@@ -51,6 +51,8 @@
         () => true,
         (a) => (action.textContent = "Action: " + JSON.stringify(a)),
         (text) => (action.textContent = text),
+        undefined,
+        true,
       );
       if (!controls.enabled) document.querySelector("#touch-toggle").click();
       document.body.classList.add("battle-active");

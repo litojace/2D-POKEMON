@@ -133,6 +133,7 @@ const touch = new TouchControls(
       scene.actions = { skill: -1, dash: false, jump: false, basic: false };
   },
 );
+$("mobile-play").hidden = !touch.available;
 $("mobile-play").onclick = () => {
   if (!touch.enabled) $("touch-toggle").click();
   $("mobile-fullscreen").click();

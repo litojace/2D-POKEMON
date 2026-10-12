@@ -14,6 +14,7 @@ type Actions = { basic: boolean; skill: number; dash: boolean; jump: boolean };
 export class TouchControls {
   readonly input = new TouchInputState();
   enabled: boolean;
+  readonly available: boolean;
   preferences: ControlPreferences;
   private root: HTMLElement;
   private stick: HTMLElement;
@@ -36,6 +37,7 @@ export class TouchControls {
     fire: (action: Partial<Actions>) => void,
     notify: (text: string) => void,
     resetActions: () => void = () => {},
+    preview = false,
   ) {
     this.root = root;
     this.resetActions = resetActions;
@@ -46,10 +48,10 @@ export class TouchControls {
       stored = null;
     }
     this.preferences = controlPreferences(stored);
+    this.available = preview || matchMedia("(pointer:coarse)").matches;
+    root.hidden = !this.available;
     this.enabled =
-      localStorage.getItem("arena-touch") === "on" ||
-      (localStorage.getItem("arena-touch") !== "off" &&
-        matchMedia("(pointer:coarse)").matches);
+      this.available && localStorage.getItem("arena-touch") !== "off";
     root.innerHTML =
       '<div class="mobile-tools"><button id="touch-toggle" class="quiet"></button><button id="mobile-fullscreen" class="quiet">Enter fullscreen ⛶</button><button id="mobile-settings" class="quiet">Mobile controls ⚙</button><span class="touch-note">Aim follows opponent</span></div><div class="rotate-hint" role="status">Rotate your phone for a wider arena. Portrait play is still available.</div><div class="touch-pad"><div class="joystick-area"><div class="joystick" role="group" aria-label="Movement joystick"><span class="joystick-knob"></span></div></div><div class="touch-buttons">' +
       (["dash", "jump", "0", "1", "2", "3", "attack"] as TouchAction[])
@@ -84,6 +86,7 @@ export class TouchControls {
       this.resize();
     };
     toggle.onclick = () => {
+      if (!this.available) return;
       this.enabled = !this.enabled;
       localStorage.setItem("arena-touch", this.enabled ? "on" : "off");
       this.reset();
@@ -296,6 +299,7 @@ export class TouchControls {
     this.resize();
   }
   settingsHTML() {
+    if (!this.available) return "";
     return (
       "<h3>Mobile Controls</h3><p>Fixed joystick · settings are saved on this device.</p>" +
       (["joystickSize", "buttonSize", "opacity"] as const)
@@ -308,6 +312,7 @@ export class TouchControls {
     );
   }
   bindSettings() {
+    if (!this.available) return;
     for (const key of ["joystickSize", "buttonSize", "opacity"] as const) {
       const input = document.getElementById(
         "control-" + key,
