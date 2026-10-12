@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Fighter ability artwork</title>
+    <style>
+      body {
+        background: #101b20;
+        color: #eaf0e4;
+        font-family: system-ui;
+        margin: 0;
+        padding: 24px;
+      }
+      h1 {
+        font-size: 24px;
+      }
+      h2 {
+        margin: 0 0 16px;
+      }
+      section {
+        background: #1b2d35;
+        border-radius: 20px;
+        padding: 22px;
+        margin-bottom: 16px;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+      }
+      .icon {
+        width: 68px;
+        height: 68px;
+        display: grid;
+        place-items: center;
+        border: 2px solid #709cab;
+        border-radius: 50%;
+        background: radial-gradient(circle, #294656, #0b1c28);
+        margin: 0 auto 14px;
+      }
+      .skill-icon {
+        width: 49px;
+        height: 49px;
+      }
+      article {
+        text-align: center;
+      }
+      strong {
+        font-size: 13px;
+      }
+      p {
+        font-size: 11px;
+        color: #aebfbd;
+        max-width: 190px;
+        margin: 8px auto;
+        line-height: 1.4;
+      }
+      @media (max-width: 500px) {
+        .row {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Fighter ability icons</h1>
+    <div id="gallery"></div>
+    <script type="module">
+      import { CHARACTERS } from "@arena/shared";
+      import { abilityIcon } from "./src/ability-icons";
+      document.querySelector("#gallery").innerHTML = Object.values(CHARACTERS)
+        .map(
+          (c) =>
+            `<section><h2 style="color:#${c.color.toString(16)}">${c.name}</h2><div class="row">${c.skills.map((a) => `<article><div class="icon">${abilityIcon(a.name)}</div><strong>${a.name}</strong><p>${a.description}</p></article>`).join("")}</div></section>`,
+        )
+        .join("");
+    </script>
+  </body>
+</html>

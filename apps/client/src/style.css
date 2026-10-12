@@ -1519,3 +1519,32 @@ dialog input[type="range"] {
     height: 88px;
   }
 }
+/* Even thumb arc around the basic attack center (156, 161). */
+.touch-buttons .touch-attack {
+  left: 110px;
+  top: 116px;
+}
+.touch-buttons button[data-skill="0"] {
+  left: 19px;
+  top: 170px;
+}
+.touch-buttons button[data-skill="1"] {
+  left: 13px;
+  top: 93px;
+}
+.touch-buttons button[data-skill="2"] {
+  left: 64px;
+  top: 32px;
+}
+.touch-buttons button[data-skill="3"] {
+  left: 144px;
+  top: 5px;
+}
+.touch-buttons button[data-action="dash"] {
+  left: 181px;
+  top: 77px;
+}
+.touch-buttons button[data-action="jump"] {
+  left: 181px;
+  top: 196px;
+}
