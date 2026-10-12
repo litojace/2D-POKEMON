@@ -16,7 +16,18 @@ import {
   type Reply,
 } from "../../../packages/shared/src/index.js";
 import { Arena } from "./simulation.js";
+import {
+  createAccountProvider,
+  authorize,
+  installAccountRoutes,
+  AccountError,
+  type AccountProvider,
+} from "./accounts.js";
+import type { Account } from "../../../packages/shared/src/accounts.js";
+import { ZodError } from "zod";
+import type { Request, Response, NextFunction } from "express";
 type Session = {
+  accountId: string;
   id: string;
   token: string;
   code: string;
@@ -24,9 +35,15 @@ type Session = {
   expires: number;
 };
 export function createArenaServer(
-  options: { reconnectMs?: number; autoTick?: boolean } = {},
+  options: {
+    reconnectMs?: number;
+    autoTick?: boolean;
+    accounts?: AccountProvider;
+  } = {},
 ) {
   const app = express();
+  const accounts = options.accounts ?? createAccountProvider();
+  app.use(express.json({ limit: "4kb" }));
   const http = createServer(app);
   const io = new Server(http, {
     maxHttpBufferSize: 4096,
@@ -40,10 +57,84 @@ export function createArenaServer(
     options.reconnectMs ??
     Number(process.env.RECONNECT_MS ?? RULES.reconnectMs);
   const eventCursors = new WeakMap<Arena, number>();
+  io.use(async (socket, next) => {
+    try {
+      const token = socket.handshake.auth.accessToken;
+      if (token) {
+        socket.data.account = await authorize(accounts, token);
+        socket.data.accessToken = token;
+      }
+      next();
+    } catch (error) {
+      next(
+        new Error(
+          error instanceof Error ? error.message : "Unable to verify login.",
+        ),
+      );
+    }
+  });
+  async function refreshSocket(socket: import("socket.io").Socket) {
+    try {
+      const account = await authorize(accounts, socket.data.accessToken);
+      socket.data.account = account;
+      const session = getSession(socket.id);
+      const arena = session && rooms.get(session.code);
+      if (arena?.practice && !account.isAdmin)
+        throw new AccountError(403, "Admin testing access was removed.");
+      const fighter = arena?.players.find((p) => p.id === session!.id);
+      if (fighter) {
+        fighter.name = account.displayName;
+        fighter.title = account.title;
+        fighter.titleColor = account.titleColor;
+      }
+      socket.emit("account-changed");
+    } catch (error) {
+      socket.emit("access-revoked", {
+        error: error instanceof Error ? error.message : "Login required.",
+      });
+      const session = getSession(socket.id);
+      if (session) {
+        socket.leave(session.code);
+        detach(session, true);
+      }
+      socket.disconnect(true);
+    }
+  }
+  installAccountRoutes(app, accounts, (id) => {
+    for (const socket of io.sockets.sockets.values())
+      if ((socket.data.account as Account | undefined)?.id === id)
+        void refreshSocket(socket);
+  });
   app.get("/api/health", (_req, res) =>
     res.json({ ok: true, rooms: rooms.size }),
   );
-  const client = path.resolve("apps/client/dist");
+  app.use("/api", (_req, res) =>
+    res.status(404).json({ error: "Unknown API endpoint." }),
+  );
+  app.use(
+    (error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+      res
+        .status(
+          error instanceof AccountError
+            ? error.status
+            : error instanceof ZodError
+              ? 400
+              : 500,
+        )
+        .json({
+          error:
+            error instanceof AccountError
+              ? error.message
+              : error instanceof ZodError
+                ? "Invalid request."
+                : "Account service failed. Please try again.",
+        });
+    },
+  );
+  const client = path.resolve(
+    process.env.INIT_CWD ?? process.cwd(),
+    "apps/client/dist",
+  );
   app.use(express.static(client));
   app.get("*", (_req, res) => res.sendFile(path.join(client, "index.html")));
   function getSession(socketId: string) {
@@ -101,6 +192,18 @@ export function createArenaServer(
     else broadcast(arena);
   }
   io.on("connection", (socket) => {
+    const account = () => socket.data.account as Account | undefined;
+    const requirePlayer = (cb: unknown) => {
+      if (!account()) {
+        fail(cb, "Please log in to play.");
+        return false;
+      }
+      if (account()!.suspended) {
+        fail(cb, "This game account is suspended.");
+        return false;
+      }
+      return true;
+    };
     let windowStart = Date.now(),
       messages = 0;
     const allowed = (limit = 90) => {
@@ -125,7 +228,14 @@ export function createArenaServer(
       const id = randomBytes(12).toString("hex"),
         token = randomBytes(32).toString("hex");
       arena.add(id, name);
+      const profile = account()!;
+      Object.assign(arena.players.at(-1)!, {
+        name: profile.displayName,
+        title: profile.title,
+        titleColor: profile.titleColor,
+      });
       sessions.set(token, {
+        accountId: profile.id,
         id,
         token,
         code: arena.code,
@@ -137,6 +247,7 @@ export function createArenaServer(
       if (publish) broadcast(arena);
     };
     socket.on("create", (data: unknown, cb: unknown) => {
+      if (!requirePlayer(cb)) return;
       if (!allowed(15))
         return fail(cb, "Too many requests. Try again in a moment.");
       const result = identitySchema.safeParse(data);
@@ -144,6 +255,11 @@ export function createArenaServer(
         return fail(cb, "Use a display name of 1–20 characters.");
       if (getSession(socket.id))
         return fail(cb, "Leave your current room first.");
+      if ([...sessions.values()].some((s) => s.accountId === account()!.id))
+        return fail(
+          cb,
+          "This account already has a room. Reconnect or leave that room first.",
+        );
       if (rooms.size >= 500)
         return fail(cb, "The arena is busy. Please try again later.");
       const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -159,12 +275,15 @@ export function createArenaServer(
       attach(arena, result.data.name, cb);
     });
     socket.on("join", (data: unknown, cb: unknown) => {
+      if (!requirePlayer(cb)) return;
       if (!allowed(15)) return fail(cb, "Too many requests.");
       const result = joinSchema.safeParse(data);
       if (!result.success)
         return fail(cb, "Enter your name and a six-character room code.");
       if (getSession(socket.id))
         return fail(cb, "Leave your current room first.");
+      if ([...sessions.values()].some((s) => s.accountId === account()!.id))
+        return fail(cb, "This account already has a room.");
       const arena = rooms.get(result.data.code);
       if (!arena)
         return fail(cb, "Room not found. Check the code with your friend.");
@@ -175,19 +294,37 @@ export function createArenaServer(
         return fail(cb, "This match has already started.");
       attach(arena, result.data.name, cb);
     });
-    socket.on("resume", (data: unknown, cb: unknown) => {
+    socket.on("resume", async (data: unknown, cb: unknown) => {
+      if (!requirePlayer(cb)) return;
       if (!allowed(15)) return fail(cb, "Too many requests.");
       const result = resumeSchema.safeParse(data);
       if (!result.success) return fail(cb, "Invalid session.");
       if (getSession(socket.id))
         return fail(cb, "You already have an active session.");
       const s = sessions.get(result.data.token);
+      if (s && s.accountId !== account()!.id)
+        return fail(cb, "This room session belongs to a different account.");
       if (!s || s.expires < Date.now())
         return fail(cb, "Your session expired. Create or join a room again.");
       if (s.socketId) return fail(cb, "This player is already connected.");
       const arena = rooms.get(s.code);
       const p = arena?.players.find((p) => p.id === s.id);
       if (!arena || !p) return fail(cb, "Room expired.");
+      if (arena.practice) {
+        try {
+          socket.data.account = await authorize(
+            accounts,
+            socket.data.accessToken,
+            true,
+          );
+        } catch (error) {
+          return fail(
+            cb,
+            error instanceof Error ? error.message : "Admin access required.",
+          );
+        }
+        if (s.socketId) return fail(cb, "This player is already connected.");
+      }
       s.socketId = socket.id;
       s.expires = Infinity;
       p.connected = true;
@@ -200,15 +337,29 @@ export function createArenaServer(
     const withRoom = (
       cb: unknown,
       action: (arena: Arena, id: string) => void,
+      rateLimited = true,
     ) => {
-      if (!allowed()) return fail(cb, "Too many requests.");
+      if (!requirePlayer(cb)) return;
+      if (rateLimited && !allowed()) return fail(cb, "Too many requests.");
       const s = getSession(socket.id);
       const a = s && rooms.get(s.code);
       if (!s || !a) return fail(cb, "Join a room first.");
       action(a, s.id);
     };
-    socket.on("practice", (data: unknown, cb: unknown) => {
+    socket.on("practice", async (data: unknown, cb: unknown) => {
       if (!allowed(15)) return fail(cb, "Too many requests.");
+      try {
+        socket.data.account = await authorize(
+          accounts,
+          socket.data.accessToken,
+          true,
+        );
+      } catch (error) {
+        return fail(
+          cb,
+          error instanceof Error ? error.message : "Admin access required.",
+        );
+      }
       const result = identitySchema
         .extend({ character: characterSchema })
         .safeParse(data);
@@ -216,6 +367,8 @@ export function createArenaServer(
         return fail(cb, "Choose a valid character and display name.");
       if (getSession(socket.id))
         return fail(cb, "Leave your current room first.");
+      if ([...sessions.values()].some((s) => s.accountId === account()!.id))
+        return fail(cb, "This account already has a room.");
       if (rooms.size >= 500)
         return fail(cb, "The arena is busy. Please try again later.");
       let code: string;
@@ -231,8 +384,27 @@ export function createArenaServer(
       a.resetPractice();
       broadcast(a);
     });
+    const withAdminRoom = async (
+      cb: unknown,
+      action: (a: Arena, id: string) => void,
+    ) => {
+      if (!allowed()) return fail(cb, "Too many requests.");
+      try {
+        socket.data.account = await authorize(
+          accounts,
+          socket.data.accessToken,
+          true,
+        );
+        withRoom(cb, action, false);
+      } catch (error) {
+        fail(
+          cb,
+          error instanceof Error ? error.message : "Admin access required.",
+        );
+      }
+    };
     socket.on("practice-character", (data: unknown, cb: unknown) =>
-      withRoom(cb, (a, id) => {
+      withAdminRoom(cb, (a, id) => {
         const result = characterSchema.safeParse(data);
         if (!a.practice || !result.success || a.phase === "paused")
           return fail(
@@ -246,7 +418,7 @@ export function createArenaServer(
       }),
     );
     socket.on("practice-reset", (_data: unknown, cb: unknown) =>
-      withRoom(cb, (a) => {
+      withAdminRoom(cb, (a) => {
         if (!a.practice || a.phase === "paused")
           return fail(cb, "Reset is available only in active solo practice.");
         a.resetPractice();
@@ -255,7 +427,7 @@ export function createArenaServer(
       }),
     );
     socket.on("practice-options", (data: unknown, cb: unknown) =>
-      withRoom(cb, (a) => {
+      withAdminRoom(cb, (a) => {
         const result = practiceOptionsSchema.safeParse(data);
         if (!a.practice || !result.success)
           return fail(cb, "Invalid practice options.");
@@ -371,6 +543,13 @@ export function createArenaServer(
     options.autoTick === false
       ? undefined
       : setInterval(step, 1000 / RULES.tick);
+  const accountTimer =
+    options.autoTick === false
+      ? undefined
+      : setInterval(() => {
+          for (const socket of io.sockets.sockets.values())
+            if (socket.data.account) void refreshSocket(socket);
+        }, 30000);
   return {
     app,
     http,
@@ -381,6 +560,7 @@ export function createArenaServer(
     broadcast,
     close: async () => {
       if (timer) clearInterval(timer);
+      if (accountTimer) clearInterval(accountTimer);
       await new Promise<void>((resolve) => io.close(() => resolve()));
     },
   };

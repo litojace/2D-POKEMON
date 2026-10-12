@@ -17,12 +17,15 @@ import {
 } from "../../../packages/shared/src/index";
 import { AudioManager } from "./audio";
 import { InterpolationBuffer } from "./networking/interpolation";
+import { AccountUI } from "./accounts";
 import "./style.css";
 const audio = new AudioManager();
 const remoteFrames = new InterpolationBuffer();
 const socket = io(import.meta.env.VITE_SERVER_URL || undefined, {
-  autoConnect: true,
+  autoConnect: false,
+  auth: { accessToken: null },
 });
+let accountsUI: AccountUI;
 let state: Snapshot | undefined,
   myId = "",
   selected: CharacterId = "voltling",
@@ -47,7 +50,7 @@ const escape = (s: string) =>
       ]!,
   );
 document.querySelector("#app")!.innerHTML =
-  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark">✦</span> ELEMENT<span>ARENA</span></a><div class="top-links"><span class="connection" id="connection">Connecting</span><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">⚙ Settings</button></div></header><main><section id="menu"></section><section id="battle" hidden><div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><span class="map-label">FOREST ARENA <span>01 / VERDANT GROUNDS</span></span></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span>WASD <b>Move</b> · Mouse <b>Aim</b> · Click <b>Attack</b></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>ELEMENT ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Original creatures. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
+  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark">✦</span> ELEMENT<span>ARENA</span></a><div class="top-links"><span class="connection" id="connection">Connecting</span><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">⚙ Settings</button><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden><div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><span class="map-label">FOREST ARENA <span>01 / VERDANT GROUNDS</span></span></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span>WASD <b>Move</b> · Mouse <b>Aim</b> · Click <b>Attack</b></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>ELEMENT ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Original creatures. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
 document.addEventListener("pointerdown", (event) => {
   if ((event.target as Element).closest("button")) {
     audio.unlock();
@@ -116,7 +119,7 @@ function renderMenu() {
       )
       .join(
         "",
-      )}</div><div class="skill-preview"><div><span class="eyebrow" style="color:#${character.color.toString(16)}">${character.element}</span><h3>${character.name}'s toolkit</h3><p>${character.role} · ${character.speed} movement speed</p></div><div class="preview-skills">${character.skills.map((a, i) => `<div><kbd>${KEYS.skills[i]}</kbd><span><strong>${a.name}</strong><small>${a.description}</small></span><b>${a.cooldown}s</b></div>`).join("")}</div></div><p class="universal">Every fighter can <b>basic attack</b>, <b>dash</b>, and <b>jump</b> in addition to their four skills.</p></div><aside class="room-panel">${isRoom ? `<div class="eyebrow">PRIVATE LOBBY</div><h2>Your duel starts here.</h2><p>Share this code with your friend.</p><button id="copy" class="room-code">${state!.code}<span>COPY CODE ↗</span></button><div class="players">${state!.players.map((p, i) => `<div><span class="player-dot" style="background:#${CHARACTERS[p.character].color.toString(16)}">${i + 1}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small>${CHARACTERS[p.character].name}</small></span><b>${!p.connected ? "OFFLINE" : p.ready ? "READY" : "CHOOSING"}</b></div>`).join("")}${state!.players.length < 2 ? '<div class="waiting"><span>＋</span> Waiting for your opponent…</div>' : ""}</div><button class="primary" id="ready">${p!.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full" id="leave">Leave room</button><small class="room-note">The match begins when both players are ready.</small>` : `<div class="eyebrow">PLAY ONLINE</div><h2>A friend. A code.<br>A worthy opponent.</h2><label for="name">YOUR DISPLAY NAME</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><button class="primary" id="create">Create private room →</button><button class="secondary full" id="practice">Solo test mode →</button><div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><small class="room-note">2 players · Free to play · No account needed<br>Keyboard + mouse recommended</small>`}</aside></div>`;
+      )}</div><div class="skill-preview"><div><span class="eyebrow" style="color:#${character.color.toString(16)}">${character.element}</span><h3>${character.name}'s toolkit</h3><p>${character.role} · ${character.speed} movement speed</p></div><div class="preview-skills">${character.skills.map((a, i) => `<div><kbd>${KEYS.skills[i]}</kbd><span><strong>${a.name}</strong><small>${a.description}</small></span><b>${a.cooldown}s</b></div>`).join("")}</div></div><p class="universal">Every fighter can <b>basic attack</b>, <b>dash</b>, and <b>jump</b> in addition to their four skills.</p></div><aside class="room-panel">${isRoom ? `<div class="eyebrow">PRIVATE LOBBY</div><h2>Your duel starts here.</h2><p>Share this code with your friend.</p><button id="copy" class="room-code">${state!.code}<span>COPY CODE ↗</span></button><div class="players">${state!.players.map((p, i) => `<div><span class="player-dot" style="background:#${CHARACTERS[p.character].color.toString(16)}">${i + 1}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small>${CHARACTERS[p.character].name}</small></span><b>${!p.connected ? "OFFLINE" : p.ready ? "READY" : "CHOOSING"}</b></div>`).join("")}${state!.players.length < 2 ? '<div class="waiting"><span>＋</span> Waiting for your opponent…</div>' : ""}</div><button class="primary" id="ready">${p!.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full" id="leave">Leave room</button><small class="room-note">The match begins when both players are ready.</small>` : `<div class="eyebrow">PLAY ONLINE</div><h2>A friend. A code.<br>A worthy opponent.</h2><label for="name">YOUR DISPLAY NAME</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><button class="primary" id="create">Create private room →</button>${accountsUI?.account?.isAdmin ? '<button class="secondary full" id="practice">Solo test mode →</button>' : ""}<div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><small class="room-note">2 players · Free to play · Login required<br>Keyboard + mouse recommended</small>`}</aside></div>`;
   document.querySelectorAll<HTMLButtonElement>("[data-character]").forEach(
     (button) =>
       (button.onclick = async () => {
@@ -127,6 +130,8 @@ function renderMenu() {
         renderMenu();
       }),
   );
+  if (!isRoom && accountsUI?.account)
+    $<HTMLInputElement>("name").readOnly = true;
   if (isRoom) {
     $("ready").onclick = () => {
       audio.unlock();
@@ -140,6 +145,7 @@ function renderMenu() {
         .catch(() => toast(`Share this code: ${state!.code}`));
   } else {
     const play = async (event: "create" | "join") => {
+      if (!accountsUI.ensurePlayer()) return;
       if (!connected) return toast("Waiting for the server connection.");
       audio.unlock();
       const name = $<HTMLInputElement>("name").value.trim();
@@ -161,14 +167,16 @@ function renderMenu() {
     };
     $("create").onclick = () => void play("create");
     $("join").onclick = () => void play("join");
-    $("practice").onclick = async () => {
-      if (!connected) return toast("Waiting for the server connection.");
-      const button = $<HTMLButtonElement>("practice");
-      button.disabled = true;
-      const name = $<HTMLInputElement>("name").value.trim() || "Trainer";
-      identity(await request("practice", { name, character: selected }));
-      button.disabled = false;
-    };
+    if ($("practice"))
+      $("practice").onclick = async () => {
+        if (!accountsUI.ensurePlayer(true)) return;
+        if (!connected) return toast("Waiting for the server connection.");
+        const button = $<HTMLButtonElement>("practice");
+        button.disabled = true;
+        const name = $<HTMLInputElement>("name").value.trim() || "Trainer";
+        identity(await request("practice", { name, character: selected }));
+        button.disabled = false;
+      };
   }
 }
 async function leave() {
@@ -346,6 +354,22 @@ socket.on("disconnect", () => {
   pending = [];
   toast("Connection lost. Reconnecting to your session…");
 });
+socket.on("connect_error", (error: Error) => {
+  toast(error.message);
+  $("connection").textContent = "LOGIN REQUIRED";
+});
+socket.on("account-changed", () => void accountsUI.refresh());
+socket.on("access-revoked", ({ error }: { error: string }) => {
+  sessionStorage.removeItem("arena-token");
+  state = undefined;
+  myId = "";
+  local = undefined;
+  pending = [];
+  screen = "";
+  renderMenu();
+  toast(error);
+  void accountsUI.refresh();
+});
 socket.on("state", (snapshot: WireSnapshot) => {
   if (snapshot.phase === "finished" && state?.phase !== "finished")
     audio.play(snapshot.winner === myId ? "victory" : "defeat");
@@ -380,6 +404,7 @@ function predict(p: Fighter, input: Input, time: number) {
   advanceMovement(p, input, 1 / RULES.tick, time);
 }
 function dialog(html: string) {
+  menuOpen = true;
   $("dialog").innerHTML =
     `<button id="close-dialog" class="close">×</button>${html}`;
   $<HTMLDialogElement>("dialog").showModal();
@@ -761,7 +786,9 @@ class ArenaScene extends Phaser.Scene {
       }
       label
         .setPosition(x, y - 45 - jump)
-        .setText(`${p.name}${p.id === myId ? " • YOU" : ""}`)
+        .setText(
+          `${p.title ? `${p.title}\n` : ""}${p.name}${p.id === myId ? " • YOU" : ""}`,
+        )
         .setAlpha(p.hp > 0 ? 1 : 0.4);
       g.fillStyle(0x102c24).fillRoundedRect(x - 30, y + 29, 60, 6, 3);
       g.fillStyle(c.color).fillRoundedRect(
@@ -845,4 +872,23 @@ new Phaser.Game({
   scene: [ArenaScene],
   render: { antialias: true },
   input: { activePointers: 1 },
+});
+accountsUI = new AccountUI({
+  openDialog: dialog,
+  notify: toast,
+  beforeSignOut: async () => {
+    if (myId) await leave();
+  },
+  onSession: (token) => {
+    const previous = (
+      socket.auth as { accessToken?: string | null } | undefined
+    )?.accessToken;
+    socket.auth = { accessToken: token };
+    if (previous !== token) socket.disconnect();
+    socket.connect();
+  },
+  onChange: () => {
+    screen = "";
+    if (!state || state.phase === "lobby") renderMenu();
+  },
 });

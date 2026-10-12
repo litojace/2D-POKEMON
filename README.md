@@ -2,6 +2,8 @@
 
 A playable browser-based, real-time 1v1 creature fighting game. Both players move, aim, attack, dash and jump simultaneously. All creatures and art are original procedural placeholders, with no official Pokémon assets.
 
+**Accounts are now required to play.** Follow [game account and admin setup](docs/accounts-setup.md) to create a separate Supabase project, apply the migration, configure auth, and grant your intended administrator. Solo testing and player/title management are admin-only. Email/password, Google sign-in, recovery, and Remember me follow the AMATYC project's pattern. Without account configuration you can browse creatures, but gameplay stays locked.
+
 ![Verified browser battle](docs/arena-preview.jpg)
 
 ## Run locally
@@ -30,13 +32,13 @@ Production is available at **http://localhost:3001** after building. One Express
 
 **Two computers on your local network:** run `npm run dev` on the host. Find its LAN IPv4 address with `ipconfig`, then open `http://HOST_LAN_IP:5173` on both computers. Both devices must be on the same network, and the host's firewall must allow the Vite port on that private network. `localhost` on your friend's device points to their device, not yours. Vite proxies sockets so only the frontend port needs to be reached by the friend. You can also build and start, then access `http://HOST_LAN_IP:3001` on the LAN.
 
-**Across the internet:** deploy the single service below and give both players the same HTTPS public URL. LAN addresses do not work over the public internet. No peer-to-peer networking, router port forwarding or database is required for the deployed game.
+**Across the internet:** deploy the single service below and give both players the same HTTPS public URL. LAN addresses do not work over the public internet. No peer-to-peer networking or router port forwarding is required. Supabase stores accounts, permissions and titles; battle rooms remain in server memory.
 
 ## Controls and rules
 
 ### Solo test mode
 
-Select a creature and click **Solo test mode** on the main menu. No second player or ready step is needed. Practice uses the same authoritative combat as online matches, without a round timer. Both you and the training target respawn automatically when defeated.
+Sign in as an administrator, select a creature and click **Solo test mode** on the main menu. No second player or ready step is needed. Practice uses the same authoritative combat as online matches, without a round timer. Both you and the training target respawn automatically when defeated.
 
 The practice toolbar lets you switch between all four creatures, reset health/positions/statistics, turn off skill/dash/jump cooldowns, and enable target attacks. The target shoots projectiles and places ground fire so you can test Counter Stance, Water Clone and jump dodges. Cast and recovery times still apply with cooldowns disabled. Hover the skill buttons for descriptions. Switching creatures resets the arena. Solo mode still needs the local or deployed game server running.
 
@@ -98,7 +100,7 @@ Verified locally on October 11, 2026: TypeScript checks, all 28 automated tests,
 
 Automated tests exercise normalization, collision, projectiles, cooldowns, damage, dash, jump, statuses, charged skills, rounds and overtime, room capacity, invalid actions, mirrored movement/health, synchronized skill casts, match results, rematches, disconnects, secure reconnection, forfeit and room cleanup. Network tests use two real socket clients and step the server deterministically; health is lowered by test fixtures to exercise death without waiting several minutes.
 
-This MVP uses procedural artwork and synthesized music/effects. It supports desktop keyboard/mouse play and responsive layout, with no mobile touch controls. Prediction currently covers movement and universal dash, not combat outcomes. Internet latency/balance testing with two humans is still necessary. Accounts, ranked matchmaking, saved stats, remappable controls, additional maps, sprite-sheet animations, and advanced unused ability categories (homing/beam attacks) are future work.
+This MVP uses procedural artwork and synthesized music/effects. It supports desktop keyboard/mouse play and responsive layout, with no mobile touch controls. Prediction currently covers movement and universal dash, not combat outcomes. Internet latency/balance testing with two humans is still necessary. Ranked matchmaking, saved match stats, remappable controls, additional maps, sprite-sheet animations, and advanced unused ability categories (homing/beam attacks) are future work.
 
 ## Troubleshooting
 

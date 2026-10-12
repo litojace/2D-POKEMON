@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@arena/shared": "*",
+    "@supabase/supabase-js": "^2.117.3",
     "phaser": "^3.90.0",
     "socket.io-client": "^4.8.0"
   },

@@ -8,6 +8,16 @@ services:
     startCommand: npm run start
     healthCheckPath: /api/health
     envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+      - key: VITE_SITE_URL
+        value: https://parena.litojace.com
       - key: NODE_ENV
         value: production
       - key: NODE_VERSION

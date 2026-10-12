@@ -408,6 +408,8 @@ export interface Stats {
   skills: number;
 }
 export interface Fighter extends Vec {
+  title?: string | null;
+  titleColor?: string | null;
   id: string;
   name: string;
   character: CharacterId;

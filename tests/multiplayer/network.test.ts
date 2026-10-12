@@ -1,6 +1,7 @@
 import { beforeEach, afterEach, it, expect } from "vitest";
 import { io, type Socket } from "socket.io-client";
 import { createArenaServer } from "../../apps/server/src/server.js";
+import { fakeAccounts } from "../helpers/accounts";
 import {
   blankInput,
   type Reply,
@@ -9,6 +10,7 @@ import {
 let server: ReturnType<typeof createArenaServer>,
   clients: Socket[] = [];
 let url = "";
+let accounts: ReturnType<typeof fakeAccounts>;
 const wait = (ms = 40) => new Promise((resolve) => setTimeout(resolve, ms));
 const emit = (
   socket: Socket,
@@ -22,18 +24,25 @@ const emit = (
         error ? reject(error) : resolve(result),
       ),
   );
-const connect = async () => {
+const connect = async (token?: string) => {
+  token ??= accounts.add().token;
   const socket = io(url, {
     transports: ["websocket"],
     forceNew: true,
     reconnection: false,
+    auth: { accessToken: token },
   });
   clients.push(socket);
   await new Promise<void>((resolve) => socket.on("connect", resolve));
   return socket;
 };
 beforeEach(async () => {
-  server = createArenaServer({ autoTick: false, reconnectMs: 150 });
+  accounts = fakeAccounts();
+  server = createArenaServer({
+    autoTick: false,
+    reconnectMs: 150,
+    accounts: accounts.provider,
+  });
   await new Promise<void>((resolve) =>
     server.http.listen(0, "127.0.0.1", resolve),
   );
@@ -177,7 +186,9 @@ it("isolates practice commands from online rooms and preserves practice reconnec
   client.disconnect();
   await wait();
   expect(a.phase).toBe("paused");
-  const replacement = await connect();
+  const replacement = await connect(
+    (client.auth as { accessToken: string }).accessToken,
+  );
   expect((await emit(replacement, "resume", { token: reply.token })).ok).toBe(
     true,
   );
@@ -282,7 +293,9 @@ it("suspends the match, securely reconnects, rejects duplicate sessions and forf
   const time = arena.time;
   server.step();
   expect(arena.time).toBe(time);
-  const replacement = await connect();
+  const replacement = await connect(
+    (two.auth as { accessToken: string }).accessToken,
+  );
   expect(
     (await emit(replacement, "resume", { token: "0".repeat(64) })).ok,
   ).toBe(false);
