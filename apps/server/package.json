@@ -1,0 +1,22 @@
+{
+  "name": "@arena/server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@arena/shared": "*",
+    "express": "^4.21.0",
+    "socket.io": "^4.8.0",
+    "dotenv": "^16.6.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.0",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.20.0",
+    "socket.io-client": "^4.8.0"
+  }
+}

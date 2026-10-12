@@ -1,0 +1,28 @@
+{
+  "name": "element-arena",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "dev": "concurrently -k \"npm run dev -w apps/server\" \"npm run dev -w apps/client\"",
+    "build": "npm run build -w packages/shared && npm run build -w apps/client && npm run build -w apps/server",
+    "typecheck": "tsc --noEmit -p apps/client && tsc --noEmit -p apps/server",
+    "test": "vitest run",
+    "start": "node apps/server/dist/apps/server/src/index.js"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0",
+    "prettier": "^3.9.10",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}
