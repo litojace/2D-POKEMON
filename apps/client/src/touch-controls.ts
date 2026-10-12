@@ -2,6 +2,7 @@ import { abilityIcon } from "./ability-icons";
 import {
   TouchInputState,
   mobileLayout,
+  safeViewport,
   controlPreferences,
   DEFAULT_CONTROLS,
   type ControlPreferences,
@@ -235,11 +236,18 @@ export class TouchControls {
       : this.root.clientWidth || innerWidth;
     const height = window.visualViewport?.height ?? innerHeight;
     const safe = getComputedStyle(this.root);
-    const available =
-      width -
-      (parseFloat(safe.getPropertyValue("--safe-left")) || 0) -
-      (parseFloat(safe.getPropertyValue("--safe-right")) || 0);
-    const layout = mobileLayout(available, height, this.preferences);
+    const insets = Object.fromEntries(
+      ["top", "right", "bottom", "left"].map((dir) => [
+        dir,
+        parseFloat(safe.getPropertyValue("--safe-" + dir)) || 0,
+      ]),
+    ) as { top: number; right: number; bottom: number; left: number };
+    const viewport = safeViewport(width, height, insets);
+    const layout = mobileLayout(
+      viewport.width,
+      viewport.height,
+      this.preferences,
+    );
     this.root.style.setProperty("--joystick-size", layout.joystick + "px");
     this.root.style.setProperty(
       "--hud-opacity",

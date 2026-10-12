@@ -15,7 +15,7 @@
       <div
         id="preview"
         class="arena-frame"
-        style="background: radial-gradient(circle at center, #397451, #214736)"
+        style="background: radial-gradient(circle at center, #365783, #1e3557)"
       >
         <span
           id="marker"
@@ -32,6 +32,16 @@
       import "./src/style.css";
       import { TouchControls } from "./src/touch-controls";
       const action = document.querySelector("#action");
+      // Development-only cutout simulation for responsive HUD verification.
+      const insetParams = new URLSearchParams(location.search);
+      for (const side of ["top", "right", "bottom", "left"]) {
+        const inset = Number(insetParams.get("safe-" + side));
+        if (inset > 0)
+          document.documentElement.style.setProperty(
+            "--safe-" + side,
+            Math.min(100, inset) + "px",
+          );
+      }
       const controls = new TouchControls(
         document.querySelector("#controls"),
         () => true,

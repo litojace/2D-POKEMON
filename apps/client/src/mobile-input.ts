@@ -119,3 +119,20 @@ export function mobileLayout(
     ],
   };
 }
+
+export function safeViewport(
+  width: number,
+  height: number,
+  insets: { top: number; right: number; bottom: number; left: number },
+) {
+  return {
+    width: Math.max(
+      0,
+      width - Math.max(0, insets.left) - Math.max(0, insets.right) - 24,
+    ),
+    height: Math.max(
+      0,
+      height - Math.max(0, insets.top) - Math.max(0, insets.bottom) - 24,
+    ),
+  };
+}

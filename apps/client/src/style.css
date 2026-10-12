@@ -1,15 +1,20 @@
 @import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap");
 :root {
   font-family: "DM Sans", sans-serif;
-  color: #e9efe8;
-  background: #101b20;
+  color: #f3f6ff;
+  background: #101c35;
   font-synthesis: none;
-  --muted: #91a19e;
-  --lime: #d5f778;
+  --muted: #a0afc8;
+  --lime: #ffd65b;
+  --stadium-red: #ef4f61;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
 }
 .practice-controls {
-  border: 1px solid #d5f77830;
-  background: #1d2e2d;
+  border: 1px solid #ffd65b30;
+  background: #1b2c49;
   border-radius: 10px;
   padding: 18px;
   margin-bottom: 22px;
@@ -36,7 +41,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #d6e2ce;
+  color: #d7e2f8;
 }
 .practice-actions input[type="checkbox"] {
   accent-color: var(--lime);
@@ -47,8 +52,8 @@
 }
 .practice-actions select {
   font: inherit;
-  background: #112322;
-  color: #eaf0e5;
+  background: #13223e;
+  color: #f3f6ff;
   border: 1px solid #ffffff30;
   padding: 8px;
   border-radius: 5px;
@@ -63,7 +68,7 @@
 body {
   margin: 0;
   background:
-    radial-gradient(ellipse at 24% 12%, #243b32 0, transparent 48%), #101b20;
+    radial-gradient(ellipse at 24% 12%, #1e3763 0, transparent 48%), #101c35;
   min-height: 100vh;
 }
 button,
@@ -121,7 +126,7 @@ button:active {
   display: grid;
   place-items: center;
   background: var(--lime);
-  color: #172923;
+  color: #15243d;
   width: 36px;
   height: 36px;
   border-radius: 10px;
@@ -154,7 +159,7 @@ button:active {
   margin-right: 8px;
 }
 .connection.online {
-  color: #a6ca96;
+  color: #9cc5ff;
 }
 main {
   max-width: 1480px;
@@ -200,7 +205,7 @@ p {
   color: var(--muted);
 }
 .arena-badge {
-  border: 1px solid #d5f77826;
+  border: 1px solid #ffd65b26;
   display: flex;
   align-items: center;
   flex-direction: column;
@@ -246,7 +251,7 @@ h2 {
 .section-title > span {
   font-size: 9px;
   letter-spacing: 2px;
-  color: #82938a;
+  color: #94a8c9;
 }
 .roster {
   display: grid;
@@ -254,12 +259,12 @@ h2 {
   gap: 12px;
 }
 .creature-card {
-  color: #e8efe9;
+  color: #f3f6ff;
   text-align: left;
   border: 1px solid #ffffff15;
   border-radius: 12px;
   padding: 16px 12px 12px;
-  background: linear-gradient(160deg, #25332f, #19272b);
+  background: linear-gradient(160deg, #253856, #172743);
   position: relative;
   overflow: hidden;
 }
@@ -271,7 +276,7 @@ h2 {
       color-mix(in srgb, var(--element) 13%, transparent),
       transparent 70%
     ),
-    #24312b;
+    #1c3050;
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--element) 20%, transparent);
 }
 .element-label {
@@ -304,7 +309,7 @@ h2 {
   border-top: 1px solid #ffffff10;
   padding-top: 12px;
   font-size: 8px;
-  color: #aeb9b0;
+  color: #b7c7e1;
   margin-top: 12px;
 }
 .card-bottom span {
@@ -317,7 +322,7 @@ h2 {
   padding: 20px 22px;
   border: 1px solid #ffffff0f;
   border-radius: 12px;
-  background: #172629;
+  background: #172743;
   display: grid;
   grid-template-columns: 1fr 1.5fr;
   gap: 24px;
@@ -363,7 +368,7 @@ kbd {
   border-radius: 5px;
   padding: 7px 8px;
   display: inline-block;
-  color: #d5dfd5;
+  color: #dce5f6;
   white-space: nowrap;
 }
 .universal {
@@ -371,11 +376,11 @@ kbd {
   margin: 14px 0 0;
 }
 .universal b {
-  color: #becbc0;
+  color: #c8d4e8;
   font-weight: 500;
 }
 .room-panel {
-  background: linear-gradient(140deg, #28382f, #1b292b);
+  background: linear-gradient(140deg, #263b60, #1b2e4b);
   border: 1px solid #ffffff12;
   border-radius: 14px;
   padding: 27px 24px;
@@ -392,13 +397,13 @@ kbd {
 .room-panel label {
   display: block;
   font-size: 9px;
-  color: #b6c3b5;
+  color: #c2cfe3;
   letter-spacing: 1.5px;
   margin: 24px 0 10px;
 }
 input:not([type="range"]):not([type="checkbox"]):not([type="color"]) {
   border: 1px solid #ffffff1c;
-  background: #111f21;
+  background: #10213d;
   color: #fff;
   padding: 13px 12px;
   border-radius: 6px;
@@ -436,13 +441,13 @@ input:not([type="range"]):not([type="checkbox"]):not([type="color"]) {
   display: grid;
   gap: 8px;
   font-size: 11px;
-  color: #b4c3ae;
+  color: #c1cfe4;
   letter-spacing: 0;
   margin: 0;
 }
 .account-form select {
-  background: #112322;
-  color: #eaf0e5;
+  background: #13223e;
+  color: #f3f6ff;
   border: 1px solid #ffffff30;
   padding: 10px;
   border-radius: 5px;
@@ -483,7 +488,7 @@ dialog:has(.admin-players) {
 .admin-title {
   display: grid;
   gap: 12px;
-  background: #142422;
+  background: #182b49;
   padding: 18px;
   border: 1px solid #ffffff15;
   border-radius: 8px;
@@ -513,7 +518,7 @@ input:focus {
   border-color: var(--lime);
 }
 input::placeholder {
-  color: #63766f;
+  color: #8092b4;
 }
 .primary,
 .secondary {
@@ -525,22 +530,22 @@ input::placeholder {
 }
 .primary {
   background: var(--lime);
-  color: #182a24;
+  color: #fff8f1;
 }
 .room-panel > .primary {
   width: 100%;
   margin-top: 15px;
 }
 .secondary {
-  background: #34483c;
-  color: #d5efb6;
+  background: #293e63;
+  color: #e2ecff;
   border: 1px solid #ffffff15;
 }
 .divider {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #72857c;
+  color: #91a5c3;
   font-size: 8px;
   letter-spacing: 1px;
   margin: 27px 0 2px;
@@ -565,15 +570,15 @@ input::placeholder {
 }
 .room-note {
   display: block;
-  color: #819487;
+  color: #93a8c6;
   line-height: 1.9;
   font-size: 9px;
   margin-top: 25px;
   text-align: center;
 }
 .room-code {
-  background: #142424;
-  border: 1px dashed #d5f77850;
+  background: #172d4c;
+  border: 1px dashed #ffd65b50;
   color: var(--lime);
   width: 100%;
   padding: 18px 5px;
@@ -598,7 +603,7 @@ input::placeholder {
   border-bottom: 1px solid #ffffff10;
 }
 .player-dot {
-  color: #1d2b26;
+  color: #14213b;
   border-radius: 8px;
   width: 30px;
   height: 30px;
@@ -626,7 +631,7 @@ input::placeholder {
 }
 .players .waiting {
   font-size: 10px;
-  color: #819487;
+  color: #93a8c6;
   padding: 23px 0;
 }
 .waiting > span {
@@ -645,7 +650,7 @@ footer {
   align-items: center;
   font-size: 8px;
   letter-spacing: 1px;
-  color: #647970;
+  color: #99accb;
 }
 footer b {
   color: var(--lime);
@@ -724,7 +729,7 @@ footer > span:last-child {
   border: 1px solid #66885444;
   border-radius: 12px;
   overflow: hidden;
-  background: #214736;
+  background: #1e3557;
   box-shadow: 0 18px 60px #0002;
 }
 #game {
@@ -759,7 +764,7 @@ footer > span:last-child {
 .movement-ability,
 .basic-hint {
   padding: 12px 10px;
-  background: #1d2e2d;
+  background: #1b2c49;
   border: 1px solid #ffffff14;
   border-radius: 8px;
   display: flex;
@@ -816,11 +821,11 @@ footer > span:last-child {
   justify-content: space-between;
   align-items: center;
   font-size: 8px;
-  color: #788e81;
+  color: #9aacc9;
   margin-top: 9px;
 }
 .battle-footer b {
-  color: #aebeb2;
+  color: #b9c8de;
   margin: 0 7px 0 4px;
 }
 .battle-footer > span:nth-child(2) {
@@ -839,8 +844,8 @@ footer > span:last-child {
 }
 .overlay-card {
   padding: 30px 40px;
-  background: #0f2221ed;
-  border: 1px solid #d5f7782a;
+  background: #13233ded;
+  border: 1px solid #ffd65b2a;
   border-radius: 14px;
   text-align: center;
   box-shadow: 0 12px 90px #0008;
@@ -882,8 +887,8 @@ footer > span:last-child {
   left: 50%;
   transform: translate(-50%, 20px);
   opacity: 0;
-  background: #d5f778;
-  color: #182a24;
+  background: #ffd65b;
+  color: #fff8f1;
   padding: 14px 24px;
   border-radius: 8px;
   box-shadow: 0 6px 40px #0005;
@@ -898,15 +903,15 @@ footer > span:last-child {
   transform: translate(-50%, 0);
 }
 dialog {
-  background: #1a2d2b;
-  color: #eaf0e5;
-  border: 1px solid #d5f77840;
+  background: #1b2e4d;
+  color: #f3f6ff;
+  border: 1px solid #ffd65b40;
   border-radius: 15px;
   padding: 35px;
   width: min(500px, 90vw);
 }
 dialog::backdrop {
-  background: #041713bb;
+  background: #071225bb;
   backdrop-filter: blur(5px);
 }
 dialog h2 {
@@ -917,7 +922,7 @@ dialog label {
   display: block;
   font-size: 10px;
   letter-spacing: 1px;
-  color: #b4c3ae;
+  color: #c1cfe4;
   margin: 25px 0;
 }
 dialog input[type="range"] {
@@ -1210,7 +1215,7 @@ dialog input[type="range"] {
   height: 38px;
   display: block;
   margin: auto;
-  filter: drop-shadow(0 0 4px #c9ed7030);
+  filter: drop-shadow(0 0 4px #ffdb6530);
 }
 .ability .skill-icon,
 .basic-hint .skill-icon {
@@ -1223,8 +1228,6 @@ dialog input[type="range"] {
   flex-shrink: 0;
 }
 #mobile-controls {
-  --safe-left: env(safe-area-inset-left, 0px);
-  --safe-right: env(safe-area-inset-right, 0px);
   margin: 10px 0;
 }
 .mobile-tools {
@@ -1250,7 +1253,7 @@ dialog input[type="range"] {
   align-items: flex-end;
   gap: 8px;
   padding: 12px;
-  background: #15252c;
+  background: #152745;
   border: 1px solid #ffffff12;
   border-radius: 20px;
 }
@@ -1268,8 +1271,8 @@ dialog input[type="range"] {
   position: relative;
   width: var(--joystick-size, 124px);
   height: var(--joystick-size, 124px);
-  border: 1px solid #dffa7950;
-  background: radial-gradient(circle, #ccf28214, #10232ccc);
+  border: 1px solid #ffd65b50;
+  background: radial-gradient(circle, #ffd65b14, #132543cc);
   border-radius: 50%;
   pointer-events: none;
   opacity: var(--hud-opacity, 0.85);
@@ -1281,9 +1284,9 @@ dialog input[type="range"] {
   left: 31%;
   top: 31%;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 25%, #f0ffb5, #b8da63);
-  border: 2px solid #e7ffb5;
-  box-shadow: 0 0 12px #dffa7930;
+  background: radial-gradient(circle at 35% 25%, #fff0a8, #edbe3e);
+  border: 2px solid #ffe58b;
+  box-shadow: 0 0 12px #ffd65b30;
   will-change: transform;
 }
 .touch-buttons {
@@ -1317,8 +1320,8 @@ dialog input[type="range"] {
   border-color: #e6c674;
 }
 .touch-buttons .touch-attack {
-  border-color: #b9df87;
-  background: radial-gradient(circle, #284c42dd, #10251fdd);
+  border-color: #ffe28c;
+  background: radial-gradient(circle, #24486bdd, #112139dd);
 }
 .touch-buttons button[data-action="jump"],
 .touch-buttons button[data-action="dash"] {
@@ -1375,7 +1378,7 @@ dialog input[type="range"] {
   display: block;
 }
 :fullscreen {
-  background: #101b20;
+  background: #101c35;
   overflow: auto;
 }
 body.battle-active.touch-mode {
@@ -1397,8 +1400,7 @@ body.battle-active.touch-mode {
   position: fixed;
   inset: 0;
   height: 100dvh;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right)
-    env(safe-area-inset-bottom) env(safe-area-inset-left);
+  padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
 }
 .battle-active.touch-mode .arena-frame {
   position: absolute;
@@ -1418,19 +1420,19 @@ body.battle-active.touch-mode {
 }
 .battle-active.touch-mode .hud {
   position: absolute;
-  top: max(8px, env(safe-area-inset-top));
-  left: max(12px, env(safe-area-inset-left));
-  right: max(12px, env(safe-area-inset-right));
+  top: calc(var(--safe-top) + 8px);
+  left: calc(var(--safe-left) + 12px);
+  right: calc(var(--safe-right) + 12px);
   z-index: 22;
-  background: #101b2099;
+  background: #101c3599;
   padding: 6px 10px;
   pointer-events: none;
 }
 .battle-active.touch-mode .touch-pad {
   position: fixed;
-  bottom: max(12px, env(safe-area-inset-bottom));
-  left: max(12px, env(safe-area-inset-left));
-  right: max(12px, env(safe-area-inset-right));
+  bottom: calc(var(--safe-bottom) + 12px);
+  left: calc(var(--safe-left) + 12px);
+  right: calc(var(--safe-right) + 12px);
   padding: 0;
   gap: 0;
   z-index: 20;
@@ -1443,7 +1445,7 @@ body.battle-active.touch-mode {
   position: fixed;
   z-index: 24;
   left: 50%;
-  top: calc(max(8px, env(safe-area-inset-top)) + 58px);
+  top: calc(calc(var(--safe-top) + 8px) + 58px);
   transform: translateX(-50%);
   justify-content: center;
   white-space: nowrap;
@@ -1454,7 +1456,7 @@ body.battle-active.touch-mode {
   display: none;
 }
 .battle-active.touch-mode .mobile-tools button {
-  background: #101b2099;
+  background: #101c3599;
   border-radius: 9px;
   padding: 7px;
   font-size: 10px;
@@ -1463,7 +1465,7 @@ body.battle-active.touch-mode {
 .battle-active.touch-mode .battle-footer {
   position: fixed;
   z-index: 24;
-  bottom: max(12px, env(safe-area-inset-bottom));
+  bottom: calc(var(--safe-bottom) + 12px);
   left: 50%;
   transform: translateX(-50%);
   padding: 0;
@@ -1471,7 +1473,8 @@ body.battle-active.touch-mode {
 }
 .battle-active.touch-mode #arena-overlay {
   z-index: 30;
-  padding: max(10px, env(safe-area-inset-top)) 12px;
+  padding: calc(var(--safe-top) + 10px) calc(var(--safe-right) + 12px)
+    calc(var(--safe-bottom) + 10px) calc(var(--safe-left) + 12px);
   overflow: auto;
 }
 .battle-active.touch-mode .overlay-card {
@@ -1479,7 +1482,7 @@ body.battle-active.touch-mode {
   overflow: auto;
   width: min(540px, 95vw);
   padding: 20px;
-  background: #13282bf5;
+  background: #14294af5;
 }
 .battle-active.touch-mode .overlay-card h2 {
   font-size: 26px;
@@ -1560,14 +1563,14 @@ body.battle-active.touch-mode {
 #pwa-banner {
   position: fixed;
   z-index: 100;
-  bottom: max(16px, env(safe-area-inset-bottom));
+  bottom: calc(var(--safe-bottom) + 16px);
   left: 50%;
   transform: translateX(-50%);
   width: min(420px, 90vw);
   padding: 14px;
   border-radius: 14px;
   background: #1b3039f5;
-  border: 1px solid #dffa7955;
+  border: 1px solid #ffd65b55;
   box-shadow: 0 6px 30px #0008;
   font-size: 12px;
 }
@@ -1579,7 +1582,7 @@ body.battle-active.touch-mode {
   font-size: 11px;
 }
 .battle-active #pwa-banner {
-  top: max(4px, env(safe-area-inset-top));
+  top: calc(var(--safe-top) + 4px);
   bottom: auto;
   font-size: 10px;
   padding: 4px;
@@ -1640,5 +1643,155 @@ body.battle-active.touch-mode {
   letter-spacing: 0;
 }
 .battle-active.touch-mode .mobile-tools {
-  top: calc(max(8px, env(safe-area-inset-top)) + 64px);
+  top: calc(calc(var(--safe-top) + 8px) + 64px);
+}
+
+/* Poké Stadium chrome remains outside device cutouts in browser and standalone mode. */
+.topbar {
+  height: auto;
+  min-height: calc(88px + var(--safe-top));
+  padding: calc(16px + var(--safe-top)) calc(5vw + var(--safe-right)) 16px
+    calc(5vw + var(--safe-left));
+  gap: 16px;
+  flex-wrap: wrap;
+  background: linear-gradient(115deg, #12213e, #1b2e50);
+  border-bottom: 1px solid #8cafdf26;
+}
+main {
+  padding-left: calc(5vw + var(--safe-left));
+  padding-right: calc(5vw + var(--safe-right));
+}
+footer {
+  margin-left: calc(5vw + var(--safe-left));
+  margin-right: calc(5vw + var(--safe-right));
+  padding-bottom: calc(18px + var(--safe-bottom));
+}
+.primary {
+  background: var(--stadium-red);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 4px 14px #ef4f6126;
+}
+.brand-mark {
+  background: linear-gradient(#ef4f61 0 46%, #15243d 46% 55%, #f3f6ff 55%);
+  color: #15243d;
+  border: 2px solid #ffffffb0;
+  border-radius: 50%;
+  font-size: 0;
+  position: relative;
+}
+.brand-mark::after {
+  content: "";
+  width: 12px;
+  height: 12px;
+  background: white;
+  border: 3px solid #15243d;
+  border-radius: 50%;
+  position: absolute;
+}
+.room-panel {
+  background: linear-gradient(140deg, #20395e, #182a47);
+  border-color: #759fd32b;
+  box-shadow: 0 18px 50px #050d1e30;
+}
+.room-panel h2 {
+  color: #fff;
+}
+.creature-card.selected {
+  border-color: #ffd65b;
+  background:
+    radial-gradient(ellipse at 50% 20%, #ffd65b16, transparent 75%), #1e3150;
+}
+.secondary {
+  background: #2a4268;
+  color: #edf3ff;
+  border-color: #8baee538;
+}
+dialog {
+  max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px);
+  overflow: auto;
+  top: var(--safe-top);
+  bottom: var(--safe-bottom);
+  left: var(--safe-left);
+  right: var(--safe-right);
+  margin: auto;
+  border-color: #8baee544;
+}
+#toast {
+  bottom: calc(24px + var(--safe-bottom));
+  max-width: calc(100vw - var(--safe-left) - var(--safe-right) - 32px);
+}
+@media (max-width: 700px) {
+  .topbar {
+    min-height: calc(72px + var(--safe-top));
+    padding: calc(14px + var(--safe-top)) calc(20px + var(--safe-right)) 14px
+      calc(20px + var(--safe-left));
+    gap: 14px;
+  }
+  .brand {
+    font-size: 18px;
+  }
+  .top-links {
+    width: 100%;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .account-nav {
+    margin-left: auto;
+  }
+  main {
+    padding-left: calc(20px + var(--safe-left));
+    padding-right: calc(20px + var(--safe-right));
+  }
+  .battle-active.touch-mode main {
+    padding: 0;
+  }
+}
+.battle-active.touch-mode .mobile-tools {
+  max-width: calc(100vw - var(--safe-left) - var(--safe-right) - 32px);
+}
+
+.creature-card {
+  background: linear-gradient(145deg, #f6f8ff, #e7edf8);
+  color: #172642;
+  border-color: #b9c8df;
+  box-shadow: 0 8px 24px #040c1f22;
+}
+.creature-card.selected {
+  background:
+    radial-gradient(ellipse at 50% 20%, #ffeaa570, transparent 75%), #f5f7fc;
+  border-color: #ffd65b;
+}
+.creature-card strong {
+  color: #142440;
+}
+.creature-card small,
+.creature-card .element-label {
+  color: #526786;
+}
+.creature-card .card-bottom {
+  color: #526786;
+  border-top-color: #b2c2db80;
+}
+.creature-card .card-bottom span {
+  color: #be354e;
+}
+
+#toast {
+  color: #172642;
+}
+
+.battle-active.touch-mode .overlay-card {
+  max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px);
+  max-width: calc(100vw - var(--safe-left) - var(--safe-right) - 24px);
+}
+.battle-active.touch-mode #practice-controls {
+  top: calc(var(--safe-top) + 116px);
+}
+@media (orientation: portrait) {
+  .battle-active.touch-mode .rotate-hint {
+    top: calc(var(--safe-top) + 112px);
+    left: calc(var(--safe-left) + 20px);
+    right: calc(var(--safe-right) + 20px);
+  }
 }

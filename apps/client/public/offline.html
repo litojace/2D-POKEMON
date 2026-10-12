@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
-    <meta name="theme-color" content="#101b20" />
+    <meta name="theme-color" content="#101c35" />
     <title>Pokémon Arena · Offline</title>
     <style>
       body {
@@ -14,10 +14,13 @@
         min-height: 100dvh;
         display: grid;
         place-items: center;
-        background: #101b20;
+        background: #101c35;
         color: #eff4e5;
         font-family: system-ui;
-        padding: env(safe-area-inset-top) 24px;
+        padding: calc(env(safe-area-inset-top, 0px) + 24px)
+          calc(env(safe-area-inset-right, 0px) + 24px)
+          calc(env(safe-area-inset-bottom, 0px) + 24px)
+          calc(env(safe-area-inset-left, 0px) + 24px);
         box-sizing: border-box;
       }
       main {
@@ -34,8 +37,8 @@
       }
       a {
         display: inline-block;
-        background: #dffa79;
-        color: #15292b;
+        background: #ffd65b;
+        color: #15243d;
         padding: 14px 24px;
         border-radius: 12px;
         text-decoration: none;

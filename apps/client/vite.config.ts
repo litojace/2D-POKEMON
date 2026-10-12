@@ -22,8 +22,8 @@ export default defineConfig({
         scope: "/",
         display: "standalone",
         orientation: "landscape",
-        theme_color: "#101b20",
-        background_color: "#101b20",
+        theme_color: "#101c35",
+        background_color: "#101c35",
         icons: [
           {
             src: "/icons/arena-192.png",

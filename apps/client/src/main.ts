@@ -54,7 +54,7 @@ const escape = (s: string) =>
       ]!,
   );
 document.querySelector("#app")!.innerHTML =
-  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark">✦</span> POKÉMON<span>ARENA</span></a><div class="top-links"><span class="connection" id="connection">Connecting</span><button class="quiet" id="install-app">Install app</button><button class="quiet" id="mobile-play">Mobile fullscreen</button><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">⚙ Settings</button><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden><div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><span class="map-label">FOREST ARENA <span>01 / VERDANT GROUNDS</span></span></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span>WASD <b>Move</b> · Mouse <b>Aim</b> · LMB <b>Attack</b> · 1 / 2 / 3 <b>Skills</b> · RMB <b>Ultimate</b></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>POKÉMON ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Pokémon fan art. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
+  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark">✦</span> POKÉMON<span>ARENA</span></a><div class="top-links"><span class="connection" id="connection">Connecting</span><button class="quiet" id="install-app">Install app</button><button class="quiet" id="mobile-play">Mobile fullscreen</button><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">⚙ Settings</button><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden><div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><span class="map-label">POKÉ STADIUM <span>01 / CHAMPIONS COURT</span></span></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span>WASD <b>Move</b> · Mouse <b>Aim</b> · LMB <b>Attack</b> · 1 / 2 / 3 <b>Skills</b> · RMB <b>Ultimate</b></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>POKÉMON ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Pokémon fan art. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
 document.addEventListener("pointerdown", (event) => {
   if ((event.target as Element).closest("button")) {
     audio.unlock();
@@ -151,7 +151,7 @@ function renderMenu() {
   $("battle").hidden = true;
   $("menu").hidden = false;
   $("menu").innerHTML =
-    `<div class="eyebrow"><span class="live-dot"></span> ONLINE 1V1 · REAL-TIME BATTLES</div><div class="intro"><div><h1>Your creature.<br>Your <em>arena.</em></h1><p>Four elements. Four skills. No waiting for your turn.<br>Challenge a friend to a real-time duel in the Forest Arena.</p></div><div class="arena-badge">✦<span>FOREST ARENA</span><small>BEST OF THREE</small></div></div><div class="lobby-layout"><div class="roster-panel"><div class="section-title"><h2>Choose your fighter</h2><span>04 CREATURES</span></div><div class="roster">${Object.values(
+    `<div class="eyebrow"><span class="live-dot"></span> ONLINE 1V1 · REAL-TIME BATTLES</div><div class="intro"><div><h1>Your creature.<br>Your <em>arena.</em></h1><p>Four elements. Four skills. No waiting for your turn.<br>Challenge a friend to a real-time duel in Poké Stadium.</p></div><div class="arena-badge">✦<span>POKÉ STADIUM</span><small>BEST OF THREE</small></div></div><div class="lobby-layout"><div class="roster-panel"><div class="section-title"><h2>Choose your fighter</h2><span>04 CREATURES</span></div><div class="roster">${Object.values(
       CHARACTERS,
     )
       .map(
@@ -569,26 +569,26 @@ class ArenaScene extends Phaser.Scene {
   }
   create() {
     scene = this;
-    this.cameras.main.setBackgroundColor("#17372d");
+    this.cameras.main.setBackgroundColor("#142746");
     const g = this.add.graphics();
-    g.fillStyle(0x214736).fillRect(0, 0, 1600, 900);
+    g.fillStyle(0x1e3557).fillRect(0, 0, 1600, 900);
     let seed = 42;
     const random = () => {
       seed = (seed * 1664525 + 1013904223) >>> 0;
       return seed / 4294967296;
     };
     for (let i = 0; i < 2400; i++) {
-      g.fillStyle([0x2a513d, 0x2f5840, 0x1d4031][i % 3], 0.6);
+      g.fillStyle([0x213b60, 0x26446b, 0x1a2e4f][i % 3], 0.6);
       g.fillRect(random() * 1600, random() * 900, 3 + random() * 8, 3);
     }
-    g.lineStyle(3, 0x608456, 0.4);
+    g.lineStyle(3, 0xc1d3f0, 0.4);
     g.strokeRoundedRect(35, 35, 1530, 830, 18);
-    g.lineStyle(1, 0x9bbc75, 0.08);
+    g.lineStyle(1, 0x95b4e3, 0.08);
     for (let x = 100; x < 1600; x += 100) g.lineBetween(x, 45, x, 855);
     for (let y = 100; y < 900; y += 100) g.lineBetween(45, y, 1555, y);
-    g.fillStyle(0x8cb780, 0.06).fillCircle(800, 450, 235);
-    g.lineStyle(2, 0xa8c98c, 0.15).strokeCircle(800, 450, 230);
-    g.lineStyle(3, 0xa8c98c, 0.2).strokeCircle(800, 450, 165);
+    g.fillStyle(0xffffff, 0.06).fillCircle(800, 450, 235);
+    g.lineStyle(2, 0xe6efff, 0.15).strokeCircle(800, 450, 230);
+    g.lineStyle(3, 0xe6efff, 0.2).strokeCircle(800, 450, 165);
     for (const x of [260, 1340]) {
       g.lineStyle(3, x === 260 ? 0xffd65b : 0x63dce8, 0.3);
       g.strokeCircle(x, 450, 70);
@@ -596,31 +596,46 @@ class ArenaScene extends Phaser.Scene {
       g.lineBetween(x, 430, x, 470);
     }
     for (const o of OBSTACLES) {
-      g.fillStyle(0x102c24, 0.7).fillRoundedRect(
+      g.fillStyle(0x0b1a32, 0.7).fillRoundedRect(
         o.x + 8,
         o.y + 15,
         o.w,
         o.h,
         18,
       );
-      g.fillStyle(0x637574).fillRoundedRect(o.x, o.y, o.w, o.h, 14);
-      g.fillStyle(0x81918a).fillRoundedRect(o.x + 7, o.y + 4, o.w - 14, 25, 8);
-      g.fillStyle(0x384e4a).fillRect(o.x + 12, o.y + o.h - 15, o.w - 24, 7);
-      g.lineStyle(3, 0x49615b).lineBetween(
+      g.fillStyle(0x486187).fillRoundedRect(o.x, o.y, o.w, o.h, 14);
+      g.fillStyle(0x7894b8).fillRoundedRect(o.x + 7, o.y + 4, o.w - 14, 25, 8);
+      g.fillStyle(0x263b5d).fillRect(o.x + 12, o.y + o.h - 15, o.w - 24, 7);
+      g.lineStyle(3, 0x99b4d6).lineBetween(
         o.x + 20,
         o.y + 45,
         o.x + 35,
         o.y + 70,
       );
-      g.fillStyle(0x426c40).fillEllipse(o.x + 20, o.y + 10, 50, 20);
+      g.fillStyle(0xef4f61).fillRoundedRect(o.x + 12, o.y + 8, 36, 12, 4);
     }
+    // Stadium rails and lights are cosmetic; collision geometry remains shared.
+    g.lineStyle(4, 0xe6efff, 0.65).lineBetween(55, 450, 1545, 450);
+    g.fillStyle(0xef4f61, 0.2).fillCircle(800, 450, 105);
+    g.lineStyle(5, 0xffffff, 0.65).strokeCircle(800, 450, 105);
+    g.fillStyle(0x1e3557).fillCircle(800, 450, 31);
+    g.lineStyle(4, 0xffffff, 0.75).strokeCircle(800, 450, 31);
     for (let i = 0; i < 20; i++) {
-      const x = i < 10 ? 30 + i * 170 : 30 + (i - 10) * 170;
-      const y = i < 10 ? 5 : 880;
-      g.fillStyle(0x102c24, 0.8).fillEllipse(x, y + 12, 120, 65);
-      g.fillStyle(0x285d3c).fillCircle(x, y, 60);
-      g.fillStyle(0x397449).fillCircle(x - 15, y - 15, 38);
-      g.fillStyle(0x478450).fillCircle(x - 25, y - 25, 22);
+      const x = 40 + i * 80;
+      g.fillStyle(i % 2 ? 0xef4f61 : 0xffffff, 0.55).fillRoundedRect(
+        x,
+        12,
+        52,
+        12,
+        4,
+      );
+      g.fillStyle(i % 2 ? 0xffffff : 0xef4f61, 0.55).fillRoundedRect(
+        x,
+        876,
+        52,
+        12,
+        4,
+      );
     }
     this.graphics = this.add.graphics();
     this.keys = this.input.keyboard!.addKeys(
@@ -903,7 +918,7 @@ class ArenaScene extends Phaser.Scene {
           `${p.title ? `${p.title}\n` : ""}${p.name}${p.id === myId ? " • YOU" : ""}`,
         )
         .setAlpha(p.hp > 0 ? 1 : 0.4);
-      g.fillStyle(0x102c24).fillRoundedRect(x - 30, y + 29, 60, 6, 3);
+      g.fillStyle(0x0b1a32).fillRoundedRect(x - 30, y + 29, 60, 6, 3);
       g.fillStyle(c.color).fillRoundedRect(
         x - 30,
         y + 29,
@@ -996,7 +1011,7 @@ new Phaser.Game({
   parent: "game",
   width: RULES.width,
   height: RULES.height,
-  backgroundColor: "#214736",
+  backgroundColor: "#1e3557",
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   scene: [ArenaScene],
   render: { antialias: true },

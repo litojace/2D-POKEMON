@@ -38,3 +38,5 @@ assert(!existsSync(root + "ability-preview.html"));
 console.log(
   `PWA build verified: ${urls.length} static precache entries, icons, manifest, and preview exclusion.`,
 );
+
+assert(!existsSync(root + "safe-preview.html"));
