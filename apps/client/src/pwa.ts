@@ -103,7 +103,7 @@ export function setupPWA(
   });
   window.addEventListener("appinstalled", () => {
     install = undefined;
-    notify("Element Arena installed. Open it from your home screen.");
+    notify("Pokémon Arena installed. Open it from your home screen.");
   });
   document.getElementById("install-app")!.onclick = async () => {
     if (install) {
@@ -119,7 +119,7 @@ export function setupPWA(
     openDialog(
       standalone
         ? "<h2>Your arena is installed.</h2><p>You are already playing in standalone mode.</p>"
-        : "<h2>Install Element Arena</h2><p><b>iPhone / iPad:</b> Open this site in Safari, tap Share, then Add to Home Screen and Add.</p><p><b>Android:</b> Open in Chrome and choose Install app or Add to Home screen from the browser menu.</p><p>Installation needs HTTPS and a supported browser. Online battles still need internet access.</p>",
+        : "<h2>Install Pokémon Arena</h2><p><b>iPhone / iPad:</b> Open this site in Safari, tap Share, then Add to Home Screen and Add.</p><p><b>Android:</b> Open in Chrome and choose Install app or Add to Home screen from the browser menu.</p><p>Installation needs HTTPS and a supported browser. Online battles still need internet access.</p>",
     );
   };
   window.addEventListener("offline", () =>

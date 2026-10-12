@@ -1,4 +1,4 @@
-# Element Arena
+# Pokémon Arena
 
 A playable browser-based, real-time 1v1 creature fighting game. Both players move, aim, attack, dash and jump simultaneously. Pikachu, Charizard, Greninja, and Lucario use original SVG fan-art drawings with animated movement. This is an unofficial Pokémon fan project.
 
@@ -89,7 +89,7 @@ Git is initialized on `main`. To publish to a repository you own, replace the pl
 
 ```sh
 git add .
-git commit -m "Build Element Arena multiplayer MVP"
+git commit -m "Build Pokémon Arena multiplayer MVP"
 git remote add origin https://github.com/YOUR_USER/YOUR_REPO.git
 git push -u origin main
 ```

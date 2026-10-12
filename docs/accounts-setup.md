@@ -1,6 +1,6 @@
 # Separate game accounts
 
-Element Arena follows AMATYC's Supabase auth pattern: email/password signup and login, email confirmation, Google sign-in, password recovery, and optional remembered sessions. Create a **new Supabase project for the game**. Its accounts remain separate from AMATYC. No administrator or default password is shipped.
+Pokémon Arena follows AMATYC's Supabase auth pattern: email/password signup and login, email confirmation, Google sign-in, password recovery, and optional remembered sessions. Create a **new Supabase project for the game**. Its accounts remain separate from AMATYC. No administrator or default password is shipped.
 
 ## Database
 

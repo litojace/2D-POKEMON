@@ -1,6 +1,6 @@
 # Mobile controls and PWA
 
-Element Arena remains one Phaser client and one Socket.IO server. Mobile and desktop use the same server-authoritative combat rules and existing protocol. Mobile aim continues to follow the opponent.
+Pokémon Arena remains one Phaser client and one Socket.IO server. Mobile and desktop use the same server-authoritative combat rules and existing protocol. Mobile aim continues to follow the opponent.
 
 ## Mobile HUD
 

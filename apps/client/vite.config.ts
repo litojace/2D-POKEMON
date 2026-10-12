@@ -15,8 +15,8 @@ export default defineConfig({
       },
       manifest: {
         id: "/",
-        name: "Element Arena",
-        short_name: "Element Arena",
+        name: "Pokémon Arena",
+        short_name: "Pokémon Arena",
         description: "Real-time arena duels with your friends.",
         start_url: "/",
         scope: "/",

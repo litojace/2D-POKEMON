@@ -54,7 +54,7 @@ const escape = (s: string) =>
       ]!,
   );
 document.querySelector("#app")!.innerHTML =
-  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark">✦</span> ELEMENT<span>ARENA</span></a><div class="top-links"><span class="connection" id="connection">Connecting</span><button class="quiet" id="install-app">Install app</button><button class="quiet" id="mobile-play">Mobile fullscreen</button><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">⚙ Settings</button><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden><div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><span class="map-label">FOREST ARENA <span>01 / VERDANT GROUNDS</span></span></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span>WASD <b>Move</b> · Mouse <b>Aim</b> · LMB <b>Attack</b> · 1 / 2 / 3 <b>Skills</b> · RMB <b>Ultimate</b></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>ELEMENT ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Pokémon fan art. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
+  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark">✦</span> POKÉMON<span>ARENA</span></a><div class="top-links"><span class="connection" id="connection">Connecting</span><button class="quiet" id="install-app">Install app</button><button class="quiet" id="mobile-play">Mobile fullscreen</button><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">⚙ Settings</button><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden><div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><span class="map-label">FOREST ARENA <span>01 / VERDANT GROUNDS</span></span></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span>WASD <b>Move</b> · Mouse <b>Aim</b> · LMB <b>Attack</b> · 1 / 2 / 3 <b>Skills</b> · RMB <b>Ultimate</b></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>POKÉMON ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Pokémon fan art. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
 document.addEventListener("pointerdown", (event) => {
   if ((event.target as Element).closest("button")) {
     audio.unlock();
@@ -390,7 +390,7 @@ function renderBattle() {
       const stats = me.stats;
       details += `<div class="result-stats"><span><b>${Math.round(stats.dealt)}</b>DAMAGE DEALT</span><span><b>${Math.round(stats.received)}</b>DAMAGE TAKEN</span><span><b>${stats.skills}</b>SKILLS CAST</span></div><button class="primary" id="rematch">${me.ready ? "Waiting for opponent…" : "Rematch →"}</button><button class="secondary" id="return">Return to lobby</button>`;
     }
-    overlay.innerHTML = `<div class="overlay-card"><span class="eyebrow">ELEMENT ARENA</span><h2>${heading}</h2><div>${details}</div></div>`;
+    overlay.innerHTML = `<div class="overlay-card"><span class="eyebrow">POKÉMON ARENA</span><h2>${heading}</h2><div>${details}</div></div>`;
     if (state.phase === "briefing")
       $("instructions-ready").onclick = () => {
         if (touch.enabled && !document.fullscreenElement)
@@ -510,7 +510,7 @@ $("help").onclick = () =>
   );
 $("credits").onclick = () =>
   dialog(
-    '<div class="eyebrow">BUILT FOR THE DUEL</div><h2>Element Arena</h2><p>Original Pokémon fan-art drawings, procedural arena art, and synthesized audio. Built with Phaser, Socket.IO, Express, TypeScript, and Vite.</p><p>An unofficial Pokémon fan project. No official Pokémon artwork, sprites, or music are used.</p>',
+    '<div class="eyebrow">BUILT FOR THE DUEL</div><h2>Pokémon Arena</h2><p>Original Pokémon fan-art drawings, procedural arena art, and synthesized audio. Built with Phaser, Socket.IO, Express, TypeScript, and Vite.</p><p>An unofficial Pokémon fan project. No official Pokémon artwork, sprites, or music are used.</p>',
   );
 $<HTMLDialogElement>("dialog").addEventListener("close", () => {
   settingsOpen = false;
