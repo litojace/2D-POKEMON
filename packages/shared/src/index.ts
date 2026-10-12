@@ -24,8 +24,8 @@ export const KEYS = {
   left: "A",
   down: "S",
   right: "D",
-  skills: ["1", "2", "3", "RMB"],
-  dash: "SHIFT",
+  skills: ["1", "2", "3", "R"],
+  dash: "RMB",
   jump: "SPACE",
 };
 export const OBSTACLES = [
@@ -458,6 +458,7 @@ export interface Zone extends Vec {
 export interface GameEvent extends Vec {
   id: number;
   kind: "cast" | "hit" | "dash" | "jump" | "land" | "round";
+  abilityId?: string;
   color: number;
   value?: number;
   owner?: string;

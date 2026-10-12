@@ -74,6 +74,7 @@ export class Arena {
     color: number,
     value?: number,
     owner?: string,
+    abilityId?: string,
   ) {
     this.events.push({
       id: ++this.serial,
@@ -83,6 +84,7 @@ export class Arena {
       color,
       value,
       owner,
+      abilityId,
     });
     if (this.events.length > 80) this.events.shift();
   }
@@ -225,7 +227,7 @@ export class Arena {
     const color = CHARACTERS[p.character].color;
     const angle = p.angle;
     const enemy = this.players.find((o) => o.id !== p.id);
-    this.event("cast", p, color, undefined, p.id);
+    this.event("cast", p, color, undefined, p.id, a.id);
     const projectile = (offset: number) => {
       if (this.projectiles.length >= RULES.maxProjectiles) return;
       this.projectiles.push({

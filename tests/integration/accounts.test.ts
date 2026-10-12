@@ -63,8 +63,19 @@ it("rejects anonymous gameplay and forged admin payloads", async () => {
   const socket = await connect(player.token);
   expect(
     (await emit(socket, "practice", { name: "Tester", character: "voltling" }))
-      .error,
-  ).toContain("Admin");
+      .ok,
+  ).toBe(true);
+  expect(
+    (
+      await emit(socket, "practice-options", {
+        unlimitedCooldowns: true,
+        targetAttacks: true,
+      })
+    ).ok,
+  ).toBe(true);
+  expect((await emit(socket, "practice-character", "auralith")).ok).toBe(true);
+  expect((await emit(socket, "practice-reset")).ok).toBe(true);
+  await emit(socket, "leave");
   expect((await emit(socket, "create", { name: "Invented name" })).ok).toBe(
     true,
   );
@@ -91,11 +102,11 @@ it("rejects invalid credentials, suspension, and account reuse", async () => {
   expect((await emit(two, "create", { name: "Two" })).ok).toBe(false);
   expect(server.rooms.size).toBe(1);
 });
-it("revoked administrators cannot change or restart a practice session", async () => {
+it("suspended players cannot change or restart a practice session", async () => {
   const admin = accounts.add();
   const socket = await connect(admin.token);
   await emit(socket, "practice", { name: "Admin", character: "voltling" });
-  admin.account.isAdmin = false;
+  admin.account.suspended = true;
   expect(
     (
       await emit(socket, "practice-options", {
@@ -107,7 +118,7 @@ it("revoked administrators cannot change or restart a practice session", async (
   expect((await emit(socket, "practice-character", "auralith")).ok).toBe(false);
   expect((await emit(socket, "practice-reset")).ok).toBe(false);
 });
-it("a revoked administrator cannot reconnect into their previous test session", async () => {
+it("players can resume practice after losing administrator privileges", async () => {
   const admin = accounts.add();
   const socket = await connect(admin.token);
   const room = await emit(socket, "practice", {
@@ -118,10 +129,10 @@ it("a revoked administrator cannot reconnect into their previous test session", 
   await new Promise((resolve) => setTimeout(resolve, 30));
   admin.account.isAdmin = false;
   const replacement = await connect(admin.token);
-  expect(
-    (await emit(replacement, "resume", { token: room.token })).error,
-  ).toContain("Admin");
-  expect(server.rooms.get(room.code!)!.phase).toBe("paused");
+  expect((await emit(replacement, "resume", { token: room.token })).ok).toBe(
+    true,
+  );
+  expect(server.rooms.get(room.code!)!.phase).toBe("playing");
 });
 it("checks HTTP authorization, payloads, origin and title ownership RPC paths", async () => {
   const admin = accounts.add(),

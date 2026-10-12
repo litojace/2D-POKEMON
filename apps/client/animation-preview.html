@@ -1,0 +1,186 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Character animation lab</title>
+    <style>
+      body {
+        margin: 0;
+        background: #101c35;
+        color: #f3f6ff;
+        font: 14px system-ui;
+      }
+      header {
+        padding: 20px;
+      }
+      label {
+        display: inline-flex;
+        gap: 8px;
+        margin: 5px;
+      }
+      button,
+      select {
+        background: #294367;
+        color: white;
+        border: 1px solid #8baee555;
+        border-radius: 6px;
+        padding: 8px;
+      }
+      #lab {
+        height: 65vh;
+      }
+      p {
+        color: #a0afc8;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h2>Pokémon Arena · Animation lab</h2>
+      <p>Development preview · no match or account · visual animation only</p>
+      <label
+        >Fighter<select id="character">
+          <option value="voltling">Pikachu</option>
+          <option value="emberwing">Charizard</option>
+          <option value="aquashade">Greninja</option>
+          <option value="auralith">Lucario</option>
+        </select></label
+      ><label
+        >Facing<select id="facing">
+          <option value="1.5708">Down</option>
+          <option value="-1.5708">Up</option>
+          <option value="3.14159">Left</option>
+          <option value="0">Right</option>
+        </select></label
+      ><label
+        >State<select id="state">
+          <option>idle</option>
+          <option>blink</option>
+          <option>walk</option>
+          <option>run</option>
+          <option>basic</option>
+          <option>skill0</option>
+          <option>skill1</option>
+          <option>skill2</option>
+          <option>skill3</option>
+          <option>dash</option>
+          <option>jump</option>
+          <option>land</option>
+          <option>hurt</option>
+          <option>defeat</option>
+          <option>victory</option>
+          <option>wave</option>
+        </select></label
+      ><label
+        >Speed<select id="speed">
+          <option value="1">1×</option>
+          <option value=".5">0.5×</option>
+          <option value="1.5">1.5×</option>
+        </select></label
+      ><button id="play">Play / replay</button
+      ><button id="combo">Attack → hurt → recover</button
+      ><label><input id="reduced" type="checkbox" />Reduced motion</label>
+      <p id="status"></p>
+    </header>
+    <div id="lab"></div>
+    <script type="module">
+      import Phaser from "phaser";
+      import { CHARACTERS } from "@arena/shared";
+      import { rigAssets } from "./src/animation/assets";
+      import { FighterRig } from "./src/animation/rig";
+      const assets = Object.fromEntries(
+        Object.keys(CHARACTERS).map((id) => [id, rigAssets(id)]),
+      );
+      let scene,
+        rig,
+        clock = 0;
+      class Lab extends Phaser.Scene {
+        preload() {
+          for (const group of Object.values(assets))
+            for (const a of group)
+              this.load.svg(a.key, a.url, { width: a.width, height: a.height });
+        }
+        create() {
+          scene = this;
+          this.cameras.main.setBackgroundColor("#1c3153");
+          select();
+        }
+        update(time, delta) {
+          if (!rig) return;
+          if (document.hidden) return;
+          clock +=
+            Math.min(delta, 60) *
+            Number(document.querySelector("#speed").value);
+          const state = document.querySelector("#state").value;
+          const c = CHARACTERS[rig.character];
+          rig.render(
+            {
+              hp: state === "defeat" ? 0 : 100,
+              speed:
+                state === "run"
+                  ? c.speed
+                  : state === "walk"
+                    ? c.speed * 0.4
+                    : 0,
+              angle: Number(document.querySelector("#facing").value),
+              dash: state === "dash",
+              jump: state === "jump",
+            },
+            400,
+            200,
+            clock,
+            1,
+            document.querySelector("#reduced").checked,
+          );
+          rig.root.setScale(3);
+          document.querySelector("#status").textContent =
+            c.name +
+            " · " +
+            rig.controller.state +
+            " · each arm, leg, head and feature is a separate layer";
+        }
+      }
+      function select() {
+        rig?.destroy();
+        const id = document.querySelector("#character").value;
+        rig = new FighterRig(scene, id, assets[id]);
+        play();
+      }
+      function play() {
+        if (!rig) return;
+        rig.controller.reset();
+        const state = document.querySelector("#state").value;
+        if (!["idle", "walk", "run", "dash", "jump", "defeat"].includes(state))
+          rig.trigger(
+            state,
+            clock,
+            state === "victory" || state === "wave"
+              ? 1800
+              : state === "blink"
+                ? 130
+                : state === "hurt"
+                  ? 160
+                  : state === "skill3"
+                    ? 650
+                    : 320,
+          );
+      }
+      document.querySelector("#character").onchange = select;
+      document.querySelector("#state").onchange = play;
+      document.querySelector("#play").onclick = play;
+      document.querySelector("#combo").onclick = () => {
+        rig.trigger("basic", clock, 300);
+        scene.time.delayedCall(180, () => rig.trigger("hurt", clock, 160));
+      };
+      new Phaser.Game({
+        type: Phaser.AUTO,
+        parent: "lab",
+        width: 800,
+        height: 400,
+        scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+        scene: [Lab],
+      });
+    </script>
+  </body>
+</html>

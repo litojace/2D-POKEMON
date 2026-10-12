@@ -79,8 +79,6 @@ export function createArenaServer(
       socket.data.account = account;
       const session = getSession(socket.id);
       const arena = session && rooms.get(session.code);
-      if (arena?.practice && !account.isAdmin)
-        throw new AccountError(403, "Admin testing access was removed.");
       const fighter = arena?.players.find((p) => p.id === session!.id);
       if (fighter) {
         fighter.name = account.displayName;
@@ -343,12 +341,12 @@ export function createArenaServer(
           socket.data.account = await authorize(
             accounts,
             socket.data.accessToken,
-            true,
+            false,
           );
         } catch (error) {
           return fail(
             cb,
-            error instanceof Error ? error.message : "Admin access required.",
+            error instanceof Error ? error.message : "Sign in required.",
           );
         }
         if (s.socketId) return fail(cb, "This player is already connected.");
@@ -380,12 +378,12 @@ export function createArenaServer(
         socket.data.account = await authorize(
           accounts,
           socket.data.accessToken,
-          true,
+          false,
         );
       } catch (error) {
         return fail(
           cb,
-          error instanceof Error ? error.message : "Admin access required.",
+          error instanceof Error ? error.message : "Sign in required.",
         );
       }
       const result = identitySchema
@@ -413,7 +411,7 @@ export function createArenaServer(
       a.resetPractice();
       broadcast(a);
     });
-    const withAdminRoom = async (
+    const withPracticeRoom = async (
       cb: unknown,
       action: (a: Arena, id: string) => void,
     ) => {
@@ -422,18 +420,15 @@ export function createArenaServer(
         socket.data.account = await authorize(
           accounts,
           socket.data.accessToken,
-          true,
+          false,
         );
         withRoom(cb, action, false);
       } catch (error) {
-        fail(
-          cb,
-          error instanceof Error ? error.message : "Admin access required.",
-        );
+        fail(cb, error instanceof Error ? error.message : "Sign in required.");
       }
     };
     socket.on("practice-character", (data: unknown, cb: unknown) =>
-      withAdminRoom(cb, (a, id) => {
+      withPracticeRoom(cb, (a, id) => {
         const result = characterSchema.safeParse(data);
         if (!a.practice || !result.success || a.phase === "paused")
           return fail(
@@ -447,7 +442,7 @@ export function createArenaServer(
       }),
     );
     socket.on("practice-reset", (_data: unknown, cb: unknown) =>
-      withAdminRoom(cb, (a) => {
+      withPracticeRoom(cb, (a) => {
         if (!a.practice || a.phase === "paused")
           return fail(cb, "Reset is available only in active solo practice.");
         a.resetPractice();
@@ -456,7 +451,7 @@ export function createArenaServer(
       }),
     );
     socket.on("practice-options", (data: unknown, cb: unknown) =>
-      withAdminRoom(cb, (a) => {
+      withPracticeRoom(cb, (a) => {
         const result = practiceOptionsSchema.safeParse(data);
         if (!a.practice || !result.success)
           return fail(cb, "Invalid practice options.");

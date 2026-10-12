@@ -2,7 +2,7 @@
 
 A playable browser-based, real-time 1v1 creature fighting game. Both players move, aim, attack, dash and jump simultaneously. Pikachu, Charizard, Greninja, and Lucario use original SVG fan-art drawings with animated movement. This is an unofficial Pokémon fan project.
 
-**Accounts are now required to play.** Follow [game account and admin setup](docs/accounts-setup.md) to create a separate Supabase project, apply the migration, configure auth, and grant your intended administrator. Solo testing and player/title management are admin-only. Email/password, Google sign-in, recovery, and Remember me follow the AMATYC project's pattern. Without account configuration you can browse creatures, but gameplay stays locked.
+**Accounts are now required to play.** Follow [game account and admin setup](docs/accounts-setup.md) to create a separate Supabase project, apply the migration, configure auth, and grant your intended administrator. Solo testing is available to signed-in players; player/title management stays admin-only. Email/password, Google sign-in, recovery, and Remember me follow the AMATYC project's pattern. Without account configuration you can browse creatures, but gameplay stays locked.
 
 ![Verified browser battle](docs/arena-preview.jpg)
 
@@ -38,7 +38,7 @@ Production is available at **http://localhost:3001** after building. One Express
 
 ### Solo test mode
 
-Sign in as an administrator, select a creature and click **Solo test mode** on the main menu. No second player or ready step is needed. Practice uses the same authoritative combat as online matches, without a round timer. Both you and the training target respawn automatically when defeated.
+Sign in, select a creature and click **Solo test mode** on the main menu. No second player or ready step is needed. Practice uses the same authoritative combat as online matches, without a round timer. Both you and the training target respawn automatically when defeated.
 
 The practice toolbar lets you switch between all four creatures, reset health/positions/statistics, turn off skill/dash/jump cooldowns, and enable target attacks. The target shoots projectiles and places ground fire so you can test Counter Stance, Water Clone and jump dodges. Cast and recovery times still apply with cooldowns disabled. Hover the skill buttons for descriptions. Switching creatures resets the arena. Solo mode still needs the local or deployed game server running.
 
@@ -47,8 +47,8 @@ The practice toolbar lets you switch between all four creatures, reset health/po
 | WASD             | Move; diagonal movement is normalized       |
 | Mouse            | Aim                                         |
 | Left click, hold | Basic attack                                |
-| 1 / 2 / 3 / RMB  | Three skills + right-click ultimate         |
-| Left Shift       | Dash, 3-second cooldown; walls still block  |
+| 1 / 2 / 3 / R    | Three skills + R ultimate                   |
+| Right mouse      | Dash, 3-second cooldown; walls still block  |
 | Space            | Jump, 2-second cooldown; avoid ground zones |
 | Escape           | Settings; online matches continue           |
 
@@ -100,7 +100,7 @@ Verified locally on October 11, 2026: TypeScript checks, all 28 automated tests,
 
 Automated tests exercise normalization, collision, projectiles, cooldowns, damage, dash, jump, statuses, charged skills, rounds and overtime, room capacity, invalid actions, mirrored movement/health, synchronized skill casts, match results, rematches, disconnects, secure reconnection, forfeit and room cleanup. Network tests use two real socket clients and step the server deterministically; health is lowered by test fixtures to exercise death without waiting several minutes.
 
-This MVP uses procedural artwork and synthesized music/effects. It supports desktop keyboard/mouse play and responsive layout, with no mobile touch controls. Prediction currently covers movement and universal dash, not combat outcomes. Internet latency/balance testing with two humans is still necessary. Ranked matchmaking, saved match stats, remappable controls, additional maps, sprite-sheet animations, and advanced unused ability categories (homing/beam attacks) are future work.
+This MVP uses procedural artwork and synthesized music/effects. It supports desktop keyboard/mouse play and responsive layout, including mobile joystick and skill buttons. Prediction currently covers movement and universal dash, not combat outcomes. Internet latency/balance testing with two humans is still necessary. Ranked matchmaking, saved match stats, remappable controls, additional maps, sprite-sheet animations, and advanced unused ability categories (homing/beam attacks) are future work.
 
 ## Troubleshooting
 

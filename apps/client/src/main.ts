@@ -1,9 +1,11 @@
+import { FighterRig } from "./animation/rig";
+import { rigAssets } from "./animation/assets";
 import { setOverlayMarkup } from "./overlay";
 import { stadiumCrowd } from "./stadium";
 import { setupPWA } from "./pwa";
 import { abilityIcon } from "./ability-icons";
 import { TouchControls } from "./touch-controls";
-import { fighterArt, fighterTextureData } from "./fighter-art";
+import { fighterArt } from "./fighter-art";
 import Phaser from "phaser";
 import { io } from "socket.io-client";
 import {
@@ -56,7 +58,7 @@ const escape = (s: string) =>
       ]!,
   );
 document.querySelector("#app")!.innerHTML =
-  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark">✦</span> POKÉMON<span>ARENA</span></a><div class="top-links"><details class="header-menu" id="header-menu"><summary>☰ <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">Settings</button><button class="quiet" id="mobile-play">Mobile fullscreen</button><button class="quiet" id="install-app">Install app</button><span class="connection" id="connection">Connecting</span></div></details><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><span class="map-label">POKÉ STADIUM <span>01 / CHAMPIONS COURT</span></span></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span>WASD <b>Move</b> · Mouse <b>Aim</b> · LMB <b>Attack</b> · 1 / 2 / 3 <b>Skills</b> · RMB <b>Ultimate</b></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>POKÉMON ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Pokémon fan art. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
+  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark">✦</span> POKÉMON<span>ARENA</span></a><div class="top-links"><details class="header-menu" id="header-menu"><summary>☰ <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">Settings</button><button class="quiet" id="mobile-play">Mobile fullscreen</button><button class="quiet" id="install-app">Install app</button><span class="connection" id="connection">Connecting</span></div></details><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><span class="map-label">POKÉ STADIUM <span>01 / CHAMPIONS COURT</span></span></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span>WASD <b>Move</b> · Mouse <b>Aim</b> · LMB <b>Attack</b> · 1 / 2 / 3 <b>Skills</b> · R <b>Ultimate</b> � RMB <b>Dash</b></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>POKÉMON ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Pokémon fan art. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
 const headerMenu = $("header-menu") as HTMLDetailsElement;
 headerMenu.addEventListener("click", (event) => {
   if ((event.target as Element).closest("button")) headerMenu.open = false;
@@ -117,6 +119,7 @@ function identity(reply: Reply) {
   seq = 0;
   pending = [];
   eventId = 0;
+  scene?.hydrateNextSnapshot();
   local = undefined;
   remoteFrames.clear();
   sessionStorage.setItem("arena-token", reply.token!);
@@ -191,7 +194,7 @@ function renderMenu() {
       )
       .join(
         "",
-      )}</div><div class="skill-preview"><div><span class="eyebrow" style="color:#${character.color.toString(16)}">${character.element}</span><h3>${character.name}'s toolkit</h3><p>${character.role} · ${character.speed} movement speed</p></div><div class="preview-skills">${character.skills.map((a, i) => `<div><kbd>${KEYS.skills[i]}</kbd>${abilityIcon(a.name)}<span><strong>${a.name}</strong><small>${a.description}</small></span><b>${a.cooldown}s</b></div>`).join("")}</div></div><p class="universal">Every fighter can <b>basic attack</b>, <b>dash</b>, and <b>jump</b> in addition to their four skills.</p></div><aside class="room-panel">${isRoom ? `<div class="eyebrow">PRIVATE LOBBY</div><h2>Your duel starts here.</h2><p>Share this code with your friend.</p><button id="copy" class="room-code">${state!.code}<span>COPY CODE ↗</span></button><div class="players">${state!.players.map((p, i) => `<div><span class="player-dot" style="background:#${CHARACTERS[p.character].color.toString(16)}">${i + 1}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small>${CHARACTERS[p.character].name}</small></span><b>${!p.connected ? "OFFLINE" : p.ready ? "READY" : "CHOOSING"}</b></div>`).join("")}${state!.players.length < 2 ? '<div class="waiting"><span>＋</span> Waiting for your opponent…</div>' : ""}</div><button class="primary" id="ready">${p!.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full" id="leave">Leave room</button><small class="room-note">The match begins when both players are ready.</small>` : `<div class="eyebrow">PLAY ONLINE</div><h2>A friend. A code.<br>A worthy opponent.</h2><label for="name">YOUR DISPLAY NAME</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><button class="primary" id="create">Create private room →</button>${accountsUI?.account?.isAdmin ? '<button class="secondary full" id="practice">Solo test mode →</button>' : ""}<div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><small class="room-note">2 players · Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`}</aside></div>`;
+      )}</div><div class="skill-preview"><div><span class="eyebrow" style="color:#${character.color.toString(16)}">${character.element}</span><h3>${character.name}'s toolkit</h3><p>${character.role} · ${character.speed} movement speed</p></div><div class="preview-skills">${character.skills.map((a, i) => `<div><kbd>${KEYS.skills[i]}</kbd>${abilityIcon(a.name)}<span><strong>${a.name}</strong><small>${a.description}</small></span><b>${a.cooldown}s</b></div>`).join("")}</div></div><p class="universal">Every fighter can <b>basic attack</b>, <b>dash</b>, and <b>jump</b> in addition to their four skills.</p></div><aside class="room-panel">${isRoom ? `<div class="eyebrow">PRIVATE LOBBY</div><h2>Your duel starts here.</h2><p>Share this code with your friend.</p><button id="copy" class="room-code">${state!.code}<span>COPY CODE ↗</span></button><div class="players">${state!.players.map((p, i) => `<div><span class="player-dot" style="background:#${CHARACTERS[p.character].color.toString(16)}">${i + 1}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small>${CHARACTERS[p.character].name}</small></span><b>${!p.connected ? "OFFLINE" : p.ready ? "READY" : "CHOOSING"}</b></div>`).join("")}${state!.players.length < 2 ? '<div class="waiting"><span>＋</span> Waiting for your opponent…</div>' : ""}</div><button class="primary" id="ready">${p!.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full" id="leave">Leave room</button><small class="room-note">The match begins when both players are ready.</small>` : `<div class="eyebrow">PLAY ONLINE</div><h2>A friend. A code.<br>A worthy opponent.</h2><label for="name">YOUR DISPLAY NAME</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><button class="primary" id="create">Create private room →</button>${accountsUI?.account ? '<button class="secondary full" id="practice">Solo test mode →</button>' : ""}<div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><small class="room-note">2 players · Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`}</aside></div>`;
   document.querySelectorAll<HTMLButtonElement>("[data-character]").forEach(
     (button) =>
       (button.onclick = async () => {
@@ -324,7 +327,7 @@ function renderBattle() {
       .join("");
     const c = CHARACTERS[me.character];
     $("abilities").innerHTML =
-      `<div class="basic-hint"><kbd>LMB</kbd><span>${abilityIcon(c.basic.name)}<small>BASIC ATTACK</small></span></div>${c.skills.map((a, i) => `<div class="ability" id="ability-${i}" style="--element:#${c.color.toString(16)}"><kbd>${KEYS.skills[i]}</kbd><span>${abilityIcon(a.name)}<small id="cooldown-${i}">READY</small></span><i class="cooldown-fill" id="fill-${i}"></i></div>`).join("")}<div class="movement-ability"><kbd>SHIFT</kbd><span>Dash<small id="dash-cd"></small></span></div><div class="movement-ability"><kbd>SPACE</kbd><span>Jump<small id="jump-cd"></small></span></div>`;
+      `<div class="basic-hint"><kbd>LMB</kbd><span>${abilityIcon(c.basic.name)}<small>BASIC ATTACK</small></span></div>${c.skills.map((a, i) => `<div class="ability" id="ability-${i}" style="--element:#${c.color.toString(16)}"><kbd>${KEYS.skills[i]}</kbd><span>${abilityIcon(a.name)}<small id="cooldown-${i}">READY</small></span><i class="cooldown-fill" id="fill-${i}"></i></div>`).join("")}<div class="movement-ability"><kbd>RMB</kbd><span>Dash<small id="dash-cd"></small></span></div><div class="movement-ability"><kbd>SPACE</kbd><span>Jump<small id="jump-cd"></small></span></div>`;
   }
   state.players.forEach((p, i) => {
     const c = CHARACTERS[p.character];
@@ -403,7 +406,7 @@ function renderBattle() {
       heading = "How to play";
       const confirmed = state.instructionsReady.includes(myId);
       details =
-        '<p class="mobile-howto">Touch mode: left joystick to move; right buttons to attack, use skills, dash, and jump. Aim follows your opponent. Use Enter fullscreen below the arena.</p><div class="controls-list"><span><kbd>W A S D</kbd>Move · mouse to aim</span><span><kbd>LMB</kbd>Basic attack</span><span><kbd>1 2 3</kbd>Character skills</span><span><kbd>RMB</kbd>Ultimate skill</span><span><kbd>SHIFT</kbd>Dash</span><span><kbd>SPACE</kbd>Jump over ground attacks</span></div><p>Use cover. Win two rounds. The countdown begins when both players confirm.</p><button class="primary" id="instructions-ready" ' +
+        '<p class="mobile-howto">Touch mode: left joystick to move; right buttons to attack, use skills, dash, and jump. Aim follows your opponent. Use Enter fullscreen below the arena.</p><div class="controls-list"><span><kbd>W A S D</kbd>Move · mouse to aim</span><span><kbd>LMB</kbd>Basic attack</span><span><kbd>1 2 3</kbd>Character skills</span><span><kbd>R</kbd>Ultimate skill</span><span><kbd>RMB</kbd>Dash</span><span><kbd>SPACE</kbd>Jump over ground attacks</span></div><p>Use cover. Win two rounds. The countdown begins when both players confirm.</p><button class="primary" id="instructions-ready" ' +
         (confirmed ? "disabled" : "") +
         ">" +
         (confirmed ? "Waiting for opponent…" : "I’m ready →") +
@@ -490,7 +493,9 @@ socket.on("state", (snapshot: WireSnapshot) => {
     audio.play(snapshot.winner === myId ? "victory" : "defeat");
   if (state?.phase !== snapshot.phase || state?.round !== snapshot.round)
     remoteFrames.clear();
+  const previous = state;
   state = unpackSnapshot(snapshot);
+  scene?.observeSnapshot(state, previous);
   pwa.sync();
   remoteFrames.add(state, performance.now());
   const me = state.players.find((p) => p.id === myId);
@@ -548,7 +553,7 @@ $("settings").onclick = showSettings;
 $("battle-menu").onclick = showSettings;
 $("help").onclick = () =>
   dialog(
-    `<div class="eyebrow">HOW TO PLAY</div><h2>Every second counts.</h2><p>Create a room, share the code, choose your creatures, and both click Ready. Win two rounds to take the match.</p><div class="controls-list"><span><kbd>W A S D</kbd>Move in eight directions</span><span><kbd>MOUSE</kbd>Aim · left click to attack</span><span><kbd>1 2 3</kbd>Skills · right click for ultimate</span><span><kbd>SHIFT</kbd>Dash · 3 second cooldown</span><span><kbd>SPACE</kbd>Jump · dodge ground attacks</span><span><kbd>ESC</kbd>Settings · the match stays live</span></div><p>Use cover to block shots. Jump over ground zones. Ultimates recharge every 30 seconds. At a tie, overtime drains both players' health.</p>`,
+    `<div class="eyebrow">HOW TO PLAY</div><h2>Every second counts.</h2><p>Create a room, share the code, choose your creatures, and both click Ready. Win two rounds to take the match.</p><div class="controls-list"><span><kbd>W A S D</kbd>Move in eight directions</span><span><kbd>MOUSE</kbd>Aim · left click to attack</span><span><kbd>1 2 3</kbd>Skills · R for ultimate</span><span><kbd>RMB</kbd>Dash · 3 second cooldown</span><span><kbd>SPACE</kbd>Jump · dodge ground attacks</span><span><kbd>ESC</kbd>Settings · the match stays live</span></div><p>Use cover to block shots. Jump over ground zones. Ultimates recharge every 30 seconds. At a tie, overtime drains both players' health.</p>`,
   );
 $("credits").onclick = () =>
   dialog(
@@ -602,13 +607,61 @@ class ArenaScene extends Phaser.Scene {
   constructor() {
     super("arena");
   }
-  private portraits: Phaser.GameObjects.Image[] = [];
-  private portraitIndex = 0;
-  private castUntil = new Map<string, number>();
-  private hitUntil = new Map<string, number>();
+  private rigs = new Map<string, FighterRig>();
+  private assets = Object.fromEntries(
+    (Object.keys(CHARACTERS) as CharacterId[]).map((id) => [id, rigAssets(id)]),
+  ) as Record<CharacterId, ReturnType<typeof rigAssets>>;
+  private animationLive = false;
+  private needsHydration = true;
+  hydrateNextSnapshot() {
+    this.needsHydration = true;
+  }
+  private getRig(id: string, character: CharacterId) {
+    let rig = this.rigs.get(id);
+    if (rig && rig.character !== character) {
+      rig.destroy();
+      this.rigs.delete(id);
+      rig = undefined;
+    }
+    if (!rig) {
+      rig = new FighterRig(this, character, this.assets[character]);
+      this.rigs.set(id, rig);
+    }
+    return rig;
+  }
+  observeSnapshot(next: Snapshot, previous?: Snapshot) {
+    this.animationLive = !this.needsHydration && previous?.code === next.code;
+    this.needsHydration = false;
+    const reset = !this.animationLive || previous?.round !== next.round;
+    const alive = new Set(
+      next.players.flatMap((p) => [
+        p.id,
+        ...(p.clone ? [`${p.id}:clone`] : []),
+      ]),
+    );
+    for (const [id, rig] of this.rigs)
+      if (!alive.has(id)) {
+        rig.destroy();
+        this.rigs.delete(id);
+      }
+    for (const p of next.players) {
+      const rig = this.getRig(p.id, p.character);
+      if (reset) rig.controller.reset();
+      const old = previous?.players.find((other) => other.id === p.id);
+      if (!reset && old) {
+        if (p.hp < old.hp) rig.trigger("hurt", this.time.now, 160);
+        if (old.jumpUntil > previous!.time && p.jumpUntil <= next.time)
+          rig.trigger("land", this.time.now, 130);
+      }
+    }
+  }
   preload() {
-    for (const id of Object.keys(CHARACTERS) as CharacterId[])
-      this.load.svg(id, fighterTextureData(id), { width: 200, height: 190 });
+    for (const assets of Object.values(this.assets))
+      for (const asset of assets)
+        this.load.svg(asset.key, asset.url, {
+          width: asset.width,
+          height: asset.height,
+        });
   }
   create() {
     scene = this;
@@ -683,7 +736,7 @@ class ArenaScene extends Phaser.Scene {
     new ResizeObserver(() => this.scale.refresh()).observe($("game"));
     this.graphics = this.add.graphics();
     this.keys = this.input.keyboard!.addKeys(
-      "W,A,S,D,ONE,TWO,THREE,SHIFT,SPACE",
+      "W,A,S,D,ONE,TWO,THREE,R,SPACE",
       false,
     ) as Record<string, Phaser.Input.Keyboard.Key>;
     this.input.mouse!.disableContextMenu();
@@ -692,8 +745,8 @@ class ArenaScene extends Phaser.Scene {
         if (this.canControl()) this.actions.skill = i;
       }),
     );
-    this.keys.SHIFT.on("down", () => {
-      if (this.canControl()) this.actions.dash = true;
+    this.keys.R.on("down", () => {
+      if (this.canControl()) this.actions.skill = 3;
     });
     this.keys.SPACE.on("down", () => {
       if (this.canControl()) this.actions.jump = true;
@@ -703,22 +756,53 @@ class ArenaScene extends Phaser.Scene {
       if (!touch.enabled && this.canControl() && pointer.leftButtonDown())
         this.actions.basic = true;
       if (!touch.enabled && this.canControl() && pointer.rightButtonDown())
-        this.actions.skill = 3;
+        this.actions.dash = true;
     });
     this.scale.refresh();
   }
   effect(event: Snapshot["events"][number]) {
     if (event.owner === myId || event.kind === "hit" || event.kind === "round")
       audio.play(event.kind);
-    if (reducedMotion) return;
-    if (event.kind === "cast" && event.owner)
-      this.castUntil.set(event.owner, this.time.now + 240);
-    if (event.kind === "hit") {
-      const victim = state?.players.find(
-        (p) => Math.hypot(p.x - event.x, p.y - event.y) < 45,
-      );
-      if (victim) this.hitUntil.set(victim.id, this.time.now + 140);
+    if (
+      this.animationLive &&
+      event.kind === "cast" &&
+      event.owner &&
+      event.abilityId
+    ) {
+      const p = state?.players.find((p) => p.id === event.owner);
+      if (p) {
+        const c = CHARACTERS[p.character];
+        const slot = c.skills.findIndex((a) => a.id === event.abilityId);
+        if (slot >= 0 || event.abilityId === c.basic.id)
+          this.getRig(p.id, p.character).trigger(
+            slot >= 0
+              ? (`skill${slot}` as "skill0" | "skill1" | "skill2" | "skill3")
+              : "basic",
+            this.time.now,
+            slot === 3 ? 650 : 300,
+            event.id,
+          );
+      }
     }
+    if (
+      this.animationLive &&
+      event.owner &&
+      (event.kind === "dash" || event.kind === "jump" || event.kind === "land")
+    ) {
+      const p = state?.players.find((p) => p.id === event.owner);
+      if (p)
+        this.getRig(p.id, p.character).trigger(
+          event.kind,
+          this.time.now,
+          event.kind === "dash"
+            ? RULES.dashDuration * 1000
+            : event.kind === "jump"
+              ? RULES.jumpDuration * 1000
+              : 130,
+          event.id,
+        );
+    }
+    if (reducedMotion) return;
     const ring = this.add
       .circle(
         event.x,
@@ -779,7 +863,10 @@ class ArenaScene extends Phaser.Scene {
       this.actions = { skill: -1, dash: false, jump: false, basic: false };
       touch.reset();
     }
-    if (!state || state.phase === "lobby") return;
+    if (!state || state.phase === "lobby") {
+      this.rigs.forEach((rig) => rig.setVisible(false));
+      return;
+    }
     this.accumulator += Math.min(delta, 100);
     while (this.accumulator >= 1000 / RULES.tick) {
       this.accumulator -= 1000 / RULES.tick;
@@ -824,8 +911,7 @@ class ArenaScene extends Phaser.Scene {
     }
     const g = this.graphics;
     g.clear();
-    this.portraitIndex = 0;
-    this.portraits.forEach((image) => image.setVisible(false));
+    this.rigs.forEach((rig) => rig.setVisible(false));
     for (const z of state.zones) {
       g.fillStyle(z.color, 0.12).fillCircle(z.x, z.y, z.radius);
       g.lineStyle(3, z.color, 0.7).strokeCircle(z.x, z.y, z.radius);
@@ -881,18 +967,40 @@ class ArenaScene extends Phaser.Scene {
                 Math.PI,
             ) * 45
           : 0;
-      const bob = reducedMotion
-        ? 0
-        : Math.sin(_time / (Math.hypot(p.vx, p.vy) > 30 ? 65 : 220)) * 2;
-      if (serverPlayer.clone)
-        this.drawCreature(
-          g,
+      const pose = {
+        hp: p.hp,
+        speed: Math.hypot(p.vx, p.vy),
+        angle: p.angle,
+        dash: serverPlayer.dashUntil > state.time,
+        jump: serverPlayer.jumpUntil > state.time,
+        charging: !!serverPlayer.charge,
+        victory:
+          (state.phase === "finished"
+            ? state.winner
+            : state.phase === "intermission"
+              ? state.roundWinner
+              : null) === p.id,
+      };
+      if (serverPlayer.clone) {
+        const clone = this.getRig(`${p.id}:clone`, p.character);
+        clone.setVisible(true);
+        clone.render(
+          {
+            ...pose,
+            hp: 1,
+            speed: 0,
+            dash: false,
+            jump: false,
+            charging: false,
+            victory: false,
+          },
           serverPlayer.clone.x,
           serverPlayer.clone.y,
-          p.character,
-          p.angle,
+          this.time.now,
           0.3,
+          reducedMotion,
         );
+      }
       g.fillStyle(0x081f19, 0.45).fillEllipse(
         x,
         y + 15,
@@ -913,11 +1021,23 @@ class ArenaScene extends Phaser.Scene {
           38,
         );
       }
-      if (p.hp > 0)
-        this.drawCreature(g, x, y - jump + bob, p.character, p.angle, 1);
-      else {
-        g.fillStyle(c.color, 0.4).fillEllipse(x, y, 45, 15);
-      }
+      const rig = this.getRig(p.id, p.character);
+      rig.setVisible(true);
+      const casting =
+        rig.controller.state === "basic" ||
+        rig.controller.state.startsWith("skill") ||
+        pose.charging;
+      rig.render(
+        {
+          ...pose,
+          angle: pose.speed > 12 && !casting ? Math.atan2(p.vy, p.vx) : p.angle,
+        },
+        x,
+        y - jump,
+        this.time.now,
+        1,
+        reducedMotion,
+      );
       if (serverPlayer.statuses.some((s) => s.kind === "shield"))
         g.lineStyle(3, c.color, 0.8).strokeCircle(x, y - jump, 43);
       if (serverPlayer.charge) {
@@ -989,65 +1109,6 @@ class ArenaScene extends Phaser.Scene {
       pointer.worldX + 15,
       pointer.worldY,
     );
-  }
-  drawCreature(
-    g: Phaser.GameObjects.Graphics,
-    x: number,
-    y: number,
-    id: CharacterId,
-    angle: number,
-    alpha: number,
-  ) {
-    const slot = this.portraitIndex++;
-    const image =
-      this.portraits[slot] ??
-      (this.portraits[slot] = this.add.image(x, y, id).setDepth(2));
-    const p = state?.players.find(
-      (p) => p.character === id && Math.hypot(p.x - x, p.y - y) < 100,
-    );
-    const strike =
-      p && !reducedMotion
-        ? Math.max(0, ((this.castUntil.get(p.id) ?? 0) - this.time.now) / 240)
-        : 0;
-    const hit = !!p && (this.hitUntil.get(p.id) ?? 0) > this.time.now;
-    const moving = !!p && Math.hypot(p.vx, p.vy) > 30;
-    const dashing = !!p && p.dashUntil > (state?.time ?? 0);
-    const jumping = !!p && p.jumpUntil > (state?.time ?? 0);
-    const beat = reducedMotion
-      ? 0
-      : Math.sin(this.time.now / (moving ? 65 : 260));
-    const lean = reducedMotion
-      ? 0
-      : dashing
-        ? Math.cos(angle) * 0.28
-        : moving
-          ? Math.cos(angle) * 0.1 + beat * 0.045
-          : beat * 0.025;
-    image
-      .setTexture(id)
-      .setVisible(true)
-      .setPosition(
-        x + Math.cos(angle) * strike * 9,
-        y - 9 + Math.sin(angle) * strike * 9,
-      )
-      .setAlpha(alpha)
-      .setTint(hit ? 0xffaaaa : 0xffffff)
-      .setFlipX(Math.cos(angle) < 0)
-      .setRotation(lean)
-      .setDisplaySize(
-        92 * (jumping ? 0.92 : 1 + beat * 0.018),
-        87 * (jumping ? 1.08 : 1 - beat * 0.025 - strike * 0.08),
-      );
-    if (dashing && !reducedMotion) {
-      g.lineStyle(3, CHARACTERS[id].color, 0.45);
-      for (let i = 1; i <= 3; i++)
-        g.lineBetween(
-          x - Math.cos(angle) * (30 + i * 12),
-          y - Math.sin(angle) * (30 + i * 12) - i * 7,
-          x - Math.cos(angle) * (70 + i * 12),
-          y - Math.sin(angle) * (70 + i * 12) - i * 7,
-        );
-    }
   }
 }
 new Phaser.Game({

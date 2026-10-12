@@ -70,7 +70,7 @@ select u.id, u.email
 from public.arena_admins a join auth.users u on u.id = a.user_id;
 ```
 
-Refresh the game. **Admin** appears in navigation and **Solo test mode** appears in the menu. Admin membership grants/revocations are done only through trusted SQL administration. The web dashboard cannot promote players or suspend administrators, preventing accidental self-lockout.
+Refresh the game. **Admin** appears in navigation. **Solo test mode** is available to every signed-in player. Admin membership grants/revocations are done only through trusted SQL administration. The web dashboard cannot promote players or suspend administrators, preventing accidental self-lockout.
 
 ## Google sign-in
 
@@ -80,7 +80,7 @@ Optionally enable Google in Supabase using a Google OAuth web client. Register t
 
 **Admin → Players & titles** supports searching/pagination, renaming players, suspending/reactivating ordinary players, creating/editing/retiring titles, and granting/revoking title ownership. Updates are recorded in `arena_admin_audit` for trusted database inspection. Players open their name in navigation to equip one of their granted, active titles. Equipped titles appear above their creatures. Retired and revoked titles cannot be equipped.
 
-Solo testing uses server-side admin checks on every command. Connected sockets recheck account status every 30 seconds. Dashboard player changes refresh affected players immediately; catalog edits reach existing fighters at their next account refresh. Room tokens are bound to their authenticated account, and one account holds one room session at a time.
+Solo testing checks authenticated, unsuspended accounts on every command. Player and title management still require admin access. Connected sockets recheck account status every 30 seconds. Dashboard player changes refresh affected players immediately; catalog edits reach existing fighters at their next account refresh. Room tokens are bound to their authenticated account, and one account holds one room session at a time.
 
 Remember me uses persistent browser storage; unchecked sessions stay per-tab. Sign-out clears both stores and leaves the room. Use **two different accounts** for a two-window multiplayer test.
 
