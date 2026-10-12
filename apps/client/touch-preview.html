@@ -2,22 +2,20 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
     <title>Touch controls preview</title>
   </head>
   <body>
-    <main>
-      <h2>Mobile controls preview</h2>
-      <p>Control demo only · no match or account required</p>
+    <main id="battle">
+      <h2 hidden>Mobile controls preview</h2>
+
       <div
         id="preview"
-        style="
-          height: 140px;
-          background: #234b3a;
-          border-radius: 20px;
-          position: relative;
-          overflow: hidden;
-        "
+        class="arena-frame"
+        style="background: radial-gradient(circle at center, #397451, #214736)"
       >
         <span
           id="marker"
@@ -25,7 +23,9 @@
           >⚡</span
         >
       </div>
-      <p id="action" role="status">Try the joystick and buttons together.</p>
+      <p id="action" class="hud" role="status">
+        CONTROL DEMO · Move and attack together · no live match
+      </p>
       <div id="controls"></div>
     </main>
     <script type="module">
@@ -39,13 +39,27 @@
         (text) => (action.textContent = text),
       );
       if (!controls.enabled) document.querySelector("#touch-toggle").click();
+      document.body.classList.add("battle-active");
+      controls.resize();
       controls.update(
         true,
-        ["Thunderbolt", "Electro Orb", "Static Field", "Ultimate"],
+        ["Thunderbolt", "Electro Orb", "Static Field", "Thunderstorm"],
         [0, 0, 0, 0],
         0,
         0,
       );
+      document.querySelector("#mobile-settings").onclick = () => {
+        const panel = document.createElement("dialog");
+        panel.innerHTML =
+          controls.settingsHTML() + '<button id="preview-close">Done</button>';
+        document.body.append(panel);
+        panel.showModal();
+        controls.bindSettings();
+        panel.querySelector("#preview-close").onclick = () => {
+          panel.close();
+          panel.remove();
+        };
+      };
       let x = 50,
         y = 50;
       function frame() {

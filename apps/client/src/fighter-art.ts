@@ -10,3 +10,8 @@ const drawings: Record<CharacterId, string> = {
 export function fighterArt(id: CharacterId) {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 190" role="img" aria-label="${{ voltling: "Pikachu", emberwing: "Charizard", aquashade: "Greninja", auralith: "Lucario" }[id]}"><ellipse class="fighter-shadow" cx="100" cy="174" rx="37" ry="6" fill="#152b32" opacity=".22"/><g class="fighter-body" stroke="#394152" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" fill="#394152">${drawings[id]}</g></svg>`;
 }
+
+export function fighterTextureData(id: CharacterId) {
+  const bytes = new TextEncoder().encode(fighterArt(id));
+  return "data:image/svg+xml;base64," + btoa(String.fromCharCode(...bytes));
+}

@@ -13,3 +13,4 @@ jobs:
       - run: npm run typecheck
       - run: npm run test
       - run: npm run build
+      - run: node scripts/verify-pwa.mjs

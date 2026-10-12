@@ -135,8 +135,24 @@ export function createArenaServer(
     process.env.INIT_CWD ?? process.cwd(),
     "apps/client/dist",
   );
-  app.use(express.static(client));
-  app.get("*", (_req, res) => res.sendFile(path.join(client, "index.html")));
+  app.use(
+    express.static(client, {
+      setHeaders(res, file) {
+        if (
+          /[/\\](sw\.js|manifest\.webmanifest|index\.html|offline\.html)$/.test(
+            file,
+          )
+        )
+          res.setHeader("Cache-Control", "no-cache");
+        if (file.endsWith("manifest.webmanifest"))
+          res.setHeader("Content-Type", "application/manifest+json");
+      },
+    }),
+  );
+  app.get("*", (_req, res) => {
+    res.setHeader("Cache-Control", "no-cache");
+    res.sendFile(path.join(client, "index.html"));
+  });
   function getSession(socketId: string) {
     return [...sessions.values()].find((s) => s.socketId === socketId);
   }

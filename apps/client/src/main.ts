@@ -1,6 +1,7 @@
+import { setupPWA } from "./pwa";
 import { abilityIcon } from "./ability-icons";
 import { TouchControls } from "./touch-controls";
-import { fighterArt } from "./fighter-art";
+import { fighterArt, fighterTextureData } from "./fighter-art";
 import Phaser from "phaser";
 import { io } from "socket.io-client";
 import {
@@ -53,7 +54,7 @@ const escape = (s: string) =>
       ]!,
   );
 document.querySelector("#app")!.innerHTML =
-  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark">✦</span> ELEMENT<span>ARENA</span></a><div class="top-links"><span class="connection" id="connection">Connecting</span><button class="quiet" id="mobile-play">Mobile fullscreen</button><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">⚙ Settings</button><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden><div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><span class="map-label">FOREST ARENA <span>01 / VERDANT GROUNDS</span></span></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span>WASD <b>Move</b> · Mouse <b>Aim</b> · LMB <b>Attack</b> · 1 / 2 / 3 <b>Skills</b> · RMB <b>Ultimate</b></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>ELEMENT ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Pokémon fan art. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
+  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark">✦</span> ELEMENT<span>ARENA</span></a><div class="top-links"><span class="connection" id="connection">Connecting</span><button class="quiet" id="install-app">Install app</button><button class="quiet" id="mobile-play">Mobile fullscreen</button><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">⚙ Settings</button><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden><div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><span class="map-label">FOREST ARENA <span>01 / VERDANT GROUNDS</span></span></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span>WASD <b>Move</b> · Mouse <b>Aim</b> · LMB <b>Attack</b> · 1 / 2 / 3 <b>Skills</b> · RMB <b>Ultimate</b></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>ELEMENT ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Pokémon fan art. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
 document.addEventListener("pointerdown", (event) => {
   if ((event.target as Element).closest("button")) {
     audio.unlock();
@@ -98,13 +99,47 @@ const touch = new TouchControls(
     if (scene) Object.assign(scene.actions, action);
   },
   toast,
+  () => {
+    if (scene)
+      scene.actions = { skill: -1, dash: false, jump: false, basic: false };
+  },
 );
 $("mobile-play").onclick = () => {
   if (!touch.enabled) $("touch-toggle").click();
   $("mobile-fullscreen").click();
 };
+function stopControls() {
+  touch.reset();
+  if (scene) {
+    scene.actions = { skill: -1, dash: false, jump: false, basic: false };
+    scene.input.keyboard?.resetKeys();
+  }
+  if (connected && state?.phase === "playing" && local)
+    socket.emit("input", {
+      seq: ++seq,
+      dx: 0,
+      dy: 0,
+      aimX: Math.max(
+        0,
+        Math.min(RULES.width, local.x + Math.cos(local.angle) * 100),
+      ),
+      aimY: Math.max(
+        0,
+        Math.min(RULES.height, local.y + Math.sin(local.angle) * 100),
+      ),
+      basic: false,
+      skill: -1,
+      dash: false,
+      jump: false,
+    });
+}
+window.addEventListener("blur", stopControls);
+window.addEventListener("pagehide", stopControls);
+document.addEventListener("visibilitychange", stopControls);
+const pwa = setupPWA(() => state?.phase, dialog, toast);
 const creatureArt = fighterArt;
 function renderMenu() {
+  pwa.sync();
   const p = state?.players.find((p) => p.id === myId);
   const isRoom = !!p;
   const character = CHARACTERS[selected];
@@ -112,6 +147,7 @@ function renderMenu() {
   if (screen === key) return;
   screen = key;
   touch.reset();
+  document.body.classList.remove("battle-active");
   $("battle").hidden = true;
   $("menu").hidden = false;
   $("menu").innerHTML =
@@ -197,6 +233,13 @@ async function leave() {
   menuOpen = false;
 }
 function renderBattle() {
+  if (!document.body.classList.contains("battle-active")) {
+    document.body.classList.add("battle-active");
+    requestAnimationFrame(() => {
+      touch.resize();
+      scene?.scale.refresh();
+    });
+  }
   const me = state?.players.find((p) => p.id === myId);
   if (!state || !me) return;
   const key = `battle:${me.character}:${!!state.practice}`;
@@ -406,6 +449,7 @@ socket.on("state", (snapshot: WireSnapshot) => {
   if (state?.phase !== snapshot.phase || state?.round !== snapshot.round)
     remoteFrames.clear();
   state = unpackSnapshot(snapshot);
+  pwa.sync();
   remoteFrames.add(state, performance.now());
   const me = state.players.find((p) => p.id === myId);
   if (!me) return;
@@ -447,15 +491,17 @@ function dialog(html: string) {
 function showSettings() {
   settingsOpen = true;
   dialog(
-    `<div class="eyebrow">YOUR PREFERENCES</div><h2>Find your rhythm.</h2><p>Online matches keep running while this menu is open.</p><label>MUSIC <input type="range" id="music" min="0" max="1" step=".01" value="${audio.music}"></label><label>SOUND EFFECTS <input type="range" id="effects" min="0" max="1" step=".01" value="${audio.effects}"></label><p>Reduced motion follows your system preference.</p>${myId ? '<button id="exit-room" class="secondary">Leave room</button>' : ""}`,
+    `<div class="eyebrow">YOUR PREFERENCES</div><h2>Find your rhythm.</h2><p>Online matches keep running while this menu is open.</p><label>MUSIC <input type="range" id="music" min="0" max="1" step=".01" value="${audio.music}"></label><label>SOUND EFFECTS <input type="range" id="effects" min="0" max="1" step=".01" value="${audio.effects}"></label><p>Reduced motion follows your system preference.</p>${touch.settingsHTML()}${myId ? '<button id="exit-room" class="secondary">Leave room</button>' : ""}`,
   );
   for (const kind of ["music", "effects"] as const)
     $(kind).oninput = () => {
       audio.unlock();
       audio.set(kind, Number($<HTMLInputElement>(kind).value));
     };
+  touch.bindSettings();
   if (myId) $("exit-room").onclick = () => void leave();
 }
+$("mobile-settings").onclick = showSettings;
 $("settings").onclick = showSettings;
 $("battle-menu").onclick = showSettings;
 $("help").onclick = () =>
@@ -502,6 +548,7 @@ class ArenaScene extends Phaser.Scene {
       state?.phase === "playing" &&
       !$<HTMLDialogElement>("dialog").open &&
       document.hasFocus() &&
+      !document.hidden &&
       !["INPUT", "TEXTAREA", "SELECT"].includes(
         document.activeElement?.tagName ?? "",
       )
@@ -518,12 +565,7 @@ class ArenaScene extends Phaser.Scene {
   private hitUntil = new Map<string, number>();
   preload() {
     for (const id of Object.keys(CHARACTERS) as CharacterId[])
-      this.load.svg(
-        id,
-        "data:image/svg+xml;charset=utf-8," +
-          encodeURIComponent(fighterArt(id)),
-        { width: 200, height: 190 },
-      );
+      this.load.svg(id, fighterTextureData(id), { width: 200, height: 190 });
   }
   create() {
     scene = this;
@@ -685,10 +727,12 @@ class ArenaScene extends Phaser.Scene {
       if (!connected || state.phase !== "playing" || !local) continue;
       const pointer = this.input.activePointer;
       const active =
+        this.canControl() &&
         !settingsOpen &&
         !menuOpen &&
         !$<HTMLDialogElement>("dialog").open &&
-        document.hasFocus();
+        document.hasFocus() &&
+        !document.hidden;
       const target = state.players.find((p) => p.id !== myId && p.hp > 0);
       const mobileAim = touch.enabled && target;
       const input: Input = {
@@ -956,7 +1000,8 @@ new Phaser.Game({
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   scene: [ArenaScene],
   render: { antialias: true },
-  input: { activePointers: 1 },
+  // Fixed 1600x900 render buffer avoids multiplying GPU load on high-DPI phones.
+  input: { activePointers: 4 },
 });
 accountsUI = new AccountUI({
   openDialog: dialog,

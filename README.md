@@ -112,3 +112,5 @@ This MVP uses procedural artwork and synthesized music/effects. It supports desk
 - A build size warning reflects the Phaser runtime. It does not prevent production build or play; further code splitting/loading optimization can follow the MVP.
 
 Mobile controls turn on automatically for coarse-pointer devices. Use Mobile fullscreen on the homepage or confirm the pre-match instructions to request fullscreen from a tap. The left joystick moves; right buttons attack, cast skills, dash and jump. Mobile aim follows the opponent. Fullscreen availability depends on the browser. A development-only control demo is available at `/touch-preview.html` while running Vite.
+
+See [Mobile controls and PWA setup](docs/mobile-pwa.md) for installation, deployment, customization, and validation limitations.
