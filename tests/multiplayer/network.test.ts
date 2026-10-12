@@ -62,8 +62,17 @@ async function lobby() {
   const guest = await emit(two, "join", { name: "Two", code: host.code });
   return { one, two, host, guest, arena: server.rooms.get(host.code!)! };
 }
-it("runs all four characters in solo mode with real skill damage and no second client", async () => {
-  for (const character of ["voltling", "emberwing", "aquashade", "auralith"]) {
+it("runs all eight characters in solo mode with real skill damage and no second client", async () => {
+  for (const character of [
+    "voltkit",
+    "cindrake",
+    "tidefin",
+    "auralynx",
+    "thornback",
+    "frostfang",
+    "duskveil",
+    "terradon",
+  ]) {
     const client = await connect();
     const reply = await emit(client, "practice", { name: "Tester", character });
     expect(reply.ok).toBe(true);
@@ -72,6 +81,8 @@ it("runs all four characters in solo mode with real skill damage and no second c
     expect(a.phase).toBe("playing");
     expect(a.players).toHaveLength(2);
     expect(server.sessions.size).toBe(1);
+    // Both ranged and melee starters must be within their real skill range.
+    a.players[0].x = 850;
     client.emit("input", {
       ...blankInput(),
       seq: 1,
@@ -99,7 +110,7 @@ it("switches practice characters, resets the arena, and optionally removes skill
   const client = await connect();
   const reply = await emit(client, "practice", {
     name: "Tester",
-    character: "voltling",
+    character: "voltkit",
   });
   const a = server.rooms.get(reply.code!)!;
   await emit(client, "practice-options", {
@@ -128,8 +139,8 @@ it("switches practice characters, resets the arena, and optionally removes skill
   await wait();
   server.step();
   expect(a.players[0].stats.skills).toBe(2);
-  expect((await emit(client, "practice-character", "aquashade")).ok).toBe(true);
-  expect(a.players[0].character).toBe("aquashade");
+  expect((await emit(client, "practice-character", "tidefin")).ok).toBe(true);
+  expect(a.players[0].character).toBe("tidefin");
   expect(a.players[0].hp).toBe(105);
   expect(a.zones).toHaveLength(0);
   a.players[0].hp = 12;
@@ -144,7 +155,7 @@ it("practice target attacks deal damage and stop cleanly when disabled", async (
   const client = await connect();
   const reply = await emit(client, "practice", {
     name: "Tester",
-    character: "auralith",
+    character: "auralynx",
   });
   const a = server.rooms.get(reply.code!)!;
   await emit(client, "practice-options", {
@@ -175,12 +186,12 @@ it("isolates practice commands from online rooms and preserves practice reconnec
     ).ok,
   ).toBe(false);
   expect((await emit(two, "practice-reset")).ok).toBe(false);
-  expect((await emit(one, "practice-character", "aquashade")).ok).toBe(false);
+  expect((await emit(one, "practice-character", "tidefin")).ok).toBe(false);
   expect(arena.practice).toBeNull();
   const client = await connect();
   const reply = await emit(client, "practice", {
     name: "Tester",
-    character: "voltling",
+    character: "voltkit",
   });
   const a = server.rooms.get(reply.code!)!;
   client.disconnect();

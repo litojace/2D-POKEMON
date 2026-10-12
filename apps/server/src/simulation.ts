@@ -36,7 +36,7 @@ export class Arena {
   events: GameEvent[] = [];
   serial = 0;
   constructor(public code: string) {}
-  add(id: string, name: string, character: CharacterId = "voltling"): Fighter {
+  add(id: string, name: string, character: CharacterId = "voltkit"): Fighter {
     const p: Fighter = {
       id,
       name,
@@ -190,6 +190,8 @@ export class Arena {
     const counter = target.statuses.some(
       (s) => s.kind === "shield" && s.until > this.time,
     );
+    if (amount > 0)
+      target.statuses = target.statuses.filter((s) => s.kind !== "stealth");
     let dealt = counter ? amount * STATUS_RULES.shieldReduction : amount;
     dealt = Math.min(target.hp, dealt);
     target.hp = Math.max(0, target.hp - dealt);
@@ -224,6 +226,7 @@ export class Arena {
     }
   }
   cast(p: Fighter, a: Ability) {
+    p.statuses = p.statuses.filter((s) => s.kind !== "stealth");
     const color = CHARACTERS[p.character].color;
     const angle = p.angle;
     const enemy = this.players.find((o) => o.id !== p.id);
@@ -278,6 +281,7 @@ export class Arena {
       p.dashY = (Math.sin(angle) * a.range) / a.duration;
       p.rush = { until: p.dashUntil, damage: a.damage, hit: false };
     }
+    if (a.kind === "stealth") this.status(p, "stealth", a.duration);
     if (a.kind === "counter") this.status(p, "shield", a.duration);
     if (a.kind === "clone") {
       p.clone = { x: p.x, y: p.y, until: this.time + a.duration };
@@ -334,7 +338,7 @@ export class Arena {
       }
       if (this.practice.targetAttacks && this.time >= this.nextPracticeZone) {
         this.nextPracticeZone = this.time + 3;
-        this.cast(target, CHARACTERS.emberwing.skills[1]);
+        this.cast(target, CHARACTERS.cindrake.skills[1]);
       }
     }
     for (const p of this.players) {

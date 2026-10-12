@@ -54,7 +54,7 @@ it("rejects anonymous gameplay and forged admin payloads", async () => {
     (
       await emit(guest, "practice", {
         name: "Guest",
-        character: "voltling",
+        character: "voltkit",
         isAdmin: true,
       })
     ).ok,
@@ -62,7 +62,7 @@ it("rejects anonymous gameplay and forged admin payloads", async () => {
   const player = accounts.add(false);
   const socket = await connect(player.token);
   expect(
-    (await emit(socket, "practice", { name: "Tester", character: "voltling" }))
+    (await emit(socket, "practice", { name: "Tester", character: "voltkit" }))
       .ok,
   ).toBe(true);
   expect(
@@ -73,7 +73,7 @@ it("rejects anonymous gameplay and forged admin payloads", async () => {
       })
     ).ok,
   ).toBe(true);
-  expect((await emit(socket, "practice-character", "auralith")).ok).toBe(true);
+  expect((await emit(socket, "practice-character", "auralynx")).ok).toBe(true);
   expect((await emit(socket, "practice-reset")).ok).toBe(true);
   await emit(socket, "leave");
   expect((await emit(socket, "create", { name: "Invented name" })).ok).toBe(
@@ -105,7 +105,7 @@ it("rejects invalid credentials, suspension, and account reuse", async () => {
 it("suspended players cannot change or restart a practice session", async () => {
   const admin = accounts.add();
   const socket = await connect(admin.token);
-  await emit(socket, "practice", { name: "Admin", character: "voltling" });
+  await emit(socket, "practice", { name: "Admin", character: "voltkit" });
   admin.account.suspended = true;
   expect(
     (
@@ -115,7 +115,7 @@ it("suspended players cannot change or restart a practice session", async () => 
       })
     ).ok,
   ).toBe(false);
-  expect((await emit(socket, "practice-character", "auralith")).ok).toBe(false);
+  expect((await emit(socket, "practice-character", "auralynx")).ok).toBe(false);
   expect((await emit(socket, "practice-reset")).ok).toBe(false);
 });
 it("players can resume practice after losing administrator privileges", async () => {
@@ -123,7 +123,7 @@ it("players can resume practice after losing administrator privileges", async ()
   const socket = await connect(admin.token);
   const room = await emit(socket, "practice", {
     name: "Admin",
-    character: "voltling",
+    character: "voltkit",
   });
   socket.disconnect();
   await new Promise((resolve) => setTimeout(resolve, 30));
@@ -213,7 +213,7 @@ it("clears a detached reservation when the owner explicitly leaves after reconne
     socket = await connect(owner.token);
   const room = await emit(socket, "practice", {
     name: "Admin",
-    character: "voltling",
+    character: "voltkit",
   });
   socket.disconnect();
   await new Promise((resolve) => setTimeout(resolve, 30));
@@ -225,7 +225,7 @@ it("clears a detached reservation when the owner explicitly leaves after reconne
 it("allows a new room after a lost disconnected reservation but protects active rooms", async () => {
   const owner = accounts.add(true),
     socket = await connect(owner.token);
-  await emit(socket, "practice", { name: "Admin", character: "voltling" });
+  await emit(socket, "practice", { name: "Admin", character: "voltkit" });
   const second = await connect(owner.token);
   expect((await emit(second, "create", { name: "Admin" })).ok).toBe(false);
   socket.disconnect();
@@ -242,7 +242,7 @@ it("removes the account reservation even if the room disappeared first", async (
   expect((await emit(socket, "leave", { token: room.token })).ok).toBe(true);
   expect(server.sessions.size).toBe(0);
   expect(
-    (await emit(socket, "practice", { name: "Admin", character: "voltling" }))
+    (await emit(socket, "practice", { name: "Admin", character: "voltkit" }))
       .ok,
   ).toBe(true);
 });

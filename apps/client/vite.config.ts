@@ -10,13 +10,16 @@ export default defineConfig({
       injectRegister: false,
       includeAssets: ["icons/*.png", "offline.html"],
       injectManifest: {
-        globPatterns: ["assets/*.{js,css}"],
+        globPatterns: [
+          "assets/*.{js,css}",
+          "assets/fighters/**/*.{svg,png,webp,json}",
+        ],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
       },
       manifest: {
         id: "/",
-        name: "Pokémon Arena",
-        short_name: "Pokémon Arena",
+        name: "Element Arena",
+        short_name: "Element Arena",
         description: "Real-time arena duels with your friends.",
         start_url: "/",
         scope: "/",

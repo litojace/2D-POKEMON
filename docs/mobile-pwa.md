@@ -1,6 +1,6 @@
 # Mobile controls and PWA
 
-Pokémon Arena remains one Phaser client and one Socket.IO server. Mobile and desktop use the same server-authoritative combat rules and existing protocol. Mobile aim continues to follow the opponent.
+Element Arena remains one Phaser client and one Socket.IO server. Mobile and desktop use the same server-authoritative combat rules and existing protocol. Mobile aim continues to follow the opponent.
 
 ## Mobile HUD
 
@@ -55,7 +55,7 @@ Browser emulation and build-artifact inspection can verify layout and configurat
 - A Phaser SVG data-URL decoding failure found during production verification was fixed and covered with a regression test. A fresh production page reported no console errors.
 - No Android/iOS hardware or installed Home Screen app was available. Real cross-device matches, hardware multitouch, offline navigation, and the complete deployed update lifecycle remain unverified.
 
-## Poké Stadium and display cutouts
+## Elemental Coliseum and display cutouts
 
 The interface uses navy, red, white, and yellow, with a stadium court and Poké Ball app icons. Shared CSS safe-area variables protect the lobby header, side content, modal dialogs, game HUD, notices, and home-indicator region. Control sizing uses the available viewport after all four safe insets. The game world and collision geometry stay unchanged.
 

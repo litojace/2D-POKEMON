@@ -35,9 +35,24 @@ export const OBSTACLES = [
   { x: 1020, y: 240, w: 90, h: 130 },
   { x: 750, y: 390, w: 100, h: 120 },
 ];
-export type CharacterId = "voltling" | "emberwing" | "aquashade" | "auralith";
+export type CharacterId =
+  | "voltkit"
+  | "cindrake"
+  | "tidefin"
+  | "auralynx"
+  | "thornback"
+  | "frostfang"
+  | "duskveil"
+  | "terradon";
 export type StatusKind =
-  "burn" | "paralysis" | "slow" | "freeze" | "stun" | "shield" | "haste";
+  | "burn"
+  | "paralysis"
+  | "slow"
+  | "freeze"
+  | "stun"
+  | "shield"
+  | "haste"
+  | "stealth";
 export const STATUS_RULES = {
   stacking: "refresh" as const,
   crowdControlImmunity: 2,
@@ -56,7 +71,8 @@ export type AbilityKind =
   | "melee"
   | "counter"
   | "barrage"
-  | "charged";
+  | "charged"
+  | "stealth";
 export interface Ability {
   id: string;
   name: string;
@@ -122,11 +138,11 @@ export interface Character {
   skills: [Ability, Ability, Ability, Ability];
 }
 export const CHARACTERS: Record<CharacterId, Character> = {
-  voltling: {
-    id: "voltling",
-    name: "Pikachu",
+  voltkit: {
+    id: "voltkit",
+    name: "Voltkit",
     element: "Electric",
-    role: "Fast ranged attacker",
+    role: "Ranged speedster",
     color: 0xffd65b,
     health: 110,
     speed: 270,
@@ -136,7 +152,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     skills: [
       ability(
         "thunderbolt",
-        "Thunderbolt",
+        "Arc Pulse",
         "projectile",
         18,
         4,
@@ -145,7 +161,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ),
       ability(
         "orb",
-        "Electro Orb",
+        "Charge Orb",
         "projectile",
         23,
         7,
@@ -154,7 +170,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ),
       ability(
         "static",
-        "Static Field",
+        "Livewire Field",
         "zone",
         4,
         10,
@@ -170,7 +186,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ),
       ability(
         "storm",
-        "Thunderstorm",
+        "Overcharge",
         "zone",
         10,
         30,
@@ -179,11 +195,11 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ),
     ],
   },
-  emberwing: {
-    id: "emberwing",
-    name: "Charizard",
+  cindrake: {
+    id: "cindrake",
+    name: "Cindrake",
     element: "Fire",
-    role: "High-damage fighter",
+    role: "Burst damage fighter",
     color: 0xff795a,
     health: 125,
     speed: 240,
@@ -199,14 +215,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     skills: [
       ability(
         "flame",
-        "Flame Burst",
+        "Crest Flare",
         "projectile",
         18,
         5,
         "Fire that burns for two seconds.",
         { status: "burn", statusDuration: 2 },
       ),
-      ability("spin", "Fire Spin", "zone", 6, 8, "A circular ground fire.", {
+      ability("spin", "Ember Ring", "zone", 6, 8, "A circular ground fire.", {
         radius: 125,
         duration: 3,
         ground: true,
@@ -214,14 +230,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       }),
       ability(
         "rush",
-        "Dragon Rush",
+        "Ember Rush",
         "movement",
         22,
         10,
         "Rush forward and strike on contact.",
         { range: 270, duration: 0.3 },
       ),
-      ability("inferno", "Inferno", "zone", 9, 30, "A large burning zone.", {
+      ability("inferno", "Solar Bloom", "zone", 9, 30, "A large burning zone.", {
         radius: 200,
         duration: 4,
         ground: true,
@@ -231,9 +247,9 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       }),
     ],
   },
-  aquashade: {
-    id: "aquashade",
-    name: "Greninja",
+  tidefin: {
+    id: "tidefin",
+    name: "Tidefin",
     element: "Water",
     role: "Agile assassin",
     color: 0x63dce8,
@@ -251,7 +267,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     skills: [
       ability(
         "shuriken",
-        "Water Shuriken",
+        "Tidal Blade",
         "projectile",
         18,
         4,
@@ -260,7 +276,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ),
       ability(
         "step",
-        "Shadow Step",
+        "Slipstream",
         "movement",
         0,
         8,
@@ -269,7 +285,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ),
       ability(
         "clone",
-        "Water Clone",
+        "Mirror Current",
         "clone",
         0,
         12,
@@ -278,7 +294,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ),
       ability(
         "barrage",
-        "Shuriken Barrage",
+        "Riptide Volley",
         "barrage",
         12,
         30,
@@ -287,17 +303,17 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ),
     ],
   },
-  auralith: {
-    id: "auralith",
-    name: "Lucario",
-    element: "Fighting / Energy",
+  auralynx: {
+    id: "auralynx",
+    name: "Auralynx",
+    element: "Energy",
     role: "Melee and counter specialist",
     color: 0xb5a1ff,
     health: 140,
     speed: 235,
     basic: ability(
       "jab",
-      "Aura Jab",
+      "Crystal Jab",
       "melee",
       12,
       0.48,
@@ -307,7 +323,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     skills: [
       ability(
         "sphere",
-        "Aura Sphere",
+        "Prism Shot",
         "projectile",
         20,
         5,
@@ -316,7 +332,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ),
       ability(
         "bone",
-        "Bone Rush",
+        "Shard Combination",
         "melee",
         28,
         7,
@@ -325,7 +341,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ),
       ability(
         "counter",
-        "Counter Stance",
+        "Prism Guard",
         "counter",
         0,
         12,
@@ -334,12 +350,271 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ),
       ability(
         "blast",
-        "Mega Aura Blast",
+        "Nova Ray",
         "charged",
         45,
         30,
         "Charge a large blast. Keep aiming during the windup.",
         { cast: 0.65, radius: 40, speed: 850, explosion: 100, range: 1000 },
+      ),
+    ],
+  },
+  thornback: {
+    id: "thornback",
+    name: "Thornback",
+    element: "Nature",
+    role: "Defensive tank",
+    color: 0x8fd58d,
+    health: 185,
+    speed: 185,
+    basic: ability(
+      "bough",
+      "Bough Bash",
+      "melee",
+      12,
+      0.7,
+      "A short, sturdy shell strike.",
+      { range: 95, knockback: 95 },
+    ),
+    skills: [
+      ability(
+        "seed",
+        "Bramble Seed",
+        "projectile",
+        12,
+        5,
+        "A thorn seed that slows the enemy.",
+        { speed: 480, status: "slow", statusDuration: 1.3 },
+      ),
+      ability(
+        "bark",
+        "Verdant Guard",
+        "counter",
+        0,
+        11,
+        "Reduce incoming damage by half and reflect part for two seconds.",
+        { duration: 2 },
+      ),
+      ability(
+        "roots",
+        "Root Garden",
+        "zone",
+        4,
+        10,
+        "A vine patch that slows grounded enemies. Jump to cross it.",
+        {
+          radius: 135,
+          range: 450,
+          duration: 3,
+          ground: true,
+          status: "slow",
+          statusDuration: 0.7,
+        },
+      ),
+      ability(
+        "bloom",
+        "Wild Bloom",
+        "zone",
+        9,
+        30,
+        "Raise a large thorn garden after a brief cast. Stay out or jump through.",
+        {
+          cast: 0.35,
+          radius: 180,
+          range: 450,
+          duration: 4,
+          ground: true,
+          status: "slow",
+          statusDuration: 0.7,
+        },
+      ),
+    ],
+  },
+  frostfang: {
+    id: "frostfang",
+    name: "Frostfang",
+    element: "Ice",
+    role: "Crowd control specialist",
+    color: 0xb8edff,
+    health: 115,
+    speed: 225,
+    basic: ability(
+      "flake",
+      "Frost Flake",
+      "projectile",
+      7,
+      0.5,
+      "A crisp shard of ice.",
+      { speed: 650 },
+    ),
+    skills: [
+      ability(
+        "lance",
+        "Ice Lance",
+        "projectile",
+        16,
+        6,
+        "A narrow lance that briefly freezes the target. Control immunity prevents chaining.",
+        { speed: 800, status: "freeze", statusDuration: 0.6 },
+      ),
+      ability(
+        "drift",
+        "Snow Drift",
+        "movement",
+        0,
+        8,
+        "Slide forward out of danger.",
+        { range: 220, duration: 0.22 },
+      ),
+      ability(
+        "chill",
+        "Cold Front",
+        "zone",
+        4,
+        10,
+        "Chilling ground slows enemies; jump over the cold.",
+        {
+          radius: 135,
+          range: 480,
+          duration: 3,
+          ground: true,
+          status: "slow",
+          statusDuration: 0.8,
+        },
+      ),
+      ability(
+        "blizzard",
+        "Crystal Blizzard",
+        "barrage",
+        9,
+        30,
+        "Five crystal shards spread across a wide fan.",
+        {
+          count: 5,
+          speed: 700,
+          status: "slow",
+          statusDuration: 1.2,
+          range: 700,
+        },
+      ),
+    ],
+  },
+  duskveil: {
+    id: "duskveil",
+    name: "Duskveil",
+    element: "Shadow",
+    role: "Stealth assassin",
+    color: 0xa98be6,
+    health: 100,
+    speed: 275,
+    basic: ability(
+      "wisp",
+      "Night Wisp",
+      "projectile",
+      7,
+      0.4,
+      "A small shadow wisp.",
+      { speed: 760 },
+    ),
+    skills: [
+      ability(
+        "rend",
+        "Cloak Rend",
+        "melee",
+        25,
+        5,
+        "Strike at close range. Approach from an unexpected angle.",
+        { range: 125, knockback: 80 },
+      ),
+      ability(
+        "veil",
+        "Shadow Veil",
+        "stealth",
+        0,
+        12,
+        "Fade for two seconds. Attacking or taking damage reveals you.",
+        { duration: 2 },
+      ),
+      ability(
+        "echo",
+        "Hollow Echo",
+        "clone",
+        0,
+        10,
+        "Leave a one-hit decoy and gain a brief speed boost.",
+        { duration: 2.5, statusDuration: 1.6 },
+      ),
+      ability(
+        "eclipse",
+        "Eclipse",
+        "zone",
+        8,
+        30,
+        "A shadow pool deals repeated damage and slows grounded enemies.",
+        {
+          radius: 160,
+          range: 450,
+          duration: 3,
+          ground: true,
+          status: "slow",
+          statusDuration: 0.6,
+        },
+      ),
+    ],
+  },
+  terradon: {
+    id: "terradon",
+    name: "Terradon",
+    element: "Earth",
+    role: "Heavy bruiser",
+    color: 0xe6ac78,
+    health: 170,
+    speed: 195,
+    basic: ability(
+      "knuckle",
+      "Stone Knuckle",
+      "melee",
+      15,
+      0.65,
+      "A heavy close-range punch.",
+      { range: 105, knockback: 100 },
+    ),
+    skills: [
+      ability(
+        "fracture",
+        "Faultline",
+        "melee",
+        25,
+        7,
+        "A forceful strike pushes enemies away.",
+        { range: 145, knockback: 200 },
+      ),
+      ability(
+        "bulwark",
+        "Mineral Guard",
+        "counter",
+        0,
+        12,
+        "Brace with crystalline armor to reduce and reflect damage.",
+        { duration: 1.8 },
+      ),
+      ability(
+        "boulder",
+        "Boulder Charge",
+        "movement",
+        20,
+        10,
+        "Charge forward, hitting an enemy once on contact.",
+        { range: 240, duration: 0.3 },
+      ),
+      ability(
+        "quake",
+        "Seismic Crown",
+        "zone",
+        10,
+        30,
+        "A rumbling patch repeatedly strikes grounded enemies. Jump clear of it.",
+        { radius: 185, range: 350, duration: 3, ground: true, knockback: 110 },
       ),
     ],
   },
@@ -391,12 +666,31 @@ export const joinSchema = identitySchema.extend({
 export const resumeSchema = z
   .object({ token: z.string().regex(/^[a-f0-9]{64}$/) })
   .strict();
-export const characterSchema = z.enum([
-  "voltling",
-  "emberwing",
-  "aquashade",
-  "auralith",
-]);
+export const FIGHTER_IDS = [
+  "voltkit",
+  "cindrake",
+  "tidefin",
+  "auralynx",
+  "thornback",
+  "frostfang",
+  "duskveil",
+  "terradon",
+] as const;
+const legacyIds: Record<string, CharacterId> = {
+  voltling: "voltkit",
+  emberwing: "cindrake",
+  aquashade: "tidefin",
+  auralith: "auralynx",
+};
+export function normalizeCharacterId(value: unknown): CharacterId | undefined {
+  if (typeof value !== "string") return undefined;
+  if (Object.hasOwn(CHARACTERS, value)) return value as CharacterId;
+  return Object.hasOwn(legacyIds, value) ? legacyIds[value] : undefined;
+}
+export const characterSchema = z.preprocess(
+  (value) => normalizeCharacterId(value) ?? value,
+  z.enum(FIGHTER_IDS),
+);
 export interface Status {
   kind: StatusKind;
   until: number;
@@ -501,6 +795,10 @@ const abilities = Object.fromEntries(
 export function packSnapshot(s: Snapshot): WireSnapshot {
   return {
     ...s,
+    players: s.players.map((p) => ({
+      ...p,
+      character: normalizeCharacterId(p.character) ?? "voltkit",
+    })),
     projectiles: s.projectiles.map(({ ability, ...pr }) => ({
       ...pr,
       abilityId: ability.id,
@@ -514,6 +812,10 @@ export function packSnapshot(s: Snapshot): WireSnapshot {
 export function unpackSnapshot(s: WireSnapshot): Snapshot {
   return {
     ...s,
+    players: s.players.map((p) => ({
+      ...p,
+      character: normalizeCharacterId(p.character) ?? "voltkit",
+    })),
     projectiles: s.projectiles.map(({ abilityId, ...pr }) => ({
       ...pr,
       ability: abilities[abilityId],

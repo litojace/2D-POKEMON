@@ -37,14 +37,18 @@
   </head>
   <body>
     <header>
-      <h2>Pokémon Arena · Animation lab</h2>
+      <h2>Element Arena · Animation lab</h2>
       <p>Development preview · no match or account · visual animation only</p>
       <label
         >Fighter<select id="character">
-          <option value="voltling">Pikachu</option>
-          <option value="emberwing">Charizard</option>
-          <option value="aquashade">Greninja</option>
-          <option value="auralith">Lucario</option>
+          <option value="voltkit">Voltkit</option>
+          <option value="cindrake">Cindrake</option>
+          <option value="tidefin">Tidefin</option>
+          <option value="auralynx">Auralynx</option>
+          <option value="thornback">Thornback</option>
+          <option value="frostfang">Frostfang</option>
+          <option value="duskveil">Duskveil</option>
+          <option value="terradon">Terradon</option>
         </select></label
       ><label
         >Facing<select id="facing">
@@ -87,8 +91,12 @@
     <script type="module">
       import Phaser from "phaser";
       import { CHARACTERS } from "@arena/shared";
+      import { fighterPack } from "./src/animation/pack-config";
       import { rigAssets } from "./src/animation/assets";
-      import { FighterRig } from "./src/animation/rig";
+      import {
+        queueFighterAssets,
+        createFighterVisual,
+      } from "./src/animation/pipeline";
       const assets = Object.fromEntries(
         Object.keys(CHARACTERS).map((id) => [id, rigAssets(id)]),
       );
@@ -97,9 +105,8 @@
         clock = 0;
       class Lab extends Phaser.Scene {
         preload() {
-          for (const group of Object.values(assets))
-            for (const a of group)
-              this.load.svg(a.key, a.url, { width: a.width, height: a.height });
+          for (const id of Object.keys(CHARACTERS))
+            queueFighterAssets(this, id, assets[id]);
         }
         create() {
           scene = this;
@@ -138,13 +145,16 @@
             c.name +
             " · " +
             rig.controller.state +
-            " · each arm, leg, head and feature is a separate layer";
+            (fighterPack(rig.character)?.kind === "layered"
+              ? " - articulated vector layers"
+              : " - imported frame animation");
         }
       }
       function select() {
+        if (!scene) return;
         rig?.destroy();
         const id = document.querySelector("#character").value;
-        rig = new FighterRig(scene, id, assets[id]);
+        rig = createFighterVisual(scene, id, assets[id]);
         play();
       }
       function play() {

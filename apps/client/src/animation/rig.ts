@@ -1,3 +1,4 @@
+import { drawElementGlyph } from "../element-effects";
 import Phaser from "phaser";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import {
@@ -85,7 +86,14 @@ export class FighterRig {
     }
     const t = (now - this.controller.started) / 1000;
     const moving = state === "walk" || state === "run";
-    const step = Math.sin(t * Math.PI * 2 * (state === "run" ? 7 : 5));
+    const heavy =
+      this.character === "thornback" || this.character === "terradon";
+    const step = Math.sin(
+      t *
+        Math.PI *
+        2 *
+        (heavy ? (state === "run" ? 4 : 3) : state === "run" ? 7 : 5),
+    );
     const idle = Math.sin(now / 430);
     const progress = Math.min(
       1,
@@ -120,7 +128,7 @@ export class FighterRig {
     head.y = -15 + (reduced ? 0 : idle * 0.55);
     head.rotation = reduced
       ? 0
-      : this.character === "aquashade"
+      : this.character === "tidefin"
         ? -0.05
         : idle * 0.025;
     ears.rotation = reduced ? 0 : Math.sin(now / 250) * 0.04;
@@ -151,20 +159,20 @@ export class FighterRig {
     armR.setPosition(17.5, -4);
     legL.setPosition(-11, 10.5);
     legR.setPosition(11, 10.5);
-    if (this.character === "auralith") {
+    if (this.character === "auralynx") {
       armL.rotation = -0.35;
       armR.rotation = 0.35;
     }
-    if (this.character === "aquashade") {
+    if (this.character === "tidefin") {
       body.setScale(0.53, 0.47);
       legL.rotation = -0.18;
       legR.rotation = 0.18;
     }
     if (moving && !reduced) {
       const stride =
-        this.character === "emberwing"
+        this.character === "cindrake"
           ? 0.32
-          : this.character === "aquashade"
+          : this.character === "tidefin"
             ? 0.65
             : 0.48;
       armL.rotation = step * stride;
@@ -199,7 +207,7 @@ export class FighterRig {
       }
     }
     if (attack) {
-      if (this.character === "voltling") {
+      if (this.character === "voltkit") {
         ears.rotation = punch * 0.14;
         if (skill === 2) {
           armL.rotation = 0.6;
@@ -207,7 +215,7 @@ export class FighterRig {
           head.y += 2;
         }
         if (skill === 3) tail.rotation += punch * 0.3;
-      } else if (this.character === "emberwing") {
+      } else if (this.character === "cindrake") {
         wings.setScale(0.55 + punch * 0.05, 0.5);
         if (state === "basic" || skill === 0) {
           head.y -= punch * 3;
@@ -223,7 +231,7 @@ export class FighterRig {
           armL.rotation = -0.9;
           armR.rotation = 0.9;
         }
-      } else if (this.character === "aquashade") {
+      } else if (this.character === "tidefin") {
         scarf.rotation = punch * 0.3;
         if (skill === 0) {
           armR.rotation = -punch * 2;
@@ -243,7 +251,7 @@ export class FighterRig {
           armL.rotation = Math.sin(progress * 22) * 1.4;
           armR.rotation = -armL.rotation;
         }
-      } else {
+      } else if (this.character === "auralynx") {
         if (state === "basic") {
           legR.rotation = punch * 0.8;
           armR.x += punch * 5;
@@ -263,6 +271,57 @@ export class FighterRig {
           armR.rotation = 1.3;
           legL.rotation = -0.25;
         }
+      }
+    }
+    if (this.character === "auralynx") {
+      if (!reduced) {
+        wings.rotation = now / 1400;
+        this.root.y -= 3 + Math.sin(now / 550) * 2;
+      }
+      body.setTint(pose.charging ? 0xffddff : 0xffffff);
+    }
+    if (this.character === "thornback") {
+      wings.rotation = reduced ? 0 : Math.sin(now / 600) * 0.045;
+      if (attack && skill === 1) {
+        body.setScale(0.55, 0.46);
+        head.y += 4;
+        armL.rotation = -0.6;
+        armR.rotation = 0.6;
+      }
+      if (attack && skill >= 2) {
+        armL.rotation = punch * 0.8;
+        armR.rotation = -punch * 0.8;
+        wings.rotation = punch * 0.15;
+      }
+    }
+    if (this.character === "frostfang") {
+      scarf.rotation = reduced ? 0 : Math.sin(now / 380) * 0.04;
+      if (attack) {
+        head.y -= punch * 2;
+        if (skill === 3) {
+          armL.rotation = 1.4;
+          armR.rotation = -1.4;
+        }
+      }
+    }
+    if (this.character === "duskveil") {
+      if (!reduced) {
+        this.root.y -= 3 + Math.sin(now / 500) * 2;
+        body.rotation += Math.sin(now / 700) * 0.04;
+      }
+      if (attack && skill === 1) {
+        armL.rotation = -1;
+        armR.rotation = 1;
+        body.setAlpha(0.5);
+      } else body.setAlpha(1);
+    }
+    if (this.character === "terradon" && attack) {
+      if (skill === 1) {
+        armL.rotation = -0.7;
+        armR.rotation = 0.7;
+      } else {
+        armR.x += punch * 6;
+        legR.rotation = punch * 0.5;
       }
     }
     if (state === "dash") {
@@ -305,25 +364,47 @@ export class FighterRig {
       head.rotation = -0.08;
     }
     if (state === "victory" && !reduced && t < 2) {
-      if (this.character === "voltling") {
+      if (this.character === "voltkit") {
         armL.rotation = 2.4 + Math.sin(t * 15) * 0.3;
         armR.rotation = -2.4 - Math.sin(t * 15) * 0.3;
         this.root.y -= Math.max(0, Math.sin(t * 8)) * 8;
-      } else if (this.character === "emberwing") {
+      } else if (this.character === "cindrake") {
         wings.setScale(0.62, 0.55);
         head.y -= 4;
         armL.rotation = -0.9;
         armR.rotation = 0.9;
-      } else if (this.character === "aquashade") {
+      } else if (this.character === "tidefin") {
         this.root.rotation = t < 0.65 ? (t / 0.65) * Math.PI * 2 : 0;
         armL.rotation = -0.8;
         armR.rotation = 0.8;
         legL.rotation = 0.5;
         legR.rotation = -0.5;
+      } else if (this.character === "auralynx") {
+        wings.rotation = t * 3;
+        armL.rotation = 1.2;
+        armR.rotation = -1.2;
+        body.setScale(0.5 + Math.sin(t * 8) * 0.02);
+      } else if (this.character === "thornback") {
+        head.rotation = Math.sin(t * 5) * 0.08;
+        wings.rotation = Math.sin(t * 7) * 0.15;
+        armL.rotation = 0.5;
+        armR.rotation = -0.5;
+      } else if (this.character === "frostfang") {
+        armL.rotation = 2 + Math.sin(t * 12) * 0.3;
+        armR.rotation = -2 - Math.sin(t * 12) * 0.3;
+        head.rotation = Math.sin(t * 6) * 0.1;
+        scarf.rotation = Math.sin(t * 10) * 0.15;
+      } else if (this.character === "duskveil") {
+        body.rotation = Math.sin(t * 7) * 0.18;
+        armL.rotation = 0.8 + Math.sin(t * 9) * 0.4;
+        armR.rotation = -0.8 - Math.sin(t * 9) * 0.4;
+        head.rotation = -body.rotation * 0.5;
       } else {
-        armL.rotation = -1 + Math.sin(t * 9) * 0.7;
-        armR.rotation = 1 - Math.sin(t * 9) * 0.7;
-        head.rotation = 0;
+        armL.rotation = 1.5;
+        armR.rotation = -1.5;
+        legL.rotation = Math.sin(t * 6) * 0.2;
+        legR.rotation = -legL.rotation;
+        head.rotation = Math.sin(t * 4) * 0.08;
       }
     }
     for (const [part, image] of this.images) {
@@ -345,23 +426,15 @@ export class FighterRig {
       Math.sin(head.rotation) * 17.5,
       head.y - Math.cos(head.rotation) * 17.5,
     );
-    const flameOffset = dir === "right" ? -14 : 14;
-    flame.setPosition(
-      tail.x +
-        Math.cos(tail.rotation) * flameOffset +
-        Math.sin(tail.rotation) * 8,
-      tail.y +
-        Math.sin(tail.rotation) * flameOffset -
-        Math.cos(tail.rotation) * 8,
-    );
-    flame.rotation = tail.rotation;
+    flame.setPosition(ears.x, ears.y);
+    flame.rotation = head.rotation;
     this.effects.clear();
     if (reduced) return;
     const color = CHARACTERS[this.character].color;
     if (
       state === "victory" &&
       t < 1.8 &&
-      (this.character === "voltling" || this.character === "emberwing")
+      (this.character === "voltkit" || this.character === "cindrake")
     ) {
       for (let i = 0; i < 3; i++) {
         const a = t * 4 + (i * Math.PI * 2) / 3;
@@ -384,7 +457,17 @@ export class FighterRig {
           y + Math.sin(pose.angle) * 25 - 10,
           radius + Math.sin(now / 65) * 2,
         );
-      if (this.character === "emberwing" && state === "basic") {
+      drawElementGlyph(
+        this.effects,
+        CHARACTERS[this.character].element,
+        x + Math.cos(pose.angle) * 25,
+        y + Math.sin(pose.angle) * 25 - 10,
+        radius,
+        color,
+        0.7,
+        now,
+      );
+      if (this.character === "cindrake" && state === "basic") {
         this.effects
           .fillStyle(color, 0.3)
           .fillTriangle(

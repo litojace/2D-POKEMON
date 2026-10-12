@@ -13,7 +13,7 @@ import {
 const duel = () => {
   const a = new Arena("ABC123");
   a.add("one", "One");
-  a.add("two", "Two", "emberwing");
+  a.add("two", "Two", "cindrake");
   a.start();
   a.phase = "playing";
   a.deadline = 180;
@@ -96,9 +96,9 @@ describe("authoritative simulation", () => {
     a.tick();
     expect(q.jumpUntil).toBeGreaterThan(a.time);
     const hp = q.hp;
-    a.damage(q, 10, p.id, { ...CHARACTERS.voltling.skills[2], ground: true });
+    a.damage(q, 10, p.id, { ...CHARACTERS.voltkit.skills[2], ground: true });
     expect(q.hp).toBe(hp);
-    a.damage(q, 10, p.id, CHARACTERS.voltling.skills[0]);
+    a.damage(q, 10, p.id, CHARACTERS.voltkit.skills[0]);
     expect(q.hp).toBe(hp - 10);
     for (let i = 0; i < 22; i++) a.tick();
     expect(q.jumpUntil).toBeLessThan(a.time);
