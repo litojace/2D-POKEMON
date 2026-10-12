@@ -48,7 +48,7 @@ Browser emulation and build-artifact inspection can verify layout and configurat
 ## Checks completed for this implementation
 
 - `npm run typecheck` and `npm run build` pass.
-- `npm test`: 64 tests pass, including existing account/database and two-client multiplayer tests.
+- `npm test`: 66 tests pass, including existing account/database and two-client multiplayer tests.
 - `node scripts/verify-pwa.mjs` checks the built manifest, PNG dimensions, static-only precache, file existence, and exclusion of developer previews. It now runs after the build in GitHub Actions.
 - Local production HTTP checks passed for entry HTML, service worker, manifest MIME type, icon routes, offline page, and update-sensitive cache headers.
 - Browser checks passed for desktop production startup, the install help entry, Mobile Controls settings, persisted opacity after reload, reset to defaults, landscape control layout, and a skill icon activating its action. The offline page was opened directly; a genuine offline navigation was not exercised.
@@ -60,3 +60,11 @@ Browser emulation and build-artifact inspection can verify layout and configurat
 The interface uses navy, red, white, and yellow, with a stadium court and Poké Ball app icons. Shared CSS safe-area variables protect the lobby header, side content, modal dialogs, game HUD, notices, and home-indicator region. Control sizing uses the available viewport after all four safe insets. The game world and collision geometry stay unchanged.
 
 In development, `/safe-preview.html?safe-top=59&safe-bottom=34` loads the real lobby with simulated portrait insets. `/touch-preview.html?safe-left=59&safe-right=59&safe-bottom=21` simulates landscape cutouts for the HUD. These fixtures are excluded from production. Browser checks verified the portrait brand at y=73 (below the simulated 59px inset), the dialog inside the safe region, and landscape controls with 12px additional spacing beyond the side/bottom insets. This is simulated validation; physical-device testing remains necessary.
+
+## Landscape stadium layout
+
+Landscape play reserves top and bottom spectator bands. Health and round information occupy the upper band; compact fullscreen, control settings, menu, and practice buttons occupy the lower band. The arena is fitted into the region between the joystick and combat gutters, so controls do not cover fighters. The world remains 1600×900 and uses the same collision, movement, and networking rules. Smaller phones consequently show a smaller court. The canvas refreshes when its parent changes size.
+
+Practice settings are collapsed by default in a Practice panel. Open it to change fighters or testing options; input is neutralized while it is open. Close it or press Escape to return to play. Crowd movement uses CSS transforms and stops for reduced motion. Browser simulation verifies the reserved bands and control separation; real-device gameplay remains a necessary final check.
+
+When the usable landscape width is especially narrow, controls switch to a compact two-row group in the lower band, preserving a larger court above them. Skill order, icons, and attack/dash/jump behavior remain the same. Checks cover both horizontal gutter separation and this vertical fallback.

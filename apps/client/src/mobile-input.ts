@@ -84,6 +84,44 @@ export function mobileLayout(
       Math.min(height * 0.34, available * 0.25) * prefs.joystickSize,
     ),
   );
+  if (available < 600 && height < 500) {
+    const compactJoystick = Math.min(joystick, Math.max(88, height * 0.28));
+    const size = Math.max(
+      44,
+      Math.min(
+        50,
+        44 * prefs.buttonSize,
+        (available - compactJoystick - 32) / 7.41,
+      ),
+    );
+    const scale = size / 44;
+    const target = (
+      action: TouchAction,
+      x: number,
+      y: number,
+      size: number,
+    ): TouchTarget => ({
+      action,
+      x: x * scale,
+      y: y * scale,
+      size: size * scale,
+    });
+    return {
+      compact: true,
+      joystick: compactJoystick,
+      width: 326 * scale,
+      height: 100 * scale,
+      targets: [
+        target("0", 28, 26, 44),
+        target("1", 84, 26, 44),
+        target("2", 140, 26, 44),
+        target("3", 196, 26, 44),
+        target("attack", 276, 51, 88),
+        target("dash", 84, 78, 44),
+        target("jump", 140, 78, 44),
+      ],
+    };
+  }
   const unit = Math.max(
     44,
     Math.min(
@@ -105,6 +143,7 @@ export function mobileLayout(
     size: Math.max(44, size * scale),
   });
   return {
+    compact: false,
     joystick,
     width: 262 * scale,
     height: Math.max(253 * scale, 225 * scale + 22),

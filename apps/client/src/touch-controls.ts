@@ -1,3 +1,4 @@
+import { stadiumBands } from "./stadium";
 import { abilityIcon } from "./ability-icons";
 import {
   TouchInputState,
@@ -91,6 +92,13 @@ export class TouchControls {
     display();
     const fullscreen =
       root.querySelector<HTMLButtonElement>("#mobile-fullscreen")!;
+    fullscreen.setAttribute("aria-label", "Toggle fullscreen");
+    fullscreen.title = "Toggle fullscreen";
+    this.root
+      .querySelector<HTMLButtonElement>("#mobile-settings")!
+      .setAttribute("aria-label", "Mobile controls settings");
+    this.root.querySelector<HTMLButtonElement>("#mobile-settings")!.title =
+      "Mobile controls settings";
     fullscreen.onclick = async () => {
       try {
         if (document.fullscreenElement) await document.exitFullscreen();
@@ -249,6 +257,20 @@ export class TouchControls {
       this.preferences,
     );
     this.root.style.setProperty("--joystick-size", layout.joystick + "px");
+    document.body.style.setProperty(
+      "--movement-gutter",
+      layout.joystick + 32 + "px",
+    );
+    document.body.style.setProperty(
+      "--combat-gutter",
+      layout.width + 12 + "px",
+    );
+    const bands = stadiumBands(viewport.height);
+    document.body.classList.toggle("compact-landscape", layout.compact);
+    if (layout.compact)
+      bands.bottom = Math.max(layout.height, layout.joystick + 20) + 48;
+    document.body.style.setProperty("--stadium-top", bands.top + "px");
+    document.body.style.setProperty("--stadium-bottom", bands.bottom + "px");
     this.root.style.setProperty(
       "--hud-opacity",
       String(this.preferences.opacity),

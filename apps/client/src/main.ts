@@ -1,3 +1,4 @@
+import { stadiumCrowd } from "./stadium";
 import { setupPWA } from "./pwa";
 import { abilityIcon } from "./ability-icons";
 import { TouchControls } from "./touch-controls";
@@ -54,7 +55,7 @@ const escape = (s: string) =>
       ]!,
   );
 document.querySelector("#app")!.innerHTML =
-  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark">✦</span> POKÉMON<span>ARENA</span></a><div class="top-links"><details class="header-menu" id="header-menu"><summary>☰ <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">Settings</button><button class="quiet" id="mobile-play">Mobile fullscreen</button><button class="quiet" id="install-app">Install app</button><span class="connection" id="connection">Connecting</span></div></details><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden><div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><span class="map-label">POKÉ STADIUM <span>01 / CHAMPIONS COURT</span></span></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span>WASD <b>Move</b> · Mouse <b>Aim</b> · LMB <b>Attack</b> · 1 / 2 / 3 <b>Skills</b> · RMB <b>Ultimate</b></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>POKÉMON ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Pokémon fan art. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
+  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark">✦</span> POKÉMON<span>ARENA</span></a><div class="top-links"><details class="header-menu" id="header-menu"><summary>☰ <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">Settings</button><button class="quiet" id="mobile-play">Mobile fullscreen</button><button class="quiet" id="install-app">Install app</button><span class="connection" id="connection">Connecting</span></div></details><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><span class="map-label">POKÉ STADIUM <span>01 / CHAMPIONS COURT</span></span></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span>WASD <b>Move</b> · Mouse <b>Aim</b> · LMB <b>Attack</b> · 1 / 2 / 3 <b>Skills</b> · RMB <b>Ultimate</b></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>POKÉMON ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Pokémon fan art. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
 const headerMenu = $("header-menu") as HTMLDetailsElement;
 headerMenu.addEventListener("click", (event) => {
   if ((event.target as Element).closest("button")) headerMenu.open = false;
@@ -65,6 +66,14 @@ document.addEventListener("pointerdown", (event) => {
 document.addEventListener(
   "keydown",
   (event) => {
+    const practice = $("practice-settings") as HTMLDetailsElement | null;
+    if (event.key === "Escape" && practice?.open) {
+      practice.open = false;
+      practice.querySelector("summary")!.focus();
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
     if (event.key === "Escape" && headerMenu.open) {
       headerMenu.open = false;
       headerMenu.querySelector("summary")!.focus();
@@ -271,7 +280,7 @@ function renderBattle() {
     $("practice-controls").hidden = !state.practice;
     if (state.practice) {
       $("practice-controls").innerHTML =
-        `<div class="practice-heading"><span class="eyebrow">SOLO TEST MODE</span><span id="practice-stats"></span></div><div class="practice-actions"><label>Creature <select id="practice-character">${Object.values(
+        `<details id="practice-settings" class="practice-settings"><summary>Practice</summary><div class="practice-panel"><div class="practice-heading"><span class="eyebrow">SOLO TEST MODE</span><span id="practice-stats"></span></div><div class="practice-actions"><label>Creature <select id="practice-character">${Object.values(
           CHARACTERS,
         )
           .map(
@@ -280,7 +289,10 @@ function renderBattle() {
           )
           .join(
             "",
-          )}</select></label><label><input id="practice-unlimited" type="checkbox"> No skill cooldowns</label><label><input id="practice-attacks" type="checkbox"> Target attacks</label><button class="secondary" id="practice-reset">Reset arena</button><button class="quiet" id="practice-exit">Exit test mode</button></div><p>Target respawns automatically. Enable attacks to test counters, clones and jumping over ground fire. Hover a skill for its description.</p>`;
+          )}</select></label><label><input id="practice-unlimited" type="checkbox"> No skill cooldowns</label><label><input id="practice-attacks" type="checkbox"> Target attacks</label><button class="secondary" id="practice-reset">Reset arena</button><button class="quiet" id="practice-exit">Exit test mode</button></div><p>Target respawns automatically. Enable attacks to test counters, clones and jumping over ground fire. Hover a skill for its description.</p></div></details>`;
+      $("practice-settings").addEventListener("toggle", () => {
+        if (($("practice-settings") as HTMLDetailsElement).open) stopControls();
+      });
       $("practice-character").onchange = () =>
         void request(
           "practice-character",
@@ -566,6 +578,7 @@ class ArenaScene extends Phaser.Scene {
     return (
       connected &&
       state?.phase === "playing" &&
+      !($("practice-settings") as HTMLDetailsElement | null)?.open &&
       !$<HTMLDialogElement>("dialog").open &&
       document.hasFocus() &&
       !document.hidden &&
@@ -657,6 +670,7 @@ class ArenaScene extends Phaser.Scene {
         4,
       );
     }
+    new ResizeObserver(() => this.scale.refresh()).observe($("game"));
     this.graphics = this.add.graphics();
     this.keys = this.input.keyboard!.addKeys(
       "W,A,S,D,ONE,TWO,THREE,SHIFT,SPACE",

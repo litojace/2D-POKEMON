@@ -1921,3 +1921,221 @@ dialog {
     padding: 10px 12px;
   }
 }
+/* Separate stadium bands and control gutters keep the court unobstructed. */
+.stadium-stands {
+  display: none;
+}
+.battle-active.touch-mode #battle {
+  background: linear-gradient(#10213e, #182c4c);
+}
+.battle-active.touch-mode .stadium-stands {
+  display: block;
+  position: absolute;
+  left: var(--safe-left);
+  right: var(--safe-right);
+  overflow: hidden;
+  pointer-events: none;
+  background: linear-gradient(#10203a, #243959);
+  border-top: 1px solid #6e96c144;
+  border-bottom: 1px solid #6e96c144;
+}
+.stands-top {
+  top: var(--safe-top);
+  height: var(--stadium-top, 72px);
+}
+.stands-bottom {
+  bottom: var(--safe-bottom);
+  height: var(--stadium-bottom, 44px);
+}
+.spectators {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  position: absolute;
+  bottom: 4px;
+  left: 12px;
+  right: 12px;
+  height: 22px;
+  opacity: 0.35;
+}
+.spectator {
+  position: relative;
+  width: 14px;
+  height: 16px;
+  transform-origin: center bottom;
+  animation: stadium-cheer 1.9s ease-in-out infinite;
+  animation-delay: var(--cheer-delay);
+}
+.spectator::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #c4cddd;
+}
+.spectator::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 3px;
+  width: 9px;
+  height: 9px;
+  border-radius: 4px 4px 0 0;
+  background: var(--fan-color);
+}
+.spectator i {
+  position: absolute;
+  top: 8px;
+  left: 0;
+  width: 16px;
+  height: 3px;
+  background: var(--fan-color);
+  transform: rotate(-15deg);
+}
+@keyframes stadium-cheer {
+  0%,
+  100% {
+    transform: translateY(1px) rotate(-5deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(5deg);
+  }
+}
+.practice-settings > summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  list-style: none;
+  color: #ffd65b;
+  padding: 10px 14px;
+  border: 1px solid #ffd65b40;
+  border-radius: 9px;
+  background: #203656;
+}
+.practice-settings > summary::-webkit-details-marker {
+  display: none;
+}
+.practice-settings[open] > summary {
+  margin-bottom: 12px;
+}
+.practice-panel {
+  padding: 10px;
+}
+.battle-active.touch-mode .hud {
+  top: calc(var(--safe-top) + 6px);
+  background: #101b3099;
+  padding: 4px 10px;
+}
+.battle-active.touch-mode .mobile-tools {
+  top: auto;
+  bottom: calc(var(--safe-bottom) + 7px);
+  left: 50%;
+  transform: translateX(-50%);
+  flex-wrap: nowrap;
+  gap: 5px;
+  max-width: none;
+}
+.battle-active.touch-mode .mobile-tools button {
+  font-size: 0;
+  width: 36px;
+  height: 30px;
+  min-height: 30px;
+  padding: 4px;
+  border: 1px solid #91b6de33;
+  background: #142846d9;
+}
+.battle-active.touch-mode #mobile-fullscreen::before {
+  content: "⛶";
+  font-size: 18px;
+}
+.battle-active.touch-mode #mobile-settings::before {
+  content: "⚙";
+  font-size: 18px;
+}
+.battle-active.touch-mode .battle-footer {
+  bottom: calc(var(--safe-bottom) + 7px);
+  left: calc(50% - 63px);
+  transform: none;
+}
+.battle-active.touch-mode #battle-menu {
+  font-size: 0;
+  min-height: 30px;
+  width: 36px;
+  border: 1px solid #91b6de33;
+  border-radius: 9px;
+  background: #142846d9;
+}
+.battle-active.touch-mode #battle-menu::before {
+  content: "☰";
+  font-size: 16px;
+}
+.battle-active.touch-mode #practice-controls {
+  top: auto;
+  bottom: calc(var(--safe-bottom) + 7px);
+  left: calc(50% + 48px);
+  transform: none;
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  margin: 0;
+  background: none;
+  border: 0;
+  opacity: 1;
+  z-index: 26;
+}
+.battle-active.touch-mode .practice-settings > summary {
+  font-size: 10px;
+  height: 30px;
+  padding: 6px 9px;
+}
+.battle-active.touch-mode .practice-settings[open] > summary {
+  margin-bottom: 0;
+}
+.battle-active.touch-mode .practice-panel {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  right: 0;
+  width: min(420px, calc(100vw - var(--safe-left) - var(--safe-right) - 32px));
+  max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 80px);
+  overflow: auto;
+  background: #152947f5;
+  border: 1px solid #9bc4f34a;
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 8px 28px #0008;
+}
+@media (orientation: landscape) {
+  .battle-active.touch-mode .arena-frame {
+    top: calc(var(--safe-top) + var(--stadium-top, 72px));
+    bottom: calc(var(--safe-bottom) + var(--stadium-bottom, 44px));
+    left: calc(var(--safe-left) + 12px + var(--movement-gutter, 160px));
+    right: calc(var(--safe-right) + 12px + var(--combat-gutter, 240px));
+    background: #122542;
+    border: 1px solid #8baddf44;
+    border-radius: 12px;
+  }
+  .battle-active.touch-mode #game {
+    height: 100%;
+    width: 100%;
+  }
+  .battle-active.touch-mode .touch-pad {
+    bottom: calc(var(--safe-bottom) + var(--stadium-bottom, 44px) + 6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spectator {
+    animation: none;
+  }
+}
+@media (orientation: landscape) {
+  .battle-active.touch-mode.compact-landscape .arena-frame {
+    left: calc(var(--safe-left) + 12px);
+    right: calc(var(--safe-right) + 12px);
+  }
+  .battle-active.touch-mode.compact-landscape .touch-pad {
+    bottom: calc(var(--safe-bottom) + 42px);
+  }
+}

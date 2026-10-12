@@ -30,6 +30,10 @@
     </main>
     <script type="module">
       import "./src/style.css";
+      import { stadiumCrowd } from "./src/stadium";
+      document
+        .querySelector("#battle")
+        .insertAdjacentHTML("afterbegin", stadiumCrowd());
       import { TouchControls } from "./src/touch-controls";
       const action = document.querySelector("#action");
       // Development-only cutout simulation for responsive HUD verification.
