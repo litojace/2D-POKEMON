@@ -1,3 +1,4 @@
+import { setOverlayMarkup } from "./overlay";
 import { stadiumCrowd } from "./stadium";
 import { setupPWA } from "./pwa";
 import { abilityIcon } from "./ability-icons";
@@ -386,7 +387,7 @@ function renderBattle() {
   );
   const overlay = $("arena-overlay");
   if (state.phase === "playing") {
-    overlay.innerHTML = "";
+    setOverlayMarkup(overlay, "");
     overlay.style.pointerEvents = "none";
   } else {
     overlay.style.pointerEvents = "auto";
@@ -423,7 +424,9 @@ function renderBattle() {
       const stats = me.stats;
       details += `<div class="result-stats"><span><b>${Math.round(stats.dealt)}</b>DAMAGE DEALT</span><span><b>${Math.round(stats.received)}</b>DAMAGE TAKEN</span><span><b>${stats.skills}</b>SKILLS CAST</span></div><button class="primary" id="rematch">${me.ready ? "Waiting for opponent…" : "Rematch →"}</button><button class="secondary" id="return">Return to lobby</button>`;
     }
-    overlay.innerHTML = `<div class="overlay-card"><span class="eyebrow">POKÉMON ARENA</span><h2>${heading}</h2><div>${details}</div></div>`;
+    const markup = `<div class="overlay-card"><span class="eyebrow">POKÉMON ARENA</span><h2>${heading}</h2><div>${details}</div></div>`;
+    // Preserve the pressed button between snapshots so pointer-up can complete its click.
+    setOverlayMarkup(overlay, markup);
     if (state.phase === "briefing")
       $("instructions-ready").onclick = () => {
         if (touch.enabled && !document.fullscreenElement)

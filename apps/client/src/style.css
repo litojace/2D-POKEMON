@@ -2169,3 +2169,25 @@ dialog {
     width: 84px;
   }
 }
+#arena-overlay {
+  z-index: 35;
+  padding: 12px;
+}
+.overlay-card {
+  max-height: calc(100% - 24px);
+  max-width: calc(100% - 24px);
+  overflow: auto;
+}
+.battle-active.touch-mode #arena-overlay {
+  position: fixed;
+  inset: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
+  z-index: 80;
+  padding: 12px;
+  background: #071225a8;
+  overflow: hidden;
+}
+.battle-active.touch-mode .overlay-card {
+  max-height: 100%;
+  max-width: 100%;
+  overflow: auto;
+}

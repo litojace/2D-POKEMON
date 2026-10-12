@@ -40,3 +40,5 @@ console.log(
 );
 
 assert(!existsSync(root + "safe-preview.html"));
+
+assert(!existsSync(root + "readiness-preview.html"));
