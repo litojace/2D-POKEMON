@@ -178,9 +178,11 @@ export function createArenaServer(
   }
   function detach(session: Session, permanent = false) {
     const arena = rooms.get(session.code);
-    if (!arena) return;
-    const p = arena.players.find((p) => p.id === session.id);
-    if (!p) return;
+    const p = arena?.players.find((p) => p.id === session.id);
+    if (!arena || !p) {
+      expire(session);
+      return;
+    }
     p.connected = false;
     p.ready = false;
     p.lastInput = blankInput();
@@ -262,6 +264,14 @@ export function createArenaServer(
       reply(cb, { ok: true, id, token, code: arena.code });
       if (publish) broadcast(arena);
     };
+    const releaseDisconnected = () => {
+      const owned = [...sessions.values()].filter(
+        (s) => s.accountId === account()?.id,
+      );
+      if (owned.some((s) => s.socketId && io.sockets.sockets.has(s.socketId)))
+        return;
+      for (const session of owned) detach(session, true);
+    };
     socket.on("create", (data: unknown, cb: unknown) => {
       if (!requirePlayer(cb)) return;
       if (!allowed(15))
@@ -271,6 +281,7 @@ export function createArenaServer(
         return fail(cb, "Use a display name of 1–20 characters.");
       if (getSession(socket.id))
         return fail(cb, "Leave your current room first.");
+      releaseDisconnected();
       if ([...sessions.values()].some((s) => s.accountId === account()!.id))
         return fail(
           cb,
@@ -298,6 +309,7 @@ export function createArenaServer(
         return fail(cb, "Enter your name and a six-character room code.");
       if (getSession(socket.id))
         return fail(cb, "Leave your current room first.");
+      releaseDisconnected();
       if ([...sessions.values()].some((s) => s.accountId === account()!.id))
         return fail(cb, "This account already has a room.");
       const arena = rooms.get(result.data.code);
@@ -383,6 +395,7 @@ export function createArenaServer(
         return fail(cb, "Choose a valid character and display name.");
       if (getSession(socket.id))
         return fail(cb, "Leave your current room first.");
+      releaseDisconnected();
       if ([...sessions.values()].some((s) => s.accountId === account()!.id))
         return fail(cb, "This account already has a room.");
       if (rooms.size >= 500)
@@ -533,8 +546,20 @@ export function createArenaServer(
         broadcast(a);
       }),
     );
-    socket.on("leave", (_data: unknown, cb: unknown) => {
-      const s = getSession(socket.id);
+    socket.on("leave", (data: unknown, cb: unknown) => {
+      let s = getSession(socket.id);
+      const token =
+        data && typeof data === "object"
+          ? (data as { token?: unknown }).token
+          : undefined;
+      if (!s && typeof token === "string") {
+        const reserved = sessions.get(token);
+        if (reserved && reserved.accountId !== account()?.id)
+          return fail(cb, "This room session belongs to a different account.");
+        if (reserved?.socketId && reserved.socketId !== socket.id)
+          return fail(cb, "This room is active in another tab.");
+        s = reserved;
+      }
       if (s) {
         socket.leave(s.code);
         detach(s, true);

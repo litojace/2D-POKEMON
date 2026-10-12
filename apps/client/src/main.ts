@@ -252,7 +252,13 @@ function renderMenu() {
   }
 }
 async function leave() {
-  await request("leave");
+  const reply = await request("leave", {
+    token: sessionStorage.getItem("arena-token"),
+  });
+  if (!reply.ok) {
+    toast("Could not leave the room yet. Reconnect and try again.");
+    return;
+  }
   sessionStorage.removeItem("arena-token");
   state = undefined;
   myId = "";

@@ -197,3 +197,51 @@ it("checks HTTP authorization, payloads, origin and title ownership RPC paths", 
     ).status,
   ).toBe(403);
 });
+it("clears a detached reservation when the owner explicitly leaves after reconnecting", async () => {
+  const owner = accounts.add(true),
+    socket = await connect(owner.token);
+  const room = await emit(socket, "practice", {
+    name: "Admin",
+    character: "voltling",
+  });
+  socket.disconnect();
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  const next = await connect(owner.token);
+  expect((await emit(next, "leave", { token: room.token })).ok).toBe(true);
+  expect(server.sessions.size).toBe(0);
+  expect((await emit(next, "create", { name: "Admin" })).ok).toBe(true);
+});
+it("allows a new room after a lost disconnected reservation but protects active rooms", async () => {
+  const owner = accounts.add(true),
+    socket = await connect(owner.token);
+  await emit(socket, "practice", { name: "Admin", character: "voltling" });
+  const second = await connect(owner.token);
+  expect((await emit(second, "create", { name: "Admin" })).ok).toBe(false);
+  socket.disconnect();
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  expect((await emit(second, "create", { name: "Admin" })).ok).toBe(true);
+  expect(server.sessions.size).toBe(1);
+  expect(server.rooms.size).toBe(1);
+});
+it("removes the account reservation even if the room disappeared first", async () => {
+  const owner = accounts.add(true),
+    socket = await connect(owner.token);
+  const room = await emit(socket, "create", { name: "Admin" });
+  server.rooms.delete(room.code!);
+  expect((await emit(socket, "leave", { token: room.token })).ok).toBe(true);
+  expect(server.sessions.size).toBe(0);
+  expect(
+    (await emit(socket, "practice", { name: "Admin", character: "voltling" }))
+      .ok,
+  ).toBe(true);
+});
+it("does not let another account release a disconnected room token", async () => {
+  const owner = accounts.add(true),
+    socket = await connect(owner.token);
+  const room = await emit(socket, "create", { name: "Owner" });
+  socket.disconnect();
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  const stranger = await connect(accounts.add(false).token);
+  expect((await emit(stranger, "leave", { token: room.token })).ok).toBe(false);
+  expect(server.sessions.has(room.token!)).toBe(true);
+});
