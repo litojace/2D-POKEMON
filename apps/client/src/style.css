@@ -2139,3 +2139,33 @@ dialog {
     bottom: calc(var(--safe-bottom) + 42px);
   }
 }
+.controls-list {
+  width: min(460px, 100%);
+  margin: 24px auto;
+  gap: 10px;
+}
+.controls-list > span {
+  display: grid;
+  grid-template-columns: 104px minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+  text-align: left;
+  line-height: 1.5;
+}
+.controls-list > span > kbd {
+  width: 104px;
+  min-width: 0;
+  margin: 0;
+  padding: 10px 8px;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+@media (max-width: 600px) {
+  .controls-list > span {
+    grid-template-columns: 84px minmax(0, 1fr);
+    gap: 12px;
+  }
+  .controls-list > span > kbd {
+    width: 84px;
+  }
+}
