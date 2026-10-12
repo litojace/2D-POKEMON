@@ -1,0 +1,63 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Touch controls preview</title>
+  </head>
+  <body>
+    <main>
+      <h2>Mobile controls preview</h2>
+      <p>Control demo only · no match or account required</p>
+      <div
+        id="preview"
+        style="
+          height: 140px;
+          background: #234b3a;
+          border-radius: 20px;
+          position: relative;
+          overflow: hidden;
+        "
+      >
+        <span
+          id="marker"
+          style="position: absolute; left: 50%; top: 50%; font-size: 30px"
+          >⚡</span
+        >
+      </div>
+      <p id="action" role="status">Try the joystick and buttons together.</p>
+      <div id="controls"></div>
+    </main>
+    <script type="module">
+      import "./src/style.css";
+      import { TouchControls } from "./src/touch-controls";
+      const action = document.querySelector("#action");
+      const controls = new TouchControls(
+        document.querySelector("#controls"),
+        () => true,
+        (a) => (action.textContent = "Action: " + JSON.stringify(a)),
+        (text) => (action.textContent = text),
+      );
+      if (!controls.enabled) document.querySelector("#touch-toggle").click();
+      controls.update(
+        true,
+        ["Thunderbolt", "Electro Orb", "Static Field", "Ultimate"],
+        [0, 0, 0, 0],
+        0,
+        0,
+      );
+      let x = 50,
+        y = 50;
+      function frame() {
+        x = Math.max(5, Math.min(95, x + controls.dx * 0.5));
+        y = Math.max(10, Math.min(90, y + controls.dy * 0.5));
+        const marker = document.querySelector("#marker");
+        marker.style.left = x + "%";
+        marker.style.top = y + "%";
+        if (controls.basic) action.textContent = "Attack held";
+        requestAnimationFrame(frame);
+      }
+      frame();
+    </script>
+  </body>
+</html>

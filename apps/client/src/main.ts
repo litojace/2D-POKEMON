@@ -1,3 +1,5 @@
+import { abilityIcon } from "./ability-icons";
+import { TouchControls } from "./touch-controls";
 import { fighterArt } from "./fighter-art";
 import Phaser from "phaser";
 import { io } from "socket.io-client";
@@ -51,7 +53,7 @@ const escape = (s: string) =>
       ]!,
   );
 document.querySelector("#app")!.innerHTML =
-  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark">✦</span> ELEMENT<span>ARENA</span></a><div class="top-links"><span class="connection" id="connection">Connecting</span><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">⚙ Settings</button><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden><div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><span class="map-label">FOREST ARENA <span>01 / VERDANT GROUNDS</span></span></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span>WASD <b>Move</b> · Mouse <b>Aim</b> · LMB <b>Attack</b> · 1 / 2 / 3 <b>Skills</b> · RMB <b>Ultimate</b></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>ELEMENT ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Pokémon fan art. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
+  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark">✦</span> ELEMENT<span>ARENA</span></a><div class="top-links"><span class="connection" id="connection">Connecting</span><button class="quiet" id="mobile-play">Mobile fullscreen</button><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">⚙ Settings</button><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden><div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><span class="map-label">FOREST ARENA <span>01 / VERDANT GROUNDS</span></span></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span>WASD <b>Move</b> · Mouse <b>Aim</b> · LMB <b>Attack</b> · 1 / 2 / 3 <b>Skills</b> · RMB <b>Ultimate</b></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>ELEMENT ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Pokémon fan art. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
 document.addEventListener("pointerdown", (event) => {
   if ((event.target as Element).closest("button")) {
     audio.unlock();
@@ -88,6 +90,19 @@ function identity(reply: Reply) {
   remoteFrames.clear();
   sessionStorage.setItem("arena-token", reply.token!);
 }
+const touch = new TouchControls(
+  $("mobile-controls"),
+  () => !!scene?.canControl(),
+  (action) => {
+    audio.unlock();
+    if (scene) Object.assign(scene.actions, action);
+  },
+  toast,
+);
+$("mobile-play").onclick = () => {
+  if (!touch.enabled) $("touch-toggle").click();
+  $("mobile-fullscreen").click();
+};
 const creatureArt = fighterArt;
 function renderMenu() {
   const p = state?.players.find((p) => p.id === myId);
@@ -96,6 +111,7 @@ function renderMenu() {
   const key = `${isRoom ? "room" : "home"}:${state?.players.map((p) => `${p.id}${p.character}${p.ready}${p.connected}`).join(":")}:${selected}`;
   if (screen === key) return;
   screen = key;
+  touch.reset();
   $("battle").hidden = true;
   $("menu").hidden = false;
   $("menu").innerHTML =
@@ -108,7 +124,7 @@ function renderMenu() {
       )
       .join(
         "",
-      )}</div><div class="skill-preview"><div><span class="eyebrow" style="color:#${character.color.toString(16)}">${character.element}</span><h3>${character.name}'s toolkit</h3><p>${character.role} · ${character.speed} movement speed</p></div><div class="preview-skills">${character.skills.map((a, i) => `<div><kbd>${KEYS.skills[i]}</kbd><span><strong>${a.name}</strong><small>${a.description}</small></span><b>${a.cooldown}s</b></div>`).join("")}</div></div><p class="universal">Every fighter can <b>basic attack</b>, <b>dash</b>, and <b>jump</b> in addition to their four skills.</p></div><aside class="room-panel">${isRoom ? `<div class="eyebrow">PRIVATE LOBBY</div><h2>Your duel starts here.</h2><p>Share this code with your friend.</p><button id="copy" class="room-code">${state!.code}<span>COPY CODE ↗</span></button><div class="players">${state!.players.map((p, i) => `<div><span class="player-dot" style="background:#${CHARACTERS[p.character].color.toString(16)}">${i + 1}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small>${CHARACTERS[p.character].name}</small></span><b>${!p.connected ? "OFFLINE" : p.ready ? "READY" : "CHOOSING"}</b></div>`).join("")}${state!.players.length < 2 ? '<div class="waiting"><span>＋</span> Waiting for your opponent…</div>' : ""}</div><button class="primary" id="ready">${p!.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full" id="leave">Leave room</button><small class="room-note">The match begins when both players are ready.</small>` : `<div class="eyebrow">PLAY ONLINE</div><h2>A friend. A code.<br>A worthy opponent.</h2><label for="name">YOUR DISPLAY NAME</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><button class="primary" id="create">Create private room →</button>${accountsUI?.account?.isAdmin ? '<button class="secondary full" id="practice">Solo test mode →</button>' : ""}<div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><small class="room-note">2 players · Free to play · Login required<br>Keyboard + mouse recommended</small>`}</aside></div>`;
+      )}</div><div class="skill-preview"><div><span class="eyebrow" style="color:#${character.color.toString(16)}">${character.element}</span><h3>${character.name}'s toolkit</h3><p>${character.role} · ${character.speed} movement speed</p></div><div class="preview-skills">${character.skills.map((a, i) => `<div><kbd>${KEYS.skills[i]}</kbd><span><strong>${a.name}</strong><small>${a.description}</small></span><b>${a.cooldown}s</b></div>`).join("")}</div></div><p class="universal">Every fighter can <b>basic attack</b>, <b>dash</b>, and <b>jump</b> in addition to their four skills.</p></div><aside class="room-panel">${isRoom ? `<div class="eyebrow">PRIVATE LOBBY</div><h2>Your duel starts here.</h2><p>Share this code with your friend.</p><button id="copy" class="room-code">${state!.code}<span>COPY CODE ↗</span></button><div class="players">${state!.players.map((p, i) => `<div><span class="player-dot" style="background:#${CHARACTERS[p.character].color.toString(16)}">${i + 1}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small>${CHARACTERS[p.character].name}</small></span><b>${!p.connected ? "OFFLINE" : p.ready ? "READY" : "CHOOSING"}</b></div>`).join("")}${state!.players.length < 2 ? '<div class="waiting"><span>＋</span> Waiting for your opponent…</div>' : ""}</div><button class="primary" id="ready">${p!.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full" id="leave">Leave room</button><small class="room-note">The match begins when both players are ready.</small>` : `<div class="eyebrow">PLAY ONLINE</div><h2>A friend. A code.<br>A worthy opponent.</h2><label for="name">YOUR DISPLAY NAME</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><button class="primary" id="create">Create private room →</button>${accountsUI?.account?.isAdmin ? '<button class="secondary full" id="practice">Solo test mode →</button>' : ""}<div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><small class="room-note">2 players · Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`}</aside></div>`;
   document.querySelectorAll<HTMLButtonElement>("[data-character]").forEach(
     (button) =>
       (button.onclick = async () => {
@@ -225,7 +241,7 @@ function renderBattle() {
       .join("");
     const c = CHARACTERS[me.character];
     $("abilities").innerHTML =
-      `<div class="basic-hint"><kbd>LMB</kbd><span>${c.basic.name}<small>BASIC ATTACK</small></span></div>${c.skills.map((a, i) => `<div class="ability" id="ability-${i}" style="--element:#${c.color.toString(16)}"><kbd>${KEYS.skills[i]}</kbd><span>${a.name}<small id="cooldown-${i}">READY</small></span><i class="cooldown-fill" id="fill-${i}"></i></div>`).join("")}<div class="movement-ability"><kbd>SHIFT</kbd><span>Dash<small id="dash-cd"></small></span></div><div class="movement-ability"><kbd>SPACE</kbd><span>Jump<small id="jump-cd"></small></span></div>`;
+      `<div class="basic-hint"><kbd>LMB</kbd><span>${abilityIcon(c.basic.name)}<small>BASIC ATTACK</small></span></div>${c.skills.map((a, i) => `<div class="ability" id="ability-${i}" style="--element:#${c.color.toString(16)}"><kbd>${KEYS.skills[i]}</kbd><span>${abilityIcon(a.name)}<small id="cooldown-${i}">READY</small></span><i class="cooldown-fill" id="fill-${i}"></i></div>`).join("")}<div class="movement-ability"><kbd>SHIFT</kbd><span>Dash<small id="dash-cd"></small></span></div><div class="movement-ability"><kbd>SPACE</kbd><span>Jump<small id="jump-cd"></small></span></div>`;
   }
   state.players.forEach((p, i) => {
     const c = CHARACTERS[p.character];
@@ -269,7 +285,8 @@ function renderBattle() {
         : "LIVE DUEL"
       : state.phase.toUpperCase();
   CHARACTERS[me.character].skills.forEach((a, i) => {
-    $(`ability-${i}`).title = a.description;
+    $(`ability-${i}`).title = `${a.name}: ${a.description}`;
+    $(`ability-${i}`).setAttribute("aria-label", `${a.name}: ${a.description}`);
     const left = Math.max(0, me.cooldowns[i] - state!.time);
     $(`cooldown-${i}`).textContent = left > 0 ? `${left.toFixed(1)}s` : "READY";
     $(`fill-${i}`).style.height = `${(100 * left) / a.cooldown}%`;
@@ -283,6 +300,14 @@ function renderBattle() {
     me.jumpAt > state.time
       ? `${(me.jumpAt - state.time).toFixed(1)}s`
       : "READY";
+  touch.update(
+    state.phase === "playing" && connected,
+    CHARACTERS[me.character].skills.map((a) => a.name),
+    me.cooldowns.map((t) => Math.max(0, t - state!.time)),
+    Math.max(0, me.dashAt - state.time),
+    Math.max(0, me.jumpAt - state.time),
+    CHARACTERS[me.character].skills.map((a) => a.cooldown),
+  );
   const overlay = $("arena-overlay");
   if (state.phase === "playing") {
     overlay.innerHTML = "";
@@ -295,7 +320,7 @@ function renderBattle() {
       heading = "How to play";
       const confirmed = state.instructionsReady.includes(myId);
       details =
-        '<div class="controls-list"><span><kbd>W A S D</kbd>Move · mouse to aim</span><span><kbd>LMB</kbd>Basic attack</span><span><kbd>1 2 3</kbd>Character skills</span><span><kbd>RMB</kbd>Ultimate skill</span><span><kbd>SHIFT</kbd>Dash</span><span><kbd>SPACE</kbd>Jump over ground attacks</span></div><p>Use cover. Win two rounds. The countdown begins when both players confirm.</p><button class="primary" id="instructions-ready" ' +
+        '<p class="mobile-howto">Touch mode: left joystick to move; right buttons to attack, use skills, dash, and jump. Aim follows your opponent. Use Enter fullscreen below the arena.</p><div class="controls-list"><span><kbd>W A S D</kbd>Move · mouse to aim</span><span><kbd>LMB</kbd>Basic attack</span><span><kbd>1 2 3</kbd>Character skills</span><span><kbd>RMB</kbd>Ultimate skill</span><span><kbd>SHIFT</kbd>Dash</span><span><kbd>SPACE</kbd>Jump over ground attacks</span></div><p>Use cover. Win two rounds. The countdown begins when both players confirm.</p><button class="primary" id="instructions-ready" ' +
         (confirmed ? "disabled" : "") +
         ">" +
         (confirmed ? "Waiting for opponent…" : "I’m ready →") +
@@ -324,8 +349,11 @@ function renderBattle() {
     }
     overlay.innerHTML = `<div class="overlay-card"><span class="eyebrow">ELEMENT ARENA</span><h2>${heading}</h2><div>${details}</div></div>`;
     if (state.phase === "briefing")
-      $("instructions-ready").onclick = () =>
+      $("instructions-ready").onclick = () => {
+        if (touch.enabled && !document.fullscreenElement)
+          $("mobile-fullscreen").click();
         void request("instructions-ready");
+      };
     if (state.phase === "finished") {
       $("rematch").onclick = () => void request("rematch");
       $("return").onclick = () => void request("lobby");
@@ -571,9 +599,9 @@ class ArenaScene extends Phaser.Scene {
     });
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
       audio.unlock();
-      if (this.canControl() && pointer.leftButtonDown())
+      if (!touch.enabled && this.canControl() && pointer.leftButtonDown())
         this.actions.basic = true;
-      if (this.canControl() && pointer.rightButtonDown())
+      if (!touch.enabled && this.canControl() && pointer.rightButtonDown())
         this.actions.skill = 3;
     });
     this.scale.refresh();
@@ -646,8 +674,10 @@ class ArenaScene extends Phaser.Scene {
         this.labels.delete(id);
         this.positions.delete(id);
       }
-    if (!this.canControl())
+    if (!this.canControl()) {
       this.actions = { skill: -1, dash: false, jump: false, basic: false };
+      touch.reset();
+    }
     if (!state || state.phase === "lobby") return;
     this.accumulator += Math.min(delta, 100);
     while (this.accumulator >= 1000 / RULES.tick) {
@@ -659,17 +689,26 @@ class ArenaScene extends Phaser.Scene {
         !menuOpen &&
         !$<HTMLDialogElement>("dialog").open &&
         document.hasFocus();
+      const target = state.players.find((p) => p.id !== myId && p.hp > 0);
+      const mobileAim = touch.enabled && target;
       const input: Input = {
         seq: ++seq,
         dx: active
-          ? Number(this.keys.D.isDown) - Number(this.keys.A.isDown)
+          ? touch.enabled
+            ? touch.dx
+            : Number(this.keys.D.isDown) - Number(this.keys.A.isDown)
           : 0,
         dy: active
-          ? Number(this.keys.S.isDown) - Number(this.keys.W.isDown)
+          ? touch.enabled
+            ? touch.dy
+            : Number(this.keys.S.isDown) - Number(this.keys.W.isDown)
           : 0,
-        aimX: Phaser.Math.Clamp(pointer.worldX, 0, 1600),
-        aimY: Phaser.Math.Clamp(pointer.worldY, 0, 900),
-        basic: active && (pointer.leftButtonDown() || this.actions.basic),
+        aimX: mobileAim ? target.x : Phaser.Math.Clamp(pointer.worldX, 0, 1600),
+        aimY: mobileAim ? target.y : Phaser.Math.Clamp(pointer.worldY, 0, 900),
+        basic:
+          active &&
+          ((touch.enabled ? touch.basic : pointer.leftButtonDown()) ||
+            this.actions.basic),
         skill: active ? this.actions.skill : -1,
         dash: active && this.actions.dash,
         jump: active && this.actions.jump,

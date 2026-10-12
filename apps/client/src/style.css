@@ -1204,3 +1204,318 @@ dialog input[type="range"] {
     animation: none !important;
   }
 }
+#mobile-controls {
+  margin: 10px 0;
+}
+.mobile-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.touch-note {
+  display: none;
+  font-size: 11px;
+  color: var(--muted);
+}
+.touch-enabled .touch-note {
+  display: inline;
+}
+.touch-pad {
+  display: none;
+}
+.touch-enabled .touch-pad {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 14px 10px;
+  background: #15252c;
+  border: 1px solid #ffffff12;
+  border-radius: 20px;
+}
+.joystick {
+  position: relative;
+  flex-shrink: 0;
+  width: 124px;
+  height: 124px;
+  border: 2px solid #dffa7955;
+  background: radial-gradient(circle, #dffa7914, #ffffff04);
+  border-radius: 50%;
+  touch-action: none;
+  user-select: none;
+}
+.joystick-knob {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  left: calc(50% - 25px);
+  top: calc(50% - 25px);
+  background: var(--lime);
+  border: 3px solid #f0ffb9;
+  border-radius: 50%;
+  box-shadow: 0 4px 15px #0005;
+  pointer-events: none;
+}
+.joystick-label {
+  position: absolute;
+  bottom: 7px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 9px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.touch-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(56px, 1fr));
+  gap: 8px;
+  max-width: 340px;
+  flex: 1;
+}
+.touch-buttons button {
+  min-height: 52px;
+  padding: 8px;
+  background: #2c414c;
+  border: 1px solid #ffffff20;
+  border-radius: 14px;
+  color: white;
+  font-size: 11px;
+  touch-action: none;
+  user-select: none;
+}
+.touch-buttons button.pressed {
+  transform: scale(0.93);
+  background: #56727a;
+}
+.touch-buttons button:disabled {
+  opacity: 0.45;
+}
+.touch-buttons .touch-ultimate {
+  background: #654b7b;
+}
+.touch-buttons .touch-attack {
+  grid-column: span 3;
+  background: var(--lime);
+  color: #18272b;
+  font-weight: bold;
+}
+.mobile-howto {
+  display: none;
+}
+.touch-mode .mobile-howto {
+  display: block;
+}
+:fullscreen {
+  background: #101b20;
+  overflow: auto;
+}
+@media (pointer: coarse) {
+  .touch-mode #abilities,
+  .touch-mode .battle-footer > span:first-child {
+    display: none;
+  }
+}
+@media (max-width: 600px) {
+  .joystick {
+    width: 108px;
+    height: 108px;
+  }
+  .touch-buttons {
+    gap: 5px;
+  }
+  .touch-buttons button {
+    font-size: 10px;
+    min-height: 46px;
+  }
+  .touch-enabled .touch-pad {
+    padding: 10px 6px;
+    gap: 10px;
+  }
+  .touch-mode .overlay-card {
+    max-height: 95%;
+    overflow: auto;
+  }
+}
+@media (max-height: 550px) and (orientation: landscape) {
+  .touch-mode #battle .arena-frame {
+    max-width: 100%;
+    margin: auto;
+  }
+  .touch-mode #battle .hud {
+    padding: 5px;
+  }
+  .touch-mode .touch-enabled .touch-pad {
+    padding: 6px;
+  }
+  .touch-mode .joystick {
+    width: 90px;
+    height: 90px;
+  }
+  .touch-mode main {
+    padding-top: 8px;
+  }
+}
+
+@media (max-width: 700px) {
+  .topbar {
+    height: auto;
+    min-height: 72px;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .top-links {
+    flex-wrap: wrap;
+  }
+}
+/* Curved thumb cluster: three skills orbit a larger attack button. */
+.skill-icon {
+  width: 38px;
+  height: 38px;
+  display: block;
+  margin: auto;
+  color: #e4f7a0;
+  filter: drop-shadow(0 0 5px #c9ed7040);
+}
+.ability .skill-icon,
+.basic-hint .skill-icon {
+  width: 32px;
+  height: 32px;
+}
+.touch-enabled .touch-pad {
+  min-height: 250px;
+  align-items: flex-end;
+  padding: 12px;
+}
+.touch-buttons {
+  position: relative;
+  display: block;
+  flex: 0 0 230px;
+  width: 230px;
+  height: 238px;
+  max-width: none;
+}
+.touch-buttons button {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  width: 60px;
+  height: 60px;
+  min-height: 0;
+  border-radius: 50%;
+  border: 2px solid #68b6cf;
+  background: radial-gradient(circle at 40% 30%, #284558, #0c1e2b 75%);
+  box-shadow:
+    0 0 0 3px #122734,
+    inset 0 0 0 3px #ffffff0a,
+    0 4px 8px #0005;
+  overflow: hidden;
+}
+.touch-buttons button[data-skill="0"] {
+  left: 12px;
+  top: 161px;
+}
+.touch-buttons button[data-skill="1"] {
+  left: 20px;
+  top: 86px;
+}
+.touch-buttons button[data-skill="2"] {
+  left: 76px;
+  top: 29px;
+}
+.touch-buttons button[data-skill="3"] {
+  left: 151px;
+  top: 2px;
+  border-color: #e9cd78;
+}
+.touch-buttons .touch-attack {
+  left: 101px;
+  top: 126px;
+  width: 91px;
+  height: 91px;
+  border-color: #e4ce7d;
+  background: radial-gradient(circle, #25444f, #0a1c26);
+}
+.touch-attack .skill-icon {
+  width: 53px;
+  height: 53px;
+  color: #99e1f3;
+}
+.touch-buttons button[data-action="dash"] {
+  left: 178px;
+  top: 77px;
+  width: 46px;
+  height: 46px;
+  border-color: #99baba;
+}
+.touch-buttons button[data-action="jump"] {
+  left: 185px;
+  top: 187px;
+  width: 43px;
+  height: 43px;
+  border-color: #99baba;
+}
+.touch-buttons button[data-action] .skill-icon {
+  width: 27px;
+  height: 27px;
+}
+.touch-buttons .touch-attack .skill-icon {
+  width: 53px;
+  height: 53px;
+}
+.touch-key {
+  position: absolute;
+  bottom: 3px;
+  font-size: 10px;
+  color: #e8e4be;
+}
+.touch-cooldown {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  inset: 0;
+  font-size: 19px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 0 2px 4px black;
+}
+.touch-buttons button.cooling {
+  background: conic-gradient(#070c17cc var(--cooldown), #264557 0);
+}
+.touch-buttons button.cooling .skill-icon {
+  opacity: 0.25;
+}
+.touch-buttons button:disabled {
+  opacity: 0.65;
+}
+.touch-buttons button.pressed {
+  background: #345c71;
+  box-shadow: 0 0 12px #91e5fcaa;
+}
+@media (max-width: 600px) {
+  .touch-enabled .touch-pad {
+    padding: 8px 4px;
+    gap: 0;
+  }
+  .joystick {
+    width: 100px;
+    height: 100px;
+    margin-bottom: 32px;
+  }
+}
+@media (max-width: 365px) {
+  .touch-buttons {
+    flex-basis: 210px;
+    transform: scale(0.9);
+    transform-origin: right bottom;
+    margin-left: -20px;
+  }
+  .joystick {
+    width: 88px;
+    height: 88px;
+  }
+}

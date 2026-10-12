@@ -110,3 +110,5 @@ This MVP uses procedural artwork and synthesized music/effects. It supports desk
 - If a room is full after disconnect, reconnect in the original tab within 30 seconds, wait for expiry, or create a new room. A token is only valid on its original server process.
 - Browser sound starts after a click due to autoplay rules. Change Music and Sound Effects in Settings.
 - A build size warning reflects the Phaser runtime. It does not prevent production build or play; further code splitting/loading optimization can follow the MVP.
+
+Mobile controls turn on automatically for coarse-pointer devices. Use Mobile fullscreen on the homepage or confirm the pre-match instructions to request fullscreen from a tap. The left joystick moves; right buttons attack, cast skills, dash and jump. Mobile aim follows the opponent. Fullscreen availability depends on the browser. A development-only control demo is available at `/touch-preview.html` while running Vite.
