@@ -1060,3 +1060,147 @@ dialog input[type="range"] {
     transition: none !important;
   }
 }
+/* Selection portraits share the battle artwork, with a playful idle rig. */
+.creature-card {
+  overflow: hidden;
+}
+.creature-card svg {
+  overflow: visible;
+  filter: drop-shadow(0 10px 12px #0002);
+}
+.creature-card .fighter-body {
+  transform-origin: 100px 170px;
+  animation: fighter-breathe 3s ease-in-out infinite;
+}
+.creature-card:nth-child(2) .fighter-body {
+  animation-delay: -0.7s;
+}
+.creature-card:nth-child(3) .fighter-body {
+  animation-delay: -1.5s;
+}
+.creature-card:nth-child(4) .fighter-body {
+  animation-delay: -2.2s;
+}
+.creature-card .fighter-head {
+  transform-origin: 100px 110px;
+  animation: fighter-look 5s ease-in-out infinite;
+}
+.creature-card .fighter-eyes {
+  transform-origin: 100px 86px;
+  animation: fighter-blink 4.8s infinite;
+}
+.creature-card .fighter-tail,
+.creature-card .fighter-scarf {
+  transform-origin: 130px 135px;
+  animation: fighter-wag 2.2s ease-in-out infinite;
+}
+.creature-card .fighter-wings {
+  transform-origin: 100px 120px;
+  animation: fighter-flap 2.5s ease-in-out infinite;
+}
+.creature-card .fighter-ears {
+  transform-origin: 100px 65px;
+  animation: fighter-ear 3.7s ease-in-out infinite;
+}
+.creature-card:hover .fighter-body,
+.creature-card:focus-visible .fighter-body {
+  animation: fighter-hop 0.65s ease-in-out infinite;
+}
+.creature-card.selected .fighter-head {
+  animation: fighter-look 2.5s ease-in-out infinite;
+}
+.creature-card.selected .fighter-shadow {
+  animation: fighter-shadow 3s ease-in-out infinite;
+  transform-origin: 100px 174px;
+}
+@keyframes fighter-breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-4px) scale(1.025, 0.985);
+  }
+}
+@keyframes fighter-look {
+  0%,
+  35%,
+  100% {
+    transform: rotate(0);
+  }
+  55%,
+  75% {
+    transform: rotate(-5deg);
+  }
+}
+@keyframes fighter-blink {
+  0%,
+  42%,
+  46%,
+  100% {
+    transform: scaleY(1);
+  }
+  44% {
+    transform: scaleY(0.08);
+  }
+}
+@keyframes fighter-wag {
+  0%,
+  100% {
+    transform: rotate(-5deg);
+  }
+  50% {
+    transform: rotate(7deg);
+  }
+}
+@keyframes fighter-flap {
+  0%,
+  100% {
+    transform: scaleX(1) rotate(-2deg);
+  }
+  50% {
+    transform: scaleX(0.88) rotate(2deg);
+  }
+}
+@keyframes fighter-ear {
+  0%,
+  80%,
+  100% {
+    transform: rotate(0);
+  }
+  85%,
+  95% {
+    transform: rotate(4deg);
+  }
+  90% {
+    transform: rotate(-3deg);
+  }
+}
+@keyframes fighter-hop {
+  0%,
+  100% {
+    transform: translateY(0) scale(1.03, 0.97);
+  }
+  45% {
+    transform: translateY(-13px) scale(0.97, 1.03) rotate(-3deg);
+  }
+  65% {
+    transform: translateY(-10px) rotate(3deg);
+  }
+}
+@keyframes fighter-shadow {
+  0%,
+  100% {
+    transform: scaleX(1);
+    opacity: 0.22;
+  }
+  50% {
+    transform: scaleX(0.88);
+    opacity: 0.16;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .creature-card svg * {
+    animation: none !important;
+  }
+}

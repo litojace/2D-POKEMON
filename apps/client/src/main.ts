@@ -1,3 +1,4 @@
+import { fighterArt } from "./fighter-art";
 import Phaser from "phaser";
 import { io } from "socket.io-client";
 import {
@@ -50,7 +51,7 @@ const escape = (s: string) =>
       ]!,
   );
 document.querySelector("#app")!.innerHTML =
-  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark">✦</span> ELEMENT<span>ARENA</span></a><div class="top-links"><span class="connection" id="connection">Connecting</span><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">⚙ Settings</button><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden><div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><span class="map-label">FOREST ARENA <span>01 / VERDANT GROUNDS</span></span></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span>WASD <b>Move</b> · Mouse <b>Aim</b> · Click <b>Attack</b></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>ELEMENT ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Original creatures. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
+  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark">✦</span> ELEMENT<span>ARENA</span></a><div class="top-links"><span class="connection" id="connection">Connecting</span><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">⚙ Settings</button><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden><div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><span class="map-label">FOREST ARENA <span>01 / VERDANT GROUNDS</span></span></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span>WASD <b>Move</b> · Mouse <b>Aim</b> · LMB <b>Attack</b> · 1 / 2 / 3 <b>Skills</b> · RMB <b>Ultimate</b></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>ELEMENT ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Pokémon fan art. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
 document.addEventListener("pointerdown", (event) => {
   if ((event.target as Element).closest("button")) {
     audio.unlock();
@@ -87,19 +88,7 @@ function identity(reply: Reply) {
   remoteFrames.clear();
   sessionStorage.setItem("arena-token", reply.token!);
 }
-function creatureArt(id: CharacterId) {
-  const c = CHARACTERS[id];
-  const color = `#${c.color.toString(16).padStart(6, "0")}`;
-  const ears =
-    id === "emberwing"
-      ? '<path d="M62 85 23 51 31 104 60 116 M138 85 177 51 169 104 140 116"/>'
-      : id === "voltling"
-        ? '<path d="M67 76 52 22 86 65 M116 65 149 22 133 76"/>'
-        : id === "aquashade"
-          ? '<path d="M55 88 37 64 63 61 M140 88 166 62 136 64"/>'
-          : '<path d="M57 92 43 39 75 64 M125 64 157 39 143 92"/>';
-  return `<svg viewBox="0 0 200 180" aria-label="${c.name}" role="img"><ellipse cx="100" cy="154" rx="51" ry="10" fill="${color}" opacity=".13"/><g fill="${color}" stroke="#17242b" stroke-width="5" stroke-linejoin="round">${ears}<path d="M61 139 52 151 76 151 M125 151 148 151 139 138"/><path d="M52 106Q49 62 100 61Q151 62 148 106L139 140Q100 160 61 140Z"/></g><path d="M71 96h17v16H71zM113 96h17v16h-17z" fill="#17242b"/><path d="M75 97h5v5h-5zM117 97h5v5h-5z" fill="#fff"/><path d="m92 120 8 6 8-6" fill="none" stroke="#17242b" stroke-width="4"/><path d="m99 74 6 9-9 6-5-9z" fill="#fff" opacity=".65"/></svg>`;
-}
+const creatureArt = fighterArt;
 function renderMenu() {
   const p = state?.players.find((p) => p.id === myId);
   const isRoom = !!p;
@@ -302,6 +291,16 @@ function renderBattle() {
     overlay.style.pointerEvents = "auto";
     let heading = "",
       details = "";
+    if (state.phase === "briefing") {
+      heading = "How to play";
+      const confirmed = state.instructionsReady.includes(myId);
+      details =
+        '<div class="controls-list"><span><kbd>W A S D</kbd>Move · mouse to aim</span><span><kbd>LMB</kbd>Basic attack</span><span><kbd>1 2 3</kbd>Character skills</span><span><kbd>RMB</kbd>Ultimate skill</span><span><kbd>SHIFT</kbd>Dash</span><span><kbd>SPACE</kbd>Jump over ground attacks</span></div><p>Use cover. Win two rounds. The countdown begins when both players confirm.</p><button class="primary" id="instructions-ready" ' +
+        (confirmed ? "disabled" : "") +
+        ">" +
+        (confirmed ? "Waiting for opponent…" : "I’m ready →") +
+        "</button>";
+    }
     if (state.phase === "countdown") {
       heading = `${Math.ceil(state.remaining)}`;
       details = "Get ready. Make your move.";
@@ -324,6 +323,9 @@ function renderBattle() {
       details += `<div class="result-stats"><span><b>${Math.round(stats.dealt)}</b>DAMAGE DEALT</span><span><b>${Math.round(stats.received)}</b>DAMAGE TAKEN</span><span><b>${stats.skills}</b>SKILLS CAST</span></div><button class="primary" id="rematch">${me.ready ? "Waiting for opponent…" : "Rematch →"}</button><button class="secondary" id="return">Return to lobby</button>`;
     }
     overlay.innerHTML = `<div class="overlay-card"><span class="eyebrow">ELEMENT ARENA</span><h2>${heading}</h2><div>${details}</div></div>`;
+    if (state.phase === "briefing")
+      $("instructions-ready").onclick = () =>
+        void request("instructions-ready");
     if (state.phase === "finished") {
       $("rematch").onclick = () => void request("rematch");
       $("return").onclick = () => void request("lobby");
@@ -430,11 +432,11 @@ $("settings").onclick = showSettings;
 $("battle-menu").onclick = showSettings;
 $("help").onclick = () =>
   dialog(
-    `<div class="eyebrow">HOW TO PLAY</div><h2>Every second counts.</h2><p>Create a room, share the code, choose your creatures, and both click Ready. Win two rounds to take the match.</p><div class="controls-list"><span><kbd>W A S D</kbd>Move in eight directions</span><span><kbd>MOUSE</kbd>Aim · left click to attack</span><span><kbd>Q E R F</kbd>Your four combat skills</span><span><kbd>SHIFT</kbd>Dash · 3 second cooldown</span><span><kbd>SPACE</kbd>Jump · dodge ground attacks</span><span><kbd>ESC</kbd>Settings · the match stays live</span></div><p>Use cover to block shots. Jump over ground zones. Ultimates recharge every 30 seconds. At a tie, overtime drains both players' health.</p>`,
+    `<div class="eyebrow">HOW TO PLAY</div><h2>Every second counts.</h2><p>Create a room, share the code, choose your creatures, and both click Ready. Win two rounds to take the match.</p><div class="controls-list"><span><kbd>W A S D</kbd>Move in eight directions</span><span><kbd>MOUSE</kbd>Aim · left click to attack</span><span><kbd>1 2 3</kbd>Skills · right click for ultimate</span><span><kbd>SHIFT</kbd>Dash · 3 second cooldown</span><span><kbd>SPACE</kbd>Jump · dodge ground attacks</span><span><kbd>ESC</kbd>Settings · the match stays live</span></div><p>Use cover to block shots. Jump over ground zones. Ultimates recharge every 30 seconds. At a tie, overtime drains both players' health.</p>`,
   );
 $("credits").onclick = () =>
   dialog(
-    '<div class="eyebrow">BUILT FOR THE DUEL</div><h2>Element Arena</h2><p>Original procedural creature artwork, arena art, and synthesized audio. Built with Phaser, Socket.IO, Express, TypeScript, and Vite.</p><p>A monster-battling inspired project. No official Pokémon artwork, sprites, or music are used.</p>',
+    '<div class="eyebrow">BUILT FOR THE DUEL</div><h2>Element Arena</h2><p>Original Pokémon fan-art drawings, procedural arena art, and synthesized audio. Built with Phaser, Socket.IO, Express, TypeScript, and Vite.</p><p>An unofficial Pokémon fan project. No official Pokémon artwork, sprites, or music are used.</p>',
   );
 $<HTMLDialogElement>("dialog").addEventListener("close", () => {
   settingsOpen = false;
@@ -471,13 +473,29 @@ class ArenaScene extends Phaser.Scene {
       connected &&
       state?.phase === "playing" &&
       !$<HTMLDialogElement>("dialog").open &&
-      document.hasFocus()
+      document.hasFocus() &&
+      !["INPUT", "TEXTAREA", "SELECT"].includes(
+        document.activeElement?.tagName ?? "",
+      )
     );
   }
   positions = new Map<string, { x: number; y: number }>();
   labels = new Map<string, Phaser.GameObjects.Text>();
   constructor() {
     super("arena");
+  }
+  private portraits: Phaser.GameObjects.Image[] = [];
+  private portraitIndex = 0;
+  private castUntil = new Map<string, number>();
+  private hitUntil = new Map<string, number>();
+  preload() {
+    for (const id of Object.keys(CHARACTERS) as CharacterId[])
+      this.load.svg(
+        id,
+        "data:image/svg+xml;charset=utf-8," +
+          encodeURIComponent(fighterArt(id)),
+        { width: 200, height: 190 },
+      );
   }
   create() {
     scene = this;
@@ -536,11 +554,11 @@ class ArenaScene extends Phaser.Scene {
     }
     this.graphics = this.add.graphics();
     this.keys = this.input.keyboard!.addKeys(
-      "W,A,S,D,Q,E,R,F,SHIFT,SPACE",
+      "W,A,S,D,ONE,TWO,THREE,SHIFT,SPACE",
       false,
     ) as Record<string, Phaser.Input.Keyboard.Key>;
     this.input.mouse!.disableContextMenu();
-    KEYS.skills.forEach((key, i) =>
+    ["ONE", "TWO", "THREE"].forEach((key, i) =>
       this.keys[key].on("down", () => {
         if (this.canControl()) this.actions.skill = i;
       }),
@@ -555,6 +573,8 @@ class ArenaScene extends Phaser.Scene {
       audio.unlock();
       if (this.canControl() && pointer.leftButtonDown())
         this.actions.basic = true;
+      if (this.canControl() && pointer.rightButtonDown())
+        this.actions.skill = 3;
     });
     this.scale.refresh();
   }
@@ -562,6 +582,14 @@ class ArenaScene extends Phaser.Scene {
     if (event.owner === myId || event.kind === "hit" || event.kind === "round")
       audio.play(event.kind);
     if (reducedMotion) return;
+    if (event.kind === "cast" && event.owner)
+      this.castUntil.set(event.owner, this.time.now + 240);
+    if (event.kind === "hit") {
+      const victim = state?.players.find(
+        (p) => Math.hypot(p.x - event.x, p.y - event.y) < 45,
+      );
+      if (victim) this.hitUntil.set(victim.id, this.time.now + 140);
+    }
     const ring = this.add
       .circle(
         event.x,
@@ -654,6 +682,8 @@ class ArenaScene extends Phaser.Scene {
     }
     const g = this.graphics;
     g.clear();
+    this.portraitIndex = 0;
+    this.portraits.forEach((image) => image.setVisible(false));
     for (const z of state.zones) {
       g.fillStyle(z.color, 0.12).fillCircle(z.x, z.y, z.radius);
       g.lineStyle(3, z.color, 0.7).strokeCircle(z.x, z.y, z.radius);
@@ -826,40 +856,56 @@ class ArenaScene extends Phaser.Scene {
     angle: number,
     alpha: number,
   ) {
-    const color = CHARACTERS[id].color;
-    g.fillStyle(color, alpha);
-    if (id === "voltling") {
-      g.fillTriangle(x - 20, y - 10, x - 25, y - 46, x - 6, y - 23);
-      g.fillTriangle(x + 20, y - 10, x + 25, y - 46, x + 6, y - 23);
-    } else if (id === "emberwing") {
-      g.fillTriangle(x - 20, y, x - 47, y - 22, x - 40, y + 18);
-      g.fillTriangle(x + 20, y, x + 47, y - 22, x + 40, y + 18);
-    } else if (id === "aquashade") {
-      g.fillTriangle(x - 20, y - 8, x - 38, y - 24, x - 10, y - 22);
-      g.fillTriangle(x + 20, y - 8, x + 38, y - 24, x + 10, y - 22);
-    } else {
-      g.fillTriangle(x - 20, y - 10, x - 30, y - 36, x - 10, y - 26);
-      g.fillTriangle(x + 20, y - 10, x + 30, y - 36, x + 10, y - 26);
-    }
-    g.fillRoundedRect(x - 25, y - 25, 50, 52, 17);
-    g.fillStyle(0xffffff, alpha * 0.2).fillEllipse(x - 7, y - 15, 30, 13);
-    g.fillStyle(0x152a2d, alpha);
-    const offset = Math.cos(angle) * 4;
-    g.fillRect(x - 14 + offset, y - 7 + Math.sin(angle) * 3, 8, 10);
-    g.fillRect(x + 6 + offset, y - 7 + Math.sin(angle) * 3, 8, 10);
-    g.fillStyle(0xffffff, alpha)
-      .fillRect(x - 13 + offset, y - 6 + Math.sin(angle) * 3, 3, 3)
-      .fillRect(x + 7 + offset, y - 6 + Math.sin(angle) * 3, 3, 3);
-    g.fillStyle(0x152a2d, alpha).fillRect(x - 4, y + 12, 8, 3);
-    g.fillStyle(color, alpha)
-      .fillRoundedRect(x - 24, y + 20, 17, 10, 4)
-      .fillRoundedRect(x + 7, y + 20, 17, 10, 4);
-    g.lineStyle(3, color, alpha * 0.5).lineBetween(
-      x + Math.cos(angle) * 31,
-      y + Math.sin(angle) * 31,
-      x + Math.cos(angle) * 47,
-      y + Math.sin(angle) * 47,
+    const slot = this.portraitIndex++;
+    const image =
+      this.portraits[slot] ??
+      (this.portraits[slot] = this.add.image(x, y, id).setDepth(2));
+    const p = state?.players.find(
+      (p) => p.character === id && Math.hypot(p.x - x, p.y - y) < 100,
     );
+    const strike =
+      p && !reducedMotion
+        ? Math.max(0, ((this.castUntil.get(p.id) ?? 0) - this.time.now) / 240)
+        : 0;
+    const hit = !!p && (this.hitUntil.get(p.id) ?? 0) > this.time.now;
+    const moving = !!p && Math.hypot(p.vx, p.vy) > 30;
+    const dashing = !!p && p.dashUntil > (state?.time ?? 0);
+    const jumping = !!p && p.jumpUntil > (state?.time ?? 0);
+    const beat = reducedMotion
+      ? 0
+      : Math.sin(this.time.now / (moving ? 65 : 260));
+    const lean = reducedMotion
+      ? 0
+      : dashing
+        ? Math.cos(angle) * 0.28
+        : moving
+          ? Math.cos(angle) * 0.1 + beat * 0.045
+          : beat * 0.025;
+    image
+      .setTexture(id)
+      .setVisible(true)
+      .setPosition(
+        x + Math.cos(angle) * strike * 9,
+        y - 9 + Math.sin(angle) * strike * 9,
+      )
+      .setAlpha(alpha)
+      .setTint(hit ? 0xffaaaa : 0xffffff)
+      .setFlipX(Math.cos(angle) < 0)
+      .setRotation(lean)
+      .setDisplaySize(
+        92 * (jumping ? 0.92 : 1 + beat * 0.018),
+        87 * (jumping ? 1.08 : 1 - beat * 0.025 - strike * 0.08),
+      );
+    if (dashing && !reducedMotion) {
+      g.lineStyle(3, CHARACTERS[id].color, 0.45);
+      for (let i = 1; i <= 3; i++)
+        g.lineBetween(
+          x - Math.cos(angle) * (30 + i * 12),
+          y - Math.sin(angle) * (30 + i * 12) - i * 7,
+          x - Math.cos(angle) * (70 + i * 12),
+          y - Math.sin(angle) * (70 + i * 12) - i * 7,
+        );
+    }
   }
 }
 new Phaser.Game({

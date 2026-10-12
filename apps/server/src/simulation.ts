@@ -86,6 +86,25 @@ export class Arena {
     });
     if (this.events.length > 80) this.events.shift();
   }
+  instructionsReady: string[] = [];
+  acknowledgeInstructions(id: string) {
+    if (
+      this.phase !== "briefing" ||
+      !this.players.some((p) => p.id === id && p.connected)
+    )
+      return false;
+    if (!this.instructionsReady.includes(id)) this.instructionsReady.push(id);
+    if (
+      this.players.length === 2 &&
+      this.players.every(
+        (p) => p.connected && this.instructionsReady.includes(p.id),
+      )
+    ) {
+      this.phase = "countdown";
+      this.deadline = this.time + RULES.countdown;
+    }
+    return true;
+  }
   start() {
     this.scores = Object.fromEntries(this.players.map((p) => [p.id, 0]));
     this.round = 1;
@@ -94,6 +113,8 @@ export class Arena {
     for (const p of this.players)
       p.stats = { dealt: 0, received: 0, skills: 0 };
     this.resetRound();
+    this.instructionsReady = [];
+    this.phase = "briefing";
   }
   resetPractice() {
     this.start();
@@ -276,6 +297,7 @@ export class Arena {
   }
   tick(dt = 1 / RULES.tick) {
     if (
+      this.phase === "briefing" ||
       this.phase === "paused" ||
       this.phase === "lobby" ||
       this.phase === "finished"
@@ -507,6 +529,7 @@ export class Arena {
   }
   snapshot(pauseRemaining = 0): Snapshot {
     return {
+      instructionsReady: this.instructionsReady,
       practice: this.practice,
       code: this.code,
       phase: this.phase,

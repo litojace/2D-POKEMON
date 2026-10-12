@@ -470,6 +470,14 @@ export function createArenaServer(
         broadcast(a);
       }),
     );
+    socket.on("instructions-ready", (_data: unknown, cb: unknown) =>
+      withRoom(cb, (a, id) => {
+        if (!a.acknowledgeInstructions(id))
+          return fail(cb, "Instructions are not awaiting confirmation.");
+        reply(cb, { ok: true });
+        broadcast(a);
+      }),
+    );
     socket.on("input", (data: unknown) =>
       withRoom(undefined, (a, id) => {
         const result = inputSchema.safeParse(data);

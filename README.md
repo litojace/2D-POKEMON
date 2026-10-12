@@ -1,6 +1,6 @@
 # Element Arena
 
-A playable browser-based, real-time 1v1 creature fighting game. Both players move, aim, attack, dash and jump simultaneously. All creatures and art are original procedural placeholders, with no official Pokémon assets.
+A playable browser-based, real-time 1v1 creature fighting game. Both players move, aim, attack, dash and jump simultaneously. Pikachu, Charizard, Greninja, and Lucario use original SVG fan-art drawings with animated movement. This is an unofficial Pokémon fan project.
 
 **Accounts are now required to play.** Follow [game account and admin setup](docs/accounts-setup.md) to create a separate Supabase project, apply the migration, configure auth, and grant your intended administrator. Solo testing and player/title management are admin-only. Email/password, Google sign-in, recovery, and Remember me follow the AMATYC project's pattern. Without account configuration you can browse creatures, but gameplay stays locked.
 
@@ -47,7 +47,7 @@ The practice toolbar lets you switch between all four creatures, reset health/po
 | WASD             | Move; diagonal movement is normalized       |
 | Mouse            | Aim                                         |
 | Left click, hold | Basic attack                                |
-| Q / E / R / F    | Four character-specific skills              |
+| 1 / 2 / 3 / RMB  | Three skills + right-click ultimate         |
 | Left Shift       | Dash, 3-second cooldown; walls still block  |
 | Space            | Jump, 2-second cooldown; avoid ground zones |
 | Escape           | Settings; online matches continue           |

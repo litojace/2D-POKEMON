@@ -24,7 +24,7 @@ export const KEYS = {
   left: "A",
   down: "S",
   right: "D",
-  skills: ["Q", "E", "R", "F"],
+  skills: ["1", "2", "3", "RMB"],
   dash: "SHIFT",
   jump: "SPACE",
 };
@@ -124,7 +124,7 @@ export interface Character {
 export const CHARACTERS: Record<CharacterId, Character> = {
   voltling: {
     id: "voltling",
-    name: "Voltling",
+    name: "Pikachu",
     element: "Electric",
     role: "Fast ranged attacker",
     color: 0xffd65b,
@@ -181,7 +181,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
   },
   emberwing: {
     id: "emberwing",
-    name: "Emberwing",
+    name: "Charizard",
     element: "Fire",
     role: "High-damage fighter",
     color: 0xff795a,
@@ -233,7 +233,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
   },
   aquashade: {
     id: "aquashade",
-    name: "Aquashade",
+    name: "Greninja",
     element: "Water",
     role: "Agile assassin",
     color: 0x63dce8,
@@ -289,7 +289,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
   },
   auralith: {
     id: "auralith",
-    name: "Auralith",
+    name: "Lucario",
     element: "Fighting / Energy",
     role: "Melee and counter specialist",
     color: 0xb5a1ff,
@@ -463,8 +463,15 @@ export interface GameEvent extends Vec {
   owner?: string;
 }
 export type Phase =
-  "lobby" | "countdown" | "playing" | "intermission" | "paused" | "finished";
+  | "lobby"
+  | "briefing"
+  | "countdown"
+  | "playing"
+  | "intermission"
+  | "paused"
+  | "finished";
 export interface Snapshot {
+  instructionsReady: string[];
   practice: { unlimitedCooldowns: boolean; targetAttacks: boolean } | null;
   code: string;
   phase: Phase;

@@ -221,6 +221,13 @@ it("synchronizes both players movement, skills, health, death, match results and
   });
   await emit(one, "ready");
   await emit(two, "ready");
+  expect(arena.phase).toBe("briefing");
+  const briefingTime = arena.time;
+  for (let i = 0; i < 120; i++) server.step();
+  expect(arena.time).toBe(briefingTime);
+  await emit(one, "instructions-ready");
+  expect(arena.phase).toBe("briefing");
+  await emit(two, "instructions-ready");
   expect(arena.phase).toBe("countdown");
   await wait();
   expect(s1?.phase).toBe("countdown");
@@ -278,6 +285,8 @@ it("synchronizes both players movement, skills, health, death, match results and
   await emit(one, "rematch");
   expect(arena.phase).toBe("finished");
   await emit(two, "rematch");
+  await emit(one, "instructions-ready");
+  await emit(two, "instructions-ready");
   expect(arena.phase).toBe("countdown");
   expect(arena.scores[guest.id!]).toBe(0);
   expect(arena.players.every((p) => p.hp > 0)).toBe(true);
@@ -286,6 +295,10 @@ it("suspends the match, securely reconnects, rejects duplicate sessions and forf
   const { one, two, host, guest, arena } = await lobby();
   await emit(one, "ready");
   await emit(two, "ready");
+  expect(arena.phase).toBe("briefing");
+  await emit(one, "instructions-ready");
+  expect(arena.phase).toBe("briefing");
+  await emit(two, "instructions-ready");
   for (let i = 0; i < 95; i++) server.step();
   two.disconnect();
   await wait();
@@ -345,6 +358,10 @@ it("allows a fresh opponent after a player leaves and the winner returns to lobb
   const { one, two, arena, host } = await lobby();
   await emit(one, "ready");
   await emit(two, "ready");
+  expect(arena.phase).toBe("briefing");
+  await emit(one, "instructions-ready");
+  expect(arena.phase).toBe("briefing");
+  await emit(two, "instructions-ready");
   await emit(two, "leave");
   expect(arena.winner).toBe(host.id);
   await emit(one, "lobby");
@@ -358,6 +375,10 @@ it("bounds spam and rejects another player ID in an input payload", async () => 
   const { one, two, arena, guest } = await lobby();
   await emit(one, "ready");
   await emit(two, "ready");
+  expect(arena.phase).toBe("briefing");
+  await emit(one, "instructions-ready");
+  expect(arena.phase).toBe("briefing");
+  await emit(two, "instructions-ready");
   for (let i = 0; i < 95; i++) server.step();
   one.emit("input", { ...blankInput(), seq: 1, id: guest.id, skill: 3 });
   await wait();
