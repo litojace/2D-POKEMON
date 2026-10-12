@@ -324,7 +324,7 @@ h2 {
   border-radius: 12px;
   background: #172743;
   display: grid;
-  grid-template-columns: 1fr 1.5fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
   gap: 24px;
 }
 .skill-preview h3 {
@@ -339,16 +339,59 @@ h2 {
   gap: 13px;
 }
 .preview-skills > div {
-  display: flex;
+  display: grid;
+  grid-template-columns: 40px 32px minmax(0, 1fr) 34px;
   align-items: center;
-  gap: 12px;
+  column-gap: 12px;
+  padding: 8px 0;
+}
+.preview-skills > div > kbd {
+  width: 40px;
+  min-height: 36px;
+  padding: 8px 0;
+  text-align: center;
+  justify-self: start;
+}
+.preview-skills > div > .skill-icon {
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  justify-self: center;
+}
+.preview-skills > div > span {
+  min-width: 0;
+  text-align: left;
+}
+.preview-skills > div > b {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.preview-skills > div + div {
+  border-top: 1px solid #ffffff0a;
+}
+@media (max-width: 600px) {
+  .skill-preview {
+    padding: 18px 14px;
+    gap: 16px;
+  }
+  .preview-skills > div {
+    grid-template-columns: 36px 28px minmax(0, 1fr) 30px;
+    column-gap: 8px;
+  }
+  .preview-skills > div > kbd {
+    width: 36px;
+    font-size: 9px;
+  }
 }
 .preview-skills strong {
-  font-size: 11px;
+  font-size: 12px;
   display: block;
 }
 .preview-skills small {
-  font-size: 9px;
+  font-size: 11px;
+  line-height: 1.5;
   color: var(--muted);
   display: block;
   margin-top: 3px;
