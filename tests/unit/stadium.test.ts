@@ -26,10 +26,10 @@ it("leaves a separate court between landscape controls and stadium bands", () =>
     );
     const bands = stadiumBands(available.height);
     if (layout.compact) {
-      const bottomBand = Math.max(layout.height, layout.joystick + 20) + 48;
+      const bottomBand = Math.max(layout.height, layout.joystick + 20) + 70;
       const courtBottom = height - bottom - bottomBand;
       const controlsTop =
-        height - bottom - 42 - Math.max(layout.height, layout.joystick + 20);
+        height - bottom - 64 - Math.max(layout.height, layout.joystick + 20);
       expect(courtBottom).toBeLessThan(controlsTop);
       expect(courtBottom - bands.top).toBeGreaterThan(90);
       expect(layout.width + layout.joystick + 20).toBeLessThan(available.width);

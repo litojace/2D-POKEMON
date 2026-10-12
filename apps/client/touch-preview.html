@@ -46,6 +46,17 @@
             Math.min(100, inset) + "px",
           );
       }
+      import { setupBattleDock } from "./src/battle-dock";
+      const overlay = document.createElement("div");
+      overlay.id = "arena-overlay";
+      document.querySelector("#preview").append(overlay);
+      const footer = document.createElement("div");
+      footer.className = "battle-footer";
+      footer.innerHTML = '<button id="battle-menu" class="quiet">Menu</button>';
+      const practice = document.createElement("div");
+      practice.id = "practice-controls";
+      practice.innerHTML =
+        '<details class="practice-settings"><summary>Practice</summary><div class="practice-panel">Training options preview<button id="preview-popup">Show popup</button></div></details>';
       const controls = new TouchControls(
         document.querySelector("#controls"),
         () => true,
@@ -55,6 +66,20 @@
         true,
       );
       if (!controls.enabled) document.querySelector("#touch-toggle").click();
+      setupBattleDock(
+        document.querySelector("#battle"),
+        document.querySelector("#controls"),
+        footer,
+        practice,
+      );
+      document.querySelector("#battle-menu").onclick = () =>
+        document.querySelector("#mobile-settings").click();
+      document.querySelector("#preview-popup").onclick = () => {
+        overlay.innerHTML =
+          '<div class="overlay-card"><h2>How to play</h2><button id="preview-ready">I am ready</button></div>';
+        document.querySelector("#preview-ready").onclick = () =>
+          (overlay.innerHTML = "");
+      };
       document.body.classList.add("battle-active");
       controls.resize();
       controls.update(

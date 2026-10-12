@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Mobile battle layout checks</title>
+    <style>
+      body {
+        background: #101c35;
+        color: #fff;
+        font: 16px system-ui;
+        margin: 20px;
+      }
+      .examples {
+        display: flex;
+        gap: 24px;
+        align-items: flex-start;
+        flex-wrap: wrap;
+      }
+      iframe {
+        border: 1px solid #688bb8;
+        border-radius: 16px;
+        display: block;
+      }
+      h2 {
+        font-size: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Mobile battle layout preview</h1>
+    <p>
+      Real touch controls and styles in device-size viewports. No account or
+      live match.
+    </p>
+    <div class="examples">
+      <section>
+        <h2>Portrait · 390 × 844 · top/bottom safe areas</h2>
+        <iframe
+          title="Portrait battle"
+          width="390"
+          height="844"
+          src="/touch-preview.html?safe-top=47&amp;safe-bottom=34"
+        ></iframe>
+      </section>
+      <section>
+        <h2>Landscape · 852 × 393 · side/bottom safe areas</h2>
+        <iframe
+          title="Landscape battle"
+          width="852"
+          height="393"
+          src="/touch-preview.html?safe-left=59&amp;safe-right=59&amp;safe-bottom=21"
+        ></iframe>
+      </section>
+    </div>
+  </body>
+</html>

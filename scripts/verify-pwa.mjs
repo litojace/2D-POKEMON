@@ -44,3 +44,4 @@ assert(!existsSync(root + "safe-preview.html"));
 assert(!existsSync(root + "readiness-preview.html"));
 
 assert(!existsSync(root + "animation-preview.html"));
+assert(!existsSync(root + "mobile-layout-preview.html"));

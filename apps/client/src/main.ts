@@ -1,3 +1,4 @@
+import { setupBattleDock } from "./battle-dock";
 import { FighterRig } from "./animation/rig";
 import { rigAssets } from "./animation/assets";
 import { setOverlayMarkup } from "./overlay";
@@ -137,6 +138,13 @@ const touch = new TouchControls(
       scene.actions = { skill: -1, dash: false, jump: false, basic: false };
   },
 );
+if (touch.available)
+  setupBattleDock(
+    $("battle"),
+    $("mobile-controls"),
+    $("battle-menu").parentElement!,
+    $("practice-controls"),
+  );
 $("mobile-play").hidden = !touch.available;
 $("mobile-play").onclick = () => {
   if (!touch.enabled) $("touch-toggle").click();

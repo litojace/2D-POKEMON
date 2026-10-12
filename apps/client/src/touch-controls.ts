@@ -271,7 +271,7 @@ export class TouchControls {
     const bands = stadiumBands(viewport.height);
     document.body.classList.toggle("compact-landscape", layout.compact);
     if (layout.compact)
-      bands.bottom = Math.max(layout.height, layout.joystick + 20) + 48;
+      bands.bottom = Math.max(layout.height, layout.joystick + 20) + 70;
     document.body.style.setProperty("--stadium-top", bands.top + "px");
     document.body.style.setProperty("--stadium-bottom", bands.bottom + "px");
     this.root.style.setProperty(

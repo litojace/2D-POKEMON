@@ -85,7 +85,11 @@ export function mobileLayout(
     ),
   );
   if (available < 600 && height < 500) {
-    const compactJoystick = Math.min(joystick, Math.max(88, height * 0.28));
+    const short = height < 310;
+    const compactJoystick = Math.min(
+      joystick,
+      Math.max(short ? 72 : 88, height * (short ? 0.23 : 0.28)),
+    );
     const size = Math.max(
       44,
       Math.min(
@@ -110,15 +114,15 @@ export function mobileLayout(
       compact: true,
       joystick: compactJoystick,
       width: 326 * scale,
-      height: 100 * scale,
+      height: (short ? 92 : 100) * scale,
       targets: [
-        target("0", 28, 26, 44),
-        target("1", 84, 26, 44),
-        target("2", 140, 26, 44),
-        target("3", 196, 26, 44),
-        target("attack", 276, 51, 88),
-        target("dash", 84, 78, 44),
-        target("jump", 140, 78, 44),
+        target("0", 28, short ? 22 : 26, 44),
+        target("1", 84, short ? 22 : 26, 44),
+        target("2", 140, short ? 22 : 26, 44),
+        target("3", 196, short ? 22 : 26, 44),
+        target("attack", 276, short ? 47 : 51, 88),
+        target("dash", 84, short ? 70 : 78, 44),
+        target("jump", 140, short ? 70 : 78, 44),
       ],
     };
   }

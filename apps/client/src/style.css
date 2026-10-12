@@ -2191,3 +2191,79 @@ dialog {
   max-width: 100%;
   overflow: auto;
 }
+
+/* Empty phase overlays must not shade or intercept an active match. */
+#arena-overlay:empty,
+.battle-active.touch-mode #arena-overlay:empty {
+  display: none;
+  background: transparent;
+  pointer-events: none;
+}
+.battle-dock {
+  display: contents;
+}
+.battle-active.touch-mode .battle-dock {
+  position: fixed;
+  bottom: calc(var(--safe-bottom) + 8px);
+  left: calc(var(--safe-left) + 12px);
+  right: calc(var(--safe-right) + 12px);
+  z-index: 26;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  pointer-events: none;
+}
+.battle-active.touch-mode .battle-dock > * {
+  pointer-events: auto;
+}
+.battle-active.touch-mode .battle-dock .battle-footer,
+.battle-active.touch-mode .battle-dock .mobile-tools,
+.battle-active.touch-mode .battle-dock #practice-controls {
+  position: relative;
+  inset: auto;
+  transform: none;
+  margin: 0;
+  padding: 0;
+}
+.battle-active.touch-mode .battle-dock #mobile-settings {
+  display: none;
+}
+.battle-active.touch-mode .battle-dock #battle-menu,
+.battle-active.touch-mode .battle-dock #mobile-fullscreen,
+.battle-active.touch-mode .battle-dock .practice-settings > summary {
+  height: 44px;
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid #91b6de55;
+  background: #1e3557;
+  color: #f3f6ff;
+}
+.battle-active.touch-mode .battle-dock #battle-menu {
+  width: auto;
+  font-size: 12px;
+  padding: 8px 14px;
+}
+.battle-active.touch-mode .battle-dock #battle-menu::before {
+  margin-right: 6px;
+}
+.battle-active.touch-mode .battle-dock #mobile-fullscreen {
+  width: 44px;
+}
+.battle-active.touch-mode .battle-dock .practice-settings > summary {
+  display: flex;
+  align-items: center;
+  padding: 8px 14px;
+  font-size: 12px;
+  color: #ffd65b;
+}
+.battle-active.touch-mode .battle-dock .practice-panel {
+  position: fixed;
+  bottom: calc(var(--safe-bottom) + 64px);
+  right: calc(var(--safe-right) + 16px);
+  max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 90px);
+}
+.battle-active.touch-mode .touch-pad,
+.battle-active.touch-mode.compact-landscape .touch-pad {
+  bottom: calc(var(--safe-bottom) + 64px);
+}
