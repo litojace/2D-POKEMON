@@ -218,6 +218,8 @@ export class Arena {
       target,
       CHARACTERS[target.character].color,
       Math.round(dealt),
+      undefined,
+      ability?.id,
     );
     if (counter && source && source !== target && source.hp > 0) {
       const reflected = Math.min(
@@ -525,7 +527,7 @@ export class Arena {
       );
       const enemy = this.players.find((p) => p.id !== pr.owner);
       const explode = () => {
-        this.event("cast", pr, pr.color);
+        this.event("impact", pr, pr.color, undefined, pr.owner, pr.ability.id);
         if (
           pr.ability.explosion &&
           enemy &&
@@ -549,7 +551,14 @@ export class Arena {
             RULES.radius + pr.ability.radius
         ) {
           enemy.clone = undefined;
-          this.event("cast", pr, pr.color);
+          this.event(
+            "impact",
+            pr,
+            pr.color,
+            undefined,
+            pr.owner,
+            pr.ability.id,
+          );
           return false;
         }
         if (

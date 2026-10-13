@@ -913,7 +913,17 @@ export interface Zone extends Vec {
 }
 export interface GameEvent extends Vec {
   id: number;
-  kind: "cast" | "hit" | "dash" | "jump" | "land" | "round" | "beam" | "burst";
+  kind:
+    | "cast"
+    | "hit"
+    | "dash"
+    | "jump"
+    | "land"
+    | "round"
+    | "beam"
+    | "burst"
+    /** A projectile ended (explosion, wall, range limit or decoy). */
+    | "impact";
   /** Beam end point. */
   tx?: number;
   ty?: number;

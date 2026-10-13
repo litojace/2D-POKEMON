@@ -6,6 +6,13 @@ import {
   type Title,
   type PlayerDirectory,
 } from "../../../packages/shared/src/accounts";
+const EYE =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg>';
+const EYE_OFF =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/><path d="M3 3l18 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
+/** Password input with an eye button inside the box to show or hide it. */
+const passwordField = (label: string, name: string, attrs: string) =>
+  `<label>${label}<span class="password-field"><input name="${name}" type="password" ${attrs}><button class="password-toggle" type="button" aria-label="Show password" aria-pressed="false" title="Show password">${EYE}</button></span></label>`;
 const escape = (text: string) =>
   text.replace(
     /[&<>"']/g,
@@ -163,7 +170,7 @@ export class AccountUI {
       reset: "Choose a new password.",
     }[mode];
     this.hooks.openDialog(
-      `<div class="eyebrow">ELEMENT ARENA ACCOUNTS</div><h2>${title}</h2>${!this.client ? "<p>Sign-in is not available yet. Accounts are being set up.</p>" : ""}<form id="auth-form" class="account-form">${mode === "signup" ? '<label>Display name<input name="displayName" maxlength="20" required autocomplete="nickname"></label>' : ""}${mode !== "reset" ? '<label>Email<input name="email" type="email" required autocomplete="email"></label>' : ""}${mode !== "forgot" ? `<label>Password<input name="password" type="password" ${mode === "login" ? "" : 'minlength="8"'} maxlength="128" required autocomplete="${mode === "login" ? "current-password" : "new-password"}"></label><button class="quiet" id="auth-show-password" type="button">Show password</button>` : ""}${mode === "signup" || mode === "reset" ? '<label>Confirm password<input name="confirmPassword" type="password" minlength="8" maxlength="128" required autocomplete="new-password"></label>' : ""}${mode === "login" ? '<label class="checkbox-label"><input id="auth-remember" type="checkbox">Remember me</label>' : ""}<button class="primary" type="submit" ${!this.client ? "disabled" : ""}>${{ login: "Log in", signup: "Create account", forgot: "Send reset link", reset: "Update password" }[mode]}</button>${mode === "login" || mode === "signup" ? `<button id="auth-google" class="secondary" type="button" ${!this.client ? "disabled" : ""}>Continue with Google</button>` : ""}<p id="auth-message" role="status"></p></form><div class="auth-links"><button class="quiet" id="auth-switch">${mode === "login" ? "Create an account" : "Back to login"}</button>${mode === "login" ? '<button class="quiet" id="auth-forgot">Forgot password?</button>' : ""}</div>`,
+      `<div class="eyebrow">ELEMENT ARENA ACCOUNTS</div><h2>${title}</h2>${!this.client ? "<p>Sign-in is not available yet. Accounts are being set up.</p>" : ""}<form id="auth-form" class="account-form">${mode === "signup" ? '<label>Display name<input name="displayName" maxlength="20" required autocomplete="nickname"></label>' : ""}${mode !== "reset" ? '<label>Email<input name="email" type="email" required autocomplete="email"></label>' : ""}${mode !== "forgot" ? passwordField("Password", "password", `${mode === "login" ? "" : 'minlength="8"'} maxlength="128" required autocomplete="${mode === "login" ? "current-password" : "new-password"}"`) : ""}${mode === "signup" || mode === "reset" ? passwordField("Confirm password", "confirmPassword", 'minlength="8" maxlength="128" required autocomplete="new-password"') : ""}${mode === "login" ? '<label class="checkbox-label"><input id="auth-remember" type="checkbox">Remember me</label>' : ""}<button class="primary" type="submit" ${!this.client ? "disabled" : ""}>${{ login: "Log in", signup: "Create account", forgot: "Send reset link", reset: "Update password" }[mode]}</button>${mode === "login" || mode === "signup" ? `<button id="auth-google" class="secondary" type="button" ${!this.client ? "disabled" : ""}>Continue with Google</button>` : ""}<p id="auth-message" role="status"></p></form><div class="auth-links"><button class="quiet" id="auth-switch">${mode === "login" ? "Create an account" : "Back to login"}</button>${mode === "login" ? '<button class="quiet" id="auth-forgot">Forgot password?</button>' : ""}</div>`,
     );
     element("auth-switch").onclick = () =>
       this.showAuth(mode === "login" ? "signup" : "login");
@@ -176,12 +183,22 @@ export class AccountUI {
     const message = element("auth-message");
     const submit = form.querySelector<HTMLButtonElement>("[type=submit]")!;
     const site = import.meta.env.VITE_SITE_URL || location.origin;
-    if (mode !== "forgot")
-      element("auth-show-password").onclick = () => {
-        const field = form.elements.namedItem("password") as HTMLInputElement;
-        field.type = field.type === "password" ? "text" : "password";
-        element("auth-show-password").textContent =
-          field.type === "password" ? "Show password" : "Hide password";
+    // Each password box has its own eye toggle.
+    for (const toggle of form.querySelectorAll<HTMLButtonElement>(
+      ".password-toggle",
+    ))
+      toggle.onclick = () => {
+        const field = toggle.parentElement!.querySelector("input")!;
+        const show = field.type === "password";
+        field.type = show ? "text" : "password";
+        toggle.innerHTML = show ? EYE_OFF : EYE;
+        toggle.setAttribute("aria-pressed", String(show));
+        toggle.setAttribute(
+          "aria-label",
+          show ? "Hide password" : "Show password",
+        );
+        toggle.title = show ? "Hide password" : "Show password";
+        field.focus();
       };
     if (mode === "login" || mode === "signup")
       element("auth-google").onclick = async () => {

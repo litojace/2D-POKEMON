@@ -3252,3 +3252,54 @@ dialog {
   text-overflow: clip;
   font-size: 16px;
 }
+/* Password boxes: eye toggle sits inside the field. */
+.password-field {
+  position: relative;
+  display: block;
+}
+.password-field input {
+  width: 100%;
+  padding-right: 52px;
+}
+.account-form .password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 34px;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid #ffffff2e;
+  border-radius: 8px;
+  background: #2a3f64;
+  color: #f3f6ff;
+  cursor: pointer;
+}
+.account-form .password-toggle:hover,
+.account-form .password-toggle:focus-visible {
+  background: #3a5585;
+  border-color: #f7d780;
+  color: #f7d780;
+}
+.account-form .password-toggle[aria-pressed="true"] {
+  color: #f7d780;
+}
+.password-toggle svg {
+  width: 22px;
+  height: 22px;
+}
+/* Eight fighters as two rows of four when the roster has room, else four rows of two. */
+.roster-panel {
+  container-type: inline-size;
+}
+.showcase-roster {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@container (min-width: 640px) {
+  .showcase-roster {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}

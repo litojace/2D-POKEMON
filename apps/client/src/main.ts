@@ -1,4 +1,3 @@
-import { drawElementGlyph } from "./element-effects";
 import { fighterSelection } from "./fighter-selection";
 import { setupBattleDock } from "./battle-dock";
 import {
@@ -10,6 +9,16 @@ import { rigAssets } from "./animation/assets";
 import { setOverlayMarkup } from "./overlay";
 import { stadiumCrowd } from "./stadium";
 import { paintArenaFloor } from "./arena-floor";
+import {
+  drawChannel,
+  drawProjectile,
+  drawWindup,
+  drawZone,
+  playBeam,
+  playCast,
+  playHit,
+  playImpact,
+} from "./skill-effects";
 import { setupPWA } from "./pwa";
 import { abilityIcon } from "./ability-icons";
 import { TouchControls } from "./touch-controls";
@@ -42,6 +51,12 @@ const allAbilities = new Map(
   Object.values(CHARACTERS)
     .flatMap((c) => [c.basic, ...c.skills])
     .map((a) => [a.id, a]),
+);
+/** The fighter colour that owns each move, for element-tinted hit sparks. */
+const abilityColor = new Map(
+  Object.values(CHARACTERS).flatMap((c) =>
+    [c.basic, ...c.skills].map((a) => [a.id, c.color] as const),
+  ),
 );
 const remoteFrames = new InterpolationBuffer();
 const socket = io(import.meta.env.VITE_SERVER_URL || undefined, {
@@ -194,12 +209,11 @@ window.addEventListener("blur", stopControls);
 window.addEventListener("pagehide", stopControls);
 document.addEventListener("visibilitychange", stopControls);
 const pwa = setupPWA(() => state?.phase, dialog, toast);
-let elementFilter = "All";
 function renderMenu() {
   pwa.sync();
   const p = state?.players.find((p) => p.id === myId);
   const isRoom = !!p;
-  const key = `${isRoom ? "room" : "home"}:${state?.players.map((p) => `${p.id}${p.character}${p.ready}${p.connected}`).join(":")}:${selected}:${elementFilter}`;
+  const key = `${isRoom ? "room" : "home"}:${state?.players.map((p) => `${p.id}${p.character}${p.ready}${p.connected}`).join(":")}:${selected}`;
   if (screen === key) return;
   screen = key;
   touch.reset();
@@ -207,7 +221,7 @@ function renderMenu() {
   $("battle").hidden = true;
   $("menu").hidden = false;
   $("menu").innerHTML =
-    `<div class="eyebrow"><span class="live-dot"></span> ONLINE 1V1 · REAL-TIME BATTLES</div><div class="intro"><div><h1>Your creature.<br>Your <em>arena.</em></h1><p>Eight original creatures. One basic attack and four special skills each. No waiting for your turn.<br>Challenge a friend to a real-time duel in Elemental Coliseum.</p></div><div class="arena-badge">✦<span>ELEMENTAL COLISEUM</span><small>BEST OF THREE</small></div></div><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected, elementFilter)}</div><aside class="room-panel">${isRoom ? `<div class="eyebrow">PRIVATE LOBBY</div><h2>Your duel starts here.</h2><p>Share this code with your friend.</p><button id="copy" class="room-code">${state!.code}<span>COPY CODE ↗</span></button><div class="players">${state!.players.map((p, i) => `<div><span class="player-dot" style="background:#${CHARACTERS[p.character].color.toString(16)}">${i + 1}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small>${CHARACTERS[p.character].name}</small></span><b>${!p.connected ? "OFFLINE" : p.ready ? "READY" : "CHOOSING"}</b></div>`).join("")}${state!.players.length < 2 ? '<div class="waiting"><span>＋</span> Waiting for your opponent…</div>' : ""}</div><button class="primary" id="ready">${p!.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full" id="leave">Leave room</button><small class="room-note">The match begins when both players are ready.</small>` : `<div class="eyebrow">PLAY ONLINE</div><h2>A friend. A code.<br>A worthy opponent.</h2><label for="name">YOUR DISPLAY NAME</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><button class="primary" id="create">Create private room →</button>${accountsUI?.account ? '<button class="secondary full" id="practice">Solo test mode →</button>' : ""}<div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><small class="room-note">2 players · Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`}</aside></div>`;
+    `<div class="eyebrow"><span class="live-dot"></span> ONLINE 1V1 · REAL-TIME BATTLES</div><div class="intro"><div><h1>Your creature.<br>Your <em>arena.</em></h1><p>Eight original creatures. One basic attack and four special skills each. No waiting for your turn.<br>Challenge a friend to a real-time duel in Elemental Coliseum.</p></div><div class="arena-badge">✦<span>ELEMENTAL COLISEUM</span><small>BEST OF THREE</small></div></div><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected)}</div><aside class="room-panel">${isRoom ? `<div class="eyebrow">PRIVATE LOBBY</div><h2>Your duel starts here.</h2><p>Share this code with your friend.</p><button id="copy" class="room-code">${state!.code}<span>COPY CODE ↗</span></button><div class="players">${state!.players.map((p, i) => `<div><span class="player-dot" style="background:#${CHARACTERS[p.character].color.toString(16)}">${i + 1}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small>${CHARACTERS[p.character].name}</small></span><b>${!p.connected ? "OFFLINE" : p.ready ? "READY" : "CHOOSING"}</b></div>`).join("")}${state!.players.length < 2 ? '<div class="waiting"><span>＋</span> Waiting for your opponent…</div>' : ""}</div><button class="primary" id="ready">${p!.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full" id="leave">Leave room</button><small class="room-note">The match begins when both players are ready.</small>` : `<div class="eyebrow">PLAY ONLINE</div><h2>A friend. A code.<br>A worthy opponent.</h2><label for="name">YOUR DISPLAY NAME</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><button class="primary" id="create">Create private room →</button>${accountsUI?.account ? '<button class="secondary full" id="practice">Solo test mode →</button>' : ""}<div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><small class="room-note">2 players · Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`}</aside></div>`;
   document.querySelectorAll<HTMLButtonElement>("[data-character]").forEach(
     (button) =>
       (button.onclick = async () => {
@@ -219,11 +233,6 @@ function renderMenu() {
         celebrateSelection($("menu"), reducedMotion);
       }),
   );
-  $<HTMLSelectElement>("fighter-filter").onchange = () => {
-    elementFilter = $<HTMLSelectElement>("fighter-filter").value;
-    screen = "";
-    renderMenu();
-  };
   if (!isRoom && accountsUI?.account)
     $<HTMLInputElement>("name").readOnly = true;
   if (isRoom) {
@@ -729,7 +738,11 @@ class ArenaScene extends Phaser.Scene {
     this.scale.refresh();
   }
   effect(event: Snapshot["events"][number]) {
-    if (event.owner === myId || event.kind === "hit" || event.kind === "round")
+    if (
+      (event.owner === myId && event.kind !== "impact") ||
+      event.kind === "hit" ||
+      event.kind === "round"
+    )
       audio.play(event.kind);
     if (
       this.animationLive &&
@@ -777,114 +790,65 @@ class ArenaScene extends Phaser.Scene {
           event.id,
         );
     }
+    const ability = event.abilityId
+      ? allAbilities.get(event.abilityId)
+      : undefined;
+    const owner = state?.players.find((p) => p.id === event.owner);
     if (
       event.kind === "beam" &&
+      ability &&
       event.tx !== undefined &&
       event.ty !== undefined
-    ) {
-      const beam = this.add.graphics().setDepth(4);
-      beam
-        .lineStyle(14, event.color, 0.25)
-        .lineBetween(event.x, event.y - 12, event.tx, event.ty);
-      beam
-        .lineStyle(5, 0xffffff, 0.85)
-        .lineBetween(event.x, event.y - 12, event.tx, event.ty);
-      this.tweens.add({
-        targets: beam,
-        alpha: 0,
-        duration: reducedMotion ? 120 : 260,
-        onComplete: () => beam.destroy(),
-      });
-      return;
-    }
-    const burst =
-      event.kind === "burst" && event.abilityId
-        ? allAbilities.get(event.abilityId)
-        : undefined;
-    if (burst) {
-      // Show the true server hit radius so players can read the attack.
-      const ring = this.add
-        .circle(event.x, event.y, burst.radius, event.color, 0.16)
-        .setStrokeStyle(4, event.color, 0.9)
-        .setDepth(1);
-      if (burst.ground) ring.setScale(1, 0.85);
-      this.tweens.add({
-        targets: ring,
-        alpha: 0,
-        scale: reducedMotion ? 1 : 1.08,
-        duration: 420,
-        onComplete: () => ring.destroy(),
-      });
-      return;
-    }
-    const melee =
-      event.kind === "cast" && event.abilityId
-        ? allAbilities.get(event.abilityId)
-        : undefined;
-    const attacker = state?.players.find((p) => p.id === event.owner);
-    if (melee?.kind === "melee" && attacker) {
-      // Swipe arc that matches the server hit range and width.
-      const spread = Math.min(Math.PI * 0.95, Math.acos(melee.arc ?? 0.35));
-      const swipe = this.add.graphics().setDepth(4);
-      swipe
-        .fillStyle(event.color, 0.28)
-        .slice(
-          event.x,
-          event.y - 10,
-          melee.range,
-          attacker.angle - spread,
-          attacker.angle + spread,
-        )
-        .fillPath();
-      swipe
-        .lineStyle(4, 0xffffff, 0.7)
-        .beginPath()
-        .arc(
-          event.x,
-          event.y - 10,
-          melee.range * 0.92,
-          attacker.angle - spread,
-          attacker.angle + spread,
-        )
-        .strokePath();
-      this.tweens.add({
-        targets: swipe,
-        alpha: 0,
-        duration: reducedMotion ? 120 : 220,
-        onComplete: () => swipe.destroy(),
-      });
-    }
-    if (reducedMotion) return;
-    const ring = this.add
-      .circle(
+    )
+      playBeam(
+        this,
+        ability,
         event.x,
         event.y,
-        event.kind === "hit" ? 18 : 30,
+        event.tx,
+        event.ty,
         event.color,
-        0.2,
-      )
-      .setStrokeStyle(2, event.color, 0.8);
-    this.tweens.add({
-      targets: ring,
-      scale: 2.8,
-      alpha: 0,
-      duration: 350,
-      onComplete: () => ring.destroy(),
-    });
+        reducedMotion,
+      );
+    // Novas play on their burst event; every other move plays on cast.
+    if (ability && event.kind === "burst")
+      playCast(this, ability, event.x, event.y, 0, event.color, reducedMotion);
+    if (ability && event.kind === "cast" && ability.kind !== "nova")
+      playCast(
+        this,
+        ability,
+        event.x,
+        event.y,
+        owner?.angle ?? 0,
+        event.color,
+        reducedMotion,
+      );
+    if (ability && event.kind === "impact")
+      playImpact(this, ability, event.x, event.y, event.color, reducedMotion);
     if (event.kind === "hit")
-      for (let i = 0; i < 6; i++) {
-        const angle = (i * Math.PI) / 3;
-        const particle = this.add.circle(event.x, event.y, 3, event.color);
-        this.tweens.add({
-          targets: particle,
-          x: event.x + Math.cos(angle) * 45,
-          y: event.y + Math.sin(angle) * 45,
-          alpha: 0,
-          scale: 0,
-          duration: 300,
-          onComplete: () => particle.destroy(),
-        });
-      }
+      playHit(
+        this,
+        ability?.element ?? "",
+        event.x,
+        event.y,
+        (ability && abilityColor.get(ability.id)) ?? event.color,
+        reducedMotion,
+      );
+    if (
+      !reducedMotion &&
+      (event.kind === "dash" || event.kind === "jump" || event.kind === "land")
+    ) {
+      const ring = this.add
+        .circle(event.x, event.y, 22, event.color, 0.15)
+        .setStrokeStyle(2, event.color, 0.7);
+      this.tweens.add({
+        targets: ring,
+        scale: 2.2,
+        alpha: 0,
+        duration: 300,
+        onComplete: () => ring.destroy(),
+      });
+    }
     if (event.value) {
       const label = this.add
         .text(event.x, event.y - 45, `−${event.value}`, {
@@ -1032,67 +996,18 @@ class ArenaScene extends Phaser.Scene {
     const g = this.graphics;
     g.clear();
     this.rigs.forEach((rig) => rig.setVisible(false));
-    for (const z of state.zones) {
-      g.fillStyle(z.color, 0.12).fillCircle(z.x, z.y, z.radius);
-      g.lineStyle(3, z.color, 0.7).strokeCircle(z.x, z.y, z.radius);
-      drawElementGlyph(
+    for (const z of state.zones)
+      drawZone(
         g,
-        z.ability.element,
-        z.x,
-        z.y,
-        Math.min(22, z.radius * 0.18),
-        z.color,
-        0.35,
+        z,
+        1 -
+          Math.max(0, z.until - state.time) /
+            Math.max(0.01, z.ability.duration),
+        _time,
+        reducedMotion,
       );
-      if (!reducedMotion) {
-        const pulse = 1 + Math.sin(_time / 140) * 0.08;
-        g.lineStyle(1, z.color, 0.3).strokeCircle(z.x, z.y, z.radius * pulse);
-      }
-    }
-    for (const pr of state.projectiles) {
-      // Layered comet trail: wide soft glow, element-coloured body, white-hot core.
-      const r = pr.ability.radius,
-        trail = reducedMotion ? 0.03 : 0.075;
-      g.lineStyle(r * 2.4, pr.color, 0.16).lineBetween(
-        pr.x - pr.vx * trail,
-        pr.y - pr.vy * trail,
-        pr.x,
-        pr.y,
-      );
-      g.lineStyle(r * 1.2, pr.color, 0.45).lineBetween(
-        pr.x - pr.vx * trail * 0.6,
-        pr.y - pr.vy * trail * 0.6,
-        pr.x,
-        pr.y,
-      );
-      g.lineStyle(Math.max(2, r * 0.45), 0xffffff, 0.75).lineBetween(
-        pr.x - pr.vx * trail * 0.3,
-        pr.y - pr.vy * trail * 0.3,
-        pr.x,
-        pr.y,
-      );
-      g.fillStyle(pr.color, 0.25).fillCircle(pr.x, pr.y, r * 2.2);
-      g.fillStyle(pr.color, 0.2).fillCircle(
-        pr.x,
-        pr.y,
-        pr.ability.radius * 1.7,
-      );
-      g.fillStyle(pr.color).fillCircle(pr.x, pr.y, pr.ability.radius);
-      drawElementGlyph(
-        g,
-        pr.ability.element,
-        pr.x,
-        pr.y,
-        Math.max(6, pr.ability.radius),
-        pr.color,
-        0.9,
-      );
-      g.fillStyle(0xffffff, 0.8).fillCircle(
-        pr.x - 3,
-        pr.y - 3,
-        pr.ability.radius * 0.4,
-      );
-    }
+    for (const pr of state.projectiles)
+      drawProjectile(g, pr, _time, reducedMotion);
     for (const serverPlayer of state.players) {
       const p = serverPlayer.id === myId && local ? local : serverPlayer;
       let pos = this.positions.get(p.id);
@@ -1211,27 +1126,29 @@ class ArenaScene extends Phaser.Scene {
         ).strokeCircle(x, y - jump - 10, 40);
       if (serverPlayer.statuses.some((s) => s.kind === "empower"))
         g.lineStyle(2, 0xffb347, 0.7).strokeEllipse(x, y + 12, 84, 38);
-      if (serverPlayer.channel && !reducedMotion) {
+      if (serverPlayer.channel) {
         const cone = c.skills[serverPlayer.channel.skill];
-        if (cone) {
-          const spread = Math.acos(cone.arc ?? 0.7);
-          const flicker = 0.85 + Math.sin(_time / 40) * 0.15;
-          g.fillStyle(c.color, 0.22).slice(
-            x,
-            y - 12,
-            cone.range * flicker,
-            p.angle - spread,
-            p.angle + spread,
-          );
-          g.fillPath();
-        }
+        if (cone)
+          drawChannel(g, cone, x, y, p.angle, c.color, _time, reducedMotion);
       }
       if (serverPlayer.charge) {
-        g.lineStyle(3, c.color, 0.8).strokeCircle(
-          x,
-          y,
-          45 + Math.sin(_time / 80) * 8,
-        );
+        // Wind-up telegraph showing the real area of the incoming move.
+        const windup = c.skills[serverPlayer.charge.skill];
+        if (windup)
+          drawWindup(
+            g,
+            windup,
+            x,
+            y,
+            p.angle,
+            serverPlayer.lastInput.aimX,
+            serverPlayer.lastInput.aimY,
+            c.color,
+            1 -
+              (serverPlayer.charge.at - state.time) /
+                Math.max(0.01, windup.cast),
+            _time,
+          );
       }
       for (const [i, s] of serverPlayer.statuses.entries()) {
         const colors = {
