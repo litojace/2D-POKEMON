@@ -931,9 +931,12 @@ footer > span:last-child {
   margin: 20px 5px 0;
 }
 .result-stats {
-  display: flex;
-  gap: 35px;
-  margin: 24px 0 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 22px auto 22px;
+  max-width: 460px;
+  text-align: center;
 }
 .result-stats span {
   font-size: 8px;
@@ -3988,19 +3991,6 @@ dialog:has(.admin-tabs) {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.team-slot {
-  width: 100%;
-  padding: 10px 8px;
-  border: 1px dashed color-mix(in srgb, var(--team) 60%, transparent);
-  border-radius: 10px;
-  background: transparent;
-  color: var(--team);
-  font-weight: 700;
-  cursor: pointer;
-}
-.team-slot:hover {
-  background: color-mix(in srgb, var(--team) 14%, transparent);
-}
 .hud.hud-teams {
   grid-template-columns: repeat(2, minmax(0, 1fr)) 140px repeat(
       2,
@@ -4117,22 +4107,169 @@ dialog:has(.admin-tabs) {
   top: calc(var(--safe-top) + 64px);
   z-index: 79;
 }
-/* Narrow 2v2 columns: status sits under the name instead of beside it. */
-.team-column .players > div {
+
+/* ---------- Polish pass ---------- */
+/* A solid strip under the iPhone/iPad status bar (the app draws under it with
+   black-translucent): content never scrolls beneath it, so iOS has nothing to
+   blur and the top of the page stays crisp. */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--safe-top);
+  background: #101c35;
+  z-index: 1000;
+  pointer-events: none;
+}
+/* Result card: centred scoreline and stats. */
+.result-score {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+.result-score b {
+  font-size: 28px;
+  font-weight: 800;
+  color: #fff;
+  min-width: 1ch;
+}
+.result-score i {
+  font-style: normal;
+  color: #ffffff55;
+}
+.result-score span {
+  min-width: 0;
+  max-width: 34%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.result-score span:first-child {
+  text-align: right;
+}
+.result-stats > span {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  column-gap: 8px;
-  row-gap: 0;
-  padding: 10px 0;
+  justify-items: center;
+}
+.overlay-card .result-stats ~ button {
+  min-width: 170px;
+}
+/* Copy-code button: a real icon (iOS turns ↗ into an emoji). */
+.room-code span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.copy-icon {
+  width: 12px;
+  height: 12px;
+}
+/* Lobby status pills. */
+.status-pill {
+  justify-self: start;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.status-pill.ready {
+  color: #7ff0ad;
+  background: #3ccf7a24;
+  border: 1px solid #3ccf7a55;
+}
+.status-pill.choosing {
+  color: #c1cfe4;
+  background: #ffffff10;
+  border: 1px solid #ffffff22;
+}
+.status-pill.offline {
+  color: #ff8f99;
+  background: #ff5d6c22;
+  border: 1px solid #ff5d6c55;
+}
+/* 2v2 columns: identical row heights for players and open seats. */
+.team-column .players > div,
+.team-column .open-slot {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 4px;
+  min-height: 64px;
+  padding: 8px 0;
+  border-bottom: 1px solid #ffffff10;
+}
+.team-column .players > :last-child {
+  border-bottom: 0;
 }
 .team-column .players > div > .player-avatar {
   grid-row: span 2;
 }
 .team-column .players > div > b {
   grid-column: 2;
-  font-size: 9px;
-  letter-spacing: 0.08em;
+  margin: 0;
 }
-.team-column .players > div > span:not(.player-avatar) {
-  min-width: 0;
+.team-column .players strong {
+  display: block;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.team-column .players strong small {
+  font-weight: 500;
+  color: var(--muted);
+}
+.team-column .players .player-fighter {
+  margin-top: 2px;
+}
+.open-slot {
+  color: #93a8c6;
+  font-size: 12px;
+  text-align: left;
+}
+.open-slot small {
+  display: block;
+  margin-top: 2px;
+  font-size: 9px;
+  color: var(--muted);
+}
+.slot-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed #ffffff33;
+  font-size: 18px;
+  color: #ffffff66;
+}
+button.open-slot.join {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #ffffff10;
+  color: var(--team);
+  font-weight: 700;
+  cursor: pointer;
+  border-radius: 0;
+}
+button.open-slot.join .slot-mark {
+  border-color: color-mix(in srgb, var(--team) 70%, transparent);
+  color: var(--team);
+  background: color-mix(in srgb, var(--team) 10%, transparent);
+}
+button.open-slot.join:hover .slot-mark {
+  background: color-mix(in srgb, var(--team) 22%, transparent);
 }

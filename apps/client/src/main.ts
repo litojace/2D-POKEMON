@@ -306,14 +306,16 @@ let roomMode: RoomMode = (() => {
     return "duel";
   }
 })();
+const COPY_ICON =
+  '<svg class="copy-icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
 /** Lobby panel: a duel list, or Blue/Red columns for 2v2. */
 function roomPanel(me: Fighter) {
   const row = (p: Fighter) => {
     const fighter = CHARACTERS[p.id === myId ? selected : p.character];
-    return `<div${p.id === myId ? " data-me" : ""}><span class="player-avatar" style="--element:#${fighter.color.toString(16).padStart(6, "0")}" title="${fighter.name}">${fighterArt(fighter.id)}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small class="player-fighter">${fighter.name}</small></span><b>${!p.connected ? "OFFLINE" : p.ready ? "READY" : "CHOOSING"}</b></div>`;
+    return `<div${p.id === myId ? " data-me" : ""}><span class="player-avatar" style="--element:#${fighter.color.toString(16).padStart(6, "0")}" title="${fighter.name}">${fighterArt(fighter.id)}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small class="player-fighter">${fighter.name}</small></span><b class="status-pill ${!p.connected ? "offline" : p.ready ? "ready" : "choosing"}">${!p.connected ? "Offline" : p.ready ? "Ready" : "Choosing"}</b></div>`;
   };
   const ready = `<button class="primary" id="ready">${me.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full" id="leave">Leave room</button>`;
-  const code = `<button id="copy" class="room-code">${state!.code}<span>COPY CODE ↗</span></button>`;
+  const code = `<button id="copy" class="room-code">${state!.code}<span>${COPY_ICON}COPY CODE</span></button>`;
   if (!isTeams())
     return `<div class="eyebrow">PRIVATE LOBBY</div><h2>Your duel starts here.</h2><p>Share this code with your friend.</p>${code}<div class="players">${state!.players.map(row).join("")}${state!.players.length < 2 ? '<div class="waiting"><span>＋</span> Waiting for your opponent…</div>' : ""}</div>${ready}<small class="room-note">The match begins when both players are ready.</small>`;
   const mine = teamOf(me),
@@ -322,10 +324,11 @@ function roomPanel(me: Fighter) {
     .map((t) => {
       const members = state!.players.filter((p) => teamOf(p) === t);
       const open = Math.max(0, 2 - members.length);
-      const slots = Array.from({ length: open }, () =>
-        t === mine
-          ? '<div class="waiting"><span>＋</span> Open slot</div>'
-          : `<button type="button" class="team-slot" data-team="${t}"><span>＋</span> Join ${TEAM_LABELS[t]}</button>`,
+      // One way to join the other team; further free seats are just shown open.
+      const slots = Array.from({ length: open }, (_, k) =>
+        t !== mine && k === 0
+          ? `<button type="button" class="open-slot join" data-team="${t}"><span class="slot-mark">＋</span><span>Join ${TEAM_LABELS[t]}<small>Switch to this team</small></span></button>`
+          : `<div class="open-slot"><span class="slot-mark">＋</span><span>Open slot<small>Waiting for a player</small></span></div>`,
       ).join("");
       return `<div class="team-column team-${t}${t === mine ? " mine" : ""}"><div class="team-head">${TEAM_LABELS[t]} team</div><div class="players">${members.map(row).join("")}${slots}</div></div>`;
     })
@@ -735,9 +738,23 @@ function renderBattle() {
         ? state.winnerTeam === teamOf(me)
         : state.winner === myId;
       heading = won ? "Victory. Well played." : "A worthy fight.";
+      // Scoreline: your side on the left, always.
+      const score = (left: string, a: number, b: number, right: string) =>
+        `<div class="result-score"><span>${left}</span><b>${a}</b><i>–</i><b>${b}</b><span>${right}</span></div>`;
+      const rival = state.players.find((p) => p.id !== myId);
       details = isTeams()
-        ? `${state.winnerTeam === undefined || state.winnerTeam === null ? "Nobody" : `${TEAM_LABELS[state.winnerTeam]} team`} wins · Blue ${state.teamScores?.[0] ?? 0} — ${state.teamScores?.[1] ?? 0} Red`
-        : `${escape(state.players.find((p) => p.id === state!.winner)?.name ?? "Nobody")} wins · ${state.players.map((p) => state!.scores[p.id]).join(" — ")}`;
+        ? score(
+            `${TEAM_LABELS[teamOf(me)]} team`,
+            state.teamScores?.[teamOf(me)] ?? 0,
+            state.teamScores?.[1 - teamOf(me)] ?? 0,
+            `${TEAM_LABELS[1 - teamOf(me)]} team`,
+          )
+        : score(
+            "You",
+            state.scores[me.id] ?? 0,
+            rival ? (state.scores[rival.id] ?? 0) : 0,
+            escape(rival?.name ?? "Opponent"),
+          );
       const stats = me.stats;
       details += `<div class="result-stats"><span><b>${Math.round(stats.dealt)}</b>DAMAGE DEALT</span><span><b>${Math.round(stats.received)}</b>DAMAGE TAKEN</span><span><b>${stats.skills}</b>SKILLS CAST</span></div><button class="primary" id="rematch">${me.ready ? "Waiting for opponent…" : "Rematch →"}</button><button class="secondary" id="return">${state.vsBot ? "Back to menu" : "Return to lobby"}</button>`;
     }
