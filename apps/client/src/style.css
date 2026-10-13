@@ -4306,3 +4306,76 @@ button.open-slot.join .slot-mark {
 button.open-slot.join:hover .slot-mark {
   background: color-mix(in srgb, var(--team) 22%, transparent);
 }
+
+.desktop-lobby-header {
+  display: none;
+}
+@media (min-width: 701px) {
+  body:not(.battle-active) main {
+    max-width: 1600px;
+    padding-top: 24px;
+    padding-left: calc(3vw + var(--safe-left));
+    padding-right: calc(3vw + var(--safe-right));
+  }
+  #menu > .intro,
+  #menu > .mobile-lobby-eyebrow,
+  #menu .roster-panel > .section-title {
+    display: none;
+  }
+  .desktop-lobby-header {
+    display: block;
+    padding: 12px 0 20px;
+    margin-bottom: 18px;
+    border-bottom: 1px solid #8cafdf26;
+    background: radial-gradient(
+      ellipse at 35% 100%,
+      #31588a26,
+      transparent 65%
+    );
+  }
+  .desktop-lobby-header h1 {
+    font-size: clamp(32px, 3.2vw, 46px);
+    line-height: 1.1;
+    letter-spacing: -0.5px;
+    margin: 8px 0 6px;
+  }
+  .desktop-lobby-header p {
+    margin: 0;
+    font-size: 14px;
+  }
+  #menu .lobby-layout {
+    grid-template-columns: minmax(0, 1fr) clamp(280px, 25vw, 360px);
+    align-items: start;
+    gap: 20px;
+  }
+  #menu .room-panel {
+    background: linear-gradient(145deg, #172e4c, #0d1b30);
+    border: 1px solid #759fd355;
+    border-radius: 16px;
+  }
+  #menu .team-columns {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  #menu .team-column {
+    padding: 12px;
+  }
+  #menu .room-panel > .primary {
+    background: linear-gradient(135deg, #ffe599, #e8b741);
+    color: #18243a;
+    box-shadow: 0 4px 20px #e8b74126;
+  }
+}
+@media (min-width: 1100px) {
+  #menu .showcase-card .card-art svg,
+  #menu .showcase-card .card-art .creature-portrait {
+    max-height: 150px;
+  }
+  #menu .showcase-card {
+    padding: 14px;
+    gap: 8px;
+  }
+  #menu .showcase-card .card-head {
+    flex-wrap: wrap;
+  }
+}
