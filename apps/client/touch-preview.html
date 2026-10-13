@@ -23,9 +23,13 @@
           >⚡</span
         >
       </div>
-      <p id="action" class="hud" role="status">
-        CONTROL DEMO · Move and attack together · no live match
-      </p>
+      <div class="hud" style="pointer-events: auto">
+        <span id="action" role="status">CONTROL DEMO &middot; no live match</span
+        ><label
+          >Fighter
+          <select id="preview-fighter"></select
+        ></label>
+      </div>
       <div id="controls"></div>
     </main>
     <script type="module">
@@ -82,13 +86,25 @@
       };
       document.body.classList.add("battle-active");
       controls.resize();
-      controls.update(
-        true,
-        ["Arc Pulse", "Charge Orb", "Livewire Field", "Overcharge"],
-        [0, 0, 0, 0],
-        0,
-        0,
-      );
+      import { CHARACTERS } from "@arena/shared";
+      const choice = document.querySelector("#preview-fighter");
+      choice.innerHTML = Object.values(CHARACTERS)
+        .map((c) => `<option value="${c.id}">${c.name}</option>`)
+        .join("");
+      const paintMoves = () => {
+        const c = CHARACTERS[choice.value];
+        controls.update(
+          true,
+          c.skills.map((a) => a.name),
+          [0, 0, 0],
+          0,
+          0,
+          c.skills.map((a) => a.cooldown),
+          { name: c.basic.name, left: 0, duration: c.basic.cooldown },
+        );
+      };
+      choice.onchange = paintMoves;
+      paintMoves();
       document.querySelector("#mobile-settings").onclick = () => {
         const panel = document.createElement("dialog");
         panel.innerHTML =

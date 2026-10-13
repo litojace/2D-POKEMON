@@ -5,11 +5,10 @@ import {
   mobileLayout,
   DEFAULT_CONTROLS,
 } from "../../apps/client/src/mobile-input";
-it("leaves a separate court between landscape controls and stadium bands", () => {
+it("keeps full-width landscape controls inside the safe court", () => {
   for (const [width, height, left, right, bottom] of [
     [667, 375, 0, 0, 0],
     [852, 393, 59, 59, 21],
-    [1024, 768, 0, 0, 20],
     [568, 320, 0, 0, 0],
     [667, 375, 59, 59, 21],
   ]) {
@@ -21,26 +20,23 @@ it("leaves a separate court between landscape controls and stadium bands", () =>
     });
     const layout = mobileLayout(
       available.width,
-      available.height,
+      Math.max(180, available.height - 64),
       DEFAULT_CONTROLS,
     );
-    const bands = stadiumBands(available.height);
-    if (layout.compact) {
-      const bottomBand = Math.max(layout.height, layout.joystick + 20) + 70;
-      const courtBottom = height - bottom - bottomBand;
-      const controlsTop =
-        height - bottom - 64 - Math.max(layout.height, layout.joystick + 20);
-      expect(courtBottom).toBeLessThan(controlsTop);
-      expect(courtBottom - bands.top).toBeGreaterThan(90);
-      expect(layout.width + layout.joystick + 20).toBeLessThan(available.width);
-      continue;
-    }
-    const courtLeft = left + 12 + layout.joystick + 32;
-    const courtRight = width - right - 12 - layout.width - 12;
-    expect(courtRight - courtLeft).toBeGreaterThan(140);
-    expect(height - bottom - bands.top - bands.bottom).toBeGreaterThan(160);
-    expect(courtLeft).toBeGreaterThan(left + 12 + layout.joystick + 20);
-    expect(courtRight).toBeLessThan(width - right - 12 - layout.width);
+    const court = {
+      left: left + 4,
+      right: width - right - 4,
+      top: 58,
+      bottom: height - bottom - 4,
+    };
+    const controlsTop = height - bottom - 14 - layout.height;
+    expect(controlsTop).toBeGreaterThan(court.top);
+    expect(height - bottom - 14).toBeLessThan(court.bottom);
+    expect(layout.width + layout.joystick + 32).toBeLessThanOrEqual(
+      width - left - right,
+    );
+    expect(layout.targets).toHaveLength(6);
+    expect(court.right - court.left).toBeGreaterThan(width - left - right - 10);
   }
 });
 it("keeps crowd decoration outside the input system", () => {

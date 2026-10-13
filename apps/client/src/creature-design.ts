@@ -32,52 +32,52 @@ export const creaturePalette: Record<
   { light: string; mid: string; dark: string; glow: string }
 > = {
   voltkit: {
-    light: "#fff2a2",
-    mid: "#efc63e",
-    dark: "#36384e",
-    glow: "#ffe778",
+    light: "#fff0a0",
+    mid: "#ffdf65",
+    dark: "#6b4a30",
+    glow: "#ffe57b",
   },
   cindrake: {
-    light: "#ffc39b",
-    mid: "#ee7749",
-    dark: "#963749",
-    glow: "#ffe08a",
+    light: "#ffd69c",
+    mid: "#f3a366",
+    dark: "#98523c",
+    glow: "#ffbe4d",
   },
   tidefin: {
-    light: "#b1f6ff",
-    mid: "#36b9d0",
-    dark: "#235d95",
-    glow: "#a7faff",
+    light: "#a6c7ed",
+    mid: "#5b91c6",
+    dark: "#25395f",
+    glow: "#88dcff",
   },
   auralynx: {
-    light: "#f3d9ff",
-    mid: "#b386e8",
-    dark: "#583e92",
-    glow: "#f2b7ff",
+    light: "#a6d5ee",
+    mid: "#689fc8",
+    dark: "#303d55",
+    glow: "#85dfff",
   },
   thornback: {
-    light: "#d6ef9a",
-    mid: "#80b477",
-    dark: "#385f58",
-    glow: "#f7d989",
+    light: "#ffffff",
+    mid: "#aee2b5",
+    dark: "#46735c",
+    glow: "#ff8cab",
   },
   frostfang: {
-    light: "#ffffff",
-    mid: "#b8ddeb",
-    dark: "#6892b4",
-    glow: "#d8faff",
+    light: "#899dde",
+    mid: "#5267a7",
+    dark: "#263454",
+    glow: "#f7d665",
   },
   duskveil: {
-    light: "#c8a1f2",
-    mid: "#664c98",
-    dark: "#272440",
-    glow: "#c1a4ff",
+    light: "#ffffff",
+    mid: "#f7d9e9",
+    dark: "#ad709e",
+    glow: "#ffd3ee",
   },
   terradon: {
-    light: "#dac8ad",
-    mid: "#988b83",
-    dark: "#4c5363",
-    glow: "#ffbc71",
+    light: "#ffedb6",
+    mid: "#d6bb79",
+    dark: "#584335",
+    glow: "#bd96ee",
   },
 };
 export function creatureLayers(id: CharacterId, dir: Facing) {
@@ -199,6 +199,92 @@ export function creatureLayers(id: CharacterId, dir: Facing) {
     layers.legL = paw(78, 161, true);
     layers.legR = paw(122, 161, true);
   }
+  // Pokemon silhouettes and signature anatomy, using the existing articulated parts.
+  const hand = (x: number, fill = body) =>
+    `${e(x, 137, 9, 19, fill)}${e(x, 152, 10, 6, fill)}`;
+  layers.armL = hand(65);
+  layers.armR = hand(135);
+  if (id === "voltkit") {
+    layers.scarf = "";
+    layers.wings = "";
+    layers.head = `${e(100, 89, 43, 33, face)}${back ? "" : `${e(63, 103, 10, 7, "#ed6464")}${e(137, 103, 10, 7, "#ed6464")}<path d="m96 98 4 3 4-3Z" fill="#493a3c"/><path d="M93 107q7 8 14 0" stroke="#493a3c" fill="none"/>`}`;
+  }
+  if (id === "cindrake") {
+    layers.flame = "";
+    layers.scarf = "";
+    layers.head = `<path d="M63 78 63 47q0-9 19 15 18-7 36 0 19-24 19-15v31q18 44-37 44T63 78Z" fill="${face}"/>${back ? "" : muzzle}`;
+    layers.ears = "";
+    layers.wings = `<path d="M74 114Q29 54 22 77l10 52q24-16 39 9m55-24q45-60 52-37l-10 52q-24-16-39 9" fill="#78c9cc" stroke="#cc8150"/>`;
+    layers.tail = `<path d="M128 145q43 18 32-33" fill="none" stroke="#ed995b" stroke-width="12"/><path d="M158 117q-16-10-3-31 4 12 10 5 14 20-7 26Z" fill="#ffce55"/>`;
+  }
+  if (id === "tidefin") {
+    layers.wings = "";
+    layers.tail = "";
+    layers.ears = "";
+    layers.head = `<path d="M57 83 44 55q-3-8 28 9l24-22q4-5 8 0l24 22q31-17 28-9l-13 28q10 37-43 37T57 83Z" fill="${face}"/><path d="M59 82q19-5 41 14 22-19 41-14l-4 25q-37 30-74 0Z" fill="#f3efdc"/>`;
+    layers.scarf = `<path d="M70 115q30 15 60 0l3 14q-33 14-66 0Z" fill="#ee9ab4"/><path d="M129 120q33-26 46-9-23 1-35 23Z" fill="#ee9ab4"/>`;
+    layers.body = `${e(100, 137, 28, 30)}${e(100, 140, 16, 23, "#f3efdc")}`;
+  }
+  if (id === "auralynx") {
+    layers.wings = "";
+    layers.scarf = "";
+    layers.flame = "";
+    layers.head = `<path d="M59 84q-3-34 41-34t41 34q10 38-41 38T59 84Z" fill="${face}"/><path d="M57 79q19-16 43-6 24-10 43 6l-7 26-26-4-10-9-10 9-26 4Z" fill="#303d55"/>${muzzle}`;
+    layers.ears = `<path d="m75 65-12-44q-2-11 15 4l12 35m20 0 12-35q17-15 15-4l-12 44" fill="#303d55"/>`;
+    layers.body = `${e(100, 137, 28, 31)}${e(100, 139, 20, 24, "#f6e6bc")}<path d="m95 130 5-13 5 13-5 5Z" fill="#fff9e6"/>`;
+    layers.armL = hand(65, "#303d55");
+    layers.armR = hand(135, "#303d55");
+    layers.tail = `<path d="M128 141q38-11 25 15-18 10-34-1Z" fill="${body}"/>`;
+  }
+  if (id === "thornback") {
+    layers.tail = "";
+    layers.wings = "";
+    layers.scarf = "";
+    layers.ears = "";
+    layers.head = `${e(100, 91, 32, 32, "#f7ffef")}<path d="M61 96Q51 47 100 43q49 4 39 53l-18-33-5 57-16-8-16 8-5-57Z" fill="#80c89a"/>`;
+    layers.body = `<path d="M83 113q17-8 34 0l6 21 26 35q-49 12-98 0l26-35Z" fill="#f9fff3"/><path d="m98 116-9-13 16 3 8 18Z" fill="#e36d89"/>`;
+    layers.armL = hand(65, "#80c89a");
+    layers.armR = hand(135, "#80c89a");
+    layers.eyes = back
+      ? ""
+      : profile
+        ? eye(100 + side * 12)
+        : eye(83) + eye(117);
+  }
+  if (id === "frostfang") {
+    layers.scarf = "";
+    layers.tail = `<path d="M128 143 166 127 157 153 122 156Z" fill="${body}"/>`;
+    layers.flame = "";
+    layers.head = `<path d="m63 63 24-9 13-13 13 13 24 9 10 22-16 30-31 7-31-7-16-30Z" fill="${face}"/><path d="m100 59-10 20 10-5 10 5Z" fill="#f7d665"/>${muzzle}`;
+    layers.ears = `<path d="M65 69 38 58 43 44l37 7m55 18 27-11-5-14-37 7" fill="${body}"/>`;
+    layers.body = `${e(100, 139, 33, 29)}<path d="M81 115q19 9 38 0l9 33-28 18-28-18Z" fill="#c56863"/><path d="m100 146-10 15 10-4 10 4Z" fill="#f7d665"/>`;
+    layers.wings = `<path d="m65 124-25-14 10 31 22 5m63-22 25-14-10 31-22 5" fill="${body}"/>`;
+  }
+  if (id === "duskveil") {
+    layers.head = `${e(100, 90, 39, 32, "#fff7fc")}${muzzle}`;
+    layers.ears = `<path d="M76 66Q44 43 56 13q32 12 33 45m35 8q32-23 20-53-32 12-33 45" fill="#f1bed7"/><path d="M71 54 62 26l17 25m50 3 9-28-17 25" fill="#739cc6"/>`;
+    layers.body = `${e(100, 139, 31, 28, "#fff7fc")}${e(100, 143, 18, 20, "#f9ddeb")}`;
+    layers.scarf = `<path d="m100 118-18-9-6 15 24-5 24 5-6-15Z" fill="#edafd0"/><path d="M80 119q-37 26-26 40m67-40q38 26 27 40" stroke="#fff0fb" stroke-width="10" fill="none"/><path d="m52 151 5 12m90-12-5 12" stroke="#86bad6" stroke-width="5"/>`;
+    layers.wings = "";
+    layers.flame = "";
+    layers.tail = `<path d="M130 143q44 17 31-20-9-13-22 0" stroke="#f4c1db" stroke-width="13" fill="none"/>`;
+  }
+  if (id === "terradon") {
+    layers.body = `<path d="M73 108 127 108l19 55-14 9-15-7-17 9-17-9-15 7-14-9Z" fill="${body}"/><path d="M80 118q-4 22-10 36m40-36 17 36" stroke="#a68d57" fill="none" opacity=".4"/>`;
+    layers.head = `${e(100, 90, 37, 32, face)}<path d="M91 105q9 8 18 0m-21-2 3 5m5-1 1 6m6-6-1 6m7-10-3 5" stroke="#584335" fill="none" stroke-width="2"/>${e(65, 99, 8, 5, "#ad674d")}${e(135, 99, 8, 5, "#ad674d")}`;
+    layers.ears = `<path d="M77 66Q45 43 60 12l26 43m29 0 21-32q7 9 7 20l-21 26" fill="${body}"/><path d="m57 19 10 17m68-8-9 14" stroke="#584335" stroke-width="10"/>`;
+    layers.eyes = back
+      ? ""
+      : `${e(80, 87, 7, 9, "#584335")}${e(120, 87, 7, 9, "#584335")}`;
+    layers.armL = "";
+    layers.armR = "";
+    layers.wings = "";
+    layers.scarf = "";
+    layers.flame = "";
+    layers.legL = e(78, 163, 11, 5, "#584335");
+    layers.legR = e(122, 163, 11, 5, "#584335");
+    layers.tail = `<path d="m130 145 28-25-3 19 17 2-37 20Z" fill="#70573d"/>`;
+  }
   if (back) {
     // Authored rear silhouette: no facial features or inner ear markings.
     layers.head = `${e(100, 88, profile ? 32 : 40, 32, face)}<path d="M78 78q22 12 44 0" stroke="${p.light}" opacity=".6" fill="none" stroke-width="3"/>`;
@@ -210,7 +296,7 @@ export function creatureLayers(id: CharacterId, dir: Facing) {
     // Author the entire profile together, including a protruding muzzle and one visible eye.
     // Coordinates are projected explicitly; no whole-character mirror or detached front mouth.
     const px = (x: number) => 100 + side * (x - 100);
-    const fur = ["voltkit", "auralynx", "frostfang", "duskveil"].includes(id);
+    const fur = ["voltkit", "auralynx", "duskveil"].includes(id);
     const skin = id === "auralynx" || id === "frostfang" ? pearl : face;
     layers.head = `${e(px(96), 88, 31, 29, skin)}${fur ? `<path d="M${px(73)} 94 ${px(64)} 102 ${px(76)} 107 ${px(72)} 115 ${px(89)} 116" fill="${skin}"/>` : ""}<path d="M${px(112)} 97Q${px(125)} 97 ${px(137)} 103Q${px(143)} 106 ${px(137)} 113Q${px(124)} 119 ${px(107)} 113Z" fill="${pearl}"/><path d="M${px(136)} 103 ${px(142)} 106 ${px(137)} 110Z" fill="${p.dark}"/><path d="M${px(136)} 113Q${px(127)} 117 ${px(119)} 112" stroke="${p.dark}" stroke-width="1.7" fill="none"/><path d="M${px(77)} 70Q${px(91)} 62 ${px(103)} 65" stroke="${p.light}" opacity=".75" stroke-width="3" fill="none"/>`;
     layers.eyes = eye(px(109));
@@ -220,8 +306,8 @@ export function creatureLayers(id: CharacterId, dir: Facing) {
     layers.ears = `<g transform="translate(${side * 3} 0) translate(100 0) scale(.72 1) translate(-100 0)">${layers.ears}</g>`;
     layers.scarf = `<g transform="translate(${side * 6} 0) translate(100 0) scale(.73 1) translate(-100 0)">${layers.scarf}</g>`;
     // Forelegs and hind legs converge in depth rather than remaining in a frontal stance.
-    layers.armL = `<g opacity=".75">${paw(px(88), 140, id === "terradon")}</g>`;
-    layers.armR = paw(px(112), 145, id === "terradon");
+    layers.armL = "";
+    layers.armR = hand(px(120), id === "auralynx" ? "#303d55" : body);
     layers.legL = `<g opacity=".8">${paw(px(87), 159)}</g>`;
     layers.legR = paw(px(113), 163);
     layers.wings = `<g transform="translate(${-side * 3} 0) translate(100 0) scale(.65 1) translate(-100 0)">${layers.wings}</g>`;
@@ -235,6 +321,46 @@ export function creatureLayers(id: CharacterId, dir: Facing) {
       layers.tail = `<path d="M${px(74)} 142Q${px(28)} 161 ${px(27)} 122Q${px(31)} 87 ${px(58)} 105Q${px(77)} 124 ${px(52)} 132Q${px(65)} 115 ${px(48)} 113Q${px(36)} 115 ${px(42)} 132L${px(79)} 135Z" fill="${body}"/>`;
     if (id === "terradon")
       layers.tail = `${crystal(px(60), 124, 19)}${crystal(px(40), 143, 11)}`;
+  }
+  if (profile || back) {
+    const px = (x: number) => 100 + side * (x - 100);
+    if (id === "voltkit") {
+      if (profile) layers.head += e(px(112), 101, 7, 5, "#ed6464");
+      if (back)
+        layers.body = `${e(100, 139, 31, 29)}<path d="M82 129h36m-30 11h24" stroke="#a67b45" stroke-width="5"/>`;
+    }
+    if (id === "cindrake") {
+      if (back) layers.body = e(100, 139, 30, 29);
+      if (profile)
+        layers.tail = `<path d="M${px(74)} 145q${-side * 43} 18 ${-side * 32}-33" stroke="#ed995b" stroke-width="12" fill="none"/><path d="M${px(43)} 118q${-side * 16}-10 ${-side * 3}-31 4 12 10 5 14 20-7 26Z" fill="#ffce55"/>`;
+    }
+    if (id === "tidefin") {
+      if (profile)
+        layers.head += `<path d="M${px(75)} 79 ${px(72)} 53 ${px(90)} 67 ${px(104)} 47 ${px(117)} 73" fill="${face}"/><path d="M${px(95)} 96 ${px(120)} 82 ${px(132)} 100 ${px(107)} 111Z" fill="#f3efdc"/>`;
+      if (back) layers.body = e(100, 139, 28, 29);
+    }
+    if (id === "auralynx") {
+      if (profile)
+        layers.head += `<path d="M${px(77)} 78Q${px(94)} 69 ${px(121)} 76L${px(123)} 94 ${px(103)} 99 ${px(85)} 91Z" fill="#303d55"/>`;
+      if (back) layers.body = e(100, 139, 28, 29);
+    }
+    if (id === "thornback") {
+      layers.head += profile
+        ? `<path d="M${px(66)} 95Q${px(60)} 49 ${px(102)} 44Q${px(130)} 45 ${px(126)} 76L${px(104)} 64 ${px(98)} 119 ${px(81)} 108Z" fill="#80c89a"/>`
+        : `<path d="M63 103Q52 48 100 43q48 5 37 60l-15 13-22-8-22 8Z" fill="#80c89a"/>`;
+    }
+    if (id === "frostfang") {
+      if (profile)
+        layers.head += `<path d="M${px(106)} 64 ${px(96)} 83 ${px(111)} 76 ${px(120)} 82Z" fill="#f7d665"/>`;
+      layers.tail = `<path d="M${profile ? px(74) : 128} 143 ${profile ? px(35) : 166} 127 ${profile ? px(45) : 157} 153 ${profile ? px(77) : 122} 156Z" fill="${body}"/>`;
+    }
+    if (id === "duskveil" && profile)
+      layers.tail = `<path d="M${px(74)} 144Q${px(36)} 156 ${px(37)} 129Q${px(43)} 111 ${px(57)} 121" stroke="#f4c1db" stroke-width="13" fill="none"/>`;
+    if (id === "terradon") {
+      layers.armL = layers.armR = "";
+      layers.tail = `<path d="M${profile ? px(74) : 130} 145 ${profile ? px(46) : 158} 120 ${profile ? px(49) : 155} 139 ${profile ? px(32) : 172} 141 ${profile ? px(65) : 135} 161Z" fill="#70573d"/>`;
+      layers.eyes = back ? "" : e(px(109), 88, 7, 9, "#584335");
+    }
   }
   return { defs, layers };
 }

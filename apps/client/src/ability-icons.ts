@@ -161,6 +161,86 @@ const universal: Record<string, string> = {
   "Crystal Jab":
     '<path d="M10 30V18l6-3 5 2 5-3 7 3 4 10-10 14H15Z"/><path d="M4 10h8m26 0 5-4m-2 15h5"/>',
 };
+const pokemonIconSources: Record<string, string> = {
+  "Thunder Shot": "Arc Pulse",
+  "Volt Dash": "Dash",
+  "Electric Field": "Livewire Field",
+  "Thunder Burst": "Overcharge",
+  "Fire Breath": "Crest Flare",
+  "Flame Dash": "Ember Rush",
+  "Blazing Spin": "Ember Ring",
+  "Inferno Strike": "Solar Bloom",
+  "Water Shuriken": "Tidal Blade",
+  "Aqua Dash": "Slipstream",
+  "Shadow Clone": "Mirror Current",
+  "Water Burst": "Riptide Volley",
+  "Aura Sphere": "Prism Shot",
+  "Force Palm": "Shard Combination",
+  "Counter Stance": "Prism Guard",
+  "Aura Burst": "Nova Ray",
+  Psybeam: "Prism Shot",
+  Teleport: "Dash",
+  "Psychic Field": "Root Garden",
+  Moonblast: "Charge Orb",
+  "Dragon Claw": "Crystal Jab",
+  "Sand Dash": "Boulder Charge",
+  Earthquake: "Seismic Crown",
+  "Dragon Rush": "Ember Rush",
+  Charm: "Prism Guard",
+  "Mystical Ribbon": "Tidal Blade",
+  "Healing Wish": "Jump",
+  "Shadow Sneak": "Cloak Rend",
+  "Trick Room": "Static Field",
+  "Phantom Claw": "Shard Combination",
+  "Shadow Burst": "Eclipse",
+};
+for (const [name, source] of Object.entries(pokemonIconSources)) {
+  const prior = abilityArtwork[source];
+  abilityArtwork[name] = {
+    color:
+      name.includes("Fire") ||
+      name.includes("Flame") ||
+      name.includes("Inferno") ||
+      name.includes("Blazing")
+        ? fire
+        : name.includes("Water") || name.includes("Aqua")
+          ? water
+          : name.includes("Thunder") ||
+              name.includes("Volt") ||
+              name.includes("Electric")
+            ? electric
+            : "#cba9f3",
+    art: prior?.art ?? universal[source] ?? universal.Dash,
+  };
+}
+abilityArtwork["Healing Wish"] = {
+  color: "#ffa9d9",
+  art: '<path d="M24 40 7 23Q-2 4 15 6l9 9 9-9Q50 4 41 23Z"/><path d="M24 18v15m-7-7h14"/>',
+};
+abilityArtwork["Charm"] = {
+  color: "#ffa9d9",
+  art: '<path d="M24 39 9 23Q1 9 14 8l10 8 10-8q13 1 5 15Z"/><path d="m4 4 4 5m32-5-4 5"/>',
+};
+abilityArtwork["Moonblast"] = {
+  color: "#f8b5e5",
+  art: '<circle cx="24" cy="24" r="16"/><path d="M30 10q-17 9-8 25 15 4 19-9-4 19-22 12Q3 27 15 13Z"/><path d="m8 4 2 5 5 2-5 2-2 5-2-5-5-2 5-2Z"/>',
+};
+abilityArtwork["Mystical Ribbon"] = {
+  color: "#f8b5e5",
+  art: '<path d="M5 31Q20 4 29 18T44 12M5 38Q20 11 29 25T44 19"/><path d="m7 4 3 5 5 2-5 2-3 5-2-5-5-2 5-2Z"/>',
+};
+abilityArtwork["Trick Room"] = {
+  color: "#bd96ee",
+  art: '<path d="M5 10h38v30H5ZM5 10l12 9h15l11-9M17 19v14l-12 7m27-21v14l11 7"/><circle cx="25" cy="26" r="7"/><path d="M25 22v5l4 2"/>',
+};
+abilityArtwork["Dragon Claw"] = {
+  color: "#99b4ef",
+  art: '<path d="M11 43Q19 17 36 5L22 31ZM23 43Q30 20 44 11L34 33ZM2 35Q8 14 24 4L12 26Z"/>',
+};
+abilityArtwork["Water Shuriken"] = {
+  color: "#85e5f4",
+  art: '<path d="m24 4 6 13 15 7-15 6-6 15-6-15-15-6 15-7Z"/><circle cx="24" cy="24" r="5"/>',
+};
 export function abilityIcon(name: string) {
   const design = abilityArtwork[name];
   const color =

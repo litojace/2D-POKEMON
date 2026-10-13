@@ -15,15 +15,15 @@ import { fighterPackSchema } from "../../apps/client/src/animation/asset-schema"
 import { fighterSelection } from "../../apps/client/src/fighter-selection";
 import { elementShapes } from "../../apps/client/src/element-effects";
 import { readFileSync, existsSync } from "node:fs";
-it("has eight original fighters, forty unique abilities and four skills per fighter", () => {
+it("has eight Pokemon, thirty-two unique moves and three abilities per fighter", () => {
   expect(Object.keys(CHARACTERS)).toEqual([...FIGHTER_IDS]);
   const abilities = Object.values(CHARACTERS).flatMap((c) => [
     c.basic,
     ...c.skills,
   ]);
-  expect(new Set(abilities.map((a) => a.id)).size).toBe(40);
+  expect(new Set(abilities.map((a) => a.id)).size).toBe(32);
   for (const c of Object.values(CHARACTERS)) {
-    expect(c.skills).toHaveLength(4);
+    expect(c.skills).toHaveLength(3);
     expect(c.health).toBeGreaterThan(0);
     expect(c.speed).toBeGreaterThan(0);
     expect(c.skills.some((a) => a.kind !== "projectile")).toBe(true);
@@ -45,30 +45,30 @@ it("preserves the original four health, speed, basic attack, damage and cooldown
     voltkit: {
       hp: 110,
       speed: 270,
-      basic: 8,
-      skills: [18, 23, 4, 10],
-      cooldowns: [4, 7, 10, 30],
+      basic: 18,
+      skills: [12, 4, 10],
+      cooldowns: [7, 10, 30],
     },
     cindrake: {
       hp: 125,
       speed: 240,
-      basic: 9,
-      skills: [18, 6, 22, 9],
-      cooldowns: [5, 8, 10, 30],
+      basic: 18,
+      skills: [22, 6, 9],
+      cooldowns: [8, 10, 30],
     },
     tidefin: {
       hp: 105,
       speed: 285,
-      basic: 7,
-      skills: [18, 0, 0, 12],
-      cooldowns: [4, 8, 12, 30],
+      basic: 18,
+      skills: [12, 0, 12],
+      cooldowns: [8, 12, 30],
     },
     auralynx: {
       hp: 140,
       speed: 235,
-      basic: 12,
-      skills: [20, 28, 0, 45],
-      cooldowns: [5, 7, 12, 30],
+      basic: 20,
+      skills: [28, 0, 45],
+      cooldowns: [7, 12, 30],
     },
   };
   for (const [id, b] of Object.entries(baseline)) {
@@ -115,7 +115,7 @@ it("loads original art and valid public metadata for every fighter and direction
   expect(art.size).toBe(8);
   expect(fighterSelection("voltkit").match(/data-character=/g)).toHaveLength(8);
   expect(
-    fighterSelection("voltkit", "Ice").match(/data-character=/g),
+    fighterSelection("voltkit", "Dragon").match(/data-character=/g),
   ).toHaveLength(1);
 });
 it("validates frame, sheet and atlas imports, frame keys, rates and local paths", () => {
@@ -206,33 +206,37 @@ it("authoritatively reveals shadow concealment on attacking, damage and expiry",
   const a = duel("duskveil"),
     p = a.players[0],
     c = CHARACTERS.duskveil;
-  a.cast(p, c.skills[1]);
+  a.cast(p, { ...c.basic, kind: "stealth", duration: 2 });
   expect(p.statuses.some((s) => s.kind === "stealth")).toBe(true);
   a.cast(p, c.basic);
   expect(p.statuses.some((s) => s.kind === "stealth")).toBe(false);
-  a.cast(p, c.skills[1]);
+  a.cast(p, { ...c.basic, kind: "stealth", duration: 2 });
   a.damage(p, 7, "two");
   expect(p.statuses.some((s) => s.kind === "stealth")).toBe(false);
-  a.cast(p, c.skills[1]);
+  a.cast(p, { ...c.basic, kind: "stealth", duration: 2 });
   for (let i = 0; i < 65; i++) a.tick();
   expect(p.statuses.some((s) => s.kind === "stealth")).toBe(false);
 });
 it("applies new defensive guard, freeze, rush and grounded area counterplay on the server", () => {
-  const guard = duel("thornback"),
+  const guard = duel("auralynx"),
     p = guard.players[0];
-  guard.cast(p, CHARACTERS.thornback.skills[1]);
+  guard.cast(p, CHARACTERS.auralynx.skills[1]);
   guard.damage(p, 20, "two");
-  expect(p.hp).toBe(175);
+  expect(p.hp).toBe(130);
   expect(guard.players[1].hp).toBe(104);
   const ice = duel("frostfang"),
     q = ice.players[1];
-  ice.damage(q, 16, "one", CHARACTERS.frostfang.skills[0]);
+  ice.damage(q, 16, "one", {
+    ...CHARACTERS.frostfang.basic,
+    status: "freeze",
+    statusDuration: 1,
+  });
   expect(q.statuses.some((s) => s.kind === "freeze")).toBe(true);
-  const earth = duel("terradon");
-  earth.cast(earth.players[0], CHARACTERS.terradon.skills[2]);
-  expect(earth.players[0].rush?.damage).toBe(20);
+  const earth = duel("frostfang");
+  earth.cast(earth.players[0], CHARACTERS.frostfang.skills[2]);
+  expect(earth.players[0].rush?.damage).toBe(38);
   q.jumpUntil = ice.time + 1;
   const hp = q.hp;
-  ice.damage(q, 10, "one", CHARACTERS.terradon.skills[3]);
+  ice.damage(q, 10, "one", CHARACTERS.terradon.skills[2]);
   expect(q.hp).toBe(hp);
 });

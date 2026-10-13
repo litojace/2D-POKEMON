@@ -24,7 +24,7 @@ export const KEYS = {
   left: "A",
   down: "S",
   right: "D",
-  skills: ["1", "2", "3", "R"],
+  skills: ["1", "2", "R"],
   dash: "RMB",
   jump: "SPACE",
 };
@@ -72,7 +72,8 @@ export type AbilityKind =
   | "counter"
   | "barrage"
   | "charged"
-  | "stealth";
+  | "stealth"
+  | "heal";
 export interface Ability {
   id: string;
   name: string;
@@ -135,7 +136,7 @@ export interface Character {
   health: number;
   speed: number;
   basic: Ability;
-  skills: [Ability, Ability, Ability, Ability];
+  skills: Ability[];
 }
 export const CHARACTERS: Record<CharacterId, Character> = {
   voltkit: {
@@ -237,14 +238,22 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "Rush forward and strike on contact.",
         { range: 270, duration: 0.3 },
       ),
-      ability("inferno", "Solar Bloom", "zone", 9, 30, "A large burning zone.", {
-        radius: 200,
-        duration: 4,
-        ground: true,
-        status: "burn",
-        statusDuration: 1,
-        range: 500,
-      }),
+      ability(
+        "inferno",
+        "Solar Bloom",
+        "zone",
+        9,
+        30,
+        "A large burning zone.",
+        {
+          radius: 200,
+          duration: 4,
+          ground: true,
+          status: "burn",
+          statusDuration: 1,
+          range: 500,
+        },
+      ),
     ],
   },
   tidefin: {
@@ -626,6 +635,230 @@ export interface Vec {
   x: number;
   y: number;
 }
+// Stable internal IDs preserve saved rooms and accounts while the presentation returns to Pokemon.
+export const POKEMON_MOVES = {
+  voltkit: [
+    "Pikachu",
+    "Electric",
+    "Thunder Shot",
+    "Volt Dash",
+    "Electric Field",
+    "Thunder Burst",
+  ],
+  cindrake: [
+    "Charizard",
+    "Fire",
+    "Fire Breath",
+    "Flame Dash",
+    "Blazing Spin",
+    "Inferno Strike",
+  ],
+  tidefin: [
+    "Greninja",
+    "Water",
+    "Water Shuriken",
+    "Aqua Dash",
+    "Shadow Clone",
+    "Water Burst",
+  ],
+  auralynx: [
+    "Lucario",
+    "Fighting",
+    "Aura Sphere",
+    "Force Palm",
+    "Counter Stance",
+    "Aura Burst",
+  ],
+  thornback: [
+    "Gardevoir",
+    "Psychic",
+    "Psybeam",
+    "Teleport",
+    "Psychic Field",
+    "Moonblast",
+  ],
+  frostfang: [
+    "Garchomp",
+    "Dragon",
+    "Dragon Claw",
+    "Sand Dash",
+    "Earthquake",
+    "Dragon Rush",
+  ],
+  duskveil: [
+    "Sylveon",
+    "Fairy",
+    "Moonblast",
+    "Charm",
+    "Mystical Ribbon",
+    "Healing Wish",
+  ],
+  terradon: [
+    "Mimikyu",
+    "Ghost",
+    "Shadow Sneak",
+    "Trick Room",
+    "Phantom Claw",
+    "Shadow Burst",
+  ],
+} as const;
+for (const id of Object.keys(POKEMON_MOVES) as CharacterId[]) {
+  const c = CHARACTERS[id],
+    moves = POKEMON_MOVES[id],
+    old = c.skills;
+  c.color = {
+    voltkit: 0xffd65b,
+    cindrake: 0xef8558,
+    tidefin: 0x5dbeef,
+    auralynx: 0x78c7ef,
+    thornback: 0xe999ce,
+    frostfang: 0x777aee,
+    duskveil: 0xf59ecb,
+    terradon: 0xab85df,
+  }[id];
+  c.role = {
+    voltkit: "Ranged speedster",
+    cindrake: "Burst damage fighter",
+    tidefin: "Agile assassin",
+    auralynx: "Counter specialist",
+    thornback: "Area control",
+    frostfang: "Bruiser",
+    duskveil: "Support and disruptor",
+    terradon: "Trickster",
+  }[id];
+  if (id === "thornback") {
+    c.health = 125;
+    c.speed = 240;
+  }
+  if (id === "frostfang") {
+    c.health = 160;
+    c.speed = 230;
+  }
+  if (id === "duskveil") {
+    c.health = 120;
+    c.speed = 245;
+  }
+  if (id === "terradon") {
+    c.health = 105;
+    c.speed = 270;
+  }
+  c.name = moves[0];
+  c.element = moves[1];
+  c.basic = { ...old[0], name: moves[2], element: c.element };
+  c.skills = [old[1], old[2], old[3]].map((a, i) => ({
+    ...a,
+    name: moves[i + 3],
+    element: c.element,
+  }));
+  if (
+    ["voltkit", "cindrake", "tidefin", "thornback", "frostfang"].includes(id)
+  ) {
+    c.skills[0] = {
+      ...c.skills[0],
+      kind: "movement",
+      damage: id === "thornback" ? 0 : id === "cindrake" ? 22 : 12,
+      range: 240,
+      duration: id === "thornback" ? 0.08 : 0.24,
+      cast: 0,
+      description:
+        id === "thornback"
+          ? "A short teleport in the aimed direction; solid cover blocks the path."
+          : "Rush forward and strike an enemy on contact.",
+    };
+  }
+  if (id === "cindrake")
+    c.skills[1] = {
+      ...c.skills[1],
+      kind: "zone",
+      radius: 130,
+      range: 120,
+      duration: 3,
+      ground: true,
+      damage: 6,
+      description:
+        "A spinning patch of flame repeatedly damages grounded enemies.",
+    };
+  if (id === "frostfang") {
+    c.basic = {
+      ...c.basic,
+      kind: "melee",
+      range: 110,
+      status: undefined,
+      description: "Slash a nearby opponent with dragon claws.",
+    };
+    c.skills[1] = {
+      ...c.skills[1],
+      name: "Earthquake",
+      ground: true,
+      description: "Shake a patch of ground to damage and slow enemies.",
+    };
+    c.skills[2] = {
+      ...c.skills[2],
+      kind: "movement",
+      range: 380,
+      duration: 0.38,
+      damage: 38,
+      cast: 0,
+      description: "A powerful dragon charge.",
+    };
+  }
+  if (id === "duskveil") {
+    c.basic = {
+      ...c.basic,
+      kind: "projectile",
+      range: 650,
+      speed: 700,
+      description: "Launch a radiant fairy orb.",
+    };
+    c.skills[0] = {
+      ...c.skills[0],
+      kind: "zone",
+      damage: 0,
+      range: 300,
+      radius: 95,
+      duration: 2,
+      status: "slow",
+      statusDuration: 1,
+      ground: false,
+      description: "Charm a small area, slowing opponents.",
+    };
+    c.skills[1] = {
+      ...c.skills[1],
+      kind: "projectile",
+      damage: 22,
+      range: 650,
+      speed: 600,
+      description: "Send a ribbon of fairy energy toward an opponent.",
+    };
+    c.skills[2] = {
+      ...c.skills[2],
+      kind: "heal",
+      damage: 35,
+      description: "Restore up to 35 health to yourself.",
+    };
+  }
+  if (id === "terradon") {
+    c.skills[0] = {
+      ...c.skills[0],
+      kind: "zone",
+      range: 300,
+      radius: 130,
+      duration: 3,
+      damage: 0,
+      status: "slow",
+      statusDuration: 1,
+      ground: false,
+      description: "Create a spectral room that slows enemies.",
+    };
+    c.skills[1] = {
+      ...c.skills[1],
+      kind: "melee",
+      damage: 24,
+      range: 120,
+      description: "Strike a nearby enemy with a phantom claw.",
+    };
+  }
+}
 export interface Input {
   seq: number;
   dx: number;
@@ -645,7 +878,7 @@ export const inputSchema = z
     aimX: z.number().finite().min(0).max(RULES.width),
     aimY: z.number().finite().min(0).max(RULES.height),
     basic: z.boolean(),
-    skill: z.number().int().min(-1).max(3),
+    skill: z.number().int().min(-1).max(2),
     dash: z.boolean(),
     jump: z.boolean(),
   })

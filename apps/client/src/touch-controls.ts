@@ -54,7 +54,7 @@ export class TouchControls {
       this.available && localStorage.getItem("arena-touch") !== "off";
     root.innerHTML =
       '<div class="mobile-tools"><button id="touch-toggle" class="quiet"></button><button id="mobile-fullscreen" class="quiet">Enter fullscreen ⛶</button><button id="mobile-settings" class="quiet">Mobile controls ⚙</button><span class="touch-note">Aim follows opponent</span></div><div class="rotate-hint" role="status">Rotate your phone for a wider arena. Portrait play is still available.</div><div class="touch-pad"><div class="joystick-area"><div class="joystick" role="group" aria-label="Movement joystick"><span class="joystick-knob"></span></div></div><div class="touch-buttons">' +
-      (["dash", "jump", "0", "1", "2", "3", "attack"] as TouchAction[])
+      (["dash", "jump", "0", "1", "2", "attack"] as TouchAction[])
         .map(
           (action) =>
             "<button " +
@@ -64,7 +64,7 @@ export class TouchControls {
             ' class="' +
             (action === "attack"
               ? "touch-attack"
-              : action === "3"
+              : action === "2"
                 ? "touch-ultimate"
                 : "") +
             '"></button>',
@@ -336,7 +336,8 @@ export class TouchControls {
     cooldowns: number[],
     dash: number,
     jump: number,
-    durations: number[] = [4, 7, 10, 30],
+    durations: number[] = [7, 10, 30],
+    basic = { name: "Attack", left: 0, duration: 1 },
   ) {
     if (!active) this.reset();
     for (const button of this.buttons) {
@@ -350,13 +351,13 @@ export class TouchControls {
             ? dash
             : action === "jump"
               ? jump
-              : 0,
+              : basic.left,
       );
       const name =
         skill !== undefined
           ? names[Number(skill)]
           : action === "attack"
-            ? "Attack"
+            ? basic.name
             : action === "dash"
               ? "Dash"
               : "Jump";
@@ -365,7 +366,11 @@ export class TouchControls {
         button.innerHTML =
           abilityIcon(name) +
           '<span class="touch-key">' +
-          (skill !== undefined ? Number(skill) + 1 : "") +
+          (skill !== undefined
+            ? Number(skill) === 2
+              ? "R"
+              : Number(skill) + 1
+            : "") +
           '</span><span class="touch-cooldown"></span>';
         button.dataset.iconName = name;
         button.title = name;
@@ -378,7 +383,9 @@ export class TouchControls {
           ? durations[Number(skill)]
           : action === "dash"
             ? 3
-            : 2;
+            : action === "jump"
+              ? 2
+              : basic.duration;
       button.style.setProperty(
         "--cooldown",
         Math.min(100, (100 * left) / duration) + "%",

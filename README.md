@@ -2,7 +2,7 @@
 
 A real-time, server-authoritative 1v1 elemental creature fighting game. Built with Phaser, TypeScript, Vite, Socket.IO, Express, and Supabase.
 
-Eight original fighters: **Voltkit, Cindrake, Tidefin, Auralynx, Thornback, Frostfang, Duskveil, and Terradon**. Each has a basic attack, four skills, dash, and jump. The first four retain their previous combat values; the expansion adds defensive, control, concealment, and bruiser identities.
+Eight Pok�mon fighters: **Pikachu, Charizard, Greninja, Lucario, Gardevoir, Garchomp, Sylveon, and Mimikyu**. Each has a signature basic attack, two abilities, an ultimate, dash, and jump. Mobile controls place the basic attack in the large central button with three evenly spaced abilities above it.
 
 Selection now uses showcase-inspired, AI-rendered transparent creature portraits. Gameplay currently uses the original articulated, shaded-vector implementation with soft highlights and distinct silhouettes. It is an initial 2.5D-style pass, not production pre-rendered 3D animation. The import pipeline supports transparent PNG frames, sprite sheets and texture atlases when artwork becomes available. See [the overhaul report and asset guide](docs/original-creatures.md).
 
@@ -35,7 +35,7 @@ Create a private room, share its six-character code, select a fighter, and confi
 | WASD        | Move                       |
 | Mouse       | Aim                        |
 | Left mouse  | Basic attack               |
-| 1 / 2 / 3   | Skills                     |
+| 1 / 2       | Skills                     |
 | R           | Ultimate                   |
 | Right mouse | Dash                       |
 | Space       | Jump                       |

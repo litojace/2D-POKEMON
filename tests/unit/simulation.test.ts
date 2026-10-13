@@ -50,7 +50,7 @@ describe("authoritative simulation", () => {
       [p, q] = a.players;
     q.x = 400;
     q.y = 450;
-    p.lastInput = input({ aimX: q.x, aimY: q.y, skill: 0 });
+    p.lastInput = input({ aimX: q.x, aimY: q.y, basic: true });
     a.tick();
     for (let i = 0; i < 10; i++) a.tick();
     expect(q.hp).toBeLessThan(CHARACTERS[q.character].health);
@@ -133,7 +133,7 @@ describe("authoritative simulation", () => {
     for (let i = 0; i < 125; i++) a.tick();
     expect(a.phase).toBe("countdown");
     expect(a.players[1].hp).toBe(125);
-    expect(a.players[0].cooldowns).toEqual([0, 0, 0, 0]);
+    expect(a.players[0].cooldowns).toEqual([0, 0, 0]);
     a.phase = "playing";
     a.players[1].hp = 0;
     a.tick();
@@ -154,7 +154,7 @@ describe("authoritative simulation", () => {
     b.deadline = 0;
     b.tick();
     expect(b.overtime).toBe(true);
-    for (let i = 0; i < 400 && b.phase === "playing"; i++) b.tick();
+    for (let i = 0; i < 300 && b.phase === "playing"; i++) b.tick();
     expect(b.phase).toBe("intermission");
   });
   it("rejects fabricated positions, health, damage and malformed controls", () => {
@@ -165,10 +165,10 @@ describe("authoritative simulation", () => {
     expect(inputSchema.safeParse(input({ dx: 100 })).success).toBe(false);
     expect(inputSchema.safeParse(input({ aimX: NaN })).success).toBe(false);
   });
-  it("all characters have four functional skills with charged cast timing", () => {
+  it("all characters have three functional abilities with charged cast timing", () => {
     for (const c of Object.values(CHARACTERS)) {
-      expect(c.skills).toHaveLength(4);
-      for (let i = 0; i < 4; i++) {
+      expect(c.skills).toHaveLength(3);
+      for (let i = 0; i < 3; i++) {
         const a = duel(),
           p = a.players[0];
         p.character = c.id;
@@ -194,7 +194,7 @@ describe("authoritative simulation", () => {
     q.x = 620;
     q.y = 300;
     p.lastInput = input({ aimX: q.x, aimY: q.y, skill: 0 });
-    for (let i = 0; i < 40; i++) a.tick();
+    for (let i = 0; i < 30; i++) a.tick();
     expect(q.hp).toBe(125);
     expect(a.projectiles).toHaveLength(0);
   });

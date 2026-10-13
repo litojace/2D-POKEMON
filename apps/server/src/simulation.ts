@@ -50,7 +50,7 @@ export class Arena {
       vy: 0,
       angle: 0,
       ack: 0,
-      cooldowns: [0, 0, 0, 0],
+      cooldowns: [0, 0, 0],
       basicAt: 0,
       dashAt: 0,
       jumpAt: 0,
@@ -140,7 +140,7 @@ export class Arena {
         vx: 0,
         vy: 0,
         angle: i === 0 ? 0 : Math.PI,
-        cooldowns: [0, 0, 0, 0],
+        cooldowns: [0, 0, 0],
         basicAt: 0,
         dashAt: 0,
         jumpAt: 0,
@@ -281,6 +281,8 @@ export class Arena {
       p.dashY = (Math.sin(angle) * a.range) / a.duration;
       p.rush = { until: p.dashUntil, damage: a.damage, hit: false };
     }
+    if (a.kind === "heal")
+      p.hp = Math.min(CHARACTERS[p.character].health, p.hp + a.damage);
     if (a.kind === "stealth") this.status(p, "stealth", a.duration);
     if (a.kind === "counter") this.status(p, "shield", a.duration);
     if (a.kind === "clone") {

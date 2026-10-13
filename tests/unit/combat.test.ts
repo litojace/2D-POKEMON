@@ -23,7 +23,13 @@ it("explodes an orb at its range limit and applies splash damage once", () => {
   q.x = 840;
   q.y = 200;
   p.angle = 0;
-  a.cast(p, CHARACTERS.voltkit.skills[1]);
+  a.cast(p, {
+    ...CHARACTERS.voltkit.basic,
+    range: 710,
+    speed: 390,
+    damage: 23,
+    explosion: 100,
+  });
   for (let i = 0; i < 65; i++) a.tick();
   expect(q.hp).toBe(110 - 23);
   expect(a.projectiles).toHaveLength(0);
@@ -47,10 +53,10 @@ it("melee and movement attacks damage enemies within their collision range", () 
     [p, q] = a.players;
   q.x = p.x + 85;
   p.angle = 0;
-  a.cast(p, CHARACTERS.auralynx.skills[1]);
+  a.cast(p, CHARACTERS.auralynx.skills[0]);
   expect(q.hp).toBe(82);
   q.x = p.x + 100;
-  a.cast(p, CHARACTERS.cindrake.skills[2]);
+  a.cast(p, CHARACTERS.cindrake.skills[0]);
   for (let i = 0; i < 8; i++) a.tick();
   expect(q.hp).toBe(60);
 });
@@ -61,14 +67,14 @@ it("decoys absorb a projectile before it reaches the owner", () => {
   q.x = 440;
   q.clone = { x: 350, y: 450, until: 3 };
   p.angle = 0;
-  a.cast(p, CHARACTERS.voltkit.skills[0]);
+  a.cast(p, CHARACTERS.voltkit.basic);
   for (let i = 0; i < 15; i++) a.tick();
   expect(q.hp).toBe(110);
   expect(q.clone).toBeUndefined();
 });
 it("packs static ability definitions as IDs and restores the renderer snapshot", () => {
   const a = duel();
-  a.cast(a.players[0], CHARACTERS.voltkit.skills[0]);
+  a.cast(a.players[0], CHARACTERS.voltkit.basic);
   const wire = packSnapshot(a.snapshot());
   expect(wire.projectiles[0]).not.toHaveProperty("ability");
   expect(wire.projectiles[0].abilityId).toBe("thunderbolt");

@@ -69,7 +69,7 @@ const escape = (s: string) =>
       ]!,
   );
 document.querySelector("#app")!.innerHTML =
-  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><details class="header-menu" id="header-menu"><summary>☰ <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">Settings</button><button class="quiet" id="mobile-play">Mobile fullscreen</button><button class="quiet" id="install-app">Install app</button><span class="connection" id="connection">Connecting</span></div></details><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span>WASD <b>Move</b> · Mouse <b>Aim</b> · LMB <b>Attack</b> · 1 / 2 / 3 <b>Skills</b> · R <b>Ultimate</b> &middot; RMB <b>Dash</b></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>ELEMENT ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Original creatures. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
+  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> POK&Eacute;MON<span>ARENA</span></a><div class="top-links"><details class="header-menu" id="header-menu"><summary>☰ <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">Settings</button><button class="quiet" id="mobile-play">Mobile fullscreen</button><button class="quiet" id="install-app">Install app</button><span class="connection" id="connection">Connecting</span></div></details><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span>WASD <b>Move</b> · Mouse <b>Aim</b> · LMB <b>Attack</b> · 1 / 2 <b>Skills</b> · R <b>Ultimate</b> &middot; RMB <b>Dash</b></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>POK&Eacute;MON ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Eight Pok�mon. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
 const headerMenu = $("header-menu") as HTMLDetailsElement;
 headerMenu.addEventListener("click", (event) => {
   if ((event.target as Element).closest("button")) headerMenu.open = false;
@@ -202,7 +202,7 @@ function renderMenu() {
   $("battle").hidden = true;
   $("menu").hidden = false;
   $("menu").innerHTML =
-    `<div class="eyebrow"><span class="live-dot"></span> ONLINE 1V1 · REAL-TIME BATTLES</div><div class="intro"><div><h1>Your creature.<br>Your <em>arena.</em></h1><p>Eight elements. Four skills. No waiting for your turn.<br>Challenge a friend to a real-time duel in Elemental Coliseum.</p></div><div class="arena-badge">✦<span>ELEMENTAL COLISEUM</span><small>BEST OF THREE</small></div></div><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected, elementFilter)}</div><aside class="room-panel">${isRoom ? `<div class="eyebrow">PRIVATE LOBBY</div><h2>Your duel starts here.</h2><p>Share this code with your friend.</p><button id="copy" class="room-code">${state!.code}<span>COPY CODE ↗</span></button><div class="players">${state!.players.map((p, i) => `<div><span class="player-dot" style="background:#${CHARACTERS[p.character].color.toString(16)}">${i + 1}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small>${CHARACTERS[p.character].name}</small></span><b>${!p.connected ? "OFFLINE" : p.ready ? "READY" : "CHOOSING"}</b></div>`).join("")}${state!.players.length < 2 ? '<div class="waiting"><span>＋</span> Waiting for your opponent…</div>' : ""}</div><button class="primary" id="ready">${p!.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full" id="leave">Leave room</button><small class="room-note">The match begins when both players are ready.</small>` : `<div class="eyebrow">PLAY ONLINE</div><h2>A friend. A code.<br>A worthy opponent.</h2><label for="name">YOUR DISPLAY NAME</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><button class="primary" id="create">Create private room →</button>${accountsUI?.account ? '<button class="secondary full" id="practice">Solo test mode →</button>' : ""}<div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><small class="room-note">2 players · Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`}</aside></div>`;
+    `<div class="eyebrow"><span class="live-dot"></span> ONLINE 1V1 · REAL-TIME BATTLES</div><div class="intro"><div><h1>Your creature.<br>Your <em>arena.</em></h1><p>Eight elements. One basic attack and three moves. No waiting for your turn.<br>Challenge a friend to a real-time duel in Elemental Coliseum.</p></div><div class="arena-badge">✦<span>ELEMENTAL COLISEUM</span><small>BEST OF THREE</small></div></div><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected, elementFilter)}</div><aside class="room-panel">${isRoom ? `<div class="eyebrow">PRIVATE LOBBY</div><h2>Your duel starts here.</h2><p>Share this code with your friend.</p><button id="copy" class="room-code">${state!.code}<span>COPY CODE ↗</span></button><div class="players">${state!.players.map((p, i) => `<div><span class="player-dot" style="background:#${CHARACTERS[p.character].color.toString(16)}">${i + 1}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small>${CHARACTERS[p.character].name}</small></span><b>${!p.connected ? "OFFLINE" : p.ready ? "READY" : "CHOOSING"}</b></div>`).join("")}${state!.players.length < 2 ? '<div class="waiting"><span>＋</span> Waiting for your opponent…</div>' : ""}</div><button class="primary" id="ready">${p!.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full" id="leave">Leave room</button><small class="room-note">The match begins when both players are ready.</small>` : `<div class="eyebrow">PLAY ONLINE</div><h2>A friend. A code.<br>A worthy opponent.</h2><label for="name">YOUR DISPLAY NAME</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><button class="primary" id="create">Create private room →</button>${accountsUI?.account ? '<button class="secondary full" id="practice">Solo test mode →</button>' : ""}<div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><small class="room-note">2 players · Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`}</aside></div>`;
   document.querySelectorAll<HTMLButtonElement>("[data-character]").forEach(
     (button) =>
       (button.onclick = async () => {
@@ -408,6 +408,11 @@ function renderBattle() {
     Math.max(0, me.dashAt - state.time),
     Math.max(0, me.jumpAt - state.time),
     CHARACTERS[me.character].skills.map((a) => a.cooldown),
+    {
+      name: CHARACTERS[me.character].basic.name,
+      left: Math.max(0, me.basicAt - state.time),
+      duration: CHARACTERS[me.character].basic.cooldown,
+    },
   );
   const overlay = $("arena-overlay");
   if (state.phase === "playing") {
@@ -421,7 +426,7 @@ function renderBattle() {
       heading = "How to play";
       const confirmed = state.instructionsReady.includes(myId);
       details =
-        '<p class="mobile-howto">Touch mode: left joystick to move; right buttons to attack, use skills, dash, and jump. Aim follows your opponent. Use Enter fullscreen below the arena.</p><div class="controls-list"><span><kbd>W A S D</kbd>Move · mouse to aim</span><span><kbd>LMB</kbd>Basic attack</span><span><kbd>1 2 3</kbd>Character skills</span><span><kbd>R</kbd>Ultimate skill</span><span><kbd>RMB</kbd>Dash</span><span><kbd>SPACE</kbd>Jump over ground attacks</span></div><p>Use cover. Win two rounds. The countdown begins when both players confirm.</p><button class="primary" id="instructions-ready" ' +
+        '<p class="mobile-howto">Touch mode: left joystick to move; right buttons to attack, use skills, dash, and jump. Aim follows your opponent. Use Enter fullscreen below the arena.</p><div class="controls-list"><span><kbd>W A S D</kbd>Move · mouse to aim</span><span><kbd>LMB</kbd>Basic attack</span><span><kbd>1 2</kbd>Character skills</span><span><kbd>R</kbd>Ultimate skill</span><span><kbd>RMB</kbd>Dash</span><span><kbd>SPACE</kbd>Jump over ground attacks</span></div><p>Use cover. Win two rounds. The countdown begins when both players confirm.</p><button class="primary" id="instructions-ready" ' +
         (confirmed ? "disabled" : "") +
         ">" +
         (confirmed ? "Waiting for opponent…" : "I’m ready →") +
@@ -448,7 +453,7 @@ function renderBattle() {
       const stats = me.stats;
       details += `<div class="result-stats"><span><b>${Math.round(stats.dealt)}</b>DAMAGE DEALT</span><span><b>${Math.round(stats.received)}</b>DAMAGE TAKEN</span><span><b>${stats.skills}</b>SKILLS CAST</span></div><button class="primary" id="rematch">${me.ready ? "Waiting for opponent…" : "Rematch →"}</button><button class="secondary" id="return">Return to lobby</button>`;
     }
-    const markup = `<div class="overlay-card"><span class="eyebrow">ELEMENT ARENA</span><h2>${heading}</h2><div>${details}</div></div>`;
+    const markup = `<div class="overlay-card"><span class="eyebrow">POK&Eacute;MON ARENA</span><h2>${heading}</h2><div>${details}</div></div>`;
     // Preserve the pressed button between snapshots so pointer-up can complete its click.
     setOverlayMarkup(overlay, markup);
     if (state.phase === "briefing")
@@ -568,11 +573,11 @@ $("settings").onclick = showSettings;
 $("battle-menu").onclick = showSettings;
 $("help").onclick = () =>
   dialog(
-    `<div class="eyebrow">HOW TO PLAY</div><h2>Every second counts.</h2><p>Create a room, share the code, choose your creatures, and both click Ready. Win two rounds to take the match.</p><div class="controls-list"><span><kbd>W A S D</kbd>Move in eight directions</span><span><kbd>MOUSE</kbd>Aim · left click to attack</span><span><kbd>1 2 3</kbd>Skills · R for ultimate</span><span><kbd>RMB</kbd>Dash · 3 second cooldown</span><span><kbd>SPACE</kbd>Jump · dodge ground attacks</span><span><kbd>ESC</kbd>Settings · the match stays live</span></div><p>Use cover to block shots. Jump over ground zones. Ultimates recharge every 30 seconds. At a tie, overtime drains both players' health.</p>`,
+    `<div class="eyebrow">HOW TO PLAY</div><h2>Every second counts.</h2><p>Create a room, share the code, choose your creatures, and both click Ready. Win two rounds to take the match.</p><div class="controls-list"><span><kbd>W A S D</kbd>Move in eight directions</span><span><kbd>MOUSE</kbd>Aim · left click to attack</span><span><kbd>1 2</kbd>Skills · R for ultimate</span><span><kbd>RMB</kbd>Dash · 3 second cooldown</span><span><kbd>SPACE</kbd>Jump · dodge ground attacks</span><span><kbd>ESC</kbd>Settings · the match stays live</span></div><p>Use cover to block shots. Jump over ground zones. Ultimates recharge every 30 seconds. At a tie, overtime drains both players' health.</p>`,
   );
 $("credits").onclick = () =>
   dialog(
-    '<div class="eyebrow">BUILT FOR THE DUEL</div><h2>Element Arena</h2><p>Eight original elemental creatures, articulated shaded-vector artwork, a procedural coliseum, and synthesized audio.</p><p>Built with Phaser, Socket.IO, Express, TypeScript, Vite, and Supabase. Creature art is an original vector implementation; rendered sprite atlases can be imported through the fighter asset pipeline.</p>',
+    '<div class="eyebrow">BUILT FOR THE DUEL</div><h2>Pok�mon Arena</h2><p>Eight Pok�mon fighters, articulated shaded-vector artwork, a procedural coliseum, and synthesized audio.</p><p>Built with Phaser, Socket.IO, Express, TypeScript, Vite, and Supabase. Creature art is an original vector implementation; rendered sprite atlases can be imported through the fighter asset pipeline.</p>',
   );
 $<HTMLDialogElement>("dialog").addEventListener("close", () => {
   settingsOpen = false;
@@ -771,17 +776,17 @@ class ArenaScene extends Phaser.Scene {
     }).observe($("game"));
     this.graphics = this.add.graphics();
     this.keys = this.input.keyboard!.addKeys(
-      "W,A,S,D,ONE,TWO,THREE,R,SPACE",
+      "W,A,S,D,ONE,TWO,R,SPACE",
       false,
     ) as Record<string, Phaser.Input.Keyboard.Key>;
     this.input.mouse!.disableContextMenu();
-    ["ONE", "TWO", "THREE"].forEach((key, i) =>
+    ["ONE", "TWO"].forEach((key, i) =>
       this.keys[key].on("down", () => {
         if (this.canControl()) this.actions.skill = i;
       }),
     );
     this.keys.R.on("down", () => {
-      if (this.canControl()) this.actions.skill = 3;
+      if (this.canControl()) this.actions.skill = 2;
     });
     this.keys.SPACE.on("down", () => {
       if (this.canControl()) this.actions.jump = true;
@@ -811,10 +816,11 @@ class ArenaScene extends Phaser.Scene {
         if (slot >= 0 || event.abilityId === c.basic.id)
           this.getRig(p.id, p.character).trigger(
             slot >= 0
-              ? (`skill${slot}` as "skill0" | "skill1" | "skill2" | "skill3")
+              ? (`skill${slot === 2 ? 3 : slot}` as
+                  "skill0" | "skill1" | "skill2" | "skill3")
               : "basic",
             this.time.now,
-            slot === 3 ? 650 : 300,
+            slot === 2 ? 650 : 300,
             event.id,
           );
       }

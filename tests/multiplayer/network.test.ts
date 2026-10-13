@@ -88,11 +88,11 @@ it("runs all eight characters in solo mode with real skill damage and no second 
       seq: 1,
       aimX: 950,
       aimY: 180,
-      skill: 0,
+      basic: true,
     });
     await wait();
     for (let i = 0; i < 30; i++) server.step();
-    expect(a.players[0].stats.skills).toBe(1);
+    expect(a.players[0].stats.dealt).toBeGreaterThan(0);
     expect(a.players[1].hp).toBeLessThan(110);
     a.players[1].hp = 0;
     server.step();
@@ -122,19 +122,19 @@ it("switches practice characters, resets the arena, and optionally removes skill
     seq: 1,
     aimX: 950,
     aimY: 180,
-    skill: 3,
+    skill: 2,
   });
   await wait();
   server.step();
   expect(a.players[0].stats.skills).toBe(1);
-  expect(a.players[0].cooldowns[3]).toBe(0);
+  expect(a.players[0].cooldowns[2]).toBe(0);
   for (let i = 0; i < 6; i++) server.step();
   client.emit("input", {
     ...blankInput(),
     seq: 2,
     aimX: 950,
     aimY: 180,
-    skill: 3,
+    skill: 2,
   });
   await wait();
   server.step();
@@ -391,7 +391,7 @@ it("bounds spam and rejects another player ID in an input payload", async () => 
   expect(arena.phase).toBe("briefing");
   await emit(two, "instructions-ready");
   for (let i = 0; i < 95; i++) server.step();
-  one.emit("input", { ...blankInput(), seq: 1, id: guest.id, skill: 3 });
+  one.emit("input", { ...blankInput(), seq: 1, id: guest.id, skill: 2 });
   await wait();
   server.step();
   expect(arena.players[0].stats.skills).toBe(0);

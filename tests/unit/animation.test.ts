@@ -83,6 +83,6 @@ it("identifies basic attacks and all sixteen skills in the existing event stream
   }
 });
 it("uses R for the ultimate and right mouse for dash", () => {
-  expect(KEYS.skills).toEqual(["1", "2", "3", "R"]);
+  expect(KEYS.skills).toEqual(["1", "2", "R"]);
   expect(KEYS.dash).toBe("RMB");
 });

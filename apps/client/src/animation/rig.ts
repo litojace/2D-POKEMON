@@ -278,7 +278,8 @@ export class FighterRig {
     if (this.character === "auralynx") {
       if (!reduced) {
         wings.rotation = now / 1400;
-        this.root.y -= 3 + Math.sin(now / 550) * 2;
+        if (pose.charging || (attack && skill === 3))
+          this.root.y -= 3 + Math.sin(now / 550) * 2;
       }
       body.setTint(pose.charging ? 0xffddff : 0xffffff);
     }
@@ -308,13 +309,12 @@ export class FighterRig {
     }
     if (this.character === "duskveil") {
       if (!reduced) {
-        this.root.y -= 3 + Math.sin(now / 500) * 2;
         body.rotation += Math.sin(now / 700) * 0.04;
       }
       if (attack && skill === 1) {
         armL.rotation = -1;
         armR.rotation = 1;
-        body.setAlpha(0.5);
+        body.setAlpha(1);
       } else body.setAlpha(1);
     }
     if (this.character === "terradon" && attack) {

@@ -56,6 +56,10 @@ export function drawElementGlyph(
       g.lineBetween(x - r * 0.55, y - r * 0.2, x, y - r);
       g.lineBetween(x + r * 0.55, y - r * 0.2, x, y - r);
       break;
+    case "fighting":
+    case "psychic":
+    case "fairy":
+    case "dragon":
     case "energy":
       g.strokePoints(
         [
@@ -84,6 +88,7 @@ export function drawElementGlyph(
         );
       }
       break;
+    case "ghost":
     case "shadow":
       g.strokeEllipse(x, y, r * 1.4, r * 1.8);
       g.fillCircle(x - r * 0.25, y - r * 0.15, r * 0.13);
