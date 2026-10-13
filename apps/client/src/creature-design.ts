@@ -59,6 +59,8 @@ export function proportioned(part: CreaturePart, x: number, y: number) {
   const { s, cx, cy } = PROPORTIONS[part];
   return [cx + (x - cx) * s, cy + (y - cy) * s];
 }
+/** Head-and-shoulders crop, centred on the face, for small round avatars. */
+export const AVATAR_VIEWBOX = "22 -8 156 156";
 /** The whole creature (big head included) fits this box; cards use it by default. */
 export const CREATURE_VIEWBOX = "0 -12 200 202";
 /** Fighters still waiting for authored art. Every current fighter has a design. */
