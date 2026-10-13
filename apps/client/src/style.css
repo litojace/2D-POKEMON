@@ -1067,7 +1067,7 @@ dialog input[type="range"] {
     font-size: 11px;
     gap: 4px;
   }
-  .health-card > div > span {
+  .health-card > div:first-child > span {
     display: none;
   }
   .timer-wrap strong {
@@ -1681,7 +1681,7 @@ body.battle-active.touch-mode {
   text-overflow: ellipsis;
   max-width: 70%;
 }
-.battle-active.touch-mode .health-card > div > span {
+.battle-active.touch-mode .health-card > div:first-child > span {
   display: none;
 }
 .battle-active.touch-mode .health-card strong {
@@ -3915,4 +3915,184 @@ dialog:has(.admin-tabs) {
   border-color: #ff697f;
   background: #ff697f22;
   box-shadow: 0 0 0 1px #ff697f inset;
+}
+/* ---------- 2v2 teams ---------- */
+.mode-picker {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  margin: 4px 0 8px;
+}
+.mode-level.active {
+  border-color: #f7d780;
+  background: #f7d78022;
+  box-shadow: 0 0 0 1px #f7d780 inset;
+}
+.team-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0;
+}
+.team-column {
+  --team: #5ab0ff;
+  border: 1px solid color-mix(in srgb, var(--team) 45%, transparent);
+  border-radius: 12px;
+  padding: 8px;
+  background: color-mix(in srgb, var(--team) 8%, transparent);
+  min-width: 0;
+}
+.team-column.team-1 {
+  --team: #ff5d6c;
+}
+.team-column.mine {
+  box-shadow: 0 0 0 1px var(--team) inset;
+}
+.team-head {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--team);
+  margin-bottom: 6px;
+}
+.team-column .players {
+  margin: 0;
+}
+.team-column .players > div {
+  min-width: 0;
+}
+.team-column .players strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.team-slot {
+  width: 100%;
+  padding: 10px 8px;
+  border: 1px dashed color-mix(in srgb, var(--team) 60%, transparent);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--team);
+  font-weight: 700;
+  cursor: pointer;
+}
+.team-slot:hover {
+  background: color-mix(in srgb, var(--team) 14%, transparent);
+}
+.hud.hud-teams {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) 140px repeat(
+      2,
+      minmax(0, 1fr)
+    );
+  gap: 12px;
+}
+.hud-teams .health-card {
+  --team: #5ab0ff;
+  border-top: 3px solid var(--team);
+  padding-top: 4px;
+  min-width: 0;
+}
+.hud-teams .health-card.team-1 {
+  --team: #ff5d6c;
+}
+.hud-teams .health-card.me b {
+  color: #fff;
+  text-decoration: underline;
+  text-decoration-color: var(--team);
+  text-underline-offset: 3px;
+}
+.hud-teams .health-card b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.battle-active.touch-mode .hud.hud-teams {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) 64px repeat(
+      2,
+      minmax(0, 1fr)
+    );
+  gap: 6px;
+}
+.battle-active.touch-mode .hud-teams .health-card > div:first-child > span,
+.battle-active.touch-mode .hud-teams .health-card small[id^="status-"] {
+  display: none;
+}
+@media (max-width: 700px) {
+  .hud.hud-teams {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) 64px repeat(
+        2,
+        minmax(0, 1fr)
+      );
+    gap: 6px;
+  }
+  .hud-teams .health-card > div:first-child > span {
+    display: none;
+  }
+}
+.briefing-versus.teams .vs-team {
+  display: flex;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  border: 1px solid #5ab0ff66;
+  background: #5ab0ff12;
+}
+.briefing-versus.teams .vs-team.team-1 {
+  border-color: #ff5d6c66;
+  background: #ff5d6c12;
+}
+.briefing-versus.teams .vs-fighter svg {
+  width: 84px;
+  height: 85px;
+}
+.battle-active.touch-mode .briefing-versus.teams .vs-fighter svg {
+  width: 56px;
+  height: 57px;
+}
+@media (max-height: 500px) {
+  .briefing-versus.teams .vs-fighter {
+    grid-template-columns: auto;
+    text-align: center;
+  }
+  .briefing-versus.teams .vs-fighter span {
+    display: none;
+  }
+  .briefing-versus.teams .vs-fighter svg,
+  .battle-active.touch-mode .briefing-versus.teams .vs-fighter svg {
+    width: 44px;
+    height: 45px;
+    grid-row: auto;
+  }
+}
+.player-nameplate.team-ally {
+  filter: drop-shadow(0 0 3px #5ab0ff) drop-shadow(0 2px 2px #080f24);
+}
+.player-nameplate.team-enemy {
+  filter: drop-shadow(0 0 3px #ff5d6c) drop-shadow(0 2px 2px #080f24);
+}
+.spectate-banner[hidden] {
+  display: none;
+}
+.spectate-banner {
+  pointer-events: none;
+  z-index: 40;
+  position: absolute;
+  top: 14%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: #101c35d9;
+  border: 1px solid #5ab0ff88;
+  color: #cfe6ff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.battle-active.touch-mode .spectate-banner {
+  position: fixed;
+  top: calc(var(--safe-top) + 64px);
+  z-index: 79;
 }

@@ -857,13 +857,24 @@ export interface Status {
   nextTick: number;
   /** Hibernate: health restored per tick. */
   amount?: number;
+  /** Who applied it (burn damage is credited to them). */
+  by?: string;
 }
 export interface Stats {
   dealt: number;
   received: number;
   skills: number;
 }
+/** Blue (0) and Red (1). In a 1v1 each player is their own team. */
+export type Team = 0 | 1;
+export type MatchMode = "duel" | "teams";
+/** Players per room for each mode. */
+export const MODE_SIZE: Record<MatchMode, number> = { duel: 2, teams: 4 };
+export const TEAM_NAMES = ["Blue", "Red"] as const;
 export interface Fighter extends Vec {
+  team?: Team;
+  /** Left the match for good (2v2): stays on the scoreboard, out of play. */
+  out?: boolean;
   title?: string | null;
   titleColor?: string | null;
   id: string;
@@ -944,6 +955,11 @@ export type Phase =
 export interface Snapshot {
   instructionsReady: string[];
   practice: { unlimitedCooldowns: boolean; targetAttacks: boolean } | null;
+  mode?: MatchMode;
+  /** Round wins per team (Blue, Red). */
+  teamScores?: [number, number];
+  winnerTeam?: Team | null;
+  roundWinnerTeam?: Team | null;
   /** Difficulty of the AI opponent in a solo-vs-bot room, else null. */
   vsBot?: "easy" | "normal" | "hard" | null;
   code: string;

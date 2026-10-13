@@ -1,6 +1,7 @@
 import {
   CHARACTERS,
   DEBUFFS,
+  MODE_SIZE,
   RULES,
   SKILL_SLOTS,
   STATUS_RULES,
@@ -15,7 +16,9 @@ import {
   type Fighter,
   type GameEvent,
   type Input,
+  type MatchMode,
   type Phase,
+  type Team,
   type Projectile,
   type Snapshot,
   type StatusKind,
@@ -35,13 +38,51 @@ export class Arena {
   scores: Record<string, number> = {};
   winner: string | null = null;
   roundWinner: string | null = null;
+  mode: MatchMode = "duel";
+  teamScores: [number, number] = [0, 0];
+  winnerTeam: Team | null = null;
+  roundWinnerTeam: Team | null = null;
   overtime = false;
   players: Fighter[] = [];
   projectiles: Projectile[] = [];
   zones: Zone[] = [];
   events: GameEvent[] = [];
   serial = 0;
-  constructor(public code: string) {}
+  constructor(
+    public code: string,
+    mode: MatchMode = "duel",
+  ) {
+    this.mode = mode;
+  }
+  /** Round wins needed: best of three in a duel, best of five in 2v2. */
+  get roundsToWin() {
+    return this.mode === "teams" ? 3 : RULES.roundsToWin;
+  }
+  /** Players this room holds: 2 for a duel, 4 for 2v2. */
+  get size() {
+    return MODE_SIZE[this.mode];
+  }
+  teamOf(p: Fighter): Team {
+    return p.team ?? (this.players.indexOf(p) % 2 === 0 ? 0 : 1);
+  }
+  /** Everyone on the other team who is still in the match. */
+  enemiesOf(p: Fighter) {
+    const team = this.teamOf(p);
+    return this.players.filter(
+      (o) => o !== p && this.teamOf(o) !== team && !o.out,
+    );
+  }
+  /** Enemies of whoever owns a projectile or zone (by id). */
+  enemiesOfOwner(owner: string) {
+    const p = this.players.find((o) => o.id === owner);
+    return p ? this.enemiesOf(p) : this.players.filter((o) => o.id !== owner);
+  }
+  /** Members of a team still standing this round. */
+  standing(team: Team) {
+    return this.players.filter(
+      (p) => this.teamOf(p) === team && !p.out && p.hp > 0,
+    );
+  }
   add(id: string, name: string, character: CharacterId = "voltkit"): Fighter {
     const p: Fighter = {
       id,
@@ -70,6 +111,9 @@ export class Arena {
       stats: { dealt: 0, received: 0, skills: 0 },
       lastInput: blankInput(),
     };
+    // Join the smaller team (a duel ends up Blue vs Red).
+    const blue = this.players.filter((o) => this.teamOf(o) === 0).length;
+    p.team = blue <= this.players.length - blue ? 0 : 1;
     this.players.push(p);
     this.scores[id] = 0;
     return p;
@@ -103,9 +147,9 @@ export class Arena {
       return false;
     if (!this.instructionsReady.includes(id)) this.instructionsReady.push(id);
     if (
-      this.players.length === 2 &&
+      this.players.length === this.size &&
       this.players.every(
-        (p) => p.connected && this.instructionsReady.includes(p.id),
+        (p) => p.out || (p.connected && this.instructionsReady.includes(p.id)),
       )
     ) {
       this.phase = "countdown";
@@ -118,6 +162,9 @@ export class Arena {
     this.round = 1;
     this.winner = null;
     this.roundWinner = null;
+    this.teamScores = [0, 0];
+    this.winnerTeam = null;
+    this.roundWinnerTeam = null;
     for (const p of this.players)
       p.stats = { dealt: 0, received: 0, skills: 0 };
     this.resetRound();
@@ -139,14 +186,19 @@ export class Arena {
     this.projectiles = [];
     this.zones = [];
     this.overtime = false;
-    for (const [i, p] of this.players.entries()) {
+    const slot = [0, 0];
+    for (const p of this.players) {
+      const team = this.teamOf(p),
+        index = slot[team]++;
+      // Duel: one each side. 2v2: partners side by side, a lane apart.
+      const y = this.mode === "teams" ? (index === 0 ? 330 : 570) : 450;
       Object.assign(p, {
-        hp: CHARACTERS[p.character].health,
-        x: i === 0 ? 260 : 1340,
-        y: 450,
+        hp: p.out ? 0 : CHARACTERS[p.character].health,
+        x: team === 0 ? 260 : 1340,
+        y,
         vx: 0,
         vy: 0,
-        angle: i === 0 ? 0 : Math.PI,
+        angle: team === 0 ? 0 : Math.PI,
         cooldowns: Array(SKILL_SLOTS).fill(0),
         basicAt: 0,
         dashAt: 0,
@@ -177,18 +229,21 @@ export class Arena {
       skill: input.skill >= 0 ? input.skill : p.lastInput.skill,
     };
   }
-  status(p: Fighter, kind: StatusKind, duration: number) {
+  status(p: Fighter, kind: StatusKind, duration: number, by?: string) {
     if (["stun", "freeze", "paralysis"].includes(kind)) {
       if (this.time < p.immuneUntil) return;
       p.immuneUntil = this.time + duration + STATUS_RULES.crowdControlImmunity;
     }
     const old = p.statuses.find((s) => s.kind === kind);
-    if (old) old.until = Math.max(old.until, this.time + duration);
-    else
+    if (old) {
+      old.until = Math.max(old.until, this.time + duration);
+      if (by) old.by = by;
+    } else
       p.statuses.push({
         kind,
         until: this.time + duration,
         nextTick: this.time + STATUS_RULES.burnInterval,
+        ...(by ? { by } : {}),
       });
   }
   has(p: Fighter, kind: StatusKind) {
@@ -242,7 +297,7 @@ export class Arena {
       );
     }
     if (ability?.status)
-      this.status(target, ability.status, ability.statusDuration ?? 1);
+      this.status(target, ability.status, ability.statusDuration ?? 1, owner);
     if (ability && source && ability.knockback) {
       const dir = normalize(target.x - source.x, target.y - source.y);
       move(target, dir.x * ability.knockback, dir.y * ability.knockback);
@@ -262,7 +317,7 @@ export class Arena {
     p.statuses = p.statuses.filter((s) => s.kind !== "stealth");
     const color = CHARACTERS[p.character].color;
     const angle = p.angle;
-    const enemy = this.players.find((o) => o.id !== p.id);
+    const enemies = this.enemiesOf(p);
     this.event("cast", p, color, undefined, p.id, a.id);
     const projectile = (offset: number) => {
       if (this.projectiles.length >= RULES.maxProjectiles) return;
@@ -301,25 +356,25 @@ export class Arena {
         color,
       });
     }
-    if (
-      a.kind === "melee" &&
-      enemy &&
-      this.inArc(p, enemy, a.range, a.arc ?? 0.35)
-    )
-      this.damage(enemy, a.damage, p.id, a);
+    if (a.kind === "melee")
+      for (const enemy of enemies)
+        if (enemy.hp > 0 && this.inArc(p, enemy, a.range, a.arc ?? 0.35))
+          this.damage(enemy, a.damage, p.id, a);
     if (a.kind === "nova") {
       this.event("burst", p, color, undefined, p.id, a.id);
-      if (
-        enemy?.clone &&
-        Math.hypot(enemy.clone.x - p.x, enemy.clone.y - p.y) < a.radius
-      )
-        enemy.clone = undefined;
-      if (
-        enemy &&
-        Math.hypot(enemy.x - p.x, enemy.y - p.y) < a.radius + RULES.radius &&
-        this.lineClear(p, enemy)
-      )
-        this.damage(enemy, a.damage, p.id, a);
+      for (const enemy of enemies) {
+        if (
+          enemy.clone &&
+          Math.hypot(enemy.clone.x - p.x, enemy.clone.y - p.y) < a.radius
+        )
+          enemy.clone = undefined;
+        if (
+          enemy.hp > 0 &&
+          Math.hypot(enemy.x - p.x, enemy.y - p.y) < a.radius + RULES.radius &&
+          this.lineClear(p, enemy)
+        )
+          this.damage(enemy, a.damage, p.id, a);
+      }
     }
     if (a.kind === "beam") {
       const dx = Math.cos(angle),
@@ -330,19 +385,22 @@ export class Arena {
         x = p.x + dx * travelled;
         y = p.y + dy * travelled;
         if (travelled > RULES.radius && blocked(x, y, 2)) break;
-        if (
-          enemy?.clone &&
-          Math.hypot(x - enemy.clone.x, y - enemy.clone.y) <
-            a.radius + RULES.radius
-        ) {
-          enemy.clone = undefined;
+        // The beam stops at the first decoy or enemy it reaches.
+        const decoy = enemies.find(
+          (e) =>
+            e.clone &&
+            Math.hypot(x - e.clone.x, y - e.clone.y) < a.radius + RULES.radius,
+        );
+        if (decoy) {
+          decoy.clone = undefined;
           break;
         }
-        if (
-          enemy &&
-          Math.hypot(x - enemy.x, y - enemy.y) < a.radius + RULES.radius
-        ) {
-          this.damage(enemy, a.damage, p.id, a);
+        const struck = enemies.find(
+          (e) =>
+            e.hp > 0 && Math.hypot(x - e.x, y - e.y) < a.radius + RULES.radius,
+        );
+        if (struck) {
+          this.damage(struck, a.damage, p.id, a);
           break;
         }
       }
@@ -441,6 +499,19 @@ export class Arena {
       if (bot) bot.lastInput = brain.think(this, bot);
     }
     for (const p of this.players) {
+      // Knocked-out (2v2) or departed fighters sit still until the next round.
+      // (A duel ends the round the same tick, so this only matters in 2v2.)
+      if (p.out || (p.hp <= 0 && this.mode === "teams")) {
+        p.vx = p.vy = 0;
+        p.charge = undefined;
+        p.channel = undefined;
+        p.lastInput = {
+          ...blankInput(),
+          aimX: p.lastInput.aimX,
+          aimY: p.lastInput.aimY,
+        };
+        continue;
+      }
       p.statuses = p.statuses.filter((s) => s.until > this.time);
       for (const s of p.statuses) {
         if (s.kind === "sleep" && s.amount && this.time >= s.nextTick) {
@@ -452,7 +523,7 @@ export class Arena {
           this.damage(
             p,
             STATUS_RULES.burnDamage,
-            this.players.find((o) => o.id !== p.id)?.id ?? "",
+            s.by ?? this.enemiesOf(p)[0]?.id ?? "",
           );
         }
       }
@@ -519,11 +590,11 @@ export class Arena {
       if (p.clone && p.clone.until <= this.time) p.clone = undefined;
       if (p.channel) {
         const a = CHARACTERS[p.character].skills[p.channel.skill];
-        const enemy = this.players.find((o) => o.id !== p.id);
         if (a && this.time >= p.channel.nextTick) {
           p.channel.nextTick += a.tickInterval ?? 0.2;
-          if (enemy && this.inArc(p, enemy, a.range, a.arc ?? 0.7))
-            this.damage(enemy, a.damage, p.id, a);
+          for (const enemy of this.enemiesOf(p))
+            if (enemy.hp > 0 && this.inArc(p, enemy, a.range, a.arc ?? 0.7))
+              this.damage(enemy, a.damage, p.id, a);
         }
         if (!a || this.time >= p.channel.until) p.channel = undefined;
       }
@@ -534,17 +605,18 @@ export class Arena {
         1,
         Math.ceil((Math.hypot(pr.vx, pr.vy) * dt) / 10),
       );
-      const enemy = this.players.find((p) => p.id !== pr.owner);
+      const enemies = this.enemiesOfOwner(pr.owner);
       const explode = () => {
         this.event("impact", pr, pr.color, undefined, pr.owner, pr.ability.id);
-        if (
-          pr.ability.explosion &&
-          enemy &&
-          Math.hypot(pr.x - enemy.x, pr.y - enemy.y) <
-            pr.ability.explosion + RULES.radius &&
-          this.lineClear(pr, enemy)
-        )
-          this.damage(enemy, pr.ability.damage, pr.owner, pr.ability);
+        if (pr.ability.explosion)
+          for (const enemy of enemies)
+            if (
+              enemy.hp > 0 &&
+              Math.hypot(pr.x - enemy.x, pr.y - enemy.y) <
+                pr.ability.explosion + RULES.radius &&
+              this.lineClear(pr, enemy)
+            )
+              this.damage(enemy, pr.ability.damage, pr.owner, pr.ability);
       };
       for (let i = 0; i < steps; i++) {
         pr.x += (pr.vx * dt) / steps;
@@ -554,12 +626,14 @@ export class Arena {
           explode();
           return false;
         }
-        if (
-          enemy?.clone &&
-          Math.hypot(pr.x - enemy.clone.x, pr.y - enemy.clone.y) <
-            RULES.radius + pr.ability.radius
-        ) {
-          enemy.clone = undefined;
+        const decoy = enemies.find(
+          (e) =>
+            e.clone &&
+            Math.hypot(pr.x - e.clone.x, pr.y - e.clone.y) <
+              RULES.radius + pr.ability.radius,
+        );
+        if (decoy) {
+          decoy.clone = undefined;
           this.event(
             "impact",
             pr,
@@ -570,13 +644,15 @@ export class Arena {
           );
           return false;
         }
-        if (
-          enemy &&
-          Math.hypot(pr.x - enemy.x, pr.y - enemy.y) <
-            RULES.radius + pr.ability.radius
-        ) {
+        const struck = enemies.find(
+          (e) =>
+            e.hp > 0 &&
+            Math.hypot(pr.x - e.x, pr.y - e.y) <
+              RULES.radius + pr.ability.radius,
+        );
+        if (struck) {
           if (pr.ability.explosion) explode();
-          else this.damage(enemy, pr.ability.damage, pr.owner, pr.ability);
+          else this.damage(struck, pr.ability.damage, pr.owner, pr.ability);
           return false;
         }
       }
@@ -592,14 +668,14 @@ export class Arena {
       }
       if (this.time >= zone.nextTick) {
         zone.nextTick += zone.ability.tickInterval ?? 0.5;
-        const enemy = this.players.find((p) => p.id !== zone.owner);
-        if (
-          enemy &&
-          Math.hypot(enemy.x - zone.x, enemy.y - zone.y) <
-            zone.radius + RULES.radius &&
-          this.lineClear(zone, enemy)
-        )
-          this.damage(enemy, zone.ability.damage, zone.owner, zone.ability);
+        for (const enemy of this.enemiesOfOwner(zone.owner))
+          if (
+            enemy.hp > 0 &&
+            Math.hypot(enemy.x - zone.x, enemy.y - zone.y) <
+              zone.radius + RULES.radius &&
+            this.lineClear(zone, enemy)
+          )
+            this.damage(enemy, zone.ability.damage, zone.owner, zone.ability);
       }
     }
     this.zones = this.zones.filter((z) => z.until > this.time);
@@ -621,42 +697,63 @@ export class Arena {
     }
     if (this.overtime)
       for (const p of this.players)
-        this.damage(
-          p,
-          dt * 12,
-          this.players.find((o) => o.id !== p.id)?.id ?? "",
-        );
-    const alive = this.players.filter((p) => p.hp > 0);
-    if (alive.length < 2) {
-      this.endRound(alive[0]?.id ?? null);
+        if (p.hp > 0 && !p.out)
+          this.damage(p, dt * 12, this.enemiesOf(p)[0]?.id ?? "");
+    const blue = this.standing(0).length,
+      red = this.standing(1).length;
+    if (!blue || !red) {
+      this.endRound(blue ? 0 : red ? 1 : null);
       return;
     }
     if (this.time >= this.deadline) {
-      const [a, b] = this.players;
-      const diff =
-        a.hp / CHARACTERS[a.character].health -
-        b.hp / CHARACTERS[b.character].health;
+      // Time: the team with more health left (as a share of its full health) wins.
+      const share = (team: Team) => {
+        const members = this.players.filter((p) => this.teamOf(p) === team);
+        return (
+          members.reduce(
+            (sum, p) =>
+              sum + Math.max(0, p.hp) / CHARACTERS[p.character].health,
+            0,
+          ) / Math.max(1, members.length)
+        );
+      };
+      const diff = share(0) - share(1);
       if (Math.abs(diff) < 0.0001) {
         this.overtime = true;
         this.deadline = this.time + 20;
-      } else this.endRound(diff > 0 ? a.id : b.id);
+      } else this.endRound(diff > 0 ? 0 : 1);
     }
   }
-  endRound(id: string | null) {
-    this.roundWinner = id;
-    if (id) this.scores[id]++;
+  /** A team (or nobody, on a double knockout) takes the round. */
+  endRound(team: Team | null) {
+    const members =
+      team === null ? [] : this.players.filter((p) => this.teamOf(p) === team);
+    this.roundWinnerTeam = team;
+    this.roundWinner =
+      members.find((p) => !p.out)?.id ?? members[0]?.id ?? null;
+    if (team !== null) {
+      this.teamScores[team]++;
+      for (const p of members) this.scores[p.id]++;
+    }
     this.event("round", { x: 800, y: 450 }, 0xffffff);
-    if (id && this.scores[id] >= RULES.roundsToWin) {
-      this.winner = id;
+    if (team !== null && this.teamScores[team] >= this.roundsToWin) {
+      this.winnerTeam = team;
+      this.winner = this.roundWinner;
       this.phase = "finished";
     } else {
       this.phase = "intermission";
       this.deadline = this.time + RULES.intermission;
     }
   }
+  /** End the match in favour of `id`'s team (opponents left or gave up). */
   forfeit(id: string) {
+    const winner = this.players.find((p) => p.id === id);
+    const team = winner ? this.teamOf(winner) : 0;
     this.winner = id;
-    this.scores[id] = RULES.roundsToWin;
+    this.winnerTeam = team;
+    this.teamScores[team] = this.roundsToWin;
+    for (const p of this.players)
+      if (this.teamOf(p) === team) this.scores[p.id] = this.roundsToWin;
     this.phase = "finished";
   }
   snapshot(pauseRemaining = 0): Snapshot {
@@ -672,6 +769,10 @@ export class Arena {
       scores: this.scores,
       winner: this.winner,
       roundWinner: this.roundWinner,
+      mode: this.mode,
+      teamScores: this.teamScores,
+      winnerTeam: this.winnerTeam,
+      roundWinnerTeam: this.roundWinnerTeam,
       players: this.players,
       projectiles: this.projectiles,
       zones: this.zones,

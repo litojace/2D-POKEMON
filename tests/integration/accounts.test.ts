@@ -494,3 +494,69 @@ it("keeps a finished bot match on rematch and refuses the lobby", async () => {
   expect((await emit(socket, "rematch")).ok).toBe(true);
   expect(arena.phase).toBe("briefing");
 });
+it("runs a 2v2 room: four players, teams, shuffle, start and 2v1 on leave", async () => {
+  const people = [0, 1, 2, 3, 4].map(() => accounts.add(false));
+  const sockets = await Promise.all(people.map((p) => connect(p.token)));
+  const host = await emit(sockets[0], "create", {
+    name: "Host",
+    mode: "teams",
+  });
+  expect(host.ok).toBe(true);
+  const arena = server.rooms.get(host.code!)!;
+  expect(arena.mode).toBe("teams");
+  for (const s of sockets.slice(1, 4))
+    expect((await emit(s, "join", { name: "Mate", code: host.code })).ok).toBe(
+      true,
+    );
+  // Room holds four; the fifth is turned away.
+  expect(
+    (await emit(sockets[4], "join", { name: "Late", code: host.code })).ok,
+  ).toBe(false);
+  expect(arena.players.map((p) => p.team)).toEqual([0, 1, 0, 1]);
+  // Blue is full, so a Red player cannot switch to it.
+  expect((await emit(sockets[1], "team", { team: 0 })).ok).toBe(false);
+  expect((await emit(sockets[1], "team", { team: 2 })).ok).toBe(false);
+  // Only the host can shuffle; teams stay two and two.
+  expect((await emit(sockets[1], "shuffle")).ok).toBe(false);
+  expect((await emit(sockets[0], "shuffle")).ok).toBe(true);
+  expect(arena.players.filter((p) => p.team === 0)).toHaveLength(2);
+  // Starts only when all four are ready.
+  for (const s of sockets.slice(0, 3)) await emit(s, "ready");
+  expect(arena.phase).toBe("lobby");
+  await emit(sockets[3], "ready");
+  expect(arena.phase).toBe("briefing");
+  for (const s of sockets.slice(0, 4)) await emit(s, "instructions-ready");
+  expect(arena.phase).toBe("countdown");
+  for (let i = 0; i < 100; i++) server.step();
+  expect(arena.phase).toBe("playing");
+  // One player leaves for good: their partner plays on 2v1.
+  const leaver = arena.players[1];
+  const partner = arena.players.find(
+    (p) => p !== leaver && p.team === leaver.team,
+  )!;
+  const leaverSocket = sockets[1];
+  expect((await emit(leaverSocket, "leave")).ok).toBe(true);
+  expect(leaver.out).toBe(true);
+  expect(arena.phase).toBe("playing");
+  // Rematch is impossible with someone missing; then the partner leaves too → forfeit.
+  const partnerSocket = sockets[arena.players.indexOf(partner)];
+  expect((await emit(partnerSocket, "leave")).ok).toBe(true);
+  expect(arena.phase).toBe("finished");
+  expect(arena.winnerTeam).toBe(1 - (leaver.team ?? 0));
+  const stayer = sockets[arena.players.findIndex((p) => !p.out && p.connected)];
+  expect((await emit(stayer, "rematch")).ok).toBe(false);
+  expect((await emit(stayer, "lobby")).ok).toBe(true);
+  expect(arena.phase).toBe("lobby");
+  expect(arena.players).toHaveLength(2);
+  expect(arena.players.every((p) => !p.out)).toBe(true);
+});
+it("still creates a normal 1v1 room by default", async () => {
+  const one = accounts.add(false);
+  const socket = await connect(one.token);
+  const room = await emit(socket, "create", { name: "Solo" });
+  expect(server.rooms.get(room.code!)!.mode).toBe("duel");
+  expect((await emit(socket, "team", { team: 1 })).ok).toBe(false);
+  expect((await emit(socket, "create", { name: "X", mode: "chaos" })).ok).toBe(
+    false,
+  );
+});

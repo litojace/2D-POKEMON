@@ -26,6 +26,12 @@ import {
 const botMatchSchema = identitySchema
   .extend({ character: characterSchema, difficulty: z.enum(BOT_DIFFICULTIES) })
   .strict();
+const createSchema = identitySchema
+  .extend({ mode: z.enum(["duel", "teams"]).optional() })
+  .strict();
+const teamSchema = z
+  .object({ team: z.union([z.literal(0), z.literal(1)]) })
+  .strict();
 const BOT_NAMES = [
   "Pip",
   "Nova",
@@ -147,7 +153,10 @@ export function createArenaServer(
       const session = getSession(socket.id);
       const arena = session ? rooms.get(session.code) : undefined;
       const me = arena?.players.find((p) => p.id === session!.id);
-      const other = arena?.players.find((p) => p.id !== session!.id);
+      const others = me && arena ? arena.enemiesOf(me) : [];
+      const other = others.length
+        ? { name: others.map((o) => o.name).join(" & ") }
+        : undefined;
       const activity: OnlinePlayer["activity"] = !arena
         ? "menu"
         : arena.practice
@@ -258,7 +267,10 @@ export function createArenaServer(
     io.to(arena.code).emit("state", packSnapshot(snapshot));
   }
   function resume(arena: Arena) {
-    if (arena.phase === "paused" && arena.players.every((p) => p.connected))
+    if (
+      arena.phase === "paused" &&
+      arena.players.every((p) => p.out || p.connected)
+    )
       arena.phase = arena.previousPhase;
   }
   function detach(session: Session, permanent = false) {
@@ -285,7 +297,28 @@ export function createArenaServer(
     sessions.delete(session.token);
     if (!arena) return;
     const other = arena.players.find((p) => p.id !== session.id);
-    if (arena.phase === "paused" && other) {
+    const leaver = arena.players.find((p) => p.id === session.id);
+    if (
+      arena.mode === "teams" &&
+      leaver &&
+      !["lobby", "finished"].includes(arena.phase)
+    ) {
+      // 2v2: the leaver is out for good; their partner plays on alone.
+      leaver.out = true;
+      leaver.hp = 0;
+      leaver.connected = false;
+      const team = arena.teamOf(leaver);
+      const partners = arena.players.filter(
+        (p) => !p.out && arena.teamOf(p) === team,
+      );
+      const opponents = arena.players.filter(
+        (p) => !p.out && arena.teamOf(p) !== team,
+      );
+      if (!partners.length && opponents.length) {
+        arena.forfeit(opponents[0].id);
+        for (const p of arena.players) p.ready = false;
+      } else resume(arena);
+    } else if (arena.phase === "paused" && other) {
       arena.forfeit(other.id);
       for (const p of arena.players) p.ready = false;
     } else if (arena.phase === "lobby")
@@ -361,7 +394,7 @@ export function createArenaServer(
       if (!requirePlayer(cb)) return;
       if (!allowed(15))
         return fail(cb, "Too many requests. Try again in a moment.");
-      const result = identitySchema.safeParse(data);
+      const result = createSchema.safeParse(data);
       if (!result.success)
         return fail(cb, "Use a display name of 1–20 characters.");
       if (getSession(socket.id))
@@ -382,7 +415,7 @@ export function createArenaServer(
           () => chars[randomInt(chars.length)],
         ).join("");
       } while (rooms.has(code));
-      const arena = new Arena(code);
+      const arena = new Arena(code, result.data.mode ?? "duel");
       rooms.set(code, arena);
       attach(arena, result.data.name, cb);
     });
@@ -402,7 +435,9 @@ export function createArenaServer(
         return fail(cb, "Room not found. Check the code with your friend.");
       if (arena.practice)
         return fail(cb, "Solo practice sessions cannot be joined.");
-      if (arena.players.length >= 2) return fail(cb, "This room is full.");
+      if (arena.bots.size) return fail(cb, "Bot matches cannot be joined.");
+      if (arena.players.length >= arena.size)
+        return fail(cb, "This room is full.");
       if (arena.phase !== "lobby")
         return fail(cb, "This match has already started.");
       attach(arena, result.data.name, cb);
@@ -611,11 +646,45 @@ export function createArenaServer(
           return fail(cb, "The match has already started.");
         const p = a.players.find((p) => p.id === id)!;
         p.ready = !p.ready;
+        const half = a.size / 2;
         if (
-          a.players.length === 2 &&
+          a.players.length === a.size &&
+          a.players.filter((p) => a.teamOf(p) === 0).length === half &&
           a.players.every((p) => p.ready && p.connected)
         )
           a.start();
+        reply(cb, { ok: true });
+        broadcast(a);
+      }),
+    );
+    // 2v2 lobby: move to the other team when it has a free slot.
+    socket.on("team", (data: unknown, cb: unknown) =>
+      withRoom(cb, (a, id) => {
+        const result = teamSchema.safeParse(data);
+        if (a.mode !== "teams" || a.phase !== "lobby" || !result.success)
+          return fail(cb, "Teams can only be changed in a 2v2 lobby.");
+        const team = result.data.team;
+        const p = a.players.find((p) => p.id === id)!;
+        if (a.teamOf(p) === team) return reply(cb, { ok: true });
+        if (a.players.filter((o) => a.teamOf(o) === team).length >= a.size / 2)
+          return fail(cb, "That team is full.");
+        p.team = team;
+        for (const o of a.players) o.ready = false;
+        reply(cb, { ok: true });
+        broadcast(a);
+      }),
+    );
+    // The host (first player in the room) can deal random, even teams.
+    socket.on("shuffle", (_data: unknown, cb: unknown) =>
+      withRoom(cb, (a, id) => {
+        if (a.mode !== "teams" || a.phase !== "lobby")
+          return fail(cb, "Teams can only be shuffled in a 2v2 lobby.");
+        if (a.players[0]?.id !== id)
+          return fail(cb, "Only the room host can shuffle teams.");
+        const order = a.players.map((p) => ({ p, k: randomInt(1 << 30) }));
+        order.sort((x, y) => x.k - y.k);
+        order.forEach(({ p }, i) => (p.team = i % 2 === 0 ? 0 : 1));
+        for (const o of a.players) o.ready = false;
         reply(cb, { ok: true });
         broadcast(a);
       }),
@@ -639,10 +708,15 @@ export function createArenaServer(
       withRoom(cb, (a, id) => {
         if (
           a.phase !== "finished" ||
-          a.players.length !== 2 ||
-          !a.players.every((p) => p.connected)
+          a.players.length !== a.size ||
+          !a.players.every((p) => p.connected && !p.out)
         )
-          return fail(cb, "Both players must be connected for a rematch.");
+          return fail(
+            cb,
+            a.size > 2
+              ? "Everyone must still be here for a rematch. Return to the lobby to refill the room."
+              : "Both players must be connected for a rematch.",
+          );
         const p = a.players.find((p) => p.id === id)!;
         p.ready = true;
         if (a.players.every((p) => p.ready)) a.start();
@@ -660,7 +734,10 @@ export function createArenaServer(
             (s) => s.code === a.code && s.id === p.id,
           ),
         );
-        for (const p of a.players) p.ready = false;
+        for (const p of a.players) {
+          p.ready = false;
+          p.out = false;
+        }
         reply(cb, { ok: true });
         broadcast(a);
       }),

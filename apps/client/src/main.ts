@@ -92,7 +92,7 @@ const escape = (s: string) =>
       ]!,
   );
 document.querySelector("#app")!.innerHTML =
-  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><details class="header-menu" id="header-menu"><summary>☰ <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">Settings</button><button class="quiet" id="install-app">Want fullscreen?</button><button class="quiet" id="report-problem">Report a problem</button><span class="connection" id="connection">Connecting</span></div></details><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span>WASD <b>Move</b> · Mouse <b>Aim</b> · LMB <b>Basic</b> · 1 / 2 / 3 / R <b>Skills</b> &middot; RMB <b>Dash</b> &middot; SPACE <b>Jump</b></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>ELEMENT ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Eight creatures. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
+  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><details class="header-menu" id="header-menu"><summary>☰ <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">Settings</button><button class="quiet" id="install-app">Want fullscreen?</button><button class="quiet" id="report-problem">Report a problem</button><span class="connection" id="connection">Connecting</span></div></details><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span>WASD <b>Move</b> · Mouse <b>Aim</b> · LMB <b>Basic</b> · 1 / 2 / 3 / R <b>Skills</b> &middot; RMB <b>Dash</b> &middot; SPACE <b>Jump</b></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>ELEMENT ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Eight creatures. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
 const headerMenu = $("header-menu") as HTMLDetailsElement;
 headerMenu.addEventListener("click", (event) => {
   if ((event.target as Element).closest("button")) headerMenu.open = false;
@@ -268,6 +268,65 @@ function showSelection() {
   if (Math.abs(scrollY - y) > 1) scrollTo(0, y);
   return true;
 }
+/** Blue = 0, Red = 1. Older snapshots without teams fall back to seat order. */
+const teamOf = (p: Fighter) =>
+  p.team ?? ((state?.players.indexOf(p) ?? 0) % 2 === 0 ? 0 : 1);
+const TEAM_LABELS = ["Blue", "Red"] as const;
+const isTeams = () => state?.mode === "teams";
+/** Living, visible enemies nearest first (aim assist, off-screen arrow). */
+function nearestEnemy(from: { x: number; y: number }, myself: Fighter) {
+  const team = teamOf(myself);
+  return state?.players
+    .filter(
+      (p) =>
+        p.id !== myself.id &&
+        teamOf(p) !== team &&
+        p.hp > 0 &&
+        !p.out &&
+        !p.statuses.some((s) => s.kind === "stealth"),
+    )
+    .sort(
+      (a, b) =>
+        Math.hypot(a.x - from.x, a.y - from.y) -
+        Math.hypot(b.x - from.x, b.y - from.y),
+    )[0];
+}
+type RoomMode = "duel" | "teams";
+let roomMode: RoomMode = (() => {
+  try {
+    return localStorage.getItem("arena-room-mode") === "teams"
+      ? "teams"
+      : "duel";
+  } catch {
+    return "duel";
+  }
+})();
+/** Lobby panel: a duel list, or Blue/Red columns for 2v2. */
+function roomPanel(me: Fighter) {
+  const row = (p: Fighter, i: number) => {
+    const fighter = CHARACTERS[p.id === myId ? selected : p.character];
+    return `<div${p.id === myId ? " data-me" : ""}><span class="player-dot" style="background:#${fighter.color.toString(16).padStart(6, "0")}">${i + 1}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small class="player-fighter">${fighter.name}</small></span><b>${!p.connected ? "OFFLINE" : p.ready ? "READY" : "CHOOSING"}</b></div>`;
+  };
+  const ready = `<button class="primary" id="ready">${me.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full" id="leave">Leave room</button>`;
+  const code = `<button id="copy" class="room-code">${state!.code}<span>COPY CODE ↗</span></button>`;
+  if (!isTeams())
+    return `<div class="eyebrow">PRIVATE LOBBY</div><h2>Your duel starts here.</h2><p>Share this code with your friend.</p>${code}<div class="players">${state!.players.map(row).join("")}${state!.players.length < 2 ? '<div class="waiting"><span>＋</span> Waiting for your opponent…</div>' : ""}</div>${ready}<small class="room-note">The match begins when both players are ready.</small>`;
+  const mine = teamOf(me),
+    host = state!.players[0]?.id === myId;
+  const columns = ([0, 1] as const)
+    .map((t) => {
+      const members = state!.players.filter((p) => teamOf(p) === t);
+      const open = Math.max(0, 2 - members.length);
+      const slots = Array.from({ length: open }, () =>
+        t === mine
+          ? '<div class="waiting"><span>＋</span> Open slot</div>'
+          : `<button type="button" class="team-slot" data-team="${t}"><span>＋</span> Join ${TEAM_LABELS[t]}</button>`,
+      ).join("");
+      return `<div class="team-column team-${t}${t === mine ? " mine" : ""}"><div class="team-head">${TEAM_LABELS[t]} team</div><div class="players">${members.map((p, i) => row(p, i)).join("")}${slots}</div></div>`;
+    })
+    .join("");
+  return `<div class="eyebrow">PRIVATE 2V2 LOBBY</div><h2>Two on two.</h2><p>Share this code with three friends, then pick a side.</p>${code}<div class="team-columns">${columns}</div>${host ? '<button class="quiet full" id="shuffle">Shuffle teams ⇄</button>' : ""}${ready}<small class="room-note">First team to 3 round wins. Starts when all four players are ready.</small>`;
+}
 type BotLevel = "easy" | "normal" | "hard";
 const BOT_LEVELS: [BotLevel, string, string][] = [
   ["easy", "Easy", "Learning"],
@@ -288,7 +347,7 @@ function renderMenu() {
   pwa.sync();
   const p = state?.players.find((p) => p.id === myId);
   const isRoom = !!p;
-  const key = `${isRoom ? "room" : "home"}:${state?.players.map((p) => `${p.id}${p.id === myId ? "" : p.character}${p.ready}${p.connected}`).join(":")}:${selected}`;
+  const key = `${isRoom ? `room-${state!.mode ?? "duel"}` : "home"}:${state?.players.map((p) => `${p.id}${p.id === myId ? "" : p.character}${p.ready}${p.connected}${p.team ?? ""}`).join(":")}:${selected}`;
   if (screen === key) return;
   const previous = screen;
   screen = key;
@@ -309,18 +368,22 @@ function renderMenu() {
   $("battle").hidden = true;
   $("menu").hidden = false;
   $("menu").innerHTML =
-    `<div class="eyebrow"><span class="live-dot"></span> ONLINE 1V1 · REAL-TIME BATTLES</div><div class="intro"><div><h1>Your creature.<br>Your <em>arena.</em></h1><p>Eight original creatures. One basic attack and four special skills each. No waiting for your turn.<br>Challenge a friend to a real-time duel in Elemental Coliseum.</p></div><div class="arena-badge">✦<span>ELEMENTAL COLISEUM</span><small>BEST OF THREE</small></div></div><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected)}</div><aside class="room-panel">${
+    `<div class="eyebrow"><span class="live-dot"></span> ONLINE 1V1 &amp; 2V2 · REAL-TIME BATTLES</div><div class="intro"><div><h1>Your creature.<br>Your <em>arena.</em></h1><p>Eight original creatures. One basic attack and four special skills each. No waiting for your turn.<br>Challenge a friend to a real-time duel in Elemental Coliseum.</p></div><div class="arena-badge">✦<span>ELEMENTAL COLISEUM</span><small>BEST OF THREE</small></div></div><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected)}</div><aside class="room-panel">${
       isRoom
-        ? `<div class="eyebrow">PRIVATE LOBBY</div><h2>Your duel starts here.</h2><p>Share this code with your friend.</p><button id="copy" class="room-code">${state!.code}<span>COPY CODE ↗</span></button><div class="players">${state!.players
-            .map((p, i) => {
-              const fighter =
-                CHARACTERS[p.id === myId ? selected : p.character];
-              return `<div${p.id === myId ? " data-me" : ""}><span class="player-dot" style="background:#${fighter.color.toString(16).padStart(6, "0")}">${i + 1}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small class="player-fighter">${fighter.name}</small></span><b>${!p.connected ? "OFFLINE" : p.ready ? "READY" : "CHOOSING"}</b></div>`;
-            })
+        ? roomPanel(p!)
+        : `<div class="eyebrow">PLAY ONLINE</div><h2>A friend. A code.<br>A worthy opponent.</h2><label for="name">YOUR DISPLAY NAME</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><div class="mode-picker" role="radiogroup" aria-label="Room type">${(
+            [
+              ["duel", "1v1 Duel", "Best of three"],
+              ["teams", "2v2 Teams", "Best of five"],
+            ] as const
+          )
+            .map(
+              ([id, label, hint]) =>
+                `<button type="button" role="radio" class="bot-level mode-level${roomMode === id ? " active" : ""}" data-mode="${id}" aria-checked="${roomMode === id}"><b>${label}</b><small>${hint}</small></button>`,
+            )
             .join(
               "",
-            )}${state!.players.length < 2 ? '<div class="waiting"><span>＋</span> Waiting for your opponent…</div>' : ""}</div><button class="primary" id="ready">${p!.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full" id="leave">Leave room</button><small class="room-note">The match begins when both players are ready.</small>`
-        : `<div class="eyebrow">PLAY ONLINE</div><h2>A friend. A code.<br>A worthy opponent.</h2><label for="name">YOUR DISPLAY NAME</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><button class="primary" id="create">Create private room →</button><div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><div class="divider">OR PLAY SOLO</div><div class="bot-picker" role="radiogroup" aria-label="Bot difficulty">${BOT_LEVELS.map(([id, label, hint]) => `<button type="button" role="radio" class="bot-level${botLevel === id ? " active" : ""}" data-bot="${id}" aria-checked="${botLevel === id}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button class="secondary full" id="bot-match">Battle an AI bot →</button>${accountsUI?.account ? '<button class="quiet full" id="practice">Solo test mode →</button>' : ""}<small class="room-note">Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`
+            )}</div><button class="primary" id="create">Create private room →</button><div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><div class="divider">OR PLAY SOLO</div><div class="bot-picker" role="radiogroup" aria-label="Bot difficulty">${BOT_LEVELS.map(([id, label, hint]) => `<button type="button" role="radio" class="bot-level${botLevel === id ? " active" : ""}" data-bot="${id}" aria-checked="${botLevel === id}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button class="secondary full" id="bot-match">Battle an AI bot →</button>${accountsUI?.account ? '<button class="quiet full" id="practice">Solo test mode →</button>' : ""}<small class="room-note">Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`
     }</aside></div>`;
   wireRoster(isRoom);
   if (keepScroll !== null && Math.abs(scrollY - keepScroll) > 1)
@@ -333,6 +396,15 @@ function renderMenu() {
       void request("ready");
     };
     $("leave").onclick = () => void leave();
+    document
+      .querySelectorAll<HTMLButtonElement>("[data-team]")
+      .forEach(
+        (b) =>
+          (b.onclick = () =>
+            void request("team", { team: Number(b.dataset.team) })),
+      );
+    if (document.getElementById("shuffle"))
+      $("shuffle").onclick = () => void request("shuffle");
     $("copy").onclick = () =>
       void navigator.clipboard
         .writeText(state!.code)
@@ -350,7 +422,7 @@ function renderMenu() {
       const reply = await request(
         event,
         event === "create"
-          ? { name }
+          ? { name, mode: roomMode }
           : {
               name,
               code: $<HTMLInputElement>("code").value.trim().toUpperCase(),
@@ -374,6 +446,24 @@ function renderMenu() {
           // Update in place: no re-render, so the page keeps its scroll.
           document
             .querySelectorAll<HTMLButtonElement>("[data-bot]")
+            .forEach((b) => {
+              const on = b === button;
+              b.classList.toggle("active", on);
+              b.setAttribute("aria-checked", String(on));
+            });
+        }),
+    );
+    document.querySelectorAll<HTMLButtonElement>("[data-mode]").forEach(
+      (button) =>
+        (button.onclick = () => {
+          roomMode = button.dataset.mode as RoomMode;
+          try {
+            localStorage.setItem("arena-room-mode", roomMode);
+          } catch {
+            /* optional */
+          }
+          document
+            .querySelectorAll<HTMLButtonElement>("[data-mode]")
             .forEach((b) => {
               const on = b === button;
               b.classList.toggle("active", on);
@@ -437,7 +527,13 @@ function renderBattle() {
   }
   const me = state?.players.find((p) => p.id === myId);
   if (!state || !me) return;
-  const key = `battle:${me.character}:${!!state.practice}`;
+  const hudOrder = isTeams()
+    ? [
+        ...state.players.filter((p) => teamOf(p) === teamOf(me)),
+        ...state.players.filter((p) => teamOf(p) !== teamOf(me)),
+      ]
+    : state.players;
+  const key = `battle:${me.character}:${!!state.practice}:${state.mode ?? "duel"}:${hudOrder.map((p) => p.id + p.character).join(",")}`;
   if (screen !== key) {
     screen = key;
     $("menu").hidden = true;
@@ -475,25 +571,31 @@ function renderBattle() {
       $("practice-reset").onclick = () => void request("practice-reset");
       $("practice-exit").onclick = () => void leave();
     }
-    $("hud").innerHTML = state.players
+    const split = isTeams() ? 2 : 1;
+    $("hud").classList.toggle("hud-teams", isTeams());
+    $("hud").innerHTML = hudOrder
       .map(
         (p, i) =>
-          `${i === 1 ? '<div class="timer-wrap"><span id="round-label"></span><strong id="timer">03:00</strong><span id="phase-label"></span></div>' : ""}<div class="health-card ${i === 1 ? "right" : ""}" style="--element:#${CHARACTERS[p.character].color.toString(16)}"><div><b>${escape(p.name)}</b><span>${CHARACTERS[p.character].name}</span><strong id="score-${i}"></strong></div><div class="health-track"><span id="health-${i}"></span></div><small id="health-text-${i}"></small><small id="status-${i}"></small></div>`,
+          `${i === split ? '<div class="timer-wrap"><span id="round-label"></span><strong id="timer">03:00</strong><span id="phase-label"></span></div>' : ""}<div class="health-card ${i >= split ? "right" : ""}${isTeams() ? ` team-${teamOf(p)}${p.id === myId ? " me" : ""}` : ""}" style="--element:#${CHARACTERS[p.character].color.toString(16)}"><div><b>${escape(p.name)}</b><span>${CHARACTERS[p.character].name}</span><strong id="score-${i}"></strong></div><div class="health-track"><span id="health-${i}"></span></div><small id="health-text-${i}"></small><small id="status-${i}"></small></div>`,
       )
       .join("");
     const c = CHARACTERS[me.character];
     $("abilities").innerHTML =
       `<div class="basic-hint" title="${c.basic.name}: ${c.basic.description} No cooldown · ${Math.round((c.basic.interval ?? 0.3) * 1000)} ms between attacks."><kbd>LMB</kbd><span>${abilityIcon(c.basic.name)}<small>${c.basic.name.toUpperCase()}</small></span></div>${c.skills.map((a, i) => `<div class="ability" id="ability-${i}" style="--element:#${c.color.toString(16)}"><kbd>${KEYS.skills[i]}</kbd><span>${abilityIcon(a.name)}<small id="cooldown-${i}">READY</small></span><i class="cooldown-fill" id="fill-${i}"></i></div>`).join("")}<div class="movement-ability"><kbd>RMB</kbd><span>Dash<small id="dash-cd"></small></span></div><div class="movement-ability"><kbd>SPACE</kbd><span>Jump<small id="jump-cd"></small></span></div>`;
   }
-  state.players.forEach((p, i) => {
+  hudOrder.forEach((p, i) => {
     const c = CHARACTERS[p.character];
-    $(`health-${i}`).style.width = `${(100 * p.hp) / c.health}%`;
-    $(`health-text-${i}`).textContent = `${Math.ceil(p.hp)} / ${c.health} HP`;
+    $(`health-${i}`).style.width = `${(100 * Math.max(0, p.hp)) / c.health}%`;
+    $(`health-text-${i}`).textContent = p.out
+      ? "LEFT THE MATCH"
+      : `${Math.ceil(Math.max(0, p.hp))} / ${c.health} HP`;
     $(`score-${i}`).textContent = state!.practice
       ? p.id === myId
         ? "TRAINER"
         : "TARGET"
-      : `${state!.scores[p.id]} / 2`;
+      : isTeams()
+        ? `${state!.teamScores?.[teamOf(p)] ?? 0} / 3`
+        : `${state!.scores[p.id]} / 2`;
     $(`status-${i}`).textContent = p.statuses
       .map((s) => s.kind.toUpperCase())
       .join(" · ");
@@ -557,9 +659,20 @@ function renderBattle() {
   );
   const overlay = $("arena-overlay");
   if (state.phase === "playing") {
+    const partner =
+      isTeams() && me.hp <= 0
+        ? state.players.find(
+            (p) => p.id !== myId && teamOf(p) === teamOf(me) && p.hp > 0,
+          )
+        : undefined;
+    // Its own element: a non-empty overlay dims the whole screen on phones.
     setOverlayMarkup(overlay, "");
+    const banner = $("spectate");
+    banner.hidden = !partner;
+    if (partner) banner.textContent = `Knocked out · watching ${partner.name}`;
     overlay.style.pointerEvents = "none";
   } else {
+    $("spectate").hidden = true;
     overlay.style.pointerEvents = "auto";
     let heading = "",
       details = "";
@@ -567,21 +680,29 @@ function renderBattle() {
       heading = "How to play";
       const confirmed = state.instructionsReady.includes(myId);
       // Who's fighting whom, each wearing their trait aura (you first).
-      const lineup = [...state.players].sort(
-        (a, b) => Number(b.id === myId) - Number(a.id === myId),
-      );
-      const versus = `<div class="briefing-versus">${lineup
-        .map(
-          (p) =>
-            `<div class="vs-fighter${p.id === myId ? " me" : ""}" style="--element:#${CHARACTERS[p.character].color.toString(16).padStart(6, "0")}">${withAura(fighterArt(p.character), p.character, reducedMotion)}<b>${escape(p.name)}${p.id === myId ? " <small>(you)</small>" : ""}</b><span>${CHARACTERS[p.character].name} · ${CHARACTERS[p.character].element}</span></div>`,
-        )
-        .join('<span class="vs-mark">VS</span>')}</div>`;
+      const card = (p: Fighter) =>
+        `<div class="vs-fighter${p.id === myId ? " me" : ""}" style="--element:#${CHARACTERS[p.character].color.toString(16).padStart(6, "0")}">${withAura(fighterArt(p.character), p.character, reducedMotion)}<b>${escape(p.name)}${p.id === myId ? " <small>(you)</small>" : ""}</b><span>${CHARACTERS[p.character].name} · ${CHARACTERS[p.character].element}</span></div>`;
+      const mine = (p: Fighter) => teamOf(p) === teamOf(me);
+      const side = (list: Fighter[]) =>
+        list.sort((a, b) => Number(b.id === myId) - Number(a.id === myId));
+      const versus = isTeams()
+        ? `<div class="briefing-versus teams"><div class="vs-team team-${teamOf(me)}">${side(state.players.filter(mine)).map(card).join("")}</div><span class="vs-mark">VS</span><div class="vs-team team-${1 - teamOf(me)}">${state.players
+            .filter((p) => !mine(p))
+            .map(card)
+            .join("")}</div></div>`
+        : `<div class="briefing-versus">${side([...state.players])
+            .map(card)
+            .join('<span class="vs-mark">VS</span>')}</div>`;
       details =
         versus +
-        '<p class="mobile-howto">Touch mode: left joystick to move; big button for basic attacks, the four curved buttons for skills, DASH and JUMP below. Aim follows your opponent. Use Enter fullscreen below the arena.</p><div class="controls-list"><span><kbd>W A S D</kbd>Move · mouse to aim</span><span><kbd>LMB</kbd>Basic attack</span><span><kbd>1 2 3 R</kbd>Four special skills</span><span><kbd>RMB</kbd>Dash</span><span><kbd>SPACE</kbd>Jump over ground attacks</span></div><p>Use cover. Win two rounds. The countdown begins when both players confirm.</p><button class="primary" id="instructions-ready" ' +
+        '<p class="mobile-howto">Touch mode: left joystick to move; big button for basic attacks, the four curved buttons for skills, DASH and JUMP below. Aim follows your nearest opponent. Use Enter fullscreen below the arena.</p><div class="controls-list"><span><kbd>W A S D</kbd>Move · mouse to aim</span><span><kbd>LMB</kbd>Basic attack</span><span><kbd>1 2 3 R</kbd>Four special skills</span><span><kbd>RMB</kbd>Dash</span><span><kbd>SPACE</kbd>Jump over ground attacks</span></div><p>' +
+        (isTeams()
+          ? "Stick with your partner and focus the same target. Your attacks pass through your teammate. First team to win three rounds takes the match."
+          : "Use cover. Win two rounds.") +
+        ' The countdown begins when everyone confirms.</p><button class="primary" id="instructions-ready" ' +
         (confirmed ? "disabled" : "") +
         ">" +
-        (confirmed ? "Waiting for opponent…" : "I’m ready →") +
+        (confirmed ? "Waiting for the others…" : "I’m ready →") +
         "</button>";
     }
     if (state.phase === "countdown") {
@@ -589,19 +710,29 @@ function renderBattle() {
       details = "Get ready. Make your move.";
     }
     if (state.phase === "intermission") {
-      heading = state.roundWinner
-        ? `${escape(state.players.find((p) => p.id === state!.roundWinner)!.name)} takes the round`
-        : "Round drawn";
+      heading = isTeams()
+        ? state.roundWinnerTeam === null || state.roundWinnerTeam === undefined
+          ? "Round drawn"
+          : state.roundWinnerTeam === teamOf(me)
+            ? "Your team takes the round"
+            : `${TEAM_LABELS[state.roundWinnerTeam]} team takes the round`
+        : state.roundWinner
+          ? `${escape(state.players.find((p) => p.id === state!.roundWinner)!.name)} takes the round`
+          : "Round drawn";
       details = `Next round in ${Math.ceil(state.remaining)} seconds`;
     }
     if (state.phase === "paused") {
-      heading = "Opponent disconnected";
+      heading = isTeams() ? "A player disconnected" : "Opponent disconnected";
       details = `Match suspended · reconnect grace ${Math.ceil(state.pauseRemaining)}s`;
     }
     if (state.phase === "finished") {
-      heading =
-        state.winner === myId ? "Victory. Well played." : "A worthy fight.";
-      details = `${escape(state.players.find((p) => p.id === state!.winner)?.name ?? "Nobody")} wins · ${state.players.map((p) => state!.scores[p.id]).join(" — ")}`;
+      const won = isTeams()
+        ? state.winnerTeam === teamOf(me)
+        : state.winner === myId;
+      heading = won ? "Victory. Well played." : "A worthy fight.";
+      details = isTeams()
+        ? `${state.winnerTeam === undefined || state.winnerTeam === null ? "Nobody" : `${TEAM_LABELS[state.winnerTeam]} team`} wins · Blue ${state.teamScores?.[0] ?? 0} — ${state.teamScores?.[1] ?? 0} Red`
+        : `${escape(state.players.find((p) => p.id === state!.winner)?.name ?? "Nobody")} wins · ${state.players.map((p) => state!.scores[p.id]).join(" — ")}`;
       const stats = me.stats;
       details += `<div class="result-stats"><span><b>${Math.round(stats.dealt)}</b>DAMAGE DEALT</span><span><b>${Math.round(stats.received)}</b>DAMAGE TAKEN</span><span><b>${stats.skills}</b>SKILLS CAST</span></div><button class="primary" id="rematch">${me.ready ? "Waiting for opponent…" : "Rematch →"}</button><button class="secondary" id="return">${state.vsBot ? "Back to menu" : "Return to lobby"}</button>`;
     }
@@ -664,7 +795,16 @@ socket.on("access-revoked", ({ error }: { error: string }) => {
 });
 socket.on("state", (snapshot: WireSnapshot) => {
   if (snapshot.phase === "finished" && state?.phase !== "finished")
-    audio.play(snapshot.winner === myId ? "victory" : "defeat");
+    audio.play(
+      (
+        snapshot.mode === "teams"
+          ? snapshot.winnerTeam ===
+            snapshot.players.find((p) => p.id === myId)?.team
+          : snapshot.winner === myId
+      )
+        ? "victory"
+        : "defeat",
+    );
   if (state?.phase !== snapshot.phase || state?.round !== snapshot.round)
     remoteFrames.clear();
   const previous = state;
@@ -1032,10 +1172,20 @@ class ArenaScene extends Phaser.Scene {
     }
   }
   update(_time: number, delta: number) {
-    const tracked = state?.players.find((p) => p.id === myId);
+    const me = state?.players.find((p) => p.id === myId);
+    const partner =
+      me && isTeams() && me.hp <= 0
+        ? state!.players.find(
+            (p) => p.id !== myId && teamOf(p) === teamOf(me) && p.hp > 0,
+          )
+        : undefined;
+    const tracked = partner ?? me;
+    const myTeam = me ? teamOf(me) : 0;
     const follow =
       state?.phase === "playing" && tracked && tracked.hp > 0
-        ? (local ?? tracked)
+        ? tracked === me
+          ? (local ?? tracked)
+          : tracked
         : undefined;
     const presented = follow
       ? (this.positions.get(follow.id) ?? follow)
@@ -1072,12 +1222,8 @@ class ArenaScene extends Phaser.Scene {
       this.scale.height,
       view,
     );
-    const opponent = state?.players.find(
-      (p) =>
-        p.id !== myId &&
-        p.hp > 0 &&
-        !p.statuses.some((s) => s.kind === "stealth"),
-    );
+    const opponent =
+      tracked && presented ? nearestEnemy(presented, tracked) : undefined;
     this.enemyBearing.hidden =
       !follow ||
       !opponent ||
@@ -1121,12 +1267,7 @@ class ArenaScene extends Phaser.Scene {
         !$<HTMLDialogElement>("dialog").open &&
         document.hasFocus() &&
         !document.hidden;
-      const target = state.players.find(
-        (p) =>
-          p.id !== myId &&
-          p.hp > 0 &&
-          !p.statuses.some((s) => s.kind === "stealth"),
-      );
+      const target = nearestEnemy(local, local);
       const mobileAim = touch.enabled && target;
       const input: Input = {
         seq: ++seq,
@@ -1206,12 +1347,17 @@ class ArenaScene extends Phaser.Scene {
         dash: serverPlayer.dashUntil > state.time,
         jump: serverPlayer.jumpUntil > state.time,
         charging: !!serverPlayer.charge,
-        victory:
-          (state.phase === "finished"
-            ? state.winner
-            : state.phase === "intermission"
-              ? state.roundWinner
-              : null) === p.id,
+        victory: isTeams()
+          ? (state.phase === "finished"
+              ? state.winnerTeam
+              : state.phase === "intermission"
+                ? state.roundWinnerTeam
+                : null) === teamOf(p) && p.hp > 0
+          : (state.phase === "finished"
+              ? state.winner
+              : state.phase === "intermission"
+                ? state.roundWinner
+                : null) === p.id,
       };
       if (serverPlayer.clone) {
         const clone = this.getRig(`${p.id}:clone`, p.character);
@@ -1262,12 +1408,17 @@ class ArenaScene extends Phaser.Scene {
             0.3,
           );
       }
-      g.lineStyle(2, p.id === myId ? 0xffffff : c.color, 0.55).strokeEllipse(
-        x,
-        y + 12,
-        72,
-        32,
-      );
+      g.lineStyle(
+        2,
+        p.id === myId
+          ? 0xffffff
+          : isTeams()
+            ? teamOf(p) === myTeam
+              ? 0x5ab0ff
+              : 0xff5d6c
+            : c.color,
+        isTeams() ? 0.8 : 0.55,
+      ).strokeEllipse(x, y + 12, 72, 32);
       if (p.dashUntil > state.time && !reducedMotion) {
         g.fillStyle(c.color, 0.18).fillEllipse(
           x - p.vx * 0.035,
@@ -1383,6 +1534,11 @@ class ArenaScene extends Phaser.Scene {
       label.style.left = labelX + "px";
       label.style.top = Math.max(36, labelY) + "px";
       label.style.opacity = p.hp > 0 ? "1" : "0.4";
+      label.classList.toggle(
+        "team-ally",
+        isTeams() && p.id !== myId && teamOf(p) === myTeam,
+      );
+      label.classList.toggle("team-enemy", isTeams() && teamOf(p) !== myTeam);
       label.hidden =
         labelX < 0 ||
         labelX > this.scale.width * css ||
