@@ -34,6 +34,7 @@ import { InterpolationBuffer } from "./networking/interpolation";
 import { AccountUI } from "./accounts";
 import "./style.css";
 import { FollowCamera, screenToWorld, outsideView } from "./follow-camera";
+import { updateNameplate } from "./player-nameplate";
 const audio = new AudioManager();
 const remoteFrames = new InterpolationBuffer();
 const socket = io(import.meta.env.VITE_SERVER_URL || undefined, {
@@ -614,7 +615,7 @@ class ArenaScene extends Phaser.Scene {
     );
   }
   positions = new Map<string, { x: number; y: number }>();
-  labels = new Map<string, Phaser.GameObjects.Text>();
+  labels = new Map<string, HTMLElement>();
   constructor() {
     super("arena");
   }
@@ -948,7 +949,7 @@ class ArenaScene extends Phaser.Scene {
     }
     for (const [id, label] of this.labels)
       if (!state?.players.some((p) => p.id === id)) {
-        label.destroy();
+        label.remove();
         this.labels.delete(id);
         this.positions.delete(id);
       }
@@ -958,6 +959,7 @@ class ArenaScene extends Phaser.Scene {
     }
     if (!state || state.phase === "lobby") {
       this.rigs.forEach((rig) => rig.setVisible(false));
+      this.labels.forEach((label) => (label.hidden = true));
       return;
     }
     this.accumulator += Math.min(delta, 100);
@@ -1117,12 +1119,13 @@ class ArenaScene extends Phaser.Scene {
           0.3,
           reducedMotion,
         );
+        clone.root.setScale(view.fighterX * 0.7, view.fighterY * 0.7);
       }
       g.fillStyle(0x081f19, 0.45).fillEllipse(
         x,
         y + 15,
-        65 - jump * 0.3,
-        23 - jump * 0.1,
+        48 - jump * 0.2,
+        18 - jump * 0.1,
       );
       g.lineStyle(2, p.id === myId ? 0xffffff : c.color, 0.55).strokeEllipse(
         x,
@@ -1188,24 +1191,33 @@ class ArenaScene extends Phaser.Scene {
       }
       let label = this.labels.get(p.id);
       if (!label) {
-        label = this.add
-          .text(0, 0, "", {
-            fontFamily: "sans-serif",
-            fontSize: "16px",
-            color: "#e7f3df",
-            stroke: "#17372d",
-            strokeThickness: 4,
-          })
-          .setOrigin(0.5);
+        label = document.createElement("div");
+        label.className = "player-nameplate";
+        $("game").parentElement!.append(label);
         this.labels.set(p.id, label);
       }
-      label
-        .setScale(view.fighterX, view.fighterY)
-        .setPosition(x, y - 45 - jump)
-        .setText(
-          `${p.title ? `${p.title}\n` : ""}${p.name}${p.id === myId ? " • YOU" : ""}`,
-        )
-        .setAlpha(p.hp > 0 ? 1 : 0.4);
+      updateNameplate(
+        label,
+        p.name,
+        p.title,
+        p.titleColor,
+        p.id === myId,
+        reducedMotion,
+      );
+      const labelX = (x - view.x) * view.zoomX + this.scale.width / 2;
+      const labelY =
+        (y - jump - view.y - 78) * view.zoomY + this.scale.height / 2;
+      label.style.left = labelX + "px";
+      label.style.top = Math.max(36, labelY) + "px";
+      label.style.opacity = p.hp > 0 ? "1" : "0.4";
+      label.hidden =
+        labelX < 0 ||
+        labelX > this.scale.width ||
+        labelY > this.scale.height ||
+        serverPlayer.statuses.some(
+          (s) => s.kind === "stealth" && p.id !== myId,
+        );
+      rig.root.setScale(view.fighterX * 0.7, view.fighterY * 0.7);
       g.fillStyle(0x0b1a32).fillRoundedRect(x - 30, y + 29, 60, 6, 3);
       g.fillStyle(c.color).fillRoundedRect(
         x - 30,

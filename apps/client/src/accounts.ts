@@ -1,3 +1,4 @@
+import { TITLE_PRESETS } from "./player-nameplate";
 import { createClient, type Session } from "@supabase/supabase-js";
 import {
   accountSchema,
@@ -304,7 +305,7 @@ export class AccountUI {
       const { players, total } = directory as PlayerDirectory;
       const titles = catalog as Title[];
       this.hooks.openDialog(
-        `<div class="eyebrow">ADMINISTRATION</div><h2>Players & titles</h2><p>Solo test mode is available from the main menu. Changes below are stored and audited.</p><form id="admin-search" class="admin-search"><input name="search" placeholder="Search player name or ID" value="${escape(search)}"><button class="secondary">Search</button></form><div class="admin-players">${players.map((p) => `<form class="admin-player" data-player="${p.id}"><strong>${escape(p.displayName)} ${p.isAdmin ? "· ADMIN" : ""}</strong><small>${p.id}</small><label>Display name<input name="displayName" maxlength="20" value="${escape(p.displayName)}" required></label><label class="checkbox-label"><input name="suspended" type="checkbox" ${p.suspended ? "checked" : ""} ${p.isAdmin ? "disabled" : ""}>Suspended</label><button class="secondary" type="submit">Save player</button><div class="title-grants">${titles.map((t) => `<label class="checkbox-label"><input data-grant="${t.id}" type="checkbox" ${p.titleIds.includes(t.id) ? "checked" : ""}>${escape(t.name)}${t.active ? "" : " (retired)"}</label>`).join("")}</div></form>`).join("") || "<p>No players found.</p>"}</div><div class="admin-pagination"><button id="admin-prev" class="quiet" ${offset === 0 ? "disabled" : ""}>Previous</button><span>${offset + 1}–${Math.min(offset + 50, total)} of ${total}</span><button id="admin-next" class="quiet" ${offset + 50 >= total ? "disabled" : ""}>Next</button></div><h3>Titles</h3><div class="admin-titles">${[null, ...titles].map((t) => `<form class="admin-title" data-title="${t?.id ?? ""}"><strong>${t ? "Edit title" : "Create title"}</strong><label>Name<input name="name" required maxlength="40" value="${escape(t?.name ?? "")}"></label><label>Description<input name="description" maxlength="160" value="${escape(t?.description ?? "")}"></label><label>Color<input name="color" type="color" value="${t?.color ?? "#d5f778"}"></label><label class="checkbox-label"><input name="active" type="checkbox" ${t?.active !== false ? "checked" : ""}>Active</label><button class="secondary">Save title</button></form>`).join("")}</div><p id="admin-message" role="status"></p>`,
+        `<div class="eyebrow">ADMINISTRATION</div><h2>Players & titles</h2><p>Solo test mode is available from the main menu. Changes below are stored and audited.</p><form id="admin-search" class="admin-search"><input name="search" placeholder="Search player name or ID" value="${escape(search)}"><button class="secondary">Search</button></form><div class="admin-players">${players.map((p) => `<form class="admin-player" data-player="${p.id}"><strong>${escape(p.displayName)} ${p.isAdmin ? "· ADMIN" : ""}</strong><small>${p.id}</small><label>Display name<input name="displayName" maxlength="20" value="${escape(p.displayName)}" required></label><label class="checkbox-label"><input name="suspended" type="checkbox" ${p.suspended ? "checked" : ""} ${p.isAdmin ? "disabled" : ""}>Suspended</label><button class="secondary" type="submit">Save player</button><div class="title-grants">${titles.map((t) => `<label class="checkbox-label"><input data-grant="${t.id}" type="checkbox" ${p.titleIds.includes(t.id) ? "checked" : ""}>${escape(t.name)}${t.active ? "" : " (retired)"}</label>`).join("")}</div></form>`).join("") || "<p>No players found.</p>"}</div><div class="admin-pagination"><button id="admin-prev" class="quiet" ${offset === 0 ? "disabled" : ""}>Previous</button><span>${offset + 1}–${Math.min(offset + 50, total)} of ${total}</span><button id="admin-next" class="quiet" ${offset + 50 >= total ? "disabled" : ""}>Next</button></div><h3>Titles</h3><p>Colors appear above fighters. Master titles glow; Grandmaster titles pulse; Legendary titles shimmer with gold sparkles.</p><button class="secondary" id="add-title-presets">Add rank title set</button><div class="admin-titles">${[null, ...titles].map((t) => `<form class="admin-title" data-title="${t?.id ?? ""}"><strong>${t ? "Edit title" : "Create title"}</strong><label>Name<input name="name" required maxlength="40" value="${escape(t?.name ?? "")}"></label><label>Description<input name="description" maxlength="160" value="${escape(t?.description ?? "")}"></label><label>Color<input name="color" type="color" value="${t?.color ?? "#d5f778"}"></label><label class="checkbox-label"><input name="active" type="checkbox" ${t?.active !== false ? "checked" : ""}>Active</label><button class="secondary">Save title</button></form>`).join("")}</div><p id="admin-message" role="status"></p>`,
       );
       const feedback = (error: unknown) =>
         (element("admin-message").textContent =
@@ -361,6 +362,55 @@ export class AccountUI {
               }),
           );
         });
+      element<HTMLButtonElement>("add-title-presets").onclick = async () => {
+        const button = element<HTMLButtonElement>("add-title-presets");
+        button.disabled = true;
+        try {
+          for (const preset of TITLE_PRESETS) {
+            if (
+              titles.some(
+                (t) => t.name.toLowerCase() === preset.name.toLowerCase(),
+              )
+            )
+              continue;
+            await this.api("/api/admin/titles", {
+              id: null,
+              name: preset.name,
+              description: "An arena honor awarded by an administrator.",
+              color: preset.color,
+              active: true,
+            });
+          }
+          await this.showAdmin(search, offset);
+        } catch (error) {
+          feedback(error);
+          button.disabled = false;
+        }
+      };
+      const newTitle = document.querySelector<HTMLFormElement>(
+        '.admin-title[data-title=""]',
+      );
+      if (newTitle) {
+        const presets = document.createElement("select");
+        presets.setAttribute("aria-label", "Title preset");
+        presets.innerHTML =
+          '<option value="">Choose a rank preset (optional)</option>' +
+          TITLE_PRESETS.map(
+            (t, i) => `<option value="${i}">${t.name}</option>`,
+          ).join("");
+        newTitle.prepend(presets);
+        presets.onchange = () => {
+          if (presets.value === "") return;
+          const preset = TITLE_PRESETS[Number(presets.value)];
+          (newTitle.elements.namedItem("name") as HTMLInputElement).value =
+            preset.name;
+          (newTitle.elements.namedItem("color") as HTMLInputElement).value =
+            preset.color;
+          (
+            newTitle.elements.namedItem("description") as HTMLInputElement
+          ).value = "An arena honor awarded by an administrator.";
+        };
+      }
       document.querySelectorAll<HTMLFormElement>(".admin-title").forEach(
         (form) =>
           (form.onsubmit = async (e) => {
