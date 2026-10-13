@@ -3565,3 +3565,11 @@ dialog:has(.admin-tabs) {
   background: #65d38a22;
   color: #9ff5c0;
 }
+.admin-notice {
+  padding: 10px 12px;
+  border: 1px solid #f7d78066;
+  border-radius: 8px;
+  background: #f7d7801a;
+  color: #f7d780;
+  font-size: 12px;
+}

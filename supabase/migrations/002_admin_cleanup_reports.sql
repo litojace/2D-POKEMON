@@ -103,3 +103,5 @@ end; $$;
 revoke all on function public.arena_submit_report(text,text,jsonb),public.arena_admin_reports(text,integer),public.arena_admin_resolve_report(bigint,boolean),public.arena_admin_set_suspended(uuid,boolean),public.arena_admin_delete_player(uuid) from public,anon,authenticated;
 grant execute on function public.arena_submit_report(text,text,jsonb),public.arena_admin_reports(text,integer),public.arena_admin_resolve_report(bigint,boolean),public.arena_admin_set_suspended(uuid,boolean),public.arena_admin_delete_player(uuid) to authenticated;
 commit;
+-- Make the new functions visible to the API right away.
+notify pgrst, 'reload schema';

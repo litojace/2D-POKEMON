@@ -368,9 +368,15 @@ export class AccountUI {
       `<div class="eyebrow">ADMINISTRATION</div><h2>Admin</h2><div class="admin-tabs" role="tablist"><button role="tab" class="admin-tab ${view.tab === "players" ? "active" : ""}" data-tab="players" aria-selected="${view.tab === "players"}">Players</button><button role="tab" class="admin-tab ${view.tab === "reports" ? "active" : ""}" data-tab="reports" aria-selected="${view.tab === "reports"}">Reports${open ? ` <b class="admin-count">${open}</b>` : ""}</button></div>`;
     this.hooks.openDialog(`${header("")}<p>Loading…</p>`);
     try {
+      // Reports are optional: if they can't load, the player tools still work.
+      let reportsError = "";
       const reports = (await this.api(
         `/api/admin/reports?status=${view.tab === "reports" ? view.status : "open"}&offset=${view.tab === "reports" ? view.reportOffset : 0}`,
-      )) as ReportList;
+      ).catch((error: unknown) => {
+        reportsError =
+          error instanceof Error ? error.message : "Reports are unavailable.";
+        return { reports: [], total: 0, open: 0 };
+      })) as ReportList;
       let body = "";
       let titles: Title[] = [];
       let players: PlayerDirectory["players"] = [];
@@ -424,7 +430,7 @@ export class AccountUI {
         }</div><div class="admin-pagination"><button id="report-prev" class="quiet" ${view.reportOffset === 0 ? "disabled" : ""}>Previous</button><span>${reports.total ? `${view.reportOffset + 1}–${Math.min(view.reportOffset + 50, reports.total)} of ${reports.total}` : ""}</span><button id="report-next" class="quiet" ${view.reportOffset + 50 >= reports.total ? "disabled" : ""}>Next</button></div>`;
       }
       this.hooks.openDialog(
-        `${header(reports.open)}${body}<p id="admin-message" role="status">${escape(view.message)}</p>`,
+        `${header(reports.open)}${reportsError ? `<p class="admin-notice">${escape(reportsError)}</p>` : ""}${view.tab === "reports" && reportsError ? "" : body}<p id="admin-message" role="status">${escape(view.message)}</p>`,
       );
       const say = (text: string) =>
         (element("admin-message").textContent = text);
@@ -438,6 +444,7 @@ export class AccountUI {
             })),
       );
       if (view.tab === "reports") {
+        if (reportsError) return;
         document.querySelectorAll<HTMLButtonElement>("[data-status]").forEach(
           (b) =>
             (b.onclick = () =>

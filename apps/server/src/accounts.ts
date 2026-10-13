@@ -57,6 +57,12 @@ export function createAccountProvider(): AccountProvider {
     },
     async rpc(token, name, args) {
       const result = await client(token).rpc(name, args);
+      // PGRST202: the function isn't in the database (a migration wasn't run).
+      if (result.error?.code === "PGRST202")
+        throw new AccountError(
+          503,
+          "The database needs an update. In Supabase's SQL Editor, run supabase/migrations/002_admin_cleanup_reports.sql.",
+        );
       if (result.error)
         throw new AccountError(
           result.error.code === "42501" ? 403 : 400,
