@@ -1,3 +1,4 @@
+import { lockLandscape } from "./orientation";
 import { registerSW } from "virtual:pwa-register";
 import { safeToUpdate, peerMatchActive } from "./pwa-policy";
 import { fullscreenHelp, fullscreenPlatform } from "./fullscreen-help";
@@ -151,6 +152,7 @@ export function setupPWA(
         closeDialog();
         try {
           await document.documentElement.requestFullscreen();
+          await lockLandscape();
         } catch {
           notify(
             "This browser blocked fullscreen. Add the game to your home screen instead.",

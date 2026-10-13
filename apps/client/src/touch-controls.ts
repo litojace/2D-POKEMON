@@ -1,3 +1,4 @@
+import { lockLandscape } from "./orientation";
 import { stadiumBands } from "./stadium";
 import { abilityIcon } from "./ability-icons";
 import {
@@ -53,7 +54,7 @@ export class TouchControls {
     this.enabled =
       this.available && localStorage.getItem("arena-touch") !== "off";
     root.innerHTML =
-      '<div class="mobile-tools"><button id="touch-toggle" class="quiet"></button><button id="mobile-fullscreen" class="quiet">Enter fullscreen ⛶</button><button id="mobile-settings" class="quiet">Mobile controls ⚙</button><span class="touch-note">Aim follows opponent</span></div><div class="rotate-hint" role="status">Rotate your phone for a wider arena. Portrait play is still available.</div><div class="touch-pad"><div class="joystick-area"><div class="joystick" role="group" aria-label="Movement joystick"><span class="joystick-knob"></span></div></div><div class="touch-buttons">' +
+      '<div class="mobile-tools"><button id="touch-toggle" class="quiet"></button><button id="mobile-fullscreen" class="quiet">Enter fullscreen ⛶</button><button id="mobile-settings" class="quiet">Mobile controls ⚙</button><span class="touch-note">Aim follows opponent</span></div><div class="rotate-hint" role="status"><span class="rotate-phone" aria-hidden="true"></span><span>Turn your phone sideways for the full arena</span></div><div class="touch-pad"><div class="joystick-area"><div class="joystick" role="group" aria-label="Movement joystick"><span class="joystick-knob"></span></div></div><div class="touch-buttons">' +
       (["dash", "jump", "0", "1", "2", "3", "attack"] as TouchAction[])
         .map(
           (action) =>
@@ -109,14 +110,7 @@ export class TouchControls {
         if (document.fullscreenElement) await document.exitFullscreen();
         else if (document.documentElement.requestFullscreen) {
           await document.documentElement.requestFullscreen();
-          const orientation = screen.orientation as ScreenOrientation & {
-            lock?: (orientation: string) => Promise<void>;
-          };
-          try {
-            await orientation.lock?.("landscape");
-          } catch {
-            /* Orientation lock is optional. */
-          }
+          await lockLandscape();
         } else
           notify(
             "Use Add to Home Screen for standalone play. This browser does not support fullscreen.",

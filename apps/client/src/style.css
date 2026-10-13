@@ -71,6 +71,16 @@ body {
     radial-gradient(ellipse at 24% 12%, #1e3763 0, transparent 48%), #101c35;
   min-height: 100vh;
 }
+/* No double-tap zoom: "manipulation" keeps taps, scrolling and pinch zoom but
+   drops the double-tap gesture (iOS Safari, Chrome, Firefox, Edge). The
+   joystick, skill buttons and battle canvas keep their stricter "none". */
+* {
+  touch-action: manipulation;
+}
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
 button,
 input {
   font: inherit;
@@ -453,6 +463,14 @@ input:not([type="range"]):not([type="checkbox"]):not([type="color"]) {
   width: 100%;
   outline: 0;
   font-size: 12px;
+}
+/* iOS zooms into any focused field under 16px; phones get 16px fields instead. */
+@media (pointer: coarse) {
+  input:not([type="range"]):not([type="checkbox"]):not([type="color"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
 .account-nav,
 .auth-links,
@@ -1588,16 +1606,36 @@ body.battle-active.touch-mode {
 }
 @media (orientation: portrait) {
   .touch-enabled .rotate-hint {
-    display: block;
-    font-size: 11px;
-    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #f3f6ff;
     padding: 8px 0;
+  }
+  .rotate-hint .rotate-phone {
+    width: 14px;
+    height: 22px;
+    border: 2px solid var(--lime);
+    border-radius: 4px;
+    flex-shrink: 0;
+    animation: rotate-phone 2.4s ease-in-out infinite;
   }
   .battle-active.touch-mode .rotate-hint {
     position: fixed;
     top: 100px;
     left: 20px;
     right: 20px;
+    margin: 0 auto;
+    width: fit-content;
+    max-width: calc(100% - 40px);
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: #101c35e6;
+    border: 1px solid #ffd65b55;
+    box-shadow: 0 4px 14px #0006;
     text-align: center;
     z-index: 24;
     pointer-events: none;
@@ -4388,5 +4426,25 @@ button.open-slot.join:hover .slot-mark {
   }
   #menu .showcase-card .card-head {
     flex-wrap: wrap;
+  }
+}
+
+@keyframes rotate-phone {
+  0%,
+  25% {
+    transform: rotate(0deg);
+  }
+  55%,
+  85% {
+    transform: rotate(-90deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rotate-hint .rotate-phone {
+    animation: none;
+    transform: rotate(-90deg);
   }
 }

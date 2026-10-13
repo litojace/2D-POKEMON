@@ -49,6 +49,7 @@ import "./style.css";
 import { FollowCamera, screenToWorld, outsideView } from "./follow-camera";
 import { updateNameplate } from "./player-nameplate";
 import { fighterPack } from "./animation/pack-config";
+import { fullscreenLandscape } from "./orientation";
 const audio = new AudioManager();
 const allAbilities = new Map(
   Object.values(CHARACTERS)
@@ -790,8 +791,8 @@ function renderBattle() {
     setOverlayMarkup(overlay, markup);
     if (state.phase === "briefing")
       $("instructions-ready").onclick = () => {
-        if (touch.enabled && !document.fullscreenElement)
-          $("mobile-fullscreen").click();
+        // Phones: go fullscreen and turn sideways where the browser allows it.
+        if (touch.enabled) void fullscreenLandscape();
         void request("instructions-ready");
       };
     if (state.phase === "finished") {

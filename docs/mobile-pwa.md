@@ -20,6 +20,12 @@ Deploy first over HTTPS. Installation is optional.
 
 The manifest requests standalone landscape display, with a `fullscreen` display override that Chromium browsers use to hide the status bar. Fullscreen and orientation lock are requested only from user interaction and only where supported. iOS can ignore orientation/fullscreen requests; rotate manually and use the Home Screen app. Normal browser play remains supported.
 
+### Landscape lock and zoom
+
+- **Auto-landscape.** Pressing Ready on the match briefing on a touch device enters fullscreen and calls `screen.orientation.lock("landscape")` (`apps/client/src/orientation.ts`). Browsers allow the lock only in fullscreen or in an installed app, so it works on Android Chrome, Edge and Samsung Internet. Installed Android apps are already landscape through the manifest. iPhone and iPad Safari have no orientation lock and the iPhone has no Fullscreen API. On iOS, and anywhere the lock is refused, portrait battles show a "Turn your phone sideways" pill with an animated phone icon. A web page cannot rotate the screen on iOS.
+- **No double-tap zoom.** Every element gets `touch-action: manipulation`, which removes double-tap zoom but keeps taps, scrolling and pinch zoom for accessibility. The joystick, skill buttons and battle canvas keep `touch-action: none`. Pinch zoom is deliberately not disabled: iOS ignores `user-scalable=no`, and on Android it would block users who need zoom.
+- **No zoom when typing.** On touch screens, text fields use 16px text. iOS automatically zooms into any focused field smaller than that.
+
 ## Caching and updates
 
 `vite-plugin-pwa` builds an explicit Workbox precache of hashed JavaScript/CSS, public icons, the offline page, and manifest. The HTML game entry is fetched from the network. If a root navigation fails after a successful initial installation, the cached offline page explains that live matches need internet. First visits without any connection cannot install or populate caches.
