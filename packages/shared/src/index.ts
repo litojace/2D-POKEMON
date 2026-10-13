@@ -81,8 +81,6 @@ export const STATUS_RULES = {
   /** Kindle: outgoing damage multiplier and basic attack interval multiplier. */
   empowerDamage: 1.25,
   empowerInterval: 0.7,
-  /** Hibernate leaves the sleeper vulnerable. */
-  sleepDamageTaken: 1.25,
   restInterval: 0.5,
 };
 export type AbilityKind =
@@ -110,7 +108,7 @@ export type AbilityKind =
   | "barrier"
   /** Self buff (Kindle). */
   | "buff"
-  /** Heal over time while asleep and vulnerable. */
+  /** Heal over time while asleep and unable to act. */
   | "rest";
 export interface Ability {
   id: string;
@@ -668,7 +666,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "rest",
         0,
         12,
-        "Fall asleep for 2.5 seconds: heal 60 HP but you can't act and take 25% more damage.",
+        "Fall asleep for 2.5 seconds: heal 60 HP but you can't move or act. Incoming damage stays normal.",
         { duration: 2.5, heal: 12 },
       ),
       ability(

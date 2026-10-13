@@ -266,7 +266,6 @@ export class Arena {
       )
     )
       dealt *= ability.bonusVsStatus;
-    if (this.has(target, "sleep")) dealt *= STATUS_RULES.sleepDamageTaken;
     if (counter) dealt *= STATUS_RULES.counterReduction;
     if (this.has(target, "shield")) dealt *= STATUS_RULES.shieldReduction;
     dealt = Math.min(target.hp, dealt);
