@@ -2651,3 +2651,30 @@ dialog {
     animation: none;
   }
 }
+
+/* Landscape: court fills the safe viewport; controls overlay its lower corners. */
+@media (orientation: landscape) {
+  .battle-active.touch-mode .arena-frame,
+  .battle-active.touch-mode.compact-landscape .arena-frame {
+    top: calc(var(--safe-top) + 58px);
+    bottom: calc(var(--safe-bottom) + 4px);
+    left: calc(var(--safe-left) + 4px);
+    right: calc(var(--safe-right) + 4px);
+    border-radius: 8px;
+  }
+  .battle-active.touch-mode .stadium-stands {
+    display: none;
+  }
+  .battle-active.touch-mode .touch-pad,
+  .battle-active.touch-mode.compact-landscape .touch-pad {
+    bottom: calc(var(--safe-bottom) + 14px);
+    left: calc(var(--safe-left) + 16px);
+    right: calc(var(--safe-right) + 16px);
+  }
+  .battle-active.touch-mode .hud {
+    top: calc(var(--safe-top) + 4px);
+  }
+  .battle-active.touch-mode .battle-dock {
+    bottom: calc(var(--safe-bottom) + 8px);
+  }
+}

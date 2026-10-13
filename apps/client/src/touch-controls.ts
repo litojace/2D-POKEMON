@@ -256,7 +256,7 @@ export class TouchControls {
     const viewport = safeViewport(width, height, insets);
     const layout = mobileLayout(
       viewport.width,
-      viewport.height,
+      width > height ? Math.max(180, viewport.height - 64) : viewport.height,
       this.preferences,
     );
     this.root.style.setProperty("--joystick-size", layout.joystick + "px");

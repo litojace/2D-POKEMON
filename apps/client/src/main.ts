@@ -33,6 +33,7 @@ import { AudioManager } from "./audio";
 import { InterpolationBuffer } from "./networking/interpolation";
 import { AccountUI } from "./accounts";
 import "./style.css";
+import { arenaViewport } from "./arena-viewport";
 const audio = new AudioManager();
 const remoteFrames = new InterpolationBuffer();
 const socket = io(import.meta.env.VITE_SERVER_URL || undefined, {
@@ -750,7 +751,10 @@ class ArenaScene extends Phaser.Scene {
         4,
       );
     }
-    new ResizeObserver(() => this.scale.refresh()).observe($("game"));
+    new ResizeObserver(() => {
+      this.scale.getParentBounds();
+      this.scale.refresh();
+    }).observe($("game"));
     this.graphics = this.add.graphics();
     this.keys = this.input.keyboard!.addKeys(
       "W,A,S,D,ONE,TWO,THREE,R,SPACE",
@@ -870,6 +874,14 @@ class ArenaScene extends Phaser.Scene {
     }
   }
   update(_time: number, delta: number) {
+    const view = arenaViewport(
+      this.scale.width,
+      this.scale.height,
+      touch.enabled &&
+        document.body.classList.contains("battle-active") &&
+        innerWidth > innerHeight,
+    );
+    this.cameras.main.setZoom(view.zoomX, view.zoomY).centerOn(800, 450);
     for (const [id, label] of this.labels)
       if (!state?.players.some((p) => p.id === id)) {
         label.destroy();
@@ -1023,6 +1035,7 @@ class ArenaScene extends Phaser.Scene {
       };
       if (serverPlayer.clone) {
         const clone = this.getRig(`${p.id}:clone`, p.character);
+        clone.root.setScale(view.fighterX, view.fighterY);
         clone.setVisible(true);
         clone.render(
           {
@@ -1062,6 +1075,7 @@ class ArenaScene extends Phaser.Scene {
         );
       }
       const rig = this.getRig(p.id, p.character);
+      rig.root.setScale(view.fighterX, view.fighterY);
       rig.setVisible(true);
       const casting =
         rig.controller.state === "basic" ||
@@ -1162,10 +1176,10 @@ new Phaser.Game({
   width: RULES.width,
   height: RULES.height,
   backgroundColor: "#1e3557",
-  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH },
   scene: [ArenaScene],
   render: { antialias: true },
-  // Fixed 1600x900 render buffer avoids multiplying GPU load on high-DPI phones.
+  // CSS-sized buffer; the camera maps the authoritative 1600x900 world.
   input: { activePointers: 4 },
 });
 accountsUI = new AccountUI({
