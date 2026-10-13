@@ -33,7 +33,7 @@ import { AudioManager } from "./audio";
 import { InterpolationBuffer } from "./networking/interpolation";
 import { AccountUI } from "./accounts";
 import "./style.css";
-import { arenaViewport } from "./arena-viewport";
+import { FollowCamera, screenToWorld, outsideView } from "./follow-camera";
 const audio = new AudioManager();
 const remoteFrames = new InterpolationBuffer();
 const socket = io(import.meta.env.VITE_SERVER_URL || undefined, {
@@ -622,6 +622,8 @@ class ArenaScene extends Phaser.Scene {
   ) as Record<CharacterId, ReturnType<typeof rigAssets>>;
   private animationLive = false;
   private needsHydration = true;
+  private followCamera = new FollowCamera();
+  private enemyBearing = document.createElement("div");
   hydrateNextSnapshot() {
     this.needsHydration = true;
   }
@@ -642,6 +644,7 @@ class ArenaScene extends Phaser.Scene {
     this.animationLive = !this.needsHydration && previous?.code === next.code;
     this.needsHydration = false;
     const reset = !this.animationLive || previous?.round !== next.round;
+    if (reset) this.followCamera = new FollowCamera();
     const alive = new Set(
       next.players.flatMap((p) => [
         p.id,
@@ -670,6 +673,11 @@ class ArenaScene extends Phaser.Scene {
   }
   create() {
     scene = this;
+    this.enemyBearing.className = "enemy-bearing";
+    this.enemyBearing.hidden = true;
+    this.enemyBearing.innerHTML =
+      '<span aria-hidden="true">➜</span><strong></strong>';
+    $("game").parentElement!.append(this.enemyBearing);
     this.cameras.main.setBackgroundColor("#142746");
     const g = this.add.graphics();
     g.fillStyle(0x1e3557).fillRect(0, 0, 1600, 900);
@@ -874,14 +882,68 @@ class ArenaScene extends Phaser.Scene {
     }
   }
   update(_time: number, delta: number) {
-    const view = arenaViewport(
+    const tracked = state?.players.find((p) => p.id === myId);
+    const follow =
+      state?.phase === "playing" && tracked && tracked.hp > 0
+        ? (local ?? tracked)
+        : undefined;
+    const presented = follow
+      ? (this.positions.get(follow.id) ?? follow)
+      : undefined;
+    const view = this.followCamera.update(
       this.scale.width,
       this.scale.height,
       touch.enabled &&
         document.body.classList.contains("battle-active") &&
         innerWidth > innerHeight,
+      follow && presented
+        ? {
+            ...follow,
+            x: presented.x,
+            y: presented.y,
+            attacking:
+              this.getRig(follow.id, follow.character).controller.state ===
+                "basic" ||
+              this.getRig(
+                follow.id,
+                follow.character,
+              ).controller.state.startsWith("skill"),
+          }
+        : undefined,
+      `${state?.code ?? "menu"}:${state?.round ?? 0}:${myId ?? ""}`,
+      delta,
+      reducedMotion,
     );
-    this.cameras.main.setZoom(view.zoomX, view.zoomY).centerOn(800, 450);
+    this.cameras.main.setZoom(view.zoomX, view.zoomY).centerOn(view.x, view.y);
+    const aim = screenToWorld(
+      this.input.activePointer.x,
+      this.input.activePointer.y,
+      this.scale.width,
+      this.scale.height,
+      view,
+    );
+    const opponent = state?.players.find(
+      (p) =>
+        p.id !== myId &&
+        p.hp > 0 &&
+        !p.statuses.some((s) => s.kind === "stealth"),
+    );
+    this.enemyBearing.hidden =
+      !follow ||
+      !opponent ||
+      !outsideView(
+        opponent.x,
+        opponent.y,
+        this.scale.width,
+        this.scale.height,
+        view,
+      );
+    if (opponent && !this.enemyBearing.hidden) {
+      this.enemyBearing.querySelector("strong")!.textContent =
+        CHARACTERS[opponent.character].name;
+      this.enemyBearing.querySelector<HTMLElement>("span")!.style.transform =
+        `rotate(${Math.atan2((opponent.y - view.y) * view.zoomY, (opponent.x - view.x) * view.zoomX)}rad)`;
+    }
     for (const [id, label] of this.labels)
       if (!state?.players.some((p) => p.id === id)) {
         label.destroy();
@@ -927,8 +989,8 @@ class ArenaScene extends Phaser.Scene {
             ? touch.dy
             : Number(this.keys.S.isDown) - Number(this.keys.W.isDown)
           : 0,
-        aimX: mobileAim ? target.x : Phaser.Math.Clamp(pointer.worldX, 0, 1600),
-        aimY: mobileAim ? target.y : Phaser.Math.Clamp(pointer.worldY, 0, 900),
+        aimX: mobileAim ? target.x : Phaser.Math.Clamp(aim.x, 0, 1600),
+        aimY: mobileAim ? target.y : Phaser.Math.Clamp(aim.y, 0, 900),
         basic:
           active &&
           ((touch.enabled ? touch.basic : pointer.leftButtonDown()) ||
@@ -1136,6 +1198,7 @@ class ArenaScene extends Phaser.Scene {
         this.labels.set(p.id, label);
       }
       label
+        .setScale(view.fighterX, view.fighterY)
         .setPosition(x, y - 45 - jump)
         .setText(
           `${p.title ? `${p.title}\n` : ""}${p.name}${p.id === myId ? " • YOU" : ""}`,
@@ -1150,24 +1213,10 @@ class ArenaScene extends Phaser.Scene {
         3,
       );
     }
-    const pointer = this.input.activePointer;
-    g.lineStyle(1, 0xffffff, 0.6).strokeCircle(
-      pointer.worldX,
-      pointer.worldY,
-      10,
-    );
-    g.lineBetween(
-      pointer.worldX - 15,
-      pointer.worldY,
-      pointer.worldX - 6,
-      pointer.worldY,
-    );
-    g.lineBetween(
-      pointer.worldX + 6,
-      pointer.worldY,
-      pointer.worldX + 15,
-      pointer.worldY,
-    );
+    if (touch.enabled) return;
+    g.lineStyle(1, 0xffffff, 0.6).strokeCircle(aim.x, aim.y, 10);
+    g.lineBetween(aim.x - 15, aim.y, aim.x - 6, aim.y);
+    g.lineBetween(aim.x + 6, aim.y, aim.x + 15, aim.y);
   }
 }
 new Phaser.Game({

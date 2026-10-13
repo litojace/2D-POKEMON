@@ -1,0 +1,164 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <title>Follow camera preview</title>
+    <style>
+      #battle .hud {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 40px;
+        font-size: 12px;
+      }
+      #battle .hud button {
+        width: auto;
+        padding: 6px 12px;
+        white-space: nowrap;
+        background: #203656;
+        color: #ffe083;
+        border: 1px solid #688bb8;
+        border-radius: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="battle">
+      <div class="hud" style="pointer-events: auto">
+        FOLLOW CAMERA PREVIEW · no live match
+        <button id="east">Walk east</button><button id="west">Walk west</button
+        ><button id="stop">Stop</button>
+      </div>
+      <div class="arena-frame"><div id="game"></div></div>
+      <div id="controls"></div>
+    </main>
+    <script type="module">
+      import "./src/style.css";
+      import Phaser from "phaser";
+      import { FollowCamera } from "./src/follow-camera";
+      import { PortraitFighterVisual } from "./src/animation/portrait-rig";
+      import { TouchControls } from "./src/touch-controls";
+      import { OBSTACLES } from "@arena/shared";
+      document.body.classList.add("battle-active");
+      let direction = 0,
+        rig,
+        actor = { x: 800, y: 450, vx: 0, vy: 0, angle: 0 };
+      const touch = new TouchControls(
+        document.querySelector("#controls"),
+        () => true,
+        (a) => {
+          if (rig)
+            rig.trigger(
+              a.dash
+                ? "dash"
+                : a.jump
+                  ? "jump"
+                  : a.skill !== undefined
+                    ? "skill" + a.skill
+                    : "basic",
+              performance.now(),
+              400,
+            );
+        },
+        () => {},
+        undefined,
+        true,
+      );
+      if (!touch.enabled) document.querySelector("#touch-toggle").click();
+      touch.update(
+        true,
+        ["Arc Pulse", "Charge Orb", "Livewire Field", "Overcharge"],
+        [0, 0, 0, 0],
+        0,
+        0,
+      );
+      document.querySelector("#east").onclick = () => (direction = 1);
+      document.querySelector("#west").onclick = () => (direction = -1);
+      document.querySelector("#stop").onclick = () => (direction = 0);
+      class Demo extends Phaser.Scene {
+        follow = new FollowCamera();
+        preload() {
+          this.load.image(
+            "portrait-voltkit",
+            "/assets/fighters/voltkit/portrait-showcase-v1.webp",
+          );
+        }
+        create() {
+          const g = this.add.graphics();
+          g.fillStyle(0x213b60).fillRect(0, 0, 1600, 900);
+          g.lineStyle(2, 0x9dc8ff, 0.15);
+          for (let x = 0; x <= 1600; x += 100) g.lineBetween(x, 0, x, 900);
+          for (let y = 0; y <= 900; y += 100) g.lineBetween(0, y, 1600, y);
+          g.lineStyle(4, 0xffd65b, 0.8).strokeRect(35, 35, 1530, 830);
+          g.lineStyle(3, 0xffffff, 0.3)
+            .strokeCircle(800, 450, 165)
+            .lineBetween(35, 450, 1565, 450);
+          for (const o of OBSTACLES)
+            g.fillStyle(0x688bb8).fillRoundedRect(o.x, o.y, o.w, o.h, 12);
+          for (let x = 150; x < 1600; x += 200)
+            this.add.text(x, 65, String(x), {
+              fontSize: "24px",
+              color: "#ffd65b",
+            });
+          rig = new PortraitFighterVisual(this, "voltkit");
+          new ResizeObserver(() => {
+            this.scale.getParentBounds();
+            this.scale.refresh();
+          }).observe(document.querySelector("#game"));
+        }
+        update(time, delta) {
+          actor.vx = (touch.dx || direction) * 270;
+          actor.vy = touch.dy * 270;
+          actor.x = Phaser.Math.Clamp(
+            actor.x + (actor.vx * Math.min(delta, 60)) / 1000,
+            60,
+            1540,
+          );
+          actor.y = Phaser.Math.Clamp(
+            actor.y + (actor.vy * Math.min(delta, 60)) / 1000,
+            100,
+            840,
+          );
+          if (actor.vx || actor.vy)
+            actor.angle = Math.atan2(actor.vy, actor.vx);
+          const view = this.follow.update(
+            this.scale.width,
+            this.scale.height,
+            innerWidth > innerHeight,
+            { ...actor, attacking: false },
+            "preview",
+            delta,
+            false,
+          );
+          this.cameras.main
+            .setZoom(view.zoomX, view.zoomY)
+            .centerOn(view.x, view.y);
+          rig.root.setScale(view.fighterX, view.fighterY);
+          rig.render(
+            {
+              hp: 110,
+              speed: Math.hypot(actor.vx, actor.vy),
+              angle: actor.angle,
+              dash: false,
+              jump: false,
+            },
+            actor.x,
+            actor.y,
+            performance.now(),
+          );
+        }
+      }
+      new Phaser.Game({
+        type: Phaser.AUTO,
+        parent: "game",
+        scale: { mode: Phaser.Scale.RESIZE },
+        scene: [Demo],
+        backgroundColor: "#142746",
+      });
+    </script>
+  </body>
+</html>

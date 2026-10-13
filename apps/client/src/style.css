@@ -2678,3 +2678,28 @@ dialog {
     bottom: calc(var(--safe-bottom) + 8px);
   }
 }
+
+.enemy-bearing {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 23;
+  pointer-events: none;
+  padding: 7px 12px;
+  border: 1px solid #ffd65b70;
+  border-radius: 20px;
+  color: #ffe083;
+  background: #101c35de;
+  font-size: 12px;
+}
+.enemy-bearing[hidden] {
+  display: none;
+}
+.enemy-bearing span {
+  display: inline-block;
+  font-size: 20px;
+}
