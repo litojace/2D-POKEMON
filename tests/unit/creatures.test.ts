@@ -196,7 +196,8 @@ it("applies counter, barrier and grounded area counterplay on the server", () =>
     m = shield.players[0];
   shield.cast(m, CHARACTERS.mystowl.skills[2]);
   shield.damage(m, 20, "two");
-  expect(m.hp).toBe(112);
+  // Ward lets 40% of the hit through.
+  expect(m.hp).toBe(CHARACTERS.mystowl.health - 20 * 0.4);
   expect(shield.players[1].hp).toBe(110);
   const field = duel("voltkit"),
     q = field.players[1];
