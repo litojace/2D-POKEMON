@@ -127,7 +127,9 @@ describe("special skills", () => {
   it("Focus Ray is instant, synchronizes its end point and is blocked by cover", () => {
     const open = duel("mystowl");
     open.arena.cast(open.p, CHARACTERS.mystowl.skills[0]);
-    expect(open.q.hp).toBe(CHARACTERS.terradon.health - 24);
+    expect(open.q.hp).toBe(
+      CHARACTERS.terradon.health - CHARACTERS.mystowl.skills[0].damage,
+    );
     const beam = open.arena.events.find((e) => e.kind === "beam")!;
     expect(beam.tx).toBeGreaterThan(open.p.x);
     const wall = duel("mystowl");

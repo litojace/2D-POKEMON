@@ -41,7 +41,7 @@ interface Profile {
 export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
   easy: {
     reaction: 0.5,
-    aimError: 0.32,
+    aimError: 0.28,
     lead: 0,
     dodge: 0.12,
     think: 0.45,
@@ -52,10 +52,10 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
     engage: 0.01,
   },
   normal: {
-    reaction: 0.28,
-    aimError: 0.14,
+    reaction: 0.34,
+    aimError: 0.2,
     lead: 0.55,
-    dodge: 0.45,
+    dodge: 0.35,
     think: 0.25,
     skillUse: 0.65,
     hesitate: 0.06,

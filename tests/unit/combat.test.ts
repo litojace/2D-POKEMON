@@ -54,18 +54,22 @@ it("melee and cone attacks damage enemies within their collision range", () => {
   q.x = p.x + 85;
   q.y = p.y;
   p.angle = 0;
+  const start = q.hp,
+    jab = CHARACTERS.auralynx.basic.damage;
   a.cast(p, CHARACTERS.auralynx.basic);
-  expect(q.hp).toBe(100);
+  expect(q.hp).toBe(start - jab);
   q.x = p.x + 400;
   a.cast(p, CHARACTERS.auralynx.basic);
-  expect(q.hp).toBe(100);
+  expect(q.hp).toBe(start - jab);
   q.x = p.x + 150;
   q.y = p.y;
   p.character = "cindrake";
   a.cast(p, CHARACTERS.cindrake.skills[0]);
   for (let i = 0; i < 45; i++) a.tick();
-  // Six 5-damage ticks over 1.2 s, plus burn ticks while it lasts.
-  expect(q.hp).toBeLessThanOrEqual(100 - 30);
+  // Six cone ticks over 1.2 s, plus burn ticks while it lasts.
+  expect(q.hp).toBeLessThanOrEqual(
+    start - jab - 6 * CHARACTERS.cindrake.skills[0].damage,
+  );
   expect(p.channel).toBeUndefined();
 });
 it("decoys absorb a projectile before it reaches the owner", () => {

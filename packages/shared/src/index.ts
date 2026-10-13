@@ -193,6 +193,7 @@ const basic = (
   ability(id, name, kind, damage, 0, description, {
     interval: intervalMs / 1000,
     recovery: Math.min(0.12, intervalMs / 1000 / 2),
+    knockback: 20,
     ...extra,
   });
 export interface Character {
@@ -293,17 +294,17 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       "cinder-snap",
       "Cinder Snap",
       "melee",
-      9,
+      17,
       450,
       "A short-range burst of fire in front of Cindrake.",
-      { range: 150, arc: 0.2, knockback: 40 },
+      { range: 170, arc: 0.2, knockback: 10 },
     ),
     skills: [
       ability(
         "ember-gust",
         "Ember Gust",
         "cone",
-        5,
+        6,
         8,
         "A continuous cone of flame for 1.2 seconds. Burns.",
         {
@@ -386,7 +387,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       6,
       260,
       "A fast water projectile.",
-      { speed: 950, radius: 8 },
+      { speed: 950, radius: 8, range: 640 },
     ),
     skills: [
       ability(
@@ -448,10 +449,10 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       "prism-jab",
       "Prism Jab",
       "melee",
-      10,
+      15,
       320,
       "A close-range energy punch.",
-      { range: 110, arc: 0.35 },
+      { range: 130, arc: 0.35, knockback: 12 },
     ),
     skills: [
       ability(
@@ -512,7 +513,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       "glint",
       "Glint",
       "projectile",
-      7,
+      6,
       300,
       "A glowing star projectile.",
       { speed: 820, radius: 10 },
@@ -568,13 +569,13 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A floating three-eyed owl. Slow, heavy attacks; controls space with rays, pushes and wards.",
     color: 0xff79d2,
-    health: 120,
+    health: 104,
     speed: 255,
     basic: basic(
       "mind-dart",
       "Mind Dart",
       "projectile",
-      10,
+      9,
       400,
       "A psychic energy projectile.",
       { speed: 760, radius: 11 },
@@ -584,7 +585,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "focus-ray",
         "Focus Ray",
         "beam",
-        24,
+        18,
         8,
         "An instant psychic beam toward your aim. Walls block it. Slows.",
         { range: 760, radius: 16, status: "slow", statusDuration: 0.6 },
@@ -611,7 +612,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "thoughtstrike",
         "Thoughtstrike",
         "zone",
-        48,
+        38,
         20,
         "A delayed psychic explosion at the target location.",
         {
@@ -635,15 +636,15 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       "A sleepy boulder tortoise. Huge health pool and crushing swings; make them come to you.",
     color: 0xc79a5b,
     health: 175,
-    speed: 215,
+    speed: 222,
     basic: basic(
       "boulder-swipe",
       "Boulder Swipe",
       "melee",
-      14,
+      18,
       600,
       "A wide melee swing in front of Terradon.",
-      { range: 130, arc: 0, knockback: 70 },
+      { range: 150, arc: 0, knockback: 25 },
     ),
     skills: [
       ability(
@@ -705,13 +706,13 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A hooded lantern wisp. Sets burns, then cashes them in with Curse Mark.",
     color: 0x9c6bff,
-    health: 105,
+    health: 120,
     speed: 260,
     basic: basic(
       "lantern-wisp",
       "Lantern Wisp",
       "projectile",
-      8,
+      9,
       350,
       "A ghostly projectile.",
       { speed: 720, radius: 11 },

@@ -3134,6 +3134,31 @@ dialog {
   min-height: 0;
   font-size: 10px;
   color: #c6d3ea;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+.showcase-card .card-head strong {
+  color: #f6f8ff;
+}
+.range-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px 2px 5px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--element);
+  background: color-mix(in srgb, var(--element) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--element) 45%, transparent);
+}
+.range-tag svg {
+  width: 11px;
+  height: 11px;
 }
 .showcase-card .card-art {
   position: relative;
@@ -3151,35 +3176,6 @@ dialog {
 .showcase-card .card-art .art-placeholder {
   top: 2px;
   right: 0;
-}
-.showcase-card .card-basic {
-  display: grid;
-  grid-template-columns: 24px 1fr;
-  grid-template-rows: auto auto;
-  column-gap: 7px;
-  align-items: center;
-  padding: 5px 8px;
-  border: 1px solid color-mix(in srgb, var(--element) 35%, transparent);
-  border-radius: 9px;
-  background: #0a1426cc;
-}
-.showcase-card .card-basic-label {
-  grid-column: 1 / -1;
-  font-size: 7.5px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--element);
-}
-.showcase-card .card-basic .skill-icon {
-  width: 24px;
-  height: 24px;
-}
-.showcase-card .card-basic b {
-  font-size: 11px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 .showcase-card .card-skills {
   display: grid;
@@ -3230,10 +3226,6 @@ dialog {
     width: 18px;
     height: 18px;
   }
-}
-.showcase-card .card-head strong,
-.showcase-card .card-basic b {
-  color: #f6f8ff;
 }
 .showcase-card .card-bottom,
 .showcase-card .card-bottom > span {
