@@ -35,6 +35,7 @@ import { AccountUI } from "./accounts";
 import "./style.css";
 import { FollowCamera, screenToWorld, outsideView } from "./follow-camera";
 import { updateNameplate } from "./player-nameplate";
+import { fighterPack } from "./animation/pack-config";
 const audio = new AudioManager();
 const remoteFrames = new InterpolationBuffer();
 const socket = io(import.meta.env.VITE_SERVER_URL || undefined, {
@@ -1206,7 +1207,12 @@ class ArenaScene extends Phaser.Scene {
       );
       const labelX = (x - view.x) * view.zoomX + this.scale.width / 2;
       const labelY =
-        (y - jump - view.y - 78) * view.zoomY + this.scale.height / 2;
+        (y -
+          jump -
+          view.y -
+          (fighterPack(p.character)?.kind === "layered" ? 56 : 78)) *
+          view.zoomY +
+        this.scale.height / 2;
       label.style.left = labelX + "px";
       label.style.top = Math.max(36, labelY) + "px";
       label.style.opacity = p.hp > 0 ? "1" : "0.4";
