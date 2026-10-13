@@ -9,6 +9,7 @@ import {
 import { rigAssets } from "./animation/assets";
 import { setOverlayMarkup } from "./overlay";
 import { stadiumCrowd } from "./stadium";
+import { paintArenaFloor } from "./arena-floor";
 import { setupPWA } from "./pwa";
 import { abilityIcon } from "./ability-icons";
 import { TouchControls } from "./touch-controls";
@@ -17,7 +18,6 @@ import { io } from "socket.io-client";
 import {
   CHARACTERS,
   RULES,
-  OBSTACLES,
   KEYS,
   advanceMovement,
   normalize,
@@ -695,86 +695,12 @@ class ArenaScene extends Phaser.Scene {
       '<span aria-hidden="true">➜</span><strong></strong>';
     $("game").parentElement!.append(this.enemyBearing);
     this.cameras.main.setBackgroundColor("#142746");
-    const g = this.add.graphics();
-    g.fillStyle(0x1e3557).fillRect(0, 0, 1600, 900);
-    let seed = 42;
-    const random = () => {
-      seed = (seed * 1664525 + 1013904223) >>> 0;
-      return seed / 4294967296;
-    };
-    for (let i = 0; i < 2400; i++) {
-      g.fillStyle([0x213b60, 0x26446b, 0x1a2e4f][i % 3], 0.6);
-      g.fillRect(random() * 1600, random() * 900, 3 + random() * 8, 3);
-    }
-    g.lineStyle(3, 0xc1d3f0, 0.4);
-    g.strokeRoundedRect(35, 35, 1530, 830, 18);
-    g.lineStyle(1, 0x95b4e3, 0.08);
-    for (let x = 100; x < 1600; x += 100) g.lineBetween(x, 45, x, 855);
-    for (let y = 100; y < 900; y += 100) g.lineBetween(45, y, 1555, y);
-    g.fillStyle(0xffffff, 0.06).fillCircle(800, 450, 235);
-    g.lineStyle(2, 0xe6efff, 0.15).strokeCircle(800, 450, 230);
-    g.lineStyle(3, 0xe6efff, 0.2).strokeCircle(800, 450, 165);
-    for (const x of [260, 1340]) {
-      g.lineStyle(3, x === 260 ? 0xffd65b : 0x63dce8, 0.3);
-      g.strokeCircle(x, 450, 70);
-      g.lineBetween(x - 20, 450, x + 20, 450);
-      g.lineBetween(x, 430, x, 470);
-    }
-    for (const o of OBSTACLES) {
-      g.fillStyle(0x0b1a32, 0.7).fillRoundedRect(
-        o.x + 8,
-        o.y + 15,
-        o.w,
-        o.h,
-        18,
-      );
-      g.fillStyle(0x486187).fillRoundedRect(o.x, o.y, o.w, o.h, 14);
-      g.fillStyle(0x7894b8).fillRoundedRect(o.x + 7, o.y + 4, o.w - 14, 25, 8);
-      g.fillStyle(0x263b5d).fillRect(o.x + 12, o.y + o.h - 15, o.w - 24, 7);
-      g.lineStyle(3, 0x99b4d6).lineBetween(
-        o.x + 20,
-        o.y + 45,
-        o.x + 35,
-        o.y + 70,
-      );
-      g.fillStyle(0xef4f61).fillRoundedRect(o.x + 12, o.y + 8, 36, 12, 4);
-    }
-    // Stadium rails and lights are cosmetic; collision geometry remains shared.
-    g.lineStyle(4, 0xe6efff, 0.65).lineBetween(55, 450, 1545, 450);
-    const crest = [
-      { x: 800, y: 345 },
-      { x: 905, y: 450 },
-      { x: 800, y: 555 },
-      { x: 695, y: 450 },
-    ];
-    g.fillStyle(0x9985d8, 0.15).fillPoints(crest, true);
-    g.lineStyle(4, 0xb8d8ee, 0.6).strokePoints(crest, true);
-    g.lineStyle(3, 0xffd65b, 0.7).strokePoints(
-      [
-        { x: 800, y: 410 },
-        { x: 840, y: 450 },
-        { x: 800, y: 490 },
-        { x: 760, y: 450 },
-      ],
-      true,
-    );
-    for (let i = 0; i < 20; i++) {
-      const x = 40 + i * 80;
-      g.fillStyle(i % 2 ? 0xef4f61 : 0xffffff, 0.55).fillRoundedRect(
-        x,
-        12,
-        52,
-        12,
-        4,
-      );
-      g.fillStyle(i % 2 ? 0xffffff : 0xef4f61, 0.55).fillRoundedRect(
-        x,
-        876,
-        52,
-        12,
-        4,
-      );
-    }
+    // Paint the court once and bake it into a texture so it costs nothing per frame.
+    const g = this.make.graphics({}, false);
+    paintArenaFloor(g);
+    g.generateTexture("arena-floor", RULES.width, RULES.height);
+    g.destroy();
+    this.add.image(0, 0, "arena-floor").setOrigin(0).setDepth(-10);
     new ResizeObserver(() => {
       this.scale.getParentBounds();
       this.scale.refresh();
@@ -890,6 +816,43 @@ class ArenaScene extends Phaser.Scene {
         onComplete: () => ring.destroy(),
       });
       return;
+    }
+    const melee =
+      event.kind === "cast" && event.abilityId
+        ? allAbilities.get(event.abilityId)
+        : undefined;
+    const attacker = state?.players.find((p) => p.id === event.owner);
+    if (melee?.kind === "melee" && attacker) {
+      // Swipe arc that matches the server hit range and width.
+      const spread = Math.min(Math.PI * 0.95, Math.acos(melee.arc ?? 0.35));
+      const swipe = this.add.graphics().setDepth(4);
+      swipe
+        .fillStyle(event.color, 0.28)
+        .slice(
+          event.x,
+          event.y - 10,
+          melee.range,
+          attacker.angle - spread,
+          attacker.angle + spread,
+        )
+        .fillPath();
+      swipe
+        .lineStyle(4, 0xffffff, 0.7)
+        .beginPath()
+        .arc(
+          event.x,
+          event.y - 10,
+          melee.range * 0.92,
+          attacker.angle - spread,
+          attacker.angle + spread,
+        )
+        .strokePath();
+      this.tweens.add({
+        targets: swipe,
+        alpha: 0,
+        duration: reducedMotion ? 120 : 220,
+        onComplete: () => swipe.destroy(),
+      });
     }
     if (reducedMotion) return;
     const ring = this.add
@@ -1087,12 +1050,28 @@ class ArenaScene extends Phaser.Scene {
       }
     }
     for (const pr of state.projectiles) {
-      g.lineStyle(pr.ability.radius, pr.color, 0.15).lineBetween(
-        pr.x - pr.vx * 0.025,
-        pr.y - pr.vy * 0.025,
+      // Layered comet trail: wide soft glow, element-coloured body, white-hot core.
+      const r = pr.ability.radius,
+        trail = reducedMotion ? 0.03 : 0.075;
+      g.lineStyle(r * 2.4, pr.color, 0.16).lineBetween(
+        pr.x - pr.vx * trail,
+        pr.y - pr.vy * trail,
         pr.x,
         pr.y,
       );
+      g.lineStyle(r * 1.2, pr.color, 0.45).lineBetween(
+        pr.x - pr.vx * trail * 0.6,
+        pr.y - pr.vy * trail * 0.6,
+        pr.x,
+        pr.y,
+      );
+      g.lineStyle(Math.max(2, r * 0.45), 0xffffff, 0.75).lineBetween(
+        pr.x - pr.vx * trail * 0.3,
+        pr.y - pr.vy * trail * 0.3,
+        pr.x,
+        pr.y,
+      );
+      g.fillStyle(pr.color, 0.25).fillCircle(pr.x, pr.y, r * 2.2);
       g.fillStyle(pr.color, 0.2).fillCircle(
         pr.x,
         pr.y,

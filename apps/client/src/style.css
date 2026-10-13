@@ -3056,3 +3056,189 @@ dialog {
     animation: none !important;
   }
 }
+
+/* Showcase fighter cards: element-themed panels with basic attack and skill strip. */
+.showcase-roster {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 12px;
+}
+.showcase-roster .showcase-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 12px 10px;
+  border: 1.5px solid color-mix(in srgb, var(--element) 55%, transparent);
+  border-radius: 14px;
+  background:
+    radial-gradient(
+      ellipse at 50% 38%,
+      color-mix(in srgb, var(--element) 30%, transparent),
+      transparent 62%
+    ),
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--element) 22%, #13213a),
+      #0d1830 70%
+    );
+  box-shadow:
+    inset 0 1px 0 #ffffff14,
+    0 0 16px color-mix(in srgb, var(--element) 16%, transparent);
+}
+.showcase-roster .showcase-card.selected {
+  border-color: var(--element);
+  box-shadow:
+    inset 0 1px 0 #ffffff1f,
+    0 0 0 1px var(--element),
+    0 0 28px color-mix(in srgb, var(--element) 45%, transparent);
+}
+.showcase-card .card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.showcase-card .card-head strong {
+  font-size: 17px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 6px #0008;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.element-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 3px 9px 3px 6px;
+  border-radius: 999px;
+  background: var(--element);
+  color: #10192b;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  box-shadow: 0 0 10px color-mix(in srgb, var(--element) 55%, transparent);
+}
+.element-pill .element-icon {
+  width: 12px;
+  height: 12px;
+}
+.selected-info .element-pill {
+  font-size: 10px;
+  margin-bottom: 6px;
+}
+.showcase-card .card-role {
+  margin: -2px 0 0;
+  min-height: 0;
+  font-size: 10px;
+  color: #c6d3ea;
+}
+.showcase-card .card-art {
+  position: relative;
+  display: block;
+}
+.showcase-card .card-art svg,
+.showcase-card .card-art .creature-portrait {
+  display: block;
+  width: 100%;
+  max-height: 120px;
+  margin: 0 auto;
+  filter: drop-shadow(0 6px 10px #0006)
+    drop-shadow(0 0 14px color-mix(in srgb, var(--element) 30%, transparent));
+}
+.showcase-card .card-art .art-placeholder {
+  top: 2px;
+  right: 0;
+}
+.showcase-card .card-basic {
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 7px;
+  align-items: center;
+  padding: 5px 8px;
+  border: 1px solid color-mix(in srgb, var(--element) 35%, transparent);
+  border-radius: 9px;
+  background: #0a1426cc;
+}
+.showcase-card .card-basic-label {
+  grid-column: 1 / -1;
+  font-size: 7.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--element);
+}
+.showcase-card .card-basic .skill-icon {
+  width: 24px;
+  height: 24px;
+}
+.showcase-card .card-basic b {
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.showcase-card .card-skills {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+.showcase-card .card-skills > span {
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  padding: 4px 0 3px;
+  border-radius: 8px;
+  background: #0a1426aa;
+  border: 1px solid #ffffff10;
+}
+.showcase-card .card-skills .skill-icon {
+  width: 22px;
+  height: 22px;
+}
+.showcase-card .card-skills i {
+  font-style: normal;
+  font-size: 8.5px;
+  color: #c6d3ea;
+}
+.showcase-card .card-bottom {
+  margin-top: 2px;
+  padding-top: 7px;
+  font-size: 9px;
+}
+@media (max-width: 420px) {
+  .showcase-roster {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .showcase-roster .showcase-card {
+    padding: 9px 8px 8px;
+  }
+  .showcase-card .card-head {
+    flex-wrap: wrap;
+  }
+  .showcase-card .card-head strong {
+    font-size: 14px;
+  }
+  .showcase-card .card-art svg {
+    max-height: 84px;
+  }
+  .showcase-card .card-skills .skill-icon {
+    width: 18px;
+    height: 18px;
+  }
+}
+.showcase-card .card-head strong,
+.showcase-card .card-basic b {
+  color: #f6f8ff;
+}
+.showcase-card .card-bottom,
+.showcase-card .card-bottom > span {
+  color: #c6d3ea;
+}
+.showcase-card .card-bottom > span {
+  color: var(--element);
+}
