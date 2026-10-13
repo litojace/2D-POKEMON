@@ -41,6 +41,7 @@ const socket = io(import.meta.env.VITE_SERVER_URL || undefined, {
   auth: { accessToken: null },
 });
 let accountsUI: AccountUI;
+let gameInstance: Phaser.Game | undefined;
 let state: Snapshot | undefined,
   myId = "",
   selected: CharacterId = "voltkit",
@@ -296,6 +297,7 @@ function renderBattle() {
     screen = key;
     $("menu").hidden = true;
     $("battle").hidden = false;
+    ensureBattleRenderer();
     scene?.scale.refresh();
     $("practice-controls").hidden = !state.practice;
     if (state.practice) {
@@ -1219,18 +1221,26 @@ class ArenaScene extends Phaser.Scene {
     g.lineBetween(aim.x + 6, aim.y, aim.x + 15, aim.y);
   }
 }
-new Phaser.Game({
-  type: Phaser.AUTO,
-  parent: "game",
-  width: RULES.width,
-  height: RULES.height,
-  backgroundColor: "#1e3557",
-  scale: { mode: Phaser.Scale.RESIZE, autoCenter: Phaser.Scale.CENTER_BOTH },
-  scene: [ArenaScene],
-  render: { antialias: true },
-  // CSS-sized buffer; the camera maps the authoritative 1600x900 world.
-  input: { activePointers: 4 },
-});
+function ensureBattleRenderer() {
+  if (gameInstance || $("game").clientWidth < 1 || $("game").clientHeight < 1)
+    return;
+  gameInstance = new Phaser.Game({
+    type: Phaser.AUTO,
+    parent: "game",
+    width: RULES.width,
+    height: RULES.height,
+    backgroundColor: "#1e3557",
+    scale: {
+      mode: Phaser.Scale.RESIZE,
+      autoCenter: Phaser.Scale.CENTER_BOTH,
+      min: { width: 1, height: 1 },
+    },
+    scene: [ArenaScene],
+    render: { antialias: true },
+    // CSS-sized buffer; the camera maps the authoritative 1600x900 world.
+    input: { activePointers: 4 },
+  });
+}
 accountsUI = new AccountUI({
   openDialog: dialog,
   notify: toast,
