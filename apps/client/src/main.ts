@@ -254,7 +254,7 @@ function renderMenu() {
     $("join").onclick = () => void play("join");
     if ($("practice"))
       $("practice").onclick = async () => {
-        if (!accountsUI.ensurePlayer(true)) return;
+        if (!accountsUI.ensurePlayer()) return;
         if (!connected) return toast("Waiting for the server connection.");
         const button = $<HTMLButtonElement>("practice");
         button.disabled = true;
