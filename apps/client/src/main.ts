@@ -262,8 +262,13 @@ function showSelection() {
   if (me) {
     const fighter = CHARACTERS[selected];
     me.querySelector(".player-fighter")!.textContent = fighter.name;
-    me.querySelector<HTMLElement>(".player-dot")!.style.background =
-      `#${fighter.color.toString(16).padStart(6, "0")}`;
+    const avatar = me.querySelector<HTMLElement>(".player-avatar")!;
+    avatar.style.setProperty(
+      "--element",
+      `#${fighter.color.toString(16).padStart(6, "0")}`,
+    );
+    avatar.title = fighter.name;
+    avatar.innerHTML = fighterArt(fighter.id);
   }
   if (Math.abs(scrollY - y) > 1) scrollTo(0, y);
   return true;
@@ -303,9 +308,9 @@ let roomMode: RoomMode = (() => {
 })();
 /** Lobby panel: a duel list, or Blue/Red columns for 2v2. */
 function roomPanel(me: Fighter) {
-  const row = (p: Fighter, i: number) => {
+  const row = (p: Fighter) => {
     const fighter = CHARACTERS[p.id === myId ? selected : p.character];
-    return `<div${p.id === myId ? " data-me" : ""}><span class="player-dot" style="background:#${fighter.color.toString(16).padStart(6, "0")}">${i + 1}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small class="player-fighter">${fighter.name}</small></span><b>${!p.connected ? "OFFLINE" : p.ready ? "READY" : "CHOOSING"}</b></div>`;
+    return `<div${p.id === myId ? " data-me" : ""}><span class="player-avatar" style="--element:#${fighter.color.toString(16).padStart(6, "0")}" title="${fighter.name}">${fighterArt(fighter.id)}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small class="player-fighter">${fighter.name}</small></span><b>${!p.connected ? "OFFLINE" : p.ready ? "READY" : "CHOOSING"}</b></div>`;
   };
   const ready = `<button class="primary" id="ready">${me.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full" id="leave">Leave room</button>`;
   const code = `<button id="copy" class="room-code">${state!.code}<span>COPY CODE ↗</span></button>`;
@@ -322,7 +327,7 @@ function roomPanel(me: Fighter) {
           ? '<div class="waiting"><span>＋</span> Open slot</div>'
           : `<button type="button" class="team-slot" data-team="${t}"><span>＋</span> Join ${TEAM_LABELS[t]}</button>`,
       ).join("");
-      return `<div class="team-column team-${t}${t === mine ? " mine" : ""}"><div class="team-head">${TEAM_LABELS[t]} team</div><div class="players">${members.map((p, i) => row(p, i)).join("")}${slots}</div></div>`;
+      return `<div class="team-column team-${t}${t === mine ? " mine" : ""}"><div class="team-head">${TEAM_LABELS[t]} team</div><div class="players">${members.map(row).join("")}${slots}</div></div>`;
     })
     .join("");
   return `<div class="eyebrow">PRIVATE 2V2 LOBBY</div><h2>Two on two.</h2><p>Share this code with three friends, then pick a side.</p>${code}<div class="team-columns">${columns}</div>${host ? '<button class="quiet full" id="shuffle">Shuffle teams ⇄</button>' : ""}${ready}<small class="room-note">First team to 3 round wins. Starts when all four players are ready.</small>`;

@@ -645,6 +645,27 @@ input::placeholder {
   padding: 14px 0;
   border-bottom: 1px solid #ffffff10;
 }
+/* Lobby rows: each player's chosen fighter. */
+.player-avatar {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: radial-gradient(
+    circle at 50% 62%,
+    color-mix(in srgb, var(--element) 45%, transparent),
+    #0d1a30 75%
+  );
+  border: 1px solid color-mix(in srgb, var(--element) 55%, transparent);
+}
+.player-avatar svg {
+  width: 50px;
+  height: 50px;
+  margin-top: 4px;
+}
 .player-dot {
   color: #14213b;
   border-radius: 8px;
@@ -4095,4 +4116,23 @@ dialog:has(.admin-tabs) {
   position: fixed;
   top: calc(var(--safe-top) + 64px);
   z-index: 79;
+}
+/* Narrow 2v2 columns: status sits under the name instead of beside it. */
+.team-column .players > div {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 8px;
+  row-gap: 0;
+  padding: 10px 0;
+}
+.team-column .players > div > .player-avatar {
+  grid-row: span 2;
+}
+.team-column .players > div > b {
+  grid-column: 2;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+.team-column .players > div > span:not(.player-avatar) {
+  min-width: 0;
 }
