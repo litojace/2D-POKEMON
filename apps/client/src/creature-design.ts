@@ -224,6 +224,6 @@ export function creatureSvg(
     `<g class="fighter-${p === "body" ? "torso" : p}">${layers[p]}</g>`;
   const content = part
     ? layers[part]
-    : `<ellipse cx="100" cy="177" rx="40" ry="8" fill="#060d24" opacity=".25"/>${(["tail", "wings", "legL", "legR", "body", "armL", "armR"] as CreaturePart[]).map(group).join("")}<g class="fighter-face">${(["head", "ears", "eyes", "flame"] as CreaturePart[]).map(group).join("")}</g>${group("scarf")}`;
+    : `<ellipse class="fighter-shadow" cx="100" cy="177" rx="40" ry="8" fill="#060d24" opacity=".25"/><g class="fighter-character">${(["tail", "wings", "legL", "legR", "body", "armL", "armR"] as CreaturePart[]).map(group).join("")}<g class="fighter-face">${(["head", "ears", "eyes", "flame"] as CreaturePart[]).map(group).join("")}</g>${group("scarf")}</g>`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}">${defs}<g stroke="${creaturePalette[id].dark}" stroke-width="1.25" stroke-linejoin="round">${content}</g></svg>`;
 }

@@ -8,7 +8,7 @@ export function celebrateSelection(root: HTMLElement, reduced: boolean) {
     el.classList.remove("selection-cheer");
     void el.offsetWidth;
     el.classList.add("selection-cheer");
-    const artwork = el.querySelector("svg, img");
+    const artwork = el.querySelector("svg .fighter-character, img");
     const finish = (event: Event) => {
       if (
         event.target !== artwork ||

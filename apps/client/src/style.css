@@ -2852,9 +2852,9 @@ dialog {
 }
 
 /* A finite celebration on click/tap, followed by the normal articulated idle. */
-.selection-cheer > svg,
+.selection-cheer > svg .fighter-character,
 .selection-cheer > img {
-  transform-origin: 50% 85%;
+  transform-origin: 100px 162px;
   animation: selection-leap 1.15s cubic-bezier(0.25, 0.65, 0.35, 1) both;
 }
 .selection-cheer .fighter-armL {
@@ -2938,8 +2938,45 @@ dialog {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .selection-cheer > svg,
+  .selection-cheer > svg .fighter-character,
   .selection-cheer > img {
     animation: none;
+  }
+}
+
+/* Ground contact is separate from the jumping creature group. */
+.creature-card svg {
+  filter: none;
+}
+.creature-card.selected.selection-cheer .fighter-shadow,
+.selected-art.selection-cheer .fighter-shadow {
+  transform-origin: 100px 177px;
+  animation: selection-ground-shadow 1.15s cubic-bezier(0.25, 0.65, 0.35, 1)
+    both;
+}
+@keyframes selection-ground-shadow {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.25;
+  }
+  12%,
+  62% {
+    transform: scale(1.04, 0.94);
+    opacity: 0.28;
+  }
+  34%,
+  48% {
+    transform: scale(0.65, 0.7);
+    opacity: 0.12;
+  }
+  80% {
+    transform: scale(0.84, 0.85);
+    opacity: 0.18;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .selection-cheer .fighter-shadow {
+    animation: none !important;
   }
 }
