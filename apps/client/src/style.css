@@ -3172,9 +3172,9 @@ dialog {
   font-size: 10px;
   color: #c6d3ea;
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
 }
 .showcase-card .card-head strong {
   color: #f6f8ff;

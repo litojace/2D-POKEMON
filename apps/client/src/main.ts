@@ -1,4 +1,5 @@
 import { fighterSelection } from "./fighter-selection";
+import { LobbySelection } from "./lobby-selection";
 import { setupBattleDock } from "./battle-dock";
 import {
   queueFighterAssets,
@@ -47,7 +48,6 @@ import { AccountUI } from "./accounts";
 import "./style.css";
 import { FollowCamera, screenToWorld, outsideView } from "./follow-camera";
 import { updateNameplate } from "./player-nameplate";
-import { celebrateSelection } from "./selection-celebration";
 import { fighterPack } from "./animation/pack-config";
 const audio = new AudioManager();
 const allAbilities = new Map(
@@ -62,6 +62,7 @@ const abilityColor = new Map(
   ),
 );
 const remoteFrames = new InterpolationBuffer();
+const lobbySelection = new LobbySelection();
 const socket = io(import.meta.env.VITE_SERVER_URL || undefined, {
   autoConnect: false,
   auth: { accessToken: null },
@@ -149,6 +150,7 @@ function request(event: string, data: unknown = {}): Promise<Reply> {
 }
 function identity(reply: Reply) {
   if (!reply.ok) return;
+  lobbySelection.reset();
   myId = reply.id!;
   seq = 0;
   pending = [];
@@ -215,15 +217,19 @@ function wireRoster(isRoom: boolean) {
         const choice = button.dataset.character as CharacterId;
         if (choice === selected) return;
         selected = choice;
+        const revision = isRoom ? lobbySelection.choose(choice) : undefined;
         renderMenu();
-        celebrateSelection($("menu"), reducedMotion);
         if (!isRoom) return;
         const reply = await request("select", choice);
         const mine = state?.players.find((p) => p.id === myId);
         // The server said no (e.g. the match is starting): show its pick again.
-        if (!reply.ok && mine && selected === choice) {
+        if (
+          !reply.ok &&
+          revision !== undefined &&
+          lobbySelection.reject(revision) &&
+          mine
+        ) {
           selected = mine.character;
-          screen = "";
           renderMenu();
         }
       }),
@@ -351,6 +357,27 @@ let botLevel: BotLevel = (() => {
     return "normal";
   }
 })();
+function wireRoom() {
+  $("ready").onclick = () => {
+    audio.unlock();
+    void request("ready");
+  };
+  $("leave").onclick = () => void leave();
+  document
+    .querySelectorAll<HTMLButtonElement>("[data-team]")
+    .forEach(
+      (b) =>
+        (b.onclick = () =>
+          void request("team", { team: Number(b.dataset.team) })),
+    );
+  if (document.getElementById("shuffle"))
+    $("shuffle").onclick = () => void request("shuffle");
+  $("copy").onclick = () =>
+    void navigator.clipboard
+      .writeText(state!.code)
+      .then(() => toast("Room code copied."))
+      .catch(() => toast(`Share this code: ${state!.code}`));
+}
 function renderMenu() {
   pwa.sync();
   const p = state?.players.find((p) => p.id === myId);
@@ -371,6 +398,23 @@ function renderMenu() {
     return;
   // Keep the reader's place when the menu re-renders while already visible.
   const keepScroll = !$("menu").hidden ? scrollY : null;
+  // Lobby status updates must not restart the roster's artwork or idle animations.
+  const retainedRoster =
+    previous &&
+    !$("menu").hidden &&
+    isRoom &&
+    previous.startsWith(`room-${state!.mode ?? "duel"}:`)
+      ? $("menu").querySelector(".roster-panel")
+      : null;
+  if (retainedRoster) {
+    if (previous.slice(previous.lastIndexOf(":") + 1) !== selected)
+      showSelection();
+    $("menu").querySelector(".room-panel")!.innerHTML = roomPanel(p!);
+    wireRoom();
+    if (keepScroll !== null && Math.abs(scrollY - keepScroll) > 1)
+      scrollTo(0, keepScroll);
+    return;
+  }
   touch.reset();
   document.body.classList.remove("battle-active");
   $("battle").hidden = true;
@@ -399,25 +443,7 @@ function renderMenu() {
   if (!isRoom && accountsUI?.account)
     $<HTMLInputElement>("name").readOnly = true;
   if (isRoom) {
-    $("ready").onclick = () => {
-      audio.unlock();
-      void request("ready");
-    };
-    $("leave").onclick = () => void leave();
-    document
-      .querySelectorAll<HTMLButtonElement>("[data-team]")
-      .forEach(
-        (b) =>
-          (b.onclick = () =>
-            void request("team", { team: Number(b.dataset.team) })),
-      );
-    if (document.getElementById("shuffle"))
-      $("shuffle").onclick = () => void request("shuffle");
-    $("copy").onclick = () =>
-      void navigator.clipboard
-        .writeText(state!.code)
-        .then(() => toast("Room code copied."))
-        .catch(() => toast(`Share this code: ${state!.code}`));
+    wireRoom();
   } else {
     const play = async (event: "create" | "join") => {
       if (!accountsUI.ensurePlayer()) return;
@@ -516,6 +542,7 @@ async function leave() {
     return;
   }
   sessionStorage.removeItem("arena-token");
+  lobbySelection.reset();
   state = undefined;
   myId = "";
   local = undefined;
@@ -785,6 +812,7 @@ socket.on("connect", () => {
       if (reply.ok) identity(reply);
       else {
         sessionStorage.removeItem("arena-token");
+        lobbySelection.reset();
         state = undefined;
         myId = "";
         screen = "";
@@ -793,6 +821,7 @@ socket.on("connect", () => {
     });
 });
 socket.on("disconnect", () => {
+  lobbySelection.reset();
   connected = false;
   $("connection").textContent = "RECONNECTING…";
   $("connection").classList.remove("online");
@@ -806,6 +835,7 @@ socket.on("connect_error", (error: Error) => {
 socket.on("account-changed", () => void accountsUI.refresh());
 socket.on("access-revoked", ({ error }: { error: string }) => {
   sessionStorage.removeItem("arena-token");
+  lobbySelection.reset();
   state = undefined;
   myId = "";
   local = undefined;
@@ -836,7 +866,7 @@ socket.on("state", (snapshot: WireSnapshot) => {
   remoteFrames.add(state, performance.now());
   const me = state.players.find((p) => p.id === myId);
   if (!me) return;
-  selected = me.character;
+  selected = lobbySelection.reconcile(me.character, state.phase === "lobby");
   seq = Math.max(seq, me.ack);
   pending = pending.filter((i) => i.seq > me.ack);
   local = structuredClone(me);
