@@ -32,6 +32,35 @@ export const creatureParts: CreaturePart[] = [
   "scarf",
   "flame",
 ];
+/**
+ * Chibi proportions baked into every part: the face (head, ears, eyes, crest)
+ * grows from just above the chin while the body and limbs shrink toward the
+ * feet so they stay planted. The rig maps its crop boxes and pivots through
+ * the same transform (see animation/assets.ts).
+ */
+const FACE = { s: 1.17, cx: 100, cy: 118 },
+  FRAME = { s: 0.86, cx: 100, cy: 172 };
+export const PROPORTIONS: Record<CreaturePart, typeof FACE> = {
+  tail: FRAME,
+  wings: FRAME,
+  legL: FRAME,
+  legR: FRAME,
+  body: FRAME,
+  armL: FRAME,
+  armR: FRAME,
+  head: FACE,
+  ears: FACE,
+  eyes: FACE,
+  scarf: FRAME,
+  flame: FACE,
+};
+/** Where a point of part `part` lands once its proportion transform is applied. */
+export function proportioned(part: CreaturePart, x: number, y: number) {
+  const { s, cx, cy } = PROPORTIONS[part];
+  return [cx + (x - cx) * s, cy + (y - cy) * s];
+}
+/** The whole creature (big head included) fits this box; cards use it by default. */
+export const CREATURE_VIEWBOX = "0 -12 200 202";
 /** Fighters still waiting for authored art. Every current fighter has a design. */
 export const PLACEHOLDER_FIGHTERS: CharacterId[] = [];
 type Palette = {
@@ -145,15 +174,20 @@ export function creatureLayers(id: CharacterId, dir: Facing) {
   const hand = (x: number, fill = body) =>
     `${e(x, 138, 9, 17, fill)}${e(x, 151, 10, 7, fill)}`;
   // Big glossy chibi eye: dark iris, element-coloured ring, two catchlights.
-  const eye = (x: number, ring = p.glow, w = 9, h = 11) =>
-    `${e(x, 88, w, h, "#121a33")}${e(x + 0.5, 91, w * 0.62, h * 0.6, ring)}${e(x + 0.5, 92, w * 0.32, h * 0.32, "#121a33")}${e(x - w * 0.33, 84, w * 0.36, h * 0.33, "#ffffff")}<circle cx="${x + w * 0.4}" cy="${94}" r="1.6" fill="#fff"/>`;
+  const eye = (x: number, ring = p.glow, w0 = 9, h0 = 11) => {
+    const w = w0 * 1.3,
+      h = h0 * 1.22,
+      y = 93;
+    return `${e(x, y, w, h, "#1b1636")}${e(x, y + h * 0.3, w * 0.74, h * 0.52, ring)}${e(x, y + h * 0.22, w * 0.42, h * 0.4, "#1b1636")}${e(x - w * 0.3, y - h * 0.36, w * 0.44, h * 0.38, "#ffffff")}<circle cx="${x + w * 0.38}" cy="${y + h * 0.34}" r="${w * 0.17}" fill="#fff"/><circle cx="${x + w * 0.42}" cy="${y - h * 0.5}" r="${w * 0.09}" fill="#fff"/>`;
+  };
   const frontEyes = (ring = p.glow, w = 9, h = 11) =>
-    eye(82, ring, w, h) + eye(118, ring, w, h);
-  const mouth = `<path d="M94 106Q97 110 100 107Q103 110 106 106" stroke="${p.dark}" stroke-width="1.8" fill="none" stroke-linecap="round"/>`;
+    eye(79, ring, w, h) + eye(121, ring, w, h);
+  const mouth = `<path d="M95.5 109Q97.8 112 100 109.6Q102.2 112 104.5 109" stroke="${p.dark}" stroke-width="1.9" fill="none" stroke-linecap="round"/>`;
+  const blushColor = id === "mystowl" ? "#c2268a" : "#ff8fb0";
   const blush =
-    `${e(70, 101, 7, 4, p.glow)}${e(130, 101, 7, 4, p.glow)}`.replace(
+    `${e(68, 108, 8, 4.5, blushColor)}${e(132, 108, 8, 4.5, blushColor)}`.replace(
       /fill="([^"]+)"/g,
-      'fill="$1" opacity=".35"',
+      'fill="$1" opacity=".5" stroke="none"',
     );
   const layers: Record<CreaturePart, string> = {
     tail: "",
@@ -163,7 +197,7 @@ export function creatureLayers(id: CharacterId, dir: Facing) {
     body: `${e(100, 138, 30, 28)}${e(100, 143, 18, 19, pearl)}${highlight(80, 124, 18)}`,
     armL: hand(67),
     armR: hand(133),
-    head: `${e(100, 88, 40, 33, face)}${highlight(72, 70, 26)}${blush}${mouth}`,
+    head: `${e(100, 88, 40, 33, face)}${highlight(72, 70, 26)}${mouth}`,
     ears: "",
     eyes: frontEyes(),
     scarf: "",
@@ -181,8 +215,8 @@ export function creatureLayers(id: CharacterId, dir: Facing) {
   }
   if (id === "cindrake") {
     // Magma newt: wide flat head, horn nubs, living flame crest, glowing cracks, ember tail.
-    layers.head = `${e(100, 90, 45, 30, face)}${path("M62 84Q72 92 70 102M138 84Q128 92 130 102M84 66Q90 74 86 80", "none", ` stroke="${p.glow}" stroke-width="2.4" stroke-linecap="round" opacity=".85"`)}${highlight(68, 74, 26)}${path("M88 106Q100 114 112 106", "none", ` stroke="${p.dark}" stroke-width="2" stroke-linecap="round"`)}`;
-    layers.ears = `${path("M66 70Q54 52 62 44Q70 56 76 66Z", p.accent)}${path("M134 70Q146 52 138 44Q130 56 124 66Z", p.accent)}`;
+    layers.head = `${e(100, 90, 43, 33, face)}${path("M62 84Q72 92 70 102M138 84Q128 92 130 102M84 66Q90 74 86 80", "none", ` stroke="${p.glow}" stroke-width="2.4" stroke-linecap="round" opacity=".85"`)}${highlight(68, 74, 26)}${mouth}`;
+    layers.ears = `${e(68, 62, 7, 9, p.accent)}${e(132, 62, 7, 9, p.accent)}`;
     layers.flame = `${path("M84 64Q76 44 88 30Q88 44 96 46Q94 26 106 12Q106 32 114 38Q120 30 120 22Q130 44 116 64Z", jewel)}${path("M92 62Q90 50 98 42Q100 52 106 54Q110 48 112 44Q116 56 108 62Z", "#fff3b8", ' stroke="none"')}`;
     layers.body = `${e(100, 139, 32, 27)}${e(100, 144, 19, 17, pearl)}${path("M84 128Q90 136 86 146M116 128Q110 136 114 146", "none", ` stroke="${p.glow}" stroke-width="2.2" opacity=".75"`)}`;
     layers.legL = paw(78, 161, 16);
@@ -197,7 +231,7 @@ export function creatureLayers(id: CharacterId, dir: Facing) {
         p.glow,
       );
     layers.ears = `${frond(64, 72, -34)}${frond(62, 84, -38)}${frond(66, 96, -30)}${frond(136, 72, 34)}${frond(138, 84, 38)}${frond(134, 96, 30)}`;
-    layers.head = `${e(100, 90, 42, 31, face)}${highlight(70, 74, 24)}${path("M80 104Q100 120 120 104", "none", ` stroke="${p.dark}" stroke-width="2.2" stroke-linecap="round"`)}`;
+    layers.head = `${e(100, 90, 42, 31, face)}${highlight(70, 74, 24)}${path("M90 108Q100 116 110 108", "none", ` stroke="${p.dark}" stroke-width="2.2" stroke-linecap="round"`)}`;
     layers.flame = `${path("M62 74Q100 60 138 74L136 82Q100 70 64 82Z", p.accent)}${path("M136 76Q150 70 156 60Q150 74 140 82Z", p.accent)}<circle cx="100" cy="72" r="3" fill="${p.glow}" stroke="none"/>`;
     layers.eyes = frontEyes("#7cf6ff", 8, 9);
     layers.body = `${e(100, 138, 26, 28)}${e(100, 142, 15, 19, pearl)}`;
@@ -208,8 +242,8 @@ export function creatureLayers(id: CharacterId, dir: Facing) {
   }
   if (id === "auralynx") {
     // Lynx monk: tall tufted ears, cheek ruff, mane collar, crystal gauntlets, orbiting shards.
-    layers.ears = `${path("M68 72L62 24L90 58Z", body)}${path("M72 64L68 36L84 56Z", p.light, ' stroke="none"')}${path("M62 24L58 8L66 22Z", p.accent)}${path("M132 72L138 24L110 58Z", body)}${path("M128 64L132 36L116 56Z", p.light, ' stroke="none"')}${path("M138 24L142 8L134 22Z", p.accent)}`;
-    layers.head = `${e(100, 88, 39, 32, face)}${path("M62 92L50 100L62 104L54 114L72 110Z", p.light)}${path("M138 92L150 100L138 104L146 114L128 110Z", p.light)}${path("M88 62L100 72L112 62", "none", ` stroke="${p.accent}" stroke-width="3" stroke-linecap="round"`)}${highlight(72, 72, 22)}${mouth}`;
+    layers.ears = `${path("M64 76Q56 34 68 28Q82 40 90 60Z", body)}${path("M70 66Q65 42 70 38Q79 47 84 58Z", p.light, ' stroke="none"')}${e(67, 31, 4, 5, p.accent)}${path("M136 76Q144 34 132 28Q118 40 110 60Z", body)}${path("M130 66Q135 42 130 38Q121 47 116 58Z", p.light, ' stroke="none"')}${e(133, 31, 4, 5, p.accent)}`;
+    layers.head = `${e(100, 88, 39, 32, face)}${path("M62 94Q50 100 58 106Q52 114 72 112Z", p.light)}${path("M138 94Q150 100 142 106Q148 114 128 112Z", p.light)}${path("M88 62L100 72L112 62", "none", ` stroke="${p.accent}" stroke-width="3" stroke-linecap="round"`)}${highlight(72, 72, 22)}${mouth}`;
     layers.eyes = frontEyes(p.glow, 8.5, 10);
     layers.scarf = `${path("M68 116Q100 98 132 116L124 128Q112 120 100 126Q88 120 76 128Z", p.light)}`;
     layers.armL = `${hand(66)}${path("M58 142L66 132L74 142L66 154Z", jewel)}`;
@@ -240,7 +274,7 @@ export function creatureLayers(id: CharacterId, dir: Facing) {
       return `${path(`M${x(14)} 118Q${x(46)} 54 ${x(82)} 62Q${x(96)} 82 ${x(76)} 108Q${x(92)} 128 ${x(72)} 148Q${x(40)} 150 ${x(14)} 132Z`, body)}<circle cx="${x(60)}" cy="${90}" r="10" fill="${shine}" stroke="none"/><circle cx="${x(60)}" cy="90" r="5" fill="${p.glow}"/><circle cx="${x(56)}" cy="130" r="5" fill="${p.light}" stroke="none"/>`;
     };
     layers.wings = wing(-1) + wing(1);
-    layers.head = `${e(100, 88, 38, 32, face)}${highlight(72, 72, 22)}${blush}${mouth}`;
+    layers.head = `${e(100, 88, 38, 32, face)}${highlight(72, 72, 22)}${mouth}`;
     layers.eyes = frontEyes(p.glow, 10, 12);
     layers.scarf = `${path("M68 130Q74 120 83 126Q89 118 95 124Q100 116 105 124Q111 118 117 126Q126 120 132 130Q118 142 100 140Q82 142 68 130Z", p.accent)}`;
   }
@@ -268,11 +302,11 @@ export function creatureLayers(id: CharacterId, dir: Facing) {
   if (id === "terradon") {
     // Boulder tortoise: mossy rock shell, sleepy lids, sprout, sturdy legs.
     layers.wings = `${path("M42 150Q36 96 100 84Q164 96 158 150Q100 160 42 150Z", `url(#${prefix}-body)`)}${path("M60 112L84 104L100 116L118 104L142 114M52 134L74 128L92 140L110 130L134 138L150 132", "none", ` stroke="${p.dark}" stroke-width="2.4" opacity=".6"`)}${e(70, 96, 12, 5, p.glow)}${e(132, 98, 10, 4, p.glow)}`;
-    layers.head = `${e(100, 90, 34, 29, face)}${highlight(76, 74, 20)}${path("M90 106Q100 110 110 106", "none", ` stroke="${p.dark}" stroke-width="2" stroke-linecap="round"`)}`;
+    layers.head = `${e(100, 90, 34, 29, face)}${highlight(76, 74, 20)}${path("M95 110Q100 113 105 110", "none", ` stroke="${p.dark}" stroke-width="2" stroke-linecap="round"`)}`;
     // Sleepy eyes: heavy lids over small irises.
     const sleepy = (x: number) =>
-      `${e(x, 90, 8, 7, "#121a33")}${e(x, 91, 4, 3.5, p.glow)}${path(`M${x - 9} 88Q${x} 79 ${x + 9} 88Z`, p.mid)}${path(`M${x - 9} 88Q${x} 84 ${x + 9} 88`, "none", ` stroke="${p.dark}" stroke-width="2"`)}`;
-    layers.eyes = sleepy(85) + sleepy(115);
+      `${e(x, 94, 10.5, 9.5, "#1b1636")}${e(x, 96, 5.5, 4.5, p.glow)}<circle cx="${x - 3}" cy="97" r="2" fill="#fff"/>${path(`M${x - 11.5} 92Q${x} 80 ${x + 11.5} 92Z`, p.mid)}${path(`M${x - 11.5} 92Q${x} 87 ${x + 11.5} 92`, "none", ` stroke="${p.dark}" stroke-width="2"`)}`;
+    layers.eyes = sleepy(81) + sleepy(119);
     layers.flame = `${path("M100 62Q98 50 100 44", "none", ` stroke="#5aa64a" stroke-width="3" stroke-linecap="round"`)}${path("M100 48Q88 38 84 46Q92 52 100 48Z", p.glow)}${path("M100 46Q110 32 118 40Q110 48 100 46Z", p.glow)}`;
     layers.body = `${e(100, 140, 33, 27)}${e(100, 144, 22, 18, pearl)}${path("M80 136H120M82 148H118", "none", ` stroke="${p.mid}" stroke-width="2" opacity=".6"`)}`;
     layers.legL = paw(76, 162, 17);
@@ -285,8 +319,11 @@ export function creatureLayers(id: CharacterId, dir: Facing) {
     // Hooded lantern wisp: pointed hood, void face with glowing eyes, ragged robe, lantern tail.
     layers.head = `${path("M58 102Q54 64 82 50Q96 36 100 22Q106 40 120 50Q146 66 142 102Q128 122 100 122Q72 122 58 102Z", face)}${e(100, 94, 30, 24, p.accent)}${highlight(70, 68, 18)}`;
     const slit = (x: number) =>
-      `<circle cx="${x}" cy="90" r="11" fill="${shine}" stroke="none" opacity=".8"/>${path(`M${x - 8} 90Q${x} 82 ${x + 8} 90Q${x} 96 ${x - 8} 90Z`, p.glow)}`;
-    layers.eyes = slit(84) + slit(116);
+      `<circle cx="${x}" cy="93" r="14" fill="${shine}" stroke="none" opacity=".7"/>${e(x, 93, 7.5, 9.5, p.glow)}${e(x - 2.5, 89.5, 3, 3.4, "#ffffff")}`;
+    layers.eyes =
+      slit(85) +
+      slit(115) +
+      `<path d="M97 106Q100 109 103 106" stroke="${p.glow}" stroke-width="1.8" fill="none" stroke-linecap="round" opacity=".9"/>`;
     layers.body = `${path("M74 116Q100 108 126 116Q134 150 140 170L128 162L118 172L108 162L100 172L92 162L82 172L72 162L60 170Q66 150 74 116Z", body)}${path("M100 120V160", "none", ` stroke="${p.light}" stroke-width="2" opacity=".35"`)}`;
     layers.legL = "";
     layers.legR = "";
@@ -298,6 +335,7 @@ export function creatureLayers(id: CharacterId, dir: Facing) {
     );
     layers.tail = `${tailPath("M126 150Q160 150 164 118Q166 104 158 98", "none", ` stroke="${p.dark}" stroke-width="4" stroke-linecap="round"`)}<circle cx="${behind ? 42 : 158}" cy="110" r="16" fill="${shine}" stroke="none"/>${e(behind ? 42 : 158, 110, 7, 9, p.glow)}${path(behind ? "M36 100H48" : "M152 100H164", "none", ` stroke="${p.dark}" stroke-width="3"`)}`;
   }
+  if (dir === "down" && id !== "duskveil") layers.head += blush;
   // Rear view: no face; keep silhouettes, ears, crests and accessories.
   if (back) {
     layers.eyes = "";
@@ -335,12 +373,9 @@ export function creatureLayers(id: CharacterId, dir: Facing) {
     }
     layers.eyes =
       id === "terradon"
-        ? `${e(px(116), 90, 8, 7, "#121a33")}${e(px(116), 91, 4, 3.5, p.glow)}${path(`M${px(107)} 88Q${px(116)} 79 ${px(125)} 88Z`, p.mid)}`
+        ? `${e(px(117), 94, 10.5, 9.5, "#1b1636")}${e(px(117), 96, 5.5, 4.5, p.glow)}<circle cx="${px(114)}" cy="97" r="2" fill="#fff"/>${path(`M${px(105.5)} 92Q${px(117)} 80 ${px(128.5)} 92Z`, p.mid)}`
         : id === "duskveil"
-          ? `<circle cx="${px(116)}" cy="90" r="12" fill="${shine}" stroke="none" opacity=".85"/>${path(
-              `M${px(106)} 90Q${px(116)} 80 ${px(126)} 90Q${px(116)} 97 ${px(106)} 90Z`,
-              p.glow,
-            )}`
+          ? `<circle cx="${px(116)}" cy="93" r="14" fill="${shine}" stroke="none" opacity=".7"/>${e(px(116), 93, 7.5, 9.5, p.glow)}${e(px(116) - 2.5, 89.5, 3, 3.4, "#ffffff")}`
           : eye(px(114), id === "voltkit" ? p.accent : p.glow, 8, 11);
     // Far limbs tuck behind the body; near limbs swing on the projected pivots.
     if (id !== "mystowl" && id !== "duskveil") {
@@ -354,13 +389,19 @@ export function creatureLayers(id: CharacterId, dir: Facing) {
       layers.armR = `${path(`M${px(118)} 124Q${px(136)} 134 ${px(136)} 152L${px(124)} 150Q${px(122)} 138 ${px(112)} 132Z`, body)}`;
     }
   }
+  for (const part of creatureParts)
+    if (layers[part]) {
+      const { s, cx, cy } = PROPORTIONS[part];
+      layers[part] =
+        `<g transform="matrix(${s} 0 0 ${s} ${+(cx - s * cx).toFixed(3)} ${+(cy - s * cy).toFixed(3)})">${layers[part]}</g>`;
+    }
   return { defs, layers };
 }
 export function creatureSvg(
   id: CharacterId,
   dir: Facing = "down",
   part?: CreaturePart,
-  viewBox = "0 0 200 190",
+  viewBox = CREATURE_VIEWBOX,
 ) {
   const { defs, layers } = creatureLayers(id, dir);
   const group = (p: CreaturePart) =>
@@ -368,5 +409,5 @@ export function creatureSvg(
   const content = part
     ? layers[part]
     : `<ellipse class="fighter-shadow" cx="100" cy="177" rx="40" ry="8" fill="#060d24" opacity=".25"/><g class="fighter-character">${(["tail", "wings", "legL", "legR", "body", "armL", "armR"] as CreaturePart[]).map(group).join("")}<g class="fighter-face">${(["head", "ears", "eyes", "flame"] as CreaturePart[]).map(group).join("")}</g>${group("scarf")}</g>`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}">${defs}<g stroke="${creaturePalette[id].dark}" stroke-width="1.25" stroke-linejoin="round">${content}</g></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}">${defs}<g stroke="${creaturePalette[id].dark}" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round">${content}</g></svg>`;
 }

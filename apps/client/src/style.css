@@ -1117,7 +1117,7 @@ dialog input[type="range"] {
   filter: drop-shadow(0 10px 12px #0002);
 }
 .creature-card .fighter-torso {
-  transform-origin: 100px 170px;
+  transform-origin: 100px 170.3px;
   animation: fighter-breathe 3s ease-in-out infinite;
 }
 .creature-card:nth-child(2) .fighter-torso {
@@ -1130,24 +1130,24 @@ dialog input[type="range"] {
   animation-delay: -2.2s;
 }
 .creature-card .fighter-face {
-  transform-origin: 100px 110px;
+  transform-origin: 100px 108.6px;
   animation: fighter-look 5s ease-in-out infinite;
 }
 .creature-card .fighter-eyes {
-  transform-origin: 100px 86px;
+  transform-origin: 100px 88.3px;
   animation: fighter-blink 4.8s infinite;
 }
 .creature-card .fighter-tail,
 .creature-card .fighter-scarf {
-  transform-origin: 130px 135px;
+  transform-origin: 125.8px 140.2px;
   animation: fighter-wag 2.2s ease-in-out infinite;
 }
 .creature-card .fighter-wings {
-  transform-origin: 100px 120px;
+  transform-origin: 100px 127.3px;
   animation: fighter-flap 2.5s ease-in-out infinite;
 }
 .creature-card .fighter-ears {
-  transform-origin: 100px 65px;
+  transform-origin: 100px 56px;
   animation: fighter-ear 3.7s ease-in-out infinite;
 }
 .creature-card:hover .fighter-torso,
@@ -2449,15 +2449,15 @@ dialog {
   color: #a3b3cc;
 }
 .selected-art .fighter-ears {
-  transform-origin: 100px 65px;
+  transform-origin: 100px 56px;
   animation: ear-twitch 3.8s ease-in-out infinite;
 }
 .selected-art .fighter-armR {
-  transform-origin: 135px 122px;
+  transform-origin: 130.1px 129px;
   animation: elemental-greeting 5s ease-in-out infinite;
 }
 .selected-art .fighter-torso {
-  transform-origin: 100px 130px;
+  transform-origin: 100px 135.9px;
   animation: elemental-breath 3s ease-in-out infinite;
 }
 @keyframes elemental-greeting {
@@ -2877,32 +2877,32 @@ dialog {
 }
 /* Alive selection artwork uses the same independent parts as the Phaser rig. */
 .selected-art .fighter-face {
-  transform-origin: 100px 100px;
+  transform-origin: 100px 96.9px;
   animation: fighter-look 5s ease-in-out infinite;
 }
 .selected-art .fighter-eyes {
-  transform-origin: 100px 86px;
+  transform-origin: 100px 88.3px;
   animation: fighter-blink 4.8s infinite;
 }
 .selected-art .fighter-tail {
-  transform-origin: 130px 137px;
+  transform-origin: 125.8px 141.9px;
   animation: fighter-wag 2.2s ease-in-out infinite;
 }
 .selected-art .fighter-wings {
-  transform-origin: 100px 115px;
+  transform-origin: 100px 123px;
   animation: fighter-flap 2.5s ease-in-out infinite;
 }
 .creature-card .fighter-flame,
 .selected-art .fighter-flame {
-  transform-origin: 100px 65px;
+  transform-origin: 100px 56px;
   animation: living-flame 0.8s ease-in-out infinite alternate;
 }
 .selected-art .fighter-legL {
-  transform-origin: 78px 151px;
+  transform-origin: 81.1px 153.9px;
   animation: living-paw 4s ease-in-out infinite;
 }
 .selected-art .fighter-legR {
-  transform-origin: 122px 151px;
+  transform-origin: 118.9px 153.9px;
   animation: living-paw 4s ease-in-out -2s infinite;
 }
 @keyframes living-flame {
@@ -2934,11 +2934,11 @@ dialog {
   animation: selection-leap 1.15s cubic-bezier(0.25, 0.65, 0.35, 1) both;
 }
 .selection-cheer .fighter-armL {
-  transform-origin: 65px 122px;
+  transform-origin: 69.9px 129px;
   animation: selection-left-paw 1.15s ease-in-out both;
 }
 .selection-cheer .fighter-armR {
-  transform-origin: 135px 122px;
+  transform-origin: 130.1px 129px;
   animation: selection-right-paw 1.15s ease-in-out both;
 }
 .selection-cheer .fighter-ears {
@@ -2951,7 +2951,7 @@ dialog {
   animation-duration: 0.4s;
 }
 .selection-cheer .fighter-torso {
-  transform-origin: 100px 150px;
+  transform-origin: 100px 153.1px;
   animation: selection-chest 1.15s ease-in-out both;
 }
 @keyframes selection-leap {
@@ -3695,4 +3695,191 @@ dialog:has(.admin-tabs) {
 .online-note {
   color: var(--muted);
   font-size: 11px;
+}
+/* Trait auras around menu art (see trait-effects.ts). */
+.trait-aura {
+  overflow: visible;
+}
+.trait-aura .ta-c {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.trait-aura .ta-base {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+@keyframes ta-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes ta-rise {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-120px);
+    opacity: 0;
+  }
+}
+@keyframes ta-flicker {
+  0% {
+    opacity: 1;
+  }
+  35% {
+    opacity: 0;
+  }
+  55% {
+    opacity: 0.8;
+  }
+  70% {
+    opacity: 0;
+  }
+}
+@keyframes ta-dash {
+  to {
+    stroke-dashoffset: -54;
+  }
+}
+@keyframes ta-pulse {
+  50% {
+    opacity: 0.45;
+    transform: scale(1.06);
+  }
+}
+@keyframes ta-flame {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(0.92, 1.14);
+  }
+}
+@keyframes ta-ripple {
+  0% {
+    transform: scale(0.4);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+@keyframes ta-wave {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+@keyframes ta-twinkle {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(0.5);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+@keyframes ta-leaf {
+  0% {
+    transform: translate(0, 0) rotate(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(30px, 150px) rotate(220deg);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .trait-aura * {
+    animation: none !important;
+  }
+}
+.briefing-versus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin: 4px 0 14px;
+}
+.vs-fighter {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+.vs-fighter svg {
+  width: 120px;
+  height: 121px;
+  filter: drop-shadow(
+    0 0 10px color-mix(in srgb, var(--element) 45%, transparent)
+  );
+}
+.vs-fighter b {
+  font-size: 14px;
+}
+.vs-fighter span {
+  font-size: 11px;
+  color: var(--element);
+  letter-spacing: 0.06em;
+}
+.vs-mark {
+  font:
+    900 22px/1 system-ui,
+    sans-serif;
+  color: #f7d780;
+  letter-spacing: 0.08em;
+}
+.battle-active.touch-mode .briefing-versus {
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.battle-active.touch-mode .vs-fighter svg {
+  width: 74px;
+  height: 75px;
+}
+/* Phones held sideways: a slim strip so "I'm ready" stays on screen. */
+@media (max-height: 500px) {
+  .briefing-versus {
+    margin: 0 0 4px;
+    gap: 8px;
+  }
+  .vs-fighter {
+    grid-template-columns: auto auto;
+    align-items: center;
+    column-gap: 4px;
+    text-align: left;
+  }
+  .vs-fighter svg,
+  .battle-active.touch-mode .vs-fighter svg {
+    width: 52px;
+    height: 53px;
+    grid-row: span 2;
+  }
+  .vs-fighter b {
+    font-size: 12px;
+  }
+  .vs-mark {
+    font-size: 16px;
+  }
+}
+@media (max-width: 700px) {
+  .vs-fighter svg {
+    width: 84px;
+    height: 85px;
+  }
 }

@@ -2,6 +2,7 @@ import type { CharacterId } from "@arena/shared";
 import {
   creatureSvg,
   creatureParts,
+  proportioned,
   type CreaturePart,
 } from "../creature-design";
 import type { Facing } from "./controller";
@@ -28,16 +29,48 @@ const definitions: Record<Part, { bounds: number[]; pivot: number[] }> = {
   body: { bounds: [48, 103, 104, 70], pivot: [100, 130] },
   armL: { bounds: [39, 114, 101, 52], pivot: [65, 122] },
   armR: { bounds: [60, 114, 101, 52], pivot: [135, 122] },
-  head: { bounds: [35, 40, 130, 91], pivot: [100, 100] },
+  head: { bounds: [35, 16, 130, 115], pivot: [100, 100] },
   ears: { bounds: [25, 5, 150, 75], pivot: [100, 65] },
-  eyes: { bounds: [60, 70, 80, 30], pivot: [100, 86] },
+  eyes: { bounds: [52, 68, 96, 44], pivot: [100, 93] },
   scarf: { bounds: [35, 90, 150, 66], pivot: [100, 118] },
-  flame: { bounds: [60, 5, 80, 75], pivot: [100, 65] },
+  flame: { bounds: [55, 5, 90, 100], pivot: [100, 65] },
 };
+/** A part's crop box once its proportion transform is applied. */
+function box(part: Part) {
+  const [x, y, w, h] = definitions[part].bounds;
+  const [x0, y0] = proportioned(part, x, y),
+    [x1, y1] = proportioned(part, x + w, y + h);
+  return [x0, y0, x1 - x0, y1 - y0].map((v) => +v.toFixed(2));
+}
+const pivot = (part: Part, x: number, y: number) => proportioned(part, x, y);
+/**
+ * Rest offsets (in rig pixels, half of art units) the rig uses to keep the
+ * face parts attached to the head while it bobs, tilts and recoils.
+ */
+export const rigAnchors = (() => {
+  const [, head] = pivot(
+    "head",
+    ...(definitions.head.pivot as [number, number]),
+  );
+  const [, eyes] = pivot(
+    "eyes",
+    ...(definitions.eyes.pivot as [number, number]),
+  );
+  const [, ears] = pivot(
+    "ears",
+    ...(definitions.ears.pivot as [number, number]),
+  );
+  return {
+    headY: (head - 130) * 0.5,
+    eyesLift: (head - eyes) * 0.5,
+    earsLift: (head - ears) * 0.5,
+  };
+})();
 export function rigAssets(id: CharacterId): RigAsset[] {
   return (["up", "down", "left", "right"] as Facing[]).flatMap((dir) =>
     parts.map((part) => {
-      const { bounds: b, pivot: defaultPivot } = definitions[part];
+      const { pivot: defaultPivot } = definitions[part];
+      const b = box(part);
       let q = dir === "right" && part === "tail" ? [70, 137] : defaultPivot;
       if (dir === "left" || dir === "right") {
         const side = dir === "right" ? 1 : -1;
@@ -50,6 +83,7 @@ export function rigAssets(id: CharacterId): RigAsset[] {
         if (projected[part] !== undefined)
           q = [100 + side * (projected[part]! - 100), defaultPivot[1]];
       }
+      q = pivot(part, q[0], q[1]);
       return {
         key: rigKey(id, dir, part),
         url:

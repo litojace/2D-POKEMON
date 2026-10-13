@@ -8,7 +8,7 @@ import {
   type AnimationState,
   type Facing,
 } from "./controller";
-import { parts, rigKey, type Part, type RigAsset } from "./assets";
+import { parts, rigAnchors, rigKey, type Part, type RigAsset } from "./assets";
 export class FighterRig {
   readonly controller = new AnimationController();
   readonly root: Phaser.GameObjects.Container;
@@ -127,7 +127,7 @@ export class FighterRig {
         .setScale(0.5)
         .setTint(state === "hurt" ? 0xffb4b4 : 0xffffff);
     body.setScale(0.5, 0.5 + (reduced ? 0 : idle * 0.009));
-    head.y = -15 + (reduced ? 0 : idle * 0.55);
+    head.y = rigAnchors.headY + (reduced ? 0 : idle * 0.55);
     head.rotation = reduced
       ? 0
       : this.character === "tidefin"
@@ -152,7 +152,7 @@ export class FighterRig {
         ? 0.055
         : 0.5,
     );
-    eyes.y = -22 + (head.y + 15);
+    eyes.y = head.y - rigAnchors.eyesLift;
     const armL = this.images.get("armL")!,
       armR = this.images.get("armR")!,
       legL = this.images.get("legL")!,
@@ -389,13 +389,13 @@ export class FighterRig {
     // Keep independently animated facial parts attached to the head, including recoil/fainting.
     eyes.rotation = head.rotation;
     eyes.setPosition(
-      Math.sin(head.rotation) * 7,
-      head.y - Math.cos(head.rotation) * 7,
+      Math.sin(head.rotation) * rigAnchors.eyesLift,
+      head.y - Math.cos(head.rotation) * rigAnchors.eyesLift,
     );
     ears.rotation += head.rotation;
     ears.setPosition(
-      Math.sin(head.rotation) * 17.5,
-      head.y - Math.cos(head.rotation) * 17.5,
+      Math.sin(head.rotation) * rigAnchors.earsLift,
+      head.y - Math.cos(head.rotation) * rigAnchors.earsLift,
     );
     flame.setPosition(ears.x, ears.y);
     flame.rotation = head.rotation;

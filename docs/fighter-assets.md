@@ -23,6 +23,26 @@ steps for Terradon, orbiting shards for Auralynx.
 `portrait.svg` and `selection.svg` in each fighter folder are exported from the
 same designs (`npx tsx scripts/export-fighters.ts`).
 
+### Cute style and trait auras
+
+The roster uses chibi proportions: `PROPORTIONS` in `creature-design.ts` scales
+the face parts (head, ears, eyes, crest) up from just above the chin and the
+body and limbs down toward the feet. The scale is baked into every part, and
+`animation/assets.ts` maps each part's crop box and pivot through the same
+transform (`proportioned()`), so author new art in the original 200x190 space
+and the rig stays attached. Faces share big sparkly eyes, small `:3` mouths and
+blush (Duskveil keeps its void face with round glowing eyes).
+
+Each fighter also has a trait aura built from its element:
+
+- **Menus** (`trait-effects.ts`): the selected roster card, the detail portrait
+  and the pre-match "How to play" card show an animated SVG aura (orbiting
+  sparks, flame wall, water ring, hex barrier, sunburst, mind waves, boulders,
+  spirit flames). With reduced motion it renders as a still frame.
+- **Battle** (`battle-aura.ts`): a small ground effect at each fighter's feet,
+  drawn with plain Phaser Graphics every frame (no filters). It is skipped with
+  reduced motion and hidden for an opponent in stealth.
+
 ## Replacing a creature with frame artwork
 
 Each fighter has `apps/client/public/assets/fighters/<id>/animations.json`. Switch

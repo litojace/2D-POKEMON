@@ -7,6 +7,9 @@ import {
 } from "./animation/pipeline";
 import { rigAssets } from "./animation/assets";
 import { setOverlayMarkup } from "./overlay";
+import { fighterArt } from "./fighter-art";
+import { withAura } from "./trait-effects";
+import { drawBattleAura } from "./battle-aura";
 import { stadiumCrowd } from "./stadium";
 import { paintArenaFloor, scaledPainter } from "./arena-floor";
 import {
@@ -241,6 +244,13 @@ function showSelection() {
     card.setAttribute("aria-pressed", String(on));
     const label = card.querySelector(".card-bottom > span");
     if (label) label.textContent = on ? "✓ SELECTED" : "SELECT";
+    // Only the selected card wears its trait aura.
+    const artwork = card.querySelector(".card-art"),
+      fresh = next.content.querySelector(
+        `[data-character="${card.dataset.character}"] .card-art`,
+      );
+    if (artwork && fresh && (on || artwork.querySelector(".trait-aura")))
+      artwork.replaceWith(fresh);
   }
   for (const part of [".selected-fighter", ".skill-preview"]) {
     const old = panel.querySelector(part),
@@ -505,7 +515,18 @@ function renderBattle() {
     if (state.phase === "briefing") {
       heading = "How to play";
       const confirmed = state.instructionsReady.includes(myId);
+      // Who's fighting whom, each wearing their trait aura (you first).
+      const lineup = [...state.players].sort(
+        (a, b) => Number(b.id === myId) - Number(a.id === myId),
+      );
+      const versus = `<div class="briefing-versus">${lineup
+        .map(
+          (p) =>
+            `<div class="vs-fighter${p.id === myId ? " me" : ""}" style="--element:#${CHARACTERS[p.character].color.toString(16).padStart(6, "0")}">${withAura(fighterArt(p.character), p.character, reducedMotion)}<b>${escape(p.name)}${p.id === myId ? " <small>(you)</small>" : ""}</b><span>${CHARACTERS[p.character].name} · ${CHARACTERS[p.character].element}</span></div>`,
+        )
+        .join('<span class="vs-mark">VS</span>')}</div>`;
       details =
+        versus +
         '<p class="mobile-howto">Touch mode: left joystick to move; big button for basic attacks, the four curved buttons for skills, DASH and JUMP below. Aim follows your opponent. Use Enter fullscreen below the arena.</p><div class="controls-list"><span><kbd>W A S D</kbd>Move · mouse to aim</span><span><kbd>LMB</kbd>Basic attack</span><span><kbd>1 2 3 R</kbd>Four special skills</span><span><kbd>RMB</kbd>Dash</span><span><kbd>SPACE</kbd>Jump over ground attacks</span></div><p>Use cover. Win two rounds. The countdown begins when both players confirm.</p><button class="primary" id="instructions-ready" ' +
         (confirmed ? "disabled" : "") +
         ">" +
@@ -1167,6 +1188,27 @@ class ArenaScene extends Phaser.Scene {
         48 - jump * 0.2,
         18 - jump * 0.1,
       );
+      // Trait aura at the feet; a stealthed opponent shows none.
+      const stealthed = serverPlayer.statuses.some((s) => s.kind === "stealth");
+      if (!reducedMotion && !(stealthed && p.id !== myId)) {
+        drawBattleAura(
+          g,
+          c.element,
+          x,
+          y + 14,
+          this.time.now / 1000,
+          stealthed ? 0.5 : 0.9,
+        );
+        if (serverPlayer.clone)
+          drawBattleAura(
+            g,
+            c.element,
+            serverPlayer.clone.x,
+            serverPlayer.clone.y + 14,
+            this.time.now / 1000,
+            0.3,
+          );
+      }
       g.lineStyle(2, p.id === myId ? 0xffffff : c.color, 0.55).strokeEllipse(
         x,
         y + 12,
