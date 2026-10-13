@@ -108,7 +108,7 @@ describe("special skills", () => {
     expect(CHARACTERS.terradon.health - clean.q.hp).toBe(16);
     expect(CHARACTERS.terradon.health - cursed.q.hp).toBe(32);
   });
-  it("Hibernate heals 60 over its duration and blocks actions without amplifying damage", () => {
+  it("Hibernate heals 75 over its duration and blocks actions without amplifying damage", () => {
     const { arena, q } = duel("cindrake");
     q.hp = 100;
     arena.submit(q, input({ skill: 1 }));
@@ -121,7 +121,7 @@ describe("special skills", () => {
     arena.tick();
     expect(q.x).toBe(x);
     for (let k = 0; k < 90; k++) arena.tick();
-    expect(q.hp).toBe(150);
+    expect(q.hp).toBe(165);
     expect(q.statuses.some((s) => s.kind === "sleep")).toBe(false);
   });
   it("Focus Ray is instant, synchronizes its end point and is blocked by cover", () => {

@@ -34,12 +34,16 @@ it("has eight fighters, forty unique moves and four special skills per fighter",
     Object.keys(elementShapes).length,
   );
 });
-it("keeps the original health and speed for the four returning fighters", () => {
+it("increases roster health by 25% while preserving movement speeds", () => {
   const baseline: Record<string, [number, number]> = {
-    voltkit: [110, 270],
-    cindrake: [125, 240],
-    tidefin: [105, 285],
-    auralynx: [140, 235],
+    voltkit: [138, 270],
+    cindrake: [156, 240],
+    tidefin: [131, 285],
+    auralynx: [175, 235],
+    lumoth: [144, 265],
+    mystowl: [130, 255],
+    terradon: [219, 222],
+    duskveil: [150, 260],
   };
   for (const [id, stats] of Object.entries(baseline)) {
     const c = CHARACTERS[id as CharacterId];
@@ -190,15 +194,15 @@ it("applies counter, barrier and grounded area counterplay on the server", () =>
     p = guard.players[0];
   guard.cast(p, CHARACTERS.auralynx.skills[2]);
   guard.damage(p, 20, "two");
-  expect(p.hp).toBe(130);
-  expect(guard.players[1].hp).toBe(104);
+  expect(p.hp).toBe(CHARACTERS.auralynx.health - 10);
+  expect(guard.players[1].hp).toBe(CHARACTERS.voltkit.health - 6);
   const shield = duel("mystowl"),
     m = shield.players[0];
   shield.cast(m, CHARACTERS.mystowl.skills[2]);
   shield.damage(m, 20, "two");
   // Ward lets 40% of the hit through.
   expect(m.hp).toBe(CHARACTERS.mystowl.health - 20 * 0.4);
-  expect(shield.players[1].hp).toBe(110);
+  expect(shield.players[1].hp).toBe(CHARACTERS.voltkit.health);
   const field = duel("voltkit"),
     q = field.players[1];
   q.jumpUntil = field.time + 1;

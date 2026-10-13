@@ -3,6 +3,7 @@ import { io, type Socket } from "socket.io-client";
 import { createArenaServer } from "../../apps/server/src/server.js";
 import { fakeAccounts } from "../helpers/accounts";
 import {
+  CHARACTERS,
   blankInput,
   type Reply,
   type Snapshot,
@@ -101,10 +102,10 @@ it("runs all eight characters in solo mode with real skill damage and no second 
     await wait();
     for (let i = 0; i < 30; i++) server.step();
     expect(a.players[0].stats.dealt).toBeGreaterThan(0);
-    expect(a.players[1].hp).toBeLessThan(110);
+    expect(a.players[1].hp).toBeLessThan(CHARACTERS.voltkit.health);
     a.players[1].hp = 0;
     server.step();
-    expect(a.players[1].hp).toBe(110);
+    expect(a.players[1].hp).toBe(CHARACTERS.voltkit.health);
     expect(a.phase).toBe("playing");
     a.deadline = 0;
     server.step();
@@ -149,12 +150,12 @@ it("switches practice characters, resets the arena, and optionally removes skill
   expect(a.players[0].stats.skills).toBe(2);
   expect((await emit(client, "practice-character", "tidefin")).ok).toBe(true);
   expect(a.players[0].character).toBe("tidefin");
-  expect(a.players[0].hp).toBe(105);
+  expect(a.players[0].hp).toBe(CHARACTERS.tidefin.health);
   expect(a.zones).toHaveLength(0);
   a.players[0].hp = 12;
   a.players[0].x = 1200;
   await emit(client, "practice-reset");
-  expect(a.players[0].hp).toBe(105);
+  expect(a.players[0].hp).toBe(CHARACTERS.tidefin.health);
   expect(a.players[0].x).toBe(650);
   expect(a.players[0].stats.skills).toBe(0);
   expect((await emit(client, "practice-character", "bogus")).ok).toBe(false);

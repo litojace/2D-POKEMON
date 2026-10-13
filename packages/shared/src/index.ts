@@ -215,7 +215,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A sugar-glider kit that stores static in its antennae. Fast, slippery and deadly at range.",
     color: 0xffd65b,
-    health: 110,
+    health: 138,
     speed: 270,
     basic: basic(
       "spark-dart",
@@ -286,7 +286,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A stout magma newt with a living flame crest. Layers burns and hits hardest up close.",
     color: 0xff7a4f,
-    health: 125,
+    health: 156,
     speed: 240,
     basic: basic(
       "cinder-snap",
@@ -376,7 +376,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "An axolotl duelist in a river sash. The quickest fighter; pokes, misdirects, then finishes.",
     color: 0x4fd6e6,
-    health: 105,
+    health: 131,
     speed: 285,
     basic: basic(
       "tide-needle",
@@ -441,7 +441,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A crystal-fisted lynx monk. Durable, patient and brutal against careless attacks.",
     color: 0x7f9cff,
-    health: 140,
+    health: 175,
     speed: 235,
     basic: basic(
       "prism-jab",
@@ -505,7 +505,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A fluffy moth that sheds glowing dust. Balanced at every range; Kindle turns pressure into a race.",
     color: 0x86f0c0,
-    health: 115,
+    health: 144,
     speed: 265,
     basic: basic(
       "glint",
@@ -567,7 +567,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A floating three-eyed owl. Slow, heavy attacks; controls space with rays, pushes and wards.",
     color: 0xff79d2,
-    health: 104,
+    health: 130,
     speed: 255,
     basic: basic(
       "mind-dart",
@@ -633,7 +633,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A sleepy boulder tortoise. Huge health pool and crushing swings; make them come to you.",
     color: 0xc79a5b,
-    health: 175,
+    health: 219,
     speed: 222,
     basic: basic(
       "boulder-swipe",
@@ -666,8 +666,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "rest",
         0,
         12,
-        "Fall asleep for 2.5 seconds: heal 60 HP but you can't move or act.",
-        { duration: 2.5, heal: 12 },
+        "Fall asleep for 2.5 seconds: heal 75 HP but you can't move or act.",
+        { duration: 2.5, heal: 15 },
       ),
       ability(
         "dust-cloud",
@@ -704,7 +704,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A hooded lantern wisp. Sets burns, then cashes them in with Curse Mark.",
     color: 0x9c6bff,
-    health: 120,
+    health: 150,
     speed: 260,
     basic: basic(
       "lantern-wisp",

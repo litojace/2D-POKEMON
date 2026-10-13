@@ -32,7 +32,7 @@ Create a private room, share its six-character code, select a fighter, and confi
 
 **2v2 Teams:** choose *2v2 Teams* before *Create private room* and share the code with three friends. Players pick Blue or Red in the lobby (the host can *Shuffle teams*); the match starts when all four are ready. First team to win three rounds takes it. Attacks never hurt teammates; area attacks hit every enemy inside. A knocked-out player watches their partner until the round ends. If someone leaves mid-match, their partner plays on 2v1; if a whole team leaves, it forfeits. On a time-out the team with more health left (as a share of full health) wins the round.
 
-**Solo vs AI bot:** pick a difficulty (Easy, Normal, Hard) under *Or play solo* and press *Battle an AI bot*. You get a private best-of-three against a bot playing a random fighter. The bot runs on the server (`apps/server/src/bot.ts`) and sends the same inputs a player would, so cooldowns and rules apply to it unchanged. Difficulty sets its reaction delay, aim spread, target leading, dodging, skill use and whether it saves its ultimate for an opening. It walks around pillars, dodges big shots, jumps ground attacks, and can be fooled by decoys. Rematch is instant; *Back to menu* leaves the room.
+**Solo vs AI bot:** pick a difficulty (Easy, Normal, Hard) under _Or play solo_ and press _Battle an AI bot_. You get a private best-of-three against a bot playing a random fighter. The bot runs on the server (`apps/server/src/bot.ts`) and sends the same inputs a player would, so cooldowns and rules apply to it unchanged. Difficulty sets its reaction delay, aim spread, target leading, dodging, skill use and whether it saves its ultimate for an opening. It walks around pillars, dodges big shots, jumps ground attacks, and can be fooled by decoys. Rematch is instant; *Back to menu* leaves the room.
 
 | Control     | Action                     |
 | ----------- | -------------------------- |
@@ -48,6 +48,8 @@ Create a private room, share its six-character code, select a fighter, and confi
 Mobile uses the left joystick and right skill/action buttons, with a separate bottom toolbar. Android/iOS PWA installation, safe-area layout and landscape play are retained. See [mobile/PWA setup](docs/mobile-pwa.md). Matches and sign-in require an internet connection.
 
 ## Balance notes
+
+The current durability pass increases every fighter’s maximum HP by 25% (rounded to whole HP) and Hibernate healing from 60 to 75 HP. Damage, cooldowns and sleep duration are unchanged. The earlier win-rate results below predate this pass and need fresh playtesting.
 
 October 2026 pass, tuned with thousands of simulated matches (simple human-like players and Hard bots, every fighter pairing) until every fighter averaged 44–59% wins (before: 10–96%):
 

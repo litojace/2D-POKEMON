@@ -31,7 +31,7 @@ it("explodes an orb at its range limit and applies splash damage once", () => {
     explosion: 100,
   });
   for (let i = 0; i < 65; i++) a.tick();
-  expect(q.hp).toBe(110 - 23);
+  expect(q.hp).toBe(CHARACTERS.voltkit.health - 23);
   expect(a.projectiles).toHaveLength(0);
 });
 it("zones damage grounded enemies repeatedly but airborne enemies avoid ground ticks", () => {
@@ -44,9 +44,9 @@ it("zones damage grounded enemies repeatedly but airborne enemies avoid ground t
   a.cast(p, CHARACTERS.voltkit.skills[2]);
   q.jumpUntil = 1;
   for (let i = 0; i < 15; i++) a.tick();
-  expect(q.hp).toBe(110);
+  expect(q.hp).toBe(CHARACTERS.voltkit.health);
   for (let i = 0; i < 35; i++) a.tick();
-  expect(q.hp).toBeLessThan(110);
+  expect(q.hp).toBeLessThan(CHARACTERS.voltkit.health);
 });
 it("melee and cone attacks damage enemies within their collision range", () => {
   const a = duel(),
@@ -81,7 +81,7 @@ it("decoys absorb a projectile before it reaches the owner", () => {
   p.angle = 0;
   a.cast(p, CHARACTERS.voltkit.basic);
   for (let i = 0; i < 15; i++) a.tick();
-  expect(q.hp).toBe(110);
+  expect(q.hp).toBe(CHARACTERS.voltkit.health);
   expect(q.clone).toBeUndefined();
 });
 it("packs static ability definitions as IDs and restores the renderer snapshot", () => {

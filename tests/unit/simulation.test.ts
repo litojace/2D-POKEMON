@@ -109,7 +109,7 @@ describe("authoritative simulation", () => {
       [p, q] = a.players;
     a.status(q, "burn", 1);
     for (let i = 0; i < 20; i++) a.tick();
-    expect(q.hp).toBeLessThan(125);
+    expect(q.hp).toBeLessThan(CHARACTERS.cindrake.health);
     a.status(q, "stun", 0.3);
     const until = q.statuses.find((s) => s.kind === "stun")!.until;
     a.status(q, "stun", 5);
@@ -132,7 +132,7 @@ describe("authoritative simulation", () => {
     expect(a.phase).toBe("intermission");
     for (let i = 0; i < 125; i++) a.tick();
     expect(a.phase).toBe("countdown");
-    expect(a.players[1].hp).toBe(125);
+    expect(a.players[1].hp).toBe(CHARACTERS.cindrake.health);
     expect(a.players[0].cooldowns).toEqual([0, 0, 0, 0]);
     a.phase = "playing";
     a.players[1].hp = 0;
@@ -154,7 +154,7 @@ describe("authoritative simulation", () => {
     b.deadline = 0;
     b.tick();
     expect(b.overtime).toBe(true);
-    for (let i = 0; i < 300 && b.phase === "playing"; i++) b.tick();
+    for (let i = 0; i < 450 && b.phase === "playing"; i++) b.tick();
     expect(b.phase).toBe("intermission");
   });
   it("rejects fabricated positions, health, damage and malformed controls", () => {
@@ -206,7 +206,7 @@ describe("authoritative simulation", () => {
     q.y = 300;
     p.lastInput = input({ aimX: q.x, aimY: q.y, skill: 0 });
     for (let i = 0; i < 30; i++) a.tick();
-    expect(q.hp).toBe(125);
+    expect(q.hp).toBe(CHARACTERS.cindrake.health);
     expect(a.projectiles).toHaveLength(0);
   });
   it("preserves a skill edge arriving between movement packets", () => {
@@ -223,6 +223,6 @@ describe("authoritative simulation", () => {
     a.submit(q, input({ dash: true, dx: 1 }));
     a.tick();
     a.damage(q, 10, p.id);
-    expect(q.hp).toBe(115);
+    expect(q.hp).toBe(CHARACTERS.cindrake.health - 10);
   });
 });
