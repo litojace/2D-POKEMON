@@ -4,7 +4,7 @@ Element Arena follows AMATYC's Supabase auth pattern: email/password signup and 
 
 ## Database
 
-In the new project's Supabase SQL Editor, run [001_arena_accounts.sql](../supabase/migrations/001_arena_accounts.sql). It creates profiles, admin membership, title definitions/ownership, and an admin audit log. Then run [002_admin_cleanup_reports.sql](../supabase/migrations/002_admin_cleanup_reports.sql), which adds problem reports and the admin suspend/delete functions. Profiles are created when users first log into the game. User-controlled signup metadata cannot grant admin rights. Passwords remain in Supabase Auth.
+In the new project's Supabase SQL Editor, run [001_arena_accounts.sql](../supabase/migrations/001_arena_accounts.sql). It creates profiles, admin membership, title definitions/ownership, and an admin audit log. Then run [002_admin_cleanup_reports.sql](../supabase/migrations/002_admin_cleanup_reports.sql), which adds problem reports and the admin suspend/delete functions. Then run [003_titles.sql](../supabase/migrations/003_titles.sql), which records when titles were created (newest custom titles list first) and lets admins delete titles. Profiles are created when users first log into the game. User-controlled signup metadata cannot grant admin rights. Passwords remain in Supabase Auth.
 
 Ordinary clients cannot read/write these tables directly. Authenticated RPCs check identity, admin membership, suspension and title ownership. The migration does not modify AMATYC tables.
 
@@ -94,7 +94,7 @@ Real email confirmation, Google OAuth, recovery, and deployed Supabase integrati
 
 Signed-in admins see an **Admin** button with two tabs:
 
-- **Players**: search, then per player: grant a title from the dropdown (or create a new one there), remove a title with ×, **Suspend/Unsuspend** (confirmation required) and **Delete** (you must type the player's name). Deleting removes the Supabase login, profile and titles permanently. Admin accounts can't be suspended or deleted from the panel.
+- **Players**: delete a title everywhere from the **Delete a title…** dropdown (with confirmation). Search, then per player: grant a title from the dropdown (or create a new one there), remove a title with ×, **Suspend/Unsuspend** (confirmation required) and **Delete** (you must type the player's name). Deleting removes the Supabase login, profile and titles permanently. Admin accounts can't be suspended or deleted from the panel.
 - **Reports**: problems sent by players from **Menu → Report a problem** (or the in-match settings). Filter open/resolved and mark them resolved or reopen them. Each report includes the reporter's screen, room code, fighter and device. Players can send up to 5 reports per 10 minutes.
 
 Every admin action is written to `arena_admin_audit`.

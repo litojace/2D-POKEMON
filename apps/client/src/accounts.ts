@@ -1,4 +1,4 @@
-import { TITLE_PRESETS } from "./player-nameplate";
+import { TITLE_PRESETS, sortTitles } from "./player-nameplate";
 import { createClient, type Session } from "@supabase/supabase-js";
 import {
   accountSchema,
@@ -288,7 +288,16 @@ export class AccountUI {
     if (!this.account) return;
     const account = this.account;
     this.hooks.openDialog(
-      `<div class="eyebrow">YOUR PLAYER PROFILE</div><h2>${escape(account.displayName)}</h2><p>${account.isAdmin ? "Administrator" : "Player"} · ${escape(this.session?.user.email ?? "")}</p><form id="profile-title" class="account-form"><label>Equipped title<select name="titleId"><option value="">No title</option>${account.ownedTitles.map((t) => `<option value="${t.id}" ${account.title === t.name ? "selected" : ""}>${escape(t.name)}</option>`).join("")}</select></label><button class="primary">Save title</button><p id="profile-message" role="status"></p></form>`,
+      `<div class="eyebrow">YOUR PLAYER PROFILE</div><h2>${escape(account.displayName)}</h2><p>${account.isAdmin ? "Administrator" : "Player"} · ${escape(this.session?.user.email ?? "")}</p><form id="profile-title" class="account-form"><label>Equipped title<select name="titleId"><option value="">No title</option>${sortTitles(
+        account.ownedTitles as Title[],
+      )
+        .map(
+          (t) =>
+            `<option value="${t.id}" ${account.title === t.name ? "selected" : ""}>${escape(t.name)}</option>`,
+        )
+        .join(
+          "",
+        )}</select></label><button class="primary">Save title</button><p id="profile-message" role="status"></p></form>`,
     );
     element<HTMLFormElement>("profile-title").onsubmit = async (event) => {
       event.preventDefault();
@@ -390,12 +399,15 @@ export class AccountUI {
         ({ players } = directory as PlayerDirectory);
         const total = (directory as PlayerDirectory).total;
         titles = catalog as Title[];
-        body = `<form id="admin-search" class="admin-search"><input name="search" placeholder="Search name or player ID" value="${escape(view.search)}" aria-label="Search players"><button class="secondary">Search</button></form><div class="admin-list">${
+        const sorted = sortTitles(titles);
+        body = `<div class="admin-title-tools"><select id="delete-title-select" aria-label="Title to delete"><option value="">Delete a title…</option>${sorted.map((t) => `<option value="${t.id}">${escape(t.name)}</option>`).join("")}</select><div class="admin-confirm" id="delete-title-confirm" hidden></div></div><form id="admin-search" class="admin-search"><input name="search" placeholder="Search name or player ID" value="${escape(view.search)}" aria-label="Search players"><button class="secondary">Search</button></form><div class="admin-list">${
           players
             .map((p) => {
-              const owned = titles.filter((t) => p.titleIds.includes(t.id));
-              const grantable = titles.filter(
-                (t) => t.active && !p.titleIds.includes(t.id),
+              const owned = sortTitles(
+                titles.filter((t) => p.titleIds.includes(t.id)),
+              );
+              const grantable = sortTitles(
+                titles.filter((t) => t.active && !p.titleIds.includes(t.id)),
               );
               return `<div class="admin-row" data-player="${p.id}" data-name="${escape(p.displayName)}"><div class="admin-row-head"><strong>${escape(p.displayName)}</strong>${p.isAdmin ? '<span class="admin-badge">ADMIN</span>' : ""}${p.suspended ? '<span class="admin-badge danger">SUSPENDED</span>' : ""}<small>Joined ${new Date(p.createdAt).toLocaleDateString()}</small></div><div class="admin-titles-row">${owned
                 .map(
@@ -500,6 +512,40 @@ export class AccountUI {
         void this.showAdmin({ offset: Math.max(0, view.offset - 50) });
       element("admin-next").onclick = () =>
         void this.showAdmin({ offset: view.offset + 50 });
+      const deleteSelect = element<HTMLSelectElement>("delete-title-select");
+      const deleteBox = element("delete-title-confirm");
+      deleteSelect.onchange = () => {
+        const title = titles.find((t) => t.id === deleteSelect.value);
+        if (!title) {
+          deleteBox.hidden = true;
+          return;
+        }
+        deleteBox.hidden = false;
+        deleteBox.innerHTML = `<p><b>Delete the title "${escape(title.name)}"?</b> It is removed from every player who has it. This cannot be undone.</p><div class="admin-actions"><button type="button" class="danger-button" data-confirm>Delete title</button><button type="button" class="quiet" data-cancel>Cancel</button></div>`;
+        deleteBox.querySelector<HTMLButtonElement>("[data-cancel]")!.onclick =
+          () => {
+            deleteSelect.value = "";
+            deleteBox.hidden = true;
+          };
+        const confirm =
+          deleteBox.querySelector<HTMLButtonElement>("[data-confirm]")!;
+        confirm.focus();
+        confirm.onclick = async () => {
+          confirm.disabled = true;
+          try {
+            await this.api("/api/admin/titles/delete", {
+              id: title.id,
+              confirm: true,
+            });
+            await this.showAdmin({
+              message: `Title "${title.name}" was deleted.`,
+            });
+          } catch (error) {
+            fail(error);
+            confirm.disabled = false;
+          }
+        };
+      };
       const grant = async (playerId: string, titleId: string, on: boolean) => {
         await this.api("/api/admin/grants", {
           playerId,

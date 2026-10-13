@@ -12,6 +12,14 @@ let server: ReturnType<typeof createArenaServer>,
 let url = "";
 let accounts: ReturnType<typeof fakeAccounts>;
 const wait = (ms = 40) => new Promise((resolve) => setTimeout(resolve, ms));
+/** Wait for a condition driven by socket messages, instead of a fixed delay. */
+async function until(condition: () => boolean, timeout = 3000) {
+  const start = Date.now();
+  while (!condition()) {
+    if (Date.now() - start > timeout) throw new Error("Timed out waiting");
+    await wait(10);
+  }
+}
 const emit = (
   socket: Socket,
   event: string,
@@ -289,7 +297,8 @@ it("synchronizes both players movement, skills, health, death, match results and
   for (let i = 0; i < 220; i++) server.step();
   q.hp = 0;
   server.step();
-  await wait();
+  // Hundreds of snapshots were just queued; wait for the final one to arrive.
+  await until(() => s1?.phase === "finished" && s2?.phase === "finished");
   expect(s1!.winner).toBe(host.id);
   expect(s2!.winner).toBe(host.id);
   expect(arena.scores[host.id!]).toBe(2);

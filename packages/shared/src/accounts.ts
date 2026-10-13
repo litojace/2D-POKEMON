@@ -5,6 +5,8 @@ export const titleSchema = z.object({
   description: z.string().max(160),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   active: z.boolean(),
+  /** Present once migration 003 has run; used for ordering only. */
+  createdAt: z.string().nullable().optional(),
 });
 export const accountSchema = z.object({
   id: z.string().uuid(),
@@ -38,6 +40,9 @@ export const suspendSchema = z
   .strict();
 /** Deleting is permanent, so the request must say so explicitly. */
 export const deletePlayerSchema = z
+  .object({ id: z.string().uuid(), confirm: z.literal(true) })
+  .strict();
+export const deleteTitleSchema = z
   .object({ id: z.string().uuid(), confirm: z.literal(true) })
   .strict();
 export const REPORT_CATEGORIES = {

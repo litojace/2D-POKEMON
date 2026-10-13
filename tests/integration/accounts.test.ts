@@ -270,6 +270,27 @@ it("checks HTTP authorization, payloads, origin and title ownership RPC paths", 
   ).toBe(200);
   expect(calls.at(-1)?.name).toBe("arena_admin_resolve_report");
   expect(
+    (await post("/api/admin/titles/delete", { id: admin.account.id })).status,
+  ).toBe(400);
+  expect(
+    (
+      await post(
+        "/api/admin/titles/delete",
+        { id: admin.account.id, confirm: true },
+        player.token,
+      )
+    ).status,
+  ).toBe(403);
+  expect(
+    (
+      await post("/api/admin/titles/delete", {
+        id: admin.account.id,
+        confirm: true,
+      })
+    ).status,
+  ).toBe(200);
+  expect(calls.at(-1)?.name).toBe("arena_admin_delete_title");
+  expect(
     (
       await fetch(`${url}/api/account/title`, {
         method: "POST",

@@ -3573,3 +3573,17 @@ dialog:has(.admin-tabs) {
   color: #f7d780;
   font-size: 12px;
 }
+.admin-title-tools {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.admin-title-tools select {
+  justify-self: start;
+  padding: 6px 10px;
+  border: 1px solid #ff5d6c66;
+  border-radius: 999px;
+  background: #13223e;
+  color: #ffb3ba;
+  font-size: 12px;
+}

@@ -5,10 +5,35 @@ export const TITLE_PRESETS = [
   { name: "Expert", color: "#719aff" },
   { name: "Candidate Master", color: "#c68bff" },
   { name: "Master", color: "#ffbc65" },
+  { name: "International Master", color: "#ffd29a" },
   { name: "Grandmaster", color: "#ff697f" },
   { name: "International Grandmaster", color: "#ff465f" },
   { name: "Legendary Grandmaster", color: "#ffd65b" },
 ];
+/**
+ * Display order for titles: custom titles first (newest first when the
+ * creation time is known), then the rank ladder from lowest to highest.
+ */
+export function sortTitles<
+  T extends { name: string; createdAt?: string | null },
+>(titles: T[]): T[] {
+  const rank = (t: T) =>
+    TITLE_PRESETS.findIndex(
+      (p) => p.name.toLowerCase() === t.name.trim().toLowerCase(),
+    );
+  return [...titles].sort((a, b) => {
+    const ra = rank(a),
+      rb = rank(b);
+    if (ra === -1 && rb === -1)
+      return (
+        (b.createdAt ?? "").localeCompare(a.createdAt ?? "") ||
+        a.name.localeCompare(b.name)
+      );
+    if (ra === -1) return -1;
+    if (rb === -1) return 1;
+    return ra - rb;
+  });
+}
 export function titleTreatment(title: string) {
   return /legendary/i.test(title)
     ? "legendary"

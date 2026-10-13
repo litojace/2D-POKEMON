@@ -18,6 +18,7 @@ beforeAll(async () => {
   for (const migration of [
     "001_arena_accounts.sql",
     "002_admin_cleanup_reports.sql",
+    "003_titles.sql",
   ])
     await db.exec(await readFile(`supabase/migrations/${migration}`, "utf8"));
   await db.exec(`insert into public.arena_admins values('${admin}');`);
@@ -205,4 +206,31 @@ it("suspends with protection for admins and deletes a whole account", async () =
       (select count(*)::int from public.arena_reports where reporter_id is null) reports`,
   );
   expect(gone.rows[0]).toEqual({ users: 0, profiles: 0, reports: 5 });
+});
+it("deletes a title everywhere and unequips it", async () => {
+  await asUser(admin);
+  const created = await db.query<{ id: string }>(
+    "select public.arena_admin_save_title(null,'Temporary','x','#123456',true) as id",
+  );
+  const id = created.rows[0].id;
+  await db.query("select public.arena_admin_grant_title($1,$2,true)", [
+    player,
+    id,
+  ]);
+  await asUser(player);
+  await db.query("select public.arena_equip_title($1)", [id]);
+  await asUser(admin);
+  await db.query("select public.arena_admin_delete_title($1)", [id]);
+  const titles = await db.query<{ value: { name: string }[] }>(
+    "select public.arena_admin_titles() as value",
+  );
+  expect(titles.rows[0].value.map((t) => t.name)).not.toContain("Temporary");
+  await asUser(player);
+  const me = await db.query<{ value: { title: string | null } }>(
+    "select public.arena_me() as value",
+  );
+  expect(me.rows[0].value.title).toBeNull();
+  await expect(
+    db.query("select public.arena_admin_delete_title($1)", [id]),
+  ).rejects.toThrow("Admin");
 });

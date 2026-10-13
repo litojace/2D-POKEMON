@@ -4,6 +4,7 @@ import {
   accountSchema,
   suspendSchema,
   deletePlayerSchema,
+  deleteTitleSchema,
   reportSchema,
   resolveReportSchema,
   titleUpdateSchema,
@@ -260,6 +261,16 @@ export function installAccountRoutes(
           p_active: data.active,
         }),
       );
+    }),
+  );
+  app.post(
+    "/api/admin/titles/delete",
+    route(true, async (req, res, token) => {
+      const data = deleteTitleSchema.parse(req.body);
+      await provider.rpc(token, "arena_admin_delete_title", {
+        p_title_id: data.id,
+      });
+      res.json({ ok: true });
     }),
   );
   app.post(
