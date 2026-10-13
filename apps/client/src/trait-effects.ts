@@ -239,7 +239,7 @@ const AURAS: Record<CharacterId, (k: Kit, id: CharacterId) => TraitAura> = {
       .range(5)
       .map(
         (i) =>
-          `<g${k.anim("leaf", 4 + i * 0.6, i * 1.1, "ease-in-out")}><path d="M${20 + i * 40} ${10 + (i % 2) * 30}q6 -6 12 0q-6 6 -12 0Z" fill="#8fd36a"/></g>`,
+          `<g transform="translate(${50 + i * 22} ${45 + (i % 2) * 20})"><g class="ta-leaf"${k.anim("leaf", 4 + i * 0.6, i * 1.1, "ease-in-out")}><path d="M-6 0q6 -6 12 0q-6 6 -12 0Z" fill="#8fd36a"/></g></g>`,
       )
       .join("")}`,
   }),
