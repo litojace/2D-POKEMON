@@ -180,6 +180,8 @@ export class AudioManager {
       round: 880,
       ui: 520,
       victory: 1040,
+      heal: 760,
+      orb: 620,
       defeat: 180,
     };
     this.tone(

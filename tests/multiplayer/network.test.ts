@@ -295,14 +295,17 @@ it("synchronizes both players movement, skills, health, death, match results and
   arena.damage(q, 5, p.id);
   server.step();
   expect(arena.roundWinner).toBe(host.id);
-  for (let i = 0; i < 220; i++) server.step();
-  q.hp = 0;
-  server.step();
+  // Win the remaining rounds (first to three).
+  for (let round = 2; round <= 3; round++) {
+    for (let i = 0; i < 220; i++) server.step();
+    q.hp = 0;
+    server.step();
+  }
   // Hundreds of snapshots were just queued; wait for the final one to arrive.
   await until(() => s1?.phase === "finished" && s2?.phase === "finished");
   expect(s1!.winner).toBe(host.id);
   expect(s2!.winner).toBe(host.id);
-  expect(arena.scores[host.id!]).toBe(2);
+  expect(arena.scores[host.id!]).toBe(3);
   await emit(one, "rematch");
   expect(arena.phase).toBe("finished");
   await emit(two, "rematch");

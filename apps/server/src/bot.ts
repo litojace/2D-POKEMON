@@ -40,12 +40,12 @@ interface Profile {
 }
 export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
   easy: {
-    reaction: 0.5,
-    aimError: 0.28,
+    reaction: 0.45,
+    aimError: 0.22,
     lead: 0,
-    dodge: 0.12,
+    dodge: 0.15,
     think: 0.45,
-    skillUse: 0.3,
+    skillUse: 0.4,
     hesitate: 0.22,
     smartUltimate: false,
     fooledByClone: 0.85,
@@ -64,10 +64,10 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
     engage: 0.06,
   },
   hard: {
-    reaction: 0.14,
-    aimError: 0.05,
+    reaction: 0.2,
+    aimError: 0.11,
     lead: 1,
-    dodge: 0.8,
+    dodge: 0.7,
     think: 0.12,
     skillUse: 0.95,
     hesitate: 0,
@@ -294,6 +294,21 @@ export class BotBrain {
           }
         : target;
       this.plan = this.choosePath(arena, me, chase, melee, hpRatio);
+      // Hurt and closer to a healing orb than the opponent is: go and take it.
+      const orb = arena.orbs
+        .map((o) => ({ o, d: Math.hypot(o.x - me.x, o.y - me.y) }))
+        .sort((a, b) => a.d - b.d)[0];
+      if (
+        orb &&
+        hpRatio < 0.7 &&
+        orb.d < Math.hypot(orb.o.x - enemy.x, orb.o.y - enemy.y) + 80 &&
+        this.random() < this.profile.skillUse + 0.2
+      ) {
+        const goal =
+          waypoint((a, b) => arena.lineClear(a, b), me, orb.o) ?? orb.o;
+        const gd = Math.hypot(goal.x - me.x, goal.y - me.y) || 1;
+        this.plan = { dx: (goal.x - me.x) / gd, dy: (goal.y - me.y) / gd };
+      }
       this.wantSkill = this.chooseSkill(arena, me, enemy, target, {
         dist,
         sight,

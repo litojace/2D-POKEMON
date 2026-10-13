@@ -12,7 +12,14 @@ export const RULES = {
   jumpCooldown: 2,
   jumpDuration: 0.65,
   roundSeconds: 180,
-  roundsToWin: 2,
+  /** First to three round wins (best of five) in every mode. */
+  roundsToWin: 3,
+  /** Healing orbs: first spawn after the countdown, then every interval. */
+  orbFirst: 12,
+  orbInterval: 18,
+  /** Share of the picker's full health an orb restores. */
+  orbHeal: 0.25,
+  orbRadius: 26,
   countdown: 3,
   intermission: 4,
   reconnectMs: 30000,
@@ -221,7 +228,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       "spark-dart",
       "Spark Dart",
       "projectile",
-      7,
+      6,
       280,
       "A fast electric projectile.",
       { speed: 860, range: 680, radius: 9 },
@@ -292,7 +299,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       "cinder-snap",
       "Cinder Snap",
       "melee",
-      17,
+      15,
       450,
       "A short-range burst of fire in front of Cindrake.",
       { range: 170, arc: 0.2, knockback: 10 },
@@ -382,7 +389,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       "tide-needle",
       "Tide Needle",
       "projectile",
-      6,
+      5,
       260,
       "A fast water projectile.",
       { speed: 950, radius: 8, range: 640 },
@@ -447,7 +454,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       "prism-jab",
       "Prism Jab",
       "melee",
-      15,
+      13,
       320,
       "A close-range energy punch.",
       { range: 130, arc: 0.35, knockback: 12 },
@@ -573,7 +580,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       "mind-dart",
       "Mind Dart",
       "projectile",
-      9,
+      8,
       400,
       "A psychic energy projectile.",
       { speed: 760, radius: 11 },
@@ -639,7 +646,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       "boulder-swipe",
       "Boulder Swipe",
       "melee",
-      18,
+      15,
       600,
       "A wide melee swing in front of Terradon.",
       { range: 150, arc: 0, knockback: 25 },
@@ -912,6 +919,15 @@ export interface Projectile extends Vec {
   ability: Ability;
   color: number;
 }
+/** A healing orb on the court, waiting to be picked up. */
+export interface Orb extends Vec {
+  id: number;
+}
+/** Where orbs appear: top and bottom centre, equally far from both sides. */
+export const ORB_SPOTS: Vec[] = [
+  { x: 800, y: 190 },
+  { x: 800, y: 710 },
+];
 export interface Zone extends Vec {
   id: number;
   owner: string;
@@ -933,7 +949,11 @@ export interface GameEvent extends Vec {
     | "beam"
     | "burst"
     /** A projectile ended (explosion, wall, range limit or decoy). */
-    | "impact";
+    | "impact"
+    /** A healing orb appeared. */
+    | "orb"
+    /** Someone picked up an orb (value = health restored). */
+    | "heal";
   /** Beam end point. */
   tx?: number;
   ty?: number;
@@ -958,6 +978,7 @@ export interface Snapshot {
   teamScores?: [number, number];
   winnerTeam?: Team | null;
   roundWinnerTeam?: Team | null;
+  orbs?: Orb[];
   /** Difficulty of the AI opponent in a solo-vs-bot room, else null. */
   vsBot?: "easy" | "normal" | "hard" | null;
   code: string;

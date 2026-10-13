@@ -4158,31 +4158,42 @@ body::before {
 }
 /* Result card: centred scoreline and stats. */
 .result-score {
-  display: flex;
+  /* name | score – score | name, with equal name columns so the dash is
+     always dead centre whatever the names are. */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 2.2ch auto 2.2ch minmax(0, 1fr);
   align-items: center;
-  justify-content: center;
-  gap: 14px;
-  margin-top: 6px;
+  column-gap: 14px;
+  margin: 8px auto 0;
+  max-width: 520px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
   letter-spacing: 0.04em;
 }
 .result-score b {
-  font-size: 28px;
+  font-size: 34px;
   font-weight: 800;
+  line-height: 1;
   color: #fff;
-  min-width: 1ch;
+  font-variant-numeric: tabular-nums;
+}
+.result-score b:nth-of-type(1) {
+  text-align: right;
+}
+.result-score b:nth-of-type(2) {
+  text-align: left;
 }
 .result-score i {
   font-style: normal;
   color: #ffffff55;
+  font-size: 22px;
 }
 .result-score span {
   min-width: 0;
-  max-width: 34%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-align: left;
 }
 .result-score span:first-child {
   text-align: right;

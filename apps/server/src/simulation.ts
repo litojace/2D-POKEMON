@@ -2,6 +2,7 @@ import {
   CHARACTERS,
   DEBUFFS,
   MODE_SIZE,
+  ORB_SPOTS,
   RULES,
   SKILL_SLOTS,
   STATUS_RULES,
@@ -17,6 +18,7 @@ import {
   type GameEvent,
   type Input,
   type MatchMode,
+  type Orb,
   type Phase,
   type Team,
   type Projectile,
@@ -46,6 +48,9 @@ export class Arena {
   players: Fighter[] = [];
   projectiles: Projectile[] = [];
   zones: Zone[] = [];
+  orbs: Orb[] = [];
+  nextOrb = 0;
+  private orbTurn = 0;
   events: GameEvent[] = [];
   serial = 0;
   constructor(
@@ -54,9 +59,9 @@ export class Arena {
   ) {
     this.mode = mode;
   }
-  /** Round wins needed: best of three in a duel, best of five in 2v2. */
+  /** Round wins needed (best of five in both modes). */
   get roundsToWin() {
-    return this.mode === "teams" ? 3 : RULES.roundsToWin;
+    return RULES.roundsToWin;
   }
   /** Players this room holds: 2 for a duel, 4 for 2v2. */
   get size() {
@@ -215,6 +220,9 @@ export class Arena {
       });
     }
     for (const brain of this.bots.values()) brain.reset();
+    this.orbs = [];
+    this.orbTurn = 0;
+    this.nextOrb = this.time + RULES.countdown + RULES.orbFirst;
     this.phase = "countdown";
     this.deadline = this.time + RULES.countdown;
   }
@@ -678,6 +686,7 @@ export class Arena {
       }
     }
     this.zones = this.zones.filter((z) => z.until > this.time);
+    if (!this.practice) this.stepOrbs();
     if (this.practice) {
       for (const [i, p] of this.players.entries())
         if (p.hp <= 0) {
@@ -722,6 +731,49 @@ export class Arena {
         this.deadline = this.time + 20;
       } else this.endRound(diff > 0 ? 0 : 1);
     }
+  }
+  /** Spawn healing orbs on schedule; the first fighter to touch one heals. */
+  stepOrbs() {
+    if (this.time >= this.nextOrb) {
+      this.nextOrb += RULES.orbInterval;
+      // Duel: one orb, alternating spots. 2v2: one at each spot.
+      const spots =
+        this.mode === "teams"
+          ? ORB_SPOTS
+          : [ORB_SPOTS[this.orbTurn++ % ORB_SPOTS.length]];
+      for (const spot of spots)
+        if (!this.orbs.some((o) => o.x === spot.x && o.y === spot.y)) {
+          this.orbs.push({ id: ++this.serial, x: spot.x, y: spot.y });
+          this.event("orb", spot, 0x7dffb0);
+        }
+    }
+    this.orbs = this.orbs.filter((orb) => {
+      // Closest living fighter in reach takes it.
+      const taker = this.players
+        .filter(
+          (p) =>
+            p.hp > 0 &&
+            !p.out &&
+            // Full health walks straight through, leaving it for later.
+            p.hp < CHARACTERS[p.character].health &&
+            Math.hypot(p.x - orb.x, p.y - orb.y) <
+              RULES.radius + RULES.orbRadius,
+        )
+        .sort(
+          (a, b) =>
+            Math.hypot(a.x - orb.x, a.y - orb.y) -
+            Math.hypot(b.x - orb.x, b.y - orb.y),
+        )[0];
+      if (!taker) return true;
+      const full = CHARACTERS[taker.character].health;
+      const healed = Math.min(
+        full - taker.hp,
+        Math.round(full * RULES.orbHeal),
+      );
+      taker.hp += healed;
+      this.event("heal", taker, 0x7dffb0, healed, taker.id);
+      return false;
+    });
   }
   /** A team (or nobody, on a double knockout) takes the round. */
   endRound(team: Team | null) {
@@ -775,6 +827,7 @@ export class Arena {
       players: this.players,
       projectiles: this.projectiles,
       zones: this.zones,
+      orbs: this.orbs,
       events: this.events,
       pauseRemaining,
       overtime: this.overtime,

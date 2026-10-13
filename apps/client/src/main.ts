@@ -420,12 +420,12 @@ function renderMenu() {
   $("battle").hidden = true;
   $("menu").hidden = false;
   $("menu").innerHTML =
-    `<header class="desktop-lobby-header"><div class="eyebrow">ELEMENTAL COLISEUM</div><h1>Choose your fighter</h1><p>Pick your creature. Enter the arena.</p></header><div class="eyebrow mobile-lobby-eyebrow"><span class="live-dot"></span> ONLINE 1V1 &amp; 2V2 · REAL-TIME BATTLES</div><div class="intro"><div><h1>Your creature.<br>Your <em>arena.</em></h1><p>Eight original creatures. One basic attack and four special skills each. No waiting for your turn.<br>Challenge a friend to a real-time duel in Elemental Coliseum.</p></div><div class="arena-badge">✦<span>ELEMENTAL COLISEUM</span><small>BEST OF THREE</small></div></div><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected)}</div><aside class="room-panel">${
+    `<header class="desktop-lobby-header"><div class="eyebrow">ELEMENTAL COLISEUM</div><h1>Choose your fighter</h1><p>Pick your creature. Enter the arena.</p></header><div class="eyebrow mobile-lobby-eyebrow"><span class="live-dot"></span> ONLINE 1V1 &amp; 2V2 · REAL-TIME BATTLES</div><div class="intro"><div><h1>Your creature.<br>Your <em>arena.</em></h1><p>Eight original creatures. One basic attack and four special skills each. No waiting for your turn.<br>Challenge a friend to a real-time duel in Elemental Coliseum.</p></div><div class="arena-badge">✦<span>ELEMENTAL COLISEUM</span><small>BEST OF FIVE</small></div></div><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected)}</div><aside class="room-panel">${
       isRoom
         ? roomPanel(p!)
         : `<div class="eyebrow">PLAY ONLINE</div><h2>A friend. A code.<br>A worthy opponent.</h2><label for="name">YOUR DISPLAY NAME</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><div class="mode-picker" role="radiogroup" aria-label="Room type">${(
             [
-              ["duel", "1v1 Duel", "Best of three"],
+              ["duel", "1v1 Duel", "Best of five"],
               ["teams", "2v2 Teams", "Best of five"],
             ] as const
           )
@@ -630,7 +630,7 @@ function renderBattle() {
         : "TARGET"
       : isTeams()
         ? `${state!.teamScores?.[teamOf(p)] ?? 0} / 3`
-        : `${state!.scores[p.id]} / 2`;
+        : `${state!.scores[p.id]} / ${RULES.roundsToWin}`;
     $(`status-${i}`).textContent = p.statuses
       .map((s) => s.kind.toUpperCase())
       .join(" · ");
@@ -733,7 +733,7 @@ function renderBattle() {
         '<p class="mobile-howto">Touch mode: left joystick to move; big button for basic attacks, the four curved buttons for skills, DASH and JUMP below. Aim follows your nearest opponent. Use Enter fullscreen below the arena.</p><div class="controls-list"><span><kbd>W A S D</kbd>Move · mouse to aim</span><span><kbd>LMB</kbd>Basic attack</span><span><kbd>1 2 3 R</kbd>Four special skills</span><span><kbd>RMB</kbd>Dash</span><span><kbd>SPACE</kbd>Jump over ground attacks</span></div><p>' +
         (isTeams()
           ? "Stick with your partner and focus the same target. Your attacks pass through your teammate. First team to win three rounds takes the match."
-          : "Use cover. Win two rounds.") +
+          : "Use cover. First to win three rounds takes the match.") +
         ' The countdown begins when everyone confirms.</p><button class="primary" id="instructions-ready" ' +
         (confirmed ? "disabled" : "") +
         ">" +
@@ -938,7 +938,7 @@ function reportContext(): Record<string, string> {
 $("report-problem").onclick = () => accountsUI.showReport(reportContext());
 $("help").onclick = () =>
   dialog(
-    `<div class="eyebrow">HOW TO PLAY</div><h2>Every second counts.</h2><p>Create a room, share the code, choose your creatures, and both click Ready. Win two rounds to take the match.</p><div class="controls-list"><span><kbd>W A S D</kbd>Move in eight directions</span><span><kbd>MOUSE</kbd>Aim · left click to attack</span><span><kbd>1 2 3 R</kbd>Four special skills</span><span><kbd>RMB</kbd>Dash · 3 second cooldown</span><span><kbd>SPACE</kbd>Jump · dodge ground attacks</span><span><kbd>ESC</kbd>Settings · the match stays live</span></div><p>Use cover to block shots. Jump over ground zones. Skills recharge in 8–20 seconds; basic attacks never go on cooldown. At a tie, overtime drains both players' health.</p>`,
+    `<div class="eyebrow">HOW TO PLAY</div><h2>Every second counts.</h2><p>Create a room, share the code, choose your creatures, and both click Ready. Win three rounds to take the match.</p><div class="controls-list"><span><kbd>W A S D</kbd>Move in eight directions</span><span><kbd>MOUSE</kbd>Aim · left click to attack</span><span><kbd>1 2 3 R</kbd>Four special skills</span><span><kbd>RMB</kbd>Dash · 3 second cooldown</span><span><kbd>SPACE</kbd>Jump · dodge ground attacks</span><span><kbd>ESC</kbd>Settings · the match stays live</span></div><p>Use cover to block shots. Jump over ground zones. Skills recharge in 8–20 seconds; basic attacks never go on cooldown. At a tie, overtime drains both players' health.</p>`,
   );
 $("credits").onclick = () =>
   dialog(
@@ -1204,11 +1204,12 @@ class ArenaScene extends Phaser.Scene {
       });
     }
     if (event.value) {
+      const heal = event.kind === "heal";
       const label = this.add
-        .text(event.x, event.y - 45, `−${event.value}`, {
+        .text(event.x, event.y - 45, `${heal ? "+" : "−"}${event.value}`, {
           fontFamily: "monospace",
           fontSize: "25px",
-          color: "#fff",
+          color: heal ? "#7dffb0" : "#fff",
           stroke: "#152820",
           strokeThickness: 4,
         })
@@ -1364,6 +1365,16 @@ class ArenaScene extends Phaser.Scene {
       );
     for (const pr of state.projectiles)
       drawProjectile(g, pr, _time, reducedMotion);
+    // Healing orbs: a soft green glow with a white cross, gently pulsing.
+    for (const orb of state.orbs ?? []) {
+      const pulse = reducedMotion ? 1 : 1 + Math.sin(_time / 220) * 0.12;
+      g.fillStyle(0x7dffb0, 0.18).fillCircle(orb.x, orb.y, 34 * pulse);
+      g.fillStyle(0x3ccf7a, 0.9).fillCircle(orb.x, orb.y, 17);
+      g.lineStyle(3, 0xd9ffe9, 0.9).strokeCircle(orb.x, orb.y, 17);
+      g.fillStyle(0xffffff, 1)
+        .fillRect(orb.x - 3, orb.y - 10, 6, 20)
+        .fillRect(orb.x - 10, orb.y - 3, 20, 6);
+    }
     for (const serverPlayer of state.players) {
       const p = serverPlayer.id === myId && local ? local : serverPlayer;
       let pos = this.positions.get(p.id);

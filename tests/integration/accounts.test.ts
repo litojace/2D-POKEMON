@@ -484,7 +484,7 @@ it("keeps a finished bot match on rematch and refuses the lobby", async () => {
   const [me, bot] = arena.players;
   arena.phase = "playing";
   arena.deadline = arena.time + 100;
-  arena.teamScores[bot.team ?? 1] = 1;
+  arena.teamScores[bot.team ?? 1] = arena.roundsToWin - 1;
   me.hp = 0;
   bot.ready = false;
   server.step();

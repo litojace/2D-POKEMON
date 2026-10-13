@@ -146,12 +146,12 @@ describe("2v2 teams", () => {
     expect(r1.hp).toBe(0);
     expect(r2.hp).toBe(CHARACTERS.voltkit.health);
   });
-  it("leaves duels unchanged: two players, Blue vs Red, best of three", () => {
+  it("leaves duels unchanged: two players, Blue vs Red, best of five", () => {
     const a = new Arena("D");
     a.add("x", "x");
     a.add("y", "y");
     expect(a.players.map((p) => p.team)).toEqual([0, 1]);
     expect(a.size).toBe(2);
-    expect(a.roundsToWin).toBe(2);
+    expect(a.roundsToWin).toBe(3);
   });
 });

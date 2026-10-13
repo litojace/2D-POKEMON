@@ -28,7 +28,7 @@ One Express service serves the frontend and Socket.IO on port 3001. Deploy both 
 
 ## Play
 
-Create a private room, share its six-character code, select a fighter, and confirm Ready. Both players acknowledge the introduction before the countdown. Win two rounds to win the match. Solo practice has a respawning target, character switching, reset, unlimited cooldowns and optional target attacks.
+Create a private room, share its six-character code, select a fighter, and confirm Ready. Both players acknowledge the introduction before the countdown. Win three rounds to win the match (best of five). Solo practice has a respawning target, character switching, reset, unlimited cooldowns and optional target attacks.
 
 **2v2 Teams:** choose *2v2 Teams* before *Create private room* and share the code with three friends. Players pick Blue or Red in the lobby (the host can *Shuffle teams*); the match starts when all four are ready. First team to win three rounds takes it. Attacks never hurt teammates; area attacks hit every enemy inside. A knocked-out player watches their partner until the round ends. If someone leaves mid-match, their partner plays on 2v1; if a whole team leaves, it forfeits. On a time-out the team with more health left (as a share of full health) wins the round.
 
@@ -57,6 +57,8 @@ October 2026 pass, tuned with thousands of simulated matches (simple human-like 
 - Brawlers hit harder and reach further: Cinder Snap 17 dmg / 170 range, Prism Jab 15 / 130, Boulder Swipe 18 / 150; Ember Gust 6 per tick; Terradon speed 222.
 - Mystowl toned down: 104 HP, Mind Dart 9, Focus Ray 18, Thoughtstrike 38.
 - Duskveil 120 HP and Lantern Wisp 9; Glint 6; Tide Needle range 640.
+
+**Longer matches (Oct 2026):** every mode is now best of five (first to three round wins). Healing orbs appear 12 s into each round and every 18 s after (one at a time in 1v1, alternating top and bottom centre; both spots in 2v2); the closest hurt fighter who touches one regains 25% of full health, and full-health fighters walk through them. Basic attacks were trimmed (Spark Dart 6, Cinder Snap 15, Tide Needle 5, Prism Jab 13, Glint 6, Mind Dart 8, Boulder Swipe 15, Lantern Wisp 9) so skills and positioning matter more. Simulated fighters stay within 47–53% average win rates.
 
 Fighter cards show **Long range** or **Close range** instead of the basic attack; the basic attack's details stay in the panel below the roster.
 

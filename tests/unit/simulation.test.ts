@@ -124,7 +124,7 @@ describe("authoritative simulation", () => {
     a.status(q, "haste", 1);
     expect(q.statuses.map((s) => s.kind)).toContain("slow");
   });
-  it("resets rounds and wins best of three", () => {
+  it("resets rounds and wins best of five", () => {
     const a = duel();
     a.players[1].hp = 0;
     a.tick();
@@ -134,10 +134,14 @@ describe("authoritative simulation", () => {
     expect(a.phase).toBe("countdown");
     expect(a.players[1].hp).toBe(CHARACTERS.cindrake.health);
     expect(a.players[0].cooldowns).toEqual([0, 0, 0, 0]);
-    a.phase = "playing";
-    a.players[1].hp = 0;
-    a.tick();
-    expect(a.phase).toBe("finished");
+    // Rounds two and three: the match ends on the third win.
+    for (const last of [false, true]) {
+      a.phase = "playing";
+      a.players[1].hp = 0;
+      a.tick();
+      expect(a.phase).toBe(last ? "finished" : "intermission");
+    }
+    expect(a.scores.one).toBe(3);
     expect(a.winner).toBe("one");
     a.start();
     expect(a.scores.one).toBe(0);
