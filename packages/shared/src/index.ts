@@ -666,7 +666,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "rest",
         0,
         12,
-        "Fall asleep for 2.5 seconds: heal 60 HP but you can't move or act. Incoming damage stays normal.",
+        "Fall asleep for 2.5 seconds: heal 60 HP but you can't move or act.",
         { duration: 2.5, heal: 12 },
       ),
       ability(
