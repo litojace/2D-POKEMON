@@ -204,30 +204,101 @@ window.addEventListener("blur", stopControls);
 window.addEventListener("pagehide", stopControls);
 document.addEventListener("visibilitychange", stopControls);
 const pwa = setupPWA(() => state?.phase, dialog, toast);
+function wireRoster(isRoom: boolean) {
+  document.querySelectorAll<HTMLButtonElement>("[data-character]").forEach(
+    (button) =>
+      (button.onclick = async () => {
+        audio.unlock();
+        const choice = button.dataset.character as CharacterId;
+        if (choice === selected) return;
+        selected = choice;
+        renderMenu();
+        celebrateSelection($("menu"), reducedMotion);
+        if (!isRoom) return;
+        const reply = await request("select", choice);
+        const mine = state?.players.find((p) => p.id === myId);
+        // The server said no (e.g. the match is starting): show its pick again.
+        if (!reply.ok && mine && selected === choice) {
+          selected = mine.character;
+          screen = "";
+          renderMenu();
+        }
+      }),
+  );
+}
+/** Move the selection highlight and swap the detail panel without re-rendering. */
+function showSelection() {
+  const panel = document.querySelector<HTMLElement>("#menu .roster-panel");
+  if (!panel) return false;
+  const y = scrollY;
+  const next = document.createElement("template");
+  next.innerHTML = fighterSelection(selected);
+  for (const card of Array.from(
+    panel.querySelectorAll<HTMLButtonElement>("[data-character]"),
+  )) {
+    const on = card.dataset.character === selected;
+    card.classList.toggle("selected", on);
+    card.setAttribute("aria-pressed", String(on));
+    const label = card.querySelector(".card-bottom > span");
+    if (label) label.textContent = on ? "✓ SELECTED" : "SELECT";
+  }
+  for (const part of [".selected-fighter", ".skill-preview"]) {
+    const old = panel.querySelector(part),
+      fresh = next.content.querySelector(part);
+    if (!old || !fresh) return false;
+    old.replaceWith(fresh);
+  }
+  const me = document.querySelector<HTMLElement>("#menu [data-me]");
+  if (me) {
+    const fighter = CHARACTERS[selected];
+    me.querySelector(".player-fighter")!.textContent = fighter.name;
+    me.querySelector<HTMLElement>(".player-dot")!.style.background =
+      `#${fighter.color.toString(16).padStart(6, "0")}`;
+  }
+  if (Math.abs(scrollY - y) > 1) scrollTo(0, y);
+  return true;
+}
 function renderMenu() {
   pwa.sync();
   const p = state?.players.find((p) => p.id === myId);
   const isRoom = !!p;
-  const key = `${isRoom ? "room" : "home"}:${state?.players.map((p) => `${p.id}${p.character}${p.ready}${p.connected}`).join(":")}:${selected}`;
+  const key = `${isRoom ? "room" : "home"}:${state?.players.map((p) => `${p.id}${p.id === myId ? "" : p.character}${p.ready}${p.connected}`).join(":")}:${selected}`;
   if (screen === key) return;
+  const previous = screen;
   screen = key;
+  // Only the fighter changed (a tap on a card): update in place so the page
+  // under the player's finger is never torn down and the scroll stays put.
+  if (
+    previous &&
+    !$("menu").hidden &&
+    previous.slice(0, previous.lastIndexOf(":")) ===
+      key.slice(0, key.lastIndexOf(":")) &&
+    showSelection()
+  )
+    return;
+  // Keep the reader's place when the menu re-renders while already visible.
+  const keepScroll = !$("menu").hidden ? scrollY : null;
   touch.reset();
   document.body.classList.remove("battle-active");
   $("battle").hidden = true;
   $("menu").hidden = false;
   $("menu").innerHTML =
-    `<div class="eyebrow"><span class="live-dot"></span> ONLINE 1V1 · REAL-TIME BATTLES</div><div class="intro"><div><h1>Your creature.<br>Your <em>arena.</em></h1><p>Eight original creatures. One basic attack and four special skills each. No waiting for your turn.<br>Challenge a friend to a real-time duel in Elemental Coliseum.</p></div><div class="arena-badge">✦<span>ELEMENTAL COLISEUM</span><small>BEST OF THREE</small></div></div><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected)}</div><aside class="room-panel">${isRoom ? `<div class="eyebrow">PRIVATE LOBBY</div><h2>Your duel starts here.</h2><p>Share this code with your friend.</p><button id="copy" class="room-code">${state!.code}<span>COPY CODE ↗</span></button><div class="players">${state!.players.map((p, i) => `<div><span class="player-dot" style="background:#${CHARACTERS[p.character].color.toString(16)}">${i + 1}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small>${CHARACTERS[p.character].name}</small></span><b>${!p.connected ? "OFFLINE" : p.ready ? "READY" : "CHOOSING"}</b></div>`).join("")}${state!.players.length < 2 ? '<div class="waiting"><span>＋</span> Waiting for your opponent…</div>' : ""}</div><button class="primary" id="ready">${p!.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full" id="leave">Leave room</button><small class="room-note">The match begins when both players are ready.</small>` : `<div class="eyebrow">PLAY ONLINE</div><h2>A friend. A code.<br>A worthy opponent.</h2><label for="name">YOUR DISPLAY NAME</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><button class="primary" id="create">Create private room →</button>${accountsUI?.account ? '<button class="secondary full" id="practice">Solo test mode →</button>' : ""}<div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><small class="room-note">2 players · Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`}</aside></div>`;
-  document.querySelectorAll<HTMLButtonElement>("[data-character]").forEach(
-    (button) =>
-      (button.onclick = async () => {
-        audio.unlock();
-        selected = button.dataset.character as CharacterId;
-        if (isRoom) await request("select", selected);
-        screen = "";
-        renderMenu();
-        celebrateSelection($("menu"), reducedMotion);
-      }),
-  );
+    `<div class="eyebrow"><span class="live-dot"></span> ONLINE 1V1 · REAL-TIME BATTLES</div><div class="intro"><div><h1>Your creature.<br>Your <em>arena.</em></h1><p>Eight original creatures. One basic attack and four special skills each. No waiting for your turn.<br>Challenge a friend to a real-time duel in Elemental Coliseum.</p></div><div class="arena-badge">✦<span>ELEMENTAL COLISEUM</span><small>BEST OF THREE</small></div></div><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected)}</div><aside class="room-panel">${
+      isRoom
+        ? `<div class="eyebrow">PRIVATE LOBBY</div><h2>Your duel starts here.</h2><p>Share this code with your friend.</p><button id="copy" class="room-code">${state!.code}<span>COPY CODE ↗</span></button><div class="players">${state!.players
+            .map((p, i) => {
+              const fighter =
+                CHARACTERS[p.id === myId ? selected : p.character];
+              return `<div${p.id === myId ? " data-me" : ""}><span class="player-dot" style="background:#${fighter.color.toString(16).padStart(6, "0")}">${i + 1}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small class="player-fighter">${fighter.name}</small></span><b>${!p.connected ? "OFFLINE" : p.ready ? "READY" : "CHOOSING"}</b></div>`;
+            })
+            .join(
+              "",
+            )}${state!.players.length < 2 ? '<div class="waiting"><span>＋</span> Waiting for your opponent…</div>' : ""}</div><button class="primary" id="ready">${p!.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full" id="leave">Leave room</button><small class="room-note">The match begins when both players are ready.</small>`
+        : `<div class="eyebrow">PLAY ONLINE</div><h2>A friend. A code.<br>A worthy opponent.</h2><label for="name">YOUR DISPLAY NAME</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><button class="primary" id="create">Create private room →</button>${accountsUI?.account ? '<button class="secondary full" id="practice">Solo test mode →</button>' : ""}<div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><small class="room-note">2 players · Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`
+    }</aside></div>`;
+  wireRoster(isRoom);
+  if (keepScroll !== null && Math.abs(scrollY - keepScroll) > 1)
+    scrollTo(0, keepScroll);
   if (!isRoom && accountsUI?.account)
     $<HTMLInputElement>("name").readOnly = true;
   if (isRoom) {
