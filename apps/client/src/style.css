@@ -1152,7 +1152,7 @@ dialog input[type="range"] {
 }
 .creature-card:hover .fighter-torso,
 .creature-card:focus-visible .fighter-torso {
-  animation: fighter-hop 0.65s ease-in-out infinite;
+  animation: fighter-breathe 1.8s ease-in-out infinite;
 }
 .creature-card.selected .fighter-face {
   animation: fighter-look 2.5s ease-in-out infinite;
@@ -2848,5 +2848,98 @@ dialog {
   .selected-art svg g,
   .creature-card svg g {
     animation: none !important;
+  }
+}
+
+/* A finite celebration on click/tap, followed by the normal articulated idle. */
+.selection-cheer > svg,
+.selection-cheer > img {
+  transform-origin: 50% 85%;
+  animation: selection-leap 1.15s cubic-bezier(0.25, 0.65, 0.35, 1) both;
+}
+.selection-cheer .fighter-armL {
+  transform-origin: 65px 122px;
+  animation: selection-left-paw 1.15s ease-in-out both;
+}
+.selection-cheer .fighter-armR {
+  transform-origin: 135px 122px;
+  animation: selection-right-paw 1.15s ease-in-out both;
+}
+.selection-cheer .fighter-ears {
+  animation-duration: 0.45s;
+}
+.selection-cheer .fighter-tail {
+  animation-duration: 0.4s;
+}
+.selection-cheer .fighter-wings {
+  animation-duration: 0.4s;
+}
+.selection-cheer .fighter-torso {
+  transform-origin: 100px 150px;
+  animation: selection-chest 1.15s ease-in-out both;
+}
+@keyframes selection-leap {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  12% {
+    transform: translateY(4px) scale(1.07, 0.91);
+  }
+  34% {
+    transform: translateY(-25px) scale(0.96, 1.06) rotate(-4deg);
+  }
+  48% {
+    transform: translateY(-22px) scale(1) rotate(4deg);
+  }
+  62% {
+    transform: translateY(2px) scale(1.06, 0.94);
+  }
+  80% {
+    transform: translateY(-10px) scale(1) rotate(-2deg);
+  }
+  100% {
+    transform: translateY(0) scale(1) rotate(0);
+  }
+}
+@keyframes selection-left-paw {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  30%,
+  60% {
+    transform: rotate(55deg);
+  }
+  80% {
+    transform: rotate(25deg);
+  }
+}
+@keyframes selection-right-paw {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  30%,
+  60% {
+    transform: rotate(-55deg);
+  }
+  80% {
+    transform: rotate(-25deg);
+  }
+}
+@keyframes selection-chest {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  35%,
+  55% {
+    transform: scale(1.04, 1.07);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .selection-cheer > svg,
+  .selection-cheer > img {
+    animation: none;
   }
 }

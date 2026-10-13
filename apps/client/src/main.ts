@@ -35,6 +35,7 @@ import { AccountUI } from "./accounts";
 import "./style.css";
 import { FollowCamera, screenToWorld, outsideView } from "./follow-camera";
 import { updateNameplate } from "./player-nameplate";
+import { celebrateSelection } from "./selection-celebration";
 import { fighterPack } from "./animation/pack-config";
 const audio = new AudioManager();
 const remoteFrames = new InterpolationBuffer();
@@ -210,6 +211,7 @@ function renderMenu() {
         if (isRoom) await request("select", selected);
         screen = "";
         renderMenu();
+        celebrateSelection($("menu"), reducedMotion);
       }),
   );
   $<HTMLSelectElement>("fighter-filter").onchange = () => {
