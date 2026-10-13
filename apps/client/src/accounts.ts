@@ -123,13 +123,9 @@ export class AccountUI {
     if (!response.ok) throw new Error(value.error ?? "Request failed.");
     return value;
   }
-  ensurePlayer(admin = false) {
+  ensurePlayer() {
     if (!this.account) {
       this.showAuth("login");
-      return false;
-    }
-    if (admin && !this.account.isAdmin) {
-      this.hooks.notify("Solo testing is available to administrators.");
       return false;
     }
     return true;
