@@ -184,22 +184,23 @@ export class AccountUI {
     const submit = form.querySelector<HTMLButtonElement>("[type=submit]")!;
     const site = import.meta.env.VITE_SITE_URL || location.origin;
     // Each password box has its own eye toggle.
-    for (const toggle of form.querySelectorAll<HTMLButtonElement>(
-      ".password-toggle",
-    ))
-      toggle.onclick = () => {
-        const field = toggle.parentElement!.querySelector("input")!;
-        const show = field.type === "password";
-        field.type = show ? "text" : "password";
-        toggle.innerHTML = show ? EYE_OFF : EYE;
-        toggle.setAttribute("aria-pressed", String(show));
-        toggle.setAttribute(
-          "aria-label",
-          show ? "Hide password" : "Show password",
-        );
-        toggle.title = show ? "Hide password" : "Show password";
-        field.focus();
-      };
+    form
+      .querySelectorAll<HTMLButtonElement>(".password-toggle")
+      .forEach((toggle) => {
+        toggle.onclick = () => {
+          const field = toggle.parentElement!.querySelector("input")!;
+          const show = field.type === "password";
+          field.type = show ? "text" : "password";
+          toggle.innerHTML = show ? EYE_OFF : EYE;
+          toggle.setAttribute("aria-pressed", String(show));
+          toggle.setAttribute(
+            "aria-label",
+            show ? "Hide password" : "Show password",
+          );
+          toggle.title = show ? "Hide password" : "Show password";
+          field.focus();
+        };
+      });
     if (mode === "login" || mode === "signup")
       element("auth-google").onclick = async () => {
         if (!this.client) return;
