@@ -11,14 +11,18 @@ describe("responsive court camera", () => {
     [1000, 270],
     [560, 180],
   ])(
-    "keeps all world edges visible and fighter proportions at %ix%i",
+    "fills landscape phones with an undistorted court at %ix%i",
     (width, height) => {
       const view = arenaViewport(width, height, true);
-      expect(1600 * view.zoomX).toBeCloseTo(width);
-      expect(900 * view.zoomY).toBeCloseTo(height);
-      expect(view.fighterX * view.zoomX).toBeCloseTo(
-        view.fighterY * view.zoomY,
-      );
+      // Uniform: circles stay round and visuals match hitboxes.
+      expect(view.zoomX).toBe(view.zoomY);
+      expect([view.fighterX, view.fighterY]).toEqual([1, 1]);
+      // Covers the arena box; the follow camera scrolls the rest.
+      expect(1600 * view.zoomX).toBeGreaterThanOrEqual(width - 1e-6);
+      expect(900 * view.zoomY).toBeGreaterThanOrEqual(height - 1e-6);
+      expect(
+        Math.min(1600 * view.zoomX - width, 900 * view.zoomY - height),
+      ).toBeCloseTo(0);
     },
   );
   it.each([

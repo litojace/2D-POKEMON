@@ -36,6 +36,53 @@ export interface FloorPainter {
     close?: boolean,
   ): FloorPainter;
 }
+/** Wrap a painter so everything is drawn `k` times larger (for a high-res bake). */
+export function scaledPainter(g: FloorPainter, k: number): FloorPainter {
+  if (k === 1) return g;
+  const s = (n: number) => n * k;
+  const wrapped: FloorPainter = {
+    fillStyle: (c, a) => (g.fillStyle(c, a), wrapped),
+    lineStyle: (w, c, a) => (g.lineStyle(s(w), c, a), wrapped),
+    fillRect: (x, y, w, h) => (g.fillRect(s(x), s(y), s(w), s(h)), wrapped),
+    fillRoundedRect: (x, y, w, h, r) => (
+      g.fillRoundedRect(s(x), s(y), s(w), s(h), r === undefined ? r : s(r)),
+      wrapped
+    ),
+    strokeRoundedRect: (x, y, w, h, r) => (
+      g.strokeRoundedRect(s(x), s(y), s(w), s(h), r === undefined ? r : s(r)),
+      wrapped
+    ),
+    fillCircle: (x, y, r) => (g.fillCircle(s(x), s(y), s(r)), wrapped),
+    strokeCircle: (x, y, r) => (g.strokeCircle(s(x), s(y), s(r)), wrapped),
+    fillEllipse: (x, y, w, h) => (
+      g.fillEllipse(s(x), s(y), s(w), s(h)),
+      wrapped
+    ),
+    fillTriangle: (a, b, c, d, e, f) => (
+      g.fillTriangle(s(a), s(b), s(c), s(d), s(e), s(f)),
+      wrapped
+    ),
+    lineBetween: (a, b, c, d) => (
+      g.lineBetween(s(a), s(b), s(c), s(d)),
+      wrapped
+    ),
+    fillPoints: (points, close) => (
+      g.fillPoints(
+        points.map((p) => ({ x: s(p.x), y: s(p.y) })),
+        close,
+      ),
+      wrapped
+    ),
+    strokePoints: (points, close) => (
+      g.strokePoints(
+        points.map((p) => ({ x: s(p.x), y: s(p.y) })),
+        close,
+      ),
+      wrapped
+    ),
+  };
+  return wrapped;
+}
 const COLS = 19,
   ROWS = 10;
 const BORDER = 36;

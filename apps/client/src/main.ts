@@ -8,7 +8,7 @@ import {
 import { rigAssets } from "./animation/assets";
 import { setOverlayMarkup } from "./overlay";
 import { stadiumCrowd } from "./stadium";
-import { paintArenaFloor } from "./arena-floor";
+import { paintArenaFloor, scaledPainter } from "./arena-floor";
 import {
   drawChannel,
   drawProjectile,
@@ -305,7 +305,7 @@ function renderBattle() {
     document.body.classList.add("battle-active");
     requestAnimationFrame(() => {
       touch.resize();
-      scene?.scale.refresh();
+      fitRenderer();
     });
   }
   const me = state?.players.find((p) => p.id === myId);
@@ -316,7 +316,7 @@ function renderBattle() {
     $("menu").hidden = true;
     $("battle").hidden = false;
     ensureBattleRenderer();
-    scene?.scale.refresh();
+    fitRenderer();
     $("practice-controls").hidden = !state.practice;
     if (state.practice) {
       $("practice-controls").innerHTML =
@@ -724,15 +724,18 @@ class ArenaScene extends Phaser.Scene {
     $("game").parentElement!.append(this.enemyBearing);
     this.cameras.main.setBackgroundColor("#142746");
     // Paint the court once and bake it into a texture so it costs nothing per frame.
+    // High-density screens get a 2x bake so the floor stays sharp when zoomed in.
+    const bake = renderScale() > 1.25 ? 2 : 1;
     const g = this.make.graphics({}, false);
-    paintArenaFloor(g);
-    g.generateTexture("arena-floor", RULES.width, RULES.height);
+    paintArenaFloor(scaledPainter(g, bake));
+    g.generateTexture("arena-floor", RULES.width * bake, RULES.height * bake);
     g.destroy();
-    this.add.image(0, 0, "arena-floor").setOrigin(0).setDepth(-10);
-    new ResizeObserver(() => {
-      this.scale.getParentBounds();
-      this.scale.refresh();
-    }).observe($("game"));
+    this.add
+      .image(0, 0, "arena-floor")
+      .setOrigin(0)
+      .setScale(1 / bake)
+      .setDepth(-10);
+    new ResizeObserver(() => fitRenderer()).observe($("game"));
     this.graphics = this.add.graphics();
     this.keys = this.input.keyboard!.addKeys(
       "W,A,S,D,ONE,TWO,THREE,R,SPACE",
@@ -877,7 +880,8 @@ class ArenaScene extends Phaser.Scene {
           stroke: "#152820",
           strokeThickness: 4,
         })
-        .setOrigin(0.5);
+        .setOrigin(0.5)
+        .setResolution(renderScale());
       this.tweens.add({
         targets: label,
         y: event.y - 95,
@@ -1204,21 +1208,24 @@ class ArenaScene extends Phaser.Scene {
         p.id === myId,
         reducedMotion,
       );
-      const labelX = (x - view.x) * view.zoomX + this.scale.width / 2;
+      // Canvas pixels → CSS pixels for the HTML nameplates.
+      const css = this.scale.zoom;
+      const labelX = ((x - view.x) * view.zoomX + this.scale.width / 2) * css;
       const labelY =
-        (y -
+        ((y -
           jump -
           view.y -
           (fighterPack(p.character)?.kind === "layered" ? 56 : 78)) *
           view.zoomY +
-        this.scale.height / 2;
+          this.scale.height / 2) *
+        css;
       label.style.left = labelX + "px";
       label.style.top = Math.max(36, labelY) + "px";
       label.style.opacity = p.hp > 0 ? "1" : "0.4";
       label.hidden =
         labelX < 0 ||
-        labelX > this.scale.width ||
-        labelY > this.scale.height ||
+        labelX > this.scale.width * css ||
+        labelY > this.scale.height * css ||
         serverPlayer.statuses.some(
           (s) => s.kind === "stealth" && p.id !== myId,
         );
@@ -1238,25 +1245,52 @@ class ArenaScene extends Phaser.Scene {
     g.lineBetween(aim.x + 6, aim.y, aim.x + 15, aim.y);
   }
 }
+/**
+ * Canvas pixels per CSS pixel. Phones have 2–3x screens; rendering at that density
+ * keeps creatures, effects and text sharp. Capped at 2 to protect frame rate.
+ */
+function renderScale() {
+  return Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+}
+/** Size the drawing buffer to the arena box at device resolution. */
+function fitRenderer() {
+  if (!gameInstance) return;
+  const parent = $("game"),
+    dpr = renderScale();
+  const width = Math.max(1, Math.round(parent.clientWidth * dpr)),
+    height = Math.max(1, Math.round(parent.clientHeight * dpr));
+  const scale = gameInstance.scale;
+  if (
+    scale.width === width &&
+    scale.height === height &&
+    scale.zoom === 1 / dpr
+  )
+    return;
+  scale.setZoom(1 / dpr);
+  scale.resize(width, height);
+}
 function ensureBattleRenderer() {
   if (gameInstance || $("game").clientWidth < 1 || $("game").clientHeight < 1)
     return;
+  const dpr = renderScale();
   gameInstance = new Phaser.Game({
     type: Phaser.AUTO,
     parent: "game",
-    width: RULES.width,
-    height: RULES.height,
     backgroundColor: "#1e3557",
     scale: {
-      mode: Phaser.Scale.RESIZE,
+      // Buffer = arena box × device pixel ratio, displayed at CSS size via zoom.
+      mode: Phaser.Scale.NONE,
+      width: Math.round($("game").clientWidth * dpr),
+      height: Math.round($("game").clientHeight * dpr),
+      zoom: 1 / dpr,
       autoCenter: Phaser.Scale.CENTER_BOTH,
-      min: { width: 1, height: 1 },
     },
     scene: [ArenaScene],
     render: { antialias: true },
-    // CSS-sized buffer; the camera maps the authoritative 1600x900 world.
+    // The camera maps the authoritative 1600x900 world onto the buffer.
     input: { activePointers: 4 },
   });
+  addEventListener("resize", fitRenderer);
 }
 accountsUI = new AccountUI({
   openDialog: dialog,

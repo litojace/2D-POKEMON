@@ -1,4 +1,8 @@
-/** Fit desktop/portrait; distribute the complete court across landscape touch screens. */
+/**
+ * Uniform projection only: circles stay round and visuals match hitboxes.
+ * Desktop/portrait fit the whole court; landscape touch screens fill the arena
+ * box (cover) and the follow camera scrolls, so fighters are larger on phones.
+ */
 export function arenaViewport(
   width: number,
   height: number,
@@ -6,8 +10,8 @@ export function arenaViewport(
 ) {
   width = Math.max(1, width);
   height = Math.max(1, height);
-  const fit = Math.min(width / 1600, height / 900);
-  const zoomX = landscapeTouch ? width / 1600 : fit;
-  const zoomY = landscapeTouch ? height / 900 : fit;
-  return { zoomX, zoomY, fighterX: fit / zoomX, fighterY: fit / zoomY };
+  const zoom = landscapeTouch
+    ? Math.max(width / 1600, height / 900)
+    : Math.min(width / 1600, height / 900);
+  return { zoomX: zoom, zoomY: zoom, fighterX: 1, fighterY: 1 };
 }
