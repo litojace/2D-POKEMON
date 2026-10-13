@@ -29,7 +29,7 @@ const ROSTER: Record<
       ["Static Lance", 8],
       ["Ball Lightning", 10],
       ["Storm Grid", 14],
-      ["Overcharge", 18],
+      ["Overcharge", 20],
     ],
   },
   cindrake: {
@@ -41,7 +41,7 @@ const ROSTER: Record<
       ["Ember Gust", 8],
       ["Magma Bomb", 12],
       ["Blaze Whirl", 15],
-      ["Sunfire Pillar", 18],
+      ["Sunfire Pillar", 20],
     ],
   },
   tidefin: {
@@ -53,7 +53,7 @@ const ROSTER: Record<
       ["Ripple Stars", 8],
       ["Whirlpool", 12],
       ["Mirror Mist", 15],
-      ["Riptide Wave", 18],
+      ["Riptide Wave", 20],
     ],
   },
   auralynx: {
@@ -65,7 +65,7 @@ const ROSTER: Record<
       ["Prism Shot", 8],
       ["Shatter Palm", 12],
       ["Mirror Guard", 15],
-      ["Nova Burst", 18],
+      ["Nova Burst", 20],
     ],
   },
   lumoth: {
@@ -77,7 +77,7 @@ const ROSTER: Record<
       ["Starfall Spray", 8],
       ["Dust Strike", 12],
       ["Kindle", 15],
-      ["Radiant Flare", 18],
+      ["Radiant Flare", 20],
     ],
   },
   mystowl: {
@@ -89,7 +89,7 @@ const ROSTER: Record<
       ["Focus Ray", 8],
       ["Repulse", 12],
       ["Ward", 15],
-      ["Thoughtstrike", 18],
+      ["Thoughtstrike", 20],
     ],
   },
   terradon: {
@@ -101,7 +101,7 @@ const ROSTER: Record<
       ["Shell Slam", 8],
       ["Hibernate", 12],
       ["Dust Cloud", 15],
-      ["Tremor", 18],
+      ["Tremor", 20],
     ],
   },
   duskveil: {
@@ -113,7 +113,7 @@ const ROSTER: Record<
       ["Shade Crawl", 8],
       ["Ghostfire", 12],
       ["Curse Mark", 15],
-      ["Void Orb", 18],
+      ["Void Orb", 20],
     ],
   },
 };
