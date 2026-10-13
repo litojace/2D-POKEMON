@@ -89,7 +89,7 @@ const escape = (s: string) =>
       ]!,
   );
 document.querySelector("#app")!.innerHTML =
-  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><details class="header-menu" id="header-menu"><summary>☰ <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">Settings</button><button class="quiet" id="mobile-play">Mobile fullscreen</button><button class="quiet" id="install-app">Install app</button><span class="connection" id="connection">Connecting</span></div></details><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span>WASD <b>Move</b> · Mouse <b>Aim</b> · LMB <b>Basic</b> · 1 / 2 / 3 / R <b>Skills</b> &middot; RMB <b>Dash</b> &middot; SPACE <b>Jump</b></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>ELEMENT ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Eight creatures. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
+  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><details class="header-menu" id="header-menu"><summary>☰ <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">Settings</button><button class="quiet" id="mobile-play">Mobile fullscreen</button><button class="quiet" id="install-app">Install app</button><button class="quiet" id="report-problem">Report a problem</button><span class="connection" id="connection">Connecting</span></div></details><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span>WASD <b>Move</b> · Mouse <b>Aim</b> · LMB <b>Basic</b> · 1 / 2 / 3 / R <b>Skills</b> &middot; RMB <b>Dash</b> &middot; SPACE <b>Jump</b></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>ELEMENT ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Eight creatures. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
 const headerMenu = $("header-menu") as HTMLDetailsElement;
 headerMenu.addEventListener("click", (event) => {
   if ((event.target as Element).closest("button")) headerMenu.open = false;
@@ -572,7 +572,7 @@ function dialog(html: string) {
 function showSettings() {
   settingsOpen = true;
   dialog(
-    `<div class="eyebrow">YOUR PREFERENCES</div><h2>Find your rhythm.</h2><p>Online matches keep running while this menu is open.</p><label>MUSIC <input type="range" id="music" min="0" max="1" step=".01" value="${audio.music}"></label><label>SOUND EFFECTS <input type="range" id="effects" min="0" max="1" step=".01" value="${audio.effects}"></label><p>Reduced motion follows your system preference.</p>${touch.settingsHTML()}${myId ? '<button id="exit-room" class="secondary">Leave room</button>' : ""}`,
+    `<div class="eyebrow">YOUR PREFERENCES</div><h2>Find your rhythm.</h2><p>Online matches keep running while this menu is open.</p><label>MUSIC <input type="range" id="music" min="0" max="1" step=".01" value="${audio.music}"></label><label>SOUND EFFECTS <input type="range" id="effects" min="0" max="1" step=".01" value="${audio.effects}"></label><p>Reduced motion follows your system preference.</p>${touch.settingsHTML()}<button id="settings-report" class="quiet">Report a problem</button>${myId ? '<button id="exit-room" class="secondary">Leave room</button>' : ""}`,
   );
   for (const kind of ["music", "effects"] as const)
     $(kind).oninput = () => {
@@ -580,11 +580,30 @@ function showSettings() {
       audio.set(kind, Number($<HTMLInputElement>(kind).value));
     };
   touch.bindSettings();
+  $("settings-report").onclick = () => accountsUI.showReport(reportContext());
   if (myId) $("exit-room").onclick = () => void leave();
 }
 $("mobile-settings").onclick = showSettings;
 $("settings").onclick = showSettings;
 $("battle-menu").onclick = showSettings;
+/** Details attached to problem reports so admins can reproduce them. */
+function reportContext(): Record<string, string> {
+  const me = state?.players.find((p) => p.id === myId);
+  const context: Record<string, string> = {
+    screen: state && state.phase !== "lobby" ? "match" : "lobby",
+    page: location.pathname.slice(0, 100),
+    device: `${touch.enabled ? "touch" : "keyboard"} · ${innerWidth}x${innerHeight}`,
+    browser: navigator.userAgent.slice(0, 300),
+  };
+  if (state) {
+    context.room = state.code.slice(0, 12);
+    context.phase = state.phase;
+    if (state.practice) context.mode = "solo practice";
+  }
+  if (me) context.fighter = CHARACTERS[me.character].name;
+  return context;
+}
+$("report-problem").onclick = () => accountsUI.showReport(reportContext());
 $("help").onclick = () =>
   dialog(
     `<div class="eyebrow">HOW TO PLAY</div><h2>Every second counts.</h2><p>Create a room, share the code, choose your creatures, and both click Ready. Win two rounds to take the match.</p><div class="controls-list"><span><kbd>W A S D</kbd>Move in eight directions</span><span><kbd>MOUSE</kbd>Aim · left click to attack</span><span><kbd>1 2 3 R</kbd>Four special skills</span><span><kbd>RMB</kbd>Dash · 3 second cooldown</span><span><kbd>SPACE</kbd>Jump · dodge ground attacks</span><span><kbd>ESC</kbd>Settings · the match stays live</span></div><p>Use cover to block shots. Jump over ground zones. Skills recharge in 8–18 seconds; basic attacks never go on cooldown. At a tie, overtime drains both players' health.</p>`,

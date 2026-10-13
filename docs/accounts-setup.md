@@ -4,7 +4,7 @@ Element Arena follows AMATYC's Supabase auth pattern: email/password signup and 
 
 ## Database
 
-In the new project's Supabase SQL Editor, run [001_arena_accounts.sql](../supabase/migrations/001_arena_accounts.sql). It creates profiles, admin membership, title definitions/ownership, and an admin audit log. Profiles are created when users first log into the game. User-controlled signup metadata cannot grant admin rights. Passwords remain in Supabase Auth.
+In the new project's Supabase SQL Editor, run [001_arena_accounts.sql](../supabase/migrations/001_arena_accounts.sql). It creates profiles, admin membership, title definitions/ownership, and an admin audit log. Then run [002_admin_cleanup_reports.sql](../supabase/migrations/002_admin_cleanup_reports.sql), which adds problem reports and the admin suspend/delete functions. Profiles are created when users first log into the game. User-controlled signup metadata cannot grant admin rights. Passwords remain in Supabase Auth.
 
 Ordinary clients cannot read/write these tables directly. Authenticated RPCs check identity, admin membership, suspension and title ownership. The migration does not modify AMATYC tables.
 
@@ -89,3 +89,12 @@ Remember me uses persistent browser storage; unchecked sessions stay per-tab. Si
 Run `npm run test`, `npm run typecheck`, and `npm run build`. Isolated PGlite PostgreSQL tests execute the real migration and check privilege escalation, title ownership, retirement/revocation, suspension and auditing. HTTP/Socket.IO tests use an injected test account provider; there is no production bypass setting.
 
 Real email confirmation, Google OAuth, recovery, and deployed Supabase integration require a configured-project test. After setup: register a regular player and verify admin/solo denial; grant your admin via SQL; create and assign a title; equip it as the player; suspend/reactivate the player; test two-account multiplayer, logout, reload recovery and password reset.
+
+## Admin tools
+
+Signed-in admins see an **Admin** button with two tabs:
+
+- **Players**: search, then per player: grant a title from the dropdown (or create a new one there), remove a title with ×, **Suspend/Unsuspend** (confirmation required) and **Delete** (you must type the player's name). Deleting removes the Supabase login, profile and titles permanently. Admin accounts can't be suspended or deleted from the panel.
+- **Reports**: problems sent by players from **Menu → Report a problem** (or the in-match settings). Filter open/resolved and mark them resolved or reopen them. Each report includes the reporter's screen, room code, fighter and device. Players can send up to 5 reports per 10 minutes.
+
+Every admin action is written to `arena_admin_audit`.

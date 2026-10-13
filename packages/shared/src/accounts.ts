@@ -33,13 +33,48 @@ export interface PlayerDirectory {
   players: ManagedPlayer[];
   total: number;
 }
-export const playerUpdateSchema = z
+export const suspendSchema = z
+  .object({ id: z.string().uuid(), suspended: z.boolean() })
+  .strict();
+/** Deleting is permanent, so the request must say so explicitly. */
+export const deletePlayerSchema = z
+  .object({ id: z.string().uuid(), confirm: z.literal(true) })
+  .strict();
+export const REPORT_CATEGORIES = {
+  bug: "Bug or glitch",
+  player: "Player behavior",
+  account: "Account or login",
+  other: "Something else",
+} as const;
+export type ReportCategory = keyof typeof REPORT_CATEGORIES;
+export const reportSchema = z
   .object({
-    id: z.string().uuid(),
-    displayName: z.string().trim().min(1).max(20),
-    suspended: z.boolean(),
+    category: z.enum(["bug", "player", "account", "other"]),
+    message: z.string().trim().min(5).max(1000),
+    context: z
+      .record(z.string().max(300))
+      .refine((value) => Object.keys(value).length <= 12, "Too many details"),
   })
   .strict();
+export const resolveReportSchema = z
+  .object({ id: z.number().int().positive(), resolved: z.boolean() })
+  .strict();
+export interface ProblemReport {
+  id: number;
+  reporterId: string | null;
+  reporterName: string;
+  category: ReportCategory;
+  message: string;
+  context: Record<string, string>;
+  status: "open" | "resolved";
+  createdAt: string;
+  resolvedAt: string | null;
+}
+export interface ReportList {
+  reports: ProblemReport[];
+  total: number;
+  open: number;
+}
 export const titleUpdateSchema = titleSchema
   .extend({
     id: z.string().uuid().nullable(),

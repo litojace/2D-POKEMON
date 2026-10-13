@@ -2,7 +2,10 @@ import { createClient } from "@supabase/supabase-js";
 import type { Express, Request, Response, NextFunction } from "express";
 import {
   accountSchema,
-  playerUpdateSchema,
+  suspendSchema,
+  deletePlayerSchema,
+  reportSchema,
+  resolveReportSchema,
   titleUpdateSchema,
   titleGrantSchema,
   equipTitleSchema,
@@ -168,15 +171,67 @@ export function installAccountRoutes(
     }),
   );
   app.post(
-    "/api/admin/players",
+    "/api/admin/players/suspend",
     route(true, async (req, res, token) => {
-      const data = playerUpdateSchema.parse(req.body);
-      await provider.rpc(token, "arena_admin_update_player", {
+      const data = suspendSchema.parse(req.body);
+      await provider.rpc(token, "arena_admin_set_suspended", {
         p_player_id: data.id,
-        p_display_name: data.displayName,
         p_suspended: data.suspended,
       });
+      // Live sessions re-check the account; suspended players are removed from rooms.
       onPlayerChanged(data.id);
+      res.json({ ok: true });
+    }),
+  );
+  app.post(
+    "/api/admin/players/delete",
+    route(true, async (req, res, token) => {
+      const data = deletePlayerSchema.parse(req.body);
+      await provider.rpc(token, "arena_admin_delete_player", {
+        p_player_id: data.id,
+      });
+      onPlayerChanged(data.id);
+      res.json({ ok: true });
+    }),
+  );
+  app.post(
+    "/api/reports",
+    route(false, async (req, res, token) => {
+      const data = reportSchema.parse(req.body);
+      const id = await provider.rpc(token, "arena_submit_report", {
+        p_category: data.category,
+        p_message: data.message,
+        p_context: data.context,
+      });
+      res.json({ ok: true, id });
+    }),
+  );
+  app.get(
+    "/api/admin/reports",
+    route(true, async (req, res, token) => {
+      const status =
+        typeof req.query.status === "string" ? req.query.status : "open";
+      if (!["open", "resolved", "all"].includes(status))
+        throw new AccountError(400, "Invalid report filter.");
+      const offset = Number(req.query.offset ?? 0);
+      if (!Number.isInteger(offset) || offset < 0 || offset > 100000)
+        throw new AccountError(400, "Invalid page.");
+      res.json(
+        await provider.rpc(token, "arena_admin_reports", {
+          p_status: status,
+          p_offset: offset,
+        }),
+      );
+    }),
+  );
+  app.post(
+    "/api/admin/reports/resolve",
+    route(true, async (req, res, token) => {
+      const data = resolveReportSchema.parse(req.body);
+      await provider.rpc(token, "arena_admin_resolve_report", {
+        p_report_id: data.id,
+        p_resolved: data.resolved,
+      });
       res.json({ ok: true });
     }),
   );

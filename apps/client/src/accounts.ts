@@ -2,9 +2,11 @@ import { TITLE_PRESETS } from "./player-nameplate";
 import { createClient, type Session } from "@supabase/supabase-js";
 import {
   accountSchema,
+  REPORT_CATEGORIES,
   type Account,
   type Title,
   type PlayerDirectory,
+  type ReportList,
 } from "../../../packages/shared/src/accounts";
 const EYE =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg>';
@@ -304,146 +306,323 @@ export class AccountUI {
       }
     };
   }
-  async showAdmin(search = "", offset = 0) {
-    if (!this.account?.isAdmin) return;
+  /** Ask the admin team for help. `context` is attached automatically. */
+  showReport(context: Record<string, string> = {}) {
+    if (!this.account) {
+      this.hooks.notify("Log in to report a problem.");
+      this.showAuth("login");
+      return;
+    }
     this.hooks.openDialog(
-      '<div class="eyebrow">ADMINISTRATION</div><h2>Players & titles</h2><p>Loading…</p>',
+      `<div class="eyebrow">HELP US FIX IT</div><h2>Report a problem</h2><p>Tell the admins what happened. Your current screen${context.room ? ` and room code ${escape(context.room)}` : ""} are included automatically.</p><form id="report-form" class="account-form"><label>What kind of problem?<select name="category" required>${Object.entries(
+        REPORT_CATEGORIES,
+      )
+        .map(([value, label]) => `<option value="${value}">${label}</option>`)
+        .join(
+          "",
+        )}</select></label><label>What happened?<textarea name="message" rows="5" minlength="5" maxlength="1000" required placeholder="What were you doing, and what went wrong?"></textarea></label><small class="report-count" id="report-count">0 / 1000</small><button class="primary" type="submit">Send report</button><p id="report-message" role="status"></p></form>`,
     );
+    const form = element<HTMLFormElement>("report-form");
+    const text = form.elements.namedItem("message") as HTMLTextAreaElement;
+    text.oninput = () =>
+      (element("report-count").textContent = `${text.value.length} / 1000`);
+    form.onsubmit = async (event) => {
+      event.preventDefault();
+      const submit = form.querySelector<HTMLButtonElement>("[type=submit]")!;
+      const fields = new FormData(form);
+      submit.disabled = true;
+      try {
+        await this.api("/api/reports", {
+          category: String(fields.get("category")),
+          message: String(fields.get("message") ?? "").trim(),
+          context,
+        });
+        form.innerHTML =
+          '<p class="report-thanks">Thanks! Your report was sent to the admins.</p>';
+      } catch (error) {
+        element("report-message").textContent =
+          error instanceof Error ? error.message : "Could not send the report.";
+        submit.disabled = false;
+      }
+    };
+  }
+  private adminView: {
+    tab: "players" | "reports";
+    search: string;
+    offset: number;
+    status: "open" | "resolved" | "all";
+    reportOffset: number;
+    message: string;
+  } = {
+    tab: "players",
+    search: "",
+    offset: 0,
+    status: "open",
+    reportOffset: 0,
+    message: "",
+  };
+  async showAdmin(changes: Partial<typeof this.adminView> = {}) {
+    if (!this.account?.isAdmin) return;
+    const view = Object.assign(this.adminView, { message: "" }, changes);
+    const header = (open: number | string) =>
+      `<div class="eyebrow">ADMINISTRATION</div><h2>Admin</h2><div class="admin-tabs" role="tablist"><button role="tab" class="admin-tab ${view.tab === "players" ? "active" : ""}" data-tab="players" aria-selected="${view.tab === "players"}">Players</button><button role="tab" class="admin-tab ${view.tab === "reports" ? "active" : ""}" data-tab="reports" aria-selected="${view.tab === "reports"}">Reports${open ? ` <b class="admin-count">${open}</b>` : ""}</button></div>`;
+    this.hooks.openDialog(`${header("")}<p>Loading…</p>`);
     try {
-      const [directory, catalog] = await Promise.all([
-        this.api(
-          `/api/admin/players?search=${encodeURIComponent(search)}&offset=${offset}`,
-        ),
-        this.api("/api/admin/titles"),
-      ]);
-      const { players, total } = directory as PlayerDirectory;
-      const titles = catalog as Title[];
+      const reports = (await this.api(
+        `/api/admin/reports?status=${view.tab === "reports" ? view.status : "open"}&offset=${view.tab === "reports" ? view.reportOffset : 0}`,
+      )) as ReportList;
+      let body = "";
+      let titles: Title[] = [];
+      let players: PlayerDirectory["players"] = [];
+      if (view.tab === "players") {
+        const [directory, catalog] = await Promise.all([
+          this.api(
+            `/api/admin/players?search=${encodeURIComponent(view.search)}&offset=${view.offset}`,
+          ),
+          this.api("/api/admin/titles"),
+        ]);
+        ({ players } = directory as PlayerDirectory);
+        const total = (directory as PlayerDirectory).total;
+        titles = catalog as Title[];
+        body = `<form id="admin-search" class="admin-search"><input name="search" placeholder="Search name or player ID" value="${escape(view.search)}" aria-label="Search players"><button class="secondary">Search</button></form><div class="admin-list">${
+          players
+            .map((p) => {
+              const owned = titles.filter((t) => p.titleIds.includes(t.id));
+              const grantable = titles.filter(
+                (t) => t.active && !p.titleIds.includes(t.id),
+              );
+              return `<div class="admin-row" data-player="${p.id}" data-name="${escape(p.displayName)}"><div class="admin-row-head"><strong>${escape(p.displayName)}</strong>${p.isAdmin ? '<span class="admin-badge">ADMIN</span>' : ""}${p.suspended ? '<span class="admin-badge danger">SUSPENDED</span>' : ""}<small>Joined ${new Date(p.createdAt).toLocaleDateString()}</small></div><div class="admin-titles-row">${owned
+                .map(
+                  (t) =>
+                    `<span class="title-chip" style="--chip:${t.color}">${escape(t.name)}<button type="button" data-revoke="${t.id}" aria-label="Remove ${escape(t.name)}" title="Remove title">×</button></span>`,
+                )
+                .join(
+                  "",
+                )}<select class="grant-select" aria-label="Grant a title to ${escape(p.displayName)}"><option value="">+ Grant title…</option>${grantable.map((t) => `<option value="${t.id}">${escape(t.name)}</option>`).join("")}<option value="__new">Create new title…</option></select></div>${
+                p.isAdmin
+                  ? ""
+                  : `<div class="admin-actions"><button type="button" class="secondary" data-action="suspend">${p.suspended ? "Unsuspend" : "Suspend"}</button><button type="button" class="danger-button" data-action="delete">Delete</button></div>`
+              }<div class="admin-confirm" hidden></div></div>`;
+            })
+            .join("") || "<p>No players found.</p>"
+        }</div><div class="admin-pagination"><button id="admin-prev" class="quiet" ${view.offset === 0 ? "disabled" : ""}>Previous</button><span>${total ? `${view.offset + 1}–${Math.min(view.offset + 50, total)} of ${total}` : "0 players"}</span><button id="admin-next" class="quiet" ${view.offset + 50 >= total ? "disabled" : ""}>Next</button></div>`;
+      } else {
+        body = `<div class="report-filter" role="group" aria-label="Report status">${(["open", "resolved", "all"] as const).map((s) => `<button class="${view.status === s ? "active" : ""}" data-status="${s}">${s[0].toUpperCase() + s.slice(1)}</button>`).join("")}</div><div class="admin-list">${
+          reports.reports
+            .map(
+              (r) =>
+                `<article class="report-card ${r.status}" data-report="${r.id}"><div class="admin-row-head"><span class="report-category ${r.category}">${REPORT_CATEGORIES[r.category] ?? r.category}</span><strong>${escape(r.reporterName || "Deleted player")}</strong><small>${new Date(r.createdAt).toLocaleString()}</small></div><p class="report-text">${escape(r.message)}</p>${
+                  Object.keys(r.context ?? {}).length
+                    ? `<small class="report-context">${Object.entries(r.context)
+                        .map(([k, v]) => `${escape(k)}: ${escape(String(v))}`)
+                        .join(" · ")}</small>`
+                    : ""
+                }<button type="button" class="${r.status === "open" ? "secondary" : "quiet"}" data-resolve="${r.status === "open"}">${r.status === "open" ? "Mark resolved" : "Reopen"}</button></article>`,
+            )
+            .join("") ||
+          `<p>No ${view.status === "all" ? "" : view.status + " "}reports.</p>`
+        }</div><div class="admin-pagination"><button id="report-prev" class="quiet" ${view.reportOffset === 0 ? "disabled" : ""}>Previous</button><span>${reports.total ? `${view.reportOffset + 1}–${Math.min(view.reportOffset + 50, reports.total)} of ${reports.total}` : ""}</span><button id="report-next" class="quiet" ${view.reportOffset + 50 >= reports.total ? "disabled" : ""}>Next</button></div>`;
+      }
       this.hooks.openDialog(
-        `<div class="eyebrow">ADMINISTRATION</div><h2>Players & titles</h2><p>Solo test mode is available from the main menu. Changes below are stored and audited.</p><form id="admin-search" class="admin-search"><input name="search" placeholder="Search player name or ID" value="${escape(search)}"><button class="secondary">Search</button></form><div class="admin-players">${players.map((p) => `<form class="admin-player" data-player="${p.id}"><strong>${escape(p.displayName)} ${p.isAdmin ? "· ADMIN" : ""}</strong><small>${p.id}</small><label>Display name<input name="displayName" maxlength="20" value="${escape(p.displayName)}" required></label><label class="checkbox-label"><input name="suspended" type="checkbox" ${p.suspended ? "checked" : ""} ${p.isAdmin ? "disabled" : ""}>Suspended</label><button class="secondary" type="submit">Save player</button><div class="title-grants">${titles.map((t) => `<label class="checkbox-label"><input data-grant="${t.id}" type="checkbox" ${p.titleIds.includes(t.id) ? "checked" : ""}>${escape(t.name)}${t.active ? "" : " (retired)"}</label>`).join("")}</div></form>`).join("") || "<p>No players found.</p>"}</div><div class="admin-pagination"><button id="admin-prev" class="quiet" ${offset === 0 ? "disabled" : ""}>Previous</button><span>${offset + 1}–${Math.min(offset + 50, total)} of ${total}</span><button id="admin-next" class="quiet" ${offset + 50 >= total ? "disabled" : ""}>Next</button></div><h3>Titles</h3><p>Colors appear above fighters. Master titles glow; Grandmaster titles pulse; Legendary titles shimmer with gold sparkles.</p><button class="secondary" id="add-title-presets">Add rank title set</button><div class="admin-titles">${[null, ...titles].map((t) => `<form class="admin-title" data-title="${t?.id ?? ""}"><strong>${t ? "Edit title" : "Create title"}</strong><label>Name<input name="name" required maxlength="40" value="${escape(t?.name ?? "")}"></label><label>Description<input name="description" maxlength="160" value="${escape(t?.description ?? "")}"></label><label>Color<input name="color" type="color" value="${t?.color ?? "#d5f778"}"></label><label class="checkbox-label"><input name="active" type="checkbox" ${t?.active !== false ? "checked" : ""}>Active</label><button class="secondary">Save title</button></form>`).join("")}</div><p id="admin-message" role="status"></p>`,
+        `${header(reports.open)}${body}<p id="admin-message" role="status">${escape(view.message)}</p>`,
       );
-      const feedback = (error: unknown) =>
-        (element("admin-message").textContent =
-          error instanceof Error ? error.message : "Request failed.");
+      const say = (text: string) =>
+        (element("admin-message").textContent = text);
+      const fail = (error: unknown) =>
+        say(error instanceof Error ? error.message : "Request failed.");
+      document.querySelectorAll<HTMLButtonElement>(".admin-tab").forEach(
+        (tab) =>
+          (tab.onclick = () =>
+            void this.showAdmin({
+              tab: tab.dataset.tab as "players" | "reports",
+            })),
+      );
+      if (view.tab === "reports") {
+        document.querySelectorAll<HTMLButtonElement>("[data-status]").forEach(
+          (b) =>
+            (b.onclick = () =>
+              void this.showAdmin({
+                status: b.dataset.status as "open" | "resolved" | "all",
+                reportOffset: 0,
+              })),
+        );
+        element("report-prev").onclick = () =>
+          void this.showAdmin({
+            reportOffset: Math.max(0, view.reportOffset - 50),
+          });
+        element("report-next").onclick = () =>
+          void this.showAdmin({ reportOffset: view.reportOffset + 50 });
+        document
+          .querySelectorAll<HTMLButtonElement>("[data-resolve]")
+          .forEach((button) => {
+            button.onclick = async () => {
+              button.disabled = true;
+              const id = Number(
+                button.closest<HTMLElement>("[data-report]")!.dataset.report,
+              );
+              try {
+                await this.api("/api/admin/reports/resolve", {
+                  id,
+                  resolved: button.dataset.resolve === "true",
+                });
+                await this.showAdmin({
+                  message:
+                    button.dataset.resolve === "true"
+                      ? "Report marked resolved."
+                      : "Report reopened.",
+                });
+              } catch (error) {
+                fail(error);
+                button.disabled = false;
+              }
+            };
+          });
+        return;
+      }
       element<HTMLFormElement>("admin-search").onsubmit = (e) => {
         e.preventDefault();
-        void this.showAdmin(
-          String(
+        void this.showAdmin({
+          search: String(
             new FormData(e.currentTarget as HTMLFormElement).get("search") ??
               "",
           ),
-          0,
-        );
+          offset: 0,
+        });
       };
       element("admin-prev").onclick = () =>
-        void this.showAdmin(search, Math.max(0, offset - 50));
+        void this.showAdmin({ offset: Math.max(0, view.offset - 50) });
       element("admin-next").onclick = () =>
-        void this.showAdmin(search, offset + 50);
-      document
-        .querySelectorAll<HTMLFormElement>(".admin-player")
-        .forEach((form) => {
-          form.onsubmit = async (e) => {
-            e.preventDefault();
-            const fields = new FormData(form);
-            try {
-              await this.api("/api/admin/players", {
-                id: form.dataset.player,
-                displayName: String(fields.get("displayName")),
-                suspended: fields.has("suspended"),
-              });
-              element("admin-message").textContent = "Player saved.";
-            } catch (error) {
-              feedback(error);
-            }
-          };
-          form.querySelectorAll<HTMLInputElement>("[data-grant]").forEach(
-            (input) =>
-              (input.onchange = async () => {
-                input.disabled = true;
-                try {
-                  await this.api("/api/admin/grants", {
-                    playerId: form.dataset.player,
-                    titleId: input.dataset.grant,
-                    grant: input.checked,
-                  });
-                  element("admin-message").textContent =
-                    "Title ownership updated.";
-                } catch (error) {
-                  input.checked = !input.checked;
-                  feedback(error);
-                } finally {
-                  input.disabled = false;
-                }
-              }),
-          );
+        void this.showAdmin({ offset: view.offset + 50 });
+      const grant = async (playerId: string, titleId: string, on: boolean) => {
+        await this.api("/api/admin/grants", {
+          playerId,
+          titleId,
+          grant: on,
         });
-      element<HTMLButtonElement>("add-title-presets").onclick = async () => {
-        const button = element<HTMLButtonElement>("add-title-presets");
-        button.disabled = true;
-        try {
-          for (const preset of TITLE_PRESETS) {
-            if (
-              titles.some(
-                (t) => t.name.toLowerCase() === preset.name.toLowerCase(),
-              )
-            )
-              continue;
-            await this.api("/api/admin/titles", {
-              id: null,
-              name: preset.name,
-              description: "An arena honor awarded by an administrator.",
-              color: preset.color,
-              active: true,
-            });
-          }
-          await this.showAdmin(search, offset);
-        } catch (error) {
-          feedback(error);
-          button.disabled = false;
-        }
       };
-      const newTitle = document.querySelector<HTMLFormElement>(
-        '.admin-title[data-title=""]',
-      );
-      if (newTitle) {
-        const presets = document.createElement("select");
-        presets.setAttribute("aria-label", "Title preset");
-        presets.innerHTML =
-          '<option value="">Choose a rank preset (optional)</option>' +
-          TITLE_PRESETS.map(
-            (t, i) => `<option value="${i}">${t.name}</option>`,
-          ).join("");
-        newTitle.prepend(presets);
-        presets.onchange = () => {
-          if (presets.value === "") return;
-          const preset = TITLE_PRESETS[Number(presets.value)];
-          (newTitle.elements.namedItem("name") as HTMLInputElement).value =
-            preset.name;
-          (newTitle.elements.namedItem("color") as HTMLInputElement).value =
-            preset.color;
-          (
-            newTitle.elements.namedItem("description") as HTMLInputElement
-          ).value = "An arena honor awarded by an administrator.";
+      document.querySelectorAll<HTMLElement>(".admin-row").forEach((row) => {
+        const id = row.dataset.player!,
+          name = row.dataset.name!;
+        const confirmBox = row.querySelector<HTMLElement>(".admin-confirm")!;
+        row
+          .querySelectorAll<HTMLButtonElement>("[data-revoke]")
+          .forEach((button) => {
+            button.onclick = async () => {
+              button.disabled = true;
+              try {
+                await grant(id, button.dataset.revoke!, false);
+                await this.showAdmin({
+                  message: `Title removed from ${name}.`,
+                });
+              } catch (error) {
+                fail(error);
+                button.disabled = false;
+              }
+            };
+          });
+        const select = row.querySelector<HTMLSelectElement>(".grant-select")!;
+        select.onchange = async () => {
+          if (!select.value) return;
+          if (select.value === "__new") {
+            select.value = "";
+            const preset =
+              TITLE_PRESETS.find(
+                (p) =>
+                  !titles.some(
+                    (t) => t.name.toLowerCase() === p.name.toLowerCase(),
+                  ),
+              ) ?? TITLE_PRESETS[0];
+            confirmBox.hidden = false;
+            confirmBox.innerHTML = `<form class="new-title-form"><input name="name" maxlength="40" required placeholder="Title name" value="${escape(preset.name)}" aria-label="New title name"><input name="color" type="color" value="${preset.color}" aria-label="Title color"><button class="primary">Create &amp; grant</button><button type="button" class="quiet" data-cancel>Cancel</button></form>`;
+            const form = confirmBox.querySelector("form")!;
+            confirmBox.querySelector<HTMLButtonElement>(
+              "[data-cancel]",
+            )!.onclick = () => {
+              confirmBox.hidden = true;
+              confirmBox.innerHTML = "";
+            };
+            form.onsubmit = async (event) => {
+              event.preventDefault();
+              const fields = new FormData(form);
+              try {
+                const titleId = (await this.api("/api/admin/titles", {
+                  id: null,
+                  name: String(fields.get("name")),
+                  description: "An arena honor awarded by an administrator.",
+                  color: String(fields.get("color")),
+                  active: true,
+                })) as string;
+                await grant(id, titleId, true);
+                await this.showAdmin({
+                  message: `Created "${String(fields.get("name"))}" and granted it to ${name}.`,
+                });
+              } catch (error) {
+                fail(error);
+              }
+            };
+            return;
+          }
+          select.disabled = true;
+          try {
+            await grant(id, select.value, true);
+            await this.showAdmin({ message: `Title granted to ${name}.` });
+          } catch (error) {
+            fail(error);
+            select.disabled = false;
+          }
         };
-      }
-      document.querySelectorAll<HTMLFormElement>(".admin-title").forEach(
-        (form) =>
-          (form.onsubmit = async (e) => {
-            e.preventDefault();
-            const fields = new FormData(form);
-            try {
-              await this.api("/api/admin/titles", {
-                id: form.dataset.title || null,
-                name: String(fields.get("name")),
-                description: String(fields.get("description")),
-                color: String(fields.get("color")),
-                active: fields.has("active"),
-              });
-              await this.showAdmin(search, offset);
-            } catch (error) {
-              feedback(error);
-            }
-          }),
-      );
+        row
+          .querySelectorAll<HTMLButtonElement>("[data-action]")
+          .forEach((button) => {
+            button.onclick = () => {
+              const deleting = button.dataset.action === "delete";
+              const suspended = button.textContent === "Unsuspend";
+              confirmBox.hidden = false;
+              confirmBox.innerHTML = deleting
+                ? `<p><b>Permanently delete ${escape(name)}?</b> Their login, profile and titles are removed for good. This cannot be undone.</p><label><span>Type <b>${escape(name)}</b> to confirm</span><input data-confirm-name autocomplete="off" aria-label="Type ${escape(name)} to confirm"></label><div class="admin-actions"><button type="button" class="danger-button" data-confirm disabled>Delete account</button><button type="button" class="quiet" data-cancel>Cancel</button></div>`
+                : `<p><b>${suspended ? "Unsuspend" : "Suspend"} ${escape(name)}?</b> ${suspended ? "They will be able to log in and play again." : "They are removed from any match and can't play until unsuspended."}</p><div class="admin-actions"><button type="button" class="${suspended ? "primary" : "danger-button"}" data-confirm>${suspended ? "Unsuspend" : "Suspend"}</button><button type="button" class="quiet" data-cancel>Cancel</button></div>`;
+              const confirm =
+                confirmBox.querySelector<HTMLButtonElement>("[data-confirm]")!;
+              const typed = confirmBox.querySelector<HTMLInputElement>(
+                "[data-confirm-name]",
+              );
+              if (typed) {
+                typed.oninput = () =>
+                  (confirm.disabled = typed.value.trim() !== name);
+                typed.focus();
+              } else confirm.focus();
+              confirmBox.querySelector<HTMLButtonElement>(
+                "[data-cancel]",
+              )!.onclick = () => {
+                confirmBox.hidden = true;
+                confirmBox.innerHTML = "";
+              };
+              confirm.onclick = async () => {
+                confirm.disabled = true;
+                try {
+                  if (deleting)
+                    await this.api("/api/admin/players/delete", {
+                      id,
+                      confirm: true,
+                    });
+                  else
+                    await this.api("/api/admin/players/suspend", {
+                      id,
+                      suspended: !suspended,
+                    });
+                  await this.showAdmin({
+                    message: deleting
+                      ? `${name} was deleted.`
+                      : `${name} is ${suspended ? "no longer suspended" : "suspended"}.`,
+                  });
+                } catch (error) {
+                  fail(error);
+                  confirm.disabled = false;
+                }
+              };
+            };
+          });
+      });
     } catch (error) {
       this.hooks.openDialog(
         `<h2>Admin tools unavailable</h2><p>${escape(error instanceof Error ? error.message : "Unable to load administration.")}</p>`,
