@@ -416,3 +416,81 @@ it("lists who is online for administrators only", async () => {
   const after = (await (await online(admin.token)).json()) as typeof list;
   expect(after.players.map((p) => p.id)).not.toContain(rival.account.id);
 });
+it("starts a private match against an AI bot", async () => {
+  const admin = accounts.add(),
+    player = accounts.add(false);
+  const socket = await connect(player.token);
+  expect(
+    (
+      await emit(socket, "bot-match", {
+        name: "Solo",
+        character: "tidefin",
+        difficulty: "brutal",
+      })
+    ).ok,
+  ).toBe(false);
+  const reply = await emit(socket, "bot-match", {
+    name: "Solo",
+    character: "tidefin",
+    difficulty: "hard",
+  });
+  expect(reply.ok).toBe(true);
+  const arena = server.rooms.get(reply.code!)!;
+  expect(arena.players).toHaveLength(2);
+  const [me, bot] = arena.players;
+  expect(me.character).toBe("tidefin");
+  expect(bot.id.startsWith("bot-")).toBe(true);
+  expect(bot.name).toMatch(/\(Bot\)$/);
+  expect(bot.title).toBe("AI · Hard");
+  expect(arena.snapshot().vsBot).toBe("hard");
+  // Nobody else can join: the room code is not a six-character join code.
+  expect(reply.code!.length).toBeGreaterThan(6);
+  expect(arena.phase).toBe("briefing");
+  expect((await emit(socket, "instructions-ready")).ok).toBe(true);
+  expect(arena.phase).toBe("countdown");
+  const online = (await (
+    await fetch(`${url}/api/admin/online`, {
+      headers: { authorization: `Bearer ${admin.token}` },
+    })
+  ).json()) as import("../../packages/shared/src/accounts").OnlineList;
+  expect(online.players.find((p) => p.id === player.account.id)).toMatchObject({
+    activity: "match",
+    room: null,
+    opponent: bot.name,
+  });
+  // A second room for the same account is refused; leaving closes the bot room.
+  expect(
+    (
+      await emit(socket, "bot-match", {
+        name: "Solo",
+        character: "voltkit",
+        difficulty: "easy",
+      })
+    ).ok,
+  ).toBe(false);
+  expect((await emit(socket, "leave")).ok).toBe(true);
+  expect(server.rooms.has(reply.code!)).toBe(false);
+});
+it("keeps a finished bot match on rematch and refuses the lobby", async () => {
+  const player = accounts.add(false);
+  const socket = await connect(player.token);
+  const reply = await emit(socket, "bot-match", {
+    name: "Solo",
+    character: "voltkit",
+    difficulty: "easy",
+  });
+  const arena = server.rooms.get(reply.code!)!;
+  // The bot is on match point and the player is knocked out during a server step.
+  const [me, bot] = arena.players;
+  arena.phase = "playing";
+  arena.deadline = arena.time + 100;
+  arena.scores[bot.id] = 1;
+  me.hp = 0;
+  bot.ready = false;
+  server.step();
+  expect(arena.phase).toBe("finished");
+  expect(arena.players[1].ready).toBe(true);
+  expect((await emit(socket, "lobby")).ok).toBe(false);
+  expect((await emit(socket, "rematch")).ok).toBe(true);
+  expect(arena.phase).toBe("briefing");
+});

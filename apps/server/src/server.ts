@@ -13,9 +13,30 @@ import {
   blankInput,
   packSnapshot,
   practiceOptionsSchema,
+  FIGHTER_IDS,
   type Reply,
 } from "../../../packages/shared/src/index.js";
 import { Arena } from "./simulation.js";
+import {
+  BotBrain,
+  BOT_DIFFICULTIES,
+  BOT_LABELS,
+  type BotDifficulty,
+} from "./bot.js";
+const botMatchSchema = identitySchema
+  .extend({ character: characterSchema, difficulty: z.enum(BOT_DIFFICULTIES) })
+  .strict();
+const BOT_NAMES = [
+  "Pip",
+  "Nova",
+  "Bramble",
+  "Zuzu",
+  "Kip",
+  "Mochi",
+  "Echo",
+  "Taro",
+];
+const BOT_COLORS = { easy: "#65d38a", normal: "#7ff3ff", hard: "#ff697f" };
 import {
   createAccountProvider,
   authorize,
@@ -28,7 +49,7 @@ import type {
   OnlineList,
   OnlinePlayer,
 } from "../../../packages/shared/src/accounts.js";
-import { ZodError } from "zod";
+import { z, ZodError } from "zod";
 import type { Request, Response, NextFunction } from "express";
 type Session = {
   accountId: string;
@@ -143,7 +164,7 @@ export function createArenaServer(
         connections: 1,
         since,
         activity,
-        room: arena && !arena.practice ? arena.code : null,
+        room: arena && !arena.practice && !arena.bots.size ? arena.code : null,
         phase: arena?.phase ?? null,
         fighter: me?.character ?? null,
         opponent: arena?.practice ? null : (other?.name ?? null),
@@ -477,6 +498,45 @@ export function createArenaServer(
       a.resetPractice();
       broadcast(a);
     });
+    // Solo vs an AI bot: a private room nobody else can join, straight to the briefing.
+    socket.on("bot-match", (data: unknown, cb: unknown) => {
+      if (!requirePlayer(cb)) return;
+      if (!allowed(15)) return fail(cb, "Too many requests.");
+      const result = botMatchSchema.safeParse(data);
+      if (!result.success)
+        return fail(cb, "Choose a fighter, a display name and a difficulty.");
+      if (getSession(socket.id))
+        return fail(cb, "Leave your current room first.");
+      releaseDisconnected();
+      if ([...sessions.values()].some((s) => s.accountId === account()!.id))
+        return fail(cb, "This account already has a room.");
+      if (rooms.size >= 500)
+        return fail(cb, "The arena is busy. Please try again later.");
+      let code: string;
+      do {
+        code = randomBytes(12).toString("hex");
+      } while (rooms.has(code));
+      const a = new Arena(code);
+      rooms.set(code, a);
+      attach(a, result.data.name, cb, false);
+      a.players[0].character = result.data.character;
+      const difficulty: BotDifficulty = result.data.difficulty,
+        botId = `bot-${code}`,
+        character = FIGHTER_IDS[randomInt(FIGHTER_IDS.length)];
+      const bot = a.add(
+        botId,
+        `${BOT_NAMES[randomInt(BOT_NAMES.length)]} (Bot)`,
+        character,
+      );
+      Object.assign(bot, {
+        title: `AI · ${BOT_LABELS[difficulty]}`,
+        titleColor: BOT_COLORS[difficulty],
+        ready: true,
+      });
+      a.bots.set(botId, new BotBrain(botId, difficulty, randomInt(1, 2 ** 31)));
+      a.start();
+      broadcast(a);
+    });
     const withPracticeRoom = async (
       cb: unknown,
       action: (a: Arena, id: string) => void,
@@ -593,6 +653,7 @@ export function createArenaServer(
     socket.on("lobby", (_data: unknown, cb: unknown) =>
       withRoom(cb, (a) => {
         if (a.phase !== "finished") return fail(cb, "Finish the match first.");
+        if (a.bots.size) return fail(cb, "Leave to return to the menu.");
         a.phase = "lobby";
         a.players = a.players.filter((p) =>
           [...sessions.values()].some(
@@ -638,7 +699,8 @@ export function createArenaServer(
       const before = a.phase;
       a.tick();
       if (before !== a.phase && a.phase === "finished")
-        for (const p of a.players) p.ready = false;
+        // Bots are always up for a rematch.
+        for (const p of a.players) p.ready = a.bots.has(p.id);
       if (
         ticks % Math.round(RULES.tick / RULES.snapshot) === 0 ||
         before !== a.phase

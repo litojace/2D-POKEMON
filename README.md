@@ -30,6 +30,8 @@ One Express service serves the frontend and Socket.IO on port 3001. Deploy both 
 
 Create a private room, share its six-character code, select a fighter, and confirm Ready. Both players acknowledge the introduction before the countdown. Win two rounds to win the match. Solo practice has a respawning target, character switching, reset, unlimited cooldowns and optional target attacks.
 
+**Solo vs AI bot:** pick a difficulty (Easy, Normal, Hard) under *Or play solo* and press *Battle an AI bot*. You get a private best-of-three against a bot playing a random fighter. The bot runs on the server (`apps/server/src/bot.ts`) and sends the same inputs a player would, so cooldowns and rules apply to it unchanged. Difficulty sets its reaction delay, aim spread, target leading, dodging, skill use and whether it saves its ultimate for an opening. It walks around pillars, dodges big shots, jumps ground attacks, and can be fooled by decoys. Rematch is instant; *Back to menu* leaves the room.
+
 | Control     | Action                     |
 | ----------- | -------------------------- |
 | WASD        | Move                       |

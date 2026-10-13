@@ -21,8 +21,11 @@ import {
   type StatusKind,
   type Zone,
 } from "../../../packages/shared/src/index.js";
+import type { BotBrain } from "./bot.js";
 export class Arena {
   practice: Snapshot["practice"] = null;
+  /** AI opponents in this room, by fighter id (solo vs bot). */
+  bots = new Map<string, BotBrain>();
   nextPracticeZone = 0;
   time = 0;
   phase: Phase = "lobby";
@@ -118,7 +121,8 @@ export class Arena {
     for (const p of this.players)
       p.stats = { dealt: 0, received: 0, skills: 0 };
     this.resetRound();
-    this.instructionsReady = [];
+    // Bots have read the instructions; the match starts when the human confirms.
+    this.instructionsReady = [...this.bots.keys()];
     this.phase = "briefing";
   }
   resetPractice() {
@@ -158,6 +162,7 @@ export class Arena {
         lastInput: blankInput(),
       });
     }
+    for (const brain of this.bots.values()) brain.reset();
     this.phase = "countdown";
     this.deadline = this.time + RULES.countdown;
   }
@@ -431,6 +436,10 @@ export class Arena {
         this.cast(target, CHARACTERS.voltkit.skills[2]);
       }
     }
+    for (const [id, brain] of this.bots) {
+      const bot = this.players.find((p) => p.id === id);
+      if (bot) bot.lastInput = brain.think(this, bot);
+    }
     for (const p of this.players) {
       p.statuses = p.statuses.filter((s) => s.until > this.time);
       for (const s of p.statuses) {
@@ -654,6 +663,7 @@ export class Arena {
     return {
       instructionsReady: this.instructionsReady,
       practice: this.practice,
+      vsBot: [...this.bots.values()][0]?.difficulty ?? null,
       code: this.code,
       phase: this.phase,
       time: this.time,

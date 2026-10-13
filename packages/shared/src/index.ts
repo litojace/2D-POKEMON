@@ -943,6 +943,8 @@ export type Phase =
 export interface Snapshot {
   instructionsReady: string[];
   practice: { unlimitedCooldowns: boolean; targetAttacks: boolean } | null;
+  /** Difficulty of the AI opponent in a solo-vs-bot room, else null. */
+  vsBot?: "easy" | "normal" | "hard" | null;
   code: string;
   phase: Phase;
   time: number;

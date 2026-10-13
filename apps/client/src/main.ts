@@ -268,6 +268,22 @@ function showSelection() {
   if (Math.abs(scrollY - y) > 1) scrollTo(0, y);
   return true;
 }
+type BotLevel = "easy" | "normal" | "hard";
+const BOT_LEVELS: [BotLevel, string, string][] = [
+  ["easy", "Easy", "Learning"],
+  ["normal", "Normal", "A fair fight"],
+  ["hard", "Hard", "No mercy"],
+];
+let botLevel: BotLevel = (() => {
+  try {
+    const saved = localStorage.getItem("arena-bot-level");
+    return BOT_LEVELS.some(([id]) => id === saved)
+      ? (saved as BotLevel)
+      : "normal";
+  } catch {
+    return "normal";
+  }
+})();
 function renderMenu() {
   pwa.sync();
   const p = state?.players.find((p) => p.id === myId);
@@ -304,7 +320,7 @@ function renderMenu() {
             .join(
               "",
             )}${state!.players.length < 2 ? '<div class="waiting"><span>＋</span> Waiting for your opponent…</div>' : ""}</div><button class="primary" id="ready">${p!.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full" id="leave">Leave room</button><small class="room-note">The match begins when both players are ready.</small>`
-        : `<div class="eyebrow">PLAY ONLINE</div><h2>A friend. A code.<br>A worthy opponent.</h2><label for="name">YOUR DISPLAY NAME</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><button class="primary" id="create">Create private room →</button>${accountsUI?.account ? '<button class="secondary full" id="practice">Solo test mode →</button>' : ""}<div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><small class="room-note">2 players · Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`
+        : `<div class="eyebrow">PLAY ONLINE</div><h2>A friend. A code.<br>A worthy opponent.</h2><label for="name">YOUR DISPLAY NAME</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><button class="primary" id="create">Create private room →</button><div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><div class="divider">OR PLAY SOLO</div><div class="bot-picker" role="radiogroup" aria-label="Bot difficulty">${BOT_LEVELS.map(([id, label, hint]) => `<button type="button" role="radio" class="bot-level${botLevel === id ? " active" : ""}" data-bot="${id}" aria-checked="${botLevel === id}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button class="secondary full" id="bot-match">Battle an AI bot →</button>${accountsUI?.account ? '<button class="quiet full" id="practice">Solo test mode →</button>' : ""}<small class="room-note">Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`
     }</aside></div>`;
   wireRoster(isRoom);
   if (keepScroll !== null && Math.abs(scrollY - keepScroll) > 1)
@@ -346,6 +362,41 @@ function renderMenu() {
     };
     $("create").onclick = () => void play("create");
     $("join").onclick = () => void play("join");
+    document.querySelectorAll<HTMLButtonElement>("[data-bot]").forEach(
+      (button) =>
+        (button.onclick = () => {
+          botLevel = button.dataset.bot as BotLevel;
+          try {
+            localStorage.setItem("arena-bot-level", botLevel);
+          } catch {
+            /* optional */
+          }
+          // Update in place: no re-render, so the page keeps its scroll.
+          document
+            .querySelectorAll<HTMLButtonElement>("[data-bot]")
+            .forEach((b) => {
+              const on = b === button;
+              b.classList.toggle("active", on);
+              b.setAttribute("aria-checked", String(on));
+            });
+        }),
+    );
+    $("bot-match").onclick = async () => {
+      if (!accountsUI.ensurePlayer()) return;
+      if (!connected) return toast("Waiting for the server connection.");
+      audio.unlock();
+      const button = $<HTMLButtonElement>("bot-match");
+      button.disabled = true;
+      const name = $<HTMLInputElement>("name").value.trim() || "Trainer";
+      identity(
+        await request("bot-match", {
+          name,
+          character: selected,
+          difficulty: botLevel,
+        }),
+      );
+      button.disabled = false;
+    };
     if ($("practice"))
       $("practice").onclick = async () => {
         if (!accountsUI.ensurePlayer()) return;
@@ -552,7 +603,7 @@ function renderBattle() {
         state.winner === myId ? "Victory. Well played." : "A worthy fight.";
       details = `${escape(state.players.find((p) => p.id === state!.winner)?.name ?? "Nobody")} wins · ${state.players.map((p) => state!.scores[p.id]).join(" — ")}`;
       const stats = me.stats;
-      details += `<div class="result-stats"><span><b>${Math.round(stats.dealt)}</b>DAMAGE DEALT</span><span><b>${Math.round(stats.received)}</b>DAMAGE TAKEN</span><span><b>${stats.skills}</b>SKILLS CAST</span></div><button class="primary" id="rematch">${me.ready ? "Waiting for opponent…" : "Rematch →"}</button><button class="secondary" id="return">Return to lobby</button>`;
+      details += `<div class="result-stats"><span><b>${Math.round(stats.dealt)}</b>DAMAGE DEALT</span><span><b>${Math.round(stats.received)}</b>DAMAGE TAKEN</span><span><b>${stats.skills}</b>SKILLS CAST</span></div><button class="primary" id="rematch">${me.ready ? "Waiting for opponent…" : "Rematch →"}</button><button class="secondary" id="return">${state.vsBot ? "Back to menu" : "Return to lobby"}</button>`;
     }
     const markup = `<div class="overlay-card"><span class="eyebrow">ELEMENT ARENA</span><h2>${heading}</h2><div>${details}</div></div>`;
     // Preserve the pressed button between snapshots so pointer-up can complete its click.
@@ -565,7 +616,9 @@ function renderBattle() {
       };
     if (state.phase === "finished") {
       $("rematch").onclick = () => void request("rematch");
-      $("return").onclick = () => void request("lobby");
+      // A bot room has no lobby to return to: go back to the menu.
+      $("return").onclick = () =>
+        void (state?.vsBot ? leave() : request("lobby"));
     }
   }
 }
