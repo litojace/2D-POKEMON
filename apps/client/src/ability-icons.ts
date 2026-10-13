@@ -163,75 +163,76 @@ const universal: Record<string, string> = {
     '<path d="M10 30V18l6-3 5 2 5-3 7 3 4 10-10 14H15Z"/><path d="M4 10h8m26 0 5-4m-2 15h5"/>',
 };
 // Roster move names reuse the hand-drawn generic icons above; colour follows the move's element.
-const pokemonIconSources: Record<string, string> = {
-  "Thunder Jolt": "Spark",
-  "Thunder Shock": "Arc Pulse",
-  "Electro Orb": "Charge Orb",
-  "Thunder Field": "Livewire Field",
-  "Volt Overload": "Overcharge",
-  "Flame Puff": "Cinder",
-  "Fire Breath": "Crest Flare",
-  "Flame Burst": "Ember Rush",
-  "Inferno Spin": "Ember Ring",
-  "Solar Blaze": "Solar Bloom",
-  "Water Kunai": "Droplet",
-  "Aqua Ring": "Snow Drift",
-  "Shadow Clone": "Mirror Current",
-  "Tidal Surge": "Cold Front",
-  "Aura Jab": "Crystal Jab",
-  "Aura Sphere": "Prism Shot",
-  "Force Palm": "Shard Combination",
-  "Counter Stance": "Prism Guard",
-  "Aura Burst": "Nova Ray",
-  "Swift Star": "Frost Flake",
-  "Star Volley": "Riptide Volley",
-  Bite: "Stone Knuckle",
-  "Last Resort": "Crystal Blizzard",
-  "Psy Bolt": "Bramble Seed",
-  Psybeam: "Ice Lance",
-  "Psychic Wave": "Seismic Crown",
-  Barrier: "Verdant Guard",
-  Psystrike: "Wild Bloom",
-  "Heavy Swipe": "Bough Bash",
-  "Body Slam": "Boulder Charge",
-  Yawn: "Root Garden",
-  "Heavy Impact": "Faultline",
-  "Shadow Orb": "Night Wisp",
-  "Shadow Sneak": "Cloak Rend",
-  "Will-O-Wisp": "Hollow Echo",
-  Hex: "Shadow Veil",
-  "Shadow Ball": "Eclipse",
+const rosterIconSources: Record<string, string> = {
+  "Spark Dart": "Spark",
+  "Static Lance": "Arc Pulse",
+  "Ball Lightning": "Charge Orb",
+  "Storm Grid": "Livewire Field",
+  Overcharge: "Overcharge",
+  "Cinder Snap": "Cinder",
+  "Ember Gust": "Crest Flare",
+  "Magma Bomb": "Ember Rush",
+  "Blaze Whirl": "Ember Ring",
+  "Sunfire Pillar": "Solar Bloom",
+  "Tide Needle": "Droplet",
+  Whirlpool: "Snow Drift",
+  "Mirror Mist": "Mirror Current",
+  "Riptide Wave": "Cold Front",
+  "Prism Jab": "Crystal Jab",
+  "Prism Shot": "Prism Shot",
+  "Shatter Palm": "Shard Combination",
+  "Mirror Guard": "Prism Guard",
+  "Nova Burst": "Nova Ray",
+  Glint: "Frost Flake",
+  "Starfall Spray": "Riptide Volley",
+  "Dust Strike": "Stone Knuckle",
+  "Radiant Flare": "Crystal Blizzard",
+  "Mind Dart": "Bramble Seed",
+  "Focus Ray": "Ice Lance",
+  Repulse: "Seismic Crown",
+  Ward: "Verdant Guard",
+  Thoughtstrike: "Wild Bloom",
+  "Boulder Swipe": "Bough Bash",
+  "Shell Slam": "Boulder Charge",
+  "Dust Cloud": "Root Garden",
+  Tremor: "Faultline",
+  "Lantern Wisp": "Night Wisp",
+  "Shade Crawl": "Cloak Rend",
+  Ghostfire: "Hollow Echo",
+  "Curse Mark": "Shadow Veil",
+  "Void Orb": "Eclipse",
 };
 const elementColors: Record<string, string> = {
   Electric: electric,
   Fire: fire,
   Water: water,
-  Fighting: "#8fd3ff",
-  Normal: "#ffd8a0",
-  Psychic: "#e3a6ff",
-  Ghost: "#b88cff",
+  Aura: "#9fb4ff",
+  Light: "#9ff5cf",
+  Psychic: "#ff8edc",
+  Earth: "#e2b97e",
+  Shadow: "#b493ff",
 };
 const moveElements = new Map(
   Object.values(CHARACTERS).flatMap((c) =>
     [c.basic, ...c.skills].map((a) => [a.name, c.element] as const),
   ),
 );
-for (const [name, source] of Object.entries(pokemonIconSources)) {
+for (const [name, source] of Object.entries(rosterIconSources)) {
   const prior = abilityArtwork[source];
   abilityArtwork[name] = {
     color: elementColors[moveElements.get(name) ?? ""] ?? prior?.color ?? aura,
     art: prior?.art ?? universal[source] ?? universal.Attack,
   };
 }
-abilityArtwork["Helping Hand"] = {
-  color: elementColors.Normal,
+abilityArtwork["Kindle"] = {
+  color: elementColors.Light,
   art: '<path d="M14 42V22q0-4 4-4t4 4v-9q0-4 4-4t4 4v4q0-4 4-4t4 4v14q0 10-10 11Z"/><path d="M8 6v8M4 10h8m28-6v6m-3-3h6"/>',
 };
-abilityArtwork["Rest"] = {
-  color: elementColors.Normal,
+abilityArtwork["Hibernate"] = {
+  color: elementColors.Earth,
   art: '<path d="M8 10h11L8 24h11M24 20h8l-8 10h8M34 32h6l-6 8h6"/>',
 };
-abilityArtwork["Water Shuriken"] = {
+abilityArtwork["Ripple Stars"] = {
   color: "#85e5f4",
   art: '<path d="m24 4 6 13 15 7-15 6-6 15-6-15-15-6 15-7Z"/><circle cx="24" cy="24" r="5"/>',
 };

@@ -1,7 +1,0 @@
-{
-  "schemaVersion": 1,
-  "kind": "layered",
-  "portrait": "portrait.svg",
-  "selection": "selection.svg",
-  "artStatus": "PLACEHOLDER: generic articulated stand-in. Supply licensed frames (see docs/fighter-assets.md) and switch kind to frames, sheet or atlas."
-}

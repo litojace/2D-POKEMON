@@ -4,10 +4,11 @@ export const elementShapes = {
   electric: "bolt",
   fire: "flame",
   water: "drop",
-  fighting: "prism",
-  normal: "star",
+  aura: "prism",
+  light: "star",
   psychic: "spiral",
-  ghost: "wisp",
+  earth: "stone",
+  shadow: "wisp",
 } as const;
 export function drawElementGlyph(
   g: Phaser.GameObjects.Graphics,
@@ -69,6 +70,7 @@ export function drawElementGlyph(
       g.fillCircle(x, y, r * 0.18);
       break;
     }
+    case "light":
     case "normal": {
       // Five-point star.
       const points = [];
@@ -84,6 +86,7 @@ export function drawElementGlyph(
       g.strokePoints(points, true);
       break;
     }
+    case "aura":
     case "fighting":
     case "fairy":
     case "dragon":

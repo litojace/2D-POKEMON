@@ -39,7 +39,7 @@ export class Arena {
   events: GameEvent[] = [];
   serial = 0;
   constructor(public code: string) {}
-  add(id: string, name: string, character: CharacterId = "pikachu"): Fighter {
+  add(id: string, name: string, character: CharacterId = "voltkit"): Fighter {
     const p: Fighter = {
       id,
       name,
@@ -426,7 +426,7 @@ export class Arena {
       }
       if (this.practice.targetAttacks && this.time >= this.nextPracticeZone) {
         this.nextPracticeZone = this.time + 3;
-        this.cast(target, CHARACTERS.pikachu.skills[2]);
+        this.cast(target, CHARACTERS.voltkit.skills[2]);
       }
     }
     for (const p of this.players) {

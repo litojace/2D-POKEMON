@@ -64,14 +64,14 @@ async function lobby() {
 }
 it("runs all eight characters in solo mode with real skill damage and no second client", async () => {
   for (const character of [
-    "pikachu",
-    "charizard",
-    "greninja",
-    "lucario",
-    "eevee",
-    "mewtwo",
-    "snorlax",
-    "gengar",
+    "voltkit",
+    "cindrake",
+    "tidefin",
+    "auralynx",
+    "lumoth",
+    "mystowl",
+    "terradon",
+    "duskveil",
   ]) {
     const client = await connect();
     const reply = await emit(client, "practice", { name: "Tester", character });
@@ -110,7 +110,7 @@ it("switches practice characters, resets the arena, and optionally removes skill
   const client = await connect();
   const reply = await emit(client, "practice", {
     name: "Tester",
-    character: "pikachu",
+    character: "voltkit",
   });
   const a = server.rooms.get(reply.code!)!;
   await emit(client, "practice-options", {
@@ -139,8 +139,8 @@ it("switches practice characters, resets the arena, and optionally removes skill
   await wait();
   server.step();
   expect(a.players[0].stats.skills).toBe(2);
-  expect((await emit(client, "practice-character", "greninja")).ok).toBe(true);
-  expect(a.players[0].character).toBe("greninja");
+  expect((await emit(client, "practice-character", "tidefin")).ok).toBe(true);
+  expect(a.players[0].character).toBe("tidefin");
   expect(a.players[0].hp).toBe(105);
   expect(a.zones).toHaveLength(0);
   a.players[0].hp = 12;
@@ -155,7 +155,7 @@ it("practice target attacks deal damage and stop cleanly when disabled", async (
   const client = await connect();
   const reply = await emit(client, "practice", {
     name: "Tester",
-    character: "lucario",
+    character: "auralynx",
   });
   const a = server.rooms.get(reply.code!)!;
   await emit(client, "practice-options", {
@@ -186,12 +186,12 @@ it("isolates practice commands from online rooms and preserves practice reconnec
     ).ok,
   ).toBe(false);
   expect((await emit(two, "practice-reset")).ok).toBe(false);
-  expect((await emit(one, "practice-character", "greninja")).ok).toBe(false);
+  expect((await emit(one, "practice-character", "tidefin")).ok).toBe(false);
   expect(arena.practice).toBeNull();
   const client = await connect();
   const reply = await emit(client, "practice", {
     name: "Tester",
-    character: "pikachu",
+    character: "voltkit",
   });
   const a = server.rooms.get(reply.code!)!;
   client.disconnect();

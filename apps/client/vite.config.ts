@@ -19,8 +19,8 @@ export default defineConfig({
       },
       manifest: {
         id: "/",
-        name: "Pok�mon Arena",
-        short_name: "Pok�mon Arena",
+        name: "Element Arena",
+        short_name: "Element Arena",
         description: "Real-time arena duels with your friends.",
         start_url: "/",
         scope: "/",

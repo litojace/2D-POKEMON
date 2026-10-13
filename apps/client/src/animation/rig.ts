@@ -86,9 +86,10 @@ export class FighterRig {
     }
     const t = (now - this.controller.started) / 1000;
     const moving = state === "walk" || state === "run";
-    const heavy = this.character === "snorlax";
-    // Mewtwo and Gengar hover instead of stepping.
-    const floats = this.character === "mewtwo" || this.character === "gengar";
+    const heavy = this.character === "terradon";
+    // Mystowl and Duskveil hover instead of stepping.
+    const floats =
+      this.character === "mystowl" || this.character === "duskveil";
     const step = Math.sin(
       t *
         Math.PI *
@@ -129,7 +130,7 @@ export class FighterRig {
     head.y = -15 + (reduced ? 0 : idle * 0.55);
     head.rotation = reduced
       ? 0
-      : this.character === "greninja"
+      : this.character === "tidefin"
         ? -0.05
         : idle * 0.025;
     ears.rotation = reduced ? 0 : Math.sin(now / 250) * 0.04;
@@ -162,27 +163,31 @@ export class FighterRig {
       )!;
       this.images.get(part)!.setPosition(asset.x, asset.y);
     }
-    if (this.character === "lucario") {
+    if (this.character === "auralynx") {
       armL.rotation = -0.35;
       armR.rotation = 0.35;
     }
-    if (this.character === "greninja") {
+    if (this.character === "tidefin") {
       body.setScale(0.53, 0.47);
       legL.rotation = -0.18;
       legR.rotation = 0.18;
     }
     if (floats && !reduced && state !== "defeat")
       this.root.y -=
-        6 + Math.sin(now / (this.character === "gengar" ? 260 : 520)) * 3;
-    if (this.character === "eevee" && !reduced)
-      tail.rotation = Math.sin(now / (moving ? 110 : 220)) * 0.22;
-    if (this.character === "snorlax" && !reduced && !moving)
+        6 + Math.sin(now / (this.character === "duskveil" ? 260 : 520)) * 3;
+    if (this.character === "lumoth" && !reduced)
+      // Moth wings flutter, faster while moving.
+      wings.setScale(
+        0.5 + Math.sin(now / (moving ? 45 : 140)) * 0.04,
+        0.5 + Math.sin(now / (moving ? 45 : 140)) * 0.015,
+      );
+    if (this.character === "terradon" && !reduced && !moving)
       body.setScale(0.5 + idle * 0.015, 0.5 + idle * 0.02);
     if (moving && !reduced) {
       const stride =
-        this.character === "charizard"
+        this.character === "cindrake"
           ? 0.32
-          : this.character === "greninja"
+          : this.character === "tidefin"
             ? 0.65
             : 0.48;
       armL.rotation = step * stride;
@@ -217,7 +222,7 @@ export class FighterRig {
       }
     }
     if (attack) {
-      if (this.character === "pikachu") {
+      if (this.character === "voltkit") {
         ears.rotation = punch * 0.14;
         if (skill === 2) {
           armL.rotation = 0.6;
@@ -225,7 +230,7 @@ export class FighterRig {
           head.y += 2;
         }
         if (skill === 3) tail.rotation += punch * 0.3;
-      } else if (this.character === "charizard") {
+      } else if (this.character === "cindrake") {
         wings.setScale(0.55 + punch * 0.05, 0.5);
         if (state === "basic" || skill === 0) {
           head.y -= punch * 3;
@@ -241,7 +246,7 @@ export class FighterRig {
           armL.rotation = -0.9;
           armR.rotation = 0.9;
         }
-      } else if (this.character === "greninja") {
+      } else if (this.character === "tidefin") {
         scarf.rotation = punch * 0.3;
         if (skill === 0) {
           armR.rotation = -punch * 2;
@@ -261,7 +266,7 @@ export class FighterRig {
           armL.rotation = Math.sin(progress * 22) * 1.4;
           armR.rotation = -armL.rotation;
         }
-      } else if (this.character === "lucario") {
+      } else if (this.character === "auralynx") {
         if (state === "basic") {
           legR.rotation = punch * 0.8;
           armR.x += punch * 5;
@@ -283,7 +288,7 @@ export class FighterRig {
         }
       }
     }
-    if (this.character === "lucario") {
+    if (this.character === "auralynx") {
       if (!reduced) {
         wings.rotation = now / 1400;
         if (pose.charging || (attack && skill === 3))
@@ -331,32 +336,32 @@ export class FighterRig {
       head.rotation = -0.08;
     }
     if (state === "victory" && !reduced && t < 2) {
-      if (this.character === "pikachu") {
+      if (this.character === "voltkit") {
         armL.rotation = 2.4 + Math.sin(t * 15) * 0.3;
         armR.rotation = -2.4 - Math.sin(t * 15) * 0.3;
         this.root.y -= Math.max(0, Math.sin(t * 8)) * 8;
-      } else if (this.character === "charizard") {
+      } else if (this.character === "cindrake") {
         wings.setScale(0.62, 0.55);
         head.y -= 4;
         armL.rotation = -0.9;
         armR.rotation = 0.9;
-      } else if (this.character === "greninja") {
+      } else if (this.character === "tidefin") {
         this.root.rotation = t < 0.65 ? (t / 0.65) * Math.PI * 2 : 0;
         armL.rotation = -0.8;
         armR.rotation = 0.8;
         legL.rotation = 0.5;
         legR.rotation = -0.5;
-      } else if (this.character === "lucario") {
+      } else if (this.character === "auralynx") {
         wings.rotation = t * 3;
         armL.rotation = 1.2;
         armR.rotation = -1.2;
         body.setScale(0.5 + Math.sin(t * 8) * 0.02);
-      } else if (this.character === "eevee") {
-        // Victory spin with a happy tail wag.
+      } else if (this.character === "lumoth") {
+        // Victory spin with a burst of wing flaps.
         this.root.rotation = t < 0.8 ? (t / 0.8) * Math.PI * 2 : 0;
-        tail.rotation = Math.sin(t * 18) * 0.35;
+        wings.setScale(0.5 + Math.abs(Math.sin(t * 14)) * 0.08, 0.5);
         this.root.y -= Math.max(0, Math.sin(t * 7)) * 6;
-      } else if (this.character === "snorlax") {
+      } else if (this.character === "terradon") {
         // Big stretch and yawn.
         armL.rotation = 2.2;
         armR.rotation = -2.2;
@@ -400,7 +405,7 @@ export class FighterRig {
     if (
       state === "victory" &&
       t < 1.8 &&
-      (this.character === "pikachu" || this.character === "charizard")
+      (this.character === "voltkit" || this.character === "cindrake")
     ) {
       for (let i = 0; i < 3; i++) {
         const a = t * 4 + (i * Math.PI * 2) / 3;
@@ -433,7 +438,7 @@ export class FighterRig {
         0.7,
         now,
       );
-      if (this.character === "charizard" && state === "basic") {
+      if (this.character === "cindrake" && state === "basic") {
         this.effects
           .fillStyle(color, 0.3)
           .fillTriangle(

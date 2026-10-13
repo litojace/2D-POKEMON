@@ -57,7 +57,7 @@ Browser emulation and build-artifact inspection can verify layout and configurat
 
 ## Elemental Coliseum and display cutouts
 
-The interface uses navy, red, white, and yellow, with a stadium court and Poké Ball app icons. Shared CSS safe-area variables protect the lobby header, side content, modal dialogs, game HUD, notices, and home-indicator region. Control sizing uses the available viewport after all four safe insets. The game world and collision geometry stay unchanged.
+The interface uses navy, red, white, and yellow, with a stone coliseum court and an elemental gem app icon. Shared CSS safe-area variables protect the lobby header, side content, modal dialogs, game HUD, notices, and home-indicator region. Control sizing uses the available viewport after all four safe insets. The game world and collision geometry stay unchanged.
 
 In development, `/safe-preview.html?safe-top=59&safe-bottom=34` loads the real lobby with simulated portrait insets. `/touch-preview.html?safe-left=59&safe-right=59&safe-bottom=21` simulates landscape cutouts for the HUD. These fixtures are excluded from production. Browser checks verified the portrait brand at y=73 (below the simulated 59px inset), the dialog inside the safe region, and landscape controls with 12px additional spacing beyond the side/bottom insets. This is simulated validation; physical-device testing remains necessary.
 
@@ -70,10 +70,13 @@ Practice settings are collapsed by default in a Practice panel. Open it to chang
 When the usable landscape width is especially narrow, controls switch to a compact two-row group in the lower band, preserving a larger court above them. Skill order, icons, and attack/dash/jump behavior remain the same. Checks cover both horizontal gutter separation and this vertical fallback.
 
 ## Full-width landscape court
+
 Landscape touch play overlays the joystick and combat cluster inside the court, with a 58px safe-area-aware HUD strip above it and a centered bottom options dock. Audience bands and side control gutters are hidden in this orientation. The resize-mode Phaser canvas maps the entire 1600x900 authoritative court to the available rectangle; fighter containers compensate for camera axis scaling to keep their artwork proportional. Physics and world coordinates remain unchanged. Desktop and portrait use a uniform fit camera. A ResizeObserver refreshes parent bounds when browser chrome, orientation or layout changes. Responsive previews include notched 852x393 and short 568x320 screens; physical Safari testing remains necessary.
 
 ## Fighter-follow camera
+
 Live play now follows the local predicted fighter at 1.65x overview magnification, with exponential smoothing, bounded movement look-ahead and attack anticipation. Camera extents clamp to the court. Countdown, intermission, defeat and match results transition back toward the overview; reduced-motion mode uses a fixed overview immediately. Hydration/new rounds reset camera state. Screen-to-world input conversion uses the current camera projection, so mouse aim remains correct as the arena moves. Touch auto-aim still uses authoritative opponent coordinates. Off-screen visible opponents get a fixed directional indicator; stealthed opponents are excluded. HUD, touch controls, dock and overlays remain DOM layers unaffected by camera motion. The development-only camera-preview.html demonstrates the shared camera and Voltkit presentation rig without authentication. Camera changes do not modify physics, collision bounds, skills or network snapshots.
 
 ## Nameplates and rank title presentation
+
 Gameplay fighter containers are rendered at 70% of their previous size, after each rig update, including clones. Nameplates use camera-projected DOM overlays above the head, with fixed readable text sizing and no hit-test interception. Enemy stealth hides the nameplate. Existing authoritative titleColor values now appear in battle. Master/Grandmaster titles have glow/pulse treatments; Legendary titles use the AMATYC gold shimmer with sparkles. Reduced motion disables animated effects. No ranking or automatic title unlocking is inferred: titles remain admin-created/granted, and players equip only owned titles. Administration includes rank presets and an idempotent Add rank title set button that skips existing names; the current database schema is sufficient.

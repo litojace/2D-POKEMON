@@ -3242,3 +3242,13 @@ dialog {
 .showcase-card .card-bottom > span {
   color: var(--element);
 }
+/* Long creature names wrap the element pill below rather than truncating. */
+.showcase-card .card-head {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+.showcase-card .card-head strong {
+  overflow: visible;
+  text-overflow: clip;
+  font-size: 16px;
+}

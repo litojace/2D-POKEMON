@@ -15,7 +15,7 @@ import { fighterPackSchema } from "../../apps/client/src/animation/asset-schema"
 import { fighterSelection } from "../../apps/client/src/fighter-selection";
 import { elementShapes } from "../../apps/client/src/element-effects";
 import { readFileSync, existsSync } from "node:fs";
-it("has eight Pokemon, forty unique moves and four special skills per fighter", () => {
+it("has eight fighters, forty unique moves and four special skills per fighter", () => {
   expect(Object.keys(CHARACTERS)).toEqual([...FIGHTER_IDS]);
   const abilities = Object.values(CHARACTERS).flatMap((c) => [
     c.basic,
@@ -36,10 +36,10 @@ it("has eight Pokemon, forty unique moves and four special skills per fighter", 
 });
 it("keeps the original health and speed for the four returning fighters", () => {
   const baseline: Record<string, [number, number]> = {
-    pikachu: [110, 270],
-    charizard: [125, 240],
-    greninja: [105, 285],
-    lucario: [140, 235],
+    voltkit: [110, 270],
+    cindrake: [125, 240],
+    tidefin: [105, 285],
+    auralynx: [140, 235],
   };
   for (const [id, stats] of Object.entries(baseline)) {
     const c = CHARACTERS[id as CharacterId];
@@ -48,18 +48,21 @@ it("keeps the original health and speed for the four returning fighters", () => 
 });
 it("migrates legacy identifiers without accepting arbitrary object properties", () => {
   for (const [old, id] of Object.entries({
-    voltling: "pikachu",
-    emberwing: "charizard",
-    aquashade: "greninja",
-    auralith: "lucario",
-    voltkit: "pikachu",
-    cindrake: "charizard",
-    tidefin: "greninja",
-    auralynx: "lucario",
-    duskveil: "eevee",
-    thornback: "mewtwo",
-    frostfang: "snorlax",
-    terradon: "gengar",
+    voltling: "voltkit",
+    emberwing: "cindrake",
+    aquashade: "tidefin",
+    auralith: "auralynx",
+    pikachu: "voltkit",
+    charizard: "cindrake",
+    greninja: "tidefin",
+    lucario: "auralynx",
+    eevee: "lumoth",
+    mewtwo: "mystowl",
+    snorlax: "terradon",
+    gengar: "duskveil",
+    thornback: "mystowl",
+    frostfang: "terradon",
+    duskveil: "duskveil",
   }))
     expect(characterSchema.parse(old)).toBe(id);
   for (const invalid of ["__proto__", "constructor", null, {}, "unknown"]) {
@@ -85,18 +88,18 @@ it("loads original art and valid public metadata for every fighter and direction
     art.add(creatureSvg(id));
   }
   expect(art.size).toBe(8);
-  expect(fighterSelection("pikachu").match(/data-character=/g)).toHaveLength(8);
+  expect(fighterSelection("voltkit").match(/data-character=/g)).toHaveLength(8);
   expect(
-    fighterSelection("pikachu", "Normal").match(/data-character=/g),
-  ).toHaveLength(2);
-  const detail = fighterSelection("snorlax");
-  for (const a of CHARACTERS.snorlax.skills) {
+    fighterSelection("voltkit", "Earth").match(/data-character=/g),
+  ).toHaveLength(1);
+  const detail = fighterSelection("terradon");
+  for (const a of CHARACTERS.terradon.skills) {
     expect(detail).toContain(a.name);
     expect(detail).toContain(`${a.cooldown}s`);
   }
   expect(detail).toContain("600 ms between attacks");
-  expect(detail).toContain("PLACEHOLDER ART");
-  expect(fighterSelection("pikachu")).toContain("Volt Overload");
+  expect(detail).not.toContain("PLACEHOLDER");
+  expect(fighterSelection("voltkit")).toContain("Overcharge");
 });
 it("validates frame, sheet and atlas imports, frame keys, rates and local paths", () => {
   const animations = Object.fromEntries(
@@ -183,22 +186,22 @@ const duel = (character: CharacterId) => {
   return a;
 };
 it("applies counter, barrier and grounded area counterplay on the server", () => {
-  const guard = duel("lucario"),
+  const guard = duel("auralynx"),
     p = guard.players[0];
-  guard.cast(p, CHARACTERS.lucario.skills[2]);
+  guard.cast(p, CHARACTERS.auralynx.skills[2]);
   guard.damage(p, 20, "two");
   expect(p.hp).toBe(130);
   expect(guard.players[1].hp).toBe(104);
-  const shield = duel("mewtwo"),
+  const shield = duel("mystowl"),
     m = shield.players[0];
-  shield.cast(m, CHARACTERS.mewtwo.skills[2]);
+  shield.cast(m, CHARACTERS.mystowl.skills[2]);
   shield.damage(m, 20, "two");
   expect(m.hp).toBe(112);
   expect(shield.players[1].hp).toBe(110);
-  const field = duel("pikachu"),
+  const field = duel("voltkit"),
     q = field.players[1];
   q.jumpUntil = field.time + 1;
   const hp = q.hp;
-  field.damage(q, 10, "one", CHARACTERS.pikachu.skills[2]);
+  field.damage(q, 10, "one", CHARACTERS.voltkit.skills[2]);
   expect(q.hp).toBe(hp);
 });

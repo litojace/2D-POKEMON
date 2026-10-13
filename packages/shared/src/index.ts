@@ -37,14 +37,14 @@ export const OBSTACLES = [
   { x: 750, y: 390, w: 100, h: 120 },
 ];
 export type CharacterId =
-  | "pikachu"
-  | "charizard"
-  | "greninja"
-  | "lucario"
-  | "eevee"
-  | "mewtwo"
-  | "snorlax"
-  | "gengar";
+  | "voltkit"
+  | "cindrake"
+  | "tidefin"
+  | "auralynx"
+  | "lumoth"
+  | "mystowl"
+  | "terradon"
+  | "duskveil";
 export type StatusKind =
   | "burn"
   | "paralysis"
@@ -57,7 +57,7 @@ export type StatusKind =
   | "empower"
   | "haste"
   | "stealth";
-/** Statuses that count as harmful for effects such as Hex. */
+/** Statuses that count as harmful for effects such as Curse Mark. */
 export const DEBUFFS: StatusKind[] = [
   "burn",
   "paralysis",
@@ -73,15 +73,15 @@ export const STATUS_RULES = {
   burnInterval: 0.5,
   slowMultiplier: 0.55,
   hasteMultiplier: 1.3,
-  /** Damage multiplier while Counter Stance is active. */
+  /** Damage multiplier while Mirror Guard is active. */
   counterReduction: 0.5,
   counterReflection: 0.3,
-  /** Damage multiplier while Barrier is active. */
+  /** Damage multiplier while Ward is active. */
   shieldReduction: 0.4,
-  /** Helping Hand: outgoing damage multiplier and basic attack interval multiplier. */
+  /** Kindle: outgoing damage multiplier and basic attack interval multiplier. */
   empowerDamage: 1.25,
   empowerInterval: 0.7,
-  /** Rest leaves the sleeper vulnerable. */
+  /** Hibernate leaves the sleeper vulnerable. */
   sleepDamageTaken: 1.25,
   restInterval: 0.5,
 };
@@ -108,7 +108,7 @@ export type AbilityKind =
   | "counter"
   /** Damage reduction only. */
   | "barrier"
-  /** Self buff (Helping Hand). */
+  /** Self buff (Kindle). */
   | "buff"
   /** Heal over time while asleep and vulnerable. */
   | "rest";
@@ -143,7 +143,7 @@ export interface Ability {
   follow?: boolean;
   /** Damage multiplier against targets with a harmful status. */
   bonusVsStatus?: number;
-  /** Rest: health restored per tick. */
+  /** Hibernate: health restored per tick. */
   heal?: number;
   visual: string;
   sound: string;
@@ -208,19 +208,19 @@ export interface Character {
   skills: Ability[];
 }
 export const CHARACTERS: Record<CharacterId, Character> = {
-  pikachu: {
-    id: "pikachu",
-    name: "Pikachu",
+  voltkit: {
+    id: "voltkit",
+    name: "Voltkit",
     element: "Electric",
     role: "Ranged speedster",
     description:
-      "Fast and slippery. Chains quick jolts with paralysis to keep opponents at range.",
+      "A sugar-glider kit that stores static in its antennae. Fast, slippery and deadly at range.",
     color: 0xffd65b,
     health: 110,
     speed: 270,
     basic: basic(
-      "thunder-jolt",
-      "Thunder Jolt",
+      "spark-dart",
+      "Spark Dart",
       "projectile",
       7,
       280,
@@ -229,8 +229,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     ),
     skills: [
       ability(
-        "thunder-shock",
-        "Thunder Shock",
+        "static-lance",
+        "Static Lance",
         "projectile",
         18,
         8,
@@ -238,8 +238,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         { speed: 1050, radius: 12, status: "paralysis", statusDuration: 0.6 },
       ),
       ability(
-        "electro-orb",
-        "Electro Orb",
+        "ball-lightning",
+        "Ball Lightning",
         "projectile",
         22,
         10,
@@ -247,8 +247,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         { speed: 400, radius: 22, explosion: 100 },
       ),
       ability(
-        "thunder-field",
-        "Thunder Field",
+        "storm-grid",
+        "Storm Grid",
         "zone",
         5,
         14,
@@ -263,12 +263,12 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         },
       ),
       ability(
-        "volt-overload",
-        "Volt Overload",
+        "overcharge",
+        "Overcharge",
         "nova",
         30,
         18,
-        "After a short charge, a circular electrical explosion around Pikachu.",
+        "After a short charge, a circular electrical explosion around Voltkit.",
         {
           radius: 190,
           cast: 0.35,
@@ -279,29 +279,29 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ),
     ],
   },
-  charizard: {
-    id: "charizard",
-    name: "Charizard",
+  cindrake: {
+    id: "cindrake",
+    name: "Cindrake",
     element: "Fire",
     role: "Burst damage fighter",
     description:
-      "Heavy hitter that layers burns and huge fire bursts. Strongest up close.",
-    color: 0xff795a,
+      "A stout magma newt with a living flame crest. Layers burns and hits hardest up close.",
+    color: 0xff7a4f,
     health: 125,
     speed: 240,
     basic: basic(
-      "flame-puff",
-      "Flame Puff",
+      "cinder-snap",
+      "Cinder Snap",
       "melee",
       9,
       450,
-      "A short-range burst of fire in front of Charizard.",
+      "A short-range burst of fire in front of Cindrake.",
       { range: 150, arc: 0.2, knockback: 40 },
     ),
     skills: [
       ability(
-        "fire-breath",
-        "Fire Breath",
+        "ember-gust",
+        "Ember Gust",
         "cone",
         5,
         8,
@@ -318,8 +318,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         },
       ),
       ability(
-        "flame-burst",
-        "Flame Burst",
+        "magma-bomb",
+        "Magma Bomb",
         "projectile",
         24,
         12,
@@ -333,12 +333,12 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         },
       ),
       ability(
-        "inferno-spin",
-        "Inferno Spin",
+        "blaze-whirl",
+        "Blaze Whirl",
         "zone",
         6,
         15,
-        "Spin while releasing flames around Charizard for 2.5 seconds.",
+        "Spin while releasing flames around Cindrake for 2.5 seconds.",
         {
           radius: 120,
           duration: 2.5,
@@ -350,8 +350,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         },
       ),
       ability(
-        "solar-blaze",
-        "Solar Blaze",
+        "sunfire-pillar",
+        "Sunfire Pillar",
         "zone",
         22,
         18,
@@ -369,19 +369,19 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ),
     ],
   },
-  greninja: {
-    id: "greninja",
-    name: "Greninja",
+  tidefin: {
+    id: "tidefin",
+    name: "Tidefin",
     element: "Water",
     role: "Agile assassin",
     description:
-      "The fastest fighter. Pokes with kunai, confuses with clones and finishes with a wave.",
-    color: 0x63dce8,
+      "An axolotl duelist in a river sash. The quickest fighter; pokes, misdirects, then finishes.",
+    color: 0x4fd6e6,
     health: 105,
     speed: 285,
     basic: basic(
-      "water-kunai",
-      "Water Kunai",
+      "tide-needle",
+      "Tide Needle",
       "projectile",
       6,
       260,
@@ -390,8 +390,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     ),
     skills: [
       ability(
-        "water-shuriken",
-        "Water Shuriken",
+        "ripple-stars",
+        "Ripple Stars",
         "barrage",
         11,
         8,
@@ -399,8 +399,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         { count: 3, speed: 1000, radius: 11 },
       ),
       ability(
-        "aqua-ring",
-        "Aqua Ring",
+        "whirlpool",
+        "Whirlpool",
         "zone",
         4,
         12,
@@ -415,8 +415,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         },
       ),
       ability(
-        "shadow-clone",
-        "Shadow Clone",
+        "mirror-mist",
+        "Mirror Mist",
         "clone",
         0,
         15,
@@ -424,8 +424,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         { duration: 3.5, status: "haste", statusDuration: 2 },
       ),
       ability(
-        "tidal-surge",
-        "Tidal Surge",
+        "riptide-wave",
+        "Riptide Wave",
         "charged",
         26,
         18,
@@ -434,19 +434,19 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ),
     ],
   },
-  lucario: {
-    id: "lucario",
-    name: "Lucario",
-    element: "Fighting",
+  auralynx: {
+    id: "auralynx",
+    name: "Auralynx",
+    element: "Aura",
     role: "Counter specialist",
     description:
-      "Durable martial artist. Punishes careless attacks with Counter Stance.",
-    color: 0x78c7ef,
+      "A crystal-fisted lynx monk. Durable, patient and brutal against careless attacks.",
+    color: 0x7f9cff,
     health: 140,
     speed: 235,
     basic: basic(
-      "aura-jab",
-      "Aura Jab",
+      "prism-jab",
+      "Prism Jab",
       "melee",
       10,
       320,
@@ -455,8 +455,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     ),
     skills: [
       ability(
-        "aura-sphere",
-        "Aura Sphere",
+        "prism-shot",
+        "Prism Shot",
         "projectile",
         20,
         8,
@@ -464,8 +464,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         { speed: 600, radius: 20 },
       ),
       ability(
-        "force-palm",
-        "Force Palm",
+        "shatter-palm",
+        "Shatter Palm",
         "melee",
         28,
         12,
@@ -479,8 +479,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         },
       ),
       ability(
-        "counter-stance",
-        "Counter Stance",
+        "mirror-guard",
+        "Mirror Guard",
         "counter",
         0,
         15,
@@ -488,8 +488,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         { duration: 1.6 },
       ),
       ability(
-        "aura-burst",
-        "Aura Burst",
+        "nova-burst",
+        "Nova Burst",
         "nova",
         34,
         18,
@@ -498,19 +498,19 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ),
     ],
   },
-  eevee: {
-    id: "eevee",
-    name: "Eevee",
-    element: "Normal",
+  lumoth: {
+    id: "lumoth",
+    name: "Lumoth",
+    element: "Light",
     role: "Versatile fighter",
     description:
-      "Balanced at every range. Helping Hand turns steady pressure into a damage race.",
-    color: 0xd9a066,
+      "A fluffy moth that sheds glowing dust. Balanced at every range; Kindle turns pressure into a race.",
+    color: 0x86f0c0,
     health: 115,
     speed: 265,
     basic: basic(
-      "swift-star",
-      "Swift Star",
+      "glint",
+      "Glint",
       "projectile",
       7,
       300,
@@ -519,22 +519,30 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     ),
     skills: [
       ability(
-        "star-volley",
-        "Star Volley",
+        "starfall-spray",
+        "Starfall Spray",
         "barrage",
         8,
         8,
         "Five glowing stars in a spread.",
         { count: 5, speed: 880, radius: 10 },
       ),
-      ability("bite", "Bite", "melee", 24, 12, "A powerful close-range bite.", {
-        range: 120,
-        arc: 0.4,
-        knockback: 90,
-      }),
       ability(
-        "helping-hand",
-        "Helping Hand",
+        "dust-strike",
+        "Dust Strike",
+        "melee",
+        24,
+        12,
+        "A powerful close-range bite.",
+        {
+          range: 120,
+          arc: 0.4,
+          knockback: 90,
+        },
+      ),
+      ability(
+        "kindle",
+        "Kindle",
         "buff",
         0,
         15,
@@ -542,29 +550,29 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         { duration: 5 },
       ),
       ability(
-        "last-resort",
-        "Last Resort",
+        "radiant-flare",
+        "Radiant Flare",
         "nova",
         40,
         18,
-        "After a charge, a powerful energy burst around Eevee.",
+        "After a charge, a powerful energy burst around Lumoth.",
         { radius: 210, cast: 0.45, knockback: 140 },
       ),
     ],
   },
-  mewtwo: {
-    id: "mewtwo",
-    name: "Mewtwo",
+  mystowl: {
+    id: "mystowl",
+    name: "Mystowl",
     element: "Psychic",
     role: "High-power duelist",
     description:
-      "Slower attacks with high damage. Controls space with beams, pushes and Barrier.",
-    color: 0xc77dff,
+      "A floating three-eyed owl. Slow, heavy attacks; controls space with rays, pushes and wards.",
+    color: 0xff79d2,
     health: 120,
     speed: 255,
     basic: basic(
-      "psy-bolt",
-      "Psy Bolt",
+      "mind-dart",
+      "Mind Dart",
       "projectile",
       10,
       400,
@@ -573,8 +581,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     ),
     skills: [
       ability(
-        "psybeam",
-        "Psybeam",
+        "focus-ray",
+        "Focus Ray",
         "beam",
         24,
         8,
@@ -582,8 +590,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         { range: 760, radius: 16, status: "slow", statusDuration: 0.6 },
       ),
       ability(
-        "psychic-wave",
-        "Psychic Wave",
+        "repulse",
+        "Repulse",
         "nova",
         12,
         12,
@@ -591,8 +599,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         { radius: 180, knockback: 260 },
       ),
       ability(
-        "barrier",
-        "Barrier",
+        "ward",
+        "Ward",
         "barrier",
         0,
         15,
@@ -600,8 +608,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         { duration: 3 },
       ),
       ability(
-        "psystrike",
-        "Psystrike",
+        "thoughtstrike",
+        "Thoughtstrike",
         "zone",
         48,
         18,
@@ -618,29 +626,29 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ),
     ],
   },
-  snorlax: {
-    id: "snorlax",
-    name: "Snorlax",
-    element: "Normal",
+  terradon: {
+    id: "terradon",
+    name: "Terradon",
+    element: "Earth",
     role: "Defensive tank",
     description:
-      "Huge health pool and crushing swings. Slow, so make the opponent come to you.",
-    color: 0x4fa3a5,
+      "A sleepy boulder tortoise. Huge health pool and crushing swings; make them come to you.",
+    color: 0xc79a5b,
     health: 175,
     speed: 215,
     basic: basic(
-      "heavy-swipe",
-      "Heavy Swipe",
+      "boulder-swipe",
+      "Boulder Swipe",
       "melee",
       14,
       600,
-      "A wide melee swing in front of Snorlax.",
+      "A wide melee swing in front of Terradon.",
       { range: 130, arc: 0, knockback: 70 },
     ),
     skills: [
       ability(
-        "body-slam",
-        "Body Slam",
+        "shell-slam",
+        "Shell Slam",
         "melee",
         30,
         8,
@@ -654,8 +662,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         },
       ),
       ability(
-        "rest",
-        "Rest",
+        "hibernate",
+        "Hibernate",
         "rest",
         0,
         12,
@@ -663,8 +671,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         { duration: 2.5, heal: 12 },
       ),
       ability(
-        "yawn",
-        "Yawn",
+        "dust-cloud",
+        "Dust Cloud",
         "zone",
         0,
         15,
@@ -679,8 +687,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         },
       ),
       ability(
-        "heavy-impact",
-        "Heavy Impact",
+        "tremor",
+        "Tremor",
         "nova",
         36,
         18,
@@ -689,19 +697,19 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ),
     ],
   },
-  gengar: {
-    id: "gengar",
-    name: "Gengar",
-    element: "Ghost",
+  duskveil: {
+    id: "duskveil",
+    name: "Duskveil",
+    element: "Shadow",
     role: "Trickster / area control",
     description:
-      "Applies burns, then cashes them in with Hex. Rewards patient setups.",
-    color: 0x9a6bd8,
+      "A hooded lantern wisp. Sets burns, then cashes them in with Curse Mark.",
+    color: 0x9c6bff,
     health: 105,
     speed: 260,
     basic: basic(
-      "shadow-orb",
-      "Shadow Orb",
+      "lantern-wisp",
+      "Lantern Wisp",
       "projectile",
       8,
       350,
@@ -710,8 +718,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     ),
     skills: [
       ability(
-        "shadow-sneak",
-        "Shadow Sneak",
+        "shade-crawl",
+        "Shade Crawl",
         "projectile",
         20,
         8,
@@ -719,8 +727,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         { speed: 1100, radius: 16, ground: true },
       ),
       ability(
-        "will-o-wisp",
-        "Will-O-Wisp",
+        "ghostfire",
+        "Ghostfire",
         "barrage",
         6,
         12,
@@ -728,8 +736,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         { count: 3, speed: 520, radius: 12, status: "burn", statusDuration: 3 },
       ),
       ability(
-        "hex",
-        "Hex",
+        "curse-mark",
+        "Curse Mark",
         "projectile",
         16,
         15,
@@ -737,8 +745,8 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         { speed: 760, radius: 14, bonusVsStatus: 2 },
       ),
       ability(
-        "shadow-ball",
-        "Shadow Ball",
+        "void-orb",
+        "Void Orb",
         "charged",
         34,
         18,
@@ -751,7 +759,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
 for (const character of Object.values(CHARACTERS))
   for (const skill of [character.basic, ...character.skills])
     skill.element = character.element;
-/** Seconds between basic attacks, including Helping Hand. */
+/** Seconds between basic attacks, including Kindle. */
 export function basicInterval(character: Character, empowered = false) {
   return (
     (character.basic.interval ?? 0.3) *
@@ -807,29 +815,31 @@ export const resumeSchema = z
   .object({ token: z.string().regex(/^[a-f0-9]{64}$/) })
   .strict();
 export const FIGHTER_IDS = [
-  "pikachu",
-  "charizard",
-  "greninja",
-  "lucario",
-  "eevee",
-  "mewtwo",
-  "snorlax",
-  "gengar",
+  "voltkit",
+  "cindrake",
+  "tidefin",
+  "auralynx",
+  "lumoth",
+  "mystowl",
+  "terradon",
+  "duskveil",
 ] as const satisfies readonly CharacterId[];
 /** Older internal IDs, accepted so stale clients and saved sessions keep working. */
 const legacyIds: Record<string, CharacterId> = {
-  voltkit: "pikachu",
-  cindrake: "charizard",
-  tidefin: "greninja",
-  auralynx: "lucario",
-  duskveil: "eevee",
-  thornback: "mewtwo",
-  frostfang: "snorlax",
-  terradon: "gengar",
-  voltling: "pikachu",
-  emberwing: "charizard",
-  aquashade: "greninja",
-  auralith: "lucario",
+  pikachu: "voltkit",
+  charizard: "cindrake",
+  greninja: "tidefin",
+  lucario: "auralynx",
+  eevee: "lumoth",
+  mewtwo: "mystowl",
+  snorlax: "terradon",
+  gengar: "duskveil",
+  thornback: "mystowl",
+  frostfang: "terradon",
+  voltling: "voltkit",
+  emberwing: "cindrake",
+  aquashade: "tidefin",
+  auralith: "auralynx",
 };
 export function normalizeCharacterId(value: unknown): CharacterId | undefined {
   if (typeof value !== "string") return undefined;
@@ -844,7 +854,7 @@ export interface Status {
   kind: StatusKind;
   until: number;
   nextTick: number;
-  /** Rest: health restored per tick. */
+  /** Hibernate: health restored per tick. */
   amount?: number;
 }
 export interface Stats {
@@ -952,7 +962,7 @@ export function packSnapshot(s: Snapshot): WireSnapshot {
     ...s,
     players: s.players.map((p) => ({
       ...p,
-      character: normalizeCharacterId(p.character) ?? "pikachu",
+      character: normalizeCharacterId(p.character) ?? "voltkit",
     })),
     projectiles: s.projectiles.map(({ ability, ...pr }) => ({
       ...pr,
@@ -969,7 +979,7 @@ export function unpackSnapshot(s: WireSnapshot): Snapshot {
     ...s,
     players: s.players.map((p) => ({
       ...p,
-      character: normalizeCharacterId(p.character) ?? "pikachu",
+      character: normalizeCharacterId(p.character) ?? "voltkit",
     })),
     projectiles: s.projectiles.map(({ abilityId, ...pr }) => ({
       ...pr,

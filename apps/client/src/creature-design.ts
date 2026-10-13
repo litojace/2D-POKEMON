@@ -1,5 +1,10 @@
 import type { CharacterId } from "@arena/shared";
 import type { Facing } from "./animation/controller";
+/**
+ * Original Element Arena creatures, authored as separately animated layers for the
+ * articulated rig (see animation/assets.ts for each part's crop bounds and pivot).
+ * Coordinates live in a 200x190 canvas; the creature stands centred on x = 100.
+ */
 export type CreaturePart =
   | "tail"
   | "wings"
@@ -27,56 +32,86 @@ export const creatureParts: CreaturePart[] = [
   "scarf",
   "flame",
 ];
-/**
- * Fighters without authored artwork render as a deliberately generic placeholder
- * creature (slate body, element-coloured glow) until licensed art is supplied
- * through the asset pipeline. See docs/fighter-assets.md.
- */
-export const PLACEHOLDER_FIGHTERS: CharacterId[] = [
-  "eevee",
-  "mewtwo",
-  "snorlax",
-  "gengar",
-];
-const placeholder = (glow: string) => ({
-  light: "#c9d2e3",
-  mid: "#8893a8",
-  dark: "#3b4357",
-  glow,
-});
-export const creaturePalette: Record<
-  CharacterId,
-  { light: string; mid: string; dark: string; glow: string }
-> = {
-  pikachu: {
-    light: "#fff0a0",
-    mid: "#ffdf65",
-    dark: "#6b4a30",
-    glow: "#ffe57b",
-  },
-  charizard: {
-    light: "#ffd69c",
-    mid: "#f3a366",
-    dark: "#98523c",
-    glow: "#ffbe4d",
-  },
-  greninja: {
-    light: "#a6c7ed",
-    mid: "#5b91c6",
-    dark: "#25395f",
-    glow: "#88dcff",
-  },
-  lucario: {
-    light: "#a6d5ee",
-    mid: "#689fc8",
-    dark: "#303d55",
-    glow: "#85dfff",
-  },
-  eevee: placeholder("#ffd38a"),
-  mewtwo: placeholder("#e3a6ff"),
-  snorlax: placeholder("#8fe0d8"),
-  gengar: placeholder("#c39bff"),
+/** Fighters still waiting for authored art. Every current fighter has a design. */
+export const PLACEHOLDER_FIGHTERS: CharacterId[] = [];
+type Palette = {
+  light: string;
+  mid: string;
+  dark: string;
+  glow: string;
+  /** Secondary colour for markings and accessories. */
+  accent: string;
 };
+export const creaturePalette: Record<CharacterId, Palette> = {
+  voltkit: {
+    light: "#fff6cf",
+    mid: "#ffd65b",
+    dark: "#6a4a1f",
+    glow: "#7ff3ff",
+    accent: "#2fb7d6",
+  },
+  cindrake: {
+    light: "#ffd7a8",
+    mid: "#ff7a4f",
+    dark: "#5e2316",
+    glow: "#ffd34d",
+    accent: "#3b1a14",
+  },
+  tidefin: {
+    light: "#dcfbff",
+    mid: "#4fd6e6",
+    dark: "#113f57",
+    glow: "#ff8fb8",
+    accent: "#1d2c5c",
+  },
+  auralynx: {
+    light: "#e6ebff",
+    mid: "#7f9cff",
+    dark: "#202a58",
+    glow: "#c9f4ff",
+    accent: "#1a1f3d",
+  },
+  lumoth: {
+    light: "#f4fff9",
+    mid: "#86f0c0",
+    dark: "#1d5a49",
+    glow: "#fff1a0",
+    accent: "#ffffff",
+  },
+  mystowl: {
+    light: "#ffe6f7",
+    mid: "#ff79d2",
+    dark: "#581d5c",
+    glow: "#9ff7ff",
+    accent: "#ffd6f0",
+  },
+  terradon: {
+    light: "#f1dcb5",
+    mid: "#c79a5b",
+    dark: "#46301c",
+    glow: "#8fd36a",
+    accent: "#7e6a55",
+  },
+  duskveil: {
+    light: "#e6dbff",
+    mid: "#9c6bff",
+    dark: "#1e1340",
+    glow: "#7dffe1",
+    accent: "#120b26",
+  },
+};
+/** Mirror the x coordinates of an absolute-command SVG path around x = 100. */
+function mirrorPath(d: string) {
+  return d.replace(
+    /([MLQCTSHVZ])([^MLQCTSHVZ]*)/g,
+    (_, cmd: string, args: string) => {
+      const n = (args.match(/-?\d*\.?\d+/g) ?? []).map(Number);
+      if (cmd === "H") return cmd + n.map((x) => 200 - x).join(" ");
+      if (cmd === "V" || cmd === "Z") return cmd + args;
+      return cmd + n.map((v, i) => (i % 2 === 0 ? 200 - v : v)).join(" ");
+    },
+  );
+}
 export function creatureLayers(id: CharacterId, dir: Facing) {
   const p = creaturePalette[id],
     prefix = `${id}-${dir}`;
@@ -86,161 +121,237 @@ export function creatureLayers(id: CharacterId, dir: Facing) {
   const body = `url(#${prefix}-body)`,
     face = `url(#${prefix}-face)`,
     pearl = `url(#${prefix}-pearl)`,
-    jewel = `url(#${prefix}-jewel)`;
+    jewel = `url(#${prefix}-jewel)`,
+    shine = `url(#${prefix}-shine)`;
   const defs = `<defs>
-    <radialGradient id="${prefix}-body" cx="27%" cy="17%" r="92%"><stop stop-color="${p.light}"/><stop offset=".38" stop-color="${p.mid}"/><stop offset="1" stop-color="${p.dark}"/></radialGradient>
-    <radialGradient id="${prefix}-face" cx="32%" cy="20%" r="83%"><stop stop-color="${p.light}"/><stop offset=".6" stop-color="${p.mid}"/><stop offset="1" stop-color="${p.dark}"/></radialGradient>
-    <radialGradient id="${prefix}-pearl" cx="30%" cy="12%"><stop stop-color="#ffffff"/><stop offset=".5" stop-color="${p.light}"/><stop offset="1" stop-color="${p.mid}"/></radialGradient>
-    <linearGradient id="${prefix}-jewel" x2=".8" y2="1"><stop stop-color="#ffffff"/><stop offset=".28" stop-color="${p.glow}"/><stop offset="1" stop-color="${p.mid}"/></linearGradient>
-    <radialGradient id="${prefix}-shine"><stop stop-color="#ffffff"/><stop offset=".4" stop-color="${p.glow}"/><stop offset="1" stop-color="${p.mid}"/></radialGradient>
+    <radialGradient id="${prefix}-body" cx="30%" cy="18%" r="95%"><stop stop-color="${p.light}"/><stop offset=".42" stop-color="${p.mid}"/><stop offset="1" stop-color="${p.dark}"/></radialGradient>
+    <radialGradient id="${prefix}-face" cx="34%" cy="22%" r="85%"><stop stop-color="${p.light}"/><stop offset=".62" stop-color="${p.mid}"/><stop offset="1" stop-color="${p.dark}"/></radialGradient>
+    <radialGradient id="${prefix}-pearl" cx="32%" cy="15%"><stop stop-color="#ffffff"/><stop offset=".55" stop-color="${p.light}"/><stop offset="1" stop-color="${p.mid}"/></radialGradient>
+    <linearGradient id="${prefix}-jewel" x2=".8" y2="1"><stop stop-color="#ffffff"/><stop offset=".3" stop-color="${p.glow}"/><stop offset="1" stop-color="${p.mid}"/></linearGradient>
+    <radialGradient id="${prefix}-shine"><stop stop-color="#ffffff"/><stop offset=".35" stop-color="${p.glow}"/><stop offset="1" stop-color="${p.glow}" stop-opacity="0"/></radialGradient>
   </defs>`;
+  // Tails trail behind: on the right in front/back/left views, on the left facing right.
+  const behind = profile && side === 1;
+  const path = (d: string, fill: string, extra = "") =>
+    `<path d="${d}" fill="${fill}"${extra}/>`;
+  const tailPath = (d: string, fill: string, extra = "") =>
+    path(behind ? mirrorPath(d) : d, fill, extra);
   const e = (x: number, y: number, rx: number, ry: number, fill = body) =>
     `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${fill}"/>`;
-  const crystal = (x: number, y: number, size: number) =>
-    `<path d="m${x} ${y - size} ${size * 0.65} ${size} -${size * 0.65} ${size} -${size * 0.65} -${size}Z" fill="${jewel}"/><path d="M${x} ${y - size}V${y + size}" stroke="#fff" opacity=".5"/>`;
-  const paw = (x: number, y: number, large = false) =>
-    `<path d="M${x - 10} ${y - 19}q-7 12-5 24 15 9 30 0 2-13-5-24Z" fill="${body}"/>${e(x, y + 4, large ? 17 : 14, 9)}<path d="m${x - 7} ${y + 7}v4m7-4v5m7-5v4" stroke="${p.light}" stroke-width="2.5"/>`;
-  const eye = (x: number) =>
-    `<path d="M${x - 10} 80q10-6 19 0" stroke="${p.dark}" stroke-width="3" fill="none"/>${e(x, 88, 9, 12, "#102038")}${e(x + 1, 91, 5, 7, p.glow)}${e(x - 3, 84, 3.5, 4.5, "#ffffff")}<circle cx="${x + 4}" cy="94" r="1.5" fill="#fff"/>`;
-  const eyes = back ? "" : profile ? eye(100 + side * 18) : eye(80) + eye(120);
-  const muzzle = back
-    ? ""
-    : `${e(100, 109, 24, 11, pearl)}<path d="m95 104 5 5 5-5Z" fill="${p.dark}"/><path d="M90 111q5 7 10 0 5 7 10 0" stroke="${p.dark}" fill="none" stroke-width="1.7"/>`;
-  const cheeks = `<path d="M63 92 51 99l11 5-7 9 15 1m67-22 12 7-11 5 7 9-15 1" fill="${face}"/>`;
+  const highlight = (x: number, y: number, w: number) =>
+    `<path d="M${x} ${y}Q${x + w / 2} ${y - w * 0.32} ${x + w} ${y - w * 0.12}" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" opacity=".55" fill="none"/>`;
+  const paw = (x: number, y: number, w = 14, fill = body) =>
+    `<path d="M${x - 9} ${y - 18}Q${x - 14} ${y - 4} ${x - w} ${y + 3}Q${x} ${y + 12} ${x + w} ${y + 3}Q${x + 14} ${y - 4} ${x + 9} ${y - 18}Z" fill="${fill}"/>${e(x, y + 4, w, 7, fill)}<path d="M${x - 6} ${y + 7}V${y + 10}M${x} ${y + 7}V${y + 11}M${x + 6} ${y + 7}V${y + 10}" stroke="${p.dark}" stroke-width="1.6" opacity=".5"/>`;
+  const hand = (x: number, fill = body) =>
+    `${e(x, 138, 9, 17, fill)}${e(x, 151, 10, 7, fill)}`;
+  // Big glossy chibi eye: dark iris, element-coloured ring, two catchlights.
+  const eye = (x: number, ring = p.glow, w = 9, h = 11) =>
+    `${e(x, 88, w, h, "#121a33")}${e(x + 0.5, 91, w * 0.62, h * 0.6, ring)}${e(x + 0.5, 92, w * 0.32, h * 0.32, "#121a33")}${e(x - w * 0.33, 84, w * 0.36, h * 0.33, "#ffffff")}<circle cx="${x + w * 0.4}" cy="${94}" r="1.6" fill="#fff"/>`;
+  const frontEyes = (ring = p.glow, w = 9, h = 11) =>
+    eye(82, ring, w, h) + eye(118, ring, w, h);
+  const mouth = `<path d="M94 106Q97 110 100 107Q103 110 106 106" stroke="${p.dark}" stroke-width="1.8" fill="none" stroke-linecap="round"/>`;
+  const blush =
+    `${e(70, 101, 7, 4, p.glow)}${e(130, 101, 7, 4, p.glow)}`.replace(
+      /fill="([^"]+)"/g,
+      'fill="$1" opacity=".35"',
+    );
   const layers: Record<CreaturePart, string> = {
     tail: "",
     wings: "",
-    legL: paw(78, 161),
-    legR: paw(122, 161),
-    body: `${e(100, 139, 34, 29)}${back ? "" : e(100, 142, 19, 21, pearl)}<path d="M76 120q16-10 27-7" stroke="${p.light}" stroke-width="3" opacity=".65" fill="none"/>`,
-    armL: paw(64, 143),
-    armR: paw(136, 143),
-    head: `${e(100, 88, 40, 32, face)}${cheeks}${muzzle}<path d="M73 68q12-8 25-7" stroke="${p.light}" stroke-width="4" stroke-linecap="round" opacity=".8" fill="none"/>`,
+    legL: paw(80, 160),
+    legR: paw(120, 160),
+    body: `${e(100, 138, 30, 28)}${e(100, 143, 18, 19, pearl)}${highlight(80, 124, 18)}`,
+    armL: hand(67),
+    armR: hand(133),
+    head: `${e(100, 88, 40, 33, face)}${highlight(72, 70, 26)}${blush}${mouth}`,
     ears: "",
-    eyes,
+    eyes: frontEyes(),
     scarf: "",
     flame: "",
   };
-  if (id === "pikachu") {
-    layers.ears = `<path d="M77 69Q42 51 48 13q29 13 38 48m28 0q9-35 38-48 6 38-29 56" fill="${body}"/><path d="M76 57 56 25l3 23 13 16m52-7 20-32-3 23-13 16" fill="#292d43"/><path d="m57 26 10 16m76-16-10 16" stroke="${p.glow}" stroke-width="3"/>`;
-    layers.scarf = `<path d="m69 111-12 10 18-1-7 14 19-5 13 14 13-14 19 5-7-14 18 1-12-10" fill="#35354b"/><path d="m83 115 17 15 17-15" stroke="${p.glow}" fill="none" stroke-width="3"/>`;
-    layers.tail =
-      side === 1 && profile
-        ? `<path d="M72 142 44 137 52 117 29 99 42 73 63 96 54 112 81 128Z" fill="${body}"/><path d="m42 73 9 25-10 9" fill="#33354b"/>`
-        : `<path d="M128 142 156 137 148 117 171 99 158 73 137 96 146 112 119 128Z" fill="${body}"/><path d="m158 73-9 25 10 9" fill="#33354b"/>`;
-    layers.head += back
-      ? ""
-      : `<path d="m70 97-6 5 8 4m58-9 6 5-8 4" stroke="${p.glow}" fill="none" stroke-width="3"/>`;
+  // Per-creature anatomy. Each block only replaces the parts that make the creature distinct.
+  if (id === "voltkit") {
+    // Sugar-glider kit: round ears, spark antennae, glider membranes, fluffy striped tail.
+    layers.ears = `${e(64, 63, 12, 13)}${e(64, 64, 6, 7, p.light)}${e(136, 63, 12, 13)}${e(136, 64, 6, 7, p.light)}${path("M88 58Q80 34 66 26", "none", ` stroke="${p.accent}" stroke-width="3.5" stroke-linecap="round"`)}${path("M112 58Q120 34 134 26", "none", ` stroke="${p.accent}" stroke-width="3.5" stroke-linecap="round"`)}<circle cx="66" cy="25" r="11" fill="${shine}" stroke="none"/><circle cx="134" cy="25" r="11" fill="${shine}" stroke="none"/><circle cx="66" cy="25" r="5" fill="${jewel}"/><circle cx="134" cy="25" r="5" fill="${jewel}"/>`;
+    layers.head = `${e(100, 88, 41, 33, face)}${path("M64 96Q100 128 136 96Q128 118 100 120Q72 118 64 96Z", p.light, ' stroke="none"')}${path("M100 56L95 70L103 72L98 84", "none", ` stroke="${p.accent}" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"`)}${highlight(70, 72, 22)}${mouth}`;
+    layers.eyes = frontEyes(p.accent);
+    layers.wings = `${path("M70 124Q46 132 44 152Q58 150 74 156Z", p.light, ` opacity=".92"`)}${path("M130 124Q154 132 156 152Q142 150 126 156Z", p.light, ` opacity=".92"`)}${path("M50 146Q58 140 70 144M150 146Q142 140 130 144", "none", ` stroke="${p.mid}" stroke-width="2"`)}`;
+    layers.tail = `${tailPath("M124 150Q160 156 172 124Q180 98 160 84Q150 104 148 116Q138 136 120 140Z", body)}${tailPath("M160 84Q154 98 154 106Q166 100 172 108Q178 92 160 84Z", p.accent, ' stroke="none"')}`;
+    layers.body = `${e(100, 138, 29, 28)}${e(100, 143, 17, 19, pearl)}${path("M100 120L95 132H103L98 146", "none", ` stroke="${p.accent}" stroke-width="3" stroke-linecap="round" opacity=".8"`)}`;
   }
-  if (id === "charizard") {
-    layers.ears = `<path d="M76 68 67 39 89 57m35 11 9-29-22 18" fill="${body}"/>`;
-    layers.flame = `<path d="M78 66q-14-22 7-40-2 16 9 11 3-20 15-30-4 26 10 33l7-17q18 29-5 43Z" fill="${jewel}"/><path d="M91 63q-5-14 13-28-2 16 10 21l-6 8Z" fill="#fff1b0"/>`;
-    layers.wings = `<path d="M71 121 35 91l3 27-14 10 24 7 20 12m61-26 36-30-3 27 14 10-24 7-20 12" fill="${body}"/><path d="m37 103 28 29m98-29-28 29" stroke="#ffd69b" opacity=".6" stroke-width="2"/>`;
-    layers.tail =
-      profile && side === 1
-        ? `<path d="M74 145q-50 31-45-37 10 42 44 22Z" fill="${body}"/>${crystal(32, 96, 17)}`
-        : `<path d="M126 145q50 31 45-37-10 42-44 22Z" fill="${body}"/>${crystal(168, 96, 17)}`;
-    layers.scarf = `<path d="m70 114 14 13 16-9 16 9 14-13" fill="${jewel}"/>`;
+  if (id === "cindrake") {
+    // Magma newt: wide flat head, horn nubs, living flame crest, glowing cracks, ember tail.
+    layers.head = `${e(100, 90, 45, 30, face)}${path("M62 84Q72 92 70 102M138 84Q128 92 130 102M84 66Q90 74 86 80", "none", ` stroke="${p.glow}" stroke-width="2.4" stroke-linecap="round" opacity=".85"`)}${highlight(68, 74, 26)}${path("M88 106Q100 114 112 106", "none", ` stroke="${p.dark}" stroke-width="2" stroke-linecap="round"`)}`;
+    layers.ears = `${path("M66 70Q54 52 62 44Q70 56 76 66Z", p.accent)}${path("M134 70Q146 52 138 44Q130 56 124 66Z", p.accent)}`;
+    layers.flame = `${path("M84 64Q76 44 88 30Q88 44 96 46Q94 26 106 12Q106 32 114 38Q120 30 120 22Q130 44 116 64Z", jewel)}${path("M92 62Q90 50 98 42Q100 52 106 54Q110 48 112 44Q116 56 108 62Z", "#fff3b8", ' stroke="none"')}`;
+    layers.body = `${e(100, 139, 32, 27)}${e(100, 144, 19, 17, pearl)}${path("M84 128Q90 136 86 146M116 128Q110 136 114 146", "none", ` stroke="${p.glow}" stroke-width="2.2" opacity=".75"`)}`;
+    layers.legL = paw(78, 161, 16);
+    layers.legR = paw(122, 161, 16);
+    layers.tail = `${tailPath("M124 152Q164 162 178 138Q184 118 168 108Q166 126 154 134Q140 142 122 140Z", body)}<circle cx="${behind ? 30 : 170}" cy="${118}" r="5" fill="${shine}" stroke="none"/><circle cx="${behind ? 44 : 156}" cy="${136}" r="4" fill="${shine}" stroke="none"/>`;
   }
-  if (id === "greninja") {
-    layers.ears = `<path d="M78 70Q53 57 62 21l21 25-6 12m46 12q25-13 16-49l-21 25 6 12" fill="${jewel}"/><path d="m65 32 9 23m61-23-9 23" stroke="#dfffff" stroke-width="2"/>`;
-    layers.wings = `<path d="M66 82 31 61l12 27-20 9 23 9-9 21 37-18m60-27 35-21-12 27 20 9-23 9 9 21-37-18" fill="${jewel}"/><path d="M35 76 61 93 37 100m128-24-26 17 24 7" stroke="#efffff" fill="none" opacity=".65"/>`;
-    layers.tail =
-      profile && side === 1
-        ? `<path d="M72 141Q18 168 27 92q11 34 44 36Z" fill="${body}"/><path d="m29 107-16-18 5 45 18 7Z" fill="${jewel}"/>`
-        : `<path d="M128 141q54 27 45-49-11 34-44 36Z" fill="${body}"/><path d="m171 107 16-18-5 45-18 7Z" fill="${jewel}"/>`;
-    layers.scarf = `<path d="M71 119q29 19 58 0l-4 13q-25 14-50 0Z" fill="${pearl}"/>`;
+  if (id === "tidefin") {
+    // Axolotl duelist: feathery gill fronds, headband, river sash, finned tail.
+    const frond = (x: number, y: number, dx: number) =>
+      path(
+        `M${x} ${y - 4}Q${x + dx * 0.5} ${y - 16} ${x + dx} ${y - 6}Q${x + dx * 0.55} ${y + 9} ${x} ${y + 6}Z`,
+        p.glow,
+      );
+    layers.ears = `${frond(64, 72, -34)}${frond(62, 84, -38)}${frond(66, 96, -30)}${frond(136, 72, 34)}${frond(138, 84, 38)}${frond(134, 96, 30)}`;
+    layers.head = `${e(100, 90, 42, 31, face)}${highlight(70, 74, 24)}${path("M80 104Q100 120 120 104", "none", ` stroke="${p.dark}" stroke-width="2.2" stroke-linecap="round"`)}`;
+    layers.flame = `${path("M62 74Q100 60 138 74L136 82Q100 70 64 82Z", p.accent)}${path("M136 76Q150 70 156 60Q150 74 140 82Z", p.accent)}<circle cx="100" cy="72" r="3" fill="${p.glow}" stroke="none"/>`;
+    layers.eyes = frontEyes("#7cf6ff", 8, 9);
+    layers.body = `${e(100, 138, 26, 28)}${e(100, 142, 15, 19, pearl)}`;
+    layers.scarf = `${path("M74 144Q100 152 126 144L127 152Q100 160 73 152Z", p.accent)}${path("M120 150Q138 156 146 168Q132 166 122 156Z", p.accent)}`;
+    layers.tail = `${tailPath("M122 150Q162 152 182 128Q166 132 156 128Q166 118 176 98Q150 110 140 128Q132 138 120 140Z", body)}${tailPath("M176 98Q166 116 156 128Q168 132 182 128", "none", ` stroke="${p.light}" stroke-width="2"`)}`;
+    layers.armL = hand(69);
+    layers.armR = hand(131);
   }
-  if (id === "lucario") {
-    layers.ears = `<path d="M76 69 57 20l32 30m35 19 19-49-32 30" fill="${pearl}"/><path d="m70 47-6-15 17 21m49-6 6-15-17 21" fill="${jewel}"/>${crystal(100, 39, 15)}`;
-    layers.head = `${e(100, 89, 39, 31, pearl)}${cheeks}${muzzle}`;
-    layers.scarf = `<path d="M67 109 58 127l20-4-1 15 23-13 23 13-1-15 20 4-9-18" fill="${jewel}"/>`;
-    layers.wings = `${crystal(37, 89, 10)}${crystal(164, 104, 12)}<path d="M33 122q67 28 134-6" stroke="${p.glow}" opacity=".4" fill="none"/>`;
-    layers.tail = `<path d="M130 143q31 20 40-8 7-23-13-25" fill="none" stroke="${p.mid}" stroke-width="14"/>${crystal(155, 106, 11)}`;
+  if (id === "auralynx") {
+    // Lynx monk: tall tufted ears, cheek ruff, mane collar, crystal gauntlets, orbiting shards.
+    layers.ears = `${path("M68 72L62 24L90 58Z", body)}${path("M72 64L68 36L84 56Z", p.light, ' stroke="none"')}${path("M62 24L58 8L66 22Z", p.accent)}${path("M132 72L138 24L110 58Z", body)}${path("M128 64L132 36L116 56Z", p.light, ' stroke="none"')}${path("M138 24L142 8L134 22Z", p.accent)}`;
+    layers.head = `${e(100, 88, 39, 32, face)}${path("M62 92L50 100L62 104L54 114L72 110Z", p.light)}${path("M138 92L150 100L138 104L146 114L128 110Z", p.light)}${path("M88 62L100 72L112 62", "none", ` stroke="${p.accent}" stroke-width="3" stroke-linecap="round"`)}${highlight(72, 72, 22)}${mouth}`;
+    layers.eyes = frontEyes(p.glow, 8.5, 10);
+    layers.scarf = `${path("M68 116Q100 98 132 116L124 128Q112 120 100 126Q88 120 76 128Z", p.light)}`;
+    layers.armL = `${hand(66)}${path("M58 142L66 132L74 142L66 154Z", jewel)}`;
+    layers.armR = `${hand(134)}${path("M126 142L134 132L142 142L134 154Z", jewel)}`;
+    layers.wings = `${path("M40 80L46 70L52 80L46 92Z", jewel)}${path("M152 96L158 86L164 96L158 108Z", jewel)}${path("M30 120L34 113L38 120L34 128Z", jewel)}`;
+    layers.tail = tailPath("M124 148Q142 150 144 138Q138 134 124 140Z", body);
   }
-  // Pokemon silhouettes and signature anatomy, using the existing articulated parts.
-  const hand = (x: number, fill = body) =>
-    `${e(x, 137, 9, 19, fill)}${e(x, 152, 10, 6, fill)}`;
-  layers.armL = hand(65);
-  layers.armR = hand(135);
-  if (id === "pikachu") {
-    layers.scarf = "";
-    layers.wings = "";
-    layers.head = `${e(100, 89, 43, 33, face)}${back ? "" : `${e(63, 103, 10, 7, "#ed6464")}${e(137, 103, 10, 7, "#ed6464")}<path d="m96 98 4 3 4-3Z" fill="#493a3c"/><path d="M93 107q7 8 14 0" stroke="#493a3c" fill="none"/>`}`;
+  if (id === "lumoth") {
+    // Fluffy moth: fern antennae, rounded star-dusted wings, white ruff collar.
+    const fern = (x0: number, dir: number) =>
+      `${path(`M${x0} 60Q${x0 + dir * 10} 34 ${x0 + dir * 26} 18`, "none", ` stroke="${p.dark}" stroke-width="2.2" stroke-linecap="round"`)}${[
+        0, 1, 2, 3,
+      ]
+        .map((i) => {
+          const t = 0.25 + i * 0.2;
+          const bx = x0 + dir * 26 * t * 1.05,
+            by = 60 - 42 * t;
+          return path(
+            `M${bx} ${by}Q${bx + dir * 9} ${by + 2} ${bx + dir * 12} ${by + 9}`,
+            "none",
+            ` stroke="${p.mid}" stroke-width="2" stroke-linecap="round"`,
+          );
+        })
+        .join("")}`;
+    layers.ears = fern(88, -1) + fern(112, 1);
+    const wing = (dir: number) => {
+      const x = (v: number) => 100 + dir * v;
+      return `${path(`M${x(14)} 118Q${x(46)} 54 ${x(82)} 62Q${x(96)} 82 ${x(76)} 108Q${x(92)} 128 ${x(72)} 148Q${x(40)} 150 ${x(14)} 132Z`, body)}<circle cx="${x(60)}" cy="${90}" r="10" fill="${shine}" stroke="none"/><circle cx="${x(60)}" cy="90" r="5" fill="${p.glow}"/><circle cx="${x(56)}" cy="130" r="5" fill="${p.light}" stroke="none"/>`;
+    };
+    layers.wings = wing(-1) + wing(1);
+    layers.head = `${e(100, 88, 38, 32, face)}${highlight(72, 72, 22)}${blush}${mouth}`;
+    layers.eyes = frontEyes(p.glow, 10, 12);
+    layers.scarf = `${path("M68 130Q74 120 83 126Q89 118 95 124Q100 116 105 124Q111 118 117 126Q126 120 132 130Q118 142 100 140Q82 142 68 130Z", p.accent)}`;
   }
-  if (id === "charizard") {
-    layers.flame = "";
-    layers.scarf = "";
-    layers.head = `<path d="M63 78 63 47q0-9 19 15 18-7 36 0 19-24 19-15v31q18 44-37 44T63 78Z" fill="${face}"/>${back ? "" : muzzle}`;
-    layers.ears = "";
-    layers.wings = `<path d="M74 114Q29 54 22 77l10 52q24-16 39 9m55-24q45-60 52-37l-10 52q-24-16-39 9" fill="#78c9cc" stroke="#cc8150"/>`;
-    layers.tail = `<path d="M128 145q43 18 32-33" fill="none" stroke="#ed995b" stroke-width="12"/><path d="M158 117q-16-10-3-31 4 12 10 5 14 20-7 26Z" fill="#ffce55"/>`;
-  }
-  if (id === "greninja") {
-    layers.wings = "";
-    layers.tail = "";
-    layers.ears = "";
-    layers.head = `<path d="M57 83 44 55q-3-8 28 9l24-22q4-5 8 0l24 22q31-17 28-9l-13 28q10 37-43 37T57 83Z" fill="${face}"/><path d="M59 82q19-5 41 14 22-19 41-14l-4 25q-37 30-74 0Z" fill="#f3efdc"/>`;
-    layers.scarf = `<path d="M70 115q30 15 60 0l3 14q-33 14-66 0Z" fill="#ee9ab4"/><path d="M129 120q33-26 46-9-23 1-35 23Z" fill="#ee9ab4"/>`;
-    layers.body = `${e(100, 137, 28, 30)}${e(100, 140, 16, 23, "#f3efdc")}`;
-  }
-  if (id === "lucario") {
-    layers.wings = "";
-    layers.scarf = "";
-    layers.flame = "";
-    layers.head = `<path d="M59 84q-3-34 41-34t41 34q10 38-41 38T59 84Z" fill="${face}"/><path d="M57 79q19-16 43-6 24-10 43 6l-7 26-26-4-10-9-10 9-26 4Z" fill="#303d55"/>${muzzle}`;
-    layers.ears = `<path d="m75 65-12-44q-2-11 15 4l12 35m20 0 12-35q17-15 15-4l-12 44" fill="#303d55"/>`;
-    layers.body = `${e(100, 137, 28, 31)}${e(100, 139, 20, 24, "#f6e6bc")}<path d="m95 130 5-13 5 13-5 5Z" fill="#fff9e6"/>`;
-    layers.armL = hand(65, "#303d55");
-    layers.armR = hand(135, "#303d55");
-    layers.tail = `<path d="M128 141q38-11 25 15-18 10-34-1Z" fill="${body}"/>`;
-  }
-  if (back) {
-    // Authored rear silhouette: no facial features or inner ear markings.
-    layers.head = `${e(100, 88, profile ? 32 : 40, 32, face)}<path d="M78 78q22 12 44 0" stroke="${p.light}" opacity=".6" fill="none" stroke-width="3"/>`;
-    layers.eyes = "";
-    layers.body += `<path d="M82 125q18-8 36 0" fill="none" stroke="${p.light}" opacity=".3" stroke-width="3"/>`;
-  } else if (profile) {
-    // Author the entire profile together, including a protruding muzzle and one visible eye.
-    // Coordinates are projected explicitly; no whole-character mirror or detached front mouth.
-    const px = (x: number) => 100 + side * (x - 100);
-    const fur = ["pikachu", "lucario"].includes(id);
-    const skin = id === "lucario" ? pearl : face;
-    layers.head = `${e(px(96), 88, 31, 29, skin)}${fur ? `<path d="M${px(73)} 94 ${px(64)} 102 ${px(76)} 107 ${px(72)} 115 ${px(89)} 116" fill="${skin}"/>` : ""}<path d="M${px(112)} 97Q${px(125)} 97 ${px(137)} 103Q${px(143)} 106 ${px(137)} 113Q${px(124)} 119 ${px(107)} 113Z" fill="${pearl}"/><path d="M${px(136)} 103 ${px(142)} 106 ${px(137)} 110Z" fill="${p.dark}"/><path d="M${px(136)} 113Q${px(127)} 117 ${px(119)} 112" stroke="${p.dark}" stroke-width="1.7" fill="none"/><path d="M${px(77)} 70Q${px(91)} 62 ${px(103)} 65" stroke="${p.light}" opacity=".75" stroke-width="3" fill="none"/>`;
-    layers.eyes = eye(px(109));
-    layers.body = `<g transform="translate(${side * 4} 0) translate(100 0) scale(.78 1) translate(-100 0)">${layers.body}</g>`;
-    layers.ears = `<g transform="translate(${side * 3} 0) translate(100 0) scale(.72 1) translate(-100 0)">${layers.ears}</g>`;
-    layers.scarf = `<g transform="translate(${side * 6} 0) translate(100 0) scale(.73 1) translate(-100 0)">${layers.scarf}</g>`;
-    // Forelegs and hind legs converge in depth rather than remaining in a frontal stance.
+  if (id === "mystowl") {
+    // Floating owl: feather horns, facial disc, third-eye gem, wing cloak, tiny talons.
+    const tuft = (dir: number) => {
+      const x = (v: number) => 100 + dir * v;
+      return `${path(`M${x(20)} 62Q${x(40)} 44 ${x(44)} 24Q${x(30)} 38 ${x(14)} 56Z`, body)}${path(`M${x(26)} 62Q${x(48)} 52 ${x(56)} 34Q${x(38)} 46 ${x(20)} 58Z`, p.mid)}${path(`M${x(30)} 64Q${x(52)} 62 ${x(62)} 48Q${x(44)} 54 ${x(26)} 60Z`, p.light)}`;
+    };
+    layers.ears = tuft(-1) + tuft(1);
+    layers.head = `${e(100, 88, 41, 34, face)}${e(82, 89, 17, 16, p.accent)}${e(118, 89, 17, 16, p.accent)}${path("M96 100L100 108L104 100Z", p.glow)}${highlight(70, 70, 22)}`;
+    layers.flame = `${path("M100 50L107 60L100 70L93 60Z", jewel)}<circle cx="100" cy="60" r="9" fill="${shine}" stroke="none" opacity=".7"/>`;
+    layers.eyes = frontEyes("#c86bff", 10, 11);
+    layers.wings = `${path("M72 116Q46 128 50 160Q62 152 74 152Z", body)}${path("M128 116Q154 128 150 160Q138 152 126 152Z", body)}${path("M56 136Q62 132 70 136M144 136Q138 132 130 136", "none", ` stroke="${p.light}" stroke-width="2"`)}`;
+    layers.body = `${e(100, 138, 29, 28)}${path("M100 120L86 134L100 162L114 134Z", p.accent)}${path("M90 138L100 146L110 138M92 150L100 156L108 150", "none", ` stroke="${p.mid}" stroke-width="2"`)}`;
     layers.armL = "";
-    layers.armR = hand(px(120), id === "lucario" ? "#303d55" : body);
-    layers.legL = `<g opacity=".8">${paw(px(87), 159)}</g>`;
-    layers.legR = paw(px(113), 163);
-    layers.wings = `<g transform="translate(${-side * 3} 0) translate(100 0) scale(.65 1) translate(-100 0)">${layers.wings}</g>`;
-    if (id === "lucario")
-      layers.tail = `<path d="M${px(74)} 142Q${px(36)} 161 ${px(32)} 131Q${px(28)} 108 ${px(47)} 106" stroke="${p.mid}" stroke-width="14" fill="none"/>${crystal(px(47), 106, 11)}`;
+    layers.armR = "";
+    layers.legL = `${path("M88 164L84 172M92 164V173M96 164L99 172", "none", ` stroke="${p.glow}" stroke-width="3" stroke-linecap="round"`)}`;
+    layers.legR = `${path("M104 164L101 172M108 164V173M112 164L116 172", "none", ` stroke="${p.glow}" stroke-width="3" stroke-linecap="round"`)}`;
+    layers.tail = tailPath(
+      "M120 156Q140 170 150 160Q144 156 146 150Q134 154 122 148Z",
+      body,
+    );
   }
-  if (profile || back) {
+  if (id === "terradon") {
+    // Boulder tortoise: mossy rock shell, sleepy lids, sprout, sturdy legs.
+    layers.wings = `${path("M42 150Q36 96 100 84Q164 96 158 150Q100 160 42 150Z", `url(#${prefix}-body)`)}${path("M60 112L84 104L100 116L118 104L142 114M52 134L74 128L92 140L110 130L134 138L150 132", "none", ` stroke="${p.dark}" stroke-width="2.4" opacity=".6"`)}${e(70, 96, 12, 5, p.glow)}${e(132, 98, 10, 4, p.glow)}`;
+    layers.head = `${e(100, 90, 34, 29, face)}${highlight(76, 74, 20)}${path("M90 106Q100 110 110 106", "none", ` stroke="${p.dark}" stroke-width="2" stroke-linecap="round"`)}`;
+    // Sleepy eyes: heavy lids over small irises.
+    const sleepy = (x: number) =>
+      `${e(x, 90, 8, 7, "#121a33")}${e(x, 91, 4, 3.5, p.glow)}${path(`M${x - 9} 88Q${x} 79 ${x + 9} 88Z`, p.mid)}${path(`M${x - 9} 88Q${x} 84 ${x + 9} 88`, "none", ` stroke="${p.dark}" stroke-width="2"`)}`;
+    layers.eyes = sleepy(85) + sleepy(115);
+    layers.flame = `${path("M100 62Q98 50 100 44", "none", ` stroke="#5aa64a" stroke-width="3" stroke-linecap="round"`)}${path("M100 48Q88 38 84 46Q92 52 100 48Z", p.glow)}${path("M100 46Q110 32 118 40Q110 48 100 46Z", p.glow)}`;
+    layers.body = `${e(100, 140, 33, 27)}${e(100, 144, 22, 18, pearl)}${path("M80 136H120M82 148H118", "none", ` stroke="${p.mid}" stroke-width="2" opacity=".6"`)}`;
+    layers.legL = paw(76, 162, 17);
+    layers.legR = paw(124, 162, 17);
+    layers.armL = hand(64);
+    layers.armR = hand(136);
+    layers.tail = tailPath("M126 156Q146 162 150 152Q140 150 128 148Z", body);
+  }
+  if (id === "duskveil") {
+    // Hooded lantern wisp: pointed hood, void face with glowing eyes, ragged robe, lantern tail.
+    layers.head = `${path("M58 102Q54 64 82 50Q96 36 100 22Q106 40 120 50Q146 66 142 102Q128 122 100 122Q72 122 58 102Z", face)}${e(100, 94, 30, 24, p.accent)}${highlight(70, 68, 18)}`;
+    const slit = (x: number) =>
+      `<circle cx="${x}" cy="90" r="11" fill="${shine}" stroke="none" opacity=".8"/>${path(`M${x - 8} 90Q${x} 82 ${x + 8} 90Q${x} 96 ${x - 8} 90Z`, p.glow)}`;
+    layers.eyes = slit(84) + slit(116);
+    layers.body = `${path("M74 116Q100 108 126 116Q134 150 140 170L128 162L118 172L108 162L100 172L92 162L82 172L72 162L60 170Q66 150 74 116Z", body)}${path("M100 120V160", "none", ` stroke="${p.light}" stroke-width="2" opacity=".35"`)}`;
+    layers.legL = "";
+    layers.legR = "";
+    layers.armL = `${path("M74 124Q58 134 58 152L70 150Q72 138 80 132Z", body)}${e(62, 152, 6, 5, p.light)}`;
+    layers.armR = `${path("M126 124Q142 134 142 152L130 150Q128 138 120 132Z", body)}${e(138, 152, 6, 5, p.light)}`;
+    layers.scarf = path(
+      "M66 112Q100 128 134 112L130 124Q100 136 70 124Z",
+      p.dark,
+    );
+    layers.tail = `${tailPath("M126 150Q160 150 164 118Q166 104 158 98", "none", ` stroke="${p.dark}" stroke-width="4" stroke-linecap="round"`)}<circle cx="${behind ? 42 : 158}" cy="110" r="16" fill="${shine}" stroke="none"/>${e(behind ? 42 : 158, 110, 7, 9, p.glow)}${path(behind ? "M36 100H48" : "M152 100H164", "none", ` stroke="${p.dark}" stroke-width="3"`)}`;
+  }
+  // Rear view: no face; keep silhouettes, ears, crests and accessories.
+  if (back) {
+    layers.eyes = "";
+    const headShape =
+      id === "duskveil"
+        ? path(
+            "M58 102Q54 64 82 50Q96 36 100 22Q106 40 120 50Q146 66 142 102Q128 122 100 122Q72 122 58 102Z",
+            face,
+          )
+        : id === "cindrake"
+          ? e(100, 90, 45, 30, face)
+          : e(100, 88, 40, 33, face);
+    layers.head = `${headShape}${highlight(78, 74, 24)}${path("M80 96Q100 108 120 96", "none", ` stroke="${p.light}" stroke-width="3" opacity=".45"`)}`;
+    if (id === "tidefin")
+      layers.flame = `${path("M62 74Q100 60 138 74L136 82Q100 70 64 82Z", p.accent)}${path("M96 76Q90 92 84 100M104 76Q110 92 116 100", "none", ` stroke="${p.accent}" stroke-width="5" stroke-linecap="round"`)}`;
+    if (id === "mystowl") layers.flame = "";
+    if (id !== "duskveil" && id !== "mystowl")
+      layers.body = `${e(100, 138, id === "terradon" ? 33 : 29, 28)}${highlight(82, 126, 18)}`;
+  } else if (profile) {
+    // Profile: compress depth, show one eye on the facing side and a short snout.
     const px = (x: number) => 100 + side * (x - 100);
-    if (id === "pikachu") {
-      if (profile) layers.head += e(px(112), 101, 7, 5, "#ed6464");
-      if (back)
-        layers.body = `${e(100, 139, 31, 29)}<path d="M82 129h36m-30 11h24" stroke="#a67b45" stroke-width="5"/>`;
+    const squeeze = (s: string, sx: number, shift: number) =>
+      `<g transform="translate(${side * shift} 0) translate(100 0) scale(${sx} 1) translate(-100 0)">${s}</g>`;
+    if (id === "mystowl")
+      layers.head = `${e(100, 88, 41, 34, face)}${e(px(116), 89, 18, 16, p.accent)}${path(`M${px(128)} 100L${px(136)} 104L${px(128)} 108Z`, p.glow)}${highlight(70, 70, 22)}`;
+    layers.head = squeeze(layers.head, 0.82, 4);
+    layers.ears = squeeze(layers.ears, 0.7, 2);
+    layers.flame = squeeze(layers.flame, 0.75, 3);
+    layers.scarf = squeeze(layers.scarf, 0.75, 4);
+    layers.body = squeeze(layers.body, 0.8, 2);
+    layers.wings = squeeze(layers.wings, 0.6, -side * 4);
+    if (id !== "duskveil" && id !== "mystowl") {
+      layers.head += e(px(136), 100, 7, 6, face);
+      layers.head += `<circle cx="${px(140)}" cy="98" r="1.6" fill="${p.dark}" stroke="none"/>`;
     }
-    if (id === "charizard") {
-      if (back) layers.body = e(100, 139, 30, 29);
-      if (profile)
-        layers.tail = `<path d="M${px(74)} 145q${-side * 43} 18 ${-side * 32}-33" stroke="#ed995b" stroke-width="12" fill="none"/><path d="M${px(43)} 118q${-side * 16}-10 ${-side * 3}-31 4 12 10 5 14 20-7 26Z" fill="#ffce55"/>`;
+    layers.eyes =
+      id === "terradon"
+        ? `${e(px(116), 90, 8, 7, "#121a33")}${e(px(116), 91, 4, 3.5, p.glow)}${path(`M${px(107)} 88Q${px(116)} 79 ${px(125)} 88Z`, p.mid)}`
+        : id === "duskveil"
+          ? `<circle cx="${px(116)}" cy="90" r="12" fill="${shine}" stroke="none" opacity=".85"/>${path(
+              `M${px(106)} 90Q${px(116)} 80 ${px(126)} 90Q${px(116)} 97 ${px(106)} 90Z`,
+              p.glow,
+            )}`
+          : eye(px(114), id === "voltkit" ? p.accent : p.glow, 8, 11);
+    // Far limbs tuck behind the body; near limbs swing on the projected pivots.
+    if (id !== "mystowl" && id !== "duskveil") {
+      layers.armL = "";
+      layers.armR = hand(px(120));
+      layers.legL = `<g opacity=".8">${paw(px(88), 158)}</g>`;
+      layers.legR = paw(px(112), 162);
     }
-    if (id === "greninja") {
-      if (profile)
-        layers.head += `<path d="M${px(75)} 79 ${px(72)} 53 ${px(90)} 67 ${px(104)} 47 ${px(117)} 73" fill="${face}"/><path d="M${px(95)} 96 ${px(120)} 82 ${px(132)} 100 ${px(107)} 111Z" fill="#f3efdc"/>`;
-      if (back) layers.body = e(100, 139, 28, 29);
-    }
-    if (id === "lucario") {
-      if (profile)
-        layers.head += `<path d="M${px(77)} 78Q${px(94)} 69 ${px(121)} 76L${px(123)} 94 ${px(103)} 99 ${px(85)} 91Z" fill="#303d55"/>`;
-      if (back) layers.body = e(100, 139, 28, 29);
+    if (id === "duskveil") {
+      layers.armL = "";
+      layers.armR = `${path(`M${px(118)} 124Q${px(136)} 134 ${px(136)} 152L${px(124)} 150Q${px(122)} 138 ${px(112)} 132Z`, body)}`;
     }
   }
   return { defs, layers };
