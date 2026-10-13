@@ -3,6 +3,7 @@ import { CHARACTERS, type CharacterId } from "@arena/shared";
 import { type FighterPack } from "./asset-schema";
 import { fighterPack } from "./pack-config";
 import { FighterRig } from "./rig";
+import { PortraitFighterVisual } from "./portrait-rig";
 import {
   AnimationController,
   facing,
@@ -39,6 +40,10 @@ export function queueFighterAssets(
   const pack = fighterPack(id),
     path = `/assets/fighters/${id}/`,
     texture = `frames-${id}`;
+  if (id === "voltkit" && pack?.kind === "layered") {
+    scene.load.image(`portrait-${id}`, path + pack.portrait);
+    return;
+  }
   if (!pack || pack.kind === "layered") {
     for (const a of layers)
       scene.load.svg(a.key, a.url, { width: a.width, height: a.height });
@@ -63,6 +68,8 @@ export function createFighterVisual(
   layers: RigAsset[],
 ): FighterVisual {
   const pack = fighterPack(id);
+  if (id === "voltkit" && pack?.kind === "layered")
+    return new PortraitFighterVisual(scene, id);
   if (!pack || pack.kind === "layered")
     return new FighterRig(scene, id, layers);
   const texture = `frames-${id}`;

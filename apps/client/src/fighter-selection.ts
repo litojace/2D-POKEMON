@@ -5,7 +5,7 @@ import { abilityIcon } from "./ability-icons";
 function art(id: CharacterId, large = false) {
   const pack = fighterPack(id);
   return pack && (pack.kind !== "layered" || !pack.portrait.endsWith(".svg"))
-    ? `<img class="creature-portrait" loading="lazy" decoding="async" src="/assets/fighters/${id}/${large ? pack.selection : pack.portrait}" alt="${CHARACTERS[id].name}">`
+    ? `<img class="creature-portrait ${id === "voltkit" ? "voltkit-pilot" : ""}" loading="lazy" decoding="async" src="/assets/fighters/${id}/${large ? pack.selection : pack.portrait}" alt="${CHARACTERS[id].name}">`
     : fighterArt(id);
 }
 export function fighterSelection(selected: CharacterId, element = "All") {

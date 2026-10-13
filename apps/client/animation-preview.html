@@ -135,18 +135,28 @@
               jump: state === "jump",
             },
             400,
-            200,
+            rig.character === "voltkit" &&
+              fighterPack(rig.character)?.kind === "layered"
+              ? 280
+              : 200,
             clock,
             1,
             document.querySelector("#reduced").checked,
           );
-          rig.root.setScale(3);
+          rig.root.setScale(
+            rig.character === "voltkit" &&
+              fighterPack(rig.character)?.kind === "layered"
+              ? 2
+              : 3,
+          );
           document.querySelector("#status").textContent =
             c.name +
             " · " +
             rig.controller.state +
             (fighterPack(rig.character)?.kind === "layered"
-              ? " - articulated vector layers"
+              ? rig.character === "voltkit"
+                ? " - portrait motion pilot (directional artwork pending)"
+                : " - articulated vector layers"
               : " - imported frame animation");
         }
       }
