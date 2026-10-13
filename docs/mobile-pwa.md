@@ -14,11 +14,11 @@ DOM Pointer Events provide independent multi-finger capture for the DOM HUD. Pha
 
 Deploy first over HTTPS. Installation is optional.
 
-- **Android Chrome:** open `https://parena.litojace.com`, tap **Install app** when available, or use the browser menu → Install app / Add to Home screen.
+- **Android Chrome:** open `https://parena.litojace.com`, open **Menu → Want fullscreen?** for a one-tap install when available, or use the browser menu → Install app / Add to Home screen.
 - **iPhone / iPad Safari:** open the same address, use Share → Add to Home Screen → Add. Open the new icon for standalone play.
-- **Desktop:** use Install app or the browser's install control when supported.
+- **Desktop:** use **Menu → Want fullscreen?** or the browser's install control when supported.
 
-The manifest requests standalone landscape display. Fullscreen and orientation lock are requested only from user interaction and only where supported. iOS can ignore orientation/fullscreen requests; rotate manually and use the Home Screen app. Normal browser play remains supported.
+The manifest requests standalone landscape display, with a `fullscreen` display override that Chromium browsers use to hide the status bar. Fullscreen and orientation lock are requested only from user interaction and only where supported. iOS can ignore orientation/fullscreen requests; rotate manually and use the Home Screen app. Normal browser play remains supported.
 
 ## Caching and updates
 

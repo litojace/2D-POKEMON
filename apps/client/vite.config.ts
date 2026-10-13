@@ -25,6 +25,8 @@ export default defineConfig({
         start_url: "/",
         scope: "/",
         display: "standalone",
+        // Chrome/Edge open the installed app with no status bar; others fall back.
+        display_override: ["fullscreen", "standalone"],
         orientation: "landscape",
         theme_color: "#101c35",
         background_color: "#101c35",

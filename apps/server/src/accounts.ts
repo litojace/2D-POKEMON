@@ -11,6 +11,7 @@ import {
   titleGrantSchema,
   equipTitleSchema,
   type Account,
+  type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 export interface AccountProvider {
   authenticate(token: string): Promise<Account | null>;
@@ -93,6 +94,11 @@ export function installAccountRoutes(
   app: Express,
   provider: AccountProvider,
   onPlayerChanged: (id: string) => void,
+  listOnline: () => OnlineList = () => ({
+    players: [],
+    guests: 0,
+    at: new Date().toISOString(),
+  }),
 ) {
   const requests = new Map<string, { count: number; until: number }>();
   app.use("/api", (req, res, next) => {
@@ -271,6 +277,13 @@ export function installAccountRoutes(
         p_title_id: data.id,
       });
       res.json({ ok: true });
+    }),
+  );
+  app.get(
+    "/api/admin/online",
+    route(true, async (_req, res) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(listOnline());
     }),
   );
   app.post(

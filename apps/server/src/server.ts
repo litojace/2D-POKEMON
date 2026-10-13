@@ -23,7 +23,11 @@ import {
   AccountError,
   type AccountProvider,
 } from "./accounts.js";
-import type { Account } from "../../../packages/shared/src/accounts.js";
+import type {
+  Account,
+  OnlineList,
+  OnlinePlayer,
+} from "../../../packages/shared/src/accounts.js";
 import { ZodError } from "zod";
 import type { Request, Response, NextFunction } from "express";
 type Session = {
@@ -98,11 +102,73 @@ export function createArenaServer(
       socket.disconnect(true);
     }
   }
-  installAccountRoutes(app, accounts, (id) => {
-    for (const socket of io.sockets.sockets.values())
-      if ((socket.data.account as Account | undefined)?.id === id)
-        void refreshSocket(socket);
-  });
+  installAccountRoutes(
+    app,
+    accounts,
+    (id) => {
+      for (const socket of io.sockets.sockets.values())
+        if ((socket.data.account as Account | undefined)?.id === id)
+          void refreshSocket(socket);
+    },
+    listOnline,
+  );
+  /** Signed-in players with a live connection, merged per account. */
+  function listOnline(): OnlineList {
+    const byAccount = new Map<string, OnlinePlayer>();
+    let guests = 0;
+    for (const socket of io.sockets.sockets.values()) {
+      const account = socket.data.account as Account | undefined;
+      if (!account) {
+        guests++;
+        continue;
+      }
+      const since = new Date(socket.handshake.issued).toISOString();
+      const session = getSession(socket.id);
+      const arena = session ? rooms.get(session.code) : undefined;
+      const me = arena?.players.find((p) => p.id === session!.id);
+      const other = arena?.players.find((p) => p.id !== session!.id);
+      const activity: OnlinePlayer["activity"] = !arena
+        ? "menu"
+        : arena.practice
+          ? "practice"
+          : arena.phase === "lobby"
+            ? "lobby"
+            : "match";
+      const entry: OnlinePlayer = {
+        id: account.id,
+        displayName: account.displayName,
+        title: account.title ?? null,
+        titleColor: account.titleColor ?? null,
+        isAdmin: account.isAdmin,
+        connections: 1,
+        since,
+        activity,
+        room: arena && !arena.practice ? arena.code : null,
+        phase: arena?.phase ?? null,
+        fighter: me?.character ?? null,
+        opponent: arena?.practice ? null : (other?.name ?? null),
+      };
+      const existing = byAccount.get(account.id);
+      if (!existing) byAccount.set(account.id, entry);
+      else {
+        // Prefer the tab that is actually in a room; keep the earliest login time.
+        const merged =
+          existing.activity === "menu" && activity !== "menu"
+            ? entry
+            : existing;
+        merged.connections = existing.connections + 1;
+        merged.since = existing.since < since ? existing.since : since;
+        byAccount.set(account.id, merged);
+      }
+    }
+    const order = { match: 0, practice: 1, lobby: 2, menu: 3 };
+    const players = [...byAccount.values()].sort(
+      (a, b) =>
+        order[a.activity] - order[b.activity] ||
+        a.displayName.localeCompare(b.displayName),
+    );
+    return { players, guests, at: new Date().toISOString() };
+  }
   app.get("/api/health", (_req, res) =>
     res.json({ ok: true, rooms: rooms.size }),
   );
@@ -506,10 +572,7 @@ export function createArenaServer(
       withRoom(undefined, (a, id) => {
         const result = inputSchema.safeParse(data);
         if (result.success)
-          a.submit(
-            a.players.find((p) => p.id === id)!,
-            result.data,
-          );
+          a.submit(a.players.find((p) => p.id === id)!, result.data);
       }),
     );
     socket.on("rematch", (_data: unknown, cb: unknown) =>

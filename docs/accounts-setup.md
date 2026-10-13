@@ -92,9 +92,10 @@ Real email confirmation, Google OAuth, recovery, and deployed Supabase integrati
 
 ## Admin tools
 
-Signed-in admins see an **Admin** button with two tabs:
+Signed-in admins see an **Admin** button with three tabs:
 
 - **Players**: delete a title everywhere from the **Delete a title…** dropdown (with confirmation). Search, then per player: grant a title from the dropdown (or create a new one there), remove a title with ×, **Suspend/Unsuspend** (confirmation required) and **Delete** (you must type the player's name). Deleting removes the Supabase login, profile and titles permanently. Admin accounts can't be suspended or deleted from the panel.
+- **Online**: signed-in players connected right now, merged per account (with tab count), showing what each is doing — menus, lobby (room code), match (opponent, fighter, phase) or solo practice — and how long they've been connected. Also counts visitors who aren't signed in. Refreshes every 10 seconds while open; **Manage** jumps to that player in the Players tab. This comes from the game server's memory (`GET /api/admin/online`), so it needs no database migration and covers this server instance only.
 - **Reports**: problems sent by players from **Menu → Report a problem** (or the in-match settings). Filter open/resolved and mark them resolved or reopen them. Each report includes the reporter's screen, room code, fighter and device. Players can send up to 5 reports per 10 minutes.
 
 Every admin action is written to `arena_admin_audit`.

@@ -80,6 +80,31 @@ export interface ReportList {
   total: number;
   open: number;
 }
+/** What a signed-in, connected player is doing right now (admin "Online" tab). */
+export type OnlineActivity = "menu" | "lobby" | "match" | "practice";
+export interface OnlinePlayer {
+  id: string;
+  displayName: string;
+  title: string | null;
+  titleColor: string | null;
+  isAdmin: boolean;
+  /** Open tabs/devices connected with this account. */
+  connections: number;
+  /** ISO time of the earliest current connection. */
+  since: string;
+  activity: OnlineActivity;
+  room: string | null;
+  /** Lobby, briefing, playing, finished… while in a room. */
+  phase: string | null;
+  fighter: string | null;
+  opponent: string | null;
+}
+export interface OnlineList {
+  players: OnlinePlayer[];
+  /** Connected visitors who are not signed in. */
+  guests: number;
+  at: string;
+}
 export const titleUpdateSchema = titleSchema
   .extend({
     id: z.string().uuid().nullable(),

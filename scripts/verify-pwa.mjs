@@ -5,6 +5,7 @@ const manifest = JSON.parse(
   readFileSync(root + "manifest.webmanifest", "utf8"),
 );
 assert.equal(manifest.display, "standalone");
+assert.deepEqual(manifest.display_override, ["fullscreen", "standalone"]);
 assert.equal(manifest.orientation, "landscape");
 assert.equal(manifest.scope, "/");
 assert(manifest.icons.some((icon) => icon.purpose === "maskable"));

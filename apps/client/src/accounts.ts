@@ -7,7 +7,10 @@ import {
   type Title,
   type PlayerDirectory,
   type ReportList,
+  type OnlineList,
 } from "../../../packages/shared/src/accounts";
+import { CHARACTERS, type CharacterId } from "@arena/shared";
+import { renderOnline } from "./admin-online";
 const EYE =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg>';
 const EYE_OFF =
@@ -356,7 +359,7 @@ export class AccountUI {
     };
   }
   private adminView: {
-    tab: "players" | "reports";
+    tab: "players" | "reports" | "online";
     search: string;
     offset: number;
     status: "open" | "resolved" | "all";
@@ -370,13 +373,30 @@ export class AccountUI {
     reportOffset: 0,
     message: "",
   };
-  async showAdmin(changes: Partial<typeof this.adminView> = {}) {
+  private onlineTimer?: ReturnType<typeof setTimeout>;
+  /** `refresh` re-renders in place without the "Loading…" flash (online auto-refresh). */
+  async showAdmin(
+    changes: Partial<typeof this.adminView> = {},
+    refresh = false,
+  ) {
     if (!this.account?.isAdmin) return;
+    clearTimeout(this.onlineTimer);
     const view = Object.assign(this.adminView, { message: "" }, changes);
-    const header = (open: number | string) =>
-      `<div class="eyebrow">ADMINISTRATION</div><h2>Admin</h2><div class="admin-tabs" role="tablist"><button role="tab" class="admin-tab ${view.tab === "players" ? "active" : ""}" data-tab="players" aria-selected="${view.tab === "players"}">Players</button><button role="tab" class="admin-tab ${view.tab === "reports" ? "active" : ""}" data-tab="reports" aria-selected="${view.tab === "reports"}">Reports${open ? ` <b class="admin-count">${open}</b>` : ""}</button></div>`;
-    this.hooks.openDialog(`${header("")}<p>Loading…</p>`);
+    const tab = (id: typeof view.tab, label: string, count?: number | string) =>
+      `<button role="tab" class="admin-tab ${view.tab === id ? "active" : ""}" data-tab="${id}" aria-selected="${view.tab === id}">${label}${count ? ` <b class="admin-count${id === "online" ? " live" : ""}">${count}</b>` : ""}</button>`;
+    const header = (open: number | string, online: number | string = "") =>
+      `<div class="eyebrow">ADMINISTRATION</div><h2>Admin</h2><div class="admin-tabs" role="tablist">${tab("players", "Players")}${tab("online", "Online", online)}${tab("reports", "Reports", open)}</div>`;
+    if (!refresh) this.hooks.openDialog(`${header("")}<p>Loading…</p>`);
     try {
+      // Who's online comes from the game server's memory; it never blocks the rest.
+      let onlineError = "";
+      const onlineRequest = (
+        this.api("/api/admin/online") as Promise<OnlineList>
+      ).catch((error: unknown) => {
+        onlineError =
+          error instanceof Error ? error.message : "Online list unavailable.";
+        return { players: [], guests: 0, at: new Date().toISOString() };
+      });
       // Reports are optional: if they can't load, the player tools still work.
       let reportsError = "";
       const reports = (await this.api(
@@ -386,6 +406,7 @@ export class AccountUI {
           error instanceof Error ? error.message : "Reports are unavailable.";
         return { reports: [], total: 0, open: 0 };
       })) as ReportList;
+      const online = await onlineRequest;
       let body = "";
       let titles: Title[] = [];
       let players: PlayerDirectory["players"] = [];
@@ -424,6 +445,13 @@ export class AccountUI {
             })
             .join("") || "<p>No players found.</p>"
         }</div><div class="admin-pagination"><button id="admin-prev" class="quiet" ${view.offset === 0 ? "disabled" : ""}>Previous</button><span>${total ? `${view.offset + 1}–${Math.min(view.offset + 50, total)} of ${total}` : "0 players"}</span><button id="admin-next" class="quiet" ${view.offset + 50 >= total ? "disabled" : ""}>Next</button></div>`;
+      } else if (view.tab === "online") {
+        body = onlineError
+          ? `<p class="admin-notice">${escape(onlineError)}</p>`
+          : renderOnline(
+              online,
+              (id) => CHARACTERS[id as CharacterId]?.name ?? id,
+            );
       } else {
         body = `<div class="report-filter" role="group" aria-label="Report status">${(["open", "resolved", "all"] as const).map((s) => `<button class="${view.status === s ? "active" : ""}" data-status="${s}">${s[0].toUpperCase() + s.slice(1)}</button>`).join("")}</div><div class="admin-list">${
           reports.reports
@@ -442,7 +470,7 @@ export class AccountUI {
         }</div><div class="admin-pagination"><button id="report-prev" class="quiet" ${view.reportOffset === 0 ? "disabled" : ""}>Previous</button><span>${reports.total ? `${view.reportOffset + 1}–${Math.min(view.reportOffset + 50, reports.total)} of ${reports.total}` : ""}</span><button id="report-next" class="quiet" ${view.reportOffset + 50 >= reports.total ? "disabled" : ""}>Next</button></div>`;
       }
       this.hooks.openDialog(
-        `${header(reports.open)}${reportsError ? `<p class="admin-notice">${escape(reportsError)}</p>` : ""}${view.tab === "reports" && reportsError ? "" : body}<p id="admin-message" role="status">${escape(view.message)}</p>`,
+        `${header(reports.open, onlineError ? "" : online.players.length)}${reportsError ? `<p class="admin-notice">${escape(reportsError)}</p>` : ""}${view.tab === "reports" && reportsError ? "" : body}<p id="admin-message" role="status">${escape(view.message)}</p>`,
       );
       const say = (text: string) =>
         (element("admin-message").textContent = text);
@@ -452,9 +480,36 @@ export class AccountUI {
         (tab) =>
           (tab.onclick = () =>
             void this.showAdmin({
-              tab: tab.dataset.tab as "players" | "reports",
+              tab: tab.dataset.tab as typeof view.tab,
             })),
       );
+      if (view.tab === "online") {
+        if (onlineError) return;
+        element("online-refresh").onclick = () => void this.showAdmin({}, true);
+        document.querySelectorAll<HTMLButtonElement>("[data-manage]").forEach(
+          (button) =>
+            (button.onclick = () =>
+              void this.showAdmin({
+                tab: "players",
+                search:
+                  button.closest<HTMLElement>("[data-online]")!.dataset
+                    .online ?? "",
+                offset: 0,
+              })),
+        );
+        this.onlineTimer = setTimeout(() => {
+          const dialog = document.getElementById(
+            "dialog",
+          ) as HTMLDialogElement | null;
+          if (
+            dialog?.open &&
+            this.adminView.tab === "online" &&
+            document.getElementById("online-refresh")
+          )
+            void this.showAdmin({}, true);
+        }, 10000);
+        return;
+      }
       if (view.tab === "reports") {
         if (reportsError) return;
         document.querySelectorAll<HTMLButtonElement>("[data-status]").forEach(

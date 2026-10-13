@@ -356,3 +356,63 @@ it("does not let another account release a disconnected room token", async () =>
   expect((await emit(stranger, "leave", { token: room.token })).ok).toBe(false);
   expect(server.sessions.has(room.token!)).toBe(true);
 });
+it("lists who is online for administrators only", async () => {
+  const admin = accounts.add(),
+    host = accounts.add(false),
+    rival = accounts.add(false),
+    solo = accounts.add(false);
+  const online = (token?: string) =>
+    fetch(`${url}/api/admin/online`, {
+      headers: token ? { authorization: `Bearer ${token}` } : {},
+    });
+  expect((await online()).status).toBe(401);
+  expect((await online(host.token)).status).toBe(403);
+  await connect(admin.token);
+  await connect(admin.token); // second tab merges into one entry
+  await connect(); // guest
+  const hostSocket = await connect(host.token);
+  const room = await emit(hostSocket, "create", { name: "Host" });
+  const rivalSocket = await connect(rival.token);
+  expect(
+    (await emit(rivalSocket, "join", { name: "Rival", code: room.code })).ok,
+  ).toBe(true);
+  const soloSocket = await connect(solo.token);
+  expect(
+    (await emit(soloSocket, "practice", { name: "Solo", character: "tidefin" }))
+      .ok,
+  ).toBe(true);
+  const response = await online(admin.token);
+  expect(response.status).toBe(200);
+  const list =
+    (await response.json()) as import("../../packages/shared/src/accounts").OnlineList;
+  expect(list.guests).toBe(1);
+  expect(list.players).toHaveLength(4);
+  const byId = Object.fromEntries(list.players.map((p) => [p.id, p]));
+  expect(byId[admin.account.id]).toMatchObject({
+    activity: "menu",
+    connections: 2,
+    isAdmin: true,
+    room: null,
+  });
+  expect(byId[host.account.id]).toMatchObject({
+    activity: "lobby",
+    room: room.code,
+    opponent: rival.account.displayName,
+  });
+  expect(byId[rival.account.id]).toMatchObject({
+    activity: "lobby",
+    opponent: host.account.displayName,
+  });
+  expect(byId[solo.account.id]).toMatchObject({
+    activity: "practice",
+    room: null,
+    fighter: "tidefin",
+    opponent: null,
+  });
+  // Busiest players first, menus last.
+  expect(list.players.at(-1)!.id).toBe(admin.account.id);
+  rivalSocket.disconnect();
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  const after = (await (await online(admin.token)).json()) as typeof list;
+  expect(after.players.map((p) => p.id)).not.toContain(rival.account.id);
+});

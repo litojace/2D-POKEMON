@@ -3587,3 +3587,112 @@ dialog:has(.admin-tabs) {
   color: #ffb3ba;
   font-size: 12px;
 }
+.fullscreen-steps {
+  margin: 0.4rem 0 0.8rem;
+  padding-left: 1.3rem;
+  display: grid;
+  gap: 0.35rem;
+  line-height: 1.4;
+}
+.fullscreen-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.6rem 0;
+}
+.fullscreen-note {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+.admin-count.live {
+  background: #3ccf7a;
+  color: #0e2a1a;
+}
+.online-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.online-summary b {
+  color: #fff;
+  font-size: 15px;
+}
+.online-summary button {
+  margin-left: auto;
+}
+.online-row {
+  gap: 6px;
+}
+.online-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #3ccf7a;
+  box-shadow: 0 0 0 3px #3ccf7a33;
+}
+.online-dot.menu {
+  background: #8fa3c2;
+  box-shadow: 0 0 0 3px #8fa3c233;
+}
+.online-dot.lobby {
+  background: #f7d780;
+  box-shadow: 0 0 0 3px #f7d78033;
+}
+.online-dot.practice {
+  background: #63dce8;
+  box-shadow: 0 0 0 3px #63dce833;
+}
+.online-dot.match {
+  animation: online-pulse 1.6s ease-in-out infinite;
+}
+@keyframes online-pulse {
+  50% {
+    box-shadow: 0 0 0 6px #3ccf7a00;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .online-dot.match {
+    animation: none;
+  }
+}
+.online-state {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #ffffff12;
+  color: #c1cfe4;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.online-state.match {
+  background: #3ccf7a26;
+  color: #7ff0ad;
+}
+.online-activity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: #c1cfe4;
+  font-size: 13px;
+}
+.online-activity code {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #0d1a30;
+  color: #f7d780;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+.online-activity button {
+  margin-left: auto;
+}
+.online-note {
+  color: var(--muted);
+  font-size: 11px;
+}

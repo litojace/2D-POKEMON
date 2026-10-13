@@ -1,5 +1,6 @@
 import { registerSW } from "virtual:pwa-register";
 import { safeToUpdate, peerMatchActive } from "./pwa-policy";
+import { fullscreenHelp, fullscreenPlatform } from "./fullscreen-help";
 interface InstallPrompt extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: string }>;
@@ -105,22 +106,57 @@ export function setupPWA(
     install = undefined;
     notify("Element Arena installed. Open it from your home screen.");
   });
-  document.getElementById("install-app")!.onclick = async () => {
-    if (install) {
-      const prompt = install;
-      await prompt.prompt();
-      await prompt.userChoice;
-      install = undefined;
-      return;
-    }
+  document.getElementById("install-app")!.onclick = () => {
+    const nav = navigator as Navigator & { standalone?: boolean };
     const standalone =
       matchMedia("(display-mode: standalone)").matches ||
-      (navigator as Navigator & { standalone?: boolean }).standalone;
-    openDialog(
-      standalone
-        ? "<h2>Your arena is installed.</h2><p>You are already playing in standalone mode.</p>"
-        : "<h2>Install Element Arena</h2><p><b>iPhone / iPad:</b> Open this site in Safari, tap Share, then Add to Home Screen and Add.</p><p><b>Android:</b> Open in Chrome and choose Install app or Add to Home screen from the browser menu.</p><p>Installation needs HTTPS and a supported browser. Online battles still need internet access.</p>",
+      matchMedia("(display-mode: fullscreen)").matches ||
+      nav.standalone === true;
+    const platform = fullscreenPlatform(
+      navigator.userAgent,
+      navigator.maxTouchPoints,
     );
+    const canFullscreen =
+      !!document.documentElement.requestFullscreen && platform !== "iphone";
+    openDialog(
+      fullscreenHelp({
+        standalone,
+        platform,
+        canPrompt: !!install,
+        canFullscreen,
+      }),
+    );
+    const dialog = document.getElementById("dialog")!;
+    // The close button also resets the game's "menu open" input guard.
+    const closeDialog = () =>
+      dialog.querySelector<HTMLButtonElement>("#close-dialog")?.click();
+    const promptButton = dialog.querySelector<HTMLButtonElement>(
+      "#fullscreen-install",
+    );
+    if (promptButton)
+      promptButton.onclick = async () => {
+        const prompt = install;
+        if (!prompt) return;
+        install = undefined;
+        await prompt.prompt();
+        const { outcome } = await prompt.userChoice;
+        closeDialog();
+        if (outcome !== "accepted")
+          notify("No problem. You can add it to your home screen any time.");
+      };
+    const nowButton =
+      dialog.querySelector<HTMLButtonElement>("#fullscreen-now");
+    if (nowButton)
+      nowButton.onclick = async () => {
+        closeDialog();
+        try {
+          await document.documentElement.requestFullscreen();
+        } catch {
+          notify(
+            "This browser blocked fullscreen. Add the game to your home screen instead.",
+          );
+        }
+      };
   };
   window.addEventListener("offline", () =>
     notify(
