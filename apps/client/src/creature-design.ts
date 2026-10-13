@@ -83,160 +83,133 @@ export const creaturePalette: Record<
 export function creatureLayers(id: CharacterId, dir: Facing) {
   const p = creaturePalette[id],
     prefix = `${id}-${dir}`;
-  const profile = dir === "left" || dir === "right",
+  const back = dir === "up",
+    profile = dir === "left" || dir === "right",
     side = dir === "left" ? -1 : 1;
-  const bodyFill = `url(#${prefix}-body)`,
-    faceFill = `url(#${prefix}-face)`;
-  const defs = `<defs><radialGradient id="${prefix}-body" cx="30%" cy="22%" r="80%"><stop stop-color="${p.light}"/><stop offset=".5" stop-color="${p.mid}"/><stop offset="1" stop-color="${p.dark}"/></radialGradient><radialGradient id="${prefix}-face" cx="30%" cy="22%" r="85%"><stop stop-color="${p.light}"/><stop offset=".7" stop-color="${p.mid}"/><stop offset="1" stop-color="${p.dark}"/></radialGradient><radialGradient id="${prefix}-shine"><stop stop-color="white"/><stop offset=".3" stop-color="${p.glow}"/><stop offset="1" stop-color="${p.mid}"/></radialGradient></defs>`;
-  const ellipse = (
-    x: number,
-    y: number,
-    rx: number,
-    ry: number,
-    fill = bodyFill,
-  ) => `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${fill}"/>`;
+  const body = `url(#${prefix}-body)`,
+    face = `url(#${prefix}-face)`,
+    pearl = `url(#${prefix}-pearl)`,
+    jewel = `url(#${prefix}-jewel)`;
+  const defs = `<defs>
+    <radialGradient id="${prefix}-body" cx="27%" cy="17%" r="92%"><stop stop-color="${p.light}"/><stop offset=".38" stop-color="${p.mid}"/><stop offset="1" stop-color="${p.dark}"/></radialGradient>
+    <radialGradient id="${prefix}-face" cx="32%" cy="20%" r="83%"><stop stop-color="${p.light}"/><stop offset=".6" stop-color="${p.mid}"/><stop offset="1" stop-color="${p.dark}"/></radialGradient>
+    <radialGradient id="${prefix}-pearl" cx="30%" cy="12%"><stop stop-color="#ffffff"/><stop offset=".5" stop-color="${p.light}"/><stop offset="1" stop-color="${p.mid}"/></radialGradient>
+    <linearGradient id="${prefix}-jewel" x2=".8" y2="1"><stop stop-color="#ffffff"/><stop offset=".28" stop-color="${p.glow}"/><stop offset="1" stop-color="${p.mid}"/></linearGradient>
+    <radialGradient id="${prefix}-shine"><stop stop-color="#ffffff"/><stop offset=".4" stop-color="${p.glow}"/><stop offset="1" stop-color="${p.mid}"/></radialGradient>
+  </defs>`;
+  const e = (x: number, y: number, rx: number, ry: number, fill = body) =>
+    `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${fill}"/>`;
+  const crystal = (x: number, y: number, size: number) =>
+    `<path d="m${x} ${y - size} ${size * 0.65} ${size} -${size * 0.65} ${size} -${size * 0.65} -${size}Z" fill="${jewel}"/><path d="M${x} ${y - size}V${y + size}" stroke="#fff" opacity=".5"/>`;
+  const paw = (x: number, y: number, large = false) =>
+    `<path d="M${x - 10} ${y - 19}q-7 12-5 24 15 9 30 0 2-13-5-24Z" fill="${body}"/>${e(x, y + 4, large ? 17 : 14, 9)}<path d="m${x - 7} ${y + 7}v4m7-4v5m7-5v4" stroke="${p.light}" stroke-width="2.5"/>`;
   const eye = (x: number) =>
-    `${ellipse(x, 86, 8, 11, "#14233b")}<ellipse cx="${x - 2}" cy="82" rx="3" ry="4" fill="white"/><circle cx="${x + 3}" cy="91" r="1.5" fill="${p.glow}"/>`;
+    `<path d="M${x - 10} 80q10-6 19 0" stroke="${p.dark}" stroke-width="3" fill="none"/>${e(x, 88, 9, 12, "#102038")}${e(x + 1, 91, 5, 7, p.glow)}${e(x - 3, 84, 3.5, 4.5, "#ffffff")}<circle cx="${x + 4}" cy="94" r="1.5" fill="#fff"/>`;
+  const eyes = back ? "" : profile ? eye(100 + side * 18) : eye(80) + eye(120);
+  const muzzle = back
+    ? ""
+    : `${e(100, 109, 24, 11, pearl)}<path d="m95 104 5 5 5-5Z" fill="${p.dark}"/><path d="M90 111q5 7 10 0 5 7 10 0" stroke="${p.dark}" fill="none" stroke-width="1.7"/>`;
+  const cheeks = `<path d="M63 92 51 99l11 5-7 9 15 1m67-22 12 7-11 5 7 9-15 1" fill="${face}"/>`;
   const layers: Record<CreaturePart, string> = {
     tail: "",
     wings: "",
-    legL: ellipse(78, 159, 15, 9),
-    legR: ellipse(122, 159, 15, 9),
-    body: ellipse(100, 136, 30, 31),
-    armL: ellipse(65, 137, 10, 18),
-    armR: ellipse(135, 137, 10, 18),
-    head: ellipse(100, 92, 43, 32, faceFill),
+    legL: paw(78, 161),
+    legR: paw(122, 161),
+    body: `${e(100, 139, 34, 29)}${back ? "" : e(100, 142, 19, 21, pearl)}<path d="M76 120q16-10 27-7" stroke="${p.light}" stroke-width="3" opacity=".65" fill="none"/>`,
+    armL: paw(64, 143),
+    armR: paw(136, 143),
+    head: `${e(100, 88, 40, 32, face)}${cheeks}${muzzle}<path d="M73 68q12-8 25-7" stroke="${p.light}" stroke-width="4" stroke-linecap="round" opacity=".8" fill="none"/>`,
     ears: "",
-    eyes:
-      dir === "up" ? "" : profile ? eye(100 + side * 17) : eye(80) + eye(120),
+    eyes,
     scarf: "",
     flame: "",
   };
   if (id === "voltkit") {
-    layers.body =
-      ellipse(100, 137, profile ? 25 : 32, 29, "#36384e") +
-      `<path d="M76 126q24-16 48 0v22q-24 20-48 0Z" fill="${bodyFill}"/><path d="M80 135q20 8 40 0m-38 9q18 8 36 0" stroke="#3b3950" stroke-width="4" fill="none"/>`;
-    layers.head = `<rect x="${profile ? 64 : 53}" y="63" width="${profile ? 76 : 94}" height="60" rx="29" fill="${faceFill}"/><path d="M62 84q38-18 76 0v17q-38 19-76 0Z" fill="#36384e"/>${dir === "up" ? '<path d="M80 82h40m-34 11h28" stroke="#ffe778" stroke-width="4"/>' : '<path d="M94 110q6 5 12 0" fill="none" stroke="#45304a" stroke-width="2"/>'}`;
-    layers.ears = `<path d="M80 65Q63 39 65 29m55 36q17-26 15-36" stroke="#343b54" stroke-width="6" fill="none"/>${ellipse(65, 28, 8, 8, `url(#${prefix}-shine)`)}${ellipse(135, 28, 8, 8, `url(#${prefix}-shine)`)}<circle cx="62" cy="25" r="2" fill="white"/><circle cx="132" cy="25" r="2" fill="white"/>`;
-    layers.armL = `<path d="M65 123q-13 9-11 20l10 11 10-9-3-17Z" fill="${bodyFill}"/>`;
-    layers.armR = `<path d="M135 123q13 9 11 20l-10 11-10-9 3-17Z" fill="${bodyFill}"/>`;
-    layers.tail = `<path d="M130 141q31 11 26-16" fill="none" stroke="#343b54" stroke-width="7"/>${ellipse(157, 123, 7, 7, `url(#${prefix}-shine)`)} `;
+    layers.ears = `<path d="M77 69Q42 51 48 13q29 13 38 48m28 0q9-35 38-48 6 38-29 56" fill="${body}"/><path d="M76 57 56 25l3 23 13 16m52-7 20-32-3 23-13 16" fill="#292d43"/><path d="m57 26 10 16m76-16-10 16" stroke="${p.glow}" stroke-width="3"/>`;
+    layers.scarf = `<path d="m69 111-12 10 18-1-7 14 19-5 13 14 13-14 19 5-7-14 18 1-12-10" fill="#35354b"/><path d="m83 115 17 15 17-15" stroke="${p.glow}" fill="none" stroke-width="3"/>`;
+    layers.tail =
+      side === 1 && profile
+        ? `<path d="M72 142 44 137 52 117 29 99 42 73 63 96 54 112 81 128Z" fill="${body}"/><path d="m42 73 9 25-10 9" fill="#33354b"/>`
+        : `<path d="M128 142 156 137 148 117 171 99 158 73 137 96 146 112 119 128Z" fill="${body}"/><path d="m158 73-9 25 10 9" fill="#33354b"/>`;
+    layers.head += back
+      ? ""
+      : `<path d="m70 97-6 5 8 4m58-9 6 5-8 4" stroke="${p.glow}" fill="none" stroke-width="3"/>`;
   }
-
   if (id === "cindrake") {
-    layers.head = `<path d="M52 90q-8-28 48-29t48 29q12 32-48 35T52 90Z" fill="${faceFill}"/><path d="M64 106q36 13 72 0" stroke="#9b4944" stroke-width="2" fill="none"/>`;
-    layers.body =
-      ellipse(100, 137, 30, 29) +
-      ellipse(100, 143, 18, 20, "#ffd29a") +
-      '<circle cx="83" cy="130" r="3" fill="#f9c06f"/><circle cx="118" cy="130" r="3" fill="#f9c06f"/>';
-    layers.flame = `<path d="M81 66q-14-18 4-31 1 14 8 6 6-14 13-19-4 17 9 20 4-7 3-14 22 26 0 38Z" fill="url(#${prefix}-shine)"/><path d="M93 64q-5-13 9-24 0 10 8 13l-4 11Z" fill="#fff7c4"/>`;
-    layers.tail = `<path d="M126 141q57 15 44-41 24 53-16 65l-31-13Z" fill="${bodyFill}"/><path d="M145 151q17 4 20-14" stroke="#f9c77f" stroke-width="5" fill="none"/>`;
-    layers.armL = ellipse(65, 135, 11, 17) + ellipse(59, 150, 12, 6, "#dc6644");
-    layers.armR =
-      ellipse(135, 135, 11, 17) + ellipse(141, 150, 12, 6, "#dc6644");
+    layers.ears = `<path d="M76 68 67 39 89 57m35 11 9-29-22 18" fill="${body}"/>`;
+    layers.flame = `<path d="M78 66q-14-22 7-40-2 16 9 11 3-20 15-30-4 26 10 33l7-17q18 29-5 43Z" fill="${jewel}"/><path d="M91 63q-5-14 13-28-2 16 10 21l-6 8Z" fill="#fff1b0"/>`;
+    layers.wings = `<path d="M71 121 35 91l3 27-14 10 24 7 20 12m61-26 36-30-3 27 14 10-24 7-20 12" fill="${body}"/><path d="m37 103 28 29m98-29-28 29" stroke="#ffd69b" opacity=".6" stroke-width="2"/>`;
+    layers.tail =
+      profile && side === 1
+        ? `<path d="M74 145q-50 31-45-37 10 42 44 22Z" fill="${body}"/>${crystal(32, 96, 17)}`
+        : `<path d="M126 145q50 31 45-37-10 42-44 22Z" fill="${body}"/>${crystal(168, 96, 17)}`;
+    layers.scarf = `<path d="m70 114 14 13 16-9 16 9 14-13" fill="${jewel}"/>`;
   }
   if (id === "tidefin") {
-    layers.head = `<path d="M57 85q0-27 43-24t43 24q14 36-43 36T57 85Z" fill="${faceFill}"/>${ellipse(100, 108, 25, 9, "#b9f5ef")}<path d="M94 107q6 6 12 0" stroke="#28638a" fill="none"/>`;
-    layers.wings = `<path d="M69 90 28 70q-4 31 32 49l-30 9q30 22 47-6m54-32 41-20q4 31-32 49l30 9q-30 22-47-6" fill="${bodyFill}"/><path d="M35 82l27 22m103-22-27 22" stroke="#b4faff" stroke-width="3"/>`;
-    layers.body =
-      ellipse(100, 139, 25, 29) + ellipse(100, 140, 13, 22, "#b4efe9");
-    layers.armL = `<path d="M68 123q-22 4-24 30 24 1 31-19Z" fill="${bodyFill}"/>`;
-    layers.armR = `<path d="M132 123q22 4 24 30-24 1-31-19Z" fill="${bodyFill}"/>`;
-    layers.tail = `<path d="M123 147q50-1 48-40 23 50-39 56Z" fill="${bodyFill}"/><path d="m153 150 30 7-5-26Z" fill="#98eff3"/>`;
+    layers.ears = `<path d="M78 70Q53 57 62 21l21 25-6 12m46 12q25-13 16-49l-21 25 6 12" fill="${jewel}"/><path d="m65 32 9 23m61-23-9 23" stroke="#dfffff" stroke-width="2"/>`;
+    layers.wings = `<path d="M66 82 31 61l12 27-20 9 23 9-9 21 37-18m60-27 35-21-12 27 20 9-23 9 9 21-37-18" fill="${jewel}"/><path d="M35 76 61 93 37 100m128-24-26 17 24 7" stroke="#efffff" fill="none" opacity=".65"/>`;
+    layers.tail =
+      profile && side === 1
+        ? `<path d="M72 141Q18 168 27 92q11 34 44 36Z" fill="${body}"/><path d="m29 107-16-18 5 45 18 7Z" fill="${jewel}"/>`
+        : `<path d="M128 141q54 27 45-49-11 34-44 36Z" fill="${body}"/><path d="m171 107 16-18-5 45-18 7Z" fill="${jewel}"/>`;
+    layers.scarf = `<path d="M71 119q29 19 58 0l-4 13q-25 14-50 0Z" fill="${pearl}"/>`;
   }
   if (id === "auralynx") {
-    layers.head = `<path d="m100 47 41 34-11 33-30 16-30-16-11-33Z" fill="${faceFill}"/><path d="m100 47-3 39-38-5m38 5 44-5m-44 5 3 44" stroke="#edd2ff" opacity=".65" fill="none" stroke-width="2"/>`;
-    layers.body = `<path d="m100 112 25 25-25 34-25-34Z" fill="${bodyFill}"/>${ellipse(100, 137, 9, 12, `url(#${prefix}-shine)`)} `;
-    layers.wings = `<path d="m36 89 14 11-5 21-14-13Zm128 0-14 11 5 21 14-13Z" fill="${faceFill}"/><path d="M42 130q58 38 116 0" stroke="#d5b8ff" opacity=".35" fill="none"/>`;
-    layers.armL =
-      '<path d="m65 122 9 12-11 19-11-16Z" fill="' + bodyFill + '"/>';
-    layers.armR =
-      '<path d="m135 122-9 12 11 19 11-16Z" fill="' + bodyFill + '"/>';
-    layers.legL = layers.legR = "";
-    layers.ears = '<path d="m100 19 9 13-9 16-9-16Z" fill="' + faceFill + '"/>';
+    layers.ears = `<path d="M76 69 57 20l32 30m35 19 19-49-32 30" fill="${pearl}"/><path d="m70 47-6-15 17 21m49-6 6-15-17 21" fill="${jewel}"/>${crystal(100, 39, 15)}`;
+    layers.head = `${e(100, 89, 39, 31, pearl)}${cheeks}${muzzle}`;
+    layers.scarf = `<path d="M67 109 58 127l20-4-1 15 23-13 23 13-1-15 20 4-9-18" fill="${jewel}"/>`;
+    layers.wings = `${crystal(37, 89, 10)}${crystal(164, 104, 12)}<path d="M33 122q67 28 134-6" stroke="${p.glow}" opacity=".4" fill="none"/>`;
+    layers.tail = `<path d="M130 143q31 20 40-8 7-23-13-25" fill="none" stroke="${p.mid}" stroke-width="14"/>${crystal(155, 106, 11)}`;
   }
   if (id === "thornback") {
-    layers.body = `<ellipse cx="100" cy="135" rx="46" ry="33" fill="${bodyFill}"/><path d="m100 111 21 11-4 24-17 12-17-12-4-24Z" fill="#628b61" stroke="#b9da96" stroke-width="3"/><path d="m79 122-21 5m63-5 21 5m-25 19 16 14m-50-14-16 14" stroke="#b9da96" stroke-width="2" fill="none"/>`;
-    layers.head =
-      ellipse(100, 96, 34, 27, faceFill) +
-      '<path d="M91 110q9 8 18 0" stroke="#45614f" fill="none"/>';
-    layers.wings = `<path d="M66 124Q30 90 48 87q34 2 42 30M110 113q30-39 48-26 10 20-33 33" fill="#91c778"/><path d="m50 94 26 20m65-16-22 15" stroke="#e1efac" fill="none"/><circle cx="139" cy="97" r="7" fill="#f5b5b5"/><circle cx="139" cy="97" r="3" fill="#ffe9a4"/>`;
-    layers.armL = ellipse(65, 143, 12, 17, "#849975");
-    layers.armR = ellipse(135, 143, 12, 17, "#849975");
-    layers.legL = ellipse(78, 162, 17, 9, "#64796b");
-    layers.legR = ellipse(122, 162, 17, 9, "#64796b");
+    layers.body = `${e(100, 133, 45, 35)}<path d="m100 106 25 15-5 29-20 12-20-12-5-29Z" fill="#376c56"/><path d="m100 108 1 48m-25-34 44 27m4-28-43 28" stroke="#b6db88" stroke-width="3"/>`;
+    layers.head = `${e(100, 92, 35, 27, face)}${muzzle}`;
+    layers.wings = `<path d="M79 120Q25 122 39 76q35 4 40 44m40 0q54 2 40-44-35 4-40 44" fill="${body}"/><path d="m43 84 27 30m87-30-27 30" stroke="#d9eea4" fill="none" stroke-width="3"/>`;
+    layers.ears = `<path d="M98 67Q69 44 86 23q31 7 19 40m-1-4q23-24 38-10-3 23-33 18" fill="${body}"/><path d="m91 33 9 26m31-7-23 9" stroke="#e1f3b6" fill="none" stroke-width="2"/>`;
+    layers.tail = `<path d="m133 148 28-8-12 24Z" fill="${body}"/>`;
+    layers.armL = paw(63, 144, true);
+    layers.armR = paw(137, 144, true);
   }
   if (id === "frostfang") {
-    layers.head = `<path d="M62 65q-13-20 5-17l17 14 16-9 16 9 17-14q18-3 5 17l9 13-5 13 5 12-12 13-20 6H85l-20-6-12-13 5-12-5-13Z" fill="${faceFill}"/>${ellipse(100, 107, 23, 13, "#f4fbff")}<path d="m94 104 6 6 6-6Z" fill="#638fa7"/>`;
-    layers.body = `<path d="M74 113q26-12 52 0l8 15-7 8 6 16-12 13H79l-12-13 6-16-7-8Z" fill="${bodyFill}"/>`;
-    layers.scarf =
-      '<path d="m67 99-22-7 14 13-16 5 22 4m68-15 22-7-14 13 16 5-22 4" stroke="#b4f8ff" stroke-width="3" fill="none"/>';
-    layers.armL = ellipse(65, 139, 11, 17, "#e4f3fa");
-    layers.armR = ellipse(135, 139, 11, 17, "#e4f3fa");
+    layers.head = `<path d="M65 70 80 65l20-11 20 11 15 5 12 13-8 11 6 12-16 13-29 5-29-5-16-13 6-12-8-11Z" fill="${pearl}"/>${muzzle}`;
+    layers.ears = `<path d="m76 67-20-34 4-21 29 37m35 18 20-34-4-21-29 37" fill="${jewel}"/>${crystal(100, 48, 18)}`;
+    layers.scarf = `<path d="m68 111-15 13 18 1-4 17 18-7 15 17 15-17 18 7-4-17 18-1-15-13" fill="${pearl}"/><path d="m80 115 12 17 8-11 8 11 12-17" fill="${jewel}"/>`;
+    layers.tail = `<path d="M130 142q38 24 40-13l-7-26-10 12-5-8-7 15 7 18-21-5Z" fill="${pearl}"/>`;
+    layers.wings = `${crystal(41, 111, 10)}${crystal(160, 117, 8)}`;
   }
   if (id === "duskveil") {
-    layers.head = `<path d="M63 83q-1-33 37-36 37 3 37 36l9 29-46 14-46-14Z" fill="${faceFill}"/><path d="M70 81q30-17 60 0l-7 23-23 8-23-8Z" fill="#211e39"/>`;
-    layers.body = `<path d="M75 113q25 10 50 0l16 40-18 17-15-7-17 7-17-10-15 6Z" fill="${bodyFill}"/><path d="M89 128q-6 20-9 27m24-25 8 28" stroke="#9b79ce" opacity=".5" fill="none"/>`;
-    layers.armL =
-      '<path d="M66 122q-25 6-20 26l26-9Z" fill="' + bodyFill + '"/>';
-    layers.armR =
-      '<path d="M134 122q25 6 20 26l-26-9Z" fill="' + bodyFill + '"/>';
-    layers.legL = layers.legR = "";
-    layers.eyes =
-      dir === "up"
-        ? ""
-        : profile
-          ? `<ellipse cx="${100 + side * 16}" cy="86" rx="7" ry="10" fill="#dcb9ff"/>`
-          : '<ellipse cx="80" cy="86" rx="8" ry="10" fill="#dcb9ff"/><ellipse cx="120" cy="86" rx="8" ry="10" fill="#dcb9ff"/>';
+    layers.head = `<path d="M62 86q-1-27 38-32 39 5 38 32l9 15-13 14-34 9-34-9-13-14Z" fill="${face}"/>${muzzle}`;
+    layers.ears = `<path d="M79 69Q39 41 60 14l29 34m32 21q40-28 19-55l-29 34" fill="${body}"/><path d="m63 26 11 26m63-26-11 26" stroke="${p.glow}" fill="none" stroke-width="3"/>`;
+    layers.eyes = back
+      ? ""
+      : profile
+        ? eye(100 + side * 18)
+        : eye(80) + eye(120);
+    layers.scarf = `<path d="M68 107 51 130l21-2-3 16 20-10 11 11 11-11 20 10-3-16 21 2-17-23" fill="${body}"/><path d="m84 117 16 10 16-10" stroke="${p.glow}" fill="none" stroke-width="2"/>`;
+    layers.tail = `<path d="M131 143q49 16 39-25-7-24-28-5-8 10 9 16-30-15-8-37 35-19 45 22 10 48-55 47Z" fill="${body}"/>`;
+    layers.wings = `<path d="M44 118q-17-19 3-42-8 20 7 31m102 11q17-19-3-42 8 20-7 31" stroke="${p.glow}" fill="none" opacity=".65" stroke-width="4"/>`;
   }
   if (id === "terradon") {
-    layers.head = `<path d="m66 58 34-9 34 9 13 24-10 32-37 11-37-11-10-32Z" fill="${faceFill}"/><path d="m66 58 10 24-13 32m71-56-10 24 13 32" stroke="#e9d8bc" opacity=".35" fill="none"/><path d="M87 108h26" stroke="#494957" stroke-width="3"/>`;
-    layers.body =
-      '<path d="m73 113 27-8 27 8 8 35-15 19H80l-15-19Z" fill="' +
-      bodyFill +
-      '"/><path d="m100 124 11 13-11 17-11-17Z" fill="' +
-      p.glow +
-      '"/>';
-    layers.armL =
-      '<path d="m62 117-16 7-4 22 14 16 22-6-3-26Z" fill="' +
-      bodyFill +
-      '"/><path d="m55 129 10 5-2 13-11-4Z" fill="' +
-      p.glow +
-      '"/>';
-    layers.armR =
-      '<path d="m138 117 16 7 4 22-14 16-22-6 3-26Z" fill="' +
-      bodyFill +
-      '"/><path d="m145 129-10 5 2 13 11-4Z" fill="' +
-      p.glow +
-      '"/>';
-    layers.ears =
-      '<path d="m91 59-3-24 12 7 9-19 7 38Z" fill="' + p.glow + '"/>';
-    layers.legL =
-      '<path d="m69 150 19 2 8 17-28 2-8-8Z" fill="' + bodyFill + '"/>';
-    layers.legR =
-      '<path d="m131 150-19 2-8 17 28 2 8-8Z" fill="' + bodyFill + '"/>';
+    layers.head = `<path d="m67 66 33-13 33 13 12 23-9 26-36 9-36-9-9-26Z" fill="${face}"/><path d="m67 66 8 24-11 25m69-49-8 24 11 25" stroke="${p.light}" opacity=".6" fill="none"/>${muzzle}`;
+    layers.body = `<path d="m69 115 31-12 31 12 9 29-20 23H80l-20-23Z" fill="${body}"/>${crystal(100, 136, 17)}<path d="M70 125 83 119m34 0 13 6" stroke="${p.light}" stroke-width="3"/>`;
+    layers.ears = `${crystal(80, 48, 19)}${crystal(105, 30, 25)}${crystal(129, 53, 17)}`;
+    layers.armL = `<path d="m59 120-17 7-3 24 18 11 19-7-2-28Z" fill="${body}"/>${crystal(57, 140, 8)}`;
+    layers.armR = `<path d="m141 120 17 7 3 24-18 11-19-7 2-28Z" fill="${body}"/>${crystal(143, 140, 8)}`;
+    layers.tail = `${crystal(148, 124, 19)}${crystal(165, 143, 11)}`;
+    layers.legL = paw(78, 161, true);
+    layers.legR = paw(122, 161, true);
   }
-
-  if (dir === "right") {
-    if (id === "voltkit")
-      layers.tail = `<path d="M70 141q-31 11-26-16" fill="none" stroke="#343b54" stroke-width="7"/>${ellipse(43, 123, 7, 7, `url(#${prefix}-shine)`)}`;
-    if (id === "cindrake")
-      layers.tail = `<path d="M74 141q-57 15-44-41-24 53 16 65l31-13Z" fill="${bodyFill}"/><path d="M55 151q-17 4-20-14" stroke="#f9c77f" stroke-width="5" fill="none"/>`;
-    if (id === "tidefin")
-      layers.tail = `<path d="M77 147q-50-1-48-40-23 50 39 56Z" fill="${bodyFill}"/><path d="m47 150-30 7 5-26Z" fill="#98eff3"/>`;
-  }
-  if (dir === "up") {
+  if (back) {
+    // Authored rear silhouette: no facial features or inner ear markings.
+    layers.head = `${e(100, 88, profile ? 32 : 40, 32, face)}<path d="M78 78q22 12 44 0" stroke="${p.light}" opacity=".6" fill="none" stroke-width="3"/>`;
     layers.eyes = "";
-    layers.head = layers.head.replace(
-      /<path[^>]*(?:stroke="#9b4944"|stroke="#28638a"|stroke="#45614f"|stroke="#494957"|d="M94 110|d="M91 110)[^>]*\/>/g,
-      "",
-    );
-    if (id === "duskveil")
-      layers.head = `<path d="M63 83q-1-33 37-36 37 3 37 36l9 29-46 14-46-14Z" fill="${faceFill}"/>`;
-    layers.head += `<path d="M80 90q20 12 40 0" stroke="${p.dark}" stroke-width="3" opacity=".35" fill="none"/>`;
+    if (id === "terradon")
+      layers.head = `<path d="m67 66 33-13 33 13 12 23-9 26-36 9-36-9-9-26Z" fill="${face}"/><path d="m70 77 30 9 30-9" fill="none" stroke="${p.light}"/>`;
+    layers.body += `<path d="M82 125q18-8 36 0" fill="none" stroke="${p.light}" opacity=".3" stroke-width="3"/>`;
   } else if (profile) {
-    // Narrow the facial anatomy while keeping authored appendages; never flip the whole creature.
     layers.head = `<g transform="translate(${side * 9} 0) translate(100 0) scale(.78 1) translate(-100 0)">${layers.head}</g>`;
+    // Separate side projection, preserving asymmetric authored parts rather than mirroring.
+    layers.body = `<g transform="translate(100 0) scale(.86 1) translate(-100 0)">${layers.body}</g>`;
   }
   return { defs, layers };
 }
@@ -247,8 +220,10 @@ export function creatureSvg(
   viewBox = "0 0 200 190",
 ) {
   const { defs, layers } = creatureLayers(id, dir);
+  const group = (p: CreaturePart) =>
+    `<g class="fighter-${p === "body" ? "torso" : p}">${layers[p]}</g>`;
   const content = part
     ? layers[part]
-    : `<ellipse cx="100" cy="177" rx="40" ry="8" fill="#060d24" opacity=".25"/>${creatureParts.map((p) => `<g class="fighter-${p === "body" ? "torso" : p}">${layers[p]}</g>`).join("")}`;
+    : `<ellipse cx="100" cy="177" rx="40" ry="8" fill="#060d24" opacity=".25"/>${(["tail", "wings", "legL", "legR", "body", "armL", "armR"] as CreaturePart[]).map(group).join("")}<g class="fighter-face">${(["head", "ears", "eyes", "flame"] as CreaturePart[]).map(group).join("")}</g>${group("scarf")}`;
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}">${defs}<g stroke="${creaturePalette[id].dark}" stroke-width="1.25" stroke-linejoin="round">${content}</g></svg>`;
 }

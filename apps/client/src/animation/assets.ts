@@ -38,7 +38,12 @@ export function rigAssets(id: CharacterId): RigAsset[] {
   return (["up", "down", "left", "right"] as Facing[]).flatMap((dir) =>
     parts.map((part) => {
       const { bounds: b, pivot: defaultPivot } = definitions[part];
-      const q = dir === "right" && part === "tail" ? [70, 137] : defaultPivot;
+      const q =
+        dir === "right" &&
+        part === "tail" &&
+        ["voltkit", "cindrake", "tidefin"].includes(id)
+          ? [70, 137]
+          : defaultPivot;
       return {
         key: rigKey(id, dir, part),
         url:

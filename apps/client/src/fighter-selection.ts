@@ -4,7 +4,7 @@ import { fighterArt } from "./fighter-art";
 import { abilityIcon } from "./ability-icons";
 function art(id: CharacterId, large = false) {
   const pack = fighterPack(id);
-  return pack && (pack.kind !== "layered" || !pack.portrait.endsWith(".svg"))
+  return pack && pack.kind !== "layered"
     ? `<img class="creature-portrait ${id === "voltkit" ? "voltkit-pilot" : ""}" loading="lazy" decoding="async" src="/assets/fighters/${id}/${large ? pack.selection : pack.portrait}" alt="${CHARACTERS[id].name}">`
     : fighterArt(id);
 }

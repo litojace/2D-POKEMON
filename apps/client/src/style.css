@@ -1116,20 +1116,20 @@ dialog input[type="range"] {
   overflow: visible;
   filter: drop-shadow(0 10px 12px #0002);
 }
-.creature-card .fighter-body {
+.creature-card .fighter-torso {
   transform-origin: 100px 170px;
   animation: fighter-breathe 3s ease-in-out infinite;
 }
-.creature-card:nth-child(2) .fighter-body {
+.creature-card:nth-child(2) .fighter-torso {
   animation-delay: -0.7s;
 }
-.creature-card:nth-child(3) .fighter-body {
+.creature-card:nth-child(3) .fighter-torso {
   animation-delay: -1.5s;
 }
-.creature-card:nth-child(4) .fighter-body {
+.creature-card:nth-child(4) .fighter-torso {
   animation-delay: -2.2s;
 }
-.creature-card .fighter-head {
+.creature-card .fighter-face {
   transform-origin: 100px 110px;
   animation: fighter-look 5s ease-in-out infinite;
 }
@@ -1150,11 +1150,11 @@ dialog input[type="range"] {
   transform-origin: 100px 65px;
   animation: fighter-ear 3.7s ease-in-out infinite;
 }
-.creature-card:hover .fighter-body,
-.creature-card:focus-visible .fighter-body {
+.creature-card:hover .fighter-torso,
+.creature-card:focus-visible .fighter-torso {
   animation: fighter-hop 0.65s ease-in-out infinite;
 }
-.creature-card.selected .fighter-head {
+.creature-card.selected .fighter-face {
   animation: fighter-look 2.5s ease-in-out infinite;
 }
 .creature-card.selected .fighter-shadow {
@@ -2797,5 +2797,56 @@ dialog {
   .player-title::before,
   .player-title::after {
     animation: none;
+  }
+}
+/* Alive selection artwork uses the same independent parts as the Phaser rig. */
+.selected-art .fighter-face {
+  transform-origin: 100px 100px;
+  animation: fighter-look 5s ease-in-out infinite;
+}
+.selected-art .fighter-eyes {
+  transform-origin: 100px 86px;
+  animation: fighter-blink 4.8s infinite;
+}
+.selected-art .fighter-tail {
+  transform-origin: 130px 137px;
+  animation: fighter-wag 2.2s ease-in-out infinite;
+}
+.selected-art .fighter-wings {
+  transform-origin: 100px 115px;
+  animation: fighter-flap 2.5s ease-in-out infinite;
+}
+.creature-card .fighter-flame,
+.selected-art .fighter-flame {
+  transform-origin: 100px 65px;
+  animation: living-flame 0.8s ease-in-out infinite alternate;
+}
+.selected-art .fighter-legL {
+  transform-origin: 78px 151px;
+  animation: living-paw 4s ease-in-out infinite;
+}
+.selected-art .fighter-legR {
+  transform-origin: 122px 151px;
+  animation: living-paw 4s ease-in-out -2s infinite;
+}
+@keyframes living-flame {
+  to {
+    transform: scale(0.96, 1.08) rotate(2deg);
+  }
+}
+@keyframes living-paw {
+  0%,
+  70%,
+  100% {
+    transform: rotate(0);
+  }
+  80% {
+    transform: rotate(8deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .selected-art svg g,
+  .creature-card svg g {
+    animation: none !important;
   }
 }

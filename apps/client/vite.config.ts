@@ -14,6 +14,7 @@ export default defineConfig({
           "assets/*.{js,css}",
           "assets/fighters/**/*.{svg,png,webp,json}",
         ],
+        globIgnores: ["assets/fighters/**/portrait-showcase-v1.webp"],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
       },
       manifest: {

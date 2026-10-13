@@ -40,7 +40,11 @@
       import "./src/style.css";
       import Phaser from "phaser";
       import { FollowCamera } from "./src/follow-camera";
-      import { PortraitFighterVisual } from "./src/animation/portrait-rig";
+      import {
+        createFighterVisual,
+        queueFighterAssets,
+      } from "./src/animation/pipeline";
+      import { rigAssets } from "./src/animation/assets";
       import { TouchControls } from "./src/touch-controls";
       import { OBSTACLES } from "@arena/shared";
       document.body.classList.add("battle-active");
@@ -82,10 +86,7 @@
       class Demo extends Phaser.Scene {
         follow = new FollowCamera();
         preload() {
-          this.load.image(
-            "portrait-voltkit",
-            "/assets/fighters/voltkit/portrait-showcase-v1.webp",
-          );
+          queueFighterAssets(this, "voltkit", rigAssets("voltkit"));
         }
         create() {
           const g = this.add.graphics();
@@ -104,7 +105,7 @@
               fontSize: "24px",
               color: "#ffd65b",
             });
-          rig = new PortraitFighterVisual(this, "voltkit");
+          rig = createFighterVisual(this, "voltkit", rigAssets("voltkit"));
           new ResizeObserver(() => {
             this.scale.getParentBounds();
             this.scale.refresh();
