@@ -3146,8 +3146,21 @@ dialog {
   box-shadow: 0 0 10px color-mix(in srgb, var(--element) 55%, transparent);
 }
 .element-pill .element-icon {
+  display: block;
+  flex: 0 0 12px;
   width: 12px;
   height: 12px;
+  margin: 0;
+}
+.showcase-card .element-pill,
+.showcase-card .range-tag {
+  line-height: 1;
+  white-space: nowrap;
+}
+.showcase-card .element-pill .element-icon,
+.showcase-card .range-tag svg {
+  margin: 0;
+  filter: none;
 }
 .selected-info .element-pill {
   font-size: 10px;
@@ -3181,6 +3194,8 @@ dialog {
   border: 1px solid color-mix(in srgb, var(--element) 45%, transparent);
 }
 .range-tag svg {
+  display: block;
+  flex: 0 0 11px;
   width: 11px;
   height: 11px;
 }
@@ -3203,29 +3218,44 @@ dialog {
 }
 .showcase-card .card-skills {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 4px;
 }
 .showcase-card .card-skills > span {
-  display: grid;
-  justify-items: center;
-  gap: 1px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  gap: 4px;
   padding: 4px 0 3px;
   border-radius: 8px;
   background: #0a1426aa;
   border: 1px solid #ffffff10;
 }
 .showcase-card .card-skills .skill-icon {
+  flex: 0 0 auto;
   width: 22px;
   height: 22px;
+  margin: 0;
 }
 .showcase-card .card-skills i {
+  display: block;
+  line-height: 1;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
   font-style: normal;
   font-size: 8.5px;
   color: #c6d3ea;
 }
 .showcase-card .card-bottom {
-  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  text-align: left;
+  line-height: 1.2;
+  margin-top: auto;
   padding-top: 7px;
   font-size: 9px;
 }
