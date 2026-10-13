@@ -35,7 +35,7 @@ it("keeps full-width landscape controls inside the safe court", () => {
     expect(layout.width + layout.joystick + 32).toBeLessThanOrEqual(
       width - left - right,
     );
-    expect(layout.targets).toHaveLength(6);
+    expect(layout.targets).toHaveLength(7);
     expect(court.right - court.left).toBeGreaterThan(width - left - right - 10);
   }
 });

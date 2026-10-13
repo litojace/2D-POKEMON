@@ -1,7 +1,10 @@
 import {
   CHARACTERS,
+  DEBUFFS,
   RULES,
+  SKILL_SLOTS,
   STATUS_RULES,
+  basicInterval,
   advanceMovement,
   blankInput,
   blocked,
@@ -36,7 +39,7 @@ export class Arena {
   events: GameEvent[] = [];
   serial = 0;
   constructor(public code: string) {}
-  add(id: string, name: string, character: CharacterId = "voltkit"): Fighter {
+  add(id: string, name: string, character: CharacterId = "pikachu"): Fighter {
     const p: Fighter = {
       id,
       name,
@@ -50,7 +53,7 @@ export class Arena {
       vy: 0,
       angle: 0,
       ack: 0,
-      cooldowns: [0, 0, 0],
+      cooldowns: Array(SKILL_SLOTS).fill(0),
       basicAt: 0,
       dashAt: 0,
       jumpAt: 0,
@@ -140,7 +143,7 @@ export class Arena {
         vx: 0,
         vy: 0,
         angle: i === 0 ? 0 : Math.PI,
-        cooldowns: [0, 0, 0],
+        cooldowns: Array(SKILL_SLOTS).fill(0),
         basicAt: 0,
         dashAt: 0,
         jumpAt: 0,
@@ -150,7 +153,7 @@ export class Arena {
         immuneUntil: 0,
         recoveryUntil: 0,
         charge: undefined,
-        rush: undefined,
+        channel: undefined,
         clone: undefined,
         lastInput: blankInput(),
       });
@@ -183,16 +186,29 @@ export class Arena {
         nextTick: this.time + STATUS_RULES.burnInterval,
       });
   }
+  has(p: Fighter, kind: StatusKind) {
+    return p.statuses.some((s) => s.kind === kind && s.until > this.time);
+  }
   damage(target: Fighter, amount: number, owner: string, ability?: Ability) {
     if (target.hp <= 0 || this.phase !== "playing") return;
     if (ability?.ground && target.jumpUntil > this.time) return;
     const source = this.players.find((p) => p.id === owner);
-    const counter = target.statuses.some(
-      (s) => s.kind === "shield" && s.until > this.time,
-    );
+    const counter = this.has(target, "counter");
     if (amount > 0)
       target.statuses = target.statuses.filter((s) => s.kind !== "stealth");
-    let dealt = counter ? amount * STATUS_RULES.shieldReduction : amount;
+    let dealt = amount;
+    if (ability && source && this.has(source, "empower"))
+      dealt *= STATUS_RULES.empowerDamage;
+    if (
+      ability?.bonusVsStatus &&
+      target.statuses.some(
+        (s) => s.until > this.time && DEBUFFS.includes(s.kind),
+      )
+    )
+      dealt *= ability.bonusVsStatus;
+    if (this.has(target, "sleep")) dealt *= STATUS_RULES.sleepDamageTaken;
+    if (counter) dealt *= STATUS_RULES.counterReduction;
+    if (this.has(target, "shield")) dealt *= STATUS_RULES.shieldReduction;
     dealt = Math.min(target.hp, dealt);
     target.hp = Math.max(0, target.hp - dealt);
     target.stats.received += dealt;
@@ -203,7 +219,7 @@ export class Arena {
       CHARACTERS[target.character].color,
       Math.round(dealt),
     );
-    if (counter && source && source.hp > 0) {
+    if (counter && source && source !== target && source.hp > 0) {
       const reflected = Math.min(
         source.hp,
         amount * STATUS_RULES.counterReflection,
@@ -224,6 +240,16 @@ export class Arena {
       const dir = normalize(target.x - source.x, target.y - source.y);
       move(target, dir.x * ability.knockback, dir.y * ability.knockback);
     }
+  }
+  /** Enemy is in front of `p` within `range` and the cosine threshold `arc`. */
+  inArc(p: Fighter, enemy: Fighter, range: number, arc: number) {
+    const distance = Math.hypot(enemy.x - p.x, enemy.y - p.y);
+    const dot = Math.cos(Math.atan2(enemy.y - p.y, enemy.x - p.x) - p.angle);
+    return (
+      distance < range + RULES.radius &&
+      (distance < RULES.radius || dot > arc) &&
+      this.lineClear(p, enemy)
+    );
   }
   cast(p: Fighter, a: Ability) {
     p.statuses = p.statuses.filter((s) => s.kind !== "stealth");
@@ -251,10 +277,9 @@ export class Arena {
         projectile((i - ((a.count ?? 5) - 1) / 2) * 0.11);
     if (a.kind === "zone" && this.zones.length < RULES.maxZones) {
       const aim = p.lastInput;
-      const distance = Math.min(
-        a.range,
-        Math.hypot(aim.aimX - p.x, aim.aimY - p.y),
-      );
+      const distance = a.follow
+        ? 0
+        : Math.min(a.range, Math.hypot(aim.aimX - p.x, aim.aimY - p.y));
       const x = p.x + Math.cos(angle) * distance,
         y = p.y + Math.sin(angle) * distance;
       this.zones.push({
@@ -264,27 +289,88 @@ export class Arena {
         y,
         radius: a.radius,
         until: this.time + a.duration,
-        nextTick: this.time + 0.35,
+        nextTick: this.time + (a.tickDelay ?? 0.35),
         ability: a,
         color,
       });
     }
-    if (a.kind === "melee" && enemy) {
-      const distance = Math.hypot(enemy.x - p.x, enemy.y - p.y);
-      const dot = Math.cos(Math.atan2(enemy.y - p.y, enemy.x - p.x) - angle);
-      if (distance < a.range && dot > 0.35 && this.lineClear(p, enemy))
+    if (
+      a.kind === "melee" &&
+      enemy &&
+      this.inArc(p, enemy, a.range, a.arc ?? 0.35)
+    )
+      this.damage(enemy, a.damage, p.id, a);
+    if (a.kind === "nova") {
+      this.event("burst", p, color, undefined, p.id, a.id);
+      if (
+        enemy?.clone &&
+        Math.hypot(enemy.clone.x - p.x, enemy.clone.y - p.y) < a.radius
+      )
+        enemy.clone = undefined;
+      if (
+        enemy &&
+        Math.hypot(enemy.x - p.x, enemy.y - p.y) < a.radius + RULES.radius &&
+        this.lineClear(p, enemy)
+      )
         this.damage(enemy, a.damage, p.id, a);
     }
-    if (a.kind === "movement") {
-      p.dashUntil = this.time + a.duration;
-      p.dashX = (Math.cos(angle) * a.range) / a.duration;
-      p.dashY = (Math.sin(angle) * a.range) / a.duration;
-      p.rush = { until: p.dashUntil, damage: a.damage, hit: false };
+    if (a.kind === "beam") {
+      const dx = Math.cos(angle),
+        dy = Math.sin(angle);
+      let x = p.x,
+        y = p.y;
+      for (let travelled = 0; travelled < a.range; travelled += 8) {
+        x = p.x + dx * travelled;
+        y = p.y + dy * travelled;
+        if (travelled > RULES.radius && blocked(x, y, 2)) break;
+        if (
+          enemy?.clone &&
+          Math.hypot(x - enemy.clone.x, y - enemy.clone.y) <
+            a.radius + RULES.radius
+        ) {
+          enemy.clone = undefined;
+          break;
+        }
+        if (
+          enemy &&
+          Math.hypot(x - enemy.x, y - enemy.y) < a.radius + RULES.radius
+        ) {
+          this.damage(enemy, a.damage, p.id, a);
+          break;
+        }
+      }
+      this.events.push({
+        id: ++this.serial,
+        kind: "beam",
+        x: p.x,
+        y: p.y,
+        tx: x,
+        ty: y,
+        color,
+        owner: p.id,
+        abilityId: a.id,
+      });
+      if (this.events.length > 80) this.events.shift();
     }
-    if (a.kind === "heal")
-      p.hp = Math.min(CHARACTERS[p.character].health, p.hp + a.damage);
-    if (a.kind === "stealth") this.status(p, "stealth", a.duration);
-    if (a.kind === "counter") this.status(p, "shield", a.duration);
+    if (a.kind === "cone") {
+      const skill = CHARACTERS[p.character].skills.indexOf(a);
+      p.channel = {
+        until: this.time + a.duration,
+        nextTick: this.time + (a.tickDelay ?? 0.1),
+        skill,
+      };
+    }
+    if (a.kind === "counter") this.status(p, "counter", a.duration);
+    if (a.kind === "barrier") this.status(p, "shield", a.duration);
+    if (a.kind === "buff") this.status(p, "empower", a.duration);
+    if (a.kind === "rest") {
+      this.status(p, "sleep", a.duration);
+      const sleep = p.statuses.find((s) => s.kind === "sleep")!;
+      sleep.amount = a.heal ?? 0;
+      // Ticks land at 0.4s, 0.9s … so a full Rest always heals duration / interval times.
+      sleep.nextTick = this.time + STATUS_RULES.restInterval - 0.1;
+      p.channel = undefined;
+    }
     if (a.kind === "clone") {
       p.clone = { x: p.x, y: p.y, until: this.time + a.duration };
       this.status(p, "haste", a.statusDuration ?? 2);
@@ -334,18 +420,22 @@ export class Arena {
       };
       target.angle = Math.atan2(human.y - target.y, human.x - target.x);
       if (this.practice.unlimitedCooldowns) {
-        human.cooldowns = [0, 0, 0, 0];
+        human.cooldowns = Array(SKILL_SLOTS).fill(0);
         human.dashAt = 0;
         human.jumpAt = 0;
       }
       if (this.practice.targetAttacks && this.time >= this.nextPracticeZone) {
         this.nextPracticeZone = this.time + 3;
-        this.cast(target, CHARACTERS.cindrake.skills[1]);
+        this.cast(target, CHARACTERS.pikachu.skills[2]);
       }
     }
     for (const p of this.players) {
       p.statuses = p.statuses.filter((s) => s.until > this.time);
-      for (const s of p.statuses)
+      for (const s of p.statuses) {
+        if (s.kind === "sleep" && s.amount && this.time >= s.nextTick) {
+          s.nextTick += STATUS_RULES.restInterval;
+          p.hp = Math.min(CHARACTERS[p.character].health, p.hp + s.amount);
+        }
         if (s.kind === "burn" && this.time >= s.nextTick) {
           s.nextTick += STATUS_RULES.burnInterval;
           this.damage(
@@ -354,14 +444,19 @@ export class Arena {
             this.players.find((o) => o.id !== p.id)?.id ?? "",
           );
         }
+      }
       const input = p.lastInput;
       const freeCooldowns =
         !!this.practice?.unlimitedCooldowns && p === this.players[0];
       if (p.jumpUntil > this.time - dt && p.jumpUntil <= this.time)
         this.event("land", p, CHARACTERS[p.character].color, undefined, p.id);
       const disabled = p.statuses.some(
-        (s) => s.kind === "stun" || s.kind === "freeze",
+        (s) => s.kind === "stun" || s.kind === "freeze" || s.kind === "sleep",
       );
+      if (disabled) {
+        p.charge = undefined;
+        p.channel = undefined;
+      }
       if (input.dash && !disabled && this.time >= p.dashAt) {
         const d = normalize(input.dx, input.dy);
         p.dashX = (d.x || d.y ? d.x : Math.cos(p.angle)) * RULES.dashSpeed;
@@ -391,11 +486,17 @@ export class Arena {
           const a = character.skills[input.skill];
           p.cooldowns[input.skill] = freeCooldowns ? 0 : this.time + a.cooldown;
           p.stats.skills++;
-          p.recoveryUntil = this.time + a.cast + a.recovery;
+          p.recoveryUntil =
+            this.time +
+            a.cast +
+            a.recovery +
+            (a.kind === "cone" ? a.duration : 0);
           if (a.cast) p.charge = { at: this.time + a.cast, skill: input.skill };
           else this.cast(p, a);
         } else if (input.basic && this.time >= p.basicAt) {
-          p.basicAt = this.time + character.basic.cooldown;
+          // The interval is enforced here, so flooding inputs cannot fire faster.
+          p.basicAt =
+            this.time + basicInterval(character, this.has(p, "empower"));
           p.recoveryUntil = this.time + character.basic.recovery;
           this.cast(p, character.basic);
         }
@@ -405,18 +506,15 @@ export class Arena {
       input.jump = false;
       input.skill = -1;
       if (p.clone && p.clone.until <= this.time) p.clone = undefined;
-      if (p.rush) {
+      if (p.channel) {
+        const a = CHARACTERS[p.character].skills[p.channel.skill];
         const enemy = this.players.find((o) => o.id !== p.id);
-        if (
-          enemy &&
-          !p.rush.hit &&
-          p.rush.damage > 0 &&
-          Math.hypot(p.x - enemy.x, p.y - enemy.y) < 60
-        ) {
-          this.damage(enemy, p.rush.damage, p.id);
-          p.rush.hit = true;
+        if (a && this.time >= p.channel.nextTick) {
+          p.channel.nextTick += a.tickInterval ?? 0.2;
+          if (enemy && this.inArc(p, enemy, a.range, a.arc ?? 0.7))
+            this.damage(enemy, a.damage, p.id, a);
         }
-        if (p.rush.until < this.time) p.rush = undefined;
+        if (!a || this.time >= p.channel.until) p.channel = undefined;
       }
     }
     // Swept substeps prevent fast projectiles from tunneling through a fighter or wall.
@@ -466,9 +564,16 @@ export class Arena {
       }
       return true;
     });
-    for (const zone of this.zones)
+    for (const zone of this.zones) {
+      if (zone.ability.follow) {
+        const owner = this.players.find((p) => p.id === zone.owner);
+        if (owner) {
+          zone.x = owner.x;
+          zone.y = owner.y;
+        }
+      }
       if (this.time >= zone.nextTick) {
-        zone.nextTick += 0.5;
+        zone.nextTick += zone.ability.tickInterval ?? 0.5;
         const enemy = this.players.find((p) => p.id !== zone.owner);
         if (
           enemy &&
@@ -478,6 +583,7 @@ export class Arena {
         )
           this.damage(enemy, zone.ability.damage, zone.owner, zone.ability);
       }
+    }
     this.zones = this.zones.filter((z) => z.until > this.time);
     if (this.practice) {
       for (const [i, p] of this.players.entries())
@@ -489,7 +595,7 @@ export class Arena {
           p.statuses = [];
           p.clone = undefined;
           p.charge = undefined;
-          p.rush = undefined;
+          p.channel = undefined;
           p.dashUntil = p.jumpUntil = 0;
           p.lastInput = blankInput();
         }

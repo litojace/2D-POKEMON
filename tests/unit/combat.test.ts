@@ -24,7 +24,7 @@ it("explodes an orb at its range limit and applies splash damage once", () => {
   q.y = 200;
   p.angle = 0;
   a.cast(p, {
-    ...CHARACTERS.voltkit.basic,
+    ...CHARACTERS.pikachu.basic,
     range: 710,
     speed: 390,
     damage: 23,
@@ -41,24 +41,32 @@ it("zones damage grounded enemies repeatedly but airborne enemies avoid ground t
   p.angle = 0;
   q.x = 400;
   q.y = 450;
-  a.cast(p, CHARACTERS.cindrake.skills[1]);
+  a.cast(p, CHARACTERS.pikachu.skills[2]);
   q.jumpUntil = 1;
   for (let i = 0; i < 15; i++) a.tick();
   expect(q.hp).toBe(110);
   for (let i = 0; i < 35; i++) a.tick();
   expect(q.hp).toBeLessThan(110);
 });
-it("melee and movement attacks damage enemies within their collision range", () => {
+it("melee and cone attacks damage enemies within their collision range", () => {
   const a = duel(),
     [p, q] = a.players;
   q.x = p.x + 85;
+  q.y = p.y;
   p.angle = 0;
-  a.cast(p, CHARACTERS.auralynx.skills[0]);
-  expect(q.hp).toBe(82);
-  q.x = p.x + 100;
-  a.cast(p, CHARACTERS.cindrake.skills[0]);
-  for (let i = 0; i < 8; i++) a.tick();
-  expect(q.hp).toBe(60);
+  a.cast(p, CHARACTERS.lucario.basic);
+  expect(q.hp).toBe(100);
+  q.x = p.x + 400;
+  a.cast(p, CHARACTERS.lucario.basic);
+  expect(q.hp).toBe(100);
+  q.x = p.x + 150;
+  q.y = p.y;
+  p.character = "charizard";
+  a.cast(p, CHARACTERS.charizard.skills[0]);
+  for (let i = 0; i < 45; i++) a.tick();
+  // Six 5-damage ticks over 1.2 s, plus burn ticks while it lasts.
+  expect(q.hp).toBeLessThanOrEqual(100 - 30);
+  expect(p.channel).toBeUndefined();
 });
 it("decoys absorb a projectile before it reaches the owner", () => {
   const a = duel(),
@@ -67,16 +75,16 @@ it("decoys absorb a projectile before it reaches the owner", () => {
   q.x = 440;
   q.clone = { x: 350, y: 450, until: 3 };
   p.angle = 0;
-  a.cast(p, CHARACTERS.voltkit.basic);
+  a.cast(p, CHARACTERS.pikachu.basic);
   for (let i = 0; i < 15; i++) a.tick();
   expect(q.hp).toBe(110);
   expect(q.clone).toBeUndefined();
 });
 it("packs static ability definitions as IDs and restores the renderer snapshot", () => {
   const a = duel();
-  a.cast(a.players[0], CHARACTERS.voltkit.basic);
+  a.cast(a.players[0], CHARACTERS.pikachu.skills[0]);
   const wire = packSnapshot(a.snapshot());
   expect(wire.projectiles[0]).not.toHaveProperty("ability");
-  expect(wire.projectiles[0].abilityId).toBe("thunderbolt");
+  expect(wire.projectiles[0].abilityId).toBe("thunder-shock");
   expect(unpackSnapshot(wire).projectiles[0].ability.damage).toBe(18);
 });

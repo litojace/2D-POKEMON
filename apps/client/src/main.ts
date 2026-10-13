@@ -38,6 +38,11 @@ import { updateNameplate } from "./player-nameplate";
 import { celebrateSelection } from "./selection-celebration";
 import { fighterPack } from "./animation/pack-config";
 const audio = new AudioManager();
+const allAbilities = new Map(
+  Object.values(CHARACTERS)
+    .flatMap((c) => [c.basic, ...c.skills])
+    .map((a) => [a.id, a]),
+);
 const remoteFrames = new InterpolationBuffer();
 const socket = io(import.meta.env.VITE_SERVER_URL || undefined, {
   autoConnect: false,
@@ -47,7 +52,7 @@ let accountsUI: AccountUI;
 let gameInstance: Phaser.Game | undefined;
 let state: Snapshot | undefined,
   myId = "",
-  selected: CharacterId = "voltkit",
+  selected: CharacterId = "pikachu",
   seq = 0,
   local: Fighter | undefined,
   pending: Input[] = [],
@@ -69,7 +74,7 @@ const escape = (s: string) =>
       ]!,
   );
 document.querySelector("#app")!.innerHTML =
-  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> POK&Eacute;MON<span>ARENA</span></a><div class="top-links"><details class="header-menu" id="header-menu"><summary>☰ <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">Settings</button><button class="quiet" id="mobile-play">Mobile fullscreen</button><button class="quiet" id="install-app">Install app</button><span class="connection" id="connection">Connecting</span></div></details><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span>WASD <b>Move</b> · Mouse <b>Aim</b> · LMB <b>Attack</b> · 1 / 2 <b>Skills</b> · R <b>Ultimate</b> &middot; RMB <b>Dash</b></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>POK&Eacute;MON ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Eight Pok�mon. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
+  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> POK&Eacute;MON<span>ARENA</span></a><div class="top-links"><details class="header-menu" id="header-menu"><summary>☰ <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">Settings</button><button class="quiet" id="mobile-play">Mobile fullscreen</button><button class="quiet" id="install-app">Install app</button><span class="connection" id="connection">Connecting</span></div></details><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span>WASD <b>Move</b> · Mouse <b>Aim</b> · LMB <b>Basic</b> · 1 / 2 / 3 / R <b>Skills</b> &middot; RMB <b>Dash</b> &middot; SPACE <b>Jump</b></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>POK&Eacute;MON ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Eight Pok&eacute;mon. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
 const headerMenu = $("header-menu") as HTMLDetailsElement;
 headerMenu.addEventListener("click", (event) => {
   if ((event.target as Element).closest("button")) headerMenu.open = false;
@@ -202,7 +207,7 @@ function renderMenu() {
   $("battle").hidden = true;
   $("menu").hidden = false;
   $("menu").innerHTML =
-    `<div class="eyebrow"><span class="live-dot"></span> ONLINE 1V1 · REAL-TIME BATTLES</div><div class="intro"><div><h1>Your creature.<br>Your <em>arena.</em></h1><p>Eight elements. One basic attack and three moves. No waiting for your turn.<br>Challenge a friend to a real-time duel in Elemental Coliseum.</p></div><div class="arena-badge">✦<span>ELEMENTAL COLISEUM</span><small>BEST OF THREE</small></div></div><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected, elementFilter)}</div><aside class="room-panel">${isRoom ? `<div class="eyebrow">PRIVATE LOBBY</div><h2>Your duel starts here.</h2><p>Share this code with your friend.</p><button id="copy" class="room-code">${state!.code}<span>COPY CODE ↗</span></button><div class="players">${state!.players.map((p, i) => `<div><span class="player-dot" style="background:#${CHARACTERS[p.character].color.toString(16)}">${i + 1}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small>${CHARACTERS[p.character].name}</small></span><b>${!p.connected ? "OFFLINE" : p.ready ? "READY" : "CHOOSING"}</b></div>`).join("")}${state!.players.length < 2 ? '<div class="waiting"><span>＋</span> Waiting for your opponent…</div>' : ""}</div><button class="primary" id="ready">${p!.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full" id="leave">Leave room</button><small class="room-note">The match begins when both players are ready.</small>` : `<div class="eyebrow">PLAY ONLINE</div><h2>A friend. A code.<br>A worthy opponent.</h2><label for="name">YOUR DISPLAY NAME</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><button class="primary" id="create">Create private room →</button>${accountsUI?.account ? '<button class="secondary full" id="practice">Solo test mode →</button>' : ""}<div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><small class="room-note">2 players · Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`}</aside></div>`;
+    `<div class="eyebrow"><span class="live-dot"></span> ONLINE 1V1 · REAL-TIME BATTLES</div><div class="intro"><div><h1>Your creature.<br>Your <em>arena.</em></h1><p>Eight Pok&eacute;mon. One basic attack and four special skills each. No waiting for your turn.<br>Challenge a friend to a real-time duel in Elemental Coliseum.</p></div><div class="arena-badge">✦<span>ELEMENTAL COLISEUM</span><small>BEST OF THREE</small></div></div><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected, elementFilter)}</div><aside class="room-panel">${isRoom ? `<div class="eyebrow">PRIVATE LOBBY</div><h2>Your duel starts here.</h2><p>Share this code with your friend.</p><button id="copy" class="room-code">${state!.code}<span>COPY CODE ↗</span></button><div class="players">${state!.players.map((p, i) => `<div><span class="player-dot" style="background:#${CHARACTERS[p.character].color.toString(16)}">${i + 1}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small>${CHARACTERS[p.character].name}</small></span><b>${!p.connected ? "OFFLINE" : p.ready ? "READY" : "CHOOSING"}</b></div>`).join("")}${state!.players.length < 2 ? '<div class="waiting"><span>＋</span> Waiting for your opponent…</div>' : ""}</div><button class="primary" id="ready">${p!.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full" id="leave">Leave room</button><small class="room-note">The match begins when both players are ready.</small>` : `<div class="eyebrow">PLAY ONLINE</div><h2>A friend. A code.<br>A worthy opponent.</h2><label for="name">YOUR DISPLAY NAME</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><button class="primary" id="create">Create private room →</button>${accountsUI?.account ? '<button class="secondary full" id="practice">Solo test mode →</button>' : ""}<div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><small class="room-note">2 players · Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`}</aside></div>`;
   document.querySelectorAll<HTMLButtonElement>("[data-character]").forEach(
     (button) =>
       (button.onclick = async () => {
@@ -342,7 +347,7 @@ function renderBattle() {
       .join("");
     const c = CHARACTERS[me.character];
     $("abilities").innerHTML =
-      `<div class="basic-hint"><kbd>LMB</kbd><span>${abilityIcon(c.basic.name)}<small>BASIC ATTACK</small></span></div>${c.skills.map((a, i) => `<div class="ability" id="ability-${i}" style="--element:#${c.color.toString(16)}"><kbd>${KEYS.skills[i]}</kbd><span>${abilityIcon(a.name)}<small id="cooldown-${i}">READY</small></span><i class="cooldown-fill" id="fill-${i}"></i></div>`).join("")}<div class="movement-ability"><kbd>RMB</kbd><span>Dash<small id="dash-cd"></small></span></div><div class="movement-ability"><kbd>SPACE</kbd><span>Jump<small id="jump-cd"></small></span></div>`;
+      `<div class="basic-hint" title="${c.basic.name}: ${c.basic.description} No cooldown · ${Math.round((c.basic.interval ?? 0.3) * 1000)} ms between attacks."><kbd>LMB</kbd><span>${abilityIcon(c.basic.name)}<small>${c.basic.name.toUpperCase()}</small></span></div>${c.skills.map((a, i) => `<div class="ability" id="ability-${i}" style="--element:#${c.color.toString(16)}"><kbd>${KEYS.skills[i]}</kbd><span>${abilityIcon(a.name)}<small id="cooldown-${i}">READY</small></span><i class="cooldown-fill" id="fill-${i}"></i></div>`).join("")}<div class="movement-ability"><kbd>RMB</kbd><span>Dash<small id="dash-cd"></small></span></div><div class="movement-ability"><kbd>SPACE</kbd><span>Jump<small id="jump-cd"></small></span></div>`;
   }
   state.players.forEach((p, i) => {
     const c = CHARACTERS[p.character];
@@ -411,7 +416,7 @@ function renderBattle() {
     {
       name: CHARACTERS[me.character].basic.name,
       left: Math.max(0, me.basicAt - state.time),
-      duration: CHARACTERS[me.character].basic.cooldown,
+      duration: CHARACTERS[me.character].basic.interval ?? 0.3,
     },
   );
   const overlay = $("arena-overlay");
@@ -426,7 +431,7 @@ function renderBattle() {
       heading = "How to play";
       const confirmed = state.instructionsReady.includes(myId);
       details =
-        '<p class="mobile-howto">Touch mode: left joystick to move; right buttons to attack, use skills, dash, and jump. Aim follows your opponent. Use Enter fullscreen below the arena.</p><div class="controls-list"><span><kbd>W A S D</kbd>Move · mouse to aim</span><span><kbd>LMB</kbd>Basic attack</span><span><kbd>1 2</kbd>Character skills</span><span><kbd>R</kbd>Ultimate skill</span><span><kbd>RMB</kbd>Dash</span><span><kbd>SPACE</kbd>Jump over ground attacks</span></div><p>Use cover. Win two rounds. The countdown begins when both players confirm.</p><button class="primary" id="instructions-ready" ' +
+        '<p class="mobile-howto">Touch mode: left joystick to move; big button for basic attacks, the four curved buttons for skills, DASH and JUMP below. Aim follows your opponent. Use Enter fullscreen below the arena.</p><div class="controls-list"><span><kbd>W A S D</kbd>Move · mouse to aim</span><span><kbd>LMB</kbd>Basic attack</span><span><kbd>1 2 3 R</kbd>Four special skills</span><span><kbd>RMB</kbd>Dash</span><span><kbd>SPACE</kbd>Jump over ground attacks</span></div><p>Use cover. Win two rounds. The countdown begins when both players confirm.</p><button class="primary" id="instructions-ready" ' +
         (confirmed ? "disabled" : "") +
         ">" +
         (confirmed ? "Waiting for opponent…" : "I’m ready →") +
@@ -573,11 +578,11 @@ $("settings").onclick = showSettings;
 $("battle-menu").onclick = showSettings;
 $("help").onclick = () =>
   dialog(
-    `<div class="eyebrow">HOW TO PLAY</div><h2>Every second counts.</h2><p>Create a room, share the code, choose your creatures, and both click Ready. Win two rounds to take the match.</p><div class="controls-list"><span><kbd>W A S D</kbd>Move in eight directions</span><span><kbd>MOUSE</kbd>Aim · left click to attack</span><span><kbd>1 2</kbd>Skills · R for ultimate</span><span><kbd>RMB</kbd>Dash · 3 second cooldown</span><span><kbd>SPACE</kbd>Jump · dodge ground attacks</span><span><kbd>ESC</kbd>Settings · the match stays live</span></div><p>Use cover to block shots. Jump over ground zones. Ultimates recharge every 30 seconds. At a tie, overtime drains both players' health.</p>`,
+    `<div class="eyebrow">HOW TO PLAY</div><h2>Every second counts.</h2><p>Create a room, share the code, choose your creatures, and both click Ready. Win two rounds to take the match.</p><div class="controls-list"><span><kbd>W A S D</kbd>Move in eight directions</span><span><kbd>MOUSE</kbd>Aim · left click to attack</span><span><kbd>1 2 3 R</kbd>Four special skills</span><span><kbd>RMB</kbd>Dash · 3 second cooldown</span><span><kbd>SPACE</kbd>Jump · dodge ground attacks</span><span><kbd>ESC</kbd>Settings · the match stays live</span></div><p>Use cover to block shots. Jump over ground zones. Skills recharge in 8–18 seconds; basic attacks never go on cooldown. At a tie, overtime drains both players' health.</p>`,
   );
 $("credits").onclick = () =>
   dialog(
-    '<div class="eyebrow">BUILT FOR THE DUEL</div><h2>Pok�mon Arena</h2><p>Eight Pok�mon fighters, articulated shaded-vector artwork, a procedural coliseum, and synthesized audio.</p><p>Built with Phaser, Socket.IO, Express, TypeScript, Vite, and Supabase. Creature art is an original vector implementation; rendered sprite atlases can be imported through the fighter asset pipeline.</p>',
+    '<div class="eyebrow">BUILT FOR THE DUEL</div><h2>Pok&eacute;mon Arena</h2><p>An unofficial, noncommercial fan game for private play with friends. Not affiliated with or endorsed by Nintendo, Game Freak, Creatures Inc. or The Pok&eacute;mon Company. Pok&eacute;mon and character names are trademarks of their respective owners.</p><p>Eevee, Mewtwo, Snorlax and Gengar currently use generic placeholder figures until licensed artwork is supplied through the fighter asset pipeline.</p><p>Built with Phaser, Socket.IO, Express, TypeScript, Vite, and Supabase.</p>',
   );
 $<HTMLDialogElement>("dialog").addEventListener("close", () => {
   settingsOpen = false;
@@ -776,18 +781,15 @@ class ArenaScene extends Phaser.Scene {
     }).observe($("game"));
     this.graphics = this.add.graphics();
     this.keys = this.input.keyboard!.addKeys(
-      "W,A,S,D,ONE,TWO,R,SPACE",
+      "W,A,S,D,ONE,TWO,THREE,R,SPACE",
       false,
     ) as Record<string, Phaser.Input.Keyboard.Key>;
     this.input.mouse!.disableContextMenu();
-    ["ONE", "TWO"].forEach((key, i) =>
+    ["ONE", "TWO", "THREE", "R"].forEach((key, i) =>
       this.keys[key].on("down", () => {
         if (this.canControl()) this.actions.skill = i;
       }),
     );
-    this.keys.R.on("down", () => {
-      if (this.canControl()) this.actions.skill = 2;
-    });
     this.keys.SPACE.on("down", () => {
       if (this.canControl()) this.actions.jump = true;
     });
@@ -816,11 +818,17 @@ class ArenaScene extends Phaser.Scene {
         if (slot >= 0 || event.abilityId === c.basic.id)
           this.getRig(p.id, p.character).trigger(
             slot >= 0
-              ? (`skill${slot === 2 ? 3 : slot}` as
-                  "skill0" | "skill1" | "skill2" | "skill3")
+              ? (`skill${slot}` as "skill0" | "skill1" | "skill2" | "skill3")
               : "basic",
             this.time.now,
-            slot === 2 ? 650 : 300,
+            slot >= 0
+              ? Math.max(
+                  c.skills[slot].kind === "cone"
+                    ? c.skills[slot].duration * 1000
+                    : 0,
+                  slot === 3 ? 650 : 360,
+                )
+              : 220,
             event.id,
           );
       }
@@ -842,6 +850,46 @@ class ArenaScene extends Phaser.Scene {
               : 130,
           event.id,
         );
+    }
+    if (
+      event.kind === "beam" &&
+      event.tx !== undefined &&
+      event.ty !== undefined
+    ) {
+      const beam = this.add.graphics().setDepth(4);
+      beam
+        .lineStyle(14, event.color, 0.25)
+        .lineBetween(event.x, event.y - 12, event.tx, event.ty);
+      beam
+        .lineStyle(5, 0xffffff, 0.85)
+        .lineBetween(event.x, event.y - 12, event.tx, event.ty);
+      this.tweens.add({
+        targets: beam,
+        alpha: 0,
+        duration: reducedMotion ? 120 : 260,
+        onComplete: () => beam.destroy(),
+      });
+      return;
+    }
+    const burst =
+      event.kind === "burst" && event.abilityId
+        ? allAbilities.get(event.abilityId)
+        : undefined;
+    if (burst) {
+      // Show the true server hit radius so players can read the attack.
+      const ring = this.add
+        .circle(event.x, event.y, burst.radius, event.color, 0.16)
+        .setStrokeStyle(4, event.color, 0.9)
+        .setDepth(1);
+      if (burst.ground) ring.setScale(1, 0.85);
+      this.tweens.add({
+        targets: ring,
+        alpha: 0,
+        scale: reducedMotion ? 1 : 1.08,
+        duration: 420,
+        onComplete: () => ring.destroy(),
+      });
+      return;
     }
     if (reducedMotion) return;
     const ring = this.add
@@ -1172,8 +1220,33 @@ class ArenaScene extends Phaser.Scene {
           : 1,
         reducedMotion,
       );
-      if (serverPlayer.statuses.some((s) => s.kind === "shield"))
-        g.lineStyle(3, c.color, 0.8).strokeCircle(x, y - jump, 43);
+      if (serverPlayer.statuses.some((s) => s.kind === "shield")) {
+        g.fillStyle(c.color, 0.1).fillCircle(x, y - jump - 10, 46);
+        g.lineStyle(3, c.color, 0.8).strokeCircle(x, y - jump - 10, 46);
+      }
+      if (serverPlayer.statuses.some((s) => s.kind === "counter"))
+        g.lineStyle(
+          3,
+          0xffffff,
+          0.55 + Math.sin(_time / 60) * 0.25,
+        ).strokeCircle(x, y - jump - 10, 40);
+      if (serverPlayer.statuses.some((s) => s.kind === "empower"))
+        g.lineStyle(2, 0xffb347, 0.7).strokeEllipse(x, y + 12, 84, 38);
+      if (serverPlayer.channel && !reducedMotion) {
+        const cone = c.skills[serverPlayer.channel.skill];
+        if (cone) {
+          const spread = Math.acos(cone.arc ?? 0.7);
+          const flicker = 0.85 + Math.sin(_time / 40) * 0.15;
+          g.fillStyle(c.color, 0.22).slice(
+            x,
+            y - 12,
+            cone.range * flicker,
+            p.angle - spread,
+            p.angle + spread,
+          );
+          g.fillPath();
+        }
+      }
       if (serverPlayer.charge) {
         g.lineStyle(3, c.color, 0.8).strokeCircle(
           x,
@@ -1188,7 +1261,10 @@ class ArenaScene extends Phaser.Scene {
           freeze: 0x9fefff,
           stun: 0xffd65b,
           paralysis: 0xffd65b,
-          shield: 0xb5a1ff,
+          sleep: 0x8fa6d8,
+          shield: 0xc77dff,
+          counter: 0x78c7ef,
+          empower: 0xffb347,
           haste: 0x8ee6ad,
           stealth: 0xa98be6,
         };

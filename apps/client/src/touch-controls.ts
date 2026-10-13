@@ -54,7 +54,7 @@ export class TouchControls {
       this.available && localStorage.getItem("arena-touch") !== "off";
     root.innerHTML =
       '<div class="mobile-tools"><button id="touch-toggle" class="quiet"></button><button id="mobile-fullscreen" class="quiet">Enter fullscreen ⛶</button><button id="mobile-settings" class="quiet">Mobile controls ⚙</button><span class="touch-note">Aim follows opponent</span></div><div class="rotate-hint" role="status">Rotate your phone for a wider arena. Portrait play is still available.</div><div class="touch-pad"><div class="joystick-area"><div class="joystick" role="group" aria-label="Movement joystick"><span class="joystick-knob"></span></div></div><div class="touch-buttons">' +
-      (["dash", "jump", "0", "1", "2", "attack"] as TouchAction[])
+      (["dash", "jump", "0", "1", "2", "3", "attack"] as TouchAction[])
         .map(
           (action) =>
             "<button " +
@@ -64,9 +64,11 @@ export class TouchControls {
             ' class="' +
             (action === "attack"
               ? "touch-attack"
-              : action === "2"
+              : action === "3"
                 ? "touch-ultimate"
-                : "") +
+                : !isNaN(Number(action))
+                  ? "touch-skill"
+                  : "") +
             '"></button>',
         )
         .join("") +
@@ -203,7 +205,7 @@ export class TouchControls {
     new ResizeObserver(resize).observe(root);
     this.update(
       false,
-      ["Skill 1", "Skill 2", "Skill 3", "Ultimate"],
+      ["Skill 1", "Skill 2", "Skill 3", "Skill 4"],
       [0, 0, 0, 0],
       0,
       0,
@@ -336,7 +338,7 @@ export class TouchControls {
     cooldowns: number[],
     dash: number,
     jump: number,
-    durations: number[] = [7, 10, 30],
+    durations: number[] = [8, 12, 15, 18],
     basic = { name: "Attack", left: 0, duration: 1 },
   ) {
     if (!active) this.reset();
@@ -361,16 +363,21 @@ export class TouchControls {
             : action === "dash"
               ? "Dash"
               : "Jump";
-      button.disabled = !active || left > 0;
+      // Basic attacks have no cooldown; the server enforces the attack interval.
+      button.disabled = !active || (action !== "attack" && left > 0);
       if (button.dataset.iconName !== name) {
         button.innerHTML =
           abilityIcon(name) +
           '<span class="touch-key">' +
           (skill !== undefined
-            ? Number(skill) === 2
+            ? Number(skill) === 3
               ? "R"
               : Number(skill) + 1
-            : "") +
+            : action === "attack"
+              ? "BASIC"
+              : action === "dash"
+                ? "DASH"
+                : "JUMP") +
           '</span><span class="touch-cooldown"></span>';
         button.dataset.iconName = name;
         button.title = name;

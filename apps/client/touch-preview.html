@@ -24,7 +24,8 @@
         >
       </div>
       <div class="hud" style="pointer-events: auto">
-        <span id="action" role="status">CONTROL DEMO &middot; no live match</span
+        <span id="action" role="status"
+          >CONTROL DEMO &middot; no live match</span
         ><label
           >Fighter
           <select id="preview-fighter"></select
@@ -96,11 +97,11 @@
         controls.update(
           true,
           c.skills.map((a) => a.name),
-          [0, 0, 0],
+          [0, 0, 0, 0],
           0,
           0,
           c.skills.map((a) => a.cooldown),
-          { name: c.basic.name, left: 0, duration: c.basic.cooldown },
+          { name: c.basic.name, left: 0, duration: c.basic.interval ?? 0.3 },
         );
       };
       choice.onchange = paintMoves;

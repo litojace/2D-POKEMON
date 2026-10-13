@@ -29,7 +29,7 @@ export function joystickVector(x: number, y: number, radius: number) {
   const scale = Math.max(radius, length);
   return { dx: x / scale, dy: y / scale };
 }
-export type TouchAction = "attack" | "dash" | "jump" | "0" | "1" | "2";
+export type TouchAction = "attack" | "dash" | "jump" | "0" | "1" | "2" | "3";
 export class TouchInputState {
   dx = 0;
   dy = 0;
@@ -119,6 +119,7 @@ export function mobileLayout(
         target("0", 28, short ? 22 : 26, 44),
         target("1", 84, short ? 22 : 26, 44),
         target("2", 140, short ? 22 : 26, 44),
+        target("3", 28, short ? 70 : 78, 44),
         target("attack", 220, short ? 47 : 51, 88),
         target("dash", 84, short ? 70 : 78, 44),
         target("jump", 140, short ? 70 : 78, 44),
@@ -151,9 +152,11 @@ export function mobileLayout(
     width: 262 * scale,
     height: Math.max(253 * scale, 225 * scale + 22),
     targets: [
-      target("0", 40, 200, 60),
-      target("1", 36, 123, 60),
-      target("2", 132, 42, 60),
+      // Four skills curve around the large basic attack button.
+      target("0", 34, 196, 60),
+      target("1", 40, 118, 60),
+      target("2", 94, 56, 60),
+      target("3", 168, 34, 60),
       target("attack", 160, 170, 88),
       target("dash", 225, 100, 48),
       target("jump", 230, 225, 48),

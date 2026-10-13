@@ -114,7 +114,7 @@ npm run build
 node scripts/verify-pwa.mjs
 ```
 
-The dev lab is `/animation-preview.html`; mobile previews are `/touch-preview.html` and `/mobile-layout-preview.html`. Supabase is required for authenticated matches, using the existing account setup documentation. Regular players can practice; admin management remains restricted. Desktop remains WASD, LMB basic, 1/2/3 skills, R ultimate, RMB dash and Space jump.
+The dev lab is `/animation-preview.html`; mobile previews are `/touch-preview.html` and `/mobile-layout-preview.html`. Supabase is required for authenticated matches, using the existing account setup documentation. Regular players can practice; admin management remains restricted. Desktop is WASD, LMB basic, 1/2/3/R for the four skills, RMB dash and Space jump. Current roster and art status: [fighter assets](fighter-assets.md).
 
 Automated checks cover all eight definitions, forty ability IDs, the original numerical mappings, legacy IDs, schema/import metadata, unique art/directions, selection/filtering, new server statuses/counterplay, thirty-two icons, state priorities/deduplication, practice, damage, reconnect and database authorization. Browser checks exercise original fighter renders, selection/filtering, directions/states, reduced motion and import smoke fixtures for all three raster modes. The temporary import fixtures are removed before delivery.
 

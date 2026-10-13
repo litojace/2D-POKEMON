@@ -1,3 +1,4 @@
+import { CHARACTERS } from "@arena/shared";
 // Each combat icon is drawn for its exact ability, rather than guessed from keywords.
 const electric = "#ffe17b",
   fire = "#ffa16b",
@@ -161,81 +162,74 @@ const universal: Record<string, string> = {
   "Crystal Jab":
     '<path d="M10 30V18l6-3 5 2 5-3 7 3 4 10-10 14H15Z"/><path d="M4 10h8m26 0 5-4m-2 15h5"/>',
 };
+// Roster move names reuse the hand-drawn generic icons above; colour follows the move's element.
 const pokemonIconSources: Record<string, string> = {
-  "Thunder Shot": "Arc Pulse",
-  "Volt Dash": "Dash",
-  "Electric Field": "Livewire Field",
-  "Thunder Burst": "Overcharge",
+  "Thunder Jolt": "Spark",
+  "Thunder Shock": "Arc Pulse",
+  "Electro Orb": "Charge Orb",
+  "Thunder Field": "Livewire Field",
+  "Volt Overload": "Overcharge",
+  "Flame Puff": "Cinder",
   "Fire Breath": "Crest Flare",
-  "Flame Dash": "Ember Rush",
-  "Blazing Spin": "Ember Ring",
-  "Inferno Strike": "Solar Bloom",
-  "Water Shuriken": "Tidal Blade",
-  "Aqua Dash": "Slipstream",
+  "Flame Burst": "Ember Rush",
+  "Inferno Spin": "Ember Ring",
+  "Solar Blaze": "Solar Bloom",
+  "Water Kunai": "Droplet",
+  "Aqua Ring": "Snow Drift",
   "Shadow Clone": "Mirror Current",
-  "Water Burst": "Riptide Volley",
+  "Tidal Surge": "Cold Front",
+  "Aura Jab": "Crystal Jab",
   "Aura Sphere": "Prism Shot",
   "Force Palm": "Shard Combination",
   "Counter Stance": "Prism Guard",
   "Aura Burst": "Nova Ray",
-  Psybeam: "Prism Shot",
-  Teleport: "Dash",
-  "Psychic Field": "Root Garden",
-  Moonblast: "Charge Orb",
-  "Dragon Claw": "Crystal Jab",
-  "Sand Dash": "Boulder Charge",
-  Earthquake: "Seismic Crown",
-  "Dragon Rush": "Ember Rush",
-  Charm: "Prism Guard",
-  "Mystical Ribbon": "Tidal Blade",
-  "Healing Wish": "Jump",
+  "Swift Star": "Frost Flake",
+  "Star Volley": "Riptide Volley",
+  Bite: "Stone Knuckle",
+  "Last Resort": "Crystal Blizzard",
+  "Psy Bolt": "Bramble Seed",
+  Psybeam: "Ice Lance",
+  "Psychic Wave": "Seismic Crown",
+  Barrier: "Verdant Guard",
+  Psystrike: "Wild Bloom",
+  "Heavy Swipe": "Bough Bash",
+  "Body Slam": "Boulder Charge",
+  Yawn: "Root Garden",
+  "Heavy Impact": "Faultline",
+  "Shadow Orb": "Night Wisp",
   "Shadow Sneak": "Cloak Rend",
-  "Trick Room": "Static Field",
-  "Phantom Claw": "Shard Combination",
-  "Shadow Burst": "Eclipse",
+  "Will-O-Wisp": "Hollow Echo",
+  Hex: "Shadow Veil",
+  "Shadow Ball": "Eclipse",
 };
+const elementColors: Record<string, string> = {
+  Electric: electric,
+  Fire: fire,
+  Water: water,
+  Fighting: "#8fd3ff",
+  Normal: "#ffd8a0",
+  Psychic: "#e3a6ff",
+  Ghost: "#b88cff",
+};
+const moveElements = new Map(
+  Object.values(CHARACTERS).flatMap((c) =>
+    [c.basic, ...c.skills].map((a) => [a.name, c.element] as const),
+  ),
+);
 for (const [name, source] of Object.entries(pokemonIconSources)) {
   const prior = abilityArtwork[source];
   abilityArtwork[name] = {
-    color:
-      name.includes("Fire") ||
-      name.includes("Flame") ||
-      name.includes("Inferno") ||
-      name.includes("Blazing")
-        ? fire
-        : name.includes("Water") || name.includes("Aqua")
-          ? water
-          : name.includes("Thunder") ||
-              name.includes("Volt") ||
-              name.includes("Electric")
-            ? electric
-            : "#cba9f3",
-    art: prior?.art ?? universal[source] ?? universal.Dash,
+    color: elementColors[moveElements.get(name) ?? ""] ?? prior?.color ?? aura,
+    art: prior?.art ?? universal[source] ?? universal.Attack,
   };
 }
-abilityArtwork["Healing Wish"] = {
-  color: "#ffa9d9",
-  art: '<path d="M24 40 7 23Q-2 4 15 6l9 9 9-9Q50 4 41 23Z"/><path d="M24 18v15m-7-7h14"/>',
+abilityArtwork["Helping Hand"] = {
+  color: elementColors.Normal,
+  art: '<path d="M14 42V22q0-4 4-4t4 4v-9q0-4 4-4t4 4v4q0-4 4-4t4 4v14q0 10-10 11Z"/><path d="M8 6v8M4 10h8m28-6v6m-3-3h6"/>',
 };
-abilityArtwork["Charm"] = {
-  color: "#ffa9d9",
-  art: '<path d="M24 39 9 23Q1 9 14 8l10 8 10-8q13 1 5 15Z"/><path d="m4 4 4 5m32-5-4 5"/>',
-};
-abilityArtwork["Moonblast"] = {
-  color: "#f8b5e5",
-  art: '<circle cx="24" cy="24" r="16"/><path d="M30 10q-17 9-8 25 15 4 19-9-4 19-22 12Q3 27 15 13Z"/><path d="m8 4 2 5 5 2-5 2-2 5-2-5-5-2 5-2Z"/>',
-};
-abilityArtwork["Mystical Ribbon"] = {
-  color: "#f8b5e5",
-  art: '<path d="M5 31Q20 4 29 18T44 12M5 38Q20 11 29 25T44 19"/><path d="m7 4 3 5 5 2-5 2-3 5-2-5-5-2 5-2Z"/>',
-};
-abilityArtwork["Trick Room"] = {
-  color: "#bd96ee",
-  art: '<path d="M5 10h38v30H5ZM5 10l12 9h15l11-9M17 19v14l-12 7m27-21v14l11 7"/><circle cx="25" cy="26" r="7"/><path d="M25 22v5l4 2"/>',
-};
-abilityArtwork["Dragon Claw"] = {
-  color: "#99b4ef",
-  art: '<path d="M11 43Q19 17 36 5L22 31ZM23 43Q30 20 44 11L34 33ZM2 35Q8 14 24 4L12 26Z"/>',
+abilityArtwork["Rest"] = {
+  color: elementColors.Normal,
+  art: '<path d="M8 10h11L8 24h11M24 20h8l-8 10h8M34 32h6l-6 8h6"/>',
 };
 abilityArtwork["Water Shuriken"] = {
   color: "#85e5f4",

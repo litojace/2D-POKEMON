@@ -1,13 +1,13 @@
 import type Phaser from "phaser";
+/** One distinct glyph per roster element. */
 export const elementShapes = {
   electric: "bolt",
   fire: "flame",
   water: "drop",
-  energy: "prism",
-  nature: "leaf",
-  ice: "snowflake",
-  shadow: "wisp",
-  earth: "stone",
+  fighting: "prism",
+  normal: "star",
+  psychic: "spiral",
+  ghost: "wisp",
 } as const;
 export function drawElementGlyph(
   g: Phaser.GameObjects.Graphics,
@@ -56,8 +56,35 @@ export function drawElementGlyph(
       g.lineBetween(x - r * 0.55, y - r * 0.2, x, y - r);
       g.lineBetween(x + r * 0.55, y - r * 0.2, x, y - r);
       break;
+    case "psychic": {
+      // Concentric spiral reads as psychic energy and stays distinct from Fighting.
+      const spin = time / 400;
+      g.strokeCircle(x, y, r);
+      g.strokeCircle(x, y, r * 0.55);
+      g.fillCircle(
+        x + Math.cos(spin) * r * 0.55,
+        y + Math.sin(spin) * r * 0.55,
+        r * 0.18,
+      );
+      g.fillCircle(x, y, r * 0.18);
+      break;
+    }
+    case "normal": {
+      // Five-point star.
+      const points = [];
+      for (let i = 0; i < 10; i++) {
+        const a = -Math.PI / 2 + (i * Math.PI) / 5;
+        const radius = i % 2 ? r * 0.45 : r;
+        points.push({
+          x: x + Math.cos(a) * radius,
+          y: y + Math.sin(a) * radius,
+        });
+      }
+      g.fillPoints(points, true);
+      g.strokePoints(points, true);
+      break;
+    }
     case "fighting":
-    case "psychic":
     case "fairy":
     case "dragon":
     case "energy":

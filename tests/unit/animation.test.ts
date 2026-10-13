@@ -66,7 +66,7 @@ it("uses dash, jump, landing and charge poses without changing gameplay state", 
     jump: false,
   });
 });
-it("identifies basic attacks and all sixteen skills in the existing event stream", () => {
+it("identifies basic attacks and all thirty-two skills in the existing event stream", () => {
   for (const character of Object.keys(CHARACTERS) as CharacterId[]) {
     const arena = new Arena("TEST");
     const p = arena.add("player", "Player", character);
@@ -82,7 +82,7 @@ it("identifies basic attacks and all sixteen skills in the existing event stream
     }
   }
 });
-it("uses R for the ultimate and right mouse for dash", () => {
-  expect(KEYS.skills).toEqual(["1", "2", "R"]);
+it("uses 1, 2, 3 and R for the four skills and right mouse for dash", () => {
+  expect(KEYS.skills).toEqual(["1", "2", "3", "R"]);
   expect(KEYS.dash).toBe("RMB");
 });

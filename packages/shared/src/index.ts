@@ -19,12 +19,13 @@ export const RULES = {
   maxProjectiles: 150,
   maxZones: 40,
 };
+export const SKILL_SLOTS = 4;
 export const KEYS = {
   up: "W",
   left: "A",
   down: "S",
   right: "D",
-  skills: ["1", "2", "R"],
+  skills: ["1", "2", "3", "R"],
   dash: "RMB",
   jump: "SPACE",
 };
@@ -36,23 +37,35 @@ export const OBSTACLES = [
   { x: 750, y: 390, w: 100, h: 120 },
 ];
 export type CharacterId =
-  | "voltkit"
-  | "cindrake"
-  | "tidefin"
-  | "auralynx"
-  | "thornback"
-  | "frostfang"
-  | "duskveil"
-  | "terradon";
+  | "pikachu"
+  | "charizard"
+  | "greninja"
+  | "lucario"
+  | "eevee"
+  | "mewtwo"
+  | "snorlax"
+  | "gengar";
 export type StatusKind =
   | "burn"
   | "paralysis"
   | "slow"
   | "freeze"
   | "stun"
+  | "sleep"
   | "shield"
+  | "counter"
+  | "empower"
   | "haste"
   | "stealth";
+/** Statuses that count as harmful for effects such as Hex. */
+export const DEBUFFS: StatusKind[] = [
+  "burn",
+  "paralysis",
+  "slow",
+  "freeze",
+  "stun",
+  "sleep",
+];
 export const STATUS_RULES = {
   stacking: "refresh" as const,
   crowdControlImmunity: 2,
@@ -60,20 +73,45 @@ export const STATUS_RULES = {
   burnInterval: 0.5,
   slowMultiplier: 0.55,
   hasteMultiplier: 1.3,
-  shieldReduction: 0.5,
+  /** Damage multiplier while Counter Stance is active. */
+  counterReduction: 0.5,
   counterReflection: 0.3,
+  /** Damage multiplier while Barrier is active. */
+  shieldReduction: 0.4,
+  /** Helping Hand: outgoing damage multiplier and basic attack interval multiplier. */
+  empowerDamage: 1.25,
+  empowerInterval: 0.7,
+  /** Rest leaves the sleeper vulnerable. */
+  sleepDamageTaken: 1.25,
+  restInterval: 0.5,
 };
 export type AbilityKind =
+  /** Single projectile. */
   | "projectile"
-  | "zone"
-  | "movement"
-  | "clone"
-  | "melee"
-  | "counter"
-  | "barrage"
+  /** Projectile fired after a wind-up (`cast`). */
   | "charged"
-  | "stealth"
-  | "heal";
+  /** Fan of `count` projectiles. */
+  | "barrage"
+  /** Ground or air area placed at the aim point (or on the caster with `follow`). */
+  | "zone"
+  /** Instant strike in front of the caster. */
+  | "melee"
+  /** Continuous cone in front of the caster for `duration`. */
+  | "cone"
+  /** Instant hitscan line toward the aim. */
+  | "beam"
+  /** Circular burst centred on the caster. */
+  | "nova"
+  /** Decoy that absorbs one projectile. */
+  | "clone"
+  /** Damage reduction plus reflection. */
+  | "counter"
+  /** Damage reduction only. */
+  | "barrier"
+  /** Self buff (Helping Hand). */
+  | "buff"
+  /** Heal over time while asleep and vulnerable. */
+  | "rest";
 export interface Ability {
   id: string;
   name: string;
@@ -81,17 +119,32 @@ export interface Ability {
   kind: AbilityKind;
   element: string;
   damage: number;
+  /** Seconds between uses of a special skill. Always 0 for basic attacks. */
   cooldown: number;
+  /** Seconds between basic attacks. Server-enforced; not a skill cooldown. */
+  interval?: number;
   range: number;
   cast: number;
   recovery: number;
   speed: number;
+  /** Projectile/beam hit radius, zone or nova radius. */
   radius: number;
+  /** Minimum cosine between aim and target for melee/cone hits (0 = 180°). */
+  arc?: number;
   duration: number;
   ground: boolean;
   knockback: number;
   status?: StatusKind;
   statusDuration?: number;
+  /** Zones and cones: first tick delay and tick spacing in seconds. */
+  tickDelay?: number;
+  tickInterval?: number;
+  /** Zone stays centred on its caster. */
+  follow?: boolean;
+  /** Damage multiplier against targets with a harmful status. */
+  bonusVsStatus?: number;
+  /** Rest: health restored per tick. */
+  heal?: number;
   visual: string;
   sound: string;
   energyCost: number;
@@ -113,7 +166,7 @@ const ability = (
   damage,
   cooldown,
   description,
-  element: "energy",
+  element: "",
   range: 700,
   cast: 0,
   recovery: 0.12,
@@ -127,11 +180,27 @@ const ability = (
   energyCost: 0,
   ...extra,
 });
+/** Basic attacks have no cooldown, only a server-enforced attack interval. */
+const basic = (
+  id: string,
+  name: string,
+  kind: AbilityKind,
+  damage: number,
+  intervalMs: number,
+  description: string,
+  extra: Partial<Ability> = {},
+): Ability =>
+  ability(id, name, kind, damage, 0, description, {
+    interval: intervalMs / 1000,
+    recovery: Math.min(0.12, intervalMs / 1000 / 2),
+    ...extra,
+  });
 export interface Character {
   id: CharacterId;
   name: string;
   element: string;
   role: string;
+  description: string;
   color: number;
   health: number;
   speed: number;
@@ -139,45 +208,53 @@ export interface Character {
   skills: Ability[];
 }
 export const CHARACTERS: Record<CharacterId, Character> = {
-  voltkit: {
-    id: "voltkit",
-    name: "Voltkit",
+  pikachu: {
+    id: "pikachu",
+    name: "Pikachu",
     element: "Electric",
     role: "Ranged speedster",
+    description:
+      "Fast and slippery. Chains quick jolts with paralysis to keep opponents at range.",
     color: 0xffd65b,
     health: 110,
     speed: 270,
-    basic: ability("spark", "Spark", "projectile", 8, 0.38, "A quick spark.", {
-      speed: 800,
-    }),
+    basic: basic(
+      "thunder-jolt",
+      "Thunder Jolt",
+      "projectile",
+      7,
+      280,
+      "A fast electric projectile.",
+      { speed: 860, range: 680, radius: 9 },
+    ),
     skills: [
       ability(
-        "thunderbolt",
-        "Arc Pulse",
+        "thunder-shock",
+        "Thunder Shock",
         "projectile",
         18,
-        4,
-        "A fast electric bolt.",
-        { speed: 1000 },
+        8,
+        "A powerful electric bolt toward your aim. Briefly paralyzes.",
+        { speed: 1050, radius: 12, status: "paralysis", statusDuration: 0.6 },
       ),
       ability(
-        "orb",
-        "Charge Orb",
+        "electro-orb",
+        "Electro Orb",
         "projectile",
-        23,
-        7,
-        "A slow orb that explodes on impact.",
-        { speed: 390, radius: 22, explosion: 100 },
+        22,
+        10,
+        "A slow electric orb that bursts on impact, shocking nearby enemies.",
+        { speed: 400, radius: 22, explosion: 100 },
       ),
       ability(
-        "static",
-        "Livewire Field",
+        "thunder-field",
+        "Thunder Field",
         "zone",
-        4,
-        10,
-        "A ground field that slows enemies.",
+        5,
+        14,
+        "An electrified ground area that damages and slows over time. Jump to avoid it.",
         {
-          radius: 125,
+          radius: 130,
           duration: 4,
           ground: true,
           status: "slow",
@@ -186,444 +263,487 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         },
       ),
       ability(
-        "storm",
-        "Overcharge",
-        "zone",
-        10,
+        "volt-overload",
+        "Volt Overload",
+        "nova",
         30,
-        "Repeated strikes in a large targeted area.",
-        { radius: 185, duration: 4, range: 600 },
+        18,
+        "After a short charge, a circular electrical explosion around Pikachu.",
+        {
+          radius: 190,
+          cast: 0.35,
+          knockback: 120,
+          status: "paralysis",
+          statusDuration: 1,
+        },
       ),
     ],
   },
-  cindrake: {
-    id: "cindrake",
-    name: "Cindrake",
+  charizard: {
+    id: "charizard",
+    name: "Charizard",
     element: "Fire",
     role: "Burst damage fighter",
+    description:
+      "Heavy hitter that layers burns and huge fire bursts. Strongest up close.",
     color: 0xff795a,
     health: 125,
     speed: 240,
-    basic: ability(
-      "cinder",
-      "Cinder",
-      "projectile",
+    basic: basic(
+      "flame-puff",
+      "Flame Puff",
+      "melee",
       9,
-      0.45,
-      "A burning cinder.",
-      { speed: 650 },
+      450,
+      "A short-range burst of fire in front of Charizard.",
+      { range: 150, arc: 0.2, knockback: 40 },
     ),
     skills: [
       ability(
-        "flame",
-        "Crest Flare",
-        "projectile",
-        18,
+        "fire-breath",
+        "Fire Breath",
+        "cone",
         5,
-        "Fire that burns for two seconds.",
-        { status: "burn", statusDuration: 2 },
-      ),
-      ability("spin", "Ember Ring", "zone", 6, 8, "A circular ground fire.", {
-        radius: 125,
-        duration: 3,
-        ground: true,
-        range: 400,
-      }),
-      ability(
-        "rush",
-        "Ember Rush",
-        "movement",
-        22,
-        10,
-        "Rush forward and strike on contact.",
-        { range: 270, duration: 0.3 },
-      ),
-      ability(
-        "inferno",
-        "Solar Bloom",
-        "zone",
-        9,
-        30,
-        "A large burning zone.",
+        8,
+        "A continuous cone of flame for 1.2 seconds. Burns.",
         {
-          radius: 200,
-          duration: 4,
-          ground: true,
+          range: 230,
+          arc: 0.75,
+          duration: 1.2,
+          tickDelay: 0.1,
+          tickInterval: 0.2,
+          knockback: 0,
           status: "burn",
-          statusDuration: 1,
-          range: 500,
+          statusDuration: 1.5,
+        },
+      ),
+      ability(
+        "flame-burst",
+        "Flame Burst",
+        "projectile",
+        24,
+        12,
+        "An explosive fireball that burns enemies caught in the blast.",
+        {
+          speed: 620,
+          radius: 18,
+          explosion: 110,
+          status: "burn",
+          statusDuration: 2,
+        },
+      ),
+      ability(
+        "inferno-spin",
+        "Inferno Spin",
+        "zone",
+        6,
+        15,
+        "Spin while releasing flames around Charizard for 2.5 seconds.",
+        {
+          radius: 120,
+          duration: 2.5,
+          follow: true,
+          range: 0,
+          tickDelay: 0.2,
+          tickInterval: 0.4,
+          knockback: 30,
+        },
+      ),
+      ability(
+        "solar-blaze",
+        "Solar Blaze",
+        "zone",
+        22,
+        18,
+        "Summon a large pillar of fire at the aim point. Burns.",
+        {
+          radius: 120,
+          range: 520,
+          duration: 1.2,
+          cast: 0.3,
+          tickDelay: 0.5,
+          tickInterval: 0.5,
+          status: "burn",
+          statusDuration: 2,
         },
       ),
     ],
   },
-  tidefin: {
-    id: "tidefin",
-    name: "Tidefin",
+  greninja: {
+    id: "greninja",
+    name: "Greninja",
     element: "Water",
     role: "Agile assassin",
+    description:
+      "The fastest fighter. Pokes with kunai, confuses with clones and finishes with a wave.",
     color: 0x63dce8,
     health: 105,
     speed: 285,
-    basic: ability(
-      "droplet",
-      "Droplet",
+    basic: basic(
+      "water-kunai",
+      "Water Kunai",
       "projectile",
-      7,
-      0.34,
-      "A precise water dart.",
-      { speed: 850 },
+      6,
+      260,
+      "A fast water projectile.",
+      { speed: 950, radius: 8 },
     ),
     skills: [
       ability(
-        "shuriken",
-        "Tidal Blade",
-        "projectile",
-        18,
-        4,
-        "A sharp, fast water blade.",
-        { speed: 1050 },
-      ),
-      ability(
-        "step",
-        "Slipstream",
-        "movement",
-        0,
-        8,
-        "A fast directional reposition.",
-        { range: 230, duration: 0.16 },
-      ),
-      ability(
-        "clone",
-        "Mirror Current",
-        "clone",
-        0,
-        12,
-        "A decoy absorbs one projectile; gain a speed boost.",
-        { duration: 3, status: "haste", statusDuration: 2 },
-      ),
-      ability(
+        "water-shuriken",
+        "Water Shuriken",
         "barrage",
-        "Riptide Volley",
-        "barrage",
-        12,
-        30,
-        "Seven water blades in a narrow fan.",
-        { count: 7, speed: 950 },
-      ),
-    ],
-  },
-  auralynx: {
-    id: "auralynx",
-    name: "Auralynx",
-    element: "Energy",
-    role: "Melee and counter specialist",
-    color: 0xb5a1ff,
-    health: 140,
-    speed: 235,
-    basic: ability(
-      "jab",
-      "Crystal Jab",
-      "melee",
-      12,
-      0.48,
-      "A close-range strike.",
-      { range: 100, radius: 60 },
-    ),
-    skills: [
-      ability(
-        "sphere",
-        "Prism Shot",
-        "projectile",
-        20,
-        5,
-        "A focused energy sphere.",
-        { radius: 20, speed: 580 },
-      ),
-      ability(
-        "bone",
-        "Shard Combination",
-        "melee",
-        28,
-        7,
-        "A powerful close-range combination.",
-        { range: 145, radius: 90, knockback: 150 },
-      ),
-      ability(
-        "counter",
-        "Prism Guard",
-        "counter",
-        0,
-        12,
-        "Shield half of incoming damage and reflect part.",
-        { duration: 1.4, status: "shield", statusDuration: 1.4 },
-      ),
-      ability(
-        "blast",
-        "Nova Ray",
-        "charged",
-        45,
-        30,
-        "Charge a large blast. Keep aiming during the windup.",
-        { cast: 0.65, radius: 40, speed: 850, explosion: 100, range: 1000 },
-      ),
-    ],
-  },
-  thornback: {
-    id: "thornback",
-    name: "Thornback",
-    element: "Nature",
-    role: "Defensive tank",
-    color: 0x8fd58d,
-    health: 185,
-    speed: 185,
-    basic: ability(
-      "bough",
-      "Bough Bash",
-      "melee",
-      12,
-      0.7,
-      "A short, sturdy shell strike.",
-      { range: 95, knockback: 95 },
-    ),
-    skills: [
-      ability(
-        "seed",
-        "Bramble Seed",
-        "projectile",
-        12,
-        5,
-        "A thorn seed that slows the enemy.",
-        { speed: 480, status: "slow", statusDuration: 1.3 },
-      ),
-      ability(
-        "bark",
-        "Verdant Guard",
-        "counter",
-        0,
         11,
-        "Reduce incoming damage by half and reflect part for two seconds.",
-        { duration: 2 },
-      ),
-      ability(
-        "roots",
-        "Root Garden",
-        "zone",
-        4,
-        10,
-        "A vine patch that slows grounded enemies. Jump to cross it.",
-        {
-          radius: 135,
-          range: 450,
-          duration: 3,
-          ground: true,
-          status: "slow",
-          statusDuration: 0.7,
-        },
-      ),
-      ability(
-        "bloom",
-        "Wild Bloom",
-        "zone",
-        9,
-        30,
-        "Raise a large thorn garden after a brief cast. Stay out or jump through.",
-        {
-          cast: 0.35,
-          radius: 180,
-          range: 450,
-          duration: 4,
-          ground: true,
-          status: "slow",
-          statusDuration: 0.7,
-        },
-      ),
-    ],
-  },
-  frostfang: {
-    id: "frostfang",
-    name: "Frostfang",
-    element: "Ice",
-    role: "Crowd control specialist",
-    color: 0xb8edff,
-    health: 115,
-    speed: 225,
-    basic: ability(
-      "flake",
-      "Frost Flake",
-      "projectile",
-      7,
-      0.5,
-      "A crisp shard of ice.",
-      { speed: 650 },
-    ),
-    skills: [
-      ability(
-        "lance",
-        "Ice Lance",
-        "projectile",
-        16,
-        6,
-        "A narrow lance that briefly freezes the target. Control immunity prevents chaining.",
-        { speed: 800, status: "freeze", statusDuration: 0.6 },
-      ),
-      ability(
-        "drift",
-        "Snow Drift",
-        "movement",
-        0,
         8,
-        "Slide forward out of danger.",
-        { range: 220, duration: 0.22 },
+        "Throw three water shurikens in a narrow fan.",
+        { count: 3, speed: 1000, radius: 11 },
       ),
       ability(
-        "chill",
-        "Cold Front",
+        "aqua-ring",
+        "Aqua Ring",
         "zone",
         4,
-        10,
-        "Chilling ground slows enemies; jump over the cold.",
+        12,
+        "A swirling water zone that damages and slows enemies.",
         {
-          radius: 135,
-          range: 480,
-          duration: 3,
+          radius: 140,
+          duration: 3.5,
+          range: 420,
           ground: true,
           status: "slow",
           statusDuration: 0.8,
         },
       ),
       ability(
-        "blizzard",
-        "Crystal Blizzard",
-        "barrage",
-        9,
-        30,
-        "Five crystal shards spread across a wide fan.",
-        {
-          count: 5,
-          speed: 700,
-          status: "slow",
-          statusDuration: 1.2,
-          range: 700,
-        },
-      ),
-    ],
-  },
-  duskveil: {
-    id: "duskveil",
-    name: "Duskveil",
-    element: "Shadow",
-    role: "Stealth assassin",
-    color: 0xa98be6,
-    health: 100,
-    speed: 275,
-    basic: ability(
-      "wisp",
-      "Night Wisp",
-      "projectile",
-      7,
-      0.4,
-      "A small shadow wisp.",
-      { speed: 760 },
-    ),
-    skills: [
-      ability(
-        "rend",
-        "Cloak Rend",
-        "melee",
-        25,
-        5,
-        "Strike at close range. Approach from an unexpected angle.",
-        { range: 125, knockback: 80 },
-      ),
-      ability(
-        "veil",
-        "Shadow Veil",
-        "stealth",
-        0,
-        12,
-        "Fade for two seconds. Attacking or taking damage reveals you.",
-        { duration: 2 },
-      ),
-      ability(
-        "echo",
-        "Hollow Echo",
+        "shadow-clone",
+        "Shadow Clone",
         "clone",
         0,
-        10,
-        "Leave a one-hit decoy and gain a brief speed boost.",
-        { duration: 2.5, statusDuration: 1.6 },
+        15,
+        "Leave a decoy that absorbs one projectile and gain a burst of speed.",
+        { duration: 3.5, status: "haste", statusDuration: 2 },
       ),
       ability(
-        "eclipse",
-        "Eclipse",
-        "zone",
+        "tidal-surge",
+        "Tidal Surge",
+        "charged",
+        26,
+        18,
+        "A wide, powerful forward-moving wave with heavy knockback.",
+        { cast: 0.25, speed: 520, radius: 42, range: 800, knockback: 200 },
+      ),
+    ],
+  },
+  lucario: {
+    id: "lucario",
+    name: "Lucario",
+    element: "Fighting",
+    role: "Counter specialist",
+    description:
+      "Durable martial artist. Punishes careless attacks with Counter Stance.",
+    color: 0x78c7ef,
+    health: 140,
+    speed: 235,
+    basic: basic(
+      "aura-jab",
+      "Aura Jab",
+      "melee",
+      10,
+      320,
+      "A close-range energy punch.",
+      { range: 110, arc: 0.35 },
+    ),
+    skills: [
+      ability(
+        "aura-sphere",
+        "Aura Sphere",
+        "projectile",
+        20,
         8,
-        30,
-        "A shadow pool deals repeated damage and slows grounded enemies.",
+        "A concentrated aura projectile.",
+        { speed: 600, radius: 20 },
+      ),
+      ability(
+        "force-palm",
+        "Force Palm",
+        "melee",
+        28,
+        12,
+        "A close-range shockwave strike with big knockback and a brief stun.",
         {
-          radius: 160,
-          range: 450,
-          duration: 3,
-          ground: true,
-          status: "slow",
-          statusDuration: 0.6,
+          range: 145,
+          arc: 0.3,
+          knockback: 180,
+          status: "stun",
+          statusDuration: 0.4,
+        },
+      ),
+      ability(
+        "counter-stance",
+        "Counter Stance",
+        "counter",
+        0,
+        15,
+        "For 1.6 seconds, take half damage and reflect 30% back to the attacker.",
+        { duration: 1.6 },
+      ),
+      ability(
+        "aura-burst",
+        "Aura Burst",
+        "nova",
+        34,
+        18,
+        "After a short charge, a circular aura explosion.",
+        { radius: 200, cast: 0.4, knockback: 150 },
+      ),
+    ],
+  },
+  eevee: {
+    id: "eevee",
+    name: "Eevee",
+    element: "Normal",
+    role: "Versatile fighter",
+    description:
+      "Balanced at every range. Helping Hand turns steady pressure into a damage race.",
+    color: 0xd9a066,
+    health: 115,
+    speed: 265,
+    basic: basic(
+      "swift-star",
+      "Swift Star",
+      "projectile",
+      7,
+      300,
+      "A glowing star projectile.",
+      { speed: 820, radius: 10 },
+    ),
+    skills: [
+      ability(
+        "star-volley",
+        "Star Volley",
+        "barrage",
+        8,
+        8,
+        "Five glowing stars in a spread.",
+        { count: 5, speed: 880, radius: 10 },
+      ),
+      ability("bite", "Bite", "melee", 24, 12, "A powerful close-range bite.", {
+        range: 120,
+        arc: 0.4,
+        knockback: 90,
+      }),
+      ability(
+        "helping-hand",
+        "Helping Hand",
+        "buff",
+        0,
+        15,
+        "For 5 seconds, deal 25% more damage and basic attack 30% faster.",
+        { duration: 5 },
+      ),
+      ability(
+        "last-resort",
+        "Last Resort",
+        "nova",
+        40,
+        18,
+        "After a charge, a powerful energy burst around Eevee.",
+        { radius: 210, cast: 0.45, knockback: 140 },
+      ),
+    ],
+  },
+  mewtwo: {
+    id: "mewtwo",
+    name: "Mewtwo",
+    element: "Psychic",
+    role: "High-power duelist",
+    description:
+      "Slower attacks with high damage. Controls space with beams, pushes and Barrier.",
+    color: 0xc77dff,
+    health: 120,
+    speed: 255,
+    basic: basic(
+      "psy-bolt",
+      "Psy Bolt",
+      "projectile",
+      10,
+      400,
+      "A psychic energy projectile.",
+      { speed: 760, radius: 11 },
+    ),
+    skills: [
+      ability(
+        "psybeam",
+        "Psybeam",
+        "beam",
+        24,
+        8,
+        "An instant psychic beam toward your aim. Walls block it. Slows.",
+        { range: 760, radius: 16, status: "slow", statusDuration: 0.6 },
+      ),
+      ability(
+        "psychic-wave",
+        "Psychic Wave",
+        "nova",
+        12,
+        12,
+        "A shockwave that pushes nearby opponents far away.",
+        { radius: 180, knockback: 260 },
+      ),
+      ability(
+        "barrier",
+        "Barrier",
+        "barrier",
+        0,
+        15,
+        "A defensive shield that blocks 60% of damage for 3 seconds.",
+        { duration: 3 },
+      ),
+      ability(
+        "psystrike",
+        "Psystrike",
+        "zone",
+        48,
+        18,
+        "A delayed psychic explosion at the target location.",
+        {
+          radius: 120,
+          range: 600,
+          cast: 0.35,
+          duration: 0.7,
+          tickDelay: 0.5,
+          tickInterval: 1,
+          knockback: 120,
         },
       ),
     ],
   },
-  terradon: {
-    id: "terradon",
-    name: "Terradon",
-    element: "Earth",
-    role: "Heavy bruiser",
-    color: 0xe6ac78,
-    health: 170,
-    speed: 195,
-    basic: ability(
-      "knuckle",
-      "Stone Knuckle",
+  snorlax: {
+    id: "snorlax",
+    name: "Snorlax",
+    element: "Normal",
+    role: "Defensive tank",
+    description:
+      "Huge health pool and crushing swings. Slow, so make the opponent come to you.",
+    color: 0x4fa3a5,
+    health: 175,
+    speed: 215,
+    basic: basic(
+      "heavy-swipe",
+      "Heavy Swipe",
       "melee",
-      15,
-      0.65,
-      "A heavy close-range punch.",
-      { range: 105, knockback: 100 },
+      14,
+      600,
+      "A wide melee swing in front of Snorlax.",
+      { range: 130, arc: 0, knockback: 70 },
     ),
     skills: [
       ability(
-        "fracture",
-        "Faultline",
+        "body-slam",
+        "Body Slam",
         "melee",
-        25,
-        7,
-        "A forceful strike pushes enemies away.",
-        { range: 145, knockback: 200 },
+        30,
+        8,
+        "A heavy close-range body attack that stuns briefly. No dash.",
+        {
+          range: 150,
+          arc: 0.1,
+          knockback: 160,
+          status: "stun",
+          statusDuration: 0.5,
+        },
       ),
       ability(
-        "bulwark",
-        "Mineral Guard",
-        "counter",
+        "rest",
+        "Rest",
+        "rest",
         0,
         12,
-        "Brace with crystalline armor to reduce and reflect damage.",
-        { duration: 1.8 },
+        "Fall asleep for 2.5 seconds: heal 60 HP but you can't act and take 25% more damage.",
+        { duration: 2.5, heal: 12 },
       ),
       ability(
-        "boulder",
-        "Boulder Charge",
-        "movement",
-        20,
-        10,
-        "Charge forward, hitting an enemy once on contact.",
-        { range: 240, duration: 0.3 },
-      ),
-      ability(
-        "quake",
-        "Seismic Crown",
+        "yawn",
+        "Yawn",
         "zone",
-        10,
-        30,
-        "A rumbling patch repeatedly strikes grounded enemies. Jump clear of it.",
-        { radius: 185, range: 350, duration: 3, ground: true, knockback: 110 },
+        0,
+        15,
+        "A drowsy cloud that heavily slows enemies inside.",
+        {
+          radius: 150,
+          duration: 3,
+          range: 400,
+          knockback: 0,
+          status: "slow",
+          statusDuration: 1.2,
+        },
+      ),
+      ability(
+        "heavy-impact",
+        "Heavy Impact",
+        "nova",
+        36,
+        18,
+        "Slam the ground for a large shockwave. Jump to avoid it.",
+        { radius: 230, cast: 0.5, ground: true, knockback: 140 },
+      ),
+    ],
+  },
+  gengar: {
+    id: "gengar",
+    name: "Gengar",
+    element: "Ghost",
+    role: "Trickster / area control",
+    description:
+      "Applies burns, then cashes them in with Hex. Rewards patient setups.",
+    color: 0x9a6bd8,
+    health: 105,
+    speed: 260,
+    basic: basic(
+      "shadow-orb",
+      "Shadow Orb",
+      "projectile",
+      8,
+      350,
+      "A ghostly projectile.",
+      { speed: 720, radius: 11 },
+    ),
+    skills: [
+      ability(
+        "shadow-sneak",
+        "Shadow Sneak",
+        "projectile",
+        20,
+        8,
+        "A fast shadow strike along the ground. Jump to avoid it.",
+        { speed: 1100, radius: 16, ground: true },
+      ),
+      ability(
+        "will-o-wisp",
+        "Will-O-Wisp",
+        "barrage",
+        6,
+        12,
+        "Three ghostly flames that burn for 3 seconds.",
+        { count: 3, speed: 520, radius: 12, status: "burn", statusDuration: 3 },
+      ),
+      ability(
+        "hex",
+        "Hex",
+        "projectile",
+        16,
+        15,
+        "A curse that deals double damage to enemies with a harmful status.",
+        { speed: 760, radius: 14, bonusVsStatus: 2 },
+      ),
+      ability(
+        "shadow-ball",
+        "Shadow Ball",
+        "charged",
+        34,
+        18,
+        "After a short charge, a powerful ghost-energy orb that explodes.",
+        { cast: 0.35, speed: 560, radius: 26, explosion: 120 },
       ),
     ],
   },
@@ -631,233 +751,16 @@ export const CHARACTERS: Record<CharacterId, Character> = {
 for (const character of Object.values(CHARACTERS))
   for (const skill of [character.basic, ...character.skills])
     skill.element = character.element;
+/** Seconds between basic attacks, including Helping Hand. */
+export function basicInterval(character: Character, empowered = false) {
+  return (
+    (character.basic.interval ?? 0.3) *
+    (empowered ? STATUS_RULES.empowerInterval : 1)
+  );
+}
 export interface Vec {
   x: number;
   y: number;
-}
-// Stable internal IDs preserve saved rooms and accounts while the presentation returns to Pokemon.
-export const POKEMON_MOVES = {
-  voltkit: [
-    "Pikachu",
-    "Electric",
-    "Thunder Shot",
-    "Volt Dash",
-    "Electric Field",
-    "Thunder Burst",
-  ],
-  cindrake: [
-    "Charizard",
-    "Fire",
-    "Fire Breath",
-    "Flame Dash",
-    "Blazing Spin",
-    "Inferno Strike",
-  ],
-  tidefin: [
-    "Greninja",
-    "Water",
-    "Water Shuriken",
-    "Aqua Dash",
-    "Shadow Clone",
-    "Water Burst",
-  ],
-  auralynx: [
-    "Lucario",
-    "Fighting",
-    "Aura Sphere",
-    "Force Palm",
-    "Counter Stance",
-    "Aura Burst",
-  ],
-  thornback: [
-    "Gardevoir",
-    "Psychic",
-    "Psybeam",
-    "Teleport",
-    "Psychic Field",
-    "Moonblast",
-  ],
-  frostfang: [
-    "Garchomp",
-    "Dragon",
-    "Dragon Claw",
-    "Sand Dash",
-    "Earthquake",
-    "Dragon Rush",
-  ],
-  duskveil: [
-    "Sylveon",
-    "Fairy",
-    "Moonblast",
-    "Charm",
-    "Mystical Ribbon",
-    "Healing Wish",
-  ],
-  terradon: [
-    "Mimikyu",
-    "Ghost",
-    "Shadow Sneak",
-    "Trick Room",
-    "Phantom Claw",
-    "Shadow Burst",
-  ],
-} as const;
-for (const id of Object.keys(POKEMON_MOVES) as CharacterId[]) {
-  const c = CHARACTERS[id],
-    moves = POKEMON_MOVES[id],
-    old = c.skills;
-  c.color = {
-    voltkit: 0xffd65b,
-    cindrake: 0xef8558,
-    tidefin: 0x5dbeef,
-    auralynx: 0x78c7ef,
-    thornback: 0xe999ce,
-    frostfang: 0x777aee,
-    duskveil: 0xf59ecb,
-    terradon: 0xab85df,
-  }[id];
-  c.role = {
-    voltkit: "Ranged speedster",
-    cindrake: "Burst damage fighter",
-    tidefin: "Agile assassin",
-    auralynx: "Counter specialist",
-    thornback: "Area control",
-    frostfang: "Bruiser",
-    duskveil: "Support and disruptor",
-    terradon: "Trickster",
-  }[id];
-  if (id === "thornback") {
-    c.health = 125;
-    c.speed = 240;
-  }
-  if (id === "frostfang") {
-    c.health = 160;
-    c.speed = 230;
-  }
-  if (id === "duskveil") {
-    c.health = 120;
-    c.speed = 245;
-  }
-  if (id === "terradon") {
-    c.health = 105;
-    c.speed = 270;
-  }
-  c.name = moves[0];
-  c.element = moves[1];
-  c.basic = { ...old[0], name: moves[2], element: c.element };
-  c.skills = [old[1], old[2], old[3]].map((a, i) => ({
-    ...a,
-    name: moves[i + 3],
-    element: c.element,
-  }));
-  if (
-    ["voltkit", "cindrake", "tidefin", "thornback", "frostfang"].includes(id)
-  ) {
-    c.skills[0] = {
-      ...c.skills[0],
-      kind: "movement",
-      damage: id === "thornback" ? 0 : id === "cindrake" ? 22 : 12,
-      range: 240,
-      duration: id === "thornback" ? 0.08 : 0.24,
-      cast: 0,
-      description:
-        id === "thornback"
-          ? "A short teleport in the aimed direction; solid cover blocks the path."
-          : "Rush forward and strike an enemy on contact.",
-    };
-  }
-  if (id === "cindrake")
-    c.skills[1] = {
-      ...c.skills[1],
-      kind: "zone",
-      radius: 130,
-      range: 120,
-      duration: 3,
-      ground: true,
-      damage: 6,
-      description:
-        "A spinning patch of flame repeatedly damages grounded enemies.",
-    };
-  if (id === "frostfang") {
-    c.basic = {
-      ...c.basic,
-      kind: "melee",
-      range: 110,
-      status: undefined,
-      description: "Slash a nearby opponent with dragon claws.",
-    };
-    c.skills[1] = {
-      ...c.skills[1],
-      name: "Earthquake",
-      ground: true,
-      description: "Shake a patch of ground to damage and slow enemies.",
-    };
-    c.skills[2] = {
-      ...c.skills[2],
-      kind: "movement",
-      range: 380,
-      duration: 0.38,
-      damage: 38,
-      cast: 0,
-      description: "A powerful dragon charge.",
-    };
-  }
-  if (id === "duskveil") {
-    c.basic = {
-      ...c.basic,
-      kind: "projectile",
-      range: 650,
-      speed: 700,
-      description: "Launch a radiant fairy orb.",
-    };
-    c.skills[0] = {
-      ...c.skills[0],
-      kind: "zone",
-      damage: 0,
-      range: 300,
-      radius: 95,
-      duration: 2,
-      status: "slow",
-      statusDuration: 1,
-      ground: false,
-      description: "Charm a small area, slowing opponents.",
-    };
-    c.skills[1] = {
-      ...c.skills[1],
-      kind: "projectile",
-      damage: 22,
-      range: 650,
-      speed: 600,
-      description: "Send a ribbon of fairy energy toward an opponent.",
-    };
-    c.skills[2] = {
-      ...c.skills[2],
-      kind: "heal",
-      damage: 35,
-      description: "Restore up to 35 health to yourself.",
-    };
-  }
-  if (id === "terradon") {
-    c.skills[0] = {
-      ...c.skills[0],
-      kind: "zone",
-      range: 300,
-      radius: 130,
-      duration: 3,
-      damage: 0,
-      status: "slow",
-      statusDuration: 1,
-      ground: false,
-      description: "Create a spectral room that slows enemies.",
-    };
-    c.skills[1] = {
-      ...c.skills[1],
-      kind: "melee",
-      damage: 24,
-      range: 120,
-      description: "Strike a nearby enemy with a phantom claw.",
-    };
-  }
 }
 export interface Input {
   seq: number;
@@ -878,7 +781,11 @@ export const inputSchema = z
     aimX: z.number().finite().min(0).max(RULES.width),
     aimY: z.number().finite().min(0).max(RULES.height),
     basic: z.boolean(),
-    skill: z.number().int().min(-1).max(2),
+    skill: z
+      .number()
+      .int()
+      .min(-1)
+      .max(SKILL_SLOTS - 1),
     dash: z.boolean(),
     jump: z.boolean(),
   })
@@ -900,20 +807,29 @@ export const resumeSchema = z
   .object({ token: z.string().regex(/^[a-f0-9]{64}$/) })
   .strict();
 export const FIGHTER_IDS = [
-  "voltkit",
-  "cindrake",
-  "tidefin",
-  "auralynx",
-  "thornback",
-  "frostfang",
-  "duskveil",
-  "terradon",
-] as const;
+  "pikachu",
+  "charizard",
+  "greninja",
+  "lucario",
+  "eevee",
+  "mewtwo",
+  "snorlax",
+  "gengar",
+] as const satisfies readonly CharacterId[];
+/** Older internal IDs, accepted so stale clients and saved sessions keep working. */
 const legacyIds: Record<string, CharacterId> = {
-  voltling: "voltkit",
-  emberwing: "cindrake",
-  aquashade: "tidefin",
-  auralith: "auralynx",
+  voltkit: "pikachu",
+  cindrake: "charizard",
+  tidefin: "greninja",
+  auralynx: "lucario",
+  duskveil: "eevee",
+  thornback: "mewtwo",
+  frostfang: "snorlax",
+  terradon: "gengar",
+  voltling: "pikachu",
+  emberwing: "charizard",
+  aquashade: "greninja",
+  auralith: "lucario",
 };
 export function normalizeCharacterId(value: unknown): CharacterId | undefined {
   if (typeof value !== "string") return undefined;
@@ -928,6 +844,8 @@ export interface Status {
   kind: StatusKind;
   until: number;
   nextTick: number;
+  /** Rest: health restored per tick. */
+  amount?: number;
 }
 export interface Stats {
   dealt: number;
@@ -960,7 +878,8 @@ export interface Fighter extends Vec {
   recoveryUntil: number;
   stats: Stats;
   charge?: { at: number; skill: number };
-  rush?: { until: number; damage: number; hit: boolean };
+  /** Active continuous cone (Fire Breath). */
+  channel?: { until: number; nextTick: number; skill: number };
   clone?: Vec & { until: number };
   lastInput: Input;
 }
@@ -984,7 +903,10 @@ export interface Zone extends Vec {
 }
 export interface GameEvent extends Vec {
   id: number;
-  kind: "cast" | "hit" | "dash" | "jump" | "land" | "round";
+  kind: "cast" | "hit" | "dash" | "jump" | "land" | "round" | "beam" | "burst";
+  /** Beam end point. */
+  tx?: number;
+  ty?: number;
   abilityId?: string;
   color: number;
   value?: number;
@@ -1030,7 +952,7 @@ export function packSnapshot(s: Snapshot): WireSnapshot {
     ...s,
     players: s.players.map((p) => ({
       ...p,
-      character: normalizeCharacterId(p.character) ?? "voltkit",
+      character: normalizeCharacterId(p.character) ?? "pikachu",
     })),
     projectiles: s.projectiles.map(({ ability, ...pr }) => ({
       ...pr,
@@ -1047,7 +969,7 @@ export function unpackSnapshot(s: WireSnapshot): Snapshot {
     ...s,
     players: s.players.map((p) => ({
       ...p,
-      character: normalizeCharacterId(p.character) ?? "voltkit",
+      character: normalizeCharacterId(p.character) ?? "pikachu",
     })),
     projectiles: s.projectiles.map(({ abilityId, ...pr }) => ({
       ...pr,
@@ -1108,7 +1030,8 @@ export function advanceMovement(
   let modifier = 1;
   for (const s of p.statuses)
     if (s.until > time) {
-      if (s.kind === "freeze" || s.kind === "stun") modifier = 0;
+      if (s.kind === "freeze" || s.kind === "stun" || s.kind === "sleep")
+        modifier = 0;
       if (s.kind === "slow" || s.kind === "paralysis")
         modifier *= STATUS_RULES.slowMultiplier;
       if (s.kind === "haste") modifier *= STATUS_RULES.hasteMultiplier;

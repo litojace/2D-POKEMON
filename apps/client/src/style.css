@@ -1359,8 +1359,24 @@ dialog input[type="range"] {
     filter 0.12s,
     transform 0.1s;
 }
+.touch-buttons .touch-skill {
+  border-color: #71d6ea;
+  box-shadow:
+    inset 0 0 0 3px #ffffff07,
+    0 0 10px #63dce833,
+    0 3px 8px #0004;
+}
 .touch-buttons .touch-ultimate {
   border-color: #e6c674;
+  box-shadow:
+    inset 0 0 0 3px #ffffff07,
+    0 0 12px #e6c67440,
+    0 3px 8px #0004;
+}
+.touch-buttons button[data-action] .touch-key {
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  font-weight: 700;
 }
 .touch-buttons .touch-attack {
   border-color: #ffe28c;
@@ -2614,17 +2630,16 @@ dialog {
   box-shadow: 0 8px 24px #e4b45040;
 }
 
-/* Voltkit presentation pilot; replace with authored frames when available. */
-.creature-card.selected .voltkit-pilot,
-.selected-art .voltkit-pilot {
+/* Frame-based portraits breathe and greet like the articulated SVG fighters. */
+.creature-card.selected .creature-portrait,
+.selected-art .creature-portrait {
   transform-origin: 50% 83%;
-  animation: voltkit-breathe 2.4s ease-in-out infinite;
-  filter: drop-shadow(0 6px 10px #ffd75b35);
+  animation: portrait-breathe 2.4s ease-in-out infinite;
 }
-.creature-card:hover .voltkit-pilot {
-  animation: voltkit-greet 0.65s ease-in-out 2;
+.creature-card:hover .creature-portrait {
+  animation: portrait-greet 0.65s ease-in-out 2;
 }
-@keyframes voltkit-breathe {
+@keyframes portrait-breathe {
   0%,
   100% {
     transform: scale(1, 1);
@@ -2633,7 +2648,7 @@ dialog {
     transform: scale(1.015, 1.035);
   }
 }
-@keyframes voltkit-greet {
+@keyframes portrait-greet {
   0%,
   100% {
     transform: translateY(0) rotate(0);
@@ -2641,14 +2656,75 @@ dialog {
   40% {
     transform: translateY(-7px) rotate(-3deg);
   }
-  70% {
-    transform: translateY(-3px) rotate(2deg);
-  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .creature-card .voltkit-pilot,
-  .selected-art .voltkit-pilot {
+  .creature-card .creature-portrait,
+  .selected-art .creature-portrait {
     animation: none;
+  }
+}
+.creature-card,
+.selected-art {
+  position: relative;
+}
+.creature-card {
+  transition:
+    transform 0.16s ease,
+    box-shadow 0.16s ease,
+    border-color 0.16s ease;
+}
+.creature-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--element) 22%, transparent);
+}
+.creature-card.selected {
+  box-shadow:
+    0 0 0 1px var(--element),
+    0 0 22px color-mix(in srgb, var(--element) 35%, transparent);
+}
+.art-placeholder {
+  position: absolute;
+  top: 30px;
+  right: 8px;
+  padding: 2px 6px;
+  border: 1px dashed #c9d2e3aa;
+  border-radius: 6px;
+  background: #0b1628cc;
+  color: #c9d2e3;
+  font-size: 7px;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+.basic-description {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: left;
+}
+.selected-info .basic-description > .basic-text {
+  display: block;
+  flex: 1;
+  margin: 0;
+  text-align: left;
+}
+.basic-description .skill-icon {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+}
+.basic-description em {
+  display: block;
+  font-style: normal;
+  color: var(--element);
+  font-size: 0.85em;
+  margin-top: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .creature-card,
+  .creature-card:hover {
+    transition: none;
+    transform: none;
   }
 }
 

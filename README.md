@@ -2,9 +2,11 @@
 
 A real-time, server-authoritative 1v1 elemental creature fighting game. Built with Phaser, TypeScript, Vite, Socket.IO, Express, and Supabase.
 
-Eight Pok�mon fighters: **Pikachu, Charizard, Greninja, Lucario, Gardevoir, Garchomp, Sylveon, and Mimikyu**. Each has a signature basic attack, two abilities, an ultimate, dash, and jump. Mobile controls place the basic attack in the large central button with abilities curving around it.
+Eight Pokémon fighters: **Pikachu, Charizard, Greninja, Lucario, Eevee, Mewtwo, Snorlax, and Gengar**. Each has one signature basic attack (no cooldown, server-enforced attack interval), four special skills on cooldowns, plus the universal dash and jump. Mobile controls put the basic attack on the large button with the four skills curving around it.
 
-Selection now uses showcase-inspired, AI-rendered transparent creature portraits. Gameplay currently uses the original articulated, shaded-vector implementation with soft highlights and distinct silhouettes. It is an initial 2.5D-style pass, not production pre-rendered 3D animation. The import pipeline supports transparent PNG frames, sprite sheets and texture atlases when artwork becomes available. See [the overhaul report and asset guide](docs/original-creatures.md).
+Pikachu, Charizard, Greninja and Lucario use the existing articulated shaded-vector rigs. **Eevee, Mewtwo, Snorlax and Gengar currently render as generic placeholder figures** until licensed artwork is supplied. See [fighter assets](docs/fighter-assets.md) for the frames each fighter needs.
+
+This is an unofficial, noncommercial fan project for private play. It is not affiliated with or endorsed by Nintendo, Game Freak, Creatures Inc. or The Pokémon Company.
 
 ## Run
 
@@ -35,8 +37,8 @@ Create a private room, share its six-character code, select a fighter, and confi
 | WASD        | Move                       |
 | Mouse       | Aim                        |
 | Left mouse  | Basic attack               |
-| 1 / 2       | Skills                     |
-| R           | Ultimate                   |
+| 1 / 2 / 3   | Skills 1–3                 |
+| R           | Skill 4                    |
 | Right mouse | Dash                       |
 | Space       | Jump                       |
 | Esc / Menu  | Preferences and leave room |

@@ -4,11 +4,11 @@ import {
   abilityArtwork,
   abilityIcon,
 } from "../../apps/client/src/ability-icons";
-it("gives all twenty-four configured abilities explicit explicit artwork", () => {
+it("gives all forty basic attacks and skills explicit artwork", () => {
   const names = Object.values(CHARACTERS).flatMap((c) =>
-    c.skills.map((a) => a.name),
+    [c.basic, ...c.skills].map((a) => a.name),
   );
-  expect(names).toHaveLength(24);
+  expect(names).toHaveLength(40);
   expect(names.every((name) => !!abilityArtwork[name])).toBe(true);
   expect(
     new Set(names.map((name) => abilityArtwork[name].art)).size,

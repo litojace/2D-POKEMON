@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Character animation lab</title>
+    <title>Animation studio</title>
     <style>
       body {
         margin: 0;
@@ -37,19 +37,9 @@
   </head>
   <body>
     <header>
-      <h2>Element Arena · Animation lab</h2>
+      <h2>Element Arena · Animation studio</h2>
       <p>Development preview · no match or account · visual animation only</p>
-      <label
-        >Fighter<select id="character">
-          <option value="voltkit">Pikachu</option>
-          <option value="cindrake">Charizard</option>
-          <option value="tidefin">Greninja</option>
-          <option value="auralynx">Lucario</option>
-          <option value="thornback">Gardevoir</option>
-          <option value="frostfang">Garchomp</option>
-          <option value="duskveil">Sylveon</option>
-          <option value="terradon">Mimikyu</option>
-        </select></label
+      <label>Fighter<select id="character"></select></label
       ><label
         >Facing<select id="facing">
           <option value="1.5708">Down</option>
@@ -79,8 +69,10 @@
       ><label
         >Speed<select id="speed">
           <option value="1">1×</option>
+          <option value=".25">0.25×</option>
           <option value=".5">0.5×</option>
           <option value="1.5">1.5×</option>
+          <option value="2">2×</option>
         </select></label
       ><button id="play">Play / replay</button
       ><button id="combo">Attack → hurt → recover</button
@@ -97,6 +89,23 @@
         queueFighterAssets,
         createFighterVisual,
       } from "./src/animation/pipeline";
+      // Options come from the shared roster so the studio never drifts from the game.
+      document.querySelector("#character").innerHTML = Object.values(CHARACTERS)
+        .map((c) => `<option value="${c.id}">${c.name}</option>`)
+        .join("");
+      function labelStates() {
+        const c = CHARACTERS[document.querySelector("#character").value];
+        for (const option of document.querySelector("#state").options) {
+          const slot = /^skill(\d)$/.exec(option.value);
+          option.textContent =
+            option.value === "basic"
+              ? `basic · ${c.basic.name}`
+              : slot
+                ? `skill ${Number(slot[1]) + 1} · ${c.skills[slot[1]].name}`
+                : option.value;
+        }
+      }
+      labelStates();
       const assets = Object.fromEntries(
         Object.keys(CHARACTERS).map((id) => [id, rigAssets(id)]),
       );
@@ -147,7 +156,10 @@
             rig.controller.state +
             (fighterPack(rig.character)?.kind === "layered"
               ? " - articulated 2.5D layers"
-              : " - imported frame animation");
+              : " - imported frame animation") +
+            (fighterPack(rig.character)?.artStatus.startsWith("PLACEHOLDER")
+              ? " · PLACEHOLDER ART (supply licensed frames)"
+              : "");
         }
       }
       function select() {
@@ -155,6 +167,7 @@
         rig?.destroy();
         const id = document.querySelector("#character").value;
         rig = createFighterVisual(scene, id, assets[id]);
+        labelStates();
         play();
       }
       function play() {
@@ -173,7 +186,12 @@
                   ? 160
                   : state === "skill3"
                     ? 650
-                    : 320,
+                    : state.startsWith("skill") &&
+                        CHARACTERS[rig.character].skills[state.slice(5)]
+                          .kind === "cone"
+                      ? CHARACTERS[rig.character].skills[state.slice(5)]
+                          .duration * 1000
+                      : 320,
           );
       }
       document.querySelector("#character").onchange = select;

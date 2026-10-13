@@ -13,7 +13,7 @@ import {
 const duel = () => {
   const a = new Arena("ABC123");
   a.add("one", "One");
-  a.add("two", "Two", "cindrake");
+  a.add("two", "Two", "charizard");
   a.start();
   a.phase = "playing";
   a.deadline = 180;
@@ -96,15 +96,15 @@ describe("authoritative simulation", () => {
     a.tick();
     expect(q.jumpUntil).toBeGreaterThan(a.time);
     const hp = q.hp;
-    a.damage(q, 10, p.id, { ...CHARACTERS.voltkit.skills[2], ground: true });
+    a.damage(q, 10, p.id, { ...CHARACTERS.pikachu.skills[2], ground: true });
     expect(q.hp).toBe(hp);
-    a.damage(q, 10, p.id, CHARACTERS.voltkit.skills[0]);
+    a.damage(q, 10, p.id, CHARACTERS.pikachu.basic);
     expect(q.hp).toBe(hp - 10);
     for (let i = 0; i < 22; i++) a.tick();
     expect(q.jumpUntil).toBeLessThan(a.time);
     expect(q.jumpAt).toBeGreaterThan(a.time);
   });
-  it("handles burn, slow, shield, haste and crowd-control immunity", () => {
+  it("handles burn, slow, counter, haste and crowd-control immunity", () => {
     const a = duel(),
       [p, q] = a.players;
     a.status(q, "burn", 1);
@@ -114,7 +114,7 @@ describe("authoritative simulation", () => {
     const until = q.statuses.find((s) => s.kind === "stun")!.until;
     a.status(q, "stun", 5);
     expect(q.statuses.find((s) => s.kind === "stun")!.until).toBe(until);
-    a.status(q, "shield", 1);
+    a.status(q, "counter", 1);
     const hp = q.hp,
       source = p.hp;
     a.damage(q, 20, p.id);
@@ -133,7 +133,7 @@ describe("authoritative simulation", () => {
     for (let i = 0; i < 125; i++) a.tick();
     expect(a.phase).toBe("countdown");
     expect(a.players[1].hp).toBe(125);
-    expect(a.players[0].cooldowns).toEqual([0, 0, 0]);
+    expect(a.players[0].cooldowns).toEqual([0, 0, 0, 0]);
     a.phase = "playing";
     a.players[1].hp = 0;
     a.tick();
@@ -165,10 +165,16 @@ describe("authoritative simulation", () => {
     expect(inputSchema.safeParse(input({ dx: 100 })).success).toBe(false);
     expect(inputSchema.safeParse(input({ aimX: NaN })).success).toBe(false);
   });
-  it("all characters have three functional abilities with charged cast timing", () => {
+  it("all characters have four functional skills with charged cast timing", () => {
+    const selfStatus = {
+      counter: "counter",
+      barrier: "shield",
+      buff: "empower",
+      rest: "sleep",
+    } as const;
     for (const c of Object.values(CHARACTERS)) {
-      expect(c.skills).toHaveLength(3);
-      for (let i = 0; i < 3; i++) {
+      expect(c.skills).toHaveLength(4);
+      for (let i = 0; i < 4; i++) {
         const a = duel(),
           p = a.players[0];
         p.character = c.id;
@@ -181,8 +187,13 @@ describe("authoritative simulation", () => {
         expect(p.stats.skills).toBe(1);
         expect(p.cooldowns[i]).toBeGreaterThan(0);
         if (c.skills[i].kind === "clone") expect(p.clone).toBeDefined();
-        if (c.skills[i].kind === "counter")
-          expect(p.statuses.some((s) => s.kind === "shield")).toBe(true);
+        const kind = c.skills[i].kind;
+        if (kind in selfStatus)
+          expect(
+            p.statuses.some(
+              (s) => s.kind === selfStatus[kind as keyof typeof selfStatus],
+            ),
+          ).toBe(true);
       }
     }
   });

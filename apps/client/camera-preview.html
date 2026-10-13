@@ -86,7 +86,7 @@
       class Demo extends Phaser.Scene {
         follow = new FollowCamera();
         preload() {
-          queueFighterAssets(this, "voltkit", rigAssets("voltkit"));
+          queueFighterAssets(this, "pikachu", rigAssets("pikachu"));
         }
         create() {
           const g = this.add.graphics();
@@ -105,7 +105,7 @@
               fontSize: "24px",
               color: "#ffd65b",
             });
-          rig = createFighterVisual(this, "voltkit", rigAssets("voltkit"));
+          rig = createFighterVisual(this, "pikachu", rigAssets("pikachu"));
           new ResizeObserver(() => {
             this.scale.getParentBounds();
             this.scale.refresh();
