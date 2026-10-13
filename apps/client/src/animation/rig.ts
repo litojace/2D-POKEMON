@@ -155,10 +155,12 @@ export class FighterRig {
       armR = this.images.get("armR")!,
       legL = this.images.get("legL")!,
       legR = this.images.get("legR")!;
-    armL.setPosition(-17.5, -4);
-    armR.setPosition(17.5, -4);
-    legL.setPosition(-11, 10.5);
-    legR.setPosition(11, 10.5);
+    for (const part of ["armL", "armR", "legL", "legR"] as Part[]) {
+      const asset = this.assets.find(
+        (a) => a.key === rigKey(this.character, dir, part),
+      )!;
+      this.images.get(part)!.setPosition(asset.x, asset.y);
+    }
     if (this.character === "auralynx") {
       armL.rotation = -0.35;
       armR.rotation = 0.35;

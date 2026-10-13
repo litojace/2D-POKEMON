@@ -207,9 +207,34 @@ export function creatureLayers(id: CharacterId, dir: Facing) {
       layers.head = `<path d="m67 66 33-13 33 13 12 23-9 26-36 9-36-9-9-26Z" fill="${face}"/><path d="m70 77 30 9 30-9" fill="none" stroke="${p.light}"/>`;
     layers.body += `<path d="M82 125q18-8 36 0" fill="none" stroke="${p.light}" opacity=".3" stroke-width="3"/>`;
   } else if (profile) {
-    layers.head = `<g transform="translate(${side * 9} 0) translate(100 0) scale(.78 1) translate(-100 0)">${layers.head}</g>`;
-    // Separate side projection, preserving asymmetric authored parts rather than mirroring.
-    layers.body = `<g transform="translate(100 0) scale(.86 1) translate(-100 0)">${layers.body}</g>`;
+    // Author the entire profile together, including a protruding muzzle and one visible eye.
+    // Coordinates are projected explicitly; no whole-character mirror or detached front mouth.
+    const px = (x: number) => 100 + side * (x - 100);
+    const fur = ["voltkit", "auralynx", "frostfang", "duskveil"].includes(id);
+    const skin = id === "auralynx" || id === "frostfang" ? pearl : face;
+    layers.head = `${e(px(96), 88, 31, 29, skin)}${fur ? `<path d="M${px(73)} 94 ${px(64)} 102 ${px(76)} 107 ${px(72)} 115 ${px(89)} 116" fill="${skin}"/>` : ""}<path d="M${px(112)} 97Q${px(125)} 97 ${px(137)} 103Q${px(143)} 106 ${px(137)} 113Q${px(124)} 119 ${px(107)} 113Z" fill="${pearl}"/><path d="M${px(136)} 103 ${px(142)} 106 ${px(137)} 110Z" fill="${p.dark}"/><path d="M${px(136)} 113Q${px(127)} 117 ${px(119)} 112" stroke="${p.dark}" stroke-width="1.7" fill="none"/><path d="M${px(77)} 70Q${px(91)} 62 ${px(103)} 65" stroke="${p.light}" opacity=".75" stroke-width="3" fill="none"/>`;
+    layers.eyes = eye(px(109));
+    if (id === "terradon")
+      layers.head += `<path d="M${px(74)} 69 ${px(82)} 88 ${px(72)} 107" stroke="${p.light}" opacity=".6" fill="none"/>`;
+    layers.body = `<g transform="translate(${side * 4} 0) translate(100 0) scale(.78 1) translate(-100 0)">${layers.body}</g>`;
+    layers.ears = `<g transform="translate(${side * 3} 0) translate(100 0) scale(.72 1) translate(-100 0)">${layers.ears}</g>`;
+    layers.scarf = `<g transform="translate(${side * 6} 0) translate(100 0) scale(.73 1) translate(-100 0)">${layers.scarf}</g>`;
+    // Forelegs and hind legs converge in depth rather than remaining in a frontal stance.
+    layers.armL = `<g opacity=".75">${paw(px(88), 140, id === "terradon")}</g>`;
+    layers.armR = paw(px(112), 145, id === "terradon");
+    layers.legL = `<g opacity=".8">${paw(px(87), 159)}</g>`;
+    layers.legR = paw(px(113), 163);
+    layers.wings = `<g transform="translate(${-side * 3} 0) translate(100 0) scale(.65 1) translate(-100 0)">${layers.wings}</g>`;
+    if (id === "auralynx")
+      layers.tail = `<path d="M${px(74)} 142Q${px(36)} 161 ${px(32)} 131Q${px(28)} 108 ${px(47)} 106" stroke="${p.mid}" stroke-width="14" fill="none"/>${crystal(px(47), 106, 11)}`;
+    if (id === "thornback")
+      layers.tail = `<path d="M${px(74)} 144 ${px(50)} 136 ${px(58)} 160Z" fill="${body}"/>`;
+    if (id === "frostfang")
+      layers.tail = `<path d="M${px(74)} 142Q${px(30)} 162 ${px(32)} 126L${px(42)} 105 ${px(47)} 118 ${px(56)} 113 ${px(54)} 134 ${px(79)} 135Z" fill="${pearl}"/>`;
+    if (id === "duskveil")
+      layers.tail = `<path d="M${px(74)} 142Q${px(28)} 161 ${px(27)} 122Q${px(31)} 87 ${px(58)} 105Q${px(77)} 124 ${px(52)} 132Q${px(65)} 115 ${px(48)} 113Q${px(36)} 115 ${px(42)} 132L${px(79)} 135Z" fill="${body}"/>`;
+    if (id === "terradon")
+      layers.tail = `${crystal(px(60), 124, 19)}${crystal(px(40), 143, 11)}`;
   }
   return { defs, layers };
 }
