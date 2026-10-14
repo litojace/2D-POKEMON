@@ -276,6 +276,7 @@ export class Arena {
       dealt *= ability.bonusVsStatus;
     if (counter) dealt *= STATUS_RULES.counterReduction;
     if (this.has(target, "shield")) dealt *= STATUS_RULES.shieldReduction;
+    if (this.has(target, "sleep")) dealt *= STATUS_RULES.sleepVulnerability;
     dealt = Math.min(target.hp, dealt);
     target.hp = Math.max(0, target.hp - dealt);
     target.stats.received += dealt;

@@ -55,6 +55,8 @@ Mobile uses the left joystick and right skill/action buttons, with a separate bo
 
 The current durability pass increases every fighter’s maximum HP by 25% (rounded to whole HP) and Hibernate healing from 60 to 75 HP. Damage, cooldowns and sleep duration are unchanged. The earlier win-rate results below predate this pass and need fresh playtesting.
 
+Hibernate now has a price: while Terradon sleeps it takes 20% more damage (`STATUS_RULES.sleepVulnerability`), and the HUD shows `SLEEP +20% DMG` so the opponent knows to punish. In 168-match simulations per style, a Terradon that sleeps carelessly mid-fight took about 12% more damage and its win rate fell from 24% to 17%. A Hard bot Terradon that only sleeps when safe was unaffected (72%).
+
 October 2026 pass, tuned with thousands of simulated matches (simple human-like players and Hard bots, every fighter pairing) until every fighter averaged 44–59% wins (before: 10–96%):
 
 - Basic attacks knock back lightly by default (20), so ranged darts no longer shove brawlers away; melee basics barely push (Cindrake 10, Auralynx 12, Terradon 25) so they can chain hits.

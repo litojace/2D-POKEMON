@@ -90,6 +90,8 @@ export const STATUS_RULES = {
   empowerDamage: 1.25,
   empowerInterval: 0.7,
   restInterval: 0.5,
+  /** Hibernate: damage multiplier while asleep (the price of the heal). */
+  sleepVulnerability: 1.2,
 };
 export type AbilityKind =
   /** Single projectile. */
@@ -674,7 +676,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "rest",
         0,
         12,
-        "Fall asleep for 2.5 seconds: heal 75 HP but you can't move or act.",
+        "Fall asleep for 2.5 seconds: heal 75 HP, but you can't move or act and take 20% more damage.",
         { duration: 2.5, heal: 15 },
       ),
       ability(

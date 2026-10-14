@@ -108,14 +108,16 @@ describe("special skills", () => {
     expect(CHARACTERS.terradon.health - clean.q.hp).toBe(16);
     expect(CHARACTERS.terradon.health - cursed.q.hp).toBe(32);
   });
-  it("Hibernate heals 75 over its duration and blocks actions without amplifying damage", () => {
+  it("Hibernate heals 75 over its duration, blocks actions and takes 20% more damage", () => {
     const { arena, q } = duel("cindrake");
     q.hp = 100;
     arena.submit(q, input({ skill: 1 }));
     arena.tick();
     expect(q.statuses.some((s) => s.kind === "sleep")).toBe(true);
     arena.damage(q, 10, "one", CHARACTERS.cindrake.basic);
-    expect(q.hp).toBe(90);
+    expect(q.hp).toBe(100 - 10 * STATUS_RULES.sleepVulnerability);
+    expect(STATUS_RULES.sleepVulnerability).toBe(1.2);
+    q.hp = 90; // keep the healing check below on whole numbers
     const x = q.x;
     arena.submit(q, input({ dx: 1, basic: true }));
     arena.tick();

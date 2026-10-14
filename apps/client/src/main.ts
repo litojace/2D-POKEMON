@@ -31,6 +31,7 @@ import { io } from "socket.io-client";
 import {
   CHARACTERS,
   RULES,
+  STATUS_RULES,
   advanceMovement,
   normalize,
   unpackSnapshot,
@@ -809,7 +810,11 @@ function renderBattle() {
         ? `${state!.teamScores?.[teamOf(p)] ?? 0} / 3`
         : `${state!.scores[p.id]} / ${RULES.roundsToWin}`;
     $(`status-${i}`).textContent = p.statuses
-      .map((s) => s.kind.toUpperCase())
+      .map((s) =>
+        s.kind === "sleep"
+          ? `SLEEP +${Math.round((STATUS_RULES.sleepVulnerability - 1) * 100)}% DMG`
+          : s.kind.toUpperCase(),
+      )
       .join(" · ");
   });
   if (state.practice) {
