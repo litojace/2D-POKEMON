@@ -4366,8 +4366,6 @@ button.open-slot.join:hover .slot-mark {
     padding-left: calc(3vw + var(--safe-left));
     padding-right: calc(3vw + var(--safe-right));
   }
-  #menu > .intro,
-  #menu > .mobile-lobby-eyebrow,
   #menu .roster-panel > .section-title {
     display: none;
   }
