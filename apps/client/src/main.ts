@@ -1304,23 +1304,25 @@ class ArenaScene extends Phaser.Scene {
   comboShown = new Map<string, number>();
   floor?: Phaser.GameObjects.Image;
   floorArena: ArenaId = "classic";
+  floorScale = new Map<string, number>();
   /** Bake an arena's floor once (2x on dense screens); returns its texture key. */
   floorTexture(id: ArenaId) {
     const key = `arena-floor-${id}`;
-    const bake = renderScale() > 1.25 ? 2 : 1;
+    const bake = floorBake();
     if (!this.textures.exists(key)) {
+      this.floorScale.set(key, bake);
       const g = this.make.graphics({}, false);
       paintArenaFloor(scaledPainter(g, bake), ARENAS[id]);
       g.generateTexture(key, RULES.width * bake, RULES.height * bake);
       g.destroy();
     }
-    this.floor?.setScale(1 / bake);
     return key;
   }
   showArena(id: ArenaId) {
     if (id === this.floorArena || !this.floor) return;
     this.floorArena = id;
-    this.floor.setTexture(this.floorTexture(id));
+    const key = this.floorTexture(id);
+    this.floor.setTexture(key).setScale(1 / (this.floorScale.get(key) ?? 1));
   }
   /** Knockout moment: camera push-in multiplier and its end time. */
   koZoom = 1;
@@ -1413,6 +1415,7 @@ class ArenaScene extends Phaser.Scene {
     this.floor = this.add
       .image(0, 0, this.floorTexture("classic"))
       .setOrigin(0)
+      .setScale(1 / (this.floorScale.get("arena-floor-classic") ?? 1))
       .setDepth(-10);
     new ResizeObserver(() => fitRenderer()).observe($("game"));
     this.graphics = this.add.graphics();
@@ -2147,6 +2150,10 @@ class ArenaScene extends Phaser.Scene {
     g.lineBetween(aim.x - 15, aim.y, aim.x - 6, aim.y);
     g.lineBetween(aim.x + 6, aim.y, aim.x + 15, aim.y);
   }
+}
+/** Floors are baked at 2x on dense screens so they stay sharp when zoomed. */
+function floorBake() {
+  return renderScale() > 1.25 ? 2 : 1;
 }
 /** Seconds into the live round on the server's clock (-1 when not live). */
 function arenaClock() {
