@@ -18,6 +18,9 @@ import {
   hasMark,
   MODE_SIZE,
   ORB_SPOTS,
+  MUTATOR_RULES,
+  roundsNeeded,
+  type MutatorId,
   RING,
   ringRadius,
   RULES,
@@ -106,9 +109,18 @@ export class Arena {
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }
-  /** Round wins needed (best of five in both modes). */
+  /** Party rules the host switched on (lobby only). */
+  mutators = new Set<MutatorId>();
+  rule(m: MutatorId) {
+    return this.mutators.has(m);
+  }
+  /** Round wins needed (best of five, or best of three with Quick match). */
   get roundsToWin() {
-    return RULES.roundsToWin;
+    return roundsNeeded([...this.mutators]);
+  }
+  /** Seconds between orbs (Orb rain halves it). */
+  get orbInterval() {
+    return RULES.orbInterval / (this.rule("orbs") ? MUTATOR_RULES.orbsRate : 1);
   }
   /** Players this room holds: 2 for a duel, 4 for 2v2. */
   get size() {
@@ -211,7 +223,8 @@ export class Arena {
     return true;
   }
   start() {
-    if (this.rotateArenas && !this.practice) {
+    if (this.rule("calm")) this.arenaId = "classic";
+    else if (this.rotateArenas && !this.practice) {
       if (this.arenaTurn < 0)
         this.arenaTurn = Math.floor(this.random() * ARENA_ROTATION.length);
       this.arenaId = ARENA_ROTATION[this.arenaTurn++ % ARENA_ROTATION.length];
@@ -283,7 +296,10 @@ export class Arena {
     this.orbTurn = 0;
     this.orbWave = 0;
     this.nextDrain = 0;
-    this.nextOrb = this.time + RULES.countdown + RULES.orbFirst;
+    this.nextOrb =
+      this.time +
+      RULES.countdown +
+      RULES.orbFirst / (this.rule("orbs") ? MUTATOR_RULES.orbsRate : 1);
     this.phase = "countdown";
     this.deadline = this.time + RULES.countdown;
   }
@@ -372,6 +388,7 @@ export class Arena {
   /** Add ultimate charge, capped at the meter's size. */
   chargeUlt(p: Fighter, amount: number) {
     if (this.phase !== "playing" && this.phase !== "intermission") return;
+    if (this.rule("turbo")) amount *= MUTATOR_RULES.turboUlt;
     p.ult = Math.min(RULES.ultMax, (p.ult ?? 0) + amount);
   }
   damage(target: Fighter, amount: number, owner: string, ability?: Ability) {
@@ -417,6 +434,7 @@ export class Arena {
     if (counter) dealt *= STATUS_RULES.counterReduction;
     if (this.has(target, "shield")) dealt *= STATUS_RULES.shieldReduction;
     if (this.has(target, "sleep")) dealt *= STATUS_RULES.sleepVulnerability;
+    if (this.rule("glass")) dealt *= MUTATOR_RULES.glassDamage;
     dealt = Math.min(target.hp, dealt);
     target.hp = Math.max(0, target.hp - dealt);
     target.stats.received += dealt;
@@ -850,7 +868,9 @@ export class Arena {
           } else
             p.cooldowns[input.skill] = freeCooldowns
               ? 0
-              : this.time + a.cooldown;
+              : this.time +
+                a.cooldown *
+                  (this.rule("turbo") ? MUTATOR_RULES.turboCooldown : 1);
           p.stats.skills++;
           p.recoveryUntil =
             this.time +
@@ -1037,7 +1057,7 @@ export class Arena {
   /** Spawn healing orbs on schedule; the first fighter to touch one heals. */
   stepOrbs() {
     if (this.time >= this.nextOrb) {
-      this.nextOrb += RULES.orbInterval;
+      this.nextOrb += this.orbInterval;
       // Duel: one orb, alternating spots. 2v2: one at each spot.
       const spots =
         this.mode === "teams"
@@ -1162,6 +1182,7 @@ export class Arena {
       events: this.events,
       pauseRemaining,
       overtime: this.overtime,
+      mutators: [...this.mutators],
       roundLog: this.roundLog,
       matchId: this.matchId,
       arena: this.arenaId,

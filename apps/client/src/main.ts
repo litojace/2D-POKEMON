@@ -36,6 +36,11 @@ import {
   CHARACTERS,
   RING,
   ringRadius,
+  MUTATORS,
+  MUTATOR_IDS,
+  MUTATOR_RULES,
+  roundsNeeded,
+  type MutatorId,
   RULES,
   STATUS_RULES,
   ULT_SLOT,
@@ -565,6 +570,35 @@ let roomMode: RoomMode = (() => {
 const COPY_ICON =
   '<svg class="copy-icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
 /** Lobby panel: a duel list, or Blue/Red columns for 2v2. */
+/** Turbo party rule: skills recharge faster (for the cooldown displays). */
+function cooldownScale() {
+  return state?.mutators?.includes("turbo") ? MUTATOR_RULES.turboCooldown : 1;
+}
+/** "two" / "three": round wins needed under this room's party rules. */
+function roundWord() {
+  const n = roundsNeeded(state?.mutators);
+  return ["zero", "one", "two", "three", "four"][n] ?? String(n);
+}
+/** Party rules on the briefing card, if any. */
+function partyRulesNote() {
+  const on = state?.mutators ?? [];
+  return on.length
+    ? `<p class="party-note"><b>Party rules:</b> ${on.map((m) => escape(MUTATORS[m].name)).join(" · ")}</p>`
+    : "";
+}
+/** Lobby party rules: the host toggles them, everyone else sees them. */
+function partyRules(host: boolean) {
+  const on = new Set(state!.mutators ?? []);
+  if (!host && !on.size) return "";
+  const chips = MUTATOR_IDS.filter((m) => host || on.has(m))
+    .map((m) =>
+      host
+        ? `<button type="button" class="rule-chip${on.has(m) ? " on" : ""}" data-mutator="${m}" aria-pressed="${on.has(m)}"><b>${escape(MUTATORS[m].name)}</b><small>${escape(MUTATORS[m].description)}</small></button>`
+        : `<span class="rule-chip on"><b>${escape(MUTATORS[m].name)}</b><small>${escape(MUTATORS[m].description)}</small></span>`,
+    )
+    .join("");
+  return `<details class="party-rules"${on.size ? " open" : ""}><summary>Party rules${on.size ? ` · ${on.size} on` : host ? " · optional" : ""}</summary><div class="rule-chips">${chips}</div>${host ? "<small>Only you (the host) can change these. Everyone readies up again after a change.</small>" : ""}</details>`;
+}
 function roomPanel(me: Fighter) {
   const row = (p: Fighter) => {
     const fighter = CHARACTERS[p.id === myId ? selected : p.character];
@@ -573,7 +607,7 @@ function roomPanel(me: Fighter) {
   const ready = `<button class="primary" id="ready">${me.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full" id="leave">Leave room</button>`;
   const code = `<button id="copy" class="room-code">${state!.code}<span>${COPY_ICON}COPY CODE</span></button><button id="invite" class="secondary full invite-link">Share invite link</button>`;
   if (!isTeams())
-    return `<div class="eyebrow">PRIVATE LOBBY</div><h2>Your duel starts here.</h2><p>Share this code with your friend.</p>${code}<div class="players">${state!.players.map(row).join("")}${state!.players.length < 2 ? '<div class="waiting"><span>＋</span> Waiting for your opponent…</div>' : ""}</div>${ready}<small class="room-note">The match begins when both players are ready.</small>`;
+    return `<div class="eyebrow">PRIVATE LOBBY</div><h2>Your duel starts here.</h2><p>Share this code with your friend.</p>${code}<div class="players">${state!.players.map(row).join("")}${state!.players.length < 2 ? '<div class="waiting"><span>＋</span> Waiting for your opponent…</div>' : ""}</div>${partyRules(state!.players[0]?.id === myId)}${ready}<small class="room-note">The match begins when both players are ready.</small>`;
   const mine = teamOf(me),
     host = state!.players[0]?.id === myId;
   const columns = ([0, 1] as const)
@@ -589,7 +623,7 @@ function roomPanel(me: Fighter) {
       return `<div class="team-column team-${t}${t === mine ? " mine" : ""}"><div class="team-head">${TEAM_LABELS[t]} team</div><div class="players">${members.map(row).join("")}${slots}</div></div>`;
     })
     .join("");
-  return `<div class="eyebrow">PRIVATE 2V2 LOBBY</div><h2>Two on two.</h2><p>Share this code with three friends, then pick a side.</p>${code}<div class="team-columns">${columns}</div>${host ? '<button class="quiet full" id="shuffle">Shuffle teams ⇄</button>' : ""}${ready}<small class="room-note">First team to 3 round wins. Starts when all four players are ready.</small>`;
+  return `<div class="eyebrow">PRIVATE 2V2 LOBBY</div><h2>Two on two.</h2><p>Share this code with three friends, then pick a side.</p>${code}<div class="team-columns">${columns}</div>${host ? '<button class="quiet full" id="shuffle">Shuffle teams ⇄</button>' : ""}${partyRules(host)}${ready}<small class="room-note">First team to ${roundsNeeded(state!.mutators)} round wins. Starts when all four players are ready.</small>`;
 }
 type BotLevel = "easy" | "normal" | "hard";
 const BOT_LEVELS: [BotLevel, string, string][] = [
@@ -622,6 +656,17 @@ function wireRoom() {
     );
   if (document.getElementById("shuffle"))
     $("shuffle").onclick = () => void request("shuffle");
+  document
+    .querySelectorAll<HTMLButtonElement>("[data-mutator]")
+    .forEach((b) => {
+      b.onclick = () => {
+        const on = new Set(state?.mutators ?? []);
+        const id = b.dataset.mutator as MutatorId;
+        if (on.has(id)) on.delete(id);
+        else on.add(id);
+        void request("mutators", { ids: [...on] });
+      };
+    });
   $("copy").onclick = () =>
     void navigator.clipboard
       .writeText(state!.code)
@@ -917,7 +962,7 @@ function renderBattle() {
         : "TARGET"
       : isTeams()
         ? `${state!.teamScores?.[teamOf(p)] ?? 0} / 3`
-        : `${state!.scores[p.id]} / ${RULES.roundsToWin}`;
+        : `${state!.scores[p.id]} / ${roundsNeeded(state!.mutators)}`;
     $(`status-${i}`).textContent = p.statuses
       .map((s) =>
         s.kind === "sleep"
@@ -938,7 +983,7 @@ function renderBattle() {
   }
   $("round-label").textContent = state.practice
     ? "FREE PRACTICE"
-    : `ROUND ${state.round} · BEST OF ${RULES.roundsToWin * 2 - 1}`;
+    : `ROUND ${state.round} · BEST OF ${roundsNeeded(state.mutators) * 2 - 1}`;
   $("network").textContent = state.practice
     ? "SOLO PRACTICE · SERVER-VALIDATED COMBAT"
     : "AUTHORITATIVE ONLINE MATCH";
@@ -987,7 +1032,7 @@ function renderBattle() {
     }
     const left = Math.max(0, me.cooldowns[i] - state!.time);
     $(`cooldown-${i}`).textContent = left > 0 ? `${left.toFixed(1)}s` : "READY";
-    $(`fill-${i}`).style.height = `${(100 * left) / a.cooldown}%`;
+    $(`fill-${i}`).style.height = `${(100 * left) / (a.cooldown * cooldownScale())}%`;
     $(`ability-${i}`).classList.toggle("cooling", left > 0);
   });
   $("dash-cd").textContent =
@@ -1004,7 +1049,9 @@ function renderBattle() {
     me.cooldowns.map((t) => Math.max(0, t - state!.time)),
     Math.max(0, me.dashAt - state.time),
     Math.max(0, me.jumpAt - state.time),
-    kitOf(me.character, me.rites).skills.map((a) => a.cooldown),
+    kitOf(me.character, me.rites).skills.map(
+      (a) => a.cooldown * cooldownScale(),
+    ),
     {
       name: CHARACTERS[me.character].basic.name,
       left: Math.max(0, me.basicAt - state.time),
@@ -1056,8 +1103,9 @@ function renderBattle() {
         controlsList() +
         "<p>" +
         (isTeams()
-          ? "Stick with your partner and focus the same target. Your attacks pass through your teammate. First team to win three rounds takes the match."
-          : "Use cover. First to win three rounds takes the match.") +
+          ? `Stick with your partner and focus the same target. Your attacks pass through your teammate. First team to win ${roundWord()} rounds takes the match.`
+          : `Use cover. First to win ${roundWord()} rounds takes the match.`) +
+        partyRulesNote() +
         ' The countdown begins when everyone confirms.</p><button class="primary" id="instructions-ready" ' +
         (confirmed ? "disabled" : "") +
         ">" +

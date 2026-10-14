@@ -1086,6 +1086,44 @@ export interface Orb extends Vec {
   /** Healing (default) restores health; energy charges the ultimate meter. */
   kind?: "heal" | "energy";
 }
+/** Party rules the room host can switch on in the lobby. */
+export const MUTATORS = {
+  turbo: {
+    name: "Turbo",
+    description: "Skills recharge twice as fast; ultimates charge 50% faster.",
+  },
+  glass: {
+    name: "Glass cannon",
+    description: "Every hit deals 50% more damage.",
+  },
+  orbs: {
+    name: "Orb rain",
+    description: "Orbs appear twice as often.",
+  },
+  quick: {
+    name: "Quick match",
+    description: "First to 2 round wins instead of 3.",
+  },
+  calm: {
+    name: "Calm court",
+    description: "Always the Stone Court: no arena hazards.",
+  },
+} as const;
+export type MutatorId = keyof typeof MUTATORS;
+export const MUTATOR_IDS = Object.keys(MUTATORS) as MutatorId[];
+export const MUTATOR_RULES = {
+  turboCooldown: 0.5,
+  turboUlt: 1.5,
+  glassDamage: 1.5,
+  orbsRate: 2,
+  quickRounds: 2,
+};
+/** Round wins needed with these party rules. */
+export function roundsNeeded(mutators: readonly string[] = []) {
+  return mutators.includes("quick")
+    ? MUTATOR_RULES.quickRounds
+    : RULES.roundsToWin;
+}
 /**
  * The closing ring: in a round's last minute the safe circle shrinks from the
  * whole court down to the centre, and standing outside it hurts. Stalled
@@ -1194,6 +1232,8 @@ export interface Snapshot {
   roundLog?: (Team | null)[];
   /** Set once a real match finishes: players report it for their records. */
   matchId?: string | null;
+  /** Party rules switched on for this room. */
+  mutators?: MutatorId[];
   /** Which arena this match is played in, and when its hazards' clock started. */
   arena?: ArenaId;
   hazardClock?: number;
