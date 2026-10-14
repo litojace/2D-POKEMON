@@ -1140,6 +1140,29 @@ export const MUTATORS = {
 } as const;
 /** 2v2 team-up: partners fighting side by side both hit harder. */
 export const TEAMUP = { range: 260, damage: 1.1 };
+/**
+ * Element team-ups: side by side in 2v2, each fighter also gives their
+ * partner a gift from their element, so every pairing plays a little
+ * differently (Tidefin + Voltkit: steady healing and faster basics).
+ */
+export const ELEMENT_GIFTS: Record<
+  string,
+  { name: string; text: string; value: number }
+> = {
+  Electric: { name: "Static charge", text: "basic attacks come 12% faster", value: 0.88 },
+  Fire: { name: "Kindling", text: "+6% damage", value: 1.06 },
+  Water: { name: "Tidewell", text: "heals 2 health a second", value: 2 },
+  Aura: { name: "Aura ward", text: "takes 8% less damage", value: 0.92 },
+  Light: { name: "Glow", text: "skills recharge 10% faster", value: 0.9 },
+  Psychic: { name: "Focus", text: "ultimate charges 15% faster", value: 1.15 },
+  Earth: { name: "Bedrock", text: "knocked back 40% less", value: 0.6 },
+  Shadow: { name: "Dusk edge", text: "+10% damage to slowed, burning or stunned foes", value: 1.1 },
+};
+/** The gift a fighter's partner gives them (by the partner's element). */
+export function giftFrom(partnerCharacter: CharacterId) {
+  const element = CHARACTERS[partnerCharacter].element;
+  return { element, ...ELEMENT_GIFTS[element] };
+}
 /** Crown Hill: the circle in the middle of the court, and how long to hold it. */
 export const CROWN = { x: 800, y: 450, radius: 150, holdSeconds: 12 };
 export type MutatorId = keyof typeof MUTATORS;

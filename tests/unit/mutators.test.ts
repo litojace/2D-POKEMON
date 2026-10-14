@@ -162,3 +162,48 @@ describe("fun party rules", () => {
     expect(travel(["speed"]) / travel([])).toBeGreaterThan(1.4);
   });
 });
+describe("element team-ups", () => {
+  async function pair(a: string, c: string) {
+    const t = new Arena("GIFT", "teams");
+    t.add("a", "A", a as never);
+    t.add("b", "B", "voltkit");
+    t.add("c", "C", c as never);
+    t.add("d", "D", "voltkit");
+    t.start();
+    t.phase = "playing";
+    t.deadline = t.time + RULES.roundSeconds;
+    const [pa, , pc] = t.players;
+    Object.assign(pc, { x: pa.x, y: pa.y + 100 });
+    return t;
+  }
+  it("a Tidefin partner heals you while you stand together", async () => {
+    const t = await pair("voltkit", "tidefin");
+    const me = t.players[0];
+    me.hp = 50;
+    for (let i = 0; i < 30; i++) t.tick();
+    expect(me.hp).toBeGreaterThan(51.5);
+    expect(me.hp).toBeLessThan(52.5);
+  });
+  it("an Auralynx partner softens hits on you; a Cindrake partner sharpens yours", async () => {
+    const shield = await pair("voltkit", "auralynx"),
+      plain = await pair("voltkit", "voltkit");
+    for (const t of [shield, plain]) t.damage(t.players[0], 20, "b", CHARACTERS.voltkit.basic);
+    const lost = (t: Arena) => CHARACTERS.voltkit.health - t.players[0].hp;
+    expect(lost(shield)).toBeCloseTo(lost(plain) * 0.92, 5);
+    const fire = await pair("voltkit", "cindrake");
+    const victim = fire.players[1];
+    fire.damage(victim, 20, "a", CHARACTERS.voltkit.basic);
+    const plain2 = await pair("voltkit", "voltkit");
+    plain2.damage(plain2.players[1], 20, "a", CHARACTERS.voltkit.basic);
+    const dealt = (t: Arena) => CHARACTERS.voltkit.health - t.players[1].hp;
+    expect(dealt(fire)).toBeCloseTo(dealt(plain2) * 1.06, 5);
+  });
+  it("gifts only work side by side", async () => {
+    const t = await pair("voltkit", "tidefin");
+    const [me, , partner] = t.players;
+    partner.x = me.x + 900;
+    me.hp = 50;
+    for (let i = 0; i < 30; i++) t.tick();
+    expect(me.hp).toBe(50);
+  });
+});

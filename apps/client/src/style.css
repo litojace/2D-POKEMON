@@ -5598,3 +5598,20 @@ body.spectating #mobile-controls,
 body.spectating #control-hints {
   display: none !important;
 }
+.teamup-note {
+  margin: 10px auto 4px;
+  max-width: 560px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #d9e6f5;
+}
+.teamup-note b {
+  color: #7fd3ff;
+  margin-right: 6px;
+  letter-spacing: 0.06em;
+}
+.teamup-note i {
+  font-style: normal;
+  color: #fff;
+  font-weight: 700;
+}

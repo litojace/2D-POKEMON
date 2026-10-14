@@ -38,6 +38,7 @@ import {
   ringRadius,
   CROWN,
   TEAMUP,
+  giftFrom,
   MUTATORS,
   MUTATOR_IDS,
   MUTATOR_RULES,
@@ -655,6 +656,18 @@ function renderWatchOverlay(overlay: HTMLElement) {
   const stop = document.getElementById("watch-stop");
   if (stop) stop.onclick = () => void stopWatching();
 }
+/** 2v2: what you and your partner give each other when side by side. */
+function teamUpNote(me: Fighter) {
+  if (!isTeams()) return "";
+  const partner = state!.players.find(
+    (p) => p.id !== me.id && teamOf(p) === teamOf(me),
+  );
+  if (!partner) return "";
+  const mine = giftFrom(partner.character),
+    theirs = giftFrom(me.character);
+  const myName = me.id === myId ? "You" : escape(me.name);
+  return `<p class="teamup-note"><b>Team-up</b> Side by side, you both deal ${Math.round((TEAMUP.damage - 1) * 100)}% more damage. ${myName} get <i>${escape(mine.name)}</i> (${escape(mine.text)}) from ${escape(CHARACTERS[partner.character].name)}; ${escape(partner.name)} gets <i>${escape(theirs.name)}</i> (${escape(theirs.text)}).</p>`;
+}
 /** Room code being watched (no seat), or "". */
 let watching = "";
 async function watchRoom(raw: string) {
@@ -752,7 +765,7 @@ function roomPanel(me: Fighter) {
       return `<div class="team-column team-${t}${t === mine ? " mine" : ""}"><div class="team-head">${TEAM_LABELS[t]} team</div><div class="players">${members.map(row).join("")}${slots}</div></div>`;
     })
     .join("");
-  return `<div class="eyebrow">PRIVATE 2V2 LOBBY</div><h2>Two on two.</h2><p>Share this code with three friends, then pick a side.</p>${code}<div class="team-columns">${columns}</div>${host ? '<button class="quiet full" id="shuffle">Shuffle teams ⇄</button>' : ""}${partyRules(host)}${ready}<small class="room-note">First team to ${roundsNeeded(state!.mutators)} round wins. Starts when all four players are ready.</small>`;
+  return `<div class="eyebrow">PRIVATE 2V2 LOBBY</div><h2>Two on two.</h2><p>Share this code with three friends, then pick a side.</p>${code}<div class="team-columns">${columns}</div>${host ? '<button class="quiet full" id="shuffle">Shuffle teams ⇄</button>' : ""}${teamUpNote({ ...me, character: selected })}${partyRules(host)}${ready}<small class="room-note">First team to ${roundsNeeded(state!.mutators)} round wins. Starts when all four players are ready.</small>`;
 }
 type BotLevel = "easy" | "normal" | "hard";
 const BOT_LEVELS: [BotLevel, string, string][] = [
@@ -1258,6 +1271,7 @@ function renderBattle() {
       const arena = ARENAS[state.arena ?? "classic"];
       details =
         versus +
+        teamUpNote(me) +
         `<p class="arena-brief"><b>Arena · ${escape(arena.name)}</b>${escape(arena.tip)}</p>` +
         '<p class="mobile-howto">Touch mode: left joystick to move; big button for basic attacks, the four curved buttons for skills, DASH and JUMP below. Aim follows your nearest opponent. Use Enter fullscreen below the arena.</p>' +
         controlsList() +

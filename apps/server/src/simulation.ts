@@ -23,6 +23,7 @@ import {
   ORB_SPOTS,
   CROWN,
   TEAMUP,
+  ELEMENT_GIFTS,
   MUTATOR_RULES,
   roundsNeeded,
   type MutatorId,
@@ -176,9 +177,13 @@ export class Arena {
   }
   /** 2v2: is this fighter's partner standing close enough to team up? */
   teamedUp(p: Fighter) {
-    if (this.mode !== "teams" || p.hp <= 0) return false;
+    return !!this.partnerNear(p);
+  }
+  /** 2v2: the partner standing close enough to team up, if any. */
+  partnerNear(p: Fighter) {
+    if (this.mode !== "teams" || p.hp <= 0 || p.out) return undefined;
     const team = this.teamOf(p);
-    return this.players.some(
+    return this.players.find(
       (o) =>
         o !== p &&
         !o.out &&
@@ -186,6 +191,13 @@ export class Arena {
         this.teamOf(o) === team &&
         Math.hypot(o.x - p.x, o.y - p.y) <= TEAMUP.range,
     );
+  }
+  /** The element gift this fighter gets from a nearby partner (2v2). */
+  gift(p: Fighter, element: string) {
+    const partner = this.partnerNear(p);
+    return partner && CHARACTERS[partner.character].element === element
+      ? ELEMENT_GIFTS[element].value
+      : undefined;
   }
   /** Members of a team still standing this round. */
   standing(team: Team) {
@@ -468,6 +480,7 @@ export class Arena {
   chargeUlt(p: Fighter, amount: number) {
     if (this.phase !== "playing" && this.phase !== "intermission") return;
     if (this.rule("turbo")) amount *= MUTATOR_RULES.turboUlt;
+    amount *= this.gift(p, "Psychic") ?? 1;
     p.ult = Math.min(RULES.ultMax, (p.ult ?? 0) + amount);
   }
   damage(target: Fighter, amount: number, owner: string, ability?: Ability) {
@@ -514,8 +527,17 @@ export class Arena {
     if (this.has(target, "shield")) dealt *= STATUS_RULES.shieldReduction;
     if (this.has(target, "sleep")) dealt *= STATUS_RULES.sleepVulnerability;
     if (this.rule("glass")) dealt *= MUTATOR_RULES.glassDamage;
-    if (source && source !== target && this.teamedUp(source))
+    if (source && source !== target && this.teamedUp(source)) {
       dealt *= TEAMUP.damage;
+      dealt *= this.gift(source, "Fire") ?? 1;
+      if (
+        target.statuses.some(
+          (s) => s.until > this.time && DEBUFFS.includes(s.kind),
+        )
+      )
+        dealt *= this.gift(source, "Shadow") ?? 1;
+    }
+    dealt *= this.gift(target, "Aura") ?? 1;
     dealt = Math.min(target.hp, dealt);
     target.hp = Math.max(0, target.hp - dealt);
     target.stats.received += dealt;
@@ -591,7 +613,10 @@ export class Arena {
         owner,
       );
     if (ability && source && ability.knockback) {
-      const push = ability.knockback * (primed ? (combo!.knockback ?? 1) : 1);
+      const push =
+        ability.knockback *
+        (primed ? (combo!.knockback ?? 1) : 1) *
+        (this.gift(target, "Earth") ?? 1);
       const dir = normalize(target.x - source.x, target.y - source.y);
       move(target, dir.x * push, dir.y * push);
     }
@@ -953,7 +978,8 @@ export class Arena {
               ? 0
               : this.time +
                 a.cooldown *
-                  (this.rule("turbo") ? MUTATOR_RULES.turboCooldown : 1);
+                  (this.rule("turbo") ? MUTATOR_RULES.turboCooldown : 1) *
+                  (this.gift(p, "Light") ?? 1);
           p.stats.skills++;
           p.recoveryUntil =
             this.time +
@@ -965,7 +991,9 @@ export class Arena {
         } else if (input.basic && this.time >= p.basicAt) {
           // The interval is enforced here, so flooding inputs cannot fire faster.
           p.basicAt =
-            this.time + basicInterval(character, this.has(p, "empower"));
+            this.time +
+            basicInterval(character, this.has(p, "empower")) *
+              (this.gift(p, "Electric") ?? 1);
           p.recoveryUntil = this.time + kit.basic.recovery;
           this.cast(p, kit.basic);
         }
@@ -1070,6 +1098,15 @@ export class Arena {
       this.stepArena(dt);
       this.walls();
       this.stepOrbs();
+      // Water team-up: a Tidefin partner nearby slowly heals you.
+      if (this.mode === "teams" && this.phase === "playing")
+        for (const p of this.players) {
+          const heal = this.gift(p, "Water");
+          if (!heal) continue;
+          const before = p.hp;
+          p.hp = Math.min(CHARACTERS[p.character].health, p.hp + heal * dt);
+          p.stats.healed = (p.stats.healed ?? 0) + (p.hp - before);
+        }
     }
     if (this.practice) {
       for (const [i, p] of this.players.entries())
