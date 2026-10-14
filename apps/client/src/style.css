@@ -11,6 +11,8 @@
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
+  /* Top bar and status-bar strip share this, so their edge is seamless. */
+  --topbar-bg: linear-gradient(90deg, #12213e, #1b2e50);
 }
 .practice-controls {
   border: 1px solid #ffd65b30;
@@ -1775,7 +1777,9 @@ body.battle-active.touch-mode {
     calc(5vw + var(--safe-left));
   gap: 16px;
   flex-wrap: wrap;
-  background: linear-gradient(115deg, #12213e, #1b2e50);
+  /* Horizontal only, so the colour at the top edge matches the status-bar
+     strip exactly (see body::before). */
+  background: var(--topbar-bg);
   border-bottom: 1px solid #8cafdf26;
 }
 main {
@@ -4180,9 +4184,12 @@ dialog:has(.admin-tabs) {
 }
 
 /* ---------- Polish pass ---------- */
-/* A solid strip under the iPhone/iPad status bar (the app draws under it with
-   black-translucent): content never scrolls beneath it, so iOS has nothing to
-   blur and the top of the page stays crisp. */
+/* A strip under the iPhone/iPad status bar so content never scrolls beneath
+   it. It uses the top bar's exact colours: iOS 26 Safari draws a soft glass
+   blur along the status bar's edge, and with no colour change there the blur
+   is invisible. Safari also samples a full-width fixed top element's
+   background-color to tint its own chrome (theme-color is ignored on iOS 26),
+   so the solid base colour matters too. */
 body::before {
   content: "";
   position: fixed;
@@ -4190,7 +4197,8 @@ body::before {
   left: 0;
   right: 0;
   height: var(--safe-top);
-  background: #101c35;
+  background-color: #12213e;
+  background-image: var(--topbar-bg);
   z-index: 1000;
   pointer-events: none;
 }
