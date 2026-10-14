@@ -9,9 +9,12 @@ import {
   type PlayerDirectory,
   type ReportList,
   type OnlineList,
+  leaderboardSchema,
+  progressSchema,
 } from "../../../packages/shared/src/accounts";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import { renderOnline } from "./admin-online";
+import { leaderboardMarkup, progressMarkup, seasonName } from "./progress-view";
 const EYE =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg>';
 const EYE_OFF =
@@ -315,8 +318,23 @@ export class AccountUI {
         )
         .join(
           "",
-        )}</select></label><button class="primary">Save title</button><p id="profile-message" role="status"></p></form>`,
+        )}</select></label><button class="primary">Save title</button><p id="profile-message" role="status"></p></form><button class="secondary full" id="profile-leaderboard">Season standings →</button><section id="profile-progress" class="progress"><p class="muted">Loading your progress…</p></section>`,
     );
+    element("profile-leaderboard").onclick = () => void this.showLeaderboard();
+    void this.api("/api/progress")
+      .then((value) => {
+        const box = element("profile-progress");
+        if (box) box.innerHTML = progressMarkup(progressSchema.parse(value));
+      })
+      .catch((error) => {
+        const box = element("profile-progress");
+        if (box)
+          box.innerHTML = `<p class="muted">${escape(
+            error instanceof Error && /database needs an update/.test(error.message)
+              ? "Records, achievements and mastery switch on once the database update (migration 004) has been run."
+              : "Your progress couldn’t be loaded right now.",
+          )}</p>`;
+      });
     element<HTMLFormElement>("profile-title").onsubmit = async (event) => {
       event.preventDefault();
       try {
@@ -332,6 +350,24 @@ export class AccountUI {
           error instanceof Error ? error.message : "Unable to update title.";
       }
     };
+  }
+  /** This month's standings: player-vs-player wins, guests and bots excluded. */
+  async showLeaderboard() {
+    if (!this.ensurePlayer()) return;
+    this.hooks.openDialog(
+      `<div class="eyebrow">SEASON STANDINGS</div><h2>Leaderboard</h2><div id="leaderboard-body"><p class="muted">Loading…</p></div><button class="quiet" id="leaderboard-back">← Back to profile</button>`,
+    );
+    element("leaderboard-back").onclick = () => void this.showProfile();
+    try {
+      const board = leaderboardSchema.parse(await this.api("/api/leaderboard"));
+      const body = element("leaderboard-body");
+      if (body)
+        body.innerHTML = `<p>${escape(seasonName(board.season))} · wins against other players. A new season starts each month.</p>${leaderboardMarkup(board)}`;
+    } catch (error) {
+      const body = element("leaderboard-body");
+      if (body)
+        body.innerHTML = `<p class="muted">${escape(error instanceof Error ? error.message : "Couldn’t load the standings.")}</p>`;
+    }
   }
   /** Ask the admin team for help. `context` is attached automatically. */
   showReport(context: Record<string, string> = {}) {

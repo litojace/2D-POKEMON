@@ -4,7 +4,7 @@ Element Arena follows AMATYC's Supabase auth pattern: email/password signup and 
 
 ## Database
 
-In the new project's Supabase SQL Editor, run [001_arena_accounts.sql](../supabase/migrations/001_arena_accounts.sql). It creates profiles, admin membership, title definitions/ownership, and an admin audit log. Then run [002_admin_cleanup_reports.sql](../supabase/migrations/002_admin_cleanup_reports.sql), which adds problem reports and the admin suspend/delete functions. Then run [003_titles.sql](../supabase/migrations/003_titles.sql), which records when titles were created (newest custom titles list first) and lets admins delete titles. Profiles are created when users first log into the game. User-controlled signup metadata cannot grant admin rights. Passwords remain in Supabase Auth.
+In the new project's Supabase SQL Editor, run [001_arena_accounts.sql](../supabase/migrations/001_arena_accounts.sql). It creates profiles, admin membership, title definitions/ownership, and an admin audit log. Then run [002_admin_cleanup_reports.sql](../supabase/migrations/002_admin_cleanup_reports.sql), which adds problem reports and the admin suspend/delete functions. Then run [003_titles.sql](../supabase/migrations/003_titles.sql), which records when titles were created (newest custom titles list first) and lets admins delete titles. Then run [004_matches_achievements.sql](../supabase/migrations/004_matches_achievements.sql), which adds match history, head-to-head records, achievements (each grants a title of the same name), monthly season standings and fighter mastery, and marks guest logins. Profiles are created when users first log into the game. User-controlled signup metadata cannot grant admin rights. Passwords remain in Supabase Auth.
 
 Ordinary clients cannot read/write these tables directly. Authenticated RPCs check identity, admin membership, suspension and title ownership. The migration does not modify AMATYC tables.
 
@@ -99,3 +99,13 @@ Signed-in admins see an **Admin** button with three tabs:
 - **Reports**: problems sent by players from **Menu → Report a problem** (or the in-match settings). Filter open/resolved and mark them resolved or reopen them. Each report includes the reporter's screen, room code, fighter and device. Players can send up to 5 reports per 10 minutes.
 
 Every admin action is written to `arena_admin_audit`.
+
+## Match records, achievements and seasons
+
+After migration 004, every finished online match is saved to the players' records. The game server builds one summary of the match and each player's game submits it with their own login; the database only counts the match once **every human in it has submitted the identical summary**, so nobody can record a win against someone else on their own. Consequences worth knowing:
+
+- A player who quits before the end never submits, so a quit match doesn't count for either side.
+- A match against a bot is confirmed by its one human. Such matches count for that player's totals, mastery and the "bot" and single-match achievements, but **not** for the season leaderboard or the win-count achievements (10 wins, 50 wins, Dynamic Duo, Elemental Master).
+- Guests (anonymous logins) keep records but are left off the leaderboard.
+
+Achievement titles are ordinary titles: admins see them in the title list and can retire or delete them like any other.

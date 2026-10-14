@@ -10,9 +10,13 @@ import {
   titleUpdateSchema,
   titleGrantSchema,
   equipTitleSchema,
+  matchReportSchema,
   type Account,
+  type MatchSummary,
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
+/** The newest database migration the server expects. */
+export const LATEST_MIGRATION = "004_matches_achievements.sql";
 export interface AccountProvider {
   authenticate(token: string): Promise<Account | null>;
   rpc(
@@ -63,7 +67,7 @@ export function createAccountProvider(): AccountProvider {
       if (result.error?.code === "PGRST202")
         throw new AccountError(
           503,
-          "The database needs an update. In Supabase's SQL Editor, run supabase/migrations/002_admin_cleanup_reports.sql.",
+          `The database needs an update (missing ${name}). In Supabase's SQL Editor, run the files in supabase/migrations you haven't run yet, newest last (${LATEST_MIGRATION}).`,
         );
       if (result.error)
         throw new AccountError(
@@ -99,6 +103,11 @@ export function installAccountRoutes(
     guests: 0,
     at: new Date().toISOString(),
   }),
+  /** A finished match's summary, if this account played in it. */
+  finishedMatch: (
+    matchId: string,
+    accountId: string,
+  ) => MatchSummary | undefined = () => undefined,
 ) {
   const requests = new Map<string, { count: number; until: number }>();
   app.use("/api", (req, res, next) => {
@@ -163,6 +172,49 @@ export function installAccountRoutes(
       });
       onPlayerChanged(account.id);
       res.json({ ok: true });
+    }),
+  );
+  // Report a finished match for your records. The summary comes from the
+  // game server's own copy, never from the browser.
+  app.post(
+    "/api/matches/report",
+    route(false, async (req, res, token, account) => {
+      const { matchId } = matchReportSchema.parse(req.body);
+      const summary = finishedMatch(matchId, account.id);
+      if (!summary)
+        throw new AccountError(404, "That match is no longer available.");
+      const result = await provider.rpc(token, "arena_report_match", {
+        p_match_id: matchId,
+        p_summary: summary,
+      });
+      if (
+        result &&
+        typeof result === "object" &&
+        ((result as { achievements?: unknown[] }).achievements?.length ?? 0) > 0
+      )
+        onPlayerChanged(account.id);
+      res.json(result);
+    }),
+  );
+  app.get(
+    "/api/progress",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await provider.rpc(token, "arena_my_progress", {}));
+    }),
+  );
+  app.get(
+    "/api/leaderboard",
+    route(false, async (req, res, token) => {
+      const season =
+        typeof req.query.season === "string" &&
+        /^\d{4}-\d{2}$/.test(req.query.season)
+          ? req.query.season
+          : null;
+      res.setHeader("Cache-Control", "no-store");
+      res.json(
+        await provider.rpc(token, "arena_leaderboard", { p_season: season }),
+      );
     }),
   );
   app.get(

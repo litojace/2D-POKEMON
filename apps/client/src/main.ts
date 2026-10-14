@@ -93,6 +93,8 @@ import {
   shareInvite,
 } from "./invite";
 import { lockScrollWhileOpen } from "./scroll-lock";
+import { recapMarkup, recordsMarkup, type RecordState } from "./match-recap";
+import { matchReportReplySchema } from "../../../packages/shared/src/accounts";
 const audio = new AudioManager();
 const allAbilities = new Map(
   Object.values(CHARACTERS)
@@ -1094,8 +1096,12 @@ function renderBattle() {
             rival ? (state.scores[rival.id] ?? 0) : 0,
             escape(rival?.name ?? "Opponent"),
           );
-      const stats = me.stats;
-      details += `<div class="result-stats"><span><b>${Math.round(stats.dealt)}</b>DAMAGE DEALT</span><span><b>${Math.round(stats.received)}</b>DAMAGE TAKEN</span><span><b>${stats.skills}</b>SKILLS CAST</span></div><button class="primary" id="rematch">${me.ready ? "Waiting for opponent…" : "Rematch →"}</button><button class="secondary" id="return">${state.vsBot ? "Back to menu" : "Return to lobby"}</button>`;
+      details +=
+        recapMarkup(state, myId) +
+        recordsMarkup(
+          state.matchId ? matchRecords.get(state.matchId) : undefined,
+        );
+      details += `<button class="primary" id="rematch">${me.ready ? "Waiting for opponent…" : "Rematch →"}</button><button class="secondary" id="return">${state.vsBot ? "Back to menu" : "Return to lobby"}</button>`;
     }
     const markup = `<div class="overlay-card${state.phase === "countdown" ? " countdown-card" : ""}"><span class="eyebrow">ELEMENT ARENA</span><h2>${heading}</h2><div>${details}</div></div>`;
     // Preserve the pressed button between snapshots so pointer-up can complete its click.
@@ -1203,9 +1209,49 @@ socket.on("state", (snapshot: WireSnapshot) => {
       if (scene && state.phase !== "lobby") scene.effect(event);
       eventId = Math.max(eventId, event.id);
     }
+  if (state.phase === "finished" && state.matchId && !state.practice)
+    void reportMatch(state.matchId);
   if (state.phase === "lobby") renderMenu();
   else renderBattle();
 });
+/** Records for finished matches, by match id (reported once each). */
+const matchRecords = new Map<string, RecordState>();
+/**
+ * Save a finished match to your records. A match counts once every player's
+ * game has saved it, so if ours was first, check again shortly.
+ */
+async function reportMatch(matchId: string, attempt = 0) {
+  if (!accountsUI.account) return;
+  if (attempt === 0) {
+    if (matchRecords.has(matchId)) return;
+    matchRecords.set(matchId, { status: "pending" });
+  }
+  try {
+    const reply = matchReportReplySchema.parse(
+      await accountsUI.api("/api/matches/report", { matchId }),
+    );
+    const before = matchRecords.get(matchId);
+    const seen =
+      before?.status === "done" ? before.reply.achievements : ([] as string[]);
+    matchRecords.set(matchId, { status: "done", reply });
+    for (const name of reply.achievements)
+      if (!seen.includes(name))
+        toast(`Achievement unlocked: ${name}. Its title is yours to wear.`);
+    if (!reply.confirmed && attempt < 3)
+      setTimeout(() => {
+        if (state?.matchId === matchId) void reportMatch(matchId, attempt + 1);
+      }, 3000 + attempt * 3000);
+  } catch (error) {
+    matchRecords.set(matchId, {
+      status: "unavailable",
+      message:
+        error instanceof Error && /database needs an update/.test(error.message)
+          ? "Match records switch on once the database update (migration 004) has been run."
+          : "Couldn’t save this match to your records.",
+    });
+  }
+  if (state?.phase === "finished") renderBattle();
+}
 function predict(p: Fighter, input: Input, time: number) {
   if (input.dash && time >= p.dashAt) {
     const d = normalize(input.dx, input.dy);

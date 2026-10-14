@@ -19,6 +19,8 @@ export const accountSchema = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/)
     .nullable(),
   ownedTitles: z.array(titleSchema),
+  /** Played as a guest (anonymous login), until they save their account. */
+  guest: z.boolean().optional(),
 });
 export type Account = z.infer<typeof accountSchema>;
 export type Title = z.infer<typeof titleSchema>;
@@ -121,3 +123,92 @@ export const titleGrantSchema = z
 export const equipTitleSchema = z
   .object({ titleId: z.string().uuid().nullable() })
   .strict();
+
+/** One finished match, as every player in it reports it (migration 004). */
+export interface MatchSummary {
+  v: 1;
+  mode: "duel" | "teams" | "ffa";
+  arena: string;
+  /** Difficulty of the AI opponent, or null for player-vs-player. */
+  bot: "easy" | "normal" | "hard" | null;
+  winnerTeam: number | null;
+  /** Round winners in order (null = drawn round). */
+  rounds: (number | null)[];
+  players: {
+    /** Account id; null for an AI bot. */
+    account: string | null;
+    name: string;
+    character: string;
+    team: number;
+    dealt: number;
+    kos: number;
+    combos: number;
+  }[];
+}
+export const matchReportSchema = z
+  .object({ matchId: z.string().min(8).max(64) })
+  .strict();
+export const recordSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  wins: z.number(),
+  losses: z.number(),
+  together: z.number().optional(),
+});
+export const matchReportReplySchema = z.object({
+  confirmed: z.boolean(),
+  records: z.array(recordSchema),
+  achievements: z.array(z.string()),
+});
+export type HeadToHead = z.infer<typeof recordSchema>;
+export type MatchReportReply = z.infer<typeof matchReportReplySchema>;
+export const progressSchema = z.object({
+  matches: z.number(),
+  wins: z.number(),
+  achievements: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      description: z.string(),
+      earnedAt: z.string().nullable(),
+    }),
+  ),
+  fighters: z.record(z.object({ matches: z.number(), wins: z.number() })),
+  season: z.object({ id: z.string(), matches: z.number(), wins: z.number() }),
+});
+export type Progress = z.infer<typeof progressSchema>;
+export const leaderboardSchema = z.object({
+  season: z.string(),
+  rows: z.array(
+    z.object({
+      rank: z.number(),
+      name: z.string(),
+      title: z.string().nullable(),
+      titleColor: z.string().nullable(),
+      wins: z.number(),
+      matches: z.number(),
+      me: z.boolean(),
+    }),
+  ),
+  me: z
+    .object({ rank: z.number(), wins: z.number(), matches: z.number() })
+    .nullable(),
+});
+export type Leaderboard = z.infer<typeof leaderboardSchema>;
+/** Fighter mastery: matches played with a fighter unlock badge tiers. */
+export const MASTERY_TIERS = [
+  { name: "Bronze", matches: 5, color: "#d69a6a" },
+  { name: "Silver", matches: 15, color: "#cfd8e6" },
+  { name: "Gold", matches: 30, color: "#ffd166" },
+  { name: "Crystal", matches: 60, color: "#9ff3ff" },
+] as const;
+export function masteryTier(matches: number) {
+  let tier: (typeof MASTERY_TIERS)[number] | null = null;
+  for (const t of MASTERY_TIERS) if (matches >= t.matches) tier = t;
+  return tier;
+}
+/** Matches still needed for the next mastery tier (null at the top). */
+export function nextMastery(matches: number) {
+  const next = MASTERY_TIERS.find((t) => matches < t.matches);
+  return next ? { ...next, left: next.matches - matches } : null;
+}

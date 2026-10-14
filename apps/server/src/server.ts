@@ -1,6 +1,6 @@
 import express from "express";
 import { createServer } from "node:http";
-import { randomBytes, randomInt } from "node:crypto";
+import { randomBytes, randomInt, randomUUID } from "node:crypto";
 import path from "node:path";
 import { Server } from "socket.io";
 import {
@@ -17,6 +17,7 @@ import {
   type Reply,
 } from "../../../packages/shared/src/index.js";
 import { Arena } from "./simulation.js";
+import { MatchLedger, matchSummary } from "./match-summary.js";
 import {
   BotBrain,
   BOT_DIFFICULTIES,
@@ -89,6 +90,9 @@ export function createArenaServer(
     options.reconnectMs ??
     Number(process.env.RECONNECT_MS ?? RULES.reconnectMs);
   const eventCursors = new WeakMap<Arena, number>();
+  /** Which account plays each fighter (kept after a player leaves). */
+  const fighterAccounts = new WeakMap<Arena, Map<string, string>>();
+  const ledger = new MatchLedger();
   io.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth.accessToken;
@@ -151,6 +155,7 @@ export function createArenaServer(
           void refreshSocket(socket);
     },
     listOnline,
+    (matchId, accountId) => ledger.forPlayer(matchId, accountId),
   );
   /** Signed-in players with a live connection, merged per account. */
   function listOnline(): OnlineList {
@@ -264,6 +269,16 @@ export function createArenaServer(
     return [...sessions.values()].find((s) => s.socketId === socketId);
   }
   function broadcast(arena: Arena) {
+    // A real match just ended: file its summary for the players to report.
+    if (arena.phase === "finished" && !arena.matchId && !arena.practice) {
+      const matchId: string = randomUUID();
+      arena.matchId = matchId;
+      const owners = fighterAccounts.get(arena);
+      ledger.add(
+        matchId,
+        matchSummary(arena, (id) => owners?.get(id) ?? null),
+      );
+    }
     let remaining = 0;
     if (arena.phase === "paused") {
       const deadlines = [...sessions.values()]
@@ -383,6 +398,8 @@ export function createArenaServer(
         title: profile.title,
         titleColor: profile.titleColor,
       });
+      if (!fighterAccounts.has(arena)) fighterAccounts.set(arena, new Map());
+      fighterAccounts.get(arena)!.set(id, profile.id);
       sessions.set(token, {
         accountId: profile.id,
         id,
@@ -846,6 +863,7 @@ export function createArenaServer(
     io,
     rooms,
     sessions,
+    ledger,
     step,
     broadcast,
     close: async () => {

@@ -26,6 +26,7 @@ import {
   basicInterval,
   advanceMovement,
   blankInput,
+  emptyStats,
   blocked,
   move,
   normalize,
@@ -62,6 +63,10 @@ export class Arena {
   winnerTeam: Team | null = null;
   roundWinnerTeam: Team | null = null;
   overtime = false;
+  /** Round winners in order (null = draw). */
+  roundLog: (Team | null)[] = [];
+  /** Id of the last finished real match (players report it for records). */
+  matchId: string | null = null;
   /** Rites: random source for offers. Seeded per room so bot replays repeat. */
   random: () => number;
   roundEndedAt = 0;
@@ -149,7 +154,7 @@ export class Arena {
       statuses: [],
       immuneUntil: 0,
       recoveryUntil: 0,
-      stats: { dealt: 0, received: 0, skills: 0 },
+      stats: emptyStats(),
       lastInput: blankInput(),
     };
     // Join the smaller team (a duel ends up Blue vs Red).
@@ -211,8 +216,10 @@ export class Arena {
     this.teamScores = [0, 0];
     this.winnerTeam = null;
     this.roundWinnerTeam = null;
+    this.roundLog = [];
+    this.matchId = null;
     for (const p of this.players) {
-      p.stats = { dealt: 0, received: 0, skills: 0 };
+      p.stats = emptyStats();
       p.ult = 0;
       p.rites = [];
       p.riteOffer = undefined;
@@ -405,6 +412,15 @@ export class Arena {
     target.hp = Math.max(0, target.hp - dealt);
     target.stats.received += dealt;
     if (source) source.stats.dealt += dealt;
+    if (
+      source &&
+      dealt > 0 &&
+      target.hp <= 0 &&
+      this.teamOf(source) !== this.teamOf(target)
+    )
+      source.stats.kos = (source.stats.kos ?? 0) + 1;
+    if (source && comboName)
+      source.stats.combos = (source.stats.combos ?? 0) + 1;
     if (dealt > 0) {
       this.chargeUlt(target, dealt * RULES.ultPerDamageTaken);
       if (source && source !== target) {
@@ -761,7 +777,9 @@ export class Arena {
       for (const s of p.statuses) {
         if (s.kind === "sleep" && s.amount && this.time >= s.nextTick) {
           s.nextTick += STATUS_RULES.restInterval;
+          const before = p.hp;
           p.hp = Math.min(CHARACTERS[p.character].health, p.hp + s.amount);
+          p.stats.healed = (p.stats.healed ?? 0) + (p.hp - before);
         }
         if (s.kind === "burn" && this.time >= s.nextTick) {
           s.nextTick += STATUS_RULES.burnInterval;
@@ -1025,6 +1043,7 @@ export class Arena {
         Math.round(full * RULES.orbHeal),
       );
       taker.hp += healed;
+      taker.stats.healed = (taker.stats.healed ?? 0) + healed;
       this.event("heal", taker, 0x7dffb0, healed, taker.id);
       return false;
     });
@@ -1034,6 +1053,7 @@ export class Arena {
     const members =
       team === null ? [] : this.players.filter((p) => this.teamOf(p) === team);
     this.roundWinnerTeam = team;
+    this.roundLog.push(team);
     this.roundWinner =
       members.find((p) => !p.out)?.id ?? members[0]?.id ?? null;
     if (team !== null) {
@@ -1095,6 +1115,8 @@ export class Arena {
       events: this.events,
       pauseRemaining,
       overtime: this.overtime,
+      roundLog: this.roundLog,
+      matchId: this.matchId,
       arena: this.arenaId,
       hazardClock: this.hazardClock,
     };

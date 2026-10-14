@@ -1007,7 +1007,22 @@ export interface Stats {
   dealt: number;
   received: number;
   skills: number;
+  /** Knockouts landed on opponents. */
+  kos?: number;
+  /** Signature combos paid off. */
+  combos?: number;
+  /** Health restored (healing orbs and self-heals). */
+  healed?: number;
 }
+/** A fresh, empty stat line for the start of a match. */
+export const emptyStats = (): Stats => ({
+  dealt: 0,
+  received: 0,
+  skills: 0,
+  kos: 0,
+  combos: 0,
+  healed: 0,
+});
 /** Blue (0) and Red (1). In a 1v1 each player is their own team. */
 export type Team = 0 | 1;
 export type MatchMode = "duel" | "teams";
@@ -1148,6 +1163,10 @@ export interface Snapshot {
   events: GameEvent[];
   pauseRemaining: number;
   overtime: boolean;
+  /** Who won each round so far (team, or null for a draw), in order. */
+  roundLog?: (Team | null)[];
+  /** Set once a real match finishes: players report it for their records. */
+  matchId?: string | null;
   /** Which arena this match is played in, and when its hazards' clock started. */
   arena?: ArenaId;
   hazardClock?: number;

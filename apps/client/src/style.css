@@ -5133,3 +5133,262 @@ html.scroll-locked {
     }
   }
 }
+/* ---- Post-match recap ---- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.recap {
+  width: min(520px, 100%);
+  margin: 16px auto 10px;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+}
+.recap thead th {
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--muted);
+  font-weight: 600;
+  padding: 0 6px 6px;
+  text-align: center;
+}
+.recap tbody th {
+  text-align: left;
+  font-weight: 400;
+  padding: 6px 8px 6px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.recap tbody th > i {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.recap tbody th > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.recap tbody th small {
+  margin-left: 6px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.recap tbody th small.who {
+  display: block;
+  margin: 1px 0 0;
+}
+.recap td {
+  text-align: center;
+  padding: 6px;
+  color: #e5efda;
+  font-weight: 700;
+}
+.recap tbody tr {
+  border-top: 1px solid #ffffff14;
+}
+.recap tbody th b {
+  color: #f3f6ff;
+  font-weight: 700;
+}
+.recap tbody tr.split {
+  border-top: 2px solid #ffffff33;
+}
+.recap tbody tr.me {
+  background: #ffffff0d;
+}
+.recap .mvp {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #ffd166;
+  color: #1b2340;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+.records {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 16px;
+  margin: 0 auto 16px;
+  font-size: 13px;
+}
+.records b {
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+.records .muted,
+.records.muted {
+  color: var(--muted);
+  font-size: 12px;
+}
+@media (max-height: 500px) {
+  .recap {
+    margin: 4px auto 2px;
+    font-size: 12px;
+  }
+  .recap thead th {
+    padding-bottom: 2px;
+  }
+  .recap tbody th,
+  .recap td {
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+  .recap tbody th small.who {
+    display: none;
+  }
+  .records {
+    margin-bottom: 6px;
+    font-size: 12px;
+  }
+  .battle-active.touch-mode .overlay-card:has(.recap) .eyebrow {
+    display: none;
+  }
+  .battle-active.touch-mode .overlay-card:has(.recap) h2 {
+    font-size: 22px;
+    margin: 0 0 2px;
+  }
+  .battle-active.touch-mode .overlay-card:has(.recap) .result-score b {
+    font-size: 26px;
+  }
+}
+@container (max-height: 470px) {
+  .recap {
+    margin: 6px auto 4px;
+    font-size: 12px;
+  }
+  .recap tbody th,
+  .recap td {
+    padding-top: 3px;
+    padding-bottom: 3px;
+  }
+  .recap tbody th small.who {
+    display: none;
+  }
+  .records {
+    margin-bottom: 8px;
+  }
+}
+/* ---- Profile progress, achievements, mastery, leaderboard ---- */
+.muted {
+  color: var(--muted);
+}
+.progress {
+  margin-top: 18px;
+}
+.progress h3 {
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  margin: 18px 0 8px;
+}
+.progress h3 small {
+  color: var(--muted);
+  font-weight: 400;
+  margin-left: 6px;
+}
+.progress-totals {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  text-align: center;
+  font-size: 8px;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+.progress-totals b {
+  display: block;
+  font-size: 20px;
+  color: #fff;
+  margin-bottom: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.achievements,
+.mastery {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+.achievements li,
+.mastery li {
+  border: 1px solid #ffffff1a;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 12px;
+  display: grid;
+  gap: 2px;
+  opacity: 0.55;
+}
+.achievements li span,
+.mastery li span,
+.mastery li small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.achievements li.earned {
+  opacity: 1;
+  border-color: #ffd16688;
+  background: #ffd16612;
+}
+.achievements li.earned b::before {
+  content: "★ ";
+  color: #ffd166;
+}
+.mastery li {
+  opacity: 1;
+  border-left: 4px solid var(--element);
+}
+.mastery li.ranked {
+  border-color: var(--tier);
+  border-left-color: var(--element);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tier) 30%, transparent);
+}
+.mastery li.ranked span {
+  color: var(--tier);
+}
+.leaderboard {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  margin: 8px 0 12px;
+}
+.leaderboard th,
+.leaderboard td {
+  padding: 6px 8px;
+  text-align: center;
+}
+.leaderboard tbody th {
+  text-align: left;
+  font-weight: 600;
+}
+.leaderboard thead th {
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+.leaderboard tbody tr {
+  border-top: 1px solid #ffffff14;
+}
+.leaderboard tr.me {
+  background: #ffd16618;
+}
+.leaderboard .empty {
+  color: var(--muted);
+  padding: 16px;
+}

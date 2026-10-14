@@ -560,3 +560,60 @@ it("still creates a normal 1v1 room by default", async () => {
     false,
   );
 });
+it("files a finished match and reports the server's own summary for each player", async () => {
+  const one = accounts.add(false),
+    two = accounts.add(false),
+    stranger = accounts.add(false);
+  const a = await connect(one.token),
+    b = await connect(two.token);
+  const host = await emit(a, "create", { name: "One" });
+  expect((await emit(b, "join", { name: "Two", code: host.code })).ok).toBe(
+    true,
+  );
+  const arena = server.rooms.get(host.code!)!;
+  arena.start();
+  arena.phase = "playing";
+  arena.forfeit(arena.players[0].id);
+  server.broadcast(arena);
+  const matchId = arena.snapshot().matchId!;
+  expect(matchId).toMatch(/^[0-9a-f-]{36}$/);
+  const calls: { token: string; name: string; args: Record<string, unknown> }[] =
+    [];
+  accounts.provider.rpc = async (token, name, args) => {
+    calls.push({ token, name, args });
+    return { confirmed: false, records: [], achievements: [] };
+  };
+  const post = (token: string, body: unknown) =>
+    fetch(`${url}/api/matches/report`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+  expect((await post(one.token, { matchId })).status).toBe(200);
+  expect((await post(two.token, { matchId })).status).toBe(200);
+  // Someone who wasn't in it, an unknown match, or a forged summary: refused.
+  expect((await post(stranger.token, { matchId })).status).toBe(404);
+  expect((await post(one.token, { matchId: "unknown-match" })).status).toBe(404);
+  expect(
+    (await post(one.token, { matchId, summary: { winnerTeam: 1 } })).status,
+  ).toBe(400);
+  expect(calls).toHaveLength(2);
+  expect(calls.map((c) => c.name)).toEqual([
+    "arena_report_match",
+    "arena_report_match",
+  ]);
+  // Both players submit the very same summary, naming both accounts.
+  expect(calls[0].args).toEqual(calls[1].args);
+  const summary = calls[0].args.p_summary as import("../../packages/shared/src/accounts").MatchSummary;
+  expect(summary.players.map((p) => p.account)).toEqual([
+    one.account.id,
+    two.account.id,
+  ]);
+  expect(summary.winnerTeam).toBe(0);
+  // A new match gets a new id.
+  arena.start();
+  expect(arena.snapshot().matchId).toBeNull();
+});
