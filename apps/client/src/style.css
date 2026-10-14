@@ -5569,3 +5569,9 @@ html.scroll-locked {
 .hud-ffa .health-card {
   --team: var(--element);
 }
+/* Fighter mastery badge on roster cards. */
+.card-bottom .mastery-badge {
+  color: var(--tier);
+  font-weight: 800;
+  letter-spacing: 0.6px;
+}

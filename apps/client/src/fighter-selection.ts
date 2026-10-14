@@ -6,6 +6,7 @@ import { abilityIcon } from "./ability-icons";
 import { PLACEHOLDER_FIGHTERS } from "./creature-design";
 import { elementIcon } from "./element-icons";
 import { withAura } from "./trait-effects";
+import { masteryTier } from "../../../packages/shared/src/accounts";
 /** Reduced motion keeps the auras as still frames. */
 const still = () =>
   typeof matchMedia !== "undefined" &&
@@ -38,6 +39,20 @@ const placeholderBadge = (id: CharacterId, label = "PLACEHOLDER") =>
   PLACEHOLDER_FIGHTERS.includes(id)
     ? `<span class="art-placeholder" title="Generic stand-in until licensed artwork is added">${label}</span>`
     : "";
+/** Your matches per fighter (from your records), for mastery badges. */
+let mastery: Record<string, { matches: number; wins: number }> = {};
+export function setMastery(
+  value: Record<string, { matches: number; wins: number }>,
+) {
+  mastery = value;
+}
+const masteryBadge = (id: CharacterId) => {
+  const played = mastery[id]?.matches ?? 0;
+  const tier = masteryTier(played);
+  return tier
+    ? `<span class="mastery-badge" style="--tier:${tier.color}" title="${tier.name} mastery · ${played} matches with ${CHARACTERS[id].name}">★ ${tier.name}</span>`
+    : "";
+};
 export function fighterSelection(selected: CharacterId, element = "All") {
   // The player's own keys (Settings → Controls), so the cards teach real controls.
   const bindings = controlPrefs().bindings,
@@ -49,7 +64,7 @@ export function fighterSelection(selected: CharacterId, element = "All") {
     .filter((c) => element === "All" || c.element === element)
     .map(
       (c) =>
-        `<button class="creature-card showcase-card ${selected === c.id ? "selected" : ""}" style="--element:${hex(c.color)}" data-character="${c.id}" aria-pressed="${selected === c.id}"><span class="card-head"><strong>${c.name}</strong><span class="element-pill">${elementIcon(c.element)}${c.element}</span></span><small class="card-role">${rangeTag(c.id)}<span>${c.role}</span></small><span class="card-art">${art(c.id, false, selected === c.id)}${placeholderBadge(c.id)}</span><span class="card-skills">${c.skills.map((a, i) => `<span title="${a.name} (${i === ULT_SLOT ? "ultimate" : `${a.cooldown}s`}): ${a.description}">${abilityIcon(a.name)}<i>${i === ULT_SLOT ? "ULT" : `${a.cooldown}s`}</i></span>`).join("")}</span><span class="card-bottom">${c.health} HP<span>${selected === c.id ? "✓ SELECTED" : "SELECT"}</span></span></button>`,
+        `<button class="creature-card showcase-card ${selected === c.id ? "selected" : ""}" style="--element:${hex(c.color)}" data-character="${c.id}" aria-pressed="${selected === c.id}"><span class="card-head"><strong>${c.name}</strong><span class="element-pill">${elementIcon(c.element)}${c.element}</span></span><small class="card-role">${rangeTag(c.id)}<span>${c.role}</span></small><span class="card-art">${art(c.id, false, selected === c.id)}${placeholderBadge(c.id)}</span><span class="card-skills">${c.skills.map((a, i) => `<span title="${a.name} (${i === ULT_SLOT ? "ultimate" : `${a.cooldown}s`}): ${a.description}">${abilityIcon(a.name)}<i>${i === ULT_SLOT ? "ULT" : `${a.cooldown}s`}</i></span>`).join("")}</span><span class="card-bottom">${c.health} HP${masteryBadge(c.id)}<span>${selected === c.id ? "✓ SELECTED" : "SELECT"}</span></span></button>`,
     );
   const skills = fighter.skills
     .map(
