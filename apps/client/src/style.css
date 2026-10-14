@@ -5434,3 +5434,7 @@ html.scroll-locked {
   background: #7fd3ff33;
   color: #9fe1ff;
 }
+/* The round clock turns red while the ring closes. */
+#timer.ring-on {
+  color: #ff7d8f;
+}

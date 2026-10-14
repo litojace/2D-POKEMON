@@ -88,3 +88,28 @@ describe("healing orbs", () => {
     expect(p.orbs).toHaveLength(0);
   });
 });
+describe("energy orbs", () => {
+  it("every other orb charges the ultimate instead of healing", () => {
+    const a = duel();
+    tick(a, RULES.orbFirst + 0.1);
+    expect(a.orbs[0].kind).toBe("heal");
+    tick(a, RULES.orbInterval);
+    const energy = a.orbs[1];
+    expect(energy.kind).toBe("energy");
+    const [one] = a.players;
+    // Full health doesn't matter for energy; a full meter does.
+    Object.assign(one, { x: energy.x, y: energy.y, ult: RULES.ultMax });
+    Object.assign(a.players[1], { x: 1500, y: 450 });
+    a.tick();
+    expect(a.orbs.some((o) => o.id === energy.id)).toBe(true);
+    one.ult = 10;
+    a.tick();
+    expect(a.orbs.some((o) => o.id === energy.id)).toBe(false);
+    expect(one.ult).toBeCloseTo(10 + RULES.orbEnergy, 0);
+    expect(one.hp).toBe(CHARACTERS.voltkit.health);
+    const event = a.events.find(
+      (e) => e.kind === "heal" && e.abilityId === "energy-orb",
+    )!;
+    expect(event.value).toBe(RULES.orbEnergy);
+  });
+});

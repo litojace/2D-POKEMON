@@ -34,6 +34,8 @@ import Phaser from "phaser";
 import { io } from "socket.io-client";
 import {
   CHARACTERS,
+  RING,
+  ringRadius,
   RULES,
   STATUS_RULES,
   ULT_SLOT,
@@ -936,7 +938,7 @@ function renderBattle() {
   }
   $("round-label").textContent = state.practice
     ? "FREE PRACTICE"
-    : `ROUND ${state.round} · BEST OF 3`;
+    : `ROUND ${state.round} · BEST OF ${RULES.roundsToWin * 2 - 1}`;
   $("network").textContent = state.practice
     ? "SOLO PRACTICE · SERVER-VALIDATED COMBAT"
     : "AUTHORITATIVE ONLINE MATCH";
@@ -952,8 +954,16 @@ function renderBattle() {
     state.phase === "playing"
       ? state.practice
         ? "TEST YOUR SKILLS"
-        : `LIVE · ${ARENAS[state.arena ?? "classic"].name.toUpperCase()}`
+        : ringRadius(state.remaining, state.overtime) !== null
+          ? "RING CLOSING · STAY INSIDE"
+          : `LIVE · ${ARENAS[state.arena ?? "classic"].name.toUpperCase()}`
       : state.phase.toUpperCase();
+  $("timer").classList.toggle(
+    "ring-on",
+    !state.practice &&
+      state.phase === "playing" &&
+      ringRadius(state.remaining, state.overtime) !== null,
+  );
   kitOf(me.character, me.rites).skills.forEach((a, i) => {
     $(`ability-${i}`).title = `${a.name}: ${a.description}`;
     $(`ability-${i}`).setAttribute("aria-label", `${a.name}: ${a.description}`);
@@ -1323,7 +1333,7 @@ function reportContext(): Record<string, string> {
 $("report-problem").onclick = () => accountsUI.showReport(reportContext());
 $("help").onclick = () =>
   dialog(
-    `<div class="eyebrow">HOW TO PLAY</div><h2>Every second counts.</h2><p>Create a room, share the code, choose your creatures, and both click Ready. Win three rounds to take the match.</p>${controlsList(true)}<p>Use cover to block shots. Jump over ground zones. Skills recharge in 8–20 seconds; basic attacks never go on cooldown. At a tie, overtime drains both players' health.</p>`,
+    `<div class="eyebrow">HOW TO PLAY</div><h2>Every second counts.</h2><p>Create a room, share the code, choose your creatures, and both click Ready. Win three rounds to take the match.</p>${controlsList(true)}<p>Use cover to block shots. Jump over ground zones. Skills recharge in 8–20 seconds; basic attacks never go on cooldown. In a round's last minute a ring closes in on the centre: stay inside it. Healing orbs (green) restore health; energy orbs (gold) charge your ultimate. At a tie, overtime drains both players' health.</p>`,
   );
 $("credits").onclick = () =>
   dialog(
@@ -1601,12 +1611,17 @@ class ArenaScene extends Phaser.Scene {
       });
     }
     if (event.value) {
-      const heal = event.kind === "heal";
+      const heal = event.kind === "heal",
+        energy = heal && event.abilityId === "energy-orb";
       const label = this.add
-        .text(event.x, event.y - 45, `${heal ? "+" : "−"}${event.value}`, {
+        .text(
+          event.x,
+          event.y - 45,
+          energy ? `+${event.value}% ULT` : `${heal ? "+" : "−"}${event.value}`,
+          {
           fontFamily: "monospace",
           fontSize: "25px",
-          color: heal ? "#7dffb0" : "#fff",
+          color: energy ? "#ffd166" : heal ? "#7dffb0" : "#fff",
           stroke: "#152820",
           strokeThickness: 4,
         })
@@ -1894,14 +1909,63 @@ class ArenaScene extends Phaser.Scene {
     for (const pr of state.projectiles)
       drawProjectile(g, pr, _time, reducedMotion);
     // Healing orbs: a soft green glow with a white cross, gently pulsing.
+    // Energy orbs: gold with a lightning bolt (they charge the ultimate).
     for (const orb of state.orbs ?? []) {
       const pulse = reducedMotion ? 1 : 1 + Math.sin(_time / 220) * 0.12;
+      if (orb.kind === "energy") {
+        g.fillStyle(0xffd166, 0.2).fillCircle(orb.x, orb.y, 34 * pulse);
+        g.fillStyle(0xe0a020, 0.92).fillCircle(orb.x, orb.y, 17);
+        g.lineStyle(3, 0xfff1c2, 0.95).strokeCircle(orb.x, orb.y, 17);
+        g.fillStyle(0xffffff, 1).fillPoints(
+          [
+            { x: orb.x + 3, y: orb.y - 12 },
+            { x: orb.x - 7, y: orb.y + 2 },
+            { x: orb.x - 1, y: orb.y + 2 },
+            { x: orb.x - 4, y: orb.y + 12 },
+            { x: orb.x + 7, y: orb.y - 3 },
+            { x: orb.x + 1, y: orb.y - 3 },
+          ],
+          true,
+        );
+        continue;
+      }
       g.fillStyle(0x7dffb0, 0.18).fillCircle(orb.x, orb.y, 34 * pulse);
       g.fillStyle(0x3ccf7a, 0.9).fillCircle(orb.x, orb.y, 17);
       g.lineStyle(3, 0xd9ffe9, 0.9).strokeCircle(orb.x, orb.y, 17);
       g.fillStyle(0xffffff, 1)
         .fillRect(orb.x - 3, orb.y - 10, 6, 20)
         .fillRect(orb.x - 10, orb.y - 3, 20, 6);
+    }
+    // The closing ring: shade everything outside the safe circle.
+    const ring =
+      state.phase === "playing" && !state.practice
+        ? ringRadius(state.remaining, state.overtime)
+        : null;
+    if (ring !== null) {
+      const beat = reducedMotion ? 0.5 : 0.5 + Math.sin(_time / 180) * 0.5;
+      // Shade outside the ring as edge-to-edge wedges (no overlaps, so the
+      // translucent shade stays even).
+      g.fillStyle(0x6b1030, 0.32);
+      const far = 2200,
+        steps = 72;
+      for (let i = 0; i < steps; i++) {
+        const a0 = (i / steps) * Math.PI * 2,
+          a1 = ((i + 1) / steps) * Math.PI * 2;
+        g.fillPoints(
+          [
+            { x: RING.x + Math.cos(a0) * ring, y: RING.y + Math.sin(a0) * ring },
+            { x: RING.x + Math.cos(a1) * ring, y: RING.y + Math.sin(a1) * ring },
+            { x: RING.x + Math.cos(a1) * far, y: RING.y + Math.sin(a1) * far },
+            { x: RING.x + Math.cos(a0) * far, y: RING.y + Math.sin(a0) * far },
+          ],
+          true,
+        );
+      }
+      g.lineStyle(5, 0xff5d73, 0.55 + 0.4 * beat).strokeCircle(
+        RING.x,
+        RING.y,
+        ring,
+      );
     }
     // Aim preview: where the held skill lands if released now (dim while recharging).
     const previewer = state.players.find((p) => p.id === myId);

@@ -8,6 +8,8 @@ import {
   ARENAS,
   COMBOS,
   hazardIn,
+  RING,
+  ringRadius,
   hasMark,
   type Ability,
   type Fighter,
@@ -306,13 +308,18 @@ export class BotBrain {
           }
         : target;
       this.plan = this.choosePath(arena, me, chase, melee, hpRatio);
-      // Hurt and closer to a healing orb than the opponent is: go and take it.
+      // Closer to a useful orb than the opponent is: go and take it (healing
+      // when hurt, energy when the ultimate is still charging).
       const orb = arena.orbs
+        .filter((o) =>
+          o.kind === "energy"
+            ? (me.ult ?? 0) < RULES.ultMax * 0.7
+            : hpRatio < 0.7,
+        )
         .map((o) => ({ o, d: Math.hypot(o.x - me.x, o.y - me.y) }))
         .sort((a, b) => a.d - b.d)[0];
       if (
         orb &&
-        hpRatio < 0.7 &&
         orb.d < Math.hypot(orb.o.x - enemy.x, orb.o.y - enemy.y) + 80 &&
         this.random() < this.profile.skillUse + 0.2
       ) {
@@ -488,6 +495,12 @@ export class BotBrain {
           if (clock >= 0 && hazardIn(h, clock) < h.warn + 0.3)
             score -= 6 * this.profile.dodge;
         }
+      // The closing ring: get inside (with a margin) before it bites.
+      const ring = ringRadius(arena.deadline - arena.time, arena.overtime);
+      if (ring !== null) {
+        const out = Math.hypot(x - RING.x, y - RING.y) - (ring - 60);
+        if (out > 0) score -= 2 + out / 40;
+      }
       score += (this.random() - 0.5) * 0.4;
       if (score > bestScore) {
         bestScore = score;

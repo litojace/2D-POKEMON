@@ -18,6 +18,8 @@ import {
   hasMark,
   MODE_SIZE,
   ORB_SPOTS,
+  RING,
+  ringRadius,
   RULES,
   SKILL_SLOTS,
   STATUS_RULES,
@@ -45,6 +47,8 @@ import {
   type Zone,
 } from "../../../packages/shared/src/index.js";
 import type { BotBrain } from "./bot.js";
+/** Seconds between overtime / closing-ring damage ticks. */
+const DRAIN_INTERVAL = 0.5;
 export class Arena {
   practice: Snapshot["practice"] = null;
   /** AI opponents in this room, by fighter id (solo vs bot). */
@@ -82,6 +86,9 @@ export class Arena {
   orbs: Orb[] = [];
   nextOrb = 0;
   private orbTurn = 0;
+  private orbWave = 0;
+  /** Next overtime / ring damage tick. */
+  private nextDrain = 0;
   events: GameEvent[] = [];
   serial = 0;
   constructor(
@@ -274,6 +281,8 @@ export class Arena {
     for (const brain of this.bots.values()) brain.reset();
     this.orbs = [];
     this.orbTurn = 0;
+    this.orbWave = 0;
+    this.nextDrain = 0;
     this.nextOrb = this.time + RULES.countdown + RULES.orbFirst;
     this.phase = "countdown";
     this.deadline = this.time + RULES.countdown;
@@ -975,10 +984,31 @@ export class Arena {
         }
       return;
     }
-    if (this.overtime)
-      for (const p of this.players)
-        if (p.hp > 0 && !p.out)
-          this.damage(p, dt * 12, this.enemiesOf(p)[0]?.id ?? "");
+    // Overtime drain and the closing ring bite twice a second (one readable
+    // hit each, rather than a sliver every tick).
+    const ring = ringRadius(this.deadline - this.time, this.overtime);
+    if (
+      (this.overtime || (ring !== null && this.time < this.deadline)) &&
+      this.time >= this.nextDrain
+    ) {
+      this.nextDrain = this.time + DRAIN_INTERVAL;
+      for (const p of this.players) {
+        if (p.hp <= 0 || p.out) continue;
+        if (this.overtime)
+          this.damage(
+            p,
+            12 * DRAIN_INTERVAL,
+            this.enemiesOf(p)[0]?.id ?? "",
+          );
+        // Outside the ring everyone loses health, and nobody's credited.
+        if (
+          ring !== null &&
+          p.hp > 0 &&
+          Math.hypot(p.x - RING.x, p.y - RING.y) > ring
+        )
+          this.damage(p, RING.damage * DRAIN_INTERVAL, "");
+      }
+    }
     const blue = this.standing(0).length,
       red = this.standing(1).length;
     if (!blue || !red) {
@@ -1013,10 +1043,12 @@ export class Arena {
         this.mode === "teams"
           ? ORB_SPOTS
           : [ORB_SPOTS[this.orbTurn++ % ORB_SPOTS.length]];
+      // Healing and energy orbs take turns (first one heals).
+      const kind = this.orbWave++ % 2 === 0 ? "heal" : "energy";
       for (const spot of spots)
         if (!this.orbs.some((o) => o.x === spot.x && o.y === spot.y)) {
-          this.orbs.push({ id: ++this.serial, x: spot.x, y: spot.y });
-          this.event("orb", spot, 0x7dffb0);
+          this.orbs.push({ id: ++this.serial, x: spot.x, y: spot.y, kind });
+          this.event("orb", spot, kind === "heal" ? 0x7dffb0 : 0xffd166);
         }
     }
     this.orbs = this.orbs.filter((orb) => {
@@ -1026,8 +1058,10 @@ export class Arena {
           (p) =>
             p.hp > 0 &&
             !p.out &&
-            // Full health walks straight through, leaving it for later.
-            p.hp < CHARACTERS[p.character].health &&
+            // Full health (or a full meter) walks straight through it.
+            (orb.kind === "energy"
+              ? (p.ult ?? 0) < RULES.ultMax
+              : p.hp < CHARACTERS[p.character].health) &&
             Math.hypot(p.x - orb.x, p.y - orb.y) <
               RULES.radius + RULES.orbRadius,
         )
@@ -1037,6 +1071,19 @@ export class Arena {
             Math.hypot(b.x - orb.x, b.y - orb.y),
         )[0];
       if (!taker) return true;
+      if (orb.kind === "energy") {
+        const before = taker.ult ?? 0;
+        this.chargeUlt(taker, RULES.orbEnergy);
+        this.event(
+          "heal",
+          taker,
+          0xffd166,
+          Math.round((taker.ult ?? 0) - before),
+          taker.id,
+          "energy-orb",
+        );
+        return false;
+      }
       const full = CHARACTERS[taker.character].health;
       const healed = Math.min(
         full - taker.hp,

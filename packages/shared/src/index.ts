@@ -20,6 +20,8 @@ export const RULES = {
   /** Share of the picker's full health an orb restores. */
   orbHeal: 0.25,
   orbRadius: 26,
+  /** Every other orb is an energy orb: ultimate charge instead of health. */
+  orbEnergy: 35,
   /** Ultimate meter (skill 4): charged by fighting, cast when full. */
   ultMax: 100,
   /** Meter per point of damage dealt, and per point taken (comeback). */
@@ -1078,9 +1080,34 @@ export interface Projectile extends Vec {
   ability: Ability;
   color: number;
 }
-/** A healing orb on the court, waiting to be picked up. */
+/** An orb on the court, waiting to be picked up. */
 export interface Orb extends Vec {
   id: number;
+  /** Healing (default) restores health; energy charges the ultimate meter. */
+  kind?: "heal" | "energy";
+}
+/**
+ * The closing ring: in a round's last minute the safe circle shrinks from the
+ * whole court down to the centre, and standing outside it hurts. Stalled
+ * rounds end in a fight instead of a timeout.
+ */
+export const RING = {
+  x: 800,
+  y: 450,
+  /** Seconds before the round's time limit when the ring starts closing. */
+  startsBefore: 60,
+  /** Covers the corners of the court. */
+  maxRadius: 920,
+  minRadius: 170,
+  /** Health per second lost outside the ring. */
+  damage: 14,
+};
+/** Safe radius for the time left in the round, or null while it's open. */
+export function ringRadius(remaining: number, overtime = false): number | null {
+  if (overtime) return RING.minRadius;
+  if (remaining > RING.startsBefore) return null;
+  const k = 1 - Math.max(0, remaining) / RING.startsBefore;
+  return RING.maxRadius + (RING.minRadius - RING.maxRadius) * k;
 }
 /** Where orbs appear: top and bottom centre, equally far from both sides. */
 export const ORB_SPOTS: Vec[] = [
