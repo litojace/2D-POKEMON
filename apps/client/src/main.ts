@@ -65,6 +65,7 @@ import {
 import { PAD_LABELS, firstPad, readPad, type PadAction } from "./gamepad";
 import { drawPreview, previewShape } from "./skill-preview";
 import { controlsCapturing, showControlsScreen } from "./controls-screen";
+import { watchBattleZoom } from "./zoom-guard";
 const audio = new AudioManager();
 const allAbilities = new Map(
   Object.values(CHARACTERS)
@@ -110,6 +111,8 @@ const escape = (s: string) =>
   );
 document.querySelector("#app")!.innerHTML =
   `<header class="topbar"><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><details class="header-menu" id="header-menu"><summary>☰ <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">Settings</button><button class="quiet" id="install-app">Want fullscreen?</button><button class="quiet" id="report-problem">Report a problem</button><span class="connection" id="connection">Connecting</span></div></details><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-stage"><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span id="control-hints"></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>ELEMENT ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Eight creatures. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
+// Touch battles lock zoom (pinch and double tap); menus keep it for accessibility.
+watchBattleZoom();
 const headerMenu = $("header-menu") as HTMLDetailsElement;
 headerMenu.addEventListener("click", (event) => {
   if ((event.target as Element).closest("button")) headerMenu.open = false;

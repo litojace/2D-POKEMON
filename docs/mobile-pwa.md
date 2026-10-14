@@ -23,7 +23,12 @@ The manifest requests standalone landscape display, with a `fullscreen` display 
 ### Landscape lock and zoom
 
 - **Auto-landscape.** Pressing Ready on the match briefing on a touch device enters fullscreen and calls `screen.orientation.lock("landscape")` (`apps/client/src/orientation.ts`). Browsers allow the lock only in fullscreen or in an installed app, so it works on Android Chrome, Edge and Samsung Internet. Installed Android apps are already landscape through the manifest. iPhone and iPad Safari have no orientation lock and the iPhone has no Fullscreen API. On iOS, and anywhere the lock is refused, portrait battles show a "Turn your phone sideways" pill with an animated phone icon. A web page cannot rotate the screen on iOS.
-- **No double-tap zoom.** Every element gets `touch-action: manipulation`, which removes double-tap zoom but keeps taps, scrolling and pinch zoom for accessibility. The joystick, skill buttons and battle canvas keep `touch-action: none`. Pinch zoom is deliberately not disabled: iOS ignores `user-scalable=no`, and on Android it would block users who need zoom.
+- **No accidental zoom in menus.** Every element gets `touch-action: manipulation`, which removes double-tap zoom but keeps taps, scrolling and pinch zoom for accessibility.
+- **No zoom at all in touch battles.** A thumb on the joystick plus a second finger on the HUD or a screen edge reads as a pinch. In an emulated phone test this zoomed the page 5×. While a touch battle is on screen, `zoom-guard.ts` adds `html.zoom-locked`:
+  - every element gets `touch-action: none`; scrolling panels (briefing card, practice panel, settings dialog) keep `pan-x pan-y`, so they can scroll but not zoom;
+  - the viewport switches to `maximum-scale=1,user-scalable=no` (Android honours it and snaps a zoom back);
+  - Safari's `gesture*` pinch events, pinch touch moves and a quick second tap on anything that isn't a control are cancelled, as an iOS fallback.
+    Leaving the battle restores the original viewport and menu pinch zoom. The emulated test covered a pinch on the HUD edge, a pinch on the right edge, and thumb-on-joystick plus a finger on the edge: all zoomed 5× before and stayed at 1× after. Physical iPhone testing is still needed, since Safari cannot be emulated here.
 - **No zoom when typing.** On touch screens, text fields use 16px text. iOS automatically zooms into any focused field smaller than that.
 
 ## Caching and updates

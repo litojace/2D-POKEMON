@@ -4749,3 +4749,35 @@ button.binding.listening {
     grid-template-columns: 1fr;
   }
 }
+/* Touch battles: no pinch or double-tap zoom anywhere (zoom-guard.ts adds
+   .zoom-locked). Panels that scroll keep panning but still cannot zoom. */
+html.zoom-locked,
+html.zoom-locked body,
+html.zoom-locked body * {
+  touch-action: none !important;
+}
+html.zoom-locked #arena-overlay,
+html.zoom-locked .overlay-card,
+html.zoom-locked #practice-controls,
+html.zoom-locked .practice-panel,
+html.zoom-locked dialog,
+html.zoom-locked dialog * {
+  touch-action: pan-x pan-y !important;
+}
+html.zoom-locked .joystick-area,
+html.zoom-locked .touch-buttons,
+html.zoom-locked .touch-buttons *,
+html.zoom-locked #game,
+html.zoom-locked #game * {
+  touch-action: none !important;
+}
+html.zoom-locked body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+html.zoom-locked dialog,
+html.zoom-locked dialog input {
+  -webkit-user-select: text;
+  user-select: text;
+}
