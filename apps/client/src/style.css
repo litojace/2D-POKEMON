@@ -5459,12 +5459,13 @@ html.scroll-locked {
 }
 .rule-chips {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
   gap: 8px;
   margin-top: 10px;
 }
 .rule-chip {
   display: grid;
+  align-content: start;
   gap: 2px;
   text-align: left;
   padding: 8px 10px;
