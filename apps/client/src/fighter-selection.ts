@@ -1,6 +1,6 @@
 import { fighterPack } from "./animation/pack-config";
 import { CHARACTERS, KEYS, type CharacterId } from "@arena/shared";
-import { fighterArt } from "./fighter-art";
+import { fighterArt, scopeIds } from "./fighter-art";
 import { abilityIcon } from "./ability-icons";
 import { PLACEHOLDER_FIGHTERS } from "./creature-design";
 import { elementIcon } from "./element-icons";
@@ -14,7 +14,11 @@ function art(id: CharacterId, large = false, aura = false) {
   const pack = fighterPack(id);
   if (pack && pack.kind !== "layered")
     return `<img class="creature-portrait" loading="lazy" decoding="async" src="/assets/fighters/${id}/${large ? pack.selection : pack.portrait}" alt="${CHARACTERS[id].name}">`;
-  return aura ? withAura(fighterArt(id), id, still()) : fighterArt(id);
+  // Card and detail portrait of the same fighter need their own ids.
+  return scopeIds(
+    aura ? withAura(fighterArt(id), id, still()) : fighterArt(id),
+    large ? "detail" : "card",
+  );
 }
 /** Long range when the basic attack reaches across the arena, else close range. */
 export function attackRange(id: CharacterId): "long" | "close" {

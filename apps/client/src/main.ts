@@ -8,7 +8,7 @@ import {
 } from "./animation/pipeline";
 import { rigAssets } from "./animation/assets";
 import { setOverlayMarkup } from "./overlay";
-import { fighterArt, fighterAvatar } from "./fighter-art";
+import { fighterArt, fighterAvatar, scopeIds } from "./fighter-art";
 import { withAura } from "./trait-effects";
 import { drawBattleAura } from "./battle-aura";
 import { stadiumCrowd } from "./stadium";
@@ -275,7 +275,10 @@ function showSelection() {
       `#${fighter.color.toString(16).padStart(6, "0")}`,
     );
     avatar.title = fighter.name;
-    avatar.innerHTML = fighterAvatar(fighter.id);
+    avatar.innerHTML = fighterAvatar(
+      fighter.id,
+      `lobby${state?.players.findIndex((p) => p.id === myId) ?? 0}`,
+    );
   }
   if (Math.abs(scrollY - y) > 1) scrollTo(0, y);
   return true;
@@ -319,7 +322,7 @@ const COPY_ICON =
 function roomPanel(me: Fighter) {
   const row = (p: Fighter) => {
     const fighter = CHARACTERS[p.id === myId ? selected : p.character];
-    return `<div${p.id === myId ? " data-me" : ""}><span class="player-avatar" style="--element:#${fighter.color.toString(16).padStart(6, "0")}" title="${fighter.name}">${fighterAvatar(fighter.id)}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small class="player-fighter">${fighter.name}</small></span><b class="status-pill ${!p.connected ? "offline" : p.ready ? "ready" : "choosing"}">${!p.connected ? "Offline" : p.ready ? "Ready" : "Choosing"}</b></div>`;
+    return `<div${p.id === myId ? " data-me" : ""}><span class="player-avatar" style="--element:#${fighter.color.toString(16).padStart(6, "0")}" title="${fighter.name}">${fighterAvatar(fighter.id, `lobby${state!.players.indexOf(p)}`)}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small class="player-fighter">${fighter.name}</small></span><b class="status-pill ${!p.connected ? "offline" : p.ready ? "ready" : "choosing"}">${!p.connected ? "Offline" : p.ready ? "Ready" : "Choosing"}</b></div>`;
   };
   const ready = `<button class="primary" id="ready">${me.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full" id="leave">Leave room</button>`;
   const code = `<button id="copy" class="room-code">${state!.code}<span>${COPY_ICON}COPY CODE</span></button>`;
@@ -717,7 +720,7 @@ function renderBattle() {
       const confirmed = state.instructionsReady.includes(myId);
       // Who's fighting whom, each wearing their trait aura (you first).
       const card = (p: Fighter) =>
-        `<div class="vs-fighter${p.id === myId ? " me" : ""}" style="--element:#${CHARACTERS[p.character].color.toString(16).padStart(6, "0")}">${withAura(fighterArt(p.character), p.character, reducedMotion)}<b>${escape(p.name)}${p.id === myId ? " <small>(you)</small>" : ""}</b><span>${CHARACTERS[p.character].name} · ${CHARACTERS[p.character].element}</span></div>`;
+        `<div class="vs-fighter${p.id === myId ? " me" : ""}" style="--element:#${CHARACTERS[p.character].color.toString(16).padStart(6, "0")}">${scopeIds(withAura(fighterArt(p.character), p.character, reducedMotion), `vs${state!.players.indexOf(p)}`)}<b>${escape(p.name)}${p.id === myId ? " <small>(you)</small>" : ""}</b><span>${CHARACTERS[p.character].name} · ${CHARACTERS[p.character].element}</span></div>`;
       const mine = (p: Fighter) => teamOf(p) === teamOf(me);
       const side = (list: Fighter[]) =>
         list.sort((a, b) => Number(b.id === myId) - Number(a.id === myId));
