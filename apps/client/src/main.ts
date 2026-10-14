@@ -37,6 +37,8 @@ import {
   RULES,
   STATUS_RULES,
   ULT_SLOT,
+  COMBOS,
+  DEBUFFS,
   skillReady,
   advanceMovement,
   normalize,
@@ -345,7 +347,7 @@ function controlsList(full = false) {
     controlPrefs().cast === "preview"
       ? " · hold to preview, release to cast"
       : "";
-  return `<div class="controls-list"><span><kbd>${escape(moveText())}</kbd>Move · ${aimHow}</span><span><kbd>${escape(keyText("basic"))}</kbd>Basic attack${full ? " · hold to keep attacking" : ""}</span><span><kbd>${escape(skillsText())}</kbd>Four skills · the last is your ultimate${casting}</span><span><kbd>${escape(keyText("dash"))}</kbd>Dash${full ? " · 3 second cooldown" : ""}</span><span><kbd>${escape(keyText("jump"))}</kbd>Jump over ground attacks</span>${full ? "<span><kbd>ESC</kbd>Settings · change keys under Controls</span>" : ""}</div>`;
+  return `<div class="controls-list"><span><kbd>${escape(moveText())}</kbd>Move · ${aimHow}</span><span><kbd>${escape(keyText("basic"))}</kbd>Basic attack${full ? " · hold to keep attacking" : ""}</span><span><kbd>${escape(skillsText())}</kbd>Four skills · the last is your ultimate${casting}</span>${full ? "<span><kbd>ULT</kbd>The ultimate charges as you fight · basic hits shorten cooldowns</span><span><kbd>COMBO</kbd>Each fighter has a setup → payoff combo (see the fighter panel)</span>" : ""}<span><kbd>${escape(keyText("dash"))}</kbd>Dash${full ? " · 3 second cooldown" : ""}</span><span><kbd>${escape(keyText("jump"))}</kbd>Jump over ground attacks</span>${full ? "<span><kbd>ESC</kbd>Settings · change keys under Controls</span>" : ""}</div>`;
 }
 let labelState = "";
 /** Keep HUD key labels in step with bindings and the device in use. */
@@ -847,7 +849,9 @@ function renderBattle() {
       .map((s) =>
         s.kind === "sleep"
           ? `SLEEP +${Math.round((STATUS_RULES.sleepVulnerability - 1) * 100)}% DMG`
-          : s.kind.toUpperCase(),
+          : s.kind === "mark"
+            ? comboOf(s.by).toUpperCase()
+            : s.kind.toUpperCase(),
       )
       .join(" · ");
   });
@@ -1226,6 +1230,7 @@ class ArenaScene extends Phaser.Scene {
   stopUntil = 0;
   /** Fighter id → performance.now() until which it flashes white. */
   flashUntil = new Map<string, number>();
+  comboShown = new Map<string, number>();
   /** Knockout moment: camera push-in multiplier and its end time. */
   koZoom = 1;
   koUntil = 0;
@@ -1404,8 +1409,16 @@ class ArenaScene extends Phaser.Scene {
         reducedMotion,
       );
     // Novas play on their burst event; every other move plays on cast.
-    if (ability && event.kind === "burst")
-      playCast(this, ability, event.x, event.y, 0, event.color, reducedMotion);
+    if (ability && event.kind === "burst") {
+      const combo = owner && COMBOS[owner.character];
+      const shown =
+        event.combo && combo?.radius
+          ? { ...ability, radius: ability.radius * combo.radius }
+          : ability;
+      playCast(this, shown, event.x, event.y, 0, event.color, reducedMotion);
+    }
+    if (event.combo && (event.kind === "burst" || event.kind === "hit"))
+      this.comboText(event);
     if (ability && event.kind === "cast" && ability.kind !== "nova")
       playCast(
         this,
@@ -1464,6 +1477,44 @@ class ArenaScene extends Phaser.Scene {
       });
     }
   }
+  /** "SOAKED!" over a combo payoff, at most once per fighter per moment. */
+  comboText(event: Snapshot["events"][number]) {
+    const key = `${event.source ?? event.owner}:${event.combo}`;
+    const now = performance.now();
+    if ((this.comboShown.get(key) ?? 0) > now) return;
+    this.comboShown.set(key, now + 600);
+    const label = this.add
+      .text(event.x, event.y - 75, `${event.combo!.toUpperCase()} COMBO!`, {
+        fontFamily: "system-ui, sans-serif",
+        fontStyle: "900",
+        fontSize: "24px",
+        color: "#ffe27a",
+        stroke: "#3a1f00",
+        strokeThickness: 5,
+      })
+      .setOrigin(0.5)
+      .setDepth(40)
+      .setResolution(renderScale());
+    if (reducedMotion) {
+      this.time.delayedCall(800, () => label.destroy());
+      return;
+    }
+    label.setScale(0.6);
+    this.tweens.add({
+      targets: label,
+      scale: 1,
+      duration: 140,
+      ease: "Back.Out",
+    });
+    this.tweens.add({
+      targets: label,
+      y: event.y - 120,
+      alpha: 0,
+      delay: 450,
+      duration: 500,
+      onComplete: () => label.destroy(),
+    });
+  }
   /** Freeze, shake, flash and rumble for one hit, scaled by its size. */
   feelHit(event: Snapshot["events"][number]) {
     const role =
@@ -1472,8 +1523,9 @@ class ArenaScene extends Phaser.Scene {
         : event.source === myId
           ? "attacker"
           : "spectator";
+    const strength = hitStrength(event.value ?? 0, event.ko);
     const feel = hitFeel(
-      hitStrength(event.value ?? 0, event.ko),
+      event.combo && strength === "weak" ? "strong" : strength,
       role,
       reducedMotion,
     );
@@ -1872,6 +1924,38 @@ class ArenaScene extends Phaser.Scene {
             _time,
           );
       }
+      // Combo marks: a spinning target over whoever is primed for a payoff.
+      for (const s of serverPlayer.statuses)
+        if (s.kind === "mark" && s.until > state.time) {
+          const marker = state.players.find((q) => q.id === s.by);
+          if (marker)
+            drawComboMark(
+              g,
+              x,
+              y - jump - 84,
+              CHARACTERS[marker.character].color,
+              _time,
+              s.by === myId || p.id === myId,
+            );
+        }
+      // Duskveil's Curse Mark pays off on any harmful status: show it to them.
+      if (
+        me &&
+        p.id !== myId &&
+        COMBOS[me.character].anyDebuff &&
+        (!isTeams() || teamOf(p) !== myTeam) &&
+        serverPlayer.statuses.some(
+          (s) => s.until > state!.time && DEBUFFS.includes(s.kind),
+        )
+      )
+        drawComboMark(
+          g,
+          x,
+          y - jump - 84,
+          CHARACTERS[me.character].color,
+          _time,
+          true,
+        );
       for (const [i, s] of serverPlayer.statuses.entries()) {
         const colors = {
           burn: 0xff795a,
@@ -1885,6 +1969,7 @@ class ArenaScene extends Phaser.Scene {
           empower: 0xffb347,
           haste: 0x8ee6ad,
           stealth: 0xa98be6,
+          mark: 0xffffff,
         };
         g.fillStyle(colors[s.kind]).fillCircle(
           x - 18 + i * 10,
@@ -1947,6 +2032,35 @@ class ArenaScene extends Phaser.Scene {
     g.lineStyle(1, 0xffffff, 0.6).strokeCircle(aim.x, aim.y, 10);
     g.lineBetween(aim.x - 15, aim.y, aim.x - 6, aim.y);
     g.lineBetween(aim.x + 6, aim.y, aim.x + 15, aim.y);
+  }
+}
+/** Name of the combo whose mark `by` places (their fighter's combo). */
+function comboOf(by?: string) {
+  const marker = state?.players.find((p) => p.id === by);
+  return marker ? COMBOS[marker.character].name : "Marked";
+}
+/** A small spinning target: "this fighter is primed for a combo". */
+function drawComboMark(
+  g: Phaser.GameObjects.Graphics,
+  x: number,
+  y: number,
+  color: number,
+  time: number,
+  mine: boolean,
+) {
+  const spin = reducedMotion ? 0 : time / 380;
+  const r = mine ? 11 : 9;
+  const alpha = mine ? 0.95 : 0.6;
+  g.lineStyle(2.5, color, alpha).strokeCircle(x, y, r);
+  g.fillStyle(0xffffff, alpha).fillCircle(x, y, 2.5);
+  for (let k = 0; k < 4; k++) {
+    const a = spin + (k * Math.PI) / 2;
+    g.lineBetween(
+      x + Math.cos(a) * (r - 3),
+      y + Math.sin(a) * (r - 3),
+      x + Math.cos(a) * (r + 5),
+      y + Math.sin(a) * (r + 5),
+    );
   }
 }
 /** Paint a fighter solid white for this frame (the rig resets tint each render). */

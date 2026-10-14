@@ -4,6 +4,8 @@ import {
   FIGHTER_IDS,
   characterSchema,
   normalizeCharacterId,
+  COMBOS,
+  ULT_SLOT,
   type CharacterId,
 } from "@arena/shared";
 import { Arena } from "../../apps/server/src/simulation";
@@ -97,10 +99,12 @@ it("loads original art and valid public metadata for every fighter and direction
     fighterSelection("voltkit", "Earth").match(/data-character=/g),
   ).toHaveLength(1);
   const detail = fighterSelection("terradon");
-  for (const a of CHARACTERS.terradon.skills) {
+  CHARACTERS.terradon.skills.forEach((a, i) => {
     expect(detail).toContain(a.name);
-    expect(detail).toContain(`${a.cooldown}s`);
-  }
+    // The ultimate charges from a meter instead of a cooldown.
+    expect(detail).toContain(i === ULT_SLOT ? "ULT" : `${a.cooldown}s`);
+  });
+  expect(detail).toContain(COMBOS.terradon.text);
   expect(detail).toContain("600 ms between attacks");
   expect(detail).not.toContain("PLACEHOLDER");
   expect(fighterSelection("voltkit")).toContain("Overcharge");

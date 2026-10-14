@@ -1,6 +1,8 @@
 import {
   CHARACTERS,
+  COMBOS,
   DEBUFFS,
+  hasMark,
   MODE_SIZE,
   ORB_SPOTS,
   RULES,
@@ -247,7 +249,10 @@ export class Arena {
       if (this.time < p.immuneUntil) return;
       p.immuneUntil = this.time + duration + STATUS_RULES.crowdControlImmunity;
     }
-    const old = p.statuses.find((s) => s.kind === kind);
+    // Combo marks from different fighters (2v2) live side by side.
+    const old = p.statuses.find(
+      (s) => s.kind === kind && (kind !== "mark" || s.by === by),
+    );
     if (old) {
       old.until = Math.max(old.until, this.time + duration);
       if (by) old.by = by;
@@ -277,13 +282,35 @@ export class Arena {
     let dealt = amount;
     if (ability && source && this.has(source, "empower"))
       dealt *= STATUS_RULES.empowerDamage;
+    let comboName: string | undefined;
     if (
       ability?.bonusVsStatus &&
       target.statuses.some(
         (s) => s.until > this.time && DEBUFFS.includes(s.kind),
       )
-    )
+    ) {
       dealt *= ability.bonusVsStatus;
+      if (source && COMBOS[source.character].payoff === ability.id)
+        comboName = COMBOS[source.character].name;
+    }
+    // Signature combo payoff: the setup's mark is cashed in for a bonus.
+    const combo =
+      source && source !== target && ability
+        ? COMBOS[source.character]
+        : undefined;
+    const primed =
+      !!combo &&
+      !combo.anyDebuff &&
+      ability?.id === combo.payoff &&
+      hasMark(combo.self ? source! : target, source!.id, this.time);
+    if (primed) {
+      comboName = combo!.name;
+      dealt *= combo!.damage ?? 1;
+      if (!combo!.self)
+        target.statuses = target.statuses.filter(
+          (s) => !(s.kind === "mark" && s.by === source!.id),
+        );
+    }
     if (counter) dealt *= STATUS_RULES.counterReduction;
     if (this.has(target, "shield")) dealt *= STATUS_RULES.shieldReduction;
     if (this.has(target, "sleep")) dealt *= STATUS_RULES.sleepVulnerability;
@@ -317,6 +344,7 @@ export class Arena {
       target: target.id,
       source: owner,
       ko: target.hp <= 0,
+      ...(comboName ? { combo: comboName } : {}),
     });
     if (counter && source && source !== target && source.hp > 0) {
       const reflected = Math.min(
@@ -333,11 +361,28 @@ export class Arena {
         Math.round(reflected),
       );
     }
-    if (ability?.status)
-      this.status(target, ability.status, ability.statusDuration ?? 1, owner);
+    // Setup: mark the target for this fighter's payoff (or the guard for
+    // Mirror Guard, which primes the one who absorbed the hit).
+    if (combo && !combo.self && !combo.anyDebuff && ability?.id === combo.setup)
+      this.status(target, "mark", combo.window, source!.id);
+    if (counter && source && source !== target) {
+      const guard = COMBOS[target.character];
+      if (guard.onAbsorb) this.status(target, "mark", guard.window, target.id);
+    }
+    const status = primed && combo!.status ? combo!.status : ability?.status;
+    if (status)
+      this.status(
+        target,
+        status,
+        (primed && combo!.status
+          ? combo!.statusDuration
+          : ability?.statusDuration) ?? 1,
+        owner,
+      );
     if (ability && source && ability.knockback) {
+      const push = ability.knockback * (primed ? (combo!.knockback ?? 1) : 1);
       const dir = normalize(target.x - source.x, target.y - source.y);
-      move(target, dir.x * ability.knockback, dir.y * ability.knockback);
+      move(target, dir.x * push, dir.y * push);
     }
   }
   /** Enemy is in front of `p` within `range` and the cosine threshold `arc`. */
@@ -356,6 +401,11 @@ export class Arena {
     const angle = p.angle;
     const enemies = this.enemiesOf(p);
     this.event("cast", p, color, undefined, p.id, a.id);
+    const combo = COMBOS[p.character];
+    const selfPrimed =
+      !!combo.self && a.id === combo.payoff && hasMark(p, p.id, this.time);
+    if (combo.self && !combo.onAbsorb && a.id === combo.setup)
+      this.status(p, "mark", combo.window, p.id);
     const projectile = (offset: number) => {
       if (this.projectiles.length >= RULES.maxProjectiles) return;
       this.projectiles.push({
@@ -398,16 +448,19 @@ export class Arena {
         if (enemy.hp > 0 && this.inArc(p, enemy, a.range, a.arc ?? 0.35))
           this.damage(enemy, a.damage, p.id, a);
     if (a.kind === "nova") {
+      const radius = a.radius * (selfPrimed ? (combo.radius ?? 1) : 1);
       this.event("burst", p, color, undefined, p.id, a.id);
+      if (selfPrimed)
+        this.events[this.events.length - 1].combo = combo.name;
       for (const enemy of enemies) {
         if (
           enemy.clone &&
-          Math.hypot(enemy.clone.x - p.x, enemy.clone.y - p.y) < a.radius
+          Math.hypot(enemy.clone.x - p.x, enemy.clone.y - p.y) < radius
         )
           enemy.clone = undefined;
         if (
           enemy.hp > 0 &&
-          Math.hypot(enemy.x - p.x, enemy.y - p.y) < a.radius + RULES.radius &&
+          Math.hypot(enemy.x - p.x, enemy.y - p.y) < radius + RULES.radius &&
           this.lineClear(p, enemy)
         )
           this.damage(enemy, a.damage, p.id, a);
@@ -477,6 +530,11 @@ export class Arena {
       p.clone = { x: p.x, y: p.y, until: this.time + a.duration };
       this.status(p, "haste", a.statusDuration ?? 2);
     }
+    // A self combo is spent by casting the payoff, hit or miss.
+    if (selfPrimed)
+      p.statuses = p.statuses.filter(
+        (s) => !(s.kind === "mark" && s.by === p.id),
+      );
   }
   lineClear(a: { x: number; y: number }, b: { x: number; y: number }) {
     const steps = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 10);

@@ -88,7 +88,9 @@ export type StatusKind =
   | "counter"
   | "empower"
   | "haste"
-  | "stealth";
+  | "stealth"
+  /** Combo setup: primed for the marker's payoff skill (`by` = the marker). */
+  | "mark";
 /** Statuses that count as harmful for effects such as Curse Mark. */
 export const DEBUFFS: StatusKind[] = [
   "burn",
@@ -789,6 +791,115 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     ],
   },
 };
+/**
+ * Signature combos: one "setup → payoff" per fighter. The setup skill marks
+ * its target (or, for `self` combos, the caster) for `window` seconds; the
+ * payoff skill consumes the mark for a bonus. Readable mastery with no new
+ * buttons. Duskveil's Curse Mark (double damage on any harmful status) is the
+ * same idea and is listed here so the HUD can show it.
+ */
+export interface Combo {
+  /** What the mark is called on screen. */
+  name: string;
+  setup: string;
+  payoff: string;
+  window: number;
+  /** The mark sits on the caster instead of the target. */
+  self?: boolean;
+  /** Mark the caster when an attack hits them during the setup (Mirror Guard). */
+  onAbsorb?: boolean;
+  /** No mark: the payoff works on any harmful status (Curse Mark). */
+  anyDebuff?: boolean;
+  damage?: number;
+  radius?: number;
+  knockback?: number;
+  /** Replaces the payoff's own status on a combo hit. */
+  status?: StatusKind;
+  statusDuration?: number;
+  text: string;
+}
+export const COMBOS: Record<CharacterId, Combo> = {
+  tidefin: {
+    name: "Soaked",
+    setup: "whirlpool",
+    payoff: "riptide-wave",
+    window: 3,
+    damage: 1.3,
+    text: "Whirlpool soaks enemies. Riptide Wave deals 30% more to Soaked targets.",
+  },
+  voltkit: {
+    name: "Charged",
+    setup: "storm-grid",
+    payoff: "static-lance",
+    window: 3,
+    damage: 1.15,
+    status: "stun",
+    statusDuration: 0.5,
+    text: "Storm Grid charges enemies. Static Lance stuns a Charged target instead of paralysing it.",
+  },
+  cindrake: {
+    name: "Scorched",
+    setup: "ember-gust",
+    payoff: "magma-bomb",
+    window: 3,
+    damage: 1.35,
+    status: "burn",
+    statusDuration: 4,
+    text: "Ember Gust scorches. Magma Bomb deals 35% more to Scorched targets and burns twice as long.",
+  },
+  mystowl: {
+    name: "Dazed",
+    setup: "repulse",
+    payoff: "thoughtstrike",
+    window: 3,
+    damage: 1.4,
+    text: "Repulse dazes. Thoughtstrike deals 40% more to Dazed targets.",
+  },
+  terradon: {
+    name: "Drowsy",
+    setup: "dust-cloud",
+    payoff: "shell-slam",
+    window: 2.5,
+    damage: 1.25,
+    knockback: 1.5,
+    text: "Dust Cloud makes enemies drowsy. Shell Slam hits Drowsy targets 25% harder and further.",
+  },
+  lumoth: {
+    name: "Kindled",
+    setup: "kindle",
+    payoff: "radiant-flare",
+    window: 5,
+    self: true,
+    radius: 1.25,
+    text: "Radiant Flare cast while Kindled is 25% wider.",
+  },
+  auralynx: {
+    name: "Primed",
+    setup: "mirror-guard",
+    payoff: "shatter-palm",
+    window: 2.5,
+    self: true,
+    onAbsorb: true,
+    damage: 1.4,
+    status: "stun",
+    statusDuration: 0.8,
+    text: "Absorb a hit with Mirror Guard to prime Shatter Palm: 40% more damage and a longer stun.",
+  },
+  duskveil: {
+    name: "Hexed",
+    setup: "ghostfire",
+    payoff: "curse-mark",
+    window: 0,
+    anyDebuff: true,
+    text: "Curse Mark deals double damage to anyone with a harmful status (Ghostfire's burn works).",
+  },
+};
+/** Is `p` carrying a combo mark placed by `by`? (Self combos: by = p.id.) */
+export function hasMark(p: Fighter, by: string, time: number) {
+  return p.statuses.some(
+    (s) => s.kind === "mark" && s.by === by && s.until > time,
+  );
+}
 for (const character of Object.values(CHARACTERS))
   for (const skill of [character.basic, ...character.skills])
     skill.element = character.element;
@@ -995,6 +1106,8 @@ export interface GameEvent extends Vec {
   source?: string;
   /** Hit events: this hit knocked the target out. */
   ko?: boolean;
+  /** Hit or burst events: a signature combo paid off (the combo's name). */
+  combo?: string;
 }
 export type Phase =
   | "lobby"

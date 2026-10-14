@@ -5,6 +5,8 @@ import {
   blankInput,
   blocked,
   skillReady,
+  COMBOS,
+  hasMark,
   type Ability,
   type Fighter,
   type Input,
@@ -548,6 +550,14 @@ export class BotBrain {
       if (!score) return;
       if (OFFENSIVE.has(a.kind) && a.bonusVsStatus && s.enemyDisabled)
         score *= a.bonusVsStatus;
+      // Clever bots cash in their signature combo while the mark lasts.
+      const combo = COMBOS[me.character];
+      if (
+        this.profile.smartUltimate &&
+        a.id === combo.payoff &&
+        hasMark(combo.self ? me : enemy, me.id, t)
+      )
+        score *= 1.6;
       // The ultimate (last slot): clever bots save it for a finish or an opening.
       if (i === skills.length - 1 && this.profile.smartUltimate) {
         const opening =

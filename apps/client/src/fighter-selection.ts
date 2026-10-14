@@ -1,5 +1,5 @@
 import { fighterPack } from "./animation/pack-config";
-import { CHARACTERS, type CharacterId } from "@arena/shared";
+import { CHARACTERS, COMBOS, ULT_SLOT, type CharacterId } from "@arena/shared";
 import { actionLabel, controlPrefs, skillLabels } from "./controls";
 import { fighterArt, scopeIds } from "./fighter-art";
 import { abilityIcon } from "./ability-icons";
@@ -49,19 +49,21 @@ export function fighterSelection(selected: CharacterId, element = "All") {
     .filter((c) => element === "All" || c.element === element)
     .map(
       (c) =>
-        `<button class="creature-card showcase-card ${selected === c.id ? "selected" : ""}" style="--element:${hex(c.color)}" data-character="${c.id}" aria-pressed="${selected === c.id}"><span class="card-head"><strong>${c.name}</strong><span class="element-pill">${elementIcon(c.element)}${c.element}</span></span><small class="card-role">${rangeTag(c.id)}<span>${c.role}</span></small><span class="card-art">${art(c.id, false, selected === c.id)}${placeholderBadge(c.id)}</span><span class="card-skills">${c.skills.map((a) => `<span title="${a.name} (${a.cooldown}s): ${a.description}">${abilityIcon(a.name)}<i>${a.cooldown}s</i></span>`).join("")}</span><span class="card-bottom">${c.health} HP<span>${selected === c.id ? "✓ SELECTED" : "SELECT"}</span></span></button>`,
+        `<button class="creature-card showcase-card ${selected === c.id ? "selected" : ""}" style="--element:${hex(c.color)}" data-character="${c.id}" aria-pressed="${selected === c.id}"><span class="card-head"><strong>${c.name}</strong><span class="element-pill">${elementIcon(c.element)}${c.element}</span></span><small class="card-role">${rangeTag(c.id)}<span>${c.role}</span></small><span class="card-art">${art(c.id, false, selected === c.id)}${placeholderBadge(c.id)}</span><span class="card-skills">${c.skills.map((a, i) => `<span title="${a.name} (${i === ULT_SLOT ? "ultimate" : `${a.cooldown}s`}): ${a.description}">${abilityIcon(a.name)}<i>${i === ULT_SLOT ? "ULT" : `${a.cooldown}s`}</i></span>`).join("")}</span><span class="card-bottom">${c.health} HP<span>${selected === c.id ? "✓ SELECTED" : "SELECT"}</span></span></button>`,
     );
   const skills = fighter.skills
     .map(
       (a, i) =>
-        `<div><kbd>${skillKeys[i]}</kbd>${abilityIcon(a.name)}<span><strong>${a.name}</strong><small>${a.description}</small></span><b>${a.cooldown}s</b></div>`,
+        `<div><kbd>${skillKeys[i]}</kbd>${abilityIcon(a.name)}<span><strong>${a.name}</strong><small>${a.description}</small></span><b>${i === ULT_SLOT ? "ULT" : `${a.cooldown}s`}</b></div>`,
     )
     .join("");
+  const combo = COMBOS[selected];
+  const comboRow = `<p class="combo-description"><b>Combo · ${combo.name}</b>${combo.text}</p>`;
   // Stats and skills open right under the selected card's row, so nobody has
   // to scroll past the whole roster. The roster grid packs densely: the panel
   // spans the full width after the selected card, and that card's row-mates
   // fill the rest of its row (works for 2 columns on phones and 4 on desktop).
-  const detail = `<div class="fighter-detail" data-detail-for="${selected}" style="--element:${color}"><div class="selected-fighter" style="--element:${color}"><div class="selected-art">${art(selected, true, true)}${placeholderBadge(selected, "PLACEHOLDER ART")}<span>${fighter.element.toUpperCase()} · ${fighter.role.toUpperCase()}</span></div><div class="selected-info"><span class="element-pill">${elementIcon(fighter.element)}${fighter.element}</span><h3>${fighter.name}</h3><p>${fighter.description}</p><div class="fighter-stats"><span><b>${fighter.health}</b>Health</span><span><b>${fighter.speed}</b>Move speed</span><span><b>${fighter.basic.damage}</b>Basic damage</span></div><p class="basic-description">${abilityIcon(fighter.basic.name)}<span class="basic-text"><b>${fighter.basic.name}</b> · ${fighter.basic.description} <em>No cooldown · ${interval} ms between attacks</em></span></p></div></div><div class="skill-preview" style="--element:${color}"><div class="skill-preview-heading"><h3>Four special skills</h3><span>${skillKeys.join(" / ")}</span></div><div class="preview-skills">${skills}</div></div></div>`;
+  const detail = `<div class="fighter-detail" data-detail-for="${selected}" style="--element:${color}"><div class="selected-fighter" style="--element:${color}"><div class="selected-art">${art(selected, true, true)}${placeholderBadge(selected, "PLACEHOLDER ART")}<span>${fighter.element.toUpperCase()} · ${fighter.role.toUpperCase()}</span></div><div class="selected-info"><span class="element-pill">${elementIcon(fighter.element)}${fighter.element}</span><h3>${fighter.name}</h3><p>${fighter.description}</p><div class="fighter-stats"><span><b>${fighter.health}</b>Health</span><span><b>${fighter.speed}</b>Move speed</span><span><b>${fighter.basic.damage}</b>Basic damage</span></div><p class="basic-description">${abilityIcon(fighter.basic.name)}<span class="basic-text"><b>${fighter.basic.name}</b> · ${fighter.basic.description} <em>No cooldown · ${interval} ms between attacks</em></span></p></div></div><div class="skill-preview" style="--element:${color}"><div class="skill-preview-heading"><h3>Four special skills</h3><span>${skillKeys.join(" / ")}</span></div><div class="preview-skills">${skills}</div>${comboRow}</div></div>`;
   const ids = Object.values(CHARACTERS)
     .filter((c) => element === "All" || c.element === element)
     .map((c) => c.id);
