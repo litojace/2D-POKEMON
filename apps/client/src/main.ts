@@ -36,6 +36,8 @@ import {
   CHARACTERS,
   RING,
   ringRadius,
+  CROWN,
+  TEAMUP,
   MUTATORS,
   MUTATOR_IDS,
   MUTATOR_RULES,
@@ -584,6 +586,13 @@ let roomMode: RoomMode = (() => {
 const COPY_ICON =
   '<svg class="copy-icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
 /** Lobby panel: a duel list, or Blue/Red columns for 2v2. */
+/** Crown Hill HUD line: your hold time against the best rival's. */
+function crownLabel(me: Fighter) {
+  const crown = state?.crown ?? [];
+  const mine = crown[teamOf(me)] ?? 0;
+  const rival = Math.max(0, ...crown.filter((_, t) => t !== teamOf(me)));
+  return `CROWN · YOU ${Math.floor(mine)}s · RIVAL ${Math.floor(rival)}s / ${CROWN.holdSeconds}s`;
+}
 /** Turbo party rule: skills recharge faster (for the cooldown displays). */
 function cooldownScale() {
   return state?.mutators?.includes("turbo") ? MUTATOR_RULES.turboCooldown : 1;
@@ -1026,7 +1035,9 @@ function renderBattle() {
     state.phase === "playing"
       ? state.practice
         ? "TEST YOUR SKILLS"
-        : ringRadius(state.remaining, state.overtime) !== null
+        : state.crown
+          ? crownLabel(me)
+          : ringRadius(state.remaining, state.overtime) !== null
           ? "RING CLOSING · STAY INSIDE"
           : `LIVE · ${ARENAS[state.arena ?? "classic"].name.toUpperCase()}`
       : state.phase.toUpperCase();
@@ -1133,7 +1144,7 @@ function renderBattle() {
         controlsList() +
         "<p>" +
         (isTeams()
-          ? `Stick with your partner and focus the same target. Your attacks pass through your teammate. First team to win ${roundWord()} rounds takes the match.`
+          ? `Stick with your partner and focus the same target: side by side, you both hit ${Math.round((TEAMUP.damage - 1) * 100)}% harder (a link shows between you). Your attacks pass through your teammate. First team to win ${roundWord()} rounds takes the match.`
           : isFfa()
             ? `Everyone is your enemy: the last fighter standing takes the round. First to win ${roundWord()} rounds takes the match.`
             : `Use cover. First to win ${roundWord()} rounds takes the match.`) +
@@ -2069,6 +2080,56 @@ class ArenaScene extends Phaser.Scene {
       g.fillStyle(0xffffff, 1)
         .fillRect(orb.x - 3, orb.y - 10, 6, 20)
         .fillRect(orb.x - 10, orb.y - 3, 20, 6);
+    }
+    // 2v2 team-up: a soft link between partners standing close together.
+    if (isTeams() && state.phase === "playing")
+      for (const team of [0, 1]) {
+        const pair = state.players.filter(
+          (p) => teamOf(p) === team && p.hp > 0 && !p.out,
+        );
+        if (
+          pair.length === 2 &&
+          Math.hypot(pair[0].x - pair[1].x, pair[0].y - pair[1].y) <=
+            TEAMUP.range
+        )
+          g.lineStyle(4, team === 0 ? 0x5ab0ff : 0xff5d6c, 0.35).lineBetween(
+            pair[0].x,
+            pair[0].y + 12,
+            pair[1].x,
+            pair[1].y + 12,
+          );
+      }
+    // Crown Hill: the circle to hold, with each side's progress as an arc.
+    if (state.crown) {
+      const pulse = reducedMotion ? 0.6 : 0.5 + Math.sin(_time / 260) * 0.2;
+      g.fillStyle(0xffd166, 0.07).fillCircle(CROWN.x, CROWN.y, CROWN.radius);
+      g.lineStyle(3, 0xffd166, pulse).strokeCircle(
+        CROWN.x,
+        CROWN.y,
+        CROWN.radius,
+      );
+      state.crown.forEach((held, side) => {
+        if (held <= 0) return;
+        const holder = state!.players.find((p) => teamOf(p) === side);
+        const color = isTeams()
+          ? side === 0
+            ? 0x5ab0ff
+            : 0xff5d6c
+          : holder
+            ? CHARACTERS[holder.character].color
+            : 0xffffff;
+        const r = CROWN.radius + 8 + side * 7;
+        g.lineStyle(5, color, 0.95);
+        g.beginPath();
+        g.arc(
+          CROWN.x,
+          CROWN.y,
+          r,
+          -Math.PI / 2,
+          -Math.PI / 2 + (Math.PI * 2 * held) / CROWN.holdSeconds,
+        );
+        g.strokePath();
+      });
     }
     // The closing ring: shade everything outside the safe circle.
     const ring =

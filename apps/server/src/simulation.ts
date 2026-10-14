@@ -19,6 +19,8 @@ import {
   MODE_SIZE,
   MODE_MIN,
   ORB_SPOTS,
+  CROWN,
+  TEAMUP,
   MUTATOR_RULES,
   roundsNeeded,
   type MutatorId,
@@ -78,6 +80,8 @@ export class Arena {
   winnerTeam: Team | null = null;
   roundWinnerTeam: Team | null = null;
   overtime = false;
+  /** Crown Hill: seconds each side has held the circle this round. */
+  crown: number[] = [];
   /** Round winners in order (null = draw). */
   roundLog: (Team | null)[] = [];
   /** Id of the last finished real match (players report it for records). */
@@ -157,6 +161,19 @@ export class Arena {
   enemiesOfOwner(owner: string) {
     const p = this.players.find((o) => o.id === owner);
     return p ? this.enemiesOf(p) : this.players.filter((o) => o.id !== owner);
+  }
+  /** 2v2: is this fighter's partner standing close enough to team up? */
+  teamedUp(p: Fighter) {
+    if (this.mode !== "teams" || p.hp <= 0) return false;
+    const team = this.teamOf(p);
+    return this.players.some(
+      (o) =>
+        o !== p &&
+        !o.out &&
+        o.hp > 0 &&
+        this.teamOf(o) === team &&
+        Math.hypot(o.x - p.x, o.y - p.y) <= TEAMUP.range,
+    );
   }
   /** Members of a team still standing this round. */
   standing(team: Team) {
@@ -288,6 +305,7 @@ export class Arena {
     this.projectiles = [];
     this.zones = [];
     this.overtime = false;
+    this.crown = this.sides.map(() => 0);
     const slot = [0, 0];
     for (const p of this.players) {
       const team = this.teamOf(p),
@@ -475,6 +493,8 @@ export class Arena {
     if (this.has(target, "shield")) dealt *= STATUS_RULES.shieldReduction;
     if (this.has(target, "sleep")) dealt *= STATUS_RULES.sleepVulnerability;
     if (this.rule("glass")) dealt *= MUTATOR_RULES.glassDamage;
+    if (source && source !== target && this.teamedUp(source))
+      dealt *= TEAMUP.damage;
     dealt = Math.min(target.hp, dealt);
     target.hp = Math.max(0, target.hp - dealt);
     target.stats.received += dealt;
@@ -1069,6 +1089,22 @@ export class Arena {
           this.damage(p, RING.damage * DRAIN_INTERVAL, "");
       }
     }
+    // Crown Hill: a side alone in the circle builds up time; enough wins.
+    if (this.rule("crown")) {
+      const inside = this.sides.filter((t) =>
+        this.standing(t).some(
+          (p) => Math.hypot(p.x - CROWN.x, p.y - CROWN.y) < CROWN.radius,
+        ),
+      );
+      if (inside.length === 1) {
+        const t = inside[0];
+        this.crown[t] = (this.crown[t] ?? 0) + dt;
+        if (this.crown[t] >= CROWN.holdSeconds) {
+          this.endRound(t);
+          return;
+        }
+      }
+    }
     // The round ends when one side (or nobody) is left standing.
     const alive = this.sides.filter((t) => this.standing(t).length);
     if (alive.length <= 1) {
@@ -1224,6 +1260,7 @@ export class Arena {
       pauseRemaining,
       overtime: this.overtime,
       mutators: [...this.mutators],
+      crown: this.rule("crown") ? this.crown : undefined,
       roundLog: this.roundLog,
       matchId: this.matchId,
       arena: this.arenaId,

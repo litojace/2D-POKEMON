@@ -68,3 +68,42 @@ describe("party rules", () => {
     }
   });
 });
+describe("crown hill and team-ups", () => {
+  it("a side alone in the crown circle long enough takes the round", async () => {
+    const { CROWN } = await import("@arena/shared");
+    const a = duel(["crown"]);
+    const [one, two] = a.players;
+    Object.assign(one, { x: CROWN.x - 110, y: CROWN.y });
+    Object.assign(two, { x: 1500, y: 450 });
+    tick(a, CROWN.holdSeconds / 2);
+    expect(a.crown[0]).toBeGreaterThan(CROWN.holdSeconds / 2 - 0.2);
+    // Contested: nobody gains.
+    Object.assign(two, { x: CROWN.x + 110, y: CROWN.y });
+    const held = a.crown[0];
+    tick(a, 2);
+    expect(a.crown[0]).toBeCloseTo(held, 5);
+    Object.assign(two, { x: 1500, y: 450 });
+    tick(a, CROWN.holdSeconds / 2 + 0.5);
+    expect(a.phase).toBe("intermission");
+    expect(a.roundWinner).toBe("one");
+    expect(a.snapshot().crown).toBeDefined();
+    expect(duel().snapshot().crown).toBeUndefined();
+  });
+  it("2v2 partners side by side hit harder", async () => {
+    const { TEAMUP } = await import("@arena/shared");
+    const t = new Arena("TU", "teams");
+    ["a", "b", "c", "d"].forEach((id) => t.add(id, id, "voltkit"));
+    t.start();
+    t.phase = "playing";
+    const [a, b, c] = t.players; // a & c are partners (Blue)
+    Object.assign(c, { x: a.x, y: a.y + 100 });
+    const before = b.hp;
+    t.damage(b, 20, "a", CHARACTERS.voltkit.basic);
+    const together = before - b.hp;
+    Object.assign(c, { x: a.x + TEAMUP.range + 200, y: a.y });
+    const mid = b.hp;
+    t.damage(b, 20, "a", CHARACTERS.voltkit.basic);
+    const apart = mid - b.hp;
+    expect(together).toBeCloseTo(apart * TEAMUP.damage, 5);
+  });
+});

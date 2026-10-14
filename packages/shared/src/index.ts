@@ -1121,7 +1121,15 @@ export const MUTATORS = {
     name: "Calm court",
     description: "Always the Stone Court: no arena hazards.",
   },
+  crown: {
+    name: "Crown Hill",
+    description: "Hold the centre circle alone for 12 seconds to win the round.",
+  },
 } as const;
+/** 2v2 team-up: partners fighting side by side both hit harder. */
+export const TEAMUP = { range: 260, damage: 1.1 };
+/** Crown Hill: the circle in the middle of the court, and how long to hold it. */
+export const CROWN = { x: 800, y: 450, radius: 150, holdSeconds: 12 };
 export type MutatorId = keyof typeof MUTATORS;
 export const MUTATOR_IDS = Object.keys(MUTATORS) as MutatorId[];
 export const MUTATOR_RULES = {
@@ -1247,6 +1255,8 @@ export interface Snapshot {
   matchId?: string | null;
   /** Party rules switched on for this room. */
   mutators?: MutatorId[];
+  /** Crown Hill: seconds each side has held the circle this round. */
+  crown?: number[];
   /** Which arena this match is played in, and when its hazards' clock started. */
   arena?: ArenaId;
   hazardClock?: number;
