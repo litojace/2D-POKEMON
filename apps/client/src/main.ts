@@ -100,7 +100,12 @@ import {
   shareInvite,
 } from "./invite";
 import { lockScrollWhileOpen } from "./scroll-lock";
-import { recapMarkup, recordsMarkup, type RecordState } from "./match-recap";
+import {
+  recapMarkup,
+  recordsMarkup,
+  standingsMarkup,
+  type RecordState,
+} from "./match-recap";
 import { matchReportReplySchema } from "../../../packages/shared/src/accounts";
 const audio = new AudioManager();
 const allAbilities = new Map(
@@ -533,9 +538,16 @@ function showSelection() {
 }
 /** Blue = 0, Red = 1. Older snapshots without teams fall back to seat order. */
 const teamOf = (p: Fighter) =>
-  p.team ?? ((state?.players.indexOf(p) ?? 0) % 2 === 0 ? 0 : 1);
+  p.team ??
+  (state?.mode === "ffa"
+    ? (state?.players.indexOf(p) ?? 0)
+    : (state?.players.indexOf(p) ?? 0) % 2 === 0
+      ? 0
+      : 1);
 const TEAM_LABELS = ["Blue", "Red"] as const;
 const isTeams = () => state?.mode === "teams";
+/** Free-for-all: three or four fighters, everyone for themselves. */
+const isFfa = () => state?.mode === "ffa";
 /** Living, visible enemies nearest first (aim assist, off-screen arrow). */
 function nearestEnemy(from: { x: number; y: number }, myself: Fighter) {
   return visibleEnemies(from, myself)[0];
@@ -557,12 +569,11 @@ function visibleEnemies(from: { x: number; y: number }, myself: Fighter) {
         Math.hypot(b.x - from.x, b.y - from.y),
     );
 }
-type RoomMode = "duel" | "teams";
+type RoomMode = "duel" | "teams" | "ffa";
 let roomMode: RoomMode = (() => {
   try {
-    return localStorage.getItem("arena-room-mode") === "teams"
-      ? "teams"
-      : "duel";
+    const saved = localStorage.getItem("arena-room-mode");
+    return saved === "teams" || saved === "ffa" ? saved : "duel";
   } catch {
     return "duel";
   }
@@ -606,6 +617,15 @@ function roomPanel(me: Fighter) {
   };
   const ready = `<button class="primary" id="ready">${me.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full" id="leave">Leave room</button>`;
   const code = `<button id="copy" class="room-code">${state!.code}<span>${COPY_ICON}COPY CODE</span></button><button id="invite" class="secondary full invite-link">Share invite link</button>`;
+  if (isFfa()) {
+    const open = Math.max(0, 4 - state!.players.length);
+    const slots = Array.from(
+      { length: open },
+      (_, k) =>
+        `<div class="open-slot"><span class="slot-mark">＋</span><span>Open slot<small>${state!.players.length + k < 3 ? "Needed to start" : "Optional fourth fighter"}</small></span></div>`,
+    ).join("");
+    return `<div class="eyebrow">PRIVATE FREE-FOR-ALL</div><h2>Last one standing.</h2><p>Share this code with two or three friends. Everyone fights everyone; the last fighter standing takes the round.</p>${code}<div class="players">${state!.players.map(row).join("")}${slots}</div>${partyRules(state!.players[0]?.id === myId)}${ready}<small class="room-note">First to ${roundsNeeded(state!.mutators)} round wins. Starts when everyone here is ready (3 or 4 players).</small>`;
+  }
   if (!isTeams())
     return `<div class="eyebrow">PRIVATE LOBBY</div><h2>Your duel starts here.</h2><p>Share this code with your friend.</p>${code}<div class="players">${state!.players.map(row).join("")}${state!.players.length < 2 ? '<div class="waiting"><span>＋</span> Waiting for your opponent…</div>' : ""}</div>${partyRules(state!.players[0]?.id === myId)}${ready}<small class="room-note">The match begins when both players are ready.</small>`;
   const mine = teamOf(me),
@@ -742,6 +762,7 @@ function renderMenu() {
             [
               ["duel", "1v1 Duel", "Best of five"],
               ["teams", "2v2 Teams", "Best of five"],
+              ["ffa", "Free-for-all", "3–4 players"],
             ] as const
           )
             .map(
@@ -899,7 +920,9 @@ function renderBattle() {
         ...state.players.filter((p) => teamOf(p) === teamOf(me)),
         ...state.players.filter((p) => teamOf(p) !== teamOf(me)),
       ]
-    : state.players;
+    : isFfa()
+      ? [me, ...state.players.filter((p) => p !== me)]
+      : state.players;
   const key = `battle:${me.character}:${!!state.practice}:${state.mode ?? "duel"}:${hudOrder.map((p) => p.id + p.character).join(",")}`;
   if (screen !== key) {
     screen = key;
@@ -938,12 +961,13 @@ function renderBattle() {
       $("practice-reset").onclick = () => void request("practice-reset");
       $("practice-exit").onclick = () => void leave();
     }
-    const split = isTeams() ? 2 : 1;
-    $("hud").classList.toggle("hud-teams", isTeams());
+    const split = isTeams() || isFfa() ? 2 : 1;
+    $("hud").classList.toggle("hud-teams", isTeams() || isFfa());
+    $("hud").classList.toggle("hud-ffa", isFfa());
     $("hud").innerHTML = hudOrder
       .map(
         (p, i) =>
-          `${i === split ? '<div class="timer-wrap"><span id="round-label"></span><strong id="timer">03:00</strong><span id="phase-label"></span></div>' : ""}<div class="health-card ${i >= split ? "right" : ""}${isTeams() ? ` team-${teamOf(p)}${p.id === myId ? " me" : ""}` : ""}" style="--element:#${CHARACTERS[p.character].color.toString(16)}"><div><b>${escape(p.name)}</b><span>${CHARACTERS[p.character].name}</span><strong id="score-${i}"></strong></div><div class="health-track"><span id="health-${i}"></span></div><small id="health-text-${i}"></small><small id="status-${i}"></small></div>`,
+          `${i === split ? '<div class="timer-wrap"><span id="round-label"></span><strong id="timer">03:00</strong><span id="phase-label"></span></div>' : ""}<div class="health-card ${i >= split ? "right" : ""}${isTeams() ? ` team-${teamOf(p)}${p.id === myId ? " me" : ""}` : isFfa() && p.id === myId ? " me" : ""}" style="--element:#${CHARACTERS[p.character].color.toString(16)}"><div><b>${escape(p.name)}</b><span>${CHARACTERS[p.character].name}</span><strong id="score-${i}"></strong></div><div class="health-track"><span id="health-${i}"></span></div><small id="health-text-${i}"></small><small id="status-${i}"></small></div>`,
       )
       .join("");
     const c = CHARACTERS[me.character];
@@ -961,7 +985,7 @@ function renderBattle() {
         ? "TRAINER"
         : "TARGET"
       : isTeams()
-        ? `${state!.teamScores?.[teamOf(p)] ?? 0} / 3`
+        ? `${state!.teamScores?.[teamOf(p)] ?? 0} / ${roundsNeeded(state!.mutators)}`
         : `${state!.scores[p.id]} / ${roundsNeeded(state!.mutators)}`;
     $(`status-${i}`).textContent = p.statuses
       .map((s) =>
@@ -1070,8 +1094,11 @@ function renderBattle() {
     // Its own element: a non-empty overlay dims the whole screen on phones.
     setOverlayMarkup(overlay, "");
     const banner = $("spectate");
-    banner.hidden = !partner;
+    const outOfRound = isFfa() && me.hp <= 0 && !me.out;
+    banner.hidden = !partner && !outOfRound;
     if (partner) banner.textContent = `Knocked out · watching ${partner.name}`;
+    else if (outOfRound)
+      banner.textContent = `Knocked out · ${state.players.filter((p) => p.hp > 0 && !p.out).length} still fighting`;
     overlay.style.pointerEvents = "none";
   } else {
     $("spectate").hidden = true;
@@ -1092,7 +1119,7 @@ function renderBattle() {
             .filter((p) => !mine(p))
             .map(card)
             .join("")}</div></div>`
-        : `<div class="briefing-versus">${side([...state.players])
+        : `<div class="briefing-versus${isFfa() ? " ffa" : ""}">${side([...state.players])
             .map(card)
             .join('<span class="vs-mark">VS</span>')}</div>`;
       const arena = ARENAS[state.arena ?? "classic"];
@@ -1104,7 +1131,9 @@ function renderBattle() {
         "<p>" +
         (isTeams()
           ? `Stick with your partner and focus the same target. Your attacks pass through your teammate. First team to win ${roundWord()} rounds takes the match.`
-          : `Use cover. First to win ${roundWord()} rounds takes the match.`) +
+          : isFfa()
+            ? `Everyone is your enemy: the last fighter standing takes the round. First to win ${roundWord()} rounds takes the match.`
+            : `Use cover. First to win ${roundWord()} rounds takes the match.`) +
         partyRulesNote() +
         ' The countdown begins when everyone confirms.</p><button class="primary" id="instructions-ready" ' +
         (confirmed ? "disabled" : "") +
@@ -1136,12 +1165,20 @@ function renderBattle() {
       const won = isTeams()
         ? state.winnerTeam === teamOf(me)
         : state.winner === myId;
-      heading = won ? "Victory. Well played." : "A worthy fight.";
+      heading = won
+        ? isFfa()
+          ? "Last one standing. Victory!"
+          : "Victory. Well played."
+        : isFfa() && state.winner
+          ? `${escape(state.players.find((p) => p.id === state!.winner)?.name ?? "A rival")} takes the free-for-all`
+          : "A worthy fight.";
       // Scoreline: your side on the left, always.
       const score = (left: string, a: number, b: number, right: string) =>
         `<div class="result-score"><span>${left}</span><b>${a}</b><i>–</i><b>${b}</b><span>${right}</span></div>`;
       const rival = state.players.find((p) => p.id !== myId);
-      details = isTeams()
+      details = isFfa()
+        ? standingsMarkup(state, myId)
+        : isTeams()
         ? score(
             `${TEAM_LABELS[teamOf(me)]} team`,
             state.teamScores?.[teamOf(me)] ?? 0,

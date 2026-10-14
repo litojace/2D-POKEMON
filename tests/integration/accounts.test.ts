@@ -617,3 +617,31 @@ it("files a finished match and reports the server's own summary for each player"
   arena.start();
   expect(arena.snapshot().matchId).toBeNull();
 });
+it("runs a free-for-all: starts with three ready, plays on until one is left", async () => {
+  const people = [0, 1, 2].map(() => accounts.add(false));
+  const sockets = await Promise.all(people.map((p) => connect(p.token)));
+  const host = await emit(sockets[0], "create", { name: "Host", mode: "ffa" });
+  expect(host.ok).toBe(true);
+  const arena = server.rooms.get(host.code!)!;
+  expect(arena.mode).toBe("ffa");
+  expect((await emit(sockets[1], "join", { name: "B", code: host.code })).ok).toBe(true);
+  // Two players can't start a free-for-all.
+  await emit(sockets[0], "ready");
+  await emit(sockets[1], "ready");
+  expect(arena.phase).toBe("lobby");
+  expect((await emit(sockets[2], "join", { name: "C", code: host.code })).ok).toBe(true);
+  await emit(sockets[2], "ready");
+  expect(arena.phase).toBe("briefing");
+  expect(arena.players.map((p) => p.team)).toEqual([0, 1, 2]);
+  for (const s of sockets) await emit(s, "instructions-ready");
+  for (let i = 0; i < 100; i++) server.step();
+  expect(arena.phase).toBe("playing");
+  // One leaves: the other two fight on.
+  expect((await emit(sockets[1], "leave")).ok).toBe(true);
+  expect(arena.players[1].out).toBe(true);
+  expect(arena.phase).toBe("playing");
+  // Another leaves: the last one standing wins the match.
+  expect((await emit(sockets[2], "leave")).ok).toBe(true);
+  expect(arena.phase).toBe("finished");
+  expect(arena.winner).toBe(arena.players[0].id);
+});

@@ -17,6 +17,7 @@ import {
   DEBUFFS,
   hasMark,
   MODE_SIZE,
+  MODE_MIN,
   ORB_SPOTS,
   MUTATOR_RULES,
   roundsNeeded,
@@ -50,6 +51,13 @@ import {
   type Zone,
 } from "../../../packages/shared/src/index.js";
 import type { BotBrain } from "./bot.js";
+/** Free-for-all starting corners (seat order), opposite corners first. */
+const FFA_SPAWNS = [
+  { x: 260, y: 250 },
+  { x: 1340, y: 650 },
+  { x: 1340, y: 250 },
+  { x: 260, y: 650 },
+];
 /** Seconds between overtime / closing-ring damage ticks. */
 const DRAIN_INTERVAL = 0.5;
 export class Arena {
@@ -66,7 +74,7 @@ export class Arena {
   winner: string | null = null;
   roundWinner: string | null = null;
   mode: MatchMode = "duel";
-  teamScores: [number, number] = [0, 0];
+  teamScores: number[] = [0, 0];
   winnerTeam: Team | null = null;
   roundWinnerTeam: Team | null = null;
   overtime = false;
@@ -122,11 +130,20 @@ export class Arena {
   get orbInterval() {
     return RULES.orbInterval / (this.rule("orbs") ? MUTATOR_RULES.orbsRate : 1);
   }
-  /** Players this room holds: 2 for a duel, 4 for 2v2. */
+  /** Most players this room holds: 2 for a duel, 4 for 2v2 or free-for-all. */
   get size() {
     return MODE_SIZE[this.mode];
   }
+  /** Players needed to start (a free-for-all starts with three or four). */
+  get minPlayers() {
+    return MODE_MIN[this.mode];
+  }
+  /** Sides in play: two, or one per fighter in a free-for-all. */
+  get sides(): Team[] {
+    return this.mode === "ffa" ? this.players.map((_, i) => i) : [0, 1];
+  }
   teamOf(p: Fighter): Team {
+    if (this.mode === "ffa") return p.team ?? this.players.indexOf(p);
     return p.team ?? (this.players.indexOf(p) % 2 === 0 ? 0 : 1);
   }
   /** Everyone on the other team who is still in the match. */
@@ -176,9 +193,15 @@ export class Arena {
       stats: emptyStats(),
       lastInput: blankInput(),
     };
-    // Join the smaller team (a duel ends up Blue vs Red).
+    // Join the smaller team (a duel ends up Blue vs Red); free-for-all:
+    // everyone is their own side.
     const blue = this.players.filter((o) => this.teamOf(o) === 0).length;
-    p.team = blue <= this.players.length - blue ? 0 : 1;
+    p.team =
+      this.mode === "ffa"
+        ? this.players.length
+        : blue <= this.players.length - blue
+          ? 0
+          : 1;
     this.players.push(p);
     this.scores[id] = 0;
     return p;
@@ -212,7 +235,7 @@ export class Arena {
       return false;
     if (!this.instructionsReady.includes(id)) this.instructionsReady.push(id);
     if (
-      this.players.length === this.size &&
+      this.players.length >= this.minPlayers &&
       this.players.every(
         (p) => p.out || (p.connected && this.instructionsReady.includes(p.id)),
       )
@@ -233,7 +256,9 @@ export class Arena {
     this.round = 1;
     this.winner = null;
     this.roundWinner = null;
-    this.teamScores = [0, 0];
+    // Free-for-all: seat order is each fighter's side.
+    if (this.mode === "ffa") this.players.forEach((p, i) => (p.team = i));
+    this.teamScores = this.sides.map(() => 0);
     this.winnerTeam = null;
     this.roundWinnerTeam = null;
     this.roundLog = [];
@@ -266,16 +291,28 @@ export class Arena {
     const slot = [0, 0];
     for (const p of this.players) {
       const team = this.teamOf(p),
-        index = slot[team]++;
+        index = this.mode === "ffa" ? 0 : slot[team]++;
       // Duel: one each side. 2v2: partners side by side, a lane apart.
-      const y = this.mode === "teams" ? (index === 0 ? 330 : 570) : 450;
+      // Free-for-all: one corner each, facing the middle.
+      const spot =
+        this.mode === "ffa"
+          ? FFA_SPAWNS[team % FFA_SPAWNS.length]
+          : {
+              x: team === 0 ? 260 : 1340,
+              y: this.mode === "teams" ? (index === 0 ? 330 : 570) : 450,
+            };
       Object.assign(p, {
         hp: p.out ? 0 : CHARACTERS[p.character].health,
-        x: team === 0 ? 260 : 1340,
-        y,
+        x: spot.x,
+        y: spot.y,
         vx: 0,
         vy: 0,
-        angle: team === 0 ? 0 : Math.PI,
+        angle:
+          this.mode === "ffa"
+            ? Math.atan2(450 - spot.y, 800 - spot.x)
+            : team === 0
+              ? 0
+              : Math.PI,
         cooldowns: Array(SKILL_SLOTS).fill(0),
         basicAt: 0,
         dashAt: 0,
@@ -338,12 +375,15 @@ export class Arena {
   kit(p: Fighter) {
     return kitOf(p.character, p.rites);
   }
-  /** Deal rite choices for the coming round; bots choose straight away. */
-  offerRites(lostTeam: Team | null) {
+  /**
+   * Deal rite choices for the coming round; bots choose straight away.
+   * Everyone who lost the round (not on `wonTeam`) gets an extra choice.
+   */
+  offerRites(wonTeam: Team | null) {
     for (const p of this.players) {
       if (p.out) continue;
       const extra =
-        lostTeam !== null && this.teamOf(p) === lostTeam
+        wonTeam !== null && this.teamOf(p) !== wonTeam
           ? RITE_RULES.comebackChoices
           : 0;
       const offer = riteOffer(
@@ -1029,10 +1069,10 @@ export class Arena {
           this.damage(p, RING.damage * DRAIN_INTERVAL, "");
       }
     }
-    const blue = this.standing(0).length,
-      red = this.standing(1).length;
-    if (!blue || !red) {
-      this.endRound(blue ? 0 : red ? 1 : null);
+    // The round ends when one side (or nobody) is left standing.
+    const alive = this.sides.filter((t) => this.standing(t).length);
+    if (alive.length <= 1) {
+      this.endRound(alive[0] ?? null);
       return;
     }
     if (this.time >= this.deadline) {
@@ -1047,11 +1087,14 @@ export class Arena {
           ) / Math.max(1, members.length)
         );
       };
-      const diff = share(0) - share(1);
-      if (Math.abs(diff) < 0.0001) {
+      // Only sides still standing can win on time.
+      const ranked = alive
+        .map((t) => ({ t, share: share(t) }))
+        .sort((a, b) => b.share - a.share);
+      if (Math.abs(ranked[0].share - ranked[1].share) < 0.0001) {
         this.overtime = true;
         this.deadline = this.time + 20;
-      } else this.endRound(diff > 0 ? 0 : 1);
+      } else this.endRound(ranked[0].t);
     }
   }
   /** Spawn healing orbs on schedule; the first fighter to touch one heals. */
@@ -1060,7 +1103,7 @@ export class Arena {
       this.nextOrb += this.orbInterval;
       // Duel: one orb, alternating spots. 2v2: one at each spot.
       const spots =
-        this.mode === "teams"
+        this.mode !== "duel"
           ? ORB_SPOTS
           : [ORB_SPOTS[this.orbTurn++ % ORB_SPOTS.length]];
       // Healing and energy orbs take turns (first one heals).
@@ -1141,9 +1184,7 @@ export class Arena {
       this.deadline = this.time + RULES.intermission;
       if (!this.practice) {
         this.deadline = this.time + RITE_RULES.seconds;
-        this.offerRites(
-          team === null ? null : ((1 - team) as Team),
-        );
+        this.offerRites(team);
       }
     }
   }

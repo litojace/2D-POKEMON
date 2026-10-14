@@ -1025,11 +1025,24 @@ export const emptyStats = (): Stats => ({
   combos: 0,
   healed: 0,
 });
-/** Blue (0) and Red (1). In a 1v1 each player is their own team. */
-export type Team = 0 | 1;
-export type MatchMode = "duel" | "teams";
-/** Players per room for each mode. */
-export const MODE_SIZE: Record<MatchMode, number> = { duel: 2, teams: 4 };
+/**
+ * Blue (0) and Red (1). In a 1v1 each player is their own team; in a
+ * free-for-all every fighter is a side of their own (0-3).
+ */
+export type Team = number;
+export type MatchMode = "duel" | "teams" | "ffa";
+/** Most players a room holds for each mode. */
+export const MODE_SIZE: Record<MatchMode, number> = {
+  duel: 2,
+  teams: 4,
+  ffa: 4,
+};
+/** Fewest players needed to start (a free-for-all can start with three). */
+export const MODE_MIN: Record<MatchMode, number> = {
+  duel: 2,
+  teams: 4,
+  ffa: 3,
+};
 export const TEAM_NAMES = ["Blue", "Red"] as const;
 export interface Fighter extends Vec {
   team?: Team;
@@ -1208,7 +1221,7 @@ export interface Snapshot {
   practice: { unlimitedCooldowns: boolean; targetAttacks: boolean } | null;
   mode?: MatchMode;
   /** Round wins per team (Blue, Red). */
-  teamScores?: [number, number];
+  teamScores?: number[];
   winnerTeam?: Team | null;
   roundWinnerTeam?: Team | null;
   orbs?: Orb[];

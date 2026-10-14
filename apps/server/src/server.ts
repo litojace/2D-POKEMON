@@ -30,7 +30,7 @@ const botMatchSchema = identitySchema
   .extend({ character: characterSchema, difficulty: z.enum(BOT_DIFFICULTIES) })
   .strict();
 const createSchema = identitySchema
-  .extend({ mode: z.enum(["duel", "teams"]).optional() })
+  .extend({ mode: z.enum(["duel", "teams", "ffa"]).optional() })
   .strict();
 const teamSchema = z
   .object({ team: z.union([z.literal(0), z.literal(1)]) })
@@ -333,11 +333,11 @@ export function createArenaServer(
     const other = arena.players.find((p) => p.id !== session.id);
     const leaver = arena.players.find((p) => p.id === session.id);
     if (
-      arena.mode === "teams" &&
+      arena.mode !== "duel" &&
       leaver &&
       !["lobby", "finished"].includes(arena.phase)
     ) {
-      // 2v2: the leaver is out for good; their partner plays on alone.
+      // 2v2 / free-for-all: the leaver is out for good; the rest play on.
       leaver.out = true;
       leaver.hp = 0;
       leaver.connected = false;
@@ -348,7 +348,13 @@ export function createArenaServer(
       const opponents = arena.players.filter(
         (p) => !p.out && arena.teamOf(p) !== team,
       );
-      if (!partners.length && opponents.length) {
+      // 2v2: a team with nobody left forfeits. Free-for-all: the match goes
+      // on until only one fighter is left in it.
+      const over =
+        arena.mode === "ffa"
+          ? opponents.length <= 1
+          : !partners.length && opponents.length > 0;
+      if (over && opponents.length) {
         arena.forfeit(opponents[0].id);
         for (const p of arena.players) p.ready = false;
       } else resume(arena);
@@ -706,8 +712,9 @@ export function createArenaServer(
         p.ready = !p.ready;
         const half = a.size / 2;
         if (
-          a.players.length === a.size &&
-          a.players.filter((p) => a.teamOf(p) === 0).length === half &&
+          a.players.length >= a.minPlayers &&
+          (a.mode !== "teams" ||
+            a.players.filter((p) => a.teamOf(p) === 0).length === half) &&
           a.players.every((p) => p.ready && p.connected)
         )
           a.start();
@@ -791,7 +798,8 @@ export function createArenaServer(
       withRoom(cb, (a, id) => {
         if (
           a.phase !== "finished" ||
-          a.players.length !== a.size ||
+          a.players.length < a.minPlayers ||
+          (a.mode !== "ffa" && a.players.length !== a.size) ||
           !a.players.every((p) => p.connected && !p.out)
         )
           return fail(

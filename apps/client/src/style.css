@@ -5490,3 +5490,82 @@ html.scroll-locked {
 .party-note {
   font-size: 13px;
 }
+/* Free-for-all standings on the result card. */
+.standings {
+  list-style: none;
+  margin: 8px auto 0;
+  padding: 0;
+  width: min(360px, 100%);
+  display: grid;
+  gap: 4px;
+}
+.standings li {
+  display: grid;
+  grid-template-columns: 3ch minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+.standings li:first-child {
+  background: #ffd16622;
+}
+.standings li.me {
+  outline: 1px solid #ffffff33;
+}
+.standings li span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.standings li b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.standings li small {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 11px;
+}
+.standings li em {
+  font-style: normal;
+  font-weight: 800;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+/* Free-for-all briefing: three or four smaller fighters in a row. */
+.briefing-versus.ffa {
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.briefing-versus.ffa .vs-fighter svg {
+  width: 84px;
+  height: 85px;
+}
+.battle-active.touch-mode .briefing-versus.ffa .vs-fighter svg {
+  width: 56px;
+  height: 57px;
+}
+.briefing-versus.ffa .vs-mark {
+  font-size: 16px;
+}
+@media (max-height: 500px) {
+  .briefing-versus.ffa .vs-fighter {
+    grid-template-columns: auto;
+    text-align: center;
+  }
+  .briefing-versus.ffa .vs-fighter span {
+    display: none;
+  }
+  .briefing-versus.ffa .vs-fighter svg,
+  .battle-active.touch-mode .briefing-versus.ffa .vs-fighter svg {
+    width: 44px;
+    height: 45px;
+    grid-row: auto;
+  }
+}
+/* Free-for-all HUD: each card in its fighter's own colour. */
+.hud-ffa .health-card {
+  --team: var(--element);
+}

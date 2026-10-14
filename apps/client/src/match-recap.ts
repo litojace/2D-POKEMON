@@ -76,3 +76,19 @@ export function recordsMarkup(record: RecordState | undefined) {
     ? `<p class="records">${lines.join("")}${note}</p>`
     : "";
 }
+
+/** Free-for-all result: everyone's round wins, most first. */
+export function standingsMarkup(state: Snapshot, myId: string) {
+  const places = ["1st", "2nd", "3rd", "4th"];
+  const order = [...state.players].sort(
+    (a, b) =>
+      (state.scores[b.id] ?? 0) - (state.scores[a.id] ?? 0) ||
+      Number(b.id === state.winner) - Number(a.id === state.winner),
+  );
+  return `<ol class="standings">${order
+    .map(
+      (p, i) =>
+        `<li class="${p.id === myId ? "me" : ""}"><span>${places[i] ?? `${i + 1}th`}</span><b>${escape(p.name)}${p.id === myId ? " <small>you</small>" : ""}</b><em>${state.scores[p.id] ?? 0}</em></li>`,
+    )
+    .join("")}</ol>`;
+}
