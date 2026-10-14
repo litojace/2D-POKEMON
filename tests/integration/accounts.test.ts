@@ -645,3 +645,33 @@ it("runs a free-for-all: starts with three ready, plays on until one is left", a
   expect(arena.phase).toBe("finished");
   expect(arena.winner).toBe(arena.players[0].id);
 });
+it("lets a friend watch a room live without a seat", async () => {
+  const one = accounts.add(false),
+    two = accounts.add(false),
+    fan = accounts.add(false);
+  const a = await connect(one.token),
+    b = await connect(two.token),
+    f = await connect(fan.token);
+  const host = await emit(a, "create", { name: "One" });
+  await emit(b, "join", { name: "Two", code: host.code });
+  expect((await emit(f, "watch", { code: "NOPE00" })).ok).toBe(false);
+  const seen: { watchers?: string[]; players: unknown[] }[] = [];
+  f.on("state", (s) => seen.push(s));
+  const watch = await emit(f, "watch", { code: host.code });
+  expect(watch.ok).toBe(true);
+  const arena = server.rooms.get(host.code!)!;
+  // A watcher takes no seat and can't play.
+  expect(arena.players).toHaveLength(2);
+  expect((await emit(f, "ready")).ok).toBe(false);
+  await new Promise((r) => setTimeout(r, 50));
+  expect(seen.at(-1)?.watchers).toEqual([fan.account.displayName]);
+  // Watching then creating a room of your own stops the watching.
+  expect((await emit(f, "unwatch")).ok).toBe(true);
+  expect(arena.snapshot().phase).toBe("lobby");
+  expect((await emit(f, "watch", { code: host.code })).ok).toBe(true);
+  // When the room closes, watchers are told.
+  const ended = new Promise((resolve) => f.once("watch-ended", resolve));
+  await emit(a, "leave");
+  await emit(b, "leave");
+  await expect(ended).resolves.toBeTruthy();
+});

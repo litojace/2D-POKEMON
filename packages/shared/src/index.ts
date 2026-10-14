@@ -1271,6 +1271,8 @@ export interface Snapshot {
   mutators?: MutatorId[];
   /** Crown Hill: seconds each side has held the circle this round. */
   crown?: number[];
+  /** Names of friends watching this room. */
+  watchers?: string[];
   /** Which arena this match is played in, and when its hazards' clock started. */
   arena?: ArenaId;
   hazardClock?: number;

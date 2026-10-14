@@ -597,6 +597,99 @@ function crownLabel(me: Fighter) {
   const rival = Math.max(0, ...crown.filter((_, t) => t !== teamOf(me)));
   return `CROWN · YOU ${Math.floor(mine)}s · RIVAL ${Math.floor(rival)}s / ${CROWN.holdSeconds}s`;
 }
+/** What a watcher sees over the arena: no buttons but "Stop watching". */
+function renderWatchOverlay(overlay: HTMLElement) {
+  const banner = $("spectate");
+  banner.hidden = state!.phase !== "playing";
+  banner.textContent = `Watching room ${state!.code} · Esc / Menu to stop`;
+  if (state!.phase === "playing") {
+    setOverlayMarkup(overlay, "");
+    overlay.style.pointerEvents = "none";
+    return;
+  }
+  overlay.style.pointerEvents = "auto";
+  const name = (id: string | null) =>
+    escape(state!.players.find((p) => p.id === id)?.name ?? "");
+  let heading = "",
+    details = "";
+  if (state!.phase === "briefing") {
+    heading = "The players are getting ready";
+    details = `<div class="briefing-versus${isFfa() ? " ffa" : ""}">${state!.players
+      .map(
+        (p, i) =>
+          `<div class="vs-fighter" style="--element:#${CHARACTERS[p.character].color.toString(16).padStart(6, "0")}">${scopeIds(fighterArt(p.character), `watchvs${i}`)}<b>${escape(p.name)}</b><span>${CHARACTERS[p.character].name}</span></div>`,
+      )
+      .join('<span class="vs-mark">VS</span>')}</div><p class="arena-brief"><b>Arena · ${escape(ARENAS[state!.arena ?? "classic"].name)}</b>${escape(ARENAS[state!.arena ?? "classic"].tip)}</p>${partyRulesNote()}`;
+  }
+  if (state!.phase === "countdown") {
+    heading = `${Math.ceil(state!.remaining)}`;
+    details = "Here we go.";
+  }
+  if (state!.phase === "intermission") {
+    heading = isTeams()
+      ? state!.roundWinnerTeam === null || state!.roundWinnerTeam === undefined
+        ? "Round drawn"
+        : `${TEAM_LABELS[state!.roundWinnerTeam] ?? ""} team takes the round`
+      : state!.roundWinner
+        ? `${name(state!.roundWinner)} takes the round`
+        : "Round drawn";
+    details = `<p class="rite-timer">Next round in ${Math.ceil(state!.remaining)} seconds</p>`;
+  }
+  if (state!.phase === "paused") {
+    heading = "A player disconnected";
+    details = `Waiting for them · ${Math.ceil(state!.pauseRemaining)}s`;
+  }
+  if (state!.phase === "finished") {
+    heading = isTeams()
+      ? `${TEAM_LABELS[state!.winnerTeam ?? 0] ?? ""} team wins`
+      : `${name(state!.winner)} wins`;
+    details =
+      (isFfa() ? standingsMarkup(state!, "") : "") +
+      recapMarkup(state!, "") +
+      '<div class="result-actions"><button class="secondary" id="watch-stop">Stop watching</button></div>';
+  }
+  setOverlayMarkup(
+    overlay,
+    `<div class="overlay-card${state!.phase === "countdown" ? " countdown-card" : ""}"><span class="eyebrow">WATCHING · ${escape(state!.code)}</span><h2>${heading}</h2><div>${details}</div></div>`,
+  );
+  const stop = document.getElementById("watch-stop");
+  if (stop) stop.onclick = () => void stopWatching();
+}
+/** Room code being watched (no seat), or "". */
+let watching = "";
+async function watchRoom(raw: string) {
+  if (!accountsUI.ensurePlayer()) return;
+  const code = raw.trim().toUpperCase();
+  const reply = await request("watch", { code });
+  if (!reply.ok) {
+    toast(reply.error ?? "Couldn't watch that room.");
+    return;
+  }
+  watching = code;
+  screen = "";
+  toast(`Watching room ${code}. You can't be hit, and nobody sees your screen.`);
+}
+async function stopWatching(notice?: string) {
+  if (watching) await request("unwatch");
+  watching = "";
+  state = undefined;
+  screen = "";
+  document.body.classList.remove("spectating");
+  renderMenu();
+  $<HTMLDialogElement>("dialog").close();
+  menuOpen = false;
+  if (notice) toast(notice);
+}
+/** The side panel while watching a room's lobby. */
+function watchPanel() {
+  const rows = state!.players
+    .map((p) => {
+      const c = CHARACTERS[p.character];
+      return `<div><span class="player-avatar" style="--element:#${c.color.toString(16).padStart(6, "0")}" title="${c.name}">${fighterAvatar(c.id, `watch${state!.players.indexOf(p)}`)}</span><span><strong>${escape(p.name)}</strong><small class="player-fighter">${c.name}</small></span><b class="status-pill ${!p.connected ? "offline" : p.ready ? "ready" : "choosing"}">${!p.connected ? "Offline" : p.ready ? "Ready" : "Choosing"}</b></div>`;
+    })
+    .join("");
+  return `<div class="eyebrow">WATCHING ROOM ${escape(state!.code)}</div><h2>Ringside seat.</h2><p>You'll see the match live as soon as everyone's ready. Watching: ${escape((state!.watchers ?? []).join(", ") || "just you")}.</p><div class="players">${rows}</div>${partyRulesNote()}<button class="secondary full" id="stop-watching">Stop watching</button>`;
+}
 /** Turbo party rule: skills recharge faster (for the cooldown displays). */
 function cooldownScale() {
   return state?.mutators?.includes("turbo") ? MUTATOR_RULES.turboCooldown : 1;
@@ -723,7 +816,8 @@ function renderMenu() {
   pwa.sync();
   const p = state?.players.find((p) => p.id === myId);
   const isRoom = !!p;
-  const key = `${isRoom ? `room-${state!.mode ?? "duel"}` : "home"}:${state?.players.map((p) => `${p.id}${p.id === myId ? "" : p.character}${p.ready}${p.connected}${p.team ?? ""}`).join(":")}:${selected}`;
+  const watchingRoom = !isRoom && !!watching && state?.code === watching;
+  const key = `${isRoom ? `room-${state!.mode ?? "duel"}` : watchingRoom ? `watch-${watching}` : "home"}:${(state?.mutators ?? []).join(",")}|${(state?.watchers ?? []).join(",")}:${state?.players.map((p) => `${p.id}${p.id === myId ? "" : p.character}${p.ready}${p.connected}${p.team ?? ""}`).join(":")}:${selected}`;
   if (screen === key) return;
   const previous = screen;
   screen = key;
@@ -774,7 +868,9 @@ function renderMenu() {
     `<header class="desktop-lobby-header"><div class="eyebrow">ELEMENTAL COLISEUM</div><h1>Choose your fighter</h1><p>Pick your creature. Enter the arena.</p></header><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected)}</div><aside class="room-panel">${
       isRoom
         ? roomPanel(p!)
-        : `<div class="eyebrow">PLAY ONLINE</div><h2>A friend. A code.<br>A worthy opponent.</h2><label for="name">YOUR DISPLAY NAME</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><div class="mode-picker" role="radiogroup" aria-label="Room type">${(
+        : watchingRoom
+          ? watchPanel()
+          : `<div class="eyebrow">PLAY ONLINE</div><h2>A friend. A code.<br>A worthy opponent.</h2><label for="name">YOUR DISPLAY NAME</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><div class="mode-picker" role="radiogroup" aria-label="Room type">${(
             [
               ["duel", "1v1 Duel", "Best of five"],
               ["teams", "2v2 Teams", "Best of five"],
@@ -787,13 +883,17 @@ function renderMenu() {
             )
             .join(
               "",
-            )}</div><button class="primary" id="create">Create private room →</button><div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><div class="divider">OR PLAY SOLO</div><div class="bot-picker" role="radiogroup" aria-label="Bot difficulty">${BOT_LEVELS.map(([id, label, hint]) => `<button type="button" role="radio" class="bot-level${botLevel === id ? " active" : ""}" data-bot="${id}" aria-checked="${botLevel === id}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button class="secondary full" id="bot-match">Battle an AI bot →</button>${accountsUI?.account ? '<button class="quiet full" id="practice">Solo test mode →</button>' : ""}<small class="room-note">Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`
+            )}</div><button class="primary" id="create">Create private room →</button><div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><button id="watch" class="quiet full">Watch this room instead</button><div class="divider">OR PLAY SOLO</div><div class="bot-picker" role="radiogroup" aria-label="Bot difficulty">${BOT_LEVELS.map(([id, label, hint]) => `<button type="button" role="radio" class="bot-level${botLevel === id ? " active" : ""}" data-bot="${id}" aria-checked="${botLevel === id}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button class="secondary full" id="bot-match">Battle an AI bot →</button>${accountsUI?.account ? '<button class="quiet full" id="practice">Solo test mode →</button>' : ""}<small class="room-note">Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`
     }</aside></div>`;
   wireRoster(isRoom);
   // Fighter panel slot: between the rows on PC, under the swipeable row on phones.
   watchFighterDetail($("menu"));
   if (keepScroll !== null && Math.abs(scrollY - keepScroll) > 1)
     scrollTo(0, keepScroll);
+  if (watchingRoom) {
+    $("stop-watching").onclick = () => void stopWatching();
+    return;
+  }
   if (!isRoom && accountsUI?.account)
     $<HTMLInputElement>("name").readOnly = true;
   if (isRoom) {
@@ -822,6 +922,8 @@ function renderMenu() {
     };
     $("create").onclick = () => void play("create");
     $("join").onclick = () => void play("join");
+    $("watch").onclick = () =>
+      void watchRoom($<HTMLInputElement>("code").value);
     // Opened from an invite link: join as soon as we're signed in and online.
     const invite = pendingInvite();
     if (invite) {
@@ -900,6 +1002,10 @@ function renderMenu() {
   }
 }
 async function leave() {
+  if (watching && !myId) {
+    await stopWatching();
+    return;
+  }
   const reply = await request("leave", {
     token: sessionStorage.getItem("arena-token"),
   });
@@ -928,8 +1034,12 @@ function renderBattle() {
       fitRenderer();
     });
   }
-  const me = state?.players.find((p) => p.id === myId);
+  // Watching: see the match from the first player's side, with no controls.
+  const me =
+    state?.players.find((p) => p.id === myId) ??
+    (watching && state?.code === watching ? state.players[0] : undefined);
   if (!state || !me) return;
+  document.body.classList.toggle("spectating", !myId && !!watching);
   queueMicrotask(refreshControlLabels);
   const hudOrder = isTeams()
     ? [
@@ -1057,7 +1167,8 @@ function renderBattle() {
     if (i === ULT_SLOT) {
       // The ultimate fills a meter by fighting instead of a cooldown.
       const full = (me.ult ?? 0) >= RULES.ultMax;
-      if (full && !ultWasReady && state!.phase === "playing") audio.play("orb");
+      if (full && !ultWasReady && state!.phase === "playing" && myId)
+        audio.play("orb");
       ultWasReady = full;
       const charge = Math.floor(me.ult ?? 0),
         ready = skillReady(
@@ -1086,7 +1197,7 @@ function renderBattle() {
       ? `${(me.jumpAt - state.time).toFixed(1)}s`
       : "READY";
   touch.update(
-    state.phase === "playing" && connected,
+    state.phase === "playing" && connected && !!myId,
     CHARACTERS[me.character].skills.map((a) => a.name),
     me.cooldowns.map((t) => Math.max(0, t - state!.time)),
     Math.max(0, me.dashAt - state.time),
@@ -1102,6 +1213,10 @@ function renderBattle() {
     state.practice?.unlimitedCooldowns ? RULES.ultMax : (me.ult ?? 0),
   );
   const overlay = $("arena-overlay");
+  if (!myId && watching) {
+    renderWatchOverlay(overlay);
+    return;
+  }
   if (state.phase === "playing") {
     const partner =
       isTeams() && me.hp <= 0
@@ -1251,6 +1366,11 @@ function renderBattle() {
 }
 socket.on("connect", () => {
   connected = true;
+  // Reconnected while watching: take the ringside seat again.
+  if (watching && !myId)
+    void request("watch", { code: watching }).then((reply) => {
+      if (!reply.ok) void stopWatching(reply.error ?? "The room closed.");
+    });
   // Invite link opened before the connection was up: try joining now.
   if (pendingInvite() && !myId && !sessionStorage.getItem("arena-token")) {
     screen = "";
@@ -1285,6 +1405,9 @@ socket.on("connect_error", (error: Error) => {
   $("connection").textContent = "LOGIN REQUIRED";
 });
 socket.on("account-changed", () => void accountsUI.refresh());
+socket.on("watch-ended", ({ reason }: { reason?: string }) => {
+  if (watching) void stopWatching(reason ?? "The room closed.");
+});
 socket.on("token-expired", () => {
   // The server's copy of our login expired: send the current one, refreshing
   // it first if the browser's copy has also run out.
@@ -1307,7 +1430,14 @@ socket.on("access-revoked", ({ error }: { error: string }) => {
   void accountsUI.refresh();
 });
 socket.on("state", (snapshot: WireSnapshot) => {
-  if (snapshot.phase === "finished" && state?.phase !== "finished")
+  const spectator = !myId && !!watching;
+  // A stale room (we left it) can still send a last snapshot: ignore it.
+  if (spectator && snapshot.code !== watching) return;
+  if (
+    snapshot.phase === "finished" &&
+    state?.phase !== "finished" &&
+    !spectator
+  )
     audio.play(
       (
         snapshot.mode === "teams"
@@ -1326,7 +1456,17 @@ socket.on("state", (snapshot: WireSnapshot) => {
   pwa.sync();
   remoteFrames.add(state, performance.now());
   const me = state.players.find((p) => p.id === myId);
-  if (!me) return;
+  if (!me) {
+    if (!spectator) return;
+    for (const event of state.events)
+      if (event.id > eventId) {
+        if (scene && state.phase !== "lobby") scene.effect(event);
+        eventId = Math.max(eventId, event.id);
+      }
+    if (state.phase === "lobby") renderMenu();
+    else renderBattle();
+    return;
+  }
   selected = lobbySelection.reconcile(me.character, state.phase === "lobby");
   seq = Math.max(seq, me.ack);
   pending = pending.filter((i) => i.seq > me.ack);
@@ -1436,7 +1576,7 @@ function dialog(html: string) {
 function showSettings() {
   settingsOpen = true;
   dialog(
-    `<div class="eyebrow">YOUR PREFERENCES</div><h2>Find your rhythm.</h2><p>Online matches keep running while this menu is open.</p><label>MUSIC <input type="range" id="music" min="0" max="1" step=".01" value="${audio.music}"></label><label>SOUND EFFECTS <input type="range" id="effects" min="0" max="1" step=".01" value="${audio.effects}"></label><p>Reduced motion follows your system preference.</p><button id="open-controls" class="secondary full">Controls &amp; key bindings →</button>${touch.settingsHTML()}<button id="settings-report" class="quiet">Report a problem</button>${myId ? '<button id="exit-room" class="secondary">Leave room</button>' : ""}`,
+    `<div class="eyebrow">YOUR PREFERENCES</div><h2>Find your rhythm.</h2><p>Online matches keep running while this menu is open.</p><label>MUSIC <input type="range" id="music" min="0" max="1" step=".01" value="${audio.music}"></label><label>SOUND EFFECTS <input type="range" id="effects" min="0" max="1" step=".01" value="${audio.effects}"></label><p>Reduced motion follows your system preference.</p><button id="open-controls" class="secondary full">Controls &amp; key bindings →</button>${touch.settingsHTML()}<button id="settings-report" class="quiet">Report a problem</button>${myId ? '<button id="exit-room" class="secondary">Leave room</button>' : watching ? '<button id="exit-room" class="secondary">Stop watching</button>' : ""}`,
   );
   for (const kind of ["music", "effects"] as const)
     $(kind).oninput = () => {
@@ -1446,7 +1586,7 @@ function showSettings() {
   touch.bindSettings();
   $("open-controls").onclick = showControls;
   $("settings-report").onclick = () => accountsUI.showReport(reportContext());
-  if (myId) $("exit-room").onclick = () => void leave();
+  if (myId || watching) $("exit-room").onclick = () => void leave();
 }
 /** Settings → Controls (see controls-screen.ts). */
 function showControls() {

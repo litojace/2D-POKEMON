@@ -5592,3 +5592,9 @@ html.scroll-locked {
     margin-top: 6px;
   }
 }
+/* Watching a room: no ability bar or touch controls, just the match. */
+body.spectating #abilities,
+body.spectating #mobile-controls,
+body.spectating #control-hints {
+  display: none !important;
+}

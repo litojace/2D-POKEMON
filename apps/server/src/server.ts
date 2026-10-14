@@ -98,6 +98,11 @@ export function createArenaServer(
   /** Which account plays each fighter (kept after a player leaves). */
   const fighterAccounts = new WeakMap<Arena, Map<string, string>>();
   const ledger = new MatchLedger();
+  /** Friends watching a room: socket id → room code and display name. */
+  const watchers = new Map<string, { code: string; name: string }>();
+  const MAX_WATCHERS = 6;
+  const watchersOf = (code: string) =>
+    [...watchers.values()].filter((w) => w.code === code).map((w) => w.name);
   io.use(async (socket, next) => {
     try {
       const token = socket.handshake.auth.accessToken;
@@ -293,6 +298,7 @@ export function createArenaServer(
       remaining = Math.max(0, (Math.min(...deadlines) - Date.now()) / 1000);
     }
     const snapshot = arena.snapshot(remaining);
+    snapshot.watchers = watchersOf(arena.code);
     snapshot.events = snapshot.events.filter(
       (e) => e.id > (eventCursors.get(arena) ?? 0),
     );
@@ -363,9 +369,17 @@ export function createArenaServer(
       for (const p of arena.players) p.ready = false;
     } else if (arena.phase === "lobby")
       arena.players = arena.players.filter((p) => p.id !== session.id);
-    if (![...sessions.values()].some((s) => s.code === arena.code))
+    if (![...sessions.values()].some((s) => s.code === arena.code)) {
       rooms.delete(arena.code);
-    else broadcast(arena);
+      // Anyone watching is told the room has closed.
+      for (const [id, w] of watchers)
+        if (w.code === arena.code) {
+          watchers.delete(id);
+          const viewer = io.sockets.sockets.get(id);
+          viewer?.leave(arena.code);
+          viewer?.emit("watch-ended", { reason: "The room closed." });
+        }
+    } else broadcast(arena);
   }
   io.on("connection", (socket) => {
     const account = () => socket.data.account as Account | undefined;
@@ -432,6 +446,44 @@ export function createArenaServer(
         return;
       for (const session of owned) detach(session, true);
     };
+    /** Leave the room this socket is watching, if any. */
+    const stopWatching = () => {
+      const w = watchers.get(socket.id);
+      if (!w) return;
+      watchers.delete(socket.id);
+      socket.leave(w.code);
+      const arena = rooms.get(w.code);
+      if (arena) broadcast(arena);
+    };
+    // Watch a friend's room: live view only, no seat and no inputs.
+    socket.on("watch", (data: unknown, cb: unknown) => {
+      if (!requirePlayer(cb)) return;
+      if (!allowed(15)) return fail(cb, "Too many requests.");
+      const code =
+        data && typeof data === "object"
+          ? String((data as { code?: unknown }).code ?? "")
+              .trim()
+              .toUpperCase()
+          : "";
+      if (!/^[A-Z0-9]{6}$/.test(code))
+        return fail(cb, "Enter the six-character room code.");
+      if (getSession(socket.id))
+        return fail(cb, "Leave your current room first.");
+      const arena = rooms.get(code);
+      if (!arena || arena.practice || arena.bots.size)
+        return fail(cb, "Room not found. Check the code with your friend.");
+      stopWatching();
+      if (watchersOf(code).length >= MAX_WATCHERS)
+        return fail(cb, "This room already has the most watchers it allows.");
+      watchers.set(socket.id, { code, name: account()!.displayName });
+      socket.join(code);
+      reply(cb, { ok: true, code });
+      broadcast(arena);
+    });
+    socket.on("unwatch", (_data: unknown, cb: unknown) => {
+      stopWatching();
+      reply(cb, { ok: true });
+    });
     // The client hands over each refreshed login token (they expire hourly).
     socket.on("token", async (data: unknown, cb: unknown) => {
       if (!allowed(10)) return fail(cb, "Too many requests.");
@@ -454,6 +506,7 @@ export function createArenaServer(
     });
     socket.on("create", (data: unknown, cb: unknown) => {
       if (!requirePlayer(cb)) return;
+      stopWatching();
       if (!allowed(15))
         return fail(cb, "Too many requests. Try again in a moment.");
       const result = createSchema.safeParse(data);
@@ -484,6 +537,7 @@ export function createArenaServer(
     });
     socket.on("join", (data: unknown, cb: unknown) => {
       if (!requirePlayer(cb)) return;
+      stopWatching();
       if (!allowed(15)) return fail(cb, "Too many requests.");
       const result = joinSchema.safeParse(data);
       if (!result.success)
@@ -558,6 +612,7 @@ export function createArenaServer(
       action(a, s.id);
     };
     socket.on("practice", async (data: unknown, cb: unknown) => {
+      stopWatching();
       if (!allowed(15)) return fail(cb, "Too many requests.");
       try {
         socket.data.account = await authorize(
@@ -598,6 +653,7 @@ export function createArenaServer(
     });
     // Solo vs an AI bot: a private room nobody else can join, straight to the briefing.
     socket.on("bot-match", (data: unknown, cb: unknown) => {
+      stopWatching();
       if (!requirePlayer(cb)) return;
       if (!allowed(15)) return fail(cb, "Too many requests.");
       const result = botMatchSchema.safeParse(data);
@@ -855,6 +911,7 @@ export function createArenaServer(
       reply(cb, { ok: true });
     });
     socket.on("disconnect", () => {
+      stopWatching();
       const s = getSession(socket.id);
       if (s) detach(s);
     });
