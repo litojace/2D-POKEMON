@@ -326,8 +326,8 @@ function refreshControlLabels() {
   const now = `${bindingsKey()}:${usingPad}:${controlPrefs().cast}`;
   if (now === labelState) return;
   labelState = now;
-  for (const kbd of document.querySelectorAll<HTMLElement>(
-    "#abilities kbd[data-action]",
+  for (const kbd of Array.from(
+    document.querySelectorAll<HTMLElement>("#abilities kbd[data-action]"),
   ))
     kbd.textContent = keyText(kbd.dataset.action as Action);
   const hint = (key: string, what: string) => `${escape(key)} <b>${what}</b>`;

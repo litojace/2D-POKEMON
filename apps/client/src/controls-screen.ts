@@ -125,9 +125,10 @@ export function showControlsScreen(options: ControlsScreenOptions) {
         ? `${codeLabel(code)} is now ${name} (taken from ${actionName(result.displaced)}).`
         : `${codeLabel(code)} is now ${name}.`;
     stop();
-    for (const button of buttons()) button.textContent = label(button);
+    for (const button of Array.from(buttons()))
+      button.textContent = label(button);
   };
-  for (const button of buttons()) {
+  for (const button of Array.from(buttons())) {
     button.onclick = () => {
       if (capturing?.button === button) return;
       stop();
@@ -170,8 +171,8 @@ export function showControlsScreen(options: ControlsScreenOptions) {
   window.addEventListener("keydown", onKey, true);
   box.addEventListener("cancel", onCancel);
   box.addEventListener("close", cleanup);
-  for (const radio of box.querySelectorAll<HTMLInputElement>(
-    'input[name="cast"]',
+  for (const radio of Array.from(
+    box.querySelectorAll<HTMLInputElement>('input[name="cast"]'),
   ))
     radio.onchange = () =>
       setControlPrefs({ ...controlPrefs(), cast: radio.value as CastMode });
