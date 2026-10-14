@@ -107,3 +107,58 @@ describe("crown hill and team-ups", () => {
     expect(together).toBeCloseTo(apart * TEAMUP.damage, 5);
   });
 });
+describe("fun party rules", () => {
+  it("fighter roulette deals random fighters each round, skips rites, restores picks", () => {
+    const a = new Arena("ROULETTE-SEED");
+    a.mutators = new Set(["random"] as never[]);
+    a.add("one", "One", "voltkit");
+    a.add("two", "Two", "voltkit");
+    a.start();
+    const seen = new Set<string>();
+    for (let r = 0; r < 6; r++) {
+      for (const p of a.players) {
+        seen.add(p.character);
+        expect(p.hp).toBe(CHARACTERS[p.character].health);
+      }
+      a.phase = "playing";
+      a.endRound(r % 2 === 0 ? 0 : null);
+      expect(a.players.every((p) => !p.riteOffer)).toBe(true);
+      a.resetRound();
+    }
+    expect(seen.size).toBeGreaterThan(2);
+    a.restoreChosen();
+    expect(a.players.map((p) => p.character)).toEqual(["voltkit", "voltkit"]);
+  });
+  it("double time makes fighters run faster, on server and in prediction alike", async () => {
+    const shared = await import("@arena/shared");
+    const run = (scale: number) => {
+      shared.useSpeedScale(scale);
+      const a = new Arena("RUN");
+      a.add("one", "One", "voltkit");
+      const p = a.players[0];
+      Object.assign(p, { x: 300, y: 450, vx: 0, vy: 0 });
+      for (let i = 0; i < 30; i++)
+        shared.advanceMovement(
+          p,
+          { ...shared.blankInput(), dx: 1, aimX: 1600, aimY: 450 },
+          1 / 30,
+          i / 30,
+        );
+      return p.x - 300;
+    };
+    const normal = run(1),
+      fast = run(MUTATOR_RULES.speed);
+    shared.useSpeedScale(1);
+    expect(fast / normal).toBeGreaterThan(1.4);
+    // Each arena applies its own rule every tick (rooms share the module).
+    const travel = (rules: string[]) => {
+      const a = duel(rules);
+      const p = a.players[0];
+      Object.assign(p, { x: 300, y: 450, vx: 0, vy: 0 });
+      a.submit(p, { ...p.lastInput, seq: 99, dx: 1, dy: 0, aimX: 1600, aimY: 450 });
+      for (let i = 0; i < 15; i++) a.tick();
+      return p.x - 300;
+    };
+    expect(travel(["speed"]) / travel([])).toBeGreaterThan(1.4);
+  });
+});

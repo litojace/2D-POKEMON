@@ -820,6 +820,7 @@ export function createArenaServer(
         if (a.phase !== "finished") return fail(cb, "Finish the match first.");
         if (a.bots.size) return fail(cb, "Leave to return to the menu.");
         a.phase = "lobby";
+        a.restoreChosen();
         a.players = a.players.filter((p) =>
           [...sessions.values()].some(
             (s) => s.code === a.code && s.id === p.id,

@@ -8,6 +8,8 @@ import {
   obstaclesAt,
   shiftingUp,
   useObstacles,
+  useSpeedScale,
+  FIGHTER_IDS,
   type ArenaId,
   type Hazard,
   RITE_BY_ID,
@@ -82,6 +84,8 @@ export class Arena {
   overtime = false;
   /** Crown Hill: seconds each side has held the circle this round. */
   crown: number[] = [];
+  /** Fighter roulette: the fighter each player picked, restored in the lobby. */
+  chosen = new Map<string, CharacterId>();
   /** Round winners in order (null = draw). */
   roundLog: (Team | null)[] = [];
   /** Id of the last finished real match (players report it for records). */
@@ -120,6 +124,14 @@ export class Arena {
       t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
+  }
+  /** Back to the lobby: everyone gets the fighter they picked again. */
+  restoreChosen() {
+    for (const p of this.players) {
+      const picked = this.chosen.get(p.id);
+      if (picked) p.character = picked;
+    }
+    this.chosen.clear();
   }
   /** Party rules the host switched on (lobby only). */
   mutators = new Set<MutatorId>();
@@ -263,6 +275,9 @@ export class Arena {
     return true;
   }
   start() {
+    // Remember picks (rematches keep the first ones) before roulette changes them.
+    for (const p of this.players)
+      if (!this.chosen.has(p.id)) this.chosen.set(p.id, p.character);
     if (this.rule("calm")) this.arenaId = "classic";
     else if (this.rotateArenas && !this.practice) {
       if (this.arenaTurn < 0)
@@ -302,6 +317,12 @@ export class Arena {
     this.nextPracticeZone = this.time + 3;
   }
   resetRound() {
+    // Fighter roulette: a fresh random fighter for everyone each round.
+    if (this.rule("random") && !this.practice)
+      for (const p of this.players) {
+        p.character = FIGHTER_IDS[Math.floor(this.random() * FIGHTER_IDS.length)];
+        p.rites = [];
+      }
     this.projectiles = [];
     this.zones = [];
     this.overtime = false;
@@ -798,6 +819,8 @@ export class Arena {
     return true;
   }
   tick(dt = 1 / RULES.tick) {
+    // Movement rules are shared module state: set this room's before moving.
+    useSpeedScale(this.rule("speed") ? MUTATOR_RULES.speed : 1);
     if (
       this.phase === "briefing" ||
       this.phase === "paused" ||
@@ -1218,7 +1241,7 @@ export class Arena {
       this.phase = "intermission";
       this.roundEndedAt = this.time;
       this.deadline = this.time + RULES.intermission;
-      if (!this.practice) {
+      if (!this.practice && !this.rule("random")) {
         this.deadline = this.time + RITE_RULES.seconds;
         this.offerRites(team);
       }

@@ -1125,6 +1125,18 @@ export const MUTATORS = {
     name: "Crown Hill",
     description: "Hold the centre circle alone for 12 seconds to win the round.",
   },
+  random: {
+    name: "Fighter roulette",
+    description: "Everyone gets a random fighter each round (no rites).",
+  },
+  speed: {
+    name: "Double time",
+    description: "Everyone runs 60% faster.",
+  },
+  giants: {
+    name: "Giants",
+    description: "Fighters look huge (looks only: hits are unchanged).",
+  },
 } as const;
 /** 2v2 team-up: partners fighting side by side both hit harder. */
 export const TEAMUP = { range: 260, damage: 1.1 };
@@ -1138,6 +1150,8 @@ export const MUTATOR_RULES = {
   glassDamage: 1.5,
   orbsRate: 2,
   quickRounds: 2,
+  speed: 1.6,
+  giants: 1.45,
 };
 /** Round wins needed with these party rules. */
 export function roundsNeeded(mutators: readonly string[] = []) {
@@ -1337,6 +1351,11 @@ export interface Rect {
  * and the client before predicting, so movement code needn't pass it around.
  */
 let activeObstacles: readonly Rect[] = OBSTACLES;
+/** Movement speed multiplier for the room being simulated (Double time). */
+let speedScale = 1;
+export function useSpeedScale(scale: number) {
+  speedScale = scale;
+}
 export function useObstacles(list: readonly Rect[]) {
   activeObstacles = list;
 }
@@ -1392,7 +1411,7 @@ export function advanceMovement(
     p.vy = p.dashY;
   } else {
     const factor = 1 - Math.exp(-RULES.acceleration * dt);
-    const speed = CHARACTERS[p.character].speed * modifier;
+    const speed = CHARACTERS[p.character].speed * modifier * speedScale;
     p.vx += (dir.x * speed - p.vx) * factor;
     p.vy += (dir.y * speed - p.vy) * factor;
   }

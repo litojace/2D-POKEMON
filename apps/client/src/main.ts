@@ -54,6 +54,7 @@ import {
   shiftingRisesIn,
   shiftingUp,
   useObstacles,
+  useSpeedScale,
   type ArenaId,
   RITE_BY_ID,
   RITE_RULES,
@@ -350,7 +351,10 @@ function riteMarkup(me: Fighter, seconds: number) {
   const rivals = state!.players.filter(
     (p) => p.id !== myId && p.rites?.length,
   );
-  return `${me.rites?.length ? `<div class="rite-owned"><em>Your rites</em>${chips(me)}</div>` : ""}${rivals
+  const roulette = state!.mutators?.includes("random")
+    ? '<p class="rite-intro">Fighter roulette: everyone gets a new random fighter next round.</p>'
+    : "";
+  return `${roulette}${me.rites?.length ? `<div class="rite-owned"><em>Your rites</em>${chips(me)}</div>` : ""}${rivals
     .map(
       (p) =>
         `<div class="rite-owned rival"><em>${escape(p.name)}</em>${chips(p)}</div>`,
@@ -1978,6 +1982,9 @@ class ArenaScene extends Phaser.Scene {
     }
     // Walls for prediction (the Shifting Ruins block comes and goes) and the floor.
     useObstacles(obstaclesAt(state.arena, arenaClock()));
+    useSpeedScale(
+      state.mutators?.includes("speed") ? MUTATOR_RULES.speed : 1,
+    );
     this.showArena(state.arena ?? "classic");
     this.accumulator += Math.min(delta, 100);
     while (this.accumulator >= 1000 / RULES.tick) {
@@ -2297,7 +2304,10 @@ class ArenaScene extends Phaser.Scene {
         );
       }
       const rig = this.getRig(p.id, p.character);
-      rig.root.setScale(view.fighterX, view.fighterY);
+      const giant = state.mutators?.includes("giants")
+        ? MUTATOR_RULES.giants
+        : 1;
+      rig.root.setScale(view.fighterX * giant, view.fighterY * giant);
       rig.setVisible(true);
       const casting =
         rig.controller.state === "basic" ||
