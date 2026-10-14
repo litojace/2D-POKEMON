@@ -1033,6 +1033,10 @@ export interface Fighter extends Vec {
   cooldowns: number[];
   /** Ultimate meter, 0 to RULES.ultMax. Carries over between rounds. */
   ult?: number;
+  /** Rites picked this match (ids, in order). */
+  rites?: string[];
+  /** Rites on offer during this intermission, until one is picked. */
+  riteOffer?: string[];
   basicAt: number;
   dashAt: number;
   jumpAt: number;
@@ -1169,6 +1173,15 @@ export function packSnapshot(s: Snapshot): WireSnapshot {
     })),
   };
 }
+function ownedAbility(s: WireSnapshot, owner: string, id: string): Ability {
+  const p = s.players.find((q) => q.id === owner);
+  const character = p && normalizeCharacterId(p.character);
+  return (
+    (character && p.rites?.length
+      ? kitAbility(character, p.rites, id)
+      : undefined) ?? abilities[id]
+  );
+}
 export function unpackSnapshot(s: WireSnapshot): Snapshot {
   return {
     ...s,
@@ -1176,13 +1189,14 @@ export function unpackSnapshot(s: WireSnapshot): Snapshot {
       ...p,
       character: normalizeCharacterId(p.character) ?? "voltkit",
     })),
+    // Owners' rites can change an ability (e.g. a wider blast): use their kit.
     projectiles: s.projectiles.map(({ abilityId, ...pr }) => ({
       ...pr,
-      ability: abilities[abilityId],
+      ability: ownedAbility(s, pr.owner, abilityId),
     })),
     zones: s.zones.map(({ abilityId, ...zone }) => ({
       ...zone,
-      ability: abilities[abilityId],
+      ability: ownedAbility(s, zone.owner, abilityId),
     })),
   };
 }
@@ -1267,3 +1281,183 @@ export const blankInput = (): Input => ({
   dash: false,
   jump: false,
 });
+
+/**
+ * Rites: round upgrades. Between rounds each player picks one of a few
+ * upgrades from their own fighter's pool; picks stack for the rest of the
+ * match. Minor rites tune a skill; a major rite (offered before round 3, and
+ * again until one is taken) changes how a skill plays. Every effect is a plain
+ * change to one ability's numbers, so the text always matches the rules.
+ */
+export type RiteTier = "minor" | "major";
+type RiteNumber =
+  | "damage"
+  | "cooldown"
+  | "range"
+  | "radius"
+  | "duration"
+  | "speed"
+  | "explosion"
+  | "count"
+  | "cast"
+  | "heal"
+  | "knockback"
+  | "statusDuration"
+  | "bonusVsStatus";
+export interface Rite {
+  id: string;
+  fighter: CharacterId;
+  tier: RiteTier;
+  name: string;
+  text: string;
+  /** The ability it changes (a skill or the basic attack). */
+  skill: string;
+  mul?: Partial<Record<RiteNumber, number>>;
+  set?: Partial<Pick<Ability, RiteNumber | "status" | "kind">>;
+}
+export const RITE_RULES = {
+  /** Intermission while players choose (seconds); it ends early once all have. */
+  seconds: 8,
+  /** Never shorter than this after a round ends, so the result can be read. */
+  minSeconds: 2.5,
+  choices: 3,
+  /** The side that lost the round sees one extra choice. */
+  comebackChoices: 1,
+  /** Majors are offered from this round on, until one is taken. */
+  majorFromRound: 3,
+};
+const rite = (
+  fighter: CharacterId,
+  tier: RiteTier,
+  skill: string,
+  name: string,
+  text: string,
+  change: Pick<Rite, "mul" | "set">,
+): Rite => ({
+  id: `${fighter}-${name.toLowerCase().replace(/[^a-z]+/g, "-")}`,
+  fighter,
+  tier,
+  skill,
+  name,
+  text,
+  ...change,
+});
+export const RITES: Rite[] = [
+  rite("voltkit", "minor", "static-lance", "Quick Lance", "Static Lance cooldown 8s → 6.5s.", { set: { cooldown: 6.5 } }),
+  rite("voltkit", "minor", "ball-lightning", "Big Ball", "Ball Lightning's blast is 30% wider.", { mul: { explosion: 1.3 } }),
+  rite("voltkit", "minor", "storm-grid", "Long Storm", "Storm Grid lasts 5.5s instead of 4s.", { set: { duration: 5.5 } }),
+  rite("voltkit", "minor", "spark-dart", "Hot Darts", "Spark Dart deals 7 damage instead of 6.", { set: { damage: 7 } }),
+  rite("voltkit", "major", "storm-grid", "Lockdown Grid", "Storm Grid paralyses instead of slowing.", { set: { status: "paralysis", statusDuration: 0.4 } }),
+  rite("voltkit", "major", "ball-lightning", "Thunderhead", "Ball Lightning becomes three orbs of 14 damage with smaller blasts.", { set: { kind: "barrage", count: 3, damage: 14, explosion: 70 } }),
+  rite("cindrake", "minor", "ember-gust", "Long Breath", "Ember Gust lasts 1.6s instead of 1.2s.", { set: { duration: 1.6 } }),
+  rite("cindrake", "minor", "magma-bomb", "Wide Bomb", "Magma Bomb's blast is 30% wider.", { mul: { explosion: 1.3 } }),
+  rite("cindrake", "minor", "blaze-whirl", "Endless Whirl", "Blaze Whirl lasts 3.5s instead of 2.5s.", { set: { duration: 3.5 } }),
+  rite("cindrake", "minor", "cinder-snap", "Searing Snap", "Cinder Snap deals 18 damage instead of 15.", { set: { damage: 18 } }),
+  rite("cindrake", "major", "sunfire-pillar", "Solar Pillar", "Sunfire Pillar erupts instantly and is 25% wider.", { set: { cast: 0 }, mul: { radius: 1.25 } }),
+  rite("cindrake", "major", "blaze-whirl", "Burning Whirl", "Blaze Whirl sets enemies on fire.", { set: { status: "burn", statusDuration: 1.5 } }),
+  rite("tidefin", "minor", "ripple-stars", "Five Stars", "Ripple Stars throws 5 stars of 9 damage instead of 3 of 11.", { set: { count: 5, damage: 9 } }),
+  rite("tidefin", "minor", "whirlpool", "Deep Pool", "Whirlpool is 20% wider.", { mul: { radius: 1.2 } }),
+  rite("tidefin", "minor", "mirror-mist", "Slipstream", "Mirror Mist's speed burst lasts 3s instead of 2s.", { set: { statusDuration: 3 } }),
+  rite("tidefin", "minor", "tide-needle", "Long Needle", "Tide Needle flies 25% further.", { mul: { range: 1.25 } }),
+  rite("tidefin", "major", "whirlpool", "Maelstrom", "Whirlpool deals 6 per tick instead of 4 and lasts 4.5s.", { set: { damage: 6, duration: 4.5 } }),
+  rite("tidefin", "major", "ripple-stars", "Rapid Stars", "Ripple Stars cooldown 8s → 5s.", { set: { cooldown: 5 } }),
+  rite("auralynx", "minor", "prism-shot", "Swift Prism", "Prism Shot flies 35% faster.", { mul: { speed: 1.35 } }),
+  rite("auralynx", "minor", "shatter-palm", "Long Palm", "Shatter Palm reaches 20% further.", { mul: { range: 1.2 } }),
+  rite("auralynx", "minor", "mirror-guard", "Steady Guard", "Mirror Guard lasts 2.2s instead of 1.6s.", { set: { duration: 2.2 } }),
+  rite("auralynx", "minor", "prism-jab", "Hard Jab", "Prism Jab deals 15 damage instead of 13.", { set: { damage: 15 } }),
+  rite("auralynx", "major", "prism-shot", "Prism Burst", "Prism Shot explodes on impact, hitting everyone nearby.", { set: { explosion: 90 } }),
+  rite("auralynx", "major", "nova-burst", "Stunning Nova", "Nova Burst also stuns for 0.6s.", { set: { status: "stun", statusDuration: 0.6 } }),
+  rite("lumoth", "minor", "starfall-spray", "Star Shower", "Starfall Spray throws 7 stars of 7 damage instead of 5 of 8.", { set: { count: 7, damage: 7 } }),
+  rite("lumoth", "minor", "dust-strike", "Sharp Bite", "Dust Strike deals 28 damage instead of 24.", { set: { damage: 28 } }),
+  rite("lumoth", "minor", "kindle", "Long Kindle", "Kindle lasts 6.5s instead of 5s.", { set: { duration: 6.5 } }),
+  rite("lumoth", "minor", "glint", "Bright Glint", "Glint deals 7 damage instead of 6.", { set: { damage: 7 } }),
+  rite("lumoth", "major", "radiant-flare", "Quick Flare", "Radiant Flare charges in 0.2s instead of 0.45s.", { set: { cast: 0.2 } }),
+  rite("lumoth", "major", "dust-strike", "Stunning Bite", "Dust Strike also stuns for 0.5s.", { set: { status: "stun", statusDuration: 0.5 } }),
+  rite("mystowl", "minor", "focus-ray", "Far Sight", "Focus Ray reaches 20% further.", { mul: { range: 1.2 } }),
+  rite("mystowl", "minor", "repulse", "Wide Repulse", "Repulse is 20% wider.", { mul: { radius: 1.2 } }),
+  rite("mystowl", "minor", "ward", "Long Ward", "Ward lasts 4s instead of 3s.", { set: { duration: 4 } }),
+  rite("mystowl", "minor", "mind-dart", "Heavy Dart", "Mind Dart deals 10 damage instead of 8.", { set: { damage: 10 } }),
+  rite("mystowl", "major", "focus-ray", "Mind Lock", "Focus Ray stuns for 0.5s instead of slowing.", { set: { status: "stun", statusDuration: 0.5 } }),
+  rite("mystowl", "major", "thoughtstrike", "Big Thought", "Thoughtstrike is 35% wider.", { mul: { radius: 1.35 } }),
+  rite("terradon", "minor", "shell-slam", "Long Slam", "Shell Slam reaches 20% further.", { mul: { range: 1.2 } }),
+  rite("terradon", "minor", "hibernate", "Deep Sleep", "Hibernate heals 90 HP instead of 75.", { set: { heal: 18 } }),
+  rite("terradon", "minor", "dust-cloud", "Thick Dust", "Dust Cloud is 20% wider.", { mul: { radius: 1.2 } }),
+  rite("terradon", "minor", "boulder-swipe", "Heavy Swipe", "Boulder Swipe deals 18 damage instead of 15.", { set: { damage: 18 } }),
+  rite("terradon", "major", "tremor", "Quick Quake", "Tremor charges in 0.25s instead of 0.5s.", { set: { cast: 0.25 } }),
+  rite("terradon", "major", "dust-cloud", "Sandstorm", "Dust Cloud also deals 4 damage per tick.", { set: { damage: 4 } }),
+  rite("duskveil", "minor", "shade-crawl", "Deep Crawl", "Shade Crawl deals 24 damage instead of 20.", { set: { damage: 24 } }),
+  rite("duskveil", "minor", "ghostfire", "Five Flames", "Ghostfire throws 5 flames instead of 3.", { set: { count: 5 } }),
+  rite("duskveil", "minor", "curse-mark", "Swift Curse", "Curse Mark flies 30% faster.", { mul: { speed: 1.3 } }),
+  rite("duskveil", "minor", "lantern-wisp", "Bright Wisp", "Lantern Wisp deals 11 damage instead of 9.", { set: { damage: 11 } }),
+  rite("duskveil", "major", "curse-mark", "Deep Curse", "Curse Mark deals 2.5× (not 2×) damage on a harmful status.", { set: { bonusVsStatus: 2.5 } }),
+  rite("duskveil", "major", "void-orb", "Burning Void", "Void Orb's blast is 30% wider and burns.", { mul: { explosion: 1.3 }, set: { status: "burn", statusDuration: 2 } }),
+];
+export const RITE_BY_ID: Record<string, Rite> = Object.fromEntries(
+  RITES.map((r) => [r.id, r]),
+);
+export interface Kit {
+  basic: Ability;
+  skills: Ability[];
+}
+const kitCache = new Map<string, Kit>();
+/** A fighter's abilities with their rites applied (cached; never mutate). */
+export function kitOf(character: CharacterId, rites: readonly string[] = []): Kit {
+  const base = CHARACTERS[character];
+  if (!rites.length) return base;
+  const key = `${character}|${rites.join(",")}`;
+  const cached = kitCache.get(key);
+  if (cached) return cached;
+  const patch = (a: Ability) => {
+    let out = a;
+    for (const id of rites) {
+      const r = RITE_BY_ID[id];
+      if (!r || r.fighter !== character || r.skill !== a.id) continue;
+      out = { ...out, ...r.set };
+      for (const [k, m] of Object.entries(r.mul ?? {}) as [RiteNumber, number][])
+        out[k] = (out[k] ?? 0) * m;
+    }
+    return out;
+  };
+  const kit = { basic: patch(base.basic), skills: base.skills.map(patch) };
+  kitCache.set(key, kit);
+  return kit;
+}
+/** The ability with this id from a fighter's kit, rites applied. */
+export function kitAbility(
+  character: CharacterId,
+  rites: readonly string[] | undefined,
+  id: string,
+) {
+  const kit = kitOf(character, rites);
+  return [kit.basic, ...kit.skills].find((a) => a.id === id);
+}
+/**
+ * The rites to offer `p` before `round`: three minors, or (from round 3,
+ * until a major is taken) both majors plus a minor. `extra` adds choices.
+ */
+export function riteOffer(
+  character: CharacterId,
+  owned: readonly string[],
+  round: number,
+  random: () => number,
+  extra = 0,
+) {
+  const pool = (tier: RiteTier) =>
+    RITES.filter(
+      (r) => r.fighter === character && r.tier === tier && !owned.includes(r.id),
+    );
+  const shuffle = <T>(list: T[]) => {
+    for (let i = list.length - 1; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      [list[i], list[j]] = [list[j], list[i]];
+    }
+    return list;
+  };
+  const hasMajor = owned.some((id) => RITE_BY_ID[id]?.tier === "major");
+  const size = RITE_RULES.choices + extra;
+  const majors =
+    round >= RITE_RULES.majorFromRound && !hasMajor ? shuffle(pool("major")) : [];
+  return [...majors, ...shuffle(pool("minor"))]
+    .slice(0, size)
+    .map((r) => r.id);
+}

@@ -32,6 +32,7 @@ const createSchema = identitySchema
 const teamSchema = z
   .object({ team: z.union([z.literal(0), z.literal(1)]) })
   .strict();
+const riteSchema = z.object({ id: z.string().min(1).max(64) }).strict();
 const BOT_NAMES = [
   "Pip",
   "Nova",
@@ -693,6 +694,15 @@ export function createArenaServer(
       withRoom(cb, (a, id) => {
         if (!a.acknowledgeInstructions(id))
           return fail(cb, "Instructions are not awaiting confirmation.");
+        reply(cb, { ok: true });
+        broadcast(a);
+      }),
+    );
+    socket.on("rite", (data: unknown, cb: unknown) =>
+      withRoom(cb, (a, id) => {
+        const result = riteSchema.safeParse(data);
+        if (!result.success || !a.pickRite(id, result.data.id))
+          return fail(cb, "That upgrade is not on offer.");
         reply(cb, { ok: true });
         broadcast(a);
       }),

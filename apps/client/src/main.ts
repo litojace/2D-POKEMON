@@ -39,6 +39,9 @@ import {
   ULT_SLOT,
   COMBOS,
   DEBUFFS,
+  RITE_BY_ID,
+  RITE_RULES,
+  kitOf,
   skillReady,
   advanceMovement,
   normalize,
@@ -239,6 +242,14 @@ const typingIn = (target: EventTarget | null) =>
 const skillSlot = (action: Action | PadAction) =>
   (SKILL_ACTIONS as readonly string[]).indexOf(action);
 function pressAction(action: Action | PadAction) {
+  // Between rounds the skill keys/buttons pick a rite (1st, 2nd, 3rd, 4th).
+  if (state?.phase === "intermission") {
+    const pick = skillSlot(action);
+    const me = state.players.find((p) => p.id === myId);
+    const id = pick >= 0 ? me?.riteOffer?.[pick] : undefined;
+    if (id) chooseRite(id);
+    return;
+  }
   if (!scene?.canControl()) return;
   audio.unlock();
   const slot = skillSlot(action);
@@ -268,7 +279,58 @@ window.addEventListener("keydown", (e) => {
   // Held keys are tracked in every phase, so movement held through the countdown works at "Fight".
   held.add(e.code);
   if (live) pressAction(action);
+  else if (state?.phase === "intermission" && !$<HTMLDialogElement>("dialog").open)
+    pressAction(action);
 });
+let ritePending = "";
+function chooseRite(id: string) {
+  if (ritePending === id) return;
+  ritePending = id;
+  void request("rite", { id }).then((reply) => {
+    ritePending = "";
+    if (!reply.ok && reply.error) toast(reply.error);
+  });
+}
+document.addEventListener("click", (e) => {
+  const card = (e.target as HTMLElement | null)?.closest?.<HTMLElement>(
+    "[data-rite]",
+  );
+  if (card?.dataset.rite) chooseRite(card.dataset.rite);
+});
+/** Between rounds: the rite choice, or what you and your rivals picked. */
+function riteMarkup(me: Fighter, seconds: number) {
+  const timer = `Next round in ${seconds} second${seconds === 1 ? "" : "s"}`;
+  const chips = (p: Fighter) =>
+    (p.rites ?? [])
+      .map((id) => RITE_BY_ID[id])
+      .filter(Boolean)
+      .map(
+        (r) =>
+          `<span class="rite-chip ${r.tier}" title="${escape(r.text)}">${escape(r.name)}</span>`,
+      )
+      .join("");
+  const offer = me.riteOffer;
+  if (offer?.length) {
+    const comeback = offer.length > RITE_RULES.choices;
+    const cards = offer
+      .map((id) => RITE_BY_ID[id])
+      .map(
+        (r, i) =>
+          `<button class="rite-card ${r.tier}" data-rite="${r.id}"><kbd>${touch.enabled ? i + 1 : escape(keyText(SKILL_ACTIONS[i]))}</kbd><span class="rite-tier">${r.tier === "major" ? "MAJOR RITE" : "RITE"}</span><b>${escape(r.name)}</b><small>${escape(r.text)}</small></button>`,
+      )
+      .join("");
+    return `<p class="rite-intro">Choose an upgrade for the rest of the match${comeback ? " · comeback: one extra choice" : ""}.</p><div class="rite-choices">${cards}</div><p class="rite-timer">${timer} · a choice is made for you when time runs out</p>${me.rites?.length ? `<div class="rite-owned">${chips(me)}</div>` : ""}`;
+  }
+  const rivals = state!.players.filter(
+    (p) => p.id !== myId && p.rites?.length,
+  );
+  return `${me.rites?.length ? `<div class="rite-owned"><em>Your rites</em>${chips(me)}</div>` : ""}${rivals
+    .map(
+      (p) =>
+        `<div class="rite-owned rival"><em>${escape(p.name)}</em>${chips(p)}</div>`,
+    )
+    .join("")}<p class="rite-timer">${state!.players.some((p) => p.riteOffer) ? "Waiting for the others to choose · " : ""}${timer}</p>`;
+}
 window.addEventListener("keyup", (e) => {
   if (!held.delete(e.code)) return;
   const action = actionFor(controlPrefs().bindings, e.code);
@@ -883,7 +945,7 @@ function renderBattle() {
         ? "TEST YOUR SKILLS"
         : "LIVE DUEL"
       : state.phase.toUpperCase();
-  CHARACTERS[me.character].skills.forEach((a, i) => {
+  kitOf(me.character, me.rites).skills.forEach((a, i) => {
     $(`ability-${i}`).title = `${a.name}: ${a.description}`;
     $(`ability-${i}`).setAttribute("aria-label", `${a.name}: ${a.description}`);
     if (i === ULT_SLOT) {
@@ -923,7 +985,7 @@ function renderBattle() {
     me.cooldowns.map((t) => Math.max(0, t - state!.time)),
     Math.max(0, me.dashAt - state.time),
     Math.max(0, me.jumpAt - state.time),
-    CHARACTERS[me.character].skills.map((a) => a.cooldown),
+    kitOf(me.character, me.rites).skills.map((a) => a.cooldown),
     {
       name: CHARACTERS[me.character].basic.name,
       left: Math.max(0, me.basicAt - state.time),
@@ -995,7 +1057,7 @@ function renderBattle() {
         : state.roundWinner
           ? `${escape(state.players.find((p) => p.id === state!.roundWinner)!.name)} takes the round`
           : "Round drawn";
-      details = `Next round in ${Math.ceil(state.remaining)} seconds`;
+      details = riteMarkup(me, Math.ceil(state.remaining));
     }
     if (state.phase === "paused") {
       heading = isTeams() ? "A player disconnected" : "Opponent disconnected";

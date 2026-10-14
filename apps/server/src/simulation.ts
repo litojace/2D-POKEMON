@@ -1,6 +1,10 @@
 import {
   CHARACTERS,
   COMBOS,
+  RITE_BY_ID,
+  RITE_RULES,
+  kitOf,
+  riteOffer,
   DEBUFFS,
   hasMark,
   MODE_SIZE,
@@ -49,6 +53,9 @@ export class Arena {
   winnerTeam: Team | null = null;
   roundWinnerTeam: Team | null = null;
   overtime = false;
+  /** Rites: random source for offers. Seeded per room so bot replays repeat. */
+  random: () => number;
+  roundEndedAt = 0;
   players: Fighter[] = [];
   projectiles: Projectile[] = [];
   zones: Zone[] = [];
@@ -62,6 +69,15 @@ export class Arena {
     mode: MatchMode = "duel",
   ) {
     this.mode = mode;
+    // Small seeded generator (mulberry32) keyed on the room code.
+    let seed = [...code].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619), 2166136261) >>> 0;
+    this.random = () => {
+      seed = (seed + 0x6d2b79f5) >>> 0;
+      let t = seed;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
   }
   /** Round wins needed (best of five in both modes). */
   get roundsToWin() {
@@ -178,6 +194,8 @@ export class Arena {
     for (const p of this.players) {
       p.stats = { dealt: 0, received: 0, skills: 0 };
       p.ult = 0;
+      p.rites = [];
+      p.riteOffer = undefined;
     }
     this.resetRound();
     // Bots have read the instructions; the match starts when the human confirms.
@@ -263,6 +281,54 @@ export class Arena {
         nextTick: this.time + STATUS_RULES.burnInterval,
         ...(by ? { by } : {}),
       });
+  }
+  /** This fighter's abilities with their rites applied. */
+  kit(p: Fighter) {
+    return kitOf(p.character, p.rites);
+  }
+  /** Deal rite choices for the coming round; bots choose straight away. */
+  offerRites(lostTeam: Team | null) {
+    for (const p of this.players) {
+      if (p.out) continue;
+      const extra =
+        lostTeam !== null && this.teamOf(p) === lostTeam
+          ? RITE_RULES.comebackChoices
+          : 0;
+      const offer = riteOffer(
+        p.character,
+        p.rites ?? [],
+        this.round + 1,
+        this.random,
+        extra,
+      );
+      p.riteOffer = offer.length ? offer : undefined;
+      if (p.riteOffer && this.bots.has(p.id))
+        this.pickRite(p.id, this.botRite(p.riteOffer));
+    }
+  }
+  /** Bots favour majors, otherwise any. */
+  botRite(offer: string[]) {
+    const weights = offer.map((id) =>
+      RITE_BY_ID[id]?.tier === "major" ? 3 : 1,
+    );
+    let roll = this.random() * weights.reduce((a, b) => a + b, 0);
+    for (const [i, w] of weights.entries()) if ((roll -= w) < 0) return offer[i];
+    return offer[0];
+  }
+  /** A player picks one of their offered rites. */
+  pickRite(id: string, riteId: string) {
+    const p = this.players.find((q) => q.id === id);
+    if (this.phase !== "intermission" || !p?.riteOffer?.includes(riteId))
+      return false;
+    p.rites = [...(p.rites ?? []), riteId];
+    p.riteOffer = undefined;
+    // Everyone has chosen: move on soon (but let the result be read).
+    if (this.players.every((q) => !q.riteOffer))
+      this.deadline = Math.min(
+        this.deadline,
+        Math.max(this.time + 1, this.roundEndedAt + RITE_RULES.minSeconds),
+      );
+    return true;
   }
   has(p: Fighter, kind: StatusKind) {
     return p.statuses.some((s) => s.kind === kind && s.until > this.time);
@@ -405,7 +471,13 @@ export class Arena {
     const selfPrimed =
       !!combo.self && a.id === combo.payoff && hasMark(p, p.id, this.time);
     if (combo.self && !combo.onAbsorb && a.id === combo.setup)
-      this.status(p, "mark", combo.window, p.id);
+      // A longer Kindle (rite) keeps its combo for as long as it lasts.
+      this.status(
+        p,
+        "mark",
+        a.kind === "buff" ? Math.max(combo.window, a.duration) : combo.window,
+        p.id,
+      );
     const projectile = (offset: number) => {
       if (this.projectiles.length >= RULES.maxProjectiles) return;
       this.projectiles.push({
@@ -508,7 +580,9 @@ export class Arena {
       if (this.events.length > 80) this.events.shift();
     }
     if (a.kind === "cone") {
-      const skill = CHARACTERS[p.character].skills.indexOf(a);
+      const skill = CHARACTERS[p.character].skills.findIndex(
+        (k) => k.id === a.id,
+      );
       p.channel = {
         until: this.time + a.duration,
         nextTick: this.time + (a.tickDelay ?? 0.1),
@@ -561,6 +635,9 @@ export class Arena {
     if (this.phase === "countdown" || this.phase === "intermission") {
       if (this.time >= this.deadline) {
         if (this.phase === "intermission") {
+          // Time's up: anyone still choosing gets their first option.
+          for (const p of this.players)
+            if (p.riteOffer) this.pickRite(p.id, p.riteOffer[0]);
           this.round++;
           this.resetRound();
         } else {
@@ -655,16 +732,17 @@ export class Arena {
       }
       advanceMovement(p, input, dt, this.time);
       if (p.charge && this.time >= p.charge.at) {
-        this.cast(p, CHARACTERS[p.character].skills[p.charge.skill]);
+        this.cast(p, this.kit(p).skills[p.charge.skill]);
         p.charge = undefined;
       }
       if (!disabled && this.time >= p.recoveryUntil && !p.charge) {
         const character = CHARACTERS[p.character];
+        const kit = this.kit(p);
         if (
           input.skill >= 0 &&
           skillReady(p, input.skill, this.time, freeCooldowns)
         ) {
-          const a = character.skills[input.skill];
+          const a = kit.skills[input.skill];
           if (input.skill === ULT_SLOT) {
             // The ultimate spends the whole meter instead of a cooldown.
             if (!freeCooldowns) p.ult = 0;
@@ -685,8 +763,8 @@ export class Arena {
           // The interval is enforced here, so flooding inputs cannot fire faster.
           p.basicAt =
             this.time + basicInterval(character, this.has(p, "empower"));
-          p.recoveryUntil = this.time + character.basic.recovery;
-          this.cast(p, character.basic);
+          p.recoveryUntil = this.time + kit.basic.recovery;
+          this.cast(p, kit.basic);
         }
       }
       input.dash = false;
@@ -695,7 +773,7 @@ export class Arena {
       input.skill = -1;
       if (p.clone && p.clone.until <= this.time) p.clone = undefined;
       if (p.channel) {
-        const a = CHARACTERS[p.character].skills[p.channel.skill];
+        const a = this.kit(p).skills[p.channel.skill];
         if (a && this.time >= p.channel.nextTick) {
           p.channel.nextTick += a.tickInterval ?? 0.2;
           for (const enemy of this.enemiesOf(p))
@@ -895,7 +973,14 @@ export class Arena {
       this.phase = "finished";
     } else {
       this.phase = "intermission";
+      this.roundEndedAt = this.time;
       this.deadline = this.time + RULES.intermission;
+      if (!this.practice) {
+        this.deadline = this.time + RITE_RULES.seconds;
+        this.offerRites(
+          team === null ? null : ((1 - team) as Team),
+        );
+      }
     }
   }
   /** End the match in favour of `id`'s team (opponents left or gave up). */

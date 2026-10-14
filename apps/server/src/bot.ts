@@ -55,7 +55,7 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
     smartUltimate: false,
     fooledByClone: 0.85,
     engage: 0.01,
-    rest: 0.44,
+    rest: 0.42,
   },
   normal: {
     reaction: 0.48,
@@ -63,12 +63,12 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
     lead: 0.2,
     dodge: 0.12,
     think: 0.25,
-    skillUse: 0.36,
+    skillUse: 0.42,
     hesitate: 0.18,
     smartUltimate: false,
     fooledByClone: 0.5,
     engage: 0.02,
-    rest: 0.4,
+    rest: 0.34,
   },
   hard: {
     reaction: 0.25,
@@ -503,7 +503,7 @@ export class BotBrain {
   ) {
     const t = arena.time;
     if (me.charge || me.channel || t < me.recoveryUntil) return -1;
-    const skills = CHARACTERS[me.character].skills;
+    const skills = arena.kit(me).skills;
     let best = -1,
       bestScore = 0;
     skills.forEach((a: Ability, i) => {

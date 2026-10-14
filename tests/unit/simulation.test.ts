@@ -131,7 +131,9 @@ describe("authoritative simulation", () => {
     a.tick();
     expect(a.scores.one).toBe(1);
     expect(a.phase).toBe("intermission");
-    for (let i = 0; i < 125; i++) a.tick();
+    // Both pick a rite, so the break ends after the short minimum.
+    for (const p of a.players) a.pickRite(p.id, p.riteOffer![0]);
+    for (let i = 0; i < 80; i++) a.tick();
     expect(a.phase).toBe("countdown");
     expect(a.players[1].hp).toBe(CHARACTERS.cindrake.health);
     expect(a.players[0].cooldowns).toEqual([0, 0, 0, 0]);

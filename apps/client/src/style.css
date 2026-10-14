@@ -967,6 +967,107 @@ footer > span:last-child {
 .overlay-card button {
   margin: 20px 5px 0;
 }
+/* Rites: round upgrades chosen between rounds. */
+.rite-intro {
+  margin: 0 0 12px;
+  color: #d9e6f5;
+  font-size: 13px;
+}
+.rite-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  width: min(720px, 86vw);
+  margin: 0 auto;
+}
+.overlay-card .rite-card {
+  position: relative;
+  display: grid;
+  gap: 5px;
+  align-content: start;
+  margin: 0;
+  padding: 14px 12px 12px;
+  min-height: 118px;
+  text-align: left;
+  background: #0d1a2e;
+  border: 1px solid #ffffff1f;
+  border-radius: 12px;
+  color: #e5efda;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.rite-card:hover,
+.rite-card:focus-visible {
+  border-color: #ffd65b;
+  background: #15263f;
+}
+.rite-card.major {
+  border-color: #ffb34788;
+  background: linear-gradient(160deg, #2a1f10, #0d1a2e 70%);
+}
+.rite-card kbd {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 10px;
+  padding: 2px 6px;
+}
+.rite-tier {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: #9aacc9;
+}
+.rite-card.major .rite-tier {
+  color: #ffb347;
+}
+.rite-card b {
+  font-size: 16px;
+}
+.rite-card small {
+  font-size: 12px;
+  line-height: 1.4;
+  color: #c3d0e2;
+}
+.rite-timer {
+  margin: 12px 0 0;
+  font-size: 11px;
+}
+.rite-owned {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 0;
+}
+.rite-owned em {
+  font-style: normal;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-right: 4px;
+}
+.rite-chip {
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid #ffffff26;
+  background: #0d1a2e;
+  color: #e5efda;
+  font-size: 11px;
+}
+.rite-chip.major {
+  border-color: #ffb347aa;
+  color: #ffcf8a;
+}
+@media (max-height: 500px) {
+  .rite-card {
+    min-height: 0;
+    padding: 10px;
+  }
+  .rite-card small {
+    font-size: 11px;
+  }
+}
 .result-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
