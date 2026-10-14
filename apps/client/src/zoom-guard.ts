@@ -82,7 +82,7 @@ export function setZoomLock(on: boolean) {
   ];
   for (const [type, listener] of listeners)
     if (on) document.addEventListener(type, listener, passiveOff);
-    else document.removeEventListener(type, listener, passiveOff);
+    else document.removeEventListener(type, listener);
   lastTap = -Infinity;
 }
 
