@@ -163,7 +163,7 @@ const AURAS: Record<CharacterId, (k: Kit, id: CharacterId) => TraitAura> = {
       )
       .join(
         "",
-      )}<g transform="translate(100 112) rotate(-14) scale(1 .34)"><g class="ta-c"${k.anim("spin", 5)}><circle r="104" fill="none" stroke="#4fd6e6" stroke-width="9" stroke-dasharray="120 40 60 60" opacity=".55"/><circle r="104" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-dasharray="60 100 30 90" opacity=".8"/></g></g>`,
+      )}<g transform="translate(100 122) scale(1 .34)"><g class="ta-c"${k.anim("spin", 5)}><circle r="88" fill="none" stroke="#4fd6e6" stroke-width="9" stroke-dasharray="104 34 52 52" opacity=".55"/><circle r="88" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-dasharray="52 86 26 78" opacity=".8"/></g></g>`,
     front: k.rising(
       12,
       (x, y, i) =>
