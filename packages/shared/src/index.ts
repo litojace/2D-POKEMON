@@ -964,6 +964,11 @@ export interface GameEvent extends Vec {
   color: number;
   value?: number;
   owner?: string;
+  /** Hit events: who was hit and who dealt it. */
+  target?: string;
+  source?: string;
+  /** Hit events: this hit knocked the target out. */
+  ko?: boolean;
 }
 export type Phase =
   | "lobby"

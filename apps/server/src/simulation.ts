@@ -289,6 +289,11 @@ export class Arena {
       undefined,
       ability?.id,
     );
+    Object.assign(this.events[this.events.length - 1], {
+      target: target.id,
+      source: owner,
+      ko: target.hp <= 0,
+    });
     if (counter && source && source !== target && source.hp > 0) {
       const reflected = Math.min(
         source.hp,

@@ -71,6 +71,7 @@ import { PAD_LABELS, firstPad, readPad, type PadAction } from "./gamepad";
 import { drawPreview, previewShape } from "./skill-preview";
 import { controlsCapturing, showControlsScreen } from "./controls-screen";
 import { watchBattleZoom } from "./zoom-guard";
+import { KO_FEEL, hitFeel, hitStrength, rumble } from "./game-feel";
 import { lockScrollWhileOpen } from "./scroll-lock";
 const audio = new AudioManager();
 const allAbilities = new Map(
@@ -1159,6 +1160,15 @@ class ArenaScene extends Phaser.Scene {
   graphics!: Phaser.GameObjects.Graphics;
   /** World point the local fighter is aiming at (for the skill preview). */
   aimPoint = { x: 800, y: 450 };
+  /** Presentation clock (ms): pauses during hit-stop; rigs and auras use it. */
+  feelClock = 0;
+  /** performance.now() until which fighters freeze (hit-stop). */
+  stopUntil = 0;
+  /** Fighter id → performance.now() until which it flashes white. */
+  flashUntil = new Map<string, number>();
+  /** Knockout moment: camera push-in multiplier and its end time. */
+  koZoom = 1;
+  koUntil = 0;
   accumulator = 0;
   actions = { skill: -1, dash: false, jump: false, basic: false };
   canControl() {
@@ -1224,9 +1234,9 @@ class ArenaScene extends Phaser.Scene {
       if (reset) rig.controller.reset();
       const old = previous?.players.find((other) => other.id === p.id);
       if (!reset && old) {
-        if (p.hp < old.hp) rig.trigger("hurt", this.time.now, 160);
+        if (p.hp < old.hp) rig.trigger("hurt", this.feelClock, 160);
         if (old.jumpUntil > previous!.time && p.jumpUntil <= next.time)
-          rig.trigger("land", this.time.now, 130);
+          rig.trigger("land", this.feelClock, 130);
       }
     }
   }
@@ -1282,7 +1292,7 @@ class ArenaScene extends Phaser.Scene {
             slot >= 0
               ? (`skill${slot}` as "skill0" | "skill1" | "skill2" | "skill3")
               : "basic",
-            this.time.now,
+            this.feelClock,
             slot >= 0
               ? Math.max(
                   c.skills[slot].kind === "cone"
@@ -1304,7 +1314,7 @@ class ArenaScene extends Phaser.Scene {
       if (p)
         this.getRig(p.id, p.character).trigger(
           event.kind,
-          this.time.now,
+          this.feelClock,
           event.kind === "dash"
             ? RULES.dashDuration * 1000
             : event.kind === "jump"
@@ -1348,6 +1358,7 @@ class ArenaScene extends Phaser.Scene {
       );
     if (ability && event.kind === "impact")
       playImpact(this, ability, event.x, event.y, event.color, reducedMotion);
+    if (event.kind === "hit" && event.target) this.feelHit(event);
     if (event.kind === "hit")
       playHit(
         this,
@@ -1393,7 +1404,51 @@ class ArenaScene extends Phaser.Scene {
       });
     }
   }
+  /** Freeze, shake, flash and rumble for one hit, scaled by its size. */
+  feelHit(event: Snapshot["events"][number]) {
+    const role =
+      event.target === myId
+        ? "victim"
+        : event.source === myId
+          ? "attacker"
+          : "spectator";
+    const feel = hitFeel(
+      hitStrength(event.value ?? 0, event.ko),
+      role,
+      reducedMotion,
+    );
+    const now = performance.now();
+    // Burn ticks and other chip damage don't flash, or burning fighters strobe.
+    if ((event.value ?? 0) >= 4)
+      this.flashUntil.set(event.target!, now + feel.flashMs);
+    if (feel.stopMs)
+      this.stopUntil = Math.max(this.stopUntil, now + feel.stopMs);
+    if (feel.shakeMs) this.cameras.main.shake(feel.shakeMs, feel.shake, false);
+    rumble(feel.rumbleMs, feel.rumble);
+    if (event.ko && !reducedMotion) {
+      // Knockout: hold the moment and push the camera in, then ease back.
+      this.koUntil = now + KO_FEEL.holdMs;
+      this.tweens.addCounter({
+        from: 0,
+        to: 1,
+        duration: KO_FEEL.zoomMs,
+        onUpdate: (tween) => {
+          this.koZoom =
+            1 + (KO_FEEL.zoom - 1) * Math.sin(tween.getValue()! * Math.PI);
+        },
+        onComplete: () => (this.koZoom = 1),
+      });
+    }
+  }
   update(_time: number, delta: number) {
+    const feelNow = performance.now();
+    const stopped = feelNow < this.stopUntil;
+    if (!stopped) this.feelClock += delta;
+    this.tweens.timeScale = stopped
+      ? 0.05
+      : feelNow < this.koUntil
+        ? KO_FEEL.tweenSlowdown
+        : 1;
     const me = state?.players.find((p) => p.id === myId);
     const partner =
       me && isTeams() && me.hp <= 0
@@ -1436,7 +1491,9 @@ class ArenaScene extends Phaser.Scene {
       delta,
       reducedMotion,
     );
-    this.cameras.main.setZoom(view.zoomX, view.zoomY).centerOn(view.x, view.y);
+    this.cameras.main
+      .setZoom(view.zoomX * this.koZoom, view.zoomY * this.koZoom)
+      .centerOn(view.x, view.y);
     const aim = screenToWorld(
       this.input.activePointer.x,
       this.input.activePointer.y,
@@ -1583,7 +1640,9 @@ class ArenaScene extends Phaser.Scene {
         p.id !== myId && state.phase === "playing"
           ? remoteFrames.sample(p.id, performance.now())
           : undefined;
-      if (interpolated) {
+      if (stopped) {
+        // Hit-stop: hold everyone in place for a few frames.
+      } else if (interpolated) {
         pos.x = interpolated.x;
         pos.y = interpolated.y;
         p.angle = interpolated.angle;
@@ -1637,7 +1696,7 @@ class ArenaScene extends Phaser.Scene {
           },
           serverPlayer.clone.x,
           serverPlayer.clone.y,
-          this.time.now,
+          this.feelClock,
           0.3,
           reducedMotion,
         );
@@ -1657,7 +1716,7 @@ class ArenaScene extends Phaser.Scene {
           c.element,
           x,
           y + 14,
-          this.time.now / 1000,
+          this.feelClock / 1000,
           stealthed ? 0.5 : 0.9,
         );
         if (serverPlayer.clone)
@@ -1666,7 +1725,7 @@ class ArenaScene extends Phaser.Scene {
             c.element,
             serverPlayer.clone.x,
             serverPlayer.clone.y + 14,
-            this.time.now / 1000,
+            this.feelClock / 1000,
             0.3,
           );
       }
@@ -1703,7 +1762,7 @@ class ArenaScene extends Phaser.Scene {
         },
         x,
         y - jump,
-        this.time.now,
+        this.feelClock,
         serverPlayer.statuses.some((s) => s.kind === "stealth")
           ? p.id === myId
             ? 0.5
@@ -1711,6 +1770,7 @@ class ArenaScene extends Phaser.Scene {
           : 1,
         reducedMotion,
       );
+      if ((this.flashUntil.get(p.id) ?? 0) > feelNow) flashWhite(rig.root);
       if (serverPlayer.statuses.some((s) => s.kind === "shield")) {
         g.fillStyle(c.color, 0.1).fillCircle(x, y - jump - 10, 46);
         g.lineStyle(3, c.color, 0.8).strokeCircle(x, y - jump - 10, 46);
@@ -1822,6 +1882,13 @@ class ArenaScene extends Phaser.Scene {
     g.lineStyle(1, 0xffffff, 0.6).strokeCircle(aim.x, aim.y, 10);
     g.lineBetween(aim.x - 15, aim.y, aim.x - 6, aim.y);
     g.lineBetween(aim.x + 6, aim.y, aim.x + 15, aim.y);
+  }
+}
+/** Paint a fighter solid white for this frame (the rig resets tint each render). */
+function flashWhite(root: Phaser.GameObjects.Container) {
+  for (const child of root.list) {
+    if (child instanceof Phaser.GameObjects.Container) flashWhite(child);
+    else (child as Phaser.GameObjects.Image).setTintFill?.(0xffffff);
   }
 }
 /**
