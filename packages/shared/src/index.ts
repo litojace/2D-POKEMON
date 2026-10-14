@@ -32,7 +32,8 @@ export const KEYS = {
   left: "A",
   down: "S",
   right: "D",
-  skills: ["1", "2", "3", "R"],
+  // Defaults only: players rebind in Settings → Controls (apps/client/src/controls.ts).
+  skills: ["Q", "E", "R", "F"],
   dash: "RMB",
   jump: "SPACE",
 };

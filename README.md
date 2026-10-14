@@ -30,20 +30,24 @@ One Express service serves the frontend and Socket.IO on port 3001. Deploy both 
 
 Create a private room, share its six-character code, select a fighter, and confirm Ready. Both players acknowledge the introduction before the countdown. Win three rounds to win the match (best of five). Solo practice has a respawning target, character switching, reset, unlimited cooldowns and optional target attacks.
 
-**2v2 Teams:** choose *2v2 Teams* before *Create private room* and share the code with three friends. Players pick Blue or Red in the lobby (the host can *Shuffle teams*); the match starts when all four are ready. First team to win three rounds takes it. Attacks never hurt teammates; area attacks hit every enemy inside. A knocked-out player watches their partner until the round ends. If someone leaves mid-match, their partner plays on 2v1; if a whole team leaves, it forfeits. On a time-out the team with more health left (as a share of full health) wins the round.
+**2v2 Teams:** choose _2v2 Teams_ before _Create private room_ and share the code with three friends. Players pick Blue or Red in the lobby (the host can _Shuffle teams_); the match starts when all four are ready. First team to win three rounds takes it. Attacks never hurt teammates; area attacks hit every enemy inside. A knocked-out player watches their partner until the round ends. If someone leaves mid-match, their partner plays on 2v1; if a whole team leaves, it forfeits. On a time-out the team with more health left (as a share of full health) wins the round.
 
-**Solo vs AI bot:** pick a difficulty (Easy, Normal, Hard) under _Or play solo_ and press _Battle an AI bot_. You get a private best-of-five against a bot playing a random fighter. The bot runs on the server (`apps/server/src/bot.ts`) and sends the same inputs a player would, so cooldowns and rules apply to it unchanged. Difficulty sets its reaction delay, aim spread, target leading, dodging, skill use, how often it pauses its attacks, and whether it saves its ultimate for an opening. Simulated win rates against a newcomer-like player (late aim, misses, pauses) are about Easy 23%, Normal 48% and Hard 99%. Against a sharp player with steady aim they are about 1%, 5% and 76%. It walks around pillars, dodges big shots, jumps ground attacks, and can be fooled by decoys. Rematch is instant; *Back to menu* leaves the room.
+**Solo vs AI bot:** pick a difficulty (Easy, Normal, Hard) under _Or play solo_ and press _Battle an AI bot_. You get a private best-of-five against a bot playing a random fighter. The bot runs on the server (`apps/server/src/bot.ts`) and sends the same inputs a player would, so cooldowns and rules apply to it unchanged. Difficulty sets its reaction delay, aim spread, target leading, dodging, skill use, how often it pauses its attacks, and whether it saves its ultimate for an opening. Simulated win rates against a newcomer-like player (late aim, misses, pauses) are about Easy 23%, Normal 48% and Hard 99%. Against a sharp player with steady aim they are about 1%, 5% and 76%. It walks around pillars, dodges big shots, jumps ground attacks, and can be fooled by decoys. Rematch is instant; _Back to menu_ leaves the room.
 
-| Control     | Action                     |
-| ----------- | -------------------------- |
-| WASD        | Move                       |
-| Mouse       | Aim                        |
-| Left mouse  | Basic attack               |
-| 1 / 2 / 3   | Skills 1–3                 |
-| R           | Skill 4                    |
-| Right mouse | Dash                       |
-| Space       | Jump                       |
-| Esc / Menu  | Preferences and leave room |
+Default controls. Every key can be changed in **Settings → Controls & key bindings** (saved per browser), and each action has a backup key:
+
+| Keyboard and mouse       | Controller (Xbox / PlayStation)        | Action                                  |
+| ------------------------ | -------------------------------------- | --------------------------------------- |
+| W A S D (or arrows)      | Left stick or D-pad                    | Move                                    |
+| Mouse                    | Right stick (centred: nearest foe)     | Aim                                     |
+| Left mouse (hold)        | RT / R2 (hold)                         | Basic attack                            |
+| Q / E / R (or 1 / 2 / 3) | X / Y / B (Square / Triangle / Circle) | Skills 1–3                              |
+| F (or 4)                 | RB / R1                                | Ultimate (skill 4)                      |
+| Right mouse (or Shift)   | LB or LT / L1 or L2                    | Dash                                    |
+| Space                    | A / Cross                              | Jump (also "I'm ready" on the briefing) |
+| Esc / Menu               | Start / Options                        | Preferences and leave room              |
+
+Q, E, R and F sit next to W A S D, so you can cast without letting go of movement. **Aim preview** (the default) draws where a skill will land while you hold its key and casts when you let go; a quick tap still casts right away. Switch to **Instant** to cast on key press. **Aim assist** (off by default) snaps mouse basic attacks onto an opponent close to your cursor; skills always go exactly where you aim.
 
 Mobile uses the left joystick and right skill/action buttons, with a separate bottom toolbar. Android/iOS PWA installation, safe-area layout and landscape play are retained. See [mobile/PWA setup](docs/mobile-pwa.md). Matches and sign-in require an internet connection.
 

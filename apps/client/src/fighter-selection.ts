@@ -1,5 +1,6 @@
 import { fighterPack } from "./animation/pack-config";
-import { CHARACTERS, KEYS, type CharacterId } from "@arena/shared";
+import { CHARACTERS, type CharacterId } from "@arena/shared";
+import { actionLabel, controlPrefs, skillLabels } from "./controls";
 import { fighterArt, scopeIds } from "./fighter-art";
 import { abilityIcon } from "./ability-icons";
 import { PLACEHOLDER_FIGHTERS } from "./creature-design";
@@ -38,6 +39,9 @@ const placeholderBadge = (id: CharacterId, label = "PLACEHOLDER") =>
     ? `<span class="art-placeholder" title="Generic stand-in until licensed artwork is added">${label}</span>`
     : "";
 export function fighterSelection(selected: CharacterId, element = "All") {
+  // The player's own keys (Settings → Controls), so the cards teach real controls.
+  const bindings = controlPrefs().bindings,
+    skillKeys = skillLabels(bindings);
   const fighter = CHARACTERS[selected],
     color = hex(fighter.color),
     interval = Math.round((fighter.basic.interval ?? 0.3) * 1000);
@@ -51,8 +55,8 @@ export function fighterSelection(selected: CharacterId, element = "All") {
   const skills = fighter.skills
     .map(
       (a, i) =>
-        `<div><kbd>${KEYS.skills[i]}</kbd>${abilityIcon(a.name)}<span><strong>${a.name}</strong><small>${a.description}</small></span><b>${a.cooldown}s</b></div>`,
+        `<div><kbd>${skillKeys[i]}</kbd>${abilityIcon(a.name)}<span><strong>${a.name}</strong><small>${a.description}</small></span><b>${a.cooldown}s</b></div>`,
     )
     .join("");
-  return `<div class="section-title"><div><span class="eyebrow">THE ROSTER</span><h2>Find your fighter</h2></div></div><div class="roster showcase-roster">${cards}</div><div class="selected-fighter" style="--element:${color}"><div class="selected-art">${art(selected, true, true)}${placeholderBadge(selected, "PLACEHOLDER ART")}<span>${fighter.element.toUpperCase()} · ${fighter.role.toUpperCase()}</span></div><div class="selected-info"><span class="element-pill">${elementIcon(fighter.element)}${fighter.element}</span><h3>${fighter.name}</h3><p>${fighter.description}</p><div class="fighter-stats"><span><b>${fighter.health}</b>Health</span><span><b>${fighter.speed}</b>Move speed</span><span><b>${fighter.basic.damage}</b>Basic damage</span></div><p class="basic-description">${abilityIcon(fighter.basic.name)}<span class="basic-text"><b>${fighter.basic.name}</b> · ${fighter.basic.description} <em>No cooldown · ${interval} ms between attacks</em></span></p></div></div><div class="skill-preview" style="--element:${color}"><div class="skill-preview-heading"><h3>Four special skills</h3><span>${KEYS.skills.join(" / ")}</span></div><div class="preview-skills">${skills}</div></div><p class="universal">Every fighter shares one <b>dash</b> (${KEYS.dash}) and one <b>jump</b> (${KEYS.jump}). Jump clears ground attacks.</p>`;
+  return `<div class="section-title"><div><span class="eyebrow">THE ROSTER</span><h2>Find your fighter</h2></div></div><div class="roster showcase-roster">${cards}</div><div class="selected-fighter" style="--element:${color}"><div class="selected-art">${art(selected, true, true)}${placeholderBadge(selected, "PLACEHOLDER ART")}<span>${fighter.element.toUpperCase()} · ${fighter.role.toUpperCase()}</span></div><div class="selected-info"><span class="element-pill">${elementIcon(fighter.element)}${fighter.element}</span><h3>${fighter.name}</h3><p>${fighter.description}</p><div class="fighter-stats"><span><b>${fighter.health}</b>Health</span><span><b>${fighter.speed}</b>Move speed</span><span><b>${fighter.basic.damage}</b>Basic damage</span></div><p class="basic-description">${abilityIcon(fighter.basic.name)}<span class="basic-text"><b>${fighter.basic.name}</b> · ${fighter.basic.description} <em>No cooldown · ${interval} ms between attacks</em></span></p></div></div><div class="skill-preview" style="--element:${color}"><div class="skill-preview-heading"><h3>Four special skills</h3><span>${skillKeys.join(" / ")}</span></div><div class="preview-skills">${skills}</div></div><p class="universal">Every fighter shares one <b>dash</b> (${actionLabel(bindings, "dash")}) and one <b>jump</b> (${actionLabel(bindings, "jump")}). Jump clears ground attacks.</p>`;
 }

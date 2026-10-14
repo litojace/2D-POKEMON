@@ -31,7 +31,6 @@ import { io } from "socket.io-client";
 import {
   CHARACTERS,
   RULES,
-  KEYS,
   advanceMovement,
   normalize,
   unpackSnapshot,
@@ -50,6 +49,22 @@ import { FollowCamera, screenToWorld, outsideView } from "./follow-camera";
 import { updateNameplate } from "./player-nameplate";
 import { fighterPack } from "./animation/pack-config";
 import { fullscreenLandscape } from "./orientation";
+import {
+  SKILL_ACTIONS,
+  SkillCaster,
+  actionFor,
+  actionLabel,
+  assistAim,
+  bindingsKey,
+  controlPrefs,
+  movementLabel,
+  onControlPrefs,
+  skillLabels,
+  type Action,
+} from "./controls";
+import { PAD_LABELS, firstPad, readPad, type PadAction } from "./gamepad";
+import { drawPreview, previewShape } from "./skill-preview";
+import { controlsCapturing, showControlsScreen } from "./controls-screen";
 const audio = new AudioManager();
 const allAbilities = new Map(
   Object.values(CHARACTERS)
@@ -94,7 +109,7 @@ const escape = (s: string) =>
       ]!,
   );
 document.querySelector("#app")!.innerHTML =
-  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><details class="header-menu" id="header-menu"><summary>☰ <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">Settings</button><button class="quiet" id="install-app">Want fullscreen?</button><button class="quiet" id="report-problem">Report a problem</button><span class="connection" id="connection">Connecting</span></div></details><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-stage"><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span>WASD <b>Move</b> · Mouse <b>Aim</b> · LMB <b>Basic</b> · 1 / 2 / 3 / R <b>Skills</b> &middot; RMB <b>Dash</b> &middot; SPACE <b>Jump</b></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>ELEMENT ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Eight creatures. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
+  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><details class="header-menu" id="header-menu"><summary>☰ <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">Settings</button><button class="quiet" id="install-app">Want fullscreen?</button><button class="quiet" id="report-problem">Report a problem</button><span class="connection" id="connection">Connecting</span></div></details><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-stage"><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span id="control-hints"></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>ELEMENT ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Eight creatures. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
 const headerMenu = $("header-menu") as HTMLDetailsElement;
 headerMenu.addEventListener("click", (event) => {
   if ((event.target as Element).closest("button")) headerMenu.open = false;
@@ -181,11 +196,160 @@ if (touch.available)
     $("battle-menu").parentElement!,
     $("practice-controls"),
   );
+// ---- Keyboard, mouse and controller (bindings live in controls.ts) ----
+/** Physical keys and mouse buttons ("KeyQ", "Mouse0") currently held. */
+const held = new Set<string>();
+const caster = new SkillCaster();
+let padHeld = new Set<PadAction>();
+/** The controller was used last (aim from the right stick, pad labels). */
+let usingPad = false;
+const typingIn = (target: EventTarget | null) =>
+  target instanceof HTMLElement &&
+  (target.isContentEditable ||
+    /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
+const skillSlot = (action: Action | PadAction) =>
+  (SKILL_ACTIONS as readonly string[]).indexOf(action);
+function pressAction(action: Action | PadAction) {
+  if (!scene?.canControl()) return;
+  audio.unlock();
+  const slot = skillSlot(action);
+  if (slot >= 0) {
+    const cast = caster.press(slot, controlPrefs().cast);
+    if (cast >= 0) scene.actions.skill = cast;
+  } else if (action === "dash") scene.actions.dash = true;
+  else if (action === "jump") scene.actions.jump = true;
+  else if (action === "basic") scene.actions.basic = true;
+}
+function releaseAction(action: Action | PadAction) {
+  const slot = skillSlot(action);
+  if (slot < 0) return;
+  const cast = caster.release(slot, controlPrefs().cast);
+  if (cast >= 0 && scene?.canControl()) scene.actions.skill = cast;
+}
+const matchKeys = () =>
+  state?.phase === "playing" && !$<HTMLDialogElement>("dialog").open;
+window.addEventListener("keydown", (e) => {
+  if (controlsCapturing() || typingIn(e.target)) return;
+  const action = actionFor(controlPrefs().bindings, e.code);
+  if (!action) return;
+  const live = matchKeys();
+  if (live) e.preventDefault(); // Space, arrows and friends must not scroll or click.
+  if (e.repeat) return;
+  usingPad = false;
+  // Held keys are tracked in every phase, so movement held through the countdown works at "Fight".
+  held.add(e.code);
+  if (live) pressAction(action);
+});
+window.addEventListener("keyup", (e) => {
+  if (!held.delete(e.code)) return;
+  const action = actionFor(controlPrefs().bindings, e.code);
+  if (action) releaseAction(action);
+});
+// mousedown/mouseup fire for every button (pointer events skip chorded buttons).
+$("game").addEventListener("mousedown", (e) => {
+  audio.unlock();
+  if (touch.enabled) return;
+  const code = `Mouse${e.button}`;
+  usingPad = false;
+  if (e.button === 1) e.preventDefault(); // No middle-click autoscroll.
+  held.add(code);
+  const action = actionFor(controlPrefs().bindings, code);
+  if (action && matchKeys()) pressAction(action);
+});
+window.addEventListener("mouseup", (e) => {
+  const code = `Mouse${e.button}`;
+  if (!held.delete(code)) return;
+  const action = actionFor(controlPrefs().bindings, code);
+  if (action) releaseAction(action);
+});
+$("game").addEventListener("mousemove", () => (usingPad = false));
+window.addEventListener("blur", () => {
+  held.clear();
+  caster.cancel();
+});
+const heldAction = (action: Action) =>
+  controlPrefs().bindings[action].some((code) => !!code && held.has(code));
+/** Poll the controller once per frame; returns its movement for this frame. */
+function pollPad() {
+  const pad = firstPad();
+  if (!pad) {
+    for (const action of padHeld) releaseAction(action);
+    padHeld = new Set();
+    return undefined;
+  }
+  const frame = readPad(pad, padHeld);
+  padHeld = frame.held;
+  if (frame.active) usingPad = true;
+  for (const action of frame.pressed) {
+    if (action === "menu") {
+      const open = $<HTMLDialogElement>("dialog");
+      if (open.open) $("close-dialog")?.click();
+      else if (state && state.phase !== "lobby") showSettings();
+    } else if (action === "jump" && state?.phase === "briefing")
+      document.getElementById("instructions-ready")?.click();
+    else pressAction(action);
+  }
+  for (const action of frame.released) releaseAction(action);
+  return frame;
+}
+window.addEventListener("gamepadconnected", () =>
+  toast(
+    "Controller connected: left stick moves, right stick aims, RT attacks. See Settings → Controls.",
+  ),
+);
+/** Key label for an action; controller button names while a pad is in use. */
+function keyText(action: Action) {
+  if (usingPad) {
+    if (action in PAD_LABELS) return PAD_LABELS[action as PadAction];
+    return "L-STICK";
+  }
+  return actionLabel(controlPrefs().bindings, action);
+}
+const moveText = () =>
+  usingPad ? "L-STICK" : movementLabel(controlPrefs().bindings);
+const skillsText = () =>
+  usingPad
+    ? SKILL_ACTIONS.map((a) => PAD_LABELS[a]).join(" ")
+    : skillLabels(controlPrefs().bindings).join(" ");
+/** The controls cheat sheet used by the briefing and How to play. */
+function controlsList(full = false) {
+  const aimHow = usingPad ? "right stick to aim" : "mouse to aim";
+  const casting =
+    controlPrefs().cast === "preview"
+      ? " · hold to preview, release to cast"
+      : "";
+  return `<div class="controls-list"><span><kbd>${escape(moveText())}</kbd>Move · ${aimHow}</span><span><kbd>${escape(keyText("basic"))}</kbd>Basic attack${full ? " · hold to keep attacking" : ""}</span><span><kbd>${escape(skillsText())}</kbd>Four skills · the last is your ultimate${casting}</span><span><kbd>${escape(keyText("dash"))}</kbd>Dash${full ? " · 3 second cooldown" : ""}</span><span><kbd>${escape(keyText("jump"))}</kbd>Jump over ground attacks</span>${full ? "<span><kbd>ESC</kbd>Settings · change keys under Controls</span>" : ""}</div>`;
+}
+let labelState = "";
+/** Keep HUD key labels in step with bindings and the device in use. */
+function refreshControlLabels() {
+  const now = `${bindingsKey()}:${usingPad}:${controlPrefs().cast}`;
+  if (now === labelState) return;
+  labelState = now;
+  for (const kbd of document.querySelectorAll<HTMLElement>(
+    "#abilities kbd[data-action]",
+  ))
+    kbd.textContent = keyText(kbd.dataset.action as Action);
+  const hint = (key: string, what: string) => `${escape(key)} <b>${what}</b>`;
+  $("control-hints").innerHTML = [
+    hint(moveText(), "Move"),
+    hint(usingPad ? "R-STICK" : "Mouse", "Aim"),
+    hint(keyText("basic"), "Basic"),
+    hint(skillsText(), "Skills"),
+    hint(keyText("dash"), "Dash"),
+    hint(keyText("jump"), "Jump"),
+  ].join(" · ");
+}
+onControlPrefs(() => {
+  labelState = "";
+  refreshControlLabels();
+});
 function stopControls() {
   touch.reset();
   if (scene) {
     scene.actions = { skill: -1, dash: false, jump: false, basic: false };
-    scene.input.keyboard?.resetKeys();
+    held.clear();
+    caster.cancel();
   }
   if (connected && state?.phase === "playing" && local)
     socket.emit("input", {
@@ -290,8 +454,11 @@ const TEAM_LABELS = ["Blue", "Red"] as const;
 const isTeams = () => state?.mode === "teams";
 /** Living, visible enemies nearest first (aim assist, off-screen arrow). */
 function nearestEnemy(from: { x: number; y: number }, myself: Fighter) {
+  return visibleEnemies(from, myself)[0];
+}
+function visibleEnemies(from: { x: number; y: number }, myself: Fighter) {
   const team = teamOf(myself);
-  return state?.players
+  return (state?.players ?? [])
     .filter(
       (p) =>
         p.id !== myself.id &&
@@ -304,7 +471,7 @@ function nearestEnemy(from: { x: number; y: number }, myself: Fighter) {
       (a, b) =>
         Math.hypot(a.x - from.x, a.y - from.y) -
         Math.hypot(b.x - from.x, b.y - from.y),
-    )[0];
+    );
 }
 type RoomMode = "duel" | "teams";
 let roomMode: RoomMode = (() => {
@@ -568,6 +735,7 @@ function renderBattle() {
   }
   const me = state?.players.find((p) => p.id === myId);
   if (!state || !me) return;
+  queueMicrotask(refreshControlLabels);
   const hudOrder = isTeams()
     ? [
         ...state.players.filter((p) => teamOf(p) === teamOf(me)),
@@ -622,7 +790,7 @@ function renderBattle() {
       .join("");
     const c = CHARACTERS[me.character];
     $("abilities").innerHTML =
-      `<div class="basic-hint" title="${c.basic.name}: ${c.basic.description} No cooldown · ${Math.round((c.basic.interval ?? 0.3) * 1000)} ms between attacks."><kbd>LMB</kbd><span>${abilityIcon(c.basic.name)}<small>${c.basic.name.toUpperCase()}</small></span></div>${c.skills.map((a, i) => `<div class="ability" id="ability-${i}" style="--element:#${c.color.toString(16)}"><kbd>${KEYS.skills[i]}</kbd><span>${abilityIcon(a.name)}<small id="cooldown-${i}">READY</small></span><i class="cooldown-fill" id="fill-${i}"></i></div>`).join("")}<div class="movement-ability"><kbd>RMB</kbd><span>Dash<small id="dash-cd"></small></span></div><div class="movement-ability"><kbd>SPACE</kbd><span>Jump<small id="jump-cd"></small></span></div>`;
+      `<div class="basic-hint" title="${c.basic.name}: ${c.basic.description} No cooldown · ${Math.round((c.basic.interval ?? 0.3) * 1000)} ms between attacks."><kbd data-action="basic">${keyText("basic")}</kbd><span>${abilityIcon(c.basic.name)}<small>${c.basic.name.toUpperCase()}</small></span></div>${c.skills.map((a, i) => `<div class="ability" id="ability-${i}" style="--element:#${c.color.toString(16)}"><kbd data-action="${SKILL_ACTIONS[i]}">${keyText(SKILL_ACTIONS[i])}</kbd><span>${abilityIcon(a.name)}<small id="cooldown-${i}">READY</small></span><i class="cooldown-fill" id="fill-${i}"></i></div>`).join("")}<div class="movement-ability"><kbd data-action="dash">${keyText("dash")}</kbd><span>Dash<small id="dash-cd"></small></span></div><div class="movement-ability"><kbd data-action="jump">${keyText("jump")}</kbd><span>Jump<small id="jump-cd"></small></span></div>`;
   }
   hudOrder.forEach((p, i) => {
     const c = CHARACTERS[p.character];
@@ -736,7 +904,9 @@ function renderBattle() {
             .join('<span class="vs-mark">VS</span>')}</div>`;
       details =
         versus +
-        '<p class="mobile-howto">Touch mode: left joystick to move; big button for basic attacks, the four curved buttons for skills, DASH and JUMP below. Aim follows your nearest opponent. Use Enter fullscreen below the arena.</p><div class="controls-list"><span><kbd>W A S D</kbd>Move · mouse to aim</span><span><kbd>LMB</kbd>Basic attack</span><span><kbd>1 2 3 R</kbd>Four special skills</span><span><kbd>RMB</kbd>Dash</span><span><kbd>SPACE</kbd>Jump over ground attacks</span></div><p>' +
+        '<p class="mobile-howto">Touch mode: left joystick to move; big button for basic attacks, the four curved buttons for skills, DASH and JUMP below. Aim follows your nearest opponent. Use Enter fullscreen below the arena.</p>' +
+        controlsList() +
+        "<p>" +
         (isTeams()
           ? "Stick with your partner and focus the same target. Your attacks pass through your teammate. First team to win three rounds takes the match."
           : "Use cover. First to win three rounds takes the match.") +
@@ -900,7 +1070,9 @@ function dialog(html: string) {
   menuOpen = true;
   $("dialog").innerHTML =
     `<button id="close-dialog" class="close">×</button>${html}`;
-  $<HTMLDialogElement>("dialog").showModal();
+  // Switching screens inside an open dialog (Settings → Controls) keeps it open.
+  if (!$<HTMLDialogElement>("dialog").open)
+    $<HTMLDialogElement>("dialog").showModal();
   $("close-dialog").onclick = () => {
     $<HTMLDialogElement>("dialog").close();
     settingsOpen = false;
@@ -910,7 +1082,7 @@ function dialog(html: string) {
 function showSettings() {
   settingsOpen = true;
   dialog(
-    `<div class="eyebrow">YOUR PREFERENCES</div><h2>Find your rhythm.</h2><p>Online matches keep running while this menu is open.</p><label>MUSIC <input type="range" id="music" min="0" max="1" step=".01" value="${audio.music}"></label><label>SOUND EFFECTS <input type="range" id="effects" min="0" max="1" step=".01" value="${audio.effects}"></label><p>Reduced motion follows your system preference.</p>${touch.settingsHTML()}<button id="settings-report" class="quiet">Report a problem</button>${myId ? '<button id="exit-room" class="secondary">Leave room</button>' : ""}`,
+    `<div class="eyebrow">YOUR PREFERENCES</div><h2>Find your rhythm.</h2><p>Online matches keep running while this menu is open.</p><label>MUSIC <input type="range" id="music" min="0" max="1" step=".01" value="${audio.music}"></label><label>SOUND EFFECTS <input type="range" id="effects" min="0" max="1" step=".01" value="${audio.effects}"></label><p>Reduced motion follows your system preference.</p><button id="open-controls" class="secondary full">Controls &amp; key bindings →</button>${touch.settingsHTML()}<button id="settings-report" class="quiet">Report a problem</button>${myId ? '<button id="exit-room" class="secondary">Leave room</button>' : ""}`,
   );
   for (const kind of ["music", "effects"] as const)
     $(kind).oninput = () => {
@@ -918,8 +1090,19 @@ function showSettings() {
       audio.set(kind, Number($<HTMLInputElement>(kind).value));
     };
   touch.bindSettings();
+  $("open-controls").onclick = showControls;
   $("settings-report").onclick = () => accountsUI.showReport(reportContext());
   if (myId) $("exit-room").onclick = () => void leave();
+}
+/** Settings → Controls (see controls-screen.ts). */
+function showControls() {
+  settingsOpen = true;
+  showControlsScreen({
+    open: dialog,
+    box: $<HTMLDialogElement>("dialog"),
+    onBack: showSettings,
+    padConnected: !!firstPad(),
+  });
 }
 $("mobile-settings").onclick = showSettings;
 $("settings").onclick = showSettings;
@@ -944,7 +1127,7 @@ function reportContext(): Record<string, string> {
 $("report-problem").onclick = () => accountsUI.showReport(reportContext());
 $("help").onclick = () =>
   dialog(
-    `<div class="eyebrow">HOW TO PLAY</div><h2>Every second counts.</h2><p>Create a room, share the code, choose your creatures, and both click Ready. Win three rounds to take the match.</p><div class="controls-list"><span><kbd>W A S D</kbd>Move in eight directions</span><span><kbd>MOUSE</kbd>Aim · left click to attack</span><span><kbd>1 2 3 R</kbd>Four special skills</span><span><kbd>RMB</kbd>Dash · 3 second cooldown</span><span><kbd>SPACE</kbd>Jump · dodge ground attacks</span><span><kbd>ESC</kbd>Settings · the match stays live</span></div><p>Use cover to block shots. Jump over ground zones. Skills recharge in 8–20 seconds; basic attacks never go on cooldown. At a tie, overtime drains both players' health.</p>`,
+    `<div class="eyebrow">HOW TO PLAY</div><h2>Every second counts.</h2><p>Create a room, share the code, choose your creatures, and both click Ready. Win three rounds to take the match.</p>${controlsList(true)}<p>Use cover to block shots. Jump over ground zones. Skills recharge in 8–20 seconds; basic attacks never go on cooldown. At a tie, overtime drains both players' health.</p>`,
   );
 $("credits").onclick = () =>
   dialog(
@@ -955,14 +1138,6 @@ $<HTMLDialogElement>("dialog").addEventListener("close", () => {
   menuOpen = false;
 });
 document.addEventListener("keydown", (e) => {
-  if (
-    e.code === "Space" &&
-    state?.phase === "playing" &&
-    !$<HTMLDialogElement>("dialog").open
-  ) {
-    if (!e.repeat && scene?.canControl()) scene.actions.jump = true;
-    e.preventDefault();
-  }
   if (
     e.code === "Escape" &&
     state &&
@@ -977,7 +1152,8 @@ renderMenu();
 
 class ArenaScene extends Phaser.Scene {
   graphics!: Phaser.GameObjects.Graphics;
-  keys!: Record<string, Phaser.Input.Keyboard.Key>;
+  /** World point the local fighter is aiming at (for the skill preview). */
+  aimPoint = { x: 800, y: 450 };
   accumulator = 0;
   actions = { skill: -1, dash: false, jump: false, basic: false };
   canControl() {
@@ -1075,26 +1251,8 @@ class ArenaScene extends Phaser.Scene {
       .setDepth(-10);
     new ResizeObserver(() => fitRenderer()).observe($("game"));
     this.graphics = this.add.graphics();
-    this.keys = this.input.keyboard!.addKeys(
-      "W,A,S,D,ONE,TWO,THREE,R,SPACE",
-      false,
-    ) as Record<string, Phaser.Input.Keyboard.Key>;
+    // Keys and mouse buttons are read through the player's bindings (see pressAction).
     this.input.mouse!.disableContextMenu();
-    ["ONE", "TWO", "THREE", "R"].forEach((key, i) =>
-      this.keys[key].on("down", () => {
-        if (this.canControl()) this.actions.skill = i;
-      }),
-    );
-    this.keys.SPACE.on("down", () => {
-      if (this.canControl()) this.actions.jump = true;
-    });
-    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
-      audio.unlock();
-      if (!touch.enabled && this.canControl() && pointer.leftButtonDown())
-        this.actions.basic = true;
-      if (!touch.enabled && this.canControl() && pointer.rightButtonDown())
-        this.actions.dash = true;
-    });
     this.scale.refresh();
   }
   effect(event: Snapshot["events"][number]) {
@@ -1305,8 +1463,10 @@ class ArenaScene extends Phaser.Scene {
         this.labels.delete(id);
         this.positions.delete(id);
       }
+    const pad = pollPad();
     if (!this.canControl()) {
       this.actions = { skill: -1, dash: false, jump: false, basic: false };
+      caster.cancel();
       touch.reset();
     }
     if (!state || state.phase === "lobby") {
@@ -1318,7 +1478,6 @@ class ArenaScene extends Phaser.Scene {
     while (this.accumulator >= 1000 / RULES.tick) {
       this.accumulator -= 1000 / RULES.tick;
       if (!connected || state.phase !== "playing" || !local) continue;
-      const pointer = this.input.activePointer;
       const active =
         this.canControl() &&
         !settingsOpen &&
@@ -1326,27 +1485,44 @@ class ArenaScene extends Phaser.Scene {
         !$<HTMLDialogElement>("dialog").open &&
         document.hasFocus() &&
         !document.hidden;
-      const target = nearestEnemy(local, local);
-      const mobileAim = touch.enabled && target;
+      const enemies = visibleEnemies(local, local);
+      const target = enemies[0];
+      const skill = active ? this.actions.skill : -1;
+      const keyX = Number(heldAction("right")) - Number(heldAction("left")),
+        keyY = Number(heldAction("down")) - Number(heldAction("up"));
+      // Aim: touch and an idle right stick follow the nearest opponent;
+      // the right stick aims by direction and tilt; otherwise the mouse.
+      let aimAt = { x: aim.x, y: aim.y };
+      if (touch.enabled && target) aimAt = target;
+      else if (usingPad && pad?.aim) {
+        const tilt = Math.hypot(pad.aim.x, pad.aim.y),
+          reach = 90 + 410 * tilt;
+        aimAt = {
+          x: local.x + (pad.aim.x / tilt) * reach,
+          y: local.y + (pad.aim.y / tilt) * reach,
+        };
+      } else if (usingPad && target) aimAt = target;
+      else if (usingPad) aimAt = this.aimPoint;
+      else if (controlPrefs().aimAssist && skill < 0)
+        aimAt = assistAim(aimAt, enemies);
+      aimAt = {
+        x: Phaser.Math.Clamp(aimAt.x, 0, RULES.width),
+        y: Phaser.Math.Clamp(aimAt.y, 0, RULES.height),
+      };
+      this.aimPoint = aimAt;
       const input: Input = {
         seq: ++seq,
-        dx: active
-          ? touch.enabled
-            ? touch.dx
-            : Number(this.keys.D.isDown) - Number(this.keys.A.isDown)
-          : 0,
-        dy: active
-          ? touch.enabled
-            ? touch.dy
-            : Number(this.keys.S.isDown) - Number(this.keys.W.isDown)
-          : 0,
-        aimX: mobileAim ? target.x : Phaser.Math.Clamp(aim.x, 0, 1600),
-        aimY: mobileAim ? target.y : Phaser.Math.Clamp(aim.y, 0, 900),
+        dx: active ? (touch.enabled ? touch.dx : keyX || (pad?.dx ?? 0)) : 0,
+        dy: active ? (touch.enabled ? touch.dy : keyY || (pad?.dy ?? 0)) : 0,
+        aimX: aimAt.x,
+        aimY: aimAt.y,
         basic:
           active &&
-          ((touch.enabled ? touch.basic : pointer.leftButtonDown()) ||
+          ((touch.enabled
+            ? touch.basic
+            : heldAction("basic") || !!pad?.held.has("basic")) ||
             this.actions.basic),
-        skill: active ? this.actions.skill : -1,
+        skill,
         dash: active && this.actions.dash,
         jump: active && this.actions.jump,
       };
@@ -1380,6 +1556,18 @@ class ArenaScene extends Phaser.Scene {
       g.fillStyle(0xffffff, 1)
         .fillRect(orb.x - 3, orb.y - 10, 6, 20)
         .fillRect(orb.x - 10, orb.y - 3, 20, 6);
+    }
+    // Aim preview: where the held skill lands if released now (dim while recharging).
+    const previewer = state.players.find((p) => p.id === myId);
+    if (caster.aiming >= 0 && local && previewer && this.canControl()) {
+      const ability = CHARACTERS[local.character].skills[caster.aiming];
+      if (ability)
+        drawPreview(
+          g,
+          previewShape(ability, local, this.aimPoint),
+          CHARACTERS[local.character].color,
+          state.time >= (previewer.cooldowns[caster.aiming] ?? 0),
+        );
     }
     for (const serverPlayer of state.players) {
       const p = serverPlayer.id === myId && local ? local : serverPlayer;

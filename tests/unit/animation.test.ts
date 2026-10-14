@@ -82,7 +82,7 @@ it("identifies basic attacks and all thirty-two skills in the existing event str
     }
   }
 });
-it("uses 1, 2, 3 and R for the four skills and right mouse for dash", () => {
-  expect(KEYS.skills).toEqual(["1", "2", "3", "R"]);
+it("defaults to Q, E, R and F for the four skills and right mouse for dash", () => {
+  expect(KEYS.skills).toEqual(["Q", "E", "R", "F"]);
   expect(KEYS.dash).toBe("RMB");
 });
