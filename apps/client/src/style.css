@@ -4904,3 +4904,10 @@ html.zoom-locked dialog input {
       transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 }
+/* Dialogs scroll on their own; reaching their end never scrolls the page. */
+dialog {
+  overscroll-behavior: contain;
+}
+html.scroll-locked {
+  overflow: hidden;
+}
