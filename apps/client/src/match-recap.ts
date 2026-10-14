@@ -57,7 +57,10 @@ export type RecordState =
   | { status: "unavailable"; message: string };
 
 /** Your all-time record against each opponent (and with each partner). */
-export function recordsMarkup(record: RecordState | undefined) {
+export function recordsMarkup(
+  record: RecordState | undefined,
+  friendIds?: Set<string>,
+) {
   if (!record) return "";
   if (record.status === "pending")
     return '<p class="records muted">Saving to your records…</p>';
@@ -69,6 +72,15 @@ export function recordsMarkup(record: RecordState | undefined) {
       return `<span>With ${escape(r.name)}: <b>${r.together}</b> ${r.together === 1 ? "match" : "matches"} together</span>`;
     return `<span>You vs ${escape(r.name)}: <b>${r.wins}–${r.losses}</b> all time</span>`;
   });
+  // Add the people you just played as friends (it's fine if you already are).
+  const add = reply.records
+    .filter((r) => !friendIds?.has(r.id))
+    .map(
+      (r) =>
+        `<button type="button" class="quiet small add-friend" data-add-friend="${escape(r.id)}">+ Add ${escape(r.name)} as a friend</button>`,
+    )
+    .join("");
+  if (add) lines.push(add);
   const note = reply.confirmed
     ? ""
     : '<span class="muted">Counts once everyone’s game has saved it.</span>';

@@ -165,7 +165,7 @@ const escape = (s: string) =>
       ]!,
   );
 document.querySelector("#app")!.innerHTML =
-  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><details class="header-menu" id="header-menu"><summary>☰ <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">Settings</button><button class="quiet" id="leaderboard">Leaderboard</button><button class="quiet" id="install-app">Want fullscreen?</button><button class="quiet" id="report-problem">Report a problem</button><span class="connection" id="connection">Connecting</span></div></details><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-stage"><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span id="control-hints"></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>ELEMENT ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Eight creatures. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
+  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><details class="header-menu" id="header-menu"><summary>☰ <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">How to play</button><button class="quiet" id="settings">Settings</button><button class="quiet" id="friends">Friends</button><button class="quiet" id="leaderboard">Leaderboard</button><button class="quiet" id="install-app">Want fullscreen?</button><button class="quiet" id="report-problem">Report a problem</button><span class="connection" id="connection">Connecting</span></div></details><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-stage"><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span id="control-hints"></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>ELEMENT ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Eight creatures. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
 // Touch battles lock zoom (pinch and double tap); menus keep it for accessibility.
 watchBattleZoom();
 // The page behind settings, help and other dialogs stays put.
@@ -667,6 +667,20 @@ function teamUpNote(me: Fighter) {
     theirs = giftFrom(me.character);
   const myName = me.id === myId ? "You" : escape(me.name);
   return `<p class="teamup-note"><b>Team-up</b> Side by side, you both deal ${Math.round((TEAMUP.damage - 1) * 100)}% more damage. ${myName} get <i>${escape(mine.name)}</i> (${escape(mine.text)}) from ${escape(CHARACTERS[partner.character].name)}; ${escape(partner.name)} gets <i>${escape(theirs.name)}</i> (${escape(theirs.text)}).</p>`;
+}
+/** Join a friend's room from the friends list. */
+async function joinByCode(code: string) {
+  if (!accountsUI.ensurePlayer()) return;
+  if (myId) return toast("Leave your current room first.");
+  if (!connected) return toast("Waiting for the server connection.");
+  if (watching) await stopWatching();
+  audio.unlock();
+  const reply = await request("join", {
+    name: accountsUI.account?.displayName ?? "Player",
+    code,
+  });
+  identity(reply);
+  if (reply.ok) await request("select", selected);
 }
 /** Room code being watched (no seat), or "". */
 let watching = "";
@@ -1342,6 +1356,7 @@ function renderBattle() {
         recapMarkup(state, myId) +
         recordsMarkup(
           state.matchId ? matchRecords.get(state.matchId) : undefined,
+          friendIds,
         );
       details += `<div class="result-actions"><button class="primary" id="rematch">${me.ready ? "Waiting for opponent…" : "Rematch →"}</button><button class="secondary" id="share-result">Share result</button><button class="secondary" id="return">${state.vsBot ? "Back to menu" : "Return to lobby"}</button></div>`;
     }
@@ -1356,6 +1371,14 @@ function renderBattle() {
       };
     if (state.phase === "finished") {
       $("rematch").onclick = () => void request("rematch");
+      document
+        .querySelectorAll<HTMLButtonElement>("[data-add-friend]")
+        .forEach((b) => {
+          b.onclick = () => {
+            b.disabled = true;
+            void accountsUI.friendRequest({ playerId: b.dataset.addFriend });
+          };
+        });
       $("share-result").onclick = () => {
         if (!state) return;
         void shareResult(
@@ -1419,6 +1442,13 @@ socket.on("connect_error", (error: Error) => {
   $("connection").textContent = "LOGIN REQUIRED";
 });
 socket.on("account-changed", () => void accountsUI.refresh());
+socket.on("friends-changed", () => {
+  if (accountsUI.friendsOpen) void accountsUI.loadFriends();
+  else
+    void accountsUI.checkFriendRequests().then((list) => {
+      if (list) friendIds = new Set(list.friends.map((f) => f.id));
+    });
+});
 socket.on("watch-ended", ({ reason }: { reason?: string }) => {
   if (watching) void stopWatching(reason ?? "The room closed.");
 });
@@ -1497,6 +1527,8 @@ socket.on("state", (snapshot: WireSnapshot) => {
   if (state.phase === "lobby") renderMenu();
   else renderBattle();
 });
+/** Your friends' account ids (to skip "Add friend" on the result card). */
+let friendIds = new Set<string>();
 /** Fighter mastery badges on the roster: matches you've played with each. */
 let masteryFor = "";
 function loadMastery(force = false) {
@@ -1507,6 +1539,11 @@ function loadMastery(force = false) {
     return;
   }
   if (id === masteryFor && !force) return;
+  // First load for this account: mention any waiting friend requests.
+  if (id !== masteryFor)
+    void accountsUI.checkFriendRequests().then((list) => {
+      if (list) friendIds = new Set(list.friends.map((f) => f.id));
+    });
   masteryFor = id;
   void accountsUI
     .api("/api/progress")
@@ -1634,6 +1671,7 @@ function reportContext(): Record<string, string> {
 }
 $("report-problem").onclick = () => accountsUI.showReport(reportContext());
 $("leaderboard").onclick = () => void accountsUI.showLeaderboard();
+$("friends").onclick = () => void accountsUI.showFriends();
 $("help").onclick = () =>
   dialog(
     `<div class="eyebrow">HOW TO PLAY</div><h2>Every second counts.</h2><p>Create a room, share the code, choose your creatures, and both click Ready. Win three rounds to take the match.</p>${controlsList(true)}<p>Use cover to block shots. Jump over ground zones. Skills recharge in 8–20 seconds; basic attacks never go on cooldown. In a round's last minute a ring closes in on the centre: stay inside it. Healing orbs (green) restore health; energy orbs (gold) charge your ultimate. At a tie, overtime drains both players' health.</p>`,
@@ -2764,6 +2802,11 @@ function ensureBattleRenderer() {
 }
 accountsUI = new AccountUI({
   openDialog: dialog,
+  joinRoom: (code) => void joinByCode(code),
+  watchRoom: (code) => {
+    if (myId) return toast("Leave your current room first.");
+    void watchRoom(code);
+  },
   notify: toast,
   beforeSignOut: async () => {
     if (myId) await leave();

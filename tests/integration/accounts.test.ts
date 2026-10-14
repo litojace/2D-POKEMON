@@ -675,3 +675,50 @@ it("lets a friend watch a room live without a seat", async () => {
   await emit(b, "leave");
   await expect(ended).resolves.toBeTruthy();
 });
+it("adds live presence to the friends list and pings friends on requests", async () => {
+  const me = accounts.add(false),
+    pal = accounts.add(false);
+  const mine = await connect(me.token),
+    theirs = await connect(pal.token);
+  const room = await emit(theirs, "create", { name: "Pal" });
+  accounts.provider.rpc = async (_token, name) => {
+    if (name === "arena_friends")
+      return {
+        code: "ABCDEF12",
+        friends: [
+          { id: pal.account.id, name: "Pal", title: null, titleColor: null },
+          { id: "00000000-0000-4000-8000-0000000000ff", name: "Away" },
+        ],
+        incoming: [],
+        outgoing: [],
+      };
+    if (name === "arena_friend_request") return "requested";
+    throw new Error("unexpected " + name);
+  };
+  const res = await fetch(`${url}/api/friends`, {
+    headers: { authorization: `Bearer ${me.token}` },
+  });
+  expect(res.status).toBe(200);
+  const body = (await res.json()) as {
+    friends: { name: string; online: boolean; room: string | null; joinable: boolean }[];
+  };
+  expect(body.friends[0]).toMatchObject({
+    name: "Pal",
+    online: true,
+    room: room.code,
+    joinable: true,
+  });
+  expect(body.friends[1]).toMatchObject({ name: "Away", online: false });
+  const pinged = new Promise((resolve) => theirs.once("friends-changed", resolve));
+  const sent = await fetch(`${url}/api/friends/request`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${me.token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ playerId: pal.account.id }),
+  });
+  expect(sent.status).toBe(200);
+  await expect(pinged).resolves.toBeUndefined();
+  void mine;
+});

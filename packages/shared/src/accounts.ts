@@ -214,3 +214,45 @@ export function nextMastery(matches: number) {
   const next = MASTERY_TIERS.find((t) => matches < t.matches);
   return next ? { ...next, left: next.matches - matches } : null;
 }
+
+/** A friend, with what the game server knows about them right now. */
+export const friendSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  title: z.string().nullable().optional(),
+  titleColor: z.string().nullable().optional(),
+  online: z.boolean().optional(),
+  activity: z.enum(["menu", "lobby", "match", "practice"]).nullable().optional(),
+  room: z.string().nullable().optional(),
+  joinable: z.boolean().optional(),
+  fighter: z.string().nullable().optional(),
+});
+export const friendsSchema = z.object({
+  code: z.string(),
+  friends: z.array(friendSchema),
+  incoming: z.array(z.object({ id: z.string(), name: z.string() })),
+  outgoing: z.array(z.object({ id: z.string(), name: z.string() })),
+});
+export type Friend = z.infer<typeof friendSchema>;
+export type FriendList = z.infer<typeof friendsSchema>;
+export const friendRequestSchema = z
+  .object({
+    code: z
+      .string()
+      .trim()
+      .regex(/^[0-9a-fA-F]{8}$/)
+      .optional(),
+    playerId: z.string().uuid().optional(),
+  })
+  .strict()
+  .refine((v) => !!v.code !== !!v.playerId, "Give a friend code or a player.");
+export const friendRespondSchema = z
+  .object({ playerId: z.string().uuid(), accept: z.boolean() })
+  .strict();
+export const friendRemoveSchema = z
+  .object({ playerId: z.string().uuid() })
+  .strict();
+/** Your friend code: the first 8 characters of your account id, upper case. */
+export function friendCode(accountId: string) {
+  return accountId.replace(/-/g, "").slice(0, 8).toUpperCase();
+}

@@ -5615,3 +5615,97 @@ body.spectating #control-hints {
   color: #fff;
   font-weight: 700;
 }
+/* ---- Friends ---- */
+.friend-code-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 6px 0 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.room-code.small-code {
+  padding: 6px 14px;
+  font-size: 18px;
+  letter-spacing: 0.18em;
+  width: auto;
+}
+.friend-add {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.friend-add input {
+  flex: 1 1 160px;
+  min-width: 0;
+  text-transform: uppercase;
+}
+#friends-body h3 {
+  font-size: 13px;
+  margin: 16px 0 6px;
+}
+.friend-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.friend-list li {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid #ffffff17;
+  border-radius: 10px;
+}
+.friend-list li:not(.online) {
+  opacity: 0.7;
+}
+.friend-name {
+  display: grid;
+  min-width: 0;
+}
+.friend-name b,
+.friend-name small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.friend-name small {
+  font-size: 11px;
+  color: var(--muted);
+}
+.friend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #5b6782;
+}
+.friend-dot.menu,
+.friend-dot.lobby {
+  background: #65d38a;
+}
+.friend-dot.match {
+  background: #ffd166;
+}
+.friend-dot.practice {
+  background: #7fd3ff;
+}
+.friend-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+button.small {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+.records .add-friend {
+  margin: 0;
+}
+.overlay-card .records .add-friend {
+  margin: 0;
+}

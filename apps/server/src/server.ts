@@ -57,10 +57,11 @@ import {
   AccountError,
   type AccountProvider,
 } from "./accounts.js";
-import type {
-  Account,
-  OnlineList,
-  OnlinePlayer,
+import {
+  friendCode,
+  type Account,
+  type OnlineList,
+  type OnlinePlayer,
 } from "../../../packages/shared/src/accounts.js";
 import { z, ZodError } from "zod";
 import type { Request, Response, NextFunction } from "express";
@@ -166,6 +167,33 @@ export function createArenaServer(
     },
     listOnline,
     (matchId, accountId) => ledger.forPlayer(matchId, accountId),
+    (accountId) => {
+      const me = listOnline().players.find((p) => p.id === accountId);
+      if (!me) return { online: false, activity: null, room: null };
+      const arena = me.room ? rooms.get(me.room) : undefined;
+      return {
+        online: true,
+        activity: me.activity,
+        room: me.room,
+        fighter: me.fighter,
+        joinable:
+          !!arena &&
+          arena.phase === "lobby" &&
+          arena.players.length < arena.size,
+      };
+    },
+    (target) => {
+      // `target` is an account id, or "code:XXXXXXXX" for a friend code.
+      for (const socket of io.sockets.sockets.values()) {
+        const id = (socket.data.account as Account | undefined)?.id;
+        if (!id) continue;
+        if (
+          id === target ||
+          (target.startsWith("code:") && friendCode(id) === target.slice(5))
+        )
+          socket.emit("friends-changed");
+      }
+    },
   );
   /** Signed-in players with a live connection, merged per account. */
   function listOnline(): OnlineList {

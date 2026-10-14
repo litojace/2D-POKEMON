@@ -11,12 +11,17 @@ import {
   titleGrantSchema,
   equipTitleSchema,
   matchReportSchema,
+  friendsSchema,
+  friendRequestSchema,
+  friendRespondSchema,
+  friendRemoveSchema,
+  type Friend,
   type Account,
   type MatchSummary,
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "004_matches_achievements.sql";
+export const LATEST_MIGRATION = "005_friends.sql";
 export interface AccountProvider {
   authenticate(token: string): Promise<Account | null>;
   rpc(
@@ -108,6 +113,10 @@ export function installAccountRoutes(
     matchId: string,
     accountId: string,
   ) => MatchSummary | undefined = () => undefined,
+  /** Live presence for a friend (online, what they're doing, their room). */
+  presence: (accountId: string) => Partial<Friend> = () => ({ online: false }),
+  /** Tell a player's open games that their friends list changed. */
+  onFriendsChanged: (accountId: string) => void = () => {},
 ) {
   const requests = new Map<string, { count: number; until: number }>();
   app.use("/api", (req, res, next) => {
@@ -196,6 +205,64 @@ export function installAccountRoutes(
       res.json(result);
     }),
   );
+  app.get(
+    "/api/friends",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      const list = friendsSchema.parse(
+        await provider.rpc(token, "arena_friends", {}),
+      );
+      list.friends = list.friends
+        .map((f) => ({ ...f, ...presence(f.id) }))
+        .sort(
+          (a, b) =>
+            Number(!!b.online) - Number(!!a.online) ||
+            a.name.localeCompare(b.name),
+        );
+      res.json(list);
+    }),
+  );
+  app.post(
+    "/api/friends/request",
+    route(false, async (req, res, token) => {
+      const data = friendRequestSchema.parse(req.body);
+      const result = await provider.rpc(token, "arena_friend_request", {
+        p_code: data.code ?? null,
+        p_player: data.playerId ?? null,
+      });
+      // Let the other player's open game know (by id, when we have it).
+      if (data.playerId) onFriendsChanged(data.playerId);
+      else friendsChangedByCode(data.code!);
+      res.json({ result });
+    }),
+  );
+  app.post(
+    "/api/friends/respond",
+    route(false, async (req, res, token) => {
+      const data = friendRespondSchema.parse(req.body);
+      await provider.rpc(token, "arena_friend_respond", {
+        p_from: data.playerId,
+        p_accept: data.accept,
+      });
+      onFriendsChanged(data.playerId);
+      res.json({ ok: true });
+    }),
+  );
+  app.post(
+    "/api/friends/remove",
+    route(false, async (req, res, token) => {
+      const data = friendRemoveSchema.parse(req.body);
+      await provider.rpc(token, "arena_friend_remove", {
+        p_player: data.playerId,
+      });
+      onFriendsChanged(data.playerId);
+      res.json({ ok: true });
+    }),
+  );
+  /** Requests by code: tell whichever online player owns that code. */
+  function friendsChangedByCode(code: string) {
+    onFriendsChanged(`code:${code.toUpperCase()}`);
+  }
   app.get(
     "/api/progress",
     route(false, async (_req, res, token) => {
