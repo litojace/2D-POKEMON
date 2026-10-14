@@ -1150,6 +1150,15 @@ socket.on("connect_error", (error: Error) => {
   $("connection").textContent = "LOGIN REQUIRED";
 });
 socket.on("account-changed", () => void accountsUI.refresh());
+socket.on("token-expired", () => {
+  // The server's copy of our login expired: send the current one, refreshing
+  // it first if the browser's copy has also run out.
+  const token = accountsUI.session?.access_token;
+  const expires = accountsUI.session?.expires_at ?? 0;
+  if (token && expires * 1000 > Date.now() + 30_000)
+    socket.emit("token", { token });
+  else void accountsUI.client?.auth.refreshSession();
+});
 socket.on("access-revoked", ({ error }: { error: string }) => {
   sessionStorage.removeItem("arena-token");
   lobbySelection.reset();
@@ -2299,9 +2308,10 @@ accountsUI = new AccountUI({
     socket.connect();
   },
   onToken: (token) => {
-    // The live connection is already authenticated; the new token is only
-    // needed if the socket ever has to reconnect.
+    // Keep the live connection's login fresh (tokens expire hourly) and use
+    // the new token if the socket ever has to reconnect.
     socket.auth = { accessToken: token };
+    if (socket.connected) socket.emit("token", { token });
   },
   onChange: () => {
     // Re-render only when something the menu shows actually changed.

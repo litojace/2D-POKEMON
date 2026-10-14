@@ -109,6 +109,7 @@ export function createArenaServer(
     try {
       const account = await authorize(accounts, socket.data.accessToken);
       socket.data.account = account;
+      socket.data.expiredChecks = 0;
       const session = getSession(socket.id);
       const arena = session && rooms.get(session.code);
       const fighter = arena?.players.find((p) => p.id === session!.id);
@@ -119,6 +120,17 @@ export function createArenaServer(
       }
       socket.emit("account-changed");
     } catch (error) {
+      // An expired token is normal (Supabase tokens last an hour): ask the
+      // client for its refreshed one instead of kicking it out mid-match.
+      // Only give up if no fresh token arrives for a few checks.
+      if (
+        error instanceof AccountError &&
+        error.status === 401 &&
+        (socket.data.expiredChecks = (socket.data.expiredChecks ?? 0) + 1) <= 4
+      ) {
+        socket.emit("token-expired");
+        return;
+      }
       socket.emit("access-revoked", {
         error: error instanceof Error ? error.message : "Login required.",
       });
@@ -391,6 +403,26 @@ export function createArenaServer(
         return;
       for (const session of owned) detach(session, true);
     };
+    // The client hands over each refreshed login token (they expire hourly).
+    socket.on("token", async (data: unknown, cb: unknown) => {
+      if (!allowed(10)) return fail(cb, "Too many requests.");
+      const token =
+        data && typeof data === "object"
+          ? (data as { token?: unknown }).token
+          : undefined;
+      try {
+        const next = await authorize(accounts, token);
+        const current = account();
+        if (current && current.id !== next.id)
+          return fail(cb, "This connection belongs to a different account.");
+        socket.data.accessToken = token;
+        socket.data.account = next;
+        socket.data.expiredChecks = 0;
+        reply(cb, { ok: true });
+      } catch (error) {
+        fail(cb, error instanceof Error ? error.message : "Login required.");
+      }
+    });
     socket.on("create", (data: unknown, cb: unknown) => {
       if (!requirePlayer(cb)) return;
       if (!allowed(15))

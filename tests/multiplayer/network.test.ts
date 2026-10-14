@@ -417,3 +417,18 @@ it("bounds spam and rejects another player ID in an input payload", async () => 
   expect(arena.players[0].x).toBeLessThan(275);
   expect(arena.players[1].ack).toBe(0);
 });
+it("accepts a refreshed login token for the same account only", async () => {
+  const { token, account } = accounts.add();
+  const socket = await connect(token);
+  accounts.users.set("refreshed-token", account);
+  expect(await emit(socket, "token", { token: "refreshed-token" })).toEqual({
+    ok: true,
+  });
+  const someoneElse = accounts.add();
+  const wrong = await emit(socket, "token", { token: someoneElse.token });
+  expect(wrong.ok).toBe(false);
+  expect(wrong.error).toMatch(/different account/);
+  expect((await emit(socket, "token", { token: "expired" })).ok).toBe(false);
+  // The connection still plays after the refresh.
+  expect((await emit(socket, "create", { name: "Fresh" })).ok).toBe(true);
+});
