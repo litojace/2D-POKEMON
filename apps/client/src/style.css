@@ -4972,3 +4972,7 @@ html.scroll-locked {
     margin-top: 10px;
   }
 }
+/* Lobby: share an invite link right under the room code. */
+.invite-link {
+  margin: -4px 0 14px;
+}

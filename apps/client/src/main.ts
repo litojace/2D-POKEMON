@@ -72,6 +72,12 @@ import { drawPreview, previewShape } from "./skill-preview";
 import { controlsCapturing, showControlsScreen } from "./controls-screen";
 import { watchBattleZoom } from "./zoom-guard";
 import { KO_FEEL, hitFeel, hitStrength, rumble } from "./game-feel";
+import {
+  captureInvite,
+  clearInvite,
+  pendingInvite,
+  shareInvite,
+} from "./invite";
 import { lockScrollWhileOpen } from "./scroll-lock";
 const audio = new AudioManager();
 const allAbilities = new Map(
@@ -101,6 +107,8 @@ let state: Snapshot | undefined,
   pending: Input[] = [],
   scene: ArenaScene | undefined;
 let accountShown = "";
+/** An invite is waiting for sign-in: say so once. */
+let inviteHinted = true;
 /** Which menu screen is showing ("home", "room-duel"…), for entry fades. */
 let menuKind = "";
 let screen = "",
@@ -389,6 +397,8 @@ window.addEventListener("blur", stopControls);
 window.addEventListener("pagehide", stopControls);
 document.addEventListener("visibilitychange", stopControls);
 const pwa = setupPWA(() => state?.phase, dialog, toast);
+// Remember a room from an invite link (?room=ABC123) before the first render.
+if (captureInvite()) inviteHinted = false;
 function wireRoster(isRoom: boolean) {
   document.querySelectorAll<HTMLButtonElement>("[data-character]").forEach(
     (button) =>
@@ -482,7 +492,7 @@ function roomPanel(me: Fighter) {
     return `<div${p.id === myId ? " data-me" : ""}><span class="player-avatar" style="--element:#${fighter.color.toString(16).padStart(6, "0")}" title="${fighter.name}">${fighterAvatar(fighter.id, `lobby${state!.players.indexOf(p)}`)}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small class="player-fighter">${fighter.name}</small></span><b class="status-pill ${!p.connected ? "offline" : p.ready ? "ready" : "choosing"}">${!p.connected ? "Offline" : p.ready ? "Ready" : "Choosing"}</b></div>`;
   };
   const ready = `<button class="primary" id="ready">${me.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full" id="leave">Leave room</button>`;
-  const code = `<button id="copy" class="room-code">${state!.code}<span>${COPY_ICON}COPY CODE</span></button>`;
+  const code = `<button id="copy" class="room-code">${state!.code}<span>${COPY_ICON}COPY CODE</span></button><button id="invite" class="secondary full invite-link">Share invite link</button>`;
   if (!isTeams())
     return `<div class="eyebrow">PRIVATE LOBBY</div><h2>Your duel starts here.</h2><p>Share this code with your friend.</p>${code}<div class="players">${state!.players.map(row).join("")}${state!.players.length < 2 ? '<div class="waiting"><span>＋</span> Waiting for your opponent…</div>' : ""}</div>${ready}<small class="room-note">The match begins when both players are ready.</small>`;
   const mine = teamOf(me),
@@ -538,6 +548,16 @@ function wireRoom() {
       .writeText(state!.code)
       .then(() => toast("Room code copied."))
       .catch(() => toast(`Share this code: ${state!.code}`));
+  $("invite").onclick = () =>
+    void shareInvite(state!.code).then((how) =>
+      toast(
+        how === "copied"
+          ? "Invite link copied. Friends who open it join this room."
+          : how === "failed"
+            ? `Share this code: ${state!.code}`
+            : "Invite sent.",
+      ),
+    );
 }
 function renderMenu() {
   pwa.sync();
@@ -641,6 +661,18 @@ function renderMenu() {
     };
     $("create").onclick = () => void play("create");
     $("join").onclick = () => void play("join");
+    // Opened from an invite link: join as soon as we're signed in and online.
+    const invite = pendingInvite();
+    if (invite) {
+      $<HTMLInputElement>("code").value = invite;
+      if (connected && accountsUI?.account) {
+        clearInvite();
+        void play("join");
+      } else if (!inviteHinted && accountsUI && !accountsUI.account) {
+        inviteHinted = true;
+        toast(`Log in to join room ${invite}. You'll go straight in.`);
+      }
+    }
     document.querySelectorAll<HTMLButtonElement>("[data-bot]").forEach(
       (button) =>
         (button.onclick = () => {
@@ -986,6 +1018,11 @@ function renderBattle() {
 }
 socket.on("connect", () => {
   connected = true;
+  // Invite link opened before the connection was up: try joining now.
+  if (pendingInvite() && !myId && !sessionStorage.getItem("arena-token")) {
+    screen = "";
+    renderMenu();
+  }
   $("connection").textContent = "SERVER CONNECTED";
   $("connection").classList.add("online");
   const token = sessionStorage.getItem("arena-token");
