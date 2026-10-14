@@ -4787,3 +4787,119 @@ html.zoom-locked dialog input {
   -webkit-user-select: text;
   user-select: text;
 }
+
+/* ---- Fighter details open under the selected card ---- */
+.showcase-roster {
+  /* Dense packing: the full-width panel sits right after the selected card and
+     that card's row-mates backfill its row, so the panel lands directly below. */
+  grid-auto-flow: row dense;
+}
+.fighter-detail {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 10px;
+  margin: 2px 0 6px;
+  scroll-margin: 90px 0 24px;
+}
+.fighter-detail .selected-fighter,
+.fighter-detail .skill-preview {
+  margin: 0;
+}
+.fighter-detail .selected-fighter {
+  border-color: color-mix(in srgb, var(--element) 45%, #a4bcd52e);
+}
+
+/* ---- Smooth transitions across the site ----
+   Everything here is skipped for players who ask for reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes ea-rise {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+  }
+  @keyframes ea-fade {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes ea-pop {
+    from {
+      opacity: 0;
+      transform: translateY(8px) scale(0.97);
+    }
+  }
+  @keyframes ea-open {
+    from {
+      opacity: 0;
+      transform: translateY(-10px) scale(0.985);
+    }
+  }
+  /* Screens: menu, room and battle fade up as they appear. */
+  #menu:not([hidden]),
+  #battle:not([hidden]) {
+    animation: ea-fade 0.28s ease-out;
+  }
+  #menu.screen-enter .desktop-lobby-header,
+  #menu.screen-enter .roster-panel,
+  #menu.screen-enter .room-panel {
+    animation: ea-rise 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  #menu.screen-enter .roster-panel {
+    animation-delay: 0.05s;
+  }
+  #menu.screen-enter .room-panel {
+    animation-delay: 0.1s;
+  }
+  /* The fighter panel slides open under the chosen card. */
+  .fighter-detail {
+    animation: ea-open 0.34s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transform-origin: top center;
+  }
+  .fighter-detail .skill-preview {
+    animation: ea-rise 0.4s 0.06s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+  /* Cards respond to hover and taps. */
+  .showcase-roster .showcase-card {
+    transition:
+      transform 0.18s ease,
+      border-color 0.25s ease,
+      box-shadow 0.25s ease,
+      background-color 0.25s ease;
+  }
+  .showcase-roster .showcase-card:active {
+    transform: scale(0.98);
+  }
+  @media (hover: hover) {
+    .showcase-roster .showcase-card:hover {
+      transform: translateY(-2px);
+    }
+  }
+  /* Menu buttons press in slightly (touch battle buttons have their own). */
+  :is(.primary, .secondary, .quiet, .bot-level, .open-slot, .room-code):not(
+      :disabled
+    ):active {
+    transform: scale(0.97);
+  }
+  /* Dialogs and their backdrop ease in. */
+  dialog[open] {
+    animation: ea-pop 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  dialog[open]::backdrop {
+    animation: ea-fade 0.24s ease-out;
+  }
+  /* Briefing, countdown, round and result cards pop in. */
+  .overlay-card:not(:empty) {
+    animation: ea-pop 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  /* Room list rows and the header menu panel. */
+  .header-menu[open] .header-menu-panel {
+    animation: ea-pop 0.18s ease-out;
+  }
+  .toast,
+  #toast {
+    transition:
+      opacity 0.25s ease,
+      transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}

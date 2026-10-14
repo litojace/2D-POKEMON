@@ -1,4 +1,4 @@
-import { fighterSelection } from "./fighter-selection";
+import { fighterSelection, updateRosterSelection } from "./fighter-selection";
 import { LobbySelection } from "./lobby-selection";
 import { setupBattleDock } from "./battle-dock";
 import {
@@ -408,31 +408,7 @@ function wireRoster(isRoom: boolean) {
 function showSelection() {
   const panel = document.querySelector<HTMLElement>("#menu .roster-panel");
   if (!panel) return false;
-  const y = scrollY;
-  const next = document.createElement("template");
-  next.innerHTML = fighterSelection(selected);
-  for (const card of Array.from(
-    panel.querySelectorAll<HTMLButtonElement>("[data-character]"),
-  )) {
-    const on = card.dataset.character === selected;
-    card.classList.toggle("selected", on);
-    card.setAttribute("aria-pressed", String(on));
-    const label = card.querySelector(".card-bottom > span");
-    if (label) label.textContent = on ? "✓ SELECTED" : "SELECT";
-    // Only the selected card wears its trait aura.
-    const artwork = card.querySelector(".card-art"),
-      fresh = next.content.querySelector(
-        `[data-character="${card.dataset.character}"] .card-art`,
-      );
-    if (artwork && fresh && (on || artwork.querySelector(".trait-aura")))
-      artwork.replaceWith(fresh);
-  }
-  for (const part of [".selected-fighter", ".skill-preview"]) {
-    const old = panel.querySelector(part),
-      fresh = next.content.querySelector(part);
-    if (!old || !fresh) return false;
-    old.replaceWith(fresh);
-  }
+  if (!updateRosterSelection(panel, selected, reducedMotion)) return false;
   const me = document.querySelector<HTMLElement>("#menu [data-me]");
   if (me) {
     const fighter = CHARACTERS[selected];
@@ -448,7 +424,6 @@ function showSelection() {
       `lobby${state?.players.findIndex((p) => p.id === myId) ?? 0}`,
     );
   }
-  if (Math.abs(scrollY - y) > 1) scrollTo(0, y);
   return true;
 }
 /** Blue = 0, Red = 1. Older snapshots without teams fall back to seat order. */
@@ -594,6 +569,10 @@ function renderMenu() {
   document.body.classList.remove("battle-active");
   $("battle").hidden = true;
   $("menu").hidden = false;
+  // A new screen (home, room, back from a match) fades up; in-place updates don't.
+  $("menu").classList.remove("screen-enter");
+  void $("menu").offsetWidth;
+  $("menu").classList.add("screen-enter");
   $("menu").innerHTML =
     `<header class="desktop-lobby-header"><div class="eyebrow">ELEMENTAL COLISEUM</div><h1>Choose your fighter</h1><p>Pick your creature. Enter the arena.</p></header><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected)}</div><aside class="room-panel">${
       isRoom
