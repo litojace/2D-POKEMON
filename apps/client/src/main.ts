@@ -109,6 +109,7 @@ import {
 } from "./match-recap";
 import { matchReportReplySchema } from "../../../packages/shared/src/accounts";
 import { setMastery } from "./fighter-selection";
+import { shareResult } from "./share-card";
 const audio = new AudioManager();
 const allAbilities = new Map(
   Object.values(CHARACTERS)
@@ -1198,7 +1199,7 @@ function renderBattle() {
         recordsMarkup(
           state.matchId ? matchRecords.get(state.matchId) : undefined,
         );
-      details += `<button class="primary" id="rematch">${me.ready ? "Waiting for opponent…" : "Rematch →"}</button><button class="secondary" id="return">${state.vsBot ? "Back to menu" : "Return to lobby"}</button>`;
+      details += `<div class="result-actions"><button class="primary" id="rematch">${me.ready ? "Waiting for opponent…" : "Rematch →"}</button><button class="secondary" id="share-result">Share result</button><button class="secondary" id="return">${state.vsBot ? "Back to menu" : "Return to lobby"}</button></div>`;
     }
     const markup = `<div class="overlay-card${state.phase === "countdown" ? " countdown-card" : ""}"><span class="eyebrow">ELEMENT ARENA</span><h2>${heading}</h2><div>${details}</div></div>`;
     // Preserve the pressed button between snapshots so pointer-up can complete its click.
@@ -1211,6 +1212,22 @@ function renderBattle() {
       };
     if (state.phase === "finished") {
       $("rematch").onclick = () => void request("rematch");
+      $("share-result").onclick = () => {
+        if (!state) return;
+        void shareResult(
+          state,
+          myId,
+          import.meta.env.VITE_SITE_URL || location.origin,
+        ).then((how) =>
+          toast(
+            how === "downloaded"
+              ? "Result card saved, and the message copied for pasting."
+              : how === "failed"
+                ? "Couldn’t make the result card on this browser."
+                : "Shared.",
+          ),
+        );
+      };
       // A bot room has no lobby to return to: go back to the menu.
       $("return").onclick = () =>
         void (state?.vsBot ? leave() : request("lobby"));
