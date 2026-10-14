@@ -6,6 +6,8 @@ import {
   RULES,
   SKILL_SLOTS,
   STATUS_RULES,
+  ULT_SLOT,
+  skillReady,
   basicInterval,
   advanceMovement,
   blankInput,
@@ -103,6 +105,7 @@ export class Arena {
       angle: 0,
       ack: 0,
       cooldowns: Array(SKILL_SLOTS).fill(0),
+      ult: 0,
       basicAt: 0,
       dashAt: 0,
       jumpAt: 0,
@@ -170,8 +173,10 @@ export class Arena {
     this.teamScores = [0, 0];
     this.winnerTeam = null;
     this.roundWinnerTeam = null;
-    for (const p of this.players)
+    for (const p of this.players) {
       p.stats = { dealt: 0, received: 0, skills: 0 };
+      p.ult = 0;
+    }
     this.resetRound();
     // Bots have read the instructions; the match starts when the human confirms.
     this.instructionsReady = [...this.bots.keys()];
@@ -257,6 +262,11 @@ export class Arena {
   has(p: Fighter, kind: StatusKind) {
     return p.statuses.some((s) => s.kind === kind && s.until > this.time);
   }
+  /** Add ultimate charge, capped at the meter's size. */
+  chargeUlt(p: Fighter, amount: number) {
+    if (this.phase !== "playing" && this.phase !== "intermission") return;
+    p.ult = Math.min(RULES.ultMax, (p.ult ?? 0) + amount);
+  }
   damage(target: Fighter, amount: number, owner: string, ability?: Ability) {
     if (target.hp <= 0 || this.phase !== "playing") return;
     if (ability?.ground && target.jumpUntil > this.time) return;
@@ -281,6 +291,20 @@ export class Arena {
     target.hp = Math.max(0, target.hp - dealt);
     target.stats.received += dealt;
     if (source) source.stats.dealt += dealt;
+    if (dealt > 0) {
+      this.chargeUlt(target, dealt * RULES.ultPerDamageTaken);
+      if (source && source !== target) {
+        this.chargeUlt(source, dealt * RULES.ultPerDamageDealt);
+        // Landed basic attacks trim the other skills' remaining cooldowns.
+        if (ability?.id === CHARACTERS[source.character].basic.id)
+          for (let k = 0; k < ULT_SLOT; k++)
+            if (source.cooldowns[k] > this.time)
+              source.cooldowns[k] = Math.max(
+                this.time,
+                source.cooldowns[k] - RULES.basicHitCooldownCut,
+              );
+      }
+    }
     this.event(
       "hit",
       target,
@@ -543,6 +567,7 @@ export class Arena {
       const input = p.lastInput;
       const freeCooldowns =
         !!this.practice?.unlimitedCooldowns && p === this.players[0];
+      this.chargeUlt(p, RULES.ultPerSecond * dt);
       if (p.jumpUntil > this.time - dt && p.jumpUntil <= this.time)
         this.event("land", p, CHARACTERS[p.character].color, undefined, p.id);
       const disabled = p.statuses.some(
@@ -577,9 +602,19 @@ export class Arena {
       }
       if (!disabled && this.time >= p.recoveryUntil && !p.charge) {
         const character = CHARACTERS[p.character];
-        if (input.skill >= 0 && this.time >= p.cooldowns[input.skill]) {
+        if (
+          input.skill >= 0 &&
+          skillReady(p, input.skill, this.time, freeCooldowns)
+        ) {
           const a = character.skills[input.skill];
-          p.cooldowns[input.skill] = freeCooldowns ? 0 : this.time + a.cooldown;
+          if (input.skill === ULT_SLOT) {
+            // The ultimate spends the whole meter instead of a cooldown.
+            if (!freeCooldowns) p.ult = 0;
+            p.cooldowns[input.skill] = 0;
+          } else
+            p.cooldowns[input.skill] = freeCooldowns
+              ? 0
+              : this.time + a.cooldown;
           p.stats.skills++;
           p.recoveryUntil =
             this.time +
@@ -791,6 +826,9 @@ export class Arena {
     if (team !== null) {
       this.teamScores[team]++;
       for (const p of members) this.scores[p.id]++;
+      // Comeback: the team that lost the round starts the next with extra charge.
+      for (const p of this.players)
+        if (this.teamOf(p) !== team) this.chargeUlt(p, RULES.ultComeback);
     }
     this.event("round", { x: 800, y: 450 }, 0xffffff);
     if (team !== null && this.teamScores[team] >= this.roundsToWin) {

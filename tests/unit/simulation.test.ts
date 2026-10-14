@@ -3,6 +3,7 @@ import { Arena } from "../../apps/server/src/simulation.js";
 import {
   CHARACTERS,
   RULES,
+  ULT_SLOT,
   advanceMovement,
   blankInput,
   blocked,
@@ -182,6 +183,7 @@ describe("authoritative simulation", () => {
         const a = duel(),
           p = a.players[0];
         p.character = c.id;
+        if (i === ULT_SLOT) p.ult = RULES.ultMax;
         a.submit(p, input({ skill: i, aimX: 420, aimY: 450 }));
         a.tick();
         if (c.skills[i].cast) {
@@ -189,7 +191,8 @@ describe("authoritative simulation", () => {
           for (let j = 0; j < 22; j++) a.tick();
         }
         expect(p.stats.skills).toBe(1);
-        expect(p.cooldowns[i]).toBeGreaterThan(0);
+        if (i === ULT_SLOT) expect(p.ult).toBeLessThan(5);
+        else expect(p.cooldowns[i]).toBeGreaterThan(0);
         if (c.skills[i].kind === "clone") expect(p.clone).toBeDefined();
         const kind = c.skills[i].kind;
         if (kind in selfStatus)

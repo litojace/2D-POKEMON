@@ -334,20 +334,25 @@ export class TouchControls {
     jump: number,
     durations: number[] = [8, 12, 15, 18],
     basic = { name: "Attack", left: 0, duration: 1 },
+    /** Ultimate meter 0–100: the ultimate button fills instead of counting down. */
+    ult = 100,
   ) {
     if (!active) this.reset();
     for (const button of this.buttons) {
       const skill = button.dataset.skill;
       const action = button.dataset.action;
+      const isUlt = skill === "3";
       const left = Math.max(
         0,
-        skill !== undefined
-          ? (cooldowns[Number(skill)] ?? 0)
-          : action === "dash"
-            ? dash
-            : action === "jump"
-              ? jump
-              : basic.left,
+        isUlt
+          ? 100 - ult // "left" is the meter still to fill
+          : skill !== undefined
+            ? (cooldowns[Number(skill)] ?? 0)
+            : action === "dash"
+              ? dash
+              : action === "jump"
+                ? jump
+                : basic.left,
       );
       const name =
         skill !== undefined
@@ -375,11 +380,13 @@ export class TouchControls {
         button.dataset.iconName = name;
         button.title = name;
       }
-      const text = left > 0 ? left.toFixed(1) : "";
+      const text =
+        left <= 0 ? "" : isUlt ? `${Math.floor(ult)}%` : left.toFixed(1);
       const label = button.querySelector(".touch-cooldown")!;
       if (label.textContent !== text) label.textContent = text;
-      const duration =
-        skill !== undefined
+      const duration = isUlt
+        ? 100
+        : skill !== undefined
           ? durations[Number(skill)]
           : action === "dash"
             ? 3
@@ -391,9 +398,14 @@ export class TouchControls {
         Math.min(100, (100 * left) / duration) + "%",
       );
       button.classList.toggle("cooling", left > 0);
+      button.classList.toggle("ult-ready", isUlt && left <= 0);
       button.setAttribute(
         "aria-label",
-        left > 0 ? name + " · " + text + " seconds" : name,
+        left <= 0
+          ? name
+          : isUlt
+            ? name + " · charging " + text
+            : name + " · " + text + " seconds",
       );
     }
   }

@@ -36,6 +36,8 @@ import {
   CHARACTERS,
   RULES,
   STATUS_RULES,
+  ULT_SLOT,
+  skillReady,
   advanceMovement,
   normalize,
   unpackSnapshot,
@@ -107,6 +109,8 @@ let state: Snapshot | undefined,
   pending: Input[] = [],
   scene: ArenaScene | undefined;
 let accountShown = "";
+/** Last known "ultimate ready" state, for the ready sound. */
+let ultWasReady = false;
 /** An invite is waiting for sign-in: say so once. */
 let inviteHinted = true;
 /** Which menu screen is showing ("home", "room-duel"…), for entry fades. */
@@ -878,6 +882,24 @@ function renderBattle() {
   CHARACTERS[me.character].skills.forEach((a, i) => {
     $(`ability-${i}`).title = `${a.name}: ${a.description}`;
     $(`ability-${i}`).setAttribute("aria-label", `${a.name}: ${a.description}`);
+    if (i === ULT_SLOT) {
+      // The ultimate fills a meter by fighting instead of a cooldown.
+      const full = (me.ult ?? 0) >= RULES.ultMax;
+      if (full && !ultWasReady && state!.phase === "playing") audio.play("orb");
+      ultWasReady = full;
+      const charge = Math.floor(me.ult ?? 0),
+        ready = skillReady(
+          me,
+          i,
+          state!.time,
+          !!state!.practice?.unlimitedCooldowns,
+        );
+      $(`cooldown-${i}`).textContent = ready ? "READY" : `${charge}%`;
+      $(`fill-${i}`).style.height = `${ready ? 0 : 100 - charge}%`;
+      $(`ability-${i}`).classList.toggle("cooling", !ready);
+      $(`ability-${i}`).classList.toggle("ult-ready", ready);
+      return;
+    }
     const left = Math.max(0, me.cooldowns[i] - state!.time);
     $(`cooldown-${i}`).textContent = left > 0 ? `${left.toFixed(1)}s` : "READY";
     $(`fill-${i}`).style.height = `${(100 * left) / a.cooldown}%`;
@@ -903,6 +925,7 @@ function renderBattle() {
       left: Math.max(0, me.basicAt - state.time),
       duration: CHARACTERS[me.character].basic.interval ?? 0.3,
     },
+    state.practice?.unlimitedCooldowns ? RULES.ultMax : (me.ult ?? 0),
   );
   const overlay = $("arena-overlay");
   if (state.phase === "playing") {
@@ -1665,7 +1688,12 @@ class ArenaScene extends Phaser.Scene {
           g,
           previewShape(ability, local, this.aimPoint),
           CHARACTERS[local.character].color,
-          state.time >= (previewer.cooldowns[caster.aiming] ?? 0),
+          skillReady(
+            previewer,
+            caster.aiming,
+            state.time,
+            !!state.practice?.unlimitedCooldowns,
+          ),
         );
     }
     for (const serverPlayer of state.players) {

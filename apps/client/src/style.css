@@ -4976,3 +4976,27 @@ html.scroll-locked {
 .invite-link {
   margin: -4px 0 14px;
 }
+/* Ultimate meter: the ultimate button glows and pulses once it's charged. */
+.ability.ult-ready,
+.touch-buttons button.ult-ready {
+  box-shadow:
+    0 0 0 2px var(--lime),
+    0 0 18px #ffd65b88;
+}
+.ability.ult-ready small {
+  color: var(--lime);
+  font-weight: 800;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ability.ult-ready,
+  .touch-buttons button.ult-ready {
+    animation: ult-pulse 1.1s ease-in-out infinite;
+  }
+  @keyframes ult-pulse {
+    50% {
+      box-shadow:
+        0 0 0 2px var(--lime),
+        0 0 30px #ffd65bcc;
+    }
+  }
+}

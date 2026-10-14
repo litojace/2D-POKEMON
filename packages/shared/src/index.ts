@@ -20,6 +20,17 @@ export const RULES = {
   /** Share of the picker's full health an orb restores. */
   orbHeal: 0.25,
   orbRadius: 26,
+  /** Ultimate meter (skill 4): charged by fighting, cast when full. */
+  ultMax: 100,
+  /** Meter per point of damage dealt, and per point taken (comeback). */
+  ultPerDamageDealt: 0.42,
+  ultPerDamageTaken: 0.22,
+  /** Slow trickle while a round is live, so cautious fights still get one. */
+  ultPerSecond: 0.6,
+  /** The round's loser starts the next one with this much extra charge. */
+  ultComeback: 25,
+  /** Each landed basic attack shortens skills 1-3's remaining cooldowns. */
+  basicHitCooldownCut: 0.25,
   countdown: 3,
   intermission: 4,
   reconnectMs: 30000,
@@ -27,6 +38,19 @@ export const RULES = {
   maxZones: 40,
 };
 export const SKILL_SLOTS = 4;
+/** The last skill slot is the ultimate: it uses the meter, not a cooldown. */
+export const ULT_SLOT = SKILL_SLOTS - 1;
+/** Can this fighter cast skill `slot` at `time`? (Practice can skip the meter.) */
+export function skillReady(
+  p: { cooldowns: number[]; ult?: number },
+  slot: number,
+  time: number,
+  freeCooldowns = false,
+) {
+  if (freeCooldowns) return true;
+  if (slot === ULT_SLOT) return (p.ult ?? 0) >= RULES.ultMax;
+  return time >= (p.cooldowns[slot] ?? 0);
+}
 export const KEYS = {
   up: "W",
   left: "A",
@@ -896,6 +920,8 @@ export interface Fighter extends Vec {
   angle: number;
   ack: number;
   cooldowns: number[];
+  /** Ultimate meter, 0 to RULES.ultMax. Carries over between rounds. */
+  ult?: number;
   basicAt: number;
   dashAt: number;
   jumpAt: number;

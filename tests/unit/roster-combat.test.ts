@@ -3,7 +3,9 @@ import { Arena } from "../../apps/server/src/simulation";
 import {
   CHARACTERS,
   FIGHTER_IDS,
+  RULES,
   STATUS_RULES,
+  ULT_SLOT,
   blankInput,
   basicInterval,
   type CharacterId,
@@ -59,23 +61,27 @@ describe("basic attacks", () => {
   });
 });
 describe("special skills", () => {
-  it("every skill casts once and its cooldown blocks repeats", () => {
+  it("every skill casts once; cooldowns (or the empty meter) block repeats", () => {
     for (const id of FIGHTER_IDS)
       for (let i = 0; i < 4; i++) {
         const { arena, p } = duel(id);
+        if (i === ULT_SLOT) p.ult = RULES.ultMax;
         arena.submit(p, input({ skill: i }));
         arena.tick();
         expect(p.stats.skills).toBe(1);
         const cooldown = p.cooldowns[i];
-        expect(cooldown).toBeCloseTo(
-          arena.time + CHARACTERS[id].skills[i].cooldown,
-        );
+        if (i === ULT_SLOT)
+          expect(p.ult).toBeLessThan(5); // spent
+        else
+          expect(cooldown).toBeCloseTo(
+            arena.time + CHARACTERS[id].skills[i].cooldown,
+          );
         for (let k = 0; k < 40; k++) {
           arena.submit(p, input({ skill: i }));
           arena.tick();
         }
         expect(p.stats.skills).toBe(1);
-        expect(p.cooldowns[i]).toBe(cooldown);
+        if (i !== ULT_SLOT) expect(p.cooldowns[i]).toBe(cooldown);
       }
   });
   it("every damaging skill hits an opponent standing in front", () => {
@@ -92,6 +98,7 @@ describe("special skills", () => {
         const a = CHARACTERS[id].skills[i];
         if (utility.has(a.id)) continue;
         const { arena, p, q } = duel(id);
+        if (i === ULT_SLOT) p.ult = RULES.ultMax;
         arena.submit(p, input({ skill: i }));
         for (let k = 0; k < 60; k++) arena.tick();
         expect(q.hp, a.name).toBeLessThan(CHARACTERS.terradon.health);

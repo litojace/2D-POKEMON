@@ -4,6 +4,7 @@ import {
   RULES,
   blankInput,
   blocked,
+  skillReady,
   type Ability,
   type Fighter,
   type Input,
@@ -52,7 +53,7 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
     smartUltimate: false,
     fooledByClone: 0.85,
     engage: 0.01,
-    rest: 0.4,
+    rest: 0.44,
   },
   normal: {
     reaction: 0.48,
@@ -60,12 +61,12 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
     lead: 0.2,
     dodge: 0.12,
     think: 0.25,
-    skillUse: 0.42,
+    skillUse: 0.36,
     hesitate: 0.18,
     smartUltimate: false,
     fooledByClone: 0.5,
     engage: 0.02,
-    rest: 0.33,
+    rest: 0.4,
   },
   hard: {
     reaction: 0.25,
@@ -402,7 +403,7 @@ export class BotBrain {
     input.aimX = clamp(ax, 0, RULES.width);
     input.aimY = clamp(ay, 0, RULES.height);
     // ---- Attack.
-    if (this.wantSkill >= 0 && t >= me.cooldowns[this.wantSkill]) {
+    if (this.wantSkill >= 0 && skillReady(me, this.wantSkill, t)) {
       input.skill = this.wantSkill;
       this.wantSkill = -1;
     } else if (
@@ -504,7 +505,7 @@ export class BotBrain {
     let best = -1,
       bestScore = 0;
     skills.forEach((a: Ability, i) => {
-      if (t < me.cooldowns[i]) return;
+      if (!skillReady(me, i, t)) return;
       let score = 0;
       const reach = (range: number) => s.dist <= range;
       switch (a.kind) {
