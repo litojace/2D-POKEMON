@@ -90,6 +90,8 @@ export interface OnlinePlayer {
   title: string | null;
   titleColor: string | null;
   isAdmin: boolean;
+  /** Playing on a guest (anonymous) login. */
+  guest?: boolean;
   /** Open tabs/devices connected with this account. */
   connections: number;
   /** ISO time of the earliest current connection. */

@@ -77,7 +77,7 @@ export function renderOnline(
           p.title
             ? `<span class="title-chip" style="--chip:${escape(p.titleColor ?? "#9fb3d1")}">${escape(p.title)}</span>`
             : ""
-        }${p.isAdmin ? '<span class="admin-badge">ADMIN</span>' : ""}<span class="online-state ${p.activity}">${LABELS[p.activity]}</span><small>online ${onlineFor(p.since, now)}${p.connections > 1 ? ` · ${p.connections} tabs` : ""}</small></div><div class="online-activity">${describeActivity(p, fighterName)}${
+        }${p.isAdmin ? '<span class="admin-badge">ADMIN</span>' : ""}${p.guest ? '<span class="admin-badge guest-badge">GUEST</span>' : ""}<span class="online-state ${p.activity}">${LABELS[p.activity]}</span><small>online ${onlineFor(p.since, now)}${p.connections > 1 ? ` · ${p.connections} tabs` : ""}</small></div><div class="online-activity">${describeActivity(p, fighterName)}${
           p.isAdmin
             ? ""
             : '<button type="button" class="quiet" data-manage>Manage</button>'

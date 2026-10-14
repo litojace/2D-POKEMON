@@ -5392,3 +5392,45 @@ html.scroll-locked {
   color: var(--muted);
   padding: 16px;
 }
+/* ---- Guest play ---- */
+.guest-play {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #ffffff1a;
+  display: grid;
+  gap: 8px;
+}
+.guest-play > span {
+  font-size: 12px;
+  color: var(--muted);
+}
+.guest-play form {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.guest-play input {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+.guest-play small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.save-account {
+  border: 1px solid #ffd16655;
+  background: #ffd16610;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+.dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+.guest-badge {
+  background: #7fd3ff33;
+  color: #9fe1ff;
+}

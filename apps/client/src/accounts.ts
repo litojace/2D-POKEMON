@@ -66,6 +66,7 @@ type Hooks = {
 export class AccountUI {
   account: Account | null = null;
   session: Session | null = null;
+  private confirmedGuestLogout = false;
   generation = 0;
   client =
     import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -169,6 +170,19 @@ export class AccountUI {
     if (this.account) {
       element("account-profile").onclick = () => void this.showProfile();
       element("account-logout").onclick = async () => {
+        if (this.account?.guest && !this.confirmedGuestLogout) {
+          this.hooks.openDialog(
+            `<div class="eyebrow">GUEST ACCOUNT</div><h2>Log out of your guest pass?</h2><p>Guest accounts can't be recovered after logging out: your records and titles would be lost. Save your account with an email first to keep them.</p><div class="dialog-actions"><button class="primary" id="guest-save">Save my account</button><button class="secondary" id="guest-leave">Log out anyway</button></div>`,
+          );
+          element("guest-save").onclick = () => void this.showProfile();
+          element("guest-leave").onclick = () => {
+            this.confirmedGuestLogout = true;
+            element<HTMLDialogElement>("dialog").close();
+            element("account-logout")?.click();
+          };
+          return;
+        }
+        this.confirmedGuestLogout = false;
         await this.hooks.beforeSignOut();
         const result = await this.client?.auth.signOut({ scope: "local" });
         if (result?.error) {
@@ -193,7 +207,7 @@ export class AccountUI {
       reset: "Choose a new password.",
     }[mode];
     this.hooks.openDialog(
-      `<div class="eyebrow">ELEMENT ARENA ACCOUNTS</div><h2>${title}</h2>${!this.client ? "<p>Sign-in is not available yet. Accounts are being set up.</p>" : ""}<form id="auth-form" class="account-form">${mode === "signup" ? '<label>Display name<input name="displayName" maxlength="20" required autocomplete="nickname"></label>' : ""}${mode !== "reset" ? '<label>Email<input name="email" type="email" required autocomplete="email"></label>' : ""}${mode !== "forgot" ? passwordField("Password", "password", `${mode === "login" ? "" : 'minlength="8"'} maxlength="128" required autocomplete="${mode === "login" ? "current-password" : "new-password"}"`) : ""}${mode === "signup" || mode === "reset" ? passwordField("Confirm password", "confirmPassword", 'minlength="8" maxlength="128" required autocomplete="new-password"') : ""}${mode === "login" ? '<label class="checkbox-label"><input id="auth-remember" type="checkbox">Remember me</label>' : ""}<button class="primary" type="submit" ${!this.client ? "disabled" : ""}>${{ login: "Log in", signup: "Create account", forgot: "Send reset link", reset: "Update password" }[mode]}</button>${mode === "login" || mode === "signup" ? `<button id="auth-google" class="secondary" type="button" ${!this.client ? "disabled" : ""}>Continue with Google</button>` : ""}<p id="auth-message" role="status"></p></form><div class="auth-links"><button class="quiet" id="auth-switch">${mode === "login" ? "Create an account" : "Back to login"}</button>${mode === "login" ? '<button class="quiet" id="auth-forgot">Forgot password?</button>' : ""}</div>`,
+      `<div class="eyebrow">ELEMENT ARENA ACCOUNTS</div><h2>${title}</h2>${!this.client ? "<p>Sign-in is not available yet. Accounts are being set up.</p>" : ""}<form id="auth-form" class="account-form">${mode === "signup" ? '<label>Display name<input name="displayName" maxlength="20" required autocomplete="nickname"></label>' : ""}${mode !== "reset" ? '<label>Email<input name="email" type="email" required autocomplete="email"></label>' : ""}${mode !== "forgot" ? passwordField("Password", "password", `${mode === "login" ? "" : 'minlength="8"'} maxlength="128" required autocomplete="${mode === "login" ? "current-password" : "new-password"}"`) : ""}${mode === "signup" || mode === "reset" ? passwordField("Confirm password", "confirmPassword", 'minlength="8" maxlength="128" required autocomplete="new-password"') : ""}${mode === "login" ? '<label class="checkbox-label"><input id="auth-remember" type="checkbox">Remember me</label>' : ""}<button class="primary" type="submit" ${!this.client ? "disabled" : ""}>${{ login: "Log in", signup: "Create account", forgot: "Send reset link", reset: "Update password" }[mode]}</button>${mode === "login" || mode === "signup" ? `<button id="auth-google" class="secondary" type="button" ${!this.client ? "disabled" : ""}>Continue with Google</button>` : ""}<p id="auth-message" role="status"></p></form>${(mode === "login" || mode === "signup") && this.client ? '<div class="guest-play"><span>Just want to try it?</span><form id="guest-form"><input name="nickname" maxlength="20" placeholder="Nickname (optional)" autocomplete="nickname" aria-label="Guest nickname"><button class="secondary" type="submit">Play as a guest</button></form><small>No email needed. Save your account later from your profile to keep your progress.</small></div>' : ""}<div class="auth-links"><button class="quiet" id="auth-switch">${mode === "login" ? "Create an account" : "Back to login"}</button>${mode === "login" ? '<button class="quiet" id="auth-forgot">Forgot password?</button>' : ""}</div>`,
     );
     element("auth-switch").onclick = () =>
       this.showAuth(mode === "login" ? "signup" : "login");
@@ -236,6 +250,35 @@ export class AccountUI {
           options: { redirectTo: new URL("/auth/callback", site).toString() },
         });
         if (error) message.textContent = error.message;
+      };
+    const guestForm = element<HTMLFormElement>("guest-form");
+    if (guestForm)
+      guestForm.onsubmit = async (event) => {
+        event.preventDefault();
+        if (!this.client) return;
+        const button = guestForm.querySelector<HTMLButtonElement>("button")!;
+        const nickname = String(
+          new FormData(guestForm).get("nickname") ?? "",
+        ).trim();
+        button.disabled = true;
+        message.textContent = "Setting up your guest pass…";
+        // Keep the guest login on this device: it can't be recovered later.
+        remember(true);
+        const { data, error } = await this.client.auth.signInAnonymously(
+          nickname ? { options: { data: { display_name: nickname } } } : {},
+        );
+        button.disabled = false;
+        if (error) {
+          message.textContent = /anonymous/i.test(error.message)
+            ? "Guest play isn't switched on yet. Please sign up or log in."
+            : error.message;
+          return;
+        }
+        await this.setSession(data.session);
+        element<HTMLDialogElement>("dialog").close();
+        this.hooks.notify(
+          "You're playing as a guest. Save your account from your profile any time to keep your progress.",
+        );
       };
     form.onsubmit = async (event) => {
       event.preventDefault();
@@ -309,7 +352,7 @@ export class AccountUI {
     if (!this.account) return;
     const account = this.account;
     this.hooks.openDialog(
-      `<div class="eyebrow">YOUR PLAYER PROFILE</div><h2>${escape(account.displayName)}</h2><p>${account.isAdmin ? "Administrator" : "Player"} · ${escape(this.session?.user.email ?? "")}</p><form id="profile-title" class="account-form"><label>Equipped title<select name="titleId"><option value="">No title</option>${sortTitles(
+      `<div class="eyebrow">YOUR PLAYER PROFILE</div><h2>${escape(account.displayName)}</h2><p>${account.isAdmin ? "Administrator" : account.guest ? "Guest" : "Player"}${this.session?.user.email ? ` · ${escape(this.session.user.email)}` : ""}</p>${account.guest ? '<form id="profile-save" class="account-form save-account"><p><b>Keep your progress.</b> Guest accounts live only on this device. Add your email to make this a full account: your records, titles and name come with you.</p><label>Email<input name="email" type="email" required autocomplete="email"></label><button class="primary">Save my account</button><p id="save-message" role="status"></p></form>' : ""}<form id="profile-title" class="account-form"><label>Equipped title<select name="titleId"><option value="">No title</option>${sortTitles(
         account.ownedTitles as Title[],
       )
         .map(
@@ -321,6 +364,23 @@ export class AccountUI {
         )}</select></label><button class="primary">Save title</button><p id="profile-message" role="status"></p></form><button class="secondary full" id="profile-leaderboard">Season standings →</button><section id="profile-progress" class="progress"><p class="muted">Loading your progress…</p></section>`,
     );
     element("profile-leaderboard").onclick = () => void this.showLeaderboard();
+    const save = element<HTMLFormElement>("profile-save");
+    if (save)
+      save.onsubmit = async (event) => {
+        event.preventDefault();
+        if (!this.client) return;
+        const email = String(new FormData(save).get("email") ?? "").trim();
+        const status = element("save-message");
+        status.textContent = "Please wait…";
+        const site = import.meta.env.VITE_SITE_URL || location.origin;
+        const { error } = await this.client.auth.updateUser(
+          { email },
+          { emailRedirectTo: new URL("/email-confirmed", site).toString() },
+        );
+        status.textContent = error
+          ? error.message
+          : "Check your inbox and confirm the email. Then choose a password with “Forgot password?” on the login screen, or keep playing here.";
+      };
     void this.api("/api/progress")
       .then((value) => {
         const box = element("profile-progress");

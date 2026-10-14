@@ -109,3 +109,23 @@ After migration 004, every finished online match is saved to the players' record
 - Guests (anonymous logins) keep records but are left off the leaderboard.
 
 Achievement titles are ordinary titles: admins see them in the title list and can retire or delete them like any other.
+
+## Guest play
+
+The login and sign-up dialogs offer **Play as a guest**: it uses Supabase anonymous sign-ins, so a friend can join a room from an invite link without making an account first. Guests are real (anonymous) accounts: they keep records and titles on that device, and they can **Save my account** from their profile by adding an email.
+
+To switch it on, in the Supabase dashboard:
+
+1. Authentication → Sign In / Providers: turn on **Allow anonymous sign-ins**.
+2. Same page: turn on **Allow manual linking** (needed to add an email to a guest account).
+3. Run migration 004 (it marks guest profiles and names them "Guest ABCD" unless they chose a nickname).
+
+Supabase limits anonymous sign-ins to 30 per hour per IP address by default (adjustable under Rate Limits). Supabase recommends CAPTCHA for anonymous sign-ins, but **turning CAPTCHA on also requires it for normal logins and sign-ups, which this game doesn't show a CAPTCHA for yet** — leave it off until that is added.
+
+Guest accounts can't be recovered once the guest logs out or clears the browser (the game warns them first). Old ones aren't removed automatically; in the SQL Editor you can tidy guests inactive for 30 days:
+
+```sql
+delete from auth.users where is_anonymous is true and created_at < now() - interval '30 days';
+```
+
+Their profiles and match history rows are removed with them.

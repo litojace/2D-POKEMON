@@ -188,6 +188,7 @@ export function createArenaServer(
         title: account.title ?? null,
         titleColor: account.titleColor ?? null,
         isAdmin: account.isAdmin,
+        ...(account.guest ? { guest: true } : {}),
         connections: 1,
         since,
         activity,
