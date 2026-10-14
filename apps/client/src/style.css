@@ -4911,3 +4911,28 @@ dialog {
 html.scroll-locked {
   overflow: hidden;
 }
+/* Touch buttons: icon and label form one group, centred in the circle (the
+   label used to be pinned to the bottom edge, pushing the group low). */
+.touch-buttons button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+}
+.touch-buttons .skill-icon {
+  width: 56%;
+  height: 56%;
+  margin: 0;
+  flex: none;
+}
+.touch-buttons .touch-attack .skill-icon {
+  width: 50%;
+  height: 50%;
+}
+.touch-buttons .touch-key {
+  position: static;
+  bottom: auto;
+  line-height: 1;
+  flex: none;
+}

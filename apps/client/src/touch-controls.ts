@@ -363,10 +363,9 @@ export class TouchControls {
         button.innerHTML =
           abilityIcon(name) +
           '<span class="touch-key">' +
+          // Touch has no keys: number the skills 1–4 (4 is the ultimate).
           (skill !== undefined
-            ? Number(skill) === 3
-              ? "R"
-              : Number(skill) + 1
+            ? Number(skill) + 1
             : action === "attack"
               ? "BASIC"
               : action === "dash"
