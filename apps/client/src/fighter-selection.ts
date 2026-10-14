@@ -113,6 +113,21 @@ export function updateRosterSelection(
   }
   oldDetail.remove();
   chosen.after(freshDetail);
+  placeFighterDetail(root);
+  // Swipeable row: bring the picked card fully into view.
+  const roster = chosen.parentElement;
+  if (roster && getComputedStyle(roster).gridAutoFlow.startsWith("column")) {
+    const left = chosen.offsetLeft - roster.offsetLeft,
+      right = left + chosen.offsetWidth;
+    if (
+      left < roster.scrollLeft ||
+      right > roster.scrollLeft + roster.clientWidth
+    )
+      roster.scrollTo({
+        left: Math.max(0, left - 2),
+        behavior: reducedMotion ? "auto" : "smooth",
+      });
+  }
   window.scrollBy({
     top: chosen.getBoundingClientRect().top - anchorTop,
     behavior: "auto",
@@ -132,11 +147,53 @@ export function updateRosterSelection(
         { duration: 320, easing: "cubic-bezier(.2,.8,.2,1)" },
       );
     }
+  // Make sure the panel can be read without hunting for it.
   const box = freshDetail.getBoundingClientRect();
-  if (box.top > innerHeight * 0.62)
+  const strip =
+    !!roster && getComputedStyle(roster).gridAutoFlow.startsWith("column");
+  let shift = 0;
+  if (strip) {
+    // Phones: keep the swipeable row at the top with the panel right under it.
+    if (box.top > innerHeight * 0.62)
+      shift = roster!.getBoundingClientRect().top - 12;
+  } else if (box.top > innerHeight * 0.62) shift = box.top - innerHeight * 0.35;
+  // PC, picked from the second row while scrolled down: show the panel's top.
+  else if (box.top < 0) shift = box.top - 90;
+  if (shift)
     window.scrollBy({
-      top: box.top - innerHeight * 0.35,
+      top: shift,
       behavior: reducedMotion ? "auto" : "smooth",
     });
   return true;
+}
+
+/**
+ * Put the stats and skills panel in its slot for the current layout: inside
+ * the grid on wide rosters (CSS orders it between the two rows), or just
+ * below the swipeable row on narrow ones (it must not scroll sideways with
+ * the cards). Safe to call any time; it only moves the panel when needed.
+ */
+export function placeFighterDetail(root: ParentNode) {
+  const roster = root.querySelector<HTMLElement>(".showcase-roster"),
+    detail = root.querySelector<HTMLElement>(".fighter-detail");
+  if (!roster || !detail) return;
+  const strip = getComputedStyle(roster).gridAutoFlow.startsWith("column");
+  if (strip) {
+    if (detail.parentElement === roster) roster.after(detail);
+  } else if (detail.parentElement !== roster) {
+    const chosen = roster.querySelector(
+      `[data-character="${detail.dataset.detailFor}"]`,
+    );
+    if (chosen) chosen.after(detail);
+    else roster.append(detail);
+  }
+}
+let watched: ResizeObserver | undefined;
+/** Re-place the panel whenever the roster switches between layouts. */
+export function watchFighterDetail(root: HTMLElement) {
+  watched?.disconnect();
+  const panel = root.querySelector<HTMLElement>(".roster-panel") ?? root;
+  placeFighterDetail(panel);
+  watched = new ResizeObserver(() => placeFighterDetail(panel));
+  watched.observe(panel);
 }

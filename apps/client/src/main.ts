@@ -1,4 +1,8 @@
-import { fighterSelection, updateRosterSelection } from "./fighter-selection";
+import {
+  fighterSelection,
+  updateRosterSelection,
+  watchFighterDetail,
+} from "./fighter-selection";
 import { LobbySelection } from "./lobby-selection";
 import { setupBattleDock } from "./battle-dock";
 import {
@@ -604,6 +608,8 @@ function renderMenu() {
             )}</div><button class="primary" id="create">Create private room →</button><div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><div class="divider">OR PLAY SOLO</div><div class="bot-picker" role="radiogroup" aria-label="Bot difficulty">${BOT_LEVELS.map(([id, label, hint]) => `<button type="button" role="radio" class="bot-level${botLevel === id ? " active" : ""}" data-bot="${id}" aria-checked="${botLevel === id}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button class="secondary full" id="bot-match">Battle an AI bot →</button>${accountsUI?.account ? '<button class="quiet full" id="practice">Solo test mode →</button>' : ""}<small class="room-note">Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`
     }</aside></div>`;
   wireRoster(isRoom);
+  // Fighter panel slot: between the rows on PC, under the swipeable row on phones.
+  watchFighterDetail($("menu"));
   if (keepScroll !== null && Math.abs(scrollY - keepScroll) > 1)
     scrollTo(0, keepScroll);
   if (!isRoom && accountsUI?.account)

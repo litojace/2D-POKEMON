@@ -4936,3 +4936,39 @@ html.scroll-locked {
   line-height: 1;
   flex: none;
 }
+
+/* ---- One fixed slot for the fighter panel ----
+   Wide roster (PC): two rows of four, and the panel always sits between the
+   rows, whichever fighter is picked, so nothing reflows when switching.
+   Narrow roster (phones): one swipeable row, with the panel right under it
+   (placeFighterDetail moves the panel out of the scrolling row). */
+@container (min-width: 640px) {
+  .showcase-roster > .showcase-card:nth-of-type(n + 5) {
+    order: 2;
+  }
+  .showcase-roster > .fighter-detail {
+    order: 1;
+  }
+}
+@container (max-width: 639.98px) {
+  .showcase-roster {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(148px, 43%);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 2px;
+    padding: 2px 2px 8px;
+    scrollbar-width: none;
+  }
+  .showcase-roster::-webkit-scrollbar {
+    display: none;
+  }
+  .showcase-roster > .showcase-card {
+    scroll-snap-align: start;
+  }
+  .roster-panel > .fighter-detail {
+    margin-top: 10px;
+  }
+}
