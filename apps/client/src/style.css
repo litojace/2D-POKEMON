@@ -4888,8 +4888,9 @@ html.zoom-locked dialog input {
   dialog[open]::backdrop {
     animation: ea-fade 0.24s ease-out;
   }
-  /* Briefing, countdown, round and result cards pop in. */
-  .overlay-card:not(:empty) {
+  /* Briefing, round and result cards pop in. */
+  /* The countdown card updates every second, so it stays still. */
+  .overlay-card:not(:empty):not(.countdown-card) {
     animation: ea-pop 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
   /* Room list rows and the header menu panel. */
