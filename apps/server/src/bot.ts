@@ -37,43 +37,48 @@ interface Profile {
   fooledByClone: number;
   /** Brawlers: chance per tick to dash in when the gap is closable. */
   engage: number;
+  /** Chance each second to hold fire for that second, like a person catching their breath. */
+  rest: number;
 }
 export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
   easy: {
-    reaction: 0.45,
-    aimError: 0.22,
+    reaction: 0.5,
+    aimError: 0.27,
     lead: 0,
-    dodge: 0.15,
+    dodge: 0.1,
     think: 0.45,
-    skillUse: 0.4,
-    hesitate: 0.22,
+    skillUse: 0.35,
+    hesitate: 0.25,
     smartUltimate: false,
     fooledByClone: 0.85,
     engage: 0.01,
+    rest: 0.4,
   },
   normal: {
-    reaction: 0.34,
-    aimError: 0.2,
-    lead: 0.55,
-    dodge: 0.35,
+    reaction: 0.48,
+    aimError: 0.27,
+    lead: 0.2,
+    dodge: 0.12,
     think: 0.25,
-    skillUse: 0.65,
-    hesitate: 0.06,
+    skillUse: 0.42,
+    hesitate: 0.18,
     smartUltimate: false,
     fooledByClone: 0.5,
-    engage: 0.06,
+    engage: 0.02,
+    rest: 0.33,
   },
   hard: {
-    reaction: 0.2,
-    aimError: 0.11,
-    lead: 1,
-    dodge: 0.7,
+    reaction: 0.25,
+    aimError: 0.14,
+    lead: 0.85,
+    dodge: 0.55,
     think: 0.12,
-    skillUse: 0.95,
+    skillUse: 0.9,
     hesitate: 0,
     smartUltimate: true,
     fooledByClone: 0.2,
     engage: 0.2,
+    rest: 0.05,
   },
 };
 export const BOT_LABELS: Record<BotDifficulty, string> = {
@@ -158,6 +163,8 @@ export class BotBrain {
   private strafe = 1;
   private nextStrafeFlip = 0;
   private hesitateUntil = 0;
+  private nextRest = 0;
+  private resting = false;
   private wantSkill = -1;
   /** Projectile ids already judged (dodge or not) so it decides once per shot. */
   private judged = new Map<number, boolean>();
@@ -398,9 +405,21 @@ export class BotBrain {
     if (this.wantSkill >= 0 && t >= me.cooldowns[this.wantSkill]) {
       input.skill = this.wantSkill;
       this.wantSkill = -1;
-    } else if (sight && dist <= basic.range * 0.95 + (melee ? RULES.radius : 0))
+    } else if (
+      sight &&
+      !this.restingAt(t) &&
+      dist <= basic.range * 0.95 + (melee ? RULES.radius : 0)
+    )
       input.basic = true;
     return input;
+  }
+  /** Re-rolled once a second: a resting bot holds its basic attack. */
+  private restingAt(t: number) {
+    if (t >= this.nextRest) {
+      this.nextRest = t + 1;
+      this.resting = this.random() < this.profile.rest;
+    }
+    return this.resting;
   }
   /** Sample directions and pick the spot that keeps range, sight and safety. */
   private choosePath(
