@@ -95,6 +95,9 @@ let state: Snapshot | undefined,
   local: Fighter | undefined,
   pending: Input[] = [],
   scene: ArenaScene | undefined;
+let accountShown = "";
+/** Which menu screen is showing ("home", "room-duel"…), for entry fades. */
+let menuKind = "";
 let screen = "",
   eventId = 0,
   settingsOpen = false,
@@ -570,12 +573,18 @@ function renderMenu() {
   }
   touch.reset();
   document.body.classList.remove("battle-active");
+  // Fade up only when arriving at a different screen (home, a room, back
+  // from a match). Rebuilding the screen you are already on stays still.
+  const kind = key.slice(0, key.indexOf(":"));
+  const arriving = $("menu").hidden || kind !== menuKind;
+  menuKind = kind;
   $("battle").hidden = true;
   $("menu").hidden = false;
-  // A new screen (home, room, back from a match) fades up; in-place updates don't.
   $("menu").classList.remove("screen-enter");
-  void $("menu").offsetWidth;
-  $("menu").classList.add("screen-enter");
+  if (arriving) {
+    void $("menu").offsetWidth;
+    $("menu").classList.add("screen-enter");
+  }
   $("menu").innerHTML =
     `<header class="desktop-lobby-header"><div class="eyebrow">ELEMENTAL COLISEUM</div><h1>Choose your fighter</h1><p>Pick your creature. Enter the arena.</p></header><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected)}</div><aside class="room-panel">${
       isRoom
@@ -1872,7 +1881,19 @@ accountsUI = new AccountUI({
     if (previous !== token) socket.disconnect();
     socket.connect();
   },
+  onToken: (token) => {
+    // The live connection is already authenticated; the new token is only
+    // needed if the socket ever has to reconnect.
+    socket.auth = { accessToken: token };
+  },
   onChange: () => {
+    // Re-render only when something the menu shows actually changed.
+    const shown = JSON.stringify([
+      accountsUI?.account ?? null,
+      !!accountsUI?.session,
+    ]);
+    if (shown === accountShown) return;
+    accountShown = shown;
     screen = "";
     if (!state || state.phase === "lobby") renderMenu();
   },

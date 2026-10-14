@@ -1,4 +1,5 @@
 import { TITLE_PRESETS, sortTitles } from "./player-nameplate";
+import { isQuietRefresh } from "./session-refresh";
 import { createClient, type Session } from "@supabase/supabase-js";
 import {
   accountSchema,
@@ -55,6 +56,8 @@ type Hooks = {
   notify: (message: string) => void;
   onChange: () => void;
   onSession: (token: string | null) => void;
+  /** Same player, fresh token (background refresh): keep it for reconnects only. */
+  onToken: (token: string) => void;
   beforeSignOut: () => Promise<void>;
 };
 export class AccountUI {
@@ -96,7 +99,19 @@ export class AccountUI {
     if (location.pathname === "/email-confirmed")
       hooks.notify("Email confirmed. You can now log in.");
   }
-  async setSession(session: Session | null) {
+  async setSession(session: Session | null, force = false) {
+    // Supabase re-announces the session on every background token refresh and
+    // whenever the tab regains focus. For the same signed-in player nothing on
+    // screen changes: keep the fresh token quietly instead of reloading the
+    // profile, re-rendering the menu and reconnecting the game socket.
+    if (
+      session &&
+      isQuietRefresh(this.session, session, !!this.account, force)
+    ) {
+      this.session = session;
+      this.hooks.onToken(session.access_token);
+      return;
+    }
     const version = ++this.generation;
     this.session = session;
     this.account = null;
@@ -119,7 +134,7 @@ export class AccountUI {
     this.hooks.onChange();
   }
   async refresh() {
-    await this.setSession(this.session);
+    await this.setSession(this.session, true);
   }
   async api(path: string, body?: unknown): Promise<unknown> {
     const origin = import.meta.env.VITE_SERVER_URL || location.origin;
