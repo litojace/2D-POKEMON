@@ -4448,3 +4448,149 @@ button.open-slot.join:hover .slot-mark {
     transform: rotate(-90deg);
   }
 }
+
+/* ---- Desktop battle: one fixed screen, no page scrolling ----
+   The page is exactly the window. HUD, skill bar and footer keep their natural
+   height; the arena takes the space left and stays 16:9, as large as fits. */
+.arena-stage {
+  display: contents;
+}
+html:has(body.battle-active:not(.touch-mode)) {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+body.battle-active:not(.touch-mode) {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+body.battle-active:not(.touch-mode) #app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+body.battle-active:not(.touch-mode) #app > footer,
+body.battle-active:not(.touch-mode) #pwa-banner {
+  display: none;
+}
+body.battle-active:not(.touch-mode) .topbar {
+  flex: none;
+  min-height: 0;
+  padding-top: calc(8px + var(--safe-top));
+  padding-bottom: 8px;
+}
+body.battle-active:not(.touch-mode) main {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: 1600px;
+  padding-top: 10px;
+  padding-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+}
+body.battle-active:not(.touch-mode) #battle:not([hidden]) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+body.battle-active:not(.touch-mode) #battle > :not(.arena-stage) {
+  flex: none;
+}
+body.battle-active:not(.touch-mode) .hud {
+  margin-bottom: 10px;
+}
+body.battle-active:not(.touch-mode) .arena-stage {
+  display: grid;
+  place-items: center;
+  flex: 1;
+  min-height: 120px;
+  container-type: size;
+}
+body.battle-active:not(.touch-mode) .arena-frame {
+  width: min(100cqw, calc(100cqh * 16 / 9 - 4px));
+}
+body.battle-active:not(.touch-mode) .ability-bar {
+  margin-top: 10px;
+}
+body.battle-active:not(.touch-mode) .battle-footer {
+  margin-top: 6px;
+}
+/* Short windows (laptops, browser zoom): tighter chrome, bigger arena. */
+@media (max-height: 760px) {
+  body.battle-active:not(.touch-mode) .topbar {
+    padding-top: calc(4px + var(--safe-top));
+    padding-bottom: 4px;
+  }
+  body.battle-active:not(.touch-mode) main {
+    padding-top: 6px;
+    padding-bottom: 4px;
+  }
+  body.battle-active:not(.touch-mode) .hud {
+    margin-bottom: 6px;
+  }
+  body.battle-active:not(.touch-mode) .ability-bar {
+    margin-top: 6px;
+  }
+  body.battle-active:not(.touch-mode) .ability,
+  body.battle-active:not(.touch-mode) .movement-ability,
+  body.battle-active:not(.touch-mode) .basic-hint {
+    padding-top: 7px;
+    padding-bottom: 7px;
+  }
+}
+/* A short desktop arena keeps the whole briefing card visible, Ready button included. */
+@container (max-height: 680px) {
+  .overlay-card {
+    padding: 16px 28px;
+  }
+  .overlay-card h2 {
+    font-size: 32px;
+    margin: 4px 0 8px;
+  }
+  .briefing-versus {
+    margin-bottom: 8px;
+  }
+  .vs-fighter svg {
+    width: 84px;
+    height: 85px;
+  }
+  .controls-list {
+    width: min(640px, 100%);
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 20px;
+    margin: 12px auto;
+  }
+  .controls-list > span {
+    grid-template-columns: 84px minmax(0, 1fr);
+    gap: 12px;
+  }
+  .controls-list > span > kbd {
+    width: 84px;
+    padding: 7px 6px;
+  }
+  .overlay-card p {
+    margin: 8px 0;
+  }
+}
+@container (max-height: 470px) {
+  .overlay-card .eyebrow {
+    display: none;
+  }
+  .overlay-card h2 {
+    font-size: 26px;
+    margin: 0 0 4px;
+  }
+  .vs-fighter svg {
+    width: 58px;
+    height: 59px;
+  }
+  .controls-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px 14px;
+    margin: 8px auto;
+  }
+}
