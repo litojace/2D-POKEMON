@@ -1,4 +1,4 @@
-import { OBSTACLES, RULES } from "@arena/shared";
+import { ARENAS, RULES, type ArenaDef, type ArenaId } from "@arena/shared";
 /** The subset of Phaser.GameObjects.Graphics the floor painter uses. */
 export interface FloorPainter {
   fillStyle(color: number, alpha?: number): FloorPainter;
@@ -90,7 +90,63 @@ const BORDER = 36;
  * Paints the cosmetic stone-tile court with grass edges. Deterministic, drawn once
  * and baked into a texture; collision geometry stays in the shared OBSTACLES list.
  */
-export function paintArenaFloor(g: FloorPainter) {
+/** Each arena's colours: surround, blades, grout, tile tones, moss, pillar. */
+export const FLOOR_PALETTES: Record<
+  ArenaId,
+  {
+    surround: number;
+    blades: number[];
+    grout: number;
+    tones: number[];
+    speck: number;
+    moss: number;
+    pillar: [number, number, number];
+    lines: number;
+  }
+> = {
+  classic: {
+    surround: 0x2f6a35,
+    blades: [0x3f8a43, 0x27582c, 0x4d9a4c],
+    grout: 0x30372f,
+    tones: [0x7b8279, 0x858c81, 0x737a72, 0x80877c],
+    speck: 0x6c756e,
+    moss: 0x4f8a46,
+    pillar: [0x5d665f, 0x737d75, 0xa7b0a6],
+    lines: 0xf3f6ef,
+  },
+  "tide-pools": {
+    surround: 0xc9b27a,
+    blades: [0x3e8f86, 0x2c6f6a, 0x58a99c],
+    grout: 0x34474a,
+    tones: [0x6f8a8f, 0x7a979b, 0x67818a, 0x86a3a3],
+    speck: 0x5c7378,
+    moss: 0x3e8f86,
+    pillar: [0x5a6f73, 0x6f878a, 0xa9c3c0],
+    lines: 0xeaf7f5,
+  },
+  "ember-forge": {
+    surround: 0x2a1d1a,
+    blades: [0xff7a3d, 0x7a3320, 0xffb347],
+    grout: 0x1d1716,
+    tones: [0x5a4a44, 0x635149, 0x51423d, 0x6b5a50],
+    speck: 0x3c302c,
+    moss: 0x8a3b22,
+    pillar: [0x4a3c37, 0x5e4c45, 0x8c7466],
+    lines: 0xffd9b8,
+  },
+  "shifting-ruins": {
+    surround: 0x55663a,
+    blades: [0x7d9248, 0x45562c, 0x93a85a],
+    grout: 0x4a4031,
+    tones: [0x9c8a6a, 0xa69474, 0x92805f, 0xab9a78],
+    speck: 0x7d6e52,
+    moss: 0x6f8a3e,
+    pillar: [0x7f6f55, 0x968566, 0xc9b892],
+    lines: 0xfbf3df,
+  },
+};
+export function paintArenaFloor(g: FloorPainter, arena: ArenaDef = ARENAS.classic) {
+  const pal = FLOOR_PALETTES[arena.id];
   const { width: W, height: H } = RULES;
   let seed = 42;
   const random = () => {
@@ -98,17 +154,17 @@ export function paintArenaFloor(g: FloorPainter) {
     return seed / 4294967296;
   };
   // Grass surround.
-  g.fillStyle(0x2f6a35).fillRect(0, 0, W, H);
+  g.fillStyle(pal.surround).fillRect(0, 0, W, H);
   for (let i = 0; i < 900; i++) {
     const x = random() * W,
       y = random() * H;
     if (x > BORDER && x < W - BORDER && y > BORDER && y < H - BORDER) continue;
-    g.fillStyle([0x3f8a43, 0x27582c, 0x4d9a4c][i % 3], 0.8);
+    g.fillStyle(pal.blades[i % 3], 0.8);
     const h = 5 + random() * 7;
     g.fillTriangle(x - 2, y, x + 2, y, x + (random() - 0.5) * 4, y - h);
   }
   // Stone tiles with grout, bevels and per-tile tone variation.
-  g.fillStyle(0x30372f).fillRect(
+  g.fillStyle(pal.grout).fillRect(
     BORDER,
     BORDER,
     W - BORDER * 2,
@@ -117,7 +173,7 @@ export function paintArenaFloor(g: FloorPainter) {
   // Whole tiles only: the court divides evenly into COLS x ROWS.
   const tileW = (W - BORDER * 2) / COLS,
     tileH = (H - BORDER * 2) / ROWS;
-  const tones = [0x7b8279, 0x858c81, 0x737a72, 0x80877c];
+  const tones = pal.tones;
   for (let row = 0; row < ROWS; row++)
     for (let col = 0; col < COLS; col++) {
       const x = BORDER + col * tileW,
@@ -140,7 +196,7 @@ export function paintArenaFloor(g: FloorPainter) {
         3,
       );
       for (let k = 0; k < 4; k++)
-        g.fillStyle(0x6c756e, 0.35).fillCircle(
+        g.fillStyle(pal.speck, 0.35).fillCircle(
           x + 8 + random() * (w - 16),
           y + 8 + random() * (h - 16),
           1 + random() * 2,
@@ -169,7 +225,7 @@ export function paintArenaFloor(g: FloorPainter) {
         : side === 3
           ? H - BORDER - random() * 26
           : t * H;
-    g.fillStyle(0x4f8a46, 0.35).fillEllipse(
+    g.fillStyle(pal.moss, 0.35).fillEllipse(
       x,
       y,
       14 + random() * 22,
@@ -177,11 +233,11 @@ export function paintArenaFloor(g: FloorPainter) {
     );
   }
   // Court markings.
-  g.lineStyle(4, 0xf3f6ef, 0.5).strokeRoundedRect(46, 46, W - 92, H - 92, 14);
-  g.lineStyle(4, 0xf3f6ef, 0.45).lineBetween(W / 2, 50, W / 2, H - 50);
+  g.lineStyle(4, pal.lines, 0.5).strokeRoundedRect(46, 46, W - 92, H - 92, 14);
+  g.lineStyle(4, pal.lines, 0.45).lineBetween(W / 2, 50, W / 2, H - 50);
   g.fillStyle(0xffffff, 0.06).fillCircle(W / 2, H / 2, 235);
-  g.lineStyle(3, 0xf3f6ef, 0.45).strokeCircle(W / 2, H / 2, 165);
-  g.lineStyle(2, 0xf3f6ef, 0.25).strokeCircle(W / 2, H / 2, 230);
+  g.lineStyle(3, pal.lines, 0.45).strokeCircle(W / 2, H / 2, 165);
+  g.lineStyle(2, pal.lines, 0.25).strokeCircle(W / 2, H / 2, 230);
   for (const x of [260, 1340]) {
     g.fillStyle(x === 260 ? 0xffd65b : 0x63dce8, 0.12).fillCircle(x, 450, 70);
     g.lineStyle(3, x === 260 ? 0xffd65b : 0x63dce8, 0.6).strokeCircle(
@@ -190,24 +246,50 @@ export function paintArenaFloor(g: FloorPainter) {
       70,
     );
   }
+  // Hazard bases: the tide pool's water and the forge's vent grates.
+  for (const h of arena.hazards) {
+    if (h.kind === "pool") {
+      g.fillStyle(0x0f4b63, 0.9).fillCircle(h.x, h.y, h.radius + 6);
+      g.fillStyle(0x1d7c99, 0.95).fillCircle(h.x, h.y, h.radius - 4);
+      g.fillStyle(0x4fd6e6, 0.3).fillCircle(h.x - 18, h.y - 16, h.radius * 0.55);
+      for (const k of [0.35, 0.6, 0.85])
+        g.lineStyle(2, 0xd9f5f0, 0.22).strokeCircle(h.x, h.y, h.radius * k);
+      g.lineStyle(5, 0xe8dcae, 0.9).strokeCircle(h.x, h.y, h.radius + 6);
+    } else {
+      const r = h.radius * 0.6;
+      g.lineStyle(2, 0xff7a3d, 0.28).strokeCircle(h.x, h.y, h.radius);
+      g.fillStyle(0x140d0b).fillCircle(h.x, h.y, r);
+      g.fillStyle(0x5a1d0e, 0.9).fillCircle(h.x, h.y, r * 0.7);
+      g.lineStyle(4, 0x2a1d1a, 1);
+      for (let k = -2; k <= 2; k++)
+        g.lineBetween(h.x + k * r * 0.32, h.y - r * 0.85, h.x + k * r * 0.32, h.y + r * 0.85);
+      g.lineStyle(4, 0x8c5a3c, 0.95).strokeCircle(h.x, h.y, r);
+    }
+  }
+  // Shifting Ruins: the sunken footprint the centre block rises from.
+  if (arena.shifting) {
+    const r = arena.shifting.rect;
+    g.fillStyle(0x3b3326, 0.6).fillRoundedRect(r.x - 4, r.y - 4, r.w + 8, r.h + 8, 14);
+    g.lineStyle(2, 0x2c2519, 0.8).strokeRoundedRect(r.x - 4, r.y - 4, r.w + 8, r.h + 8, 14);
+  }
   // Stone pillars (cosmetic look of the shared obstacles).
-  for (const o of OBSTACLES) {
+  for (const o of arena.obstacles) {
     g.fillStyle(0x10170f, 0.35).fillEllipse(
       o.x + o.w / 2 + 10,
       o.y + o.h + 6,
       o.w + 40,
       34,
     );
-    g.fillStyle(0x5d665f).fillRoundedRect(o.x, o.y, o.w, o.h, 12);
-    g.fillStyle(0x737d75).fillRoundedRect(
+    g.fillStyle(pal.pillar[0]).fillRoundedRect(o.x, o.y, o.w, o.h, 12);
+    g.fillStyle(pal.pillar[1]).fillRoundedRect(
       o.x + 5,
       o.y + 5,
       o.w - 10,
       o.h - 22,
       9,
     );
-    g.fillStyle(0xa7b0a6).fillRoundedRect(o.x + 6, o.y + 4, o.w - 12, 22, 8);
-    g.fillStyle(0x4f8a46, 0.85).fillEllipse(
+    g.fillStyle(pal.pillar[2]).fillRoundedRect(o.x + 6, o.y + 4, o.w - 12, 22, 8);
+    g.fillStyle(pal.moss, 0.85).fillEllipse(
       o.x + o.w * 0.3,
       o.y + 9,
       o.w * 0.45,
@@ -218,7 +300,7 @@ export function paintArenaFloor(g: FloorPainter) {
       .lineBetween(o.x + 30, o.y + 62, o.x + 24, o.y + 80);
     for (let k = 0; k < 6; k++) {
       const gx = o.x + 4 + random() * (o.w - 8);
-      g.fillStyle(0x3f8a43).fillTriangle(
+      g.fillStyle(pal.blades[0]).fillTriangle(
         gx - 3,
         o.y + o.h + 2,
         gx + 3,

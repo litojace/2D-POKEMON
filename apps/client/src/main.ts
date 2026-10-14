@@ -37,8 +37,15 @@ import {
   RULES,
   STATUS_RULES,
   ULT_SLOT,
+  ARENAS,
   COMBOS,
   DEBUFFS,
+  hazardIn,
+  obstaclesAt,
+  shiftingRisesIn,
+  shiftingUp,
+  useObstacles,
+  type ArenaId,
   RITE_BY_ID,
   RITE_RULES,
   kitOf,
@@ -943,7 +950,7 @@ function renderBattle() {
     state.phase === "playing"
       ? state.practice
         ? "TEST YOUR SKILLS"
-        : "LIVE DUEL"
+        : `LIVE · ${ARENAS[state.arena ?? "classic"].name.toUpperCase()}`
       : state.phase.toUpperCase();
   kitOf(me.character, me.rites).skills.forEach((a, i) => {
     $(`ability-${i}`).title = `${a.name}: ${a.description}`;
@@ -1029,8 +1036,10 @@ function renderBattle() {
         : `<div class="briefing-versus">${side([...state.players])
             .map(card)
             .join('<span class="vs-mark">VS</span>')}</div>`;
+      const arena = ARENAS[state.arena ?? "classic"];
       details =
         versus +
+        `<p class="arena-brief"><b>Arena · ${escape(arena.name)}</b>${escape(arena.tip)}</p>` +
         '<p class="mobile-howto">Touch mode: left joystick to move; big button for basic attacks, the four curved buttons for skills, DASH and JUMP below. Aim follows your nearest opponent. Use Enter fullscreen below the arena.</p>' +
         controlsList() +
         "<p>" +
@@ -1293,6 +1302,26 @@ class ArenaScene extends Phaser.Scene {
   /** Fighter id → performance.now() until which it flashes white. */
   flashUntil = new Map<string, number>();
   comboShown = new Map<string, number>();
+  floor?: Phaser.GameObjects.Image;
+  floorArena: ArenaId = "classic";
+  /** Bake an arena's floor once (2x on dense screens); returns its texture key. */
+  floorTexture(id: ArenaId) {
+    const key = `arena-floor-${id}`;
+    const bake = renderScale() > 1.25 ? 2 : 1;
+    if (!this.textures.exists(key)) {
+      const g = this.make.graphics({}, false);
+      paintArenaFloor(scaledPainter(g, bake), ARENAS[id]);
+      g.generateTexture(key, RULES.width * bake, RULES.height * bake);
+      g.destroy();
+    }
+    this.floor?.setScale(1 / bake);
+    return key;
+  }
+  showArena(id: ArenaId) {
+    if (id === this.floorArena || !this.floor) return;
+    this.floorArena = id;
+    this.floor.setTexture(this.floorTexture(id));
+  }
   /** Knockout moment: camera push-in multiplier and its end time. */
   koZoom = 1;
   koUntil = 0;
@@ -1381,15 +1410,9 @@ class ArenaScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor("#142746");
     // Paint the court once and bake it into a texture so it costs nothing per frame.
     // High-density screens get a 2x bake so the floor stays sharp when zoomed in.
-    const bake = renderScale() > 1.25 ? 2 : 1;
-    const g = this.make.graphics({}, false);
-    paintArenaFloor(scaledPainter(g, bake));
-    g.generateTexture("arena-floor", RULES.width * bake, RULES.height * bake);
-    g.destroy();
-    this.add
-      .image(0, 0, "arena-floor")
+    this.floor = this.add
+      .image(0, 0, this.floorTexture("classic"))
       .setOrigin(0)
-      .setScale(1 / bake)
       .setDepth(-10);
     new ResizeObserver(() => fitRenderer()).observe($("game"));
     this.graphics = this.add.graphics();
@@ -1479,6 +1502,7 @@ class ArenaScene extends Phaser.Scene {
           : ability;
       playCast(this, shown, event.x, event.y, 0, event.color, reducedMotion);
     }
+    if (event.kind === "hazard") this.hazardBurst(event);
     if (event.combo && (event.kind === "burst" || event.kind === "hit"))
       this.comboText(event);
     if (ability && event.kind === "cast" && ability.kind !== "nova")
@@ -1538,6 +1562,30 @@ class ArenaScene extends Phaser.Scene {
         onComplete: () => label.destroy(),
       });
     }
+  }
+  /** A hazard going off: a ring the size of its reach (dust for the wall). */
+  hazardBurst(event: Snapshot["events"][number]) {
+    const arena = ARENAS[state?.arena ?? "classic"];
+    const hazard = arena.hazards.find(
+      (h) => Math.hypot(h.x - event.x, h.y - event.y) < 2,
+    );
+    const radius = hazard?.radius ?? 90;
+    audio.play("hit");
+    if (reducedMotion) return;
+    const ring = this.add
+      .circle(event.x, event.y, radius * 0.4, event.color, 0.35)
+      .setStrokeStyle(4, event.color, 0.9)
+      .setDepth(5);
+    this.tweens.add({
+      targets: ring,
+      scale: 2.6,
+      alpha: 0,
+      duration: 420,
+      onComplete: () => ring.destroy(),
+    });
+    const me = state?.players.find((p) => p.id === myId);
+    if (me && Math.hypot(me.x - event.x, me.y - event.y) < radius + 60)
+      this.cameras.main.shake(140, 0.004, false);
   }
   /** "SOAKED!" over a combo payoff, at most once per fighter per moment. */
   comboText(event: Snapshot["events"][number]) {
@@ -1710,6 +1758,9 @@ class ArenaScene extends Phaser.Scene {
       this.labels.forEach((label) => (label.hidden = true));
       return;
     }
+    // Walls for prediction (the Shifting Ruins block comes and goes) and the floor.
+    useObstacles(obstaclesAt(state.arena, arenaClock()));
+    this.showArena(state.arena ?? "classic");
     this.accumulator += Math.min(delta, 100);
     while (this.accumulator >= 1000 / RULES.tick) {
       this.accumulator -= 1000 / RULES.tick;
@@ -1771,6 +1822,7 @@ class ArenaScene extends Phaser.Scene {
     const g = this.graphics;
     g.clear();
     this.rigs.forEach((rig) => rig.setVisible(false));
+    drawArenaLive(g, state.arena ?? "classic", arenaClock(), _time);
     for (const z of state.zones)
       drawZone(
         g,
@@ -2094,6 +2146,50 @@ class ArenaScene extends Phaser.Scene {
     g.lineStyle(1, 0xffffff, 0.6).strokeCircle(aim.x, aim.y, 10);
     g.lineBetween(aim.x - 15, aim.y, aim.x - 6, aim.y);
     g.lineBetween(aim.x + 6, aim.y, aim.x + 15, aim.y);
+  }
+}
+/** Seconds into the live round on the server's clock (-1 when not live). */
+function arenaClock() {
+  return state?.phase === "playing" ? state.time - (state.hazardClock ?? 0) : -1;
+}
+/** The moving parts of an arena: the shifting block and hazard telegraphs. */
+function drawArenaLive(
+  g: Phaser.GameObjects.Graphics,
+  id: ArenaId,
+  t: number,
+  time: number,
+) {
+  const arena = ARENAS[id];
+  const wobble = reducedMotion ? 0 : Math.sin(time / 40) * 2;
+  if (arena.shifting) {
+    const r = arena.shifting.rect;
+    if (shiftingUp(arena, t)) {
+      g.fillStyle(0x10170f, 0.35).fillEllipse(r.x + r.w / 2 + 10, r.y + r.h + 6, r.w + 40, 34);
+      g.fillStyle(0x7f6f55).fillRoundedRect(r.x, r.y, r.w, r.h, 12);
+      g.fillStyle(0x968566).fillRoundedRect(r.x + 5, r.y + 5, r.w - 10, r.h - 22, 9);
+      g.fillStyle(0xc9b892).fillRoundedRect(r.x + 6, r.y + 4, r.w - 12, 22, 8);
+      g.lineStyle(2, 0x5e523d, 0.8)
+        .lineBetween(r.x + 20, r.y + 40, r.x + 34, r.y + 66)
+        .lineBetween(r.x + 34, r.y + 66, r.x + 26, r.y + 86);
+    } else {
+      const rising = shiftingRisesIn(arena, t);
+      if (t >= 0 && rising <= arena.shifting.warn) {
+        // About to rise: rumbling outline and dust.
+        const a = 0.5 + 0.4 * Math.sin(time / 60);
+        g.lineStyle(4, 0xffd65b, a).strokeRoundedRect(r.x + wobble, r.y, r.w, r.h, 12);
+        g.fillStyle(0xc9b892, 0.25).fillRoundedRect(r.x, r.y, r.w, r.h, 12);
+      }
+    }
+  }
+  if (t < 0) return;
+  for (const h of arena.hazards) {
+    const next = hazardIn(h, t);
+    if (next > h.warn) continue;
+    const k = 1 - next / h.warn; // 0 → 1 as it fires
+    const color = h.kind === "vent" ? 0xff7a3d : 0x9fefff;
+    g.fillStyle(color, 0.12 + 0.25 * k).fillCircle(h.x, h.y, h.radius);
+    g.lineStyle(3, color, 0.5 + 0.5 * k).strokeCircle(h.x, h.y, h.radius * (0.4 + 0.6 * k));
+    g.lineStyle(2, 0xffffff, 0.35 + 0.4 * k).strokeCircle(h.x, h.y, h.radius);
   }
 }
 /** Name of the combo whose mark `by` places (their fighter's combo). */

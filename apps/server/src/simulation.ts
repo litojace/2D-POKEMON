@@ -1,6 +1,15 @@
 import {
   CHARACTERS,
+  ARENAS,
+  ARENA_ROTATION,
   COMBOS,
+  hazardAbility,
+  hazardIn,
+  obstaclesAt,
+  shiftingUp,
+  useObstacles,
+  type ArenaId,
+  type Hazard,
   RITE_BY_ID,
   RITE_RULES,
   kitOf,
@@ -56,6 +65,12 @@ export class Arena {
   /** Rites: random source for offers. Seeded per room so bot replays repeat. */
   random: () => number;
   roundEndedAt = 0;
+  /** Arena for this match. Real rooms rotate (`rotateArenas`); tests stay on Classic. */
+  arenaId: ArenaId = "classic";
+  rotateArenas = false;
+  private arenaTurn = -1;
+  /** When the live round began: hazards and the shifting wall run from here. */
+  hazardClock = 0;
   players: Fighter[] = [];
   projectiles: Projectile[] = [];
   zones: Zone[] = [];
@@ -184,6 +199,11 @@ export class Arena {
     return true;
   }
   start() {
+    if (this.rotateArenas && !this.practice) {
+      if (this.arenaTurn < 0)
+        this.arenaTurn = Math.floor(this.random() * ARENA_ROTATION.length);
+      this.arenaId = ARENA_ROTATION[this.arenaTurn++ % ARENA_ROTATION.length];
+    }
     this.scores = Object.fromEntries(this.players.map((p) => [p.id, 0]));
     this.round = 1;
     this.winner = null;
@@ -339,6 +359,7 @@ export class Arena {
     p.ult = Math.min(RULES.ultMax, (p.ult ?? 0) + amount);
   }
   damage(target: Fighter, amount: number, owner: string, ability?: Ability) {
+    this.walls();
     if (target.hp <= 0 || this.phase !== "playing") return;
     if (ability?.ground && target.jumpUntil > this.time) return;
     const source = this.players.find((p) => p.id === owner);
@@ -462,6 +483,7 @@ export class Arena {
     );
   }
   cast(p: Fighter, a: Ability) {
+    this.walls();
     p.statuses = p.statuses.filter((s) => s.kind !== "stealth");
     const color = CHARACTERS[p.character].color;
     const angle = p.angle;
@@ -610,7 +632,56 @@ export class Arena {
         (s) => !(s.kind === "mark" && s.by === p.id),
       );
   }
+  /** Seconds into the live round (negative before it starts). */
+  arenaTime() {
+    return this.phase === "playing" ? this.time - this.hazardClock : -1;
+  }
+  /** Walls right now; also makes them the ones collision uses. */
+  walls() {
+    const list = obstaclesAt(this.arenaId, this.arenaTime());
+    useObstacles(list);
+    return list;
+  }
+  /** Hazards, the shifting wall and the pools' slow, once per tick. */
+  stepArena(dt: number) {
+    const def = ARENAS[this.arenaId];
+    const t = this.arenaTime(),
+      before = t - dt;
+    const alive = this.players.filter((p) => p.hp > 0 && !p.out);
+    if (def.shifting && shiftingUp(def, t) && !shiftingUp(def, before)) {
+      // The block rises: shove anyone on it out of the way, stop shots inside.
+      const r = def.shifting.rect;
+      for (const p of alive) pushOut(p, r);
+      this.projectiles = this.projectiles.filter(
+        (pr) =>
+          pr.x < r.x || pr.x > r.x + r.w || pr.y < r.y || pr.y > r.y + r.h,
+      );
+      this.event("hazard", { x: r.x + r.w / 2, y: r.y + r.h / 2 }, 0xb59b6b, undefined, undefined, "hazard-wall");
+    }
+    for (const h of def.hazards) {
+      const inside = alive.filter(
+        (p) => Math.hypot(p.x - h.x, p.y - h.y) < h.radius + RULES.radius * 0.5,
+      );
+      if (h.kind === "pool" && h.status)
+        for (const p of inside)
+          if (p.jumpUntil <= this.time)
+            this.status(p, h.status, h.statusDuration ?? 0.3);
+      if (!triggers(h, before, t)) continue;
+      this.event("hazard", h, h.kind === "vent" ? 0xff7a3d : 0x4fd6e6, undefined, undefined, `hazard-${h.kind}`);
+      const hit = hazardAbility(h);
+      for (const p of inside) {
+        if (h.ground && p.jumpUntil > this.time) continue;
+        this.damage(p, h.damage, "", hit);
+        if (h.knockback) {
+          const d = normalize(p.x - h.x || 1, p.y - h.y);
+          const len = Math.hypot(d.x, d.y) || 1;
+          move(p, (d.x / len) * h.knockback, (d.y / len) * h.knockback);
+        }
+      }
+    }
+  }
   lineClear(a: { x: number; y: number }, b: { x: number; y: number }) {
+    this.walls();
     const steps = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 10);
     for (let i = 1; i < steps; i++)
       if (
@@ -632,6 +703,7 @@ export class Arena {
     )
       return;
     this.time += dt;
+    this.walls();
     if (this.phase === "countdown" || this.phase === "intermission") {
       if (this.time >= this.deadline) {
         if (this.phase === "intermission") {
@@ -643,6 +715,7 @@ export class Arena {
         } else {
           this.phase = "playing";
           this.deadline = this.time + RULES.roundSeconds;
+          this.hazardClock = this.time;
         }
       }
       return;
@@ -863,7 +936,11 @@ export class Arena {
       }
     }
     this.zones = this.zones.filter((z) => z.until > this.time);
-    if (!this.practice) this.stepOrbs();
+    if (!this.practice) {
+      this.stepArena(dt);
+      this.walls();
+      this.stepOrbs();
+    }
     if (this.practice) {
       for (const [i, p] of this.players.entries())
         if (p.hp <= 0) {
@@ -1018,6 +1095,28 @@ export class Arena {
       events: this.events,
       pauseRemaining,
       overtime: this.overtime,
+      arena: this.arenaId,
+      hazardClock: this.hazardClock,
     };
   }
+}
+/** Did hazard `h` trigger between `before` and `t` (seconds into the round)? */
+function triggers(h: Hazard, before: number, t: number) {
+  const count = (x: number) =>
+    x < h.offset ? -1 : Math.floor((x - h.offset) / h.period);
+  return t >= h.offset && count(t) > count(before);
+}
+/** Move `p` to the nearest point just outside `r` (a wall rising under it). */
+function pushOut(p: { x: number; y: number }, r: { x: number; y: number; w: number; h: number }) {
+  const pad = RULES.radius + 2;
+  if (p.x < r.x - pad || p.x > r.x + r.w + pad || p.y < r.y - pad || p.y > r.y + r.h + pad)
+    return;
+  const options = [
+    { x: r.x - pad, y: p.y, d: p.x - (r.x - pad) },
+    { x: r.x + r.w + pad, y: p.y, d: r.x + r.w + pad - p.x },
+    { x: p.x, y: r.y - pad, d: p.y - (r.y - pad) },
+    { x: p.x, y: r.y + r.h + pad, d: r.y + r.h + pad - p.y },
+  ].sort((a, b) => a.d - b.d);
+  p.x = options[0].x;
+  p.y = options[0].y;
 }

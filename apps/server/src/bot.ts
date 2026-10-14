@@ -5,7 +5,9 @@ import {
   blankInput,
   blocked,
   skillReady,
+  ARENAS,
   COMBOS,
+  hazardIn,
   hasMark,
   type Ability,
   type Fighter,
@@ -478,6 +480,14 @@ export class BotBrain {
           Math.hypot(z.x - x, z.y - y) < z.radius + RULES.radius
         )
           score -= 4;
+      // Arena hazards: careful bots step out before a vent or surge fires.
+      const clock = arena.arenaTime();
+      for (const h of ARENAS[arena.arenaId].hazards)
+        if (Math.hypot(h.x - x, h.y - y) < h.radius + RULES.radius) {
+          if (h.kind === "pool") score -= 1;
+          if (clock >= 0 && hazardIn(h, clock) < h.warn + 0.3)
+            score -= 6 * this.profile.dodge;
+        }
       score += (this.random() - 0.5) * 0.4;
       if (score > bestScore) {
         bestScore = score;

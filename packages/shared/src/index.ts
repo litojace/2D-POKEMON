@@ -1097,7 +1097,9 @@ export interface GameEvent extends Vec {
     /** A healing orb appeared. */
     | "orb"
     /** Someone picked up an orb (value = health restored). */
-    | "heal";
+    | "heal"
+    /** An arena hazard fired (abilityId: hazard-vent, hazard-pool, hazard-wall). */
+    | "hazard";
   /** Beam end point. */
   tx?: number;
   ty?: number;
@@ -1146,6 +1148,9 @@ export interface Snapshot {
   events: GameEvent[];
   pauseRemaining: number;
   overtime: boolean;
+  /** Which arena this match is played in, and when its hazards' clock started. */
+  arena?: ArenaId;
+  hazardClock?: number;
 }
 export type WireSnapshot = Omit<Snapshot, "projectiles" | "zones"> & {
   projectiles: (Omit<Projectile, "ability"> & { abilityId: string })[];
@@ -1211,13 +1216,31 @@ export const normalize = (x: number, y: number): Vec => {
   const length = Math.hypot(x, y);
   return length > 1 ? { x: x / length, y: y / length } : { x, y };
 };
+export interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+/**
+ * The walls collision uses right now. Each arena (and the moving pillar in
+ * Shifting Ruins) has its own; the server sets this before simulating a room
+ * and the client before predicting, so movement code needn't pass it around.
+ */
+let activeObstacles: readonly Rect[] = OBSTACLES;
+export function useObstacles(list: readonly Rect[]) {
+  activeObstacles = list;
+}
+export function currentObstacles() {
+  return activeObstacles;
+}
 export function blocked(x: number, y: number, r = RULES.radius): boolean {
   return (
     x < r ||
     y < r ||
     x > RULES.width - r ||
     y > RULES.height - r ||
-    OBSTACLES.some(
+    activeObstacles.some(
       (o) =>
         Math.hypot(
           x - Math.max(o.x, Math.min(x, o.x + o.w)),
@@ -1460,4 +1483,155 @@ export function riteOffer(
   return [...majors, ...shuffle(pool("minor"))]
     .slice(0, size)
     .map((r) => r.id);
+}
+
+/**
+ * Arenas. Classic is the original court; the others add one hazard each so a
+ * match plays a little differently, and matches rotate through all four.
+ * Hazards run on a clock that starts when a round goes live, telegraph before
+ * they act, and hurt everyone the same (they never credit a player).
+ */
+export type ArenaId = "classic" | "tide-pools" | "ember-forge" | "shifting-ruins";
+export interface Hazard {
+  kind: "pool" | "vent";
+  x: number;
+  y: number;
+  radius: number;
+  /** Seconds between triggers, the first at `offset` into the round. */
+  period: number;
+  offset: number;
+  /** Telegraph shown for this long before it triggers. */
+  warn: number;
+  damage: number;
+  knockback: number;
+  /** Jumping avoids it. */
+  ground: boolean;
+  status?: StatusKind;
+  statusDuration?: number;
+}
+export interface ArenaDef {
+  id: ArenaId;
+  name: string;
+  /** One line for the briefing. */
+  tip: string;
+  obstacles: Rect[];
+  /** A wall that sinks and rises (Shifting Ruins). */
+  shifting?: { rect: Rect; up: number; down: number; warn: number };
+  hazards: Hazard[];
+}
+const PILLARS = OBSTACLES.slice(0, 4);
+const CENTRE = OBSTACLES[4];
+const vent = (x: number, y: number, offset: number): Hazard => ({
+  kind: "vent",
+  x,
+  y,
+  radius: 78,
+  period: 8,
+  offset,
+  warn: 1.1,
+  damage: 14,
+  knockback: 0,
+  ground: true,
+  status: "burn",
+  statusDuration: 2,
+});
+export const ARENAS: Record<ArenaId, ArenaDef> = {
+  classic: {
+    id: "classic",
+    name: "Stone Court",
+    tip: "The original court: four pillars and a centre block for cover.",
+    obstacles: OBSTACLES,
+    hazards: [],
+  },
+  "tide-pools": {
+    id: "tide-pools",
+    name: "Tide Pools",
+    tip: "The centre is a tide pool: it slows you, and every 7 seconds it surges and throws everyone out.",
+    obstacles: PILLARS,
+    hazards: [
+      {
+        kind: "pool",
+        x: 800,
+        y: 450,
+        radius: 120,
+        period: 7,
+        offset: 7,
+        warn: 1.2,
+        damage: 8,
+        knockback: 170,
+        ground: false,
+        status: "slow",
+        statusDuration: 0.3,
+      },
+    ],
+  },
+  "ember-forge": {
+    id: "ember-forge",
+    name: "Ember Forge",
+    tip: "Four vents erupt in turn (they glow first). Jump or step out to avoid the burn.",
+    obstacles: OBSTACLES,
+    hazards: [
+      vent(650, 160, 4),
+      vent(950, 740, 4),
+      vent(950, 160, 8),
+      vent(650, 740, 8),
+    ],
+  },
+  "shifting-ruins": {
+    id: "shifting-ruins",
+    name: "Shifting Ruins",
+    tip: "The centre block sinks and rises again: cover comes and goes, and it shakes before it rises.",
+    obstacles: PILLARS,
+    shifting: { rect: CENTRE, up: 7, down: 5, warn: 1 },
+    hazards: [],
+  },
+};
+/** Matches rotate through every arena. */
+export const ARENA_ROTATION: ArenaId[] = [
+  "classic",
+  "tide-pools",
+  "ember-forge",
+  "shifting-ruins",
+];
+const withCentre = new Map<ArenaId, Rect[]>();
+/** Is the shifting wall up at `t` seconds into the round? */
+export function shiftingUp(arena: ArenaDef, t: number) {
+  const s = arena.shifting;
+  if (!s) return false;
+  return t < 0 || (((t % (s.up + s.down)) + s.up + s.down) % (s.up + s.down)) < s.up;
+}
+/** Seconds until the shifting wall rises (0 if it is up). */
+export function shiftingRisesIn(arena: ArenaDef, t: number) {
+  const s = arena.shifting;
+  if (!s || shiftingUp(arena, t)) return 0;
+  const cycle = s.up + s.down;
+  return cycle - (t % cycle);
+}
+/** The walls of `arena` at `t` seconds into the round. */
+export function obstaclesAt(id: ArenaId | undefined, t: number): Rect[] {
+  const arena = ARENAS[id ?? "classic"];
+  if (!arena.shifting || !shiftingUp(arena, t)) return arena.obstacles;
+  let list = withCentre.get(arena.id);
+  if (!list) {
+    list = [...arena.obstacles, arena.shifting.rect];
+    withCentre.set(arena.id, list);
+  }
+  return list;
+}
+/** Seconds until hazard `h` next triggers, `t` seconds into the round. */
+export function hazardIn(h: Hazard, t: number) {
+  if (t < h.offset) return h.offset - t;
+  const since = (t - h.offset) % h.period;
+  return since === 0 ? 0 : h.period - since;
+}
+/** What a hazard hit looks like to the damage rules (status, jump to avoid). */
+export function hazardAbility(h: Hazard): Ability {
+  return ability(`hazard-${h.kind}`, h.kind === "vent" ? "Vent" : "Surge", "zone", h.damage, 0, "", {
+    ground: h.ground,
+    knockback: 0,
+    radius: h.radius,
+    ...(h.kind === "vent" && h.status
+      ? { status: h.status, statusDuration: h.statusDuration }
+      : {}),
+  });
 }

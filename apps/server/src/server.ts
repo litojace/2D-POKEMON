@@ -417,6 +417,7 @@ export function createArenaServer(
         ).join("");
       } while (rooms.has(code));
       const arena = new Arena(code, result.data.mode ?? "duel");
+      arena.rotateArenas = true;
       rooms.set(code, arena);
       attach(arena, result.data.name, cb);
     });
@@ -553,6 +554,7 @@ export function createArenaServer(
         code = randomBytes(12).toString("hex");
       } while (rooms.has(code));
       const a = new Arena(code);
+      a.rotateArenas = true;
       rooms.set(code, a);
       attach(a, result.data.name, cb, false);
       a.players[0].character = result.data.character;

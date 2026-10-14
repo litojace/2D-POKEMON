@@ -967,6 +967,21 @@ footer > span:last-child {
 .overlay-card button {
   margin: 20px 5px 0;
 }
+.arena-brief {
+  margin: 14px auto 4px;
+  max-width: 520px;
+  color: #d9e6f5;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.arena-brief b {
+  display: block;
+  color: #ffd65b;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 11px;
+  margin-bottom: 2px;
+}
 /* Rites: round upgrades chosen between rounds. */
 .rite-intro {
   margin: 0 0 12px;
