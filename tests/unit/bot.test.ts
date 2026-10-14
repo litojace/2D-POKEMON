@@ -74,7 +74,8 @@ describe("AI bot", () => {
     expect(BOT_PROFILES.easy.reaction).toBeGreaterThan(
       BOT_PROFILES.hard.reaction,
     );
-  });
+    // 32 full bot matches: well past vitest's 10s default on slow runners.
+  }, 60_000);
   it("hunts down and beats a player who stands still", () => {
     const arena = new Arena("still");
     arena.add("H", "H", "voltkit");
