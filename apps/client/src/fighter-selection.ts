@@ -91,7 +91,7 @@ export function fighterSelection(selected: CharacterId, element = "All") {
     at < 0
       ? cards.join("") + detail
       : [...cards.slice(0, at + 1), detail, ...cards.slice(at + 1)].join("");
-  return `<div class="section-title"><div><span class="eyebrow">THE ROSTER</span><h2>Find your fighter</h2></div></div><div class="roster showcase-roster">${grid}</div><p class="universal">Every fighter shares one <b>dash</b> (${actionLabel(bindings, "dash")}) and one <b>jump</b> (${actionLabel(bindings, "jump")}). Jump clears ground attacks.</p>`;
+  return `<div class="section-title"><div><span class="eyebrow">THE ROSTER</span><h2>Find your fighter</h2></div></div><div class="roster-navigation" aria-label="Champion navigation"><div class="roster-swipe-hint"><span aria-hidden="true">&#8596;</span><span>Swipe to explore <small>${cards.length} champions</small></span></div><div class="roster-scroll-buttons"><button type="button" data-roster-step="-1" aria-label="Previous champions" disabled>&#8249;</button><button type="button" data-roster-step="1" aria-label="More champions">&#8250;</button></div><progress class="roster-scroll-progress" aria-label="Champion list scroll position" max="1" value="0"></progress></div><div class="roster showcase-roster">${grid}</div><p class="universal">Every fighter shares one <b>dash</b> (${actionLabel(bindings, "dash")}) and one <b>jump</b> (${actionLabel(bindings, "jump")}). Jump clears ground attacks.</p>`;
 }
 
 /**
@@ -210,11 +210,50 @@ export function placeFighterDetail(root: ParentNode) {
   }
 }
 let watched: ResizeObserver | undefined;
+let navigationEvents: AbortController | undefined;
 /** Re-place the panel whenever the roster switches between layouts. */
 export function watchFighterDetail(root: HTMLElement) {
   watched?.disconnect();
+  navigationEvents?.abort();
+  navigationEvents = new AbortController();
   const panel = root.querySelector<HTMLElement>(".roster-panel") ?? root;
   placeFighterDetail(panel);
-  watched = new ResizeObserver(() => placeFighterDetail(panel));
+  const roster = panel.querySelector<HTMLElement>(".showcase-roster");
+  const previous = panel.querySelector<HTMLButtonElement>(
+    '[data-roster-step="-1"]',
+  );
+  const next = panel.querySelector<HTMLButtonElement>('[data-roster-step="1"]');
+  const progress = panel.querySelector<HTMLProgressElement>(
+    ".roster-scroll-progress",
+  );
+  const syncNavigation = () => {
+    if (!roster) return;
+    const max = Math.max(0, roster.scrollWidth - roster.clientWidth);
+    if (previous) previous.disabled = roster.scrollLeft <= 2;
+    if (next) next.disabled = roster.scrollLeft >= max - 2;
+    if (progress) progress.value = max ? roster.scrollLeft / max : 0;
+  };
+  for (const button of [previous, next])
+    button?.addEventListener(
+      "click",
+      () => {
+        roster?.scrollBy({
+          left: Number(button.dataset.rosterStep) * (roster.clientWidth * 0.8),
+          behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
+            ? "instant"
+            : "smooth",
+        });
+      },
+      { signal: navigationEvents.signal },
+    );
+  roster?.addEventListener("scroll", syncNavigation, {
+    passive: true,
+    signal: navigationEvents.signal,
+  });
+  syncNavigation();
+  watched = new ResizeObserver(() => {
+    placeFighterDetail(panel);
+    syncNavigation();
+  });
   watched.observe(panel);
 }

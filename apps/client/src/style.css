@@ -6180,3 +6180,88 @@ button.small {
   font-style: normal;
   font-weight: 700;
 }
+
+/* Keep menu actions easy to recognize without relying on icon fonts. */
+.header-menu-panel .quiet {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.menu-option-icon {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  color: #ffd65b;
+  opacity: 0.9;
+}
+.roster-navigation {
+  display: none;
+}
+@container (max-width: 639.98px) {
+  .roster-navigation {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 8px 14px;
+    margin: 0 0 12px;
+  }
+  .roster-swipe-hint {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    color: #ffd65b;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  .roster-swipe-hint > span:first-child {
+    font-size: 25px;
+  }
+  .roster-swipe-hint small {
+    display: block;
+    color: #a9bbd5;
+    font-size: 10px;
+    font-weight: 500;
+    margin-top: 2px;
+  }
+  .roster-scroll-buttons {
+    display: flex;
+    gap: 6px;
+  }
+  .roster-scroll-buttons button {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid #ffd65b66;
+    border-radius: 10px;
+    background: #233653;
+    color: #ffd65b;
+    font-size: 29px;
+    line-height: 1;
+  }
+  .roster-scroll-buttons button:disabled {
+    opacity: 0.3;
+  }
+  .roster-scroll-progress {
+    grid-column: 1/-1;
+    display: block;
+    width: 100%;
+    height: 4px;
+    appearance: none;
+    border: 0;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #344762;
+    color: #ffd65b;
+  }
+  .roster-scroll-progress::-webkit-progress-bar {
+    background: #344762;
+  }
+  .roster-scroll-progress::-webkit-progress-value {
+    background: #ffd65b;
+    border-radius: 4px;
+  }
+  .roster-scroll-progress::-moz-progress-bar {
+    background: #ffd65b;
+    border-radius: 4px;
+  }
+}
