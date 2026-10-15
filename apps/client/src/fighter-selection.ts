@@ -1,3 +1,4 @@
+import { menuIcon } from "./menu-icons";
 import { fighterPack } from "./animation/pack-config";
 import { CHARACTERS, COMBOS, ULT_SLOT, type CharacterId } from "@arena/shared";
 import { actionLabel, controlPrefs, skillLabels } from "./controls";
@@ -91,7 +92,7 @@ export function fighterSelection(selected: CharacterId, element = "All") {
     at < 0
       ? cards.join("") + detail
       : [...cards.slice(0, at + 1), detail, ...cards.slice(at + 1)].join("");
-  return `<div class="section-title"><div><span class="eyebrow">THE ROSTER</span><h2>Find your fighter</h2></div></div><div class="roster-navigation" aria-label="Champion navigation"><div class="roster-swipe-hint"><span aria-hidden="true">&#8596;</span><span>Swipe to explore <small>${cards.length} champions</small></span></div><div class="roster-scroll-buttons"><button type="button" data-roster-step="-1" aria-label="Previous champions" disabled>&#8249;</button><button type="button" data-roster-step="1" aria-label="More champions">&#8250;</button></div><progress class="roster-scroll-progress" aria-label="Champion list scroll position" max="1" value="0"></progress></div><div class="roster showcase-roster">${grid}</div><p class="universal">Every fighter shares one <b>dash</b> (${actionLabel(bindings, "dash")}) and one <b>jump</b> (${actionLabel(bindings, "jump")}). Jump clears ground attacks.</p>`;
+  return `<div class="section-title"><div><span class="eyebrow">THE ROSTER</span><h2>Find your fighter</h2></div></div><div class="roster-navigation" aria-label="Champion navigation"><div class="roster-swipe-hint"><span class="roster-swipe-icon" aria-hidden="true">${menuIcon("swipe")}</span><span>Swipe to explore <small>${cards.length} champions</small></span></div><div class="roster-scroll-buttons"><button type="button" data-roster-step="-1" aria-label="Previous champions" disabled>&#8249;</button><button type="button" data-roster-step="1" aria-label="More champions">&#8250;</button></div><progress class="roster-scroll-progress" aria-label="Champion list scroll position" max="1" value="0"></progress></div><div class="roster showcase-roster">${grid}</div><p class="universal">Every fighter shares one <b>dash</b> (${actionLabel(bindings, "dash")}) and one <b>jump</b> (${actionLabel(bindings, "jump")}). Jump clears ground attacks.</p>`;
 }
 
 /**

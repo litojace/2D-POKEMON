@@ -6213,9 +6213,8 @@ button.small {
     font-size: 12px;
     font-weight: 700;
   }
-  .roster-swipe-hint > span:first-child {
-    font-size: 25px;
-  }
+  .roster-swipe-icon { display:grid; place-items:center; width:32px; height:32px; flex:0 0 32px; }
+  .roster-swipe-icon .menu-option-icon { width:26px; height:26px; opacity:1; }
   .roster-swipe-hint small {
     display: block;
     color: #a9bbd5;
@@ -6300,12 +6299,12 @@ dialog:has(.illustrated-guide) { width:min(820px,94vw); }
 .guide-ex + .guide-move { position:absolute; right:18%; top:19px; width:65px; height:65px; border:2px solid #83c7ff; box-shadow:0 0 20px #6dbfff66; }
 .guide-ex-meter i { width:33.333%; background:#82caff; }
 .guide-ex-meter b { color:#a8d5ff; }
-.guide-orb { position:absolute; top:28px; width:52px; height:52px; border-radius:50%; display:grid; place-items:center; font-size:34px; line-height:1; font-weight:700; }
-.guide-heal { left:18%; color:white; background:radial-gradient(circle at 35% 30%,#e8ffe7,#58e58b 50%,#13713b); box-shadow:0 0 22px #60ee8880; border:2px solid #bdffd0; }
-.guide-energy { right:18%; color:#fff4b9; background:radial-gradient(circle at 35% 30%,#fff9c7,#e6ba49 55%,#9f711c); box-shadow:0 0 22px #ffd65b80; border:2px solid #ffedac; }
-.guide-orb-label { position:absolute; top:96px; font-size:10px; font-weight:800; letter-spacing:.5px; }
-.guide-heal-label { left:17%; color:#8cf0b0; }
-.guide-energy-label { right:12%; color:#ffdf85; }
+.guide-orb { position:static; width:52px; height:52px; border-radius:50%; display:grid; place-items:center; color:white; }
+.guide-heal { color:white; background:radial-gradient(circle at 35% 30%,#e8ffe7,#58e58b 50%,#13713b); box-shadow:0 0 22px #60ee8880; border:2px solid #bdffd0; }
+.guide-energy { color:#fff4b9; background:radial-gradient(circle at 35% 30%,#fff9c7,#e6ba49 55%,#9f711c); box-shadow:0 0 22px #ffd65b80; border:2px solid #ffedac; }
+.guide-orb-label { position:static; display:block; font-size:10px; font-weight:800; letter-spacing:.5px; line-height:1.3; text-align:center; white-space:nowrap; }
+.guide-heal-label { color:#8cf0b0; }
+.guide-energy-label { color:#ffdf85; }
 .guide-danger { position:absolute; inset:0; background:#ee56682a; }
 .guide-safe-ring { position:absolute; width:115px; height:115px; border:3px solid #ef6687; border-radius:50%; left:calc(50% - 58px); top:6px; background:#213651; box-shadow:0 0 20px #f7576d66; }
 .guide-safe-ring ~ .guide-fighter { left:calc(50% - 47px); top:15px; }
@@ -6335,10 +6334,10 @@ dialog:has(.illustrated-guide) { width:min(820px,94vw); }
  .guide-ultimate { width:54px; height:54px; right:9%; top:12px; padding:7px; }
  .guide-ex { left:9%; font-size:28px; }
  .guide-ex + .guide-move { width:52px; height:52px; right:9%; }
- .guide-orb { width:40px; height:40px; font-size:28px; top:24px; }
- .guide-heal { left:12%; } .guide-energy { right:12%; }
- .guide-orb-label { top:82px; font-size:8px; }
- .guide-heal-label { left:8%; } .guide-energy-label { right:5%; }
+ .guide-orb { width:40px; height:40px; }
+
+ .guide-orb-label { font-size:8px; letter-spacing:.2px; }
+
  .guide-rank-badge { left:9%; width:42px; height:42px; top:29px; }
  .guide-rank-badge .menu-option-icon { width:28px; height:28px; }
  .guide-rank-star { font-size:40px; right:7%; }
@@ -6351,3 +6350,9 @@ dialog:has(.illustrated-guide) { width:min(820px,94vw); }
 @media(max-width:480px) {
  .guide-meter b { width:auto; right:0; font-size:8px; }
 }
+
+.guide-orb-pair { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:center; height:100%; padding:14px 8px; gap:8px; }
+.guide-orb-item { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; min-width:0; }
+.guide-orb > svg,.guide-orb > .skill-icon { width:60%; height:60%; color:inherit; }
+
+.guide-energy > svg { color:#9b6517; }

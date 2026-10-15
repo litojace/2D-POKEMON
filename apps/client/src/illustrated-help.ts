@@ -53,7 +53,7 @@ export function illustratedHelp() {
     card(
       "Collect glowing orbs",
       scene(
-        `<span class="guide-orb guide-heal">+</span><span class="guide-orb guide-energy">&#9889;</span><span class="guide-orb-label guide-heal-label">+${Math.round(RULES.orbHeal * 100)}% HP</span><span class="guide-orb-label guide-energy-label">+${RULES.orbEnergy} ENERGY</span>`,
+        `<div class="guide-orb-pair"><div class="guide-orb-item"><span class="guide-orb guide-heal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span><span class="guide-orb-label guide-heal-label">+${Math.round(RULES.orbHeal * 100)}% HP</span></div><div class="guide-orb-item"><span class="guide-orb guide-energy"><svg viewBox="0 0 24 24" fill="currentColor"><path d="m14 2-9 12h6l-1 8 9-12h-6Z"/></svg></span><span class="guide-orb-label guide-energy-label">+${RULES.orbEnergy} ENERGY</span></div></div>`,
       ),
       "Green restores health. Gold charges your ultimate.",
     ),
