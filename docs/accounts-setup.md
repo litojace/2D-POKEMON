@@ -1,6 +1,6 @@
 # Separate game accounts
 
-Element Arena follows AMATYC's Supabase auth pattern: email/password signup and login, email confirmation, Google sign-in, password recovery, and optional remembered sessions. Create a **new Supabase project for the game**. Its accounts remain separate from AMATYC. No administrator or default password is shipped.
+Element Arena follows AMATYC's Supabase auth pattern: email/password signup and login, email confirmation, optional Google sign-in (hidden until you turn it on), password recovery, and optional remembered sessions. Create a **new Supabase project for the game**. Its accounts remain separate from AMATYC. No administrator or default password is shipped.
 
 ## Database
 
@@ -72,9 +72,24 @@ from public.arena_admins a join auth.users u on u.id = a.user_id;
 
 Refresh the game. **Admin** appears in navigation. **Solo test mode** is available to every signed-in player. Admin membership grants/revocations are done only through trusted SQL administration. The web dashboard cannot promote players or suspend administrators, preventing accidental self-lockout.
 
-## Google sign-in
+## Google sign-in (optional, off by default)
 
-Optionally enable Google in Supabase using a Google OAuth web client. Register the exact callback supplied by Supabase (normally `https://YOUR_GAME_PROJECT.supabase.co/auth/v1/callback`) as Google's authorized redirect URI. Add the game origin as an authorized JavaScript origin. Keep the Google secret in Supabase, not the repository. See [Supabase's Google guide](https://supabase.com/docs/guides/auth/social-login/auth-google).
+The "Continue with Google" button is hidden until you turn it on. To set it up:
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), create (or pick) a project and open **Google Auth Platform**.
+   - **Branding:** app name (Element Arena), support email, and the `litojace.com` domain.
+   - **Audience:** choose **External**. While it's in "Testing", only the test users you list can sign in; publish the app to let anyone in.
+   - **Data Access:** add the `openid` scope (email and profile are there by default). Don't add other scopes.
+2. In **Clients**, create an OAuth client of type **Web application**.
+   - Authorized JavaScript origins: `https://parena.litojace.com`
+   - Authorized redirect URIs: the callback Supabase shows on its Google provider page, normally `https://YOUR_GAME_PROJECT.supabase.co/auth/v1/callback`
+   - Save the client ID and client secret.
+3. In Supabase, open **Authentication → Sign In / Providers → Google**, enable it and paste the client ID and client secret. Keep the secret in Supabase, never in the repository.
+4. In Supabase **Authentication → URL Configuration**, make sure the Site URL is `https://parena.litojace.com` and `https://parena.litojace.com/auth/callback` is in the redirect URLs (it already is if email confirmation works).
+5. In Render, add the environment variable `VITE_GOOGLE_SIGN_IN` = `on` to the web service and redeploy. It's read when the site is built, so a redeploy is needed.
+6. Test it: log out, choose **Continue with Google**, and check you land back in the game signed in.
+
+To hide it again, remove the variable (or set it to anything but `on`) and redeploy. See [Supabase's Google guide](https://supabase.com/docs/guides/auth/social-login/auth-google).
 
 ## Player and title management
 

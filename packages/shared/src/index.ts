@@ -1555,7 +1555,7 @@ export interface Rite {
 }
 export const RITE_RULES = {
   /** Intermission while players choose (seconds); it ends early once all have. */
-  seconds: 8,
+  seconds: 12,
   /** Never shorter than this after a round ends, so the result can be read. */
   minSeconds: 2.5,
   choices: 3,

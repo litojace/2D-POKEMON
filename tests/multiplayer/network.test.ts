@@ -297,8 +297,8 @@ it("synchronizes both players movement, skills, health, death, match results and
   expect(arena.roundWinner).toBe(host.id);
   // Win the remaining rounds (first to three).
   for (let round = 2; round <= 3; round++) {
-    // Rite choice (up to 8s, auto-picked) plus the countdown.
-    for (let i = 0; i < 345; i++) server.step();
+    // Rite choice (up to 12s, auto-picked) plus the 3s countdown, at 30 Hz.
+    for (let i = 0; i < 465; i++) server.step();
     q.hp = 0;
     server.step();
   }
