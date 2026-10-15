@@ -1,3 +1,4 @@
+import { PwaAutoUpdate } from "./pwa-auto-update";
 import { lockLandscape } from "./orientation";
 import { registerSW } from "virtual:pwa-register";
 import { safeToUpdate, peerMatchActive } from "./pwa-policy";
@@ -11,18 +12,19 @@ export function setupPWA(
   openDialog: (html: string) => void,
   notify: (text: string) => void,
 ) {
-  let install: InstallPrompt | undefined,
-    waiting = false,
-    reloadReady = false;
+  let install: InstallPrompt | undefined;
+  let registration: ServiceWorkerRegistration | undefined;
+  let lastCheck = 0;
+  let checking = false;
   const id = "arena-pwa-tab-" + crypto.randomUUID();
   const banner = document.createElement("aside");
   banner.id = "pwa-banner";
   banner.hidden = true;
-  banner.innerHTML =
-    '<span></span><button class="secondary">Update app</button>';
+  banner.setAttribute("role", "status");
+  banner.innerHTML = "<span></span>";
   document.body.append(banner);
   const message = banner.querySelector("span")!;
-  const update = banner.querySelector("button")!;
+
   const peers = () => {
     const records: Array<{ active: boolean; at: number }> = [];
     try {
@@ -38,17 +40,44 @@ export function setupPWA(
     }
     return peerMatchActive(records, Date.now());
   };
-  const idle = () => safeToUpdate(getPhase()) && !peers();
-  const paint = () => {
-    banner.hidden = !waiting && !reloadReady;
-    if (!banner.hidden) {
-      const ready = idle();
-      message.textContent = ready
-        ? "A new arena version is ready."
-        : "Update ready · available after the match.";
-      update.disabled = !ready;
-      update.textContent = reloadReady ? "Reload app" : "Update app";
+  const idle = () =>
+    safeToUpdate(getPhase()) &&
+    !peers() &&
+    document.visibilityState === "visible" &&
+    navigator.onLine;
+  const automatic = new PwaAutoUpdate({
+    safe: idle,
+    activate: () => apply(true),
+    reload: () => location.reload(),
+    now: () => Date.now(),
+  });
+  const checkForUpdate = async () => {
+    if (
+      !registration ||
+      checking ||
+      !navigator.onLine ||
+      document.visibilityState !== "visible" ||
+      Date.now() - lastCheck < 5000
+    )
+      return;
+    lastCheck = Date.now();
+    checking = true;
+    try {
+      await registration.update();
+    } catch {
+      /* Offline, or deployment is still starting: check again later. */
+    } finally {
+      checking = false;
     }
+  };
+  const paint = () => {
+    banner.hidden = !automatic.waiting && !automatic.reloadReady;
+    if (!banner.hidden) {
+      message.textContent = idle()
+        ? "Updating to the latest arena version…"
+        : "Update downloaded · applies automatically after the match.";
+    }
+    void automatic.sync();
   };
   let lastBeat = 0,
     lastPhase: string | undefined;
@@ -68,13 +97,17 @@ export function setupPWA(
     paint();
   };
   const apply = registerSW({
+    immediate: true,
+    onRegisteredSW(_url, current) {
+      registration = current;
+      void checkForUpdate();
+    },
     onNeedRefresh() {
-      waiting = true;
+      automatic.available();
       paint();
     },
     onNeedReload() {
-      reloadReady = true;
-      waiting = false;
+      automatic.activated();
       paint();
     },
     onRegisterError() {
@@ -83,15 +116,19 @@ export function setupPWA(
       );
     },
   });
-  update.onclick = () => {
-    if (!idle()) return;
-    if (reloadReady) location.reload();
-    else void apply(true);
-  };
   heartbeat();
   setInterval(heartbeat, 10000);
   window.addEventListener("storage", paint);
-  window.addEventListener("pageshow", heartbeat);
+  setInterval(() => void checkForUpdate(), 60000);
+  const resume = () => {
+    heartbeat();
+    paint();
+    void checkForUpdate();
+  };
+  window.addEventListener("pageshow", resume);
+  window.addEventListener("focus", resume);
+  window.addEventListener("online", resume);
+  document.addEventListener("visibilitychange", resume);
   window.addEventListener("pagehide", () => {
     try {
       localStorage.removeItem(id);
