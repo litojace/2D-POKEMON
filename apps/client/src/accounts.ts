@@ -373,6 +373,7 @@ export class AccountUI {
       this.hooks.openDialog(raidBestiary(progress));
       for(const button of Array.from(document.querySelectorAll<HTMLButtonElement>('button[data-raid-cosmetic]')))button.onclick=async()=>{
         button.disabled=true;
+        button.setAttribute("aria-busy","true");
         try {
           const cosmetic=button.dataset.raidCosmetic||null;
           await this.api('/api/raids/cosmetic',{cosmetic});
@@ -381,7 +382,7 @@ export class AccountUI {
           this.hooks.notify(cosmetic==="cragbound"?"Cragbound colors equipped.":cosmetic==="mountain-aura"?"Mountain aura equipped.":"Original appearance equipped.");
           await this.showRaids();
         }
-        catch(error){button.disabled=false;this.hooks.notify(error instanceof Error?error.message:'Cosmetic could not be equipped.');}
+        catch(error){button.disabled=false;button.removeAttribute('aria-busy');this.hooks.notify(error instanceof Error?error.message:'Cosmetic could not be equipped.');}
       };
     }catch(error){this.hooks.openDialog(`<h2>Boss Bestiary</h2><p>${escape(error instanceof Error?error.message:'Raid records are not available yet.')}</p><p>Raids are playable at Peril 1. Persistent rewards require migration 007 and server storage configuration.</p>`);}
   }

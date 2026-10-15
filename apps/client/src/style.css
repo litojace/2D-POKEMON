@@ -6683,3 +6683,7 @@ body.battle-raid:not(.touch-mode) #battle { position:relative; }
 .roster-panel[data-raid-cosmetic="mountain-aura"] .selected .card-art,
 .raid-party-avatar[data-raid-cosmetic="mountain-aura"] {border-radius:50%;box-shadow:inset 0 0 0 2px #ffda8299,0 0 14px #ffcd6244;}
 @media(max-width:420px) {.raid-rewards .raid-reward {grid-template-columns:16px minmax(0,1fr);}.raid-reward > small {grid-column:2;}}
+
+/* Locked/equipped cosmetics are idle; reserve the wait cursor for a save. */
+.raid-equip .raid-cosmetic-option:disabled {cursor:default;}
+.raid-equip .raid-cosmetic-option[aria-busy="true"] {cursor:wait;}
