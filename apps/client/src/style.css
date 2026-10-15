@@ -6743,3 +6743,11 @@ body:not(.battle-active)::before {background:rgba(15,29,52,.66);-webkit-backdrop
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
   body:not(.battle-active) .topbar,body:not(.battle-active)::before {background:#13233de8;}
 }
+
+/* The header (and its open menu) always stays above the page. The lobby
+   panels keep a transform from their entrance animation, which makes them
+   their own layers; without a z-index here they painted over the menu. */
+.topbar {
+  position: relative;
+  z-index: 70;
+}
