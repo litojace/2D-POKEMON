@@ -48,7 +48,7 @@ async function play(
       combos: 0,
     })),
   };
-  const id = `rated-${++serial}`;
+  const id = `rated-match-${++serial}`;
   const replies: Record<string, { rating?: Rating }> = {};
   for (const p of players)
     if (p.id) {
