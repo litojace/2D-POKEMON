@@ -1,3 +1,4 @@
+import { wireRaidDifficulty } from "./raid-difficulty";
 import { updateMenuShell } from "./menu-shell";
 import { raidLobby, renderRaidUI, drawRaidArena } from "./raid-ui";
 import { illustratedHelp } from "./illustrated-help";
@@ -851,11 +852,12 @@ let botLevel: BotLevel = (() => {
 })();
 async function showRaidBestiary() { await accountsUI.showRaids(); }
 function wireRaidLobby() {
+  wireRaidDifficulty();
   const copy=document.getElementById("raid-copy-code");
   if(copy)copy.onclick=()=>void navigator.clipboard.writeText(state?.code??"").then(()=>toast("Room code copied")).catch(()=>toast("Room code: "+(state?.code??"")));
 
   const bestiary=document.getElementById('raid-bestiary');if(bestiary)bestiary.onclick=()=>void showRaidBestiary();
-  const peril=document.getElementById('raid-peril') as HTMLSelectElement|null,weekly=document.getElementById('raid-weekly') as HTMLInputElement|null;
+  const peril=document.getElementById('raid-peril') as HTMLInputElement|null,weekly=document.getElementById('raid-weekly') as HTMLInputElement|null;
   const configure=()=>void request('raid-config',{peril:Number(peril?.value??1),weekly:weekly?.checked??false});
   if(peril)peril.onchange=configure;if(weekly)weekly.onchange=configure;
 }

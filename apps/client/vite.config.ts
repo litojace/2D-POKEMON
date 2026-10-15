@@ -12,6 +12,7 @@ export default defineConfig({
       injectManifest: {
         globPatterns: [
           "assets/*.{js,css}",
+          "assets/backgrounds/*.webp",
           "assets/fighters/**/*.{svg,png,webp,json}",
         ],
         globIgnores: ["assets/fighters/**/portrait-showcase-v1.webp"],

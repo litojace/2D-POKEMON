@@ -6687,3 +6687,27 @@ body.battle-raid:not(.touch-mode) #battle { position:relative; }
 /* Locked/equipped cosmetics are idle; reserve the wait cursor for a save. */
 .raid-equip .raid-cosmetic-option:disabled {cursor:default;}
 .raid-equip .raid-cosmetic-option[aria-busy="true"] {cursor:wait;}
+
+/* Approved Celestial Coliseum backdrop, kept behind the readable lobby panels. */
+body {isolation:isolate;}
+body::after {content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(180deg,#08142630 0%,#08142666 45%,#08142630 100%),url('/assets/backgrounds/celestial-coliseum.webp') center/cover no-repeat;}
+body.battle-active::after {display:none;}
+
+/* Custom list keeps the open difficulty menu consistent across operating systems. */
+.raid-difficulty-picker {position:relative;}
+.raid-lobby .raid-peril-trigger {display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:46px;margin:0;padding:12px;border:1px solid #8caed14d;border-radius:10px;background:#12223a;color:#edf3ff;font-size:12px;font-weight:600;text-align:left;}
+.raid-peril-trigger > svg {width:18px;height:18px;color:#ffe099;flex:0 0 18px;}
+.raid-peril-trigger[aria-expanded="true"] {border-color:#ffe099;background:#1b2e4b;}
+.raid-peril-trigger[aria-expanded="true"] > svg {transform:rotate(180deg);}
+.raid-lobby .raid-peril-trigger:disabled {cursor:default;opacity:.6;}
+.raid-peril-options {position:absolute;top:calc(100% + 7px);left:0;right:0;z-index:60;padding:6px;border:1px solid #c9aa665c;border-radius:12px;background:#14243e;box-shadow:0 16px 32px #03091699;}
+.raid-peril-options[hidden] {display:none;}
+.raid-lobby .raid-peril-options > button {display:grid;grid-template-columns:30px minmax(0,1fr) 18px;align-items:center;gap:10px;width:100%;min-height:58px;margin:0;padding:9px 10px;border:1px solid transparent;border-radius:8px;background:transparent;color:#e8effc;text-align:left;}
+.raid-peril-options > button > span:nth-child(2) {display:grid;gap:4px;}
+.raid-peril-options b {font-size:12px;line-height:1.3;}
+.raid-peril-options small {font-size:10px;line-height:1.4;color:#a9bbd4;}
+.raid-peril-number {display:grid;place-items:center;width:30px;height:30px;border:1px solid #7996bb44;border-radius:8px;color:#c4d0e4;font-size:13px;font-weight:800;}
+.raid-peril-options > button[aria-selected="true"] {background:#ffd87012;border-color:#e8c57566;}
+.raid-peril-options > button[aria-selected="true"] :is(b,.raid-peril-number,.raid-peril-check) {color:#ffe099;}
+.raid-peril-options > button:hover,.raid-peril-options > button:focus-visible {background:#2c4161;outline:2px solid #ffe099;outline-offset:-2px;}
+.raid-peril-check {text-align:center;font-size:14px;}

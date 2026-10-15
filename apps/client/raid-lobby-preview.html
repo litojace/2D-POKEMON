@@ -25,6 +25,7 @@
     <aside class="room-panel" id="preview"></aside>
     <script type="module">
       import "./src/style.css";
+      import { wireRaidDifficulty } from "./src/raid-difficulty";
       import { RaidArena } from "../server/src/raid";
       import { raidLobby, raidBestiary } from "./src/raid-ui";
       const arena = new RaidArena("B76CKS");
@@ -46,6 +47,7 @@
       }
       function render() {
         mount.innerHTML = raidLobby(arena.snapshot(), "preview");
+        wireRaidDifficulty(mount);
         document.getElementById("ready").onclick = () => {
           arena.heroes()[0].ready = !arena.heroes()[0].ready;
           render();
