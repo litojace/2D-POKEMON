@@ -218,6 +218,14 @@ it("2v2 moves both partners alike; free-for-all compares by standings; bots chan
   expect((await rating(fay)).rating).toBe(fayBefore);
 });
 
+it("DEBUG state", async () => {
+  await db.exec("reset role");
+  const r = await db.query("select player_id, rating, matches from public.arena_ratings order by player_id");
+  const p = await db.query("select id, display_name, guest, suspended from public.arena_profiles order by id");
+  const c = await db.query("select count(*)::int n from public.arena_rating_changes");
+  const s = await db.query("select season from public.arena_rating_seasons");
+  expect(JSON.stringify({ r: r.rows, p: p.rows, c: c.rows, s: s.rows })).toBe("");
+});
 it("lists ranked players by rating, the unranked separately, and your own rating", async () => {
   await as(cy);
   const board = (
