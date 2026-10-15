@@ -62,6 +62,8 @@ export interface RaidWarning {
   ty: number;
   radius: number;
   at: number;
+  /** Server start time lets clients animate the warning without guessing its duration. */
+  startedAt?: number;
 }
 export interface RaidState {
   bossId: string;

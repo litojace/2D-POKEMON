@@ -7,6 +7,8 @@ import {
   raidWeekly,
   type RaidProgress,
 } from "../../../packages/shared/src/raid";
+import { raidRitePicture } from "./raid-rite-art";
+import { drawRaidBoss } from "./raid-boss-art";
 import { abilityIcon } from "./ability-icons";
 import { fighterAvatar } from "./fighter-art";
 import { setOverlayMarkup } from "./overlay";
@@ -37,7 +39,7 @@ export function raidLobby(state: Snapshot, myId: string) {
     )}</div><label>CHALLENGE<select id="raid-peril" ${host ? "" : "disabled"}>${[1, 2, 3].map((p) => `<option value="${p}" ${p === r.peril ? "selected" : ""}>Peril ${p} · ${["Learn the mountain", "Falling debris", "Closing arena"][p - 1]}</option>`).join("")}</select></label><label class="choice"><input id="raid-weekly" type="checkbox" ${r.weekly ? "checked" : ""} ${host ? "" : "disabled"}>Raid of the Week · shared Peril 2 challenge</label><p class="raid-small">Solo gets one self-revive. Co-op revives by standing near a downed ally. Higher Perils unlock through clears. Raid progress is separate from PvP ratings.</p><button class="primary" id="ready">${me.ready ? "Cancel ready" : "Ready for the raid →"}</button><button class="secondary" id="raid-bestiary">Bestiary & rewards</button><button class="quiet" id="leave">Leave room</button>`;
 }
 export function raidBestiary(p: RaidProgress & { equipped?: string | null }) {
-  return `<div class="eyebrow">BOSS BESTIARY</div><h2>Grumblecrag</h2><div class="raid-bestiary-art" aria-hidden="true"><svg viewBox="0 0 260 170" width="200" height="135"><ellipse cx="130" cy="145" rx="95" ry="19" fill="#070e1e" opacity=".5"/><rect x="62" y="39" width="136" height="112" rx="32" fill="#53677f"/><path d="m57 52 25-50 26 40m95 10L178 2l-26 40" fill="#9ba9bb"/><rect x="20" y="84" width="40" height="69" rx="17" fill="#53677f"/><rect x="200" y="84" width="40" height="69" rx="17" fill="#53677f"/><rect x="85" y="66" width="90" height="28" rx="8" fill="#1c293f"/><ellipse cx="106" cy="79" rx="8" ry="5" fill="#ffd47c"/><ellipse cx="154" cy="79" rx="8" ry="5" fill="#ffd47c"/><circle cx="130" cy="118" r="20" fill="#b89966"/><path d="m112 33 12 27m33 50 16 23" stroke="#a6b7cf" stroke-width="3"/></svg><b>THE LIVING MOUNTAIN</b></div><p>A guardian of the old coliseum. Its rage is its weakness: bait a charge into a pillar to crack its armor.</p><div class="fighter-stats"><span><b>${p.clears}</b>Clears</span><span><b>${p.highestPeril}</b>Highest Peril</span><span><b>${p.bestSeconds === null ? "—" : time(p.bestSeconds)}</b>Best clear</span></div><h3>Your next rewards</h3><div class="raid-rewards"><p>${p.clears ? "✓" : "○"} First clear → <b>Cragbreaker title</b></p><p>${p.clears >= 5 ? "✓" : "○"} ${Math.min(p.clears, 5)}/5 clears → <b>Cragbound color variant</b></p><p>${p.highestPeril >= 3 ? "✓" : "○"} Peril 3 → <b>Mountain Conqueror title</b></p><p>${p.cosmetics.includes("mountain-aura") ? "✓" : "○"} Peril 3 with no downs → <b>Mountain aura</b></p><p>A rare Gilded encounter grants its own title. All other rewards have guaranteed goals.</p></div><h3>Equip a cosmetic</h3><div class="raid-equip">${[null, ...p.cosmetics].map((id) => `<button class="secondary" data-raid-cosmetic="${id ?? ""}" ${p.equipped == id ? "disabled" : ""}>${id === "cragbound" ? "Cragbound colors" : id === "mountain-aura" ? "Mountain aura" : "Original appearance"}</button>`).join("")}</div><h3>Raid of the Week · ${raidWeekly().week}</h3><p>Same boss, trait, seed and Peril for everyone. Times are separated by team size.</p>${[
+  return `<div class="eyebrow">BOSS BESTIARY</div><h2>Grumblecrag</h2><div class="raid-bestiary-art" aria-hidden="true"><svg viewBox="0 0 300 220" width="240" height="176"><ellipse cx="150" cy="193" rx="111" ry="21" fill="#070e1e" opacity=".5"/><g stroke="#202e43" stroke-width="4" stroke-linejoin="round"><path d="m81 176-16 19 14 12 48-2 4-25m88-4 16 19-14 12-48-2-4-25" fill="#52657b"/><path d="m76 67 25-29 73-6 49 37-3 88-39 35-73-7-35-43Z" fill="#52657b"/><path d="m76 67 25-29 73-6 49 37-57 10-63-1Z" fill="#8a9eb1"/><path d="m96 92 30-12 57 3 23 32-20 58-39 13-44-23Z" fill="#202e43"/><path d="m19 121 14-32 29-3 25 22-6 63-32 13-29-22Zm199-13 23-25 32 7 13 32-3 43-30 17-33-17Z" fill="#52657b"/><path d="m19 121 14-32 29-3 25 22-31 5Zm199-13 23-25 32 7 13 32-33-8Z" fill="#8a9eb1"/><path d="m52 76 2-38 19-27 17 53-10 20Zm148-13 16-58 23 30-2 44Zm35 5 16-33 13 35-11 18Z" fill="#ffce75"/><path d="m54 38 19-27-1 57-20 8Zm162-33 0 56-16 2Z" fill="#b6c6d1"/><path d="m103 61 24-19 43 0 28 23-9 39-45 9-40-17Z" fill="#202e43"/><path d="m103 61 24-19 43 0 28 23-48-6-12 13Z" fill="#8a9eb1"/><path d="m117 77 20 6-1 7-19-3Zm43 6 21-7-1 10-20 4Z" fill="#ffce75" stroke="none"/><path d="m121 103 23 7 31-8-13 20-26-1Z" fill="#52657b"/><path d="m149 121 24 18-4 25-21 17-21-19-2-26Z" fill="#8a9eb1"/><path d="m149 128 16 15-4 17-13 13-14-16 0-17Z" fill="#ffce75"/><path d="m149 128-1 45-14-16v-17Z" fill="#fff0bc" stroke="none"/><path d="m105 120 10 13-5 15m79-31-10 17 7 12M43 131l6 13-6 16m218-32-8 16 6 12" fill="none" stroke="#ffce75" stroke-width="2"/></g></svg><b>THE LIVING MOUNTAIN</b></div><p>A guardian of the old coliseum. Its rage is its weakness: bait a charge into a pillar to crack its armor.</p><div class="fighter-stats"><span><b>${p.clears}</b>Clears</span><span><b>${p.highestPeril}</b>Highest Peril</span><span><b>${p.bestSeconds === null ? "—" : time(p.bestSeconds)}</b>Best clear</span></div><h3>Your next rewards</h3><div class="raid-rewards"><p>${p.clears ? "✓" : "○"} First clear → <b>Cragbreaker title</b></p><p>${p.clears >= 5 ? "✓" : "○"} ${Math.min(p.clears, 5)}/5 clears → <b>Cragbound color variant</b></p><p>${p.highestPeril >= 3 ? "✓" : "○"} Peril 3 → <b>Mountain Conqueror title</b></p><p>${p.cosmetics.includes("mountain-aura") ? "✓" : "○"} Peril 3 with no downs → <b>Mountain aura</b></p><p>A rare Gilded encounter grants its own title. All other rewards have guaranteed goals.</p></div><h3>Equip a cosmetic</h3><div class="raid-equip">${[null, ...p.cosmetics].map((id) => `<button class="secondary" data-raid-cosmetic="${id ?? ""}" ${p.equipped == id ? "disabled" : ""}>${id === "cragbound" ? "Cragbound colors" : id === "mountain-aura" ? "Mountain aura" : "Original appearance"}</button>`).join("")}</div><h3>Raid of the Week · ${raidWeekly().week}</h3><p>Same boss, trait, seed and Peril for everyone. Times are separated by team size.</p>${[
     1, 2, 3, 4,
   ]
     .map(
@@ -100,7 +102,7 @@ export function renderRaidUI(
       r.phase === 1
         ? "Choose your starting rite"
         : `Phase ${r.phase} · ${RAID.phases[r.phase - 1]}`;
-    body = `<p>Rites stack for this run. Choose within ${Math.ceil(state.remaining)} seconds.</p><div class="raid-rite-options">${(r.offers[me.id] ?? []).map((id) => `<button data-raid-rite="${id}" class="secondary">${abilityIcon(RAID_RITES[id].icon)}<span><b>${RAID_RITES[id].name}</b><small>${RAID_RITES[id].text}</small></span></button>`).join("") || "<p>Rite locked in · waiting for the team.</p>"}</div>`;
+    body = `<p>Rites stack for this run. Choose within ${Math.ceil(state.remaining)} seconds.</p><div class="raid-rite-options">${(r.offers[me.id] ?? []).map((id) => `<button data-raid-rite="${id}" class="secondary raid-rite-${id}">${raidRitePicture(id)}<span class="raid-rite-copy"><b>${RAID_RITES[id].name}</b><small>${RAID_RITES[id].text}</small></span></button>`).join("") || "<p>Rite locked in · waiting for the team.</p>"}</div>`;
   } else if (state.phase === "countdown") {
     title = String(Math.ceil(state.remaining));
     body = "<p>Stay together. Watch the ground.</p>";
@@ -137,22 +139,85 @@ export function drawRaidArena(
   const r = state.raid;
   if (!r) return;
   for (const w of r.warnings) {
-    const pulse = reduced ? 1 : 1 + Math.sin(state.time * 8) * 0.06;
+    const pulse = reduced ? 1 : 0.86 + Math.sin(state.time * 8) * 0.14;
+    const danger = 0xff4059,
+      edge = 0xff8c99;
     if (w.kind === "charge") {
-      g.lineStyle(w.radius * 2, 0xffa665, 0.15).lineBetween(
+      const dx = w.tx - w.x,
+        dy = w.ty - w.y;
+      const length = Math.hypot(dx, dy) || 1;
+      const ux = dx / length,
+        uy = dy / length;
+      const nx = -uy * w.radius,
+        ny = ux * w.radius;
+      g.lineStyle(w.radius * 2, danger, 0.2 * pulse).lineBetween(
         w.x,
         w.y,
         w.tx,
         w.ty,
       );
-      g.lineStyle(3, 0xffc776, 0.9).lineBetween(w.x, w.y, w.tx, w.ty);
+      // Exact lane edges and chevrons remain legible without color perception.
+      g.lineStyle(3, danger, 1)
+        .lineBetween(w.x + nx, w.y + ny, w.tx + nx, w.ty + ny)
+        .lineBetween(w.x - nx, w.y - ny, w.tx - nx, w.ty - ny);
+      const flow = reduced ? 0 : (state.time * 85) % 90;
+      for (let distance = 24 + flow; distance < length - 12; distance += 90) {
+        const cx = w.x + ux * distance,
+          cy = w.y + uy * distance;
+        g.lineStyle(3, edge, 0.95)
+          .lineBetween(
+            cx - ux * 13 - uy * 15,
+            cy - uy * 13 + ux * 15,
+            cx + ux * 9,
+            cy + uy * 9,
+          )
+          .lineBetween(
+            cx + ux * 9,
+            cy + uy * 9,
+            cx - ux * 13 + uy * 15,
+            cy - uy * 13 - ux * 15,
+          );
+      }
     } else {
-      g.fillStyle(w.kind === "slam" ? 0xffc15b : 0xef6e7e, 0.13).fillCircle(
+      // Keep the boundary fixed at the server's damage radius; pulse opacity only.
+      g.fillStyle(danger, 0.18 * pulse).fillCircle(w.x, w.y, w.radius);
+      g.lineStyle(4, danger, 1).strokeCircle(w.x, w.y, w.radius);
+      g.lineStyle(1, edge, 0.9).strokeCircle(
         w.x,
         w.y,
-        w.radius,
+        Math.max(0, w.radius - 7),
       );
-      g.lineStyle(3, 0xffc15b, 0.85).strokeCircle(w.x, w.y, w.radius * pulse);
+      g.lineStyle(3, edge, 1)
+        .lineBetween(w.x - 8, w.y - 8, w.x + 8, w.y + 8)
+        .lineBetween(w.x + 8, w.y - 8, w.x - 8, w.y + 8);
+    }
+    if (w.startedAt !== undefined) {
+      const duration = Math.max(0.01, w.at - w.startedAt);
+      const progress = Math.max(
+        0,
+        Math.min(1, (state.time - w.startedAt) / duration),
+      );
+      if (w.kind === "charge") {
+        // A growing center stripe shows time remaining alongside the flowing arrows.
+        g.lineStyle(5, edge, 0.65).lineBetween(
+          w.x,
+          w.y,
+          w.x + (w.tx - w.x) * progress,
+          w.y + (w.ty - w.y) * progress,
+        );
+      } else if (progress > 0) {
+        g.lineStyle(5, 0xffd1d6, 0.95)
+          .beginPath()
+          .arc(
+            w.x,
+            w.y,
+            Math.max(0, w.radius - 12),
+            -Math.PI / 2,
+            -Math.PI / 2 + progress * Math.PI * 2,
+            false,
+          )
+          .strokePath();
+      }
     }
   }
   for (const w of r.wards)
@@ -193,40 +258,5 @@ export function drawRaidArena(
     }
   if (r.closingRadius)
     g.lineStyle(6, 0xef6e7e, 0.7).strokeCircle(800, 450, r.closingRadius);
-  const boss = state.players.find((p) => p.raidBoss);
-  if (!boss) return;
-  const x = boss.x,
-    y = boss.y,
-    exposed = r.exposedUntil > state.time || r.staggerUntil > state.time;
-  const rock = r.gilded ? 0xc4a36a : 0x53677f,
-    light = r.gilded ? 0xf7d88a : 0x9ba9bb;
-  g.fillStyle(0x040d20, 0.4).fillEllipse(x, y + 52, 185, 62);
-  g.fillStyle(rock).fillRoundedRect(x - 68, y - 58, 136, 112, 32);
-  g.fillStyle(light)
-    .fillTriangle(x - 73, y - 45, x - 48, y - 95, x - 22, y - 55)
-    .fillTriangle(x + 73, y - 45, x + 48, y - 95, x + 22, y - 55);
-  g.fillStyle(rock)
-    .fillRoundedRect(x - 110, y - 13, 40, 69, 17)
-    .fillRoundedRect(x + 70, y - 13, 40, 69, 17);
-  g.fillStyle(0x26344c)
-    .fillEllipse(x - 43, y + 53, 58, 28)
-    .fillEllipse(x + 43, y + 53, 58, 28);
-  g.fillStyle(0x1c293f).fillRoundedRect(x - 45, y - 31, 90, 28, 8);
-  g.fillStyle(exposed ? 0x7cffe5 : 0xffd47c)
-    .fillEllipse(x - 24, y - 18, 15, 10)
-    .fillEllipse(x + 24, y - 18, 15, 10);
-  g.lineStyle(3, light, 0.7)
-    .lineBetween(x - 18, y - 64, x - 6, y - 37)
-    .lineBetween(x + 27, y + 12, x + 43, y + 35);
-  g.fillStyle(exposed ? 0x71ffe3 : 0xb89966, exposed ? 0.9 : 0.35).fillCircle(
-    x,
-    y + 21,
-    exposed ? 25 : 16,
-  );
-  if (exposed)
-    g.lineStyle(4, 0x9affeb, 0.75).strokeCircle(
-      x,
-      y + 21,
-      33 + (reduced ? 0 : Math.sin(state.time * 10) * 3),
-    );
+  drawRaidBoss(g, state, reduced);
 }

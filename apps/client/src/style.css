@@ -6382,8 +6382,82 @@ dialog:has(.illustrated-guide) { width:min(820px,94vw); }
 .raid-instructions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:16px 0; }
 .raid-instructions > span { display:flex; flex-direction:column; align-items:center; gap:9px; padding:12px; background:#122b45; border:1px solid #7191b555; border-radius:10px; }
 .raid-instructions .skill-icon { width:36px; height:36px; }.raid-instructions b { font-size:12px; }.raid-instructions small { color:#b5c5db; font-size:11px; line-height:1.5; }
-.raid-rite-options { display:grid; gap:10px; }.raid-rite-options button { display:flex; gap:14px; align-items:center; text-align:left; padding:14px; }
-.raid-rite-options .skill-icon { width:40px; height:40px; flex:0 0 40px; }.raid-rite-options span { display:grid; gap:5px; }.raid-rite-options small { font-size:11px; line-height:1.5; color:#b4c7dd; }
+/* A fixed icon track keeps every title and wrapped description aligned. */
+.raid-rite-options {
+  display: grid;
+  gap: 10px;
+  text-align: left;
+}
+.raid-rite-options > button {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  align-items: center;
+  justify-items: stretch;
+  gap: 16px;
+  min-height: 82px;
+  padding: 14px 18px;
+  text-align: left;
+}
+.raid-rite-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid #ffdf7b30;
+  border-radius: 12px;
+  background: #14233c80;
+}
+.raid-rite-icon .skill-icon {
+  display: block;
+  width: 32px;
+  height: 32px;
+  margin: 0;
+}
+.raid-rite-copy {
+  display: grid;
+  align-content: center;
+  gap: 5px;
+  min-width: 0;
+  text-align: left;
+}
+.raid-rite-copy b,
+.raid-rite-copy small {
+  display: block;
+  margin: 0;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.raid-rite-copy b {
+  color: #f1f5ff;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.raid-rite-copy small {
+  color: #b4c7dd;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+.raid-rite-options > button:hover,
+.raid-rite-options > button:focus-visible {
+  border-color: #ffe17b99;
+  background: #344e77;
+}
+.raid-rite-options > button:focus-visible {
+  outline: 2px solid #ffe17b;
+  outline-offset: 3px;
+}
+.raid-instructions > span {
+  display: grid;
+  grid-template-rows: 36px auto 1fr;
+  justify-items: center;
+  align-items: start;
+}
+.raid-instructions > span > .skill-icon { align-self: center; }
+.raid-instructions b { line-height: 1.4; }
+.raid-instructions small { margin: 0; }
 .raid-result-stats { display:flex; justify-content:center; gap:30px; margin:18px; }.raid-result-stats span { display:grid; gap:6px; font-size:10px; color:#a4b9d3; }.raid-result-stats b { font-size:25px; color:#ffe198; }
 .raid-bestiary-art { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; height:150px; background:radial-gradient(ellipse,#c1a16a40,transparent 70%); }.raid-bestiary-art span { font-size:80px; color:#e7bd72; text-shadow:0 0 25px #cf975c; }.raid-bestiary-art b { font-size:10px; letter-spacing:3px; color:#ffdf9d; }
 .raid-rewards { background:#152743; border-radius:12px; padding:10px 16px; }.raid-rewards p,.raid-board p { font-size:12px; line-height:1.6; }.raid-equip { display:flex; flex-wrap:wrap; gap:8px; }.raid-board { padding:12px; border:1px solid #7d9dc244; border-radius:10px; margin:8px 0; }
@@ -6392,5 +6466,47 @@ dialog:has(.illustrated-guide) { width:min(820px,94vw); }
 
 body.battle-raid:not(.touch-mode) #battle { position:relative; }
 
-.raid-rite-options button { margin:0; width:100%; }
-@media(orientation:landscape) and (max-height:600px){ .raid-rite-options button {padding:9px 12px;}.raid-rite-options .skill-icon {width:30px;height:30px;flex-basis:30px;}.raid-overlay {padding:14px 20px;}.raid-overlay>p{margin:8px 0;} }
+.raid-rite-options > button { margin:0; width:100%; }
+.raid-bestiary-art { height:auto; min-height:190px; padding:12px 0; }
+@media(orientation:landscape) and (max-height:600px){ .raid-rite-options > button {padding:9px 12px; min-height:64px;grid-template-columns:38px minmax(0,1fr);gap:12px;}.raid-rite-icon {width:38px;height:38px;border-radius:9px;}.raid-rite-icon .skill-icon {width:26px;height:26px;}.raid-rite-copy b{font-size:13px;}.raid-rite-copy small{font-size:11px;}.raid-instructions > span{grid-template-rows:25px auto 1fr;}.raid-overlay {padding:14px 20px;}.raid-overlay>p{margin:8px 0;} }
+
+@media(max-width:600px) and (orientation:portrait) {
+  .raid-rite-options > button { grid-template-columns:40px minmax(0,1fr);gap:12px;padding:12px; }
+  .raid-rite-icon {width:40px;height:40px;border-radius:10px;}
+  .raid-rite-icon .skill-icon {width:28px;height:28px;}
+}
+
+/* Color and an effect illustration make each raid upgrade recognizable. */
+.raid-rite-shelter { --rite-color:#83e8cf; --rite-rgb:131,232,207; }
+.raid-rite-sharing { --rite-color:#ffd86b; --rite-rgb:255,216,107; }
+.raid-rite-core { --rite-color:#ffb17d; --rite-rgb:255,177,125; }
+.raid-rite-rescue { --rite-color:#91d5ff; --rite-rgb:145,213,255; }
+.raid-rite-courage { --rite-color:#ffa0b6; --rite-rgb:255,160,182; }
+.raid-rite-mending { --rite-color:#b2f598; --rite-rgb:178,245,152; }
+.raid-rite-options > button {
+  grid-template-columns:64px minmax(0,1fr);
+  min-height:94px;
+  background:linear-gradient(110deg,rgba(var(--rite-rgb),.16),rgba(var(--rite-rgb),.025) 80%),#203352;
+  border:1px solid rgba(var(--rite-rgb),.32);
+  border-left:3px solid var(--rite-color);
+  border-radius:12px;
+}
+.raid-rite-options .raid-rite-icon {
+  width:64px;
+  height:64px;
+  color:var(--rite-color);
+  background:radial-gradient(ellipse,rgba(var(--rite-rgb),.2),#12203990);
+  border-color:rgba(var(--rite-rgb),.35);
+}
+.raid-rite-icon > svg { display:block;width:54px;height:54px; }
+.raid-rite-copy b { color:var(--rite-color); }
+.raid-rite-options > button:hover,
+.raid-rite-options > button:focus-visible {
+  border-color:var(--rite-color);
+  background:linear-gradient(110deg,rgba(var(--rite-rgb),.25),rgba(var(--rite-rgb),.07)),#263d5e;
+}
+@media(max-width:600px), (orientation:landscape) and (max-height:600px) {
+  .raid-rite-options > button {grid-template-columns:44px minmax(0,1fr);min-height:68px;}
+  .raid-rite-options .raid-rite-icon {width:44px;height:44px;}
+  .raid-rite-icon > svg {width:38px;height:38px;}
+}

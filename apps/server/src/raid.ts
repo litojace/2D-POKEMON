@@ -408,6 +408,7 @@ export class RaidArena extends Arena {
       ty,
       radius,
       at: this.time + delay,
+      startedAt: this.time,
     });
   }
   private attacksStep(dt: number) {
@@ -596,9 +597,9 @@ export class RaidArena extends Arena {
     if (boss.hp <= 0) return this.finish(true);
     if (this.raid.elapsed >= RAID.timeLimit) return this.finish(false);
     const next =
-      boss.hp / this.raid.maxHp <= 0.33
+      boss.hp <= this.raid.maxHp * 0.33 + 1e-6
         ? 3
-        : boss.hp / this.raid.maxHp <= 0.67
+        : boss.hp <= this.raid.maxHp * 0.67 + 1e-6
           ? 2
           : 1;
     if (next > this.raid.phase) {

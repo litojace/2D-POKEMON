@@ -58,6 +58,19 @@ it("offers one starting rite and new stackable choices at each HP-gated phase", 
   expect(a.raid.rites.p0).toHaveLength(3);
   expect(a.raid.resultId).toBeTruthy();
 });
+it("advances at fractional health gates despite floating-point roundoff", () => {
+  const a = raid();
+  a.raid.maxHp = 1008;
+  for (const phase of [1, 2]) {
+    fight(a);
+    a.raid.phase = phase;
+    a.boss()!.hp = a.raid.maxHp * (phase === 1 ? 0.67 : 0.33) + 1e-12;
+    a.tick();
+    expect(a.raid.phase).toBe(phase + 1);
+    expect(a.phase).toBe("intermission");
+    expect(a.raid.offers.p0.length).toBeGreaterThan(0);
+  }
+});
 it("telegraphs boss attacks, breaks pillars on charge, and exposes the weak point", () => {
   const a = raid();
   fight(a);
