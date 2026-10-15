@@ -39,6 +39,7 @@ const CHORDS: Record<string, string[]> = {
   F: ["C4", "F4", "A4"],
 };
 export class AudioManager {
+  private lastRaidSound = new Map<string, number>();
   context?: AudioContext;
   music = Number(localStorage.getItem("arena-music") ?? 0.12);
   effects = Number(localStorage.getItem("arena-effects") ?? 0.3);
@@ -190,6 +191,85 @@ export class AudioManager {
       this.effects * 0.15,
       kind === "hit" ? "sawtooth" : "triangle",
     );
+  }
+  /** Original low, filtered rock/roar cues routed through the effects volume. */
+  playRaid(kind: import("./raid-boss-motion").RaidBossCue) {
+    const ctx = this.context;
+    if (!ctx || ctx.state !== "running" || this.effects <= 0 || document.hidden)
+      return;
+    const t = ctx.currentTime;
+    const frequent = kind === "chip" || kind === "core";
+    if (
+      t - (this.lastRaidSound.get(kind) ?? -10) <
+      (frequent ? 0.12 : kind === "step" ? 0.2 : 0.5)
+    )
+      return;
+    this.lastRaidSound.set(kind, t);
+    // start pitch, end pitch, duration, filter, gain, rock texture.
+    const profiles: Record<import("./raid-boss-motion").RaidBossCue, number[]> =
+      {
+        roar: [88, 27, 0.65, 380, 0.16, 0.06],
+        step: [60, 25, 0.17, 200, 0.08, 0.03],
+        slam: [76, 20, 0.5, 420, 0.2, 0.14],
+        crash: [110, 25, 0.65, 900, 0.18, 0.16],
+        awaken: [115, 32, 0.95, 480, 0.17, 0.08],
+        fall: [65, 18, 0.95, 300, 0.17, 0.13],
+        charge: [45, 145, 1.35, 650, 0.11, 0.07],
+        debris: [280, 110, 0.65, 1700, 0.08, 0.09],
+        "debris-hit": [95, 35, 0.3, 1100, 0.12, 0.12],
+        core: [420, 180, 0.18, 1400, 0.08, 0.015],
+        chip: [150, 60, 0.13, 1200, 0.07, 0.07],
+      };
+    const [start, end, duration, cutoff, volume, texture] = profiles[kind];
+    const osc = ctx.createOscillator(),
+      filter = ctx.createBiquadFilter(),
+      gain = ctx.createGain();
+    osc.type =
+      kind === "roar" || kind === "awaken"
+        ? "sawtooth"
+        : kind === "core"
+          ? "sine"
+          : "triangle";
+    osc.frequency.setValueAtTime(start, t);
+    osc.frequency.exponentialRampToValueAtTime(end, t + duration);
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(cutoff, t);
+    filter.frequency.exponentialRampToValueAtTime(
+      Math.max(90, cutoff * 0.3),
+      t + duration,
+    );
+    gain.gain.setValueAtTime(0.001, t);
+    gain.gain.linearRampToValueAtTime(this.effects * volume, t + 0.025);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+    osc.connect(filter).connect(gain).connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + duration + 0.02);
+    osc.onended = () => {
+      osc.disconnect();
+      filter.disconnect();
+      gain.disconnect();
+    };
+    if (this.noise) {
+      const src = ctx.createBufferSource(),
+        grit = ctx.createBiquadFilter(),
+        mix = ctx.createGain();
+      src.buffer = this.noise;
+      src.loop = true;
+      grit.type = "bandpass";
+      grit.frequency.setValueAtTime(cutoff, t);
+      grit.Q.value = 0.7;
+      mix.gain.setValueAtTime(0.001, t);
+      mix.gain.linearRampToValueAtTime(this.effects * texture, t + 0.02);
+      mix.gain.exponentialRampToValueAtTime(0.001, t + duration);
+      src.connect(grit).connect(mix).connect(ctx.destination);
+      src.start(t);
+      src.stop(t + duration + 0.02);
+      src.onended = () => {
+        src.disconnect();
+        grit.disconnect();
+        mix.disconnect();
+      };
+    }
   }
   set(kind: "music" | "effects", value: number) {
     this[kind] = value;

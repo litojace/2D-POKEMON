@@ -1,64 +1,63 @@
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
 
-// Presentation only: positions, damage and attack deadlines stay server owned.
-const frames = new WeakMap<
-  Phaser.GameObjects.Graphics,
-  {
-    time: number;
-    x: number;
-    y: number;
-    slamAt: number;
-    speed: number;
-  }
->();
+import { RaidBossMotion } from "./raid-boss-motion";
+const motions = new WeakMap<Phaser.GameObjects.Graphics, RaidBossMotion>();
 
 export function drawRaidBoss(
   g: Phaser.GameObjects.Graphics,
   state: Snapshot,
   reduced: boolean,
+  clock = performance.now() / 1000,
 ) {
   const r = state.raid;
   const boss = state.players.find((p) => p.raidBoss);
   if (!r || !boss) return;
-  const t = state.time;
-  let frame = frames.get(g);
-  if (!frame || t < frame.time)
-    frame = { time: t, x: boss.x, y: boss.y, slamAt: -100, speed: 0 };
-  const dt = t - frame.time;
-  const speed =
-    dt > 0 && dt < 0.3
-      ? Math.hypot(boss.x - frame.x, boss.y - frame.y) / dt
-      : dt === 0
-        ? frame.speed
-        : 0;
-  const slam = r.warnings.find((w) => w.kind === "slam");
-  if (slam) frame.slamAt = slam.at;
-  const stagger = r.staggerUntil > t;
-  const exposed = r.exposedUntil > t || stagger;
-  const windup = r.warnings.find((w) => w.kind === "charge");
-  const lift =
-    slam && !stagger ? Math.max(0, Math.min(1, 1 - (slam.at - t) / 1.25)) : 0;
-  const impact =
-    !stagger && t >= frame.slamAt
-      ? Math.max(0, 1 - (t - frame.slamAt) / 0.45)
-      : 0;
-  const charging = speed > 180 && !stagger;
+  let controller = motions.get(g);
+  if (!controller) {
+    controller = new RaidBossMotion();
+    motions.set(g, controller);
+  }
+  const pose = controller.sample(state, clock, reduced)!;
+  const t = pose.time;
+  const stagger = r.staggerUntil > state.time && !pose.dead;
+  const exposed = (r.exposedUntil > state.time || stagger) && !pose.dead;
+  const windup = pose.charge > 0 && !pose.dead;
+  const lift = pose.slam > 0 ? Math.min(1, pose.slam * 1.7) : 0;
+  const impact = pose.impact;
+  const charging = pose.charging;
   const motion = reduced ? 0 : 1;
-  const breath = Math.sin(t * 2.5) * 2 * motion;
+  const breath =
+    Math.sin(t * (r.phase === 3 ? 3.2 : 1.7)) *
+    (r.phase === 3 ? 3.5 : 2.5) *
+    motion;
   const stride = charging ? Math.sin(t * 23) * 5 * motion : 0;
-  const crouch = windup ? 9 : impact * 13;
+  const crouch = stagger
+    ? 20
+    : pose.dead
+      ? Math.sin(Math.min(pose.deathAge, 1) * Math.PI) * 14
+      : windup
+        ? 5 + pose.charge * 11
+        : impact * 17 - lift * 10;
   const lean = stagger
     ? Math.sin(t * 3) * 3 * motion
     : charging
       ? Math.cos(boss.angle) * 9
       : Math.cos(boss.angle) * 3;
-  const x = boss.x + lean,
+  const recoil = Math.sin(pose.hurt * Math.PI * 3) * pose.hurt * 6 * motion;
+  const x = boss.x + lean + recoil + Math.sin(t * 17) * pose.crash * 5 * motion,
     y = boss.y + breath + crouch;
   const pulse = reduced ? 0.8 : 0.75 + Math.sin(t * (exposed ? 9 : 3)) * 0.2;
-  const hot = exposed ? 0x82ffe7 : r.phase === 3 ? 0xff7751 : 0xffce75;
+  const hot = pose.dead
+    ? 0x655a4b
+    : exposed
+      ? 0x82ffe7
+      : r.phase === 3
+        ? 0xff7751
+        : 0xffce75;
   const dark = r.gilded ? 0x55402e : 0x202e43;
-  const rock = r.gilded ? 0xa78248 : 0x52657b;
+  const rock =
+    pose.hurt > 0.65 && exposed ? 0xb7e4dd : r.gilded ? 0xa78248 : 0x52657b;
   const face = r.gilded ? 0xe4c47c : 0x8a9eb1;
   const rim = r.gilded ? 0xffe9a2 : 0xb6c6d1;
   const poly = (
@@ -121,6 +120,61 @@ export function drawRaidBoss(
   // Shadow and dust stay on the floor as the torso and fists rise.
   g.fillStyle(0x030a18, 0.35).fillEllipse(boss.x, boss.y + 51, 202, 61);
   g.fillStyle(0x030a18, 0.25).fillEllipse(boss.x, boss.y + 51, 146, 39);
+  // Low-opacity floor effects never obscure the red damage boundary.
+  if ((impact > 0 || pose.crash > 0) && !reduced) {
+    const strength = Math.max(impact, pose.crash),
+      spread = (1 - strength) * 150;
+    g.lineStyle(4, face, strength * 0.45).strokeEllipse(
+      boss.x,
+      boss.y + 48,
+      100 + spread * 2,
+      35 + spread,
+    );
+    for (let i = 0; i < 5; i++)
+      g.fillStyle(face, strength * 0.16).fillEllipse(
+        boss.x + (i - 2) * 36,
+        boss.y + 44,
+        30 + spread * 0.3,
+        14 + spread * 0.12,
+      );
+  }
+  const paintFragments = () => {
+    for (const f of pose.fragments) {
+      const fx = f.x + f.vx * f.age,
+        fy = f.y + f.vy * f.age + 160 * f.age * f.age;
+      poly(
+        fx,
+        fy,
+        [-f.size, -f.size * 0.4, 0, -f.size, f.size, 0, f.size * 0.5, f.size],
+        f.glow ? hot : face,
+        (1 - f.age / f.life) * 0.9,
+      );
+    }
+  };
+  const rubble = () => {
+    for (let i = 0; i < 13; i++) {
+      const a = i * 2.4,
+        radius = 20 + (i % 4) * 23;
+      poly(
+        boss.x + Math.cos(a) * radius,
+        boss.y + 39 + Math.sin(a) * radius * 0.32,
+        [-16, -6, -8, -18, 12, -12, 20, 4, 4, 12, -12, 8],
+        i % 2 ? rock : dark,
+      );
+    }
+    const fade = Math.max(0, 1 - (pose.deathAge - 1) / 2);
+    g.fillStyle(0xffc576, fade * 0.65).fillCircle(boss.x, boss.y + 38, 12);
+  };
+  if (pose.collapse >= 1) {
+    rubble();
+    paintFragments();
+    return pose.cues;
+  }
+  g.save();
+  if (pose.dead)
+    g.translateCanvas(boss.x, boss.y + 54)
+      .scaleCanvas(1 + pose.collapse * 0.35, 1 - pose.collapse * 0.85)
+      .translateCanvas(-boss.x, -boss.y - 54);
   if (charging && !reduced)
     for (let i = 0; i < 7; i++) {
       const age = (t * 3 + i / 7) % 1,
@@ -186,9 +240,32 @@ export function drawRaidBoss(
   }
   // Independently articulated forearms. Both rise before the authoritative slam.
   for (const side of [-1, 1]) {
-    const armLift = lift * 76;
-    const ax = x + side * (96 + lift * 12),
-      ay = y + 9 - armLift + side * stride;
+    const beating =
+      pose.debris > 0
+        ? Math.sin(pose.debris * Math.PI * 5 + side) * 12 * motion
+        : 0;
+    const grind =
+      !lift && !windup && !charging && !stagger && !pose.debris
+        ? Math.sin(t * 1.4 + side * 0.7) * 4 * motion
+        : 0;
+    const armLift =
+      lift * 98 + (stagger ? -12 : 0) + (pose.debris > 0 ? 26 : 0);
+    const reach = stagger
+      ? 56
+      : pose.debris > 0
+        ? 59
+        : windup
+          ? 105 + pose.charge * 9
+          : 96 + lift * 12;
+    const ax = x + side * reach + grind,
+      ay =
+        y +
+        9 -
+        armLift +
+        side * stride +
+        beating +
+        (windup ? 18 : 0) +
+        (pose.dead ? pose.collapse * 15 : 0);
     g.lineStyle(22, dark, 1).lineBetween(x + side * 68, y - 23, ax, ay);
     poly(
       ax,
@@ -212,12 +289,20 @@ export function drawRaidBoss(
         .lineBetween(ax - 3, ay + 2, ax + 5, ay + 15);
   }
 
+  if (pose.transform > 0 && !reduced) {
+    g.lineStyle(3, hot, pose.transform * 0.5).strokeEllipse(
+      x,
+      y,
+      90 + (1 - pose.transform) * 150,
+      130 + (1 - pose.transform) * 100,
+    );
+  }
   const coreY = y + 16;
   g.fillStyle(hot, 0.06 * pulse).fillCircle(x, coreY, exposed ? 61 : 42);
   poly(x, coreY, [0, -31, 29, -12, 25, 21, 0, 36, -26, 19, -29, -13], face);
   poly(x, coreY, [0, -25, 23, -9, 19, 16, 0, 29, -20, 15, -23, -10], 0x111d2e);
   crystal(x, coreY, exposed ? 27 : 18);
-  if (exposed) {
+  if (exposed || r.phase === 3) {
     g.lineStyle(2, hot, 0.55 * pulse).strokeCircle(x, coreY, 36);
     for (let i = 0; i < 6; i++) {
       const a = (i * Math.PI) / 3 + (reduced ? 0 : t * 0.7);
@@ -240,7 +325,7 @@ export function drawRaidBoss(
   }
   // Face moves as one unit; directional offset includes eyes, brow and jaw.
   const hx = x + Math.cos(boss.angle) * 5,
-    hy = y - 49 + (stagger ? 7 : 0);
+    hy = y - 49 + (stagger ? 12 : 0) - lift * 6;
   poly(
     hx,
     hy,
@@ -250,7 +335,57 @@ export function drawRaidBoss(
   poly(hx, hy, [-38, -14, -18, -27, 27, -24, 40, -7, 8, -11, -3, -2], face);
   poly(hx, hy, [-30, 1, -10, 6, -11, 12, -29, 9], hot);
   poly(hx, hy, [10, 6, 30, 0, 29, 9, 11, 12], hot);
-  poly(hx, hy, [-23, 20, 0, 24, 24, 18, 14, 32, -12, 34], rock);
+  const roar =
+    (pose.debris > 0 || pose.charge > 0.15 || pose.transform > 0.1) &&
+    !pose.dead;
+  if (roar) poly(hx, hy, [-20, 18, 20, 17, 16, 34, -12, 36], 0x101a29);
+  poly(
+    hx,
+    hy + (roar ? 8 : 0),
+    [-23, 20, 0, 24, 24, 18, 14, 32, -12, 34],
+    rock,
+  );
+  if (roar) {
+    for (const side of [-1, 1])
+      poly(hx + side * 12, hy + 20, [-3, 0, 3, 0, 0, 5], rim);
+  }
+  // Eyes follow the same target direction as the entire face.
+  if (!pose.dead)
+    for (const side of [-1, 1])
+      g.fillStyle(0xfff2d3, 0.7).fillCircle(
+        hx + side * 20 + Math.cos(boss.angle) * 3,
+        hy + 7 + Math.sin(boss.angle) * 1.5,
+        2,
+      );
+  if (pose.debris > 0 && !reduced)
+    for (let i = 0; i < 6; i++) {
+      const a = i * 2.4 + t * 0.5,
+        radius = 90 + (i % 2) * 18;
+      const ry = Math.sin(a) * radius * 0.35;
+      g.fillStyle(0x040c19, 0.2).fillEllipse(
+        boss.x + Math.cos(a) * radius,
+        boss.y + 49 + ry,
+        14,
+        5,
+      );
+      poly(
+        boss.x + Math.cos(a) * radius,
+        boss.y + ry - pose.debris * 95,
+        [-7, -4, 0, -10, 9, -2, 5, 7, -5, 6],
+        face,
+      );
+    }
+  if (!reduced && !pose.dead && !charging)
+    for (let i = 0; i < 3; i++) {
+      const age = (t * 0.5 + i / 3) % 1;
+      poly(
+        x + (i - 1) * 56,
+        y - 40 + age * 92,
+        [-2, -3, 3, -2, 2, 3, -3, 2],
+        face,
+        (1 - age) * 0.4,
+      );
+    }
   if (stagger && !reduced)
     for (let i = 0; i < 3; i++) {
       const a = t * 2 + (i * Math.PI * 2) / 3;
@@ -272,5 +407,8 @@ export function drawRaidBoss(
         impact * 0.8,
       );
     }
-  frames.set(g, { time: t, x: boss.x, y: boss.y, slamAt: frame.slamAt, speed });
+  g.restore();
+  if (pose.dead && pose.collapse > 0.4) rubble();
+  paintFragments();
+  return pose.cues;
 }

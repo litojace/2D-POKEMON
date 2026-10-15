@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Raid lobby · Local preview</title>
+    <style>
+      body {
+        padding: 24px;
+      }
+      .room-panel {
+        width: min(430px, 100%);
+        margin: auto;
+      }
+      .preview-note {
+        text-align: center;
+        font-size: 10px;
+        color: #9fb3ce;
+        margin: 0 0 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <p class="preview-note">LOCAL PREVIEW · no room or account changes</p>
+    <aside class="room-panel" id="preview"></aside>
+    <script type="module">
+      import "./src/style.css";
+      import { RaidArena } from "../server/src/raid";
+      import { raidLobby } from "./src/raid-ui";
+      const arena = new RaidArena("B76CKS");
+      arena.add("preview", "litojace", "voltkit");
+      arena.start();
+      arena.phase = "lobby";
+      const mount = document.getElementById("preview");
+      function render() {
+        mount.innerHTML = raidLobby(arena.snapshot(), "preview");
+        document.getElementById("ready").onclick = () => {
+          arena.heroes()[0].ready = !arena.heroes()[0].ready;
+          render();
+        };
+        document.getElementById("raid-peril").onchange = (e) => {
+          arena.raid.peril = Number(e.target.value);
+          render();
+        };
+        document.getElementById("raid-weekly").onchange = (e) => {
+          arena.raid.weekly = e.target.checked;
+          if (e.target.checked) arena.raid.peril = 2;
+          render();
+        };
+        document.getElementById("raid-copy-code").onclick = () =>
+          navigator.clipboard.writeText(arena.code);
+        document.getElementById("leave").onclick = () =>
+          (location.href = "/raid-preview.html");
+        document.getElementById("raid-bestiary").onclick = () =>
+          (location.href = "/");
+      }
+      render();
+    </script>
+  </body>
+</html>

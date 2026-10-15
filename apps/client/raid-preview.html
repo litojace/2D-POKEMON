@@ -42,6 +42,9 @@
     <script type="module">
       import "./src/style.css";
       import Phaser from "phaser";
+      import { AudioManager } from "./src/audio";
+      const audio = new AudioManager();
+      const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
       import { RaidArena } from "../server/src/raid";
       import { CHARACTERS, ARENAS, blankInput } from "@arena/shared";
       import { renderRaidUI, drawRaidArena } from "./src/raid-ui";
@@ -81,6 +84,7 @@
           rig = createFighterVisual(scene, "voltkit", rigAssets("voltkit"));
       }
       const request = async (event, data) => {
+        audio.unlock();
         if (event === "instructions-ready")
           arena.acknowledgeInstructions("preview");
         if (event === "rite") arena.pickRite("preview", data.id);
@@ -141,7 +145,12 @@
           arena.tick(Math.min(delta / 1000, 0.04));
           const state = arena.snapshot();
           this.g.clear();
-          drawRaidArena(this.g, state);
+          const cues = drawRaidArena(this.g, state, reduced, now / 1000) ?? [];
+          for (const cue of cues) {
+            audio.playRaid(cue);
+            if (!reduced && ["slam", "crash", "awaken", "fall"].includes(cue))
+              this.cameras.main.shake(150, 0.0025, false);
+          }
           for (const pr of arena.projectiles) drawProjectile(this.g, pr, now);
           for (const z of arena.zones)
             drawZone(

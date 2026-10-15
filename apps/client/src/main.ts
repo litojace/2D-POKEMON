@@ -14,7 +14,7 @@ import {
   type FighterVisual,
 } from "./animation/pipeline";
 import { rigAssets } from "./animation/assets";
-import { setOverlayMarkup } from "./overlay";
+import { setOverlayMarkup, LIVE_SECONDS, fillLiveSeconds } from "./overlay";
 import { fighterArt, fighterAvatar, scopeIds } from "./fighter-art";
 import { withAura } from "./trait-effects";
 import { drawBattleAura } from "./battle-aura";
@@ -348,14 +348,6 @@ document.addEventListener("click", (e) => {
  * animation, which flickers), so the number lives in this slot and is filled
  * in after the card is drawn (see fillLiveSeconds).
  */
-const LIVE_SECONDS = '<span class="live-seconds"></span>';
-function fillLiveSeconds(root: HTMLElement, seconds: number) {
-  const n = Math.max(0, Math.ceil(seconds));
-  const text = `${n} second${n === 1 ? "" : "s"}`;
-  root.querySelectorAll<HTMLElement>(".live-seconds").forEach((slot) => {
-    if (slot.textContent !== text) slot.textContent = text;
-  });
-}
 function riteMarkup(me: Fighter, _seconds: number) {
   const timer = `Next round in ${LIVE_SECONDS}`;
   const chips = (p: Fighter) =>
@@ -841,6 +833,9 @@ let botLevel: BotLevel = (() => {
 })();
 async function showRaidBestiary() { await accountsUI.showRaids(); }
 function wireRaidLobby() {
+  const copy=document.getElementById("raid-copy-code");
+  if(copy)copy.onclick=()=>void navigator.clipboard.writeText(state?.code??"").then(()=>toast("Room code copied")).catch(()=>toast("Room code: "+(state?.code??"")));
+
   const bestiary=document.getElementById('raid-bestiary');if(bestiary)bestiary.onclick=()=>void showRaidBestiary();
   const peril=document.getElementById('raid-peril') as HTMLSelectElement|null,weekly=document.getElementById('raid-weekly') as HTMLInputElement|null;
   const configure=()=>void request('raid-config',{peril:Number(peril?.value??1),weekly:weekly?.checked??false});
@@ -1947,13 +1942,12 @@ class ArenaScene extends Phaser.Scene {
   }
   effect(event: Snapshot["events"][number]) {
     if(event.kind==='raid-impact') {
-      audio.play('hit');
       const ring=this.add.circle(event.x,event.y,event.raidRadius??90,event.color,.12).setStrokeStyle(4,event.color,.9);
       this.tweens.add({targets:ring,alpha:0,scale:reducedMotion?1:1.25,duration:400,onComplete:()=>ring.destroy()});
     }
 
     if (
-      (event.owner === myId && event.kind !== "impact") ||
+      (event.owner === myId && event.kind !== "impact" && event.kind !== "raid-impact") ||
       event.kind === "hit" ||
       event.kind === "round"
     )
@@ -2397,7 +2391,12 @@ class ArenaScene extends Phaser.Scene {
     }
     const g = this.graphics;
     g.clear();
-    drawRaidArena(g,state,reducedMotion);
+    const raidCues = drawRaidArena(g,state,reducedMotion,_time/1000) ?? [];
+    for(const cue of raidCues) {
+      audio.playRaid(cue);
+      if(!reducedMotion && ["slam","crash","awaken","fall"].includes(cue))
+        this.cameras.main.shake(cue === "awaken" ? 230 : 150, cue === "crash" ? .004 : .0025, false);
+    }
     this.rigs.forEach((rig) => rig.setVisible(false));
     drawArenaLive(g, state.arena ?? "classic", arenaClock(), _time);
     for (const z of state.zones)
