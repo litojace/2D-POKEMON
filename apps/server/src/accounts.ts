@@ -1,3 +1,5 @@
+import type { RaidReceipt } from "../../../packages/shared/src/raid.js";
+import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 import type { Express, Request, Response, NextFunction } from "express";
 import {
@@ -21,8 +23,9 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "006_ratings.sql";
+export const LATEST_MIGRATION = "007_raids.sql";
 export interface AccountProvider {
+  recordRaid?(receipt: RaidReceipt): Promise<void>;
   authenticate(token: string): Promise<Account | null>;
   rpc(
     token: string,
@@ -54,6 +57,13 @@ export function createAccountProvider(): AccountProvider {
     });
   };
   return {
+    async recordRaid(receipt) {
+      const serviceKey=process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if(!url||!serviceKey)throw new AccountError(503,'Raid rewards require server storage configuration.');
+      const admin=createClient(url,serviceKey,{auth:{persistSession:false,autoRefreshToken:false}});
+      const result=await admin.rpc('arena_record_raid',{p_receipt:receipt});
+      if(result.error)throw new AccountError(503,'Raid rewards could not be stored.');
+    },
     async authenticate(token) {
       const scoped = client(token);
       const { data, error } = await scoped.auth.getUser(token);
@@ -263,6 +273,13 @@ export function installAccountRoutes(
   function friendsChangedByCode(code: string) {
     onFriendsChanged(`code:${code.toUpperCase()}`);
   }
+  app.get('/api/raids',route(false,async(_req,res,token)=>{
+    res.setHeader('Cache-Control','no-store');res.json(await provider.rpc(token,'arena_raid_progress',{}));
+  }));
+  app.post('/api/raids/cosmetic',route(false,async(req,res,token,account)=>{
+    const data=z.object({cosmetic:z.enum(['cragbound','mountain-aura']).nullable()}).strict().parse(req.body);
+    await provider.rpc(token,'arena_equip_raid_cosmetic',{p_cosmetic:data.cosmetic});onPlayerChanged(account.id);res.json({ok:true});
+  }));
   app.get(
     "/api/progress",
     route(false, async (_req, res, token) => {

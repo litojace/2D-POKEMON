@@ -1,3 +1,5 @@
+import { raidBestiary } from "./raid-ui";
+import type { RaidProgress } from "../../../packages/shared/src/raid";
 import { TITLE_PRESETS, sortTitles } from "./player-nameplate";
 import { isQuietRefresh } from "./session-refresh";
 import { createClient, type Session } from "@supabase/supabase-js";
@@ -355,6 +357,17 @@ export class AccountUI {
       }
     };
   }
+  async showRaids() {
+    if(!this.ensurePlayer())return;
+    try {
+      const progress=await this.api('/api/raids') as RaidProgress;
+      this.hooks.openDialog(raidBestiary(progress));
+      for(const button of Array.from(document.querySelectorAll<HTMLButtonElement>('[data-raid-cosmetic]')))button.onclick=async()=>{
+        try {await this.api('/api/raids/cosmetic',{cosmetic:button.dataset.raidCosmetic||null});void this.showRaids();}
+        catch(error){this.hooks.notify(error instanceof Error?error.message:'Cosmetic could not be equipped.');}
+      };
+    }catch(error){this.hooks.openDialog(`<h2>Boss Bestiary</h2><p>${escape(error instanceof Error?error.message:'Raid records are not available yet.')}</p><p>Raids are playable at Peril 1. Persistent rewards require migration 007 and server storage configuration.</p>`);}
+  }
   async showProfile() {
     if (!this.account) return;
     const account = this.account;
@@ -368,9 +381,11 @@ export class AccountUI {
         )
         .join(
           "",
-        )}</select></label><button class="primary">Save title</button><p id="profile-message" role="status"></p></form><button class="secondary full" id="profile-leaderboard">Season standings →</button><section id="profile-progress" class="progress"><p class="muted">Loading your progress…</p></section>`,
+        )}</select></label><button class="primary">Save title</button><p id="profile-message" role="status"></p></form><button class="secondary full" id="profile-leaderboard">Season standings →</button><section id="profile-raid"><button class="secondary full" id="profile-raids">Boss Bestiary & raid rewards →</button><p id="profile-raid-stats" class="muted"></p></section><section id="profile-progress" class="progress"><p class="muted">Loading your progress…</p></section>`,
     );
     element("profile-leaderboard").onclick = () => void this.showLeaderboard();
+    element("profile-raids").onclick=()=>void this.showRaids();
+    void this.api('/api/raids').then(value=>{const p=value as RaidProgress,box=element('profile-raid-stats');if(box)box.textContent=`Boss raids: ${p.clears} clears · highest Peril ${p.highestPeril}`;}).catch(()=>{});
     const save = element<HTMLFormElement>("profile-save");
     if (save)
       save.onsubmit = async (event) => {

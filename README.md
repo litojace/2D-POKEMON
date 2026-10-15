@@ -105,3 +105,7 @@ Development-only previews:
 ## Limits
 
 Balance is provisional. Physical iPhone/Android frame-rate, install/update behavior, and authenticated two-device visual PvP need real-device testing. Current directional art reuses some articulated limb shapes. Production sprite frames, expressions and tightly packed atlases remain artwork requirements. Concealment is a gameplay presentation status; current snapshots still include positions and are not an anti-cheat visibility system.
+
+## Boss Raid
+
+Co-op raids for 1–4 players feature Grumblecrag, three phases, breakable armor, stagger, revives, raid rites, Perils, weekly brackets and cosmetic rewards. See [Boss Raid guide and deployment setup](docs/boss-raid.md). Persistent rewards require migration 007 and a server-only Supabase service-role key.

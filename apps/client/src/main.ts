@@ -1,3 +1,4 @@
+import { raidLobby, renderRaidUI, drawRaidArena } from "./raid-ui";
 import { illustratedHelp } from "./illustrated-help";
 import { menuIcon } from "./menu-icons";
 import {
@@ -36,6 +37,7 @@ import Phaser from "phaser";
 import { io } from "socket.io-client";
 import {
   CHARACTERS,
+  OBSTACLES,
   RING,
   ringRadius,
   CROWN,
@@ -68,6 +70,7 @@ import {
   skillReady,
   advanceMovement,
   normalize,
+  move,
   unpackSnapshot,
   type WireSnapshot,
   type CharacterId,
@@ -606,11 +609,11 @@ function visibleEnemies(from: { x: number; y: number }, myself: Fighter) {
         Math.hypot(b.x - from.x, b.y - from.y),
     );
 }
-type RoomMode = "duel" | "teams" | "ffa";
+type RoomMode = "duel" | "teams" | "ffa" | "raid";
 let roomMode: RoomMode = (() => {
   try {
     const saved = localStorage.getItem("arena-room-mode");
-    return saved === "teams" || saved === "ffa" ? saved : "duel";
+    return saved === "teams" || saved === "ffa" || saved === "raid" ? saved : "duel";
   } catch {
     return "duel";
   }
@@ -785,6 +788,7 @@ function partyRules(host: boolean) {
   return `<details class="party-rules"${on.size ? " open" : ""}><summary>Party rules${on.size ? ` · ${on.size} on` : host ? " · optional" : ""}</summary><div class="rule-chips">${chips}</div>${host ? "<small>Only you (the host) can change these. Everyone readies up again after a change.</small>" : ""}</details>`;
 }
 function roomPanel(me: Fighter) {
+  if (state?.raid) return raidLobby(state,myId);
   const row = (p: Fighter) => {
     const fighter = CHARACTERS[p.id === myId ? selected : p.character];
     return `<div${p.id === myId ? " data-me" : ""}><span class="player-avatar" style="--element:#${fighter.color.toString(16).padStart(6, "0")}" title="${fighter.name}">${fighterAvatar(fighter.id, `lobby${state!.players.indexOf(p)}`)}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small class="player-fighter">${fighter.name}${p.flair ? ` · <b class="flair flair-${p.flair.toLowerCase()}">★ ${p.flair}</b>` : ""}</small></span><b class="status-pill ${!p.connected ? "offline" : p.ready ? "ready" : "choosing"}">${!p.connected ? "Offline" : p.ready ? "Ready" : "Choosing"}</b></div>`;
@@ -835,7 +839,15 @@ let botLevel: BotLevel = (() => {
     return "normal";
   }
 })();
+async function showRaidBestiary() { await accountsUI.showRaids(); }
+function wireRaidLobby() {
+  const bestiary=document.getElementById('raid-bestiary');if(bestiary)bestiary.onclick=()=>void showRaidBestiary();
+  const peril=document.getElementById('raid-peril') as HTMLSelectElement|null,weekly=document.getElementById('raid-weekly') as HTMLInputElement|null;
+  const configure=()=>void request('raid-config',{peril:Number(peril?.value??1),weekly:weekly?.checked??false});
+  if(peril)peril.onchange=configure;if(weekly)weekly.onchange=configure;
+}
 function wireRoom() {
+  wireRaidLobby();
   $("ready").onclick = () => {
     audio.unlock();
     void request("ready");
@@ -916,7 +928,7 @@ function renderMenu() {
     return;
   }
   touch.reset();
-  document.body.classList.remove("battle-active");
+  document.body.classList.remove("battle-active", "battle-raid");
   // Fade up only when arriving at a different screen (home, a room, back
   // from a match). Rebuilding the screen you are already on stays still.
   const kind = key.slice(0, key.indexOf(":"));
@@ -940,6 +952,7 @@ function renderMenu() {
               ["duel", "1v1 Duel", "Best of five"],
               ["teams", "2v2 Teams", "Best of five"],
               ["ffa", "Free-for-all", "3–4 players"],
+              ["raid", "Boss Raid", "Co-op · 1–4 players"],
             ] as const
           )
             .map(
@@ -948,7 +961,7 @@ function renderMenu() {
             )
             .join(
               "",
-            )}</div><button class="primary" id="create">Create private room →</button><div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><button id="watch" class="quiet full">Watch this room instead</button><div class="divider">OR PLAY SOLO</div><div class="bot-picker" role="radiogroup" aria-label="Bot difficulty">${BOT_LEVELS.map(([id, label, hint]) => `<button type="button" role="radio" class="bot-level${botLevel === id ? " active" : ""}" data-bot="${id}" aria-checked="${botLevel === id}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button class="secondary full" id="bot-match">Battle an AI bot →</button>${accountsUI?.account ? '<button class="quiet full" id="practice">Solo test mode →</button>' : ""}<small class="room-note">Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`
+            )}</div><button class="primary" id="create">Create private room →</button><button class="quiet" id="raid-bestiary">Boss Bestiary & raid rewards</button><div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><button id="watch" class="quiet full">Watch this room instead</button><div class="divider">OR PLAY SOLO</div><div class="bot-picker" role="radiogroup" aria-label="Bot difficulty">${BOT_LEVELS.map(([id, label, hint]) => `<button type="button" role="radio" class="bot-level${botLevel === id ? " active" : ""}" data-bot="${id}" aria-checked="${botLevel === id}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button class="secondary full" id="bot-match">Battle an AI bot →</button>${accountsUI?.account ? '<button class="quiet full" id="practice">Solo test mode →</button>' : ""}<small class="room-note">Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`
     }</aside></div>`;
   wireRoster(isRoom);
   // Fighter panel slot: between the rows on PC, under the swipeable row on phones.
@@ -1038,6 +1051,7 @@ function renderMenu() {
             });
         }),
     );
+    wireRaidLobby();
     $("bot-match").onclick = async () => {
       if (!accountsUI.ensurePlayer()) return;
       if (!connected) return toast("Waiting for the server connection.");
@@ -1104,6 +1118,7 @@ function renderBattle() {
     state?.players.find((p) => p.id === myId) ??
     (watching && state?.code === watching ? state.players[0] : undefined);
   if (!state || !me) return;
+  document.body.classList.toggle("battle-raid", !!state.raid);
   document.body.classList.toggle("spectating", !myId && !!watching);
   queueMicrotask(refreshControlLabels);
   const hudOrder = isTeams()
@@ -1302,6 +1317,13 @@ function renderBattle() {
     state.practice ? Infinity : EX.cost,
     exArmedUntil > performance.now(),
   );
+  if(state.raid && myId) {
+    renderRaidUI(state,me,request);
+    if(me.hp<=0)document.querySelectorAll<HTMLButtonElement>(".touch-buttons button").forEach(b=>b.disabled=true);
+    const exit=document.getElementById('raid-exit');if(exit)exit.onclick=()=>void leave();
+    const rewards=document.getElementById('raid-rewards');if(rewards)rewards.onclick=()=>void accountsUI.showRaids();
+    return;
+  }
   const overlay = $("arena-overlay");
   if (!myId && watching) {
     renderWatchOverlay(overlay);
@@ -1694,6 +1716,8 @@ async function reportMatch(matchId: string, attempt = 0) {
   if (state?.phase === "finished") renderBattle();
 }
 function predict(p: Fighter, input: Input, time: number) {
+  if(state?.raid && p.hp<=0) {if(!p.out){const d=normalize(input.dx,input.dy);move(p,d.x*35/RULES.tick,d.y*35/RULES.tick);}return;}
+
   if (input.dash && time >= p.dashAt) {
     const d = normalize(input.dx, input.dy);
     p.dashX = (d.x || d.y ? d.x : Math.cos(p.angle)) * RULES.dashSpeed;
@@ -1922,6 +1946,12 @@ class ArenaScene extends Phaser.Scene {
     this.scale.refresh();
   }
   effect(event: Snapshot["events"][number]) {
+    if(event.kind==='raid-impact') {
+      audio.play('hit');
+      const ring=this.add.circle(event.x,event.y,event.raidRadius??90,event.color,.12).setStrokeStyle(4,event.color,.9);
+      this.tweens.add({targets:ring,alpha:0,scale:reducedMotion?1:1.25,duration:400,onComplete:()=>ring.destroy()});
+    }
+
     if (
       (event.owner === myId && event.kind !== "impact") ||
       event.kind === "hit" ||
@@ -2196,7 +2226,7 @@ class ArenaScene extends Phaser.Scene {
         : 1;
     const me = state?.players.find((p) => p.id === myId);
     const partner =
-      me && isTeams() && me.hp <= 0
+      me && (isTeams() || !!state?.raid) && me.hp <= 0
         ? state!.players.find(
             (p) => p.id !== myId && teamOf(p) === teamOf(me) && p.hp > 0,
           )
@@ -2282,7 +2312,7 @@ class ArenaScene extends Phaser.Scene {
       return;
     }
     // Walls for prediction (the Shifting Ruins block comes and goes) and the floor.
-    useObstacles(obstaclesAt(state.arena, arenaClock()));
+    useObstacles(state.raid ? OBSTACLES.filter((_,i)=>!state!.raid!.pillars[i]?.broken) : obstaclesAt(state.arena, arenaClock()));
     useSpeedScale(
       state.mutators?.includes("speed") ? MUTATOR_RULES.speed : 1,
     );
@@ -2367,6 +2397,7 @@ class ArenaScene extends Phaser.Scene {
     }
     const g = this.graphics;
     g.clear();
+    drawRaidArena(g,state,reducedMotion);
     this.rigs.forEach((rig) => rig.setVisible(false));
     drawArenaLive(g, state.arena ?? "classic", arenaClock(), _time);
     for (const z of state.zones)
@@ -2498,7 +2529,7 @@ class ArenaScene extends Phaser.Scene {
     }
     // The closing ring: shade everything outside the safe circle.
     const ring =
-      state.phase === "playing" && !state.practice
+      state.phase === "playing" && !state.practice && !state.raid
         ? ringRadius(state.remaining, state.overtime)
         : null;
     if (ring !== null) {
@@ -2567,6 +2598,7 @@ class ArenaScene extends Phaser.Scene {
       const x = pos.x,
         y = pos.y,
         c = CHARACTERS[p.character];
+      if (serverPlayer.raidBoss) continue;
       const jump =
         serverPlayer.jumpUntil > state.time
           ? Math.sin(
@@ -2576,6 +2608,7 @@ class ArenaScene extends Phaser.Scene {
           : 0;
       const pose = {
         hp: p.hp,
+        cosmetic: p.raidCosmetic,
         speed: Math.hypot(p.vx, p.vy),
         angle: p.angle,
         dash: serverPlayer.dashUntil > state.time,
@@ -2584,7 +2617,7 @@ class ArenaScene extends Phaser.Scene {
         ultReady:
           (serverPlayer.ult ?? 0) >= RULES.ultMax && serverPlayer.hp > 0,
         greet: state.phase === "countdown",
-        victory: isTeams()
+        victory: isTeams() || !!state.raid
           ? (state.phase === "finished"
               ? state.winnerTeam
               : state.phase === "intermission"
@@ -2688,6 +2721,7 @@ class ArenaScene extends Phaser.Scene {
         view.fighterX * 0.7 * giant,
         view.fighterY * 0.7 * giant,
       );
+      if(p.raidCosmetic==='mountain-aura')g.lineStyle(3,0xffd28c,.7).strokeEllipse(x,y+10,95,45);
       rig.setVisible(true);
       const casting =
         rig.controller.state === "basic" ||

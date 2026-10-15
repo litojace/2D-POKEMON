@@ -35,6 +35,7 @@ const priority: Record<AnimationState, number> = {
   defeat: 100,
 };
 export interface AnimationPose {
+  cosmetic?: "cragbound" | "mountain-aura";
   hp: number;
   speed: number;
   angle: number;

@@ -561,7 +561,7 @@ export class Arena {
         dealt *= this.gift(source, "Shadow") ?? 1;
     }
     dealt *= this.gift(target, "Aura") ?? 1;
-    dealt = Math.min(target.hp, dealt);
+    dealt = Math.min(this.damageLimit(target), dealt);
     target.hp = Math.max(0, target.hp - dealt);
     target.stats.received += dealt;
     if (source) source.stats.dealt += dealt;
@@ -606,21 +606,8 @@ export class Arena {
       ko: target.hp <= 0,
       ...(comboName ? { combo: comboName } : {}),
     });
-    if (counter && source && source !== target && source.hp > 0) {
-      const reflected = Math.min(
-        source.hp,
-        amount * STATUS_RULES.counterReflection,
-      );
-      source.hp -= reflected;
-      source.stats.received += reflected;
-      target.stats.dealt += reflected;
-      this.event(
-        "hit",
-        source,
-        CHARACTERS[target.character].color,
-        Math.round(reflected),
-      );
-    }
+    if (counter && source && source !== target && source.hp > 0)
+      this.reflectDamage(source,target,amount);
     // Setup: mark the target for this fighter's payoff (or the guard for
     // Mirror Guard, which primes the one who absorbed the hit).
     if (combo && !combo.self && !combo.anyDebuff && ability?.id === combo.setup)
@@ -648,12 +635,29 @@ export class Arena {
       move(target, dir.x * push, dir.y * push);
     }
   }
+  damageLimit(target: Fighter) { return target.hp; }
+  reflectDamage(source: Fighter,target: Fighter,amount:number) {
+      const reflected = Math.min(
+        source.hp,
+        amount * STATUS_RULES.counterReflection,
+      );
+      source.hp -= reflected;
+      source.stats.received += reflected;
+      target.stats.dealt += reflected;
+      this.event(
+        "hit",
+        source,
+        CHARACTERS[target.character].color,
+        Math.round(reflected),
+      );
+  }
+  hitRadius(p: Fighter) { return p.raidBoss ? 70 : RULES.radius; }
   /** Enemy is in front of `p` within `range` and the cosine threshold `arc`. */
   inArc(p: Fighter, enemy: Fighter, range: number, arc: number) {
     const distance = Math.hypot(enemy.x - p.x, enemy.y - p.y);
     const dot = Math.cos(Math.atan2(enemy.y - p.y, enemy.x - p.x) - p.angle);
     return (
-      distance < range + RULES.radius &&
+      distance < range + this.hitRadius(enemy) &&
       (distance < RULES.radius || dot > arc) &&
       this.lineClear(p, enemy)
     );
@@ -757,7 +761,7 @@ export class Arena {
         }
         const struck = enemies.find(
           (e) =>
-            e.hp > 0 && Math.hypot(x - e.x, y - e.y) < a.radius + RULES.radius,
+            e.hp > 0 && Math.hypot(x - e.x, y - e.y) < a.radius + this.hitRadius(e),
         );
         if (struck) {
           this.damage(struck, a.damage, p.id, a);
@@ -925,7 +929,7 @@ export class Arena {
     for (const p of this.players) {
       // Knocked-out (2v2) or departed fighters sit still until the next round.
       // (A duel ends the round the same tick, so this only matters in 2v2.)
-      if (p.out || (p.hp <= 0 && this.mode === "teams")) {
+      if (p.out || (p.hp <= 0 && (this.mode === "teams" || this.mode === "raid"))) {
         p.vx = p.vy = 0;
         p.charge = undefined;
         p.channel = undefined;
@@ -1077,7 +1081,7 @@ export class Arena {
             if (
               enemy.hp > 0 &&
               Math.hypot(pr.x - enemy.x, pr.y - enemy.y) <
-                pr.ability.explosion + RULES.radius &&
+                pr.ability.explosion + this.hitRadius(enemy) &&
               this.lineClear(pr, enemy)
             )
               this.damage(enemy, pr.ability.damage, pr.owner, pr.ability);
@@ -1112,7 +1116,7 @@ export class Arena {
           (e) =>
             e.hp > 0 &&
             Math.hypot(pr.x - e.x, pr.y - e.y) <
-              RULES.radius + pr.ability.radius,
+              this.hitRadius(e) + pr.ability.radius,
         );
         if (struck) {
           if (pr.ability.explosion) explode();
@@ -1136,7 +1140,7 @@ export class Arena {
           if (
             enemy.hp > 0 &&
             Math.hypot(enemy.x - zone.x, enemy.y - zone.y) <
-              zone.radius + RULES.radius &&
+              zone.radius + this.hitRadius(enemy) &&
             this.lineClear(zone, enemy)
           )
             this.damage(enemy, zone.ability.damage, zone.owner, zone.ability);
@@ -1173,6 +1177,7 @@ export class Arena {
         }
       return;
     }
+    if (this.mode === "raid") return;
     // Overtime drain and the closing ring bite twice a second (one readable
     // hit each, rather than a sliver every tick).
     const ring = ringRadius(this.deadline - this.time, this.overtime);

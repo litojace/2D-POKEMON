@@ -588,6 +588,7 @@ export class FighterRig {
     this.setY = this.root.scaleY;
     this.root.x += offsetX * this.baseX;
     this.root.y += offsetY * this.baseY + FEET * this.baseY * (1 - sy);
+    if(pose.cosmetic === "cragbound" && state !== "hurt")for(const image of this.images.values())image.setTint(0xe6c795);
     this.effects.clear();
     if (reduced) {
       this.particles.length = 0;

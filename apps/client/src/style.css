@@ -6356,3 +6356,41 @@ dialog:has(.illustrated-guide) { width:min(820px,94vw); }
 .guide-orb > svg,.guide-orb > .skill-icon { width:60%; height:60%; color:inherit; }
 
 .guide-energy > svg { color:#9b6517; }
+
+/* Co-op raid presentation. Shared combat controls remain in the safe corners. */
+#raid-hud { display:none; }
+.battle-raid #hud { visibility:hidden; height:156px; overflow:hidden; }
+.battle-raid #raid-hud { display:block; position:absolute; top:calc(var(--safe-top,0px) + 8px); left:max(18px,var(--safe-left,0px)); right:max(18px,var(--safe-right,0px)); z-index:25; background:#0c1b32ed; border:1px solid #d7b16f66; border-radius:12px; padding:10px 14px; pointer-events:none; }
+.raid-boss-heading { display:flex; justify-content:space-between; gap:10px; color:#ffdc92; font-size:12px; }
+.raid-boss-heading span { color:#a8bbd5; font-size:10px; }
+.raid-boss-health { height:12px; border-radius:6px; background:#351e29; margin:7px 0 5px; overflow:hidden; }
+.raid-boss-health i { display:block; height:100%; background:linear-gradient(90deg,#d97948,#f9d37c); }
+.raid-stagger { height:5px; background:#172c48; position:relative; margin-bottom:12px; }
+.raid-stagger i { display:block; height:100%; background:#8cf7e3; }
+.raid-stagger span { position:absolute; top:6px; right:0; color:#a7f4e5; font-size:7px; letter-spacing:1px; }
+.raid-party-bars { display:flex; gap:14px; margin-top:14px; }
+.raid-party-bars > span { display:grid; flex:1; min-width:0; font-size:9px; gap:3px; }
+.raid-party-bars b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.raid-party-bars i { display:block; height:4px; background:linear-gradient(90deg,#8bdfca var(--hp),#263a52 var(--hp)); }
+.raid-party-bars small { color:#a6b9d2; font-size:8px; }
+.raid-party-bars .downed { color:#f5acac; }
+.raid-callout { color:#f7d998; font-size:10px; line-height:1.4; margin:9px 0 0; }
+.raid-team { display:grid; gap:8px; margin:15px 0; }
+.raid-team > div { display:flex; gap:10px; align-items:center; }
+.raid-team svg { width:45px; height:45px; }
+.raid-team span { display:grid; gap:4px; }.raid-team small,.raid-small { color:#a8bbd5; font-size:11px; line-height:1.6; }
+.raid-instructions { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:16px 0; }
+.raid-instructions > span { display:flex; flex-direction:column; align-items:center; gap:9px; padding:12px; background:#122b45; border:1px solid #7191b555; border-radius:10px; }
+.raid-instructions .skill-icon { width:36px; height:36px; }.raid-instructions b { font-size:12px; }.raid-instructions small { color:#b5c5db; font-size:11px; line-height:1.5; }
+.raid-rite-options { display:grid; gap:10px; }.raid-rite-options button { display:flex; gap:14px; align-items:center; text-align:left; padding:14px; }
+.raid-rite-options .skill-icon { width:40px; height:40px; flex:0 0 40px; }.raid-rite-options span { display:grid; gap:5px; }.raid-rite-options small { font-size:11px; line-height:1.5; color:#b4c7dd; }
+.raid-result-stats { display:flex; justify-content:center; gap:30px; margin:18px; }.raid-result-stats span { display:grid; gap:6px; font-size:10px; color:#a4b9d3; }.raid-result-stats b { font-size:25px; color:#ffe198; }
+.raid-bestiary-art { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; height:150px; background:radial-gradient(ellipse,#c1a16a40,transparent 70%); }.raid-bestiary-art span { font-size:80px; color:#e7bd72; text-shadow:0 0 25px #cf975c; }.raid-bestiary-art b { font-size:10px; letter-spacing:3px; color:#ffdf9d; }
+.raid-rewards { background:#152743; border-radius:12px; padding:10px 16px; }.raid-rewards p,.raid-board p { font-size:12px; line-height:1.6; }.raid-equip { display:flex; flex-wrap:wrap; gap:8px; }.raid-board { padding:12px; border:1px solid #7d9dc244; border-radius:10px; margin:8px 0; }
+@media(max-width:600px){.raid-boss-heading { font-size:10px; }.raid-boss-heading span{font-size:8px;}.raid-instructions { gap:6px; }.raid-instructions > span { padding:8px; }.raid-instructions b { font-size:10px; }.raid-instructions small { font-size:9px; }}
+@media(orientation:landscape) and (max-height:600px){.battle-raid #raid-hud { padding:6px 10px; }.raid-callout { margin-top:4px; }.raid-party-bars { margin-top:8px; }.raid-party-bars small { display:none; }.raid-stagger span{font-size:6px;top:4px;}.raid-boss-health{height:8px;margin:4px 0;}.raid-stagger{margin-bottom:8px;} .raid-overlay p{font-size:11px;} .raid-instructions {margin:8px 0;}.raid-instructions .skill-icon {width:25px;height:25px;} }
+
+body.battle-raid:not(.touch-mode) #battle { position:relative; }
+
+.raid-rite-options button { margin:0; width:100%; }
+@media(orientation:landscape) and (max-height:600px){ .raid-rite-options button {padding:9px 12px;}.raid-rite-options .skill-icon {width:30px;height:30px;flex-basis:30px;}.raid-overlay {padding:14px 20px;}.raid-overlay>p{margin:8px 0;} }

@@ -1,3 +1,4 @@
+import type { RaidState } from "./raid.js";
 import { z } from "zod";
 export const RULES = {
   width: 1600,
@@ -1053,21 +1054,25 @@ export const emptyStats = (): Stats => ({
  * free-for-all every fighter is a side of their own (0-3).
  */
 export type Team = number;
-export type MatchMode = "duel" | "teams" | "ffa";
+export type MatchMode = "duel" | "teams" | "ffa" | "raid";
 /** Most players a room holds for each mode. */
 export const MODE_SIZE: Record<MatchMode, number> = {
   duel: 2,
   teams: 4,
   ffa: 4,
+  raid: 4,
 };
 /** Fewest players needed to start (a free-for-all can start with three). */
 export const MODE_MIN: Record<MatchMode, number> = {
   duel: 2,
   teams: 4,
   ffa: 3,
+  raid: 1,
 };
 export const TEAM_NAMES = ["Blue", "Red"] as const;
 export interface Fighter extends Vec {
+  raidBoss?: boolean;
+  raidCosmetic?: "cragbound" | "mountain-aura";
   team?: Team;
   /** Left the match for good (2v2): stays on the scoreboard, out of play. */
   out?: boolean;
@@ -1280,7 +1285,9 @@ export interface Zone extends Vec {
 }
 export interface GameEvent extends Vec {
   id: number;
+  raidRadius?: number;
   kind:
+    | "raid-impact"
     | "cast"
     | "hit"
     | "dash"
@@ -1321,6 +1328,7 @@ export type Phase =
   | "paused"
   | "finished";
 export interface Snapshot {
+  raid?: RaidState;
   instructionsReady: string[];
   practice: { unlimitedCooldowns: boolean; targetAttacks: boolean } | null;
   mode?: MatchMode;

@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Boss Raid · Local playtest</title>
+  </head>
+  <body class="battle-active battle-raid">
+    <div id="app">
+      <header class="topbar">
+        <b>Boss Raid · LOCAL PLAYTEST</b>
+        <div>
+          <button id="lab-start">Restart</button
+          ><button id="lab-phase">Next phase</button
+          ><button id="lab-down">Test self-revive</button
+          ><select id="lab-peril">
+            <option value="1">Peril 1</option>
+            <option value="2">Peril 2</option>
+            <option value="3">Peril 3</option>
+          </select>
+        </div>
+      </header>
+      <main>
+        <section id="battle">
+          <div id="hud"></div>
+          <div class="arena-stage">
+            <div class="arena-frame">
+              <div id="game"></div>
+              <div id="arena-overlay"></div>
+              <div id="spectate" class="spectate-banner" hidden></div>
+            </div>
+          </div>
+          <div id="mobile-controls"></div>
+          <div class="battle-footer">
+            WASD move · hold mouse to attack · Q/E/R specials · F ultimate ·
+            right click dash · Space jump. Local simulation; no accounts or
+            rewards.
+          </div>
+        </section>
+      </main>
+    </div>
+    <script type="module">
+      import "./src/style.css";
+      import Phaser from "phaser";
+      import { RaidArena } from "../server/src/raid";
+      import { CHARACTERS, ARENAS, blankInput } from "@arena/shared";
+      import { renderRaidUI, drawRaidArena } from "./src/raid-ui";
+      import { drawProjectile, drawZone } from "./src/skill-effects";
+      import { paintArenaFloor, scaledPainter } from "./src/arena-floor";
+      import { rigAssets } from "./src/animation/assets";
+      import {
+        queueFighterAssets,
+        createFighterVisual,
+      } from "./src/animation/pipeline";
+      import { TouchControls } from "./src/touch-controls";
+      let arena,
+        scene,
+        rig,
+        seq = 0,
+        frame = 0;
+      let actions = { skill: -1, basic: false, dash: false, jump: false };
+      const touch = new TouchControls(
+        document.querySelector("#mobile-controls"),
+        () => arena?.phase === "playing",
+        (a) => Object.assign(actions, a),
+        () => {},
+        () => {},
+        new URLSearchParams(location.search).get("touch") === "1",
+      );
+      function reset() {
+        arena = new RaidArena("LOCAL");
+        arena.add("preview", "You", "voltkit");
+        arena.configure(
+          Number(document.querySelector("#lab-peril").value),
+          false,
+        );
+        arena.start();
+        seq = 0;
+        rig?.destroy();
+        if (scene)
+          rig = createFighterVisual(scene, "voltkit", rigAssets("voltkit"));
+      }
+      const request = async (event, data) => {
+        if (event === "instructions-ready")
+          arena.acknowledgeInstructions("preview");
+        if (event === "rite") arena.pickRite("preview", data.id);
+        if (event === "rematch") reset();
+        if (event === "lobby") reset();
+      };
+      document.querySelector("#lab-start").onclick = reset;
+      document.querySelector("#lab-peril").onchange = reset;
+      document.querySelector("#lab-down").onclick = () =>
+        arena.damage(arena.heroes()[0], 10000, arena.boss().id);
+      document.querySelector("#lab-phase").onclick = () =>
+        arena.damage(arena.boss(), 100000, "preview");
+      class Lab extends Phaser.Scene {
+        preload() {
+          queueFighterAssets(this, "voltkit", rigAssets("voltkit"));
+        }
+        create() {
+          scene = this;
+          const g = this.add.graphics();
+          paintArenaFloor(scaledPainter(g, 1), ARENAS.classic);
+          this.g = this.add.graphics();
+          this.keys = this.input.keyboard.addKeys("W,A,S,D,Q,E,R,F,SPACE");
+          ["Q", "E", "R", "F"].forEach((key, i) =>
+            this.keys[key].on("down", () => (actions.skill = i)),
+          );
+          this.keys.SPACE.on("down", () => (actions.jump = true));
+          this.input.mouse.disableContextMenu();
+          this.input.on("pointerdown", (p) => {
+            if (p.rightButtonDown()) actions.dash = true;
+          });
+          reset();
+        }
+        update(now, delta) {
+          if (!arena || !rig) return;
+          const p = arena.heroes()[0],
+            boss = arena.boss();
+          this.cameras.main
+            .setZoom(Math.min(this.scale.width / 1600, this.scale.height / 900))
+            .centerOn(800, 450);
+          const pointer = this.input.activePointer,
+            aim = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+          const input = {
+            ...blankInput(),
+            seq: ++seq,
+            dx: touch.enabled
+              ? touch.dx
+              : Number(this.keys.D.isDown) - Number(this.keys.A.isDown),
+            dy: touch.enabled
+              ? touch.dy
+              : Number(this.keys.S.isDown) - Number(this.keys.W.isDown),
+            aimX: touch.enabled ? boss.x : aim.x,
+            aimY: touch.enabled ? boss.y : aim.y,
+            ...actions,
+            basic: touch.basic || pointer.leftButtonDown(),
+          };
+          arena.submit(p, input);
+          actions = { skill: -1, basic: false, dash: false, jump: false };
+          arena.tick(Math.min(delta / 1000, 0.04));
+          const state = arena.snapshot();
+          this.g.clear();
+          drawRaidArena(this.g, state);
+          for (const pr of arena.projectiles) drawProjectile(this.g, pr, now);
+          for (const z of arena.zones)
+            drawZone(
+              this.g,
+              z,
+              1 -
+                Math.max(0, z.until - arena.time) /
+                  Math.max(0.01, z.ability.duration),
+              now,
+              false,
+            );
+          const jump =
+            p.jumpUntil > arena.time
+              ? Math.sin((1 - (p.jumpUntil - arena.time) / 0.65) * Math.PI) * 45
+              : 0;
+          this.g.fillStyle(0x07142b, 0.4).fillEllipse(p.x, p.y + 15, 45, 17);
+          rig.root.setScale(0.8);
+          rig.render(
+            {
+              hp: p.hp,
+              speed: Math.hypot(p.vx, p.vy),
+              angle: p.angle,
+              dash: p.dashUntil > arena.time,
+              jump: jump > 0,
+              charging: !!p.charge,
+              victory: arena.raid.result === "victory",
+            },
+            p.x,
+            p.y - jump,
+            now,
+          );
+          if (++frame % 5 === 0) {
+            renderRaidUI(state, p, request);
+            touch.update(
+              arena.phase === "playing",
+              CHARACTERS.voltkit.skills.map((a) => a.name),
+              p.cooldowns.map((t) => Math.max(0, t - arena.time)),
+              Math.max(0, p.dashAt - arena.time),
+              Math.max(0, p.jumpAt - arena.time),
+              [8, 10, 14, 18],
+              { name: CHARACTERS.voltkit.basic.name, left: 0, duration: 0.28 },
+              p.ult ?? 0,
+            );
+          }
+        }
+      }
+      new Phaser.Game({
+        type: Phaser.AUTO,
+        parent: "game",
+        scene: Lab,
+        scale: {
+          mode: Phaser.Scale.RESIZE,
+          width: 1000,
+          height: 600,
+          min: { width: 1, height: 1 },
+        },
+        backgroundColor: "#132541",
+      });
+    </script>
+  </body>
+</html>

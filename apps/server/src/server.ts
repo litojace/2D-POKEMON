@@ -1,3 +1,5 @@
+import { RaidArena } from "./raid.js";
+import { raidWeekly, type RaidProgress, type RaidReceipt } from "../../../packages/shared/src/raid.js";
 import express from "express";
 import { createServer } from "node:http";
 import { randomBytes, randomInt, randomUUID } from "node:crypto";
@@ -30,7 +32,7 @@ const botMatchSchema = identitySchema
   .extend({ character: characterSchema, difficulty: z.enum(BOT_DIFFICULTIES) })
   .strict();
 const createSchema = identitySchema
-  .extend({ mode: z.enum(["duel", "teams", "ffa"]).optional() })
+  .extend({ mode: z.enum(["duel", "teams", "ffa", "raid"]).optional() })
   .strict();
 const teamSchema = z
   .object({ team: z.union([z.literal(0), z.literal(1)]) })
@@ -134,6 +136,9 @@ export function createArenaServer(
         fighter.name = account.displayName;
         fighter.title = account.title;
         fighter.titleColor = account.titleColor;
+      }
+      if(fighter) {
+        try {const progress=await accounts.rpc(socket.data.accessToken,'arena_raid_progress',{}) as {equipped?:'cragbound'|'mountain-aura'};fighter.raidCosmetic=progress.equipped??undefined;}catch{/* Optional until migration 007 is configured. */}
       }
       socket.emit("account-changed");
     } catch (error) {
@@ -309,9 +314,23 @@ export function createArenaServer(
   function getSession(socketId: string) {
     return [...sessions.values()].find((s) => s.socketId === socketId);
   }
+  const raidSaves = new WeakMap<RaidArena,string>();
   function broadcast(arena: Arena) {
+    if(arena instanceof RaidArena && arena.raid.result === 'victory' && arena.raid.resultId && raidSaves.get(arena)!==arena.raid.resultId) {
+      raidSaves.set(arena,arena.raid.resultId);
+      const runId=arena.raid.resultId, r=arena.raid;
+      const owners=fighterAccounts.get(arena);
+      const players=arena.heroes().map(p=>({accountId:owners?.get(p.id)??'',character:p.character})).filter(p=>p.accountId);
+      const receipt:RaidReceipt={id:runId,boss:'grumblecrag',peril:r.peril,trait:r.trait,gilded:r.gilded,weekly:r.weekly,week:r.week,seed:r.seed,partySize:r.partySize,seconds:Math.round(r.elapsed*1000)/1000,downs:r.downs,revives:r.revives,players};
+      r.rewardStatus='saving';
+      void (accounts.recordRaid ? accounts.recordRaid(receipt) : Promise.reject(new Error('Raid rewards need server storage configuration.'))).then(()=>{
+        if(arena.raid.resultId!==runId)return;
+        r.rewardStatus='saved';for(const socket of io.sockets.sockets.values())if(players.some(p=>p.accountId===socket.data.account?.id))socket.emit('account-changed');broadcast(arena);
+      }).catch(()=>{if(arena.raid.resultId===runId){r.rewardStatus='unavailable';broadcast(arena);}});
+    }
+
     // A real match just ended: file its summary for the players to report.
-    if (arena.phase === "finished" && !arena.matchId && !arena.practice) {
+    if (arena.phase === "finished" && !arena.matchId && !arena.practice && arena.mode !== "raid") {
       const matchId: string = randomUUID();
       arena.matchId = matchId;
       const owners = fighterAccounts.get(arena);
@@ -464,6 +483,8 @@ export function createArenaServer(
         socketId: socket.id,
         expires: Infinity,
       });
+      const attached=arena.players.find(p=>p.id===id);
+      void accounts.rpc(socket.data.accessToken,'arena_raid_progress',{}).then(value=>{if(attached){attached.raidCosmetic=(value as {equipped?:'cragbound'|'mountain-aura'}).equipped??undefined;broadcast(arena);}}).catch(()=>{});
       socket.join(arena.code);
       reply(cb, { ok: true, id, token, code: arena.code });
       if (publish) broadcast(arena);
@@ -560,7 +581,7 @@ export function createArenaServer(
           () => chars[randomInt(chars.length)],
         ).join("");
       } while (rooms.has(code));
-      const arena = new Arena(code, result.data.mode ?? "duel");
+      const arena = result.data.mode === "raid" ? new RaidArena(code) : new Arena(code, result.data.mode ?? "duel");
       arena.rotateArenas = true;
       rooms.set(code, arena);
       attach(arena, result.data.name, cb);
@@ -791,6 +812,22 @@ export function createArenaServer(
         broadcast(a);
       }),
     );
+    socket.on('raid-config',async(data:unknown,cb:unknown)=>{
+      if(!requirePlayer(cb)||!allowed(10))return;
+      const s=getSession(socket.id),a=s&&rooms.get(s.code);
+      if(!(a instanceof RaidArena)||a.phase!=='lobby'||a.players[0]?.id!==s?.id)return fail(cb,'Only the raid host can change the challenge in the lobby.');
+      const result=z.object({peril:z.number().int().min(1).max(3),weekly:z.boolean()}).strict().safeParse(data);
+      if(!result.success)return fail(cb,'Choose a valid raid challenge.');
+      let highest=0;
+      if(result.data.peril>1&&!result.data.weekly){
+        try { const progress=await accounts.rpc(socket.data.accessToken,'arena_raid_progress',{} ) as RaidProgress;highest=progress.highestPeril; }
+        catch { return fail(cb,'Raid progression is unavailable. Peril 1 is always open.'); }
+      }
+      // Recheck state after the asynchronous account lookup.
+      if(a.phase!=='lobby'||getSession(socket.id)?.id!==s!.id)return fail(cb,'The room changed while checking this challenge.');
+      if(!result.data.weekly&&result.data.peril>highest+1)return fail(cb,'Clear the previous Peril first.');
+      a.configure(result.data.peril,result.data.weekly);for(const p of a.players)p.ready=false;reply(cb,{ok:true});broadcast(a);
+    });
     socket.on("ready", (_data: unknown, cb: unknown) =>
       withRoom(cb, (a, id) => {
         if (a.phase !== "lobby")
@@ -876,7 +913,7 @@ export function createArenaServer(
     // Party rules: the host switches them on or off in the lobby.
     socket.on("mutators", (data: unknown, cb: unknown) =>
       withRoom(cb, (a, id) => {
-        if (a.phase !== "lobby" || a.bots.size || a.practice)
+        if (a.phase !== "lobby" || a.bots.size || a.practice || a.mode === "raid")
           return fail(cb, "Party rules can only be changed in a room lobby.");
         if (a.players[0]?.id !== id)
           return fail(cb, "Only the room host can change the party rules.");
@@ -915,6 +952,12 @@ export function createArenaServer(
     );
     socket.on("rematch", (_data: unknown, cb: unknown) =>
       withRoom(cb, (a, id) => {
+        if(a instanceof RaidArena){
+          if(a.phase!=='finished'||!a.heroes().length||!a.heroes().every(p=>p.connected))return fail(cb,'Return to the lobby to refill the team.');
+          a.players.find(p=>p.id===id)!.ready=true;
+          if(a.heroes().every(p=>p.ready))a.start();
+          reply(cb,{ok:true});broadcast(a);return;
+        }
         if (
           a.phase !== "finished" ||
           a.players.length < a.minPlayers ||
