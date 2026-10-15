@@ -121,6 +121,7 @@ import {
 import { matchReportReplySchema } from "../../../packages/shared/src/accounts";
 import { masteryMatches, setMastery } from "./fighter-selection";
 import { shareResult } from "./share-card";
+import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
 const audio = new AudioManager();
 const allAbilities = new Map(
   Object.values(CHARACTERS)
@@ -357,7 +358,7 @@ function riteMarkup(me: Fighter, _seconds: number) {
       .filter(Boolean)
       .map(
         (r) =>
-          `<span class="rite-chip ${r.tier}" title="${escape(r.text)}">${escape(r.name)}</span>`,
+          `<span class="rite-chip ${r.tier}" title="${escape(r.text)}">${riteIcon(r, "chip")}${escape(r.name)}</span>`,
       )
       .join("");
   const offer = me.riteOffer;
@@ -367,7 +368,7 @@ function riteMarkup(me: Fighter, _seconds: number) {
       .map((id) => RITE_BY_ID[id])
       .map(
         (r, i) =>
-          `<button class="rite-card ${r.tier}" data-rite="${r.id}"><kbd>${touch.enabled ? i + 1 : escape(keyText(SKILL_ACTIONS[i]))}</kbd><span class="rite-tier">${r.tier === "major" ? "MAJOR RITE" : "RITE"}</span><b>${escape(r.name)}</b><small>${escape(r.text)}</small></button>`,
+          `<button class="rite-card ${r.tier}" data-rite="${r.id}"><kbd>${touch.enabled ? i + 1 : escape(keyText(SKILL_ACTIONS[i]))}</kbd><span class="rite-head">${riteIcon(r)}<span class="rite-tier">${r.tier === "major" ? "MAJOR RITE" : "RITE"}<em style="color:${RITE_EFFECTS[riteEffect(r)].color}">${escape(RITE_EFFECTS[riteEffect(r)].label)}</em></span></span><b>${escape(r.name)}</b><small>${escape(r.text)}</small></button>`,
       )
       .join("");
     return `<p class="rite-intro">Choose an upgrade for the rest of the match${comeback ? " · comeback: one extra choice" : ""}.</p><div class="rite-choices">${cards}</div><p class="rite-timer">${timer} · a choice is made for you when time runs out</p>${me.rites?.length ? `<div class="rite-owned">${chips(me)}</div>` : ""}`;

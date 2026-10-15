@@ -5930,3 +5930,99 @@ button.small {
     }
   }
 }
+/* ---- Rite icons: the skill it changes + a badge for the kind of change ---- */
+.rite-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-right: 26px;
+}
+.rite-head .rite-tier {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  white-space: nowrap;
+}
+.rite-head .rite-tier em {
+  font-style: normal;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  font-weight: 700;
+}
+.rite-icon {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: radial-gradient(circle at 35% 30%, #ffffff14, #0000 70%), #0a1424;
+  border: 1px solid color-mix(in srgb, var(--effect) 45%, transparent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--effect) 22%, transparent);
+}
+.rite-icon.major {
+  border-color: #ffb347;
+  box-shadow: 0 0 12px #ffb34755;
+}
+.rite-icon .skill-icon {
+  width: 30px;
+  height: 30px;
+  margin: 0;
+}
+.rite-badge {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 20px;
+  height: 20px;
+  padding: 3px;
+  border-radius: 50%;
+  background: #0b1526;
+  border: 1.5px solid currentColor;
+}
+.rite-icon.chip {
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  box-shadow: none;
+}
+.rite-icon.chip .skill-icon {
+  width: 15px;
+  height: 15px;
+}
+.rite-icon.chip .rite-badge {
+  width: 11px;
+  height: 11px;
+  padding: 1px;
+  right: -4px;
+  bottom: -4px;
+  border-width: 1px;
+}
+.rite-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+@media (max-height: 500px) {
+  .rite-head {
+    gap: 8px;
+  }
+  .rite-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+  }
+  .rite-icon .skill-icon {
+    width: 23px;
+    height: 23px;
+  }
+  .rite-badge {
+    width: 16px;
+    height: 16px;
+    padding: 2px;
+    right: -5px;
+    bottom: -5px;
+  }
+}
