@@ -224,7 +224,23 @@ it("DEBUG state", async () => {
   const p = await db.query("select id, display_name, guest, suspended from public.arena_profiles order by id");
   const c = await db.query("select count(*)::int n from public.arena_rating_changes");
   const s = await db.query("select season from public.arena_rating_seasons");
-  expect(JSON.stringify({ r: r.rows, p: p.rows, c: c.rows, s: s.rows })).toBe("");
+  const m = await db.query("select id, vs_bot from public.arena_matches");
+  const rep = await db.query("select match_id, player_id from public.arena_match_reports");
+  let err = "";
+  try {
+    await play([{ id: ana, team: 0 }, { id: ben, team: 1 }], 0);
+  } catch (e) {
+    err = String(e);
+  }
+  let err2 = "";
+  try {
+    await db.exec("reset role");
+    await db.query("select public.arena_apply_ratings('dbg-1', $1::jsonb)", [JSON.stringify({ v: 1, mode: "duel", winnerTeam: 0, rounds: [0], players: [{ account: ana, team: 0 }, { account: ben, team: 1 }] })]);
+  } catch (e) {
+    err2 = String(e);
+  }
+  const r2 = await db.query("select player_id, rating, matches from public.arena_ratings order by player_id");
+  expect(JSON.stringify({ r: r.rows, c: c.rows, s: s.rows, m: m.rows.length, rep: rep.rows.length, err, err2, r2: r2.rows })).toBe("");
 });
 it("lists ranked players by rating, the unranked separately, and your own rating", async () => {
   await as(cy);
