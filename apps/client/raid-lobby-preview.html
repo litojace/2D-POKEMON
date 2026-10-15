@@ -26,12 +26,24 @@
     <script type="module">
       import "./src/style.css";
       import { RaidArena } from "../server/src/raid";
-      import { raidLobby } from "./src/raid-ui";
+      import { raidLobby, raidBestiary } from "./src/raid-ui";
       const arena = new RaidArena("B76CKS");
       arena.add("preview", "litojace", "voltkit");
       arena.start();
       arena.phase = "lobby";
       const mount = document.getElementById("preview");
+      const previewProgress = {
+        clears: 1,
+        highestPeril: 1,
+        bestSeconds: 61,
+        titles: ["Cragbreaker"],
+        cosmetics: [],
+        weekly: [],
+        equipped: null,
+      };
+      function showRewards() {
+        mount.innerHTML = raidBestiary(previewProgress);
+      }
       function render() {
         mount.innerHTML = raidLobby(arena.snapshot(), "preview");
         document.getElementById("ready").onclick = () => {
@@ -51,10 +63,10 @@
           navigator.clipboard.writeText(arena.code);
         document.getElementById("leave").onclick = () =>
           (location.href = "/raid-preview.html");
-        document.getElementById("raid-bestiary").onclick = () =>
-          (location.href = "/");
+        document.getElementById("raid-bestiary").onclick = showRewards;
       }
-      render();
+      if (new URLSearchParams(location.search).has("rewards")) showRewards();
+      else render();
     </script>
   </body>
 </html>

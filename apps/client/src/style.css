@@ -6657,3 +6657,29 @@ body.battle-raid:not(.touch-mode) #battle { position:relative; }
   .raid-elapsed b {font-size:23px;}
   .raid-elapsed > svg {width:18px;height:18px;}
 }
+
+.raid-party-avatar,.raid-party-avatar > svg {display:block;width:42px;height:42px;}
+
+.raid-rewards .raid-reward {display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:8px;align-items:center;margin:5px 0;padding:10px 8px;border-radius:8px;}
+.raid-reward-check {font-size:15px;line-height:1;text-align:center;}
+.raid-reward > small {font-size:9px;line-height:1.4;color:#91a6c1;}
+.raid-rewards .raid-reward.is-complete {color:#a5edc1;background:#59d49712;border:1px solid #6ae2a33b;}
+.raid-reward.is-complete :is(b,small,.raid-reward-check) {color:#a5edc1;}
+.raid-equip {display:grid;gap:9px;}
+.raid-equip .raid-cosmetic-option {display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:12px;align-items:center;width:100%;margin:0;padding:10px 12px;text-align:left;}
+.raid-cosmetic-preview {position:relative;display:grid;place-items:center;width:48px;height:48px;border-radius:10px;background:#14213a;}
+.raid-cosmetic-preview > svg {width:44px;height:44px;}
+.raid-cosmetic-option > span:nth-child(2) {display:grid;gap:5px;}
+.raid-cosmetic-option b {font-size:12px;line-height:1.4;}
+.raid-cosmetic-option small {font-size:10px;font-weight:400;line-height:1.4;color:#adbed3;}
+.raid-cosmetic-state {font-size:10px;line-height:1.4;}
+.raid-cosmetic-option.is-equipped {opacity:1;border-color:#7be3ac77;background:#16403944;}
+.raid-cosmetic-option.is-equipped :is(b,small,.raid-cosmetic-state) {color:#a5edc1;}
+.raid-cosmetic-preview[data-cosmetic="cragbound"] > svg,
+.roster-panel[data-raid-cosmetic="cragbound"] .selected .card-art > :is(svg,img),
+.roster-panel[data-raid-cosmetic="cragbound"] .selected-art > :is(svg,img),
+.raid-party-avatar[data-raid-cosmetic="cragbound"] > svg {filter:sepia(.5) saturate(.8) brightness(.96);}
+.raid-cosmetic-preview[data-cosmetic="mountain-aura"],
+.roster-panel[data-raid-cosmetic="mountain-aura"] .selected .card-art,
+.raid-party-avatar[data-raid-cosmetic="mountain-aura"] {border-radius:50%;box-shadow:inset 0 0 0 2px #ffda8299,0 0 14px #ffcd6244;}
+@media(max-width:420px) {.raid-rewards .raid-reward {grid-template-columns:16px minmax(0,1fr);}.raid-reward > small {grid-column:2;}}

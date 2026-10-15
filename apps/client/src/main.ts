@@ -1,3 +1,4 @@
+import { updateMenuShell } from "./menu-shell";
 import { raidLobby, renderRaidUI, drawRaidArena } from "./raid-ui";
 import { illustratedHelp } from "./illustrated-help";
 import { menuIcon } from "./menu-icons";
@@ -162,8 +163,7 @@ let ultWasReady = false;
 let exArmedUntil = 0;
 /** An invite is waiting for sign-in: say so once. */
 let inviteHinted = true;
-/** Which menu screen is showing ("home", "room-duel"…), for entry fades. */
-let menuKind = "";
+/** Render key for menu, lobby and battle state changes. */
 let screen = "",
   eventId = 0,
   settingsOpen = false,
@@ -546,6 +546,15 @@ function wireRoster(isRoom: boolean) {
       }),
   );
 }
+function syncMenuCosmetic() {
+  const panel=document.querySelector<HTMLElement>("#menu .roster-panel");
+  const fighter=state?.players.find(p=>p.id===myId);
+  const cosmetic=accountsUI?.account && accountsUI.raidCosmetic!==undefined ? accountsUI.raidCosmetic : fighter?.raidCosmetic;
+  if(panel)panel.dataset.raidCosmetic=cosmetic??"";
+  const avatar=Array.from(document.querySelectorAll<HTMLElement>("#menu [data-raid-player]"))
+    .find(row=>row.dataset.raidPlayer===myId)?.querySelector<HTMLElement>(".raid-party-avatar");
+  if(avatar)avatar.dataset.raidCosmetic=cosmetic??"";
+}
 /** Move the selection highlight and swap the detail panel without re-rendering. */
 function showSelection() {
   const panel = document.querySelector<HTMLElement>("#menu .roster-panel");
@@ -566,6 +575,15 @@ function showSelection() {
       `lobby${state?.players.findIndex((p) => p.id === myId) ?? 0}`,
     );
   }
+  const raidMe = Array.from(document.querySelectorAll<HTMLElement>("#menu [data-raid-player]"))
+    .find(row=>row.dataset.raidPlayer===myId);
+  if(raidMe) {
+    const avatar=raidMe.querySelector<HTMLElement>(".raid-party-avatar");
+    const name=raidMe.querySelector<HTMLElement>(".raid-player-character");
+    if(avatar)avatar.innerHTML=fighterAvatar(selected,"raid-lobby-"+myId);
+    if(name)name.textContent=CHARACTERS[selected].name;
+  }
+  syncMenuCosmetic();
   return true;
 }
 /** Blue = 0, Red = 1. Older snapshots without teams fall back to seat order. */
@@ -780,7 +798,7 @@ function partyRules(host: boolean) {
   return `<details class="party-rules"${on.size ? " open" : ""}><summary>Party rules${on.size ? ` · ${on.size} on` : host ? " · optional" : ""}</summary><div class="rule-chips">${chips}</div>${host ? "<small>Only you (the host) can change these. Everyone readies up again after a change.</small>" : ""}</details>`;
 }
 function roomPanel(me: Fighter) {
-  if (state?.raid) return raidLobby(state,myId);
+  if (state?.raid) return raidLobby(state,myId,selected);
   const row = (p: Fighter) => {
     const fighter = CHARACTERS[p.id === myId ? selected : p.character];
     return `<div${p.id === myId ? " data-me" : ""}><span class="player-avatar" style="--element:#${fighter.color.toString(16).padStart(6, "0")}" title="${fighter.name}">${fighterAvatar(fighter.id, `lobby${state!.players.indexOf(p)}`)}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small class="player-fighter">${fighter.name}${p.flair ? ` · <b class="flair flair-${p.flair.toLowerCase()}">★ ${p.flair}</b>` : ""}</small></span><b class="status-pill ${!p.connected ? "offline" : p.ready ? "ready" : "choosing"}">${!p.connected ? "Offline" : p.ready ? "Ready" : "Choosing"}</b></div>`;
@@ -889,7 +907,7 @@ function renderMenu() {
   const p = state?.players.find((p) => p.id === myId);
   const isRoom = !!p;
   const watchingRoom = !isRoom && !!watching && state?.code === watching;
-  const key = `${isRoom ? `room-${state!.mode ?? "duel"}` : watchingRoom ? `watch-${watching}` : "home"}:${(state?.mutators ?? []).join(",")}|${(state?.watchers ?? []).join(",")}:${state?.players.map((p) => `${p.id}${p.id === myId ? "" : p.character}${p.ready}${p.connected}${p.team ?? ""}${p.flair ?? ""}`).join(":")}:${selected}`;
+  const key = `${isRoom ? `room-${state!.mode ?? "duel"}` : watchingRoom ? `watch-${watching}` : "home"}:${(state?.mutators ?? []).join(",")}|${(state?.watchers ?? []).join(",")}:${state?.players.map((p) => `${p.id}${p.id === myId ? "" : p.character}${p.ready}${p.connected}${p.team ?? ""}${p.flair ?? ""}${p.raidCosmetic ?? ""}`).join(":")}:${selected}`;
   if (screen === key) return;
   const previous = screen;
   screen = key;
@@ -905,30 +923,10 @@ function renderMenu() {
     return;
   // Keep the reader's place when the menu re-renders while already visible.
   const keepScroll = !$("menu").hidden ? scrollY : null;
-  // Lobby status updates must not restart the roster's artwork or idle animations.
-  const retainedRoster =
-    previous &&
-    !$("menu").hidden &&
-    isRoom &&
-    previous.startsWith(`room-${state!.mode ?? "duel"}:`)
-      ? $("menu").querySelector(".roster-panel")
-      : null;
-  if (retainedRoster) {
-    if (previous.slice(previous.lastIndexOf(":") + 1) !== selected)
-      showSelection();
-    $("menu").querySelector(".room-panel")!.innerHTML = roomPanel(p!);
-    wireRoom();
-    if (keepScroll !== null && Math.abs(scrollY - keepScroll) > 1)
-      scrollTo(0, keepScroll);
-    return;
-  }
   touch.reset();
   document.body.classList.remove("battle-active", "battle-raid");
-  // Fade up only when arriving at a different screen (home, a room, back
-  // from a match). Rebuilding the screen you are already on stays still.
-  const kind = key.slice(0, key.indexOf(":"));
-  const arriving = $("menu").hidden || kind !== menuKind;
-  menuKind = kind;
+  // Home and lobby share a mounted shell; only returning from battle fades in.
+  const arriving = $("menu").hidden;
   $("battle").hidden = true;
   $("menu").hidden = false;
   $("menu").classList.remove("screen-enter");
@@ -936,9 +934,7 @@ function renderMenu() {
     void $("menu").offsetWidth;
     $("menu").classList.add("screen-enter");
   }
-  $("menu").innerHTML =
-    `<header class="desktop-lobby-header"><div class="eyebrow">ELEMENTAL COLISEUM</div><h1>Choose your fighter</h1><p>Pick your creature. Enter the arena.</p></header><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected)}</div><aside class="room-panel">${
-      isRoom
+  const panelMarkup = isRoom
         ? roomPanel(p!)
         : watchingRoom
           ? watchPanel()
@@ -956,11 +952,17 @@ function renderMenu() {
             )
             .join(
               "",
-            )}</div><button class="primary" id="create">Create private room →</button><button class="quiet" id="raid-bestiary">Boss Bestiary & raid rewards</button><div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><button id="watch" class="quiet full">Watch this room instead</button><div class="divider">OR PLAY SOLO</div><div class="bot-picker" role="radiogroup" aria-label="Bot difficulty">${BOT_LEVELS.map(([id, label, hint]) => `<button type="button" role="radio" class="bot-level${botLevel === id ? " active" : ""}" data-bot="${id}" aria-checked="${botLevel === id}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button class="secondary full" id="bot-match">Battle an AI bot →</button>${accountsUI?.account ? '<button class="quiet full" id="practice">Solo test mode →</button>' : ""}<small class="room-note">Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`
-    }</aside></div>`;
+            )}</div><button class="primary" id="create">Create private room →</button><button class="quiet" id="raid-bestiary">Boss Bestiary & raid rewards</button><div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><button id="watch" class="quiet full">Watch this room instead</button><div class="divider">OR PLAY SOLO</div><div class="bot-picker" role="radiogroup" aria-label="Bot difficulty">${BOT_LEVELS.map(([id, label, hint]) => `<button type="button" role="radio" class="bot-level${botLevel === id ? " active" : ""}" data-bot="${id}" aria-checked="${botLevel === id}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button class="secondary full" id="bot-match">Battle an AI bot →</button>${accountsUI?.account ? '<button class="quiet full" id="practice">Solo test mode →</button>' : ""}<small class="room-note">Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`;
+  const retainedShell = updateMenuShell($("menu"), panelMarkup, () =>
+    `<header class="desktop-lobby-header"><div class="eyebrow">ELEMENTAL COLISEUM</div><h1>Choose your fighter</h1><p>Pick your creature. Enter the arena.</p></header><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected)}</div><aside class="room-panel">${panelMarkup}</aside></div>`,
+    keepScroll !== null,
+  );
   wireRoster(isRoom);
+  syncMenuCosmetic();
   // Fighter panel slot: between the rows on PC, under the swipeable row on phones.
-  watchFighterDetail($("menu"));
+  if (!retainedShell) watchFighterDetail($("menu"));
+  else if (previous && previous.slice(previous.lastIndexOf(":") + 1) !== selected)
+    showSelection();
   if (keepScroll !== null && Math.abs(scrollY - keepScroll) > 1)
     scrollTo(0, keepScroll);
   if (watchingRoom) {
@@ -3051,6 +3053,7 @@ accountsUI = new AccountUI({
     const shown = JSON.stringify([
       accountsUI?.account ?? null,
       !!accountsUI?.session,
+      accountsUI?.raidCosmetic,
     ]);
     if (shown === accountShown) return;
     accountShown = shown;

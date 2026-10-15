@@ -1,5 +1,10 @@
 import type Phaser from "phaser";
-import { CHARACTERS, type Fighter, type Snapshot } from "@arena/shared";
+import {
+  CHARACTERS,
+  type Fighter,
+  type Snapshot,
+  type CharacterId,
+} from "@arena/shared";
 import {
   RAID,
   RAID_RITES,
@@ -24,23 +29,55 @@ const time = (s: number) =>
   `${Math.floor(s / 60)}:${Math.floor(s % 60)
     .toString()
     .padStart(2, "0")}`;
-export function raidLobby(state: Snapshot, myId: string) {
+export function raidLobby(
+  state: Snapshot,
+  myId: string,
+  selected?: CharacterId,
+) {
   const r = state.raid!,
     host = state.players[0]?.id === myId;
   const me = state.players.find((p) => p.id === myId)!;
-  const party = state.players.filter((p) => !p.raidBoss);
+  const party = state.players
+    .filter((p) => !p.raidBoss)
+    .map((p) =>
+      p.id === myId && selected ? { ...p, character: selected } : p,
+    );
   const ready = party.filter((p) => p.ready).length;
   return `<div class="raid-lobby">
     <div class="raid-lobby-banner"><div><span class="eyebrow">CO-OP RAID · 1–4 PLAYERS</span><h2>Grumblecrag</h2><p>The living mountain</p></div><svg viewBox="-65 -65 130 115" aria-hidden="true">${raidGuideBoss()}</svg></div>
     <div class="raid-invite"><div><span>INVITE YOUR PARTY</span><b>${escape(state.code)}</b></div><button type="button" id="raid-copy-code" class="secondary" aria-label="Copy raid room code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V3H3v13h5"/></svg><span>Copy code</span></button></div>
-    <section class="raid-party-section" aria-label="Raid party"><div class="raid-section-heading"><h3>Your party</h3><span>${ready}/${party.length} ready</span></div><div class="raid-party-list">${party.map((p) => `<div class="raid-party-member">${fighterAvatar(p.character, "raid-lobby-" + p.id)}<div class="raid-party-identity"><b>${escape(p.name)}</b><span>${CHARACTERS[p.character].name}${p.id === state.players[0]?.id ? " · Host" : ""}</span></div><span class="raid-ready-badge ${p.ready ? "is-ready" : ""}">${p.ready ? "Ready" : "Choosing"}</span></div>`).join("")}<div class="raid-open-slots">${Array.from({ length: Math.max(0, 4 - party.length) }, () => '<div class="raid-party-empty"><span aria-hidden="true">+</span>Open slot</div>').join("")}</div></div></section>
+    <section class="raid-party-section" aria-label="Raid party"><div class="raid-section-heading"><h3>Your party</h3><span>${ready}/${party.length} ready</span></div><div class="raid-party-list">${party.map((p) => `<div class="raid-party-member" data-raid-player="${escape(p.id)}"><span class="raid-party-avatar" data-raid-cosmetic="${p.raidCosmetic ?? ""}">${fighterAvatar(p.character, "raid-lobby-" + p.id)}</span><div class="raid-party-identity"><b>${escape(p.name)}</b><span><span class="raid-player-character">${CHARACTERS[p.character].name}</span>${p.id === state.players[0]?.id ? " · Host" : ""}</span></div><span class="raid-ready-badge ${p.ready ? "is-ready" : ""}">${p.ready ? "Ready" : "Choosing"}</span></div>`).join("")}<div class="raid-open-slots">${Array.from({ length: Math.max(0, 4 - party.length) }, () => '<div class="raid-party-empty"><span aria-hidden="true">+</span>Open slot</div>').join("")}</div></div></section>
     <section class="raid-challenge" aria-label="Raid challenge"><div class="raid-section-heading"><h3>Choose your challenge</h3><span>${host ? "HOST CONTROLS" : "HOST SELECTS"}</span></div><label class="raid-peril-label" for="raid-peril">Difficulty</label><div class="raid-select-wrap"><select id="raid-peril" ${host && !r.weekly ? "" : "disabled"}>${[1, 2, 3].map((p) => `<option value="${p}" ${p === r.peril ? "selected" : ""}>Peril ${p} · ${["Learn the mountain", "Falling debris", "Closing arena"][p - 1]}</option>`).join("")}</select><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2"/></svg></div><label class="raid-weekly-option"><input id="raid-weekly" type="checkbox" ${r.weekly ? "checked" : ""} ${host ? "" : "disabled"}><span><b>Raid of the Week</b><small>Shared Peril 2 challenge · weekly leaderboard</small></span></label><p class="raid-unlock-note">Clear a Peril to unlock the next difficulty.</p></section>
     <div class="raid-lobby-rules"><span><svg class="raid-rule-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v10m-5-5h10"/></svg><span>${party.length === 1 ? "One solo self-revive" : "Stand near allies to revive"}</span></span><span><svg class="raid-rule-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 3 8 4v6c0 5-8 8-8 8s-8-3-8-8V7Z"/><path d="m8 12 3 3 5-6"/></svg><span>Separate from PvP rating</span></span></div>
     <div class="raid-lobby-actions"><button class="primary" id="ready">${me.ready ? "Cancel ready" : "Ready for the raid"}<span aria-hidden="true">${me.ready ? "×" : "→"}</span></button><div><button class="secondary" id="raid-bestiary">Bestiary & rewards</button><button class="quiet" id="leave">Leave room</button></div></div>
   </div>`;
 }
+function rewardRow(done: boolean, text: string) {
+  return `<p class="raid-reward${done ? " is-complete" : ""}"><span class="raid-reward-check" aria-hidden="true">${done ? "✓" : "○"}</span><span>${text}</span><small>${done ? "Completed" : "Locked"}</small></p>`;
+}
+function cosmeticOptions(p: RaidProgress) {
+  return ([null, "cragbound", "mountain-aura"] as const)
+    .map((id) => {
+      const owned = id === null || p.cosmetics.includes(id);
+      const active = (p.equipped ?? null) === id;
+      const name =
+        id === "cragbound"
+          ? "Cragbound colors"
+          : id === "mountain-aura"
+            ? "Mountain aura"
+            : "Original appearance";
+      const hint =
+        id === "cragbound"
+          ? "Unlock with 5 raid clears"
+          : id === "mountain-aura"
+            ? "Unlock: Peril 3 with no downs"
+            : "Your champion's original look";
+      return `<button class="secondary raid-cosmetic-option${active ? " is-equipped" : ""}" data-raid-cosmetic="${id ?? ""}" ${!owned || active ? "disabled" : ""}><span class="raid-cosmetic-preview" data-cosmetic="${id ?? ""}" aria-hidden="true">${fighterAvatar("voltkit", "cosmetic-" + (id ?? "original"))}</span><span><b>${name}</b><small>${active ? "Equipped" : owned ? "Equip cosmetic" : hint}</small></span><span class="raid-cosmetic-state">${active ? "✓" : owned ? "→" : "Locked"}</span></button>`;
+    })
+    .join("");
+}
 export function raidBestiary(p: RaidProgress & { equipped?: string | null }) {
-  return `<div class="eyebrow">BOSS BESTIARY</div><h2>Grumblecrag</h2><div class="raid-bestiary-art" aria-hidden="true"><svg viewBox="0 0 300 220" width="240" height="176"><ellipse cx="150" cy="193" rx="111" ry="21" fill="#070e1e" opacity=".5"/><g stroke="#202e43" stroke-width="4" stroke-linejoin="round"><path d="m81 176-16 19 14 12 48-2 4-25m88-4 16 19-14 12-48-2-4-25" fill="#52657b"/><path d="m76 67 25-29 73-6 49 37-3 88-39 35-73-7-35-43Z" fill="#52657b"/><path d="m76 67 25-29 73-6 49 37-57 10-63-1Z" fill="#8a9eb1"/><path d="m96 92 30-12 57 3 23 32-20 58-39 13-44-23Z" fill="#202e43"/><path d="m19 121 14-32 29-3 25 22-6 63-32 13-29-22Zm199-13 23-25 32 7 13 32-3 43-30 17-33-17Z" fill="#52657b"/><path d="m19 121 14-32 29-3 25 22-31 5Zm199-13 23-25 32 7 13 32-33-8Z" fill="#8a9eb1"/><path d="m52 76 2-38 19-27 17 53-10 20Zm148-13 16-58 23 30-2 44Zm35 5 16-33 13 35-11 18Z" fill="#ffce75"/><path d="m54 38 19-27-1 57-20 8Zm162-33 0 56-16 2Z" fill="#b6c6d1"/><path d="m103 61 24-19 43 0 28 23-9 39-45 9-40-17Z" fill="#202e43"/><path d="m103 61 24-19 43 0 28 23-48-6-12 13Z" fill="#8a9eb1"/><path d="m117 77 20 6-1 7-19-3Zm43 6 21-7-1 10-20 4Z" fill="#ffce75" stroke="none"/><path d="m121 103 23 7 31-8-13 20-26-1Z" fill="#52657b"/><path d="m149 121 24 18-4 25-21 17-21-19-2-26Z" fill="#8a9eb1"/><path d="m149 128 16 15-4 17-13 13-14-16 0-17Z" fill="#ffce75"/><path d="m149 128-1 45-14-16v-17Z" fill="#fff0bc" stroke="none"/><path d="m105 120 10 13-5 15m79-31-10 17 7 12M43 131l6 13-6 16m218-32-8 16 6 12" fill="none" stroke="#ffce75" stroke-width="2"/></g></svg><b>THE LIVING MOUNTAIN</b></div><p>A guardian of the old coliseum. Its rage is its weakness: bait a charge into a pillar to crack its armor.</p><div class="fighter-stats"><span><b>${p.clears}</b>Clears</span><span><b>${p.highestPeril}</b>Highest Peril</span><span><b>${p.bestSeconds === null ? "—" : time(p.bestSeconds)}</b>Best clear</span></div><h3>Your next rewards</h3><div class="raid-rewards"><p>${p.clears ? "✓" : "○"} First clear → <b>Cragbreaker title</b></p><p>${p.clears >= 5 ? "✓" : "○"} ${Math.min(p.clears, 5)}/5 clears → <b>Cragbound color variant</b></p><p>${p.highestPeril >= 3 ? "✓" : "○"} Peril 3 → <b>Mountain Conqueror title</b></p><p>${p.cosmetics.includes("mountain-aura") ? "✓" : "○"} Peril 3 with no downs → <b>Mountain aura</b></p><p>A rare Gilded encounter grants its own title. All other rewards have guaranteed goals.</p></div><h3>Equip a cosmetic</h3><div class="raid-equip">${[null, ...p.cosmetics].map((id) => `<button class="secondary" data-raid-cosmetic="${id ?? ""}" ${p.equipped == id ? "disabled" : ""}>${id === "cragbound" ? "Cragbound colors" : id === "mountain-aura" ? "Mountain aura" : "Original appearance"}</button>`).join("")}</div><h3>Raid of the Week · ${raidWeekly().week}</h3><p>Same boss, trait, seed and Peril for everyone. Times are separated by team size.</p>${[
+  return `<div class="eyebrow">BOSS BESTIARY</div><h2>Grumblecrag</h2><div class="raid-bestiary-art" aria-hidden="true"><svg viewBox="0 0 300 220" width="240" height="176"><ellipse cx="150" cy="193" rx="111" ry="21" fill="#070e1e" opacity=".5"/><g stroke="#202e43" stroke-width="4" stroke-linejoin="round"><path d="m81 176-16 19 14 12 48-2 4-25m88-4 16 19-14 12-48-2-4-25" fill="#52657b"/><path d="m76 67 25-29 73-6 49 37-3 88-39 35-73-7-35-43Z" fill="#52657b"/><path d="m76 67 25-29 73-6 49 37-57 10-63-1Z" fill="#8a9eb1"/><path d="m96 92 30-12 57 3 23 32-20 58-39 13-44-23Z" fill="#202e43"/><path d="m19 121 14-32 29-3 25 22-6 63-32 13-29-22Zm199-13 23-25 32 7 13 32-3 43-30 17-33-17Z" fill="#52657b"/><path d="m19 121 14-32 29-3 25 22-31 5Zm199-13 23-25 32 7 13 32-33-8Z" fill="#8a9eb1"/><path d="m52 76 2-38 19-27 17 53-10 20Zm148-13 16-58 23 30-2 44Zm35 5 16-33 13 35-11 18Z" fill="#ffce75"/><path d="m54 38 19-27-1 57-20 8Zm162-33 0 56-16 2Z" fill="#b6c6d1"/><path d="m103 61 24-19 43 0 28 23-9 39-45 9-40-17Z" fill="#202e43"/><path d="m103 61 24-19 43 0 28 23-48-6-12 13Z" fill="#8a9eb1"/><path d="m117 77 20 6-1 7-19-3Zm43 6 21-7-1 10-20 4Z" fill="#ffce75" stroke="none"/><path d="m121 103 23 7 31-8-13 20-26-1Z" fill="#52657b"/><path d="m149 121 24 18-4 25-21 17-21-19-2-26Z" fill="#8a9eb1"/><path d="m149 128 16 15-4 17-13 13-14-16 0-17Z" fill="#ffce75"/><path d="m149 128-1 45-14-16v-17Z" fill="#fff0bc" stroke="none"/><path d="m105 120 10 13-5 15m79-31-10 17 7 12M43 131l6 13-6 16m218-32-8 16 6 12" fill="none" stroke="#ffce75" stroke-width="2"/></g></svg><b>THE LIVING MOUNTAIN</b></div><p>A guardian of the old coliseum. Its rage is its weakness: bait a charge into a pillar to crack its armor.</p><div class="fighter-stats"><span><b>${p.clears}</b>Clears</span><span><b>${p.highestPeril}</b>Highest Peril</span><span><b>${p.bestSeconds === null ? "—" : time(p.bestSeconds)}</b>Best clear</span></div><h3>Your next rewards</h3><div class="raid-rewards">${rewardRow(p.clears > 0, "First clear → <b>Cragbreaker title</b>")}${rewardRow(p.clears >= 5, `${Math.min(p.clears, 5)}/5 clears → <b>Cragbound color variant</b>`)}${rewardRow(p.highestPeril >= 3, "Peril 3 → <b>Mountain Conqueror title</b>")}${rewardRow(p.cosmetics.includes("mountain-aura"), "Peril 3 with no downs → <b>Mountain aura</b>")}<p>A rare Gilded encounter grants its own title. All other rewards have guaranteed goals.</p></div><h3>Equip a cosmetic</h3><div class="raid-equip">${cosmeticOptions(p)}</div><h3>Raid of the Week · ${raidWeekly().week}</h3><p>Same boss, trait, seed and Peril for everyone. Times are separated by team size.</p>${[
     1, 2, 3, 4,
   ]
     .map(

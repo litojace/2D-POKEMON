@@ -74,6 +74,7 @@ type Hooks = {
 };
 export class AccountUI {
   account: Account | null = null;
+  raidCosmetic: RaidProgress["equipped"] = undefined;
   session: Session | null = null;
   private confirmedGuestLogout = false;
   generation = 0;
@@ -128,12 +129,18 @@ export class AccountUI {
     const version = ++this.generation;
     this.session = session;
     this.account = null;
+    this.raidCosmetic = undefined;
     this.hooks.onSession(session?.access_token ?? null);
     if (session) {
       try {
         const account = accountSchema.parse(await this.api("/api/account"));
         if (version !== this.generation) return;
         this.account = account;
+        try {
+          const progress=await this.api("/api/raids") as RaidProgress;
+          if(version!==this.generation)return;
+          this.raidCosmetic=progress.equipped??null;
+        } catch { /* Raid storage is optional until migration 007 is installed. */ }
       } catch (error) {
         if (version !== this.generation) return;
         this.hooks.notify(
@@ -361,10 +368,20 @@ export class AccountUI {
     if(!this.ensurePlayer())return;
     try {
       const progress=await this.api('/api/raids') as RaidProgress;
+      this.raidCosmetic=progress.equipped??null;
+      this.hooks.onChange();
       this.hooks.openDialog(raidBestiary(progress));
-      for(const button of Array.from(document.querySelectorAll<HTMLButtonElement>('[data-raid-cosmetic]')))button.onclick=async()=>{
-        try {await this.api('/api/raids/cosmetic',{cosmetic:button.dataset.raidCosmetic||null});void this.showRaids();}
-        catch(error){this.hooks.notify(error instanceof Error?error.message:'Cosmetic could not be equipped.');}
+      for(const button of Array.from(document.querySelectorAll<HTMLButtonElement>('button[data-raid-cosmetic]')))button.onclick=async()=>{
+        button.disabled=true;
+        try {
+          const cosmetic=button.dataset.raidCosmetic||null;
+          await this.api('/api/raids/cosmetic',{cosmetic});
+          this.raidCosmetic=cosmetic as RaidProgress["equipped"];
+          this.hooks.onChange();
+          this.hooks.notify(cosmetic==="cragbound"?"Cragbound colors equipped.":cosmetic==="mountain-aura"?"Mountain aura equipped.":"Original appearance equipped.");
+          await this.showRaids();
+        }
+        catch(error){button.disabled=false;this.hooks.notify(error instanceof Error?error.message:'Cosmetic could not be equipped.');}
       };
     }catch(error){this.hooks.openDialog(`<h2>Boss Bestiary</h2><p>${escape(error instanceof Error?error.message:'Raid records are not available yet.')}</p><p>Raids are playable at Peril 1. Persistent rewards require migration 007 and server storage configuration.</p>`);}
   }

@@ -111,6 +111,7 @@ export interface RaidReceipt {
   players: { accountId: string; character: string }[];
 }
 export interface RaidProgress {
+  equipped?: "cragbound" | "mountain-aura" | null;
   clears: number;
   highestPeril: number;
   bestSeconds: number | null;

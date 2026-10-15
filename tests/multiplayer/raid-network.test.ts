@@ -43,7 +43,7 @@ const setup = async () => {
     });
     return socket;
   };
-  return { connect, recordRaid };
+  return { connect, recordRaid, accounts };
 };
 it("starts a regular-player solo raid, enforces Peril unlocks, and records a verified victory once outside Elo", async () => {
   const { connect, recordRaid } = await setup(),
@@ -120,4 +120,56 @@ it("synchronizes four teammates against the same boss and preserves disconnect r
   expect(a.phase).toBe("paused");
   expect((await emit(host, "leave")).ok).toBe(true);
   expect(a.players[0].out).toBe(true);
+});
+
+it("broadcasts an equipped cosmetic and its removal to an existing room immediately", async () => {
+  const { connect, accounts } = await setup();
+  let equipped: string | null = null;
+  accounts.provider.rpc = async (_token, name, args) => {
+    if (name === "arena_equip_raid_cosmetic") {
+      equipped = (args as { p_cosmetic: string | null }).p_cosmetic;
+      return null;
+    }
+    return {
+      highestPeril: 3,
+      clears: 5,
+      cosmetics: ["cragbound", "mountain-aura"],
+      weekly: [],
+      equipped,
+    };
+  };
+  const host = await connect();
+  const created = await emit(host, "create", { name: "Raider", mode: "raid" });
+  const address = server!.http.address() as { port: number };
+  for (const cosmetic of ["cragbound", null]) {
+    const update = new Promise<void>((resolve) => {
+      const listener = (state: any) => {
+        if (
+          (state.players.find((p: any) => p.id === created.id)?.raidCosmetic ??
+            null) === cosmetic
+        ) {
+          host.off("state", listener);
+          resolve();
+        }
+      };
+      host.on("state", listener);
+    });
+    const response = await fetch(
+      `http://127.0.0.1:${address.port}/api/raids/cosmetic`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${(host.auth as { accessToken: string }).accessToken}`,
+        },
+        body: JSON.stringify({ cosmetic }),
+      },
+    );
+    expect(response.ok).toBe(true);
+    await update;
+    expect(
+      server!.rooms.get(created.code!)!.players.find((p) => p.id === created.id)
+        ?.raidCosmetic ?? null,
+    ).toBe(cosmetic);
+  }
 });

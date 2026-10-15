@@ -140,6 +140,7 @@ export function createArenaServer(
       if(fighter) {
         try {const progress=await accounts.rpc(socket.data.accessToken,'arena_raid_progress',{}) as {equipped?:'cragbound'|'mountain-aura'};fighter.raidCosmetic=progress.equipped??undefined;}catch{/* Optional until migration 007 is configured. */}
       }
+      if(arena && fighter)broadcast(arena);
       socket.emit("account-changed");
     } catch (error) {
       // An expired token is normal (Supabase tokens last an hour): ask the
