@@ -722,3 +722,30 @@ it("adds live presence to the friends list and pings friends on requests", async
   await expect(pinged).resolves.toBeUndefined();
   void mine;
 });
+it("lets a player wear only the mastery flair their records unlock", async () => {
+  const player = accounts.add(false);
+  const socket = await connect(player.token);
+  const host = await emit(socket, "create", { name: "Flair" });
+  const arena = server.rooms.get(host.code!)!;
+  const me = arena.players[0];
+  me.character = "voltkit";
+  accounts.provider.rpc = async (_token, name) => {
+    if (name !== "arena_my_progress") throw new Error("unexpected " + name);
+    return {
+      matches: 20,
+      wins: 9,
+      achievements: [],
+      fighters: { voltkit: { matches: 16, wins: 7 } },
+      season: { id: "2026-10", matches: 4, wins: 2 },
+    };
+  };
+  expect((await emit(socket, "flair", { tier: "Gold" })).ok).toBe(false);
+  expect((await emit(socket, "flair", { tier: "Shiny" })).ok).toBe(false);
+  expect((await emit(socket, "flair", { tier: "Silver" })).ok).toBe(true);
+  expect(me.flair).toBe("Silver");
+  // Switching fighter takes it off (it belonged to Voltkit).
+  expect((await emit(socket, "select", "tidefin")).ok).toBe(true);
+  expect(me.flair).toBeUndefined();
+  expect((await emit(socket, "flair", { tier: "Bronze" })).ok).toBe(false);
+  expect((await emit(socket, "flair", { tier: null })).ok).toBe(true);
+});

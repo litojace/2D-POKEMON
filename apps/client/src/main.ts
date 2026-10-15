@@ -107,7 +107,11 @@ import {
   shareInvite,
 } from "./invite";
 import { lockScrollWhileOpen } from "./scroll-lock";
-import { progressSchema } from "../../../packages/shared/src/accounts";
+import {
+  MASTERY_TIERS,
+  masteryTier,
+  progressSchema,
+} from "../../../packages/shared/src/accounts";
 import {
   recapMarkup,
   recordsMarkup,
@@ -115,7 +119,7 @@ import {
   type RecordState,
 } from "./match-recap";
 import { matchReportReplySchema } from "../../../packages/shared/src/accounts";
-import { setMastery } from "./fighter-selection";
+import { masteryMatches, setMastery } from "./fighter-selection";
 import { shareResult } from "./share-card";
 const audio = new AudioManager();
 const allAbilities = new Map(
@@ -761,7 +765,7 @@ function partyRules(host: boolean) {
 function roomPanel(me: Fighter) {
   const row = (p: Fighter) => {
     const fighter = CHARACTERS[p.id === myId ? selected : p.character];
-    return `<div${p.id === myId ? " data-me" : ""}><span class="player-avatar" style="--element:#${fighter.color.toString(16).padStart(6, "0")}" title="${fighter.name}">${fighterAvatar(fighter.id, `lobby${state!.players.indexOf(p)}`)}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small class="player-fighter">${fighter.name}</small></span><b class="status-pill ${!p.connected ? "offline" : p.ready ? "ready" : "choosing"}">${!p.connected ? "Offline" : p.ready ? "Ready" : "Choosing"}</b></div>`;
+    return `<div${p.id === myId ? " data-me" : ""}><span class="player-avatar" style="--element:#${fighter.color.toString(16).padStart(6, "0")}" title="${fighter.name}">${fighterAvatar(fighter.id, `lobby${state!.players.indexOf(p)}`)}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small class="player-fighter">${fighter.name}${p.flair ? ` · <b class="flair flair-${p.flair.toLowerCase()}">★ ${p.flair}</b>` : ""}</small></span><b class="status-pill ${!p.connected ? "offline" : p.ready ? "ready" : "choosing"}">${!p.connected ? "Offline" : p.ready ? "Ready" : "Choosing"}</b></div>`;
   };
   const ready = `<button class="primary" id="ready">${me.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full" id="leave">Leave room</button>`;
   const code = `<button id="copy" class="room-code">${state!.code}<span>${COPY_ICON}COPY CODE</span></button><button id="invite" class="secondary full invite-link">Share invite link</button>`;
@@ -856,7 +860,7 @@ function renderMenu() {
   const p = state?.players.find((p) => p.id === myId);
   const isRoom = !!p;
   const watchingRoom = !isRoom && !!watching && state?.code === watching;
-  const key = `${isRoom ? `room-${state!.mode ?? "duel"}` : watchingRoom ? `watch-${watching}` : "home"}:${(state?.mutators ?? []).join(",")}|${(state?.watchers ?? []).join(",")}:${state?.players.map((p) => `${p.id}${p.id === myId ? "" : p.character}${p.ready}${p.connected}${p.team ?? ""}`).join(":")}:${selected}`;
+  const key = `${isRoom ? `room-${state!.mode ?? "duel"}` : watchingRoom ? `watch-${watching}` : "home"}:${(state?.mutators ?? []).join(",")}|${(state?.watchers ?? []).join(",")}:${state?.players.map((p) => `${p.id}${p.id === myId ? "" : p.character}${p.ready}${p.connected}${p.team ?? ""}${p.flair ?? ""}`).join(":")}:${selected}`;
   if (screen === key) return;
   const previous = screen;
   screen = key;
@@ -1544,6 +1548,7 @@ socket.on("state", (snapshot: WireSnapshot) => {
     return;
   }
   selected = lobbySelection.reconcile(me.character, state.phase === "lobby");
+  if (state.phase === "lobby") syncFlair(me);
   seq = Math.max(seq, me.ack);
   pending = pending.filter((i) => i.seq > me.ack);
   local = structuredClone(me);
@@ -1559,6 +1564,15 @@ socket.on("state", (snapshot: WireSnapshot) => {
   if (state.phase === "lobby") renderMenu();
   else renderBattle();
 });
+/** Wear your best mastery tier for the fighter you've picked (lobby only). */
+let flairSent = "";
+function syncFlair(me: Fighter) {
+  const tier = masteryTier(masteryMatches(me.character))?.name ?? null;
+  const key = `${state?.code}:${me.character}:${tier}`;
+  if ((me.flair ?? null) === tier || flairSent === key) return;
+  flairSent = key;
+  void request("flair", { tier });
+}
 /** Your friends' account ids (to skip "Add friend" on the result card). */
 let friendIds = new Set<string>();
 /** Fighter mastery badges on the roster: matches you've played with each. */
@@ -1581,6 +1595,8 @@ function loadMastery(force = false) {
     .api("/api/progress")
     .then((value) => {
       setMastery(progressSchema.parse(value).fighters);
+      const me = state?.players.find((p) => p.id === myId);
+      if (me && state?.phase === "lobby") syncFlair(me);
       if (!state || state.phase === "lobby") {
         screen = "";
         renderMenu();
@@ -2593,6 +2609,20 @@ class ArenaScene extends Phaser.Scene {
             : c.color,
         isTeams() ? 0.8 : 0.55,
       ).strokeEllipse(x, y + 12, 72, 32);
+      // Mastery flair: an outer ring in the tier's colour (Crystal shimmers).
+      if (serverPlayer.flair) {
+        const tier = MASTERY_TIERS.find((t) => t.name === serverPlayer.flair);
+        if (tier) {
+          const colour =
+            tier.name === "Crystal" && !reducedMotion
+              ? Phaser.Display.Color.HSVToRGB((_time / 2400) % 1, 0.45, 1)
+                  .color
+              : Number.parseInt(tier.color.slice(1), 16);
+          g.lineStyle(2, colour, 0.75).strokeEllipse(x, y + 12, 86, 40);
+          if (tier.name === "Gold" || tier.name === "Crystal")
+            g.lineStyle(6, colour, 0.18).strokeEllipse(x, y + 12, 90, 43);
+        }
+      }
       if (p.dashUntil > state.time && !reducedMotion) {
         g.fillStyle(c.color, 0.18).fillEllipse(
           x - p.vx * 0.035,

@@ -5727,3 +5727,19 @@ button.small {
     0 0 0 3px #ffd166,
     0 0 16px #ffd166aa;
 }
+/* Mastery flair label in the lobby. */
+.flair {
+  font-weight: 800;
+}
+.flair-bronze {
+  color: #d69a6a;
+}
+.flair-silver {
+  color: #cfd8e6;
+}
+.flair-gold {
+  color: #ffd166;
+}
+.flair-crystal {
+  color: #9ff3ff;
+}

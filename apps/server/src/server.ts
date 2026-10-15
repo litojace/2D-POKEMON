@@ -59,6 +59,8 @@ import {
 } from "./accounts.js";
 import {
   friendCode,
+  MASTERY_TIERS,
+  progressSchema,
   type Account,
   type OnlineList,
   type OnlinePlayer,
@@ -782,6 +784,7 @@ export function createArenaServer(
         if (a.phase !== "lobby" || !result.success)
           return fail(cb, "Character selection is unavailable.");
         const p = a.players.find((p) => p.id === id)!;
+        if (p.character !== result.data) p.flair = undefined;
         p.character = result.data;
         p.ready = false;
         reply(cb, { ok: true });
@@ -838,6 +841,38 @@ export function createArenaServer(
         broadcast(a);
       }),
     );
+    // Mastery flair: a ring in your tier's colour, checked against your records.
+    socket.on("flair", async (data: unknown, cb: unknown) => {
+      if (!allowed(10)) return fail(cb, "Too many requests.");
+      const tier =
+        data && typeof data === "object"
+          ? (data as { tier?: unknown }).tier
+          : undefined;
+      const wanted = MASTERY_TIERS.find((t) => t.name === tier);
+      if (tier !== null && !wanted) return fail(cb, "Unknown mastery tier.");
+      const s = getSession(socket.id);
+      const arena = s && rooms.get(s.code);
+      const p = arena?.players.find((q) => q.id === s!.id);
+      if (!arena || !p) return fail(cb, "Join a room first.");
+      if (!wanted) {
+        p.flair = undefined;
+        reply(cb, { ok: true });
+        return broadcast(arena);
+      }
+      try {
+        const progress = progressSchema.parse(
+          await accounts.rpc(socket.data.accessToken, "arena_my_progress", {}),
+        );
+        const played = progress.fighters[p.character]?.matches ?? 0;
+        if (played < wanted.matches)
+          return fail(cb, "That mastery tier isn't unlocked for this fighter.");
+        p.flair = wanted.name;
+        reply(cb, { ok: true });
+        broadcast(arena);
+      } catch {
+        fail(cb, "Mastery couldn't be checked right now.");
+      }
+    });
     // Party rules: the host switches them on or off in the lobby.
     socket.on("mutators", (data: unknown, cb: unknown) =>
       withRoom(cb, (a, id) => {

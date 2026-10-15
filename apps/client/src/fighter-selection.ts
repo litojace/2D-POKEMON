@@ -46,6 +46,10 @@ export function setMastery(
 ) {
   mastery = value;
 }
+/** Matches you've played with a fighter (0 until your records load). */
+export function masteryMatches(id: CharacterId) {
+  return mastery[id]?.matches ?? 0;
+}
 const masteryBadge = (id: CharacterId) => {
   const played = mastery[id]?.matches ?? 0;
   const tier = masteryTier(played);

@@ -1086,6 +1086,8 @@ export interface Fighter extends Vec {
   cooldowns: number[];
   /** Ultimate meter, 0 to RULES.ultMax. Carries over between rounds. */
   ult?: number;
+  /** Mastery flair shown under this fighter (verified by the server). */
+  flair?: "Bronze" | "Silver" | "Gold" | "Crystal";
   /** Orb Rush: gems this fighter is carrying. */
   gems?: number;
   /** Rites picked this match (ids, in order). */

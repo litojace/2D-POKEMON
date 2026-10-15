@@ -343,6 +343,7 @@ export class Arena {
       for (const p of this.players) {
         p.character = FIGHTER_IDS[Math.floor(this.random() * FIGHTER_IDS.length)];
         p.rites = [];
+        p.flair = undefined;
       }
     this.projectiles = [];
     this.zones = [];

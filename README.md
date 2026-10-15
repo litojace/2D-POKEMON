@@ -34,9 +34,17 @@ Create a private room, share its six-character code, select a fighter, and confi
 
 **Free-for-all:** choose _Free-for-all_ and share the code with two or three friends. Everyone fights everyone; the last fighter standing takes the round (on a time-out, the healthiest still standing). It starts when everyone in the room is ready, with three or four players. Someone who leaves is out, and the match goes on until one fighter remains.
 
-**Party rules:** the host of any room can switch on _Turbo_ (skills recharge twice as fast, ultimates charge 50% faster), _Glass cannon_ (+50% damage), _Orb rain_ (orbs twice as often), _Quick match_ (first to two), _Calm court_ (Stone Court only, no hazards) and _Crown Hill_ (hold the centre circle alone for 12 seconds to take the round). Everyone readies up again after a change.
+**Party rules:** the host of any room can switch on _Turbo_ (skills recharge twice as fast, ultimates charge 50% faster), _Glass cannon_ (+50% damage), _Orb rain_ (orbs twice as often), _Quick match_ (first to two), _Calm court_ (Stone Court only, no hazards), _Crown Hill_ (hold the centre circle alone for 12 seconds to take the round), _Orb Rush_ (carry gems to your own goal; bank 5 to take the round, big hits knock gems loose), _Fighter roulette_ (a random fighter each round), _Double time_ (60% faster running) and _Giants_ (huge-looking fighters). Everyone readies up again after a change.
 
-**Every round:** in the last minute a ring closes from the whole court to the centre; outside it you lose 14 health a second. Orbs alternate between healing (green, +25% health) and energy (gold, +35% ultimate charge). In 2v2, partners within 260 px of each other both deal 10% more damage.
+**Watching and friends:** enter a room code and choose _Watch this room instead_ to watch a match live without playing (up to six watchers). Menu → _Friends_ shows your 8-character friend code, friend requests and who's online, with _Join_ for open lobbies and _Watch_ for live matches; the result card offers _Add as a friend_ for the people you just played ([migration 005](supabase/migrations/005_friends.sql)).
+
+**EX skills:** press your ultimate before its meter is full (33% or more) to arm an EX version of your next skill: 35% more damage and 20% more reach for a third of the meter. Works the same on keyboard, controller and touch.
+
+**2v2 team-ups:** partners within 260 px both deal 10% more damage, and each gives the other a gift from their element: faster basics (Electric), +6% damage (Fire), 2 health a second (Water), 8% less damage taken (Aura), faster skill recharge (Light), faster ultimate (Psychic), 40% less knockback (Earth), or +10% against slowed, burning or stunned foes (Shadow).
+
+**Mastery flair:** reaching a mastery tier with a fighter (Bronze 5, Silver 15, Gold 30, Crystal 60 matches) puts a ring in that tier's colour under them in matches; the server checks it against your records.
+
+**Every round:** in the last minute a ring closes from the whole court to the centre; outside it you lose 14 health a second. Orbs alternate between healing (green, +25% health) and energy (gold, +35% ultimate charge). In 2v2, partners close together get a team-up bonus (below).
 
 **After the match:** the result card shows a recap (damage dealt and taken, KOs, signature combos, MVP), your all-time record against each opponent, and a _Share result_ picture card. Matches count towards your records, ten achievements (each grants a title), fighter mastery badges on the roster and a monthly season leaderboard (menu → _Leaderboard_) once [migration 004](supabase/migrations/004_matches_achievements.sql) is run; see [account setup](docs/accounts-setup.md). Friends without an account can _Play as a guest_ (Supabase anonymous sign-ins must be switched on).
 
