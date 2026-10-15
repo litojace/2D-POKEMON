@@ -6633,8 +6633,9 @@ body.battle-raid:not(.touch-mode) #battle { position:relative; }
 .raid-party-bars small,.raid-section-heading > span {font-variant-numeric:tabular-nums;line-height:1.4;}
 .raid-rite-intro > span:first-child {flex:1;min-width:120px;font-size:12px;line-height:1.5;}
 .raid-choice-timer {display:inline-grid;grid-template-columns:18px auto 100px;align-items:center;justify-content:start;min-height:36px;}
-.raid-choice-timer > span {line-height:1;}
-.raid-choice-timer strong {display:block;text-align:left;line-height:1.2;}
+.raid-choice-timer > span {line-height:20px;letter-spacing:.5px;}
+.raid-choice-timer strong {display:flex;align-items:center;min-height:20px;text-align:left;line-height:20px;}
+.raid-choice-timer .live-seconds {display:block;line-height:20px;}
 .raid-rite-copy {align-self:center;padding:0;gap:6px;}
 .raid-rite-copy small {min-height:3em;}
 .raid-result-stats {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;}
