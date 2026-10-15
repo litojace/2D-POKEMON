@@ -6699,22 +6699,22 @@ body.battle-active::after {display:none;}
 /* Quiet atmosphere stays behind all UI and disappears during combat. */
 .celestial-atmosphere {position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;contain:strict;}
 body.battle-active .celestial-atmosphere {display:none;}
-.celestial-clouds {position:absolute;inset:-8%;background:radial-gradient(ellipse at 12% 25%,#afd1ed1c,transparent 32%),radial-gradient(ellipse at 85% 65%,#c8d9ed18,transparent 30%);animation:celestial-cloud-drift 48s ease-in-out infinite alternate;}
+.celestial-clouds {position:absolute;inset:-15%;background:radial-gradient(ellipse 32% 9% at 18% 28%,#a9d9ff70,transparent 75%),radial-gradient(ellipse 27% 7% at 78% 37%,#b8caff55,transparent 75%),radial-gradient(ellipse 22% 12% at 60% 75%,#8abaff33,transparent 75%);animation:celestial-cloud-drift 18s ease-in-out infinite alternate;animation-delay:-7s;}
 .celestial-stars,.celestial-stars::after {position:absolute;inset:0;background:radial-gradient(circle at 12% 14%,#e7f4ffcc 0 1px,transparent 2px),radial-gradient(circle at 73% 9%,#fff1bac7 0 1px,transparent 2px),radial-gradient(circle at 88% 34%,#d9eaffad 0 1px,transparent 2px),radial-gradient(circle at 37% 38%,#d9eaff9c 0 1px,transparent 2px),radial-gradient(circle at 64% 68%,#fff1ba99 0 1px,transparent 2px);animation:celestial-twinkle 7s ease-in-out infinite alternate;}
 .celestial-stars::after {content:"";transform:translate(7%,12%);animation-delay:-4s;animation-duration:11s;}
-.celestial-ember {position:absolute;left:var(--x);top:var(--y);width:3px;height:3px;border-radius:50%;background:#ffe4a2;box-shadow:0 0 7px 2px #ffd56f44;opacity:0;animation:celestial-rise var(--duration,20s) linear infinite;animation-delay:var(--delay);}
-.celestial-ember:nth-child(3) {--x:8%;--y:92%;--delay:-4s;--duration:23s;}
-.celestial-ember:nth-child(4) {--x:24%;--y:65%;--delay:-12s;--duration:27s;}
-.celestial-ember:nth-child(5) {--x:47%;--y:85%;--delay:-8s;--duration:21s;}
-.celestial-ember:nth-child(6) {--x:68%;--y:95%;--delay:-18s;--duration:29s;}
-.celestial-ember:nth-child(7) {--x:83%;--y:72%;--delay:-3s;--duration:25s;}
-.celestial-ember:nth-child(8) {--x:94%;--y:88%;--delay:-15s;--duration:24s;}
-@keyframes celestial-cloud-drift {from {transform:translate3d(-2%,0,0);opacity:.45;}to {transform:translate3d(3%,-2%,0);opacity:.8;}}
+.celestial-ember {position:absolute;left:var(--x);top:var(--y);width:5px;height:5px;border-radius:50%;background:#fff0ba;box-shadow:0 0 8px 3px #ffd56f88;opacity:0;animation:celestial-rise var(--duration,12s) linear infinite;animation-delay:var(--delay);}
+.celestial-ember:nth-child(3) {--x:7%;--y:35%;--delay:-4s;--duration:11s;}
+.celestial-ember:nth-child(4) {--x:47%;--y:31%;--delay:-8s;--duration:14s;}
+.celestial-ember:nth-child(5) {--x:87%;--y:39%;--delay:-6s;--duration:12s;}
+.celestial-ember:nth-child(6) {--x:28%;--y:28%;--delay:-10s;--duration:16s;}
+.celestial-ember:nth-child(7) {--x:72%;--y:32%;--delay:-3s;--duration:13s;}
+.celestial-ember:nth-child(8) {--x:96%;--y:78%;--delay:-7s;--duration:15s;}
+@keyframes celestial-cloud-drift {from {transform:translate3d(-8%,0,0);opacity:.6;}to {transform:translate3d(10%,-3%,0);opacity:1;}}
 @keyframes celestial-twinkle {from {opacity:.2;}to {opacity:.7;}}
-@keyframes celestial-rise {0% {transform:translate3d(0,20px,0);opacity:0;}15%,70% {opacity:.55;}100% {transform:translate3d(30px,-220px,0);opacity:0;}}
+@keyframes celestial-rise {0% {transform:translate3d(0,30px,0);opacity:0;}15%,70% {opacity:.9;}100% {transform:translate3d(65px,-160px,0);opacity:0;}}
 @media(max-width:600px) {
   .celestial-ember:nth-child(n+6),.celestial-stars::after {display:none;}
-  .celestial-clouds {animation-duration:65s;}
+  .celestial-clouds {animation-duration:24s;}
 }
 @media(prefers-reduced-motion:reduce) {.celestial-atmosphere {display:none;}}
 
