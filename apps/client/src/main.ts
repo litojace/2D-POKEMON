@@ -2579,6 +2579,9 @@ class ArenaScene extends Phaser.Scene {
         dash: serverPlayer.dashUntil > state.time,
         jump: serverPlayer.jumpUntil > state.time,
         charging: !!serverPlayer.charge,
+        ultReady:
+          (serverPlayer.ult ?? 0) >= RULES.ultMax && serverPlayer.hp > 0,
+        greet: state.phase === "countdown",
         victory: isTeams()
           ? (state.phase === "finished"
               ? state.winnerTeam
@@ -2593,7 +2596,7 @@ class ArenaScene extends Phaser.Scene {
       };
       if (serverPlayer.clone) {
         const clone = this.getRig(`${p.id}:clone`, p.character);
-        clone.root.setScale(view.fighterX, view.fighterY);
+        clone.root.setScale(view.fighterX * 0.7, view.fighterY * 0.7);
         clone.setVisible(true);
         clone.render(
           {
@@ -2604,6 +2607,8 @@ class ArenaScene extends Phaser.Scene {
             jump: false,
             charging: false,
             victory: false,
+            ultReady: false,
+            greet: false,
           },
           serverPlayer.clone.x,
           serverPlayer.clone.y,
@@ -2611,7 +2616,6 @@ class ArenaScene extends Phaser.Scene {
           0.3,
           reducedMotion,
         );
-        clone.root.setScale(view.fighterX * 0.7, view.fighterY * 0.7);
       }
       g.fillStyle(0x081f19, 0.45).fillEllipse(
         x,
@@ -2677,7 +2681,11 @@ class ArenaScene extends Phaser.Scene {
       const giant = state.mutators?.includes("giants")
         ? MUTATOR_RULES.giants
         : 1;
-      rig.root.setScale(view.fighterX * giant, view.fighterY * giant);
+      // The rig keeps this as its base scale (squash and stretch multiply it).
+      rig.root.setScale(
+        view.fighterX * 0.7 * giant,
+        view.fighterY * 0.7 * giant,
+      );
       rig.setVisible(true);
       const casting =
         rig.controller.state === "basic" ||
@@ -2829,7 +2837,6 @@ class ArenaScene extends Phaser.Scene {
         serverPlayer.statuses.some(
           (s) => s.kind === "stealth" && p.id !== myId,
         );
-      rig.root.setScale(view.fighterX * 0.7, view.fighterY * 0.7);
       g.fillStyle(0x0b1a32).fillRoundedRect(x - 30, y + 29, 60, 6, 3);
       g.fillStyle(c.color).fillRoundedRect(
         x - 30,

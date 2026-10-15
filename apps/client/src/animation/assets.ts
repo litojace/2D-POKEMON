@@ -3,7 +3,9 @@ import {
   creatureSvg,
   creatureParts,
   proportioned,
+  MOODS,
   type CreaturePart,
+  type Mood,
 } from "../creature-design";
 import type { Facing } from "./controller";
 export type Part = CreaturePart;
@@ -21,19 +23,26 @@ export interface RigAsset {
 export function rigKey(id: CharacterId, dir: Facing, part: Part) {
   return `rig-${id}-${dir}-${part}`;
 }
+/** The eyes texture for an expression ("normal" is the plain eyes part). */
+export function moodKey(id: CharacterId, dir: Facing, mood: Mood) {
+  return mood === "normal"
+    ? rigKey(id, dir, "eyes")
+    : `${rigKey(id, dir, "eyes")}-${mood}`;
+}
 const definitions: Record<Part, { bounds: number[]; pivot: number[] }> = {
-  tail: { bounds: [5, 50, 190, 125], pivot: [130, 137] },
-  wings: { bounds: [10, 40, 180, 115], pivot: [100, 115] },
+  tail: { bounds: [0, 40, 200, 140], pivot: [130, 137] },
+  wings: { bounds: [0, 30, 200, 145], pivot: [100, 115] },
   legL: { bounds: [50, 135, 90, 45], pivot: [78, 151] },
   legR: { bounds: [60, 135, 90, 45], pivot: [122, 151] },
-  body: { bounds: [48, 103, 104, 70], pivot: [100, 130] },
+  body: { bounds: [44, 103, 112, 76], pivot: [100, 130] },
   armL: { bounds: [39, 114, 101, 52], pivot: [65, 122] },
-  armR: { bounds: [60, 114, 101, 52], pivot: [135, 122] },
-  head: { bounds: [35, 16, 130, 115], pivot: [100, 100] },
-  ears: { bounds: [25, 5, 150, 75], pivot: [100, 65] },
+  // Tall enough for Tidefin's fin-blade.
+  armR: { bounds: [60, 84, 110, 86], pivot: [135, 122] },
+  head: { bounds: [35, 8, 130, 123], pivot: [100, 100] },
+  ears: { bounds: [5, 0, 190, 115], pivot: [100, 65] },
   eyes: { bounds: [52, 68, 96, 44], pivot: [100, 93] },
-  scarf: { bounds: [35, 90, 150, 66], pivot: [100, 118] },
-  flame: { bounds: [55, 5, 90, 100], pivot: [100, 65] },
+  scarf: { bounds: [35, 90, 150, 84], pivot: [100, 118] },
+  flame: { bounds: [30, -2, 140, 110], pivot: [100, 65] },
 };
 /** A part's crop box once its proportion transform is applied. */
 function box(part: Part) {
@@ -66,36 +75,55 @@ export const rigAnchors = (() => {
     earsLift: (head - ears) * 0.5,
   };
 })();
+function asset(
+  id: CharacterId,
+  dir: Facing,
+  part: Part,
+  mood: Mood = "normal",
+): RigAsset {
+  const { pivot: defaultPivot } = definitions[part];
+  const b = box(part);
+  let q = dir === "right" && part === "tail" ? [70, 137] : defaultPivot;
+  if (dir === "left" || dir === "right") {
+    const side = dir === "right" ? 1 : -1;
+    const projected: Partial<Record<Part, number>> = {
+      armL: 88,
+      armR: 112,
+      legL: 87,
+      legR: 113,
+    };
+    if (projected[part] !== undefined)
+      q = [100 + side * (projected[part]! - 100), defaultPivot[1]];
+  }
+  q = pivot(part, q[0], q[1]);
+  return {
+    key: part === "eyes" ? moodKey(id, dir, mood) : rigKey(id, dir, part),
+    url:
+      "data:image/svg+xml;base64," +
+      btoa(creatureSvg(id, dir, part, b.join(" "), mood)),
+    width: b[2],
+    height: b[3],
+    originX: (q[0] - b[0]) / b[2],
+    originY: (q[1] - b[1]) / b[3],
+    x: (q[0] - 100) * 0.5,
+    y: (q[1] - 130) * 0.5,
+  };
+}
+const DIRS: Facing[] = ["up", "down", "left", "right"];
+/**
+ * Every texture a fighter's rig uses: each part for each facing, plus the
+ * expression eyes (happy, hurt, dizzy, focus) for the facings that show a face.
+ */
 export function rigAssets(id: CharacterId): RigAsset[] {
-  return (["up", "down", "left", "right"] as Facing[]).flatMap((dir) =>
-    parts.map((part) => {
-      const { pivot: defaultPivot } = definitions[part];
-      const b = box(part);
-      let q = dir === "right" && part === "tail" ? [70, 137] : defaultPivot;
-      if (dir === "left" || dir === "right") {
-        const side = dir === "right" ? 1 : -1;
-        const projected: Partial<Record<Part, number>> = {
-          armL: 88,
-          armR: 112,
-          legL: 87,
-          legR: 113,
-        };
-        if (projected[part] !== undefined)
-          q = [100 + side * (projected[part]! - 100), defaultPivot[1]];
-      }
-      q = pivot(part, q[0], q[1]);
-      return {
-        key: rigKey(id, dir, part),
-        url:
-          "data:image/svg+xml;base64," +
-          btoa(creatureSvg(id, dir, part, b.join(" "))),
-        width: b[2],
-        height: b[3],
-        originX: (q[0] - b[0]) / b[2],
-        originY: (q[1] - b[1]) / b[3],
-        x: (q[0] - 100) * 0.5,
-        y: (q[1] - 130) * 0.5,
-      };
-    }),
-  );
+  return [
+    ...DIRS.flatMap((dir) => parts.map((part) => asset(id, dir, part))),
+    ...DIRS.filter((dir) => dir !== "up").flatMap((dir) =>
+      MOODS.map((mood) => asset(id, dir, "eyes", mood)),
+    ),
+  ];
+}
+/** A point of the creature art (200×190 canvas) in rig pixels from its root. */
+export function rigPoint(part: Part, x: number, y: number) {
+  const [px, py] = proportioned(part, x, y);
+  return { x: (px - 100) * 0.5, y: (py - 130) * 0.5 };
 }

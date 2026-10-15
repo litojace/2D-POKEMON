@@ -42,6 +42,10 @@ export interface AnimationPose {
   jump: boolean;
   victory?: boolean;
   charging?: boolean;
+  /** The ultimate is charged: a focused look and a glow. */
+  ultReady?: boolean;
+  /** Round intro (countdown): each fighter greets with its own wave. */
+  greet?: boolean;
 }
 export function facing(angle: number): Facing {
   return Math.abs(Math.cos(angle)) > Math.abs(Math.sin(angle))
@@ -101,7 +105,9 @@ export class AnimationController {
               ? "walk"
               : pose.victory
                 ? "victory"
-                : "idle";
+                : pose.greet
+                  ? "wave"
+                  : "idle";
     if (this.state !== next) {
       this.state = next;
       this.started = now;

@@ -56,7 +56,8 @@ describe("cute proportions", () => {
   it("crops every part with finite boxes that contain the scaled eyes and head", () => {
     for (const id of FIGHTER_IDS) {
       const assets = rigAssets(id);
-      expect(assets).toHaveLength(48);
+      // 12 parts × 4 facings, plus 4 expressions × the 3 facings with a face.
+      expect(assets).toHaveLength(60);
       for (const a of assets) {
         expect(a.width, a.key).toBeGreaterThan(0);
         expect(a.height, a.key).toBeGreaterThan(0);
