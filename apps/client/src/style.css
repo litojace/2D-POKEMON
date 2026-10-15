@@ -6693,8 +6693,30 @@ body.battle-raid:not(.touch-mode) #battle { position:relative; }
 
 /* Approved Celestial Coliseum backdrop, kept behind the readable lobby panels. */
 body {isolation:isolate;}
-body::after {content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:linear-gradient(180deg,#08142630 0%,#08142666 45%,#08142630 100%),url('/assets/backgrounds/celestial-coliseum.webp') center/cover no-repeat;}
+body::after {content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;background:linear-gradient(180deg,#08142630 0%,#08142666 45%,#08142630 100%),url('/assets/backgrounds/celestial-coliseum.webp') center/cover no-repeat;}
 body.battle-active::after {display:none;}
+
+/* Quiet atmosphere stays behind all UI and disappears during combat. */
+.celestial-atmosphere {position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;contain:strict;}
+body.battle-active .celestial-atmosphere {display:none;}
+.celestial-clouds {position:absolute;inset:-8%;background:radial-gradient(ellipse at 12% 25%,#afd1ed1c,transparent 32%),radial-gradient(ellipse at 85% 65%,#c8d9ed18,transparent 30%);animation:celestial-cloud-drift 48s ease-in-out infinite alternate;}
+.celestial-stars,.celestial-stars::after {position:absolute;inset:0;background:radial-gradient(circle at 12% 14%,#e7f4ffcc 0 1px,transparent 2px),radial-gradient(circle at 73% 9%,#fff1bac7 0 1px,transparent 2px),radial-gradient(circle at 88% 34%,#d9eaffad 0 1px,transparent 2px),radial-gradient(circle at 37% 38%,#d9eaff9c 0 1px,transparent 2px),radial-gradient(circle at 64% 68%,#fff1ba99 0 1px,transparent 2px);animation:celestial-twinkle 7s ease-in-out infinite alternate;}
+.celestial-stars::after {content:"";transform:translate(7%,12%);animation-delay:-4s;animation-duration:11s;}
+.celestial-ember {position:absolute;left:var(--x);top:var(--y);width:3px;height:3px;border-radius:50%;background:#ffe4a2;box-shadow:0 0 7px 2px #ffd56f44;opacity:0;animation:celestial-rise var(--duration,20s) linear infinite;animation-delay:var(--delay);}
+.celestial-ember:nth-child(3) {--x:8%;--y:92%;--delay:-4s;--duration:23s;}
+.celestial-ember:nth-child(4) {--x:24%;--y:65%;--delay:-12s;--duration:27s;}
+.celestial-ember:nth-child(5) {--x:47%;--y:85%;--delay:-8s;--duration:21s;}
+.celestial-ember:nth-child(6) {--x:68%;--y:95%;--delay:-18s;--duration:29s;}
+.celestial-ember:nth-child(7) {--x:83%;--y:72%;--delay:-3s;--duration:25s;}
+.celestial-ember:nth-child(8) {--x:94%;--y:88%;--delay:-15s;--duration:24s;}
+@keyframes celestial-cloud-drift {from {transform:translate3d(-2%,0,0);opacity:.45;}to {transform:translate3d(3%,-2%,0);opacity:.8;}}
+@keyframes celestial-twinkle {from {opacity:.2;}to {opacity:.7;}}
+@keyframes celestial-rise {0% {transform:translate3d(0,20px,0);opacity:0;}15%,70% {opacity:.55;}100% {transform:translate3d(30px,-220px,0);opacity:0;}}
+@media(max-width:600px) {
+  .celestial-ember:nth-child(n+6),.celestial-stars::after {display:none;}
+  .celestial-clouds {animation-duration:65s;}
+}
+@media(prefers-reduced-motion:reduce) {.celestial-atmosphere {display:none;}}
 
 /* Custom list keeps the open difficulty menu consistent across operating systems. */
 .raid-difficulty-picker {position:relative;}
