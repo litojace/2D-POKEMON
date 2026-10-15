@@ -6385,6 +6385,7 @@ dialog:has(.illustrated-guide) { width:min(820px,94vw); }
 /* A fixed icon track keeps every title and wrapped description aligned. */
 .raid-rite-options {
   display: grid;
+  grid-auto-rows: 1fr;
   gap: 10px;
   text-align: left;
 }
@@ -6634,7 +6635,8 @@ body.battle-raid:not(.touch-mode) #battle { position:relative; }
 .raid-choice-timer {display:inline-grid;grid-template-columns:18px auto 100px;align-items:center;justify-content:start;min-height:36px;}
 .raid-choice-timer > span {line-height:1;}
 .raid-choice-timer strong {display:block;text-align:left;line-height:1.2;}
-.raid-rite-copy {align-self:start;padding-top:5px;gap:6px;}
+.raid-rite-copy {align-self:center;padding:0;gap:6px;}
+.raid-rite-copy small {min-height:3em;}
 .raid-result-stats {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;}
 .raid-result-stats > span {text-align:center;justify-items:center;grid-template-rows:32px auto;align-items:baseline;}
 .raid-result-stats b {font-variant-numeric:tabular-nums;line-height:1.2;}
@@ -6642,7 +6644,7 @@ body.battle-raid:not(.touch-mode) #battle { position:relative; }
   .raid-choice-timer {min-height:32px;grid-template-columns:16px auto 94px;gap:7px;}
   .raid-choice-timer > svg {width:16px;height:16px;}
   .raid-choice-timer strong {font-size:15px;}
-  .raid-rite-copy {padding-top:2px;gap:4px;}
+  .raid-rite-copy {padding:0;gap:4px;}
 }
 
 /* The elapsed raid clock belongs beside the current warning, not in metadata. */
@@ -6711,3 +6713,10 @@ body.battle-active::after {display:none;}
 .raid-peril-options > button[aria-selected="true"] :is(b,.raid-peril-number,.raid-peril-check) {color:#ffe099;}
 .raid-peril-options > button:hover,.raid-peril-options > button:focus-visible {background:#2c4161;outline:2px solid #ffe099;outline-offset:-2px;}
 .raid-peril-check {text-align:center;font-size:14px;}
+
+/* Frosted lobby navigation lets the coliseum show through without losing contrast. */
+body:not(.battle-active) .topbar {background:rgba(15,29,52,.66);-webkit-backdrop-filter:blur(16px) saturate(115%);backdrop-filter:blur(16px) saturate(115%);border-bottom:1px solid #e4c37c2b;box-shadow:0 6px 24px #03091622;}
+body:not(.battle-active)::before {background:rgba(15,29,52,.66);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
+  body:not(.battle-active) .topbar,body:not(.battle-active)::before {background:#13233de8;}
+}

@@ -44,6 +44,7 @@
       import Phaser from "phaser";
       import { AudioManager } from "./src/audio";
       const audio = new AudioManager();
+      audio.start();
       const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
       import { RaidArena } from "../server/src/raid";
       import { CHARACTERS, ARENAS, blankInput } from "@arena/shared";
@@ -144,6 +145,7 @@
           actions = { skill: -1, basic: false, dash: false, jump: false };
           arena.tick(Math.min(delta / 1000, 0.04));
           const state = arena.snapshot();
+          audio.setTheme("raid", arena.raid.phase);
           this.g.clear();
           const cues = drawRaidArena(this.g, state, reduced, now / 1000) ?? [];
           for (const cue of cues) {

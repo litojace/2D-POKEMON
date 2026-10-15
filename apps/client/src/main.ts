@@ -131,6 +131,7 @@ import { masteryMatches, setMastery } from "./fighter-selection";
 import { shareResult } from "./share-card";
 import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
 const audio = new AudioManager();
+audio.start();
 const allAbilities = new Map(
   Object.values(CHARACTERS)
     .flatMap((c) => [c.basic, ...c.skills])
@@ -905,6 +906,7 @@ function wireRoom() {
     );
 }
 function renderMenu() {
+  audio.setTheme("lobby");
   pwa.sync();
   const p = state?.players.find((p) => p.id === myId);
   const isRoom = !!p;
@@ -1103,6 +1105,7 @@ async function leave() {
   menuOpen = false;
 }
 function renderBattle() {
+  audio.setTheme(state?.raid?"raid":"pvp",state?.raid?.phase??1);
   if (!document.body.classList.contains("battle-active")) {
     document.body.classList.add("battle-active");
     // The battle screen fits the window; drop any scroll left over from the menu.
