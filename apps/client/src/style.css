@@ -5661,7 +5661,7 @@ body.spectating #control-hints {
   border: 1px solid #ffffff17;
   border-radius: 10px;
 }
-.friend-list li:not(.online) {
+.friend-list li:not(.online):not(.request) {
   opacity: 0.7;
 }
 .friend-name {

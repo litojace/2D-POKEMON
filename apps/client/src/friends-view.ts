@@ -37,7 +37,7 @@ export function friendsMarkup(list: FriendList) {
     ? `<h3>Friend requests</h3><ul class="friend-list">${list.incoming
         .map(
           (r) =>
-            `<li><span class="friend-dot"></span><b>${escape(r.name)}</b><span class="friend-actions"><button class="primary small" data-accept="${r.id}">Accept</button><button class="quiet small" data-decline="${r.id}">Decline</button></span></li>`,
+            `<li class="request"><span class="friend-dot"></span><b>${escape(r.name)}</b><span class="friend-actions"><button class="primary small" data-accept="${r.id}">Accept</button><button class="quiet small" data-decline="${r.id}">Decline</button></span></li>`,
         )
         .join("")}</ul>`
     : "";
