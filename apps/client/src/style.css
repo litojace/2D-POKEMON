@@ -5709,3 +5709,21 @@ button.small {
 .overlay-card .records .add-friend {
   margin: 0;
 }
+/* EX skills: the ultimate button shows when an EX is affordable; armed
+   skills glow until used. */
+.ability.ex-ready {
+  box-shadow: inset 0 0 0 2px #ffd16688;
+}
+.ability.ex-armed {
+  box-shadow:
+    inset 0 0 0 2px #ffd166,
+    0 0 14px #ffd16688;
+}
+.touch-buttons button.ex-ready {
+  box-shadow: 0 0 0 2px #ffd166aa;
+}
+.touch-buttons button.ex-armed {
+  box-shadow:
+    0 0 0 3px #ffd166,
+    0 0 16px #ffd166aa;
+}

@@ -39,6 +39,9 @@ import {
   CROWN,
   TEAMUP,
   giftFrom,
+  RUSH,
+  rushGoals,
+  EX,
   MUTATORS,
   MUTATOR_IDS,
   MUTATOR_RULES,
@@ -144,6 +147,8 @@ let state: Snapshot | undefined,
 let accountShown = "";
 /** Last known "ultimate ready" state, for the ready sound. */
 let ultWasReady = false;
+/** EX skills: armed until this time (ms), 0 when not armed. */
+let exArmedUntil = 0;
 /** An invite is waiting for sign-in: say so once. */
 let inviteHinted = true;
 /** Which menu screen is showing ("home", "room-duel"…), for entry fades. */
@@ -591,6 +596,13 @@ let roomMode: RoomMode = (() => {
 const COPY_ICON =
   '<svg class="copy-icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
 /** Lobby panel: a duel list, or Blue/Red columns for 2v2. */
+/** Orb Rush HUD line: gems you carry, your side's bank and the best rival's. */
+function rushLabel(me: Fighter) {
+  const banked = state?.banked ?? [];
+  const mine = banked[teamOf(me)] ?? 0;
+  const rival = Math.max(0, ...banked.filter((_, t) => t !== teamOf(me)));
+  return `RUSH · CARRYING ${me.gems ?? 0} · BANKED ${mine} · RIVAL ${rival} / ${RUSH.target}`;
+}
 /** Crown Hill HUD line: your hold time against the best rival's. */
 function crownLabel(me: Fighter) {
   const crown = state?.crown ?? [];
@@ -1176,7 +1188,9 @@ function renderBattle() {
     state.phase === "playing"
       ? state.practice
         ? "TEST YOUR SKILLS"
-        : state.crown
+        : state.banked
+          ? rushLabel(me)
+          : state.crown
           ? crownLabel(me)
           : ringRadius(state.remaining, state.overtime) !== null
           ? "RING CLOSING · STAY INSIDE"
@@ -1204,12 +1218,28 @@ function renderBattle() {
           state!.time,
           !!state!.practice?.unlimitedCooldowns,
         );
-      $(`cooldown-${i}`).textContent = ready ? "READY" : `${charge}%`;
+      const armed = exArmedUntil > performance.now();
+      const exReady = !ready && charge >= EX.cost && !state!.practice;
+      $(`cooldown-${i}`).textContent = ready
+        ? "READY"
+        : armed
+          ? "EX ARMED"
+          : exReady
+            ? `${charge}% · EX`
+            : `${charge}%`;
       $(`fill-${i}`).style.height = `${ready ? 0 : 100 - charge}%`;
       $(`ability-${i}`).classList.toggle("cooling", !ready);
       $(`ability-${i}`).classList.toggle("ult-ready", ready);
+      $(`ability-${i}`).classList.toggle("ex-ready", exReady && !armed);
+      $(`ability-${i}`).title = ready
+        ? `${a.name}: ${a.description}`
+        : `${a.name}: ${a.description} Press it before the meter is full to arm an EX skill (costs ${EX.cost}% of the meter): your next skill hits ${Math.round((EX.damage - 1) * 100)}% harder and ${Math.round((EX.radius - 1) * 100)}% wider.`;
       return;
     }
+    $(`ability-${i}`).classList.toggle(
+      "ex-armed",
+      exArmedUntil > performance.now(),
+    );
     const left = Math.max(0, me.cooldowns[i] - state!.time);
     $(`cooldown-${i}`).textContent = left > 0 ? `${left.toFixed(1)}s` : "READY";
     $(`fill-${i}`).style.height = `${(100 * left) / (a.cooldown * cooldownScale())}%`;
@@ -1238,6 +1268,8 @@ function renderBattle() {
       duration: CHARACTERS[me.character].basic.interval ?? 0.3,
     },
     state.practice?.unlimitedCooldowns ? RULES.ultMax : (me.ult ?? 0),
+    state.practice ? Infinity : EX.cost,
+    exArmedUntil > performance.now(),
   );
   const overlay = $("arena-overlay");
   if (!myId && watching) {
@@ -1674,7 +1706,7 @@ $("leaderboard").onclick = () => void accountsUI.showLeaderboard();
 $("friends").onclick = () => void accountsUI.showFriends();
 $("help").onclick = () =>
   dialog(
-    `<div class="eyebrow">HOW TO PLAY</div><h2>Every second counts.</h2><p>Create a room, share the code, choose your creatures, and both click Ready. Win three rounds to take the match.</p>${controlsList(true)}<p>Use cover to block shots. Jump over ground zones. Skills recharge in 8–20 seconds; basic attacks never go on cooldown. In a round's last minute a ring closes in on the centre: stay inside it. Healing orbs (green) restore health; energy orbs (gold) charge your ultimate. At a tie, overtime drains both players' health.</p>`,
+    `<div class="eyebrow">HOW TO PLAY</div><h2>Every second counts.</h2><p>Create a room, share the code, choose your creatures, and both click Ready. Win three rounds to take the match.</p>${controlsList(true)}<p>Use cover to block shots. Jump over ground zones. Skills recharge in 8–20 seconds; basic attacks never go on cooldown. Press your ultimate before its meter is full to arm an EX skill: for a third of the meter, your next skill hits harder and wider. In a round's last minute a ring closes in on the centre: stay inside it. Healing orbs (green) restore health; energy orbs (gold) charge your ultimate. At a tie, overtime drains both players' health.</p>`,
   );
 $("credits").onclick = () =>
   dialog(
@@ -1952,17 +1984,28 @@ class ArenaScene extends Phaser.Scene {
       });
     }
     if (event.value) {
-      const heal = event.kind === "heal",
-        energy = heal && event.abilityId === "energy-orb";
+      const bank = event.abilityId === "gem-bank",
+        heal = event.kind === "heal" || bank,
+        energy = event.kind === "heal" && event.abilityId === "energy-orb";
       const label = this.add
         .text(
           event.x,
           event.y - 45,
-          energy ? `+${event.value}% ULT` : `${heal ? "+" : "−"}${event.value}`,
+          bank
+            ? `+${event.value} GEM${event.value === 1 ? "" : "S"} BANKED`
+            : energy
+              ? `+${event.value}% ULT`
+              : `${heal ? "+" : "−"}${event.value}`,
           {
           fontFamily: "monospace",
           fontSize: "25px",
-          color: energy ? "#ffd166" : heal ? "#7dffb0" : "#fff",
+          color: bank
+            ? "#d8b4ff"
+            : energy
+              ? "#ffd166"
+              : heal
+                ? "#7dffb0"
+                : "#fff",
           stroke: "#152820",
           strokeThickness: 4,
         })
@@ -2008,7 +2051,13 @@ class ArenaScene extends Phaser.Scene {
     if ((this.comboShown.get(key) ?? 0) > now) return;
     this.comboShown.set(key, now + 600);
     const label = this.add
-      .text(event.x, event.y - 75, `${event.combo!.toUpperCase()} COMBO!`, {
+      .text(
+        event.x,
+        event.y - 75,
+        event.abilityId === "ex-cast"
+          ? `${event.combo!.toUpperCase()}!`
+          : `${event.combo!.toUpperCase()} COMBO!`,
+        {
         fontFamily: "system-ui, sans-serif",
         fontStyle: "900",
         fontSize: "24px",
@@ -2191,7 +2240,26 @@ class ArenaScene extends Phaser.Scene {
         !document.hidden;
       const enemies = visibleEnemies(local, local);
       const target = enemies[0];
-      const skill = active ? this.actions.skill : -1;
+      let skill = active ? this.actions.skill : -1;
+      // EX skills: the ultimate button before the meter is full arms an EX
+      // version of your next skill (costs a third of the meter).
+      const meter = local.ult ?? 0;
+      let ex = false;
+      if (
+        skill === ULT_SLOT &&
+        meter < RULES.ultMax &&
+        !state.practice?.unlimitedCooldowns
+      ) {
+        if (meter >= EX.cost) {
+          exArmedUntil = exArmedUntil ? 0 : performance.now() + EX.armSeconds * 1000;
+          if (exArmedUntil) audio.play("orb");
+        }
+        skill = -1;
+      } else if (skill >= 0 && skill < ULT_SLOT && exArmedUntil) {
+        if (performance.now() < exArmedUntil && meter >= EX.cost) ex = true;
+        exArmedUntil = 0;
+      }
+      if (exArmedUntil && performance.now() >= exArmedUntil) exArmedUntil = 0;
       const keyX = Number(heldAction("right")) - Number(heldAction("left")),
         keyY = Number(heldAction("down")) - Number(heldAction("up"));
       // Aim: touch and an idle right stick follow the nearest opponent;
@@ -2227,6 +2295,7 @@ class ArenaScene extends Phaser.Scene {
             : heldAction("basic") || !!pad?.held.has("basic")) ||
             this.actions.basic),
         skill,
+        ...(ex ? { ex: true } : {}),
         dash: active && this.actions.dash,
         jump: active && this.actions.jump,
       };
@@ -2298,6 +2367,43 @@ class ArenaScene extends Phaser.Scene {
             pair[1].y + 12,
           );
       }
+    // Orb Rush: goals (in each side's colour), gems, and gems being carried.
+    if (state.gems) {
+      const goals = rushGoals(state.mode);
+      goals.forEach((goal, side) => {
+        if (state!.mode === "ffa" && side >= state!.players.length) return;
+        const owner = state!.players.find((p) => teamOf(p) === side);
+        const color =
+          state!.mode === "ffa" && owner
+            ? CHARACTERS[owner.character].color
+            : side === 0
+              ? 0x5ab0ff
+              : 0xff5d6c;
+        g.fillStyle(color, 0.12).fillCircle(goal.x, goal.y, RUSH.goalRadius);
+        g.lineStyle(3, color, 0.7).strokeCircle(goal.x, goal.y, RUSH.goalRadius);
+      });
+      const bob = reducedMotion ? 0 : Math.sin(_time / 200) * 3;
+      const diamond = (x: number, y: number, r: number) => [
+        { x, y: y - r },
+        { x: x + r * 0.7, y },
+        { x, y: y + r },
+        { x: x - r * 0.7, y },
+      ];
+      for (const gem of state.gems) {
+        const y = gem.y + bob;
+        g.fillStyle(0xc58cff, 0.22).fillCircle(gem.x, y, 22);
+        g.fillStyle(0xb06cff, 1).fillPoints(diamond(gem.x, y, 14), true);
+        g.lineStyle(2, 0xf1e2ff, 0.9).strokePoints(diamond(gem.x, y, 14), true);
+      }
+      for (const p of state.players) {
+        const n = Math.min(p.gems ?? 0, 6);
+        for (let i = 0; i < n; i++)
+          g.fillStyle(0xb06cff, 1).fillPoints(
+            diamond(p.x - ((n - 1) * 9) / 2 + i * 9, p.y - 62, 6),
+            true,
+          );
+      }
+    }
     // Crown Hill: the circle to hold, with each side's progress as an arc.
     if (state.crown) {
       const pulse = reducedMotion ? 0.6 : 0.5 + Math.sin(_time / 260) * 0.2;

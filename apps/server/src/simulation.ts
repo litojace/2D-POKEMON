@@ -21,6 +21,11 @@ import {
   MODE_SIZE,
   MODE_MIN,
   ORB_SPOTS,
+  EX,
+  exAbility,
+  RUSH,
+  rushGoals,
+  type Gem,
   CROWN,
   TEAMUP,
   ELEMENT_GIFTS,
@@ -85,6 +90,10 @@ export class Arena {
   overtime = false;
   /** Crown Hill: seconds each side has held the circle this round. */
   crown: number[] = [];
+  /** Orb Rush: gems on the court, gems banked per side, next spawn time. */
+  gems: Gem[] = [];
+  banked: number[] = [];
+  private nextGem = 0;
   /** Fighter roulette: the fighter each player picked, restored in the lobby. */
   chosen = new Map<string, CharacterId>();
   /** Round winners in order (null = draw). */
@@ -339,6 +348,10 @@ export class Arena {
     this.zones = [];
     this.overtime = false;
     this.crown = this.sides.map(() => 0);
+    this.gems = [];
+    this.banked = this.sides.map(() => 0);
+    this.nextGem = this.time + RULES.countdown + 1.5;
+    for (const p of this.players) p.gems = 0;
     const slot = [0, 0];
     for (const p of this.players) {
       const team = this.teamOf(p),
@@ -400,6 +413,7 @@ export class Arena {
       dash: input.dash || p.lastInput.dash,
       jump: input.jump || p.lastInput.jump,
       skill: input.skill >= 0 ? input.skill : p.lastInput.skill,
+      ex: input.skill >= 0 ? !!input.ex : p.lastInput.ex,
     };
   }
   status(p: Fighter, kind: StatusKind, duration: number, by?: string) {
@@ -549,6 +563,10 @@ export class Arena {
       this.teamOf(source) !== this.teamOf(target)
     )
       source.stats.kos = (source.stats.kos ?? 0) + 1;
+    // Orb Rush: a knockout drops everything carried; a big hit drops one.
+    if (this.rule("rush") && (target.gems ?? 0) > 0)
+      if (target.hp <= 0) this.dropGems(target, target.gems ?? 0);
+      else if (dealt >= RUSH.dropDamage) this.dropGems(target, 1);
     if (source && comboName)
       source.stats.combos = (source.stats.combos ?? 0) + 1;
     if (dealt > 0) {
@@ -631,7 +649,7 @@ export class Arena {
       this.lineClear(p, enemy)
     );
   }
-  cast(p: Fighter, a: Ability) {
+  cast(p: Fighter, a: Ability, ex = false) {
     this.walls();
     p.statuses = p.statuses.filter((s) => s.kind !== "stealth");
     const color = CHARACTERS[p.character].color;
@@ -758,6 +776,7 @@ export class Arena {
         until: this.time + a.duration,
         nextTick: this.time + (a.tickDelay ?? 0.1),
         skill,
+        ...(ex ? { ex: true } : {}),
       };
     }
     if (a.kind === "counter") this.status(p, "counter", a.duration);
@@ -958,7 +977,8 @@ export class Arena {
       }
       advanceMovement(p, input, dt, this.time);
       if (p.charge && this.time >= p.charge.at) {
-        this.cast(p, this.kit(p).skills[p.charge.skill]);
+        const a = this.kit(p).skills[p.charge.skill];
+        this.cast(p, p.charge.ex ? exAbility(a) : a, p.charge.ex);
         p.charge = undefined;
       }
       if (!disabled && this.time >= p.recoveryUntil && !p.charge) {
@@ -968,7 +988,15 @@ export class Arena {
           input.skill >= 0 &&
           skillReady(p, input.skill, this.time, freeCooldowns)
         ) {
-          const a = kit.skills[input.skill];
+          // EX: a stronger skill 1-3 for a third of the ultimate meter.
+          const ex =
+            !!input.ex &&
+            input.skill !== ULT_SLOT &&
+            (freeCooldowns || (p.ult ?? 0) >= EX.cost);
+          if (ex && !freeCooldowns) p.ult = (p.ult ?? 0) - EX.cost;
+          const a = ex
+            ? exAbility(kit.skills[input.skill])
+            : kit.skills[input.skill];
           if (input.skill === ULT_SLOT) {
             // The ultimate spends the whole meter instead of a cooldown.
             if (!freeCooldowns) p.ult = 0;
@@ -986,8 +1014,14 @@ export class Arena {
             a.cast +
             a.recovery +
             (a.kind === "cone" ? a.duration : 0);
-          if (a.cast) p.charge = { at: this.time + a.cast, skill: input.skill };
-          else this.cast(p, a);
+          if (a.cast)
+            p.charge = { at: this.time + a.cast, skill: input.skill, ex };
+          else this.cast(p, a, ex);
+          if (ex) {
+            // Shown over the caster like a combo callout.
+            this.event("burst", p, 0xffd166, undefined, p.id, "ex-cast");
+            this.events[this.events.length - 1].combo = `EX ${a.name}`;
+          }
         } else if (input.basic && this.time >= p.basicAt) {
           // The interval is enforced here, so flooding inputs cannot fire faster.
           p.basicAt =
@@ -1002,6 +1036,7 @@ export class Arena {
       input.basic = false;
       input.jump = false;
       input.skill = -1;
+      input.ex = false;
       if (p.clone && p.clone.until <= this.time) p.clone = undefined;
       if (p.channel) {
         const a = this.kit(p).skills[p.channel.skill];
@@ -1009,7 +1044,12 @@ export class Arena {
           p.channel.nextTick += a.tickInterval ?? 0.2;
           for (const enemy of this.enemiesOf(p))
             if (enemy.hp > 0 && this.inArc(p, enemy, a.range, a.arc ?? 0.7))
-              this.damage(enemy, a.damage, p.id, a);
+              this.damage(
+                enemy,
+                a.damage * (p.channel.ex ? EX.damage : 1),
+                p.id,
+                a,
+              );
         }
         if (!a || this.time >= p.channel.until) p.channel = undefined;
       }
@@ -1149,6 +1189,7 @@ export class Arena {
           this.damage(p, RING.damage * DRAIN_INTERVAL, "");
       }
     }
+    if (this.rule("rush") && this.stepRush()) return;
     // Crown Hill: a side alone in the circle builds up time; enough wins.
     if (this.rule("crown")) {
       const inside = this.sides.filter((t) =>
@@ -1192,6 +1233,70 @@ export class Arena {
         this.deadline = this.time + 20;
       } else this.endRound(ranked[0].t);
     }
+  }
+  /**
+   * Orb Rush: spawn gems, let fighters pick them up and bank them at their
+   * own goal. Returns true when a side has banked enough to take the round.
+   */
+  stepRush() {
+    if (this.time >= this.nextGem) {
+      this.nextGem = this.time + RUSH.spawnEvery;
+      if (this.gems.length < RUSH.max)
+        for (let tries = 0; tries < 12; tries++) {
+          const spot = {
+            x: 300 + this.random() * 1000,
+            y: 120 + this.random() * 660,
+          };
+          const goals = rushGoals(this.mode);
+          if (
+            blocked(spot.x, spot.y, 22) ||
+            goals.some((g) => Math.hypot(g.x - spot.x, g.y - spot.y) < 260)
+          )
+            continue;
+          this.gems.push({ id: ++this.serial, ...spot });
+          this.event("orb", spot, 0xc58cff, undefined, undefined, "gem");
+          break;
+        }
+    }
+    const goals = rushGoals(this.mode);
+    for (const p of this.players) {
+      if (p.hp <= 0 || p.out) continue;
+      this.gems = this.gems.filter((g) => {
+        if (Math.hypot(g.x - p.x, g.y - p.y) > RUSH.pickup) return true;
+        p.gems = (p.gems ?? 0) + 1;
+        this.event("heal", p, 0xc58cff, undefined, p.id, "gem-pickup");
+        return false;
+      });
+      const side = this.teamOf(p);
+      const goal = goals[side % goals.length];
+      if (
+        (p.gems ?? 0) > 0 &&
+        Math.hypot(goal.x - p.x, goal.y - p.y) < RUSH.goalRadius
+      ) {
+        this.banked[side] = (this.banked[side] ?? 0) + (p.gems ?? 0);
+        this.event("burst", goal, 0xc58cff, p.gems, p.id, "gem-bank");
+        p.gems = 0;
+        if (this.banked[side] >= RUSH.target) {
+          this.endRound(side);
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+  /** Orb Rush: drop carried gems where a fighter stands. */
+  dropGems(p: Fighter, count: number) {
+    const n = Math.min(count, p.gems ?? 0);
+    for (let i = 0; i < n; i++) {
+      const a = this.random() * Math.PI * 2;
+      const spot = { x: p.x + Math.cos(a) * 60, y: p.y + Math.sin(a) * 60 };
+      if (blocked(spot.x, spot.y, 22)) {
+        spot.x = p.x;
+        spot.y = p.y;
+      }
+      this.gems.push({ id: ++this.serial, ...spot });
+    }
+    p.gems = (p.gems ?? 0) - n;
   }
   /** Spawn healing orbs on schedule; the first fighter to touch one heals. */
   stepOrbs() {
@@ -1321,6 +1426,8 @@ export class Arena {
       overtime: this.overtime,
       mutators: [...this.mutators],
       crown: this.rule("crown") ? this.crown : undefined,
+      gems: this.rule("rush") ? this.gems : undefined,
+      banked: this.rule("rush") ? this.banked : undefined,
       roundLog: this.roundLog,
       matchId: this.matchId,
       arena: this.arenaId,

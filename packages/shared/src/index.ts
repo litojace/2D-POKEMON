@@ -926,6 +926,28 @@ export interface Input {
   skill: number;
   dash: boolean;
   jump: boolean;
+  /** Cast this skill's EX version (spends EX.cost of the ultimate meter). */
+  ex?: boolean;
+}
+/**
+ * EX skills: spend a third of the ultimate meter for a stronger skill 1-3.
+ * Pressing the ultimate button before the meter is full arms it.
+ */
+export const EX = {
+  cost: 33,
+  damage: 1.35,
+  radius: 1.2,
+  /** How long an armed EX waits for a skill. */
+  armSeconds: 4,
+};
+/** The EX version of an ability: more damage (or healing) and reach. */
+export function exAbility(a: Ability): Ability {
+  return {
+    ...a,
+    damage: Math.round(a.damage * EX.damage),
+    radius: a.radius * EX.radius,
+    ...(a.heal ? { heal: Math.round(a.heal * EX.damage) } : {}),
+  };
 }
 export const inputSchema = z
   .object({
@@ -942,6 +964,7 @@ export const inputSchema = z
       .max(SKILL_SLOTS - 1),
     dash: z.boolean(),
     jump: z.boolean(),
+    ex: z.boolean().optional(),
   })
   .strict();
 export const identitySchema = z
@@ -1063,6 +1086,8 @@ export interface Fighter extends Vec {
   cooldowns: number[];
   /** Ultimate meter, 0 to RULES.ultMax. Carries over between rounds. */
   ult?: number;
+  /** Orb Rush: gems this fighter is carrying. */
+  gems?: number;
   /** Rites picked this match (ids, in order). */
   rites?: string[];
   /** Rites on offer during this intermission, until one is picked. */
@@ -1078,9 +1103,9 @@ export interface Fighter extends Vec {
   immuneUntil: number;
   recoveryUntil: number;
   stats: Stats;
-  charge?: { at: number; skill: number };
+  charge?: { at: number; skill: number; ex?: boolean };
   /** Active continuous cone (Fire Breath). */
-  channel?: { until: number; nextTick: number; skill: number };
+  channel?: { until: number; nextTick: number; skill: number; ex?: boolean };
   clone?: Vec & { until: number };
   lastInput: Input;
 }
@@ -1137,6 +1162,10 @@ export const MUTATORS = {
     name: "Giants",
     description: "Fighters look huge (looks only: hits are unchanged).",
   },
+  rush: {
+    name: "Orb Rush",
+    description: "Grab gems and carry them to your goal; bank 5 to win the round. Big hits knock gems loose.",
+  },
 } as const;
 /** 2v2 team-up: partners fighting side by side both hit harder. */
 export const TEAMUP = { range: 260, damage: 1.1 };
@@ -1162,6 +1191,34 @@ export const ELEMENT_GIFTS: Record<
 export function giftFrom(partnerCharacter: CharacterId) {
   const element = CHARACTERS[partnerCharacter].element;
   return { element, ...ELEMENT_GIFTS[element] };
+}
+/** Orb Rush: gems to grab and bank at your own goal. */
+export const RUSH = {
+  target: 5,
+  /** A new gem every few seconds, up to `max` on the court. */
+  spawnEvery: 3.5,
+  max: 4,
+  pickup: 42,
+  goalRadius: 70,
+  /** A hit at least this big knocks one carried gem loose. */
+  dropDamage: 15,
+};
+/** Where each side banks gems: its own end of the court (or corner). */
+export function rushGoals(mode: MatchMode | undefined): Vec[] {
+  return mode === "ffa"
+    ? [
+        { x: 130, y: 130 },
+        { x: 1470, y: 770 },
+        { x: 1470, y: 130 },
+        { x: 130, y: 770 },
+      ]
+    : [
+        { x: 110, y: 450 },
+        { x: 1490, y: 450 },
+      ];
+}
+export interface Gem extends Vec {
+  id: number;
 }
 /** Crown Hill: the circle in the middle of the court, and how long to hold it. */
 export const CROWN = { x: 800, y: 450, radius: 150, holdSeconds: 12 };
@@ -1296,6 +1353,9 @@ export interface Snapshot {
   crown?: number[];
   /** Names of friends watching this room. */
   watchers?: string[];
+  /** Orb Rush: gems on the court and gems banked per side. */
+  gems?: Gem[];
+  banked?: number[];
   /** Which arena this match is played in, and when its hazards' clock started. */
   arena?: ArenaId;
   hazardClock?: number;

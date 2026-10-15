@@ -336,6 +336,9 @@ export class TouchControls {
     basic = { name: "Attack", left: 0, duration: 1 },
     /** Ultimate meter 0–100: the ultimate button fills instead of counting down. */
     ult = 100,
+    /** EX skills: meter needed to arm one, and whether one is armed. */
+    exCost = Infinity,
+    exArmed = false,
   ) {
     if (!active) this.reset();
     for (const button of this.buttons) {
@@ -363,7 +366,10 @@ export class TouchControls {
               ? "Dash"
               : "Jump";
       // Basic attacks have no cooldown; the server enforces the attack interval.
-      button.disabled = !active || (action !== "attack" && left > 0);
+      // The ultimate button also arms an EX skill once the meter allows one.
+      const exReady = isUlt && left > 0 && ult >= exCost;
+      button.disabled =
+        !active || (action !== "attack" && left > 0 && !exReady);
       if (button.dataset.iconName !== name) {
         button.innerHTML =
           abilityIcon(name) +
@@ -381,7 +387,15 @@ export class TouchControls {
         button.title = name;
       }
       const text =
-        left <= 0 ? "" : isUlt ? `${Math.floor(ult)}%` : left.toFixed(1);
+        left <= 0
+          ? ""
+          : isUlt
+            ? exArmed
+              ? "EX ✓"
+              : exReady
+                ? `EX ${Math.floor(ult)}%`
+                : `${Math.floor(ult)}%`
+            : left.toFixed(1);
       const label = button.querySelector(".touch-cooldown")!;
       if (label.textContent !== text) label.textContent = text;
       const duration = isUlt
@@ -399,6 +413,11 @@ export class TouchControls {
       );
       button.classList.toggle("cooling", left > 0);
       button.classList.toggle("ult-ready", isUlt && left <= 0);
+      button.classList.toggle("ex-ready", exReady);
+      button.classList.toggle(
+        "ex-armed",
+        exArmed && skill !== undefined && !isUlt,
+      );
       button.setAttribute(
         "aria-label",
         left <= 0
