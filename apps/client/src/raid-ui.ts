@@ -1,3 +1,8 @@
+import {
+  raidCue,
+  raidContributions,
+  raidRewardProgress,
+} from "./raid-presentation";
 import { raidDifficulty } from "./raid-difficulty";
 import type Phaser from "phaser";
 import {
@@ -8,6 +13,7 @@ import {
 } from "@arena/shared";
 import {
   RAID,
+  RAID_CHAPTERS,
   RAID_RITES,
   RAID_TRAITS,
   raidWeekly,
@@ -96,10 +102,18 @@ export function raidBestiary(p: RaidProgress & { equipped?: string | null }) {
     )
     .join("")}`;
 }
+const resultProgress = new WeakMap<
+  HTMLElement,
+  { id: string; progress?: RaidProgress | null }
+>();
+function chapterPath(phase: number) {
+  return `<ol class="raid-chapters" aria-label="Raid chapters">${RAID_CHAPTERS.map((c, i) => `<li class="${i + 1 === phase ? "is-current" : i + 1 < phase ? "is-complete" : ""}" ${i + 1 === phase ? 'aria-current="step"' : ""}><span aria-hidden="true">${i + 1 < phase ? "✓" : i + 1}</span><b>${c.name}</b></li>`).join("")}</ol>`;
+}
 export function renderRaidUI(
   state: Snapshot,
   me: Fighter,
   request: (event: string, data?: unknown) => Promise<unknown>,
+  loadProgress?: () => Promise<RaidProgress>,
 ) {
   const r = state.raid!,
     boss = state.players.find((p) => p.id === r.bossId);
@@ -109,16 +123,42 @@ export function renderRaidUI(
     hud.id = "raid-hud";
     document.getElementById("battle")!.prepend(hud);
   }
+  const charge = r.warnings.find((w) => w.kind === "charge");
+  const targetLocked =
+    charge?.lockAt !== undefined && state.time >= charge.lockAt;
   hud.innerHTML = `<div class="raid-boss-heading"><b>${r.gilded ? "✦ GILDED " : ""}GRUMBLECRAG</b><span>PERIL ${r.peril} · PHASE ${r.phase}/3</span></div><div class="raid-boss-health"><i style="width:${Math.max(0, ((boss?.hp ?? 0) / r.maxHp) * 100)}%"></i></div><div class="raid-stagger"><i style="width:${r.staggerUntil > state.time ? 100 : r.stagger}%"></i><span>${r.staggerUntil > state.time ? "STAGGER · CORE EXPOSED" : "STAGGER"}</span></div><div class="raid-party-bars">${state.players
     .filter((p) => !p.raidBoss)
     .map(
       (p) =>
-        `<span class="${p.hp <= 0 ? "downed" : ""}"><b>${escape(p.name)}</b><i style="--hp:${Math.max(0, (p.hp / CHARACTERS[p.character].health) * 100)}%"></i><small>${p.out ? "LEFT" : p.hp <= 0 ? `DOWN · ${Math.round((r.downed[p.id]?.progress ?? 0) * 100)}%` : `${Math.ceil(p.hp)} HP`}</small></span>`,
+        `<span class="${p.hp <= 0 ? "downed" : charge?.targetId === p.id ? "is-targeted" : ""}"><b>${escape(p.name)}</b><i style="--hp:${Math.max(0, (p.hp / CHARACTERS[p.character].health) * 100)}%"></i><small>${p.out ? "LEFT" : p.hp <= 0 ? `DOWN · ${Math.round((r.downed[p.id]?.progress ?? 0) * 100)}%` : charge?.targetId === p.id ? (targetLocked ? "LOCKED · DODGE" : "TARGET · BAIT") : `${Math.ceil(p.hp)} HP`}</small></span>`,
     )
     .join(
       "",
-    )}</div><div class="raid-status-row"><p class="raid-callout" role="status">${escape(r.message)}</p><div class="raid-elapsed" role="timer" aria-label="Raid elapsed time"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><b>${time(r.elapsed)}</b></div></div>`;
+    )}</div><div class="raid-status-row"><p class="raid-callout" role="status">${escape(raidCue(state, me.id))}</p><div class="raid-elapsed" role="timer" aria-label="Raid elapsed time"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><b>${time(r.elapsed)}</b></div></div>`;
   const overlay = document.getElementById("arena-overlay")!;
+  let progress = resultProgress.get(overlay);
+  if (
+    state.phase === "finished" &&
+    r.rewardStatus === "saved" &&
+    loadProgress
+  ) {
+    const id = `${me.id}:${r.resultId ?? r.seed}`;
+    if (progress?.id !== id) {
+      progress = { id };
+      resultProgress.set(overlay, progress);
+      const pending = progress;
+      void loadProgress()
+        .then((value) => {
+          pending.progress = value;
+        })
+        .catch(() => {
+          pending.progress = null;
+        });
+    }
+  } else {
+    resultProgress.delete(overlay);
+    progress = undefined;
+  }
   // Reveal results after the collapse, without restarting when reward status updates.
   if (r.result === "victory" && state.phase === "finished") {
     const id = r.resultId ?? String(r.seed);
@@ -147,16 +187,16 @@ export function renderRaidUI(
     body = "";
   if (state.phase === "briefing") {
     title = `${RAID_TRAITS[r.trait].name} Grumblecrag`;
-    body = `<p>${escape(RAID_TRAITS[r.trait].text)}</p><div class="raid-instructions"><span>${raidGuideScene("charge", me.character)}<b>Bait the charge</b><small>Lure the boss into a stone pillar.</small></span><span>${raidGuideScene("core", me.character)}<b>Strike the core</b><small>Armor breaks. Unleash your ultimate.</small></span><span>${raidGuideScene("revive", me.character)}<b>Revive together</b><small>Stand beside a fallen ally to revive.</small></span></div><p>Three phases · one shared fight · ${r.partySize === 1 ? "one solo self-revive" : "no required healer"} · no PvP rating changes.</p><button class="primary" id="raid-instructions" ${state.instructionsReady.includes(me.id) ? "disabled" : ""}>${state.instructionsReady.includes(me.id) ? "Waiting for the team…" : "Let’s raid →"}</button>`;
+    body = `${chapterPath(r.phase)}<p>${escape(RAID_TRAITS[r.trait].text)}</p><div class="raid-instructions"><span>${raidGuideScene("charge", me.character)}<b>Bait the charge</b><small>Lure the boss into a stone pillar.</small></span><span>${raidGuideScene("core", me.character)}<b>Strike the core</b><small>Armor breaks. Unleash your ultimate.</small></span><span>${raidGuideScene("revive", me.character)}<b>Revive together</b><small>Stand beside a fallen ally to revive.</small></span></div><p>Three phases · one shared fight · ${r.partySize === 1 ? "one solo self-revive" : "no required healer"} · no PvP rating changes.</p><button class="primary" id="raid-instructions" ${state.instructionsReady.includes(me.id) ? "disabled" : ""}>${state.instructionsReady.includes(me.id) ? "Waiting for the team…" : "Let’s raid →"}</button>`;
   } else if (state.phase === "intermission") {
     title =
       r.phase === 1
         ? "Choose your starting rite"
         : `Phase ${r.phase} · ${RAID.phases[r.phase - 1]}`;
-    body = `<p class="raid-rite-intro"><span>Rites stack for this run.</span><span class="raid-choice-timer" role="timer" aria-label="Time left to choose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>CHOOSE IN</span><strong>${LIVE_SECONDS}</strong></span></p><div class="raid-rite-options">${(r.offers[me.id] ?? []).map((id) => `<button data-raid-rite="${id}" class="secondary raid-rite-${id}">${raidRitePicture(id)}<span class="raid-rite-copy"><b>${RAID_RITES[id].name}</b><small>${RAID_RITES[id].text}</small></span></button>`).join("") || "<p>Rite locked in · waiting for the team.</p>"}</div>`;
+    body = `${chapterPath(r.phase)}<p class="raid-phase-objective">${RAID_CHAPTERS[r.phase - 1].detail}</p><p class="raid-rite-intro"><span>Choose a role for this chapter. Your rites stack.</span><span class="raid-choice-timer" role="timer" aria-label="Time left to choose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>CHOOSE IN</span><strong>${LIVE_SECONDS}</strong></span></p><div class="raid-rite-options">${(r.offers[me.id] ?? []).map((id) => `<button data-raid-rite="${id}" class="secondary raid-rite-${id}">${raidRitePicture(id)}<span class="raid-rite-copy"><b>${RAID_RITES[id].name}</b><small>${RAID_RITES[id].text}</small></span></button>`).join("") || "<p>Rite locked in · waiting for the team.</p>"}</div><div class="raid-team-builds" aria-label="Team rites"></div>`;
   } else if (state.phase === "countdown") {
     title = String(Math.ceil(state.remaining));
-    body = "<p>Stay together. Watch the ground.</p>";
+    body = `<p>${RAID_CHAPTERS[r.phase - 1].objective}</p>`;
   } else if (state.phase === "paused") {
     title = "A teammate disconnected";
     body = "<p>The raid is paused while they reconnect.</p>";
@@ -165,12 +205,45 @@ export function renderRaidUI(
       r.result === "victory"
         ? "Grumblecrag defeated!"
         : "The mountain still stands";
-    body = `<div class="raid-result-stats"><span><b>${time(r.elapsed)}</b>Clear time</span><span><b>${r.revives}</b>Revives</span><span><b>${r.downs}</b>Downs</span></div><p>${r.result === "victory" ? "Clear reward: Cragbreaker title. Five clears earn Cragbound colors." : "Change champion or try a different rite build."}</p>${r.result === "victory" ? `<p class="raid-save-state">${r.rewardStatus === "saved" ? "✓ Rewards saved to your account." : r.rewardStatus === "unavailable" ? "Reward storage is unavailable. This clear has not been saved; contact the host." : "Saving your rewards…"}</p><p>Next challenge: ${r.peril < 3 ? "Peril " + (r.peril + 1) + " · " + ["", "Falling Debris", "Closing Arena"][r.peril] : "Try another champion, a no-downs clear, or Raid of the Week."}</p>` : ""}<div class="result-actions"><button class="primary" id="raid-retry">${me.ready ? "Waiting for the team…" : "Run again →"}</button><button class="secondary" id="raid-lobby">Change champion / challenge</button><button class="secondary" id="raid-rewards">Bestiary & rewards</button><button class="quiet" id="raid-exit">Return to menu</button></div>`;
+    const heroes = state.players.filter((p) => !p.raidBoss && !p.out);
+    const readyCount = heroes.filter((p) => p.ready).length;
+    body = `<div class="raid-result-summary"><div class="raid-result-art" aria-hidden="true"><svg viewBox="-65 -65 130 115">${raidGuideBoss()}</svg></div><div class="raid-result-stats"><span><b>${time(r.elapsed)}</b>${r.result === "victory" ? "Clear time" : "Time survived"}</span><span><b>${r.revives}</b>Revives</span><span><b>${r.downs}</b>Downs</span></div></div><div class="raid-result-body">${raidContributions(state)}<div class="raid-result-next">${
+      r.result === "victory"
+        ? `<p class="raid-save-state" role="status">${r.rewardStatus === "saved" ? "✓ Rewards saved to your account." : r.rewardStatus === "unavailable" ? "This clear could not be saved. Your reward progress has not been updated." : "Saving your rewards…"}</p>${r.rewardStatus === "saved" ? raidRewardProgress(loadProgress ? progress?.progress : null) : ""}<p class="raid-next-challenge">${r.peril < 3 ? `Next challenge: Peril ${r.peril + 1} · ${r.peril === 1 ? "Falling debris" : "Closing arena"}` : "Next challenge: a no-downs clear or Raid of the Week."}</p>`
+        : `<p class="raid-retry-tip">${Object.values(r.contributions ?? {}).some((c) => c.pillars > 0) ? "Save ultimates for the exposed core. Leave the slam circle if your jump is cooling down." : "Try lining up a pillar between you and the boss, then dodge when the charge locks."}</p>`
+    }<div class="raid-retry-status">${heroes.length === 1 ? "Same champion and challenge · choose fresh rites" : `${readyCount}/${heroes.length} ready · everyone confirms to run again`}</div><div class="result-actions raid-result-actions"><button class="primary" id="raid-retry" ${me.ready || !heroes.every((p) => p.connected) ? "disabled" : ""}>${me.ready ? "Waiting for the team…" : "Run again →"}</button><button class="secondary" id="raid-lobby">Change champion / challenge</button><button class="secondary" id="raid-rewards">Bestiary & rewards</button><button class="quiet" id="raid-exit">Return to menu</button></div>${!heroes.every((p) => p.connected) ? '<p class="raid-retry-tip">A teammate is disconnected. Return to the lobby to refill the party.</p>' : ""}</div></div>`;
   }
+  const previousCard = overlay.querySelector<HTMLElement>(".raid-overlay");
+  const scrollTop =
+    overlay.dataset.raidPhase === state.phase
+      ? (previousCard?.scrollTop ?? 0)
+      : 0;
+  const active = document.activeElement;
+  const focusId = active && previousCard?.contains(active) ? active.id : "";
   setOverlayMarkup(
     overlay,
-    `<div class="overlay-card raid-overlay"><span class="eyebrow">BOSS RAID · CO-OP</span><h2>${title}</h2>${body}</div>`,
+    `<div class="overlay-card raid-overlay${state.phase === "finished" ? " raid-results" : ""}"><span class="eyebrow">BOSS RAID · CO-OP</span><h2>${title}</h2>${body}</div>`,
   );
+  overlay.dataset.raidPhase = state.phase;
+  const card = overlay.querySelector<HTMLElement>(".raid-overlay");
+  if (card) card.scrollTop = scrollTop;
+  if (focusId) {
+    const button = document.getElementById(focusId);
+    if (button && card?.contains(button) && !button.hasAttribute("disabled"))
+      button.focus({ preventScroll: true });
+  }
+  const builds = overlay.querySelector<HTMLElement>(".raid-team-builds");
+  if (builds)
+    setOverlayMarkup(
+      builds,
+      state.players
+        .filter((p) => !p.raidBoss && !p.out)
+        .map(
+          (p) =>
+            `<div><b>${escape(p.name)}</b><span>${(r.rites[p.id] ?? []).map((id) => RAID_RITES[id].name).join(" · ") || "Choosing a starting rite"}${r.offers[p.id]?.length && r.rites[p.id]?.length ? " · Choosing…" : ""}</span></div>`,
+        )
+        .join(""),
+    );
   fillLiveSeconds(overlay, state.remaining);
   overlay
     .querySelector(".raid-choice-timer")
@@ -199,6 +272,22 @@ export function drawRaidArena(
     const danger = 0xff4059,
       edge = 0xff8c99;
     if (w.kind === "charge") {
+      const target = state.players.find((p) => p.id === w.targetId && p.hp > 0);
+      const locked = w.lockAt !== undefined && state.time >= w.lockAt;
+      if (target) {
+        const color = locked ? 0xff4059 : 0xffd982;
+        g.lineStyle(3, color, 1).strokeCircle(target.x, target.y - 75, 16);
+        g.lineStyle(3, color, 1)
+          .lineBetween(
+            target.x - 23,
+            target.y - 75,
+            target.x + 23,
+            target.y - 75,
+          )
+          .lineBetween(target.x, target.y - 98, target.x, target.y - 52);
+        if (locked)
+          g.fillStyle(color, 1).fillCircle(target.x, target.y - 75, 5);
+      }
       const dx = w.tx - w.x,
         dy = w.ty - w.y;
       const length = Math.hypot(dx, dy) || 1;
@@ -280,6 +369,10 @@ export function drawRaidArena(
     g.lineStyle(3, 0x8beed2, 0.7).strokeCircle(w.x, w.y, 130);
   for (const p of state.players)
     if (r.downed[p.id]) {
+      g.fillStyle(0x102d29, 0.95).fillCircle(p.x, p.y - 60, 20);
+      g.lineStyle(5, 0x7dffb0, 1)
+        .lineBetween(p.x - 10, p.y - 60, p.x + 10, p.y - 60)
+        .lineBetween(p.x, p.y - 70, p.x, p.y - 50);
       g.lineStyle(4, 0x7dffb0, 0.7).strokeCircle(p.x, p.y, 70);
       g.lineStyle(7, 0x7dffb0, 1)
         .beginPath()

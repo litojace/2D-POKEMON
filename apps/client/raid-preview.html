@@ -89,7 +89,7 @@
         if (event === "instructions-ready")
           arena.acknowledgeInstructions("preview");
         if (event === "rite") arena.pickRite("preview", data.id);
-        if (event === "rematch") reset();
+        if (event === "rematch") arena.retry();
         if (event === "lobby") reset();
       };
       document.querySelector("#lab-start").onclick = reset;

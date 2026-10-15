@@ -21,7 +21,8 @@ export function drawRaidBoss(
   const pose = controller.sample(state, clock, reduced)!;
   const t = pose.time;
   const stagger = r.staggerUntil > state.time && !pose.dead;
-  const exposed = (r.exposedUntil > state.time || stagger) && !pose.dead;
+  const exposed =
+    (r.phase === 3 || r.exposedUntil > state.time || stagger) && !pose.dead;
   const windup = pose.charge > 0 && !pose.dead;
   const lift = pose.slam > 0 ? Math.min(1, pose.slam * 1.7) : 0;
   const impact = pose.impact;
@@ -207,6 +208,16 @@ export function drawRaidBoss(
     );
   }
 
+  // Shed armor becomes orbiting fragments around the fully exposed final core.
+  if (r.phase === 3 && !pose.dead) {
+    for (let i = 0; i < 4; i++) {
+      const a = (i * Math.PI) / 2 + (reduced ? 0 : t * 0.45);
+      const fx = x + Math.cos(a) * 118,
+        fy = y - 36 + Math.sin(a) * 58;
+      poly(fx, fy, [-12, -8, 2, -16, 16, -2, 8, 12, -9, 10], rock);
+      g.lineStyle(2, hot, 0.8).lineBetween(fx - 6, fy - 7, fx + 5, fy + 6);
+    }
+  }
   // Broad layered torso, asymmetrical shoulder formations and recessed chest.
   poly(
     x,
@@ -233,10 +244,21 @@ export function drawRaidBoss(
   for (const side of [-1, 1]) {
     const sx = x + side * 66,
       sy = y - 44;
-    poly(sx, sy, [-34, -19, -14, -39, 23, -33, 40, -8, 23, 20, -24, 19], rock);
-    poly(sx, sy, [-34, -19, -14, -39, 23, -33, 8, -12], face);
-    crystal(sx + side * 9, sy - 33, side === 1 ? 38 : 27);
-    crystal(sx - side * 14, sy - 23, 20);
+    // The left shoulder breaks in chapter two; both shoulders open in chapter three.
+    if (r.phase === 1 || (r.phase === 2 && side === 1)) {
+      poly(
+        sx,
+        sy,
+        [-34, -19, -14, -39, 23, -33, 40, -8, 23, 20, -24, 19],
+        rock,
+      );
+      poly(sx, sy, [-34, -19, -14, -39, 23, -33, 8, -12], face);
+      crystal(sx + side * 9, sy - 33, side === 1 ? 38 : 27);
+      crystal(sx - side * 14, sy - 23, 20);
+    } else {
+      poly(sx, sy + 10, [-24, -8, -7, -19, 21, -9, 19, 17, -17, 16], dark);
+      crystal(sx, sy, 24);
+    }
   }
   // Independently articulated forearms. Both rise before the authoritative slam.
   for (const side of [-1, 1]) {
@@ -301,7 +323,7 @@ export function drawRaidBoss(
   g.fillStyle(hot, 0.06 * pulse).fillCircle(x, coreY, exposed ? 61 : 42);
   poly(x, coreY, [0, -31, 29, -12, 25, 21, 0, 36, -26, 19, -29, -13], face);
   poly(x, coreY, [0, -25, 23, -9, 19, 16, 0, 29, -20, 15, -23, -10], 0x111d2e);
-  crystal(x, coreY, exposed ? 27 : 18);
+  crystal(x, coreY, r.phase === 3 ? 33 : exposed ? 27 : 18);
   if (exposed || r.phase === 3) {
     g.lineStyle(2, hot, 0.55 * pulse).strokeCircle(x, coreY, 36);
     for (let i = 0; i < 6; i++) {

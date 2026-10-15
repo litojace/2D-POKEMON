@@ -1321,7 +1321,7 @@ function renderBattle() {
     exArmedUntil > performance.now(),
   );
   if(state.raid && myId) {
-    renderRaidUI(state,me,request);
+    renderRaidUI(state,me,request,async () => await accountsUI.api("/api/raids") as import("../../../packages/shared/src/raid").RaidProgress);
     if(me.hp<=0)document.querySelectorAll<HTMLButtonElement>(".touch-buttons button").forEach(b=>b.disabled=true);
     const exit=document.getElementById('raid-exit');if(exit)exit.onclick=()=>void leave();
     const rewards=document.getElementById('raid-rewards');if(rewards)rewards.onclick=()=>void accountsUI.showRaids();

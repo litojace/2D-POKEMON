@@ -2,7 +2,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { RaidArena } from "../../apps/server/src/raid";
 import { renderRaidUI } from "../../apps/client/src/raid-ui";
 afterEach(() => vi.unstubAllGlobals());
-it("updates countdown text without replacing raid choices, but redraws changed offers", () => {
+it("preserves raid choices during countdown and teammate picks, but redraws changed offers", () => {
   let writes = 0,
     html = "";
   const timer = { textContent: "" };
@@ -28,8 +28,10 @@ it("updates countdown text without replacing raid choices, but redraws changed o
   });
   const a = new RaidArena("TEST");
   a.add("hero", "Hero");
+  a.add("friend", "Friend");
   a.start();
   a.acknowledgeInstructions("hero");
+  a.acknowledgeInstructions("friend");
   const render = (remaining: number) =>
     renderRaidUI({ ...a.snapshot(), remaining }, a.heroes()[0], async () => {});
   render(15);
@@ -39,6 +41,9 @@ it("updates countdown text without replacing raid choices, but redraws changed o
   expect(html).toBe(initial);
   expect(writes).toBe(1);
   expect(html).toContain("data-raid-rite");
+  a.pickRite("friend", a.raid.offers.friend[0]);
+  render(1);
+  expect(writes).toBe(1);
   a.raid.offers.hero = [];
   render(1);
   expect(writes).toBe(2);

@@ -25,6 +25,7 @@ import {
 } from "../../../packages/shared/src/index.js";
 import {
   RAID,
+  RAID_CHAPTERS,
   RAID_RITES,
   RAID_TRAITS,
   raidWeekly,
@@ -44,7 +45,10 @@ export class RaidArena extends Arena {
     ty: number;
     until: number;
     hit: Set<string>;
+    targetId?: string;
   };
+  private seenAttacks = new Map<string, number>();
+  private rescueCredit = new Map<string, Set<string>>();
   private downAt = new Map<string, number>();
   private crawl = new Map<string, { dx: number; dy: number }>();
   private selfUsed = false;
@@ -127,6 +131,11 @@ export class RaidArena extends Arena {
     r.downed = {};
     r.rites = {};
     r.offers = {};
+    r.contributions = Object.fromEntries(
+      this.players.map((p) => [p.id, { damage: 0, revives: 0, pillars: 0 }]),
+    );
+    this.seenAttacks.clear();
+    this.rescueCredit.clear();
     r.downs = 0;
     r.revives = 0;
     r.pillars = OBSTACLES.map((o) => ({
@@ -159,6 +168,12 @@ export class RaidArena extends Arena {
     this.instructionsReady = [boss.id];
     r.message = `${r.gilded ? "Gilded " : ""}${RAID_TRAITS[r.trait].name} Grumblecrag · ${RAID_TRAITS[r.trait].text}`;
   }
+  retry() {
+    if (this.phase !== "finished") return;
+    this.start();
+    this.instructionsReady = this.players.map((p) => p.id);
+    this.offerRaidRites();
+  }
   override acknowledgeInstructions(id: string) {
     const ok = super.acknowledgeInstructions(id);
     if (ok && this.phase === "countdown") this.offerRaidRites();
@@ -166,18 +181,19 @@ export class RaidArena extends Arena {
   }
   private offerRaidRites() {
     this.phase = "intermission";
-    this.deadline = this.time + 15;
+    this.deadline = this.time + (this.raid.phase === 1 ? 15 : 12);
     this.projectiles = [];
     this.zones = [];
     this.raid.warnings = [];
     this.charging = undefined;
     const all = Object.keys(RAID_RITES) as RaidRite[];
-    for (const p of this.heroes()) {
+    for (const [seat, p] of this.heroes().entries()) {
       const owned = this.raid.rites[p.id] ?? [];
       const options = all.filter((id) => !owned.includes(id));
-      // Seeded options are identical for a weekly run, independent of room code.
+      // Stable by party seat for weekly fairness, while teammates see varied offers.
       const offset =
-        (this.raid.seed + this.raid.phase * 7) % Math.max(1, options.length);
+        (this.raid.seed + this.raid.phase * 7 + seat) %
+        Math.max(1, options.length);
       this.raid.offers[p.id] = Array.from(
         { length: Math.min(3, options.length) },
         (_, i) => options[(offset + i) % options.length],
@@ -237,7 +253,10 @@ export class RaidArena extends Arena {
       return;
     const r = this.raid;
     if (target.raidBoss) {
-      const exposed = r.exposedUntil > this.time || r.staggerUntil > this.time;
+      const exposed =
+        r.phase === 3 ||
+        r.exposedUntil > this.time ||
+        r.staggerUntil > this.time;
       amount *= exposed ? (r.trait === "restless" ? 1.8 : 1.6) : 0.72;
       if (
         source &&
@@ -272,6 +291,11 @@ export class RaidArena extends Arena {
       );
     const before = target.hp;
     super.damage(target, amount, owner, ability);
+    if (target.raidBoss && source && r.contributions?.[source.id])
+      r.contributions[source.id].damage += Math.max(
+        0,
+        before - Math.max(0, target.hp),
+      );
     if (!target.raidBoss && target.hp < before) {
       this.damageAt.set(target.id, this.time);
       if (target.hp <= 0) {
@@ -375,12 +399,21 @@ export class RaidArena extends Arena {
           this.time - (this.damageAt.get(q.id) ?? -99) > 0.6,
       );
       if (rescuers.length) {
+        const credit = this.rescueCredit.get(p.id) ?? new Set<string>();
+        rescuers.forEach((q) => credit.add(q.id));
+        this.rescueCredit.set(p.id, credit);
         const fast = rescuers.some((q) => this.hasRite(q, "rescue"));
         down.progress = Math.min(
           1,
           down.progress + (dt / RAID.reviveSeconds) * (fast ? 1.35 : 1),
         );
-        if (down.progress >= 1) this.revive(p, fast);
+        if (down.progress >= 1) {
+          for (const id of credit)
+            if (this.raid.contributions?.[id])
+              this.raid.contributions[id].revives++;
+          this.rescueCredit.delete(p.id);
+          this.revive(p, fast);
+        }
       }
     }
     if (
@@ -399,7 +432,7 @@ export class RaidArena extends Arena {
     radius: number,
     delay: number,
   ) {
-    this.raid.warnings.push({
+    const warning = {
       id: ++this.serial,
       kind,
       x,
@@ -409,7 +442,17 @@ export class RaidArena extends Arena {
       radius,
       at: this.time + delay,
       startedAt: this.time,
-    });
+    };
+    this.raid.warnings.push(warning);
+    return warning;
+  }
+  private warnDebris(teach: boolean) {
+    for (const p of this.heroes().filter((p) => p.hp > 0))
+      Object.assign(this.warn("debris", p.x, p.y, p.x, p.y, 95, 1.65), {
+        teach,
+      });
+    if (this.raid.peril >= 2 || this.raid.trait === "fractured")
+      this.warn("debris", 800, 450, 800, 450, 135, 1.9);
   }
   private attacksStep(dt: number) {
     const r = this.raid,
@@ -425,29 +468,51 @@ export class RaidArena extends Arena {
       this.nextAttack = r.staggerUntil + 1;
     }
     if (r.staggerUntil > this.time) return;
-    if (this.time >= this.nextAttack && !this.charging) {
+    // Follow a target for the first second, then preserve a readable dodge window.
+    for (const w of r.warnings) {
+      if (
+        w.kind !== "charge" ||
+        w.lockAt === undefined ||
+        this.time >= w.lockAt
+      )
+        continue;
+      const target = this.heroes().find((p) => p.id === w.targetId && p.hp > 0);
+      if (!target) continue;
+      const direction = normalize(target.x - boss.x, target.y - boss.y);
+      w.tx = Math.max(90, Math.min(1510, boss.x + direction.x * 1000));
+      w.ty = Math.max(90, Math.min(810, boss.y + direction.y * 1000));
+      boss.angle = Math.atan2(w.ty - w.y, w.tx - w.x);
+    }
+    if (this.time >= this.nextAttack && !this.charging && !r.warnings.length) {
       const alive = this.heroes().filter((p) => p.hp > 0);
       if (!alive.length) return;
       const target = alive[(this.attacks + r.seed) % alive.length];
       boss.angle = Math.atan2(target.y - boss.y, target.x - boss.x);
-      const n = this.attacks++ % 3;
-      if (n === 0) {
-        const dx = target.x - boss.x,
-          dy = target.y - boss.y,
-          len = Math.hypot(dx, dy) || 1;
-        this.warn(
+      const pattern =
+        r.phase === 2
+          ? (["charge", "slam", "charge", "debris"] as const)
+          : (["charge", "slam", "debris"] as const);
+      const kind = pattern[this.attacks++ % pattern.length];
+      const count = this.seenAttacks.get(kind) ?? 0;
+      this.seenAttacks.set(kind, count + 1);
+      if (kind === "charge") {
+        const d = normalize(target.x - boss.x, target.y - boss.y);
+        const warning = this.warn(
           "charge",
           boss.x,
           boss.y,
-          Math.max(90, Math.min(1510, boss.x + (dx / len) * 1000)),
-          Math.max(90, Math.min(810, boss.y + (dy / len) * 1000)),
+          Math.max(90, Math.min(1510, boss.x + d.x * 1000)),
+          Math.max(90, Math.min(810, boss.y + d.y * 1000)),
           80,
           1.7,
         );
-        r.message = `${target.name}: bait the charge into a pillar!`;
-      }
-      if (n === 1) {
-        this.warn(
+        Object.assign(warning, {
+          targetId: target.id,
+          lockAt: this.time + 1,
+          teach: count < 2,
+        });
+      } else if (kind === "slam") {
+        const warning = this.warn(
           "slam",
           boss.x,
           boss.y,
@@ -456,30 +521,20 @@ export class RaidArena extends Arena {
           (r.phase >= 3 ? 320 : 240) + (r.trait === "ancient" ? 30 : 0),
           1.25,
         );
-        r.message = "Ground slam — jump the shockwave!";
-      }
-      if (n === 2) {
-        for (const p of alive)
-          this.warn("debris", p.x, p.y, p.x, p.y, 95, 1.65);
-        if (r.peril >= 2 || r.trait === "fractured")
-          this.warn("debris", 800, 450, 800, 450, 135, 1.9);
-        r.message = "Falling debris — leave the glowing circles!";
-      }
-      this.nextAttack =
-        this.time + (r.trait === "restless" ? 3.7 : 4.7) - r.phase * 0.35;
+        Object.assign(warning, { teach: count < 2 });
+      } else this.warnDebris(count < 2);
+      this.nextAttack = this.time + (r.trait === "restless" ? 4.4 : 5.2);
     }
     const due = r.warnings.filter((w) => w.at <= this.time);
     r.warnings = r.warnings.filter((w) => w.at > this.time);
     for (const w of due) {
       if (w.kind === "charge") {
-        const dx = w.tx - w.x,
-          dy = w.ty - w.y,
-          len = Math.hypot(dx, dy) || 1;
         this.charging = {
-          tx: Math.max(90, Math.min(1510, w.x + (dx / len) * 1000)),
-          ty: Math.max(90, Math.min(810, w.y + (dy / len) * 1000)),
+          tx: w.tx,
+          ty: w.ty,
           until: this.time + 1.3,
           hit: new Set(),
+          targetId: w.targetId,
         };
       } else {
         const ability = {
@@ -495,6 +550,25 @@ export class RaidArena extends Arena {
             this.damage(p, w.kind === "slam" ? 27 : 20, boss.id, ability);
         this.event("raid-impact", w, 0xffbd6a, undefined, boss.id);
         this.events[this.events.length - 1].raidRadius = w.radius;
+        if (w.kind === "slam" && r.phase >= 2 && !w.followUp) {
+          // Longer than the shared jump cooldown: both hits can be avoided fairly.
+          Object.assign(
+            this.warn(
+              "slam",
+              boss.x,
+              boss.y,
+              boss.x,
+              boss.y,
+              w.radius,
+              RULES.jumpCooldown + 0.3,
+            ),
+            { followUp: true, teach: w.teach },
+          );
+          this.nextAttack = this.time + RULES.jumpCooldown + 2.8;
+        } else if (w.kind === "slam" && w.followUp && r.phase === 3) {
+          this.warnDebris(false);
+          this.nextAttack = this.time + 5;
+        }
       }
     }
     if (this.charging) {
@@ -510,6 +584,9 @@ export class RaidArena extends Arena {
       );
       if (pillar) {
         pillar.broken = true;
+        if (c.targetId && r.contributions?.[c.targetId])
+          r.contributions[c.targetId].pillars++;
+        this.nextAttack = Math.max(this.nextAttack, this.time + 3);
         r.stagger = Math.min(100, r.stagger + 42);
         r.exposedUntil = this.time + (r.trait === "fractured" ? 10 : 8);
         r.message = "ARMOR BROKEN! Hit the glowing core.";
@@ -606,7 +683,11 @@ export class RaidArena extends Arena {
       this.phaseElapsed = 0;
       this.raid.phase = next;
       this.round = next;
-      this.raid.message = RAID.phases[next - 1];
+      this.raid.message = RAID_CHAPTERS[next - 1].objective;
+      this.attacks = 0;
+      this.started = false;
+      this.raid.staggerUntil = 0;
+      this.raid.exposedUntil = 0;
       this.raid.pillars.forEach((p) => (p.broken = false));
       this.offerRaidRites();
     }

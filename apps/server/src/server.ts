@@ -956,7 +956,7 @@ export function createArenaServer(
         if(a instanceof RaidArena){
           if(a.phase!=='finished'||!a.heroes().length||!a.heroes().every(p=>p.connected))return fail(cb,'Return to the lobby to refill the team.');
           a.players.find(p=>p.id===id)!.ready=true;
-          if(a.heroes().every(p=>p.ready))a.start();
+          if(a.heroes().every(p=>p.ready))a.retry();
           reply(cb,{ok:true});broadcast(a);return;
         }
         if (

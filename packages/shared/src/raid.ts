@@ -8,6 +8,31 @@ export const RAID = {
   staggerSeconds: 6,
   phases: ["Wake the mountain", "Break the armor", "Heart of the mountain"],
 } as const;
+export const RAID_CHAPTERS = [
+  {
+    name: "Wake the mountain",
+    objective: "Bait charges into pillars. Jump the slam.",
+    detail:
+      "Learn the warning shapes and lead a charge into a pillar to expose the core.",
+  },
+  {
+    name: "Break the armor",
+    objective: "Break pillars. Watch for the second slam.",
+    detail:
+      "Charges come more often. A second slam follows the first — leave the circle or jump again.",
+  },
+  {
+    name: "Heart of the mountain",
+    objective: "Strike the open core. Survive the combinations.",
+    detail:
+      "The core stays exposed. Double slams lead into falling debris, then a longer recovery window.",
+  },
+] as const;
+export interface RaidContribution {
+  damage: number;
+  revives: number;
+  pillars: number;
+}
 export const RAID_TRAITS = {
   restless: {
     name: "Restless",
@@ -33,7 +58,7 @@ export const RAID_RITES = {
   },
   core: {
     name: "Core Seeker",
-    text: "Hits during a stagger trigger an extra 8 damage once per second.",
+    text: "Hits on the exposed core trigger an extra 8 damage once per second.",
     icon: "Static Lance",
   },
   rescue: {
@@ -64,6 +89,10 @@ export interface RaidWarning {
   at: number;
   /** Server start time lets clients animate the warning without guessing its duration. */
   startedAt?: number;
+  targetId?: string;
+  lockAt?: number;
+  followUp?: boolean;
+  teach?: boolean;
 }
 export interface RaidState {
   bossId: string;
@@ -94,6 +123,7 @@ export interface RaidState {
   message: string;
   resultId?: string;
   rewardStatus?: "saving" | "saved" | "unavailable";
+  contributions?: Record<string, RaidContribution>;
 }
 export interface RaidReceipt {
   id: string;

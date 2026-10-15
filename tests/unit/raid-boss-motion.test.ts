@@ -136,3 +136,32 @@ it("distinguishes charge and debris skill cues without repeating them each snaps
   expect(sample(0.2).cues).toContain("debris-hit");
   expect(sample(0.25).cues).not.toContain("debris-hit");
 });
+
+it("sheds armor at chapter two and emits fragments from both a broken pillar and the boss", () => {
+  const { arena, sample } = setup();
+  arena.raid.phase = 2;
+  expect(sample(0.05).cues).toContain("awaken");
+  const pillar = arena.raid.pillars[0];
+  pillar.broken = true;
+  const pose = sample(0.1);
+  expect(pose.cues).toContain("crash");
+  expect(pose.fragments.some((f) => f.x === pillar.x)).toBe(true);
+  expect(pose.fragments.some((f) => f.x === arena.boss()!.x && f.glow)).toBe(
+    true,
+  );
+});
+
+it("uses exposed-core feedback throughout the final chapter", () => {
+  const { arena, sample } = setup();
+  arena.raid.phase = 3;
+  sample(0.05);
+  arena.boss()!.hp -= 10;
+  const pose = sample(0.2);
+  expect(pose.cues).toContain("core");
+  expect(pose.cues).not.toContain("chip");
+  expect(
+    pose.fragments
+      .filter((f) => f.y === arena.boss()!.y - 10)
+      .every((f) => f.glow),
+  ).toBe(true);
+});

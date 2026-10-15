@@ -6,12 +6,16 @@ Choose **Boss Raid · Co-op · 1–4 players**, create a room, and share its cod
 
 Grumblecrag is a separate boss entity with a larger hit radius and custom artwork. Everyone is on one team; friendly fire is disabled. Its health scales with the starting party size and is locked for the run, so leaving cannot lower its health.
 
-The encounter has three HP-gated chapters. Attacks cannot bypass a chapter with burst damage or reflection. Between chapters, pick another raid rite; previous rites remain. Chapter changes rebuild the pillars. An eight-minute active-combat limit bounds a run; drafting and reconnect pauses do not count toward the clear timer. Actual clear lengths and difficulty still need multiplayer balance testing.
+The encounter has three HP-gated chapters. Attacks cannot bypass a chapter with burst damage or reflection. Between chapters, pick another raid rite; previous rites remain. Chapter changes rebuild the pillars. An eight-minute active-combat limit bounds a run; drafting and reconnect pauses do not count toward the clear timer. The pacing target is roughly four to six minutes for a successful run; actual clear lengths and difficulty still need human multiplayer balance testing. Boss health and attack damage are unchanged in the encounter refresh.
 
-- **Charge:** a long ground warning tracks an intended line, then locks. Bait it into a pillar to break armor and expose the core.
-- **Ground slam:** a circular warning tells everyone to jump. Jumping avoids its damage.
+- **Charge:** a long ground warning follows the marked player for one second, then locks for a 0.7-second dodge window. A crosshair and party status identify the target. Bait it into a pillar to break armor and expose the core.
+- **Ground slam:** a circular warning tells everyone to jump. Jumping avoids its damage. Chapters two and three add a second slam 2.3 seconds after the first, allowing the two-second jump cooldown to recover. Stagger and chapter transitions cancel follow-ups.
 - **Falling debris:** leave the marked circles before they detonate.
 - **Stagger:** armor breaks and player attacks fill a shared meter. At full stagger, the boss stops attacking for six seconds and takes amplified damage. Save ultimates for this opening.
+
+Chapter one teaches the three basic attacks. Chapter two prioritizes charges and introduces the double slam. Chapter three keeps the core exposed, chains the double slam into debris, and gives players a recovery window afterward. The boss sheds a shoulder plate in chapter two and both plates in chapter three; final-phase fragments orbit its enlarged core. Breaking a pillar throws off glowing armor fragments.
+
+Contextual combat prompts shorten after the first two uses of each attack. Downed teammates have a green rescue marker and progress ring. Each chapter's objective is shown during the upgrade break. Starting rites allow 15 seconds; later breaks allow 12 seconds, and all choices confirmed ends the break early.
 
 Normal crowd control adds stagger rather than stun-locking the boss. The boss cannot be pushed around by ordinary knockback. Downed teammates can crawl; standing nearby revives them. Being hit interrupts the rescuer, but progress is retained. A solo run gets one self-revive; another down ends it. A wiped co-op team loses.
 
@@ -25,7 +29,7 @@ Each run rolls a visible trait with a benefit and a drawback:
 
 Peril 1 teaches the encounter. Clearing it unlocks Peril 2, adding debris pressure. Peril 3 gradually closes a safe circle in the final chapter. These levels change mechanics rather than increasing the boss health bar. A rare non-weekly run rolls Gilded: golden appearance, 12% more health and a bonus title. Guaranteed cosmetics never require a rare encounter.
 
-Six raid-only rites offer dash wards, shared ultimate energy, extra exposed-core damage, faster revives, low-health damage and ultimate-triggered healing. All champions can contribute; no dedicated healer is required. These upgrades disappear after the run and do not change PvP loadouts.
+Six raid-only rites offer dash wards, shared ultimate energy, extra exposed-core damage, faster revives, low-health damage and ultimate-triggered healing. All champions can contribute; no dedicated healer is required. Offers vary by party seat, remain deterministic for weekly runs, and exclude owned rites. The upgrade panel shows everyone’s current build. These upgrades disappear after the run and do not change PvP loadouts.
 
 ## Rewards and records
 
@@ -36,6 +40,10 @@ Verified victories grant:
 - Peril 3: **Mountain Conqueror** title.
 - Peril 3 with no downs: **Mountain aura** cosmetic.
 - Gilded clear: **Gilded Cragbreaker** title.
+
+Results show actual boss damage, revive assists, and pillar baits per player, alongside team totals. Everyone who contributed to a completed rescue receives revive credit; solo self-revives appear only in the team total. Damage excludes overkill and phase-gated damage. Pillars credit the marked player whose charge broke them. Contribution counters reset on retry and are not a competitive leaderboard.
+
+After the server confirms reward storage, the result screen fetches the player's saved progress and shows the next milestone. Failed storage never displays invented progress. Run again keeps the party, champions and challenge, skips the already-seen introduction, and opens fresh starting rites after everyone confirms. Changing champion or difficulty returns the party to the lobby.
 
 The Bestiary shows boss information, clears, highest Peril, best active-combat time, reward goals and cosmetic equipment. It is available from the home screen, raid lobby, result screen and player profile. Only the server's verified equipped cosmetic is sent to opponents. Cosmetic choices affect appearance, not combat stats.
 

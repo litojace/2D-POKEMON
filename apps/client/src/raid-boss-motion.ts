@@ -114,10 +114,19 @@ export class RaidBossMotion {
         this.speed = live ? Math.hypot(b.x - p.x, b.y - p.y) / serverDt : 0;
       if (b.hp < p.hp && b.hp > 0) {
         if (this.time - this.chipAt >= 0.1) {
-          burst(b.x, b.y - 10, 5, r.exposedUntil > state.time);
+          burst(
+            b.x,
+            b.y - 10,
+            5,
+            r.phase === 3 ||
+              r.exposedUntil > state.time ||
+              r.staggerUntil > state.time,
+          );
           this.chipAt = this.time;
           cues.push(
-            r.exposedUntil > state.time || r.staggerUntil > state.time
+            r.phase === 3 ||
+              r.exposedUntil > state.time ||
+              r.staggerUntil > state.time
               ? "core"
               : "chip",
           );
@@ -125,7 +134,7 @@ export class RaidBossMotion {
         this.hurtAge = 0;
       }
       if (
-        r.phase === 3 &&
+        r.phase > 1 &&
         live &&
         (r.phase > p.phase || (p.stage !== "playing" && p.stage !== "paused"))
       ) {
@@ -139,6 +148,7 @@ export class RaidBossMotion {
         this.crashAge = 0;
         cues.push("crash");
         burst(pillar.x, pillar.y, 20);
+        burst(b.x, b.y - 25, 16, true);
       }
       if (pillar.broken) this.broken.add(i);
       else this.broken.delete(i);

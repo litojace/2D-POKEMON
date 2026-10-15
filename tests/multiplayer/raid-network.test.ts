@@ -85,7 +85,7 @@ it("starts a regular-player solo raid, enforces Peril unlocks, and records a ver
   expect(a.matchId).toBeNull();
   expect(a.raid.rewardStatus).toBe("saved");
   await emit(host, "rematch");
-  expect(a.phase).toBe("briefing");
+  expect(a.phase).toBe("intermission");
   expect(a.raid.result).toBeNull();
   expect(a.players).toHaveLength(2);
 });
@@ -172,4 +172,25 @@ it("broadcasts an equipped cosmetic and its removal to an existing room immediat
         ?.raidCosmetic ?? null,
     ).toBe(cosmetic);
   }
+});
+
+it("waits for both teammates before quick retry and preserves the party's picks", async () => {
+  const { connect } = await setup();
+  const host = await connect(),
+    friend = await connect();
+  const created = await emit(host, "create", { name: "Host", mode: "raid" });
+  await emit(friend, "join", { name: "Friend", code: created.code });
+  await emit(host, "ready");
+  await emit(friend, "ready");
+  const a = server!.rooms.get(created.code!) as RaidArena;
+  const picks = a.heroes().map((p) => p.character);
+  a.forfeit(a.heroes()[0].id);
+  a.heroes().forEach((p) => (p.ready = false));
+  expect((await emit(host, "rematch")).ok).toBe(true);
+  expect(a.phase).toBe("finished");
+  expect(a.heroes().filter((p) => p.ready)).toHaveLength(1);
+  expect((await emit(friend, "rematch")).ok).toBe(true);
+  expect(a.phase).toBe("intermission");
+  expect(a.heroes().map((p) => p.character)).toEqual(picks);
+  expect(Object.keys(a.raid.offers)).toHaveLength(2);
 });
