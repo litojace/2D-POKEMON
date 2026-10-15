@@ -5112,9 +5112,8 @@ html.scroll-locked {
 /* Ultimate meter: the ultimate button glows and pulses once it's charged. */
 .ability.ult-ready,
 .touch-buttons button.ult-ready {
-  box-shadow:
-    0 0 0 2px var(--lime),
-    0 0 18px #ffd65b88;
+  border-color: transparent;
+  box-shadow: 0 0 18px #ffd65b88;
 }
 .ability.ult-ready small {
   color: var(--lime);
@@ -5127,9 +5126,7 @@ html.scroll-locked {
   }
   @keyframes ult-pulse {
     50% {
-      box-shadow:
-        0 0 0 2px var(--lime),
-        0 0 30px #ffd65bcc;
+      box-shadow: 0 0 32px #ffd65bcc;
     }
   }
 }
@@ -5742,4 +5739,147 @@ button.small {
 }
 .flair-crystal {
   color: #9ff3ff;
+}
+/* ---- Ultimate ready: a spinning energy ring, a light sweep, a pop ----
+   The ring is a conic gradient behind an inner panel, so only a bright
+   border shows; it spins while the ultimate is ready. A one-off burst
+   plays the moment the meter fills. */
+.ability.ult-ready,
+.touch-buttons button.ult-ready {
+  --ult-a: var(--lime);
+  --ult-b: var(--element, #7fe7ff);
+  isolation: isolate;
+}
+.ability.ult-ready::before,
+.touch-buttons button.ult-ready::before {
+  content: "";
+  position: absolute;
+  /* A square much bigger than the button, so it covers it at any angle. */
+  left: 50%;
+  top: 50%;
+  width: max(260%, 260px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  z-index: -2;
+  /* Two bright comets chasing each other round the edge. */
+  background: conic-gradient(
+    from 0deg,
+    transparent 0 14%,
+    var(--ult-b) 26%,
+    var(--ult-a) 38%,
+    #fffbe8 44%,
+    transparent 46% 64%,
+    var(--ult-b) 76%,
+    var(--ult-a) 88%,
+    #fffbe8 94%,
+    transparent 96%
+  );
+}
+.ability.ult-ready::after,
+.touch-buttons button.ult-ready::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  z-index: -1;
+  border-radius: 6px;
+  background:
+    linear-gradient(
+      115deg,
+      transparent 35%,
+      #ffffff40 48%,
+      #ffffff10 54%,
+      transparent 62%
+    )
+    -160% 0 / 250% 100% no-repeat,
+    radial-gradient(circle at 50% 120%, #ffd65b38, transparent 70%),
+    #1b2c49;
+}
+.touch-buttons button.ult-ready::after {
+  inset: 4px;
+  border-radius: 50%;
+  background:
+    linear-gradient(
+      115deg,
+      transparent 35%,
+      #ffffff48 48%,
+      #ffffff10 54%,
+      transparent 62%
+    )
+    -160% 0 / 250% 100% no-repeat,
+    radial-gradient(circle at 35% 25%, #4a3a12, #0d1a28);
+}
+.ability.ult-ready .cooldown-fill {
+  display: none;
+}
+.touch-buttons button.ult-ready > * {
+  position: relative;
+  z-index: 1;
+}
+.ability.ult-ready .skill-icon,
+.touch-buttons button.ult-ready .skill-icon {
+  filter: drop-shadow(0 0 6px #ffd65bcc);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ability.ult-ready::before,
+  .touch-buttons button.ult-ready::before {
+    animation: ult-spin 1.6s linear infinite;
+  }
+  .ability.ult-ready::after,
+  .touch-buttons button.ult-ready::after {
+    animation: ult-sweep 2.4s ease-in-out infinite;
+  }
+  .ability.ult-ready .skill-icon,
+  .touch-buttons button.ult-ready .skill-icon {
+    animation: ult-bob 1.2s ease-in-out infinite;
+  }
+  /* The moment it fills: a quick pop and flash. */
+  .ability.ult-burst,
+  .touch-buttons button.ult-burst {
+    animation:
+      ult-pop 0.55s cubic-bezier(0.2, 1.6, 0.4, 1),
+      ult-pulse 1.1s ease-in-out 0.55s infinite;
+  }
+  @keyframes ult-spin {
+    from {
+      transform: translate(-50%, -50%) rotate(0turn);
+    }
+    to {
+      transform: translate(-50%, -50%) rotate(1turn);
+    }
+  }
+  @keyframes ult-sweep {
+    0%,
+    55% {
+      background-position:
+        -160% 0,
+        0 0,
+        0 0;
+    }
+    100% {
+      background-position:
+        260% 0,
+        0 0,
+        0 0;
+    }
+  }
+  @keyframes ult-bob {
+    50% {
+      transform: translateY(-2px) scale(1.08);
+      filter: drop-shadow(0 0 10px #fff2b0);
+    }
+  }
+  @keyframes ult-pop {
+    0% {
+      transform: scale(1);
+      filter: brightness(1);
+    }
+    35% {
+      transform: scale(1.14);
+      filter: brightness(1.9);
+    }
+    100% {
+      transform: scale(1);
+      filter: brightness(1);
+    }
+  }
 }

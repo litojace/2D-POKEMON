@@ -1212,8 +1212,13 @@ function renderBattle() {
     if (i === ULT_SLOT) {
       // The ultimate fills a meter by fighting instead of a cooldown.
       const full = (me.ult ?? 0) >= RULES.ultMax;
-      if (full && !ultWasReady && state!.phase === "playing" && myId)
+      if (full && !ultWasReady && state!.phase === "playing" && myId) {
         audio.play("orb");
+        // A one-off pop the moment the meter fills.
+        const button = $(`ability-${i}`);
+        button.classList.add("ult-burst");
+        setTimeout(() => button.classList.remove("ult-burst"), 650);
+      }
       ultWasReady = full;
       const charge = Math.floor(me.ult ?? 0),
         ready = skillReady(

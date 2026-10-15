@@ -412,7 +412,13 @@ export class TouchControls {
         Math.min(100, (100 * left) / duration) + "%",
       );
       button.classList.toggle("cooling", left > 0);
-      button.classList.toggle("ult-ready", isUlt && left <= 0);
+      const ready = isUlt && left <= 0;
+      if (ready && !button.classList.contains("ult-ready")) {
+        // The meter just filled: pop once.
+        button.classList.add("ult-burst");
+        setTimeout(() => button.classList.remove("ult-burst"), 650);
+      }
+      button.classList.toggle("ult-ready", ready);
       button.classList.toggle("ex-ready", exReady);
       button.classList.toggle(
         "ex-armed",
