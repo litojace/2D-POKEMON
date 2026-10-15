@@ -335,8 +335,22 @@ document.addEventListener("click", (e) => {
   if (card?.dataset.rite) chooseRite(card.dataset.rite);
 });
 /** Between rounds: the rite choice, or what you and your rivals picked. */
-function riteMarkup(me: Fighter, seconds: number) {
-  const timer = `Next round in ${seconds} second${seconds === 1 ? "" : "s"}`;
+/**
+ * Seconds that tick down on an overlay card. The card's markup must stay the
+ * same from one second to the next (rebuilding it restarts its pop-in
+ * animation, which flickers), so the number lives in this slot and is filled
+ * in after the card is drawn (see fillLiveSeconds).
+ */
+const LIVE_SECONDS = '<span class="live-seconds"></span>';
+function fillLiveSeconds(root: HTMLElement, seconds: number) {
+  const n = Math.max(0, Math.ceil(seconds));
+  const text = `${n} second${n === 1 ? "" : "s"}`;
+  root.querySelectorAll<HTMLElement>(".live-seconds").forEach((slot) => {
+    if (slot.textContent !== text) slot.textContent = text;
+  });
+}
+function riteMarkup(me: Fighter, _seconds: number) {
+  const timer = `Next round in ${LIVE_SECONDS}`;
   const chips = (p: Fighter) =>
     (p.rites ?? [])
       .map((id) => RITE_BY_ID[id])
@@ -650,11 +664,11 @@ function renderWatchOverlay(overlay: HTMLElement) {
       : state!.roundWinner
         ? `${name(state!.roundWinner)} takes the round`
         : "Round drawn";
-    details = `<p class="rite-timer">Next round in ${Math.ceil(state!.remaining)} seconds</p>`;
+    details = `<p class="rite-timer">Next round in ${LIVE_SECONDS}</p>`;
   }
   if (state!.phase === "paused") {
     heading = "A player disconnected";
-    details = `Waiting for them · ${Math.ceil(state!.pauseRemaining)}s`;
+    details = `Waiting for them · ${LIVE_SECONDS}`;
   }
   if (state!.phase === "finished") {
     heading = isTeams()
@@ -668,6 +682,10 @@ function renderWatchOverlay(overlay: HTMLElement) {
   setOverlayMarkup(
     overlay,
     `<div class="overlay-card${state!.phase === "countdown" ? " countdown-card" : ""}"><span class="eyebrow">WATCHING · ${escape(state!.code)}</span><h2>${heading}</h2><div>${details}</div></div>`,
+  );
+  fillLiveSeconds(
+    overlay,
+    state!.phase === "paused" ? state!.pauseRemaining : state!.remaining,
   );
   const stop = document.getElementById("watch-stop");
   if (stop) stop.onclick = () => void stopWatching();
@@ -1361,7 +1379,7 @@ function renderBattle() {
     }
     if (state.phase === "paused") {
       heading = isTeams() ? "A player disconnected" : "Opponent disconnected";
-      details = `Match suspended · reconnect grace ${Math.ceil(state.pauseRemaining)}s`;
+      details = `Match suspended · reconnect grace ${LIVE_SECONDS}`;
     }
     if (state.phase === "finished") {
       const won = isTeams()
@@ -1404,6 +1422,10 @@ function renderBattle() {
     const markup = `<div class="overlay-card${state.phase === "countdown" ? " countdown-card" : ""}"><span class="eyebrow">ELEMENT ARENA</span><h2>${heading}</h2><div>${details}</div></div>`;
     // Preserve the pressed button between snapshots so pointer-up can complete its click.
     setOverlayMarkup(overlay, markup);
+    fillLiveSeconds(
+      overlay,
+      state.phase === "paused" ? state.pauseRemaining : state.remaining,
+    );
     if (state.phase === "briefing")
       $("instructions-ready").onclick = () => {
         // Phones: go fullscreen and turn sideways where the browser allows it.
