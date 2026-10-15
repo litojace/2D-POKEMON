@@ -6265,3 +6265,89 @@ button.small {
     border-radius: 4px;
   }
 }
+
+/* Illustrated field guide: actual fighter and ability SVGs on miniature courts. */
+dialog:has(.illustrated-guide) { width:min(820px,94vw); }
+.guide-section-heading { margin:24px 0 14px; }
+.guide-section-heading h3 { margin:5px 0 0; font-size:20px; }
+.guide-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.guide-card { min-width:0; border:1px solid #8baee530; border-radius:14px; overflow:hidden; background:#1c2c47; }
+.guide-scene { height:140px; position:relative; overflow:hidden; background:radial-gradient(ellipse at center,#34527a80,transparent 75%),repeating-linear-gradient(0deg,transparent 0 34px,#a1c2ed0c 35px 36px),repeating-linear-gradient(90deg,#203653 0 39px,#49607b 40px,#203653 41px); }
+.guide-caption { padding:12px 14px 14px; }
+.guide-caption h3 { font:700 14px var(--font-body, sans-serif); color:#f2f5ff; margin:0 0 6px; }
+.guide-caption p { font-size:12px; line-height:1.55; color:#b8c7dc; margin:0; }
+.guide-fighter { position:absolute; width:95px; height:95px; left:10%; top:30px; }
+.guide-fighter > svg { width:100%; height:100%; }
+.guide-rock { position:absolute; width:44px; height:70px; left:49%; top:39px; border:5px solid #6680a2; border-top:12px solid #95abca; border-radius:9px; background:#344c6e; box-shadow:6px 8px #08172a70; }
+.guide-rock:after { content:''; position:absolute; width:15px; height:20px; top:8px; left:9px; border-left:3px solid #b7c9e2; transform:rotate(-25deg); }
+.guide-shot { position:absolute; right:5%; top:56px; width:40px; filter:drop-shadow(0 0 8px #ff9651); }
+.guide-block-spark { position:absolute; left:68%; top:50px; color:#ffd66c; font-size:28px; }
+.guide-ground-zone { position:absolute; width:135px; height:55px; left:calc(50% - 68px); bottom:14px; border:2px solid #ffd65b; border-radius:50%; background:repeating-radial-gradient(ellipse,#ffd65b22 0 8px,#ffd65b55 9px,#ffd65b11 10px 16px); box-shadow:0 0 18px #ffd65b33; }
+.guide-floor-shadow { position:absolute; width:45px; height:12px; background:#0007; border-radius:50%; left:calc(50% - 22px); bottom:33px; }
+.guide-airborne { left:calc(50% - 47px); top:0; }
+.guide-airborne .fighter-shadow { opacity:0; }
+.guide-jump { position:absolute; right:8%; top:32px; width:36px; color:#d8efff; }
+.guide-move-pair { display:grid; grid-template-columns:50px 50px; justify-content:center; align-content:center; gap:9px 40px; height:100%; }
+.guide-move { display:block; width:48px; height:48px; padding:6px; border:1px solid #8aaede66; border-radius:50%; background:#132941; box-shadow:0 0 15px #5f8ee422; }
+.guide-move .skill-icon,.guide-shot .skill-icon,.guide-jump .skill-icon,.guide-ultimate .skill-icon { width:100%; height:100%; }
+.guide-infinity { grid-column:1; grid-row:2; text-align:center; font-size:28px; color:#c6e7ff; line-height:20px; }
+.guide-clock { grid-column:2; grid-row:2; text-align:center; font-size:12px; font-weight:800; color:#ffd65b; padding-top:5px; }
+.guide-ultimate { position:absolute; right:15%; top:19px; width:66px; height:66px; border:2px solid #ffda67; border-radius:50%; padding:8px; background:#ffe07112; box-shadow:0 0 22px #ffda6755; }
+.guide-meter,.guide-ex-meter { position:absolute; bottom:14px; left:12%; width:76%; height:10px; border-radius:6px; background:#0e1d34; border:1px solid #ffd65b88; }
+.guide-meter i,.guide-ex-meter i { display:block; height:100%; width:100%; background:linear-gradient(90deg,#cf943c,#ffe794); border-radius:6px; }
+.guide-meter b,.guide-ex-meter b { position:absolute; width:100%; text-align:center; bottom:14px; font-size:9px; letter-spacing:1.5px; color:#ffe08a; }
+.guide-ex { position:absolute; left:18%; top:28px; font-size:36px; font-weight:900; font-style:italic; color:#b2dbff; text-shadow:0 0 16px #6dbfff; }
+.guide-ex + .guide-move { position:absolute; right:18%; top:19px; width:65px; height:65px; border:2px solid #83c7ff; box-shadow:0 0 20px #6dbfff66; }
+.guide-ex-meter i { width:33.333%; background:#82caff; }
+.guide-ex-meter b { color:#a8d5ff; }
+.guide-orb { position:absolute; top:28px; width:52px; height:52px; border-radius:50%; display:grid; place-items:center; font-size:34px; line-height:1; font-weight:700; }
+.guide-heal { left:18%; color:white; background:radial-gradient(circle at 35% 30%,#e8ffe7,#58e58b 50%,#13713b); box-shadow:0 0 22px #60ee8880; border:2px solid #bdffd0; }
+.guide-energy { right:18%; color:#fff4b9; background:radial-gradient(circle at 35% 30%,#fff9c7,#e6ba49 55%,#9f711c); box-shadow:0 0 22px #ffd65b80; border:2px solid #ffedac; }
+.guide-orb-label { position:absolute; top:96px; font-size:10px; font-weight:800; letter-spacing:.5px; }
+.guide-heal-label { left:17%; color:#8cf0b0; }
+.guide-energy-label { right:12%; color:#ffdf85; }
+.guide-danger { position:absolute; inset:0; background:#ee56682a; }
+.guide-safe-ring { position:absolute; width:115px; height:115px; border:3px solid #ef6687; border-radius:50%; left:calc(50% - 58px); top:6px; background:#213651; box-shadow:0 0 20px #f7576d66; }
+.guide-safe-ring ~ .guide-fighter { left:calc(50% - 47px); top:15px; }
+.guide-ring-time { position:absolute; bottom:5px; left:0; width:100%; text-align:center; font-size:9px; letter-spacing:1.5px; color:#ffb0c3; }
+.guide-rank-badge { position:absolute; left:15%; top:29px; width:55px; height:55px; border:1px solid #8baee544; border-radius:12px; background:#243a5d; display:grid; place-items:center; }
+.guide-rank-badge .menu-option-icon { width:35px; height:35px; }
+.guide-rank-path { position:absolute; top:42px; left:43%; color:#ffd65b; font-size:20px; }
+.guide-rank-star { position:absolute; top:24px; right:13%; font-size:50px; color:#ffd65b; text-shadow:0 0 20px #ffd65b88; }
+.guide-rank-label { position:absolute; left:0; bottom:16px; width:100%; text-align:center; font-size:9px; font-weight:700; color:#ffe49c; letter-spacing:1px; }
+.guide-overtime { display:flex; align-items:center; gap:12px; border:1px solid #ed708c44; border-radius:10px; padding:12px; font-size:12px; line-height:1.5; background:#db5b7810; }
+.guide-overtime > span:first-child { font-size:26px; color:#f3a9ba; }
+.guide-rank-note { font-size:11px; color:#9cacc7; }
+@media(max-width:480px) {
+ .guide-grid { gap:8px; }
+ .guide-scene { height:116px; }
+ .guide-caption { padding:10px; }
+ .guide-caption h3 { font-size:12px; }
+ .guide-caption p { font-size:11px; }
+ .guide-fighter { width:76px; height:76px; left:0; }
+ .guide-airborne { left:calc(50% - 38px); }
+ .guide-rock { width:30px; height:56px; left:48%; top:35px; }
+ .guide-shot { width:25px; top:52px; right:3%; }
+ .guide-block-spark { left:72%; }
+ .guide-move-pair { gap:5px 22px; grid-template-columns:42px 42px; }
+ .guide-move { width:42px; height:42px; }
+ .guide-clock { font-size:10px; }
+ .guide-ultimate { width:54px; height:54px; right:9%; top:12px; padding:7px; }
+ .guide-ex { left:9%; font-size:28px; }
+ .guide-ex + .guide-move { width:52px; height:52px; right:9%; }
+ .guide-orb { width:40px; height:40px; font-size:28px; top:24px; }
+ .guide-heal { left:12%; } .guide-energy { right:12%; }
+ .guide-orb-label { top:82px; font-size:8px; }
+ .guide-heal-label { left:8%; } .guide-energy-label { right:5%; }
+ .guide-rank-badge { left:9%; width:42px; height:42px; top:29px; }
+ .guide-rank-badge .menu-option-icon { width:28px; height:28px; }
+ .guide-rank-star { font-size:40px; right:7%; }
+ .guide-rank-path { font-size:14px; left:42%; }
+ .guide-rank-label { font-size:8px; letter-spacing:0; }
+ .guide-safe-ring { width:92px; height:92px; left:calc(50% - 46px); }
+ .guide-safe-ring ~ .guide-fighter { left:calc(50% - 38px); top:12px; }
+}
+
+@media(max-width:480px) {
+ .guide-meter b { width:auto; right:0; font-size:8px; }
+}
