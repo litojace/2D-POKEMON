@@ -11,7 +11,13 @@ import {
   RING,
   ringRadius,
   hasMark,
+  kitAbility,
+  kitOf,
+  RITE_BY_ID,
+  DEBUFFS,
   type Ability,
+  type CharacterId,
+  type StatusKind,
   type Fighter,
   type Input,
 } from "../../../packages/shared/src/index.js";
@@ -229,7 +235,8 @@ export class BotBrain {
         target = { x: enemy.clone.x, y: enemy.clone.y, vx: 0, vy: 0 };
     }
     const character = CHARACTERS[me.character];
-    const basic = character.basic;
+    // Rites can change the basic attack (reach, damage): use the real one.
+    const basic = arena.kit(me).basic;
     const melee = basic.kind === "melee" || basic.kind === "cone";
     const dist = Math.hypot(target.x - me.x, target.y - me.y);
     const sight = arena.lineClear(me, target);
@@ -282,7 +289,8 @@ export class BotBrain {
     const windup =
       enemy.charge &&
       (() => {
-        const a = CHARACTERS[enemy.character].skills[enemy.charge!.skill];
+        // The enemy's own rites (a wider nova, say) count when dodging.
+        const a = kitOf(enemy.character, enemy.rites).skills[enemy.charge!.skill];
         return a.kind === "nova" &&
           Math.hypot(enemy.x - me.x, enemy.y - me.y) < a.radius + 40
           ? a
@@ -441,7 +449,7 @@ export class BotBrain {
     melee: boolean,
     hpRatio: number,
   ) {
-    const basic = CHARACTERS[me.character].basic;
+    const basic = arena.kit(me).basic;
     const preferred = melee
       ? 70
       : clamp(basic.range * 0.5, 240, 400) + (hpRatio < 0.35 ? 90 : 0);
@@ -602,4 +610,127 @@ export class BotBrain {
     }
     return -1;
   }
+}
+
+/**
+ * Rite choice by difficulty. Easy takes any card; Normal leans towards
+ * majors; Hard scores each card for its own fighter, the rites it already
+ * has and the opponent it's facing, and takes the best.
+ */
+export function chooseRite(
+  difficulty: BotDifficulty,
+  offer: string[],
+  me: { character: CharacterId; rites?: string[] },
+  enemy: { character: CharacterId } | undefined,
+  random: () => number,
+  crowd = false,
+) {
+  if (!offer.length) return undefined;
+  if (difficulty === "easy") return offer[Math.floor(random() * offer.length)];
+  if (difficulty === "normal") {
+    const weights = offer.map((id) =>
+      RITE_BY_ID[id]?.tier === "major" ? 3 : 1,
+    );
+    let roll = random() * weights.reduce((a, b) => a + b, 0);
+    for (const [i, w] of weights.entries()) if ((roll -= w) < 0) return offer[i];
+    return offer[0];
+  }
+  let best = offer[0],
+    bestScore = -Infinity;
+  for (const id of offer) {
+    // A little noise so two near-equal cards don't always go the same way.
+    const score = riteValue(id, me, enemy, crowd) + random() * 0.02;
+    if (score > bestScore) {
+      bestScore = score;
+      best = id;
+    }
+  }
+  return best;
+}
+
+/** How much control each status gives (roughly, per application). */
+const STATUS_WEIGHT: Partial<Record<StatusKind, number>> = {
+  stun: 1,
+  freeze: 1,
+  sleep: 0.9,
+  paralysis: 0.8,
+  burn: 0.45,
+  slow: 0.3,
+  haste: 0.3,
+};
+const ticking = (a: Ability) => !!a.tickInterval && a.damage > 0;
+/** Damage one use deals if everything lands. */
+const perUse = (a: Ability) =>
+  a.damage *
+  (a.count ?? 1) *
+  (ticking(a) ? Math.max(1, a.duration / a.tickInterval!) : 1);
+const pace = (a: Ability) => a.cooldown || a.interval || 1;
+
+/**
+ * Estimated strength a rite adds, as a fraction (0.25 ≈ a quarter stronger
+ * on that ability), adjusted for the matchup.
+ */
+export function riteValue(
+  id: string,
+  me: { character: CharacterId; rites?: string[] },
+  enemy: { character: CharacterId } | undefined,
+  crowd = false,
+) {
+  const rite = RITE_BY_ID[id];
+  if (!rite || rite.fighter !== me.character) return -1;
+  const owned = me.rites ?? [];
+  const a0 = kitAbility(me.character, owned, rite.skill);
+  const a1 = kitAbility(me.character, [...owned, id], rite.skill);
+  if (!a0 || !a1) return 0;
+  const enemyBasic = enemy ? CHARACTERS[enemy.character].basic : undefined;
+  const enemyMelee =
+    enemyBasic?.kind === "melee" || enemyBasic?.kind === "cone";
+  // Matchup: reach and control matter more against brawlers who close in;
+  // area matters more when there are several targets.
+  const reachW = enemyMelee ? 1.3 : 1;
+  const controlW = enemyMelee ? 1.2 : 1;
+  const areaW = crowd ? 1.3 : 1;
+  const ratio = (x: number | undefined, y: number | undefined) =>
+    x && y ? y / x - 1 : 0;
+  let value = 0;
+  // Damage over time: per use, divided by how often it can be used.
+  const p0 = perUse(a0) / pace(a0),
+    p1 = perUse(a1) / pace(a1);
+  value += p0 > 0 ? p1 / p0 - 1 : p1 > 0 ? 0.5 : 0;
+  value += 0.5 * ratio(a0.range, a1.range) * reachW;
+  value += 0.6 * ratio(a0.radius, a1.radius) * areaW;
+  value += a0.explosion
+    ? 0.6 * ratio(a0.explosion, a1.explosion) * areaW
+    : a1.explosion
+      ? 0.35 * areaW
+      : 0;
+  value += 0.4 * ratio(a0.speed, a1.speed);
+  value += 1.2 * Math.max(0, a0.cast - a1.cast);
+  if (!ticking(a1)) value += 0.4 * ratio(a0.duration, a1.duration);
+  const s0 = a0.status ? (STATUS_WEIGHT[a0.status] ?? 0.3) : 0,
+    s1 = a1.status ? (STATUS_WEIGHT[a1.status] ?? 0.3) : 0;
+  value +=
+    s1 !== s0
+      ? (s1 - s0) * controlW
+      : 0.3 * ratio(a0.statusDuration, a1.statusDuration);
+  value += 0.8 * ratio(a0.heal, a1.heal);
+  if ((a1.bonusVsStatus ?? 0) > (a0.bonusVsStatus ?? 0)) {
+    // Worth more the more ways this kit has to inflict a harmful status.
+    const kit = kitOf(me.character, owned);
+    const sources = [kit.basic, ...kit.skills].filter(
+      (k) => k.status && DEBUFFS.includes(k.status),
+    ).length;
+    value +=
+      ((a1.bonusVsStatus ?? 0) - (a0.bonusVsStatus ?? 0)) *
+      0.25 *
+      (1 + 0.25 * sources);
+  }
+  // Basic attacks are used all the time; combo skills are a bot's best plays.
+  const base = CHARACTERS[me.character];
+  if (base.basic.id === rite.skill) value *= 1.2;
+  const combo = COMBOS[me.character];
+  if (combo.setup === rite.skill || combo.payoff === rite.skill) value += 0.1;
+  // Upgrading a skill you've already upgraded stacks well.
+  if (owned.some((o) => RITE_BY_ID[o]?.skill === rite.skill)) value += 0.05;
+  return value;
 }

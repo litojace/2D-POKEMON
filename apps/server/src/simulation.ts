@@ -60,7 +60,7 @@ import {
   type StatusKind,
   type Zone,
 } from "../../../packages/shared/src/index.js";
-import type { BotBrain } from "./bot.js";
+import { chooseRite, type BotBrain } from "./bot.js";
 /** Free-for-all starting corners (seat order), opposite corners first. */
 const FFA_SPAWNS = [
   { x: 260, y: 250 },
@@ -461,17 +461,25 @@ export class Arena {
       );
       p.riteOffer = offer.length ? offer : undefined;
       if (p.riteOffer && this.bots.has(p.id))
-        this.pickRite(p.id, this.botRite(p.riteOffer));
+        this.pickRite(p.id, this.botRite(p, p.riteOffer));
     }
   }
-  /** Bots favour majors, otherwise any. */
-  botRite(offer: string[]) {
-    const weights = offer.map((id) =>
-      RITE_BY_ID[id]?.tier === "major" ? 3 : 1,
+  /** A bot's pick: by difficulty (see chooseRite). */
+  botRite(p: Fighter, offer: string[]) {
+    const brain = this.bots.get(p.id);
+    const enemy = this.players.find(
+      (q) => q.id !== p.id && !q.out && this.teamOf(q) !== this.teamOf(p),
     );
-    let roll = this.random() * weights.reduce((a, b) => a + b, 0);
-    for (const [i, w] of weights.entries()) if ((roll -= w) < 0) return offer[i];
-    return offer[0];
+    return (
+      chooseRite(
+        brain?.difficulty ?? "normal",
+        offer,
+        p,
+        enemy,
+        this.random,
+        this.mode !== "duel",
+      ) ?? offer[0]
+    );
   }
   /** A player picks one of their offered rites. */
   pickRite(id: string, riteId: string) {
