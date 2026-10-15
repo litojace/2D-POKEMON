@@ -126,6 +126,19 @@ export const equipTitleSchema = z
   .object({ titleId: z.string().uuid().nullable() })
   .strict();
 
+/** Your skill rating and rank (migration 006). */
+export const ratingSchema = z.object({
+  rating: z.number(),
+  matches: z.number(),
+  peak: z.number().optional(),
+  rank: z.string(),
+  placementLeft: z.number().optional(),
+  next: z.object({ name: z.string(), at: z.number() }).nullable().optional(),
+  /** After a match: your rating and rank before it. */
+  before: z.number().optional(),
+  previousRank: z.string().optional(),
+});
+export type Rating = z.infer<typeof ratingSchema>;
 /** One finished match, as every player in it reports it (migration 004). */
 export interface MatchSummary {
   v: 1;
@@ -157,10 +170,12 @@ export const recordSchema = z.object({
   losses: z.number(),
   together: z.number().optional(),
 });
+
 export const matchReportReplySchema = z.object({
   confirmed: z.boolean(),
   records: z.array(recordSchema),
   achievements: z.array(z.string()),
+  rating: ratingSchema.optional(),
 });
 export type HeadToHead = z.infer<typeof recordSchema>;
 export type MatchReportReply = z.infer<typeof matchReportReplySchema>;
@@ -177,6 +192,7 @@ export const progressSchema = z.object({
   ),
   fighters: z.record(z.object({ matches: z.number(), wins: z.number() })),
   season: z.object({ id: z.string(), matches: z.number(), wins: z.number() }),
+  rating: ratingSchema.optional(),
 });
 export type Progress = z.infer<typeof progressSchema>;
 export const leaderboardSchema = z.object({
@@ -190,11 +206,21 @@ export const leaderboardSchema = z.object({
       wins: z.number(),
       matches: z.number(),
       me: z.boolean(),
+      rating: z.number().optional(),
+      rankName: z.string().optional(),
     }),
   ),
+  unranked: z
+    .array(z.object({ name: z.string(), left: z.number() }))
+    .optional(),
   me: z
-    .object({ rank: z.number(), wins: z.number(), matches: z.number() })
+    .object({
+      rank: z.number().nullable(),
+      wins: z.number(),
+      matches: z.number(),
+    })
     .nullable(),
+  rating: ratingSchema.optional(),
 });
 export type Leaderboard = z.infer<typeof leaderboardSchema>;
 /** Fighter mastery: matches played with a fighter unlock badge tiers. */
@@ -255,4 +281,25 @@ export const friendRemoveSchema = z
 /** Your friend code: the first 8 characters of your account id, upper case. */
 export function friendCode(accountId: string) {
   return accountId.replace(/-/g, "").slice(0, 8).toUpperCase();
+}
+
+/**
+ * The rank ladder (must match supabase/migrations/006_ratings.sql). Ratings
+ * start at 1000; reaching a rank grants its title for good.
+ */
+export const PLACEMENT_MATCHES = 5;
+export const RANKS = [
+  { name: "Newbie", min: 0, color: "#a9b4c9" },
+  { name: "Pupil", min: 950, color: "#65d38a" },
+  { name: "Specialist", min: 1000, color: "#50dbe9" },
+  { name: "Expert", min: 1075, color: "#719aff" },
+  { name: "Candidate Master", min: 1150, color: "#c68bff" },
+  { name: "Master", min: 1225, color: "#ffbc65" },
+  { name: "International Master", min: 1300, color: "#ffd29a" },
+  { name: "Grandmaster", min: 1375, color: "#ff697f" },
+  { name: "International Grandmaster", min: 1450, color: "#ff465f" },
+  { name: "Legendary Grandmaster", min: 1550, color: "#ffd65b" },
+] as const;
+export function rankColor(name: string | undefined) {
+  return RANKS.find((r) => r.name === name)?.color ?? "#a0afc8";
 }

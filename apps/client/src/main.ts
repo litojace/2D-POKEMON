@@ -111,6 +111,7 @@ import {
   MASTERY_TIERS,
   masteryTier,
   progressSchema,
+  RANKS,
 } from "../../../packages/shared/src/accounts";
 import {
   recapMarkup,
@@ -1662,6 +1663,19 @@ async function reportMatch(matchId: string, attempt = 0) {
     for (const name of reply.achievements)
       if (!seen.includes(name))
         toast(`Achievement unlocked: ${name}. Its title is yours to wear.`);
+    // Rank up: say so once, when the rating change first arrives.
+    const rating = reply.rating;
+    const wasRated =
+      before?.status === "done" && before.reply.rating?.before !== undefined;
+    if (
+      rating?.before !== undefined &&
+      !wasRated &&
+      rating.rank !== "Unranked" &&
+      rating.previousRank !== rating.rank &&
+      RANKS.findIndex((r) => r.name === rating.rank) >
+        RANKS.findIndex((r) => r.name === rating.previousRank)
+    )
+      toast(`Rank up! You're now ${rating.rank}. The title is yours to keep.`);
     if (!reply.confirmed && attempt < 3)
       setTimeout(() => {
         if (state?.matchId === matchId) void reportMatch(matchId, attempt + 1);
@@ -1750,7 +1764,7 @@ $("leaderboard").onclick = () => void accountsUI.showLeaderboard();
 $("friends").onclick = () => void accountsUI.showFriends();
 $("help").onclick = () =>
   dialog(
-    `<div class="eyebrow">HOW TO PLAY</div><h2>Every second counts.</h2><p>Create a room, share the code, choose your creatures, and both click Ready. Win three rounds to take the match.</p>${controlsList(true)}<p>Use cover to block shots. Jump over ground zones. Skills recharge in 8–20 seconds; basic attacks never go on cooldown. Press your ultimate before its meter is full to arm an EX skill: for a third of the meter, your next skill hits harder and wider. In a round's last minute a ring closes in on the centre: stay inside it. Healing orbs (green) restore health; energy orbs (gold) charge your ultimate. At a tie, overtime drains both players' health.</p>`,
+    `<div class="eyebrow">HOW TO PLAY</div><h2>Every second counts.</h2><p>Create a room, share the code, choose your creatures, and both click Ready. Win three rounds to take the match.</p>${controlsList(true)}<p>Use cover to block shots. Jump over ground zones. Skills recharge in 8–20 seconds; basic attacks never go on cooldown. Press your ultimate before its meter is full to arm an EX skill: for a third of the meter, your next skill hits harder and wider. Matches against other players move your skill rating: climb from Newbie to Legendary Grandmaster and keep each rank's title (Menu → Leaderboard → How ranks work). In a round's last minute a ring closes in on the centre: stay inside it. Healing orbs (green) restore health; energy orbs (gold) charge your ultimate. At a tie, overtime drains both players' health.</p>`,
   );
 $("credits").onclick = () =>
   dialog(

@@ -3,7 +3,10 @@ import {
   type Fighter,
   type Snapshot,
 } from "../../../packages/shared/src/index";
-import type { MatchReportReply } from "../../../packages/shared/src/accounts";
+import {
+  rankColor,
+  type MatchReportReply,
+} from "../../../packages/shared/src/accounts";
 
 const escape = (s: string) =>
   s.replace(
@@ -72,6 +75,14 @@ export function recordsMarkup(
       return `<span>With ${escape(r.name)}: <b>${r.together}</b> ${r.together === 1 ? "match" : "matches"} together</span>`;
     return `<span>You vs ${escape(r.name)}: <b>${r.wins}–${r.losses}</b> all time</span>`;
   });
+  // Your rating change from this match (once it's confirmed).
+  const rating = reply.rating;
+  if (rating && rating.before !== undefined) {
+    const delta = rating.rating - rating.before;
+    lines.unshift(
+      `<span class="rating-change">Rating <b>${rating.rating}</b> <em class="${delta >= 0 ? "up" : "down"}">${delta >= 0 ? "+" : "−"}${Math.abs(delta)}</em> · <i style="color:${rankColor(rating.rank)}">${escape(rating.rank)}</i>${rating.placementLeft ? ` · ${rating.placementLeft} placement left` : ""}</span>`,
+    );
+  }
   // Add the people you just played as friends (it's fine if you already are).
   const add = reply.records
     .filter((r) => !friendIds?.has(r.id))

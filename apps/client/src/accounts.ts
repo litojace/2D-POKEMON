@@ -565,7 +565,9 @@ export class AccountUI {
       const board = leaderboardSchema.parse(await this.api("/api/leaderboard"));
       const body = element("leaderboard-body");
       if (body)
-        body.innerHTML = `<p>${escape(seasonName(board.season))} · wins against other players. A new season starts each month.</p>${leaderboardMarkup(board)}`;
+        body.innerHTML = board.rating
+          ? `<p>Players ranked by skill rating · ${escape(seasonName(board.season))} season.</p>${leaderboardMarkup(board)}`
+          : `<p>${escape(seasonName(board.season))} · wins against other players. A new season starts each month.</p>${leaderboardMarkup(board)}`;
     } catch (error) {
       const body = element("leaderboard-body");
       if (body)

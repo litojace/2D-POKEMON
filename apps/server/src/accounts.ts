@@ -21,7 +21,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "005_friends.sql";
+export const LATEST_MIGRATION = "006_ratings.sql";
 export interface AccountProvider {
   authenticate(token: string): Promise<Account | null>;
   rpc(
@@ -267,7 +267,18 @@ export function installAccountRoutes(
     "/api/progress",
     route(false, async (_req, res, token) => {
       res.setHeader("Cache-Control", "no-store");
-      res.json(await provider.rpc(token, "arena_my_progress", {}));
+      const progress = (await provider.rpc(
+        token,
+        "arena_my_progress",
+        {},
+      )) as Record<string, unknown>;
+      // Rating and rank (migration 006); progress still loads without it.
+      try {
+        progress.rating = await provider.rpc(token, "arena_my_rating", {});
+      } catch {
+        /* ratings not set up yet */
+      }
+      res.json(progress);
     }),
   );
   app.get(
