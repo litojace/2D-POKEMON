@@ -71,7 +71,7 @@ export function renderRaidUI(
     hud.id = "raid-hud";
     document.getElementById("battle")!.prepend(hud);
   }
-  hud.innerHTML = `<div class="raid-boss-heading"><b>${r.gilded ? "✦ GILDED " : ""}GRUMBLECRAG</b><span>PERIL ${r.peril} · PHASE ${r.phase}/3 · ${time(r.elapsed)}</span></div><div class="raid-boss-health"><i style="width:${Math.max(0, ((boss?.hp ?? 0) / r.maxHp) * 100)}%"></i></div><div class="raid-stagger"><i style="width:${r.staggerUntil > state.time ? 100 : r.stagger}%"></i><span>${r.staggerUntil > state.time ? "STAGGER · CORE EXPOSED" : "STAGGER"}</span></div><div class="raid-party-bars">${state.players
+  hud.innerHTML = `<div class="raid-boss-heading"><b>${r.gilded ? "✦ GILDED " : ""}GRUMBLECRAG</b><span>PERIL ${r.peril} · PHASE ${r.phase}/3</span></div><div class="raid-boss-health"><i style="width:${Math.max(0, ((boss?.hp ?? 0) / r.maxHp) * 100)}%"></i></div><div class="raid-stagger"><i style="width:${r.staggerUntil > state.time ? 100 : r.stagger}%"></i><span>${r.staggerUntil > state.time ? "STAGGER · CORE EXPOSED" : "STAGGER"}</span></div><div class="raid-party-bars">${state.players
     .filter((p) => !p.raidBoss)
     .map(
       (p) =>
@@ -79,7 +79,7 @@ export function renderRaidUI(
     )
     .join(
       "",
-    )}</div><p class="raid-callout" role="status">${escape(r.message)}</p>`;
+    )}</div><div class="raid-status-row"><p class="raid-callout" role="status">${escape(r.message)}</p><div class="raid-elapsed" role="timer" aria-label="Raid elapsed time"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><b>${time(r.elapsed)}</b></div></div>`;
   const overlay = document.getElementById("arena-overlay")!;
   // Reveal results after the collapse, without restarting when reward status updates.
   if (r.result === "victory" && state.phase === "finished") {

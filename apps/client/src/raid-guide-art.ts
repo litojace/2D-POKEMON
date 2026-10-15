@@ -20,6 +20,8 @@ export function raidGuideScene(
   if (kind === "core")
     art = `${hero(18, 66, "b")}<g transform="translate(145 61) scale(.72)">${raidGuideBoss(true)}</g><path class="raid-guide-bolt" d="m67 89 19-12-2 10 24-11-18 20 1-10Z" fill="#ffe17b"/><circle class="raid-guide-core" cx="145" cy="75" r="23" fill="none" stroke="#82ffe7" stroke-width="2"/><rect x="107" y="111" width="78" height="5" rx="2" fill="#203c4b"/><rect x="107" y="111" width="58" height="5" rx="2" fill="#82ffe7"/><text x="145" y="26">CORE OPEN</text>`;
   if (kind === "revive")
-    art = `<ellipse cx="144" cy="85" rx="42" ry="27" fill="#82ffe7" opacity=".09"/><ellipse cx="144" cy="85" rx="42" ry="27" stroke="#82ffe7" stroke-width="2" fill="none"/>${hero(61, 55, "c")}<g transform="translate(150 91) rotate(75)">${hero(-21, -35, "d")}</g><path class="raid-guide-revive" d="M113 88q30-35 59-6" fill="none" stroke="#a7ffb2" stroke-width="4" stroke-linecap="round"/><path d="M145 48v14m-7-7h14" stroke="#a7ffb2" stroke-width="3"/><text x="144" y="119">REVIVING</text>`;
+    art = `<ellipse cx="144" cy="85" rx="42" ry="27" fill="#82ffe7" opacity=".09"/><ellipse cx="144" cy="85" rx="42" ry="27" stroke="#82ffe7" stroke-width="2" fill="none"/>${hero(61, 55, "c")}<g transform="translate(150 91) rotate(75)">${hero(-21, -35, "d")}</g><path class="raid-guide-revive" d="M113 88q30-35 59-6" fill="none" stroke="#a7ffb2" stroke-width="4" stroke-linecap="round"/><path d="M145 48v14m-7-7h14" stroke="#a7ffb2" stroke-width="3"/><text x="124" y="119">REVIVING</text>`;
+  // Center the complete two-character scene; center its caption on the card.
+  if (kind === "revive") art = `<g transform="translate(-14 -8)">${art}</g>`;
   return `<svg class="raid-guide-scene" viewBox="0 0 220 135" aria-hidden="true">${floor}${art}</svg>`;
 }

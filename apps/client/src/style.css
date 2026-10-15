@@ -6644,3 +6644,16 @@ body.battle-raid:not(.touch-mode) #battle { position:relative; }
   .raid-choice-timer strong {font-size:15px;}
   .raid-rite-copy {padding-top:2px;gap:4px;}
 }
+
+/* The elapsed raid clock belongs beside the current warning, not in metadata. */
+.raid-status-row {display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:9px;}
+.raid-status-row .raid-callout {margin:0;min-width:0;flex:1;}
+.raid-elapsed {display:flex;align-items:center;justify-content:flex-end;gap:8px;flex:0 0 auto;color:#ffe399;}
+.raid-elapsed > svg {display:block;width:20px;height:20px;}
+.raid-elapsed b {display:block;min-width:4.5ch;text-align:right;font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1;letter-spacing:.4px;}
+@media(orientation:landscape) and (max-height:600px) {
+  .raid-status-row {margin-top:5px;gap:12px;}
+  .raid-elapsed {gap:6px;}
+  .raid-elapsed b {font-size:23px;}
+  .raid-elapsed > svg {width:18px;height:18px;}
+}
