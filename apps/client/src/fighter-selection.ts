@@ -106,6 +106,7 @@ export function updateRosterSelection(
   root: ParentNode,
   selected: CharacterId,
   reducedMotion = false,
+  revealSelection = false,
 ) {
   const next = document.createElement("template");
   next.innerHTML = fighterSelection(selected);
@@ -136,6 +137,9 @@ export function updateRosterSelection(
   oldDetail.remove();
   chosen.after(freshDetail);
   placeFighterDetail(root);
+  // Server snapshots and room entry update the selection without navigating
+  // away from the room controls. Only a deliberate card tap reveals details.
+  if (!revealSelection) return true;
   // Swipeable row: bring the picked card fully into view.
   const roster = chosen.parentElement;
   if (roster && getComputedStyle(roster).gridAutoFlow.startsWith("column")) {

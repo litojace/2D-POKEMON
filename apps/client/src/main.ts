@@ -531,7 +531,7 @@ function wireRoster(isRoom: boolean) {
         if (choice === selected) return;
         selected = choice;
         const revision = isRoom ? lobbySelection.choose(choice) : undefined;
-        renderMenu();
+        renderMenu(true);
         if (!isRoom) return;
         const reply = await request("select", choice);
         const mine = state?.players.find((p) => p.id === myId);
@@ -558,10 +558,11 @@ function syncMenuCosmetic() {
   if(avatar)avatar.dataset.raidCosmetic=cosmetic??"";
 }
 /** Move the selection highlight and swap the detail panel without re-rendering. */
-function showSelection() {
+function showSelection(revealSelection = false) {
   const panel = document.querySelector<HTMLElement>("#menu .roster-panel");
   if (!panel) return false;
-  if (!updateRosterSelection(panel, selected, reducedMotion)) return false;
+  if (!updateRosterSelection(panel, selected, reducedMotion, revealSelection))
+    return false;
   const me = document.querySelector<HTMLElement>("#menu [data-me]");
   if (me) {
     const fighter = CHARACTERS[selected];
@@ -905,7 +906,7 @@ function wireRoom() {
       ),
     );
 }
-function renderMenu() {
+function renderMenu(revealSelection = false) {
   audio.setTheme("lobby");
   pwa.sync();
   const p = state?.players.find((p) => p.id === myId);
@@ -922,7 +923,7 @@ function renderMenu() {
     !$("menu").hidden &&
     previous.slice(0, previous.lastIndexOf(":")) ===
       key.slice(0, key.lastIndexOf(":")) &&
-    showSelection()
+    showSelection(revealSelection)
   )
     return;
   // Keep the reader's place when the menu re-renders while already visible.
@@ -966,7 +967,7 @@ function renderMenu() {
   // Fighter panel slot: between the rows on PC, under the swipeable row on phones.
   if (!retainedShell) watchFighterDetail($("menu"));
   else if (previous && previous.slice(previous.lastIndexOf(":") + 1) !== selected)
-    showSelection();
+    showSelection(revealSelection);
   if (keepScroll !== null && Math.abs(scrollY - keepScroll) > 1)
     scrollTo(0, keepScroll);
   if (watchingRoom) {

@@ -14,7 +14,7 @@ export function wireRaidDifficulty(root: ParentNode = document) {
   const close = (focus = false) => {
     list.hidden = true;
     trigger.setAttribute("aria-expanded", "false");
-    if (focus) trigger.focus();
+    if (focus) trigger.focus({ preventScroll: true });
   };
   const open = () => {
     if (trigger.disabled) return;
@@ -22,9 +22,14 @@ export function wireRaidDifficulty(root: ParentNode = document) {
     trigger.setAttribute("aria-expanded", "true");
     (
       options.find((b) => b.dataset.peril === input.value) ?? options[0]
-    ).focus();
+    ).focus({ preventScroll: true });
   };
-  trigger.onclick = () => (list.hidden ? open() : close());
+  // Keep a tap on the chevron from blurring the focused option before click.
+  // Otherwise focusout can close the list and the same click opens it again.
+  trigger.onpointerdown = (e) => {
+    if (e.button === 0) e.preventDefault();
+  };
+  trigger.onclick = () => (list.hidden ? open() : close(true));
   trigger.onkeydown = (e) => {
     if (["ArrowDown", "ArrowUp", "Home", "End"].includes(e.key)) {
       e.preventDefault();

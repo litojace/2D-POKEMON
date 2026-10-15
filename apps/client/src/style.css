@@ -241,6 +241,8 @@ p {
   letter-spacing: 2px;
 }
 .lobby-layout {
+  /* Changing room controls must not anchor the viewport to the roster below. */
+  overflow-anchor: none;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 310px;
   gap: 30px;
