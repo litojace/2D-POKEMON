@@ -1,3 +1,4 @@
+import { iconLabel } from "./menu-icons";
 import {
   CHARACTERS,
   type Fighter,
@@ -88,7 +89,7 @@ export function recordsMarkup(
     .filter((r) => !friendIds?.has(r.id))
     .map(
       (r) =>
-        `<button type="button" class="quiet small add-friend" data-add-friend="${escape(r.id)}">+ Add ${escape(r.name)} as a friend</button>`,
+        `<button type="button" class="quiet small add-friend" data-add-friend="${escape(r.id)}">${iconLabel("add-friend", `Add ${escape(r.name)} as a friend`)}</button>`,
     )
     .join("");
   if (add) lines.push(add);

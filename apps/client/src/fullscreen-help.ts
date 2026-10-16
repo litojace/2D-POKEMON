@@ -1,3 +1,4 @@
+import { iconLabel } from "./menu-icons";
 export type FullscreenPlatform = "iphone" | "ipad" | "android" | "desktop";
 /** Rough platform guess for the instructions (iPadOS reports as a Mac with touch). */
 export function fullscreenPlatform(
@@ -37,10 +38,10 @@ export function fullscreenHelp(options: {
         : desktop;
   const actions = [
     canPrompt
-      ? '<button class="primary" id="fullscreen-install">Add to home screen</button>'
+      ? `<button class="primary" id="fullscreen-install">${iconLabel("install", "Add to home screen")}</button>`
       : "",
     canFullscreen
-      ? '<button class="secondary" id="fullscreen-now">Fullscreen for now</button>'
+      ? `<button class="secondary" id="fullscreen-now">${iconLabel("fullscreen", "Fullscreen for now")}</button>`
       : "",
   ].join("");
   return `<h2>Want fullscreen?</h2><p>Add Element Arena to your home screen. It then opens like an app, with no address bar or browser buttons taking up space, and starts faster next time.</p>${

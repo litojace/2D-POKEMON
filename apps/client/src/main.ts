@@ -2,7 +2,7 @@ import { wireRaidDifficulty } from "./raid-difficulty";
 import { updateMenuShell } from "./menu-shell";
 import { raidLobby, renderRaidUI, drawRaidArena, raidLookList } from "./raid-ui";
 import { illustratedHelp } from "./illustrated-help";
-import { menuIcon } from "./menu-icons";
+import { buttonIcon, iconLabel, menuIcon } from "./menu-icons";
 import {
   fighterSelection,
   updateRosterSelection,
@@ -719,7 +719,7 @@ function renderWatchOverlay(overlay: HTMLElement) {
     details =
       (isFfa() ? standingsMarkup(state!, "") : "") +
       recapMarkup(state!, "") +
-      '<div class="result-actions"><button class="secondary leave-button" id="watch-stop">Stop watching</button></div>';
+      `<div class="result-actions"><button class="secondary leave-button" id="watch-stop">${iconLabel("stop-watching", "Stop watching")}</button></div>`;
   }
   setOverlayMarkup(
     overlay,
@@ -791,7 +791,7 @@ function watchPanel() {
       return `<div><span class="player-avatar" style="--element:#${c.color.toString(16).padStart(6, "0")}" title="${c.name}">${fighterAvatar(c.id, `watch${state!.players.indexOf(p)}`)}</span><span><strong>${escape(p.name)}</strong><small class="player-fighter">${c.name}</small></span><b class="status-pill ${!p.connected ? "offline" : p.ready ? "ready" : "choosing"}">${!p.connected ? "Offline" : p.ready ? "Ready" : "Choosing"}</b></div>`;
     })
     .join("");
-  return `<div class="eyebrow">WATCHING ROOM ${escape(state!.code)}</div><h2>Ringside seat.</h2><p>You'll see the match live as soon as everyone's ready. Watching: ${escape((state!.watchers ?? []).join(", ") || "just you")}.</p><div class="players">${rows}</div>${partyRulesNote()}<button class="secondary full leave-button" id="stop-watching">Stop watching</button>`;
+  return `<div class="eyebrow">WATCHING ROOM ${escape(state!.code)}</div><h2>Ringside seat.</h2><p>You'll see the match live as soon as everyone's ready. Watching: ${escape((state!.watchers ?? []).join(", ") || "just you")}.</p><div class="players">${rows}</div>${partyRulesNote()}<button class="secondary full leave-button" id="stop-watching">${iconLabel("stop-watching", "Stop watching")}</button>`;
 }
 /** Turbo party rule: skills recharge faster (for the cooldown displays). */
 function cooldownScale() {
@@ -828,8 +828,8 @@ function roomPanel(me: Fighter) {
     const fighter = CHARACTERS[p.id === myId ? selected : p.character];
     return `<div${p.id === myId ? " data-me" : ""}><span class="player-avatar" data-raid-cosmetic="${raidLookList(p.raidLook)}" style="--element:#${fighter.color.toString(16).padStart(6, "0")}" title="${fighter.name}">${fighterAvatar(fighter.id, `lobby${state!.players.indexOf(p)}`)}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small class="player-fighter">${fighter.name}${p.flair ? ` · <b class="flair flair-${p.flair.toLowerCase()}">★ ${p.flair}</b>` : ""}</small></span><b class="status-pill ${!p.connected ? "offline" : p.ready ? "ready" : "choosing"}">${!p.connected ? "Offline" : p.ready ? "Ready" : "Choosing"}</b></div>`;
   };
-  const ready = `<button class="primary" id="ready">${me.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full leave-button" id="leave">Leave room</button>`;
-  const code = `<button id="copy" class="room-code">${state!.code}<span>${COPY_ICON}COPY CODE</span></button><button id="invite" class="secondary full invite-link">Share invite link</button>`;
+  const ready = `<button class="primary" id="ready">${me.ready ? iconLabel("cancel", "Cancel ready") : iconLabel("battle", "Ready to battle →")}</button><button class="quiet full leave-button" id="leave">${iconLabel("leave", "Leave room")}</button>`;
+  const code = `<button id="copy" class="room-code">${state!.code}<span>${COPY_ICON}COPY CODE</span></button><button id="invite" class="secondary full invite-link">${iconLabel("share", "Share invite link")}</button>`;
   if (isFfa()) {
     const open = Math.max(0, 4 - state!.players.length);
     const slots = Array.from(
@@ -856,7 +856,7 @@ function roomPanel(me: Fighter) {
       return `<div class="team-column team-${t}${t === mine ? " mine" : ""}"><div class="team-head">${TEAM_LABELS[t]} team</div><div class="players">${members.map(row).join("")}${slots}</div></div>`;
     })
     .join("");
-  return `<div class="eyebrow">PRIVATE 2V2 LOBBY</div><h2>Two on two.</h2><p>Share this code with three friends, then pick a side.</p>${code}<div class="team-columns">${columns}</div>${host ? '<button class="quiet full" id="shuffle">Shuffle teams ⇄</button>' : ""}${teamUpNote({ ...me, character: selected })}${partyRules(host)}${ready}<small class="room-note">First team to ${roundsNeeded(state!.mutators)} round wins. Starts when all four players are ready.</small>`;
+  return `<div class="eyebrow">PRIVATE 2V2 LOBBY</div><h2>Two on two.</h2><p>Share this code with three friends, then pick a side.</p>${code}<div class="team-columns">${columns}</div>${host ? `<button class="quiet full" id="shuffle">${iconLabel("shuffle", "Shuffle teams")}</button>` : ""}${teamUpNote({ ...me, character: selected })}${partyRules(host)}${ready}<small class="room-note">First team to ${roundsNeeded(state!.mutators)} round wins. Starts when all four players are ready.</small>`;
 }
 type BotLevel = "easy" | "normal" | "hard";
 const BOT_LEVELS: [BotLevel, string, string][] = [
@@ -986,7 +986,7 @@ function renderMenu(revealSelection = false) {
             )
             .join(
               "",
-            )}</div><button class="primary" id="create">Create private room →</button><button class="quiet raid-icon-button" id="raid-bestiary">${menuIcon("bestiary")}<span>Boss Bestiary & raid rewards</span></button><div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><button id="watch" class="quiet full">Watch this room instead</button><div class="divider">OR PLAY SOLO</div><div class="bot-picker" role="radiogroup" aria-label="Bot difficulty">${BOT_LEVELS.map(([id, label, hint]) => `<button type="button" role="radio" class="bot-level${botLevel === id ? " active" : ""}" data-bot="${id}" aria-checked="${botLevel === id}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button class="secondary full" id="bot-match">Battle an AI bot →</button>${accountsUI?.account ? '<button class="quiet full" id="practice">Solo test mode →</button>' : ""}<small class="room-note">Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`;
+            )}</div><button class="primary" id="create">${iconLabel("create", "Create private room →")}</button><button class="quiet raid-icon-button" id="raid-bestiary">${menuIcon("bestiary")}<span>Boss Bestiary & raid rewards</span></button><div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">${iconLabel("enter", "Join →")}</button></div><button id="watch" class="quiet full">${iconLabel("watch", "Watch this room instead")}</button><div class="divider">OR PLAY SOLO</div><div class="bot-picker" role="radiogroup" aria-label="Bot difficulty">${BOT_LEVELS.map(([id, label, hint]) => `<button type="button" role="radio" class="bot-level${botLevel === id ? " active" : ""}" data-bot="${id}" aria-checked="${botLevel === id}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button class="secondary full" id="bot-match">${iconLabel("bot", "Battle an AI bot →")}</button>${accountsUI?.account ? '<button class="quiet full" id="practice">' + iconLabel("target", "Solo test mode →") + '</button>' : ""}<small class="room-note">Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`;
   const retainedShell = updateMenuShell($("menu"), panelMarkup, () =>
     `<header class="desktop-lobby-header"><div class="eyebrow">ELEMENTAL COLISEUM</div><h1>Choose your fighter</h1><p>Pick your creature. Enter the arena.</p></header><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected)}</div><aside class="room-panel">${panelMarkup}</aside></div>`,
     keepScroll !== null,
@@ -1180,7 +1180,7 @@ function renderBattle() {
           )
           .join(
             "",
-          )}</select></label><label><input id="practice-unlimited" type="checkbox"> No skill cooldowns</label><label><input id="practice-attacks" type="checkbox"> Target attacks</label><button class="secondary" id="practice-reset">Reset arena</button><button class="quiet leave-button" id="practice-exit">Exit test mode</button></div><p>Target respawns automatically. Enable attacks to test counters, clones and jumping over ground fire. Hover a skill for its description.</p></div></details>`;
+          )}</select></label><label><input id="practice-unlimited" type="checkbox"> No skill cooldowns</label><label><input id="practice-attacks" type="checkbox"> Target attacks</label><button class="secondary" id="practice-reset">${iconLabel("again", "Reset arena")}</button><button class="quiet leave-button" id="practice-exit">${iconLabel("leave", "Exit test mode")}</button></div><p>Target respawns automatically. Enable attacks to test counters, clones and jumping over ground fire. Hover a skill for its description.</p></div></details>`;
       $("practice-settings").addEventListener("toggle", () => {
         if (($("practice-settings") as HTMLDetailsElement).open) stopControls();
       });
@@ -1475,7 +1475,7 @@ function renderBattle() {
           state.matchId ? matchRecords.get(state.matchId) : undefined,
           friendIds,
         );
-      details += `<div class="result-actions"><button class="primary" id="rematch">${me.ready ? "Waiting for opponent…" : "Rematch →"}</button><button class="secondary" id="share-result">Share result</button><button class="secondary" id="return">${state.vsBot ? "Back to menu" : "Return to lobby"}</button></div>`;
+      details += `<div class="result-actions"><button class="primary" id="rematch">${me.ready ? "Waiting for opponent…" : iconLabel("again", "Rematch →")}</button><button class="secondary" id="share-result">${iconLabel("share", "Share result")}</button><button class="secondary" id="return">${state.vsBot ? iconLabel("home", "Back to menu") : iconLabel("back", "Return to lobby")}</button></div>`;
     }
     const markup = `<div class="overlay-card${state.phase === "countdown" ? " countdown-card" : ""}"><span class="eyebrow">ELEMENT ARENA</span><h2>${heading}</h2><div>${details}</div></div>`;
     // Preserve the pressed button between snapshots so pointer-up can complete its click.
@@ -1783,19 +1783,19 @@ function leaveButton() {
     ["briefing", "countdown", "playing", "intermission", "paused"].includes(
       state.phase,
     );
-  if (!live) return '<button id="exit-room" class="secondary leave-button">Leave room</button>';
+  if (!live) return `<button id="exit-room" class="secondary leave-button">${iconLabel("leave", "Leave room")}</button>`;
   if (state!.raid) {
     const others = state!.players.filter(
       (p) => !p.raidBoss && !p.out && p.id !== myId,
     ).length;
-    return `<button id="exit-room" class="secondary leave-button is-costly">Leave raid<small>${others ? "Your team carries on without you" : "Ends this run"}</small></button>`;
+    return `<button id="exit-room" class="secondary leave-button is-costly"><span>${buttonIcon("leave")}Leave raid</span><small>${others ? "Your team carries on without you" : "Ends this run"}</small></button>`;
   }
-  return '<button id="exit-room" class="secondary leave-button is-costly">Leave match<small>Counts as a forfeit</small></button>';
+  return `<button id="exit-room" class="secondary leave-button is-costly"><span>${buttonIcon("leave")}Leave match</span><small>Counts as a forfeit</small></button>`;
 }
 function showSettings() {
   settingsOpen = true;
   dialog(
-    `<div class="eyebrow">YOUR PREFERENCES</div><h2>Find your rhythm.</h2><p>Online matches keep running while this menu is open.</p><label>MUSIC <input type="range" id="music" min="0" max="1" step=".01" value="${audio.music}"></label><label>SOUND EFFECTS <input type="range" id="effects" min="0" max="1" step=".01" value="${audio.effects}"></label><p>Reduced motion follows your system preference.</p><button id="open-controls" class="secondary full">Controls &amp; key bindings →</button>${touch.settingsHTML()}<div class="settings-actions">${myId ? leaveButton() : watching ? '<button id="exit-room" class="secondary leave-button">Stop watching</button>' : ""}<button id="settings-report" class="quiet">Report a problem</button></div>`,
+    `<div class="eyebrow">YOUR PREFERENCES</div><h2>Find your rhythm.</h2><p>Online matches keep running while this menu is open.</p><label>MUSIC <input type="range" id="music" min="0" max="1" step=".01" value="${audio.music}"></label><label>SOUND EFFECTS <input type="range" id="effects" min="0" max="1" step=".01" value="${audio.effects}"></label><p>Reduced motion follows your system preference.</p><button id="open-controls" class="secondary full">${iconLabel("keyboard", "Controls &amp; key bindings →")}</button>${touch.settingsHTML()}<div class="settings-actions">${myId ? leaveButton() : watching ? `<button id="exit-room" class="secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>` : ""}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button></div>`,
   );
   for (const kind of ["music", "effects"] as const)
     $(kind).oninput = () => {

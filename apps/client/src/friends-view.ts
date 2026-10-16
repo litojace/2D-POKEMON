@@ -1,3 +1,4 @@
+import { iconLabel } from "./menu-icons";
 import {
   CHARACTERS,
   normalizeCharacterId,
@@ -37,7 +38,7 @@ export function friendsMarkup(list: FriendList) {
     ? `<h3>Friend requests</h3><ul class="friend-list">${list.incoming
         .map(
           (r) =>
-            `<li class="request"><span class="friend-dot"></span><b>${escape(r.name)}</b><span class="friend-actions"><button class="primary small" data-accept="${r.id}">Accept</button><button class="quiet small" data-decline="${r.id}">Decline</button></span></li>`,
+            `<li class="request"><span class="friend-dot"></span><b>${escape(r.name)}</b><span class="friend-actions"><button class="primary small" data-accept="${r.id}">${iconLabel("check", "Accept")}</button><button class="quiet small" data-decline="${r.id}">${iconLabel("cancel", "Decline")}</button></span></li>`,
         )
         .join("")}</ul>`
     : "";
@@ -45,7 +46,7 @@ export function friendsMarkup(list: FriendList) {
     ? `<ul class="friend-list">${list.friends
         .map(
           (f) =>
-            `<li class="${f.online ? "online" : ""}"><span class="friend-dot ${f.online ? (f.activity ?? "menu") : ""}"></span><span class="friend-name"><b>${escape(f.name)}</b>${f.title ? `<small style="color:${escape(f.titleColor ?? "#d5f778")}">${escape(f.title)}</small>` : ""}<small>${escape(friendStatus(f))}</small></span><span class="friend-actions">${f.room && f.joinable ? `<button class="primary small" data-join="${escape(f.room)}">Join</button>` : ""}${f.room && f.activity === "match" ? `<button class="secondary small" data-watch="${escape(f.room)}">Watch</button>` : ""}<button class="quiet small" data-remove="${f.id}" title="Remove friend" aria-label="Remove ${escape(f.name)}">×</button></span></li>`,
+            `<li class="${f.online ? "online" : ""}"><span class="friend-dot ${f.online ? (f.activity ?? "menu") : ""}"></span><span class="friend-name"><b>${escape(f.name)}</b>${f.title ? `<small style="color:${escape(f.titleColor ?? "#d5f778")}">${escape(f.title)}</small>` : ""}<small>${escape(friendStatus(f))}</small></span><span class="friend-actions">${f.room && f.joinable ? `<button class="primary small" data-join="${escape(f.room)}">${iconLabel("enter", "Join")}</button>` : ""}${f.room && f.activity === "match" ? `<button class="secondary small" data-watch="${escape(f.room)}">${iconLabel("watch", "Watch")}</button>` : ""}<button class="quiet small" data-remove="${f.id}" title="Remove friend" aria-label="Remove ${escape(f.name)}">×</button></span></li>`,
         )
         .join("")}</ul>`
     : '<p class="muted">No friends yet. Share your friend code, or add someone from a match result.</p>';

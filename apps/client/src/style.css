@@ -7107,6 +7107,13 @@ button.leave-button.secondary {
   color: #ff9aa5;
   border: 1px solid #ff6b7a66;
   background: #ff4d6012;
+  /* Same shape and weight as the secondary buttons beside it. */
+  border-radius: 6px;
+  font-weight: 700;
+}
+button.leave-button.quiet {
+  padding: 12px 16px;
+  font-size: 11px;
 }
 .leave-button:hover:not(:disabled),
 .leave-button:focus-visible {
@@ -7122,8 +7129,50 @@ button.leave-button.secondary {
   border-color: #ff6b7acc;
   background: #ff4d6033;
 }
+.leave-button.is-costly > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
 .leave-button.is-costly small {
   font-size: 10px;
   font-weight: 500;
   color: #ffb3bb;
+}
+
+/* Button icons: a small line icon before the label, in the button's own
+   text colour (see buttonIcon in menu-icons.ts). */
+button:has(> .button-icon) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+button.full:has(> .button-icon) {
+  display: flex;
+}
+.button-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  opacity: 0.9;
+}
+button.small .button-icon {
+  width: 14px;
+  height: 14px;
+  flex-basis: 14px;
+}
+.raid-lobby-actions #ready .ready-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+/* Leave buttons sized like their neighbours where those are compact. */
+.raid-lobby-actions > div > button.leave-button {
+  padding: 10px 12px;
+}
+.raid-drill-options button.leave-button {
+  padding: 6px 9px;
+  border-radius: 8px;
+  font-size: 11px;
 }

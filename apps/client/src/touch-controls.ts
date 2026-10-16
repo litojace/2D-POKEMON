@@ -1,3 +1,4 @@
+import { iconLabel } from "./menu-icons";
 import { lockLandscape } from "./orientation";
 import { stadiumBands } from "./stadium";
 import { abilityIcon } from "./ability-icons";
@@ -304,7 +305,7 @@ export class TouchControls {
             `<label>${{ joystickSize: "JOYSTICK SIZE", buttonSize: "COMBAT BUTTON SIZE", opacity: "HUD OPACITY" }[key]} <input type="range" id="control-${key}" min="${key === "opacity" ? 0.4 : key === "buttonSize" ? 0.85 : 0.8}" max="${key === "opacity" ? 1 : key === "buttonSize" ? 1.2 : 1.25}" step=".05" value="${this.preferences[key]}"></label>`,
         )
         .join("") +
-      '<button class="secondary" id="control-reset">Reset mobile layout</button>'
+      `<button class="secondary" id="control-reset">${iconLabel("again", "Reset mobile layout")}</button>`
     );
   }
   bindSettings() {

@@ -1,4 +1,5 @@
 import { raidBestiary, raidCosmeticOptions } from "./raid-ui";
+import { iconLabel } from "./menu-icons";
 import {
   RAID_COSMETICS,
   raidLookOf,
@@ -190,14 +191,14 @@ export class AccountUI {
     const root = element("account-nav");
     if (!root) return;
     root.innerHTML = this.account
-      ? `<button class="quiet" id="account-profile">${escape(this.account.displayName)}</button>${this.account.isAdmin ? '<button class="quiet" id="account-admin">Admin</button>' : ""}<button class="quiet" id="account-logout">Log out</button>`
-      : '<button class="quiet" id="account-login">Log in</button><button class="secondary" id="account-signup">Sign up</button>';
+      ? `<button class="quiet" id="account-profile">${iconLabel("user", escape(this.account.displayName))}</button>${this.account.isAdmin ? `<button class="quiet" id="account-admin">${iconLabel("admin", "Admin")}</button>` : ""}<button class="quiet" id="account-logout">${iconLabel("leave", "Log out")}</button>`
+      : `<button class="quiet" id="account-login">${iconLabel("enter", "Log in")}</button><button class="secondary" id="account-signup">${iconLabel("add-friend", "Sign up")}</button>`;
     if (this.account) {
       element("account-profile").onclick = () => void this.showProfile();
       element("account-logout").onclick = async () => {
         if (this.account?.guest && !this.confirmedGuestLogout) {
           this.hooks.openDialog(
-            `<div class="eyebrow">GUEST ACCOUNT</div><h2>Log out of your guest pass?</h2><p>Guest accounts can't be recovered after logging out: your records and titles would be lost. Save your account with an email first to keep them.</p><div class="dialog-actions"><button class="primary" id="guest-save">Save my account</button><button class="secondary" id="guest-leave">Log out anyway</button></div>`,
+            `<div class="eyebrow">GUEST ACCOUNT</div><h2>Log out of your guest pass?</h2><p>Guest accounts can't be recovered after logging out: your records and titles would be lost. Save your account with an email first to keep them.</p><div class="dialog-actions"><button class="primary" id="guest-save">${iconLabel("save", "Save my account")}</button><button class="secondary" id="guest-leave">${iconLabel("leave", "Log out anyway")}</button></div>`,
           );
           element("guest-save").onclick = () => void this.showProfile();
           element("guest-leave").onclick = () => {
@@ -232,7 +233,7 @@ export class AccountUI {
       reset: "Choose a new password.",
     }[mode];
     this.hooks.openDialog(
-      `<div class="eyebrow">ELEMENT ARENA ACCOUNTS</div><h2>${title}</h2>${!this.client ? "<p>Sign-in is not available yet. Accounts are being set up.</p>" : ""}<form id="auth-form" class="account-form">${mode === "signup" ? '<label>Display name<input name="displayName" maxlength="20" required autocomplete="nickname"></label>' : ""}${mode !== "reset" ? '<label>Email<input name="email" type="email" required autocomplete="email"></label>' : ""}${mode !== "forgot" ? passwordField("Password", "password", `${mode === "login" ? "" : 'minlength="8"'} maxlength="128" required autocomplete="${mode === "login" ? "current-password" : "new-password"}"`) : ""}${mode === "signup" || mode === "reset" ? passwordField("Confirm password", "confirmPassword", 'minlength="8" maxlength="128" required autocomplete="new-password"') : ""}${mode === "login" ? '<label class="checkbox-label"><input id="auth-remember" type="checkbox">Remember me</label>' : ""}<button class="primary" type="submit" ${!this.client ? "disabled" : ""}>${{ login: "Log in", signup: "Create account", forgot: "Send reset link", reset: "Update password" }[mode]}</button>${GOOGLE_SIGN_IN && (mode === "login" || mode === "signup") ? `<button id="auth-google" class="secondary" type="button" ${!this.client ? "disabled" : ""}>Continue with Google</button>` : ""}<p id="auth-message" role="status"></p></form>${(mode === "login" || mode === "signup") && this.client ? '<div class="guest-play"><span>Just want to try it?</span><form id="guest-form"><input name="nickname" maxlength="20" placeholder="Nickname (optional)" autocomplete="nickname" aria-label="Guest nickname"><button class="secondary" type="submit">Play as a guest</button></form><small>No email needed. Save your account later from your profile to keep your progress.</small></div>' : ""}<div class="auth-links"><button class="quiet" id="auth-switch">${mode === "login" ? "Create an account" : "Back to login"}</button>${mode === "login" ? '<button class="quiet" id="auth-forgot">Forgot password?</button>' : ""}</div>`,
+      `<div class="eyebrow">ELEMENT ARENA ACCOUNTS</div><h2>${title}</h2>${!this.client ? "<p>Sign-in is not available yet. Accounts are being set up.</p>" : ""}<form id="auth-form" class="account-form">${mode === "signup" ? '<label>Display name<input name="displayName" maxlength="20" required autocomplete="nickname"></label>' : ""}${mode !== "reset" ? '<label>Email<input name="email" type="email" required autocomplete="email"></label>' : ""}${mode !== "forgot" ? passwordField("Password", "password", `${mode === "login" ? "" : 'minlength="8"'} maxlength="128" required autocomplete="${mode === "login" ? "current-password" : "new-password"}"`) : ""}${mode === "signup" || mode === "reset" ? passwordField("Confirm password", "confirmPassword", 'minlength="8" maxlength="128" required autocomplete="new-password"') : ""}${mode === "login" ? '<label class="checkbox-label"><input id="auth-remember" type="checkbox">Remember me</label>' : ""}<button class="primary" type="submit" ${!this.client ? "disabled" : ""}>${{ login: iconLabel("enter", "Log in"), signup: iconLabel("add-friend", "Create account"), forgot: "Send reset link", reset: iconLabel("save", "Update password") }[mode]}</button>${GOOGLE_SIGN_IN && (mode === "login" || mode === "signup") ? `<button id="auth-google" class="secondary" type="button" ${!this.client ? "disabled" : ""}>Continue with Google</button>` : ""}<p id="auth-message" role="status"></p></form>${(mode === "login" || mode === "signup") && this.client ? `<div class="guest-play"><span>Just want to try it?</span><form id="guest-form"><input name="nickname" maxlength="20" placeholder="Nickname (optional)" autocomplete="nickname" aria-label="Guest nickname"><button class="secondary" type="submit">${iconLabel("user", "Play as a guest")}</button></form><small>No email needed. Save your account later from your profile to keep your progress.</small></div>` : ""}<div class="auth-links"><button class="quiet" id="auth-switch">${mode === "login" ? "Create an account" : "Back to login"}</button>${mode === "login" ? '<button class="quiet" id="auth-forgot">Forgot password?</button>' : ""}</div>`,
     );
     element("auth-switch").onclick = () =>
       this.showAuth(mode === "login" ? "signup" : "login");
@@ -448,7 +449,7 @@ export class AccountUI {
     if (!this.account) return;
     const account = this.account;
     this.hooks.openDialog(
-      `<div class="eyebrow">YOUR PLAYER PROFILE</div><h2>${escape(account.displayName)}</h2><p>${account.isAdmin ? "Administrator" : account.guest ? "Guest" : "Player"}${this.session?.user.email ? ` · ${escape(this.session.user.email)}` : ""}</p>${account.guest ? '<form id="profile-save" class="account-form save-account"><p><b>Keep your progress.</b> Guest accounts live only on this device. Add your email to make this a full account: your records, titles and name come with you.</p><label>Email<input name="email" type="email" required autocomplete="email"></label><button class="primary">Save my account</button><p id="save-message" role="status"></p></form>' : ""}<form id="profile-title" class="account-form"><label>Equipped title<select name="titleId"><option value="">No title</option>${sortTitles(
+      `<div class="eyebrow">YOUR PLAYER PROFILE</div><h2>${escape(account.displayName)}</h2><p>${account.isAdmin ? "Administrator" : account.guest ? "Guest" : "Player"}${this.session?.user.email ? ` · ${escape(this.session.user.email)}` : ""}</p>${account.guest ? `<form id="profile-save" class="account-form save-account"><p><b>Keep your progress.</b> Guest accounts live only on this device. Add your email to make this a full account: your records, titles and name come with you.</p><label>Email<input name="email" type="email" required autocomplete="email"></label><button class="primary">${iconLabel("save", "Save my account")}</button><p id="save-message" role="status"></p></form>` : ""}<form id="profile-title" class="account-form"><label>Equipped title<select name="titleId"><option value="">No title</option>${sortTitles(
         account.ownedTitles as Title[],
       )
         .map(
@@ -457,7 +458,7 @@ export class AccountUI {
         )
         .join(
           "",
-        )}</select></label><button class="primary">Save title</button><p id="profile-message" role="status"></p></form><button class="secondary full" id="profile-leaderboard">Season standings →</button><section id="profile-raid"><button class="secondary full" id="profile-raids">Boss Bestiary & raid rewards →</button><p id="profile-raid-stats" class="muted"></p></section><section id="profile-progress" class="progress"><p class="muted">Loading your progress…</p></section>`,
+        )}</select></label><button class="primary">${iconLabel("save", "Save title")}</button><p id="profile-message" role="status"></p></form><button class="secondary full" id="profile-leaderboard">${iconLabel("leaderboard", "Season standings →")}</button><section id="profile-raid"><button class="secondary full" id="profile-raids">${iconLabel("bestiary", "Boss Bestiary & raid rewards →")}</button><p id="profile-raid-stats" class="muted"></p></section><section id="profile-progress" class="progress"><p class="muted">Loading your progress…</p></section>`,
     );
     element("profile-leaderboard").onclick = () => void this.showLeaderboard();
     element("profile-raids").onclick=()=>void this.showRaids();
@@ -515,7 +516,7 @@ export class AccountUI {
   async showFriends() {
     if (!this.ensurePlayer()) return;
     this.hooks.openDialog(
-      `<div class="eyebrow">FRIENDS</div><h2>Your crew</h2><div class="friend-code-row"><span>Your friend code</span><button class="room-code small-code" id="friend-code" title="Copy">—</button></div><form id="friend-add" class="friend-add"><input name="code" maxlength="8" placeholder="Friend code (8 characters)" aria-label="Friend code" autocomplete="off"><button class="secondary">Add friend</button></form><p id="friend-message" role="status"></p><div id="friends-body"><p class="muted">Loading…</p></div>`,
+      `<div class="eyebrow">FRIENDS</div><h2>Your crew</h2><div class="friend-code-row"><span>Your friend code</span><button class="room-code small-code" id="friend-code" title="Copy">—</button></div><form id="friend-add" class="friend-add"><input name="code" maxlength="8" placeholder="Friend code (8 characters)" aria-label="Friend code" autocomplete="off"><button class="secondary">${iconLabel("add-friend", "Add friend")}</button></form><p id="friend-message" role="status"></p><div id="friends-body"><p class="muted">Loading…</p></div>`,
     );
     this.friendsOpen = true;
     const dialog = element<HTMLDialogElement>("dialog");
@@ -651,7 +652,7 @@ export class AccountUI {
   async showLeaderboard() {
     if (!this.ensurePlayer()) return;
     this.hooks.openDialog(
-      `<div class="eyebrow">SEASON STANDINGS</div><h2>Leaderboard</h2><div id="leaderboard-body"><p class="muted">Loading…</p></div><button class="quiet" id="leaderboard-back">← Back to profile</button>`,
+      `<div class="eyebrow">SEASON STANDINGS</div><h2>Leaderboard</h2><div id="leaderboard-body"><p class="muted">Loading…</p></div><button class="quiet" id="leaderboard-back">${iconLabel("back", "Back to profile")}</button>`,
     );
     element("leaderboard-back").onclick = () => void this.showProfile();
     try {
@@ -681,7 +682,7 @@ export class AccountUI {
         .map(([value, label]) => `<option value="${value}">${label}</option>`)
         .join(
           "",
-        )}</select></label><label>What happened?<textarea name="message" rows="5" minlength="5" maxlength="1000" required placeholder="What were you doing, and what went wrong?"></textarea></label><small class="report-count" id="report-count">0 / 1000</small><button class="primary" type="submit">Send report</button><p id="report-message" role="status"></p></form>`,
+        )}</select></label><label>What happened?<textarea name="message" rows="5" minlength="5" maxlength="1000" required placeholder="What were you doing, and what went wrong?"></textarea></label><small class="report-count" id="report-count">0 / 1000</small><button class="primary" type="submit">${iconLabel("report", "Send report")}</button><p id="report-message" role="status"></p></form>`,
     );
     const form = element<HTMLFormElement>("report-form");
     const text = form.elements.namedItem("message") as HTMLTextAreaElement;
