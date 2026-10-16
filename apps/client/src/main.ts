@@ -3029,6 +3029,7 @@ function ensureBattleRenderer() {
   new ResizeObserver(() => fitRenderer()).observe($("game"));
 }
 accountsUI = new AccountUI({
+  selectedCharacter: () => selected,
   openDialog: dialog,
   joinRoom: (code) => void joinByCode(code),
   watchRoom: (code) => {

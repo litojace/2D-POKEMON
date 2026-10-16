@@ -1,4 +1,4 @@
-import { raidBestiary } from "./raid-ui";
+import { raidBestiary, raidCosmeticOptions } from "./raid-ui";
 import type { RaidProgress } from "../../../packages/shared/src/raid";
 import { TITLE_PRESETS, sortTitles } from "./player-nameplate";
 import { isQuietRefresh } from "./session-refresh";
@@ -71,6 +71,7 @@ type Hooks = {
   /** Same player, fresh token (background refresh): keep it for reconnects only. */
   onToken: (token: string) => void;
   beforeSignOut: () => Promise<void>;
+  selectedCharacter?: () => CharacterId;
 };
 export class AccountUI {
   account: Account | null = null;
@@ -365,26 +366,68 @@ export class AccountUI {
     };
   }
   async showRaids() {
-    if(!this.ensurePlayer())return;
+    if (!this.ensurePlayer()) return;
     try {
-      const progress=await this.api('/api/raids') as RaidProgress;
-      this.raidCosmetic=progress.equipped??null;
+      const progress = (await this.api("/api/raids")) as RaidProgress;
+      this.raidCosmetic = progress.equipped ?? null;
       this.hooks.onChange();
-      this.hooks.openDialog(raidBestiary(progress));
-      for(const button of Array.from(document.querySelectorAll<HTMLButtonElement>('button[data-raid-cosmetic]')))button.onclick=async()=>{
-        button.disabled=true;
-        button.setAttribute("aria-busy","true");
-        try {
-          const cosmetic=button.dataset.raidCosmetic||null;
-          await this.api('/api/raids/cosmetic',{cosmetic});
-          this.raidCosmetic=cosmetic as RaidProgress["equipped"];
-          this.hooks.onChange();
-          this.hooks.notify(cosmetic==="cragbound"?"Cragbound colors equipped.":cosmetic==="mountain-aura"?"Mountain aura equipped.":"Original appearance equipped.");
-          await this.showRaids();
-        }
-        catch(error){button.disabled=false;button.removeAttribute('aria-busy');this.hooks.notify(error instanceof Error?error.message:'Cosmetic could not be equipped.');}
+      const character = this.hooks.selectedCharacter?.() ?? "voltkit";
+      this.hooks.openDialog(raidBestiary(progress, character));
+      const options = document.querySelector<HTMLElement>(".raid-equip")!;
+      const status = document.querySelector<HTMLElement>(
+        ".raid-appearance-status",
+      )!;
+      const bind = () => {
+        for (const button of Array.from(
+          options.querySelectorAll<HTMLButtonElement>(
+            "button[data-raid-cosmetic]",
+          ),
+        ))
+          button.onclick = async () => {
+            const cosmetic = (button.dataset.raidCosmetic ||
+              null) as RaidProgress["equipped"];
+            const buttons = Array.from(
+              options.querySelectorAll<HTMLButtonElement>("button"),
+            );
+            const disabled = buttons.map((b) => b.disabled);
+            buttons.forEach((b) => {
+              b.disabled = true;
+            });
+            button.setAttribute("aria-busy", "true");
+            status.textContent = "Saving appearance…";
+            try {
+              await this.api("/api/raids/cosmetic", { cosmetic });
+              this.raidCosmetic = cosmetic;
+              progress.equipped = cosmetic;
+              this.hooks.onChange();
+              if (!options.isConnected) return;
+              // Update only the choices: keep the dialog and its scroll position.
+              options.innerHTML = raidCosmeticOptions(progress, character);
+              status.textContent =
+                cosmetic === "cragbound"
+                  ? "Cragbound colors equipped for all fighters."
+                  : cosmetic === "mountain-aura"
+                    ? "Mountain aura equipped for all fighters."
+                    : "Original appearance restored.";
+              bind();
+            } catch (error) {
+              buttons.forEach((b, i) => {
+                b.disabled = disabled[i];
+              });
+              button.removeAttribute("aria-busy");
+              status.textContent =
+                error instanceof Error
+                  ? error.message
+                  : "Appearance could not be saved. Try again.";
+            }
+          };
       };
-    }catch(error){this.hooks.openDialog(`<h2>Boss Bestiary</h2><p>${escape(error instanceof Error?error.message:'Raid records are not available yet.')}</p><p>Raids are playable at Peril 1. Persistent rewards require migration 007 and server storage configuration.</p>`);}
+      bind();
+    } catch (error) {
+      this.hooks.openDialog(
+        `<h2>Boss Bestiary</h2><p>${escape(error instanceof Error ? error.message : "Raid records are not available yet.")}</p><p>Raids are playable at Peril 1. Persistent rewards require migration 007 and server storage configuration.</p>`,
+      );
+    }
   }
   async showProfile() {
     if (!this.account) return;

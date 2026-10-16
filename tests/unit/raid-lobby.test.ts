@@ -34,17 +34,24 @@ it("marks earned rewards completed and keeps unearned cosmetics visibly locked",
   expect(html).toMatch(/data-raid-cosmetic="cragbound" disabled/);
 });
 it("distinguishes an equipped cosmetic from another unlocked option", () => {
-  const html = raidBestiary({
-    clears: 5,
-    highestPeril: 3,
-    bestSeconds: 60,
-    titles: [],
-    cosmetics: ["cragbound", "mountain-aura"],
-    weekly: [],
-    equipped: "cragbound",
-  });
+  const html = raidBestiary(
+    {
+      clears: 5,
+      highestPeril: 3,
+      bestSeconds: 60,
+      titles: [],
+      cosmetics: ["cragbound", "mountain-aura"],
+      weekly: [],
+      equipped: "cragbound",
+    },
+    "tidefin",
+  );
   expect(html.match(/class="raid-reward is-complete"/g)).toHaveLength(4);
   expect(html).toMatch(/is-equipped" data-raid-cosmetic="cragbound" disabled/);
   expect(html).toMatch(/data-raid-cosmetic="mountain-aura" >/);
-  expect(html).toContain("Equip cosmetic");
+  expect(html).toContain("✓ Equipped");
+  expect(html).toContain("Choose one look for all your fighters");
+  expect(html).toContain("Previewing Tidefin");
+  expect(html.match(/aria-label="Tidefin"/g)).toHaveLength(3);
+  expect(html).not.toContain('aria-label="Voltkit"');
 });
