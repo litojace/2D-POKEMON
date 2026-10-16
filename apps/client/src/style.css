@@ -4946,6 +4946,7 @@ html.zoom-locked body * {
 }
 html.zoom-locked #arena-overlay,
 html.zoom-locked .overlay-card,
+html.zoom-locked .overlay-card *,
 html.zoom-locked #practice-controls,
 html.zoom-locked .practice-panel,
 html.zoom-locked dialog,

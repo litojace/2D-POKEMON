@@ -49,3 +49,58 @@ it("preserves raid choices during countdown and teammate picks, but redraws chan
   expect(writes).toBe(2);
   expect(html).toContain("Rite locked in");
 });
+
+it("leaves native scrolling untouched on repeated results snapshots and restores it only after a redraw", () => {
+  let html = "",
+    position = 0,
+    scrollWrites = 0;
+  const card = {
+    get scrollTop() {
+      return position;
+    },
+    set scrollTop(value: number) {
+      position = value;
+      scrollWrites++;
+    },
+    contains: () => false,
+  };
+  const overlay = {
+    style: {},
+    dataset: {},
+    classList: { remove: () => {} },
+    get innerHTML() {
+      return html;
+    },
+    set innerHTML(value: string) {
+      html = value;
+      position = 0;
+    },
+    querySelector: (selector: string) =>
+      selector === ".raid-overlay" && html ? card : null,
+    querySelectorAll: () => [],
+  };
+  const hud = { innerHTML: "" };
+  vi.stubGlobal("document", {
+    getElementById: (id: string) =>
+      id === "raid-hud" ? hud : id === "arena-overlay" ? overlay : null,
+  });
+  const a = new RaidArena("SCROLL");
+  a.add("hero", "Hero");
+  a.start();
+  a.endRound(1);
+  const render = () =>
+    renderRaidUI(a.snapshot(), a.heroes()[0], async () => {});
+  render();
+  scrollWrites = 0;
+  // Simulate the browser moving the native scroller during a touch gesture.
+  for (let i = 1; i <= 10; i++) {
+    position = i * 12;
+    render();
+  }
+  expect(position).toBe(120);
+  expect(scrollWrites).toBe(0);
+  a.heroes()[0].ready = !a.heroes()[0].ready;
+  render();
+  expect(position).toBe(120);
+  expect(scrollWrites).toBe(1);
+});

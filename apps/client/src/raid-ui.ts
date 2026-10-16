@@ -220,14 +220,15 @@ export function renderRaidUI(
       : 0;
   const active = document.activeElement;
   const focusId = active && previousCard?.contains(active) ? active.id : "";
-  setOverlayMarkup(
+  const replaced = setOverlayMarkup(
     overlay,
     `<div class="overlay-card raid-overlay${state.phase === "finished" ? " raid-results" : state.phase === "intermission" ? " raid-draft" : ""}"><span class="eyebrow">BOSS RAID · CO-OP</span><h2>${title}</h2>${body}</div>`,
   );
   overlay.dataset.raidPhase = state.phase;
   const card = overlay.querySelector<HTMLElement>(".raid-overlay");
-  if (card) card.scrollTop = scrollTop;
-  if (focusId) {
+  // Leave native touch scrolling alone while snapshots keep the same DOM.
+  if (replaced && card) card.scrollTop = scrollTop;
+  if (replaced && focusId) {
     const button = document.getElementById(focusId);
     if (button && card?.contains(button) && !button.hasAttribute("disabled"))
       button.focus({ preventScroll: true });
