@@ -6837,3 +6837,71 @@ body:not(.battle-active)::before {background:rgba(15,29,52,.66);-webkit-backdrop
   .raid-result-summary .raid-result-art,.raid-result-summary .raid-result-art > svg {width:48px;height:48px;}
   .raid-result-summary .raid-result-stats b {font-size:22px;}
 }
+
+/* Mobile raid HUD: narrow, shallow, and clear of the touch control corners. */
+.battle-active.touch-mode #raid-hud {
+  left:calc(var(--safe-left,0px) + 8px);right:calc(var(--safe-right,0px) + 8px);
+  top:calc(var(--safe-top,0px) + 4px);max-width:620px;margin:0 auto;
+  padding:5px 8px;border-radius:8px;background:#0c1b32df;
+}
+.touch-mode .raid-boss-heading {font-size:10px;line-height:1.2;gap:8px;}
+.touch-mode .raid-boss-heading span {font-size:8px;}
+.touch-mode .raid-boss-health {height:5px;margin:4px 0 3px;}
+.touch-mode .raid-stagger {height:3px;margin:0 0 3px;margin-right:106px;}
+.touch-mode .raid-stagger span {top:-2px;left:calc(100% + 6px);right:auto;width:100px;text-align:right;font-size:6px;line-height:8px;letter-spacing:.4px;white-space:nowrap;}
+.touch-mode .raid-party-bars {gap:10px;margin-top:4px;}
+.touch-mode .raid-party-bars > span {grid-template-rows:auto 3px;gap:2px;font-size:8px;}
+.touch-mode .raid-party-bars i {height:3px;}
+.touch-mode .raid-party-bars small {display:none;}
+.touch-mode .raid-party-bars :is(.downed,.is-targeted) small {display:block;font-size:7px;line-height:1.2;}
+.touch-mode .raid-party-bars[data-party-size="1"] {display:none;}
+.touch-mode .raid-status-row {margin-top:4px;gap:8px;align-items:center;}
+.touch-mode .raid-status-row .raid-callout {font-size:9px;line-height:1.3;}
+.touch-mode .raid-elapsed {gap:4px;}
+.touch-mode .raid-elapsed > svg {width:11px;height:11px;}
+.touch-mode .raid-elapsed b {font-size:14px;letter-spacing:0;}
+
+/* Show the full choice set at once; team builds are optional reading below it. */
+#arena-overlay .raid-draft {width:min(1040px,100%);padding:18px 24px;}
+.battle-active.touch-mode #arena-overlay .raid-draft {width:min(1040px,100%);}
+.raid-draft h2 {font-size:30px;margin:6px 0;line-height:1.15;}
+.raid-draft .raid-phase-objective {margin:8px 0;font-size:12px;line-height:1.5;}
+.raid-draft .raid-rite-intro {margin:8px 0 12px;}
+.raid-draft .raid-rite-options > p {grid-column:1/-1;margin:12px 0;text-align:center;}
+.raid-draft .raid-team-summary {margin-top:12px;text-align:left;border-top:1px solid #7b9aba33;}
+.raid-team-summary > summary {padding:10px 0;min-height:36px;font-size:11px;color:#b7cbe1;cursor:pointer;}
+.raid-team-summary > summary:focus-visible {outline:2px solid #ffe099;outline-offset:2px;}
+.raid-team-summary .raid-team-builds {margin:0;padding:0 0 8px;border:0;}
+@media(min-width:560px) {
+  .raid-draft .raid-rite-options {grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
+  .raid-draft .raid-rite-options > button {grid-template-columns:minmax(0,1fr);grid-template-rows:52px 1fr;justify-items:center;align-items:start;gap:10px;padding:14px;min-height:0;border-left-width:1px;border-top:3px solid var(--rite-color);text-align:center;}
+  .raid-draft .raid-rite-options .raid-rite-icon {width:52px;height:52px;}
+  .raid-draft .raid-rite-icon > svg {width:44px;height:44px;}
+  .raid-draft .raid-rite-copy {align-self:stretch;align-content:start;grid-template-rows:2.6em auto;gap:6px;text-align:center;}
+  .raid-draft .raid-rite-copy b {font-size:14px;line-height:1.3;text-align:center;align-self:center;}
+  .raid-draft .raid-rite-copy small {font-size:12px;line-height:1.5;min-height:0;text-align:center;}
+}
+@media(orientation:landscape) and (max-height:600px) {
+  #arena-overlay .raid-draft {padding:10px 18px;}
+  .raid-draft > .eyebrow {font-size:8px;line-height:1.2;}
+  .raid-overlay.raid-draft h2 {font-size:23px;margin:4px 0;}
+  .raid-draft .raid-phase-objective {font-size:11px;line-height:1.35;margin:6px 0;}
+  .raid-draft .raid-rite-intro {margin:6px 0 8px;}
+  .raid-draft .raid-rite-intro > span:first-child {font-size:11px;}
+  .raid-draft .raid-choice-timer {min-height:28px;padding:4px 8px;}
+  .raid-draft .raid-rite-options {gap:8px;}
+  .raid-draft .raid-rite-options > button {grid-template-rows:36px 1fr;padding:10px;gap:6px;}
+  .raid-draft .raid-rite-options .raid-rite-icon {width:36px;height:36px;border-radius:9px;}
+  .raid-draft .raid-rite-icon > svg {width:30px;height:30px;}
+  .raid-draft .raid-rite-copy {grid-template-rows:2.6em auto;gap:3px;}
+  .raid-draft .raid-rite-copy b {font-size:12px;}
+  .raid-draft .raid-rite-copy small {font-size:11px;line-height:1.4;}
+  .raid-draft .raid-team-summary {margin-top:8px;}
+}
+@media(max-width:559px) {
+  #arena-overlay .raid-draft {padding:14px;}
+  .raid-draft h2 {font-size:25px;}
+  .raid-draft .raid-rite-options {gap:8px;}
+  .raid-draft .raid-rite-options > button {padding:10px;gap:10px;}
+  .raid-draft .raid-rite-copy small {min-height:0;}
+}

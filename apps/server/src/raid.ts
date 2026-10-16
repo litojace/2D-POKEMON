@@ -181,7 +181,7 @@ export class RaidArena extends Arena {
   }
   private offerRaidRites() {
     this.phase = "intermission";
-    this.deadline = this.time + (this.raid.phase === 1 ? 15 : 12);
+    this.deadline = this.time + RAID.riteChoiceSeconds;
     this.projectiles = [];
     this.zones = [];
     this.raid.warnings = [];

@@ -126,7 +126,7 @@ export function renderRaidUI(
   const charge = r.warnings.find((w) => w.kind === "charge");
   const targetLocked =
     charge?.lockAt !== undefined && state.time >= charge.lockAt;
-  hud.innerHTML = `<div class="raid-boss-heading"><b>${r.gilded ? "✦ GILDED " : ""}GRUMBLECRAG</b><span>PERIL ${r.peril} · PHASE ${r.phase}/3</span></div><div class="raid-boss-health"><i style="width:${Math.max(0, ((boss?.hp ?? 0) / r.maxHp) * 100)}%"></i></div><div class="raid-stagger"><i style="width:${r.staggerUntil > state.time ? 100 : r.stagger}%"></i><span>${r.staggerUntil > state.time ? "STAGGER · CORE EXPOSED" : "STAGGER"}</span></div><div class="raid-party-bars">${state.players
+  hud.innerHTML = `<div class="raid-boss-heading"><b>${r.gilded ? "✦ GILDED " : ""}GRUMBLECRAG</b><span>PERIL ${r.peril} · PHASE ${r.phase}/3</span></div><div class="raid-boss-health"><i style="width:${Math.max(0, ((boss?.hp ?? 0) / r.maxHp) * 100)}%"></i></div><div class="raid-stagger"><i style="width:${r.staggerUntil > state.time ? 100 : r.stagger}%"></i><span>${r.staggerUntil > state.time ? "STAGGER · CORE EXPOSED" : "STAGGER"}</span></div><div class="raid-party-bars" data-party-size="${state.players.filter((p) => !p.raidBoss && !p.out).length}">${state.players
     .filter((p) => !p.raidBoss)
     .map(
       (p) =>
@@ -193,7 +193,7 @@ export function renderRaidUI(
       r.phase === 1
         ? "Choose your starting rite"
         : `Phase ${r.phase} · ${RAID.phases[r.phase - 1]}`;
-    body = `${chapterPath(r.phase)}<p class="raid-phase-objective">${RAID_CHAPTERS[r.phase - 1].detail}</p><p class="raid-rite-intro"><span>Choose a role for this chapter. Your rites stack.</span><span class="raid-choice-timer" role="timer" aria-label="Time left to choose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>CHOOSE IN</span><strong>${LIVE_SECONDS}</strong></span></p><div class="raid-rite-options">${(r.offers[me.id] ?? []).map((id) => `<button data-raid-rite="${id}" class="secondary raid-rite-${id}">${raidRitePicture(id)}<span class="raid-rite-copy"><b>${RAID_RITES[id].name}</b><small>${RAID_RITES[id].text}</small></span></button>`).join("") || "<p>Rite locked in · waiting for the team.</p>"}</div><div class="raid-team-builds" aria-label="Team rites"></div>`;
+    body = `<p class="raid-phase-objective">${RAID_CHAPTERS[r.phase - 1].detail}</p><p class="raid-rite-intro"><span>Rites stack for this run.</span><span class="raid-choice-timer" role="timer" aria-label="Time left to choose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>CHOOSE IN</span><strong>${LIVE_SECONDS}</strong></span></p><div class="raid-rite-options">${(r.offers[me.id] ?? []).map((id) => `<button data-raid-rite="${id}" class="secondary raid-rite-${id}">${raidRitePicture(id)}<span class="raid-rite-copy"><b>${RAID_RITES[id].name}</b><small>${RAID_RITES[id].text}</small></span></button>`).join("") || "<p>Rite locked in · waiting for the team.</p>"}</div><details class="raid-team-summary"><summary>Team rites</summary><div class="raid-team-builds" aria-label="Team rites"></div></details>`;
   } else if (state.phase === "countdown") {
     title = String(Math.ceil(state.remaining));
     body = `<p>${RAID_CHAPTERS[r.phase - 1].objective}</p>`;
@@ -222,7 +222,7 @@ export function renderRaidUI(
   const focusId = active && previousCard?.contains(active) ? active.id : "";
   setOverlayMarkup(
     overlay,
-    `<div class="overlay-card raid-overlay${state.phase === "finished" ? " raid-results" : ""}"><span class="eyebrow">BOSS RAID · CO-OP</span><h2>${title}</h2>${body}</div>`,
+    `<div class="overlay-card raid-overlay${state.phase === "finished" ? " raid-results" : state.phase === "intermission" ? " raid-draft" : ""}"><span class="eyebrow">BOSS RAID · CO-OP</span><h2>${title}</h2>${body}</div>`,
   );
   overlay.dataset.raidPhase = state.phase;
   const card = overlay.querySelector<HTMLElement>(".raid-overlay");

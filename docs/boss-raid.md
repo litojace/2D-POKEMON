@@ -15,7 +15,7 @@ The encounter has three HP-gated chapters. Attacks cannot bypass a chapter with 
 
 Chapter one teaches the three basic attacks. Chapter two prioritizes charges and introduces the double slam. Chapter three keeps the core exposed, chains the double slam into debris, and gives players a recovery window afterward. The boss sheds a shoulder plate in chapter two and both plates in chapter three; final-phase fragments orbit its enlarged core. Breaking a pillar throws off glowing armor fragments.
 
-Contextual combat prompts shorten after the first two uses of each attack. Downed teammates have a green rescue marker and progress ring. Each chapter's objective is shown during the upgrade break. Starting rites allow 15 seconds; later breaks allow 12 seconds, and all choices confirmed ends the break early.
+Contextual combat prompts shorten after the first two uses of each attack. Downed teammates have a green rescue marker and progress ring. Each chapter's objective is shown during the upgrade break. Every rite choice allows 30 seconds, and all choices confirmed ends the break early. Landscape screens show three choices side by side; the team build details can be expanded below them.
 
 Normal crowd control adds stagger rather than stun-locking the boss. The boss cannot be pushed around by ordinary knockback. Downed teammates can crawl; standing nearby revives them. Being hit interrupts the rescuer, but progress is retained. A solo run gets one self-revive; another down ends it. A wiped co-op team loses.
 

@@ -370,3 +370,35 @@ it("credits all participating rescuers, including help before an interruption", 
   expect(a.raid.contributions![r.id].revives).toBe(1);
   expect(a.raid.contributions![p.id].revives).toBe(0);
 });
+
+it("allows thirty seconds to read rites in every chapter, with early completion when everyone picks", () => {
+  for (const chapter of [1, 2, 3]) {
+    const a = raid(2);
+    if (chapter === 1) {
+      a.heroes().forEach((p) => a.acknowledgeInstructions(p.id));
+    } else {
+      fight(a);
+      a.raid.phase = chapter - 1;
+      a.boss()!.hp = a.raid.maxHp * (chapter === 2 ? 0.67 : 0.33);
+      a.tick();
+    }
+    expect(a.raid.phase).toBe(chapter);
+    expect(a.deadline - a.time).toBeCloseTo(30);
+    a.tick(20);
+    expect(a.phase).toBe("intermission");
+    expect(Object.keys(a.raid.offers)).toHaveLength(2);
+    a.pickRite("p0", a.raid.offers.p0[0]);
+    expect(a.deadline - a.time).toBeCloseTo(10);
+    a.pickRite("p1", a.raid.offers.p1[0]);
+    expect(a.deadline - a.time).toBeCloseTo(1);
+    a.tick(1);
+    expect(a.phase).toBe("countdown");
+  }
+  const a = raid();
+  a.acknowledgeInstructions("p0");
+  a.tick(29.9);
+  expect(a.phase).toBe("intermission");
+  a.tick(0.2);
+  expect(a.phase).toBe("countdown");
+  expect(a.raid.rites.p0).toHaveLength(1);
+});
