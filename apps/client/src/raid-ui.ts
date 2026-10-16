@@ -130,7 +130,7 @@ export function raidBestiary(p: RaidProgress, character: CharacterId = "voltkit"
     )
     .join(
       "",
-    )}<p>A rare Gilded encounter grants its own title. Everything else has a guaranteed goal. Rewards change only how you look.</p></div><h3>Fighter appearance</h3><p class="raid-appearance-note">Pick a skin, aura, entrance and frame separately. They show on all your fighters in PvP and raids. Appearance only — no stat changes. Previewing ${CHARACTERS[character].name}.</p><div class="raid-equip">${raidCosmeticOptions(p, character)}</div><p class="raid-appearance-status" role="status"></p><h3>Raid of the Week · ${raidWeekly().week}</h3><p>Same boss, trait, seed and Peril for everyone. Times are separated by team size.</p>${[
+    )}<p>A rare Gilded encounter grants its own title. Everything else has a guaranteed goal. Rewards change only how you look.</p></div><h3>Fighter appearance</h3><p class="raid-appearance-note">Pick a skin, aura, entrance and frame separately. They show on all your fighters in PvP and raids. Appearance only — no stat changes. Previewing ${CHARACTERS[character].name}.</p>${p.loadout ? "" : '<p class="raid-appearance-note raid-update-needed">Saving separate slots needs the latest database update: run migration 008_raid_progress.sql in Supabase (as the last file run).</p>'}<div class="raid-equip">${raidCosmeticOptions(p, character)}</div><p class="raid-appearance-status" role="status"></p><h3>Raid of the Week · ${raidWeekly().week}</h3><p>Same boss, trait, seed and Peril for everyone. Times are separated by team size.</p>${[
     1, 2, 3, 4,
   ]
     .map(

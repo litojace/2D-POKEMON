@@ -1,4 +1,4 @@
-import { RAID_COSMETICS, type RaidReceipt } from "../../../packages/shared/src/raid.js";
+import { RAID_COSMETICS, type RaidProgress, type RaidReceipt } from "../../../packages/shared/src/raid.js";
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 import type { Express, Request, Response, NextFunction } from "express";
@@ -284,7 +284,12 @@ export function installAccountRoutes(
   app.post('/api/raids/equip',route(false,async(req,res,token,account)=>{
     const data=z.object({slot:z.enum(['skin','aura','entrance','frame']),item:z.enum(['cragbound','cragstone','mountain-aura','mountainborn','conqueror']).nullable()}).strict().parse(req.body);
     if(data.item&&RAID_COSMETICS[data.item].slot!==data.slot)throw new AccountError(400,'That item belongs in another slot.');
-    await provider.rpc(token,'arena_equip_raid_slot',{p_slot:data.slot,p_item:data.item});onPlayerChanged(account.id);res.json({ok:true});
+    await provider.rpc(token,'arena_equip_raid_slot',{p_slot:data.slot,p_item:data.item});
+    // Read it back: only report success if the database really kept it.
+    const progress=await provider.rpc(token,'arena_raid_progress',{}) as RaidProgress;
+    if(!progress?.loadout||(progress.loadout[data.slot]??null)!==data.item)
+      throw new AccountError(503,`Your appearance couldn't be kept: the database's raid functions are out of date. In Supabase's SQL Editor, run supabase/migrations/${LATEST_MIGRATION} again (it must be the last file run).`);
+    onPlayerChanged(account.id);res.json({ok:true,progress});
   }));
   app.get(
     "/api/progress",

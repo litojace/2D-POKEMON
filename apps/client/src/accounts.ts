@@ -402,9 +402,14 @@ export class AccountUI {
             button.setAttribute("aria-busy", "true");
             status.textContent = "Saving appearance…";
             try {
-              await this.api("/api/raids/equip", { slot, item });
-              const look = { ...raidLookOf(progress), [slot]: item };
-              progress.loadout = look;
+              const saved = (await this.api("/api/raids/equip", {
+                slot,
+                item,
+              })) as { progress?: RaidProgress };
+              // Show what the server actually saved, never a guess.
+              if (saved.progress) Object.assign(progress, saved.progress);
+              else progress.loadout = { ...raidLookOf(progress), [slot]: item };
+              const look = raidLookOf(progress);
               this.raidLook = look;
               // The save worked: a hiccup redrawing the page behind the
               // dialog must not be reported as a failed save.

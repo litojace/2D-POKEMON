@@ -198,3 +198,44 @@ it("waits for both teammates before quick retry and preserves the party's picks"
   expect(a.heroes().map((p) => p.character)).toEqual(picks);
   expect(Object.keys(a.raid.offers)).toHaveLength(2);
 });
+
+it("only reports an equipped slot after the database really kept it", async () => {
+  const { connect, accounts } = await setup();
+  let stored: Record<string, string | null> = {};
+  let upToDate = true;
+  accounts.provider.rpc = async (_token, name, args) => {
+    if (name === "arena_equip_raid_slot") {
+      const a = args as { p_slot: string; p_item: string | null };
+      stored = { ...stored, [a.p_slot]: a.p_item };
+      return null;
+    }
+    // An outdated progress function (e.g. 007 run again after 008) has no loadout.
+    return {
+      highestPeril: 3,
+      clears: 5,
+      cosmetics: ["cragbound", "mountain-aura"],
+      weekly: [],
+      ...(upToDate ? { loadout: stored } : { equipped: null }),
+    };
+  };
+  const host = await connect();
+  await emit(host, "create", { name: "Raider", mode: "raid" });
+  const address = server!.http.address() as { port: number };
+  const equip = (body: unknown) =>
+    fetch(`http://127.0.0.1:${address.port}/api/raids/equip`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${(host.auth as { accessToken: string }).accessToken}`,
+      },
+      body: JSON.stringify(body),
+    });
+  const ok = await equip({ slot: "aura", item: "mountain-aura" });
+  expect(ok.ok).toBe(true);
+  expect((await ok.json()).progress.loadout.aura).toBe("mountain-aura");
+  expect((await equip({ slot: "aura", item: "cragbound" })).status).toBe(400);
+  upToDate = false;
+  const stale = await equip({ slot: "skin", item: "cragbound" });
+  expect(stale.status).toBe(503);
+  expect((await stale.json()).error).toContain("008_raid_progress.sql");
+});
