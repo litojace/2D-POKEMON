@@ -215,8 +215,13 @@ export class RaidBossMotion {
     } else this.strideAge = 0;
     this.fragments = this.fragments.filter((v) => (v.age += dt) < v.life);
     const slam = r.warnings.find((w) => w.kind === "slam");
-    const debris = r.warnings.find((w) => w.kind === "debris");
-    const charge = r.warnings.find((w) => w.kind === "charge");
+    // Volleys wind up like a charge; eruptions and meteors like debris.
+    const debris = r.warnings.find(
+      (w) => w.kind === "debris" || w.kind === "eruption" || w.kind === "share",
+    );
+    const charge = r.warnings.find(
+      (w) => w.kind === "charge" || w.kind === "volley",
+    );
     const progress = (w: typeof slam) =>
       w
         ? clamp(

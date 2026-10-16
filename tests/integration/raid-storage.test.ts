@@ -42,6 +42,7 @@ beforeAll(async () => {
     "005_friends.sql",
     "006_ratings.sql",
     "007_raids.sql",
+    "008_raid_progress.sql",
   ])
     await db.exec(await readFile("supabase/migrations/" + file, "utf8"));
   await login();
@@ -76,7 +77,12 @@ it("records verified clears once, grants guaranteed rewards, and leaves Elo unch
   const p = await progress();
   expect(p.clears).toBe(5);
   expect(p.highestPeril).toBe(3);
-  expect(p.cosmetics).toEqual(["cragbound", "mountain-aura"]);
+  expect(p.cosmetics).toEqual([
+    "cragbound",
+    "mountain-aura",
+    "mountainborn",
+    "conqueror",
+  ]);
   expect(p.weekly[0].names).toEqual(["Raider"]);
   await db.query("select public.arena_equip_raid_cosmetic('cragbound')");
   expect((await progress()).equipped).toBe("cragbound");
@@ -91,4 +97,69 @@ it("records verified clears once, grants guaranteed rewards, and leaves Elo unch
   ).rows[0].p;
   expect(rating.matches).toBe(0);
   expect(rating.rating).toBe(1000);
+});
+
+it("saves losses for titles and tuning without counting them as clears", async () => {
+  await db.exec("reset role;set role service_role");
+  const loss = (n: number, pillars: number, revives: number) => ({
+    ...receipt(100 + n),
+    weekly: true,
+    result: "defeat",
+    phaseReached: 2,
+    seconds: 60,
+    downCauses: { volley: 2, share: 1 },
+    players: [
+      { accountId: player, character: "terradon", pillars, revives, damage: 900, downs: 2 },
+    ],
+  });
+  for (let n = 0; n < 3; n++)
+    await db.query("select public.arena_record_raid($1::jsonb)", [
+      JSON.stringify(loss(n, 9, 7)),
+    ]);
+  const p = await progress();
+  expect(p.clears).toBe(5);
+  expect(p.runs).toBe(8);
+  expect(p.pillars).toBe(27);
+  expect(p.revives).toBe(21);
+  // Losses never reach the weekly clear board.
+  expect(p.weekly.every((row: any) => row.seconds !== 60)).toBe(true);
+  const titles = (
+    await db.query<{ p: any }>("select public.arena_me() as p")
+  ).rows[0].p.ownedTitles.map((t: any) => t.name);
+  expect(titles).toContain("Pillar Breaker");
+  expect(titles).toContain("Mountain Guardian");
+  expect(p.titles).toContain("Pillar Breaker");
+});
+it("equips one item per slot and refuses unearned or misplaced items", async () => {
+  await login();
+  await db.query("select public.arena_equip_raid_slot('frame','conqueror')");
+  await db.query("select public.arena_equip_raid_slot('entrance','mountainborn')");
+  await expect(
+    db.query("select public.arena_equip_raid_slot('skin','cragstone')"),
+  ).rejects.toThrow("not earned");
+  await expect(
+    db.query("select public.arena_equip_raid_slot('skin','conqueror')"),
+  ).rejects.toThrow("another slot");
+  const p = await progress();
+  expect(p.loadout).toEqual({
+    skin: "cragbound",
+    aura: null,
+    entrance: "mountainborn",
+    frame: "conqueror",
+  });
+  await db.query("select public.arena_equip_raid_slot('skin',null)");
+  expect((await progress()).loadout.skin).toBeNull();
+});
+it("keeps balance data for admins only", async () => {
+  await login();
+  await expect(db.query("select public.arena_raid_balance()")).rejects.toThrow();
+  await db.exec(`reset role;insert into public.arena_admins values('${player}')`);
+  await login();
+  const balance = (
+    await db.query<{ p: any }>("select public.arena_raid_balance() as p")
+  ).rows[0].p;
+  expect(balance.downCauses).toEqual({ volley: 6, share: 3 });
+  expect(
+    balance.runs.find((r: any) => r.result === "defeat").phaseReached,
+  ).toBe(2);
 });

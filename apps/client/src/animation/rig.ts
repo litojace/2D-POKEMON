@@ -1,4 +1,4 @@
-import { cosmeticLayer } from "./cosmetics";
+import { cosmeticLayer, type Skin } from "./cosmetics";
 import { drawElementGlyph } from "../element-effects";
 import Phaser from "phaser";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
@@ -43,7 +43,7 @@ const LANTERN: Spring = { drag: 1 / 240, stiff: 32, damp: 3.2 };
 const FEET = 21;
 const MAX_PARTICLES = 48;
 
-type ParticleShape = "dot" | "spark" | "star" | "bubble" | "puff";
+type ParticleShape = "dot" | "spark" | "star" | "bubble" | "puff" | "pebble";
 interface Particle {
   x: number;
   y: number;
@@ -74,6 +74,7 @@ export class FighterRig {
   private velocityX = 0;
   private velocityY = 0;
   private lastState: AnimationState = "idle";
+  private entrance = false;
   private lastProgress = 0;
   /** The scale the caller asked for (view zoom, giants); squash multiplies it. */
   private baseX = 1;
@@ -560,6 +561,13 @@ export class FighterRig {
         image.rotation = s.a;
       }
     } else if (reduced) this.springs.clear();
+    // Mountainborn entrance: a burst of pebbles as the round's greeting starts.
+    if (
+      state === "wave" &&
+      this.lastState !== "wave" &&
+      pose.look?.entrance === "mountainborn"
+    )
+      this.entrance = true;
     this.lastState = state;
     // Keep independently animated facial parts attached to the head, including recoil/fainting.
     eyes.rotation = head.rotation;
@@ -590,7 +598,11 @@ export class FighterRig {
     this.root.x += offsetX * this.baseX;
     this.root.y += offsetY * this.baseY + FEET * this.baseY * (1 - sy);
     for (const image of this.images.values()) {
-      const texture = cosmeticLayer(this.scene, image.texture.key, pose.cosmetic === "cragbound");
+      const texture = cosmeticLayer(
+        this.scene,
+        image.texture.key,
+        (pose.look?.skin ?? null) as Skin | null,
+      );
       if (image.texture.key !== texture) image.setTexture(texture);
     }
     this.effects.clear();
@@ -778,6 +790,23 @@ export class FighterRig {
     };
     // The tail tip sits on the far side when facing right.
     const tailX = (ax: number) => (dir === "right" ? 200 - ax : ax);
+    if (this.entrance) {
+      this.entrance = false;
+      for (let i = 0; i < 22; i++) {
+        const a = -Math.PI * (0.1 + Math.random() * 0.8);
+        const speed = 90 + Math.random() * 150;
+        this.emit({
+          x: x + (Math.random() - 0.5) * 30 * sc,
+          y: y + FEET * sc,
+          vx: Math.cos(a) * speed,
+          vy: Math.sin(a) * speed - 60,
+          life: 0.8 + Math.random() * 0.4,
+          size: (2.5 + Math.random() * 2.5) * sc,
+          color: [0x8a7a68, 0xa99782, 0x6f6152, 0xffc46b][i % 4],
+          shape: "pebble",
+        });
+      }
+    }
     // ---- Signature particles.
     if (this.character === "voltkit" && this.chance(moving ? 6 : 2.5, dt)) {
       const tip = at("tail", tailX(168), 84);
@@ -884,7 +913,14 @@ export class FighterRig {
       p.age += dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
-      p.vy += (p.shape === "puff" ? 20 : p.shape === "star" ? -6 : 0) * dt;
+      p.vy +=
+        (p.shape === "puff"
+          ? 20
+          : p.shape === "star"
+            ? -6
+            : p.shape === "pebble"
+              ? 420
+              : 0) * dt;
     }
     this.particles = this.particles.filter((p) => p.age < p.life);
     for (const p of this.particles) {
@@ -894,7 +930,12 @@ export class FighterRig {
         g.lineStyle(1.2, p.color, 0.8 * fade).strokeCircle(p.x, p.y, p.size);
       else if (p.shape === "puff")
         g.fillStyle(p.color, 0.35 * fade).fillCircle(p.x, p.y, p.size * (1 + p.age * 2));
-      else if (p.shape === "spark")
+      else if (p.shape === "pebble") {
+        const s = p.size;
+        g.fillStyle(p.color, fade)
+          .fillTriangle(p.x - s, p.y, p.x, p.y - s * 0.8, p.x + s, p.y)
+          .fillTriangle(p.x - s, p.y, p.x, p.y + s * 0.7, p.x + s, p.y);
+      } else if (p.shape === "spark")
         g.lineStyle(1.6, p.color, fade)
           .lineBetween(p.x - p.size, p.y, p.x, p.y - p.size * 0.6)
           .lineBetween(p.x, p.y - p.size * 0.6, p.x + p.size * 0.4, p.y + p.size * 0.5);

@@ -1,3 +1,4 @@
+import type { RaidLoadout } from "../../../../packages/shared/src/raid";
 export type Facing = "up" | "down" | "left" | "right";
 export type AnimationState =
   | "idle"
@@ -35,7 +36,8 @@ const priority: Record<AnimationState, number> = {
   defeat: 100,
 };
 export interface AnimationPose {
-  cosmetic?: "cragbound" | "mountain-aura";
+  /** Equipped raid appearance (skin and entrance affect the rig). */
+  look?: RaidLoadout;
   hp: number;
   speed: number;
   angle: number;

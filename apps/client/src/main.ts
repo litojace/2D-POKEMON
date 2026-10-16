@@ -1,6 +1,6 @@
 import { wireRaidDifficulty } from "./raid-difficulty";
 import { updateMenuShell } from "./menu-shell";
-import { raidLobby, renderRaidUI, drawRaidArena } from "./raid-ui";
+import { raidLobby, renderRaidUI, drawRaidArena, raidLookList } from "./raid-ui";
 import { illustratedHelp } from "./illustrated-help";
 import { menuIcon } from "./menu-icons";
 import {
@@ -328,6 +328,27 @@ window.addEventListener("keydown", (e) => {
   else if (state?.phase === "intermission" && !$<HTMLDialogElement>("dialog").open)
     pressAction(action);
 });
+// Raid team signals on Z / X / C (when those keys aren't bound to anything).
+const PING_KEYS: Record<string, "stack" | "revive" | "bait"> = {
+  KeyZ: "stack",
+  KeyX: "revive",
+  KeyC: "bait",
+};
+window.addEventListener("keydown", (e) => {
+  const kind = PING_KEYS[e.code];
+  if (
+    !kind ||
+    e.repeat ||
+    controlsCapturing() ||
+    typingIn(e.target) ||
+    actionFor(controlPrefs().bindings, e.code) ||
+    !state?.raid ||
+    state.raid.drill ||
+    !["playing", "countdown"].includes(state.phase)
+  )
+    return;
+  void request("raid-ping", { kind });
+});
 let ritePending = "";
 function chooseRite(id: string) {
   if (ritePending === id) return;
@@ -551,11 +572,12 @@ function wireRoster(isRoom: boolean) {
 function syncMenuCosmetic() {
   const panel=document.querySelector<HTMLElement>("#menu .roster-panel");
   const fighter=state?.players.find(p=>p.id===myId);
-  const cosmetic=accountsUI?.account && accountsUI.raidCosmetic!==undefined ? accountsUI.raidCosmetic : fighter?.raidCosmetic;
-  if(panel)panel.dataset.raidCosmetic=cosmetic??"";
+  const look=accountsUI?.account && accountsUI.raidLook!==undefined ? accountsUI.raidLook : fighter?.raidLook;
+  const worn=raidLookList(look);
+  if(panel)panel.dataset.raidCosmetic=worn;
   const avatar=Array.from(document.querySelectorAll<HTMLElement>("#menu [data-raid-player]"))
     .find(row=>row.dataset.raidPlayer===myId)?.querySelector<HTMLElement>(".raid-party-avatar");
-  if(avatar)avatar.dataset.raidCosmetic=cosmetic??"";
+  if(avatar)avatar.dataset.raidCosmetic=worn;
 }
 /** Move the selection highlight and swap the detail panel without re-rendering. */
 function showSelection(revealSelection = false) {
@@ -804,7 +826,7 @@ function roomPanel(me: Fighter) {
   if (state?.raid) return raidLobby(state,myId,selected);
   const row = (p: Fighter) => {
     const fighter = CHARACTERS[p.id === myId ? selected : p.character];
-    return `<div${p.id === myId ? " data-me" : ""}><span class="player-avatar" style="--element:#${fighter.color.toString(16).padStart(6, "0")}" title="${fighter.name}">${fighterAvatar(fighter.id, `lobby${state!.players.indexOf(p)}`)}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small class="player-fighter">${fighter.name}${p.flair ? ` · <b class="flair flair-${p.flair.toLowerCase()}">★ ${p.flair}</b>` : ""}</small></span><b class="status-pill ${!p.connected ? "offline" : p.ready ? "ready" : "choosing"}">${!p.connected ? "Offline" : p.ready ? "Ready" : "Choosing"}</b></div>`;
+    return `<div${p.id === myId ? " data-me" : ""}><span class="player-avatar" data-raid-cosmetic="${raidLookList(p.raidLook)}" style="--element:#${fighter.color.toString(16).padStart(6, "0")}" title="${fighter.name}">${fighterAvatar(fighter.id, `lobby${state!.players.indexOf(p)}`)}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small class="player-fighter">${fighter.name}${p.flair ? ` · <b class="flair flair-${p.flair.toLowerCase()}">★ ${p.flair}</b>` : ""}</small></span><b class="status-pill ${!p.connected ? "offline" : p.ready ? "ready" : "choosing"}">${!p.connected ? "Offline" : p.ready ? "Ready" : "Choosing"}</b></div>`;
   };
   const ready = `<button class="primary" id="ready">${me.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full" id="leave">Leave room</button>`;
   const code = `<button id="copy" class="room-code">${state!.code}<span>${COPY_ICON}COPY CODE</span></button><button id="invite" class="secondary full invite-link">Share invite link</button>`;
@@ -861,6 +883,10 @@ function wireRaidLobby() {
   const bestiary=document.getElementById('raid-bestiary');if(bestiary)bestiary.onclick=()=>void showRaidBestiary();
   const peril=document.getElementById('raid-peril') as HTMLInputElement|null,weekly=document.getElementById('raid-weekly') as HTMLInputElement|null;
   const configure=()=>void request('raid-config',{peril:Number(peril?.value??1),weekly:weekly?.checked??false});
+  // Practice: the host picks one boss attack to repeat.
+  document.querySelectorAll<HTMLButtonElement>("#menu [data-raid-drill]").forEach((b)=>{
+    b.onclick=()=>void request('raid-drill',{kind:b.dataset.raidDrill}).then((reply)=>{const r=reply as {ok?:boolean;error?:string};if(!r.ok&&r.error)toast(r.error);});
+  });
   if(peril)peril.onchange=configure;if(weekly)weekly.onchange=configure;
 }
 function wireRoom() {
@@ -912,7 +938,7 @@ function renderMenu(revealSelection = false) {
   const p = state?.players.find((p) => p.id === myId);
   const isRoom = !!p;
   const watchingRoom = !isRoom && !!watching && state?.code === watching;
-  const key = `${isRoom ? `room-${state!.mode ?? "duel"}` : watchingRoom ? `watch-${watching}` : "home"}:${(state?.mutators ?? []).join(",")}|${(state?.watchers ?? []).join(",")}:${state?.players.map((p) => `${p.id}${p.id === myId ? "" : p.character}${p.ready}${p.connected}${p.team ?? ""}${p.flair ?? ""}${p.raidCosmetic ?? ""}`).join(":")}:${selected}`;
+  const key = `${isRoom ? `room-${state!.mode ?? "duel"}` : watchingRoom ? `watch-${watching}` : "home"}:${(state?.mutators ?? []).join(",")}|${(state?.watchers ?? []).join(",")}:${state?.players.map((p) => `${p.id}${p.id === myId ? "" : p.character}${p.ready}${p.connected}${p.team ?? ""}${p.flair ?? ""}${raidLookList(p.raidLook)}`).join(":")}:${selected}`;
   if (screen === key) return;
   const previous = screen;
   screen = key;
@@ -2615,7 +2641,7 @@ class ArenaScene extends Phaser.Scene {
           : 0;
       const pose = {
         hp: p.hp,
-        cosmetic: p.raidCosmetic,
+        look: p.raidLook,
         speed: Math.hypot(p.vx, p.vy),
         angle: p.angle,
         dash: serverPlayer.dashUntil > state.time,
@@ -2728,7 +2754,7 @@ class ArenaScene extends Phaser.Scene {
         view.fighterX * 0.7 * giant,
         view.fighterY * 0.7 * giant,
       );
-      if(p.raidCosmetic==='mountain-aura')g.lineStyle(3,0xffd28c,.7).strokeEllipse(x,y+10,95,45);
+      if(p.raidLook?.aura==='mountain-aura')g.lineStyle(3,0xffd28c,.7).strokeEllipse(x,y+10,95,45);
       rig.setVisible(true);
       const casting =
         rig.controller.state === "basic" ||
@@ -3060,7 +3086,7 @@ accountsUI = new AccountUI({
     const shown = JSON.stringify([
       accountsUI?.account ?? null,
       !!accountsUI?.session,
-      accountsUI?.raidCosmetic,
+      accountsUI?.raidLook ?? null,
     ]);
     if (shown === accountShown) return;
     accountShown = shown;

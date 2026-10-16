@@ -636,6 +636,10 @@ export class Arena {
     }
   }
   damageLimit(target: Fighter) { return target.hp; }
+  /** Modes can adjust what a bot decided (raids: dodge boss telegraphs). */
+  botInput(_bot: Fighter, input: Input) {
+    return input;
+  }
   reflectDamage(source: Fighter,target: Fighter,amount:number) {
       const reflected = Math.min(
         source.hp,
@@ -924,7 +928,7 @@ export class Arena {
     }
     for (const [id, brain] of this.bots) {
       const bot = this.players.find((p) => p.id === id);
-      if (bot) bot.lastInput = brain.think(this, bot);
+      if (bot) bot.lastInput = this.botInput(bot, brain.think(this, bot));
     }
     for (const p of this.players) {
       // Knocked-out (2v2) or departed fighters sit still until the next round.

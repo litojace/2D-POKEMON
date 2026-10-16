@@ -200,7 +200,15 @@ export class BotBrain {
   }
   think(arena: Arena, me: Fighter): Input {
     const input = blankInput();
-    const enemy = arena.players.find((p) => p.id !== me.id);
+    // An opponent (in a raid, the boss; never a teammate).
+    const enemy =
+      arena.players.find(
+        (p) =>
+          p.id !== me.id &&
+          !p.out &&
+          p.hp > 0 &&
+          arena.teamOf(p) !== arena.teamOf(me),
+      ) ?? arena.players.find((p) => p.id !== me.id);
     const t = arena.time;
     input.aimX = enemy?.x ?? RULES.width / 2;
     input.aimY = enemy?.y ?? RULES.height / 2;

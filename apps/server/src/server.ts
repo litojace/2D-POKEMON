@@ -1,5 +1,5 @@
 import { RaidArena } from "./raid.js";
-import { raidWeekly, type RaidProgress, type RaidReceipt } from "../../../packages/shared/src/raid.js";
+import { RAID_ATTACKS, RAID_PINGS, RAID_COSMETICS, raidLookOf, raidWeekly, type RaidProgress, type RaidReceipt } from "../../../packages/shared/src/raid.js";
 import express from "express";
 import { createServer } from "node:http";
 import { randomBytes, randomInt, randomUUID } from "node:crypto";
@@ -138,7 +138,7 @@ export function createArenaServer(
         fighter.titleColor = account.titleColor;
       }
       if(fighter) {
-        try {const progress=await accounts.rpc(socket.data.accessToken,'arena_raid_progress',{}) as {equipped?:'cragbound'|'mountain-aura'};fighter.raidCosmetic=progress.equipped??undefined;}catch{/* Optional until migration 007 is configured. */}
+        try {const progress=await accounts.rpc(socket.data.accessToken,'arena_raid_progress',{}) as RaidProgress;fighter.raidLook=raidLookOf(progress);}catch{/* Optional until migration 007 is configured. */}
       }
       if(arena && fighter)broadcast(arena);
       socket.emit("account-changed");
@@ -317,12 +317,14 @@ export function createArenaServer(
   }
   const raidSaves = new WeakMap<RaidArena,string>();
   function broadcast(arena: Arena) {
-    if(arena instanceof RaidArena && arena.raid.result === 'victory' && arena.raid.resultId && raidSaves.get(arena)!==arena.raid.resultId) {
+    // Wins and real attempts (not practice, not instant quits) are saved:
+    // losses still count towards titles and tell us which attacks are unfair.
+    if(arena instanceof RaidArena && arena.raid.result && !arena.raid.drill && (arena.raid.result==='victory'||arena.raid.elapsed>=20) && arena.raid.resultId && raidSaves.get(arena)!==arena.raid.resultId) {
       raidSaves.set(arena,arena.raid.resultId);
       const runId=arena.raid.resultId, r=arena.raid;
       const owners=fighterAccounts.get(arena);
-      const players=arena.heroes().map(p=>({accountId:owners?.get(p.id)??'',character:p.character})).filter(p=>p.accountId);
-      const receipt:RaidReceipt={id:runId,boss:'grumblecrag',peril:r.peril,trait:r.trait,gilded:r.gilded,weekly:r.weekly,week:r.week,seed:r.seed,partySize:r.partySize,seconds:Math.round(r.elapsed*1000)/1000,downs:r.downs,revives:r.revives,players};
+      const players=arena.heroes().map(p=>{const c=r.contributions?.[p.id];return {accountId:owners?.get(p.id)??'',character:p.character,damage:Math.round(c?.damage??0),revives:c?.revives??0,pillars:c?.pillars??0,downs:c?.downs??0};}).filter(p=>p.accountId);
+      const receipt:RaidReceipt={id:runId,boss:'grumblecrag',peril:r.peril,trait:r.trait,gilded:r.gilded,weekly:r.weekly,week:r.week,seed:r.seed,partySize:r.partySize,seconds:Math.max(0.001,Math.round(r.elapsed*1000)/1000),downs:r.downs,revives:r.revives,result:r.result??undefined,phaseReached:r.phase,downCauses:{...arena.downCauses},players};
       r.rewardStatus='saving';
       void (accounts.recordRaid ? accounts.recordRaid(receipt) : Promise.reject(new Error('Raid rewards need server storage configuration.'))).then(()=>{
         if(arena.raid.resultId!==runId)return;
@@ -375,7 +377,15 @@ export function createArenaServer(
     p.lastInput = blankInput();
     session.socketId = null;
     session.expires = Date.now() + (permanent ? 0 : grace);
-    if (!["lobby", "finished", "paused"].includes(arena.phase)) {
+    const standIn =
+      arena instanceof RaidArena &&
+      ["playing", "countdown", "intermission"].includes(arena.phase) &&
+      arena.heroes().some(
+        (h) =>
+          h.id !== p.id && h.connected && !arena.raid.standIns?.includes(h.id),
+      ) &&
+      arena.standIn(p.id);
+    if (!standIn && !["lobby", "finished", "paused"].includes(arena.phase)) {
       arena.previousPhase = arena.phase;
       arena.phase = "paused";
     }
@@ -394,6 +404,7 @@ export function createArenaServer(
       !["lobby", "finished"].includes(arena.phase)
     ) {
       // 2v2 / free-for-all: the leaver is out for good; the rest play on.
+      if (arena instanceof RaidArena) arena.release(leaver.id);
       leaver.out = true;
       leaver.hp = 0;
       leaver.connected = false;
@@ -485,7 +496,7 @@ export function createArenaServer(
         expires: Infinity,
       });
       const attached=arena.players.find(p=>p.id===id);
-      void accounts.rpc(socket.data.accessToken,'arena_raid_progress',{}).then(value=>{if(attached){attached.raidCosmetic=(value as {equipped?:'cragbound'|'mountain-aura'}).equipped??undefined;broadcast(arena);}}).catch(()=>{});
+      void accounts.rpc(socket.data.accessToken,'arena_raid_progress',{}).then(value=>{if(attached){attached.raidLook=raidLookOf(value as RaidProgress);broadcast(arena);}}).catch(()=>{});
       socket.join(arena.code);
       reply(cb, { ok: true, id, token, code: arena.code });
       if (publish) broadcast(arena);
@@ -646,6 +657,7 @@ export function createArenaServer(
       s.expires = Infinity;
       p.connected = true;
       p.lastInput = blankInput();
+      if (arena instanceof RaidArena) arena.release(p.id);
       socket.join(s.code);
       resume(arena);
       reply(cb, { ok: true, id: s.id, code: s.code, token: s.token });
@@ -829,6 +841,23 @@ export function createArenaServer(
       if(!result.data.weekly&&result.data.peril>highest+1)return fail(cb,'Clear the previous Peril first.');
       a.configure(result.data.peril,result.data.weekly);for(const p of a.players)p.ready=false;reply(cb,{ok:true});broadcast(a);
     });
+    socket.on('raid-ping',(data:unknown,cb:unknown)=>
+      withRoom(cb,(a,id)=>{
+        const kind=z.object({kind:z.enum(Object.keys(RAID_PINGS) as ['stack','revive','bait'])}).strict().safeParse(data);
+        if(!(a instanceof RaidArena)||!kind.success)return fail(cb,'Pings are for raids.');
+        if(!a.ping(id,kind.data.kind))return fail(cb,'Wait a moment before pinging again.');
+        reply(cb,{ok:true});broadcast(a);
+      },false));
+    socket.on('raid-drill',(data:unknown,cb:unknown)=>
+      withRoom(cb,(a,id)=>{
+        const result=z.object({kind:z.enum(Object.keys(RAID_ATTACKS) as ['charge','slam','debris','volley','eruption','share']).nullable()}).strict().safeParse(data);
+        if(!(a instanceof RaidArena)||!result.success)return fail(cb,'Choose an attack to practise.');
+        if(a.players[0]?.id!==id)return fail(cb,'The host picks the practice attack.');
+        const kind=result.data.kind;
+        const ok=kind===null?a.stopDrill():a.raid.drill?a.setDrill(kind):a.startDrill(kind);
+        if(!ok)return fail(cb,'Practice opens from the raid lobby.');
+        reply(cb,{ok:true});broadcast(a);
+      }));
     socket.on("ready", (_data: unknown, cb: unknown) =>
       withRoom(cb, (a, id) => {
         if (a.phase !== "lobby")
@@ -980,7 +1009,16 @@ export function createArenaServer(
     );
     socket.on("lobby", (_data: unknown, cb: unknown) =>
       withRoom(cb, (a) => {
+        if (a instanceof RaidArena && a.raid.drill) {
+          a.stopDrill();
+          reply(cb, { ok: true });
+          broadcast(a);
+          return;
+        }
         if (a.phase !== "finished") return fail(cb, "Finish the match first.");
+        // Raid stand-ins hand back their seats in the lobby.
+        if (a instanceof RaidArena)
+          for (const id of [...(a.raid.standIns ?? [])]) a.release(id);
         if (a.bots.size) return fail(cb, "Leave to return to the menu.");
         a.phase = "lobby";
         a.restoreChosen();

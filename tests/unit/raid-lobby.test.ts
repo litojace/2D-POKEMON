@@ -28,30 +28,35 @@ it("marks earned rewards completed and keeps unearned cosmetics visibly locked",
     weekly: [],
     equipped: null,
   });
-  expect(html.match(/class="raid-reward is-complete"/g)).toHaveLength(1);
-  expect(html).toContain("Completed");
-  expect(html).toContain("Unlock with 5 raid clears");
-  expect(html).toMatch(/data-raid-cosmetic="cragbound" disabled/);
+  expect(html.match(/class="raid-goal is-complete"/g)).toHaveLength(1);
+  expect(html).toContain("Unlock: 5 raid clears");
+  expect(html).toContain("1/5 clears");
+  expect(html).toMatch(/data-raid-item="cragbound" data-raid-cosmetic="cragbound" disabled/);
+  // Before migration 008 the lifetime titles say when they start counting.
+  expect(html).toContain("Counts from the next raid update");
 });
-it("distinguishes an equipped cosmetic from another unlocked option", () => {
+it("equips one item per slot and shows exact title progress", () => {
   const html = raidBestiary(
     {
-      clears: 5,
+      clears: 10,
       highestPeril: 3,
       bestSeconds: 60,
       titles: [],
-      cosmetics: ["cragbound", "mountain-aura"],
+      cosmetics: ["cragbound", "cragstone", "mountain-aura", "mountainborn", "conqueror"],
       weekly: [],
-      equipped: "cragbound",
+      loadout: { skin: "cragstone", frame: "conqueror" },
+      pillars: 7,
+      revives: 25,
+      runs: 14,
     },
     "tidefin",
   );
-  expect(html.match(/class="raid-reward is-complete"/g)).toHaveLength(4);
-  expect(html).toMatch(/is-equipped" data-raid-cosmetic="cragbound" disabled/);
-  expect(html).toMatch(/data-raid-cosmetic="mountain-aura" >/);
-  expect(html).toContain("✓ Equipped");
-  expect(html).toContain("Choose one look for all your fighters");
+  expect(html).toMatch(/is-equipped" data-raid-slot="skin" data-raid-item="cragstone"/);
+  expect(html).toMatch(/is-equipped" data-raid-slot="frame" data-raid-item="conqueror"/);
+  // The aura slot is empty, so its "None" option is the equipped one.
+  expect(html).toMatch(/is-equipped" data-raid-slot="aura" data-raid-item=""/);
+  expect(html).toContain("7/25 pillars baited");
+  expect(html).toContain("20/20 revives");
   expect(html).toContain("Previewing Tidefin");
-  expect(html.match(/aria-label="Tidefin"/g)).toHaveLength(3);
   expect(html).not.toContain('aria-label="Voltkit"');
 });

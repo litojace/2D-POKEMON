@@ -53,10 +53,12 @@ it("uses saved reward counts and handles unavailable progress without inventing 
     weekly: [],
   };
   expect(raidRewardProgress(p)).toContain("4/5 clears");
-  expect(raidRewardProgress({ ...p, clears: 5 })).toContain(
+  expect(raidRewardProgress({ ...p, clears: 5 })).toContain("Cragstone skin");
+  expect(raidRewardProgress({ ...p, clears: 5 })).toContain("5/10 clears");
+  expect(raidRewardProgress({ ...p, clears: 10 })).toContain(
     "Mountain Conqueror",
   );
-  expect(raidRewardProgress({ ...p, clears: 5, highestPeril: 3 })).toContain(
+  expect(raidRewardProgress({ ...p, clears: 10, highestPeril: 3 })).toContain(
     "Mountain aura",
   );
 });

@@ -521,6 +521,17 @@ export function creatureLayers(
       layers.armR = `${path(`M${px(118)} 124Q${px(136)} 134 ${px(136)} 152L${px(124)} 150Q${px(122)} 138 ${px(112)} 132Z`, body)}`;
     }
   }
+  // Cragstone skin (menus): glowing cracks, hidden unless the skin is worn.
+  // The rig paints its own cracks, and display="none" keeps them out of it.
+  const crack = (d: string) =>
+    `<g class="crag-cracks" display="none" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="${d}" stroke="#ff9a2e" stroke-width="4.5" opacity=".35"/><path d="${d}" stroke="#ffcf7a" stroke-width="1.7"/></g>`;
+  if (layers.body && !back)
+    layers.body += crack("M88 127l6 7-3 6 7 8M113 131l-5 7 4 7");
+  else if (layers.body) layers.body += crack("M90 124l7 9-4 8 8 9M112 128l-6 9 5 8");
+  if (layers.head)
+    layers.head += back
+      ? crack("M84 70l7 8-3 7 8 6M116 66l-6 9 4 7")
+      : crack("M84 64l5 6-2 5 6 4M117 63l-4 6 3 5");
   for (const part of creatureParts)
     if (layers[part]) {
       const { s, cx, cy } = PROPORTIONS[part];

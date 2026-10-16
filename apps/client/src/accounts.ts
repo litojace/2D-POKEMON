@@ -1,5 +1,12 @@
 import { raidBestiary, raidCosmeticOptions } from "./raid-ui";
-import type { RaidProgress } from "../../../packages/shared/src/raid";
+import {
+  RAID_COSMETICS,
+  raidLookOf,
+  type RaidCosmetic,
+  type RaidLoadout,
+  type RaidProgress,
+  type RaidSlot,
+} from "../../../packages/shared/src/raid";
 import { TITLE_PRESETS, sortTitles } from "./player-nameplate";
 import { isQuietRefresh } from "./session-refresh";
 import { createClient, type Session } from "@supabase/supabase-js";
@@ -75,7 +82,8 @@ type Hooks = {
 };
 export class AccountUI {
   account: Account | null = null;
-  raidCosmetic: RaidProgress["equipped"] = undefined;
+  /** Equipped raid look (undefined until loaded). */
+  raidLook: RaidLoadout | undefined = undefined;
   session: Session | null = null;
   private confirmedGuestLogout = false;
   generation = 0;
@@ -130,7 +138,7 @@ export class AccountUI {
     const version = ++this.generation;
     this.session = session;
     this.account = null;
-    this.raidCosmetic = undefined;
+    this.raidLook = undefined;
     this.hooks.onSession(session?.access_token ?? null);
     if (session) {
       try {
@@ -140,7 +148,7 @@ export class AccountUI {
         try {
           const progress=await this.api("/api/raids") as RaidProgress;
           if(version!==this.generation)return;
-          this.raidCosmetic=progress.equipped??null;
+          this.raidLook=raidLookOf(progress);
         } catch { /* Raid storage is optional until migration 007 is installed. */ }
       } catch (error) {
         if (version !== this.generation) return;
@@ -369,7 +377,7 @@ export class AccountUI {
     if (!this.ensurePlayer()) return;
     try {
       const progress = (await this.api("/api/raids")) as RaidProgress;
-      this.raidCosmetic = progress.equipped ?? null;
+      this.raidLook = raidLookOf(progress);
       this.hooks.onChange();
       const character = this.hooks.selectedCharacter?.() ?? "voltkit";
       this.hooks.openDialog(raidBestiary(progress, character));
@@ -379,13 +387,11 @@ export class AccountUI {
       )!;
       const bind = () => {
         for (const button of Array.from(
-          options.querySelectorAll<HTMLButtonElement>(
-            "button[data-raid-cosmetic]",
-          ),
+          options.querySelectorAll<HTMLButtonElement>("button[data-raid-slot]"),
         ))
           button.onclick = async () => {
-            const cosmetic = (button.dataset.raidCosmetic ||
-              null) as RaidProgress["equipped"];
+            const slot = button.dataset.raidSlot as RaidSlot;
+            const item = (button.dataset.raidItem || null) as RaidCosmetic | null;
             const buttons = Array.from(
               options.querySelectorAll<HTMLButtonElement>("button"),
             );
@@ -396,19 +402,17 @@ export class AccountUI {
             button.setAttribute("aria-busy", "true");
             status.textContent = "Saving appearance…";
             try {
-              await this.api("/api/raids/cosmetic", { cosmetic });
-              this.raidCosmetic = cosmetic;
-              progress.equipped = cosmetic;
+              await this.api("/api/raids/equip", { slot, item });
+              const look = { ...raidLookOf(progress), [slot]: item };
+              progress.loadout = look;
+              this.raidLook = look;
               this.hooks.onChange();
               if (!options.isConnected) return;
               // Update only the choices: keep the dialog and its scroll position.
               options.innerHTML = raidCosmeticOptions(progress, character);
-              status.textContent =
-                cosmetic === "cragbound"
-                  ? "Cragbound colors equipped for all fighters."
-                  : cosmetic === "mountain-aura"
-                    ? "Mountain aura equipped for all fighters."
-                    : "Original appearance restored.";
+              status.textContent = item
+                ? `${RAID_COSMETICS[item].name} equipped for all fighters.`
+                : `${slot[0].toUpperCase() + slot.slice(1)} slot cleared.`;
               bind();
             } catch (error) {
               buttons.forEach((b, i) => {
@@ -425,7 +429,7 @@ export class AccountUI {
       bind();
     } catch (error) {
       this.hooks.openDialog(
-        `<h2>Boss Bestiary</h2><p>${escape(error instanceof Error ? error.message : "Raid records are not available yet.")}</p><p>Raids are playable at Peril 1. Persistent rewards require migration 007 and server storage configuration.</p>`,
+        `<h2>Boss Bestiary</h2><p>${escape(error instanceof Error ? error.message : "Raid records are not available yet.")}</p><p>Raids are playable at Peril 1. Persistent rewards require migrations 007 and 008 and server storage configuration.</p>`,
       );
     }
   }

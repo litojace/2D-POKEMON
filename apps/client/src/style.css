@@ -6687,12 +6687,12 @@ body.battle-raid:not(.touch-mode) #battle { position:relative; }
 .raid-cosmetic-option.is-equipped {opacity:1;border-color:#7be3ac77;background:#16403944;}
 .raid-cosmetic-option.is-equipped :is(b,small,.raid-cosmetic-state) {color:#a5edc1;}
 .raid-cosmetic-preview[data-cosmetic="cragbound"] > svg,
-.roster-panel[data-raid-cosmetic="cragbound"] .selected .card-art > :is(svg,img),
-.roster-panel[data-raid-cosmetic="cragbound"] .selected-art > :is(svg,img),
-.raid-party-avatar[data-raid-cosmetic="cragbound"] > svg {filter:sepia(1) saturate(.8) brightness(.96);}
+.roster-panel[data-raid-cosmetic~="cragbound"] .selected .card-art > :is(svg,img),
+.roster-panel[data-raid-cosmetic~="cragbound"] .selected-art > :is(svg,img),
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="cragbound"] > svg {filter:sepia(1) saturate(.8) brightness(.96);}
 .raid-cosmetic-preview[data-cosmetic="mountain-aura"],
-.roster-panel[data-raid-cosmetic="mountain-aura"] .selected .card-art,
-.raid-party-avatar[data-raid-cosmetic="mountain-aura"] {border-radius:50%;box-shadow:inset 0 0 0 2px #ffda8299,0 0 14px #ffcd6244;}
+.roster-panel[data-raid-cosmetic~="mountain-aura"] .selected .card-art,
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="mountain-aura"] {border-radius:50%;box-shadow:inset 0 0 0 2px #ffda8299,0 0 14px #ffcd6244;}
 @media(max-width:420px) {.raid-rewards .raid-reward {grid-template-columns:16px minmax(0,1fr);}.raid-reward > small {grid-column:2;}}
 
 /* Locked/equipped cosmetics are idle; reserve the wait cursor for a save. */
@@ -6911,3 +6911,161 @@ body:not(.battle-active)::before {background:rgba(15,29,52,.66);-webkit-backdrop
   .raid-draft .raid-rite-options > button {padding:10px;gap:10px;}
   .raid-draft .raid-rite-copy small {min-height:0;}
 }
+
+/* ---- Raid rewards: Cragstone skin, Conqueror frame ---- */
+.crag-cracks { display: none; }
+.raid-cosmetic-preview[data-cosmetic="cragstone"] .crag-cracks,
+.roster-panel[data-raid-cosmetic~="cragstone"] :is(.selected .card-art,.selected-art) .crag-cracks,
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="cragstone"] .crag-cracks { display: inline; }
+.raid-cosmetic-preview[data-cosmetic="cragstone"] > svg,
+.roster-panel[data-raid-cosmetic~="cragstone"] .selected .card-art > :is(svg,img),
+.roster-panel[data-raid-cosmetic~="cragstone"] .selected-art > :is(svg,img),
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="cragstone"] > svg {
+  filter: grayscale(.55) sepia(.25) brightness(.92) drop-shadow(0 0 2px #ff9a2e55);
+}
+/* Carved stone ring with a glowing core gem at the bottom. */
+.raid-cosmetic-preview[data-cosmetic="conqueror"],
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="conqueror"] {
+  position: relative;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px #6f6152, 0 0 0 5px #a99782, 0 0 12px 5px #ffb44d55;
+}
+.raid-cosmetic-preview[data-cosmetic="conqueror"]::after,
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="conqueror"]::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 10px;
+  height: 10px;
+  transform: translateX(-50%) rotate(45deg);
+  background: radial-gradient(circle, #fff3c4, #ffb44d 60%, #b8651b);
+  border: 2px solid #6f6152;
+  box-shadow: 0 0 8px #ffb44d;
+}
+.raid-cosmetic-preview[data-cosmetic="mountainborn"] {
+  border-radius: 50%;
+  box-shadow: inset 0 -10px 12px -6px #a99782;
+}
+/* Appearance slots and reward goals in the bestiary. */
+.raid-slot { display: grid; gap: 8px; }
+.raid-slot h4 {
+  margin: 8px 0 0;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #d7b16f;
+}
+.raid-goal {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 70px;
+  gap: 8px;
+  align-items: center;
+  margin: 5px 0;
+  padding: 9px 8px;
+  border-radius: 8px;
+}
+.raid-goal > span:nth-child(2) { display: grid; gap: 3px; min-width: 0; }
+.raid-goal b { font-size: 12px; }
+.raid-goal small { font-size: 10px; color: #91a6c1; }
+.raid-goal progress { width: 100%; height: 6px; accent-color: #ffd65b; }
+.raid-goal.is-complete { color: #a5edc1; background: #59d49712; border: 1px solid #6ae2a33b; }
+.raid-goal.is-complete :is(b, small, .raid-reward-check) { color: #a5edc1; }
+/* Team roles on the results table. */
+.raid-role {
+  display: inline-block;
+  margin: 3px 4px 0 0;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: .5px;
+  color: #1b1636;
+  background: #ffd65b;
+}
+/* Champion tricks in the briefing. */
+.raid-perks {
+  margin: 10px 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #ffd65b12;
+  border: 1px solid #ffd65b33;
+  text-align: left;
+}
+.raid-perks h3 { margin: 0 0 4px; font-size: 12px; }
+.raid-perks ul { margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.5; }
+/* "What downed you" in the downed banner. */
+.battle-raid .spectate-banner b { display: block; }
+.battle-raid .spectate-banner small {
+  display: block;
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  max-width: 460px;
+}
+/* Team signals: Stack / Revive / Bait. */
+#raid-pings, #raid-drill { display: none; }
+.battle-raid #raid-pings:not([hidden]) {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 26;
+  display: grid;
+  gap: 6px;
+}
+#raid-pings button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid #ffd65b55;
+  background: #0c1b32e6;
+  color: #ffe7a3;
+  font-size: 11px;
+  font-weight: 700;
+}
+#raid-pings button[data-raid-ping="revive"] { color: #9bffc4; border-color: #7dffb055; }
+#raid-pings button[data-raid-ping="bait"] { color: #ffc28a; border-color: #ffa94d55; }
+#raid-pings svg { width: 18px; height: 18px; flex: none; }
+@media (max-width: 900px), (max-height: 600px) {
+  #raid-pings button span { display: none; }
+  #raid-pings button { padding: 6px; min-width: 40px; justify-content: center; }
+}
+/* Practice bar. */
+.battle-raid #raid-drill:not([hidden]) {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  z-index: 26;
+  display: block;
+  width: min(640px, calc(100% - 20px));
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #d7b16f66;
+  background: #0c1b32ed;
+}
+.raid-drill-head { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; }
+.raid-drill-head span { color: #9bffc4; font-variant-numeric: tabular-nums; }
+#raid-drill p { margin: 4px 0 8px; font-size: 11px; color: #a9bbd5; }
+.raid-drill-options { display: flex; flex-wrap: wrap; gap: 6px; }
+.raid-drill-options button {
+  padding: 6px 9px;
+  border-radius: 8px;
+  border: 1px solid #8baee555;
+  background: #1b2d4c;
+  color: #dce7fa;
+  font-size: 11px;
+}
+.raid-drill-options button.is-active { border-color: #ffd65b; color: #ffd65b; }
+.raid-practice { margin: 10px 0; }
+.raid-practice summary { cursor: pointer; font-weight: 700; font-size: 13px; }
+.raid-practice p { font-size: 12px; color: #a9bbd5; }
+.raid-practice-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.raid-practice-options button { display: grid; gap: 3px; text-align: left; padding: 9px 10px; }
+.raid-practice-options small { font-size: 10px; color: #a9bbd5; font-weight: 500; }

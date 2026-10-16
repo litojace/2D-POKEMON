@@ -1,4 +1,4 @@
-import type { RaidReceipt } from "../../../packages/shared/src/raid.js";
+import { RAID_COSMETICS, type RaidReceipt } from "../../../packages/shared/src/raid.js";
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 import type { Express, Request, Response, NextFunction } from "express";
@@ -23,7 +23,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "007_raids.sql";
+export const LATEST_MIGRATION = "008_raid_progress.sql";
 export interface AccountProvider {
   recordRaid?(receipt: RaidReceipt): Promise<void>;
   authenticate(token: string): Promise<Account | null>;
@@ -279,6 +279,12 @@ export function installAccountRoutes(
   app.post('/api/raids/cosmetic',route(false,async(req,res,token,account)=>{
     const data=z.object({cosmetic:z.enum(['cragbound','mountain-aura']).nullable()}).strict().parse(req.body);
     await provider.rpc(token,'arena_equip_raid_cosmetic',{p_cosmetic:data.cosmetic});onPlayerChanged(account.id);res.json({ok:true});
+  }));
+  // One item per slot (skin, aura, entrance, frame), from migration 008.
+  app.post('/api/raids/equip',route(false,async(req,res,token,account)=>{
+    const data=z.object({slot:z.enum(['skin','aura','entrance','frame']),item:z.enum(['cragbound','cragstone','mountain-aura','mountainborn','conqueror']).nullable()}).strict().parse(req.body);
+    if(data.item&&RAID_COSMETICS[data.item].slot!==data.slot)throw new AccountError(400,'That item belongs in another slot.');
+    await provider.rpc(token,'arena_equip_raid_slot',{p_slot:data.slot,p_item:data.item});onPlayerChanged(account.id);res.json({ok:true});
   }));
   app.get(
     "/api/progress",

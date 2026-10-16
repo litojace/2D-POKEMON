@@ -24,15 +24,25 @@ import {
   type StatusKind,
 } from "../../../packages/shared/src/index.js";
 import {
+  GRUMBLECRAG,
   RAID,
   RAID_CHAPTERS,
+  RAID_ATTACKS,
+  RAID_PING_SECONDS,
   RAID_RITES,
   RAID_TRAITS,
+  eruptionChain,
+  raidPattern,
   raidWeekly,
+  type RaidAttack,
+  type RaidPingKind,
   type RaidState,
   type RaidRite,
   type RaidTrait,
+  type RaidWarning,
 } from "../../../packages/shared/src/raid.js";
+import { BotBrain } from "./bot.js";
+const BOSS = GRUMBLECRAG;
 
 export class RaidArena extends Arena {
   raid: RaidState;
@@ -54,6 +64,13 @@ export class RaidArena extends Arena {
   private selfUsed = false;
   private coreAt = new Map<string, number>();
   private damageAt = new Map<string, number>();
+  /** The boss attack currently dealing damage (for "what downed you"). */
+  private hitBy?: RaidAttack;
+  /** Downs per attack this run, saved for balance tuning. */
+  downCauses: Partial<Record<RaidAttack, number>> = {};
+  private pingAt = new Map<string, number>();
+  /** Raiders hit by the attack that is resolving (practice dodge count). */
+  private struck = new Set<string>();
   constructor(code: string) {
     super(code, "raid");
     const weekly = raidWeekly();
@@ -124,15 +141,23 @@ export class RaidArena extends Arena {
     r.gilded = !r.weekly && randomInt(20) === 0;
     r.peril = r.weekly ? weekly.peril : r.peril;
     r.maxHp = Math.round(
-      (1450 + 900 * (r.partySize - 1)) * (r.gilded ? 1.12 : 1),
+      (BOSS.health.base + BOSS.health.perExtraPlayer * (r.partySize - 1)) *
+        (r.gilded ? BOSS.health.gilded : 1),
     );
+    r.pings = [];
+    r.drillStats = r.drill ? { hits: 0, dodges: 0 } : undefined;
+    this.downCauses = {};
+    this.pingAt.clear();
     r.warnings = [];
     r.wards = [];
     r.downed = {};
     r.rites = {};
     r.offers = {};
     r.contributions = Object.fromEntries(
-      this.players.map((p) => [p.id, { damage: 0, revives: 0, pillars: 0 }]),
+      this.players.map((p) => [
+        p.id,
+        { damage: 0, revives: 0, pillars: 0, downs: 0 },
+      ]),
     );
     this.seenAttacks.clear();
     this.rescueCredit.clear();
@@ -252,6 +277,22 @@ export class RaidArena extends Arena {
     )
       return;
     const r = this.raid;
+    if (r.drill) {
+      // Practice: the boss can't be hurt, and its hits only count.
+      if (target.raidBoss || !source?.raidBoss) return;
+      if (ability?.ground && target.jumpUntil > this.time) return;
+      if (!this.struck.has(target.id)) {
+        this.struck.add(target.id);
+        if (r.drillStats) r.drillStats.hits++;
+        this.event("hit", target, 0xff8c99, 0, owner);
+      }
+      return;
+    }
+    if (source?.raidBoss) {
+      amount *= BOSS.perilDamage[r.peril] ?? 1;
+      if (!(ability?.ground && target.jumpUntil > this.time))
+        this.struck.add(target.id);
+    }
     if (target.raidBoss) {
       const exposed =
         r.phase === 3 ||
@@ -304,12 +345,34 @@ export class RaidArena extends Arena {
         r.downed[target.id] = {
           progress: 0,
           self: r.partySize === 1 && !this.selfUsed,
+          ...(this.hitBy ? { cause: this.hitBy } : {}),
         };
+        if (this.hitBy)
+          this.downCauses[this.hitBy] = (this.downCauses[this.hitBy] ?? 0) + 1;
+        const mine = r.contributions?.[target.id];
+        if (mine) mine.downs = (mine.downs ?? 0) + 1;
       }
     }
   }
   override cast(p: Fighter, a: Ability, ex = false) {
     super.cast(p, a, ex);
+    // Lumoth's Kindle jump-starts the revive of fallen allies nearby.
+    if (p.character === "lumoth" && a.kind === "buff" && !p.raidBoss)
+      for (const ally of this.heroes()) {
+        const down = this.raid.downed[ally.id];
+        if (
+          !down ||
+          down.self ||
+          ally === p ||
+          Math.hypot(ally.x - p.x, ally.y - p.y) > RAID.reviveRange + 60
+        )
+          continue;
+        down.progress = Math.min(0.95, down.progress + 0.5);
+        const credit = this.rescueCredit.get(ally.id) ?? new Set<string>();
+        credit.add(p.id);
+        this.rescueCredit.set(ally.id, credit);
+        this.event("heal", ally, 0x7dffb0, 0, p.id);
+      }
     if (this.hasRite(p, "mending") && a.id === this.kit(p).skills[3].id)
       for (const hero of this.heroes())
         if (hero.hp > 0 && Math.hypot(hero.x - p.x, hero.y - p.y) < 300) {
@@ -424,15 +487,15 @@ export class RaidArena extends Arena {
       this.finish(false);
   }
   private warn(
-    kind: "slam" | "charge" | "debris",
+    kind: RaidAttack,
     x: number,
     y: number,
     tx: number,
     ty: number,
     radius: number,
     delay: number,
-  ) {
-    const warning = {
+  ): RaidWarning {
+    const warning: RaidWarning = {
       id: ++this.serial,
       kind,
       x,
@@ -448,11 +511,144 @@ export class RaidArena extends Arena {
   }
   private warnDebris(teach: boolean) {
     for (const p of this.heroes().filter((p) => p.hp > 0))
-      Object.assign(this.warn("debris", p.x, p.y, p.x, p.y, 95, 1.65), {
-        teach,
-      });
+      Object.assign(
+        this.warn(
+          "debris",
+          p.x,
+          p.y,
+          p.x,
+          p.y,
+          BOSS.debris.radius,
+          BOSS.debris.delay,
+        ),
+        { teach },
+      );
     if (this.raid.peril >= 2 || this.raid.trait === "fractured")
       this.warn("debris", 800, 450, 800, 450, 135, 1.9);
+  }
+  /** A cone of stones from the boss towards a raider. */
+  private warnVolley(target: Fighter, teach: boolean) {
+    const boss = this.boss()!;
+    const d = normalize(target.x - boss.x, target.y - boss.y);
+    const range = BOSS.volley.range + (this.raid.trait === "ancient" ? 40 : 0);
+    return Object.assign(
+      this.warn(
+        "volley",
+        boss.x,
+        boss.y,
+        boss.x + d.x * range,
+        boss.y + d.y * range,
+        range,
+        BOSS.volley.delay,
+      ),
+      { spread: BOSS.volley.spread / 2, targetId: target.id, teach },
+    );
+  }
+  /** Eruptions under one raider; each one that lands spawns the next. */
+  private warnEruption(target: Fighter, chain: number, teach: boolean) {
+    return Object.assign(
+      this.warn(
+        "eruption",
+        target.x,
+        target.y,
+        target.x,
+        target.y,
+        BOSS.eruption.radius,
+        BOSS.eruption.delay,
+      ),
+      { targetId: target.id, chain, teach },
+    );
+  }
+  /**
+   * A meteor marks a raider and follows them. With friends alive it never
+   * locks (gather on them to split it); alone it locks so it can be dodged.
+   */
+  private warnShare(target: Fighter, teach: boolean) {
+    const alone = this.heroes().filter((p) => p.hp > 0).length < 2;
+    return Object.assign(
+      this.warn(
+        "share",
+        target.x,
+        target.y,
+        target.x,
+        target.y,
+        BOSS.share.radius,
+        BOSS.share.delay,
+      ),
+      {
+        targetId: target.id,
+        teach,
+        ...(alone ? { lockAt: this.time + BOSS.share.delay - BOSS.share.soloLock } : {}),
+      },
+    );
+  }
+  /** Is a raider inside a volley cone (and not hiding behind a pillar)? */
+  private inVolley(w: RaidWarning, p: Fighter) {
+    const dx = p.x - w.x,
+      dy = p.y - w.y,
+      dist = Math.hypot(dx, dy);
+    if (dist > w.radius + RULES.radius) return false;
+    const aim = Math.atan2(w.ty - w.y, w.tx - w.x);
+    const off = Math.atan2(Math.sin(Math.atan2(dy, dx) - aim), Math.cos(Math.atan2(dy, dx) - aim));
+    if (Math.abs(off) > (w.spread ?? 0.45) + Math.atan2(RULES.radius, Math.max(dist, 1)))
+      return false;
+    return this.lineClear(w, p);
+  }
+  private cadence() {
+    const r = this.raid;
+    const base =
+      r.trait === "restless"
+        ? BOSS.cadence.restless
+        : BOSS.cadence.normal;
+    return r.phase === 3 && !r.drill ? base * BOSS.cadence.finalPhase : base;
+  }
+  /** Practice: count everyone a resolved attack missed. */
+  private countDodges() {
+    const stats = this.raid.drillStats;
+    if (!this.raid.drill || !stats) return;
+    for (const p of this.heroes())
+      if (p.hp > 0 && !this.struck.has(p.id)) stats.dodges++;
+  }
+  private startAttack(kind: RaidAttack, target: Fighter) {
+    const r = this.raid,
+      boss = this.boss()!;
+    const count = this.seenAttacks.get(kind) ?? 0;
+    this.seenAttacks.set(kind, count + 1);
+    const teach = count < 2;
+    boss.angle = Math.atan2(target.y - boss.y, target.x - boss.x);
+    if (kind === "charge") {
+      const d = normalize(target.x - boss.x, target.y - boss.y);
+      Object.assign(
+        this.warn(
+          "charge",
+          boss.x,
+          boss.y,
+          Math.max(90, Math.min(1510, boss.x + d.x * 1000)),
+          Math.max(90, Math.min(810, boss.y + d.y * 1000)),
+          BOSS.charge.width,
+          BOSS.charge.delay,
+        ),
+        { targetId: target.id, lockAt: this.time + BOSS.charge.lock, teach },
+      );
+    } else if (kind === "slam") {
+      Object.assign(
+        this.warn(
+          "slam",
+          boss.x,
+          boss.y,
+          boss.x,
+          boss.y,
+          (r.phase >= 3 ? BOSS.slam.finalRadius : BOSS.slam.radius) +
+            (r.trait === "ancient" ? 30 : 0),
+          BOSS.slam.delay,
+        ),
+        { teach },
+      );
+    } else if (kind === "debris") this.warnDebris(teach);
+    else if (kind === "volley") this.warnVolley(target, teach);
+    else if (kind === "eruption")
+      this.warnEruption(target, eruptionChain(r.phase, r.peril), teach);
+    else this.warnShare(target, teach);
   }
   private attacksStep(dt: number) {
     const r = this.raid,
@@ -468,66 +664,45 @@ export class RaidArena extends Arena {
       this.nextAttack = r.staggerUntil + 1;
     }
     if (r.staggerUntil > this.time) return;
-    // Follow a target for the first second, then preserve a readable dodge window.
+    // Follow a target until the warning locks, then keep a readable dodge window.
     for (const w of r.warnings) {
-      if (
-        w.kind !== "charge" ||
-        w.lockAt === undefined ||
-        this.time >= w.lockAt
-      )
-        continue;
       const target = this.heroes().find((p) => p.id === w.targetId && p.hp > 0);
       if (!target) continue;
-      const direction = normalize(target.x - boss.x, target.y - boss.y);
-      w.tx = Math.max(90, Math.min(1510, boss.x + direction.x * 1000));
-      w.ty = Math.max(90, Math.min(810, boss.y + direction.y * 1000));
-      boss.angle = Math.atan2(w.ty - w.y, w.tx - w.x);
+      if (w.kind === "charge") {
+        if (w.lockAt === undefined || this.time >= w.lockAt) continue;
+        const direction = normalize(target.x - boss.x, target.y - boss.y);
+        w.tx = Math.max(90, Math.min(1510, boss.x + direction.x * 1000));
+        w.ty = Math.max(90, Math.min(810, boss.y + direction.y * 1000));
+        boss.angle = Math.atan2(w.ty - w.y, w.tx - w.x);
+      } else if (w.kind === "share") {
+        if (w.lockAt !== undefined && this.time >= w.lockAt) continue;
+        w.x = w.tx = target.x;
+        w.y = w.ty = target.y;
+        w.sharers = this.heroes().filter(
+          (p) =>
+            p.hp > 0 &&
+            Math.hypot(p.x - w.x, p.y - w.y) < w.radius + RULES.radius,
+        ).length;
+      }
     }
     if (this.time >= this.nextAttack && !this.charging && !r.warnings.length) {
       const alive = this.heroes().filter((p) => p.hp > 0);
       if (!alive.length) return;
       const target = alive[(this.attacks + r.seed) % alive.length];
-      boss.angle = Math.atan2(target.y - boss.y, target.x - boss.x);
-      const pattern =
-        r.phase === 2
-          ? (["charge", "slam", "charge", "debris"] as const)
-          : (["charge", "slam", "debris"] as const);
+      const pattern = r.drill
+        ? [r.drill]
+        : raidPattern(r.phase, r.peril, r.partySize);
       const kind = pattern[this.attacks++ % pattern.length];
-      const count = this.seenAttacks.get(kind) ?? 0;
-      this.seenAttacks.set(kind, count + 1);
-      if (kind === "charge") {
-        const d = normalize(target.x - boss.x, target.y - boss.y);
-        const warning = this.warn(
-          "charge",
-          boss.x,
-          boss.y,
-          Math.max(90, Math.min(1510, boss.x + d.x * 1000)),
-          Math.max(90, Math.min(810, boss.y + d.y * 1000)),
-          80,
-          1.7,
-        );
-        Object.assign(warning, {
-          targetId: target.id,
-          lockAt: this.time + 1,
-          teach: count < 2,
-        });
-      } else if (kind === "slam") {
-        const warning = this.warn(
-          "slam",
-          boss.x,
-          boss.y,
-          boss.x,
-          boss.y,
-          (r.phase >= 3 ? 320 : 240) + (r.trait === "ancient" ? 30 : 0),
-          1.25,
-        );
-        Object.assign(warning, { teach: count < 2 });
-      } else this.warnDebris(count < 2);
-      this.nextAttack = this.time + (r.trait === "restless" ? 4.4 : 5.2);
+      this.startAttack(kind, target);
+      this.nextAttack = this.time + (r.drill ? 3.2 : this.cadence());
+      // Practice: broken pillars come back so charges can be baited again.
+      if (r.drill && r.pillars.every((p) => p.broken))
+        r.pillars.forEach((p) => (p.broken = false));
     }
     const due = r.warnings.filter((w) => w.at <= this.time);
     r.warnings = r.warnings.filter((w) => w.at > this.time);
     for (const w of due) {
+      this.struck.clear();
       if (w.kind === "charge") {
         this.charging = {
           tx: w.tx,
@@ -536,39 +711,103 @@ export class RaidArena extends Arena {
           hit: new Set(),
           targetId: w.targetId,
         };
+        continue;
+      }
+      this.hitBy = w.kind;
+      const ability = {
+        ...CHARACTERS.terradon.skills[3],
+        ground: w.kind === "slam",
+        knockback: 0,
+      };
+      if (w.kind === "volley") {
+        for (const p of this.heroes())
+          if (p.hp > 0 && this.inVolley(w, p)) {
+            if (this.has(p, "counter") && !r.drill) {
+              // Auralynx's Mirror Guard sends the stones back.
+              r.stagger = Math.min(100, r.stagger + 12);
+              r.message = `${p.name}'s guard reflects the volley!`;
+              this.event("hit", boss, 0xc9f4ff, 0, p.id);
+              continue;
+            }
+            this.damage(p, BOSS.volley.damage, boss.id, ability);
+          }
+        // The final phase chains a volley straight into eruptions.
+        if (r.phase === 3 && r.peril >= 2 && !r.drill) {
+          const target = this.heroes().find(
+            (p) => p.id === w.targetId && p.hp > 0,
+          );
+          if (target) this.warnEruption(target, 2, false);
+        }
+      } else if (w.kind === "share") {
+        const inside = this.heroes().filter(
+          (p) =>
+            p.hp > 0 &&
+            Math.hypot(p.x - w.x, p.y - w.y) < w.radius + RULES.radius,
+        );
+        const alive = this.heroes().filter((p) => p.hp > 0).length;
+        const warded = inside.some((p) => this.has(p, "shield"));
+        const each =
+          alive < 2 || w.lockAt !== undefined
+            ? BOSS.share.soloDamage
+            : (BOSS.share.damage / Math.max(1, inside.length)) *
+              (warded ? 1 - BOSS.share.wardReduction : 1);
+        for (const p of inside) this.damage(p, each, boss.id, ability);
+        if (inside.length > 1 && !r.drill)
+          r.message = `Meteor shared by ${inside.length} raiders!`;
       } else {
-        const ability = {
-          ...CHARACTERS.terradon.skills[3],
-          ground: w.kind === "slam",
-          knockback: 0,
-        };
+        const damage =
+          w.kind === "slam"
+            ? BOSS.slam.damage
+            : w.kind === "eruption"
+              ? BOSS.eruption.damage
+              : BOSS.debris.damage;
         for (const p of this.heroes())
           if (
             p.hp > 0 &&
             Math.hypot(p.x - w.x, p.y - w.y) < w.radius + RULES.radius
           )
-            this.damage(p, w.kind === "slam" ? 27 : 20, boss.id, ability);
-        this.event("raid-impact", w, 0xffbd6a, undefined, boss.id);
-        this.events[this.events.length - 1].raidRadius = w.radius;
-        if (w.kind === "slam" && r.phase >= 2 && !w.followUp) {
-          // Longer than the shared jump cooldown: both hits can be avoided fairly.
+            this.damage(p, damage, boss.id, ability);
+      }
+      this.hitBy = undefined;
+      this.countDodges();
+      this.event("raid-impact", w, 0xffbd6a, undefined, boss.id);
+      this.events[this.events.length - 1].raidRadius = w.radius;
+      if (w.kind === "eruption" && (w.chain ?? 1) > 1) {
+        const target = this.heroes().find(
+          (p) => p.id === w.targetId && p.hp > 0,
+        );
+        if (target)
           Object.assign(
             this.warn(
-              "slam",
-              boss.x,
-              boss.y,
-              boss.x,
-              boss.y,
+              "eruption",
+              target.x,
+              target.y,
+              target.x,
+              target.y,
               w.radius,
-              RULES.jumpCooldown + 0.3,
+              BOSS.eruption.gap,
             ),
-            { followUp: true, teach: w.teach },
+            { targetId: target.id, chain: (w.chain ?? 1) - 1, teach: w.teach },
           );
-          this.nextAttack = this.time + RULES.jumpCooldown + 2.8;
-        } else if (w.kind === "slam" && w.followUp && r.phase === 3) {
-          this.warnDebris(false);
-          this.nextAttack = this.time + 5;
-        }
+      }
+      if (w.kind === "slam" && r.phase >= 2 && !w.followUp && !r.drill) {
+        // Longer than the shared jump cooldown: both hits can be avoided fairly.
+        Object.assign(
+          this.warn(
+            "slam",
+            boss.x,
+            boss.y,
+            boss.x,
+            boss.y,
+            w.radius,
+            RULES.jumpCooldown + 0.3,
+          ),
+          { followUp: true, teach: w.teach },
+        );
+        this.nextAttack = this.time + RULES.jumpCooldown + 2.8;
+      } else if (w.kind === "slam" && w.followUp && r.phase === 3) {
+        this.warnDebris(false);
+        this.nextAttack = this.time + 4.5;
       }
     }
     if (this.charging) {
@@ -576,7 +815,10 @@ export class RaidArena extends Arena {
         dx = c.tx - boss.x,
         dy = c.ty - boss.y,
         len = Math.hypot(dx, dy) || 1,
-        step = Math.min(len, (r.trait === "ancient" ? 480 : 650) * dt);
+        step = Math.min(
+          len,
+          (r.trait === "ancient" ? 480 : BOSS.charge.speed) * dt,
+        );
       boss.x += (dx / len) * step;
       boss.y += (dy / len) * step;
       const pillar = r.pillars.find(
@@ -584,16 +826,21 @@ export class RaidArena extends Arena {
       );
       if (pillar) {
         pillar.broken = true;
-        if (c.targetId && r.contributions?.[c.targetId])
+        if (c.targetId && r.contributions?.[c.targetId] && !r.drill)
           r.contributions[c.targetId].pillars++;
         this.nextAttack = Math.max(this.nextAttack, this.time + 3);
-        r.stagger = Math.min(100, r.stagger + 42);
-        r.exposedUntil = this.time + (r.trait === "fractured" ? 10 : 8);
-        r.message = "ARMOR BROKEN! Hit the glowing core.";
+        if (!r.drill) {
+          r.stagger = Math.min(100, r.stagger + 42);
+          r.exposedUntil = this.time + (r.trait === "fractured" ? 10 : 8);
+          r.message = "ARMOR BROKEN! Hit the glowing core.";
+        }
         this.event("raid-impact", pillar, 0xffd65b, undefined, boss.id);
         this.events[this.events.length - 1].raidRadius = 100;
+        this.struck = new Set(c.hit);
+        this.countDodges();
         this.charging = undefined;
       } else {
+        this.hitBy = "charge";
         for (const p of this.heroes())
           if (
             p.hp > 0 &&
@@ -601,18 +848,161 @@ export class RaidArena extends Arena {
             Math.hypot(p.x - boss.x, p.y - boss.y) < 100
           ) {
             c.hit.add(p.id);
-            this.damage(p, 28, boss.id);
+            if (p.character === "terradon" && !r.drill) {
+              // Terradon's shell stops the charge head-on.
+              this.damage(p, BOSS.charge.damage / 2, boss.id);
+              r.stagger = Math.min(100, r.stagger + 20);
+              r.message = `${p.name} stops the charge!`;
+              this.charging = undefined;
+              break;
+            }
+            this.damage(p, BOSS.charge.damage, boss.id);
           }
-        if (len < 10 || this.time >= c.until) this.charging = undefined;
+        this.hitBy = undefined;
+        if (
+          this.charging &&
+          (len < 10 || this.time >= this.charging.until)
+        ) {
+          this.struck = new Set(c.hit);
+          this.countDodges();
+          this.charging = undefined;
+        }
       }
     }
-    if (r.peril >= 3 && r.phase === 3) {
+    if (r.peril >= 3 && r.phase === 3 && !r.drill) {
       const radius = Math.max(240, 500 - this.phaseElapsed * 2);
       r.closingRadius = radius;
       for (const p of this.heroes())
         if (p.hp > 0 && Math.hypot(p.x - 800, p.y - 450) > radius)
           this.damage(p, 6 * dt, boss.id);
     }
+  }
+  /** A quick team signal over a raider's head. */
+  ping(id: string, kind: RaidPingKind) {
+    const p = this.heroes().find((q) => q.id === id);
+    if (!p || !["playing", "countdown", "intermission"].includes(this.phase))
+      return false;
+    if (this.time < (this.pingAt.get(id) ?? -Infinity)) return false;
+    this.pingAt.set(id, this.time + 1.2);
+    const r = this.raid;
+    r.pings = (r.pings ?? []).filter(
+      (q) => q.playerId !== id && q.until > this.time,
+    );
+    r.pings.push({
+      id: ++this.serial,
+      playerId: id,
+      kind,
+      until: this.time + RAID_PING_SECONDS,
+    });
+    return true;
+  }
+  /** Practice room: the boss repeats one attack; hits only count. */
+  startDrill(kind: RaidAttack) {
+    if (!["lobby", "finished"].includes(this.phase) || !this.heroes().length)
+      return false;
+    this.raid.drill = kind;
+    this.start();
+    this.raid.message = `Practice · ${RAID_ATTACKS[kind].name}`;
+    this.instructionsReady = this.players.map((p) => p.id);
+    this.phase = "countdown";
+    this.deadline = this.time + 3;
+    return true;
+  }
+  setDrill(kind: RaidAttack) {
+    const r = this.raid;
+    if (!r.drill || this.phase === "finished") return false;
+    r.drill = kind;
+    r.warnings = [];
+    r.drillStats = { hits: 0, dodges: 0 };
+    r.message = `Practice · ${RAID_ATTACKS[kind].name}`;
+    this.charging = undefined;
+    this.attacks = 0;
+    this.nextAttack = this.time + 1.5;
+    return true;
+  }
+  /** Leave practice for the raid lobby. */
+  stopDrill() {
+    const r = this.raid;
+    if (!r.drill) return false;
+    r.drill = null;
+    r.drillStats = undefined;
+    r.warnings = [];
+    this.charging = undefined;
+    this.players = this.players.filter((p) => !p.raidBoss);
+    this.phase = "lobby";
+    for (const p of this.players) p.ready = false;
+    return true;
+  }
+  /** An AI plays a disconnected raider's champion until they return. */
+  standIn(id: string) {
+    const p = this.heroes().find((q) => q.id === id);
+    if (!p || this.bots.has(id)) return false;
+    this.bots.set(id, new BotBrain(id, "normal", (this.raid.seed % 9973) + 1));
+    this.raid.standIns = [...(this.raid.standIns ?? []), id];
+    return true;
+  }
+  release(id: string) {
+    if (!this.raid.standIns?.includes(id)) return false;
+    this.bots.delete(id);
+    this.raid.standIns = this.raid.standIns.filter((q) => q !== id);
+    const p = this.players.find((q) => q.id === id);
+    if (p) p.lastInput = blankInput();
+    return true;
+  }
+  /** Stand-ins dodge telegraphs, share meteors and revive allies. */
+  override botInput(bot: Fighter, input: Input) {
+    if (bot.hp <= 0 || bot.raidBoss) return input;
+    const r = this.raid;
+    const go = (x: number, y: number, away: boolean) => {
+      const d = normalize(x - bot.x, y - bot.y);
+      input.dx = away ? -d.x : d.x;
+      input.dy = away ? -d.y : d.y;
+      return input;
+    };
+    const alive = this.heroes().filter((p) => p.hp > 0).length;
+    for (const w of r.warnings) {
+      if (w.kind === "share") {
+        if (w.targetId !== bot.id && alive > 1 && w.lockAt === undefined)
+          return go(w.x, w.y, false);
+        if (w.lockAt !== undefined && w.targetId === bot.id)
+          return go(w.x, w.y, true);
+        continue;
+      }
+      if (w.kind === "volley") {
+        if (this.inVolley(w, bot)) {
+          const aim = Math.atan2(w.ty - w.y, w.tx - w.x);
+          // Step sideways out of the cone.
+          return go(
+            bot.x - Math.sin(aim) * 100,
+            bot.y + Math.cos(aim) * 100,
+            false,
+          );
+        }
+        continue;
+      }
+      if (w.kind === "charge") {
+        const lx = w.tx - w.x,
+          ly = w.ty - w.y,
+          len = Math.hypot(lx, ly) || 1;
+        const t = Math.max(
+          0,
+          Math.min(1, ((bot.x - w.x) * lx + (bot.y - w.y) * ly) / (len * len)),
+        );
+        const px = w.x + lx * t,
+          py = w.y + ly * t;
+        if (Math.hypot(bot.x - px, bot.y - py) < w.radius + RULES.radius + 20)
+          return go(px, py, true);
+        continue;
+      }
+      if (Math.hypot(bot.x - w.x, bot.y - w.y) < w.radius + RULES.radius + 15)
+        return go(w.x, w.y, true);
+    }
+    const down = this.heroes().find(
+      (p) => p.hp <= 0 && r.downed[p.id] && !r.downed[p.id].self,
+    );
+    if (down && Math.hypot(down.x - bot.x, down.y - bot.y) > RAID.reviveRange * 0.6)
+      return go(down.x, down.y, false);
+    return input;
   }
   private finish(won: boolean) {
     if (this.raid.result) return;
@@ -663,6 +1053,9 @@ export class RaidArena extends Arena {
       for (const p of dashers)
         this.raid.wards.push({ x: p.x, y: p.y, until: this.time + 3 });
       this.raid.wards = this.raid.wards.filter((w) => w.until > this.time);
+      this.raid.pings = (this.raid.pings ?? []).filter(
+        (q) => q.until > this.time,
+      );
       this.attacksStep(dt);
     }
     super.tick(dt);
@@ -672,7 +1065,8 @@ export class RaidArena extends Arena {
     const boss = this.boss();
     if (!boss) return;
     if (boss.hp <= 0) return this.finish(true);
-    if (this.raid.elapsed >= RAID.timeLimit) return this.finish(false);
+    if (this.raid.elapsed >= RAID.timeLimit && !this.raid.drill)
+      return this.finish(false);
     const next =
       boss.hp <= this.raid.maxHp * 0.33 + 1e-6
         ? 3

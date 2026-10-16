@@ -351,6 +351,7 @@ it("credits actual damage and pillar baiting, and resets contributions on quick 
     damage: 0,
     revives: 0,
     pillars: 0,
+    downs: 0,
   });
   expect(a.raid.offers.p0).toHaveLength(3);
 });

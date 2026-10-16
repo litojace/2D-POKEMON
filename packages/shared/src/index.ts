@@ -1,4 +1,4 @@
-import type { RaidState } from "./raid.js";
+import type { RaidLoadout, RaidState } from "./raid.js";
 import { z } from "zod";
 export const RULES = {
   width: 1600,
@@ -1072,7 +1072,8 @@ export const MODE_MIN: Record<MatchMode, number> = {
 export const TEAM_NAMES = ["Blue", "Red"] as const;
 export interface Fighter extends Vec {
   raidBoss?: boolean;
-  raidCosmetic?: "cragbound" | "mountain-aura";
+  /** Equipped raid appearance (skin, aura, entrance, frame). */
+  raidLook?: RaidLoadout;
   team?: Team;
   /** Left the match for good (2v2): stays on the scoreboard, out of play. */
   out?: boolean;

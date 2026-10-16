@@ -115,9 +115,13 @@ it("synchronizes four teammates against the same boss and preserves disconnect r
     before = target.hp;
   a.damage(target, 50, a.heroes()[0].id);
   expect(target.hp).toBe(before);
+  const dropped = a.heroes()[3].id;
   peers[3].disconnect();
   await new Promise((r) => setTimeout(r, 20));
-  expect(a.phase).toBe("paused");
+  // An AI stand-in plays the dropped raider instead of pausing everyone.
+  expect(a.phase).toBe("playing");
+  expect(a.raid.standIns).toContain(dropped);
+  expect(a.bots.has(dropped)).toBe(true);
   expect((await emit(host, "leave")).ok).toBe(true);
   expect(a.players[0].out).toBe(true);
 });
@@ -145,8 +149,8 @@ it("broadcasts an equipped cosmetic and its removal to an existing room immediat
     const update = new Promise<void>((resolve) => {
       const listener = (state: any) => {
         if (
-          (state.players.find((p: any) => p.id === created.id)?.raidCosmetic ??
-            null) === cosmetic
+          (state.players.find((p: any) => p.id === created.id)?.raidLook
+            ?.skin ?? null) === cosmetic
         ) {
           host.off("state", listener);
           resolve();
@@ -169,7 +173,7 @@ it("broadcasts an equipped cosmetic and its removal to an existing room immediat
     await update;
     expect(
       server!.rooms.get(created.code!)!.players.find((p) => p.id === created.id)
-        ?.raidCosmetic ?? null,
+        ?.raidLook?.skin ?? null,
     ).toBe(cosmetic);
   }
 });

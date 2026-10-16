@@ -6,14 +6,17 @@ Choose **Boss Raid · Co-op · 1–4 players**, create a room, and share its cod
 
 Grumblecrag is a separate boss entity with a larger hit radius and custom artwork. Everyone is on one team; friendly fire is disabled. Its health scales with the starting party size and is locked for the run, so leaving cannot lower its health.
 
-The encounter has three HP-gated chapters. Attacks cannot bypass a chapter with burst damage or reflection. Between chapters, pick another raid rite; previous rites remain. Chapter changes rebuild the pillars. An eight-minute active-combat limit bounds a run; drafting and reconnect pauses do not count toward the clear timer. The pacing target is roughly four to six minutes for a successful run; actual clear lengths and difficulty still need human multiplayer balance testing. Boss health and attack damage are unchanged in the encounter refresh.
+The encounter has three HP-gated chapters. Attacks cannot bypass a chapter with burst damage or reflection. Between chapters, pick another raid rite; previous rites remain. Chapter changes rebuild the pillars. An eight-minute active-combat limit bounds a run; drafting and reconnect pauses do not count toward the clear timer. The pacing target is roughly four to six minutes for a successful run; actual clear lengths and difficulty still need human multiplayer balance testing. All of Grumblecrag's numbers (health, damage, sizes, timings, attack order) live in one data block, `GRUMBLECRAG` in `packages/shared/src/raid.ts`, so tuning or adding a second boss is mostly data.
 
 - **Charge:** a long ground warning follows the marked player for one second, then locks for a 0.7-second dodge window. A crosshair and party status identify the target. Bait it into a pillar to break armor and expose the core.
 - **Ground slam:** a circular warning tells everyone to jump. Jumping avoids its damage. Chapters two and three add a second slam 2.3 seconds after the first, allowing the two-second jump cooldown to recover. Stagger and chapter transitions cancel follow-ups.
 - **Falling debris:** leave the marked circles before they detonate.
+- **Rock volley:** a red cone of stones towards one raider. Leave the cone or put an unbroken pillar between you and the boss.
+- **Chasing eruption:** orange vents erupt under one raider two or three times in a row, each where they now stand. Keep running, and away from your team.
+- **Shared meteor:** a gold circle follows a marked raider. Its damage is split between everyone standing in it when it lands, so gather on them; pips above the circle show how many are sharing. Alone (or the last raider standing), it turns red and locks in place shortly before landing, so it can be dodged instead.
 - **Stagger:** armor breaks and player attacks fill a shared meter. At full stagger, the boss stops attacking for six seconds and takes amplified damage. Save ultimates for this opening.
 
-Chapter one teaches the three basic attacks. Chapter two prioritizes charges and introduces the double slam. Chapter three keeps the core exposed, chains the double slam into debris, and gives players a recovery window afterward. The boss sheds a shoulder plate in chapter two and both plates in chapter three; final-phase fragments orbit its enlarged core. Breaking a pillar throws off glowing armor fragments.
+Chapter one teaches charges, slams, volleys and debris. Chapter two adds the double slam, chasing eruptions and the shared meteor. Chapter three keeps the core exposed but attacks about 15% faster and chains attacks together: the double slam into debris and, from Peril 2, a volley straight into eruptions. The boss sheds a shoulder plate in chapter two and both plates in chapter three; final-phase fragments orbit its enlarged core. Breaking a pillar throws off glowing armor fragments.
 
 Contextual combat prompts shorten after the first two uses of each attack. Downed teammates have a green rescue marker and progress ring. Each chapter's objective is shown during the upgrade break. Every rite choice allows 15 seconds, and all choices confirmed ends the break early. Landscape screens show three choices side by side; the team build details can be expanded below them.
 
@@ -27,21 +30,46 @@ Each run rolls a visible trait with a benefit and a drawback:
 - Fractured adds falling debris but armor breaks last longer.
 - Ancient has slower charges and wider shockwaves.
 
-Peril 1 teaches the encounter. Clearing it unlocks Peril 2, adding debris pressure. Peril 3 gradually closes a safe circle in the final chapter. These levels change mechanics rather than increasing the boss health bar. A rare non-weekly run rolls Gilded: golden appearance, 12% more health and a bonus title. Guaranteed cosmetics never require a rare encounter.
+Peril 1 teaches the encounter. Clearing it unlocks Peril 2: extra debris, longer eruption chains, volley-into-eruption combinations and 10% more boss damage. Peril 3 adds eruptions to chapter one, gradually closes a safe circle in the final chapter and deals 20% more damage. The boss health bar is the same at every Peril. A rare non-weekly run rolls Gilded: golden appearance, 12% more health and a bonus title. Guaranteed cosmetics never require a rare encounter.
 
 Six raid-only rites offer dash wards, shared ultimate energy, extra exposed-core damage, faster revives, low-health damage and ultimate-triggered healing. All champions can contribute; no dedicated healer is required. Offers vary by party seat, remain deterministic for weekly runs, and exclude owned rites. The upgrade panel shows everyone’s current build. These upgrades disappear after the run and do not change PvP loadouts.
+
+## Champion tricks
+
+Some champions' skills answer Grumblecrag's attacks; the briefing lists the party's:
+
+- **Auralynx · Mirror Guard** blocks the rock volley completely and adds stagger.
+- **Mystowl · Ward** up inside a shared meteor cuts the damage for everyone sharing it by 35%.
+- **Terradon** stops a charge head-on with its shell, taking half damage and staggering the boss.
+- **Lumoth · Kindle** cast beside a fallen ally fills half of their revive at once (and earns revive credit).
+
+## Teamwork tools
+
+- **Team signals:** *Stack on me*, *Revive me* and *Bait here*, from the buttons on the left of the arena or the **Z**, **X** and **C** keys (when those keys aren't bound to anything). A marker appears over your head for a few seconds and teammates see it in the callout line. One signal per second.
+- **What downed you:** the downed banner names the attack that downed you and how to avoid it. A lost run's result screen gives the tip for the attack that downed the team most.
+- **Stand-ins:** if a raider disconnects mid-run while at least one other player is still connected, an AI plays their champion (dodging telegraphs, stacking for meteors, reviving allies) until they reconnect, instead of pausing everyone. A solo raid still pauses. If they don't return in time, their seat is dropped as before.
+- **Practice:** in the raid lobby, the host can open *Practice the boss's attacks*. The boss repeats one chosen attack; nobody is hurt and the boss can't be damaged, and a bar counts hits and dodges. The host can switch attacks or leave practice for the lobby. Practice is never saved.
 
 ## Rewards and records
 
 Verified victories grant:
 
 - First clear: **Cragbreaker** title.
-- Five clears: **Cragbound** color variant, usable on any champion.
-- Peril 3: **Mountain Conqueror** title.
-- Peril 3 with no downs: **Mountain aura** cosmetic.
+- Five clears: **Cragbound** colors (skin).
+- Ten clears: **Cragstone** skin — stone markings with glowing amber cracks.
+- Peril 2 clear: **Mountainborn** entrance — your fighter arrives in a burst of pebbles each round.
+- Peril 3 clear: **Mountain Conqueror** title and the **Conqueror** portrait frame.
+- Peril 3 with no downs: **Mountain aura**.
 - Gilded clear: **Gilded Cragbreaker** title.
 
-Results show actual boss damage, revive assists, and pillar baits per player, alongside team totals. Everyone who contributed to a completed rescue receives revive credit; solo self-revives appear only in the team total. Damage excludes overkill and phase-gated damage. Pillars credit the marked player whose charge broke them. Contribution counters reset on retry and are not a competitive leaderboard.
+Lifetime totals over every saved run, **wins and losses**, grant:
+
+- 25 charges baited into pillars: **Pillar Breaker** title.
+- 20 revives helped: **Mountain Guardian** title.
+
+Skin, aura, entrance and frame are separate slots, equipped independently in the Bestiary for all fighters. Every reward is cosmetic: no stat bonuses, so experienced players never make the raid easier. The Bestiary lists every reward with its exact progress.
+
+Results show actual boss damage, revive assists, and pillar baits per player, alongside team totals, plus a role for whoever led each: Heavy Hitter, Medic and Bait Master. Everyone who contributed to a completed rescue receives revive credit; solo self-revives appear only in the team total. Damage excludes overkill and phase-gated damage. Pillars credit the marked player whose charge broke them. Contribution counters reset on retry and are not a competitive leaderboard.
 
 After the server confirms reward storage, the result screen fetches the player's saved progress and shows the next milestone. Failed storage never displays invented progress. Run again keeps the party, champions and challenge, skips the already-seen introduction, and opens fresh starting rites after everyone confirms. Changing champion or difficulty returns the party to the lobby.
 
@@ -51,11 +79,24 @@ Raid of the Week is optional. Its week starts Monday at 00:00 UTC; all rooms sha
 
 ## Required deployment setup
 
-1. Run `supabase/migrations/007_raids.sql` in Supabase after migrations 001–006.
+1. Run `supabase/migrations/007_raids.sql` in Supabase after migrations 001–006, then `supabase/migrations/008_raid_progress.sql`.
 2. Set **SUPABASE_SERVICE_ROLE_KEY** in the **server's** hosting environment alongside its existing SUPABASE_URL. Never use a VITE_ prefix or put this key in browser configuration. It enables the server-only `arena_record_raid` function.
 3. Redeploy the server and client together, since snapshots now support the raid mode.
 
 Core Peril 1 raids work without reward storage, but clears cannot be persisted or higher Perils unlocked until the migration and server credential are configured. The result screen explicitly reports storage failures. A server restart before saving an unavailable reward is not a durable queue; do the setup before inviting players to earn rewards.
+
+Migration 008 also saves real attempts that were lost (20 seconds or more of combat; practice never), with the chapter reached, per-player stats and which attacks downed people. Losses never count as clears or reach the weekly board. To see it, run this in Supabase's SQL Editor:
+
+```sql
+-- How far runs get, by Peril and party size.
+select peril, party_size, result, phase_reached, count(*), round(avg(seconds)) as avg_seconds
+from arena_raid_runs group by 1, 2, 3, 4 order by 1, 2, 3, 4;
+-- Which attacks down people most.
+select key as attack, sum(value::int) as downs
+from arena_raid_runs, jsonb_each_text(down_causes) group by 1 order by 2 desc;
+```
+
+(Signed-in admins can also call `arena_raid_balance()`, which returns the same summary.)
 
 Tables have RLS and no direct player write access. Only the service role can submit clears. The database records each run once, grants titles, checks cosmetic ownership, and exposes authenticated progress reads. No new HTTP endpoint accepts client-submitted raid wins.
 
