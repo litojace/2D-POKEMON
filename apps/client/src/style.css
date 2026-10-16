@@ -7083,3 +7083,18 @@ body:not(.battle-active)::before {background:rgba(15,29,52,.66);-webkit-backdrop
   flex: 0 0 20px;
   color: #ffd65b;
 }
+
+/* Settings: one column of actions under the controls button. */
+.settings-actions {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+.settings-actions > button {
+  width: 100%;
+  margin: 0;
+}
+.settings-actions > .quiet {
+  justify-self: center;
+  width: auto;
+}

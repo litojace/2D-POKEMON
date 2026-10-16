@@ -1775,7 +1775,7 @@ function dialog(html: string) {
 function showSettings() {
   settingsOpen = true;
   dialog(
-    `<div class="eyebrow">YOUR PREFERENCES</div><h2>Find your rhythm.</h2><p>Online matches keep running while this menu is open.</p><label>MUSIC <input type="range" id="music" min="0" max="1" step=".01" value="${audio.music}"></label><label>SOUND EFFECTS <input type="range" id="effects" min="0" max="1" step=".01" value="${audio.effects}"></label><p>Reduced motion follows your system preference.</p><button id="open-controls" class="secondary full">Controls &amp; key bindings →</button>${touch.settingsHTML()}<button id="settings-report" class="quiet">Report a problem</button>${myId ? '<button id="exit-room" class="secondary">Leave room</button>' : watching ? '<button id="exit-room" class="secondary">Stop watching</button>' : ""}`,
+    `<div class="eyebrow">YOUR PREFERENCES</div><h2>Find your rhythm.</h2><p>Online matches keep running while this menu is open.</p><label>MUSIC <input type="range" id="music" min="0" max="1" step=".01" value="${audio.music}"></label><label>SOUND EFFECTS <input type="range" id="effects" min="0" max="1" step=".01" value="${audio.effects}"></label><p>Reduced motion follows your system preference.</p><button id="open-controls" class="secondary full">Controls &amp; key bindings →</button>${touch.settingsHTML()}<div class="settings-actions">${myId ? '<button id="exit-room" class="secondary">Leave room</button>' : watching ? '<button id="exit-room" class="secondary">Stop watching</button>' : ""}<button id="settings-report" class="quiet">Report a problem</button></div>`,
   );
   for (const kind of ["music", "effects"] as const)
     $(kind).oninput = () => {
