@@ -719,7 +719,7 @@ function renderWatchOverlay(overlay: HTMLElement) {
     details =
       (isFfa() ? standingsMarkup(state!, "") : "") +
       recapMarkup(state!, "") +
-      '<div class="result-actions"><button class="secondary" id="watch-stop">Stop watching</button></div>';
+      '<div class="result-actions"><button class="secondary leave-button" id="watch-stop">Stop watching</button></div>';
   }
   setOverlayMarkup(
     overlay,
@@ -791,7 +791,7 @@ function watchPanel() {
       return `<div><span class="player-avatar" style="--element:#${c.color.toString(16).padStart(6, "0")}" title="${c.name}">${fighterAvatar(c.id, `watch${state!.players.indexOf(p)}`)}</span><span><strong>${escape(p.name)}</strong><small class="player-fighter">${c.name}</small></span><b class="status-pill ${!p.connected ? "offline" : p.ready ? "ready" : "choosing"}">${!p.connected ? "Offline" : p.ready ? "Ready" : "Choosing"}</b></div>`;
     })
     .join("");
-  return `<div class="eyebrow">WATCHING ROOM ${escape(state!.code)}</div><h2>Ringside seat.</h2><p>You'll see the match live as soon as everyone's ready. Watching: ${escape((state!.watchers ?? []).join(", ") || "just you")}.</p><div class="players">${rows}</div>${partyRulesNote()}<button class="secondary full" id="stop-watching">Stop watching</button>`;
+  return `<div class="eyebrow">WATCHING ROOM ${escape(state!.code)}</div><h2>Ringside seat.</h2><p>You'll see the match live as soon as everyone's ready. Watching: ${escape((state!.watchers ?? []).join(", ") || "just you")}.</p><div class="players">${rows}</div>${partyRulesNote()}<button class="secondary full leave-button" id="stop-watching">Stop watching</button>`;
 }
 /** Turbo party rule: skills recharge faster (for the cooldown displays). */
 function cooldownScale() {
@@ -828,7 +828,7 @@ function roomPanel(me: Fighter) {
     const fighter = CHARACTERS[p.id === myId ? selected : p.character];
     return `<div${p.id === myId ? " data-me" : ""}><span class="player-avatar" data-raid-cosmetic="${raidLookList(p.raidLook)}" style="--element:#${fighter.color.toString(16).padStart(6, "0")}" title="${fighter.name}">${fighterAvatar(fighter.id, `lobby${state!.players.indexOf(p)}`)}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small class="player-fighter">${fighter.name}${p.flair ? ` · <b class="flair flair-${p.flair.toLowerCase()}">★ ${p.flair}</b>` : ""}</small></span><b class="status-pill ${!p.connected ? "offline" : p.ready ? "ready" : "choosing"}">${!p.connected ? "Offline" : p.ready ? "Ready" : "Choosing"}</b></div>`;
   };
-  const ready = `<button class="primary" id="ready">${me.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full" id="leave">Leave room</button>`;
+  const ready = `<button class="primary" id="ready">${me.ready ? "Cancel ready" : "Ready to battle →"}</button><button class="quiet full leave-button" id="leave">Leave room</button>`;
   const code = `<button id="copy" class="room-code">${state!.code}<span>${COPY_ICON}COPY CODE</span></button><button id="invite" class="secondary full invite-link">Share invite link</button>`;
   if (isFfa()) {
     const open = Math.max(0, 4 - state!.players.length);
@@ -1180,7 +1180,7 @@ function renderBattle() {
           )
           .join(
             "",
-          )}</select></label><label><input id="practice-unlimited" type="checkbox"> No skill cooldowns</label><label><input id="practice-attacks" type="checkbox"> Target attacks</label><button class="secondary" id="practice-reset">Reset arena</button><button class="quiet" id="practice-exit">Exit test mode</button></div><p>Target respawns automatically. Enable attacks to test counters, clones and jumping over ground fire. Hover a skill for its description.</p></div></details>`;
+          )}</select></label><label><input id="practice-unlimited" type="checkbox"> No skill cooldowns</label><label><input id="practice-attacks" type="checkbox"> Target attacks</label><button class="secondary" id="practice-reset">Reset arena</button><button class="quiet leave-button" id="practice-exit">Exit test mode</button></div><p>Target respawns automatically. Enable attacks to test counters, clones and jumping over ground fire. Hover a skill for its description.</p></div></details>`;
       $("practice-settings").addEventListener("toggle", () => {
         if (($("practice-settings") as HTMLDetailsElement).open) stopControls();
       });
@@ -1772,10 +1772,30 @@ function dialog(html: string) {
     menuOpen = false;
   };
 }
+/**
+ * The Settings leave button. Outlined red normally; bolder, with what it
+ * costs, while a match is actually under way.
+ */
+function leaveButton() {
+  const live =
+    !!state &&
+    !state.practice &&
+    ["briefing", "countdown", "playing", "intermission", "paused"].includes(
+      state.phase,
+    );
+  if (!live) return '<button id="exit-room" class="secondary leave-button">Leave room</button>';
+  if (state!.raid) {
+    const others = state!.players.filter(
+      (p) => !p.raidBoss && !p.out && p.id !== myId,
+    ).length;
+    return `<button id="exit-room" class="secondary leave-button is-costly">Leave raid<small>${others ? "Your team carries on without you" : "Ends this run"}</small></button>`;
+  }
+  return '<button id="exit-room" class="secondary leave-button is-costly">Leave match<small>Counts as a forfeit</small></button>';
+}
 function showSettings() {
   settingsOpen = true;
   dialog(
-    `<div class="eyebrow">YOUR PREFERENCES</div><h2>Find your rhythm.</h2><p>Online matches keep running while this menu is open.</p><label>MUSIC <input type="range" id="music" min="0" max="1" step=".01" value="${audio.music}"></label><label>SOUND EFFECTS <input type="range" id="effects" min="0" max="1" step=".01" value="${audio.effects}"></label><p>Reduced motion follows your system preference.</p><button id="open-controls" class="secondary full">Controls &amp; key bindings →</button>${touch.settingsHTML()}<div class="settings-actions">${myId ? '<button id="exit-room" class="secondary">Leave room</button>' : watching ? '<button id="exit-room" class="secondary">Stop watching</button>' : ""}<button id="settings-report" class="quiet">Report a problem</button></div>`,
+    `<div class="eyebrow">YOUR PREFERENCES</div><h2>Find your rhythm.</h2><p>Online matches keep running while this menu is open.</p><label>MUSIC <input type="range" id="music" min="0" max="1" step=".01" value="${audio.music}"></label><label>SOUND EFFECTS <input type="range" id="effects" min="0" max="1" step=".01" value="${audio.effects}"></label><p>Reduced motion follows your system preference.</p><button id="open-controls" class="secondary full">Controls &amp; key bindings →</button>${touch.settingsHTML()}<div class="settings-actions">${myId ? leaveButton() : watching ? '<button id="exit-room" class="secondary leave-button">Stop watching</button>' : ""}<button id="settings-report" class="quiet">Report a problem</button></div>`,
   );
   for (const kind of ["music", "effects"] as const)
     $(kind).oninput = () => {

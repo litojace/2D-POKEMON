@@ -87,7 +87,7 @@ export function raidLobby(
     <section class="raid-challenge" aria-label="Raid challenge"><div class="raid-section-heading"><h3>Choose your challenge</h3><span>${host ? "HOST CONTROLS" : "HOST SELECTS"}</span></div>${raidDifficulty(r.peril, !host || r.weekly)}<label class="raid-weekly-option"><input id="raid-weekly" type="checkbox" ${r.weekly ? "checked" : ""} ${host ? "" : "disabled"}><span><b>Raid of the Week</b><small>Shared Peril 2 challenge · weekly leaderboard</small></span></label><p class="raid-unlock-note">Clear a Peril to unlock the next difficulty.</p></section>
     <div class="raid-lobby-rules"><span><svg class="raid-rule-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v10m-5-5h10"/></svg><span>${party.length === 1 ? "One solo self-revive" : "Stand near allies to revive"}</span></span><span><svg class="raid-rule-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 3 8 4v6c0 5-8 8-8 8s-8-3-8-8V7Z"/><path d="m8 12 3 3 5-6"/></svg><span>Separate from PvP rating</span></span></div>
     ${practicePicker(host)}
-    <div class="raid-lobby-actions"><button class="primary" id="ready">${me.ready ? "Cancel ready" : "Ready for the raid"}<span aria-hidden="true">${me.ready ? "×" : "→"}</span></button><div><button class="secondary raid-icon-button" id="raid-bestiary">${menuIcon("bestiary")}<span>Bestiary & rewards</span></button><button class="quiet" id="leave">Leave room</button></div></div>
+    <div class="raid-lobby-actions"><button class="primary" id="ready">${me.ready ? "Cancel ready" : "Ready for the raid"}<span aria-hidden="true">${me.ready ? "×" : "→"}</span></button><div><button class="secondary raid-icon-button" id="raid-bestiary">${menuIcon("bestiary")}<span>Bestiary & rewards</span></button><button class="quiet leave-button" id="leave">Leave room</button></div></div>
   </div>`;
 }
 const SLOT_NAMES: Record<RaidSlot, string> = {
@@ -654,7 +654,7 @@ function raidControls(
   const key = `${r.drill}|${host}|${r.drillStats?.hits}|${r.drillStats?.dodges}`;
   if (drill.dataset.key === key) return;
   drill.dataset.key = key;
-  drill.innerHTML = `<div class="raid-drill-head"><b>Practice · ${RAID_ATTACKS[r.drill].name}</b><span>Dodged ${r.drillStats?.dodges ?? 0} · Hit ${r.drillStats?.hits ?? 0}</span></div><p>${escape(RAID_ATTACKS[r.drill].tip)}</p><div class="raid-drill-options">${ATTACK_ORDER.map((id) => `<button type="button" class="${id === r.drill ? "is-active" : ""}" data-raid-drill="${id}" ${host ? "" : "disabled"}>${RAID_ATTACKS[id].name}</button>`).join("")}<button type="button" class="quiet" id="raid-drill-leave">${host ? "Leave practice" : "Host ends practice"}</button></div>`;
+  drill.innerHTML = `<div class="raid-drill-head"><b>Practice · ${RAID_ATTACKS[r.drill].name}</b><span>Dodged ${r.drillStats?.dodges ?? 0} · Hit ${r.drillStats?.hits ?? 0}</span></div><p>${escape(RAID_ATTACKS[r.drill].tip)}</p><div class="raid-drill-options">${ATTACK_ORDER.map((id) => `<button type="button" class="${id === r.drill ? "is-active" : ""}" data-raid-drill="${id}" ${host ? "" : "disabled"}>${RAID_ATTACKS[id].name}</button>`).join("")}<button type="button" class="quiet leave-button" id="raid-drill-leave">${host ? "Leave practice" : "Host ends practice"}</button></div>`;
   for (const b of Array.from(
     drill.querySelectorAll<HTMLButtonElement>("[data-raid-drill]"),
   ))

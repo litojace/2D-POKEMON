@@ -7098,3 +7098,32 @@ body:not(.battle-active)::before {background:rgba(15,29,52,.66);-webkit-backdrop
   justify-self: center;
   width: auto;
 }
+
+/* Leaving: red text and outline, never a solid red block (red is also the
+   colour of boss warnings). Bolder only while a match is under way. */
+.leave-button,
+button.leave-button.quiet,
+button.leave-button.secondary {
+  color: #ff9aa5;
+  border: 1px solid #ff6b7a66;
+  background: #ff4d6012;
+}
+.leave-button:hover:not(:disabled),
+.leave-button:focus-visible {
+  color: #ffc2c8;
+  border-color: #ff6b7aaa;
+  background: #ff4d6026;
+}
+.leave-button.is-costly {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  color: #ffd0d5;
+  border-color: #ff6b7acc;
+  background: #ff4d6033;
+}
+.leave-button.is-costly small {
+  font-size: 10px;
+  font-weight: 500;
+  color: #ffb3bb;
+}
