@@ -916,12 +916,15 @@ function wireRoom() {
         void request("mutators", { ids: [...on] });
       };
     });
-  $("copy").onclick = () =>
+  // The raid lobby has its own copy button and no invite link.
+  const copy = document.getElementById("copy");
+  if (copy) copy.onclick = () =>
     void navigator.clipboard
       .writeText(state!.code)
       .then(() => toast("Room code copied."))
       .catch(() => toast(`Share this code: ${state!.code}`));
-  $("invite").onclick = () =>
+  const invite = document.getElementById("invite");
+  if (invite) invite.onclick = () =>
     void shareInvite(state!.code).then((how) =>
       toast(
         how === "copied"
@@ -983,7 +986,7 @@ function renderMenu(revealSelection = false) {
             )
             .join(
               "",
-            )}</div><button class="primary" id="create">Create private room →</button><button class="quiet" id="raid-bestiary">Boss Bestiary & raid rewards</button><div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><button id="watch" class="quiet full">Watch this room instead</button><div class="divider">OR PLAY SOLO</div><div class="bot-picker" role="radiogroup" aria-label="Bot difficulty">${BOT_LEVELS.map(([id, label, hint]) => `<button type="button" role="radio" class="bot-level${botLevel === id ? " active" : ""}" data-bot="${id}" aria-checked="${botLevel === id}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button class="secondary full" id="bot-match">Battle an AI bot →</button>${accountsUI?.account ? '<button class="quiet full" id="practice">Solo test mode →</button>' : ""}<small class="room-note">Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`;
+            )}</div><button class="primary" id="create">Create private room →</button><button class="quiet raid-icon-button" id="raid-bestiary">${menuIcon("bestiary")}<span>Boss Bestiary & raid rewards</span></button><div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">Join →</button></div><button id="watch" class="quiet full">Watch this room instead</button><div class="divider">OR PLAY SOLO</div><div class="bot-picker" role="radiogroup" aria-label="Bot difficulty">${BOT_LEVELS.map(([id, label, hint]) => `<button type="button" role="radio" class="bot-level${botLevel === id ? " active" : ""}" data-bot="${id}" aria-checked="${botLevel === id}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button class="secondary full" id="bot-match">Battle an AI bot →</button>${accountsUI?.account ? '<button class="quiet full" id="practice">Solo test mode →</button>' : ""}<small class="room-note">Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`;
   const retainedShell = updateMenuShell($("menu"), panelMarkup, () =>
     `<header class="desktop-lobby-header"><div class="eyebrow">ELEMENTAL COLISEUM</div><h1>Choose your fighter</h1><p>Pick your creature. Enter the arena.</p></header><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected)}</div><aside class="room-panel">${panelMarkup}</aside></div>`,
     keepScroll !== null,

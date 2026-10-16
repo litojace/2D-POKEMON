@@ -7069,3 +7069,17 @@ body:not(.battle-active)::before {background:rgba(15,29,52,.66);-webkit-backdrop
 .raid-practice-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
 .raid-practice-options button { display: grid; gap: 3px; text-align: left; padding: 9px 10px; }
 .raid-practice-options small { font-size: 10px; color: #a9bbd5; font-weight: 500; }
+
+/* Bestiary & rewards buttons carry the book icon. */
+.raid-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.raid-icon-button .menu-option-icon {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  color: #ffd65b;
+}

@@ -406,7 +406,13 @@ export class AccountUI {
               const look = { ...raidLookOf(progress), [slot]: item };
               progress.loadout = look;
               this.raidLook = look;
-              this.hooks.onChange();
+              // The save worked: a hiccup redrawing the page behind the
+              // dialog must not be reported as a failed save.
+              try {
+                this.hooks.onChange();
+              } catch (error) {
+                console.error(error);
+              }
               if (!options.isConnected) return;
               // Update only the choices: keep the dialog and its scroll position.
               options.innerHTML = raidCosmeticOptions(progress, character);
