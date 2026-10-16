@@ -6366,8 +6366,10 @@ dialog:has(.illustrated-guide) { width:min(820px,94vw); }
 .battle-raid #raid-hud { display:block; position:absolute; top:calc(var(--safe-top,0px) + 8px); left:max(18px,var(--safe-left,0px)); right:max(18px,var(--safe-right,0px)); z-index:25; background:#0c1b32ed; border:1px solid #d7b16f66; border-radius:12px; padding:10px 14px; pointer-events:none; }
 .raid-boss-heading { display:flex; justify-content:space-between; gap:10px; color:#ffdc92; font-size:12px; }
 .raid-boss-heading span { color:#a8bbd5; font-size:10px; }
-.raid-boss-health { height:12px; border-radius:6px; background:#351e29; margin:7px 0 5px; overflow:hidden; }
-.raid-boss-health i { display:block; height:100%; background:linear-gradient(90deg,#d97948,#f9d37c); }
+.raid-boss-health { position:relative; height:12px; border-radius:6px; background:#351e29; margin:7px 0 5px; }
+.raid-boss-health i { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,#d97948,#f9d37c); }
+.raid-health-mark { position:absolute; top:-2px; bottom:-2px; width:3px; transform:translateX(-50%); border-radius:1px; background:#ff4059; box-shadow:0 0 0 1px #101c35; }
+.raid-health-mark.is-passed { background:#747e93; opacity:.55; }
 .raid-stagger { height:5px; background:#172c48; position:relative; margin-bottom:12px; }
 .raid-stagger i { display:block; height:100%; background:#8cf7e3; }
 .raid-stagger span { position:absolute; top:6px; right:0; color:#a7f4e5; font-size:7px; letter-spacing:1px; }
