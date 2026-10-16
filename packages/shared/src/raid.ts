@@ -2,7 +2,7 @@ export const RAID = {
   name: "Grumblecrag",
   maxPeril: 3,
   timeLimit: 480,
-  riteChoiceSeconds: 30,
+  riteChoiceSeconds: 15,
   reviveSeconds: 3,
   reviveRange: 100,
   selfReviveDelay: 6,

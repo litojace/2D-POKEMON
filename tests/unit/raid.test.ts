@@ -371,7 +371,7 @@ it("credits all participating rescuers, including help before an interruption", 
   expect(a.raid.contributions![p.id].revives).toBe(0);
 });
 
-it("allows thirty seconds to read rites in every chapter, with early completion when everyone picks", () => {
+it("allows fifteen seconds to read rites in every chapter, with early completion when everyone picks", () => {
   for (const chapter of [1, 2, 3]) {
     const a = raid(2);
     if (chapter === 1) {
@@ -383,8 +383,8 @@ it("allows thirty seconds to read rites in every chapter, with early completion 
       a.tick();
     }
     expect(a.raid.phase).toBe(chapter);
-    expect(a.deadline - a.time).toBeCloseTo(30);
-    a.tick(20);
+    expect(a.deadline - a.time).toBeCloseTo(15);
+    a.tick(5);
     expect(a.phase).toBe("intermission");
     expect(Object.keys(a.raid.offers)).toHaveLength(2);
     a.pickRite("p0", a.raid.offers.p0[0]);
@@ -396,7 +396,7 @@ it("allows thirty seconds to read rites in every chapter, with early completion 
   }
   const a = raid();
   a.acknowledgeInstructions("p0");
-  a.tick(29.9);
+  a.tick(14.9);
   expect(a.phase).toBe("intermission");
   a.tick(0.2);
   expect(a.phase).toBe("countdown");
