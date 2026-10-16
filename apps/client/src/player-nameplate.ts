@@ -64,3 +64,41 @@ export function updateNameplate(
   );
   el.children[1].textContent = name + (own ? " · YOU" : "");
 }
+const escapeHtml = (value: string) =>
+  value.replace(
+    /[&<>"']/g,
+    (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        c
+      ]!,
+  );
+type PickerTitle = {
+  id: string;
+  name: string;
+  color: string;
+  description?: string;
+  createdAt?: string | null;
+};
+/**
+ * The profile's title chooser: each owned title drawn exactly as it appears
+ * above a fighter (colour, glow, shimmer), plus a live nameplate preview that
+ * the caller keeps up to date with updateNameplate. Radios are named
+ * "titleId", so the surrounding form submits the same value the old <select>
+ * did ("" = no title).
+ */
+export function titlePickerMarkup(
+  titles: PickerTitle[],
+  equipped: string | null | undefined,
+) {
+  const sorted = sortTitles(titles);
+  const current = sorted.find((t) => t.name === equipped)?.id ?? "";
+  const option = (t: PickerTitle | null) => {
+    const id = t?.id ?? "";
+    const sample = t
+      ? `<span class="player-title title-${titleTreatment(t.name)}">${escapeHtml(t.name)}</span>`
+      : '<span class="title-none">No title</span>';
+    const note = t ? t.description : "Just your name above your fighter.";
+    return `<label class="title-option" style="--title-color:${t && /^#[0-9a-f]{6}$/i.test(t.color) ? t.color : "#a9b4c9"}"><input type="radio" name="titleId" value="${escapeHtml(id)}"${id === current ? " checked" : ""}><span class="title-sample">${sample}${note ? `<small>${escapeHtml(note)}</small>` : ""}</span>${id === current ? '<em class="title-equipped">Equipped</em>' : ""}</label>`;
+  };
+  return `<fieldset class="title-picker"><legend>Equipped title</legend><div class="title-preview"><div class="player-nameplate" id="title-preview"></div><small>How other players see you in the arena</small></div><div class="title-options" role="radiogroup" aria-label="Choose a title">${option(null)}${sorted.map(option).join("")}</div>${sorted.length ? "" : '<p class="muted">Earn titles from season ranks, raids and events. They show up here.</p>'}</fieldset>`;
+}

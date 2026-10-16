@@ -8,7 +8,12 @@ import {
   type RaidProgress,
   type RaidSlot,
 } from "../../../packages/shared/src/raid";
-import { TITLE_PRESETS, sortTitles } from "./player-nameplate";
+import {
+  TITLE_PRESETS,
+  sortTitles,
+  titlePickerMarkup,
+  updateNameplate,
+} from "./player-nameplate";
 import { isQuietRefresh } from "./session-refresh";
 import { createClient, type Session } from "@supabase/supabase-js";
 import {
@@ -449,16 +454,7 @@ export class AccountUI {
     if (!this.account) return;
     const account = this.account;
     this.hooks.openDialog(
-      `<div class="eyebrow">YOUR PLAYER PROFILE</div><h2>${escape(account.displayName)}</h2><p>${account.isAdmin ? "Administrator" : account.guest ? "Guest" : "Player"}${this.session?.user.email ? ` · ${escape(this.session.user.email)}` : ""}</p>${account.guest ? `<form id="profile-save" class="account-form save-account"><p><b>Keep your progress.</b> Guest accounts live only on this device. Add your email to make this a full account: your records, titles and name come with you.</p><label>Email<input name="email" type="email" required autocomplete="email"></label><button class="primary">${iconLabel("save", "Save my account")}</button><p id="save-message" role="status"></p></form>` : ""}<form id="profile-title" class="account-form"><label>Equipped title<select name="titleId"><option value="">No title</option>${sortTitles(
-        account.ownedTitles as Title[],
-      )
-        .map(
-          (t) =>
-            `<option value="${t.id}" ${account.title === t.name ? "selected" : ""}>${escape(t.name)}</option>`,
-        )
-        .join(
-          "",
-        )}</select></label><button class="primary">${iconLabel("save", "Save title")}</button><p id="profile-message" role="status"></p></form><button class="secondary full" id="profile-leaderboard">${iconLabel("leaderboard", "Season standings →")}</button><section id="profile-raid"><button class="secondary full" id="profile-raids">${iconLabel("bestiary", "Boss Bestiary & raid rewards →")}</button><p id="profile-raid-stats" class="muted"></p></section><section id="profile-progress" class="progress"><p class="muted">Loading your progress…</p></section>`,
+      `<div class="eyebrow">YOUR PLAYER PROFILE</div><h2>${escape(account.displayName)}</h2><p>${account.isAdmin ? "Administrator" : account.guest ? "Guest" : "Player"}${this.session?.user.email ? ` · ${escape(this.session.user.email)}` : ""}</p>${account.guest ? `<form id="profile-save" class="account-form save-account"><p><b>Keep your progress.</b> Guest accounts live only on this device. Add your email to make this a full account: your records, titles and name come with you.</p><label>Email<input name="email" type="email" required autocomplete="email"></label><button class="primary">${iconLabel("save", "Save my account")}</button><p id="save-message" role="status"></p></form>` : ""}<form id="profile-title" class="account-form">${titlePickerMarkup(account.ownedTitles as Title[], account.title)}<button class="primary">${iconLabel("save", "Save title")}</button><p id="profile-message" role="status"></p></form><button class="secondary full" id="profile-leaderboard">${iconLabel("leaderboard", "Season standings →")}</button><section id="profile-raid"><button class="secondary full" id="profile-raids">${iconLabel("bestiary", "Boss Bestiary & raid rewards →")}</button><p id="profile-raid-stats" class="muted"></p></section><section id="profile-progress" class="progress"><p class="muted">Loading your progress…</p></section>`,
     );
     element("profile-leaderboard").onclick = () => void this.showLeaderboard();
     element("profile-raids").onclick=()=>void this.showRaids();
@@ -494,6 +490,27 @@ export class AccountUI {
               : "Your progress couldn’t be loaded right now.",
           )}</p>`;
       });
+    // Live preview: the nameplate shows whichever title is picked, before saving.
+    const titleForm = element<HTMLFormElement>("profile-title");
+    const paintPreview = () => {
+      const id = String(new FormData(titleForm).get("titleId") ?? "");
+      const pick = (account.ownedTitles as Title[]).find((t) => t.id === id);
+      updateNameplate(
+        element("title-preview"),
+        account.displayName,
+        pick?.name ?? null,
+        pick?.color ?? null,
+        true,
+        matchMedia("(prefers-reduced-motion: reduce)").matches,
+      );
+      const saved =
+        (account.ownedTitles as Title[]).find((t) => t.name === account.title)
+          ?.id ?? "";
+      element("profile-message").textContent =
+        id === saved ? "" : "Press Save title to equip it.";
+    };
+    titleForm.onchange = paintPreview;
+    paintPreview();
     element<HTMLFormElement>("profile-title").onsubmit = async (event) => {
       event.preventDefault();
       try {
@@ -503,6 +520,8 @@ export class AccountUI {
         );
         await this.api("/api/account/title", { titleId: titleId || null });
         await this.refresh();
+        // Redraw so "Equipped" moves to the new title.
+        await this.showProfile();
         element("profile-message").textContent = "Title updated.";
       } catch (error) {
         element("profile-message").textContent =

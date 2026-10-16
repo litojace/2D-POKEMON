@@ -475,7 +475,7 @@ kbd {
   letter-spacing: 1.5px;
   margin: 24px 0 10px;
 }
-input:not([type="range"]):not([type="checkbox"]):not([type="color"]) {
+input:not([type="range"]):not([type="checkbox"]):not([type="color"]):not([type="radio"]) {
   border: 1px solid #ffffff1c;
   background: #10213d;
   color: #fff;
@@ -487,7 +487,7 @@ input:not([type="range"]):not([type="checkbox"]):not([type="color"]) {
 }
 /* iOS zooms into any focused field under 16px; phones get 16px fields instead. */
 @media (pointer: coarse) {
-  input:not([type="range"]):not([type="checkbox"]):not([type="color"]),
+  input:not([type="range"]):not([type="checkbox"]):not([type="color"]):not([type="radio"]),
   select,
   textarea {
     font-size: 16px;
@@ -7175,4 +7175,120 @@ button.small .button-icon {
   padding: 6px 9px;
   border-radius: 8px;
   font-size: 11px;
+}
+/* Profile title picker: every title drawn as it looks in the arena. */
+.title-picker {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.title-picker legend {
+  padding: 0;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #d7e2f8;
+}
+.title-preview {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 14px 10px 10px;
+  margin-bottom: 10px;
+  border-radius: 10px;
+  border: 1px solid #ffffff14;
+  background:
+    radial-gradient(ellipse at 50% 120%, #4a6a3a66, transparent 65%),
+    linear-gradient(#1a2d4c, #0f1c33);
+}
+.title-preview .player-nameplate {
+  position: static;
+  transform: none;
+  max-width: 100%;
+}
+.title-preview .player-title {
+  font-size: 13px;
+}
+.title-preview .player-name {
+  font-size: 14px;
+}
+.title-preview > small {
+  font-size: 10px;
+  color: #93a8c6;
+}
+.title-options {
+  display: grid;
+  gap: 6px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 2px;
+}
+label.title-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid #8baee530;
+  background: #14243f;
+  cursor: pointer;
+  /* Undo the form's stacked label styling. */
+  margin: 0;
+  font-size: inherit;
+  color: inherit;
+}
+.title-option:hover {
+  border-color: #8baee566;
+}
+.title-option:has(input:checked) {
+  border-color: #ffd65b;
+  background: #ffd65b12;
+}
+.title-option:has(input:focus-visible) {
+  outline: 2px solid var(--lime);
+  outline-offset: 2px;
+}
+.account-form .title-option input {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  accent-color: #ffd65b;
+}
+.title-sample {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+  text-align: left;
+}
+.title-sample .player-title {
+  justify-self: start;
+  font-size: 13px;
+  white-space: normal;
+}
+.title-sample small {
+  font-size: 10px;
+  color: #a9bbd5;
+  font-weight: 500;
+  line-height: 1.35;
+}
+.title-none {
+  font-size: 13px;
+  font-weight: 700;
+  color: #a9b4c9;
+}
+.title-equipped {
+  flex: none;
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #18233c;
+  background: #ffd65b;
+  border-radius: 999px;
+  padding: 2px 7px;
 }
