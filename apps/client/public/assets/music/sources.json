@@ -1,0 +1,212 @@
+[
+  {
+    "id": "piano-low",
+    "instrument": "piano",
+    "file": "piano-low.mp3",
+    "rootHz": 130.8127826502993,
+    "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Kawai/Sustains/GPiano_sus_C2_v2_rr1_Player.wav",
+    "sourceSha256": "00838dbdbcb0dffd02529c38fa84bc514931634b485fc2ad6ecc62fe98d27a62",
+    "sha256": "d8fe5b760b74d415947745158be2b9802d22cbb0081fa8195067086fd7d9597f",
+    "license": "CC0-1.0"
+  },
+  {
+    "id": "piano-mid",
+    "instrument": "piano",
+    "file": "piano-mid.mp3",
+    "rootHz": 261.6255653005986,
+    "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Kawai/Sustains/GPiano_sus_C3_v2_rr1_Player.wav",
+    "sourceSha256": "fce33012fe900309abafd1a4d6d254d142b0cbf33834c7a72c2fd1ada4e746e1",
+    "sha256": "f29e90dd2953d0c8743a692e26f64dc19e5718a9528551a46522bd769af95f96",
+    "license": "CC0-1.0"
+  },
+  {
+    "id": "piano-high",
+    "instrument": "piano",
+    "file": "piano-high.mp3",
+    "rootHz": 523.2511306011972,
+    "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Zithers/Grand%20Piano%2C%20Kawai/Sustains/GPiano_sus_C4_v2_rr1_Player.wav",
+    "sourceSha256": "69845de40a38ed6501746520f9f385ae56200a4372faed48178e64a32a75e58c",
+    "sha256": "11802fd4533c09a05920182ee9ddbe85bfbbc51f51c7fb07c7922a63f13cac67",
+    "license": "CC0-1.0"
+  },
+  {
+    "id": "harp-low",
+    "instrument": "harp",
+    "file": "harp-low.mp3",
+    "rootHz": 293.6647679174076,
+    "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Composite%20Chordophones/Concert%20Harp/KSHarp_D4_mf1.wav",
+    "sourceSha256": "ebfde8aab4411019e37e3426f4dd88d6a52a38c2d0261d7f10ec63d8ff584dc7",
+    "sha256": "173dada7b7ab77bfee941e5e567dbc09653d00f230068bf2146c1566c7412213",
+    "license": "CC0-1.0"
+  },
+  {
+    "id": "harp-high",
+    "instrument": "harp",
+    "file": "harp-high.mp3",
+    "rootHz": 523.2511306011972,
+    "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Chordophones/Composite%20Chordophones/Concert%20Harp/KSHarp_C5_mf1.wav",
+    "sourceSha256": "7c8b862f6fd3f1442ed87537af976d84bda8c05a5b4900e8907d570b5202a517",
+    "sha256": "ab15044521ffca4cc7486c7a52618bf42f0cd1f0c122e1c179fa18be7dedd2b1",
+    "license": "CC0-1.0"
+  },
+  {
+    "id": "flute-mid",
+    "instrument": "flute",
+    "file": "flute-mid.mp3",
+    "rootHz": 523.2511306011972,
+    "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Woodwinds/Flute/susvib/LDFlute_susvib_C4_v1_1.wav",
+    "sourceSha256": "e88a0ff35e6b8c29fd88bc778a4c817d955b2c3a2934def97a7d093b72e2ae97",
+    "sha256": "be6b15031f02eb2baabe4e49398d7cca3126ff1fc43427a984ad5f7e411a4900",
+    "license": "CC0-1.0"
+  },
+  {
+    "id": "flute-high",
+    "instrument": "flute",
+    "file": "flute-high.mp3",
+    "rootHz": 1046.5022612023945,
+    "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Woodwinds/Flute/susvib/LDFlute_susvib_C5_v1_1.wav",
+    "sourceSha256": "ecb78c59069866ea7c3327594851827cd2f50c5d411aad422269a88e53614fbe",
+    "sha256": "5e43c595d0e43f35d5ec5e5bf73fe8d4080dc9659563e949e74dbc2bfbe74601",
+    "license": "CC0-1.0"
+  },
+  {
+    "id": "flute-low",
+    "instrument": "flute",
+    "file": "flute-low.mp3",
+    "rootHz": 261.6255653005986,
+    "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Woodwinds/Flute/susvib/LDFlute_susvib_C3_v1_1.wav",
+    "sourceSha256": "073631c8442b275d803e608e840c2ce6cad3b08320018e08510cf3cb57373154",
+    "sha256": "dad8dae6db4f07a05857481b917f2a2f1df06229ed7fb37ce437231bd15c9d67",
+    "license": "CC0-1.0"
+  },
+  {
+    "id": "strings-low",
+    "instrument": "strings",
+    "file": "strings-low.mp3",
+    "rootHz": 293.6647679174076,
+    "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Violin%20Section/susVib/VlnEns_susVib_D3_v1.wav",
+    "sourceSha256": "583e660bc5daa4e094aef5fc014fbb92751040be8741ed7a16847306a1fe0a99",
+    "sha256": "a9135cc98f9dd9663c09c808487891174385a8b04c02fb28e409a78a9f80d661",
+    "license": "CC0-1.0"
+  },
+  {
+    "id": "strings-mid",
+    "instrument": "strings",
+    "file": "strings-mid.mp3",
+    "rootHz": 523.2511306011972,
+    "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Violin%20Section/susVib/VlnEns_susVib_C4_v1.wav",
+    "sourceSha256": "c07edd5b2119fa1da2207aba996961b50dd616f69bbcf2300ab271bc6c16239f",
+    "sha256": "c9fe43f3cbdc93ee7778f0609ef5b8840a3fb3463433fb9ad87c027941752879",
+    "license": "CC0-1.0"
+  },
+  {
+    "id": "strings-high",
+    "instrument": "strings",
+    "file": "strings-high.mp3",
+    "rootHz": 783.9908719634985,
+    "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Violin%20Section/susVib/VlnEns_susVib_G4_v1.wav",
+    "sourceSha256": "ed2a89cf254432d2af073699fa43ebfa16cfbc5552c7fc964a184fc434eaaa39",
+    "sha256": "b159ff13cd047122c800d70c8f0e80767ab0f6c55aa054d1baeab558531319f2",
+    "license": "CC0-1.0"
+  },
+  {
+    "id": "spiccato-low",
+    "instrument": "spiccato",
+    "file": "spiccato-low.mp3",
+    "rootHz": 293.6647679174076,
+    "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Violin%20Section/Spic/VlnEns_Spic_D3_v1_rr1.wav",
+    "sourceSha256": "d94e088560784d6ecd6a927e8101d7e460e6d79168ab9eb52842c58891fae8da",
+    "sha256": "8b06d9cd47966c3193266082df582940bc5046fd7a6d740d1ac6fa102cfa371c",
+    "license": "CC0-1.0"
+  },
+  {
+    "id": "spiccato-mid",
+    "instrument": "spiccato",
+    "file": "spiccato-mid.mp3",
+    "rootHz": 523.2511306011972,
+    "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Violin%20Section/Spic/VlnEns_Spic_C4_v1_rr1.wav",
+    "sourceSha256": "b734950875dff1dd7cda7c4721901516560b99f5655c3ffd40b6dc43c16e9c2f",
+    "sha256": "383ec8c34f67c464cf2aecf32bd21cd90ca21f9023ad45fef1b4b583e4d198aa",
+    "license": "CC0-1.0"
+  },
+  {
+    "id": "spiccato-high",
+    "instrument": "spiccato",
+    "file": "spiccato-high.mp3",
+    "rootHz": 783.9908719634985,
+    "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Violin%20Section/Spic/VlnEns_Spic_G4_v1_rr1.wav",
+    "sourceSha256": "ae748a8421f32e0e490fbf298b6bc32ec5534c2210ba2d6d9f65fd77726e1107",
+    "sha256": "9ed9280593223961f8eea231544e93e907df8cd77d78615fbe67e91d0d9e5c9c",
+    "license": "CC0-1.0"
+  },
+  {
+    "id": "cello-low",
+    "instrument": "cello",
+    "file": "cello-low.mp3",
+    "rootHz": 65.40639132514966,
+    "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Cello%20Section/susvib/susvib_C1_v1_1.wav",
+    "sourceSha256": "abdcea431f384e135c469b0f3e4ac2a437f282f521dc5bcbe22abc221536e8de",
+    "sha256": "2a94ac5ab321d72984f3aebb6c5f68d7e6d8063f13530c2827c799eb581def0c",
+    "license": "CC0-1.0"
+  },
+  {
+    "id": "cello",
+    "instrument": "cello",
+    "file": "cello.mp3",
+    "rootHz": 261.6255653005986,
+    "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Strings/Cello%20Section/susvib/susvib_C3_v1_1.wav",
+    "sourceSha256": "a614ee7ca821b44660236e47b89620cf914ec6ad27a99bc0d9764f47dbe512e1",
+    "sha256": "641f2eeb6d3f1c45cdf4f69c15460d0a0d6394ecb37ca515e911245f2cbb09c3",
+    "license": "CC0-1.0"
+  },
+  {
+    "id": "horn",
+    "instrument": "horn",
+    "file": "horn.mp3",
+    "rootHz": 261.6255653005986,
+    "source": "https://raw.githubusercontent.com/sgossner/VSCO-2-CE/440300901dfe9275fd84e0b7763af1f8443ae62e/Brass/F%20Horn/sus/MOHorn_sus_C3_v2_1.wav",
+    "sourceSha256": "c0c0b157dcde094c4417b7c165d645897cde9ea6d74247bbab0c0e75355e78c3",
+    "sha256": "eb09f3446a292de27c1a2f9fb07d5a7ae5f63861968ff603389118422e1d0d12",
+    "license": "CC0-1.0"
+  },
+  {
+    "id": "concert-bass",
+    "instrument": "concert-bass",
+    "file": "concert-bass.mp3",
+    "rootHz": null,
+    "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Bass%20Drum%201/BDrumNew_hit_v3_rr1_Sum.wav",
+    "sourceSha256": "a2d8829e8b2b59e8afb12fa396b01758827059339c2a84ad066d17b36c82d1ff",
+    "sha256": "016cfe786b64a50e568df215a907fd7ec4f9fa48755466de710f7097b0973adb",
+    "license": "CC0-1.0"
+  },
+  {
+    "id": "concert-snare",
+    "instrument": "concert-snare",
+    "file": "concert-snare.mp3",
+    "rootHz": null,
+    "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Snare%20Drum%2C%20Rope%20Tension/Hi/RopeSnare_hi_sn_Main_vl2_rr1.wav",
+    "sourceSha256": "08c3f8ceeef6b85f0c5c719e16d4500851367afc1ddfef7479a429b10e63fe8a",
+    "sha256": "f0b25a1a7d864adfa0c694c3f26ab7da0f17063492237a6dcf4f8f3141b2b708",
+    "license": "CC0-1.0"
+  },
+  {
+    "id": "timpani",
+    "instrument": "timpani",
+    "file": "timpani.mp3",
+    "rootHz": null,
+    "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Membranophones/Struck%20Membranophones/Timpani%201/Hit/Timpani1_Hit_v3_rr3_Sum.wav",
+    "sourceSha256": "25455f78f6a4dbbc9b26dad2e1896a4707f87eab458a55334b66e85bf05d0556",
+    "sha256": "b47b8a74922c3d1eda8bd07dfc670efc372b3c7901a35834ebf5b02d1dcb7b5a",
+    "license": "CC0-1.0"
+  },
+  {
+    "id": "concert-cymbal",
+    "instrument": "concert-cymbal",
+    "file": "concert-cymbal.mp3",
+    "rootHz": null,
+    "source": "https://raw.githubusercontent.com/sgossner/VCSL/c1ea7bcc3c7309650ab0da9d15c9cd1fbc4a4c7e/Idiophones/Struck%20Idiophones/Suspended%20Cymbal%201/susCymb1_hit_mp1.wav",
+    "sourceSha256": "426238ad2bfadab07895c7b8f89204fed623d865693cc02d72c68627a86df75e",
+    "sha256": "1e5e3776b25157995b16c6380c720847ab22226acf76412333de6dff957adc30",
+    "license": "CC0-1.0"
+  }
+]

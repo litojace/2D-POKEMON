@@ -13,6 +13,7 @@ export default defineConfig({
         globPatterns: [
           "assets/*.{js,css}",
           "assets/backgrounds/*.webp",
+          "assets/music/*.mp3",
           "assets/fighters/**/*.{svg,png,webp,json}",
         ],
         globIgnores: ["assets/fighters/**/portrait-showcase-v1.webp"],

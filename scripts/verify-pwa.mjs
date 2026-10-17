@@ -29,6 +29,15 @@ assert(
   "Only public static assets may be cached",
 );
 assert(urls.includes("offline.html"));
+const music = JSON.parse(
+  readFileSync("apps/client/public/assets/music/sources.json", "utf8"),
+);
+for (const sample of music) {
+  assert(
+    urls.includes(`assets/music/${sample.file}`),
+    `Missing offline instrument: ${sample.file}`,
+  );
+}
 assert(
   !urls.includes("index.html"),
   "Game entry navigation must remain network-only",

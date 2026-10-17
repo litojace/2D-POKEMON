@@ -1,4 +1,9 @@
 import type { ScoreNote } from "./music-score";
+import {
+  isSampleInstrument,
+  MusicSampleBank,
+  playSample,
+} from "./music-samples";
 const NOTE: Record<string, number> = {
   C: 0,
   D: 2,
@@ -16,7 +21,7 @@ export function noteHz(name: string) {
   return 440 * 2 ** (semis / 12);
 }
 
-/** Music-only synthesis; the output follows its theme's crossfade and volume bus. */
+/** Recorded instruments and result synthesis share the theme's crossfade/volume bus. */
 export class MusicSynth {
   private echo: DelayNode;
   private echoNodes: AudioNode[];
@@ -25,6 +30,7 @@ export class MusicSynth {
     private output: AudioNode,
     private noise: AudioBuffer,
     bpm: number,
+    private samples?: MusicSampleBank,
   ) {
     this.echo = ctx.createDelay(1);
     this.echo.delayTime.value = (60 / bpm) * 0.75;
@@ -46,6 +52,36 @@ export class MusicSynth {
   }
   play(note: ScoreNote, t: number) {
     const { instrument, volume, duration } = note;
+    if (isSampleInstrument(instrument)) {
+      if (
+        this.samples &&
+        playSample(
+          this.ctx,
+          this.output,
+          this.samples,
+          note,
+          note.note ? noteHz(note.note) : 0,
+          t,
+        )
+      )
+        return;
+      // A failed download should leave music playable, including offline first visits.
+      const fallback = {
+        piano: "bell",
+        harp: "pluck",
+        flute: "arp",
+        strings: "pad",
+        spiccato: "pluck",
+        cello: "bass",
+        horn: "pad",
+        "concert-bass": "kick",
+        "concert-snare": "snare",
+        timpani: "tom",
+        "concert-cymbal": "crash",
+      } as const;
+      this.play({ ...note, instrument: fallback[instrument] }, t);
+      return;
+    }
     if (instrument === "kick" || instrument === "tom") {
       this.drum(
         t,

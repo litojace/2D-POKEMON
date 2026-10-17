@@ -7,6 +7,7 @@ import {
   type MusicTheme,
 } from "./music-score";
 import { MusicSynth } from "./music-synth";
+import { MusicSampleBank } from "./music-samples";
 export { noteHz } from "./music-synth";
 // Original adaptive lobby, PvP and raid scores plus synthesized combat effects.
 const MIX = 0.5;
@@ -19,6 +20,7 @@ export class AudioManager {
   private musicBus?: GainNode;
   private scoreBus?: GainNode;
   private synth?: MusicSynth;
+  private samples?: MusicSampleBank;
   private theme: MusicTheme = "lobby";
   private phase = 1;
   private autoStarted = false;
@@ -73,6 +75,7 @@ export class AudioManager {
       this.scoreBus,
       this.noise!,
       MUSIC_BPM[theme],
+      this.samples,
     );
     if (previous) {
       previous.gain.cancelScheduledValues(t);
@@ -114,11 +117,18 @@ export class AudioManager {
       );
       const data = this.noise.getChannelData(0);
       for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
+      if (typeof window.fetch === "function") {
+        this.samples = new MusicSampleBank(this.context);
+        void this.samples
+          .load(window.fetch.bind(window))
+          .then(() => this.schedule());
+      }
       this.synth = new MusicSynth(
         this.context,
         this.scoreBus,
         this.noise,
         MUSIC_BPM[this.theme],
+        this.samples,
       );
     }
     this.updateMusicGain();
@@ -129,6 +139,8 @@ export class AudioManager {
   private schedule() {
     const ctx = this.context;
     if (!ctx || ctx.state !== "running" || !this.musicBus) return;
+    if (!isResultTheme(this.theme) && this.samples && !this.samples.complete)
+      return;
     if (document.hidden || this.music <= 0) {
       this.nextTime = ctx.currentTime + 0.05;
       return;

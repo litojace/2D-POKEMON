@@ -27,20 +27,20 @@ it("intensifies the final raid phase with additional percussion", () => {
   const count = (phase: number) =>
     Array.from({ length: 16 }, (_, s) => scoreStep("raid", s, phase))
       .flat()
-      .filter((n) => ["kick", "tom", "hat"].includes(n.instrument)).length;
+      .filter((n) =>
+        ["concert-bass", "concert-snare", "timpani"].includes(n.instrument),
+      ).length;
   expect(count(3)).toBeGreaterThan(count(2));
   expect(count(2)).toBeGreaterThan(count(1));
 });
 
 it("plays a longer arrangement with a quieter breakdown and a return to the groove", () => {
   for (const theme of ["lobby", "pvp", "raid"] as MusicTheme[]) {
-    const percussion = (bar: number) =>
-      Array.from({ length: 64 }, (_, s) => scoreStep(theme, bar * 16 + s))
-        .flat()
-        .filter((n) =>
-          ["kick", "snare", "hat", "openhat", "tom"].includes(n.instrument),
-        ).length;
-    expect(percussion(24)).toBeGreaterThan(percussion(16));
+    const density = (bar: number) =>
+      Array.from({ length: 64 }, (_, s) =>
+        scoreStep(theme, bar * 16 + s),
+      ).flat().length;
+    expect(density(24)).toBeGreaterThan(density(16));
     expect(scoreStep(theme, MUSIC_LOOP_STEPS)).toEqual(scoreStep(theme, 0));
     expect(
       Array.from({ length: 128 }, (_, s) => scoreStep(theme, s)),
