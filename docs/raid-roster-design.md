@@ -1,4 +1,4 @@
-# Raid Roster, Shop & Missions — Design Spec (draft 2)
+# Raid Roster, Shop & Missions — Design Spec (draft 3)
 
 Status: **design only, nothing built yet.** Numbers are starting values to tune
 with real play, using the same balance data Grumblecrag already records.
@@ -12,7 +12,10 @@ Decisions so far (Oct 17):
 5. A fifth cosmetic slot: **Victory**.
 6. **Seven bosses, one for each day of the week.**
 7. A **Shop** that sells cosmetics for coins earned from daily missions and
-   boss raids (§10).
+   boss raids (§10), with **56 champion skins in four rarities**, including
+   Mythicals that awaken as you play.
+
+The full list, with later decisions, is in §12.
 
 ## 1. Goals
 
@@ -213,7 +216,9 @@ Bubble Prison.
 ### 5.2 Gloomshade — "Lights Out" (Shadow, ★★)
 
 **Look:** a big floppy-eared puff of shadow with too many blinking eyes and
-a long tail ending in a little lantern. Cute until it grins.
+a long tail ending in a glowing crescent moon. Cute until it grins. (It
+carries no lantern, so it never looks like Duskveil, the champion who is a
+hooded lantern wisp.)
 
 **Arena:** the Lantern Yard, with **4 lanterns** that make pools of light.
 Outside the light, the screen edges dim (vision shrinks by about 25%, never
@@ -222,8 +227,8 @@ fully dark).
 **Signature: find the real one.**
 
 - From chapter 2, Gloomshade splits into 3 copies (4 on Peril 3).
-- Only the real one **casts a shadow inside lantern light**, and its tail
-  lantern flickers in time with the music.
+- Only the real one **casts a shadow inside lantern light**, and its
+  crescent tail flickers in time with the music.
 - Hitting a decoy pops it into a Curse Puff on the hitter.
 - Hitting the real one 6 times in a row **exposes** it: all decoys vanish
   and the core is open for 5 seconds.
@@ -236,7 +241,7 @@ fully dark).
 | **Grasping Hands** | A checkerboard of tiles darkens | Stand on a lit tile. The pattern shifts on Peril 2+ | 20 |
 | **Lantern Snuff** | One lantern dims, then goes out | Hit it 2 times to relight. Unlit lanterns mean less light to find the real one | — |
 | **Creeping Curse** (ch. 2+) | A purple mark on one raider; it spreads to anyone within 120 px for 2 s | Spread out. 3 stacks = Haunted (5 dmg/s for 6 s). Stand in lantern light for 2 s to cleanse | 5/s |
-| **Mirror Split** (ch. 2+) | The boss blinks, then 3–4 copies appear | Find the shadow and the flickering lantern | — |
+| **Mirror Split** (ch. 2+) | The boss blinks, then 3–4 copies appear | Find the shadow and the flickering crescent | — |
 | **Nightmare Pulse** | A dark ring expands from *every* copy, but only the real one's hurts | Jump the real ring. It also reveals which one is real | 24 |
 
 **Chapters**
@@ -631,9 +636,9 @@ equip it. Titles keep using the profile title picker.
   - Lifetime: 30 strands, *Shipwright*.
 - **Gloomshade**
   - Titles: *Lightbringer* (first clear), *Night's End* (Peril 3).
-  - Cosmetics: Dusk colours, Lanternlit skin, Shadowstep entrance, Lantern
-    frame, Wisp aura.
-  - **Lantern Bow** victory (feat: nobody hits a decoy).
+  - Cosmetics: Dusk colours, Moonlit skin, Shadowstep entrance, Crescent
+    frame, Nightmote aura.
+  - **Crescent Bow** victory (feat: nobody hits a decoy).
   - Lifetime: relight 50 lanterns, *Lamplighter*.
 - **Somnara**
   - Titles: *Dreamwaker* (first clear), *Lucid Legend* (Peril 3).
@@ -804,7 +809,7 @@ the Raid of the Day rotates through the bosses that are built.
 
 | Source | Coins |
 |---|---|
-| Each daily mission (3 per day) | 40–80, by difficulty |
+| Each daily mission (3 per day) | 40 / 70 / 120 (easy / medium / hard) |
 | All 3 daily missions done | +50 bonus |
 | Raid clear | 30 at Peril 1, 45 at Peril 2, 60 at Peril 3 |
 | Raid of the Day, first clear today | +50 |
@@ -823,19 +828,21 @@ the Raid of the Day rotates through the bosses that are built.
   - Practice and drills pay nothing.
 - **Mostly-idle matches** (under 20 s of active play) pay nothing.
 
-Rough pace: a typical evening earns about **450 coins**:
+Rough pace: a typical evening earns about **500 coins**:
 
 | Source | Coins |
 |---|---|
-| 3 missions + bonus | ~230 |
+| 3 missions (40 + 70 + 120) + 50 bonus | ~280 |
 | 3 Peril 2 raid clears + Raid of the Day bonus | ~185 |
 | 4 PvP matches | ~40 |
 
-At the prices below, that works out to:
+At the prices below (§10.5.1), that works out to:
 
-- A recolour skin in about **one evening**.
-- A themed skin or a victory in about **two**.
-- A full themed set (about 2,300 coins) in about **a week**.
+- A Common skin in about **one evening**.
+- A Rare in **3–4 evenings**.
+- An Epic in about **a week**.
+- A Mythical in about **3 weeks**.
+- A full collection in about **8 evenings**.
 
 ### 10.4 Daily missions
 
@@ -870,44 +877,71 @@ next to your name in the header.
 **Layout**
 
 - **Today's Picks:** 4 items that rotate daily (seeded, the same for
-  everyone), one of them at 20% off.
-- **Catalog:** everything currently for sale, filtered by slot (Skin,
-  Aura, Entrance, Frame, Victory) and by champion.
-- Each item has a **live preview** on your selected champion, with
-  *Buy* and *Equip*.
-- Owned items show *Owned* and go straight into the five loadout slots
-  alongside raid rewards.
+  everyone). One Common, Rare or Epic item is 20% off; Mythicals are never
+  discounted.
+- **Mythic Hall:** its own tab showing all eight Mythicals, each with a
+  preview of its three Awakening stages (§10.5.1) and your progress toward
+  unlocking it.
+- **Catalog:** everything for sale, filtered by champion, rarity,
+  collection and slot.
+- **Previews:** every item has a live preview on its champion: idle, dash,
+  skills, entrance and victory. Then *Buy* and *Equip*.
+- **Owned items** show *Owned* and go straight into the loadout.
 
 **What's sold**
 
-1. **Champion skins** (new for the shop): alternate looks for **one
-   specific champion**, e.g. *Frost Voltkit*, *Candy Cindrake*, *Moonlit
-   Duskveil*. These are what most people mean by "skins".
-   - **Recolour skins:** a new palette on the existing art. Cheap to make,
-     so there can be several per champion.
-   - **Themed skins:** recolour plus small added pieces, such as a scarf, a
-     crown or a costume detail on the rig.
-2. **Shop collection** for the all-fighter slots: themed sets that look
-   nothing like the boss rewards, e.g. *Candy*, *Galaxy*, *Retro Pixel*
-   and *Festival*. Each set has colours, an aura, an entrance, a frame
-   and a victory.
+1. **Champion skins:** 7 per champion, 56 in all (§10.6). This is the
+   heart of the shop.
+2. **All-fighter collections** for the Skin / Aura / Entrance / Frame /
+   Victory slots, styled so they never look like boss rewards (§10.7).
 3. **Later:** seasonal items for a limited time (e.g. a Halloween set),
    which return in later years.
 
-**Prices (starting values)**
+### 10.5.1 Rarity
 
-| Item | Coins |
-|---|---|
-| Recolour champion skin | 400 |
-| Themed champion skin | 900 |
-| All-fighter colours | 300 |
-| Frame | 500 |
-| Aura | 600 |
-| Entrance | 700 |
-| Victory | 800 |
-| Full set bundle | ~20% off the items it contains |
+| Rarity | Border | What you get | Price | About how long |
+|---|---|---|---|---|
+| **Common** | Grey | A new palette on the champion's art | **500** | 1 evening |
+| **Rare** | Blue | Palette + pattern + one small accessory + a matching dash trail | **1,500** | 3–4 evenings |
+| **Epic** | Purple | All of Rare + recoloured skill effects, custom hit sparks, custom KO poof, one animated detail | **3,500** | ~1 week |
+| **Mythical** | Animated gold-to-rainbow | All of Epic + animated body texture, ambient particles, its own entrance and victory, custom ultimate, and **three Awakening stages** | **8,000** + a Mythic Trial | ~3 weeks, then more to awaken it fully |
 
-**Champion skins vs the all-fighter Skin slot**
+**Mythic Trial (to unlock the purchase):** win **30 matches or raid clears
+with that champion**. The Mythic Hall shows the count, e.g. "Voltkit
+18/30". Coins alone can't buy a Mythical; you have to be good with that
+champion first.
+
+**Awakening:** a Mythical grows as you play in it.
+
+- **Stage I (on purchase):** the new look, skill effects, entrance and
+  victory.
+- **Stage II:** 25 wins wearing it. Adds the ambient effect (e.g.
+  Voltkit's little rain cloud) and animated details.
+- **Stage III:** 75 wins wearing it **and** a Peril 3 raid clear with that
+  champion. Adds the full ultimate effect, a footstep trail, nameplate
+  flair, and an animated frame for that champion's portrait.
+- You can show any stage you've reached; it doesn't have to be the
+  highest.
+
+**Collection bonus:** own every skin in a collection (e.g. all *Winter*
+skins) to earn that collection's frame for free.
+
+**Fairness rules for every skin** (enforced in code review and tests):
+
+- **Gameplay stays the same:**
+  - Hitboxes, size, speed, timing and warning shapes never change.
+  - Skill effects change colour and particles only, never shape or reach.
+  - Every enemy skill keeps a readable outline in the game's standard
+    enemy colour, so opponents can always read your attacks.
+- **Nothing gets in the way:**
+  - Screen-wide flourishes (like a sky darkening on an ultimate) only
+    show on the **wearer's own screen**, and last under 0.5 s.
+  - Ambient particles are faint and capped, and they turn off with
+    reduced motion and on slower devices.
+- **Entrances and victories:** entrances play only at round start;
+  victories only after the round is decided.
+
+### 10.5.2 Champion skins vs the all-fighter Skin slot
 
 - A champion skin replaces that champion's look.
 - An all-fighter skin (like Cragstone) styles whatever champion you play.
@@ -915,7 +949,147 @@ next to your name in the header.
   skin applies to your other champions.
 - The Shop and the Rewards tab both explain this in one line.
 
-### 10.6 Engineering
+### 10.6 Champion skin catalog (56 skins)
+
+Every champion gets **3 Common, 2 Rare, 1 Epic and 1 Mythical**. Skins also
+belong to **collections** shared across champions:
+
+- **Winter** (frost, snow and scarves)
+- **Festival** (lanterns, paper and ribbons)
+- **Garden** (petals, moss and blossoms)
+- **Arcade** (neon and pixels)
+- **Celestial** (all eight Mythicals: stars, suns and eclipses)
+
+#### Voltkit (sugar-glider kit, Electric)
+
+| Rarity | Skin | Look and effects |
+|---|---|---|
+| Common | Midnight | Navy fur, cyan cheeks |
+| Common | Peach Fizz | Peach and pink, soft-drink bubbles on its tail tip |
+| Common | Mint Static | Mint and white |
+| Rare · Winter | **Snowcap** | Frosty blue fur, earmuffs; dash leaves snowflake sparks |
+| Rare · Festival | **Kite Runner** | Paper-kite wing pattern, a tail ribbon that trails; dash leaves confetti |
+| Epic · Arcade | **Neon Arcade** | Synthwave grid fur in pink and cyan. Skills turn neon magenta, hit sparks are pixel bursts, KO is a pixel "poof", and its antennae pulse like LEDs |
+| **Mythical · Celestial** | **Stormcrown** | **I:** storm-grey fur with gold lightning veins; Spark Dart leaves a gold zig-zag; arrives in a lightning strike; victory is a thunderclap with a floating crown. **II:** a tiny rain cloud follows overhead, and lightning crawls up the antennae. **III:** Overcharge bursts into a lightning crown with branching bolts, footsteps crackle, and its name flickers with static |
+
+#### Cindrake (magma newt, Fire)
+
+| Rarity | Skin | Look and effects |
+|---|---|---|
+| Common | Ashen | Charcoal body with ember-orange crest |
+| Common | Coral | Coral pink and cream |
+| Common | Lime Flame | Green flame crest |
+| Rare · Garden | **Chili Pepper** | Glossy red with a green stem cap; dash puffs spice dust |
+| Rare · Winter | **Blue Flame** | Cool blue fire crest, white-hot skills |
+| Epic · Festival | **Volcano Forge** | Blacksmith apron and goggles, molten-metal skin. Magma Bomb becomes a glowing ingot, hits throw anvil sparks, KO is a puff of forge smoke, and its crest pulses like bellows |
+| **Mythical · Celestial** | **Sunforged** | **I:** obsidian body with sun-gold cracks; skills burn gold-white; arrives as a falling meteor; victory: its crest erupts in a sunburst. **II:** its crest becomes a small sun with orbiting flares. **III:** Sunfire Pillar becomes a solar column ringed by rotating sigils, footsteps leave brief golden glyphs, and its name glows like a corona |
+
+#### Tidefin (axolotl duelist, Water)
+
+| Rarity | Skin | Look and effects |
+|---|---|---|
+| Common | Bubblegum | Classic pink axolotl, magenta gills |
+| Common | Abyss | Deep navy with teal gills |
+| Common | Sandbar | Sand and sea-green |
+| Rare · Garden | **Koi Pond** | Orange-and-white koi spots, a koi-scale sash; dash leaves lily pads |
+| Rare · Festival | **Corsair** | Tricorn hat and striped sash; splashes scatter gold coins |
+| Epic · Winter | **Glacier** | See-through ice-crystal body. Skills become ice, Whirlpool swirls with snow, hits shatter into shards, and its gills frost over and thaw |
+| **Mythical · Celestial** | **Moontide** | **I:** a deep-sea body speckled with glowing dots; skills shimmer moonlit silver; it rises out of a ripple pool; victory is a ring of glowing bubbles. **II:** its gills glow like deep-sea lights, and soft ripples spread wherever it stands. **III:** Mirror Mist's clones become ghostly jellyfish, Riptide Wave carries a moon's reflection, and its name ripples |
+
+#### Auralynx (crystal-fisted lynx monk, Aura)
+
+| Rarity | Skin | Look and effects |
+|---|---|---|
+| Common | Snowshoe | White fur, ice-blue fists |
+| Common | Desert | Tan fur, amber fists |
+| Common | Twilight | Purple fur, rose fists |
+| Rare · Garden | **Cherry Blossom** | Pink robe; petals drift down on dash |
+| Rare · Festival | **Jade Temple** | Jade fists, red tassels; hits ring like a small bell |
+| Epic · Arcade | **Stained Glass** | Fists and robe made of stained-glass panels. Prism Shot fires coloured glass, hits shatter into sparkles, Mirror Guard looks like a rose window, and light glints across it |
+| **Mythical · Celestial** | **Celestial Sage** | **I:** fur full of slowly drifting stars; galaxy-crystal fists; steps through a star portal; victory: a meditative float with orbiting stars. **II:** a halo of floating stones orbits it. **III:** Mirror Guard becomes a turning mandala shield, Nova Burst blooms into a small supernova, footsteps leave fading stars, and its name twinkles |
+
+#### Lumoth (fluffy moth, Light)
+
+| Rarity | Skin | Look and effects |
+|---|---|---|
+| Common | Lunar | Silver-white fluff |
+| Common | Peachy | Peach and cream |
+| Common | Dusk | Lilac and navy |
+| Rare · Garden | **Rosy Maple** | Pink and buttery yellow, like the real rosy maple moth; soft yellow dust puffs on dash |
+| Rare · Festival | **Paper Lantern** | Wings like warm paper lanterns that glow from inside |
+| Epic · Winter | **Aurora** | Wings ripple through northern-lights colours. Its dust becomes aurora ribbons, hits sparkle green-violet, and KO fades like dawn |
+| **Mythical · Celestial** | **Starweaver** | **I:** wings woven from starlight with drifting constellations; arrives by unfurling from a cocoon of light; victory: spreads its wings and paints a star. **II:** glowing threads trail from its wings. **III:** Kindle sparks become shooting stars, Radiant Flare draws a constellation shaped like Lumoth, and its name shimmers |
+
+#### Mystowl (three-eyed owl, Psychic)
+
+| Rarity | Skin | Look and effects |
+|---|---|---|
+| Common | Snowy | White feathers, gold eyes |
+| Common | Barn | Tan, heart-shaped face |
+| Common | Midnight | Dark blue, silver eyes |
+| Rare · Festival | **Scholar** | A tiny graduation cap and scarf (all three eyes stay visible); pages flutter on dash |
+| Rare · Garden | **Witch's Familiar** | A pointed hat, potion-bubble dash trail |
+| Epic · Arcade | **Clockwork** | Brass gears and rivets, ticking eye. Focus Ray becomes a golden clock-hand beam, Ward shows a clock face, and gears spin on its back |
+| **Mythical · Celestial** | **Oracle** | **I:** its third eye opens onto a galaxy; it materializes from a blink; victory: all three eyes flare. **II:** original rune cards orbit it. **III:** Focus Ray becomes a galaxy beam, Ward shows a turning eye sigil, and its name has a faint third-eye glyph |
+
+#### Terradon (boulder tortoise, Earth)
+
+| Rarity | Skin | Look and effects |
+|---|---|---|
+| Common | Mossy | Green moss on the shell |
+| Common | Sandstone | Red-orange layered stone |
+| Common | Granite | Speckled grey |
+| Rare · Garden | **Bonsai** | A tiny bonsai tree on its shell; leaves fall on dash |
+| Rare · Winter | **Snowball** | Snow-covered shell, knitted scarf; puffs of snow on hits |
+| Epic · Arcade | **Geode** | Shell cracks show glowing amethyst. Tremor bursts with crystal shards, hits sparkle violet, and the crystals pulse while it sleeps |
+| **Mythical · Celestial** | **World-Shell** | **I:** a tiny floating island on its shell, with trees, a waterfall and clouds; it rises from the ground like a mountain; victory: tiny fireworks from the shell's village. **II:** little birds circle and the waterfall flows. **III:** Hibernate lights up a sleeping village, Tremor makes flowers spring up, and its name has a tiny leaf |
+
+#### Duskveil (hooded lantern wisp, Shadow)
+
+| Rarity | Skin | Look and effects |
+|---|---|---|
+| Common | Ember | Orange flame, charcoal hood |
+| Common | Ghost White | Pale hood, blue flame |
+| Common | Teal Spirit | Teal flame, navy hood |
+| Rare · Festival | **Pumpkin Lantern** | A carved-pumpkin lantern; autumn leaves on dash |
+| Rare · Festival | **Paper Lantern** | A red paper lantern with tassels |
+| Epic · Garden | **Candlelight** | A melting-candle hood with wax drips. Ghostfire becomes candle flames, hits puff smoke, and KO is a blown-out wick |
+| **Mythical · Celestial** | **Eclipse** | **I:** the hood becomes a total eclipse with a dark sun and a bright ring; it fades in like an eclipse; victory: the ring blooms. **II:** the ring flares and shadow wisps drift. **III:** Curse Mark becomes an eclipse sigil, Void Orb a tiny black sun, and its name has a ring |
+
+### 10.7 All-fighter collections
+
+Sold per piece (slot prices below) or as a bundle at 20% off. Rarity
+applies here too.
+
+| Collection | Colours (Common 300) | Aura (Rare 900) | Entrance (Rare 1,000) | Frame (Rare 800) | Victory (Epic 1,800) |
+|---|---|---|---|---|---|
+| **Candy** | Pastel swirl | Sprinkle ring | Pops out of a gift box | Frosted cookie | Confetti cake burst |
+| **Galaxy** | Deep-space tint | Slow nebula ring | Warps in through a star tunnel | Planet-ring border | Supernova pose |
+| **Retro Pixel** | 8-bit palette | Pixel heart ring | "Player 1" pixel spawn | Cartridge border | "LEVEL UP!" pixel burst |
+| **Festival** | Lantern red-gold | Floating paper lanterns | Firecracker pop | Knot-and-tassel border | Fireworks finale |
+| **Garden** | Spring green | Petal ring | Blooms from a flower | Vine border | Flower shower |
+| **Winter** | Frost tint | Snowflake ring | Arrives in a snow flurry | Icicle border | Snowglobe shake |
+
+Each collection costs about 3,900 coins as a bundle.
+
+### 10.8 Coin sink and pace
+
+| Item | Coins | At ~500 coins an evening |
+|---|---|---|
+| One champion's full skin line (3 Common + 2 Rare + Epic + Mythical) | 16,000 | ~5 weeks |
+| Every champion skin | 128,000 | Long-term: a goal for the most dedicated |
+| Every collection | ~23,400 | ~7 weeks |
+
+To keep this motivating rather than a grind, harder play pays more:
+
+- **Peril 3 clears** pay double.
+- **The hard daily mission** pays 120 (up from 80).
+- **Grand Tour** completion pays **+600**.
+- **A 7-day mission streak** pays **+300**.
+- **A missed day** can be made up once a week (decided). The make-up clear
+  counts for the Grand Tour but not for the daily board.
+
+### 10.9 Engineering
 
 **Database (migration 010)**
 
@@ -941,7 +1115,17 @@ next to your name in the header.
   3. Checks the balance.
   4. Writes the ledger entry and ownership.
 - **Loadouts** accept owned shop items alongside earned raid rewards.
-  Champion skins get a per-champion loadout row.
+  Champion skins get a per-champion loadout row:
+  `arena_champion_looks(player_id, champion, skin_id, stage)`. `stage` is
+  the Awakening stage the player chose to show, up to the highest
+  reached.
+- **Rarity and gates:** `arena_shop_items` gains `rarity`, `collection`,
+  and for Mythicals `trial_wins` (30). `arena_buy_item` checks the Mythic
+  Trial from **server-recorded wins** with that champion (PvP match
+  ledger + raid clears). It never takes a count from the browser.
+- **Awakening:** wins wearing a Mythical are counted when results are
+  saved (`arena_skin_progress(player_id, skin_id, wins, peril3)`). Stages
+  are computed, never stored as claims.
 
 **Server:** mission progress updates when a match or raid result is saved,
 and coin grants ride on the same receipts.
@@ -949,8 +1133,21 @@ and coin grants ride on the same receipts.
 **Client:**
 - The Shop page and coin chip.
 - Mission cards on the home screen (progress bars, re-roll).
-- The champion-skin rendering path in the rig (palette swap first, add-on
-  pieces later).
+- The champion-skin rendering path in the rig, built in layers so each
+  rarity reuses the one below:
+  1. **Palette:** per-part colour remap of the existing art (cached
+     textures, like Cragstone today).
+  2. **Pattern:** spots, stripes, stars or panels painted onto parts
+     (source-atop, like Cragstone's cracks).
+  3. **Accessories:** small extra rig parts on anchor points (head, back,
+     tail).
+  4. **Effects:** skill colour sets, hit sparks, KO poofs, dash trails.
+  5. **Mythical:** animated textures (a few pre-baked frames per part),
+     ambient emitters, entrance and victory sequences, and stage flags.
+- **Effect budget:** at most two Mythical ambient emitters on screen,
+  capped particles, and all off under reduced motion.
+- **Fairness tests:** skill shapes, sizes and timing are identical with
+  and without every skin.
 
 **Tests:**
 - grant idempotency
@@ -966,24 +1163,36 @@ and coin grants ride on the same receipts.
 | Step | What |
 |---|---|
 | 1 | Raid Hub + Raid of the Day + Victory slot + migration 009 (§9 step 1) |
-| 2 | **Coins, daily missions and the Shop** (migration 010) with a first catalog: one recolour skin per champion and one themed set. Coins start flowing from the raids and PvP that already exist |
-| 3–8 | The six new bosses, in the §9 order, each adding its rewards; shop sets added alongside |
+| 2 | **Coins, daily missions and the Shop** (migration 010) with the **whole catalog at once** (decided): all 56 champion skins, the Mythic Hall with Awakening, and the six collections. Coins start flowing from the raids and PvP that already exist |
+| 3–8 | The six new bosses, in the §9 order, each adding its rewards |
 
-Doing the shop second means coins and missions are live before the long
-boss build. Every evening of play earns something while the bosses arrive
-one by one.
+**Step 2 is the biggest single step in the plan:** 56 skins, 8 of them
+Mythicals with three stages each, plus 30 collection pieces. It's built in
+the layer order of §10.9 (palettes → patterns → accessories → effects →
+Mythicals), so one shared system draws all of them. It still ships as one
+release.
 
-## 12. Open questions
+## 12. Decisions log
 
-1. Is midnight Pacific the right daily changeover for everyone in the
-   group?
-2. Grand Tour: must each day's boss be cleared on **its own day**
-   (proposed), or any time that week?
-3. Should a missed day be catch-up-able (e.g. one "make-up" clear per
-   week)?
-4. Shop pace: one evening per recolour skin, two per themed skin, a week
-   per full set. Is that about right?
-5. Should coins from PvP require a match against **other people** only
-   (proposed: bot matches pay only through missions)?
-6. Which champion skins first? Proposed: one recolour per champion (8),
-   then themed skins for the most-played champions.
+| Date | Decision |
+|---|---|
+| Oct 17 | No self-revive at Peril 3 solo (all bosses) |
+| Oct 17 | New bosses unlock after a Grumblecrag clear |
+| Oct 17 | Boss names approved |
+| Oct 17 | Seven bosses, one per day; Raid of the Day |
+| Oct 17 | Fifth slot: Victory |
+| Oct 17 | Shop with coins from daily missions and raids |
+| Oct 17 | Daily changeover at midnight Pacific |
+| Oct 17 | Grand Tour bosses must be cleared on their own day |
+| Oct 17 | One make-up clear per week for a missed day |
+| Oct 17 | Rarity tiers (Common / Rare / Epic / Mythical) with Mythic Trials and Awakening |
+| Oct 17 | PvP coins only from matches against people |
+| Oct 17 | All champion skins and collections ship together |
+
+## 13. Open questions
+
+1. Prices: Mythical at 8,000 coins plus a 30-win trial, about 3 weeks of
+   steady play. Harder or easier?
+2. Should Mythical Awakening stages also show to opponents? Proposed:
+   yes, since that's the bragging point, within the fairness rules.
+3. Any skin names or themes to swap?
