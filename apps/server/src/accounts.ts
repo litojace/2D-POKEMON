@@ -1,5 +1,7 @@
 import { RAID_COSMETICS, RAID_SLOTS, type RaidCosmetic, type RaidProgress, type RaidReceipt } from "../../../packages/shared/src/raid.js";
 import { z } from "zod";
+import { characterSchema } from "../../../packages/shared/src/index.js";
+import type { ActivityReceipt } from "../../../packages/shared/src/shop.js";
 import { createClient } from "@supabase/supabase-js";
 import type { Express, Request, Response, NextFunction } from "express";
 import {
@@ -23,9 +25,11 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "009_raid_hub.sql";
+export const LATEST_MIGRATION = "010_shop.sql";
 export interface AccountProvider {
   recordRaid?(receipt: RaidReceipt): Promise<void>;
+  /** Coins, missions and Mythic progress after a real match or raid. */
+  recordActivity?(receipt: ActivityReceipt): Promise<void>;
   authenticate(token: string): Promise<Account | null>;
   rpc(
     token: string,
@@ -63,6 +67,13 @@ export function createAccountProvider(): AccountProvider {
       const admin=createClient(url,serviceKey,{auth:{persistSession:false,autoRefreshToken:false}});
       const result=await admin.rpc('arena_record_raid',{p_receipt:receipt});
       if(result.error)throw new AccountError(503,'Raid rewards could not be stored.');
+    },
+    async recordActivity(receipt) {
+      const serviceKey=process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if(!url||!serviceKey)throw new AccountError(503,'Coins require server storage configuration.');
+      const admin=createClient(url,serviceKey,{auth:{persistSession:false,autoRefreshToken:false}});
+      const result=await admin.rpc('arena_record_activity',{p:receipt});
+      if(result.error)throw new AccountError(503,'Coins and missions could not be stored.');
     },
     async authenticate(token) {
       const scoped = client(token);
@@ -273,6 +284,24 @@ export function installAccountRoutes(
   function friendsChangedByCode(code: string) {
     onFriendsChanged(`code:${code.toUpperCase()}`);
   }
+  // The Shop: balance, catalog ownership, missions and equipped skins.
+  app.get('/api/economy',route(false,async(_req,res,token)=>{
+    res.setHeader('Cache-Control','no-store');res.json(await provider.rpc(token,'arena_economy',{}));
+  }));
+  app.post('/api/shop/buy',route(false,async(req,res,token,account)=>{
+    const data=z.object({item:z.string().min(1).max(64).regex(/^[a-z0-9-]+$/)}).strict().parse(req.body);
+    const economy=await provider.rpc(token,'arena_buy_item',{p_item:data.item});
+    onPlayerChanged(account.id);res.json({ok:true,economy});
+  }));
+  app.post('/api/shop/equip',route(false,async(req,res,token,account)=>{
+    const data=z.object({champion:characterSchema,skin:z.string().min(1).max(64).regex(/^[a-z0-9-]+$/).nullable(),stage:z.number().int().min(1).max(3).default(1)}).strict().parse(req.body);
+    const economy=await provider.rpc(token,'arena_equip_champion_skin',{p_champion:data.champion,p_skin:data.skin,p_stage:data.stage});
+    onPlayerChanged(account.id);res.json({ok:true,economy});
+  }));
+  app.post('/api/missions/reroll',route(false,async(req,res,token)=>{
+    const data=z.object({slot:z.number().int().min(0).max(2)}).strict().parse(req.body);
+    res.json({ok:true,economy:await provider.rpc(token,'arena_reroll_mission',{p_slot:data.slot})});
+  }));
   app.get('/api/raids',route(false,async(_req,res,token)=>{
     res.setHeader('Cache-Control','no-store');res.json(await provider.rpc(token,'arena_raid_progress',{}));
   }));

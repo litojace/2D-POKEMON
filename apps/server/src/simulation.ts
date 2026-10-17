@@ -98,6 +98,8 @@ export class Arena {
   chosen = new Map<string, CharacterId>();
   /** Round winners in order (null = draw). */
   roundLog: (Team | null)[] = [];
+  /** Seconds spent in active play this match (for "mostly idle" checks). */
+  playTime = 0;
   /** Id of the last finished real match (players report it for records). */
   matchId: string | null = null;
   /** Rites: random source for offers. Seeded per room so bot replays repeat. */
@@ -316,6 +318,7 @@ export class Arena {
     this.roundWinnerTeam = null;
     this.roundLog = [];
     this.matchId = null;
+    this.playTime = 0;
     for (const p of this.players) {
       p.stats = emptyStats();
       p.ult = 0;
@@ -562,8 +565,11 @@ export class Arena {
     }
     dealt *= this.gift(target, "Aura") ?? 1;
     dealt = Math.min(this.damageLimit(target), dealt);
+    const standing = target.hp > 0;
     target.hp = Math.max(0, target.hp - dealt);
     target.stats.received += dealt;
+    if (standing && target.hp <= 0)
+      target.stats.knocked = (target.stats.knocked ?? 0) + 1;
     if (source) source.stats.dealt += dealt;
     if (
       source &&
@@ -890,6 +896,7 @@ export class Arena {
     )
       return;
     this.time += dt;
+    if (this.phase === "playing") this.playTime += dt;
     this.walls();
     if (this.phase === "countdown" || this.phase === "intermission") {
       if (this.time >= this.deadline) {
@@ -1017,6 +1024,7 @@ export class Arena {
           if (input.skill === ULT_SLOT) {
             // The ultimate spends the whole meter instead of a cooldown.
             if (!freeCooldowns) p.ult = 0;
+            p.stats.ults = (p.stats.ults ?? 0) + 1;
             p.cooldowns[input.skill] = 0;
           } else
             p.cooldowns[input.skill] = freeCooldowns

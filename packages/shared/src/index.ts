@@ -1,4 +1,5 @@
 import type { RaidLoadout, RaidState } from "./raid.js";
+import type { ChampionLook } from "./shop.js";
 import { z } from "zod";
 export const RULES = {
   width: 1600,
@@ -1039,6 +1040,10 @@ export interface Stats {
   combos?: number;
   /** Health restored (healing orbs and self-heals). */
   healed?: number;
+  /** Ultimates used. */
+  ults?: number;
+  /** Times this fighter was knocked out. */
+  knocked?: number;
 }
 /** A fresh, empty stat line for the start of a match. */
 export const emptyStats = (): Stats => ({
@@ -1074,6 +1079,8 @@ export interface Fighter extends Vec {
   raidBoss?: boolean;
   /** Equipped raid appearance (skin, aura, entrance, frame). */
   raidLook?: RaidLoadout;
+  /** Equipped Shop skin for each champion (only the one being played shows). */
+  championLooks?: Partial<Record<CharacterId, ChampionLook>>;
   team?: Team;
   /** Left the match for good (2v2): stays on the scoreboard, out of play. */
   out?: boolean;

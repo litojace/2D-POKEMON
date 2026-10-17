@@ -1,4 +1,5 @@
 import { RaidArena } from "./raid.js";
+import type { ActivityReceipt } from "../../../packages/shared/src/shop.js";
 import { RAID_ATTACKS, RAID_PINGS, RAID_COSMETICS, raidLookOf, raidDay, raidWeek, RAID_BOSSES, RAID_BOSS_ORDER, type RaidBossId, type RaidProgress, type RaidReceipt } from "../../../packages/shared/src/raid.js";
 import express from "express";
 import { createServer } from "node:http";
@@ -18,6 +19,7 @@ import {
   FIGHTER_IDS,
   MUTATOR_IDS,
   type MutatorId,
+  type Fighter,
   type Reply,
 } from "../../../packages/shared/src/index.js";
 import { Arena } from "./simulation.js";
@@ -146,6 +148,7 @@ export function createArenaServer(
       }
       if(fighter) {
         try {const progress=await accounts.rpc(socket.data.accessToken,'arena_raid_progress',{}) as RaidProgress;fighter.raidLook=raidLookOf(progress);}catch{/* Optional until migration 007 is configured. */}
+        try {fighter.championLooks=await accounts.rpc(socket.data.accessToken,'arena_my_looks',{}) as Fighter['championLooks'];}catch{/* Optional until migration 010 is configured. */}
       }
       if(arena && fighter)broadcast(arena);
       socket.emit("account-changed");
@@ -323,6 +326,17 @@ export function createArenaServer(
     return [...sessions.values()].find((s) => s.socketId === socketId);
   }
   const raidSaves = new WeakMap<RaidArena,string>();
+  /** The Shop skin a fighter is wearing for the champion in play. */
+  const lookFor = (p: Fighter) => p.championLooks?.[p.character]?.skin ?? null;
+  function recordActivity(receipt: ActivityReceipt) {
+    if (!accounts.recordActivity || !receipt.players.length) return;
+    void accounts.recordActivity(receipt).then(() => {
+      // Wallets and missions changed: let those players' games refresh.
+      for (const socket of io.sockets.sockets.values())
+        if (receipt.players.some((p) => p.accountId === socket.data.account?.id))
+          socket.emit("economy-changed");
+    }).catch((error) => console.error("Activity not stored:", error instanceof Error ? error.message : error));
+  }
   function broadcast(arena: Arena) {
     // Wins and real attempts (not practice, not instant quits) are saved:
     // losses still count towards titles and tell us which attacks are unfair.
@@ -333,6 +347,7 @@ export function createArenaServer(
       const players=arena.heroes().map(p=>{const c=r.contributions?.[p.id];return {accountId:owners?.get(p.id)??'',character:p.character,damage:Math.round(c?.damage??0),revives:c?.revives??0,pillars:c?.pillars??0,downs:c?.downs??0};}).filter(p=>p.accountId);
       const receipt:RaidReceipt={id:runId,boss:r.boss,peril:r.peril,trait:r.trait,gilded:r.gilded,weekly:false,week:raidWeek(new Date(`${r.day}T12:00:00Z`)),daily:r.daily,day:r.day,feat:arena.feat(),seed:r.seed,partySize:r.partySize,seconds:Math.max(0.001,Math.round(r.elapsed*1000)/1000),downs:r.downs,revives:r.revives,result:r.result??undefined,phaseReached:r.phase,downCauses:{...arena.downCauses},players};
       r.rewardStatus='saving';
+      recordActivity({id:`raid:${runId}`,kind:'raid',day:r.day,players:arena.heroes().filter(p=>owners?.get(p.id)).map(p=>{const c=r.contributions?.[p.id];return {accountId:owners!.get(p.id)!,character:p.character,won:r.result==='victory',vsPeople:false,botLevel:null,mode:'raid',knockedOut:(c?.downs??0)>0,skillUses:p.stats.skills,ults:p.stats.ults??0,activeSeconds:r.elapsed,skin:lookFor(p),raid:{cleared:r.result==='victory',daily:r.daily,peril:r.peril,flawless:r.downs===0,feat:arena.feat(),revives:c?.revives??0}};})});
       void (accounts.recordRaid ? accounts.recordRaid(receipt) : Promise.reject(new Error('Raid rewards need server storage configuration.'))).then(()=>{
         if(arena.raid.resultId!==runId)return;
         r.rewardStatus='saved';for(const socket of io.sockets.sockets.values())if(players.some(p=>p.accountId===socket.data.account?.id))socket.emit('account-changed');broadcast(arena);
@@ -348,6 +363,31 @@ export function createArenaServer(
         matchId,
         matchSummary(arena, (id) => owners?.get(id) ?? null),
       );
+      // Coins and missions: reported by the server, never by the players.
+      const humans = arena.players.filter((p) => !arena.bots.has(p.id) && owners?.get(p.id));
+      const vsPeople = humans.length >= 2 && arena.bots.size === 0;
+      const botLevel = [...arena.bots.values()][0]?.difficulty ?? null;
+      recordActivity({
+        id: `match:${matchId}`,
+        kind: "match",
+        day: raidDay().day,
+        players: humans.map((p) => ({
+          accountId: owners!.get(p.id)!,
+          character: p.character,
+          won:
+            arena.winnerTeam !== null && arena.winnerTeam !== undefined
+              ? arena.teamOf(p) === arena.winnerTeam
+              : arena.winner === p.id,
+          vsPeople,
+          botLevel,
+          mode: arena.mode,
+          knockedOut: (p.stats.knocked ?? 0) > 0,
+          skillUses: p.stats.skills,
+          ults: p.stats.ults ?? 0,
+          activeSeconds: arena.playTime,
+          skin: lookFor(p),
+        })),
+      });
     }
     let remaining = 0;
     if (arena.phase === "paused") {
@@ -504,6 +544,8 @@ export function createArenaServer(
       });
       const attached=arena.players.find(p=>p.id===id);
       void accounts.rpc(socket.data.accessToken,'arena_raid_progress',{}).then(value=>{if(attached){attached.raidLook=raidLookOf(value as RaidProgress);broadcast(arena);}}).catch(()=>{});
+      // Equipped Shop skins (migration 010); the client shows the one for the champion in play.
+      void accounts.rpc(socket.data.accessToken,'arena_my_looks',{}).then(value=>{if(attached){attached.championLooks=value as Fighter['championLooks'];broadcast(arena);}}).catch(()=>{});
       socket.join(arena.code);
       reply(cb, { ok: true, id, token, code: arena.code });
       if (publish) broadcast(arena);
