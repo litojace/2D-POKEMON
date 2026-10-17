@@ -1,15 +1,19 @@
 /**
- * Freeze the page behind open dialogs (settings, help, controls, sign-in…).
+ * Freeze the page behind the Menu dropdown and its dialogs.
  *
  * `overflow: hidden` alone does not stop touch scrolling on every iOS version,
  * so the page is pinned with `position: fixed` at its current offset and put
  * back at exactly the same scroll position when the dialog closes. The width
- * of a vanished desktop scrollbar is padded back so nothing shifts sideways.
+ * of a vanished desktop scrollbar is reserved so nothing shifts sideways.
  * The dialog itself still scrolls; `overscroll-behavior: contain` in the
  * stylesheet stops its scroll from chaining to the page.
  */
 let locked = false;
 let savedY = 0;
+let savedX = 0;
+const properties = ["position", "top", "left", "right", "width"] as const;
+let savedStyles: string[] = [];
+let savedGutter = "";
 
 export function isScrollLocked() {
   return locked;
@@ -22,38 +26,41 @@ export function setScrollLock(on: boolean) {
     root = document.documentElement;
   if (on) {
     savedY = window.scrollY;
+    savedX = window.scrollX;
+    savedStyles = properties.map((property) => body.style[property]);
+    savedGutter = root.style.scrollbarGutter;
     const scrollbar = window.innerWidth - root.clientWidth;
+    const width = body.getBoundingClientRect().width;
+    // Keep classic desktop scrollbars' space, including fixed backgrounds.
+    if (scrollbar > 0) root.style.scrollbarGutter = "stable";
     root.classList.add("scroll-locked");
     Object.assign(body.style, {
       position: "fixed",
       top: `-${savedY}px`,
-      left: "0",
-      right: "0",
-      width: "100%",
-      paddingRight: scrollbar > 0 ? `${scrollbar}px` : "",
+      left: `-${savedX}px`,
+      right: "auto",
+      width: `${width}px`,
     });
   } else {
     root.classList.remove("scroll-locked");
-    for (const prop of [
-      "position",
-      "top",
-      "left",
-      "right",
-      "width",
-      "paddingRight",
-    ] as const)
-      body.style[prop] = "";
-    window.scrollTo(0, savedY);
+    properties.forEach((property, index) => {
+      body.style[property] = savedStyles[index];
+    });
+    root.style.scrollbarGutter = savedGutter;
+    window.scrollTo({ left: savedX, top: savedY, behavior: "instant" });
   }
 }
 
-/** Lock while the dialog is open; works for showModal()/close() and Esc. */
-export function lockScrollWhileOpen(dialog: HTMLDialogElement) {
-  const sync = () => setScrollLock(dialog.open);
-  new MutationObserver(sync).observe(dialog, {
-    attributes: true,
-    attributeFilter: ["open"],
+/** Hold one lock until every tracked menu/dialog closes, including Esc. */
+export function lockScrollWhileOpen(
+  ...panels: (HTMLDialogElement | HTMLDetailsElement)[]
+) {
+  const sync = () => setScrollLock(panels.some((panel) => panel.open));
+  const observer = new MutationObserver(sync);
+  panels.forEach((panel) => {
+    observer.observe(panel, { attributes: true, attributeFilter: ["open"] });
+    panel.addEventListener("close", sync);
+    panel.addEventListener("toggle", sync);
   });
-  dialog.addEventListener("close", sync);
   sync();
 }

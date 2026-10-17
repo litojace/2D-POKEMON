@@ -2143,6 +2143,9 @@ dialog {
   gap: 3px;
   min-width: 210px;
   max-width: calc(100vw - var(--safe-left) - var(--safe-right) - 40px);
+  max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 150px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 9px;
   border: 1px solid #8baee544;
   border-radius: 12px;
