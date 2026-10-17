@@ -14,6 +14,10 @@ const parameter = () => ({
 const node = () => ({
   gain: parameter(),
   frequency: parameter(),
+  detune: parameter(),
+  delayTime: parameter(),
+  pan: parameter(),
+  Q: parameter(),
   connect: vi.fn(function (target: unknown) {
     return target;
   }),
@@ -48,6 +52,8 @@ class FakeAudioContext {
     return n;
   };
   createBiquadFilter = node;
+  createDelay = node;
+  createStereoPanner = node;
   createBufferSource = node;
   createBuffer = () => ({ getChannelData: () => new Float32Array(25) });
 }

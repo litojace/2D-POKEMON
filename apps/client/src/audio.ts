@@ -1,21 +1,12 @@
-import { MUSIC_BPM, scoreStep, type MusicTheme } from "./music-score";
+import {
+  MUSIC_BPM,
+  MUSIC_LOOP_STEPS,
+  scoreStep,
+  type MusicTheme,
+} from "./music-score";
+import { MusicSynth } from "./music-synth";
+export { noteHz } from "./music-synth";
 // Original adaptive lobby, PvP and raid scores plus synthesized combat effects.
-const NOTE: Record<string, number> = {
-  C: 0,
-  D: 2,
-  E: 4,
-  F: 5,
-  G: 7,
-  A: 9,
-  B: 11,
-};
-/** "A4" → 440 Hz. */
-export function noteHz(name: string) {
-  const m = /^([A-G])(#?)(\d)$/.exec(name);
-  if (!m) return 0;
-  const semis = NOTE[m[1]] + (m[2] ? 1 : 0) + (Number(m[3]) - 4) * 12 - 9;
-  return 440 * 2 ** (semis / 12);
-}
 const MIX = 0.5;
 export class AudioManager {
   private lastRaidSound = new Map<string, number>();
@@ -25,6 +16,7 @@ export class AudioManager {
   timer?: ReturnType<typeof setInterval>;
   private musicBus?: GainNode;
   private scoreBus?: GainNode;
+  private synth?: MusicSynth;
   private theme: MusicTheme = "lobby";
   private phase = 1;
   private autoStarted = false;
@@ -64,16 +56,26 @@ export class AudioManager {
     this.theme = theme;
     this.step = 0;
     if (!this.context || !this.musicBus) return;
-    const previous = this.scoreBus;
+    const previous = this.scoreBus,
+      previousSynth = this.synth;
     this.scoreBus = this.context.createGain();
     const t = this.context.currentTime;
     this.scoreBus.gain.setValueAtTime(0, t);
     this.scoreBus.gain.linearRampToValueAtTime(1, t + 1.1);
     this.scoreBus.connect(this.musicBus);
+    this.synth = new MusicSynth(
+      this.context,
+      this.scoreBus,
+      this.noise!,
+      MUSIC_BPM[theme],
+    );
     if (previous) {
       previous.gain.cancelScheduledValues(t);
       previous.gain.setTargetAtTime(0, t, 0.25);
-      setTimeout(() => previous.disconnect(), 1800);
+      setTimeout(() => {
+        previousSynth?.disconnect();
+        previous.disconnect();
+      }, 1800);
     }
     this.nextTime = t + 0.04;
   }
@@ -99,7 +101,7 @@ export class AudioManager {
       this.musicBus.connect(this.context.destination);
       this.scoreBus = this.context.createGain();
       this.scoreBus.connect(this.musicBus);
-      const length = Math.floor(this.context.sampleRate * 0.25);
+      const length = Math.floor(this.context.sampleRate);
       this.noise = this.context.createBuffer(
         1,
         length,
@@ -107,6 +109,12 @@ export class AudioManager {
       );
       const data = this.noise.getChannelData(0);
       for (let i = 0; i < length; i++) data[i] = Math.random() * 2 - 1;
+      this.synth = new MusicSynth(
+        this.context,
+        this.scoreBus,
+        this.noise,
+        MUSIC_BPM[this.theme],
+      );
     }
     this.updateMusicGain();
     if (this.context.state === "running") this.schedule();
@@ -123,126 +131,13 @@ export class AudioManager {
     if (this.nextTime < ctx.currentTime) this.nextTime = ctx.currentTime + 0.05;
     while (this.nextTime < ctx.currentTime + 0.12) {
       this.playStep(this.step, this.nextTime);
-      this.step = (this.step + 1) % 128;
+      this.step = (this.step + 1) % MUSIC_LOOP_STEPS;
       this.nextTime += 60 / MUSIC_BPM[this.theme] / 4;
     }
   }
   private playStep(step: number, t: number) {
-    const beat = 60 / MUSIC_BPM[this.theme];
-    for (const note of scoreStep(this.theme, step, this.phase)) {
-      if (note.instrument === "kick") this.kick(t, note.volume);
-      else if (note.instrument === "tom")
-        this.drum(t, note.volume, note.duration);
-      else if (note.instrument === "snare" || note.instrument === "hat")
-        this.hit(
-          t,
-          note.volume,
-          note.duration,
-          note.instrument === "hat" ? 6500 : 1600,
-        );
-      else
-        this.voice(
-          noteHz(note.note!),
-          t,
-          note.duration,
-          note.volume,
-          note.instrument === "bass" ? "triangle" : "sine",
-          note.instrument === "pad" ? 0.22 : 0.008,
-        );
-      if (note.instrument === "bell")
-        this.voice(
-          noteHz(note.note!) * 2,
-          t,
-          note.duration * 0.55,
-          note.volume * 0.18,
-          "sine",
-        );
-      if (note.instrument === "pad")
-        this.voice(
-          noteHz(note.note!) * 1.003,
-          t,
-          beat * 3.8,
-          note.volume * 0.3,
-          "triangle",
-          0.3,
-        );
-    }
-  }
-  private drum(t: number, volume: number, duration: number) {
-    const ctx = this.context!,
-      o = ctx.createOscillator(),
-      g = ctx.createGain();
-    o.type = "triangle";
-    o.frequency.setValueAtTime(105, t);
-    o.frequency.exponentialRampToValueAtTime(35, t + duration);
-    g.gain.setValueAtTime(volume, t);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + duration);
-    o.connect(g).connect(this.scoreBus!);
-    o.start(t);
-    o.stop(t + duration + 0.02);
-    o.onended = () => {
-      o.disconnect();
-      g.disconnect();
-    };
-  }
-  private voice(
-    hz: number,
-    t: number,
-    duration: number,
-    volume: number,
-    type: OscillatorType,
-    attack = 0.008,
-  ) {
-    const ctx = this.context!,
-      o = ctx.createOscillator(),
-      g = ctx.createGain();
-    o.type = type;
-    o.frequency.setValueAtTime(hz, t);
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(volume, t + attack);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + duration);
-    o.connect(g).connect(this.scoreBus!);
-    o.start(t);
-    o.stop(t + duration + 0.02);
-    o.onended = () => {
-      o.disconnect();
-      g.disconnect();
-    };
-  }
-  private kick(t: number, volume = 0.3) {
-    const ctx = this.context!,
-      o = ctx.createOscillator(),
-      g = ctx.createGain();
-    o.frequency.setValueAtTime(150, t);
-    o.frequency.exponentialRampToValueAtTime(45, t + 0.12);
-    g.gain.setValueAtTime(volume, t);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
-    o.connect(g).connect(this.scoreBus!);
-    o.start(t);
-    o.stop(t + 0.18);
-    o.onended = () => {
-      o.disconnect();
-      g.disconnect();
-    };
-  }
-  private hit(t: number, volume: number, duration: number, cutoff: number) {
-    const ctx = this.context!,
-      src = ctx.createBufferSource(),
-      filter = ctx.createBiquadFilter(),
-      g = ctx.createGain();
-    src.buffer = this.noise!;
-    filter.type = "highpass";
-    filter.frequency.value = cutoff;
-    g.gain.setValueAtTime(volume, t);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + duration);
-    src.connect(filter).connect(g).connect(this.scoreBus!);
-    src.start(t);
-    src.stop(t + duration + 0.02);
-    src.onended = () => {
-      src.disconnect();
-      filter.disconnect();
-      g.disconnect();
-    };
+    for (const note of scoreStep(this.theme, step, this.phase))
+      this.synth?.play(note, t);
   }
   tone(
     hz: number,
