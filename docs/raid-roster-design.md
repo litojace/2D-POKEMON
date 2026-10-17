@@ -1,6 +1,6 @@
 # Raid Roster, Shop & Missions — Design Spec (approved)
 
-Status: **approved Oct 17; building step 1.** Numbers are starting values to tune
+Status: **approved Oct 17. Step 1 (Raid Hub, Raid of the Day, Victory slot, migration 009) shipped Oct 17; next is step 2, the Shop.** In step 1 the Victory plays in the arena on round and raid wins; showing it on the results card and in the menu preview is still to do. Numbers are starting values to tune
 with real play, using the same balance data Grumblecrag already records.
 
 Decisions so far (Oct 17):
@@ -1194,4 +1194,4 @@ release.
 
 ## 13. Open questions
 
-None right now. The design is approved; building starts with §11 step 1.
+None right now. Step 1 is shipped; step 2 (the Shop) is next.
