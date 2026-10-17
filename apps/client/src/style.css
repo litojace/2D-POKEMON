@@ -69,8 +69,6 @@
 }
 body {
   margin: 0;
-  background:
-    radial-gradient(ellipse at 24% 12%, #1e3763 0, transparent 48%), #101c35;
   min-height: 100vh;
 }
 /* No double-tap zoom: "manipulation" keeps taps, scrolling and pinch zoom but
@@ -80,6 +78,7 @@ body {
   touch-action: manipulation;
 }
 html {
+  background: #101c35;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
@@ -5719,6 +5718,7 @@ body.spectating #control-hints {
   display: grid;
   min-width: 0;
 }
+.friend-list .request > b { min-width: 0; overflow-wrap: anywhere; }
 .friend-name b,
 .friend-name small {
   overflow: hidden;
@@ -5749,6 +5749,11 @@ body.spectating #control-hints {
   display: flex;
   gap: 6px;
   align-items: center;
+}
+@media (max-width: 480px) {
+  .friend-list li { grid-template-columns: 10px minmax(0, 1fr); }
+  .friend-actions { grid-column: 2; flex-wrap: wrap; }
+  .friend-name b, .friend-name small { white-space: normal; overflow-wrap: anywhere; }
 }
 button.small {
   padding: 6px 10px;
@@ -6197,7 +6202,8 @@ button.small {
 .menu-option-icon {
   width: 20px;
   height: 20px;
-  flex: 0 0 20px;
+  flex: 0 0 auto;
+  vertical-align: middle;
   color: #ffd65b;
   opacity: 0.9;
 }
@@ -6568,12 +6574,13 @@ body.battle-raid:not(.touch-mode) #battle { position:relative; }
 }
 /* Raid lobby: room, party, challenge and actions each have a consistent track. */
 .raid-lobby {display:grid;gap:20px;min-width:0;}
-.raid-lobby-banner {display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:8px;align-items:center;padding-bottom:16px;border-bottom:1px solid #89a9d22b;background:radial-gradient(ellipse at 95% 40%,#ffca6b12,transparent 65%);}
+.raid-lobby-banner {display:grid;grid-template-columns:minmax(0,1fr) 64px;gap:12px;align-items:center;padding-bottom:16px;border-bottom:1px solid #89a9d22b;background:radial-gradient(ellipse at 95% 40%,#ffca6b12,transparent 65%);}
+.raid-lobby-banner > div {min-width:0;}
 .raid-lobby-banner .eyebrow {font-size:9px;letter-spacing:1.5px;line-height:1.6;}
-.raid-lobby-banner h2 {font-size:34px;line-height:1.1;margin:8px 0 5px;}
+.raid-lobby-banner h2 {font-size:clamp(20px,7vw,28px);line-height:1.15;margin:8px 0 5px;overflow-wrap:anywhere;}
 .raid-lobby-banner p {font-size:12px;margin:0;color:#adbed5;}
-.raid-lobby-banner > svg {display:block;width:110px;height:102px;}
-.raid-invite {display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid #91aed331;border-radius:12px;background:#102039;}
+.raid-lobby-banner > svg {display:block;width:64px;height:64px;}
+.raid-invite {display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid #91aed331;border-radius:12px;background:#102039;}
 .raid-invite > div {display:grid;gap:6px;}
 .raid-invite > div > span {font-size:8px;letter-spacing:1.4px;color:#9fb3d0;}
 .raid-invite b {font-size:21px;font-variant-numeric:tabular-nums;letter-spacing:3px;color:#ffe099;}
@@ -6703,10 +6710,12 @@ body.battle-raid:not(.touch-mode) #battle { position:relative; }
 .raid-equip .raid-cosmetic-option:disabled {cursor:default;}
 .raid-equip .raid-cosmetic-option[aria-busy="true"] {cursor:wait;}
 
-/* Approved Celestial Coliseum backdrop, kept behind the readable lobby panels. */
+/* The picture belongs to the viewport, outside the body pinned by menu locks.
+   The large viewport height stays stable when mobile browser bars expand. */
 body {isolation:isolate;}
-body::after {content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;background:linear-gradient(180deg,#08142630 0%,#08142666 45%,#08142630 100%),url('/assets/backgrounds/celestial-coliseum.webp') center/cover no-repeat;}
-body.battle-active::after {display:none;}
+html::before {content:"";position:fixed;top:0;left:0;width:100%;height:100vh;height:100lvh;z-index:-1;pointer-events:none;background:linear-gradient(180deg,#08142630 0%,#08142666 45%,#08142630 100%),url('/assets/backgrounds/celestial-coliseum.webp') center/cover no-repeat;}
+html:has(body.battle-active)::before {display:none;}
+body.battle-active {background:radial-gradient(ellipse at 24% 12%,#1e3763 0,transparent 48%),#101c35;}
 
 /* Quiet atmosphere stays behind all UI and disappears during combat. */
 .celestial-atmosphere {position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;contain:strict;}
@@ -6914,6 +6923,13 @@ body:not(.battle-active)::before {background:rgba(15,29,52,.66);-webkit-backdrop
   .raid-draft .raid-rite-options {gap:8px;}
   .raid-draft .raid-rite-options > button {padding:10px;gap:10px;}
   .raid-draft .raid-rite-copy small {min-height:0;}
+}
+@media(max-width:360px) and (max-height:650px) {
+  #arena-overlay .raid-draft {padding:10px;}
+  .raid-draft h2 {font-size:23px;}
+  .raid-draft .raid-phase-objective {font-size:11px;line-height:1.4;margin:6px 0;}
+  .raid-draft .raid-rite-intro {margin:6px 0 8px;}
+  .raid-draft .raid-rite-options > button {padding:8px;gap:8px;}
 }
 
 /* ---- Raid rewards: Cragstone skin, Conqueror frame ---- */
@@ -7158,13 +7174,13 @@ button.full:has(> .button-icon) {
 .button-icon {
   width: 16px;
   height: 16px;
-  flex: 0 0 16px;
+  flex: 0 0 auto;
+  vertical-align: middle;
   opacity: 0.9;
 }
 button.small .button-icon {
   width: 14px;
   height: 14px;
-  flex-basis: 14px;
 }
 .raid-lobby-actions #ready .ready-label {
   display: inline-flex;
@@ -7299,19 +7315,19 @@ label.title-option {
 
 /* ---------------------------------------------------------------------------
    Raid Hub: a page of bosses, today's featured raid and each boss's page. */
-dialog:has(.raid-hub) {
+dialog:is(:has(.raid-hub), :has(.shop)) {
   --raid-dialog-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px);
   width: min(960px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
   max-height: var(--raid-dialog-height);
   padding: 0;
   overflow: hidden;
 }
-dialog[open]:has(.raid-hub) { display: grid; grid-template-rows: 52px minmax(0, 1fr); }
-.raid-dialog-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 8px; background: #192b47; }
-.raid-dialog-toolbar .close { position: static; flex: 0 0 44px; display: grid; place-items: center; width: 44px; height: 44px; min-height: 44px; margin: 0 0 0 auto; padding: 0; border: 0; border-radius: 8px; line-height: 1; }
-.raid-dialog-toolbar .close:focus-visible { outline: 2px solid #ffd65b; outline-offset: -3px; }
+dialog[open]:is(:has(.raid-hub), :has(.shop)) { display: grid; grid-template-rows: 52px minmax(0, 1fr); }
+.dialog-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 8px; background: #192b47; }
+.dialog-toolbar .close { position: static; flex: 0 0 44px; display: grid; place-items: center; width: 44px; height: 44px; min-height: 44px; margin: 0 0 0 auto; padding: 0; border: 0; border-radius: 8px; line-height: 1; }
+.dialog-toolbar .close:focus-visible { outline: 2px solid #ffd65b; outline-offset: -3px; }
 .raid-dialog-toolbar .raid-hub-back { margin: 0; min-height: 44px; padding: 8px 12px; }
-.raid-dialog-content { min-width: 0; min-height: 0; max-height: calc(var(--raid-dialog-height) - 54px); overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 16px 28px 28px; }
+.dialog-content { min-width: 0; min-height: 0; max-height: calc(var(--raid-dialog-height) - 54px); overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 16px 28px 28px; }
 .raid-hub > *, .raid-hub-panel > *, .raid-boss-head > div { min-width: 0; }
 .raid-hub-panel { overflow-wrap: anywhere; }
 .raid-boss-head h2 { overflow-wrap: anywhere; }
@@ -7692,15 +7708,16 @@ button.raid-boss-card:hover:not(:disabled) { border-color: var(--boss); }
 #shop-open { display: flex; align-items: center; gap: 8px; }
 #shop-open .coin-chip { margin-left: auto; }
 .home-missions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; width: 100%; margin: 6px 0 0; padding: 0; background: none; border: 0; cursor: pointer; }
-.home-mission { display: grid; gap: 4px; min-width: 0; padding: 6px 7px; border-radius: 8px; background: #0f1d36; border: 1px solid #8baee526; text-align: left; }
+.home-mission { display: grid; grid-template-rows: 1fr auto; align-items: start; gap: 4px; min-width: 0; padding: 6px 7px; border-radius: 8px; background: #0f1d36; border: 1px solid #8baee526; text-align: left; }
 .home-mission small { overflow: hidden; font-size: 10px; line-height: 1.25; color: #c1cfe4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .home-mission progress { width: 100%; height: 5px; accent-color: #ffd65b; }
 .home-mission.is-done { border-color: #6ae2a355; }
 .home-mission.is-done small { color: #a5edc1; }
 .home-missions:hover .home-mission { border-color: #ffd65b55; }
 
-dialog:has(.shop) { width: min(980px, 96vw); padding: 26px; }
-.shop { display: grid; gap: 16px; }
+dialog:has(.shop) { width: min(980px, 96vw); }
+.shop { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.shop, .shop-body, .shop-preview, .shop-preview-text { min-width: 0; }
 .shop-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
 .shop-head h2 { display: flex; align-items: center; gap: 10px; margin: 4px 0 0; }
 .shop-head h2 .button-icon { width: 26px; height: 26px; color: #ffd65b; }
@@ -7709,7 +7726,7 @@ dialog:has(.shop) { width: min(980px, 96vw); padding: 26px; }
 .shop-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
 .shop-tabs button { flex: none; padding: 8px 14px; border-radius: 999px; background: #0f1d36; border: 1px solid #8baee533; color: #c1cfe4; font-weight: 700; font-size: 12px; }
 .shop-tabs button.active { background: #ffd65b; border-color: #ffd65b; color: #1b1636; }
-.shop-heading { display: flex; align-items: baseline; gap: 10px; margin: 6px 0 10px; font-size: 16px; }
+.shop-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 6px 0 10px; font-size: 16px; }
 .shop-heading small { font-size: 11px; font-weight: 400; color: #91a6c1; }
 .shop-intro, .shop-note { margin: 0 0 10px; font-size: 12px; line-height: 1.5; color: #c1cfe4; }
 .shop-note { font-size: 11px; color: #91a6c1; }
@@ -7776,22 +7793,28 @@ dialog:has(.shop) { width: min(980px, 96vw); padding: 26px; }
 
 /* Daily missions. */
 .mission-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
-.mission { display: grid; gap: 6px; padding: 12px; border-radius: 12px; background: #10203b; border: 1px solid #8baee533; }
-.mission b { font-size: 13px; }
-.mission progress { width: 100%; height: 7px; accent-color: #ffd65b; }
-.mission small { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #c1cfe4; }
-.mission small .button-icon { width: 13px; height: 13px; color: #ffd65b; }
-.mission button { justify-self: start; padding: 4px 8px; font-size: 11px; }
-.mission-tier { justify-self: start; padding: 1px 8px; border-radius: 999px; font-size: 9px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; background: #6ae2a3; color: #0b2a1c; }
+.mission { display: grid; grid-template-rows: auto 1fr auto; gap: 8px; min-width: 0; padding: 12px; border-radius: 12px; background: #10203b; border: 1px solid #8baee533; }
+.mission-title { align-self: start; font-size: 13px; line-height: 1.4; overflow-wrap: anywhere; }
+.mission-footer { display: grid; gap: 8px; min-width: 0; }
+.mission progress { display: block; width: 100%; height: 7px; accent-color: #ffd65b; }
+.mission-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; font-size: 11px; line-height: 1.4; color: #c1cfe4; }
+.mission-reward, .mission-complete { display: inline-flex; align-items: center; gap: 4px; }
+.mission-reward { white-space: nowrap; color: #ffe39a; }
+.mission-reward .button-icon { width: 13px; height: 13px; }
+.mission-actions { display: flex; align-items: center; min-height: 28px; font-size: 11px; }
+.mission-complete { color: #a5edc1; }
+.mission-actions button { padding: 4px 8px; font-size: 11px; }
+.mission-tier { justify-self: start; align-self: start; padding: 4px 8px; border-radius: 999px; font-size: 9px; line-height: 1; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; background: #6ae2a3; color: #0b2a1c; }
 .mission.tier-medium .mission-tier { background: #4f9cff; color: #071225; }
 .mission.tier-hard .mission-tier { background: #ff8a5b; color: #2a0d05; }
 .mission.is-done { border-color: #6ae2a366; background: #16403933; }
 .mission.is-done b { color: #a5edc1; }
-.mission-streak { display: flex; align-items: center; gap: 6px; margin: 10px 0 4px; font-size: 12px; color: #ffe39a; }
+.mission-streak { display: flex; align-items: flex-start; gap: 6px; margin: 10px 0 4px; font-size: 12px; line-height: 1.5; color: #ffe39a; }
 .mission-streak .button-icon { width: 16px; height: 16px; }
+.mission-streak > .button-icon { margin-top: 1px; }
 
 @media (max-width: 640px) {
-  dialog:has(.shop) { padding: 18px 12px; }
+  dialog:has(.shop) .dialog-content { padding: 12px; }
   .shop-preview { grid-template-columns: 1fr; }
   .shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .shop-card { padding: 8px; }

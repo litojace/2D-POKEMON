@@ -594,9 +594,9 @@ export class AccountUI {
     };
     const render = (keepScroll = true) => {
       const root = dialogEl();
-      const top = root?.scrollTop ?? 0;
+      const top = (root?.querySelector<HTMLElement>(".dialog-content") ?? root)?.scrollTop ?? 0;
       this.hooks.openDialog(shopMarkup(view, this.economy ?? null, this.raidLook ?? {}, problem));
-      if (root && keepScroll) root.scrollTop = top;
+      if (root && keepScroll) (root.querySelector<HTMLElement>(".dialog-content") ?? root).scrollTop = top;
       wire();
     };
     this.shopRefresh = () => {

@@ -197,7 +197,7 @@ export function missionsBlock(e: Economy, compact = false) {
   const left = e.missions.filter((m) => !m.done).length;
   const cards = e.missions
     .map(
-      (m) => `<li class="mission tier-${m.tier}${m.done ? " is-done" : ""}"><span class="mission-tier">${m.tier}</span><b>${escape(m.text)}</b><progress max="${m.target}" value="${Math.min(m.progress, m.target)}"></progress><small>${m.done ? "Done" : `${Math.min(m.progress, m.target)}/${m.target}`} · ${buttonIcon("coin")}${m.coins}</small>${!m.done && !e.rerolled && !compact ? `<button class="quiet" data-mission-reroll="${m.slot}">${iconLabel("shuffle", "Re-roll")}</button>` : ""}</li>`,
+      (m) => `<li class="mission tier-${m.tier}${m.done ? " is-done" : ""}"><span class="mission-tier">${m.tier}</span><b class="mission-title">${escape(m.text)}</b><div class="mission-footer"><progress aria-label="${escape(m.text)} progress" max="${m.target}" value="${Math.min(m.progress, m.target)}"></progress><div class="mission-meta"><span>${Math.min(m.progress, m.target)}/${m.target}</span><span class="mission-reward">${buttonIcon("coin")}<span>${m.coins}<span class="sr-only"> coins</span></span></span></div>${!compact ? `<div class="mission-actions">${m.done ? `<span class="mission-complete">${iconLabel("check", "Completed")}</span>` : !e.rerolled ? `<button class="quiet" data-mission-reroll="${m.slot}">${iconLabel("shuffle", "Re-roll")}</button>` : ""}</div>` : ""}</div></li>`,
     )
     .join("");
   const streak = `<p class="mission-streak">${buttonIcon("sparkle")}<span>Streak <b>${e.streak}</b> day${e.streak === 1 ? "" : "s"} · all three each day for 7 days pays +${COINS.streakBonus}; all three today pays +${COINS.allMissionsBonus}</span></p>`;
