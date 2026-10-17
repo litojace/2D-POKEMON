@@ -425,7 +425,7 @@ export class AccountUI {
             ? `<p class="raid-appearance-note raid-update-needed">${escape(problem)} Raids are still playable at Peril 1; saved rewards need the database update (migrations 007–009) and server storage configuration.</p>`
             : ""),
       );
-      if (top) dialogEl()?.scrollTo?.(0, 0);
+      if (top) (dialogEl()?.querySelector<HTMLElement>(".raid-dialog-content") ?? dialogEl())?.scrollTo?.(0, 0);
       wire();
     };
     const wire = () => {

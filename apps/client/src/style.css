@@ -2015,6 +2015,7 @@ footer {
   border-color: #8baee538;
 }
 dialog {
+  max-width: calc(100vw - var(--safe-left) - var(--safe-right) - 24px);
   max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px);
   overflow: auto;
   top: var(--safe-top);
@@ -7296,9 +7297,21 @@ label.title-option {
 /* ---------------------------------------------------------------------------
    Raid Hub: a page of bosses, today's featured raid and each boss's page. */
 dialog:has(.raid-hub) {
-  width: min(960px, 96vw);
-  padding: 28px;
+  --raid-dialog-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px);
+  width: min(960px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
+  max-height: var(--raid-dialog-height);
+  padding: 0;
+  overflow: hidden;
 }
+dialog[open]:has(.raid-hub) { display: grid; grid-template-rows: 52px minmax(0, 1fr); }
+.raid-dialog-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 8px; background: #192b47; }
+.raid-dialog-toolbar .close { position: static; flex: 0 0 44px; display: grid; place-items: center; width: 44px; height: 44px; min-height: 44px; margin: 0 0 0 auto; padding: 0; border: 0; border-radius: 8px; line-height: 1; }
+.raid-dialog-toolbar .close:focus-visible { outline: 2px solid #ffd65b; outline-offset: -3px; }
+.raid-dialog-toolbar .raid-hub-back { margin: 0; min-height: 44px; padding: 8px 12px; }
+.raid-dialog-content { min-width: 0; min-height: 0; max-height: calc(var(--raid-dialog-height) - 54px); overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 16px 28px 28px; }
+.raid-hub > *, .raid-hub-panel > *, .raid-boss-head > div { min-width: 0; }
+.raid-hub-panel { overflow-wrap: anywhere; }
+.raid-boss-head h2 { overflow-wrap: anywhere; }
 .raid-hub { display: grid; gap: 18px; }
 .raid-hub h2 { margin: 4px 0 0; }
 .raid-crest { width: 100%; height: 100%; display: block; }
@@ -7308,7 +7321,7 @@ dialog:has(.raid-hub) {
   align-items: flex-end;
   gap: 12px;
   flex-wrap: wrap;
-  padding-right: 34px; /* clear the dialog's close button */
+  padding-right: 0;
 }
 .raid-hub-totals { display: flex; gap: 10px; }
 .raid-hub-totals span {
@@ -7471,7 +7484,7 @@ button.raid-boss-card:hover:not(:disabled) { border-color: var(--boss); }
 
 /* A boss's page. */
 .raid-hub-back { justify-self: start; margin: -6px 0 0 -8px; }
-.raid-boss-head { display: flex; gap: 16px; align-items: center; padding-right: 34px; }
+.raid-boss-head { display: flex; gap: 16px; align-items: center; }
 .raid-boss-art {
   flex: 0 0 96px;
   width: 96px;
@@ -7545,7 +7558,7 @@ button.raid-boss-card:hover:not(:disabled) { border-color: var(--boss); }
 .raid-cosmetic-preview[data-cosmetic="rockslide-flex"] > svg { transform: translateY(-3px); }
 
 @media (max-width: 720px) {
-  dialog:has(.raid-hub) { padding: 20px 14px; }
+  .raid-dialog-content { padding: 12px 14px 20px; }
   .raid-today { grid-template-columns: 76px minmax(0, 1fr); }
   .raid-today-art { width: 76px; height: 76px; }
   .raid-today-board { grid-column: 1 / -1; }
@@ -7555,4 +7568,28 @@ button.raid-boss-card:hover:not(:disabled) { border-color: var(--boss); }
   .raid-day-check { top: auto; bottom: 3px; right: 3px; width: 13px; height: 13px; font-size: 8px; }
   .raid-boss-grid { grid-template-columns: 1fr; }
   .raid-boss-art { flex-basis: 72px; width: 72px; height: 72px; }
+}
+
+/* Short landscape screens need room for the selected tab's actual content. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .raid-dialog-content { padding: 10px 16px 16px; }
+  .raid-hub { gap: 10px; }
+  .raid-boss-head { gap: 12px; }
+  .raid-boss-art { flex-basis: 48px; width: 48px; height: 48px; border-radius: 10px; }
+  .raid-boss-head h2 { font-size: 22px; line-height: 1.15; margin: 2px 0; }
+  .raid-boss-head .eyebrow { font-size: 9px; }
+  .raid-boss-head p { font-size: 11px; margin: 2px 0 0; }
+  .raid-hub-head h2 { font-size: 24px; }
+}
+@media (max-width: 720px), (orientation: landscape) and (max-height: 500px) {
+  .raid-hub-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; }
+  .raid-hub-tabs button { min-width: 0; min-height: 44px; margin: 0; padding: 8px 4px; font-size: 11px; }
+}
+@media (max-width: 380px) {
+  .raid-boss-head { gap: 10px; }
+  .raid-boss-art { flex-basis: 56px; width: 56px; height: 56px; }
+  .raid-boss-head h2 { font-size: 23px; }
+  .raid-boss-head p { font-size: 11px; }
+  .raid-goal { grid-template-columns: 18px minmax(0, 1fr); }
+  .raid-goal progress { grid-column: 2; }
 }

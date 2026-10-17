@@ -1,3 +1,4 @@
+import { setDialogContent } from "./dialog";
 import { wireRaidDifficulty } from "./raid-difficulty";
 import { updateMenuShell } from "./menu-shell";
 import { raidLobby, renderRaidUI, drawRaidArena, raidLookList } from "./raid-ui";
@@ -1794,8 +1795,7 @@ function predict(p: Fighter, input: Input, time: number) {
 }
 function dialog(html: string) {
   menuOpen = true;
-  $("dialog").innerHTML =
-    `<button id="close-dialog" class="close">×</button>${html}`;
+  setDialogContent($<HTMLDialogElement>("dialog"), html);
   // Switching screens inside an open dialog (Settings → Controls) keeps it open.
   if (!$<HTMLDialogElement>("dialog").open)
     $<HTMLDialogElement>("dialog").showModal();
