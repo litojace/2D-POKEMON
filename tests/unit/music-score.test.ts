@@ -49,3 +49,25 @@ it("plays a longer arrangement with a quieter breakdown and a return to the groo
     );
   }
 });
+
+it("composes distinct victory, defeat and draw endings that resolve without looping", async () => {
+  const { RESULT_MUSIC_STEPS } =
+    await import("../../apps/client/src/music-score");
+  const endings = [];
+  for (const theme of ["victory", "defeat", "draw"] as const) {
+    const notes = Array.from({ length: RESULT_MUSIC_STEPS[theme] }, (_, s) =>
+      scoreStep(theme, s),
+    ).flat();
+    expect(notes.length).toBeGreaterThan(0);
+    for (const n of notes) {
+      expect(n.duration).toBeGreaterThan(0);
+      expect(n.volume).toBeGreaterThan(0);
+      if (n.note) expect(noteHz(n.note)).toBeGreaterThan(0);
+    }
+    expect(scoreStep(theme, RESULT_MUSIC_STEPS[theme])).toEqual([]);
+    expect(scoreStep(theme, MUSIC_LOOP_STEPS)).toEqual([]);
+    endings.push(notes);
+  }
+  expect(endings[0]).not.toEqual(endings[1]);
+  expect(endings[1]).not.toEqual(endings[2]);
+});

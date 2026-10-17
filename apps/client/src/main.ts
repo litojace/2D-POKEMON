@@ -1,3 +1,4 @@
+import { battleMusic } from "./battle-music";
 import { setDialogContent } from "./dialog";
 import { wireRaidDifficulty } from "./raid-difficulty";
 import { updateMenuShell } from "./menu-shell";
@@ -1169,7 +1170,7 @@ async function leave() {
   menuOpen = false;
 }
 function renderBattle() {
-  audio.setTheme(state?.raid?"raid":"pvp",state?.raid?.phase??1);
+  if (state) audio.setTheme(battleMusic(state, myId), state.raid?.phase ?? 1);
   if (!document.body.classList.contains("battle-active")) {
     document.body.classList.add("battle-active");
     // The battle screen fits the window; drop any scroll left over from the menu.
@@ -1632,21 +1633,6 @@ socket.on("state", (snapshot: WireSnapshot) => {
   const spectator = !myId && !!watching;
   // A stale room (we left it) can still send a last snapshot: ignore it.
   if (spectator && snapshot.code !== watching) return;
-  if (
-    snapshot.phase === "finished" &&
-    state?.phase !== "finished" &&
-    !spectator
-  )
-    audio.play(
-      (
-        snapshot.mode === "teams"
-          ? snapshot.winnerTeam ===
-            snapshot.players.find((p) => p.id === myId)?.team
-          : snapshot.winner === myId
-      )
-        ? "victory"
-        : "defeat",
-    );
   if (state?.phase !== snapshot.phase || state?.round !== snapshot.round)
     remoteFrames.clear();
   const previous = state;

@@ -148,3 +148,50 @@ it("crossfades theme changes and retires the old music bus", () => {
   expect(old.disconnect).toHaveBeenCalledOnce();
   expect(contexts).toHaveLength(1);
 });
+
+it("plays each result once across repeated snapshots, then resumes music on a rematch", () => {
+  allowed = true;
+  const audio = new AudioManager();
+  audio.start();
+  for (const theme of ["victory", "defeat", "draw"] as const) {
+    audio.setTheme(theme);
+    const start = contexts[0].currentTime;
+    for (let ms = 25; ms <= 15000; ms += 25) {
+      contexts[0].currentTime = start + ms / 1000;
+      audio.setTheme(theme);
+      vi.advanceTimersByTime(25);
+    }
+    const ended = contexts[0].oscillators.length;
+    for (let ms = 25; ms <= 1000; ms += 25) {
+      contexts[0].currentTime = start + 15 + ms / 1000;
+      audio.setTheme(theme);
+      vi.advanceTimersByTime(25);
+    }
+    expect(contexts[0].oscillators).toHaveLength(ended);
+    audio.setTheme("pvp");
+    contexts[0].currentTime += 0.1;
+    vi.advanceTimersByTime(25);
+    expect(contexts[0].oscillators.length).toBeGreaterThan(ended);
+  }
+});
+it("keeps result music on the music volume control even with sound effects muted", () => {
+  allowed = true;
+  const audio = new AudioManager();
+  audio.start();
+  audio.set("effects", 0);
+  const before = contexts[0].oscillators.length;
+  audio.setTheme("victory");
+  contexts[0].currentTime = 0.1;
+  vi.advanceTimersByTime(25);
+  expect(contexts[0].oscillators.length).toBeGreaterThan(before);
+  audio.set("music", 0);
+  const muted = contexts[0].oscillators.length;
+  contexts[0].currentTime = 1;
+  vi.advanceTimersByTime(100);
+  expect(contexts[0].oscillators).toHaveLength(muted);
+  expect(contexts[0].gains[0].gain.setTargetAtTime).toHaveBeenLastCalledWith(
+    0,
+    0.1,
+    0.08,
+  );
+});

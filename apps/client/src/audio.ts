@@ -2,6 +2,8 @@ import {
   MUSIC_BPM,
   MUSIC_LOOP_STEPS,
   scoreStep,
+  isResultTheme,
+  RESULT_MUSIC_STEPS,
   type MusicTheme,
 } from "./music-score";
 import { MusicSynth } from "./music-synth";
@@ -61,7 +63,10 @@ export class AudioManager {
     this.scoreBus = this.context.createGain();
     const t = this.context.currentTime;
     this.scoreBus.gain.setValueAtTime(0, t);
-    this.scoreBus.gain.linearRampToValueAtTime(1, t + 1.1);
+    this.scoreBus.gain.linearRampToValueAtTime(
+      1,
+      t + (isResultTheme(theme) ? 0.12 : 1.1),
+    );
     this.scoreBus.connect(this.musicBus);
     this.synth = new MusicSynth(
       this.context,
@@ -71,7 +76,7 @@ export class AudioManager {
     );
     if (previous) {
       previous.gain.cancelScheduledValues(t);
-      previous.gain.setTargetAtTime(0, t, 0.25);
+      previous.gain.setTargetAtTime(0, t, isResultTheme(theme) ? 0.08 : 0.25);
       setTimeout(() => {
         previousSynth?.disconnect();
         previous.disconnect();
@@ -129,9 +134,16 @@ export class AudioManager {
       return;
     }
     if (this.nextTime < ctx.currentTime) this.nextTime = ctx.currentTime + 0.05;
+    const limit = isResultTheme(this.theme)
+      ? RESULT_MUSIC_STEPS[this.theme]
+      : undefined;
     while (this.nextTime < ctx.currentTime + 0.12) {
+      if (limit !== undefined && this.step >= limit) return;
       this.playStep(this.step, this.nextTime);
-      this.step = (this.step + 1) % MUSIC_LOOP_STEPS;
+      this.step =
+        limit === undefined
+          ? (this.step + 1) % MUSIC_LOOP_STEPS
+          : this.step + 1;
       this.nextTime += 60 / MUSIC_BPM[this.theme] / 4;
     }
   }
