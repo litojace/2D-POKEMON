@@ -9,6 +9,7 @@ let sync: () => void;
 let style: Record<string, string>;
 let rootStyle: Record<string, string>;
 let scrollTo: ReturnType<typeof vi.fn>;
+let resize: () => void;
 beforeEach(() => {
   style = {
     position: "relative",
@@ -33,6 +34,10 @@ beforeEach(() => {
     scrollY: 230,
     innerWidth: 1015,
     scrollTo,
+    addEventListener: vi.fn((_event, listener) => {
+      resize = listener;
+    }),
+    removeEventListener: vi.fn(),
   });
   vi.stubGlobal(
     "MutationObserver",
@@ -109,4 +114,15 @@ it("does not introduce scrollbar space on mobile or short pages", () => {
   window.innerWidth = 1000;
   setScrollLock(true);
   expect(rootStyle.scrollbarGutter).toBe("auto");
+});
+
+it("fits the new viewport when rotating with a menu open and retires the resize listener", () => {
+  setScrollLock(true);
+  Object.assign(document.documentElement, { clientWidth: 600 });
+  resize();
+  expect(style.width).toBe("600px");
+  expect(style.top).toBe("-230px");
+  setScrollLock(false);
+  expect(style.width).toBe("");
+  expect(window.removeEventListener).toHaveBeenCalledWith("resize", resize);
 });

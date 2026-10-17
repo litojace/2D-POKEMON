@@ -7825,3 +7825,117 @@ dialog:has(.shop) { width: min(980px, 96vw); }
 @media (prefers-reduced-motion: reduce) {
   .rarity-badge.rarity-mythical, .shop-card.rarity-mythical { animation: none; }
 }
+
+/* Use landscape width for related controls rather than stacking long columns. */
+.settings-touch:empty { display: none; }
+.settings-audio, .settings-touch, .controls-preferences, .controls-bindings { min-width: 0; }
+@media (orientation: landscape) and (min-width: 560px) {
+  dialog:has(.settings-screen), dialog:has(.bindings) { width: min(980px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px)); }
+  .settings-layout:has(.settings-touch:not(:empty)) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+  .settings-layout:has(.settings-touch:not(:empty)) .settings-touch { grid-column: 2; grid-row: 1 / span 2; }
+  .settings-layout:has(.settings-touch:not(:empty)) .settings-actions { grid-column: 1; grid-row: 2; margin-top: 0; }
+  .settings-layout:not(:has(.settings-touch:not(:empty))) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; align-items: start; }
+  .settings-layout:not(:has(.settings-touch:not(:empty))) .settings-audio { display: contents; }
+  .settings-layout:not(:has(.settings-touch:not(:empty))) .settings-audio > label { grid-column: 1; }
+  .settings-layout:not(:has(.settings-touch:not(:empty))) .settings-audio > p { grid-column: 1; grid-row: 3; }
+  .settings-layout:not(:has(.settings-touch:not(:empty))) #open-controls { grid-column: 2; grid-row: 1; margin-top: 10px; }
+  .settings-layout:not(:has(.settings-touch:not(:empty))) .settings-actions { grid-column: 2; grid-row: 2 / span 2; }
+  .settings-touch > h3 { margin-top: 0; }
+  .controls-layout { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 0 20px; align-items: start; }
+  .controls-bindings { grid-column: 2; grid-row: 1 / span 2; }
+  .controls-layout > .pad-map { grid-column: 1; }
+  .controls-preferences .cast-mode, .controls-bindings .bindings { margin-top: 8px; }
+  .controls-layout .binding-row { grid-template-columns: minmax(0, 1fr) 64px 64px; }
+  .controls-layout .pad-map .controls-list { grid-template-columns: 1fr; }
+  .settings-actions { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+}
+
+@media (orientation: landscape) and (min-width: 760px) {
+  dialog:has(.shop) { width: min(1200px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px)); }
+  .shop { grid-template-columns: minmax(200px, .65fr) minmax(0, 1.35fr); gap: 12px 16px; align-items: start; }
+  .shop-head, .shop-tabs, .shop-status { grid-column: 1 / -1; }
+  .shop-preview { grid-column: 1; grid-row: 3; grid-template-columns: 1fr; position: sticky; top: 0; }
+  .shop-body { grid-column: 2; grid-row: 3; }
+  .shop:not(:has(.shop-preview)) .shop-body { grid-column: 1 / -1; }
+  .shop-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  .raid-rewards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; }
+  .raid-equip { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 12px 16px; }
+  .raid-slot { min-width: 0; }
+}
+
+/* Short windows spend their height on fighters, forms and item lists. */
+@media (orientation: landscape) and (max-height: 600px) {
+  body:not(.battle-active) .topbar { min-height: calc(52px + var(--safe-top)); padding: calc(6px + var(--safe-top)) calc(12px + var(--safe-right)) 6px calc(12px + var(--safe-left)); gap: 8px; flex-wrap: nowrap; }
+  body:not(.battle-active) .brand { font-size: 16px; gap: 5px; flex: none; }
+  body:not(.battle-active) .brand-mark { width: 28px; height: 28px; margin-right: 0; }
+  body:not(.battle-active) .top-links { width: auto; min-width: 0; flex: 1; justify-content: flex-end; gap: 8px; }
+  body:not(.battle-active) .account-nav { gap: 4px; }
+  body:not(.battle-active) #account-profile { max-width: clamp(90px, 12vw, 140px); }
+  #account-profile > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  body:not(.battle-active) main { padding: 12px calc(12px + var(--safe-right)) 20px calc(12px + var(--safe-left)); }
+  .desktop-lobby-header { padding: 0 0 8px; margin-bottom: 10px; }
+  .desktop-lobby-header h1 { font-size: 26px; margin: 4px 0 0; }
+  .desktop-lobby-header p { display: none; }
+  #menu .lobby-layout { grid-template-columns: minmax(0, 1fr) clamp(210px, 32vw, 280px); gap: 12px; align-items: start; }
+  #menu .room-panel { grid-row: auto; min-width: 0; padding: 14px; }
+  #menu .room-panel h2 { font-size: 24px; margin: 8px 0 12px; }
+  #menu .section-title { margin-bottom: 8px; }
+  #menu .showcase-card { padding: 10px; gap: 5px; }
+  #menu .showcase-card .card-art :is(svg, .creature-portrait) { max-height: 96px; }
+  #menu .selected-fighter { grid-template-columns: 100px minmax(0, 1fr); padding: 10px; gap: 12px; }
+  #menu .selected-art :is(svg, .creature-portrait) { width: 100px; height: 110px; }
+  #menu .selected-info h3 { font-size: 28px; margin: 4px 0; }
+  #menu .fighter-stats { margin: 10px 0; gap: 12px; }
+  #menu .team-columns { grid-template-columns: 1fr; gap: 8px; }
+  #menu .team-column { min-width: 0; padding: 8px; }
+  dialog { width: min(1000px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px)); padding: 16px 20px; }
+  dialog h2 { margin: 6px 0 10px; font-size: 26px; }
+  dialog > p, .settings-screen > p { margin: 6px 0 12px; }
+  dialog label { margin: 10px 0; }
+  dialog .account-form { gap: 10px; }
+  #auth-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #auth-form:not(:has(> label:nth-of-type(2))) { grid-template-columns: 1fr; }
+  #auth-form > :is(button, p, .checkbox-label) { grid-column: 1 / -1; }
+  .settings-layout { gap: 16px; }
+  .settings-touch h3 { font-size: 16px; margin-bottom: 4px; }
+  .settings-touch > p, .settings-audio > p { font-size: 11px; margin: 6px 0; }
+  .settings-actions { margin-top: 8px; }
+  .settings-screen #open-controls { margin-top: 6px; }
+  .controls-layout { gap: 0 16px; }
+  .controls-layout .binding-group { margin-top: 6px; }
+  .controls-layout .binding-note { min-height: 0; }
+  dialog[open]:is(:has(.raid-hub), :has(.shop)) { grid-template-rows: 44px minmax(0, 1fr); padding: 0; }
+  .dialog-toolbar { padding: 0 4px; }
+  .dialog-content { max-height: calc(var(--raid-dialog-height) - 46px); padding: 10px 16px 16px; }
+  dialog[open]:has(.shop) { grid-template-rows: minmax(0, 1fr); }
+  dialog:has(.shop) .dialog-toolbar { position: absolute; top: 2px; right: 4px; z-index: 2; background: transparent; }
+  dialog:has(.shop) .dialog-content { max-height: calc(var(--raid-dialog-height) - 2px); }
+  .shop-head { padding-right: 48px; align-items: center; }
+  .shop-head .eyebrow { display: none; }
+  .shop-head h2 { margin: 0; font-size: 24px; }
+  .shop { gap: 10px 12px; }
+  .shop-tabs button { min-height: 36px; padding: 6px 12px; }
+  .shop-preview { padding: 10px; gap: 8px; }
+  .shop-face svg { max-height: 64px; }
+  .shop-preview-text h3 { font-size: 16px; margin: 4px 0; }
+  .shop-preview-text p, .shop-note { font-size: 11px; line-height: 1.4; }
+  .shop-card-art { height: 88px; }
+  .shop-card-art > svg { height: 82px; }
+  .shop-card { padding: 8px; gap: 6px; }
+  .shop-heading { font-size: 14px; margin-bottom: 8px; }
+  .guide-section-heading { margin: 14px 0 10px; }
+  .guide-caption { padding: 10px; }
+  .raid-hub { gap: 10px; }
+  .raid-hub-head h2 { font-size: 24px; }
+}
+@media (orientation: landscape) and (max-width: 759px) and (max-height: 600px) {
+  .shop-preview { grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); }
+  #menu .selected-fighter { grid-template-columns: 1fr; }
+  .raid-lobby-actions > div { grid-template-columns: 1fr; }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .desktop-lobby-header { display: none; }
+}
+@media (orientation: landscape) and (min-width: 1000px) {
+  .guide-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

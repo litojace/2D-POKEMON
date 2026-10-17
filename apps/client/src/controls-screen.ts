@@ -80,12 +80,12 @@ export function controlsScreenHTML(padConnected: boolean) {
     .join("");
   return (
     `<div class="eyebrow">CONTROLS</div><h2>Make it yours.</h2>` +
-    `<fieldset class="cast-mode"><legend>Skill casting</legend>${cast}</fieldset>` +
+    `<div class="controls-layout"><div class="controls-preferences"><fieldset class="cast-mode"><legend>Skill casting</legend>${cast}</fieldset>` +
     `<label class="choice assist"><input type="checkbox" id="aim-assist"${prefs.aimAssist ? " checked" : ""}><span><b>Aim assist (mouse)</b><small>Basic attacks snap to an opponent close to your cursor. Skills always go exactly where you aim.</small></span></label>` +
-    `<div class="bindings" role="group" aria-label="Key bindings"><div class="binding-row binding-head"><span>Action</span><span>Main</span><span>Backup</span></div>${rows}</div>` +
+    `</div><div class="controls-bindings"><div class="bindings" role="group" aria-label="Key bindings"><div class="binding-row binding-head"><span>Action</span><span>Main</span><span>Backup</span></div>${rows}</div>` +
     `<p class="binding-note" id="binding-note" role="status">Click a box, then press a key or click it with the mouse button you want. Delete clears it, Esc cancels.</p>` +
     `<button type="button" id="controls-reset" class="quiet">${iconLabel("again", "Reset to defaults")}</button>` +
-    `<div class="pad-map"><b>Controller</b> <small id="pad-status">${padConnected ? "Connected" : "Plug in or pair a controller and press any button."}</small><div class="controls-list">${pad}<span><kbd>L-STICK</kbd>Move</span><span><kbd>R-STICK</kbd>Aim (centred: aims at the nearest opponent)</span></div></div>` +
+    `</div><div class="pad-map"><b>Controller</b> <small id="pad-status">${padConnected ? "Connected" : "Plug in or pair a controller and press any button."}</small><div class="controls-list">${pad}<span><kbd>L-STICK</kbd>Move</span><span><kbd>R-STICK</kbd>Aim (centred: aims at the nearest opponent)</span></div></div></div>` +
     `<button type="button" id="controls-back" class="secondary">${iconLabel("back", "Back to settings")}</button>`
   );
 }

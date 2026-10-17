@@ -14,6 +14,11 @@ let savedX = 0;
 const properties = ["position", "top", "left", "right", "width"] as const;
 let savedStyles: string[] = [];
 let savedGutter = "";
+let bodyWidthInset = 0;
+const resizeLockedPage = () => {
+  if (!locked) return;
+  document.body.style.width = `${Math.max(0, document.documentElement.clientWidth - bodyWidthInset)}px`;
+};
 
 export function isScrollLocked() {
   return locked;
@@ -31,6 +36,7 @@ export function setScrollLock(on: boolean) {
     savedGutter = root.style.scrollbarGutter;
     const scrollbar = window.innerWidth - root.clientWidth;
     const width = body.getBoundingClientRect().width;
+    bodyWidthInset = root.clientWidth - width;
     // Keep classic desktop scrollbars' space, including fixed backgrounds.
     if (scrollbar > 0) root.style.scrollbarGutter = "stable";
     root.classList.add("scroll-locked");
@@ -41,7 +47,9 @@ export function setScrollLock(on: boolean) {
       right: "auto",
       width: `${width}px`,
     });
+    window.addEventListener("resize", resizeLockedPage);
   } else {
+    window.removeEventListener("resize", resizeLockedPage);
     root.classList.remove("scroll-locked");
     properties.forEach((property, index) => {
       body.style[property] = savedStyles[index];
