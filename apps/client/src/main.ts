@@ -914,7 +914,23 @@ function wireRaidLobby() {
 
   const bestiary=document.getElementById('raid-bestiary');if(bestiary)bestiary.onclick=()=>void showRaidBestiary();
   const peril=document.getElementById('raid-peril') as HTMLInputElement|null,daily=document.getElementById('raid-daily-toggle') as HTMLInputElement|null;
-  const configure=()=>void request('raid-config',{peril:Number(peril?.value??1),daily:daily?.checked??false}).then((reply)=>{const r=reply as {ok?:boolean;error?:string};if(!r.ok&&r.error)toast(r.error);});
+  const configure = () => {
+    const isDaily = daily?.checked ?? false;
+    // The daily raid grants access to Peril 2 before regular Peril 2 is unlocked.
+    // Always allow leaving it by returning to the first regular difficulty.
+    const difficulty = !isDaily && state?.raid?.daily ? 1 : Number(peril?.value ?? 1);
+    void request("raid-config", { peril: difficulty, daily: isDaily }).then((reply) => {
+      const result = reply as { ok?: boolean; error?: string };
+      if (!result.ok) {
+        if (result.error) toast(result.error);
+        // Restore the authoritative values when a locked challenge is rejected.
+        if (state?.phase === "lobby") {
+          screen = "";
+          renderMenu();
+        }
+      }
+    });
+  };
   // Practice: the host picks one boss attack to repeat.
   document.querySelectorAll<HTMLButtonElement>("#menu [data-raid-drill]").forEach((b)=>{
     b.onclick=()=>void request('raid-drill',{kind:b.dataset.raidDrill}).then((reply)=>{const r=reply as {ok?:boolean;error?:string};if(!r.ok&&r.error)toast(r.error);});
@@ -973,7 +989,8 @@ function renderMenu(revealSelection = false) {
   const p = state?.players.find((p) => p.id === myId);
   const isRoom = !!p;
   const watchingRoom = !isRoom && !!watching && state?.code === watching;
-  const key = `${isRoom ? `room-${state!.mode ?? "duel"}` : watchingRoom ? `watch-${watching}` : "home"}:${(state?.mutators ?? []).join(",")}|${(state?.watchers ?? []).join(",")}:${state?.players.map((p) => `${p.id}${p.id === myId ? "" : p.character}${p.ready}${p.connected}${p.team ?? ""}${p.flair ?? ""}${raidLookList(p.raidLook)}`).join(":")}:${selected}`;
+  const raidChallenge = state?.raid ? `${state.raid.boss}/${state.raid.peril}/${state.raid.daily}` : "";
+  const key = `${isRoom ? `room-${state!.mode ?? "duel"}` : watchingRoom ? `watch-${watching}` : "home"}:${(state?.mutators ?? []).join(",")}|${raidChallenge}|${(state?.watchers ?? []).join(",")}:${state?.players.map((p) => `${p.id}${p.id === myId ? "" : p.character}${p.ready}${p.connected}${p.team ?? ""}${p.flair ?? ""}${raidLookList(p.raidLook)}`).join(":")}:${selected}`;
   if (screen === key) return;
   const previous = screen;
   screen = key;

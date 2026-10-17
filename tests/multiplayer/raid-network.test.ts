@@ -5,6 +5,7 @@ import { fakeAccounts } from "../helpers/accounts";
 import { RaidArena } from "../../apps/server/src/raid";
 import { LATEST_MIGRATION } from "../../apps/server/src/accounts";
 import { blankInput, type Reply } from "@arena/shared";
+import { raidDay } from "../../packages/shared/src/raid";
 let server: ReturnType<typeof createArenaServer> | undefined;
 const sockets: Socket[] = [];
 afterEach(async () => {
@@ -100,6 +101,27 @@ it("starts a regular-player solo raid, enforces Peril unlocks, and records a ver
   expect(a.raid.result).toBeNull();
   expect(a.players).toHaveLength(2);
 });
+it("lets the host leave a daily raid after returning to the lobby without regular Peril 2 unlocked", async () => {
+  const { connect } = await setup(), host = await connect();
+  const created = await emit(host, "create", { name: "Raider", mode: "raid", boss: raidDay().boss });
+  const a = server!.rooms.get(created.code!) as RaidArena;
+  expect((await emit(host, "raid-config", { peril: 2, daily: true })).ok).toBe(true);
+  await emit(host, "ready");
+  expect(a.phase).toBe("briefing");
+  a.forfeit(created.id!);
+  expect(a.phase).toBe("finished");
+  expect((await emit(host, "lobby")).ok).toBe(true);
+  expect(a.raid.daily).toBe(true);
+  expect(a.raid.peril).toBe(2);
+  // Daily access does not unlock regular Peril 2; the client must request Peril 1.
+  expect((await emit(host, "raid-config", { peril: 2, daily: false })).ok).toBe(false);
+  expect((await emit(host, "raid-config", { peril: 1, daily: false })).ok).toBe(true);
+  expect(a.raid.daily).toBe(false);
+  expect(a.raid.peril).toBe(1);
+  expect(a.heroes()).toHaveLength(1);
+  expect(a.heroes()[0].ready).toBe(false);
+});
+
 it("synchronizes four teammates against the same boss and preserves disconnect recovery", async () => {
   const { connect } = await setup();
   const host = await connect();
