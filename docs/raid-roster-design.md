@@ -1,6 +1,6 @@
-# Raid Roster, Shop & Missions — Design Spec (draft 3)
+# Raid Roster, Shop & Missions — Design Spec (approved)
 
-Status: **design only, nothing built yet.** Numbers are starting values to tune
+Status: **approved Oct 17; building step 1.** Numbers are starting values to tune
 with real play, using the same balance data Grumblecrag already records.
 
 Decisions so far (Oct 17):
@@ -1188,11 +1188,10 @@ release.
 | Oct 17 | Rarity tiers (Common / Rare / Epic / Mythical) with Mythic Trials and Awakening |
 | Oct 17 | PvP coins only from matches against people |
 | Oct 17 | All champion skins and collections ship together |
+| Oct 17 | Mythical price confirmed: 8,000 coins + 30-win trial |
+| Oct 17 | Opponents see a Mythical's Awakening stage |
+| Oct 17 | Skin names and themes approved |
 
 ## 13. Open questions
 
-1. Prices: Mythical at 8,000 coins plus a 30-win trial, about 3 weeks of
-   steady play. Harder or easier?
-2. Should Mythical Awakening stages also show to opponents? Proposed:
-   yes, since that's the bragging point, within the fairness rules.
-3. Any skin names or themes to swap?
+None right now. The design is approved; building starts with §11 step 1.
