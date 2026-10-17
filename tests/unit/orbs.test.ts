@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { CHARACTERS, ORB_SPOTS, RULES } from "@arena/shared";
+import {
+  CHARACTERS,
+  ORB_SPOTS,
+  RULES,
+  packSnapshot,
+  unpackSnapshot,
+} from "@arena/shared";
 import { Arena } from "../../apps/server/src/simulation";
 const tick = (a: Arena, seconds: number) => {
   for (let i = 0; i < Math.round(seconds * RULES.tick); i++) a.tick();
@@ -63,6 +69,24 @@ describe("healing orbs", () => {
     });
     b.tick();
     expect(b.players[0].hp).toBe(full);
+  });
+  it("shows whole HP for the first orb when topping up fractional health", () => {
+    const a = duel();
+    tick(a, RULES.orbFirst + 0.1);
+    const orb = a.orbs[0],
+      one = a.players[0];
+    const full = CHARACTERS[one.character].health;
+    Object.assign(one, { x: orb.x, y: orb.y, hp: full - 12.8 });
+    const before = one.stats.healed ?? 0;
+    a.stepOrbs();
+    expect(a.orbs).toHaveLength(0);
+    expect(one.hp).toBe(full);
+    expect((one.stats.healed ?? 0) - before).toBeCloseTo(12.8);
+    const event = unpackSnapshot(packSnapshot(a.snapshot())).events.find(
+      (e) => e.kind === "heal",
+    )!;
+    expect(event.value).toBe(13);
+    expect(Number.isInteger(event.value)).toBe(true);
   });
   it("is left alone by a fighter at full health", () => {
     const a = duel();

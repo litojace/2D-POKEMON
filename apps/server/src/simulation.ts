@@ -1381,7 +1381,8 @@ export class Arena {
       );
       taker.hp += healed;
       taker.stats.healed = (taker.stats.healed ?? 0) + healed;
-      this.event("heal", taker, 0x7dffb0, healed, taker.id);
+      // Health and stats retain fractional precision; combat popups show whole HP.
+      this.event("heal", taker, 0x7dffb0, Math.round(healed), taker.id);
       return false;
     });
   }
