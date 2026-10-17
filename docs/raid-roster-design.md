@@ -1,28 +1,46 @@
-# Raid Roster — Design Spec (draft 1)
+# Raid Roster, Shop & Missions — Design Spec (draft 2)
 
 Status: **design only, nothing built yet.** Numbers are starting values to tune
 with real play, using the same balance data Grumblecrag already records.
 
+Decisions so far (Oct 17):
+
+1. Solo Peril 3 has no self-revive, on every boss including Grumblecrag.
+2. New bosses unlock after clearing Grumblecrag.
+3. Boss names approved.
+4. A featured boss **every day** (Raid of the Day).
+5. A fifth cosmetic slot: **Victory**.
+6. **Seven bosses, one for each day of the week.**
+7. A **Shop** that sells cosmetics for coins earned from daily missions and
+   boss raids (§10).
+
 ## 1. Goals
 
-- Turn Boss Raid into a **Raid Hub**: a page of bosses, each with its own
-  challenges, rewards and records.
-- Every boss should teach a **different kind of teamwork**, not reskin the
+- Turn Boss Raid into a **Raid Hub**: a page of seven bosses, each with its
+  own challenges, rewards and records, and one featured each day.
+- Every boss teaches a **different kind of teamwork**, not a reskin of the
   same fight:
 
-| Boss | Element | Teamwork it asks for | Difficulty |
-|---|---|---|---|
-| Grumblecrag (existing) | Earth | Baiting and stacking | ★ |
-| Tidewyrm | Water | Sharing safe ground and rescuing a trapped ally | ★★ |
-| Gloomshade | Shadow | Reading tells and spreading out | ★★ |
-| Emberwing | Fire | Being in several places at once | ★★★ |
-| Storm Twins | Electric | Pairing up and timing two kills | ★★★ |
+| Day | Boss | Element | Teamwork it asks for | Difficulty |
+|---|---|---|---|---|
+| Sat | Grumblecrag (existing) | Earth | Baiting and stacking | ★ |
+| Fri | Tidewyrm | Water | Sharing safe ground, rescuing a trapped ally | ★★ |
+| Mon | Gloomshade | Shadow | Reading tells, spreading out | ★★ |
+| Wed | Somnara | Psychic | Calling out what only one of you can see | ★★ |
+| Sun | Prismatail | Light | Forming a relay chain | ★★★ |
+| Tue | Emberwing | Fire | Being in several places at once | ★★★ |
+| Thu | Storm Twins | Electric | Pairing up, timing two kills | ★★★ |
+
+The days follow the old planet names of the week: Sun's day for light,
+Moon's day for shadow, Mars (Tuesday) for fire, Mercury (Wednesday) for the
+mind, Thor's day for thunder, Venus (born of the sea) for water, and Saturn
+for stone.
 
 - Rewards stay **cosmetic only** (no stat bonuses), so veterans never make
   the raid easier for others.
-- Rewards should take **weeks, not one evening**. That means per-boss ladders,
-  challenge feats that need skill, and cross-boss goals.
-- Every boss supports **1–4 players**, including solo at every Peril (see §3).
+- Rewards take **weeks, not one evening**: per-boss ladders, skill feats,
+  daily play and cross-boss goals.
+- Every boss supports **1–4 players**, solo at every Peril (see §3).
 - All designs are original: cute but menacing, no Pokémon likenesses.
 
 ## 2. The Raid Hub
@@ -30,56 +48,83 @@ with real play, using the same balance data Grumblecrag already records.
 **Entry:** choosing *Boss Raid* on the Play panel opens the Hub instead of
 going straight to a room.
 
-**Hub page**
+**Hub page, top to bottom**
 
-- **Header:** total rewards earned across all bosses (e.g. "23 / 62 rewards")
-  and lifetime raid clears.
-- **Raid of the Week banner:** one boss per week, with its trait, Peril 2, a
-  separate weekly board and a small weekly-only title for the first clear.
-  The boss rotates in a fixed order.
-- **Boss cards** in a grid (one column on phones, swipeable like the
-  champion roster). Each card shows:
-  - Boss art (idle animation) and an element chip.
-  - Difficulty stars.
-  - The signature mechanic in one line ("Strand it on an island").
-  - Your best Peril cleared as a badge (P1/P2/P3, with a no-downs mark).
-  - Reward progress bar (e.g. 4/9).
-  - A "NEW" ribbon until first played.
+1. **Header:** rewards earned across all bosses (e.g. "23 / 84 rewards"),
+   lifetime clears, and the current Grand Tour progress (§2.1).
+2. **This week strip:** seven small day tiles, Sun → Sat, each with its
+   boss's crest. Today's tile is large and lit.
+   - Past days you cleared get a check mark; missed days are dimmed.
+   - Tapping a tile opens that boss.
+3. **Raid of the Day card:** today's boss, its trait, Peril 2, today's board
+   (top 10 per party size), a countdown to the next boss, and *Raid today's
+   boss*.
+4. **Boss cards** for all seven, in a grid (one column on phones, swipeable
+   like the champion roster). Each card shows:
+   - Boss art (idle animation), element chip and its day.
+   - Difficulty stars.
+   - The signature mechanic in one line ("Strand it on an island").
+   - Your best Peril cleared (P1/P2/P3, with a no-downs mark).
+   - Reward progress (e.g. 4/11).
+   - A "NEW" ribbon until first played.
+   - A lock with "Clear Grumblecrag to unlock" when locked.
 
-**Unlocks:** Grumblecrag is open from the start; it's the tutorial boss.
-The other four unlock after **any Peril 1 clear of Grumblecrag**. Peril 2/3
-unlock **per boss**, the same way they do today.
+**Unlocks**
+
+- Grumblecrag is open from the start; it's the tutorial boss.
+- The other six unlock after **any clear of Grumblecrag**.
+- Peril 2 and 3 unlock **per boss**, the same way they do today.
 
 **Boss page** (tap a card) has four tabs:
 
-1. **Overview:** a short flavour blurb, the three chapter names and goals,
-   an illustration of the signature mechanic, and which champion tricks
+1. **Overview:** a flavour blurb, the three chapters and their goals, an
+   illustration of the signature mechanic, and the champion tricks that
    apply (§6).
-2. **Attacks:** every attack with its warning shape, a tip, and
-   *Practice this* (opens a practice room for that attack).
-3. **Rewards:** the full ladder with exact progress, equip buttons, and
-   previews of the cosmetics on your current champion.
-4. **Records:** best time per party size, clears per Peril, the weekly
-   board if it's that boss's week, and recent runs.
+2. **Attacks:** every attack with its warning shape, a tip, and *Practice
+   this*.
+3. **Rewards:** the full ladder with exact progress, equip buttons, and a
+   preview of each cosmetic on your current champion.
+4. **Records:** best time per party size, clears per Peril, today's board
+   (if it's that boss's day), and recent runs.
 
 **Actions:** *Create raid room* (boss and Peril chosen here), *Join with
-code*, *Play solo now*. Room codes carry the boss, so friends who join land
-in the right fight. The raid lobby gets a small boss switcher for the host;
-changing it un-readies everyone, like party rules do now.
+code*, *Play solo now*.
 
-**Also:** the existing Bestiary button becomes *Raid Hub*. Profile, results
-and lobby links open the Hub on the relevant boss.
+- Room codes carry the boss, so friends who join land in the right fight.
+- The host gets a boss switcher in the raid lobby; changing it un-readies
+  everyone, like party rules do now.
+- The Bestiary button becomes *Raid Hub*. Profile, results and lobby links
+  open the Hub on the relevant boss.
 
-## 3. Solo rules (chosen: solo everything, harder)
+### 2.1 Raid of the Day (replaces Raid of the Week)
+
+- **One featured boss per day** on the fixed schedule above. Everyone
+  gets the same seed and trait, at Peril 2.
+- **The day changes at midnight Pacific time.** That's where the group
+  plays, and it avoids a 5 pm switch in the middle of an evening. The
+  server decides the day, so everyone agrees.
+- **Today's board:** top 10 per party size (solo, duo, trio, four). It
+  resets daily; past days are kept in history.
+- Open to anyone who has cleared Grumblecrag, even without that boss's
+  Peril 2 unlock (like the weekly works now). Saturday (Grumblecrag) is
+  open to everyone.
+- **Grand Tour:** clear each day's boss *on its day*, all seven within one
+  Sunday–Saturday week. The reward is the *Seven Suns* victory (§7). The
+  Hub shows the tour as seven checks.
+- **Until all seven bosses exist:** the days of unbuilt bosses feature the
+  built ones in turn, and the Grand Tour starts once all seven are out.
+
+## 3. Solo rules (decided)
 
 - Every boss and every Peril can be played solo.
-- **Peril 1–2 solo:** one self-revive, as today.
-- **Peril 3 solo: no self-revive.** One down ends the run.
+- **Peril 1–2 solo:** one self-revive.
+- **Peril 3 solo: no self-revive**, on every boss including Grumblecrag.
+  One down ends the run.
+  - This makes Grumblecrag's existing "Peril 3, no downs" reward harder
+    solo; teams are unaffected. Rewards already earned are kept.
 - Each team mechanic has a solo version (listed per boss) that's possible
   but asks more of one player.
-- **Solo Peril 3 clear** is its own feat reward on every boss.
-- **Open question:** apply "no self-revive at Peril 3 solo" to Grumblecrag
-  too, for consistency? Rewards already earned are kept either way.
+- **Solo Peril 3 clear** is its own reward on every boss.
 
 ## 4. Shared rules (all bosses)
 
@@ -92,16 +137,16 @@ The same as Grumblecrag unless a boss says otherwise:
 - Stagger meter, downed/crawl/revive, team signals, practice drills,
   stand-in AI for disconnects, "what downed you" tips, contribution stats.
 - Traits (one rolled per run, three per boss) and rare Gilded runs.
-- **Team signals become per-boss:** the third key changes meaning.
+- **Team signals:** the third key changes meaning per boss.
   - Grumblecrag: "Bait here"
   - Tidewyrm: "Island here"
   - Gloomshade: "That's the real one"
+  - Somnara: rune calls (see §5.5)
+  - Prismatail: "Relay to me"
   - Emberwing: "Take this brazier"
   - Storm Twins: "Pair with me"
-- Rites: the six existing rites stay shared. Each boss adds **one themed
-  rite** to its offer pool, listed per boss.
-
----
+- **Rites:** the six existing rites stay shared, and each boss adds one
+  themed rite to its offer pool.
 
 ## 5. The bosses
 
@@ -343,137 +388,357 @@ That's the biggest engine change in the roster, so it comes last.
 
 ---
 
+### 5.5 Somnara, the Dream Whale — "Only the Dreamer Knows" (Psychic, ★★)
+
+**Look:** a huge, sleepy sky whale, lavender and starry, with a nightcap of
+cloud. Its back is a tiny floating island with a little house on it. It
+hums in its sleep, and the music notes it hums are its attacks.
+
+**Arena:** the Cloud Deck, with **4 rune pads** near the corners (Circle,
+Star, Moon, Wave) and soft cloud floor.
+
+**Signature: the Dream Sequence.**
+
+- Somnara hums a sequence of 3 runes (4 on Peril 2, 5 on Peril 3).
+- **Only one raider, the Dreamer, sees it.** It shows above their head on
+  their own screen only.
+- The team has 10 s to step on the pads in that order; any raider can
+  step on any pad.
+- **Right order:** Somnara wakes with a jolt, **exposed** for 6 s.
+- **Wrong pad:** a Nightmare burst hits everyone for 18 and the sequence
+  restarts with a new Dreamer.
+- The Dreamer calls the runes with four quick signals (keys **1–4**, or a
+  rune bar on touch). Teammates see the calls as rune icons over the
+  Dreamer's head, so no voice chat is needed.
+- From chapter 3 on Peril 3, some sequences are shown **backwards** (an
+  arrow says so), and the Dreamer has to call them in reverse.
+
+**Health:** 1300, +870 per extra raider.
+
+| Attack | Warning | How to beat it | Dmg |
+|---|---|---|---|
+| **Lullaby Rings** | Soft rings ripple out from the whale | Each ring that touches you adds a Drowsy stack; 3 stacks = asleep for 2 s, unless a teammate taps you awake (any hit wakes you, harmlessly) | 6 + Drowsy |
+| **Tail Splash** | A wide rectangle beside the whale | Leave it | 26 |
+| **Dream Bubbles** | Floating orbs drift toward the nearest raider | Pop them (one hit) or outrun them; touching one adds Drowsy | Drowsy |
+| **Falling Stars** (ch. 2+) | A constellation flashes for 1.5 s, then stars land on its points | Remember the shape, then stand between the stars | 22 each |
+| **Whale Song** (ch. 2+) | A 4 s channel; the whole arena hurts except a moving Quiet Zone | **Everyone into the Quiet Zone**: a stack mechanic. It shrinks on higher Perils | 30 |
+| **Nightmare** | Only after a wrong rune | Get the order right | 18 |
+
+**Chapters**
+
+1. **Dozing:** lullabies, tail splashes and bubbles. Short 3-rune
+   sequences teach the rune pads.
+2. **Deep Sleep:** stars and Whale Song begin, and sequences get longer.
+3. **Waking Dream:** faster rhythm, sequences while other attacks
+   continue, and backwards sequences on Peril 3.
+
+**Traits**
+
+- *Deep Slumber:* longer sequences, but exposure lasts 2 s longer.
+- *Restless Dream:* more bubbles, but sequences are one rune shorter.
+- *Starry Night:* more Falling Stars, but a bigger Quiet Zone.
+
+**Themed rite: Lucid.** Immune to Drowsy from bubbles. You also see the
+first rune of every sequence, even when you're not the Dreamer.
+
+**Solo version:**
+
+- You're always the Dreamer.
+- You get 14 s to step the sequence.
+- Sequences are one rune shorter than a team's.
+
+**Practice drills:** Lullaby Rings, Falling Stars, Whale Song, Dream
+Sequence.
+
+**Engine note:**
+- The Dreamer-only sequence must be sent privately to that one player, not
+  in the shared snapshot everyone receives, so others can't peek.
+- Drowsy is a new status type.
+- No new movement physics are needed.
+
+### 5.6 Prismatail — "Carry the Light" (Light, ★★★)
+
+**Look:** a crystal peacock with a puffed-out chest and a sunny, proud face.
+Its tail fan is a ring of prism feathers that throws rainbows on the floor.
+A glowing crystal heart sits behind a clear shield.
+
+**Arena:** the Sun Atrium, a bright hall with a **skylight** that drops a
+sunbeam, and **4 mirror posts**.
+
+**Signature: the Light Relay.**
+
+- The crystal heart is shielded.
+- When the skylight opens, a sunbeam lands at one spot and shoots toward
+  the **nearest raider** within 300 px.
+- A raider standing in a beam **passes it on** to the nearest *other*
+  raider or mirror post within 300 px. The chain keeps going until it
+  reaches the boss (within 260 px of it).
+- When it arrives, the shield shatters: **exposed** for 6 s.
+- Standing in a beam is bright: 3 damage/s to whoever holds it.
+- The boss keeps walking away from the skylight, so longer chains, and
+  more raiders in a line, are needed as it goes.
+
+**Health:** 1350, +880 per extra raider.
+
+| Attack | Warning | How to beat it | Dmg |
+|---|---|---|---|
+| **Prism Lance** | A thin line locks onto one raider for 1.1 s | Step out of the line | 25 |
+| **Fan Display** | The tail opens into 6 coloured cones; the crest on its head glows **one colour** | Only cones of the crest's colour fire. Read the crest and stand in another colour | 24 |
+| **Glare** | The crest flashes white for 1 s | **Face away**: anyone aiming toward the boss when it flashes is blinded (screen whites out for 1.5 s) | — |
+| **Refraction** (ch. 2+) | Prism Lances bounce off mirror posts; the bounce lines are shown | Read the bounces, not just the first line | 25 |
+| **Halo Crush** (ch. 2+) | A ring of light closes in on one raider, with one gap | Dash out through the gap | 28 |
+| **Split Light** (ch. 3) | **Two** sunbeams at once | Both chains must reach the heart within 3 s of each other | — |
+
+**Chapters**
+
+1. **Dawn:** lances, fans and glare. One short relay, the boss stays near
+   the skylight.
+2. **High Noon:** refraction and halos; the boss wanders further, so
+   chains get longer.
+3. **Solar Crown:** faster rhythm and Split Light. Teams of 3–4 split into
+   two chains.
+
+**Traits**
+
+- *Dazzling:* more Glare, but relay range is +60.
+- *Overcast:* a dimmer beam needs one more link, but fewer lances.
+- *Kaleidoscope:* the fan has 8 cones, but the shield breaks for 1 s
+  longer.
+
+**Themed rite: Polished.** Holding a beam doesn't hurt you, and your relay
+range is +60.
+
+**Solo version:**
+
+- Mirror posts are hit-to-rotate. Each hit turns a post 45°, and the posts
+  plus you make the chain.
+- Split Light becomes one beam that must be held for 2 s.
+
+**Practice drills:** Prism Lance, Fan Display, Glare, Halo Crush, Light
+Relay.
+
+**Engine note:**
+- Beam chains are line-segment geometry rebuilt each tick, a new system.
+- "Facing" uses the existing aim direction.
+- On touch, aim follows the opponent, so Glare must turn auto-aim *away*
+  from the boss during the flash. Otherwise touch players can't dodge it.
+  This needs testing on phones.
+
+---
+
 ## 6. Champion tricks across the roster
 
-Every champion has at least two bosses where one of its skills is a special
-answer. "Who should I bring?" becomes part of each boss.
+Every champion has **at least three bosses** where one of its skills is a
+special answer, so "who should I bring?" is part of each boss.
 
-| Champion | Grumblecrag | Tidewyrm | Gloomshade | Emberwing | Storm Twins |
-|---|---|---|---|---|---|
-| **Voltkit** | — | Static Lance on a *Stranded* boss adds +15 stagger (water conducts) | Ball Lightning's burst lights the area for 3 s and shows true shadows | — | Absorbs Chain Lightning: no jump, +15 ultimate charge |
-| **Cindrake** | — | Magma Bomb pops a Bubble Prison in one hit | — | Blaze Whirl lights a brazier from range | — |
-| **Tidefin** | — | Mirror Mist's clone can carry the dive ripple | — | Whirlpool puts out burning ground where it lands | — |
-| **Auralynx** | Mirror Guard blocks the volley | — | — | Mirror Guard reflects a Dive Bomb: +20 stagger | Mirror Guard reflects the Link Beam into a twin: +20 stagger |
-| **Lumoth** | Kindle: half a revive | — | Radiant Flare relights lanterns nearby and cleanses curse | Starfall Spray hits an airborne boss at full damage | — |
-| **Mystowl** | Ward splits the meteor | — | Focus Ray passes through decoys and marks the real one | — | — |
-| **Terradon** | Shell stops a charge | Tremor pops all bubbles nearby and frees a Prison | — | — | Hibernate grounds you: immune to Polarity |
-| **Duskveil** | — | — | Curse Mark on the real one reveals it to everyone for 6 s | — | Void Orb pulls one twin toward the other |
+**Voltkit** (3)
+- **Tidewyrm:** Static Lance on a Stranded boss adds +15 stagger (water
+  conducts).
+- **Gloomshade:** Ball Lightning's burst lights the area for 3 s and shows
+  true shadows.
+- **Storm Twins:** absorbs Chain Lightning: no jump, +15 ultimate charge.
 
-Counts: Voltkit, Auralynx, Lumoth and Terradon have 3; Cindrake, Tidefin,
-Mystowl and Duskveil have 2. Those four each get a third trick in a later
-pass, as bosses beyond these five arrive.
+**Cindrake** (4)
+- **Tidewyrm:** Magma Bomb pops a Bubble Prison in one hit.
+- **Emberwing:** Blaze Whirl lights a brazier from range.
+- **Somnara:** Ember Gust wakes sleeping allies in its cone at once.
+- **Prismatail:** Sunfire Pillar counts as a relay point for 4 s.
+
+**Tidefin** (3)
+- **Tidewyrm:** Mirror Mist's clone can carry the dive ripple.
+- **Emberwing:** Whirlpool puts out burning ground where it lands.
+- **Somnara:** Mirror Mist's clone can step on a rune pad.
+
+**Auralynx** (3)
+- **Grumblecrag:** Mirror Guard blocks the volley.
+- **Emberwing:** Mirror Guard reflects a Dive Bomb: +20 stagger.
+- **Storm Twins:** Mirror Guard reflects the Link Beam into a twin: +20
+  stagger.
+
+**Lumoth** (4)
+- **Grumblecrag:** Kindle fills half a revive.
+- **Gloomshade:** Radiant Flare relights lanterns nearby and cleanses
+  curse.
+- **Emberwing:** Starfall Spray hits an airborne boss at full damage.
+- **Prismatail:** Radiant Flare relays a beam it touches to *every* raider
+  in range at once.
+
+**Mystowl** (4)
+- **Grumblecrag:** Ward splits the meteor.
+- **Gloomshade:** Focus Ray passes through decoys and marks the real one.
+- **Somnara:** Thoughtstrike shows the current sequence to the whole team.
+- **Prismatail:** Ward blocks Glare for allies inside it.
+
+**Terradon** (3)
+- **Grumblecrag:** its shell stops a charge.
+- **Tidewyrm:** Tremor pops all bubbles nearby and frees a Prison.
+- **Storm Twins:** Hibernate grounds it: immune to Polarity.
+
+**Duskveil** (4)
+- **Gloomshade:** Curse Mark on the real one reveals it for 6 s.
+- **Storm Twins:** Void Orb pulls one twin toward the other.
+- **Somnara:** Shade Crawl leaves a trail that blocks Dream Bubbles.
+- **Prismatail:** Void Orb swallows a Prism Lance.
+
+Every boss has four champion tricks.
 
 ## 7. Rewards
 
-### 7.1 Per-boss ladder (the same shape on every boss)
+### 7.1 Slots
 
-| Goal | Reward | Slot |
-|---|---|---|
-| First clear | "[Boss]breaker"-style title | Title |
-| 5 clears | Boss colours | Skin |
-| 10 clears | Textured boss skin | Skin |
-| Peril 2 clear | Themed entrance | Entrance |
-| Peril 3 clear | Mastery title + portrait frame | Title + Frame |
-| Peril 3, no downs | Themed aura | Aura |
-| **Feat** (skill challenge) | Badge title | Title |
-| **Speed** (Peril 2 under a target time, per party size) | Badge title | Title |
-| **Solo Peril 3 clear** | "Lone [X]" title | Title |
-| **Lifetime stat** (wins and losses) | Stat title | Title |
+**Five boss-agnostic slots:** you can mix pieces from any boss.
+
+| Slot | What it is |
+|---|---|
+| Skin | Colours or a textured look on your fighter |
+| Aura | A ring or effect beneath your fighter |
+| Entrance | How you arrive each round |
+| Frame | Your portrait border in lobbies and results |
+| **Victory** *(new)* | A 2-second celebration when you win a round, a match or a raid. It also plays on your results card and in the menu preview |
+
+The Rewards tab previews every item on your current champion before you
+equip it. Titles keep using the profile title picker.
+
+### 7.2 Per-boss ladder (the same shape on every boss)
+
+| Goal | Reward |
+|---|---|
+| First clear | Title |
+| 5 clears | Colours (skin) |
+| 10 clears | Textured skin |
+| Peril 2 clear | Entrance |
+| Peril 3 clear | Mastery title + frame |
+| Peril 3, no downs | Aura |
+| **Feat** (a skill challenge) | **Victory** |
+| **Speed** (Peril 2 under a target time, per party size) | Title |
+| **Solo Peril 3** | "Lone …" title |
+| **Lifetime stat** (wins and losses) | Title |
 
 **Per boss**
 
+- **Grumblecrag**
+  - Existing: Cragbreaker, Cragbound colours, Cragstone skin, Mountainborn
+    entrance, Mountain Conqueror + Conqueror frame, Mountain aura, Gilded
+    Cragbreaker, Pillar Breaker, Mountain Guardian.
+  - **New:** *Rockslide Flex* victory (feat: every charge in a run hits a
+    pillar), *Avalanche* title (Peril 2 solo under 3:30), *Lone
+    Mountain* (solo Peril 3).
 - **Tidewyrm**
   - Titles: *Tidebreaker* (first clear), *Leviathan's Bane* (Peril 3).
-  - Cosmetics: Seafoam colours, Pearlscale skin, Riptide entrance (a
-    splash), Reef frame, Tidal aura.
-  - Feat: strand it 4 times in one run.
+  - Cosmetics: Seafoam colours, Pearlscale skin, Riptide entrance, Reef
+    frame, Tidal aura.
+  - **Splashdown** victory (feat: strand it 4 times in one run).
   - Lifetime: 30 strands, *Shipwright*.
 - **Gloomshade**
   - Titles: *Lightbringer* (first clear), *Night's End* (Peril 3).
-  - Cosmetics: Dusk colours, Lanternlit skin (a soft glow on the edges),
-    Shadowstep entrance, Lantern frame, Wisp aura.
-  - Feat: clear without anyone hitting a decoy.
+  - Cosmetics: Dusk colours, Lanternlit skin, Shadowstep entrance, Lantern
+    frame, Wisp aura.
+  - **Lantern Bow** victory (feat: nobody hits a decoy).
   - Lifetime: relight 50 lanterns, *Lamplighter*.
+- **Somnara**
+  - Titles: *Dreamwaker* (first clear), *Lucid Legend* (Peril 3).
+  - Cosmetics: Twilight colours, Starlit skin (twinkling flecks), Dreamdrift
+    entrance (bubbles), Moonglass frame, Lullaby aura (floating notes).
+  - **Sweet Dreams** victory (feat: a run with no wrong runes).
+  - Lifetime: 60 runes stepped, *Dream Weaver*.
+- **Prismatail**
+  - Titles: *Prismbreaker* (first clear), *Sunshatter* (Peril 3).
+  - Cosmetics: Dawn colours, Prismatic skin (rainbow edges), Sunburst
+    entrance, Stained-glass frame, Halo aura.
+  - **Rainbow Fan** victory (feat: shatter the shield within 8 s of the
+    beam, 3 times).
+  - Lifetime: 80 relays, *Lightkeeper*.
 - **Emberwing**
   - Titles: *Skyfeller* (first clear), *Wingbreaker* (Peril 3).
   - Cosmetics: Ember colours, Cinderplume skin, Firefall entrance, Brazier
     frame, Ember aura.
-  - Feat: ground it within 20 s of take-off, three times in a run.
+  - **Feather Fall** victory (feat: ground it within 20 s of take-off, 3
+    times).
   - Lifetime: light 60 braziers, *Torchbearer*.
 - **Storm Twins**
   - Titles: *Stormsplitter* (first clear), *Eye of the Storm* (Peril 3).
   - Cosmetics: Static colours, Thundercell skin, Lightning-strike entrance,
     Conductor frame, Spark aura.
-  - Feat: beat both twins within 2 s of each other.
+  - **Twin Spark** victory (feat: both twins down within 2 s of each
+    other).
   - Lifetime: 40 polarity pairs, *Perfect Pair*.
-- **Grumblecrag** (back-filled so you have new things to chase)
-  - Feat: every charge in a run hits a pillar.
-  - Speed: Peril 2 solo under 3:30.
-  - Solo Peril 3: *Lone Mountain*.
 
-### 7.2 Cross-boss rewards
+Each speed target is set after the first week of real clear times. A
+guessed number would be either trivial or impossible.
+
+### 7.3 Cross-boss and daily rewards
 
 | Goal | Reward |
 |---|---|
-| Clear all 5 bosses (any Peril) | **Raid Veteran** title |
-| Clear all 5 on Peril 3 | **Hall of Bosses** frame (animated, cycles each boss's crest) |
-| Peril 3 no-downs on all 5 | **Unbroken** aura (prismatic) |
+| Clear all 7 bosses (any Peril) | **Raid Veteran** title |
+| Clear all 7 on Peril 3 | **Hall of Bosses** frame (cycles each boss's crest) |
+| Peril 3 no-downs on all 7 | **Unbroken** aura (prismatic) |
 | 100 total raid clears | **Boss Hunter** title |
-| Weekly boss, first clear each week | *Weekly Champion · week of …* (time-stamped, shown in profile history) |
+| **Grand Tour**: each day's boss on its day, all 7 in one week | **Seven Suns** victory (seven elemental orbs) |
 
-**Totals:** 11 rewards per new boss (44), 13 for Grumblecrag (10 today plus
-3 back-filled) and 5 cross-boss rewards, 62 in all. The Hub header shows
-the count.
+Days with a Raid of the Day clear are shown as a streak on your profile;
+the streak is a record, not a reward.
 
-### 7.3 Equipping
+**Totals**
 
-- The four slots stay (skin, aura, entrance, frame), and they're
-  **boss-agnostic**: you can wear Pearlscale with a Lantern frame.
-- The Rewards tab previews each cosmetic on your current champion before
-  you equip it.
-- Titles keep using the profile title picker.
+| Group | Count |
+|---|---|
+| 6 new bosses × 11 | 66 |
+| Grumblecrag (10 today + 3 new) | 13 |
+| Cross-boss and Grand Tour | 5 |
+| **Total** | **84** |
 
 ## 8. Engineering plan
 
 **Shared (`packages/shared`)**
 
 - Add `RaidBossDef` with:
-  - id, name, element, stars, look notes
+  - id, name, element, day, stars
   - health, Peril damage, cadence, chapters, attacks and their numbers
   - `pattern(phase, peril, party)`
   - traits, themed rite, perks, signals
   - arena features
   - cosmetic and title definitions
-- `RAID_BOSSES` registry. `GRUMBLECRAG` becomes its first entry.
+- `RAID_BOSSES` registry; `GRUMBLECRAG` becomes its first entry.
+- `raidDay(date)` → { day, boss, seed, trait }, using the Pacific calendar
+  day.
 - `RaidAttack` becomes a per-boss key union. `RaidState` gets:
   - `boss` (id)
-  - `features` (pillars | islands | lanterns | braziers | posts)
-  - `entities[]` (one boss, or two for the Twins)
-  - `marks` (curse stacks, heat marks, polarity)
+  - `features`: pillars, islands, lanterns, rune pads, mirror posts,
+    braziers or copper posts
+  - `entities[]`: one boss, or two for the Twins
+  - `marks`: curse, heat, polarity, drowsy
+  - `beams`: Prismatail's relay chains
+- `RaidLoadout` gains the `victory` slot.
 
 **Server (`apps/server/src/raid/`)**
 
 - `core.ts`: chapters, downs and revives, stagger, rites, contributions,
-  receipts, practice, stand-ins, solo rules.
-- One module per boss implementing `startAttack`, `tick`, `hit rules`,
-  `feature update`, and `standInHints` (e.g. "go to an island on High
-  Tide", "spread on Heat Mark", "find an opposite partner").
+  receipts, practice, stand-ins, solo rules (including no Peril 3 solo
+  self-revive).
+- One module per boss implementing `startAttack`, `tick`, hit rules,
+  feature updates and `standInHints`. Examples of hints: "island on High
+  Tide", "spread on Heat Mark", "find an opposite partner", "go stand in
+  the Quiet Zone", "step the called rune", "join the relay line".
+- A private per-player event for Somnara's Dreamer sequence.
 - `RaidArena` delegates to the boss module.
 
 **Client**
 
-- Per-boss art and motion modules, like `raid-boss-art.ts` and
-  `raid-boss-motion.ts` today.
-- Warning renderers per attack and feature drawing.
-- Guide scenes for the briefing.
-- 16 new cosmetics in the rig: tint/texture skins, aura rings, entrance
-  bursts, frames in the menu.
-- The Hub page and boss page (tabs) in a new `raid-hub.ts`.
+- **Per boss:** art and motion modules (like `raid-boss-art.ts` and
+  `raid-boss-motion.ts` today), warning renderers, feature drawing, and
+  guide scenes.
+- **New cosmetics:** six bosses × five slots, plus Grumblecrag's victory
+  and the cross-boss items.
+- **Victory slot:** a short rig animation plus a particle burst, played at
+  round wins, raid wins and on the results card.
+- **Hub and boss pages** (with tabs) in a new `raid-hub.ts`, including the
+  week strip.
 
 **Database (migration 009)**
 
-- `arena_raid_rewards(id, boss, slot, kind, rule jsonb, name, description)`
-  lists every reward and its rule. Rule kinds:
+- **Rewards table:** `arena_raid_rewards(id, boss, slot, kind, rule jsonb,
+  name, description)` lists every reward and its rule. Rule kinds:
   - `clears >= n`
   - `peril >= n`
   - `flawless peril`
@@ -482,42 +747,243 @@ the count.
   - `feat`
   - `lifetime stat`
   - `cross-boss`
+  - `grand tour`
 
-  Progress and unlocks are computed from this table, so new bosses need
-  rows, not new SQL functions.
+  Progress and unlocks are computed from this table, so each new boss
+  needs **rows, not new SQL functions**.
 - `arena_raid_players.feats jsonb` stores per-boss stats such as strands,
-  lanterns, braziers and pairs.
-- `arena_record_raid` accepts any boss in `arena_raid_rewards`.
-- `arena_raid_progress()` returns **per-boss** progress plus cross-boss
-  totals.
-- The loadout check constraint is replaced by a lookup against the rewards
-  table.
+  lanterns, runes, relays, braziers and pairs.
+- `arena_raid_runs` gains `daily boolean` and `day date`. The server
+  supplies the day, and the daily board reads from them. The old weekly
+  columns stay for history.
+- `arena_record_raid` accepts any boss listed in the rewards table.
+- `arena_raid_progress()` returns per-boss progress, cross-boss totals,
+  today's board and Grand Tour state.
+- **Loadouts:** a `victory` column; the hard-coded check constraint is
+  replaced by a lookup in the rewards table.
 - Existing Grumblecrag rows keep working.
 
-**Tests per boss:** attack patterns per Peril and party size, the
-signature rule (strand / expose / ground / kill window), perks, solo
-rules, stand-in hints, and database unlocks for every rule kind.
+**Tests per boss:**
+- attack patterns per Peril and party size
+- the signature rule (strand / expose / sequence / relay / ground / kill
+  window)
+- perks and solo rules
+- stand-in hints
+- database unlocks for every rule kind
+- the daily rollover at Pacific midnight, including daylight-saving days
 
 ## 9. Build order and size
 
 | Step | What | Size |
 |---|---|---|
-| 1 | Raid Hub + boss registry refactor + migration 009 + Grumblecrag back-fill rewards | Large |
-| 2 | **Tidewyrm**: reuses the bait-to-a-feature idea, so it's the gentlest new boss | Large |
-| 3 | **Gloomshade**: new reveal and curse systems, no engine changes | Large |
-| 4 | **Emberwing**: needs the airborne state | Large |
-| 5 | **Storm Twins**: needs two boss entities | Largest |
+| 1 | Raid Hub, week strip, Raid of the Day, boss registry refactor, Victory slot, migration 009, Grumblecrag's new rewards and the Peril 3 solo change | Large |
+| 2 | **Tidewyrm**: reuses the bait-to-a-feature idea, the gentlest new boss | Large |
+| 3 | **Gloomshade**: reveal and curse systems, no engine changes | Large |
+| 4 | **Somnara**: private Dreamer info, Drowsy, rune pads | Large |
+| 5 | **Prismatail**: relay beams, facing check | Large |
+| 6 | **Emberwing**: the airborne state | Large |
+| 7 | **Storm Twins**: two boss entities | Largest |
 
 Each step is played with friends before the next starts; the balance data
-(clears, time, downs by attack) decides the tuning.
+(clears, time, downs by attack) decides the tuning. Until all seven exist,
+the Raid of the Day rotates through the bosses that are built.
 
-## 10. Open questions
+## 10. Shop, coins and daily missions
 
-1. Apply the "no self-revive at Peril 3 solo" rule to Grumblecrag too?
-2. Should the other bosses need a Grumblecrag clear first, or all be open
-   from the start?
-3. Are the boss names OK: Tidewyrm, Gloomshade, Emberwing, Storm Twins
-   (Fizz & Crackle)?
-4. Raid of the Week: one rotating boss (proposed), or every boss weekly?
-5. Five slots or four: add a fifth cosmetic slot later (e.g. a victory pose
-   or footstep trail)?
+### 10.1 Principles
+
+- **Coins are earned in play only.** There's no real-money purchasing.
+- **Everything in the shop is cosmetic.** Nothing bought changes combat.
+- **Boss rewards can't be bought.** They stay proof you beat that boss.
+  The shop sells its **own** collection, so buying never cheapens a raid
+  reward, and raids stay the way to get raid looks.
+- **Coins can't be farmed:** daily caps, no coins from practice, and
+  reduced coins from bot matches (§10.3).
+
+### 10.2 Earning coins
+
+| Source | Coins |
+|---|---|
+| Each daily mission (3 per day) | 40–80, by difficulty |
+| All 3 daily missions done | +50 bonus |
+| Raid clear | 30 at Peril 1, 45 at Peril 2, 60 at Peril 3 |
+| Raid of the Day, first clear today | +50 |
+| First raid reward of a new kind (title, skin…) | +25 |
+| PvP match | 15 for a win, 6 for a loss |
+
+### 10.3 Limits
+
+- **Per day:**
+  - Raid clears pay coins up to **5 times per day**; after that they
+    still count for rewards.
+  - PvP pays up to **10 matches per day**.
+- **Bots:**
+  - Bot matches pay only through missions that ask for them (e.g. "Beat a
+    Hard bot").
+  - Practice and drills pay nothing.
+- **Mostly-idle matches** (under 20 s of active play) pay nothing.
+
+Rough pace: a typical evening earns about **450 coins**:
+
+| Source | Coins |
+|---|---|
+| 3 missions + bonus | ~230 |
+| 3 Peril 2 raid clears + Raid of the Day bonus | ~185 |
+| 4 PvP matches | ~40 |
+
+At the prices below, that works out to:
+
+- A recolour skin in about **one evening**.
+- A themed skin or a victory in about **two**.
+- A full themed set (about 2,300 coins) in about **a week**.
+
+### 10.4 Daily missions
+
+- **Three missions** each day: one easy, one medium, one hard. They
+  refresh at the same Pacific midnight as the Raid of the Day.
+- Picked from a pool by a daily seed, so friends get the **same three**
+  and can do them together.
+- **One free re-roll per day** for a mission you can't do (e.g. it needs a
+  champion you don't like).
+- **Example pool**
+  - **Easy:** "Play 2 matches", "Clear any raid", "Land 30 skill hits",
+    "Use your ultimate 3 times".
+  - **Medium:**
+    - "Win 2 PvP matches"
+    - "Clear today's boss"
+    - "Revive 3 allies"
+    - "Win a match as an Earth or Water champion"
+    - "Beat a Hard bot"
+  - **Hard:**
+    - "Clear any raid on Peril 3"
+    - "Clear a raid with no downs"
+    - "Win a 2v2 without being knocked out"
+    - "Complete a boss feat"
+- Missions are checked **on the server** from the same match and raid
+  results that already exist, so they can't be faked from the browser.
+
+### 10.5 The shop
+
+**Where:** a *Shop* item in the menu (with an icon), and a coin balance
+next to your name in the header.
+
+**Layout**
+
+- **Today's Picks:** 4 items that rotate daily (seeded, the same for
+  everyone), one of them at 20% off.
+- **Catalog:** everything currently for sale, filtered by slot (Skin,
+  Aura, Entrance, Frame, Victory) and by champion.
+- Each item has a **live preview** on your selected champion, with
+  *Buy* and *Equip*.
+- Owned items show *Owned* and go straight into the five loadout slots
+  alongside raid rewards.
+
+**What's sold**
+
+1. **Champion skins** (new for the shop): alternate looks for **one
+   specific champion**, e.g. *Frost Voltkit*, *Candy Cindrake*, *Moonlit
+   Duskveil*. These are what most people mean by "skins".
+   - **Recolour skins:** a new palette on the existing art. Cheap to make,
+     so there can be several per champion.
+   - **Themed skins:** recolour plus small added pieces, such as a scarf, a
+     crown or a costume detail on the rig.
+2. **Shop collection** for the all-fighter slots: themed sets that look
+   nothing like the boss rewards, e.g. *Candy*, *Galaxy*, *Retro Pixel*
+   and *Festival*. Each set has colours, an aura, an entrance, a frame
+   and a victory.
+3. **Later:** seasonal items for a limited time (e.g. a Halloween set),
+   which return in later years.
+
+**Prices (starting values)**
+
+| Item | Coins |
+|---|---|
+| Recolour champion skin | 400 |
+| Themed champion skin | 900 |
+| All-fighter colours | 300 |
+| Frame | 500 |
+| Aura | 600 |
+| Entrance | 700 |
+| Victory | 800 |
+| Full set bundle | ~20% off the items it contains |
+
+**Champion skins vs the all-fighter Skin slot**
+
+- A champion skin replaces that champion's look.
+- An all-fighter skin (like Cragstone) styles whatever champion you play.
+- If both are equipped, the **champion skin wins**, and the all-fighter
+  skin applies to your other champions.
+- The Shop and the Rewards tab both explain this in one line.
+
+### 10.6 Engineering
+
+**Database (migration 010)**
+
+- `arena_wallets(player_id, balance)`.
+- `arena_coin_ledger(id, player_id, amount, reason, ref, created_at)`:
+  **append-only**, with a unique `ref` per grant, so a retried save never
+  pays twice. The balance is checked against the ledger in tests.
+- `arena_shop_items(id, kind, slot, champion, name, price, set, active,
+  available_from, available_to)`.
+- `arena_owned_items(player_id, item_id, acquired_at)`.
+- `arena_daily_missions(day, slot, mission)`, seeded and the same for
+  everyone, plus `arena_mission_progress(player_id, day, mission,
+  progress, done, rerolled)`.
+
+**Rules**
+
+- **Who grants coins:** only the game server's service role, through a
+  `security definer` function, the same as raid records today.
+- **Who spends coins:** the player, through `arena_buy_item(item_id)`.
+  In one transaction it:
+  1. Checks the item is on sale.
+  2. Checks the player doesn't already own it.
+  3. Checks the balance.
+  4. Writes the ledger entry and ownership.
+- **Loadouts** accept owned shop items alongside earned raid rewards.
+  Champion skins get a per-champion loadout row.
+
+**Server:** mission progress updates when a match or raid result is saved,
+and coin grants ride on the same receipts.
+
+**Client:**
+- The Shop page and coin chip.
+- Mission cards on the home screen (progress bars, re-roll).
+- The champion-skin rendering path in the rig (palette swap first, add-on
+  pieces later).
+
+**Tests:**
+- grant idempotency
+- daily caps
+- buying with too few coins
+- double-buy
+- ownership checks on equip
+- mission completion from real results
+- the daily rollover
+
+## 11. Overall build order
+
+| Step | What |
+|---|---|
+| 1 | Raid Hub + Raid of the Day + Victory slot + migration 009 (§9 step 1) |
+| 2 | **Coins, daily missions and the Shop** (migration 010) with a first catalog: one recolour skin per champion and one themed set. Coins start flowing from the raids and PvP that already exist |
+| 3–8 | The six new bosses, in the §9 order, each adding its rewards; shop sets added alongside |
+
+Doing the shop second means coins and missions are live before the long
+boss build. Every evening of play earns something while the bosses arrive
+one by one.
+
+## 12. Open questions
+
+1. Is midnight Pacific the right daily changeover for everyone in the
+   group?
+2. Grand Tour: must each day's boss be cleared on **its own day**
+   (proposed), or any time that week?
+3. Should a missed day be catch-up-able (e.g. one "make-up" clear per
+   week)?
+4. Shop pace: one evening per recolour skin, two per themed skin, a week
+   per full set. Is that about right?
+5. Should coins from PvP require a match against **other people** only
+   (proposed: bot matches pay only through missions)?
+6. Which champion skins first? Proposed: one recolour per champion (8),
+   then themed skins for the most-played champions.
