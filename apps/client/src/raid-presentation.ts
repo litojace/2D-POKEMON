@@ -1,3 +1,4 @@
+import { portraitAvatar, portraitCosmetics } from "./portraits";
 import { CHARACTERS, type Snapshot } from "@arena/shared";
 import {
   RAID_CHAPTERS,
@@ -8,7 +9,6 @@ import {
   type RaidProgress,
   type RaidReward,
 } from "../../../packages/shared/src/raid";
-import { fighterAvatar } from "./fighter-art";
 const escape = (s: string) =>
   s.replace(
     /[&<>"']/g,
@@ -104,7 +104,7 @@ export function raidContributions(state: Snapshot) {
         revives: 0,
         pillars: 0,
       };
-      return `<div class="raid-score-row"><div class="raid-score-player"><span class="raid-score-avatar" aria-hidden="true" data-raid-cosmetic="${Object.values(p.raidLook ?? {}).filter(Boolean).join(" ")}">${fighterAvatar(p.character, "raid-result-" + p.id)}</span><span><b>${escape(p.name)}</b><small>${CHARACTERS[p.character].name}${p.out ? " · Left" : ""}${r.standIns?.includes(p.id) ? " · AI stand-in" : ""}</small>${(roles[p.id] ?? []).map((role) => `<em class="raid-role">${role}</em>`).join("")}</span></div><span aria-label="Damage">${Math.round(stats.damage).toLocaleString("en-US")}</span><span aria-label="Revives">${stats.revives}</span><span aria-label="Pillars broken">${stats.pillars}</span></div>`;
+      return `<div class="raid-score-row"><div class="raid-score-player"><span class="raid-score-avatar" aria-hidden="true" data-raid-cosmetic="${portraitCosmetics(p)}">${portraitAvatar(p, "raid-result-" + p.id)}</span><span><b>${escape(p.name)}</b><small>${CHARACTERS[p.character].name}${p.out ? " · Left" : ""}${r.standIns?.includes(p.id) ? " · AI stand-in" : ""}</small>${(roles[p.id] ?? []).map((role) => `<em class="raid-role">${role}</em>`).join("")}</span></div><span aria-label="Damage">${Math.round(stats.damage).toLocaleString("en-US")}</span><span aria-label="Revives">${stats.revives}</span><span aria-label="Pillars broken">${stats.pillars}</span></div>`;
     })
     .join(
       "",

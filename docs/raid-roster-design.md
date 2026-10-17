@@ -1,6 +1,6 @@
 # Raid Roster, Shop & Missions — Design Spec (approved)
 
-Status: **approved Oct 17. Step 1 (Raid Hub, Raid of the Day, Victory slot, migration 009) shipped Oct 17; next is step 2, the Shop.** In step 1 the Victory plays in the arena on round and raid wins; showing it on the results card and in the menu preview is still to do. Numbers are starting values to tune
+Status: **approved Oct 17. Step 1 (Raid Hub, Raid of the Day, Victory slot, migration 009) shipped Oct 17. Step 2 (coins, daily missions and the Shop with the whole catalog, migrations 010–011) shipped Oct 17; next is step 3, Tidewyrm.** See §11 for what step 2 draws and what's still simplified. In step 1 the Victory plays in the arena on round and raid wins; showing it on the results card and in the menu preview is still to do. Numbers are starting values to tune
 with real play, using the same balance data Grumblecrag already records.
 
 Decisions so far (Oct 17):
@@ -1172,6 +1172,30 @@ the layer order of §10.9 (palettes → patterns → accessories → effects →
 Mythicals), so one shared system draws all of them. It still ships as one
 release.
 
+### 11.1 Step 2 as built
+
+- **Champion skins** re-draw the champion's own vector art: a new palette,
+  then (Rare+) a pattern masked to each body part and small accessories
+  placed per facing, a dash trail; (Epic+) a skill colour for casts,
+  projectiles, zones and hit sparks, a looping detail and a KO poof;
+  (Mythical) its own entrance and victory bursts, an ambient effect per
+  Awakening stage, a stage-3 accessory where it has one, and a stage-3
+  ultimate ring. Rig textures for a skin load the first time someone
+  wearing it appears.
+- **Simplified for now:** Epic "custom hit sparks" are the standard sparks
+  in the skin's colour; Mythical "animated body textures" are animated
+  effects drawn around the fighter rather than pre-baked texture frames;
+  the stage-3 footstep trail and nameplate flair are not drawn yet.
+- **Effect budget:** Mythical ambient effects for at most two fighters on
+  screen (yours first); nothing animated under reduced motion.
+- **Fairness tests:** every skin keeps each rig part's size, pivot and
+  placement identical to the champion's own (tests/unit/skin-art.test.ts).
+- **Collections:** Colours recolour the rig textures (eyes untouched), auras
+  draw under the fighter, entrances burst at the round greeting, victories
+  play around the champion's own celebration, frames are portrait borders.
+- **Collection bonus** (migration 011): owning every champion skin in a
+  collection (Winter, Festival, Garden) gives that collection's frame.
+
 ## 12. Decisions log
 
 | Date | Decision |
@@ -1194,4 +1218,4 @@ release.
 
 ## 13. Open questions
 
-None right now. Step 1 is shipped; step 2 (the Shop) is next.
+None right now. Steps 1 and 2 are shipped; step 3 (Tidewyrm) is next.

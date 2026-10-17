@@ -1,5 +1,12 @@
 import type { CharacterId } from "@arena/shared";
 import type { Facing } from "./animation/controller";
+import {
+  PATTERN_PARTS,
+  SKIN_ART,
+  accessorySvg,
+  patternSvg,
+  type SkinArt,
+} from "./skins/skin-art";
 /**
  * Original Element Arena creatures, authored as separately animated layers for the
  * articulated rig (see animation/assets.ts for each part's crop bounds and pivot).
@@ -146,13 +153,30 @@ function mirrorPath(d: string) {
 /** Facial expressions the rig swaps in (the eyes layer only). */
 export type Mood = "normal" | "happy" | "hurt" | "dizzy" | "focus";
 export const MOODS: Mood[] = ["happy", "hurt", "dizzy", "focus"];
+/** A Shop skin worn by a champion, at its Awakening stage (Mythicals). */
+export interface SkinLook {
+  skin: string;
+  stage?: number;
+}
+/** The palette a champion wears (its own, or a skin's over it). */
+export function paletteFor(id: CharacterId, look?: SkinLook | null): Palette {
+  const art = look ? SKIN_ART[look.skin] : undefined;
+  return { ...creaturePalette[id], ...(art?.palette ?? {}) };
+}
+/** Only a skin made for this champion applies. */
+export function lookFor(id: CharacterId, look?: SkinLook | null) {
+  return look && look.skin.startsWith(`${id}-`) && SKIN_ART[look.skin] ? look : null;
+}
 export function creatureLayers(
   id: CharacterId,
   dir: Facing,
   mood: Mood = "normal",
+  worn?: SkinLook | null,
 ) {
-  const p = creaturePalette[id],
-    prefix = `${id}-${dir}`;
+  const look = lookFor(id, worn);
+  const art = look ? SKIN_ART[look.skin] : undefined;
+  const p = paletteFor(id, look),
+    prefix = `${id}-${dir}${look ? `-${look.skin}` : ""}`;
   const back = dir === "up",
     profile = dir === "left" || dir === "right",
     side = dir === "left" ? -1 : 1;
@@ -538,7 +562,41 @@ export function creatureLayers(
       layers[part] =
         `<g transform="matrix(${s} 0 0 ${s} ${+(cx - s * cx).toFixed(3)} ${+(cy - s * cy).toFixed(3)})">${layers[part]}</g>`;
     }
+  if (art && look) dressLayers(id, dir, look, art, p, prefix, layers);
   return { defs, layers };
+}
+/**
+ * Paint a skin's pattern over the parts it covers (masked to each part's own
+ * shape, in final coordinates) and add its accessories on top.
+ */
+function dressLayers(
+  id: CharacterId,
+  dir: Facing,
+  look: SkinLook,
+  art: SkinArt,
+  p: Palette,
+  prefix: string,
+  layers: Record<CreaturePart, string>,
+) {
+  if (art.pattern) {
+    const { kind, color, color2, opacity = 0.6, parts } = art.pattern;
+    const wallpaper = patternSvg(kind, color, color2, look.skin);
+    for (const part of parts ?? PATTERN_PARTS) {
+      if (!layers[part]) continue;
+      const m = `${prefix}-m-${part}`;
+      layers[part] +=
+        `<mask id="${m}" maskUnits="userSpaceOnUse" x="-40" y="-60" width="280" height="280"><g filter="url(#${m}-w)" stroke="none">${layers[part]}</g><filter id="${m}-w"><feColorMatrix values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0"/></filter></mask>` +
+        `<g mask="url(#${m})" stroke="none" opacity="${opacity}">${wallpaper}</g>`;
+    }
+  }
+  const stage = look.stage ?? 1;
+  const extras = [
+    ...(art.accessories ?? []),
+    ...(art.stageAccessories ?? []).filter((s) => stage >= s.stage).map((s) => s.accessory),
+  ];
+  for (const a of extras)
+    for (const [part, svg] of accessorySvg(a, id, dir, p))
+      layers[part] += `<g class="skin-accessory skin-${a}">${svg}</g>`;
 }
 export function creatureSvg(
   id: CharacterId,
@@ -546,12 +604,13 @@ export function creatureSvg(
   part?: CreaturePart,
   viewBox = CREATURE_VIEWBOX,
   mood: Mood = "normal",
+  look?: SkinLook | null,
 ) {
-  const { defs, layers } = creatureLayers(id, dir, mood);
+  const { defs, layers } = creatureLayers(id, dir, mood, look);
   const group = (p: CreaturePart) =>
     `<g class="fighter-${p === "body" ? "torso" : p}">${layers[p]}</g>`;
   const content = part
     ? layers[part]
     : `<ellipse class="fighter-shadow" cx="100" cy="177" rx="40" ry="8" fill="#060d24" opacity=".25"/><g class="fighter-character">${(["tail", "wings", "legL", "legR", "body", "armL", "armR"] as CreaturePart[]).map(group).join("")}<g class="fighter-face">${(["head", "ears", "eyes", "flame"] as CreaturePart[]).map(group).join("")}</g>${group("scarf")}</g>`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}">${defs}<g stroke="${creaturePalette[id].dark}" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round">${content}</g></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}">${defs}<g stroke="${paletteFor(id, lookFor(id, look)).dark}" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round">${content}</g></svg>`;
 }

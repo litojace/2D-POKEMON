@@ -50,6 +50,7 @@ beforeAll(async () => {
     "008_raid_progress.sql",
     "009_raid_hub.sql",
     "010_shop.sql",
+    "011_collection_bonus.sql",
   ])
     await db.exec(await readFile("supabase/migrations/" + file, "utf8"));
   await login();
@@ -149,4 +150,17 @@ it("offers three daily missions and one re-roll", async () => {
     await expect(db.query(`select public.arena_reroll_mission(${open.slot})`)).rejects.toThrow("already re-rolled");
   } else
     await expect(db.query("select public.arena_reroll_mission(0)")).rejects.toThrow("already done");
+});
+
+it("gives a collection's frame free once every champion skin in it is owned", async () => {
+  await db.exec(`reset role;insert into public.arena_owned_items(player_id, item_id) select '${player}', id from public.arena_shop_items where kind = 'champion' and collection = 'winter' and id <> 'terradon-snowball' on conflict do nothing;update public.arena_wallets set balance = 5000 where player_id = '${player}'`);
+  expect((await economy()).owned).not.toContain("winter-frame");
+  await login();
+  const after = (await db.query<{ e: any }>("select public.arena_buy_item('terradon-snowball') as e")).rows[0].e;
+  expect(after.owned).toContain("winter-frame");
+  expect(after.balance).toBe(5000 - 1500);
+  // Owning the frame takes it off the set's price.
+  await db.exec("reset role");
+  const price = (await db.query<{ p: number }>(`select public.arena_item_price('${player}', 'winter-set', public.arena_today()) as p`)).rows[0].p;
+  expect(price).toBe(Math.round(((300 + 900 + 1000 + 1800) * 0.8) / 10) * 10);
 });

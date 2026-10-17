@@ -1,5 +1,5 @@
 import { CHARACTERS, type CharacterId } from "@arena/shared";
-import { AVATAR_VIEWBOX, creatureSvg } from "./creature-design";
+import { AVATAR_VIEWBOX, creatureSvg, type SkinLook } from "./creature-design";
 /**
  * Give an inline SVG's ids (gradients, filters) a placement-specific suffix.
  *
@@ -23,15 +23,23 @@ export function scopeIds(svg: string, scope: string) {
       ids.has(id) ? `${a}#${id}-${scope}"` : all,
     );
 }
-export function fighterArt(id: CharacterId, viewBox?: string) {
-  return creatureSvg(id, "down", undefined, viewBox).replace(
+export function fighterArt(
+  id: CharacterId,
+  viewBox?: string,
+  look?: SkinLook | null,
+) {
+  return creatureSvg(id, "down", undefined, viewBox, "normal", look).replace(
     "<svg ",
     `<svg role="img" aria-label="${CHARACTERS[id].name}" `,
   );
 }
 /** Centred head-and-shoulders portrait for avatars. */
-export function fighterAvatar(id: CharacterId, scope = "avatar") {
-  return scopeIds(fighterArt(id, AVATAR_VIEWBOX), scope);
+export function fighterAvatar(
+  id: CharacterId,
+  scope = "avatar",
+  look?: SkinLook | null,
+) {
+  return scopeIds(fighterArt(id, AVATAR_VIEWBOX, look), scope);
 }
 export function fighterTextureData(id: CharacterId) {
   return "data:image/svg+xml;base64," + btoa(fighterArt(id));

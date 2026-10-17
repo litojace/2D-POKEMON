@@ -13,13 +13,20 @@ const still = () =>
   typeof matchMedia !== "undefined" &&
   matchMedia("(prefers-reduced-motion: reduce)").matches;
 const hex = (color: number) => `#${color.toString(16).padStart(6, "0")}`;
+/** Your equipped Shop skins, shown on the roster cards and detail art. */
+let worn: Partial<Record<CharacterId, { skin: string; stage: number }>> = {};
+export function setWornSkins(value: typeof worn | undefined) {
+  worn = value ?? {};
+}
 function art(id: CharacterId, large = false, aura = false) {
   const pack = fighterPack(id);
   if (pack && pack.kind !== "layered")
     return `<img class="creature-portrait" loading="lazy" decoding="async" src="/assets/fighters/${id}/${large ? pack.selection : pack.portrait}" alt="${CHARACTERS[id].name}">`;
   // Card and detail portrait of the same fighter need their own ids.
   return scopeIds(
-    aura ? withAura(fighterArt(id), id, still()) : fighterArt(id),
+    aura
+      ? withAura(fighterArt(id, undefined, worn[id]), id, still())
+      : fighterArt(id, undefined, worn[id]),
     large ? "detail" : "card",
   );
 }

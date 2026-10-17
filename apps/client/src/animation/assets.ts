@@ -4,9 +4,12 @@ import {
   creatureParts,
   proportioned,
   MOODS,
+  lookFor,
   type CreaturePart,
   type Mood,
+  type SkinLook,
 } from "../creature-design";
+import { SKIN_ART } from "../skins/skin-art";
 import type { Facing } from "./controller";
 export type Part = CreaturePart;
 export const parts = creatureParts;
@@ -20,14 +23,26 @@ export interface RigAsset {
   x: number;
   y: number;
 }
-export function rigKey(id: CharacterId, dir: Facing, part: Part) {
-  return `rig-${id}-${dir}-${part}`;
+/**
+ * The texture suffix for a worn Shop skin ("" for the champion's own look).
+ * The Awakening stage is part of it only when the skin's art changes with it.
+ */
+export function skinSuffix(id: CharacterId, worn?: SkinLook | null) {
+  const look = lookFor(id, worn);
+  if (!look) return "";
+  const staged = (SKIN_ART[look.skin].stageAccessories ?? []).some(
+    (s) => (look.stage ?? 1) >= s.stage,
+  );
+  return `~${look.skin}${staged ? `~${look.stage}` : ""}`;
+}
+export function rigKey(id: CharacterId, dir: Facing, part: Part, suffix = "") {
+  return `rig-${id}-${dir}-${part}${suffix}`;
 }
 /** The eyes texture for an expression ("normal" is the plain eyes part). */
-export function moodKey(id: CharacterId, dir: Facing, mood: Mood) {
+export function moodKey(id: CharacterId, dir: Facing, mood: Mood, suffix = "") {
   return mood === "normal"
-    ? rigKey(id, dir, "eyes")
-    : `${rigKey(id, dir, "eyes")}-${mood}`;
+    ? rigKey(id, dir, "eyes", suffix)
+    : `${rigKey(id, dir, "eyes")}-${mood}${suffix}`;
 }
 const definitions: Record<Part, { bounds: number[]; pivot: number[] }> = {
   tail: { bounds: [0, 40, 200, 140], pivot: [130, 137] },
@@ -80,7 +95,9 @@ function asset(
   dir: Facing,
   part: Part,
   mood: Mood = "normal",
+  look: SkinLook | null = null,
 ): RigAsset {
+  const suffix = skinSuffix(id, look);
   const { pivot: defaultPivot } = definitions[part];
   const b = box(part);
   let q = dir === "right" && part === "tail" ? [70, 137] : defaultPivot;
@@ -97,10 +114,13 @@ function asset(
   }
   q = pivot(part, q[0], q[1]);
   return {
-    key: part === "eyes" ? moodKey(id, dir, mood) : rigKey(id, dir, part),
+    key:
+      part === "eyes"
+        ? moodKey(id, dir, mood, suffix)
+        : rigKey(id, dir, part, suffix),
     url:
       "data:image/svg+xml;base64," +
-      btoa(creatureSvg(id, dir, part, b.join(" "), mood)),
+      btoa(creatureSvg(id, dir, part, b.join(" "), mood, look)),
     width: b[2],
     height: b[3],
     originX: (q[0] - b[0]) / b[2],
@@ -114,11 +134,11 @@ const DIRS: Facing[] = ["up", "down", "left", "right"];
  * Every texture a fighter's rig uses: each part for each facing, plus the
  * expression eyes (happy, hurt, dizzy, focus) for the facings that show a face.
  */
-export function rigAssets(id: CharacterId): RigAsset[] {
+export function rigAssets(id: CharacterId, look: SkinLook | null = null): RigAsset[] {
   return [
-    ...DIRS.flatMap((dir) => parts.map((part) => asset(id, dir, part))),
+    ...DIRS.flatMap((dir) => parts.map((part) => asset(id, dir, part, "normal", look))),
     ...DIRS.filter((dir) => dir !== "up").flatMap((dir) =>
-      MOODS.map((mood) => asset(id, dir, "eyes", mood)),
+      MOODS.map((mood) => asset(id, dir, "eyes", mood, look)),
     ),
   ];
 }

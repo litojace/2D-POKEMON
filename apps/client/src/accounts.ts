@@ -6,6 +6,12 @@ import {
   type RaidHubTab,
 } from "./raid-hub";
 import { iconLabel } from "./menu-icons";
+import { coinChip, coins, lookSlot, shopMarkup, type ShopTab, type ShopView } from "./shop-ui";
+import {
+  CHAMPION_SKIN_BY_ID,
+  LOOK_ITEM_BY_ID,
+  type Economy,
+} from "../../../packages/shared/src/shop";
 import {
   RAID_COSMETICS,
   featuredOn,
@@ -104,6 +110,8 @@ export class AccountUI {
   account: Account | null = null;
   /** Equipped raid look (undefined until loaded). */
   raidLook: RaidLoadout | undefined = undefined;
+  /** Coins, owned items, missions (undefined until loaded or before migration 010). */
+  economy: Economy | undefined = undefined;
   session: Session | null = null;
   private confirmedGuestLogout = false;
   generation = 0;
@@ -159,6 +167,7 @@ export class AccountUI {
     this.session = session;
     this.account = null;
     this.raidLook = undefined;
+    this.economy = undefined;
     this.hooks.onSession(session?.access_token ?? null);
     if (session) {
       try {
@@ -170,6 +179,11 @@ export class AccountUI {
           if(version!==this.generation)return;
           this.raidLook=raidLookOf(progress);
         } catch { /* Raid storage is optional until migration 007 is installed. */ }
+        try {
+          const economy = (await this.api("/api/economy")) as Economy;
+          if (version !== this.generation) return;
+          this.economy = economy;
+        } catch { /* The Shop needs migration 010. */ }
       } catch (error) {
         if (version !== this.generation) return;
         this.hooks.notify(
@@ -210,10 +224,11 @@ export class AccountUI {
     const root = element("account-nav");
     if (!root) return;
     root.innerHTML = this.account
-      ? `<button class="quiet" id="account-profile">${iconLabel("user", escape(this.account.displayName))}</button>${this.account.isAdmin ? `<button class="quiet" id="account-admin">${iconLabel("admin", "Admin")}</button>` : ""}<button class="quiet" id="account-logout">${iconLabel("leave", "Log out")}</button>`
+      ? `<button class="quiet coin-button" id="account-coins" aria-label="Shop: ${this.economy ? coins(this.economy.balance) : "your"} coins">${coinChip(this.economy?.balance)}</button><button class="quiet" id="account-profile">${iconLabel("user", escape(this.account.displayName))}</button>${this.account.isAdmin ? `<button class="quiet" id="account-admin">${iconLabel("admin", "Admin")}</button>` : ""}<button class="quiet" id="account-logout">${iconLabel("leave", "Log out")}</button>`
       : `<button class="quiet" id="account-login">${iconLabel("enter", "Log in")}</button><button class="secondary" id="account-signup">${iconLabel("add-friend", "Sign up")}</button>`;
     if (this.account) {
       element("account-profile").onclick = () => void this.showProfile();
+      element("account-coins").onclick = () => void this.showShop();
       element("account-logout").onclick = async () => {
         if (this.account?.guest && !this.confirmedGuestLogout) {
           this.hooks.openDialog(
@@ -418,7 +433,7 @@ export class AccountUI {
               view.boss,
               view.tab,
               progress,
-              progress ? raidAppearance(progress, character) : "",
+              progress ? raidAppearance(progress, character, this.economy?.owned) : "",
             )
           : raidHubMarkup(progress)) +
           (problem
@@ -524,10 +539,10 @@ export class AccountUI {
           }
           if (!options.isConnected) return;
           // Update only the choices: keep the dialog and its scroll position.
-          options.innerHTML = raidCosmeticOptions(progress, character);
+          options.innerHTML = raidCosmeticOptions(progress, character, this.economy?.owned);
           if (status)
             status.textContent = item
-              ? `${RAID_COSMETICS[item].name} equipped for all fighters.`
+              ? `${(RAID_COSMETICS[item] ?? LOOK_ITEM_BY_ID[item]).name} equipped for all fighters.`
               : `${slot[0].toUpperCase() + slot.slice(1)} slot cleared.`;
           this.bindAppearance(options, progress, character);
         } catch (error) {
@@ -540,6 +555,181 @@ export class AccountUI {
               error instanceof Error ? error.message : "Appearance could not be saved. Try again.";
         }
       };
+  }
+  /** Reload coins and missions (after a match, a raid or a purchase). */
+  async loadEconomy() {
+    if (!this.account) return;
+    const version = this.generation;
+    try {
+      const economy = (await this.api("/api/economy")) as Economy;
+      if (version !== this.generation) return;
+      this.economy = economy;
+      this.renderNav();
+      this.hooks.onChange();
+      this.shopRefresh?.();
+    } catch {
+      /* Shop storage needs migration 010. */
+    }
+  }
+  /** Re-render the open Shop (set while it's open). */
+  private shopRefresh?: () => void;
+  private shopView: ShopView = { tab: "today", champion: "voltkit" };
+  /** The Shop: Today's Picks, champion skins, the Mythic Hall, collections and missions. */
+  async showShop(tab?: ShopTab) {
+    if (!this.ensurePlayer()) return;
+    const view = this.shopView;
+    if (tab) view.tab = tab;
+    if (!view.preview) view.champion = this.hooks.selectedCharacter?.() ?? view.champion;
+    let problem = "";
+    try {
+      this.economy = (await this.api("/api/economy")) as Economy;
+      this.renderNav();
+    } catch (error) {
+      problem = error instanceof Error ? `${error.message} The Shop needs the latest database update (migration 010).` : "The Shop is not available yet.";
+    }
+    const dialogEl = () => document.getElementById("dialog") as HTMLDialogElement | null;
+    const status = (text: string) => {
+      const box = dialogEl()?.querySelector<HTMLElement>(".shop-status");
+      if (box) box.textContent = text;
+    };
+    const render = (keepScroll = true) => {
+      const root = dialogEl();
+      const top = root?.scrollTop ?? 0;
+      this.hooks.openDialog(shopMarkup(view, this.economy ?? null, this.raidLook ?? {}, problem));
+      if (root && keepScroll) root.scrollTop = top;
+      wire();
+    };
+    this.shopRefresh = () => {
+      if (dialogEl()?.open && dialogEl()?.querySelector(".shop")) render();
+      else this.shopRefresh = undefined;
+    };
+    const busy = async (button: HTMLButtonElement, work: () => Promise<string>) => {
+      const all = Array.from(dialogEl()?.querySelectorAll<HTMLButtonElement>(".shop button") ?? []);
+      all.forEach((b) => (b.disabled = true));
+      button.setAttribute("aria-busy", "true");
+      try {
+        const message = await work();
+        this.renderNav();
+        try {
+          this.hooks.onChange();
+        } catch (error) {
+          console.error(error);
+        }
+        render();
+        status(message);
+      } catch (error) {
+        render();
+        status(error instanceof Error ? error.message : "That didn't work. Try again.");
+      }
+    };
+    const wire = () => {
+      const root = dialogEl();
+      if (!root) return;
+      const all = <T extends HTMLElement>(q: string) => Array.from(root.querySelectorAll<T>(q));
+      for (const b of all<HTMLButtonElement>("[data-shop-tab]"))
+        b.onclick = () => {
+          view.tab = b.dataset.shopTab as ShopTab;
+          render(false);
+          root.querySelector<HTMLButtonElement>(`[data-shop-tab="${view.tab}"]`)?.focus();
+        };
+      for (const b of all<HTMLButtonElement>("[data-shop-champion]"))
+        b.onclick = () => {
+          view.champion = b.dataset.shopChampion as CharacterId;
+          view.preview = this.economy?.looks[view.champion]?.skin ?? null;
+          view.stage = this.economy?.looks[view.champion]?.stage ?? 1;
+          render();
+        };
+      for (const b of all<HTMLButtonElement>("[data-shop-preview]"))
+        b.onclick = () => {
+          const id = b.dataset.shopPreview!;
+          view.preview = id;
+          const skin = CHAMPION_SKIN_BY_ID[id];
+          if (skin) view.champion = skin.champion;
+          view.stage = this.economy?.looks[view.champion]?.skin === id ? this.economy.looks[view.champion]!.stage : 1;
+          render();
+          root.querySelector<HTMLElement>(".shop-preview")?.scrollIntoView?.({ block: "nearest" });
+        };
+      for (const b of all<HTMLButtonElement>("[data-shop-stage]"))
+        b.onclick = async () => {
+          view.stage = Number(b.dataset.shopStage);
+          const id = view.preview;
+          const reached = id ? this.economy?.awakening[id]?.stage ?? 0 : 0;
+          // Wearing it: switch the shown stage too (any stage you've reached).
+          if (id && this.economy?.looks[view.champion]?.skin === id && view.stage <= reached)
+            return busy(b, async () => {
+              this.economy = ((await this.api("/api/shop/equip", { champion: view.champion, skin: id, stage: view.stage })) as { economy: Economy }).economy;
+              return `Showing Stage ${"I".repeat(view.stage!)}.`;
+            });
+          render();
+        };
+      for (const b of all<HTMLButtonElement>("[data-shop-buy]"))
+        b.onclick = () => {
+          const id = b.dataset.shopBuy!;
+          // Two taps: the first asks, the second buys.
+          if (b.dataset.confirm !== "yes") {
+            b.dataset.confirm = "yes";
+            b.classList.add("is-confirming");
+            b.querySelector("span")!.textContent = `Buy for ${coins(Number(b.dataset.price))}?`;
+            setTimeout(() => {
+              if (!b.isConnected || b.dataset.confirm !== "yes") return;
+              delete b.dataset.confirm;
+              b.classList.remove("is-confirming");
+              b.querySelector("span")!.textContent = coins(Number(b.dataset.price));
+            }, 4000);
+            return;
+          }
+          void busy(b, async () => {
+            this.economy = ((await this.api("/api/shop/buy", { item: id })) as { economy: Economy }).economy;
+            view.preview = id;
+            return `${CHAMPION_SKIN_BY_ID[id]?.name ?? LOOK_ITEM_BY_ID[id]?.name ?? "Set"} is yours. Equip it any time.`;
+          });
+        };
+      for (const b of all<HTMLButtonElement>("[data-shop-equip]"))
+        b.onclick = () =>
+          void busy(b, async () => {
+            const id = b.dataset.shopEquip!;
+            const skin = CHAMPION_SKIN_BY_ID[id];
+            if (skin) {
+              const stage = this.economy?.awakening[id]?.stage ?? 1;
+              this.economy = ((await this.api("/api/shop/equip", { champion: skin.champion, skin: id, stage })) as { economy: Economy }).economy;
+              return `${skin.name} equipped on ${CHARACTERS[skin.champion].name}.`;
+            }
+            await this.equipLook(lookSlot(id)!, id);
+            return `${LOOK_ITEM_BY_ID[id].name} equipped for every fighter.`;
+          });
+      for (const b of all<HTMLButtonElement>("[data-shop-unequip]"))
+        b.onclick = () =>
+          void busy(b, async () => {
+            const id = b.dataset.shopUnequip!;
+            const skin = CHAMPION_SKIN_BY_ID[id];
+            if (skin) {
+              this.economy = ((await this.api("/api/shop/equip", { champion: skin.champion, skin: null })) as { economy: Economy }).economy;
+              return `${CHARACTERS[skin.champion].name} wears the original look.`;
+            }
+            await this.equipLook(lookSlot(id)!, null);
+            return `${LOOK_ITEM_BY_ID[id].name} taken off.`;
+          });
+      for (const b of all<HTMLButtonElement>("[data-shop-unequip-champion]"))
+        b.onclick = () =>
+          void busy(b, async () => {
+            const champion = b.dataset.shopUnequipChampion as CharacterId;
+            this.economy = ((await this.api("/api/shop/equip", { champion, skin: null })) as { economy: Economy }).economy;
+            view.preview = null;
+            return `${CHARACTERS[champion].name} wears the original look.`;
+          });
+      for (const b of all<HTMLButtonElement>("[data-mission-reroll]"))
+        b.onclick = () =>
+          void busy(b, async () => {
+            this.economy = ((await this.api("/api/missions/reroll", { slot: Number(b.dataset.missionReroll) })) as { economy: Economy }).economy;
+            return "Mission re-rolled.";
+          });
+    };
+    render(false);
+  }
+  /** Equip a collection piece (or clear a slot) through the raid appearance route. */
+  private async equipLook(slot: RaidSlot, item: string | null) {
+    const saved = (await this.api("/api/raids/equip", { slot, item })) as { progress?: RaidProgress };
+    this.raidLook = saved.progress ? raidLookOf(saved.progress) : { ...this.raidLook, [slot]: item };
   }
   async showProfile() {
     if (!this.account) return;

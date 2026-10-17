@@ -179,7 +179,9 @@ export type RaidCosmetic =
   | "mountainborn"
   | "conqueror"
   | "rockslide-flex";
-export type RaidLoadout = Partial<Record<RaidSlot, RaidCosmetic | null>>;
+/** A raid reward or a Shop collection piece (see shop.ts LOOK_ITEMS). */
+export type AppearanceItem = RaidCosmetic | (string & {});
+export type RaidLoadout = Partial<Record<RaidSlot, AppearanceItem | null>>;
 /**
  * How a reward is earned. The same rules are seeded into the database
  * (migration 009, `arena_raid_rewards`), which is what actually grants them;

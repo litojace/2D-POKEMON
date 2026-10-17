@@ -7596,3 +7596,209 @@ button.raid-boss-card:hover:not(:disabled) { border-color: var(--boss); }
   .raid-goal { grid-template-columns: 18px minmax(0, 1fr); }
   .raid-goal progress { grid-column: 2; }
 }
+
+/* ---- Shop collection pieces (Colours, Aura, Entrance, Frame, Victory) ----
+   Colours restyle the portrait (in play, the rig recolours the textures).
+   A worn champion skin wins over Colours, so portraits drop them then. */
+.raid-cosmetic-preview[data-cosmetic="candy-colours"] > svg,
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="candy-colours"] > svg { filter: sepia(.35) saturate(1.5) hue-rotate(290deg) brightness(1.12); }
+.raid-cosmetic-preview[data-cosmetic="galaxy-colours"] > svg,
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="galaxy-colours"] > svg { filter: grayscale(.4) sepia(.6) hue-rotate(200deg) saturate(2.2) brightness(.78); }
+.raid-cosmetic-preview[data-cosmetic="retro-colours"] > svg,
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="retro-colours"] > svg { filter: contrast(1.45) saturate(1.6); }
+.raid-cosmetic-preview[data-cosmetic="festival-colours"] > svg,
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="festival-colours"] > svg { filter: sepia(.8) hue-rotate(-30deg) saturate(2.4) brightness(.95); }
+.raid-cosmetic-preview[data-cosmetic="garden-colours"] > svg,
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="garden-colours"] > svg { filter: sepia(.6) hue-rotate(50deg) saturate(1.6); }
+.raid-cosmetic-preview[data-cosmetic="winter-colours"] > svg,
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="winter-colours"] > svg { filter: grayscale(.6) sepia(.3) hue-rotate(170deg) brightness(1.15); }
+
+/* Auras: a ring under the portrait in the collection's style. */
+.raid-cosmetic-preview:is([data-cosmetic$="-aura"]):not([data-cosmetic="mountain-aura"]) { border-radius: 50%; }
+.raid-cosmetic-preview[data-cosmetic="candy-aura"] { box-shadow: inset 0 0 0 3px transparent, 0 0 0 3px #ff6fa8, 0 0 0 6px #6fd6ff66; background: radial-gradient(circle, #14213a 58%, #ffd65b33); }
+.raid-cosmetic-preview[data-cosmetic="galaxy-aura"] { box-shadow: 0 0 14px 4px #c86bff55; background: radial-gradient(circle, #14213a 50%, #4a3a9a); }
+.raid-cosmetic-preview[data-cosmetic="retro-aura"] { box-shadow: 0 0 0 3px #ff3a5a; border-radius: 4px !important; }
+.raid-cosmetic-preview[data-cosmetic="festival-aura"] { box-shadow: 0 0 12px 3px #ffd65b55; background: radial-gradient(circle, #14213a 55%, #d8262a66); }
+.raid-cosmetic-preview[data-cosmetic="garden-aura"] { box-shadow: 0 0 0 3px #ffb3cf; background: radial-gradient(circle, #14213a 55%, #6fbf4a55); }
+.raid-cosmetic-preview[data-cosmetic="winter-aura"] { box-shadow: 0 0 0 2px #ffffff, 0 0 12px 3px #bfe8ff77; }
+
+/* Entrances and victories: a hint of the moment behind the preview. */
+.raid-cosmetic-preview[data-cosmetic="candy-entrance"] { background: linear-gradient(#14213a 55%, #ff6fa8 55% 62%, #6fd6ff 62%); }
+.raid-cosmetic-preview[data-cosmetic="galaxy-entrance"] { background: repeating-radial-gradient(circle, #14213a 0 5px, #4a3a9a 5px 7px); }
+.raid-cosmetic-preview[data-cosmetic="retro-entrance"] { background: conic-gradient(#2ff3ff 25%, #14213a 0 50%, #ff4fd8 0 75%, #14213a 0) 0 0 / 8px 8px; }
+.raid-cosmetic-preview[data-cosmetic="festival-entrance"] { background: radial-gradient(circle at 50% 80%, #ffd65b, #d8262a 30%, #14213a 62%); }
+.raid-cosmetic-preview[data-cosmetic="garden-entrance"] { background: radial-gradient(circle at 50% 85%, #ffb3cf 0 22%, #6fbf4a 23% 30%, #14213a 31%); }
+.raid-cosmetic-preview[data-cosmetic="winter-entrance"] { background: radial-gradient(circle at 30% 30%, #fff 0 2px, transparent 3px) 0 0 / 12px 12px, #2a4a6e; }
+.raid-cosmetic-preview[data-cosmetic="candy-victory"] { background: linear-gradient(transparent 60%, #ffd2e4 60% 72%, #fff0f8 72% 84%, #ff9ec8 84%), #14213a; }
+.raid-cosmetic-preview[data-cosmetic="galaxy-victory"] { background: radial-gradient(circle, #ffffff 0 8%, #9fd8ff 18%, #c86bff 40%, #14213a 70%); }
+.raid-cosmetic-preview[data-cosmetic="retro-victory"] { background: linear-gradient(#14213a 70%, #ffd65b 70% 78%, #14213a 78%); }
+.raid-cosmetic-preview[data-cosmetic="festival-victory"] { background: radial-gradient(circle at 25% 25%, #ff4f4f 0 4px, transparent 5px), radial-gradient(circle at 75% 30%, #ffd65b 0 4px, transparent 5px), radial-gradient(circle at 50% 15%, #7ff3ff 0 3px, transparent 4px), #14213a; }
+.raid-cosmetic-preview[data-cosmetic="garden-victory"] { background: radial-gradient(circle at 20% 20%, #ffb3cf 0 3px, transparent 4px) 0 0 / 14px 14px, #14213a; }
+.raid-cosmetic-preview[data-cosmetic="winter-victory"] { border-radius: 50%; box-shadow: inset 0 0 0 2px #ffffffaa, inset 0 -8px 0 #8a5a3a; background: #bfe8ff22; }
+
+/* Frames: portrait borders in lobbies and results. */
+.raid-cosmetic-preview[data-cosmetic$="-frame"],
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar):is([data-raid-cosmetic~="candy-frame"],[data-raid-cosmetic~="galaxy-frame"],[data-raid-cosmetic~="retro-frame"],[data-raid-cosmetic~="festival-frame"],[data-raid-cosmetic~="garden-frame"],[data-raid-cosmetic~="winter-frame"]) { position: relative; border-radius: 50%; }
+.raid-cosmetic-preview[data-cosmetic="candy-frame"],
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="candy-frame"] {
+  box-shadow: 0 0 0 4px #d9a066, 0 0 0 6px #fff0f8, 0 0 0 7px #ff6fa8;
+}
+.raid-cosmetic-preview[data-cosmetic="galaxy-frame"],
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="galaxy-frame"] {
+  box-shadow: 0 0 0 3px #4a3a9a, 0 0 10px 4px #c86bff66;
+}
+.raid-cosmetic-preview[data-cosmetic="galaxy-frame"]::after,
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="galaxy-frame"]::after {
+  content: ""; position: absolute; right: -7px; top: -5px; width: 14px; height: 14px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ffd6a0, #d0703a); box-shadow: 0 0 0 1px #14213a;
+  outline: 2px solid #9fd8ffaa; outline-offset: -1px; transform: rotate(-20deg) scaleY(1);
+}
+.raid-cosmetic-preview[data-cosmetic="retro-frame"],
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="retro-frame"] {
+  border-radius: 4px !important; box-shadow: 0 0 0 3px #3a3a44, 0 0 0 5px #8a8a96, 0 6px 0 3px #3a3a44;
+}
+.raid-cosmetic-preview[data-cosmetic="festival-frame"],
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="festival-frame"] {
+  box-shadow: 0 0 0 3px #d8262a, 0 0 0 5px #ffd65b;
+}
+.raid-cosmetic-preview[data-cosmetic="festival-frame"]::after,
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="festival-frame"]::after {
+  content: ""; position: absolute; left: 50%; bottom: -14px; width: 4px; height: 12px; transform: translateX(-50%);
+  background: linear-gradient(#ffd65b 0 30%, #d8262a 30%); border-radius: 0 0 2px 2px;
+}
+.raid-cosmetic-preview[data-cosmetic="garden-frame"],
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="garden-frame"] {
+  box-shadow: 0 0 0 3px #4a8a2a, 0 0 0 5px #8fd66a88;
+}
+.raid-cosmetic-preview[data-cosmetic="garden-frame"]::after,
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="garden-frame"]::after {
+  content: ""; position: absolute; left: -6px; top: -4px; width: 12px; height: 8px; border-radius: 0 100% 0 100%;
+  background: #6fbf4a; border: 1px solid #2f5a1a; transform: rotate(-20deg);
+}
+.raid-cosmetic-preview[data-cosmetic="winter-frame"],
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="winter-frame"] {
+  box-shadow: 0 0 0 3px #e6f6ff, 0 0 0 5px #7fd0ff, 0 0 10px 3px #bfe8ff66;
+}
+.raid-cosmetic-preview[data-cosmetic="winter-frame"]::after,
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="winter-frame"]::after {
+  content: ""; position: absolute; left: 50%; bottom: -10px; width: 18px; height: 9px; transform: translateX(-50%);
+  background: linear-gradient(135deg, transparent 33%, #e6f6ff 33% 66%, transparent 66%) 0 0 / 6px 9px;
+}
+
+/* ---- Shop, coins and daily missions (design §10) ---- */
+.coin-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 6px; border-radius: 999px; background: #ffd65b1f; border: 1px solid #ffd65b55; color: #ffe39a; font-weight: 700; font-size: 12px; line-height: 1.2; white-space: nowrap; }
+.coin-chip .button-icon { width: 15px; height: 15px; color: #ffd65b; }
+.coin-button { padding: 4px 6px; }
+#shop-open { display: flex; align-items: center; gap: 8px; }
+#shop-open .coin-chip { margin-left: auto; }
+.home-missions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; width: 100%; margin: 6px 0 0; padding: 0; background: none; border: 0; cursor: pointer; }
+.home-mission { display: grid; gap: 4px; min-width: 0; padding: 6px 7px; border-radius: 8px; background: #0f1d36; border: 1px solid #8baee526; text-align: left; }
+.home-mission small { overflow: hidden; font-size: 10px; line-height: 1.25; color: #c1cfe4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.home-mission progress { width: 100%; height: 5px; accent-color: #ffd65b; }
+.home-mission.is-done { border-color: #6ae2a355; }
+.home-mission.is-done small { color: #a5edc1; }
+.home-missions:hover .home-mission { border-color: #ffd65b55; }
+
+dialog:has(.shop) { width: min(980px, 96vw); padding: 26px; }
+.shop { display: grid; gap: 16px; }
+.shop-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
+.shop-head h2 { display: flex; align-items: center; gap: 10px; margin: 4px 0 0; }
+.shop-head h2 .button-icon { width: 26px; height: 26px; color: #ffd65b; }
+.shop-head .coin-chip { font-size: 16px; padding: 6px 14px 6px 10px; }
+.shop-head .coin-chip .button-icon { width: 20px; height: 20px; }
+.shop-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
+.shop-tabs button { flex: none; padding: 8px 14px; border-radius: 999px; background: #0f1d36; border: 1px solid #8baee533; color: #c1cfe4; font-weight: 700; font-size: 12px; }
+.shop-tabs button.active { background: #ffd65b; border-color: #ffd65b; color: #1b1636; }
+.shop-heading { display: flex; align-items: baseline; gap: 10px; margin: 6px 0 10px; font-size: 16px; }
+.shop-heading small { font-size: 11px; font-weight: 400; color: #91a6c1; }
+.shop-intro, .shop-note { margin: 0 0 10px; font-size: 12px; line-height: 1.5; color: #c1cfe4; }
+.shop-note { font-size: 11px; color: #91a6c1; }
+.shop-status { min-height: 1.2em; margin: 0; font-size: 12px; color: #a5edc1; }
+
+/* The big preview: four facings, or a collection piece worn. */
+.shop-preview { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 16px; align-items: center; padding: 14px; border-radius: 14px; background: radial-gradient(ellipse at 30% 0%, #2c4370, #10203b 70%); border: 1px solid #8baee533; }
+.shop-faces { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+.shop-face svg { display: block; width: 100%; height: auto; }
+.shop-faces.is-piece { grid-template-columns: 1fr; justify-items: center; }
+.shop-faces.is-piece .raid-cosmetic-preview { width: 120px; height: 120px; }
+.shop-faces.is-piece .raid-cosmetic-preview > svg { width: 110px; height: 110px; }
+.shop-preview-text h3 { margin: 6px 0 4px; font-size: 20px; }
+.shop-preview-text p { margin: 0 0 8px; font-size: 12px; line-height: 1.5; color: #c1cfe4; }
+.shop-stages { display: flex; gap: 6px; flex-wrap: wrap; }
+.shop-stages button { padding: 5px 10px; border-radius: 999px; font-size: 11px; background: #0f1d36; border: 1px solid #8baee544; color: #c1cfe4; }
+.shop-stages button.active { border-color: #ffd65b; color: #ffe39a; background: #ffd65b1f; }
+
+/* Rarity badges and card borders. */
+.rarity-badge { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 9px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; }
+.rarity-badge.rarity-common { background: #8a96a8; color: #10203b; }
+.rarity-badge.rarity-rare { background: #4f9cff; color: #071225; }
+.rarity-badge.rarity-epic { background: #b06bff; color: #12052a; }
+.rarity-badge.rarity-mythical { background: linear-gradient(90deg, #ffd65b, #ff8fd8, #7ff3ff, #ffd65b); background-size: 300% 100%; color: #1b1636; animation: mythic-shift 6s linear infinite; }
+.deal-badge { display: inline-block; margin-left: 4px; padding: 1px 7px; border-radius: 999px; font-size: 9px; font-weight: 800; background: #ff5d6c; color: #fff; }
+@keyframes mythic-shift { to { background-position: 300% 0; } }
+
+.shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.shop-card { position: relative; display: grid; grid-template-rows: auto 1fr auto; gap: 8px; padding: 10px; border-radius: 12px; background: #10203b; border: 2px solid #8a96a855; min-width: 0; }
+.shop-card.rarity-rare { border-color: #4f9cff77; }
+.shop-card.rarity-epic { border-color: #b06bff88; box-shadow: 0 0 14px #b06bff22; }
+.shop-card.rarity-mythical { border-color: transparent; background: linear-gradient(#10203b, #10203b) padding-box, linear-gradient(120deg, #ffd65b, #ff8fd8, #7ff3ff, #ffd65b) border-box; background-size: 100% 100%, 300% 300%; animation: mythic-border 8s linear infinite; }
+@keyframes mythic-border { to { background-position: 0 0, 300% 0; } }
+.shop-card.is-selected { outline: 2px solid #ffd65b; outline-offset: 2px; }
+.shop-card.is-deal::before { content: ""; position: absolute; inset: -1px; border-radius: 12px; box-shadow: 0 0 0 1px #ff5d6c88, 0 0 16px #ff5d6c33; pointer-events: none; }
+.shop-card-art { display: grid; place-items: center; height: 120px; padding: 4px; border-radius: 9px; background: radial-gradient(circle at 50% 35%, #233a63, #0c182d 75%); border: 0; cursor: pointer; }
+.shop-card-art > svg { width: auto; height: 112px; }
+.shop-card-art .shop-look-preview { width: 92px; height: 92px; }
+.shop-card-art .shop-look-preview > svg { width: 84px; height: 84px; }
+.shop-card-body { display: grid; align-content: start; justify-items: start; gap: 3px; min-width: 0; }
+.shop-card-body b { font-size: 13px; }
+.shop-card-body small { font-size: 10px; color: #91a6c1; }
+.shop-card-action { display: flex; justify-content: flex-end; }
+.shop-card-action button { padding: 6px 12px; font-size: 12px; }
+.shop-buy { display: inline-flex; align-items: center; gap: 6px; }
+.shop-buy.is-confirming { background: #ffe39a; }
+.shop-state { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: #a5edc1; }
+.shop-state.shop-locked { color: #ffb4b4; }
+.shop-unequip { border-color: #6ae2a377; color: #a5edc1; }
+.shop-progress { display: grid; gap: 3px; margin-top: 4px; }
+.shop-progress progress { width: 100%; height: 6px; accent-color: #ffd65b; }
+.shop-progress small { font-size: 10px; }
+.shop-own { margin: 0 0 10px; }
+.shop-champions { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 10px; scrollbar-width: thin; }
+.shop-champion { flex: none; display: grid; justify-items: center; gap: 2px; width: 72px; padding: 6px 4px; border-radius: 10px; background: #0f1d36; border: 1px solid #8baee526; color: #c1cfe4; font-size: 10px; }
+.shop-champion svg { width: 46px; height: 46px; }
+.shop-champion.active { border-color: #ffd65b; color: #ffe39a; background: #ffd65b14; }
+.shop-collection { margin: 0 0 18px; }
+.shop-collection header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin-bottom: 8px; }
+.shop-collection h3 { margin: 0; font-size: 16px; }
+.shop-collection header small { color: #91a6c1; font-size: 11px; }
+.shop-collection header button { margin-left: auto; padding: 6px 12px; font-size: 12px; }
+.shop-collection header .shop-bonus { flex-basis: 100%; color: #ffe39a; }
+
+/* Daily missions. */
+.mission-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.mission { display: grid; gap: 6px; padding: 12px; border-radius: 12px; background: #10203b; border: 1px solid #8baee533; }
+.mission b { font-size: 13px; }
+.mission progress { width: 100%; height: 7px; accent-color: #ffd65b; }
+.mission small { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #c1cfe4; }
+.mission small .button-icon { width: 13px; height: 13px; color: #ffd65b; }
+.mission button { justify-self: start; padding: 4px 8px; font-size: 11px; }
+.mission-tier { justify-self: start; padding: 1px 8px; border-radius: 999px; font-size: 9px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; background: #6ae2a3; color: #0b2a1c; }
+.mission.tier-medium .mission-tier { background: #4f9cff; color: #071225; }
+.mission.tier-hard .mission-tier { background: #ff8a5b; color: #2a0d05; }
+.mission.is-done { border-color: #6ae2a366; background: #16403933; }
+.mission.is-done b { color: #a5edc1; }
+.mission-streak { display: flex; align-items: center; gap: 6px; margin: 10px 0 4px; font-size: 12px; color: #ffe39a; }
+.mission-streak .button-icon { width: 16px; height: 16px; }
+
+@media (max-width: 640px) {
+  dialog:has(.shop) { padding: 18px 12px; }
+  .shop-preview { grid-template-columns: 1fr; }
+  .shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .shop-card { padding: 8px; }
+  .shop-card-art { height: 96px; }
+  .shop-card-art > svg { height: 90px; }
+  .home-missions { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rarity-badge.rarity-mythical, .shop-card.rarity-mythical { animation: none; }
+}

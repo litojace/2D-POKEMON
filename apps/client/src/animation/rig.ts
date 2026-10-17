@@ -15,10 +15,19 @@ import {
   parts,
   rigAnchors,
   rigKey,
+  rigAssets,
   rigPoint,
+  skinSuffix,
   type Part,
   type RigAsset,
 } from "./assets";
+import { paletteFor, type SkinLook } from "../creature-design";
+import { hexToNumber, wornArt } from "../skins/skin-art";
+import { FX_GRAVITY, drawFxParticle, drawSkinFx, type FxShape } from "../skins/skin-fx";
+import { drawCollectionVictory, playCollectionEntrance } from "../skins/collection-fx";
+
+/** Skinned texture sets already requested, per scene (loaded on first sight). */
+const requested = new WeakMap<Phaser.Scene, Set<string>>();
 
 /**
  * Follow-through: these parts hang on damped springs, so they trail behind
@@ -45,7 +54,7 @@ const FEET = 21;
 const ROCK_PILE = 24;
 const MAX_PARTICLES = 48;
 
-type ParticleShape = "dot" | "spark" | "star" | "bubble" | "puff" | "pebble";
+type ParticleShape = FxShape;
 interface Particle {
   x: number;
   y: number;
@@ -56,6 +65,7 @@ interface Particle {
   size: number;
   color: number;
   shape: ParticleShape;
+  spin?: number;
 }
 
 export class FighterRig {
@@ -91,6 +101,10 @@ export class FighterRig {
   private tiltAt = 0;
   private tiltUntil = 0;
   private tiltSide = 1;
+  /** Texture suffix of the Shop skin being shown ("" = the champion's own). */
+  private suffix = "";
+  /** The state skin effects last saw (to fire one-off bursts once). */
+  private fxState: AnimationState = "idle";
   constructor(
     private scene: Phaser.Scene,
     readonly character: CharacterId,
@@ -143,6 +157,30 @@ export class FighterRig {
   private chance(rate: number, dt: number) {
     return Math.random() < rate * dt;
   }
+  /**
+   * Show a Shop skin (or the champion's own look). Skinned textures load the
+   * first time they are needed; until then the fighter keeps its own look.
+   */
+  wear(look: SkinLook | null | undefined) {
+    const suffix = skinSuffix(this.character, look);
+    if (suffix === this.suffix) return;
+    const probe = rigKey(this.character, "down", "body", suffix);
+    if (!this.scene.textures.exists(probe)) {
+      let asked = requested.get(this.scene);
+      if (!asked) requested.set(this.scene, (asked = new Set()));
+      if (!asked.has(suffix)) {
+        asked.add(suffix);
+        for (const a of rigAssets(this.character, look ?? null))
+          if (!this.scene.textures.exists(a.key))
+            this.scene.load.svg(a.key, a.url, { width: a.width, height: a.height });
+        if (!this.scene.load.isLoading()) this.scene.load.start();
+      }
+      return;
+    }
+    this.suffix = suffix;
+    for (const [part, image] of this.images)
+      image.setTexture(rigKey(this.character, this.dir, part, suffix));
+  }
   render(
     pose: AnimationPose,
     x: number,
@@ -153,6 +191,7 @@ export class FighterRig {
   ) {
     for (const [part, image] of this.images)
       this.previousRotations.set(part, image.rotation);
+    this.wear(pose.skin);
     const dt = this.lastRender
       ? Math.min(0.05, Math.max(0, now - this.lastRender) / 1000)
       : 0;
@@ -187,7 +226,7 @@ export class FighterRig {
           (a) => a.key === rigKey(this.character, dir, part),
         )!;
         image
-          .setTexture(asset.key)
+          .setTexture(rigKey(this.character, dir, part, this.suffix))
           .setOrigin(asset.originX, asset.originY)
           .setPosition(asset.x, asset.y);
       }
@@ -266,7 +305,7 @@ export class FighterRig {
     scarf.rotation = reduced ? 0 : Math.sin(now / 200) * 0.06;
     // ---- Expression.
     const mood = dir === "up" ? "normal" : moodFor(state, pose);
-    const eyesKey = moodKey(this.character, dir, mood);
+    const eyesKey = moodKey(this.character, dir, mood, this.suffix);
     if (eyes.texture.key !== eyesKey && this.scene.textures.exists(eyesKey))
       eyes.setTexture(eyesKey);
     if (now >= this.blinkAt) {
@@ -529,7 +568,12 @@ export class FighterRig {
     });
     else if (state === "wave") armR.rotation = -2.4;
     // An equipped Victory reward replaces the champion's own victory move.
-    if (state === "victory" && !reduced && t < 2.2 && !pose.look?.victory)
+    if (
+      state === "victory" &&
+      !reduced &&
+      t < 2.2 &&
+      pose.look?.victory !== "rockslide-flex"
+    )
       this.victory(t, { head, body, armL, armR, legL, legR, tail, wings, flame, ears }, (dx, dy) => {
         offsetX += dx;
         offsetY += dy;
@@ -638,7 +682,8 @@ export class FighterRig {
       const texture = cosmeticLayer(
         this.scene,
         image.texture.key,
-        (pose.look?.skin ?? null) as Skin | null,
+        // A champion skin wins over an all-fighter Skin (design §10.5.2).
+        (this.suffix ? null : (pose.look?.skin ?? null)) as Skin | null,
       );
       if (image.texture.key !== texture) image.setTexture(texture);
     }
@@ -866,7 +911,13 @@ export class FighterRig {
     dir: Facing,
   ) {
     const g = this.effects;
-    const color = CHARACTERS[this.character].color;
+    const art = wornArt(this.character, pose.skin);
+    const stage = pose.skin?.stage ?? 1;
+    // Epic and Mythical skins recolour the cast glyph, rings and sparks.
+    const color = art?.skill ?? CHARACTERS[this.character].color;
+    const glow = art
+      ? hexToNumber(paletteFor(this.character, pose.skin).glow)
+      : undefined;
     const sc = this.baseX;
     const at = (part: Part, ax: number, ay: number) => {
       const p = rigPoint(part, ax, ay);
@@ -904,7 +955,7 @@ export class FighterRig {
         vy: -10 - Math.random() * 20,
         life: 0.25,
         size: 5 * sc,
-        color: 0x7ff3ff,
+        color: glow ?? 0x7ff3ff,
         shape: "spark",
       });
     }
@@ -917,7 +968,7 @@ export class FighterRig {
         vy: -30 - Math.random() * 30,
         life: 0.7,
         size: (1.4 + Math.random() * 1.4) * sc,
-        color: Math.random() < 0.5 ? 0xffd34d : 0xff7a4f,
+        color: Math.random() < 0.5 ? (glow ?? 0xffd34d) : (art ? hexToNumber(paletteFor(this.character, pose.skin).mid) : 0xff7a4f),
         shape: "dot",
       });
     }
@@ -929,7 +980,7 @@ export class FighterRig {
         vy: -14 - Math.random() * 10,
         life: 0.6,
         size: (2 + Math.random() * 2) * sc,
-        color: 0xbff6ff,
+        color: glow ?? 0xbff6ff,
         shape: "bubble",
       });
     }
@@ -943,7 +994,7 @@ export class FighterRig {
         vy: 6 + Math.random() * 10,
         life: 0.9,
         size: (2 + Math.random() * 1.5) * sc,
-        color: 0xfff1a0,
+        color: glow ?? 0xfff1a0,
         shape: "star",
       });
     }
@@ -995,23 +1046,66 @@ export class FighterRig {
         shape: "star",
       });
     }
+    // ---- Shop skin extras (trails, details, Mythical Awakening effects).
+    if (art) {
+      const top = at("head", 100, 55);
+      drawSkinFx(
+        {
+          g,
+          under: this.under,
+          emit: (p) => this.emit(p),
+          chance: (rate, d) => this.chance(rate, d),
+          x,
+          y,
+          headX: top.x,
+          headY: top.y,
+          sc,
+          now,
+          dt,
+          angle: pose.angle,
+          moving,
+          dashing: state === "dash",
+          hurt: state === "hurt",
+          defeated: state === "defeat",
+          greeting: state === "wave" && this.fxState !== "wave",
+          celebrating: state === "victory" && this.fxState !== "victory",
+          knockedOut: state === "defeat" && this.fxState !== "defeat",
+          ultimate: skill === 3 && this.lastProgress < 0.3 && progress >= 0.3,
+          ambient: pose.ambient !== false,
+        },
+        art,
+        stage,
+      );
+    }
+    // ---- Shop collection pieces: entrance burst and victory finale.
+    if (state === "wave" && this.fxState !== "wave" && pose.look?.entrance)
+      playCollectionEntrance((p) => this.emit(p), pose.look.entrance, x, y, sc);
+    if (state === "victory" && pose.look?.victory)
+      drawCollectionVictory(
+        g,
+        this.under,
+        (p) => this.emit(p),
+        (rate, d) => this.chance(rate, d),
+        pose.look.victory,
+        x,
+        y,
+        sc,
+        t,
+        dt,
+        this.fxState !== "victory",
+      );
+    this.fxState = state;
     // ---- Update and draw particles.
     for (const p of this.particles) {
       p.age += dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
-      p.vy +=
-        (p.shape === "puff"
-          ? 20
-          : p.shape === "star"
-            ? -6
-            : p.shape === "pebble"
-              ? 420
-              : 0) * dt;
+      p.vy += (FX_GRAVITY[p.shape] ?? 0) * dt;
     }
     this.particles = this.particles.filter((p) => p.age < p.life);
     for (const p of this.particles) {
       const fade = 1 - p.age / p.life;
+      if (drawFxParticle(g, p, fade)) continue;
       if (p.shape === "dot") g.fillStyle(p.color, 0.85 * fade).fillCircle(p.x, p.y, p.size);
       else if (p.shape === "bubble")
         g.lineStyle(1.2, p.color, 0.8 * fade).strokeCircle(p.x, p.y, p.size);
@@ -1042,8 +1136,8 @@ export class FighterRig {
         const a = now / 700 + i * Math.PI;
         const wx = x + Math.cos(a) * 30 * sc,
           wy = y - 12 * sc + Math.sin(a) * 10 * sc;
-        g.fillStyle(0x7dffe1, 0.18).fillCircle(wx, wy, 5 * sc);
-        g.fillStyle(0x7dffe1, 0.85).fillCircle(wx, wy, 1.8 * sc);
+        g.fillStyle(glow ?? 0x7dffe1, 0.18).fillCircle(wx, wy, 5 * sc);
+        g.fillStyle(glow ?? 0x7dffe1, 0.85).fillCircle(wx, wy, 1.8 * sc);
       }
     if (state === "defeat") {
       const top = at("head", 100, 46);

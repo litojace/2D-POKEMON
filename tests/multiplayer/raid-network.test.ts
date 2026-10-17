@@ -3,7 +3,7 @@ import { io, type Socket } from "socket.io-client";
 import { createArenaServer } from "../../apps/server/src/server";
 import { fakeAccounts } from "../helpers/accounts";
 import { RaidArena } from "../../apps/server/src/raid";
-import { LATEST_MIGRATION } from "../../apps/server/src/accounts";
+import { RAID_FUNCTIONS_MIGRATION } from "../../apps/server/src/accounts";
 import { blankInput, type Reply } from "@arena/shared";
 import { raidDay } from "../../packages/shared/src/raid";
 let server: ReturnType<typeof createArenaServer> | undefined;
@@ -270,5 +270,5 @@ it("only reports an equipped slot after the database really kept it", async () =
   upToDate = false;
   const stale = await equip({ slot: "skin", item: "cragbound" });
   expect(stale.status).toBe(503);
-  expect((await stale.json()).error).toContain(LATEST_MIGRATION);
+  expect((await stale.json()).error).toContain(RAID_FUNCTIONS_MIGRATION);
 });

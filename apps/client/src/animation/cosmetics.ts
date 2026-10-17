@@ -1,6 +1,58 @@
 import type Phaser from "phaser";
 
-export type Skin = "cragbound" | "cragstone";
+export type Skin =
+  | "cragbound"
+  | "cragstone"
+  | "candy-colours"
+  | "galaxy-colours"
+  | "retro-colours"
+  | "festival-colours"
+  | "garden-colours"
+  | "winter-colours";
+export const SKINS: Skin[] = [
+  "cragbound",
+  "cragstone",
+  "candy-colours",
+  "galaxy-colours",
+  "retro-colours",
+  "festival-colours",
+  "garden-colours",
+  "winter-colours",
+];
+const hexRgb = (c: number) => [(c >> 16) & 255, (c >> 8) & 255, c & 255];
+/**
+ * Shop "Colours": recolour by brightness through three tones (shadow, mid,
+ * light), keeping a little of the original so each champion stays itself.
+ */
+export const TONES: Partial<Record<Skin, { tones: [number, number, number]; keep: number }>> = {
+  "candy-colours": { tones: [0x9a5a9a, 0xff9ec8, 0xfff0f8], keep: 0.25 },
+  "galaxy-colours": { tones: [0x0e0a2e, 0x4a3a9a, 0x9fd8ff], keep: 0.2 },
+  "festival-colours": { tones: [0x5a0d12, 0xd8262a, 0xffd65b], keep: 0.2 },
+  "garden-colours": { tones: [0x1f4a1a, 0x6fbf4a, 0xf0ffb0], keep: 0.25 },
+  "winter-colours": { tones: [0x2a4a6e, 0x9fcfff, 0xffffff], keep: 0.3 },
+};
+export function tonePixels(pixels: Uint8ClampedArray, skin: Skin) {
+  const spec = TONES[skin];
+  if (!spec) return;
+  const [a, b, c] = spec.tones.map(hexRgb);
+  for (let i = 0; i < pixels.length; i += 4) {
+    const r = pixels[i],
+      g = pixels[i + 1],
+      bl = pixels[i + 2];
+    const l = (0.299 * r + 0.587 * g + 0.114 * bl) / 255;
+    const [lo, hi, k] = l < 0.5 ? [a, b, l / 0.5] : [b, c, (l - 0.5) / 0.5];
+    for (let ch = 0; ch < 3; ch++) {
+      const tone = lo[ch] + (hi[ch] - lo[ch]) * k;
+      pixels[i + ch] = tone * (1 - spec.keep) + pixels[i + ch] * spec.keep;
+    }
+  }
+}
+/** Retro: a chunky 8-bit look (four levels per channel, a touch brighter). */
+export function retroPixels(pixels: Uint8ClampedArray) {
+  for (let i = 0; i < pixels.length; i += 4)
+    for (let ch = 0; ch < 3; ch++)
+      pixels[i + ch] = Math.min(255, Math.round((pixels[i + ch] / 255) * 3) * 85 + 10);
+}
 
 /** Match the menu's sepia(1) saturate(.8) brightness(.96), including Canvas. */
 export function cragboundPixels(pixels: Uint8ClampedArray) {
@@ -51,7 +103,7 @@ export function seeded(key: string) {
  * body parts crack; the eyes stay clear so faces remain readable.
  */
 export function crackLines(key: string, width: number, height: number) {
-  if (/-eyes(-|$)/.test(key) || width < 8 || height < 8) return [];
+  if (/-eyes([-~]|$)/.test(key) || width < 8 || height < 8) return [];
   const random = seeded(key);
   const count = Math.max(1, Math.round((width * height) / 4200));
   const lines: { x: number; y: number }[][] = [];
@@ -73,10 +125,7 @@ export function crackLines(key: string, width: number, height: number) {
   return lines;
 }
 
-const prefixes: Record<Skin, string> = {
-  cragbound: "cragbound:",
-  cragstone: "cragstone:",
-};
+const prefixes = Object.fromEntries(SKINS.map((s) => [s, `${s}:`])) as Record<Skin, string>;
 const originalOf = (key: string) => {
   for (const prefix of Object.values(prefixes))
     if (key.startsWith(prefix)) return key.slice(prefix.length);
@@ -89,9 +138,9 @@ export function cosmeticLayer(
   skin: Skin | null | undefined,
 ) {
   const original = originalOf(key);
-  if (!skin) return original;
-  // Faces stay as drawn under Cragstone; Cragbound tints everything.
-  if (skin === "cragstone" && /-eyes(-|$)/.test(original)) return original;
+  if (!skin || !prefixes[skin]) return original;
+  // Faces stay as drawn (readable eyes); only Cragbound tints everything.
+  if (skin !== "cragbound" && /-eyes([-~]|$)/.test(original)) return original;
   const styled = prefixes[skin] + original;
   if (!scene.textures.exists(styled)) {
     const source = scene.textures
@@ -104,8 +153,24 @@ export function cosmeticLayer(
     context.drawImage(source, 0, 0);
     const pixels = context.getImageData(0, 0, canvas.width, canvas.height);
     if (skin === "cragbound") cragboundPixels(pixels.data);
-    else cragstonePixels(pixels.data);
+    else if (skin === "cragstone") cragstonePixels(pixels.data);
+    else if (skin === "retro-colours") retroPixels(pixels.data);
+    else tonePixels(pixels.data, skin);
     context.putImageData(pixels, 0, 0);
+    if (skin === "galaxy-colours" && !/-eyes([-~]|$)/.test(original)) {
+      // A sprinkle of stars, only where the layer is opaque.
+      context.globalCompositeOperation = "source-atop";
+      const random = seeded(original);
+      for (let n = 0; n < (canvas.width * canvas.height) / 900; n++) {
+        context.fillStyle = random() < 0.7 ? "#ffffff" : "#9fd8ff";
+        context.globalAlpha = 0.5 + random() * 0.5;
+        const x = random() * canvas.width,
+          y = random() * canvas.height,
+          r = 0.6 + random() * 1.2;
+        context.fillRect(x - r / 2, y - r / 2, r, r);
+      }
+      context.globalAlpha = 1;
+    }
     if (skin === "cragstone") {
       // Glowing amber cracks, painted only where the layer is opaque.
       context.globalCompositeOperation = "source-atop";

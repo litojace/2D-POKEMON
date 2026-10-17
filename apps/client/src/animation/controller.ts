@@ -38,6 +38,10 @@ const priority: Record<AnimationState, number> = {
 export interface AnimationPose {
   /** Equipped raid appearance (skin and entrance affect the rig). */
   look?: RaidLoadout;
+  /** Shop skin worn by this champion (with its Awakening stage). */
+  skin?: { skin: string; stage?: number } | null;
+  /** Mythical ambient effects allowed (at most two fighters on screen). */
+  ambient?: boolean;
   hp: number;
   speed: number;
   angle: number;

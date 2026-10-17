@@ -334,6 +334,29 @@ export interface Economy {
   today: { raidClears: number; pvpMatches: number };
 }
 
+/**
+ * What an item costs this player (mirrors arena_item_price in migration 010):
+ * null once owned; a set costs 80% of the pieces not yet owned; today's deal
+ * is 20% off. Prices round to the nearest 10.
+ */
+export function shopPrice(id: string, owned: readonly string[], deal: string | null) {
+  const round10 = (n: number) => Math.round(n / 10) * 10;
+  const bundle = SHOP_BUNDLES.find((b) => b.id === id);
+  if (bundle) {
+    const left = bundle.items.filter((i) => !owned.includes(i));
+    if (!left.length) return null;
+    return round10(left.reduce((sum, i) => sum + LOOK_ITEM_BY_ID[i].price, 0) * (1 - bundle.discount));
+  }
+  if (owned.includes(id)) return null;
+  const base = CHAMPION_SKIN_BY_ID[id] ? skinPrice(CHAMPION_SKIN_BY_ID[id]) : LOOK_ITEM_BY_ID[id]?.price;
+  if (base === undefined) return null;
+  return id === deal ? round10(base * (1 - COINS.pickDiscount)) : base;
+}
+/** The rarity of any shop item (sets have none). */
+export function shopRarity(id: string): Rarity | null {
+  return CHAMPION_SKIN_BY_ID[id]?.rarity ?? LOOK_ITEM_BY_ID[id]?.rarity ?? null;
+}
+
 /** A Mythical's Awakening stage from its progress. */
 export function awakeningStage(wins: number, peril3: boolean) {
   if (wins >= AWAKENING.stage3Wins && peril3) return 3;

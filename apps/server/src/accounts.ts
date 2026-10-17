@@ -1,7 +1,7 @@
 import { RAID_COSMETICS, RAID_SLOTS, type RaidCosmetic, type RaidProgress, type RaidReceipt } from "../../../packages/shared/src/raid.js";
 import { z } from "zod";
 import { characterSchema } from "../../../packages/shared/src/index.js";
-import type { ActivityReceipt } from "../../../packages/shared/src/shop.js";
+import { LOOK_ITEM_BY_ID, type ActivityReceipt } from "../../../packages/shared/src/shop.js";
 import { createClient } from "@supabase/supabase-js";
 import type { Express, Request, Response, NextFunction } from "express";
 import {
@@ -25,7 +25,9 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "010_shop.sql";
+export const LATEST_MIGRATION = "011_collection_bonus.sql";
+/** The migration that last redefined the raid appearance functions. */
+export const RAID_FUNCTIONS_MIGRATION = "010_shop.sql";
 export interface AccountProvider {
   recordRaid?(receipt: RaidReceipt): Promise<void>;
   /** Coins, missions and Mythic progress after a real match or raid. */
@@ -311,13 +313,15 @@ export function installAccountRoutes(
   }));
   // One item per slot (skin, aura, entrance, frame; victory from migration 009).
   app.post('/api/raids/equip',route(false,async(req,res,token,account)=>{
-    const data=z.object({slot:z.enum(RAID_SLOTS as [typeof RAID_SLOTS[number],...typeof RAID_SLOTS]),item:z.enum(Object.keys(RAID_COSMETICS) as [RaidCosmetic,...RaidCosmetic[]]).nullable()}).strict().parse(req.body);
-    if(data.item&&RAID_COSMETICS[data.item as RaidCosmetic].slot!==data.slot)throw new AccountError(400,'That item belongs in another slot.');
+    // Raid rewards and Shop collection pieces share the appearance slots.
+    const slotOf=(id:string)=>RAID_COSMETICS[id as RaidCosmetic]?.slot??LOOK_ITEM_BY_ID[id]?.slot;
+    const data:{slot:typeof RAID_SLOTS[number];item:string|null}=z.object({slot:z.enum(RAID_SLOTS as [typeof RAID_SLOTS[number],...typeof RAID_SLOTS]),item:z.string().max(64).refine((id:string)=>!!slotOf(id),'Unknown item.').nullable()}).strict().parse(req.body);
+    if(data.item&&slotOf(data.item)!==data.slot)throw new AccountError(400,'That item belongs in another slot.');
     await provider.rpc(token,'arena_equip_raid_slot',{p_slot:data.slot,p_item:data.item});
     // Read it back: only report success if the database really kept it.
     const progress=await provider.rpc(token,'arena_raid_progress',{}) as RaidProgress;
     if(!progress?.loadout||(progress.loadout[data.slot]??null)!==data.item)
-      throw new AccountError(503,`Your appearance couldn't be kept: the database's raid functions are out of date. In Supabase's SQL Editor, run supabase/migrations/${LATEST_MIGRATION} again (it must be the last file run).`);
+      throw new AccountError(503,`Your appearance couldn't be kept: the database's raid functions are out of date. In Supabase's SQL Editor, run supabase/migrations/${RAID_FUNCTIONS_MIGRATION} again, then any newer files.`);
     onPlayerChanged(account.id);res.json({ok:true,progress});
   }));
   app.get(

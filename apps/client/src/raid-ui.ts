@@ -36,6 +36,8 @@ import { raidGuideScene, raidGuideBoss } from "./raid-guide-art";
 import { raidRitePicture } from "./raid-rite-art";
 import { drawRaidBoss } from "./raid-boss-art";
 import { fighterAvatar } from "./fighter-art";
+import { portraitAvatar, portraitCosmetics } from "./portraits";
+import { LOOK_ITEMS } from "../../../packages/shared/src/shop";
 import { setOverlayMarkup, LIVE_SECONDS, fillLiveSeconds } from "./overlay";
 const escape = (s: string) =>
   s.replace(
@@ -55,6 +57,7 @@ export function raidLookList(look: RaidLoadout | null | undefined) {
     .filter(Boolean)
     .join(" ");
 }
+export { portraitAvatar, portraitCosmetics } from "./portraits";
 const ATTACK_ORDER: RaidAttack[] = [
   "charge",
   "slam",
@@ -84,7 +87,7 @@ export function raidLobby(
   return `<div class="raid-lobby">
     <div class="raid-lobby-banner"><div><span class="eyebrow">CO-OP RAID · 1–4 PLAYERS</span><h2>${RAID_BOSSES[r.boss].name}</h2><p>${RAID_BOSSES[r.boss].epithet}</p></div><svg viewBox="-65 -65 130 115" aria-hidden="true">${raidGuideBoss()}</svg></div>
     <div class="raid-invite"><div><span>INVITE YOUR PARTY</span><b>${escape(state.code)}</b></div><button type="button" id="raid-copy-code" class="secondary" aria-label="Copy raid room code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V3H3v13h5"/></svg><span>Copy code</span></button></div>
-    <section class="raid-party-section" aria-label="Raid party"><div class="raid-section-heading"><h3>Your party</h3><span>${ready}/${party.length} ready</span></div><div class="raid-party-list">${party.map((p) => `<div class="raid-party-member" data-raid-player="${escape(p.id)}"><span class="raid-party-avatar" data-raid-cosmetic="${raidLookList(p.raidLook)}">${fighterAvatar(p.character, "raid-lobby-" + p.id)}</span><div class="raid-party-identity"><b>${escape(p.name)}</b><span><span class="raid-player-character">${CHARACTERS[p.character].name}</span>${p.id === state.players[0]?.id ? " · Host" : ""}</span></div><span class="raid-ready-badge ${p.ready ? "is-ready" : ""}">${p.ready ? "Ready" : "Choosing"}</span></div>`).join("")}<div class="raid-open-slots">${Array.from({ length: Math.max(0, 4 - party.length) }, () => '<div class="raid-party-empty"><span aria-hidden="true">+</span>Open slot</div>').join("")}</div></div></section>
+    <section class="raid-party-section" aria-label="Raid party"><div class="raid-section-heading"><h3>Your party</h3><span>${ready}/${party.length} ready</span></div><div class="raid-party-list">${party.map((p) => `<div class="raid-party-member" data-raid-player="${escape(p.id)}"><span class="raid-party-avatar" data-raid-cosmetic="${portraitCosmetics(p)}">${portraitAvatar(p, "raid-lobby-" + p.id)}</span><div class="raid-party-identity"><b>${escape(p.name)}</b><span><span class="raid-player-character">${CHARACTERS[p.character].name}</span>${p.id === state.players[0]?.id ? " · Host" : ""}</span></div><span class="raid-ready-badge ${p.ready ? "is-ready" : ""}">${p.ready ? "Ready" : "Choosing"}</span></div>`).join("")}<div class="raid-open-slots">${Array.from({ length: Math.max(0, 4 - party.length) }, () => '<div class="raid-party-empty"><span aria-hidden="true">+</span>Open slot</div>').join("")}</div></div></section>
     <section class="raid-challenge" aria-label="Raid challenge"><div class="raid-section-heading"><h3>Choose your challenge</h3><span>${host ? "HOST CONTROLS" : "HOST SELECTS"}</span></div>${raidDifficulty(r.peril, !host || r.daily)}${raidDay().boss === r.boss ? `<label class="raid-weekly-option"><input id="raid-daily-toggle" type="checkbox" ${r.daily ? "checked" : ""} ${host ? "" : "disabled"}><span><b>Raid of the Day</b><small>Today's shared Peril 2 challenge · daily board</small></span></label>` : ""}<p class="raid-unlock-note">${r.daily ? (host ? "Uncheck Raid of the Day to choose a regular difficulty." : "The host can switch to a regular raid.") : "Clear a Peril to unlock the next difficulty."}</p></section>
     <div class="raid-lobby-rules"><span><svg class="raid-rule-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v10m-5-5h10"/></svg><span>${party.length === 1 ? (r.peril >= 3 ? "Peril 3 solo: no self-revive" : "One solo self-revive") : "Stand near allies to revive"}</span></span><span><svg class="raid-rule-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 3 8 4v6c0 5-8 8-8 8s-8-3-8-8V7Z"/><path d="m8 12 3 3 5-6"/></svg><span>Separate from PvP rating</span></span></div>
     ${practicePicker(host)}
@@ -99,17 +102,30 @@ const SLOT_NAMES: Record<RaidSlot, string> = {
   victory: "Victory",
 };
 /** Appearance choices, one row of options per slot. Cosmetic only. */
-export function raidCosmeticOptions(p: RaidProgress, character: CharacterId) {
+export function raidCosmeticOptions(
+  p: RaidProgress,
+  character: CharacterId,
+  shopOwned: string[] = [],
+) {
   const look = raidLookOf(p);
   return (Object.keys(SLOT_NAMES) as RaidSlot[])
     .map((slot) => {
-      const items = (Object.keys(RAID_COSMETICS) as RaidCosmetic[]).filter(
-        (id) => RAID_COSMETICS[id].slot === slot,
-      );
-      const option = (id: RaidCosmetic | null) => {
-        const owned = id === null || p.cosmetics.includes(id);
+      const items: string[] = [
+        ...(Object.keys(RAID_COSMETICS) as RaidCosmetic[]).filter(
+          (id) => RAID_COSMETICS[id].slot === slot,
+        ),
+        // Shop collection pieces you own for this slot.
+        ...LOOK_ITEMS.filter((i) => i.slot === slot && shopOwned.includes(i.id)).map((i) => i.id),
+      ];
+      const option = (id: string | null) => {
+        const shop = id ? LOOK_ITEMS.find((i) => i.id === id) : undefined;
+        const owned = id === null || !!shop || p.cosmetics.includes(id);
         const active = (look[slot] ?? null) === id;
-        const info = id ? RAID_COSMETICS[id] : null;
+        const info = shop
+          ? { name: shop.name, description: shop.description, goal: "" }
+          : id
+            ? RAID_COSMETICS[id as RaidCosmetic]
+            : null;
         const name = info?.name ?? (slot === "skin" ? "Original look" : slot === "victory" ? "Champion's own" : "None");
         const detail = info
           ? owned
@@ -127,8 +143,12 @@ export function raidCosmeticOptions(p: RaidProgress, character: CharacterId) {
     .join("");
 }
 /** The appearance picker shown on a boss's Rewards tab. */
-export function raidAppearance(p: RaidProgress, character: CharacterId = "voltkit") {
-  return `<h3>Fighter appearance</h3><p class="raid-appearance-note">Pick a skin, aura, entrance, frame and victory separately. They show on all your fighters in PvP and raids. Appearance only, no stat changes. Previewing ${CHARACTERS[character].name}.</p>${p.loadout && "victory" in p.loadout ? "" : '<p class="raid-appearance-note raid-update-needed">Saving every slot needs the latest database update: run migration 009_raid_hub.sql in Supabase (as the last file run).</p>'}<div class="raid-equip">${raidCosmeticOptions(p, character)}</div><p class="raid-appearance-status" role="status"></p>`;
+export function raidAppearance(
+  p: RaidProgress,
+  character: CharacterId = "voltkit",
+  shopOwned: string[] = [],
+) {
+  return `<h3>Fighter appearance</h3><p class="raid-appearance-note">Pick a skin, aura, entrance, frame and victory separately. They show on all your fighters in PvP and raids (a champion skin from the Shop wins over the Skin slot). Shop collection pieces you own appear here too. Appearance only, no stat changes. Previewing ${CHARACTERS[character].name}.</p>${p.loadout && "victory" in p.loadout ? "" : '<p class="raid-appearance-note raid-update-needed">Saving every slot needs the latest database update: run migration 009_raid_hub.sql in Supabase (as the last file run).</p>'}<div class="raid-equip">${raidCosmeticOptions(p, character, shopOwned)}</div><p class="raid-appearance-status" role="status"></p>`;
 }
 const resultProgress = new WeakMap<
   HTMLElement,
