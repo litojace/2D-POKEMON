@@ -1,4 +1,4 @@
-import { RAID_COSMETICS, type RaidProgress, type RaidReceipt } from "../../../packages/shared/src/raid.js";
+import { RAID_COSMETICS, RAID_SLOTS, type RaidCosmetic, type RaidProgress, type RaidReceipt } from "../../../packages/shared/src/raid.js";
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 import type { Express, Request, Response, NextFunction } from "express";
@@ -23,7 +23,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "008_raid_progress.sql";
+export const LATEST_MIGRATION = "009_raid_hub.sql";
 export interface AccountProvider {
   recordRaid?(receipt: RaidReceipt): Promise<void>;
   authenticate(token: string): Promise<Account | null>;
@@ -280,10 +280,10 @@ export function installAccountRoutes(
     const data=z.object({cosmetic:z.enum(['cragbound','mountain-aura']).nullable()}).strict().parse(req.body);
     await provider.rpc(token,'arena_equip_raid_cosmetic',{p_cosmetic:data.cosmetic});onPlayerChanged(account.id);res.json({ok:true});
   }));
-  // One item per slot (skin, aura, entrance, frame), from migration 008.
+  // One item per slot (skin, aura, entrance, frame; victory from migration 009).
   app.post('/api/raids/equip',route(false,async(req,res,token,account)=>{
-    const data=z.object({slot:z.enum(['skin','aura','entrance','frame']),item:z.enum(['cragbound','cragstone','mountain-aura','mountainborn','conqueror']).nullable()}).strict().parse(req.body);
-    if(data.item&&RAID_COSMETICS[data.item].slot!==data.slot)throw new AccountError(400,'That item belongs in another slot.');
+    const data=z.object({slot:z.enum(RAID_SLOTS as [typeof RAID_SLOTS[number],...typeof RAID_SLOTS]),item:z.enum(Object.keys(RAID_COSMETICS) as [RaidCosmetic,...RaidCosmetic[]]).nullable()}).strict().parse(req.body);
+    if(data.item&&RAID_COSMETICS[data.item as RaidCosmetic].slot!==data.slot)throw new AccountError(400,'That item belongs in another slot.');
     await provider.rpc(token,'arena_equip_raid_slot',{p_slot:data.slot,p_item:data.item});
     // Read it back: only report success if the database really kept it.
     const progress=await provider.rpc(token,'arena_raid_progress',{}) as RaidProgress;

@@ -1,7 +1,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import { readFile } from "node:fs/promises";
 import { beforeAll, afterAll, it, expect } from "vitest";
-import { raidWeekly } from "../../packages/shared/src/raid";
+import { pacificDate } from "../../packages/shared/src/raid";
 let db: PGlite;
 const player = "00000000-0000-4000-8000-000000000001";
 const login = async () =>
@@ -20,8 +20,10 @@ const receipt = (id: number) => ({
   peril: id === 5 ? 3 : 1,
   trait: "ancient",
   gilded: false,
-  weekly: true,
-  week: raidWeekly().week,
+  weekly: false,
+  week: "2026-10-12",
+  daily: true,
+  day: pacificDate(),
   seed: 100,
   partySize: 1,
   seconds: 330 - id,
@@ -43,6 +45,7 @@ beforeAll(async () => {
     "006_ratings.sql",
     "007_raids.sql",
     "008_raid_progress.sql",
+    "009_raid_hub.sql",
   ])
     await db.exec(await readFile("supabase/migrations/" + file, "utf8"));
   await login();
@@ -77,13 +80,16 @@ it("records verified clears once, grants guaranteed rewards, and leaves Elo unch
   const p = await progress();
   expect(p.clears).toBe(5);
   expect(p.highestPeril).toBe(3);
-  expect(p.cosmetics).toEqual([
+  expect([...p.cosmetics].sort()).toEqual([
+    "conqueror",
     "cragbound",
     "mountain-aura",
     "mountainborn",
-    "conqueror",
   ]);
-  expect(p.weekly[0].names).toEqual(["Raider"]);
+  expect(p.bosses.grumblecrag.clears).toBe(5);
+  expect(p.today.board[0].names).toEqual(["Raider"]);
+  expect(p.today.cleared).toBe(true);
+  expect(p.dailyClears).toEqual([pacificDate()]);
   await db.query("select public.arena_equip_raid_cosmetic('cragbound')");
   expect((await progress()).equipped).toBe("cragbound");
   const account = (await db.query<{ p: any }>("select public.arena_me() as p"))
@@ -103,7 +109,6 @@ it("saves losses for titles and tuning without counting them as clears", async (
   await db.exec("reset role;set role service_role");
   const loss = (n: number, pillars: number, revives: number) => ({
     ...receipt(100 + n),
-    weekly: true,
     result: "defeat",
     phaseReached: 2,
     seconds: 60,
@@ -121,8 +126,8 @@ it("saves losses for titles and tuning without counting them as clears", async (
   expect(p.runs).toBe(8);
   expect(p.pillars).toBe(27);
   expect(p.revives).toBe(21);
-  // Losses never reach the weekly clear board.
-  expect(p.weekly.every((row: any) => row.seconds !== 60)).toBe(true);
+  // Losses never reach the daily clear board.
+  expect(p.today.board.every((row: any) => row.seconds !== 60)).toBe(true);
   const titles = (
     await db.query<{ p: any }>("select public.arena_me() as p")
   ).rows[0].p.ownedTitles.map((t: any) => t.name);
@@ -146,6 +151,7 @@ it("equips one item per slot and refuses unearned or misplaced items", async () 
     aura: null,
     entrance: "mountainborn",
     frame: "conqueror",
+    victory: null,
   });
   await db.query("select public.arena_equip_raid_slot('skin',null)");
   expect((await progress()).loadout.skin).toBeNull();
@@ -158,8 +164,52 @@ it("keeps balance data for admins only", async () => {
   const balance = (
     await db.query<{ p: any }>("select public.arena_raid_balance() as p")
   ).rows[0].p;
-  expect(balance.downCauses).toEqual({ volley: 6, share: 3 });
+  expect(balance.downCauses).toEqual({
+    "grumblecrag:volley": 6,
+    "grumblecrag:share": 3,
+  });
   expect(
     balance.runs.find((r: any) => r.result === "defeat").phaseReached,
   ).toBe(2);
+});
+
+it("grants feat, speed and solo rewards from rules, and the Victory slot", async () => {
+  await db.exec("reset role;set role service_role");
+  const run = (n: number, extra: object) => ({
+    ...receipt(200 + n),
+    daily: false,
+    peril: 2,
+    seconds: 300,
+    ...extra,
+  });
+  // Feat (every charge baited) and a fast solo Peril 2 clear.
+  await db.query("select public.arena_record_raid($1::jsonb)", [
+    JSON.stringify(run(1, { feat: true, seconds: 205 })),
+  ]);
+  // A feat claimed on a loss never counts.
+  await db.query("select public.arena_record_raid($1::jsonb)", [
+    JSON.stringify(run(2, { feat: true, result: "defeat" })),
+  ]);
+  const p = await progress();
+  expect(p.earned).toContain("rockslide-flex");
+  expect(p.earned).toContain("avalanche");
+  expect(p.stats.grumblecrag.feats).toBe(1);
+  expect(p.titles).toContain("Avalanche");
+  await db.query("select public.arena_equip_raid_slot('victory','rockslide-flex')");
+  expect((await progress()).loadout.victory).toBe("rockslide-flex");
+  await expect(
+    db.query("select public.arena_equip_raid_slot('victory','cragbound')"),
+  ).rejects.toThrow("another slot");
+});
+it("only records bosses that can be played, and keeps the rule check internal", async () => {
+  await db.exec("reset role;set role service_role");
+  await expect(
+    db.query("select public.arena_record_raid($1::jsonb)", [
+      JSON.stringify({ ...receipt(300), boss: "tidewyrm" }),
+    ]),
+  ).rejects.toThrow("Invalid raid");
+  await login();
+  await expect(
+    db.query(`select public.arena_raid_earned('${player}')`),
+  ).rejects.toThrow();
 });

@@ -1,5 +1,5 @@
 import { RaidArena } from "./raid.js";
-import { RAID_ATTACKS, RAID_PINGS, RAID_COSMETICS, raidLookOf, raidWeekly, type RaidProgress, type RaidReceipt } from "../../../packages/shared/src/raid.js";
+import { RAID_ATTACKS, RAID_PINGS, RAID_COSMETICS, raidLookOf, raidDay, raidWeek, RAID_BOSSES, RAID_BOSS_ORDER, type RaidBossId, type RaidProgress, type RaidReceipt } from "../../../packages/shared/src/raid.js";
 import express from "express";
 import { createServer } from "node:http";
 import { randomBytes, randomInt, randomUUID } from "node:crypto";
@@ -32,7 +32,14 @@ const botMatchSchema = identitySchema
   .extend({ character: characterSchema, difficulty: z.enum(BOT_DIFFICULTIES) })
   .strict();
 const createSchema = identitySchema
-  .extend({ mode: z.enum(["duel", "teams", "ffa", "raid"]).optional() })
+  .extend({
+    mode: z.enum(["duel", "teams", "ffa", "raid"]).optional(),
+    // Only bosses that are built can be raided.
+    boss: z
+      .enum(RAID_BOSS_ORDER as [RaidBossId, ...RaidBossId[]])
+      .refine((id: RaidBossId) => RAID_BOSSES[id].playable)
+      .optional(),
+  })
   .strict();
 const teamSchema = z
   .object({ team: z.union([z.literal(0), z.literal(1)]) })
@@ -324,7 +331,7 @@ export function createArenaServer(
       const runId=arena.raid.resultId, r=arena.raid;
       const owners=fighterAccounts.get(arena);
       const players=arena.heroes().map(p=>{const c=r.contributions?.[p.id];return {accountId:owners?.get(p.id)??'',character:p.character,damage:Math.round(c?.damage??0),revives:c?.revives??0,pillars:c?.pillars??0,downs:c?.downs??0};}).filter(p=>p.accountId);
-      const receipt:RaidReceipt={id:runId,boss:'grumblecrag',peril:r.peril,trait:r.trait,gilded:r.gilded,weekly:r.weekly,week:r.week,seed:r.seed,partySize:r.partySize,seconds:Math.max(0.001,Math.round(r.elapsed*1000)/1000),downs:r.downs,revives:r.revives,result:r.result??undefined,phaseReached:r.phase,downCauses:{...arena.downCauses},players};
+      const receipt:RaidReceipt={id:runId,boss:r.boss,peril:r.peril,trait:r.trait,gilded:r.gilded,weekly:false,week:raidWeek(new Date(`${r.day}T12:00:00Z`)),daily:r.daily,day:r.day,feat:arena.feat(),seed:r.seed,partySize:r.partySize,seconds:Math.max(0.001,Math.round(r.elapsed*1000)/1000),downs:r.downs,revives:r.revives,result:r.result??undefined,phaseReached:r.phase,downCauses:{...arena.downCauses},players};
       r.rewardStatus='saving';
       void (accounts.recordRaid ? accounts.recordRaid(receipt) : Promise.reject(new Error('Raid rewards need server storage configuration.'))).then(()=>{
         if(arena.raid.resultId!==runId)return;
@@ -593,7 +600,7 @@ export function createArenaServer(
           () => chars[randomInt(chars.length)],
         ).join("");
       } while (rooms.has(code));
-      const arena = result.data.mode === "raid" ? new RaidArena(code) : new Arena(code, result.data.mode ?? "duel");
+      const arena = result.data.mode === "raid" ? new RaidArena(code, result.data.boss) : new Arena(code, result.data.mode ?? "duel");
       arena.rotateArenas = true;
       rooms.set(code, arena);
       attach(arena, result.data.name, cb);
@@ -829,17 +836,24 @@ export function createArenaServer(
       if(!requirePlayer(cb)||!allowed(10))return;
       const s=getSession(socket.id),a=s&&rooms.get(s.code);
       if(!(a instanceof RaidArena)||a.phase!=='lobby'||a.players[0]?.id!==s?.id)return fail(cb,'Only the raid host can change the challenge in the lobby.');
-      const result=z.object({peril:z.number().int().min(1).max(3),weekly:z.boolean()}).strict().safeParse(data);
+      const result=z.object({peril:z.number().int().min(1).max(3),daily:z.boolean()}).strict().safeParse(data);
       if(!result.success)return fail(cb,'Choose a valid raid challenge.');
-      let highest=0;
-      if(result.data.peril>1&&!result.data.weekly){
-        try { const progress=await accounts.rpc(socket.data.accessToken,'arena_raid_progress',{} ) as RaidProgress;highest=progress.highestPeril; }
+      const boss=a.raid.boss,today=raidDay();
+      if(result.data.daily&&today.boss!==boss)return fail(cb,`Today's raid is ${RAID_BOSSES[today.boss].name}.`);
+      let highest=0,unlocked=boss==='grumblecrag';
+      if((result.data.peril>1&&!result.data.daily)||!unlocked){
+        try {
+          const progress=await accounts.rpc(socket.data.accessToken,'arena_raid_progress',{} ) as RaidProgress;
+          highest=progress.bosses?.[boss]?.highestPeril??(boss==='grumblecrag'?progress.highestPeril:0);
+          unlocked||=(progress.bosses?.grumblecrag?.clears??progress.clears)>0;
+        }
         catch { return fail(cb,'Raid progression is unavailable. Peril 1 is always open.'); }
       }
       // Recheck state after the asynchronous account lookup.
       if(a.phase!=='lobby'||getSession(socket.id)?.id!==s!.id)return fail(cb,'The room changed while checking this challenge.');
-      if(!result.data.weekly&&result.data.peril>highest+1)return fail(cb,'Clear the previous Peril first.');
-      a.configure(result.data.peril,result.data.weekly);for(const p of a.players)p.ready=false;reply(cb,{ok:true});broadcast(a);
+      if(!unlocked)return fail(cb,'Clear Grumblecrag first to unlock this boss.');
+      if(!result.data.daily&&result.data.peril>highest+1)return fail(cb,'Clear the previous Peril first.');
+      a.configure(result.data.peril,result.data.daily);for(const p of a.players)p.ready=false;reply(cb,{ok:true});broadcast(a);
     });
     socket.on('raid-ping',(data:unknown,cb:unknown)=>
       withRoom(cb,(a,id)=>{

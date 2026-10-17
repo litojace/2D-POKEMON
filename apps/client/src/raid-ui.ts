@@ -22,8 +22,9 @@ import {
   RAID_PINGS,
   RAID_RITES,
   RAID_TRAITS,
+  RAID_BOSSES,
+  raidDay,
   raidLookOf,
-  raidWeekly,
   type RaidAttack,
   type RaidCosmetic,
   type RaidLoadout,
@@ -81,13 +82,13 @@ export function raidLobby(
     );
   const ready = party.filter((p) => p.ready).length;
   return `<div class="raid-lobby">
-    <div class="raid-lobby-banner"><div><span class="eyebrow">CO-OP RAID · 1–4 PLAYERS</span><h2>Grumblecrag</h2><p>The living mountain</p></div><svg viewBox="-65 -65 130 115" aria-hidden="true">${raidGuideBoss()}</svg></div>
+    <div class="raid-lobby-banner"><div><span class="eyebrow">CO-OP RAID · 1–4 PLAYERS</span><h2>${RAID_BOSSES[r.boss].name}</h2><p>${RAID_BOSSES[r.boss].epithet}</p></div><svg viewBox="-65 -65 130 115" aria-hidden="true">${raidGuideBoss()}</svg></div>
     <div class="raid-invite"><div><span>INVITE YOUR PARTY</span><b>${escape(state.code)}</b></div><button type="button" id="raid-copy-code" class="secondary" aria-label="Copy raid room code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V3H3v13h5"/></svg><span>Copy code</span></button></div>
     <section class="raid-party-section" aria-label="Raid party"><div class="raid-section-heading"><h3>Your party</h3><span>${ready}/${party.length} ready</span></div><div class="raid-party-list">${party.map((p) => `<div class="raid-party-member" data-raid-player="${escape(p.id)}"><span class="raid-party-avatar" data-raid-cosmetic="${raidLookList(p.raidLook)}">${fighterAvatar(p.character, "raid-lobby-" + p.id)}</span><div class="raid-party-identity"><b>${escape(p.name)}</b><span><span class="raid-player-character">${CHARACTERS[p.character].name}</span>${p.id === state.players[0]?.id ? " · Host" : ""}</span></div><span class="raid-ready-badge ${p.ready ? "is-ready" : ""}">${p.ready ? "Ready" : "Choosing"}</span></div>`).join("")}<div class="raid-open-slots">${Array.from({ length: Math.max(0, 4 - party.length) }, () => '<div class="raid-party-empty"><span aria-hidden="true">+</span>Open slot</div>').join("")}</div></div></section>
-    <section class="raid-challenge" aria-label="Raid challenge"><div class="raid-section-heading"><h3>Choose your challenge</h3><span>${host ? "HOST CONTROLS" : "HOST SELECTS"}</span></div>${raidDifficulty(r.peril, !host || r.weekly)}<label class="raid-weekly-option"><input id="raid-weekly" type="checkbox" ${r.weekly ? "checked" : ""} ${host ? "" : "disabled"}><span><b>Raid of the Week</b><small>Shared Peril 2 challenge · weekly leaderboard</small></span></label><p class="raid-unlock-note">Clear a Peril to unlock the next difficulty.</p></section>
-    <div class="raid-lobby-rules"><span><svg class="raid-rule-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v10m-5-5h10"/></svg><span>${party.length === 1 ? "One solo self-revive" : "Stand near allies to revive"}</span></span><span><svg class="raid-rule-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 3 8 4v6c0 5-8 8-8 8s-8-3-8-8V7Z"/><path d="m8 12 3 3 5-6"/></svg><span>Separate from PvP rating</span></span></div>
+    <section class="raid-challenge" aria-label="Raid challenge"><div class="raid-section-heading"><h3>Choose your challenge</h3><span>${host ? "HOST CONTROLS" : "HOST SELECTS"}</span></div>${raidDifficulty(r.peril, !host || r.daily)}${raidDay().boss === r.boss ? `<label class="raid-weekly-option"><input id="raid-daily-toggle" type="checkbox" ${r.daily ? "checked" : ""} ${host ? "" : "disabled"}><span><b>Raid of the Day</b><small>Today's shared Peril 2 challenge · daily board</small></span></label>` : ""}<p class="raid-unlock-note">Clear a Peril to unlock the next difficulty.</p></section>
+    <div class="raid-lobby-rules"><span><svg class="raid-rule-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v10m-5-5h10"/></svg><span>${party.length === 1 ? (r.peril >= 3 ? "Peril 3 solo: no self-revive" : "One solo self-revive") : "Stand near allies to revive"}</span></span><span><svg class="raid-rule-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 3 8 4v6c0 5-8 8-8 8s-8-3-8-8V7Z"/><path d="m8 12 3 3 5-6"/></svg><span>Separate from PvP rating</span></span></div>
     ${practicePicker(host)}
-    <div class="raid-lobby-actions"><button class="primary" id="ready"><span class="ready-label">${buttonIcon(me.ready ? "cancel" : "battle")}${me.ready ? "Cancel ready" : "Ready for the raid"}</span><span aria-hidden="true">${me.ready ? "" : "→"}</span></button><div><button class="secondary raid-icon-button" id="raid-bestiary">${menuIcon("bestiary")}<span>Bestiary & rewards</span></button><button class="quiet leave-button" id="leave">${iconLabel("leave", "Leave room")}</button></div></div>
+    <div class="raid-lobby-actions"><button class="primary" id="ready"><span class="ready-label">${buttonIcon(me.ready ? "cancel" : "battle")}${me.ready ? "Cancel ready" : "Ready for the raid"}</span><span aria-hidden="true">${me.ready ? "" : "→"}</span></button><div><button class="secondary raid-icon-button" id="raid-bestiary">${menuIcon("bestiary")}<span>Raid Hub & rewards</span></button><button class="quiet leave-button" id="leave">${iconLabel("leave", "Leave room")}</button></div></div>
   </div>`;
 }
 const SLOT_NAMES: Record<RaidSlot, string> = {
@@ -95,6 +96,7 @@ const SLOT_NAMES: Record<RaidSlot, string> = {
   aura: "Aura",
   entrance: "Entrance",
   frame: "Portrait frame",
+  victory: "Victory",
 };
 /** Appearance choices, one row of options per slot. Cosmetic only. */
 export function raidCosmeticOptions(p: RaidProgress, character: CharacterId) {
@@ -108,45 +110,25 @@ export function raidCosmeticOptions(p: RaidProgress, character: CharacterId) {
         const owned = id === null || p.cosmetics.includes(id);
         const active = (look[slot] ?? null) === id;
         const info = id ? RAID_COSMETICS[id] : null;
-        const name = info?.name ?? (slot === "skin" ? "Original look" : "None");
+        const name = info?.name ?? (slot === "skin" ? "Original look" : slot === "victory" ? "Champion's own" : "None");
         const detail = info
           ? owned
             ? info.description
             : `Unlock: ${info.goal}`
           : slot === "skin"
             ? "Your champion's original colors"
-            : `No ${SLOT_NAMES[slot].toLowerCase()}`;
+            : slot === "victory"
+              ? "Your champion's own celebration"
+              : `No ${SLOT_NAMES[slot].toLowerCase()}`;
         return `<button class="secondary raid-cosmetic-option${active ? " is-equipped" : ""}" data-raid-slot="${slot}" data-raid-item="${id ?? ""}" data-raid-cosmetic="${id ?? ""}" ${!owned || active ? "disabled" : ""}><span class="raid-cosmetic-preview" data-cosmetic="${id ?? ""}" aria-hidden="true">${fighterAvatar(character, `cosmetic-${slot}-${id ?? "none"}`)}</span><span><b>${name}</b><small>${detail}</small></span><span class="raid-cosmetic-state">${active ? "✓ Equipped" : owned ? (id === null ? "Clear" : "Equip") : "Locked"}</span></button>`;
       };
       return `<div class="raid-slot"><h4>${SLOT_NAMES[slot]}</h4>${[null, ...items].map(option).join("")}</div>`;
     })
     .join("");
 }
-export function raidBestiary(p: RaidProgress, character: CharacterId = "voltkit") {
-  return `<div class="eyebrow">BOSS BESTIARY</div><h2>Grumblecrag</h2><div class="raid-bestiary-art" aria-hidden="true"><svg viewBox="0 0 300 220" width="240" height="176"><ellipse cx="150" cy="193" rx="111" ry="21" fill="#070e1e" opacity=".5"/><g stroke="#202e43" stroke-width="4" stroke-linejoin="round"><path d="m81 176-16 19 14 12 48-2 4-25m88-4 16 19-14 12-48-2-4-25" fill="#52657b"/><path d="m76 67 25-29 73-6 49 37-3 88-39 35-73-7-35-43Z" fill="#52657b"/><path d="m76 67 25-29 73-6 49 37-57 10-63-1Z" fill="#8a9eb1"/><path d="m96 92 30-12 57 3 23 32-20 58-39 13-44-23Z" fill="#202e43"/><path d="m19 121 14-32 29-3 25 22-6 63-32 13-29-22Zm199-13 23-25 32 7 13 32-3 43-30 17-33-17Z" fill="#52657b"/><path d="m19 121 14-32 29-3 25 22-31 5Zm199-13 23-25 32 7 13 32-33-8Z" fill="#8a9eb1"/><path d="m52 76 2-38 19-27 17 53-10 20Zm148-13 16-58 23 30-2 44Zm35 5 16-33 13 35-11 18Z" fill="#ffce75"/><path d="m54 38 19-27-1 57-20 8Zm162-33 0 56-16 2Z" fill="#b6c6d1"/><path d="m103 61 24-19 43 0 28 23-9 39-45 9-40-17Z" fill="#202e43"/><path d="m103 61 24-19 43 0 28 23-48-6-12 13Z" fill="#8a9eb1"/><path d="m117 77 20 6-1 7-19-3Zm43 6 21-7-1 10-20 4Z" fill="#ffce75" stroke="none"/><path d="m121 103 23 7 31-8-13 20-26-1Z" fill="#52657b"/><path d="m149 121 24 18-4 25-21 17-21-19-2-26Z" fill="#8a9eb1"/><path d="m149 128 16 15-4 17-13 13-14-16 0-17Z" fill="#ffce75"/><path d="m149 128-1 45-14-16v-17Z" fill="#fff0bc" stroke="none"/><path d="m105 120 10 13-5 15m79-31-10 17 7 12M43 131l6 13-6 16m218-32-8 16 6 12" fill="none" stroke="#ffce75" stroke-width="2"/></g></svg><b>THE LIVING MOUNTAIN</b></div><p>A guardian of the old coliseum. Its rage is its weakness: bait a charge into a pillar to crack its armor.</p><div class="fighter-stats"><span><b>${p.clears}</b>Clears</span><span><b>${p.highestPeril}</b>Highest Peril</span><span><b>${p.bestSeconds === null ? "—" : time(p.bestSeconds)}</b>Best clear</span></div><h3>Rewards</h3><div class="raid-rewards">${raidGoals(p)
-    .map(
-      (g) =>
-        `<div class="raid-goal${g.value >= g.max ? " is-complete" : ""}"><span class="raid-reward-check" aria-hidden="true">${g.value >= g.max ? "✓" : "○"}</span><span><b>${g.name}</b><small>${g.text}</small></span><progress value="${g.value}" max="${g.max}" aria-label="${g.name} progress"></progress></div>`,
-    )
-    .join(
-      "",
-    )}<p>A rare Gilded encounter grants its own title. Everything else has a guaranteed goal. Rewards change only how you look.</p></div><h3>Fighter appearance</h3><p class="raid-appearance-note">Pick a skin, aura, entrance and frame separately. They show on all your fighters in PvP and raids. Appearance only — no stat changes. Previewing ${CHARACTERS[character].name}.</p>${p.loadout ? "" : '<p class="raid-appearance-note raid-update-needed">Saving separate slots needs the latest database update: run migration 008_raid_progress.sql in Supabase (as the last file run).</p>'}<div class="raid-equip">${raidCosmeticOptions(p, character)}</div><p class="raid-appearance-status" role="status"></p><h3>Raid of the Week · ${raidWeekly().week}</h3><p>Same boss, trait, seed and Peril for everyone. Times are separated by team size.</p>${[
-    1, 2, 3, 4,
-  ]
-    .map(
-      (size) =>
-        `<details class="raid-board"><summary>${size === 1 ? "Solo" : size + " players"}</summary>${
-          p.weekly
-            .filter((row) => row.partySize === size)
-            .slice(0, 10)
-            .map(
-              (row, i) =>
-                `<p><b>#${i + 1} · ${time(row.seconds)}</b> ${row.names.map(escape).join(" + ")}</p>`,
-            )
-            .join("") || "<p>No clears in this bracket yet.</p>"
-        }</details>`,
-    )
-    .join("")}`;
+/** The appearance picker shown on a boss's Rewards tab. */
+export function raidAppearance(p: RaidProgress, character: CharacterId = "voltkit") {
+  return `<h3>Fighter appearance</h3><p class="raid-appearance-note">Pick a skin, aura, entrance, frame and victory separately. They show on all your fighters in PvP and raids. Appearance only, no stat changes. Previewing ${CHARACTERS[character].name}.</p>${p.loadout && "victory" in p.loadout ? "" : '<p class="raid-appearance-note raid-update-needed">Saving every slot needs the latest database update: run migration 009_raid_hub.sql in Supabase (as the last file run).</p>'}<div class="raid-equip">${raidCosmeticOptions(p, character)}</div><p class="raid-appearance-status" role="status"></p>`;
 }
 const resultProgress = new WeakMap<
   HTMLElement,
@@ -179,7 +161,7 @@ export function renderRaidUI(
     0,
     Math.min(100, ((boss?.hp ?? 0) / r.maxHp) * 100),
   );
-  hud.innerHTML = `<div class="raid-boss-heading"><b>${r.gilded ? "✦ GILDED " : ""}GRUMBLECRAG</b><span>PERIL ${r.peril} · PHASE ${r.phase}/3</span></div><div class="raid-boss-health" role="progressbar" aria-label="Boss health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(healthPercent)}" aria-valuetext="${Math.round(healthPercent)}% health. Rite choices open at 67% and 33% health."><i style="width:${healthPercent}%"></i>${[67, 33].map((mark, index) => `<span class="raid-health-mark${r.phase > index + 1 ? " is-passed" : ""}" style="left:${mark}%" aria-hidden="true"></span>`).join("")}</div><div class="raid-stagger"><i style="width:${r.staggerUntil > state.time ? 100 : r.stagger}%"></i><span>${r.staggerUntil > state.time ? "STAGGER · CORE EXPOSED" : "STAGGER"}</span></div><div class="raid-party-bars" data-party-size="${state.players.filter((p) => !p.raidBoss && !p.out).length}">${state.players
+  hud.innerHTML = `<div class="raid-boss-heading"><b>${r.gilded ? "✦ GILDED " : ""}${RAID_BOSSES[r.boss].name.toUpperCase()}</b>${r.daily ? '<em class="raid-daily-badge">RAID OF THE DAY</em>' : ""}<span>PERIL ${r.peril} · PHASE ${r.phase}/3</span></div><div class="raid-boss-health" role="progressbar" aria-label="Boss health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(healthPercent)}" aria-valuetext="${Math.round(healthPercent)}% health. Rite choices open at 67% and 33% health."><i style="width:${healthPercent}%"></i>${[67, 33].map((mark, index) => `<span class="raid-health-mark${r.phase > index + 1 ? " is-passed" : ""}" style="left:${mark}%" aria-hidden="true"></span>`).join("")}</div><div class="raid-stagger"><i style="width:${r.staggerUntil > state.time ? 100 : r.stagger}%"></i><span>${r.staggerUntil > state.time ? "STAGGER · CORE EXPOSED" : "STAGGER"}</span></div><div class="raid-party-bars" data-party-size="${state.players.filter((p) => !p.raidBoss && !p.out).length}">${state.players
     .filter((p) => !p.raidBoss)
     .map(
       (p) =>
@@ -236,8 +218,8 @@ export function renderRaidUI(
   let title = "",
     body = "";
   if (state.phase === "briefing") {
-    title = `${RAID_TRAITS[r.trait].name} Grumblecrag`;
-    body = `${chapterPath(r.phase)}<p>${escape(RAID_TRAITS[r.trait].text)}</p><div class="raid-instructions"><span>${raidGuideScene("charge", me.character)}<b>Bait the charge</b><small>Lure the boss into a stone pillar.</small></span><span>${raidGuideScene("core", me.character)}<b>Strike the core</b><small>Armor breaks. Unleash your ultimate.</small></span><span>${raidGuideScene("revive", me.character)}<b>Revive together</b><small>Stand beside a fallen ally to revive.</small></span></div>${perkLines(state, me.id)}${r.partySize > 1 ? `<p class="raid-signals">Team signals: ${(Object.keys(RAID_PINGS) as RaidPingKind[]).map((k) => `<b>${RAID_PINGS[k].key}</b> ${RAID_PINGS[k].label}`).join(" · ")} (or the buttons on the left)</p>` : ""}<p>Three phases · one shared fight · ${r.partySize === 1 ? "one solo self-revive" : "no required healer"} · no PvP rating changes.</p><button class="primary" id="raid-instructions" ${state.instructionsReady.includes(me.id) ? "disabled" : ""}>${state.instructionsReady.includes(me.id) ? "Waiting for the team…" : iconLabel("battle", "Let’s raid →")}</button>`;
+    title = `${RAID_TRAITS[r.trait].name} ${RAID_BOSSES[r.boss].name}`;
+    body = `${chapterPath(r.phase)}<p>${escape(RAID_TRAITS[r.trait].text)}</p><div class="raid-instructions"><span>${raidGuideScene("charge", me.character)}<b>Bait the charge</b><small>Lure the boss into a stone pillar.</small></span><span>${raidGuideScene("core", me.character)}<b>Strike the core</b><small>Armor breaks. Unleash your ultimate.</small></span><span>${raidGuideScene("revive", me.character)}<b>Revive together</b><small>Stand beside a fallen ally to revive.</small></span></div>${perkLines(state, me.id)}${r.partySize > 1 ? `<p class="raid-signals">Team signals: ${(Object.keys(RAID_PINGS) as RaidPingKind[]).map((k) => `<b>${RAID_PINGS[k].key}</b> ${RAID_PINGS[k].label}`).join(" · ")} (or the buttons on the left)</p>` : ""}<p>Three phases · one shared fight · ${r.partySize === 1 ? (r.peril >= 3 ? "no self-revive on Peril 3" : "one solo self-revive") : "no required healer"} · no PvP rating changes.</p><button class="primary" id="raid-instructions" ${state.instructionsReady.includes(me.id) ? "disabled" : ""}>${state.instructionsReady.includes(me.id) ? "Waiting for the team…" : iconLabel("battle", "Let’s raid →")}</button>`;
   } else if (state.phase === "intermission") {
     title =
       r.phase === 1
@@ -253,7 +235,7 @@ export function renderRaidUI(
   } else if (state.phase === "finished") {
     title =
       r.result === "victory"
-        ? "Grumblecrag defeated!"
+        ? `${RAID_BOSSES[r.boss].name} defeated!`
         : "The mountain still stands";
     const heroes = state.players.filter((p) => !p.raidBoss && !p.out);
     const readyCount = heroes.filter((p) => p.ready).length;
@@ -261,7 +243,7 @@ export function renderRaidUI(
       r.result === "victory"
         ? `<p class="raid-save-state" role="status">${r.rewardStatus === "saved" ? "✓ Rewards saved to your account." : r.rewardStatus === "unavailable" ? "This clear could not be saved. Your reward progress has not been updated." : "Saving your rewards…"}</p>${r.rewardStatus === "saved" ? raidRewardProgress(loadProgress ? progress?.progress : null) : ""}<p class="raid-next-challenge">${r.peril < 3 ? `Next challenge: Peril ${r.peril + 1} · ${r.peril === 1 ? "Falling debris" : "Closing arena"}` : "Next challenge: a no-downs clear or Raid of the Week."}</p>`
         : `${r.rewardStatus === "saved" ? '<p class="raid-save-state" role="status">✓ Progress saved: your pillars and revives count towards titles.</p>' : ""}<p class="raid-retry-tip">${defeatTip(state)}</p>`
-    }<div class="raid-retry-status">${heroes.length === 1 ? "Same champion and challenge · choose fresh rites" : `${readyCount}/${heroes.length} ready · everyone confirms to run again`}</div><div class="result-actions raid-result-actions"><button class="primary" id="raid-retry" ${me.ready || !heroes.every((p) => p.connected) ? "disabled" : ""}>${me.ready ? "Waiting for the team…" : iconLabel("again", "Run again →")}</button><button class="secondary" id="raid-lobby">${iconLabel("swap", "Change champion / challenge")}</button><button class="secondary raid-icon-button" id="raid-rewards">${menuIcon("bestiary")}<span>Bestiary & rewards</span></button><button class="quiet" id="raid-exit">${iconLabel("home", "Return to menu")}</button></div>${!heroes.every((p) => p.connected) ? '<p class="raid-retry-tip">A teammate is disconnected. Return to the lobby to refill the party.</p>' : ""}</div></div>`;
+    }<div class="raid-retry-status">${heroes.length === 1 ? "Same champion and challenge · choose fresh rites" : `${readyCount}/${heroes.length} ready · everyone confirms to run again`}</div><div class="result-actions raid-result-actions"><button class="primary" id="raid-retry" ${me.ready || !heroes.every((p) => p.connected) ? "disabled" : ""}>${me.ready ? "Waiting for the team…" : iconLabel("again", "Run again →")}</button><button class="secondary" id="raid-lobby">${iconLabel("swap", "Change champion / challenge")}</button><button class="secondary raid-icon-button" id="raid-rewards">${menuIcon("bestiary")}<span>Raid Hub & rewards</span></button><button class="quiet" id="raid-exit">${iconLabel("home", "Return to menu")}</button></div>${!heroes.every((p) => p.connected) ? '<p class="raid-retry-tip">A teammate is disconnected. Return to the lobby to refill the party.</p>' : ""}</div></div>`;
   }
   const previousCard = overlay.querySelector<HTMLElement>(".raid-overlay");
   const scrollTop =

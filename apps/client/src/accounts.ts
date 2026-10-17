@@ -1,8 +1,17 @@
-import { raidBestiary, raidCosmeticOptions } from "./raid-ui";
+import { raidAppearance, raidCosmeticOptions } from "./raid-ui";
+import {
+  raidBossPageMarkup,
+  raidCountdown,
+  raidHubMarkup,
+  type RaidHubTab,
+} from "./raid-hub";
 import { iconLabel } from "./menu-icons";
 import {
   RAID_COSMETICS,
+  featuredOn,
+  pacificDate,
   raidLookOf,
+  type RaidBossId,
   type RaidCosmetic,
   type RaidLoadout,
   type RaidProgress,
@@ -85,6 +94,11 @@ type Hooks = {
   onToken: (token: string) => void;
   beforeSignOut: () => Promise<void>;
   selectedCharacter?: () => CharacterId;
+  /** Create a raid room for a boss (today's challenge, or straight in solo). */
+  startRaid?: (
+    boss: RaidBossId,
+    options: { daily?: boolean; solo?: boolean },
+  ) => void;
 };
 export class AccountUI {
   account: Account | null = null;
@@ -379,85 +393,162 @@ export class AccountUI {
       }
     };
   }
-  async showRaids() {
-    if (!this.ensurePlayer()) return;
-    try {
-      const progress = (await this.api("/api/raids")) as RaidProgress;
-      this.raidLook = raidLookOf(progress);
-      this.hooks.onChange();
-      const character = this.hooks.selectedCharacter?.() ?? "voltkit";
-      this.hooks.openDialog(raidBestiary(progress, character));
-      const options = document.querySelector<HTMLElement>(".raid-equip")!;
-      const status = document.querySelector<HTMLElement>(
-        ".raid-appearance-status",
-      )!;
-      const bind = () => {
-        for (const button of Array.from(
-          options.querySelectorAll<HTMLButtonElement>("button[data-raid-slot]"),
-        ))
-          button.onclick = async () => {
-            const slot = button.dataset.raidSlot as RaidSlot;
-            const item = (button.dataset.raidItem || null) as RaidCosmetic | null;
-            const buttons = Array.from(
-              options.querySelectorAll<HTMLButtonElement>("button"),
-            );
-            const disabled = buttons.map((b) => b.disabled);
-            buttons.forEach((b) => {
-              b.disabled = true;
-            });
-            button.setAttribute("aria-busy", "true");
-            status.textContent = "Saving appearance…";
-            try {
-              const saved = (await this.api("/api/raids/equip", {
-                slot,
-                item,
-              })) as { progress?: RaidProgress };
-              // Show what the server actually saved, never a guess.
-              if (saved.progress) Object.assign(progress, saved.progress);
-              else progress.loadout = { ...raidLookOf(progress), [slot]: item };
-              const look = raidLookOf(progress);
-              this.raidLook = look;
-              // The save worked: a hiccup redrawing the page behind the
-              // dialog must not be reported as a failed save.
-              try {
-                this.hooks.onChange();
-              } catch (error) {
-                console.error(error);
-              }
-              if (!options.isConnected) return;
-              // Update only the choices: keep the dialog and its scroll position.
-              options.innerHTML = raidCosmeticOptions(progress, character);
-              status.textContent = item
-                ? `${RAID_COSMETICS[item].name} equipped for all fighters.`
-                : `${slot[0].toUpperCase() + slot.slice(1)} slot cleared.`;
-              bind();
-            } catch (error) {
-              buttons.forEach((b, i) => {
-                b.disabled = disabled[i];
-              });
-              button.removeAttribute("aria-busy");
-              status.textContent =
-                error instanceof Error
-                  ? error.message
-                  : "Appearance could not be saved. Try again.";
-            }
-          };
-      };
-      bind();
-    } catch (error) {
+  /** The Raid Hub: every boss, today's raid, rewards and appearance. */
+  async showRaidHub(boss?: RaidBossId, tab: RaidHubTab = "overview") {
+    let progress: RaidProgress | null = null;
+    let problem = "";
+    if (this.account)
+      try {
+        progress = (await this.api("/api/raids")) as RaidProgress;
+        this.raidLook = raidLookOf(progress);
+        this.hooks.onChange();
+      } catch (error) {
+        problem =
+          error instanceof Error ? error.message : "Raid records are not available yet.";
+      }
+    const character = this.hooks.selectedCharacter?.() ?? "voltkit";
+    const view: { boss?: RaidBossId; tab: RaidHubTab } = { boss, tab };
+    const dialogEl = () => document.getElementById("dialog") as HTMLDialogElement | null;
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const render = (top = false) => {
+      clearInterval(timer);
       this.hooks.openDialog(
-        `<h2>Boss Bestiary</h2><p>${escape(error instanceof Error ? error.message : "Raid records are not available yet.")}</p><p>Raids are playable at Peril 1. Persistent rewards require migrations 007 and 008 and server storage configuration.</p>`,
+        (view.boss
+          ? raidBossPageMarkup(
+              view.boss,
+              view.tab,
+              progress,
+              progress ? raidAppearance(progress, character) : "",
+            )
+          : raidHubMarkup(progress)) +
+          (problem
+            ? `<p class="raid-appearance-note raid-update-needed">${escape(problem)} Raids are still playable at Peril 1; saved rewards need the database update (migrations 007–009) and server storage configuration.</p>`
+            : ""),
       );
-    }
+      if (top) dialogEl()?.scrollTo?.(0, 0);
+      wire();
+    };
+    const wire = () => {
+      const root = dialogEl();
+      if (!root) return;
+      for (const b of Array.from(root.querySelectorAll<HTMLButtonElement>("[data-raid-boss]")))
+        b.onclick = () => {
+          view.boss = b.dataset.raidBoss as RaidBossId;
+          view.tab = "overview";
+          render(true);
+        };
+      const back = root.querySelector<HTMLButtonElement>("#raid-hub-back");
+      if (back)
+        back.onclick = () => {
+          view.boss = undefined;
+          render(true);
+        };
+      for (const b of Array.from(root.querySelectorAll<HTMLButtonElement>("[data-raid-tab]")))
+        b.onclick = () => {
+          view.tab = b.dataset.raidTab as RaidHubTab;
+          render();
+          root.querySelector<HTMLButtonElement>(`[data-raid-tab="${view.tab}"]`)?.focus();
+        };
+      const daily = root.querySelector<HTMLButtonElement>("#raid-daily");
+      if (daily)
+        daily.onclick = () =>
+          this.hooks.startRaid?.(featuredOn(progress?.today?.day ?? pacificDate()).boss, {
+            daily: true,
+          });
+      for (const b of Array.from(root.querySelectorAll<HTMLButtonElement>("[data-raid-start]")))
+        b.onclick = () =>
+          view.boss &&
+          this.hooks.startRaid?.(view.boss, { solo: b.dataset.raidStart === "solo" });
+      const join = root.querySelector<HTMLButtonElement>("#raid-join");
+      const code = root.querySelector<HTMLInputElement>("#raid-join-code");
+      if (join && code) {
+        const go = () => {
+          const value = code.value.trim().toUpperCase();
+          if (!value) return code.focus();
+          dialogEl()?.close();
+          this.hooks.joinRoom?.(value);
+        };
+        join.onclick = go;
+        code.onkeydown = (event) => {
+          if (event.key === "Enter") go();
+        };
+      }
+      // "Next boss in …": ticks while the Hub is open, then refreshes.
+      const clock = root.querySelector<HTMLElement>("[data-raid-next]");
+      if (clock)
+        timer = setInterval(() => {
+          if (!clock.isConnected) return clearInterval(timer);
+          const left = Number(clock.dataset.raidNext) - Date.now();
+          if (left <= 0) {
+            clearInterval(timer);
+            void this.showRaidHub(view.boss, view.tab);
+            return;
+          }
+          clock.textContent = raidCountdown(left);
+        }, 1000);
+      const options = root.querySelector<HTMLElement>(".raid-equip");
+      if (options && progress) this.bindAppearance(options, progress, character);
+    };
+    render();
+  }
+  /** Equip buttons on a boss's Rewards tab (saved on the server, then shown). */
+  private bindAppearance(options: HTMLElement, progress: RaidProgress, character: CharacterId) {
+    const status = document.querySelector<HTMLElement>(".raid-appearance-status");
+    for (const button of Array.from(
+      options.querySelectorAll<HTMLButtonElement>("button[data-raid-slot]"),
+    ))
+      button.onclick = async () => {
+        const slot = button.dataset.raidSlot as RaidSlot;
+        const item = (button.dataset.raidItem || null) as RaidCosmetic | null;
+        const buttons = Array.from(options.querySelectorAll<HTMLButtonElement>("button"));
+        const disabled = buttons.map((b) => b.disabled);
+        buttons.forEach((b) => {
+          b.disabled = true;
+        });
+        button.setAttribute("aria-busy", "true");
+        if (status) status.textContent = "Saving appearance…";
+        try {
+          const saved = (await this.api("/api/raids/equip", { slot, item })) as {
+            progress?: RaidProgress;
+          };
+          // Show what the server actually saved, never a guess.
+          if (saved.progress) Object.assign(progress, saved.progress);
+          else progress.loadout = { ...raidLookOf(progress), [slot]: item };
+          this.raidLook = raidLookOf(progress);
+          // The save worked: a hiccup redrawing the page behind the dialog
+          // must not be reported as a failed save.
+          try {
+            this.hooks.onChange();
+          } catch (error) {
+            console.error(error);
+          }
+          if (!options.isConnected) return;
+          // Update only the choices: keep the dialog and its scroll position.
+          options.innerHTML = raidCosmeticOptions(progress, character);
+          if (status)
+            status.textContent = item
+              ? `${RAID_COSMETICS[item].name} equipped for all fighters.`
+              : `${slot[0].toUpperCase() + slot.slice(1)} slot cleared.`;
+          this.bindAppearance(options, progress, character);
+        } catch (error) {
+          buttons.forEach((b, i) => {
+            b.disabled = disabled[i];
+          });
+          button.removeAttribute("aria-busy");
+          if (status)
+            status.textContent =
+              error instanceof Error ? error.message : "Appearance could not be saved. Try again.";
+        }
+      };
   }
   async showProfile() {
     if (!this.account) return;
     const account = this.account;
     this.hooks.openDialog(
-      `<div class="eyebrow">YOUR PLAYER PROFILE</div><h2>${escape(account.displayName)}</h2><p>${account.isAdmin ? "Administrator" : account.guest ? "Guest" : "Player"}${this.session?.user.email ? ` · ${escape(this.session.user.email)}` : ""}</p>${account.guest ? `<form id="profile-save" class="account-form save-account"><p><b>Keep your progress.</b> Guest accounts live only on this device. Add your email to make this a full account: your records, titles and name come with you.</p><label>Email<input name="email" type="email" required autocomplete="email"></label><button class="primary">${iconLabel("save", "Save my account")}</button><p id="save-message" role="status"></p></form>` : ""}<form id="profile-title" class="account-form">${titlePickerMarkup(account.ownedTitles as Title[], account.title)}<button class="primary">${iconLabel("save", "Save title")}</button><p id="profile-message" role="status"></p></form><button class="secondary full" id="profile-leaderboard">${iconLabel("leaderboard", "Season standings →")}</button><section id="profile-raid"><button class="secondary full" id="profile-raids">${iconLabel("bestiary", "Boss Bestiary & raid rewards →")}</button><p id="profile-raid-stats" class="muted"></p></section><section id="profile-progress" class="progress"><p class="muted">Loading your progress…</p></section>`,
+      `<div class="eyebrow">YOUR PLAYER PROFILE</div><h2>${escape(account.displayName)}</h2><p>${account.isAdmin ? "Administrator" : account.guest ? "Guest" : "Player"}${this.session?.user.email ? ` · ${escape(this.session.user.email)}` : ""}</p>${account.guest ? `<form id="profile-save" class="account-form save-account"><p><b>Keep your progress.</b> Guest accounts live only on this device. Add your email to make this a full account: your records, titles and name come with you.</p><label>Email<input name="email" type="email" required autocomplete="email"></label><button class="primary">${iconLabel("save", "Save my account")}</button><p id="save-message" role="status"></p></form>` : ""}<form id="profile-title" class="account-form">${titlePickerMarkup(account.ownedTitles as Title[], account.title)}<button class="primary">${iconLabel("save", "Save title")}</button><p id="profile-message" role="status"></p></form><button class="secondary full" id="profile-leaderboard">${iconLabel("leaderboard", "Season standings →")}</button><section id="profile-raid"><button class="secondary full" id="profile-raids">${iconLabel("bestiary", "Raid Hub & rewards →")}</button><p id="profile-raid-stats" class="muted"></p></section><section id="profile-progress" class="progress"><p class="muted">Loading your progress…</p></section>`,
     );
     element("profile-leaderboard").onclick = () => void this.showLeaderboard();
-    element("profile-raids").onclick=()=>void this.showRaids();
+    element("profile-raids").onclick=()=>void this.showRaidHub();
     void this.api('/api/raids').then(value=>{const p=value as RaidProgress,box=element('profile-raid-stats');if(box)box.textContent=`Boss raids: ${p.clears} clears · highest Peril ${p.highestPeril}`;}).catch(()=>{});
     const save = element<HTMLFormElement>("profile-save");
     if (save)

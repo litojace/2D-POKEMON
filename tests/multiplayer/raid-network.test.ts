@@ -48,15 +48,20 @@ const setup = async () => {
 it("starts a regular-player solo raid, enforces Peril unlocks, and records a verified victory once outside Elo", async () => {
   const { connect, recordRaid } = await setup(),
     host = await connect();
-  const created = await emit(host, "create", { name: "Raider", mode: "raid" });
+  // Only bosses that are built can be raided.
+  expect(
+    (await emit(host, "create", { name: "Raider", mode: "raid", boss: "tidewyrm" })).ok,
+  ).toBe(false);
+  const created = await emit(host, "create", { name: "Raider", mode: "raid", boss: "grumblecrag" });
   expect(created.ok).toBe(true);
   const a = server!.rooms.get(created.code!) as RaidArena;
   expect(a).toBeInstanceOf(RaidArena);
+  expect(a.raid.boss).toBe("grumblecrag");
   expect(
-    (await emit(host, "raid-config", { peril: 3, weekly: false })).ok,
+    (await emit(host, "raid-config", { peril: 3, daily: false })).ok,
   ).toBe(false);
   expect(
-    (await emit(host, "raid-config", { peril: 1, weekly: false })).ok,
+    (await emit(host, "raid-config", { peril: 1, daily: false })).ok,
   ).toBe(true);
   await emit(host, "ready");
   expect(a.phase).toBe("briefing");
@@ -81,7 +86,12 @@ it("starts a regular-player solo raid, enforces Peril unlocks, and records a ver
     boss: "grumblecrag",
     partySize: 1,
     peril: 1,
+    daily: false,
+    weekly: false,
+    feat: false,
   });
+  // The day a run counts for is a real calendar date.
+  expect(recordRaid.mock.calls[0][0].day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   expect(a.matchId).toBeNull();
   expect(a.raid.rewardStatus).toBe("saved");
   await emit(host, "rematch");
@@ -103,7 +113,7 @@ it("synchronizes four teammates against the same boss and preserves disconnect r
   }
   const a = server!.rooms.get(created.code!) as RaidArena;
   expect(
-    (await emit(peers[1], "raid-config", { peril: 1, weekly: true })).ok,
+    (await emit(peers[1], "raid-config", { peril: 1, daily: true })).ok,
   ).toBe(false);
   for (const s of peers) await emit(s, "ready");
   expect(a.heroes()).toHaveLength(4);
@@ -237,5 +247,5 @@ it("only reports an equipped slot after the database really kept it", async () =
   upToDate = false;
   const stale = await equip({ slot: "skin", item: "cragbound" });
   expect(stale.status).toBe(503);
-  expect((await stale.json()).error).toContain("008_raid_progress.sql");
+  expect((await stale.json()).error).toContain("009_raid_hub.sql");
 });

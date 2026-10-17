@@ -6,7 +6,7 @@ import {
   packSnapshot,
   unpackSnapshot,
 } from "@arena/shared";
-import { raidWeekly } from "../../packages/shared/src/raid";
+import { featuredOn, raidDay } from "../../packages/shared/src/raid";
 const raid = (players = 1) => {
   const a = new RaidArena("TEST");
   for (let i = 0; i < players; i++) a.add("p" + i, "Player " + i);
@@ -162,11 +162,13 @@ it("rate limits crawling by simulation time and rejects downed attack packets", 
   expect(p.x - x).toBeLessThan(2);
   expect(p.stats.skills).toBe(0);
 });
-it("weekly seeds and traits are stable across rooms and team sizes", () => {
-  const one = raidWeekly(new Date("2026-10-14T23:00:00Z")),
-    two = raidWeekly(new Date("2026-10-18T01:00:00Z"));
+it("daily seeds and traits are stable across rooms and team sizes", () => {
+  // 10 a.m. and 11 p.m. Pacific on the same day share the challenge.
+  const one = raidDay(new Date("2026-10-17T17:00:00Z")),
+    two = raidDay(new Date("2026-10-18T06:00:00Z"));
   expect(one).toEqual(two);
-  expect(one).not.toEqual(raidWeekly(new Date("2026-10-19T01:00:00Z")));
+  expect(one).not.toEqual(raidDay(new Date("2026-10-18T08:00:00Z")));
+  expect(featuredOn("2026-10-17").seed).toBe(one.seed);
   const a = new RaidArena("AAA"),
     b = new RaidArena("BBB");
   a.add("a", "A");
@@ -176,10 +178,41 @@ it("weekly seeds and traits are stable across rooms and team sizes", () => {
   b.configure(1, true);
   a.start();
   b.start();
+  expect(a.raid.daily).toBe(true);
   expect(a.raid.seed).toBe(b.raid.seed);
+  expect(a.raid.seed).toBe(raidDay().seed);
   expect(a.raid.trait).toBe(b.raid.trait);
   expect(a.raid.peril).toBe(2);
   expect(a.raid.gilded).toBe(false);
+});
+
+it("solo raiders self-revive up to Peril 2, but not on Peril 3", () => {
+  for (const peril of [2, 3]) {
+    const a = raid();
+    a.configure(peril, false);
+    fight(a);
+    const [p] = a.heroes();
+    a.damage(p, 999, a.boss()!.id);
+    expect(a.raid.downed[p.id].self).toBe(peril < 3);
+    for (let i = 0; i < 3; i++) a.tick();
+    expect(a.raid.result).toBe(peril < 3 ? null : "defeat");
+  }
+});
+
+it("the feat needs every charge (at least three) to hit a pillar", () => {
+  const a = raid();
+  fight(a);
+  a.raid.result = "victory";
+  a.chargeBaits = 3;
+  expect(a.feat()).toBe(true);
+  a.chargeMisses = 1;
+  expect(a.feat()).toBe(false);
+  a.chargeMisses = 0;
+  a.chargeBaits = 2;
+  expect(a.feat()).toBe(false);
+  a.raid.result = "defeat";
+  a.chargeBaits = 5;
+  expect(a.feat()).toBe(false);
 });
 
 it("raid rites protect allies, share energy and heal without leaking into PvP kits", () => {
@@ -304,7 +337,7 @@ it("ends a final-phase slam combination with debris and a recovery window", () =
   expect(before - a.boss()!.hp).toBeGreaterThan(10);
 });
 
-it("varies teammates' rite offers while preserving weekly seat reproducibility", () => {
+it("varies teammates' rite offers while preserving daily seat reproducibility", () => {
   const make = (code: string) => {
     const a = new RaidArena(code);
     for (let i = 0; i < 4; i++) a.add(code + i, "Player");

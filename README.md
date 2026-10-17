@@ -108,4 +108,4 @@ Balance is provisional. Physical iPhone/Android frame-rate, install/update behav
 
 ## Boss Raid
 
-Co-op raids for 1–4 players feature Grumblecrag, three phases, breakable armor, stagger, revives, raid rites, Perils, weekly brackets and cosmetic rewards. See [Boss Raid guide and deployment setup](docs/boss-raid.md). Persistent rewards require migrations 007 and 008 and a server-only Supabase service-role key.
+Co-op raids for 1–4 players open from the Raid Hub: a roster of seven bosses (one featured each day, Grumblecrag built so far), three phases, breakable armor, stagger, revives, raid rites, Perils, a daily board and cosmetic rewards including Victory celebrations. See [Boss Raid guide and deployment setup](docs/boss-raid.md). Persistent rewards require migrations 007 and 008 and a server-only Supabase service-role key.

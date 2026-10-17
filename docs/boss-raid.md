@@ -1,6 +1,8 @@
 # Boss Raid
 
-Choose **Boss Raid · Co-op · 1–4 players**, create a room, and share its code. Every human readies up, confirms the illustrated boss introduction, and chooses a starting rite. Solo needs no AI partner and gets one automatic self-revive. Existing champion selection, custom controls, touch joystick, camera and Socket.IO reconnection remain in use.
+Choose **Boss Raid · Co-op · 1–4 players** and press **Open the Raid Hub**. The Hub shows this week's seven bosses (one featured each day), today's Raid of the Day, and a card for every boss. Open a boss to see its chapters, attacks, rewards and records, then **Create raid room** (share its code) or **Play solo now**. Only Grumblecrag is built so far; the other six are listed as coming soon (see [the roster design](raid-roster-design.md)).
+
+In a raid room Every human readies up, confirms the illustrated boss introduction, and chooses a starting rite. Solo needs no AI partner and gets one automatic self-revive on Peril 1–2 (none on Peril 3). Existing champion selection, custom controls, touch joystick, camera and Socket.IO reconnection remain in use.
 
 ## The encounter
 
@@ -20,7 +22,7 @@ Chapter one teaches charges, slams, volleys and debris. Chapter two adds the dou
 
 Contextual combat prompts shorten after the first two uses of each attack. Downed teammates have a green rescue marker and progress ring. Each chapter's objective is shown during the upgrade break. Every rite choice allows 15 seconds, and all choices confirmed ends the break early. Landscape screens show three choices side by side; the team build details can be expanded below them.
 
-Normal crowd control adds stagger rather than stun-locking the boss. The boss cannot be pushed around by ordinary knockback. Downed teammates can crawl; standing nearby revives them. Being hit interrupts the rescuer, but progress is retained. A solo run gets one self-revive; another down ends it. A wiped co-op team loses.
+Normal crowd control adds stagger rather than stun-locking the boss. The boss cannot be pushed around by ordinary knockback. Downed teammates can crawl; standing nearby revives them. Being hit interrupts the rescuer, but progress is retained. A solo run gets one self-revive on Peril 1–2; another down ends it. Solo Peril 3 has no self-revive: one down ends the run. A wiped co-op team loses.
 
 ## Replay variety
 
@@ -52,34 +54,39 @@ Some champions' skills answer Grumblecrag's attacks; the briefing lists the part
 
 ## Rewards and records
 
-Verified victories grant:
+Rewards are defined as rules (`RAID_REWARDS` in `packages/shared/src/raid.ts`, seeded identically into `arena_raid_rewards` by migration 009; a test keeps them in step). The database decides what you've earned from your saved runs. Grumblecrag's ladder:
 
-- First clear: **Cragbreaker** title.
-- Five clears: **Cragbound** colors (skin).
-- Ten clears: **Cragstone** skin — stone markings with glowing amber cracks.
-- Peril 2 clear: **Mountainborn** entrance — your fighter arrives in a burst of pebbles each round.
-- Peril 3 clear: **Mountain Conqueror** title and the **Conqueror** portrait frame.
-- Peril 3 with no downs: **Mountain aura**.
-- Gilded clear: **Gilded Cragbreaker** title.
+| Goal | Reward |
+|---|---|
+| First clear | **Cragbreaker** title |
+| 5 clears | **Cragbound** colors (skin) |
+| 10 clears | **Cragstone** skin |
+| Clear Peril 2 | **Mountainborn** entrance |
+| Clear Peril 3 | **Mountain Conqueror** title + **Conqueror** frame |
+| Peril 3, no downs | **Mountain aura** |
+| Feat: every charge in a run hits a pillar (3 or more charges) | **Rockslide Flex** victory |
+| Peril 2 solo in under 3:30 | **Avalanche** title |
+| Peril 3 solo (no self-revive) | **Lone Mountain** title |
+| Rare Gilded clear | **Gilded Cragbreaker** title |
+| 25 pillars baited (wins and losses) | **Pillar Breaker** title |
+| 20 revives helped (wins and losses) | **Mountain Guardian** title |
+| 100 clears across every boss | **Boss Hunter** title |
 
-Lifetime totals over every saved run, **wins and losses**, grant:
+Solo Peril 3 clears from before migration 009 (when a self-revive was still possible) count for Lone Mountain only if nobody went down.
 
-- 25 charges baited into pillars: **Pillar Breaker** title.
-- 20 revives helped: **Mountain Guardian** title.
-
-Skin, aura, entrance and frame are separate slots, equipped independently in the Bestiary for all fighters. Every reward is cosmetic: no stat bonuses, so experienced players never make the raid easier. The Bestiary lists every reward with its exact progress.
+Skin, aura, entrance, frame and **victory** are separate slots, equipped independently on a boss's Rewards tab in the Raid Hub, for all fighters. A Victory replaces your champion's own celebration when you win a round or a raid (Rockslide Flex: a pile of rocks rises under you and you flex on top while pebbles bounce away). Every reward is cosmetic: no stat bonuses, so experienced players never make the raid easier. The Bestiary lists every reward with its exact progress.
 
 Results show actual boss damage, revive assists, and pillar baits per player, alongside team totals, plus a role for whoever led each: Heavy Hitter, Medic and Bait Master. Everyone who contributed to a completed rescue receives revive credit; solo self-revives appear only in the team total. Damage excludes overkill and phase-gated damage. Pillars credit the marked player whose charge broke them. Contribution counters reset on retry and are not a competitive leaderboard.
 
 After the server confirms reward storage, the result screen fetches the player's saved progress and shows the next milestone. Failed storage never displays invented progress. Run again keeps the party, champions and challenge, skips the already-seen introduction, and opens fresh starting rites after everyone confirms. Changing champion or difficulty returns the party to the lobby.
 
-The Bestiary shows boss information, clears, highest Peril, best active-combat time, reward goals and cosmetic equipment. It is available from the home screen, raid lobby, result screen and player profile. Only the server's verified equipped cosmetic is sent to opponents. Cosmetic choices affect appearance, not combat stats.
+The Raid Hub boss page shows boss information, clears, highest Peril, best active-combat time, reward goals and cosmetic equipment. It is available from the home screen, raid lobby, result screen and player profile. Only the server's verified equipped cosmetic is sent to opponents. Cosmetic choices affect appearance, not combat stats.
 
-Raid of the Week is optional. Its week starts Monday at 00:00 UTC; all rooms share the same seed, trait and Peril 2 challenge. Solo, duo, trio and four-player results have separate brackets. Weekly Peril 2 is open without a prior clear. Raid wins never enter the PvP match ledger or Elo rating system.
+**Raid of the Day** is optional and replaces Raid of the Week. Each day has a featured boss: Sun Prismatail, Mon Gloomshade, Tue Emberwing, Wed Somnara, Thu Storm Twins, Fri Tidewyrm, Sat Grumblecrag. Until a boss is built, a built boss stands in on its day. The day changes at **midnight Pacific time** (daylight saving included); the server decides the day, so everyone agrees. All rooms that day share the same seed, trait and Peril 2 challenge, and solo, duo, trio and four-player clears have separate daily boards. The host ticks *Raid of the Day* in the lobby (or presses *Raid today's boss* in the Hub). If midnight passes while a party waits in the lobby, the run simply becomes a normal run. Raid wins never enter the PvP match ledger or Elo rating system.
 
 ## Required deployment setup
 
-1. Run `supabase/migrations/007_raids.sql` in Supabase after migrations 001–006, then `supabase/migrations/008_raid_progress.sql`.
+1. Run `supabase/migrations/007_raids.sql` in Supabase after migrations 001–006, then `supabase/migrations/008_raid_progress.sql`, then `supabase/migrations/009_raid_hub.sql` (it must be the last file run; if you ever re-run an older raid migration, run 009 again afterwards).
 2. Set **SUPABASE_SERVICE_ROLE_KEY** in the **server's** hosting environment alongside its existing SUPABASE_URL. Never use a VITE_ prefix or put this key in browser configuration. It enables the server-only `arena_record_raid` function.
 3. Redeploy the server and client together, since snapshots now support the raid mode.
 

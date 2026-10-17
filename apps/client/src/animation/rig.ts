@@ -41,6 +41,8 @@ const SPRINGS: Partial<Record<Part, Spring>> = {
 const LANTERN: Spring = { drag: 1 / 240, stiff: 32, damp: 3.2 };
 /** Rig pixels from the root (body pivot) down to the feet. */
 const FEET = 21;
+/** Rockslide Flex victory: how high the rock pile lifts the fighter (rig units). */
+const ROCK_PILE = 24;
 const MAX_PARTICLES = 48;
 
 type ParticleShape = "dot" | "spark" | "star" | "bubble" | "puff" | "pebble";
@@ -75,6 +77,11 @@ export class FighterRig {
   private velocityY = 0;
   private lastState: AnimationState = "idle";
   private entrance = false;
+  /** Rockslide Flex: pile height this frame (rig units) and the last time seen. */
+  private pile = 0;
+  private pileT = 0;
+  /** Drawn under the fighter (the victory rock pile). */
+  private under: Phaser.GameObjects.Graphics;
   private lastProgress = 0;
   /** The scale the caller asked for (view zoom, giants); squash multiplies it. */
   private baseX = 1;
@@ -91,6 +98,7 @@ export class FighterRig {
   ) {
     this.root = scene.add.container(0, 0).setDepth(2);
     this.effects = scene.add.graphics().setDepth(3);
+    this.under = scene.add.graphics().setDepth(1.9);
     for (const part of parts) {
       const asset = assets.find(
         (a) => a.key === rigKey(character, "down", part),
@@ -116,10 +124,12 @@ export class FighterRig {
   setVisible(visible: boolean) {
     this.root.setVisible(visible);
     this.effects.setVisible(visible);
+    this.under.setVisible(visible);
   }
   destroy() {
     this.root.destroy(true);
     this.effects.destroy();
+    this.under.destroy();
   }
   /** Kick every spring (a landing thump, a hit). */
   private kick(amount: number) {
@@ -518,11 +528,38 @@ export class FighterRig {
       offsetY += dy;
     });
     else if (state === "wave") armR.rotation = -2.4;
-    if (state === "victory" && !reduced && t < 2.2)
+    // An equipped Victory reward replaces the champion's own victory move.
+    if (state === "victory" && !reduced && t < 2.2 && !pose.look?.victory)
       this.victory(t, { head, body, armL, armR, legL, legR, tail, wings, flame, ears }, (dx, dy) => {
         offsetX += dx;
         offsetY += dy;
       });
+    // Rockslide Flex (a Victory reward): a pile of rocks rises under the
+    // fighter, who stands on top flexing while pebbles bounce away.
+    const flexing =
+      state === "victory" && !reduced && pose.look?.victory === "rockslide-flex";
+    const lastPileT = this.pileT;
+    this.pileT = flexing ? t : 0;
+    this.pile = 0;
+    if (flexing) {
+      const rise = Math.min(1, t / 0.35);
+      const sink = t > 2.6 ? Math.max(0, 1 - (t - 2.6) / 0.4) : 1;
+      this.pile = ROCK_PILE * (1 - (1 - rise) ** 3) * sink;
+      offsetX = 0;
+      offsetY -= this.pile;
+      if (t > 0.4 && t < 2.6) {
+        const pump = Math.sin((t - 0.4) * 7);
+        armL.rotation = 2.45 + pump * 0.18;
+        armR.rotation = -2.45 - pump * 0.18;
+        body.rotation = 0;
+        head.rotation = -0.06;
+        sy *= 1 + Math.max(0, pump) * 0.03;
+      }
+      // Pebbles burst when the pile lands, and with each flex.
+      const pumps = (v: number) => Math.floor(Math.max(0, v - 0.4) * 7 / Math.PI);
+      if (lastPileT < 0.35 && t >= 0.35) this.pebbles(x, y, 16);
+      else if (t < 2.6 && pumps(t) > pumps(lastPileT)) this.pebbles(x, y, 3);
+    }
     // Smooth hand-offs between poses (springy parts integrate on their own).
     for (const [part, image] of this.images) {
       if (!reduced && SPRINGS[part]) continue;
@@ -606,12 +643,62 @@ export class FighterRig {
       if (image.texture.key !== texture) image.setTexture(texture);
     }
     this.effects.clear();
+    this.under.clear();
+    if (this.pile > 0) this.drawPile(x, y);
     if (reduced) {
       this.particles.length = 0;
       return;
     }
     this.drawEffects(pose, state, x, y, now, dt, t, progress, skill, attack, moving, dir);
     this.lastProgress = progress;
+  }
+
+  /** A burst of bouncing pebbles from the top of the victory rock pile. */
+  private pebbles(x: number, y: number, count: number) {
+    const sc = this.baseX;
+    for (let i = 0; i < count; i++) {
+      const a = -Math.PI * (0.15 + Math.random() * 0.7);
+      const speed = 70 + Math.random() * 120;
+      this.emit({
+        x: x + (Math.random() - 0.5) * 34 * sc,
+        y: y + (FEET - this.pile) * sc,
+        vx: Math.cos(a) * speed,
+        vy: Math.sin(a) * speed - 40,
+        life: 0.7 + Math.random() * 0.4,
+        size: (2.2 + Math.random() * 2.4) * sc,
+        color: [0x8a7a68, 0xa99782, 0x6f6152, 0xffc46b][i % 4],
+        shape: "pebble",
+      });
+    }
+  }
+  /** The Rockslide Flex pile: chunky stones stacked under the fighter's feet. */
+  private drawPile(x: number, y: number) {
+    const g = this.under,
+      sc = this.baseX,
+      base = y + FEET * sc,
+      h = this.pile * sc,
+      w = 30 * sc;
+    const stones: [number, number, number, number, number][] = [
+      // x offset, y (0 = ground, 1 = top), width, height, colour
+      [-0.62, 0.12, 0.62, 0.42, 0x6f6152],
+      [0.6, 0.1, 0.6, 0.4, 0x7c6d5d],
+      [-0.05, 0.05, 0.8, 0.5, 0x8a7a68],
+      [-0.32, 0.55, 0.58, 0.42, 0x9b8a75],
+      [0.34, 0.6, 0.55, 0.4, 0x8a7a68],
+      [0.0, 0.92, 0.66, 0.34, 0xa99782],
+    ];
+    g.fillStyle(0x000000, 0.25).fillEllipse(x, base + 2 * sc, w * 2.3, 9 * sc);
+    for (const [ox, oy, sw, sh, color] of stones) {
+      const cx = x + ox * w,
+        cy = base - oy * h,
+        rw = sw * w,
+        rh = Math.max(2, sh * h);
+      g.fillStyle(color, 1).fillRoundedRect(cx - rw / 2, cy - rh / 2, rw, rh, Math.min(rw, rh) * 0.35);
+      g.lineStyle(1.5 * sc, 0x3d342b, 0.9).strokeRoundedRect(cx - rw / 2, cy - rh / 2, rw, rh, Math.min(rw, rh) * 0.35);
+      g.fillStyle(0xffffff, 0.12).fillRect(cx - rw * 0.3, cy - rh * 0.4, rw * 0.35, Math.max(1, rh * 0.15));
+    }
+    // A thin amber glint, like Cragstone's cracks.
+    g.lineStyle(1.4 * sc, 0xffc46b, 0.8).lineBetween(x - 6 * sc, base - h * 0.55, x + 2 * sc, base - h * 0.35);
   }
 
   /** Each champion's own greeting at the start of a round. */

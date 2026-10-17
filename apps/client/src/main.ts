@@ -3,6 +3,7 @@ import { updateMenuShell } from "./menu-shell";
 import { raidLobby, renderRaidUI, drawRaidArena, raidLookList } from "./raid-ui";
 import { illustratedHelp } from "./illustrated-help";
 import { buttonIcon, iconLabel, menuIcon } from "./menu-icons";
+import type { RaidBossId } from "../../../packages/shared/src/raid";
 import {
   fighterSelection,
   updateRosterSelection,
@@ -645,6 +646,10 @@ function visibleEnemies(from: { x: number; y: number }, myself: Fighter) {
     );
 }
 type RoomMode = "duel" | "teams" | "ffa" | "raid";
+const createLabel = () =>
+  roomMode === "raid"
+    ? iconLabel("bestiary", "Open the Raid Hub →")
+    : iconLabel("create", "Create private room →");
 let roomMode: RoomMode = (() => {
   try {
     const saved = localStorage.getItem("arena-room-mode");
@@ -874,20 +879,45 @@ let botLevel: BotLevel = (() => {
     return "normal";
   }
 })();
-async function showRaidBestiary() { await accountsUI.showRaids(); }
+async function showRaidBestiary() { await accountsUI.showRaidHub(state?.raid?.boss); }
+/** Create a raid room for a boss from the Raid Hub (optionally today's raid, or straight in solo). */
+async function startRaid(boss: RaidBossId, options: { daily?: boolean; solo?: boolean }) {
+  if (!accountsUI.ensurePlayer()) return;
+  if (myId) return toast("Leave your current room first.");
+  if (!connected) return toast("Waiting for the server connection.");
+  if (watching) await stopWatching();
+  audio.unlock();
+  $<HTMLDialogElement>("dialog").close();
+  settingsOpen = false;
+  menuOpen = false;
+  roomMode = "raid";
+  const reply = await request("create", {
+    name: accountsUI.account?.displayName ?? localStorage.getItem("arena-name") ?? "Player",
+    mode: "raid",
+    boss,
+  });
+  identity(reply);
+  if (!reply.ok) return;
+  await request("select", selected);
+  if (options.daily) {
+    const daily = (await request("raid-config", { peril: 2, daily: true })) as { ok?: boolean; error?: string };
+    if (!daily.ok && daily.error) toast(daily.error);
+  }
+  if (options.solo) await request("ready");
+}
 function wireRaidLobby() {
   wireRaidDifficulty();
   const copy=document.getElementById("raid-copy-code");
   if(copy)copy.onclick=()=>void navigator.clipboard.writeText(state?.code??"").then(()=>toast("Room code copied")).catch(()=>toast("Room code: "+(state?.code??"")));
 
   const bestiary=document.getElementById('raid-bestiary');if(bestiary)bestiary.onclick=()=>void showRaidBestiary();
-  const peril=document.getElementById('raid-peril') as HTMLInputElement|null,weekly=document.getElementById('raid-weekly') as HTMLInputElement|null;
-  const configure=()=>void request('raid-config',{peril:Number(peril?.value??1),weekly:weekly?.checked??false});
+  const peril=document.getElementById('raid-peril') as HTMLInputElement|null,daily=document.getElementById('raid-daily-toggle') as HTMLInputElement|null;
+  const configure=()=>void request('raid-config',{peril:Number(peril?.value??1),daily:daily?.checked??false}).then((reply)=>{const r=reply as {ok?:boolean;error?:string};if(!r.ok&&r.error)toast(r.error);});
   // Practice: the host picks one boss attack to repeat.
   document.querySelectorAll<HTMLButtonElement>("#menu [data-raid-drill]").forEach((b)=>{
     b.onclick=()=>void request('raid-drill',{kind:b.dataset.raidDrill}).then((reply)=>{const r=reply as {ok?:boolean;error?:string};if(!r.ok&&r.error)toast(r.error);});
   });
-  if(peril)peril.onchange=configure;if(weekly)weekly.onchange=configure;
+  if(peril)peril.onchange=configure;if(daily)daily.onchange=configure;
 }
 function wireRoom() {
   wireRaidLobby();
@@ -986,7 +1016,7 @@ function renderMenu(revealSelection = false) {
             )
             .join(
               "",
-            )}</div><button class="primary" id="create">${iconLabel("create", "Create private room →")}</button><button class="quiet raid-icon-button" id="raid-bestiary">${menuIcon("bestiary")}<span>Boss Bestiary & raid rewards</span></button><div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">${iconLabel("enter", "Join →")}</button></div><button id="watch" class="quiet full">${iconLabel("watch", "Watch this room instead")}</button><div class="divider">OR PLAY SOLO</div><div class="bot-picker" role="radiogroup" aria-label="Bot difficulty">${BOT_LEVELS.map(([id, label, hint]) => `<button type="button" role="radio" class="bot-level${botLevel === id ? " active" : ""}" data-bot="${id}" aria-checked="${botLevel === id}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button class="secondary full" id="bot-match">${iconLabel("bot", "Battle an AI bot →")}</button>${accountsUI?.account ? '<button class="quiet full" id="practice">' + iconLabel("target", "Solo test mode →") + '</button>' : ""}<small class="room-note">Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`;
+            )}</div><button class="primary" id="create">${createLabel()}</button><button class="quiet raid-icon-button" id="raid-bestiary">${menuIcon("bestiary")}<span>Raid Hub & rewards</span></button><div class="divider">OR JOIN A FRIEND</div><label for="code">ROOM CODE</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">${iconLabel("enter", "Join →")}</button></div><button id="watch" class="quiet full">${iconLabel("watch", "Watch this room instead")}</button><div class="divider">OR PLAY SOLO</div><div class="bot-picker" role="radiogroup" aria-label="Bot difficulty">${BOT_LEVELS.map(([id, label, hint]) => `<button type="button" role="radio" class="bot-level${botLevel === id ? " active" : ""}" data-bot="${id}" aria-checked="${botLevel === id}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button class="secondary full" id="bot-match">${iconLabel("bot", "Battle an AI bot →")}</button>${accountsUI?.account ? '<button class="quiet full" id="practice">' + iconLabel("target", "Solo test mode →") + '</button>' : ""}<small class="room-note">Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`;
   const retainedShell = updateMenuShell($("menu"), panelMarkup, () =>
     `<header class="desktop-lobby-header"><div class="eyebrow">ELEMENTAL COLISEUM</div><h1>Choose your fighter</h1><p>Pick your creature. Enter the arena.</p></header><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected)}</div><aside class="room-panel">${panelMarkup}</aside></div>`,
     keepScroll !== null,
@@ -1029,7 +1059,9 @@ function renderMenu(revealSelection = false) {
       identity(reply);
       if (reply.ok) await request("select", selected);
     };
-    $("create").onclick = () => void play("create");
+    // Boss Raid goes through the Raid Hub, where the boss is chosen.
+    $("create").onclick = () =>
+      roomMode === "raid" ? void accountsUI.showRaidHub() : void play("create");
     $("join").onclick = () => void play("join");
     $("watch").onclick = () =>
       void watchRoom($<HTMLInputElement>("code").value);
@@ -1080,6 +1112,7 @@ function renderMenu(revealSelection = false) {
               b.classList.toggle("active", on);
               b.setAttribute("aria-checked", String(on));
             });
+          $("create").innerHTML = createLabel();
         }),
     );
     wireRaidLobby();
@@ -1353,7 +1386,7 @@ function renderBattle() {
     renderRaidUI(state,me,request,async () => await accountsUI.api("/api/raids") as import("../../../packages/shared/src/raid").RaidProgress);
     if(me.hp<=0)document.querySelectorAll<HTMLButtonElement>(".touch-buttons button").forEach(b=>b.disabled=true);
     const exit=document.getElementById('raid-exit');if(exit)exit.onclick=()=>void leave();
-    const rewards=document.getElementById('raid-rewards');if(rewards)rewards.onclick=()=>void accountsUI.showRaids();
+    const rewards=document.getElementById('raid-rewards');if(rewards)rewards.onclick=()=>void accountsUI.showRaidHub(state?.raid?.boss,'rewards');
     return;
   }
   const overlay = $("arena-overlay");
@@ -3080,6 +3113,7 @@ function ensureBattleRenderer() {
 accountsUI = new AccountUI({
   selectedCharacter: () => selected,
   openDialog: dialog,
+  startRaid: (boss, options) => void startRaid(boss, options),
   joinRoom: (code) => void joinByCode(code),
   watchRoom: (code) => {
     if (myId) return toast("Leave your current room first.");

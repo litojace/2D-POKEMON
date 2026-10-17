@@ -1,6 +1,11 @@
 import { expect, it } from "vitest";
 import { RaidArena } from "../../apps/server/src/raid";
-import { raidBestiary, raidLobby } from "../../apps/client/src/raid-ui";
+import { raidAppearance, raidLobby } from "../../apps/client/src/raid-ui";
+import { raidBossPageMarkup } from "../../apps/client/src/raid-hub";
+import type { RaidProgress } from "../../packages/shared/src/raid";
+// The Rewards tab of Grumblecrag's page in the Raid Hub.
+const raidBestiary = (p: RaidProgress, character: "voltkit" | "tidefin" = "voltkit") =>
+  raidBossPageMarkup("grumblecrag", "rewards", p, raidAppearance(p, character));
 
 it("uses the local pending champion for its party avatar while keeping teammates unchanged", () => {
   const a = new RaidArena("TEST");
@@ -29,7 +34,7 @@ it("marks earned rewards completed and keeps unearned cosmetics visibly locked",
     equipped: null,
   });
   expect(html.match(/class="raid-goal is-complete"/g)).toHaveLength(1);
-  expect(html).toContain("Unlock: 5 raid clears");
+  expect(html).toContain("Unlock: 5 clears");
   expect(html).toContain("1/5 clears");
   expect(html).toMatch(/data-raid-item="cragbound" data-raid-cosmetic="cragbound" disabled/);
   // Before migration 008 the lifetime titles say when they start counting.
@@ -59,4 +64,18 @@ it("equips one item per slot and shows exact title progress", () => {
   expect(html).toContain("20/20 revives");
   expect(html).toContain("Previewing Tidefin");
   expect(html).not.toContain('aria-label="Voltkit"');
+});
+it("offers the Victory slot alongside the other appearance slots", () => {
+  const html = raidBestiary({
+    clears: 3,
+    highestPeril: 1,
+    bestSeconds: 60,
+    titles: [],
+    cosmetics: ["rockslide-flex"],
+    weekly: [],
+    earned: ["cragbreaker", "rockslide-flex"],
+    loadout: { victory: "rockslide-flex" },
+  });
+  expect(html).toContain("<h4>Victory</h4>");
+  expect(html).toMatch(/is-equipped" data-raid-slot="victory" data-raid-item="rockslide-flex"/);
 });

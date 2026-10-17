@@ -33,7 +33,8 @@ import {
   RAID_TRAITS,
   eruptionChain,
   raidPattern,
-  raidWeekly,
+  raidDay,
+  type RaidBossId,
   type RaidAttack,
   type RaidPingKind,
   type RaidState,
@@ -69,13 +70,16 @@ export class RaidArena extends Arena {
   /** Downs per attack this run, saved for balance tuning. */
   downCauses: Partial<Record<RaidAttack, number>> = {};
   private pingAt = new Map<string, number>();
+  /** Charges this run that hit a pillar, and ones that ran their course. */
+  chargeBaits = 0;
+  chargeMisses = 0;
   /** Raiders hit by the attack that is resolving (practice dodge count). */
   private struck = new Set<string>();
-  constructor(code: string) {
+  constructor(code: string, boss: RaidBossId = "grumblecrag") {
     super(code, "raid");
-    const weekly = raidWeekly();
     this.raid = {
       bossId: "raid-boss",
+      boss,
       name: RAID.name,
       peril: 1,
       trait: "ancient",
@@ -91,8 +95,8 @@ export class RaidArena extends Arena {
       wards: [],
       rites: {},
       offers: {},
-      weekly: false,
-      week: weekly.week,
+      daily: false,
+      day: raidDay().day,
       seed: randomInt(1 << 30),
       partySize: 1,
       elapsed: 0,
@@ -113,15 +117,23 @@ export class RaidArena extends Arena {
     p.team = 0;
     return p;
   }
-  configure(peril: number, weekly: boolean) {
-    this.raid.peril = weekly ? raidWeekly().peril : peril;
-    this.raid.weekly = weekly;
+  configure(peril: number, daily: boolean) {
+    this.raid.peril = daily ? raidDay().peril : peril;
+    this.raid.daily = daily;
+  }
+  /** The boss's feat for this run (Grumblecrag: every charge hit a pillar). */
+  feat() {
+    return (
+      this.raid.result === "victory" &&
+      this.chargeBaits >= 3 &&
+      this.chargeMisses === 0
+    );
   }
   override start() {
     this.players = this.players.filter((p) => !p.raidBoss && !p.out);
     super.start();
     const r = this.raid,
-      weekly = raidWeekly();
+      today = raidDay();
     r.result = null;
     r.closingRadius = undefined;
     this.phaseElapsed = 0;
@@ -133,13 +145,16 @@ export class RaidArena extends Arena {
     r.staggerUntil = 0;
     r.exposedUntil = 0;
     r.partySize = this.players.length;
-    r.week = weekly.week;
-    r.seed = r.weekly ? weekly.seed : randomInt(1 << 30);
-    r.trait = r.weekly
-      ? weekly.trait
-      : (Object.keys(RAID_TRAITS) as RaidTrait[])[r.seed % 3];
-    r.gilded = !r.weekly && randomInt(20) === 0;
-    r.peril = r.weekly ? weekly.peril : r.peril;
+    // A daily run is today's featured boss; if the day rolled over while the
+    // party sat in the lobby, it simply becomes a normal run.
+    if (r.daily && today.boss !== r.boss) r.daily = false;
+    r.day = today.day;
+    r.seed = r.daily ? today.seed : randomInt(1 << 30);
+    r.trait = (Object.keys(RAID_TRAITS) as RaidTrait[])[r.seed % 3];
+    r.gilded = !r.daily && randomInt(20) === 0;
+    r.peril = r.daily ? today.peril : r.peril;
+    this.chargeBaits = 0;
+    this.chargeMisses = 0;
     r.maxHp = Math.round(
       (BOSS.health.base + BOSS.health.perExtraPlayer * (r.partySize - 1)) *
         (r.gilded ? BOSS.health.gilded : 1),
@@ -215,7 +230,7 @@ export class RaidArena extends Arena {
     for (const [seat, p] of this.heroes().entries()) {
       const owned = this.raid.rites[p.id] ?? [];
       const options = all.filter((id) => !owned.includes(id));
-      // Stable by party seat for weekly fairness, while teammates see varied offers.
+      // Stable by party seat for daily fairness, while teammates see varied offers.
       const offset =
         (this.raid.seed + this.raid.phase * 7 + seat) %
         Math.max(1, options.length);
@@ -344,7 +359,11 @@ export class RaidArena extends Arena {
         this.downAt.set(target.id, this.time);
         r.downed[target.id] = {
           progress: 0,
-          self: r.partySize === 1 && !this.selfUsed,
+          // Solo gets one self-revive, except on Peril 3.
+          self:
+            r.partySize === 1 &&
+            !this.selfUsed &&
+            r.peril <= RAID.soloSelfReviveMaxPeril,
           ...(this.hitBy ? { cause: this.hitBy } : {}),
         };
         if (this.hitBy)
@@ -828,6 +847,7 @@ export class RaidArena extends Arena {
         pillar.broken = true;
         if (c.targetId && r.contributions?.[c.targetId] && !r.drill)
           r.contributions[c.targetId].pillars++;
+        if (!r.drill) this.chargeBaits++;
         this.nextAttack = Math.max(this.nextAttack, this.time + 3);
         if (!r.drill) {
           r.stagger = Math.min(100, r.stagger + 42);
@@ -863,6 +883,8 @@ export class RaidArena extends Arena {
           this.charging &&
           (len < 10 || this.time >= this.charging.until)
         ) {
+          // The charge ran its course without meeting a pillar.
+          if (!r.drill) this.chargeMisses++;
           this.struck = new Set(c.hit);
           this.countDodges();
           this.charging = undefined;

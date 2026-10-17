@@ -2,9 +2,11 @@ import { CHARACTERS, type Snapshot } from "@arena/shared";
 import {
   RAID_CHAPTERS,
   RAID_PINGS,
-  RAID_TITLE_GOALS,
+  RAID_REWARDS,
+  type RaidBossId,
   type RaidContribution,
   type RaidProgress,
+  type RaidReward,
 } from "../../../packages/shared/src/raid";
 import { fighterAvatar } from "./fighter-art";
 const escape = (s: string) =>
@@ -109,37 +111,78 @@ export function raidContributions(state: Snapshot) {
     )}<p class="raid-score-note">Revives credit everyone who helped. Pillars credit the raider who baited the charge.</p></section>`;
 }
 
-/** Every raid reward with its exact progress. */
-export function raidGoals(p: RaidProgress) {
-  const pillars = p.pillars ?? 0,
-    revives = p.revives ?? 0;
-  const counted = p.pillars !== undefined;
-  return [
-    { name: "Cragbreaker title", value: Math.min(p.clears, 1), max: 1, text: "Clear Grumblecrag" },
-    { name: "Cragbound colors", value: Math.min(p.clears, 5), max: 5, text: `${Math.min(p.clears, 5)}/5 clears` },
-    { name: "Cragstone skin", value: Math.min(p.clears, 10), max: 10, text: `${Math.min(p.clears, 10)}/10 clears` },
-    { name: "Mountainborn entrance", value: Math.min(p.highestPeril, 2), max: 2, text: "Clear Peril 2" },
-    { name: "Conqueror frame + Mountain Conqueror title", value: Math.min(p.highestPeril, 3), max: 3, text: "Clear Peril 3" },
-    { name: "Mountain aura", value: p.cosmetics.includes("mountain-aura") ? 1 : 0, max: 1, text: "Clear Peril 3 with no downs" },
-    ...Object.entries(RAID_TITLE_GOALS).map(([name, goal]) => {
-      const have = goal.stat === "pillars" ? pillars : revives;
-      return {
-        name: `${name} title`,
-        value: Math.min(have, goal.count),
-        max: goal.count,
-        text: counted
-          ? `${Math.min(have, goal.count)}/${goal.count} ${goal.stat === "pillars" ? "pillars baited" : "revives"} · wins and losses count`
-          : "Counts from the next raid update",
-      };
-    }),
-  ];
+export interface RaidGoal {
+  id: string;
+  reward: RaidReward;
+  name: string;
+  value: number;
+  max: number;
+  text: string;
+  done: boolean;
+}
+/** Has the player earned a reward? Uses the server's list when it has one. */
+function earnedReward(p: RaidProgress, reward: RaidReward, computed: boolean) {
+  if (p.earned) return p.earned.includes(reward.id);
+  // Before migration 009: titles and cosmetics are listed by name / id.
+  return (
+    computed ||
+    p.cosmetics.includes(reward.id) ||
+    (reward.slot === "title" && p.titles.includes(reward.name))
+  );
+}
+/** One reward's exact progress from saved records (never invented). */
+export function raidGoal(p: RaidProgress, reward: RaidReward): RaidGoal {
+  const boss = reward.boss ?? "grumblecrag";
+  const record = p.bosses?.[boss] ??
+    (boss === "grumblecrag"
+      ? { clears: p.clears, highestPeril: p.highestPeril }
+      : { clears: 0, highestPeril: 0 });
+  const rule = reward.rule;
+  const label = reward.slot === "title" ? `${reward.name} title` : reward.name;
+  const goal = (value: number, max: number, text: string) => {
+    const done = earnedReward(p, reward, value >= max);
+    return {
+      id: reward.id,
+      reward,
+      name: label,
+      value: done ? max : Math.min(value, max),
+      max,
+      text,
+      done,
+    };
+  };
+  switch (rule.kind) {
+    case "clears":
+      return goal(record.clears, rule.n, rule.n === 1 ? reward.goal : `${Math.min(record.clears, rule.n)}/${rule.n} clears`);
+    case "peril":
+      return goal(Math.min(record.highestPeril, rule.n), rule.n, reward.goal);
+    case "stat": {
+      const stats = p.stats?.[boss];
+      const known = stats !== undefined || (boss === "grumblecrag" && p.pillars !== undefined);
+      const have = stats?.[rule.stat] ?? (boss === "grumblecrag" ? (p[rule.stat] ?? 0) : 0);
+      return goal(have, rule.n, known
+        ? `${Math.min(have, rule.n)}/${rule.n} ${rule.stat === "pillars" ? "pillars baited" : "revives"} · wins and losses count`
+        : "Counts from the next raid update");
+    }
+    case "total-clears": {
+      const total = p.totalClears ?? p.clears;
+      return goal(total, rule.n, `${Math.min(total, rule.n)}/${rule.n} clears across every boss`);
+    }
+    default:
+      return goal(0, 1, reward.goal);
+  }
+}
+/** Every reward for a boss (and the cross-boss ones), with exact progress. */
+export function raidGoals(p: RaidProgress, boss: RaidBossId = "grumblecrag") {
+  return RAID_REWARDS.filter((r) => r.boss === boss).map((r) => raidGoal(p, r));
 }
 export function raidRewardProgress(progress: RaidProgress | null | undefined) {
   if (!progress)
-    return `<div class="raid-next-reward"><b>Your next reward</b><p>${progress === null ? "Open Bestiary & rewards to check your progress." : "Loading your reward progress…"}</p></div>`;
-  const goal = raidGoals(progress).find((g) => g.value < g.max) ?? {
+    return `<div class="raid-next-reward"><b>Your next reward</b><p>${progress === null ? "Open the Raid Hub to check your progress." : "Loading your reward progress…"}</p></div>`;
+  // Rare Gilded encounters are never "next": they can't be worked towards.
+  const goal = raidGoals(progress).find((g) => !g.done && g.reward.rule.kind !== "gilded") ?? {
     name: "All milestone rewards earned",
-    text: "Try a new champion or the weekly leaderboard.",
+    text: "Try a new champion or today's Raid of the Day board.",
     value: 1,
     max: 1,
   };

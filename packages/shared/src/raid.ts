@@ -1,3 +1,5 @@
+import type { RaidBossId } from "./raid-roster.js";
+export * from "./raid-roster.js";
 export const RAID = {
   name: "Grumblecrag",
   maxPeril: 3,
@@ -7,6 +9,8 @@ export const RAID = {
   reviveRange: 100,
   selfReviveDelay: 6,
   staggerSeconds: 6,
+  /** Solo raiders get one self-revive up to this Peril; Peril 3 solo has none. */
+  soloSelfReviveMaxPeril: 2,
   phases: ["Wake the mountain", "Break the armor", "Heart of the mountain"],
 } as const;
 export const RAID_CHAPTERS = [
@@ -160,54 +164,84 @@ export const RAID_PERKS: Partial<
   },
 };
 /** Separate appearance slots; each is cosmetic only. */
-export type RaidSlot = "skin" | "aura" | "entrance" | "frame";
+export type RaidSlot = "skin" | "aura" | "entrance" | "frame" | "victory";
+export const RAID_SLOTS: RaidSlot[] = [
+  "skin",
+  "aura",
+  "entrance",
+  "frame",
+  "victory",
+];
 export type RaidCosmetic =
   | "cragbound"
   | "cragstone"
   | "mountain-aura"
   | "mountainborn"
-  | "conqueror";
+  | "conqueror"
+  | "rockslide-flex";
 export type RaidLoadout = Partial<Record<RaidSlot, RaidCosmetic | null>>;
-export const RAID_COSMETICS: Record<
+/**
+ * How a reward is earned. The same rules are seeded into the database
+ * (migration 009, `arena_raid_rewards`), which is what actually grants them;
+ * a unit test keeps the two lists identical.
+ */
+export type RaidRule =
+  | { kind: "clears"; n: number }
+  | { kind: "peril"; n: number }
+  | { kind: "flawless"; peril: number }
+  | { kind: "solo"; peril: number }
+  | { kind: "speed"; peril: number; party: number; seconds: number }
+  | { kind: "gilded" }
+  | { kind: "feat" }
+  | { kind: "stat"; stat: "pillars" | "revives"; n: number }
+  | { kind: "total-clears"; n: number };
+export interface RaidReward {
+  id: string;
+  /** null = earned across every boss. */
+  boss: RaidBossId | null;
+  slot: RaidSlot | "title";
+  name: string;
+  description: string;
+  goal: string;
+  rule: RaidRule;
+}
+export const RAID_REWARDS: RaidReward[] = [
+  { id: "cragbreaker", boss: "grumblecrag", slot: "title", name: "Cragbreaker", description: "Title", goal: "First clear", rule: { kind: "clears", n: 1 } },
+  { id: "cragbound", boss: "grumblecrag", slot: "skin", name: "Cragbound colors", description: "Earthy gold colors", goal: "5 clears", rule: { kind: "clears", n: 5 } },
+  { id: "cragstone", boss: "grumblecrag", slot: "skin", name: "Cragstone skin", description: "Stone markings with glowing amber cracks", goal: "10 clears", rule: { kind: "clears", n: 10 } },
+  { id: "mountainborn", boss: "grumblecrag", slot: "entrance", name: "Mountainborn entrance", description: "Arrive in a burst of pebbles each round", goal: "Clear Peril 2", rule: { kind: "peril", n: 2 } },
+  { id: "mountain-conqueror", boss: "grumblecrag", slot: "title", name: "Mountain Conqueror", description: "Title", goal: "Clear Peril 3", rule: { kind: "peril", n: 3 } },
+  { id: "conqueror", boss: "grumblecrag", slot: "frame", name: "Conqueror frame", description: "A carved stone portrait frame with a glowing core", goal: "Clear Peril 3", rule: { kind: "peril", n: 3 } },
+  { id: "mountain-aura", boss: "grumblecrag", slot: "aura", name: "Mountain aura", description: "A golden ring beneath your fighter", goal: "Clear Peril 3 with no downs", rule: { kind: "flawless", peril: 3 } },
+  { id: "rockslide-flex", boss: "grumblecrag", slot: "victory", name: "Rockslide Flex", description: "Leap onto a rising pile of rocks and flex as pebbles bounce away", goal: "Feat: every charge in a run hits a pillar (3+ charges)", rule: { kind: "feat" } },
+  { id: "avalanche", boss: "grumblecrag", slot: "title", name: "Avalanche", description: "Title", goal: "Clear Peril 2 solo in under 3:30", rule: { kind: "speed", peril: 2, party: 1, seconds: 210 } },
+  { id: "lone-mountain", boss: "grumblecrag", slot: "title", name: "Lone Mountain", description: "Title", goal: "Clear Peril 3 solo (no self-revive)", rule: { kind: "solo", peril: 3 } },
+  { id: "gilded-cragbreaker", boss: "grumblecrag", slot: "title", name: "Gilded Cragbreaker", description: "Title", goal: "Defeat a rare Gilded Grumblecrag", rule: { kind: "gilded" } },
+  { id: "pillar-breaker", boss: "grumblecrag", slot: "title", name: "Pillar Breaker", description: "Title", goal: "Bait 25 charges into pillars (wins and losses)", rule: { kind: "stat", stat: "pillars", n: 25 } },
+  { id: "mountain-guardian", boss: "grumblecrag", slot: "title", name: "Mountain Guardian", description: "Title", goal: "Help revive teammates 20 times (wins and losses)", rule: { kind: "stat", stat: "revives", n: 20 } },
+  { id: "boss-hunter", boss: null, slot: "title", name: "Boss Hunter", description: "Title", goal: "100 raid clears across every boss", rule: { kind: "total-clears", n: 100 } },
+];
+export const RAID_COSMETICS = Object.fromEntries(
+  RAID_REWARDS.filter((r) => r.slot !== "title").map((r) => [
+    r.id,
+    {
+      slot: r.slot as RaidSlot,
+      name: r.name,
+      description: r.description,
+      goal: r.goal,
+      boss: r.boss,
+    },
+  ]),
+) as Record<
   RaidCosmetic,
-  { slot: RaidSlot; name: string; description: string; goal: string }
-> = {
-  cragbound: {
-    slot: "skin",
-    name: "Cragbound colors",
-    description: "Earthy gold colors",
-    goal: "5 raid clears",
-  },
-  cragstone: {
-    slot: "skin",
-    name: "Cragstone skin",
-    description: "Stone markings with glowing amber cracks",
-    goal: "10 raid clears",
-  },
-  "mountain-aura": {
-    slot: "aura",
-    name: "Mountain aura",
-    description: "A golden ring beneath your fighter",
-    goal: "Clear Peril 3 with no downs",
-  },
-  mountainborn: {
-    slot: "entrance",
-    name: "Mountainborn entrance",
-    description: "Arrive in a burst of pebbles each round",
-    goal: "Clear Peril 2",
-  },
-  conqueror: {
-    slot: "frame",
-    name: "Conqueror frame",
-    description: "A carved stone portrait frame with a glowing core",
-    goal: "Clear Peril 3",
-  },
-};
-/** Raid titles earned from totals across every run (wins and losses). */
-export const RAID_TITLE_GOALS = {
-  "Pillar Breaker": { stat: "pillars", count: 25 },
-  "Mountain Guardian": { stat: "revives", count: 20 },
-} as const;
+  {
+    slot: RaidSlot;
+    name: string;
+    description: string;
+    goal: string;
+    boss: RaidBossId | null;
+  }
+>;
 export const RAID_TRAITS = {
   restless: {
     name: "Restless",
@@ -276,7 +310,10 @@ export interface RaidWarning {
   teach?: boolean;
 }
 export interface RaidState {
+  /** The boss entity's player id. */
   bossId: string;
+  /** Which boss this raid is (Grumblecrag, …). */
+  boss: RaidBossId;
   name: string;
   peril: number;
   trait: RaidTrait;
@@ -302,8 +339,10 @@ export interface RaidState {
   wards: { x: number; y: number; until: number }[];
   rites: Record<string, RaidRite[]>;
   offers: Record<string, RaidRite[]>;
-  weekly: boolean;
-  week: string;
+  /** Raid of the Day: today's featured boss at Peril 2, shared seed. */
+  daily: boolean;
+  /** Pacific calendar date (YYYY-MM-DD) the run counts for. */
+  day: string;
   seed: number;
   partySize: number;
   elapsed: number;
@@ -318,12 +357,17 @@ export interface RaidState {
 }
 export interface RaidReceipt {
   id: string;
-  boss: "grumblecrag";
+  boss: RaidBossId;
   peril: number;
   trait: RaidTrait;
   gilded: boolean;
+  /** Kept false for databases that only have migration 008. */
   weekly: boolean;
   week: string;
+  daily?: boolean;
+  day?: string;
+  /** The boss's feat was achieved in this run (e.g. every charge baited). */
+  feat?: boolean;
   seed: number;
   partySize: number;
   seconds: number;
@@ -343,6 +387,18 @@ export interface RaidReceipt {
     downs?: number;
   }[];
 }
+export interface RaidBossProgress {
+  clears: number;
+  highestPeril: number;
+  bestSeconds: number | null;
+  runs: number;
+}
+export interface RaidBoardRow {
+  partySize: number;
+  seconds: number;
+  names: string[];
+  peril: number;
+}
 export interface RaidProgress {
   /** Before migration 008: one cosmetic for everything. */
   equipped?: "cragbound" | "mountain-aura" | null;
@@ -357,12 +413,16 @@ export interface RaidProgress {
   bestSeconds: number | null;
   titles: string[];
   cosmetics: string[];
-  weekly: {
-    partySize: number;
-    seconds: number;
-    names: string[];
-    peril: number;
-  }[];
+  /** Pre-009 weekly board (empty from migration 009). */
+  weekly: RaidBoardRow[];
+  /** From migration 009: per-boss records, earned reward ids, today's board. */
+  bosses?: Partial<Record<RaidBossId, RaidBossProgress>>;
+  earned?: string[];
+  stats?: Partial<Record<RaidBossId, { pillars: number; revives: number; feats: number }>>;
+  totalClears?: number;
+  today?: { day: string; boss: RaidBossId; cleared: boolean; board: RaidBoardRow[] };
+  /** Days this Pacific week (Sun–Sat) with a Raid of the Day clear. */
+  dailyClears?: string[];
 }
 export function raidWeek(date = new Date()) {
   const start = new Date(
@@ -370,14 +430,6 @@ export function raidWeek(date = new Date()) {
   );
   start.setUTCDate(start.getUTCDate() - ((start.getUTCDay() + 6) % 7));
   return start.toISOString().slice(0, 10);
-}
-export function raidWeekly(date = new Date()) {
-  const week = raidWeek(date);
-  let seed = 2166136261;
-  for (const ch of week)
-    seed = Math.imul(seed ^ ch.charCodeAt(0), 16777619) >>> 0;
-  const trait = (Object.keys(RAID_TRAITS) as RaidTrait[])[seed % 3];
-  return { week, seed, trait, peril: 2 };
 }
 
 /** The equipped look from saved progress (also reads the pre-008 format). */
