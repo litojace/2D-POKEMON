@@ -17,6 +17,7 @@ import {
   type Rarity,
 } from "../../../packages/shared/src/shop";
 import type { RaidLoadout } from "../../../packages/shared/src/raid";
+import { nextRaidDayAt } from "../../../packages/shared/src/raid-roster";
 import { fighterArt, fighterAvatar, scopeIds } from "./fighter-art";
 import { buttonIcon, iconLabel } from "./menu-icons";
 import { creatureSvg, CREATURE_VIEWBOX, type SkinLook } from "./creature-design";
@@ -54,7 +55,14 @@ export function coinChip(balance: number | null | undefined, id = "") {
   return `<span class="coin-chip"${id ? ` id="${id}"` : ""}>${buttonIcon("coin")}<b>${balance == null ? "—" : coins(balance)}</b><span class="sr-only"> coins</span></span>`;
 }
 const rarityBadge = (r: Rarity | null) =>
-  r ? `<span class="rarity-badge rarity-${r}">${RARITY_NAMES[r]}</span>` : "";
+  r ? `<span class="rarity-badge rarity-${r}"><i class="rarity-gem" aria-hidden="true"></i>${RARITY_NAMES[r]}</span>` : "";
+/** "7 h 24 min" until the next Pacific midnight, when Today's Picks change. */
+export function picksCountdown(now = Date.now()) {
+  const minutes = Math.max(1, Math.round((nextRaidDayAt(new Date(now)) - now) / 60_000));
+  const h = Math.floor(minutes / 60),
+    m = minutes % 60;
+  return h ? `${h} h ${m} min` : `${m} min`;
+}
 
 /** A small picture of any item, worn by the previewed champion. */
 export function itemPicture(id: string, champion: CharacterId, scope: string, stage = 1) {
@@ -94,17 +102,20 @@ export function itemAction(id: string, e: Economy | null, loadout: RaidLoadout =
   if (skin?.rarity === "mythical" && trial(e, skin.champion) < MYTHIC_TRIAL_WINS)
     return `<span class="shop-state shop-locked">Mythic Trial ${trial(e, skin.champion)}/${MYTHIC_TRIAL_WINS}</span>`;
   const short = e.balance < price;
-  return `<button class="primary shop-buy" data-shop-buy="${id}" data-price="${price}" ${short ? `disabled title="You need ${coins(price - e.balance)} more coins"` : ""}>${buttonIcon("coin")}<span>${coins(price)}</span></button>`;
+  const full = e.picks.deal === id ? shopPrice(id, e.owned, null) : null;
+  const was = full && full > price ? `<s class="shop-was"><span class="sr-only">Was </span>${coins(full)}</s>` : "";
+  return `<button class="primary shop-buy" data-shop-buy="${id}" data-price="${price}" ${short ? `disabled title="You need ${coins(price - e.balance)} more coins"` : ""}>${buttonIcon("coin")}${was}<span>${coins(price)}</span></button>`;
 }
-/** One item card. */
-function card(id: string, view: ShopView, e: Economy | null, loadout: RaidLoadout, extra = "") {
+/** One item card (the hero is today's deal, laid out wide). */
+function card(id: string, view: ShopView, e: Economy | null, loadout: RaidLoadout, extra = "", hero = false) {
   const rarity = shopRarity(id);
   const price = e ? shopPrice(id, e.owned, e.picks.deal) : null;
   const deal = e?.picks.deal === id && price !== null;
   const selected = previewItem(view, e) === id;
-  return `<article class="shop-card rarity-${rarity ?? "set"}${selected ? " is-selected" : ""}${deal ? " is-deal" : ""}">
+  const blurb = hero ? `<p class="shop-card-blurb">${escape(CHAMPION_SKIN_BY_ID[id]?.description ?? LOOK_ITEM_BY_ID[id]?.description ?? "")}</p>` : "";
+  return `<article class="shop-card rarity-${rarity ?? "set"}${selected ? " is-selected" : ""}${deal ? " is-deal" : ""}${hero ? " is-hero" : ""}">
     <button class="shop-card-art" data-shop-preview="${id}" aria-label="Preview ${escape(itemName(id))}" aria-pressed="${selected}">${itemPicture(id, view.champion, `shop-${view.tab}-${id}`)}</button>
-    <div class="shop-card-body"><div class="shop-card-badges">${rarityBadge(rarity)}${deal ? '<span class="deal-badge">20% off today</span>' : ""}</div><b>${escape(itemName(id))}</b><small>${escape(itemLine(id))}</small>${extra}</div>
+    <div class="shop-card-body"><div class="shop-card-badges">${rarityBadge(rarity)}${deal ? '<span class="deal-badge">20% off today</span>' : ""}</div><b class="shop-card-name">${escape(itemName(id))}</b><small>${escape(itemLine(id))}</small>${blurb}${extra}</div>
     <div class="shop-card-action">${itemAction(id, e, loadout)}</div>
   </article>`;
 }
@@ -141,7 +152,7 @@ function previewPanel(view: ShopView, e: Economy | null) {
   const action = piece?.slot === "entrance" ? "entrance" : piece?.slot === "victory" ? "victory" : "idle";
   const fallback = piece ? itemPicture(piece.id, champion, "shop-piece-preview") : scopeIds(fighterArtFacing(champion, "down", look), "shop-live-fallback");
   const controls = frame ? "" : `<div class="shop-preview-controls"><div class="shop-motion-options" role="group" aria-label="Preview animation">${["idle", "run", "dash", "entrance", "victory"].map(a => `<button type="button" data-preview-action="${a}" aria-pressed="${a === action}">${a[0].toUpperCase() + a.slice(1)}</button>`).join("")}</div><button type="button" class="shop-motion-toggle" data-preview-toggle aria-label="Play preview animations" aria-pressed="false" disabled>Loading preview…</button></div>`;
-  return `<section class="shop-preview" aria-label="Cosmetic preview"><div class="shop-preview-visual"><div class="shop-live-stage${frame ? " is-frame" : ""}" data-preview-champion="${champion}" data-preview-item="${id ?? ""}" data-preview-stage="${stage}" data-preview-action="${action}" role="img" aria-label="${title} ${frame ? "profile frame" : "animated preview"}"><div class="shop-preview-fallback">${fallback}</div></div>${frame ? '<p class="shop-frame-caption">Profile frame</p>' : `<div class="shop-faces" role="group" aria-label="Preview facing">${faces}</div>`}${controls}</div><div class="shop-preview-text"><div class="shop-preview-kicker">${rarityBadge(id ? shopRarity(id) : null)}<span>${frame ? "PORTRAIT" : "LIVE PREVIEW"}</span></div><h3>${title}</h3><p>${text}</p>${stages}</div></section>`;
+  return `<section class="shop-preview rarity-${(id && shopRarity(id)) || "set"}" aria-label="Cosmetic preview"><div class="shop-preview-visual"><div class="shop-live-stage${frame ? " is-frame" : ""}" data-preview-champion="${champion}" data-preview-item="${id ?? ""}" data-preview-stage="${stage}" data-preview-action="${action}" role="img" aria-label="${title} ${frame ? "profile frame" : "animated preview"}"><div class="shop-preview-fallback">${fallback}</div></div>${frame ? '<p class="shop-frame-caption">Profile frame</p>' : `<div class="shop-faces" role="group" aria-label="Preview facing">${faces}</div>`}${controls}</div><div class="shop-preview-text"><div class="shop-preview-kicker">${rarityBadge(id ? shopRarity(id) : null)}<span>${frame ? "Portrait frame" : "Live preview"}</span></div><h3>${title}</h3><p>${text}</p>${stages}</div></section>`;
 }
 /** Plain creature art in any facing (the Shop's preview). */
 function fighterArtFacing(id: CharacterId, dir: "down" | "left" | "right" | "up", look: SkinLook | null) {
@@ -155,7 +166,10 @@ function awakeningNote(id: string, e: Economy | null) {
 
 function todayTab(view: ShopView, e: Economy | null, loadout: RaidLoadout) {
   if (!e) return "";
-  return `<h3 class="shop-heading">Today's Picks <small>New picks at midnight Pacific</small></h3><div class="shop-grid">${e.picks.items.map((id) => card(id, view, e, loadout)).join("")}</div>${missionsBlock(e, true)}`;
+  // Today's deal leads as a wide card (if it's still for sale).
+  const deal = e.picks.items.find((id) => id === e.picks.deal && shopPrice(id, e.owned, e.picks.deal) !== null);
+  const cards = [...(deal ? [deal] : []), ...e.picks.items.filter((id) => id !== deal)].map((id) => card(id, view, e, loadout, "", id === deal)).join("");
+  return `<h3 class="shop-heading">Today's picks <small>New picks in ${picksCountdown()}</small></h3><div class="shop-grid shop-picks">${cards}</div>${missionsBlock(e, true)}`;
 }
 function championsTab(view: ShopView, e: Economy | null, loadout: RaidLoadout) {
   const chips = CHAMPIONS.map(
@@ -202,7 +216,7 @@ export function missionsBlock(e: Economy, compact = false) {
   const left = e.missions.filter((m) => !m.done).length;
   const cards = e.missions
     .map(
-      (m) => `<li class="mission tier-${m.tier}${m.done ? " is-done" : ""}"><span class="mission-tier">${m.tier}</span><b class="mission-title">${escape(m.text)}</b><div class="mission-footer"><progress aria-label="${escape(m.text)} progress" max="${m.target}" value="${Math.min(m.progress, m.target)}"></progress><div class="mission-meta"><span>${Math.min(m.progress, m.target)}/${m.target}</span><span class="mission-reward">${buttonIcon("coin")}<span>${m.coins}<span class="sr-only"> coins</span></span></span></div>${!compact ? `<div class="mission-actions">${m.done ? `<span class="mission-complete">${iconLabel("check", "Completed")}</span>` : !e.rerolled ? `<button class="quiet" data-mission-reroll="${m.slot}">${iconLabel("shuffle", "Re-roll")}</button>` : ""}</div>` : ""}</div></li>`,
+      (m) => `<li class="mission tier-${m.tier}${m.done ? " is-done" : ""}"><span class="mission-tier">${'<i aria-hidden="true"></i>'.repeat(m.tier === "easy" ? 1 : m.tier === "medium" ? 2 : 3)}${m.tier[0].toUpperCase() + m.tier.slice(1)}</span><b class="mission-title">${escape(m.text)}</b><div class="mission-footer"><progress aria-label="${escape(m.text)} progress" max="${m.target}" value="${Math.min(m.progress, m.target)}"></progress><div class="mission-meta"><span>${Math.min(m.progress, m.target)}/${m.target}</span><span class="mission-reward">${buttonIcon("coin")}<span>${m.coins}<span class="sr-only"> coins</span></span></span></div>${!compact ? `<div class="mission-actions">${m.done ? `<span class="mission-complete">${iconLabel("check", "Completed")}</span>` : !e.rerolled ? `<button class="quiet" data-mission-reroll="${m.slot}">${iconLabel("shuffle", "Re-roll")}</button>` : ""}</div>` : ""}</div></li>`,
     )
     .join("");
   const streak = `<p class="mission-streak">${buttonIcon("sparkle")}<span>Streak <b>${e.streak}</b> day${e.streak === 1 ? "" : "s"} · all three each day for 7 days pays +${COINS.streakBonus}; all three today pays +${COINS.allMissionsBonus}</span></p>`;
@@ -226,7 +240,7 @@ export function shopMarkup(view: ShopView, e: Economy | null, loadout: RaidLoado
         missions: (_v: ShopView, econ: Economy) => missionsBlock(econ),
       }[view.tab](view, e, loadout);
   const preview = view.tab === "missions" ? "" : previewPanel(view, e);
-  return `<div class="shop"><header class="shop-head"><div><div class="eyebrow">ELEMENT ARENA</div><h2>${iconLabel("shop", "Shop")}</h2></div>${coinChip(e?.balance)}</header>${tabs}${preview}<div class="shop-body">${body}</div><p class="shop-status" role="status"></p></div>`;
+  return `<div class="shop"><header class="shop-head"><h2>${iconLabel("shop", "Shop")}</h2>${coinChip(e?.balance)}</header>${tabs}${preview}<div class="shop-body">${body}</div><p class="shop-status" role="status"></p></div>`;
 }
 /** Collection pieces' slot (for equipping). */
 export const lookSlot = (id: string) => LOOK_ITEM_BY_ID[id]?.slot;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SHOP_BUNDLES, shopPrice, type Economy } from "../../packages/shared/src/shop";
-import { SHOP_TABS, itemAction, missionsBlock, shopMarkup } from "../../apps/client/src/shop-ui";
+import { SHOP_TABS, itemAction, missionsBlock, picksCountdown, shopMarkup } from "../../apps/client/src/shop-ui";
 
 const economy = (extra: Partial<Economy> = {}): Economy => ({
   balance: 2000,
@@ -55,6 +55,23 @@ describe("shop page", () => {
         const html = shopMarkup({ tab, champion: "terradon" }, e);
         expect(html, tab).not.toMatch(/undefined|NaN|\[object/);
       }
+  });
+  it("leads Today with the deal as a wide card, showing the full price struck through", () => {
+    // The deal is listed last in the picks but shown first.
+    const e = economy({ picks: { day: "2026-10-17", items: ["galaxy-aura", "mystowl-scholar", "voltkit-snowcap"], deal: "voltkit-snowcap" } });
+    const html = shopMarkup({ tab: "today", champion: "voltkit" }, e);
+    const first = html.indexOf('class="shop-card'), hero = html.indexOf("is-hero");
+    expect(hero).toBeGreaterThan(-1);
+    expect(html.slice(first, hero)).not.toContain("<article");
+    expect(html.match(/is-hero/g)).toHaveLength(1);
+    expect(itemAction("voltkit-snowcap", e)).toMatch(/<s class="shop-was">.*1,500<\/s>.*1,200/);
+    // Once bought, there's no hero (nothing left to discount).
+    expect(shopMarkup({ tab: "today", champion: "voltkit" }, economy({ ...e, owned: ["voltkit-snowcap"] }))).not.toContain("is-hero");
+  });
+  it("counts down to the next Pacific midnight", () => {
+    // 21:30 PDT on Oct 17 is 04:30 UTC on Oct 18: 2 h 30 min to go.
+    expect(picksCountdown(Date.parse("2026-10-18T04:30:00Z"))).toBe("2 h 30 min");
+    expect(picksCountdown(Date.parse("2026-10-18T06:55:00Z"))).toBe("5 min");
   });
   it("escapes mission text and offers one re-roll for unfinished missions", () => {
     const html = missionsBlock(economy());

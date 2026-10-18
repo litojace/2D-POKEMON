@@ -136,9 +136,7 @@ export function mountShopPreview(panel: HTMLElement): () => void {
     create() {
       if (disposed || loadFailed) return;
       this.floor = this.add.graphics().setDepth(0);
-      this.floor.lineStyle(1, 0x8ab8df, 0.08);
-      for (let x = 0; x <= 400; x += 40) this.floor.lineBetween(x, 0, x, 260);
-      for (let y = 20; y <= 260; y += 40) this.floor.lineBetween(0, y, 400, y);
+      // The spotlit pedestal behind it is CSS (.shop-live-stage); this is its shadow.
       this.floor.fillStyle(0x040d20, 0.4).fillEllipse(200, 207, 160, 40);
       this.floor
         .lineStyle(1, CHARACTERS[champion].color, 0.3)

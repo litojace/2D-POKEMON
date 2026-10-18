@@ -8178,3 +8178,175 @@ button.shop-face[aria-pressed="true"], .shop-motion-options button[aria-pressed=
   .shop-body { grid-column: 1; grid-row: 4; }
   .shop:not(:has(.shop-preview)) .shop-body { grid-row: 3; }
 }
+
+/* ==== Shop: a collector's display case ====
+   Each item is a trading card finished by its rarity: matte slate (Common),
+   a cool sheen (Rare), a violet sheen (Epic) and a moving prismatic foil
+   (Mythical, the one animated finish). Prices are gold coin tags. */
+.shop,
+.rarity-badge { --tone: #ffd65b; }
+:is(.shop-card, .shop-preview, .rarity-badge).rarity-common { --tone: #a3b1c6; }
+:is(.shop-card, .shop-preview, .rarity-badge).rarity-rare { --tone: #5aa9ff; }
+:is(.shop-card, .shop-preview, .rarity-badge).rarity-epic { --tone: #bb7cff; }
+:is(.shop-card, .shop-preview, .rarity-badge).rarity-mythical { --tone: #ff9be0; }
+:is(.shop-card, .shop-preview).rarity-set { --tone: #ffd65b; }
+
+/* Title and coin purse. */
+.shop-head { align-items: center; }
+.shop-head h2 { margin: 0; font: 800 clamp(34px, 3.4vw, 44px)/1 "Barlow Condensed", sans-serif; letter-spacing: .5px; }
+.shop-head h2 > .button-icon { width: 30px; height: 30px; padding: 6px; border-radius: 10px; color: #2a1a00; background: linear-gradient(160deg, #ffe48a, #f0b63a); box-shadow: inset 0 -2px 0 #b8791a; }
+.shop-head .coin-chip { gap: 8px; padding: 5px 16px 5px 6px; font: 800 22px/1 "Barlow Condensed", sans-serif; color: #fff1c4; background: linear-gradient(#1a1630, #120f24) padding-box, linear-gradient(135deg, #ffe48a, #b8791a 60%, #ffe48a) border-box; border: 2px solid transparent; box-shadow: 0 6px 18px -8px #ffd65b88; }
+.shop-head .coin-chip .button-icon { width: 26px; height: 26px; padding: 4px; border-radius: 50%; color: #2a1a00; background: radial-gradient(circle at 35% 30%, #fff3bf, #ffd65b 45%, #c98a1b); }
+
+/* Section tabs: a shelf with a lit label under the open one. */
+.shop-tabs { gap: 2px; padding: 0; border-bottom: 1px solid #8baee526; }
+.shop-tabs button { position: relative; padding: 10px 14px 12px; border: 0; border-radius: 8px 8px 0 0; background: transparent; color: #9fb2cf; font: 700 18px/1 "Barlow Condensed", sans-serif; letter-spacing: .3px; }
+.shop-tabs button:hover:not(.active) { color: #e2ebf8; background: #ffffff08; filter: none; }
+.shop-tabs button.active { color: #ffe39a; background: linear-gradient(#ffd65b00, #ffd65b14); }
+.shop-tabs button.active::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 3px; border-radius: 3px 3px 0 0; background: #ffd65b; box-shadow: 0 0 12px #ffd65b; }
+
+.shop-heading { align-items: baseline; margin: 2px 0 12px; font: 700 24px/1.1 "Barlow Condensed", sans-serif; letter-spacing: .3px; }
+.shop-heading small { font: 500 12px/1.3 "DM Sans", sans-serif; color: #9fb2cf; letter-spacing: 0; }
+
+/* Rarity: a small gem and the word, in the rarity's colour. */
+.rarity-badge { display: inline-flex; align-items: center; gap: 6px; padding: 0; background: none !important; color: var(--tone) !important; font: 700 12px/1.2 "DM Sans", sans-serif; letter-spacing: 0; text-transform: none; animation: none !important; }
+.rarity-gem { flex: none; width: 8px; height: 8px; transform: rotate(45deg); border-radius: 2px; background: var(--tone); box-shadow: 0 0 8px var(--tone); }
+.rarity-badge.rarity-mythical .rarity-gem { background: conic-gradient(#ffd65b, #ff8fd8, #7ff3ff, #ffd65b); }
+.rarity-badge.rarity-mythical { background: linear-gradient(90deg, #ffd65b, #ff8fd8, #7ff3ff) !important; -webkit-background-clip: text !important; background-clip: text !important; color: transparent !important; }
+.deal-badge { position: relative; padding: 3px 8px 3px 10px; border-radius: 3px 999px 999px 3px; background: #ff5d6c; color: #fff; font: 800 11px/1.2 "DM Sans", sans-serif; box-shadow: 0 4px 10px -4px #ff5d6c; }
+
+/* The cards. */
+.shop-grid { gap: 12px; }
+.shop-card { gap: 10px; padding: 8px 8px 10px; border: 1px solid color-mix(in srgb, var(--tone) 38%, transparent); border-radius: 14px; background: linear-gradient(180deg, color-mix(in srgb, var(--tone) 12%, #14233f), #0e1a31 55%); box-shadow: inset 0 3px 0 -1px color-mix(in srgb, var(--tone) 85%, transparent), inset 0 1px 0 #ffffff10; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+.shop-card:hover, .shop-card:focus-within { transform: translateY(-2px); border-color: color-mix(in srgb, var(--tone) 70%, transparent); box-shadow: inset 0 3px 0 -1px var(--tone), 0 14px 28px -14px color-mix(in srgb, var(--tone) 70%, transparent); }
+.shop-card.is-deal::before { display: none; }
+.shop-card-art { border-radius: 10px; background:
+  radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--tone) 42%, transparent), transparent 58%),
+  radial-gradient(ellipse 34% 9% at 50% 86%, #00000080, transparent 75%),
+  linear-gradient(180deg, #1c3054, #0b162b); box-shadow: inset 0 0 0 1px #ffffff0d; }
+.shop-card-art > svg { position: relative; z-index: 1; filter: drop-shadow(0 6px 6px #00000055); transition: transform .2s ease; }
+.shop-card:hover .shop-card-art > svg { transform: translateY(-3px) scale(1.04); }
+.shop-card-art::after { z-index: 2; content: "Try on"; border-radius: 999px; padding: 3px 8px; background: #08122499; backdrop-filter: blur(3px); opacity: 0; transition: opacity .18s ease; }
+.shop-card:hover .shop-card-art::after, .shop-card-art:focus-visible::after { opacity: 1; }
+/* A diagonal sheen across Rare and Epic art. */
+.shop-card:is(.rarity-rare, .rarity-epic) .shop-card-art::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(115deg, transparent 30%, color-mix(in srgb, var(--tone) 26%, transparent) 42%, #ffffff1c 47%, transparent 58%); }
+/* Mythical: a holographic foil that drifts across the whole card. */
+.shop-card.rarity-mythical { border: 1.5px solid transparent; background: linear-gradient(180deg, #2a1f45, #0e1a31 55%) padding-box, linear-gradient(120deg, #ffd65b, #ff8fd8, #7ff3ff, #ffd65b) border-box; background-size: 100% 100%, 300% 300%; box-shadow: 0 0 22px -6px #ff8fd866; }
+.shop-card.rarity-mythical .shop-card-art::before { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; mix-blend-mode: color-dodge; background: linear-gradient(115deg, transparent 18%, #ff8fd870 32%, #7ff3ff70 42%, #ffd65b70 52%, transparent 66%); background-size: 260% 100%; animation: shop-foil 6s linear infinite; }
+@keyframes shop-foil { from { background-position: 130% 0; } to { background-position: -130% 0; } }
+/* The item in the fitting room (after the rarity finishes, so it wins). */
+.shop-grid > .shop-card.is-selected { outline: 0; border-color: #ffd65b; box-shadow: inset 0 3px 0 -1px var(--tone), 0 0 0 2px #ffd65b, 0 14px 30px -12px #ffd65b88; }
+.shop-card-body { gap: 4px; }
+.shop-card-badges { min-height: 22px; gap: 8px; }
+.shop-card-body > b.shop-card-name { min-height: 0; font: 700 21px/1.05 "Barlow Condensed", sans-serif; letter-spacing: .2px; color: #f3f6ff; }
+.shop-card-body > small { min-height: 0; font-size: 11px; color: #8fa3c2; }
+.shop-card-action { justify-content: stretch; }
+.shop-card-action > * { flex: 1; }
+
+/* Coin price tags (and Equip/Equipped to match). */
+.shop .shop-buy { justify-content: center; gap: 7px; min-height: 40px; padding: 6px 14px; border: 0; border-radius: 999px; color: #2a1a00; background: linear-gradient(180deg, #ffe58f, #f2b93b); box-shadow: inset 0 -3px 0 #c4841f, inset 0 1px 0 #fff6cf, 0 6px 14px -8px #ffd65b; font: 800 20px/1 "Barlow Condensed", sans-serif; letter-spacing: .3px; }
+.shop .shop-buy .button-icon { width: 18px; height: 18px; color: #7a4a00; }
+.shop .shop-buy:disabled { cursor: not-allowed; opacity: 1; color: #8c7a55; background: linear-gradient(180deg, #3a3550, #2b2740); box-shadow: inset 0 1px 0 #ffffff12; }
+.shop .shop-buy:disabled .button-icon { color: #8c7a55; }
+.shop .shop-buy.is-confirming { background: linear-gradient(180deg, #fff3c4, #ffd65b); box-shadow: inset 0 -3px 0 #c4841f, 0 0 0 3px #ffd65b55; }
+.shop-was { font: 600 15px/1 "Barlow Condensed", sans-serif; opacity: .55; text-decoration-thickness: 2px; }
+.shop .shop-card-action > button.secondary { min-height: 40px; border-radius: 999px; font: 700 17px/1 "Barlow Condensed", sans-serif; letter-spacing: .3px; background: #ffffff0a; border: 1px solid #8baee540; color: #dbe6f6; }
+.shop .shop-card-action > button.shop-unequip { border-color: #6ae2a399; color: #a5edc1; background: #6ae2a314; }
+.shop-card-action > .shop-state { justify-content: center; min-height: 40px; font-weight: 700; }
+.shop-state.shop-locked { padding: 0 12px; border-radius: 999px; border: 1px dashed #ff9be066; color: #ffc4ec; background: #ff9be00d; }
+
+/* Today's deal: a wide hero card. */
+.shop-picks { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.shop-card.is-hero { grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); grid-template-rows: 1fr auto; column-gap: 18px; padding: 10px 18px 14px 10px; background:
+  radial-gradient(circle at 100% 0%, #ff5d6c33, transparent 45%),
+  linear-gradient(180deg, color-mix(in srgb, var(--tone) 14%, #16264a), #0e1a31 70%); }
+.shop-card.is-hero .shop-card-art { grid-row: 1 / span 2; height: 100%; min-height: 210px; }
+.shop-card.is-hero .shop-card-art > svg { height: 190px; }
+.shop-card.is-hero .shop-card-body { align-self: center; padding-top: 6px; }
+.shop-card.is-hero .shop-card-name { font-size: 36px !important; }
+.shop-card.is-hero .deal-badge { font-size: 13px; padding: 4px 12px 4px 12px; }
+.shop-card-blurb { margin: 6px 0 0; font-size: 13px; line-height: 1.5; color: #c1cfe4; max-width: 46ch; }
+.shop-card.is-hero .shop-card-action { justify-content: flex-start; }
+.shop-card.is-hero .shop-card-action > * { flex: 0 1 260px; }
+.shop-card.is-hero .shop-buy { min-height: 48px; font-size: 26px; }
+
+/* The fitting room: a spotlit pedestal tinted by the item's rarity. */
+.shop-preview { border-color: color-mix(in srgb, var(--tone) 30%, #8baee533); background: linear-gradient(180deg, color-mix(in srgb, var(--tone) 10%, #15264a), #0d182e 70%); }
+.shop-live-stage { border: 0; border-radius: 12px; background:
+  linear-gradient(100deg, transparent 38%, color-mix(in srgb, var(--tone) 16%, transparent) 50%, transparent 62%) 50% 0 / 100% 78% no-repeat,
+  radial-gradient(ellipse 30% 9% at 50% 80%, color-mix(in srgb, var(--tone) 55%, transparent), transparent 72%),
+  radial-gradient(ellipse 60% 70% at 50% 30%, color-mix(in srgb, var(--tone) 22%, transparent), transparent 70%),
+  linear-gradient(180deg, #172b4d, #0a1427 85%); box-shadow: inset 0 0 0 1px #ffffff12, inset 0 -30px 40px -20px #000a; }
+.shop-faces, .shop-motion-options { gap: 0; padding: 3px; border-radius: 10px; background: #08122499; box-shadow: inset 0 0 0 1px #8baee522; }
+button.shop-face, .shop-motion-options button { border: 0; border-radius: 7px; background: transparent; color: #9fb2cf; font-weight: 600; font-size: 11px; }
+button.shop-face[aria-pressed="true"], .shop-motion-options button[aria-pressed="true"] { color: #2a1a00; background: linear-gradient(180deg, #ffe58f, #f2b93b); box-shadow: inset 0 -2px 0 #c4841f; }
+.shop-motion-toggle { background: transparent; color: #9ed8e2; text-decoration: underline; text-underline-offset: 3px; }
+.shop-preview-kicker { gap: 10px; }
+.shop-preview-kicker > span:last-child { font-size: 11px; letter-spacing: 0; color: #8fa3c2; }
+.shop-preview-text h3 { font: 800 30px/1.05 "Barlow Condensed", sans-serif; letter-spacing: .3px; }
+.shop-stages { gap: 0; padding: 3px; border-radius: 10px; background: #08122499; box-shadow: inset 0 0 0 1px #8baee522; width: max-content; max-width: 100%; }
+.shop-stages button { border: 0; border-radius: 7px; background: transparent; color: #9fb2cf; font: 700 15px/1 "Barlow Condensed", sans-serif; padding: 7px 12px; }
+.shop-stages button.active { color: #2a1a00; background: linear-gradient(180deg, #ffe58f, #f2b93b); box-shadow: inset 0 -2px 0 #c4841f; }
+
+.shop-body > .shop-grid + .missions { margin-top: 26px; }
+.shop-progress { width: 100%; }
+.shop-progress progress { -webkit-appearance: none; appearance: none; height: 8px; border: 0; border-radius: 999px; overflow: hidden; background: #08122499; box-shadow: inset 0 0 0 1px #8baee526; }
+.shop-progress progress::-webkit-progress-bar { background: transparent; }
+.shop-progress progress::-webkit-progress-value { border-radius: 999px; background: linear-gradient(90deg, #ffd65b, #ff8fd8, #7ff3ff); }
+.shop-progress progress::-moz-progress-bar { border-radius: 999px; background: linear-gradient(90deg, #ffd65b, #ff8fd8, #7ff3ff); }
+.shop-own button { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 14px; border-radius: 999px; background: #ffffff0a; border: 1px solid #8baee540; color: #c1cfe4; font-size: 12px; }
+
+/* Champion picker: round portraits; the chosen one is lit. */
+.shop-champions { gap: 8px; padding: 2px 2px 6px; }
+.shop-champion { width: 76px; gap: 4px; padding: 6px 4px 7px; border: 1px solid transparent; border-radius: 12px; background: transparent; color: #9fb2cf; font: 700 14px/1.1 "Barlow Condensed", sans-serif; }
+.shop-champion svg { width: 54px; height: 54px; padding: 3px; border-radius: 50%; background: radial-gradient(circle at 50% 40%, #233a63, #0c182d 80%); box-shadow: 0 0 0 2px #8baee533; }
+.shop-champion:hover:not(.active) { color: #e2ebf8; filter: none; }
+.shop-champion.active { color: #ffe39a; background: #ffd65b12; border-color: #ffd65b55; }
+.shop-champion.active svg { box-shadow: 0 0 0 2px #ffd65b, 0 0 14px #ffd65b66; }
+
+/* Collections: each set is a shelf with its own banner. */
+.shop-collection { padding: 12px; border-radius: 16px; background: linear-gradient(180deg, #ffffff07, transparent 120px); box-shadow: inset 0 0 0 1px #8baee51c; }
+.shop-collection > header h3 { font: 800 26px/1 "Barlow Condensed", sans-serif; letter-spacing: .3px; }
+.shop-collection > header .shop-buy { flex: 0 0 auto; }
+
+/* Missions: ticket stubs with a tier stripe and chunky progress bars. */
+.mission { position: relative; padding: 12px 14px 12px 18px; border: 0; border-radius: 12px; background: linear-gradient(90deg, var(--tier) 0 5px, transparent 5px), linear-gradient(180deg, color-mix(in srgb, var(--tier) 10%, #14233f), #0e1a31); box-shadow: inset 0 0 0 1px #8baee526; --tier: #6ae2a3; }
+.mission.tier-medium { --tier: #5aa9ff; }
+.mission.tier-hard { --tier: #ff8a5b; }
+.mission-tier, .mission.tier-medium .mission-tier, .mission.tier-hard .mission-tier { display: inline-flex; align-items: center; gap: 3px; padding: 0; background: none; color: var(--tier); font: 700 12px/1.2 "DM Sans", sans-serif; letter-spacing: 0; text-transform: none; }
+.mission-tier > i { width: 7px; height: 7px; margin-right: 1px; transform: rotate(45deg); border-radius: 1.5px; background: var(--tier); }
+.mission-tier > i:last-of-type { margin-right: 5px; }
+.mission-title { font: 700 19px/1.15 "Barlow Condensed", sans-serif; letter-spacing: .2px; }
+.mission progress, .home-mission progress { -webkit-appearance: none; appearance: none; height: 10px; border: 0; border-radius: 999px; overflow: hidden; background: #08122499; box-shadow: inset 0 0 0 1px #8baee526; }
+.mission progress::-webkit-progress-bar, .home-mission progress::-webkit-progress-bar { background: transparent; }
+.mission progress::-webkit-progress-value, .home-mission progress::-webkit-progress-value { border-radius: 999px; background: linear-gradient(90deg, color-mix(in srgb, var(--tier, #ffd65b) 70%, #fff), var(--tier, #ffd65b)); }
+.mission progress::-moz-progress-bar, .home-mission progress::-moz-progress-bar { border-radius: 999px; background: var(--tier, #ffd65b); }
+.home-mission progress { height: 6px; }
+.mission-reward { padding: 3px 9px 3px 5px; border-radius: 999px; background: #ffd65b1c; font: 800 16px/1 "Barlow Condensed", sans-serif; }
+.mission-reward .button-icon { width: 15px; height: 15px; }
+.mission.is-done { background: linear-gradient(90deg, #6ae2a3 0 5px, transparent 5px), linear-gradient(180deg, #16403966, #0e1a31); box-shadow: inset 0 0 0 1px #6ae2a355; }
+.mission.is-done .mission-title { color: #a5edc1; }
+.mission-streak { align-items: center; padding: 8px 12px; border-radius: 10px; background: #ffd65b0f; }
+
+@media (max-width: 640px) {
+  .shop-picks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .shop-card.is-hero { grid-template-columns: 1fr; grid-template-rows: auto; padding: 8px 8px 12px; }
+  .shop-card.is-hero .shop-card-art { grid-row: auto; min-height: 170px; }
+  .shop-card.is-hero .shop-card-art > svg { height: 156px; }
+  .shop-card.is-hero .shop-card-name { font-size: 30px !important; }
+  .shop-card.is-hero .shop-card-action > * { flex: 1; }
+  .shop-tabs button { font-size: 16px; padding: 9px 10px 11px; }
+  .shop-card-body > b.shop-card-name { font-size: 19px; }
+}
+@media (orientation: landscape) and (max-height: 600px) {
+  .shop-head h2 { font-size: 30px; }
+  .shop-card.is-hero .shop-card-art { min-height: 150px; }
+  .shop-card.is-hero .shop-card-art > svg { height: 136px; }
+  .shop-card.is-hero .shop-card-name { font-size: 28px !important; }
+  .shop-preview-text h3 { font-size: 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shop-card, .shop-card-art > svg, .shop-card-art::after { transition: none; }
+  .shop-card:hover, .shop-card:focus-within, .shop-card:hover .shop-card-art > svg { transform: none; }
+  .shop-card.rarity-mythical .shop-card-art::before { animation: none; background-position: 50% 0; }
+}
