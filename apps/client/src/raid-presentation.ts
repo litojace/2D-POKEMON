@@ -266,5 +266,5 @@ export function raidRewardProgress(
     value: 1,
     max: 1,
   };
-  return `<div class="raid-next-reward"><span>YOUR NEXT MILESTONE</span><b>${goal.name}</b><progress aria-label="${goal.name}" value="${goal.value}" max="${goal.max}"></progress><p>${goal.text}</p></div>`;
+  return `<div class="raid-next-reward"><span>Your next milestone</span><b>${goal.name}</b><progress aria-label="${goal.name}" value="${goal.value}" max="${goal.max}"></progress><p>${goal.text}</p></div>`;
 }

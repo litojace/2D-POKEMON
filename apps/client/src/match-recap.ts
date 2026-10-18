@@ -52,7 +52,7 @@ export function recapMarkup(state: Snapshot, myId: string) {
     ].join("");
     return `<tr class="${p.id === myId ? "me" : ""}${p === firstRival && order.indexOf(p) > 1 ? " split" : ""} side-${team(p)}"><th scope="row"><i style="background:${hex(c.color)}"></i><span><b>${escape(p.name)}</b>${tags}<small class="who">${c.name}</small></span></th><td>${Math.round(p.stats.dealt)}</td><td>${Math.round(p.stats.received)}</td><td>${p.stats.kos ?? 0}</td><td>${p.stats.combos ?? 0}</td></tr>`;
   };
-  return `<table class="recap"><thead><tr><th scope="col"><span class="sr-only">Player</span></th><th scope="col" title="Damage dealt">DMG</th><th scope="col" title="Damage taken">TAKEN</th><th scope="col" title="Knockouts">KO</th><th scope="col" title="Signature combos">COMBO</th></tr></thead><tbody>${order.map(row).join("")}</tbody></table>`;
+  return `<table class="recap"><thead><tr><th scope="col"><span class="sr-only">Player</span></th><th scope="col" title="Damage dealt">Dealt</th><th scope="col" title="Damage taken">Taken</th><th scope="col" title="Knockouts">KOs</th><th scope="col" title="Signature combos">Combos</th></tr></thead><tbody>${order.map(row).join("")}</tbody></table>`;
 }
 
 export type RecordState =

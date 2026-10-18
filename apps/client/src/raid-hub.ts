@@ -126,11 +126,11 @@ export function raidHubMarkup(p: RaidProgress | null, now = new Date()) {
     return `<button type="button" class="raid-boss-card${b.playable ? "" : " is-soon"}${locked ? " is-locked" : ""}${id === today.boss ? " is-featured" : ""}" data-raid-boss="${id}" style="--boss:${b.color}"><span class="raid-card-art">${raidCrest(id)}</span><span class="raid-card-body"><span class="raid-card-top"><b>${b.name}</b>${stars(b.stars)}</span><small>${b.element} · ${RAID_WEEKDAYS[b.day]}</small><span class="raid-card-signature">${b.signature}</span>${status}${b.playable && total ? `<span class="raid-card-progress"><progress value="${done}" max="${total}" aria-label="${b.name} rewards"></progress><small>${done}/${total} rewards</small></span>` : ""}</span></button>`;
   }).join("");
   return `<div class="raid-hub">
-<header class="raid-hub-head"><div><div class="eyebrow">BOSS RAIDS · CO-OP · 1–4 PLAYERS</div><h2>Raid Hub</h2></div><div class="raid-hub-totals"><span><b>${counts.earned}/${counts.total}</b>rewards</span><span><b>${p?.totalClears ?? p?.clears ?? 0}</b>clears</span></div></header>
+<header class="raid-hub-head"><div><div class="eyebrow">Boss raids · co-op · 1–4 players</div><h2>Raid Hub</h2></div><div class="raid-hub-totals"><span><b>${counts.earned}/${counts.total}</b>rewards</span><span><b>${p?.totalClears ?? p?.clears ?? 0}</b>clears</span></div></header>
 <section class="raid-week" aria-label="This week's bosses">${strip}</section>
-<section class="raid-today" style="--boss:${todayBoss.color}" aria-label="Raid of the Day"><div class="raid-today-art">${raidCrest(today.boss)}</div><div class="raid-today-info"><span class="eyebrow">RAID OF THE DAY · ${RAID_WEEKDAYS[today.weekday].toUpperCase()}</span><h3>${todayBoss.name}</h3><p>Peril 2 · ${RAID_TRAITS[trait].name}: ${RAID_TRAITS[trait].text} Same challenge for everyone today.</p>${today.scheduled !== today.boss ? `<p class="raid-today-note">${RAID_BOSSES[today.scheduled].name}'s day: until it arrives, ${todayBoss.name} stands in.</p>` : ""}<p class="raid-today-next">Next boss in <time data-raid-next="${nextRaidDayAt(now)}">${raidCountdown(nextRaidDayAt(now) - now.getTime())}</time></p><div class="raid-today-actions">${p?.today?.cleared ? '<span class="raid-today-done">✓ Cleared today</span>' : ""}<button type="button" class="primary" id="raid-daily">${iconLabel("battle", p?.today?.cleared ? "Raid today's boss again →" : "Raid today's boss →")}</button></div></div><div class="raid-today-board"><b>Today's board</b>${board(p?.today?.board)}</div></section>
+<section class="raid-today" style="--boss:${todayBoss.color}" aria-label="Raid of the Day"><div class="raid-today-art">${raidCrest(today.boss)}</div><div class="raid-today-info"><span class="eyebrow">Raid of the Day · ${RAID_WEEKDAYS[today.weekday]}</span><h3>${todayBoss.name}</h3><p>Peril 2 · ${RAID_TRAITS[trait].name}: ${RAID_TRAITS[trait].text} Same challenge for everyone today.</p>${today.scheduled !== today.boss ? `<p class="raid-today-note">${RAID_BOSSES[today.scheduled].name}'s day: until it arrives, ${todayBoss.name} stands in.</p>` : ""}<p class="raid-today-next">Next boss in <time data-raid-next="${nextRaidDayAt(now)}">${raidCountdown(nextRaidDayAt(now) - now.getTime())}</time></p><div class="raid-today-actions">${p?.today?.cleared ? '<span class="raid-today-done">✓ Cleared today</span>' : ""}<button type="button" class="primary" id="raid-daily">${iconLabel("battle", p?.today?.cleared ? "Raid today's boss again" : "Raid today's boss")}</button></div></div><div class="raid-today-board"><b>Today's board</b>${board(p?.today?.board)}</div></section>
 <section class="raid-boss-grid" aria-label="Bosses">${cards}</section>
-<section class="raid-hub-join"><label for="raid-join-code">Join a friend's raid</label><div class="join-row"><input id="raid-join-code" maxlength="6" placeholder="ABC123" autocomplete="off"><button type="button" class="secondary" id="raid-join">${iconLabel("enter", "Join →")}</button></div></section>
+<section class="raid-hub-join"><label for="raid-join-code">Join a friend's raid</label><div class="join-row"><input id="raid-join-code" maxlength="6" placeholder="ABC123" autocomplete="off"><button type="button" class="secondary" id="raid-join">${iconLabel("enter", "Join")}</button></div></section>
 ${p ? "" : '<p class="raid-appearance-note">Log in to save clears and rewards. Peril 1 is always open.</p>'}
 </div>`;
 }
@@ -192,14 +192,14 @@ export function raidBossPageMarkup(
           : records(id, p);
   return `<div class="raid-hub raid-boss-page" style="--boss:${b.color}">
 <button type="button" class="quiet raid-hub-back" id="raid-hub-back">${iconLabel("back", "All bosses")}</button>
-<header class="raid-boss-head"><div class="raid-boss-art">${raidCrest(id)}</div><div><span class="eyebrow">${b.element.toUpperCase()} · ${RAID_WEEKDAYS[b.day].toUpperCase()}</span><h2>${b.name}</h2><p>${b.epithet} ${stars(b.stars)}</p></div></header>
+<header class="raid-boss-head"><div class="raid-boss-art">${raidCrest(id)}</div><div><span class="eyebrow">${b.element} · ${RAID_WEEKDAYS[b.day]}</span><h2>${b.name}</h2><p>${b.epithet} ${stars(b.stars)}</p></div></header>
 <div class="raid-hub-tabs" role="tablist" aria-label="${b.name}">${RAID_HUB_TABS.map(([t, label]) => `<button type="button" role="tab" id="raid-tab-${t}" aria-selected="${t === tab}" aria-controls="raid-tab-panel" data-raid-tab="${t}" class="${t === tab ? "is-active" : ""}">${label}</button>`).join("")}</div>
 <section class="raid-hub-panel" id="raid-tab-panel" role="tabpanel" aria-labelledby="raid-tab-${tab}">${body}</section>
 ${
   b.playable
     ? locked
       ? `<p class="raid-hub-locked">${menuIcon("bestiary")}<span>Clear Grumblecrag once to unlock ${b.name}.</span></p>`
-      : `<div class="raid-hub-actions"><button type="button" class="primary" data-raid-start="room">${iconLabel("create", "Create raid room →")}</button><button type="button" class="secondary" data-raid-start="solo">${iconLabel("target", "Play solo now")}</button></div>`
+      : `<div class="raid-hub-actions"><button type="button" class="primary" data-raid-start="room">${iconLabel("create", "Create raid room")}</button><button type="button" class="secondary" data-raid-start="solo">${iconLabel("target", "Play solo now")}</button></div>`
     : ""
 }
 </div>`;

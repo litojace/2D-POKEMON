@@ -8409,3 +8409,166 @@ dialog:has(.missions-screen) { width: min(980px, calc(100vw - var(--safe-left) -
   .missions-screen .mission-title { font-size: 19px; }
   .missions-head h2 { font-size: 28px; }
 }
+
+/* ==== Platform look (matches the Shop and Daily missions) ====
+   One language everywhere: Barlow Condensed for headings, names and button
+   labels; DM Sans for reading. Gold pill buttons for the main action, glass
+   pills for the rest, sentence-case labels with a small gem, rounded
+   gradient panels, and gold-filled segments for the chosen option.
+   This layer comes last on purpose; the battle HUD is left as it is. */
+:root {
+  --gold-top: #ffe58f;
+  --gold-bottom: #f2b93b;
+  --gold-edge: #c4841f;
+  --gold-ink: #2a1a00;
+  --glass: #ffffff0a;
+  --glass-line: #8baee540;
+  --panel-top: #18294a;
+  --panel-bottom: #0e1a31;
+  --panel-line: #8baee52b;
+  --display: "Barlow Condensed", Impact, sans-serif;
+}
+
+/* Headings and labels. */
+h2, dialog h2 { font-family: var(--display); font-weight: 800; letter-spacing: .3px; line-height: 1.05; }
+dialog h2 { font-size: clamp(28px, 3vw, 38px); }
+h3 { font-family: var(--display); font-weight: 700; letter-spacing: .2px; }
+.section-title h2 { font-size: 24px; }
+.section-title > span { font-size: 12px; letter-spacing: .5px; color: #9fb2cf; }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .2px; text-transform: none; color: #ffd65b; gap: 8px; }
+.eyebrow::before { content: ""; flex: none; width: 7px; height: 7px; transform: rotate(45deg); border-radius: 1.5px; background: currentColor; box-shadow: 0 0 8px currentColor; }
+.room-panel label, dialog label { font-size: 12px; font-weight: 600; letter-spacing: 0; color: #c1cfe4; }
+.divider { font-size: 12px; font-weight: 600; letter-spacing: 0; color: #9fb2cf; }
+.divider:before, .divider:after { background: linear-gradient(90deg, transparent, #8baee533); }
+.divider:after { background: linear-gradient(90deg, #8baee533, transparent); }
+:is(.element-label, .combo-description b, .arena-brief b, .rite-owned em, .showcase-card .card-head strong, .element-pill, .range-tag,
+  .online-state, .team-head, .status-pill, .cast-mode legend, .binding-head, .binding-group, .raid-slot h4, .title-equipped,
+  .raid-hub-totals span, .raid-day-name, .raid-today-board > b, .raid-hub-panel h4) { text-transform: none; letter-spacing: .2px; }
+.showcase-card .card-head strong { font-family: var(--display); font-weight: 800; font-size: 24px; letter-spacing: .3px; }
+:is(.element-pill, .range-tag) { font-size: 10px; font-weight: 700; }
+.raid-day-name { font-size: 12px; }
+.raid-today-board > b, .raid-hub-panel h4 { font-family: var(--display); font-size: 17px; letter-spacing: .3px; }
+
+/* Buttons. The main action is a gold pill; the rest are glass pills. */
+.primary, #menu .room-panel > .primary {
+  border: 0; border-radius: 999px; padding: 12px 20px; min-height: 44px;
+  color: var(--gold-ink); background: linear-gradient(180deg, var(--gold-top), var(--gold-bottom));
+  box-shadow: inset 0 -3px 0 var(--gold-edge), inset 0 1px 0 #fff6cf, 0 8px 18px -10px #ffd65b;
+  font: 800 18px/1.1 var(--display); letter-spacing: .4px;
+}
+.primary:hover:not(:disabled) { background: linear-gradient(180deg, #fff0b3, #f6c552); filter: none; box-shadow: inset 0 -3px 0 var(--gold-edge), inset 0 1px 0 #fff6cf, 0 10px 22px -10px #ffd65b; }
+.primary:active:not(:disabled) { box-shadow: inset 0 -1px 0 var(--gold-edge), inset 0 1px 0 #fff6cf; transform: translateY(2px); }
+.primary:disabled { color: #8c7a55; background: linear-gradient(180deg, #3a3550, #2b2740); box-shadow: inset 0 1px 0 #ffffff12; }
+.primary .button-icon, .primary .menu-option-icon { color: #7a4a00; }
+.secondary:not(.leave-button) {
+  border: 1px solid var(--glass-line); border-radius: 999px; padding: 11px 18px; min-height: 42px;
+  color: #e2ebf8; background: var(--glass); box-shadow: inset 0 1px 0 #ffffff10;
+  font: 700 17px/1.1 var(--display); letter-spacing: .3px;
+}
+.secondary:not(.leave-button):hover:not(:disabled) { background: #ffffff14; border-color: #ffd65b66; color: #fff; filter: none; }
+.leave-button, button.leave-button.quiet, button.leave-button.secondary { border-radius: 999px; font: 700 16px/1.1 var(--display); letter-spacing: .3px; }
+.quiet { border-radius: 999px; }
+.quiet:hover:not(:disabled) { color: #e2ebf8; filter: none; }
+:is(.primary, .secondary) :is(.button-icon, .menu-option-icon) { width: 18px; height: 18px; }
+
+/* Chosen-option tiles (room type, bot level, …): gold fill when chosen. */
+.bot-level { border: 0; border-radius: 12px; background: #08122480; box-shadow: inset 0 0 0 1px #8baee52b; color: #c1cfe4; transition: background .15s ease, box-shadow .15s ease; }
+.bot-level b { font: 700 18px/1.1 var(--display); letter-spacing: .3px; }
+.bot-level small { font-size: 11px; color: #8fa3c2; }
+.bot-level:hover:not(.active):not(:disabled) { box-shadow: inset 0 0 0 1px #ffd65b66; filter: none; }
+.bot-level.active { color: var(--gold-ink); background: linear-gradient(180deg, var(--gold-top), var(--gold-bottom)); box-shadow: inset 0 -3px 0 var(--gold-edge); }
+.bot-level.active small { color: #6b4a10; }
+
+/* Fields. */
+input:not([type="range"]):not([type="checkbox"]):not([type="color"]):not([type="radio"]), select, textarea {
+  border: 0; border-radius: 12px; background: #0a1529; box-shadow: inset 0 0 0 1px #8baee533; color: #f3f6ff;
+}
+input:not([type="range"]):not([type="checkbox"]):not([type="color"]):not([type="radio"]):focus, select:focus, textarea:focus {
+  box-shadow: inset 0 0 0 1.5px #ffd65b, 0 0 0 3px #ffd65b26; outline: 0;
+}
+input[type="range"] { accent-color: #ffd65b; }
+
+/* Panels: rounded, lit from the top. */
+.room-panel { border: 0; border-radius: 18px; background: linear-gradient(180deg, var(--panel-top), var(--panel-bottom)); box-shadow: inset 0 0 0 1px var(--panel-line), inset 0 1px 0 #ffffff12, 0 20px 50px -20px #000a; }
+.room-panel h2 { font-size: 32px; font-weight: 800; letter-spacing: .3px; }
+dialog { border: 0; border-radius: 20px; background: linear-gradient(180deg, #1a2c4f, #0f1b33 70%); box-shadow: inset 0 0 0 1px var(--panel-line), inset 0 1px 0 #ffffff14, 0 30px 80px -20px #000c; }
+dialog::backdrop { background: #050c1acc; }
+.close, .dialog-toolbar .close { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: 0; border-radius: 50%; background: var(--glass); box-shadow: inset 0 0 0 1px var(--glass-line); color: #dbe6f6; font-size: 22px; line-height: 1; }
+.close:hover:not(:disabled) { background: #ffffff18; color: #fff; filter: none; }
+.close:focus-visible { outline: 2px solid #ffd65b; outline-offset: 2px; }
+.dialog-toolbar { background: transparent; }
+.creature-card, .selected-fighter { border-radius: 16px; }
+
+/* Top bar: menu and account as glass pills; Sign up is the gold action. */
+.header-menu summary { border: 0; border-radius: 999px; background: var(--glass); box-shadow: inset 0 0 0 1px var(--glass-line); font: 700 16px/1 var(--display); letter-spacing: .3px; padding: 10px 16px; }
+.header-menu[open] summary { box-shadow: inset 0 0 0 1px #ffd65b99; }
+.header-menu-panel { border-radius: 16px; }
+.header-menu-panel .quiet { border-radius: 10px; font-size: 13px; }
+.selected-art > span { letter-spacing: .3px; font-size: 12px; font-weight: 600; }
+.room-panel h2 { font-size: 30px; }
+
+/* Tab shelves (Raid Hub boss pages, admin): like the Shop's tabs. */
+.raid-hub-tabs, .admin-tabs { gap: 2px; border-bottom: 1px solid #8baee526; }
+.raid-hub-tabs button, .admin-tab {
+  position: relative; padding: 10px 14px 12px; border: 0; border-radius: 8px 8px 0 0; background: transparent;
+  color: #9fb2cf; font: 700 18px/1 var(--display); letter-spacing: .3px;
+}
+.raid-hub-tabs button:hover:not(.is-active), .admin-tab:hover:not(.active) { color: #e2ebf8; background: #ffffff08; filter: none; }
+.raid-hub-tabs button.is-active, .admin-tab.active { color: #ffe39a; background: linear-gradient(#ffd65b00, #ffd65b14); border-bottom-color: transparent; }
+.raid-hub-tabs button.is-active::after, .admin-tab.active::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 3px; border-radius: 3px 3px 0 0; background: #ffd65b; box-shadow: 0 0 12px #ffd65b; }
+.report-filter button { border-radius: 999px; }
+.report-filter button.active { background: linear-gradient(180deg, var(--gold-top), var(--gold-bottom)); border-color: transparent; color: var(--gold-ink); box-shadow: inset 0 -2px 0 var(--gold-edge); }
+
+/* Raid Hub tiles and cards: lit panels; today's tile is lit in the boss's colour. */
+button.raid-day { border: 0; border-radius: 14px; background: linear-gradient(180deg, #172846, #0e1a31); box-shadow: inset 0 0 0 1px #8baee526; }
+button.raid-day:hover:not(:disabled) { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--boss) 60%, transparent); filter: none; }
+.raid-day.is-today { border: 0; box-shadow: inset 0 0 0 2px var(--boss), 0 8px 22px -8px color-mix(in srgb, var(--boss) 70%, transparent); }
+.raid-day-name { font-family: var(--display); font-weight: 700; font-size: 16px; }
+button.raid-boss-card { border: 0; border-radius: 16px; background: linear-gradient(180deg, color-mix(in srgb, var(--boss) 9%, #16274a), #0e1a31 75%); box-shadow: inset 0 0 0 1px #8baee526, inset 0 3px 0 -1px color-mix(in srgb, var(--boss) 70%, transparent); }
+button.raid-boss-card:hover:not(:disabled) { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--boss) 70%, transparent), inset 0 3px 0 -1px var(--boss); filter: none; }
+.raid-boss-card.is-featured { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--boss) 80%, transparent), inset 0 3px 0 -1px var(--boss); }
+.raid-card-top > b { font-family: var(--display); font-size: 19px; letter-spacing: .2px; line-height: 1.05; }
+.raid-today { border-radius: 18px; }
+.raid-hub-totals > * { border-radius: 12px; }
+.raid-hub-totals b { font-family: var(--display); font-size: 22px; }
+.guide-card { border: 0; border-radius: 16px; background: linear-gradient(180deg, #1a2c4f, #0f1b33); box-shadow: inset 0 0 0 1px #8baee52b; }
+.guide-caption b, .guide-card h3, .guide-card h4 { font-family: var(--display); font-size: 18px; letter-spacing: .2px; }
+
+/* Skills panel and fighter details. */
+.selected-info h3 { letter-spacing: .3px; }
+:is(.skills-panel, .skill-list) h2 { font-family: var(--display); }
+.raid-hub-chapters li::before { text-transform: none; letter-spacing: .2px; font-size: 12px; font-weight: 600; }
+.raid-hub-chapters li b { font-family: var(--display); font-size: 18px; letter-spacing: .2px; }
+.raid-card-top { gap: 6px; min-width: 0; }
+.raid-card-top > b { min-width: 0; }
+.raid-card-top > :not(b) { flex: none; }
+.raid-card-progress { min-width: 0; }
+
+/* Stats: big numbers in the display face, labels in sentence case. */
+.progress-totals { font-size: 11px; letter-spacing: 0; }
+.progress-totals b { font-family: var(--display); font-size: 30px; font-weight: 800; letter-spacing: .3px; margin-bottom: 2px; }
+:is(.fighter-stats, .raid-result-stats) b { font-family: var(--display); font-weight: 800; letter-spacing: .3px; }
+:is(.mastery, .achievements) li b { font-family: var(--display); font-size: 17px; letter-spacing: .2px; }
+.recap th { letter-spacing: .2px; text-transform: none; font-size: 11px; }
+
+/* Toasts: a dark pill with a gold edge, not a solid yellow block. */
+#toast { border-radius: 999px; padding: 10px 18px; color: #fff1c4; background: linear-gradient(#1a1630, #120f24) padding-box, linear-gradient(135deg, #ffe48a, #b8791a 60%, #ffe48a) border-box; border: 1.5px solid transparent; box-shadow: 0 12px 30px -10px #000c; font-weight: 600; }
+
+/* Password field's show/hide button: round, inside the round field. */
+.password-toggle, .password-field button { border-radius: 999px; }
+
+/* Card-shaped choices that reuse .secondary keep card corners, not pills. */
+.raid-rite-options > button.secondary, button.secondary.raid-cosmetic-option {
+  border-radius: 16px; min-height: 0; padding: 12px; font: inherit; letter-spacing: 0;
+  background: linear-gradient(180deg, #1a2c4f, #0f1b33); border: 0; box-shadow: inset 0 0 0 1px #8baee533;
+}
+.raid-rite-options > button.secondary:hover:not(:disabled), button.secondary.raid-cosmetic-option:hover:not(:disabled) { box-shadow: inset 0 0 0 1.5px #ffd65b99; }
+.raid-rite-options > button.secondary b { font-family: var(--display); font-size: 19px; letter-spacing: .2px; }
+button.secondary.raid-cosmetic-option.active, button.secondary.raid-cosmetic-option[aria-pressed="true"] { box-shadow: inset 0 0 0 2px #ffd65b, 0 0 16px -4px #ffd65b88; }
+.leave-button.is-costly { border-radius: 16px; }
+
+/* In-game cards (briefing, results, pauses): the same lit panel as dialogs. */
+.overlay-card { border: 0; border-radius: 20px; background: linear-gradient(180deg, #1a2c4fee, #0f1b33f2 70%); box-shadow: inset 0 0 0 1px var(--panel-line), inset 0 1px 0 #ffffff14, 0 30px 80px -20px #000c; }
+.overlay-card h2 { font-size: clamp(28px, 3vw, 40px); }
+.room-code span { font: 600 12px "DM Sans", sans-serif; letter-spacing: 0; }
+.room-code { font-family: var(--display); border-radius: 14px; }

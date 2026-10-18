@@ -62,7 +62,7 @@ export function progressMarkup(progress: Progress) {
     ? Math.round((100 * progress.wins) / progress.matches)
     : 0;
   const earned = progress.achievements.filter((a) => a.earnedAt).length;
-  const totals = `<div class="progress-totals"><span><b>${progress.matches}</b>MATCHES</span><span><b>${progress.wins}</b>WINS</span><span><b>${rate}%</b>WIN RATE</span><span><b>${progress.season.wins}–${progress.season.matches - progress.season.wins}</b>${escape(seasonName(progress.season.id).toUpperCase())}</span></div>`;
+  const totals = `<div class="progress-totals"><span><b>${progress.matches}</b>Matches</span><span><b>${progress.wins}</b>Wins</span><span><b>${rate}%</b>Win rate</span><span><b>${progress.season.wins}–${progress.season.matches - progress.season.wins}</b>${escape(seasonName(progress.season.id))}</span></div>`;
   const achievements = `<h3>Achievements <small>${earned}/${progress.achievements.length} · each one unlocks its title</small></h3><ul class="achievements">${progress.achievements
     .map(
       (a) =>

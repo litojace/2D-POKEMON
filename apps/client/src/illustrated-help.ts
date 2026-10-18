@@ -72,5 +72,5 @@ export function illustratedHelp() {
       "Player matches change your rating. Earn rank titles to keep.",
     ),
   ];
-  return `<section class="illustrated-guide" aria-label="Battle tips in pictures"><div class="guide-section-heading"><span class="eyebrow">LEARN BY LOOKING</span><h3>Your arena field guide</h3></div><div class="guide-grid">${tiles.join("")}</div><p class="guide-overtime"><span aria-hidden="true">&#9201;</span><span><b>Tied when time runs out?</b> Overtime drains both players’ health.</span></p><p class="guide-rank-note">Rank details: Menu → Leaderboard → How ranks work.</p></section>`;
+  return `<section class="illustrated-guide" aria-label="Battle tips in pictures"><div class="guide-section-heading"><span class="eyebrow">Learn by looking</span><h3>Your arena field guide</h3></div><div class="guide-grid">${tiles.join("")}</div><p class="guide-overtime"><span aria-hidden="true">&#9201;</span><span><b>Tied when time runs out?</b> Overtime drains both players’ health.</span></p><p class="guide-rank-note">Rank details: Menu → Leaderboard → How ranks work.</p></section>`;
 }
