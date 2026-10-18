@@ -258,29 +258,32 @@ describe("Bubble Prison", () => {
 });
 
 describe("a whole run", () => {
-  it("plays through every chapter with stand-ins without errors", () => {
+  it("plays through every chapter with stand-ins and uses every attack", () => {
     const a = createRaidArena("SIM", "tidewyrm") as TidewyrmArena;
-    for (const [i, c] of (["voltkit", "tidefin", "terradon"] as CharacterId[]).entries()) {
-      a.add("b" + i, "Bot " + i, c);
-    }
+    for (const [i, c] of (["voltkit", "tidefin", "terradon"] as CharacterId[]).entries()) a.add("b" + i, "Bot " + i, c);
     a.configure(3, false);
     a.start();
     for (const p of a.heroes()) a.standIn(p.id);
     a.phase = "playing";
     a.deadline = 480;
     const seen = new Set<string>();
-    for (let t = 0; t < 400 && !a.raid.result; t += 1 / 30) {
+    // The test sets the boss's health itself, so each chapter lasts about a
+    // minute however hard the stand-ins hit (their damage is undone).
+    const chip = a.raid.maxHp / 3 / 60 / 30;
+    let thirdFor = 0;
+    for (let t = 0; t < 470 && !a.raid.result && thirdFor < 60; t += 1 / 30) {
+      const boss = a.boss()!,
+        before = boss.hp;
       a.tick(1 / 30);
+      boss.hp = before - (a.phase === "playing" ? chip : 0);
       for (const w of a.raid.warnings) seen.add(w.kind);
       if ((a.phase as string) === "intermission") {
         for (const [id, offer] of Object.entries(a.raid.offers)) a.pickRite(id, offer[0]);
         a.tick(1 / 30);
       }
-      // Speed the fight along: chip the boss so every chapter is reached.
-      const boss = a.boss();
-      if (boss && a.phase === "playing" && !a.raid.submerged) boss.hp -= 0.6;
+      if (a.raid.phase === 3) thirdFor += 1 / 30;
     }
     expect(a.raid.phase).toBe(3);
-    for (const kind of ["dive", "wave", "bubbles", "hightide", "undertow", "prison"]) expect(seen).toContain(kind);
+    for (const kind of ["dive", "wave", "bubbles", "hightide", "undertow", "prison"]) expect([...seen]).toContain(kind);
   });
 });
