@@ -1,4 +1,4 @@
-import { adventureStep } from "./adventure-score";
+import { adventureStep, ADVENTURE_LOOP_STEPS } from "./adventure-score";
 import type { SampleInstrument } from "./music-samples";
 export type BackgroundTheme = "lobby" | "pvp" | "raid";
 export type ResultTheme = "victory" | "defeat" | "draw";
@@ -35,15 +35,15 @@ export interface ScoreNote {
   pan?: number;
 }
 export const MUSIC_BPM: Record<MusicTheme, number> = {
-  lobby: 88,
-  pvp: 152,
-  raid: 116,
+  lobby: 96,
+  pvp: 148,
+  raid: 104,
   victory: 124,
   defeat: 82,
   draw: 96,
 };
 /** A full arrangement, with a breakdown and return, rather than an eight-bar loop. */
-export const MUSIC_LOOP_STEPS = 32 * 16;
+export const MUSIC_LOOP_STEPS = ADVENTURE_LOOP_STEPS;
 const phrase = (notes: string) =>
   notes.split(" ").map((n) => (n === "-" ? "" : n));
 const resultChords = {

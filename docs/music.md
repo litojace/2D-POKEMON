@@ -1,14 +1,14 @@
 # Adventure music
 
-The three background scores are original 32-bar compositions scheduled with Web Audio:
+The three background scores are original 48-bar compositions scheduled with Web Audio:
 
-| Scene     | Character                                                        | Tempo   |
-| --------- | ---------------------------------------------------------------- | ------- |
-| Lobby     | Warm piano, harp and flute in G major                            | 88 BPM  |
-| PvP       | A fast D minor battle melody with strings and concert percussion | 152 BPM |
-| Boss raid | A dramatic A minor horn theme, strings and timpani               | 116 BPM |
+| Scene     | Track                 | Character                                                                 | Tempo   | Loop |
+| --------- | --------------------- | ------------------------------------------------------------------------- | ------- | ---- |
+| Lobby     | Lanterns at Dawn      | Warm D major piano melody, lilting harp and answering flute               | 96 BPM  | 2:00 |
+| PvP       | Skybound Rivals       | Syncopated E minor piano, a soaring string refrain and driving percussion | 148 BPM | 1:18 |
+| Boss raid | Crown of the Colossus | C minor horn calls, answering strings and a heavy orchestral march        | 104 BPM | 1:51 |
 
-Each arrangement includes a quieter middle section and a fuller return. Raid phases add layers without restarting the score. Victory, defeat and draw keep their finite result themes. Music respects the existing volume, mute, background-page handling and theme crossfades.
+Each arrangement has a statement, answer, quieter bridge, climax, varied answer and homecoming. Four separately written eight-bar melody sections use changing harmonies; explicit note lengths leave breaths between phrases. The closing harmony leads back to the opening key. Short stereo room reflections soften the recorded instruments while percussion stays direct. Raid phases add layers without restarting the score. Victory, defeat and draw keep their finite result themes. Music respects the existing volume, mute, background-page handling and theme crossfades.
 
 ## Recorded instruments
 

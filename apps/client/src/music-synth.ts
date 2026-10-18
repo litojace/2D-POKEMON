@@ -25,6 +25,7 @@ export function noteHz(name: string) {
 export class MusicSynth {
   private echo: DelayNode;
   private echoNodes: AudioNode[];
+  private room: BiquadFilterNode;
   constructor(
     private ctx: BaseAudioContext,
     private output: AudioNode,
@@ -46,6 +47,27 @@ export class MusicSynth {
     this.echo.connect(filter).connect(feedback).connect(this.echo);
     filter.connect(wet).connect(stereo).connect(output);
     this.echoNodes = [this.echo, filter, feedback, wet, stereo];
+    // Short, quiet room reflections soften the recorded ensemble without
+    // obscuring rhythmic attacks or adding a long tail over combat sounds.
+    this.room = ctx.createBiquadFilter();
+    this.room.type = "lowpass";
+    this.room.frequency.value = 3600;
+    this.echoNodes.push(this.room);
+    for (const [seconds, level, pan] of [
+      [0.037, 0.11, -0.45],
+      [0.061, 0.08, 0.45],
+      [0.097, 0.05, -0.25],
+      [0.139, 0.03, 0.25],
+    ]) {
+      const delay = ctx.createDelay(0.2),
+        gain = ctx.createGain(),
+        position = ctx.createStereoPanner();
+      delay.delayTime.value = seconds;
+      gain.gain.value = level;
+      position.pan.value = pan;
+      this.room.connect(delay).connect(gain).connect(position).connect(output);
+      this.echoNodes.push(delay, gain, position);
+    }
   }
   disconnect() {
     this.echoNodes.forEach((node) => node.disconnect());
@@ -62,6 +84,7 @@ export class MusicSynth {
           note,
           note.note ? noteHz(note.note) : 0,
           t,
+          this.room,
         )
       )
         return;

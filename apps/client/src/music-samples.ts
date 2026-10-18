@@ -73,6 +73,7 @@ export function playSample(
   note: ScoreNote,
   hz: number,
   t: number,
+  room?: AudioNode,
 ): boolean {
   if (!isSampleInstrument(note.instrument)) return false;
   const sample = bank.get(note.instrument, hz);
@@ -99,6 +100,7 @@ export function playSample(
   gain.gain.linearRampToValueAtTime(0.0001, t + duration);
   stereo.pan.value = note.pan ?? 0;
   source.connect(gain).connect(stereo).connect(output);
+  if (room && sample.rootHz) stereo.connect(room);
   source.start(t);
   source.stop(t + duration + 0.01);
   source.onended = () => {
