@@ -32,6 +32,21 @@ const act = async (id: string, kind: "match" | "raid", player: object) => {
     JSON.stringify({ id, kind, day: await today(), players: [player] }),
   ]);
 };
+/**
+ * Coins excluding daily-mission rewards. Missions are picked by date, so on
+ * some days these raid clears also finish a mission (and pay it); the raid
+ * pay itself must not depend on the day the tests run.
+ */
+const paidExceptMissions = async () => {
+  const balance = (await economy()).balance;
+  await db.exec("reset role");
+  const missions = (
+    await db.query<{ coins: number }>(
+      `select coalesce(sum(amount), 0)::int as coins from public.arena_coin_ledger where player_id = '${player}' and reason in ('mission', 'missions-bonus', 'streak')`,
+    )
+  ).rows[0].coins;
+  return balance - missions;
+};
 const raidClear = (peril: number, daily = false) =>
   me({ raid: { cleared: true, daily, peril, flawless: true, feat: true, revives: 4 } });
 beforeAll(async () => {
@@ -61,12 +76,12 @@ afterAll(async () => db.close());
 it("pays raid clears with a daily cap, the daily bonus once, and ignores repeats", async () => {
   await act("r1", "raid", raidClear(2, true));
   await act("r1", "raid", raidClear(2, true));
-  expect((await economy()).balance).toBe(45 + 50);
+  expect(await paidExceptMissions()).toBe(45 + 50);
   for (let n = 2; n <= 7; n++) await act(`r${n}`, "raid", raidClear(3, true));
   const e = await economy();
   // Five paid clears a day: 45 + four Peril 3 clears at 60.
   expect(e.today.raidClears).toBe(5);
-  expect(e.balance).toBe(45 + 50 + 4 * 60);
+  expect(await paidExceptMissions()).toBe(45 + 50 + 4 * 60);
 });
 
 it("pays real matches against people only, up to ten a day", async () => {
