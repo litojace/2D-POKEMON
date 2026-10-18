@@ -1914,11 +1914,11 @@ $("leaderboard").onclick = () => void accountsUI.showLeaderboard();
 $("friends").onclick = () => void accountsUI.showFriends();
 $("help").onclick = () =>
   dialog(
-    `<div class="eyebrow">HOW TO PLAY</div><h2>Every second counts.</h2><p>Create a room, share the code, choose your creatures, and both click Ready. Win three rounds to take the match.</p>${controlsList(true)}${illustratedHelp()}`,
+    `<div class="help-screen"><div class="eyebrow">HOW TO PLAY</div><h2>Every second counts.</h2><p>Create a room, share the code, choose your creatures, and both click Ready. Win three rounds to take the match.</p><div class="help-layout"><section class="help-controls" aria-label="Game controls">${controlsList(true)}</section>${illustratedHelp()}</div></div>`,
   );
 $("credits").onclick = () =>
   dialog(
-    '<div class="eyebrow">BUILT FOR THE DUEL</div><h2>Element Arena</h2><p>Eight original creatures, each an articulated shaded-vector rig with front, back and side views, plus a stone coliseum and original music.</p><p>Instrument recordings: <a href="https://github.com/sgossner/VCSL" target="_blank" rel="noopener noreferrer">Versilian Community Sample Library</a> and <a href="https://github.com/sgossner/VSCO-2-CE" target="_blank" rel="noopener noreferrer">VSCO 2 Community Edition</a> (CC0 public domain).</p><p>Built with Phaser, Socket.IO, Express, TypeScript, Vite, and Supabase. Rendered sprite sheets or atlases can replace any creature through the fighter asset pipeline.</p>',
+    '<div class="credits-screen"><div class="eyebrow">BUILT FOR THE DUEL</div><h2>Element Arena</h2><div class="credits-details"><p>Eight original creatures, each an articulated shaded-vector rig with front, back and side views, plus a stone coliseum and original music.</p><p>Instrument recordings: <a href="https://github.com/sgossner/VCSL" target="_blank" rel="noopener noreferrer">Versilian Community Sample Library</a> and <a href="https://github.com/sgossner/VSCO-2-CE" target="_blank" rel="noopener noreferrer">VSCO 2 Community Edition</a> (CC0 public domain).</p><p>Built with Phaser, Socket.IO, Express, TypeScript, Vite, and Supabase. Rendered sprite sheets or atlases can replace any creature through the fighter asset pipeline.</p></div></div>',
   );
 $<HTMLDialogElement>("dialog").addEventListener("close", () => {
   settingsOpen = false;

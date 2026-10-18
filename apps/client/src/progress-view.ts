@@ -119,5 +119,5 @@ function ratedBoardMarkup(board: Leaderboard) {
         )
         .join(" · ")}</p>`
     : "";
-  return `${ratingMarkup(board.rating)}<table class="leaderboard"><thead><tr><th scope="col">#</th><th scope="col">Player</th><th scope="col">Rating</th><th scope="col" title="Wins and losses against players this month">This month</th></tr></thead><tbody>${rows}</tbody></table>${unranked}${ranksHelpMarkup()}`;
+  return `<div class="leaderboard-layout"><aside class="leaderboard-summary">${ratingMarkup(board.rating)}${ranksHelpMarkup()}</aside><div class="leaderboard-results"><table class="leaderboard"><thead><tr><th scope="col">#</th><th scope="col">Player</th><th scope="col">Rating</th><th scope="col" title="Wins and losses against players this month">This month</th></tr></thead><tbody>${rows}</tbody></table>${unranked}</div></div>`;
 }

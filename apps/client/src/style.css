@@ -7829,7 +7829,7 @@ dialog:has(.shop) { width: min(980px, 96vw); }
 /* Use landscape width for related controls rather than stacking long columns. */
 .settings-touch:empty { display: none; }
 .settings-audio, .settings-touch, .controls-preferences, .controls-bindings { min-width: 0; }
-@media (orientation: landscape) and (min-width: 560px) {
+@media (min-width: 760px), (orientation: landscape) and (min-width: 560px) {
   dialog:has(.settings-screen), dialog:has(.bindings) { width: min(980px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px)); }
   .settings-layout:has(.settings-touch:not(:empty)) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
   .settings-layout:has(.settings-touch:not(:empty)) .settings-touch { grid-column: 2; grid-row: 1 / span 2; }
@@ -7852,12 +7852,12 @@ dialog:has(.shop) { width: min(980px, 96vw); }
 
 @media (orientation: landscape) and (min-width: 760px) {
   dialog:has(.shop) { width: min(1200px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px)); }
-  .shop { grid-template-columns: minmax(200px, .65fr) minmax(0, 1.35fr); gap: 12px 16px; align-items: start; }
+  .shop { grid-template-columns: clamp(200px, 24vw, 280px) minmax(0, 1fr); gap: 12px 16px; align-items: start; }
   .shop-head, .shop-tabs, .shop-status { grid-column: 1 / -1; }
   .shop-preview { grid-column: 1; grid-row: 3; grid-template-columns: 1fr; position: sticky; top: 0; }
   .shop-body { grid-column: 2; grid-row: 3; }
   .shop:not(:has(.shop-preview)) .shop-body { grid-column: 1 / -1; }
-  .shop-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  .shop-grid { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
   .raid-rewards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; }
   .raid-equip { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 12px 16px; }
   .raid-slot { min-width: 0; }
@@ -8004,4 +8004,92 @@ dialog:has(.shop) { width: min(980px, 96vw); }
   border-radius: 50%;
   background: radial-gradient(circle at 35% 35%, #ffffff, #fff3f8 45%, #c9b8d6);
   box-shadow: 0 0 0 2px #ff8fa8, 0 0 8px #bff6ff;
+}
+
+.binding-section { display: grid; gap: 4px; min-width: 0; }
+
+/* Content-rich menus share the available width, including tablets in portrait. */
+.profile-customize, #profile-progress, .friends-invite, #friends-body,
+.help-controls, .leaderboard-summary, .leaderboard-results { min-width: 0; }
+@media (min-width: 760px), (orientation: landscape) and (min-width: 560px) {
+  dialog:has(.profile-screen, .friends-screen, .controls-layout, .help-screen, #leaderboard-body, .admin-tabs) {
+    width: min(1320px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
+  }
+  dialog:has(.settings-screen, #auth-form, #report-form, .credits-screen, .fullscreen-steps, .fullscreen-actions) {
+    width: min(1000px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
+  }
+  dialog:is(:has(.raid-hub), :has(.shop)) {
+    width: min(1440px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
+  }
+  dialog[open]:has(.shop) { grid-template-rows: minmax(0, 1fr); }
+  dialog:has(.shop) .dialog-toolbar { position: absolute; top: 2px; right: 4px; z-index: 2; background: transparent; }
+  dialog:has(.shop) .dialog-content { max-height: calc(var(--raid-dialog-height) - 2px); }
+  .shop-head { padding-right: 48px; }
+  .header-menu { position: static; }
+  .header-menu-panel { top: calc(100% + 4px); right: calc(12px + var(--safe-right)); left: auto; width: 460px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .header-menu-panel .connection { grid-column: 1 / -1; }
+  .header-menu-panel > button { min-width: 0; }
+  .profile-layout, .friends-layout, .help-layout, .leaderboard-layout {
+    display: grid;
+    grid-template-columns: minmax(220px, .7fr) minmax(0, 1.3fr);
+    gap: 24px;
+    align-items: start;
+  }
+  .profile-layout .progress { margin-top: 0; }
+  .friends-layout { grid-template-columns: minmax(200px, .65fr) minmax(0, 1.35fr); }
+  #friends-body > h3:first-child { margin-top: 0; }
+  .friends-invite .friend-code-row { flex-wrap: wrap; }
+  .friend-list li { grid-template-columns: 10px minmax(0, 1fr); }
+  .friend-list .friend-actions { grid-column: 2; justify-self: start; flex-wrap: wrap; }
+  .help-layout { grid-template-columns: minmax(180px, .45fr) minmax(0, 1.55fr); }
+  .help-controls .controls-list { grid-template-columns: 1fr; margin-top: 0; }
+  .help-layout .illustrated-guide, .help-layout .guide-section-heading { margin-top: 0; }
+  .help-layout .guide-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .leaderboard-layout { grid-template-columns: minmax(200px, .6fr) minmax(0, 1.4fr); }
+  .leaderboard-results .leaderboard { margin-top: 0; }
+  .leaderboard-summary .rating-card { margin-top: 0; }
+  .fullscreen-steps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 32px; }
+  .credits-details { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+  #auth-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #auth-form:not(:has(label:nth-of-type(2))) { grid-template-columns: 1fr; }
+  #auth-form > button, #auth-form > p, #auth-form > .checkbox-label { grid-column: 1 / -1; }
+  #report-form { display: grid; grid-template-columns: minmax(170px, .6fr) minmax(0, 1.4fr); align-items: start; }
+  #report-form > label:first-child { grid-column: 1; grid-row: 1; }
+  #report-form > label:nth-child(2) { grid-column: 2; grid-row: 1 / span 2; }
+  #report-form > button { grid-column: 1; grid-row: 2; }
+  #report-count { grid-column: 2; }
+  #report-form > p { grid-column: 1 / -1; }
+  .raid-boss-grid { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .raid-hub-chapters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .raid-hub-perks, .raid-hub-attacks { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .raid-rewards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; }
+  .raid-equip { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 12px 16px; }
+  .raid-slot { min-width: 0; }
+}
+@media (min-width: 760px) and (orientation: portrait) {
+  .shop-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+}
+@media (min-width: 1100px) {
+  .profile-layout { grid-template-columns: 320px minmax(0, 1fr); }
+  .friends-layout { grid-template-columns: 300px minmax(0, 1fr); }
+  .friend-list { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .controls-layout { grid-template-columns: minmax(0, .8fr) minmax(0, 1.6fr) minmax(0, .8fr); }
+  .bindings { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+  .controls-bindings { grid-row: 1; }
+  .controls-layout > .pad-map { grid-column: 3; grid-row: 1; margin-top: 8px; padding-top: 0; border-top: 0; }
+  .help-layout { grid-template-columns: 240px minmax(0, 1fr); }
+  .help-layout .guide-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .raid-rewards, .raid-equip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (orientation: landscape) and (max-height: 600px) and (min-width: 760px) {
+  /* A preview taller than the viewport must scroll away with the item list. */
+  .shop-preview { position: static; }
+}
+@media (orientation: landscape) and (min-width: 560px) and (max-width: 759px) {
+  .header-menu-panel { max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 70px); }
+  .profile-layout, .friends-layout, .leaderboard-layout { grid-template-columns: minmax(180px, .8fr) minmax(0, 1.2fr); gap: 16px; }
+  .profile-layout .progress-totals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .help-layout { grid-template-columns: 1fr; gap: 12px; }
+  .help-controls .controls-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .raid-equip { grid-template-columns: 1fr; }
 }
