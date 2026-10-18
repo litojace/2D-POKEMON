@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { SHOP_BUNDLES, shopPrice, type Economy } from "../../packages/shared/src/shop";
-import { SHOP_TABS, itemAction, missionsBlock, picksCountdown, shopMarkup } from "../../apps/client/src/shop-ui";
+import { SHOP_TABS, itemAction, picksCountdown, shopMarkup } from "../../apps/client/src/shop-ui";
+import { missionsBlock, missionsMarkup } from "../../apps/client/src/missions-ui";
 
 const economy = (extra: Partial<Economy> = {}): Economy => ({
   balance: 2000,
@@ -78,5 +79,29 @@ describe("shop page", () => {
     expect(html).toContain("Win 2 &lt;b&gt;matches&lt;/b&gt;");
     expect(html.match(/data-mission-reroll/g)).toHaveLength(2);
     expect(missionsBlock(economy({ rerolled: true }))).not.toContain("data-mission-reroll");
+  });
+  it("gives missions their own screen, out of the Shop", () => {
+    expect(SHOP_TABS.map(([id]) => id)).not.toContain("missions");
+    expect(shopMarkup({ tab: "today", champion: "voltkit" }, economy())).not.toContain("mission-list");
+    const html = missionsMarkup(economy());
+    expect(html).toContain("mission-list");
+    expect(html).toContain("New missions in");
+    expect(html).not.toMatch(/undefined|NaN|\[object/);
+    expect(missionsMarkup(null)).toContain("Log in");
+  });
+  it("marks missions that need other people and offers a solo swap", () => {
+    const html = missionsBlock(economy());
+    // Slot 1 is "Win 2 matches against players" in the test economy.
+    expect(html).toContain("With others");
+    expect(html).toContain("Swap for a solo mission");
+  });
+  it("lights the streak track up to today", () => {
+    const track = (e: ReturnType<typeof economy>) => (missionsMarkup(e).match(/class="is-lit/g) ?? []).length;
+    // Two days so far, today not finished: two lit.
+    expect(track(economy({ streak: 2 }))).toBe(2);
+    // A full week paid yesterday: today starts again.
+    expect(track(economy({ streak: 7 }))).toBe(0);
+    const allDone = economy().missions.map((m) => ({ ...m, done: true, progress: m.target }));
+    expect(track(economy({ streak: 7, missions: allDone }))).toBe(7);
   });
 });

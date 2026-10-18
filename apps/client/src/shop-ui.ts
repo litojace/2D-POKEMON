@@ -3,7 +3,6 @@ import {
   AWAKENING,
   CHAMPION_SKINS,
   CHAMPION_SKIN_BY_ID,
-  COINS,
   COLLECTION_NAMES,
   LOOK_ITEMS,
   LOOK_ITEM_BY_ID,
@@ -26,13 +25,12 @@ import { creatureSvg, CREATURE_VIEWBOX, type SkinLook } from "./creature-design"
  * The Shop and daily missions (design §10). Markup only: AccountUI wires the
  * buttons. Every price shown mirrors the database, which is what charges.
  */
-export type ShopTab = "today" | "champions" | "mythic" | "collections" | "missions";
+export type ShopTab = "today" | "champions" | "mythic" | "collections";
 export const SHOP_TABS: [ShopTab, string][] = [
   ["today", "Today"],
   ["champions", "Champion skins"],
   ["mythic", "Mythic Hall"],
   ["collections", "Collections"],
-  ["missions", "Missions"],
 ];
 export interface ShopView {
   tab: ShopTab;
@@ -169,7 +167,7 @@ function todayTab(view: ShopView, e: Economy | null, loadout: RaidLoadout) {
   // Today's deal leads as a wide card (if it's still for sale).
   const deal = e.picks.items.find((id) => id === e.picks.deal && shopPrice(id, e.owned, e.picks.deal) !== null);
   const cards = [...(deal ? [deal] : []), ...e.picks.items.filter((id) => id !== deal)].map((id) => card(id, view, e, loadout, "", id === deal)).join("");
-  return `<h3 class="shop-heading">Today's picks <small>New picks in ${picksCountdown()}</small></h3><div class="shop-grid shop-picks">${cards}</div>${missionsBlock(e, true)}`;
+  return `<h3 class="shop-heading">Today's picks <small>New picks in ${picksCountdown()}</small></h3><div class="shop-grid shop-picks">${cards}</div>`;
 }
 function championsTab(view: ShopView, e: Economy | null, loadout: RaidLoadout) {
   const chips = CHAMPIONS.map(
@@ -211,21 +209,6 @@ function collectionsTab(view: ShopView, e: Economy | null, loadout: RaidLoadout)
   }).join("");
   return `<p class="shop-intro">Collection pieces work on every fighter. Equip them here or on a boss's Rewards tab in the Raid Hub. Previewing on ${CHARACTERS[view.champion].name}.</p>${sets}`;
 }
-/** Daily missions: progress, the one free re-roll, the streak and today's caps. */
-export function missionsBlock(e: Economy, compact = false) {
-  const left = e.missions.filter((m) => !m.done).length;
-  const cards = e.missions
-    .map(
-      (m) => `<li class="mission tier-${m.tier}${m.done ? " is-done" : ""}"><span class="mission-tier">${'<i aria-hidden="true"></i>'.repeat(m.tier === "easy" ? 1 : m.tier === "medium" ? 2 : 3)}${m.tier[0].toUpperCase() + m.tier.slice(1)}</span><b class="mission-title">${escape(m.text)}</b><div class="mission-footer"><progress aria-label="${escape(m.text)} progress" max="${m.target}" value="${Math.min(m.progress, m.target)}"></progress><div class="mission-meta"><span>${Math.min(m.progress, m.target)}/${m.target}</span><span class="mission-reward">${buttonIcon("coin")}<span>${m.coins}<span class="sr-only"> coins</span></span></span></div>${!compact ? `<div class="mission-actions">${m.done ? `<span class="mission-complete">${iconLabel("check", "Completed")}</span>` : !e.rerolled ? `<button class="quiet" data-mission-reroll="${m.slot}">${iconLabel("shuffle", "Re-roll")}</button>` : ""}</div>` : ""}</div></li>`,
-    )
-    .join("");
-  const streak = `<p class="mission-streak">${buttonIcon("sparkle")}<span>Streak <b>${e.streak}</b> day${e.streak === 1 ? "" : "s"} · all three each day for 7 days pays +${COINS.streakBonus}; all three today pays +${COINS.allMissionsBonus}</span></p>`;
-  const caps = compact
-    ? ""
-    : `<p class="shop-note">Today: raid clears paid ${Math.min(e.today.raidClears, COINS.raidClearsPaidPerDay)}/${COINS.raidClearsPaidPerDay} · matches against players paid ${Math.min(e.today.pvpMatches, COINS.pvpMatchesPaidPerDay)}/${COINS.pvpMatchesPaidPerDay}. Coins come from raids, missions and real matches (not bots).${e.rerolled ? " You've used today's re-roll." : " One free re-roll a day."}</p>`;
-  return `<section class="missions"><h3 class="shop-heading">Daily missions <small>${left ? `${left} left` : "All done"}</small></h3><ul class="mission-list">${cards}</ul>${streak}${caps}</section>`;
-}
-
 export function shopMarkup(view: ShopView, e: Economy | null, loadout: RaidLoadout = {}, problem = "") {
   const tabs = `<nav class="shop-tabs" role="tablist" aria-label="Shop sections">${SHOP_TABS.map(
     ([id, label]) => `<button role="tab" type="button" data-shop-tab="${id}" aria-selected="${id === view.tab}" class="${id === view.tab ? "active" : ""}">${label}</button>`,
@@ -237,9 +220,8 @@ export function shopMarkup(view: ShopView, e: Economy | null, loadout: RaidLoado
         champions: championsTab,
         mythic: mythicTab,
         collections: collectionsTab,
-        missions: (_v: ShopView, econ: Economy) => missionsBlock(econ),
       }[view.tab](view, e, loadout);
-  const preview = view.tab === "missions" ? "" : previewPanel(view, e);
+  const preview = previewPanel(view, e);
   return `<div class="shop"><header class="shop-head"><h2>${iconLabel("shop", "Shop")}</h2>${coinChip(e?.balance)}</header>${tabs}${preview}<div class="shop-body">${body}</div><p class="shop-status" role="status"></p></div>`;
 }
 /** Collection pieces' slot (for equipping). */

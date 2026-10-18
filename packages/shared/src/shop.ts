@@ -224,7 +224,16 @@ export type MissionMetric =
   | "feat"
   | "hard-bot-win"
   | "wins-with"
-  | "teams-unharmed";
+  | "teams-unharmed"
+  // Added with migration 014.
+  | "wins"
+  | "bot-wins"
+  | "minutes"
+  | "raid-play"
+  | "raid-solo"
+  | "raid-solo-p2"
+  | "raid-party"
+  | "ffa-wins";
 export interface Mission {
   id: string;
   tier: MissionTier;
@@ -234,6 +243,11 @@ export interface Mission {
   coins: number;
   /** wins-with: the champions that count. */
   champions?: CharacterId[];
+  /**
+   * Can be done alone (against bots or in a solo raid). Players who haven't
+   * played anyone else this week are only given these.
+   */
+  solo: boolean;
 }
 export const MISSION_COINS: Record<MissionTier, number> = { easy: 40, medium: 70, hard: 120 };
 const mission = (
@@ -243,24 +257,45 @@ const mission = (
   metric: MissionMetric,
   target: number,
   champions?: CharacterId[],
-): Mission => ({ id, tier, text, metric, target, coins: MISSION_COINS[tier], ...(champions ? { champions } : {}) });
+): Mission => ({ id, tier, text, metric, target, coins: MISSION_COINS[tier], solo: true, ...(champions ? { champions } : {}) });
+/** A mission that needs other people (a real match, a 2v2, a party raid). */
+const together = (m: Mission): Mission => ({ ...m, solo: false });
 export const MISSIONS: Mission[] = [
+  // Easy
   mission("play-2", "easy", "Play 2 matches", "play", 2),
   mission("raid-1", "easy", "Clear any raid", "raid-clear", 1),
   mission("skills-30", "easy", "Use 30 skills", "skill-uses", 30),
   mission("ults-3", "easy", "Use your ultimate 3 times", "ults", 3),
-  mission("pvp-wins-2", "medium", "Win 2 matches against players", "pvp-wins", 2),
+  mission("win-1", "easy", "Win a match", "wins", 1),
+  mission("raid-play-1", "easy", "Finish a raid, win or lose", "raid-play", 1),
+  mission("minutes-10", "easy", "Play for 10 minutes", "minutes", 10),
+  // Medium
+  together(mission("pvp-wins-2", "medium", "Win 2 matches against players", "pvp-wins", 2)),
   mission("daily-1", "medium", "Clear today's Raid of the Day", "daily-clear", 1),
-  mission("revives-3", "medium", "Help revive 3 allies in raids", "revives", 3),
+  together(mission("revives-3", "medium", "Help revive 3 allies in raids", "revives", 3)),
   mission("earth-water", "medium", "Win a match as Terradon or Tidefin", "wins-with", 1, ["terradon", "tidefin"]),
   mission("fire-light", "medium", "Win a match as Cindrake or Lumoth", "wins-with", 1, ["cindrake", "lumoth"]),
+  mission("electric-aura", "medium", "Win a match as Voltkit or Auralynx", "wins-with", 1, ["voltkit", "auralynx"]),
+  mission("psychic-shadow", "medium", "Win a match as Mystowl or Duskveil", "wins-with", 1, ["mystowl", "duskveil"]),
   mission("hard-bot", "medium", "Beat a Hard bot", "hard-bot-win", 1),
+  mission("bot-wins-3", "medium", "Win 3 matches against bots", "bot-wins", 3),
+  mission("raids-2", "medium", "Clear 2 raids", "raid-clear", 2),
+  mission("raid-solo-1", "medium", "Clear a raid on your own", "raid-solo", 1),
+  mission("ults-8", "medium", "Use your ultimate 8 times", "ults", 8),
+  together(mission("raid-party", "medium", "Clear a raid with a friend", "raid-party", 1)),
+  // Hard
   mission("raid-p3", "hard", "Clear any raid on Peril 3", "raid-peril3", 1),
   mission("raid-flawless", "hard", "Clear a raid with no downs", "raid-flawless", 1),
-  mission("teams-unharmed", "hard", "Win a 2v2 without being knocked out", "teams-unharmed", 1),
+  together(mission("teams-unharmed", "hard", "Win a 2v2 without being knocked out", "teams-unharmed", 1)),
   mission("feat-1", "hard", "Complete a boss feat", "feat", 1),
-  mission("pvp-wins-5", "hard", "Win 5 matches against players", "pvp-wins", 5),
+  together(mission("pvp-wins-5", "hard", "Win 5 matches against players", "pvp-wins", 5)),
+  mission("hard-bots-3", "hard", "Beat 3 Hard bots", "hard-bot-win", 3),
+  mission("raids-3", "hard", "Clear 3 raids", "raid-clear", 3),
+  mission("raid-solo-p2", "hard", "Clear a raid on your own on Peril 2 or higher", "raid-solo-p2", 1),
+  mission("minutes-30", "hard", "Play for 30 minutes", "minutes", 30),
+  together(mission("ffa-win", "hard", "Win a free-for-all", "ffa-wins", 1)),
 ];
+export const MISSION_BY_ID: Record<string, Mission> = Object.fromEntries(MISSIONS.map((m) => [m.id, m]));
 
 /**
  * What the game server reports after a real match or raid (never the

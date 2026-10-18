@@ -114,7 +114,7 @@ The Raid Hub boss page shows boss information, clears, highest Peril, best activ
 
 ## Required deployment setup
 
-1. Run `supabase/migrations/007_raids.sql` in Supabase after migrations 001–006, then `supabase/migrations/008_raid_progress.sql`, then `supabase/migrations/009_raid_hub.sql`, then the Shop's `010_shop.sql` and `011_collection_bonus.sql`, then `012_tidewyrm.sql` (it switches Tidewyrm on and seeds its rewards), then `013_gloomshade.sql` (the same for Gloomshade). 010 also updates the appearance functions so Shop pieces can be equipped; if you ever re-run an older raid migration, run 009–013 again afterwards, in order.
+1. Run `supabase/migrations/007_raids.sql` in Supabase after migrations 001–006, then `supabase/migrations/008_raid_progress.sql`, then `supabase/migrations/009_raid_hub.sql`, then the Shop's `010_shop.sql` and `011_collection_bonus.sql`, then `012_tidewyrm.sql` (it switches Tidewyrm on and seeds its rewards), then `013_gloomshade.sql` (the same for Gloomshade), then `014_missions.sql` (daily missions). 010 also updates the appearance functions so Shop pieces can be equipped; if you ever re-run an older raid migration, run 009–014 again afterwards, in order.
 2. Set **SUPABASE_SERVICE_ROLE_KEY** in the **server's** hosting environment alongside its existing SUPABASE_URL. Never use a VITE_ prefix or put this key in browser configuration. It enables the server-only `arena_record_raid` function.
 3. Redeploy the server and client together, since snapshots now support the raid mode.
 

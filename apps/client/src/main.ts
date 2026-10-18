@@ -585,16 +585,17 @@ function skinOf(p: Pick<Fighter, "id" | "championLooks"> | undefined, character:
   return looksOf(p)?.[character] ?? null;
 }
 let lastWornKey = "{}";
-/** Home: the Shop button with today's missions underneath (signed in). */
+/** Home: the Shop button, and today's missions as their own card (signed in). */
 function homeShop() {
   if (!accountsUI?.account) return "";
   const e = accountsUI.economy;
+  const done = e?.missions.filter((m) => m.done).length ?? 0;
   const missions = e?.missions.length
-    ? `<button type="button" class="home-missions" id="home-missions" aria-label="Daily missions: ${e.missions.filter((m) => m.done).length} of ${e.missions.length} done">${e.missions
-        .map((m) => `<span class="home-mission${m.done ? " is-done" : ""}" title="${escape(m.text)}"><small>${escape(m.text)}</small><progress max="${m.target}" value="${Math.min(m.progress, m.target)}"></progress></span>`)
+    ? `<button type="button" class="home-missions" id="home-missions" aria-label="Daily missions: ${done} of ${e.missions.length} done"><span class="home-missions-head">${menuIcon("missions")}<b>Daily missions</b><small>${done === e.missions.length ? "All done" : `${done}/${e.missions.length} done`}</small></span>${e.missions
+        .map((m) => `<span class="home-mission tier-${m.tier}${m.done ? " is-done" : ""}" title="${escape(m.text)}"><small>${escape(m.text)}</small><progress max="${m.target}" value="${Math.min(m.progress, m.target)}"></progress></span>`)
         .join("")}</button>`
     : "";
-  return `<button class="quiet raid-icon-button" id="shop-open">${menuIcon("shop")}<span>Shop & daily missions</span>${e ? coinChip(e.balance) : ""}</button>${missions}`;
+  return `<button class="quiet raid-icon-button" id="shop-open">${menuIcon("shop")}<span>Shop</span>${e ? coinChip(e.balance) : ""}</button>${missions}`;
 }
 function syncMenuCosmetic() {
   const panel=document.querySelector<HTMLElement>("#menu .roster-panel");
@@ -939,7 +940,7 @@ function wireRaidLobby() {
 
   const bestiary=document.getElementById('raid-bestiary');if(bestiary)bestiary.onclick=()=>void showRaidBestiary();
   const shop=document.getElementById('shop-open');if(shop)shop.onclick=()=>void accountsUI.showShop();
-  const missions=document.getElementById('home-missions');if(missions)missions.onclick=()=>void accountsUI.showShop('missions');
+  const missions=document.getElementById('home-missions');if(missions)missions.onclick=()=>void accountsUI.showMissions();
   const peril=document.getElementById('raid-peril') as HTMLInputElement|null,daily=document.getElementById('raid-daily-toggle') as HTMLInputElement|null;
   const configure = () => {
     const isDaily = daily?.checked ?? false;

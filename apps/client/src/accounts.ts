@@ -7,6 +7,7 @@ import {
 } from "./raid-hub";
 import { iconLabel } from "./menu-icons";
 import { coinChip, coins, lookSlot, shopMarkup, type ShopTab, type ShopView } from "./shop-ui";
+import { missionsMarkup } from "./missions-ui";
 import {
   CHAMPION_SKIN_BY_ID,
   LOOK_ITEM_BY_ID,
@@ -567,6 +568,7 @@ export class AccountUI {
       this.renderNav();
       this.hooks.onChange();
       this.shopRefresh?.();
+      this.missionsRefresh?.();
     } catch {
       /* Shop storage needs migration 010. */
     }
@@ -741,14 +743,49 @@ export class AccountUI {
             view.preview = null;
             return `${CHARACTERS[champion].name} wears the original look.`;
           });
-      for (const b of all<HTMLButtonElement>("[data-mission-reroll]"))
-        b.onclick = () =>
-          void busy(b, async () => {
-            this.economy = ((await this.api("/api/missions/reroll", { slot: Number(b.dataset.missionReroll) })) as { economy: Economy }).economy;
-            return "Mission re-rolled.";
-          });
     };
     render(false);
+  }
+  /** Re-render the open Missions screen (set while it's open). */
+  private missionsRefresh?: () => void;
+  /** Daily missions: their own screen, opened from the home card. */
+  async showMissions() {
+    if (!this.ensurePlayer()) return;
+    let problem = "";
+    try {
+      this.economy = (await this.api("/api/economy")) as Economy;
+      this.renderNav();
+    } catch (error) {
+      problem = error instanceof Error ? `${error.message} Missions need the latest database update.` : "Missions are not available yet.";
+    }
+    const dialogEl = () => document.getElementById("dialog") as HTMLDialogElement | null;
+    const render = (message = "") => {
+      this.hooks.openDialog(missionsMarkup(this.economy ?? null, problem));
+      const root = dialogEl();
+      if (!root) return;
+      const status = root.querySelector<HTMLElement>(".missions-screen .shop-status");
+      if (status) status.textContent = message;
+      const shop = root.querySelector<HTMLButtonElement>("#missions-shop");
+      if (shop) shop.onclick = () => void this.showShop();
+      for (const b of Array.from(root.querySelectorAll<HTMLButtonElement>("[data-mission-reroll]")))
+        b.onclick = async () => {
+          root.querySelectorAll<HTMLButtonElement>(".missions-screen button").forEach((x) => (x.disabled = true));
+          b.setAttribute("aria-busy", "true");
+          try {
+            this.economy = ((await this.api("/api/missions/reroll", { slot: Number(b.dataset.missionReroll) })) as { economy: Economy }).economy;
+            this.renderNav();
+            this.hooks.onChange();
+            render("New mission ready.");
+          } catch (error) {
+            render(error instanceof Error ? error.message : "That didn't work. Try again.");
+          }
+        };
+    };
+    this.missionsRefresh = () => {
+      if (dialogEl()?.open && dialogEl()?.querySelector(".missions-screen")) render();
+      else this.missionsRefresh = undefined;
+    };
+    render();
   }
   /** Equip a collection piece (or clear a slot) through the raid appearance route. */
   private async equipLook(slot: RaidSlot, item: string | null) {

@@ -13,11 +13,24 @@ import {
 } from "../../packages/shared/src/shop";
 
 const migration = readFileSync("supabase/migrations/010_shop.sql", "utf8");
+/** Missions are re-seeded (with the solo flag) by 014. */
+const missionMigration = readFileSync("supabase/migrations/014_missions.sql", "utf8");
 
 describe("shop catalog", () => {
   it("is seeded into the database exactly as defined", () => {
     expect(migration).toContain(shopItemsSql);
-    expect(migration).toContain(missionsSql);
+    expect(missionMigration).toContain(missionsSql);
+  });
+
+  it("gives solo players plenty of missions in every tier, and counts every metric", () => {
+    for (const tier of ["easy", "medium", "hard"] as const)
+      expect(MISSIONS.filter((m) => m.tier === tier && m.solo).length, tier).toBeGreaterThanOrEqual(7);
+    expect(new Set(MISSIONS.map((m) => m.id)).size).toBe(MISSIONS.length);
+    // Missions that need other people are flagged.
+    for (const id of ["pvp-wins-2", "pvp-wins-5", "revives-3", "teams-unharmed", "raid-party", "ffa-win"])
+      expect(MISSIONS.find((m) => m.id === id)?.solo, id).toBe(false);
+    // Every metric is bumped by the database's activity report.
+    for (const m of MISSIONS) expect(missionMigration, m.metric).toContain(`'${m.metric}'`);
   });
 
   it("has 7 skins for every champion: 3 Common, 2 Rare, 1 Epic, 1 Mythical", () => {

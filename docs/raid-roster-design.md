@@ -871,6 +871,26 @@ At the prices below (§10.5.1), that works out to:
 - Missions are checked **on the server** from the same match and raid
   results that already exist, so they can't be faked from the browser.
 
+**Update (Oct 18, migration 014): missions that fit how you play.**
+
+- Missions have their **own screen** (the *Daily missions* card on the
+  home screen), no longer a Shop tab.
+- Every mission is marked **solo** or **with others**. With others: *Win
+  2 / 5 matches against players*, *Help revive 3 allies*, *Win a 2v2
+  without being knocked out*, *Clear a raid with a friend*, *Win a
+  free-for-all* (bot matches are always 1-against-1).
+- A player who hasn't played a match against people in the past 7 days is
+  **only given solo missions**. Everyone else draws from the full pool. The
+  picks are still seeded by day, so friends who play the same way still
+  share missions.
+- Re-rolling a *with others* mission always gives a solo one (the button
+  says *Swap for a solo mission*).
+- The pool grew from 15 to 30 (23 solo). New: *Win a match*, *Finish a
+  raid, win or lose*, *Play for 10 / 30 minutes*, *Win 3 matches against
+  bots*, *Win as Voltkit or Auralynx*, *Win as Mystowl or Duskveil*, *Clear
+  2 / 3 raids*, *Clear a raid on your own* (and on Peril 2+), *Use your
+  ultimate 8 times*, *Beat 3 Hard bots*, plus the two group missions above.
+
 ### 10.5 The shop
 
 **Where:** a *Shop* item in the menu (with an icon), and a coin balance
