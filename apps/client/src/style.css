@@ -7751,7 +7751,7 @@ dialog:has(.shop) { width: min(980px, 96vw); }
 .rarity-badge.rarity-rare { background: #4f9cff; color: #071225; }
 .rarity-badge.rarity-epic { background: #b06bff; color: #12052a; }
 .rarity-badge.rarity-mythical { background: linear-gradient(90deg, #ffd65b, #ff8fd8, #7ff3ff, #ffd65b); background-size: 300% 100%; color: #1b1636; animation: mythic-shift 6s linear infinite; }
-.deal-badge { display: inline-block; margin-left: 4px; padding: 1px 7px; border-radius: 999px; font-size: 9px; font-weight: 800; background: #ff5d6c; color: #fff; }
+.deal-badge { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 9px; font-weight: 800; background: #ff5d6c; color: #fff; }
 @keyframes mythic-shift { to { background-position: 300% 0; } }
 
 .shop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
