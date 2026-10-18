@@ -1,6 +1,6 @@
 # Boss Raid
 
-Choose **Boss Raid · Co-op · 1–4 players** and press **Open the Raid Hub**. The Hub shows this week's seven bosses (one featured each day), today's Raid of the Day, and a card for every boss. Open a boss to see its chapters, attacks, rewards and records, then **Create raid room** (share its code) or **Play solo now**. Only Grumblecrag is built so far; the other six are listed as coming soon (see [the roster design](raid-roster-design.md)).
+Choose **Boss Raid · Co-op · 1–4 players** and press **Open the Raid Hub**. The Hub shows this week's seven bosses (one featured each day), today's Raid of the Day, and a card for every boss. Open a boss to see its chapters, attacks, rewards and records, then **Create raid room** (share its code) or **Play solo now**. Grumblecrag and Tidewyrm are built; the other five are listed as coming soon (see [the roster design](raid-roster-design.md)). New bosses unlock after a first Grumblecrag clear.
 
 In a raid room Every human readies up, confirms the illustrated boss introduction, and chooses a starting rite. Solo needs no AI partner and gets one automatic self-revive on Peril 1–2 (none on Peril 3). Existing champion selection, custom controls, touch joystick, camera and Socket.IO reconnection remain in use.
 
@@ -23,6 +23,20 @@ Chapter one teaches charges, slams, volleys and debris. Chapter two adds the dou
 Contextual combat prompts shorten after the first two uses of each attack. Downed teammates have a green rescue marker and progress ring. Each chapter's objective is shown during the upgrade break. Every rite choice allows 15 seconds, and all choices confirmed ends the break early. Landscape screens show three choices side by side; the team build details can be expanded below them.
 
 Normal crowd control adds stagger rather than stun-locking the boss. The boss cannot be pushed around by ordinary knockback. Downed teammates can crawl; standing nearby revives them. Being hit interrupts the rescuer, but progress is retained. A solo run gets one self-revive on Peril 1–2; another down ends it. Solo Peril 3 has no self-revive: one down ends the run. A wiped co-op team loses.
+
+## Tidewyrm (Friday's boss)
+
+A sleepy sea serpent fought in the **Lagoon Court**: shallow water with four raised islands you can stand on (no walls). Its numbers live in `TIDEWYRM` and its attack order in `tidewyrmPattern` (`packages/shared/src/raid.ts`); the fight is `TidewyrmArena` in `apps/server/src/raid-tidewyrm.ts`, which reuses the raid core (chapters, rites, downs, stagger, practice, stand-ins).
+
+- **Dive & Surface (signature):** it dives (can't be hit under water) and a ripple follows one raider for 1.4 s, then locks for 0.8 s. It surfaces there with a splash ring. Surfacing **on an island strands it**: exposed for 5 s (7 on Peril 1), stagger, and a strand counted for the raider it chased. An island sinks after two strands until the next chapter. Tidefin's Mirror Mist clone carries the ripple.
+- **Tidal Wave:** a band sweeps across from one edge. Chapter 1 waves are low (jump them); from chapter 2 they're high (only an island is safe).
+- **Bubble Barrage:** 7–9 slow bubbles in a fan. A hit roots you for 0.8 s; attacks pop them; Terradon's Tremor clears them.
+- **High Tide** (ch. 2+): the floor floods for 5 s; off the islands you take damage and slow down. Two raiders fit on an island; a third is pushed off (solo: no limit).
+- **Undertow** (ch. 2+): a whirlpool at the centre pulls everyone in for 3 s; its centre hurts. Dash outward.
+- **Bubble Prison** (ch. 2+): one raider is sealed and drifts to the boss's mouth over 6 s. Teammates pop it with three hits (Cindrake's Magma Bomb in one, Terradon's Tremor frees it); the trapped raider can mash attack (8 presses) to break out. Reaching the mouth downs you.
+- **Storm Surge** (ch. 3): faster rhythm; High Tide leads straight into a dive and the Undertow into a wave. On Peril 3 an island sinks for good every 45 s (35 s solo), down to two.
+- **Traits:** Murky (fainter ripples, strands last 1 s longer), Rip Current (stronger Undertow, slower waves), Spring Tide (longer High Tide, bigger islands). **Themed rite:** Sure Footing (no bubble roots, 15% faster in water). **Signal:** the third key is "Island here".
+- **Rewards** (migration 012): Tidebreaker (first clear), Seafoam colors (5 clears), Pearlscale skin (10), Riptide entrance (Peril 2), Leviathan's Bane title + Reef frame (Peril 3), Tidal aura (Peril 3, no downs), Splashdown victory (feat: strand it 4 times in one run), Flash Flood (Peril 2 solo under 4:00), Lone Current (Peril 3 solo), Shipwright (30 strands, wins and losses).
 
 ## Replay variety
 
@@ -86,7 +100,7 @@ The Raid Hub boss page shows boss information, clears, highest Peril, best activ
 
 ## Required deployment setup
 
-1. Run `supabase/migrations/007_raids.sql` in Supabase after migrations 001–006, then `supabase/migrations/008_raid_progress.sql`, then `supabase/migrations/009_raid_hub.sql`, then the Shop's `010_shop.sql` and `011_collection_bonus.sql` (010 also updates the appearance functions so Shop pieces can be equipped; if you ever re-run an older raid migration, run 009, 010 and 011 again afterwards, in order).
+1. Run `supabase/migrations/007_raids.sql` in Supabase after migrations 001–006, then `supabase/migrations/008_raid_progress.sql`, then `supabase/migrations/009_raid_hub.sql`, then the Shop's `010_shop.sql` and `011_collection_bonus.sql`, then `012_tidewyrm.sql` (it switches Tidewyrm on and seeds its rewards). 010 also updates the appearance functions so Shop pieces can be equipped; if you ever re-run an older raid migration, run 009–012 again afterwards, in order.
 2. Set **SUPABASE_SERVICE_ROLE_KEY** in the **server's** hosting environment alongside its existing SUPABASE_URL. Never use a VITE_ prefix or put this key in browser configuration. It enables the server-only `arena_record_raid` function.
 3. Redeploy the server and client together, since snapshots now support the raid mode.
 

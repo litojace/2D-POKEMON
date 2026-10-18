@@ -20,7 +20,7 @@ export interface FloorPainter {
   ): FloorPainter;
   fillCircle(x: number, y: number, r: number): FloorPainter;
   strokeCircle(x: number, y: number, r: number): FloorPainter;
-  fillEllipse(x: number, y: number, w: number, h: number): FloorPainter;
+  fillEllipse(x: number, y: number, w: number, h: number, smoothness?: number): FloorPainter;
   fillTriangle(
     x0: number,
     y0: number,
@@ -54,8 +54,8 @@ export function scaledPainter(g: FloorPainter, k: number): FloorPainter {
     ),
     fillCircle: (x, y, r) => (g.fillCircle(s(x), s(y), s(r)), wrapped),
     strokeCircle: (x, y, r) => (g.strokeCircle(s(x), s(y), s(r)), wrapped),
-    fillEllipse: (x, y, w, h) => (
-      g.fillEllipse(s(x), s(y), s(w), s(h)),
+    fillEllipse: (x, y, w, h, smoothness) => (
+      g.fillEllipse(s(x), s(y), s(w), s(h), smoothness),
       wrapped
     ),
     fillTriangle: (a, b, c, d, e, f) => (
@@ -134,6 +134,16 @@ export const FLOOR_PALETTES: Record<
     pillar: [0x4a3c37, 0x5e4c45, 0x8c7466],
     lines: 0xffd9b8,
   },
+  lagoon: {
+    surround: 0xc9b27a,
+    blades: [0x3e8f86, 0x2c6f6a, 0x58a99c],
+    grout: 0x1b5b6e,
+    tones: [0x2b8aa0, 0x2f93a8, 0x2884a0, 0x3399ad],
+    speck: 0x7fe9ff,
+    moss: 0x3e8f86,
+    pillar: [0xb89b62, 0xd2b679, 0xf1dcae],
+    lines: 0xd9f5f0,
+  },
   "shifting-ruins": {
     surround: 0x55663a,
     blades: [0x7d9248, 0x45562c, 0x93a85a],
@@ -146,6 +156,7 @@ export const FLOOR_PALETTES: Record<
   },
 };
 export function paintArenaFloor(g: FloorPainter, arena: ArenaDef = ARENAS.classic) {
+  if (arena.id === "lagoon") return paintLagoon(g);
   const pal = FLOOR_PALETTES[arena.id];
   const { width: W, height: H } = RULES;
   let seed = 42;
@@ -319,4 +330,50 @@ export function paintArenaFloor(g: FloorPainter, arena: ArenaDef = ARENAS.classi
       H - i * 14,
       20,
     );
+}
+
+/**
+ * Tidewyrm's Lagoon Court: a sandy rim around shallow, sunlit water. The
+ * islands rise and sink during a raid, so they are drawn live (raid-ui.ts),
+ * not baked into the floor.
+ */
+function paintLagoon(g: FloorPainter) {
+  const { width: W, height: H } = RULES;
+  let seed = 7;
+  const random = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  // Sand rim with pebbles and a few shells.
+  g.fillStyle(0xd9c48a).fillRect(0, 0, W, H);
+  for (let i = 0; i < 500; i++) {
+    const x = random() * W,
+      y = random() * H;
+    g.fillStyle(i % 3 ? 0xc4ad73 : 0xead8a5, 0.8).fillCircle(x, y, 1 + random() * 2.5);
+  }
+  // The water: deep at the edges, bright in the middle.
+  g.fillStyle(0x0f5f78).fillRoundedRect(BORDER, BORDER, W - BORDER * 2, H - BORDER * 2, 40);
+  g.fillStyle(0x16788f).fillRoundedRect(BORDER + 18, BORDER + 18, W - BORDER * 2 - 36, H - BORDER * 2 - 36, 34);
+  g.fillStyle(0x1f8fa6, 0.9).fillEllipse(W / 2, H / 2, W - 260, H - 200, 128);
+  g.fillStyle(0x2aa3b8, 0.6).fillEllipse(W / 2, H / 2, W - 520, H - 380, 128);
+  // Sunlit caustics and sandy patches on the bottom.
+  for (let i = 0; i < 46; i++) {
+    const x = BORDER + 40 + random() * (W - BORDER * 2 - 80),
+      y = BORDER + 40 + random() * (H - BORDER * 2 - 80);
+    g.fillStyle(0xd9c48a, 0.12).fillEllipse(x, y, 40 + random() * 70, 18 + random() * 30);
+  }
+  for (let i = 0; i < 140; i++) {
+    const x = BORDER + 20 + random() * (W - BORDER * 2 - 40),
+      y = BORDER + 20 + random() * (H - BORDER * 2 - 40),
+      w = 12 + random() * 26;
+    g.lineStyle(2, 0xbff6ff, 0.12 + random() * 0.1).lineBetween(x, y, x + w, y + (random() - 0.5) * 8);
+  }
+  // A ring where the whirlpool forms.
+  g.lineStyle(3, 0xd9f5f0, 0.18).strokeCircle(W / 2, H / 2, 150);
+  g.lineStyle(2, 0xd9f5f0, 0.1).strokeCircle(W / 2, H / 2, 230);
+  // Foam where water meets sand.
+  g.lineStyle(6, 0xf2fbfa, 0.55).strokeRoundedRect(BORDER, BORDER, W - BORDER * 2, H - BORDER * 2, 40);
+  g.lineStyle(3, 0xffffff, 0.35).strokeRoundedRect(BORDER + 9, BORDER + 9, W - BORDER * 2 - 18, H - BORDER * 2 - 18, 34);
+  for (let i = 0; i < 6; i++)
+    g.lineStyle(14, 0x062a35, 0.04 + i * 0.012).strokeRoundedRect(i * 7, i * 7, W - i * 14, H - i * 14, 20);
 }

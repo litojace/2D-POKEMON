@@ -53,7 +53,7 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
     signature: "Strand it on an island",
     blurb:
       "A sleepy sea serpent with a pearl on its brow. Lure its dive onto dry land, share the islands when the tide rises, and pop your friends out of bubbles.",
-    playable: false,
+    playable: true,
   },
   gloomshade: {
     id: "gloomshade",

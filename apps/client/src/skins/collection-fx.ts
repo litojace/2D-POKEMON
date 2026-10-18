@@ -57,6 +57,15 @@ export function drawCollectionAura(g: G, id: string, x: number, y: number, now: 
         g.fillStyle(i % 2 ? 0xffb3cf : 0xfff0f5, 0.95).fillTriangle(px - dx, py - dy, px + dx, py + dy, px - dy, py + dx * 0.6);
       });
       return true;
+    case "tidal-aura": {
+      // Tidewyrm's reward: a rolling ring of water with foam crests.
+      g.fillStyle(0x1f8fa6, 0.18).fillEllipse(x, y, 104, 44);
+      g.lineStyle(3, 0x7fe9ff, 0.8).strokeEllipse(x, y, 96, 40);
+      ring(10, 48, 20, 2600, (px, py, i) =>
+        g.fillStyle(i % 2 ? 0xffffff : 0xbff6ff, 0.9).fillCircle(px, py - 2, 3.4),
+      );
+      return true;
+    }
     case "winter-aura":
       ring(8, 46, 19, 5200, (px, py, i) => {
         const s = 4;
@@ -110,6 +119,14 @@ export function playCollectionEntrance(emit: Emit, id: string, x: number, y: num
       burst(24, (i) => {
         const a = (i / 24) * TAU;
         return { y: y + 4 * sc, vx: Math.cos(a) * rnd(60, 120), vy: Math.sin(a) * rnd(30, 60) - 70, life: rnd(0.8, 1.2), size: 3 * sc, color: [0xffb3cf, 0xff6fa0, 0xfff0f5, 0x8fe06a][i % 4], shape: "leaf", spin: rnd(-8, 8) };
+      });
+      return true;
+    case "riptide":
+      // Tidewyrm's reward: burst up out of a splash.
+      emit({ x, y: y - 6 * sc, vx: 0, vy: 0, life: 0.45, size: 14 * sc, color: 0x7fe9ff, shape: "ring" });
+      burst(30, (i) => {
+        const a = -Math.PI * (0.1 + (i / 30) * 0.8);
+        return { y: y + 10 * sc, vx: Math.cos(a) * rnd(80, 190), vy: Math.sin(a) * rnd(150, 280), life: rnd(0.6, 1), size: rnd(2, 3.4) * sc, color: i % 3 ? 0xe6fbff : 0x7fe9ff, shape: "dot" };
       });
       return true;
     case "winter-entrance":
@@ -218,6 +235,19 @@ export function drawCollectionVictory(
       if (chance(26, dt))
         emit({ x: x + rnd(-80, 80) * sc, y: y - rnd(80, 120) * sc, vx: rnd(-20, 20), vy: rnd(40, 80), life: rnd(1.2, 1.8), size: 3 * sc, color: [0xffb3cf, 0xff6fa0, 0xfff0f5, 0xffd65b][Math.floor(rnd(0, 4))], shape: "leaf", spin: rnd(-6, 6) });
       return true;
+    case "splashdown": {
+      // Tidewyrm's reward: a wave rises behind you and crashes in spray.
+      const rise = Math.min(1, t / 0.5),
+        crash = t > 0.9 ? Math.min(1, (t - 0.9) / 0.4) : 0;
+      const h = 90 * sc * rise * (1 - crash * 0.8);
+      under.fillStyle(0x1f8fa6, 0.7 * fade).fillEllipse(x, y + 10 * sc, 150 * sc, 34 * sc);
+      under.fillStyle(0x3fb3c9, 0.85 * fade).fillTriangle(x - 70 * sc, y + 12 * sc, x + 70 * sc, y + 12 * sc, x + 20 * sc * (1 - crash), y + 12 * sc - h);
+      under.fillStyle(0xe6fbff, 0.9 * fade).fillCircle(x + 20 * sc * (1 - crash), y + 12 * sc - h, 10 * sc);
+      if (t > 0.9 && t - dt <= 0.9)
+        for (let i = 0; i < 34; i++)
+          emit({ x: x + rnd(-40, 40) * sc, y: y - 50 * sc, vx: rnd(-170, 170), vy: rnd(-260, -60), life: rnd(0.7, 1.1), size: rnd(2, 3.5) * sc, color: i % 3 ? 0xe6fbff : 0x7fe9ff, shape: "dot" });
+      return true;
+    }
     case "winter-victory": {
       // A snow globe: a glassy dome with a swirl of snow.
       under.fillStyle(0xbfe8ff, 0.14 * fade).fillCircle(x, y - 18 * sc, 48 * sc);

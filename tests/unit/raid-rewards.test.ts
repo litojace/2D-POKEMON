@@ -8,17 +8,20 @@ import {
   RAID_SLOTS,
 } from "../../packages/shared/src/raid";
 
-const sql = readFileSync("supabase/migrations/009_raid_hub.sql", "utf8");
-/** Rows of the arena_raid_rewards seed in migration 009. */
+/** Migrations that seed arena_raid_rewards (009: Grumblecrag; 012: Tidewyrm). */
+const sql = ["009_raid_hub.sql", "012_tidewyrm.sql"]
+  .map((f) => readFileSync(`supabase/migrations/${f}`, "utf8"))
+  .join("\n");
+/** Rows of the arena_raid_rewards seeds (SQL doubles a quote inside a name). */
 const seeded = [
   ...sql.matchAll(
-    /\('([a-z-]+)', (null|'[a-z-]+'), '([a-z]+)', '([^']+)', '(\{[^']*\})'\)/g,
+    /\('([a-z-]+)', (null|'[a-z-]+'), '([a-z]+)', '((?:[^']|'')+)', '(\{[^']*\})'\)/g,
   ),
 ].map(([, id, boss, slot, name, rule]) => ({
   id,
   boss: boss === "null" ? null : boss.slice(1, -1),
   slot,
-  name,
+  name: name.replace(/''/g, "'"),
   rule: JSON.parse(rule),
 }));
 
@@ -41,7 +44,7 @@ describe("raid rewards", () => {
       .join("\n");
     for (const reward of RAID_REWARDS.filter((r) => r.slot === "title"))
       expect(migrations, reward.name).toMatch(
-        new RegExp(`\\('${reward.name}',\\s*'`),
+        new RegExp(`\\('${reward.name.replace(/'/g, "''")}',\\s*'`),
       );
   });
 
@@ -65,7 +68,10 @@ describe("raid rewards", () => {
 
   it("seeds every boss in the roster, and only playable ones can be raided", () => {
     for (const id of RAID_BOSS_ORDER) {
-      expect(sql).toContain(`('${id}', '${RAID_BOSSES[id].name}', ${RAID_BOSSES[id].playable})`);
+      // 009 seeds the roster; later migrations switch bosses on as they ship.
+      const enabled = new RegExp(`set playable = true where id = '${id}'`).test(sql);
+      expect(sql).toContain(`('${id}', '${RAID_BOSSES[id].name}', ${id === "grumblecrag"})`);
+      expect(id === "grumblecrag" || enabled, id).toBe(RAID_BOSSES[id].playable);
     }
   });
 });

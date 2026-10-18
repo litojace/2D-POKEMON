@@ -6,20 +6,20 @@ import {
   RAID_ATTACKS,
   RAID_BOSSES,
   RAID_BOSS_ORDER,
-  RAID_CHAPTERS,
-  RAID_PERKS,
   RAID_REWARDS,
   RAID_TRAITS,
   RAID_WEEKDAYS,
   featuredOn,
   nextRaidDayAt,
   pacificDate,
+  raidAttacksOf,
+  raidChapters,
+  raidPerksOf,
+  raidTraitFor,
   raidWeekDays,
-  type RaidAttack,
   type RaidBoardRow,
   type RaidBossId,
   type RaidProgress,
-  type RaidTrait,
 } from "../../../packages/shared/src/raid";
 import { raidCrest } from "./raid-crests";
 import { raidGoal, raidGoals } from "./raid-presentation";
@@ -94,7 +94,7 @@ export function raidHubMarkup(p: RaidProgress | null, now = new Date()) {
   const today = featuredOn(todayDay);
   const counts = rewardCount(p);
   const cleared = new Set(p?.dailyClears ?? []);
-  const trait = (Object.keys(RAID_TRAITS) as RaidTrait[])[today.seed % 3];
+  const trait = raidTraitFor(today.boss, today.seed);
   const todayBoss = RAID_BOSSES[today.boss];
   const strip = week
     .map((d) => {
@@ -135,24 +135,22 @@ ${p ? "" : '<p class="raid-appearance-note">Log in to save clears and rewards. P
 </div>`;
 }
 
-const GRUMBLECRAG_ATTACKS: RaidAttack[] = ["charge", "slam", "volley", "debris", "eruption", "share"];
-
 function overview(id: RaidBossId) {
   const b = RAID_BOSSES[id];
   if (!b.playable)
     return `<p>${b.blurb}</p><p class="raid-hub-soon"><b>Coming soon.</b> ${b.name} will be featured every ${["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][b.day]}. Until then, a built boss stands in on its day.</p>`;
-  const perks = Object.entries(RAID_PERKS)
+  const perks = Object.entries(raidPerksOf(id))
     .map(
       ([champ, perk]) =>
         `<li><b>${CHARACTERS[champ as CharacterId].name} · ${perk!.skill}</b><small>${perk!.text}</small></li>`,
     )
     .join("");
-  return `<p>${b.blurb}</p><h4>Three chapters</h4><ol class="raid-hub-chapters">${RAID_CHAPTERS.map((c) => `<li><b>${c.name}</b><small>${c.objective}</small></li>`).join("")}</ol><h4>Champion tricks</h4><ul class="raid-hub-perks">${perks}</ul><p class="raid-hub-rules">Solo: one self-revive on Peril 1–2, none on Peril 3. Teams revive each other. Raids never change your PvP rating.</p>`;
+  return `<p>${b.blurb}</p><h4>Three chapters</h4><ol class="raid-hub-chapters">${raidChapters(id).map((c) => `<li><b>${c.name}</b><small>${c.objective}</small></li>`).join("")}</ol><h4>Champion tricks</h4><ul class="raid-hub-perks">${perks}</ul><p class="raid-hub-rules">Solo: one self-revive on Peril 1–2, none on Peril 3. Teams revive each other. Raids never change your PvP rating.</p>`;
 }
 
 function attacks(id: RaidBossId) {
   if (!RAID_BOSSES[id].playable) return `<p>Attack details arrive with the boss.</p>`;
-  return `<ul class="raid-hub-attacks">${GRUMBLECRAG_ATTACKS.map((a) => `<li><b>${RAID_ATTACKS[a].name}</b><small>${RAID_ATTACKS[a].tip}</small></li>`).join("")}</ul><p class="raid-hub-rules">Practice any attack from the raid lobby: the host opens <i>Practice the boss's attacks</i>.</p>`;
+  return `<ul class="raid-hub-attacks">${raidAttacksOf(id).map((a) => `<li><b>${RAID_ATTACKS[a].name}</b><small>${RAID_ATTACKS[a].tip}</small></li>`).join("")}</ul><p class="raid-hub-rules">Practice any attack from the raid lobby: the host opens <i>Practice the boss's attacks</i>.</p>`;
 }
 
 function rewards(id: RaidBossId, p: RaidProgress | null) {

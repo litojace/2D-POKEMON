@@ -7939,3 +7939,36 @@ dialog:has(.shop) { width: min(980px, 96vw); }
 @media (orientation: landscape) and (min-width: 1000px) {
   .guide-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+/* ---- Tidewyrm raid rewards ---- */
+.raid-cosmetic-preview[data-cosmetic="seafoam"] > svg,
+.roster-panel[data-raid-cosmetic~="seafoam"] .selected .card-art > :is(svg,img),
+.roster-panel[data-raid-cosmetic~="seafoam"] .selected-art > :is(svg,img),
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="seafoam"] > svg { filter: sepia(.5) hue-rotate(130deg) saturate(1.6) brightness(1.05); }
+.raid-cosmetic-preview[data-cosmetic="pearlscale"] > svg,
+.roster-panel[data-raid-cosmetic~="pearlscale"] .selected .card-art > :is(svg,img),
+.roster-panel[data-raid-cosmetic~="pearlscale"] .selected-art > :is(svg,img),
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="pearlscale"] > svg { filter: sepia(.4) hue-rotate(150deg) saturate(1.3) brightness(1.12) drop-shadow(0 0 3px #fff3f8aa); }
+.raid-cosmetic-preview[data-cosmetic="tidal-aura"] { border-radius: 50%; box-shadow: 0 0 0 3px #7fe9ff, 0 0 12px 3px #1f8fa688; background: radial-gradient(circle, #14213a 56%, #1f8fa6); }
+.raid-cosmetic-preview[data-cosmetic="riptide"] { background: radial-gradient(ellipse at 50% 90%, #e6fbff 0 14%, #3fb3c9 15% 32%, #14213a 33%); }
+.raid-cosmetic-preview[data-cosmetic="splashdown"] { background: linear-gradient(160deg, transparent 40%, #3fb3c9 41% 60%, #e6fbff 61% 66%, transparent 67%), #14213a; }
+/* Reef frame: coral branches around the portrait, a pearl at the bottom. */
+.raid-cosmetic-preview[data-cosmetic="reef"],
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="reef"] {
+  position: relative;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px #ff8fa8, 0 0 0 5px #ffd2dc, 0 0 10px 3px #7fe9ff55;
+}
+.raid-cosmetic-preview[data-cosmetic="reef"]::after,
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="reef"]::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 12px;
+  height: 12px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ffffff, #fff3f8 45%, #c9b8d6);
+  box-shadow: 0 0 0 2px #ff8fa8, 0 0 8px #bff6ff;
+}

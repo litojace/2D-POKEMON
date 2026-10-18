@@ -2437,7 +2437,7 @@ class ArenaScene extends Phaser.Scene {
       return;
     }
     // Walls for prediction (the Shifting Ruins block comes and goes) and the floor.
-    useObstacles(state.raid ? OBSTACLES.filter((_,i)=>!state!.raid!.pillars[i]?.broken) : obstaclesAt(state.arena, arenaClock()));
+    useObstacles(state.raid ? (state.arena === "lagoon" ? [] : OBSTACLES.filter((_,i)=>!state!.raid!.pillars[i]?.broken)) : obstaclesAt(state.arena, arenaClock()));
     useSpeedScale(
       state.mutators?.includes("speed") ? MUTATOR_RULES.speed : 1,
     );

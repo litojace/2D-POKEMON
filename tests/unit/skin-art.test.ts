@@ -92,3 +92,28 @@ describe("collection pieces", () => {
     }
   });
 });
+
+describe("raid cosmetics", () => {
+  const css = readFileSync("apps/client/src/style.css", "utf8");
+  /** Grumblecrag's originals are drawn by the rig and main.ts directly. */
+  const special = ["mountain-aura", "mountainborn", "rockslide-flex"];
+  it("every raid reward in an appearance slot is drawn somewhere", async () => {
+    const { RAID_REWARDS } = await import("../../packages/shared/src/raid");
+    for (const r of RAID_REWARDS) {
+      if (r.slot === "title" || special.includes(r.id)) continue;
+      const g = graphics();
+      const emitted: unknown[] = [];
+      const emit = (p: unknown) => emitted.push(p);
+      if (r.slot === "skin") expect(SKINS, r.id).toContain(r.id);
+      if (r.slot === "aura") expect(drawCollectionAura(g, r.id, 0, 0, 1000, false), r.id).toBe(true);
+      if (r.slot === "entrance") {
+        expect(playCollectionEntrance(emit, r.id, 0, 0, 1), r.id).toBe(true);
+        expect(emitted.length).toBeGreaterThan(0);
+      }
+      if (r.slot === "victory")
+        expect(drawCollectionVictory(g, g, emit, () => true, r.id, 0, 0, 1, 1, 0.2, true), r.id).toBe(true);
+      if (r.slot === "frame") expect(css, r.id).toContain(`[data-raid-cosmetic~="${r.id}"]`);
+      expect(css, r.id).toContain(`[data-cosmetic="${r.id}"]`);
+    }
+  });
+});

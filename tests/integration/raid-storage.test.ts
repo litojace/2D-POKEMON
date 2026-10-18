@@ -213,3 +213,44 @@ it("only records bosses that can be played, and keeps the rule check internal", 
     db.query(`select public.arena_raid_earned('${player}')`),
   ).rejects.toThrow();
 });
+it("records Tidewyrm once migration 012 switches it on, with its own rewards", async () => {
+  for (const file of ["010_shop.sql", "011_collection_bonus.sql", "012_tidewyrm.sql"])
+    await db.exec("reset role;" + (await readFile("supabase/migrations/" + file, "utf8")));
+  await db.exec("reset role;set role service_role");
+  const tide = (n: number, extra: object) => ({
+    ...receipt(400 + n),
+    boss: "tidewyrm",
+    trait: "murky",
+    daily: false,
+    peril: 3,
+    seconds: 400,
+    ...extra,
+  });
+  // A Peril 3 solo clear with the feat (four strands) and 18 strands for the raider.
+  await db.query("select public.arena_record_raid($1::jsonb)", [
+    JSON.stringify(tide(1, { feat: true, players: [{ accountId: player, character: "voltkit", pillars: 18 }] })),
+  ]);
+  let p = await progress();
+  expect(p.bosses.tidewyrm.clears).toBe(1);
+  for (const id of ["tidebreaker", "leviathans-bane", "reef", "tidal-aura", "splashdown", "lone-current"])
+    expect(p.earned).toContain(id);
+  expect(p.earned).not.toContain("shipwright");
+  expect(p.titles).toContain("Tidebreaker");
+  expect(p.titles).toContain("Leviathan's Bane");
+  // A lost run still counts its strands towards Shipwright (30 in all).
+  await db.exec("reset role;set role service_role");
+  await db.query("select public.arena_record_raid($1::jsonb)", [
+    JSON.stringify(tide(2, { result: "defeat", players: [{ accountId: player, character: "voltkit", pillars: 12 }] })),
+  ]);
+  p = await progress();
+  expect(p.earned).toContain("shipwright");
+  expect(p.bosses.tidewyrm.clears).toBe(1);
+  // Its cosmetics equip in their slots; bosses not yet built still can't be recorded.
+  await login();
+  await db.query("select public.arena_equip_raid_slot('victory','splashdown')");
+  expect((await progress()).loadout.victory).toBe("splashdown");
+  await db.exec("reset role;set role service_role");
+  await expect(
+    db.query("select public.arena_record_raid($1::jsonb)", [JSON.stringify({ ...tide(3, {}), boss: "gloomshade" })]),
+  ).rejects.toThrow("Invalid raid");
+});

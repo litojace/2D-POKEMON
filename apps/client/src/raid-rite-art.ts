@@ -25,6 +25,10 @@ const pictures: Record<RaidRite, { color: string; art: string }> = {
   mending: {
     color: "#b2f598",
     art: '<ellipse cx="32" cy="44" rx="26" ry="12"/><ellipse cx="32" cy="44" rx="17" ry="7" opacity=".5"/><path d="M32 7v24m-12-12h24" stroke-width="6"/><path d="M10 29v8m-4-4h8m40-12v8m-4-4h8"/><path d="m26 46 6 4 6-4"/>',
+  },  // A paw stepping lightly over water, a bubble bursting beside it.
+  footing: {
+    color: "#7fe9ff",
+    art: '<path d="M4 46q7-5 14 0t14 0 14 0 14 0M8 55q6-4 12 0t12 0 12 0 12 0" opacity=".6"/><ellipse cx="30" cy="30" rx="9" ry="11" fill="currentColor" fill-opacity=".2"/><circle cx="20" cy="17" r="4"/><circle cx="30" cy="12" r="4"/><circle cx="40" cy="17" r="4"/><circle cx="51" cy="31" r="6"/><path d="M57 23l3-3M51 22v-4M58 31h4"/>',
   },
 };
 

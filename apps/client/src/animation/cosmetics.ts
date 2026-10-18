@@ -8,7 +8,10 @@ export type Skin =
   | "retro-colours"
   | "festival-colours"
   | "garden-colours"
-  | "winter-colours";
+  | "winter-colours"
+  // Tidewyrm's raid rewards.
+  | "seafoam"
+  | "pearlscale";
 export const SKINS: Skin[] = [
   "cragbound",
   "cragstone",
@@ -18,6 +21,8 @@ export const SKINS: Skin[] = [
   "festival-colours",
   "garden-colours",
   "winter-colours",
+  "seafoam",
+  "pearlscale",
 ];
 const hexRgb = (c: number) => [(c >> 16) & 255, (c >> 8) & 255, c & 255];
 /**
@@ -30,6 +35,8 @@ export const TONES: Partial<Record<Skin, { tones: [number, number, number]; keep
   "festival-colours": { tones: [0x5a0d12, 0xd8262a, 0xffd65b], keep: 0.2 },
   "garden-colours": { tones: [0x1f4a1a, 0x6fbf4a, 0xf0ffb0], keep: 0.25 },
   "winter-colours": { tones: [0x2a4a6e, 0x9fcfff, 0xffffff], keep: 0.3 },
+  seafoam: { tones: [0x13606b, 0x4fd6c8, 0xe6fbff], keep: 0.25 },
+  pearlscale: { tones: [0x1d4f6e, 0x7fd8e6, 0xfff3f8], keep: 0.3 },
 };
 export function tonePixels(pixels: Uint8ClampedArray, skin: Skin) {
   const spec = TONES[skin];
@@ -170,6 +177,29 @@ export function cosmeticLayer(
         context.fillRect(x - r / 2, y - r / 2, r, r);
       }
       context.globalAlpha = 1;
+    }
+    if (skin === "pearlscale" && !/-eyes([-~]|$)/.test(original)) {
+      // Overlapping scale arcs with pearl freckles, only where the layer is opaque.
+      context.globalCompositeOperation = "source-atop";
+      const step = Math.max(8, Math.round(Math.min(canvas.width, canvas.height) / 9));
+      context.lineWidth = Math.max(1, step / 9);
+      for (let row = 0, y = step / 2; y < canvas.height + step; row++, y += step * 0.6)
+        for (let x = (row % 2) * (step / 2); x < canvas.width + step; x += step) {
+          context.strokeStyle = "rgba(255, 243, 248, .45)";
+          context.beginPath();
+          context.arc(x, y, step / 2, 0.15 * Math.PI, 0.85 * Math.PI);
+          context.stroke();
+        }
+      const random = seeded(original + ":pearls");
+      for (let n = 0; n < (canvas.width * canvas.height) / 1400; n++) {
+        const x = random() * canvas.width,
+          y = random() * canvas.height,
+          r = 1.2 + random() * 1.6;
+        context.fillStyle = "rgba(255, 255, 255, .9)";
+        context.beginPath();
+        context.arc(x, y, r, 0, Math.PI * 2);
+        context.fill();
+      }
     }
     if (skin === "cragstone") {
       // Glowing amber cracks, painted only where the layer is opaque.

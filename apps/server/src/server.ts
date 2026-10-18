@@ -1,6 +1,7 @@
 import { RaidArena } from "./raid.js";
+import { createRaidArena } from "./raid-bosses.js";
 import type { ActivityReceipt } from "../../../packages/shared/src/shop.js";
-import { RAID_ATTACKS, RAID_PINGS, RAID_COSMETICS, raidLookOf, raidDay, raidWeek, RAID_BOSSES, RAID_BOSS_ORDER, type RaidBossId, type RaidProgress, type RaidReceipt } from "../../../packages/shared/src/raid.js";
+import { RAID_ATTACKS, RAID_PINGS, RAID_COSMETICS, raidAttacksOf, type RaidAttack, raidLookOf, raidDay, raidWeek, RAID_BOSSES, RAID_BOSS_ORDER, type RaidBossId, type RaidProgress, type RaidReceipt } from "../../../packages/shared/src/raid.js";
 import express from "express";
 import { createServer } from "node:http";
 import { randomBytes, randomInt, randomUUID } from "node:crypto";
@@ -642,7 +643,7 @@ export function createArenaServer(
           () => chars[randomInt(chars.length)],
         ).join("");
       } while (rooms.has(code));
-      const arena = result.data.mode === "raid" ? new RaidArena(code, result.data.boss) : new Arena(code, result.data.mode ?? "duel");
+      const arena = result.data.mode === "raid" ? createRaidArena(code, result.data.boss) : new Arena(code, result.data.mode ?? "duel");
       arena.rotateArenas = true;
       rooms.set(code, arena);
       attach(arena, result.data.name, cb);
@@ -906,8 +907,8 @@ export function createArenaServer(
       },false));
     socket.on('raid-drill',(data:unknown,cb:unknown)=>
       withRoom(cb,(a,id)=>{
-        const result=z.object({kind:z.enum(Object.keys(RAID_ATTACKS) as ['charge','slam','debris','volley','eruption','share']).nullable()}).strict().safeParse(data);
-        if(!(a instanceof RaidArena)||!result.success)return fail(cb,'Choose an attack to practise.');
+        const result=z.object({kind:z.enum(Object.keys(RAID_ATTACKS) as [RaidAttack,...RaidAttack[]]).nullable()}).strict().safeParse(data);
+        if(!(a instanceof RaidArena)||!result.success||(result.data.kind!==null&&!raidAttacksOf(a.raid.boss).includes(result.data.kind)))return fail(cb,'Choose an attack to practise.');
         if(a.players[0]?.id!==id)return fail(cb,'The host picks the practice attack.');
         const kind=result.data.kind;
         const ok=kind===null?a.stopDrill():a.raid.drill?a.setDrill(kind):a.startDrill(kind);

@@ -1,6 +1,6 @@
 # Raid Roster, Shop & Missions — Design Spec (approved)
 
-Status: **approved Oct 17. Step 1 (Raid Hub, Raid of the Day, Victory slot, migration 009) shipped Oct 17. Step 2 (coins, daily missions and the Shop with the whole catalog, migrations 010–011) shipped Oct 17; next is step 3, Tidewyrm.** See §11 for what step 2 draws and what's still simplified. In step 1 the Victory plays in the arena on round and raid wins; showing it on the results card and in the menu preview is still to do. Numbers are starting values to tune
+Status: **approved Oct 17. Step 1 (Raid Hub, Raid of the Day, Victory slot, migration 009) shipped Oct 17. Step 2 (coins, daily missions and the Shop with the whole catalog, migrations 010–011) shipped Oct 17. Step 3 (Tidewyrm, migration 012) shipped Oct 18; next is a play session, then step 4, Gloomshade.** See §11 for what step 2 draws and what's still simplified. In step 1 the Victory plays in the arena on round and raid wins; showing it on the results card and in the menu preview is still to do. Numbers are starting values to tune
 with real play, using the same balance data Grumblecrag already records.
 
 Decisions so far (Oct 17):
@@ -1196,6 +1196,23 @@ release.
 - **Collection bonus** (migration 011): owning every champion skin in a
   collection (Winter, Festival, Garden) gives that collection's frame.
 
+### 11.2 Step 3 as built (Tidewyrm)
+
+- Built as designed in §5.1, on the shared raid core: `RaidArena` now has
+  hooks (arena setup, attack start/resolve, per-tick boss step, chapter
+  reset, stand-in hints) and `TidewyrmArena` overrides them.
+- **Choices made while building** (easy to change): the stranded boss
+  starts no new attacks until it swims home; Tidewyrm surfaced in water
+  lingers 2.5 s, then returns to the centre under water (can't be hit);
+  a sealed raider takes no other damage; the solo mash is 8 presses in a
+  party too; chapter 3 keeps its armour (only strands and stagger expose
+  it, unlike Grumblecrag's always-open last chapter); the speed title is
+  Peril 2 solo under 4:00 (*Flash Flood*) and the solo Peril 3 title is
+  *Lone Current* (names not in the original spec).
+- **Bot check:** AI stand-in teams clear every Peril; solo runs take about
+  80–90 s against Grumblecrag's 70 s (bots play far better than people,
+  so only the comparison matters). Real tuning waits for the play session.
+
 ## 12. Decisions log
 
 | Date | Decision |
@@ -1218,4 +1235,4 @@ release.
 
 ## 13. Open questions
 
-None right now. Steps 1 and 2 are shipped; step 3 (Tidewyrm) is next.
+None right now. Steps 1–3 are shipped; after a play session, step 4 (Gloomshade) is next.

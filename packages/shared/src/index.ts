@@ -1722,7 +1722,13 @@ export function riteOffer(
  * Hazards run on a clock that starts when a round goes live, telegraph before
  * they act, and hurt everyone the same (they never credit a player).
  */
-export type ArenaId = "classic" | "tide-pools" | "ember-forge" | "shifting-ruins";
+export type ArenaId =
+  | "classic"
+  | "tide-pools"
+  | "ember-forge"
+  | "shifting-ruins"
+  /** Tidewyrm's raid arena (not in the PvP rotation). */
+  | "lagoon";
 export interface Hazard {
   kind: "pool" | "vent";
   x: number;
@@ -1814,6 +1820,13 @@ export const ARENAS: Record<ArenaId, ArenaDef> = {
     tip: "The centre block sinks and rises again: cover comes and goes, and it shakes before it rises.",
     obstacles: PILLARS,
     shifting: { rect: CENTRE, up: 7, down: 5, warn: 1 },
+    hazards: [],
+  },
+  lagoon: {
+    id: "lagoon",
+    name: "Lagoon Court",
+    tip: "A shallow lagoon with four raised islands to stand on.",
+    obstacles: [],
     hazards: [],
   },
 };
