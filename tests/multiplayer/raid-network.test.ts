@@ -4,6 +4,7 @@ import { createArenaServer } from "../../apps/server/src/server";
 import { fakeAccounts } from "../helpers/accounts";
 import { RaidArena } from "../../apps/server/src/raid";
 import { RAID_FUNCTIONS_MIGRATION } from "../../apps/server/src/accounts";
+import { TidewyrmArena } from "../../apps/server/src/raid-tidewyrm";
 import { blankInput, type Reply } from "@arena/shared";
 import { raidDay } from "../../packages/shared/src/raid";
 let server: ReturnType<typeof createArenaServer> | undefined;
@@ -52,7 +53,7 @@ it("starts a regular-player solo raid, enforces Peril unlocks, and records a ver
     host = await connect();
   // Only bosses that are built can be raided.
   expect(
-    (await emit(host, "create", { name: "Raider", mode: "raid", boss: "tidewyrm" })).ok,
+    (await emit(host, "create", { name: "Raider", mode: "raid", boss: "gloomshade" })).ok,
   ).toBe(false);
   const created = await emit(host, "create", { name: "Raider", mode: "raid", boss: "grumblecrag" });
   expect(created.ok).toBe(true);
@@ -271,4 +272,18 @@ it("only reports an equipped slot after the database really kept it", async () =
   const stale = await equip({ slot: "skin", item: "cragbound" });
   expect(stale.status).toBe(503);
   expect((await stale.json()).error).toContain(RAID_FUNCTIONS_MIGRATION);
+});
+it("opens Tidewyrm in its own arena and checks practice attacks belong to the boss", async () => {
+  const { connect } = await setup(),
+    host = await connect();
+  const created = await emit(host, "create", { name: "Raider", mode: "raid", boss: "tidewyrm" });
+  expect(created.ok).toBe(true);
+  const a = server!.rooms.get(created.code!) as RaidArena;
+  expect(a).toBeInstanceOf(TidewyrmArena);
+  expect(a.raid.boss).toBe("tidewyrm");
+  // Grumblecrag's charge can't be practised here; Tidewyrm's dive can.
+  expect((await emit(host, "raid-drill", { kind: "charge" })).ok).toBe(false);
+  expect((await emit(host, "raid-drill", { kind: "dive" })).ok).toBe(true);
+  expect(a.raid.drill).toBe("dive");
+  expect(a.arenaId).toBe("lagoon");
 });
