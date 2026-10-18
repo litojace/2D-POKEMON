@@ -885,7 +885,7 @@ At the prices below (§10.5.1), that works out to:
   share missions.
 - Re-rolling a *with others* mission always gives a solo one (the button
   says *Swap for a solo mission*).
-- The pool grew from 15 to 30 (23 solo). New: *Win a match*, *Finish a
+- The pool grew from 15 to 30 (24 solo). New: *Win a match*, *Finish a
   raid, win or lose*, *Play for 10 / 30 minutes*, *Win 3 matches against
   bots*, *Win as Voltkit or Auralynx*, *Win as Mystowl or Duskveil*, *Clear
   2 / 3 raids*, *Clear a raid on your own* (and on Peril 2+), *Use your
