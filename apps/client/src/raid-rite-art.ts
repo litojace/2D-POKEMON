@@ -30,6 +30,10 @@ const pictures: Record<RaidRite, { color: string; art: string }> = {
     color: "#7fe9ff",
     art: '<path d="M4 46q7-5 14 0t14 0 14 0 14 0M8 55q6-4 12 0t12 0 12 0 12 0" opacity=".6"/><ellipse cx="30" cy="30" rx="9" ry="11" fill="currentColor" fill-opacity=".2"/><circle cx="20" cy="17" r="4"/><circle cx="30" cy="12" r="4"/><circle cx="40" cy="17" r="4"/><circle cx="51" cy="31" r="6"/><path d="M57 23l3-3M51 22v-4M58 31h4"/>',
   },
+  lamplighter: {
+    color: "#ffd65b",
+    art: '<path d="M22 14h16l-3-6H25Z"/><rect x="20" y="14" width="20" height="20" rx="3"/><path d="M30 34v16M22 52h16"/><path d="M30 19q-4 4 0 9q4-5 0-9Z" fill="currentColor" fill-opacity=".5"/><circle cx="30" cy="24" r="17" opacity=".35"/><path d="M48 40v8M44 44h8" opacity=".8"/>',
+  },
 };
 
 export function raidRitePicture(id: RaidRite) {

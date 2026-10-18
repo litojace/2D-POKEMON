@@ -66,7 +66,7 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
     signature: "Find the one that casts a shadow",
     blurb:
       "A floppy-eared puff of shadow with a crescent-moon tail. Keep the lanterns lit, find the real one among its copies, and spread out when the curse creeps.",
-    playable: false,
+    playable: true,
   },
   somnara: {
     id: "somnara",

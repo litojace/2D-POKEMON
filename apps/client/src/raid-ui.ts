@@ -39,6 +39,7 @@ import { raidGuideScene, raidGuideBossFor } from "./raid-guide-art";
 import { raidRitePicture } from "./raid-rite-art";
 import { drawRaidBoss } from "./raid-boss-art";
 import { drawLagoon, drawTideAttacks, drawTidewyrm, drawTidewyrmWarning } from "./raid-tidewyrm-art";
+import { drawGloomshade, drawGloomshadeWarning, drawLanternYard } from "./raid-gloomshade-art";
 import { fighterAvatar } from "./fighter-art";
 import { portraitAvatar, portraitCosmetics } from "./portraits";
 import { LOOK_ITEMS } from "../../../packages/shared/src/shop";
@@ -237,7 +238,9 @@ export function renderRaidUI(
   if (state.phase === "briefing") {
     title = `${RAID_TRAITS[r.trait].name} ${RAID_BOSSES[r.boss].name}`;
     const guide =
-      r.boss === "tidewyrm"
+      r.boss === "gloomshade"
+        ? `<span>${raidGuideScene("lantern", me.character)}<b>Keep the lights on</b><small>Hit a dark lantern twice. Light cleanses curses.</small></span><span>${raidGuideScene("shadow", me.character)}<b>Find the real one</b><small>Only it casts a shadow in light. Copies curse you.</small></span><span>${raidGuideScene("curse", me.character)}<b>Spread out</b><small>Curses jump to anyone close. Three makes you Haunted.</small></span>`
+        : r.boss === "tidewyrm"
         ? `<span>${raidGuideScene("strand", me.character)}<b>Strand it</b><small>Lead the dive ripple onto an island, then step off.</small></span><span>${raidGuideScene("tide", me.character)}<b>Share the islands</b><small>High Tide floods the floor: two to an island.</small></span><span>${raidGuideScene("prison", me.character)}<b>Pop the bubble</b><small>Three hits free a trapped friend. Alone, mash attack.</small></span>`
         : `<span>${raidGuideScene("charge", me.character)}<b>Bait the charge</b><small>Lure the boss into a stone pillar.</small></span><span>${raidGuideScene("core", me.character)}<b>Strike the core</b><small>Armor breaks. Unleash your ultimate.</small></span><span>${raidGuideScene("revive", me.character)}<b>Revive together</b><small>Stand beside a fallen ally to revive.</small></span>`;
     body = `${chapterPath(r.phase, r.boss)}<p>${escape(RAID_TRAITS[r.trait].text)}</p><div class="raid-instructions">${guide}</div>${perkLines(state, me.id)}${r.partySize > 1 ? `<p class="raid-signals">Team signals: ${(Object.keys(RAID_PINGS) as RaidPingKind[]).map((k) => `<b>${RAID_PINGS[k].key}</b> ${raidPingLabel(k, r.boss)}`).join(" · ")} (or the buttons on the left)</p>` : ""}<p>Three phases · one shared fight · ${r.partySize === 1 ? (r.peril >= 3 ? "no self-revive on Peril 3" : "one solo self-revive") : "no required healer"} · no PvP rating changes.</p><button class="primary" id="raid-instructions" ${state.instructionsReady.includes(me.id) ? "disabled" : ""}>${state.instructionsReady.includes(me.id) ? "Waiting for the team…" : iconLabel("battle", "Let’s raid →")}</button>`;
@@ -259,13 +262,15 @@ export function renderRaidUI(
         ? `${RAID_BOSSES[r.boss].name} defeated!`
         : r.boss === "tidewyrm"
           ? "The tide keeps rising"
-          : "The mountain still stands";
+          : r.boss === "gloomshade"
+            ? "The night goes on"
+            : "The mountain still stands";
     const heroes = state.players.filter((p) => !p.raidBoss && !p.out);
     const readyCount = heroes.filter((p) => p.ready).length;
     body = `<div class="raid-result-summary"><div class="raid-result-art" aria-hidden="true"><svg viewBox="-65 -65 130 115">${raidGuideBossFor(r.boss)}</svg></div><div class="raid-result-stats"><span><b>${time(r.elapsed)}</b>${r.result === "victory" ? "Clear time" : "Time survived"}</span><span><b>${r.revives}</b>Revives</span><span><b>${r.downs}</b>Downs</span></div></div><div class="raid-result-body">${raidContributions(state)}<div class="raid-result-next">${
       r.result === "victory"
         ? `<p class="raid-save-state" role="status">${r.rewardStatus === "saved" ? "✓ Rewards saved to your account." : r.rewardStatus === "unavailable" ? "This clear could not be saved. Your reward progress has not been updated." : "Saving your rewards…"}</p>${r.rewardStatus === "saved" ? raidRewardProgress(loadProgress ? progress?.progress : null, r.boss) : ""}<p class="raid-next-challenge">${r.peril < 3 ? `Next challenge: Peril ${r.peril + 1} · ${r.boss === "tidewyrm" ? (r.peril === 1 ? "Shorter strands, harder hits" : "Islands sink for good") : r.peril === 1 ? "Falling debris" : "Closing arena"}` : "Next challenge: a no-downs clear or the Raid of the Day."}</p>`
-        : `${r.rewardStatus === "saved" ? `<p class="raid-save-state" role="status">✓ Progress saved: your ${r.boss === "tidewyrm" ? "strands" : "pillars"} and revives count towards titles.</p>` : ""}<p class="raid-retry-tip">${defeatTip(state)}</p>`
+        : `${r.rewardStatus === "saved" ? `<p class="raid-save-state" role="status">✓ Progress saved: your ${r.boss === "tidewyrm" ? "strands" : r.boss === "gloomshade" ? "relights" : "pillars"} and revives count towards titles.</p>` : ""}<p class="raid-retry-tip">${defeatTip(state)}</p>`
     }<div class="raid-retry-status">${heroes.length === 1 ? "Same champion and challenge · choose fresh rites" : `${readyCount}/${heroes.length} ready · everyone confirms to run again`}</div><div class="result-actions raid-result-actions"><button class="primary" id="raid-retry" ${me.ready || !heroes.every((p) => p.connected) ? "disabled" : ""}>${me.ready ? "Waiting for the team…" : iconLabel("again", "Run again →")}</button><button class="secondary" id="raid-lobby">${iconLabel("swap", "Change champion / challenge")}</button><button class="secondary raid-icon-button" id="raid-rewards">${menuIcon("bestiary")}<span>Raid Hub & rewards</span></button><button class="quiet" id="raid-exit">${iconLabel("home", "Return to menu")}</button></div>${!heroes.every((p) => p.connected) ? '<p class="raid-retry-tip">A teammate is disconnected. Return to the lobby to refill the party.</p>' : ""}</div></div>`;
   }
   const previousCard = overlay.querySelector<HTMLElement>(".raid-overlay");
@@ -323,10 +328,13 @@ export function drawRaidArena(
 ) {
   const r = state.raid;
   if (!r) return;
-  const tide = r.boss === "tidewyrm";
+  const tide = r.boss === "tidewyrm",
+    gloom = r.boss === "gloomshade";
   if (tide) drawLagoon(g, state, reduced);
+  if (gloom) drawLanternYard(g, state, reduced);
   for (const w of r.warnings) {
     if (tide && drawTidewyrmWarning(g, state, w, reduced)) continue;
+    if (gloom && drawGloomshadeWarning(g, state, w, reduced)) continue;
     const pulse = reduced ? 1 : 0.86 + Math.sin(state.time * 8) * 0.14;
     const danger = 0xff4059,
       edge = 0xff8c99;
@@ -577,7 +585,11 @@ export function drawRaidArena(
       g.fillStyle(color, 1).fillCircle(p.x, y + bob, 3);
     }
   }
-  return tide ? drawTidewyrm(g, state, reduced, clock) : drawRaidBoss(g, state, reduced, clock);
+  return tide
+    ? drawTidewyrm(g, state, reduced, clock)
+    : gloom
+      ? drawGloomshade(g, state, reduced, clock)
+      : drawRaidBoss(g, state, reduced, clock);
 }
 
 /** Why the run was lost, from what downed people most. */
@@ -588,6 +600,10 @@ function defeatTip(state: Snapshot) {
     if (d.cause) causes.set(d.cause, (causes.get(d.cause) ?? 0) + 1);
   const worst = [...causes].sort((a, b) => b[1] - a[1])[0]?.[0];
   if (worst) return `${RAID_ATTACKS[worst].name}: ${RAID_ATTACKS[worst].tip}`;
+  if (r.boss === "gloomshade")
+    return Object.values(r.contributions ?? {}).some((c) => c.pillars > 0)
+      ? "Look for the one with a shadow in lantern light, then hit it six times in a row to expose its core."
+      : "Relight dark lanterns with two hits: their light cleanses curses and shows which Gloomshade is real.";
   if (r.boss === "tidewyrm")
     return Object.values(r.contributions ?? {}).some((c) => c.pillars > 0)
       ? "Save ultimates for when it's stranded. Get onto an island as soon as the water's edge glows."

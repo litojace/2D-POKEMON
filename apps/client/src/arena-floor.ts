@@ -144,6 +144,16 @@ export const FLOOR_PALETTES: Record<
     pillar: [0xb89b62, 0xd2b679, 0xf1dcae],
     lines: 0xd9f5f0,
   },
+  "lantern-yard": {
+    surround: 0x1d2440,
+    blades: [0x2f4a4a, 0x22383a, 0x3d5c56],
+    grout: 0x161a30,
+    tones: [0x3a3f63, 0x404669, 0x363b5c, 0x454b70],
+    speck: 0x2a2f4d,
+    moss: 0x355a4e,
+    pillar: [0x3a3550, 0x4d4668, 0xb7a6d6],
+    lines: 0xd8d2f5,
+  },
   "shifting-ruins": {
     surround: 0x55663a,
     blades: [0x7d9248, 0x45562c, 0x93a85a],
@@ -157,6 +167,7 @@ export const FLOOR_PALETTES: Record<
 };
 export function paintArenaFloor(g: FloorPainter, arena: ArenaDef = ARENAS.classic) {
   if (arena.id === "lagoon") return paintLagoon(g);
+  if (arena.id === "lantern-yard") return paintLanternYard(g);
   const pal = FLOOR_PALETTES[arena.id];
   const { width: W, height: H } = RULES;
   let seed = 42;
@@ -376,4 +387,62 @@ function paintLagoon(g: FloorPainter) {
   g.lineStyle(3, 0xffffff, 0.35).strokeRoundedRect(BORDER + 9, BORDER + 9, W - BORDER * 2 - 18, H - BORDER * 2 - 18, 34);
   for (let i = 0; i < 6; i++)
     g.lineStyle(14, 0x062a35, 0.04 + i * 0.012).strokeRoundedRect(i * 7, i * 7, W - i * 14, H - i * 14, 20);
+}
+
+/**
+ * Gloomshade's Lantern Yard: a moonlit flagstone courtyard ringed by hedges.
+ * The flagstones line up with Grasping Hands' 8 × 5 tiles so the checkerboard
+ * reads at a glance. Lanterns go out and come back, so they are drawn live
+ * (raid-gloomshade-art.ts), not baked into the floor.
+ */
+function paintLanternYard(g: FloorPainter) {
+  const { width: W, height: H } = RULES;
+  let seed = 13;
+  const random = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  // Night hedges all round, with a few pale flowers.
+  g.fillStyle(0x1b2b33).fillRect(0, 0, W, H);
+  for (let i = 0; i < 700; i++) {
+    const x = random() * W,
+      y = random() * H;
+    if (x > BORDER && x < W - BORDER && y > BORDER && y < H - BORDER) continue;
+    g.fillStyle(i % 3 ? 0x24403f : 0x2f5250, 0.85).fillCircle(x, y, 4 + random() * 7);
+    if (i % 23 === 0) g.fillStyle(0xd8d2f5, 0.7).fillCircle(x, y, 2);
+  }
+  // Flagstones: one per Grasping Hands tile, split into a few slabs each.
+  const cols = 8,
+    rows = 5,
+    tw = W / cols,
+    th = H / rows;
+  const tones = [0x3a3f63, 0x404669, 0x363b5c, 0x454b70];
+  g.fillStyle(0x161a30).fillRect(BORDER, BORDER, W - BORDER * 2, H - BORDER * 2);
+  for (let c = 0; c < cols; c++)
+    for (let r = 0; r < rows; r++) {
+      const x0 = Math.max(BORDER, c * tw),
+        y0 = Math.max(BORDER, r * th),
+        x1 = Math.min(W - BORDER, (c + 1) * tw),
+        y1 = Math.min(H - BORDER, (r + 1) * th);
+      // Every other tile a shade lighter, faintly: the board Hands uses.
+      g.fillStyle(tones[(c * 3 + r) % 4], (c + r) % 2 ? 0.92 : 1).fillRoundedRect(x0 + 4, y0 + 4, x1 - x0 - 8, y1 - y0 - 8, 8);
+      // Slab joints inside the tile.
+      const split = 0.35 + random() * 0.3;
+      g.lineStyle(2, 0x1f2440, 0.7).lineBetween(x0 + 8, y0 + (y1 - y0) * split, x1 - 8, y0 + (y1 - y0) * split);
+      g.lineBetween(x0 + (x1 - x0) * (0.3 + random() * 0.4), y0 + 8, x0 + (x1 - x0) * (0.3 + random() * 0.4), y0 + (y1 - y0) * split);
+      // Moss in the cracks and a little starlight on the stone.
+      for (let k = 0; k < 4; k++)
+        g.fillStyle(0x355a4e, 0.45).fillCircle(x0 + 8 + random() * (x1 - x0 - 16), y0 + 8 + random() * (y1 - y0 - 16), 1.5 + random() * 2.5);
+      g.fillStyle(0xd8d2f5, 0.06).fillEllipse(x0 + (x1 - x0) * 0.35, y0 + (y1 - y0) * 0.3, (x1 - x0) * 0.5, (y1 - y0) * 0.25);
+    }
+  // A worn moon-circle in the middle, where Gloomshade likes to rest.
+  g.lineStyle(4, 0xb7a6d6, 0.16).strokeCircle(W / 2, 430, 120);
+  g.lineStyle(2, 0xb7a6d6, 0.1).strokeCircle(W / 2, 430, 150);
+  g.fillStyle(0xd8d2f5, 0.08).fillCircle(W / 2 - 18, 412, 46);
+  g.fillStyle(0x161a30, 0.12).fillCircle(W / 2, 404, 40);
+  // Low stone kerb, then the night closing in at the edges.
+  g.lineStyle(6, 0x4d4668, 0.9).strokeRoundedRect(BORDER, BORDER, W - BORDER * 2, H - BORDER * 2, 18);
+  g.lineStyle(2, 0xb7a6d6, 0.35).strokeRoundedRect(BORDER + 5, BORDER + 5, W - BORDER * 2 - 10, H - BORDER * 2 - 10, 14);
+  for (let i = 0; i < 6; i++)
+    g.lineStyle(14, 0x070914, 0.05 + i * 0.012).strokeRoundedRect(i * 7, i * 7, W - i * 14, H - i * 14, 20);
 }

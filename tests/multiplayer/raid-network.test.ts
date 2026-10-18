@@ -5,6 +5,7 @@ import { fakeAccounts } from "../helpers/accounts";
 import { RaidArena } from "../../apps/server/src/raid";
 import { RAID_FUNCTIONS_MIGRATION } from "../../apps/server/src/accounts";
 import { TidewyrmArena } from "../../apps/server/src/raid-tidewyrm";
+import { GloomshadeArena } from "../../apps/server/src/raid-gloomshade";
 import { blankInput, type Reply } from "@arena/shared";
 import { raidDay } from "../../packages/shared/src/raid";
 let server: ReturnType<typeof createArenaServer> | undefined;
@@ -53,7 +54,7 @@ it("starts a regular-player solo raid, enforces Peril unlocks, and records a ver
     host = await connect();
   // Only bosses that are built can be raided.
   expect(
-    (await emit(host, "create", { name: "Raider", mode: "raid", boss: "gloomshade" })).ok,
+    (await emit(host, "create", { name: "Raider", mode: "raid", boss: "somnara" })).ok,
   ).toBe(false);
   const created = await emit(host, "create", { name: "Raider", mode: "raid", boss: "grumblecrag" });
   expect(created.ok).toBe(true);
@@ -286,4 +287,16 @@ it("opens Tidewyrm in its own arena and checks practice attacks belong to the bo
   expect((await emit(host, "raid-drill", { kind: "dive" })).ok).toBe(true);
   expect(a.raid.drill).toBe("dive");
   expect(a.arenaId).toBe("lagoon");
+});
+it("opens Gloomshade in the Lantern Yard and practises its own attacks", async () => {
+  const { connect } = await setup(),
+    host = await connect();
+  const created = await emit(host, "create", { name: "Raider", mode: "raid", boss: "gloomshade" });
+  expect(created.ok).toBe(true);
+  const a = server!.rooms.get(created.code!) as RaidArena;
+  expect(a).toBeInstanceOf(GloomshadeArena);
+  expect((await emit(host, "raid-drill", { kind: "dive" })).ok).toBe(false);
+  expect((await emit(host, "raid-drill", { kind: "split" })).ok).toBe(true);
+  expect(a.raid.drill).toBe("split");
+  expect(a.arenaId).toBe("lantern-yard");
 });

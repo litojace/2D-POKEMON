@@ -1728,7 +1728,9 @@ export type ArenaId =
   | "ember-forge"
   | "shifting-ruins"
   /** Tidewyrm's raid arena (not in the PvP rotation). */
-  | "lagoon";
+  | "lagoon"
+  /** Gloomshade's raid arena (not in the PvP rotation). */
+  | "lantern-yard";
 export interface Hazard {
   kind: "pool" | "vent";
   x: number;
@@ -1826,6 +1828,12 @@ export const ARENAS: Record<ArenaId, ArenaDef> = {
     id: "lagoon",
     name: "Lagoon Court",
     tip: "A shallow lagoon with four raised islands to stand on.",
+    obstacles: [],
+    hazards: [],
+  },  "lantern-yard": {
+    id: "lantern-yard",
+    name: "Lantern Yard",
+    tip: "A moonlit courtyard lit by four lanterns.",
     obstacles: [],
     hazards: [],
   },

@@ -24,7 +24,7 @@ export function raidCue(state: Snapshot, myId: string) {
   if (r.staggerUntil > state.time)
     return "Core exposed — unleash your ultimates!";
   const w = r.warnings[0];
-  const tide = tidewyrmCue(state, myId);
+  const tide = tidewyrmCue(state, myId) || gloomshadeCue(state, myId);
   if (tide) return tide;
   if (w?.kind === "charge") {
     const locked = w.lockAt !== undefined && state.time >= w.lockAt;
@@ -79,7 +79,9 @@ export function raidCue(state: Snapshot, myId: string) {
   if (r.exposedUntil > state.time)
     return r.boss === "tidewyrm"
       ? "Stranded — hit it while it's on dry land!"
-      : "Armor broken — strike the glowing core!";
+      : r.boss === "gloomshade"
+        ? "Found it — strike the glowing core!"
+        : "Armor broken — strike the glowing core!";
   return raidChapters(r.boss)[r.phase - 1].objective;
 }
 /** Tidewyrm's callouts, most urgent first. */
@@ -119,6 +121,35 @@ function tidewyrmCue(state: Snapshot, myId: string) {
   return "";
 }
 
+/** Gloomshade's callouts, most urgent first. */
+function gloomshadeCue(state: Snapshot, myId: string) {
+  const r = state.raid!;
+  if (r.boss !== "gloomshade") return "";
+  const name = (id?: string) =>
+    id === myId ? "you" : (state.players.find((p) => p.id === id)?.name ?? "an ally");
+  const mine = r.curses?.[myId];
+  if (mine && mine.hauntedUntil > state.time) return "Haunted — get into lantern light to cleanse it!";
+  const w = r.warnings[0];
+  if (w?.kind === "hands")
+    return w.shiftAt !== undefined && state.time < w.shiftAt
+      ? "Grasping Hands — the tiles will flip! Watch for the flicker."
+      : "Grasping Hands — stand on a tile without hands!";
+  if (w?.kind === "pulse") return w.teach ? "Nightmare Pulse — jump as the ring fills (every copy shows one)!" : "Nightmare Pulse — jump!";
+  if (w?.kind === "lunge")
+    return w.targetId === myId ? "Shadow Lunge on you — sidestep the lane!" : `Shadow Lunge at ${name(w.targetId)} — keep out of the lane!`;
+  if (mine && mine.stacks > 0)
+    return r.partySize > 1 ? "Cursed — move away from your team and find lantern light!" : "Cursed — keep moving and find lantern light!";
+  if (w?.kind === "snuff") return "A lantern is going out!";
+  if (w?.kind === "curse")
+    return w.targetId === myId ? "A curse is coming for you — find lantern light!" : `A curse is coming for ${name(w.targetId)} — spread out!`;
+  if (w?.kind === "split") return "It's splitting — watch which one casts a shadow in the light!";
+  if (r.exposedUntil > state.time) return "";
+  if ((r.revealUntil ?? 0) > state.time) return "The real one is marked — hit it six times in a row!";
+  if ((r.decoys?.length ?? 0) > 0) return "Find the real one: only it casts a shadow in lantern light. Copies curse you.";
+  if ((r.lanterns ?? []).some((l) => !l.lit)) return "A lantern is out — hit it twice to relight it.";
+  return "";
+}
+
 /** One fun role per raider who stood out (top damage, revives, pillars). */
 export function raidRoles(
   contributions: Record<string, RaidContribution>,
@@ -133,12 +164,12 @@ export function raidRoles(
   };
   best("damage", "Heavy Hitter");
   best("revives", "Medic");
-  best("pillars", boss === "tidewyrm" ? "Strand Master" : "Bait Master");
+  best("pillars", boss === "tidewyrm" ? "Strand Master" : boss === "gloomshade" ? "Lantern Keeper" : "Bait Master");
   return roles;
 }
 /** What the boss-feature column counts (pillars baited, strands …). */
 export const featureLabel = (boss: RaidBossId) =>
-  boss === "tidewyrm" ? "Strands" : "Pillars";
+  boss === "tidewyrm" ? "Strands" : boss === "gloomshade" ? "Relights" : "Pillars";
 export function raidContributions(state: Snapshot) {
   const r = state.raid!;
   const roles = raidRoles(r.contributions ?? {}, r.boss);
@@ -150,7 +181,7 @@ export function raidContributions(state: Snapshot) {
         revives: 0,
         pillars: 0,
       };
-      return `<div class="raid-score-row"><div class="raid-score-player"><span class="raid-score-avatar" aria-hidden="true" data-raid-cosmetic="${portraitCosmetics(p)}">${portraitAvatar(p, "raid-result-" + p.id)}</span><span><b>${escape(p.name)}</b><small>${CHARACTERS[p.character].name}${p.out ? " · Left" : ""}${r.standIns?.includes(p.id) ? " · AI stand-in" : ""}</small>${(roles[p.id] ?? []).map((role) => `<em class="raid-role">${role}</em>`).join("")}</span></div><span aria-label="Damage">${Math.round(stats.damage).toLocaleString("en-US")}</span><span aria-label="Revives">${stats.revives}</span><span aria-label="${r.boss === "tidewyrm" ? "Strands" : "Pillars broken"}">${stats.pillars}</span></div>`;
+      return `<div class="raid-score-row"><div class="raid-score-player"><span class="raid-score-avatar" aria-hidden="true" data-raid-cosmetic="${portraitCosmetics(p)}">${portraitAvatar(p, "raid-result-" + p.id)}</span><span><b>${escape(p.name)}</b><small>${CHARACTERS[p.character].name}${p.out ? " · Left" : ""}${r.standIns?.includes(p.id) ? " · AI stand-in" : ""}</small>${(roles[p.id] ?? []).map((role) => `<em class="raid-role">${role}</em>`).join("")}</span></div><span aria-label="Damage">${Math.round(stats.damage).toLocaleString("en-US")}</span><span aria-label="Revives">${stats.revives}</span><span aria-label="${r.boss === "tidewyrm" ? "Strands" : r.boss === "gloomshade" ? "Lanterns relit" : "Pillars broken"}">${stats.pillars}</span></div>`;
     })
     .join(
       "",
@@ -207,7 +238,7 @@ export function raidGoal(p: RaidProgress, reward: RaidReward): RaidGoal {
       const known = stats !== undefined || (boss === "grumblecrag" && p.pillars !== undefined);
       const have = stats?.[rule.stat] ?? (boss === "grumblecrag" ? (p[rule.stat] ?? 0) : 0);
       return goal(have, rule.n, known
-        ? `${Math.min(have, rule.n)}/${rule.n} ${rule.stat === "pillars" ? (boss === "tidewyrm" ? "strands" : "pillars baited") : "revives"} · wins and losses count`
+        ? `${Math.min(have, rule.n)}/${rule.n} ${rule.stat === "pillars" ? (boss === "tidewyrm" ? "strands" : boss === "gloomshade" ? "lanterns relit" : "pillars baited") : "revives"} · wins and losses count`
         : "Counts from the next raid update");
     }
     case "total-clears": {

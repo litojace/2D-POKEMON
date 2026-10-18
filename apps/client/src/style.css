@@ -7940,6 +7940,39 @@ dialog:has(.shop) { width: min(980px, 96vw); }
   .guide-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
+/* ---- Gloomshade raid rewards ---- */
+.raid-cosmetic-preview[data-cosmetic="dusk-colors"] > svg,
+.roster-panel[data-raid-cosmetic~="dusk-colors"] .selected .card-art > :is(svg,img),
+.roster-panel[data-raid-cosmetic~="dusk-colors"] .selected-art > :is(svg,img),
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="dusk-colors"] > svg { filter: sepia(.45) hue-rotate(220deg) saturate(1.4) brightness(1.02); }
+.raid-cosmetic-preview[data-cosmetic="moonlit-skin"] > svg,
+.roster-panel[data-raid-cosmetic~="moonlit-skin"] .selected .card-art > :is(svg,img),
+.roster-panel[data-raid-cosmetic~="moonlit-skin"] .selected-art > :is(svg,img),
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="moonlit-skin"] > svg { filter: saturate(.45) hue-rotate(200deg) brightness(1.15) drop-shadow(0 0 3px #f4f6ffaa); }
+.raid-cosmetic-preview[data-cosmetic="nightmote"] { border-radius: 50%; box-shadow: 0 0 0 3px #ffd27a, 0 0 12px 3px #ffd27a55; background: radial-gradient(circle at 30% 70%, #fff1c2 0 4%, transparent 5%), radial-gradient(circle at 72% 64%, #fff1c2 0 4%, transparent 5%), radial-gradient(circle, #14213a 56%, #2b2245); }
+.raid-cosmetic-preview[data-cosmetic="shadowstep"] { background: radial-gradient(ellipse at 50% 88%, #4a3d72 0 18%, #2b2245 19% 32%, #14213a 33%); }
+.raid-cosmetic-preview[data-cosmetic="crescent-bow"] { background: radial-gradient(circle at 62% 30%, #161a30 0 15%, transparent 16%), radial-gradient(circle at 54% 34%, #ffd65b 0 19%, transparent 20%), #161a30; }
+/* Crescent frame: a night-blue ring with a golden moon at the top. */
+.raid-cosmetic-preview[data-cosmetic="crescent"],
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="crescent"] {
+  position: relative;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px #2b2245, 0 0 0 5px #7b5cd6, 0 0 10px 3px #ffd65b44;
+}
+.raid-cosmetic-preview[data-cosmetic="crescent"]::after,
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="crescent"]::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -8px;
+  width: 14px;
+  height: 14px;
+  transform: translateX(-50%) rotate(-30deg);
+  border-radius: 50%;
+  box-shadow: inset -4px 2px 0 0 #ffd65b;
+  filter: drop-shadow(0 0 3px #ffd65b);
+}
+
 /* ---- Tidewyrm raid rewards ---- */
 .raid-cosmetic-preview[data-cosmetic="seafoam"] > svg,
 .roster-panel[data-raid-cosmetic~="seafoam"] .selected .card-art > :is(svg,img),

@@ -11,7 +11,10 @@ export type Skin =
   | "winter-colours"
   // Tidewyrm's raid rewards.
   | "seafoam"
-  | "pearlscale";
+  | "pearlscale"
+  // Gloomshade's raid rewards.
+  | "dusk-colors"
+  | "moonlit-skin";
 export const SKINS: Skin[] = [
   "cragbound",
   "cragstone",
@@ -23,6 +26,8 @@ export const SKINS: Skin[] = [
   "winter-colours",
   "seafoam",
   "pearlscale",
+  "dusk-colors",
+  "moonlit-skin",
 ];
 const hexRgb = (c: number) => [(c >> 16) & 255, (c >> 8) & 255, c & 255];
 /**
@@ -37,6 +42,9 @@ export const TONES: Partial<Record<Skin, { tones: [number, number, number]; keep
   "winter-colours": { tones: [0x2a4a6e, 0x9fcfff, 0xffffff], keep: 0.3 },
   seafoam: { tones: [0x13606b, 0x4fd6c8, 0xe6fbff], keep: 0.25 },
   pearlscale: { tones: [0x1d4f6e, 0x7fd8e6, 0xfff3f8], keep: 0.3 },
+  // Twilight violet shading up into lantern gold.
+  "dusk-colors": { tones: [0x2b2245, 0x8a5fc8, 0xffd27a], keep: 0.25 },
+  "moonlit-skin": { tones: [0x2a3358, 0x9aa8d8, 0xf4f6ff], keep: 0.3 },
 };
 export function tonePixels(pixels: Uint8ClampedArray, skin: Skin) {
   const spec = TONES[skin];
@@ -177,6 +185,25 @@ export function cosmeticLayer(
         context.fillRect(x - r / 2, y - r / 2, r, r);
       }
       context.globalAlpha = 1;
+    }
+    if (skin === "moonlit-skin" && !/-eyes([-~]|$)/.test(original)) {
+      // A soft silver glow from the top, and a few drifting stars.
+      context.globalCompositeOperation = "source-atop";
+      const glow = context.createLinearGradient(0, 0, 0, canvas.height);
+      glow.addColorStop(0, "rgba(244, 246, 255, .28)");
+      glow.addColorStop(0.6, "rgba(244, 246, 255, 0)");
+      context.fillStyle = glow;
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      const random = seeded(original + ":moon");
+      for (let n = 0; n < (canvas.width * canvas.height) / 2200; n++) {
+        const x = random() * canvas.width,
+          y = random() * canvas.height,
+          r = 1 + random() * 1.4;
+        context.fillStyle = random() < 0.75 ? "rgba(255, 255, 255, .85)" : "rgba(255, 214, 91, .8)";
+        context.fillRect(x - r, y - r / 4, r * 2, r / 2);
+        context.fillRect(x - r / 4, y - r, r / 2, r * 2);
+      }
+      context.globalCompositeOperation = "source-over";
     }
     if (skin === "pearlscale" && !/-eyes([-~]|$)/.test(original)) {
       // Overlapping scale arcs with pearl freckles, only where the layer is opaque.

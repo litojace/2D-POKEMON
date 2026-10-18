@@ -33,7 +33,6 @@ import {
   ritesFor,
   RAID_PING_SECONDS,
   RAID_TRAITS,
-  TIDEWYRM,
   eruptionChain,
   raidPattern,
   raidDay,
@@ -47,7 +46,11 @@ import {
 import { BotBrain } from "./bot.js";
 const BOSS = GRUMBLECRAG;
 /** The numbers every boss shares the shape of (health, Peril damage, rhythm). */
-export type RaidBossNumbers = Pick<typeof GRUMBLECRAG | typeof TIDEWYRM, "health" | "perilDamage" | "cadence">;
+export type RaidBossNumbers = {
+  readonly health: { readonly base: number; readonly perExtraPlayer: number; readonly gilded: number };
+  readonly perilDamage: readonly number[];
+  readonly cadence: { readonly normal: number; readonly restless: number; readonly finalPhase: number };
+};
 
 export class RaidArena extends Arena {
   raid: RaidState;
@@ -698,15 +701,14 @@ export class RaidArena extends Arena {
       this.charging = undefined;
       this.nextAttack = r.staggerUntil + 1;
     }
+    this.worldStep(dt, boss);
     if (r.staggerUntil > this.time) return;
     this.followWarnings(boss);
     if (this.time >= this.nextAttack && this.canStartAttack() && !r.warnings.length) {
       const alive = this.heroes().filter((p) => p.hp > 0);
       if (!alive.length) return;
       const target = alive[(this.attacks + r.seed) % alive.length];
-      const pattern = r.drill
-        ? [r.drill]
-        : raidPattern(r.phase, r.peril, r.partySize, r.boss);
+      const pattern = r.drill ? [r.drill] : this.pattern();
       const kind = pattern[this.attacks++ % pattern.length];
       this.startAttack(kind, target);
       this.nextAttack = this.time + (r.drill ? 3.2 : this.cadence());
@@ -719,6 +721,13 @@ export class RaidArena extends Arena {
       this.resolveWarning(w, boss);
     }
     this.bossStep(dt, boss);
+  }
+  /** Arena upkeep that carries on even while the boss is staggered. */
+  protected worldStep(_dt: number, _boss: Fighter) {}
+  /** This chapter's attack order. */
+  protected pattern() {
+    const r = this.raid;
+    return raidPattern(r.phase, r.peril, r.partySize, r.boss);
   }
   /** No new attack while one is still playing out (Grumblecrag: a charge). */
   protected canStartAttack() {

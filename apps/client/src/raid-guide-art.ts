@@ -11,12 +11,24 @@ export function raidGuideTidewyrm(exposed = false) {
   const pearl = exposed ? "#bff6ff" : "#fff3f8";
   return `<g stroke="#13606b" stroke-width="2" stroke-linejoin="round"><ellipse cy="38" rx="44" ry="9" fill="#071325" opacity=".45"/><path d="M-40 34q8-14 22-4t22-6 16-26" fill="none" stroke="#13606b" stroke-width="20" stroke-linecap="round"/><path d="M-40 34q8-14 22-4t22-6 16-26" fill="none" stroke="#2fb7a6" stroke-width="16" stroke-linecap="round"/><path d="m-6 12 4-16 10 10Zm-20 14 2-14 10 8Z" fill="#ffa8c8"/><ellipse cx="22" cy="-14" rx="24" ry="19" fill="#2fb7a6"/><ellipse cx="30" cy="-8" rx="14" ry="9" fill="#8ff0d8" stroke="none"/><path d="M4-22-14-36l4 18Z" fill="#ffa8c8"/><circle cx="20" cy="-17" r="4" fill="#fff" stroke="none"/><circle cx="31" cy="-17" r="4" fill="#fff" stroke="none"/><path d="M15-19h10m1 0h10" stroke-width="2.5"/><circle cx="24" cy="-31" r="5.5" fill="${pearl}"/>${exposed ? '<circle cx="24" cy="-31" r="12" fill="none" stroke="#bff6ff" opacity=".7"/>' : ""}<path d="M-56 38q10-6 20 0t20 0 20 0 20 0 20 0" fill="none" stroke="#d9f5f0" stroke-width="2" opacity=".7"/></g>`;
 }
+/**
+ * Gloomshade in miniature: a floppy-eared shadow puff with a crescent-moon
+ * tail. `shadow` draws its ground shadow: the tell that marks the real one.
+ */
+export function raidGuideGloomshade(exposed = false, shadow = true) {
+  const core = exposed ? '<circle cy="20" r="10" fill="#ffd65b" opacity=".45" stroke="none"/><circle cy="20" r="5" fill="#fff1c2"/>' : "";
+  return `<g stroke="#18122b" stroke-width="2" stroke-linejoin="round">${shadow ? '<ellipse cx="6" cy="38" rx="38" ry="8" fill="#071325" opacity=".55" stroke="none"/>' : ""}<circle cx="-38" cy="12" r="8" fill="#2b2245"/><circle cx="-46" cy="6" r="6" fill="#2b2245"/><path d="M-50-20a16 16 0 1 0 0 32a20 20 0 0 1 0-32Z" fill="#ffd65b"/>${[-24, -12, 0, 12, 24].map((x) => `<circle cx="${x}" cy="28" r="9" fill="#18122b"/>`).join("")}<ellipse cx="-30" cy="0" rx="11" ry="26" fill="#2b2245"/><ellipse cx="30" cy="0" rx="11" ry="26" fill="#2b2245"/><circle cy="-4" r="34" fill="#2b2245"/><ellipse cx="-6" cy="-20" rx="22" ry="12" fill="#4a3d72" opacity=".6" stroke="none"/><ellipse cx="-11" cy="-8" rx="7" ry="9" fill="#fff3c4" stroke="none"/><ellipse cx="13" cy="-8" rx="7" ry="9" fill="#fff3c4" stroke="none"/><ellipse cx="-10" cy="-7" rx="3.5" ry="5" fill="#18122b" stroke="none"/><ellipse cx="14" cy="-7" rx="3.5" ry="5" fill="#18122b" stroke="none"/><circle cx="-8" cy="-11" r="1.6" fill="#fff" stroke="none"/><circle cx="16" cy="-11" r="1.6" fill="#fff" stroke="none"/><path d="M-3 6q4 4 8 0" fill="none" stroke="#fff3c4"/>${core}</g>`;
+}
 /** The boss's miniature for lobbies and results. */
 export function raidGuideBossFor(boss: string, exposed = false) {
-  return boss === "tidewyrm" ? raidGuideTidewyrm(exposed) : raidGuideBoss(exposed);
+  return boss === "tidewyrm"
+    ? raidGuideTidewyrm(exposed)
+    : boss === "gloomshade"
+      ? raidGuideGloomshade(exposed)
+      : raidGuideBoss(exposed);
 }
 export function raidGuideScene(
-  kind: "charge" | "core" | "revive" | "strand" | "tide" | "prison",
+  kind: "charge" | "core" | "revive" | "strand" | "tide" | "prison" | "lantern" | "shadow" | "curse",
   character: CharacterId,
 ) {
   const hero = (x: number, y: number, n: string) =>
@@ -39,6 +51,16 @@ export function raidGuideScene(
     art = `${water}<rect width="220" height="135" fill="#7fe9ff" opacity=".15"/>${island(110, 86)}${hero(66, 50, "t1")}${hero(110, 50, "t2")}<circle cx="99" cy="44" r="6" fill="#ffd65b"/><circle cx="121" cy="44" r="6" fill="#ffd65b"/><text x="110" y="28">TWO PER ISLAND</text>`;
   if (kind === "prison")
     art = `${water}<circle cx="80" cy="78" r="30" fill="#bff6ff" opacity=".25" stroke="#7fe9ff" stroke-width="3"/>${hero(59, 55, "p1")}${hero(140, 58, "p2")}<path class="raid-guide-bolt" d="m140 78-22-2 8-6-12-6 18 2-6-6Z" fill="#ffe17b"/><circle cx="62" cy="38" r="5" fill="#ffd65b"/><circle cx="80" cy="38" r="5" fill="#ffd65b"/><circle cx="98" cy="38" r="5" fill="#0c1b32" stroke="#ffd65b"/><text x="110" y="24">POP IT: 3 HITS</text>`;
+  const night = '<rect width="220" height="135" fill="#161a30" opacity=".55"/>';
+  const post = (x: number, y: number, lit: boolean) =>
+    `<g stroke="#23202f" stroke-width="2"><rect x="${x - 3}" y="${y}" width="6" height="34" fill="#23202f"/><rect x="${x - 12}" y="${y + 32}" width="24" height="9" rx="3" fill="#4d4668"/><path d="M${x - 13} ${y - 2}h26l-3 -18h-20Z" fill="${lit ? "#fff1c2" : "#2c2b44"}"/><path d="M${x - 14} ${y - 20}h28l-14 -9Z" fill="#23202f"/></g>`;
+  const wisp = (x: number, y: number) => `<circle cx="${x}" cy="${y}" r="5" fill="#e0ccff" stroke="#b07bff" stroke-width="2"/>`;
+  if (kind === "lantern")
+    art = `${night}${post(150, 52, false)}${hero(40, 62, "l")}<path class="raid-guide-bolt" d="m92 82 22-8-6 8 16-4-18 12 4-8Z" fill="#ffe17b"/><circle cx="143" cy="22" r="5" fill="#ffd65b"/><circle cx="157" cy="22" r="5" fill="#0c1b32" stroke="#ffd65b" stroke-width="2"/><text x="150" y="128">TWO HITS</text>`;
+  if (kind === "shadow")
+    art = `${night}<ellipse cx="110" cy="96" rx="96" ry="30" fill="#ffd27a" opacity=".22"/>${post(110, 40, true)}<g transform="translate(58 70) scale(.5)">${raidGuideGloomshade(false, true)}</g><g transform="translate(166 70) scale(.5)" opacity=".9">${raidGuideGloomshade(false, false)}</g><circle cx="58" cy="30" r="9" fill="none" stroke="#ffd65b" stroke-width="3"/><path d="M160 24l12 12m0-12-12 12" stroke="#ff4059" stroke-width="3"/><text x="110" y="128">SHADOW = REAL</text>`;
+  if (kind === "curse")
+    art = `${night}<circle cx="64" cy="80" r="44" fill="#b07bff" opacity=".1" stroke="#b07bff" stroke-width="2" stroke-dasharray="5 5"/>${hero(43, 57, "c1")}${wisp(40, 60)}${wisp(88, 66)}${wisp(64, 50)}${hero(152, 57, "c2")}<path d="M112 80h26m-8-7 8 7-8 7" stroke="#8beed2" stroke-width="3" fill="none"/><text x="110" y="128">SPREAD OUT</text>`;
   // Center the complete two-character scene; center its caption on the card.
   if (kind === "revive") art = `<g transform="translate(-14 -8)">${art}</g>`;
   return `<svg class="raid-guide-scene" viewBox="0 0 220 135" aria-hidden="true">${floor}${art}</svg>`;

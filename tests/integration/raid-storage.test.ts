@@ -254,3 +254,46 @@ it("records Tidewyrm once migration 012 switches it on, with its own rewards", a
     db.query("select public.arena_record_raid($1::jsonb)", [JSON.stringify({ ...tide(3, {}), boss: "gloomshade" })]),
   ).rejects.toThrow("Invalid raid");
 });
+it("records Gloomshade once migration 013 switches it on, with its own rewards", async () => {
+  for (const file of ["010_shop.sql", "011_collection_bonus.sql", "012_tidewyrm.sql", "013_gloomshade.sql"])
+    await db.exec("reset role;" + (await readFile("supabase/migrations/" + file, "utf8")));
+  await db.exec("reset role;set role service_role");
+  const gloom = (n: number, extra: object) => ({
+    ...receipt(500 + n),
+    boss: "gloomshade",
+    trait: "moonlit",
+    daily: false,
+    peril: 3,
+    seconds: 400,
+    ...extra,
+  });
+  // A Peril 3 solo clear with the feat (no copy hit) and 30 relights
+  // (a run counts at most 20).
+  await db.query("select public.arena_record_raid($1::jsonb)", [
+    JSON.stringify(gloom(1, { feat: true, players: [{ accountId: player, character: "lumoth", pillars: 30 }] })),
+  ]);
+  let p = await progress();
+  expect(p.bosses.gloomshade.clears).toBe(1);
+  for (const id of ["lightbringer", "nights-end", "crescent", "nightmote", "crescent-bow", "lone-lantern"])
+    expect(p.earned).toContain(id);
+  expect(p.earned).not.toContain("lamplighter-title");
+  expect(p.titles).toContain("Night's End");
+  // Lost runs still count their relights towards Lamplighter (50 in all).
+  for (const [n, pillars] of [[2, 20], [3, 10]]) {
+    await db.exec("reset role;set role service_role");
+    await db.query("select public.arena_record_raid($1::jsonb)", [
+      JSON.stringify(gloom(n, { result: "defeat", players: [{ accountId: player, character: "lumoth", pillars }] })),
+    ]);
+    p = await progress();
+    if (n === 2) expect(p.earned).not.toContain("lamplighter-title");
+  }
+  expect(p.earned).toContain("lamplighter-title");
+  expect(p.titles).toContain("Lamplighter");
+  await login();
+  await db.query("select public.arena_equip_raid_slot('aura','nightmote')");
+  expect((await progress()).loadout.aura).toBe("nightmote");
+  await db.exec("reset role;set role service_role");
+  await expect(
+    db.query("select public.arena_record_raid($1::jsonb)", [JSON.stringify({ ...gloom(4, {}), boss: "somnara" })]),
+  ).rejects.toThrow("Invalid raid");
+});

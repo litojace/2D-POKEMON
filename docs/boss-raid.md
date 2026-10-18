@@ -1,6 +1,6 @@
 # Boss Raid
 
-Choose **Boss Raid · Co-op · 1–4 players** and press **Open the Raid Hub**. The Hub shows this week's seven bosses (one featured each day), today's Raid of the Day, and a card for every boss. Open a boss to see its chapters, attacks, rewards and records, then **Create raid room** (share its code) or **Play solo now**. Grumblecrag and Tidewyrm are built; the other five are listed as coming soon (see [the roster design](raid-roster-design.md)). New bosses unlock after a first Grumblecrag clear.
+Choose **Boss Raid · Co-op · 1–4 players** and press **Open the Raid Hub**. The Hub shows this week's seven bosses (one featured each day), today's Raid of the Day, and a card for every boss. Open a boss to see its chapters, attacks, rewards and records, then **Create raid room** (share its code) or **Play solo now**. Grumblecrag, Tidewyrm and Gloomshade are built; the other four are listed as coming soon (see [the roster design](raid-roster-design.md)). New bosses unlock after a first Grumblecrag clear.
 
 In a raid room Every human readies up, confirms the illustrated boss introduction, and chooses a starting rite. Solo needs no AI partner and gets one automatic self-revive on Peril 1–2 (none on Peril 3). Existing champion selection, custom controls, touch joystick, camera and Socket.IO reconnection remain in use.
 
@@ -37,6 +37,20 @@ A sleepy sea serpent fought in the **Lagoon Court**: shallow water with four rai
 - **Storm Surge** (ch. 3): faster rhythm; High Tide leads straight into a dive and the Undertow into a wave. On Peril 3 an island sinks for good every 45 s (35 s solo), down to two.
 - **Traits:** Murky (fainter ripples, strands last 1 s longer), Rip Current (stronger Undertow, slower waves), Spring Tide (longer High Tide, bigger islands). **Themed rite:** Sure Footing (no bubble roots, 15% faster in water). **Signal:** the third key is "Island here".
 - **Rewards** (migration 012): Tidebreaker (first clear), Seafoam colors (5 clears), Pearlscale skin (10), Riptide entrance (Peril 2), Leviathan's Bane title + Reef frame (Peril 3), Tidal aura (Peril 3, no downs), Splashdown victory (feat: strand it 4 times in one run), Flash Flood (Peril 2 solo under 4:00), Lone Current (Peril 3 solo), Shipwright (30 strands, wins and losses).
+
+## Gloomshade (Monday's boss)
+
+A floppy-eared puff of shadow with a crescent-moon tail, fought in the **Lantern Yard**: a moonlit courtyard with four lanterns that make pools of light (no walls). The edges of the yard dim as lanterns go out, but it never goes fully dark. Its numbers live in `GLOOMSHADE` and its attack order in `gloomshadePattern` (`packages/shared/src/raid.ts`); the fight is `GloomshadeArena` in `apps/server/src/raid-gloomshade.ts`. Health: 1050, +1000 per extra raider (more of it comes with each raider than for the other bosses, because finding the real one costs a solo raider more time).
+
+- **Mirror Split (signature, ch. 2+):** it splits into 3 copies (4 on Peril 3; one fewer solo; Moonlit +1, Hollow −1). They drift between spots together. Only the real one **casts a shadow in lantern light**, and only its moon tail flickers. Hitting a copy pops it and gives the hitter a curse stack. **Six hits in a row** on the real one (while copies are out) make the copies vanish and expose its core for 5 s. In chapter 1 there are no copies: fill the stagger bar instead.
+- **Shadow Lunge:** a lane from the nearest shadow (a copy, or a lantern that's gone out) to one raider; it follows them for 0.6 s, then locks. Sidestep it.
+- **Grasping Hands:** half the floor's tiles (an 8 × 5 checkerboard that matches the flagstones) darken; stand on a lit tile. From Peril 2 the board flips once: the tiles flicker just before.
+- **Lantern Snuff:** a lantern dims and goes out. Two hits relight it (a shot or a swing aimed at it). In chapter 3 it goes out twice as fast.
+- **Creeping Curse** (ch. 2+): a stack on one raider. Anyone within 120 px of a cursed raider for 2 s (3 s with Restless Spirits) gets a stack too. Three stacks = **Haunted**: 5 damage a second for 6 s. Two seconds in lantern light cleanses it. Solo, the curse instead grows if you stand still for 2.5 s.
+- **Nightmare Pulse:** a ring expands from every copy, but only the real one's hurts: jump it. The real ring marks the real one for a moment. In chapter 3 pulses come in pairs.
+- **Champion tricks:** Voltkit's Ball Lightning lights its landing spot for 3 s; Lumoth's Radiant Flare relights lanterns and cleanses curses nearby; Mystowl's Focus Ray, aimed at the real one, marks it for 4 s; Duskveil's Curse Mark on the real one reveals it for 6 s.
+- **Traits:** Moonlit (wider lantern light, one extra copy), Restless Spirits (more Grasping Hands, slower curse spread), Hollow (fewer copies, fainter shadow). **Themed rite:** Lamplighter (one hit relights a lantern; lantern light heals 1% a second). **Signal:** the third key is "That's the real one".
+- **Rewards** (migration 013): Lightbringer (first clear), Dusk colors (5 clears), Moonlit skin (10), Shadowstep entrance (Peril 2), Night's End title + Crescent frame (Peril 3), Nightmote aura (Peril 3, no downs), Crescent Bow victory (feat: nobody hits a copy all run, with at least one split), Moonrunner (Peril 2 solo under 4:00), Lone Lantern (Peril 3 solo), Lamplighter (50 lanterns relit, wins and losses; a run counts at most 20).
 
 ## Replay variety
 
@@ -100,7 +114,7 @@ The Raid Hub boss page shows boss information, clears, highest Peril, best activ
 
 ## Required deployment setup
 
-1. Run `supabase/migrations/007_raids.sql` in Supabase after migrations 001–006, then `supabase/migrations/008_raid_progress.sql`, then `supabase/migrations/009_raid_hub.sql`, then the Shop's `010_shop.sql` and `011_collection_bonus.sql`, then `012_tidewyrm.sql` (it switches Tidewyrm on and seeds its rewards). 010 also updates the appearance functions so Shop pieces can be equipped; if you ever re-run an older raid migration, run 009–012 again afterwards, in order.
+1. Run `supabase/migrations/007_raids.sql` in Supabase after migrations 001–006, then `supabase/migrations/008_raid_progress.sql`, then `supabase/migrations/009_raid_hub.sql`, then the Shop's `010_shop.sql` and `011_collection_bonus.sql`, then `012_tidewyrm.sql` (it switches Tidewyrm on and seeds its rewards), then `013_gloomshade.sql` (the same for Gloomshade). 010 also updates the appearance functions so Shop pieces can be equipped; if you ever re-run an older raid migration, run 009–013 again afterwards, in order.
 2. Set **SUPABASE_SERVICE_ROLE_KEY** in the **server's** hosting environment alongside its existing SUPABASE_URL. Never use a VITE_ prefix or put this key in browser configuration. It enables the server-only `arena_record_raid` function.
 3. Redeploy the server and client together, since snapshots now support the raid mode.
 

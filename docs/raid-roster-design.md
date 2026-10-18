@@ -233,7 +233,8 @@ fully dark).
 - Hitting the real one 6 times in a row **exposes** it: all decoys vanish
   and the core is open for 5 seconds.
 
-**Health:** 1300, +870 per extra raider.
+**Health:** 1050, +1000 per extra raider (changed from 1300 + 870 after the
+bot check in §11.3).
 
 | Attack | Warning | How to beat it | Dmg |
 |---|---|---|---|
@@ -418,7 +419,8 @@ Star, Moon, Wave) and soft cloud floor.
 - From chapter 3 on Peril 3, some sequences are shown **backwards** (an
   arrow says so), and the Dreamer has to call them in reverse.
 
-**Health:** 1300, +870 per extra raider.
+**Health:** 1050, +1000 per extra raider (changed from 1300 + 870 after the
+bot check in §11.3).
 
 | Attack | Warning | How to beat it | Dmg |
 |---|---|---|---|
@@ -1213,6 +1215,31 @@ release.
   80–90 s against Grumblecrag's 70 s (bots play far better than people,
   so only the comparison matters). Real tuning waits for the play session.
 
+### 11.3 Step 4 as built (Gloomshade)
+
+- Built as designed in §5.2 on the same hooks, as `GloomshadeArena`. One
+  new hook: `worldStep` runs every tick even while the boss is staggered,
+  so lanterns, curses and healing don't freeze during a stagger.
+- **Choices made while building** (easy to change):
+  - Six hits in a row only count **while copies are out**: in chapter 1
+    the stagger bar exposes it. (Counting them with no copies let parties
+    expose it every couple of seconds.) Hits from one raider count at most
+    every 0.2 s; any hit on a copy resets the count.
+  - The flicker is an irregular shimmer, not timed to the music, and the
+    real one's moon has a faint halo.
+  - The edges dim as lanterns go out (darker the more are out) instead of
+    shrinking the view by 25%.
+  - Shadow Lunge follows its target for half its warning, then locks.
+  - Relighting: a shot that reaches the lantern, or a fresh attack press
+    aimed at it from within 140 px. Radiant Flare reaches 240 px.
+  - The real ring of a Nightmare Pulse marks the real one for 1.5 s.
+  - Witching Hour re-splits as soon as an exposure ends.
+  - Names not in the spec: *Moonrunner* (Peril 2 solo under 4:00) and
+    *Lone Lantern* (Peril 3 solo).
+- **Bot check** (5 seeds each): solo ≈ 91 s (Tidewyrm ≈ 84 s), three
+  raiders ≈ 68 s (74 s), four ≈ 61 s (63 s), no downs. Bots play far
+  better than people, so only the comparison matters.
+
 ## 12. Decisions log
 
 | Date | Decision |
@@ -1235,4 +1262,4 @@ release.
 
 ## 13. Open questions
 
-None right now. Steps 1–3 are shipped; after a play session, step 4 (Gloomshade) is next.
+None right now. Steps 1–4 are shipped; after a play session, step 5 (Somnara) is next.

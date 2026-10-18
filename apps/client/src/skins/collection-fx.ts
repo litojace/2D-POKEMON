@@ -66,6 +66,17 @@ export function drawCollectionAura(g: G, id: string, x: number, y: number, now: 
       );
       return true;
     }
+    case "nightmote": {
+      // Gloomshade's reward: fireflies of lantern light circling beneath you.
+      g.fillStyle(0x2b2245, 0.22).fillEllipse(x, y, 100, 42);
+      ring(7, 46, 19, 4400, (px, py, i) => {
+        const bob = reduced ? 0 : Math.sin(now / 350 + i * 1.3) * 4;
+        const blink = reduced ? 1 : 0.55 + 0.45 * Math.abs(Math.sin(now / 500 + i * 2.1));
+        g.fillStyle(0xffd27a, 0.25 * blink).fillCircle(px, py - 6 + bob, 7);
+        g.fillStyle(0xfff1c2, 0.95 * blink).fillCircle(px, py - 6 + bob, 2.6);
+      });
+      return true;
+    }
     case "winter-aura":
       ring(8, 46, 19, 5200, (px, py, i) => {
         const s = 4;
@@ -127,6 +138,14 @@ export function playCollectionEntrance(emit: Emit, id: string, x: number, y: num
       burst(30, (i) => {
         const a = -Math.PI * (0.1 + (i / 30) * 0.8);
         return { y: y + 10 * sc, vx: Math.cos(a) * rnd(80, 190), vy: Math.sin(a) * rnd(150, 280), life: rnd(0.6, 1), size: rnd(2, 3.4) * sc, color: i % 3 ? 0xe6fbff : 0x7fe9ff, shape: "dot" };
+      });
+      return true;
+    case "shadowstep":
+      // Gloomshade's reward: rise out of a pool of shadow.
+      emit({ x, y: y + 8 * sc, vx: 0, vy: 0, life: 0.6, size: 22 * sc, color: 0x2b2245, shape: "ring" });
+      burst(26, (i) => {
+        const a = (i / 26) * TAU;
+        return { x: x + Math.cos(a) * 34 * sc, y: y + 8 * sc + Math.sin(a) * 12 * sc, vx: Math.cos(a) * rnd(10, 30), vy: -rnd(60, 140), life: rnd(0.6, 1), size: rnd(3, 5) * sc, color: i % 4 ? 0x4a3d72 : 0xffd65b, shape: i % 4 ? "puff" : "spark" };
       });
       return true;
     case "winter-entrance":
@@ -246,6 +265,19 @@ export function drawCollectionVictory(
       if (t > 0.9 && t - dt <= 0.9)
         for (let i = 0; i < 34; i++)
           emit({ x: x + rnd(-40, 40) * sc, y: y - 50 * sc, vx: rnd(-170, 170), vy: rnd(-260, -60), life: rnd(0.7, 1.1), size: rnd(2, 3.5) * sc, color: i % 3 ? 0xe6fbff : 0x7fe9ff, shape: "dot" });
+      return true;
+    }
+    case "crescent-bow": {
+      // Gloomshade's reward: a crescent moon rises behind you as you bow.
+      const rise = Math.min(1, t / 0.8);
+      const mx = x + 26 * sc,
+        my = y - (40 + 70 * rise) * sc,
+        mr = 30 * sc;
+      under.fillStyle(0xffd65b, 0.16 * fade).fillCircle(mx, my, mr * 1.8);
+      under.fillStyle(0xffd65b, 0.95 * fade).fillCircle(mx, my, mr);
+      // The bite that makes it a crescent: the night sky behind it.
+      under.fillStyle(0x161a30, fade).fillCircle(mx + mr * 0.5, my - mr * 0.2, mr * 0.85);
+      if (chance(10, dt)) emit({ x: x + rnd(-80, 80) * sc, y: y - rnd(70, 140) * sc, vx: 0, vy: rnd(-10, 10), life: rnd(0.8, 1.2), size: 2.4 * sc, color: 0xfff1c2, shape: "star" });
       return true;
     }
     case "winter-victory": {

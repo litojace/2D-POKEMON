@@ -54,7 +54,14 @@ export type RaidAttack =
   | "bubbles"
   | "hightide"
   | "undertow"
-  | "prison";
+  | "prison"
+  // Gloomshade
+  | "lunge"
+  | "hands"
+  | "snuff"
+  | "curse"
+  | "split"
+  | "pulse";
 export const RAID_ATTACKS: Record<
   RaidAttack,
   { name: string; tip: string; practice: string }
@@ -119,11 +126,42 @@ export const RAID_ATTACKS: Record<
     tip: "Teammates pop the bubble with three hits. Alone, mash your attack to break out before it reaches the boss's mouth.",
     practice: "A bubble seals you and drifts to the boss. Mash attack (or have friends pop it).",
   },
+  lunge: {
+    name: "Shadow Lunge",
+    tip: "A dark line reaches you from the nearest shadow, not from the boss. Sidestep off the line.",
+    practice: "A dark line from a shadow to you. Sidestep it.",
+  },
+  hands: {
+    name: "Grasping Hands",
+    tip: "Half the floor's tiles darken: stand on a lit tile. From Peril 2 the pattern flips once, so watch it.",
+    practice: "Tiles darken in a checkerboard. Stand on a lit one.",
+  },
+  snuff: {
+    name: "Lantern Snuff",
+    tip: "A lantern dims and goes out. Hit it twice to relight it: lantern light is where the real Gloomshade casts a shadow.",
+    practice: "A lantern goes out. Hit it twice to relight it.",
+  },
+  curse: {
+    name: "Creeping Curse",
+    tip: "Spread out: the curse spreads to anyone near a cursed raider. Three stacks haunts you. Stand in lantern light to cleanse it.",
+    practice: "A curse marks you. Stand in lantern light to cleanse it.",
+  },
+  split: {
+    name: "Mirror Split",
+    tip: "Only the real Gloomshade casts a shadow in lantern light, and its moon tail flickers. Hitting a copy curses you.",
+    practice: "It splits into copies. Find the one with a shadow in the light.",
+  },
+  pulse: {
+    name: "Nightmare Pulse",
+    tip: "Every copy sends a ring, but only the real one's hurts: jump it. The pulse also shows you which one is real.",
+    practice: "Rings from every copy. Jump the real one's.",
+  },
 };
 /** Each boss's attacks, in the order the Hub and the practice room list them. */
 export const RAID_BOSS_ATTACKS: Partial<Record<RaidBossId, RaidAttack[]>> = {
   grumblecrag: ["charge", "slam", "volley", "debris", "eruption", "share"],
   tidewyrm: ["dive", "wave", "bubbles", "hightide", "undertow", "prison"],
+  gloomshade: ["lunge", "hands", "snuff", "curse", "split", "pulse"],
 };
 export const raidAttacksOf = (boss: RaidBossId) => RAID_BOSS_ATTACKS[boss] ?? [];
 /**
@@ -201,6 +239,86 @@ export const TIDEWYRM = {
   /** Voltkit's Static Lance on a stranded Tidewyrm (water conducts). */
   lanceStagger: 15,
 } as const;
+/**
+ * Gloomshade's numbers (docs/raid-roster-design.md §5.2). Damage is before
+ * the Peril multiplier.
+ */
+export const GLOOMSHADE = {
+  id: "gloomshade",
+  name: "Gloomshade",
+  // Finding the real one costs a solo raider more time than a party, so
+  // more of its health comes with each extra raider than for the others.
+  health: { base: 1050, perExtraPlayer: 1000, gilded: 1.12 },
+  perilDamage: [1, 1, 1.1, 1.2],
+  cadence: { normal: 4.8, restless: 4.4, finalPhase: 0.85 },
+  /** The Lantern Yard's four lanterns and how far their light reaches. */
+  lanterns: [
+    { x: 330, y: 210 },
+    { x: 1270, y: 210 },
+    { x: 330, y: 690 },
+    { x: 1270, y: 690 },
+  ],
+  lightRadius: 150,
+  /** Moonlit trait: a brighter yard (wider lantern light). */
+  moonlitLightRadius: 185,
+  /** Hits to relight an unlit lantern (1 with the Lamplighter rite). */
+  relightHits: 2,
+  home: { x: 800, y: 430 },
+  /** Where Gloomshade and its copies drift between. */
+  spots: [
+    { x: 800, y: 430 },
+    { x: 560, y: 300 },
+    { x: 1040, y: 300 },
+    { x: 560, y: 600 },
+    { x: 1040, y: 600 },
+    { x: 800, y: 210 },
+    { x: 800, y: 690 },
+  ],
+  driftSpeed: 150,
+  driftEvery: 3.5,
+  lunge: { delay: 1.2, width: 34, length: 760, damage: 25 },
+  /** Grasping Hands: the floor as a checkerboard of tiles. */
+  hands: { cols: 8, rows: 5, delay: 1.6, shiftAt: 0.7, damage: 20 },
+  snuff: { delay: 1.5, finalDelay: 0.75 },
+  curse: { radius: 120, spreadSeconds: 2, restlessSpread: 3, haunted: 3, hauntSeconds: 6, dps: 5, cleanseSeconds: 2, soloStill: 2.5 },
+  split: { delay: 1.2, copies: 3, peril3Copies: 4 },
+  pulse: { delay: 1.4, radius: 260, damage: 24, pairGap: 1.2 },
+  /** Hits on the real one in a row that expose it. */
+  exposeHits: 6,
+  exposeSeconds: 5,
+  /** Voltkit's Ball Lightning lights its landing spot this long. */
+  sparkLight: 3,
+  /** Mystowl's Focus Ray and Duskveil's Curse Mark reveal the real one. */
+  revealRay: 4,
+  revealMark: 6,
+} as const;
+/** How far lantern light reaches this run (wider on Moonlit). */
+export const lanternRadius = (trait: string) =>
+  trait === "moonlit" ? GLOOMSHADE.moonlitLightRadius : GLOOMSHADE.lightRadius;
+/** Grasping Hands: is the tile at (x, y) dark for this parity? */
+export function handsTileDark(x: number, y: number, parity: number) {
+  const { cols, rows } = GLOOMSHADE.hands;
+  const col = Math.max(0, Math.min(cols - 1, Math.floor((x / 1600) * cols)));
+  const row = Math.max(0, Math.min(rows - 1, Math.floor((y / 900) * rows)));
+  return (col + row) % 2 === parity;
+}
+/** Gloomshade's attack order for a chapter. */
+export function gloomshadePattern(phase: number, peril: number, restless = false): RaidAttack[] {
+  const hands: RaidAttack[] = restless ? ["hands"] : [];
+  if (phase === 1)
+    return [
+      "lunge",
+      "hands",
+      "snuff",
+      "lunge",
+      ...(peril >= 3 ? (["pulse"] as RaidAttack[]) : []),
+      "hands",
+      ...hands,
+    ];
+  if (phase === 2) return ["split", "lunge", "curse", "hands", "snuff", "pulse", "lunge", ...hands];
+  // Witching Hour: pulses come in pairs (the server adds the second).
+  return ["pulse", "lunge", "curse", "snuff", "hands", "pulse", "lunge", ...hands];
+}
 /** Tidewyrm's attack order for a chapter. */
 export function tidewyrmPattern(phase: number, peril: number): RaidAttack[] {
   if (phase === 1)
@@ -220,6 +338,7 @@ export function raidPattern(
   boss: RaidBossId = "grumblecrag",
 ): RaidAttack[] {
   if (boss === "tidewyrm") return tidewyrmPattern(phase, peril);
+  if (boss === "gloomshade") return gloomshadePattern(phase, peril);
   // A meteor needs friends to share it; alone it becomes a dodge.
   const meteor: RaidAttack = "share";
   if (phase === 1)
@@ -247,6 +366,7 @@ export const RAID_PING_SECONDS = 3.5;
 /** The third signal means something different on each boss. */
 export function raidPingLabel(kind: RaidPingKind, boss: RaidBossId = "grumblecrag") {
   if (kind === "bait" && boss === "tidewyrm") return "Island here";
+  if (kind === "bait" && boss === "gloomshade") return "That's the real one";
   return RAID_PINGS[kind].label;
 }
 /** What some champions' skills do against Grumblecrag (see RAID_BOSS_PERKS). */
@@ -296,6 +416,24 @@ export const RAID_BOSS_PERKS: Partial<
       text: "Pops every bubble nearby and frees a raider from a Bubble Prison.",
     },
   },
+  gloomshade: {
+    voltkit: {
+      skill: "Ball Lightning",
+      text: "Lights up where it bursts for 3 seconds, showing true shadows.",
+    },
+    lumoth: {
+      skill: "Radiant Flare",
+      text: "Relights lanterns nearby and cleanses curses from allies around you.",
+    },
+    mystowl: {
+      skill: "Focus Ray",
+      text: "Passes through copies: aimed at the real Gloomshade, it marks it for everyone.",
+    },
+    duskveil: {
+      skill: "Curse Mark",
+      text: "Aimed at the real Gloomshade, it reveals it to the team for 6 seconds.",
+    },
+  },
 };
 export const raidPerksOf = (boss: RaidBossId) => RAID_BOSS_PERKS[boss] ?? {};
 /** Chapter names and goals per boss. */
@@ -323,6 +461,26 @@ export const RAID_BOSS_CHAPTERS: Partial<
         "The rhythm quickens: High Tide leads straight into a dive, and the Undertow into a wave. On Peril 3 an island sinks for good every 45 seconds.",
     },
   ],
+  gloomshade: [
+    {
+      name: "Dusk",
+      objective: "Keep the lanterns lit. Stand on lit tiles.",
+      detail:
+        "Shadow Lunges come from the nearest shadow, not from Gloomshade. Grasping Hands darken half the floor: stand on a lit tile. When a lantern goes out, hit it twice to relight it. Keep hitting Gloomshade to fill its stagger bar and expose its core.",
+    },
+    {
+      name: "Midnight",
+      objective: "Find the real one. Spread out from curses.",
+      detail:
+        "It splits into copies: only the real Gloomshade casts a shadow in lantern light, and its moon tail flickers. Hitting a copy curses you; six hits on the real one in a row exposes it. Creeping Curse spreads between raiders who stand close: lantern light cleanses it.",
+    },
+    {
+      name: "Witching Hour",
+      objective: "Relight fast. Jump the real pulse.",
+      detail:
+        "Lanterns go out twice as fast, the copies come back after every exposure, and Nightmare Pulses come in pairs.",
+    },
+  ],
 };
 export const raidChapters = (boss: RaidBossId) =>
   RAID_BOSS_CHAPTERS[boss] ?? RAID_CHAPTERS;
@@ -347,7 +505,13 @@ export type RaidCosmetic =
   | "riptide"
   | "reef"
   | "tidal-aura"
-  | "splashdown";
+  | "splashdown"
+  | "dusk-colors"
+  | "moonlit-skin"
+  | "shadowstep"
+  | "crescent"
+  | "nightmote"
+  | "crescent-bow";
 /** A raid reward or a Shop collection piece (see shop.ts LOOK_ITEMS). */
 export type AppearanceItem = RaidCosmetic | (string & {});
 export type RaidLoadout = Partial<Record<RaidSlot, AppearanceItem | null>>;
@@ -401,6 +565,17 @@ export const RAID_REWARDS: RaidReward[] = [
   { id: "flash-flood", boss: "tidewyrm", slot: "title", name: "Flash Flood", description: "Title", goal: "Clear Peril 2 solo in under 4:00", rule: { kind: "speed", peril: 2, party: 1, seconds: 240 } },
   { id: "lone-current", boss: "tidewyrm", slot: "title", name: "Lone Current", description: "Title", goal: "Clear Peril 3 solo (no self-revive)", rule: { kind: "solo", peril: 3 } },
   { id: "shipwright", boss: "tidewyrm", slot: "title", name: "Shipwright", description: "Title", goal: "Strand Tidewyrm 30 times (wins and losses)", rule: { kind: "stat", stat: "pillars", n: 30 } },
+  { id: "lightbringer", boss: "gloomshade", slot: "title", name: "Lightbringer", description: "Title", goal: "First clear", rule: { kind: "clears", n: 1 } },
+  { id: "dusk-colors", boss: "gloomshade", slot: "skin", name: "Dusk colors", description: "Twilight violet and lantern gold", goal: "5 clears", rule: { kind: "clears", n: 5 } },
+  { id: "moonlit-skin", boss: "gloomshade", slot: "skin", name: "Moonlit skin", description: "A silver moon-glow with drifting stars", goal: "10 clears", rule: { kind: "clears", n: 10 } },
+  { id: "shadowstep", boss: "gloomshade", slot: "entrance", name: "Shadowstep entrance", description: "Rise out of a pool of shadow each round", goal: "Clear Peril 2", rule: { kind: "peril", n: 2 } },
+  { id: "nights-end", boss: "gloomshade", slot: "title", name: "Night's End", description: "Title", goal: "Clear Peril 3", rule: { kind: "peril", n: 3 } },
+  { id: "crescent", boss: "gloomshade", slot: "frame", name: "Crescent frame", description: "A night-blue portrait frame with a golden moon", goal: "Clear Peril 3", rule: { kind: "peril", n: 3 } },
+  { id: "nightmote", boss: "gloomshade", slot: "aura", name: "Nightmote aura", description: "Fireflies of lantern light circle beneath you", goal: "Clear Peril 3 with no downs", rule: { kind: "flawless", peril: 3 } },
+  { id: "crescent-bow", boss: "gloomshade", slot: "victory", name: "Crescent Bow", description: "A crescent moon rises behind you as you take a bow", goal: "Feat: nobody hits a copy all run", rule: { kind: "feat" } },
+  { id: "moonrunner", boss: "gloomshade", slot: "title", name: "Moonrunner", description: "Title", goal: "Clear Peril 2 solo in under 4:00", rule: { kind: "speed", peril: 2, party: 1, seconds: 240 } },
+  { id: "lone-lantern", boss: "gloomshade", slot: "title", name: "Lone Lantern", description: "Title", goal: "Clear Peril 3 solo (no self-revive)", rule: { kind: "solo", peril: 3 } },
+  { id: "lamplighter-title", boss: "gloomshade", slot: "title", name: "Lamplighter", description: "Title", goal: "Relight 50 lanterns (wins and losses)", rule: { kind: "stat", stat: "pillars", n: 50 } },
   { id: "boss-hunter", boss: null, slot: "title", name: "Boss Hunter", description: "Title", goal: "100 raid clears across every boss", rule: { kind: "total-clears", n: 100 } },
 ];
 export const RAID_COSMETICS = Object.fromEntries(
@@ -437,12 +612,16 @@ export const RAID_TRAITS = {
   murky: { name: "Murky", text: "Dive ripples are harder to see, but strands last a second longer." },
   "rip-current": { name: "Rip Current", text: "A stronger Undertow, but slower waves." },
   "spring-tide": { name: "Spring Tide", text: "High Tide lasts longer, but the islands are bigger." },
+  moonlit: { name: "Moonlit", text: "A brighter yard, but one extra copy." },
+  "restless-spirits": { name: "Restless Spirits", text: "Grasping Hands come more often, but curses spread slower." },
+  hollow: { name: "Hollow", text: "Fewer copies, but the real one's shadow is fainter." },
 } as const;
 export type RaidTrait = keyof typeof RAID_TRAITS;
 /** Each boss's three traits; a run rolls one from its seed. */
 export const RAID_BOSS_TRAITS: Partial<Record<RaidBossId, RaidTrait[]>> = {
   grumblecrag: ["restless", "fractured", "ancient"],
   tidewyrm: ["murky", "rip-current", "spring-tide"],
+  gloomshade: ["moonlit", "restless-spirits", "hollow"],
 };
 export const raidTraitFor = (boss: RaidBossId, seed: number) => {
   const list = RAID_BOSS_TRAITS[boss] ?? RAID_BOSS_TRAITS.grumblecrag!;
@@ -484,11 +663,17 @@ export const RAID_RITES = {
     text: "Bubbles can't root you, and you move 15% faster through water.",
     icon: "Dash",
   },
+  lamplighter: {
+    name: "Lamplighter",
+    text: "One hit relights a lantern, and standing in lantern light heals 1% health a second.",
+    icon: "Rest",
+  },
 } as const;
 export type RaidRite = keyof typeof RAID_RITES;
 /** Themed rites only offered against their own boss. */
 export const RAID_BOSS_RITES: Partial<Record<RaidRite, RaidBossId>> = {
   footing: "tidewyrm",
+  lamplighter: "gloomshade",
 };
 /** The rites a boss's runs can offer: the shared six plus its own. */
 export const ritesFor = (boss: RaidBossId) =>
@@ -518,6 +703,11 @@ export interface RaidWarning {
   teach?: boolean;
   /** Tidal Wave: a high wave (island only) rather than a low one (jump). */
   high?: boolean;
+  /** Grasping Hands: which checkerboard parity is dark (it may flip at `shiftAt`). */
+  parity?: number;
+  shiftAt?: number;
+  /** Lantern Snuff: which lantern dims. */
+  lantern?: number;
 }
 /** Tidewyrm's raised islands (walkable). */
 export interface RaidIsland {
@@ -597,6 +787,18 @@ export interface RaidState {
   undertow?: { x: number; y: number; until: number; radius: number };
   /** Times Tidewyrm has been stranded this run (its feat). */
   strands?: number;
+  /** Gloomshade: the Lantern Yard's lanterns. */
+  lanterns?: { x: number; y: number; lit: boolean; hits: number }[];
+  /** Gloomshade's copies (the real one is the boss entity). */
+  decoys?: { id: number; x: number; y: number }[];
+  /** Creeping Curse stacks per raider, and who is Haunted until when. */
+  curses?: Record<string, { stacks: number; hauntedUntil: number }>;
+  /** Short-lived light (Voltkit's Ball Lightning). */
+  lights?: { x: number; y: number; radius: number; until: number }[];
+  /** The real Gloomshade is marked for everyone until this time. */
+  revealUntil?: number;
+  /** Hits on the real Gloomshade in a row (6 exposes it). */
+  streak?: number;
   message: string;
   resultId?: string;
   rewardStatus?: "saving" | "saved" | "unavailable";
