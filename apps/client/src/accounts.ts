@@ -573,6 +573,7 @@ export class AccountUI {
   }
   /** Re-render the open Shop (set while it's open). */
   private shopRefresh?: () => void;
+  private shopPreviewCleanup?: () => void;
   private shopView: ShopView = { tab: "today", champion: "voltkit" };
   /** The Shop: Today's Picks, champion skins, the Mythic Hall, collections and missions. */
   async showShop(tab?: ShopTab) {
@@ -625,6 +626,29 @@ export class AccountUI {
     const wire = () => {
       const root = dialogEl();
       if (!root) return;
+      this.shopPreviewCleanup?.();
+      const panel = root.querySelector<HTMLElement>(".shop-preview");
+      let cancelled = false;
+      let dispose: (() => void) | undefined;
+      const cleanup = () => {
+        if (cancelled) return;
+        cancelled = true;
+        dispose?.();
+        observer.disconnect();
+        root.removeEventListener("close", cleanup);
+      };
+      this.shopPreviewCleanup = cleanup;
+      root.addEventListener("close", cleanup);
+      const observer = new MutationObserver(() => {
+        if (!panel?.isConnected) cleanup();
+      });
+      observer.observe(root, { childList: true });
+      if (panel) void import("./shop-preview").then(({ mountShopPreview }) => {
+        if (!cancelled && root.open && panel.isConnected) dispose = mountShopPreview(panel);
+      }).catch(() => {
+        const toggle = panel.querySelector<HTMLButtonElement>("[data-preview-toggle]");
+        if (toggle) { toggle.disabled = true; toggle.textContent = "Still preview"; }
+      });
       const all = <T extends HTMLElement>(q: string) => Array.from(root.querySelectorAll<T>(q));
       for (const b of all<HTMLButtonElement>("[data-shop-tab]"))
         b.onclick = () => {

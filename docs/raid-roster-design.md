@@ -1197,6 +1197,13 @@ release.
 - **Collections:** Colours recolour the rig textures (eyes untouched), auras
   draw under the fighter, entrances burst at the round greeting, victories
   play around the champion's own celebration, frames are portrait borders.
+- **Live Shop preview:** a single lazy-loaded Canvas scene shares the battle
+  rig, skin textures, collection auras, entrance bursts and victory effects.
+  Players can choose four facings and idle/run/dash/entrance/victory motion;
+  frames use their actual portrait border. Motion starts paused with reduced
+  motion enabled, and the pause choice survives item changes. Offscreen or
+  background previews stop updating; switching tabs or closing destroys the
+  preview. Facing and motion controls never call purchase/equip APIs.
 - **Collection bonus** (migration 011): owning every champion skin in a
   collection (Winter, Festival, Garden) gives that collection's frame.
 
