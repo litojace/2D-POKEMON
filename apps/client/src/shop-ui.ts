@@ -147,9 +147,10 @@ function previewPanel(view: ShopView, e: Economy | null) {
       ? `${escape(piece.description)}. Worn by every fighter${piece.slot === "skin" ? " (a champion skin wins over Colours)" : ""}.`
       : "Pick a skin to preview it from every side.";
   const frame = piece?.slot === "frame";
-  const action = piece?.slot === "entrance" ? "entrance" : piece?.slot === "victory" ? "victory" : "idle";
+  // Each item plays the animation that shows it off; no picker needed.
+  const action = piece?.slot === "entrance" ? "entrance" : piece?.slot === "victory" ? "victory" : "showcase";
   const fallback = piece ? itemPicture(piece.id, champion, "shop-piece-preview") : scopeIds(fighterArtFacing(champion, "down", look), "shop-live-fallback");
-  const controls = frame ? "" : `<div class="shop-preview-controls"><div class="shop-motion-options" role="group" aria-label="Preview animation">${["idle", "run", "dash", "entrance", "victory"].map(a => `<button type="button" data-preview-action="${a}" aria-pressed="${a === action}">${a[0].toUpperCase() + a.slice(1)}</button>`).join("")}</div><button type="button" class="shop-motion-toggle" data-preview-toggle aria-label="Play preview animations" aria-pressed="false" disabled>Loading preview…</button></div>`;
+  const controls = frame ? "" : `<div class="shop-preview-controls"><button type="button" class="shop-motion-toggle" data-preview-toggle aria-label="Play preview animations" aria-pressed="false" disabled>Loading preview…</button></div>`;
   return `<section class="shop-preview rarity-${(id && shopRarity(id)) || "set"}" aria-label="Cosmetic preview"><div class="shop-preview-visual"><div class="shop-live-stage${frame ? " is-frame" : ""}" data-preview-champion="${champion}" data-preview-item="${id ?? ""}" data-preview-stage="${stage}" data-preview-action="${action}" role="img" aria-label="${title} ${frame ? "profile frame" : "animated preview"}"><div class="shop-preview-fallback">${fallback}</div></div>${frame ? '<p class="shop-frame-caption">Profile frame</p>' : `<div class="shop-faces" role="group" aria-label="Preview facing">${faces}</div>`}${controls}</div><div class="shop-preview-text"><div class="shop-preview-kicker">${rarityBadge(id ? shopRarity(id) : null)}<span>${frame ? "Portrait frame" : "Live preview"}</span></div><h3>${title}</h3><p>${text}</p>${stages}</div></section>`;
 }
 /** Plain creature art in any facing (the Shop's preview). */

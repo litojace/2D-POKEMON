@@ -33,7 +33,7 @@ export function mountShopPreview(panel: HTMLElement): () => void {
   let dirty = true;
   let clock = 0;
   let cycle = 0;
-  let action = host.dataset.previewAction!;
+  const action = host.dataset.previewAction!;
   let angle = Math.PI / 2;
   let rig: FighterRig | undefined;
   let game: Phaser.Game | undefined;
@@ -78,18 +78,6 @@ export function mountShopPreview(panel: HTMLElement): () => void {
       angle = angles[button.dataset.previewFacing!];
       for (const b of Array.from(
         panel.querySelectorAll("[data-preview-facing]"),
-      ))
-        b.setAttribute("aria-pressed", String(b === button));
-      reset();
-    };
-  for (const button of Array.from(
-    panel.querySelectorAll<HTMLButtonElement>("button[data-preview-action]"),
-  ))
-    button.onclick = () => {
-      action = button.dataset.previewAction!;
-      host.dataset.previewAction = action;
-      for (const b of Array.from(
-        panel.querySelectorAll("button[data-preview-action]"),
       ))
         b.setAttribute("aria-pressed", String(b === button));
       reset();
@@ -166,23 +154,25 @@ export function mountShopPreview(panel: HTMLElement): () => void {
         cycle = nextCycle;
       }
       const t = (clock % 4400) / 1000;
-      const dash = action === "dash" && t > 0.6 && t < 1;
-      const running = action === "run";
-      const travel = running
-        ? Math.sin(clock / 650) * 28
-        : action === "dash"
-          ? t < 0.6
-            ? -35
-            : t < 1
-              ? -35 + (t - 0.6) * 175
-              : 35
-          : 0;
+      // Showcase loop (4.4 s): stand, run forward, dash, then turn and run
+      // back. Shows idle details, run trails and the dash burst on its own.
+      const showcase = action === "showcase";
+      const dash = showcase && t >= 2.6 && t < 3;
+      const back = showcase && t >= 3;
+      const running = showcase && ((t >= 1.4 && t < 2.6) || back);
+      const travel = !showcase || t < 1.4
+        ? 0
+        : t < 2.6
+          ? ((t - 1.4) / 1.2) * 30
+          : t < 3
+            ? 30 + (t - 2.6) * 100
+            : 70 * (1 - (t - 3) / 1.4);
       const x = 200 + Math.cos(angle) * travel;
       const y = 174 + Math.sin(angle) * travel * 0.35;
       const pose: AnimationPose = {
         hp: 100,
         speed: running ? CHARACTERS[champion].speed : 0,
-        angle,
+        angle: back ? angle + Math.PI : angle,
         dash,
         jump: false,
         skin: worn,
