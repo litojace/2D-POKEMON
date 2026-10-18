@@ -1,5 +1,6 @@
 import type { CharacterId } from "@arena/shared";
 import type { Facing } from "./animation/controller";
+import { awakeningSvg } from "./skins/mythic-art";
 import {
   PATTERN_PARTS,
   SKIN_ART,
@@ -597,6 +598,9 @@ function dressLayers(
   for (const a of extras)
     for (const [part, svg] of accessorySvg(a, id, dir, p))
       layers[part] += `<g class="skin-accessory skin-${a}">${svg}</g>`;
+  if (art.mythic)
+    for (const [part, svg] of awakeningSvg(art.mythic, stage, id, dir, p))
+      layers[part] += `<g class="skin-awakening">${svg}</g>`;
 }
 export function creatureSvg(
   id: CharacterId,

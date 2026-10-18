@@ -1181,8 +1181,10 @@ release.
   placed per facing, a dash trail; (Epic+) a skill colour for casts,
   projectiles, zones and hit sparks, a looping detail and a KO poof;
   (Mythical) its own entrance and victory bursts, an ambient effect per
-  Awakening stage, a stage-3 accessory where it has one, and a stage-3
-  ultimate ring. Rig textures for a skin load the first time someone
+  Awakening stage, permanent theme-specific additions at stages II and III
+  visible in both Shop previews and battle (including reduced motion),
+  and a stage-3 ultimate ring. Each stage has its own rig texture keys.
+  Rig textures for a skin load the first time someone
   wearing it appears.
 - **Simplified for now:** Epic "custom hit sparks" are the standard sparks
   in the skin's colour; Mythical "animated body textures" are animated

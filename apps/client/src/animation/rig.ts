@@ -27,7 +27,7 @@ import { FX_GRAVITY, drawFxParticle, drawSkinFx, type FxShape } from "../skins/s
 import { drawCollectionVictory, playCollectionEntrance } from "../skins/collection-fx";
 
 /** Skinned texture sets already requested, per scene (loaded on first sight). */
-const requested = new WeakMap<Phaser.Scene, Set<string>>();
+const requested = new WeakMap<Phaser.Scene, Map<string, string[]>>();
 
 /**
  * Follow-through: these parts hang on damped springs, so they trail behind
@@ -165,12 +165,16 @@ export class FighterRig {
     const suffix = skinSuffix(this.character, look);
     if (suffix === this.suffix) return;
     const probe = rigKey(this.character, "down", "body", suffix);
-    if (!this.scene.textures.exists(probe)) {
-      let asked = requested.get(this.scene);
-      if (!asked) requested.set(this.scene, (asked = new Set()));
+    let asked = requested.get(this.scene);
+    const pending = asked?.get(suffix);
+    // The body can finish before arms, accessories or expression textures.
+    // Keep the current form until the entire requested set is ready.
+    if (!this.scene.textures.exists(probe) || pending?.some((key) => !this.scene.textures.exists(key))) {
+      if (!asked) requested.set(this.scene, (asked = new Map()));
       if (!asked.has(suffix)) {
-        asked.add(suffix);
-        for (const a of rigAssets(this.character, look ?? null))
+        const assets = rigAssets(this.character, look ?? null);
+        asked.set(suffix, assets.map((a) => a.key));
+        for (const a of assets)
           if (!this.scene.textures.exists(a.key))
             this.scene.load.svg(a.key, a.url, { width: a.width, height: a.height });
         if (!this.scene.load.isLoading()) this.scene.load.start();

@@ -33,7 +33,7 @@ describe("champion skin art", () => {
   it("draws every skin in every facing as well-formed SVG with its own palette", () => {
     for (const s of CHAMPION_SKINS)
       for (const dir of DIRS)
-        for (const stage of [1, 3]) {
+        for (const stage of [1, 2, 3]) {
           const svg = creatureSvg(s.champion, dir, undefined, undefined, "normal", { skin: s.id, stage });
           expect(svg, `${s.id} ${dir}`).not.toMatch(/NaN|undefined|Infinity/);
           expect(svg).toContain(`${s.champion}-${dir}-${s.id}-body`);
@@ -54,9 +54,25 @@ describe("champion skin art", () => {
     expect(fighterSkillColor({ character: "voltkit", championLooks: { voltkit: { skin: "voltkit-midnight", stage: 1 } } })).toBeUndefined();
   });
 
-  it("keys Awakening stages only when the art changes with them", () => {
+  it("gives every Mythical three distinct forms in every facing and keeps their battle textures separate", () => {
+    for (const skin of CHAMPION_SKINS.filter((s) => s.rarity === "mythical")) {
+      for (const dir of DIRS) {
+        const forms = [1, 2, 3].map(stage => creatureSvg(skin.champion, dir, undefined, undefined, "normal", { skin: skin.id, stage }));
+        expect(new Set(forms).size, `${skin.id} ${dir}: all three stages need visible artwork`).toBe(3);
+      }
+      const stages = [1, 2, 3].map(stage => rigAssets(skin.champion, { skin: skin.id, stage }));
+      const keys = stages.flatMap(assets => assets.map(asset => asset.key));
+      expect(new Set(keys).size, `${skin.id}: switching stage must not reuse another stage's textures`).toBe(keys.length);
+      // Compare the actual encoded images too, rather than just the cache keys.
+      expect(new Set(stages.map(assets => assets.map(asset => asset.url).join())).size, skin.id).toBe(3);
+      expect(skinSuffix(skin.champion, { skin: skin.id }), skin.id).toBe(skinSuffix(skin.champion, { skin: skin.id, stage: 1 }));
+    }
+  });
+
+  it("leaves non-Mythical texture keys alone", () => {
     expect(skinSuffix("voltkit", { skin: "voltkit-midnight", stage: 1 })).toBe("~voltkit-midnight");
-    expect(skinSuffix("voltkit", { skin: "voltkit-stormcrown", stage: 2 })).toBe("~voltkit-stormcrown");
+    expect(skinSuffix("voltkit", { skin: "voltkit-midnight", stage: 3 })).toBe("~voltkit-midnight");
+    expect(skinSuffix("voltkit", { skin: "voltkit-stormcrown", stage: 2 })).toBe("~voltkit-stormcrown~2");
     expect(skinSuffix("voltkit", { skin: "voltkit-stormcrown", stage: 3 })).toBe("~voltkit-stormcrown~3");
   });
 
@@ -64,10 +80,12 @@ describe("champion skin art", () => {
     for (const s of CHAMPION_SKINS) {
       const shape = (a: ReturnType<typeof rigAssets>[number]) => [a.width, a.height, a.originX, a.originY, a.x, a.y];
       const base = rigAssets(s.champion).map(shape);
-      const skinned = rigAssets(s.champion, { skin: s.id, stage: 3 });
-      expect(skinned.map(shape), s.id).toEqual(base);
-      expect(new Set(skinned.map((a) => a.key)).size).toBe(skinned.length);
-      expect(skinned.every((a) => a.key.includes(`~${s.id}`))).toBe(true);
+      for (const stage of [1, 2, 3]) {
+        const skinned = rigAssets(s.champion, { skin: s.id, stage });
+        expect(skinned.map(shape), `${s.id} stage ${stage}`).toEqual(base);
+        expect(new Set(skinned.map((a) => a.key)).size).toBe(skinned.length);
+        expect(skinned.every((a) => a.key.includes(`~${s.id}`))).toBe(true);
+      }
     }
   });
 });

@@ -30,10 +30,10 @@ export interface RigAsset {
 export function skinSuffix(id: CharacterId, worn?: SkinLook | null) {
   const look = lookFor(id, worn);
   if (!look) return "";
-  const staged = (SKIN_ART[look.skin].stageAccessories ?? []).some(
-    (s) => (look.stage ?? 1) >= s.stage,
-  );
-  return `~${look.skin}${staged ? `~${look.stage}` : ""}`;
+  const stage = look.stage ?? 1;
+  const art = SKIN_ART[look.skin];
+  const staged = !!art.mythic || (art.stageAccessories ?? []).some((s) => stage >= s.stage);
+  return `~${look.skin}${staged ? `~${stage}` : ""}`;
 }
 export function rigKey(id: CharacterId, dir: Facing, part: Part, suffix = "") {
   return `rig-${id}-${dir}-${part}${suffix}`;
