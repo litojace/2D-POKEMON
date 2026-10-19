@@ -50,11 +50,11 @@ it("preserves raid choices during countdown and teammate picks, but redraws chan
   expect(html).toContain("Rite locked in");
 });
 
-it("leaves native scrolling untouched on repeated results snapshots and restores it only after a redraw", () => {
+it.each(["finished", "briefing"])("leaves native scrolling untouched on repeated %s snapshots and restores it only after a redraw", (phase) => {
   let html = "",
     position = 0,
     scrollWrites = 0;
-  const card = {
+  const scroller = {
     get scrollTop() {
       return position;
     },
@@ -64,6 +64,9 @@ it("leaves native scrolling untouched on repeated results snapshots and restores
     },
     contains: () => false,
   };
+  const card = phase === "briefing"
+    ? { scrollTop: 0, contains: () => false }
+    : scroller;
   const overlay = {
     style: {},
     dataset: {},
@@ -75,8 +78,10 @@ it("leaves native scrolling untouched on repeated results snapshots and restores
       html = value;
       position = 0;
     },
-    querySelector: (selector: string) =>
-      selector === ".raid-overlay" && html ? card : null,
+    querySelector: (selector: string) => !html ? null
+      : selector === ".raid-overlay" ? card
+      : selector === ".raid-briefing-body" && phase === "briefing" ? scroller
+      : null,
     querySelectorAll: () => [],
   };
   const hud = { innerHTML: "" };
@@ -87,7 +92,7 @@ it("leaves native scrolling untouched on repeated results snapshots and restores
   const a = new RaidArena("SCROLL");
   a.add("hero", "Hero");
   a.start();
-  a.endRound(1);
+  if (phase === "finished") a.endRound(1);
   const render = () =>
     renderRaidUI(a.snapshot(), a.heroes()[0], async () => {});
   render();
@@ -99,7 +104,8 @@ it("leaves native scrolling untouched on repeated results snapshots and restores
   }
   expect(position).toBe(120);
   expect(scrollWrites).toBe(0);
-  a.heroes()[0].ready = !a.heroes()[0].ready;
+  if (phase === "briefing") a.instructionsReady.push("hero");
+  else a.heroes()[0].ready = !a.heroes()[0].ready;
   render();
   expect(position).toBe(120);
   expect(scrollWrites).toBe(1);

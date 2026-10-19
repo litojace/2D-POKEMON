@@ -7317,7 +7317,9 @@ dialog[open]:is(:has(.raid-hub), :has(.shop)) { display: grid; grid-template-row
 .dialog-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 8px; background: #192b47; }
 .dialog-toolbar .close { position: static; flex: 0 0 44px; display: grid; place-items: center; width: 44px; height: 44px; min-height: 44px; margin: 0 0 0 auto; padding: 0; border: 0; border-radius: 8px; line-height: 1; }
 .dialog-toolbar .close:focus-visible { outline: 2px solid #ffd65b; outline-offset: -3px; }
-.raid-dialog-toolbar .raid-hub-back { margin: 0; min-height: 44px; padding: 8px 12px; }
+.raid-dialog-toolbar .raid-hub-back { display: inline-flex; align-items: center; gap: 8px; flex: 0 1 auto; min-width: 0; height: 44px; min-height: 44px; margin: 0; padding: 8px 12px; border-radius: 10px; line-height: 1.2; }
+.raid-dialog-toolbar .raid-hub-back:focus-visible { outline: 2px solid #ffd65b; outline-offset: -3px; }
+.raid-dialog-toolbar .raid-hub-back:hover { background: #ffffff0a; }
 .dialog-content { min-width: 0; min-height: 0; max-height: calc(var(--raid-dialog-height) - 54px); overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 16px 28px 28px; }
 .raid-hub > *, .raid-hub-panel > *, .raid-boss-head > div { min-width: 0; }
 .raid-hub-panel { overflow-wrap: anywhere; }
@@ -8787,4 +8789,41 @@ dialog:is(:has(.raid-hub), :has(.shop)) .dialog-content { height: 100%; max-heig
 @media (max-height: 350px) and (max-width: 700px) {
   .dream-private-runes { gap: 3px; }
   .dream-private-runes i { width: 14px; height: 14px; }
+}
+
+/* Keep raid navigation and the start action clear of clipped scroll edges. */
+.raid-dialog-toolbar { box-shadow: inset 0 -1px 0 #8baee51a; }
+#arena-overlay .raid-briefing {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  width: min(900px, 100%);
+  max-width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  scrollbar-gutter: auto;
+  padding: 20px 24px;
+}
+.raid-briefing-body {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: 0 8px;
+}
+.raid-briefing-body:focus-visible { outline: 2px solid #ffd65b; outline-offset: -2px; border-radius: 8px; }
+.raid-briefing .raid-chapters { margin-top: 4px; }
+.raid-briefing-body > p { margin: 10px 0; line-height: 1.5; }
+.raid-briefing-actions { display: flex; justify-content: center; padding-top: 12px; border-top: 1px solid #8baee526; }
+#arena-overlay .raid-briefing #raid-instructions { min-height: 44px; margin: 0; padding: 12px 24px; }
+@media (orientation: landscape) and (max-height: 600px) {
+  #arena-overlay .raid-briefing { width: min(1040px, 100%); padding: 10px 18px; }
+  #arena-overlay .raid-briefing h2 { font-size: 26px; line-height: 1.1; margin: 4px 0 8px; }
+  .raid-briefing .raid-chapters { margin: 0 0 6px; }
+  .raid-briefing .raid-chapters > li { padding: 5px 8px; }
+  .raid-briefing .raid-guide-scene { height: 64px; }
+  .raid-briefing .raid-instructions { margin: 6px 0; }
+  .raid-briefing-body > p { margin: 6px 0; }
+  .raid-briefing-actions { padding-top: 8px; }
+  #arena-overlay .raid-briefing #raid-instructions { padding: 10px 20px; }
 }

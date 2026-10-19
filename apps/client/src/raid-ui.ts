@@ -247,7 +247,7 @@ export function renderRaidUI(
         : r.boss === "tidewyrm"
         ? `<span>${raidGuideScene("strand", me.character)}<b>Strand it</b><small>Lead the dive ripple onto an island, then step off.</small></span><span>${raidGuideScene("tide", me.character)}<b>Share the islands</b><small>High Tide floods the floor: two to an island.</small></span><span>${raidGuideScene("prison", me.character)}<b>Pop the bubble</b><small>Three hits free a trapped friend. Alone, mash attack.</small></span>`
         : `<span>${raidGuideScene("charge", me.character)}<b>Bait the charge</b><small>Lure the boss into a stone pillar.</small></span><span>${raidGuideScene("core", me.character)}<b>Strike the core</b><small>Armor breaks. Unleash your ultimate.</small></span><span>${raidGuideScene("revive", me.character)}<b>Revive together</b><small>Stand beside a fallen ally to revive.</small></span>`;
-    body = `${chapterPath(r.phase, r.boss)}<p>${escape(RAID_TRAITS[r.trait].text)}</p><div class="raid-instructions">${guide}</div>${perkLines(state, me.id)}${r.partySize > 1 ? `<p class="raid-signals">Team signals: ${(Object.keys(RAID_PINGS) as RaidPingKind[]).map((k) => `<b>${RAID_PINGS[k].key}</b> ${raidPingLabel(k, r.boss)}`).join(" · ")} (or the buttons on the left)</p>` : ""}<p>Three phases · one shared fight · ${r.partySize === 1 ? (r.peril >= 3 ? "no self-revive on Peril 3" : "one solo self-revive") : "no required healer"} · no PvP rating changes.</p><button class="primary" id="raid-instructions" ${state.instructionsReady.includes(me.id) ? "disabled" : ""}>${state.instructionsReady.includes(me.id) ? "Waiting for the team…" : iconLabel("battle", "Let’s raid")}</button>`;
+    body = `<div class="raid-briefing-body" tabindex="0" role="region" aria-label="Raid instructions">${chapterPath(r.phase, r.boss)}<p>${escape(RAID_TRAITS[r.trait].text)}</p><div class="raid-instructions">${guide}</div>${perkLines(state, me.id)}${r.partySize > 1 ? `<p class="raid-signals">Team signals: ${(Object.keys(RAID_PINGS) as RaidPingKind[]).map((k) => `<b>${RAID_PINGS[k].key}</b> ${raidPingLabel(k, r.boss)}`).join(" · ")} (or the buttons on the left)</p>` : ""}<p>Three phases · one shared fight · ${r.partySize === 1 ? (r.peril >= 3 ? "no self-revive on Peril 3" : "one solo self-revive") : "no required healer"} · no PvP rating changes.</p></div><div class="raid-briefing-actions"><button class="primary" id="raid-instructions" ${state.instructionsReady.includes(me.id) ? "disabled" : ""}>${state.instructionsReady.includes(me.id) ? "Waiting for the team…" : iconLabel("battle", "Let’s raid")}</button></div>`;
   } else if (state.phase === "intermission") {
     title =
       r.phase === 1
@@ -279,20 +279,23 @@ export function renderRaidUI(
     }<div class="raid-retry-status">${heroes.length === 1 ? "Same champion and challenge · choose fresh rites" : `${readyCount}/${heroes.length} ready · everyone confirms to run again`}</div><div class="result-actions raid-result-actions"><button class="primary" id="raid-retry" ${me.ready || !heroes.every((p) => p.connected) ? "disabled" : ""}>${me.ready ? "Waiting for the team…" : iconLabel("again", "Run again")}</button><button class="secondary" id="raid-lobby">${iconLabel("swap", "Change champion / challenge")}</button><button class="secondary raid-icon-button" id="raid-rewards">${menuIcon("bestiary")}<span>Raid Hub & rewards</span></button><button class="quiet" id="raid-exit">${iconLabel("home", "Return to menu")}</button></div>${!heroes.every((p) => p.connected) ? '<p class="raid-retry-tip">A teammate is disconnected. Return to the lobby to refill the party.</p>' : ""}</div></div>`;
   }
   const previousCard = overlay.querySelector<HTMLElement>(".raid-overlay");
+  const previousScroller =
+    overlay.querySelector<HTMLElement>(".raid-briefing-body") ?? previousCard;
   const scrollTop =
     overlay.dataset.raidPhase === state.phase
-      ? (previousCard?.scrollTop ?? 0)
+      ? (previousScroller?.scrollTop ?? 0)
       : 0;
   const active = document.activeElement;
   const focusId = active && previousCard?.contains(active) ? active.id : "";
   const replaced = setOverlayMarkup(
     overlay,
-    `<div class="overlay-card raid-overlay${state.phase === "finished" ? " raid-results" : state.phase === "intermission" ? " raid-draft" : ""}"><span class="eyebrow">Boss raid · co-op</span><h2>${title}</h2>${body}</div>`,
+    `<div class="overlay-card raid-overlay${state.phase === "finished" ? " raid-results" : state.phase === "intermission" ? " raid-draft" : state.phase === "briefing" ? " raid-briefing" : ""}"><span class="eyebrow">Boss raid · co-op</span><h2>${title}</h2>${body}</div>`,
   );
   overlay.dataset.raidPhase = state.phase;
   const card = overlay.querySelector<HTMLElement>(".raid-overlay");
   // Leave native touch scrolling alone while snapshots keep the same DOM.
-  if (replaced && card) card.scrollTop = scrollTop;
+  const scroller = overlay.querySelector<HTMLElement>(".raid-briefing-body") ?? card;
+  if (replaced && scroller) scroller.scrollTop = scrollTop;
   if (replaced && focusId) {
     const button = document.getElementById(focusId);
     if (button && card?.contains(button) && !button.hasAttribute("disabled"))
