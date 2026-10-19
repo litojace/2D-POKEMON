@@ -186,6 +186,31 @@ afterEach(() => {
 });
 
 describe("Shop live previews", () => {
+  it("pauses behind the portrait cover and resumes without an animation jump", () => {
+    const portrait = { matches: false };
+    vi.stubGlobal("matchMedia", (query: string) =>
+      query.includes("orientation:")
+        ? portrait
+        : {
+            matches: false,
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+          },
+    );
+    const { host, dispose } = preview();
+    draw();
+    const before = host.dataset.animationTime;
+    mock.render.mockClear();
+    portrait.matches = true;
+    for (let i = 0; i < 100; i++) mock.scene.update(0, 5000);
+    expect(mock.render).not.toHaveBeenCalled();
+    expect(host.dataset.animationTime).toBe(before);
+    portrait.matches = false;
+    draw();
+    expect(mock.render).toHaveBeenCalledOnce();
+    expect(Number(host.dataset.animationTime) - Number(before)).toBe(16);
+    dispose();
+  });
   it("stays idle at the same position and facing across several animation cycles", () => {
     const { dispose } = preview();
     for (let i = 0; i < 400; i++) mock.scene.update(i * 50, 50);

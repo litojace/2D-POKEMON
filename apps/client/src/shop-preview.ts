@@ -33,6 +33,9 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
   let compare: HTMLButtonElement | null;
   let layers: RigAsset[] = [];
   const motion = matchMedia("(prefers-reduced-motion: reduce)");
+  const portraitCover = matchMedia(
+    "(orientation: portrait) and (pointer: coarse) and (hover: none)",
+  );
   let paused = pausedPreference ?? motion.matches;
   let visible = true;
   let disposed = false;
@@ -262,6 +265,7 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
         disposed ||
         !visible ||
         document.hidden ||
+        portraitCover.matches ||
         (paused && !dirty)
       )
         return;

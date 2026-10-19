@@ -8142,7 +8142,7 @@ dialog :is(.profile-layout, .friends-layout, .help-layout) { line-height: 1.5; }
 }
 @media (orientation: landscape) and (max-height: 600px) and (min-width: 560px) {
   .shop { grid-template-columns: minmax(0, 1fr); }
-  .shop-preview { grid-column: 1; grid-row: 3; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.1fr); gap: 8px 12px; }
+  .shop-preview { grid-column: 1; grid-row: 2; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.1fr); gap: 8px 12px; }
   .shop-preview-visual { display: contents; }
   .shop-live-stage { grid-column: 1; grid-row: 1; }
   .shop-frame-caption { grid-column: 1; grid-row: 2; }
@@ -8150,8 +8150,8 @@ dialog :is(.profile-layout, .friends-layout, .help-layout) { line-height: 1.5; }
   .shop-preview-text { grid-column: 3; grid-row: 1; align-self: center; }
   .shop-preview:has(.is-frame) { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
   .shop-preview:has(.is-frame) .shop-preview-text { grid-column: 2; grid-row: 1 / span 2; }
-  .shop-body { grid-column: 1; grid-row: 4; }
-  .shop:not(:has(.shop-preview)) .shop-body { grid-row: 3; }
+  .shop-body { grid-column: 1; grid-row: 3; }
+  .shop:not(:has(.shop-preview)) .shop-body { grid-row: 2; }
 }
 
 /* ==== Shop: a collector's display case ====
@@ -8712,7 +8712,7 @@ button.secondary.raid-cosmetic-option.active, button.secondary.raid-cosmetic-opt
   @keyframes rotate-gate-turn { 0%, 20% { transform: rotate(0deg); } 55%, 85% { transform: rotate(-90deg); } 100% { transform: rotate(0deg); } }
   /* Nothing behind it can be used or scrolled, dialogs included. */
   body { overflow: hidden; }
-  dialog { visibility: hidden; }
+  dialog { visibility: hidden; opacity: 0; pointer-events: none; }
   dialog::backdrop { background: transparent; }
   .rotate-hint { display: none !important; }
 }
@@ -8823,8 +8823,8 @@ dialog[open].framed-dialog {
   scrollbar-gutter: auto;
 }
 dialog[open].framed-dialog.has-dialog-footer { grid-template-rows: 48px minmax(0, 1fr) auto; }
-dialog[open].framed-dialog.has-dialog-tabs { grid-template-rows: 48px auto minmax(0, 1fr); }
-dialog[open].framed-dialog.has-dialog-tabs.has-dialog-footer { grid-template-rows: 48px auto minmax(0, 1fr) auto; }
+dialog[open].framed-dialog.has-dialog-tabs:not(.has-inline-tabs) { grid-template-rows: 48px auto minmax(0, 1fr); }
+dialog[open].framed-dialog.has-dialog-tabs.has-dialog-footer:not(.has-inline-tabs) { grid-template-rows: 48px auto minmax(0, 1fr) auto; }
 dialog.framed-dialog > .dialog-toolbar {
   position: static;
   z-index: 3;
@@ -8884,7 +8884,7 @@ dialog.framed-dialog > .dialog-content {
 }
 /* Tab bars have their own row, so scrolled cards cannot paint above or
    behind them. Only the content below the tab bar scrolls vertically. */
-dialog.framed-dialog > .dialog-tabs {
+.framed-dialog .dialog-tabs {
   position: static;
   z-index: 2;
   align-items: stretch;
@@ -8894,7 +8894,32 @@ dialog.framed-dialog > .dialog-tabs {
   padding: 0 16px;
   background: #172744;
 }
-dialog.framed-dialog > .dialog-tabs > button { min-height: 44px; }
+.framed-dialog .dialog-tabs > button { min-height: 44px; }
+/* Close shares the tab bar or title instead of reserving an empty row. */
+dialog.framed-dialog > .dialog-toolbar > .dialog-tabs {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0;
+  border-bottom: 0;
+  background: transparent;
+}
+.dialog-toolbar .dialog-heading {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 0 8px;
+}
+.dialog-toolbar h2.dialog-heading, .dialog-toolbar .dialog-heading h2 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 22px;
+  line-height: 1.15;
+  margin: 0;
+}
+.dialog-toolbar .missions-head.dialog-heading { flex-wrap: nowrap; gap: 8px; }
+.dialog-toolbar .missions-head .coin-chip { flex: none; font-size: 16px; padding: 3px 8px 3px 4px; }
 .framed-dialog .shop-head { padding-right: 0; }
 @media (min-width: 760px), (orientation: landscape) and (min-width: 560px) {
   .framed-dialog .profile-customize, .framed-dialog .friends-invite { position: sticky; top: 0; }

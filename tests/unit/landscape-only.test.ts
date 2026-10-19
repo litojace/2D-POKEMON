@@ -17,7 +17,7 @@ describe("landscape only", () => {
     expect(rule?.[0]).toMatch(/position:\s*fixed;\s*inset:\s*0;/);
     expect(rule?.[0]).toContain("display: grid");
     // Dialogs (top layer) are hidden behind it too.
-    expect(css).toMatch(/dialog \{ visibility: hidden; \}/);
+    expect(css).toMatch(/dialog \{ visibility: hidden; opacity: 0; pointer-events: none; \}/);
   });
   it("keeps the stylesheet's braces balanced (a lost one nests later rules)", () => {
     const code = css.replace(/\/\*[\s\S]*?\*\//g, "");

@@ -23,6 +23,16 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
   );
   if (tabs) tabs.classList.add("dialog-tabs");
   dialog.classList.toggle("has-dialog-tabs", !!tabs);
+  const inlineTabs = !!tabs && !back;
+  dialog.classList.toggle("has-inline-tabs", inlineTabs);
+  if (inlineTabs) toolbar.prepend(tabs!);
+  else if (!tabs && !back) {
+    const heading = content.querySelector<HTMLElement>(".missions-head, h2");
+    if (heading) {
+      heading.classList.add("dialog-heading");
+      toolbar.prepend(heading);
+    }
+  }
   const footer = document.createElement("div");
   footer.className = "dialog-footer";
   footer.setAttribute("role", "group");
@@ -61,7 +71,7 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
   dialog.classList.toggle("has-dialog-footer", footer.childElementCount > 0);
   dialog.replaceChildren(
     toolbar,
-    ...(tabs ? [tabs] : []),
+    ...(tabs && !inlineTabs ? [tabs] : []),
     content,
     ...(footer.childElementCount ? [footer] : []),
   );
