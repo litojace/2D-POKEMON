@@ -8623,3 +8623,37 @@ button.secondary.raid-cosmetic-option.active, button.secondary.raid-cosmetic-opt
 @media (max-width: 480px) {
   .raid-hub-tabs button { min-height: 44px; padding: 8px 3px; font-size: 12px; letter-spacing: 0; }
 }
+
+/* ==== Landscape only (touch devices) ====
+   Held upright, a phone or tablet sees only this cover, on every screen.
+   Android's installed app is locked to landscape by the manifest; iPhone
+   and iPad can't be locked by a web page, so turning the device is the way
+   in. Desktop browsers (fine pointers) are never covered. */
+#rotate-gate { display: none; }
+@media (orientation: portrait) and (pointer: coarse) and (hover: none) {
+  #rotate-gate {
+    position: fixed; inset: 0; z-index: 2147483000; display: grid; place-items: center;
+    padding: calc(24px + var(--safe-top)) calc(24px + var(--safe-right)) calc(24px + var(--safe-bottom)) calc(24px + var(--safe-left));
+    background: radial-gradient(ellipse at 50% 35%, #1d3157, #0a1427 70%);
+    text-align: center; touch-action: none;
+  }
+  .rotate-gate-card { display: grid; justify-items: center; gap: 12px; max-width: 320px; }
+  .rotate-gate-card h2 { margin: 8px 0 0; font: 800 34px/1.05 var(--display); letter-spacing: .3px; color: #f3f6ff; }
+  .rotate-gate-card p { margin: 0; font-size: 14px; color: #9fb2cf; }
+  .rotate-gate-card .primary { margin-top: 10px; }
+  .rotate-gate-phone {
+    position: relative; width: 52px; height: 88px; border-radius: 12px;
+    border: 3px solid #ffd65b; box-shadow: 0 0 22px #ffd65b55, inset 0 0 0 3px #0a1427;
+    background: linear-gradient(180deg, #ffd65b22, transparent); animation: rotate-gate-turn 2.6s ease-in-out infinite;
+  }
+  .rotate-gate-phone::after { content: ""; position: absolute; left: 50%; bottom: 6px; width: 14px; height: 3px; margin-left: -7px; border-radius: 2px; background: #ffd65b; }
+  @keyframes rotate-gate-turn { 0%, 20% { transform: rotate(0deg); } 55%, 85% { transform: rotate(-90deg); } 100% { transform: rotate(0deg); } }
+  /* Nothing behind it can be used or scrolled, dialogs included. */
+  body { overflow: hidden; }
+  dialog { visibility: hidden; }
+  dialog::backdrop { background: transparent; }
+  .rotate-hint { display: none !important; }
+}
+@media (orientation: portrait) and (pointer: coarse) and (hover: none) and (prefers-reduced-motion: reduce) {
+  .rotate-gate-phone { animation: none; transform: rotate(-90deg); }
+}

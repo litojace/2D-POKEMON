@@ -28,6 +28,16 @@
       <span class="celestial-ember"></span>
     </div>
     <div id="app"></div>
+    <!-- Element Arena plays in landscape only. On touch devices held upright
+         this covers everything (see rotate-gate.ts and style.css). -->
+    <div id="rotate-gate" role="status" aria-live="polite">
+      <div class="rotate-gate-card">
+        <span class="rotate-gate-phone" aria-hidden="true"></span>
+        <h2>Turn your phone sideways</h2>
+        <p>Element Arena plays in landscape.</p>
+        <button type="button" class="primary" id="rotate-gate-lock" hidden>Rotate for me</button>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

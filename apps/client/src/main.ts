@@ -95,6 +95,7 @@ import { FollowCamera, screenToWorld, outsideView } from "./follow-camera";
 import { updateNameplate } from "./player-nameplate";
 import { fighterPack } from "./animation/pack-config";
 import { fullscreenLandscape } from "./orientation";
+import { wireRotateGate } from "./rotate-gate";
 import {
   SKILL_ACTIONS,
   SkillCaster,
@@ -548,6 +549,7 @@ window.addEventListener("blur", stopControls);
 window.addEventListener("pagehide", stopControls);
 document.addEventListener("visibilitychange", stopControls);
 const pwa = setupPWA(() => state?.phase, dialog, toast);
+wireRotateGate();
 // Remember a room from an invite link (?room=ABC123) before the first render.
 if (captureInvite()) inviteHinted = false;
 function wireRoster(isRoom: boolean) {
