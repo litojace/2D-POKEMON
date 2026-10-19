@@ -19,4 +19,14 @@ describe("landscape only", () => {
     // Dialogs (top layer) are hidden behind it too.
     expect(css).toMatch(/dialog \{ visibility: hidden; \}/);
   });
+  it("keeps the stylesheet's braces balanced (a lost one nests later rules)", () => {
+    const code = css.replace(/\/\*[\s\S]*?\*\//g, "");
+    let depth = 0;
+    for (const ch of code) {
+      if (ch === "{") depth++;
+      if (ch === "}") depth--;
+      expect(depth).toBeGreaterThanOrEqual(0);
+    }
+    expect(depth).toBe(0);
+  });
 });
