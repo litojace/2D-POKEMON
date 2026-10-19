@@ -35,9 +35,9 @@ export interface ScoreNote {
   pan?: number;
 }
 export const MUSIC_BPM: Record<MusicTheme, number> = {
-  lobby: 96,
-  pvp: 148,
-  raid: 104,
+  lobby: 112,
+  pvp: 144,
+  raid: 124,
   victory: 124,
   defeat: 82,
   draw: 96,
@@ -142,7 +142,7 @@ function resultStep(theme: ResultTheme, step: number): ScoreNote[] {
   return notes;
 }
 
-/** Original JRPG adventure, battle and boss arrangements. */
+/** Original cheerful adventure, playful battle and boss arrangements. */
 export function scoreStep(
   theme: MusicTheme,
   step: number,

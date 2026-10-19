@@ -2,13 +2,15 @@
 
 The three background scores are original 48-bar compositions scheduled with Web Audio:
 
-| Scene     | Track                 | Character                                                                 | Tempo   | Loop |
-| --------- | --------------------- | ------------------------------------------------------------------------- | ------- | ---- |
-| Lobby     | Lanterns at Dawn      | Warm D major piano melody, lilting harp and answering flute               | 96 BPM  | 2:00 |
-| PvP       | Skybound Rivals       | Syncopated E minor piano, a soaring string refrain and driving percussion | 148 BPM | 1:18 |
-| Boss raid | Crown of the Colossus | C minor horn calls, answering strings and a heavy orchestral march        | 104 BPM | 1:51 |
+| Scene     | Track                | Character                                                        | Tempo   | Loop |
+| --------- | -------------------- | ---------------------------------------------------------------- | ------- | ---- |
+| Lobby     | Pocket Parade        | Skipping G major piano, answering flute and playful harp         | 112 BPM | 1:43 |
+| PvP       | Hopscotch Heroes     | Bright C major hooks, bouncy bass and light offbeat piano        | 144 BPM | 1:20 |
+| Boss raid | Big Friendly Trouble | Mischievous D major brass calls, flute choruses and lively drums | 124 BPM | 1:33 |
 
-Each arrangement has a statement, answer, quieter bridge, climax, varied answer and homecoming. Four separately written eight-bar melody sections use changing harmonies; explicit note lengths leave breaths between phrases. The closing harmony leads back to the opening key. Short stereo room reflections soften the recorded instruments while percussion stays direct. Raid phases add layers without restarting the score. Victory, defeat and draw keep their finite result themes. Music respects the existing volume, mute, background-page handling and theme crossfades.
+Each track is a new melody and arrangement with a statement, answer, quieter bridge, celebratory chorus, varied answer and homecoming. Major keys, added-sixth chords, short articulated notes and clear rests give the soundtrack a cheerful adventure feel. Piano and flute trade the tune, harp fills the gaps, and light spiccato chords supply the bounce. The lobby has no drums; PvP uses a restrained backbeat; raid phases gradually add percussion and upper strings without restarting the song. Closing phrases leave a breath and lead smoothly back to the opening key.
+
+Recorded instruments retain the same short stereo room reflections. Victory, defeat and draw keep their finite result themes. Music respects the existing volume, mute, background-page handling and theme crossfades.
 
 ## Recorded instruments
 
