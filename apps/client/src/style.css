@@ -4190,16 +4190,6 @@ dialog:has(.admin-tabs) {
   color: #fff;
   box-shadow: 0 0 0 1px #f7d780 inset;
 }
-.bot-level[data-bot="easy"].active {
-  border-color: #65d38a;
-  background: #65d38a22;
-  box-shadow: 0 0 0 1px #65d38a inset;
-}
-.bot-level[data-bot="hard"].active {
-  border-color: #ff697f;
-  background: #ff697f22;
-  box-shadow: 0 0 0 1px #ff697f inset;
-}
 /* ---------- 2v2 teams ---------- */
 .mode-picker {
   display: grid;
