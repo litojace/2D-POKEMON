@@ -30,3 +30,12 @@ describe("landscape only", () => {
     expect(depth).toBe(0);
   });
 });
+
+describe("shop grid", () => {
+  it("keeps a lone filtered card card-sized (auto-fill, never auto-fit)", () => {
+    const css = readFileSync("apps/client/src/style.css", "utf8");
+    const rules = css.match(/\.shop-grid \{[^}]*grid-template-columns:[^;]*;/g) ?? [];
+    expect(rules.length).toBeGreaterThan(0);
+    for (const rule of rules) expect(rule).not.toContain("auto-fit");
+  });
+});

@@ -165,10 +165,16 @@ export class AccountUI {
       return;
     }
     const version = ++this.generation;
+    // Reloading the same player (after a purchase, an equip, a title change…)
+    // keeps what's on screen until the fresh copy arrives. Clearing it first
+    // made an open Shop say "Log in" and ask a signed-in player to sign in.
+    const samePlayer = !!session && !!this.account && session.user?.id === this.account.id;
     this.session = session;
-    this.account = null;
-    this.raidLook = undefined;
-    this.economy = undefined;
+    if (!samePlayer) {
+      this.account = null;
+      this.raidLook = undefined;
+      this.economy = undefined;
+    }
     this.hooks.onSession(session?.access_token ?? null);
     if (session) {
       try {
@@ -185,6 +191,9 @@ export class AccountUI {
           if (version !== this.generation) return;
           this.economy = economy;
         } catch { /* The Shop needs migration 010. */ }
+        // An open Shop or Missions screen shows the fresh copy.
+        this.shopRefresh?.();
+        this.missionsRefresh?.();
       } catch (error) {
         if (version !== this.generation) return;
         this.hooks.notify(

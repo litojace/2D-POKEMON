@@ -7857,7 +7857,7 @@ dialog:has(.shop) { width: min(980px, 96vw); }
   .shop-preview { grid-column: 1; grid-row: 3; grid-template-columns: 1fr; position: sticky; top: 0; }
   .shop-body { grid-column: 2; grid-row: 3; }
   .shop:not(:has(.shop-preview)) .shop-body { grid-column: 1 / -1; }
-  .shop-grid { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+  .shop-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
   .raid-rewards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; }
   .raid-equip { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 12px 16px; }
   .raid-slot { min-width: 0; }
@@ -8067,7 +8067,7 @@ dialog:has(.shop) { width: min(980px, 96vw); }
   .raid-slot { min-width: 0; }
 }
 @media (min-width: 760px) and (orientation: portrait) {
-  .shop-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+  .shop-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
 }
 @media (min-width: 1100px) {
   .profile-layout { grid-template-columns: 320px minmax(0, 1fr); }
