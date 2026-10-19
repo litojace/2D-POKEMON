@@ -652,6 +652,35 @@ export class AccountUI {
         if (toggle) { toggle.disabled = true; toggle.textContent = "Still preview"; }
       });
       const all = <T extends HTMLElement>(q: string) => Array.from(root.querySelectorAll<T>(q));
+      const restoreFocus = (selector: string) => root.querySelector<HTMLElement>(selector)?.focus({ preventScroll: true });
+      for (const b of all<HTMLButtonElement>("[data-shop-ownership]"))
+        b.onclick = () => {
+          view.ownership = b.dataset.shopOwnership as ShopView["ownership"];
+          render();
+          restoreFocus(`[data-shop-ownership="${view.ownership}"]`);
+        };
+      for (const select of all<HTMLSelectElement>("[data-shop-rarity]"))
+        select.onchange = () => {
+          view.rarity = select.value as ShopView["rarity"];
+          render();
+          restoreFocus("[data-shop-rarity]");
+        };
+      for (const b of all<HTMLButtonElement>("[data-shop-reset]"))
+        b.onclick = () => {
+          view.ownership = "all";
+          view.rarity = "all";
+          render();
+          restoreFocus('[data-shop-ownership="all"]');
+        };
+      for (const b of all<HTMLButtonElement>("[data-shop-collection]"))
+        b.onclick = () => {
+          view.collection = b.dataset.shopCollection as ShopView["collection"];
+          view.preview = `${view.collection}-colours`;
+          render();
+          restoreFocus(`[data-shop-collection="${view.collection}"]`);
+        };
+      for (const b of all<HTMLButtonElement>("[data-shop-missions]"))
+        b.onclick = () => void this.showMissions();
       for (const b of all<HTMLButtonElement>("[data-shop-tab]"))
         b.onclick = () => {
           view.tab = b.dataset.shopTab as ShopTab;
@@ -695,18 +724,21 @@ export class AccountUI {
           if (b.dataset.confirm !== "yes") {
             b.dataset.confirm = "yes";
             b.classList.add("is-confirming");
-            b.querySelector("span")!.textContent = `Buy for ${coins(Number(b.dataset.price))}?`;
+            const label = b.querySelector<HTMLElement>(".shop-price")!;
+            const original = label.textContent;
+            label.textContent = `Buy for ${coins(Number(b.dataset.price))}?`;
             setTimeout(() => {
               if (!b.isConnected || b.dataset.confirm !== "yes") return;
               delete b.dataset.confirm;
               b.classList.remove("is-confirming");
-              b.querySelector("span")!.textContent = coins(Number(b.dataset.price));
+              label.textContent = original;
             }, 4000);
             return;
           }
           void busy(b, async () => {
             this.economy = ((await this.api("/api/shop/buy", { item: id })) as { economy: Economy }).economy;
-            view.preview = id;
+            // Sets contain several pieces; keep their real item preview selected.
+            if (CHAMPION_SKIN_BY_ID[id] || LOOK_ITEM_BY_ID[id]) view.preview = id;
             return `${CHAMPION_SKIN_BY_ID[id]?.name ?? LOOK_ITEM_BY_ID[id]?.name ?? "Set"} is yours. Equip it any time.`;
           });
         };

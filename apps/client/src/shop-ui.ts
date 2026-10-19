@@ -39,6 +39,9 @@ export interface ShopView {
   preview?: string | null;
   /** Awakening stage previewed for a Mythical. */
   stage?: number;
+  ownership?: "all" | "owned" | "unowned";
+  rarity?: Rarity | "all";
+  collection?: Collection;
 }
 const escape = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -102,7 +105,14 @@ export function itemAction(id: string, e: Economy | null, loadout: RaidLoadout =
   const short = e.balance < price;
   const full = e.picks.deal === id ? shopPrice(id, e.owned, null) : null;
   const was = full && full > price ? `<s class="shop-was"><span class="sr-only">Was </span>${coins(full)}</s>` : "";
-  return `<button class="primary shop-buy" data-shop-buy="${id}" data-price="${price}" ${short ? `disabled title="You need ${coins(price - e.balance)} more coins"` : ""}>${buttonIcon("coin")}${was}<span>${coins(price)}</span></button>`;
+  return `<button class="primary shop-buy" data-shop-buy="${id}" data-price="${price}" ${short ? `disabled title="You need ${coins(price - e.balance)} more coins"` : ""}>${buttonIcon("coin")}${was}<span class="shop-price">${coins(price)}</span></button>`;
+}
+function ownershipBadge(id: string, e: Economy | null, loadout: RaidLoadout) {
+  if (!e?.owned.includes(id)) return "";
+  const skin = CHAMPION_SKIN_BY_ID[id];
+  const piece = LOOK_ITEM_BY_ID[id];
+  const equipped = skin ? e.looks[skin.champion]?.skin === id : piece && loadout[piece.slot] === id;
+  return `<span class="shop-owned-badge">${iconLabel("check", equipped ? "Equipped" : "Owned")}</span>`;
 }
 /** One item card (the hero is today's deal, laid out wide). */
 function card(id: string, view: ShopView, e: Economy | null, loadout: RaidLoadout, extra = "", hero = false) {
@@ -113,18 +123,18 @@ function card(id: string, view: ShopView, e: Economy | null, loadout: RaidLoadou
   const blurb = hero ? `<p class="shop-card-blurb">${escape(CHAMPION_SKIN_BY_ID[id]?.description ?? LOOK_ITEM_BY_ID[id]?.description ?? "")}</p>` : "";
   return `<article class="shop-card rarity-${rarity ?? "set"}${selected ? " is-selected" : ""}${deal ? " is-deal" : ""}${hero ? " is-hero" : ""}">
     <button class="shop-card-art" data-shop-preview="${id}" aria-label="Preview ${escape(itemName(id))}" aria-pressed="${selected}">${itemPicture(id, view.champion, `shop-${view.tab}-${id}`)}</button>
-    <div class="shop-card-body"><div class="shop-card-badges">${rarityBadge(rarity)}${deal ? '<span class="deal-badge">20% off today</span>' : ""}</div><b class="shop-card-name">${escape(itemName(id))}</b><small>${escape(itemLine(id))}</small>${blurb}${extra}</div>
+    <div class="shop-card-body"><div class="shop-card-badges">${rarityBadge(rarity)}${deal ? '<span class="deal-badge">20% off today</span>' : ""}${ownershipBadge(id, e, loadout)}</div><b class="shop-card-name">${escape(itemName(id))}</b><small>${escape(itemLine(id))}</small>${blurb}${extra}</div>
     <div class="shop-card-action">${itemAction(id, e, loadout)}</div>
   </article>`;
 }
 
 function previewItem(view: ShopView, e: Economy | null) {
   return view.preview ??
-    (view.tab === "today" ? e?.picks.items[0] : view.tab === "mythic" ? `${view.champion}-${MYTHIC_SLUG[view.champion]}` : e?.looks[view.champion]?.skin) ?? null;
+    (view.tab === "today" ? e?.picks.items[0] : view.tab === "mythic" ? `${view.champion}-${MYTHIC_SLUG[view.champion]}` : view.tab === "collections" ? `${view.collection ?? SHOP_BUNDLES[0].collection}-colours` : e?.looks[view.champion]?.skin) ?? null;
 }
 
 /** Live battle rig with facing and motion controls, or an actual portrait frame. */
-function previewPanel(view: ShopView, e: Economy | null) {
+function previewPanel(view: ShopView, e: Economy | null, loadout: RaidLoadout) {
   const id = previewItem(view, e);
   const skin = id ? CHAMPION_SKIN_BY_ID[id] : undefined;
   const champion = skin?.champion ?? view.champion;
@@ -150,8 +160,14 @@ function previewPanel(view: ShopView, e: Economy | null) {
   // Each item plays the animation that shows it off; no picker needed.
   const action = piece?.slot === "entrance" ? "entrance" : piece?.slot === "victory" ? "victory" : "showcase";
   const fallback = piece ? itemPicture(piece.id, champion, "shop-piece-preview") : scopeIds(fighterArtFacing(champion, "down", look), "shop-live-fallback");
-  const controls = frame ? "" : `<div class="shop-preview-controls"><button type="button" class="shop-motion-toggle" data-preview-toggle aria-label="Play preview animations" aria-pressed="false" disabled>Loading preview…</button></div>`;
-  return `<section class="shop-preview rarity-${(id && shopRarity(id)) || "set"}" aria-label="Cosmetic preview"><div class="shop-preview-visual"><div class="shop-live-stage${frame ? " is-frame" : ""}" data-preview-champion="${champion}" data-preview-item="${id ?? ""}" data-preview-stage="${stage}" data-preview-action="${action}" role="img" aria-label="${title} ${frame ? "profile frame" : "animated preview"}"><div class="shop-preview-fallback">${fallback}</div></div>${frame ? '<p class="shop-frame-caption">Profile frame</p>' : `<div class="shop-faces" role="group" aria-label="Preview facing">${faces}</div>`}${controls}</div><div class="shop-preview-text"><div class="shop-preview-kicker">${rarityBadge(id ? shopRarity(id) : null)}<span>${frame ? "Portrait frame" : "Live preview"}</span></div><h3>${title}</h3><p>${text}</p>${stages}</div></section>`;
+  const compare = skin || piece?.slot === "skin" ? '<button type="button" class="shop-compare" data-preview-compare aria-pressed="false" disabled>Compare original</button>' : "";
+  const controls = frame ? "" : `<div class="shop-preview-controls">${compare}<button type="button" class="shop-motion-toggle" data-preview-toggle aria-label="Play preview animations" aria-pressed="false" disabled>Loading preview…</button></div>`;
+  const price = id && e ? shopPrice(id, e.owned, e.picks.deal) : null;
+  const locked = skin?.rarity === "mythical" && e && !e.owned.includes(skin.id) && trial(e, champion) < MYTHIC_TRIAL_WINS;
+  const shortfall = e && price !== null && price > e.balance && !locked
+    ? `<p class="shop-shortfall">${coins(price - e.balance)} more coins needed</p><button type="button" class="secondary shop-earn" data-shop-missions>${iconLabel("coin", "Earn coins · Daily missions")}</button>` : "";
+  const purchase = id ? `<div class="shop-preview-purchase" aria-label="Selected item actions">${itemAction(id, e, loadout)}${shortfall}</div>` : "";
+  return `<section class="shop-preview rarity-${(id && shopRarity(id)) || "set"}" aria-label="Cosmetic preview"><div class="shop-preview-visual"><div class="shop-live-stage${frame ? " is-frame" : ""}" data-preview-champion="${champion}" data-preview-item="${id ?? ""}" data-preview-stage="${stage}" data-preview-action="${action}" role="img" aria-label="${title} ${frame ? "profile frame" : "animated preview"}"><div class="shop-preview-fallback">${fallback}</div></div>${frame ? '<p class="shop-frame-caption">Profile frame</p>' : `<div class="shop-faces" role="group" aria-label="Preview facing">${faces}</div>`}${controls}</div><div class="shop-preview-text"><div class="shop-preview-kicker">${rarityBadge(id ? shopRarity(id) : null)}<span>${frame ? "Portrait frame" : "Live preview"}</span></div><h3>${title}</h3><p>${text}</p>${stages}${purchase}</div></section>`;
 }
 /** Plain creature art in any facing (the Shop's preview). */
 function fighterArtFacing(id: CharacterId, dir: "down" | "left" | "right" | "up", look: SkinLook | null) {
@@ -170,17 +186,30 @@ function todayTab(view: ShopView, e: Economy | null, loadout: RaidLoadout) {
   const cards = [...(deal ? [deal] : []), ...e.picks.items.filter((id) => id !== deal)].map((id) => card(id, view, e, loadout, "", id === deal)).join("");
   return `<h3 class="shop-heading">Today's picks <small>New picks in ${picksCountdown()}</small></h3><div class="shop-grid shop-picks">${cards}</div>`;
 }
+function matchesOwnership(id: string, view: ShopView, e: Economy | null) {
+  return !view.ownership || view.ownership === "all" ||
+    (view.ownership === "owned" ? !!e?.owned.includes(id) : !e?.owned.includes(id));
+}
+function browseFilters(view: ShopView, count: number, showRarity = false) {
+  const ownership = (["all", "owned", "unowned"] as const).map((value) =>
+    `<button type="button" data-shop-ownership="${value}" aria-pressed="${(view.ownership ?? "all") === value}">${{ all: "All", owned: "Owned", unowned: "Not owned" }[value]}</button>`).join("");
+  const rarity = showRarity ? `<label class="shop-rarity-filter">Rarity <select data-shop-rarity><option value="all">All rarities</option>${Object.entries(RARITY_NAMES).map(([value, label]) => `<option value="${value}"${view.rarity === value ? " selected" : ""}>${label}</option>`).join("")}</select></label>` : "";
+  return `<div class="shop-browse"><div class="shop-ownership" role="group" aria-label="Ownership">${ownership}</div>${rarity}<span class="shop-result-count" role="status">${count} ${count === 1 ? "skin" : "skins"}</span></div>`;
+}
+const emptyResults = '<div class="shop-empty"><b>No skins match these filters</b><p>Try another fighter or browse all rarities and ownership states.</p><button type="button" class="secondary" data-shop-reset>Clear filters</button></div>';
 function championsTab(view: ShopView, e: Economy | null, loadout: RaidLoadout) {
   const chips = CHAMPIONS.map(
     (c) => `<button type="button" class="shop-champion${c === view.champion ? " active" : ""}" data-shop-champion="${c}" aria-pressed="${c === view.champion}">${fighterAvatar(c, `shop-chip-${c}`, e?.looks[c] ?? null)}<span>${CHARACTERS[c].name}</span></button>`,
   ).join("");
   const own = e?.looks[view.champion] ? `<button class="secondary" data-shop-unequip-champion="${view.champion}">${iconLabel("cancel", "Wear the original look")}</button>` : "";
-  return `<div class="shop-champions" role="group" aria-label="Champion">${chips}</div>${own ? `<p class="shop-own">${own}</p>` : ""}<div class="shop-grid">${CHAMPION_SKINS.filter((s) => s.champion === view.champion)
+  const skins = CHAMPION_SKINS.filter((s) => s.champion === view.champion && matchesOwnership(s.id, view, e) && (!view.rarity || view.rarity === "all" || s.rarity === view.rarity));
+  return `<div class="shop-champions" role="group" aria-label="Champion">${chips}</div>${own ? `<p class="shop-own">${own}</p>` : ""}${browseFilters(view, skins.length, true)}${skins.length ? `<div class="shop-grid">${skins
     .map((s) => card(s.id, view, e, loadout))
-    .join("")}</div>`;
+    .join("")}</div>` : emptyResults}`;
 }
 function mythicTab(view: ShopView, e: Economy | null, loadout: RaidLoadout) {
-  return `<p class="shop-intro">Mythicals can't be bought with coins alone: win <b>${MYTHIC_TRIAL_WINS} matches or raid clears</b> with the champion first (wins against players and raid clears count, bots don't). They awaken as you win in them.</p><div class="shop-grid">${CHAMPION_SKINS.filter((s) => s.rarity === "mythical")
+  const skins = CHAMPION_SKINS.filter((s) => s.rarity === "mythical" && matchesOwnership(s.id, view, e));
+  return `<p class="shop-intro">Mythicals can't be bought with coins alone: win <b>${MYTHIC_TRIAL_WINS} matches or raid clears</b> with the champion first (wins against players and raid clears count, bots don't). They awaken as you win in them.</p>${browseFilters(view, skins.length)}${!skins.length ? emptyResults : ""}<div class="shop-grid">${skins
     .map((s) => {
       const t = e ? trial(e, s.champion) : 0;
       const owned = e?.owned.includes(s.id);
@@ -193,13 +222,15 @@ function mythicTab(view: ShopView, e: Economy | null, loadout: RaidLoadout) {
     .join("")}</div>`;
 }
 function collectionsTab(view: ShopView, e: Economy | null, loadout: RaidLoadout) {
-  const sets = SHOP_BUNDLES.map((b) => {
+  const selected = view.collection ?? SHOP_BUNDLES[0].collection;
+  const picker = `<div class="shop-collection-picker" role="group" aria-label="Collection">${SHOP_BUNDLES.map((b) => `<button type="button" data-shop-collection="${b.collection}" aria-pressed="${b.collection === selected}"><b>${COLLECTION_NAMES[b.collection]}</b><span>${b.items.filter((id) => e?.owned.includes(id)).length}/${b.items.length} owned</span></button>`).join("")}</div>`;
+  const sets = SHOP_BUNDLES.filter((b) => b.collection === selected).map((b) => {
     const price = e ? shopPrice(b.id, e.owned, e.picks.deal) : null;
     const action = !e
       ? ""
       : price === null
         ? `<span class="shop-state">${iconLabel("check", "Complete")}</span>`
-        : `<button class="primary shop-buy" data-shop-buy="${b.id}" data-price="${price}" ${e.balance < price ? "disabled" : ""}>${buttonIcon("coin")}<span>Set ${coins(price)}</span></button>`;
+        : `<button class="primary shop-buy" data-shop-buy="${b.id}" data-price="${price}" ${e.balance < price ? "disabled" : ""}>${buttonIcon("coin")}<span class="shop-price">Set ${coins(price)}</span></button>`;
     // Collection bonus: every champion skin of this collection unlocks its frame.
     const skins = CHAMPION_SKINS.filter((c) => c.collection === b.collection);
     const have = skins.filter((c) => e?.owned.includes(c.id)).length;
@@ -208,7 +239,7 @@ function collectionsTab(view: ShopView, e: Economy | null, loadout: RaidLoadout)
       : "";
     return `<section class="shop-collection"><header><h3>${COLLECTION_NAMES[b.collection as Collection]}</h3><small>All five pieces · 20% off what you don't own</small>${action}${bonus}</header><div class="shop-grid">${b.items.map((id) => card(id, view, e, loadout)).join("")}</div></section>`;
   }).join("");
-  return `<p class="shop-intro">Collection pieces work on every fighter. Equip them here or on a boss's Rewards tab in the Raid Hub. Previewing on ${CHARACTERS[view.champion].name}.</p>${sets}`;
+  return `<p class="shop-intro">Collection pieces work on every fighter. Choose a set to explore its colours, aura, frame, entrance and victory effect. Previewing on ${CHARACTERS[view.champion].name}.</p>${picker}${sets}`;
 }
 export function shopMarkup(view: ShopView, e: Economy | null, loadout: RaidLoadout = {}, problem = "") {
   const tabs = `<nav class="shop-tabs" role="tablist" aria-label="Shop sections">${SHOP_TABS.map(
@@ -222,7 +253,7 @@ export function shopMarkup(view: ShopView, e: Economy | null, loadout: RaidLoado
         mythic: mythicTab,
         collections: collectionsTab,
       }[view.tab](view, e, loadout);
-  const preview = previewPanel(view, e);
+  const preview = previewPanel(view, e, loadout);
   return `<div class="shop"><header class="shop-head"><h2>${iconLabel("shop", "Shop")}</h2>${coinChip(e?.balance)}</header>${tabs}${preview}<div class="shop-body">${body}</div><p class="shop-status" role="status"></p></div>`;
 }
 /** Collection pieces' slot (for equipping). */

@@ -50,6 +50,47 @@ describe("shop buttons", () => {
 });
 
 describe("shop page", () => {
+  const cards = (html: string) => [...html.matchAll(/data-shop-preview="([^"]+)"/g)].map((m) => m[1]);
+  it("combines ownership and rarity filters without hiding the equipped state", () => {
+    const e = economy({ owned: ["voltkit-midnight", "voltkit-snowcap"], looks: { voltkit: { skin: "voltkit-midnight", stage: 1 } } });
+    const view = { tab: "champions", champion: "voltkit", ownership: "owned" } as const;
+    expect(cards(shopMarkup(view, e))).toEqual(["voltkit-midnight", "voltkit-snowcap"]);
+    expect(cards(shopMarkup({ ...view, rarity: "rare" }, e))).toEqual(["voltkit-snowcap"]);
+    expect(cards(shopMarkup({ ...view, ownership: "unowned" }, e))).not.toContain("voltkit-midnight");
+    const empty = shopMarkup({ ...view, rarity: "mythical" }, e);
+    expect(cards(empty)).toHaveLength(0);
+    expect(empty).toContain("data-shop-reset");
+    expect(shopMarkup(view, e)).toContain('class="shop-owned-badge"');
+  });
+  it("filters Mythic Hall ownership independently of champion rarity", () => {
+    expect(cards(shopMarkup({ tab: "mythic", champion: "voltkit", ownership: "owned", rarity: "common" }, economy({ owned: ["lumoth-starweaver"] })))).toEqual(["lumoth-starweaver"]);
+  });
+  it("shows just the selected collection and counts already owned pieces", () => {
+    const html = shopMarkup({ tab: "collections", champion: "voltkit", collection: "galaxy" }, economy({ owned: ["galaxy-aura", "galaxy-frame"] }));
+    expect(cards(html)).toEqual(SHOP_BUNDLES.find((b) => b.collection === "galaxy")!.items);
+    expect(html).toContain("2/5 owned");
+    expect(html).toContain('data-preview-item="galaxy-colours"');
+    expect(html).toContain('data-shop-buy="galaxy-set"');
+  });
+  it("offers the right preview action and explains affordability without bypassing Mythic Trials", () => {
+    const view = { tab: "champions", champion: "voltkit", preview: "voltkit-snowcap" } as const;
+    const preview = (html: string) => html.split('class="shop-body"')[0];
+    const short = preview(shopMarkup(view, economy({ balance: 100 })));
+    expect(short).toContain("1,100 more coins needed");
+    expect(short).toContain("data-shop-missions");
+    expect(short).toContain('data-shop-buy="voltkit-snowcap"');
+    expect(preview(shopMarkup(view, economy({ owned: ["voltkit-snowcap"] })))).toContain('data-shop-equip="voltkit-snowcap"');
+    expect(preview(shopMarkup({ ...view, preview: "galaxy-aura" }, economy({ owned: ["galaxy-aura"] }), { aura: "galaxy-aura" }))).toContain('data-shop-unequip="galaxy-aura"');
+    const locked = preview(shopMarkup({ ...view, preview: "lumoth-starweaver" }, economy({ balance: 0 })));
+    expect(locked).toContain("Mythic Trial 4/30");
+    expect(locked).not.toContain("data-shop-missions");
+  });
+  it("allows original comparisons for skins and colours, but not frames or effects", () => {
+    for (const preview of ["voltkit-snowcap", "candy-colours"])
+      expect(shopMarkup({ tab: "today", champion: "voltkit", preview }, economy())).toContain("data-preview-compare");
+    for (const preview of ["galaxy-aura", "galaxy-frame", "garden-entrance", "festival-victory"])
+      expect(shopMarkup({ tab: "today", champion: "voltkit", preview }, economy())).not.toContain("data-preview-compare");
+  });
   it("renders every tab cleanly", () => {
     for (const [tab] of SHOP_TABS)
       for (const e of [economy(), null]) {

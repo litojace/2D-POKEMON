@@ -33,6 +33,9 @@ export function mountShopPreview(panel: HTMLElement): () => void {
   let dirty = true;
   let clock = 0;
   let cycle = 0;
+  let original = false;
+  const originalLabel = host.getAttribute("aria-label")!;
+  const compare = panel.querySelector<HTMLButtonElement>("[data-preview-compare]");
   const action = host.dataset.previewAction!;
   let angle = Math.PI / 2;
   let rig: FighterRig | undefined;
@@ -42,6 +45,7 @@ export function mountShopPreview(panel: HTMLElement): () => void {
   )!;
   const syncToggle = () => {
     toggle.disabled = !ready;
+    if (compare) compare.disabled = !ready;
     toggle.textContent = paused ? "Play animation" : "Pause animation";
     toggle.setAttribute("aria-label", toggle.textContent);
     toggle.setAttribute("aria-pressed", String(!paused));
@@ -64,6 +68,14 @@ export function mountShopPreview(panel: HTMLElement): () => void {
     pausedPreference = paused;
     dirty = true;
     syncToggle();
+  };
+  if (compare) compare.onclick = () => {
+    original = !original;
+    compare.setAttribute("aria-pressed", String(original));
+    compare.textContent = original ? "Show selected look" : "Compare original";
+    host.dataset.original = String(original);
+    host.setAttribute("aria-label", original ? `${CHARACTERS[champion].name} original appearance` : originalLabel);
+    reset();
   };
   const angles: Record<string, number> = {
     down: Math.PI / 2,
@@ -102,6 +114,7 @@ export function mountShopPreview(panel: HTMLElement): () => void {
     ready = false;
     host.classList.remove("is-ready");
     toggle.disabled = true;
+    if (compare) compare.disabled = true;
     toggle.textContent = "Still preview";
   };
   class PreviewScene extends Phaser.Scene {
@@ -175,8 +188,8 @@ export function mountShopPreview(panel: HTMLElement): () => void {
         angle: back ? angle + Math.PI : angle,
         dash,
         jump: false,
-        skin: worn,
-        look,
+        skin: original ? null : worn,
+        look: original ? {} : look,
         ambient: true,
         greet: action === "entrance" && t < 3.5,
         victory: action === "victory" && t < 3.5,
