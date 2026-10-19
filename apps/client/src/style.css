@@ -8657,3 +8657,22 @@ button.secondary.raid-cosmetic-option.active, button.secondary.raid-cosmetic-opt
 @media (orientation: portrait) and (pointer: coarse) and (hover: none) and (prefers-reduced-motion: reduce) {
   .rotate-gate-phone { animation: none; transform: rotate(-90deg); }
 }
+
+/* ==== One fixed size for the main screens ====
+   Shop, Raid Hub (and boss pages), Daily missions, Profile, Friends,
+   Leaderboard and Admin share one size, so switching tabs or moving
+   between them never resizes the window: content scrolls inside instead.
+   Small dialogs (Settings, Sign in, reports) stay compact. */
+dialog:is(:has(.shop), :has(.raid-hub), :has(.missions-screen), :has(.profile-screen), :has(.friends-screen), :has(#leaderboard-body), :has(.admin-tabs)) {
+  --hub-height: min(900px, calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px));
+  --raid-dialog-height: var(--hub-height);
+  width: min(1440px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
+  height: var(--hub-height);
+  max-height: var(--hub-height);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+/* Shop and Raid Hub: toolbar on top, the rest scrolls. */
+dialog[open]:is(:has(.raid-hub), :has(.shop)) { overflow: hidden; }
+dialog:is(:has(.raid-hub), :has(.shop)) .dialog-content { height: 100%; max-height: none; }
