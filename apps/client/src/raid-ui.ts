@@ -153,9 +153,6 @@ const resultProgress = new WeakMap<
   HTMLElement,
   { id: string; progress?: RaidProgress | null }
 >();
-function chapterPath(phase: number, boss: RaidBossId) {
-  return `<ol class="raid-chapters" aria-label="Raid chapters">${raidChapters(boss).map((c, i) => `<li class="${i + 1 === phase ? "is-current" : i + 1 < phase ? "is-complete" : ""}" ${i + 1 === phase ? 'aria-current="step"' : ""}><span aria-hidden="true">${i + 1 < phase ? "✓" : i + 1}</span><b>${c.name}</b></li>`).join("")}</ol>`;
-}
 export function renderRaidUI(
   state: Snapshot,
   me: Fighter,
@@ -247,7 +244,7 @@ export function renderRaidUI(
         : r.boss === "tidewyrm"
         ? `<span>${raidGuideScene("strand", me.character)}<b>Strand it</b><small>Lead the dive ripple onto an island, then step off.</small></span><span>${raidGuideScene("tide", me.character)}<b>Share the islands</b><small>High Tide floods the floor: two to an island.</small></span><span>${raidGuideScene("prison", me.character)}<b>Pop the bubble</b><small>Three hits free a trapped friend. Alone, mash attack.</small></span>`
         : `<span>${raidGuideScene("charge", me.character)}<b>Bait the charge</b><small>Lure the boss into a stone pillar.</small></span><span>${raidGuideScene("core", me.character)}<b>Strike the core</b><small>Armor breaks. Unleash your ultimate.</small></span><span>${raidGuideScene("revive", me.character)}<b>Revive together</b><small>Stand beside a fallen ally to revive.</small></span>`;
-    body = `<div class="raid-briefing-body" tabindex="0" role="region" aria-label="Raid instructions">${chapterPath(r.phase, r.boss)}<p>${escape(RAID_TRAITS[r.trait].text)}</p><div class="raid-instructions">${guide}</div>${perkLines(state, me.id)}${r.partySize > 1 ? `<p class="raid-signals">Team signals: ${(Object.keys(RAID_PINGS) as RaidPingKind[]).map((k) => `<b>${RAID_PINGS[k].key}</b> ${raidPingLabel(k, r.boss)}`).join(" · ")} (or the buttons on the left)</p>` : ""}<p>Three phases · one shared fight · ${r.partySize === 1 ? (r.peril >= 3 ? "no self-revive on Peril 3" : "one solo self-revive") : "no required healer"} · no PvP rating changes.</p></div><div class="raid-briefing-actions"><button class="primary" id="raid-instructions" ${state.instructionsReady.includes(me.id) ? "disabled" : ""}>${state.instructionsReady.includes(me.id) ? "Waiting for the team…" : iconLabel("battle", "Let’s raid")}</button></div>`;
+    body = `<div class="raid-briefing-body" tabindex="0" role="region" aria-label="Raid instructions"><p>${escape(RAID_TRAITS[r.trait].text)}</p><div class="raid-instructions">${guide}</div>${perkLines(state, me.id)}${r.partySize > 1 ? `<p class="raid-signals">Team signals: ${(Object.keys(RAID_PINGS) as RaidPingKind[]).map((k) => `<b>${RAID_PINGS[k].key}</b> ${raidPingLabel(k, r.boss)}`).join(" · ")} (or the buttons on the left)</p>` : ""}<p>Three phases · one shared fight · ${r.partySize === 1 ? (r.peril >= 3 ? "no self-revive on Peril 3" : "one solo self-revive") : "no required healer"} · no PvP rating changes.</p></div><div class="raid-briefing-actions"><button class="primary" id="raid-instructions" ${state.instructionsReady.includes(me.id) ? "disabled" : ""}>${state.instructionsReady.includes(me.id) ? "Waiting for the team…" : iconLabel("battle", "Let’s raid")}</button></div>`;
   } else if (state.phase === "intermission") {
     title =
       r.phase === 1

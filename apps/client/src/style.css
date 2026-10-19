@@ -6761,14 +6761,8 @@ body:not(.battle-active)::before {background:rgba(15,29,52,.66);-webkit-backdrop
   z-index: 70;
 }
 
-/* Raid chapters, team builds and results share stable icon and text columns. */
+/* Raid team builds and results share stable icon and text columns. */
 .raid-overlay {width:min(720px,100%);scrollbar-gutter:stable;}
-.raid-overlay .raid-chapters {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;list-style:none;padding:0;margin:14px 0;text-align:left;}
-.raid-chapters > li {display:grid;grid-template-columns:24px minmax(0,1fr);align-items:center;gap:8px;padding:10px 8px;border:1px solid #7994b337;border-radius:10px;background:#102039;color:#94a9c5;min-width:0;}
-.raid-chapters > li > span {display:grid;place-items:center;width:24px;height:24px;border:1px solid currentColor;border-radius:50%;font-size:11px;line-height:1;font-variant-numeric:tabular-nums;}
-.raid-chapters b {font-size:11px;line-height:1.35;}
-.raid-chapters .is-current {color:#ffe099;border-color:#e0ba6d99;background:#b9892515;}
-.raid-chapters .is-complete {color:#93dfc5;}
 .raid-overlay .raid-phase-objective {font-size:12px;line-height:1.6;text-align:left;color:#c0d0e4;margin:12px 0;}
 .raid-team-builds {display:grid;gap:6px;margin-top:14px;padding-top:12px;border-top:1px solid #7b9aba33;text-align:left;}
 .raid-team-builds > div {display:grid;grid-template-columns:minmax(70px,1fr) minmax(0,3fr);gap:12px;align-items:baseline;}
@@ -6808,9 +6802,6 @@ body:not(.battle-active)::before {background:rgba(15,29,52,.66);-webkit-backdrop
 .raid-result-actions > button:focus-visible {outline:2px solid #ffe099;outline-offset:2px;}
 .raid-result-actions > button:disabled {opacity:.6;cursor:default;}
 @media(max-width:600px) {
-  .raid-overlay .raid-chapters {gap:5px;}
-  .raid-chapters > li {grid-template-columns:1fr;justify-items:center;text-align:center;gap:6px;padding:8px 4px;}
-  .raid-chapters b {font-size:10px;}
   .raid-score-head,.raid-score-row {grid-template-columns:minmax(0,1fr) 52px 42px 36px;gap:6px;}
   .raid-score-head {font-size:9px;}
   .raid-score-player {grid-template-columns:28px minmax(0,1fr);gap:6px;}
@@ -6821,8 +6812,6 @@ body:not(.battle-active)::before {background:rgba(15,29,52,.66);-webkit-backdrop
   .raid-results .raid-result-actions > button {font-size:11px;}
 }
 @media(orientation:landscape) and (max-height:600px) {
-  .raid-overlay .raid-chapters {margin:8px 0;}
-  .raid-chapters > li {padding:6px 8px;}
   .raid-overlay .raid-phase-objective {font-size:11px;margin:8px 0;}
   .raid-results .raid-result-art {height:52px;}
   .raid-result-art > svg {width:62px;height:52px;}
@@ -8812,15 +8801,12 @@ dialog:is(:has(.raid-hub), :has(.shop)) .dialog-content { height: 100%; max-heig
   padding: 0 8px;
 }
 .raid-briefing-body:focus-visible { outline: 2px solid #ffd65b; outline-offset: -2px; border-radius: 8px; }
-.raid-briefing .raid-chapters { margin-top: 4px; }
 .raid-briefing-body > p { margin: 10px 0; line-height: 1.5; }
 .raid-briefing-actions { display: flex; justify-content: center; padding-top: 12px; border-top: 1px solid #8baee526; }
 #arena-overlay .raid-briefing #raid-instructions { min-height: 44px; margin: 0; padding: 12px 24px; }
 @media (orientation: landscape) and (max-height: 600px) {
   #arena-overlay .raid-briefing { width: min(1040px, 100%); padding: 10px 18px; }
   #arena-overlay .raid-briefing h2 { font-size: 26px; line-height: 1.1; margin: 4px 0 8px; }
-  .raid-briefing .raid-chapters { margin: 0 0 6px; }
-  .raid-briefing .raid-chapters > li { padding: 5px 8px; }
   .raid-briefing .raid-guide-scene { height: 64px; }
   .raid-briefing .raid-instructions { margin: 6px 0; }
   .raid-briefing-body > p { margin: 6px 0; }
