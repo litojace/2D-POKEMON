@@ -96,6 +96,7 @@ describe("shop page", () => {
       for (const e of [economy(), null]) {
         const html = shopMarkup({ tab, champion: "terradon" }, e);
         expect(html, tab).not.toMatch(/undefined|NaN|\[object/);
+        expect(html, tab).not.toMatch(/data-preview-facing|shop-faces|from every side/);
       }
   });
   it("leads Today with the deal as a wide card, showing the full price struck through", () => {

@@ -42,7 +42,6 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
   let clock = 0;
   let cycle = 0;
   let original = false;
-  let angle = Math.PI / 2;
   let revision = 0;
   let rig: FighterRig | undefined;
   let game: Phaser.Game | undefined;
@@ -129,7 +128,6 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
     toggle = panel.querySelector<HTMLButtonElement>("[data-preview-toggle]");
     compare = panel.querySelector<HTMLButtonElement>("[data-preview-compare]");
     original = false;
-    angle = Math.PI / 2;
     clock = 0;
     cycle = 0;
     ready = false;
@@ -158,23 +156,6 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
             ? `${CHARACTERS[champion].name} original appearance`
             : originalLabel,
         );
-        reset();
-      };
-    const angles: Record<string, number> = {
-      down: Math.PI / 2,
-      left: Math.PI,
-      right: 0,
-      up: -Math.PI / 2,
-    };
-    for (const button of Array.from(
-      panel.querySelectorAll<HTMLButtonElement>("[data-preview-facing]"),
-    ))
-      button.onclick = () => {
-        angle = angles[button.dataset.previewFacing!];
-        for (const b of Array.from(
-          panel.querySelectorAll("[data-preview-facing]"),
-        ))
-          b.setAttribute("aria-pressed", String(b === button));
         reset();
       };
     // Frames are static. Keep the renderer available, but outside the DOM.
@@ -295,7 +276,7 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
       const pose: AnimationPose = {
         hp: 100,
         speed: 0,
-        angle,
+        angle: Math.PI / 2,
         dash: false,
         jump: false,
         skin: original ? null : worn,

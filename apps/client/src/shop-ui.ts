@@ -134,16 +134,13 @@ export function previewItem(view: ShopView, e: Economy | null) {
     (view.tab === "today" ? e?.picks.items[0] : view.tab === "mythic" ? `${view.champion}-${MYTHIC_SLUG[view.champion]}` : view.tab === "collections" ? `${view.collection ?? SHOP_BUNDLES[0].collection}-colours` : e?.looks[view.champion]?.skin) ?? null;
 }
 
-/** Live battle rig with facing and motion controls, or an actual portrait frame. */
+/** Front-facing live battle rig with motion controls, or a portrait frame. */
 export function shopPreviewMarkup(view: ShopView, e: Economy | null, loadout: RaidLoadout) {
   const id = previewItem(view, e);
   const skin = id ? CHAMPION_SKIN_BY_ID[id] : undefined;
   const champion = skin?.champion ?? view.champion;
   const stage = skin?.rarity === "mythical" ? (view.stage ?? 1) : 1;
   const look = skin ? { skin: skin.id, stage } : null;
-  const faces = (["down", "left", "right", "up"] as const)
-    .map((dir) => `<button type="button" class="shop-face" data-preview-facing="${dir}" aria-label="${({ down: "Front", left: "Left", right: "Right", up: "Back" })[dir]} view" aria-pressed="${dir === "down"}"><span>${({ down: "Front", left: "Left", right: "Right", up: "Back" })[dir]}</span></button>`)
-    .join("");
   const piece = id ? LOOK_ITEM_BY_ID[id] : undefined;
   const stages =
     skin?.rarity === "mythical"
@@ -156,12 +153,12 @@ export function shopPreviewMarkup(view: ShopView, e: Economy | null, loadout: Ra
     ? escape(skin.description)
     : piece
       ? `${escape(piece.description)}. Worn by every fighter${piece.slot === "skin" ? " (a champion skin wins over Colours)" : ""}.`
-      : "Pick a skin to preview it from every side.";
+      : "Pick a skin to see it in the live preview.";
   const frame = piece?.slot === "frame";
   // Each item plays the animation that shows it off; no picker needed.
   const action = piece?.slot === "entrance" ? "entrance" : piece?.slot === "victory" ? "victory" : "idle";
   const fallback = frame ? itemPicture(piece.id, champion, "shop-piece-preview") : scopeIds(
-    fighterArtFacing(champion, "down", look, action), "shop-live-fallback",
+    frontPreviewArt(champion, look, action), "shop-live-fallback",
   );
   const fallbackClass = piece?.slot === "skin" ? " raid-cosmetic-preview shop-preview-colours" : "";
   const compare = skin || piece?.slot === "skin" ? '<button type="button" class="shop-compare" data-preview-compare aria-pressed="false" disabled>Compare original</button>' : "";
@@ -171,11 +168,11 @@ export function shopPreviewMarkup(view: ShopView, e: Economy | null, loadout: Ra
   const shortfall = e && price !== null && price > e.balance && !locked
     ? `<p class="shop-shortfall">${coins(price - e.balance)} more coins needed</p><button type="button" class="secondary shop-earn" data-shop-missions>${iconLabel("coin", "Earn coins · Daily missions")}</button>` : "";
   const purchase = id ? `<div class="shop-preview-purchase" aria-label="Selected item actions">${itemAction(id, e, loadout)}${shortfall}</div>` : "";
-  return `<section class="shop-preview rarity-${(id && shopRarity(id)) || "set"}" aria-label="Cosmetic preview"><div class="shop-preview-visual"><div class="shop-live-stage${frame ? " is-frame" : ""}" data-preview-champion="${champion}" data-preview-item="${id ?? ""}" data-preview-stage="${stage}" data-preview-action="${action}" role="img" aria-label="${title} ${frame ? "profile frame" : "animated preview"}"><div class="shop-preview-fallback${fallbackClass}"${piece?.slot === "skin" ? ` data-cosmetic="${piece.id}"` : ""}>${fallback}</div></div>${frame ? '<p class="shop-frame-caption">Profile frame</p>' : `<div class="shop-faces" role="group" aria-label="Preview facing">${faces}</div>`}${controls}</div><div class="shop-preview-text"><div class="shop-preview-kicker">${rarityBadge(id ? shopRarity(id) : null)}<span>${frame ? "Portrait frame" : "Live preview"}</span></div><h3>${title}</h3><p>${text}</p>${stages}${purchase}</div></section>`;
+  return `<section class="shop-preview rarity-${(id && shopRarity(id)) || "set"}" aria-label="Cosmetic preview"><div class="shop-preview-visual"><div class="shop-live-stage${frame ? " is-frame" : ""}" data-preview-champion="${champion}" data-preview-item="${id ?? ""}" data-preview-stage="${stage}" data-preview-action="${action}" role="img" aria-label="${title} ${frame ? "profile frame" : "animated preview"}"><div class="shop-preview-fallback${fallbackClass}"${piece?.slot === "skin" ? ` data-cosmetic="${piece.id}"` : ""}>${fallback}</div></div>${frame ? '<p class="shop-frame-caption">Profile frame</p>' : ""}${controls}</div><div class="shop-preview-text"><div class="shop-preview-kicker">${rarityBadge(id ? shopRarity(id) : null)}<span>${frame ? "Portrait frame" : "Live preview"}</span></div><h3>${title}</h3><p>${text}</p>${stages}${purchase}</div></section>`;
 }
-/** Plain creature art in any facing (the Shop's preview). */
-function fighterArtFacing(id: CharacterId, dir: "down" | "left" | "right" | "up", look: SkinLook | null, action: string) {
-  return creatureSvg(id, dir, undefined, previewViewBox(action), "normal", look).replace("<svg ", '<svg aria-hidden="true" ');
+/** Match the front-facing live preview while its textures load. */
+function frontPreviewArt(id: CharacterId, look: SkinLook | null, action: string) {
+  return creatureSvg(id, "down", undefined, previewViewBox(action), "normal", look).replace("<svg ", '<svg aria-hidden="true" ');
 }
 function awakeningNote(id: string, e: Economy | null) {
   const a = e?.awakening[id];
