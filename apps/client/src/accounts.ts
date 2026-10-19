@@ -802,15 +802,34 @@ export class AccountUI {
     const dialogEl = () => document.getElementById("dialog") as HTMLDialogElement | null;
     const render = (message = "") => {
       const previous = dialogEl();
-      const openGuides = new Set(Array.from(previous?.querySelectorAll<HTMLDetailsElement>(".mission-guide[open]") ?? []).map((guide) => guide.dataset.missionGuide));
-      const focusedGuide = previous?.querySelector(".mission-guide > summary:focus")?.parentElement?.dataset.missionGuide;
+      const openGuide = previous?.querySelector<HTMLDialogElement>(".mission-instructions[open]");
+      const openMission = openGuide?.dataset.missionGuide;
+      const guideScroll = openGuide?.querySelector<HTMLElement>(".mission-popup-body")?.scrollTop ?? 0;
+      const focusedHelp = previous?.querySelector<HTMLButtonElement>("[data-mission-help]:focus")?.dataset.missionHelp;
       const scrollTop = previous?.querySelector(".missions-screen") ? previous.scrollTop : 0;
       this.hooks.openDialog(missionsMarkup(this.economy ?? null, problem));
       const root = dialogEl();
       if (!root) return;
-      for (const guide of Array.from(root.querySelectorAll<HTMLDetailsElement>(".mission-guide"))) {
-        guide.open = openGuides.has(guide.dataset.missionGuide);
-        if (guide.dataset.missionGuide === focusedGuide) guide.querySelector("summary")?.focus({ preventScroll: true });
+      for (const guide of Array.from(root.querySelectorAll<HTMLDialogElement>(".mission-instructions"))) {
+        const trigger = root.querySelector<HTMLButtonElement>(`[aria-controls="${guide.id}"]`)!;
+        const show = () => {
+          guide.showModal();
+          trigger.setAttribute("aria-expanded", "true");
+        };
+        trigger.onclick = show;
+        guide.querySelector<HTMLButtonElement>(".mission-help-close")!.onclick = () => guide.close();
+        guide.onclose = () => {
+          trigger.setAttribute("aria-expanded", "false");
+          trigger.focus({ preventScroll: true });
+        };
+        guide.onclick = (event) => {
+          const rect = guide.getBoundingClientRect();
+          if (event.target === guide && (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom)) guide.close();
+        };
+        if (guide.dataset.missionGuide === openMission) {
+          show();
+          guide.querySelector<HTMLElement>(".mission-popup-body")!.scrollTop = guideScroll;
+        } else if (!openMission && trigger.dataset.missionHelp === focusedHelp) trigger.focus({ preventScroll: true });
       }
       root.scrollTop = scrollTop;
       const status = root.querySelector<HTMLElement>(".missions-screen .shop-status");

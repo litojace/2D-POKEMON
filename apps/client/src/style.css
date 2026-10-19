@@ -8356,22 +8356,32 @@ dialog:has(.missions-screen) { width: min(980px, calc(100vw - var(--safe-left) -
 .missions-screen .mission-list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .missions-screen .mission { gap: 10px; padding: 16px 16px 14px 20px; min-height: 170px; }
 .missions-screen .mission-title { font-size: 24px; }
-.mission-guide { min-width: 0; align-self: start; }
-.mission-guide > summary { display: flex; align-items: flex-start; gap: 8px; min-height: 44px; list-style: none; cursor: pointer; border-radius: 8px; }
-.mission-guide > summary::-webkit-details-marker { display: none; }
-.mission-guide > summary::marker { content: ""; }
-.mission-guide > summary:focus-visible { outline: 2px solid var(--lime); outline-offset: 4px; }
-.mission-guide .mission-title { flex: 1; min-width: 0; padding-top: 6px; }
-.mission-help-icon { display: grid; place-items: center; flex: 0 0 36px; width: 36px; height: 36px; border-radius: 50%; color: #b8cce8; background: #ffffff08; }
+.mission-title-row { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
+.mission-title-row .mission-title { flex: 1; min-width: 0; padding-top: 6px; }
+button.mission-help-icon { display: grid; place-items: center; flex: 0 0 40px; width: 40px; height: 40px; margin: 0; padding: 8px; border: 0; border-radius: 50%; color: #b8cce8; background: #ffffff08; }
 .mission-help-icon .button-icon { width: 22px; height: 22px; }
-.mission-guide > summary:hover .mission-help-icon { color: #ffe39a; background: #ffd65b14; }
-.mission-guide[open] .mission-help-icon { color: #2a1a00; background: linear-gradient(180deg, var(--gold-top), var(--gold-bottom)); }
-.mission-instructions { margin-top: 10px; padding: 12px; border: 1px solid #8baee533; border-radius: 10px; background: #08142799; color: #dbe6f6; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
-.mission-instructions h4 { margin: 0 0 6px; font: 700 17px/1.2 var(--display); color: #ffe39a; }
+button.mission-help-icon:hover { color: #ffe39a; background: #ffd65b14; }
+button.mission-help-icon[aria-expanded="true"] { color: #2a1a00; background: linear-gradient(180deg, var(--gold-top), var(--gold-bottom)); }
+dialog.mission-instructions {
+  position: fixed; inset: 0; width: min(560px, calc(100vw - var(--safe-left) - var(--safe-right) - 32px));
+  height: fit-content; max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 32px); margin: auto; padding: 0;
+  overflow: hidden; overscroll-behavior: contain; border: 1px solid #ffd65b55; border-radius: 18px;
+  background: linear-gradient(180deg, #1a2c4f, #0f1b33); box-shadow: inset 0 1px 0 #ffffff14, 0 24px 80px #0009;
+  color: #dbe6f6; font: 400 14px/1.6 "DM Sans", sans-serif; text-align: left; overflow-wrap: anywhere;
+}
+dialog.mission-instructions[open] { display: flex; flex-direction: column; }
+dialog.mission-instructions::backdrop { background: #040c1bb3; backdrop-filter: blur(3px); }
+.mission-popup-head { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px 8px 20px; }
+.mission-popup-body { min-height: 0; padding: 0 20px 20px; overflow: auto; overscroll-behavior: contain; }
+.mission-popup-head > span { display: inline-flex; align-items: center; gap: 8px; color: #ffe39a; font-size: 12px; font-weight: 700; }
+.mission-popup-head .button-icon { width: 20px; height: 20px; }
+.mission-popup-head .mission-help-close { display: grid; place-items: center; flex: none; width: 40px; height: 40px; min-height: 40px; margin: 0; padding: 8px; border-radius: 50%; background: #ffffff0a; box-shadow: inset 0 0 0 1px #8baee540; }
+.mission-instructions h3 { margin: 0 0 14px; font: 800 28px/1.15 var(--display); color: #f3f6ff; }
 .mission-instructions p { margin: 0; }
-.mission-instructions ul { margin: 8px 0 0; padding-left: 18px; }
-.mission-instructions li + li { margin-top: 6px; }
-.mission-instructions .mission-save-note { margin-top: 10px; padding-top: 10px; border-top: 1px solid #8baee526; color: #a8bbd5; }
+.mission-instructions ul { margin: 12px 0 0; padding-left: 20px; }
+.mission-instructions li + li { margin-top: 8px; }
+.mission-instructions .mission-save-note { margin-top: 16px; padding-top: 14px; border-top: 1px solid #8baee526; color: #a8bbd5; font-size: 12px; }
+@media (pointer: coarse) { button.mission-help-icon { flex-basis: 44px; width: 44px; height: 44px; } }
 .missions-screen .mission progress { height: 12px; }
 .mission-together { margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: #ffffff12; color: #dbe6f6; font-size: 11px; font-weight: 600; }
 .missions-note { margin: 0; font-size: 12px; line-height: 1.5; color: #c1cfe4; }
