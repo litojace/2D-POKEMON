@@ -8512,6 +8512,28 @@ h3 { font-family: var(--display); font-weight: 700; letter-spacing: .2px; }
 .bot-level.active { color: var(--gold-ink); background: linear-gradient(180deg, var(--gold-top), var(--gold-bottom)); box-shadow: inset 0 -3px 0 var(--gold-edge); }
 .bot-level.active small { color: #6b4a10; }
 
+/* Bot difficulty keeps its own colour, including a readable selected fill. */
+.bot-level[data-bot] {
+  --level-top: var(--gold-top); --level-bottom: var(--gold-bottom); --level-edge: var(--gold-edge);
+  --level-ink: var(--gold-ink); --level-hint: #6b4a10;
+  color: var(--level-top); background: color-mix(in srgb, var(--level-bottom) 7%, #0b182d);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--level-bottom) 35%, transparent);
+}
+.bot-level[data-bot="easy"] {
+  --level-top: #b5f3cf; --level-bottom: #57cf8e; --level-edge: #29975b;
+  --level-ink: #092b1a; --level-hint: #16462b;
+}
+.bot-level[data-bot="hard"] {
+  --level-top: #ffc0c7; --level-bottom: #fa7b8b; --level-edge: #c84761;
+  --level-ink: #4a1020; --level-hint: #621f2d;
+}
+.bot-level[data-bot]:hover:not(.active):not(:disabled) { box-shadow: inset 0 0 0 1px var(--level-bottom); }
+.bot-level[data-bot].active {
+  color: var(--level-ink); background: linear-gradient(180deg, var(--level-top), var(--level-bottom));
+  box-shadow: inset 0 -3px 0 var(--level-edge), inset 0 1px 0 #ffffff66;
+}
+.bot-level[data-bot].active small { color: var(--level-hint); }
+
 /* Fields. */
 input:not([type="range"]):not([type="checkbox"]):not([type="color"]):not([type="radio"]), select, textarea {
   border: 0; border-radius: 12px; background: #0a1529; box-shadow: inset 0 0 0 1px #8baee533; color: #f3f6ff;
