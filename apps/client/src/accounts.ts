@@ -645,7 +645,7 @@ export class AccountUI {
       else this.shopRefresh = undefined;
     };
     const busy = async (button: HTMLButtonElement, work: () => Promise<string>) => {
-      const all = Array.from(dialogEl()?.querySelectorAll<HTMLButtonElement>(".shop button") ?? []);
+      const all = Array.from(dialogEl()?.querySelectorAll<HTMLButtonElement>(".shop button, .dialog-tabs [data-shop-tab]") ?? []);
       all.forEach((b) => (b.disabled = true));
       button.setAttribute("aria-busy", "true");
       try {

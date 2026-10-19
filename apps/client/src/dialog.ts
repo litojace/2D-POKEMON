@@ -18,6 +18,11 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
   );
   if (back) toolbar.append(back);
   toolbar.append(close);
+  const tabs = content.querySelector<HTMLElement>(
+    ".raid-hub-tabs, .shop-tabs, .admin-tabs",
+  );
+  if (tabs) tabs.classList.add("dialog-tabs");
+  dialog.classList.toggle("has-dialog-tabs", !!tabs);
   const footer = document.createElement("div");
   footer.className = "dialog-footer";
   footer.setAttribute("role", "group");
@@ -30,6 +35,7 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
       ".fullscreen-actions",
       ".settings-actions",
       ".missions-shop",
+      ".raid-hub-actions",
       "#controls-reset",
       "#control-reset",
       "#open-controls",
@@ -55,6 +61,7 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
   dialog.classList.toggle("has-dialog-footer", footer.childElementCount > 0);
   dialog.replaceChildren(
     toolbar,
+    ...(tabs ? [tabs] : []),
     content,
     ...(footer.childElementCount ? [footer] : []),
   );
