@@ -1,6 +1,7 @@
 import { COINS, MISSION_BY_ID, type Economy } from "../../../packages/shared/src/shop";
 import { buttonIcon, iconLabel } from "./menu-icons";
 import { coinChip, picksCountdown } from "./shop-ui";
+import { missionFeatExamples, missionHelp } from "./mission-help";
 
 /**
  * Daily missions, on their own screen (they used to be a Shop tab). Markup
@@ -20,7 +21,9 @@ export function missionsBlock(e: Economy, compact = false) {
       const action = compact
         ? ""
         : `<div class="mission-actions">${m.done ? `<span class="mission-complete">${iconLabel("check", "Completed")}</span>` : !e.rerolled ? `<button class="quiet" data-mission-reroll="${m.slot}">${iconLabel("shuffle", together ? "Swap for a solo mission" : "Re-roll")}</button>` : ""}</div>`;
-      return `<li class="mission tier-${m.tier}${m.done ? " is-done" : ""}"><span class="mission-tier">${'<i aria-hidden="true"></i>'.repeat(TIER_PIPS[m.tier])}${m.tier[0].toUpperCase() + m.tier.slice(1)}${together ? '<span class="mission-together">With others</span>' : ""}</span><b class="mission-title">${escape(m.text)}</b><div class="mission-footer"><progress aria-label="${escape(m.text)} progress" max="${m.target}" value="${Math.min(m.progress, m.target)}"></progress><div class="mission-meta"><span>${Math.min(m.progress, m.target)}/${m.target}</span><span class="mission-reward">${buttonIcon("coin")}<span>${m.coins}<span class="sr-only"> coins</span></span></span></div>${action}</div></li>`;
+      const examples = missionFeatExamples(m.id);
+      const title = compact ? `<b class="mission-title">${escape(m.text)}</b>` : `<details class="mission-guide" data-mission-guide="${escape(m.id)}"><summary aria-label="How to complete: ${escape(m.text)}"><b class="mission-title">${escape(m.text)}</b><span class="mission-help-icon">${buttonIcon("help")}</span></summary><div class="mission-instructions"><h4>How to complete</h4><p>${escape(missionHelp(m.id))}</p>${examples.length ? `<ul>${examples.map((text) => `<li>${escape(text)}</li>`).join("")}</ul>` : ""}<p class="mission-save-note">Finish the match or raid to save progress. Solo test mode and attack practice do not count. Mission coins are added automatically when completed.</p></div></details>`;
+      return `<li class="mission tier-${m.tier}${m.done ? " is-done" : ""}"><span class="mission-tier">${'<i aria-hidden="true"></i>'.repeat(TIER_PIPS[m.tier])}${m.tier[0].toUpperCase() + m.tier.slice(1)}${together ? '<span class="mission-together">With others</span>' : ""}</span>${title}<div class="mission-footer"><progress aria-label="${escape(m.text)} progress" max="${m.target}" value="${Math.min(m.progress, m.target)}"></progress><div class="mission-meta"><span>${Math.min(m.progress, m.target)}/${m.target}</span><span class="mission-reward">${buttonIcon("coin")}<span>${m.coins}<span class="sr-only"> coins</span></span></span></div>${action}</div></li>`;
     })
     .join("")}</ul>`;
 }

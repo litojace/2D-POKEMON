@@ -8356,6 +8356,22 @@ dialog:has(.missions-screen) { width: min(980px, calc(100vw - var(--safe-left) -
 .missions-screen .mission-list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .missions-screen .mission { gap: 10px; padding: 16px 16px 14px 20px; min-height: 170px; }
 .missions-screen .mission-title { font-size: 24px; }
+.mission-guide { min-width: 0; align-self: start; }
+.mission-guide > summary { display: flex; align-items: flex-start; gap: 8px; min-height: 44px; list-style: none; cursor: pointer; border-radius: 8px; }
+.mission-guide > summary::-webkit-details-marker { display: none; }
+.mission-guide > summary::marker { content: ""; }
+.mission-guide > summary:focus-visible { outline: 2px solid var(--lime); outline-offset: 4px; }
+.mission-guide .mission-title { flex: 1; min-width: 0; padding-top: 6px; }
+.mission-help-icon { display: grid; place-items: center; flex: 0 0 36px; width: 36px; height: 36px; border-radius: 50%; color: #b8cce8; background: #ffffff08; }
+.mission-help-icon .button-icon { width: 22px; height: 22px; }
+.mission-guide > summary:hover .mission-help-icon { color: #ffe39a; background: #ffd65b14; }
+.mission-guide[open] .mission-help-icon { color: #2a1a00; background: linear-gradient(180deg, var(--gold-top), var(--gold-bottom)); }
+.mission-instructions { margin-top: 10px; padding: 12px; border: 1px solid #8baee533; border-radius: 10px; background: #08142799; color: #dbe6f6; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.mission-instructions h4 { margin: 0 0 6px; font: 700 17px/1.2 var(--display); color: #ffe39a; }
+.mission-instructions p { margin: 0; }
+.mission-instructions ul { margin: 8px 0 0; padding-left: 18px; }
+.mission-instructions li + li { margin-top: 6px; }
+.mission-instructions .mission-save-note { margin-top: 10px; padding-top: 10px; border-top: 1px solid #8baee526; color: #a8bbd5; }
 .missions-screen .mission progress { height: 12px; }
 .mission-together { margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: #ffffff12; color: #dbe6f6; font-size: 11px; font-weight: 600; }
 .missions-note { margin: 0; font-size: 12px; line-height: 1.5; color: #c1cfe4; }

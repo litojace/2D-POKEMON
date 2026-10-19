@@ -121,6 +121,14 @@ describe("shop page", () => {
     expect(html.match(/data-mission-reroll/g)).toHaveLength(2);
     expect(missionsBlock(economy({ rerolled: true }))).not.toContain("data-mission-reroll");
   });
+  it("gives every mission a keyboard-accessible question-mark disclosure", () => {
+    const html = missionsBlock(economy());
+    expect(html.match(/class="mission-guide"/g)).toHaveLength(3);
+    expect(html.match(/<summary aria-label="How to complete:/g)).toHaveLength(3);
+    expect(html).toContain("How to complete: Win 2 &lt;b&gt;matches&lt;/b&gt;");
+    expect(html).toContain("Solo test mode and attack practice do not count");
+    expect(missionsBlock(economy(), true)).not.toContain("mission-guide");
+  });
   it("gives missions their own screen, out of the Shop", () => {
     expect(SHOP_TABS.map(([id]) => id)).not.toContain("missions");
     expect(shopMarkup({ tab: "today", champion: "voltkit" }, economy())).not.toContain("mission-list");

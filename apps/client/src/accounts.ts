@@ -801,9 +801,18 @@ export class AccountUI {
     }
     const dialogEl = () => document.getElementById("dialog") as HTMLDialogElement | null;
     const render = (message = "") => {
+      const previous = dialogEl();
+      const openGuides = new Set(Array.from(previous?.querySelectorAll<HTMLDetailsElement>(".mission-guide[open]") ?? []).map((guide) => guide.dataset.missionGuide));
+      const focusedGuide = previous?.querySelector(".mission-guide > summary:focus")?.parentElement?.dataset.missionGuide;
+      const scrollTop = previous?.querySelector(".missions-screen") ? previous.scrollTop : 0;
       this.hooks.openDialog(missionsMarkup(this.economy ?? null, problem));
       const root = dialogEl();
       if (!root) return;
+      for (const guide of Array.from(root.querySelectorAll<HTMLDetailsElement>(".mission-guide"))) {
+        guide.open = openGuides.has(guide.dataset.missionGuide);
+        if (guide.dataset.missionGuide === focusedGuide) guide.querySelector("summary")?.focus({ preventScroll: true });
+      }
+      root.scrollTop = scrollTop;
       const status = root.querySelector<HTMLElement>(".missions-screen .shop-status");
       if (status) status.textContent = message;
       const shop = root.querySelector<HTMLButtonElement>("#missions-shop");
