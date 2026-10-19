@@ -46,7 +46,7 @@ function bonuses(e: Economy) {
 }
 
 export function missionsMarkup(e: Economy | null, problem = "") {
-  const head = `<header class="missions-head"><h2>${iconLabel("missions", "Daily missions")}</h2>${coinChip(e?.balance)}</header>`;
+  const head = `<header class="missions-head"><h2>${iconLabel("missions", "Daily missions")}</h2>${coinChip(e?.balance, "", e?.unlimitedCoins)}</header>`;
   if (!e)
     return `<div class="missions-screen">${head}<p class="shop-intro">${problem ? escape(problem) : "Log in to get three daily missions that pay coins."}</p></div>`;
   const left = e.missions.filter((m) => !m.done).length;

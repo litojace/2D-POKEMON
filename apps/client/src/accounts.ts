@@ -235,7 +235,7 @@ export class AccountUI {
     const root = element("account-nav");
     if (!root) return;
     root.innerHTML = this.account
-      ? `<button class="quiet coin-button" id="account-coins" aria-label="Shop: ${this.economy ? coins(this.economy.balance) : "your"} coins">${coinChip(this.economy?.balance)}</button><button class="quiet" id="account-profile">${iconLabel("user", escape(this.account.displayName))}</button>${this.account.isAdmin ? `<button class="quiet" id="account-admin">${iconLabel("admin", "Admin")}</button>` : ""}<button class="quiet" id="account-logout">${iconLabel("leave", "Log out")}</button>`
+      ? `<button class="quiet coin-button" id="account-coins" aria-label="Shop: ${this.economy?.unlimitedCoins ? "unlimited" : this.economy ? coins(this.economy.balance) : "your"} coins">${coinChip(this.economy?.balance, "", this.economy?.unlimitedCoins)}</button><button class="quiet" id="account-profile">${iconLabel("user", escape(this.account.displayName))}</button>${this.account.isAdmin ? `<button class="quiet" id="account-admin">${iconLabel("admin", "Admin")}</button>` : ""}<button class="quiet" id="account-logout">${iconLabel("leave", "Log out")}</button>`
       : `<button class="quiet" id="account-login">${iconLabel("enter", "Log in")}</button><button class="secondary" id="account-signup">${iconLabel("add-friend", "Sign up")}</button>`;
     if (this.account) {
       element("account-profile").onclick = () => void this.showProfile();
@@ -760,7 +760,7 @@ export class AccountUI {
             b.classList.add("is-confirming");
             const label = b.querySelector<HTMLElement>(".shop-price")!;
             const original = label.textContent;
-            label.textContent = `Buy for ${coins(Number(b.dataset.price))}?`;
+            label.textContent = this.economy?.unlimitedCoins ? "Get for testing?" : `Buy for ${coins(Number(b.dataset.price))}?`;
             setTimeout(() => {
               if (!b.isConnected || b.dataset.confirm !== "yes") return;
               delete b.dataset.confirm;

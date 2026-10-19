@@ -148,3 +148,7 @@ Their profiles and match history rows are removed with them.
 ## Ratings and ranks
 
 After migration 006 every player has a skill rating starting at 1000. Only confirmed player-vs-player matches move it (bot matches and quit matches don't). The first 5 rated matches are placement (bigger swings; shown as Unranked). The rank ladder reuses the title names: Newbie (under 950), Pupil 950, Specialist 1000, Expert 1075, Candidate Master 1150, Master 1225, International Master 1300, Grandmaster 1375, International Grandmaster 1450 and Legendary Grandmaster (1550 **and** #1 on the leaderboard). Reaching a rank adds its title to the player's owned titles for good; titles are never taken away, including ones an admin granted by hand. On the first rated match of each month, ratings move 25% of the way back towards 1000. The thresholds live in `arena_rank_ladder` and must match `RANKS` in `packages/shared/src/accounts.ts` (a test checks this).
+
+### Unlimited coins for admin testing
+
+Run [016_admin_shop_coins.sql](../supabase/migrations/016_admin_shop_coins.sql) after the earlier migrations. Existing non-suspended administrators see **∞ coins** and can buy Shop items and collection sets without spending their real balance. Purchases persist, can be equipped normally, and are recorded in the admin audit log. Prices, Mythic Trials, Awakening requirements and regular player spending still work as usual. Removing admin membership ends unlimited spending immediately; the saved wallet balance is unchanged.

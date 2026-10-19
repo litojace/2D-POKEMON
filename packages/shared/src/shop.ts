@@ -343,6 +343,8 @@ export interface ChampionLook {
 /** The player's shop state (migration 010's arena_economy()). */
 export interface Economy {
   balance: number;
+  /** Database-verified administrator: purchases do not spend coins. */
+  unlimitedCoins?: boolean;
   owned: string[];
   /** Today's Picks: item ids; `deal` is the one at a discount. */
   picks: { day: string; items: string[]; deal: string | null };

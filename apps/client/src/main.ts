@@ -607,7 +607,7 @@ function homeShop() {
         .map((m) => `<span class="home-mission tier-${m.tier}${m.done ? " is-done" : ""}" title="${escape(m.text)}"><small>${escape(m.text)}</small><progress max="${m.target}" value="${Math.min(m.progress, m.target)}"></progress></span>`)
         .join("")}</button>`
     : "";
-  return `<button class="quiet raid-icon-button" id="shop-open">${menuIcon("shop")}<span>Shop</span>${e ? coinChip(e.balance) : ""}</button>${missions}`;
+  return `<button class="quiet raid-icon-button" id="shop-open">${menuIcon("shop")}<span>Shop</span>${e ? coinChip(e.balance, "", e.unlimitedCoins) : ""}</button>${missions}`;
 }
 function syncMenuCosmetic() {
   const panel=document.querySelector<HTMLElement>("#menu .roster-panel");

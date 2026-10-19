@@ -41,6 +41,22 @@ describe("shop buttons", () => {
     expect(itemAction("voltkit-stormcrown", economy({ balance: 9000 }))).toContain('data-shop-buy="voltkit-stormcrown"');
     expect(itemAction("voltkit-stormcrown", economy())).toMatch(/data-shop-buy="voltkit-stormcrown"[^>]*disabled/);
   });
+  it("allows admin spending at zero coins across skins, previews and collection sets", () => {
+    const e = economy({ balance: 0, unlimitedCoins: true });
+    const button = itemAction("voltkit-snowcap", e);
+    expect(button).toContain('data-shop-buy="voltkit-snowcap"');
+    expect(button).not.toContain("disabled");
+    const skin = shopMarkup({ tab: "champions", champion: "voltkit", preview: "voltkit-snowcap" }, e);
+    expect(skin).toContain("∞");
+    expect(skin).toContain("Unlimited ");
+    expect(skin).toContain("Purchases don’t spend coins");
+    expect(skin).not.toContain("more coins needed");
+    const sets = shopMarkup({ tab: "collections", champion: "voltkit", collection: "candy" }, e);
+    expect(sets).toMatch(/data-shop-buy="candy-set"[^>]*>/);
+    expect(sets).not.toMatch(/data-shop-buy="[^"]+"[^>]*disabled/);
+    expect(itemAction("lumoth-starweaver", e)).toContain("Mythic Trial 4/30");
+    expect(itemAction("voltkit-snowcap", economy({ balance: 0 }))).toContain("disabled");
+  });
   it("offers Equip for owned items and shows what's worn", () => {
     const e = economy({ owned: ["voltkit-midnight", "candy-aura"], looks: { voltkit: { skin: "voltkit-midnight", stage: 1 } } });
     expect(itemAction("voltkit-midnight", e)).toContain("data-shop-unequip");

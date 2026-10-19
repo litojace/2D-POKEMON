@@ -3,9 +3,10 @@ import { readFile } from "node:fs/promises";
 import { beforeAll, afterAll, it, expect } from "vitest";
 let db: PGlite;
 const player = "00000000-0000-4000-8000-000000000001";
-const login = async () =>
+const admin = "00000000-0000-4000-8000-000000000002";
+const login = async (id = player) =>
   db.exec(
-    `reset role;select set_config('request.jwt.claim.sub','${player}',false);set role authenticated;`,
+    `reset role;select set_config('request.jwt.claim.sub','${id}',false);set role authenticated;`,
   );
 const economy = async () => {
   await login();
@@ -66,6 +67,11 @@ beforeAll(async () => {
     "009_raid_hub.sql",
     "010_shop.sql",
     "011_collection_bonus.sql",
+    "012_tidewyrm.sql",
+    "013_gloomshade.sql",
+    "014_missions.sql",
+    "015_somnara.sql",
+    "016_admin_shop_coins.sql",
   ])
     await db.exec(await readFile("supabase/migrations/" + file, "utf8"));
   await login();
@@ -178,4 +184,51 @@ it("gives a collection's frame free once every champion skin in it is owned", as
   await db.exec("reset role");
   const price = (await db.query<{ p: number }>(`select public.arena_item_price('${player}', 'winter-set', public.arena_today()) as p`)).rows[0].p;
   expect(price).toBe(Math.round(((300 + 900 + 1000 + 1800) * 0.8) / 10) * 10);
+});
+
+
+it("gives only database-verified admins unlimited spending and ends it on revocation", async () => {
+  await db.exec(`reset role;insert into auth.users values ('${admin}', '{"display_name":"Shop tester","isAdmin":true}');`);
+  await login(admin);
+  await db.query("select public.arena_me()");
+  const state = async () => (await db.query<{ e: any }>("select public.arena_economy() as e")).rows[0].e;
+  expect((await state()).unlimitedCoins).toBe(false);
+  await expect(db.query(`insert into public.arena_admins values ('${admin}')`)).rejects.toThrow();
+  await expect(db.query("select public.arena_buy_item('voltkit-midnight')")).rejects.toThrow("Not enough coins");
+
+  await db.exec(`reset role;insert into public.arena_admins values ('${admin}');`);
+  // Reapplying the migration preserves data and permissions.
+  await db.exec(await readFile("supabase/migrations/016_admin_shop_coins.sql", "utf8"));
+  await login(admin);
+  expect(await state()).toMatchObject({ unlimitedCoins: true, balance: 0 });
+  const bought = (await db.query<{ e: any }>("select public.arena_buy_item('voltkit-midnight') as e")).rows[0].e;
+  expect(bought).toMatchObject({ unlimitedCoins: true, balance: 0 });
+  expect(bought.owned).toContain("voltkit-midnight");
+  await db.query("select public.arena_equip_champion_skin('voltkit','voltkit-midnight',1)");
+  expect((await state()).looks.voltkit.skin).toBe("voltkit-midnight");
+  await db.query("select public.arena_buy_item('candy-set')");
+  expect((await state()).owned).toEqual(expect.arrayContaining(["candy-aura", "candy-frame", "candy-victory", "candy-entrance", "candy-colours"]));
+  await expect(db.query("select public.arena_buy_item('voltkit-midnight')")).rejects.toThrow("already own");
+  await expect(db.query("select public.arena_buy_item('nope')")).rejects.toThrow("not for sale");
+  await expect(db.query("select public.arena_buy_item('voltkit-stormcrown')")).rejects.toThrow("Mythic Trial");
+
+  await db.exec(`reset role;insert into public.arena_wallets(player_id,balance) values ('${admin}',275);`);
+  await login(admin);
+  await db.query("select public.arena_buy_item('voltkit-snowcap')");
+  expect((await state()).balance).toBe(275);
+  await db.exec("reset role");
+  expect((await db.query<{ balance: number }>(`select balance from public.arena_wallets where player_id='${admin}'`)).rows[0].balance).toBe(275);
+  expect((await db.query<{ n: number }>(`select count(*)::int as n from public.arena_coin_ledger where player_id='${admin}'`)).rows[0].n).toBe(0);
+  const audits = (await db.query<{ details: { item: string; price: number } }>(`select details from public.arena_admin_audit where actor_id='${admin}' and action='shop_test_purchase' order by id`)).rows;
+  expect(audits.map(a => a.details.item)).toEqual(["voltkit-midnight", "candy-set", "voltkit-snowcap"]);
+  expect(audits.every(a => a.details.price > 0)).toBe(true);
+
+  await db.exec(`delete from public.arena_admins where user_id='${admin}'`);
+  await login(admin);
+  expect(await state()).toMatchObject({ unlimitedCoins: false, balance: 275 });
+  await expect(db.query("select public.arena_buy_item('cindrake-ashen')")).rejects.toThrow("Not enough coins");
+  await db.exec(`reset role;insert into public.arena_admins values ('${admin}');update public.arena_profiles set suspended=true where id='${admin}'`);
+  await login(admin);
+  expect((await state()).unlimitedCoins).toBe(false);
+  await expect(db.query("select public.arena_buy_item('cindrake-ashen')")).rejects.toThrow("Login required");
 });
