@@ -19,7 +19,8 @@ import type { RaidLoadout } from "../../../packages/shared/src/raid";
 import { nextRaidDayAt } from "../../../packages/shared/src/raid-roster";
 import { fighterArt, fighterAvatar, scopeIds } from "./fighter-art";
 import { buttonIcon, iconLabel } from "./menu-icons";
-import { creatureSvg, CREATURE_VIEWBOX, type SkinLook } from "./creature-design";
+import { creatureSvg, type SkinLook } from "./creature-design";
+import { previewViewBox } from "./shop-preview-layout";
 
 /**
  * The Shop and daily missions (design §10). Markup only: AccountUI wires the
@@ -158,8 +159,11 @@ function previewPanel(view: ShopView, e: Economy | null, loadout: RaidLoadout) {
       : "Pick a skin to preview it from every side.";
   const frame = piece?.slot === "frame";
   // Each item plays the animation that shows it off; no picker needed.
-  const action = piece?.slot === "entrance" ? "entrance" : piece?.slot === "victory" ? "victory" : "showcase";
-  const fallback = piece ? itemPicture(piece.id, champion, "shop-piece-preview") : scopeIds(fighterArtFacing(champion, "down", look), "shop-live-fallback");
+  const action = piece?.slot === "entrance" ? "entrance" : piece?.slot === "victory" ? "victory" : "idle";
+  const fallback = frame ? itemPicture(piece.id, champion, "shop-piece-preview") : scopeIds(
+    fighterArtFacing(champion, "down", look, action), "shop-live-fallback",
+  );
+  const fallbackClass = piece?.slot === "skin" ? " raid-cosmetic-preview shop-preview-colours" : "";
   const compare = skin || piece?.slot === "skin" ? '<button type="button" class="shop-compare" data-preview-compare aria-pressed="false" disabled>Compare original</button>' : "";
   const controls = frame ? "" : `<div class="shop-preview-controls">${compare}<button type="button" class="shop-motion-toggle" data-preview-toggle aria-label="Play preview animations" aria-pressed="false" disabled>Loading preview…</button></div>`;
   const price = id && e ? shopPrice(id, e.owned, e.picks.deal) : null;
@@ -167,11 +171,11 @@ function previewPanel(view: ShopView, e: Economy | null, loadout: RaidLoadout) {
   const shortfall = e && price !== null && price > e.balance && !locked
     ? `<p class="shop-shortfall">${coins(price - e.balance)} more coins needed</p><button type="button" class="secondary shop-earn" data-shop-missions>${iconLabel("coin", "Earn coins · Daily missions")}</button>` : "";
   const purchase = id ? `<div class="shop-preview-purchase" aria-label="Selected item actions">${itemAction(id, e, loadout)}${shortfall}</div>` : "";
-  return `<section class="shop-preview rarity-${(id && shopRarity(id)) || "set"}" aria-label="Cosmetic preview"><div class="shop-preview-visual"><div class="shop-live-stage${frame ? " is-frame" : ""}" data-preview-champion="${champion}" data-preview-item="${id ?? ""}" data-preview-stage="${stage}" data-preview-action="${action}" role="img" aria-label="${title} ${frame ? "profile frame" : "animated preview"}"><div class="shop-preview-fallback">${fallback}</div></div>${frame ? '<p class="shop-frame-caption">Profile frame</p>' : `<div class="shop-faces" role="group" aria-label="Preview facing">${faces}</div>`}${controls}</div><div class="shop-preview-text"><div class="shop-preview-kicker">${rarityBadge(id ? shopRarity(id) : null)}<span>${frame ? "Portrait frame" : "Live preview"}</span></div><h3>${title}</h3><p>${text}</p>${stages}${purchase}</div></section>`;
+  return `<section class="shop-preview rarity-${(id && shopRarity(id)) || "set"}" aria-label="Cosmetic preview"><div class="shop-preview-visual"><div class="shop-live-stage${frame ? " is-frame" : ""}" data-preview-champion="${champion}" data-preview-item="${id ?? ""}" data-preview-stage="${stage}" data-preview-action="${action}" role="img" aria-label="${title} ${frame ? "profile frame" : "animated preview"}"><div class="shop-preview-fallback${fallbackClass}"${piece?.slot === "skin" ? ` data-cosmetic="${piece.id}"` : ""}>${fallback}</div></div>${frame ? '<p class="shop-frame-caption">Profile frame</p>' : `<div class="shop-faces" role="group" aria-label="Preview facing">${faces}</div>`}${controls}</div><div class="shop-preview-text"><div class="shop-preview-kicker">${rarityBadge(id ? shopRarity(id) : null)}<span>${frame ? "Portrait frame" : "Live preview"}</span></div><h3>${title}</h3><p>${text}</p>${stages}${purchase}</div></section>`;
 }
 /** Plain creature art in any facing (the Shop's preview). */
-function fighterArtFacing(id: CharacterId, dir: "down" | "left" | "right" | "up", look: SkinLook | null) {
-  return creatureSvg(id, dir, undefined, CREATURE_VIEWBOX, "normal", look).replace("<svg ", '<svg aria-hidden="true" ');
+function fighterArtFacing(id: CharacterId, dir: "down" | "left" | "right" | "up", look: SkinLook | null, action: string) {
+  return creatureSvg(id, dir, undefined, previewViewBox(action), "normal", look).replace("<svg ", '<svg aria-hidden="true" ');
 }
 function awakeningNote(id: string, e: Economy | null) {
   const a = e?.awakening[id];

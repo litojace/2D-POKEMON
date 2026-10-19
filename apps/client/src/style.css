@@ -8129,9 +8129,12 @@ dialog :is(.profile-layout, .friends-layout, .help-layout) { line-height: 1.5; }
 .shop-preview-text h3 { line-height: 1.2; overflow-wrap: anywhere; }
 .shop-preview-text p { line-height: 1.5; }
 .shop-live-stage { position: relative; width: 100%; aspect-ratio: 400 / 260; overflow: hidden; border-radius: 10px; border: 1px solid #809aca33; background: radial-gradient(ellipse at 50% 65%, #294c72 0, #142b48 45%, #0c192e 85%); }
-.shop-live-stage canvas { position: absolute; inset: 0; display: block; width: 100% !important; height: 100% !important; object-fit: contain; }
+.shop-live-stage canvas { position: absolute; inset: 0; display: block; width: 100% !important; height: 100% !important; object-fit: contain; visibility: hidden; }
+.shop-live-stage.is-ready canvas { visibility: visible; }
 .shop-preview-fallback { position: absolute; inset: 0; display: grid; place-items: center; padding: 14px; }
 .shop-preview-fallback > svg { width: auto; height: 100%; max-width: 100%; }
+.shop-live-stage:not(.is-frame) .shop-preview-fallback { width: 100%; height: 100%; padding: 0; border-radius: 0; background: none; }
+.shop-live-stage:not(.is-frame) .shop-preview-fallback > svg { width: 100%; height: 100%; }
 .shop-preview-fallback > .raid-cosmetic-preview { width: 120px; height: 120px; }
 .shop-preview-fallback > .raid-cosmetic-preview > svg { width: 110px; height: 110px; }
 .shop-live-stage.is-ready .shop-preview-fallback { visibility: hidden; }

@@ -8,6 +8,7 @@ import { rigAssets } from "./animation/assets";
 import { FighterRig } from "./animation/rig";
 import { drawCollectionAura } from "./skins/collection-fx";
 import type { AnimationPose } from "./animation/controller";
+import { SHOP_PREVIEW, previewZoom } from "./shop-preview-layout";
 
 let pausedPreference: boolean | undefined;
 
@@ -31,6 +32,7 @@ export function mountShopPreview(panel: HTMLElement): () => void {
   let ready = false;
   let loadFailed = false;
   let dirty = true;
+  let drawn = false;
   let clock = 0;
   let cycle = 0;
   let original = false;
@@ -145,9 +147,7 @@ export function mountShopPreview(panel: HTMLElement): () => void {
       this.aura = this.add.graphics().setDepth(1).setScale(1.5);
       rig = new FighterRig(this, champion, layers);
       ready = true;
-      host.classList.add("is-ready");
       host.querySelector("canvas")?.setAttribute("aria-hidden", "true");
-      syncToggle();
     }
     update(_time: number, delta: number) {
       if (
@@ -161,32 +161,22 @@ export function mountShopPreview(panel: HTMLElement): () => void {
         return;
       const step = paused ? 0 : Math.min(delta, 50);
       clock += step;
-      const nextCycle = Math.floor(clock / 4400);
+      // Only entrances/finales replay. Resetting idle would snap signature
+      // poses (such as Auralynx's meditative float) back to their starting pose.
+      const nextCycle = action === "idle" ? 0 : Math.floor(clock / 4400);
       if (nextCycle !== cycle) {
         rig.controller.reset();
         cycle = nextCycle;
       }
       const t = (clock % 4400) / 1000;
-      // Showcase loop (4.4 s): stand, run forward, dash, then turn and run
-      // back. Shows idle details, run trails and the dash burst on its own.
-      const showcase = action === "showcase";
-      const dash = showcase && t >= 2.6 && t < 3;
-      const back = showcase && t >= 3;
-      const running = showcase && ((t >= 1.4 && t < 2.6) || back);
-      const travel = !showcase || t < 1.4
-        ? 0
-        : t < 2.6
-          ? ((t - 1.4) / 1.2) * 30
-          : t < 3
-            ? 30 + (t - 2.6) * 100
-            : 70 * (1 - (t - 3) / 1.4);
-      const x = 200 + Math.cos(angle) * travel;
-      const y = 174 + Math.sin(angle) * travel * 0.35;
+      // Stay on the pedestal: breathing, skin details and cosmetic effects
+      // animate without walking, dashing or turning away from the chosen view.
+      const { x, y } = SHOP_PREVIEW;
       const pose: AnimationPose = {
         hp: 100,
-        speed: running ? CHARACTERS[champion].speed : 0,
-        angle: back ? angle + Math.PI : angle,
-        dash,
+        speed: 0,
+        angle,
+        dash: false,
         jump: false,
         skin: original ? null : worn,
         look: original ? {} : look,
@@ -196,8 +186,8 @@ export function mountShopPreview(panel: HTMLElement): () => void {
       };
       // Entrances and finales need headroom for fireworks and falling particles.
       this.cameras.main
-        .setZoom(action === "victory" || action === "entrance" ? 0.78 : 1)
-        .centerOn(200, 130);
+        .setZoom(previewZoom(action))
+        .centerOn(SHOP_PREVIEW.x, SHOP_PREVIEW.cameraY);
       this.aura.clear();
       if (piece?.slot === "aura")
         drawCollectionAura(
@@ -208,8 +198,18 @@ export function mountShopPreview(panel: HTMLElement): () => void {
           clock,
           paused,
         );
-      rig.root.setScale(1.8);
+      rig.root.setScale(SHOP_PREVIEW.scale);
       rig.render(pose, x, y, clock, 1, paused && motion.matches);
+      if (!drawn) {
+        drawn = true;
+        // create() has loaded textures but its canvas is still blank/unposed.
+        // Keep the matching static art until this fully posed frame is drawn.
+        this.game.events.once(Phaser.Core.Events.POST_RENDER, () => {
+          if (disposed || loadFailed) return;
+          host.classList.add("is-ready");
+          syncToggle();
+        });
+      }
       host.dataset.animationTime = String(Math.round(clock));
       dirty = false;
     }
@@ -218,8 +218,8 @@ export function mountShopPreview(panel: HTMLElement): () => void {
     game = new Phaser.Game({
       type: Phaser.CANVAS,
       parent: host,
-      width: 400,
-      height: 260,
+      width: SHOP_PREVIEW.width,
+      height: SHOP_PREVIEW.height,
       transparent: true,
       banner: false,
       audio: { noAudio: true },
