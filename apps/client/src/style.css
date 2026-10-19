@@ -8113,10 +8113,7 @@ dialog :is(.profile-layout, .friends-layout, .help-layout) { line-height: 1.5; }
 .shop-preview-fallback > .raid-cosmetic-preview { width: 120px; height: 120px; }
 .shop-preview-fallback > .raid-cosmetic-preview > svg { width: 110px; height: 110px; }
 .shop-live-stage.is-ready .shop-preview-fallback { visibility: hidden; }
-.shop-motion-toggle { display: flex; justify-content: center; align-items: center; min-width: 0; min-height: 32px; margin: 0; padding: 6px 4px; border: 1px solid #8baee530; border-radius: 7px; background: #0e1d34; color: #bacee5; font-size: 10px; line-height: 1.25; }
 .shop-preview-controls { display: grid; gap: 6px; }
-.shop-motion-toggle { border-color: transparent; color: #9ed8e2; }
-.shop-motion-toggle:disabled { cursor: default; }
 .shop-frame-caption { margin: 0; text-align: center; font-size: 11px; color: #a9bdd8; }
 .shop-status:empty { display: none; }
 @media (min-width: 760px) and (orientation: landscape) {
@@ -8136,9 +8133,6 @@ dialog :is(.profile-layout, .friends-layout, .help-layout) { line-height: 1.5; }
 }
 @media (prefers-reduced-motion: reduce) {
   .shop-card { transition: none; }
-}
-@media (pointer: coarse) {
-  .shop-motion-toggle { min-height: 44px; }
 }
 @media (orientation: landscape) and (max-height: 600px) and (min-width: 560px) {
   .shop { grid-template-columns: minmax(0, 1fr); }
@@ -8252,7 +8246,6 @@ dialog :is(.profile-layout, .friends-layout, .help-layout) { line-height: 1.5; }
   radial-gradient(ellipse 30% 9% at 50% 80%, color-mix(in srgb, var(--tone) 55%, transparent), transparent 72%),
   radial-gradient(ellipse 60% 70% at 50% 30%, color-mix(in srgb, var(--tone) 22%, transparent), transparent 70%),
   linear-gradient(180deg, #172b4d, #0a1427 85%); box-shadow: inset 0 0 0 1px #ffffff12, inset 0 -30px 40px -20px #000a; }
-.shop-motion-toggle { background: transparent; color: #9ed8e2; text-decoration: underline; text-underline-offset: 3px; }
 .shop-preview-kicker { gap: 10px; }
 .shop-preview-kicker > span:last-child { font-size: 11px; letter-spacing: 0; color: #8fa3c2; }
 .shop-preview-text h3 { font: 800 30px/1.05 "Barlow Condensed", sans-serif; letter-spacing: .3px; }

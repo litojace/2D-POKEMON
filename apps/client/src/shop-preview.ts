@@ -12,7 +12,6 @@ import type { AnimationPose } from "./animation/controller";
 import type { SkinLook } from "./creature-design";
 import { SHOP_PREVIEW, previewZoom } from "./shop-preview-layout";
 
-let pausedPreference: boolean | undefined;
 export interface ShopPreviewHandle {
   (): void;
   update(panel: HTMLElement): void;
@@ -29,14 +28,13 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
   let look = {};
   let action: string;
   let originalLabel: string;
-  let toggle: HTMLButtonElement | null;
   let compare: HTMLButtonElement | null;
   let layers: RigAsset[] = [];
   const motion = matchMedia("(prefers-reduced-motion: reduce)");
   const portraitCover = matchMedia(
     "(orientation: portrait) and (pointer: coarse) and (hover: none)",
   );
-  let paused = pausedPreference ?? motion.matches;
+  let paused = motion.matches;
   let visible = true;
   let disposed = false;
   let ready = false;
@@ -68,13 +66,8 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
     cached.set(key, value);
     return value;
   };
-  const syncToggle = () => {
-    if (!toggle) return;
-    toggle.disabled = !ready;
+  const syncControls = () => {
     if (compare) compare.disabled = !ready;
-    toggle.textContent = paused ? "Play animation" : "Pause animation";
-    toggle.setAttribute("aria-label", toggle.textContent);
-    toggle.setAttribute("aria-pressed", String(!paused));
     host.dataset.playing = String(!paused);
   };
   const reset = () => {
@@ -88,9 +81,8 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
   };
   const onMotion = () => {
     paused = motion.matches;
-    pausedPreference = paused;
     dirty = true;
-    if (ready) syncToggle();
+    if (ready) syncControls();
   };
   motion.addEventListener("change", onMotion);
   const observer = new IntersectionObserver(
@@ -104,10 +96,6 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
     if (disposed) return;
     ready = false;
     host.classList.remove("is-ready");
-    if (toggle) {
-      toggle.disabled = true;
-      toggle.textContent = "Still preview";
-    }
     if (compare) compare.disabled = true;
   };
   const updatePanel = (next: HTMLElement) => {
@@ -128,7 +116,6 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
     look = piece ? { [piece.slot]: id } : {};
     action = host.dataset.previewAction!;
     originalLabel = host.getAttribute("aria-label")!;
-    toggle = panel.querySelector<HTMLButtonElement>("[data-preview-toggle]");
     compare = panel.querySelector<HTMLButtonElement>("[data-preview-compare]");
     original = false;
     clock = 0;
@@ -138,13 +125,6 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
     dirty = true;
     rig?.destroy();
     rig = undefined;
-    if (toggle)
-      toggle.onclick = () => {
-        paused = !paused;
-        pausedPreference = paused;
-        dirty = true;
-        syncToggle();
-      };
     if (compare)
       compare.onclick = () => {
         original = !original;
@@ -311,7 +291,7 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
         this.game.events.once(Phaser.Core.Events.POST_RENDER, () => {
           if (disposed || selected !== revision) return;
           host.classList.add("is-ready");
-          syncToggle();
+          syncControls();
         });
       }
       host.dataset.animationTime = String(Math.round(clock));

@@ -124,21 +124,21 @@ function panel(
     setAttribute: vi.fn(),
     appendChild: vi.fn(),
   };
-  const toggle = {
+  const compare = {
     disabled: true,
-    textContent: "Loading preview…",
+    textContent: "Compare original",
     setAttribute: vi.fn(),
   };
   const element = {
     querySelector: (selector: string) =>
       selector === ".shop-live-stage"
         ? host
-        : selector === "[data-preview-toggle]"
-          ? toggle
+        : selector === "[data-preview-compare]"
+          ? compare
           : null,
     querySelectorAll: () => [],
   } as unknown as HTMLElement;
-  return { host, toggle, element };
+  return { host, compare, element };
 }
 function preview(action = "idle") {
   const p = panel(action);
@@ -229,15 +229,15 @@ describe("Shop live previews", () => {
     dispose();
   });
   it("reveals the canvas only after the first posed frame has actually rendered", () => {
-    const { host, toggle, dispose } = preview();
+    const { host, compare, dispose } = preview();
     expect(host.classList.contains("is-ready")).toBe(false);
-    expect(toggle.disabled).toBe(true);
+    expect(compare.disabled).toBe(true);
     mock.scene.update(0, 16);
     expect(mock.render).toHaveBeenCalledOnce();
     expect(host.classList.contains("is-ready")).toBe(false);
     mock.postRender!();
     expect(host.classList.contains("is-ready")).toBe(true);
-    expect(toggle.disabled).toBe(false);
+    expect(compare.disabled).toBe(false);
     dispose();
   });
   it("does not reveal an abandoned preview when its pending frame finishes", () => {

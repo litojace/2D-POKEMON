@@ -162,7 +162,7 @@ export function shopPreviewMarkup(view: ShopView, e: Economy | null, loadout: Ra
   );
   const fallbackClass = piece?.slot === "skin" ? " raid-cosmetic-preview shop-preview-colours" : "";
   const compare = skin || piece?.slot === "skin" ? '<button type="button" class="shop-compare" data-preview-compare aria-pressed="false" disabled>Compare original</button>' : "";
-  const controls = frame ? "" : `<div class="shop-preview-controls">${compare}<button type="button" class="shop-motion-toggle" data-preview-toggle aria-label="Play preview animations" aria-pressed="false" disabled>Loading preview…</button></div>`;
+  const controls = compare ? `<div class="shop-preview-controls">${compare}</div>` : "";
   const price = id && e ? shopPrice(id, e.owned, e.picks.deal) : null;
   const locked = skin?.rarity === "mythical" && e && !e.owned.includes(skin.id) && trial(e, champion) < MYTHIC_TRIAL_WINS;
   const shortfall = e && price !== null && price > e.balance && !locked
