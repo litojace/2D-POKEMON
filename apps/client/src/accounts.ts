@@ -6,7 +6,7 @@ import {
   type RaidHubTab,
 } from "./raid-hub";
 import { iconLabel } from "./menu-icons";
-import { coinChip, coins, lookSlot, shopMarkup, type ShopTab, type ShopView } from "./shop-ui";
+import { coinChip, coins, lookSlot, shopMarkup, shopPreviewMarkup, previewItem, type ShopTab, type ShopView } from "./shop-ui";
 import { missionsMarkup } from "./missions-ui";
 import {
   CHAMPION_SKIN_BY_ID,
@@ -604,10 +604,38 @@ export class AccountUI {
       const box = dialogEl()?.querySelector<HTMLElement>(".shop-status");
       if (box) box.textContent = text;
     };
-    const render = (keepScroll = true) => {
+    this.shopPreviewCleanup?.();
+    let preview: import("./shop-preview").ShopPreviewHandle | undefined;
+    let importing = false;
+    let cancelled = false;
+    const root = dialogEl()!;
+    const cleanup = () => {
+      if (cancelled) return;
+      cancelled = true;
+      preview?.();
+      observer.disconnect();
+      root.removeEventListener("close", cleanup);
+    };
+    const observer = new MutationObserver(() => {
+      if (!root.querySelector(".shop")) cleanup();
+    });
+    observer.observe(root, { childList: true });
+    root.addEventListener("close", cleanup);
+    this.shopPreviewCleanup = cleanup;
+    const render = (keepScroll = true, previewOnly = false) => {
       const root = dialogEl();
       const top = (root?.querySelector<HTMLElement>(".dialog-content") ?? root)?.scrollTop ?? 0;
-      this.hooks.openDialog(shopMarkup(view, this.economy ?? null, this.raidLook ?? {}, problem));
+      const panel = root?.querySelector<HTMLElement>(".shop-preview");
+      if (previewOnly && panel) {
+        // Keep catalog SVGs, focus and scroll position intact while browsing.
+        panel.outerHTML = shopPreviewMarkup(view, this.economy ?? null, this.raidLook ?? {});
+        const selected = previewItem(view, this.economy ?? null);
+        for (const button of Array.from(root!.querySelectorAll<HTMLElement>("[data-shop-preview]"))) {
+          const active = button.dataset.shopPreview === selected;
+          button.setAttribute("aria-pressed", String(active));
+          button.closest(".shop-card")?.classList.toggle("is-selected", active);
+        }
+      } else this.hooks.openDialog(shopMarkup(view, this.economy ?? null, this.raidLook ?? {}, problem));
       if (root && keepScroll) (root.querySelector<HTMLElement>(".dialog-content") ?? root).scrollTop = top;
       wire();
     };
@@ -637,29 +665,18 @@ export class AccountUI {
     const wire = () => {
       const root = dialogEl();
       if (!root) return;
-      this.shopPreviewCleanup?.();
       const panel = root.querySelector<HTMLElement>(".shop-preview");
-      let cancelled = false;
-      let dispose: (() => void) | undefined;
-      const cleanup = () => {
-        if (cancelled) return;
-        cancelled = true;
-        dispose?.();
-        observer.disconnect();
-        root.removeEventListener("close", cleanup);
-      };
-      this.shopPreviewCleanup = cleanup;
-      root.addEventListener("close", cleanup);
-      const observer = new MutationObserver(() => {
-        if (!panel?.isConnected) cleanup();
-      });
-      observer.observe(root, { childList: true });
-      if (panel) void import("./shop-preview").then(({ mountShopPreview }) => {
-        if (!cancelled && root.open && panel.isConnected) dispose = mountShopPreview(panel);
-      }).catch(() => {
-        const toggle = panel.querySelector<HTMLButtonElement>("[data-preview-toggle]");
-        if (toggle) { toggle.disabled = true; toggle.textContent = "Still preview"; }
-      });
+      if (panel && preview) preview.update(panel);
+      else if (panel && !importing && !cancelled) {
+        importing = true;
+        void import("./shop-preview").then(({ mountShopPreview }) => {
+          const current = root.querySelector<HTMLElement>(".shop-preview");
+          if (!cancelled && root.open && current) preview = mountShopPreview(current);
+        }).catch(() => {
+          const toggle = root.querySelector<HTMLButtonElement>("[data-preview-toggle]");
+          if (toggle) { toggle.disabled = true; toggle.textContent = "Still preview"; }
+        });
+      }
       const all = <T extends HTMLElement>(q: string) => Array.from(root.querySelectorAll<T>(q));
       const restoreFocus = (selector: string) => root.querySelector<HTMLElement>(selector)?.focus({ preventScroll: true });
       for (const b of all<HTMLButtonElement>("[data-shop-ownership]"))
@@ -710,8 +727,15 @@ export class AccountUI {
           const skin = CHAMPION_SKIN_BY_ID[id];
           if (skin) view.champion = skin.champion;
           view.stage = this.economy?.looks[view.champion]?.skin === id ? this.economy.looks[view.champion]!.stage : 1;
-          render();
-          root.querySelector<HTMLElement>(".shop-preview")?.scrollIntoView?.({ block: "nearest" });
+          render(true, true);
+          // Bring an offscreen preview into view, without moving the catalog
+          // when the selected look is already visible alongside it.
+          const panel = root.querySelector<HTMLElement>(".shop-preview");
+          const content = root.querySelector<HTMLElement>(".dialog-content") ?? root;
+          const bounds = panel?.getBoundingClientRect();
+          const viewport = content.getBoundingClientRect();
+          if (bounds && (bounds.bottom <= viewport.top || bounds.top >= viewport.bottom))
+            panel?.scrollIntoView?.({ block: "nearest" });
         };
       for (const b of all<HTMLButtonElement>("[data-shop-stage]"))
         b.onclick = async () => {
@@ -724,7 +748,7 @@ export class AccountUI {
               this.economy = ((await this.api("/api/shop/equip", { champion: view.champion, skin: id, stage: view.stage })) as { economy: Economy }).economy;
               return `Showing Stage ${"I".repeat(view.stage!)}.`;
             });
-          render();
+          render(true, true);
         };
       for (const b of all<HTMLButtonElement>("[data-shop-buy]"))
         b.onclick = () => {

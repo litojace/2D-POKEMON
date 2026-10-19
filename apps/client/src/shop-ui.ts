@@ -129,13 +129,13 @@ function card(id: string, view: ShopView, e: Economy | null, loadout: RaidLoadou
   </article>`;
 }
 
-function previewItem(view: ShopView, e: Economy | null) {
+export function previewItem(view: ShopView, e: Economy | null) {
   return view.preview ??
     (view.tab === "today" ? e?.picks.items[0] : view.tab === "mythic" ? `${view.champion}-${MYTHIC_SLUG[view.champion]}` : view.tab === "collections" ? `${view.collection ?? SHOP_BUNDLES[0].collection}-colours` : e?.looks[view.champion]?.skin) ?? null;
 }
 
 /** Live battle rig with facing and motion controls, or an actual portrait frame. */
-function previewPanel(view: ShopView, e: Economy | null, loadout: RaidLoadout) {
+export function shopPreviewMarkup(view: ShopView, e: Economy | null, loadout: RaidLoadout) {
   const id = previewItem(view, e);
   const skin = id ? CHAMPION_SKIN_BY_ID[id] : undefined;
   const champion = skin?.champion ?? view.champion;
@@ -257,7 +257,7 @@ export function shopMarkup(view: ShopView, e: Economy | null, loadout: RaidLoado
         mythic: mythicTab,
         collections: collectionsTab,
       }[view.tab](view, e, loadout);
-  const preview = previewPanel(view, e, loadout);
+  const preview = shopPreviewMarkup(view, e, loadout);
   return `<div class="shop"><header class="shop-head"><h2>${iconLabel("shop", "Shop")}</h2>${coinChip(e?.balance)}</header>${tabs}${preview}<div class="shop-body">${body}</div><p class="shop-status" role="status"></p></div>`;
 }
 /** Collection pieces' slot (for equipping). */
