@@ -57,7 +57,7 @@ export interface FxContext {
   knockedOut: boolean;
   /** An ultimate just went off. */
   ultimate: boolean;
-  /** Mythical ambient effects are within the on-screen budget. */
+  /** Extra ambient particles are within the on-screen budget; ornaments always draw. */
   ambient: boolean;
 }
 
@@ -234,7 +234,7 @@ function mythic(ctx: FxContext, art: SkinArt, stage: number) {
       break;
     }
     case "sunforged": {
-      if (ctx.chance(stage >= 2 ? 14 : 8, ctx.dt))
+      if (ctx.ambient && ctx.chance(stage >= 2 ? 14 : 8, ctx.dt))
         ctx.emit({
           x: x + (Math.random() - 0.5) * 30 * sc,
           y: mid + (Math.random() - 0.3) * 20 * sc,
@@ -270,7 +270,7 @@ function mythic(ctx: FxContext, art: SkinArt, stage: number) {
       const tgt = o.front ? g : under;
       tgt.fillStyle(0xc8f6ff, 0.95).fillCircle(o.x, o.y, 5 * sc);
       tgt.fillStyle(0x070d24, 1).fillCircle(o.x + 2.4 * sc, o.y - 1 * sc, 4.4 * sc);
-      if (ctx.chance(6, ctx.dt))
+      if (ctx.ambient && ctx.chance(6, ctx.dt))
         ctx.emit({ x: x + (Math.random() - 0.5) * 30 * sc, y: y + 14 * sc, vx: 0, vy: -26, life: 0.9, size: 2 * sc, color: 0x7ff3ff, shape: "bubble" });
       if (stage >= 2)
         for (let i = 0; i < 2; i++) {
@@ -313,7 +313,7 @@ function mythic(ctx: FxContext, art: SkinArt, stage: number) {
         const k = (now / 1600) % 1;
         g.lineStyle(1.4 * sc, color, 0.5 * (1 - k)).strokeCircle(ctx.headX, ctx.headY + 14 * sc, (12 + k * 26) * sc);
       }
-      if (art.mythic === "starweaver" && ctx.chance(stage >= 2 ? 10 : 5, ctx.dt))
+      if (ctx.ambient && art.mythic === "starweaver" && ctx.chance(stage >= 2 ? 10 : 5, ctx.dt))
         ctx.emit({ x: x + (Math.random() - 0.5) * 50 * sc, y: mid + (Math.random() - 0.5) * 20 * sc, vx: 0, vy: 14, life: 0.9, size: 1.8 * sc, color: 0xfff3b0, shape: "star" });
       break;
     }
@@ -326,7 +326,7 @@ function mythic(ctx: FxContext, art: SkinArt, stage: number) {
           cy = ctx.headY - 12 * sc + (o.y - y) * 0.6;
         (o.front ? g : under).fillStyle(0xffffff, 0.85).fillCircle(cx - 3 * sc, cy, 3.4 * sc).fillCircle(cx + 2 * sc, cy - 1.5 * sc, 4 * sc).fillCircle(cx + 6 * sc, cy, 3 * sc);
       }
-      if (ctx.chance(stage >= 2 ? 4 : 2, ctx.dt))
+      if (ctx.ambient && ctx.chance(stage >= 2 ? 4 : 2, ctx.dt))
         ctx.emit({ x: ctx.headX + 12 * sc, y: ctx.headY - 6 * sc, vx: 4, vy: 30, life: 0.5, size: 1.4 * sc, color: 0x7fd0ff, shape: "dot" });
       if (stage >= 3)
         for (let i = 0; i < 2; i++) {
@@ -369,7 +369,7 @@ export function drawSkinFx(ctx: FxContext, art: SkinArt | undefined, stage: numb
   moments(ctx, art, stage);
   if (ctx.defeated) return;
   detail(ctx, art);
-  if (art.mythic && ctx.ambient) mythic(ctx, art, stage);
+  if (art.mythic) mythic(ctx, art, stage);
 }
 
 /** One-off bursts: KO poof (Epic+), Mythical entrance, victory and ultimate. */

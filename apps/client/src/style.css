@@ -9003,3 +9003,14 @@ dialog.framed-dialog > .dialog-content:focus-visible { outline: 2px solid #ffd65
   #arena-overlay .raid-draft.action-overlay { grid-template-rows: auto minmax(48px, 1fr) auto; }
   .raid-draft.action-overlay > .eyebrow { display: none; }
 }
+
+/* Auralynx's rear ring follows its battle rig, including on equipped portraits. */
+@keyframes fighter-aura-ring {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  :is(.roster-panel, .player-avatar, .vs-fighter) svg[data-fighter="auralynx"] .fighter-wings {
+    transform-origin: 100px 122.98px;
+    animation: fighter-aura-ring 8.8s linear infinite;
+  }
+}

@@ -30,7 +30,7 @@ export function fighterArt(
 ) {
   return creatureSvg(id, "down", undefined, viewBox, "normal", look).replace(
     "<svg ",
-    `<svg role="img" aria-label="${CHARACTERS[id].name}" `,
+    `<svg role="img" data-fighter="${id}" aria-label="${CHARACTERS[id].name}" `,
   );
 }
 /** Centred head-and-shoulders portrait for avatars. */

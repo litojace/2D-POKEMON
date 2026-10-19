@@ -1167,8 +1167,9 @@ and coin grants ride on the same receipts.
   4. **Effects:** skill colour sets, hit sparks, KO poofs, dash trails.
   5. **Mythical:** animated textures (a few pre-baked frames per part),
      ambient emitters, entrance and victory sequences, and stage flags.
-- **Effect budget:** at most two Mythical ambient emitters on screen,
-  capped particles, and all off under reduced motion.
+- **Effect budget:** at most two living Mythicals emit extra ambient particles.
+  Signature ornaments stay animated for every living fighter; particle counts
+  remain capped, and reduced motion disables animations.
 - **Fairness tests:** skill shapes, sizes and timing are identical with
   and without every skin.
 
@@ -1211,8 +1212,9 @@ release.
   in the skin's colour; Mythical "animated body textures" are animated
   effects drawn around the fighter rather than pre-baked texture frames;
   the stage-3 footstep trail and nameplate flair are not drawn yet.
-- **Effect budget:** Mythical ambient effects for at most two fighters on
-  screen (yours first); nothing animated under reduced motion.
+- **Effect budget:** extra Mythical ambient particles for at most two living
+  fighters on screen (yours first). Signature ornaments stay animated for all
+  living fighters; nothing animates under reduced motion.
 - **Fairness tests:** every skin keeps each rig part's size, pivot and
   placement identical to the champion's own (tests/unit/skin-art.test.ts).
 - **Collections:** Colours recolour the rig textures (eyes untouched), auras

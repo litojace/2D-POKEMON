@@ -2730,10 +2730,11 @@ class ArenaScene extends Phaser.Scene {
           ),
         );
     }
-    // Effect budget: Mythical ambient effects for at most two fighters (you first).
+    // Extra ambient particles for at most two living Mythicals (you first).
+    // Signature ornaments still animate for every equipped fighter.
     const ambient = new Set(
       [...state.players]
-        .filter((q) => wornArt(q.character, q.championLooks?.[q.character])?.mythic)
+        .filter((q) => q.hp > 0 && wornArt(q.character, q.championLooks?.[q.character])?.mythic)
         .sort((a, b) => Number(b.id === myId) - Number(a.id === myId))
         .slice(0, 2)
         .map((q) => q.id),
