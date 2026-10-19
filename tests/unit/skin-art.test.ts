@@ -10,6 +10,17 @@ import { drawCollectionAura, drawCollectionVictory, playCollectionEntrance } fro
 
 const ids = Object.keys(CHARACTERS) as CharacterId[];
 const DIRS = ["down", "up", "left", "right"] as const;
+
+it("loads a complete front preview with the same textures used in battle", () => {
+  const looks = [null, ...[1, 2, 3].map(stage => ({ skin: "voltkit-stormcrown", stage }))];
+  for (const look of looks) {
+    const all = rigAssets("voltkit", look);
+    const front = rigAssets("voltkit", look, ["down"]);
+    expect(all).toHaveLength(60);
+    expect(front).toHaveLength(16);
+    expect(front).toEqual(all.filter(asset => asset.key.startsWith("rig-voltkit-down-")));
+  }
+});
 /** A Graphics stand-in that accepts any chained drawing call. */
 const graphics = (): any =>
   new Proxy({}, { get: (_t, key) => (key === "then" ? undefined : () => graphics()) });

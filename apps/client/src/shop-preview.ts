@@ -37,6 +37,7 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
   let paused = motion.matches;
   let visible = true;
   let disposed = false;
+  let failedSelection = false;
   let ready = false;
   let dirty = true;
   let drawn = false;
@@ -62,13 +63,26 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
     const key = champion + skinSuffix(champion, skin);
     const found = cached.get(key);
     cached.delete(key);
-    const value = found ?? rigAssets(champion, skin);
+    const value = found ?? rigAssets(champion, skin, ["down"]);
     cached.set(key, value);
     return value;
   };
   const syncControls = () => {
     if (compare) compare.disabled = !ready;
     host.dataset.playing = String(!paused);
+  };
+  const syncLoop = () => {
+    if (!game?.isRunning || disposed) return;
+    const running =
+      visible &&
+      !document.hidden &&
+      !portraitCover.matches &&
+      !failedSelection &&
+      !host.classList.contains("is-frame") &&
+      (!paused || dirty || !drawn);
+    host.dataset.rendering = String(running);
+    if (running && !game.loop.running) game.loop.wake();
+    else if (!running && game.loop.running) game.loop.sleep();
   };
   const reset = () => {
     clock = 0;
@@ -78,25 +92,34 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
       rig.destroy();
       rig = new FighterRig(scene, champion, layers);
     }
+    syncLoop();
   };
   const onMotion = () => {
     paused = motion.matches;
     dirty = true;
     if (ready) syncControls();
+    syncLoop();
   };
   motion.addEventListener("change", onMotion);
+  portraitCover.addEventListener("change", syncLoop);
+  document.addEventListener("visibilitychange", syncLoop);
   const observer = new IntersectionObserver(
-    ([entry]) => {
+    (entries) => {
+      const entry = entries.find((entry) => entry.target === host);
+      if (!entry) return;
       visible = entry.isIntersecting;
       dirty = true;
+      syncLoop();
     },
     { threshold: 0 },
   );
   const failed = () => {
     if (disposed) return;
     ready = false;
+    failedSelection = true;
     host.classList.remove("is-ready");
     if (compare) compare.disabled = true;
+    syncLoop();
   };
   const updatePanel = (next: HTMLElement) => {
     if (disposed) return;
@@ -121,6 +144,7 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
     clock = 0;
     cycle = 0;
     ready = false;
+    failedSelection = false;
     drawn = false;
     dirty = true;
     rig?.destroy();
@@ -161,6 +185,7 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
           }, 0);
         });
     }
+    syncLoop();
   };
   class PreviewScene extends Phaser.Scene {
     private floor!: Phaser.GameObjects.Graphics;
@@ -179,6 +204,7 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
         host.appendChild(this.game.canvas);
         this.select();
       }
+      syncLoop();
     }
     select() {
       if (
@@ -221,6 +247,8 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
           .strokeEllipse(200, 207, 180, 48);
         rig = new FighterRig(this, champion, layers);
         ready = true;
+        dirty = true;
+        syncLoop();
       };
       if (!missing.length) {
         complete();
@@ -296,6 +324,9 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
       }
       host.dataset.animationTime = String(Math.round(clock));
       dirty = false;
+      // A still frame needs one complete render, then no timer or canvas work.
+      if (paused)
+        this.game.events.once(Phaser.Core.Events.POST_RENDER, syncLoop);
     }
   }
   updatePanel(initialPanel);
@@ -323,7 +354,11 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
       cancelSelection();
       observer.disconnect();
       motion.removeEventListener("change", onMotion);
+      portraitCover.removeEventListener("change", syncLoop);
+      document.removeEventListener("visibilitychange", syncLoop);
       game?.destroy(true);
+      // Phaser completes destruction on its next tick, including when asleep.
+      if (game?.isRunning && !game.loop.running) game.loop.wake();
       cached.clear();
     },
     { update: updatePanel },

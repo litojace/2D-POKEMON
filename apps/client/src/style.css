@@ -7737,12 +7737,12 @@ dialog:has(.shop) { width: min(980px, 96vw); }
 .shop-card { position: relative; display: grid; grid-template-rows: auto 1fr auto; gap: 8px; padding: 10px; border-radius: 12px; background: #10203b; border: 2px solid #8a96a855; min-width: 0; }
 .shop-card.rarity-rare { border-color: #4f9cff77; }
 .shop-card.rarity-epic { border-color: #b06bff88; box-shadow: 0 0 14px #b06bff22; }
-.shop-card.rarity-mythical { border-color: transparent; background: linear-gradient(#10203b, #10203b) padding-box, linear-gradient(120deg, #ffd65b, #ff8fd8, #7ff3ff, #ffd65b) border-box; background-size: 100% 100%, 300% 300%; animation: mythic-border 8s linear infinite; }
-@keyframes mythic-border { to { background-position: 0 0, 300% 0; } }
+.shop-card.rarity-mythical { border-color: transparent; background: linear-gradient(#10203b, #10203b) padding-box, linear-gradient(120deg, #ffd65b, #ff8fd8, #7ff3ff, #ffd65b) border-box; background-size: 100% 100%, 300% 300%; }
 .shop-card.is-selected { outline: 2px solid #ffd65b; outline-offset: 2px; }
 .shop-card.is-deal::before { content: ""; position: absolute; inset: -1px; border-radius: 12px; box-shadow: 0 0 0 1px #ff5d6c88, 0 0 16px #ff5d6c33; pointer-events: none; }
 .shop-card-art { display: grid; place-items: center; height: 120px; padding: 4px; border-radius: 9px; background: radial-gradient(circle at 50% 35%, #233a63, #0c182d 75%); border: 0; cursor: pointer; }
-.shop-card-art > svg { width: auto; height: 112px; }
+.shop-card-art > :is(svg, img) { width: auto; height: 112px; }
+.shop-card-art > img { max-width: 100%; object-fit: contain; }
 .shop-card-art .shop-look-preview { width: 92px; height: 92px; }
 .shop-card-art .shop-look-preview > svg { width: 84px; height: 84px; }
 .shop-card-body { display: grid; align-content: start; justify-items: start; gap: 3px; min-width: 0; }
@@ -7798,7 +7798,7 @@ dialog:has(.shop) { width: min(980px, 96vw); }
   .shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .shop-card { padding: 8px; }
   .shop-card-art { height: 96px; }
-  .shop-card-art > svg { height: 90px; }
+  .shop-card-art > :is(svg, img) { height: 90px; }
   .home-missions { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -7897,7 +7897,7 @@ dialog:has(.shop) { width: min(980px, 96vw); }
   .shop-preview-text h3 { font-size: 16px; margin: 4px 0; }
   .shop-preview-text p, .shop-note { font-size: 11px; line-height: 1.4; }
   .shop-card-art { height: 88px; }
-  .shop-card-art > svg { height: 82px; }
+  .shop-card-art > :is(svg, img) { height: 82px; }
   .shop-card { padding: 8px; gap: 6px; }
   .shop-heading { font-size: 14px; margin-bottom: 8px; }
   .guide-section-heading { margin: 14px 0 10px; }
@@ -8193,16 +8193,15 @@ dialog :is(.profile-layout, .friends-layout, .help-layout) { line-height: 1.5; }
   radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--tone) 42%, transparent), transparent 58%),
   radial-gradient(ellipse 34% 9% at 50% 86%, #00000080, transparent 75%),
   linear-gradient(180deg, #1c3054, #0b162b); box-shadow: inset 0 0 0 1px #ffffff0d; }
-.shop-card-art > svg { position: relative; z-index: 1; filter: drop-shadow(0 6px 6px #00000055); transition: transform .2s ease; }
-.shop-card:hover .shop-card-art > svg { transform: translateY(-3px) scale(1.04); }
+.shop-card-art > :is(svg, img) { position: relative; z-index: 1; filter: drop-shadow(0 6px 6px #00000055); transition: transform .2s ease; }
+.shop-card:hover .shop-card-art > :is(svg, img) { transform: translateY(-3px) scale(1.04); }
 .shop-card-art::after { z-index: 2; content: "Try on"; border-radius: 999px; padding: 3px 8px; background: #08122499; backdrop-filter: blur(3px); opacity: 0; transition: opacity .18s ease; }
 .shop-card:hover .shop-card-art::after, .shop-card-art:focus-visible::after { opacity: 1; }
 /* A diagonal sheen across Rare and Epic art. */
 .shop-card:is(.rarity-rare, .rarity-epic) .shop-card-art::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(115deg, transparent 30%, color-mix(in srgb, var(--tone) 26%, transparent) 42%, #ffffff1c 47%, transparent 58%); }
-/* Mythical: a holographic foil that drifts across the whole card. */
+/* Static iridescent finishes keep the catalog light; the selected preview animates. */
 .shop-card.rarity-mythical { border: 1.5px solid transparent; background: linear-gradient(180deg, #2a1f45, #0e1a31 55%) padding-box, linear-gradient(120deg, #ffd65b, #ff8fd8, #7ff3ff, #ffd65b) border-box; background-size: 100% 100%, 300% 300%; box-shadow: 0 0 22px -6px #ff8fd866; }
-.shop-card.rarity-mythical .shop-card-art::before { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; mix-blend-mode: color-dodge; background: linear-gradient(115deg, transparent 18%, #ff8fd870 32%, #7ff3ff70 42%, #ffd65b70 52%, transparent 66%); background-size: 260% 100%; animation: shop-foil 6s linear infinite; }
-@keyframes shop-foil { from { background-position: 130% 0; } to { background-position: -130% 0; } }
+.shop-card.rarity-mythical .shop-card-art::before { content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; opacity: .4; background: linear-gradient(115deg, transparent 18%, #ff8fd870 32%, #7ff3ff70 42%, #ffd65b70 52%, transparent 66%); background-position: 50% 0; }
 /* The item in the fitting room (after the rarity finishes, so it wins). */
 .shop-grid > .shop-card.is-selected { outline: 0; border-color: #ffd65b; box-shadow: inset 0 3px 0 -1px var(--tone), 0 0 0 2px #ffd65b, 0 14px 30px -12px #ffd65b88; }
 .shop-card-body { gap: 4px; }
@@ -8230,7 +8229,7 @@ dialog :is(.profile-layout, .friends-layout, .help-layout) { line-height: 1.5; }
   radial-gradient(circle at 100% 0%, #ff5d6c33, transparent 45%),
   linear-gradient(180deg, color-mix(in srgb, var(--tone) 14%, #16264a), #0e1a31 70%); }
 .shop-card.is-hero .shop-card-art { grid-row: 1 / span 2; height: 100%; min-height: 210px; }
-.shop-card.is-hero .shop-card-art > svg { height: 190px; }
+.shop-card.is-hero .shop-card-art > :is(svg, img) { height: 190px; }
 .shop-card.is-hero .shop-card-body { align-self: center; padding-top: 6px; }
 .shop-card.is-hero .shop-card-name { font-size: 36px !important; }
 .shop-card.is-hero .deal-badge { font-size: 13px; padding: 4px 12px 4px 12px; }
@@ -8297,7 +8296,7 @@ dialog :is(.profile-layout, .friends-layout, .help-layout) { line-height: 1.5; }
   .shop-picks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .shop-card.is-hero { grid-template-columns: 1fr; grid-template-rows: auto; padding: 8px 8px 12px; }
   .shop-card.is-hero .shop-card-art { grid-row: auto; min-height: 170px; }
-  .shop-card.is-hero .shop-card-art > svg { height: 156px; }
+  .shop-card.is-hero .shop-card-art > :is(svg, img) { height: 156px; }
   .shop-card.is-hero .shop-card-name { font-size: 30px !important; }
   .shop-card.is-hero .shop-card-action > * { flex: 1; }
   .shop-tabs button { font-size: 16px; padding: 9px 10px 11px; }
@@ -8306,13 +8305,13 @@ dialog :is(.profile-layout, .friends-layout, .help-layout) { line-height: 1.5; }
 @media (orientation: landscape) and (max-height: 600px) {
   .shop-head h2 { font-size: 30px; }
   .shop-card.is-hero .shop-card-art { min-height: 150px; }
-  .shop-card.is-hero .shop-card-art > svg { height: 136px; }
+  .shop-card.is-hero .shop-card-art > :is(svg, img) { height: 136px; }
   .shop-card.is-hero .shop-card-name { font-size: 28px !important; }
   .shop-preview-text h3 { font-size: 22px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .shop-card, .shop-card-art > svg, .shop-card-art::after { transition: none; }
-  .shop-card:hover, .shop-card:focus-within, .shop-card:hover .shop-card-art > svg { transform: none; }
+  .shop-card, .shop-card-art > :is(svg, img), .shop-card-art::after { transition: none; }
+  .shop-card:hover, .shop-card:focus-within, .shop-card:hover .shop-card-art > :is(svg, img) { transform: none; }
   .shop-card.rarity-mythical .shop-card-art::before { animation: none; background-position: 50% 0; }
 }
 

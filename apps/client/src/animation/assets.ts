@@ -133,11 +133,18 @@ const DIRS: Facing[] = ["up", "down", "left", "right"];
 /**
  * Every texture a fighter's rig uses: each part for each facing, plus the
  * expression eyes (happy, hurt, dizzy, focus) for the facings that show a face.
+ * Combat uses all facings; fixed-angle previews can request a subset.
  */
-export function rigAssets(id: CharacterId, look: SkinLook | null = null): RigAsset[] {
+export function rigAssets(
+  id: CharacterId,
+  look: SkinLook | null = null,
+  directions: readonly Facing[] = DIRS,
+): RigAsset[] {
   return [
-    ...DIRS.flatMap((dir) => parts.map((part) => asset(id, dir, part, "normal", look))),
-    ...DIRS.filter((dir) => dir !== "up").flatMap((dir) =>
+    ...directions.flatMap((dir) =>
+      parts.map((part) => asset(id, dir, part, "normal", look)),
+    ),
+    ...directions.filter((dir) => dir !== "up").flatMap((dir) =>
       MOODS.map((mood) => asset(id, dir, "eyes", mood, look)),
     ),
   ];

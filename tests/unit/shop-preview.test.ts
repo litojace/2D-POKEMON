@@ -11,6 +11,9 @@ const mock = vi.hoisted(() => ({
   rigs: vi.fn(),
   games: vi.fn(),
   assets: vi.fn(),
+  intersect: undefined as undefined | ((entries: unknown[]) => void),
+  postRenderCallbacks: [] as Array<() => void>,
+  loop: { running: true, sleep: vi.fn(), wake: vi.fn() },
   postRender: undefined as (() => void) | undefined,
   textures: new Set<string>(),
   pending: [] as string[],
@@ -55,13 +58,20 @@ vi.mock("phaser", () => ({
         canvas: mock.canvas,
         events: {
           once: (_: string, fn: () => void) => {
-            mock.postRender = fn;
+            mock.postRenderCallbacks.push(fn);
+            const callbacks = [...mock.postRenderCallbacks];
+            mock.postRender = () => {
+              mock.postRenderCallbacks = [];
+              callbacks.forEach((callback) => callback());
+            };
           },
         },
       };
     },
     Game: class {
       canvas = mock.canvas;
+      isRunning = true;
+      loop = mock.loop;
       scale = { parent: undefined, refresh: vi.fn() };
       constructor(config: any) {
         mock.games();
@@ -74,8 +84,8 @@ vi.mock("phaser", () => ({
 vi.mock("../../apps/client/src/animation/assets", () => ({
   skinSuffix: (_: string, skin: any) =>
     skin ? `~${skin.skin}~${skin.stage}` : "",
-  rigAssets: (id: string, skin: any) => {
-    mock.assets(id, skin);
+  rigAssets: (id: string, skin: any, directions: string[]) => {
+    mock.assets(id, skin, directions);
     return [
       {
         key: `${id}-${skin?.skin ?? "original"}-${skin?.stage ?? 1}`,
@@ -147,6 +157,8 @@ function preview(action = "idle") {
   return { ...p, dispose };
 }
 function draw() {
+  mock.postRenderCallbacks = [];
+  mock.postRender = undefined;
   mock.scene.update(0, 16);
   mock.postRender?.();
 }
@@ -161,10 +173,22 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.useFakeTimers();
   mock.postRender = undefined;
+  mock.postRenderCallbacks = [];
+  mock.loop.running = true;
+  mock.loop.sleep.mockImplementation(() => {
+    mock.loop.running = false;
+  });
+  mock.loop.wake.mockImplementation(() => {
+    mock.loop.running = true;
+  });
   mock.textures.clear();
   mock.pending = [];
   mock.autoLoad = true;
-  vi.stubGlobal("document", { hidden: false });
+  vi.stubGlobal("document", {
+    hidden: false,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  });
   vi.stubGlobal("matchMedia", () => ({
     matches: false,
     addEventListener: vi.fn(),
@@ -173,6 +197,9 @@ beforeEach(() => {
   vi.stubGlobal(
     "IntersectionObserver",
     class {
+      constructor(callback: (entries: unknown[]) => void) {
+        mock.intersect = callback;
+      }
       observe() {}
       disconnect() {}
     },
@@ -186,8 +213,52 @@ afterEach(() => {
 });
 
 describe("Shop live previews", () => {
+  it("stops the render loop offscreen, ignores old hosts, and wakes to dispose", () => {
+    const { host, dispose } = preview();
+    draw();
+    mock.intersect!([{ target: host, isIntersecting: false }]);
+    expect(mock.loop.running).toBe(false);
+    expect(mock.loop.sleep).toHaveBeenCalledOnce();
+    const next = panel("idle", "voltkit-midnight");
+    change(dispose, next);
+    expect(mock.loop.running).toBe(true);
+    mock.intersect!([{ target: host, isIntersecting: false }]);
+    expect(mock.loop.running).toBe(true);
+    mock.intersect!([{ target: next.host, isIntersecting: false }]);
+    expect(mock.loop.running).toBe(false);
+    dispose();
+    expect(mock.loop.running).toBe(true);
+    expect(mock.destroy).toHaveBeenCalledWith(true);
+  });
+  it("renders one reduced-motion frame and wakes for an original comparison", () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: query.includes("reduced-motion"),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }));
+    const { host, compare, dispose } = preview();
+    draw();
+    expect(host.classList.contains("is-ready")).toBe(true);
+    expect(mock.loop.running).toBe(false);
+    (compare as unknown as { onclick: () => void }).onclick();
+    expect(mock.loop.running).toBe(true);
+    draw();
+    expect(mock.render.mock.lastCall![0].skin).toBeNull();
+    expect(mock.loop.running).toBe(false);
+    dispose();
+  });
+  it("loads only the front-facing textures needed by the Shop", () => {
+    const { dispose } = preview();
+    for (const [, , directions] of mock.assets.mock.calls)
+      expect(directions).toEqual(["down"]);
+    dispose();
+  });
   it("pauses behind the portrait cover and resumes without an animation jump", () => {
-    const portrait = { matches: false };
+    const portrait = {
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    };
     vi.stubGlobal("matchMedia", (query: string) =>
       query.includes("orientation:")
         ? portrait
