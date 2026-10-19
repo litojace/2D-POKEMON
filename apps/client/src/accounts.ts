@@ -742,8 +742,8 @@ export class AccountUI {
         b.onclick = async () => {
           view.stage = Number(b.dataset.shopStage);
           const id = view.preview;
-          const reached = id ? this.economy?.awakening[id]?.stage ?? 0 : 0;
-          // Wearing it: switch the shown stage too (any stage you've reached).
+          const reached = this.economy?.mythicTesting ? 3 : id ? this.economy?.awakening[id]?.stage ?? 0 : 0;
+          // Wearing it: save a reached stage, or any stage available to an admin tester.
           if (id && this.economy?.looks[view.champion]?.skin === id && view.stage <= reached)
             return busy(b, async () => {
               this.economy = ((await this.api("/api/shop/equip", { champion: view.champion, skin: id, stage: view.stage })) as { economy: Economy }).economy;
@@ -773,6 +773,7 @@ export class AccountUI {
             this.economy = ((await this.api("/api/shop/buy", { item: id })) as { economy: Economy }).economy;
             // Sets contain several pieces; keep their real item preview selected.
             if (CHAMPION_SKIN_BY_ID[id] || LOOK_ITEM_BY_ID[id]) view.preview = id;
+            if (CHAMPION_SKIN_BY_ID[id]) view.champion = CHAMPION_SKIN_BY_ID[id].champion;
             return `${CHAMPION_SKIN_BY_ID[id]?.name ?? LOOK_ITEM_BY_ID[id]?.name ?? "Set"} is yours. Equip it any time.`;
           });
         };
@@ -782,7 +783,9 @@ export class AccountUI {
             const id = b.dataset.shopEquip!;
             const skin = CHAMPION_SKIN_BY_ID[id];
             if (skin) {
-              const stage = this.economy?.awakening[id]?.stage ?? 1;
+              const stage = this.economy?.mythicTesting && skin.rarity === "mythical"
+                ? (view.preview === id ? view.stage ?? 1 : 3)
+                : this.economy?.awakening[id]?.stage ?? 1;
               this.economy = ((await this.api("/api/shop/equip", { champion: skin.champion, skin: id, stage })) as { economy: Economy }).economy;
               return `${skin.name} equipped on ${CHARACTERS[skin.champion].name}.`;
             }

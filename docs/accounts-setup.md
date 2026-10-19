@@ -152,3 +152,7 @@ After migration 006 every player has a skill rating starting at 1000. Only confi
 ### Unlimited coins for admin testing
 
 Run [016_admin_shop_coins.sql](../supabase/migrations/016_admin_shop_coins.sql) after the earlier migrations. Existing non-suspended administrators see **∞ coins** and can buy Shop items and collection sets without spending their real balance. Purchases persist, can be equipped normally, and are recorded in the admin audit log. Prices, Mythic Trials, Awakening requirements and regular player spending still work as usual. Removing admin membership ends unlimited spending immediately; the saved wallet balance is unchanged.
+
+### Admin Mythic testing
+
+Run [017_admin_mythic_testing.sql](../supabase/migrations/017_admin_mythic_testing.sql) after 016. Both verification columns at the end should read **true**. Existing non-suspended admins can acquire Mythics with no Mythic Trial wins and equip any of stages I–III without raid clears. Select a stage in the preview and equip the skin; stage buttons also change an already-equipped skin. Earned wins and raid progress remain unchanged. Regular players still need their normal unlocks.

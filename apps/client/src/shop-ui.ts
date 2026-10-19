@@ -115,7 +115,7 @@ export function itemAction(id: string, e: Economy | null, loadout: RaidLoadout =
   }
   const price = shopPrice(id, e.owned, e.picks.deal);
   if (price === null) return `<span class="shop-state">${iconLabel("check", "Owned")}</span>`;
-  if (skin?.rarity === "mythical" && trial(e, skin.champion) < MYTHIC_TRIAL_WINS)
+  if (!e.mythicTesting && skin?.rarity === "mythical" && trial(e, skin.champion) < MYTHIC_TRIAL_WINS)
     return `<span class="shop-state shop-locked">Mythic Trial ${trial(e, skin.champion)}/${MYTHIC_TRIAL_WINS}</span>`;
   const short = !e.unlimitedCoins && e.balance < price;
   const full = e.picks.deal === id ? shopPrice(id, e.owned, null) : null;
@@ -178,7 +178,7 @@ export function shopPreviewMarkup(view: ShopView, e: Economy | null, loadout: Ra
   const compare = skin || piece?.slot === "skin" ? '<button type="button" class="shop-compare" data-preview-compare aria-pressed="false" disabled>Compare original</button>' : "";
   const controls = compare ? `<div class="shop-preview-controls">${compare}</div>` : "";
   const price = id && e ? shopPrice(id, e.owned, e.picks.deal) : null;
-  const locked = skin?.rarity === "mythical" && e && !e.owned.includes(skin.id) && trial(e, champion) < MYTHIC_TRIAL_WINS;
+  const locked = skin?.rarity === "mythical" && e && !e.mythicTesting && !e.owned.includes(skin.id) && trial(e, champion) < MYTHIC_TRIAL_WINS;
   const shortfall = e && !e.unlimitedCoins && price !== null && price > e.balance && !locked
     ? `<p class="shop-shortfall">${coins(price - e.balance)} more coins needed</p><button type="button" class="secondary shop-earn" data-shop-missions>${iconLabel("coin", "Earn coins · Daily missions")}</button>` : "";
   const purchase = id ? `<div class="shop-preview-purchase" aria-label="Selected item actions">${itemAction(id, e, loadout)}${shortfall}</div>` : "";
@@ -189,6 +189,7 @@ function frontPreviewArt(id: CharacterId, look: SkinLook | null, action: string)
   return creatureSvg(id, "down", undefined, previewViewBox(action), "normal", look).replace("<svg ", '<svg aria-hidden="true" ');
 }
 function awakeningNote(id: string, e: Economy | null) {
+  if (e?.mythicTesting) return "Admin testing · All three stages are available to equip.";
   const a = e?.awakening[id];
   if (!a) return `Stage II: ${AWAKENING.stage2Wins} wins wearing it. Stage III: ${AWAKENING.stage3Wins} wins and a Peril 3 raid clear with this champion.`;
   return `Your Awakening: Stage ${"I".repeat(a.stage)} · ${a.wins} wins wearing it${a.stage < 3 ? ` · next at ${a.stage < 2 ? AWAKENING.stage2Wins : AWAKENING.stage3Wins} wins${a.stage === 2 && !a.peril3 ? " and a Peril 3 clear" : ""}` : ""}.`;
@@ -224,12 +225,17 @@ function championsTab(view: ShopView, e: Economy | null, loadout: RaidLoadout) {
 }
 function mythicTab(view: ShopView, e: Economy | null, loadout: RaidLoadout) {
   const skins = CHAMPION_SKINS.filter((s) => s.rarity === "mythical" && matchesOwnership(s.id, view, e));
-  return `<p class="shop-intro">Mythicals can't be bought with coins alone: win <b>${MYTHIC_TRIAL_WINS} matches or raid clears</b> with the champion first (wins against players and raid clears count, bots don't). They awaken as you win in them.</p>${browseFilters(view, skins.length)}${!skins.length ? emptyResults : ""}<div class="shop-grid">${skins
+  const intro = e?.mythicTesting
+    ? "Admin testing · Mythic Trials and raid clears are bypassed. Get a skin and choose any Awakening stage."
+    : `Mythicals can't be bought with coins alone: win <b>${MYTHIC_TRIAL_WINS} matches or raid clears</b> with the champion first (wins against players and raid clears count, bots don't). They awaken as you win in them.`;
+  return `<p class="shop-intro">${intro}</p>${browseFilters(view, skins.length)}${!skins.length ? emptyResults : ""}<div class="shop-grid">${skins
     .map((s) => {
       const t = e ? trial(e, s.champion) : 0;
       const owned = e?.owned.includes(s.id);
       const a = e?.awakening[s.id];
-      const bar = owned
+      const bar = e?.mythicTesting
+        ? '<span class="shop-progress"><small>All three stages available for testing</small></span>'
+        : owned
         ? `<span class="shop-progress"><progress max="${AWAKENING.stage3Wins}" value="${Math.min(AWAKENING.stage3Wins, a?.wins ?? 0)}"></progress><small>Awakening Stage ${"I".repeat(a?.stage ?? 1)} · ${a?.wins ?? 0}/${AWAKENING.stage3Wins} wins</small></span>`
         : `<span class="shop-progress"><progress max="${MYTHIC_TRIAL_WINS}" value="${t}"></progress><small>Trial ${t}/${MYTHIC_TRIAL_WINS} wins as ${CHARACTERS[s.champion].name}</small></span>`;
       return card(s.id, view, e, loadout, bar);

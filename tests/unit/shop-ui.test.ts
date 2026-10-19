@@ -57,6 +57,19 @@ describe("shop buttons", () => {
     expect(itemAction("lumoth-starweaver", e)).toContain("Mythic Trial 4/30");
     expect(itemAction("voltkit-snowcap", economy({ balance: 0 }))).toContain("disabled");
   });
+  it("lets verified admin testers acquire Mythics and choose all stages", () => {
+    const e = economy({ balance: 0, unlimitedCoins: true, mythicTesting: true, trialWins: {} });
+    const action = itemAction("auralynx-celestial-sage", e);
+    expect(action).toContain('data-shop-buy="auralynx-celestial-sage"');
+    expect(action).not.toContain("disabled");
+    expect(action).not.toContain("Mythic Trial");
+    const html = shopMarkup({ tab: "mythic", champion: "auralynx", preview: "auralynx-celestial-sage", stage: 3 }, e);
+    expect(html).toContain("All three stages are available to equip");
+    expect(html).toContain("Mythic Trials and raid clears are bypassed");
+    expect(html).not.toContain("Trial 0/30");
+    expect(html).not.toContain("more coins needed");
+    expect(itemAction("auralynx-celestial-sage", economy({ unlimitedCoins: true, mythicTesting: false, trialWins: {} }))).toContain("Mythic Trial 0/30");
+  });
   it("offers Equip for owned items and shows what's worn", () => {
     const e = economy({ owned: ["voltkit-midnight", "candy-aura"], looks: { voltkit: { skin: "voltkit-midnight", stage: 1 } } });
     expect(itemAction("voltkit-midnight", e)).toContain("data-shop-unequip");

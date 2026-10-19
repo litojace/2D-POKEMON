@@ -232,3 +232,60 @@ it("gives only database-verified admins unlimited spending and ends it on revoca
   expect((await state()).unlimitedCoins).toBe(false);
   await expect(db.query("select public.arena_buy_item('cindrake-ashen')")).rejects.toThrow("Login required");
 });
+
+it("lets admins test all Mythic stages without changing earned wins or raid clears", async () => {
+  const tester = "00000000-0000-4000-8000-000000000003";
+  await db.exec("reset role");
+  const migration = await readFile("supabase/migrations/017_admin_mythic_testing.sql", "utf8");
+  await db.exec(migration);
+  const repeated = await db.exec(migration);
+  expect(repeated.at(-1)!.rows).toEqual([{ mythic_testing_enabled: true, admin_stages_enabled: true }]);
+  await db.exec(`insert into auth.users values ('${tester}', '{"display_name":"Mythic tester","isAdmin":true}');`);
+  await login(tester);
+  await db.query("select public.arena_me()");
+  const state = async () => (await db.query<{ e: any }>("select public.arena_economy() as e")).rows[0].e;
+  expect(await state()).toMatchObject({ mythicTesting: false, unlimitedCoins: false });
+  await expect(db.query("select public.arena_buy_item('auralynx-celestial-sage')")).rejects.toThrow("Mythic Trial");
+  await db.exec(`reset role;insert into public.arena_admins values ('${tester}')`);
+  const skins = (await db.query<{ id: string; champion: string }>("select id, champion from public.arena_shop_items where rarity='mythical' order by id")).rows;
+  expect(skins).toHaveLength(8);
+  await login(tester);
+  const before = await state();
+  expect(before).toMatchObject({ mythicTesting: true, unlimitedCoins: true, balance: 0 });
+  for (const skin of skins) {
+    await db.query("select public.arena_buy_item($1)", [skin.id]);
+    for (const stage of [1, 2, 3]) {
+      await db.query("select public.arena_equip_champion_skin($1,$2,$3)", [skin.champion, skin.id, stage]);
+      expect((await state()).looks[skin.champion]).toEqual({ skin: skin.id, stage });
+    }
+  }
+  const after = await state();
+  expect(after.balance).toBe(0);
+  expect(after.trialWins).toEqual(before.trialWins);
+  for (const skin of skins)
+    expect(after.awakening[skin.id]).toEqual({ wins: 0, peril3: false, stage: 1 });
+  const visible = (await db.query<{ looks: any }>("select public.arena_my_looks() as looks")).rows[0].looks;
+  expect(visible.auralynx).toEqual({ skin: "auralynx-celestial-sage", stage: 3 });
+  await expect(db.query("select public.arena_equip_champion_skin('auralynx','auralynx-celestial-sage',4)")).rejects.toThrow("not unlocked");
+  await expect(db.query("select public.arena_equip_champion_skin('auralynx','auralynx-celestial-sage',0)")).rejects.toThrow("not unlocked");
+  await expect(db.query("select public.arena_equip_champion_skin('voltkit','auralynx-celestial-sage',3)")).rejects.toThrow("another champion");
+  await expect(db.query("select public.arena_equip_champion_skin('voltkit','voltkit-snowcap',1)")).rejects.toThrow("do not own");
+  await db.query("select public.arena_buy_item('voltkit-snowcap')");
+  await expect(db.query("select public.arena_equip_champion_skin('voltkit','voltkit-snowcap',3)")).rejects.toThrow("not unlocked");
+
+  await db.exec(`reset role;delete from public.arena_admins where user_id='${tester}'`);
+  await login(tester);
+  expect((await state()).mythicTesting).toBe(false);
+  await expect(db.query("select public.arena_equip_champion_skin('auralynx','auralynx-celestial-sage',3)")).rejects.toThrow("not unlocked");
+  await db.query("select public.arena_equip_champion_skin('auralynx','auralynx-celestial-sage',1)");
+  await login();
+  expect((await state()).mythicTesting).toBe(false);
+  await expect(db.query("select public.arena_equip_champion_skin('voltkit','voltkit-stormcrown',3)")).rejects.toThrow("not unlocked");
+  await expect(db.query("select public.arena_buy_item('lumoth-starweaver')")).rejects.toThrow("Mythic Trial");
+
+  await db.exec(`reset role;insert into public.arena_admins values ('${tester}');update public.arena_profiles set suspended=true where id='${tester}'`);
+  await login(tester);
+  expect((await state()).mythicTesting).toBe(false);
+  await expect(db.query("select public.arena_equip_champion_skin('auralynx','auralynx-celestial-sage',3)")).rejects.toThrow("Login required");
+  await expect(db.query("select public.arena_buy_item('cindrake-ashen')")).rejects.toThrow("Login required");
+});
