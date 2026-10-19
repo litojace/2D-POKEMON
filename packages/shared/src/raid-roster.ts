@@ -79,7 +79,7 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
     signature: "Step the runes only the Dreamer sees",
     blurb:
       "A huge sleepy sky whale with a tiny house on its back. One raider sees its dream; the team must step the runes in order to wake it.",
-    playable: false,
+    playable: true,
   },
   prismatail: {
     id: "prismatail",

@@ -8,8 +8,8 @@ import {
   RAID_SLOTS,
 } from "../../packages/shared/src/raid";
 
-/** Migrations that seed arena_raid_rewards (009: Grumblecrag; 012: Tidewyrm; 013: Gloomshade). */
-const sql = ["009_raid_hub.sql", "012_tidewyrm.sql", "013_gloomshade.sql"]
+/** Migrations that seed arena_raid_rewards (009: Grumblecrag; 012: Tidewyrm; 013: Gloomshade; 015: Somnara). */
+const sql = ["009_raid_hub.sql", "012_tidewyrm.sql", "013_gloomshade.sql", "015_somnara.sql"]
   .map((f) => readFileSync(`supabase/migrations/${f}`, "utf8"))
   .join("\n");
 /** Rows of the arena_raid_rewards seeds (SQL doubles a quote inside a name). */

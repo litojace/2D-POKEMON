@@ -8748,3 +8748,43 @@ dialog:is(:has(.shop), :has(.raid-hub), :has(.missions-screen), :has(.profile-sc
 /* Shop and Raid Hub: toolbar on top, the rest scrolls. */
 dialog[open]:is(:has(.raid-hub), :has(.shop)) { overflow: hidden; }
 dialog:is(:has(.raid-hub), :has(.shop)) .dialog-content { height: 100%; max-height: none; }
+
+/* Somnara: a compact private dream and four calls, clear of movement controls. */
+#raid-dream-panel { display: none; }
+.battle-raid #raid-dream-panel:not([hidden]) { position: absolute; z-index: 26; top: 8px; left: 50%; transform: translateX(-50%); display: grid; gap: 4px; max-width: calc(100% - 110px); padding: 5px 7px; border: 1px solid #c9a3ff77; border-radius: 12px; background: #101b35ed; box-shadow: 0 4px 18px #060d2477; color: #e4d6ff; }
+.dream-strip, .dream-private-runes { display: flex; align-items: center; justify-content: center; gap: 5px; }
+.dream-strip > span, .dream-strip small { font-size: 10px; white-space: nowrap; }
+.dream-strip > b { font-size: 12px; min-width: 23px; text-align: right; color: #ffe19b; }
+.dream-private-runes i { display: inline-flex; width: 17px; height: 17px; }
+.dream-private-runes svg { width: 100%; height: 100%; }
+.dream-rune-buttons { display: grid; grid-template-columns: repeat(4, minmax(44px, 1fr)); gap: 4px; }
+.dream-rune-buttons button { display: flex; align-items: center; justify-content: center; gap: 3px; min-height: 44px; margin: 0; padding: 5px; border: 1px solid currentColor; border-radius: 8px; background: #ffffff08; }
+.dream-rune-buttons svg { width: 22px; height: 22px; flex: none; }
+.dream-rune-buttons kbd { font-family: inherit; font-size: 10px; font-weight: 600; line-height: 1; opacity: .7; }
+[data-rune="circle"] { color: #92efdb; }
+[data-rune="star"] { color: #ffdf8d; }
+[data-rune="moon"] { color: #d1b2ff; }
+[data-rune="wave"] { color: #8bceff; }
+@media (max-height: 450px) { .dream-strip > span { display: none; } }
+/* Somnara's earned cosmetics, also represented in combat's layered rig. */
+.raid-cosmetic-preview[data-cosmetic="twilight-colors"] > svg,
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar,.roster-panel)[data-raid-cosmetic~="twilight-colors"] svg { filter: hue-rotate(225deg) saturate(.55) brightness(1.08); }
+.raid-cosmetic-preview[data-cosmetic="starlit-skin"] > svg,
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar,.roster-panel)[data-raid-cosmetic~="starlit-skin"] svg { filter: hue-rotate(240deg) saturate(.4) drop-shadow(0 0 4px #e6ddff88); }
+.raid-cosmetic-preview[data-cosmetic="moonglass"],
+:is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="moonglass"] { border-radius: 18%; background: linear-gradient(135deg, #c9a3ff22, #8bceff11); box-shadow: 0 0 0 3px #b9a7e3, inset 0 0 0 4px #dce4ff66, 0 0 14px #b9a7e344; }
+.raid-cosmetic-preview[data-cosmetic="lullaby-aura"] { border-radius: 50%; box-shadow: 0 0 0 2px #c9a3ff88, 0 0 14px #c9a3ff44; background: radial-gradient(ellipse at 50% 85%, #c9a3ff33, transparent 65%); }
+.raid-cosmetic-preview[data-cosmetic="dreamdrift"], .raid-cosmetic-preview[data-cosmetic="sweet-dreams"] { background: radial-gradient(circle at 25% 60%, #92efdb33 0 8%, transparent 9%), radial-gradient(circle at 75% 30%, #c9a3ff44 0 10%, transparent 11%), #15203c; border-radius: 16%; }
+
+/* Canvas dimensions must not change the box observed by fitRenderer. Phaser's
+   centering margins otherwise create a resize loop and move raid controls. */
+.battle-raid #game { position: relative; min-height: 0; }
+.battle-raid #game canvas { position: absolute !important; inset: 0; margin: 0 !important; width: 100% !important; height: 100% !important; }
+.raid-cosmetic-preview[data-cosmetic="moonglass"], :is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="moonglass"] { position: relative; }
+.raid-cosmetic-preview[data-cosmetic="moonglass"]::after, :is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="moonglass"]::after { content: ""; position: absolute; top: 4px; right: 3px; width: 13px; height: 13px; border-radius: 50%; box-shadow: -4px 1px 0 #f3f0ff; pointer-events: none; }
+.raid-cosmetic-preview[data-cosmetic="lullaby-aura"]::after { content: "♪"; position: absolute; right: 5px; top: 4px; color: #ffdf8d; font-size: 22px; line-height: 1; pointer-events: none; }
+.dream-rune-buttons kbd { min-width: 0; padding: 0; border: 0; background: none; }
+@media (max-height: 350px) and (max-width: 700px) {
+  .dream-private-runes { gap: 3px; }
+  .dream-private-runes i { width: 14px; height: 14px; }
+}

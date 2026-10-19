@@ -1,7 +1,8 @@
 # Raid Roster, Shop & Missions — Design Spec (approved)
 
-Status: **approved Oct 17. Step 1 (Raid Hub, Raid of the Day, Victory slot, migration 009) shipped Oct 17. Step 2 (coins, daily missions and the Shop with the whole catalog, migrations 010–011) shipped Oct 17. Step 3 (Tidewyrm, migration 012) shipped Oct 18; next is a play session, then step 4, Gloomshade.** See §11 for what step 2 draws and what's still simplified. In step 1 the Victory plays in the arena on round and raid wins; showing it on the results card and in the menu preview is still to do. Numbers are starting values to tune
-with real play, using the same balance data Grumblecrag already records.
+Status: **Grumblecrag, Tidewyrm, Gloomshade and Somnara are implemented. Somnara uses migration 015; apply it after 014 to enable its records and eleven rewards. Prismatail is next in the build order, followed by Emberwing and Storm Twins.** The Raid Hub, Raid of the Day, five cosmetic slots, coins, daily missions and Shop are implemented. Balance values still need live play feedback.
+
+Somnara's sequence is generated privately on the server, omitted from public and spectator snapshots, and delivered only to the Dreamer (or through Lucid/Thoughtstrike). Its camera keeps all four pads visible. Tests cover solo/co-op rune entry, backwards dreams, sleep/wake, champion tricks, practice, daily rotation, socket privacy, reward persistence and desktop/mobile controls.
 
 Decisions so far (Oct 17):
 

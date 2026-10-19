@@ -1,3 +1,5 @@
+import { renderSomnaraControls } from "./somnara-controls";
+import { drawCloudDeck, drawSomnaraWarning, drawSomnara } from "./raid-somnara-art";
 import { buttonIcon, iconLabel, menuIcon } from "./menu-icons";
 import {
   raidCue,
@@ -238,7 +240,9 @@ export function renderRaidUI(
   if (state.phase === "briefing") {
     title = `${RAID_TRAITS[r.trait].name} ${RAID_BOSSES[r.boss].name}`;
     const guide =
-      r.boss === "gloomshade"
+      r.boss === "somnara"
+        ? `<span>${raidGuideScene("dream", me.character)}<b>Call the dream</b><small>Only the Dreamer sees it. Call runes with 1–4 or the rune bar.</small></span><span>${raidGuideScene("runes", me.character)}<b>Step the pads in order</b><small>Enter a matching pad for each rune. Solve it to expose Somnara.</small></span><span>${raidGuideScene("quiet", me.character)}<b>Stay awake</b><small>Jump rings, pop bubbles and follow the moving Quiet Zone.</small></span>`
+        : r.boss === "gloomshade"
         ? `<span>${raidGuideScene("lantern", me.character)}<b>Keep the lights on</b><small>Hit a dark lantern twice. Light cleanses curses.</small></span><span>${raidGuideScene("shadow", me.character)}<b>Find the real one</b><small>Only it casts a shadow in light. Copies curse you.</small></span><span>${raidGuideScene("curse", me.character)}<b>Spread out</b><small>Curses jump to anyone close. Three makes you Haunted.</small></span>`
         : r.boss === "tidewyrm"
         ? `<span>${raidGuideScene("strand", me.character)}<b>Strand it</b><small>Lead the dive ripple onto an island, then step off.</small></span><span>${raidGuideScene("tide", me.character)}<b>Share the islands</b><small>High Tide floods the floor: two to an island.</small></span><span>${raidGuideScene("prison", me.character)}<b>Pop the bubble</b><small>Three hits free a trapped friend. Alone, mash attack.</small></span>`
@@ -262,6 +266,7 @@ export function renderRaidUI(
         ? `${RAID_BOSSES[r.boss].name} defeated!`
         : r.boss === "tidewyrm"
           ? "The tide keeps rising"
+          : r.boss === "somnara" ? "The dream drifts on"
           : r.boss === "gloomshade"
             ? "The night goes on"
             : "The mountain still stands";
@@ -269,8 +274,8 @@ export function renderRaidUI(
     const readyCount = heroes.filter((p) => p.ready).length;
     body = `<div class="raid-result-summary"><div class="raid-result-art" aria-hidden="true"><svg viewBox="-65 -65 130 115">${raidGuideBossFor(r.boss)}</svg></div><div class="raid-result-stats"><span><b>${time(r.elapsed)}</b>${r.result === "victory" ? "Clear time" : "Time survived"}</span><span><b>${r.revives}</b>Revives</span><span><b>${r.downs}</b>Downs</span></div></div><div class="raid-result-body">${raidContributions(state)}<div class="raid-result-next">${
       r.result === "victory"
-        ? `<p class="raid-save-state" role="status">${r.rewardStatus === "saved" ? "✓ Rewards saved to your account." : r.rewardStatus === "unavailable" ? "This clear could not be saved. Your reward progress has not been updated." : "Saving your rewards…"}</p>${r.rewardStatus === "saved" ? raidRewardProgress(loadProgress ? progress?.progress : null, r.boss) : ""}<p class="raid-next-challenge">${r.peril < 3 ? `Next challenge: Peril ${r.peril + 1} · ${r.boss === "tidewyrm" ? (r.peril === 1 ? "Shorter strands, harder hits" : "Islands sink for good") : r.peril === 1 ? "Falling debris" : "Closing arena"}` : "Next challenge: a no-downs clear or the Raid of the Day."}</p>`
-        : `${r.rewardStatus === "saved" ? `<p class="raid-save-state" role="status">✓ Progress saved: your ${r.boss === "tidewyrm" ? "strands" : r.boss === "gloomshade" ? "relights" : "pillars"} and revives count towards titles.</p>` : ""}<p class="raid-retry-tip">${defeatTip(state)}</p>`
+        ? `<p class="raid-save-state" role="status">${r.rewardStatus === "saved" ? "✓ Rewards saved to your account." : r.rewardStatus === "unavailable" ? "This clear could not be saved. Your reward progress has not been updated." : "Saving your rewards…"}</p>${r.rewardStatus === "saved" ? raidRewardProgress(loadProgress ? progress?.progress : null, r.boss) : ""}<p class="raid-next-challenge">${r.peril < 3 ? `Next challenge: Peril ${r.peril + 1} · ${r.boss === "somnara" ? (r.peril === 1 ? "Longer rune sequences" : "Backwards dreams and faster attacks") : r.boss === "tidewyrm" ? (r.peril === 1 ? "Shorter strands, harder hits" : "Islands sink for good") : r.boss === "gloomshade" ? (r.peril === 1 ? "Faster hands and more copies" : "Paired pulses and shifting tiles") : r.peril === 1 ? "Falling debris" : "Closing arena"}` : "Next challenge: a no-downs clear or the Raid of the Day."}</p>`
+        : `${r.rewardStatus === "saved" ? `<p class="raid-save-state" role="status">✓ Progress saved: your ${r.boss === "tidewyrm" ? "strands" : r.boss === "gloomshade" ? "relights" : r.boss === "somnara" ? "correct runes" : "pillars"} and revives count towards titles.</p>` : ""}<p class="raid-retry-tip">${defeatTip(state)}</p>`
     }<div class="raid-retry-status">${heroes.length === 1 ? "Same champion and challenge · choose fresh rites" : `${readyCount}/${heroes.length} ready · everyone confirms to run again`}</div><div class="result-actions raid-result-actions"><button class="primary" id="raid-retry" ${me.ready || !heroes.every((p) => p.connected) ? "disabled" : ""}>${me.ready ? "Waiting for the team…" : iconLabel("again", "Run again")}</button><button class="secondary" id="raid-lobby">${iconLabel("swap", "Change champion / challenge")}</button><button class="secondary raid-icon-button" id="raid-rewards">${menuIcon("bestiary")}<span>Raid Hub & rewards</span></button><button class="quiet" id="raid-exit">${iconLabel("home", "Return to menu")}</button></div>${!heroes.every((p) => p.connected) ? '<p class="raid-retry-tip">A teammate is disconnected. Return to the lobby to refill the party.</p>' : ""}</div></div>`;
   }
   const previousCard = overlay.querySelector<HTMLElement>(".raid-overlay");
@@ -329,10 +334,13 @@ export function drawRaidArena(
   const r = state.raid;
   if (!r) return;
   const tide = r.boss === "tidewyrm",
-    gloom = r.boss === "gloomshade";
+    gloom = r.boss === "gloomshade",
+    dream = r.boss === "somnara";
+  if (dream) drawCloudDeck(g, state, reduced);
   if (tide) drawLagoon(g, state, reduced);
   if (gloom) drawLanternYard(g, state, reduced);
   for (const w of r.warnings) {
+    if (dream && drawSomnaraWarning(g, state, w, reduced)) continue;
     if (tide && drawTidewyrmWarning(g, state, w, reduced)) continue;
     if (gloom && drawGloomshadeWarning(g, state, w, reduced)) continue;
     const pulse = reduced ? 1 : 0.86 + Math.sin(state.time * 8) * 0.14;
@@ -585,6 +593,7 @@ export function drawRaidArena(
       g.fillStyle(color, 1).fillCircle(p.x, y + bob, 3);
     }
   }
+  if (dream) return drawSomnara(g, state, reduced, clock);
   return tide
     ? drawTidewyrm(g, state, reduced, clock)
     : gloom
@@ -600,6 +609,7 @@ function defeatTip(state: Snapshot) {
     if (d.cause) causes.set(d.cause, (causes.get(d.cause) ?? 0) + 1);
   const worst = [...causes].sort((a, b) => b[1] - a[1])[0]?.[0];
   if (worst) return `${RAID_ATTACKS[worst].name}: ${RAID_ATTACKS[worst].tip}`;
+  if (r.boss === "somnara") return "Call the runes, then enter their pads in order. Jump the rings and pop Dream Bubbles before three Drowsy stacks put you to sleep.";
   if (r.boss === "gloomshade")
     return Object.values(r.contributions ?? {}).some((c) => c.pillars > 0)
       ? "Look for the one with a shadow in lantern light, then hit it six times in a row to expose its core."
@@ -651,6 +661,7 @@ function raidControls(
   // The arena frame holds the game canvas (#game).
   const frame = document.getElementById("game")?.parentElement;
   if (!frame) return;
+  renderSomnaraControls(state, me, frame, request);
   let pings = document.getElementById("raid-pings");
   if (!pings) {
     pings = document.createElement("div");

@@ -1,3 +1,5 @@
+import { somnaraPattern, type DreamRune } from "./raid-somnara.js";
+export * from "./raid-somnara.js";
 import type { RaidBossId } from "./raid-roster.js";
 import type { CharacterId } from "./index.js";
 export * from "./raid-roster.js";
@@ -61,7 +63,9 @@ export type RaidAttack =
   | "snuff"
   | "curse"
   | "split"
-  | "pulse";
+  | "pulse"
+  // Somnara
+  | "lullaby" | "tail-splash" | "dream-bubbles" | "falling-stars" | "whale-song" | "dream-sequence" | "nightmare";
 export const RAID_ATTACKS: Record<
   RaidAttack,
   { name: string; tip: string; practice: string }
@@ -156,12 +160,20 @@ export const RAID_ATTACKS: Record<
     tip: "Every copy sends a ring, but only the real one's hurts: jump it. The pulse also shows you which one is real.",
     practice: "Rings from every copy. Jump the real one's.",
   },
+  lullaby: { name: "Lullaby Rings", tip: "Jump the expanding rings or keep out of their path. Three Drowsy stacks put you to sleep; a teammate can hit you awake without hurting you.", practice: "Jump the three soft rings. Each hit adds Drowsy." },
+  "tail-splash": { name: "Tail Splash", tip: "Leave the marked rectangle before Somnara's tail splashes down.", practice: "A wide rectangle marks the tail's reach. Step outside it." },
+  "dream-bubbles": { name: "Dream Bubbles", tip: "Pop the drifting bubbles with an attack or outrun them. Touching one adds Drowsy.", practice: "Slow bubbles follow you. Pop them or keep moving." },
+  "falling-stars": { name: "Falling Stars", tip: "Remember the constellation and stand between the marked stars before they land.", practice: "A constellation flashes; stars land on each marked point." },
+  "whale-song": { name: "Whale Song", tip: "Stay inside the moving teal Quiet Zone until the song ends. Everyone fits; it shrinks on higher Perils.", practice: "Follow the moving Quiet Zone for four seconds." },
+  "dream-sequence": { name: "Dream Sequence", tip: "The Dreamer sees the runes privately. Call them with 1–4 or the rune buttons, then enter the matching pads in order. Leave a pad before entering it again. A backwards arrow means read right to left.", practice: "Read your private sequence and step on the pads in order. Solo gives you 14 seconds." },
+  nightmare: { name: "Nightmare", tip: "A wrong rune or expired sequence bursts across the team. A fresh Dreamer gets a new sequence; listen for their calls.", practice: "Get the rune sequence right before its timer expires." },
 };
 /** Each boss's attacks, in the order the Hub and the practice room list them. */
 export const RAID_BOSS_ATTACKS: Partial<Record<RaidBossId, RaidAttack[]>> = {
   grumblecrag: ["charge", "slam", "volley", "debris", "eruption", "share"],
   tidewyrm: ["dive", "wave", "bubbles", "hightide", "undertow", "prison"],
   gloomshade: ["lunge", "hands", "snuff", "curse", "split", "pulse"],
+  somnara: ["lullaby", "tail-splash", "dream-bubbles", "falling-stars", "whale-song", "dream-sequence"],
 };
 export const raidAttacksOf = (boss: RaidBossId) => RAID_BOSS_ATTACKS[boss] ?? [];
 /**
@@ -339,6 +351,7 @@ export function raidPattern(
 ): RaidAttack[] {
   if (boss === "tidewyrm") return tidewyrmPattern(phase, peril);
   if (boss === "gloomshade") return gloomshadePattern(phase, peril);
+  if (boss === "somnara") return somnaraPattern(phase);
   // A meteor needs friends to share it; alone it becomes a dodge.
   const meteor: RaidAttack = "share";
   if (phase === 1)
@@ -366,6 +379,7 @@ export const RAID_PING_SECONDS = 3.5;
 /** The third signal means something different on each boss. */
 export function raidPingLabel(kind: RaidPingKind, boss: RaidBossId = "grumblecrag") {
   if (kind === "bait" && boss === "tidewyrm") return "Island here";
+  if (kind === "bait" && boss === "somnara") return "Rune here";
   if (kind === "bait" && boss === "gloomshade") return "That's the real one";
   return RAID_PINGS[kind].label;
 }
@@ -434,6 +448,12 @@ export const RAID_BOSS_PERKS: Partial<
       text: "Aimed at the real Gloomshade, it reveals it to the team for 6 seconds.",
     },
   },
+  somnara: {
+    cindrake: { skill: "Ember Gust", text: "Wakes every sleeping ally caught in the cone, without hurting them." },
+    tidefin: { skill: "Mirror Mist", text: "Your clone can enter a rune pad and count as a step." },
+    mystowl: { skill: "Thoughtstrike", text: "Reveals the current dream sequence to the whole team." },
+    duskveil: { skill: "Shade Crawl", text: "Leaves a shadow trail that pops Dream Bubbles." },
+  },
 };
 export const raidPerksOf = (boss: RaidBossId) => RAID_BOSS_PERKS[boss] ?? {};
 /** Chapter names and goals per boss. */
@@ -481,6 +501,11 @@ export const RAID_BOSS_CHAPTERS: Partial<
         "Lanterns go out twice as fast, the copies come back after every exposure, and Nightmare Pulses come in pairs.",
     },
   ],
+  somnara: [
+    { name: "Dozing", objective: "Read the dream. Step the runes in order.", detail: "Only the Dreamer sees the sequence. Call Circle, Star, Moon and Wave with 1–4 or the rune buttons, then enter the pads in order to expose Somnara for 6 seconds. Jump Lullaby Rings and pop Dream Bubbles. Three Drowsy stacks put you to sleep; allies can tap you awake." },
+    { name: "Deep Sleep", objective: "Remember the stars. Follow the Quiet Zone.", detail: "Sequences get longer. Falling Stars land at the constellation points, and Whale Song hurts everyone outside its moving teal Quiet Zone. Solo sequences are shorter and give you 14 seconds." },
+    { name: "Waking Dream", objective: "Call clearly. Solve the dream through the attacks.", detail: "Attacks continue while the sequence is active. On Peril 3 some dreams are displayed backwards: the arrow means read right to left. Spread out for stars, then gather in the Quiet Zone." },
+  ],
 };
 export const raidChapters = (boss: RaidBossId) =>
   RAID_BOSS_CHAPTERS[boss] ?? RAID_CHAPTERS;
@@ -511,7 +536,8 @@ export type RaidCosmetic =
   | "shadowstep"
   | "crescent"
   | "nightmote"
-  | "crescent-bow";
+  | "crescent-bow"
+  | "twilight-colors" | "starlit-skin" | "dreamdrift" | "moonglass" | "lullaby-aura" | "sweet-dreams";
 /** A raid reward or a Shop collection piece (see shop.ts LOOK_ITEMS). */
 export type AppearanceItem = RaidCosmetic | (string & {});
 export type RaidLoadout = Partial<Record<RaidSlot, AppearanceItem | null>>;
@@ -577,6 +603,17 @@ export const RAID_REWARDS: RaidReward[] = [
   { id: "lone-lantern", boss: "gloomshade", slot: "title", name: "Lone Lantern", description: "Title", goal: "Clear Peril 3 solo (no self-revive)", rule: { kind: "solo", peril: 3 } },
   { id: "lamplighter-title", boss: "gloomshade", slot: "title", name: "Lamplighter", description: "Title", goal: "Relight 50 lanterns (wins and losses)", rule: { kind: "stat", stat: "pillars", n: 50 } },
   { id: "boss-hunter", boss: null, slot: "title", name: "Boss Hunter", description: "Title", goal: "100 raid clears across every boss", rule: { kind: "total-clears", n: 100 } },
+  {"id": "dreamwaker", "boss": "somnara", "slot": "title", "name": "Dreamwaker", "description": "Title", "goal": "First clear", "rule": {"kind": "clears", "n": 1}},
+  {"id": "twilight-colors", "boss": "somnara", "slot": "skin", "name": "Twilight colors", "description": "Lavender dusk with soft rose highlights", "goal": "5 clears", "rule": {"kind": "clears", "n": 5}},
+  {"id": "starlit-skin", "boss": "somnara", "slot": "skin", "name": "Starlit skin", "description": "Midnight lavender with twinkling star flecks", "goal": "10 clears", "rule": {"kind": "clears", "n": 10}},
+  {"id": "dreamdrift", "boss": "somnara", "slot": "entrance", "name": "Dreamdrift entrance", "description": "Arrive on a cloud of shimmering dream bubbles", "goal": "Clear Peril 2", "rule": {"kind": "peril", "n": 2}},
+  {"id": "lucid-legend", "boss": "somnara", "slot": "title", "name": "Lucid Legend", "description": "Title", "goal": "Clear Peril 3", "rule": {"kind": "peril", "n": 3}},
+  {"id": "moonglass", "boss": "somnara", "slot": "frame", "name": "Moonglass frame", "description": "A glassy lavender frame with a silver crescent", "goal": "Clear Peril 3", "rule": {"kind": "peril", "n": 3}},
+  {"id": "lullaby-aura", "boss": "somnara", "slot": "aura", "name": "Lullaby aura", "description": "Floating musical notes circle beneath your fighter", "goal": "Clear Peril 3 with no downs", "rule": {"kind": "flawless", "peril": 3}},
+  {"id": "sweet-dreams", "boss": "somnara", "slot": "victory", "name": "Sweet Dreams", "description": "A little dream whale swims through a starry cloud behind you", "goal": "Feat: solve a dream and finish with no wrong runes or timeouts", "rule": {"kind": "feat"}},
+  {"id": "daydream-dash", "boss": "somnara", "slot": "title", "name": "Daydream Dash", "description": "Title", "goal": "Clear Peril 2 solo in under 4:00", "rule": {"kind": "speed", "peril": 2, "party": 1, "seconds": 240}},
+  {"id": "lone-dreamer", "boss": "somnara", "slot": "title", "name": "Lone Dreamer", "description": "Title", "goal": "Clear Peril 3 solo (no self-revive)", "rule": {"kind": "solo", "peril": 3}},
+  {"id": "dream-weaver", "boss": "somnara", "slot": "title", "name": "Dream Weaver", "description": "Title", "goal": "Step 60 correct runes (wins and losses)", "rule": {"kind": "stat", "stat": "pillars", "n": 60}},
 ];
 export const RAID_COSMETICS = Object.fromEntries(
   RAID_REWARDS.filter((r) => r.slot !== "title").map((r) => [
@@ -600,6 +637,9 @@ export const RAID_COSMETICS = Object.fromEntries(
   }
 >;
 export const RAID_TRAITS = {
+  "deep-slumber": { name: "Deep Slumber", text: "One more rune in each sequence, but exposure lasts 2 seconds longer." },
+  "restless-dream": { name: "Restless Dream", text: "More Dream Bubbles, but one fewer rune per sequence." },
+  "starry-night": { name: "Starry Night", text: "More Falling Stars, but a larger Quiet Zone." },
   restless: {
     name: "Restless",
     text: "Faster attacks, but the exposed core takes extra damage.",
@@ -622,12 +662,14 @@ export const RAID_BOSS_TRAITS: Partial<Record<RaidBossId, RaidTrait[]>> = {
   grumblecrag: ["restless", "fractured", "ancient"],
   tidewyrm: ["murky", "rip-current", "spring-tide"],
   gloomshade: ["moonlit", "restless-spirits", "hollow"],
+  somnara: ["deep-slumber", "restless-dream", "starry-night"],
 };
 export const raidTraitFor = (boss: RaidBossId, seed: number) => {
   const list = RAID_BOSS_TRAITS[boss] ?? RAID_BOSS_TRAITS.grumblecrag!;
   return list[seed % list.length];
 };
 export const RAID_RITES = {
+  lucid: { name: "Lucid", text: "Dream Bubbles cannot make you Drowsy. See the first rune of every sequence, even when someone else is the Dreamer.", icon: "Rest" },
   shelter: {
     name: "Sheltering Step",
     text: "Dashing leaves a ward. Nearby allies take 25% less damage for 3 seconds.",
@@ -674,6 +716,7 @@ export type RaidRite = keyof typeof RAID_RITES;
 export const RAID_BOSS_RITES: Partial<Record<RaidRite, RaidBossId>> = {
   footing: "tidewyrm",
   lamplighter: "gloomshade",
+  lucid: "somnara",
 };
 /** The rites a boss's runs can offer: the shared six plus its own. */
 export const ritesFor = (boss: RaidBossId) =>
@@ -708,6 +751,8 @@ export interface RaidWarning {
   shiftAt?: number;
   /** Lantern Snuff: which lantern dims. */
   lantern?: number;
+  /** Tail Splash: full rectangle width. */
+  width?: number;
 }
 /** Tidewyrm's raised islands (walkable). */
 export interface RaidIsland {
@@ -799,6 +844,16 @@ export interface RaidState {
   revealUntil?: number;
   /** Hits on the real Gloomshade in a row (6 exposes it). */
   streak?: number;
+  /** Somnara: public progress only; the sequence lives on the server. */
+  dream?: { id: number; dreamerId: string; step: number; length: number; until: number; startedAt: number; backwards: boolean };
+  dreamRings?: { id: number; x: number; y: number; radius: number; startedAt: number }[];
+  dreamBubbles?: { id: number; x: number; y: number; until: number }[];
+  quietZone?: { x: number; y: number; radius: number; startedAt: number; until: number };
+  drowsy?: Record<string, { stacks: number; sleepUntil: number }>;
+  runeCalls?: { id: number; playerId: string; rune: DreamRune; step: number; until: number }[];
+  dreamTrails?: { x: number; y: number; until: number }[];
+  dreamsSolved?: number;
+  dreamMistakes?: number;
   message: string;
   resultId?: string;
   rewardStatus?: "saving" | "saved" | "unavailable";

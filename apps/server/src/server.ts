@@ -1,7 +1,7 @@
 import { RaidArena } from "./raid.js";
 import { createRaidArena } from "./raid-bosses.js";
 import type { ActivityReceipt } from "../../../packages/shared/src/shop.js";
-import { RAID_ATTACKS, RAID_PINGS, RAID_COSMETICS, raidAttacksOf, type RaidAttack, raidLookOf, raidDay, raidWeek, RAID_BOSSES, RAID_BOSS_ORDER, type RaidBossId, type RaidProgress, type RaidReceipt } from "../../../packages/shared/src/raid.js";
+import { DREAM_RUNES, RAID_ATTACKS, RAID_PINGS, RAID_COSMETICS, raidAttacksOf, type RaidAttack, raidLookOf, raidDay, raidWeek, RAID_BOSSES, RAID_BOSS_ORDER, type RaidBossId, type RaidProgress, type RaidReceipt } from "../../../packages/shared/src/raid.js";
 import express from "express";
 import { createServer } from "node:http";
 import { randomBytes, randomInt, randomUUID } from "node:crypto";
@@ -404,7 +404,15 @@ export function createArenaServer(
     );
     if (snapshot.events.length)
       eventCursors.set(arena, snapshot.events.at(-1)!.id);
-    io.to(arena.code).emit("state", packSnapshot(snapshot));
+    const wire = packSnapshot(snapshot);
+    if (arena instanceof RaidArena && arena.raid.boss === "somnara") {
+      const recipients = [...sessions.values()].filter(s => s.code === arena.code && s.socketId);
+      // Serialize shared world data once. The private sequence is added only
+      // to the authenticated seat's socket, never a room/spectator broadcast.
+      io.to(arena.code).except(recipients.map(s => s.socketId!)).emit("state", wire);
+      for (const session of recipients)
+        io.to(session.socketId!).emit("state", { ...wire, raidDream: arena.dreamFor(session.id) });
+    } else io.to(arena.code).emit("state", wire);
   }
   function resume(arena: Arena) {
     if (
@@ -905,6 +913,13 @@ export function createArenaServer(
         if(!a.ping(id,kind.data.kind))return fail(cb,'Wait a moment before pinging again.');
         reply(cb,{ok:true});broadcast(a);
       },false));
+    socket.on("raid-rune", (data: unknown, cb: unknown) =>
+      withRoom(cb, (a, id) => {
+        const result = z.object({ rune: z.enum(DREAM_RUNES) }).strict().safeParse(data);
+        if (!(a instanceof RaidArena) || !result.success || !a.callRune(id, result.data.rune))
+          return fail(cb, "Only the awake Dreamer can call a rune. Wait a moment between calls.");
+        reply(cb, { ok: true }); broadcast(a);
+      }, false));
     socket.on('raid-drill',(data:unknown,cb:unknown)=>
       withRoom(cb,(a,id)=>{
         const result=z.object({kind:z.enum(Object.keys(RAID_ATTACKS) as [RaidAttack,...RaidAttack[]]).nullable()}).strict().safeParse(data);

@@ -1,3 +1,4 @@
+import { createRaidArena } from "../../apps/server/src/raid-bosses";
 import { expect, it } from "vitest";
 import { RaidArena } from "../../apps/server/src/raid";
 import {
@@ -169,8 +170,8 @@ it("daily seeds and traits are stable across rooms and team sizes", () => {
   expect(one).toEqual(two);
   expect(one).not.toEqual(raidDay(new Date("2026-10-18T08:00:00Z")));
   expect(featuredOn("2026-10-17").seed).toBe(one.seed);
-  const a = new RaidArena("AAA"),
-    b = new RaidArena("BBB");
+  const a = createRaidArena("AAA", raidDay().boss),
+    b = createRaidArena("BBB", raidDay().boss);
   a.add("a", "A");
   b.add("b", "B");
   b.add("c", "C");
@@ -339,7 +340,7 @@ it("ends a final-phase slam combination with debris and a recovery window", () =
 
 it("varies teammates' rite offers while preserving daily seat reproducibility", () => {
   const make = (code: string) => {
-    const a = new RaidArena(code);
+    const a = createRaidArena(code, raidDay().boss);
     for (let i = 0; i < 4; i++) a.add(code + i, "Player");
     a.configure(1, true);
     a.start();

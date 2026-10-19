@@ -2,6 +2,7 @@ import { portraitAvatar, portraitCosmetics } from "./portraits";
 import { CHARACTERS, type Snapshot } from "@arena/shared";
 import {
   raidChapters,
+  DREAM_RUNE_NAMES,
   raidPingLabel,
   RAID_REWARDS,
   type RaidBossId,
@@ -24,7 +25,7 @@ export function raidCue(state: Snapshot, myId: string) {
   if (r.staggerUntil > state.time)
     return "Core exposed — unleash your ultimates!";
   const w = r.warnings[0];
-  const tide = tidewyrmCue(state, myId) || gloomshadeCue(state, myId);
+  const tide = somnaraCue(state, myId) || tidewyrmCue(state, myId) || gloomshadeCue(state, myId);
   if (tide) return tide;
   if (w?.kind === "charge") {
     const locked = w.lockAt !== undefined && state.time >= w.lockAt;
@@ -150,6 +151,26 @@ function gloomshadeCue(state: Snapshot, myId: string) {
   return "";
 }
 
+/** Somnara's private cues use only the recipient's view. */
+function somnaraCue(state: Snapshot, myId: string) {
+  const r = state.raid!;
+  if (r.boss !== "somnara") return "";
+  const drowsy = r.drowsy?.[myId];
+  if (drowsy && drowsy.sleepUntil > state.time) return "Asleep — a teammate can tap you awake without hurting you!";
+  if (r.quietZone) return "Whale Song — follow the moving teal Quiet Zone!";
+  if (r.warnings.some(w => w.kind === "falling-stars")) return "Falling Stars — stand between the constellation points!";
+  const dream = r.dream, view = state.raidDream;
+  if (dream) {
+    if (view?.id === dream.id && view.full) return `${dream.dreamerId === myId ? "You are the Dreamer" : "Dream revealed"}${view.backwards ? " — read RIGHT TO LEFT" : ""}. Call 1–4, then step the pads (${dream.step}/${dream.length}).`;
+    const called = [...(r.runeCalls ?? [])].reverse().find(q => q.until > state.time && q.step === dream.step && q.playerId === dream.dreamerId);
+    return called ? `${DREAM_RUNE_NAMES[called.rune]} called — enter that rune pad (${dream.step}/${dream.length})!` : "Listen to the Dreamer's rune calls, then enter the pads in order.";
+  }
+  if (r.exposedUntil > state.time) return "Dream solved — strike Somnara's shining heart!";
+  if (r.warnings.some(w => w.kind === "lullaby") || r.dreamRings?.length) return "Lullaby Rings — jump! Three Drowsy stacks put you to sleep.";
+  if (r.warnings.some(w => w.kind === "tail-splash")) return "Tail Splash — leave the marked lane!";
+  if (r.dreamBubbles?.length) return "Pop the Dream Bubbles or outrun them.";
+  return "";
+}
 /** One fun role per raider who stood out (top damage, revives, pillars). */
 export function raidRoles(
   contributions: Record<string, RaidContribution>,
@@ -164,12 +185,12 @@ export function raidRoles(
   };
   best("damage", "Heavy Hitter");
   best("revives", "Medic");
-  best("pillars", boss === "tidewyrm" ? "Strand Master" : boss === "gloomshade" ? "Lantern Keeper" : "Bait Master");
+  best("pillars", boss === "tidewyrm" ? "Strand Master" : boss === "gloomshade" ? "Lantern Keeper" : boss === "somnara" ? "Dream Guide" : "Bait Master");
   return roles;
 }
 /** What the boss-feature column counts (pillars baited, strands …). */
 export const featureLabel = (boss: RaidBossId) =>
-  boss === "tidewyrm" ? "Strands" : boss === "gloomshade" ? "Relights" : "Pillars";
+  boss === "tidewyrm" ? "Strands" : boss === "gloomshade" ? "Relights" : boss === "somnara" ? "Runes" : "Pillars";
 export function raidContributions(state: Snapshot) {
   const r = state.raid!;
   const roles = raidRoles(r.contributions ?? {}, r.boss);
@@ -181,11 +202,11 @@ export function raidContributions(state: Snapshot) {
         revives: 0,
         pillars: 0,
       };
-      return `<div class="raid-score-row"><div class="raid-score-player"><span class="raid-score-avatar" aria-hidden="true" data-raid-cosmetic="${portraitCosmetics(p)}">${portraitAvatar(p, "raid-result-" + p.id)}</span><span><b>${escape(p.name)}</b><small>${CHARACTERS[p.character].name}${p.out ? " · Left" : ""}${r.standIns?.includes(p.id) ? " · AI stand-in" : ""}</small>${(roles[p.id] ?? []).map((role) => `<em class="raid-role">${role}</em>`).join("")}</span></div><span aria-label="Damage">${Math.round(stats.damage).toLocaleString("en-US")}</span><span aria-label="Revives">${stats.revives}</span><span aria-label="${r.boss === "tidewyrm" ? "Strands" : r.boss === "gloomshade" ? "Lanterns relit" : "Pillars broken"}">${stats.pillars}</span></div>`;
+      return `<div class="raid-score-row"><div class="raid-score-player"><span class="raid-score-avatar" aria-hidden="true" data-raid-cosmetic="${portraitCosmetics(p)}">${portraitAvatar(p, "raid-result-" + p.id)}</span><span><b>${escape(p.name)}</b><small>${CHARACTERS[p.character].name}${p.out ? " · Left" : ""}${r.standIns?.includes(p.id) ? " · AI stand-in" : ""}</small>${(roles[p.id] ?? []).map((role) => `<em class="raid-role">${role}</em>`).join("")}</span></div><span aria-label="Damage">${Math.round(stats.damage).toLocaleString("en-US")}</span><span aria-label="Revives">${stats.revives}</span><span aria-label="${r.boss === "tidewyrm" ? "Strands" : r.boss === "gloomshade" ? "Lanterns relit" : r.boss === "somnara" ? "Correct runes" : "Pillars broken"}">${stats.pillars}</span></div>`;
     })
     .join(
       "",
-    )}<p class="raid-score-note">Revives credit everyone who helped. Pillars credit the raider who baited the charge.</p></section>`;
+    )}<p class="raid-score-note">Revives credit everyone who helped. ${r.boss === "somnara" ? "Runes credit the raider whose fighter or clone entered the correct pad." : r.boss === "tidewyrm" ? "Strands credit the raider who baited the dive." : r.boss === "gloomshade" ? "Relights credit the raider who lit the lantern." : "Pillars credit the raider who baited the charge."}</p></section>`;
 }
 
 export interface RaidGoal {
@@ -238,7 +259,7 @@ export function raidGoal(p: RaidProgress, reward: RaidReward): RaidGoal {
       const known = stats !== undefined || (boss === "grumblecrag" && p.pillars !== undefined);
       const have = stats?.[rule.stat] ?? (boss === "grumblecrag" ? (p[rule.stat] ?? 0) : 0);
       return goal(have, rule.n, known
-        ? `${Math.min(have, rule.n)}/${rule.n} ${rule.stat === "pillars" ? (boss === "tidewyrm" ? "strands" : boss === "gloomshade" ? "lanterns relit" : "pillars baited") : "revives"} · wins and losses count`
+        ? `${Math.min(have, rule.n)}/${rule.n} ${rule.stat === "pillars" ? (boss === "tidewyrm" ? "strands" : boss === "gloomshade" ? "lanterns relit" : boss === "somnara" ? "correct runes" : "pillars baited") : "revives"} · wins and losses count`
         : "Counts from the next raid update");
     }
     case "total-clears": {

@@ -37,6 +37,8 @@ import {
   raidPattern,
   raidDay,
   type RaidBossId,
+  type RaidDreamView,
+  type DreamRune,
   type RaidAttack,
   type RaidPingKind,
   type RaidState,
@@ -948,6 +950,9 @@ export class RaidArena extends Arena {
           this.damage(p, 6 * dt, boss.id);
     }
   }
+  /** Recipient-only Somnara information; ordinary raids have none. */
+  dreamFor(_id: string): RaidDreamView | undefined { return undefined; }
+  callRune(_id: string, _rune: DreamRune): boolean { return false; }
   /** A quick team signal over a raider's head. */
   ping(id: string, kind: RaidPingKind) {
     const p = this.heroes().find((q) => q.id === id);

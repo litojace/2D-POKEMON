@@ -5,6 +5,7 @@ import { fakeAccounts } from "../helpers/accounts";
 import { RaidArena } from "../../apps/server/src/raid";
 import { RAID_FUNCTIONS_MIGRATION } from "../../apps/server/src/accounts";
 import { TidewyrmArena } from "../../apps/server/src/raid-tidewyrm";
+import { SomnaraArena } from "../../apps/server/src/raid-somnara";
 import { GloomshadeArena } from "../../apps/server/src/raid-gloomshade";
 import { blankInput, type Reply } from "@arena/shared";
 import { raidDay } from "../../packages/shared/src/raid";
@@ -54,7 +55,7 @@ it("starts a regular-player solo raid, enforces Peril unlocks, and records a ver
     host = await connect();
   // Only bosses that are built can be raided.
   expect(
-    (await emit(host, "create", { name: "Raider", mode: "raid", boss: "somnara" })).ok,
+    (await emit(host, "create", { name: "Raider", mode: "raid", boss: "emberwing" })).ok,
   ).toBe(false);
   const created = await emit(host, "create", { name: "Raider", mode: "raid", boss: "grumblecrag" });
   expect(created.ok).toBe(true);
@@ -104,7 +105,8 @@ it("starts a regular-player solo raid, enforces Peril unlocks, and records a ver
   expect(a.players).toHaveLength(2);
 });
 it("lets the host leave a daily raid after returning to the lobby without regular Peril 2 unlocked", async () => {
-  const { connect } = await setup(), host = await connect();
+  const { connect, accounts } = await setup(), host = await connect();
+  accounts.provider.rpc = async () => ({ highestPeril: 0, clears: 1, cosmetics: [], weekly: [] });
   const created = await emit(host, "create", { name: "Raider", mode: "raid", boss: raidDay().boss });
   const a = server!.rooms.get(created.code!) as RaidArena;
   expect((await emit(host, "raid-config", { peril: 2, daily: true })).ok).toBe(true);
@@ -299,4 +301,55 @@ it("opens Gloomshade in the Lantern Yard and practises its own attacks", async (
   expect((await emit(host, "raid-drill", { kind: "split" })).ok).toBe(true);
   expect(a.raid.drill).toBe("split");
   expect(a.arenaId).toBe("lantern-yard");
+});
+
+it("sends Somnara's dream only to its authenticated Dreamer, with Lucid/reveal exceptions and no spectator leak", async () => {
+  const { connect, accounts } = await setup();
+  accounts.provider.rpc = async () => ({ clears: 1, highestPeril: 3, cosmetics: [], weekly: [], bosses: { grumblecrag: { clears: 1, highestPeril: 3 } } });
+  const host = await connect(), peer = await connect(), watcher = await connect();
+  const created = await emit(host, "create", { name: "Dream host", mode: "raid", boss: "somnara" });
+  expect(created.ok).toBe(true);
+  const joined = await emit(peer, "join", { name: "Dream friend", code: created.code }); expect(joined.ok).toBe(true);
+  expect((await emit(watcher, "watch", { code: created.code })).ok).toBe(true);
+  const a = server!.rooms.get(created.code!) as SomnaraArena;
+  expect(a).toBeInstanceOf(SomnaraArena); a.start(); a.phase = "playing";
+  (a as any).started = true; (a as any).nextAttack = Infinity;
+  (a as any).startAttack("dream-sequence", a.heroes()[0]);
+  const d = a.raid.dream!;
+  const socketById = new Map([[created.id!, host], [joined.id!, peer]]);
+  const dreamer = socketById.get(d.dreamerId)!, other = dreamer === host ? peer : host;
+  const otherId = dreamer === host ? joined.id! : created.id!;
+  const state = (socket: Socket, predicate: (s: any) => boolean) => new Promise<any>((resolve, reject) => {
+    const timeout = setTimeout(() => { socket.off("state", onState); reject(new Error("No matching Somnara snapshot")); }, 2000);
+    const onState = (snapshot: any) => { if (!predicate(snapshot)) return; clearTimeout(timeout); socket.off("state", onState); resolve(snapshot); };
+    socket.on("state", onState);
+  });
+  let pending = [dreamer, other, watcher].map(s => state(s, v => v.raid?.dream?.id === d.id));
+  for (let i = 0; i < 6; i++) server!.step();
+  let [own, ally, publicView] = await Promise.all(pending);
+  expect(own.raidDream.full).toBe(true); expect(own.raidDream.runes).toHaveLength(d.length);
+  expect(ally.raidDream).toBeUndefined(); expect(publicView.raidDream).toBeUndefined();
+  expect(JSON.stringify(ally)).not.toContain('"runes"'); expect(JSON.stringify(publicView)).not.toContain('"runes"');
+  expect((await emit(other, "raid-rune", { rune: "circle" })).ok).toBe(false);
+  expect((await emit(other, "raid-rune", { rune: "circle", playerId: d.dreamerId })).ok).toBe(false);
+  expect((await emit(dreamer, "raid-rune", { rune: "circle" })).ok).toBe(true);
+  a.raid.rites[otherId] = ["lucid"];
+  pending = [state(other, v => v.raidDream?.id === d.id && !v.raidDream.full)];
+  for (let i = 0; i < 6; i++) server!.step();
+  ally = (await Promise.all(pending))[0]; expect(ally.raidDream.runes).toHaveLength(1);
+  a.heroes()[0].character = "mystowl";
+  const { CHARACTERS } = await import("@arena/shared");
+  a.cast(a.heroes()[0], CHARACTERS.mystowl.skills.find(s => s.id === "thoughtstrike")!);
+  pending = [state(other, v => v.raidDream?.full), state(watcher, v => v.raid?.dream?.id === d.id)];
+  for (let i = 0; i < 6; i++) server!.step();
+  [ally, publicView] = await Promise.all(pending);
+  expect(ally.raidDream.runes).toHaveLength(d.length); expect(publicView.raidDream).toBeUndefined();
+  a.heroes()[0].character = "voltkit";
+  a.raid.rites[otherId] = [];
+  (a as any).beginDream(); const next = a.raid.dream!;
+  const newOther = socketById.get(a.heroes().find(p => p.id !== next.dreamerId)!.id)!;
+  pending = [state(newOther, v => v.raid?.dream?.id === next.id), state(watcher, v => v.raid?.dream?.id === next.id)];
+  for (let i = 0; i < 6; i++) server!.step();
+  [ally, publicView] = await Promise.all(pending);
+  expect(ally.raidDream).toBeUndefined(); expect(publicView.raidDream).toBeUndefined();
 });

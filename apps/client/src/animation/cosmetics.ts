@@ -14,7 +14,9 @@ export type Skin =
   | "pearlscale"
   // Gloomshade's raid rewards.
   | "dusk-colors"
-  | "moonlit-skin";
+  | "moonlit-skin"
+  | "twilight-colors"
+  | "starlit-skin";
 export const SKINS: Skin[] = [
   "cragbound",
   "cragstone",
@@ -28,6 +30,8 @@ export const SKINS: Skin[] = [
   "pearlscale",
   "dusk-colors",
   "moonlit-skin",
+  "twilight-colors",
+  "starlit-skin",
 ];
 const hexRgb = (c: number) => [(c >> 16) & 255, (c >> 8) & 255, c & 255];
 /**
@@ -44,6 +48,8 @@ export const TONES: Partial<Record<Skin, { tones: [number, number, number]; keep
   pearlscale: { tones: [0x1d4f6e, 0x7fd8e6, 0xfff3f8], keep: 0.3 },
   // Twilight violet shading up into lantern gold.
   "dusk-colors": { tones: [0x2b2245, 0x8a5fc8, 0xffd27a], keep: 0.25 },
+  "twilight-colors": { tones: [0x352a63, 0xa89ad9, 0xf2cddd], keep: 0.3 },
+  "starlit-skin": { tones: [0x242844, 0x74679f, 0xe6ddff], keep: 0.2 },
   "moonlit-skin": { tones: [0x2a3358, 0x9aa8d8, 0xf4f6ff], keep: 0.3 },
 };
 export function tonePixels(pixels: Uint8ClampedArray, skin: Skin) {
@@ -186,7 +192,7 @@ export function cosmeticLayer(
       }
       context.globalAlpha = 1;
     }
-    if (skin === "moonlit-skin" && !/-eyes([-~]|$)/.test(original)) {
+    if ((skin === "moonlit-skin" || skin === "starlit-skin") && !/-eyes([-~]|$)/.test(original)) {
       // A soft silver glow from the top, and a few drifting stars.
       context.globalCompositeOperation = "source-atop";
       const glow = context.createLinearGradient(0, 0, 0, canvas.height);

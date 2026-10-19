@@ -1,3 +1,4 @@
+import { dreamRuneKey } from "./somnara-controls";
 import { battleMusic } from "./battle-music";
 import { setDialogContent } from "./dialog";
 import { wireRaidDifficulty } from "./raid-difficulty";
@@ -324,6 +325,12 @@ const matchKeys = () =>
   state?.phase === "playing" && !$<HTMLDialogElement>("dialog").open;
 window.addEventListener("keydown", (e) => {
   if (controlsCapturing() || typingIn(e.target)) return;
+  const rune = dreamRuneKey(state, myId, e.code);
+  if (rune && matchKeys()) {
+    e.preventDefault();
+    if (!e.repeat) void request("raid-rune", { rune });
+    return;
+  }
   const action = actionFor(controlPrefs().bindings, e.code);
   if (!action) return;
   const live = matchKeys();
@@ -1970,6 +1977,8 @@ class ArenaScene extends Phaser.Scene {
   showArena(id: ArenaId) {
     if (id === this.floorArena || !this.floor) return;
     this.floorArena = id;
+    const label = document.querySelector<HTMLElement>(".map-label");
+    if (label) label.innerHTML = id === "cloud-deck" ? "CLOUD DECK <span>SOMNARA’S DREAM</span>" : `${ARENAS[id].name.toUpperCase()} <span>ELEMENT ARENA</span>`;
     const key = this.floorTexture(id);
     this.floor.setTexture(key).setScale(1 / (this.floorScale.get(key) ?? 1));
   }
@@ -2376,7 +2385,7 @@ class ArenaScene extends Phaser.Scene {
       touch.enabled &&
         document.body.classList.contains("battle-active") &&
         innerWidth > innerHeight,
-      follow && presented
+      follow && presented && state?.raid?.boss !== "somnara"
         ? {
             ...follow,
             x: presented.x,
@@ -2418,7 +2427,7 @@ class ArenaScene extends Phaser.Scene {
       );
     if (opponent && !this.enemyBearing.hidden) {
       this.enemyBearing.querySelector("strong")!.textContent =
-        CHARACTERS[opponent.character].name;
+        opponent.raidBoss && state?.raid ? state.raid.name : CHARACTERS[opponent.character].name;
       this.enemyBearing.querySelector<HTMLElement>("span")!.style.transform =
         `rotate(${Math.atan2((opponent.y - view.y) * view.zoomY, (opponent.x - view.x) * view.zoomX)}rad)`;
     }
@@ -2440,7 +2449,7 @@ class ArenaScene extends Phaser.Scene {
       return;
     }
     // Walls for prediction (the Shifting Ruins block comes and goes) and the floor.
-    useObstacles(state.raid ? (state.arena === "lagoon" || state.arena === "lantern-yard" ? [] : OBSTACLES.filter((_,i)=>!state!.raid!.pillars[i]?.broken)) : obstaclesAt(state.arena, arenaClock()));
+    useObstacles(state.raid ? (state.arena === "lagoon" || state.arena === "lantern-yard" || state.arena === "cloud-deck" ? [] : OBSTACLES.filter((_,i)=>!state!.raid!.pillars[i]?.broken)) : obstaclesAt(state.arena, arenaClock()));
     useSpeedScale(
       state.mutators?.includes("speed") ? MUTATOR_RULES.speed : 1,
     );
@@ -2971,6 +2980,7 @@ class ArenaScene extends Phaser.Scene {
           stun: 0xffd65b,
           paralysis: 0xffd65b,
           sleep: 0x8fa6d8,
+          drowsy: 0xc9a3ff,
           shield: 0xc77dff,
           counter: 0x78c7ef,
           empower: 0xffb347,

@@ -88,6 +88,7 @@ export type StatusKind =
   | "freeze"
   | "stun"
   | "sleep"
+  | "drowsy"
   | "shield"
   | "counter"
   | "empower"
@@ -103,6 +104,7 @@ export const DEBUFFS: StatusKind[] = [
   "freeze",
   "stun",
   "sleep",
+  "drowsy",
 ];
 export const STATUS_RULES = {
   stacking: "refresh" as const,
@@ -1337,6 +1339,8 @@ export type Phase =
   | "finished";
 export interface Snapshot {
   raid?: RaidState;
+  /** Somnara: sent only to this player; absent from public/spectator snapshots. */
+  raidDream?: import("./raid-somnara.js").RaidDreamView;
   instructionsReady: string[];
   practice: { unlimitedCooldowns: boolean; targetAttacks: boolean } | null;
   mode?: MatchMode;
@@ -1730,7 +1734,8 @@ export type ArenaId =
   /** Tidewyrm's raid arena (not in the PvP rotation). */
   | "lagoon"
   /** Gloomshade's raid arena (not in the PvP rotation). */
-  | "lantern-yard";
+  | "lantern-yard"
+  | "cloud-deck";
 export interface Hazard {
   kind: "pool" | "vent";
   x: number;
@@ -1837,6 +1842,7 @@ export const ARENAS: Record<ArenaId, ArenaDef> = {
     obstacles: [],
     hazards: [],
   },
+  "cloud-deck": { id: "cloud-deck", name: "Cloud Deck", tip: "Follow the Dreamer and step the four rune pads in order.", obstacles: [], hazards: [] },
 };
 /** Matches rotate through every arena. */
 export const ARENA_ROTATION: ArenaId[] = [

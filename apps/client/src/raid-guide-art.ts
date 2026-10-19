@@ -19,16 +19,20 @@ export function raidGuideGloomshade(exposed = false, shadow = true) {
   const core = exposed ? '<circle cy="20" r="10" fill="#ffd65b" opacity=".45" stroke="none"/><circle cy="20" r="5" fill="#fff1c2"/>' : "";
   return `<g stroke="#18122b" stroke-width="2" stroke-linejoin="round">${shadow ? '<ellipse cx="6" cy="38" rx="38" ry="8" fill="#071325" opacity=".55" stroke="none"/>' : ""}<circle cx="-38" cy="12" r="8" fill="#2b2245"/><circle cx="-46" cy="6" r="6" fill="#2b2245"/><path d="M-50-20a16 16 0 1 0 0 32a20 20 0 0 1 0-32Z" fill="#ffd65b"/>${[-24, -12, 0, 12, 24].map((x) => `<circle cx="${x}" cy="28" r="9" fill="#18122b"/>`).join("")}<ellipse cx="-30" cy="0" rx="11" ry="26" fill="#2b2245"/><ellipse cx="30" cy="0" rx="11" ry="26" fill="#2b2245"/><circle cy="-4" r="34" fill="#2b2245"/><ellipse cx="-6" cy="-20" rx="22" ry="12" fill="#4a3d72" opacity=".6" stroke="none"/><ellipse cx="-11" cy="-8" rx="7" ry="9" fill="#fff3c4" stroke="none"/><ellipse cx="13" cy="-8" rx="7" ry="9" fill="#fff3c4" stroke="none"/><ellipse cx="-10" cy="-7" rx="3.5" ry="5" fill="#18122b" stroke="none"/><ellipse cx="14" cy="-7" rx="3.5" ry="5" fill="#18122b" stroke="none"/><circle cx="-8" cy="-11" r="1.6" fill="#fff" stroke="none"/><circle cx="16" cy="-11" r="1.6" fill="#fff" stroke="none"/><path d="M-3 6q4 4 8 0" fill="none" stroke="#fff3c4"/>${core}</g>`;
 }
+/** Somnara's sleepy whale, cloud cap and tiny cottage. */
+export function raidGuideSomnara(exposed = false) {
+  return `<g stroke="#283452" stroke-width="2" stroke-linejoin="round"><ellipse cy="35" rx="48" ry="9" fill="#0b1430" opacity=".4"/><path d="m30-4 28-16-8 20 10 16-28-9" fill="#7061ac"/><ellipse cy="5" rx="45" ry="27" fill="#8977c5"/><ellipse cy="17" rx="38" ry="14" fill="#c3b3eb"/><ellipse cx="7" cy="-21" rx="23" ry="7" fill="#99c6bf"/><path d="M-2-24v-15h18v15M-6-38l13-12 14 12Z" fill="#f0d6b9"/><path d="m-18-24-12-13-8 10" fill="#d3d8ed"/><circle cx="-37" cy="-27" r="7" fill="#d3d8ed"/><path d="M-32 0q5 5 10 0M-32 14q7 6 14 0" fill="none"/>${exposed ? '<path d="m-8 9 3 6 7 1-5 5 1 7-6-3-6 3 1-7-5-5 7-1Z" fill="#ffdf8d"/>' : '<path d="m-8-7 1 3 3 1-3 1-1 3-1-3-3-1 3-1Z" fill="#f6e8ff"/>'}</g>`;
+}
 /** The boss's miniature for lobbies and results. */
 export function raidGuideBossFor(boss: string, exposed = false) {
-  return boss === "tidewyrm"
+  return boss === "somnara" ? raidGuideSomnara(exposed) : boss === "tidewyrm"
     ? raidGuideTidewyrm(exposed)
     : boss === "gloomshade"
       ? raidGuideGloomshade(exposed)
       : raidGuideBoss(exposed);
 }
 export function raidGuideScene(
-  kind: "charge" | "core" | "revive" | "strand" | "tide" | "prison" | "lantern" | "shadow" | "curse",
+  kind: "charge" | "core" | "revive" | "strand" | "tide" | "prison" | "lantern" | "shadow" | "curse" | "dream" | "runes" | "quiet",
   character: CharacterId,
 ) {
   const hero = (x: number, y: number, n: string) =>
@@ -61,6 +65,10 @@ export function raidGuideScene(
     art = `${night}<ellipse cx="110" cy="96" rx="96" ry="30" fill="#ffd27a" opacity=".22"/>${post(110, 40, true)}<g transform="translate(58 70) scale(.5)">${raidGuideGloomshade(false, true)}</g><g transform="translate(166 70) scale(.5)" opacity=".9">${raidGuideGloomshade(false, false)}</g><circle cx="58" cy="30" r="9" fill="none" stroke="#ffd65b" stroke-width="3"/><path d="M160 24l12 12m0-12-12 12" stroke="#ff4059" stroke-width="3"/><text x="110" y="128">SHADOW = REAL</text>`;
   if (kind === "curse")
     art = `${night}<circle cx="64" cy="80" r="44" fill="#b07bff" opacity=".1" stroke="#b07bff" stroke-width="2" stroke-dasharray="5 5"/>${hero(43, 57, "c1")}${wisp(40, 60)}${wisp(88, 66)}${wisp(64, 50)}${hero(152, 57, "c2")}<path d="M112 80h26m-8-7 8 7-8 7" stroke="#8beed2" stroke-width="3" fill="none"/><text x="110" y="128">SPREAD OUT</text>`;
+
+  if (kind === "dream") art = `<g transform="translate(156 77) scale(.65)">${raidGuideSomnara()}</g>${hero(38, 64, "dream")}<rect x="25" y="26" width="100" height="28" rx="8" fill="#121c36" stroke="#c9a3ff"/><circle cx="43" cy="40" r="7" fill="none" stroke="#92efdb" stroke-width="2"/><path d="m70 32 3 5 6 1-4 4 1 6-6-3-5 3 1-6-4-4 6-1Z" fill="#ffdf8d"/><path d="M98 33a8 8 0 1 0 7 11 9 9 0 0 1-7-11Z" fill="#d1b2ff"/><text x="110" y="128">ONLY YOUR DREAMER SEES</text>`;
+  if (kind === "runes") art = `<circle cx="48" cy="74" r="25" fill="#92efdb" fill-opacity=".13" stroke="#92efdb" stroke-width="2"/><circle cx="48" cy="74" r="10" fill="none" stroke="#92efdb" stroke-width="3"/><circle cx="158" cy="74" r="25" fill="#ffdf8d" fill-opacity=".13" stroke="#ffdf8d" stroke-width="2"/><path d="m158 60 4 8 10 2-7 6 1 10-8-5-8 5 1-10-7-6 10-2Z" fill="#ffdf8d"/><path d="M82 74h40m-8-6 8 6-8 6" fill="none" stroke="#e4d6ff" stroke-width="3"/><text x="110" y="128">ENTER EACH PAD IN ORDER</text>`;
+  if (kind === "quiet") art = `<rect x="10" y="20" width="200" height="88" rx="12" fill="#ff647f" opacity=".15"/><ellipse cx="123" cy="76" rx="54" ry="32" fill="#92efdb" fill-opacity=".2" stroke="#92efdb" stroke-width="3"/>${hero(98, 40, "quiet")}<path d="M47 73h29m-8-7 8 7-8 7" fill="none" stroke="#92efdb" stroke-width="3"/><text x="110" y="128">FOLLOW THE QUIET ZONE</text>`;
   // Center the complete two-character scene; center its caption on the card.
   if (kind === "revive") art = `<g transform="translate(-14 -8)">${art}</g>`;
   return `<svg class="raid-guide-scene" viewBox="0 0 220 135" aria-hidden="true">${floor}${art}</svg>`;

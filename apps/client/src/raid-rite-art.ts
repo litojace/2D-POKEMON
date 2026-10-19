@@ -2,6 +2,7 @@ import type { RaidRite } from "../../../packages/shared/src/raid";
 
 // Each picture depicts the effect rather than borrowing an unrelated combat icon.
 const pictures: Record<RaidRite, { color: string; art: string }> = {
+  lucid: { color: "#c9a3ff", art: '<path d="M6 32Q32 8 58 32Q32 56 6 32Z"/><circle cx="32" cy="32" r="9"/><path d="m47 7 2 6 6 2-6 2-2 6-2-6-6-2 6-2Z" fill="currentColor" fill-opacity=".5"/>' },
   shelter: {
     color: "#83e8cf",
     art: '<ellipse cx="32" cy="48" rx="24" ry="10" opacity=".45"/><path d="M32 7 49 14v13c0 12-17 21-17 21S15 39 15 27V14Z" fill="currentColor" fill-opacity=".14"/><path d="m30 20 11 9-11 9 2-9ZM5 23h13M3 30h11M6 37h12"/>',

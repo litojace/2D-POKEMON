@@ -705,6 +705,13 @@ export class FighterRig {
     }
     this.effects.clear();
     this.under.clear();
+    if (!this.suffix && pose.look?.skin === "starlit-skin") {
+      for (let i = 0; i < 5; i++) {
+        const sx = x + (i % 3 - 1) * 14 * this.baseX, sy = y - (12 + Math.floor(i / 3) * 23) * this.baseY;
+        const alpha = reduced ? 0.6 : 0.35 + Math.sin(now / 900 + i * 1.8) ** 2 * 0.55;
+        this.effects.lineStyle(1.2 * this.baseX, 0xf6e8ff, alpha).lineBetween(sx - 3 * this.baseX, sy, sx + 3 * this.baseX, sy).lineBetween(sx, sy - 3 * this.baseY, sx, sy + 3 * this.baseY);
+      }
+    }
     if (this.pile > 0) this.drawPile(x, y);
     if (reduced) {
       this.particles.length = 0;

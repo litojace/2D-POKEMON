@@ -1,6 +1,6 @@
 # Boss Raid
 
-Choose **Boss Raid · Co-op · 1–4 players** and press **Open the Raid Hub**. The Hub shows this week's seven bosses (one featured each day), today's Raid of the Day, and a card for every boss. Open a boss to see its chapters, attacks, rewards and records, then **Create raid room** (share its code) or **Play solo now**. Grumblecrag, Tidewyrm and Gloomshade are built; the other four are listed as coming soon (see [the roster design](raid-roster-design.md)). New bosses unlock after a first Grumblecrag clear.
+Choose **Boss Raid · Co-op · 1–4 players** and press **Open the Raid Hub**. The Hub shows this week's seven bosses (one featured each day), today's Raid of the Day, and a card for every boss. Open a boss to see its chapters, attacks, rewards and records, then **Create raid room** (share its code) or **Play solo now**. Grumblecrag, Tidewyrm, Gloomshade and Somnara are built; the other three are listed as coming soon (see [the roster design](raid-roster-design.md)). New bosses unlock after a first Grumblecrag clear.
 
 In a raid room Every human readies up, confirms the illustrated boss introduction, and chooses a starting rite. Solo needs no AI partner and gets one automatic self-revive on Peril 1–2 (none on Peril 3). Existing champion selection, custom controls, touch joystick, camera and Socket.IO reconnection remain in use.
 
@@ -51,6 +51,20 @@ A floppy-eared puff of shadow with a crescent-moon tail, fought in the **Lantern
 - **Champion tricks:** Voltkit's Ball Lightning lights its landing spot for 3 s; Lumoth's Radiant Flare relights lanterns and cleanses curses nearby; Mystowl's Focus Ray, aimed at the real one, marks it for 4 s; Duskveil's Curse Mark on the real one reveals it for 6 s.
 - **Traits:** Moonlit (wider lantern light, one extra copy), Restless Spirits (more Grasping Hands, slower curse spread), Hollow (fewer copies, fainter shadow). **Themed rite:** Lamplighter (one hit relights a lantern; lantern light heals 1% a second). **Signal:** the third key is "That's the real one".
 - **Rewards** (migration 013): Lightbringer (first clear), Dusk colors (5 clears), Moonlit skin (10), Shadowstep entrance (Peril 2), Night's End title + Crescent frame (Peril 3), Nightmote aura (Peril 3, no downs), Crescent Bow victory (feat: nobody hits a copy all run, with at least one split), Moonrunner (Peril 2 solo under 4:00), Lone Lantern (Peril 3 solo), Lamplighter (50 lanterns relit, wins and losses; a run counts at most 20).
+
+## Somnara (Wednesday's boss)
+
+A sleepy lavender sky whale carries a cottage on its back above the **Cloud Deck**. Four pads show Circle, Star, Moon and Wave. The camera keeps the complete deck visible so teams can coordinate.
+
+- **Dream Sequence:** only the Dreamer receives the sequence. Call runes with **1–4** or the touch rune bar, then enter the matching pads in order. Numeric skill aliases temporarily become calls for the Dreamer; Q/E/R/F still cast skills. A wrong pad or timeout causes an 18-damage Nightmare and gives a fresh sequence to another living raider. A correct sequence exposes Somnara for six seconds. Leave a pad before entering it again.
+- **Solo:** always the Dreamer, one fewer rune, fourteen seconds instead of a team's ten. Chapter one teaches short sequences; later chapters scale to Peril. Final Peril 3 dreams can display backwards: read right to left.
+- **Lullaby Rings:** jump the expanding rings. Rings and drifting **Dream Bubbles** add Drowsy; three stacks put you to sleep for two seconds. Attacks pop bubbles. Allies can hit sleeping teammates awake without friendly damage; this does not cancel Terradon's own Hibernate.
+- **Tail Splash:** leave the marked lane. **Falling Stars** (chapter two onward) land on constellation points; stand between them. **Whale Song** channels for four seconds, hurting anyone outside the moving teal Quiet Zone.
+- **Traits:** Deep Slumber adds a rune but extends exposure by two seconds. Restless Dream sends more bubbles but shortens sequences. Starry Night adds stars and enlarges the Quiet Zone. **Lucid** prevents bubble Drowsy and privately shows the first rune even to non-Dreamers.
+- **Champion tricks:** Ember Gust wakes allies throughout its cone; Mirror Mist's clone can enter a rune pad; Thoughtstrike reveals the current sequence to the team; Shade Crawl leaves bubble-blocking trails. Stand-ins follow actual rune calls or their own private view.
+- **Eleven rewards:** Dreamwaker, Twilight colors, Starlit skin, Dreamdrift entrance, Lucid Legend, Moonglass frame, Lullaby aura, Sweet Dreams victory, Daydream Dash, Lone Dreamer and Dream Weaver. Sweet Dreams requires a solved sequence and no wrong runes/timeouts; Dream Weaver counts 60 correct rune entries across wins and losses. The shared feature counter stores rune entries for this boss; it does not stop at the older twenty-pillar limit.
+
+Migration **015_somnara.sql** enables Somnara's stored records, titles and cosmetics. Its sequence stays out of public/spectator snapshots; Lucid's one-rune hint and Thoughtstrike's team reveal are sent to the appropriate authenticated seats only.
 
 ## Replay variety
 
@@ -114,7 +128,7 @@ The Raid Hub boss page shows boss information, clears, highest Peril, best activ
 
 ## Required deployment setup
 
-1. Run `supabase/migrations/007_raids.sql` in Supabase after migrations 001–006, then `supabase/migrations/008_raid_progress.sql`, then `supabase/migrations/009_raid_hub.sql`, then the Shop's `010_shop.sql` and `011_collection_bonus.sql`, then `012_tidewyrm.sql` (it switches Tidewyrm on and seeds its rewards), then `013_gloomshade.sql` (the same for Gloomshade), then `014_missions.sql` (daily missions). 010 also updates the appearance functions so Shop pieces can be equipped; if you ever re-run an older raid migration, run 009–014 again afterwards, in order.
+1. Run `supabase/migrations/007_raids.sql` in Supabase after migrations 001–006, then `supabase/migrations/008_raid_progress.sql`, then `supabase/migrations/009_raid_hub.sql`, then the Shop's `010_shop.sql` and `011_collection_bonus.sql`, then `012_tidewyrm.sql` (it switches Tidewyrm on and seeds its rewards), then `013_gloomshade.sql` (the same for Gloomshade), then `014_missions.sql` (daily missions), then `015_somnara.sql` (Somnara and its rewards). 010 also updates the appearance functions so Shop pieces can be equipped; if you ever re-run an older raid migration, run 009–015 again afterwards, in order.
 2. Set **SUPABASE_SERVICE_ROLE_KEY** in the **server's** hosting environment alongside its existing SUPABASE_URL. Never use a VITE_ prefix or put this key in browser configuration. It enables the server-only `arena_record_raid` function.
 3. Redeploy the server and client together, since snapshots now support the raid mode.
 

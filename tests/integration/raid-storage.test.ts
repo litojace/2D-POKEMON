@@ -297,3 +297,33 @@ it("records Gloomshade once migration 013 switches it on, with its own rewards",
     db.query("select public.arena_record_raid($1::jsonb)", [JSON.stringify({ ...gloom(4, {}), boss: "somnara" })]),
   ).rejects.toThrow("Invalid raid");
 });
+
+it("stores Somnara rewards and every correct rune after migration 015, without granting browser write access", async () => {
+  for (const f of ["014_missions.sql", "015_somnara.sql", "015_somnara.sql"])
+    await db.exec("reset role;" + await readFile("supabase/migrations/" + f, "utf8"));
+  const dream = (n: number, extra: object = {}) => ({ ...receipt(600 + n), boss: "somnara", trait: "deep-slumber", daily: false, peril: 3, seconds: 300, ...extra });
+  await db.exec("reset role;set role service_role");
+  const first = dream(1, { feat: true, players: [{ accountId: player, character: "mystowl", pillars: 35 }] });
+  await db.query("select public.arena_record_raid($1::jsonb)", [JSON.stringify(first)]);
+  await db.query("select public.arena_record_raid($1::jsonb)", [JSON.stringify(first)]);
+  let p = await progress();
+  expect(p.bosses.somnara.clears).toBe(1); expect(p.stats.somnara.pillars).toBe(35);
+  for (const id of ["dreamwaker", "lucid-legend", "moonglass", "lullaby-aura", "sweet-dreams", "lone-dreamer"]) expect(p.earned).toContain(id);
+  expect(p.earned).not.toContain("dream-weaver");
+  await db.exec("reset role;set role service_role");
+  await db.query("select public.arena_record_raid($1::jsonb)", [JSON.stringify(dream(2, { result: "defeat", feat: true, players: [{ accountId: player, character: "mystowl", pillars: 25 }] }))]);
+  p = await progress(); expect(p.bosses.somnara.clears).toBe(1); expect(p.stats.somnara.pillars).toBe(60); expect(p.earned).toContain("dream-weaver"); expect(p.titles).toContain("Dream Weaver");
+  for (let n = 3; n <= 11; n++) {
+    await db.exec("reset role;set role service_role");
+    await db.query("select public.arena_record_raid($1::jsonb)", [JSON.stringify(dream(n, { peril: 2, seconds: 210 }))]);
+  }
+  p = await progress(); expect(p.bosses.somnara.clears).toBe(10);
+  for (const id of ["twilight-colors", "starlit-skin", "dreamdrift", "daydream-dash"]) expect(p.earned).toContain(id);
+  for (const [slot, id] of [["skin", "starlit-skin"], ["aura", "lullaby-aura"], ["entrance", "dreamdrift"], ["frame", "moonglass"], ["victory", "sweet-dreams"]]) {
+    await login(); await db.query("select public.arena_equip_raid_slot($1,$2)", [slot,id]); expect((await progress()).loadout[slot]).toBe(id);
+  }
+  await login();
+  await expect(db.query("select public.arena_record_raid($1::jsonb)", [JSON.stringify(dream(12))])).rejects.toThrow();
+  await db.exec("reset role;set role service_role");
+  await expect(db.query("select public.arena_record_raid($1::jsonb)", [JSON.stringify(dream(13, { boss: "prismatail" }))])).rejects.toThrow("Invalid raid");
+});

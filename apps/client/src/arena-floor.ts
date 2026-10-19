@@ -144,6 +144,7 @@ export const FLOOR_PALETTES: Record<
     pillar: [0xb89b62, 0xd2b679, 0xf1dcae],
     lines: 0xd9f5f0,
   },
+  "cloud-deck": { surround: 0x151d3b, blades: [0x525b86, 0x68739e], grout: 0x364266, tones: [0x44547b], speck: 0xc9a3ff, moss: 0x53658b, pillar: [0x52658b, 0x687da7, 0xa1b6d6], lines: 0xd5dcff },
   "lantern-yard": {
     surround: 0x1d2440,
     blades: [0x2f4a4a, 0x22383a, 0x3d5c56],
@@ -166,6 +167,7 @@ export const FLOOR_PALETTES: Record<
   },
 };
 export function paintArenaFloor(g: FloorPainter, arena: ArenaDef = ARENAS.classic) {
+  if (arena.id === "cloud-deck") return paintCloudDeck(g);
   if (arena.id === "lagoon") return paintLagoon(g);
   if (arena.id === "lantern-yard") return paintLanternYard(g);
   const pal = FLOOR_PALETTES[arena.id];
@@ -445,4 +447,26 @@ function paintLanternYard(g: FloorPainter) {
   g.lineStyle(2, 0xb7a6d6, 0.35).strokeRoundedRect(BORDER + 5, BORDER + 5, W - BORDER * 2 - 10, H - BORDER * 2 - 10, 14);
   for (let i = 0; i < 6; i++)
     g.lineStyle(14, 0x070914, 0.05 + i * 0.012).strokeRoundedRect(i * 7, i * 7, W - i * 14, H - i * 14, 20);
+}
+
+/** Soft cloud stone, a constellation inlay and clouds around the deck's edge. */
+function paintCloudDeck(g: FloorPainter) {
+  g.fillStyle(0x172240).fillRect(0, 0, 1600, 900);
+  for (let row = 0; row < 9; row++) for (let col = 0; col < 16; col++) {
+    const x = col * 100, y = row * 100;
+    g.fillStyle((row + col) % 2 ? 0x354766 : 0x3a4b6f).fillRoundedRect(x + 2, y + 2, 96, 96, 18);
+    if ((row * 7 + col * 3) % 13 === 0) {
+      g.fillStyle(0xa3b6d8, 0.35).fillCircle(x + 48, y + 50, 2);
+      g.lineStyle(1, 0xa3b6d8, 0.3).lineBetween(x + 42, y + 50, x + 54, y + 50).lineBetween(x + 48, y + 44, x + 48, y + 56);
+    }
+  }
+  g.lineStyle(3, 0xb7bde4, 0.25).strokeRoundedRect(28, 28, 1544, 844, 40);
+  g.lineStyle(2, 0xc9a3ff, 0.15).strokeCircle(800, 450, 275);
+  for (let i = 0; i < 12; i++) {
+    const a = i * Math.PI / 6;
+    g.fillStyle(0xd6d8f4, 0.5).fillCircle(800 + Math.cos(a) * 275, 450 + Math.sin(a) * 275, 4);
+  }
+  for (let x = 0; x < 1700; x += 95) {
+    g.fillStyle(0x8599bc, 0.22).fillEllipse(x, 0, 150, 65).fillEllipse(x + 30, 900, 165, 60);
+  }
 }
