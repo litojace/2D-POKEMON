@@ -50,63 +50,72 @@ it("preserves raid choices during countdown and teammate picks, but redraws chan
   expect(html).toContain("Rite locked in");
 });
 
-it.each(["finished", "briefing"])("leaves native scrolling untouched on repeated %s snapshots and restores it only after a redraw", (phase) => {
-  let html = "",
-    position = 0,
-    scrollWrites = 0;
-  const scroller = {
-    get scrollTop() {
-      return position;
-    },
-    set scrollTop(value: number) {
-      position = value;
-      scrollWrites++;
-    },
-    contains: () => false,
-  };
-  const card = phase === "briefing"
-    ? { scrollTop: 0, contains: () => false }
-    : scroller;
-  const overlay = {
-    style: {},
-    dataset: {},
-    classList: { remove: () => {} },
-    get innerHTML() {
-      return html;
-    },
-    set innerHTML(value: string) {
-      html = value;
-      position = 0;
-    },
-    querySelector: (selector: string) => !html ? null
-      : selector === ".raid-overlay" ? card
-      : selector === ".raid-briefing-body" && phase === "briefing" ? scroller
-      : null,
-    querySelectorAll: () => [],
-  };
-  const hud = { innerHTML: "" };
-  vi.stubGlobal("document", {
-    getElementById: (id: string) =>
-      id === "raid-hud" ? hud : id === "arena-overlay" ? overlay : null,
-  });
-  const a = new RaidArena("SCROLL");
-  a.add("hero", "Hero");
-  a.start();
-  if (phase === "finished") a.endRound(1);
-  const render = () =>
-    renderRaidUI(a.snapshot(), a.heroes()[0], async () => {});
-  render();
-  scrollWrites = 0;
-  // Simulate the browser moving the native scroller during a touch gesture.
-  for (let i = 1; i <= 10; i++) {
-    position = i * 12;
+it.each(["finished", "briefing", "intermission"])(
+  "leaves native scrolling untouched on repeated %s snapshots and restores it only after a redraw",
+  (phase) => {
+    let html = "",
+      position = 0,
+      scrollWrites = 0;
+    const scroller = {
+      get scrollTop() {
+        return position;
+      },
+      set scrollTop(value: number) {
+        position = value;
+        scrollWrites++;
+      },
+      contains: () => false,
+    };
+    const card = { scrollTop: 0, contains: () => false };
+    const overlay = {
+      style: {},
+      dataset: {},
+      classList: { remove: () => {} },
+      get innerHTML() {
+        return html;
+      },
+      set innerHTML(value: string) {
+        html = value;
+        position = 0;
+      },
+      querySelector: (selector: string) =>
+        !html
+          ? null
+          : selector === ".raid-overlay"
+            ? card
+            : selector === ".raid-briefing-body" && phase === "briefing"
+              ? scroller
+              : selector === ".panel-scroll" && phase !== "briefing"
+                ? scroller
+                : null,
+      querySelectorAll: () => [],
+    };
+    const hud = { innerHTML: "" };
+    vi.stubGlobal("document", {
+      getElementById: (id: string) =>
+        id === "raid-hud" ? hud : id === "arena-overlay" ? overlay : null,
+    });
+    const a = new RaidArena("SCROLL");
+    a.add("hero", "Hero");
+    a.start();
+    if (phase === "finished") a.endRound(1);
+    if (phase === "intermission") a.acknowledgeInstructions("hero");
+    const render = () =>
+      renderRaidUI(a.snapshot(), a.heroes()[0], async () => {});
     render();
-  }
-  expect(position).toBe(120);
-  expect(scrollWrites).toBe(0);
-  if (phase === "briefing") a.instructionsReady.push("hero");
-  else a.heroes()[0].ready = !a.heroes()[0].ready;
-  render();
-  expect(position).toBe(120);
-  expect(scrollWrites).toBe(1);
-});
+    scrollWrites = 0;
+    // Simulate the browser moving the native scroller during a touch gesture.
+    for (let i = 1; i <= 10; i++) {
+      position = i * 12;
+      render();
+    }
+    expect(position).toBe(120);
+    expect(scrollWrites).toBe(0);
+    if (phase === "briefing") a.instructionsReady.push("hero");
+    else if (phase === "intermission") a.raid.offers.hero = [];
+    else a.heroes()[0].ready = !a.heroes()[0].ready;
+    render();
+    expect(position).toBe(120);
+    expect(scrollWrites).toBe(1);
+  },
+);

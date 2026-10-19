@@ -1,3 +1,4 @@
+import { formSubmitButton } from "./dialog";
 import { raidAppearance, raidCosmeticOptions } from "./raid-ui";
 import {
   raidBossPageMarkup,
@@ -288,7 +289,7 @@ export class AccountUI {
     }
     const form = element<HTMLFormElement>("auth-form");
     const message = element("auth-message");
-    const submit = form.querySelector<HTMLButtonElement>("[type=submit]")!;
+    const submit = formSubmitButton(form);
     const site = import.meta.env.VITE_SITE_URL || location.origin;
     // Each password box has its own eye toggle.
     form
@@ -326,7 +327,7 @@ export class AccountUI {
       guestForm.onsubmit = async (event) => {
         event.preventDefault();
         if (!this.client) return;
-        const button = guestForm.querySelector<HTMLButtonElement>("button")!;
+        const button = formSubmitButton(guestForm);
         const nickname = String(
           new FormData(guestForm).get("nickname") ?? "",
         ).trim();
@@ -830,7 +831,8 @@ export class AccountUI {
       const openMission = openGuide?.dataset.missionGuide;
       const guideScroll = openGuide?.querySelector<HTMLElement>(".mission-popup-body")?.scrollTop ?? 0;
       const focusedHelp = previous?.querySelector<HTMLButtonElement>("[data-mission-help]:focus")?.dataset.missionHelp;
-      const scrollTop = previous?.querySelector(".missions-screen") ? previous.scrollTop : 0;
+      const scrollTop = previous?.querySelector(".missions-screen")
+        ? (previous.querySelector<HTMLElement>(".dialog-content")?.scrollTop ?? 0) : 0;
       this.hooks.openDialog(missionsMarkup(this.economy ?? null, problem));
       const root = dialogEl();
       if (!root) return;
@@ -855,7 +857,7 @@ export class AccountUI {
           guide.querySelector<HTMLElement>(".mission-popup-body")!.scrollTop = guideScroll;
         } else if (!openMission && trigger.dataset.missionHelp === focusedHelp) trigger.focus({ preventScroll: true });
       }
-      root.scrollTop = scrollTop;
+      root.querySelector<HTMLElement>(".dialog-content")!.scrollTop = scrollTop;
       const status = root.querySelector<HTMLElement>(".missions-screen .shop-status");
       if (status) status.textContent = message;
       const shop = root.querySelector<HTMLButtonElement>("#missions-shop");
@@ -1144,7 +1146,7 @@ export class AccountUI {
       (element("report-count").textContent = `${text.value.length} / 1000`);
     form.onsubmit = async (event) => {
       event.preventDefault();
-      const submit = form.querySelector<HTMLButtonElement>("[type=submit]")!;
+      const submit = formSubmitButton(form);
       const fields = new FormData(form);
       submit.disabled = true;
       try {
@@ -1153,6 +1155,7 @@ export class AccountUI {
           message: String(fields.get("message") ?? "").trim(),
           context,
         });
+        submit.remove();
         form.innerHTML =
           '<p class="report-thanks">Thanks! Your report was sent to the admins.</p>';
       } catch (error) {

@@ -8813,3 +8813,168 @@ dialog:is(:has(.raid-hub), :has(.shop)) .dialog-content { height: 100%; max-heig
   .raid-briefing-actions { padding-top: 8px; }
   #arena-overlay .raid-briefing #raid-instructions { padding: 10px 20px; }
 }
+
+/* All menu screens keep navigation and screen actions outside the scroller. */
+dialog[open].framed-dialog {
+  display: grid;
+  grid-template-rows: 48px minmax(0, 1fr);
+  max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px);
+  padding: 0;
+  overflow: hidden;
+  scrollbar-gutter: auto;
+}
+dialog[open].framed-dialog.has-dialog-footer { grid-template-rows: 48px minmax(0, 1fr) auto; }
+dialog.framed-dialog > .dialog-toolbar {
+  position: static;
+  z-index: 3;
+  min-width: 0;
+  padding: 2px 8px;
+  background: transparent;
+  box-shadow: inset 0 -1px 0 #8baee51a;
+}
+dialog.framed-dialog > .dialog-toolbar > button:not(.close) {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #b8cce8;
+  font-size: 12px;
+  line-height: 1.2;
+}
+dialog.framed-dialog > .dialog-toolbar > button:focus-visible { outline: 2px solid #ffd65b; outline-offset: -3px; }
+dialog.framed-dialog > .dialog-content {
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  max-height: none;
+  padding: 14px 24px 24px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scroll-padding: 12px;
+}
+.dialog-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px 16px;
+  border-top: 1px solid #8baee526;
+  background: #101e36;
+}
+.dialog-footer > :is(.dialog-actions, .fullscreen-actions, .settings-actions, .auth-links, .missions-shop) { display: contents; }
+.framed-dialog .dialog-footer button {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  padding: 10px 14px;
+  font-size: 14px;
+  line-height: 1.25;
+}
+.framed-dialog .shop-tabs, .framed-dialog .raid-hub-tabs, .framed-dialog .admin-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #172744;
+}
+.framed-dialog .shop-head { padding-right: 0; }
+@media (min-width: 760px), (orientation: landscape) and (min-width: 560px) {
+  .framed-dialog .profile-customize, .framed-dialog .friends-invite { position: sticky; top: 0; }
+}
+@media (orientation: landscape) and (max-height: 600px) {
+  dialog.framed-dialog > .dialog-content { padding: 10px 16px 16px; }
+  .dialog-footer { padding: 6px 12px; gap: 6px; }
+}
+
+/* Ready, replay, share and return actions stay visible over long battle details. */
+#arena-overlay .action-overlay {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  width: min(940px, 100%);
+  max-height: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  scrollbar-gutter: auto;
+}
+.panel-scroll {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: 0 8px;
+  scroll-padding: 8px;
+}
+.panel-scroll:focus-visible { outline: 2px solid #ffd65b; outline-offset: -2px; border-radius: 8px; }
+.panel-actions { padding-top: 12px; border-top: 1px solid #8baee526; }
+#arena-overlay .panel-actions .result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+}
+#arena-overlay .panel-actions button { min-height: 44px; width: auto; margin: 0; padding: 10px 16px; }
+#arena-overlay .panel-actions .raid-result-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#arena-overlay .panel-actions .raid-result-actions button { width: 100%; }
+@media (min-width: 1000px) {
+  #arena-overlay .panel-actions .raid-result-actions { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (orientation: landscape) and (max-height: 600px) {
+  #arena-overlay .action-overlay { padding: 10px 18px; }
+  #arena-overlay .action-overlay > h2 { margin: 4px 0 8px; font-size: 26px; line-height: 1.1; }
+  .panel-actions { padding-top: 8px; }
+  #arena-overlay .panel-actions button { padding: 8px 12px; font-size: 13px; }
+  #arena-overlay .panel-actions .raid-result-actions { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+/* Rites remain selectable while phase objectives and collected rites scroll. */
+#arena-overlay .raid-draft.action-overlay { width: min(1040px, 100%); }
+#arena-overlay .panel-actions .rite-choices { grid-template-columns: repeat(var(--rite-count, 3), minmax(0, 1fr)); }
+#arena-overlay .panel-actions .rite-card { min-height: 44px; margin: 0; }
+#arena-overlay .panel-actions .raid-rite-options > button { margin: 0; width: 100%; }
+@media (orientation: landscape) and (max-height: 600px) {
+  #arena-overlay .panel-actions .rite-card { padding: 8px; }
+  .panel-actions .rite-head { margin-bottom: 6px; gap: 8px; padding-right: 18px; }
+  .panel-actions .rite-card kbd { top: 6px; right: 6px; }
+  .panel-actions .rite-card b { font-size: 13px; }
+  .panel-actions .rite-card small { font-size: 11px; line-height: 1.35; }
+  .panel-actions .raid-rite-options > button { padding: 8px; }
+}
+dialog.framed-dialog > .dialog-content:focus-visible { outline: 2px solid #ffd65b; outline-offset: -3px; border-radius: 8px; }
+.framed-dialog .settings-layout:not(:has(.settings-touch:not(:empty))) { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 560px) {
+  .framed-dialog .settings-layout:not(:has(.settings-touch:not(:empty))) .settings-audio { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }
+  .framed-dialog .settings-layout:not(:has(.settings-touch:not(:empty))) .settings-audio > label { grid-column: auto; }
+  .framed-dialog .settings-layout:not(:has(.settings-touch:not(:empty))) .settings-audio > p { grid-column: 1 / -1; grid-row: auto; }
+}
+@media (orientation: landscape) and (max-height: 600px) {
+  #arena-overlay .raid-draft.action-overlay > h2 { font-size: 23px; margin: 4px 0; }
+  .raid-draft.action-overlay .panel-scroll { min-height: 48px; }
+  #arena-overlay .raid-draft .panel-actions .raid-rite-options > button {
+    grid-template-columns: 28px minmax(0, 1fr);
+    grid-template-rows: minmax(32px, auto) auto;
+    align-items: center;
+    gap: 6px 8px;
+    padding: 8px;
+  }
+  .raid-draft .panel-actions .raid-rite-options .raid-rite-icon { width: 28px; height: 28px; border-radius: 7px; }
+  .raid-draft .panel-actions .raid-rite-icon > svg { width: 24px; height: 24px; }
+  .raid-draft .panel-actions .raid-rite-copy { display: contents; }
+  .raid-draft .panel-actions .raid-rite-copy b { grid-column: 2; text-align: left; }
+  .raid-draft .panel-actions .raid-rite-copy small { grid-column: 1 / -1; text-align: left; }
+}
+@media (orientation: landscape) and (max-height: 350px) {
+  #arena-overlay .raid-draft.action-overlay { grid-template-rows: auto minmax(48px, 1fr) auto; }
+  .raid-draft.action-overlay > .eyebrow { display: none; }
+}

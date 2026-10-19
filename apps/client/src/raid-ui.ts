@@ -233,7 +233,8 @@ export function renderRaidUI(
   }
   overlay.style.pointerEvents = "auto";
   let title = "",
-    body = "";
+    body = "",
+    actions = "";
   if (state.phase === "briefing") {
     title = `${RAID_TRAITS[r.trait].name} ${RAID_BOSSES[r.boss].name}`;
     const guide =
@@ -250,7 +251,8 @@ export function renderRaidUI(
       r.phase === 1
         ? "Choose your starting rite"
         : `Phase ${r.phase} · ${raidChapters(r.boss)[r.phase - 1].name}`;
-    body = `<p class="raid-phase-objective">${raidChapters(r.boss)[r.phase - 1].detail}</p><p class="raid-rite-intro"><span>Rites stack for this run.</span><span class="raid-choice-timer" role="timer" aria-label="Time left to choose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>Choose in</span><strong>${LIVE_SECONDS}</strong></span></p><div class="raid-rite-options">${(r.offers[me.id] ?? []).map((id) => `<button data-raid-rite="${id}" class="secondary raid-rite-${id}">${raidRitePicture(id)}<span class="raid-rite-copy"><b>${RAID_RITES[id].name}</b><small>${RAID_RITES[id].text}</small></span></button>`).join("") || "<p>Rite locked in · waiting for the team.</p>"}</div><details class="raid-team-summary"><summary>Team rites</summary><div class="raid-team-builds" aria-label="Team rites"></div></details>`;
+    body = `<p class="raid-phase-objective">${raidChapters(r.boss)[r.phase - 1].detail}</p><details class="raid-team-summary"><summary>Team rites</summary><div class="raid-team-builds" aria-label="Team rites"></div></details>`;
+    actions = `<p class="raid-rite-intro"><span>Rites stack for this run.</span><span class="raid-choice-timer" role="timer" aria-label="Time left to choose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>Choose in</span><strong>${LIVE_SECONDS}</strong></span></p><div class="raid-rite-options">${(r.offers[me.id] ?? []).map((id) => `<button data-raid-rite="${id}" class="secondary raid-rite-${id}">${raidRitePicture(id)}<span class="raid-rite-copy"><b>${RAID_RITES[id].name}</b><small>${RAID_RITES[id].text}</small></span></button>`).join("") || "<p>Rite locked in · waiting for the team.</p>"}</div>`;
   } else if (state.phase === "countdown") {
     title = String(Math.ceil(state.remaining));
     body = `<p>${raidChapters(r.boss)[r.phase - 1].objective}</p>`;
@@ -269,15 +271,17 @@ export function renderRaidUI(
             : "The mountain still stands";
     const heroes = state.players.filter((p) => !p.raidBoss && !p.out);
     const readyCount = heroes.filter((p) => p.ready).length;
+    actions = `<div class="result-actions raid-result-actions"><button class="primary" id="raid-retry" ${me.ready || !heroes.every((p) => p.connected) ? "disabled" : ""}>${me.ready ? "Waiting for the team…" : iconLabel("again", "Run again")}</button><button class="secondary" id="raid-lobby">${iconLabel("swap", "Change champion / challenge")}</button><button class="secondary raid-icon-button" id="raid-rewards">${menuIcon("bestiary")}<span>Raid Hub & rewards</span></button><button class="quiet" id="raid-exit">${iconLabel("home", "Return to menu")}</button></div>`;
     body = `<div class="raid-result-summary"><div class="raid-result-art" aria-hidden="true"><svg viewBox="-65 -65 130 115">${raidGuideBossFor(r.boss)}</svg></div><div class="raid-result-stats"><span><b>${time(r.elapsed)}</b>${r.result === "victory" ? "Clear time" : "Time survived"}</span><span><b>${r.revives}</b>Revives</span><span><b>${r.downs}</b>Downs</span></div></div><div class="raid-result-body">${raidContributions(state)}<div class="raid-result-next">${
       r.result === "victory"
         ? `<p class="raid-save-state" role="status">${r.rewardStatus === "saved" ? "✓ Rewards saved to your account." : r.rewardStatus === "unavailable" ? "This clear could not be saved. Your reward progress has not been updated." : "Saving your rewards…"}</p>${r.rewardStatus === "saved" ? raidRewardProgress(loadProgress ? progress?.progress : null, r.boss) : ""}<p class="raid-next-challenge">${r.peril < 3 ? `Next challenge: Peril ${r.peril + 1} · ${r.boss === "somnara" ? (r.peril === 1 ? "Longer rune sequences" : "Backwards dreams and faster attacks") : r.boss === "tidewyrm" ? (r.peril === 1 ? "Shorter strands, harder hits" : "Islands sink for good") : r.boss === "gloomshade" ? (r.peril === 1 ? "Faster hands and more copies" : "Paired pulses and shifting tiles") : r.peril === 1 ? "Falling debris" : "Closing arena"}` : "Next challenge: a no-downs clear or the Raid of the Day."}</p>`
         : `${r.rewardStatus === "saved" ? `<p class="raid-save-state" role="status">✓ Progress saved: your ${r.boss === "tidewyrm" ? "strands" : r.boss === "gloomshade" ? "relights" : r.boss === "somnara" ? "correct runes" : "pillars"} and revives count towards titles.</p>` : ""}<p class="raid-retry-tip">${defeatTip(state)}</p>`
-    }<div class="raid-retry-status">${heroes.length === 1 ? "Same champion and challenge · choose fresh rites" : `${readyCount}/${heroes.length} ready · everyone confirms to run again`}</div><div class="result-actions raid-result-actions"><button class="primary" id="raid-retry" ${me.ready || !heroes.every((p) => p.connected) ? "disabled" : ""}>${me.ready ? "Waiting for the team…" : iconLabel("again", "Run again")}</button><button class="secondary" id="raid-lobby">${iconLabel("swap", "Change champion / challenge")}</button><button class="secondary raid-icon-button" id="raid-rewards">${menuIcon("bestiary")}<span>Raid Hub & rewards</span></button><button class="quiet" id="raid-exit">${iconLabel("home", "Return to menu")}</button></div>${!heroes.every((p) => p.connected) ? '<p class="raid-retry-tip">A teammate is disconnected. Return to the lobby to refill the party.</p>' : ""}</div></div>`;
+    }<div class="raid-retry-status">${heroes.length === 1 ? "Same champion and challenge · choose fresh rites" : `${readyCount}/${heroes.length} ready · everyone confirms to run again`}</div>${!heroes.every((p) => p.connected) ? '<p class="raid-retry-tip">A teammate is disconnected. Return to the lobby to refill the party.</p>' : ""}</div></div>`;
   }
   const previousCard = overlay.querySelector<HTMLElement>(".raid-overlay");
   const previousScroller =
-    overlay.querySelector<HTMLElement>(".raid-briefing-body") ?? previousCard;
+    overlay.querySelector<HTMLElement>(".raid-briefing-body") ??
+    overlay.querySelector<HTMLElement>(".panel-scroll") ?? previousCard;
   const scrollTop =
     overlay.dataset.raidPhase === state.phase
       ? (previousScroller?.scrollTop ?? 0)
@@ -286,12 +290,13 @@ export function renderRaidUI(
   const focusId = active && previousCard?.contains(active) ? active.id : "";
   const replaced = setOverlayMarkup(
     overlay,
-    `<div class="overlay-card raid-overlay${state.phase === "finished" ? " raid-results" : state.phase === "intermission" ? " raid-draft" : state.phase === "briefing" ? " raid-briefing" : ""}"><span class="eyebrow">Boss raid · co-op</span><h2>${title}</h2>${body}</div>`,
+    `<div class="overlay-card raid-overlay${state.phase === "finished" ? " raid-results action-overlay" : state.phase === "intermission" ? " raid-draft action-overlay" : state.phase === "briefing" ? " raid-briefing" : ""}"><span class="eyebrow">Boss raid · co-op</span><h2>${title}</h2>${actions ? `<div class="panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div><div class="panel-actions">${actions}</div>` : body}</div>`,
   );
   overlay.dataset.raidPhase = state.phase;
   const card = overlay.querySelector<HTMLElement>(".raid-overlay");
   // Leave native touch scrolling alone while snapshots keep the same DOM.
-  const scroller = overlay.querySelector<HTMLElement>(".raid-briefing-body") ?? card;
+  const scroller = overlay.querySelector<HTMLElement>(".raid-briefing-body") ??
+    overlay.querySelector<HTMLElement>(".panel-scroll") ?? card;
   if (replaced && scroller) scroller.scrollTop = scrollTop;
   if (replaced && focusId) {
     const button = document.getElementById(focusId);

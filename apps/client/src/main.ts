@@ -407,7 +407,10 @@ function riteMarkup(me: Fighter, _seconds: number) {
           `<button class="rite-card ${r.tier}" data-rite="${r.id}"><kbd>${touch.enabled ? i + 1 : escape(keyText(SKILL_ACTIONS[i]))}</kbd><span class="rite-head">${riteIcon(r)}<span class="rite-tier">${r.tier === "major" ? "MAJOR RITE" : "RITE"}<em style="color:${RITE_EFFECTS[riteEffect(r)].color}">${escape(RITE_EFFECTS[riteEffect(r)].label)}</em></span></span><b>${escape(r.name)}</b><small>${escape(r.text)}</small></button>`,
       )
       .join("");
-    return `<p class="rite-intro">Choose an upgrade for the rest of the match${comeback ? " · comeback: one extra choice" : ""}.</p><div class="rite-choices">${cards}</div><p class="rite-timer">${timer} · a choice is made for you when time runs out</p>${me.rites?.length ? `<div class="rite-owned">${chips(me)}</div>` : ""}`;
+    return {
+      body: `<p class="rite-intro">Choose an upgrade for the rest of the match${comeback ? " · comeback: one extra choice" : ""}.</p><p class="rite-timer">${timer} · a choice is made for you when time runs out</p>${me.rites?.length ? `<div class="rite-owned">${chips(me)}</div>` : ""}`,
+      actions: `<div class="rite-choices" style="--rite-count:${offer.length}">${cards}</div>`,
+    };
   }
   const rivals = state!.players.filter(
     (p) => p.id !== myId && p.rites?.length,
@@ -415,12 +418,12 @@ function riteMarkup(me: Fighter, _seconds: number) {
   const roulette = state!.mutators?.includes("random")
     ? '<p class="rite-intro">Fighter roulette: everyone gets a new random fighter next round.</p>'
     : "";
-  return `${roulette}${me.rites?.length ? `<div class="rite-owned"><em>Your rites</em>${chips(me)}</div>` : ""}${rivals
+  return { body: `${roulette}${me.rites?.length ? `<div class="rite-owned"><em>Your rites</em>${chips(me)}</div>` : ""}${rivals
     .map(
       (p) =>
         `<div class="rite-owned rival"><em>${escape(p.name)}</em>${chips(p)}</div>`,
     )
-    .join("")}<p class="rite-timer">${state!.players.some((p) => p.riteOffer) ? "Waiting for the others to choose · " : ""}${timer}</p>`;
+    .join("")}<p class="rite-timer">${state!.players.some((p) => p.riteOffer) ? "Waiting for the others to choose · " : ""}${timer}</p>`, actions: "" };
 }
 window.addEventListener("keyup", (e) => {
   if (!held.delete(e.code)) return;
@@ -726,7 +729,8 @@ function renderWatchOverlay(overlay: HTMLElement) {
   const name = (id: string | null) =>
     escape(state!.players.find((p) => p.id === id)?.name ?? "");
   let heading = "",
-    details = "";
+    details = "",
+    actions = "";
   if (state!.phase === "briefing") {
     heading = "The players are getting ready";
     details = `<div class="briefing-versus${isFfa() ? " ffa" : ""}">${state!.players
@@ -760,12 +764,13 @@ function renderWatchOverlay(overlay: HTMLElement) {
       : `${name(state!.winner)} wins`;
     details =
       (isFfa() ? standingsMarkup(state!, "") : "") +
-      recapMarkup(state!, "") +
-      `<div class="result-actions"><button class="secondary leave-button" id="watch-stop">${iconLabel("stop-watching", "Stop watching")}</button></div>`;
+      recapMarkup(state!, "");
+    actions = `<div class="result-actions"><button class="secondary leave-button" id="watch-stop">${iconLabel("stop-watching", "Stop watching")}</button></div>`;
   }
   setOverlayMarkup(
     overlay,
-    `<div class="overlay-card${state!.phase === "countdown" ? " countdown-card" : ""}"><span class="eyebrow">Watching · ${escape(state!.code)}</span><h2>${heading}</h2><div>${details}</div></div>`,
+    `<div class="overlay-card${actions ? " action-overlay" : state!.phase === "countdown" ? " countdown-card" : ""}"><span class="eyebrow">Watching · ${escape(state!.code)}</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match results"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`,
+    actions ? `${state!.code}:${state!.matchId ?? ""}:${state!.phase}` : undefined,
   );
   fillLiveSeconds(
     overlay,
@@ -1475,7 +1480,8 @@ function renderBattle() {
     $("spectate").hidden = true;
     overlay.style.pointerEvents = "auto";
     let heading = "",
-      details = "";
+      details = "",
+      actions = "";
     if (state.phase === "briefing") {
       heading = "How to play";
       const confirmed = state.instructionsReady.includes(myId);
@@ -1507,11 +1513,8 @@ function renderBattle() {
             ? `Everyone is your enemy: the last fighter standing takes the round. First to win ${roundWord()} rounds takes the match.`
             : `Use cover. First to win ${roundWord()} rounds takes the match.`) +
         partyRulesNote() +
-        ' The countdown begins when everyone confirms.</p><button class="primary" id="instructions-ready" ' +
-        (confirmed ? "disabled" : "") +
-        ">" +
-        (confirmed ? "Waiting for the others…" : "I’m ready") +
-        "</button>";
+        ' The countdown begins when everyone confirms.</p>';
+      actions = `<button class="primary" id="instructions-ready" ${confirmed ? "disabled" : ""}>${confirmed ? "Waiting for the others…" : "I’m ready"}</button>`;
     }
     if (state.phase === "countdown") {
       heading = `${Math.ceil(state.remaining)}`;
@@ -1527,7 +1530,9 @@ function renderBattle() {
         : state.roundWinner
           ? `${escape(state.players.find((p) => p.id === state!.roundWinner)!.name)} takes the round`
           : "Round drawn";
-      details = riteMarkup(me, Math.ceil(state.remaining));
+      const rites = riteMarkup(me, Math.ceil(state.remaining));
+      details = rites.body;
+      actions = rites.actions;
     }
     if (state.phase === "paused") {
       heading = isTeams() ? "A player disconnected" : "Opponent disconnected";
@@ -1569,11 +1574,11 @@ function renderBattle() {
           state.matchId ? matchRecords.get(state.matchId) : undefined,
           friendIds,
         );
-      details += `<div class="result-actions"><button class="primary" id="rematch">${me.ready ? "Waiting for opponent…" : iconLabel("again", "Rematch")}</button><button class="secondary" id="share-result">${iconLabel("share", "Share result")}</button><button class="secondary" id="return">${state.vsBot ? iconLabel("home", "Back to menu") : iconLabel("back", "Return to lobby")}</button></div>`;
+      actions = `<div class="result-actions"><button class="primary" id="rematch">${me.ready ? "Waiting for opponent…" : iconLabel("again", "Rematch")}</button><button class="secondary" id="share-result">${iconLabel("share", "Share result")}</button><button class="secondary" id="return">${state.vsBot ? iconLabel("home", "Back to menu") : iconLabel("back", "Return to lobby")}</button></div>`;
     }
-    const markup = `<div class="overlay-card${state.phase === "countdown" ? " countdown-card" : ""}"><span class="eyebrow">Element Arena</span><h2>${heading}</h2><div>${details}</div></div>`;
-    // Preserve the pressed button between snapshots so pointer-up can complete its click.
-    setOverlayMarkup(overlay, markup);
+    const markup = `<div class="overlay-card${actions ? " action-overlay" : state.phase === "countdown" ? " countdown-card" : ""}"><span class="eyebrow">Element Arena</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match details"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`;
+    // Preserve the pressed button and native scrolling between snapshots.
+    setOverlayMarkup(overlay, markup, actions ? `${state.code}:${state.matchId ?? ""}:${state.phase}` : undefined);
     fillLiveSeconds(
       overlay,
       state.phase === "paused" ? state.pauseRemaining : state.remaining,
