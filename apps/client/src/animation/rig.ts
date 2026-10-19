@@ -105,6 +105,8 @@ export class FighterRig {
   private suffix = "";
   /** The state skin effects last saw (to fire one-off bursts once). */
   private fxState: AnimationState = "idle";
+  /** Auralynx's ring keeps its phase when its speed or the scene clock changes. */
+  private auraRingAngle = 0;
   constructor(
     private scene: Phaser.Scene,
     readonly character: CharacterId,
@@ -477,10 +479,16 @@ export class FighterRig {
       }
     }
     // ---- Signature idles.
+    if (this.character === "auralynx") {
+      if (!reduced) {
+        const celebrating = state === "victory" && t < 2.2 && pose.look?.victory !== "rockslide-flex";
+        const speed = celebrating ? 6 : pose.charging || attack ? 1 / 0.42 : 1 / 1.4;
+        this.auraRingAngle = (this.auraRingAngle + dt * speed) % (Math.PI * 2);
+      }
+      wings.rotation = this.auraRingAngle;
+    }
     if (!reduced) {
       if (this.character === "auralynx") {
-        const fast = pose.charging || attack;
-        wings.rotation = now / (fast ? 420 : 1400);
         if (pose.charging || (attack && skill === 3))
           offsetY -= 3 + Math.sin(now / 550) * 2;
         // Meditative float after standing still for a moment.
@@ -610,6 +618,9 @@ export class FighterRig {
     }
     // Smooth hand-offs between poses (springy parts integrate on their own).
     for (const [part, image] of this.images) {
+      // This is a rotating ring, not a wing. Its phase is already continuous;
+      // a spring would snap backwards when Phaser wraps +PI to -PI.
+      if (part === "wings" && this.character === "auralynx") continue;
       if (!reduced && SPRINGS[part]) continue;
       const old = this.previousRotations.get(part) ?? 0;
       const delta = Math.atan2(
@@ -626,6 +637,7 @@ export class FighterRig {
         if (state === "dash") this.kick(-aimX * 3);
       }
       for (const part of Object.keys(SPRINGS) as Part[]) {
+        if (part === "wings" && this.character === "auralynx") continue;
         const image = this.images.get(part)!;
         const spring =
           part === "tail" && this.character === "duskveil"
@@ -862,7 +874,6 @@ export class FighterRig {
         p.legR.rotation = -0.5;
         break;
       case "auralynx":
-        p.wings.rotation = t * 6;
         p.armL.rotation = 1.2;
         p.armR.rotation = -1.2;
         p.body.setScale(0.5 + Math.sin(t * 8) * 0.02);
