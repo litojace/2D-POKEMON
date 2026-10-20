@@ -351,3 +351,27 @@ it("stores Prismatail's eleven rewards after 019 and preserves Shop slots and ad
   const economy=(await db.query<{e:any}>('select public.arena_economy() as e')).rows[0].e;expect(economy.unlimitedCoins).toBe(true);expect(economy.mythicTesting).toBe(true);
   await db.query("select public.arena_buy_item('galaxy-victory')");await db.query("select public.arena_equip_raid_slot('victory','galaxy-victory')");expect((await progress()).loadout.victory).toBe('galaxy-victory');
 },20000);
+
+it("stores Emberwing's eleven rewards with migration 020 and preserves appearance slots and admin testing",async()=>{
+ await login();
+ const economyBefore=(await db.query<{e:any}>('select public.arena_economy() as e')).rows[0].e;
+ const lookBefore=(await progress()).loadout;
+ for(let i=0;i<2;i++)await db.exec('reset role;'+await readFile('supabase/migrations/020_emberwing.sql','utf8'));
+ await login();expect((await progress()).loadout).toEqual(lookBefore);
+ const economyAfter=(await db.query<{e:any}>('select public.arena_economy() as e')).rows[0].e;
+ expect(economyAfter.unlimitedCoins).toBe(economyBefore.unlimitedCoins);expect(economyAfter.mythicTesting).toBe(economyBefore.mythicTesting);expect(economyAfter.owned).toEqual(economyBefore.owned);
+ const ember=(n:number,extra:object={})=>({...receipt(1000+n),boss:'emberwing',trait:'molting',daily:false,peril:3,seconds:210,feat:true,players:[{accountId:player,character:'cindrake',pillars:6}],...extra});
+ await expect(db.query('select public.arena_record_raid($1::jsonb)',[JSON.stringify(ember(1))])).rejects.toThrow();
+ await expect(db.query("select public.arena_equip_raid_slot('skin','cinderplume')")).rejects.toThrow('not earned');
+ await db.exec('reset role;set role service_role');
+ const first=ember(1);await db.query('select public.arena_record_raid($1::jsonb)',[JSON.stringify(first)]);await db.query('select public.arena_record_raid($1::jsonb)',[JSON.stringify(first)]);
+ for(let n=2;n<=10;n++)await db.query('select public.arena_record_raid($1::jsonb)',[JSON.stringify(ember(n))]);
+ let p=await progress();expect(p.bosses.emberwing.clears).toBe(10);expect(p.stats.emberwing.pillars).toBe(60);
+ for(const id of ['skyfeller','ember-colors','cinderplume','firefall','wingbreaker','brazier-frame','ember-aura','feather-fall','flashfire','lone-phoenix','torchbearer'])expect(p.earned).toContain(id);
+ for(const[slot,id]of [['skin','cinderplume'],['aura','ember-aura'],['entrance','firefall'],['frame','brazier-frame'],['victory','feather-fall']]){
+  await login();await db.query('select public.arena_equip_raid_slot($1,$2)',[slot,id]);expect((await progress()).loadout[slot]).toBe(id);
+ }
+ await db.exec('reset role;set role service_role');await db.query('select public.arena_record_raid($1::jsonb)',[JSON.stringify(ember(11,{result:'defeat',players:[{accountId:player,character:'cindrake',pillars:999}]}))]);
+ p=await progress();expect(p.bosses.emberwing.clears).toBe(10);expect(p.stats.emberwing.pillars).toBe(360);
+ await db.exec('reset role;set role service_role');await expect(db.query('select public.arena_record_raid($1::jsonb)',[JSON.stringify(ember(12,{boss:'storm-twins'}))])).rejects.toThrow('Invalid raid');
+},20000);

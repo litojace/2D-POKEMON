@@ -2391,7 +2391,7 @@ class ArenaScene extends Phaser.Scene {
       touch.enabled &&
         document.body.classList.contains("battle-active") &&
         innerWidth > innerHeight,
-      follow && presented && state?.raid?.boss !== "somnara" && state?.raid?.boss !== "prismatail"
+      follow && presented && state?.raid?.boss !== "somnara" && state?.raid?.boss !== "prismatail" && state?.raid?.boss !== "emberwing"
         ? {
             ...follow,
             x: presented.x,
@@ -2455,7 +2455,7 @@ class ArenaScene extends Phaser.Scene {
       return;
     }
     // Walls for prediction (the Shifting Ruins block comes and goes) and the floor.
-    useObstacles(state.raid ? (state.arena === "lagoon" || state.arena === "lantern-yard" || state.arena === "cloud-deck" || state.arena === "sun-atrium" ? [] : OBSTACLES.filter((_,i)=>!state!.raid!.pillars[i]?.broken)) : obstaclesAt(state.arena, arenaClock()));
+    useObstacles(state.raid ? (state.arena === "lagoon" || state.arena === "lantern-yard" || state.arena === "cloud-deck" || state.arena === "sun-atrium" || state.arena === "sky-terrace" ? [] : OBSTACLES.filter((_,i)=>!state!.raid!.pillars[i]?.broken)) : obstaclesAt(state.arena, arenaClock()));
     useSpeedScale(
       state.mutators?.includes("speed") ? MUTATOR_RULES.speed : 1,
     );

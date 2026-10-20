@@ -1,3 +1,4 @@
+import { drawSkyTerrace, drawEmberwingWarning, drawEmberwing } from "./raid-emberwing-art";
 import { drawSunAtrium, drawPrismatailWarning, drawPrismatail } from "./raid-prismatail-art";
 import { renderPrismatailControls } from "./prismatail-controls";
 import { renderSomnaraControls } from "./somnara-controls";
@@ -180,7 +181,7 @@ export function renderRaidUI(
     0,
     Math.min(100, ((boss?.hp ?? 0) / r.maxHp) * 100),
   );
-  hud.innerHTML = `<div class="raid-boss-heading"><b>${r.gilded ? "✦ GILDED " : ""}${RAID_BOSSES[r.boss].name.toUpperCase()}</b>${r.daily ? '<em class="raid-daily-badge">RAID OF THE DAY</em>' : ""}<span>PERIL ${r.peril} · PHASE ${r.phase}/3</span></div><div class="raid-boss-health" role="progressbar" aria-label="Boss health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(healthPercent)}" aria-valuetext="${Math.round(healthPercent)}% health. Rite choices open at 67% and 33% health."><i style="width:${healthPercent}%"></i>${[67, 33].map((mark, index) => `<span class="raid-health-mark${r.phase > index + 1 ? " is-passed" : ""}" style="left:${mark}%" aria-hidden="true"></span>`).join("")}</div><div class="raid-stagger"><i style="width:${r.boss === "prismatail" ? (r.exposedUntil > state.time ? 100 : Math.min(100,(r.lightHold ?? 0) / (r.phase === 3 && r.partySize === 1 ? 2 : .65) * 100)) : r.staggerUntil > state.time ? 100 : r.stagger}%"></i><span>${r.boss === "prismatail" ? (r.exposedUntil > state.time ? "HEART EXPOSED" : "LIGHT RELAY · SHIELDED") : r.staggerUntil > state.time ? "STAGGER · CORE EXPOSED" : "STAGGER"}</span></div><div class="raid-party-bars" data-party-size="${state.players.filter((p) => !p.raidBoss && !p.out).length}">${state.players
+  hud.innerHTML = `<div class="raid-boss-heading"><b>${r.gilded ? "✦ GILDED " : ""}${RAID_BOSSES[r.boss].name.toUpperCase()}</b>${r.daily ? '<em class="raid-daily-badge">RAID OF THE DAY</em>' : ""}<span>PERIL ${r.peril} · PHASE ${r.phase}/3</span></div><div class="raid-boss-health" role="progressbar" aria-label="Boss health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(healthPercent)}" aria-valuetext="${Math.round(healthPercent)}% health. Rite choices open at 67% and 33% health."><i style="width:${healthPercent}%"></i>${[67, 33].map((mark, index) => `<span class="raid-health-mark${r.phase > index + 1 ? " is-passed" : ""}" style="left:${mark}%" aria-hidden="true"></span>`).join("")}</div><div class="raid-stagger"><i style="width:${r.boss === "emberwing" ? (r.permanentGround || r.exposedUntil>state.time ? 100 : r.airborne ? (r.braziers??[]).filter(b=>b.litUntil>state.time).length/3*100 : r.stagger) : r.boss === "prismatail" ? (r.exposedUntil > state.time ? 100 : Math.min(100,(r.lightHold ?? 0) / (r.phase === 3 && r.partySize === 1 ? 2 : .65) * 100)) : r.staggerUntil > state.time ? 100 : r.stagger}%"></i><span>${r.boss === "emberwing" ? (r.permanentGround ? "WINGS BROKEN · HEART OPEN" : r.airborne ? `AIRBORNE · ${(r.braziers ?? []).filter(b=>b.litUntil>state.time).length}/3 BRAZIERS` : r.exposedUntil>state.time ? "GROUNDED · HEART EXPOSED" : "STAGGER") : r.boss === "prismatail" ? (r.exposedUntil > state.time ? "HEART EXPOSED" : "LIGHT RELAY · SHIELDED") : r.staggerUntil > state.time ? "STAGGER · CORE EXPOSED" : "STAGGER"}</span></div><div class="raid-party-bars" data-party-size="${state.players.filter((p) => !p.raidBoss && !p.out).length}">${state.players
     .filter((p) => !p.raidBoss)
     .map(
       (p) =>
@@ -240,7 +241,9 @@ export function renderRaidUI(
   if (state.phase === "briefing") {
     title = `${RAID_TRAITS[r.trait].name} ${RAID_BOSSES[r.boss].name}`;
     const guide =
-      r.boss === "prismatail"
+      r.boss === "emberwing"
+        ? `<span>${raidGuideScene("braziers", me.character)}<b>Light the triangle</b><small>Stand on each brazier for 1.5 seconds. All three must burn together.</small></span><span>${raidGuideScene("ground-bird", me.character)}<b>Ground the sky</b><small>Bring it down to expose the heart and shrink burning ground.</small></span><span>${raidGuideScene("heat-spread", me.character)}<b>Spread for Heat Marks</b><small>Keep your blast away from allies. Jump the expanding flame ring.</small></span>`
+        : r.boss === "prismatail"
         ? `<span>${raidGuideScene("relay", me.character)}<b>Carry the light</b><small>Skylight → raider → mirror posts → heart. Follow the gold beams.</small></span><span>${raidGuideScene("mirror", me.character)}<b>Turn the mirrors</b><small>Hit a post to turn its arrow 45°. A connected chain opens the shield.</small></span><span>${raidGuideScene("glare", me.character)}<b>Watch the crest</b><small>Step out of its numbered fan cone. Aim away from Glare, or hold Look away.</small></span>`
         : r.boss === "somnara"
         ? `<span>${raidGuideScene("dream", me.character)}<b>Call the dream</b><small>Only the Dreamer sees it. Call runes with 1–4 or the rune bar.</small></span><span>${raidGuideScene("runes", me.character)}<b>Step the pads in order</b><small>Enter a matching pad for each rune. Solve it to expose Somnara.</small></span><span>${raidGuideScene("quiet", me.character)}<b>Stay awake</b><small>Jump rings, pop bubbles and follow the moving Quiet Zone.</small></span>`
@@ -267,6 +270,8 @@ export function renderRaidUI(
     title =
       r.result === "victory"
         ? `${RAID_BOSSES[r.boss].name} defeated!`
+        : r.boss === "emberwing" ? "The sky still burns"
+        : r.boss === "prismatail" ? "The heart stays shielded"
         : r.boss === "tidewyrm"
           ? "The tide keeps rising"
           : r.boss === "somnara" ? "The dream drifts on"
@@ -275,11 +280,11 @@ export function renderRaidUI(
             : "The mountain still stands";
     const heroes = state.players.filter((p) => !p.raidBoss && !p.out);
     const readyCount = heroes.filter((p) => p.ready).length;
-    actions = `<div class="result-actions raid-result-actions"><button class="primary" id="raid-retry" ${me.ready || !heroes.every((p) => p.connected) ? "disabled" : ""}>${me.ready ? "Waiting for the team…" : iconLabel("again", "Run again")}</button><button class="secondary" id="raid-lobby">${iconLabel("swap", "Change champion / challenge")}</button><button class="secondary raid-icon-button" id="raid-rewards">${menuIcon("bestiary")}<span>Raid Hub & rewards</span></button><button class="quiet" id="raid-exit">${iconLabel("home", "Return to menu")}</button></div>`;
+    actions = `<div class="result-actions raid-result-actions"><button class="primary" id="raid-retry" ${me.ready || !heroes.every((p) => p.connected) ? "disabled" : ""}>${me.ready ? "Waiting for the team…" : iconLabel("again", "Run again")}</button><button class="secondary" id="raid-lobby" aria-label="Change champion or challenge" title="Change champion or challenge">${iconLabel("swap", "Change setup")}</button><button class="secondary raid-icon-button" id="raid-rewards">${menuIcon("bestiary")}<span>Raid Hub & rewards</span></button><button class="quiet" id="raid-exit">${iconLabel("home", "Return to menu")}</button></div>`;
     body = `<div class="raid-result-summary"><div class="raid-result-art" aria-hidden="true"><svg viewBox="-65 -65 130 115">${raidGuideBossFor(r.boss)}</svg></div><div class="raid-result-stats"><span><b>${time(r.elapsed)}</b>${r.result === "victory" ? "Clear time" : "Time survived"}</span><span><b>${r.revives}</b>Revives</span><span><b>${r.downs}</b>Downs</span></div></div><div class="raid-result-body">${raidContributions(state)}<div class="raid-result-next">${
       r.result === "victory"
-        ? `<p class="raid-save-state" role="status">${r.rewardStatus === "saved" ? "✓ Rewards saved to your account." : r.rewardStatus === "unavailable" ? "This clear could not be saved. Your reward progress has not been updated." : "Saving your rewards…"}</p>${r.rewardStatus === "saved" ? raidRewardProgress(loadProgress ? progress?.progress : null, r.boss) : ""}<p class="raid-next-challenge">${r.peril < 3 ? `Next challenge: Peril ${r.peril + 1} · ${r.boss === "prismatail" ? (r.peril === 1 ? "Stronger light attacks" : "Faster attacks and no solo self-revive") : r.boss === "somnara" ? (r.peril === 1 ? "Longer rune sequences" : "Backwards dreams and faster attacks") : r.boss === "tidewyrm" ? (r.peril === 1 ? "Shorter strands, harder hits" : "Islands sink for good") : r.boss === "gloomshade" ? (r.peril === 1 ? "Faster hands and more copies" : "Paired pulses and shifting tiles") : r.peril === 1 ? "Falling debris" : "Closing arena"}` : "Next challenge: a no-downs clear or the Raid of the Day."}</p>`
-        : `${r.rewardStatus === "saved" ? `<p class="raid-save-state" role="status">✓ Progress saved: your ${r.boss === "tidewyrm" ? "strands" : r.boss === "gloomshade" ? "relights" : r.boss === "prismatail" ? "light relays" : r.boss === "somnara" ? "correct runes" : "pillars"} and revives count towards titles.</p>` : ""}<p class="raid-retry-tip">${defeatTip(state)}</p>`
+        ? `<p class="raid-save-state" role="status">${r.rewardStatus === "saved" ? "✓ Rewards saved to your account." : r.rewardStatus === "unavailable" ? "This clear could not be saved. Your reward progress has not been updated." : "Saving your rewards…"}</p>${r.rewardStatus === "saved" ? raidRewardProgress(loadProgress ? progress?.progress : null, r.boss) : ""}<p class="raid-next-challenge">${r.peril < 3 ? `Next challenge: Peril ${r.peril + 1} · ${r.boss === "emberwing" ? (r.peril === 1 ? "Stronger heat and dives" : "Less room for mistakes, no solo self-revive") : r.boss === "prismatail" ? (r.peril === 1 ? "Stronger light attacks" : "Faster attacks and no solo self-revive") : r.boss === "somnara" ? (r.peril === 1 ? "Longer rune sequences" : "Backwards dreams and faster attacks") : r.boss === "tidewyrm" ? (r.peril === 1 ? "Shorter strands, harder hits" : "Islands sink for good") : r.boss === "gloomshade" ? (r.peril === 1 ? "Faster hands and more copies" : "Paired pulses and shifting tiles") : r.peril === 1 ? "Falling debris" : "Closing arena"}` : "Next challenge: a no-downs clear or the Raid of the Day."}</p>`
+        : `${r.rewardStatus === "saved" ? `<p class="raid-save-state" role="status">✓ Progress saved: your ${r.boss === "tidewyrm" ? "strands" : r.boss === "gloomshade" ? "relights" : r.boss === "emberwing" ? "braziers lit" : r.boss === "prismatail" ? "light relays" : r.boss === "somnara" ? "correct runes" : "pillars"} and revives count towards titles.</p>` : ""}<p class="raid-retry-tip">${defeatTip(state)}</p>`
     }<div class="raid-retry-status">${heroes.length === 1 ? "Same champion and challenge · choose fresh rites" : `${readyCount}/${heroes.length} ready · everyone confirms to run again`}</div>${!heroes.every((p) => p.connected) ? '<p class="raid-retry-tip">A teammate is disconnected. Return to the lobby to refill the party.</p>' : ""}</div></div>`;
   }
   const previousCard = overlay.querySelector<HTMLElement>(".raid-overlay");
@@ -345,11 +350,13 @@ export function drawRaidArena(
   const tide = r.boss === "tidewyrm",
     gloom = r.boss === "gloomshade",
     dream = r.boss === "somnara";
+  if (r.boss === "emberwing") drawSkyTerrace(g, state, reduced);
   if (r.boss === "prismatail") drawSunAtrium(g, state, reduced);
   if (dream) drawCloudDeck(g, state, reduced);
   if (tide) drawLagoon(g, state, reduced);
   if (gloom) drawLanternYard(g, state, reduced);
   for (const w of r.warnings) {
+    if (r.boss === "emberwing" && drawEmberwingWarning(g, state, w)) continue;
     if (r.boss === "prismatail" && drawPrismatailWarning(g, state, w)) continue;
     if (dream && drawSomnaraWarning(g, state, w, reduced)) continue;
     if (tide && drawTidewyrmWarning(g, state, w, reduced)) continue;
@@ -604,6 +611,7 @@ export function drawRaidArena(
       g.fillStyle(color, 1).fillCircle(p.x, y + bob, 3);
     }
   }
+  if (r.boss === "emberwing") return drawEmberwing(g, state, reduced, clock);
   if (r.boss === "prismatail") return drawPrismatail(g, state, reduced, clock);
   if (dream) return drawSomnara(g, state, reduced, clock);
   return tide
@@ -621,6 +629,7 @@ function defeatTip(state: Snapshot) {
     if (d.cause) causes.set(d.cause, (causes.get(d.cause) ?? 0) + 1);
   const worst = [...causes].sort((a, b) => b[1] - a[1])[0]?.[0];
   if (worst) return `${RAID_ATTACKS[worst].name}: ${RAID_ATTACKS[worst].tip}`;
+  if (r.boss === "emberwing") return "Light all three braziers together to ground Emberwing. Solo flames last longer. Spread out for Heat Marks and save ultimates for the open heart.";
   if (r.boss === "prismatail") return "Stand inside the skylight ring, connect to the mirror posts, and hit a mirror to turn its arrow. Save ultimates for the open heart.";
   if (r.boss === "somnara") return "Call the runes, then enter their pads in order. Jump the rings and pop Dream Bubbles before three Drowsy stacks put you to sleep.";
   if (r.boss === "gloomshade")

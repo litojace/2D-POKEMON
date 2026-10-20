@@ -66,6 +66,12 @@ export function drawCollectionAura(g: G, id: string, x: number, y: number, now: 
       );
       return true;
     }
+    case "ember-aura": {
+      g.lineStyle(2,0xffa66c,.8).strokeEllipse(x,y,100,40);
+      g.fillStyle(0xff8558,.1).fillEllipse(x,y,110,45);
+      ring(8,48,19,6200,(px,py,i)=>{const rise=reduced?0:Math.sin(now/1000+i)*5;g.fillStyle(i%2?0xffd28b:0xff8765,.85).fillEllipse(px,py-5+rise,3,6);});
+      return true;
+    }
     case "halo-aura": {
       g.lineStyle(3,0xffe5a0,.85).strokeEllipse(x,y,100,40);
       g.lineStyle(1,0xfff3cf,.4).strokeEllipse(x,y,112,46);
@@ -147,6 +153,9 @@ export function playCollectionEntrance(emit: Emit, id: string, x: number, y: num
         const a = (i / 24) * TAU;
         return { y: y + 4 * sc, vx: Math.cos(a) * rnd(60, 120), vy: Math.sin(a) * rnd(30, 60) - 70, life: rnd(0.8, 1.2), size: 3 * sc, color: [0xffb3cf, 0xff6fa0, 0xfff0f5, 0x8fe06a][i % 4], shape: "leaf", spin: rnd(-8, 8) };
       });
+      return true;
+    case "firefall":
+      burst(22,i=>({x:x+rnd(-45,45)*sc,y:y-rnd(40,100)*sc,vx:rnd(-30,30),vy:rnd(25,70),life:rnd(.8,1.3),size:3*sc,color:i%2?0xffd28b:0xff8765,shape:"leaf",spin:rnd(-3,3)}));
       return true;
     case "sunburst":
       burst(24,i=>{const a=i/24*TAU;return {x,y:y-20*sc,vx:Math.cos(a)*170,vy:Math.sin(a)*130,life:.75,size:4*sc,color:i%2?0xffe5a0:0xffffff,shape:"spark"};});
@@ -289,6 +298,15 @@ export function drawCollectionVictory(
       if (t > 0.9 && t - dt <= 0.9)
         for (let i = 0; i < 34; i++)
           emit({ x: x + rnd(-40, 40) * sc, y: y - 50 * sc, vx: rnd(-170, 170), vy: rnd(-260, -60), life: rnd(0.7, 1.1), size: rnd(2, 3.5) * sc, color: i % 3 ? 0xe6fbff : 0x7fe9ff, shape: "dot" });
+      return true;
+    }
+    case "feather-fall": {
+      const spread=Math.min(1,t/.65);
+      for(let i=0;i<9;i++){
+        const a=-Math.PI+i*Math.PI/8,px=x+Math.cos(a)*85*sc*spread,py=y-25*sc+Math.sin(a)*70*sc*spread+Math.max(0,t-.8)*20*sc;
+        under.fillStyle(i%2?0xffd28b:0xe77f5c,fade).fillEllipse(px,py,12*sc,32*sc);
+        under.lineStyle(1.3*sc,0xffe8bc,fade).lineBetween(px,py-12*sc,px,py+14*sc);
+      }
       return true;
     }
     case "rainbow-fan": {

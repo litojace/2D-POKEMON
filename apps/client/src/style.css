@@ -9032,3 +9032,10 @@ dialog.framed-dialog > .dialog-content:focus-visible { outline: 2px solid #ffd65
 .raid-cosmetic-preview[data-cosmetic="sunburst"] { background:repeating-conic-gradient(from 0deg at 50% 80%,#ffe2a033 0deg 10deg,transparent 10deg 30deg);border-radius:16%; }
 .raid-cosmetic-preview[data-cosmetic="rainbow-fan"] { background:conic-gradient(from 270deg at 50% 90%,#ff899e55,#ffd77855,#9aefb555,#80e1ff55,#a5adff55,#e5a0ff55,transparent 50%);border-radius:16%; }
 @media(max-height:360px) { #raid-prism-controls button { min-height:40px; padding:4px 8px; font-size:11px; } }
+
+/* Emberwing rewards keep portraits stable; moving effects render in the combat rig. */
+.raid-cosmetic-preview[data-cosmetic="ember-colors"] > svg, :is(.raid-party-avatar,.raid-score-avatar,.player-avatar,.roster-panel)[data-raid-cosmetic~="ember-colors"] svg { filter:sepia(.5) saturate(1.1) hue-rotate(335deg); }
+.raid-cosmetic-preview[data-cosmetic="cinderplume"] > svg, :is(.raid-party-avatar,.raid-score-avatar,.player-avatar,.roster-panel)[data-raid-cosmetic~="cinderplume"] svg { filter:sepia(.25) saturate(.6) brightness(.7) drop-shadow(0 0 3px #ff985a77); }
+.raid-cosmetic-preview[data-cosmetic="brazier-frame"], :is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="brazier-frame"] { border-radius:18%; box-shadow:0 0 0 3px #b87e58,inset 0 0 0 4px #ffcd8a44,0 0 15px #ff985a44; background:radial-gradient(circle at 0 0,#ffbb7780,transparent 40%),radial-gradient(circle at 100% 100%,#ff876580,transparent 40%),#243149; }
+.raid-cosmetic-preview[data-cosmetic="ember-aura"] { border-radius:50%; box-shadow:0 0 0 2px #ffac6f99,0 0 18px #ff985a44; background:radial-gradient(ellipse at 50% 85%,#ff985a44,transparent 65%); }
+.raid-cosmetic-preview[data-cosmetic="firefall"], .raid-cosmetic-preview[data-cosmetic="feather-fall"] { border-radius:16%; background:radial-gradient(ellipse at 25% 20%,#ffd28b44,transparent 40%),radial-gradient(ellipse at 75% 70%,#ff876544,transparent 40%),#15203c; }

@@ -1,3 +1,5 @@
+import { emberwingPattern } from "./raid-emberwing.js";
+export * from "./raid-emberwing.js";
 import { prismatailPattern } from "./raid-prismatail.js";
 export * from "./raid-prismatail.js";
 import { somnaraPattern, type DreamRune } from "./raid-somnara.js";
@@ -68,7 +70,8 @@ export type RaidAttack =
   | "pulse"
   // Somnara
   | "lullaby" | "tail-splash" | "dream-bubbles" | "falling-stars" | "whale-song" | "dream-sequence" | "nightmare"
-  | "prism-lance" | "fan-display" | "glare" | "refraction" | "halo-crush" | "light-relay";
+  | "prism-lance" | "fan-display" | "glare" | "refraction" | "halo-crush" | "light-relay"
+  | "dive-bomb" | "ember-rain" | "wing-gust" | "flame-ring" | "scorched-earth" | "heat-mark" | "brazier-lighting";
 export const RAID_ATTACKS: Record<
   RaidAttack,
   { name: string; tip: string; practice: string }
@@ -79,6 +82,13 @@ export const RAID_ATTACKS: Record<
   "refraction": { name: "Refraction", tip: "Lances bounce off mirror posts. Both segments are marked before they fire.", practice: "Leave both marked beam segments." },
   "halo-crush": { name: "Halo Crush", tip: "The ring closes around the marked point. Move through the teal gap or dash clear.", practice: "A closing halo has one marked safe gap." },
   "light-relay": { name: "Light Relay", tip: "Stand between the skylight and a mirror. Hit mirrors to rotate them 45\u00b0. Chain light into the heart. In the final phase, solo holds one beam for 2 seconds; teams need both paths within 3 seconds.", practice: "Connect skylight \u2192 raider \u2192 mirrors \u2192 heart. Hit a mirror to turn its arrow." },
+  "dive-bomb": {"name": "Dive Bomb", "tip": "Sidestep the locked lane. The dive leaves a burning trail for 4 seconds. Auralynx can reflect it with Mirror Guard.", "practice": "A locked lane marks the dive. Step sideways; avoid the burning trail."},
+  "ember-rain": {"name": "Ember Rain", "tip": "Keep moving between the small marked circles. Each ember lands separately.", "practice": "Embers rain down on staggered circles. Step between them."},
+  "wing-gust": {"name": "Wing Gust", "tip": "Leave the arrow cone or dash into the gust to resist its push. Avoid being pushed into fire.", "practice": "The cone pushes you away. Dash toward the boss as it lands."},
+  "flame-ring": {"name": "Flame Ring", "tip": "Jump as the expanding edge reaches you. Standing inside the ring after it passes is safe.", "practice": "Jump over the expanding ring of fire."},
+  "scorched-earth": {"name": "Scorched Earth", "tip": "Avoid growing fire patches. Grounding Emberwing shrinks all fire; Tidefin\u2019s Whirlpool extinguishes nearby patches.", "practice": "Fire patches grow over time. Ground the boss to shrink them."},
+  "heat-mark": {"name": "Heat Mark", "tip": "Spread out from marked allies before the 3-second timer expires. Each marked raider takes their own hit; standing in another blast adds damage.", "practice": "A blast follows you for 3 seconds. Spread out, then stay clear of other marked raiders."},
+  "brazier-lighting": {"name": "Brazier Lighting", "tip": "Stand inside a brazier ring for 1.5 seconds. Light all three together to ground Emberwing. Solo flames last 12 seconds (8 on Peril 3). Fireproof halves the lighting time.", "practice": "Run the triangle and light all three braziers before the first goes out."},
   charge: {
     name: "Mountain Charge",
     tip: "When you're targeted, stand so a pillar is between you and the boss, then step aside as the lane locks.",
@@ -179,6 +189,7 @@ export const RAID_ATTACKS: Record<
 };
 /** Each boss's attacks, in the order the Hub and the practice room list them. */
 export const RAID_BOSS_ATTACKS: Partial<Record<RaidBossId, RaidAttack[]>> = {
+  emberwing: ["dive-bomb", "ember-rain", "wing-gust", "flame-ring", "scorched-earth", "heat-mark", "brazier-lighting"],
   prismatail: ["prism-lance", "fan-display", "glare", "refraction", "halo-crush", "light-relay"],
   grumblecrag: ["charge", "slam", "volley", "debris", "eruption", "share"],
   tidewyrm: ["dive", "wave", "bubbles", "hightide", "undertow", "prison"],
@@ -363,6 +374,7 @@ export function raidPattern(
   if (boss === "gloomshade") return gloomshadePattern(phase, peril);
   if (boss === "somnara") return somnaraPattern(phase);
   if (boss === "prismatail") return prismatailPattern(phase);
+  if (boss === "emberwing") return emberwingPattern(phase);
   // A meteor needs friends to share it; alone it becomes a dodge.
   const meteor: RaidAttack = "share";
   if (phase === 1)
@@ -390,6 +402,7 @@ export const RAID_PING_SECONDS = 3.5;
 /** The third signal means something different on each boss. */
 export function raidPingLabel(kind: RaidPingKind, boss: RaidBossId = "grumblecrag") {
   if (kind === "bait" && boss === "tidewyrm") return "Island here";
+  if (kind === "bait" && boss === "emberwing") return "Brazier here";
   if (kind === "bait" && boss === "prismatail") return "Relay here";
   if (kind === "bait" && boss === "somnara") return "Rune here";
   if (kind === "bait" && boss === "gloomshade") return "That's the real one";
@@ -428,6 +441,12 @@ export const RAID_BOSS_PERKS: Partial<
     lumoth: { skill: "Radiant Flare", text: "For 4 seconds, light reaching you fans out through nearby allies." },
     mystowl: { skill: "Ward", text: "Your ward protects nearby allies from Glare." },
     duskveil: { skill: "Void Orb", text: "A Void Orb on a lance lane swallows that segment." },
+  },
+  emberwing: {
+    cindrake: { skill: "Blaze Whirl", text: "Your flames light any brazier they touch, including while you move." },
+    tidefin: { skill: "Whirlpool", text: "Your water extinguishes fire patches and dive trails where it lands." },
+    auralynx: { skill: "Mirror Guard", text: "Reflecting a Dive Bomb adds 20 stagger to Emberwing." },
+    lumoth: { skill: "Starfall Spray", text: "Your stars deal full damage to an airborne Emberwing." },
   },
   grumblecrag: RAID_PERKS,
   tidewyrm: {
@@ -482,6 +501,11 @@ export const RAID_BOSS_CHAPTERS: Partial<
     { name: "Dawn", objective: "Carry skylight through mirrors into the shielded heart.", detail: "Stand within the skylight ring to take the beam. Light travels up to 300px between raiders and mirror posts, and 260px into the heart. Hit a mirror to turn its arrow 45°. A connected chain shatters the shield for 6 seconds. Carrying light burns 3 health per second." },
     { name: "High Noon", objective: "Follow reflected lanes. Escape through the halo gap.", detail: "Prismatail moves farther from the skylight. Refraction shows both sides of the bounce before firing. The closing halo leaves a teal gap. The Polished rite prevents beam burn and extends your relay range." },
     { name: "Solar Crown", objective: "Complete both light paths within 3 seconds.", detail: "Teams connect two skylights to the heart within 3 seconds; mirrors can carry either path. Solo needs one continuous connection for 2 seconds. Turn your aim away from Glare, or hold Look away on touch. Save ultimates for the exposed heart." },
+  ],
+  emberwing: [
+    { name: "Takeoff", objective: "Sidestep dives. Jump the expanding flame ring.", detail: "Emberwing stays on the ground while you learn its attacks. Avoid the locked dive lane and its burning trail, step between falling embers, and dash toward the boss to resist Wing Gust." },
+    { name: "High Flight", objective: "Light all three braziers together to ground Emberwing.", detail: "Stand on a brazier for 1.5 seconds. Team flames last 6 seconds; solo flames last 12 seconds (8 on Peril 3). Grounding exposes Emberwing for 6 seconds and shrinks fire patches. Melee cannot hit it in the air; ranged damage is halved. Spread out for Heat Marks." },
+    { name: "Blazing Sky", objective: "Ground it twice to keep the heart open.", detail: "Team braziers stay lit for 4 seconds, while solo keeps the longer timer. Fire spreads faster. Bring Emberwing down twice this chapter and it stays grounded, exposed for the rest of the fight. Fireproof halves lighting time and reduces floor-fire damage by 50%." },
   ],
   grumblecrag: RAID_CHAPTERS,
   tidewyrm: [
@@ -561,7 +585,8 @@ export type RaidCosmetic =
   | "nightmote"
   | "crescent-bow"
   | "twilight-colors" | "starlit-skin" | "dreamdrift" | "moonglass" | "lullaby-aura" | "sweet-dreams"
-  | "dawn-colors" | "prismatic-skin" | "sunburst" | "stained-glass" | "halo-aura" | "rainbow-fan";
+  | "dawn-colors" | "prismatic-skin" | "sunburst" | "stained-glass" | "halo-aura" | "rainbow-fan"
+  | "ember-colors" | "cinderplume" | "firefall" | "brazier-frame" | "ember-aura" | "feather-fall";
 /** A raid reward or a Shop collection piece (see shop.ts LOOK_ITEMS). */
 export type AppearanceItem = RaidCosmetic | (string & {});
 export type RaidLoadout = Partial<Record<RaidSlot, AppearanceItem | null>>;
@@ -591,6 +616,18 @@ export interface RaidReward {
   rule: RaidRule;
 }
 export const RAID_REWARDS: RaidReward[] = [
+  {"id": "skyfeller", "boss": "emberwing", "slot": "title", "name": "Skyfeller", "description": "Title", "goal": "First clear", "rule": {"kind": "clears", "n": 1}},
+  {"id": "ember-colors", "boss": "emberwing", "slot": "skin", "name": "Ember colors", "description": "Burnished orange with warm golden highlights", "goal": "5 clears", "rule": {"kind": "clears", "n": 5}},
+  {"id": "cinderplume", "boss": "emberwing", "slot": "skin", "name": "Cinderplume skin", "description": "Charcoal feathers with glowing ember flecks", "goal": "10 clears", "rule": {"kind": "clears", "n": 10}},
+  {"id": "firefall", "boss": "emberwing", "slot": "entrance", "name": "Firefall entrance", "description": "Arrive in a shower of glowing feathers", "goal": "Clear Peril 2", "rule": {"kind": "peril", "n": 2}},
+  {"id": "wingbreaker", "boss": "emberwing", "slot": "title", "name": "Wingbreaker", "description": "Title", "goal": "Clear Peril 3", "rule": {"kind": "peril", "n": 3}},
+  {"id": "brazier-frame", "boss": "emberwing", "slot": "frame", "name": "Brazier frame", "description": "A dark bronze frame with burning corners", "goal": "Clear Peril 3", "rule": {"kind": "peril", "n": 3}},
+  {"id": "ember-aura", "boss": "emberwing", "slot": "aura", "name": "Ember aura", "description": "Warm embers drift around a glowing ring", "goal": "Clear Peril 3 with no downs", "rule": {"kind": "flawless", "peril": 3}},
+  {"id": "feather-fall", "boss": "emberwing", "slot": "victory", "name": "Feather Fall", "description": "Fiery feathers fan out and drift gently around you", "goal": "Feat: ground Emberwing within 20 seconds of takeoff three times", "rule": {"kind": "feat"}},
+  {"id": "flashfire", "boss": "emberwing", "slot": "title", "name": "Flashfire", "description": "Title", "goal": "Clear Peril 2 solo in under 4:00", "rule": {"kind": "speed", "peril": 2, "party": 1, "seconds": 240}},
+  {"id": "lone-phoenix", "boss": "emberwing", "slot": "title", "name": "Lone Phoenix", "description": "Title", "goal": "Clear Peril 3 solo (no self-revive)", "rule": {"kind": "solo", "peril": 3}},
+  {"id": "torchbearer", "boss": "emberwing", "slot": "title", "name": "Torchbearer", "description": "Title", "goal": "Light 60 braziers (wins and losses)", "rule": {"kind": "stat", "stat": "pillars", "n": 60}},
+
   {"id": "prismbreaker", "boss": "prismatail", "slot": "title", "name": "Prismbreaker", "description": "Title", "goal": "First clear", "rule": {"kind": "clears", "n": 1}},
   {"id": "dawn-colors", "boss": "prismatail", "slot": "skin", "name": "Dawn colors", "description": "Warm gold with rose and peach highlights", "goal": "5 clears", "rule": {"kind": "clears", "n": 5}},
   {"id": "prismatic-skin", "boss": "prismatail", "slot": "skin", "name": "Prismatic skin", "description": "Crystal-white skin edged in rainbow light", "goal": "10 clears", "rule": {"kind": "clears", "n": 10}},
@@ -673,6 +710,9 @@ export const RAID_COSMETICS = Object.fromEntries(
   }
 >;
 export const RAID_TRAITS = {
+  updraft: { name: "Updraft", text: "A longer opening flight, but grounding exposes the heart for 2 extra seconds." },
+  smouldering: { name: "Smouldering", text: "Fire patches last longer, but less Ember Rain falls." },
+  molting: { name: "Molting", text: "Dives come more often, but fallen feathers grant 10 ultimate charge." },
   dazzling: { name: "Dazzling", text: "More Glare, but relay range grows by 60px." },
   overcast: { name: "Overcast", text: "Light needs an extra relay link, but fewer lances fire." },
   kaleidoscope: { name: "Kaleidoscope", text: "Eight fan cones, but the heart stays exposed a second longer." },
@@ -702,6 +742,7 @@ export const RAID_BOSS_TRAITS: Partial<Record<RaidBossId, RaidTrait[]>> = {
   tidewyrm: ["murky", "rip-current", "spring-tide"],
   gloomshade: ["moonlit", "restless-spirits", "hollow"],
   prismatail: ["dazzling", "overcast", "kaleidoscope"],
+  emberwing: ["updraft", "smouldering", "molting"],
   somnara: ["deep-slumber", "restless-dream", "starry-night"],
 };
 export const raidTraitFor = (boss: RaidBossId, seed: number) => {
@@ -709,6 +750,7 @@ export const raidTraitFor = (boss: RaidBossId, seed: number) => {
   return list[seed % list.length];
 };
 export const RAID_RITES = {
+  fireproof: { name: "Fireproof", text: "Take 50% less damage from burning ground and light braziers twice as fast.", icon: "Blaze Whirl" },
   polished: { name: "Polished", text: "Carry sunlight without burning. Your relay range grows by 60px.", icon: "Mirror Guard" },
   lucid: { name: "Lucid", text: "Dream Bubbles cannot make you Drowsy. See the first rune of every sequence, even when someone else is the Dreamer.", icon: "Rest" },
   shelter: {
@@ -759,6 +801,7 @@ export const RAID_BOSS_RITES: Partial<Record<RaidRite, RaidBossId>> = {
   lamplighter: "gloomshade",
   lucid: "somnara",
   polished: "prismatail",
+  fireproof: "emberwing",
 };
 /** The rites a boss's runs can offer: the shared six plus its own. */
 export const ritesFor = (boss: RaidBossId) =>
@@ -899,6 +942,18 @@ export interface RaidState {
   dreamTrails?: { x: number; y: number; until: number }[];
   dreamsSolved?: number;
   dreamMistakes?: number;
+  airborne?: boolean;
+  braziers?: import("./raid-emberwing.js").RaidBrazier[];
+  emberPatches?: import("./raid-emberwing.js").EmberPatch[];
+  emberTrails?: import("./raid-emberwing.js").EmberTrail[];
+  flameRings?: { id:number; x:number; y:number; radius:number; startedAt:number }[];
+  emberFeathers?: { id:number; x:number; y:number; until:number }[];
+  emberDive?: { x:number; y:number; tx:number; ty:number; startedAt:number; until:number };
+  groundings?: number;
+  quickGroundings?: number;
+  chapterGroundings?: number;
+  permanentGround?: boolean;
+  takeoffAt?: number;
   mirrors?: import("./raid-prismatail.js").PrismMirror[];
   lightLinks?: import("./raid-prismatail.js").LightLink[];
   lightStartedAt?: number;

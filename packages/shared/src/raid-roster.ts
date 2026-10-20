@@ -105,7 +105,7 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
     signature: "Light three braziers at once",
     blurb:
       "A plump, smug fire bird that refuses to land. Light all three braziers together to knock it out of the sky.",
-    playable: false,
+    playable: true,
   },
   "storm-twins": {
     id: "storm-twins",

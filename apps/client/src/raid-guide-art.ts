@@ -26,14 +26,14 @@ export function raidGuideSomnara(exposed = false) {
 }
 /** The boss's miniature for lobbies and results. */
 export function raidGuideBossFor(boss: string, exposed = false) {
-  return boss === "prismatail" ? raidCrest("prismatail").replace(/<svg[^>]*>/, '<g transform="translate(-45 -50) scale(.9)">').replace("</svg>", "</g>") : boss === "somnara" ? raidGuideSomnara(exposed) : boss === "tidewyrm"
+  return boss === "emberwing" ? raidCrest("emberwing").replace(/<svg[^>]*>/, '<g transform="translate(-45 -50) scale(.9)">').replace("</svg>", "</g>") : boss === "prismatail" ? raidCrest("prismatail").replace(/<svg[^>]*>/, '<g transform="translate(-45 -50) scale(.9)">').replace("</svg>", "</g>") : boss === "somnara" ? raidGuideSomnara(exposed) : boss === "tidewyrm"
     ? raidGuideTidewyrm(exposed)
     : boss === "gloomshade"
       ? raidGuideGloomshade(exposed)
       : raidGuideBoss(exposed);
 }
 export function raidGuideScene(
-  kind: "relay" | "mirror" | "glare" | "charge" | "core" | "revive" | "strand" | "tide" | "prison" | "lantern" | "shadow" | "curse" | "dream" | "runes" | "quiet",
+  kind: "braziers" | "ground-bird" | "heat-spread" | "relay" | "mirror" | "glare" | "charge" | "core" | "revive" | "strand" | "tide" | "prison" | "lantern" | "shadow" | "curse" | "dream" | "runes" | "quiet",
   character: CharacterId,
 ) {
   const hero = (x: number, y: number, n: string) =>
@@ -73,6 +73,9 @@ export function raidGuideScene(
   if (kind === "relay") art = `<circle cx="27" cy="60" r="15" fill="#ffe2a0"/>${hero(49, 55, "relay")}<path d="M27 60 70 83 132 57 187 80" fill="none" stroke="#ffe2a0" stroke-width="4"/><path d="m132 40 13 17-13 17-13-17Z" fill="#9ae4ee"/><path d="m187 65 10 15-10 15-10-15Z" fill="#ffe2a0"/><text x="110" y="128">LIGHT → MIRRORS → HEART</text>`;
   if (kind === "mirror") art = `<ellipse cx="110" cy="98" rx="42" ry="12" fill="#08152b"/><path d="m110 30 25 32-25 32-25-32Z" fill="#9ae4ee" stroke="#ffe2a0" stroke-width="3"/><path d="M110 62h61m-12-9 12 9-12 9" stroke="#ffe2a0" stroke-width="4" fill="none"/><path d="M72 73a44 44 0 0 1 69-50m-13-2 13 2-3 13" stroke="#8cebd1" stroke-width="3" fill="none"/><text x="110" y="128">HIT TO TURN 45°</text>`;
   if (kind === "glare") art = `<path d="M70 43q40-35 80 0-40 35-80 0Z" fill="#ffe2a0" fill-opacity=".2" stroke="#ffe2a0" stroke-width="3"/><circle cx="110" cy="43" r="11" fill="#ffe2a0"/>${hero(89, 65, "glare")}<path d="M111 90v21m-7-8 7 8 7-8" fill="none" stroke="#8cebd1" stroke-width="3"/><text x="110" y="128">TURN AWAY FROM GLARE</text>`;
+  if(kind === "braziers") art = `<path d="M110 30 45 100h130Z" fill="none" stroke="#ffcf91" stroke-width="2" stroke-dasharray="5 4"/>${[[110,30],[45,100],[175,100]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="18" fill="#ffad6c" fill-opacity=".2" stroke="#ffcf91"/><path d="M${x-8} ${y+3}q-4-8 8-19-2 8 6 9 8 12-14 10Z" fill="#ffcf91"/>`).join("")}<text x="110" y="128">ALL THREE TOGETHER</text>`;
+  if(kind === "ground-bird") art = `<g transform="translate(65 20) scale(.8)">${raidGuideBossFor("emberwing")}</g><path d="M60 58v42m-8-9 8 9 8-9" stroke="#ffcf91" stroke-width="3" fill="none"/>${hero(151,65,"fire")}<text x="110" y="128">GROUND IT · STRIKE THE HEART</text>`;
+  if(kind === "heat-spread") art = `<circle cx="57" cy="72" r="35" fill="#ff688c" fill-opacity=".12" stroke="#ff688c"/>${hero(36,45,"mark1")}${hero(150,45,"mark2")}<path d="M103 73h32m-8-7 8 7-8 7" fill="none" stroke="#8be7d0" stroke-width="3"/><text x="110" y="128">SPREAD BEFORE IT BURSTS</text>`;
   // Center the complete two-character scene; center its caption on the card.
   if (kind === "revive") art = `<g transform="translate(-14 -8)">${art}</g>`;
   return `<svg class="raid-guide-scene" viewBox="0 0 220 135" aria-hidden="true">${floor}${art}</svg>`;
