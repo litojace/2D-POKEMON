@@ -66,6 +66,12 @@ export function drawCollectionAura(g: G, id: string, x: number, y: number, now: 
       );
       return true;
     }
+    case "halo-aura": {
+      g.lineStyle(3,0xffe5a0,.85).strokeEllipse(x,y,100,40);
+      g.lineStyle(1,0xfff3cf,.4).strokeEllipse(x,y,112,46);
+      ring(6,50,20,6500,(px,py,i)=>{ const color=[0xff899e,0xffd778,0x9aefb5,0x80e1ff,0xa5adff,0xe5a0ff][i];g.fillStyle(color,.9).fillTriangle(px,py-6,px+4,py,px,py+6).fillTriangle(px,py-6,px-4,py,px,py+6); });
+      return true;
+    }
     case "lullaby-aura": {
       g.fillStyle(0x8977c5, 0.12).fillEllipse(x, y, 102, 43);
       g.lineStyle(1.5, 0xc9a3ff, 0.45).strokeEllipse(x, y, 98, 41);
@@ -141,6 +147,10 @@ export function playCollectionEntrance(emit: Emit, id: string, x: number, y: num
         const a = (i / 24) * TAU;
         return { y: y + 4 * sc, vx: Math.cos(a) * rnd(60, 120), vy: Math.sin(a) * rnd(30, 60) - 70, life: rnd(0.8, 1.2), size: 3 * sc, color: [0xffb3cf, 0xff6fa0, 0xfff0f5, 0x8fe06a][i % 4], shape: "leaf", spin: rnd(-8, 8) };
       });
+      return true;
+    case "sunburst":
+      burst(24,i=>{const a=i/24*TAU;return {x,y:y-20*sc,vx:Math.cos(a)*170,vy:Math.sin(a)*130,life:.75,size:4*sc,color:i%2?0xffe5a0:0xffffff,shape:"spark"};});
+      emit({x,y,vx:0,vy:0,life:.8,size:24*sc,color:0xffd778,shape:"ring"});
       return true;
     case "dreamdrift":
       emit({ x, y, vx: 0, vy: -12, life: 1.2, size: 18 * sc, color: 0xc9a3ff, shape: "ring" });
@@ -279,6 +289,16 @@ export function drawCollectionVictory(
       if (t > 0.9 && t - dt <= 0.9)
         for (let i = 0; i < 34; i++)
           emit({ x: x + rnd(-40, 40) * sc, y: y - 50 * sc, vx: rnd(-170, 170), vy: rnd(-260, -60), life: rnd(0.7, 1.1), size: rnd(2, 3.5) * sc, color: i % 3 ? 0xe6fbff : 0x7fe9ff, shape: "dot" });
+      return true;
+    }
+    case "rainbow-fan": {
+      const spread=Math.min(1,t/.7), colors=[0xff899e,0xffd778,0x9aefb5,0x80e1ff,0xa5adff,0xe5a0ff];
+      for(let i=0;i<9;i++){
+        const a=-Math.PI+(i/8)*Math.PI,reach=100*sc*spread,px=x+Math.cos(a)*reach,py=y-25*sc+Math.sin(a)*reach;
+        under.lineStyle(5*sc,colors[i%6],.6*fade).lineBetween(x,y,px,py);
+        under.fillStyle(colors[i%6],.8*fade).fillTriangle(px,py-18*sc,px-12*sc,py,px,py+18*sc).fillTriangle(px,py-18*sc,px+12*sc,py,px,py+18*sc);
+        under.fillStyle(0xfff9ed,fade).fillCircle(px,py,3*sc);
+      }
       return true;
     }
     case "sweet-dreams": {

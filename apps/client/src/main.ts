@@ -1,3 +1,4 @@
+import { prismatailAim } from "./prismatail-controls";
 import { dreamRuneKey } from "./somnara-controls";
 import { battleMusic } from "./battle-music";
 import { setDialogContent } from "./dialog";
@@ -2390,7 +2391,7 @@ class ArenaScene extends Phaser.Scene {
       touch.enabled &&
         document.body.classList.contains("battle-active") &&
         innerWidth > innerHeight,
-      follow && presented && state?.raid?.boss !== "somnara"
+      follow && presented && state?.raid?.boss !== "somnara" && state?.raid?.boss !== "prismatail"
         ? {
             ...follow,
             x: presented.x,
@@ -2454,7 +2455,7 @@ class ArenaScene extends Phaser.Scene {
       return;
     }
     // Walls for prediction (the Shifting Ruins block comes and goes) and the floor.
-    useObstacles(state.raid ? (state.arena === "lagoon" || state.arena === "lantern-yard" || state.arena === "cloud-deck" ? [] : OBSTACLES.filter((_,i)=>!state!.raid!.pillars[i]?.broken)) : obstaclesAt(state.arena, arenaClock()));
+    useObstacles(state.raid ? (state.arena === "lagoon" || state.arena === "lantern-yard" || state.arena === "cloud-deck" || state.arena === "sun-atrium" ? [] : OBSTACLES.filter((_,i)=>!state!.raid!.pillars[i]?.broken)) : obstaclesAt(state.arena, arenaClock()));
     useSpeedScale(
       state.mutators?.includes("speed") ? MUTATOR_RULES.speed : 1,
     );
@@ -2509,6 +2510,8 @@ class ArenaScene extends Phaser.Scene {
       else if (usingPad) aimAt = this.aimPoint;
       else if (controlPrefs().aimAssist && skill < 0)
         aimAt = assistAim(aimAt, enemies);
+      const prismAim = state ? prismatailAim(state, local) : undefined;
+      if (prismAim) aimAt = prismAim;
       aimAt = {
         x: Phaser.Math.Clamp(aimAt.x, 0, RULES.width),
         y: Phaser.Math.Clamp(aimAt.y, 0, RULES.height),
@@ -2521,11 +2524,11 @@ class ArenaScene extends Phaser.Scene {
         aimX: aimAt.x,
         aimY: aimAt.y,
         basic:
-          active &&
+          active && (prismAim ? prismAim.basic :
           ((touch.enabled
             ? touch.basic
             : heldAction("basic") || !!pad?.held.has("basic")) ||
-            this.actions.basic),
+            this.actions.basic)),
         skill,
         ...(ex ? { ex: true } : {}),
         dash: active && this.actions.dash,

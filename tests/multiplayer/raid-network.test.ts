@@ -353,3 +353,19 @@ it("sends Somnara's dream only to its authenticated Dreamer, with Lucid/reveal e
   [ally, publicView] = await Promise.all(pending);
   expect(ally.raidDream).toBeUndefined(); expect(publicView.raidDream).toBeUndefined();
 });
+
+it("opens Prismatail for a co-op party, validates its drills, and broadcasts the relay state", async () => {
+  const {connect,accounts}=await setup();accounts.provider.rpc=async()=>({clears:1,highestPeril:3,cosmetics:[],weekly:[],bosses:{grumblecrag:{clears:1,highestPeril:3}}});
+  const host=await connect(),peer=await connect();
+  const created=await emit(host,'create',{name:'Light host',mode:'raid',boss:'prismatail'});expect(created.ok).toBe(true);
+  const joined=await emit(peer,'join',{name:'Light friend',code:created.code});expect(joined.ok).toBe(true);
+  const a=server!.rooms.get(created.code!) as RaidArena;expect(a.constructor.name).toBe('PrismatailArena');
+  expect((await emit(peer,'raid-drill',{kind:'light-relay'})).ok).toBe(false);
+  expect((await emit(host,'raid-drill',{kind:'dream-sequence'})).ok).toBe(false);
+  expect((await emit(host,'raid-drill',{kind:'light-relay'})).ok).toBe(true);
+  a.phase='playing';a.raid.phase=3;a.heroes().forEach((p,i)=>{p.x=470;p.y=i?600:300});(a as any).started=true;(a as any).nextAttack=Infinity;
+  const pending=new Promise<any>((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('No Prismatail relay snapshot')),2000);peer.on('state',s=>{if(s.raid?.lightLinks?.length){clearTimeout(timer);resolve(s);}})});
+  for(let i=0;i<70;i++)server!.step();const snapshot=await pending;
+  expect(snapshot.arena).toBe('sun-atrium');expect(snapshot.raid.mirrors).toHaveLength(4);expect(snapshot.raid.lightLinks.some((s:any)=>s.beam===1)).toBe(true);expect(snapshot.raidDream).toBeUndefined();
+  expect((await emit(host,'raid-drill',{kind:null})).ok).toBe(true);
+});

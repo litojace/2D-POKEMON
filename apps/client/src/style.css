@@ -9016,3 +9016,19 @@ dialog.framed-dialog > .dialog-content:focus-visible { outline: 2px solid #ffd65
 }
 
 .shop-status.is-error { color: #ffb4bf; }
+
+/* Prismatail: compact controls leave the relay lanes clear on short screens. */
+#raid-prism-controls { display: none; }
+.battle-raid #raid-prism-controls:not([hidden]) { position:absolute; z-index:26; top:26px; left:50%; transform:translateX(-50%); display:flex; gap:6px; max-width:calc(100% - 100px); }
+#raid-prism-controls button { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:44px; padding:6px 12px; border:1px solid #e5cc8970; border-radius:10px; color:#ffebaf; background:#14223bea; font-size:12px; line-height:1.2; touch-action:none; white-space:nowrap; }
+#raid-prism-controls button span { font-size:19px; line-height:1; }
+#raid-prism-controls button:disabled { opacity:.4; }
+#raid-prism-controls.glare-warning [data-prism-away], #raid-prism-controls [aria-pressed="true"] { border-color:#ffe7ad; background:#665635; box-shadow:0 0 12px #ffe2a03b; }
+.battle-raid .prism-blinded #game::after { content:""; position:absolute; inset:0; z-index:20; pointer-events:none; background:radial-gradient(ellipse,#aaa0d8d9,#414065ed); backdrop-filter:blur(6px); }
+.raid-cosmetic-preview[data-cosmetic="dawn-colors"] > svg, :is(.raid-party-avatar,.raid-score-avatar,.player-avatar,.roster-panel)[data-raid-cosmetic~="dawn-colors"] svg { filter:sepia(.5) saturate(.85) hue-rotate(325deg) brightness(1.15); }
+.raid-cosmetic-preview[data-cosmetic="prismatic-skin"] > svg, :is(.raid-party-avatar,.raid-score-avatar,.player-avatar,.roster-panel)[data-raid-cosmetic~="prismatic-skin"] svg { filter:saturate(.45) brightness(1.3) drop-shadow(-2px 0 2px #ff899e88) drop-shadow(2px 0 2px #80e1ff99); }
+.raid-cosmetic-preview[data-cosmetic="stained-glass"], :is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="stained-glass"] { border-radius:18%; box-shadow:0 0 0 3px #ffe2a0,0 0 14px #80e1ff44; background:conic-gradient(#ff899e66,#ffd77866,#9aefb566,#80e1ff66,#a5adff66,#e5a0ff66,#ff899e66); }
+.raid-cosmetic-preview[data-cosmetic="halo-aura"] { border-radius:50%; box-shadow:0 0 0 2px #ffe2a0,0 0 18px #ffe2a055; background:radial-gradient(ellipse at 50% 85%,#ffe2a044,transparent 65%); }
+.raid-cosmetic-preview[data-cosmetic="sunburst"] { background:repeating-conic-gradient(from 0deg at 50% 80%,#ffe2a033 0deg 10deg,transparent 10deg 30deg);border-radius:16%; }
+.raid-cosmetic-preview[data-cosmetic="rainbow-fan"] { background:conic-gradient(from 270deg at 50% 90%,#ff899e55,#ffd77855,#9aefb555,#80e1ff55,#a5adff55,#e5a0ff55,transparent 50%);border-radius:16%; }
+@media(max-height:360px) { #raid-prism-controls button { min-height:40px; padding:4px 8px; font-size:11px; } }

@@ -25,6 +25,18 @@ export function raidCue(state: Snapshot, myId: string) {
   if (r.staggerUntil > state.time)
     return "Core exposed — unleash your ultimates!";
   const w = r.warnings[0];
+  if (r.boss === "prismatail") {
+    if (r.exposedUntil > state.time) return "Heart exposed — unleash your ultimates!";
+    if ((r.blinded?.[myId] ?? 0) > state.time) return "Dazzled — keep moving until your vision clears.";
+    if (w?.kind === "glare") return "Glare — aim away from the boss or hold Look away!";
+    if (w?.kind === "fan-display") return `Fan ${(w.prismIndex ?? 0) + 1} fires — leave the matching colour and pip count!`;
+    if (w?.kind === "halo-crush") return "Halo closing — move through the teal gap!";
+    if (w?.kind === "refraction") return "Refraction — leave both marked lanes!";
+    if (w?.kind === "prism-lance") return "Lance locked — sidestep the thin lane!";
+    const arrivals=(r.lightArrivals??[]).filter(t=>t>=0);
+    if(r.phase===3 && r.partySize>1 && arrivals.length) return `Split Light · ${arrivals.length}/2 paths · pair within ${Math.max(0,Math.ceil(3-(state.time-Math.min(...arrivals))))}s!`;
+    return r.phase === 3 ? r.partySize === 1 ? `Hold the light path: ${Math.min(2,r.lightHold??0).toFixed(1)}/2s` : "Split Light — connect both paths within 3 seconds!" : "Relay skylight → raider → mirrors → heart. Hit mirrors to turn them.";
+  }
   const tide = somnaraCue(state, myId) || tidewyrmCue(state, myId) || gloomshadeCue(state, myId);
   if (tide) return tide;
   if (w?.kind === "charge") {
@@ -185,12 +197,12 @@ export function raidRoles(
   };
   best("damage", "Heavy Hitter");
   best("revives", "Medic");
-  best("pillars", boss === "tidewyrm" ? "Strand Master" : boss === "gloomshade" ? "Lantern Keeper" : boss === "somnara" ? "Dream Guide" : "Bait Master");
+  best("pillars", boss === "tidewyrm" ? "Strand Master" : boss === "gloomshade" ? "Lantern Keeper" : boss === "prismatail" ? "Lightkeeper" : boss === "somnara" ? "Dream Guide" : "Bait Master");
   return roles;
 }
 /** What the boss-feature column counts (pillars baited, strands …). */
 export const featureLabel = (boss: RaidBossId) =>
-  boss === "tidewyrm" ? "Strands" : boss === "gloomshade" ? "Relights" : boss === "somnara" ? "Runes" : "Pillars";
+  boss === "tidewyrm" ? "Strands" : boss === "gloomshade" ? "Relights" : boss === "prismatail" ? "Relays" : boss === "somnara" ? "Runes" : "Pillars";
 export function raidContributions(state: Snapshot) {
   const r = state.raid!;
   const roles = raidRoles(r.contributions ?? {}, r.boss);
@@ -202,11 +214,11 @@ export function raidContributions(state: Snapshot) {
         revives: 0,
         pillars: 0,
       };
-      return `<div class="raid-score-row"><div class="raid-score-player"><span class="raid-score-avatar" aria-hidden="true" data-raid-cosmetic="${portraitCosmetics(p)}">${portraitAvatar(p, "raid-result-" + p.id)}</span><span><b>${escape(p.name)}</b><small>${CHARACTERS[p.character].name}${p.out ? " · Left" : ""}${r.standIns?.includes(p.id) ? " · AI stand-in" : ""}</small>${(roles[p.id] ?? []).map((role) => `<em class="raid-role">${role}</em>`).join("")}</span></div><span aria-label="Damage">${Math.round(stats.damage).toLocaleString("en-US")}</span><span aria-label="Revives">${stats.revives}</span><span aria-label="${r.boss === "tidewyrm" ? "Strands" : r.boss === "gloomshade" ? "Lanterns relit" : r.boss === "somnara" ? "Correct runes" : "Pillars broken"}">${stats.pillars}</span></div>`;
+      return `<div class="raid-score-row"><div class="raid-score-player"><span class="raid-score-avatar" aria-hidden="true" data-raid-cosmetic="${portraitCosmetics(p)}">${portraitAvatar(p, "raid-result-" + p.id)}</span><span><b>${escape(p.name)}</b><small>${CHARACTERS[p.character].name}${p.out ? " · Left" : ""}${r.standIns?.includes(p.id) ? " · AI stand-in" : ""}</small>${(roles[p.id] ?? []).map((role) => `<em class="raid-role">${role}</em>`).join("")}</span></div><span aria-label="Damage">${Math.round(stats.damage).toLocaleString("en-US")}</span><span aria-label="Revives">${stats.revives}</span><span aria-label="${r.boss === "tidewyrm" ? "Strands" : r.boss === "gloomshade" ? "Lanterns relit" : r.boss === "prismatail" ? "Light relays" : r.boss === "somnara" ? "Correct runes" : "Pillars broken"}">${stats.pillars}</span></div>`;
     })
     .join(
       "",
-    )}<p class="raid-score-note">Revives credit everyone who helped. ${r.boss === "somnara" ? "Runes credit the raider whose fighter or clone entered the correct pad." : r.boss === "tidewyrm" ? "Strands credit the raider who baited the dive." : r.boss === "gloomshade" ? "Relights credit the raider who lit the lantern." : "Pillars credit the raider who baited the charge."}</p></section>`;
+    )}<p class="raid-score-note">Revives credit everyone who helped. ${r.boss === "prismatail" ? "Relays credit every raider in a completed light path." : r.boss === "somnara" ? "Runes credit the raider whose fighter or clone entered the correct pad." : r.boss === "tidewyrm" ? "Strands credit the raider who baited the dive." : r.boss === "gloomshade" ? "Relights credit the raider who lit the lantern." : "Pillars credit the raider who baited the charge."}</p></section>`;
 }
 
 export interface RaidGoal {
@@ -259,7 +271,7 @@ export function raidGoal(p: RaidProgress, reward: RaidReward): RaidGoal {
       const known = stats !== undefined || (boss === "grumblecrag" && p.pillars !== undefined);
       const have = stats?.[rule.stat] ?? (boss === "grumblecrag" ? (p[rule.stat] ?? 0) : 0);
       return goal(have, rule.n, known
-        ? `${Math.min(have, rule.n)}/${rule.n} ${rule.stat === "pillars" ? (boss === "tidewyrm" ? "strands" : boss === "gloomshade" ? "lanterns relit" : boss === "somnara" ? "correct runes" : "pillars baited") : "revives"} · wins and losses count`
+        ? `${Math.min(have, rule.n)}/${rule.n} ${rule.stat === "pillars" ? (boss === "tidewyrm" ? "strands" : boss === "gloomshade" ? "lanterns relit" : boss === "prismatail" ? "light relays" : boss === "somnara" ? "correct runes" : "pillars baited") : "revives"} · wins and losses count`
         : "Counts from the next raid update");
     }
     case "total-clears": {

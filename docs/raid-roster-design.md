@@ -1,8 +1,10 @@
 # Raid Roster, Shop & Missions — Design Spec (approved)
 
-Status: **Grumblecrag, Tidewyrm, Gloomshade and Somnara are implemented. Somnara uses migration 015; apply it after 014 to enable its records and eleven rewards. Prismatail is next in the build order, followed by Emberwing and Storm Twins.** The Raid Hub, Raid of the Day, five cosmetic slots, coins, daily missions and Shop are implemented. Balance values still need live play feedback.
+Status: **Grumblecrag, Tidewyrm, Gloomshade, Somnara and Prismatail are implemented. Apply migration 019_prismatail.sql after 018_collection_equipping.sql to enable Prismatail records and eleven rewards. Emberwing is next, followed by Storm Twins.** The Raid Hub, Raid of the Day, five cosmetic slots, coins, daily missions and Shop are implemented. Balance values still need live play feedback.
 
 Somnara's sequence is generated privately on the server, omitted from public and spectator snapshots, and delivered only to the Dreamer (or through Lucid/Thoughtstrike). Its camera keeps all four pads visible. Tests cover solo/co-op rune entry, backwards dreams, sleep/wake, champion tricks, practice, daily rotation, socket privacy, reward persistence and desktop/mobile controls.
+
+Prismatail fights in the Sun Atrium. Light passes through raiders and directional mirror posts; ordinary attacks turn a mirror 45°. Solar Crown requires two team paths within three seconds, or a continuous two-second solo path. The mobile camera keeps the complete relay visible, with compact Look away and Turn mirror controls. Six practice drills, champion tricks, traits, Polished, eleven rewards and Sunday daily rotation are implemented. Lightkeeper credits one relay per participating raider when the shield breaks, never per simulation frame. The two-player final phase uses both beams too; a Radiant Flare carrier can relay both during its four-second effect. Tests cover party sizes 1–4 on all Perils, attack geometry, mirror repair by stand-ins, socket state, database permissions and reward equipping. Balance still needs human play feedback.
 
 Decisions so far (Oct 17):
 

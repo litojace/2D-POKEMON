@@ -16,7 +16,9 @@ export type Skin =
   | "dusk-colors"
   | "moonlit-skin"
   | "twilight-colors"
-  | "starlit-skin";
+  | "starlit-skin"
+  | "dawn-colors"
+  | "prismatic-skin";
 export const SKINS: Skin[] = [
   "cragbound",
   "cragstone",
@@ -32,6 +34,8 @@ export const SKINS: Skin[] = [
   "moonlit-skin",
   "twilight-colors",
   "starlit-skin",
+  "dawn-colors",
+  "prismatic-skin",
 ];
 const hexRgb = (c: number) => [(c >> 16) & 255, (c >> 8) & 255, c & 255];
 /**
@@ -49,6 +53,8 @@ export const TONES: Partial<Record<Skin, { tones: [number, number, number]; keep
   // Twilight violet shading up into lantern gold.
   "dusk-colors": { tones: [0x2b2245, 0x8a5fc8, 0xffd27a], keep: 0.25 },
   "twilight-colors": { tones: [0x352a63, 0xa89ad9, 0xf2cddd], keep: 0.3 },
+  "dawn-colors": { tones: [0x6e3451,0xe9a279,0xfff0b9], keep: .22 },
+  "prismatic-skin": { tones: [0x475b83,0xb5d9e3,0xfff9ee], keep: .15 },
   "starlit-skin": { tones: [0x242844, 0x74679f, 0xe6ddff], keep: 0.2 },
   "moonlit-skin": { tones: [0x2a3358, 0x9aa8d8, 0xf4f6ff], keep: 0.3 },
 };
@@ -191,6 +197,14 @@ export function cosmeticLayer(
         context.fillRect(x - r / 2, y - r / 2, r, r);
       }
       context.globalAlpha = 1;
+    }
+    if (skin === "prismatic-skin" && !/-eyes([-~]|$)/.test(original)) {
+      context.globalCompositeOperation = "source-atop";
+      const prism = context.createLinearGradient(0,0,canvas.width,canvas.height);
+      ["#ff899e77","#ffd77866","#9aefb577","#80e1ff88","#a5adff88","#e5a0ff88"].forEach((color,i)=>prism.addColorStop(i/5,color));
+      context.fillStyle=prism;
+      context.fillRect(0,0,canvas.width,canvas.height);
+      context.globalCompositeOperation="source-over";
     }
     if ((skin === "moonlit-skin" || skin === "starlit-skin") && !/-eyes([-~]|$)/.test(original)) {
       // A soft silver glow from the top, and a few drifting stars.

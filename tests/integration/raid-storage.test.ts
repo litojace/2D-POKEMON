@@ -327,3 +327,27 @@ it("stores Somnara rewards and every correct rune after migration 015, without g
   await db.exec("reset role;set role service_role");
   await expect(db.query("select public.arena_record_raid($1::jsonb)", [JSON.stringify(dream(13, { boss: "prismatail" }))])).rejects.toThrow("Invalid raid");
 });
+
+it("stores Prismatail's eleven rewards after 019 and preserves Shop slots and admin testing", async () => {
+  for(const f of ['016_admin_shop_coins.sql','017_admin_mythic_testing.sql','018_collection_equipping.sql','019_prismatail.sql','019_prismatail.sql']) {
+    await db.exec('reset role;'+await readFile('supabase/migrations/'+f,'utf8'));
+  }
+  const prism=(n:number,extra:object={})=>({...receipt(800+n),boss:'prismatail',trait:'dazzling',daily:false,peril:3,seconds:210,feat:true,players:[{accountId:player,character:'lumoth',pillars:8}],...extra});
+  await login();
+  await expect(db.query('select public.arena_equip_raid_slot($1,$2)',['aura','halo-aura'])).rejects.toThrow('not earned');
+  await expect(db.query('select public.arena_record_raid($1::jsonb)',[JSON.stringify(prism(1))])).rejects.toThrow();
+  await db.exec('reset role;set role service_role');
+  const first=prism(1);await db.query('select public.arena_record_raid($1::jsonb)',[JSON.stringify(first)]);await db.query('select public.arena_record_raid($1::jsonb)',[JSON.stringify(first)]);
+  for(let i=2;i<=10;i++)await db.query('select public.arena_record_raid($1::jsonb)',[JSON.stringify(prism(i))]);
+  let p=await progress();expect(p.bosses.prismatail.clears).toBe(10);expect(p.stats.prismatail.pillars).toBe(80);
+  for(const id of ['prismbreaker','dawn-colors','prismatic-skin','sunburst','sunshatter','stained-glass','halo-aura','rainbow-fan','sunbeam-sprint','lone-sun','lightkeeper'])expect(p.earned).toContain(id);
+  for(const [slot,id] of [['skin','prismatic-skin'],['aura','halo-aura'],['entrance','sunburst'],['frame','stained-glass'],['victory','rainbow-fan']]){
+    await login();await db.query('select public.arena_equip_raid_slot($1,$2)',[slot,id]);expect((await progress()).loadout[slot]).toBe(id);
+  }
+  await db.exec('reset role;set role service_role');
+  await db.query('select public.arena_record_raid($1::jsonb)',[JSON.stringify(prism(11,{result:'defeat',players:[{accountId:player,character:'lumoth',pillars:999}]}))]);
+  p=await progress();expect(p.bosses.prismatail.clears).toBe(10);expect(p.stats.prismatail.pillars).toBe(380);
+  await db.exec(`reset role;insert into public.arena_admins values('${player}') on conflict do nothing`);await login();
+  const economy=(await db.query<{e:any}>('select public.arena_economy() as e')).rows[0].e;expect(economy.unlimitedCoins).toBe(true);expect(economy.mythicTesting).toBe(true);
+  await db.query("select public.arena_buy_item('galaxy-victory')");await db.query("select public.arena_equip_raid_slot('victory','galaxy-victory')");expect((await progress()).loadout.victory).toBe('galaxy-victory');
+},20000);

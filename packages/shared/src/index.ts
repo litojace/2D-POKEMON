@@ -1735,7 +1735,8 @@ export type ArenaId =
   | "lagoon"
   /** Gloomshade's raid arena (not in the PvP rotation). */
   | "lantern-yard"
-  | "cloud-deck";
+  | "cloud-deck"
+  | "sun-atrium";
 export interface Hazard {
   kind: "pool" | "vent";
   x: number;
@@ -1842,6 +1843,7 @@ export const ARENAS: Record<ArenaId, ArenaDef> = {
     obstacles: [],
     hazards: [],
   },
+  "sun-atrium": { id: "sun-atrium", name: "Sun Atrium", tip: "Relay skylight through the mirror posts into the heart.", obstacles: [], hazards: [] },
   "cloud-deck": { id: "cloud-deck", name: "Cloud Deck", tip: "Follow the Dreamer and step the four rune pads in order.", obstacles: [], hazards: [] },
 };
 /** Matches rotate through every arena. */

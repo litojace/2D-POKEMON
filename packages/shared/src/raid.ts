@@ -1,3 +1,5 @@
+import { prismatailPattern } from "./raid-prismatail.js";
+export * from "./raid-prismatail.js";
 import { somnaraPattern, type DreamRune } from "./raid-somnara.js";
 export * from "./raid-somnara.js";
 import type { RaidBossId } from "./raid-roster.js";
@@ -65,11 +67,18 @@ export type RaidAttack =
   | "split"
   | "pulse"
   // Somnara
-  | "lullaby" | "tail-splash" | "dream-bubbles" | "falling-stars" | "whale-song" | "dream-sequence" | "nightmare";
+  | "lullaby" | "tail-splash" | "dream-bubbles" | "falling-stars" | "whale-song" | "dream-sequence" | "nightmare"
+  | "prism-lance" | "fan-display" | "glare" | "refraction" | "halo-crush" | "light-relay";
 export const RAID_ATTACKS: Record<
   RaidAttack,
   { name: string; tip: string; practice: string }
 > = {
+  "prism-lance": { name: "Prism Lance", tip: "Sidestep the thin red lane after it locks.", practice: "A locked straight beam. Step sideways." },
+  "fan-display": { name: "Fan Display", tip: "The numbered colour on the crest is the only cone that fires. Leave that cone.", practice: "Six numbered cones appear; only the crest\u2019s matching colour fires." },
+  "glare": { name: "Glare", tip: "Aim away from the boss when the eye warning fills. On touch, hold Look away. Mystowl\u2019s Ward protects allies inside.", practice: "Turn away before the white crest flashes to avoid 1.5 seconds of blindness." },
+  "refraction": { name: "Refraction", tip: "Lances bounce off mirror posts. Both segments are marked before they fire.", practice: "Leave both marked beam segments." },
+  "halo-crush": { name: "Halo Crush", tip: "The ring closes around the marked point. Move through the teal gap or dash clear.", practice: "A closing halo has one marked safe gap." },
+  "light-relay": { name: "Light Relay", tip: "Stand between the skylight and a mirror. Hit mirrors to rotate them 45\u00b0. Chain light into the heart. In the final phase, solo holds one beam for 2 seconds; teams need both paths within 3 seconds.", practice: "Connect skylight \u2192 raider \u2192 mirrors \u2192 heart. Hit a mirror to turn its arrow." },
   charge: {
     name: "Mountain Charge",
     tip: "When you're targeted, stand so a pillar is between you and the boss, then step aside as the lane locks.",
@@ -170,6 +179,7 @@ export const RAID_ATTACKS: Record<
 };
 /** Each boss's attacks, in the order the Hub and the practice room list them. */
 export const RAID_BOSS_ATTACKS: Partial<Record<RaidBossId, RaidAttack[]>> = {
+  prismatail: ["prism-lance", "fan-display", "glare", "refraction", "halo-crush", "light-relay"],
   grumblecrag: ["charge", "slam", "volley", "debris", "eruption", "share"],
   tidewyrm: ["dive", "wave", "bubbles", "hightide", "undertow", "prison"],
   gloomshade: ["lunge", "hands", "snuff", "curse", "split", "pulse"],
@@ -352,6 +362,7 @@ export function raidPattern(
   if (boss === "tidewyrm") return tidewyrmPattern(phase, peril);
   if (boss === "gloomshade") return gloomshadePattern(phase, peril);
   if (boss === "somnara") return somnaraPattern(phase);
+  if (boss === "prismatail") return prismatailPattern(phase);
   // A meteor needs friends to share it; alone it becomes a dodge.
   const meteor: RaidAttack = "share";
   if (phase === 1)
@@ -379,6 +390,7 @@ export const RAID_PING_SECONDS = 3.5;
 /** The third signal means something different on each boss. */
 export function raidPingLabel(kind: RaidPingKind, boss: RaidBossId = "grumblecrag") {
   if (kind === "bait" && boss === "tidewyrm") return "Island here";
+  if (kind === "bait" && boss === "prismatail") return "Relay here";
   if (kind === "bait" && boss === "somnara") return "Rune here";
   if (kind === "bait" && boss === "gloomshade") return "That's the real one";
   return RAID_PINGS[kind].label;
@@ -411,6 +423,12 @@ export const RAID_PERKS: Partial<
 export const RAID_BOSS_PERKS: Partial<
   Record<RaidBossId, Partial<Record<CharacterId, { skill: string; text: string }>>>
 > = {
+  prismatail: {
+    cindrake: { skill: "Sunfire Pillar", text: "Your pillar relays the sunbeam for 4 seconds." },
+    lumoth: { skill: "Radiant Flare", text: "For 4 seconds, light reaching you fans out through nearby allies." },
+    mystowl: { skill: "Ward", text: "Your ward protects nearby allies from Glare." },
+    duskveil: { skill: "Void Orb", text: "A Void Orb on a lance lane swallows that segment." },
+  },
   grumblecrag: RAID_PERKS,
   tidewyrm: {
     voltkit: {
@@ -460,6 +478,11 @@ export const raidPerksOf = (boss: RaidBossId) => RAID_BOSS_PERKS[boss] ?? {};
 export const RAID_BOSS_CHAPTERS: Partial<
   Record<RaidBossId, readonly { name: string; objective: string; detail: string }[]>
 > = {
+  prismatail: [
+    { name: "Dawn", objective: "Carry skylight through mirrors into the shielded heart.", detail: "Stand within the skylight ring to take the beam. Light travels up to 300px between raiders and mirror posts, and 260px into the heart. Hit a mirror to turn its arrow 45°. A connected chain shatters the shield for 6 seconds. Carrying light burns 3 health per second." },
+    { name: "High Noon", objective: "Follow reflected lanes. Escape through the halo gap.", detail: "Prismatail moves farther from the skylight. Refraction shows both sides of the bounce before firing. The closing halo leaves a teal gap. The Polished rite prevents beam burn and extends your relay range." },
+    { name: "Solar Crown", objective: "Complete both light paths within 3 seconds.", detail: "Teams connect two skylights to the heart within 3 seconds; mirrors can carry either path. Solo needs one continuous connection for 2 seconds. Turn your aim away from Glare, or hold Look away on touch. Save ultimates for the exposed heart." },
+  ],
   grumblecrag: RAID_CHAPTERS,
   tidewyrm: [
     {
@@ -537,7 +560,8 @@ export type RaidCosmetic =
   | "crescent"
   | "nightmote"
   | "crescent-bow"
-  | "twilight-colors" | "starlit-skin" | "dreamdrift" | "moonglass" | "lullaby-aura" | "sweet-dreams";
+  | "twilight-colors" | "starlit-skin" | "dreamdrift" | "moonglass" | "lullaby-aura" | "sweet-dreams"
+  | "dawn-colors" | "prismatic-skin" | "sunburst" | "stained-glass" | "halo-aura" | "rainbow-fan";
 /** A raid reward or a Shop collection piece (see shop.ts LOOK_ITEMS). */
 export type AppearanceItem = RaidCosmetic | (string & {});
 export type RaidLoadout = Partial<Record<RaidSlot, AppearanceItem | null>>;
@@ -567,6 +591,18 @@ export interface RaidReward {
   rule: RaidRule;
 }
 export const RAID_REWARDS: RaidReward[] = [
+  {"id": "prismbreaker", "boss": "prismatail", "slot": "title", "name": "Prismbreaker", "description": "Title", "goal": "First clear", "rule": {"kind": "clears", "n": 1}},
+  {"id": "dawn-colors", "boss": "prismatail", "slot": "skin", "name": "Dawn colors", "description": "Warm gold with rose and peach highlights", "goal": "5 clears", "rule": {"kind": "clears", "n": 5}},
+  {"id": "prismatic-skin", "boss": "prismatail", "slot": "skin", "name": "Prismatic skin", "description": "Crystal-white skin edged in rainbow light", "goal": "10 clears", "rule": {"kind": "clears", "n": 10}},
+  {"id": "sunburst", "boss": "prismatail", "slot": "entrance", "name": "Sunburst entrance", "description": "Arrive in a burst of golden rays", "goal": "Clear Peril 2", "rule": {"kind": "peril", "n": 2}},
+  {"id": "sunshatter", "boss": "prismatail", "slot": "title", "name": "Sunshatter", "description": "Title", "goal": "Clear Peril 3", "rule": {"kind": "peril", "n": 3}},
+  {"id": "stained-glass", "boss": "prismatail", "slot": "frame", "name": "Stained-glass frame", "description": "A rainbow crystal portrait frame", "goal": "Clear Peril 3", "rule": {"kind": "peril", "n": 3}},
+  {"id": "halo-aura", "boss": "prismatail", "slot": "aura", "name": "Halo aura", "description": "A golden halo with orbiting prism crystals", "goal": "Clear Peril 3 with no downs", "rule": {"kind": "flawless", "peril": 3}},
+  {"id": "rainbow-fan", "boss": "prismatail", "slot": "victory", "name": "Rainbow Fan", "description": "A fan of rainbow crystal feathers blooms behind you", "goal": "Feat: shatter the shield within 8 seconds three times", "rule": {"kind": "feat"}},
+  {"id": "sunbeam-sprint", "boss": "prismatail", "slot": "title", "name": "Sunbeam Sprint", "description": "Title", "goal": "Clear Peril 2 solo in under 4:00", "rule": {"kind": "speed", "peril": 2, "party": 1, "seconds": 240}},
+  {"id": "lone-sun", "boss": "prismatail", "slot": "title", "name": "Lone Sun", "description": "Title", "goal": "Clear Peril 3 solo (no self-revive)", "rule": {"kind": "solo", "peril": 3}},
+  {"id": "lightkeeper", "boss": "prismatail", "slot": "title", "name": "Lightkeeper", "description": "Title", "goal": "Relay light 80 times (wins and losses)", "rule": {"kind": "stat", "stat": "pillars", "n": 80}},
+
   { id: "cragbreaker", boss: "grumblecrag", slot: "title", name: "Cragbreaker", description: "Title", goal: "First clear", rule: { kind: "clears", n: 1 } },
   { id: "cragbound", boss: "grumblecrag", slot: "skin", name: "Cragbound colors", description: "Earthy gold colors", goal: "5 clears", rule: { kind: "clears", n: 5 } },
   { id: "cragstone", boss: "grumblecrag", slot: "skin", name: "Cragstone skin", description: "Stone markings with glowing amber cracks", goal: "10 clears", rule: { kind: "clears", n: 10 } },
@@ -637,6 +673,9 @@ export const RAID_COSMETICS = Object.fromEntries(
   }
 >;
 export const RAID_TRAITS = {
+  dazzling: { name: "Dazzling", text: "More Glare, but relay range grows by 60px." },
+  overcast: { name: "Overcast", text: "Light needs an extra relay link, but fewer lances fire." },
+  kaleidoscope: { name: "Kaleidoscope", text: "Eight fan cones, but the heart stays exposed a second longer." },
   "deep-slumber": { name: "Deep Slumber", text: "One more rune in each sequence, but exposure lasts 2 seconds longer." },
   "restless-dream": { name: "Restless Dream", text: "More Dream Bubbles, but one fewer rune per sequence." },
   "starry-night": { name: "Starry Night", text: "More Falling Stars, but a larger Quiet Zone." },
@@ -662,6 +701,7 @@ export const RAID_BOSS_TRAITS: Partial<Record<RaidBossId, RaidTrait[]>> = {
   grumblecrag: ["restless", "fractured", "ancient"],
   tidewyrm: ["murky", "rip-current", "spring-tide"],
   gloomshade: ["moonlit", "restless-spirits", "hollow"],
+  prismatail: ["dazzling", "overcast", "kaleidoscope"],
   somnara: ["deep-slumber", "restless-dream", "starry-night"],
 };
 export const raidTraitFor = (boss: RaidBossId, seed: number) => {
@@ -669,6 +709,7 @@ export const raidTraitFor = (boss: RaidBossId, seed: number) => {
   return list[seed % list.length];
 };
 export const RAID_RITES = {
+  polished: { name: "Polished", text: "Carry sunlight without burning. Your relay range grows by 60px.", icon: "Mirror Guard" },
   lucid: { name: "Lucid", text: "Dream Bubbles cannot make you Drowsy. See the first rune of every sequence, even when someone else is the Dreamer.", icon: "Rest" },
   shelter: {
     name: "Sheltering Step",
@@ -717,6 +758,7 @@ export const RAID_BOSS_RITES: Partial<Record<RaidRite, RaidBossId>> = {
   footing: "tidewyrm",
   lamplighter: "gloomshade",
   lucid: "somnara",
+  polished: "prismatail",
 };
 /** The rites a boss's runs can offer: the shared six plus its own. */
 export const ritesFor = (boss: RaidBossId) =>
@@ -753,6 +795,9 @@ export interface RaidWarning {
   lantern?: number;
   /** Tail Splash: full rectangle width. */
   width?: number;
+  prismIndex?: number;
+  prismCount?: number;
+  gapAngle?: number;
 }
 /** Tidewyrm's raised islands (walkable). */
 export interface RaidIsland {
@@ -854,6 +899,15 @@ export interface RaidState {
   dreamTrails?: { x: number; y: number; until: number }[];
   dreamsSolved?: number;
   dreamMistakes?: number;
+  mirrors?: import("./raid-prismatail.js").PrismMirror[];
+  lightLinks?: import("./raid-prismatail.js").LightLink[];
+  lightStartedAt?: number;
+  lightHold?: number;
+  lightArrivals?: number[];
+  shieldBreaks?: number;
+  quickBreaks?: number;
+  blinded?: Record<string, number>;
+  sunPillars?: { x: number; y: number; until: number; owner: string }[];
   message: string;
   resultId?: string;
   rewardStatus?: "saving" | "saved" | "unavailable";

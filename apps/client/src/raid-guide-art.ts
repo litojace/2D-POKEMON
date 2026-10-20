@@ -1,4 +1,5 @@
 import type { CharacterId } from "@arena/shared";
+import { raidCrest } from "./raid-crests";
 import { fighterArt, scopeIds } from "./fighter-art";
 
 // Miniature diagrams use the same fighter artwork, boss silhouette and warning colors as combat.
@@ -25,14 +26,14 @@ export function raidGuideSomnara(exposed = false) {
 }
 /** The boss's miniature for lobbies and results. */
 export function raidGuideBossFor(boss: string, exposed = false) {
-  return boss === "somnara" ? raidGuideSomnara(exposed) : boss === "tidewyrm"
+  return boss === "prismatail" ? raidCrest("prismatail").replace(/<svg[^>]*>/, '<g transform="translate(-45 -50) scale(.9)">').replace("</svg>", "</g>") : boss === "somnara" ? raidGuideSomnara(exposed) : boss === "tidewyrm"
     ? raidGuideTidewyrm(exposed)
     : boss === "gloomshade"
       ? raidGuideGloomshade(exposed)
       : raidGuideBoss(exposed);
 }
 export function raidGuideScene(
-  kind: "charge" | "core" | "revive" | "strand" | "tide" | "prison" | "lantern" | "shadow" | "curse" | "dream" | "runes" | "quiet",
+  kind: "relay" | "mirror" | "glare" | "charge" | "core" | "revive" | "strand" | "tide" | "prison" | "lantern" | "shadow" | "curse" | "dream" | "runes" | "quiet",
   character: CharacterId,
 ) {
   const hero = (x: number, y: number, n: string) =>
@@ -69,6 +70,9 @@ export function raidGuideScene(
   if (kind === "dream") art = `<g transform="translate(156 77) scale(.65)">${raidGuideSomnara()}</g>${hero(38, 64, "dream")}<rect x="25" y="26" width="100" height="28" rx="8" fill="#121c36" stroke="#c9a3ff"/><circle cx="43" cy="40" r="7" fill="none" stroke="#92efdb" stroke-width="2"/><path d="m70 32 3 5 6 1-4 4 1 6-6-3-5 3 1-6-4-4 6-1Z" fill="#ffdf8d"/><path d="M98 33a8 8 0 1 0 7 11 9 9 0 0 1-7-11Z" fill="#d1b2ff"/><text x="110" y="128">ONLY YOUR DREAMER SEES</text>`;
   if (kind === "runes") art = `<circle cx="48" cy="74" r="25" fill="#92efdb" fill-opacity=".13" stroke="#92efdb" stroke-width="2"/><circle cx="48" cy="74" r="10" fill="none" stroke="#92efdb" stroke-width="3"/><circle cx="158" cy="74" r="25" fill="#ffdf8d" fill-opacity=".13" stroke="#ffdf8d" stroke-width="2"/><path d="m158 60 4 8 10 2-7 6 1 10-8-5-8 5 1-10-7-6 10-2Z" fill="#ffdf8d"/><path d="M82 74h40m-8-6 8 6-8 6" fill="none" stroke="#e4d6ff" stroke-width="3"/><text x="110" y="128">ENTER EACH PAD IN ORDER</text>`;
   if (kind === "quiet") art = `<rect x="10" y="20" width="200" height="88" rx="12" fill="#ff647f" opacity=".15"/><ellipse cx="123" cy="76" rx="54" ry="32" fill="#92efdb" fill-opacity=".2" stroke="#92efdb" stroke-width="3"/>${hero(98, 40, "quiet")}<path d="M47 73h29m-8-7 8 7-8 7" fill="none" stroke="#92efdb" stroke-width="3"/><text x="110" y="128">FOLLOW THE QUIET ZONE</text>`;
+  if (kind === "relay") art = `<circle cx="27" cy="60" r="15" fill="#ffe2a0"/>${hero(49, 55, "relay")}<path d="M27 60 70 83 132 57 187 80" fill="none" stroke="#ffe2a0" stroke-width="4"/><path d="m132 40 13 17-13 17-13-17Z" fill="#9ae4ee"/><path d="m187 65 10 15-10 15-10-15Z" fill="#ffe2a0"/><text x="110" y="128">LIGHT → MIRRORS → HEART</text>`;
+  if (kind === "mirror") art = `<ellipse cx="110" cy="98" rx="42" ry="12" fill="#08152b"/><path d="m110 30 25 32-25 32-25-32Z" fill="#9ae4ee" stroke="#ffe2a0" stroke-width="3"/><path d="M110 62h61m-12-9 12 9-12 9" stroke="#ffe2a0" stroke-width="4" fill="none"/><path d="M72 73a44 44 0 0 1 69-50m-13-2 13 2-3 13" stroke="#8cebd1" stroke-width="3" fill="none"/><text x="110" y="128">HIT TO TURN 45°</text>`;
+  if (kind === "glare") art = `<path d="M70 43q40-35 80 0-40 35-80 0Z" fill="#ffe2a0" fill-opacity=".2" stroke="#ffe2a0" stroke-width="3"/><circle cx="110" cy="43" r="11" fill="#ffe2a0"/>${hero(89, 65, "glare")}<path d="M111 90v21m-7-8 7 8 7-8" fill="none" stroke="#8cebd1" stroke-width="3"/><text x="110" y="128">TURN AWAY FROM GLARE</text>`;
   // Center the complete two-character scene; center its caption on the card.
   if (kind === "revive") art = `<g transform="translate(-14 -8)">${art}</g>`;
   return `<svg class="raid-guide-scene" viewBox="0 0 220 135" aria-hidden="true">${floor}${art}</svg>`;

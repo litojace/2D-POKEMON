@@ -92,7 +92,7 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
     signature: "Relay the sunbeam to its heart",
     blurb:
       "A proud crystal peacock with a shielded heart. Pass the sunbeam raider to raider until it reaches the boss and shatters the shield.",
-    playable: false,
+    playable: true,
   },
   emberwing: {
     id: "emberwing",

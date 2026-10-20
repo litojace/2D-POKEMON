@@ -38,11 +38,12 @@ describe("mission completion instructions", () => {
   });
   it("lists the actual boss feat requirements from the reward catalog", () => {
     const examples = missionFeatExamples("feat-1");
-    expect(examples).toHaveLength(4);
+    expect(examples).toHaveLength(5);
     expect(examples.some((text) => text.includes("Grumblecrag") && text.includes("pillar"))).toBe(true);
     expect(examples.some((text) => text.includes("Tidewyrm") && text.includes("4 times"))).toBe(true);
     expect(examples.some((text) => text.includes("Gloomshade") && text.includes("copy"))).toBe(true);
     expect(examples.some((text) => text.includes("Somnara") && text.includes("wrong runes"))).toBe(true);
+    expect(examples.some((text) => text.includes("Prismatail") && text.includes("8 seconds"))).toBe(true);
     expect(missionFeatExamples("raid-1")).toEqual([]);
   });
 });

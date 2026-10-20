@@ -144,6 +144,7 @@ export const FLOOR_PALETTES: Record<
     pillar: [0xb89b62, 0xd2b679, 0xf1dcae],
     lines: 0xd9f5f0,
   },
+  "sun-atrium": { surround: 0x253747, blades: [0x708b85, 0x4c706a], grout: 0x485567, tones: [0x68788c,0x728297,0x657789], speck: 0xdfcf9a, moss: 0x819f92, pillar: [0x53657e,0x8ea4bc,0xd8e4ee], lines: 0xffe3a3 },
   "cloud-deck": { surround: 0x151d3b, blades: [0x525b86, 0x68739e], grout: 0x364266, tones: [0x44547b], speck: 0xc9a3ff, moss: 0x53658b, pillar: [0x52658b, 0x687da7, 0xa1b6d6], lines: 0xd5dcff },
   "lantern-yard": {
     surround: 0x1d2440,
@@ -167,6 +168,7 @@ export const FLOOR_PALETTES: Record<
   },
 };
 export function paintArenaFloor(g: FloorPainter, arena: ArenaDef = ARENAS.classic) {
+  if (arena.id === "sun-atrium") return paintSunAtrium(g);
   if (arena.id === "cloud-deck") return paintCloudDeck(g);
   if (arena.id === "lagoon") return paintLagoon(g);
   if (arena.id === "lantern-yard") return paintLanternYard(g);
@@ -468,5 +470,29 @@ function paintCloudDeck(g: FloorPainter) {
   }
   for (let x = 0; x < 1700; x += 95) {
     g.fillStyle(0x8599bc, 0.22).fillEllipse(x, 0, 150, 65).fillEllipse(x + 30, 900, 165, 60);
+  }
+}
+
+/** Sun Atrium: baked marble, stained glass and brass inlays. No per-frame scenery work. */
+function paintSunAtrium(g: FloorPainter) {
+  g.fillStyle(0x243649).fillRect(0,0,1600,900);
+  for(let row=0;row<9;row++)for(let col=0;col<16;col++){
+    const x=col*100,y=row*100;
+    g.fillStyle((row+col)%2?0x4e6178:0x54677d).fillRoundedRect(x+1,y+1,98,98,3);
+    g.lineStyle(1,0xb8cad4,.08).lineBetween(x+8,y+20,x+75,y+86);
+  }
+  g.lineStyle(5,0xc8b881,.5).strokeRoundedRect(24,24,1552,852,30);
+  g.lineStyle(1,0xffe5ae,.35).strokeRoundedRect(38,38,1524,824,24);
+  const colors=[0xd97c91,0xe0ba70,0x80b9a8,0x70a9c7,0x8d8dc0,0xb18dbd];
+  for(let i=0;i<8;i++)for(const y of [24,818]){
+    const x=130+i*190;
+    g.fillStyle(0x192a41).fillRoundedRect(x-56,y,112,58,14);
+    g.fillStyle(colors[i%6],.55).fillTriangle(x-48,y+48,x,y+7,x+48,y+48);
+    g.lineStyle(2,0xc8b881,.65).lineBetween(x-48,y+48,x,y+7).lineBetween(x,y+7,x+48,y+48).lineBetween(x,y+7,x,y+48);
+  }
+  for(const radius of [210,310])g.lineStyle(2,0xe0c993,.2).strokeCircle(1000,450,radius);
+  for(let i=0;i<12;i++){
+    const a=i*Math.PI/6,x=1000+Math.cos(a)*310,y=450+Math.sin(a)*310;
+    g.fillStyle(colors[i%6],.28).fillPoints([{x,y:y-13},{x:x+8,y},{x,y:y+13},{x:x-8,y}],true);
   }
 }
