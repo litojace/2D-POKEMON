@@ -601,9 +601,13 @@ export class AccountUI {
       problem = error instanceof Error ? `${error.message} The Shop needs the latest database update (migration 010).` : "The Shop is not available yet.";
     }
     const dialogEl = () => document.getElementById("dialog") as HTMLDialogElement | null;
-    const status = (text: string) => {
+    const status = (text: string, failed = false) => {
       const box = dialogEl()?.querySelector<HTMLElement>(".shop-status");
-      if (box) box.textContent = text;
+      if (box) {
+        box.textContent = text;
+        box.classList.toggle("is-error", failed);
+        box.setAttribute("role", failed ? "alert" : "status");
+      }
     };
     this.shopPreviewCleanup?.();
     let preview: import("./shop-preview").ShopPreviewHandle | undefined;
@@ -660,7 +664,7 @@ export class AccountUI {
         status(message);
       } catch (error) {
         render();
-        status(error instanceof Error ? error.message : "That didn't work. Try again.");
+        status(error instanceof Error ? error.message : "That didn't work. Try again.", true);
       }
     };
     const wire = () => {

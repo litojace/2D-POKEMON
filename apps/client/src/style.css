@@ -9014,3 +9014,5 @@ dialog.framed-dialog > .dialog-content:focus-visible { outline: 2px solid #ffd65
     animation: fighter-aura-ring 8.8s linear infinite;
   }
 }
+
+.shop-status.is-error { color: #ffb4bf; }

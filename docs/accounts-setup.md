@@ -156,3 +156,7 @@ Run [016_admin_shop_coins.sql](../supabase/migrations/016_admin_shop_coins.sql) 
 ### Admin Mythic testing
 
 Run [017_admin_mythic_testing.sql](../supabase/migrations/017_admin_mythic_testing.sql) after 016. Both verification columns at the end should read **true**. Existing non-suspended admins can acquire Mythics with no Mythic Trial wins and equip any of stages I–III without raid clears. Select a stage in the preview and equip the skin; stage buttons also change an already-equipped skin. Earned wins and raid progress remain unchanged. Regular players still need their normal unlocks.
+
+### Repair Shop collection equipping
+
+If an owned collection item fails with “That item belongs in another slot”, run the entire [018_collection_equipping.sql](../supabase/migrations/018_collection_equipping.sql) after 017. All three verification columns should read **true**. This restores Shop support to the appearance functions, repairs collection slot mappings and keeps all five slots in saved loadouts. Colours, aura, entrance, frame and victory can be worn together, with one item per slot. Wallets, purchases, earned raid rewards and the admin bypasses remain intact. Avoid reapplying older raid/Shop migrations afterward, since they replace newer functions.

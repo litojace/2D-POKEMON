@@ -2,6 +2,8 @@ import { beforeEach, afterEach, it, expect } from "vitest";
 import { io, type Socket } from "socket.io-client";
 import { createArenaServer } from "../../apps/server/src/server";
 import { fakeAccounts } from "../helpers/accounts";
+import { AccountError } from "../../apps/server/src/accounts";
+import { LOOK_ITEMS } from "../../packages/shared/src/shop";
 import type { Reply } from "../../packages/shared/src/index";
 let server: ReturnType<typeof createArenaServer>,
   accounts: ReturnType<typeof fakeAccounts>,
@@ -748,4 +750,51 @@ it("lets a player wear only the mastery flair their records unlock", async () =>
   expect(me.flair).toBeUndefined();
   expect((await emit(socket, "flair", { tier: "Bronze" })).ok).toBe(false);
   expect((await emit(socket, "flair", { tier: null })).ok).toBe(true);
+});
+
+
+it("equips every collection item through the shared appearance route and reads all slots back", async () => {
+  const player = accounts.add(false);
+  const loadout: Record<string, string | null> = {};
+  accounts.provider.rpc = async (_token, name, args) => {
+    if (name === "arena_equip_raid_slot") {
+      loadout[args.p_slot as string] = args.p_item as string | null;
+      return null;
+    }
+    if (name === "arena_raid_progress") return { loadout: { ...loadout } };
+    throw Error(`Unexpected RPC ${name}`);
+  };
+  for (const item of LOOK_ITEMS) {
+    const response = await fetch(`${url}/api/raids/equip`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${player.token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ slot: item.slot, item: item.id }),
+    });
+    expect(response.status, item.id).toBe(200);
+    expect((await response.json()).progress.loadout[item.slot]).toBe(item.id);
+  }
+});
+
+it("explains stale collection functions and never reports an unsaved appearance as success", async () => {
+  const player = accounts.add(false);
+  const post = (slot: string, item: string) => fetch(`${url}/api/raids/equip`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${player.token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ slot, item }),
+  });
+  accounts.provider.rpc = async () => { throw new AccountError(400, "That item belongs in another slot"); };
+  const stale = await post("victory", "galaxy-victory");
+  expect(stale.status).toBe(503);
+  expect((await stale.json()).error).toContain("018_collection_equipping.sql");
+  const wrong = await post("aura", "galaxy-victory");
+  expect(wrong.status).toBe(400);
+  expect((await wrong.json()).error).toBe("That item belongs in another slot.");
+  accounts.provider.rpc = async (_token, name) => name === "arena_raid_progress" ? { loadout: {} } : null;
+  const lost = await post("victory", "galaxy-victory");
+  expect(lost.status).toBe(503);
+  expect((await lost.json()).error).toContain("018_collection_equipping.sql");
+  accounts.provider.rpc = async () => { throw new AccountError(400, "Cosmetic not earned"); };
+  const unowned = await post("victory", "galaxy-victory");
+  expect(unowned.status).toBe(400);
+  expect((await unowned.json()).error).toBe("Cosmetic not earned");
 });

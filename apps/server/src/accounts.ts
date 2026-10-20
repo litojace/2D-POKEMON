@@ -25,9 +25,9 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "017_admin_mythic_testing.sql";
+export const LATEST_MIGRATION = "018_collection_equipping.sql";
 /** The migration that last redefined the raid appearance functions. */
-export const RAID_FUNCTIONS_MIGRATION = "010_shop.sql";
+export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
   recordRaid?(receipt: RaidReceipt): Promise<void>;
   /** Coins, missions and Mythic progress after a real match or raid. */
@@ -317,11 +317,19 @@ export function installAccountRoutes(
     const slotOf=(id:string)=>RAID_COSMETICS[id as RaidCosmetic]?.slot??LOOK_ITEM_BY_ID[id]?.slot;
     const data:{slot:typeof RAID_SLOTS[number];item:string|null}=z.object({slot:z.enum(RAID_SLOTS as [typeof RAID_SLOTS[number],...typeof RAID_SLOTS]),item:z.string().max(64).refine((id:string)=>!!slotOf(id),'Unknown item.').nullable()}).strict().parse(req.body);
     if(data.item&&slotOf(data.item)!==data.slot)throw new AccountError(400,'That item belongs in another slot.');
-    await provider.rpc(token,'arena_equip_raid_slot',{p_slot:data.slot,p_item:data.item});
+    try {
+      await provider.rpc(token,'arena_equip_raid_slot',{p_slot:data.slot,p_item:data.item});
+    } catch (error) {
+      // The request's slot was already checked against the current catalog.
+      // Older raid functions reject owned Shop pieces as if the slot were wrong.
+      if (data.item && LOOK_ITEM_BY_ID[data.item] && error instanceof AccountError && /belongs in another slot|Unknown cosmetic/.test(error.message))
+        throw new AccountError(503, `Shop appearance support needs a database update. Run supabase/migrations/${RAID_FUNCTIONS_MIGRATION} in Supabase's SQL Editor, then try equipping again.`);
+      throw error;
+    }
     // Read it back: only report success if the database really kept it.
     const progress=await provider.rpc(token,'arena_raid_progress',{}) as RaidProgress;
     if(!progress?.loadout||(progress.loadout[data.slot]??null)!==data.item)
-      throw new AccountError(503,`Your appearance couldn't be kept: the database's raid functions are out of date. In Supabase's SQL Editor, run supabase/migrations/${RAID_FUNCTIONS_MIGRATION} again, then any newer files.`);
+      throw new AccountError(503,`Your appearance couldn't be kept: the database's raid functions are out of date. In Supabase's SQL Editor, run supabase/migrations/${RAID_FUNCTIONS_MIGRATION}, then try again.`);
     onPlayerChanged(account.id);res.json({ok:true,progress});
   }));
   app.get(
