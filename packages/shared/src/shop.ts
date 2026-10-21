@@ -373,7 +373,11 @@ export interface Economy {
     coins: number;
     done: boolean;
   }[];
+  /** Legacy flag retained for older clients. */
   rerolled: boolean;
+  /** Daily change count and allowance, supplied by migration 023. */
+  rerollsUsed?: number;
+  rerollLimit?: number;
   streak: number;
   /** Coins earned today, by source (for the caps). */
   today: { raidClears: number; pvpMatches: number };

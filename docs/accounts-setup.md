@@ -161,7 +161,10 @@ Run [017_admin_mythic_testing.sql](../supabase/migrations/017_admin_mythic_testi
 
 If an owned collection item fails with “That item belongs in another slot”, run the entire [018_collection_equipping.sql](../supabase/migrations/018_collection_equipping.sql) after 017. All three verification columns should read **true**. This restores Shop support to the appearance functions, repairs collection slot mappings and keeps all five slots in saved loadouts. Colours, aura, entrance, frame and victory can be worn together, with one item per slot. Wallets, purchases, earned raid rewards and the admin bypasses remain intact. Avoid reapplying older raid/Shop migrations afterward, since they replace newer functions.
 
-
 ## Player levels and seasonal rewards
 
 After all migrations through `021_storm_twins.sql`, run [022_player_journey.sql](../supabase/migrations/022_player_journey.sql). It adds player XP, automatic level and free season rewards, weekly goal progress, and verified Arcade/Boss Rush activity. The final query should return `journey_enabled = true`. Use the existing server-only service-role key; no additional client secret is needed. Existing accounts start at level 1 and keep all prior purchases and rewards. Previewing rewards does not change earned progress, including for admins.
+
+## Three daily mission changes
+
+After migration 022, run [023_three_mission_changes.sql](../supabase/migrations/023_three_mission_changes.sql) in the Supabase SQL Editor. Both verification columns should read **true**. Each account gets three free mission changes per Pacific calendar day, shared across unfinished missions. Existing changes count toward the new allowance; changing a mission resets only that slot's progress. Completed missions, earned rewards, wallets and journey progress are preserved. The UI shows the remaining count after refreshing missions. Until this migration is applied, the client continues to respect the old one-change allowance.
