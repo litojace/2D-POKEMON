@@ -143,3 +143,13 @@ Previews: [Cindrake with embers and soft ground light](redesign-home-ground.png)
 - Typecheck, all 854 tests, the client production build and PWA verification pass. Changed files pass Prettier. Formatting the touched preview-layout file reduces the repository's existing formatting failures from 76 to 75; the remaining files are untouched.
 
 Previews: [Auralynx floating on home](redesign-home-shop-pose.png), [landscape-phone Shop-style idle](redesign-home-shop-pose-mobile.png).
+
+## Roster review — use the available card space
+
+- Replaced the fixed tiny thumbnail/type sizes with sizing based on each tile's own width and height. At 1280×720, home avatars grow from 48px to approximately 76px and names from 20px to approximately 31px. At 844×390, home avatars grow from 24px to approximately 43px and names from 15px to approximately 20px. Larger desktop tiles allow 112px avatars and 32px names.
+- Centered avatar and text groups on the same vertical axis, scaled the mastery ring with the avatar, enlarged element labels, and kept consistent padding/gaps. Portraits stay inside their intended avatar crop. Narrow room cards adapt separately rather than forcing tiny sizing onto every phone card.
+- Kept all eight fighters visible without roster scrolling, with the selected details on the right and every room action reachable. Browser checks cover all eight selections and duel, teams, FFA and raid rooms. Additional spacing checks cover nine desktop/landscape sizes, the screenshot's short desktop proportions, phone safe areas, avatar/text center alignment, every card's text/pill bounds and absence of overlap.
+- Added the user's standing UI requirement to the redesign plan: review spacing, alignment, visual balance, readable sizing, long names and selection states on desktop and landscape phones before finishing any UI change.
+- Typecheck, all 854 tests, the client build and PWA verification pass. Changed files pass Prettier; the repository-wide formatting check still reports 75 pre-existing failures in untouched files.
+
+Updated previews: [larger desktop avatars and names](redesign-roster-compact.png), [landscape phone roster](redesign-mobile-avatars.png), [private lobby](redesign-mobile-lobby.png).

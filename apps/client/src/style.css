@@ -19992,31 +19992,43 @@ body.battle-active .ability.ult-ready,
   scroll-snap-type: none;
 }
 #menu .selection-layout .showcase-roster > .showcase-card {
-  grid-template-columns: 48px minmax(0, 1fr);
+  container: fighter-tile / size;
+  grid-template-columns: auto minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   align-items: center;
   height: auto;
   min-height: 0;
-  gap: 10px;
-  padding: 10px;
+  gap: 12px;
+  padding: 12px;
   transform: none;
   animation: none;
 }
 #menu .selection-layout .showcase-card .card-head {
   grid-column: 2;
   grid-row: 1;
-  grid-template-rows: 24px 20px;
+  grid-template-rows: auto auto;
   align-content: center;
-  gap: 4px;
+  gap: clamp(3px, 2cqb, 8px);
 }
 #menu .selection-layout .showcase-card .card-head strong {
-  font-size: 20px;
+  font-size: clamp(18px, 11cqi, 32px);
+  line-height: 1.05;
+}
+#menu .selection-layout .showcase-card .element-pill {
+  font-size: clamp(10px, 5cqi, 14px);
+  line-height: 1.2;
+  padding: 3px 6px;
+  gap: 4px;
+}
+#menu .selection-layout .showcase-card .element-pill svg {
+  width: 1em;
+  height: 1em;
 }
 #menu .selection-layout .showcase-card .card-art {
   grid-column: 1;
   grid-row: 1;
-  width: 48px;
-  height: 48px;
+  width: min(32cqi, 76cqb, 112px);
+  height: min(32cqi, 76cqb, 112px);
   border-radius: 12px;
   background: color-mix(in srgb, var(--element) 10%, var(--bg-0));
 }
@@ -20027,12 +20039,14 @@ body.battle-active .ability.ult-ready,
   > :is(svg, .creature-portrait) {
   position: relative;
   z-index: 1;
-  height: 46px;
-  max-height: 46px;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  overflow: hidden;
 }
 #menu .selection-layout .showcase-card .fighter-mastery-ring {
-  width: 46px;
-  height: 46px;
+  width: 100%;
+  height: 100%;
   z-index: 0;
 }
 #menu
@@ -20075,45 +20089,9 @@ body.lobby-active #menu .fighter-preview-slot {
     padding: 0;
   }
   #menu .selection-layout .showcase-roster > .showcase-card {
-    grid-template-columns: 24px minmax(0, 1fr);
-    gap: 4px;
-    padding: 4px;
-    border-radius: 8px;
-  }
-  #menu .selection-layout .showcase-card .card-head {
-    grid-template-rows: 17px 11px;
-    gap: 1px;
-  }
-  #menu .selection-layout .showcase-card .card-head strong {
-    font-size: 15px;
-    line-height: 17px;
-  }
-  #menu .selection-layout .showcase-card .element-pill {
-    font-size: 9px;
-    line-height: 11px;
-    padding: 0 3px;
-    gap: 2px;
-  }
-  #menu .selection-layout .showcase-card .element-pill svg {
-    width: 9px;
-    height: 9px;
-  }
-  #menu .selection-layout .showcase-card .card-art {
-    width: 24px;
-    height: 28px;
-    border-radius: 6px;
-  }
-  #menu
-    .selection-layout
-    .showcase-card
-    .card-art
-    > :is(svg, .creature-portrait) {
-    height: 28px;
-    max-height: 28px;
-  }
-  #menu .selection-layout .showcase-card .fighter-mastery-ring {
-    width: 24px;
-    height: 24px;
+    gap: 8px;
+    padding: 6px;
+    border-radius: 10px;
   }
   #menu .fighter-preview-slot .selected-fighter {
     grid-template-columns: min(112px, 42%) minmax(0, 1fr);
@@ -20294,6 +20272,24 @@ body.lobby-active #menu .fighter-preview-slot {
     #leave
     .button-icon {
     display: none;
+  }
+}
+
+/* Only genuinely narrow tiles need small type; roomy phone drawers scale up. */
+@container fighter-tile (max-width: 140px) {
+  #menu .selection-layout .showcase-card .card-head strong {
+    font-size: clamp(13px, 12cqi, 18px);
+  }
+  #menu .selection-layout .showcase-card .element-pill {
+    font-size: 9px;
+    padding: 1px 3px;
+    gap: 2px;
+  }
+}
+@media (max-width: 740px) and (max-height: 360px) and (orientation: landscape) {
+  #menu .selection-layout .showcase-roster > .showcase-card {
+    padding: 3px;
+    gap: 5px;
   }
 }
 
