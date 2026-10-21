@@ -163,6 +163,9 @@ export function setupHomeNavigation(menu: HTMLElement, settings: () => void) {
 
   // Home runs while the hidden Phaser canvas sleeps. A small UI-only loop gives
   // controller users the same focusable controls as keyboard and touch users.
+  const menuVisible = () =>
+    document.body.classList.contains("home-active") ||
+    document.body.classList.contains("lobby-active");
   let frame = 0,
     lastDirection = 0,
     lastStep = 0,
@@ -171,11 +174,17 @@ export function setupHomeNavigation(menu: HTMLElement, settings: () => void) {
     !!pad.buttons[n] && (pad.buttons[n].pressed || pad.buttons[n].value > 0.5);
   function poll(time: number) {
     frame = 0;
-    if (!document.body.classList.contains("home-active") || document.hidden)
-      return;
+    if (!menuVisible() || document.hidden) return;
     const pad = firstPad();
     if (pad) {
       const pressed = new Set([0, 1, 9].filter((i) => down(pad, i)));
+      const scroller = (
+        document.activeElement as HTMLElement | null
+      )?.closest<HTMLElement>(
+        ".fighter-preview-slot, .lobby-room-content, .showcase-roster",
+      );
+      if (scroller && Math.abs(pad.axes[3] ?? 0) > 0.25)
+        scroller.scrollBy({ top: pad.axes[3] * 10, behavior: "instant" });
       const d =
         down(pad, 12) || pad.axes[1] < -0.55
           ? -1
@@ -206,7 +215,7 @@ export function setupHomeNavigation(menu: HTMLElement, settings: () => void) {
       if (pressed.has(0) && !previous.has(0)) {
         const active = document.activeElement as HTMLElement;
         if (focusable(scope).includes(active)) active.click();
-        else menu.querySelector<HTMLElement>("#create")?.focus();
+        else menu.querySelector<HTMLElement>("#create, #ready")?.focus();
       }
       if (pressed.has(1) && !previous.has(1)) {
         if (dialog?.open)
@@ -232,8 +241,7 @@ export function setupHomeNavigation(menu: HTMLElement, settings: () => void) {
       cancelAnimationFrame(frame);
       frame = 0;
     }
-    if (document.body.classList.contains("home-active") && !document.hidden)
-      frame = requestAnimationFrame(poll);
+    if (menuVisible() && !document.hidden) frame = requestAnimationFrame(poll);
     else {
       previous.clear();
       lastDirection = 0;

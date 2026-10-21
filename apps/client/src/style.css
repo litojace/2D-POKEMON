@@ -18250,3 +18250,840 @@ body.home-active #credits {
     scroll-behavior: auto !important;
   }
 }
+
+/* Phase 3: portrait roster, persistent preview and anchored room actions. */
+body.lobby-active {
+  --lobby-top: calc(64px + var(--safe-top));
+  background:
+    radial-gradient(
+      ellipse at 35% 45%,
+      color-mix(in srgb, var(--element) 12%, transparent),
+      transparent 60%
+    ),
+    var(--bg-0);
+  overflow: hidden;
+}
+body.lobby-active .topbar {
+  height: var(--lobby-top);
+  min-height: 0;
+  padding: var(--safe-top) calc(20px + var(--safe-right)) 0
+    calc(20px + var(--safe-left));
+}
+body.lobby-active main {
+  width: 100%;
+  max-width: 1800px;
+  height: calc(100dvh - var(--lobby-top) - 28px - var(--safe-bottom));
+  padding: 16px calc(20px + var(--safe-right)) 0 calc(20px + var(--safe-left));
+  margin: 0 auto;
+  min-height: 0;
+}
+body.lobby-active #menu {
+  height: 100%;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 16px;
+}
+body.lobby-active .desktop-lobby-header {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  padding: 0;
+  margin: 0;
+  background: none;
+  border: 0;
+}
+body.lobby-active .desktop-lobby-header h1 {
+  font-size: 36px;
+  line-height: 1;
+  margin: 0;
+  text-transform: uppercase;
+}
+body.lobby-active .desktop-lobby-header p {
+  font-size: 14px;
+  margin: 0;
+  color: var(--text-dim);
+}
+body.lobby-active .desktop-lobby-header .eyebrow {
+  font-size: 12px;
+}
+body.lobby-active #menu .lobby-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 310px;
+  gap: 20px;
+  min-height: 0;
+  margin: 0;
+}
+body.lobby-active #app > footer {
+  position: fixed;
+  bottom: var(--safe-bottom);
+  inset-inline: 20px;
+  height: 24px;
+  padding: 4px 0;
+  margin: 0;
+  font-size: 11px;
+}
+body.lobby-active .roster-panel,
+.home-roster-drawer .roster-panel {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  min-height: 0;
+  gap: 10px;
+}
+body.lobby-active .roster-panel > .section-title,
+.home-roster-drawer .roster-panel > .section-title {
+  margin: 0;
+  padding: 0;
+}
+body.lobby-active .roster-panel > .section-title h2,
+.home-roster-drawer .roster-panel > .section-title h2 {
+  font-size: 28px;
+  margin: 2px 0;
+}
+body.lobby-active .roster-panel > .section-title .eyebrow {
+  display: none;
+}
+.selection-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(260px, 1fr);
+  gap: 16px;
+  min-height: 0;
+  min-width: 0;
+}
+.selection-layout .showcase-roster {
+  display: grid;
+  grid-auto-flow: row;
+  grid-auto-columns: auto;
+  grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+  grid-template-rows: none;
+  gap: 12px;
+  overflow: hidden auto;
+  align-content: start;
+  padding: 3px 8px 6px 3px;
+  min-height: 0;
+  scroll-snap-type: none;
+  overscroll-behavior: contain;
+}
+.selection-layout .showcase-roster > .showcase-card {
+  order: 0;
+  grid-column: auto;
+  width: 100%;
+  min-width: 0;
+  padding: 12px;
+  gap: 8px;
+  border: 1px solid color-mix(in srgb, var(--element) 30%, var(--line));
+  background:
+    radial-gradient(
+      ellipse at 50% 36%,
+      color-mix(in srgb, var(--element) 18%, transparent),
+      transparent 75%
+    ),
+    var(--bg-1);
+  border-radius: var(--radius-lg);
+  box-shadow: inset 0 1px 0 #ffffff0a;
+}
+.selection-layout .showcase-card.selected {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 1px var(--accent),
+    inset 0 0 24px color-mix(in srgb, var(--element) 12%, transparent);
+}
+.selection-layout .showcase-card .card-head {
+  display: flex;
+  align-items: start;
+  gap: 5px;
+}
+.selection-layout .showcase-card .card-head strong {
+  font: 800 25px/1 var(--display);
+  text-transform: uppercase;
+}
+.selection-layout .showcase-card .element-pill {
+  font-size: 11px;
+  padding: 4px 8px;
+}
+.selection-layout .showcase-card .card-role {
+  font-size: 12px;
+  gap: 5px;
+  min-height: 42px;
+}
+.selection-layout .showcase-card .range-tag {
+  font-size: 10px;
+}
+.selection-layout .showcase-card .card-art {
+  height: 144px;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+}
+#menu
+  .selection-layout
+  .showcase-card
+  .card-art
+  > :is(svg, .creature-portrait) {
+  width: 100%;
+  height: 140px;
+  max-height: 140px;
+  margin: 0;
+}
+.fighter-mastery-ring {
+  position: absolute;
+  z-index: -1;
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  background: conic-gradient(var(--tier) var(--mastery-progress), #ffffff18 0);
+  mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 3px),
+    #000 calc(100% - 2px)
+  );
+}
+.selection-layout .showcase-card .card-skills i {
+  font-size: 11px;
+}
+.selection-layout .showcase-card .card-bottom {
+  font-size: 12px;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.selection-layout .showcase-card .mastery-badge {
+  font-size: 10px;
+}
+.fighter-preview-slot {
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--bg-1);
+}
+.fighter-preview-slot .fighter-detail {
+  display: block;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  animation: none;
+}
+#menu .fighter-preview-slot .selected-fighter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  margin: 0;
+  padding: 20px;
+  border: 0;
+  border-radius: 0;
+  background: radial-gradient(
+    ellipse at 50% 10%,
+    color-mix(in srgb, var(--element) 18%, transparent),
+    transparent 70%
+  );
+  animation: none;
+}
+#menu .fighter-preview-slot .selected-art {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+#menu .fighter-preview-slot .selected-art > :is(svg, .creature-portrait) {
+  width: 100%;
+  height: 210px;
+  max-height: 210px;
+  object-fit: contain;
+}
+.fighter-preview-slot .selected-art-caption {
+  font-size: 12px;
+}
+#menu .fighter-preview-slot .selected-info h3 {
+  font-size: 38px;
+  text-transform: uppercase;
+  margin: 6px 0;
+}
+.fighter-preview-slot .selected-info p {
+  font-size: 14px;
+  line-height: 1.55;
+}
+.fighter-preview-slot .fighter-mastery-label {
+  color: var(--accent);
+}
+.fighter-preview-slot .fighter-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 16px 0;
+}
+.fighter-preview-slot .fighter-stats span {
+  font-size: 12px;
+}
+.fighter-preview-slot .fighter-stats b {
+  font: 700 28px/1 var(--display);
+}
+.fighter-preview-slot .skill-preview {
+  padding: 16px 20px;
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  animation: none;
+}
+.fighter-preview-slot .preview-skills {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+.fighter-preview-slot .preview-skills > div {
+  grid-template-columns: 26px 28px minmax(0, 1fr) 32px;
+  padding: 12px 0;
+}
+.fighter-preview-slot .preview-skills strong {
+  font-size: 16px;
+}
+.fighter-preview-slot .preview-skills small,
+.fighter-preview-slot .combo-description {
+  font-size: 13px;
+  line-height: 1.55;
+}
+.fighter-preview-slot .preview-skills kbd,
+.fighter-preview-slot .preview-skills > div > b {
+  font-size: 12px;
+}
+.roster-panel:has(.selection-layout) .universal {
+  font-size: 12px;
+  margin: 0;
+  line-height: 1.5;
+}
+.roster-panel:has(.selection-layout) .roster-navigation {
+  margin: 0;
+}
+.roster-panel:has(.selection-layout) .roster-swipe-hint {
+  font-size: 12px;
+}
+.home-roster-drawer {
+  width: min(1440px, calc(100vw - var(--safe-left) - var(--safe-right) - 40px));
+}
+.home-roster-drawer .home-drawer-scroll {
+  overflow: hidden;
+}
+.home-roster-drawer .roster-panel {
+  height: 100%;
+}
+body.lobby-active #menu .lobby-room-panel {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+.lobby-room-content {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 20px;
+}
+.lobby-room-content h2 {
+  font-size: 28px;
+}
+.lobby-room-content p,
+.lobby-room-content label,
+.lobby-room-content small {
+  font-size: 13px;
+  line-height: 1.5;
+}
+.lobby-room-content .players {
+  margin: 14px 0;
+}
+.lobby-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 16px;
+  border-top: 1px solid var(--line);
+  background: var(--bg-1);
+  margin: 0;
+}
+.lobby-actions #ready {
+  width: 100%;
+  font-size: 24px;
+  min-height: 50px;
+}
+.lobby-actions #leave,
+.lobby-actions #stop-watching {
+  flex: 1;
+  min-height: 40px;
+  font-size: 14px;
+}
+.lobby-room-content .team-column {
+  border-top: 3px solid #75b5ff;
+}
+.lobby-room-content .team-column.team-1 {
+  border-color: #ff8294;
+}
+@media (orientation: landscape) and (max-height: 600px), (max-width: 1000px) {
+  body.lobby-active {
+    --lobby-top: calc(50px + var(--safe-top));
+  }
+  body.lobby-active main {
+    padding: 6px calc(10px + var(--safe-right)) 0 calc(10px + var(--safe-left));
+    height: calc(100dvh - var(--lobby-top) - 24px - var(--safe-bottom));
+  }
+  body.lobby-active #menu {
+    gap: 6px;
+  }
+  body.lobby-active .desktop-lobby-header {
+    gap: 6px 14px;
+  }
+  body.lobby-active .desktop-lobby-header h1 {
+    font-size: 26px;
+  }
+  body.lobby-active .desktop-lobby-header .eyebrow,
+  body.lobby-active .desktop-lobby-header p {
+    font-size: 11px;
+  }
+  body.lobby-active #menu .lobby-layout {
+    grid-template-columns: minmax(0, 1fr) 230px;
+    gap: 10px;
+  }
+  .selection-layout {
+    grid-template-columns: minmax(0, 1.1fr) minmax(220px, 1fr);
+    gap: 10px;
+  }
+  .selection-layout .showcase-roster {
+    grid-template-columns: repeat(auto-fill, minmax(125px, 1fr));
+    gap: 8px;
+  }
+  .selection-layout .showcase-roster > .showcase-card {
+    padding: 9px;
+  }
+  .selection-layout .showcase-card .card-head strong {
+    font-size: 23px;
+  }
+  .selection-layout .showcase-card .card-role {
+    font-size: 11px;
+  }
+  .selection-layout .showcase-card .card-art {
+    height: 110px;
+  }
+  #menu
+    .selection-layout
+    .showcase-card
+    .card-art
+    > :is(svg, .creature-portrait) {
+    height: 108px;
+    max-height: 108px;
+  }
+  .fighter-mastery-ring {
+    width: 100px;
+    height: 100px;
+  }
+  #menu .fighter-preview-slot .selected-fighter {
+    padding: 12px;
+  }
+  #menu .fighter-preview-slot .selected-art > :is(svg, .creature-portrait) {
+    height: 125px;
+    max-height: 125px;
+  }
+  #menu .fighter-preview-slot .selected-info h3 {
+    font-size: 30px;
+  }
+  .fighter-preview-slot .selected-info p {
+    font-size: 12px;
+  }
+  .fighter-preview-slot .skill-preview {
+    padding: 12px;
+  }
+  .fighter-preview-slot .preview-skills small,
+  .fighter-preview-slot .combo-description {
+    font-size: 12px;
+  }
+  .fighter-preview-slot .preview-skills > div {
+    grid-template-columns: 22px 24px minmax(0, 1fr) 28px;
+    gap: 6px;
+  }
+  body.lobby-active .roster-panel > .section-title h2,
+  .home-roster-drawer .roster-panel > .section-title h2 {
+    font-size: 23px;
+  }
+  body.lobby-active .roster-panel,
+  .home-roster-drawer .roster-panel {
+    gap: 6px;
+  }
+  .lobby-room-content {
+    padding: 12px;
+  }
+  .lobby-actions {
+    padding: 10px;
+    gap: 6px;
+  }
+  .lobby-actions #ready {
+    min-height: 42px;
+    font-size: 22px;
+  }
+  .lobby-actions #leave {
+    min-height: 34px;
+  }
+  .home-roster-drawer .home-drawer-head {
+    padding: 10px 16px;
+  }
+  .home-roster-drawer .home-drawer-scroll {
+    padding: 10px 16px;
+  }
+}
+@media (max-width: 740px) {
+  body.lobby-active .selection-layout {
+    grid-template-columns: minmax(0, 1fr);
+    overflow: auto;
+  }
+  body.lobby-active .selection-layout .showcase-roster {
+    max-height: 240px;
+    min-height: 200px;
+  }
+  body.lobby-active .fighter-preview-slot {
+    min-height: 220px;
+  }
+  body.lobby-active .desktop-lobby-header p {
+    display: none;
+  }
+  .home-roster-drawer .selection-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(210px, 1fr);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .selection-layout *,
+  .selection-layout *::before,
+  .selection-layout *::after,
+  .lobby-actions * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+body.lobby-active #menu .lobby-layout {
+  align-items: stretch;
+}
+body.lobby-active main,
+body.lobby-active #menu {
+  min-height: 0;
+}
+body.lobby-active .lobby-layout > .roster-panel,
+body.lobby-active #menu .lobby-room-panel {
+  height: 100%;
+  min-height: 0;
+}
+body.lobby-active .roster-panel > .section-title {
+  display: flex;
+}
+.selection-layout .showcase-roster {
+  grid-auto-rows: max-content;
+}
+.selection-layout .showcase-roster > .showcase-card {
+  height: auto;
+  min-height: max-content;
+}
+.selection-layout .showcase-card > * {
+  flex-shrink: 0;
+}
+.lobby-actions #ready {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 12px;
+  gap: 8px;
+  line-height: 1.1;
+}
+.lobby-actions #ready .ready-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.lobby-actions svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+.lobby-actions .full {
+  margin-top: 0;
+}
+.lobby-actions #leave {
+  margin: 0;
+}
+.lobby-actions.raid-lobby-actions > div {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+.lobby-actions .raid-icon-button {
+  padding: 8px;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+}
+body.lobby-active #app > footer {
+  margin: 0;
+}
+body.lobby-active .roster-panel > .section-title {
+  display: none;
+}
+@media (orientation: landscape) and (max-height: 600px) {
+  .lobby-actions #ready {
+    font-size: 20px;
+  }
+  .lobby-actions #ready .ready-label {
+    flex-wrap: nowrap;
+  }
+  .lobby-actions .raid-icon-button {
+    font-size: 12px;
+  }
+  .lobby-actions #leave {
+    font-size: 12px;
+    border-radius: var(--radius-sm);
+    padding: 8px;
+  }
+  body.lobby-active #app > footer {
+    font-size: 10px;
+  }
+}
+@media (orientation: landscape) and (max-height: 600px) {
+  body.lobby-active main {
+    height: calc(100dvh - var(--lobby-top) - 40px - var(--safe-bottom));
+  }
+  .roster-panel:has(.selection-layout) .roster-navigation {
+    gap: 4px 10px;
+  }
+  .roster-panel:has(.selection-layout) .roster-scroll-buttons button {
+    height: 32px;
+    min-height: 32px;
+    width: 40px;
+    font-size: 24px;
+  }
+}
+
+/* Desktop lobby review: compact portraits and immediately reachable kit details. */
+body.lobby-active .roster-panel {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+.roster-panel:has(.selection-layout) .roster-navigation {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 12px;
+}
+.roster-panel:has(.selection-layout) .roster-swipe-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent);
+  font-size: 12px;
+}
+.roster-panel:has(.selection-layout) .roster-swipe-hint small {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-left: 8px;
+}
+.roster-panel:has(.selection-layout) .roster-swipe-icon {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  transform: rotate(90deg);
+}
+.roster-panel:has(.selection-layout) .roster-scroll-buttons {
+  display: flex;
+  gap: 6px;
+}
+.roster-panel:has(.selection-layout) .roster-scroll-buttons button {
+  width: 36px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  font-size: 24px;
+}
+.roster-panel:has(.selection-layout) .roster-scroll-progress {
+  grid-column: 1 / -1;
+  width: 100%;
+  height: 2px;
+}
+.selection-layout .showcase-card .card-bottom > span {
+  font-size: 12px;
+}
+.fighter-preview-slot {
+  container-type: inline-size;
+}
+.fighter-preview-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--line);
+}
+.fighter-preview-tabs button {
+  flex: 1;
+  min-height: 36px;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-dim);
+  font: 700 16px/1 var(--display);
+}
+.fighter-preview-tabs button[aria-pressed="true"] {
+  color: var(--accent);
+  border-color: #ffd65b55;
+  background: #ffd65b12;
+}
+@container (min-width: 380px) {
+  #menu .fighter-preview-slot .selected-fighter {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    align-items: center;
+    padding: 16px;
+    gap: 14px;
+  }
+  #menu .fighter-preview-slot .selected-art > :is(svg, .creature-portrait) {
+    height: 230px;
+    max-height: 230px;
+  }
+  #menu .fighter-preview-slot .selected-info h3 {
+    font-size: 34px;
+  }
+  .fighter-preview-slot .selected-info p {
+    font-size: 13px;
+  }
+  .fighter-preview-slot .fighter-stats {
+    gap: 6px;
+    margin: 12px 0;
+  }
+  .fighter-preview-slot .fighter-stats span {
+    font-size: 11px;
+  }
+  .fighter-preview-slot .fighter-stats b {
+    font-size: 24px;
+  }
+}
+@media (min-width: 1100px) and (min-height: 601px) {
+  .selection-layout .showcase-roster > .showcase-card {
+    padding: 10px;
+    gap: 5px;
+  }
+  .selection-layout .showcase-card .card-head strong {
+    font-size: 23px;
+  }
+  .selection-layout .showcase-card .card-role {
+    min-height: 32px;
+    font-size: 12px;
+  }
+  .selection-layout .showcase-card .card-art {
+    height: 106px;
+  }
+  #menu
+    .selection-layout
+    .showcase-card
+    .card-art
+    > :is(svg, .creature-portrait) {
+    height: 104px;
+    max-height: 104px;
+  }
+  .selection-layout .fighter-mastery-ring {
+    width: 100px;
+    height: 100px;
+  }
+  .selection-layout .showcase-card .card-skills > span {
+    gap: 2px;
+    padding: 3px 0;
+  }
+  .selection-layout .showcase-card .card-skills .skill-icon {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+@media (min-width: 701px) {
+  .home-roster-drawer .roster-panel {
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+}
+
+.roster-panel:has(.selection-layout) .roster-scroll-buttons button {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-2);
+  color: var(--accent);
+}
+.roster-panel:has(.selection-layout) .roster-scroll-buttons button:disabled {
+  opacity: 0.35;
+}
+.roster-panel:has(.selection-layout) .roster-scroll-progress {
+  appearance: none;
+  border: 0;
+  border-radius: 99px;
+  background: var(--line);
+  overflow: hidden;
+}
+.roster-scroll-progress::-webkit-progress-bar {
+  background: var(--line);
+}
+.roster-scroll-progress::-webkit-progress-value {
+  background: var(--accent);
+}
+.roster-scroll-progress::-moz-progress-bar {
+  background: var(--accent);
+}
+@media (min-width: 741px) {
+  body.lobby-active .roster-panel {
+    grid-template-columns: minmax(0, 1.15fr) minmax(220px, 1fr);
+    column-gap: 16px;
+  }
+  body.lobby-active .selection-layout {
+    display: contents;
+  }
+  body.lobby-active .roster-navigation {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  body.lobby-active .showcase-roster {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  body.lobby-active .fighter-preview-slot {
+    grid-column: 2;
+    grid-row: 1 / 3;
+  }
+  body.lobby-active .roster-panel > .universal {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+  body.lobby-active .roster-swipe-hint small {
+    display: block;
+    margin-left: 0;
+  }
+}
+
+.fighter-preview-slot .preview-skills > div {
+  grid-template-columns: 36px 28px minmax(0, 1fr) 32px;
+  gap: 10px;
+}
+.fighter-preview-slot .preview-skills > div > kbd {
+  width: 36px;
+  min-width: 0;
+  height: 30px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+}
+.fighter-preview-slot .preview-skills > div > .skill-icon {
+  width: 26px;
+  height: 26px;
+  margin: 0;
+}
+@media (orientation: landscape) and (max-height: 600px) {
+  .fighter-preview-slot .preview-skills > div {
+    grid-template-columns: 36px 26px minmax(0, 1fr) 28px;
+    gap: 6px;
+  }
+}

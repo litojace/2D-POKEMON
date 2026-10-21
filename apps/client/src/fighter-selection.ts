@@ -7,7 +7,10 @@ import { abilityIcon } from "./ability-icons";
 import { PLACEHOLDER_FIGHTERS } from "./creature-design";
 import { elementIcon } from "./element-icons";
 import { withAura } from "./trait-effects";
-import { masteryTier } from "../../../packages/shared/src/accounts";
+import {
+  masteryTier,
+  nextMastery,
+} from "../../../packages/shared/src/accounts";
 /** Reduced motion keeps the auras as still frames. */
 const still = () =>
   typeof matchMedia !== "undefined" &&
@@ -65,6 +68,17 @@ const masteryBadge = (id: CharacterId) => {
     ? `<span class="mastery-badge" style="--tier:${tier.color}" title="${tier.name} mastery · ${played} matches with ${CHARACTERS[id].name}">★ ${tier.name}</span>`
     : "";
 };
+/** Progress through the existing mastery milestones; no new progression rules. */
+function masteryRing(id: CharacterId) {
+  const played = masteryMatches(id),
+    tier = masteryTier(played),
+    next = nextMastery(played);
+  const from = tier?.matches ?? 0;
+  const progress = next
+    ? Math.min(100, (100 * (played - from)) / (next.matches - from))
+    : 100;
+  return `<span class="fighter-mastery-ring" style="--mastery-progress:${progress}%;--tier:${tier?.color ?? "var(--accent)"}" role="img" aria-label="${tier?.name ?? "New challenger"} mastery · ${played} matches${next ? ` · ${next.left} to ${next.name}` : ""}"></span>`;
+}
 export function fighterSelection(selected: CharacterId, element = "All") {
   // The player's own keys (Settings → Controls), so the cards teach real controls.
   const bindings = controlPrefs().bindings,
@@ -76,7 +90,7 @@ export function fighterSelection(selected: CharacterId, element = "All") {
     .filter((c) => element === "All" || c.element === element)
     .map(
       (c) =>
-        `<button class="creature-card showcase-card ${selected === c.id ? "selected" : ""}" style="--element:${hex(c.color)}" data-character="${c.id}" aria-pressed="${selected === c.id}"><span class="card-head"><strong>${c.name}</strong><span class="element-pill">${elementIcon(c.element)}${c.element}</span></span><small class="card-role">${rangeTag(c.id)}<span>${c.role}</span></small><span class="card-art">${art(c.id, false, selected === c.id)}${placeholderBadge(c.id)}</span><span class="card-skills">${c.skills.map((a, i) => `<span title="${a.name} (${i === ULT_SLOT ? "ultimate" : `${a.cooldown}s`}): ${a.description}">${abilityIcon(a.name)}<i>${i === ULT_SLOT ? "ULT" : `${a.cooldown}s`}</i></span>`).join("")}</span><span class="card-bottom">${c.health} HP${masteryBadge(c.id)}<span>${selected === c.id ? "✓ Selected" : "Select"}</span></span></button>`,
+        `<button class="creature-card showcase-card ${selected === c.id ? "selected" : ""}" style="--element:${hex(c.color)}" data-character="${c.id}" aria-pressed="${selected === c.id}"><span class="card-head"><strong>${c.name}</strong><span class="element-pill">${elementIcon(c.element)}${c.element}</span></span><small class="card-role">${rangeTag(c.id)}<span>${c.role}</span></small><span class="card-art">${masteryRing(c.id)}${art(c.id, false, selected === c.id)}${placeholderBadge(c.id)}</span><span class="card-skills">${c.skills.map((a, i) => `<span title="${a.name} (${i === ULT_SLOT ? "ultimate" : `${a.cooldown}s`}): ${a.description}">${abilityIcon(a.name)}<i>${i === ULT_SLOT ? "ULT" : `${a.cooldown}s`}</i></span>`).join("")}</span><span class="card-bottom">${c.health} HP${masteryBadge(c.id)}<span>${selected === c.id ? "✓ Selected" : "Select"}</span></span></button>`,
     );
   const skills = fighter.skills
     .map(
@@ -86,11 +100,9 @@ export function fighterSelection(selected: CharacterId, element = "All") {
     .join("");
   const combo = COMBOS[selected];
   const comboRow = `<p class="combo-description"><b>Combo · ${combo.name}</b>${combo.text}</p>`;
-  // Stats and skills open right under the selected card's row, so nobody has
-  // to scroll past the whole roster. The roster grid packs densely: the panel
-  // spans the full width after the selected card, and that card's row-mates
-  // fill the rest of its row (works for 2 columns on phones and 4 on desktop).
-  const detail = `<div class="fighter-detail" data-detail-for="${selected}" style="--element:${color}"><div class="selected-fighter" style="--element:${color}"><div class="selected-art">${art(selected, true, true)}${placeholderBadge(selected, "PLACEHOLDER ART")}<span class="selected-art-caption">${fighter.element} · ${fighter.role}</span></div><div class="selected-info"><span class="element-pill">${elementIcon(fighter.element)}${fighter.element}</span><h3>${fighter.name}</h3><p>${fighter.description}</p><div class="fighter-stats"><span><b>${fighter.health}</b>Health</span><span><b>${fighter.speed}</b>Move speed</span><span><b>${fighter.basic.damage}</b>Basic damage</span></div><p class="basic-description">${abilityIcon(fighter.basic.name)}<span class="basic-text"><b>${fighter.basic.name}</b> · ${fighter.basic.description} <em>No cooldown · ${interval} ms between attacks</em></span></p></div></div><div class="skill-preview" style="--element:${color}"><div class="skill-preview-heading"><h3>Four special skills</h3><span>${skillKeys.join(" / ")}</span></div><div class="preview-skills">${skills}</div>${comboRow}</div></div>`;
+  // Keep detail markup adjacent for legacy consumers; the mounted layout
+  // places it in a separate, scrollable preview beside the portrait roster.
+  const detail = `<div class="fighter-detail" data-detail-for="${selected}" style="--element:${color}"><nav class="fighter-preview-tabs" aria-label="Fighter preview sections"><button type="button" data-fighter-preview="overview" aria-pressed="true">Overview</button><button type="button" data-fighter-preview="skills" aria-pressed="false">Skills &amp; combo</button></nav><div class="selected-fighter" style="--element:${color}"><div class="selected-art">${art(selected, true, true)}${placeholderBadge(selected, "PLACEHOLDER ART")}<span class="selected-art-caption">${fighter.element} · ${fighter.role}</span></div><div class="selected-info"><span class="element-pill">${elementIcon(fighter.element)}${fighter.element}</span><h3>${fighter.name}</h3><p class="fighter-mastery-label">${masteryTier(masteryMatches(selected))?.name ?? "New challenger"} mastery · ${masteryMatches(selected)} matches</p><p>${fighter.description}</p><div class="fighter-stats"><span><b>${fighter.health}</b>Health</span><span><b>${fighter.speed}</b>Move speed</span><span><b>${fighter.basic.damage}</b>Basic damage</span></div><p class="basic-description">${abilityIcon(fighter.basic.name)}<span class="basic-text"><b>${fighter.basic.name}</b> · ${fighter.basic.description} <em>No cooldown · ${interval} ms between attacks</em></span></p></div></div><div class="skill-preview" style="--element:${color}" hidden><div class="skill-preview-heading"><h3>Four special skills</h3><span>${skillKeys.join(" / ")}</span></div><div class="preview-skills">${skills}</div>${comboRow}</div></div>`;
   const ids = Object.values(CHARACTERS)
     .filter((c) => element === "All" || c.element === element)
     .map((c) => c.id);
@@ -99,16 +111,10 @@ export function fighterSelection(selected: CharacterId, element = "All") {
     at < 0
       ? cards.join("") + detail
       : [...cards.slice(0, at + 1), detail, ...cards.slice(at + 1)].join("");
-  return `<div class="section-title"><div><span class="eyebrow">The roster</span><h2>Find your fighter</h2></div></div><div class="roster-navigation" aria-label="Champion navigation"><div class="roster-swipe-hint"><span class="roster-swipe-icon" aria-hidden="true">${menuIcon("swipe")}</span><span>Swipe to explore <small>${cards.length} champions</small></span></div><div class="roster-scroll-buttons"><button type="button" data-roster-step="-1" aria-label="Previous champions" disabled>&#8249;</button><button type="button" data-roster-step="1" aria-label="More champions">&#8250;</button></div><progress class="roster-scroll-progress" aria-label="Champion list scroll position" max="1" value="0"></progress></div><div class="roster showcase-roster">${grid}</div><p class="universal">Every fighter shares one <b>dash</b> (${actionLabel(bindings, "dash")}) and one <b>jump</b> (${actionLabel(bindings, "jump")}). Jump clears ground attacks.</p>`;
+  return `<div class="section-title"><div><span class="eyebrow">The roster</span><h2>Find your fighter</h2></div></div><div class="roster-navigation" aria-label="Champion navigation"><div class="roster-swipe-hint"><span class="roster-swipe-icon" aria-hidden="true">${menuIcon("swipe")}</span><span>Browse fighters <small>${cards.length} champions</small></span></div><div class="roster-scroll-buttons"><button type="button" data-roster-step="-1" aria-label="Previous champions" disabled>&#8249;</button><button type="button" data-roster-step="1" aria-label="More champions">&#8250;</button></div><progress class="roster-scroll-progress" aria-label="Champion list scroll position" max="1" value="0"></progress></div><div class="selection-layout"><div class="roster showcase-roster" role="group" aria-label="Fighters">${grid}</div><aside class="fighter-preview-slot" tabindex="0" role="region" aria-label="Selected fighter, stats and skills"></aside></div><p class="universal">Every fighter shares one <b>dash</b> (${actionLabel(bindings, "dash")}) and one <b>jump</b> (${actionLabel(bindings, "jump")}). Jump clears ground attacks.</p>`;
 }
 
-/**
- * Select a fighter on an already rendered roster without re-rendering it:
- * move the highlight and aura, and open the stats and skills panel under the
- * chosen card. The tapped card stays exactly where the finger is, the other
- * cards glide to their new places (FLIP), and the page scrolls gently only if
- * the panel opened mostly off-screen. Returns false if a full render is needed.
- */
+/** Swap the selected preview without replacing the roster or moving the page. */
 export function updateRosterSelection(
   root: ParentNode,
   selected: CharacterId,
@@ -141,9 +147,39 @@ export function updateRosterSelection(
     if (artwork && fresh && (on || artwork.querySelector(".trait-aura")))
       artwork.replaceWith(fresh);
   }
+  showFighterSection(
+    freshDetail,
+    oldDetail.getAttribute("data-preview") ?? "overview",
+  );
   oldDetail.remove();
   chosen.after(freshDetail);
   placeFighterDetail(root);
+  const preview = root.querySelector<HTMLElement>(".fighter-preview-slot");
+  if (preview) {
+    preview.scrollTop = 0;
+    if (revealSelection) {
+      const roster = chosen.parentElement!;
+      const card = chosen.getBoundingClientRect(),
+        list = roster.getBoundingClientRect();
+      if (card.top < list.top || card.bottom > list.bottom)
+        roster.scrollBy({
+          top:
+            card.top < list.top
+              ? card.top - list.top
+              : card.bottom - list.bottom,
+          behavior: reducedMotion || still() ? "instant" : "smooth",
+        });
+      if (!reducedMotion && !still())
+        freshDetail.animate(
+          [
+            { opacity: 0.4, transform: "translateX(14px)" },
+            { opacity: 1, transform: "translateX(0)" },
+          ],
+          { duration: 180, easing: "cubic-bezier(.2,.8,.2,1)" },
+        );
+    }
+    return true;
+  }
   // Server snapshots and room entry update the selection without navigating
   // away from the room controls. Only a deliberate card tap reveals details.
   if (!revealSelection) return true;
@@ -200,16 +236,16 @@ export function updateRosterSelection(
   return true;
 }
 
-/**
- * Put the stats and skills panel in its slot for the current layout: inside
- * the grid on wide rosters (CSS orders it between the two rows), or just
- * below the swipeable row on narrow ones (it must not scroll sideways with
- * the cards). Safe to call any time; it only moves the panel when needed.
- */
+/** Mount the stable preview slot, with legacy inline placement as a fallback. */
 export function placeFighterDetail(root: ParentNode) {
   const roster = root.querySelector<HTMLElement>(".showcase-roster"),
     detail = root.querySelector<HTMLElement>(".fighter-detail");
   if (!roster || !detail) return;
+  const preview = root.querySelector<HTMLElement>(".fighter-preview-slot");
+  if (preview) {
+    if (detail.parentElement !== preview) preview.append(detail);
+    return;
+  }
   const strip = getComputedStyle(roster).gridAutoFlow.startsWith("column");
   if (strip) {
     if (detail.parentElement === roster) roster.after(detail);
@@ -221,6 +257,20 @@ export function placeFighterDetail(root: ParentNode) {
     else roster.append(detail);
   }
 }
+/** Both sections remain in the DOM; native buttons also work with a controller. */
+function showFighterSection(detail: HTMLElement, section: string) {
+  detail.dataset.preview = section;
+  const skills = section === "skills";
+  detail.querySelector<HTMLElement>(".selected-fighter")!.hidden = skills;
+  detail.querySelector<HTMLElement>(".skill-preview")!.hidden = !skills;
+  for (const button of Array.from(
+    detail.querySelectorAll<HTMLElement>("[data-fighter-preview]"),
+  ))
+    button.setAttribute(
+      "aria-pressed",
+      String(button.dataset.fighterPreview === section),
+    );
+}
 let watched: ResizeObserver | undefined;
 let navigationEvents: AbortController | undefined;
 /** Re-place the panel whenever the roster switches between layouts. */
@@ -230,6 +280,21 @@ export function watchFighterDetail(root: HTMLElement) {
   navigationEvents = new AbortController();
   const panel = root.querySelector<HTMLElement>(".roster-panel") ?? root;
   placeFighterDetail(panel);
+  panel.addEventListener(
+    "click",
+    (event) => {
+      const button = (event.target as Element).closest<HTMLElement>(
+        "[data-fighter-preview]",
+      );
+      if (!button) return;
+      const detail = button.closest<HTMLElement>(".fighter-detail");
+      if (!detail) return;
+      showFighterSection(detail, button.dataset.fighterPreview!);
+      const preview = detail.closest<HTMLElement>(".fighter-preview-slot");
+      if (preview) preview.scrollTop = 0;
+    },
+    { signal: navigationEvents.signal },
+  );
   const roster = panel.querySelector<HTMLElement>(".showcase-roster");
   const previous = panel.querySelector<HTMLButtonElement>(
     '[data-roster-step="-1"]',
@@ -240,17 +305,29 @@ export function watchFighterDetail(root: HTMLElement) {
   );
   const syncNavigation = () => {
     if (!roster) return;
-    const max = Math.max(0, roster.scrollWidth - roster.clientWidth);
-    if (previous) previous.disabled = roster.scrollLeft <= 2;
-    if (next) next.disabled = roster.scrollLeft >= max - 2;
-    if (progress) progress.value = max ? roster.scrollLeft / max : 0;
+    const vertical = !!panel.querySelector(".fighter-preview-slot");
+    const max = Math.max(
+      0,
+      vertical
+        ? roster.scrollHeight - roster.clientHeight
+        : roster.scrollWidth - roster.clientWidth,
+    );
+    const position = vertical ? roster.scrollTop : roster.scrollLeft;
+    if (previous) previous.textContent = vertical ? "⌃" : "‹";
+    if (next) next.textContent = vertical ? "⌄" : "›";
+    if (previous) previous.disabled = position <= 2;
+    if (next) next.disabled = position >= max - 2;
+    if (progress) progress.value = max ? position / max : 0;
   };
   for (const button of [previous, next])
     button?.addEventListener(
       "click",
       () => {
+        const vertical = !!panel.querySelector(".fighter-preview-slot");
         roster?.scrollBy({
-          left: Number(button.dataset.rosterStep) * (roster.clientWidth * 0.8),
+          [vertical ? "top" : "left"]:
+            Number(button.dataset.rosterStep) *
+            ((vertical ? roster.clientHeight : roster.clientWidth) * 0.8),
           behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
             ? "instant"
             : "smooth",

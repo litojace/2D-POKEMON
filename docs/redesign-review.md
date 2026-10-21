@@ -41,3 +41,16 @@ The first review missed the fixed 150px fighter-name override at the wide-screen
 - Typecheck, all 854 tests, the production client build and PWA verification pass. The existing repository-wide formatting failures remain in untouched files; changed files pass Prettier.
 
 Updated previews: [desktop](redesign-phase2-desktop.png), [tall desktop](redesign-desktop-tall.png), [landscape phone](redesign-phase2-mobile.png). Review profiles remain browser-only fixtures.
+
+## Phase 3 — fighter selection and lobby
+
+- Rebuilt selection as element-tinted portrait cards beside an independently scrollable, larger fighter preview. Cards keep equipped skins, range labels, HP, skill icons and the existing mastery badge; a portrait ring now shows progress between the existing mastery milestones.
+- Selecting a fighter updates the preview in place with a short slide and updates the lobby's element tint. Reduced motion skips the slide and decorative animation. The page stays still and card positions remain stable.
+- Moved room information, players, team selection, raid difficulty and party rules into a scrollable side card. Ready is the gold primary action; Ready, Leave, spectator exit and raid reward shortcuts stay outside the scrolling information.
+- Extended menu controller navigation to the lobby and added right-stick scrolling for the focused roster, preview or room information. Existing native keyboard controls and battle controller inputs are unchanged.
+- Reviewed all eight selections and duel, teams, FFA and raid lobbies at 1280×720, 1920×1080, 844×390 and 568×320. Verified viewport fit, pinned actions, reduced motion, simulated phone safe areas and controller scrolling. Very narrow landscape screens let the selection region scroll to the preview below the cards.
+- Typecheck and all 854 tests passed. The repository-wide formatting check still reports the same 76 pre-existing failures in untouched files; changed files pass Prettier.
+
+Browser-only sample accounts remain confined to the review harness. Previews: [desktop lobby](redesign-phase3-desktop.png), [landscape phone raid lobby](redesign-phase3-mobile.png), [desktop skill details](redesign-phase3-skills.png).
+
+Phase 3 desktop review: tightened portrait spacing, fixed explicit navigation/selection rows, and split the selected preview into Overview and Skills & combo sections with sticky native buttons. The active section stays selected when comparing fighters. Wide previews place the portrait beside the information instead of stacking both into a long column.

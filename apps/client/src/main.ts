@@ -1,3 +1,4 @@
+import { frameLobbyPanel } from "./lobby-layout";
 import {
   homeShell,
   homeModeLabel,
@@ -645,6 +646,10 @@ function syncMenuCosmetic() {
     championLooks: accountsUI?.economy?.looks ?? fighter?.championLooks,
   });
   if (panel) panel.dataset.raidCosmetic = worn;
+  document.body.style.setProperty(
+    "--element",
+    `#${CHARACTERS[selected].color.toString(16).padStart(6, "0")}`,
+  );
   const avatar = Array.from(
     document.querySelectorAll<HTMLElement>("#menu [data-raid-player]"),
   )
@@ -1212,6 +1217,7 @@ function renderMenu(revealSelection = false) {
   document.body.classList.remove("battle-active", "battle-raid");
   const home = !isRoom && !watchingRoom;
   document.body.classList.toggle("home-active", home);
+  document.body.classList.toggle("lobby-active", !home);
   // Home and lobby share a mounted shell; only returning from battle fades in.
   const arriving = $("menu").hidden;
   $("battle").hidden = true;
@@ -1250,6 +1256,8 @@ function renderMenu(revealSelection = false) {
       !wornChanged &&
       !!$("menu").querySelector(".home-screen") === home,
   );
+  if (!home)
+    frameLobbyPanel($("menu").querySelector<HTMLElement>(".room-panel")!);
   const adventureButton = document.getElementById("home-adventure");
   if (adventureButton)
     adventureButton.onclick = () => void accountsUI.showAdventure();
@@ -1416,7 +1424,7 @@ async function leave() {
   menuOpen = false;
 }
 function renderBattle() {
-  document.body.classList.remove("home-active");
+  document.body.classList.remove("home-active", "lobby-active");
   if (state) audio.setTheme(battleMusic(state, myId), state.raid?.phase ?? 1);
   if (!document.body.classList.contains("battle-active")) {
     document.body.classList.add("battle-active");
