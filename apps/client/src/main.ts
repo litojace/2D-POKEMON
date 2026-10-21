@@ -9,7 +9,13 @@ import { battleMusic } from "./battle-music";
 import { setDialogContent } from "./dialog";
 import { wireRaidDifficulty } from "./raid-difficulty";
 import { updateMenuShell } from "./menu-shell";
-import { raidLobby, renderRaidUI, drawRaidArena, raidLookList, portraitCosmetics } from "./raid-ui";
+import {
+  raidLobby,
+  renderRaidUI,
+  drawRaidArena,
+  raidLookList,
+  portraitCosmetics,
+} from "./raid-ui";
 import { illustratedHelp } from "./illustrated-help";
 import { buttonIcon, iconLabel, menuIcon } from "./menu-icons";
 import type { RaidBossId } from "../../../packages/shared/src/raid";
@@ -348,7 +354,10 @@ window.addEventListener("keydown", (e) => {
   // Held keys are tracked in every phase, so movement held through the countdown works at "Fight".
   held.add(e.code);
   if (live) pressAction(action);
-  else if (state?.phase === "intermission" && !$<HTMLDialogElement>("dialog").open)
+  else if (
+    state?.phase === "intermission" &&
+    !$<HTMLDialogElement>("dialog").open
+  )
     pressAction(action);
 });
 // Raid team signals on Z / X / C (when those keys aren't bound to anything).
@@ -420,18 +429,21 @@ function riteMarkup(me: Fighter, _seconds: number) {
       actions: `<div class="rite-choices" style="--rite-count:${offer.length}">${cards}</div>`,
     };
   }
-  const rivals = state!.players.filter(
-    (p) => p.id !== myId && p.rites?.length,
-  );
+  const rivals = state!.players.filter((p) => p.id !== myId && p.rites?.length);
   const roulette = state!.mutators?.includes("random")
     ? '<p class="rite-intro">Fighter roulette: everyone gets a new random fighter next round.</p>'
     : "";
-  return { body: `${roulette}${me.rites?.length ? `<div class="rite-owned"><em>Your rites</em>${chips(me)}</div>` : ""}${rivals
-    .map(
-      (p) =>
-        `<div class="rite-owned rival"><em>${escape(p.name)}</em>${chips(p)}</div>`,
-    )
-    .join("")}<p class="rite-timer">${state!.players.some((p) => p.riteOffer) ? "Waiting for the others to choose · " : ""}${timer}</p>`, actions: "" };
+  return {
+    body: `${roulette}${me.rites?.length ? `<div class="rite-owned"><em>Your rites</em>${chips(me)}</div>` : ""}${rivals
+      .map(
+        (p) =>
+          `<div class="rite-owned rival"><em>${escape(p.name)}</em>${chips(p)}</div>`,
+      )
+      .join(
+        "",
+      )}<p class="rite-timer">${state!.players.some((p) => p.riteOffer) ? "Waiting for the others to choose · " : ""}${timer}</p>`,
+    actions: "",
+  };
 }
 window.addEventListener("keyup", (e) => {
   if (!held.delete(e.code)) return;
@@ -598,10 +610,15 @@ function wireRoster(isRoom: boolean) {
 }
 /** A player's equipped champion skins (yours update as soon as you equip). */
 function looksOf(p: Pick<Fighter, "id" | "championLooks"> | undefined) {
-  return p?.id === myId && accountsUI?.economy ? accountsUI.economy.looks : p?.championLooks;
+  return p?.id === myId && accountsUI?.economy
+    ? accountsUI.economy.looks
+    : p?.championLooks;
 }
 /** The champion skin a player wears on a champion, if any. */
-function skinOf(p: Pick<Fighter, "id" | "championLooks"> | undefined, character: CharacterId) {
+function skinOf(
+  p: Pick<Fighter, "id" | "championLooks"> | undefined,
+  character: CharacterId,
+) {
   return looksOf(p)?.[character] ?? null;
 }
 let lastWornKey = "{}";
@@ -612,20 +629,33 @@ function homeShop() {
   const done = e?.missions.filter((m) => m.done).length ?? 0;
   const missions = e?.missions.length
     ? `<button type="button" class="home-missions" id="home-missions" aria-label="Daily missions: ${done} of ${e.missions.length} done"><span class="home-missions-head">${menuIcon("missions")}<b>Daily missions</b><small>${done === e.missions.length ? "All done" : `${done}/${e.missions.length} done`}</small></span>${e.missions
-        .map((m) => `<span class="home-mission tier-${m.tier}${m.done ? " is-done" : ""}" title="${escape(m.text)}"><small>${escape(m.text)}</small><progress max="${m.target}" value="${Math.min(m.progress, m.target)}"></progress></span>`)
+        .map(
+          (m) =>
+            `<span class="home-mission tier-${m.tier}${m.done ? " is-done" : ""}" title="${escape(m.text)}"><small>${escape(m.text)}</small><progress max="${m.target}" value="${Math.min(m.progress, m.target)}"></progress></span>`,
+        )
         .join("")}</button>`
     : "";
   return `<button class="quiet raid-icon-button" id="shop-open">${menuIcon("shop")}<span>Shop</span>${e ? coinChip(e.balance, "", e.unlimitedCoins) : ""}</button>${missions}${adventureHome(e)}`;
 }
 function syncMenuCosmetic() {
-  const panel=document.querySelector<HTMLElement>("#menu .roster-panel");
-  const fighter=state?.players.find(p=>p.id===myId);
-  const look=accountsUI?.account && accountsUI.raidLook!==undefined ? accountsUI.raidLook : fighter?.raidLook;
-  const worn=portraitCosmetics({character:selected,raidLook:look,championLooks:accountsUI?.economy?.looks ?? fighter?.championLooks});
-  if(panel)panel.dataset.raidCosmetic=worn;
-  const avatar=Array.from(document.querySelectorAll<HTMLElement>("#menu [data-raid-player]"))
-    .find(row=>row.dataset.raidPlayer===myId)?.querySelector<HTMLElement>(".raid-party-avatar");
-  if(avatar)avatar.dataset.raidCosmetic=worn;
+  const panel = document.querySelector<HTMLElement>("#menu .roster-panel");
+  const fighter = state?.players.find((p) => p.id === myId);
+  const look =
+    accountsUI?.account && accountsUI.raidLook !== undefined
+      ? accountsUI.raidLook
+      : fighter?.raidLook;
+  const worn = portraitCosmetics({
+    character: selected,
+    raidLook: look,
+    championLooks: accountsUI?.economy?.looks ?? fighter?.championLooks,
+  });
+  if (panel) panel.dataset.raidCosmetic = worn;
+  const avatar = Array.from(
+    document.querySelectorAll<HTMLElement>("#menu [data-raid-player]"),
+  )
+    .find((row) => row.dataset.raidPlayer === myId)
+    ?.querySelector<HTMLElement>(".raid-party-avatar");
+  if (avatar) avatar.dataset.raidCosmetic = worn;
 }
 /** Move the selection highlight and swap the detail panel without re-rendering. */
 function showSelection(revealSelection = false) {
@@ -646,16 +676,28 @@ function showSelection(revealSelection = false) {
     avatar.innerHTML = fighterAvatar(
       fighter.id,
       `lobby${state?.players.findIndex((p) => p.id === myId) ?? 0}`,
-      skinOf(state?.players.find((p) => p.id === myId), fighter.id),
+      skinOf(
+        state?.players.find((p) => p.id === myId),
+        fighter.id,
+      ),
     );
   }
-  const raidMe = Array.from(document.querySelectorAll<HTMLElement>("#menu [data-raid-player]"))
-    .find(row=>row.dataset.raidPlayer===myId);
-  if(raidMe) {
-    const avatar=raidMe.querySelector<HTMLElement>(".raid-party-avatar");
-    const name=raidMe.querySelector<HTMLElement>(".raid-player-character");
-    if(avatar)avatar.innerHTML=fighterAvatar(selected,"raid-lobby-"+myId,skinOf(state?.players.find((p)=>p.id===myId),selected));
-    if(name)name.textContent=CHARACTERS[selected].name;
+  const raidMe = Array.from(
+    document.querySelectorAll<HTMLElement>("#menu [data-raid-player]"),
+  ).find((row) => row.dataset.raidPlayer === myId);
+  if (raidMe) {
+    const avatar = raidMe.querySelector<HTMLElement>(".raid-party-avatar");
+    const name = raidMe.querySelector<HTMLElement>(".raid-player-character");
+    if (avatar)
+      avatar.innerHTML = fighterAvatar(
+        selected,
+        "raid-lobby-" + myId,
+        skinOf(
+          state?.players.find((p) => p.id === myId),
+          selected,
+        ),
+      );
+    if (name) name.textContent = CHARACTERS[selected].name;
   }
   syncMenuCosmetic();
   return true;
@@ -701,7 +743,9 @@ const createLabel = () =>
 let roomMode: RoomMode = (() => {
   try {
     const saved = localStorage.getItem("arena-room-mode");
-    return saved === "teams" || saved === "ffa" || saved === "raid" ? saved : "duel";
+    return saved === "teams" || saved === "ffa" || saved === "raid"
+      ? saved
+      : "duel";
   } catch {
     return "duel";
   }
@@ -746,7 +790,9 @@ function renderWatchOverlay(overlay: HTMLElement) {
         (p, i) =>
           `<div class="vs-fighter" style="--element:#${CHARACTERS[p.character].color.toString(16).padStart(6, "0")}">${scopeIds(fighterArt(p.character, undefined, skinOf(p, p.character)), `watchvs${i}`)}<b>${escape(p.name)}</b><span>${CHARACTERS[p.character].name}</span></div>`,
       )
-      .join('<span class="vs-mark">VS</span>')}</div><p class="arena-brief"><b>Arena · ${escape(ARENAS[state!.arena ?? "classic"].name)}</b>${escape(ARENAS[state!.arena ?? "classic"].tip)}</p>${partyRulesNote()}`;
+      .join(
+        '<span class="vs-mark">VS</span>',
+      )}</div><p class="arena-brief"><b>Arena · ${escape(ARENAS[state!.arena ?? "classic"].name)}</b>${escape(ARENAS[state!.arena ?? "classic"].tip)}</p>${partyRulesNote()}`;
   }
   if (state!.phase === "countdown") {
     heading = `${Math.ceil(state!.remaining)}`;
@@ -771,14 +817,15 @@ function renderWatchOverlay(overlay: HTMLElement) {
       ? `${TEAM_LABELS[state!.winnerTeam ?? 0] ?? ""} team wins`
       : `${name(state!.winner)} wins`;
     details =
-      (isFfa() ? standingsMarkup(state!, "") : "") +
-      recapMarkup(state!, "");
-    actions = `<div class="result-actions"><button class="secondary leave-button" id="watch-stop">${iconLabel("stop-watching", "Stop watching")}</button></div>`;
+      (isFfa() ? standingsMarkup(state!, "") : "") + recapMarkup(state!, "");
+    actions = `<div class="result-actions"><button class="secondary btn-secondary leave-button" id="watch-stop">${iconLabel("stop-watching", "Stop watching")}</button></div>`;
   }
   setOverlayMarkup(
     overlay,
     `<div class="overlay-card${actions ? " action-overlay" : state!.phase === "countdown" ? " countdown-card" : ""}"><span class="eyebrow">Watching · ${escape(state!.code)}</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match results"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`,
-    actions ? `${state!.code}:${state!.matchId ?? ""}:${state!.phase}` : undefined,
+    actions
+      ? `${state!.code}:${state!.matchId ?? ""}:${state!.phase}`
+      : undefined,
   );
   fillLiveSeconds(
     overlay,
@@ -825,7 +872,9 @@ async function watchRoom(raw: string) {
   }
   watching = code;
   screen = "";
-  toast(`Watching room ${code}. You can't be hit, and nobody sees your screen.`);
+  toast(
+    `Watching room ${code}. You can't be hit, and nobody sees your screen.`,
+  );
 }
 async function stopWatching(notice?: string) {
   if (watching) await request("unwatch");
@@ -846,7 +895,7 @@ function watchPanel() {
       return `<div><span class="player-avatar" style="--element:#${c.color.toString(16).padStart(6, "0")}" title="${c.name}">${fighterAvatar(c.id, `watch${state!.players.indexOf(p)}`, skinOf(p, c.id))}</span><span><strong>${escape(p.name)}</strong><small class="player-fighter">${c.name}</small></span><b class="status-pill ${!p.connected ? "offline" : p.ready ? "ready" : "choosing"}">${!p.connected ? "Offline" : p.ready ? "Ready" : "Choosing"}</b></div>`;
     })
     .join("");
-  return `<div class="eyebrow">Watching room ${escape(state!.code)}</div><h2>Ringside seat.</h2><p>You'll see the match live as soon as everyone's ready. Watching: ${escape((state!.watchers ?? []).join(", ") || "just you")}.</p><div class="players">${rows}</div>${partyRulesNote()}<button class="secondary full leave-button" id="stop-watching">${iconLabel("stop-watching", "Stop watching")}</button>`;
+  return `<div class="eyebrow">Watching room ${escape(state!.code)}</div><h2>Ringside seat.</h2><p>You'll see the match live as soon as everyone's ready. Watching: ${escape((state!.watchers ?? []).join(", ") || "just you")}.</p><div class="players">${rows}</div>${partyRulesNote()}<button class="secondary btn-secondary full leave-button" id="stop-watching">${iconLabel("stop-watching", "Stop watching")}</button>`;
 }
 /** Turbo party rule: skills recharge faster (for the cooldown displays). */
 function cooldownScale() {
@@ -866,7 +915,8 @@ function partyRulesNote() {
 }
 /** Lobby party rules: the host toggles them, everyone else sees them. */
 function partyRules(host: boolean) {
-  if (state?.arcade) return `<p class="arcade-lobby-note"><b>${ARCADE_EVENTS[state.arcade.id].name}</b> · ${ARCADE_EVENTS[state.arcade.id].text} Weekly rules are fixed. PvP rating stays separate.</p>`;
+  if (state?.arcade)
+    return `<p class="arcade-lobby-note"><b>${ARCADE_EVENTS[state.arcade.id].name}</b> · ${ARCADE_EVENTS[state.arcade.id].text} Weekly rules are fixed. PvP rating stays separate.</p>`;
   const on = new Set(state!.mutators ?? []);
   if (!host && !on.size) return "";
   const chips = MUTATOR_IDS.filter((m) => host || on.has(m))
@@ -879,13 +929,13 @@ function partyRules(host: boolean) {
   return `<details class="party-rules"${on.size ? " open" : ""}><summary>Party rules${on.size ? ` · ${on.size} on` : host ? " · optional" : ""}</summary><div class="rule-chips">${chips}</div>${host ? "<small>Only you (the host) can change these. Everyone readies up again after a change.</small>" : ""}</details>`;
 }
 function roomPanel(me: Fighter) {
-  if (state?.raid) return raidLobby(state,myId,selected);
+  if (state?.raid) return raidLobby(state, myId, selected);
   const row = (p: Fighter) => {
     const fighter = CHARACTERS[p.id === myId ? selected : p.character];
     return `<div${p.id === myId ? " data-me" : ""}><span class="player-avatar" data-raid-cosmetic="${portraitCosmetics({ character: fighter.id, raidLook: p.raidLook, championLooks: looksOf(p) })}" style="--element:#${fighter.color.toString(16).padStart(6, "0")}" title="${fighter.name}">${fighterAvatar(fighter.id, `lobby${state!.players.indexOf(p)}`, skinOf(p, fighter.id))}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small class="player-fighter">${fighter.name}${p.flair ? ` · <b class="flair flair-${p.flair.toLowerCase()}">★ ${p.flair}</b>` : ""}</small></span><b class="status-pill ${!p.connected ? "offline" : p.ready ? "ready" : "choosing"}">${!p.connected ? "Offline" : p.ready ? "Ready" : "Choosing"}</b></div>`;
   };
-  const ready = `<button class="primary" id="ready">${me.ready ? iconLabel("cancel", "Cancel ready") : iconLabel("battle", "Ready to battle")}</button><button class="quiet full leave-button" id="leave">${iconLabel("leave", "Leave room")}</button>`;
-  const code = `<button id="copy" class="room-code">${state!.code}<span>${COPY_ICON}Copy code</span></button><button id="invite" class="secondary full invite-link">${iconLabel("share", "Share invite link")}</button>`;
+  const ready = `<button class="primary btn-primary" id="ready">${me.ready ? iconLabel("cancel", "Cancel ready") : iconLabel("battle", "Ready to battle")}</button><button class="quiet full leave-button" id="leave">${iconLabel("leave", "Leave room")}</button>`;
+  const code = `<button id="copy" class="room-code">${state!.code}<span>${COPY_ICON}Copy code</span></button><button id="invite" class="secondary btn-secondary full invite-link">${iconLabel("share", "Share invite link")}</button>`;
   if (isFfa()) {
     const open = Math.max(0, 4 - state!.players.length);
     const slots = Array.from(
@@ -936,22 +986,43 @@ async function startAdventure(mode: string) {
   if (!connected) return toast("Waiting for the server connection.");
   if (watching) await stopWatching();
   audio.unlock();
-  $<HTMLDialogElement>("dialog").close();settingsOpen=false;menuOpen=false;
-  const name=accountsUI.account?.displayName ?? "Player";
-  if (mode==='arcade-bot') {
-    identity(await request('bot-match',{name,character:selected,difficulty:botLevel,arcade:arcadeWeek(raidDay().day).id}));
+  $<HTMLDialogElement>("dialog").close();
+  settingsOpen = false;
+  menuOpen = false;
+  const name = accountsUI.account?.displayName ?? "Player";
+  if (mode === "arcade-bot") {
+    identity(
+      await request("bot-match", {
+        name,
+        character: selected,
+        difficulty: botLevel,
+        arcade: arcadeWeek(raidDay().day).id,
+      }),
+    );
     return;
   }
-  const expedition=mode.startsWith('expedition-');
-  roomMode=expedition?'raid':mode==='arcade-teams'?'teams':'duel';
-  const reply=await request('create',{name,mode:roomMode,...(expedition?{expedition:true}:{arcade:arcadeWeek(raidDay().day).id})});
-  identity(reply);if(!reply.ok)return;
-  await request('select',selected);
-  if(mode==='expedition-solo')await request('ready');
+  const expedition = mode.startsWith("expedition-");
+  roomMode = expedition ? "raid" : mode === "arcade-teams" ? "teams" : "duel";
+  const reply = await request("create", {
+    name,
+    mode: roomMode,
+    ...(expedition
+      ? { expedition: true }
+      : { arcade: arcadeWeek(raidDay().day).id }),
+  });
+  identity(reply);
+  if (!reply.ok) return;
+  await request("select", selected);
+  if (mode === "expedition-solo") await request("ready");
 }
-async function showRaidBestiary() { await accountsUI.showRaidHub(state?.raid?.boss); }
+async function showRaidBestiary() {
+  await accountsUI.showRaidHub(state?.raid?.boss);
+}
 /** Create a raid room for a boss from the Raid Hub (optionally today's raid, or straight in solo). */
-async function startRaid(boss: RaidBossId, options: { daily?: boolean; solo?: boolean }) {
+async function startRaid(
+  boss: RaidBossId,
+  options: { daily?: boolean; solo?: boolean },
+) {
   if (!accountsUI.ensurePlayer()) return;
   if (myId) return toast("Leave your current room first.");
   if (!connected) return toast("Waiting for the server connection.");
@@ -962,7 +1033,10 @@ async function startRaid(boss: RaidBossId, options: { daily?: boolean; solo?: bo
   menuOpen = false;
   roomMode = "raid";
   const reply = await request("create", {
-    name: accountsUI.account?.displayName ?? localStorage.getItem("arena-name") ?? "Player",
+    name:
+      accountsUI.account?.displayName ??
+      localStorage.getItem("arena-name") ??
+      "Player",
     mode: "raid",
     boss,
   });
@@ -970,42 +1044,70 @@ async function startRaid(boss: RaidBossId, options: { daily?: boolean; solo?: bo
   if (!reply.ok) return;
   await request("select", selected);
   if (options.daily) {
-    const daily = (await request("raid-config", { peril: 2, daily: true })) as { ok?: boolean; error?: string };
+    const daily = (await request("raid-config", { peril: 2, daily: true })) as {
+      ok?: boolean;
+      error?: string;
+    };
     if (!daily.ok && daily.error) toast(daily.error);
   }
   if (options.solo) await request("ready");
 }
 function wireRaidLobby() {
   wireRaidDifficulty();
-  const copy=document.getElementById("raid-copy-code");
-  if(copy)copy.onclick=()=>void navigator.clipboard.writeText(state?.code??"").then(()=>toast("Room code copied")).catch(()=>toast("Room code: "+(state?.code??"")));
+  const copy = document.getElementById("raid-copy-code");
+  if (copy)
+    copy.onclick = () =>
+      void navigator.clipboard
+        .writeText(state?.code ?? "")
+        .then(() => toast("Room code copied"))
+        .catch(() => toast("Room code: " + (state?.code ?? "")));
 
-  const bestiary=document.getElementById('raid-bestiary');if(bestiary)bestiary.onclick=()=>void showRaidBestiary();
-  const shop=document.getElementById('shop-open');if(shop)shop.onclick=()=>void accountsUI.showShop();
-  const missions=document.getElementById('home-missions');if(missions)missions.onclick=()=>void accountsUI.showMissions();
-  const peril=document.getElementById('raid-peril') as HTMLInputElement|null,daily=document.getElementById('raid-daily-toggle') as HTMLInputElement|null;
+  const bestiary = document.getElementById("raid-bestiary");
+  if (bestiary) bestiary.onclick = () => void showRaidBestiary();
+  const shop = document.getElementById("shop-open");
+  if (shop) shop.onclick = () => void accountsUI.showShop();
+  const missions = document.getElementById("home-missions");
+  if (missions) missions.onclick = () => void accountsUI.showMissions();
+  const peril = document.getElementById(
+      "raid-peril",
+    ) as HTMLInputElement | null,
+    daily = document.getElementById(
+      "raid-daily-toggle",
+    ) as HTMLInputElement | null;
   const configure = () => {
     const isDaily = daily?.checked ?? false;
     // The daily raid grants access to Peril 2 before regular Peril 2 is unlocked.
     // Always allow leaving it by returning to the first regular difficulty.
-    const difficulty = !isDaily && state?.raid?.daily ? 1 : Number(peril?.value ?? 1);
-    void request("raid-config", { peril: difficulty, daily: isDaily }).then((reply) => {
-      const result = reply as { ok?: boolean; error?: string };
-      if (!result.ok) {
-        if (result.error) toast(result.error);
-        // Restore the authoritative values when a locked challenge is rejected.
-        if (state?.phase === "lobby") {
-          screen = "";
-          renderMenu();
+    const difficulty =
+      !isDaily && state?.raid?.daily ? 1 : Number(peril?.value ?? 1);
+    void request("raid-config", { peril: difficulty, daily: isDaily }).then(
+      (reply) => {
+        const result = reply as { ok?: boolean; error?: string };
+        if (!result.ok) {
+          if (result.error) toast(result.error);
+          // Restore the authoritative values when a locked challenge is rejected.
+          if (state?.phase === "lobby") {
+            screen = "";
+            renderMenu();
+          }
         }
-      }
-    });
+      },
+    );
   };
   // Practice: the host picks one boss attack to repeat.
-  document.querySelectorAll<HTMLButtonElement>("#menu [data-raid-drill]").forEach((b)=>{
-    b.onclick=()=>void request('raid-drill',{kind:b.dataset.raidDrill}).then((reply)=>{const r=reply as {ok?:boolean;error?:string};if(!r.ok&&r.error)toast(r.error);});
-  });
-  if(peril)peril.onchange=configure;if(daily)daily.onchange=configure;
+  document
+    .querySelectorAll<HTMLButtonElement>("#menu [data-raid-drill]")
+    .forEach((b) => {
+      b.onclick = () =>
+        void request("raid-drill", { kind: b.dataset.raidDrill }).then(
+          (reply) => {
+            const r = reply as { ok?: boolean; error?: string };
+            if (!r.ok && r.error) toast(r.error);
+          },
+        );
+    });
+  if (peril) peril.onchange = configure;
+  if (daily) daily.onchange = configure;
 }
 function wireRoom() {
   wireRaidLobby();
@@ -1036,22 +1138,24 @@ function wireRoom() {
     });
   // The raid lobby has its own copy button and no invite link.
   const copy = document.getElementById("copy");
-  if (copy) copy.onclick = () =>
-    void navigator.clipboard
-      .writeText(state!.code)
-      .then(() => toast("Room code copied."))
-      .catch(() => toast(`Share this code: ${state!.code}`));
+  if (copy)
+    copy.onclick = () =>
+      void navigator.clipboard
+        .writeText(state!.code)
+        .then(() => toast("Room code copied."))
+        .catch(() => toast(`Share this code: ${state!.code}`));
   const invite = document.getElementById("invite");
-  if (invite) invite.onclick = () =>
-    void shareInvite(state!.code).then((how) =>
-      toast(
-        how === "copied"
-          ? "Invite link copied. Friends who open it join this room."
-          : how === "failed"
-            ? `Share this code: ${state!.code}`
-            : "Invite sent.",
-      ),
-    );
+  if (invite)
+    invite.onclick = () =>
+      void shareInvite(state!.code).then((how) =>
+        toast(
+          how === "copied"
+            ? "Invite link copied. Friends who open it join this room."
+            : how === "failed"
+              ? `Share this code: ${state!.code}`
+              : "Invite sent.",
+        ),
+      );
 }
 function renderMenu(revealSelection = false) {
   audio.setTheme("lobby");
@@ -1059,8 +1163,27 @@ function renderMenu(revealSelection = false) {
   const p = state?.players.find((p) => p.id === myId);
   const isRoom = !!p;
   const watchingRoom = !isRoom && !!watching && state?.code === watching;
-  const raidChallenge = state?.raid ? `${state.raid.boss}/${state.raid.peril}/${state.raid.daily}` : "";
-  const key = `${isRoom ? `room-${state!.mode ?? "duel"}` : watchingRoom ? `watch-${watching}` : "home"}:${(state?.mutators ?? []).join(",")}|${raidChallenge}|${(state?.watchers ?? []).join(",")}:${state?.players.map((p) => `${p.id}${p.id === myId ? "" : p.character}${p.ready}${p.connected}${p.team ?? ""}${p.flair ?? ""}${raidLookList(p.raidLook)}${Object.values(looksOf(p) ?? {}).map((l) => `${l?.skin}${l?.stage}`).join(",")}`).join(":")}:${accountsUI?.economy ? `${accountsUI.economy.journey?.xp ?? ""}/${accountsUI.economy.journey?.season.xp ?? ""}/${accountsUI.economy.balance}/${accountsUI.economy.missions.map((m) => m.progress).join(",")}/${Object.values(accountsUI.economy.looks).map((l) => `${l?.skin}${l?.stage}`).join(",")}` : ""}:${selected}`;
+  const raidChallenge = state?.raid
+    ? `${state.raid.boss}/${state.raid.peril}/${state.raid.daily}`
+    : "";
+  const key = `${isRoom ? `room-${state!.mode ?? "duel"}` : watchingRoom ? `watch-${watching}` : "home"}:${(state?.mutators ?? []).join(",")}|${raidChallenge}|${(state?.watchers ?? []).join(",")}:${state?.players
+    .map(
+      (p) =>
+        `${p.id}${p.id === myId ? "" : p.character}${p.ready}${p.connected}${p.team ?? ""}${p.flair ?? ""}${raidLookList(p.raidLook)}${Object.values(
+          looksOf(p) ?? {},
+        )
+          .map((l) => `${l?.skin}${l?.stage}`)
+          .join(",")}`,
+    )
+    .join(":")}:${
+    accountsUI?.economy
+      ? `${accountsUI.economy.journey?.xp ?? ""}/${accountsUI.economy.journey?.season.xp ?? ""}/${accountsUI.economy.balance}/${accountsUI.economy.missions.map((m) => m.progress).join(",")}/${Object.values(
+          accountsUI.economy.looks,
+        )
+          .map((l) => `${l?.skin}${l?.stage}`)
+          .join(",")}`
+      : ""
+  }:${selected}`;
   if (screen === key) return;
   const previous = screen;
   screen = key;
@@ -1089,40 +1212,47 @@ function renderMenu(revealSelection = false) {
     $("menu").classList.add("screen-enter");
   }
   const panelMarkup = isRoom
-        ? roomPanel(p!)
-        : watchingRoom
-          ? watchPanel()
-          : `<div class="eyebrow">Play online</div><h2>A friend. A code.<br>A worthy opponent.</h2><label for="name">Your display name</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><div class="mode-picker" role="radiogroup" aria-label="Room type">${(
-            [
-              ["duel", "1v1 Duel", "Best of five"],
-              ["teams", "2v2 Teams", "Best of five"],
-              ["ffa", "Free-for-all", "3–4 players"],
-              ["raid", "Boss Raid", "Co-op · 1–4 players"],
-            ] as const
+    ? roomPanel(p!)
+    : watchingRoom
+      ? watchPanel()
+      : `<div class="eyebrow">Play online</div><h2>A friend. A code.<br>A worthy opponent.</h2><label for="name">Your display name</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><div class="mode-picker" role="radiogroup" aria-label="Room type">${(
+          [
+            ["duel", "1v1 Duel", "Best of five"],
+            ["teams", "2v2 Teams", "Best of five"],
+            ["ffa", "Free-for-all", "3–4 players"],
+            ["raid", "Boss Raid", "Co-op · 1–4 players"],
+          ] as const
+        )
+          .map(
+            ([id, label, hint]) =>
+              `<button type="button" role="radio" class="bot-level mode-level${roomMode === id ? " active" : ""}" data-mode="${id}" aria-checked="${roomMode === id}"><b>${label}</b><small>${hint}</small></button>`,
           )
-            .map(
-              ([id, label, hint]) =>
-                `<button type="button" role="radio" class="bot-level mode-level${roomMode === id ? " active" : ""}" data-mode="${id}" aria-checked="${roomMode === id}"><b>${label}</b><small>${hint}</small></button>`,
-            )
-            .join(
-              "",
-            )}</div><button class="primary" id="create">${createLabel()}</button><button class="quiet raid-icon-button" id="raid-bestiary">${menuIcon("bestiary")}<span>Raid Hub & rewards</span></button>${homeShop()}<div class="divider">Or join a friend</div><label for="code">Room code</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary">${iconLabel("enter", "Join")}</button></div><button id="watch" class="quiet full">${iconLabel("watch", "Watch this room instead")}</button><div class="divider">Or play solo</div><div class="bot-picker" role="radiogroup" aria-label="Bot difficulty">${BOT_LEVELS.map(([id, label, hint]) => `<button type="button" role="radio" class="bot-level${botLevel === id ? " active" : ""}" data-bot="${id}" aria-checked="${botLevel === id}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button class="secondary full" id="bot-match">${iconLabel("bot", "Battle an AI bot")}</button>${accountsUI?.account ? '<button class="quiet full" id="practice">' + iconLabel("target", "Solo test mode") + '</button>' : ""}<small class="room-note">Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`;
+          .join(
+            "",
+          )}</div><button class="primary btn-primary" id="create">${createLabel()}</button><button class="quiet raid-icon-button" id="raid-bestiary">${menuIcon("bestiary")}<span>Raid Hub & rewards</span></button>${homeShop()}<div class="divider">Or join a friend</div><label for="code">Room code</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary btn-secondary">${iconLabel("enter", "Join")}</button></div><button id="watch" class="quiet full">${iconLabel("watch", "Watch this room instead")}</button><div class="divider">Or play solo</div><div class="bot-picker" role="radiogroup" aria-label="Bot difficulty">${BOT_LEVELS.map(([id, label, hint]) => `<button type="button" role="radio" class="bot-level${botLevel === id ? " active" : ""}" data-bot="${id}" aria-checked="${botLevel === id}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button class="secondary btn-secondary full" id="bot-match">${iconLabel("bot", "Battle an AI bot")}</button>${accountsUI?.account ? '<button class="quiet full" id="practice">' + iconLabel("target", "Solo test mode") + "</button>" : ""}<small class="room-note">Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`;
   // A newly equipped Shop skin redraws the roster cards.
   const wornKey = JSON.stringify(accountsUI?.economy?.looks ?? {});
   const wornChanged = wornKey !== lastWornKey;
   lastWornKey = wornKey;
   setWornSkins(accountsUI?.economy?.looks);
-  const retainedShell = updateMenuShell($("menu"), panelMarkup, () =>
-    `<header class="desktop-lobby-header"><div class="eyebrow">Elemental Coliseum</div><h1>Choose your fighter</h1><p>Pick your creature. Enter the arena.</p></header><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected)}</div><aside class="room-panel">${panelMarkup}</aside></div>`,
+  const retainedShell = updateMenuShell(
+    $("menu"),
+    panelMarkup,
+    () =>
+      `<header class="desktop-lobby-header"><div class="eyebrow">Elemental Coliseum</div><h1>Choose your fighter</h1><p>Pick your creature. Enter the arena.</p></header><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected)}</div><aside class="room-panel card">${panelMarkup}</aside></div>`,
     keepScroll !== null && !wornChanged,
   );
   const adventureButton = document.getElementById("home-adventure");
-  if (adventureButton) adventureButton.onclick = () => void accountsUI.showAdventure();
+  if (adventureButton)
+    adventureButton.onclick = () => void accountsUI.showAdventure();
   wireRoster(isRoom);
   syncMenuCosmetic();
   // Fighter panel slot: between the rows on PC, under the swipeable row on phones.
   if (!retainedShell) watchFighterDetail($("menu"));
-  else if (previous && previous.slice(previous.lastIndexOf(":") + 1) !== selected)
+  else if (
+    previous &&
+    previous.slice(previous.lastIndexOf(":") + 1) !== selected
+  )
     showSelection(revealSelection);
   if (keepScroll !== null && Math.abs(scrollY - keepScroll) > 1)
     scrollTo(0, keepScroll);
@@ -1311,7 +1441,7 @@ function renderBattle() {
           )
           .join(
             "",
-          )}</select></label><label><input id="practice-unlimited" type="checkbox"> No skill cooldowns</label><label><input id="practice-attacks" type="checkbox"> Target attacks</label><button class="secondary" id="practice-reset">${iconLabel("again", "Reset arena")}</button><button class="quiet leave-button" id="practice-exit">${iconLabel("leave", "Exit test mode")}</button></div><p>Target respawns automatically. Enable attacks to test counters, clones and jumping over ground fire. Hover a skill for its description.</p></div></details>`;
+          )}</select></label><label><input id="practice-unlimited" type="checkbox"> No skill cooldowns</label><label><input id="practice-attacks" type="checkbox"> Target attacks</label><button class="secondary btn-secondary" id="practice-reset">${iconLabel("again", "Reset arena")}</button><button class="quiet leave-button" id="practice-exit">${iconLabel("leave", "Exit test mode")}</button></div><p>Target respawns automatically. Enable attacks to test counters, clones and jumping over ground fire. Hover a skill for its description.</p></div></details>`;
       $("practice-settings").addEventListener("toggle", () => {
         if (($("practice-settings") as HTMLDetailsElement).open) stopControls();
       });
@@ -1395,10 +1525,10 @@ function renderBattle() {
         : state.banked
           ? rushLabel(me)
           : state.crown
-          ? crownLabel(me)
-          : ringRadius(state.remaining, state.overtime) !== null
-          ? "RING CLOSING · STAY INSIDE"
-          : `LIVE · ${ARENAS[state.arena ?? "classic"].name.toUpperCase()}`
+            ? crownLabel(me)
+            : ringRadius(state.remaining, state.overtime) !== null
+              ? "RING CLOSING · STAY INSIDE"
+              : `LIVE · ${ARENAS[state.arena ?? "classic"].name.toUpperCase()}`
       : state.phase.toUpperCase();
   $("timer").classList.toggle(
     "ring-on",
@@ -1451,7 +1581,8 @@ function renderBattle() {
     );
     const left = Math.max(0, me.cooldowns[i] - state!.time);
     $(`cooldown-${i}`).textContent = left > 0 ? `${left.toFixed(1)}s` : "READY";
-    $(`fill-${i}`).style.height = `${(100 * left) / (a.cooldown * cooldownScale())}%`;
+    $(`fill-${i}`).style.height =
+      `${(100 * left) / (a.cooldown * cooldownScale())}%`;
     $(`ability-${i}`).classList.toggle("cooling", left > 0);
   });
   $("dash-cd").textContent =
@@ -1480,11 +1611,27 @@ function renderBattle() {
     state.practice ? Infinity : EX.cost,
     exArmedUntil > performance.now(),
   );
-  if(state.raid && myId) {
-    renderRaidUI(state,me,request,async () => await accountsUI.api("/api/raids") as import("../../../packages/shared/src/raid").RaidProgress, accountsUI.economy?.journey);
-    if(me.hp<=0)document.querySelectorAll<HTMLButtonElement>(".touch-buttons button").forEach(b=>b.disabled=true);
-    const exit=document.getElementById('raid-exit');if(exit)exit.onclick=()=>void leave();
-    const rewards=document.getElementById('raid-rewards');if(rewards)rewards.onclick=()=>void accountsUI.showRaidHub(state?.raid?.boss,'rewards');
+  if (state.raid && myId) {
+    renderRaidUI(
+      state,
+      me,
+      request,
+      async () =>
+        (await accountsUI.api(
+          "/api/raids",
+        )) as import("../../../packages/shared/src/raid").RaidProgress,
+      accountsUI.economy?.journey,
+    );
+    if (me.hp <= 0)
+      document
+        .querySelectorAll<HTMLButtonElement>(".touch-buttons button")
+        .forEach((b) => (b.disabled = true));
+    const exit = document.getElementById("raid-exit");
+    if (exit) exit.onclick = () => void leave();
+    const rewards = document.getElementById("raid-rewards");
+    if (rewards)
+      rewards.onclick = () =>
+        void accountsUI.showRaidHub(state?.raid?.boss, "rewards");
     return;
   }
   const overlay = $("arena-overlay");
@@ -1528,12 +1675,17 @@ function renderBattle() {
             .filter((p) => !mine(p))
             .map(card)
             .join("")}</div></div>`
-        : `<div class="briefing-versus${isFfa() ? " ffa" : ""}">${side([...state.players])
+        : `<div class="briefing-versus${isFfa() ? " ffa" : ""}">${side([
+            ...state.players,
+          ])
             .map(card)
             .join('<span class="vs-mark">VS</span>')}</div>`;
       const arena = ARENAS[state.arena ?? "classic"];
       details =
-        (state.arcade ? `<p class="arcade-brief"><b>${ARCADE_EVENTS[state.arcade.id].name}</b>${ARCADE_EVENTS[state.arcade.id].tip} · Arcade does not change your PvP rating.</p>` : "") + versus +
+        (state.arcade
+          ? `<p class="arcade-brief"><b>${ARCADE_EVENTS[state.arcade.id].name}</b>${ARCADE_EVENTS[state.arcade.id].tip} · Arcade does not change your PvP rating.</p>`
+          : "") +
+        versus +
         teamUpNote(me) +
         `<p class="arena-brief"><b>Arena · ${escape(arena.name)}</b>${escape(state.arcade ? ARCADE_EVENTS[state.arcade.id].tip : arena.tip)}</p>` +
         '<p class="mobile-howto">Touch mode: left joystick to move; big button for basic attacks, the four curved buttons for skills, DASH and JUMP below. Aim follows your nearest opponent. Use Enter fullscreen below the arena.</p>' +
@@ -1545,8 +1697,8 @@ function renderBattle() {
             ? `Everyone is your enemy: the last fighter standing takes the round. First to win ${roundWord()} rounds takes the match.`
             : `Use cover. First to win ${roundWord()} rounds takes the match.`) +
         partyRulesNote() +
-        ' The countdown begins when everyone confirms.</p>';
-      actions = `<button class="primary" id="instructions-ready" ${confirmed ? "disabled" : ""}>${confirmed ? "Waiting for the others…" : "I’m ready"}</button>`;
+        " The countdown begins when everyone confirms.</p>";
+      actions = `<button class="primary btn-primary" id="instructions-ready" ${confirmed ? "disabled" : ""}>${confirmed ? "Waiting for the others…" : "I’m ready"}</button>`;
     }
     if (state.phase === "countdown") {
       heading = `${Math.ceil(state.remaining)}`;
@@ -1588,31 +1740,46 @@ function renderBattle() {
       details = isFfa()
         ? standingsMarkup(state, myId)
         : isTeams()
-        ? score(
-            `${TEAM_LABELS[teamOf(me)]} team`,
-            state.teamScores?.[teamOf(me)] ?? 0,
-            state.teamScores?.[1 - teamOf(me)] ?? 0,
-            `${TEAM_LABELS[1 - teamOf(me)]} team`,
-          )
-        : score(
-            "You",
-            state.scores[me.id] ?? 0,
-            rival ? (state.scores[rival.id] ?? 0) : 0,
-            escape(rival?.name ?? "Opponent"),
-          );
+          ? score(
+              `${TEAM_LABELS[teamOf(me)]} team`,
+              state.teamScores?.[teamOf(me)] ?? 0,
+              state.teamScores?.[1 - teamOf(me)] ?? 0,
+              `${TEAM_LABELS[1 - teamOf(me)]} team`,
+            )
+          : score(
+              "You",
+              state.scores[me.id] ?? 0,
+              rival ? (state.scores[rival.id] ?? 0) : 0,
+              escape(rival?.name ?? "Opponent"),
+            );
       details +=
         recapMarkup(state, myId) +
         recordsMarkup(
-          state.matchId && !state.arcade ? matchRecords.get(state.matchId) : undefined,
+          state.matchId && !state.arcade
+            ? matchRecords.get(state.matchId)
+            : undefined,
           friendIds,
         );
-      details += resultXp(accountsUI.economy?.journey, state.matchId ? `match:${state.matchId}` : undefined, state.activityStatus, state.activityEligible?.includes(myId) ?? true);
-      if (state.arcade) details += '<p class="arcade-rating-note">Weekly arcade · XP and mission progress · PvP rating stays separate.</p>';
-      actions = `<div class="result-actions"><button class="primary" id="rematch">${me.ready ? "Waiting for opponent…" : iconLabel("again", "Rematch")}</button><button class="secondary" id="share-result">${iconLabel("share", "Share result")}</button><button class="secondary" id="return">${state.vsBot ? iconLabel("home", "Back to menu") : iconLabel("back", "Return to lobby")}</button></div>`;
+      details += resultXp(
+        accountsUI.economy?.journey,
+        state.matchId ? `match:${state.matchId}` : undefined,
+        state.activityStatus,
+        state.activityEligible?.includes(myId) ?? true,
+      );
+      if (state.arcade)
+        details +=
+          '<p class="arcade-rating-note">Weekly arcade · XP and mission progress · PvP rating stays separate.</p>';
+      actions = `<div class="result-actions"><button class="primary btn-primary" id="rematch">${me.ready ? "Waiting for opponent…" : iconLabel("again", "Rematch")}</button><button class="secondary btn-secondary" id="share-result">${iconLabel("share", "Share result")}</button><button class="secondary btn-secondary" id="return">${state.vsBot ? iconLabel("home", "Back to menu") : iconLabel("back", "Return to lobby")}</button></div>`;
     }
     const markup = `<div class="overlay-card${actions ? " action-overlay" : state.phase === "countdown" ? " countdown-card" : ""}"><span class="eyebrow">Element Arena</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match details"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`;
     // Preserve the pressed button and native scrolling between snapshots.
-    setOverlayMarkup(overlay, markup, actions ? `${state.code}:${state.matchId ?? ""}:${state.phase}` : undefined);
+    setOverlayMarkup(
+      overlay,
+      markup,
+      actions
+        ? `${state.code}:${state.matchId ?? ""}:${state.phase}`
+        : undefined,
+    );
     fillLiveSeconds(
       overlay,
       state.phase === "paused" ? state.pauseRemaining : state.remaining,
@@ -1764,7 +1931,12 @@ socket.on("state", (snapshot: WireSnapshot) => {
       if (scene && state.phase !== "lobby") scene.effect(event);
       eventId = Math.max(eventId, event.id);
     }
-  if (state.phase === "finished" && state.matchId && !state.practice && !state.arcade)
+  if (
+    state.phase === "finished" &&
+    state.matchId &&
+    !state.practice &&
+    !state.arcade
+  )
     void reportMatch(state.matchId);
   if (state.phase === "lobby") renderMenu();
   else renderBattle();
@@ -1853,9 +2025,13 @@ async function reportMatch(matchId: string, attempt = 0) {
     )
       toast(`Rank up! You're now ${rating.rank}. The title is yours to keep.`);
     if (!reply.confirmed && attempt < 3)
-      setTimeout(() => {
-        if (state?.matchId === matchId) void reportMatch(matchId, attempt + 1);
-      }, 3000 + attempt * 3000);
+      setTimeout(
+        () => {
+          if (state?.matchId === matchId)
+            void reportMatch(matchId, attempt + 1);
+        },
+        3000 + attempt * 3000,
+      );
   } catch (error) {
     matchRecords.set(matchId, {
       status: "unavailable",
@@ -1868,7 +2044,13 @@ async function reportMatch(matchId: string, attempt = 0) {
   if (state?.phase === "finished") renderBattle();
 }
 function predict(p: Fighter, input: Input, time: number) {
-  if(state?.raid && p.hp<=0) {if(!p.out){const d=normalize(input.dx,input.dy);move(p,d.x*35/RULES.tick,d.y*35/RULES.tick);}return;}
+  if (state?.raid && p.hp <= 0) {
+    if (!p.out) {
+      const d = normalize(input.dx, input.dy);
+      move(p, (d.x * 35) / RULES.tick, (d.y * 35) / RULES.tick);
+    }
+    return;
+  }
 
   if (input.dash && time >= p.dashAt) {
     const d = normalize(input.dx, input.dy);
@@ -1904,19 +2086,20 @@ function leaveButton() {
     ["briefing", "countdown", "playing", "intermission", "paused"].includes(
       state.phase,
     );
-  if (!live) return `<button id="exit-room" class="secondary leave-button">${iconLabel("leave", "Leave room")}</button>`;
+  if (!live)
+    return `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("leave", "Leave room")}</button>`;
   if (state!.raid) {
     const others = state!.players.filter(
       (p) => !p.raidBoss && !p.out && p.id !== myId,
     ).length;
-    return `<button id="exit-room" class="secondary leave-button is-costly"><span>${buttonIcon("leave")}Leave raid</span><small>${others ? "Your team carries on without you" : "Ends this run"}</small></button>`;
+    return `<button id="exit-room" class="secondary btn-secondary leave-button is-costly"><span>${buttonIcon("leave")}Leave raid</span><small>${others ? "Your team carries on without you" : "Ends this run"}</small></button>`;
   }
-  return `<button id="exit-room" class="secondary leave-button is-costly"><span>${buttonIcon("leave")}Leave match</span><small>Counts as a forfeit</small></button>`;
+  return `<button id="exit-room" class="secondary btn-secondary leave-button is-costly"><span>${buttonIcon("leave")}Leave match</span><small>Counts as a forfeit</small></button>`;
 }
 function showSettings() {
   settingsOpen = true;
   dialog(
-    `<div class="settings-screen"><div class="eyebrow">Your preferences</div><h2>Find your rhythm.</h2><p>Online matches keep running while this menu is open.</p><div class="settings-layout"><div class="settings-audio"><label>Music <input type="range" id="music" min="0" max="1" step=".01" value="${audio.music}"></label><label>Sound effects <input type="range" id="effects" min="0" max="1" step=".01" value="${audio.effects}"></label><p>Reduced motion follows your system preference.</p><button id="open-controls" class="secondary full">${iconLabel("keyboard", "Controls &amp; key bindings")}</button></div><div class="settings-touch">${touch.settingsHTML()}</div><div class="settings-actions">${myId ? leaveButton() : watching ? `<button id="exit-room" class="secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>` : ""}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button></div></div></div>`,
+    `<div class="settings-screen"><div class="eyebrow">Your preferences</div><h2>Find your rhythm.</h2><p>Online matches keep running while this menu is open.</p><div class="settings-layout"><div class="settings-audio"><label>Music <input type="range" id="music" min="0" max="1" step=".01" value="${audio.music}"></label><label>Sound effects <input type="range" id="effects" min="0" max="1" step=".01" value="${audio.effects}"></label><p>Reduced motion follows your system preference.</p><button id="open-controls" class="secondary btn-secondary full">${iconLabel("keyboard", "Controls &amp; key bindings")}</button></div><div class="settings-touch">${touch.settingsHTML()}</div><div class="settings-actions">${myId ? leaveButton() : watching ? `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>` : ""}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button></div></div></div>`,
   );
   for (const kind of ["music", "effects"] as const)
     $(kind).oninput = () => {
@@ -2017,7 +2200,11 @@ class ArenaScene extends Phaser.Scene {
     if (id === this.floorArena || !this.floor) return;
     this.floorArena = id;
     const label = document.querySelector<HTMLElement>(".map-label");
-    if (label) label.innerHTML = id === "cloud-deck" ? "CLOUD DECK <span>SOMNARA’S DREAM</span>" : `${ARENAS[id].name.toUpperCase()} <span>ELEMENT ARENA</span>`;
+    if (label)
+      label.innerHTML =
+        id === "cloud-deck"
+          ? "CLOUD DECK <span>SOMNARA’S DREAM</span>"
+          : `${ARENAS[id].name.toUpperCase()} <span>ELEMENT ARENA</span>`;
     const key = this.floorTexture(id);
     this.floor.setTexture(key).setScale(1 / (this.floorScale.get(key) ?? 1));
   }
@@ -2121,13 +2308,23 @@ class ArenaScene extends Phaser.Scene {
     this.scale.refresh();
   }
   effect(event: Snapshot["events"][number]) {
-    if(event.kind==='raid-impact') {
-      const ring=this.add.circle(event.x,event.y,event.raidRadius??90,event.color,.12).setStrokeStyle(4,event.color,.9);
-      this.tweens.add({targets:ring,alpha:0,scale:reducedMotion?1:1.25,duration:400,onComplete:()=>ring.destroy()});
+    if (event.kind === "raid-impact") {
+      const ring = this.add
+        .circle(event.x, event.y, event.raidRadius ?? 90, event.color, 0.12)
+        .setStrokeStyle(4, event.color, 0.9);
+      this.tweens.add({
+        targets: ring,
+        alpha: 0,
+        scale: reducedMotion ? 1 : 1.25,
+        duration: 400,
+        onComplete: () => ring.destroy(),
+      });
     }
 
     if (
-      (event.owner === myId && event.kind !== "impact" && event.kind !== "raid-impact") ||
+      (event.owner === myId &&
+        event.kind !== "impact" &&
+        event.kind !== "raid-impact") ||
       event.kind === "hit" ||
       event.kind === "round"
     )
@@ -2263,18 +2460,19 @@ class ArenaScene extends Phaser.Scene {
               ? `+${event.value}% ULT`
               : `${heal ? "+" : "−"}${event.value}`,
           {
-          fontFamily: "monospace",
-          fontSize: "25px",
-          color: bank
-            ? "#d8b4ff"
-            : energy
-              ? "#ffd166"
-              : heal
-                ? "#7dffb0"
-                : "#fff",
-          stroke: "#152820",
-          strokeThickness: 4,
-        })
+            fontFamily: "monospace",
+            fontSize: "25px",
+            color: bank
+              ? "#d8b4ff"
+              : energy
+                ? "#ffd166"
+                : heal
+                  ? "#7dffb0"
+                  : "#fff",
+            stroke: "#152820",
+            strokeThickness: 4,
+          },
+        )
         .setOrigin(0.5)
         .setResolution(renderScale());
       this.tweens.add({
@@ -2324,13 +2522,14 @@ class ArenaScene extends Phaser.Scene {
           ? `${event.combo!.toUpperCase()}!`
           : `${event.combo!.toUpperCase()} COMBO!`,
         {
-        fontFamily: "system-ui, sans-serif",
-        fontStyle: "900",
-        fontSize: "24px",
-        color: "#ffe27a",
-        stroke: "#3a1f00",
-        strokeThickness: 5,
-      })
+          fontFamily: "system-ui, sans-serif",
+          fontStyle: "900",
+          fontSize: "24px",
+          color: "#ffe27a",
+          stroke: "#3a1f00",
+          strokeThickness: 5,
+        },
+      )
       .setOrigin(0.5)
       .setDepth(40)
       .setResolution(renderScale());
@@ -2424,7 +2623,13 @@ class ArenaScene extends Phaser.Scene {
       touch.enabled &&
         document.body.classList.contains("battle-active") &&
         innerWidth > innerHeight,
-      follow && presented && !state?.arcade && state?.raid?.boss !== "somnara" && state?.raid?.boss !== "prismatail" && state?.raid?.boss !== "emberwing" && state?.raid?.boss !== "storm-twins"
+      follow &&
+        presented &&
+        !state?.arcade &&
+        state?.raid?.boss !== "somnara" &&
+        state?.raid?.boss !== "prismatail" &&
+        state?.raid?.boss !== "emberwing" &&
+        state?.raid?.boss !== "storm-twins"
         ? {
             ...follow,
             x: presented.x,
@@ -2466,7 +2671,11 @@ class ArenaScene extends Phaser.Scene {
       );
     if (opponent && !this.enemyBearing.hidden) {
       this.enemyBearing.querySelector("strong")!.textContent =
-        opponent.raidBoss && state?.raid ? (state.raid.boss === "storm-twins" ? opponent.name : state.raid.name) : CHARACTERS[opponent.character].name;
+        opponent.raidBoss && state?.raid
+          ? state.raid.boss === "storm-twins"
+            ? opponent.name
+            : state.raid.name
+          : CHARACTERS[opponent.character].name;
       this.enemyBearing.querySelector<HTMLElement>("span")!.style.transform =
         `rotate(${Math.atan2((opponent.y - view.y) * view.zoomY, (opponent.x - view.x) * view.zoomX)}rad)`;
     }
@@ -2488,10 +2697,19 @@ class ArenaScene extends Phaser.Scene {
       return;
     }
     // Walls for prediction (the Shifting Ruins block comes and goes) and the floor.
-    useObstacles(state.raid ? (state.arena === "lagoon" || state.arena === "lantern-yard" || state.arena === "cloud-deck" || state.arena === "sun-atrium" || state.arena === "sky-terrace" || state.arena === "conductor-ring" ? [] : OBSTACLES.filter((_,i)=>!state!.raid!.pillars[i]?.broken)) : obstaclesAt(state.arena, arenaClock()));
-    useSpeedScale(
-      state.mutators?.includes("speed") ? MUTATOR_RULES.speed : 1,
+    useObstacles(
+      state.raid
+        ? state.arena === "lagoon" ||
+          state.arena === "lantern-yard" ||
+          state.arena === "cloud-deck" ||
+          state.arena === "sun-atrium" ||
+          state.arena === "sky-terrace" ||
+          state.arena === "conductor-ring"
+          ? []
+          : OBSTACLES.filter((_, i) => !state!.raid!.pillars[i]?.broken)
+        : obstaclesAt(state.arena, arenaClock()),
     );
+    useSpeedScale(state.mutators?.includes("speed") ? MUTATOR_RULES.speed : 1);
     this.showArena(state.arena ?? "classic");
     this.accumulator += Math.min(delta, 100);
     while (this.accumulator >= 1000 / RULES.tick) {
@@ -2517,7 +2735,9 @@ class ArenaScene extends Phaser.Scene {
         !state.practice?.unlimitedCooldowns
       ) {
         if (meter >= EX.cost) {
-          exArmedUntil = exArmedUntil ? 0 : performance.now() + EX.armSeconds * 1000;
+          exArmedUntil = exArmedUntil
+            ? 0
+            : performance.now() + EX.armSeconds * 1000;
           if (exArmedUntil) audio.play("orb");
         }
         skill = -1;
@@ -2559,11 +2779,13 @@ class ArenaScene extends Phaser.Scene {
         aimX: aimAt.x,
         aimY: aimAt.y,
         basic:
-          active && (prismAim ? prismAim.basic :
-          ((touch.enabled
-            ? touch.basic
-            : heldAction("basic") || !!pad?.held.has("basic")) ||
-            this.actions.basic)),
+          active &&
+          (prismAim
+            ? prismAim.basic
+            : (touch.enabled
+                ? touch.basic
+                : heldAction("basic") || !!pad?.held.has("basic")) ||
+              this.actions.basic),
         skill,
         ...(ex ? { ex: true } : {}),
         dash: active && this.actions.dash,
@@ -2577,11 +2799,15 @@ class ArenaScene extends Phaser.Scene {
     }
     const g = this.graphics;
     g.clear();
-    const raidCues = drawRaidArena(g,state,reducedMotion,_time/1000) ?? [];
-    for(const cue of raidCues) {
+    const raidCues = drawRaidArena(g, state, reducedMotion, _time / 1000) ?? [];
+    for (const cue of raidCues) {
       audio.playRaid(cue);
-      if(!reducedMotion && ["slam","crash","awaken","fall"].includes(cue))
-        this.cameras.main.shake(cue === "awaken" ? 230 : 150, cue === "crash" ? .004 : .0025, false);
+      if (!reducedMotion && ["slam", "crash", "awaken", "fall"].includes(cue))
+        this.cameras.main.shake(
+          cue === "awaken" ? 230 : 150,
+          cue === "crash" ? 0.004 : 0.0025,
+          false,
+        );
     }
     this.rigs.forEach((rig) => rig.setVisible(false));
     drawArenaLive(g, state.arena ?? "classic", arenaClock(), _time);
@@ -2664,7 +2890,11 @@ class ArenaScene extends Phaser.Scene {
               ? 0x5ab0ff
               : 0xff5d6c;
         g.fillStyle(color, 0.12).fillCircle(goal.x, goal.y, RUSH.goalRadius);
-        g.lineStyle(3, color, 0.7).strokeCircle(goal.x, goal.y, RUSH.goalRadius);
+        g.lineStyle(3, color, 0.7).strokeCircle(
+          goal.x,
+          goal.y,
+          RUSH.goalRadius,
+        );
       });
       const bob = reducedMotion ? 0 : Math.sin(_time / 200) * 3;
       const diamond = (x: number, y: number, r: number) => [
@@ -2689,17 +2919,13 @@ class ArenaScene extends Phaser.Scene {
       }
     }
     // Crown Hill: the circle to hold, with each side's progress as an arc.
-    drawArcade(g,state,reducedMotion);
+    drawArcade(g, state, reducedMotion);
     if (state.crown) {
       const hill = state.arcade?.hill ?? CROWN;
       const targetSeconds = state.arcade?.hill?.target ?? CROWN.holdSeconds;
       const pulse = reducedMotion ? 0.6 : 0.5 + Math.sin(_time / 260) * 0.2;
       g.fillStyle(0xffd166, 0.07).fillCircle(hill.x, hill.y, hill.radius);
-      g.lineStyle(3, 0xffd166, pulse).strokeCircle(
-        hill.x,
-        hill.y,
-        hill.radius,
-      );
+      g.lineStyle(3, 0xffd166, pulse).strokeCircle(hill.x, hill.y, hill.radius);
       state.crown.forEach((held, side) => {
         if (held <= 0) return;
         const holder = state!.players.find((p) => teamOf(p) === side);
@@ -2740,8 +2966,14 @@ class ArenaScene extends Phaser.Scene {
           a1 = ((i + 1) / steps) * Math.PI * 2;
         g.fillPoints(
           [
-            { x: RING.x + Math.cos(a0) * ring, y: RING.y + Math.sin(a0) * ring },
-            { x: RING.x + Math.cos(a1) * ring, y: RING.y + Math.sin(a1) * ring },
+            {
+              x: RING.x + Math.cos(a0) * ring,
+              y: RING.y + Math.sin(a0) * ring,
+            },
+            {
+              x: RING.x + Math.cos(a1) * ring,
+              y: RING.y + Math.sin(a1) * ring,
+            },
             { x: RING.x + Math.cos(a1) * far, y: RING.y + Math.sin(a1) * far },
             { x: RING.x + Math.cos(a0) * far, y: RING.y + Math.sin(a0) * far },
           ],
@@ -2775,7 +3007,11 @@ class ArenaScene extends Phaser.Scene {
     // Signature ornaments still animate for every equipped fighter.
     const ambient = new Set(
       [...state.players]
-        .filter((q) => q.hp > 0 && wornArt(q.character, q.championLooks?.[q.character])?.mythic)
+        .filter(
+          (q) =>
+            q.hp > 0 &&
+            wornArt(q.character, q.championLooks?.[q.character])?.mythic,
+        )
         .sort((a, b) => Number(b.id === myId) - Number(a.id === myId))
         .slice(0, 2)
         .map((q) => q.id),
@@ -2824,17 +3060,18 @@ class ArenaScene extends Phaser.Scene {
         ultReady:
           (serverPlayer.ult ?? 0) >= RULES.ultMax && serverPlayer.hp > 0,
         greet: state.phase === "countdown",
-        victory: isTeams() || !!state.raid
-          ? (state.phase === "finished"
-              ? state.winnerTeam
-              : state.phase === "intermission"
-                ? state.roundWinnerTeam
-                : null) === teamOf(p) && p.hp > 0
-          : (state.phase === "finished"
-              ? state.winner
-              : state.phase === "intermission"
-                ? state.roundWinner
-                : null) === p.id,
+        victory:
+          isTeams() || !!state.raid
+            ? (state.phase === "finished"
+                ? state.winnerTeam
+                : state.phase === "intermission"
+                  ? state.roundWinnerTeam
+                  : null) === teamOf(p) && p.hp > 0
+            : (state.phase === "finished"
+                ? state.winner
+                : state.phase === "intermission"
+                  ? state.roundWinner
+                  : null) === p.id,
       };
       if (serverPlayer.clone) {
         const clone = this.getRig(`${p.id}:clone`, p.character);
@@ -2903,8 +3140,7 @@ class ArenaScene extends Phaser.Scene {
         if (tier) {
           const colour =
             tier.name === "Crystal" && !reducedMotion
-              ? Phaser.Display.Color.HSVToRGB((_time / 2400) % 1, 0.45, 1)
-                  .color
+              ? Phaser.Display.Color.HSVToRGB((_time / 2400) % 1, 0.45, 1).color
               : Number.parseInt(tier.color.slice(1), 16);
           g.lineStyle(2, colour, 0.75).strokeEllipse(x, y + 12, 86, 40);
           if (tier.name === "Gold" || tier.name === "Crystal")
@@ -2928,8 +3164,10 @@ class ArenaScene extends Phaser.Scene {
         view.fighterX * 0.7 * giant,
         view.fighterY * 0.7 * giant,
       );
-      if(p.raidLook?.aura==='mountain-aura')g.lineStyle(3,0xffd28c,.7).strokeEllipse(x,y+10,95,45);
-      else if(p.raidLook?.aura)drawCollectionAura(g,p.raidLook.aura,x,y+10,_time,reducedMotion);
+      if (p.raidLook?.aura === "mountain-aura")
+        g.lineStyle(3, 0xffd28c, 0.7).strokeEllipse(x, y + 10, 95, 45);
+      else if (p.raidLook?.aura)
+        drawCollectionAura(g, p.raidLook.aura, x, y + 10, _time, reducedMotion);
       rig.setVisible(true);
       const casting =
         rig.controller.state === "basic" ||
@@ -3103,7 +3341,9 @@ function floorBake() {
 }
 /** Seconds into the live round on the server's clock (-1 when not live). */
 function arenaClock() {
-  return state?.phase === "playing" ? state.time - (state.hazardClock ?? 0) : -1;
+  return state?.phase === "playing"
+    ? state.time - (state.hazardClock ?? 0)
+    : -1;
 }
 /** The moving parts of an arena: the shifting block and hazard telegraphs. */
 function drawArenaLive(
@@ -3117,9 +3357,20 @@ function drawArenaLive(
   if (arena.shifting) {
     const r = arena.shifting.rect;
     if (shiftingUp(arena, t)) {
-      g.fillStyle(0x10170f, 0.35).fillEllipse(r.x + r.w / 2 + 10, r.y + r.h + 6, r.w + 40, 34);
+      g.fillStyle(0x10170f, 0.35).fillEllipse(
+        r.x + r.w / 2 + 10,
+        r.y + r.h + 6,
+        r.w + 40,
+        34,
+      );
       g.fillStyle(0x7f6f55).fillRoundedRect(r.x, r.y, r.w, r.h, 12);
-      g.fillStyle(0x968566).fillRoundedRect(r.x + 5, r.y + 5, r.w - 10, r.h - 22, 9);
+      g.fillStyle(0x968566).fillRoundedRect(
+        r.x + 5,
+        r.y + 5,
+        r.w - 10,
+        r.h - 22,
+        9,
+      );
       g.fillStyle(0xc9b892).fillRoundedRect(r.x + 6, r.y + 4, r.w - 12, 22, 8);
       g.lineStyle(2, 0x5e523d, 0.8)
         .lineBetween(r.x + 20, r.y + 40, r.x + 34, r.y + 66)
@@ -3129,7 +3380,13 @@ function drawArenaLive(
       if (t >= 0 && rising <= arena.shifting.warn) {
         // About to rise: rumbling outline and dust.
         const a = 0.5 + 0.4 * Math.sin(time / 60);
-        g.lineStyle(4, 0xffd65b, a).strokeRoundedRect(r.x + wobble, r.y, r.w, r.h, 12);
+        g.lineStyle(4, 0xffd65b, a).strokeRoundedRect(
+          r.x + wobble,
+          r.y,
+          r.w,
+          r.h,
+          12,
+        );
         g.fillStyle(0xc9b892, 0.25).fillRoundedRect(r.x, r.y, r.w, r.h, 12);
       }
     }
@@ -3141,7 +3398,11 @@ function drawArenaLive(
     const k = 1 - next / h.warn; // 0 → 1 as it fires
     const color = h.kind === "vent" ? 0xff7a3d : 0x9fefff;
     g.fillStyle(color, 0.12 + 0.25 * k).fillCircle(h.x, h.y, h.radius);
-    g.lineStyle(3, color, 0.5 + 0.5 * k).strokeCircle(h.x, h.y, h.radius * (0.4 + 0.6 * k));
+    g.lineStyle(3, color, 0.5 + 0.5 * k).strokeCircle(
+      h.x,
+      h.y,
+      h.radius * (0.4 + 0.6 * k),
+    );
     g.lineStyle(2, 0xffffff, 0.35 + 0.4 * k).strokeCircle(h.x, h.y, h.radius);
   }
 }
@@ -3243,7 +3504,7 @@ accountsUI = new AccountUI({
   selectedCharacter: () => selected,
   openDialog: dialog,
   startRaid: (boss, options) => void startRaid(boss, options),
-  startAdventure: mode => void startAdventure(mode),
+  startAdventure: (mode) => void startAdventure(mode),
   joinRoom: (code) => void joinByCode(code),
   watchRoom: (code) => {
     if (myId) return toast("Leave your current room first.");
@@ -3278,7 +3539,9 @@ accountsUI = new AccountUI({
     ]);
     if (shown === accountShown) return;
     accountShown = shown;
-    if (!state || state.phase === "lobby") { screen = ""; renderMenu(); }
-    else renderBattle();
+    if (!state || state.phase === "lobby") {
+      screen = "";
+      renderMenu();
+    } else renderBattle();
   },
 });

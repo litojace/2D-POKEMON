@@ -1,7 +1,7 @@
 /** Keep navigation and actions outside long, touch-scrollable menu content. */
 export function setDialogContent(dialog: HTMLDialogElement, html: string) {
   dialog.innerHTML = `<button type="button" id="close-dialog" class="close" aria-label="Close dialog">×</button>${html}`;
-  dialog.classList.add("framed-dialog");
+  dialog.classList.add("framed-dialog", "card");
   const raid = !!dialog.querySelector(".raid-hub");
   const close = dialog.querySelector<HTMLButtonElement>("#close-dialog")!;
   const content = document.createElement("div");
