@@ -79,3 +79,13 @@ Stopped after Phase 4. Results, shop/dialog redesign and later phases remain for
 - Browser review covers practice, duel, teams and raids at 2234×1274, 1920×1080, 1280×720, 1024×600, 2560×1080 and 844×390. Checks cover maximized desktop court bounds, unchanged arena size when Practice opens, card alignment, repeated selection, desktop/phone preview switching and viewport overflow. Additional lobby checks use mixed earned mastery tiers and verify pinned actions, controller scrolling and safe areas.
 
 Updated previews: [expanded desktop arena](redesign-arena-expanded.png), [desktop overview and skills](redesign-roster-aligned.png). Review data remains confined to the external browser harness. This is a follow-up to Phases 3–4; later phases are unchanged.
+
+## Home review — full fighter silhouette
+
+Cindrake's tall crest extends beyond the default full-body SVG crop after the chibi proportions and idle animation are applied. Scaling the same cropped SVG down would leave the flame cut off.
+
+- Gave home portraits a separate, padded SVG frame. Fighters appear slightly smaller, with space above crests and around animated extremities. Avatar crops, roster previews and in-match textures remain unchanged.
+- Checked all eight fighters at seven idle-animation positions across 13 desktop and landscape-phone sizes, including 1280×720 and 844×390. Their silhouettes remain within the padded frame; the scene and controls fit without page overflow. Reduced-motion artwork remains stationary.
+- Typecheck, all 854 tests, the production client build and PWA verification pass. Changed files pass Prettier; the full formatting check retains the 76 existing failures in untouched files.
+
+Preview: [complete home fighter portrait](redesign-home-full-fighter.png).

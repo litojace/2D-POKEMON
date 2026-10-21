@@ -51,10 +51,15 @@ export function homeFeature(
   const c = CHARACTERS[id],
     tier = masteryTier(masteryMatches(id));
   const pack = fighterPack(id);
+  // Leave room for tall crests and the animated idle above the full-body crop.
+  // Keep this presentation frame separate from avatars and in-match textures.
   const art =
     pack && pack.kind !== "layered"
       ? `<img class="creature-portrait" src="/assets/fighters/${id}/${pack.selection}" alt="${c.name}">`
-      : scopeIds(fighterArt(id, undefined, economy?.looks[id]), "home-feature");
+      : scopeIds(
+          fighterArt(id, "-20 -40 240 250", economy?.looks[id]),
+          "home-feature",
+        );
   const cosmetic = portraitCosmetics({
     character: id,
     raidLook: look,
