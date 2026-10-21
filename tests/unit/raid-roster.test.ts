@@ -23,7 +23,7 @@ describe("raid roster and Raid of the Day", () => {
       "tidewyrm",
       "grumblecrag",
     ]);
-    expect(RAID_BOSSES.grumblecrag.playable).toBe(true);
+    expect(RAID_BOSS_ORDER.every(id => RAID_BOSSES[id].playable)).toBe(true);
   });
 
   it("changes day at midnight Pacific, not UTC", () => {
@@ -54,7 +54,7 @@ describe("raid roster and Raid of the Day", () => {
     const saturday = featuredOn("2026-10-17");
     expect(saturday.weekday).toBe(6);
     expect(saturday.boss).toBe("grumblecrag");
-    // Oct 18 is a Sunday (Prismatail); until it exists a playable boss stands in.
+    // Oct 18 is a Sunday (Prismatail).
     const sunday = featuredOn("2026-10-18");
     expect(sunday.scheduled).toBe("prismatail");
     expect(RAID_BOSSES[sunday.boss].playable).toBe(true);
@@ -80,5 +80,6 @@ describe("raid roster and Raid of the Day", () => {
       "2026-10-17",
     ]);
     expect(week.map((d) => d.scheduled)).toEqual(RAID_DAY_SCHEDULE);
+    expect(week.map((d) => d.boss)).toEqual(RAID_DAY_SCHEDULE);
   });
 });

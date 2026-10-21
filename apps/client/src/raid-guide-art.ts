@@ -26,14 +26,14 @@ export function raidGuideSomnara(exposed = false) {
 }
 /** The boss's miniature for lobbies and results. */
 export function raidGuideBossFor(boss: string, exposed = false) {
-  return boss === "emberwing" ? raidCrest("emberwing").replace(/<svg[^>]*>/, '<g transform="translate(-45 -50) scale(.9)">').replace("</svg>", "</g>") : boss === "prismatail" ? raidCrest("prismatail").replace(/<svg[^>]*>/, '<g transform="translate(-45 -50) scale(.9)">').replace("</svg>", "</g>") : boss === "somnara" ? raidGuideSomnara(exposed) : boss === "tidewyrm"
+  return boss === "storm-twins" ? raidCrest("storm-twins").replace(/<svg[^>]*>/, '<g transform="translate(-45 -50) scale(.9)">').replace("</svg>", "</g>") : boss === "emberwing" ? raidCrest("emberwing").replace(/<svg[^>]*>/, '<g transform="translate(-45 -50) scale(.9)">').replace("</svg>", "</g>") : boss === "prismatail" ? raidCrest("prismatail").replace(/<svg[^>]*>/, '<g transform="translate(-45 -50) scale(.9)">').replace("</svg>", "</g>") : boss === "somnara" ? raidGuideSomnara(exposed) : boss === "tidewyrm"
     ? raidGuideTidewyrm(exposed)
     : boss === "gloomshade"
       ? raidGuideGloomshade(exposed)
       : raidGuideBoss(exposed);
 }
 export function raidGuideScene(
-  kind: "braziers" | "ground-bird" | "heat-spread" | "relay" | "mirror" | "glare" | "charge" | "core" | "revive" | "strand" | "tide" | "prison" | "lantern" | "shadow" | "curse" | "dream" | "runes" | "quiet",
+  kind: "two-hearts" | "polarity-pair" | "twin-finish" | "braziers" | "ground-bird" | "heat-spread" | "relay" | "mirror" | "glare" | "charge" | "core" | "revive" | "strand" | "tide" | "prison" | "lantern" | "shadow" | "curse" | "dream" | "runes" | "quiet",
   character: CharacterId,
 ) {
   const hero = (x: number, y: number, n: string) =>
@@ -76,6 +76,9 @@ export function raidGuideScene(
   if(kind === "braziers") art = `<path d="M110 30 45 100h130Z" fill="none" stroke="#ffcf91" stroke-width="2" stroke-dasharray="5 4"/>${[[110,30],[45,100],[175,100]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="18" fill="#ffad6c" fill-opacity=".2" stroke="#ffcf91"/><path d="M${x-8} ${y+3}q-4-8 8-19-2 8 6 9 8 12-14 10Z" fill="#ffcf91"/>`).join("")}<text x="110" y="128">ALL THREE TOGETHER</text>`;
   if(kind === "ground-bird") art = `<g transform="translate(65 20) scale(.8)">${raidGuideBossFor("emberwing")}</g><path d="M60 58v42m-8-9 8 9 8-9" stroke="#ffcf91" stroke-width="3" fill="none"/>${hero(151,65,"fire")}<text x="110" y="128">GROUND IT · STRIKE THE HEART</text>`;
   if(kind === "heat-spread") art = `<circle cx="57" cy="72" r="35" fill="#ff688c" fill-opacity=".12" stroke="#ff688c"/>${hero(36,45,"mark1")}${hero(150,45,"mark2")}<path d="M103 73h32m-8-7 8 7-8 7" fill="none" stroke="#8be7d0" stroke-width="3"/><text x="110" y="128">SPREAD BEFORE IT BURSTS</text>`;
+  if(kind === "two-hearts") art = `<g transform="translate(110 60) scale(.9)">${raidGuideBossFor("storm-twins")}</g><rect x="29" y="100" width="68" height="7" rx="3" fill="#ffe18b"/><rect x="123" y="100" width="68" height="7" rx="3" fill="#8edfff"/><text x="110" y="128">TWO SEPARATE HEALTH BARS</text>`;
+  if(kind === "polarity-pair") art = `${hero(42,58,"plus")}${hero(133,58,"minus")}<circle cx="63" cy="42" r="15" fill="#ffe18b" fill-opacity=".15" stroke="#ffe18b"/><path d="M55 42h16m-8-8v16" stroke="#ffe18b" stroke-width="3"/><circle cx="154" cy="42" r="15" fill="#8edfff" fill-opacity=".15" stroke="#8edfff"/><path d="M146 42h16" stroke="#8edfff" stroke-width="3"/><path d="m89 77 10-5-10-5m36 10-10-5 10-5" fill="none" stroke="#8de8cf" stroke-width="3"/><text x="110" y="128">OPPOSITE SIGNS CANCEL</text>`;
+  if(kind === "twin-finish") art = `<g transform="translate(110 58) scale(.8)">${raidGuideBossFor("storm-twins")}</g><circle cx="110" cy="99" r="16" fill="#15243b" stroke="#ffce8c" stroke-width="2"/><path d="M110 89v11l8 4" stroke="#ffce8c" stroke-width="2" fill="none"/><text x="110" y="128">FINISH BEFORE IT REVIVES</text>`;
   // Center the complete two-character scene; center its caption on the card.
   if (kind === "revive") art = `<g transform="translate(-14 -8)">${art}</g>`;
   return `<svg class="raid-guide-scene" viewBox="0 0 220 135" aria-hidden="true">${floor}${art}</svg>`;

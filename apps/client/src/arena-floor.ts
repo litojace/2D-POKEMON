@@ -144,6 +144,7 @@ export const FLOOR_PALETTES: Record<
     pillar: [0xb89b62, 0xd2b679, 0xf1dcae],
     lines: 0xd9f5f0,
   },
+  "conductor-ring": { surround:0x1c2c43,blades:[0x52647a,0x637790,0x8398aa],grout:0x2b3d55,tones:[0x4c6078],speck:0xe0b881,moss:0x47617a,pillar:[0x776157,0xa47c59,0xe3bb8b],lines:0xa5d5eb },
   "sky-terrace": { surround: 0x28374d, blades:[0x718196,0x8995a3,0x4b596f], grout:0x374254, tones:[0x626d7d],speck:0xffc78f,moss:0x576174,pillar:[0x465164,0x69788b,0xa3b2c4],lines:0xffd4a3 },
   "sun-atrium": { surround: 0x253747, blades: [0x708b85, 0x4c706a], grout: 0x485567, tones: [0x68788c,0x728297,0x657789], speck: 0xdfcf9a, moss: 0x819f92, pillar: [0x53657e,0x8ea4bc,0xd8e4ee], lines: 0xffe3a3 },
   "cloud-deck": { surround: 0x151d3b, blades: [0x525b86, 0x68739e], grout: 0x364266, tones: [0x44547b], speck: 0xc9a3ff, moss: 0x53658b, pillar: [0x52658b, 0x687da7, 0xa1b6d6], lines: 0xd5dcff },
@@ -169,6 +170,7 @@ export const FLOOR_PALETTES: Record<
   },
 };
 export function paintArenaFloor(g: FloorPainter, arena: ArenaDef = ARENAS.classic) {
+  if (arena.id === "conductor-ring") return paintConductorRing(g);
   if (arena.id === "sky-terrace") return paintSkyTerrace(g);
   if (arena.id === "sun-atrium") return paintSunAtrium(g);
   if (arena.id === "cloud-deck") return paintCloudDeck(g);
@@ -515,4 +517,13 @@ function paintSkyTerrace(g:FloorPainter){
   const x=100+i*127;g.fillStyle(0x2b3a50).fillRoundedRect(x-17,y-20,34,40,5);g.fillStyle(0x91a0ae,.7).fillEllipse(x,y-16,40,12);
  }
  g.lineStyle(2,0xe2b78b,.16).strokeCircle(800,450,260);
+}
+
+function paintConductorRing(g:FloorPainter){
+ g.fillStyle(0x1c2c43).fillRect(0,0,1600,900);
+ for(let row=0;row<9;row++)for(let col=0;col<16;col++)g.fillStyle((row+col)%2?0x3b526b:0x415972).fillRoundedRect(col*100+2,row*100+2,96,96,9);
+ const ellipse=(rx:number,ry:number,color:number,alpha:number,width:number)=>g.lineStyle(width,color,alpha).strokePoints(Array.from({length:97},(_,i)=>({x:800+Math.cos(i*Math.PI/48)*rx,y:450+Math.sin(i*Math.PI/48)*ry})),true);
+ ellipse(730,380,0xd2ad80,.7,5);ellipse(710,360,0x8cdcff,.25,2);ellipse(500,285,0xd2ad80,.17,2);
+ for(let i=0;i<16;i++){const a=i*Math.PI/8;g.lineStyle(2,0xe0ba89,.18).lineBetween(800+Math.cos(a)*500,450+Math.sin(a)*285,800+Math.cos(a)*730,450+Math.sin(a)*380);}
+ g.lineStyle(2,0x8cdcff,.13).strokeCircle(800,450,150);
 }

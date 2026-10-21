@@ -66,6 +66,11 @@ export function drawCollectionAura(g: G, id: string, x: number, y: number, now: 
       );
       return true;
     }
+    case "spark-aura": {
+      g.lineStyle(1.5,0x9fe4ff,.55).strokeEllipse(x,y,100,40);
+      ring(8,48,19,5200,(px,py,i)=>{const color=i%2?0x8edfff:0xffe18b;g.lineStyle(2,color,.95).lineBetween(px-3,py-5,px+1,py).lineBetween(px+1,py,px-2,py+5);});
+      return true;
+    }
     case "ember-aura": {
       g.lineStyle(2,0xffa66c,.8).strokeEllipse(x,y,100,40);
       g.fillStyle(0xff8558,.1).fillEllipse(x,y,110,45);
@@ -153,6 +158,10 @@ export function playCollectionEntrance(emit: Emit, id: string, x: number, y: num
         const a = (i / 24) * TAU;
         return { y: y + 4 * sc, vx: Math.cos(a) * rnd(60, 120), vy: Math.sin(a) * rnd(30, 60) - 70, life: rnd(0.8, 1.2), size: 3 * sc, color: [0xffb3cf, 0xff6fa0, 0xfff0f5, 0x8fe06a][i % 4], shape: "leaf", spin: rnd(-8, 8) };
       });
+      return true;
+    case "lightning-strike":
+      burst(20,i=>({x:x+(i%2?18:-18)*sc,y:y-rnd(10,80)*sc,vx:rnd(-45,45),vy:rnd(30,100),life:.6,size:3*sc,color:i%2?0x8edfff:0xffe18b,shape:"spark"}));
+      emit({x,y,vx:0,vy:0,life:.7,size:22*sc,color:0x9fe4ff,shape:"ring"});
       return true;
     case "firefall":
       burst(22,i=>({x:x+rnd(-45,45)*sc,y:y-rnd(40,100)*sc,vx:rnd(-30,30),vy:rnd(25,70),life:rnd(.8,1.3),size:3*sc,color:i%2?0xffd28b:0xff8765,shape:"leaf",spin:rnd(-3,3)}));
@@ -298,6 +307,17 @@ export function drawCollectionVictory(
       if (t > 0.9 && t - dt <= 0.9)
         for (let i = 0; i < 34; i++)
           emit({ x: x + rnd(-40, 40) * sc, y: y - 50 * sc, vx: rnd(-170, 170), vy: rnd(-260, -60), life: rnd(0.7, 1.1), size: rnd(2, 3.5) * sc, color: i % 3 ? 0xe6fbff : 0x7fe9ff, shape: "dot" });
+      return true;
+    }
+    case "twin-spark": {
+      const close=Math.min(1,t/.9),distance=(70-45*close)*sc;
+      for(const side of [-1,1]){
+        const jx=x+side*distance,jy=y-(75+Math.sin(t*2+side)*6)*sc,color=side<0?0xffe18b:0x8edfff;
+        under.fillStyle(color,fade).fillEllipse(jx,jy,40*sc,30*sc);
+        under.fillStyle(0xe7f5ff,fade).fillCircle(jx-10*sc,jy-13*sc,8*sc).fillCircle(jx+3*sc,jy-16*sc,10*sc).fillCircle(jx+13*sc,jy-10*sc,7*sc);
+        for(let j=0;j<3;j++)under.lineStyle(2*sc,color,fade).lineBetween(jx+(j-1)*11*sc,jy+12*sc,jx+(j-1)*11*sc+Math.sin(t*2+j)*4*sc,jy+27*sc);
+      }
+      if(t>.8&&t<1.7&&chance(20,dt))emit({x:x+rnd(-20,20)*sc,y:y-80*sc,vx:rnd(-60,60),vy:rnd(-50,20),life:.6,size:2.5*sc,color:Math.random()<.5?0xffe18b:0x8edfff,shape:"star"});
       return true;
     }
     case "feather-fall": {

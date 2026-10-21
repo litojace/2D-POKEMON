@@ -1,3 +1,4 @@
+import { stormTarget } from "./storm-twins-controls";
 import { prismatailAim } from "./prismatail-controls";
 import { dreamRuneKey } from "./somnara-controls";
 import { battleMusic } from "./battle-music";
@@ -2391,7 +2392,7 @@ class ArenaScene extends Phaser.Scene {
       touch.enabled &&
         document.body.classList.contains("battle-active") &&
         innerWidth > innerHeight,
-      follow && presented && state?.raid?.boss !== "somnara" && state?.raid?.boss !== "prismatail" && state?.raid?.boss !== "emberwing"
+      follow && presented && state?.raid?.boss !== "somnara" && state?.raid?.boss !== "prismatail" && state?.raid?.boss !== "emberwing" && state?.raid?.boss !== "storm-twins"
         ? {
             ...follow,
             x: presented.x,
@@ -2433,7 +2434,7 @@ class ArenaScene extends Phaser.Scene {
       );
     if (opponent && !this.enemyBearing.hidden) {
       this.enemyBearing.querySelector("strong")!.textContent =
-        opponent.raidBoss && state?.raid ? state.raid.name : CHARACTERS[opponent.character].name;
+        opponent.raidBoss && state?.raid ? (state.raid.boss === "storm-twins" ? opponent.name : state.raid.name) : CHARACTERS[opponent.character].name;
       this.enemyBearing.querySelector<HTMLElement>("span")!.style.transform =
         `rotate(${Math.atan2((opponent.y - view.y) * view.zoomY, (opponent.x - view.x) * view.zoomX)}rad)`;
     }
@@ -2455,7 +2456,7 @@ class ArenaScene extends Phaser.Scene {
       return;
     }
     // Walls for prediction (the Shifting Ruins block comes and goes) and the floor.
-    useObstacles(state.raid ? (state.arena === "lagoon" || state.arena === "lantern-yard" || state.arena === "cloud-deck" || state.arena === "sun-atrium" || state.arena === "sky-terrace" ? [] : OBSTACLES.filter((_,i)=>!state!.raid!.pillars[i]?.broken)) : obstaclesAt(state.arena, arenaClock()));
+    useObstacles(state.raid ? (state.arena === "lagoon" || state.arena === "lantern-yard" || state.arena === "cloud-deck" || state.arena === "sun-atrium" || state.arena === "sky-terrace" || state.arena === "conductor-ring" ? [] : OBSTACLES.filter((_,i)=>!state!.raid!.pillars[i]?.broken)) : obstaclesAt(state.arena, arenaClock()));
     useSpeedScale(
       state.mutators?.includes("speed") ? MUTATOR_RULES.speed : 1,
     );
@@ -2510,6 +2511,8 @@ class ArenaScene extends Phaser.Scene {
       else if (usingPad) aimAt = this.aimPoint;
       else if (controlPrefs().aimAssist && skill < 0)
         aimAt = assistAim(aimAt, enemies);
+      const stormAim = state ? stormTarget(state) : undefined;
+      if (stormAim) aimAt = stormAim;
       const prismAim = state ? prismatailAim(state, local) : undefined;
       if (prismAim) aimAt = prismAim;
       aimAt = {

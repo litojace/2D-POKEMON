@@ -118,7 +118,7 @@ export const RAID_BOSSES: Record<RaidBossId, RaidBossInfo> = {
     signature: "Beat both twins together",
     blurb:
       "Two floating thunder-jellies tied by a crackling ribbon. Pair up with opposite charges and bring both down before either can revive the other.",
-    playable: false,
+    playable: true,
   },
 };
 

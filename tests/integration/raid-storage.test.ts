@@ -375,3 +375,20 @@ it("stores Emberwing's eleven rewards with migration 020 and preserves appearanc
  p=await progress();expect(p.bosses.emberwing.clears).toBe(10);expect(p.stats.emberwing.pillars).toBe(360);
  await db.exec('reset role;set role service_role');await expect(db.query('select public.arena_record_raid($1::jsonb)',[JSON.stringify(ember(12,{boss:'storm-twins'}))])).rejects.toThrow('Invalid raid');
 },20000);
+
+it("stores the final Storm Twins ladder after 021 while preserving purchases, admin testing and all appearance slots",async()=>{
+ await login();const look=(await progress()).loadout,economyBefore=(await db.query<{e:any}>('select public.arena_economy() as e')).rows[0].e;
+ for(let i=0;i<2;i++)await db.exec('reset role;'+await readFile('supabase/migrations/021_storm_twins.sql','utf8'));
+ await login();expect((await progress()).loadout).toEqual(look);const economy=(await db.query<{e:any}>('select public.arena_economy() as e')).rows[0].e;
+ expect(economy.owned).toEqual(economyBefore.owned);expect(economy.unlimitedCoins).toBe(economyBefore.unlimitedCoins);expect(economy.mythicTesting).toBe(economyBefore.mythicTesting);
+ const storm=(n:number,extra:object={})=>({...receipt(1200+n),boss:'storm-twins',trait:'bickering',daily:false,peril:3,seconds:210,feat:true,players:[{accountId:player,character:'auralynx',pillars:4}],...extra});
+ await expect(db.query('select public.arena_record_raid($1::jsonb)',[JSON.stringify(storm(1))])).rejects.toThrow();await expect(db.query("select public.arena_equip_raid_slot('skin','thundercell')")).rejects.toThrow('not earned');
+ await db.exec('reset role;set role service_role');const first=storm(1);await db.query('select public.arena_record_raid($1::jsonb)',[JSON.stringify(first)]);await db.query('select public.arena_record_raid($1::jsonb)',[JSON.stringify(first)]);
+ for(let n=2;n<=10;n++)await db.query('select public.arena_record_raid($1::jsonb)',[JSON.stringify(storm(n))]);
+ let p=await progress();expect(p.bosses['storm-twins'].clears).toBe(10);expect(p.stats['storm-twins'].pillars).toBe(40);
+ for(const id of ['stormsplitter','static-colors','thundercell','lightning-strike','eye-of-the-storm','conductor-frame','spark-aura','twin-spark','flashpoint','lone-conductor','perfect-pair'])expect(p.earned).toContain(id);
+ for(const[slot,id]of [['skin','thundercell'],['aura','spark-aura'],['entrance','lightning-strike'],['frame','conductor-frame'],['victory','twin-spark']]){await login();await db.query('select public.arena_equip_raid_slot($1,$2)',[slot,id]);expect((await progress()).loadout[slot]).toBe(id);}
+ await db.exec('reset role;set role service_role');await db.query('select public.arena_record_raid($1::jsonb)',[JSON.stringify(storm(11,{result:'defeat',players:[{accountId:player,character:'auralynx',pillars:999}]}))]);
+ p=await progress();expect(p.bosses['storm-twins'].clears).toBe(10);expect(p.stats['storm-twins'].pillars).toBe(340);
+ await db.exec('reset role');expect((await db.query<{n:number}>('select count(*)::int as n from public.arena_raid_bosses where playable')).rows[0].n).toBe(7);
+},20000);

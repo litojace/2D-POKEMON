@@ -20,7 +20,9 @@ export type Skin =
   | "dawn-colors"
   | "prismatic-skin"
   | "ember-colors"
-  | "cinderplume";
+  | "cinderplume"
+  | "static-colors"
+  | "thundercell";
 export const SKINS: Skin[] = [
   "cragbound",
   "cragstone",
@@ -40,6 +42,8 @@ export const SKINS: Skin[] = [
   "prismatic-skin",
   "ember-colors",
   "cinderplume",
+  "static-colors",
+  "thundercell",
 ];
 const hexRgb = (c: number) => [(c >> 16) & 255, (c >> 8) & 255, c & 255];
 /**
@@ -57,6 +61,8 @@ export const TONES: Partial<Record<Skin, { tones: [number, number, number]; keep
   // Twilight violet shading up into lantern gold.
   "dusk-colors": { tones: [0x2b2245, 0x8a5fc8, 0xffd27a], keep: 0.25 },
   "twilight-colors": { tones: [0x352a63, 0xa89ad9, 0xf2cddd], keep: 0.3 },
+  "static-colors": { tones: [0x28435f,0x81bcd6,0xffe9a1], keep:.22 },
+  thundercell: { tones:[0x263451,0xa6c9e0,0xf2f7ff],keep:.18 },
   "ember-colors": { tones: [0x6a3541,0xd77c53,0xffd795], keep: .22 },
   "cinderplume": { tones: [0x242b3b,0x655064,0xecaf7a], keep: .18 },
   "dawn-colors": { tones: [0x6e3451,0xe9a279,0xfff0b9], keep: .22 },
@@ -203,6 +209,16 @@ export function cosmeticLayer(
         context.fillRect(x - r / 2, y - r / 2, r, r);
       }
       context.globalAlpha = 1;
+    }
+    if (skin === "thundercell" && !/-eyes([-~]|$)/.test(original)) {
+      context.globalCompositeOperation="source-atop";
+      const random=seeded(original+":thunder");
+      context.strokeStyle="#80cfff";context.lineWidth=1.5;
+      for(let n=0;n<canvas.width*canvas.height/3200;n++){
+        const x=random()*canvas.width,y=random()*canvas.height;
+        context.beginPath();context.moveTo(x,y);context.lineTo(x-3,y+5);context.lineTo(x+1,y+5);context.lineTo(x-2,y+11);context.stroke();
+      }
+      context.globalCompositeOperation="source-over";
     }
     if (skin === "cinderplume" && !/-eyes([-~]|$)/.test(original)) {
       context.globalCompositeOperation="source-atop";

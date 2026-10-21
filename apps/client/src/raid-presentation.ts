@@ -25,6 +25,20 @@ export function raidCue(state: Snapshot, myId: string) {
   if (r.staggerUntil > state.time)
     return "Core exposed — unleash your ultimates!";
   const w = r.warnings[0];
+  if (r.boss === "storm-twins") {
+    const fallen=r.twins?.find(t=>(state.players.find(p=>p.id===t.id)?.hp??0)<=0);
+    if(fallen && state.players.some(p=>p.raidBoss&&p.hp>0)) return `${fallen.name} revives in ${Math.max(0,Math.ceil((fallen.reviveAt??state.time)-state.time))}s — finish the other twin!`;
+    const mark=r.polarities?.find(m=>m.playerId===myId&&!m.cancelled);
+    if(mark) return r.polarityPad ? "Polarity — enter your opposite-sign floor pad!" : "Polarity — stand next to an opposite sign!";
+    if(w?.kind === "link-beam" || r.stormBeam) return "Link Beam — jump across the bright ribbon; watch the copper bends!";
+    if(w?.kind === "chain-lightning") return "Chain Lightning — spread out, 200px apart!";
+    if(w?.kind === "twin-rush") return "Twin Rush — leave both crossing lanes!";
+    if(w?.kind === "thunderclap") return "Thunderclap — jump the marked circle or step outside!";
+    if(w?.kind === "static-field") return "Static Field — leave the circle or jump across it!";
+    const exposed=r.twins?.find(t=>t.exposedUntil>state.time);
+    if(exposed)return `${exposed.name} staggered — strike its exposed core!`;
+    return r.phase===3 ? "Keep both low, then finish together. Tap Fizz or Crackle to aim." : "Balance both health bars. Rites open at 67% and 33% combined health.";
+  }
   if (r.boss === "emberwing") {
     if(r.permanentGround && !w && !r.flameRings?.length) return "Wings broken — the heart stays exposed!";
     if(r.exposedUntil>state.time) return "Grounded — unleash your ultimates! Fire patches have shrunk.";
@@ -210,12 +224,12 @@ export function raidRoles(
   };
   best("damage", "Heavy Hitter");
   best("revives", "Medic");
-  best("pillars", boss === "tidewyrm" ? "Strand Master" : boss === "gloomshade" ? "Lantern Keeper" : boss === "emberwing" ? "Torchbearer" : boss === "prismatail" ? "Lightkeeper" : boss === "somnara" ? "Dream Guide" : "Bait Master");
+  best("pillars", boss === "tidewyrm" ? "Strand Master" : boss === "gloomshade" ? "Lantern Keeper" : boss === "storm-twins" ? "Perfect Pair" : boss === "emberwing" ? "Torchbearer" : boss === "prismatail" ? "Lightkeeper" : boss === "somnara" ? "Dream Guide" : "Bait Master");
   return roles;
 }
 /** What the boss-feature column counts (pillars baited, strands …). */
 export const featureLabel = (boss: RaidBossId) =>
-  boss === "tidewyrm" ? "Strands" : boss === "gloomshade" ? "Relights" : boss === "emberwing" ? "Braziers" : boss === "prismatail" ? "Relays" : boss === "somnara" ? "Runes" : "Pillars";
+  boss === "tidewyrm" ? "Strands" : boss === "gloomshade" ? "Relights" : boss === "storm-twins" ? "Pairs" : boss === "emberwing" ? "Braziers" : boss === "prismatail" ? "Relays" : boss === "somnara" ? "Runes" : "Pillars";
 export function raidContributions(state: Snapshot) {
   const r = state.raid!;
   const roles = raidRoles(r.contributions ?? {}, r.boss);
@@ -227,11 +241,11 @@ export function raidContributions(state: Snapshot) {
         revives: 0,
         pillars: 0,
       };
-      return `<div class="raid-score-row"><div class="raid-score-player"><span class="raid-score-avatar" aria-hidden="true" data-raid-cosmetic="${portraitCosmetics(p)}">${portraitAvatar(p, "raid-result-" + p.id)}</span><span><b>${escape(p.name)}</b><small>${CHARACTERS[p.character].name}${p.out ? " · Left" : ""}${r.standIns?.includes(p.id) ? " · AI stand-in" : ""}</small>${(roles[p.id] ?? []).map((role) => `<em class="raid-role">${role}</em>`).join("")}</span></div><span aria-label="Damage">${Math.round(stats.damage).toLocaleString("en-US")}</span><span aria-label="Revives">${stats.revives}</span><span aria-label="${r.boss === "tidewyrm" ? "Strands" : r.boss === "gloomshade" ? "Lanterns relit" : r.boss === "emberwing" ? "Braziers lit" : r.boss === "prismatail" ? "Light relays" : r.boss === "somnara" ? "Correct runes" : "Pillars broken"}">${stats.pillars}</span></div>`;
+      return `<div class="raid-score-row"><div class="raid-score-player"><span class="raid-score-avatar" aria-hidden="true" data-raid-cosmetic="${portraitCosmetics(p)}">${portraitAvatar(p, "raid-result-" + p.id)}</span><span><b>${escape(p.name)}</b><small>${CHARACTERS[p.character].name}${p.out ? " · Left" : ""}${r.standIns?.includes(p.id) ? " · AI stand-in" : ""}</small>${(roles[p.id] ?? []).map((role) => `<em class="raid-role">${role}</em>`).join("")}</span></div><span aria-label="Damage">${Math.round(stats.damage).toLocaleString("en-US")}</span><span aria-label="Revives">${stats.revives}</span><span aria-label="${r.boss === "tidewyrm" ? "Strands" : r.boss === "gloomshade" ? "Lanterns relit" : r.boss === "storm-twins" ? "Polarity pairs" : r.boss === "emberwing" ? "Braziers lit" : r.boss === "prismatail" ? "Light relays" : r.boss === "somnara" ? "Correct runes" : "Pillars broken"}">${stats.pillars}</span></div>`;
     })
     .join(
       "",
-    )}<p class="raid-score-note">Revives credit everyone who helped. ${r.boss === "emberwing" ? "Braziers credit the raider who finishes lighting them." : r.boss === "prismatail" ? "Relays credit every raider in a completed light path." : r.boss === "somnara" ? "Runes credit the raider whose fighter or clone entered the correct pad." : r.boss === "tidewyrm" ? "Strands credit the raider who baited the dive." : r.boss === "gloomshade" ? "Relights credit the raider who lit the lantern." : "Pillars credit the raider who baited the charge."}</p></section>`;
+    )}<p class="raid-score-note">Revives credit everyone who helped. ${r.boss === "storm-twins" ? "Pairs credit every raider who cancels an opposite sign (including the solo pad)." : r.boss === "emberwing" ? "Braziers credit the raider who finishes lighting them." : r.boss === "prismatail" ? "Relays credit every raider in a completed light path." : r.boss === "somnara" ? "Runes credit the raider whose fighter or clone entered the correct pad." : r.boss === "tidewyrm" ? "Strands credit the raider who baited the dive." : r.boss === "gloomshade" ? "Relights credit the raider who lit the lantern." : "Pillars credit the raider who baited the charge."}</p></section>`;
 }
 
 export interface RaidGoal {
@@ -284,7 +298,7 @@ export function raidGoal(p: RaidProgress, reward: RaidReward): RaidGoal {
       const known = stats !== undefined || (boss === "grumblecrag" && p.pillars !== undefined);
       const have = stats?.[rule.stat] ?? (boss === "grumblecrag" ? (p[rule.stat] ?? 0) : 0);
       return goal(have, rule.n, known
-        ? `${Math.min(have, rule.n)}/${rule.n} ${rule.stat === "pillars" ? (boss === "tidewyrm" ? "strands" : boss === "gloomshade" ? "lanterns relit" : boss === "emberwing" ? "braziers lit" : boss === "prismatail" ? "light relays" : boss === "somnara" ? "correct runes" : "pillars baited") : "revives"} · wins and losses count`
+        ? `${Math.min(have, rule.n)}/${rule.n} ${rule.stat === "pillars" ? (boss === "tidewyrm" ? "strands" : boss === "gloomshade" ? "lanterns relit" : boss === "storm-twins" ? "polarity pairs" : boss === "emberwing" ? "braziers lit" : boss === "prismatail" ? "light relays" : boss === "somnara" ? "correct runes" : "pillars baited") : "revives"} · wins and losses count`
         : "Counts from the next raid update");
     }
     case "total-clears": {

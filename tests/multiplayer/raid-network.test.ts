@@ -53,9 +53,9 @@ const setup = async () => {
 it("starts a regular-player solo raid, enforces Peril unlocks, and records a verified victory once outside Elo", async () => {
   const { connect, recordRaid } = await setup(),
     host = await connect();
-  // Only bosses that are built can be raided.
+  // Unknown boss IDs are rejected even now that the entire roster is playable.
   expect(
-    (await emit(host, "create", { name: "Raider", mode: "raid", boss: "storm-twins" })).ok,
+    (await emit(host, "create", { name: "Raider", mode: "raid", boss: "unknown-boss" })).ok,
   ).toBe(false);
   const created = await emit(host, "create", { name: "Raider", mode: "raid", boss: "grumblecrag" });
   expect(created.ok).toBe(true);
@@ -380,4 +380,16 @@ it("creates Emberwing in the Sky Terrace, restricts practice to the host, and se
  const pending=new Promise<any>((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('No Emberwing snapshot')),2000);peer.on('state',s=>{if(s.raid?.airborne&&s.raid?.braziers?.length===3){clearTimeout(timer);resolve(s);}})});
  for(let i=0;i<10;i++)server!.step();const snapshot=await pending;expect(snapshot.arena).toBe('sky-terrace');expect(snapshot.raid.braziers.every((b:any)=>Number.isFinite(b.progress))).toBe(true);expect(snapshot.raidDream).toBeUndefined();
  expect((await emit(host,'raid-drill',{kind:null})).ok).toBe(true);expect(a.raid.airborne).toBe(false);
+});
+
+it("starts Storm Twins with both NPCs acknowledged, broadcasts separate health, and records only a real two-twin victory",async()=>{
+ const{connect,accounts,recordRaid}=await setup();accounts.provider.rpc=async()=>({clears:1,highestPeril:3,cosmetics:[],weekly:[],bosses:{grumblecrag:{clears:1,highestPeril:3}}});
+ const host=await connect(),peer=await connect();const created=await emit(host,'create',{name:'Storm host',mode:'raid',boss:'storm-twins'});expect(created.ok).toBe(true);
+ expect((await emit(peer,'join',{name:'Storm friend',code:created.code})).ok).toBe(true);await emit(host,'ready');await emit(peer,'ready');
+ const a=server!.rooms.get(created.code!)as RaidArena;expect(a.constructor.name).toBe('StormTwinsArena');expect(a.players.filter(p=>p.raidBoss)).toHaveLength(2);expect(a.raid.partySize).toBe(2);expect(a.phase).toBe('briefing');
+ await emit(host,'instructions-ready');await emit(peer,'instructions-ready');expect(a.phase).toBe('intermission');for(const[id,offer]of Object.entries(a.raid.offers))await emit(id===created.id?host:peer,'rite',{id:offer[0]});for(let i=0;i<125;i++)server!.step();expect(a.phase).toBe('playing');
+ a.raid.phase=3;(a as any).started=true;(a as any).nextAttack=Infinity;const bosses=a.players.filter(p=>p.raidBoss);
+ const snapshot=new Promise<any>((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('No twin snapshot')),2000);peer.on('state',s=>{if(s.raid?.twins?.length===2){clearTimeout(timer);resolve(s);}})});
+ for(let i=0;i<6;i++)server!.step();const state=await snapshot;expect(state.arena).toBe('conductor-ring');expect(state.players.filter((p:any)=>p.raidBoss)).toHaveLength(2);
+ a.damage(bosses[0],100000,created.id!);server!.step();await new Promise(r=>setTimeout(r,10));expect(a.phase).toBe('playing');expect(recordRaid).not.toHaveBeenCalled();a.damage(bosses[1],100000,created.id!);server!.step();await new Promise(r=>setTimeout(r,20));expect(a.raid.result).toBe('victory');expect(recordRaid).toHaveBeenCalledTimes(1);expect(recordRaid.mock.calls[0][0].players).toHaveLength(2);expect(recordRaid.mock.calls[0][0].feat).toBe(true);
 });

@@ -295,7 +295,7 @@ export class RaidArena extends Arena {
   }
   override status(p: Fighter, kind: StatusKind, duration: number, by?: string) {
     if (p.raidBoss && ["stun", "freeze", "paralysis", "sleep"].includes(kind)) {
-      this.raid.stagger = Math.min(100, this.raid.stagger + 3);
+      this.addBossStagger(p, 3);
       return;
     }
     super.status(p, kind, duration, by);
@@ -332,10 +332,7 @@ export class RaidArena extends Arena {
         this.struck.add(target.id);
     }
     if (target.raidBoss) {
-      const exposed =
-        this.alwaysExposed() ||
-        r.exposedUntil > this.time ||
-        r.staggerUntil > this.time;
+      const exposed = this.bossExposed(target);
       amount *= exposed ? (r.trait === "restless" ? 1.8 : 1.6) : 0.72;
       if (
         source &&
@@ -352,7 +349,7 @@ export class RaidArena extends Arena {
         amount += 8;
         this.coreAt.set(source.id, this.time + 1);
       }
-      r.stagger = Math.min(100, r.stagger + Math.min(1.3, amount * 0.025));
+      this.addBossStagger(target, Math.min(1.3, amount * 0.025));
       // Bosses cannot be displaced or stun-locked by normal fighter kits.
       ability = ability ? { ...ability, knockback: 0 } : undefined;
     } else if (
@@ -363,11 +360,7 @@ export class RaidArena extends Arena {
       )
     )
       amount *= 0.75;
-    if (target.raidBoss && r.phase < 3)
-      amount = Math.min(
-        amount,
-        Math.max(0, target.hp - r.maxHp * (r.phase === 1 ? 0.67 : 0.33)),
-      );
+    if (target.raidBoss) amount = Math.min(amount, this.damageLimit(target));
     const before = target.hp;
     super.damage(target, amount, owner, ability);
     if (target.raidBoss && source && r.contributions?.[source.id])
@@ -1140,13 +1133,13 @@ export class RaidArena extends Arena {
     if (this.raid.result) return;
     const boss = this.boss();
     if (!boss) return;
-    if (boss.hp <= 0) return this.finish(true);
+    if (this.bossHealth() <= 0) return this.finish(true);
     if (this.raid.elapsed >= RAID.timeLimit && !this.raid.drill)
       return this.finish(false);
     const next =
-      boss.hp <= this.raid.maxHp * 0.33 + 1e-6
+      this.bossHealth() <= this.raid.maxHp * 0.33 + 1e-6
         ? 3
-        : boss.hp <= this.raid.maxHp * 0.67 + 1e-6
+        : this.bossHealth() <= this.raid.maxHp * 0.67 + 1e-6
           ? 2
           : 1;
     if (next > this.raid.phase) {
@@ -1161,6 +1154,16 @@ export class RaidArena extends Arena {
       this.onChapter();
       this.offerRaidRites();
     }
+  }
+  /** Separate health and stagger hooks let multi-boss raids share the same phase and reward flow. */
+  protected bossHealth() {
+    return this.boss()?.hp ?? 0;
+  }
+  protected bossExposed(_target: Fighter) {
+    return this.alwaysExposed() || this.raid.exposedUntil > this.time || this.raid.staggerUntil > this.time;
+  }
+  protected addBossStagger(_target: Fighter, amount: number) {
+    this.raid.stagger = Math.min(100, this.raid.stagger + amount);
   }
   /** Grumblecrag's last chapter keeps its core open. */
   protected alwaysExposed() {

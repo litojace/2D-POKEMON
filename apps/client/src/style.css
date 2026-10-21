@@ -9039,3 +9039,22 @@ dialog.framed-dialog > .dialog-content:focus-visible { outline: 2px solid #ffd65
 .raid-cosmetic-preview[data-cosmetic="brazier-frame"], :is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="brazier-frame"] { border-radius:18%; box-shadow:0 0 0 3px #b87e58,inset 0 0 0 4px #ffcd8a44,0 0 15px #ff985a44; background:radial-gradient(circle at 0 0,#ffbb7780,transparent 40%),radial-gradient(circle at 100% 100%,#ff876580,transparent 40%),#243149; }
 .raid-cosmetic-preview[data-cosmetic="ember-aura"] { border-radius:50%; box-shadow:0 0 0 2px #ffac6f99,0 0 18px #ff985a44; background:radial-gradient(ellipse at 50% 85%,#ff985a44,transparent 65%); }
 .raid-cosmetic-preview[data-cosmetic="firefall"], .raid-cosmetic-preview[data-cosmetic="feather-fall"] { border-radius:16%; background:radial-gradient(ellipse at 25% 20%,#ffd28b44,transparent 40%),radial-gradient(ellipse at 75% 70%,#ff876544,transparent 40%),#15203c; }
+
+/* Storm Twins keep separate, compact HP bars and stable touch target buttons. */
+.raid-twin-health { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:5px 0 7px; }
+.raid-twin-bar > div:first-child { display:flex;align-items:center;justify-content:space-between;gap:6px;color:var(--twin-color);font-size:11px;line-height:1.2;margin-bottom:3px; }
+.raid-twin-bar b { font-size:12px; }.raid-twin-bar span { font-size:9px;letter-spacing:.03em; }
+.raid-twin-track { height:7px;background:#203149;border-radius:5px;overflow:hidden; }.raid-twin-track i { display:block;height:100%;background:var(--twin-color); }
+.raid-twin-stagger { height:2px;background:#203149;margin-top:3px; }.raid-twin-stagger i { display:block;height:100%;background:#95e6d1; }
+#raid-storm-targets {display:none;}
+.battle-raid #raid-storm-targets:not([hidden]) {position:absolute;z-index:26;top:36px;left:50%;transform:translateX(-50%);display:flex;gap:6px;}
+#raid-storm-targets button {min-height:44px;padding:6px 12px;border-radius:10px;border:1px solid #ffe18b77;background:#14243bea;color:#ffe7a7;font-size:12px;line-height:1.2;touch-action:manipulation;white-space:nowrap;}
+#raid-storm-targets [data-twin-index="1"] {color:#a8e6ff;border-color:#8edfff77;}
+#raid-storm-targets [aria-pressed="true"] {background:#49606a;box-shadow:0 0 12px #9edfff44;}
+#raid-storm-targets button:disabled {opacity:.35;}
+@media(max-height:500px){.raid-twin-health{margin:3px 0 4px;gap:9px}.raid-twin-bar > div:first-child{margin-bottom:2px}.raid-twin-track{height:5px}.raid-twin-stagger{height:2px;margin-top:2px}.raid-twin-bar b{font-size:10px}.raid-twin-bar span{font-size:8px}}
+.raid-cosmetic-preview[data-cosmetic="static-colors"] > svg, :is(.raid-party-avatar,.raid-score-avatar,.player-avatar,.roster-panel)[data-raid-cosmetic~="static-colors"] svg {filter:sepia(.25) saturate(.6) hue-rotate(145deg) brightness(1.1);}
+.raid-cosmetic-preview[data-cosmetic="thundercell"] > svg, :is(.raid-party-avatar,.raid-score-avatar,.player-avatar,.roster-panel)[data-raid-cosmetic~="thundercell"] svg {filter:saturate(.35) brightness(1.25) drop-shadow(0 0 3px #8edfff88);}
+.raid-cosmetic-preview[data-cosmetic="conductor-frame"], :is(.raid-party-avatar,.raid-score-avatar,.player-avatar)[data-raid-cosmetic~="conductor-frame"] {border-radius:18%;box-shadow:0 0 0 3px #bd926c,inset 0 0 0 4px #8edfff55,0 0 14px #ffe18b44;background:linear-gradient(135deg,#ffe18b33,#8edfff22);}
+.raid-cosmetic-preview[data-cosmetic="spark-aura"] {border-radius:50%;box-shadow:0 0 0 2px #8edfff88,0 0 16px #ffe18b44;background:radial-gradient(ellipse at 50% 85%,#8edfff33,transparent 65%);}
+.raid-cosmetic-preview[data-cosmetic="lightning-strike"],.raid-cosmetic-preview[data-cosmetic="twin-spark"] {border-radius:16%;background:radial-gradient(circle at 25% 40%,#ffe18b44,transparent 40%),radial-gradient(circle at 75% 40%,#8edfff44,transparent 40%),#15203c;}
