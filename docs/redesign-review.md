@@ -95,3 +95,9 @@ Preview: [complete home fighter portrait](redesign-home-full-fighter.png).
 - Hid the redundant roster arrow controls and removed their header column. Existing selectors remain intact; mouse-wheel, touch, keyboard focus and controller scrolling still reach every fighter.
 - Disabled native mouse text selection during desktop battles to prevent HUD and control labels being highlighted by rapid clicks or drags. Inputs, text areas and editable fields remain selectable; clipboard buttons and gameplay input handlers are unchanged.
 - Typecheck, all 854 tests, the client production build and PWA verification pass. Changed files pass Prettier; the full formatting check retains the same 76 existing failures in untouched files. Browser checks cover the roster at 1280×720 and 844×390 and desktop battle text selection, with editable-field checks.
+
+## Charged ultimate presentation
+
+- Added a warm gold core, element-colored orbiting energy ring, inner halo and brighter icon to fully charged ultimate controls. Button dimensions and hit areas stay fixed; the HUD meter gains a matching glow.
+- Touch controls now display a readable READY label and expose the ready state in their accessible name. Spending the charge removes the effect immediately, including when used during the old arrival-burst interval. Reduced motion retains the gold ready appearance without animation.
+- Browser checks at 1280×720, 844×390 and 568×320 cover 99% → ready → spent, repeated snapshots without restarting the ring, stable button bounds, icon/label separation and reduced motion. Typecheck, all 854 tests, the client build and PWA verification pass; the unchanged formatting baseline remains 76 files.

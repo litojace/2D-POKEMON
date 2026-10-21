@@ -389,7 +389,9 @@ export class TouchControls {
       }
       const text =
         left <= 0
-          ? ""
+          ? isUlt
+            ? "READY"
+            : ""
           : isUlt
             ? exArmed
               ? "EX ✓"
@@ -428,7 +430,7 @@ export class TouchControls {
       button.setAttribute(
         "aria-label",
         left <= 0
-          ? name
+          ? name + (isUlt ? " · ultimate ready" : "")
           : isUlt
             ? name + " · charging " + text
             : name + " · " + text + " seconds",

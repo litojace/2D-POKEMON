@@ -19814,3 +19814,111 @@ body.battle-active:not(.touch-mode)
   -webkit-user-select: text;
   user-select: text;
 }
+
+/* Charged ultimates: contained energy, without moving the button or its hit area. */
+.ability.ult-burst,
+.touch-buttons button.ult-burst {
+  animation: none;
+}
+body.battle-active .ability.ult-ready,
+.touch-buttons button.ult-ready {
+  border-color: var(--accent);
+  color: #fff4c4;
+  background: radial-gradient(
+    circle at 40% 30%,
+    #6a511f,
+    #251f22 62%,
+    var(--bg-0)
+  );
+  box-shadow:
+    0 0 0 2px #ffd65b30,
+    0 0 24px #ffd65b80,
+    inset 0 0 16px #ffd65b30;
+  animation: none;
+}
+.ability.ult-ready .skill-cooldown-ring,
+.touch-buttons button.ult-ready::before {
+  background: conic-gradient(
+    from -90deg,
+    #fff8da,
+    var(--accent) 45deg,
+    var(--ult-b) 100deg,
+    #ffd65b40 160deg,
+    #fff8da 180deg,
+    var(--accent) 225deg,
+    var(--ult-b) 280deg,
+    #ffd65b40 340deg,
+    #fff8da
+  );
+  animation: none;
+}
+.ability.ult-ready::after,
+.touch-buttons button.ult-ready::after {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border: 1px solid #ffe9a580;
+  border-radius: 50%;
+  background: transparent;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.6;
+  animation: none;
+}
+.ability.ult-ready .skill-icon,
+.touch-buttons button.ult-ready .skill-icon {
+  color: #fff4c4;
+  filter: drop-shadow(0 0 5px #ffd65b);
+  animation: none;
+}
+.ability.ult-ready small,
+.touch-buttons button.ult-ready .touch-cooldown {
+  color: #fff4c4;
+  font-weight: 800;
+  text-shadow: 0 0 8px #ffd65b80;
+}
+.touch-buttons button.ult-ready .touch-key {
+  position: absolute;
+  visibility: hidden;
+}
+.touch-buttons button.ult-ready .touch-cooldown {
+  position: absolute;
+  inset: auto 0 3px;
+  font-size: 10px;
+  line-height: 12px;
+  letter-spacing: 0.6px;
+}
+.touch-buttons button.ult-ready .skill-icon {
+  width: 52%;
+  height: 52%;
+  margin-bottom: 8px;
+}
+.hud-ultimate.is-ready .hud-ultimate-track {
+  box-shadow: 0 0 8px #ffd65b70;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ability.ult-ready .skill-cooldown-ring,
+  .touch-buttons button.ult-ready::before {
+    animation: ultimate-energy-orbit 3.6s linear infinite;
+  }
+  .ability.ult-ready::after,
+  .touch-buttons button.ult-ready::after {
+    animation: ultimate-energy-breathe 2.4s ease-in-out infinite;
+  }
+}
+@keyframes ultimate-energy-orbit {
+  to {
+    transform: rotate(1turn);
+  }
+}
+@keyframes ultimate-energy-breathe {
+  0%,
+  100% {
+    transform: scale(0.94);
+    opacity: 0.35;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 0.85;
+  }
+}
