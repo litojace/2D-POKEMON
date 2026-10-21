@@ -174,3 +174,10 @@ Updated previews: [desktop animated fighter details](redesign-roster-compact.png
 - Typecheck, all 854 tests, client build and PWA verification pass. Changed files pass Prettier; the full formatting check retains the 75 pre-existing failures in untouched files. Only client presentation and review documentation changed.
 
 Updated previews: [wider desktop information panel](redesign-roster-compact.png), [landscape phone selection](redesign-mobile-avatars.png), [landscape private lobby](redesign-mobile-lobby.png).
+
+## Fighter selection review — stable selection outline
+
+- The compact roster inherited a 250ms border/shadow transition from the old showcase cards. Changing fighters immediately updated the selected state but left the previous card's gold border fading out, briefly showing two highlighted fighters. Compact cards now change their border and shadow immediately.
+- Kept the gold selection stroke inside each card. Keyboard focus uses a separate inset light outline, keeping focus visible even along the clipped edges of the four-row grid. Card sizes, avatar/text spacing, details, selection events and animations in the right-hand preview are unchanged.
+- Browser checks cover every fighter, rapid switching, mouse/touch and keyboard activation, Home and private duel/team rooms, normal/reduced motion, desktop and landscape-phone sizes with safe areas. Each sampled frame contains exactly one gold selection border, with no card movement or roster scrolling.
+- Typecheck and all 866 tests pass. Updated files pass Prettier; the full formatting check continues to report 73 pre-existing failures outside this change.

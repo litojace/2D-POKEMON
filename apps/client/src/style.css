@@ -20075,6 +20075,19 @@ body.lobby-active #menu .roster-panel {
   padding: 12px;
   transform: none;
   animation: none;
+  /* Selection is immediate: a fading border leaves two gold cards at once. */
+  transition: none;
+}
+#menu .selection-layout .showcase-card.selected {
+  /* Keep the highlight inside the compact grid's clipping boundary. */
+  box-shadow:
+    inset 0 0 0 1px var(--accent),
+    inset 0 0 24px color-mix(in srgb, var(--element) 12%, transparent);
+}
+#menu .selection-layout .showcase-card:focus-visible {
+  /* Focus can move independently of selection with a keyboard/controller. */
+  outline: 2px solid var(--text);
+  outline-offset: -5px;
 }
 #menu .selection-layout .showcase-card .card-head {
   grid-column: 2;
