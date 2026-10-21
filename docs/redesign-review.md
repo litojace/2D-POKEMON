@@ -153,3 +153,13 @@ Previews: [Auralynx floating on home](redesign-home-shop-pose.png), [landscape-p
 - Typecheck, all 854 tests, the client build and PWA verification pass. Changed files pass Prettier; the repository-wide formatting check still reports 75 pre-existing failures in untouched files.
 
 Updated previews: [larger desktop avatars and names](redesign-roster-compact.png), [landscape phone roster](redesign-mobile-avatars.png), [private lobby](redesign-mobile-lobby.png).
+
+## Fighter selection review — share the Shop/Home animations
+
+- The selected fighter's right-hand portrait now uses the same rig, idle poses, equipped skin stages and ambient skin effects as Shop and Home. Auralynx floats with tucked feet and a rotating ring; the eight left-hand avatar cards stay stationary.
+- Extended the existing preview controller to move one renderer between Home and the visible selection panel. Repeated choices reuse front-facing textures and the bounded eight-look cache. Live cosmetic metadata updates the preview without rebuilding the surrounding information. Shop's independent item preview keeps its existing behavior.
+- Shared the soft ground treatment with the full selection portrait, and kept the quieter elemental effects around it. The canvas occupies exactly the SVG's first grid row, leaving the caption in its own row. Portrait dimensions, stats, skills, combo, card sizes and room actions retain their existing positions. Original SVG/image artwork remains the loading/failure fallback.
+- Browser review checks every fighter in Home selection and duel, teams, FFA and raid lobbies at 1280×720, 1920×1080, 844×390 and 568×320. Checks cover canvas/SVG bounds, caption separation, still avatars, all eight cards without scrolling, safe areas and Ready/Leave access. Additional checks cover all eight stage-three Mythical skins, live aura changes, rapid choices, controller scrolling, offscreen sleep, dialog/room-popover pauses, reduced motion, renderer cleanup on battle entry and a blocked-renderer fallback. Review hooks are external to the shipped client.
+- Typecheck, all 854 tests, the client production build and PWA verification pass. Changed files pass Prettier; the full formatting check retains 75 existing failures in untouched files. No server, shared package, database, networking or gameplay changes.
+
+Updated previews: [desktop animated fighter details](redesign-roster-compact.png), [landscape-phone fighter details](redesign-mobile-avatars.png), [private lobby](redesign-mobile-lobby.png).

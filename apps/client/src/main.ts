@@ -662,6 +662,10 @@ function syncMenuCosmetic() {
     championLooks: accountsUI?.economy?.looks ?? fighter?.championLooks,
   });
   if (panel) panel.dataset.raidCosmetic = worn;
+  const preview = panel?.querySelector<HTMLElement>(".fighter-rig-stage");
+  const previewLook = encodeURIComponent(JSON.stringify(look ?? {}));
+  if (preview && preview.dataset.previewLook !== previewLook)
+    preview.dataset.previewLook = previewLook;
   document.body.style.setProperty(
     "--element",
     `#${CHARACTERS[selected].color.toString(16).padStart(6, "0")}`,

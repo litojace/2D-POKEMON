@@ -1,5 +1,18 @@
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import { AVATAR_VIEWBOX, creatureSvg, type SkinLook } from "./creature-design";
+
+/** A borderless contact shadow shared by Home and full fighter previews. */
+export function withSoftGround(svg: string) {
+  return svg
+    .replace(
+      "</defs>",
+      '<radialGradient id="home-contact"><stop stop-color="#020612" stop-opacity=".65"/><stop offset=".45" stop-color="#020612" stop-opacity=".4"/><stop offset="1" stop-color="#020612" stop-opacity="0"/></radialGradient><radialGradient id="home-floor-light"><stop stop-color="var(--element)" stop-opacity=".2"/><stop offset="1" stop-color="var(--element)" stop-opacity="0"/></radialGradient></defs>',
+    )
+    .replace(
+      /<ellipse class="fighter-shadow"[^>]*\/>/,
+      '<g class="home-contact-shadow" stroke="none"><ellipse cx="100" cy="178" rx="62" ry="13" fill="url(#home-floor-light)"/><ellipse class="fighter-shadow" cx="100" cy="177" rx="42" ry="9" fill="url(#home-contact)"/></g>',
+    );
+}
 /**
  * Give an inline SVG's ids (gradients, filters) a placement-specific suffix.
  *

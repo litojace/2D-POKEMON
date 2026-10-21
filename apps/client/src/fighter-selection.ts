@@ -2,7 +2,7 @@ import { menuIcon } from "./menu-icons";
 import { fighterPack } from "./animation/pack-config";
 import { CHARACTERS, COMBOS, ULT_SLOT, type CharacterId } from "@arena/shared";
 import { actionLabel, controlPrefs, skillLabels } from "./controls";
-import { fighterArt, scopeIds } from "./fighter-art";
+import { fighterArt, scopeIds, withSoftGround } from "./fighter-art";
 import { abilityIcon } from "./ability-icons";
 import { PLACEHOLDER_FIGHTERS } from "./creature-design";
 import { elementIcon } from "./element-icons";
@@ -26,10 +26,10 @@ function art(id: CharacterId, large = false, aura = false) {
   if (pack && pack.kind !== "layered")
     return `<img class="creature-portrait" loading="lazy" decoding="async" src="/assets/fighters/${id}/${large ? pack.selection : pack.portrait}" alt="${CHARACTERS[id].name}">`;
   // Card and detail portrait of the same fighter need their own ids.
+  const svg = fighterArt(id, undefined, worn[id]);
+  const framed = large ? withSoftGround(svg) : svg;
   return scopeIds(
-    aura
-      ? withAura(fighterArt(id, undefined, worn[id]), id, still())
-      : fighterArt(id, undefined, worn[id]),
+    aura ? withAura(framed, id, still()) : framed,
     large ? "detail" : "card",
   );
 }
@@ -128,7 +128,7 @@ export function fighterSelection(selected: CharacterId, element = "All") {
   const comboRow = `<p class="combo-description"><b>Combo · ${combo.name}</b>${combo.text}</p>`;
   // Keep detail markup adjacent for legacy consumers; the mounted layout
   // places it in a separate, scrollable preview beside the portrait roster.
-  const detail = `<div class="fighter-detail" data-detail-for="${selected}" style="--element:${color}"><nav class="fighter-preview-tabs" aria-label="Fighter preview sections"><button type="button" data-fighter-preview="overview" aria-pressed="true">Overview</button><button type="button" data-fighter-preview="skills" aria-pressed="false">Skills &amp; combo</button></nav><div class="selected-fighter" style="--element:${color}"><div class="selected-art">${art(selected, true, true)}${placeholderBadge(selected, "PLACEHOLDER ART")}<span class="selected-art-caption">${fighter.element} · ${fighter.role}</span></div><div class="selected-info"><span class="element-pill">${elementIcon(fighter.element)}${fighter.element}</span><h3>${fighter.name}</h3><p class="fighter-role-label">${fighter.role} · ${attackRange(selected) === "long" ? "Ranged basic attack" : "Melee basic attack"}</p><p class="fighter-mastery-label">${masteryTier(masteryMatches(selected))?.name ?? "New challenger"} mastery · ${masteryMatches(selected)} matches</p><p>${fighter.description}</p><div class="fighter-stats"><span><b>${fighter.health}</b>Health</span><span><b>${fighter.speed}</b>Move speed</span><span><b>${fighter.basic.damage}</b>Basic damage</span></div><p class="basic-description">${abilityIcon(fighter.basic.name)}<span class="basic-text"><b>${fighter.basic.name}</b> · ${fighter.basic.description} <em>No cooldown · ${interval} ms between attacks</em></span></p></div></div><div class="skill-preview" style="--element:${color}" hidden><div class="skill-preview-heading"><h3>Four special skills</h3><span>${skillKeys.join(" / ")}</span></div><div class="preview-skills">${skills}</div>${comboRow}</div></div>`;
+  const detail = `<div class="fighter-detail" data-detail-for="${selected}" style="--element:${color}"><nav class="fighter-preview-tabs" aria-label="Fighter preview sections"><button type="button" data-fighter-preview="overview" aria-pressed="true">Overview</button><button type="button" data-fighter-preview="skills" aria-pressed="false">Skills &amp; combo</button></nav><div class="selected-fighter" style="--element:${color}"><div class="selected-art fighter-rig-stage" data-preview-champion="${selected}" data-preview-item="${worn[selected]?.skin ?? ""}" data-preview-stage="${worn[selected]?.stage ?? 1}" data-preview-look="%7B%7D" data-preview-action="idle" aria-label="${fighter.name} animated preview">${art(selected, true, true)}${placeholderBadge(selected, "PLACEHOLDER ART")}<span class="selected-art-caption">${fighter.element} · ${fighter.role}</span></div><div class="selected-info"><span class="element-pill">${elementIcon(fighter.element)}${fighter.element}</span><h3>${fighter.name}</h3><p class="fighter-role-label">${fighter.role} · ${attackRange(selected) === "long" ? "Ranged basic attack" : "Melee basic attack"}</p><p class="fighter-mastery-label">${masteryTier(masteryMatches(selected))?.name ?? "New challenger"} mastery · ${masteryMatches(selected)} matches</p><p>${fighter.description}</p><div class="fighter-stats"><span><b>${fighter.health}</b>Health</span><span><b>${fighter.speed}</b>Move speed</span><span><b>${fighter.basic.damage}</b>Basic damage</span></div><p class="basic-description">${abilityIcon(fighter.basic.name)}<span class="basic-text"><b>${fighter.basic.name}</b> · ${fighter.basic.description} <em>No cooldown · ${interval} ms between attacks</em></span></p></div></div><div class="skill-preview" style="--element:${color}" hidden><div class="skill-preview-heading"><h3>Four special skills</h3><span>${skillKeys.join(" / ")}</span></div><div class="preview-skills">${skills}</div>${comboRow}</div></div>`;
   const ids = Object.values(CHARACTERS)
     .filter((c) => element === "All" || c.element === element)
     .map((c) => c.id);

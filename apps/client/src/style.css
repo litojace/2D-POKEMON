@@ -17493,29 +17493,36 @@ body.home-active #credits {
 #menu .home-fighter-art.is-ready > canvas {
   opacity: 1;
 }
-.home-fighter-art.is-ready :is(.fighter-character, .fighter-scarf) {
+:is(.home-fighter-art, .fighter-rig-stage).is-ready
+  :is(.fighter-character, .fighter-scarf) {
   visibility: hidden;
 }
-.home-fighter-art.is-ready :is(.fighter-character, .fighter-scarf),
-.home-fighter-art.is-ready :is(.fighter-character, .fighter-scarf) * {
+:is(.home-fighter-art, .fighter-rig-stage).is-ready
+  :is(.fighter-character, .fighter-scarf),
+:is(.home-fighter-art, .fighter-rig-stage).is-ready
+  :is(.fighter-character, .fighter-scarf)
+  * {
   animation-play-state: paused !important;
 }
-.home-fighter-art .ta-back {
+:is(.home-fighter-art, .fighter-rig-stage) .ta-back {
   opacity: 0.55;
 }
-.home-fighter-art .ta-front {
+:is(.home-fighter-art, .fighter-rig-stage) .ta-front {
   opacity: 0.75;
 }
 /* The home contact shadow replaces the aura's repeated floor pools/rims. */
-.home-fighter-art .ta-back > ellipse:is([cy="176"], [cy="178"]) {
+:is(.home-fighter-art, .fighter-rig-stage)
+  .ta-back
+  > ellipse:is([cy="176"], [cy="178"]) {
   display: none;
 }
 /* Cindrake keeps its crest and drifting embers; omit the flat-bottomed wall
    of flame used in the compact selection preview. */
-.home-fighter-art .ta-back .ta-base {
+:is(.home-fighter-art, .fighter-rig-stage) .ta-back .ta-base {
   display: none;
 }
-.home-fighter-art :is(.ta-back, .ta-front, .home-contact-shadow) {
+:is(.home-fighter-art, .fighter-rig-stage)
+  :is(.ta-back, .ta-front, .home-contact-shadow) {
   pointer-events: none;
 }
 .home-fighter-copy {
@@ -18538,6 +18545,25 @@ body.lobby-active .roster-panel > .section-title .eyebrow {
   height: 210px;
   max-height: 210px;
   object-fit: contain;
+}
+#menu .fighter-preview-slot .fighter-rig-stage > :is(svg, .creature-portrait) {
+  grid-area: 1 / 1 / 2 / 2;
+}
+#menu .fighter-preview-slot .fighter-rig-stage > canvas {
+  position: absolute;
+  grid-area: 1 / 1 / 2 / 2;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain;
+  pointer-events: none;
+  opacity: 0;
+}
+#menu .fighter-preview-slot .fighter-rig-stage.is-ready > canvas {
+  opacity: 1;
+}
+.fighter-rig-stage > .selected-art-caption {
+  grid-area: 2 / 1;
 }
 .fighter-preview-slot .selected-art-caption {
   font-size: 12px;

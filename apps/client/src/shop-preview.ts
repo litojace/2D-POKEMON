@@ -13,19 +13,20 @@ import type { AnimationPose } from "./animation/controller";
 import type { SkinLook } from "./creature-design";
 import { HOME_PREVIEW, SHOP_PREVIEW, previewZoom } from "./shop-preview-layout";
 
+export type PreviewPlacement = "shop" | "home" | "selection";
 export interface ShopPreviewHandle {
   (): void;
-  update(panel: HTMLElement): void;
+  update(panel: HTMLElement, placement?: PreviewPlacement): void;
   suspend(value: boolean): void;
 }
 
 /** Shared idle rig for Shop and Home. Keep decoded textures when browsing. */
 export function mountShopPreview(
   initialPanel: HTMLElement,
-  placement: "shop" | "home" = "shop",
+  placement: PreviewPlacement = "shop",
 ): ShopPreviewHandle {
-  const home = placement === "home";
-  const framing = home ? HOME_PREVIEW : SHOP_PREVIEW;
+  let home = placement !== "shop";
+  let framing = home ? HOME_PREVIEW : SHOP_PREVIEW;
   let suspended = false;
   let panel: HTMLElement;
   let host: HTMLElement;
@@ -130,14 +131,22 @@ export function mountShopPreview(
     if (compare) compare.disabled = true;
     syncLoop();
   };
-  const updatePanel = (next: HTMLElement) => {
+  const updatePanel = (next: HTMLElement, nextPlacement = placement) => {
     if (disposed) return;
+    placement = nextPlacement;
+    home = placement !== "shop";
+    framing = home ? HOME_PREVIEW : SHOP_PREVIEW;
     revision++;
     cancelSelection();
     panel = next;
     observer.disconnect();
+    host?.classList.remove("is-ready");
     host = panel.querySelector<HTMLElement>(
-      home ? ".home-fighter-art" : ".shop-live-stage",
+      placement === "selection"
+        ? ".fighter-rig-stage"
+        : home
+          ? ".home-fighter-art"
+          : ".shop-live-stage",
     )!;
     host.classList.remove("is-ready");
     observer.observe(host);
@@ -375,6 +384,7 @@ export function mountShopPreview(
   const dispose: ShopPreviewHandle = Object.assign(
     () => {
       disposed = true;
+      host.classList.remove("is-ready");
       cancelSelection();
       observer.disconnect();
       motion.removeEventListener("change", onMotion);

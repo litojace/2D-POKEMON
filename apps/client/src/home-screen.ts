@@ -10,7 +10,7 @@ import {
 import type { Economy } from "../../../packages/shared/src/shop";
 import type { RaidLoadout } from "../../../packages/shared/src/raid";
 import { masteryMatches } from "./fighter-selection";
-import { fighterArt, scopeIds } from "./fighter-art";
+import { fighterArt, scopeIds, withSoftGround } from "./fighter-art";
 import { fighterPack } from "./animation/pack-config";
 import { elementIcon } from "./element-icons";
 import { menuIcon } from "./menu-icons";
@@ -59,15 +59,9 @@ export function homeFeature(
       ? `<img class="creature-portrait" src="/assets/fighters/${id}/${pack.selection}" alt="${c.name}">`
       : scopeIds(
           withAura(
-            fighterArt(id, "-20 -40 240 250", economy?.looks[id])
-              .replace(
-                "</defs>",
-                '<radialGradient id="home-contact"><stop stop-color="#020612" stop-opacity=".65"/><stop offset=".45" stop-color="#020612" stop-opacity=".4"/><stop offset="1" stop-color="#020612" stop-opacity="0"/></radialGradient><radialGradient id="home-floor-light"><stop stop-color="var(--element)" stop-opacity=".2"/><stop offset="1" stop-color="var(--element)" stop-opacity="0"/></radialGradient></defs>',
-              )
-              .replace(
-                /<ellipse class="fighter-shadow"[^>]*\/>/,
-                '<g class="home-contact-shadow" stroke="none"><ellipse cx="100" cy="178" rx="62" ry="13" fill="url(#home-floor-light)"/><ellipse class="fighter-shadow" cx="100" cy="177" rx="42" ry="9" fill="url(#home-contact)"/></g>',
-              ),
+            withSoftGround(
+              fighterArt(id, "-20 -40 240 250", economy?.looks[id]),
+            ),
             id,
           ),
           "home-feature",
