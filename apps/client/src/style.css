@@ -19922,3 +19922,297 @@ body.battle-active .ability.ult-ready,
     opacity: 0.85;
   }
 }
+
+/* Phone roster cards are still avatars with a concise kit summary. */
+@media (max-width: 1000px) and (orientation: landscape) {
+  #menu .selection-layout .showcase-roster {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+    grid-auto-flow: row;
+    grid-auto-rows: 172px;
+    align-content: start;
+    gap: 8px;
+    padding: 0 6px 0 0;
+    overflow: hidden auto;
+    scroll-snap-type: none;
+  }
+  #menu .selection-layout .showcase-roster > .showcase-card {
+    grid-template-columns: 64px minmax(0, 1fr);
+    grid-template-rows: 40px 44px 26px 32px;
+    height: 172px;
+    min-height: 172px;
+    gap: 4px 8px;
+    padding: 8px;
+    transform: none;
+    animation: none;
+  }
+  #menu .selection-layout .showcase-card .card-head {
+    grid-column: 2;
+    grid-row: 1;
+    grid-template-rows: 22px 16px;
+    gap: 2px;
+  }
+  #menu .selection-layout .showcase-card .card-head strong {
+    font-size: 20px;
+  }
+  #menu .selection-layout .showcase-card .element-pill {
+    font-size: 10px;
+    line-height: 12px;
+    padding: 2px 6px;
+  }
+  #menu .selection-layout .showcase-card .card-role {
+    grid-column: 2;
+    grid-row: 2;
+    height: 44px;
+    gap: 2px;
+    font-size: 11px;
+    line-height: 1.2;
+  }
+  #menu .selection-layout .showcase-card .range-tag {
+    height: 14px;
+    min-height: 0;
+    padding: 0 5px;
+    font-size: 9px;
+    line-height: 1.1;
+  }
+  #menu .selection-layout .showcase-card .range-tag svg {
+    width: 10px;
+    height: 10px;
+  }
+  #menu .selection-layout .showcase-card .card-art {
+    grid-column: 1;
+    grid-row: 1 / 3;
+    width: 64px;
+    height: 64px;
+    align-self: center;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--element) 10%, var(--bg-0));
+  }
+  #menu
+    .selection-layout
+    .showcase-card
+    .card-art
+    > :is(svg, .creature-portrait) {
+    position: relative;
+    z-index: 1;
+    height: 62px;
+    max-height: 62px;
+  }
+  #menu .selection-layout .showcase-card .fighter-mastery-ring {
+    width: 60px;
+    height: 60px;
+    z-index: 0;
+  }
+  #menu .selection-layout .showcase-card .card-art *,
+  #menu .fighter-preview-slot .selected-art svg * {
+    animation: none !important;
+    transition: none !important;
+  }
+  #menu .selection-layout .showcase-card .card-art :is(.ta-back, .ta-front),
+  #menu .fighter-preview-slot .selected-art :is(.ta-back, .ta-front) {
+    display: none;
+  }
+  #menu .selection-layout .showcase-card .card-skills {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    height: 26px;
+  }
+  #menu .selection-layout .showcase-card .card-skills > span {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 2px;
+  }
+  #menu .selection-layout .showcase-card .card-skills .skill-icon {
+    width: 18px;
+    height: 18px;
+  }
+  #menu .selection-layout .showcase-card .card-skills i {
+    font-size: 9px;
+    line-height: 1;
+  }
+  #menu .selection-layout .showcase-card .card-bottom {
+    grid-column: 1 / -1;
+    grid-row: 4;
+    min-height: 32px;
+    height: 32px;
+    padding-top: 4px;
+    gap: 2px 6px;
+    line-height: 1.1;
+  }
+  #menu .fighter-preview-slot .selected-fighter {
+    grid-template-columns: 48px minmax(0, 1fr);
+    align-items: start;
+    gap: 2px 8px;
+    padding: 10px;
+  }
+  #menu .fighter-preview-slot .selected-art {
+    grid-column: 1;
+    grid-row: 1 / 3;
+  }
+  #menu .fighter-preview-slot .selected-art > :is(svg, .creature-portrait) {
+    width: 48px;
+    height: 48px;
+    max-height: 48px;
+  }
+  #menu .fighter-preview-slot .selected-art-caption {
+    display: none;
+  }
+  #menu .fighter-preview-slot .selected-info {
+    display: contents;
+  }
+  #menu .fighter-preview-slot .selected-info > :is(.element-pill, h3) {
+    grid-column: 2;
+  }
+  #menu .fighter-preview-slot .selected-info h3 {
+    font-size: 26px;
+    margin: 0;
+  }
+  #menu .fighter-preview-slot .selected-info > .element-pill {
+    justify-self: start;
+    align-self: center;
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+  #menu .fighter-preview-slot .selected-info > :is(p, .fighter-stats) {
+    grid-column: 1 / -1;
+  }
+  #menu .fighter-preview-slot .selected-info p {
+    margin: 2px 0;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  #menu .fighter-preview-slot .fighter-stats {
+    margin: 4px 0;
+  }
+  #menu .fighter-preview-slot .fighter-stats b {
+    font-size: 22px;
+  }
+  body.lobby-active .desktop-lobby-header {
+    min-height: 24px;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 10px;
+  }
+  body.lobby-active .desktop-lobby-header h1 {
+    font-size: 20px;
+    line-height: 24px;
+    white-space: nowrap;
+  }
+  body.lobby-active .desktop-lobby-header .eyebrow {
+    font-size: 10px;
+  }
+  .home-roster-drawer .home-drawer-head {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+  .home-roster-drawer .home-drawer-head h2 {
+    font-size: 20px;
+    margin: 2px 0 0;
+  }
+  .home-roster-drawer .home-drawer-head .eyebrow {
+    font-size: 10px;
+  }
+  body.lobby-active #menu .lobby-room-content {
+    padding: 10px;
+  }
+  body.lobby-active #menu .lobby-room-content h2 {
+    font-size: 20px;
+    line-height: 1.15;
+    margin: 4px 0;
+  }
+  body.lobby-active #menu .lobby-room-content > p {
+    margin: 6px 0;
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  body.lobby-active #menu .lobby-room-content .room-code {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 44px;
+    padding: 6px;
+    font-size: 26px;
+    line-height: 1.1;
+    letter-spacing: 3px;
+  }
+  body.lobby-active #menu .room-code span {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    margin-top: 0;
+    letter-spacing: 0;
+    white-space: nowrap;
+  }
+  body.lobby-active #menu .room-code span svg {
+    width: 14px;
+    height: 14px;
+  }
+  body.lobby-active #menu .invite-link {
+    min-height: 40px;
+    padding: 6px;
+    margin-bottom: 8px;
+    font-size: 14px;
+  }
+  body.lobby-active #menu .players {
+    margin: 8px 0;
+  }
+  body.lobby-active #menu .players > div {
+    padding: 8px 0;
+  }
+  body.lobby-active #menu .players .player-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+  body.lobby-active #menu .lobby-actions:not(.raid-lobby-actions) {
+    flex-wrap: nowrap;
+    align-items: stretch;
+    padding: 8px;
+  }
+  body.lobby-active #menu .lobby-actions:not(.raid-lobby-actions) #ready {
+    flex: 1;
+    min-width: 0;
+    width: auto;
+    min-height: 44px;
+    padding: 6px;
+    gap: 6px;
+    font-size: 16px;
+    letter-spacing: 0.4px;
+    line-height: 1.1;
+  }
+  body.lobby-active
+    #menu
+    .lobby-actions:not(.raid-lobby-actions)
+    #ready
+    > span {
+    white-space: nowrap;
+    letter-spacing: 0.4px;
+  }
+  body.lobby-active
+    #menu
+    .lobby-actions:not(.raid-lobby-actions)
+    #ready
+    .button-icon {
+    width: 16px;
+    height: 16px;
+  }
+  body.lobby-active #menu .lobby-actions:not(.raid-lobby-actions) #leave {
+    flex: 0 0 54px;
+    min-height: 44px;
+    padding: 4px;
+    font-size: 11px;
+    line-height: 1.1;
+  }
+  body.lobby-active
+    #menu
+    .lobby-actions:not(.raid-lobby-actions)
+    #leave
+    .button-icon {
+    display: none;
+  }
+}

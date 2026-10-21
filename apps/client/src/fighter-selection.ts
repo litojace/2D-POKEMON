@@ -79,6 +79,32 @@ function masteryRing(id: CharacterId) {
     : 100;
   return `<span class="fighter-mastery-ring" style="--mastery-progress:${progress}%;--tier:${tier?.color ?? "var(--accent)"}" role="img" aria-label="${tier?.name ?? "New challenger"} mastery · ${played} matches${next ? ` · ${next.left} to ${next.name}` : ""}"></span>`;
 }
+const displayedMastery = new WeakMap<HTMLElement, number>();
+/** Records may arrive after the roster mounts; refresh every card without a tap. */
+export function syncRosterMastery(root: ParentNode) {
+  for (const card of Array.from(
+    root.querySelectorAll<HTMLElement>(".showcase-roster [data-character]"),
+  )) {
+    const id = card.dataset.character as CharacterId;
+    const matches = masteryMatches(id);
+    if (displayedMastery.get(card) === matches) continue;
+    const next = document.createElement("template");
+    next.innerHTML = masteryRing(id);
+    card.querySelector(".fighter-mastery-ring")?.replaceWith(next.content);
+    next.innerHTML = masteryBadge(id);
+    const badge = card.querySelector(".mastery-badge");
+    if (badge) badge.replaceWith(next.content);
+    else card.querySelector(".card-selection-label")?.before(next.content);
+    displayedMastery.set(card, matches);
+  }
+  const detail = root.querySelector<HTMLElement>(".fighter-detail");
+  const label = detail?.querySelector(".fighter-mastery-label");
+  if (detail && label) {
+    const matches = masteryMatches(detail.dataset.detailFor as CharacterId);
+    const text = `${masteryTier(matches)?.name ?? "New challenger"} mastery · ${matches} matches`;
+    if (label.textContent !== text) label.textContent = text;
+  }
+}
 export function fighterSelection(selected: CharacterId, element = "All") {
   // The player's own keys (Settings → Controls), so the cards teach real controls.
   const bindings = controlPrefs().bindings,
@@ -241,6 +267,21 @@ export function placeFighterDetail(root: ParentNode) {
   const roster = root.querySelector<HTMLElement>(".showcase-roster"),
     detail = root.querySelector<HTMLElement>(".fighter-detail");
   if (!roster || !detail) return;
+  const compact = matchMedia(
+    "(max-width: 1000px) and (orientation: landscape)",
+  ).matches;
+  for (const portrait of Array.from(
+    root.querySelectorAll<SVGSVGElement>(
+      ".card-art > svg, .fighter-detail .selected-art > svg",
+    ),
+  )) {
+    const full =
+      portrait.dataset.fullPortraitViewbox ?? portrait.getAttribute("viewBox")!;
+    portrait.dataset.fullPortraitViewbox = full;
+    const frame = compact ? "18 -32 164 180" : full;
+    if (portrait.getAttribute("viewBox") !== frame)
+      portrait.setAttribute("viewBox", frame);
+  }
   const preview = root.querySelector<HTMLElement>(".fighter-preview-slot");
   if (preview) {
     showFighterSection(detail, detail.dataset.preview ?? "overview");

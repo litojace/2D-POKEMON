@@ -30,6 +30,7 @@ import { buttonIcon, iconLabel, menuIcon } from "./menu-icons";
 import type { RaidBossId } from "../../../packages/shared/src/raid";
 import {
   fighterSelection,
+  syncRosterMastery,
   updateRosterSelection,
   watchFighterDetail,
 } from "./fighter-selection";
@@ -1275,6 +1276,7 @@ function renderMenu(revealSelection = false) {
   if (adventureButton)
     adventureButton.onclick = () => void accountsUI.showAdventure();
   wireRoster(isRoom);
+  syncRosterMastery($("menu"));
   syncMenuCosmetic();
   syncHomePresentation();
   // Fighter panel slot: between the rows on PC, under the swipeable row on phones.
