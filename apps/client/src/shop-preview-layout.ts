@@ -8,6 +8,16 @@ export const SHOP_PREVIEW = {
   cameraY: 130,
 } as const;
 
+/** Home keeps its padded SVG frame (-20 -40 240 250), at two pixels per art unit. */
+export const HOME_PREVIEW = {
+  width: 480,
+  height: 500,
+  x: 240,
+  y: 340,
+  scale: 4,
+  cameraY: 250,
+} as const;
+
 export function previewZoom(action: string) {
   return action === "entrance" || action === "victory" ? 0.78 : 1;
 }
@@ -18,5 +28,10 @@ export function previewViewBox(action: string) {
   const zoom = previewZoom(action);
   const artScale = scale * 0.5 * zoom;
   const screenY = height / 2 + (y - cameraY) * zoom;
-  return [100 - x / artScale, 130 - screenY / artScale, width / artScale, height / artScale].join(" ");
+  return [
+    100 - x / artScale,
+    130 - screenY / artScale,
+    width / artScale,
+    height / artScale,
+  ].join(" ");
 }

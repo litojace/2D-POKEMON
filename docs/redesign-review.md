@@ -133,3 +133,13 @@ Updated previews: [desktop fighter grid](redesign-roster-compact.png), [landscap
 - Typecheck, all 854 tests, the client production build and PWA verification pass. Changed files pass Prettier; the repository-wide formatting check retains the same 76 pre-existing failures in untouched files. Only client presentation and review documentation changed.
 
 Previews: [Cindrake with embers and soft ground light](redesign-home-ground.png), [landscape-phone elemental effects](redesign-home-effects-mobile.png).
+
+## Home review — match the Shop's fighter poses
+
+- Home now uses the Shop's shared animation rig for the featured fighter, with the same idle pose inputs, skin stages and skin effects. Auralynx settles into her floating meditation pose with tucked feet and a continuously rotating ring; the other seven fighters use their own signature idle movements. No rig or battle behavior changed.
+- Kept the padded home framing, soft contact shadow, element glow and surrounding trait effects. The original SVG stays as an accessible loading/failure fallback; its character and scarf disappear only after a fully posed canvas frame is ready. The Shop's outlined floor does not appear on home.
+- Reuses one silent 30fps preview while comparing fighters, with only front-facing textures and the existing bounded eight-look cache. It pauses when drawers, Shop or other menus cover home, and while offscreen or in a hidden tab. Entering battle or leaving home disposes the preview. Reduced motion renders one stationary frame, then sleeps.
+- Browser review covers all eight fighters at 1280×720, 1920×1080, 844×390 and 568×320, including Auralynx's floating pose, stable framing and phone safe areas. Additional checks cover rapid switching, all eight stage-three Mythical skins, a collection aura, the actual Shop renderer and original comparison, drawer pause/resume, reduced motion, disposal/recreation and a blocked-renderer fallback. Review hooks stay in the external browser harness.
+- Typecheck, all 854 tests, the client production build and PWA verification pass. Changed files pass Prettier. Formatting the touched preview-layout file reduces the repository's existing formatting failures from 76 to 75; the remaining files are untouched.
+
+Previews: [Auralynx floating on home](redesign-home-shop-pose.png), [landscape-phone Shop-style idle](redesign-home-shop-pose-mobile.png).

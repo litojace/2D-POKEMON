@@ -17480,6 +17480,26 @@ body.home-active #credits {
 #menu .home-fighter-art > svg {
   overflow: hidden;
 }
+#menu .home-fighter-art > canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain;
+  opacity: 0;
+  pointer-events: none;
+}
+#menu .home-fighter-art.is-ready > canvas {
+  opacity: 1;
+}
+.home-fighter-art.is-ready :is(.fighter-character, .fighter-scarf) {
+  visibility: hidden;
+}
+.home-fighter-art.is-ready :is(.fighter-character, .fighter-scarf),
+.home-fighter-art.is-ready :is(.fighter-character, .fighter-scarf) * {
+  animation-play-state: paused !important;
+}
 .home-fighter-art .ta-back {
   opacity: 0.55;
 }

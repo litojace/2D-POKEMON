@@ -11,22 +11,29 @@ import { SKINS } from "./animation/cosmetics";
 import { drawCollectionAura } from "./skins/collection-fx";
 import type { AnimationPose } from "./animation/controller";
 import type { SkinLook } from "./creature-design";
-import { SHOP_PREVIEW, previewZoom } from "./shop-preview-layout";
+import { HOME_PREVIEW, SHOP_PREVIEW, previewZoom } from "./shop-preview-layout";
 
 export interface ShopPreviewHandle {
   (): void;
   update(panel: HTMLElement): void;
+  suspend(value: boolean): void;
 }
 
-/** One silent renderer per Shop visit. Keep decoded textures when browsing. */
-export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
+/** Shared idle rig for Shop and Home. Keep decoded textures when browsing. */
+export function mountShopPreview(
+  initialPanel: HTMLElement,
+  placement: "shop" | "home" = "shop",
+): ShopPreviewHandle {
+  const home = placement === "home";
+  const framing = home ? HOME_PREVIEW : SHOP_PREVIEW;
+  let suspended = false;
   let panel: HTMLElement;
   let host: HTMLElement;
   let champion: CharacterId;
   let id: string;
   let worn: SkinLook | null;
   let piece: { slot: string } | undefined;
-  let look = {};
+  let look: NonNullable<AnimationPose["look"]> = {};
   let action: string;
   let originalLabel: string;
   let compare: HTMLButtonElement | null;
@@ -58,7 +65,7 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
     selectionTask = undefined;
   };
   // Bounded to eight complete looks, including originals. No catalog-sized
-  // texture cache, and all of it is released when the Shop closes.
+  // texture cache, and all of it is released when the preview is disposed.
   const cached = new Map<string, RigAsset[]>();
   const assets = (skin: SkinLook | null) => {
     const key = champion + skinSuffix(champion, skin);
@@ -76,6 +83,7 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
     if (!game?.isRunning || disposed) return;
     const running =
       visible &&
+      !suspended &&
       !document.hidden &&
       !portraitCover.matches &&
       !failedSelection &&
@@ -128,7 +136,10 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
     cancelSelection();
     panel = next;
     observer.disconnect();
-    host = panel.querySelector<HTMLElement>(".shop-live-stage")!;
+    host = panel.querySelector<HTMLElement>(
+      home ? ".home-fighter-art" : ".shop-live-stage",
+    )!;
+    host.classList.remove("is-ready");
     observer.observe(host);
     visible = true;
     champion = host.dataset.previewChampion as CharacterId;
@@ -137,7 +148,11 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
       ? { skin: id, stage: Number(host.dataset.previewStage) }
       : null;
     piece = LOOK_ITEM_BY_ID[id] ?? JOURNEY_ITEM_BY_ID[id];
-    look = piece ? { [piece.slot]: id } : {};
+    look = home
+      ? JSON.parse(decodeURIComponent(host.dataset.previewLook ?? "%7B%7D"))
+      : piece
+        ? { [piece.slot]: id }
+        : {};
     action = host.dataset.previewAction!;
     originalLabel = host.getAttribute("aria-label")!;
     compare = panel.querySelector<HTMLButtonElement>("[data-preview-compare]");
@@ -197,7 +212,10 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
       if (disposed) return;
       scene = this;
       this.floor = this.add.graphics().setDepth(0);
-      this.aura = this.add.graphics().setDepth(1).setScale(1.5);
+      this.aura = this.add
+        .graphics()
+        .setDepth(1)
+        .setScale(framing.scale / 1.2);
       this.game.canvas.setAttribute("aria-hidden", "true");
       // Selection may have changed while Phaser was booting.
       if (host.classList.contains("is-frame")) this.game.canvas.remove();
@@ -242,10 +260,12 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
           return;
         }
         this.floor.clear();
-        this.floor.fillStyle(0x040d20, 0.4).fillEllipse(200, 207, 160, 40);
-        this.floor
-          .lineStyle(1, CHARACTERS[champion].color, 0.3)
-          .strokeEllipse(200, 207, 180, 48);
+        if (!home) {
+          this.floor.fillStyle(0x040d20, 0.4).fillEllipse(200, 207, 160, 40);
+          this.floor
+            .lineStyle(1, CHARACTERS[champion].color, 0.3)
+            .strokeEllipse(200, 207, 180, 48);
+        }
         rig = new FighterRig(this, champion, layers);
         ready = true;
         dirty = true;
@@ -273,6 +293,7 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
         !ready ||
         disposed ||
         !visible ||
+        suspended ||
         document.hidden ||
         portraitCover.matches ||
         (paused && !dirty)
@@ -285,7 +306,7 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
         cycle = nextCycle;
       }
       const t = (clock % 4400) / 1000;
-      const { x, y } = SHOP_PREVIEW;
+      const { x, y } = framing;
       const pose: AnimationPose = {
         hp: 100,
         speed: 0,
@@ -300,18 +321,20 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
       };
       this.cameras.main
         .setZoom(previewZoom(action))
-        .centerOn(SHOP_PREVIEW.x, SHOP_PREVIEW.cameraY);
+        .centerOn(framing.x, framing.cameraY);
       this.aura.clear();
-      if (piece?.slot === "aura")
+      const auraId = home ? look.aura : piece?.slot === "aura" ? id : null;
+      const auraScale = framing.scale / 1.2;
+      if (auraId)
         drawCollectionAura(
           this.aura,
-          id,
-          x / 1.5,
-          (y + 38) / 1.5,
+          auraId,
+          x / auraScale,
+          (y + (home ? 21 * framing.scale : 38)) / auraScale,
           clock,
           paused,
         );
-      rig.root.setScale(SHOP_PREVIEW.scale);
+      rig.root.setScale(framing.scale);
       rig.render(pose, x, y, clock, 1, paused && motion.matches);
       if (!drawn) {
         drawn = true;
@@ -337,8 +360,8 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
     game = new Phaser.Game({
       type: Phaser.CANVAS,
       parent: host!,
-      width: SHOP_PREVIEW.width,
-      height: SHOP_PREVIEW.height,
+      width: framing.width,
+      height: framing.height,
       transparent: true,
       banner: false,
       audio: { noAudio: true },
@@ -362,7 +385,13 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
       if (game?.isRunning && !game.loop.running) game.loop.wake();
       cached.clear();
     },
-    { update: updatePanel },
+    {
+      update: updatePanel,
+      suspend(value: boolean) {
+        suspended = value;
+        syncLoop();
+      },
+    },
   );
   return dispose;
 }
