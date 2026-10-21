@@ -68,3 +68,14 @@ Phase 3 desktop review: tightened portrait spacing, fixed explicit navigation/se
 Review snapshots are generated from the existing simulation and supplied only by an external browser harness; no fixture or authentication bypass ships in the client. Previews: [desktop match HUD](redesign-phase4-desktop.png), [landscape phone team HUD](redesign-phase4-mobile.png).
 
 Stopped after Phase 4. Results, shop/dialog redesign and later phases remain for a separate review.
+
+## Desktop review — arena space and fighter details
+
+- Removed the desktop battle width cap and inherited viewport-wide side padding. The court grows to the available width or height while keeping its proportions, HUD anchors and input mapping. At 2234×1274, the practice court grows from approximately 1377px to 2053px wide.
+- Moved desktop Practice settings into a compact bottom-left control. Its scrollable popover keeps every setting and exit action reachable without reserving a row above the arena or resizing it when opened.
+- Aligned roster cards into consistent name, element, role, portrait, skills and footer rows. HP and selection have dedicated labels; changing selection no longer overwrites a mastery badge or leaves another card displaying “Selected.” Earned mastery badges retain their own row.
+- Desktop previews show the overview followed immediately by all four skills and the combo. Compact screens retain the section buttons; resizing between layouts preserves the selected section and keeps both desktop sections visible.
+- Typecheck, all 854 tests, the production client build and PWA verification pass. Changed files pass Prettier; the full formatting check still reports the same 76 pre-existing failures in untouched files.
+- Browser review covers practice, duel, teams and raids at 2234×1274, 1920×1080, 1280×720, 1024×600, 2560×1080 and 844×390. Checks cover maximized desktop court bounds, unchanged arena size when Practice opens, card alignment, repeated selection, desktop/phone preview switching and viewport overflow. Additional lobby checks use mixed earned mastery tiers and verify pinned actions, controller scrolling and safe areas.
+
+Updated previews: [expanded desktop arena](redesign-arena-expanded.png), [desktop overview and skills](redesign-roster-aligned.png). Review data remains confined to the external browser harness. This is a follow-up to Phases 3–4; later phases are unchanged.

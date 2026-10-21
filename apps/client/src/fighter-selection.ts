@@ -90,7 +90,7 @@ export function fighterSelection(selected: CharacterId, element = "All") {
     .filter((c) => element === "All" || c.element === element)
     .map(
       (c) =>
-        `<button class="creature-card showcase-card ${selected === c.id ? "selected" : ""}" style="--element:${hex(c.color)}" data-character="${c.id}" aria-pressed="${selected === c.id}"><span class="card-head"><strong>${c.name}</strong><span class="element-pill">${elementIcon(c.element)}${c.element}</span></span><small class="card-role">${rangeTag(c.id)}<span>${c.role}</span></small><span class="card-art">${masteryRing(c.id)}${art(c.id, false, selected === c.id)}${placeholderBadge(c.id)}</span><span class="card-skills">${c.skills.map((a, i) => `<span title="${a.name} (${i === ULT_SLOT ? "ultimate" : `${a.cooldown}s`}): ${a.description}">${abilityIcon(a.name)}<i>${i === ULT_SLOT ? "ULT" : `${a.cooldown}s`}</i></span>`).join("")}</span><span class="card-bottom">${c.health} HP${masteryBadge(c.id)}<span>${selected === c.id ? "✓ Selected" : "Select"}</span></span></button>`,
+        `<button class="creature-card showcase-card ${selected === c.id ? "selected" : ""}" style="--element:${hex(c.color)}" data-character="${c.id}" aria-pressed="${selected === c.id}"><span class="card-head"><strong>${c.name}</strong><span class="element-pill">${elementIcon(c.element)}${c.element}</span></span><small class="card-role">${rangeTag(c.id)}<span>${c.role}</span></small><span class="card-art">${masteryRing(c.id)}${art(c.id, false, selected === c.id)}${placeholderBadge(c.id)}</span><span class="card-skills">${c.skills.map((a, i) => `<span title="${a.name} (${i === ULT_SLOT ? "ultimate" : `${a.cooldown}s`}): ${a.description}">${abilityIcon(a.name)}<i>${i === ULT_SLOT ? "ULT" : `${a.cooldown}s`}</i></span>`).join("")}</span><span class="card-bottom"><span class="card-health">${c.health} HP</span>${masteryBadge(c.id)}<span class="card-selection-label">${selected === c.id ? "✓ Selected" : "Select"}</span></span></button>`,
     );
   const skills = fighter.skills
     .map(
@@ -137,7 +137,7 @@ export function updateRosterSelection(
     const on = card.dataset.character === selected;
     card.classList.toggle("selected", on);
     card.setAttribute("aria-pressed", String(on));
-    const label = card.querySelector(".card-bottom > span");
+    const label = card.querySelector(".card-selection-label");
     if (label) label.textContent = on ? "✓ Selected" : "Select";
     // Only the selected card wears its trait aura.
     const artwork = card.querySelector(".card-art"),
@@ -243,6 +243,7 @@ export function placeFighterDetail(root: ParentNode) {
   if (!roster || !detail) return;
   const preview = root.querySelector<HTMLElement>(".fighter-preview-slot");
   if (preview) {
+    showFighterSection(detail, detail.dataset.preview ?? "overview");
     if (detail.parentElement !== preview) preview.append(detail);
     return;
   }
@@ -261,8 +262,12 @@ export function placeFighterDetail(root: ParentNode) {
 function showFighterSection(detail: HTMLElement, section: string) {
   detail.dataset.preview = section;
   const skills = section === "skills";
-  detail.querySelector<HTMLElement>(".selected-fighter")!.hidden = skills;
-  detail.querySelector<HTMLElement>(".skill-preview")!.hidden = !skills;
+  const expanded = matchMedia("(min-width: 1001px)").matches;
+  detail.querySelector<HTMLElement>(".fighter-preview-tabs")!.hidden = expanded;
+  detail.querySelector<HTMLElement>(".selected-fighter")!.hidden =
+    !expanded && skills;
+  detail.querySelector<HTMLElement>(".skill-preview")!.hidden =
+    !expanded && !skills;
   for (const button of Array.from(
     detail.querySelectorAll<HTMLElement>("[data-fighter-preview]"),
   ))
