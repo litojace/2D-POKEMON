@@ -163,3 +163,14 @@ Updated previews: [larger desktop avatars and names](redesign-roster-compact.png
 - Typecheck, all 854 tests, the client production build and PWA verification pass. Changed files pass Prettier; the full formatting check retains 75 existing failures in untouched files. No server, shared package, database, networking or gameplay changes.
 
 Updated previews: [desktop animated fighter details](redesign-roster-compact.png), [landscape-phone fighter details](redesign-mobile-avatars.png), [private lobby](redesign-mobile-lobby.png).
+
+## Fighter selection review — give information more width
+
+- Narrowed the two-column fighter grid to approximately 36% of the selection area, with width limits that keep all eight avatar/name cards readable and visible. The detail panel grows from approximately 546px to 746px at 1280×720; at 1920×1080 the roster is capped at 460px so the information can use the extra width.
+- Wider detail panels show skills in a two-column grid, with aligned key labels, icons, descriptions and cooldowns. Tightened overview spacing and portrait height in these panels. Stats use columns that can shrink safely and descriptions wrap within their pane; all existing text, skills, combo and shared-control instructions remain reachable.
+- Landscape phones use a smaller bounded roster and a wider detail pane. Where the pane has enough width, the portrait sits beside the entire introduction/properties group. At 844×390, the home detail pane grows from roughly 360px to 483px; the private-lobby pane grows from roughly 272px to 517px. Very narrow phones retain the stacked information layout inside the right pane.
+- Extended the existing “Room & ready” disclosure to all compact landscape layouts up to 1000px, freeing the width previously reserved for a third column. The pop-up keeps room information scrollable and its actions pinned. Desktop retains the room sidebar; resizing, keyboard, controller and touch keep every control reachable.
+- Reviewed card contents, avatar/name alignment and safe areas at nine desktop/landscape sizes. Additional browser checks cover all eight animated selections and duel, teams, FFA and raid rooms at 1280×720, 1920×1080, 844×390 and 568×320, plus skill icon/text bounds, caption/canvas alignment, all Mythical stage-three skins, rapid selection, room controls, controller scrolling and reduced motion.
+- Typecheck, all 854 tests, client build and PWA verification pass. Changed files pass Prettier; the full formatting check retains the 75 pre-existing failures in untouched files. Only client presentation and review documentation changed.
+
+Updated previews: [wider desktop information panel](redesign-roster-compact.png), [landscape phone selection](redesign-mobile-avatars.png), [landscape private lobby](redesign-mobile-lobby.png).

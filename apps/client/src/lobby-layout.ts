@@ -2,7 +2,7 @@ import { iconLabel } from "./menu-icons";
 
 let releaseRoomDrawer: (() => void) | undefined;
 
-/** On narrow phones the room stays reachable without squeezing fighter details. */
+/** Phone room controls stay reachable without squeezing fighter details. */
 function placeRoomDrawer(panel: HTMLElement) {
   if (panel.closest(".lobby-room-drawer")) return;
   const layout = panel.parentElement;
@@ -20,7 +20,9 @@ function placeRoomDrawer(panel: HTMLElement) {
   summary.setAttribute("aria-controls", panel.id);
   drawer.append(summary);
   panel.before(drawer);
-  const compact = matchMedia("(max-width: 740px) and (orientation: landscape)");
+  const compact = matchMedia(
+    "(max-width: 1000px) and (orientation: landscape)",
+  );
   const events = new AbortController();
   const close = () => {
     drawer.open = false;

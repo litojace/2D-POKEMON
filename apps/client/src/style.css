@@ -19997,6 +19997,53 @@ body.battle-active .ability.ult-ready,
 }
 
 /* All fighters stay visible; only the selected fighter animates in the detail pane. */
+#menu .selection-layout,
+body.lobby-active #menu .roster-panel {
+  grid-template-columns: clamp(300px, 36%, 460px) minmax(0, 1fr);
+}
+.fighter-preview-slot {
+  container-name: fighter-information;
+}
+.fighter-preview-slot .selected-info,
+.fighter-preview-slot .basic-text {
+  min-width: 0;
+}
+.fighter-preview-slot .fighter-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@container fighter-information (min-width: 560px) {
+  #menu .fighter-preview-slot .selected-art > :is(svg, .creature-portrait) {
+    height: 200px;
+    max-height: 200px;
+  }
+  .fighter-preview-slot .selected-info p {
+    margin: 6px 0;
+  }
+  .fighter-preview-slot .fighter-stats {
+    margin: 8px 0;
+  }
+  .fighter-preview-slot .preview-skills {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .fighter-preview-slot .preview-skills > div {
+    grid-template-columns: 24px 24px minmax(0, 1fr) 30px;
+    align-items: start;
+    gap: 8px;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+  }
+  .fighter-preview-slot .preview-skills > div > kbd {
+    width: 24px;
+    height: 28px;
+    font-size: 11px;
+  }
+  .fighter-preview-slot .preview-skills > div > .skill-icon {
+    width: 24px;
+    height: 24px;
+  }
+}
 #menu .roster-panel:has(.selection-layout) {
   grid-template-rows: minmax(0, 1fr);
   gap: 0;
@@ -20110,6 +20157,10 @@ body.lobby-active #menu .fighter-preview-slot {
   display: none;
 }
 @media (max-width: 1000px) and (orientation: landscape) {
+  #menu .selection-layout {
+    grid-template-columns: clamp(188px, 36%, 320px) minmax(0, 1fr);
+    gap: 10px;
+  }
   #menu .selection-layout .showcase-roster {
     gap: 4px;
     padding: 0;
@@ -20304,12 +20355,35 @@ body.lobby-active #menu .fighter-preview-slot {
 /* Only genuinely narrow tiles need small type; roomy phone drawers scale up. */
 @container fighter-tile (max-width: 140px) {
   #menu .selection-layout .showcase-card .card-head strong {
-    font-size: clamp(13px, 12cqi, 18px);
+    font-size: clamp(13px, 14cqi, 18px);
   }
   #menu .selection-layout .showcase-card .element-pill {
     font-size: 9px;
     padding: 1px 3px;
     gap: 2px;
+  }
+}
+@container fighter-tile (max-width: 90px) {
+  #menu .selection-layout .showcase-card .card-art {
+    width: min(28cqi, 76cqb, 112px);
+    height: min(28cqi, 76cqb, 112px);
+  }
+}
+@media (max-width: 1000px) and (orientation: landscape) {
+  @container fighter-information (min-width: 380px) {
+    #menu .fighter-preview-slot .selected-fighter {
+      grid-template-columns: 112px minmax(0, 1fr);
+      gap: 12px;
+    }
+    #menu .fighter-preview-slot .selected-info {
+      display: block;
+      grid-column: 2;
+      grid-row: 1;
+    }
+    #menu .fighter-preview-slot .selected-art {
+      grid-row: 1;
+      align-self: center;
+    }
   }
 }
 @media (max-width: 740px) and (max-height: 360px) and (orientation: landscape) {
@@ -20319,14 +20393,14 @@ body.lobby-active #menu .fighter-preview-slot {
   }
 }
 
-/* A room disclosure leaves both fighter panels usable on the smallest phones. */
-@media (max-width: 740px) and (orientation: landscape) {
+/* Phone room controls leave the main width for fighter information. */
+@media (max-width: 1000px) and (orientation: landscape) {
   body.lobby-active #menu .lobby-layout {
     position: relative;
     grid-template-columns: minmax(0, 1fr);
   }
   body.lobby-active #menu .roster-panel {
-    grid-template-columns: minmax(0, 1fr) minmax(200px, 1fr);
+    grid-template-columns: clamp(188px, 36%, 320px) minmax(0, 1fr);
     column-gap: 10px;
   }
   body.lobby-active #menu .selection-layout {
