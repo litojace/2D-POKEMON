@@ -1,3 +1,5 @@
+import { levelBar } from "./adventure-ui";
+import type { Journey } from "../../../packages/shared/src/journey";
 import {
   CHARACTERS,
   FIGHTER_IDS,
@@ -57,7 +59,7 @@ export function ranksHelpMarkup() {
   return `<details class="ranks-help"><summary>How ranks work</summary><ul><li>Everyone starts at a <b>1000</b> rating. Your first ${PLACEMENT_MATCHES} matches against other players are placement matches: your rating moves faster and you show as Unranked.</li><li>Win and you gain rating; lose and you drop. Beating a stronger player earns more (up to about +20), beating a much weaker one very little. In 2v2 your team's average rating is compared with theirs; in a free-for-all, you're compared with each opponent by final standings.</li><li>Only confirmed matches against other players count: bot matches and matches someone quit don't change ratings.</li><li>Reaching a rank gives you its title to keep, even if your rating drops later. Equip it from your profile.</li><li>Each month, everyone's rating moves a quarter of the way back towards 1000, so a new season is a fresh race. Titles you've earned stay.</li></ul><ol class="rank-ladder">${rows}</ol></details>`;
 }
 /** Totals, this season, achievements and fighter mastery for the profile. */
-export function progressMarkup(progress: Progress) {
+export function progressMarkup(progress: Progress, journey?: Journey) {
   const rate = progress.matches
     ? Math.round((100 * progress.wins) / progress.matches)
     : 0;
@@ -78,7 +80,7 @@ export function progressMarkup(progress: Progress) {
       return `<li style="--element:${color}${tier ? `;--tier:${tier.color}` : ""}" class="${tier ? "ranked" : ""}"><b>${CHARACTERS[id].name}</b><span>${tier ? `${tier.name} · ` : ""}${record.matches} played · ${record.wins} won</span><small>${next ? `${next.left} more for ${next.name}` : "Top tier"}</small></li>`;
     },
   ).join("")}</ul>`;
-  return ratingMarkup(progress.rating) + totals + achievements + mastery;
+  return (journey ? levelBar(journey) + '<p><button class="secondary" id="profile-adventure">Player levels & seasonal rewards →</button></p>' : "") + ratingMarkup(progress.rating) + totals + achievements + mastery;
 }
 
 /** The leaderboard: ranked players by rating, with this month's record. */

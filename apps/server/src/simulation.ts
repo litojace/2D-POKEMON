@@ -71,6 +71,11 @@ const FFA_SPAWNS = [
 /** Seconds between overtime / closing-ring damage ticks. */
 const DRAIN_INTERVAL = 0.5;
 export class Arena {
+  activityStatus?: "saving" | "saved" | "unavailable";
+  activityEligible?: string[];
+  arcade?: import("../../../packages/shared/src/arcade.js").ArcadeState;
+  readonly engaged = new Set<string>();
+  get crownZone() { return CROWN; }
   practice: Snapshot["practice"] = null;
   /** AI opponents in this room, by fighter id (solo vs bot). */
   bots = new Map<string, BotBrain>();
@@ -319,6 +324,9 @@ export class Arena {
     this.roundLog = [];
     this.matchId = null;
     this.playTime = 0;
+    this.activityStatus = undefined;
+    this.activityEligible = undefined;
+    this.engaged.clear();
     for (const p of this.players) {
       p.stats = emptyStats();
       p.ult = 0;
@@ -411,6 +419,7 @@ export class Arena {
   submit(p: Fighter, input: Input) {
     if (this.phase !== "playing" || input.seq <= p.ack) return;
     p.ack = input.seq;
+    if (input.dx || input.dy || input.basic || input.skill >= 0 || input.dash || input.jump) this.engaged.add(p.id);
     p.lastInput = {
       ...input,
       basic: input.basic || p.lastInput.basic,
@@ -1220,13 +1229,13 @@ export class Arena {
     if (this.rule("crown")) {
       const inside = this.sides.filter((t) =>
         this.standing(t).some(
-          (p) => Math.hypot(p.x - CROWN.x, p.y - CROWN.y) < CROWN.radius,
+          (p) => Math.hypot(p.x - this.crownZone.x, p.y - this.crownZone.y) < this.crownZone.radius,
         ),
       );
       if (inside.length === 1) {
         const t = inside[0];
         this.crown[t] = (this.crown[t] ?? 0) + dt;
-        if (this.crown[t] >= CROWN.holdSeconds) {
+        if (this.crown[t] >= this.crownZone.holdSeconds) {
           this.endRound(t);
           return;
         }
@@ -1429,6 +1438,9 @@ export class Arena {
   }
   snapshot(pauseRemaining = 0): Snapshot {
     return {
+      activityStatus: this.activityStatus,
+      activityEligible: this.activityEligible,
+      arcade: this.arcade,
       instructionsReady: this.instructionsReady,
       practice: this.practice,
       vsBot: [...this.bots.values()][0]?.difficulty ?? null,

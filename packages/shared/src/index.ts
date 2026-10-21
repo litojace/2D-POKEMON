@@ -1338,6 +1338,9 @@ export type Phase =
   | "paused"
   | "finished";
 export interface Snapshot {
+  activityStatus?: "saving" | "saved" | "unavailable";
+  activityEligible?: string[];
+  arcade?: import("./arcade.js").ArcadeState;
   raid?: RaidState;
   /** Somnara: sent only to this player; absent from public/spectator snapshots. */
   raidDream?: import("./raid-somnara.js").RaidDreamView;

@@ -19,7 +19,7 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
   if (back) toolbar.append(back);
   toolbar.append(close);
   const tabs = content.querySelector<HTMLElement>(
-    ".raid-hub-tabs, .shop-tabs, .admin-tabs",
+    ".raid-hub-tabs, .shop-tabs, .admin-tabs, .adventure-tabs",
   );
   if (tabs) tabs.classList.add("dialog-tabs");
   dialog.classList.toggle("has-dialog-tabs", !!tabs);
@@ -42,6 +42,7 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
   const actions = content.querySelectorAll<HTMLElement>(
     [
       ".dialog-actions",
+      ".adventure-actions",
       ".fullscreen-actions",
       ".settings-actions",
       ".missions-shop",
@@ -57,6 +58,7 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
       "#profile-title > button",
       "#profile-leaderboard",
       "#profile-raids",
+      "#profile-adventure",
       "#friend-add > button",
       "#report-form > button[type=submit]",
     ].join(","),

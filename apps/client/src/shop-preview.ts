@@ -1,3 +1,4 @@
+import { JOURNEY_ITEM_BY_ID } from "../../../packages/shared/src/journey";
 import Phaser from "phaser";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import {
@@ -24,7 +25,7 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
   let champion: CharacterId;
   let id: string;
   let worn: SkinLook | null;
-  let piece: (typeof LOOK_ITEM_BY_ID)[string] | undefined;
+  let piece: { slot: string } | undefined;
   let look = {};
   let action: string;
   let originalLabel: string;
@@ -135,7 +136,7 @@ export function mountShopPreview(initialPanel: HTMLElement): ShopPreviewHandle {
     worn = CHAMPION_SKIN_BY_ID[id]
       ? { skin: id, stage: Number(host.dataset.previewStage) }
       : null;
-    piece = LOOK_ITEM_BY_ID[id];
+    piece = LOOK_ITEM_BY_ID[id] ?? JOURNEY_ITEM_BY_ID[id];
     look = piece ? { [piece.slot]: id } : {};
     action = host.dataset.previewAction!;
     originalLabel = host.getAttribute("aria-label")!;

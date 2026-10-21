@@ -1,3 +1,4 @@
+import { JOURNEY_ITEM_BY_ID } from "../../../../packages/shared/src/journey";
 import type Phaser from "phaser";
 import type { FxParticle } from "./skin-fx";
 import { sparkle } from "./skin-fx";
@@ -19,6 +20,17 @@ export function drawCollectionAura(g: G, id: string, x: number, y: number, now: 
       draw(x + Math.cos(a) * rx, y + Math.sin(a) * ry, i, a);
     }
   };
+  const journey=JOURNEY_ITEM_BY_ID[id];
+  if (journey?.slot === 'aura') {
+    const color=parseInt(journey.color.slice(1),16), accent=parseInt(journey.accent.slice(1),16);
+    g.lineStyle(1.6,color,.7).strokeEllipse(x,y,102,42);
+    g.lineStyle(1,accent,.4).strokeEllipse(x,y,114,48);
+    ring(id==='astral-aura'?8:6,49,20,6200,(px,py,i)=>{
+      const c=i%2?color:accent;
+      g.fillStyle(c,.9).fillTriangle(px,py-5,px+3,py,px,py+5).fillTriangle(px,py-5,px-3,py,px,py+5);
+    });
+    return true;
+  }
   switch (id) {
     case "candy-aura": {
       const colors = [0xff6fa8, 0x6fd6ff, 0xffd65b, 0x8fe06a, 0xc89aff];
@@ -128,6 +140,10 @@ export function playCollectionEntrance(emit: Emit, id: string, x: number, y: num
       emit({ x: x, y: y, ...p } as FxParticle);
     }
   };
+  if (id==='comet-arrival') {
+    burst(18,i=>({x:x+(i-9)*3*sc,y:y-60*sc,vx:(i-9)*9,vy:-40+Math.abs(i-9)*10,life:.7+(i%3)*.15,size:(i%4===0?5:2)*sc,color:i%2?0xffd991:0x9ff3d8,shape:'star',spin:i%2?2:-2}));
+    return true;
+  }
   switch (id) {
     case "candy-entrance": {
       // The gift box bursts open: its lid flies off in a shower of confetti.
@@ -243,6 +259,20 @@ export function drawCollectionVictory(
 ) {
   if (t > 3) return false;
   const fade = t > 2.4 ? Math.max(0, 1 - (t - 2.4) / 0.6) : 1;
+  const journey=JOURNEY_ITEM_BY_ID[id];
+  if (journey?.slot==='victory') {
+    const color=parseInt(journey.color.slice(1),16), accent=parseInt(journey.accent.slice(1),16);
+    for(let i=0;i<3;i++) {
+      const k=Math.max(0,Math.min(1,(t-i*.25)/.65));
+      if(t<i*.25)continue;
+      const sx=x+(i-1)*48*sc, sy=y-100*sc+k*82*sc;
+      g.lineStyle(3*sc,i%2?color:accent,.55*fade).lineBetween(sx+24*sc,sy-50*sc,sx,sy);
+      sparkle(g,sx,sy,5*sc,i%2?color:accent,fade);
+      if(k===1)under.lineStyle(2*sc,color,(1-Math.min(1,(t-i*.25-.65)/1.2))*fade).strokeEllipse(sx,y+8*sc,42*sc,16*sc);
+    }
+    if(first)for(let i=0;i<12;i++)emit({x,y:y-40*sc,vx:(i-5.5)*18,vy:-70-Math.random()*40,life:1,size:2.5*sc,color:i%2?color:accent,shape:'star'});
+    return true;
+  }
   switch (id) {
     case "candy-victory": {
       // A layered cake rises behind, then bursts into confetti.

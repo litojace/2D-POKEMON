@@ -314,6 +314,10 @@ export interface ActivityPlayer {
   skillUses: number;
   ults: number;
   activeSeconds: number;
+  participated?: boolean;
+  abandoned?: boolean;
+  arcade?: string;
+  expedition?: { completed: number };
   /** Equipped champion skin (for Awakening). */
   skin?: string | null;
   raid?: {
@@ -323,11 +327,12 @@ export interface ActivityPlayer {
     flawless: boolean;
     feat: boolean;
     revives: number;
+    phaseReached?: number;
   };
 }
 export interface ActivityReceipt {
   id: string;
-  kind: "match" | "raid";
+  kind: "match" | "raid" | "expedition";
   /** Pacific calendar day (YYYY-MM-DD). */
   day: string;
   players: ActivityPlayer[];
@@ -342,6 +347,7 @@ export interface ChampionLook {
 
 /** The player's shop state (migration 010's arena_economy()). */
 export interface Economy {
+  journey?: import("./journey.js").Journey;
   balance: number;
   /** Database-verified administrator: purchases do not spend coins. */
   unlimitedCoins?: boolean;

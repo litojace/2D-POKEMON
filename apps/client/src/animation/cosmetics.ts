@@ -22,7 +22,12 @@ export type Skin =
   | "ember-colors"
   | "cinderplume"
   | "static-colors"
-  | "thundercell";
+  | "thundercell"
+  | "aurora-colors"
+  | "season-aurora-colors"
+  | "season-ember-colors"
+  | "season-tide-colors"
+  | "season-astral-colors";
 export const SKINS: Skin[] = [
   "cragbound",
   "cragstone",
@@ -44,6 +49,11 @@ export const SKINS: Skin[] = [
   "cinderplume",
   "static-colors",
   "thundercell",
+  "aurora-colors",
+  "season-aurora-colors",
+  "season-ember-colors",
+  "season-tide-colors",
+  "season-astral-colors",
 ];
 const hexRgb = (c: number) => [(c >> 16) & 255, (c >> 8) & 255, c & 255];
 /**
@@ -51,6 +61,12 @@ const hexRgb = (c: number) => [(c >> 16) & 255, (c >> 8) & 255, c & 255];
  * light), keeping a little of the original so each champion stays itself.
  */
 export const TONES: Partial<Record<Skin, { tones: [number, number, number]; keep: number }>> = {
+  "aurora-colors": { tones: [0x25364d,0x9ff3d8,0xe9f7d6], keep: .22 },
+  "season-aurora-colors": { tones: [0x25364d,0x9ff3d8,0xe2d5ff], keep: .22 },
+  "season-ember-colors": { tones: [0x422a38,0xffb980,0xfff0c1], keep: .22 },
+  "season-tide-colors": { tones: [0x20354d,0x86deff,0xe2fff5], keep: .22 },
+  "season-astral-colors": { tones: [0x302a50,0xd2b0ff,0xffe4f3], keep: .22 },
+
   "candy-colours": { tones: [0x9a5a9a, 0xff9ec8, 0xfff0f8], keep: 0.25 },
   "galaxy-colours": { tones: [0x0e0a2e, 0x4a3a9a, 0x9fd8ff], keep: 0.2 },
   "festival-colours": { tones: [0x5a0d12, 0xd8262a, 0xffd65b], keep: 0.2 },

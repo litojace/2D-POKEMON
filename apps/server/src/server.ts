@@ -1,3 +1,6 @@
+import { createExpedition, prepareExpedition, enterExpeditionCamp, chooseExpeditionCamp, advanceExpedition, restartExpedition, expeditionReceipt } from "./expedition.js";
+import { ArcadeArena } from "./arcade.js";
+import { arcadeWeek, ARCADE_IDS, type ArcadeId } from "../../../packages/shared/src/arcade.js";
 import { RaidArena } from "./raid.js";
 import { createRaidArena } from "./raid-bosses.js";
 import type { ActivityReceipt } from "../../../packages/shared/src/shop.js";
@@ -32,11 +35,13 @@ import {
   type BotDifficulty,
 } from "./bot.js";
 const botMatchSchema = identitySchema
-  .extend({ character: characterSchema, difficulty: z.enum(BOT_DIFFICULTIES) })
+  .extend({ character: characterSchema, difficulty: z.enum(BOT_DIFFICULTIES), arcade: z.enum(ARCADE_IDS as [ArcadeId, ...ArcadeId[]]).optional() })
   .strict();
 const createSchema = identitySchema
   .extend({
     mode: z.enum(["duel", "teams", "ffa", "raid"]).optional(),
+    arcade: z.enum(ARCADE_IDS as [ArcadeId, ...ArcadeId[]]).optional(),
+    expedition: z.boolean().optional(),
     // Only bosses that are built can be raided.
     boss: z
       .enum(RAID_BOSS_ORDER as [RaidBossId, ...RaidBossId[]])
@@ -329,26 +334,52 @@ export function createArenaServer(
   const raidSaves = new WeakMap<RaidArena,string>();
   /** The Shop skin a fighter is wearing for the champion in play. */
   const lookFor = (p: Fighter) => p.championLooks?.[p.character]?.skin ?? null;
-  function recordActivity(receipt: ActivityReceipt) {
-    if (!accounts.recordActivity || !receipt.players.length) return;
+  function recordActivity(receipt: ActivityReceipt, done?: (saved: boolean) => void, arena?: Arena) {
+    if (arena) {
+      const eligible = new Set(receipt.players.filter(p=>p.activeSeconds>=20&&!p.abandoned&&p.participated!==false&&(receipt.kind!=='match'||p.vsPeople||p.botLevel)).map(p=>p.accountId));
+      const owners = fighterAccounts.get(arena);
+      arena.activityEligible = arena.players.filter(p=>eligible.has(owners?.get(p.id)??'')).map(p=>p.id);
+    }
+    if (!accounts.recordActivity || !receipt.players.length) { done?.(false); return; }
     void accounts.recordActivity(receipt).then(() => {
+      done?.(true);
       // Wallets and missions changed: let those players' games refresh.
       for (const socket of io.sockets.sockets.values())
         if (receipt.players.some((p) => p.accountId === socket.data.account?.id))
           socket.emit("economy-changed");
-    }).catch((error) => console.error("Activity not stored:", error instanceof Error ? error.message : error));
+    }).catch((error) => { done?.(false); console.error("Activity not stored:", error instanceof Error ? error.message : error); });
+  }
+  function replaceRaidRoom(old: RaidArena, next: RaidArena) {
+    const owners = fighterAccounts.get(old);
+    if (owners) fighterAccounts.set(next, owners);
+    rooms.set(old.code, next);
+    return next;
+  }
+  function startArena(a: Arena) {
+    a.start();
+    if (a instanceof RaidArena) prepareExpedition(a);
   }
   function broadcast(arena: Arena) {
+    if (arena instanceof RaidArena && arena.raid.expedition) {
+      enterExpeditionCamp(arena);
+      const receipt = expeditionReceipt(arena, fighterAccounts.get(arena));
+      if (receipt) recordActivity(receipt, saved => {
+        const e = arena.raid.expedition!;
+        e.saved = saved ? 'saved' : 'unavailable';
+        if (rooms.get(arena.code) === arena) broadcast(arena);
+      },arena);
+    }
     // Wins and real attempts (not practice, not instant quits) are saved:
     // losses still count towards titles and tell us which attacks are unfair.
-    if(arena instanceof RaidArena && arena.raid.result && !arena.raid.drill && (arena.raid.result==='victory'||arena.raid.elapsed>=20) && arena.raid.resultId && raidSaves.get(arena)!==arena.raid.resultId) {
+    if(arena instanceof RaidArena && !arena.raid.expedition && arena.raid.result && !arena.raid.drill && (arena.raid.result==='victory'||arena.raid.elapsed>=20) && arena.raid.resultId && raidSaves.get(arena)!==arena.raid.resultId) {
       raidSaves.set(arena,arena.raid.resultId);
       const runId=arena.raid.resultId, r=arena.raid;
       const owners=fighterAccounts.get(arena);
       const players=arena.heroes().map(p=>{const c=r.contributions?.[p.id];return {accountId:owners?.get(p.id)??'',character:p.character,damage:Math.round(c?.damage??0),revives:c?.revives??0,pillars:c?.pillars??0,downs:c?.downs??0};}).filter(p=>p.accountId);
       const receipt:RaidReceipt={id:runId,boss:r.boss,peril:r.peril,trait:r.trait,gilded:r.gilded,weekly:false,week:raidWeek(new Date(`${r.day}T12:00:00Z`)),daily:r.daily,day:r.day,feat:arena.feat(),seed:r.seed,partySize:r.partySize,seconds:Math.max(0.001,Math.round(r.elapsed*1000)/1000),downs:r.downs,revives:r.revives,result:r.result??undefined,phaseReached:r.phase,downCauses:{...arena.downCauses},players};
       r.rewardStatus='saving';
-      recordActivity({id:`raid:${runId}`,kind:'raid',day:r.day,players:arena.heroes().filter(p=>owners?.get(p.id)).map(p=>{const c=r.contributions?.[p.id];return {accountId:owners!.get(p.id)!,character:p.character,won:r.result==='victory',vsPeople:false,botLevel:null,mode:'raid',knockedOut:(c?.downs??0)>0,skillUses:p.stats.skills,ults:p.stats.ults??0,activeSeconds:r.elapsed,skin:lookFor(p),raid:{cleared:r.result==='victory',daily:r.daily,peril:r.peril,flawless:r.downs===0,feat:arena.feat(),revives:c?.revives??0}};})});
+      arena.activityStatus='saving';
+      recordActivity({id:`raid:${runId}`,kind:'raid',day:r.day,players:arena.heroes().filter(p=>owners?.get(p.id)).map(p=>{const c=r.contributions?.[p.id];return {accountId:owners!.get(p.id)!,character:p.character,won:r.result==='victory',vsPeople:false,botLevel:null,mode:'raid',knockedOut:(c?.downs??0)>0,skillUses:p.stats.skills,ults:p.stats.ults??0,activeSeconds:r.elapsed,skin:lookFor(p),raid:{cleared:r.result==='victory',daily:r.daily,peril:r.peril,flawless:r.downs===0,feat:arena.feat(),revives:c?.revives??0,phaseReached:r.phase},participated:arena.engaged.has(p.id)||p.stats.skills>0||p.stats.dealt>0||(c?.revives??0)>0,abandoned:p.out};})}, saved => {if(arena.raid.resultId!==runId)return;arena.activityStatus=saved?'saved':'unavailable';broadcast(arena);},arena);
       void (accounts.recordRaid ? accounts.recordRaid(receipt) : Promise.reject(new Error('Raid rewards need server storage configuration.'))).then(()=>{
         if(arena.raid.resultId!==runId)return;
         r.rewardStatus='saved';for(const socket of io.sockets.sockets.values())if(players.some(p=>p.accountId===socket.data.account?.id))socket.emit('account-changed');broadcast(arena);
@@ -360,7 +391,7 @@ export function createArenaServer(
       const matchId: string = randomUUID();
       arena.matchId = matchId;
       const owners = fighterAccounts.get(arena);
-      ledger.add(
+      if (!arena.arcade) ledger.add(
         matchId,
         matchSummary(arena, (id) => owners?.get(id) ?? null),
       );
@@ -368,6 +399,7 @@ export function createArenaServer(
       const humans = arena.players.filter((p) => !arena.bots.has(p.id) && owners?.get(p.id));
       const vsPeople = humans.length >= 2 && arena.bots.size === 0;
       const botLevel = [...arena.bots.values()][0]?.difficulty ?? null;
+      arena.activityStatus = "saving";
       recordActivity({
         id: `match:${matchId}`,
         kind: "match",
@@ -386,9 +418,12 @@ export function createArenaServer(
           skillUses: p.stats.skills,
           ults: p.stats.ults ?? 0,
           activeSeconds: arena.playTime,
+          arcade: arena.arcade?.id,
+          participated: arena.engaged.has(p.id) || p.stats.skills > 0 || p.stats.dealt > 0,
+          abandoned: p.out || !p.connected,
           skin: lookFor(p),
         })),
-      });
+      }, saved => { if(arena.matchId!==matchId)return; arena.activityStatus=saved?"saved":"unavailable"; broadcast(arena); },arena);
     }
     let remaining = 0;
     if (arena.phase === "paused") {
@@ -651,7 +686,11 @@ export function createArenaServer(
           () => chars[randomInt(chars.length)],
         ).join("");
       } while (rooms.has(code));
-      const arena = result.data.mode === "raid" ? createRaidArena(code, result.data.boss) : new Arena(code, result.data.mode ?? "duel");
+      const weekly = arcadeWeek(raidDay().day);
+      if (result.data.arcade && (result.data.arcade !== weekly.id || !['duel','teams'].includes(result.data.mode ?? 'duel')))
+        return fail(cb, 'Choose this week’s arcade event in 1v1 or 2v2.');
+      if (result.data.expedition && (result.data.mode !== "raid" || result.data.arcade)) return fail(cb, "Boss Rush is a co-op raid expedition.");
+      const arena = result.data.mode === "raid" ? result.data.expedition ? createExpedition(code, raidDay().day) : createRaidArena(code, result.data.boss) : result.data.arcade ? new ArcadeArena(code, result.data.arcade, weekly.week, result.data.mode ?? 'duel') : new Arena(code, result.data.mode ?? "duel");
       arena.rotateArenas = true;
       rooms.set(code, arena);
       attach(arena, result.data.name, cb);
@@ -792,7 +831,9 @@ export function createArenaServer(
       do {
         code = randomBytes(12).toString("hex");
       } while (rooms.has(code));
-      const a = new Arena(code);
+      const weekly = arcadeWeek(raidDay().day);
+      if (result.data.arcade && result.data.arcade !== weekly.id) return fail(cb, 'The weekly arcade event has changed. Reopen the menu.');
+      const a = result.data.arcade ? new ArcadeArena(code, result.data.arcade, weekly.week) : new Arena(code);
       a.rotateArenas = true;
       rooms.set(code, a);
       attach(a, result.data.name, cb, false);
@@ -886,7 +927,7 @@ export function createArenaServer(
     socket.on('raid-config',async(data:unknown,cb:unknown)=>{
       if(!requirePlayer(cb)||!allowed(10))return;
       const s=getSession(socket.id),a=s&&rooms.get(s.code);
-      if(!(a instanceof RaidArena)||a.phase!=='lobby'||a.players[0]?.id!==s?.id)return fail(cb,'Only the raid host can change the challenge in the lobby.');
+      if(!(a instanceof RaidArena)||a.raid.expedition||a.phase!=='lobby'||a.players[0]?.id!==s?.id)return fail(cb,'Only the raid host can change the challenge in the lobby.');
       const result=z.object({peril:z.number().int().min(1).max(3),daily:z.boolean()}).strict().safeParse(data);
       if(!result.success)return fail(cb,'Choose a valid raid challenge.');
       const boss=a.raid.boss,today=raidDay();
@@ -923,13 +964,18 @@ export function createArenaServer(
     socket.on('raid-drill',(data:unknown,cb:unknown)=>
       withRoom(cb,(a,id)=>{
         const result=z.object({kind:z.enum(Object.keys(RAID_ATTACKS) as [RaidAttack,...RaidAttack[]]).nullable()}).strict().safeParse(data);
-        if(!(a instanceof RaidArena)||!result.success||(result.data.kind!==null&&!raidAttacksOf(a.raid.boss).includes(result.data.kind)))return fail(cb,'Choose an attack to practise.');
+        if(!(a instanceof RaidArena)||a.raid.expedition||!result.success||(result.data.kind!==null&&!raidAttacksOf(a.raid.boss).includes(result.data.kind)))return fail(cb,'Choose an attack to practise.');
         if(a.players[0]?.id!==id)return fail(cb,'The host picks the practice attack.');
         const kind=result.data.kind;
         const ok=kind===null?a.stopDrill():a.raid.drill?a.setDrill(kind):a.startDrill(kind);
         if(!ok)return fail(cb,'Practice opens from the raid lobby.');
         reply(cb,{ok:true});broadcast(a);
       }));
+    socket.on('expedition-choice', (data: unknown, cb: unknown) => withRoom(cb, (a,id) => {
+      const result = z.object({choice:z.enum(['rest','surge'])}).strict().safeParse(data);
+      if (!(a instanceof RaidArena) || !result.success || !chooseExpeditionCamp(a,id,result.data.choice)) return fail(cb,'Choose a camp option once between Boss Rush legs.');
+      reply(cb,{ok:true});broadcast(a);
+    }));
     socket.on("ready", (_data: unknown, cb: unknown) =>
       withRoom(cb, (a, id) => {
         if (a.phase !== "lobby")
@@ -943,7 +989,7 @@ export function createArenaServer(
             a.players.filter((p) => a.teamOf(p) === 0).length === half) &&
           a.players.every((p) => p.ready && p.connected)
         )
-          a.start();
+          startArena(a);
         reply(cb, { ok: true });
         broadcast(a);
       }),
@@ -1019,6 +1065,7 @@ export function createArenaServer(
           return fail(cb, "Party rules can only be changed in a room lobby.");
         if (a.players[0]?.id !== id)
           return fail(cb, "Only the room host can change the party rules.");
+        if (a.arcade) return fail(cb, "Weekly arcade rules are fixed for everyone.");
         const result = mutatorsSchema.safeParse(data);
         if (!result.success) return fail(cb, "Unknown party rule.");
         a.mutators = new Set(result.data.ids);
@@ -1055,6 +1102,12 @@ export function createArenaServer(
     socket.on("rematch", (_data: unknown, cb: unknown) =>
       withRoom(cb, (a, id) => {
         if(a instanceof RaidArena){
+          if(a.raid.expedition){
+            if(a.phase!=='finished'||!a.heroes().every(p=>p.connected))return fail(cb,'Finish the expedition and reconnect before retrying.');
+            a.players.find(p=>p.id===id)!.ready=true;
+            if(a.heroes().every(p=>p.ready))a=replaceRaidRoom(a,restartExpedition(a,raidDay().day,true));
+            reply(cb,{ok:true});broadcast(a);return;
+          }
           if(a.phase!=='finished'||!a.heroes().length||!a.heroes().every(p=>p.connected))return fail(cb,'Return to the lobby to refill the team.');
           a.players.find(p=>p.id===id)!.ready=true;
           if(a.heroes().every(p=>p.ready))a.retry();
@@ -1081,6 +1134,10 @@ export function createArenaServer(
     );
     socket.on("lobby", (_data: unknown, cb: unknown) =>
       withRoom(cb, (a) => {
+        if (a instanceof RaidArena && a.raid.expedition && a.phase === 'finished') {
+          a = replaceRaidRoom(a,restartExpedition(a,raidDay().day,false));
+          reply(cb,{ok:true});broadcast(a);return;
+        }
         if (a instanceof RaidArena && a.raid.drill) {
           a.stopDrill();
           reply(cb, { ok: true });
@@ -1138,9 +1195,13 @@ export function createArenaServer(
     ticks++;
     for (const s of sessions.values())
       if (!s.socketId && s.expires <= Date.now()) expire(s);
-    for (const a of rooms.values()) {
+    for (let a of [...rooms.values()]) {
       const before = a.phase;
       a.tick();
+      if (a instanceof RaidArena && a.raid.expedition?.camp) {
+        const next = advanceExpedition(a);
+        if (next) a = replaceRaidRoom(a,next);
+      }
       if (before !== a.phase && a.phase === "finished")
         // Bots are always up for a rematch.
         for (const p of a.players) p.ready = a.bots.has(p.id);

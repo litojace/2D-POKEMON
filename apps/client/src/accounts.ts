@@ -1,3 +1,5 @@
+import { adventureMarkup, type AdventureTab, type AdventureView } from "./adventure-ui";
+import { playerLevel, JOURNEY_ITEM_BY_ID, seasonTheme } from "../../../packages/shared/src/journey";
 import { formSubmitButton } from "./dialog";
 import { raidAppearance, raidCosmeticOptions } from "./raid-ui";
 import {
@@ -103,6 +105,7 @@ type Hooks = {
   beforeSignOut: () => Promise<void>;
   selectedCharacter?: () => CharacterId;
   /** Create a raid room for a boss (today's challenge, or straight in solo). */
+  startAdventure?: (mode: string) => void;
   startRaid?: (
     boss: RaidBossId,
     options: { daily?: boolean; solo?: boolean },
@@ -195,6 +198,7 @@ export class AccountUI {
         // An open Shop or Missions screen shows the fresh copy.
         this.shopRefresh?.();
         this.missionsRefresh?.();
+        this.adventureRefresh?.();
       } catch (error) {
         if (version !== this.generation) return;
         this.hooks.notify(
@@ -235,7 +239,7 @@ export class AccountUI {
     const root = element("account-nav");
     if (!root) return;
     root.innerHTML = this.account
-      ? `<button class="quiet coin-button" id="account-coins" aria-label="Shop: ${this.economy?.unlimitedCoins ? "unlimited" : this.economy ? coins(this.economy.balance) : "your"} coins">${coinChip(this.economy?.balance, "", this.economy?.unlimitedCoins)}</button><button class="quiet" id="account-profile">${iconLabel("user", escape(this.account.displayName))}</button>${this.account.isAdmin ? `<button class="quiet" id="account-admin">${iconLabel("admin", "Admin")}</button>` : ""}<button class="quiet" id="account-logout">${iconLabel("leave", "Log out")}</button>`
+      ? `<button class="quiet coin-button" id="account-coins" aria-label="Shop: ${this.economy?.unlimitedCoins ? "unlimited" : this.economy ? coins(this.economy.balance) : "your"} coins">${coinChip(this.economy?.balance, "", this.economy?.unlimitedCoins)}</button><button class="quiet" id="account-profile">${iconLabel("user", escape(this.account.displayName))}${this.economy?.journey ? `<small class="nav-level">Lv ${playerLevel(this.economy.journey.xp).level}</small>` : ""}</button>${this.account.isAdmin ? `<button class="quiet" id="account-admin">${iconLabel("admin", "Admin")}</button>` : ""}<button class="quiet" id="account-logout">${iconLabel("leave", "Log out")}</button>`
       : `<button class="quiet" id="account-login">${iconLabel("enter", "Log in")}</button><button class="secondary" id="account-signup">${iconLabel("add-friend", "Sign up")}</button>`;
     if (this.account) {
       element("account-profile").onclick = () => void this.showProfile();
@@ -587,6 +591,61 @@ export class AccountUI {
   private shopRefresh?: () => void;
   private shopPreviewCleanup?: () => void;
   private shopView: ShopView = { tab: "today", champion: "voltkit" };
+  private adventureRefresh?: () => void;
+  private adventureCleanup?: () => void;
+  async showAdventure(tab: AdventureTab = "levels") {
+    if (!this.ensurePlayer()) return;
+    const generation = this.generation;
+    try { this.economy = await this.api("/api/economy") as Economy; } catch { /* The mode cards also work before progression storage is installed. */ }
+    if (generation !== this.generation) return;
+    this.adventureCleanup?.();
+    const view: AdventureView = { tab, preview: tab === "season" ? `season-${seasonTheme(this.economy?.journey?.season.id ?? new Date().toISOString().slice(0,7))}-frame` : "wayfarer-frame" };
+    const root = document.getElementById("dialog") as HTMLDialogElement;
+    let preview: import("./shop-preview").ShopPreviewHandle | undefined;
+    let importing = false, disposed = false;
+    const cleanup = () => {
+      if (disposed) return;
+      disposed = true; preview?.(); observer.disconnect();
+      root.removeEventListener("close",cleanup);
+      this.adventureRefresh = undefined;
+    };
+    const observer = new MutationObserver(() => { if (!root.querySelector(".adventure")) cleanup(); });
+    observer.observe(root,{childList:true}); root.addEventListener("close",cleanup);
+    this.adventureCleanup = cleanup;
+    const render = () => {
+      if (disposed) return;
+      const top = root.querySelector(".dialog-content")?.scrollTop ?? 0;
+      this.hooks.openDialog(adventureMarkup(view,this.economy,this.hooks.selectedCharacter?.() ?? "voltkit",this.raidLook));
+      const scroll = root.querySelector(".dialog-content"); if (scroll) scroll.scrollTop = top;
+      const panel = root.querySelector<HTMLElement>(".journey-preview");
+      if (panel && preview) preview.update(panel);
+      else if (panel && !importing) {
+        importing = true;
+        void import("./shop-preview").then(({mountShopPreview}) => {
+          importing = false;
+          const current = root.querySelector<HTMLElement>(".journey-preview");
+          if (!disposed && current) preview = mountShopPreview(current);
+        });
+      } else if (!panel && preview) { preview(); preview = undefined; }
+      for (const b of Array.from(root.querySelectorAll<HTMLButtonElement>("[data-adventure-tab]"))) b.onclick = () => {
+        view.tab = b.dataset.adventureTab as AdventureTab;
+        if (view.tab === "season") view.preview = `season-${seasonTheme(this.economy?.journey?.season.id ?? new Date().toISOString().slice(0,7))}-frame`;
+        render();
+      };
+      for (const b of Array.from(root.querySelectorAll<HTMLButtonElement>("[data-journey-preview]"))) b.onclick = () => { view.preview = b.dataset.journeyPreview; render(); };
+      for (const b of Array.from(root.querySelectorAll<HTMLButtonElement>("[data-adventure-play]"))) b.onclick = () => this.hooks.startAdventure?.(b.dataset.adventurePlay!);
+      for (const b of Array.from(root.querySelectorAll<HTMLButtonElement>("[data-journey-equip]"))) b.onclick = async () => {
+        b.disabled = true;
+        try {
+          const item = JOURNEY_ITEM_BY_ID[b.dataset.journeyEquip!];
+          const result = await this.api("/api/raids/cosmetic",{slot:item.slot,item:item.id}) as {progress:RaidProgress};
+          this.raidLook = raidLookOf(result.progress); this.hooks.onChange(); render();
+        } catch(error) { b.disabled = false; const status=root.querySelector(".adventure-status");if(status)status.textContent=error instanceof Error?error.message:"Could not equip that reward."; }
+      };
+    };
+    this.adventureRefresh = render;
+    render();
+  }
   /** The Shop: Today's Picks, champion skins, the Mythic Hall, collections and missions. */
   async showShop(tab?: ShopTab) {
     if (!this.ensurePlayer()) return;
@@ -923,7 +982,7 @@ export class AccountUI {
     void this.api("/api/progress")
       .then((value) => {
         const box = element("profile-progress");
-        if (box) box.innerHTML = progressMarkup(progressSchema.parse(value));
+        if (box) { box.innerHTML = progressMarkup(progressSchema.parse(value), this.economy?.journey); const adventure = box.querySelector<HTMLButtonElement>("#profile-adventure"); if (adventure) adventure.onclick = () => void this.showAdventure(); }
       })
       .catch((error) => {
         const box = element("profile-progress");

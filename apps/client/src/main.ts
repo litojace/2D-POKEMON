@@ -1,3 +1,7 @@
+import { raidDay } from "../../../packages/shared/src/raid";
+import { adventureHome, resultXp } from "./adventure-ui";
+import { arcadeWeek, ARCADE_EVENTS } from "../../../packages/shared/src/arcade";
+import { drawArcade } from "./arcade-art";
 import { stormTarget } from "./storm-twins-controls";
 import { prismatailAim } from "./prismatail-controls";
 import { dreamRuneKey } from "./somnara-controls";
@@ -611,7 +615,7 @@ function homeShop() {
         .map((m) => `<span class="home-mission tier-${m.tier}${m.done ? " is-done" : ""}" title="${escape(m.text)}"><small>${escape(m.text)}</small><progress max="${m.target}" value="${Math.min(m.progress, m.target)}"></progress></span>`)
         .join("")}</button>`
     : "";
-  return `<button class="quiet raid-icon-button" id="shop-open">${menuIcon("shop")}<span>Shop</span>${e ? coinChip(e.balance, "", e.unlimitedCoins) : ""}</button>${missions}`;
+  return `<button class="quiet raid-icon-button" id="shop-open">${menuIcon("shop")}<span>Shop</span>${e ? coinChip(e.balance, "", e.unlimitedCoins) : ""}</button>${missions}${adventureHome(e)}`;
 }
 function syncMenuCosmetic() {
   const panel=document.querySelector<HTMLElement>("#menu .roster-panel");
@@ -717,7 +721,7 @@ function crownLabel(me: Fighter) {
   const crown = state?.crown ?? [];
   const mine = crown[teamOf(me)] ?? 0;
   const rival = Math.max(0, ...crown.filter((_, t) => t !== teamOf(me)));
-  return `CROWN · YOU ${Math.floor(mine)}s · RIVAL ${Math.floor(rival)}s / ${CROWN.holdSeconds}s`;
+  return `CROWN · YOU ${Math.floor(mine)}s · RIVAL ${Math.floor(rival)}s / ${state?.arcade?.hill?.target ?? CROWN.holdSeconds}s`;
 }
 /** What a watcher sees over the arena: no buttons but "Stop watching". */
 function renderWatchOverlay(overlay: HTMLElement) {
@@ -862,6 +866,7 @@ function partyRulesNote() {
 }
 /** Lobby party rules: the host toggles them, everyone else sees them. */
 function partyRules(host: boolean) {
+  if (state?.arcade) return `<p class="arcade-lobby-note"><b>${ARCADE_EVENTS[state.arcade.id].name}</b> · ${ARCADE_EVENTS[state.arcade.id].text} Weekly rules are fixed. PvP rating stays separate.</p>`;
   const on = new Set(state!.mutators ?? []);
   if (!host && !on.size) return "";
   const chips = MUTATOR_IDS.filter((m) => host || on.has(m))
@@ -925,6 +930,25 @@ let botLevel: BotLevel = (() => {
     return "normal";
   }
 })();
+async function startAdventure(mode: string) {
+  if (!accountsUI.ensurePlayer()) return;
+  if (myId) return toast("Leave your current room first.");
+  if (!connected) return toast("Waiting for the server connection.");
+  if (watching) await stopWatching();
+  audio.unlock();
+  $<HTMLDialogElement>("dialog").close();settingsOpen=false;menuOpen=false;
+  const name=accountsUI.account?.displayName ?? "Player";
+  if (mode==='arcade-bot') {
+    identity(await request('bot-match',{name,character:selected,difficulty:botLevel,arcade:arcadeWeek(raidDay().day).id}));
+    return;
+  }
+  const expedition=mode.startsWith('expedition-');
+  roomMode=expedition?'raid':mode==='arcade-teams'?'teams':'duel';
+  const reply=await request('create',{name,mode:roomMode,...(expedition?{expedition:true}:{arcade:arcadeWeek(raidDay().day).id})});
+  identity(reply);if(!reply.ok)return;
+  await request('select',selected);
+  if(mode==='expedition-solo')await request('ready');
+}
 async function showRaidBestiary() { await accountsUI.showRaidHub(state?.raid?.boss); }
 /** Create a raid room for a boss from the Raid Hub (optionally today's raid, or straight in solo). */
 async function startRaid(boss: RaidBossId, options: { daily?: boolean; solo?: boolean }) {
@@ -1036,7 +1060,7 @@ function renderMenu(revealSelection = false) {
   const isRoom = !!p;
   const watchingRoom = !isRoom && !!watching && state?.code === watching;
   const raidChallenge = state?.raid ? `${state.raid.boss}/${state.raid.peril}/${state.raid.daily}` : "";
-  const key = `${isRoom ? `room-${state!.mode ?? "duel"}` : watchingRoom ? `watch-${watching}` : "home"}:${(state?.mutators ?? []).join(",")}|${raidChallenge}|${(state?.watchers ?? []).join(",")}:${state?.players.map((p) => `${p.id}${p.id === myId ? "" : p.character}${p.ready}${p.connected}${p.team ?? ""}${p.flair ?? ""}${raidLookList(p.raidLook)}${Object.values(looksOf(p) ?? {}).map((l) => `${l?.skin}${l?.stage}`).join(",")}`).join(":")}:${accountsUI?.economy ? `${accountsUI.economy.balance}/${accountsUI.economy.missions.map((m) => m.progress).join(",")}/${Object.values(accountsUI.economy.looks).map((l) => `${l?.skin}${l?.stage}`).join(",")}` : ""}:${selected}`;
+  const key = `${isRoom ? `room-${state!.mode ?? "duel"}` : watchingRoom ? `watch-${watching}` : "home"}:${(state?.mutators ?? []).join(",")}|${raidChallenge}|${(state?.watchers ?? []).join(",")}:${state?.players.map((p) => `${p.id}${p.id === myId ? "" : p.character}${p.ready}${p.connected}${p.team ?? ""}${p.flair ?? ""}${raidLookList(p.raidLook)}${Object.values(looksOf(p) ?? {}).map((l) => `${l?.skin}${l?.stage}`).join(",")}`).join(":")}:${accountsUI?.economy ? `${accountsUI.economy.journey?.xp ?? ""}/${accountsUI.economy.journey?.season.xp ?? ""}/${accountsUI.economy.balance}/${accountsUI.economy.missions.map((m) => m.progress).join(",")}/${Object.values(accountsUI.economy.looks).map((l) => `${l?.skin}${l?.stage}`).join(",")}` : ""}:${selected}`;
   if (screen === key) return;
   const previous = screen;
   screen = key;
@@ -1092,6 +1116,8 @@ function renderMenu(revealSelection = false) {
     `<header class="desktop-lobby-header"><div class="eyebrow">Elemental Coliseum</div><h1>Choose your fighter</h1><p>Pick your creature. Enter the arena.</p></header><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected)}</div><aside class="room-panel">${panelMarkup}</aside></div>`,
     keepScroll !== null && !wornChanged,
   );
+  const adventureButton = document.getElementById("home-adventure");
+  if (adventureButton) adventureButton.onclick = () => void accountsUI.showAdventure();
   wireRoster(isRoom);
   syncMenuCosmetic();
   // Fighter panel slot: between the rows on PC, under the swipeable row on phones.
@@ -1455,7 +1481,7 @@ function renderBattle() {
     exArmedUntil > performance.now(),
   );
   if(state.raid && myId) {
-    renderRaidUI(state,me,request,async () => await accountsUI.api("/api/raids") as import("../../../packages/shared/src/raid").RaidProgress);
+    renderRaidUI(state,me,request,async () => await accountsUI.api("/api/raids") as import("../../../packages/shared/src/raid").RaidProgress, accountsUI.economy?.journey);
     if(me.hp<=0)document.querySelectorAll<HTMLButtonElement>(".touch-buttons button").forEach(b=>b.disabled=true);
     const exit=document.getElementById('raid-exit');if(exit)exit.onclick=()=>void leave();
     const rewards=document.getElementById('raid-rewards');if(rewards)rewards.onclick=()=>void accountsUI.showRaidHub(state?.raid?.boss,'rewards');
@@ -1507,9 +1533,9 @@ function renderBattle() {
             .join('<span class="vs-mark">VS</span>')}</div>`;
       const arena = ARENAS[state.arena ?? "classic"];
       details =
-        versus +
+        (state.arcade ? `<p class="arcade-brief"><b>${ARCADE_EVENTS[state.arcade.id].name}</b>${ARCADE_EVENTS[state.arcade.id].tip} · Arcade does not change your PvP rating.</p>` : "") + versus +
         teamUpNote(me) +
-        `<p class="arena-brief"><b>Arena · ${escape(arena.name)}</b>${escape(arena.tip)}</p>` +
+        `<p class="arena-brief"><b>Arena · ${escape(arena.name)}</b>${escape(state.arcade ? ARCADE_EVENTS[state.arcade.id].tip : arena.tip)}</p>` +
         '<p class="mobile-howto">Touch mode: left joystick to move; big button for basic attacks, the four curved buttons for skills, DASH and JUMP below. Aim follows your nearest opponent. Use Enter fullscreen below the arena.</p>' +
         controlsList() +
         "<p>" +
@@ -1577,9 +1603,11 @@ function renderBattle() {
       details +=
         recapMarkup(state, myId) +
         recordsMarkup(
-          state.matchId ? matchRecords.get(state.matchId) : undefined,
+          state.matchId && !state.arcade ? matchRecords.get(state.matchId) : undefined,
           friendIds,
         );
+      details += resultXp(accountsUI.economy?.journey, state.matchId ? `match:${state.matchId}` : undefined, state.activityStatus, state.activityEligible?.includes(myId) ?? true);
+      if (state.arcade) details += '<p class="arcade-rating-note">Weekly arcade · XP and mission progress · PvP rating stays separate.</p>';
       actions = `<div class="result-actions"><button class="primary" id="rematch">${me.ready ? "Waiting for opponent…" : iconLabel("again", "Rematch")}</button><button class="secondary" id="share-result">${iconLabel("share", "Share result")}</button><button class="secondary" id="return">${state.vsBot ? iconLabel("home", "Back to menu") : iconLabel("back", "Return to lobby")}</button></div>`;
     }
     const markup = `<div class="overlay-card${actions ? " action-overlay" : state.phase === "countdown" ? " countdown-card" : ""}"><span class="eyebrow">Element Arena</span><h2>${heading}</h2><div${actions ? ' class="panel-scroll" tabindex="0" role="region" aria-label="Match details"' : ""}>${details}</div>${actions ? `<div class="panel-actions">${actions}</div>` : ""}</div>`;
@@ -1736,7 +1764,7 @@ socket.on("state", (snapshot: WireSnapshot) => {
       if (scene && state.phase !== "lobby") scene.effect(event);
       eventId = Math.max(eventId, event.id);
     }
-  if (state.phase === "finished" && state.matchId && !state.practice)
+  if (state.phase === "finished" && state.matchId && !state.practice && !state.arcade)
     void reportMatch(state.matchId);
   if (state.phase === "lobby") renderMenu();
   else renderBattle();
@@ -2396,7 +2424,7 @@ class ArenaScene extends Phaser.Scene {
       touch.enabled &&
         document.body.classList.contains("battle-active") &&
         innerWidth > innerHeight,
-      follow && presented && state?.raid?.boss !== "somnara" && state?.raid?.boss !== "prismatail" && state?.raid?.boss !== "emberwing" && state?.raid?.boss !== "storm-twins"
+      follow && presented && !state?.arcade && state?.raid?.boss !== "somnara" && state?.raid?.boss !== "prismatail" && state?.raid?.boss !== "emberwing" && state?.raid?.boss !== "storm-twins"
         ? {
             ...follow,
             x: presented.x,
@@ -2661,13 +2689,16 @@ class ArenaScene extends Phaser.Scene {
       }
     }
     // Crown Hill: the circle to hold, with each side's progress as an arc.
+    drawArcade(g,state,reducedMotion);
     if (state.crown) {
+      const hill = state.arcade?.hill ?? CROWN;
+      const targetSeconds = state.arcade?.hill?.target ?? CROWN.holdSeconds;
       const pulse = reducedMotion ? 0.6 : 0.5 + Math.sin(_time / 260) * 0.2;
-      g.fillStyle(0xffd166, 0.07).fillCircle(CROWN.x, CROWN.y, CROWN.radius);
+      g.fillStyle(0xffd166, 0.07).fillCircle(hill.x, hill.y, hill.radius);
       g.lineStyle(3, 0xffd166, pulse).strokeCircle(
-        CROWN.x,
-        CROWN.y,
-        CROWN.radius,
+        hill.x,
+        hill.y,
+        hill.radius,
       );
       state.crown.forEach((held, side) => {
         if (held <= 0) return;
@@ -2679,15 +2710,15 @@ class ArenaScene extends Phaser.Scene {
           : holder
             ? CHARACTERS[holder.character].color
             : 0xffffff;
-        const r = CROWN.radius + 8 + side * 7;
+        const r = hill.radius + 8 + side * 7;
         g.lineStyle(5, color, 0.95);
         g.beginPath();
         g.arc(
-          CROWN.x,
-          CROWN.y,
+          hill.x,
+          hill.y,
           r,
           -Math.PI / 2,
-          -Math.PI / 2 + (Math.PI * 2 * held) / CROWN.holdSeconds,
+          -Math.PI / 2 + (Math.PI * 2 * held) / targetSeconds,
         );
         g.strokePath();
       });
@@ -3212,6 +3243,7 @@ accountsUI = new AccountUI({
   selectedCharacter: () => selected,
   openDialog: dialog,
   startRaid: (boss, options) => void startRaid(boss, options),
+  startAdventure: mode => void startAdventure(mode),
   joinRoom: (code) => void joinByCode(code),
   watchRoom: (code) => {
     if (myId) return toast("Leave your current room first.");
@@ -3242,10 +3274,11 @@ accountsUI = new AccountUI({
       accountsUI?.account ?? null,
       !!accountsUI?.session,
       accountsUI?.raidLook ?? null,
+      accountsUI?.economy?.journey ?? null,
     ]);
     if (shown === accountShown) return;
     accountShown = shown;
-    screen = "";
-    if (!state || state.phase === "lobby") renderMenu();
+    if (!state || state.phase === "lobby") { screen = ""; renderMenu(); }
+    else renderBattle();
   },
 });

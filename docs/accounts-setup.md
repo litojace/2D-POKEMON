@@ -160,3 +160,8 @@ Run [017_admin_mythic_testing.sql](../supabase/migrations/017_admin_mythic_testi
 ### Repair Shop collection equipping
 
 If an owned collection item fails with “That item belongs in another slot”, run the entire [018_collection_equipping.sql](../supabase/migrations/018_collection_equipping.sql) after 017. All three verification columns should read **true**. This restores Shop support to the appearance functions, repairs collection slot mappings and keeps all five slots in saved loadouts. Colours, aura, entrance, frame and victory can be worn together, with one item per slot. Wallets, purchases, earned raid rewards and the admin bypasses remain intact. Avoid reapplying older raid/Shop migrations afterward, since they replace newer functions.
+
+
+## Player levels and seasonal rewards
+
+After all migrations through `021_storm_twins.sql`, run [022_player_journey.sql](../supabase/migrations/022_player_journey.sql). It adds player XP, automatic level and free season rewards, weekly goal progress, and verified Arcade/Boss Rush activity. The final query should return `journey_enabled = true`. Use the existing server-only service-role key; no additional client secret is needed. Existing accounts start at level 1 and keep all prior purchases and rewards. Previewing rewards does not change earned progress, including for admins.

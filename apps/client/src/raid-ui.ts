@@ -1,3 +1,6 @@
+import { renderExpeditionOverlay } from "./expedition-ui";
+import { resultXp } from "./adventure-ui";
+import { JOURNEY_ITEMS, type Journey } from "../../../packages/shared/src/journey";
 import { drawConductorRing, drawStormWarning, drawStormTwins } from "./raid-storm-twins-art";
 import { renderStormTargets, stormTwinHealth } from "./storm-twins-controls";
 import { drawSkyTerrace, drawEmberwingWarning, drawEmberwing } from "./raid-emberwing-art";
@@ -89,12 +92,13 @@ export function raidLobby(
     );
   const ready = party.filter((p) => p.ready).length;
   return `<div class="raid-lobby">
-    <div class="raid-lobby-banner"><div><span class="eyebrow">Co-op raid · 1–4 players</span><h2>${RAID_BOSSES[r.boss].name}</h2><p>${RAID_BOSSES[r.boss].epithet}</p></div><svg viewBox="-65 -65 130 115" aria-hidden="true">${raidGuideBossFor(r.boss)}</svg></div>
+    <div class="raid-lobby-banner"><div><span class="eyebrow">Co-op raid · 1–4 players</span><h2>${r.expedition ? "Boss Rush" : RAID_BOSSES[r.boss].name}</h2><p>${r.expedition ? "Three trials · one shared journey" : RAID_BOSSES[r.boss].epithet}</p></div><svg viewBox="-65 -65 130 115" aria-hidden="true">${raidGuideBossFor(r.boss)}</svg></div>
     <div class="raid-invite"><div><span>Invite your party</span><b>${escape(state.code)}</b></div><button type="button" id="raid-copy-code" class="secondary" aria-label="Copy raid room code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V3H3v13h5"/></svg><span>Copy code</span></button></div>
     <section class="raid-party-section" aria-label="Raid party"><div class="raid-section-heading"><h3>Your party</h3><span>${ready}/${party.length} ready</span></div><div class="raid-party-list">${party.map((p) => `<div class="raid-party-member" data-raid-player="${escape(p.id)}"><span class="raid-party-avatar" data-raid-cosmetic="${portraitCosmetics(p)}">${portraitAvatar(p, "raid-lobby-" + p.id)}</span><div class="raid-party-identity"><b>${escape(p.name)}</b><span><span class="raid-player-character">${CHARACTERS[p.character].name}</span>${p.id === state.players[0]?.id ? " · Host" : ""}</span></div><span class="raid-ready-badge ${p.ready ? "is-ready" : ""}">${p.ready ? "Ready" : "Choosing"}</span></div>`).join("")}<div class="raid-open-slots">${Array.from({ length: Math.max(0, 4 - party.length) }, () => '<div class="raid-party-empty"><span aria-hidden="true">+</span>Open slot</div>').join("")}</div></div></section>
-    <section class="raid-challenge" aria-label="Raid challenge"><div class="raid-section-heading"><h3>Choose your challenge</h3><span>${host ? "HOST CONTROLS" : "HOST SELECTS"}</span></div>${raidDifficulty(r.peril, !host || r.daily)}${raidDay().boss === r.boss ? `<label class="raid-weekly-option"><input id="raid-daily-toggle" type="checkbox" ${r.daily ? "checked" : ""} ${host ? "" : "disabled"}><span><b>Raid of the Day</b><small>Today's shared Peril 2 challenge · daily board</small></span></label>` : ""}<p class="raid-unlock-note">${r.daily ? (host ? "Uncheck Raid of the Day to choose a regular difficulty." : "The host can switch to a regular raid.") : "Clear a Peril to unlock the next difficulty."}</p></section>
+    ${r.expedition ? `<section class="raid-challenge"><h3>Boss Rush route</h3><ol class="expedition-lobby-route">${r.expedition.route.map((id,i)=>`<li><span>${i+1}</span>${RAID_BOSSES[id].name}</li>`).join("")}</ol><p>Three shorter trials at Peril 1. Health and rites carry. Choose Rest or Surge at each camp.</p></section>` : `    <section class="raid-challenge" aria-label="Raid challenge"><div class="raid-section-heading"><h3>Choose your challenge</h3><span>${host ? "HOST CONTROLS" : "HOST SELECTS"}</span></div>${raidDifficulty(r.peril, !host || r.daily)}${raidDay().boss === r.boss ? `<label class="raid-weekly-option"><input id="raid-daily-toggle" type="checkbox" ${r.daily ? "checked" : ""} ${host ? "" : "disabled"}><span><b>Raid of the Day</b><small>Today's shared Peril 2 challenge · daily board</small></span></label>` : ""}<p class="raid-unlock-note">${r.daily ? (host ? "Uncheck Raid of the Day to choose a regular difficulty." : "The host can switch to a regular raid.") : "Clear a Peril to unlock the next difficulty."}</p></section>`}
+
     <div class="raid-lobby-rules"><span><svg class="raid-rule-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v10m-5-5h10"/></svg><span>${party.length === 1 ? (r.peril >= 3 ? "Peril 3 solo: no self-revive" : "One solo self-revive") : "Stand near allies to revive"}</span></span><span><svg class="raid-rule-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 3 8 4v6c0 5-8 8-8 8s-8-3-8-8V7Z"/><path d="m8 12 3 3 5-6"/></svg><span>Separate from PvP rating</span></span></div>
-    ${practicePicker(host, r.boss)}
+    ${r.expedition ? "" : practicePicker(host, r.boss)}
     <div class="raid-lobby-actions"><button class="primary" id="ready"><span class="ready-label">${buttonIcon(me.ready ? "cancel" : "battle")}${me.ready ? "Cancel ready" : "Ready for the raid"}</span><span aria-hidden="true">${me.ready ? "" : "→"}</span></button><div><button class="secondary raid-icon-button" id="raid-bestiary">${menuIcon("bestiary")}<span>Raid Hub & rewards</span></button><button class="quiet leave-button" id="leave">${iconLabel("leave", "Leave room")}</button></div></div>
   </div>`;
 }
@@ -119,10 +123,10 @@ export function raidCosmeticOptions(
           (id) => RAID_COSMETICS[id].slot === slot,
         ),
         // Shop collection pieces you own for this slot.
-        ...LOOK_ITEMS.filter((i) => i.slot === slot && shopOwned.includes(i.id)).map((i) => i.id),
+        ...[...LOOK_ITEMS,...JOURNEY_ITEMS].filter((i) => i.slot === slot && shopOwned.includes(i.id)).map((i) => i.id),
       ];
       const option = (id: string | null) => {
-        const shop = id ? LOOK_ITEMS.find((i) => i.id === id) : undefined;
+        const shop = id ? [...LOOK_ITEMS,...JOURNEY_ITEMS].find((i) => i.id === id) : undefined;
         const owned = id === null || !!shop || p.cosmetics.includes(id);
         const active = (look[slot] ?? null) === id;
         const info = shop
@@ -163,6 +167,7 @@ export function renderRaidUI(
   me: Fighter,
   request: (event: string, data?: unknown) => Promise<unknown>,
   loadProgress?: () => Promise<RaidProgress>,
+  journey?: Journey,
 ) {
   const r = state.raid!,
     boss = state.players.find((p) => p.id === r.bossId);
@@ -183,7 +188,7 @@ export function renderRaidUI(
     0,
     Math.min(100, ((r.boss === "storm-twins" ? state.players.filter(p=>p.raidBoss).reduce((sum,p)=>sum+Math.max(0,p.hp),0) : boss?.hp ?? 0) / r.maxHp) * 100),
   );
-  hud.innerHTML = `<div class="raid-boss-heading"><b>${r.gilded ? "✦ GILDED " : ""}${RAID_BOSSES[r.boss].name.toUpperCase()}</b>${r.daily ? '<em class="raid-daily-badge">RAID OF THE DAY</em>' : ""}<span>PERIL ${r.peril} · PHASE ${r.phase}/3</span></div>${r.boss === "storm-twins" ? stormTwinHealth(state) : ""}<div class="raid-boss-health" role="progressbar" aria-label="Boss health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(healthPercent)}" aria-valuetext="${Math.round(healthPercent)}% health. Rite choices open at 67% and 33% health."><i style="width:${healthPercent}%"></i>${[67, 33].map((mark, index) => `<span class="raid-health-mark${r.phase > index + 1 ? " is-passed" : ""}" style="left:${mark}%" aria-hidden="true"></span>`).join("")}</div><div class="raid-stagger" ${r.boss === "storm-twins" ? "hidden" : ""}><i style="width:${r.boss === "emberwing" ? (r.permanentGround || r.exposedUntil>state.time ? 100 : r.airborne ? (r.braziers??[]).filter(b=>b.litUntil>state.time).length/3*100 : r.stagger) : r.boss === "prismatail" ? (r.exposedUntil > state.time ? 100 : Math.min(100,(r.lightHold ?? 0) / (r.phase === 3 && r.partySize === 1 ? 2 : .65) * 100)) : r.staggerUntil > state.time ? 100 : r.stagger}%"></i><span>${r.boss === "emberwing" ? (r.permanentGround ? "WINGS BROKEN · HEART OPEN" : r.airborne ? `AIRBORNE · ${(r.braziers ?? []).filter(b=>b.litUntil>state.time).length}/3 BRAZIERS` : r.exposedUntil>state.time ? "GROUNDED · HEART EXPOSED" : "STAGGER") : r.boss === "prismatail" ? (r.exposedUntil > state.time ? "HEART EXPOSED" : "LIGHT RELAY · SHIELDED") : r.staggerUntil > state.time ? "STAGGER · CORE EXPOSED" : "STAGGER"}</span></div><div class="raid-party-bars" data-party-size="${state.players.filter((p) => !p.raidBoss && !p.out).length}">${state.players
+  hud.innerHTML = `<div class="raid-boss-heading"><b>${r.expedition ? `BOSS RUSH ${r.expedition.leg+1}/3 · ` : ""}${r.gilded ? "✦ GILDED " : ""}${RAID_BOSSES[r.boss].name.toUpperCase()}</b>${r.daily ? '<em class="raid-daily-badge">RAID OF THE DAY</em>' : ""}<span>${r.expedition ? `TRIAL ${r.expedition.leg+1} OF 3` : `PERIL ${r.peril} · PHASE ${r.phase}/3`}</span></div>${r.boss === "storm-twins" ? stormTwinHealth(state) : ""}<div class="raid-boss-health" role="progressbar" aria-label="Boss health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(healthPercent)}" aria-valuetext="${Math.round(healthPercent)}% health.${r.expedition ? "" : " Rite choices open at 67% and 33% health."}"><i style="width:${healthPercent}%"></i>${(r.expedition ? [] : [67, 33]).map((mark, index) => `<span class="raid-health-mark${r.phase > index + 1 ? " is-passed" : ""}" style="left:${mark}%" aria-hidden="true"></span>`).join("")}</div><div class="raid-stagger" ${r.boss === "storm-twins" ? "hidden" : ""}><i style="width:${r.boss === "emberwing" ? (r.permanentGround || r.exposedUntil>state.time ? 100 : r.airborne ? (r.braziers??[]).filter(b=>b.litUntil>state.time).length/3*100 : r.stagger) : r.boss === "prismatail" ? (r.exposedUntil > state.time ? 100 : Math.min(100,(r.lightHold ?? 0) / (r.phase === 3 && r.partySize === 1 ? 2 : .65) * 100)) : r.staggerUntil > state.time ? 100 : r.stagger}%"></i><span>${r.boss === "emberwing" ? (r.permanentGround ? "WINGS BROKEN · HEART OPEN" : r.airborne ? `AIRBORNE · ${(r.braziers ?? []).filter(b=>b.litUntil>state.time).length}/3 BRAZIERS` : r.exposedUntil>state.time ? "GROUNDED · HEART EXPOSED" : "STAGGER") : r.boss === "prismatail" ? (r.exposedUntil > state.time ? "HEART EXPOSED" : "LIGHT RELAY · SHIELDED") : r.staggerUntil > state.time ? "STAGGER · CORE EXPOSED" : "STAGGER"}</span></div><div class="raid-party-bars" data-party-size="${state.players.filter((p) => !p.raidBoss && !p.out).length}">${state.players
     .filter((p) => !p.raidBoss)
     .map(
       (p) =>
@@ -192,6 +197,7 @@ export function renderRaidUI(
     .join(
       "",
     )}</div><div class="raid-status-row"><p class="raid-callout" role="status">${escape(raidCue(state, me.id))}</p><div class="raid-elapsed" role="timer" aria-label="Raid elapsed time"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><b>${time(r.elapsed)}</b></div></div>`;
+  if (renderExpeditionOverlay(state,me,request,journey)) return;
   const overlay = document.getElementById("arena-overlay")!;
   let progress = resultProgress.get(overlay);
   if (
@@ -256,10 +262,10 @@ export function renderRaidUI(
         : r.boss === "tidewyrm"
         ? `<span>${raidGuideScene("strand", me.character)}<b>Strand it</b><small>Lead the dive ripple onto an island, then step off.</small></span><span>${raidGuideScene("tide", me.character)}<b>Share the islands</b><small>High Tide floods the floor: two to an island.</small></span><span>${raidGuideScene("prison", me.character)}<b>Pop the bubble</b><small>Three hits free a trapped friend. Alone, mash attack.</small></span>`
         : `<span>${raidGuideScene("charge", me.character)}<b>Bait the charge</b><small>Lure the boss into a stone pillar.</small></span><span>${raidGuideScene("core", me.character)}<b>Strike the core</b><small>Armor breaks. Unleash your ultimate.</small></span><span>${raidGuideScene("revive", me.character)}<b>Revive together</b><small>Stand beside a fallen ally to revive.</small></span>`;
-    body = `<div class="raid-briefing-body" tabindex="0" role="region" aria-label="Raid instructions"><p>${escape(RAID_TRAITS[r.trait].text)}</p><div class="raid-instructions">${guide}</div>${perkLines(state, me.id)}${r.partySize > 1 ? `<p class="raid-signals">Team signals: ${(Object.keys(RAID_PINGS) as RaidPingKind[]).map((k) => `<b>${RAID_PINGS[k].key}</b> ${raidPingLabel(k, r.boss)}`).join(" · ")} (or the buttons on the left)</p>` : ""}<p>Three phases · one shared fight · ${r.partySize === 1 ? (r.peril >= 3 ? "no self-revive on Peril 3" : "one solo self-revive") : "no required healer"} · no PvP rating changes.</p></div><div class="raid-briefing-actions"><button class="primary" id="raid-instructions" ${state.instructionsReady.includes(me.id) ? "disabled" : ""}>${state.instructionsReady.includes(me.id) ? "Waiting for the team…" : iconLabel("battle", "Let’s raid")}</button></div>`;
+    body = `<div class="raid-briefing-body" tabindex="0" role="region" aria-label="Raid instructions"><p>${escape(RAID_TRAITS[r.trait].text)}</p><div class="raid-instructions">${guide}</div>${perkLines(state, me.id)}${r.partySize > 1 ? `<p class="raid-signals">Team signals: ${(Object.keys(RAID_PINGS) as RaidPingKind[]).map((k) => `<b>${RAID_PINGS[k].key}</b> ${raidPingLabel(k, r.boss)}`).join(" · ")} (or the buttons on the left)</p>` : ""}<p>${r.expedition ? "One shorter final chapter · health and rites carry between trials" : "Three phases · one shared fight"} · ${r.partySize === 1 ? (r.peril >= 3 ? "no self-revive on Peril 3" : "one solo self-revive") : "no required healer"} · no PvP rating changes.</p></div><div class="raid-briefing-actions"><button class="primary" id="raid-instructions" ${state.instructionsReady.includes(me.id) ? "disabled" : ""}>${state.instructionsReady.includes(me.id) ? "Waiting for the team…" : iconLabel("battle", "Let’s raid")}</button></div>`;
   } else if (state.phase === "intermission") {
     title =
-      r.phase === 1
+      r.expedition ? "Choose your expedition rite" : r.phase === 1
         ? "Choose your starting rite"
         : `Phase ${r.phase} · ${raidChapters(r.boss)[r.phase - 1].name}`;
     body = `<p class="raid-phase-objective">${raidChapters(r.boss)[r.phase - 1].detail}</p><details class="raid-team-summary"><summary>Team rites</summary><div class="raid-team-builds" aria-label="Team rites"></div></details>`;
@@ -292,6 +298,7 @@ export function renderRaidUI(
         : `${r.rewardStatus === "saved" ? `<p class="raid-save-state" role="status">✓ Progress saved: your ${r.boss === "tidewyrm" ? "strands" : r.boss === "gloomshade" ? "relights" : r.boss === "storm-twins" ? "polarity pairs" : r.boss === "emberwing" ? "braziers lit" : r.boss === "prismatail" ? "light relays" : r.boss === "somnara" ? "correct runes" : "pillars"} and revives count towards titles.</p>` : ""}<p class="raid-retry-tip">${defeatTip(state)}</p>`
     }<div class="raid-retry-status">${heroes.length === 1 ? "Same champion and challenge · choose fresh rites" : `${readyCount}/${heroes.length} ready · everyone confirms to run again`}</div>${!heroes.every((p) => p.connected) ? '<p class="raid-retry-tip">A teammate is disconnected. Return to the lobby to refill the party.</p>' : ""}</div></div>`;
   }
+  if (state.phase === "finished") body += resultXp(journey, r.resultId ? `raid:${r.resultId}` : undefined, state.activityStatus, state.activityEligible?.includes(me.id) ?? true);
   const previousCard = overlay.querySelector<HTMLElement>(".raid-overlay");
   const previousScroller =
     overlay.querySelector<HTMLElement>(".raid-briefing-body") ??

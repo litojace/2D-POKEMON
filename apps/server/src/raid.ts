@@ -219,6 +219,39 @@ export class RaidArena extends Arena {
     this.instructionsReady = [boss.id];
     r.message = `${r.gilded ? "Gilded " : ""}${RAID_TRAITS[r.trait].name} ${RAID_BOSSES[r.boss].name} · ${RAID_TRAITS[r.trait].text}`;
   }
+  /** Expeditions use one shorter final chapter, retaining each raider's build. */
+  prepareExpeditionStage(carry: Record<string, import("../../../packages/shared/src/expedition.js").ExpeditionCarry>) {
+    const r = this.raid;
+    r.daily = false;
+    r.peril = 1;
+    r.phase = 3;
+    const fraction = .5;
+    r.maxHp = Math.max(1, Math.round(r.maxHp * fraction));
+    for (const p of this.players.filter(p => p.raidBoss)) p.hp = Math.max(1, Math.round(p.hp * fraction));
+    if (r.twins) {
+      for (const t of r.twins) t.maxHp = this.players.find(p => p.id === t.id)!.hp;
+      r.maxHp = r.twins.reduce((s,t) => s+t.maxHp, 0);
+    }
+    this.onChapter();
+    for (const p of this.heroes()) {
+      const saved = carry[p.id];
+      if (!saved) continue;
+      p.hp = Math.min(CHARACTERS[p.character].health, Math.max(1, saved.hp));
+      p.ult = saved.ult;
+      r.rites[p.id] = [...saved.rites];
+    }
+  }
+  beginExpeditionCamp() {
+    this.raid.result = null;
+    this.raid.resultId = undefined;
+    this.raid.offers = {};
+    this.phase = "intermission";
+    this.deadline = this.time + 15;
+    this.projectiles = []; this.zones = [];
+    this.raid.warnings = [];
+    this.clearAttacks();
+    for (const p of this.heroes()) p.lastInput = blankInput();
+  }
   /** The arena's features at the start of a run (Grumblecrag: four pillars). */
   protected setupArena() {
     this.raid.pillars = OBSTACLES.map((o) => ({
@@ -1093,6 +1126,7 @@ export class RaidArena extends Arena {
     this.finish(false);
   }
   override tick(dt = 1 / RULES.tick) {
+    if (this.raid.expedition?.camp && this.phase === "intermission") { this.time += dt; return; }
     if (["lobby", "briefing", "paused", "finished"].includes(this.phase))
       return;
     if (this.phase === "intermission") {

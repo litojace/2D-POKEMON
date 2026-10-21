@@ -910,6 +910,7 @@ export interface RaidWave {
   high: boolean;
 }
 export interface RaidState {
+  expedition?: import("./expedition.js").ExpeditionState;
   /** The boss entity's player id. */
   bossId: string;
   /** Which boss this raid is (Grumblecrag, …). */
