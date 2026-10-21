@@ -123,3 +123,13 @@ This replaces the taller mobile cards and stacked narrow-phone fallback above.
 - Typecheck, all 854 tests, the client production build and PWA verification pass. Changed files pass Prettier; the repository-wide formatting check retains the same 76 pre-existing failures in untouched files. No gameplay, server, shared package or database changes.
 
 Updated previews: [desktop fighter grid](redesign-roster-compact.png), [landscape phone fighter grid](redesign-mobile-avatars.png), [landscape phone private lobby](redesign-mobile-lobby.png). Review fixtures remain outside the shipped client.
+
+## Home review — softer ground and elemental effects
+
+- Replaced the outlined platform and duplicated hard shadow with a feathered contact shadow and a faint element-colored pool of light, drawn in the fighter SVG so they remain aligned with its feet at every viewport size. Image-based art retains a soft fallback. The existing padded portrait frame keeps tall crests visible.
+- Restored the existing elemental trait effects around the featured fighter: sparks, embers, bubbles, floating crystals, light particles, psychic orbs, leaves/rocks and wisps. Home uses quieter opacity and omits repeated floor rings and Cindrake's flat-bottomed flame wall. Equipped skin artwork and cosmetic attributes remain intact; these are the existing menu effects, without an additional canvas or renderer.
+- Extended the menu motion observer to pause SVG clocks for reduced motion and pause background artwork when a home drawer makes the scene inert. CSS animations and SVG motion resume on the same nodes when appropriate. Hidden tabs, covered menus and offscreen portraits retain their existing pause behavior.
+- Reviewed every fighter at 1280×720, 1920×1080, 844×390 and 568×320, sampling seven character-animation positions for crest/silhouette bounds. Also checked safe areas, equipped stage-three artwork, dynamic reduced-motion changes, paused SVG clocks and reopening/closing fighter selection. The ground has no outline and the page stays within the viewport.
+- Typecheck, all 854 tests, the client production build and PWA verification pass. Changed files pass Prettier; the repository-wide formatting check retains the same 76 pre-existing failures in untouched files. Only client presentation and review documentation changed.
+
+Previews: [Cindrake with embers and soft ground light](redesign-home-ground.png), [landscape-phone elemental effects](redesign-home-effects-mobile.png).

@@ -15,6 +15,7 @@ import { fighterPack } from "./animation/pack-config";
 import { elementIcon } from "./element-icons";
 import { menuIcon } from "./menu-icons";
 import { portraitCosmetics } from "./portraits";
+import { withAura } from "./trait-effects";
 
 export type HomeMode = "duel" | "teams" | "ffa" | "raid";
 export const HOME_MODES = [
@@ -57,7 +58,18 @@ export function homeFeature(
     pack && pack.kind !== "layered"
       ? `<img class="creature-portrait" src="/assets/fighters/${id}/${pack.selection}" alt="${c.name}">`
       : scopeIds(
-          fighterArt(id, "-20 -40 240 250", economy?.looks[id]),
+          withAura(
+            fighterArt(id, "-20 -40 240 250", economy?.looks[id])
+              .replace(
+                "</defs>",
+                '<radialGradient id="home-contact"><stop stop-color="#020612" stop-opacity=".65"/><stop offset=".45" stop-color="#020612" stop-opacity=".4"/><stop offset="1" stop-color="#020612" stop-opacity="0"/></radialGradient><radialGradient id="home-floor-light"><stop stop-color="var(--element)" stop-opacity=".2"/><stop offset="1" stop-color="var(--element)" stop-opacity="0"/></radialGradient></defs>',
+              )
+              .replace(
+                /<ellipse class="fighter-shadow"[^>]*\/>/,
+                '<g class="home-contact-shadow" stroke="none"><ellipse cx="100" cy="178" rx="62" ry="13" fill="url(#home-floor-light)"/><ellipse class="fighter-shadow" cx="100" cy="177" rx="42" ry="9" fill="url(#home-contact)"/></g>',
+              ),
+            id,
+          ),
           "home-feature",
         );
   const cosmetic = portraitCosmetics({

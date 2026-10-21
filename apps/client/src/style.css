@@ -17456,20 +17456,47 @@ body.home-active #credits {
   );
 }
 .home-fighter-stage > .home-fighter-ground {
+  display: none;
+}
+/* SVG portraits carry a feathered contact shadow in the same coordinate frame
+   as their feet. Image packs retain a quiet fallback, without a platform rim. */
+.home-fighter-stage:has(.creature-portrait) > .home-fighter-ground {
   position: absolute;
-  left: 16%;
-  right: 16%;
+  left: 26%;
+  right: 26%;
   bottom: 4%;
-  height: 11%;
+  height: 8%;
   display: block;
-  border: 1px solid color-mix(in srgb, var(--element) 20%, transparent);
+  border: 0;
   border-radius: 50%;
   background: radial-gradient(
     ellipse,
-    color-mix(in srgb, var(--element) 10%, transparent),
-    transparent 70%
+    #02061280,
+    color-mix(in srgb, var(--element) 10%, transparent) 45%,
+    transparent 72%
   );
-  box-shadow: 0 12px 50px #0004;
+  pointer-events: none;
+}
+#menu .home-fighter-art > svg {
+  overflow: hidden;
+}
+.home-fighter-art .ta-back {
+  opacity: 0.55;
+}
+.home-fighter-art .ta-front {
+  opacity: 0.75;
+}
+/* The home contact shadow replaces the aura's repeated floor pools/rims. */
+.home-fighter-art .ta-back > ellipse:is([cy="176"], [cy="178"]) {
+  display: none;
+}
+/* Cindrake keeps its crest and drifting embers; omit the flat-bottomed wall
+   of flame used in the compact selection preview. */
+.home-fighter-art .ta-back .ta-base {
+  display: none;
+}
+.home-fighter-art :is(.ta-back, .ta-front, .home-contact-shadow) {
+  pointer-events: none;
 }
 .home-fighter-copy {
   position: relative;
