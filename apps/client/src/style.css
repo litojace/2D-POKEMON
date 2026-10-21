@@ -19795,3 +19795,22 @@ body.battle-active:not(.touch-mode) .practice-panel {
   justify-self: start;
   font-size: 10px;
 }
+
+/* Native scrolling replaces the redundant roster arrow controls. */
+#menu .roster-navigation {
+  grid-template-columns: minmax(0, 1fr);
+}
+#menu .roster-navigation .roster-scroll-buttons {
+  display: none;
+}
+
+/* Rapid battle clicks should never start a text-selection drag. */
+body.battle-active:not(.touch-mode) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+body.battle-active:not(.touch-mode)
+  :is(input, textarea, [contenteditable="true"]) {
+  -webkit-user-select: text;
+  user-select: text;
+}
