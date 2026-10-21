@@ -28,3 +28,16 @@ Review screenshots use an in-browser sample profile because no Supabase credenti
 - [Landscape phone home, 844×390](redesign-phase2-mobile.png)
 
 Stopped after Phase 2 for review. Phases 3–8 are not included.
+
+## Phase 2 review fix — layout and readability
+
+The first review missed the fixed 150px fighter-name override at the wide-screen breakpoint. Names could break mid-word, while supporting labels were only 8–10px.
+
+- Replaced the home scene's viewport offsets with content rows that reserve space for the heading, fighter and bottom controls. The central fighter group has a bounded width and height on large and tall desktops.
+- Sized fighter names from their own text column and kept them on one line. Removed the 1600px font-size jump.
+- Increased desktop role text to 16px, mastery details and secondary actions to 14px, and season/mode labels to 12–13px. Improved contrast for decorative labels too. Phone secondary text is now 11–12px rather than 7–9px.
+- Preserved right/left/bottom safe areas, reduced motion, controller/keyboard navigation and every existing selector. No gameplay or networking changes.
+- Browser checks cover all eight fighters at 1024×768, 1280×720, 1280×1024, 1366×768, 1440×900, 1599×900, 1600×900, 1600×1200, 1680×1050, 1920×1080, 2560×1440, 844×390 and 568×320. Names fit their columns; the page does not overflow. Separate interaction checks cover mode switching, safe areas, controller input, reduced motion and returning from lobbies.
+- Typecheck, all 854 tests, the production client build and PWA verification pass. The existing repository-wide formatting failures remain in untouched files; changed files pass Prettier.
+
+Updated previews: [desktop](redesign-phase2-desktop.png), [tall desktop](redesign-desktop-tall.png), [landscape phone](redesign-phase2-mobile.png). Review profiles remain browser-only fixtures.
