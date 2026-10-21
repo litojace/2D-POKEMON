@@ -1,5 +1,14 @@
-import { adventureMarkup, type AdventureTab, type AdventureView } from "./adventure-ui";
-import { playerLevel, JOURNEY_ITEM_BY_ID, seasonTheme } from "../../../packages/shared/src/journey";
+import { fighterAvatar } from "./fighter-art";
+import {
+  adventureMarkup,
+  type AdventureTab,
+  type AdventureView,
+} from "./adventure-ui";
+import {
+  playerLevel,
+  JOURNEY_ITEM_BY_ID,
+  seasonTheme,
+} from "../../../packages/shared/src/journey";
 import { formSubmitButton } from "./dialog";
 import { raidAppearance, raidCosmeticOptions } from "./raid-ui";
 import {
@@ -9,7 +18,16 @@ import {
   type RaidHubTab,
 } from "./raid-hub";
 import { iconLabel } from "./menu-icons";
-import { coinChip, coins, lookSlot, shopMarkup, shopPreviewMarkup, previewItem, type ShopTab, type ShopView } from "./shop-ui";
+import {
+  coinChip,
+  coins,
+  lookSlot,
+  shopMarkup,
+  shopPreviewMarkup,
+  previewItem,
+  type ShopTab,
+  type ShopView,
+} from "./shop-ui";
 import { missionsMarkup } from "./missions-ui";
 import {
   CHAMPION_SKIN_BY_ID,
@@ -172,7 +190,8 @@ export class AccountUI {
     // Reloading the same player (after a purchase, an equip, a title change…)
     // keeps what's on screen until the fresh copy arrives. Clearing it first
     // made an open Shop say "Log in" and ask a signed-in player to sign in.
-    const samePlayer = !!session && !!this.account && session.user?.id === this.account.id;
+    const samePlayer =
+      !!session && !!this.account && session.user?.id === this.account.id;
     this.session = session;
     if (!samePlayer) {
       this.account = null;
@@ -186,15 +205,19 @@ export class AccountUI {
         if (version !== this.generation) return;
         this.account = account;
         try {
-          const progress=await this.api("/api/raids") as RaidProgress;
-          if(version!==this.generation)return;
-          this.raidLook=raidLookOf(progress);
-        } catch { /* Raid storage is optional until migration 007 is installed. */ }
+          const progress = (await this.api("/api/raids")) as RaidProgress;
+          if (version !== this.generation) return;
+          this.raidLook = raidLookOf(progress);
+        } catch {
+          /* Raid storage is optional until migration 007 is installed. */
+        }
         try {
           const economy = (await this.api("/api/economy")) as Economy;
           if (version !== this.generation) return;
           this.economy = economy;
-        } catch { /* The Shop needs migration 010. */ }
+        } catch {
+          /* The Shop needs migration 010. */
+        }
         // An open Shop or Missions screen shows the fresh copy.
         this.shopRefresh?.();
         this.missionsRefresh?.();
@@ -239,7 +262,7 @@ export class AccountUI {
     const root = element("account-nav");
     if (!root) return;
     root.innerHTML = this.account
-      ? `<button class="quiet coin-button" id="account-coins" aria-label="Shop: ${this.economy?.unlimitedCoins ? "unlimited" : this.economy ? coins(this.economy.balance) : "your"} coins">${coinChip(this.economy?.balance, "", this.economy?.unlimitedCoins)}</button><button class="quiet" id="account-profile">${iconLabel("user", escape(this.account.displayName))}${this.economy?.journey ? `<small class="nav-level">Lv ${playerLevel(this.economy.journey.xp).level}</small>` : ""}</button>${this.account.isAdmin ? `<button class="quiet" id="account-admin">${iconLabel("admin", "Admin")}</button>` : ""}<button class="quiet" id="account-logout">${iconLabel("leave", "Log out")}</button>`
+      ? `<button class="quiet coin-button" id="account-coins" aria-label="Shop: ${this.economy?.unlimitedCoins ? "unlimited" : this.economy ? coins(this.economy.balance) : "your"} coins">${coinChip(this.economy?.balance, "", this.economy?.unlimitedCoins)}</button><button class="quiet" id="account-profile"><span class="account-avatar" data-champion="${this.hooks.selectedCharacter?.() ?? "voltkit"}" aria-hidden="true">${fighterAvatar(this.hooks.selectedCharacter?.() ?? "voltkit", "account-nav", this.economy?.looks[this.hooks.selectedCharacter?.() ?? "voltkit"])}</span><span class="account-name">${escape(this.account.displayName)}</span>${this.economy?.journey ? `<small class="nav-level">Lv ${playerLevel(this.economy.journey.xp).level}</small>` : ""}</button>${this.account.isAdmin ? `<button class="quiet" id="account-admin" aria-label="Admin" title="Admin">${iconLabel("admin", "Admin")}</button>` : ""}<button class="quiet" id="account-logout" aria-label="Log out" title="Log out">${iconLabel("leave", "Log out")}</button>`
       : `<button class="quiet" id="account-login">${iconLabel("enter", "Log in")}</button><button class="secondary" id="account-signup">${iconLabel("add-friend", "Sign up")}</button>`;
     if (this.account) {
       element("account-profile").onclick = () => void this.showProfile();
@@ -434,11 +457,14 @@ export class AccountUI {
         this.hooks.onChange();
       } catch (error) {
         problem =
-          error instanceof Error ? error.message : "Raid records are not available yet.";
+          error instanceof Error
+            ? error.message
+            : "Raid records are not available yet.";
       }
     const character = this.hooks.selectedCharacter?.() ?? "voltkit";
     const view: { boss?: RaidBossId; tab: RaidHubTab } = { boss, tab };
-    const dialogEl = () => document.getElementById("dialog") as HTMLDialogElement | null;
+    const dialogEl = () =>
+      document.getElementById("dialog") as HTMLDialogElement | null;
     let timer: ReturnType<typeof setInterval> | undefined;
     const render = (top = false) => {
       clearInterval(timer);
@@ -448,20 +474,28 @@ export class AccountUI {
               view.boss,
               view.tab,
               progress,
-              progress ? raidAppearance(progress, character, this.economy?.owned) : "",
+              progress
+                ? raidAppearance(progress, character, this.economy?.owned)
+                : "",
             )
           : raidHubMarkup(progress)) +
           (problem
             ? `<p class="raid-appearance-note raid-update-needed">${escape(problem)} Raids are still playable at Peril 1; saved rewards need the database update (migrations 007–009) and server storage configuration.</p>`
             : ""),
       );
-      if (top) (dialogEl()?.querySelector<HTMLElement>(".raid-dialog-content") ?? dialogEl())?.scrollTo?.(0, 0);
+      if (top)
+        (
+          dialogEl()?.querySelector<HTMLElement>(".raid-dialog-content") ??
+          dialogEl()
+        )?.scrollTo?.(0, 0);
       wire();
     };
     const wire = () => {
       const root = dialogEl();
       if (!root) return;
-      for (const b of Array.from(root.querySelectorAll<HTMLButtonElement>("[data-raid-boss]")))
+      for (const b of Array.from(
+        root.querySelectorAll<HTMLButtonElement>("[data-raid-boss]"),
+      ))
         b.onclick = () => {
           view.boss = b.dataset.raidBoss as RaidBossId;
           view.tab = "overview";
@@ -473,22 +507,33 @@ export class AccountUI {
           view.boss = undefined;
           render(true);
         };
-      for (const b of Array.from(root.querySelectorAll<HTMLButtonElement>("[data-raid-tab]")))
+      for (const b of Array.from(
+        root.querySelectorAll<HTMLButtonElement>("[data-raid-tab]"),
+      ))
         b.onclick = () => {
           view.tab = b.dataset.raidTab as RaidHubTab;
           render();
-          root.querySelector<HTMLButtonElement>(`[data-raid-tab="${view.tab}"]`)?.focus();
+          root
+            .querySelector<HTMLButtonElement>(`[data-raid-tab="${view.tab}"]`)
+            ?.focus();
         };
       const daily = root.querySelector<HTMLButtonElement>("#raid-daily");
       if (daily)
         daily.onclick = () =>
-          this.hooks.startRaid?.(featuredOn(progress?.today?.day ?? pacificDate()).boss, {
-            daily: true,
-          });
-      for (const b of Array.from(root.querySelectorAll<HTMLButtonElement>("[data-raid-start]")))
+          this.hooks.startRaid?.(
+            featuredOn(progress?.today?.day ?? pacificDate()).boss,
+            {
+              daily: true,
+            },
+          );
+      for (const b of Array.from(
+        root.querySelectorAll<HTMLButtonElement>("[data-raid-start]"),
+      ))
         b.onclick = () =>
           view.boss &&
-          this.hooks.startRaid?.(view.boss, { solo: b.dataset.raidStart === "solo" });
+          this.hooks.startRaid?.(view.boss, {
+            solo: b.dataset.raidStart === "solo",
+          });
       const join = root.querySelector<HTMLButtonElement>("#raid-join");
       const code = root.querySelector<HTMLInputElement>("#raid-join-code");
       if (join && code) {
@@ -517,20 +562,29 @@ export class AccountUI {
           clock.textContent = raidCountdown(left);
         }, 1000);
       const options = root.querySelector<HTMLElement>(".raid-equip");
-      if (options && progress) this.bindAppearance(options, progress, character);
+      if (options && progress)
+        this.bindAppearance(options, progress, character);
     };
     render();
   }
   /** Equip buttons on a boss's Rewards tab (saved on the server, then shown). */
-  private bindAppearance(options: HTMLElement, progress: RaidProgress, character: CharacterId) {
-    const status = document.querySelector<HTMLElement>(".raid-appearance-status");
+  private bindAppearance(
+    options: HTMLElement,
+    progress: RaidProgress,
+    character: CharacterId,
+  ) {
+    const status = document.querySelector<HTMLElement>(
+      ".raid-appearance-status",
+    );
     for (const button of Array.from(
       options.querySelectorAll<HTMLButtonElement>("button[data-raid-slot]"),
     ))
       button.onclick = async () => {
         const slot = button.dataset.raidSlot as RaidSlot;
         const item = (button.dataset.raidItem || null) as RaidCosmetic | null;
-        const buttons = Array.from(options.querySelectorAll<HTMLButtonElement>("button"));
+        const buttons = Array.from(
+          options.querySelectorAll<HTMLButtonElement>("button"),
+        );
         const disabled = buttons.map((b) => b.disabled);
         buttons.forEach((b) => {
           b.disabled = true;
@@ -538,7 +592,10 @@ export class AccountUI {
         button.setAttribute("aria-busy", "true");
         if (status) status.textContent = "Saving appearance…";
         try {
-          const saved = (await this.api("/api/raids/equip", { slot, item })) as {
+          const saved = (await this.api("/api/raids/equip", {
+            slot,
+            item,
+          })) as {
             progress?: RaidProgress;
           };
           // Show what the server actually saved, never a guess.
@@ -554,7 +611,11 @@ export class AccountUI {
           }
           if (!options.isConnected) return;
           // Update only the choices: keep the dialog and its scroll position.
-          options.innerHTML = raidCosmeticOptions(progress, character, this.economy?.owned);
+          options.innerHTML = raidCosmeticOptions(
+            progress,
+            character,
+            this.economy?.owned,
+          );
           if (status)
             status.textContent = item
               ? `${(RAID_COSMETICS[item] ?? LOOK_ITEM_BY_ID[item]).name} equipped for all fighters.`
@@ -567,7 +628,9 @@ export class AccountUI {
           button.removeAttribute("aria-busy");
           if (status)
             status.textContent =
-              error instanceof Error ? error.message : "Appearance could not be saved. Try again.";
+              error instanceof Error
+                ? error.message
+                : "Appearance could not be saved. Try again.";
         }
       };
   }
@@ -596,52 +659,108 @@ export class AccountUI {
   async showAdventure(tab: AdventureTab = "levels") {
     if (!this.ensurePlayer()) return;
     const generation = this.generation;
-    try { this.economy = await this.api("/api/economy") as Economy; } catch { /* The mode cards also work before progression storage is installed. */ }
+    try {
+      this.economy = (await this.api("/api/economy")) as Economy;
+    } catch {
+      /* The mode cards also work before progression storage is installed. */
+    }
     if (generation !== this.generation) return;
     this.adventureCleanup?.();
-    const view: AdventureView = { tab, preview: tab === "season" ? `season-${seasonTheme(this.economy?.journey?.season.id ?? new Date().toISOString().slice(0,7))}-frame` : "wayfarer-frame" };
+    const view: AdventureView = {
+      tab,
+      preview:
+        tab === "season"
+          ? `season-${seasonTheme(this.economy?.journey?.season.id ?? new Date().toISOString().slice(0, 7))}-frame`
+          : "wayfarer-frame",
+    };
     const root = document.getElementById("dialog") as HTMLDialogElement;
     let preview: import("./shop-preview").ShopPreviewHandle | undefined;
-    let importing = false, disposed = false;
+    let importing = false,
+      disposed = false;
     const cleanup = () => {
       if (disposed) return;
-      disposed = true; preview?.(); observer.disconnect();
-      root.removeEventListener("close",cleanup);
+      disposed = true;
+      preview?.();
+      observer.disconnect();
+      root.removeEventListener("close", cleanup);
       this.adventureRefresh = undefined;
     };
-    const observer = new MutationObserver(() => { if (!root.querySelector(".adventure")) cleanup(); });
-    observer.observe(root,{childList:true}); root.addEventListener("close",cleanup);
+    const observer = new MutationObserver(() => {
+      if (!root.querySelector(".adventure")) cleanup();
+    });
+    observer.observe(root, { childList: true });
+    root.addEventListener("close", cleanup);
     this.adventureCleanup = cleanup;
     const render = () => {
       if (disposed) return;
       const top = root.querySelector(".dialog-content")?.scrollTop ?? 0;
-      this.hooks.openDialog(adventureMarkup(view,this.economy,this.hooks.selectedCharacter?.() ?? "voltkit",this.raidLook));
-      const scroll = root.querySelector(".dialog-content"); if (scroll) scroll.scrollTop = top;
+      this.hooks.openDialog(
+        adventureMarkup(
+          view,
+          this.economy,
+          this.hooks.selectedCharacter?.() ?? "voltkit",
+          this.raidLook,
+        ),
+      );
+      const scroll = root.querySelector(".dialog-content");
+      if (scroll) scroll.scrollTop = top;
       const panel = root.querySelector<HTMLElement>(".journey-preview");
       if (panel && preview) preview.update(panel);
       else if (panel && !importing) {
         importing = true;
-        void import("./shop-preview").then(({mountShopPreview}) => {
+        void import("./shop-preview").then(({ mountShopPreview }) => {
           importing = false;
           const current = root.querySelector<HTMLElement>(".journey-preview");
           if (!disposed && current) preview = mountShopPreview(current);
         });
-      } else if (!panel && preview) { preview(); preview = undefined; }
-      for (const b of Array.from(root.querySelectorAll<HTMLButtonElement>("[data-adventure-tab]"))) b.onclick = () => {
-        view.tab = b.dataset.adventureTab as AdventureTab;
-        if (view.tab === "season") view.preview = `season-${seasonTheme(this.economy?.journey?.season.id ?? new Date().toISOString().slice(0,7))}-frame`;
-        render();
-      };
-      for (const b of Array.from(root.querySelectorAll<HTMLButtonElement>("[data-journey-preview]"))) b.onclick = () => { view.preview = b.dataset.journeyPreview; render(); };
-      for (const b of Array.from(root.querySelectorAll<HTMLButtonElement>("[data-adventure-play]"))) b.onclick = () => this.hooks.startAdventure?.(b.dataset.adventurePlay!);
-      for (const b of Array.from(root.querySelectorAll<HTMLButtonElement>("[data-journey-equip]"))) b.onclick = async () => {
-        b.disabled = true;
-        try {
-          const item = JOURNEY_ITEM_BY_ID[b.dataset.journeyEquip!];
-          const result = await this.api("/api/raids/cosmetic",{slot:item.slot,item:item.id}) as {progress:RaidProgress};
-          this.raidLook = raidLookOf(result.progress); this.hooks.onChange(); render();
-        } catch(error) { b.disabled = false; const status=root.querySelector(".adventure-status");if(status)status.textContent=error instanceof Error?error.message:"Could not equip that reward."; }
-      };
+      } else if (!panel && preview) {
+        preview();
+        preview = undefined;
+      }
+      for (const b of Array.from(
+        root.querySelectorAll<HTMLButtonElement>("[data-adventure-tab]"),
+      ))
+        b.onclick = () => {
+          view.tab = b.dataset.adventureTab as AdventureTab;
+          if (view.tab === "season")
+            view.preview = `season-${seasonTheme(this.economy?.journey?.season.id ?? new Date().toISOString().slice(0, 7))}-frame`;
+          render();
+        };
+      for (const b of Array.from(
+        root.querySelectorAll<HTMLButtonElement>("[data-journey-preview]"),
+      ))
+        b.onclick = () => {
+          view.preview = b.dataset.journeyPreview;
+          render();
+        };
+      for (const b of Array.from(
+        root.querySelectorAll<HTMLButtonElement>("[data-adventure-play]"),
+      ))
+        b.onclick = () => this.hooks.startAdventure?.(b.dataset.adventurePlay!);
+      for (const b of Array.from(
+        root.querySelectorAll<HTMLButtonElement>("[data-journey-equip]"),
+      ))
+        b.onclick = async () => {
+          b.disabled = true;
+          try {
+            const item = JOURNEY_ITEM_BY_ID[b.dataset.journeyEquip!];
+            const result = (await this.api("/api/raids/cosmetic", {
+              slot: item.slot,
+              item: item.id,
+            })) as { progress: RaidProgress };
+            this.raidLook = raidLookOf(result.progress);
+            this.hooks.onChange();
+            render();
+          } catch (error) {
+            b.disabled = false;
+            const status = root.querySelector(".adventure-status");
+            if (status)
+              status.textContent =
+                error instanceof Error
+                  ? error.message
+                  : "Could not equip that reward.";
+          }
+        };
     };
     this.adventureRefresh = render;
     render();
@@ -651,15 +770,20 @@ export class AccountUI {
     if (!this.ensurePlayer()) return;
     const view = this.shopView;
     if (tab) view.tab = tab;
-    if (!view.preview) view.champion = this.hooks.selectedCharacter?.() ?? view.champion;
+    if (!view.preview)
+      view.champion = this.hooks.selectedCharacter?.() ?? view.champion;
     let problem = "";
     try {
       this.economy = (await this.api("/api/economy")) as Economy;
       this.renderNav();
     } catch (error) {
-      problem = error instanceof Error ? `${error.message} The Shop needs the latest database update (migration 010).` : "The Shop is not available yet.";
+      problem =
+        error instanceof Error
+          ? `${error.message} The Shop needs the latest database update (migration 010).`
+          : "The Shop is not available yet.";
     }
-    const dialogEl = () => document.getElementById("dialog") as HTMLDialogElement | null;
+    const dialogEl = () =>
+      document.getElementById("dialog") as HTMLDialogElement | null;
     const status = (text: string, failed = false) => {
       const box = dialogEl()?.querySelector<HTMLElement>(".shop-status");
       if (box) {
@@ -688,27 +812,47 @@ export class AccountUI {
     this.shopPreviewCleanup = cleanup;
     const render = (keepScroll = true, previewOnly = false) => {
       const root = dialogEl();
-      const top = (root?.querySelector<HTMLElement>(".dialog-content") ?? root)?.scrollTop ?? 0;
+      const top =
+        (root?.querySelector<HTMLElement>(".dialog-content") ?? root)
+          ?.scrollTop ?? 0;
       const panel = root?.querySelector<HTMLElement>(".shop-preview");
       if (previewOnly && panel) {
         // Keep catalog SVGs, focus and scroll position intact while browsing.
-        panel.outerHTML = shopPreviewMarkup(view, this.economy ?? null, this.raidLook ?? {});
+        panel.outerHTML = shopPreviewMarkup(
+          view,
+          this.economy ?? null,
+          this.raidLook ?? {},
+        );
         const selected = previewItem(view, this.economy ?? null);
-        for (const button of Array.from(root!.querySelectorAll<HTMLElement>("[data-shop-preview]"))) {
+        for (const button of Array.from(
+          root!.querySelectorAll<HTMLElement>("[data-shop-preview]"),
+        )) {
           const active = button.dataset.shopPreview === selected;
           button.setAttribute("aria-pressed", String(active));
           button.closest(".shop-card")?.classList.toggle("is-selected", active);
         }
-      } else this.hooks.openDialog(shopMarkup(view, this.economy ?? null, this.raidLook ?? {}, problem));
-      if (root && keepScroll) (root.querySelector<HTMLElement>(".dialog-content") ?? root).scrollTop = top;
+      } else
+        this.hooks.openDialog(
+          shopMarkup(view, this.economy ?? null, this.raidLook ?? {}, problem),
+        );
+      if (root && keepScroll)
+        (root.querySelector<HTMLElement>(".dialog-content") ?? root).scrollTop =
+          top;
       wire();
     };
     this.shopRefresh = () => {
       if (dialogEl()?.open && dialogEl()?.querySelector(".shop")) render();
       else this.shopRefresh = undefined;
     };
-    const busy = async (button: HTMLButtonElement, work: () => Promise<string>) => {
-      const all = Array.from(dialogEl()?.querySelectorAll<HTMLButtonElement>(".shop button, .dialog-tabs [data-shop-tab]") ?? []);
+    const busy = async (
+      button: HTMLButtonElement,
+      work: () => Promise<string>,
+    ) => {
+      const all = Array.from(
+        dialogEl()?.querySelectorAll<HTMLButtonElement>(
+          ".shop button, .dialog-tabs [data-shop-tab]",
+        ) ?? [],
+      );
       all.forEach((b) => (b.disabled = true));
       button.setAttribute("aria-busy", "true");
       try {
@@ -723,7 +867,12 @@ export class AccountUI {
         status(message);
       } catch (error) {
         render();
-        status(error instanceof Error ? error.message : "That didn't work. Try again.", true);
+        status(
+          error instanceof Error
+            ? error.message
+            : "That didn't work. Try again.",
+          true,
+        );
       }
     };
     const wire = () => {
@@ -733,16 +882,28 @@ export class AccountUI {
       if (panel && preview) preview.update(panel);
       else if (panel && !importing && !cancelled) {
         importing = true;
-        void import("./shop-preview").then(({ mountShopPreview }) => {
-          const current = root.querySelector<HTMLElement>(".shop-preview");
-          if (!cancelled && root.open && current) preview = mountShopPreview(current);
-        }).catch(() => {
-          const toggle = root.querySelector<HTMLButtonElement>("[data-preview-toggle]");
-          if (toggle) { toggle.disabled = true; toggle.textContent = "Still preview"; }
-        });
+        void import("./shop-preview")
+          .then(({ mountShopPreview }) => {
+            const current = root.querySelector<HTMLElement>(".shop-preview");
+            if (!cancelled && root.open && current)
+              preview = mountShopPreview(current);
+          })
+          .catch(() => {
+            const toggle = root.querySelector<HTMLButtonElement>(
+              "[data-preview-toggle]",
+            );
+            if (toggle) {
+              toggle.disabled = true;
+              toggle.textContent = "Still preview";
+            }
+          });
       }
-      const all = <T extends HTMLElement>(q: string) => Array.from(root.querySelectorAll<T>(q));
-      const restoreFocus = (selector: string) => root.querySelector<HTMLElement>(selector)?.focus({ preventScroll: true });
+      const all = <T extends HTMLElement>(q: string) =>
+        Array.from(root.querySelectorAll<T>(q));
+      const restoreFocus = (selector: string) =>
+        root
+          .querySelector<HTMLElement>(selector)
+          ?.focus({ preventScroll: true });
       for (const b of all<HTMLButtonElement>("[data-shop-ownership]"))
         b.onclick = () => {
           view.ownership = b.dataset.shopOwnership as ShopView["ownership"];
@@ -775,7 +936,9 @@ export class AccountUI {
         b.onclick = () => {
           view.tab = b.dataset.shopTab as ShopTab;
           render(false);
-          root.querySelector<HTMLButtonElement>(`[data-shop-tab="${view.tab}"]`)?.focus();
+          root
+            .querySelector<HTMLButtonElement>(`[data-shop-tab="${view.tab}"]`)
+            ?.focus();
         };
       for (const b of all<HTMLButtonElement>("[data-shop-champion]"))
         b.onclick = () => {
@@ -790,26 +953,47 @@ export class AccountUI {
           view.preview = id;
           const skin = CHAMPION_SKIN_BY_ID[id];
           if (skin) view.champion = skin.champion;
-          view.stage = this.economy?.looks[view.champion]?.skin === id ? this.economy.looks[view.champion]!.stage : 1;
+          view.stage =
+            this.economy?.looks[view.champion]?.skin === id
+              ? this.economy.looks[view.champion]!.stage
+              : 1;
           render(true, true);
           // Bring an offscreen preview into view, without moving the catalog
           // when the selected look is already visible alongside it.
           const panel = root.querySelector<HTMLElement>(".shop-preview");
-          const content = root.querySelector<HTMLElement>(".dialog-content") ?? root;
+          const content =
+            root.querySelector<HTMLElement>(".dialog-content") ?? root;
           const bounds = panel?.getBoundingClientRect();
           const viewport = content.getBoundingClientRect();
-          if (bounds && (bounds.bottom <= viewport.top || bounds.top >= viewport.bottom))
+          if (
+            bounds &&
+            (bounds.bottom <= viewport.top || bounds.top >= viewport.bottom)
+          )
             panel?.scrollIntoView?.({ block: "nearest" });
         };
       for (const b of all<HTMLButtonElement>("[data-shop-stage]"))
         b.onclick = async () => {
           view.stage = Number(b.dataset.shopStage);
           const id = view.preview;
-          const reached = this.economy?.mythicTesting ? 3 : id ? this.economy?.awakening[id]?.stage ?? 0 : 0;
+          const reached = this.economy?.mythicTesting
+            ? 3
+            : id
+              ? (this.economy?.awakening[id]?.stage ?? 0)
+              : 0;
           // Wearing it: save a reached stage, or any stage available to an admin tester.
-          if (id && this.economy?.looks[view.champion]?.skin === id && view.stage <= reached)
+          if (
+            id &&
+            this.economy?.looks[view.champion]?.skin === id &&
+            view.stage <= reached
+          )
             return busy(b, async () => {
-              this.economy = ((await this.api("/api/shop/equip", { champion: view.champion, skin: id, stage: view.stage })) as { economy: Economy }).economy;
+              this.economy = (
+                (await this.api("/api/shop/equip", {
+                  champion: view.champion,
+                  skin: id,
+                  stage: view.stage,
+                })) as { economy: Economy }
+              ).economy;
               return `Showing Stage ${"I".repeat(view.stage!)}.`;
             });
           render(true, true);
@@ -823,7 +1007,9 @@ export class AccountUI {
             b.classList.add("is-confirming");
             const label = b.querySelector<HTMLElement>(".shop-price")!;
             const original = label.textContent;
-            label.textContent = this.economy?.unlimitedCoins ? "Get for testing?" : `Buy for ${coins(Number(b.dataset.price))}?`;
+            label.textContent = this.economy?.unlimitedCoins
+              ? "Get for testing?"
+              : `Buy for ${coins(Number(b.dataset.price))}?`;
             setTimeout(() => {
               if (!b.isConnected || b.dataset.confirm !== "yes") return;
               delete b.dataset.confirm;
@@ -833,10 +1019,16 @@ export class AccountUI {
             return;
           }
           void busy(b, async () => {
-            this.economy = ((await this.api("/api/shop/buy", { item: id })) as { economy: Economy }).economy;
+            this.economy = (
+              (await this.api("/api/shop/buy", { item: id })) as {
+                economy: Economy;
+              }
+            ).economy;
             // Sets contain several pieces; keep their real item preview selected.
-            if (CHAMPION_SKIN_BY_ID[id] || LOOK_ITEM_BY_ID[id]) view.preview = id;
-            if (CHAMPION_SKIN_BY_ID[id]) view.champion = CHAMPION_SKIN_BY_ID[id].champion;
+            if (CHAMPION_SKIN_BY_ID[id] || LOOK_ITEM_BY_ID[id])
+              view.preview = id;
+            if (CHAMPION_SKIN_BY_ID[id])
+              view.champion = CHAMPION_SKIN_BY_ID[id].champion;
             return `${CHAMPION_SKIN_BY_ID[id]?.name ?? LOOK_ITEM_BY_ID[id]?.name ?? "Set"} is yours. Equip it any time.`;
           });
         };
@@ -846,10 +1038,19 @@ export class AccountUI {
             const id = b.dataset.shopEquip!;
             const skin = CHAMPION_SKIN_BY_ID[id];
             if (skin) {
-              const stage = this.economy?.mythicTesting && skin.rarity === "mythical"
-                ? (view.preview === id ? view.stage ?? 1 : 3)
-                : this.economy?.awakening[id]?.stage ?? 1;
-              this.economy = ((await this.api("/api/shop/equip", { champion: skin.champion, skin: id, stage })) as { economy: Economy }).economy;
+              const stage =
+                this.economy?.mythicTesting && skin.rarity === "mythical"
+                  ? view.preview === id
+                    ? (view.stage ?? 1)
+                    : 3
+                  : (this.economy?.awakening[id]?.stage ?? 1);
+              this.economy = (
+                (await this.api("/api/shop/equip", {
+                  champion: skin.champion,
+                  skin: id,
+                  stage,
+                })) as { economy: Economy }
+              ).economy;
               return `${skin.name} equipped on ${CHARACTERS[skin.champion].name}.`;
             }
             await this.equipLook(lookSlot(id)!, id);
@@ -861,7 +1062,12 @@ export class AccountUI {
             const id = b.dataset.shopUnequip!;
             const skin = CHAMPION_SKIN_BY_ID[id];
             if (skin) {
-              this.economy = ((await this.api("/api/shop/equip", { champion: skin.champion, skin: null })) as { economy: Economy }).economy;
+              this.economy = (
+                (await this.api("/api/shop/equip", {
+                  champion: skin.champion,
+                  skin: null,
+                })) as { economy: Economy }
+              ).economy;
               return `${CHARACTERS[skin.champion].name} wears the original look.`;
             }
             await this.equipLook(lookSlot(id)!, null);
@@ -871,7 +1077,11 @@ export class AccountUI {
         b.onclick = () =>
           void busy(b, async () => {
             const champion = b.dataset.shopUnequipChampion as CharacterId;
-            this.economy = ((await this.api("/api/shop/equip", { champion, skin: null })) as { economy: Economy }).economy;
+            this.economy = (
+              (await this.api("/api/shop/equip", { champion, skin: null })) as {
+                economy: Economy;
+              }
+            ).economy;
             view.preview = null;
             return `${CHARACTERS[champion].name} wears the original look.`;
           });
@@ -888,70 +1098,115 @@ export class AccountUI {
       this.economy = (await this.api("/api/economy")) as Economy;
       this.renderNav();
     } catch (error) {
-      problem = error instanceof Error ? `${error.message} Missions need the latest database update.` : "Missions are not available yet.";
+      problem =
+        error instanceof Error
+          ? `${error.message} Missions need the latest database update.`
+          : "Missions are not available yet.";
     }
-    const dialogEl = () => document.getElementById("dialog") as HTMLDialogElement | null;
+    const dialogEl = () =>
+      document.getElementById("dialog") as HTMLDialogElement | null;
     const render = (message = "") => {
       const previous = dialogEl();
-      const openGuide = previous?.querySelector<HTMLDialogElement>(".mission-instructions[open]");
+      const openGuide = previous?.querySelector<HTMLDialogElement>(
+        ".mission-instructions[open]",
+      );
       const openMission = openGuide?.dataset.missionGuide;
-      const guideScroll = openGuide?.querySelector<HTMLElement>(".mission-popup-body")?.scrollTop ?? 0;
-      const focusedHelp = previous?.querySelector<HTMLButtonElement>("[data-mission-help]:focus")?.dataset.missionHelp;
+      const guideScroll =
+        openGuide?.querySelector<HTMLElement>(".mission-popup-body")
+          ?.scrollTop ?? 0;
+      const focusedHelp = previous?.querySelector<HTMLButtonElement>(
+        "[data-mission-help]:focus",
+      )?.dataset.missionHelp;
       const scrollTop = previous?.querySelector(".missions-screen")
-        ? (previous.querySelector<HTMLElement>(".dialog-content")?.scrollTop ?? 0) : 0;
+        ? (previous.querySelector<HTMLElement>(".dialog-content")?.scrollTop ??
+          0)
+        : 0;
       this.hooks.openDialog(missionsMarkup(this.economy ?? null, problem));
       const root = dialogEl();
       if (!root) return;
-      for (const guide of Array.from(root.querySelectorAll<HTMLDialogElement>(".mission-instructions"))) {
-        const trigger = root.querySelector<HTMLButtonElement>(`[aria-controls="${guide.id}"]`)!;
+      for (const guide of Array.from(
+        root.querySelectorAll<HTMLDialogElement>(".mission-instructions"),
+      )) {
+        const trigger = root.querySelector<HTMLButtonElement>(
+          `[aria-controls="${guide.id}"]`,
+        )!;
         const show = () => {
           guide.showModal();
           trigger.setAttribute("aria-expanded", "true");
         };
         trigger.onclick = show;
-        guide.querySelector<HTMLButtonElement>(".mission-help-close")!.onclick = () => guide.close();
+        guide.querySelector<HTMLButtonElement>(".mission-help-close")!.onclick =
+          () => guide.close();
         guide.onclose = () => {
           trigger.setAttribute("aria-expanded", "false");
           trigger.focus({ preventScroll: true });
         };
         guide.onclick = (event) => {
           const rect = guide.getBoundingClientRect();
-          if (event.target === guide && (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom)) guide.close();
+          if (
+            event.target === guide &&
+            (event.clientX < rect.left ||
+              event.clientX > rect.right ||
+              event.clientY < rect.top ||
+              event.clientY > rect.bottom)
+          )
+            guide.close();
         };
         if (guide.dataset.missionGuide === openMission) {
           show();
-          guide.querySelector<HTMLElement>(".mission-popup-body")!.scrollTop = guideScroll;
-        } else if (!openMission && trigger.dataset.missionHelp === focusedHelp) trigger.focus({ preventScroll: true });
+          guide.querySelector<HTMLElement>(".mission-popup-body")!.scrollTop =
+            guideScroll;
+        } else if (!openMission && trigger.dataset.missionHelp === focusedHelp)
+          trigger.focus({ preventScroll: true });
       }
       root.querySelector<HTMLElement>(".dialog-content")!.scrollTop = scrollTop;
-      const status = root.querySelector<HTMLElement>(".missions-screen .shop-status");
+      const status = root.querySelector<HTMLElement>(
+        ".missions-screen .shop-status",
+      );
       if (status) status.textContent = message;
       const shop = root.querySelector<HTMLButtonElement>("#missions-shop");
       if (shop) shop.onclick = () => void this.showShop();
-      for (const b of Array.from(root.querySelectorAll<HTMLButtonElement>("[data-mission-reroll]")))
+      for (const b of Array.from(
+        root.querySelectorAll<HTMLButtonElement>("[data-mission-reroll]"),
+      ))
         b.onclick = async () => {
-          root.querySelectorAll<HTMLButtonElement>(".missions-screen button").forEach((x) => (x.disabled = true));
+          root
+            .querySelectorAll<HTMLButtonElement>(".missions-screen button")
+            .forEach((x) => (x.disabled = true));
           b.setAttribute("aria-busy", "true");
           try {
-            this.economy = ((await this.api("/api/missions/reroll", { slot: Number(b.dataset.missionReroll) })) as { economy: Economy }).economy;
+            this.economy = (
+              (await this.api("/api/missions/reroll", {
+                slot: Number(b.dataset.missionReroll),
+              })) as { economy: Economy }
+            ).economy;
             this.renderNav();
             this.hooks.onChange();
             render("New mission ready.");
           } catch (error) {
-            render(error instanceof Error ? error.message : "That didn't work. Try again.");
+            render(
+              error instanceof Error
+                ? error.message
+                : "That didn't work. Try again.",
+            );
           }
         };
     };
     this.missionsRefresh = () => {
-      if (dialogEl()?.open && dialogEl()?.querySelector(".missions-screen")) render();
+      if (dialogEl()?.open && dialogEl()?.querySelector(".missions-screen"))
+        render();
       else this.missionsRefresh = undefined;
     };
     render();
   }
   /** Equip a collection piece (or clear a slot) through the raid appearance route. */
   private async equipLook(slot: RaidSlot, item: string | null) {
-    const saved = (await this.api("/api/raids/equip", { slot, item })) as { progress?: RaidProgress };
-    this.raidLook = saved.progress ? raidLookOf(saved.progress) : { ...this.raidLook, [slot]: item };
+    const saved = (await this.api("/api/raids/equip", { slot, item })) as {
+      progress?: RaidProgress;
+    };
+    this.raidLook = saved.progress
+      ? raidLookOf(saved.progress)
+      : { ...this.raidLook, [slot]: item };
   }
   async showProfile() {
     if (!this.account) return;
@@ -960,8 +1215,15 @@ export class AccountUI {
       `<div class="profile-screen"><div class="eyebrow">Your player profile</div><h2>${escape(account.displayName)}</h2><p>${account.isAdmin ? "Administrator" : account.guest ? "Guest" : "Player"}${this.session?.user.email ? ` · ${escape(this.session.user.email)}` : ""}</p><div class="profile-layout"><div class="profile-customize">${account.guest ? `<form id="profile-save" class="account-form save-account"><p><b>Keep your progress.</b> Guest accounts live only on this device. Add your email to make this a full account: your records, titles and name come with you.</p><label>Email<input name="email" type="email" required autocomplete="email"></label><button class="primary">${iconLabel("save", "Save my account")}</button><p id="save-message" role="status"></p></form>` : ""}<form id="profile-title" class="account-form">${titlePickerMarkup(account.ownedTitles as Title[], account.title)}<button class="primary">${iconLabel("save", "Save title")}</button><p id="profile-message" role="status"></p></form><button class="secondary full" id="profile-leaderboard">${iconLabel("leaderboard", "Season standings")}</button><section id="profile-raid"><button class="secondary full" id="profile-raids">${iconLabel("bestiary", "Raid Hub & rewards")}</button><p id="profile-raid-stats" class="muted"></p></section></div><section id="profile-progress" class="progress"><p class="muted">Loading your progress…</p></section></div></div>`,
     );
     element("profile-leaderboard").onclick = () => void this.showLeaderboard();
-    element("profile-raids").onclick=()=>void this.showRaidHub();
-    void this.api('/api/raids').then(value=>{const p=value as RaidProgress,box=element('profile-raid-stats');if(box)box.textContent=`Boss raids: ${p.clears} clears · highest Peril ${p.highestPeril}`;}).catch(()=>{});
+    element("profile-raids").onclick = () => void this.showRaidHub();
+    void this.api("/api/raids")
+      .then((value) => {
+        const p = value as RaidProgress,
+          box = element("profile-raid-stats");
+        if (box)
+          box.textContent = `Boss raids: ${p.clears} clears · highest Peril ${p.highestPeril}`;
+      })
+      .catch(() => {});
     const save = element<HTMLFormElement>("profile-save");
     if (save)
       save.onsubmit = async (event) => {
@@ -982,13 +1244,22 @@ export class AccountUI {
     void this.api("/api/progress")
       .then((value) => {
         const box = element("profile-progress");
-        if (box) { box.innerHTML = progressMarkup(progressSchema.parse(value), this.economy?.journey); const adventure = box.querySelector<HTMLButtonElement>("#profile-adventure"); if (adventure) adventure.onclick = () => void this.showAdventure(); }
+        if (box) {
+          box.innerHTML = progressMarkup(
+            progressSchema.parse(value),
+            this.economy?.journey,
+          );
+          const adventure =
+            box.querySelector<HTMLButtonElement>("#profile-adventure");
+          if (adventure) adventure.onclick = () => void this.showAdventure();
+        }
       })
       .catch((error) => {
         const box = element("profile-progress");
         if (box)
           box.innerHTML = `<p class="muted">${escape(
-            error instanceof Error && /database needs an update/.test(error.message)
+            error instanceof Error &&
+              /database needs an update/.test(error.message)
               ? "Records, achievements and mastery switch on once the database update (migration 004) has been run."
               : "Your progress couldn’t be loaded right now.",
           )}</p>`;
@@ -1128,11 +1399,13 @@ export class AccountUI {
               accept: false,
             })),
       );
-      body.querySelectorAll<HTMLButtonElement>("[data-remove]").forEach(
-        (b) =>
-          (b.onclick = () =>
-            void act("/api/friends/remove", { playerId: b.dataset.remove })),
-      );
+      body
+        .querySelectorAll<HTMLButtonElement>("[data-remove]")
+        .forEach(
+          (b) =>
+            (b.onclick = () =>
+              void act("/api/friends/remove", { playerId: b.dataset.remove })),
+        );
       body.querySelectorAll<HTMLButtonElement>("[data-join]").forEach(
         (b) =>
           (b.onclick = () => {

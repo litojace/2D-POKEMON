@@ -12,6 +12,7 @@ export default defineConfig({
       injectManifest: {
         globPatterns: [
           "assets/*.{js,css}",
+          "assets/fonts/*.woff2",
           "assets/backgrounds/*.webp",
           "assets/music/*.mp3",
           "assets/fighters/**/*.{svg,png,webp,json}",
@@ -30,8 +31,8 @@ export default defineConfig({
         // Chrome/Edge open the installed app with no status bar; others fall back.
         display_override: ["fullscreen", "standalone"],
         orientation: "landscape",
-        theme_color: "#101c35",
-        background_color: "#101c35",
+        theme_color: "#0b1020",
+        background_color: "#0b1020",
         icons: [
           {
             src: "/icons/arena-192.png",

@@ -1,5 +1,13 @@
+import {
+  homeShell,
+  homeModeLabel,
+  syncHomeScene,
+  lastHomeFighter,
+  rememberHomeFighter,
+} from "./home-screen";
+import { setupHomeNavigation } from "./home-navigation";
 import { raidDay } from "../../../packages/shared/src/raid";
-import { adventureHome, resultXp } from "./adventure-ui";
+import { resultXp } from "./adventure-ui";
 import { arcadeWeek, ARCADE_EVENTS } from "../../../packages/shared/src/arcade";
 import { drawArcade } from "./arcade-art";
 import { stormTarget } from "./storm-twins-controls";
@@ -36,7 +44,6 @@ import { setOverlayMarkup, LIVE_SECONDS, fillLiveSeconds } from "./overlay";
 import { fighterArt, fighterAvatar, scopeIds } from "./fighter-art";
 import { fighterSkillColor, wornArt } from "./skins/skin-art";
 import { drawCollectionAura } from "./skins/collection-fx";
-import { coinChip } from "./shop-ui";
 import { withAura } from "./trait-effects";
 import { drawBattleAura } from "./battle-aura";
 import { stadiumCrowd } from "./stadium";
@@ -174,7 +181,7 @@ let accountsUI: AccountUI;
 let gameInstance: Phaser.Game | undefined;
 let state: Snapshot | undefined,
   myId = "",
-  selected: CharacterId = "voltkit",
+  selected: CharacterId = lastHomeFighter(),
   seq = 0,
   local: Fighter | undefined,
   pending: Input[] = [],
@@ -204,9 +211,11 @@ const escape = (s: string) =>
       ]!,
   );
 document.querySelector("#app")!.innerHTML =
-  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><details class="header-menu" id="header-menu"><summary>☰ <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">${menuIcon("help")}<span>How to play</span></button><button class="quiet" id="settings">${menuIcon("settings")}<span>Settings</span></button><button class="quiet" id="friends">${menuIcon("friends")}<span>Friends</span></button><button class="quiet" id="leaderboard">${menuIcon("leaderboard")}<span>Leaderboard</span></button><button class="quiet" id="install-app">${menuIcon("fullscreen")}<span>Want fullscreen?</span></button><button class="quiet" id="report-problem">${menuIcon("report")}<span>Report a problem</span></button><span class="connection" id="connection">Connecting</span></div></details><div id="account-nav" class="account-nav"></div></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-stage"><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span id="control-hints"></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>ELEMENT ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Eight creatures. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
+  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><div id="account-nav" class="account-nav"></div><button type="button" class="quiet home-settings" id="home-settings" aria-label="Settings" title="Settings">${menuIcon("settings")}</button><details class="header-menu" id="header-menu"><summary>☰ <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">${menuIcon("help")}<span>How to play</span></button><button class="quiet" id="settings">${menuIcon("settings")}<span>Settings</span></button><button class="quiet" id="friends">${menuIcon("friends")}<span>Friends</span></button><button class="quiet" id="leaderboard">${menuIcon("leaderboard")}<span>Leaderboard</span></button><button class="quiet" id="install-app">${menuIcon("fullscreen")}<span>Want fullscreen?</span></button><button class="quiet" id="report-problem">${menuIcon("report")}<span>Report a problem</span></button><span class="connection" id="connection">Connecting</span></div></details></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-stage"><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span id="control-hints"></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>ELEMENT ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Eight creatures. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
 // Touch battles lock zoom (pinch and double tap); menus keep it for accessibility.
 watchBattleZoom();
+const homeNavigation = setupHomeNavigation($("menu"), () => showSettings());
+$("home-settings").onclick = () => showSettings();
 const headerMenu = $("header-menu") as HTMLDetailsElement;
 // A dropdown-to-dialog transition keeps the same page position throughout.
 lockScrollWhileOpen($<HTMLDialogElement>("dialog"), headerMenu);
@@ -590,6 +599,7 @@ function wireRoster(isRoom: boolean) {
         const choice = button.dataset.character as CharacterId;
         if (choice === selected) return;
         selected = choice;
+        rememberHomeFighter(choice);
         const revision = isRoom ? lobbySelection.choose(choice) : undefined;
         renderMenu(true);
         if (!isRoom) return;
@@ -622,21 +632,6 @@ function skinOf(
   return looksOf(p)?.[character] ?? null;
 }
 let lastWornKey = "{}";
-/** Home: the Shop button, and today's missions as their own card (signed in). */
-function homeShop() {
-  if (!accountsUI?.account) return "";
-  const e = accountsUI.economy;
-  const done = e?.missions.filter((m) => m.done).length ?? 0;
-  const missions = e?.missions.length
-    ? `<button type="button" class="home-missions" id="home-missions" aria-label="Daily missions: ${done} of ${e.missions.length} done"><span class="home-missions-head">${menuIcon("missions")}<b>Daily missions</b><small>${done === e.missions.length ? "All done" : `${done}/${e.missions.length} done`}</small></span>${e.missions
-        .map(
-          (m) =>
-            `<span class="home-mission tier-${m.tier}${m.done ? " is-done" : ""}" title="${escape(m.text)}"><small>${escape(m.text)}</small><progress max="${m.target}" value="${Math.min(m.progress, m.target)}"></progress></span>`,
-        )
-        .join("")}</button>`
-    : "";
-  return `<button class="quiet raid-icon-button" id="shop-open">${menuIcon("shop")}<span>Shop</span>${e ? coinChip(e.balance, "", e.unlimitedCoins) : ""}</button>${missions}${adventureHome(e)}`;
-}
 function syncMenuCosmetic() {
   const panel = document.querySelector<HTMLElement>("#menu .roster-panel");
   const fighter = state?.players.find((p) => p.id === myId);
@@ -700,7 +695,25 @@ function showSelection(revealSelection = false) {
     if (name) name.textContent = CHARACTERS[selected].name;
   }
   syncMenuCosmetic();
+  syncHomePresentation();
   return true;
+}
+function syncHomePresentation() {
+  syncHomeScene($("menu"), selected, accountsUI?.economy, accountsUI?.raidLook);
+  const journey = document.getElementById("home-adventure");
+  if (journey) journey.onclick = () => void accountsUI.showAdventure();
+  const friends = document.getElementById("home-friends");
+  if (friends) friends.onclick = () => void accountsUI.showFriends();
+  const avatar = document.querySelector("#account-profile .account-avatar");
+  if (avatar && avatar.getAttribute("data-champion") !== selected) {
+    avatar.innerHTML = fighterAvatar(
+      selected,
+      "account-nav",
+      accountsUI?.economy?.looks[selected],
+    );
+    avatar.setAttribute("data-champion", selected);
+  }
+  homeNavigation.refresh();
 }
 /** Blue = 0, Red = 1. Older snapshots without teams fall back to seat order. */
 const teamOf = (p: Fighter) =>
@@ -736,10 +749,6 @@ function visibleEnemies(from: { x: number; y: number }, myself: Fighter) {
     );
 }
 type RoomMode = "duel" | "teams" | "ffa" | "raid";
-const createLabel = () =>
-  roomMode === "raid"
-    ? iconLabel("bestiary", "Open the Raid Hub")
-    : iconLabel("create", "Create private room");
 let roomMode: RoomMode = (() => {
   try {
     const saved = localStorage.getItem("arena-room-mode");
@@ -1201,6 +1210,8 @@ function renderMenu(revealSelection = false) {
   const keepScroll = !$("menu").hidden ? scrollY : null;
   touch.reset();
   document.body.classList.remove("battle-active", "battle-raid");
+  const home = !isRoom && !watchingRoom;
+  document.body.classList.toggle("home-active", home);
   // Home and lobby share a mounted shell; only returning from battle fades in.
   const arriving = $("menu").hidden;
   $("battle").hidden = true;
@@ -1215,21 +1226,7 @@ function renderMenu(revealSelection = false) {
     ? roomPanel(p!)
     : watchingRoom
       ? watchPanel()
-      : `<div class="eyebrow">Play online</div><h2>A friend. A code.<br>A worthy opponent.</h2><label for="name">Your display name</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><div class="mode-picker" role="radiogroup" aria-label="Room type">${(
-          [
-            ["duel", "1v1 Duel", "Best of five"],
-            ["teams", "2v2 Teams", "Best of five"],
-            ["ffa", "Free-for-all", "3–4 players"],
-            ["raid", "Boss Raid", "Co-op · 1–4 players"],
-          ] as const
-        )
-          .map(
-            ([id, label, hint]) =>
-              `<button type="button" role="radio" class="bot-level mode-level${roomMode === id ? " active" : ""}" data-mode="${id}" aria-checked="${roomMode === id}"><b>${label}</b><small>${hint}</small></button>`,
-          )
-          .join(
-            "",
-          )}</div><button class="primary btn-primary" id="create">${createLabel()}</button><button class="quiet raid-icon-button" id="raid-bestiary">${menuIcon("bestiary")}<span>Raid Hub & rewards</span></button>${homeShop()}<div class="divider">Or join a friend</div><label for="code">Room code</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary btn-secondary">${iconLabel("enter", "Join")}</button></div><button id="watch" class="quiet full">${iconLabel("watch", "Watch this room instead")}</button><div class="divider">Or play solo</div><div class="bot-picker" role="radiogroup" aria-label="Bot difficulty">${BOT_LEVELS.map(([id, label, hint]) => `<button type="button" role="radio" class="bot-level${botLevel === id ? " active" : ""}" data-bot="${id}" aria-checked="${botLevel === id}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button class="secondary btn-secondary full" id="bot-match">${iconLabel("bot", "Battle an AI bot")}</button>${accountsUI?.account ? '<button class="quiet full" id="practice">' + iconLabel("target", "Solo test mode") + "</button>" : ""}<small class="room-note">Free to play · Login required<br>Keyboard + mouse or mobile touch controls</small>`;
+      : `<label for="name">Your display name</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><div class="home-play-options"><section><h3>Join your crew</h3><label for="code">Room code</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary btn-secondary">${iconLabel("enter", "Join")}</button></div><button id="watch" class="quiet full">${iconLabel("watch", "Watch this room instead")}</button></section><section><h3>Sharpen your skills</h3><div class="bot-picker" role="radiogroup" aria-label="Bot difficulty">${BOT_LEVELS.map(([id, label, hint]) => `<button type="button" role="radio" class="bot-level${botLevel === id ? " active" : ""}" data-bot="${id}" aria-checked="${botLevel === id}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button class="secondary btn-secondary full" id="bot-match">${iconLabel("bot", "Battle an AI bot")}</button>${accountsUI?.account ? '<button class="quiet full" id="practice">' + iconLabel("target", "Solo test mode") + "</button>" : ""}</section></div><small class="room-note">Free to play · Login required<br>Keyboard + mouse · Controller · Touch</small>`;
   // A newly equipped Shop skin redraws the roster cards.
   const wornKey = JSON.stringify(accountsUI?.economy?.looks ?? {});
   const wornChanged = wornKey !== lastWornKey;
@@ -1239,14 +1236,26 @@ function renderMenu(revealSelection = false) {
     $("menu"),
     panelMarkup,
     () =>
-      `<header class="desktop-lobby-header"><div class="eyebrow">Elemental Coliseum</div><h1>Choose your fighter</h1><p>Pick your creature. Enter the arena.</p></header><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected)}</div><aside class="room-panel card">${panelMarkup}</aside></div>`,
-    keepScroll !== null && !wornChanged,
+      home
+        ? homeShell(
+            panelMarkup,
+            fighterSelection(selected),
+            roomMode,
+            selected,
+            accountsUI?.economy,
+            accountsUI?.raidLook,
+          )
+        : `<header class="desktop-lobby-header"><div class="eyebrow">Elemental Coliseum</div><h1>Choose your fighter</h1><p>Pick your creature. Enter the arena.</p></header><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected)}</div><aside class="room-panel card">${panelMarkup}</aside></div>`,
+    keepScroll !== null &&
+      !wornChanged &&
+      !!$("menu").querySelector(".home-screen") === home,
   );
   const adventureButton = document.getElementById("home-adventure");
   if (adventureButton)
     adventureButton.onclick = () => void accountsUI.showAdventure();
   wireRoster(isRoom);
   syncMenuCosmetic();
+  syncHomePresentation();
   // Fighter panel slot: between the rows on PC, under the swipeable row on phones.
   if (!retainedShell) watchFighterDetail($("menu"));
   else if (
@@ -1296,6 +1305,7 @@ function renderMenu(revealSelection = false) {
     const invite = pendingInvite();
     if (invite) {
       $<HTMLInputElement>("code").value = invite;
+      homeNavigation.open("play");
       if (connected && accountsUI?.account) {
         clearInvite();
         void play("join");
@@ -1339,7 +1349,18 @@ function renderMenu(revealSelection = false) {
               b.classList.toggle("active", on);
               b.setAttribute("aria-checked", String(on));
             });
-          $("create").innerHTML = createLabel();
+          $("home-mode-toggle").querySelector("b")!.textContent =
+            homeModeLabel(roomMode);
+          $("create").setAttribute(
+            "aria-label",
+            roomMode === "raid"
+              ? "Play Boss Raid: open Raid Hub"
+              : `Play ${homeModeLabel(roomMode)}: create private room`,
+          );
+          $("menu").querySelector(".home-launch-hint")!.textContent =
+            roomMode === "raid"
+              ? "Choose your boss in the Raid Hub"
+              : "Create a private room · Invite your crew";
         }),
     );
     wireRaidLobby();
@@ -1395,6 +1416,7 @@ async function leave() {
   menuOpen = false;
 }
 function renderBattle() {
+  document.body.classList.remove("home-active");
   if (state) audio.setTheme(battleMusic(state, myId), state.raid?.phase ?? 1);
   if (!document.body.classList.contains("battle-active")) {
     document.body.classList.add("battle-active");
