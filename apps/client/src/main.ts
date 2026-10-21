@@ -213,6 +213,19 @@ const escape = (s: string) =>
   );
 document.querySelector("#app")!.innerHTML =
   `<header class="topbar"><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><div id="account-nav" class="account-nav"></div><button type="button" class="quiet home-settings" id="home-settings" aria-label="Settings" title="Settings">${menuIcon("settings")}</button><details class="header-menu" id="header-menu"><summary>☰ <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">${menuIcon("help")}<span>How to play</span></button><button class="quiet" id="settings">${menuIcon("settings")}<span>Settings</span></button><button class="quiet" id="friends">${menuIcon("friends")}<span>Friends</span></button><button class="quiet" id="leaderboard">${menuIcon("leaderboard")}<span>Leaderboard</span></button><button class="quiet" id="install-app">${menuIcon("fullscreen")}<span>Want fullscreen?</span></button><button class="quiet" id="report-problem">${menuIcon("report")}<span>Report a problem</span></button><span class="connection" id="connection">Connecting</span></div></details></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-stage"><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span id="control-hints"></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu">Esc / Menu</button></div></section></main><footer><span>ELEMENT ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Eight creatures. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
+// Reserve the measured HUD and wrapped callout height on landscape phones.
+const battleHudSize = new ResizeObserver(() => {
+  if ($("battle").hidden) return;
+  const panel = $("hud").getBoundingClientRect();
+  const callout = document
+    .getElementById("phase-label")
+    ?.getBoundingClientRect();
+  const height = Math.ceil(
+    Math.max(panel.bottom, callout?.bottom ?? panel.bottom) - panel.top,
+  );
+  $("battle").style.setProperty("--match-hud-height", `${height + 8}px`);
+});
+battleHudSize.observe($("hud"));
 // Touch battles lock zoom (pinch and double tap); menus keep it for accessibility.
 watchBattleZoom();
 const homeNavigation = setupHomeNavigation($("menu"), () => showSettings());
@@ -1440,6 +1453,10 @@ function renderBattle() {
     state?.players.find((p) => p.id === myId) ??
     (watching && state?.code === watching ? state.players[0] : undefined);
   if (!state || !me) return;
+  document.body.style.setProperty(
+    "--element",
+    `#${CHARACTERS[me.character].color.toString(16).padStart(6, "0")}`,
+  );
   document.body.classList.toggle("battle-raid", !!state.raid);
   document.body.classList.toggle("spectating", !myId && !!watching);
   queueMicrotask(refreshControlLabels);
@@ -1496,12 +1513,15 @@ function renderBattle() {
     $("hud").innerHTML = hudOrder
       .map(
         (p, i) =>
-          `${i === split ? '<div class="timer-wrap"><span id="round-label"></span><strong id="timer">03:00</strong><span id="phase-label"></span></div>' : ""}<div class="health-card ${i >= split ? "right" : ""}${isTeams() ? ` team-${teamOf(p)}${p.id === myId ? " me" : ""}` : isFfa() && p.id === myId ? " me" : ""}" style="--element:#${CHARACTERS[p.character].color.toString(16)}"><div><b>${escape(p.name)}</b><span>${CHARACTERS[p.character].name}</span><strong id="score-${i}"></strong></div><div class="health-track"><span id="health-${i}"></span></div><small id="health-text-${i}"></small><small id="status-${i}"></small></div>`,
+          `${i === split ? '<div class="timer-wrap"><span id="round-label"></span><strong id="timer">03:00</strong><span id="phase-label"></span></div>' : ""}<div class="health-card ${i >= split ? "right" : ""}${isTeams() ? ` team-${teamOf(p)}${p.id === myId ? " me" : ""}` : isFfa() && p.id === myId ? " me" : ""}" style="--element:#${CHARACTERS[p.character].color.toString(16)}"><div><b>${escape(p.name)}</b><span>${CHARACTERS[p.character].name}</span><strong id="score-${i}"></strong></div><div class="health-track"><span id="health-${i}"></span></div><small id="health-text-${i}"></small><small id="status-${i}"></small><div class="hud-ultimate" title="Ultimate charge"><span>ULT <b id="ult-text-${i}"></b></span><div class="hud-ultimate-track" role="meter" aria-label="${escape(p.name)} ultimate charge" aria-valuemin="0" aria-valuemax="100"><i id="ult-meter-${i}"></i></div></div></div>`,
       )
       .join("");
+    battleHudSize.disconnect();
+    battleHudSize.observe($("hud"));
+    battleHudSize.observe($("phase-label"));
     const c = CHARACTERS[me.character];
     $("abilities").innerHTML =
-      `<div class="basic-hint" title="${c.basic.name}: ${c.basic.description} No cooldown · ${Math.round((c.basic.interval ?? 0.3) * 1000)} ms between attacks."><kbd data-action="basic">${keyText("basic")}</kbd><span>${abilityIcon(c.basic.name)}<small>${c.basic.name.toUpperCase()}</small></span></div>${c.skills.map((a, i) => `<div class="ability" id="ability-${i}" style="--element:#${c.color.toString(16)}"><kbd data-action="${SKILL_ACTIONS[i]}">${keyText(SKILL_ACTIONS[i])}</kbd><span>${abilityIcon(a.name)}<small id="cooldown-${i}">READY</small></span><i class="cooldown-fill" id="fill-${i}"></i></div>`).join("")}<div class="movement-ability"><kbd data-action="dash">${keyText("dash")}</kbd><span>Dash<small id="dash-cd"></small></span></div><div class="movement-ability"><kbd data-action="jump">${keyText("jump")}</kbd><span>Jump<small id="jump-cd"></small></span></div>`;
+      `<div class="basic-hint" title="${c.basic.name}: ${c.basic.description} No cooldown · ${Math.round((c.basic.interval ?? 0.3) * 1000)} ms between attacks."><kbd data-action="basic">${keyText("basic")}</kbd><span>${abilityIcon(c.basic.name)}<small>${c.basic.name.toUpperCase()}</small></span></div>${c.skills.map((a, i) => `<div class="ability" id="ability-${i}" style="--element:#${c.color.toString(16)}"><kbd data-action="${SKILL_ACTIONS[i]}">${keyText(SKILL_ACTIONS[i])}</kbd><span>${abilityIcon(a.name)}<small id="cooldown-${i}">READY</small></span><i class="cooldown-fill" id="fill-${i}"></i><i class="skill-cooldown-ring" aria-hidden="true"></i></div>`).join("")}<div class="movement-ability"><kbd data-action="dash">${keyText("dash")}</kbd><span>Dash<small id="dash-cd"></small></span></div><div class="movement-ability"><kbd data-action="jump">${keyText("jump")}</kbd><span>Jump<small id="jump-cd"></small></span></div>`;
   }
   hudOrder.forEach((p, i) => {
     const c = CHARACTERS[p.character];
@@ -1516,6 +1536,20 @@ function renderBattle() {
       : isTeams()
         ? `${state!.teamScores?.[teamOf(p)] ?? 0} / ${roundsNeeded(state!.mutators)}`
         : `${state!.scores[p.id]} / ${roundsNeeded(state!.mutators)}`;
+    const charge = Math.min(
+      100,
+      Math.max(0, (100 * (p.ult ?? 0)) / RULES.ultMax),
+    );
+    $(`ult-text-${i}`).textContent =
+      charge >= 100 ? "READY" : `${Math.floor(charge)}%`;
+    $(`ult-meter-${i}`).style.width = `${charge}%`;
+    $(`ult-meter-${i}`).parentElement!.setAttribute(
+      "aria-valuenow",
+      String(Math.floor(charge)),
+    );
+    $(`ult-meter-${i}`)
+      .closest(".hud-ultimate")
+      ?.classList.toggle("is-ready", charge >= 100);
     $(`status-${i}`).textContent = p.statuses
       .map((s) =>
         s.kind === "sleep"
@@ -1597,6 +1631,10 @@ function renderBattle() {
             ? `${charge}% · EX`
             : `${charge}%`;
       $(`fill-${i}`).style.height = `${ready ? 0 : 100 - charge}%`;
+      $(`ability-${i}`).style.setProperty(
+        "--cooldown",
+        `${ready ? 0 : 100 - charge}%`,
+      );
       $(`ability-${i}`).classList.toggle("cooling", !ready);
       $(`ability-${i}`).classList.toggle("ult-ready", ready);
       $(`ability-${i}`).classList.toggle("ex-ready", exReady && !armed);
@@ -1613,6 +1651,10 @@ function renderBattle() {
     $(`cooldown-${i}`).textContent = left > 0 ? `${left.toFixed(1)}s` : "READY";
     $(`fill-${i}`).style.height =
       `${(100 * left) / (a.cooldown * cooldownScale())}%`;
+    $(`ability-${i}`).style.setProperty(
+      "--cooldown",
+      `${Math.min(100, (100 * left) / (a.cooldown * cooldownScale()))}%`,
+    );
     $(`ability-${i}`).classList.toggle("cooling", left > 0);
   });
   $("dash-cd").textContent =
@@ -2480,34 +2522,48 @@ class ArenaScene extends Phaser.Scene {
       const bank = event.abilityId === "gem-bank",
         heal = event.kind === "heal" || bank,
         energy = event.kind === "heal" && event.abilityId === "energy-orb";
+      const strength = hitStrength(event.value, event.ko);
+      const value = event.value.toLocaleString(undefined, {
+        maximumFractionDigits: 1,
+      });
       const label = this.add
         .text(
           event.x,
           event.y - 45,
           bank
-            ? `+${event.value} GEM${event.value === 1 ? "" : "S"} BANKED`
+            ? `+${value} GEM${event.value === 1 ? "" : "S"} BANKED`
             : energy
-              ? `+${event.value}% ULT`
-              : `${heal ? "+" : "−"}${event.value}`,
+              ? `+${value}% ULT`
+              : `${heal ? "+" : "−"}${value}`,
           {
-            fontFamily: "monospace",
-            fontSize: "25px",
+            fontFamily: "DM Sans, sans-serif",
+            fontStyle: "bold",
+            fontSize: heal
+              ? "26px"
+              : strength === "critical"
+                ? "38px"
+                : strength === "strong"
+                  ? "32px"
+                  : "26px",
             color: bank
               ? "#d8b4ff"
               : energy
                 ? "#ffd166"
                 : heal
                   ? "#7dffb0"
-                  : "#fff",
-            stroke: "#152820",
-            strokeThickness: 4,
+                  : strength === "critical"
+                    ? "#ffd65b"
+                    : "#eef2ff",
+            stroke: "#0b1020",
+            strokeThickness: 5,
           },
         )
         .setOrigin(0.5)
+        .setDepth(45)
         .setResolution(renderScale());
       this.tweens.add({
         targets: label,
-        y: event.y - 95,
+        y: reducedMotion ? event.y - 45 : event.y - 95,
         alpha: 0,
         duration: 650,
         onComplete: () => label.destroy(),
@@ -2608,6 +2664,11 @@ class ArenaScene extends Phaser.Scene {
     if (event.ko && !reducedMotion) {
       // Knockout: hold the moment and push the camera in, then ease back.
       this.koUntil = now + KO_FEEL.holdMs;
+      if (!this.cameras.main.flashEffect.isRunning) {
+        // Phaser captures the initial alpha when the effect starts.
+        this.cameras.main.flashEffect.alpha = 0.12;
+        this.cameras.main.flash(KO_FEEL.holdMs, 255, 214, 91);
+      }
       this.tweens.addCounter({
         from: 0,
         to: 1,
@@ -2653,7 +2714,9 @@ class ArenaScene extends Phaser.Scene {
       touch.enabled &&
         document.body.classList.contains("battle-active") &&
         innerWidth > innerHeight,
-      follow &&
+      touch.enabled &&
+        innerWidth > innerHeight &&
+        follow &&
         presented &&
         !state?.arcade &&
         state?.raid?.boss !== "somnara" &&
@@ -3484,6 +3547,18 @@ function fitRenderer() {
   if (!gameInstance) return;
   const parent = $("game"),
     dpr = renderScale();
+  // Anchor desktop HUD and controls to the displayed court, including letterboxing.
+  const frame = parent.parentElement!.getBoundingClientRect();
+  const battle = $("battle").getBoundingClientRect();
+  $("battle").style.setProperty("--desktop-arena-width", `${frame.width}px`);
+  $("battle").style.setProperty(
+    "--desktop-arena-top",
+    `${frame.top - battle.top}px`,
+  );
+  $("battle").style.setProperty(
+    "--desktop-arena-bottom",
+    `${battle.bottom - frame.bottom}px`,
+  );
   const width = Math.max(1, Math.round(parent.clientWidth * dpr)),
     height = Math.max(1, Math.round(parent.clientHeight * dpr));
   const scale = gameInstance.scale;

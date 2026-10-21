@@ -19087,3 +19087,602 @@ body.lobby-active .roster-panel {
     gap: 6px;
   }
 }
+
+/* Phase 4: compact corner HUD and shared circular skill cooldowns. */
+body.battle-active:not(.battle-raid) .hud {
+  grid-template-columns: minmax(0, 320px) minmax(100px, 1fr) minmax(0, 320px);
+  gap: 16px;
+  align-items: start;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+body.battle-active:not(.battle-raid) .hud.hud-teams {
+  grid-template-columns: repeat(2, minmax(0, 200px)) minmax(100px, 1fr) repeat(
+      2,
+      minmax(0, 200px)
+    );
+  gap: 10px;
+}
+.health-card {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--bg-0) 90%, transparent);
+  box-shadow: 0 4px 16px #0003;
+}
+.health-card > div:first-child {
+  gap: 8px;
+  font-size: 14px;
+  margin-bottom: 7px;
+}
+.health-card b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.health-card > div:first-child > span {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.health-card strong {
+  flex: none;
+  font: 700 18px/1 var(--display);
+}
+.health-card .health-track {
+  height: 7px;
+  border-radius: 999px;
+  background: #ffffff1a;
+}
+.health-card .health-track span {
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--element) 70%, white),
+    var(--element)
+  );
+}
+.health-card > small {
+  font-size: 11px;
+  margin-top: 5px;
+  line-height: 1.3;
+}
+.health-card > small:last-of-type {
+  color: var(--element);
+  float: right;
+}
+.hud-ultimate {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  clear: both;
+  padding-top: 5px;
+}
+.health-card .hud-ultimate > span {
+  flex: none;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.hud-ultimate b {
+  color: var(--text);
+  font-size: inherit;
+  font-weight: 600;
+}
+.hud-ultimate-track {
+  flex: 1;
+  height: 3px;
+  background: #ffffff1a;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.hud-ultimate-track i {
+  display: block;
+  width: 0;
+  height: 100%;
+  background: var(--accent);
+}
+.hud-ultimate.is-ready > span,
+.hud-ultimate.is-ready b {
+  color: var(--accent);
+}
+.timer-wrap {
+  justify-self: center;
+  min-width: 90px;
+  padding: 4px 8px;
+}
+.timer-wrap > span {
+  font-size: 11px;
+  letter-spacing: 0.7px;
+  line-height: 1.4;
+}
+.timer-wrap strong {
+  font-size: 38px;
+  line-height: 1.1;
+}
+body.battle-active:not(.touch-mode) .ability-bar {
+  justify-content: center;
+  gap: clamp(12px, 2vw, 28px);
+}
+body.battle-active:not(.touch-mode)
+  :is(.ability, .movement-ability, .basic-hint) {
+  flex: none;
+  width: 88px;
+  height: 88px;
+  min-width: 0;
+  padding: 12px 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 20%, var(--bg-2), var(--bg-0));
+  isolation: isolate;
+  overflow: hidden;
+  text-align: center;
+}
+body.battle-active:not(.touch-mode) .ability {
+  border-color: color-mix(in srgb, var(--element) 45%, var(--line));
+}
+body.battle-active:not(.touch-mode)
+  :is(.ability, .movement-ability, .basic-hint)
+  kbd {
+  position: absolute;
+  left: 9px;
+  top: 5px;
+  min-width: 20px;
+  padding: 2px 4px;
+  font-size: 11px;
+  background: var(--bg-0);
+  border: 1px solid var(--line);
+  z-index: 3;
+}
+body.battle-active:not(.touch-mode)
+  :is(.ability, .movement-ability, .basic-hint)
+  > span {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+  width: 100%;
+  white-space: normal;
+  font-size: 14px;
+}
+body.battle-active:not(.touch-mode) .ability .skill-icon,
+body.battle-active:not(.touch-mode) .basic-hint .skill-icon {
+  height: 30px;
+  width: 30px;
+  margin: 0;
+}
+body.battle-active:not(.touch-mode)
+  :is(.ability, .movement-ability, .basic-hint)
+  small {
+  font-size: 11px;
+  line-height: 1.1;
+  margin-top: 2px;
+  letter-spacing: 0;
+}
+body.battle-active:not(.touch-mode) .basic-hint small {
+  font-size: 10px;
+}
+body.battle-active:not(.touch-mode) .ability .cooldown-fill {
+  display: none;
+}
+.skill-cooldown-ring,
+.touch-buttons button::before {
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: conic-gradient(
+    from -90deg,
+    #ffffff18 var(--skill-sweep, 0%),
+    var(--element, var(--accent)) 0
+  );
+  mask: radial-gradient(
+    farthest-side,
+    transparent calc(100% - 3px),
+    #000 calc(100% - 2px)
+  );
+}
+.ability.ult-ready::before,
+.ability.ult-ready::after {
+  content: none;
+}
+.ability.ult-ready .skill-cooldown-ring {
+  background: var(--accent);
+}
+.ability.cooling {
+  opacity: 1;
+}
+.ability.cooling .skill-icon {
+  opacity: 0.4;
+}
+.ability.cooling small {
+  color: var(--text);
+  font-weight: 700;
+}
+.touch-buttons button::before,
+.touch-buttons button.ult-ready::before {
+  content: "";
+  inset: 2px;
+  width: auto;
+  height: auto;
+  left: 2px;
+  top: 2px;
+  aspect-ratio: auto;
+  z-index: 0;
+  transform: none;
+  animation: none;
+  background: conic-gradient(
+    from -90deg,
+    #ffffff18 var(--skill-sweep, 0%),
+    var(--element, var(--accent)) 0
+  );
+}
+.touch-buttons button.ult-ready::after {
+  content: none;
+}
+.touch-buttons button.ult-ready::before {
+  background: var(--accent);
+}
+.touch-buttons button.cooling {
+  background: radial-gradient(circle, #121a33eb, #0b1020dd);
+}
+.touch-buttons .touch-cooldown {
+  font: 800 18px/1 var(--display);
+  color: var(--text);
+}
+.touch-buttons .touch-key {
+  font: 700 11px/1 var(--display);
+  letter-spacing: 0.4px;
+  opacity: 1;
+}
+.touch-buttons button.ult-ready {
+  box-shadow: 0 0 16px #ffd65b55;
+}
+body.battle-active.touch-mode:not(.battle-raid) .hud {
+  grid-template-columns: minmax(0, 220px) minmax(72px, 1fr) minmax(0, 220px);
+  gap: 8px;
+}
+body.battle-active.touch-mode:not(.battle-raid) .hud.hud-teams {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) 72px repeat(
+      2,
+      minmax(0, 1fr)
+    );
+  gap: 6px;
+}
+body.battle-active.touch-mode .health-card {
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+}
+body.battle-active.touch-mode .health-card > div:first-child {
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+body.battle-active.touch-mode .health-card b {
+  max-width: none;
+}
+body.battle-active.touch-mode .health-card strong {
+  font-size: 14px;
+}
+body.battle-active.touch-mode .health-card > small {
+  font-size: 10px;
+  margin-top: 3px;
+}
+body.battle-active.touch-mode .health-card .health-track {
+  height: 5px;
+}
+body.battle-active.touch-mode .hud-ultimate {
+  gap: 5px;
+  padding-top: 3px;
+}
+body.battle-active.touch-mode .hud-ultimate > span {
+  font-size: 10px;
+}
+body.battle-active.touch-mode .timer-wrap {
+  min-width: 0;
+  padding: 4px 0;
+}
+body.battle-active.touch-mode .timer-wrap strong {
+  font-size: 30px;
+}
+body.battle-active.touch-mode .timer-wrap > span {
+  font-size: 10px;
+  letter-spacing: 0;
+}
+@media (max-width: 700px) {
+  body.battle-active.touch-mode .health-card {
+    padding: 5px;
+  }
+  body.battle-active.touch-mode .health-card > div:first-child {
+    font-size: 11px;
+    gap: 3px;
+  }
+  body.battle-active.touch-mode .hud.hud-teams .health-card > div:first-child {
+    flex-wrap: wrap;
+  }
+  body.battle-active.touch-mode .hud.hud-teams .health-card strong {
+    font-size: 12px;
+  }
+  body.battle-active.touch-mode .hud.hud-teams .health-card > small {
+    font-size: 9px;
+  }
+  body.battle-active.touch-mode .hud.hud-teams .hud-ultimate {
+    flex-wrap: wrap;
+    gap: 2px;
+  }
+  body.battle-active.touch-mode .hud.hud-teams .hud-ultimate-track {
+    min-width: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .health-card *,
+  .ability,
+  .ability *,
+  .ability::before,
+  .ability::after,
+  .touch-buttons button,
+  .touch-buttons button::before,
+  .touch-buttons button::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+/* The canvas is sized by its frame; its previous pixel height must not enlarge it. */
+body.battle-active:not(.touch-mode) .arena-frame {
+  aspect-ratio: 16 / 9;
+}
+body.battle-active:not(.touch-mode) #game {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+}
+.health-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 6px;
+  padding: 8px 10px;
+  line-height: 1.2;
+}
+.health-card > div:first-child,
+.health-card .health-track,
+.health-card .hud-ultimate {
+  grid-column: 1 / -1;
+}
+.health-card > div:first-child,
+.health-card > small {
+  margin: 0;
+}
+.health-card > small:last-of-type {
+  float: none;
+  text-align: right;
+}
+.health-card .hud-ultimate {
+  padding-top: 0;
+}
+body.battle-active.touch-mode .health-card {
+  padding: 5px 7px;
+  gap: 3px 5px;
+}
+body.battle-active.touch-mode .health-card > div:first-child,
+body.battle-active.touch-mode .health-card > small {
+  margin: 0;
+}
+body.battle-active.touch-mode .health-card .hud-ultimate {
+  padding-top: 0;
+}
+body.battle-active.touch-mode:not(.battle-raid) .timer-wrap {
+  position: relative;
+}
+body.battle-active.touch-mode:not(.battle-raid) #round-label {
+  white-space: nowrap;
+  position: absolute;
+  width: 160px;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: 10px;
+}
+body.battle-active.touch-mode:not(.battle-raid) .timer-wrap strong {
+  margin-top: 13px;
+}
+body.battle-active.touch-mode:not(.battle-raid) #phase-label {
+  position: absolute;
+  width: 200px;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 47px;
+  white-space: nowrap;
+  font-size: 10px;
+}
+@media (max-width: 700px) {
+  body.battle-active.touch-mode:not(.battle-raid) #round-label {
+    white-space: normal;
+    width: 72px;
+    line-height: 1.1;
+  }
+  body.battle-active.touch-mode:not(.battle-raid) .timer-wrap strong {
+    margin-top: 23px;
+    font-size: 26px;
+  }
+  body.battle-active.touch-mode:not(.battle-raid) #phase-label {
+    top: 58px;
+    width: 160px;
+    white-space: normal;
+    line-height: 1.1;
+  }
+  body.battle-active.touch-mode .hud.hud-teams .health-card > div:first-child {
+    flex-wrap: nowrap;
+  }
+  body.battle-active.touch-mode .hud.hud-teams .hud-ultimate {
+    flex-wrap: nowrap;
+  }
+  body.battle-active.touch-mode .hud.hud-teams .hud-ultimate-track {
+    min-width: 0;
+  }
+}
+
+/* Resolve the registered, non-inheriting cooldown on the control itself. */
+.ability,
+.touch-buttons button {
+  --skill-sweep: var(--cooldown, 0%);
+}
+body.battle-active.touch-mode:not(.battle-raid) .hud.hud-teams {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) 120px repeat(
+      2,
+      minmax(0, 1fr)
+    );
+}
+body.battle-active.touch-mode:not(.battle-raid) #round-label {
+  width: 100%;
+  left: 0;
+  transform: none;
+  white-space: normal;
+}
+body.battle-active.touch-mode:not(.battle-raid) #phase-label {
+  width: 100%;
+  left: 0;
+  transform: none;
+  white-space: normal;
+  line-height: 1.15;
+}
+@media (max-width: 700px) {
+  body.battle-active.touch-mode:not(.battle-raid) .hud.hud-teams {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) 90px repeat(
+        2,
+        minmax(0, 1fr)
+      );
+  }
+  body.battle-active.touch-mode:not(.battle-raid) #phase-label {
+    font-size: 9px;
+  }
+}
+/* Share the last row between HP and ultimate rather than making the HUD taller. */
+.health-card {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.health-card > small[id^="health-text-"] {
+  grid-column: 1;
+  grid-row: 3;
+  white-space: nowrap;
+}
+.health-card > small[id^="status-"] {
+  grid-column: 1 / -1;
+  grid-row: 4;
+}
+.health-card > small[id^="status-"]:empty {
+  display: none;
+}
+.health-card .hud-ultimate {
+  grid-column: 2;
+  grid-row: 3;
+  clear: none;
+}
+@media (max-width: 700px) {
+  body.battle-active.touch-mode .hud.hud-teams .health-card .hud-ultimate {
+    grid-column: 1 / -1;
+    grid-row: 4;
+  }
+  body.battle-active.touch-mode
+    .hud.hud-teams
+    .health-card
+    > small[id^="status-"] {
+    grid-row: 5;
+  }
+}
+body.battle-active:not(.touch-mode) .timer-wrap {
+  padding: 2px 6px;
+}
+body.battle-active:not(.touch-mode) .timer-wrap > span {
+  font-size: 11px;
+  line-height: 1.2;
+}
+body.battle-active:not(.touch-mode) .timer-wrap strong {
+  font-size: 34px;
+  line-height: 1;
+}
+body.battle-active:not(.touch-mode) .battle-footer {
+  font-size: 12px;
+  gap: 12px;
+}
+body.battle-active:not(.touch-mode) .battle-footer > span:nth-child(2) {
+  font-size: 11px;
+  letter-spacing: 0.3px;
+}
+body.battle-active:not(.touch-mode) #battle-menu {
+  font-size: 13px;
+}
+@media (max-width: 1100px) {
+  body.battle-active:not(.touch-mode) .battle-footer {
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+}
+body.battle-active.touch-mode:not(.battle-raid) .arena-frame {
+  top: calc(var(--safe-top) + var(--match-hud-height, 58px));
+}
+/* Keep the existing selection label as readable as its HP and skill labels. */
+.selection-layout .showcase-card .card-bottom > span {
+  font-size: 12px;
+}
+body.battle-active.touch-mode:not(.battle-raid) .timer-wrap {
+  width: 100%;
+  max-width: 220px;
+}
+/* Desktop PvP reads as one court, with its HUD anchored inside the corners. */
+body.battle-active:not(.touch-mode):not(.battle-raid) #battle {
+  position: relative;
+}
+body.battle-active:not(.touch-mode):not(.battle-raid) .hud {
+  position: absolute;
+  top: calc(var(--desktop-arena-top, 0px) + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(var(--desktop-arena-width, 100%) - 24px);
+  margin: 0;
+  z-index: 22;
+  grid-template-columns: minmax(0, 280px) minmax(100px, 1fr) minmax(0, 280px);
+}
+body.battle-active:not(.touch-mode):not(.battle-raid) .hud.hud-teams {
+  grid-template-columns: repeat(2, minmax(0, 200px)) minmax(100px, 1fr) repeat(
+      2,
+      minmax(0, 200px)
+    );
+}
+body.battle-active:not(.touch-mode):not(.battle-raid) .ability-bar {
+  position: absolute;
+  bottom: calc(var(--desktop-arena-bottom, 32px) + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(860px, calc(var(--desktop-arena-width, 100%) - 24px));
+  margin: 0;
+  z-index: 22;
+  gap: clamp(10px, 1.5vw, 20px);
+}
+body.battle-active:not(.touch-mode):not(.battle-raid)
+  :is(.ability, .movement-ability, .basic-hint) {
+  width: 76px;
+  height: 76px;
+}
+body.battle-active:not(.touch-mode):not(.battle-raid)
+  #battle:has(#arena-overlay:not(:empty))
+  :is(.hud, .ability-bar) {
+  visibility: hidden;
+}
+
+body.battle-active:not(.touch-mode):not(.battle-raid) .timer-wrap {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: #0b1020e6;
+  padding: 6px 12px;
+}
+body.battle-active:not(.touch-mode):not(.battle-raid) .enemy-bearing {
+  top: calc(var(--match-hud-height, 78px) + 18px);
+}
