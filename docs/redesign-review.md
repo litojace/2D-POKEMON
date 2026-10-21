@@ -111,3 +111,15 @@ Preview: [complete home fighter portrait](redesign-home-full-fighter.png).
 - Verified late records without a tap, mastery reset, retained art/scroll, repeated updates without replacing nodes, and desktop ↔ phone portrait restoration. Typecheck, all 854 tests, the client production build and PWA verification pass. Changed files pass Prettier; the full formatting check retains the same 76 pre-existing failures in untouched files.
 
 Updated previews: [compact mobile roster](redesign-mobile-avatars.png), [mobile private lobby](redesign-mobile-lobby.png). Sample records remain confined to the external review harness.
+
+## Fighter selection — all eight cards visible
+
+This replaces the taller mobile cards and stacked narrow-phone fallback above.
+
+- Kept all eight fighters visible in a two-column, four-row grid on the left. Each compact card contains a still avatar, name, element and mastery ring; the selected card has a gold border. Large card portraits, repeated cooldown rows and HP now give way to the selected fighter's information on the right.
+- Restored a full animated fighter in the right pane, with a padded frame for tall crests. Overview, mastery, properties, basic attack, all four special skills, combo and shared dash/jump instructions appear together. Only this detail pane needs to scroll; reduced motion keeps the artwork still.
+- Kept the private room beside the fighter panels on standard landscape phones and desktops. Below 741px, a native “Room & ready” disclosure gives both fighter panels enough width. Room information scrolls independently of its pinned actions; touch, keyboard and controller can open it. Escape and outside taps close it, and resizing restores the normal room panel.
+- Browser checks cover all eight selections and duel, teams, FFA and raid rooms at 1280×720, 1920×1080, 844×390 and 568×320. Checks verify all card bounds without roster scrolling, right-hand details, stationary card artwork, animated full previews, reduced motion and phone safe areas. Additional checks cover keyboard/controller activation, touch dismissal, pinned actions, repeated resizing, text bounds and scrolling through the combo and shared controls.
+- Typecheck, all 854 tests, the client production build and PWA verification pass. Changed files pass Prettier; the repository-wide formatting check retains the same 76 pre-existing failures in untouched files. No gameplay, server, shared package or database changes.
+
+Updated previews: [desktop fighter grid](redesign-roster-compact.png), [landscape phone fighter grid](redesign-mobile-avatars.png), [landscape phone private lobby](redesign-mobile-lobby.png). Review fixtures remain outside the shipped client.

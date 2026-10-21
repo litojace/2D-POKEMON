@@ -128,7 +128,7 @@ export function fighterSelection(selected: CharacterId, element = "All") {
   const comboRow = `<p class="combo-description"><b>Combo · ${combo.name}</b>${combo.text}</p>`;
   // Keep detail markup adjacent for legacy consumers; the mounted layout
   // places it in a separate, scrollable preview beside the portrait roster.
-  const detail = `<div class="fighter-detail" data-detail-for="${selected}" style="--element:${color}"><nav class="fighter-preview-tabs" aria-label="Fighter preview sections"><button type="button" data-fighter-preview="overview" aria-pressed="true">Overview</button><button type="button" data-fighter-preview="skills" aria-pressed="false">Skills &amp; combo</button></nav><div class="selected-fighter" style="--element:${color}"><div class="selected-art">${art(selected, true, true)}${placeholderBadge(selected, "PLACEHOLDER ART")}<span class="selected-art-caption">${fighter.element} · ${fighter.role}</span></div><div class="selected-info"><span class="element-pill">${elementIcon(fighter.element)}${fighter.element}</span><h3>${fighter.name}</h3><p class="fighter-mastery-label">${masteryTier(masteryMatches(selected))?.name ?? "New challenger"} mastery · ${masteryMatches(selected)} matches</p><p>${fighter.description}</p><div class="fighter-stats"><span><b>${fighter.health}</b>Health</span><span><b>${fighter.speed}</b>Move speed</span><span><b>${fighter.basic.damage}</b>Basic damage</span></div><p class="basic-description">${abilityIcon(fighter.basic.name)}<span class="basic-text"><b>${fighter.basic.name}</b> · ${fighter.basic.description} <em>No cooldown · ${interval} ms between attacks</em></span></p></div></div><div class="skill-preview" style="--element:${color}" hidden><div class="skill-preview-heading"><h3>Four special skills</h3><span>${skillKeys.join(" / ")}</span></div><div class="preview-skills">${skills}</div>${comboRow}</div></div>`;
+  const detail = `<div class="fighter-detail" data-detail-for="${selected}" style="--element:${color}"><nav class="fighter-preview-tabs" aria-label="Fighter preview sections"><button type="button" data-fighter-preview="overview" aria-pressed="true">Overview</button><button type="button" data-fighter-preview="skills" aria-pressed="false">Skills &amp; combo</button></nav><div class="selected-fighter" style="--element:${color}"><div class="selected-art">${art(selected, true, true)}${placeholderBadge(selected, "PLACEHOLDER ART")}<span class="selected-art-caption">${fighter.element} · ${fighter.role}</span></div><div class="selected-info"><span class="element-pill">${elementIcon(fighter.element)}${fighter.element}</span><h3>${fighter.name}</h3><p class="fighter-role-label">${fighter.role} · ${attackRange(selected) === "long" ? "Ranged basic attack" : "Melee basic attack"}</p><p class="fighter-mastery-label">${masteryTier(masteryMatches(selected))?.name ?? "New challenger"} mastery · ${masteryMatches(selected)} matches</p><p>${fighter.description}</p><div class="fighter-stats"><span><b>${fighter.health}</b>Health</span><span><b>${fighter.speed}</b>Move speed</span><span><b>${fighter.basic.damage}</b>Basic damage</span></div><p class="basic-description">${abilityIcon(fighter.basic.name)}<span class="basic-text"><b>${fighter.basic.name}</b> · ${fighter.basic.description} <em>No cooldown · ${interval} ms between attacks</em></span></p></div></div><div class="skill-preview" style="--element:${color}" hidden><div class="skill-preview-heading"><h3>Four special skills</h3><span>${skillKeys.join(" / ")}</span></div><div class="preview-skills">${skills}</div>${comboRow}</div></div>`;
   const ids = Object.values(CHARACTERS)
     .filter((c) => element === "All" || c.element === element)
     .map((c) => c.id);
@@ -267,25 +267,24 @@ export function placeFighterDetail(root: ParentNode) {
   const roster = root.querySelector<HTMLElement>(".showcase-roster"),
     detail = root.querySelector<HTMLElement>(".fighter-detail");
   if (!roster || !detail) return;
-  const compact = matchMedia(
-    "(max-width: 1000px) and (orientation: landscape)",
-  ).matches;
   for (const portrait of Array.from(
     root.querySelectorAll<SVGSVGElement>(
       ".card-art > svg, .fighter-detail .selected-art > svg",
     ),
   )) {
-    const full =
-      portrait.dataset.fullPortraitViewbox ?? portrait.getAttribute("viewBox")!;
-    portrait.dataset.fullPortraitViewbox = full;
-    const frame = compact ? "18 -32 164 180" : full;
+    const frame = portrait.closest(".card-art")
+      ? "18 -32 164 180"
+      : "-20 -40 240 250";
     if (portrait.getAttribute("viewBox") !== frame)
       portrait.setAttribute("viewBox", frame);
   }
   const preview = root.querySelector<HTMLElement>(".fighter-preview-slot");
   if (preview) {
+    if (detail.parentElement !== preview) preview.prepend(detail);
+    const sharedControls = root.querySelector<HTMLElement>(".universal");
+    if (sharedControls && sharedControls.parentElement !== preview)
+      preview.append(sharedControls);
     showFighterSection(detail, detail.dataset.preview ?? "overview");
-    if (detail.parentElement !== preview) preview.append(detail);
     return;
   }
   const strip = getComputedStyle(roster).gridAutoFlow.startsWith("column");
@@ -303,7 +302,9 @@ export function placeFighterDetail(root: ParentNode) {
 function showFighterSection(detail: HTMLElement, section: string) {
   detail.dataset.preview = section;
   const skills = section === "skills";
-  const expanded = matchMedia("(min-width: 1001px)").matches;
+  const expanded =
+    !!detail.closest(".fighter-preview-slot") ||
+    matchMedia("(min-width: 1001px)").matches;
   detail.querySelector<HTMLElement>(".fighter-preview-tabs")!.hidden = expanded;
   detail.querySelector<HTMLElement>(".selected-fighter")!.hidden =
     !expanded && skills;
