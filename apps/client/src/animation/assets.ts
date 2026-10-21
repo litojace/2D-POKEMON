@@ -1,6 +1,6 @@
 import type { CharacterId } from "@arena/shared";
 import {
-  creatureSvg,
+  creatureSvgRenderer,
   creatureParts,
   proportioned,
   MOODS,
@@ -32,7 +32,8 @@ export function skinSuffix(id: CharacterId, worn?: SkinLook | null) {
   if (!look) return "";
   const stage = look.stage ?? 1;
   const art = SKIN_ART[look.skin];
-  const staged = !!art.mythic || (art.stageAccessories ?? []).some((s) => stage >= s.stage);
+  const staged =
+    !!art.mythic || (art.stageAccessories ?? []).some((s) => stage >= s.stage);
   return `~${look.skin}${staged ? `~${stage}` : ""}`;
 }
 export function rigKey(id: CharacterId, dir: Facing, part: Part, suffix = "") {
@@ -96,6 +97,7 @@ function asset(
   part: Part,
   mood: Mood = "normal",
   look: SkinLook | null = null,
+  render = creatureSvgRenderer(id, dir, mood, look),
 ): RigAsset {
   const suffix = skinSuffix(id, look);
   const { pivot: defaultPivot } = definitions[part];
@@ -118,9 +120,7 @@ function asset(
       part === "eyes"
         ? moodKey(id, dir, mood, suffix)
         : rigKey(id, dir, part, suffix),
-    url:
-      "data:image/svg+xml;base64," +
-      btoa(creatureSvg(id, dir, part, b.join(" "), mood, look)),
+    url: "data:image/svg+xml;base64," + btoa(render(part, b.join(" "))),
     width: b[2],
     height: b[3],
     originX: (q[0] - b[0]) / b[2],
@@ -140,13 +140,25 @@ export function rigAssets(
   look: SkinLook | null = null,
   directions: readonly Facing[] = DIRS,
 ): RigAsset[] {
+  // Each normal facing supplies twelve crops. Building its patterns, masks
+  // and Awakening accessories for every crop stalls the animation thread.
+  const drawings = new Map(
+    directions.map((dir) => [
+      dir,
+      creatureSvgRenderer(id, dir, "normal", look),
+    ]),
+  );
   return [
     ...directions.flatMap((dir) =>
-      parts.map((part) => asset(id, dir, part, "normal", look)),
+      parts.map((part) =>
+        asset(id, dir, part, "normal", look, drawings.get(dir)!),
+      ),
     ),
-    ...directions.filter((dir) => dir !== "up").flatMap((dir) =>
-      MOODS.map((mood) => asset(id, dir, "eyes", mood, look)),
-    ),
+    ...directions
+      .filter((dir) => dir !== "up")
+      .flatMap((dir) =>
+        MOODS.map((mood) => asset(id, dir, "eyes", mood, look)),
+      ),
   ];
 }
 /** A point of the creature art (200×190 canvas) in rig pixels from its root. */

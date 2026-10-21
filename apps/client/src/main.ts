@@ -124,6 +124,7 @@ import {
   shareInvite,
 } from "./invite";
 import { lockScrollWhileOpen, setScrollLock } from "./scroll-lock";
+import { watchMenuMotion } from "./menu-motion";
 import {
   MASTERY_TIERS,
   masteryTier,
@@ -199,6 +200,7 @@ watchBattleZoom();
 const headerMenu = $("header-menu") as HTMLDetailsElement;
 // A dropdown-to-dialog transition keeps the same page position throughout.
 lockScrollWhileOpen($<HTMLDialogElement>("dialog"), headerMenu);
+watchMenuMotion($("menu"), $<HTMLDialogElement>("dialog"), headerMenu);
 headerMenu.addEventListener("click", (event) => {
   if ((event.target as Element).closest("button")) headerMenu.open = false;
 });
@@ -1055,6 +1057,7 @@ function renderMenu(revealSelection = false) {
   // Home and lobby share a mounted shell; only returning from battle fades in.
   const arriving = $("menu").hidden;
   $("battle").hidden = true;
+  syncBattleLoop();
   $("menu").hidden = false;
   $("menu").classList.remove("screen-enter");
   if (arriving) {
@@ -1268,6 +1271,7 @@ function renderBattle() {
     $("menu").hidden = true;
     $("battle").hidden = false;
     ensureBattleRenderer();
+    syncBattleLoop();
     fitRenderer();
     $("practice-controls").hidden = !state.practice;
     if (state.practice) {
@@ -3191,9 +3195,18 @@ function ensureBattleRenderer() {
     // The camera maps the authoritative 1600x900 world onto the buffer.
     input: { activePointers: 4 },
   });
+  // A player can return home while the first texture load is still finishing.
+  gameInstance.events.once(Phaser.Core.Events.POST_RENDER, syncBattleLoop);
+  gameInstance.events.on(Phaser.Core.Events.RESUME, syncBattleLoop);
   addEventListener("resize", fitRenderer);
   // The arena box also changes when the HUD or skill bar changes height.
   new ResizeObserver(() => fitRenderer()).observe($("game"));
+}
+/** A hidden battle canvas must not compete with the menu or Shop preview. */
+function syncBattleLoop() {
+  if (!gameInstance?.isRunning) return;
+  if ($("battle").hidden) gameInstance.loop.sleep();
+  else if (!gameInstance.loop.running) gameInstance.loop.wake();
 }
 accountsUI = new AccountUI({
   selectedCharacter: () => selected,

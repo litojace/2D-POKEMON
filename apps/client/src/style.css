@@ -9004,6 +9004,13 @@ dialog.framed-dialog > .dialog-content:focus-visible { outline: 2px solid #ffd65
   .raid-draft.action-overlay > .eyebrow { display: none; }
 }
 
+/* Preserve each portrait's phase while it is offscreen or covered by a menu. */
+#menu [data-motion-paused],
+#menu [data-motion-paused] *,
+#menu [data-motion-paused]::before,
+#menu [data-motion-paused]::after {
+  animation-play-state: paused !important;
+}
 /* Auralynx's rear ring follows its battle rig, including on equipped portraits. */
 @keyframes fighter-aura-ring {
   to { transform: rotate(360deg); }

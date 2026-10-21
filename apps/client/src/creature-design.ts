@@ -586,7 +586,7 @@ function dressLayers(
       if (!layers[part]) continue;
       const m = `${prefix}-m-${part}`;
       layers[part] +=
-        `<mask id="${m}" maskUnits="userSpaceOnUse" x="-40" y="-60" width="280" height="280"><g filter="url(#${m}-w)" stroke="none">${layers[part]}</g><filter id="${m}-w"><feColorMatrix values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0"/></filter></mask>` +
+        `<mask id="${m}" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="-40" y="-60" width="280" height="280"><g stroke="none">${layers[part]}</g></mask>` +
         `<g mask="url(#${m})" stroke="none" opacity="${opacity}">${wallpaper}</g>`;
     }
   }
@@ -610,11 +610,23 @@ export function creatureSvg(
   mood: Mood = "normal",
   look?: SkinLook | null,
 ) {
+  return creatureSvgRenderer(id, dir, mood, look)(part, viewBox);
+}
+/** Prepare a look once when several cropped textures share the same drawing. */
+export function creatureSvgRenderer(
+  id: CharacterId,
+  dir: Facing,
+  mood: Mood = "normal",
+  look?: SkinLook | null,
+) {
   const { defs, layers } = creatureLayers(id, dir, mood, look);
+  const stroke = paletteFor(id, lookFor(id, look)).dark;
   const group = (p: CreaturePart) =>
     `<g class="fighter-${p === "body" ? "torso" : p}">${layers[p]}</g>`;
-  const content = part
-    ? layers[part]
-    : `<ellipse class="fighter-shadow" cx="100" cy="177" rx="40" ry="8" fill="#060d24" opacity=".25"/><g class="fighter-character">${(["tail", "wings", "legL", "legR", "body", "armL", "armR"] as CreaturePart[]).map(group).join("")}<g class="fighter-face">${(["head", "ears", "eyes", "flame"] as CreaturePart[]).map(group).join("")}</g>${group("scarf")}</g>`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}">${defs}<g stroke="${paletteFor(id, lookFor(id, look)).dark}" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round">${content}</g></svg>`;
+  return (part?: CreaturePart, viewBox = CREATURE_VIEWBOX) => {
+    const content = part
+      ? layers[part]
+      : `<ellipse class="fighter-shadow" cx="100" cy="177" rx="40" ry="8" fill="#060d24" opacity=".25"/><g class="fighter-character">${(["tail", "wings", "legL", "legR", "body", "armL", "armR"] as CreaturePart[]).map(group).join("")}<g class="fighter-face">${(["head", "ears", "eyes", "flame"] as CreaturePart[]).map(group).join("")}</g>${group("scarf")}</g>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}">${defs}<g stroke="${stroke}" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round">${content}</g></svg>`;
+  };
 }
