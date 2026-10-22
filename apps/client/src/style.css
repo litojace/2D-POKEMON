@@ -20918,7 +20918,7 @@ body.lobby-active #menu .fighter-preview-slot {
   gap: 5px;
 }
 #account-coins .coin-chip b {
-  font-size: 20px;
+  font-size: 16px;
   line-height: 1.2;
 }
 #account-coins .coin-chip .button-icon {
@@ -20931,7 +20931,7 @@ body.lobby-active #menu .fighter-preview-slot {
     padding: 3px 8px;
   }
   #account-coins .coin-chip b {
-    font-size: 18px;
+    font-size: 15px;
   }
   #account-coins .coin-chip .button-icon {
     width: 13px;
