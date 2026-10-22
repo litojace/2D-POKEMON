@@ -168,3 +168,7 @@ After all migrations through `021_storm_twins.sql`, run [022_player_journey.sql]
 ## Three daily mission changes
 
 After migration 022, run [023_three_mission_changes.sql](../supabase/migrations/023_three_mission_changes.sql) in the Supabase SQL Editor. Both verification columns should read **true**. Each account gets three free mission changes per Pacific calendar day, shared across unfinished missions. Existing changes count toward the new allowance; changing a mission resets only that slot's progress. Completed missions, earned rewards, wallets and journey progress are preserved. The UI shows the remaining count after refreshing missions. Until this migration is applied, the client continues to respect the old one-change allowance.
+
+## Bot missions without a minimum match duration
+
+After migration 023, run [024_fast_bot_missions.sql](../supabase/migrations/024_fast_bot_missions.sql) in the Supabase SQL Editor. Both verification columns should read **true**. Completed matches against Easy, Normal or Hard bots now count toward daily missions regardless of length, including bot-win, Hard-bot, fighter-specific win and match-completion missions. The server must still report a completed match with participation; practice, abandoned and idle results do not qualify. Existing mission progress and rewards are preserved. This applies to newly recorded results and does not retroactively award previously ignored wins. PvP mission duration requirements, match XP, weekly goals, Mythic Trials and raid rules stay unchanged.
