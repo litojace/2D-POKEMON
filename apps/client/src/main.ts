@@ -1,4 +1,5 @@
 import { frameLobbyPanel } from "./lobby-layout";
+import { fitDesktopBattleHud } from "./desktop-battle-layout";
 import {
   homeShell,
   homeModeLabel,
@@ -233,8 +234,10 @@ const battleHudSize = new ResizeObserver((entries) => {
     Math.max(panel.bottom, callout?.bottom ?? panel.bottom) - panel.top,
   );
   $("battle").style.setProperty("--match-hud-height", `${height + 8}px`);
+  fitRenderer();
 });
 battleHudSize.observe($("hud"));
+battleHudSize.observe($("abilities"));
 // Touch battles lock zoom (pinch and double tap); menus keep it for accessibility.
 watchBattleZoom();
 const homeNavigation = setupHomeNavigation($("menu"), () => showSettings());
@@ -3569,6 +3572,7 @@ function fitRenderer() {
   if (!gameInstance) return;
   const parent = $("game"),
     dpr = renderScale();
+  fitDesktopBattleHud($("battle"));
   // Anchor desktop HUD and controls to the displayed court, including letterboxing.
   const frame = parent.parentElement!.getBoundingClientRect();
   const battle = $("battle").getBoundingClientRect();
@@ -3584,6 +3588,9 @@ function fitRenderer() {
   const width = Math.max(1, Math.round(parent.clientWidth * dpr)),
     height = Math.max(1, Math.round(parent.clientHeight * dpr));
   const scale = gameInstance.scale;
+  // Outside HUD placement can move the canvas without changing its pixel size.
+  // Keep mouse aim aligned with its new position in that case too.
+  scale.updateBounds();
   if (
     scale.width === width &&
     scale.height === height &&
