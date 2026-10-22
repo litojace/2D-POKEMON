@@ -17270,7 +17270,8 @@ body.home-active #credits {
 .home-rail-item,
 .home-rail .home-missions {
   position: relative;
-  display: flex;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
   align-items: center;
   justify-content: flex-start;
   gap: 13px;
@@ -17287,10 +17288,20 @@ body.home-active #credits {
   text-align: left;
 }
 .home-rail-item > .menu-option-icon {
+  grid-column: 1;
+  grid-row: 1;
   color: inherit;
   width: 22px;
   height: 22px;
   flex: none;
+}
+.home-rail-item > span {
+  grid-column: 2;
+  grid-row: 1;
+}
+.home-rail #shop-open {
+  display: grid;
+  column-gap: 13px;
 }
 .home-rail-item.is-active {
   color: var(--accent);
@@ -17318,20 +17329,20 @@ body.home-active #credits {
   border-top: 1px solid var(--line);
 }
 .home-rail .home-missions {
-  flex-wrap: wrap;
-  font-size: 17px;
   box-shadow: none;
-  gap: 8px;
-  padding: 12px;
+  row-gap: 6px;
 }
 .home-nav-badge {
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: start;
   font:
     700 12px/1.2 "DM Sans",
     sans-serif;
   color: var(--accent);
   background: #ffd65b16;
   padding: 4px 7px;
-  margin-left: 28px;
+  margin-left: 0;
 }
 .home-rail-caption {
   margin-top: auto;
@@ -17978,7 +17989,9 @@ body.home-active #credits {
     gap: 2px;
   }
   .home-rail-item,
-  .home-rail .home-missions {
+  .home-rail .home-missions,
+  .home-rail #shop-open {
+    display: flex;
     min-height: 40px;
     height: 40px;
     padding: 10px;
@@ -18268,7 +18281,8 @@ body.home-active #credits {
     padding-bottom: 4px;
   }
   .home-rail-item,
-  .home-rail .home-missions {
+  .home-rail .home-missions,
+  .home-rail #shop-open {
     min-height: 34px;
     height: 34px;
     padding: 7px;
