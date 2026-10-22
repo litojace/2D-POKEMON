@@ -25,6 +25,30 @@ export function setupHomeNavigation(menu: HTMLElement, settings: () => void) {
       .querySelector("#home-mode-toggle")
       ?.setAttribute("aria-expanded", "false");
   }
+  function backFromFighterDetails() {
+    const filters = menu.querySelector<HTMLElement>(
+      ".roster-panel.is-filter-open",
+    );
+    if (filters && !filters.closest("[hidden], [inert]")) {
+      filters
+        .querySelector<HTMLButtonElement>("[data-champion-filter-toggle]")
+        ?.click();
+      return true;
+    }
+    const detail = menu.querySelector<HTMLElement>(".fighter-detail");
+    if (!detail || detail.closest("[hidden], [inert]")) return false;
+    if (detail?.dataset.preview === "skills") {
+      detail
+        .querySelector<HTMLButtonElement>('[data-fighter-preview="overview"]')
+        ?.click();
+      return true;
+    }
+    if (detail?.dataset.inspection) {
+      detail.querySelector<HTMLButtonElement>("[data-skill-close]")?.click();
+      return true;
+    }
+    return false;
+  }
   function refresh() {
     if (!menu.querySelector(".home-screen")) {
       panel = undefined;
@@ -121,10 +145,16 @@ export function setupHomeNavigation(menu: HTMLElement, settings: () => void) {
     "keydown",
     (event) => {
       if (
-        !document.body.classList.contains("home-active") ||
+        (!document.body.classList.contains("home-active") &&
+          !document.body.classList.contains("lobby-active")) ||
         document.querySelector<HTMLDialogElement>("#dialog")?.open
       )
         return;
+      if (event.key === "Escape" && backFromFighterDetails()) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return;
+      }
       if (event.key === "Escape" && (panel || modes()?.hidden === false)) {
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -181,7 +211,7 @@ export function setupHomeNavigation(menu: HTMLElement, settings: () => void) {
       const scroller = (
         document.activeElement as HTMLElement | null
       )?.closest<HTMLElement>(
-        ".fighter-preview-slot, .lobby-room-content, .showcase-roster",
+        ".skill-preview, .selected-info, .fighter-preview-slot, .lobby-room-content, .showcase-roster",
       );
       if (scroller && Math.abs(pad.axes[3] ?? 0) > 0.25)
         scroller.scrollBy({ top: pad.axes[3] * 10, behavior: "instant" });
@@ -221,7 +251,7 @@ export function setupHomeNavigation(menu: HTMLElement, settings: () => void) {
         if (dialog?.open)
           dialog.querySelector<HTMLButtonElement>("#close-dialog")?.click();
         else if (header?.open) header.open = false;
-        else close();
+        else if (!backFromFighterDetails()) close();
       }
       if (pressed.has(9) && !previous.has(9)) {
         if (dialog?.open)

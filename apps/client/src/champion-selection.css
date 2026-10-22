@@ -1,0 +1,1236 @@
+/* The champion selector shares one stage, one animated rig and one portrait strip. */
+#home-fighter-panel:has(.champion-selector) {
+  inset: calc(20px + var(--safe-top)) calc(20px + var(--safe-right))
+    calc(20px + var(--safe-bottom)) calc(20px + var(--safe-left));
+  width: min(1440px, calc(100vw - var(--safe-left) - var(--safe-right) - 40px));
+  margin-inline: auto;
+}
+#home-fighter-panel:has(.champion-selector) .home-drawer-head {
+  padding: 18px 24px;
+}
+#home-fighter-panel:has(.champion-selector) .home-drawer-head h2 {
+  font-size: 30px;
+}
+#home-fighter-panel:has(.champion-selector) .home-drawer-scroll {
+  padding: 16px 20px 18px;
+  overflow: hidden;
+}
+#menu .roster-panel:has(.champion-selector),
+#menu .lobby-layout > .roster-panel:has(.champion-selector) {
+  display: block;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+#menu .champion-selector {
+  --body: "DM Sans", sans-serif;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+}
+#menu .champion-selector > :is(.section-title, .roster-navigation) {
+  display: none;
+}
+#menu .champion-selector .selection-layout.champion-selection {
+  display: grid;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) 112px;
+  gap: 12px;
+  overflow: hidden;
+}
+#menu .champion-selector .champion-selection .fighter-preview-slot {
+  grid-row: 1;
+  grid-column: 1;
+  min-height: 0;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  container-type: normal;
+  border: 1px solid color-mix(in srgb, var(--element) 45%, var(--line));
+  border-radius: 20px;
+  background: #080f1c;
+}
+#menu .champion-selector .fighter-detail {
+  position: relative;
+  text-align: left;
+  display: grid;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  background: radial-gradient(
+    ellipse at 15% 35%,
+    color-mix(in srgb, var(--element) 14%, transparent),
+    transparent 65%
+  );
+}
+#menu .champion-selector .selected-fighter {
+  display: contents;
+}
+#menu .champion-selector .selected-art {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  position: relative;
+  display: block;
+  min-height: 0;
+  min-width: 0;
+  height: 100%;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  isolation: isolate;
+  background: radial-gradient(
+    ellipse at 45% 55%,
+    color-mix(in srgb, var(--element) 20%, transparent),
+    transparent 70%
+  );
+}
+#menu .champion-selector .selected-art::before {
+  content: "";
+  position: absolute;
+  inset: -25%;
+  z-index: -1;
+  pointer-events: none;
+  background: repeating-conic-gradient(
+    from -10deg at 50% 70%,
+    color-mix(in srgb, var(--element) 6%, transparent) 0deg 7deg,
+    transparent 7deg 17deg
+  );
+  mask-image: linear-gradient(90deg, #000b, transparent 92%);
+}
+#menu .champion-selector .selected-art > :is(svg, .creature-portrait),
+#menu .champion-selector .fighter-rig-stage > canvas {
+  position: absolute;
+  inset: 4% 3% 2%;
+  width: 94% !important;
+  height: 94% !important;
+  max-height: none;
+  margin: 0;
+  object-fit: contain;
+  z-index: 1;
+  overflow: visible;
+}
+#menu .champion-selector .champion-index {
+  position: absolute;
+  left: 22px;
+  top: 18px;
+  z-index: 2;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 700;
+}
+#menu .champion-selector .champion-index b {
+  color: var(--element);
+  font: 800 28px/1 var(--display);
+}
+#menu .champion-selector .champion-wordmark {
+  position: absolute;
+  bottom: -10px;
+  left: 10px;
+  z-index: 0;
+  color: transparent;
+  -webkit-text-stroke: 1px color-mix(in srgb, var(--element) 22%, transparent);
+  font: 800 clamp(80px, 10vw, 170px)/0.85 var(--display);
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+}
+#menu .champion-selector .selected-art-caption {
+  position: absolute;
+  bottom: 10px;
+  left: 22px;
+  font-size: 11px;
+  color: var(--text-dim);
+  z-index: 2;
+}
+#menu .champion-selector .selected-info {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  min-width: 0;
+  min-height: 0;
+  padding: 24px 28px 12px 10px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  gap: 12px;
+}
+#menu .champion-selector .champion-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+#menu .champion-selector .champion-tags > span {
+  font: 600 11px/1.2 var(--body);
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  color: var(--text-dim);
+}
+#menu .champion-selector .champion-tags > .element-pill {
+  background: var(--element);
+  color: var(--bg-0);
+  border-color: transparent;
+  gap: 5px;
+}
+#menu .champion-selector .element-pill svg {
+  width: 13px;
+  height: 13px;
+}
+#menu .champion-selector .champion-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+#menu .champion-selector .selected-info h3 {
+  font: 800 clamp(36px, 4.5vw, 68px)/0.95 var(--display);
+  text-transform: uppercase;
+  margin: 0;
+  overflow-wrap: normal;
+}
+#menu .champion-selector .champion-bio-button {
+  display: none;
+}
+#menu .champion-selector .selected-info p {
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+  color: var(--text-dim);
+}
+#menu .champion-selector .fighter-stats {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin: 4px 0;
+}
+#menu .champion-selector .champion-stat {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr) 38px;
+  gap: 10px;
+  align-items: center;
+}
+#menu .champion-selector .champion-stat > span:first-child {
+  text-transform: uppercase;
+  font: 700 11px/1.2 var(--body);
+  letter-spacing: 1px;
+  color: var(--text-dim);
+}
+#menu .champion-selector .champion-stat-track {
+  display: block;
+  height: 9px;
+  background: #ffffff0c;
+  border-radius: 2px;
+  transform: skewX(-15deg);
+  overflow: hidden;
+}
+#menu .champion-selector .champion-stat-track i {
+  display: block;
+  height: 100%;
+  background: var(--element);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--element) 45%, transparent);
+}
+#menu .champion-selector .champion-stat-track::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0 calc(10% - 4px),
+    #080f1c calc(10% - 4px) 10%
+  );
+}
+#menu .champion-selector .fighter-stats b {
+  font: 700 21px/1 var(--display);
+  text-align: right;
+}
+#menu .champion-selector .champion-skill-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) 62px;
+  gap: 8px;
+  flex: none;
+}
+#menu .champion-selector .champion-skill-buttons > button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  height: 64px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: linear-gradient(#ffffff0a, #ffffff03);
+  color: var(--element);
+  box-shadow: none;
+}
+#menu
+  .champion-selector
+  .champion-skill-buttons
+  > button[aria-expanded="true"] {
+  border-color: var(--element);
+  background: color-mix(in srgb, var(--element) 13%, #101825);
+  box-shadow: inset 0 0 14px color-mix(in srgb, var(--element) 10%, transparent);
+}
+#menu .champion-selector .champion-skill-buttons kbd {
+  position: absolute;
+  top: 5px;
+  left: 6px;
+  padding: 1px 4px;
+  font: 700 10px/1.3 var(--body);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #080d17;
+  color: var(--text);
+}
+#menu .champion-selector .champion-skill-buttons .skill-icon {
+  width: 29px;
+  height: 29px;
+  margin: 0;
+}
+#menu .champion-selector .champion-skill-buttons small {
+  position: absolute;
+  bottom: 4px;
+  right: 6px;
+  font: 700 10px/1.2 var(--body);
+  color: var(--text-dim);
+}
+#menu .champion-selector .champion-skill-buttons > button:nth-child(4) {
+  border-color: color-mix(in srgb, var(--element) 50%, var(--line));
+}
+#menu .champion-selector .champion-skill-buttons .champion-full-kit {
+  border-style: dashed;
+  color: var(--text-dim);
+  padding-bottom: 21px;
+}
+#menu .champion-selector .champion-full-kit .menu-option-icon {
+  width: 22px;
+  height: 22px;
+  color: inherit;
+}
+#menu .champion-selector .champion-full-kit small {
+  inset: auto 0 7px;
+  text-align: center;
+}
+#menu .champion-selector .champion-skill-tooltip {
+  position: relative;
+  flex: none;
+  border-left: 3px solid var(--element);
+  background: #ffffff05;
+  border-radius: 10px;
+  padding: 9px 34px 9px 12px;
+}
+#menu .champion-selector .champion-skill-tooltip b {
+  display: block;
+  font: 700 17px/1.2 var(--display);
+  text-transform: uppercase;
+}
+#menu .champion-selector .champion-skill-tooltip p {
+  font-size: 12px;
+  margin-top: 3px;
+}
+#menu .champion-selector [data-skill-close] {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--text-dim);
+  background: #ffffff05;
+}
+#menu .champion-selector .champion-basic-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+#menu .champion-selector .basic-description {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  color: var(--text);
+  box-shadow: none;
+}
+#menu .champion-selector .basic-description .skill-icon {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  margin: 0;
+  color: var(--element);
+}
+#menu .champion-selector .basic-text {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  font-size: 12px;
+}
+#menu .champion-selector .basic-text small {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+#menu .champion-selector .champion-combo-button {
+  flex: none;
+  padding: 7px 9px;
+  font: 700 12px/1.2 var(--body);
+  background: color-mix(in srgb, var(--element) 12%, #101825);
+  color: var(--element);
+  border: 0;
+  border-radius: 99px;
+  box-shadow: none;
+}
+#menu .champion-selector .champion-actions {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 28px 22px 10px;
+  min-width: 0;
+  border: 0;
+  margin: 0;
+  background: transparent;
+}
+#menu .champion-selector .champion-lock {
+  flex: none;
+  min-width: 132px;
+  min-height: 46px;
+  padding: 12px 24px;
+  border-radius: 99px;
+  color: var(--accent-ink);
+  font: 800 21px/1 var(--display);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+#menu .champion-selector .champion-mastery {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+#menu .champion-selector .champion-mastery .fighter-mastery-ring {
+  position: relative;
+  inset: auto;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  transform: none;
+}
+#menu .champion-selector .champion-mastery b {
+  text-transform: uppercase;
+  font: 800 17px/1.1 var(--display);
+}
+#menu .champion-selector .champion-mastery p {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+#menu .champion-selector .skill-preview {
+  grid-column: 2;
+  grid-row: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 20px 28px 10px 10px;
+  border: 0;
+  background: none;
+}
+#menu .champion-selector .skill-preview-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-right: 94px;
+  margin: 0 0 12px;
+}
+#menu .champion-selector .skill-preview-heading h3 {
+  margin: 0;
+  font: 800 36px/1 var(--display);
+  text-transform: uppercase;
+}
+#menu .champion-selector .skill-preview-heading > span {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+#menu .champion-selector .fighter-preview-tabs {
+  position: absolute;
+  top: 18px;
+  right: 24px;
+  z-index: 4;
+  padding: 0;
+  min-height: 0;
+  background: none;
+  border: 0;
+}
+#menu .champion-selector .fighter-preview-tabs button {
+  min-height: 28px;
+  padding: 6px 12px;
+  border-radius: 99px;
+  border: 1px solid var(--line);
+  background: #ffffff06;
+  color: var(--text);
+  font: 600 12px/1.2 var(--body);
+}
+#menu .champion-selector .fighter-preview-tabs [data-fighter-preview="skills"] {
+  display: none;
+}
+#menu .champion-selector .preview-skills {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+#menu .champion-selector .preview-skills > div {
+  display: grid;
+  grid-template-columns: 42px 30px minmax(0, 1fr) 48px;
+  gap: 9px;
+  align-items: center;
+  padding: 10px;
+  min-height: 56px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #ffffff03;
+  margin: 0;
+}
+#menu .champion-selector .preview-skills > div > kbd {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: start;
+  width: auto;
+  padding: 3px 5px;
+  font: 700 10px/1 var(--body);
+  border: 1px solid var(--line);
+  background: #050a12;
+  border-radius: 5px;
+}
+#menu .champion-selector .preview-skills > div > .skill-icon {
+  grid-column: 2;
+  grid-row: 1;
+  width: 27px;
+  height: 27px;
+  color: var(--element);
+  margin: 0;
+}
+#menu .champion-selector .preview-skills > div > span:not(.skill-icon) {
+  grid-column: 3;
+  grid-row: 1;
+  min-width: 0;
+}
+#menu .champion-selector .preview-skills strong {
+  display: block;
+  text-transform: uppercase;
+  font: 700 18px/1.1 var(--display);
+}
+#menu .champion-selector .preview-skills small {
+  display: block;
+  color: var(--text-dim);
+  font: 400 12px/1.5 var(--body);
+  margin-top: 3px;
+}
+#menu .champion-selector .preview-skills strong em {
+  font: 400 10px/1 var(--body);
+  text-transform: none;
+  color: var(--text-dim);
+  margin-left: 5px;
+}
+#menu .champion-selector .preview-skills > div > b {
+  grid-column: 4;
+  grid-row: 1;
+  text-align: right;
+  font: 700 14px/1 var(--display);
+  color: var(--text-dim);
+}
+#menu
+  .champion-selector
+  .preview-skills
+  > :is(.champion-ultimate-row, .champion-basic-row, .champion-combo-row) {
+  border-color: color-mix(in srgb, var(--element) 30%, var(--line));
+}
+#menu .champion-selector .preview-skills > .champion-ultimate-row > b {
+  color: var(--accent);
+}
+#menu
+  .champion-selector
+  .preview-skills
+  > .champion-combo-row
+  > .champion-combo-spark {
+  grid-column: 2;
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  width: 27px;
+  height: 27px;
+  text-align: center;
+  color: var(--element);
+}
+#menu
+  .champion-selector
+  .preview-skills
+  > .champion-combo-row
+  > span:last-child {
+  grid-column: 3 / -1;
+}
+#menu .champion-selector .champion-strip {
+  grid-column: 1;
+  grid-row: 2;
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr);
+  gap: 10px;
+  padding: 9px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: #080f1c;
+  min-width: 0;
+  overflow: hidden;
+}
+#menu .champion-selector .champion-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+#menu .champion-selector .champion-filters button {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 2px;
+  font: 700 12px/1 var(--display);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #ffffff03;
+  color: var(--text-dim);
+  box-shadow: none;
+}
+#menu .champion-selector .champion-filters .element-icon {
+  width: 15px;
+  height: 15px;
+}
+#menu .champion-selector .champion-filters button[aria-pressed="true"] {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+#menu .champion-selector .selection-layout .showcase-roster {
+  display: grid;
+  grid-column: auto;
+  grid-row: auto;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+  grid-auto-flow: column;
+  grid-auto-rows: auto;
+  align-items: stretch;
+  gap: 8px;
+  padding: 2px;
+  min-width: 0;
+  min-height: 0;
+  max-height: none;
+  overflow: hidden;
+}
+#menu .champion-selector .selection-layout .showcase-roster > .showcase-card {
+  container-type: normal;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0;
+  min-width: 0;
+  min-height: 0;
+  width: auto;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--element) 32%, var(--line));
+  border-radius: 13px;
+  background: radial-gradient(
+    ellipse at 50% 0%,
+    color-mix(in srgb, var(--element) 20%, #172233),
+    #0a101a
+  );
+  box-shadow: none;
+  transform: none;
+  transition: none;
+}
+#menu
+  .champion-selector
+  .selection-layout
+  .showcase-roster
+  > .showcase-card.selected {
+  border-color: var(--accent);
+  box-shadow:
+    inset 0 0 0 2px var(--accent),
+    0 0 12px #ffd65b33;
+}
+#menu .champion-selector .selection-layout .showcase-card .card-head {
+  position: relative;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  padding: 3px;
+  background: #070c16c9;
+  text-align: center;
+}
+#menu .champion-selector .selection-layout .showcase-card.selected .card-head {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+#menu .champion-selector .selection-layout .showcase-card .card-head strong {
+  display: block;
+  font: 800 clamp(12px, 1.2vw, 18px)/1 var(--display);
+  text-transform: uppercase;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#menu
+  .champion-selector
+  .selection-layout
+  .showcase-card
+  .card-head
+  .element-pill {
+  display: none;
+}
+#menu .champion-selector .selection-layout .showcase-card .card-art {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: none;
+  border-radius: 0;
+}
+#menu
+  .champion-selector
+  .selection-layout
+  .showcase-card
+  .card-art
+  > :is(svg, .creature-portrait) {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  object-fit: contain;
+}
+#menu
+  .champion-selector
+  .selection-layout
+  .showcase-card
+  .fighter-mastery-ring {
+  inset: 5px 5px auto auto;
+  width: 10px;
+  height: 10px;
+  transform: none;
+  z-index: 3;
+}
+#menu
+  .champion-selector
+  .selection-layout
+  .showcase-card
+  :is(.card-role, .card-skills, .card-bottom) {
+  display: none;
+}
+#menu .champion-selector .universal {
+  display: block;
+  padding: 10px 0 0;
+  margin: 8px 0 0;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+#menu .champion-selector button:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: -4px;
+}
+@media (max-width: 1200px), (max-height: 760px) {
+  #menu .champion-selector .selected-info {
+    gap: 9px;
+    padding: 18px 18px 10px 6px;
+  }
+  #menu .champion-selector .selected-info h3 {
+    font-size: 42px;
+  }
+  #menu .champion-selector .champion-bio {
+    font-size: 12px;
+  }
+  #menu .champion-selector .champion-actions {
+    padding: 10px 18px 14px 6px;
+    gap: 8px;
+  }
+  #menu .champion-selector .champion-lock {
+    font-size: 18px;
+    min-height: 42px;
+    padding: 10px 18px;
+  }
+  #menu .champion-selector .champion-mastery p {
+    font-size: 10px;
+  }
+  #menu .champion-selector .skill-preview {
+    padding: 16px 18px 8px 6px;
+  }
+  #menu .champion-selector .preview-skills > div {
+    gap: 7px;
+    padding: 8px;
+    grid-template-columns: 34px 24px minmax(0, 1fr) 40px;
+  }
+  #menu .champion-selector .preview-skills strong {
+    font-size: 16px;
+  }
+  #menu .champion-selector .preview-skills small {
+    font-size: 11px;
+  }
+  #menu .champion-selector .selection-layout.champion-selection {
+    grid-template-rows: minmax(0, 1fr) 94px;
+  }
+}
+@media (max-width: 1000px) and (orientation: landscape) {
+  #home-fighter-panel:has(.champion-selector) {
+    inset: calc(8px + var(--safe-top)) calc(12px + var(--safe-right))
+      calc(8px + var(--safe-bottom)) calc(12px + var(--safe-left));
+    width: auto;
+  }
+  #home-fighter-panel:has(.champion-selector) .home-drawer-head {
+    padding: 8px 14px;
+  }
+  #home-fighter-panel:has(.champion-selector) .home-drawer-head h2 {
+    font-size: 22px;
+    margin-top: 2px;
+  }
+  #home-fighter-panel:has(.champion-selector) .home-drawer-head .eyebrow {
+    font-size: 10px;
+  }
+  #home-fighter-panel:has(.champion-selector) .home-panel-close {
+    width: 36px;
+    height: 36px;
+    min-height: 36px;
+  }
+  #home-fighter-panel:has(.champion-selector) .home-drawer-scroll {
+    padding: 8px 10px;
+  }
+  body.lobby-active
+    #menu
+    .lobby-layout
+    > .roster-panel:has(.champion-selector) {
+    display: block;
+  }
+  #menu .champion-selector .selection-layout.champion-selection {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) 60px;
+    gap: 8px;
+  }
+  #menu .champion-selector .fighter-detail {
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  }
+  #menu .champion-selector .selected-info {
+    display: flex;
+    padding: 10px 14px 4px 6px;
+    gap: 6px;
+    grid-column: 2;
+    grid-row: 1;
+    overflow: auto;
+  }
+  #menu .champion-selector .selected-art {
+    grid-column: 1;
+    grid-row: 1 / -1;
+    align-self: stretch;
+    height: 100%;
+  }
+  #menu .champion-selector .selected-info h3 {
+    font-size: 30px;
+  }
+  #menu .champion-selector .champion-tags > span {
+    font-size: 9px;
+    padding: 2px 6px;
+  }
+  #menu .champion-selector .champion-tags > .fighter-role-label {
+    display: none;
+  }
+  #menu .champion-selector .champion-bio {
+    display: none;
+  }
+  #menu .champion-selector .champion-bio-button {
+    display: grid;
+    place-items: center;
+    padding: 0;
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--line);
+    border-radius: 50%;
+    background: #ffffff05;
+  }
+  #menu .champion-selector .champion-bio-button .menu-option-icon {
+    width: 17px;
+    height: 17px;
+  }
+  #menu .champion-selector .fighter-stats {
+    gap: 4px;
+    margin: 0;
+  }
+  #menu .champion-selector .champion-stat {
+    grid-template-columns: 64px minmax(0, 1fr) 28px;
+    gap: 6px;
+  }
+  #menu .champion-selector .champion-stat > span:first-child {
+    font-size: 9px;
+  }
+  #menu .champion-selector .fighter-stats b {
+    font-size: 15px;
+  }
+  #menu .champion-selector .champion-stat-track {
+    height: 6px;
+  }
+  #menu .champion-selector .champion-skill-buttons {
+    gap: 5px;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) 44px;
+  }
+  #menu .champion-selector .champion-skill-buttons > button {
+    height: 42px;
+    border-radius: 10px;
+    padding: 6px;
+  }
+  #menu .champion-selector .champion-skill-buttons .skill-icon {
+    width: 23px;
+    height: 23px;
+  }
+  #menu .champion-selector .champion-skill-buttons kbd {
+    top: 3px;
+    left: 3px;
+    font-size: 8px;
+    padding: 0 2px;
+  }
+  #menu .champion-selector .champion-skill-buttons small {
+    bottom: 3px;
+    right: 4px;
+    font-size: 8px;
+  }
+  #menu .champion-selector .champion-full-kit .menu-option-icon {
+    width: 17px;
+    height: 17px;
+  }
+  #menu .champion-selector .champion-skill-buttons .champion-full-kit {
+    padding-bottom: 14px;
+  }
+  #menu .champion-selector .champion-full-kit small {
+    bottom: 4px;
+  }
+  #menu .champion-selector .champion-basic-summary {
+    display: none;
+    gap: 5px;
+  }
+  #menu .champion-selector .basic-text b {
+    font-size: 10px;
+  }
+  #menu .champion-selector .basic-text small {
+    display: none;
+  }
+  #menu .champion-selector .basic-description .skill-icon {
+    width: 16px;
+    height: 16px;
+  }
+  #menu .champion-selector .champion-combo-button {
+    font-size: 9px;
+    padding: 5px 7px;
+  }
+  #menu .champion-selector .champion-actions {
+    padding: 4px 14px 8px 6px;
+    gap: 8px;
+  }
+  #menu .champion-selector .champion-lock {
+    flex: 1;
+    min-width: 112px;
+    max-width: 200px;
+    min-height: 36px;
+    padding: 8px 10px;
+    font-size: 16px;
+  }
+  #menu .champion-selector .champion-mastery {
+    gap: 6px;
+  }
+  #menu .champion-selector .champion-mastery .fighter-mastery-ring {
+    width: 24px;
+    height: 24px;
+  }
+  #menu .champion-selector .champion-mastery b {
+    font-size: 12px;
+  }
+  #menu .champion-selector .champion-mastery p {
+    font-size: 9px;
+    max-width: 90px;
+    line-height: 1.3;
+  }
+  #menu .champion-selector .champion-index {
+    left: 12px;
+    top: 10px;
+    font-size: 9px;
+  }
+  #menu .champion-selector .champion-index b {
+    font-size: 21px;
+  }
+  #menu .champion-selector .champion-wordmark {
+    font-size: 85px;
+  }
+  #menu .champion-selector .selected-art-caption {
+    display: none;
+  }
+  #menu
+    .champion-selector
+    .fighter-detail[data-inspection]
+    :is(.fighter-stats, .champion-basic-summary) {
+    display: none;
+  }
+  #menu .champion-selector .champion-skill-tooltip {
+    padding: 7px 28px 7px 9px;
+  }
+  #menu .champion-selector .champion-skill-tooltip b {
+    font-size: 14px;
+  }
+  #menu .champion-selector .champion-skill-tooltip p {
+    font-size: 11px;
+    line-height: 1.35;
+  }
+  #menu .champion-selector .fighter-detail[data-preview="skills"] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #menu
+    .champion-selector
+    .fighter-detail[data-preview="skills"]
+    .selected-art {
+    display: none;
+  }
+  #menu .champion-selector .skill-preview {
+    grid-column: 1;
+    padding: 10px 12px 5px;
+  }
+  #menu
+    .champion-selector
+    .fighter-detail[data-preview="skills"]
+    .champion-actions {
+    grid-column: 1;
+  }
+  #menu .champion-selector .skill-preview-heading {
+    margin-bottom: 7px;
+  }
+  #menu .champion-selector .skill-preview-heading h3 {
+    font-size: 22px;
+  }
+  #menu .champion-selector .fighter-preview-tabs {
+    top: 8px;
+    right: 12px;
+  }
+  #menu .champion-selector .preview-skills {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px;
+  }
+  #menu .champion-selector .preview-skills > div {
+    grid-template-columns: 28px 22px minmax(0, 1fr) 36px;
+    gap: 6px;
+    padding: 6px;
+    min-height: 54px;
+  }
+  #menu .champion-selector .preview-skills strong {
+    font-size: 14px;
+  }
+  #menu .champion-selector .preview-skills small {
+    font-size: 10.5px;
+    line-height: 1.35;
+  }
+  #menu .champion-selector .preview-skills > div > .skill-icon {
+    width: 22px;
+    height: 22px;
+  }
+  #menu
+    .champion-selector
+    .preview-skills
+    > .champion-combo-row
+    > .champion-combo-spark {
+    width: 22px;
+    height: 22px;
+  }
+  #menu .champion-selector .preview-skills > div > b {
+    font-size: 12px;
+  }
+  #menu .champion-selector .champion-strip {
+    padding: 5px;
+    gap: 6px;
+    grid-template-columns: 54px minmax(0, 1fr);
+    border-radius: 12px;
+  }
+  #menu .champion-selector .champion-filters {
+    gap: 2px;
+  }
+  #menu .champion-selector .champion-filters button {
+    border-radius: 4px;
+    font-size: 9px;
+    padding: 0;
+  }
+  #menu .champion-selector .champion-filters .element-icon {
+    width: 10px;
+    height: 10px;
+  }
+  #menu .champion-selector .selection-layout .showcase-roster {
+    gap: 5px;
+  }
+  #menu .champion-selector .selection-layout .showcase-roster > .showcase-card {
+    padding: 0;
+    border-radius: 9px;
+  }
+  #menu .champion-selector .selection-layout .showcase-card .card-head {
+    display: none;
+  }
+  #menu .champion-selector .selection-layout .showcase-card .card-art {
+    width: 100%;
+    height: 100%;
+  }
+}
+@media (max-height: 350px) and (orientation: landscape) {
+  #home-fighter-panel:has(.champion-selector) .home-drawer-head {
+    padding-block: 5px;
+  }
+  #home-fighter-panel:has(.champion-selector) .home-drawer-head h2 {
+    font-size: 20px;
+  }
+  #home-fighter-panel:has(.champion-selector) .home-drawer-head .eyebrow {
+    display: none;
+  }
+  #menu .champion-selector .selection-layout.champion-selection {
+    grid-template-rows: minmax(0, 1fr) 48px;
+    gap: 6px;
+  }
+  #menu .champion-selector .selected-info {
+    gap: 4px;
+    padding-top: 7px;
+  }
+  #menu .champion-selector .selected-info h3 {
+    font-size: 26px;
+  }
+  #menu .champion-selector .champion-actions {
+    padding-bottom: 5px;
+  }
+  #menu .champion-selector .champion-mastery p {
+    display: none;
+  }
+  #menu .champion-selector .champion-skill-buttons > button {
+    height: 36px;
+  }
+  #menu .champion-selector .champion-basic-summary {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #menu .champion-selector *,
+  #menu .champion-selector *::before,
+  #menu .champion-selector *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+/* Touch filters open a usable palette instead of nine tiny tap targets. */
+#menu .champion-selector .champion-filter-toggle {
+  display: none;
+}
+#menu .champion-selector .selected-info > * {
+  flex-shrink: 0;
+}
+#menu .champion-selector .selection-layout .showcase-card .card-head strong {
+  width: 100%;
+  text-align: center;
+}
+#menu .champion-selector .showcase-card.is-equipped::after {
+  content: "✓";
+  position: absolute;
+  left: 5px;
+  top: 4px;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  background: #07101de6;
+  border-radius: 50%;
+  color: var(--accent);
+  font-size: 11px;
+}
+@media (max-width: 1000px) and (orientation: landscape) {
+  #menu .champion-selector .champion-strip {
+    position: relative;
+    grid-template-columns: 44px minmax(0, 1fr);
+    overflow: visible;
+  }
+  #menu .champion-selector .champion-filter-toggle {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 100%;
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #ffffff05;
+    color: var(--accent);
+    font: 700 11px/1 var(--body);
+  }
+  #menu .champion-selector .champion-filter-toggle .menu-option-icon {
+    width: 18px;
+    height: 18px;
+  }
+  #menu .champion-selector .champion-filters {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    z-index: 8;
+    width: 232px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(3, 44px);
+    gap: 5px;
+    padding: 8px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--bg-1);
+    box-shadow: 0 12px 32px #0008;
+  }
+  #menu .roster-panel.is-filter-open .champion-selector .champion-filters {
+    display: grid;
+  }
+  #menu .champion-selector .champion-filters button {
+    font-size: 14px;
+    border-radius: 8px;
+  }
+  #menu .champion-selector .champion-filters .element-icon {
+    width: 20px;
+    height: 20px;
+  }
+  #menu .champion-selector .selected-info {
+    gap: 4px;
+  }
+  #menu .champion-selector .champion-name-row {
+    min-height: 28px;
+  }
+  #menu .champion-selector .selected-info h3 {
+    font-size: 28px;
+  }
+  #menu .champion-selector .fighter-stats {
+    gap: 3px;
+  }
+  #menu .champion-selector .fighter-stats b {
+    font-size: 13px;
+  }
+  #menu .champion-selector .champion-basic-summary {
+    display: none;
+  }
+}

@@ -115,6 +115,7 @@ import { AudioManager } from "./audio";
 import { InterpolationBuffer } from "./networking/interpolation";
 import { AccountUI } from "./accounts";
 import "./style.css";
+import "./champion-selection.css";
 import { FollowCamera, screenToWorld, outsideView } from "./follow-camera";
 import { updateNameplate } from "./player-nameplate";
 import { fighterPack } from "./animation/pack-config";
@@ -620,31 +621,67 @@ wireRotateGate();
 // Remember a room from an invite link (?room=ABC123) before the first render.
 if (captureInvite()) inviteHinted = false;
 function wireRoster(isRoom: boolean) {
+  const panel = document.querySelector<HTMLElement>("#menu .roster-panel");
+  if (!panel) return;
+  const confirm = () => {
+    for (const card of Array.from(
+      panel.querySelectorAll<HTMLElement>("[data-character]"),
+    )) {
+      card.classList.toggle("is-equipped", card.dataset.character === selected);
+      card.title = `${CHARACTERS[card.dataset.character as CharacterId].name}${card.dataset.character === selected ? " · Your current fighter" : ""}`;
+    }
+  };
+  confirm();
   document.querySelectorAll<HTMLButtonElement>("[data-character]").forEach(
     (button) =>
-      (button.onclick = async () => {
+      (button.onclick = () => {
         audio.unlock();
         const choice = button.dataset.character as CharacterId;
-        if (choice === selected) return;
-        selected = choice;
-        rememberHomeFighter(choice);
-        const revision = isRoom ? lobbySelection.choose(choice) : undefined;
-        renderMenu(true);
-        if (!isRoom) return;
-        const reply = await request("select", choice);
-        const mine = state?.players.find((p) => p.id === myId);
-        // The server said no (e.g. the match is starting): show its pick again.
         if (
-          !reply.ok &&
-          revision !== undefined &&
-          lobbySelection.reject(revision) &&
-          mine
-        ) {
-          selected = mine.character;
-          renderMenu();
-        }
+          panel.querySelector<HTMLElement>(".fighter-detail")?.dataset
+            .detailFor === choice
+        )
+          return;
+        updateRosterSelection(panel, choice, reducedMotion, true);
+        syncRosterMastery(panel);
+        syncMenuCosmetic();
       }),
   );
+  panel.onclick = async (event) => {
+    const lock = (event.target as Element).closest<HTMLButtonElement>(
+      "[data-fighter-lock]",
+    );
+    if (!lock || lock.disabled) return;
+    audio.unlock();
+    const choice = lock.dataset.fighterLock as CharacterId;
+    if (!isRoom) homeNavigation.close();
+    if (choice === selected) {
+      if (isRoom)
+        toast(
+          `${CHARACTERS[choice].name} is selected. Ready up when you're set.`,
+        );
+      return;
+    }
+    selected = choice;
+    confirm();
+    rememberHomeFighter(choice);
+    const revision = isRoom ? lobbySelection.choose(choice) : undefined;
+    renderMenu(true);
+    if (!isRoom) return;
+    const reply = await request("select", choice);
+    const mine = state?.players.find((p) => p.id === myId);
+    // The server said no (e.g. the match is starting): show its pick again.
+    if (
+      !reply.ok &&
+      revision !== undefined &&
+      lobbySelection.reject(revision) &&
+      mine
+    ) {
+      selected = mine.character;
+      confirm();
+      renderMenu();
+    }
+  };
 }
 /** A player's equipped champion skins (yours update as soon as you equip). */
 function looksOf(p: Pick<Fighter, "id" | "championLooks"> | undefined) {
@@ -672,7 +709,14 @@ function syncMenuCosmetic() {
     raidLook: look,
     championLooks: accountsUI?.economy?.looks ?? fighter?.championLooks,
   });
-  if (panel) panel.dataset.raidCosmetic = worn;
+  if (panel)
+    panel.dataset.raidCosmetic = portraitCosmetics({
+      character:
+        (panel.querySelector<HTMLElement>(".fighter-detail")?.dataset
+          .detailFor as CharacterId) ?? selected,
+      raidLook: look,
+      championLooks: accountsUI?.economy?.looks ?? fighter?.championLooks,
+    });
   const preview = panel?.querySelector<HTMLElement>(".fighter-rig-stage");
   const previewLook = encodeURIComponent(JSON.stringify(look ?? {}));
   if (preview && preview.dataset.previewLook !== previewLook)
@@ -1158,6 +1202,19 @@ function wireRoom() {
   wireRaidLobby();
   $("ready").onclick = () => {
     audio.unlock();
+    const preview =
+      $("menu").querySelector<HTMLElement>(".fighter-detail")?.dataset
+        .detailFor;
+    const alreadyReady = state?.players.find((p) => p.id === myId)?.ready;
+    if (!alreadyReady && preview && preview !== selected) {
+      toast(
+        `Lock in ${CHARACTERS[preview as CharacterId].name} or return to your current fighter before readying up.`,
+      );
+      $("menu")
+        .querySelector<HTMLButtonElement>("[data-fighter-lock]")
+        ?.focus({ preventScroll: true });
+      return;
+    }
     void request("ready");
   };
   $("leave").onclick = () => void leave();

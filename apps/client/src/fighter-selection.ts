@@ -100,44 +100,98 @@ export function syncRosterMastery(root: ParentNode) {
   const detail = root.querySelector<HTMLElement>(".fighter-detail");
   const label = detail?.querySelector(".fighter-mastery-label");
   if (detail && label) {
-    const matches = masteryMatches(detail.dataset.detailFor as CharacterId);
-    const text = `${masteryTier(matches)?.name ?? "New challenger"} mastery · ${matches} matches`;
+    const id = detail.dataset.detailFor as CharacterId;
+    const matches = masteryMatches(id);
+    const next = nextMastery(matches);
+    const text = `${matches} matches${next ? ` · ${next.left} to ${next.name}` : " · Maximum mastery"}`;
     if (label.textContent !== text) label.textContent = text;
+    if (displayedMastery.get(detail) !== matches) {
+      const footer = detail.querySelector(".champion-mastery");
+      const name = footer?.querySelector<HTMLElement>("b");
+      const tier = masteryTier(matches);
+      if (name) {
+        name.textContent = tier?.name ?? "New challenger";
+        name.style.color = tier?.color ?? "var(--accent)";
+      }
+      const ring = document.createElement("template");
+      ring.innerHTML = masteryRing(id);
+      footer?.querySelector(".fighter-mastery-ring")?.replaceWith(ring.content);
+      displayedMastery.set(detail, matches);
+    }
   }
 }
 export function fighterSelection(selected: CharacterId, element = "All") {
-  // The player's own keys (Settings → Controls), so the cards teach real controls.
-  const bindings = controlPrefs().bindings,
-    skillKeys = skillLabels(bindings);
-  const fighter = CHARACTERS[selected],
-    color = hex(fighter.color),
-    interval = Math.round((fighter.basic.interval ?? 0.3) * 1000);
-  const cards = Object.values(CHARACTERS)
+  const bindings = controlPrefs().bindings;
+  const skillKeys = skillLabels(bindings);
+  const fighter = CHARACTERS[selected];
+  const color = hex(fighter.color);
+  const interval = Math.round((fighter.basic.interval ?? 0.3) * 1000);
+  const fighters = Object.values(CHARACTERS);
+  const cards = fighters
     .filter((c) => element === "All" || c.element === element)
     .map(
       (c) =>
-        `<button class="creature-card showcase-card ${selected === c.id ? "selected" : ""}" style="--element:${hex(c.color)}" data-character="${c.id}" aria-pressed="${selected === c.id}"><span class="card-head"><strong>${c.name}</strong><span class="element-pill">${elementIcon(c.element)}${c.element}</span></span><small class="card-role">${rangeTag(c.id)}<span>${c.role}</span></small><span class="card-art">${masteryRing(c.id)}${art(c.id, false, selected === c.id)}${placeholderBadge(c.id)}</span><span class="card-skills">${c.skills.map((a, i) => `<span title="${a.name} (${i === ULT_SLOT ? "ultimate" : `${a.cooldown}s`}): ${a.description}">${abilityIcon(a.name)}<i>${i === ULT_SLOT ? "ULT" : `${a.cooldown}s`}</i></span>`).join("")}</span><span class="card-bottom"><span class="card-health">${c.health} HP</span>${masteryBadge(c.id)}<span class="card-selection-label">${selected === c.id ? "✓ Selected" : "Select"}</span></span></button>`,
+        `<button type="button" class="creature-card showcase-card ${selected === c.id ? "selected" : ""}" style="--element:${hex(c.color)}" data-character="${c.id}" data-element="${c.element}" aria-label="Preview ${c.name}" aria-pressed="${selected === c.id}"><span class="card-head"><strong>${c.name}</strong><span class="element-pill">${elementIcon(c.element)}${c.element}</span></span><small class="card-role">${rangeTag(c.id)}<span>${c.role}</span></small><span class="card-art">${masteryRing(c.id)}${art(c.id, false, selected === c.id)}${placeholderBadge(c.id)}</span><span class="card-skills">${c.skills.map((a, i) => `<span title="${a.name}: ${a.description}">${abilityIcon(a.name)}<i>${i === ULT_SLOT ? "ULT" : `${a.cooldown}s`}</i></span>`).join("")}</span><span class="card-bottom"><span class="card-health">${c.health} HP</span>${masteryBadge(c.id)}<span class="card-selection-label">${selected === c.id ? "✓ Selected" : "Select"}</span></span></button>`,
     );
   const skills = fighter.skills
     .map(
       (a, i) =>
-        `<div><kbd>${skillKeys[i]}</kbd>${abilityIcon(a.name)}<span><strong>${a.name}</strong><small>${a.description}</small></span><b>${i === ULT_SLOT ? "ULT" : `${a.cooldown}s`}</b></div>`,
+        `<div class="${i === ULT_SLOT ? "champion-ultimate-row" : ""}"><kbd>${skillKeys[i]}</kbd>${abilityIcon(a.name)}<span><strong>${a.name}</strong><small>${a.description}</small></span><b>${i === ULT_SLOT ? "Ultimate" : `${a.cooldown}s`}</b></div>`,
     )
     .join("");
   const combo = COMBOS[selected];
-  const comboRow = `<p class="combo-description"><b>Combo · ${combo.name}</b>${combo.text}</p>`;
-  // Keep detail markup adjacent for legacy consumers; the mounted layout
-  // places it in a separate, scrollable preview beside the portrait roster.
-  const detail = `<div class="fighter-detail" data-detail-for="${selected}" style="--element:${color}"><nav class="fighter-preview-tabs" aria-label="Fighter preview sections"><button type="button" data-fighter-preview="overview" aria-pressed="true">Overview</button><button type="button" data-fighter-preview="skills" aria-pressed="false">Skills &amp; combo</button></nav><div class="selected-fighter" style="--element:${color}"><div class="selected-art fighter-rig-stage" data-preview-champion="${selected}" data-preview-item="${worn[selected]?.skin ?? ""}" data-preview-stage="${worn[selected]?.stage ?? 1}" data-preview-look="%7B%7D" data-preview-action="idle" aria-label="${fighter.name} animated preview">${art(selected, true, true)}${placeholderBadge(selected, "PLACEHOLDER ART")}<span class="selected-art-caption">${fighter.element} · ${fighter.role}</span></div><div class="selected-info"><span class="element-pill">${elementIcon(fighter.element)}${fighter.element}</span><h3>${fighter.name}</h3><p class="fighter-role-label">${fighter.role} · ${attackRange(selected) === "long" ? "Ranged basic attack" : "Melee basic attack"}</p><p class="fighter-mastery-label">${masteryTier(masteryMatches(selected))?.name ?? "New challenger"} mastery · ${masteryMatches(selected)} matches</p><p>${fighter.description}</p><div class="fighter-stats"><span><b>${fighter.health}</b>Health</span><span><b>${fighter.speed}</b>Move speed</span><span><b>${fighter.basic.damage}</b>Basic damage</span></div><p class="basic-description">${abilityIcon(fighter.basic.name)}<span class="basic-text"><b>${fighter.basic.name}</b> · ${fighter.basic.description} <em>No cooldown · ${interval} ms between attacks</em></span></p></div></div><div class="skill-preview" style="--element:${color}" hidden><div class="skill-preview-heading"><h3>Four special skills</h3><span>${skillKeys.join(" / ")}</span></div><div class="preview-skills">${skills}</div>${comboRow}</div></div>`;
-  const ids = Object.values(CHARACTERS)
+  const basicRow = `<div class="champion-basic-row"><kbd>${actionLabel(bindings, "basic")}</kbd>${abilityIcon(fighter.basic.name)}<span><strong>${fighter.basic.name} <em>Basic attack</em></strong><small>${fighter.basic.description} No cooldown · ${interval} ms between attacks.</small></span><b>${fighter.basic.damage} dmg</b></div>`;
+  const comboRow = `<div class="combo-description champion-combo-row"><kbd>Combo</kbd><span class="champion-combo-spark" aria-hidden="true">✦</span><span><strong>${combo.name}</strong><small>${combo.text}</small></span></div>`;
+  const statValues = [
+    ["Health", fighter.health, Math.max(...fighters.map((c) => c.health))],
+    ["Speed", fighter.speed, Math.max(...fighters.map((c) => c.speed))],
+    [
+      "Basic DPS",
+      Math.round(fighter.basic.damage / (fighter.basic.interval ?? 0.3)),
+      Math.max(
+        ...fighters.map((c) =>
+          Math.round(c.basic.damage / (c.basic.interval ?? 0.3)),
+        ),
+      ),
+    ],
+  ] as const;
+  const stats = statValues
+    .map(
+      ([label, value, max]) =>
+        `<div class="champion-stat"><span>${label}</span><span class="champion-stat-track" role="meter" aria-label="${label}" aria-valuemin="0" aria-valuemax="${max}" aria-valuenow="${value}"><i style="width:${Math.round((value / max) * 100)}%"></i></span><b>${value}</b></div>`,
+    )
+    .join("");
+  const played = masteryMatches(selected),
+    tier = masteryTier(played),
+    next = nextMastery(played);
+  const detail = `<div class="fighter-detail" data-detail-for="${selected}" data-preview="overview" style="--element:${color}">
+    <nav class="fighter-preview-tabs" aria-label="Fighter preview sections" hidden><button type="button" data-fighter-preview="overview" aria-pressed="true">‹ Overview</button><button type="button" data-fighter-preview="skills" aria-pressed="false">Full kit</button></nav>
+    <div class="selected-fighter" style="--element:${color}">
+      <div class="selected-art fighter-rig-stage" data-preview-champion="${selected}" data-preview-item="${worn[selected]?.skin ?? ""}" data-preview-stage="${worn[selected]?.stage ?? 1}" data-preview-look="%7B%7D" data-preview-action="idle" aria-label="${fighter.name} animated preview"><span class="champion-index"><b>${String(fighters.findIndex((c) => c.id === selected) + 1).padStart(2, "0")}</b> / ${String(fighters.length).padStart(2, "0")}</span>${art(selected, true, true)}${placeholderBadge(selected, "PLACEHOLDER ART")}<span class="champion-wordmark" aria-hidden="true">${fighter.name}</span><span class="selected-art-caption">${fighter.element} · ${fighter.role}</span></div>
+      <div class="selected-info"><div class="champion-tags"><span class="element-pill">${elementIcon(fighter.element)}${fighter.element}</span><span>${attackRange(selected) === "long" ? "Ranged" : "Melee"}</span><span class="fighter-role-label">${fighter.role}</span></div><div class="champion-name-row"><h3>${fighter.name}</h3><button type="button" class="champion-bio-button" data-skill-inspect="bio" aria-label="About ${fighter.name}" aria-expanded="false">${menuIcon("help")}</button></div><p class="champion-bio">${fighter.description}</p><div class="fighter-stats">${stats}</div>
+      <div class="champion-skill-buttons" aria-label="Inspect skills">${fighter.skills.map((a, i) => `<button type="button" data-skill-inspect="${i}" aria-label="${a.name}, ${i === ULT_SLOT ? "ultimate" : `${a.cooldown} second cooldown`}" aria-expanded="false" title="${a.name}"><kbd>${skillKeys[i]}</kbd>${abilityIcon(a.name)}<small>${i === ULT_SLOT ? "ULT" : `${a.cooldown}s`}</small></button>`).join("")}<button type="button" class="champion-full-kit" data-fighter-preview="skills">${menuIcon("missions")}<small>Full kit</small></button></div>
+      <div class="champion-skill-tooltip" role="region" aria-label="Skill details" hidden><button type="button" data-skill-close aria-label="Close skill details">×</button><b data-skill-title></b><p data-skill-description></p></div>
+      <div class="champion-basic-summary"><button type="button" class="basic-description" data-skill-inspect="basic" aria-expanded="false">${abilityIcon(fighter.basic.name)}<span class="basic-text"><b>${fighter.basic.name}</b><small>Basic attack · no cooldown</small></span></button><button type="button" class="champion-combo-button" data-skill-inspect="combo" aria-expanded="false">Combo · ${combo.name}</button></div></div>
+    </div>
+    <section class="skill-preview" tabindex="0" role="region" aria-label="${fighter.name} full kit and movement controls" style="--element:${color}" hidden><div class="skill-preview-heading"><h3>${fighter.name}</h3><span>Full kit</span></div><div class="preview-skills">${skills}${basicRow}${comboRow}</div></section>
+    <footer class="champion-actions"><div class="champion-mastery">${masteryRing(selected)}<div><b style="color:${tier?.color ?? "var(--accent)"}">${tier?.name ?? "New challenger"}</b><p class="fighter-mastery-label">${played} matches${next ? ` · ${next.left} to ${next.name}` : " · Maximum mastery"}</p></div></div><button type="button" class="primary btn-primary champion-lock" data-fighter-lock="${selected}" aria-label="Lock in ${fighter.name}">Lock in</button></footer>
+  </div>`;
+  const ids = fighters
     .filter((c) => element === "All" || c.element === element)
     .map((c) => c.id);
   const at = ids.indexOf(selected);
+  // Preserve inline order for consumers; placeFighterDetail mounts the stable stage.
   const grid =
     at < 0
       ? cards.join("") + detail
       : [...cards.slice(0, at + 1), detail, ...cards.slice(at + 1)].join("");
-  return `<div class="section-title"><div><span class="eyebrow">The roster</span><h2>Find your fighter</h2></div></div><div class="roster-navigation" aria-label="Champion navigation"><div class="roster-swipe-hint"><span class="roster-swipe-icon" aria-hidden="true">${menuIcon("swipe")}</span><span>Browse fighters <small>${cards.length} champions</small></span></div><div class="roster-scroll-buttons"><button type="button" data-roster-step="-1" aria-label="Previous champions" disabled>&#8249;</button><button type="button" data-roster-step="1" aria-label="More champions">&#8250;</button></div><progress class="roster-scroll-progress" aria-label="Champion list scroll position" max="1" value="0"></progress></div><div class="selection-layout"><div class="roster showcase-roster" role="group" aria-label="Fighters">${grid}</div><aside class="fighter-preview-slot" tabindex="0" role="region" aria-label="Selected fighter, stats and skills"></aside></div><p class="universal">Every fighter shares one <b>dash</b> (${actionLabel(bindings, "dash")}) and one <b>jump</b> (${actionLabel(bindings, "jump")}). Jump clears ground attacks.</p>`;
+  const filters = ["All", ...new Set(fighters.map((c) => c.element))]
+    .map(
+      (name) =>
+        `<button type="button" data-champion-filter="${name}" aria-label="${name === "All" ? "All fighters" : `${name} fighters`}" aria-pressed="${name === element}" title="${name}">${name === "All" ? "All" : elementIcon(name)}</button>`,
+    )
+    .join("");
+  return `<div class="champion-selector"><div class="section-title"><div><span class="eyebrow">The roster</span><h2>Find your fighter</h2></div></div><div class="roster-navigation" aria-label="Champion navigation"><div class="roster-swipe-hint"><span class="roster-swipe-icon" aria-hidden="true">${menuIcon("swipe")}</span><span>Browse fighters <small>${cards.length} champions</small></span></div><div class="roster-scroll-buttons"><button type="button" data-roster-step="-1" aria-label="Previous champions" disabled>‹</button><button type="button" data-roster-step="1" aria-label="More champions">›</button></div><progress class="roster-scroll-progress" aria-label="Champion list scroll position" max="1" value="0"></progress></div><div class="selection-layout champion-selection"><div class="champion-strip"><button type="button" class="champion-filter-toggle" data-champion-filter-toggle aria-label="Filter fighters by element" aria-expanded="false"><span>All</span>${menuIcon("swipe")}</button><nav class="champion-filters" aria-label="Filter fighters by element">${filters}</nav><div class="roster showcase-roster" role="group" aria-label="Fighters">${grid}</div></div><aside class="fighter-preview-slot" tabindex="0" role="region" aria-label="Selected fighter, stats and skills"></aside></div><p class="universal">Every fighter shares one <b>dash</b> (${actionLabel(bindings, "dash")}) and one <b>jump</b> (${actionLabel(bindings, "jump")}). Jump clears ground attacks.</p></div>`;
 }
 
 /** Swap the selected preview without replacing the roster or moving the page. */
@@ -177,6 +231,9 @@ export function updateRosterSelection(
     freshDetail,
     oldDetail.getAttribute("data-preview") ?? "overview",
   );
+  const sharedHelp = oldDetail.querySelector(".universal");
+  if (sharedHelp)
+    freshDetail.querySelector(".skill-preview")!.append(sharedHelp);
   oldDetail.remove();
   chosen.after(freshDetail);
   placeFighterDetail(root);
@@ -187,12 +244,12 @@ export function updateRosterSelection(
       const roster = chosen.parentElement!;
       const card = chosen.getBoundingClientRect(),
         list = roster.getBoundingClientRect();
-      if (card.top < list.top || card.bottom > list.bottom)
+      if (card.left < list.left || card.right > list.right)
         roster.scrollBy({
-          top:
-            card.top < list.top
-              ? card.top - list.top
-              : card.bottom - list.bottom,
+          left:
+            card.left < list.left
+              ? card.left - list.left
+              : card.right - list.right,
           behavior: reducedMotion || still() ? "instant" : "smooth",
         });
       if (!reducedMotion && !still())
@@ -273,7 +330,7 @@ export function placeFighterDetail(root: ParentNode) {
     ),
   )) {
     const frame = portrait.closest(".card-art")
-      ? "18 -32 164 180"
+      ? "22 -8 156 156"
       : "-20 -40 240 250";
     if (portrait.getAttribute("viewBox") !== frame)
       portrait.setAttribute("viewBox", frame);
@@ -282,8 +339,15 @@ export function placeFighterDetail(root: ParentNode) {
   if (preview) {
     if (detail.parentElement !== preview) preview.prepend(detail);
     const sharedControls = root.querySelector<HTMLElement>(".universal");
-    if (sharedControls && sharedControls.parentElement !== preview)
-      preview.append(sharedControls);
+    if (
+      sharedControls &&
+      sharedControls.parentElement !== detail.querySelector(".skill-preview")
+    )
+      detail.querySelector(".skill-preview")!.append(sharedControls);
+    preview.style.setProperty(
+      "--element",
+      hex(CHARACTERS[detail.dataset.detailFor as CharacterId].color),
+    );
     showFighterSection(detail, detail.dataset.preview ?? "overview");
     return;
   }
@@ -300,22 +364,64 @@ export function placeFighterDetail(root: ParentNode) {
 }
 /** Both sections remain in the DOM; native buttons also work with a controller. */
 function showFighterSection(detail: HTMLElement, section: string) {
-  detail.dataset.preview = section;
   const skills = section === "skills";
-  const expanded =
-    !!detail.closest(".fighter-preview-slot") ||
-    matchMedia("(min-width: 1001px)").matches;
-  detail.querySelector<HTMLElement>(".fighter-preview-tabs")!.hidden = expanded;
-  detail.querySelector<HTMLElement>(".selected-fighter")!.hidden =
-    !expanded && skills;
-  detail.querySelector<HTMLElement>(".skill-preview")!.hidden =
-    !expanded && !skills;
+  detail.dataset.preview = skills ? "skills" : "overview";
+  detail.querySelector<HTMLElement>(".fighter-preview-tabs")!.hidden = !skills;
+  detail.querySelector<HTMLElement>(".selected-fighter")!.hidden = false;
+  detail.querySelector<HTMLElement>(".selected-info")!.hidden = skills;
+  detail.querySelector<HTMLElement>(".skill-preview")!.hidden = !skills;
   for (const button of Array.from(
     detail.querySelectorAll<HTMLElement>("[data-fighter-preview]"),
   ))
     button.setAttribute(
       "aria-pressed",
       String(button.dataset.fighterPreview === section),
+    );
+}
+function inspectSkill(detail: HTMLElement, key?: string) {
+  const tooltip = detail.querySelector<HTMLElement>(".champion-skill-tooltip")!;
+  const id = detail.dataset.detailFor as CharacterId;
+  const fighter = CHARACTERS[id];
+  const same = detail.dataset.inspection === key;
+  if (!key || same) {
+    const previous = detail.dataset.inspection;
+    tooltip.hidden = true;
+    delete detail.dataset.inspection;
+    if (previous)
+      detail
+        .querySelector<HTMLElement>(`[data-skill-inspect="${previous}"]`)
+        ?.focus({ preventScroll: true });
+  } else {
+    let title: string, description: string;
+    if (key === "combo") {
+      title = `Combo · ${COMBOS[id].name}`;
+      description = COMBOS[id].text;
+    } else if (key === "bio") {
+      title = fighter.name;
+      description = fighter.description;
+    } else if (key === "basic") {
+      title = `${fighter.basic.name} · ${fighter.basic.damage} damage`;
+      description = `${fighter.basic.description} No cooldown · ${Math.round((fighter.basic.interval ?? 0.3) * 1000)} ms between attacks.`;
+    } else {
+      const skill = fighter.skills[Number(key)];
+      if (!skill) return;
+      title = `${skill.name} · ${Number(key) === ULT_SLOT ? "Ultimate" : `${skill.cooldown}s cooldown`}`;
+      description = skill.description;
+    }
+    tooltip.querySelector<HTMLElement>("[data-skill-title]")!.textContent =
+      title;
+    tooltip.querySelector<HTMLElement>(
+      "[data-skill-description]",
+    )!.textContent = description;
+    tooltip.hidden = false;
+    detail.dataset.inspection = key;
+  }
+  for (const button of Array.from(
+    detail.querySelectorAll<HTMLElement>("[data-skill-inspect]"),
+  ))
+    button.setAttribute(
+      "aria-expanded",
+      String(button.dataset.skillInspect === detail.dataset.inspection),
     );
 }
 let watched: ResizeObserver | undefined;
@@ -327,18 +433,108 @@ export function watchFighterDetail(root: HTMLElement) {
   navigationEvents = new AbortController();
   const panel = root.querySelector<HTMLElement>(".roster-panel") ?? root;
   placeFighterDetail(panel);
+  document.addEventListener(
+    "pointerdown",
+    (event) => {
+      if (
+        (event.target as Element).closest(
+          ".champion-filters, [data-champion-filter-toggle]",
+        )
+      )
+        return;
+      panel.classList.remove("is-filter-open");
+      panel
+        .querySelector("[data-champion-filter-toggle]")
+        ?.setAttribute("aria-expanded", "false");
+    },
+    { signal: navigationEvents.signal },
+  );
   panel.addEventListener(
     "click",
     (event) => {
-      const button = (event.target as Element).closest<HTMLElement>(
-        "[data-fighter-preview]",
+      const target = event.target as Element;
+      const filterToggle = target.closest<HTMLElement>(
+        "[data-champion-filter-toggle]",
       );
+      if (filterToggle) {
+        const open = panel.classList.toggle("is-filter-open");
+        filterToggle.setAttribute("aria-expanded", String(open));
+        return;
+      }
+      const filter = target.closest<HTMLElement>("[data-champion-filter]");
+      if (filter) {
+        const element = filter.dataset.championFilter!;
+        panel.classList.remove("is-filter-open");
+        const toggle = panel.querySelector<HTMLElement>(
+          "[data-champion-filter-toggle]",
+        );
+        toggle?.setAttribute("aria-expanded", "false");
+        const label = toggle?.querySelector("span");
+        if (label)
+          label.textContent = element === "All" ? "All" : element.slice(0, 3);
+        for (const option of Array.from(
+          panel.querySelectorAll<HTMLElement>("[data-champion-filter]"),
+        ))
+          option.setAttribute("aria-pressed", String(option === filter));
+        for (const card of Array.from(
+          panel.querySelectorAll<HTMLElement>(".showcase-card"),
+        ))
+          card.hidden = element !== "All" && card.dataset.element !== element;
+        const chosen = panel.querySelector<HTMLElement>(
+          ".showcase-card.selected:not([hidden])",
+        );
+        if (!chosen)
+          panel
+            .querySelector<HTMLElement>(".showcase-card:not([hidden])")
+            ?.click();
+        return;
+      }
+      const inspect = target.closest<HTMLElement>(
+        "[data-skill-inspect], [data-skill-close]",
+      );
+      if (inspect) {
+        const detail = inspect.closest<HTMLElement>(".fighter-detail");
+        if (detail) inspectSkill(detail, inspect.dataset.skillInspect);
+        return;
+      }
+      const button = target.closest<HTMLElement>("[data-fighter-preview]");
       if (!button) return;
       const detail = button.closest<HTMLElement>(".fighter-detail");
       if (!detail) return;
       showFighterSection(detail, button.dataset.fighterPreview!);
+      const destination = detail.querySelector<HTMLElement>(
+        button.dataset.fighterPreview === "skills"
+          ? ".skill-preview"
+          : ".champion-full-kit",
+      );
+      destination?.focus({ preventScroll: true });
       const preview = detail.closest<HTMLElement>(".fighter-preview-slot");
       if (preview) preview.scrollTop = 0;
+    },
+    { signal: navigationEvents.signal },
+  );
+  panel.addEventListener(
+    "keydown",
+    (event) => {
+      if (
+        !(event.target as Element).matches("[data-character]") ||
+        !["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)
+      )
+        return;
+      const cards = Array.from(
+        panel.querySelectorAll<HTMLElement>("[data-character]:not([hidden])"),
+      );
+      const index = cards.indexOf(event.target as HTMLElement);
+      const next =
+        event.key === "Home"
+          ? 0
+          : event.key === "End"
+            ? cards.length - 1
+            : (index + (event.key === "ArrowLeft" ? -1 : 1) + cards.length) %
+              cards.length;
+      event.preventDefault();
+      cards[next]?.focus({ preventScroll: true });
+      cards[next]?.click();
     },
     { signal: navigationEvents.signal },
   );
@@ -352,7 +548,7 @@ export function watchFighterDetail(root: HTMLElement) {
   );
   const syncNavigation = () => {
     if (!roster) return;
-    const vertical = !!panel.querySelector(".fighter-preview-slot");
+    const vertical = false;
     const max = Math.max(
       0,
       vertical
@@ -370,7 +566,7 @@ export function watchFighterDetail(root: HTMLElement) {
     button?.addEventListener(
       "click",
       () => {
-        const vertical = !!panel.querySelector(".fighter-preview-slot");
+        const vertical = false;
         roster?.scrollBy({
           [vertical ? "top" : "left"]:
             Number(button.dataset.rosterStep) *
