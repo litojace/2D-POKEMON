@@ -71,9 +71,17 @@ describe("mission completion instructions", () => {
     expect(missionHelp("skills-30")).toContain("Basic attacks do not count");
     expect(missionHelp("ults-3")).toContain("EX skills do not count");
     expect(missionHelp("minutes-30")).toContain(
-      "Whole minutes from each finished game",
+      "including leftover seconds from short games",
     );
-    expect(missionHelp("minutes-30")).toContain("time in menus does not count");
+    expect(missionHelp("minutes-30")).toContain("Time in menus does not count");
+    for (const id of [
+      "skills-30",
+      "ults-3",
+      "ults-8",
+      "minutes-10",
+      "minutes-30",
+    ])
+      expect(missionHelp(id)).toContain("Boss Rush");
   });
   it("lists the actual boss feat requirements from the reward catalog", () => {
     const examples = missionFeatExamples("feat-1");

@@ -20,8 +20,8 @@ export function missionHelp(id: string) {
     "pvp-wins":
       "Win full matches against other players in a room with no bots. Matches must last at least 20 seconds; bot wins and raid clears do not count.",
     "skill-uses":
-      "Activate skills 1–4 in matches or raids. Successful casts, including ultimates, count across multiple games. Basic attacks do not count.",
-    ults: "Fill your ultimate meter, then activate skill 4 in a match or raid. Repeat across games until you reach the target. EX skills do not count as ultimates.",
+      "Activate skills 1–4 in matches or raids. Successful casts, including ultimates, count across multiple games and Boss Rush runs. Basic attacks do not count.",
+    ults: "Fill your ultimate meter, then activate skill 4 in a match or raid. Repeat across matches, raids or Boss Rush runs until you reach the target. EX skills do not count as ultimates.",
     "raid-clear":
       "Choose Boss Raid and defeat a boss on any Peril. Solo and party clears count, including Raid of the Day. Defeats do not count.",
     "daily-clear":
@@ -41,7 +41,7 @@ export function missionHelp(id: string) {
     "bot-wins":
       "Select Battle an AI bot and win full matches on any difficulty. Completed matches count at any duration. Wins against players do not count for this mission.",
     minutes:
-      "Play matches or raids and finish them. Whole minutes from each finished game add together; time in menus does not count. You do not need to reach the target in one game.",
+      "Finish matches, raids or Boss Rush runs. Combat time adds together across finished games, including leftover seconds from short games; progress shows whole minutes. Time in menus does not count. You do not need to reach the target in one game.",
     "raid-play":
       "Finish a raid by defeating the boss or reaching a defeat result. A defeat must last at least 20 seconds to count. Leaving early or using attack practice does not count.",
     "raid-solo":

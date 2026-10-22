@@ -379,7 +379,54 @@ export function createArenaServer(
       const receipt:RaidReceipt={id:runId,boss:r.boss,peril:r.peril,trait:r.trait,gilded:r.gilded,weekly:false,week:raidWeek(new Date(`${r.day}T12:00:00Z`)),daily:r.daily,day:r.day,feat:arena.feat(),seed:r.seed,partySize:r.partySize,seconds:Math.max(0.001,Math.round(r.elapsed*1000)/1000),downs:r.downs,revives:r.revives,result:r.result??undefined,phaseReached:r.phase,downCauses:{...arena.downCauses},players};
       r.rewardStatus='saving';
       arena.activityStatus='saving';
-      recordActivity({id:`raid:${runId}`,kind:'raid',day:r.day,players:arena.heroes().filter(p=>owners?.get(p.id)).map(p=>{const c=r.contributions?.[p.id];return {accountId:owners!.get(p.id)!,character:p.character,won:r.result==='victory',vsPeople:false,botLevel:null,mode:'raid',knockedOut:(c?.downs??0)>0,skillUses:p.stats.skills,ults:p.stats.ults??0,activeSeconds:r.elapsed,skin:lookFor(p),raid:{cleared:r.result==='victory',daily:r.daily,peril:r.peril,flawless:r.downs===0,feat:arena.feat(),revives:c?.revives??0,phaseReached:r.phase},participated:arena.engaged.has(p.id)||p.stats.skills>0||p.stats.dealt>0||(c?.revives??0)>0,abandoned:p.out};})}, saved => {if(arena.raid.resultId!==runId)return;arena.activityStatus=saved?'saved':'unavailable';broadcast(arena);},arena);
+      recordActivity(
+        {
+          id: `raid:${runId}`,
+          kind: "raid",
+          day: r.day,
+          // Keep departed seats: the database excludes their rewards but needs
+          // the original party size to distinguish co-op and solo missions.
+          players: arena.players
+            .filter((p) => !p.raidBoss && owners?.get(p.id))
+            .map((p) => {
+              const c = r.contributions?.[p.id];
+              return {
+                accountId: owners!.get(p.id)!,
+                character: p.character,
+                won: r.result === "victory",
+                vsPeople: false,
+                botLevel: null,
+                mode: "raid",
+                knockedOut: (c?.downs ?? 0) > 0,
+                skillUses: p.stats.skills,
+                ults: p.stats.ults ?? 0,
+                activeSeconds: r.elapsed,
+                skin: lookFor(p),
+                raid: {
+                  cleared: r.result === "victory",
+                  daily: r.daily,
+                  peril: r.peril,
+                  flawless: r.downs === 0,
+                  feat: arena.feat(),
+                  revives: c?.revives ?? 0,
+                  phaseReached: r.phase,
+                },
+                participated:
+                  arena.engaged.has(p.id) ||
+                  p.stats.skills > 0 ||
+                  p.stats.dealt > 0 ||
+                  (c?.revives ?? 0) > 0,
+                abandoned: p.out,
+              };
+            }),
+        },
+        (saved) => {
+          if (arena.raid.resultId !== runId) return;
+          arena.activityStatus = saved ? "saved" : "unavailable";
+          broadcast(arena);
+        },
+        arena,
+      );
       void (accounts.recordRaid ? accounts.recordRaid(receipt) : Promise.reject(new Error('Raid rewards need server storage configuration.'))).then(()=>{
         if(arena.raid.resultId!==runId)return;
         r.rewardStatus='saved';for(const socket of io.sockets.sockets.values())if(players.some(p=>p.accountId===socket.data.account?.id))socket.emit('account-changed');broadcast(arena);
