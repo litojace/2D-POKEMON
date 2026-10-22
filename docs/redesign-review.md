@@ -181,3 +181,14 @@ Updated previews: [wider desktop information panel](redesign-roster-compact.png)
 - Kept the gold selection stroke inside each card. Keyboard focus uses a separate inset light outline, keeping focus visible even along the clipped edges of the four-row grid. Card sizes, avatar/text spacing, details, selection events and animations in the right-hand preview are unchanged.
 - Browser checks cover every fighter, rapid switching, mouse/touch and keyboard activation, Home and private duel/team rooms, normal/reduced motion, desktop and landscape-phone sizes with safe areas. Each sampled frame contains exactly one gold selection border, with no card movement or roster scrolling.
 - Typecheck and all 866 tests pass. Updated files pass Prettier; the full formatting check continues to report 73 pre-existing failures outside this change.
+
+## Raid rite selection and header currency
+
+- Rebuilt the rite-choice presentation as a screen-sized navy window with three equal, centred cards. Larger illustrations, coloured edges, clear titles and aligned description tracks make each option easier to scan. Desktop cards are roughly 370px tall at 1280×720; a landscape phone at 844×390 gets 168px cards without scrolling the choices.
+- Moved the live countdown beneath the choices and centred it at every reviewed size. Phase guidance and optional team builds remain reachable in their own compact scroll region, which does not move the cards or timer when opened. Countdown updates preserve the buttons and focus; the existing 15-second allowance and urgency threshold are unchanged.
+- Short landscape layouts place icons beside titles. All twelve rites fit at seven sizes, from 568×320 through 1920×1080, with phone safe areas. Lucid has a shorter equivalent description in the card; the original wording is retained in its tooltip. Hover/focus styling respects reduced motion.
+- Fixed the existing keyboard/controller selection lookup to use raid offers during raids and ordinary rite offers during PvP. Selection still sends the same request and payload; gameplay and server rules are unchanged.
+- Reduced only the header coin pill: 20px balance text on desktop and 18px on compact screens, with smaller padding and icons. The button retains a 44px touch target. Checked ordinary, large and unlimited balances alongside the other header controls.
+- Browser checks cover all bosses and chapters, locked-in/waiting state, stable countdown nodes, keyboard activation, mapped controller actions, native team-detail scrolling, focus, reduced motion and header alignment. Typecheck, all 866 tests, the client build and PWA verification pass. Updated text/code files pass Prettier; the full check retains existing formatting failures elsewhere.
+
+Previews: [desktop rite choices](redesign-raid-rites-desktop.png), [landscape phone choices](redesign-raid-rites-mobile.png), [smaller header coin display](redesign-header-coins.png).

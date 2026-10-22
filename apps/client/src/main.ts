@@ -341,7 +341,8 @@ function pressAction(action: Action | PadAction) {
   if (state?.phase === "intermission") {
     const pick = skillSlot(action);
     const me = state.players.find((p) => p.id === myId);
-    const id = pick >= 0 ? me?.riteOffer?.[pick] : undefined;
+    const offers = state.raid ? state.raid.offers[myId ?? ""] : me?.riteOffer;
+    const id = pick >= 0 ? offers?.[pick] : undefined;
     if (id) chooseRite(id);
     return;
   }

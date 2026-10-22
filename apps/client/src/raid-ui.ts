@@ -1,13 +1,32 @@
 import { renderExpeditionOverlay } from "./expedition-ui";
 import { resultXp } from "./adventure-ui";
-import { JOURNEY_ITEMS, type Journey } from "../../../packages/shared/src/journey";
-import { drawConductorRing, drawStormWarning, drawStormTwins } from "./raid-storm-twins-art";
+import {
+  JOURNEY_ITEMS,
+  type Journey,
+} from "../../../packages/shared/src/journey";
+import {
+  drawConductorRing,
+  drawStormWarning,
+  drawStormTwins,
+} from "./raid-storm-twins-art";
 import { renderStormTargets, stormTwinHealth } from "./storm-twins-controls";
-import { drawSkyTerrace, drawEmberwingWarning, drawEmberwing } from "./raid-emberwing-art";
-import { drawSunAtrium, drawPrismatailWarning, drawPrismatail } from "./raid-prismatail-art";
+import {
+  drawSkyTerrace,
+  drawEmberwingWarning,
+  drawEmberwing,
+} from "./raid-emberwing-art";
+import {
+  drawSunAtrium,
+  drawPrismatailWarning,
+  drawPrismatail,
+} from "./raid-prismatail-art";
 import { renderPrismatailControls } from "./prismatail-controls";
 import { renderSomnaraControls } from "./somnara-controls";
-import { drawCloudDeck, drawSomnaraWarning, drawSomnara } from "./raid-somnara-art";
+import {
+  drawCloudDeck,
+  drawSomnaraWarning,
+  drawSomnara,
+} from "./raid-somnara-art";
 import { buttonIcon, iconLabel, menuIcon } from "./menu-icons";
 import {
   raidCue,
@@ -48,8 +67,17 @@ import {
 import { raidGuideScene, raidGuideBossFor } from "./raid-guide-art";
 import { raidRitePicture } from "./raid-rite-art";
 import { drawRaidBoss } from "./raid-boss-art";
-import { drawLagoon, drawTideAttacks, drawTidewyrm, drawTidewyrmWarning } from "./raid-tidewyrm-art";
-import { drawGloomshade, drawGloomshadeWarning, drawLanternYard } from "./raid-gloomshade-art";
+import {
+  drawLagoon,
+  drawTideAttacks,
+  drawTidewyrm,
+  drawTidewyrmWarning,
+} from "./raid-tidewyrm-art";
+import {
+  drawGloomshade,
+  drawGloomshadeWarning,
+  drawLanternYard,
+} from "./raid-gloomshade-art";
 import { fighterAvatar } from "./fighter-art";
 import { portraitAvatar, portraitCosmetics } from "./portraits";
 import { LOOK_ITEMS } from "../../../packages/shared/src/shop";
@@ -62,6 +90,11 @@ const escape = (s: string) =>
         c
       ]!,
   );
+/** Keep the longest rite readable in the three-card phone layout. */
+const riteDescription = (id: keyof typeof RAID_RITES) =>
+  id === "lucid"
+    ? "Dream Bubbles can’t make you Drowsy. Always see the first dream rune."
+    : RAID_RITES[id].text;
 const time = (s: number) =>
   `${Math.floor(s / 60)}:${Math.floor(s % 60)
     .toString()
@@ -75,7 +108,14 @@ export function raidLookList(look: RaidLoadout | null | undefined) {
 export { portraitAvatar, portraitCosmetics } from "./portraits";
 /** Host-only practice: pick one boss attack to repeat. */
 function practicePicker(host: boolean, boss: RaidBossId) {
-  return `<details class="raid-practice"><summary>Practice the boss's attacks</summary><p>The boss repeats one attack. Nobody gets hurt: hits and dodges are just counted.${host ? "" : " The host picks the attack."}</p><div class="raid-practice-options">${raidAttacksOf(boss).map((id) => `<button type="button" class="secondary" data-raid-drill="${id}" ${host ? "" : "disabled"}><b>${RAID_ATTACKS[id].name}</b><small>${RAID_ATTACKS[id].practice}</small></button>`).join("")}</div></details>`;
+  return `<details class="raid-practice"><summary>Practice the boss's attacks</summary><p>The boss repeats one attack. Nobody gets hurt: hits and dodges are just counted.${host ? "" : " The host picks the attack."}</p><div class="raid-practice-options">${raidAttacksOf(
+    boss,
+  )
+    .map(
+      (id) =>
+        `<button type="button" class="secondary" data-raid-drill="${id}" ${host ? "" : "disabled"}><b>${RAID_ATTACKS[id].name}</b><small>${RAID_ATTACKS[id].practice}</small></button>`,
+    )
+    .join("")}</div></details>`;
 }
 export function raidLobby(
   state: Snapshot,
@@ -95,7 +135,7 @@ export function raidLobby(
     <div class="raid-lobby-banner"><div><span class="eyebrow">Co-op raid · 1–4 players</span><h2>${r.expedition ? "Boss Rush" : RAID_BOSSES[r.boss].name}</h2><p>${r.expedition ? "Three trials · one shared journey" : RAID_BOSSES[r.boss].epithet}</p></div><svg viewBox="-65 -65 130 115" aria-hidden="true">${raidGuideBossFor(r.boss)}</svg></div>
     <div class="raid-invite"><div><span>Invite your party</span><b>${escape(state.code)}</b></div><button type="button" id="raid-copy-code" class="secondary" aria-label="Copy raid room code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V3H3v13h5"/></svg><span>Copy code</span></button></div>
     <section class="raid-party-section" aria-label="Raid party"><div class="raid-section-heading"><h3>Your party</h3><span>${ready}/${party.length} ready</span></div><div class="raid-party-list">${party.map((p) => `<div class="raid-party-member" data-raid-player="${escape(p.id)}"><span class="raid-party-avatar" data-raid-cosmetic="${portraitCosmetics(p)}">${portraitAvatar(p, "raid-lobby-" + p.id)}</span><div class="raid-party-identity"><b>${escape(p.name)}</b><span><span class="raid-player-character">${CHARACTERS[p.character].name}</span>${p.id === state.players[0]?.id ? " · Host" : ""}</span></div><span class="raid-ready-badge ${p.ready ? "is-ready" : ""}">${p.ready ? "Ready" : "Choosing"}</span></div>`).join("")}<div class="raid-open-slots">${Array.from({ length: Math.max(0, 4 - party.length) }, () => '<div class="raid-party-empty"><span aria-hidden="true">+</span>Open slot</div>').join("")}</div></div></section>
-    ${r.expedition ? `<section class="raid-challenge"><h3>Boss Rush route</h3><ol class="expedition-lobby-route">${r.expedition.route.map((id,i)=>`<li><span>${i+1}</span>${RAID_BOSSES[id].name}</li>`).join("")}</ol><p>Three shorter trials at Peril 1. Health and rites carry. Choose Rest or Surge at each camp.</p></section>` : `    <section class="raid-challenge" aria-label="Raid challenge"><div class="raid-section-heading"><h3>Choose your challenge</h3><span>${host ? "HOST CONTROLS" : "HOST SELECTS"}</span></div>${raidDifficulty(r.peril, !host || r.daily)}${raidDay().boss === r.boss ? `<label class="raid-weekly-option"><input id="raid-daily-toggle" type="checkbox" ${r.daily ? "checked" : ""} ${host ? "" : "disabled"}><span><b>Raid of the Day</b><small>Today's shared Peril 2 challenge · daily board</small></span></label>` : ""}<p class="raid-unlock-note">${r.daily ? (host ? "Uncheck Raid of the Day to choose a regular difficulty." : "The host can switch to a regular raid.") : "Clear a Peril to unlock the next difficulty."}</p></section>`}
+    ${r.expedition ? `<section class="raid-challenge"><h3>Boss Rush route</h3><ol class="expedition-lobby-route">${r.expedition.route.map((id, i) => `<li><span>${i + 1}</span>${RAID_BOSSES[id].name}</li>`).join("")}</ol><p>Three shorter trials at Peril 1. Health and rites carry. Choose Rest or Surge at each camp.</p></section>` : `    <section class="raid-challenge" aria-label="Raid challenge"><div class="raid-section-heading"><h3>Choose your challenge</h3><span>${host ? "HOST CONTROLS" : "HOST SELECTS"}</span></div>${raidDifficulty(r.peril, !host || r.daily)}${raidDay().boss === r.boss ? `<label class="raid-weekly-option"><input id="raid-daily-toggle" type="checkbox" ${r.daily ? "checked" : ""} ${host ? "" : "disabled"}><span><b>Raid of the Day</b><small>Today's shared Peril 2 challenge · daily board</small></span></label>` : ""}<p class="raid-unlock-note">${r.daily ? (host ? "Uncheck Raid of the Day to choose a regular difficulty." : "The host can switch to a regular raid.") : "Clear a Peril to unlock the next difficulty."}</p></section>`}
 
     <div class="raid-lobby-rules"><span><svg class="raid-rule-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v10m-5-5h10"/></svg><span>${party.length === 1 ? (r.peril >= 3 ? "Peril 3 solo: no self-revive" : "One solo self-revive") : "Stand near allies to revive"}</span></span><span><svg class="raid-rule-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 3 8 4v6c0 5-8 8-8 8s-8-3-8-8V7Z"/><path d="m8 12 3 3 5-6"/></svg><span>Separate from PvP rating</span></span></div>
     ${r.expedition ? "" : practicePicker(host, r.boss)}
@@ -123,10 +163,14 @@ export function raidCosmeticOptions(
           (id) => RAID_COSMETICS[id].slot === slot,
         ),
         // Shop collection pieces you own for this slot.
-        ...[...LOOK_ITEMS,...JOURNEY_ITEMS].filter((i) => i.slot === slot && shopOwned.includes(i.id)).map((i) => i.id),
+        ...[...LOOK_ITEMS, ...JOURNEY_ITEMS]
+          .filter((i) => i.slot === slot && shopOwned.includes(i.id))
+          .map((i) => i.id),
       ];
       const option = (id: string | null) => {
-        const shop = id ? [...LOOK_ITEMS,...JOURNEY_ITEMS].find((i) => i.id === id) : undefined;
+        const shop = id
+          ? [...LOOK_ITEMS, ...JOURNEY_ITEMS].find((i) => i.id === id)
+          : undefined;
         const owned = id === null || !!shop || p.cosmetics.includes(id);
         const active = (look[slot] ?? null) === id;
         const info = shop
@@ -134,7 +178,13 @@ export function raidCosmeticOptions(
           : id
             ? RAID_COSMETICS[id as RaidCosmetic]
             : null;
-        const name = info?.name ?? (slot === "skin" ? "Original look" : slot === "victory" ? "Champion's own" : "None");
+        const name =
+          info?.name ??
+          (slot === "skin"
+            ? "Original look"
+            : slot === "victory"
+              ? "Champion's own"
+              : "None");
         const detail = info
           ? owned
             ? info.description
@@ -177,7 +227,9 @@ export function renderRaidUI(
     hud.id = "raid-hud";
     document.getElementById("battle")!.prepend(hud);
   }
-  const charge = r.warnings.find((w) => w.kind === "charge" || w.kind === "dive");
+  const charge = r.warnings.find(
+    (w) => w.kind === "charge" || w.kind === "dive",
+  );
   const meteor = r.warnings.find((w) => w.kind === "share");
   const erupting = r.warnings.find((w) => w.kind === "eruption");
   const sealed = (id: string) => r.prisons?.some((q) => q.playerId === id);
@@ -186,9 +238,18 @@ export function renderRaidUI(
     charge?.lockAt !== undefined && state.time >= charge.lockAt;
   const healthPercent = Math.max(
     0,
-    Math.min(100, ((r.boss === "storm-twins" ? state.players.filter(p=>p.raidBoss).reduce((sum,p)=>sum+Math.max(0,p.hp),0) : boss?.hp ?? 0) / r.maxHp) * 100),
+    Math.min(
+      100,
+      ((r.boss === "storm-twins"
+        ? state.players
+            .filter((p) => p.raidBoss)
+            .reduce((sum, p) => sum + Math.max(0, p.hp), 0)
+        : (boss?.hp ?? 0)) /
+        r.maxHp) *
+        100,
+    ),
   );
-  hud.innerHTML = `<div class="raid-boss-heading"><b>${r.expedition ? `BOSS RUSH ${r.expedition.leg+1}/3 · ` : ""}${r.gilded ? "✦ GILDED " : ""}${RAID_BOSSES[r.boss].name.toUpperCase()}</b>${r.daily ? '<em class="raid-daily-badge">RAID OF THE DAY</em>' : ""}<span>${r.expedition ? `TRIAL ${r.expedition.leg+1} OF 3` : `PERIL ${r.peril} · PHASE ${r.phase}/3`}</span></div>${r.boss === "storm-twins" ? stormTwinHealth(state) : ""}<div class="raid-boss-health" role="progressbar" aria-label="Boss health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(healthPercent)}" aria-valuetext="${Math.round(healthPercent)}% health.${r.expedition ? "" : " Rite choices open at 67% and 33% health."}"><i style="width:${healthPercent}%"></i>${(r.expedition ? [] : [67, 33]).map((mark, index) => `<span class="raid-health-mark${r.phase > index + 1 ? " is-passed" : ""}" style="left:${mark}%" aria-hidden="true"></span>`).join("")}</div><div class="raid-stagger" ${r.boss === "storm-twins" ? "hidden" : ""}><i style="width:${r.boss === "emberwing" ? (r.permanentGround || r.exposedUntil>state.time ? 100 : r.airborne ? (r.braziers??[]).filter(b=>b.litUntil>state.time).length/3*100 : r.stagger) : r.boss === "prismatail" ? (r.exposedUntil > state.time ? 100 : Math.min(100,(r.lightHold ?? 0) / (r.phase === 3 && r.partySize === 1 ? 2 : .65) * 100)) : r.staggerUntil > state.time ? 100 : r.stagger}%"></i><span>${r.boss === "emberwing" ? (r.permanentGround ? "WINGS BROKEN · HEART OPEN" : r.airborne ? `AIRBORNE · ${(r.braziers ?? []).filter(b=>b.litUntil>state.time).length}/3 BRAZIERS` : r.exposedUntil>state.time ? "GROUNDED · HEART EXPOSED" : "STAGGER") : r.boss === "prismatail" ? (r.exposedUntil > state.time ? "HEART EXPOSED" : "LIGHT RELAY · SHIELDED") : r.staggerUntil > state.time ? "STAGGER · CORE EXPOSED" : "STAGGER"}</span></div><div class="raid-party-bars" data-party-size="${state.players.filter((p) => !p.raidBoss && !p.out).length}">${state.players
+  hud.innerHTML = `<div class="raid-boss-heading"><b>${r.expedition ? `BOSS RUSH ${r.expedition.leg + 1}/3 · ` : ""}${r.gilded ? "✦ GILDED " : ""}${RAID_BOSSES[r.boss].name.toUpperCase()}</b>${r.daily ? '<em class="raid-daily-badge">RAID OF THE DAY</em>' : ""}<span>${r.expedition ? `TRIAL ${r.expedition.leg + 1} OF 3` : `PERIL ${r.peril} · PHASE ${r.phase}/3`}</span></div>${r.boss === "storm-twins" ? stormTwinHealth(state) : ""}<div class="raid-boss-health" role="progressbar" aria-label="Boss health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(healthPercent)}" aria-valuetext="${Math.round(healthPercent)}% health.${r.expedition ? "" : " Rite choices open at 67% and 33% health."}"><i style="width:${healthPercent}%"></i>${(r.expedition ? [] : [67, 33]).map((mark, index) => `<span class="raid-health-mark${r.phase > index + 1 ? " is-passed" : ""}" style="left:${mark}%" aria-hidden="true"></span>`).join("")}</div><div class="raid-stagger" ${r.boss === "storm-twins" ? "hidden" : ""}><i style="width:${r.boss === "emberwing" ? (r.permanentGround || r.exposedUntil > state.time ? 100 : r.airborne ? ((r.braziers ?? []).filter((b) => b.litUntil > state.time).length / 3) * 100 : r.stagger) : r.boss === "prismatail" ? (r.exposedUntil > state.time ? 100 : Math.min(100, ((r.lightHold ?? 0) / (r.phase === 3 && r.partySize === 1 ? 2 : 0.65)) * 100)) : r.staggerUntil > state.time ? 100 : r.stagger}%"></i><span>${r.boss === "emberwing" ? (r.permanentGround ? "WINGS BROKEN · HEART OPEN" : r.airborne ? `AIRBORNE · ${(r.braziers ?? []).filter((b) => b.litUntil > state.time).length}/3 BRAZIERS` : r.exposedUntil > state.time ? "GROUNDED · HEART EXPOSED" : "STAGGER") : r.boss === "prismatail" ? (r.exposedUntil > state.time ? "HEART EXPOSED" : "LIGHT RELAY · SHIELDED") : r.staggerUntil > state.time ? "STAGGER · CORE EXPOSED" : "STAGGER"}</span></div><div class="raid-party-bars" data-party-size="${state.players.filter((p) => !p.raidBoss && !p.out).length}">${state.players
     .filter((p) => !p.raidBoss)
     .map(
       (p) =>
@@ -197,7 +258,7 @@ export function renderRaidUI(
     .join(
       "",
     )}</div><div class="raid-status-row"><p class="raid-callout" role="status">${escape(raidCue(state, me.id))}</p><div class="raid-elapsed" role="timer" aria-label="Raid elapsed time"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><b>${time(r.elapsed)}</b></div></div>`;
-  if (renderExpeditionOverlay(state,me,request,journey)) return;
+  if (renderExpeditionOverlay(state, me, request, journey)) return;
   const overlay = document.getElementById("arena-overlay")!;
   let progress = resultProgress.get(overlay);
   if (
@@ -252,24 +313,25 @@ export function renderRaidUI(
       r.boss === "storm-twins"
         ? `<span>${raidGuideScene("two-hearts", me.character)}<b>Balance both hearts</b><small>Lower both health bars. Tap Fizz or Crackle to choose a target.</small></span><span>${raidGuideScene("polarity-pair", me.character)}<b>Pair opposite signs</b><small>Meet an opposite sign in 4 seconds. Solo gets a floor pad.</small></span><span>${raidGuideScene("twin-finish", me.character)}<b>Finish together</b><small>When one falls, beat the other before the timer or it revives at 35% health.</small></span>`
         : r.boss === "emberwing"
-        ? `<span>${raidGuideScene("braziers", me.character)}<b>Light the triangle</b><small>Stand on each brazier for 1.5 seconds. All three must burn together.</small></span><span>${raidGuideScene("ground-bird", me.character)}<b>Ground the sky</b><small>Bring it down to expose the heart and shrink burning ground.</small></span><span>${raidGuideScene("heat-spread", me.character)}<b>Spread for Heat Marks</b><small>Keep your blast away from allies. Jump the expanding flame ring.</small></span>`
-        : r.boss === "prismatail"
-        ? `<span>${raidGuideScene("relay", me.character)}<b>Carry the light</b><small>Skylight → raider → mirror posts → heart. Follow the gold beams.</small></span><span>${raidGuideScene("mirror", me.character)}<b>Turn the mirrors</b><small>Hit a post to turn its arrow 45°. A connected chain opens the shield.</small></span><span>${raidGuideScene("glare", me.character)}<b>Watch the crest</b><small>Step out of its numbered fan cone. Aim away from Glare, or hold Look away.</small></span>`
-        : r.boss === "somnara"
-        ? `<span>${raidGuideScene("dream", me.character)}<b>Call the dream</b><small>Only the Dreamer sees it. Call runes with 1–4 or the rune bar.</small></span><span>${raidGuideScene("runes", me.character)}<b>Step the pads in order</b><small>Enter a matching pad for each rune. Solve it to expose Somnara.</small></span><span>${raidGuideScene("quiet", me.character)}<b>Stay awake</b><small>Jump rings, pop bubbles and follow the moving Quiet Zone.</small></span>`
-        : r.boss === "gloomshade"
-        ? `<span>${raidGuideScene("lantern", me.character)}<b>Keep the lights on</b><small>Hit a dark lantern twice. Light cleanses curses.</small></span><span>${raidGuideScene("shadow", me.character)}<b>Find the real one</b><small>Only it casts a shadow in light. Copies curse you.</small></span><span>${raidGuideScene("curse", me.character)}<b>Spread out</b><small>Curses jump to anyone close. Three makes you Haunted.</small></span>`
-        : r.boss === "tidewyrm"
-        ? `<span>${raidGuideScene("strand", me.character)}<b>Strand it</b><small>Lead the dive ripple onto an island, then step off.</small></span><span>${raidGuideScene("tide", me.character)}<b>Share the islands</b><small>High Tide floods the floor: two to an island.</small></span><span>${raidGuideScene("prison", me.character)}<b>Pop the bubble</b><small>Three hits free a trapped friend. Alone, mash attack.</small></span>`
-        : `<span>${raidGuideScene("charge", me.character)}<b>Bait the charge</b><small>Lure the boss into a stone pillar.</small></span><span>${raidGuideScene("core", me.character)}<b>Strike the core</b><small>Armor breaks. Unleash your ultimate.</small></span><span>${raidGuideScene("revive", me.character)}<b>Revive together</b><small>Stand beside a fallen ally to revive.</small></span>`;
+          ? `<span>${raidGuideScene("braziers", me.character)}<b>Light the triangle</b><small>Stand on each brazier for 1.5 seconds. All three must burn together.</small></span><span>${raidGuideScene("ground-bird", me.character)}<b>Ground the sky</b><small>Bring it down to expose the heart and shrink burning ground.</small></span><span>${raidGuideScene("heat-spread", me.character)}<b>Spread for Heat Marks</b><small>Keep your blast away from allies. Jump the expanding flame ring.</small></span>`
+          : r.boss === "prismatail"
+            ? `<span>${raidGuideScene("relay", me.character)}<b>Carry the light</b><small>Skylight → raider → mirror posts → heart. Follow the gold beams.</small></span><span>${raidGuideScene("mirror", me.character)}<b>Turn the mirrors</b><small>Hit a post to turn its arrow 45°. A connected chain opens the shield.</small></span><span>${raidGuideScene("glare", me.character)}<b>Watch the crest</b><small>Step out of its numbered fan cone. Aim away from Glare, or hold Look away.</small></span>`
+            : r.boss === "somnara"
+              ? `<span>${raidGuideScene("dream", me.character)}<b>Call the dream</b><small>Only the Dreamer sees it. Call runes with 1–4 or the rune bar.</small></span><span>${raidGuideScene("runes", me.character)}<b>Step the pads in order</b><small>Enter a matching pad for each rune. Solve it to expose Somnara.</small></span><span>${raidGuideScene("quiet", me.character)}<b>Stay awake</b><small>Jump rings, pop bubbles and follow the moving Quiet Zone.</small></span>`
+              : r.boss === "gloomshade"
+                ? `<span>${raidGuideScene("lantern", me.character)}<b>Keep the lights on</b><small>Hit a dark lantern twice. Light cleanses curses.</small></span><span>${raidGuideScene("shadow", me.character)}<b>Find the real one</b><small>Only it casts a shadow in light. Copies curse you.</small></span><span>${raidGuideScene("curse", me.character)}<b>Spread out</b><small>Curses jump to anyone close. Three makes you Haunted.</small></span>`
+                : r.boss === "tidewyrm"
+                  ? `<span>${raidGuideScene("strand", me.character)}<b>Strand it</b><small>Lead the dive ripple onto an island, then step off.</small></span><span>${raidGuideScene("tide", me.character)}<b>Share the islands</b><small>High Tide floods the floor: two to an island.</small></span><span>${raidGuideScene("prison", me.character)}<b>Pop the bubble</b><small>Three hits free a trapped friend. Alone, mash attack.</small></span>`
+                  : `<span>${raidGuideScene("charge", me.character)}<b>Bait the charge</b><small>Lure the boss into a stone pillar.</small></span><span>${raidGuideScene("core", me.character)}<b>Strike the core</b><small>Armor breaks. Unleash your ultimate.</small></span><span>${raidGuideScene("revive", me.character)}<b>Revive together</b><small>Stand beside a fallen ally to revive.</small></span>`;
     body = `<div class="raid-briefing-body" tabindex="0" role="region" aria-label="Raid instructions"><p>${escape(RAID_TRAITS[r.trait].text)}</p><div class="raid-instructions">${guide}</div>${perkLines(state, me.id)}${r.partySize > 1 ? `<p class="raid-signals">Team signals: ${(Object.keys(RAID_PINGS) as RaidPingKind[]).map((k) => `<b>${RAID_PINGS[k].key}</b> ${raidPingLabel(k, r.boss)}`).join(" · ")} (or the buttons on the left)</p>` : ""}<p>${r.expedition ? "One shorter final chapter · health and rites carry between trials" : "Three phases · one shared fight"} · ${r.partySize === 1 ? (r.peril >= 3 ? "no self-revive on Peril 3" : "one solo self-revive") : "no required healer"} · no PvP rating changes.</p></div><div class="raid-briefing-actions"><button class="primary" id="raid-instructions" ${state.instructionsReady.includes(me.id) ? "disabled" : ""}>${state.instructionsReady.includes(me.id) ? "Waiting for the team…" : iconLabel("battle", "Let’s raid")}</button></div>`;
   } else if (state.phase === "intermission") {
-    title =
-      r.expedition ? "Choose your expedition rite" : r.phase === 1
+    title = r.expedition
+      ? "Choose your expedition rite"
+      : r.phase === 1
         ? "Choose your starting rite"
         : `Phase ${r.phase} · ${raidChapters(r.boss)[r.phase - 1].name}`;
     body = `<p class="raid-phase-objective">${raidChapters(r.boss)[r.phase - 1].detail}</p><details class="raid-team-summary"><summary>Team rites</summary><div class="raid-team-builds" aria-label="Team rites"></div></details>`;
-    actions = `<p class="raid-rite-intro"><span>Rites stack for this run.</span><span class="raid-choice-timer" role="timer" aria-label="Time left to choose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>Choose in</span><strong>${LIVE_SECONDS}</strong></span></p><div class="raid-rite-options">${(r.offers[me.id] ?? []).map((id) => `<button data-raid-rite="${id}" class="secondary raid-rite-${id}">${raidRitePicture(id)}<span class="raid-rite-copy"><b>${RAID_RITES[id].name}</b><small>${RAID_RITES[id].text}</small></span></button>`).join("") || "<p>Rite locked in · waiting for the team.</p>"}</div>`;
+    actions = `<p class="raid-rite-intro"><span>Rites stack for this run.</span><span class="raid-choice-timer" role="timer" aria-label="Time left to choose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>Choose in</span><strong>${LIVE_SECONDS}</strong></span></p><div class="raid-rite-options">${(r.offers[me.id] ?? []).map((id) => `<button data-raid-rite="${id}" class="secondary raid-rite-${id}" title="${escape(RAID_RITES[id].text)}">${raidRitePicture(id)}<span class="raid-rite-copy"><b>${RAID_RITES[id].name}</b><small>${riteDescription(id)}</small></span></button>`).join("") || "<p>Rite locked in · waiting for the team.</p>"}</div>`;
   } else if (state.phase === "countdown") {
     title = String(Math.ceil(state.remaining));
     body = `<p>${raidChapters(r.boss)[r.phase - 1].objective}</p>`;
@@ -280,15 +342,19 @@ export function renderRaidUI(
     title =
       r.result === "victory"
         ? `${RAID_BOSSES[r.boss].name} defeated!`
-        : r.boss === "storm-twins" ? "The storm gathers again"
-        : r.boss === "emberwing" ? "The sky still burns"
-        : r.boss === "prismatail" ? "The heart stays shielded"
-        : r.boss === "tidewyrm"
-          ? "The tide keeps rising"
-          : r.boss === "somnara" ? "The dream drifts on"
-          : r.boss === "gloomshade"
-            ? "The night goes on"
-            : "The mountain still stands";
+        : r.boss === "storm-twins"
+          ? "The storm gathers again"
+          : r.boss === "emberwing"
+            ? "The sky still burns"
+            : r.boss === "prismatail"
+              ? "The heart stays shielded"
+              : r.boss === "tidewyrm"
+                ? "The tide keeps rising"
+                : r.boss === "somnara"
+                  ? "The dream drifts on"
+                  : r.boss === "gloomshade"
+                    ? "The night goes on"
+                    : "The mountain still stands";
     const heroes = state.players.filter((p) => !p.raidBoss && !p.out);
     const readyCount = heroes.filter((p) => p.ready).length;
     actions = `<div class="result-actions raid-result-actions"><button class="primary" id="raid-retry" ${me.ready || !heroes.every((p) => p.connected) ? "disabled" : ""}>${me.ready ? "Waiting for the team…" : iconLabel("again", "Run again")}</button><button class="secondary" id="raid-lobby" aria-label="Change champion or challenge" title="Change champion or challenge">${iconLabel("swap", "Change setup")}</button><button class="secondary raid-icon-button" id="raid-rewards">${menuIcon("bestiary")}<span>Raid Hub & rewards</span></button><button class="quiet" id="raid-exit">${iconLabel("home", "Return to menu")}</button></div>`;
@@ -298,11 +364,18 @@ export function renderRaidUI(
         : `${r.rewardStatus === "saved" ? `<p class="raid-save-state" role="status">✓ Progress saved: your ${r.boss === "tidewyrm" ? "strands" : r.boss === "gloomshade" ? "relights" : r.boss === "storm-twins" ? "polarity pairs" : r.boss === "emberwing" ? "braziers lit" : r.boss === "prismatail" ? "light relays" : r.boss === "somnara" ? "correct runes" : "pillars"} and revives count towards titles.</p>` : ""}<p class="raid-retry-tip">${defeatTip(state)}</p>`
     }<div class="raid-retry-status">${heroes.length === 1 ? "Same champion and challenge · choose fresh rites" : `${readyCount}/${heroes.length} ready · everyone confirms to run again`}</div>${!heroes.every((p) => p.connected) ? '<p class="raid-retry-tip">A teammate is disconnected. Return to the lobby to refill the party.</p>' : ""}</div></div>`;
   }
-  if (state.phase === "finished") body += resultXp(journey, r.resultId ? `raid:${r.resultId}` : undefined, state.activityStatus, state.activityEligible?.includes(me.id) ?? true);
+  if (state.phase === "finished")
+    body += resultXp(
+      journey,
+      r.resultId ? `raid:${r.resultId}` : undefined,
+      state.activityStatus,
+      state.activityEligible?.includes(me.id) ?? true,
+    );
   const previousCard = overlay.querySelector<HTMLElement>(".raid-overlay");
   const previousScroller =
     overlay.querySelector<HTMLElement>(".raid-briefing-body") ??
-    overlay.querySelector<HTMLElement>(".panel-scroll") ?? previousCard;
+    overlay.querySelector<HTMLElement>(".panel-scroll") ??
+    previousCard;
   const scrollTop =
     overlay.dataset.raidPhase === state.phase
       ? (previousScroller?.scrollTop ?? 0)
@@ -316,8 +389,10 @@ export function renderRaidUI(
   overlay.dataset.raidPhase = state.phase;
   const card = overlay.querySelector<HTMLElement>(".raid-overlay");
   // Leave native touch scrolling alone while snapshots keep the same DOM.
-  const scroller = overlay.querySelector<HTMLElement>(".raid-briefing-body") ??
-    overlay.querySelector<HTMLElement>(".panel-scroll") ?? card;
+  const scroller =
+    overlay.querySelector<HTMLElement>(".raid-briefing-body") ??
+    overlay.querySelector<HTMLElement>(".panel-scroll") ??
+    card;
   if (replaced && scroller) scroller.scrollTop = scrollTop;
   if (replaced && focusId) {
     const button = document.getElementById(focusId);
@@ -499,7 +574,11 @@ export function drawRaidArena(
         w.y + 8,
       );
       for (let i = 0; i < (w.chain ?? 1) - 1; i++)
-        g.fillStyle(lava, 1).fillCircle(w.x - 8 + i * 16, w.y + w.radius + 14, 5);
+        g.fillStyle(lava, 1).fillCircle(
+          w.x - 8 + i * 16,
+          w.y + w.radius + 14,
+          5,
+        );
     } else {
       // Keep the boundary fixed at the server's damage radius; pulse opacity only.
       g.fillStyle(danger, 0.18 * pulse).fillCircle(w.x, w.y, w.radius);
@@ -605,7 +684,11 @@ export function drawRaidArena(
     const y = p.y - 112,
       bob = reduced ? 0 : Math.sin(state.time * 6) * 3;
     const color =
-      ping.kind === "stack" ? 0xffd65b : ping.kind === "revive" ? 0x7dffb0 : 0xffa94d;
+      ping.kind === "stack"
+        ? 0xffd65b
+        : ping.kind === "revive"
+          ? 0x7dffb0
+          : 0xffa94d;
     g.fillStyle(0x0c1b32, 0.92).fillCircle(p.x, y + bob, 18);
     g.lineStyle(3, color, 1).strokeCircle(p.x, y + bob, 18);
     if (ping.kind === "stack") {
@@ -644,10 +727,14 @@ function defeatTip(state: Snapshot) {
     if (d.cause) causes.set(d.cause, (causes.get(d.cause) ?? 0) + 1);
   const worst = [...causes].sort((a, b) => b[1] - a[1])[0]?.[0];
   if (worst) return `${RAID_ATTACKS[worst].name}: ${RAID_ATTACKS[worst].tip}`;
-  if (r.boss === "storm-twins") return "Lower both health bars before finishing either twin. Pair opposite Polarity signs, then finish both during the countdown.";
-  if (r.boss === "emberwing") return "Light all three braziers together to ground Emberwing. Solo flames last longer. Spread out for Heat Marks and save ultimates for the open heart.";
-  if (r.boss === "prismatail") return "Stand inside the skylight ring, connect to the mirror posts, and hit a mirror to turn its arrow. Save ultimates for the open heart.";
-  if (r.boss === "somnara") return "Call the runes, then enter their pads in order. Jump the rings and pop Dream Bubbles before three Drowsy stacks put you to sleep.";
+  if (r.boss === "storm-twins")
+    return "Lower both health bars before finishing either twin. Pair opposite Polarity signs, then finish both during the countdown.";
+  if (r.boss === "emberwing")
+    return "Light all three braziers together to ground Emberwing. Solo flames last longer. Spread out for Heat Marks and save ultimates for the open heart.";
+  if (r.boss === "prismatail")
+    return "Stand inside the skylight ring, connect to the mirror posts, and hit a mirror to turn its arrow. Save ultimates for the open heart.";
+  if (r.boss === "somnara")
+    return "Call the runes, then enter their pads in order. Jump the rings and pop Dream Bubbles before three Drowsy stacks put you to sleep.";
   if (r.boss === "gloomshade")
     return Object.values(r.contributions ?? {}).some((c) => c.pillars > 0)
       ? "Look for the one with a shadow in lantern light, then hit it six times in a row to expose its core."
@@ -701,7 +788,7 @@ function raidControls(
   if (!frame) return;
   renderSomnaraControls(state, me, frame, request);
   renderPrismatailControls(state, me, frame);
-  renderStormTargets(state,frame);
+  renderStormTargets(state, frame);
   let pings = document.getElementById("raid-pings");
   if (!pings) {
     pings = document.createElement("div");
@@ -738,7 +825,16 @@ function raidControls(
   const key = `${r.drill}|${host}|${r.drillStats?.hits}|${r.drillStats?.dodges}`;
   if (drill.dataset.key === key) return;
   drill.dataset.key = key;
-  drill.innerHTML = `<div class="raid-drill-head"><b>Practice · ${RAID_ATTACKS[r.drill].name}</b><span>Dodged ${r.drillStats?.dodges ?? 0} · Hit ${r.drillStats?.hits ?? 0}</span></div><p>${escape(RAID_ATTACKS[r.drill].tip)}</p><div class="raid-drill-options">${raidAttacksOf(r.boss).map((id) => `<button type="button" class="${id === r.drill ? "is-active" : ""}" data-raid-drill="${id}" ${host ? "" : "disabled"}>${RAID_ATTACKS[id].name}</button>`).join("")}<button type="button" class="quiet leave-button" id="raid-drill-leave">${host ? iconLabel("leave", "Leave practice") : "Host ends practice"}</button></div>`;
+  drill.innerHTML = `<div class="raid-drill-head"><b>Practice · ${RAID_ATTACKS[r.drill].name}</b><span>Dodged ${r.drillStats?.dodges ?? 0} · Hit ${r.drillStats?.hits ?? 0}</span></div><p>${escape(RAID_ATTACKS[r.drill].tip)}</p><div class="raid-drill-options">${raidAttacksOf(
+    r.boss,
+  )
+    .map(
+      (id) =>
+        `<button type="button" class="${id === r.drill ? "is-active" : ""}" data-raid-drill="${id}" ${host ? "" : "disabled"}>${RAID_ATTACKS[id].name}</button>`,
+    )
+    .join(
+      "",
+    )}<button type="button" class="quiet leave-button" id="raid-drill-leave">${host ? iconLabel("leave", "Leave practice") : "Host ends practice"}</button></div>`;
   for (const b of Array.from(
     drill.querySelectorAll<HTMLButtonElement>("[data-raid-drill]"),
   ))
