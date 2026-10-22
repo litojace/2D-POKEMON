@@ -1,3 +1,4 @@
+import { bossLife, bossEye } from "./raid-boss-life";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
 import {
@@ -246,97 +247,162 @@ export function drawEmberwing(
     c = { motion: new RaidBossMotion(), flight: r.airborne ? 1 : 0, clock };
     controllers.set(g, c);
   }
-  const pose = c.motion.sample(state, clock, reduced)!,
-    dt =
-      state.phase === "paused"
-        ? 0
-        : Math.max(0, Math.min(0.05, clock - c.clock));
+  const pose = c.motion.sample(state, clock, reduced)!;
+  const life = bossLife(g, state, boss, clock, reduced);
+  const dt =
+    state.phase === "paused" ? 0 : Math.max(0, Math.min(0.05, clock - c.clock));
   c.clock = clock;
   const target = r.airborne ? 1 : 0;
   c.flight = reduced
     ? target
     : c.flight + Math.max(-dt * 3, Math.min(dt * 3, target - c.flight));
-  const t = reduced ? 0 : pose.time,
+  const t = life.time,
     x = boss.x,
-    y =
-      boss.y -
-      64 -
-      c.flight * 65 +
-      Math.sin(t * (r.airborne ? 2 : 1.4)) * 5 +
-      pose.collapse * 35;
-  const alpha = pose.dead ? Math.max(0.2, 1 - pose.deathAge * 0.3) : 1,
-    exposed = r.permanentGround || r.exposedUntil > state.time;
-  g.fillStyle(0x10192a, 0.35).fillEllipse(
+    flight = c.flight;
+  const y =
+    boss.y -
+    64 -
+    flight * 65 +
+    life.breath * 4 +
+    pose.collapse * 35 +
+    life.windup * 5;
+  const alpha = pose.dead
+    ? reduced
+      ? 0.2
+      : Math.max(0.2, 1 - pose.deathAge * 0.3)
+    : 1;
+  const exposed = r.permanentGround || r.exposedUntil > state.time;
+  g.fillStyle(0x10192a, 0.3).fillEllipse(
     x,
     boss.y + 12,
-    170 - c.flight * 35,
-    50 - c.flight * 10,
+    170 - flight * 35,
+    45 - flight * 10,
   );
-  if (r.airborne)
-    g.lineStyle(2, 0xffcf9188, 0.4).strokeEllipse(x, boss.y + 12, 95, 30);
-  // Rounded feathers and a stable body silhouette keep the bird readable during flight.
-  for (let i = 0; i < 5; i++) {
-    const a = -0.8 + i * 0.4,
-      tx = x + Math.cos(a) * 75,
-      ty = y + 38 + Math.sin(a) * 60;
-    g.fillStyle(i % 2 ? 0xe88554 : 0xbc5150, alpha).fillEllipse(tx, ty, 52, 26);
+  // Tail plumes overlap and lag behind the chest, with warm shafts and ember tips.
+  for (let i = 0; i < 7; i++) {
+    const a = -0.82 + i * 0.25 + Math.sin(t * 1.7 + i * 0.4) * 0.04 * life.move;
+    g.save()
+      .translateCanvas(x + 28, y + 35)
+      .rotateCanvas(a);
+    g.fillStyle(i % 2 ? 0xc65a50 : 0xa94048, alpha).fillEllipse(54, 0, 100, 29);
+    g.fillStyle(0xffb76b, alpha).fillEllipse(88, 0, 34, 21);
+    g.lineStyle(2, 0xffd498, alpha * 0.5).lineBetween(30, 0, 91, 0);
+    g.restore();
   }
-  const flap = Math.sin(t * (r.airborne ? 7 : 2)) * 18 * (r.airborne ? 1 : 0.2);
+  const flap =
+    Math.sin(t * (r.airborne ? 5.8 : 1.7)) *
+    (r.airborne ? 0.5 : 0.055) *
+    life.move;
+  // Shoulder hinge, layered flight feathers and a delayed wrist make a real wing beat.
   for (const side of [-1, 1]) {
-    const wx = x + side * (r.airborne ? 100 : 62),
-      wy = y + 10 + flap;
-    g.fillStyle(0xb9574b, alpha).fillEllipse(
-      wx,
-      wy,
-      r.airborne ? 100 : 52,
-      r.airborne ? 44 : 78,
-    );
-    for (let i = 0; i < 3; i++)
-      g.fillStyle(i % 2 ? 0xffc17b : 0xe78e57, alpha).fillEllipse(
-        wx + side * (i * 15 - 12),
-        wy + 19 + i * 7,
-        29,
-        47,
+    const angle =
+      side * (-0.25 + flap - life.windup * 0.26 + (1 - flight) * 0.95);
+    g.save()
+      .translateCanvas(x + side * 48, y - 4)
+      .rotateCanvas(angle)
+      .scaleCanvas(side, 1);
+    g.fillStyle(0x743942, alpha).fillEllipse(46, 6, 108, 53);
+    g.fillStyle(0xd66d51, alpha).fillEllipse(42, 0, 99, 43);
+    for (let j = 5; j >= 0; j--) {
+      const fx = 24 + j * 15,
+        fy =
+          18 +
+          j * 4 +
+          Math.sin(t * 5.8 - 0.5 + j * 0.2) * flight * 5 * life.move;
+      g.save()
+        .translateCanvas(fx, fy)
+        .rotateCanvas(-0.22 + j * 0.075);
+      g.fillStyle(j % 2 ? 0xe98d56 : 0xc8654f, alpha).fillEllipse(
+        0,
+        19,
+        24,
+        62 - j * 3,
       );
+      g.fillStyle(0xffcf84, alpha).fillEllipse(0, 36 - j, 17, 22);
+      g.lineStyle(1.5, 0xffedbd, alpha * 0.5).lineBetween(0, 6, 0, 39 - j);
+      g.restore();
+    }
+    g.fillStyle(0xf7b66e, alpha).fillEllipse(30, -9, 60, 18);
+    g.restore();
   }
+  g.fillStyle(0x713949, alpha).fillEllipse(x, y + 3, 145, 137);
   g.fillStyle(
     pose.hurt > 0.2 ? 0xffe0b1 : r.gilded ? 0xe2ab65 : 0xe98b58,
     alpha,
-  ).fillEllipse(x, y, 144, 135);
-  g.fillStyle(0xffd49c, alpha).fillEllipse(x - 6, y + 25, 102, 81);
-  g.fillStyle(0xf4b078, alpha).fillEllipse(x, y - 45, 105, 84);
-  flame(g, x + 5, y - 98, 29, alpha);
-  flame(g, x - 23, y - 86, 17, alpha);
-  flame(g, x + 29, y - 86, 16, alpha);
-  for (const side of [-1, 1]) {
-    g.fillStyle(0x4b3042, alpha).fillEllipse(x + side * 22, y - 46, 11, 14);
-    g.lineStyle(4, 0x773d43, alpha).lineBetween(
-      x + side * 13,
-      y - 57,
-      x + side * 32,
-      y - 53,
-    );
-    g.fillStyle(0xffffff, alpha).fillCircle(x + side * 22 - 1, y - 49, 2.5);
+  ).fillEllipse(x, y, 138, 132 + life.breath * 2);
+  g.fillStyle(0xffd49c, alpha).fillEllipse(x - 6, y + 24, 98, 79);
+  for (let i = 0; i < 3; i++)
+    g.lineStyle(2, 0xe9a56e, alpha * 0.6)
+      .beginPath()
+      .arc(x - 5, y + 15 + i * 14, 23, 0.25, Math.PI - 0.25, false)
+      .strokePath();
+  const hx = x + life.lookX * 5,
+    hy = y - 45 - life.windup * 8 + life.breath * 2;
+  g.fillStyle(0xf4b078, alpha).fillEllipse(hx, hy, 104, 84);
+  // Three individually licking crest flames; no rapid glow flicker.
+  for (const [dx, size, phase] of [
+    [5, 29, 0],
+    [-23, 17, 1],
+    [29, 16, 2],
+  ]) {
+    g.save()
+      .translateCanvas(hx + dx, hy - 46)
+      .rotateCanvas(Math.sin(t * 2.4 + phase) * 0.07 * life.move);
+    flame(g, 0, -7, size + Math.sin(t * 3 + phase) * 2 * life.move, alpha);
+    g.restore();
   }
-  g.fillStyle(0xffcf76, alpha).fillTriangle(
-    x - 12,
-    y - 31,
-    x + 12,
-    y - 31,
-    x + 2,
-    y - 17,
+  for (const side of [-1, 1]) {
+    if (pose.dead)
+      g.lineStyle(3, 0x4b3042, alpha).lineBetween(
+        hx + side * 22 - 6,
+        hy,
+        hx + side * 22 + 6,
+        hy,
+      );
+    else bossEye(g, hx + side * 22, hy - 1, 14, 19, life, 0x6a3341, alpha);
+    g.lineStyle(3.5, 0x773d43, alpha).lineBetween(
+      hx + side * 13,
+      hy - 13 - life.windup * 3,
+      hx + side * 32,
+      hy - 9,
+    );
+  }
+  g.fillStyle(0x944844, alpha).fillTriangle(
+    hx - 11,
+    hy + 15,
+    hx + 12,
+    hy + 15,
+    hx + 2,
+    hy + 32 + life.windup * 7,
   );
-  for (const side of [-1, 1])
-    g.fillStyle(0xb66b50, alpha).fillEllipse(x + side * 29, y + 66, 39, 15);
-  if (exposed) {
-    g.fillStyle(0xffe6ad, 0.25).fillCircle(x, y + 22, 30);
-    flame(g, x, y + 16, 19, alpha);
-    g.lineStyle(3, 0xffe6ad, 0.75).strokeCircle(x, y + 22, 35);
+  g.fillStyle(0xffd47c, alpha).fillTriangle(
+    hx - 13,
+    hy + 12,
+    hx + 12,
+    hy + 12,
+    hx + 1,
+    hy + 26,
+  );
+  for (const side of [-1, 1]) {
+    const footY = y + 65 - flight * 8;
+    g.fillStyle(0xa65e4b, alpha).fillEllipse(x + side * 29, footY, 37, 14);
+    for (let j = 0; j < 3; j++)
+      g.fillStyle(0xffdc99, alpha).fillEllipse(
+        x + side * 29 - 10 + j * 9,
+        footY + 3,
+        6,
+        8,
+      );
+  }
+  if (exposed && !pose.dead) {
+    g.fillStyle(0xffe6ad, 0.2).fillCircle(x, y + 22, 30);
+    flame(g, x, y + 16, 19 + life.breath, alpha);
+    g.lineStyle(2, 0xffe6ad, 0.65).strokeCircle(x, y + 22, 34);
   }
   if (!reduced && !pose.dead)
     for (let i = 0; i < 4; i++) {
       const k = (t * 0.35 + i * 0.25) % 1;
-      g.fillStyle(i % 2 ? 0xffce87 : 0xff8b65, (1 - k) * 0.65).fillCircle(
+      g.fillStyle(i % 2 ? 0xffce87 : 0xff8b65, (1 - k) * 0.5).fillCircle(
         x + 50 + i * 14,
         y + 25 + k * 65,
         2.5,

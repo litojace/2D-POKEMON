@@ -1,3 +1,4 @@
+import { bossLife } from "./raid-boss-life";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
 
@@ -19,6 +20,7 @@ export function drawRaidBoss(
     motions.set(g, controller);
   }
   const pose = controller.sample(state, clock, reduced)!;
+  const life = bossLife(g, state, boss, clock, reduced);
   const t = pose.time;
   const stagger = r.staggerUntil > state.time && !pose.dead;
   const exposed =
@@ -31,7 +33,7 @@ export function drawRaidBoss(
   const breath =
     Math.sin(t * (r.phase === 3 ? 3.2 : 1.7)) *
     (r.phase === 3 ? 3.5 : 2.5) *
-    motion;
+    life.move;
   const stride = charging ? Math.sin(t * 23) * 5 * motion : 0;
   const crouch = stagger
     ? 20
@@ -163,7 +165,7 @@ export function drawRaidBoss(
         i % 2 ? rock : dark,
       );
     }
-    const fade = Math.max(0, 1 - (pose.deathAge - 1) / 2);
+    const fade = reduced ? 0 : Math.max(0, 1 - (pose.deathAge - 1) / 2);
     g.fillStyle(0xffc576, fade * 0.65).fillCircle(boss.x, boss.y + 38, 12);
   };
   if (pose.collapse >= 1) {
@@ -243,7 +245,7 @@ export function drawRaidBoss(
   );
   for (const side of [-1, 1]) {
     const sx = x + side * 66,
-      sy = y - 44;
+      sy = y - 44 - life.breath * 1.5;
     // The left shoulder breaks in chapter two; both shoulders open in chapter three.
     if (r.phase === 1 || (r.phase === 2 && side === 1)) {
       poly(
@@ -346,8 +348,8 @@ export function drawRaidBoss(
       .lineBetween(x + side * 46, cy + 12, x + side * 39, cy + 25);
   }
   // Face moves as one unit; directional offset includes eyes, brow and jaw.
-  const hx = x + Math.cos(boss.angle) * 5,
-    hy = y - 49 + (stagger ? 12 : 0) - lift * 6;
+  const hx = x + life.lookX * 5,
+    hy = y - 49 + (stagger ? 12 : 0) - lift * 6 + life.breath;
   poly(
     hx,
     hy,
@@ -357,6 +359,23 @@ export function drawRaidBoss(
   poly(hx, hy, [-38, -14, -18, -27, 27, -24, 40, -7, 8, -11, -3, -2], face);
   poly(hx, hy, [-30, 1, -10, 6, -11, 12, -29, 9], hot);
   poly(hx, hy, [10, 6, 30, 0, 29, 9, 11, 12], hot);
+  // Heavy stone lids briefly cover the glowing eyes; the brows remain readable.
+  if (life.blink > 0.05 && !pose.dead && !stagger)
+    for (const side of [-1, 1]) {
+      g.fillStyle(rock, 1).fillRoundedRect(
+        hx + side * 20 - 13,
+        hy - 1,
+        26,
+        life.blink * 12,
+        2,
+      );
+      g.lineStyle(2, dark, 0.7).lineBetween(
+        hx + side * 20 - 10,
+        hy + life.blink * 10,
+        hx + side * 20 + 9,
+        hy + life.blink * 10 - side * 2,
+      );
+    }
   const roar =
     (pose.debris > 0 || pose.charge > 0.15 || pose.transform > 0.1) &&
     !pose.dead;
@@ -372,7 +391,7 @@ export function drawRaidBoss(
       poly(hx + side * 12, hy + 20, [-3, 0, 3, 0, 0, 5], rim);
   }
   // Eyes follow the same target direction as the entire face.
-  if (!pose.dead)
+  if (!pose.dead && life.blink < 0.6)
     for (const side of [-1, 1])
       g.fillStyle(0xfff2d3, 0.7).fillCircle(
         hx + side * 20 + Math.cos(boss.angle) * 3,

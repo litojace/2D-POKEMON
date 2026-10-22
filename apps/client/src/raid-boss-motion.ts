@@ -111,7 +111,10 @@ export class RaidBossMotion {
     if (p && !reset) {
       const serverDt = state.time - p.time;
       if (serverDt > 0)
-        this.speed = live ? Math.hypot(b.x - p.x, b.y - p.y) / serverDt : 0;
+        this.speed =
+          live || state.phase === "paused"
+            ? Math.hypot(b.x - p.x, b.y - p.y) / serverDt
+            : 0;
       if (b.hp < p.hp && b.hp > 0) {
         if (this.time - this.chipAt >= 0.1) {
           burst(
@@ -204,7 +207,10 @@ export class RaidBossMotion {
       }
       this.deathAge += dt || 0.00001;
     }
-    const charging = live && this.speed > 180 && r.staggerUntil <= state.time;
+    const charging =
+      (live || state.phase === "paused") &&
+      this.speed > 180 &&
+      r.staggerUntil <= state.time;
     if (charging) {
       this.strideAge += dt;
       if (this.strideAge > 0.26) {

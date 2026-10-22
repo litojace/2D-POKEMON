@@ -1,3 +1,4 @@
+import { bossLife, bossEye } from "./raid-boss-life";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
 import {
@@ -346,31 +347,70 @@ export function drawSomnara(
   m.hp = boss.hp;
   m.exposed = exposed;
   m.result = r.result;
-  const t = reduced ? 0 : m.time;
+  const life = bossLife(g, state, boss, clock, reduced),
+    t = life.time;
   const farewell =
-    m.deathAt === undefined ? 0 : Math.min(1, (m.time - m.deathAt) / 1.25);
+    m.deathAt === undefined
+      ? 0
+      : reduced
+        ? 1
+        : Math.min(1, (m.time - m.deathAt) / 1.25);
   const x = boss.x,
-    y = boss.y - 62 + Math.sin(t * 1.35) * 9 - farewell * 90;
+    y = boss.y - 62 + life.breath * 6 - farewell * 90 + life.windup * 4;
   const alpha = 1 - farewell * 0.7;
-  g.fillStyle(0x08102a, 0.3 * (1 - farewell)).fillEllipse(
+  const skin = m.time < m.hurtUntil ? 0xb49bdd : r.gilded ? 0xa18b69 : 0x8977c5;
+  g.fillStyle(0x08102a, 0.27 * (1 - farewell)).fillEllipse(
     x,
     boss.y + 26,
-    230,
-    65,
+    217,
+    49,
   );
-  // Tail and flippers lift gently; the body never changes scale on a phase switch.
-  const sway = Math.sin(t * 1.7) * 9;
-  g.fillStyle(0x54467d, alpha)
-    .fillTriangle(x + 94, y + 5, x + 170, y - 55 + sway, x + 149, y + 20 + sway)
-    .fillTriangle(x + 120, y + 4, x + 178, y + 48 - sway, x + 142, y + 12);
-  g.lineStyle(6, 0x283452, alpha).strokeEllipse(x, y, 250, 144);
-  g.fillStyle(
-    m.time < m.hurtUntil ? 0xb49bdd : r.gilded ? 0xa18b69 : 0x8977c5,
-    alpha,
-  ).fillEllipse(x, y, 250, 144);
-  g.fillStyle(0xc3b3eb, alpha).fillEllipse(x - 5, y + 30, 214, 76);
-  g.fillStyle(0x7061ac, alpha).fillEllipse(x + 22, y + 54 + sway * 0.3, 77, 31);
-  // A floating island, cottage and cloud nightcap on Somnara's back.
+  // A hinged tail stock and two flukes follow the whale's slow swimming stroke.
+  const stroke = Math.sin(t * 1.65) * life.move;
+  g.save()
+    .translateCanvas(x + 105, y + 5)
+    .rotateCanvas(stroke * 0.13 - life.windup * 0.12);
+  g.fillStyle(0x51447e, alpha).fillEllipse(20, 0, 69, 38);
+  for (const side of [-1, 1]) {
+    g.save()
+      .translateCanvas(42, 0)
+      .rotateCanvas(side * (0.35 + stroke * 0.07));
+    g.fillStyle(0x68558f, alpha).fillTriangle(
+      0,
+      0,
+      36,
+      side * 49,
+      49,
+      side * 12,
+    );
+    g.lineStyle(2, 0xc3b3eb, alpha * 0.55).lineBetween(9, 0, 35, side * 25);
+    g.restore();
+  }
+  g.restore();
+  // The far flipper stays behind a softly shaded, breathing body.
+  g.save()
+    .translateCanvas(x - 18, y + 27)
+    .rotateCanvas(-0.35 - stroke * 0.18);
+  g.fillStyle(0x5d508d, alpha).fillEllipse(0, 25, 48, 73);
+  g.restore();
+  g.fillStyle(0x283452, alpha).fillEllipse(x, y, 255, 146);
+  g.fillStyle(skin, alpha).fillEllipse(x, y, 250, 144);
+  g.fillStyle(0xa797d7, alpha * 0.8).fillEllipse(x - 17, y - 28, 195, 72);
+  g.fillStyle(0xcbbbea, alpha).fillEllipse(x - 9, y + 30, 211, 72);
+  // Pleated throat and a second flipper make the silhouette read as a whale.
+  for (let i = 0; i < 4; i++)
+    g.lineStyle(1.8, 0x9d8bc7, alpha * 0.5)
+      .beginPath()
+      .arc(x - 50 + i * 17, y + 21, 27, 0.25, Math.PI - 0.25, false)
+      .strokePath();
+  g.save()
+    .translateCanvas(x + 18, y + 35)
+    .rotateCanvas(0.45 + stroke * 0.2 + life.windup * 0.2);
+  g.fillStyle(0x675695, alpha).fillEllipse(14, 22, 70, 33);
+  g.fillStyle(0x9981c4, alpha).fillEllipse(11, 17, 58, 20);
+  g.lineStyle(2, 0xc3b3eb, alpha * 0.5).lineBetween(0, 19, 32, 24);
+  g.restore();
+  // A tiny lived-in cottage rides the back, with a pendulum nightcap and warm windows.
   g.fillStyle(0x53678a, alpha).fillEllipse(x + 13, y - 66, 120, 31);
   g.fillStyle(0x99c6bf, alpha).fillEllipse(x + 13, y - 73, 118, 19);
   g.fillStyle(0xf0d6b9, alpha).fillRoundedRect(x - 8, y - 115, 43, 36, 4);
@@ -382,57 +422,86 @@ export function drawSomnara(
     x + 45,
     y - 112,
   );
-  g.fillStyle(exposed || farewell ? 0xffdc85 : 0x7696ad, alpha).fillRoundedRect(
-    x + 5,
-    y - 105,
-    12,
-    16,
-    2,
+  g.lineStyle(2, 0xb7c6dd, alpha * 0.7).lineBetween(
+    x - 17,
+    y - 112,
+    x + 14,
+    y - 142,
   );
-  g.fillStyle(0xd3d8ed, alpha)
-    .fillCircle(x - 57, y - 84, 22)
-    .fillCircle(x - 83, y - 91, 19)
-    .fillCircle(x - 101, y - 78, 14);
-  star(g, x - 104, y - 63, 7, 0xffdf8d, alpha);
-  // Stars in the whale's skin, with deliberately slow twinkling.
-  for (let i = 0; i < 9; i++) {
-    const sx = x - 70 + (i % 5) * 31,
-      sy = y - 35 + Math.floor(i / 5) * 33;
+  g.fillStyle(exposed || farewell ? 0xffdc85 : 0xd5c1a0, alpha).fillRoundedRect(
+    x + 3,
+    y - 104,
+    16,
+    17,
+    3,
+  );
+  g.lineStyle(1.5, 0x64729f, alpha)
+    .lineBetween(x + 11, y - 104, x + 11, y - 87)
+    .lineBetween(x + 3, y - 96, x + 19, y - 96);
+  const cap = life.sway * 4;
+  g.fillStyle(0x5f508c, alpha).fillTriangle(
+    x - 87,
+    y - 62,
+    x - 33,
+    y - 73,
+    x - 94 + cap,
+    y - 118,
+  );
+  g.fillStyle(0xd3d8ed, alpha).fillEllipse(x - 61, y - 73, 69, 22);
+  g.fillStyle(0xffe6a8, alpha).fillCircle(x - 94 + cap, y - 117, 9);
+  star(g, x - 94 + cap, y - 117, 5, 0xfff8dc, alpha);
+  for (let i = 0; i < 8; i++)
     star(
       g,
-      sx,
-      sy,
-      i % 3 ? 3 : 5,
+      x - 55 + (i % 4) * 32,
+      y - 29 + Math.floor(i / 4) * 29,
+      i % 3 ? 3 : 4,
       0xf6e8ff,
-      alpha * (0.35 + Math.sin(t * 1.3 + i) * 0.15),
+      alpha * (0.42 + Math.sin(t * 1.25 + i) * 0.12),
     );
-  }
-  // Sleepy smile when covered; bright eyes and glowing heart when awakened.
-  g.lineStyle(4, 0x283452, alpha);
-  if (exposed || farewell) {
-    g.fillStyle(0x283452, alpha).fillEllipse(x - 83, y - 6, 10, 17);
-    g.fillStyle(0xffffff, alpha).fillCircle(x - 84, y - 10, 2.5);
-  } else
-    g.beginPath()
-      .arc(x - 83, y - 12, 11, 0.3, Math.PI - 0.3, false)
+  const ex = x - 83 + life.lookX * 2,
+    ey = y - 10;
+  const awake =
+    exposed || life.windup > 0.15 || (life.move && Math.sin(t * 0.55) > 0.82);
+  if (awake && !farewell) bossEye(g, ex, ey, 15, 22, life, 0x4b477a, alpha);
+  else
+    g.lineStyle(3.5, 0x35405c, alpha)
+      .beginPath()
+      .arc(ex, ey - 5, 11, 0.3, Math.PI - 0.3, false)
       .strokePath();
-  g.beginPath()
-    .arc(x - 94, y + 9, 19, 0.3, 1.5, false)
-    .strokePath();
-  if (exposed) {
-    g.fillStyle(0xffdf8d, 0.2).fillCircle(x - 32, y + 24, 28);
-    star(g, x - 32, y + 24, 19, 0xffdf8d, alpha);
-    g.lineStyle(2, 0xfff1c2, alpha).strokeCircle(x - 32, y + 24, 27);
+  g.fillStyle(0xc9a9d4, alpha * 0.65).fillEllipse(x - 91, y + 9, 18, 9);
+  if (life.windup > 0.1 && !farewell) {
+    g.fillStyle(0x514674, alpha).fillEllipse(
+      x - 100,
+      y + 21,
+      19,
+      7 + life.windup * 15,
+    );
+    g.fillStyle(0xdcbbd7, alpha).fillEllipse(
+      x - 102,
+      y + 26,
+      10,
+      3 + life.windup * 4,
+    );
+  } else
+    g.lineStyle(3, 0x35405c, alpha)
+      .beginPath()
+      .arc(x - 97, y + 9, 18, 0.3, 1.5, false)
+      .strokePath();
+  if (exposed && !farewell) {
+    g.fillStyle(0xffdf8d, 0.17).fillCircle(x - 32, y + 24, 28);
+    star(g, x - 32, y + 24, 19 + life.breath, 0xffdf8d, alpha);
+    g.lineStyle(2, 0xfff1c2, alpha * 0.8).strokeCircle(x - 32, y + 24, 27);
   }
-  if (r.quietZone || r.dream)
+  if ((r.quietZone || r.dream || life.windup > 0.15) && !farewell)
     for (let i = 0; i < 3; i++)
       note(
         g,
         x - 133 - i * 16,
-        y - 24 - i * 18 + Math.sin(t + i) * 5,
-        0.9,
+        y - 24 - i * 18 + Math.sin(t + i) * 4 * life.move,
+        0.8,
         0xd8c8ff,
-        alpha * 0.7,
+        alpha * 0.65,
       );
   return cues;
 }

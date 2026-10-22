@@ -1,3 +1,4 @@
+import { bossLife, bossEye } from "./raid-boss-life";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
 import {
@@ -231,45 +232,82 @@ export function drawStormTwins(
       );
     if (old === 0 && p.hp > 0) cues.push("awaken");
     m.hp.set(p.id, p.hp);
+    const life = bossLife(g, state, p, clock, reduced);
     const down = p.hp <= 0,
-      x = p.x,
-      y = p.y - 52 + Math.sin(t * (i ? 1.7 : 3) + i) * 6,
-      body = i ? 0x72bde6 : r.gilded ? 0xffd277 : 0xf4d675,
-      alpha = down ? 0.35 : 1;
-    g.fillStyle(0x0e1a30, 0.3).fillEllipse(x, p.y + 13, 130, 36);
-    // Slowly curling tendrils use a continuous clock and never restart on snapshots.
+      x = p.x;
+    const pulse = Math.sin(t * (i ? 2.5 : 3.4) + i) * life.move;
+    const y = p.y - 52 + life.breath * 5 + life.windup * 7;
+    const body = i ? 0x72bde6 : r.gilded ? 0xffd277 : 0xf4d675;
+    const alpha = down ? 0.35 : 1;
+    g.fillStyle(0x0e1a30, 0.27).fillEllipse(x, p.y + 13, 117, 30);
+    // Bell contraction drives the tendrils: each tip follows with a small delay.
     for (let j = 0; j < 5; j++) {
-      const bx = x - 38 + j * 19,
-        sway = Math.sin(t * 2 + j + i) * 7;
-      g.lineStyle(8, i ? 0x6ca4d2 : 0xd9b16a, alpha)
+      const bx = x - 36 + j * 18;
+      const lag =
+        Math.sin(t * (i ? 2.5 : 3.4) - j * 0.3 - 0.7 + i) * 7 * life.move;
+      g.lineStyle(8, i ? 0x508dbb : 0xc09c56, alpha)
         .beginPath()
         .moveTo(bx, y + 24)
-        .lineTo(bx + sway, y + 54 + (j % 2) * 7)
-        .lineTo(bx - sway * 0.6, y + 70)
+        .lineTo(bx + lag * 0.65, y + 44 + pulse * 2)
+        .lineTo(bx + lag, y + 61 - pulse * 3 + (j % 2) * 5)
+        .lineTo(bx - lag * 0.2, y + 72 - pulse * 4)
         .strokePath();
+      g.lineStyle(2, i ? 0xd5f2ff : 0xfff1ba, alpha * 0.6).lineBetween(
+        bx + lag,
+        y + 52,
+        bx + lag * 0.5,
+        y + 65 - pulse * 3,
+      );
       g.fillStyle(i ? 0xc4ecff : 0xffefad, alpha).fillCircle(
-        bx - sway * 0.6,
-        y + 70,
+        bx - lag * 0.2,
+        y + 72 - pulse * 4,
         4,
       );
     }
-    g.fillStyle(body, alpha).fillEllipse(x, y, 130, 100);
-    g.fillStyle(i ? 0xa1dbed : 0xffeaa0, alpha).fillEllipse(
+    const width = 130 + pulse * 5,
+      height = 98 - pulse * 4 - life.windup * 5;
+    g.fillStyle(i ? 0x325d85 : 0x8c713e, alpha).fillEllipse(
+      x,
+      y + 2,
+      width + 4,
+      height + 4,
+    );
+    g.fillStyle(body, alpha).fillEllipse(x, y, width, height);
+    g.fillStyle(i ? 0x9ed9ed : 0xffe9a2, alpha).fillEllipse(
       x - 12,
       y - 15,
-      94,
-      58,
+      92,
+      55,
     );
-    // Cloud caps distinguish the sleepy blue twin from impatient yellow Fizz.
-    g.fillStyle(i ? 0xc8dff1 : 0xfff4c5, alpha)
-      .fillCircle(x - 35, y - 43, 21)
-      .fillCircle(x - 9, y - 55, 25)
-      .fillCircle(x + 20, y - 50, 23)
-      .fillCircle(x + 44, y - 36, 17);
+    g.fillStyle(i ? 0xe0f6ff : 0xfff7d8, alpha * 0.4).fillEllipse(
+      x - 27,
+      y - 23,
+      32,
+      13,
+    );
+    // The cloud cap billows independently, with a raised lightning crest.
+    for (let k = 0; k < 4; k++) {
+      const cx = x - 35 + k * 26,
+        cy =
+          y -
+          39 -
+          Math.sin((k * Math.PI) / 3) * 12 +
+          Math.sin(t * 1.5 + k + i) * 2 * life.move;
+      g.fillStyle(i ? 0x8eb9d9 : 0xd6bf7f, alpha).fillCircle(
+        cx,
+        cy + 3,
+        19 + (k % 2) * 4,
+      );
+      g.fillStyle(i ? 0xd8e9f4 : 0xfff3cf, alpha).fillCircle(
+        cx - 1,
+        cy,
+        18 + (k % 2) * 4,
+      );
+    }
     const boltColor = i ? 0x5e83c4 : 0xc99341;
     g.fillStyle(boltColor, alpha).fillPoints(
       [
-        { x: x + 1, y: y - 70 },
+        { x: x + 1, y: y - 71 },
         { x: x - 13, y: y - 47 },
         { x: x - 2, y: y - 47 },
         { x: x - 8, y: y - 28 },
@@ -278,42 +316,54 @@ export function drawStormTwins(
       ],
       true,
     );
-    if (down) {
-      g.lineStyle(3, 0x243752, 0.8);
-      for (const dx of [-22, 22])
-        g.lineBetween(x + dx - 5, y - 8, x + dx + 5, y + 2).lineBetween(
-          x + dx + 5,
-          y - 8,
-          x + dx - 5,
-          y + 2,
-        );
-    } else
-      for (const side of [-1, 1]) {
-        g.fillStyle(0x253b54, alpha).fillEllipse(
-          x + side * 23,
-          y - 4,
-          i ? 11 : 13,
-          i ? 9 : 17,
-        );
-        g.fillStyle(0xffffff, alpha).fillCircle(
-          x + side * 23 - 1,
-          y - 7,
-          i ? 1.5 : 2.5,
+    for (const side of [-1, 1]) {
+      const ex = x + side * 23 + life.lookX * 2,
+        ey = y - 4;
+      if (down) {
+        g.lineStyle(3, 0x243752, 0.8)
+          .lineBetween(ex - 5, ey - 4, ex + 5, ey + 4)
+          .lineBetween(ex + 5, ey - 4, ex - 5, ey + 4);
+      } else {
+        bossEye(
+          g,
+          ex,
+          ey,
+          i ? 13 : 15,
+          i ? 13 : 20,
+          life,
+          i ? 0x345985 : 0x78552b,
+          alpha,
         );
         g.lineStyle(3, 0x51637b, alpha).lineBetween(
           x + side * 14,
-          y - 15,
+          y - 16 - life.windup * 3,
           x + side * 31,
           y - (i ? 15 : 20),
         );
+        g.fillStyle(i ? 0x92c9e5 : 0xf0bb75, alpha * 0.8).fillEllipse(
+          x + side * 37,
+          y + 8,
+          12,
+          6,
+        );
       }
-    g.lineStyle(3, 0x476079, alpha)
+    }
+    g.lineStyle(2.8, 0x476079, alpha)
       .beginPath()
-      .arc(x, y + 13, 10, i ? Math.PI : 0, i ? TAU : Math.PI, false)
+      .arc(
+        x + life.lookX * 2,
+        y + 13,
+        9,
+        i ? Math.PI : 0,
+        i ? TAU : Math.PI,
+        false,
+      )
       .strokePath();
+    if (!down && life.windup > 0.15)
+      sign(g, x + 47, y - 28, 0.8, i ? 0xc7edff : 0xffed9d, 9);
     if (meta.exposedUntil > state.time && !down) {
-      g.fillStyle(0xeaffef, 0.2).fillCircle(x, y + 18, 24);
-      g.lineStyle(3, 0xafffe1, 0.9).strokeCircle(x, y + 18, 25);
+      g.fillStyle(0xeaffef, 0.18).fillCircle(x, y + 18, 24);
+      g.lineStyle(2.5, 0xafffe1, 0.9).strokeCircle(x, y + 18, 25);
       sign(g, x, y + 18, 1, 0xeaffef, 10);
     }
   }

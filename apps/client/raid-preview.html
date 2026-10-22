@@ -10,7 +10,15 @@
       <header class="topbar">
         <b>Boss Raid · LOCAL PLAYTEST</b>
         <div>
-          <button id="lab-start">Restart</button
+          <select id="lab-boss" aria-label="Boss to playtest">
+            <option value="grumblecrag">Grumblecrag</option>
+            <option value="tidewyrm">Tidewyrm</option>
+            <option value="gloomshade">Gloomshade</option>
+            <option value="somnara">Somnara</option>
+            <option value="prismatail">Prismatail</option>
+            <option value="emberwing">Emberwing</option>
+            <option value="storm-twins">Storm Twins</option></select
+          ><button id="lab-start">Restart</button
           ><button id="lab-phase">Next phase</button
           ><button id="lab-down">Test self-revive</button
           ><select id="lab-peril">
@@ -46,7 +54,7 @@
       const audio = new AudioManager();
       audio.start();
       const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-      import { RaidArena } from "../server/src/raid";
+      import { createRaidArena } from "../server/src/raid-bosses";
       import { CHARACTERS, ARENAS, blankInput } from "@arena/shared";
       import { renderRaidUI, drawRaidArena } from "./src/raid-ui";
       import { drawProjectile, drawZone } from "./src/skill-effects";
@@ -71,8 +79,26 @@
         () => {},
         new URLSearchParams(location.search).get("touch") === "1",
       );
+      const requestedBoss = new URLSearchParams(location.search).get("boss");
+      if (
+        Array.from(document.querySelector("#lab-boss").options).some(
+          (o) => o.value === requestedBoss,
+        )
+      )
+        document.querySelector("#lab-boss").value = requestedBoss;
+      window.raidPlaytest = {
+        get arena() {
+          return arena;
+        },
+        get scene() {
+          return scene;
+        },
+      };
       function reset() {
-        arena = new RaidArena("LOCAL");
+        arena = createRaidArena(
+          "LOCAL",
+          document.querySelector("#lab-boss").value,
+        );
         arena.add("preview", "You", "voltkit");
         arena.configure(
           Number(document.querySelector("#lab-peril").value),
@@ -94,6 +120,7 @@
       };
       document.querySelector("#lab-start").onclick = reset;
       document.querySelector("#lab-peril").onchange = reset;
+      document.querySelector("#lab-boss").onchange = reset;
       document.querySelector("#lab-down").onclick = () =>
         arena.damage(arena.heroes()[0], 10000, arena.boss().id);
       document.querySelector("#lab-phase").onclick = () =>

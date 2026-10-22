@@ -1,3 +1,4 @@
+import { bossLife, bossEye } from "./raid-boss-life";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
 import {
@@ -229,78 +230,113 @@ export function drawPrismatail(
     motion.set(g, m);
   }
   const pose = m.sample(state, clock, reduced)!;
-  const t = reduced ? 0 : pose.time,
-    x = boss.x,
-    y = boss.y - 60 + Math.sin(t * 1.3) * 4 + pose.collapse * 32,
-    exposed = r.exposedUntil > state.time;
-  const alpha =
-    r.result === "victory" ? Math.max(0.2, 1 - pose.deathAge * 0.35) : 1;
-  g.fillStyle(0x101a2d, 0.35).fillEllipse(x, boss.y + 20, 200, 60);
-  // Each prism feather has its own facet and eye; slow fan breathing never rescales the body.
-  for (let i = 0; i < 9; i++) {
-    const a = -Math.PI + (i / 8) * Math.PI,
-      reach = 152 + Math.sin(t * 1.1 + i * 0.6) * 5;
+  const life = bossLife(g, state, boss, clock, reduced);
+  const t = life.time,
+    x = boss.x;
+  const exposed = r.exposedUntil > state.time;
+  const y =
+    boss.y - 60 + life.breath * 3 + pose.collapse * 32 + life.windup * 5;
+  const alpha = pose.dead
+    ? reduced
+      ? 0.2
+      : Math.max(0.2, 1 - pose.deathAge * 0.35)
+    : 1;
+  g.fillStyle(0x101a2d, 0.32).fillEllipse(x, boss.y + 20, 184, 47);
+  // Layered, hinged feathers open in a travelling wave, rather than rigid spokes.
+  const fan =
+    1 + life.breath * 0.025 - life.windup * 0.12 - (exposed ? 0.1 : 0);
+  for (let i = 0; i < 11; i++) {
+    const a =
+      -Math.PI +
+      (i * Math.PI) / 10 +
+      Math.sin(t * 1.25 + i * 0.55) * 0.035 * life.move;
+    const reach = (142 + Math.sin((i * Math.PI) / 10) * 22) * fan;
     const tx = x + Math.cos(a) * reach,
-      ty = y - 12 + Math.sin(a) * reach;
-    const side = 17,
-      color = PRISM_COLORS[i % 6];
-    g.fillStyle(0x263d59, alpha).fillTriangle(
-      x,
-      y + 15,
-      tx - side,
-      ty,
-      tx + side,
-      ty,
-    );
-    diamond(g, tx, ty, 36, color, alpha * 0.9);
-    diamond(g, tx - 4, ty - 6, 17, 0xfff8e6, alpha * 0.7);
-    g.fillStyle(0x20304d, alpha).fillCircle(tx, ty + 4, 7);
-    g.fillStyle(color, alpha).fillCircle(tx, ty + 4, 3.5);
+      ty = y - 8 + Math.sin(a) * reach;
+    const color = PRISM_COLORS[i % 6];
+    g.lineStyle(10, 0x26465d, alpha).lineBetween(x, y + 24, tx, ty);
+    g.save()
+      .translateCanvas(tx, ty)
+      .rotateCanvas(a + Math.PI / 2);
+    g.fillStyle(0x1a354c, alpha).fillEllipse(0, 0, 47, 89);
+    g.fillStyle(color, alpha * 0.85).fillEllipse(0, -2, 39, 79);
+    g.fillStyle(0xfff7cf, alpha * 0.5).fillEllipse(-6, -12, 10, 37);
+    diamond(g, 0, -4, 22, 0xeefbff, alpha * 0.8);
+    diamond(g, 0, -4, 15, color, alpha);
+    g.fillStyle(0x243654, alpha).fillEllipse(0, -4, 10, 15);
+    g.fillStyle(0xffffff, alpha * 0.85).fillCircle(-3, -9, 2.5);
+    g.lineStyle(1.5, 0xe8faff, alpha * 0.45).lineBetween(0, 21, 0, 39);
+    g.restore();
   }
+  // Small planted feet anchor a breathing chest and independently tilting head.
+  for (const side of [-1, 1]) {
+    g.lineStyle(5, 0xb89254, alpha).lineBetween(
+      x + side * 20,
+      y + 60,
+      x + side * 24,
+      boss.y + 8,
+    );
+    g.fillStyle(0xe3b567, alpha).fillEllipse(x + side * 25, boss.y + 9, 32, 12);
+  }
+  g.fillStyle(0x224659, alpha).fillEllipse(x, y + 16, 111, 120);
   g.fillStyle(
     pose.hurt > 0.2 ? 0xe5faff : r.gilded ? 0xf6c66f : 0x65bcca,
     alpha,
-  ).fillEllipse(x, y + 14, 107, 120);
-  g.fillStyle(0xffebac, alpha).fillEllipse(x, y + 27, 70, 82);
-  g.fillStyle(0x32788e, alpha)
-    .fillEllipse(x - 43, y + 25 + Math.sin(t * 1.8) * 3, 34, 70)
-    .fillEllipse(x + 43, y + 25 - Math.sin(t * 1.8) * 3, 34, 70);
-  g.fillStyle(0x83d7db, alpha).fillEllipse(x, y - 52, 66, 70);
+  ).fillEllipse(x, y + 12, 104, 119 + life.breath * 2);
+  g.fillStyle(0xffe9a4, alpha).fillEllipse(x, y + 28, 66, 78);
+  for (const side of [-1, 1]) {
+    g.save()
+      .translateCanvas(x + side * 39, y + 5)
+      .rotateCanvas(side * (0.15 + life.windup * 0.45) + life.breath * 0.025);
+    g.fillStyle(0x32788e, alpha).fillEllipse(side * 8, 26, 34, 69);
+    g.lineStyle(2, 0xa4ece9, alpha * 0.6).lineBetween(
+      side * 5,
+      14,
+      side * 10,
+      40,
+    );
+    g.restore();
+  }
+  const hx = x + life.lookX * 5,
+    hy = y - 53 + life.breath * 2 - life.windup * 9;
+  g.fillStyle(0x3d91a5, alpha).fillEllipse(hx, hy + 20, 42, 57);
+  g.fillStyle(0x86dbe1, alpha).fillEllipse(hx, hy, 67, 69);
+  g.fillStyle(0xc6f1e4, alpha * 0.7).fillEllipse(hx - 10, hy - 13, 31, 20);
   for (const off of [-14, 0, 14]) {
+    const tip =
+      hy -
+      56 -
+      Math.abs(off) * 0.3 +
+      Math.sin(t * 2 + off * 0.06) * 2 * life.move;
     g.lineStyle(3, 0xe1c36e, alpha).lineBetween(
-      x + off * 0.4,
-      y - 83,
-      x + off,
-      y - 107 - Math.abs(off) * 0.3,
+      hx + off * 0.4,
+      hy - 30,
+      hx + off,
+      tip,
     );
-    diamond(g, x + off, y - 109 - Math.abs(off) * 0.3, 8, 0xffe9a0, alpha);
+    diamond(g, hx + off, tip - 2, 8, 0xffe9a0, alpha);
   }
-  for (const dx of [-15, 15]) {
-    g.fillStyle(0x152438, alpha).fillEllipse(x + dx, y - 56, 10, 15);
-    g.fillStyle(0xffffff, alpha).fillCircle(x + dx - 1, y - 59, 2.5);
-  }
+  if (pose.dead) {
+    g.lineStyle(3, 0x243654, alpha);
+    for (const dx of [-15, 15])
+      g.lineBetween(hx + dx - 5, hy - 1, hx + dx + 5, hy - 1);
+  } else
+    for (const dx of [-15, 15])
+      bossEye(g, hx + dx, hy - 3, 13, 18, life, 0x1e546d, alpha);
   g.fillStyle(0xffb56b, alpha).fillTriangle(
-    x - 9,
-    y - 42,
-    x + 9,
-    y - 42,
-    x,
-    y - 29,
+    hx - 8,
+    hy + 9,
+    hx + 8,
+    hy + 9,
+    hx,
+    hy + 22 + life.windup * 4,
   );
-  g.fillStyle(0xe3b567, alpha)
-    .fillEllipse(x - 25, boss.y + 7, 35, 13)
-    .fillEllipse(x + 25, boss.y + 7, 35, 13);
-  diamond(g, x, y + 22, 26, exposed ? 0xfff5c9 : 0x9ae4ee, alpha);
-  if (!exposed) {
-    g.fillStyle(0x9adfff, 0.14).fillEllipse(x, y + 15, 118, 136);
-    g.lineStyle(3, 0xc6efff, 0.8).strokeEllipse(x, y + 15, 118, 136);
-    g.lineStyle(2, 0xffffff, 0.55).lineBetween(x - 30, y - 27, x - 43, y + 4);
-  } else {
-    g.lineStyle(3, 0xffe9a0, 0.7).strokeCircle(
-      x,
-      y + 22,
-      36 + Math.sin(t * 2) * 3,
-    );
-  }
+  diamond(g, x, y + 24, 25, exposed ? 0xfff5c9 : 0x9ae4ee, alpha);
+  if (!exposed && !pose.dead) {
+    g.fillStyle(0x9adfff, 0.1).fillEllipse(x, y + 15, 118, 136);
+    g.lineStyle(2.5, 0xc6efff, 0.7).strokeEllipse(x, y + 15, 118, 136);
+    g.lineStyle(2, 0xffffff, 0.45).lineBetween(x - 30, y - 27, x - 43, y + 4);
+  } else if (!pose.dead)
+    g.lineStyle(3, 0xffe9a0, 0.7).strokeCircle(x, y + 24, 36 + life.breath * 2);
   return pose.cues;
 }

@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <title>Boss animation review · Local preview</title>
+    <style>
+      @font-face {
+        font-family: "DM Sans";
+        src: url("/assets/fonts/dm-sans-latin-400-normal.woff2") format("woff2");
+        font-weight: 400;
+        font-display: swap;
+      }
+      @font-face {
+        font-family: "Barlow Condensed";
+        src: url("/assets/fonts/barlow-condensed-latin-700-normal.woff2")
+          format("woff2");
+        font-weight: 700;
+        font-display: swap;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #0b1020;
+        color: #eef2ff;
+        font:
+          14px "DM Sans",
+          sans-serif;
+      }
+      body {
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        min-width: 0;
+        overflow: hidden;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px max(16px, env(safe-area-inset-right)) 12px
+          max(16px, env(safe-area-inset-left));
+        border-bottom: 1px solid #ffffff1f;
+      }
+      h1 {
+        font:
+          700 24px "Barlow Condensed",
+          sans-serif;
+        margin: 0;
+      }
+      nav {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      button,
+      select {
+        font: inherit;
+        background: #1a2547;
+        color: #eef2ff;
+        border: 1px solid #ffffff30;
+        border-radius: 8px;
+        padding: 7px 12px;
+      }
+      button:focus-visible,
+      select:focus-visible {
+        outline: 2px solid #ffd65b;
+      }
+      #board {
+        min-height: 0;
+        min-width: 0;
+        overflow: hidden;
+      }
+      canvas {
+        display: block;
+      }
+      small {
+        color: #a0afc8;
+      }
+      @media (max-height: 450px) {
+        header {
+          padding-block: 6px;
+        }
+        h1 {
+          font-size: 14px;
+        }
+        small {
+          display: none;
+        }
+        button,
+        select {
+          padding: 5px 8px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>Raid roster · Motion study</h1>
+        <small
+          >Local art preview · No accounts, combat changes or rewards</small
+        >
+      </div>
+      <nav>
+        <select id="pose" aria-label="Boss state">
+          <option value="idle">Idle</option>
+          <option value="cast">Casting</option>
+          <option value="exposed">Exposed</option>
+          <option value="defeated">Defeated</option></select
+        ><button id="pause">Pause</button
+        ><button id="motion">Reduce motion</button>
+      </nav>
+    </header>
+    <div id="board"></div>
+    <script type="module">
+      import Phaser from "phaser";
+      import { createRaidArena } from "../server/src/raid-bosses";
+      import { drawRaidBoss } from "./src/raid-boss-art";
+      import { drawTidewyrm } from "./src/raid-tidewyrm-art";
+      import { drawGloomshade } from "./src/raid-gloomshade-art";
+      import { drawSomnara } from "./src/raid-somnara-art";
+      import { drawPrismatail } from "./src/raid-prismatail-art";
+      import { drawEmberwing } from "./src/raid-emberwing-art";
+      import { drawStormTwins } from "./src/raid-storm-twins-art";
+      const entries = [
+        ["grumblecrag", "GRUMBLECRAG", "Living stone", drawRaidBoss],
+        ["tidewyrm", "TIDEWYRM", "River guardian", drawTidewyrm],
+        ["gloomshade", "GLOOMSHADE", "Moonlit trickster", drawGloomshade],
+        ["somnara", "SOMNARA", "Dream voyager", drawSomnara],
+        ["prismatail", "PRISMATAIL", "Crystal sovereign", drawPrismatail],
+        ["emberwing", "EMBERWING", "Ember phoenix", drawEmberwing],
+        ["storm-twins", "STORM TWINS", "Fizz & Crackle", drawStormTwins],
+      ];
+      const only = new URLSearchParams(location.search).get("boss");
+      const roster = only ? entries.filter((e) => e[0] === only) : entries;
+      let reduced = matchMedia("(prefers-reduced-motion:reduce)").matches,
+        paused = false,
+        mode = "idle";
+      document.querySelector("#motion").onclick = () => {
+        reduced = !reduced;
+        document.querySelector("#motion").textContent = reduced
+          ? "Full motion"
+          : "Reduce motion";
+      };
+      document.querySelector("#pause").onclick = () => {
+        paused = !paused;
+        document.querySelector("#pause").textContent = paused
+          ? "Resume"
+          : "Pause";
+      };
+      document.querySelector("#pose").onchange = (e) => (mode = e.target.value);
+      window.review = {
+        roster: roster.map((e) => e[0]),
+        get ready() {
+          return !!window.review.scene;
+        },
+        set mode(v) {
+          mode = v;
+        },
+        set reduced(v) {
+          reduced = v;
+        },
+        set paused(v) {
+          paused = v;
+        },
+      };
+      class Board extends Phaser.Scene {
+        create() {
+          this.elapsed = 0;
+          this.items = roster.map(([id, name, subtitle, draw], i) => {
+            const a = createRaidArena("ART" + i, id);
+            a.add("hero", "You");
+            a.start();
+            a.phase = "playing";
+            a.raid.gilded = false;
+            a.raid.seed = 100 + i;
+            const s = a.snapshot();
+            s.raid.warnings = [];
+            s.raid.exposedUntil = 0;
+            s.raid.staggerUntil = 0;
+            s.raid.airborne = id === "emberwing";
+            const b = s.players.filter((p) => p.raidBoss);
+            for (const [j, p] of b.entries()) {
+              p.x = b.length > 1 ? 725 + j * 150 : 800;
+              p.y = 475;
+              p.angle = Math.PI * 0.8;
+            }
+            return {
+              state: s,
+              hp: new Map(b.map((p) => [p.id, p.hp])),
+              draw,
+              g: this.add.graphics(),
+              name: this.add
+                .text(0, 0, name, {
+                  fontFamily: "Barlow Condensed",
+                  fontSize: 22,
+                  fontStyle: "bold",
+                  color: "#eef2ff",
+                })
+                .setOrigin(0.5),
+              subtitle: this.add
+                .text(0, 0, subtitle, {
+                  fontFamily: "DM Sans",
+                  fontSize: 12,
+                  color: "#a0afc8",
+                })
+                .setOrigin(0.5),
+            };
+          });
+          this.bg = this.add.graphics().setDepth(-1);
+          window.review.scene = this;
+        }
+        update(now, delta) {
+          if (!paused) this.elapsed += Math.min(delta / 1000, 0.05);
+          const width = this.scale.width,
+            height = this.scale.height,
+            cols = roster.length === 1 ? 1 : 4,
+            rows = Math.ceil(roster.length / cols),
+            cw = width / cols,
+            ch = height / rows;
+          this.bg.clear();
+          for (const [i, v] of this.items.entries()) {
+            const cx = ((i % cols) + 0.5) * cw,
+              cy = (Math.floor(i / cols) + 0.5) * ch;
+            this.bg
+              .fillStyle(0x121a33)
+              .fillRoundedRect(
+                cx - cw / 2 + 8,
+                cy - ch / 2 + 8,
+                cw - 16,
+                ch - 16,
+                16,
+              );
+            this.bg
+              .lineStyle(1, 0xffffff, 0.1)
+              .strokeRoundedRect(
+                cx - cw / 2 + 8,
+                cy - ch / 2 + 8,
+                cw - 16,
+                ch - 16,
+                16,
+              );
+            const s = v.state;
+            s.time = this.elapsed;
+            s.phase = paused
+              ? "paused"
+              : mode === "defeated"
+                ? "finished"
+                : "playing";
+            s.raid.result = mode === "defeated" ? "victory" : null;
+            for (const p of s.players)
+              if (p.raidBoss) p.hp = mode === "defeated" ? 0 : v.hp.get(p.id);
+            s.raid.exposedUntil = mode === "exposed" ? this.elapsed + 1 : 0;
+            s.raid.staggerUntil = mode === "exposed" ? this.elapsed + 1 : 0;
+            s.raid.warnings =
+              mode === "cast"
+                ? [
+                    {
+                      id: Math.floor(this.elapsed / 3),
+                      kind: "slam",
+                      x: 800,
+                      y: 475,
+                      tx: 800,
+                      ty: 475,
+                      radius: 200,
+                      startedAt: Math.floor(this.elapsed / 3) * 3,
+                      at: Math.floor(this.elapsed / 3) * 3 + 3,
+                    },
+                  ]
+                : [];
+            const scale = Math.min((cw - 40) / 400, (ch - 106) / 360);
+            v.g
+              .clear()
+              .setPosition(cx - 800 * scale, cy + 6 - 430 * scale)
+              .setScale(scale);
+            v.draw(v.g, s, reduced, now / 1000);
+            v.name
+              .setPosition(cx, cy + ch / 2 - 48)
+              .setFontSize(height < 400 ? 16 : 22);
+            v.subtitle
+              .setPosition(cx, cy + ch / 2 - 28)
+              .setFontSize(height < 400 ? 10 : 12);
+          }
+        }
+      }
+      await document.fonts.load('700 22px "Barlow Condensed"');
+      await document.fonts.load('400 12px "DM Sans"');
+      new Phaser.Game({
+        type: Phaser.CANVAS,
+        parent: "board",
+        scene: Board,
+        scale: { mode: Phaser.Scale.RESIZE, width: 1280, height: 650 },
+        backgroundColor: "#0b1020",
+        audio: { noAudio: true },
+      });
+    </script>
+  </body>
+</html>

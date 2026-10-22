@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
+    "test:boss-art": "vitest run --root . --config ../../vitest.config.ts",
     "build": "tsc --noEmit && vite build"
   },
   "dependencies": {
