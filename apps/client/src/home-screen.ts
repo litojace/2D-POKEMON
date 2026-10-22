@@ -61,6 +61,7 @@ export function homeFeature(
           withAura(
             withSoftGround(
               fighterArt(id, "-20 -40 240 250", economy?.looks[id]),
+              id,
             ),
             id,
           ),

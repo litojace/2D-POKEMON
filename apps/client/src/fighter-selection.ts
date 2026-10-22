@@ -27,7 +27,7 @@ function art(id: CharacterId, large = false, aura = false) {
     return `<img class="creature-portrait" loading="lazy" decoding="async" src="/assets/fighters/${id}/${large ? pack.selection : pack.portrait}" alt="${CHARACTERS[id].name}">`;
   // Card and detail portrait of the same fighter need their own ids.
   const svg = fighterArt(id, undefined, worn[id]);
-  const framed = large ? withSoftGround(svg) : svg;
+  const framed = large ? withSoftGround(svg, id) : svg;
   return scopeIds(
     aura ? withAura(framed, id, still()) : framed,
     large ? "detail" : "card",
@@ -362,6 +362,32 @@ export function placeFighterDetail(root: ParentNode) {
     else roster.append(detail);
   }
 }
+let groundResize: ResizeObserver | undefined;
+let groundedArt: HTMLElement | undefined;
+/** Match the rays to the SVG ground plane, including contain-fit letterboxing. */
+function alignChampionGround(detail: HTMLElement) {
+  const art = detail.querySelector<HTMLElement>(".fighter-rig-stage")!;
+  const align = () => {
+    const shadow = art.querySelector<SVGEllipseElement>(".fighter-shadow");
+    const matrix = shadow?.getScreenCTM();
+    if (!shadow || !matrix || !art.getClientRects().length) return;
+    const point = new DOMPoint(
+      shadow.cx.baseVal.value,
+      shadow.cy.baseVal.value,
+    );
+    const ground =
+      point.matrixTransform(matrix).y - art.getBoundingClientRect().top;
+    if (ground > 0)
+      art.style.setProperty("--champion-ground-y", `${ground.toFixed(2)}px`);
+  };
+  if (groundedArt !== art) {
+    groundResize?.disconnect();
+    groundedArt = art;
+    groundResize = new ResizeObserver(align);
+    groundResize.observe(art);
+  }
+  align();
+}
 /** Both sections remain in the DOM; native buttons also work with a controller. */
 function showFighterSection(detail: HTMLElement, section: string) {
   const skills = section === "skills";
@@ -377,6 +403,7 @@ function showFighterSection(detail: HTMLElement, section: string) {
       "aria-pressed",
       String(button.dataset.fighterPreview === section),
     );
+  alignChampionGround(detail);
 }
 function inspectSkill(detail: HTMLElement, key?: string) {
   const tooltip = detail.querySelector<HTMLElement>(".champion-skill-tooltip")!;
@@ -429,6 +456,8 @@ let navigationEvents: AbortController | undefined;
 /** Re-place the panel whenever the roster switches between layouts. */
 export function watchFighterDetail(root: HTMLElement) {
   watched?.disconnect();
+  groundResize?.disconnect();
+  groundedArt = undefined;
   navigationEvents?.abort();
   navigationEvents = new AbortController();
   const panel = root.querySelector<HTMLElement>(".roster-panel") ?? root;

@@ -6,6 +6,12 @@ animations use the existing shared preview renderer; there is only one live rig.
 The element glow, static rays and outlined fighter name frame the artwork without
 cropping tall crests or adding extra animated canvases.
 
+Standing fighters have a feathered shadow with contact shading at their paws;
+hovering fighters retain a softer floor beneath them. The background rays converge
+at that ground plane and follow its rendered position when the panel resizes.
+The SVG effects and animated canvas share the same frame on phones and desktop.
+Element, range and role badges also share their height and text alignment.
+
 The overview shows the fighter's description, range, role and comparative health,
 speed and basic DPS bars. Skill buttons open descriptions; Full kit includes all
 four abilities, the basic attack, combo and shared movement instructions. Values,

@@ -85,7 +85,7 @@
   overflow: hidden;
   isolation: isolate;
   background: radial-gradient(
-    ellipse at 45% 55%,
+    ellipse at 50% var(--champion-ground-y, 75%),
     color-mix(in srgb, var(--element) 20%, transparent),
     transparent 70%
   );
@@ -93,11 +93,11 @@
 #menu .champion-selector .selected-art::before {
   content: "";
   position: absolute;
-  inset: -25%;
+  inset: 0;
   z-index: -1;
   pointer-events: none;
   background: repeating-conic-gradient(
-    from -10deg at 50% 70%,
+    from -10deg at 50% var(--champion-ground-y, 75%),
     color-mix(in srgb, var(--element) 6%, transparent) 0deg 7deg,
     transparent 7deg 17deg
   );
@@ -109,6 +109,7 @@
   inset: 4% 3% 2%;
   width: 94% !important;
   height: 94% !important;
+  max-width: none;
   max-height: none;
   margin: 0;
   object-fit: contain;
