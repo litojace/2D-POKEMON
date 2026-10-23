@@ -69,7 +69,8 @@ export function homeFeature(
         );
   const cosmetic = portraitCosmetics({
     character: id,
-    raidLook: look,
+    // Portrait borders and their ornaments belong on avatars, not this stage.
+    raidLook: { ...look, frame: null },
     championLooks: economy?.looks,
   });
   return `<div class="home-fighter-stage selected-art" data-raid-cosmetic="${cosmetic}"><span class="home-fighter-halo" aria-hidden="true"></span><div class="home-fighter-art player-avatar" data-raid-cosmetic="${cosmetic}" data-preview-champion="${id}" data-preview-item="${economy?.looks[id]?.skin ?? ""}" data-preview-stage="${economy?.looks[id]?.stage ?? 1}" data-preview-look="${encodeURIComponent(JSON.stringify(look ?? {}))}" data-preview-action="idle" aria-label="${c.name} animated preview">${art}</div><span class="home-fighter-ground" aria-hidden="true"></span></div><div class="home-fighter-copy"><span class="home-element-label">${elementIcon(c.element)} ${c.element}</span><h1>${c.name}</h1><p class="home-fighter-role">${c.role}</p><span class="home-mastery pill" style="--mastery:${tier?.color ?? "var(--text-dim)"}">${menuIcon("sparkle")}<span>${tier ? `${tier.name} mastery` : "New challenger"}<small>${masteryMatches(id)} matches played</small></span></span><button type="button" class="quiet home-change-fighter" data-home-open="fighters">Change fighter ${menuIcon("swap")}</button></div>`;

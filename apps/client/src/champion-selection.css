@@ -457,6 +457,56 @@
   border: 0;
   background: none;
 }
+#menu .champion-selector .champion-kit-heading {
+  display: none;
+}
+/* Roomy layouts keep the entire kit below the overview in its own scroller. */
+#menu
+  .champion-selector
+  .fighter-detail[data-kit-layout="inline"]
+  .champion-skill-buttons {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+#menu
+  .champion-selector
+  .fighter-detail[data-kit-layout="inline"]
+  :is(
+    .champion-full-kit,
+    .champion-skill-tooltip,
+    .champion-basic-summary,
+    .skill-preview-heading
+  ) {
+  display: none;
+}
+#menu
+  .champion-selector
+  .fighter-detail[data-kit-layout="inline"]
+  .selected-info
+  > .skill-preview {
+  display: block;
+  flex: none;
+  min-height: auto;
+  overflow: visible;
+  padding: 0;
+}
+#menu
+  .champion-selector
+  .fighter-detail[data-kit-layout="inline"]
+  .champion-kit-heading {
+  display: block;
+  margin: 4px 0 10px;
+  font: 700 20px/1.2 var(--display);
+  text-transform: uppercase;
+  color: var(--text);
+}
+#menu
+  .champion-selector
+  .fighter-detail[data-kit-layout="inline"]
+  .preview-skills
+  > .is-inspected {
+  border-color: var(--element);
+  background: color-mix(in srgb, var(--element) 10%, #101825);
+}
 #menu .champion-selector .skill-preview-heading {
   display: flex;
   align-items: center;

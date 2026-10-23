@@ -11,10 +11,14 @@ hovering fighters retain a softer floor beneath them. The background rays conver
 at that ground plane and follow its rendered position when the panel resizes.
 The SVG effects and animated canvas share the same frame on phones and desktop.
 Element, range and role badges also share their height and text alignment.
+Portrait-frame ornaments remain on avatars and the wardrobe frame sample instead
+of floating above the full-size Home fighter.
 
 The overview shows the fighter's description, range, role and comparative health,
-speed and basic DPS bars. Skill buttons open descriptions; Full kit includes all
-four abilities, the basic attack, combo and shared movement instructions. Values,
+speed and basic DPS bars. On larger screens the complete skill kit sits beneath
+the overview; skill buttons highlight and scroll to their descriptions. Compact
+screens retain Full kit for all four abilities, the basic attack, combo and shared
+movement instructions. Values,
 cooldowns, descriptions and key labels come from the current game definitions and
 control preferences, rather than the example values in the supplied mockups.
 

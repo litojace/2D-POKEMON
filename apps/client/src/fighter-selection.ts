@@ -136,12 +136,12 @@ export function fighterSelection(selected: CharacterId, element = "All") {
   const skills = fighter.skills
     .map(
       (a, i) =>
-        `<div class="${i === ULT_SLOT ? "champion-ultimate-row" : ""}"><kbd>${skillKeys[i]}</kbd>${abilityIcon(a.name)}<span><strong>${a.name}</strong><small>${a.description}</small></span><b>${i === ULT_SLOT ? "Ultimate" : `${a.cooldown}s`}</b></div>`,
+        `<div class="${i === ULT_SLOT ? "champion-ultimate-row" : ""}" data-kit-skill="${i}"><kbd>${skillKeys[i]}</kbd>${abilityIcon(a.name)}<span><strong>${a.name}</strong><small>${a.description}</small></span><b>${i === ULT_SLOT ? "Ultimate" : `${a.cooldown}s`}</b></div>`,
     )
     .join("");
   const combo = COMBOS[selected];
-  const basicRow = `<div class="champion-basic-row"><kbd>${actionLabel(bindings, "basic")}</kbd>${abilityIcon(fighter.basic.name)}<span><strong>${fighter.basic.name} <em>Basic attack</em></strong><small>${fighter.basic.description} No cooldown · ${interval} ms between attacks.</small></span><b>${fighter.basic.damage} dmg</b></div>`;
-  const comboRow = `<div class="combo-description champion-combo-row"><kbd>Combo</kbd><span class="champion-combo-spark" aria-hidden="true">✦</span><span><strong>${combo.name}</strong><small>${combo.text}</small></span></div>`;
+  const basicRow = `<div class="champion-basic-row" data-kit-skill="basic"><kbd>${actionLabel(bindings, "basic")}</kbd>${abilityIcon(fighter.basic.name)}<span><strong>${fighter.basic.name} <em>Basic attack</em></strong><small>${fighter.basic.description} No cooldown · ${interval} ms between attacks.</small></span><b>${fighter.basic.damage} dmg</b></div>`;
+  const comboRow = `<div class="combo-description champion-combo-row" data-kit-skill="combo"><kbd>Combo</kbd><span class="champion-combo-spark" aria-hidden="true">✦</span><span><strong>${combo.name}</strong><small>${combo.text}</small></span></div>`;
   const statValues = [
     ["Health", fighter.health, Math.max(...fighters.map((c) => c.health))],
     ["Speed", fighter.speed, Math.max(...fighters.map((c) => c.speed))],
@@ -173,7 +173,7 @@ export function fighterSelection(selected: CharacterId, element = "All") {
       <div class="champion-skill-tooltip" role="region" aria-label="Skill details" hidden><button type="button" data-skill-close aria-label="Close skill details">×</button><b data-skill-title></b><p data-skill-description></p></div>
       <div class="champion-basic-summary"><button type="button" class="basic-description" data-skill-inspect="basic" aria-expanded="false">${abilityIcon(fighter.basic.name)}<span class="basic-text"><b>${fighter.basic.name}</b><small>Basic attack · no cooldown</small></span></button><button type="button" class="champion-combo-button" data-skill-inspect="combo" aria-expanded="false">Combo · ${combo.name}</button></div></div>
     </div>
-    <section class="skill-preview" tabindex="0" role="region" aria-label="${fighter.name} full kit and movement controls" style="--element:${color}" hidden><div class="skill-preview-heading"><h3>${fighter.name}</h3><span>Full kit</span></div><div class="preview-skills">${skills}${basicRow}${comboRow}</div></section>
+    <section class="skill-preview" tabindex="0" role="region" aria-label="${fighter.name} full kit and movement controls" style="--element:${color}" hidden><div class="skill-preview-heading"><h3>${fighter.name}</h3><span>Full kit</span></div><h4 class="champion-kit-heading">Skills &amp; combo</h4><div class="preview-skills">${skills}${basicRow}${comboRow}</div></section>
     <footer class="champion-actions"><div class="champion-mastery">${masteryRing(selected)}<div><b style="color:${tier?.color ?? "var(--accent)"}">${tier?.name ?? "New challenger"}</b><p class="fighter-mastery-label">${played} matches${next ? ` · ${next.left} to ${next.name}` : " · Maximum mastery"}</p></div></div><button type="button" class="primary btn-primary champion-lock" data-fighter-lock="${selected}" aria-label="Lock in ${fighter.name}">Lock in</button></footer>
   </div>`;
   const ids = fighters
@@ -390,19 +390,40 @@ function alignChampionGround(detail: HTMLElement) {
 }
 /** Both sections remain in the DOM; native buttons also work with a controller. */
 function showFighterSection(detail: HTMLElement, section: string) {
-  const skills = section === "skills";
+  const inline = matchMedia(
+    "(min-width: 1001px) and (min-height: 601px)",
+  ).matches;
+  const changedLayout =
+    detail.dataset.kitLayout !== (inline ? "inline" : "tabs");
+  detail.dataset.kitLayout = inline ? "inline" : "tabs";
+  const info = detail.querySelector<HTMLElement>(".selected-info")!;
+  const kit = detail.querySelector<HTMLElement>(".skill-preview")!;
+  if (inline && kit.parentElement !== info) info.append(kit);
+  else if (!inline && kit.parentElement !== detail)
+    detail.insertBefore(kit, detail.querySelector(".champion-actions"));
+  const skills = !inline && section === "skills";
   detail.dataset.preview = skills ? "skills" : "overview";
   detail.querySelector<HTMLElement>(".fighter-preview-tabs")!.hidden = !skills;
   detail.querySelector<HTMLElement>(".selected-fighter")!.hidden = false;
-  detail.querySelector<HTMLElement>(".selected-info")!.hidden = skills;
-  detail.querySelector<HTMLElement>(".skill-preview")!.hidden = !skills;
+  info.hidden = skills;
+  kit.hidden = !inline && !skills;
   for (const button of Array.from(
     detail.querySelectorAll<HTMLElement>("[data-fighter-preview]"),
   ))
     button.setAttribute(
       "aria-pressed",
-      String(button.dataset.fighterPreview === section),
+      String(button.dataset.fighterPreview === detail.dataset.preview),
     );
+  if (changedLayout) {
+    detail.querySelector<HTMLElement>(".champion-skill-tooltip")!.hidden = true;
+    delete detail.dataset.inspection;
+    for (const row of Array.from(detail.querySelectorAll(".is-inspected")))
+      row.classList.remove("is-inspected");
+    for (const button of Array.from(
+      detail.querySelectorAll("[data-skill-inspect]"),
+    ))
+      button.setAttribute("aria-expanded", "false");
+  }
   alignChampionGround(detail);
 }
 function inspectSkill(detail: HTMLElement, key?: string) {
@@ -410,6 +431,37 @@ function inspectSkill(detail: HTMLElement, key?: string) {
   const id = detail.dataset.detailFor as CharacterId;
   const fighter = CHARACTERS[id];
   const same = detail.dataset.inspection === key;
+  if (detail.dataset.kitLayout === "inline") {
+    tooltip.hidden = true;
+    if (!key || same) delete detail.dataset.inspection;
+    else detail.dataset.inspection = key;
+    for (const button of Array.from(
+      detail.querySelectorAll<HTMLElement>("[data-skill-inspect]"),
+    ))
+      button.setAttribute(
+        "aria-expanded",
+        String(button.dataset.skillInspect === detail.dataset.inspection),
+      );
+    for (const row of Array.from(
+      detail.querySelectorAll<HTMLElement>("[data-kit-skill]"),
+    )) {
+      const active = row.dataset.kitSkill === detail.dataset.inspection;
+      row.classList.toggle("is-inspected", active);
+      if (active) {
+        const info = detail.querySelector<HTMLElement>(".selected-info")!;
+        const bounds = row.getBoundingClientRect(),
+          viewport = info.getBoundingClientRect();
+        if (bounds.top < viewport.top || bounds.bottom > viewport.bottom)
+          info.scrollTo({
+            top: info.scrollTop + bounds.top - viewport.top - 12,
+            behavior: matchMedia("(prefers-reduced-motion: reduce)").matches
+              ? "instant"
+              : "smooth",
+          });
+      }
+    }
+    return;
+  }
   if (!key || same) {
     const previous = detail.dataset.inspection;
     tooltip.hidden = true;
