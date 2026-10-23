@@ -234,6 +234,7 @@ function riptideImpact(scene: Phaser.Scene, a: Ability, x: number, y: number, co
   fx.burst({ x, y: gy, z: 10, count: 30, kind: "drop", color: [color, FOAM], speed: [30, 160], up: [380, 620], life: [0.8, 1.2], size: [2, 3.6], grav: 1100, bounce: 0.1, drag: 0.6 });
   fx.burst({ x, y: gy, z: 12, count: 14, kind: "smoke", color: FOAM, speed: [40, 160], up: [20, 60], life: [0.7, 1.2], size: [10, 18], drag: 2 });
   fx.decal({ kind: "wet", x: x + cos * 20, y: gy, r: r * 2.2, color, life: 4.5 });
+  fx.ultimate(color, 850);
   fx.shake(220, 0.006);
   shot(fx.reduced ? 300 : 900, (k) => {
     // 1. The crest collapses forward over the first third.

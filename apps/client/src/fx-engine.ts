@@ -32,7 +32,7 @@ interface Particle {
   spin: number;
 }
 interface Decal {
-  kind: "scorch" | "crack" | "wet" | "glyph";
+  kind: "scorch" | "crack" | "wet" | "glyph" | "molten";
   x: number;
   y: number;
   r: number;
@@ -85,6 +85,16 @@ function makeTextures(scene: Phaser.Scene) {
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, size, size);
   canvas.refresh();
+  // Screen vignette for ultimates: clear centre, dark edges.
+  const v = scene.textures.createCanvas("fx-vignette", 256, 256)!;
+  const vc = v.getContext();
+  const vg = vc.createRadialGradient(128, 128, 60, 128, 128, 182);
+  vg.addColorStop(0, "rgba(0,0,0,0)");
+  vg.addColorStop(0.55, "rgba(0,0,0,0.35)");
+  vg.addColorStop(1, "rgba(0,0,0,1)");
+  vc.fillStyle = vg;
+  vc.fillRect(0, 0, 256, 256);
+  v.refresh();
 }
 
 export class Fx {
@@ -109,6 +119,9 @@ export class Fx {
   private readonly decals: Decal[] = [];
   private readonly lastEmit = new Map<string | number, number>();
   readonly reduced = reducedMotion();
+  private vignette?: Phaser.GameObjects.Image;
+  private wash?: Phaser.GameObjects.Image;
+  private ult = { start: 0, until: 0, color: 0xffffff, dark: false };
   private frame = 0;
   private used = 0;
   time = 0;
@@ -145,6 +158,7 @@ export class Fx {
     this.step(dt);
     this.drawParticles();
     this.drawDecals(dt);
+    this.drawUltimate();
     for (let i = this.used; i < this.glows.length; i++) this.glows[i].setVisible(false);
     for (let i = this.usedFloor; i < this.floorGlows.length; i++) this.floorGlows[i].setVisible(false);
     for (let i = this.usedSoft; i < this.softs.length; i++) this.softs[i].setVisible(false);
@@ -154,7 +168,7 @@ export class Fx {
     const ev = this.scene.events;
     ev.off(PRE_UPDATE, this.begin, this);
     ev.off(POST_UPDATE, this.end, this);
-    for (const o of [this.g, this.solid, this.sparks, this.decalLayer, this.floor, this.floorSolid, ...this.glows, ...this.floorGlows, ...this.softs]) o.destroy();
+    for (const o of [this.g, this.solid, this.sparks, this.decalLayer, this.floor, this.floorSolid, ...(this.vignette ? [this.vignette] : []), ...(this.wash ? [this.wash] : []), ...this.glows, ...this.floorGlows, ...this.softs]) o.destroy();
     instances.delete(this.scene);
   }
 
@@ -360,6 +374,18 @@ export class Fx {
         }
       }
       if (d.kind === "wet") g.fillStyle(d.color, 0.18 * a).fillEllipse(d.x, d.y, d.r * 2, d.r * 1.5);
+      if (d.kind === "molten") {
+        // Lava that glows orange, crusts over and cools to dark rock.
+        const hot = Math.max(0, 1 - k * 1.6);
+        g.fillStyle(0x2a1610, 0.45 * a).fillEllipse(d.x, d.y, d.r * 2, d.r * 1.6);
+        g.fillStyle(0xff7a2a, 0.75 * hot).fillEllipse(d.x, d.y, d.r * 1.6, d.r * 1.25);
+        g.fillStyle(0xffd27a, 0.7 * hot * hot).fillEllipse(d.x, d.y, d.r * 0.9, d.r * 0.7);
+        g.lineStyle(2, 0x2a1610, 0.6 * a);
+        for (let j = 0; j < 5; j++) {
+          const ang = d.seed + j * 1.3;
+          g.lineBetween(d.x + Math.cos(ang) * d.r * 0.2, d.y + Math.sin(ang) * d.r * 0.16, d.x + Math.cos(ang + 0.5) * d.r * 0.75, d.y + Math.sin(ang + 0.5) * d.r * 0.6);
+        }
+      }
       if (d.kind === "glyph") g.lineStyle(2, d.color, 0.4 * a).strokeEllipse(d.x, d.y, d.r * 2, d.r * 1.6);
     }
   }
@@ -421,6 +447,44 @@ export class Fx {
       g = onFloor ? this.floor : this.g;
     g.lineStyle(width * (1.6 - k), color, 0.25 * a).strokeEllipse(x, y, r * 2, r * 2 * squash);
     g.lineStyle(Math.max(1, width * 0.45 * (1 - k * 0.6)), 0xffffff, 0.85 * a).strokeEllipse(x, y, r * 2, r * 2 * squash);
+  }
+
+  /**
+   * The "ultimate moment": the screen edges dim and the view washes with the
+   * fighter's colour for a beat. Mild by design; skipped with reduced motion.
+   * `dark` keeps the wash out (shadow moves: the lights go out instead).
+   */
+  ultimate(color: number, ms = 750, dark = false) {
+    if (this.reduced) return;
+    this.ult = { start: this.time, until: this.time + ms, color, dark };
+  }
+  private drawUltimate() {
+    const { start, until, color, dark } = this.ult,
+      k = (this.time - start) / Math.max(1, until - start);
+    if (k < 0 || k >= 1) {
+      this.vignette?.setVisible(false);
+      this.wash?.setVisible(false);
+      return;
+    }
+    const cam = this.scene.cameras.main,
+      z = cam.zoom || 1;
+    if (!this.vignette) {
+      this.vignette = this.scene.add.image(0, 0, "fx-vignette").setScrollFactor(0).setDepth(4.9);
+      this.wash = this.scene.add.image(0, 0, "fx-glow").setScrollFactor(0).setDepth(4.95).setBlendMode(ADD);
+    }
+    // Rise fast, hold, ease out.
+    const env = k < 0.12 ? k / 0.12 : k < 0.5 ? 1 : 1 - (k - 0.5) / 0.5;
+    this.vignette
+      .setVisible(true)
+      .setPosition(cam.width / 2, cam.height / 2)
+      .setScale((cam.width / z / 256) * 1.15, (cam.height / z / 256) * 1.15)
+      .setAlpha((dark ? 0.75 : 0.5) * env);
+    this.wash!
+      .setVisible(!dark)
+      .setPosition(cam.width / 2, cam.height / 2)
+      .setScale((cam.width / z / 128) * 1.3, (cam.height / z / 128) * 1.3)
+      .setTint(color)
+      .setAlpha(0.22 * env * (1 - k));
   }
 
   shake(ms: number, intensity: number) {

@@ -39,6 +39,7 @@ function fakeScene() {
   const scene: any = deep({
     events,
     add: deep({ graphics, image: () => deep() }),
+    cameras: { main: { width: 1280, height: 720, zoom: 1.2, shake: () => undefined } },
     tweens: {
       addCounter: (cfg: { onUpdate: (t: { getValue(): number }) => void; onComplete: () => void }) => {
         for (const v of [0, 0.25, 0.5, 0.75, 1]) cfg.onUpdate({ getValue: () => v });
