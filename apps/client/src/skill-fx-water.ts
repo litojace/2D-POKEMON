@@ -164,7 +164,11 @@ function riptideWindup(g: G, a: Ability, x: number, y: number, angle: number, _a
   });
   void now;
 }
+/** Where each wave was last seen heading, so its crash can fall forward. */
+const waveHeading = new Map<number, { x: number; y: number; angle: number; at: number }>();
 function riptideWave(g: G, pr: Projectile, now: number) {
+  waveHeading.set(pr.id, { x: pr.x, y: pr.y, angle: Math.atan2(pr.vy, pr.vx), at: now });
+  if (waveHeading.size > 16) waveHeading.delete(waveHeading.keys().next().value!);
   const fx = fxFor(g.scene),
     r = pr.ability.radius,
     c = pr.color,
@@ -208,6 +212,78 @@ function riptideWave(g: G, pr: Projectile, now: number) {
   });
 }
 
+// ───────────── Riptide Wave crash ─────────────
+function riptideImpact(scene: Phaser.Scene, a: Ability, x: number, y: number, color: number, shot: Shot) {
+  const fx = fxFor(scene),
+    r = a.radius,
+    gy = y + 14;
+  // The wave that ended nearest this point tells us which way it was moving.
+  let dir = 0,
+    best = Infinity;
+  for (const [id, w] of waveHeading) {
+    const d = Math.hypot(w.x - x, w.y - y);
+    if (d < best) (best = d), (dir = w.angle);
+    if (d < 80) waveHeading.delete(id);
+  }
+  const cos = Math.cos(dir),
+    sin = Math.sin(dir),
+    nx = -sin,
+    ny = cos;
+  // Spray thrown forward, a geyser straight up, mist hanging after.
+  fx.burst({ x, y: gy, z: 20, count: 34, kind: "drop", color: [color, FOAM, 0x9eefff], angle: dir, spread: 0.9, speed: [180, 520], up: [120, 380], life: [0.5, 0.95], size: [1.8, 3.4], grav: 1100, bounce: 0.15, drag: 0.8 });
+  fx.burst({ x, y: gy, z: 10, count: 30, kind: "drop", color: [color, FOAM], speed: [30, 160], up: [380, 620], life: [0.8, 1.2], size: [2, 3.6], grav: 1100, bounce: 0.1, drag: 0.6 });
+  fx.burst({ x, y: gy, z: 12, count: 14, kind: "smoke", color: FOAM, speed: [40, 160], up: [20, 60], life: [0.7, 1.2], size: [10, 18], drag: 2 });
+  fx.decal({ kind: "wet", x: x + cos * 20, y: gy, r: r * 2.2, color, life: 4.5 });
+  fx.shake(220, 0.006);
+  shot(fx.reduced ? 300 : 900, (k) => {
+    // 1. The crest collapses forward over the first third.
+    const fall = Math.min(1, k / 0.32);
+    if (fall < 1) {
+      const lift = 46 * (1 - ease(fall)),
+        push = 40 * ease(fall),
+        w = r * (1 + fall * 0.35);
+      const pts = (back: number, up: number) =>
+        Array.from({ length: 13 }, (_, i) => {
+          const s2 = i / 12 - 0.5,
+            bulge = Math.cos(s2 * Math.PI) * 16;
+          return { x: x + cos * (push + bulge - back) + nx * s2 * 2 * w, y: y + sin * (push + bulge - back) + ny * s2 * 2 * w - up * Math.cos(s2 * Math.PI) };
+        });
+      fx.solid.fillStyle(DEEP, 0.85 * (1 - fall)).fillPoints([...pts(50, 0), ...pts(0, lift).reverse()], true);
+      fx.solid.fillStyle(color, 1 - fall).fillPoints([...pts(40, 6), ...pts(4, lift * 0.9).reverse()], true);
+      fx.solid.lineStyle(8, FOAM, 1 - fall).strokePoints(pts(0, lift), false);
+    }
+    // 2. A geyser column rising then falling back.
+    const gk = Math.max(0, Math.min(1, (k - 0.05) / 0.6)),
+      h = Math.sin(gk * Math.PI) * 120;
+    if (h > 4) {
+      // A tapered, see-through jet with wobbling edges and a foam crown.
+      const cx = x + cos * 10,
+        left: { x: number; y: number }[] = [],
+        right: { x: number; y: number }[] = [];
+      for (let i = 0; i <= 8; i++) {
+        const t = i / 8,
+          w = 13 * (1 - t * 0.55),
+          wob = Math.sin(k * 28 + i * 1.7) * 2.5,
+          py = gy - 6 - h * t;
+        left.push({ x: cx - w + wob, y: py });
+        right.push({ x: cx + w + wob, y: py });
+      }
+      const jet = [...left, ...right.reverse()];
+      fx.solid.fillStyle(DEEP, 0.35).fillPoints(jet, true);
+      fx.solid.fillStyle(color, 0.7).fillPoints(jet, true);
+      fx.solid.lineStyle(3, FOAM, 0.75).strokePoints(left.slice(1), false);
+      fx.solid.fillStyle(FOAM, 0.9).fillCircle(cx, gy - 6 - h, 8).fillCircle(cx - 7, gy - 2 - h, 5).fillCircle(cx + 7, gy - 3 - h, 5);
+    }
+    // 3. Water floods out across the floor with two foam rings.
+    const flood = r * 2.4 * ease(Math.min(1, k * 1.5));
+    fx.floorSolid.fillStyle(color, 0.3 * (1 - k)).fillEllipse(x + cos * 18, gy, flood * 2, flood * 2 * 0.7);
+    fx.shockwave(x + cos * 18, gy, flood, k, FOAM, 9, 0.7);
+    if (k > 0.15) fx.shockwave(x + cos * 18, gy, flood * 0.62 * ease(Math.min(1, (k - 0.15) * 1.8)), k, color, 6, 0.7);
+    fx.glow(x, gy - 20, r * 2.4, color, 0.45 * (1 - k));
+    fx.glow(x, gy, r * 2.2, color, 0.35 * (1 - k), true);
+  });
+}
+
 // ───────────── Casts and hits ─────────────
 function waterCast(scene: Phaser.Scene, a: Ability, x: number, y: number, angle: number, color: number, shot: Shot) {
   const fx = fxFor(scene),
@@ -230,6 +306,6 @@ export const waterKit: FxKit = {
   zone: { whirlpool },
   windup: { "riptide-wave": riptideWindup },
   cast: { "tide-needle": waterCast, "ripple-stars": waterCast, "riptide-wave": waterCast, "mirror-mist": mirrorMist },
-  impact: { "tide-needle": needleImpact, "ripple-stars": needleImpact, "riptide-wave": needleImpact },
+  impact: { "tide-needle": needleImpact, "ripple-stars": needleImpact, "riptide-wave": riptideImpact },
   hit: { water: waterHit },
 };
