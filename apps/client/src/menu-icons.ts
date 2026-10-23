@@ -1,5 +1,7 @@
 const paths = {
-  swipe: '<path d="M4 12h16M7 8l-4 4 4 4m10-8 4 4-4 4"/><path d="M9 4h6M9 20h6" opacity=".5"/>',
+  wardrobe: '<path d="M9 6a3 3 0 0 1 6 0c0 2-3 2-3 5v1L3 18v3h18v-3l-9-6"/>',
+  swipe:
+    '<path d="M4 12h16M7 8l-4 4 4 4m10-8 4 4-4 4"/><path d="M9 4h6M9 20h6" opacity=".5"/>',
   help: '<path d="M9 9a3 3 0 0 1 6 0c0 2-3 2-3 5"/><path d="M12 17h.01"/><circle cx="12" cy="12" r="10"/>',
   settings:
     '<path d="m9 3-.5 3-2 1-3-.5-2 3 2 2v2l-2 2 2 3 3-.5 2 1 .5 3h4l.5-3 2-1 3 .5 2-3-2-2v-2l2-2-2-3-3 .5-2-1L13 3Z"/><circle cx="11" cy="12" r="3"/>',
@@ -51,8 +53,10 @@ const paths = {
   // A shop awning over a counter.
   shop: '<path d="M3 9 5 4h14l2 5"/><path d="M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0"/><path d="M5 12v8h14v-8M10 20v-5h4v5"/>',
   coin: '<circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5c0-1 1-1.8 2.5-1.8s2.5.8 2.5 1.8-1 1.5-2.5 1.8-2.5.8-2.5 1.9 1 1.8 2.5 1.8 2.5-.8 2.5-1.8"/>',
-  missions: '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="m8 9 1.5 1.5L12 8M8 15l1.5 1.5L12 14M14 9h3M14 15h3"/>',
-  sparkle: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/>',
+  missions:
+    '<rect x="4" y="3" width="16" height="18" rx="2"/><path d="m8 9 1.5 1.5L12 8M8 15l1.5 1.5L12 14M14 9h3M14 15h3"/>',
+  sparkle:
+    '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/>',
 } as const;
 export type IconName = keyof typeof paths;
 export function menuIcon(name: IconName) {

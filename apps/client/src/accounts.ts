@@ -1,4 +1,5 @@
 import { fighterAvatar } from "./fighter-art";
+import { openWardrobe } from "./wardrobe";
 import {
   adventureMarkup,
   type AdventureTab,
@@ -194,6 +195,12 @@ export class AccountUI {
       !!session && !!this.account && session.user?.id === this.account.id;
     this.session = session;
     if (!samePlayer) {
+      this.wardrobePanel?.dispose();
+      this.wardrobePanel = undefined;
+      const wardrobe = document.querySelector<HTMLDialogElement>(
+        "dialog:has(.wardrobe)",
+      );
+      wardrobe?.close();
       this.account = null;
       this.raidLook = undefined;
       this.economy = undefined;
@@ -222,6 +229,7 @@ export class AccountUI {
         this.shopRefresh?.();
         this.missionsRefresh?.();
         this.adventureRefresh?.();
+        this.wardrobePanel?.refresh();
       } catch (error) {
         if (version !== this.generation) return;
         this.hooks.notify(
@@ -654,6 +662,85 @@ export class AccountUI {
   private shopRefresh?: () => void;
   private shopPreviewCleanup?: () => void;
   private shopView: ShopView = { tab: "today", champion: "voltkit" };
+  private wardrobePanel?: ReturnType<typeof openWardrobe>;
+  /** One inventory for purchased pieces and earned boss cosmetics. */
+  async showWardrobe() {
+    if (!this.ensurePlayer()) return;
+    const generation = this.generation;
+    this.wardrobePanel?.dispose();
+    this.hooks.openDialog(
+      '<section class="wardrobe-loading"><h2>Wardrobe</h2><p role="status">Loading your collection…</p></section>',
+    );
+    const results = await Promise.allSettled([
+      this.api("/api/economy"),
+      this.api("/api/raids"),
+    ]);
+    const root = document.getElementById("dialog") as HTMLDialogElement;
+    if (
+      generation !== this.generation ||
+      !root.open ||
+      !root.querySelector(".wardrobe-loading")
+    )
+      return;
+    const [economy, raids] = results;
+    if (economy.status === "fulfilled") this.economy = economy.value as Economy;
+    if (!this.economy) {
+      this.hooks.openDialog(
+        '<h2>Wardrobe</h2><p role="alert">Your wardrobe could not load. Close this panel and try again.</p>',
+      );
+      return;
+    }
+    let progress =
+      raids.status === "fulfilled" ? (raids.value as RaidProgress) : null;
+    if (progress) this.raidLook = raidLookOf(progress);
+    this.wardrobePanel?.dispose();
+    this.wardrobePanel = openWardrobe(
+      root,
+      this.hooks.selectedCharacter?.() ?? "voltkit",
+      {
+        state: () => ({
+          economy: this.economy!,
+          progress,
+          look: this.raidLook ?? {},
+        }),
+        render: (html) => this.hooks.openDialog(html),
+        shop: () => void this.showShop(),
+        raids: () => void this.showRaidHub(),
+        save: async (slot, item, champion, stage) => {
+          if (generation !== this.generation)
+            throw new Error(
+              "Your session changed. Reopen Wardrobe to continue.",
+            );
+          if (slot === "champion") {
+            const result = (await this.api("/api/shop/equip", {
+              champion,
+              skin: item,
+              ...(item ? { stage: stage ?? 1 } : {}),
+            })) as { economy: Economy };
+            if (generation !== this.generation) return;
+            this.economy = result.economy;
+          } else {
+            const result = (await this.api("/api/raids/equip", {
+              slot,
+              item,
+            })) as { progress: RaidProgress };
+            if (generation !== this.generation) return;
+            progress = result.progress;
+            this.raidLook = raidLookOf(progress);
+          }
+          this.renderNav();
+          try {
+            this.hooks.onChange();
+          } catch (error) {
+            console.error(error);
+          }
+        },
+      },
+      results.some((r) => r.status === "rejected")
+        ? "Some wardrobe data could not load. Reopen Wardrobe to refresh your collection."
+        : "",
+    );
+  }
   private adventureRefresh?: () => void;
   private adventureCleanup?: () => void;
   async showAdventure(tab: AdventureTab = "levels") {
@@ -932,6 +1019,8 @@ export class AccountUI {
         };
       for (const b of all<HTMLButtonElement>("[data-shop-missions]"))
         b.onclick = () => void this.showMissions();
+      for (const b of all<HTMLButtonElement>("[data-wardrobe-open]"))
+        b.onclick = () => void this.showWardrobe();
       for (const b of all<HTMLButtonElement>("[data-shop-tab]"))
         b.onclick = () => {
           view.tab = b.dataset.shopTab as ShopTab;

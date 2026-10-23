@@ -157,11 +157,12 @@ export function mountShopPreview(
       ? { skin: id, stage: Number(host.dataset.previewStage) }
       : null;
     piece = LOOK_ITEM_BY_ID[id] ?? JOURNEY_ITEM_BY_ID[id];
-    look = home
-      ? JSON.parse(decodeURIComponent(host.dataset.previewLook ?? "%7B%7D"))
-      : piece
-        ? { [piece.slot]: id }
-        : {};
+    look =
+      home || host.dataset.previewLook !== undefined
+        ? JSON.parse(decodeURIComponent(host.dataset.previewLook ?? "%7B%7D"))
+        : piece
+          ? { [piece.slot]: id }
+          : {};
     action = host.dataset.previewAction!;
     originalLabel = host.getAttribute("aria-label")!;
     compare = panel.querySelector<HTMLButtonElement>("[data-preview-compare]");
@@ -332,9 +333,18 @@ export function mountShopPreview(
         .setZoom(previewZoom(action))
         .centerOn(framing.x, framing.cameraY);
       this.aura.clear();
-      const auraId = home ? look.aura : piece?.slot === "aura" ? id : null;
+      const auraId = look.aura;
       const auraScale = framing.scale / 1.2;
-      if (auraId)
+      if (auraId === "mountain-aura")
+        this.aura
+          .lineStyle(3, 0xffd28c, 0.7)
+          .strokeEllipse(
+            x / auraScale,
+            (y + (home ? 21 * framing.scale : 38)) / auraScale,
+            95,
+            45,
+          );
+      else if (auraId)
         drawCollectionAura(
           this.aura,
           auraId,

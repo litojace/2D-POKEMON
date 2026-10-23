@@ -15,7 +15,12 @@ import {
   type Economy,
   type Rarity,
 } from "../../../packages/shared/src/shop";
-import type { RaidLoadout } from "../../../packages/shared/src/raid";
+import {
+  RAID_COSMETICS,
+  type RaidLoadout,
+} from "../../../packages/shared/src/raid";
+import { JOURNEY_ITEM_BY_ID } from "../../../packages/shared/src/journey";
+import { colourPreview, hasColourPalette } from "./colour-preview";
 import { nextRaidDayAt } from "../../../packages/shared/src/raid-roster";
 import { fighterArt, fighterAvatar, scopeIds } from "./fighter-art";
 import { buttonIcon, iconLabel } from "./menu-icons";
@@ -108,9 +113,12 @@ export function itemPicture(
 ) {
   const skin = CHAMPION_SKIN_BY_ID[id];
   if (skin) return skinThumbnail(id, skin.champion, stage);
-  const look = LOOK_ITEM_BY_ID[id];
+  const look =
+    LOOK_ITEM_BY_ID[id] ??
+    RAID_COSMETICS[id as keyof typeof RAID_COSMETICS] ??
+    JOURNEY_ITEM_BY_ID[id];
   if (look)
-    return `<span class="raid-cosmetic-preview shop-look-preview" data-cosmetic="${id}">${fighterAvatar(champion, scope)}</span>`;
+    return `<span class="raid-cosmetic-preview shop-look-preview" data-cosmetic="${id}">${hasColourPalette(id) ? `<img src="data:image/svg+xml,${encodeURIComponent(colourPreview(fighterAvatar(champion, scope), id))}" width="84" height="84" alt="" loading="lazy" decoding="async">` : fighterAvatar(champion, scope)}</span>`;
   return "";
 }
 function itemName(id: string) {
@@ -256,9 +264,17 @@ export function shopPreviewMarkup(
         : "idle";
   const fallback = frame
     ? itemPicture(piece.id, champion, "shop-piece-preview")
-    : scopeIds(frontPreviewArt(champion, look, action), "shop-live-fallback");
+    : scopeIds(
+        colourPreview(
+          frontPreviewArt(champion, look, action),
+          piece?.slot === "skin" ? piece.id : "",
+        ),
+        "shop-live-fallback",
+      );
   const fallbackClass =
-    piece?.slot === "skin" ? " raid-cosmetic-preview shop-preview-colours" : "";
+    piece?.slot === "skin"
+      ? ` raid-cosmetic-preview shop-preview-colours${hasColourPalette(piece.id) ? " is-colour-matched" : ""}`
+      : "";
   const compare =
     skin || piece?.slot === "skin"
       ? '<button type="button" class="shop-compare" data-preview-compare aria-pressed="false" disabled>Compare original</button>'
@@ -439,7 +455,7 @@ export function shopMarkup(
         collections: collectionsTab,
       }[view.tab](view, e, loadout);
   const preview = shopPreviewMarkup(view, e, loadout);
-  return `<div class="shop"><header class="shop-head"><h2>${iconLabel("shop", "Shop")}</h2>${coinChip(e?.balance, "", e?.unlimitedCoins)}</header>${tabs}${preview}<div class="shop-body">${e?.unlimitedCoins ? '<p class="shop-note">Admin testing · Purchases don’t spend coins.</p>' : ""}${body}</div><p class="shop-status" role="status"></p></div>`;
+  return `<div class="shop"><header class="shop-head"><h2>${iconLabel("shop", "Shop")}</h2><button type="button" class="secondary" data-wardrobe-open>${iconLabel("wardrobe", "Wardrobe")}</button>${coinChip(e?.balance, "", e?.unlimitedCoins)}</header>${tabs}${preview}<div class="shop-body">${e?.unlimitedCoins ? '<p class="shop-note">Admin testing · Purchases don’t spend coins.</p>' : ""}${body}</div><p class="shop-status" role="status"></p></div>`;
 }
 /** Collection pieces' slot (for equipping). */
 export const lookSlot = (id: string) => LOOK_ITEM_BY_ID[id]?.slot;

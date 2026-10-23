@@ -116,6 +116,7 @@ import { InterpolationBuffer } from "./networking/interpolation";
 import { AccountUI } from "./accounts";
 import "./style.css";
 import "./champion-selection.css";
+import "./wardrobe.css";
 import { FollowCamera, screenToWorld, outsideView } from "./follow-camera";
 import { updateNameplate } from "./player-nameplate";
 import { fighterPack } from "./animation/pack-config";
@@ -1155,6 +1156,8 @@ function wireRaidLobby() {
   if (bestiary) bestiary.onclick = () => void showRaidBestiary();
   const shop = document.getElementById("shop-open");
   if (shop) shop.onclick = () => void accountsUI.showShop();
+  const wardrobe = document.getElementById("wardrobe-open");
+  if (wardrobe) wardrobe.onclick = () => void accountsUI.showWardrobe();
   const missions = document.getElementById("home-missions");
   if (missions) missions.onclick = () => void accountsUI.showMissions();
   const peril = document.getElementById(
