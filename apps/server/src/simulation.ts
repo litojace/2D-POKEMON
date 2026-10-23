@@ -1141,7 +1141,12 @@ export class Arena {
         );
         if (struck) {
           if (pr.ability.explosion) explode();
-          else this.damage(struck, pr.ability.damage, pr.owner, pr.ability);
+          else {
+            // Contact point, so the move's own impact effect plays on a hit
+            // too (not only when it reaches a wall or the end of its range).
+            this.event("impact", pr, pr.color, undefined, pr.owner, pr.ability.id);
+            this.damage(struck, pr.ability.damage, pr.owner, pr.ability);
+          }
           return false;
         }
       }

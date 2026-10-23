@@ -243,6 +243,16 @@ function strikeWindup(g: G, a: Ability, x: number, y: number, angle: number, aim
   void hash;
 }
 
+/** Mind Dart lands: a small lens pulse and a few weightless motes. */
+function dartImpact(scene: Phaser.Scene, _a: Ability, x: number, y: number, color: number, shot: Shot) {
+  const fx = fxFor(scene);
+  floatMotes(fx, x, y + 10, 4, color, 30);
+  shot(fx.reduced ? 120 : 260, (k) => {
+    lensRing(fx, x, y, 6 + ease(k) * 22, color, 1 - k, 2, 1);
+    fx.glow(x, y, 20 * (1 - k * 0.5), color, 0.6 * (1 - k));
+  });
+}
+
 export const psychicKit: FxKit = {
   projectile: { "mind-dart": mindDart },
   beam: { "focus-ray": focusRay },
@@ -254,5 +264,6 @@ export const psychicKit: FxKit = {
     repulse: (scene, a, x, y, _angle, color, shot) => repulse(scene, a, x, y, color, shot),
     ward,
   },
+  impact: { "mind-dart": dartImpact },
   hit: { psychic: psychicHit },
 };

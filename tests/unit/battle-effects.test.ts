@@ -74,6 +74,8 @@ describe("battle effects", () => {
         : false;
       if (!has) missing.push(`${a.id} (${a.kind})`);
       if ((a.cast ?? 0) > 0 && !(a.id in effectKit.windup)) missing.push(`${a.id} wind-up`);
+      // The server sends an impact whenever a projectile ends, hit or miss.
+      if (["projectile", "barrage", "charged"].includes(a.kind) && !(a.id in effectKit.impact)) missing.push(`${a.id} impact`);
     }
     for (const c of Object.values(CHARACTERS))
       if (!(c.element.toLowerCase() in effectKit.hit)) missing.push(`${c.element} hit`);

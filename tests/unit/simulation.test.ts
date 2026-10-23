@@ -235,3 +235,42 @@ describe("authoritative simulation", () => {
     expect(q.hp).toBe(CHARACTERS.cindrake.health - 10);
   });
 });
+
+describe("projectile impact events", () => {
+  /** Fire one projectile from `p` straight at `q` and run until it lands. */
+  const land = (a: Arena, abilityId: string) => {
+    const [p, q] = a.players;
+    const c = CHARACTERS[p.character];
+    const ability = [c.basic, ...c.skills].find((s) => s.id === abilityId)!;
+    q.x = p.x + 160;
+    q.y = p.y;
+    a.projectiles.push({ id: 9001, owner: p.id, x: p.x + 30, y: p.y, vx: ability.speed, vy: 0, remaining: 600, ability, color: c.color });
+    a.events = [];
+    for (let i = 0; i < 20 && a.projectiles.some((pr) => pr.id === 9001); i++) a.tick();
+    return a.events;
+  };
+  it("sends an impact at the contact point when a projectile hits a fighter", () => {
+    const a = duel();
+    const events = land(a, "spark-dart");
+    const impact = events.find((e) => e.kind === "impact" && e.abilityId === "spark-dart");
+    const hit = events.find((e) => e.kind === "hit" && e.abilityId === "spark-dart");
+    expect(hit).toBeTruthy();
+    expect(impact).toBeTruthy();
+    // Touching: fighter edge + projectile edge, within one swept step.
+    expect(Math.abs(impact!.x - a.players[1].x)).toBeLessThan(RULES.radius + CHARACTERS.voltkit.basic.radius + 12);
+  });
+  it("still sends Riptide Wave's impact when it lands as Tidefin's combo", () => {
+    const a = new Arena("ABC123");
+    a.add("one", "One", "tidefin");
+    a.add("two", "Two", "cindrake");
+    a.start();
+    a.phase = "playing";
+    a.deadline = 180;
+    const [p, q] = a.players;
+    a.status(q, "mark", 3, p.id); // Soaked by Whirlpool
+    const events = land(a, "riptide-wave");
+    const hit = events.find((e) => e.kind === "hit" && e.abilityId === "riptide-wave");
+    expect(hit?.combo).toBe("Soaked");
+    expect(events.some((e) => e.kind === "impact" && e.abilityId === "riptide-wave")).toBe(true);
+  });
+});
