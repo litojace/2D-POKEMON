@@ -33,11 +33,12 @@ const give = async (ids: string[]) => {
       [player, id, slot],
     );
 };
+// This metric audit fixes the first three slots; rollout tests cover all six.
 const progress = async () => {
   await db.exec("reset role");
   return (
     await db.query<{ mission_id: string; progress: number; done: boolean }>(
-      "select mission_id,progress,done from public.arena_mission_progress where player_id=$1 and day=public.arena_today() order by slot",
+      "select mission_id,progress,done from public.arena_mission_progress where player_id=$1 and day=public.arena_today() and slot < 3 order by slot",
       [player],
     )
   ).rows;
@@ -329,11 +330,16 @@ it("retains per-slot leftover time on replay and migration reapplication, and re
     "utf8",
   );
   await db.exec(migration.replace(/^begin;|^commit;/gm, ""));
+  const sixMissions = await readFile(
+    "supabase/migrations/026_six_daily_missions.sql",
+    "utf8",
+  );
+  await db.exec(sixMissions.replace(/^begin;|^commit;/gm, ""));
   const remaining = async () => {
     await db.exec("reset role");
     return (
       await db.query<{ time_remainder_ms: number }>(
-        "select time_remainder_ms from public.arena_mission_progress where player_id=$1 and day=public.arena_today() order by slot",
+        "select time_remainder_ms from public.arena_mission_progress where player_id=$1 and day=public.arena_today() and slot < 3 order by slot",
         [player],
       )
     ).rows.map((p) => p.time_remainder_ms);
@@ -429,14 +435,21 @@ it("completes all four weekly goals once from eligible results, including Boss R
   expect(awards.rows[0].n).toBe(4);
 });
 
-it("pays the all-three and seventh-day streak bonuses once and keeps all mission writes private", async () => {
+it("pays the all-six and seventh-day streak bonuses once and keeps all mission writes private", async () => {
   const d = await today();
   for (let n = 1; n <= 6; n++)
     await db.query(
       "insert into public.arena_mission_days(player_id,day,bonus) values($1,$2::date-$3::int,true)",
       [player, d, n],
     );
-  await give(["skills-30", "ults-8", "minutes-30"]);
+  await give([
+    "skills-30",
+    "ults-8",
+    "hard-bots-3",
+    "ults-3",
+    "bot-wins-3",
+    "minutes-30",
+  ]);
   const p = await receipt("expedition", {
     mode: "raid",
     botLevel: null,
@@ -447,6 +460,11 @@ it("pays the all-three and seventh-day streak bonuses once and keeps all mission
   });
   await record(p);
   await record(p);
+  for (let n = 0; n < 3; n++) {
+    const bot = await receipt("match", { activeSeconds: 1 });
+    await record(bot);
+    await record(bot);
+  }
   await db.exec("reset role");
   const coins = await db.query<{ reason: string; amount: number }>(
     "select reason,amount from public.arena_coin_ledger where player_id=$1 and reason in ('missions-bonus','streak') order by reason",

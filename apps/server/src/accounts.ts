@@ -1,7 +1,17 @@
-import { RAID_COSMETICS, RAID_SLOTS, type RaidCosmetic, type RaidProgress, type RaidReceipt } from "../../../packages/shared/src/raid.js";
+import {
+  RAID_COSMETICS,
+  RAID_SLOTS,
+  type RaidCosmetic,
+  type RaidProgress,
+  type RaidReceipt,
+} from "../../../packages/shared/src/raid.js";
 import { z } from "zod";
 import { characterSchema } from "../../../packages/shared/src/index.js";
-import { LOOK_ITEM_BY_ID, type ActivityReceipt } from "../../../packages/shared/src/shop.js";
+import {
+  DAILY_MISSION_COUNT,
+  LOOK_ITEM_BY_ID,
+  type ActivityReceipt,
+} from "../../../packages/shared/src/shop.js";
 import { createClient } from "@supabase/supabase-js";
 import type { Express, Request, Response, NextFunction } from "express";
 import {
@@ -25,7 +35,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "025_mission_completion.sql";
+export const LATEST_MIGRATION = "026_six_daily_missions.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -64,18 +74,34 @@ export function createAccountProvider(): AccountProvider {
   };
   return {
     async recordRaid(receipt) {
-      const serviceKey=process.env.SUPABASE_SERVICE_ROLE_KEY;
-      if(!url||!serviceKey)throw new AccountError(503,'Raid rewards require server storage configuration.');
-      const admin=createClient(url,serviceKey,{auth:{persistSession:false,autoRefreshToken:false}});
-      const result=await admin.rpc('arena_record_raid',{p_receipt:receipt});
-      if(result.error)throw new AccountError(503,'Raid rewards could not be stored.');
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!url || !serviceKey)
+        throw new AccountError(
+          503,
+          "Raid rewards require server storage configuration.",
+        );
+      const admin = createClient(url, serviceKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      const result = await admin.rpc("arena_record_raid", {
+        p_receipt: receipt,
+      });
+      if (result.error)
+        throw new AccountError(503, "Raid rewards could not be stored.");
     },
     async recordActivity(receipt) {
-      const serviceKey=process.env.SUPABASE_SERVICE_ROLE_KEY;
-      if(!url||!serviceKey)throw new AccountError(503,'Coins require server storage configuration.');
-      const admin=createClient(url,serviceKey,{auth:{persistSession:false,autoRefreshToken:false}});
-      const result=await admin.rpc('arena_record_activity',{p:receipt});
-      if(result.error)throw new AccountError(503,'Coins and missions could not be stored.');
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!url || !serviceKey)
+        throw new AccountError(
+          503,
+          "Coins require server storage configuration.",
+        );
+      const admin = createClient(url, serviceKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      const result = await admin.rpc("arena_record_activity", { p: receipt });
+      if (result.error)
+        throw new AccountError(503, "Coins and missions could not be stored.");
     },
     async authenticate(token) {
       const scoped = client(token);
@@ -287,51 +313,160 @@ export function installAccountRoutes(
     onFriendsChanged(`code:${code.toUpperCase()}`);
   }
   // The Shop: balance, catalog ownership, missions and equipped skins.
-  app.get('/api/economy',route(false,async(_req,res,token)=>{
-    res.setHeader('Cache-Control','no-store');res.json(await provider.rpc(token,'arena_economy',{}));
-  }));
-  app.post('/api/shop/buy',route(false,async(req,res,token,account)=>{
-    const data=z.object({item:z.string().min(1).max(64).regex(/^[a-z0-9-]+$/)}).strict().parse(req.body);
-    const economy=await provider.rpc(token,'arena_buy_item',{p_item:data.item});
-    onPlayerChanged(account.id);res.json({ok:true,economy});
-  }));
-  app.post('/api/shop/equip',route(false,async(req,res,token,account)=>{
-    const data=z.object({champion:characterSchema,skin:z.string().min(1).max(64).regex(/^[a-z0-9-]+$/).nullable(),stage:z.number().int().min(1).max(3).default(1)}).strict().parse(req.body);
-    const economy=await provider.rpc(token,'arena_equip_champion_skin',{p_champion:data.champion,p_skin:data.skin,p_stage:data.stage});
-    onPlayerChanged(account.id);res.json({ok:true,economy});
-  }));
-  app.post('/api/missions/reroll',route(false,async(req,res,token)=>{
-    const data=z.object({slot:z.number().int().min(0).max(2)}).strict().parse(req.body);
-    res.json({ok:true,economy:await provider.rpc(token,'arena_reroll_mission',{p_slot:data.slot})});
-  }));
-  app.get('/api/raids',route(false,async(_req,res,token)=>{
-    res.setHeader('Cache-Control','no-store');res.json(await provider.rpc(token,'arena_raid_progress',{}));
-  }));
-  app.post('/api/raids/cosmetic',route(false,async(req,res,token,account)=>{
-    const data=z.object({cosmetic:z.enum(['cragbound','mountain-aura']).nullable()}).strict().parse(req.body);
-    await provider.rpc(token,'arena_equip_raid_cosmetic',{p_cosmetic:data.cosmetic});onPlayerChanged(account.id);res.json({ok:true});
-  }));
+  app.get(
+    "/api/economy",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await provider.rpc(token, "arena_economy", {}));
+    }),
+  );
+  app.post(
+    "/api/shop/buy",
+    route(false, async (req, res, token, account) => {
+      const data = z
+        .object({
+          item: z
+            .string()
+            .min(1)
+            .max(64)
+            .regex(/^[a-z0-9-]+$/),
+        })
+        .strict()
+        .parse(req.body);
+      const economy = await provider.rpc(token, "arena_buy_item", {
+        p_item: data.item,
+      });
+      onPlayerChanged(account.id);
+      res.json({ ok: true, economy });
+    }),
+  );
+  app.post(
+    "/api/shop/equip",
+    route(false, async (req, res, token, account) => {
+      const data = z
+        .object({
+          champion: characterSchema,
+          skin: z
+            .string()
+            .min(1)
+            .max(64)
+            .regex(/^[a-z0-9-]+$/)
+            .nullable(),
+          stage: z.number().int().min(1).max(3).default(1),
+        })
+        .strict()
+        .parse(req.body);
+      const economy = await provider.rpc(token, "arena_equip_champion_skin", {
+        p_champion: data.champion,
+        p_skin: data.skin,
+        p_stage: data.stage,
+      });
+      onPlayerChanged(account.id);
+      res.json({ ok: true, economy });
+    }),
+  );
+  app.post(
+    "/api/missions/reroll",
+    route(false, async (req, res, token) => {
+      const data = z
+        .object({
+          slot: z
+            .number()
+            .int()
+            .min(0)
+            .max(DAILY_MISSION_COUNT - 1),
+        })
+        .strict()
+        .parse(req.body);
+      res.json({
+        ok: true,
+        economy: await provider.rpc(token, "arena_reroll_mission", {
+          p_slot: data.slot,
+        }),
+      });
+    }),
+  );
+  app.get(
+    "/api/raids",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await provider.rpc(token, "arena_raid_progress", {}));
+    }),
+  );
+  app.post(
+    "/api/raids/cosmetic",
+    route(false, async (req, res, token, account) => {
+      const data = z
+        .object({ cosmetic: z.enum(["cragbound", "mountain-aura"]).nullable() })
+        .strict()
+        .parse(req.body);
+      await provider.rpc(token, "arena_equip_raid_cosmetic", {
+        p_cosmetic: data.cosmetic,
+      });
+      onPlayerChanged(account.id);
+      res.json({ ok: true });
+    }),
+  );
   // One item per slot (skin, aura, entrance, frame; victory from migration 009).
-  app.post('/api/raids/equip',route(false,async(req,res,token,account)=>{
-    // Raid rewards and Shop collection pieces share the appearance slots.
-    const slotOf=(id:string)=>RAID_COSMETICS[id as RaidCosmetic]?.slot??LOOK_ITEM_BY_ID[id]?.slot;
-    const data:{slot:typeof RAID_SLOTS[number];item:string|null}=z.object({slot:z.enum(RAID_SLOTS as [typeof RAID_SLOTS[number],...typeof RAID_SLOTS]),item:z.string().max(64).refine((id:string)=>!!slotOf(id),'Unknown item.').nullable()}).strict().parse(req.body);
-    if(data.item&&slotOf(data.item)!==data.slot)throw new AccountError(400,'That item belongs in another slot.');
-    try {
-      await provider.rpc(token,'arena_equip_raid_slot',{p_slot:data.slot,p_item:data.item});
-    } catch (error) {
-      // The request's slot was already checked against the current catalog.
-      // Older raid functions reject owned Shop pieces as if the slot were wrong.
-      if (data.item && LOOK_ITEM_BY_ID[data.item] && error instanceof AccountError && /belongs in another slot|Unknown cosmetic/.test(error.message))
-        throw new AccountError(503, `Shop appearance support needs a database update. Run supabase/migrations/${RAID_FUNCTIONS_MIGRATION} in Supabase's SQL Editor, then try equipping again.`);
-      throw error;
-    }
-    // Read it back: only report success if the database really kept it.
-    const progress=await provider.rpc(token,'arena_raid_progress',{}) as RaidProgress;
-    if(!progress?.loadout||(progress.loadout[data.slot]??null)!==data.item)
-      throw new AccountError(503,`Your appearance couldn't be kept: the database's raid functions are out of date. In Supabase's SQL Editor, run supabase/migrations/${RAID_FUNCTIONS_MIGRATION}, then try again.`);
-    onPlayerChanged(account.id);res.json({ok:true,progress});
-  }));
+  app.post(
+    "/api/raids/equip",
+    route(false, async (req, res, token, account) => {
+      // Raid rewards and Shop collection pieces share the appearance slots.
+      const slotOf = (id: string) =>
+        RAID_COSMETICS[id as RaidCosmetic]?.slot ?? LOOK_ITEM_BY_ID[id]?.slot;
+      const data: { slot: (typeof RAID_SLOTS)[number]; item: string | null } = z
+        .object({
+          slot: z.enum(
+            RAID_SLOTS as [(typeof RAID_SLOTS)[number], ...typeof RAID_SLOTS],
+          ),
+          item: z
+            .string()
+            .max(64)
+            .refine((id: string) => !!slotOf(id), "Unknown item.")
+            .nullable(),
+        })
+        .strict()
+        .parse(req.body);
+      if (data.item && slotOf(data.item) !== data.slot)
+        throw new AccountError(400, "That item belongs in another slot.");
+      try {
+        await provider.rpc(token, "arena_equip_raid_slot", {
+          p_slot: data.slot,
+          p_item: data.item,
+        });
+      } catch (error) {
+        // The request's slot was already checked against the current catalog.
+        // Older raid functions reject owned Shop pieces as if the slot were wrong.
+        if (
+          data.item &&
+          LOOK_ITEM_BY_ID[data.item] &&
+          error instanceof AccountError &&
+          /belongs in another slot|Unknown cosmetic/.test(error.message)
+        )
+          throw new AccountError(
+            503,
+            `Shop appearance support needs a database update. Run supabase/migrations/${RAID_FUNCTIONS_MIGRATION} in Supabase's SQL Editor, then try equipping again.`,
+          );
+        throw error;
+      }
+      // Read it back: only report success if the database really kept it.
+      const progress = (await provider.rpc(
+        token,
+        "arena_raid_progress",
+        {},
+      )) as RaidProgress;
+      if (
+        !progress?.loadout ||
+        (progress.loadout[data.slot] ?? null) !== data.item
+      )
+        throw new AccountError(
+          503,
+          `Your appearance couldn't be kept: the database's raid functions are out of date. In Supabase's SQL Editor, run supabase/migrations/${RAID_FUNCTIONS_MIGRATION}, then try again.`,
+        );
+      onPlayerChanged(account.id);
+      res.json({ ok: true, progress });
+    }),
+  );
   app.get(
     "/api/progress",
     route(false, async (_req, res, token) => {

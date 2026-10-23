@@ -1,5 +1,6 @@
 import {
   COINS,
+  DAILY_MISSION_COUNT,
   MISSION_BY_ID,
   type Economy,
 } from "../../../packages/shared/src/shop";
@@ -31,7 +32,7 @@ function changesRemaining(e: Economy) {
   );
 }
 
-/** The three mission tickets, with progress and remaining free changes. */
+/** The daily mission tickets, with progress and remaining free changes. */
 export function missionsBlock(e: Economy, compact = false) {
   return `<ul class="mission-list">${e.missions
     .map((m) => {
@@ -51,11 +52,11 @@ export function missionsBlock(e: Economy, compact = false) {
     .join("")}</ul>`;
 }
 
-/** Bonuses: all three today (+50), and every 7th day in a row (+300). */
+/** Bonuses: all missions today (+50), and every 7th day in a row (+300). */
 function bonuses(e: Economy) {
   const done = e.missions.filter((m) => m.done).length;
   const all = e.missions.length > 0 && done === e.missions.length;
-  // The streak includes today once all three are done; until then it runs
+  // The streak includes today once all missions are done; until then it runs
   // to yesterday, and a finished week starts the track again.
   const into = all
     ? e.streak % STREAK_DAYS || (e.streak > 0 ? STREAK_DAYS : 0)
@@ -66,15 +67,15 @@ function bonuses(e: Economy) {
       `<li class="${i < into ? "is-lit" : ""}${i === STREAK_DAYS - 1 ? " is-payday" : ""}"><span class="sr-only">Day ${i + 1}${i < into ? ", done" : ""}</span>${i === STREAK_DAYS - 1 ? `<b>+${COINS.streakBonus}</b>` : ""}</li>`,
   ).join("");
   return `<section class="missions-bonuses" aria-label="Bonuses">
-    <div class="missions-bonus${all ? " is-earned" : ""}"><b>All three today</b><span class="mission-reward">${buttonIcon("coin")}<span>+${COINS.allMissionsBonus}</span></span><small>${all ? "Earned. See you tomorrow!" : `${done} of ${e.missions.length} done`}</small></div>
-    <div class="missions-bonus missions-streak"><b>Streak · ${e.streak} day${e.streak === 1 ? "" : "s"}</b><ol class="streak-track" aria-label="${into} of ${STREAK_DAYS} days toward the streak bonus">${days}</ol><small>Finish all three every day: the 7th day pays +${COINS.streakBonus}.</small></div>
+    <div class="missions-bonus${all ? " is-earned" : ""}"><b>All ${e.missions.length} today</b><span class="mission-reward">${buttonIcon("coin")}<span>+${COINS.allMissionsBonus}</span></span><small>${all ? "Earned. See you tomorrow!" : `${done} of ${e.missions.length} done`}</small></div>
+    <div class="missions-bonus missions-streak"><b>Streak · ${e.streak} day${e.streak === 1 ? "" : "s"}</b><ol class="streak-track" aria-label="${into} of ${STREAK_DAYS} days toward the streak bonus">${days}</ol><small>Finish all ${e.missions.length} every day: the 7th day pays +${COINS.streakBonus}.</small></div>
   </section>`;
 }
 
 export function missionsMarkup(e: Economy | null, problem = "") {
   const head = `<header class="missions-head"><h2>${iconLabel("missions", "Daily missions")}</h2>${coinChip(e?.balance, "", e?.unlimitedCoins)}</header>`;
   if (!e)
-    return `<div class="missions-screen">${head}<p class="shop-intro">${problem ? escape(problem) : "Log in to get three daily missions that pay coins."}</p></div>`;
+    return `<div class="missions-screen">${head}<p class="shop-intro">${problem ? escape(problem) : `Log in to get ${DAILY_MISSION_COUNT} daily missions that pay coins.`}</p></div>`;
   const left = e.missions.filter((m) => !m.done).length;
   const together = e.missions.some((m) => MISSION_BY_ID[m.id]?.solo === false);
   const remaining = changesRemaining(e);

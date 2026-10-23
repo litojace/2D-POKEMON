@@ -13411,7 +13411,7 @@ dialog.mission-instructions::backdrop {
   color: var(--text);
 }
 
-/* Bonuses: all three today, and the 7-day streak track. */
+/* Bonuses: all daily missions, and the 7-day streak track. */
 .missions-bonuses {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
@@ -13564,6 +13564,11 @@ dialog.mission-instructions::backdrop {
   }
   .missions-streak {
     grid-template-columns: 1fr;
+  }
+}
+@media (orientation: landscape) and (max-width: 760px) {
+  .missions-screen .mission-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 @media (orientation: landscape) and (max-height: 600px) {

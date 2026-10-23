@@ -579,8 +579,11 @@ it("files a finished match and reports the server's own summary for each player"
   server.broadcast(arena);
   const matchId = arena.snapshot().matchId!;
   expect(matchId).toMatch(/^[0-9a-f-]{36}$/);
-  const calls: { token: string; name: string; args: Record<string, unknown> }[] =
-    [];
+  const calls: {
+    token: string;
+    name: string;
+    args: Record<string, unknown>;
+  }[] = [];
   accounts.provider.rpc = async (token, name, args) => {
     calls.push({ token, name, args });
     return { confirmed: false, records: [], achievements: [] };
@@ -598,7 +601,9 @@ it("files a finished match and reports the server's own summary for each player"
   expect((await post(two.token, { matchId })).status).toBe(200);
   // Someone who wasn't in it, an unknown match, or a forged summary: refused.
   expect((await post(stranger.token, { matchId })).status).toBe(404);
-  expect((await post(one.token, { matchId: "unknown-match" })).status).toBe(404);
+  expect((await post(one.token, { matchId: "unknown-match" })).status).toBe(
+    404,
+  );
   expect(
     (await post(one.token, { matchId, summary: { winnerTeam: 1 } })).status,
   ).toBe(400);
@@ -609,7 +614,8 @@ it("files a finished match and reports the server's own summary for each player"
   ]);
   // Both players submit the very same summary, naming both accounts.
   expect(calls[0].args).toEqual(calls[1].args);
-  const summary = calls[0].args.p_summary as import("../../packages/shared/src/accounts").MatchSummary;
+  const summary = calls[0].args
+    .p_summary as import("../../packages/shared/src/accounts").MatchSummary;
   expect(summary.players.map((p) => p.account)).toEqual([
     one.account.id,
     two.account.id,
@@ -626,12 +632,16 @@ it("runs a free-for-all: starts with three ready, plays on until one is left", a
   expect(host.ok).toBe(true);
   const arena = server.rooms.get(host.code!)!;
   expect(arena.mode).toBe("ffa");
-  expect((await emit(sockets[1], "join", { name: "B", code: host.code })).ok).toBe(true);
+  expect(
+    (await emit(sockets[1], "join", { name: "B", code: host.code })).ok,
+  ).toBe(true);
   // Two players can't start a free-for-all.
   await emit(sockets[0], "ready");
   await emit(sockets[1], "ready");
   expect(arena.phase).toBe("lobby");
-  expect((await emit(sockets[2], "join", { name: "C", code: host.code })).ok).toBe(true);
+  expect(
+    (await emit(sockets[2], "join", { name: "C", code: host.code })).ok,
+  ).toBe(true);
   await emit(sockets[2], "ready");
   expect(arena.phase).toBe("briefing");
   expect(arena.players.map((p) => p.team)).toEqual([0, 1, 2]);
@@ -702,7 +712,12 @@ it("adds live presence to the friends list and pings friends on requests", async
   });
   expect(res.status).toBe(200);
   const body = (await res.json()) as {
-    friends: { name: string; online: boolean; room: string | null; joinable: boolean }[];
+    friends: {
+      name: string;
+      online: boolean;
+      room: string | null;
+      joinable: boolean;
+    }[];
   };
   expect(body.friends[0]).toMatchObject({
     name: "Pal",
@@ -711,7 +726,9 @@ it("adds live presence to the friends list and pings friends on requests", async
     joinable: true,
   });
   expect(body.friends[1]).toMatchObject({ name: "Away", online: false });
-  const pinged = new Promise((resolve) => theirs.once("friends-changed", resolve));
+  const pinged = new Promise((resolve) =>
+    theirs.once("friends-changed", resolve),
+  );
   const sent = await fetch(`${url}/api/friends/request`, {
     method: "POST",
     headers: {
@@ -752,7 +769,6 @@ it("lets a player wear only the mastery flair their records unlock", async () =>
   expect((await emit(socket, "flair", { tier: null })).ok).toBe(true);
 });
 
-
 it("equips every collection item through the shared appearance route and reads all slots back", async () => {
   const player = accounts.add(false);
   const loadout: Record<string, string | null> = {};
@@ -767,7 +783,10 @@ it("equips every collection item through the shared appearance route and reads a
   for (const item of LOOK_ITEMS) {
     const response = await fetch(`${url}/api/raids/equip`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${player.token}`, "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${player.token}`,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({ slot: item.slot, item: item.id }),
     });
     expect(response.status, item.id).toBe(200);
@@ -777,24 +796,67 @@ it("equips every collection item through the shared appearance route and reads a
 
 it("explains stale collection functions and never reports an unsaved appearance as success", async () => {
   const player = accounts.add(false);
-  const post = (slot: string, item: string) => fetch(`${url}/api/raids/equip`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${player.token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ slot, item }),
-  });
-  accounts.provider.rpc = async () => { throw new AccountError(400, "That item belongs in another slot"); };
+  const post = (slot: string, item: string) =>
+    fetch(`${url}/api/raids/equip`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${player.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ slot, item }),
+    });
+  accounts.provider.rpc = async () => {
+    throw new AccountError(400, "That item belongs in another slot");
+  };
   const stale = await post("victory", "galaxy-victory");
   expect(stale.status).toBe(503);
   expect((await stale.json()).error).toContain("018_collection_equipping.sql");
   const wrong = await post("aura", "galaxy-victory");
   expect(wrong.status).toBe(400);
   expect((await wrong.json()).error).toBe("That item belongs in another slot.");
-  accounts.provider.rpc = async (_token, name) => name === "arena_raid_progress" ? { loadout: {} } : null;
+  accounts.provider.rpc = async (_token, name) =>
+    name === "arena_raid_progress" ? { loadout: {} } : null;
   const lost = await post("victory", "galaxy-victory");
   expect(lost.status).toBe(503);
   expect((await lost.json()).error).toContain("018_collection_equipping.sql");
-  accounts.provider.rpc = async () => { throw new AccountError(400, "Cosmetic not earned"); };
+  accounts.provider.rpc = async () => {
+    throw new AccountError(400, "Cosmetic not earned");
+  };
   const unowned = await post("victory", "galaxy-victory");
   expect(unowned.status).toBe(400);
   expect((await unowned.json()).error).toBe("Cosmetic not earned");
+});
+
+it("accepts all six daily mission slots and rejects invalid reroll requests before the RPC", async () => {
+  const player = accounts.add(false);
+  const slots: unknown[] = [];
+  accounts.provider.rpc = async (_token, name, args) => {
+    expect(name).toBe("arena_reroll_mission");
+    slots.push(args.p_slot);
+    return { missions: [], rerollsUsed: 1, rerollLimit: 5 };
+  };
+  const post = (body: unknown, token = player.token) =>
+    fetch(`${url}/api/missions/reroll`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    });
+  for (let slot = 0; slot < 6; slot++)
+    expect((await post({ slot })).status).toBe(200);
+  expect(slots).toEqual([0, 1, 2, 3, 4, 5]);
+  for (const body of [
+    { slot: -1 },
+    { slot: 6 },
+    { slot: 1.5 },
+    { slot: "5" },
+    { slot: null },
+    {},
+    { slot: 0, rerollsUsed: 0 },
+  ])
+    expect((await post(body)).status).toBe(400);
+  expect((await post({ slot: 5 }, "invalid")).status).toBe(401);
+  expect(slots).toHaveLength(6);
 });

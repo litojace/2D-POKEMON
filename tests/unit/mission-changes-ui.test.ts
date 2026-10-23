@@ -91,3 +91,44 @@ describe("daily mission changes", () => {
     }
   });
 });
+
+it("shows six missions, five changes, unique help dialogs and an all-six streak goal", () => {
+  const original = economy();
+  const missions = [
+    ...original.missions,
+    ...original.missions.map((m) => ({
+      ...m,
+      slot: m.slot + 3,
+      done: false,
+      progress: 0,
+    })),
+  ];
+  for (let used = 0; used <= 5; used++) {
+    const e = economy({ missions, rerollLimit: 5, rerollsUsed: used });
+    const html = missionsMarkup(e);
+    expect(html.match(/class="mission tier-/g)).toHaveLength(6);
+    expect(html).toContain(
+      `5 free mission changes per day · ${5 - used} remaining today`,
+    );
+    expect(html).toContain("All 6 today");
+    expect(html).toContain("Finish all 6 every day");
+    expect(html).toContain("1 of 6 done");
+    expect(html.match(/data-mission-reroll=/g)?.length ?? 0).toBe(
+      used === 5 ? 0 : 5,
+    );
+    for (let slot = 0; slot < 6; slot++)
+      expect(
+        html.match(new RegExp(`id="mission-guide-${slot}"`, "g")),
+      ).toHaveLength(1);
+  }
+  const complete = missionsMarkup(
+    economy({
+      missions: missions.map((m) => ({ ...m, done: true, progress: m.target })),
+      streak: 7,
+      rerollLimit: 5,
+    }),
+  );
+  expect(complete).toContain("All done for today");
+  expect(complete).toContain("Earned. See you tomorrow!");
+  expect(complete).not.toContain("data-mission-reroll=");
+});
