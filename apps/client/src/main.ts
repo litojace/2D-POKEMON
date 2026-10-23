@@ -163,6 +163,7 @@ import {
 import { matchReportReplySchema } from "../../../packages/shared/src/accounts";
 import { masteryMatches, setMastery, setWornSkins } from "./fighter-selection";
 import { shareResult } from "./share-card";
+import { openTown } from "./town";
 import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
 const audio = new AudioManager();
 audio.start();
@@ -1105,6 +1106,27 @@ async function startAdventure(mode: string) {
   await request("select", selected);
   if (mode === "expedition-solo") await request("ready");
 }
+let closeTown: (() => void) | undefined;
+/** Elemental Plaza: walk around with everyone else who is online. */
+function enterTown() {
+  if (closeTown || !accountsUI.ensurePlayer()) return;
+  if (myId) return toast("Leave your current room first.");
+  if (!connected) return toast("Waiting for the server connection.");
+  audio.unlock();
+  closeTown = openTown({
+    socket,
+    character: selected,
+    request,
+    reduced: reducedMotion,
+    onClose: (portal) => {
+      closeTown = undefined;
+      if (portal === "raids") void showRaidBestiary();
+      else if (portal === "shop") void accountsUI.showShop();
+      else if (portal === "missions") void accountsUI.showMissions();
+      else if (portal === "boss-rush") void accountsUI.showAdventure("expedition");
+    },
+  });
+}
 async function showRaidBestiary() {
   await accountsUI.showRaidHub(state?.raid?.boss);
 }
@@ -1156,6 +1178,8 @@ function wireRaidLobby() {
   if (bestiary) bestiary.onclick = () => void showRaidBestiary();
   const shop = document.getElementById("shop-open");
   if (shop) shop.onclick = () => void accountsUI.showShop();
+  const townButton = document.getElementById("town-open");
+  if (townButton) townButton.onclick = () => enterTown();
   const wardrobe = document.getElementById("wardrobe-open");
   if (wardrobe) wardrobe.onclick = () => void accountsUI.showWardrobe();
   const missions = document.getElementById("home-missions");

@@ -36,6 +36,8 @@ export function describeActivity(
   switch (p.activity) {
     case "menu":
       return "Browsing menus";
+    case "town":
+      return "Walking around town";
     case "practice":
       return `Solo practice${as}`;
     case "lobby":
@@ -52,6 +54,7 @@ const LABELS: Record<OnlinePlayer["activity"], string> = {
   match: "In match",
   practice: "Practice",
   lobby: "Lobby",
+  town: "In town",
   menu: "Menu",
 };
 /** Body of the admin "Online" tab. */
@@ -60,7 +63,7 @@ export function renderOnline(
   fighterName: (id: string) => string,
   now = Date.now(),
 ) {
-  const counts = { match: 0, practice: 0, lobby: 0, menu: 0 };
+  const counts = { match: 0, practice: 0, lobby: 0, town: 0, menu: 0 };
   for (const p of list.players) counts[p.activity]++;
   const summary = `<div class="online-summary"><span><b>${list.players.length}</b> signed in</span>${(
     Object.keys(counts) as OnlinePlayer["activity"][]

@@ -83,7 +83,7 @@ export interface ReportList {
   open: number;
 }
 /** What a signed-in, connected player is doing right now (admin "Online" tab). */
-export type OnlineActivity = "menu" | "lobby" | "match" | "practice";
+export type OnlineActivity = "menu" | "lobby" | "match" | "practice" | "town";
 export interface OnlinePlayer {
   id: string;
   displayName: string;
@@ -248,7 +248,7 @@ export const friendSchema = z.object({
   title: z.string().nullable().optional(),
   titleColor: z.string().nullable().optional(),
   online: z.boolean().optional(),
-  activity: z.enum(["menu", "lobby", "match", "practice"]).nullable().optional(),
+  activity: z.enum(["menu", "lobby", "match", "practice", "town"]).nullable().optional(),
   room: z.string().nullable().optional(),
   joinable: z.boolean().optional(),
   fighter: z.string().nullable().optional(),

@@ -27,6 +27,8 @@ export function friendStatus(f: Friend) {
       return f.joinable ? "In a lobby · room open" : "In a lobby";
     case "practice":
       return "Practising";
+    case "town":
+      return "In town";
     default:
       return "Online";
   }

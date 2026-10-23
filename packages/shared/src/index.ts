@@ -1444,6 +1444,9 @@ export interface Reply {
   token?: string;
   id?: string;
   code?: string;
+  /** Town joins: which town copy, and your walker id in it. */
+  town?: number;
+  me?: number;
 }
 export const normalize = (x: number, y: number): Vec => {
   const length = Math.hypot(x, y);

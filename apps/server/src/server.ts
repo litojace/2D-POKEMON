@@ -27,6 +27,9 @@ import {
   type Reply,
 } from "../../../packages/shared/src/index.js";
 import { Arena } from "./simulation.js";
+import { TownWorld } from "./town.js";
+import { TOWN } from "../../../packages/shared/src/town.js";
+import { playerLevel } from "../../../packages/shared/src/journey.js";
 import { MatchLedger, matchSummary } from "./match-summary.js";
 import {
   BotBrain,
@@ -118,6 +121,8 @@ export function createArenaServer(
   /** Which account plays each fighter (kept after a player leaves). */
   const fighterAccounts = new WeakMap<Arena, Map<string, string>>();
   const ledger = new MatchLedger();
+  /** Elemental Plaza: everyone walking around the shared town. */
+  const town = new TownWorld();
   /** Friends watching a room: socket id → room code and display name. */
   const watchers = new Map<string, { code: string; name: string }>();
   const MAX_WATCHERS = 6;
@@ -238,7 +243,9 @@ export function createArenaServer(
         ? { name: others.map((o) => o.name).join(" & ") }
         : undefined;
       const activity: OnlinePlayer["activity"] = !arena
-        ? "menu"
+        ? town.townOf(socket.id) !== undefined
+          ? "town"
+          : "menu"
         : arena.practice
           ? "practice"
           : arena.phase === "lobby"
@@ -272,7 +279,7 @@ export function createArenaServer(
         byAccount.set(account.id, merged);
       }
     }
-    const order = { match: 0, practice: 1, lobby: 2, menu: 3 };
+    const order = { match: 0, practice: 1, lobby: 2, town: 3, menu: 4 };
     const players = [...byAccount.values()].sort(
       (a, b) =>
         order[a.activity] - order[b.activity] ||
@@ -1231,7 +1238,65 @@ export function createArenaServer(
       }
       reply(cb, { ok: true });
     });
+    // ───────────── Town ─────────────
+    // Starting or joining a room takes you out of town.
+    socket.use(([event]: unknown[], next: (error?: Error) => void) => {
+      if (["create", "join", "practice", "bot-match", "resume", "watch"].includes(String(event)) && town.townOf(socket.id) !== undefined) {
+        town.leave(socket.id);
+        socket.emit("town-closed");
+      }
+      next();
+    });
+    socket.on("town-join", (data: unknown, cb: unknown) => {
+      if (!allowed(10) || !requirePlayer(cb)) return;
+      if (getSession(socket.id)) return fail(cb, "Leave your room before visiting the town.");
+      const parsed = characterSchema.safeParse((data as { character?: unknown } | null)?.character);
+      if (!parsed.success) return fail(cb, "Choose a fighter first.");
+      const me = account()!;
+      const walker = town.join(socket.id, me.id, {
+        name: me.displayName,
+        title: me.title ?? null,
+        titleColor: me.titleColor ?? null,
+        level: null,
+        character: parsed.data,
+        skin: null,
+      });
+      reply(cb, { ok: true, town: walker.town, me: walker.profile.id });
+      // Level and equipped skin need account lookups; they follow shortly.
+      const token = socket.data.accessToken as string | undefined;
+      if (token) {
+        void accounts
+          .rpc(token, "arena_journey", {})
+          .then((j) => {
+            const xp = Number((j as { xp?: unknown } | null)?.xp);
+            if (Number.isFinite(xp)) town.updateProfile(socket.id, { level: playerLevel(xp).level });
+          })
+          .catch(() => undefined);
+        void accounts
+          .rpc(token, "arena_my_looks", {})
+          .then((looks) => {
+            const look = (looks as Record<string, { skin: string; stage?: number }> | null)?.[parsed.data];
+            if (look?.skin) town.updateProfile(socket.id, { skin: { skin: look.skin, stage: look.stage } });
+          })
+          .catch(() => undefined);
+      }
+    });
+    socket.on("town-input", (data: unknown) => {
+      if (!allowed(40)) return;
+      const d = data as { dx?: unknown; dy?: unknown } | null;
+      town.input(socket.id, d?.dx, d?.dy);
+    });
+    socket.on("town-emote", (data: unknown, cb: unknown) => {
+      if (!allowed(10)) return;
+      const ok = town.emote(socket.id, (data as { emote?: unknown } | null)?.emote, Date.now());
+      reply(cb, ok ? { ok: true } : { ok: false, error: "Wait a moment between emotes." });
+    });
+    socket.on("town-leave", (_data: unknown, cb: unknown) => {
+      town.leave(socket.id);
+      reply(cb, { ok: true });
+    });
     socket.on("disconnect", () => {
+      town.leave(socket.id);
       stopWatching();
       const s = getSession(socket.id);
       if (s) detach(s);
@@ -1263,6 +1328,30 @@ export function createArenaServer(
     options.autoTick === false
       ? undefined
       : setInterval(step, 1000 / RULES.tick);
+  /** Move everyone in town and send each player what is near them. */
+  let townTicks = 0;
+  const townStep = () => {
+    townTicks++;
+    town.step(1 / TOWN.tick, Date.now());
+    if (townTicks % Math.round(TOWN.tick / TOWN.send) !== 0) return;
+    for (const key of town.keys()) {
+      const socket = io.sockets.sockets.get(key);
+      if (!socket) {
+        town.leave(key);
+        continue;
+      }
+      const view = town.view(key);
+      if (!view) continue;
+      if (view.profiles.length) socket.emit("town-profiles", view.profiles);
+      socket.emit("town-state", view.state);
+    }
+  };
+  const townTimer =
+    options.autoTick === false
+      ? undefined
+      : setInterval(() => {
+          if (town.size) townStep();
+        }, 1000 / TOWN.tick);
   const accountTimer =
     options.autoTick === false
       ? undefined
@@ -1279,8 +1368,11 @@ export function createArenaServer(
     ledger,
     step,
     broadcast,
+    town,
+    townStep,
     close: async () => {
       if (timer) clearInterval(timer);
+      if (townTimer) clearInterval(townTimer);
       if (accountTimer) clearInterval(accountTimer);
       await new Promise<void>((resolve) => io.close(() => resolve()));
     },

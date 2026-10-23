@@ -142,6 +142,12 @@ export class FighterRig {
     this.effects.setVisible(visible);
     this.under.setVisible(visible);
   }
+  /** Sort the fighter (with its effects and ground layer) among other objects. */
+  setDepth(depth: number) {
+    this.under.setDepth(depth - 0.1);
+    this.root.setDepth(depth);
+    this.effects.setDepth(depth + 0.1);
+  }
   destroy() {
     this.root.destroy(true);
     this.effects.destroy();
