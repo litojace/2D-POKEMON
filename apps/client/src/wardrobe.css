@@ -434,8 +434,26 @@ dialog.wardrobe-dialog > .dialog-content {
     padding: 6px 12px;
   }
   .wardrobe-fighter-picker {
-    padding: 0 0 6px;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    margin-top: -6px;
+    padding: 6px 0;
     gap: 6px;
+    background: var(--bg-0);
+    box-shadow: 0 -12px 0 12px var(--bg-0);
+  }
+  .wardrobe-fighter-picker select {
+    width: 100%;
+    height: 44px;
+    padding: 8px 4px;
+    appearance: none;
+    background-image: none;
+    text-align: center;
+    text-align-last: center;
+    font-size: 14px;
   }
   .wardrobe-fighter-picker label {
     position: absolute;
@@ -514,10 +532,12 @@ dialog.wardrobe-dialog > .dialog-content {
     height: 30px;
   }
   .wardrobe-inventory {
-    padding: 8px 12px;
+    padding: 6px 12px;
   }
   .wardrobe-filters {
-    padding: 0 0 6px;
+    margin-top: -6px;
+    padding: 6px 0;
+    box-shadow: 0 -12px 0 12px var(--bg-0);
   }
   .wardrobe-inventory-heading {
     margin: 2px 0 8px;
@@ -554,6 +574,19 @@ dialog.wardrobe-dialog > .dialog-content {
     grid-template-columns: minmax(0, 1fr) auto;
     padding: 8px 12px;
     gap: 4px 12px;
+  }
+  .wardrobe-footer:not([data-selection="true"]) {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 6px 12px;
+  }
+  .wardrobe-footer:not([data-selection="true"])
+    > :is(.wardrobe-selection, .wardrobe-save) {
+    display: none;
+  }
+  .wardrobe-footer:not([data-selection="true"]):not(
+      :has(.wardrobe-status:not(:empty))
+    ) {
+    display: none;
   }
   .wardrobe-selection > b {
     font-size: 20px;

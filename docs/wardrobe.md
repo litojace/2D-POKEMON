@@ -21,6 +21,11 @@ keyboard focus, controller confirmation/scrolling/Back, safe areas and reduced
 motion are supported. Browsing changes only the preview and selected-card state;
 the inventory stays mounted and only one live preview renderer runs.
 
+On landscape phones, the fighter switcher and category strip stay pinned while
+their columns scroll. The fighter's name is centered between equal-width arrows.
+The default outfit summary is hidden; selecting an item reveals its save controls,
+and save feedback uses a small status bar instead of restoring the outfit summary.
+
 ## Shop colour correction
 
 Collection colour thumbnails previously used hue-rotation CSS filters while the
