@@ -1243,7 +1243,8 @@ footer > span:last-child {
   font-size: 12px;
   pointer-events: none;
   transition: 0.2s;
-  z-index: 50;
+  /* Above the town (60) and its panels (81). */
+  z-index: 95;
   max-width: 90vw;
 }
 #toast.show {
@@ -21256,6 +21257,8 @@ body.battle-active:not(.touch-mode) #battle.desktop-hud-outside .enemy-bearing {
 .town-layer {
   position: fixed;
   inset: 0;
+  /* Under the top bar (account, coins, settings, menu stay reachable). */
+  top: var(--home-top, 0px);
   z-index: 60;
   background: #2f4224;
   color: #f4efe2;
@@ -21296,9 +21299,6 @@ body.battle-active:not(.touch-mode) #battle.desktop-hud-outside .enemy-bearing {
 .town-place small {
   color: #c9d2e3;
   font-size: 12px;
-}
-.town-leave {
-  min-height: 40px;
 }
 .town-prompt {
   position: absolute;
@@ -21405,11 +21405,6 @@ body.battle-active:not(.touch-mode) #battle.desktop-hud-outside .enemy-bearing {
   .town-place small {
     font-size: 11px;
   }
-  .town-leave {
-    min-height: 34px;
-    padding: 4px 12px;
-    font-size: 13px;
-  }
   .town-emotes {
     right: max(12px, env(safe-area-inset-right));
     bottom: max(8px, env(safe-area-inset-bottom));
@@ -21425,4 +21420,198 @@ body.battle-active:not(.touch-mode) #battle.desktop-hud-outside .enemy-bearing {
     bottom: calc(60px + env(safe-area-inset-bottom));
     padding: 6px 14px;
   }
+}
+
+/* The town replaces the home scene: hide (and so pause) what it covers. */
+body.town-active .home-rail,
+body.town-active .home-scene {
+  display: none;
+}
+.town-actions {
+  position: absolute;
+  left: max(16px, env(safe-area-inset-left));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 16px;
+  background: rgba(16, 19, 24, 0.72);
+}
+.town-actions button {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 2px;
+  min-width: 62px;
+  height: 56px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f4efe2;
+  font: 700 10px/1 "DM Sans", sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.town-actions button:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+.town-actions button svg {
+  width: 20px;
+  height: 20px;
+}
+.town-actions .town-play {
+  grid-auto-flow: column;
+  gap: 8px;
+  min-width: 120px;
+  margin-left: 4px;
+  font: 800 20px/1 "Barlow Condensed", sans-serif;
+  letter-spacing: 0.08em;
+  background: var(--stadium-red, #e8463a);
+  color: #fff;
+}
+.town-actions .town-play:hover {
+  filter: brightness(1.1);
+  background: var(--stadium-red, #e8463a);
+}
+/* Start a room, inside the Play panel. */
+.play-start {
+  margin-bottom: 20px;
+}
+.play-start .mode-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 10px 0 10px;
+}
+.play-start .mode-level {
+  min-height: 52px;
+  text-align: left;
+}
+
+/* Welcome gate: sign up or log in to play. */
+.welcome-gate {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: calc(100dvh - var(--home-top, 72px));
+  padding: 24px max(16px, env(safe-area-inset-right)) 24px max(16px, env(safe-area-inset-left));
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 120%, rgba(181, 155, 255, 0.28), transparent 60%),
+    radial-gradient(ellipse at 50% 0%, #1d3157, #0a1427 75%);
+}
+.gate-lineup {
+  position: absolute;
+  inset: auto 0 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 0;
+  height: 42%;
+  opacity: 0.9;
+  pointer-events: none;
+}
+.gate-fighter {
+  width: min(13vw, 150px);
+  margin: 0 -1.2vw;
+  filter: drop-shadow(0 0 24px color-mix(in srgb, var(--c) 45%, transparent));
+  animation: gate-bob 3.2s ease-in-out infinite;
+  animation-delay: calc(var(--i) * -0.4s);
+}
+.gate-fighter svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+@keyframes gate-bob {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gate-fighter {
+    animation: none;
+  }
+}
+.gate-card {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  max-width: 640px;
+  margin-bottom: 18vh;
+  padding: 28px 32px;
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.12));
+  border-radius: 20px;
+  background: rgba(10, 16, 32, 0.78);
+  backdrop-filter: blur(8px);
+  text-align: center;
+}
+.gate-card h1 {
+  margin: 0;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: clamp(36px, 6vw, 64px);
+  line-height: 0.95;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.gate-copy,
+.gate-status {
+  margin: 0;
+  color: var(--text-dim, #c9d2e3);
+}
+.gate-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+.gate-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 0 22px;
+}
+.gate-note {
+  color: var(--text-dim, #c9d2e3);
+  font-size: 12px;
+}
+@media (max-height: 500px) {
+  .gate-card {
+    gap: 8px;
+    margin-bottom: 30vh;
+    padding: 16px 22px;
+  }
+  .gate-lineup {
+    height: 38%;
+  }
+}
+@media (max-height: 500px) {
+  .town-actions {
+    left: max(12px, env(safe-area-inset-left));
+    bottom: max(8px, env(safe-area-inset-bottom));
+    gap: 4px;
+    padding: 4px;
+  }
+  .town-actions button {
+    min-width: 50px;
+    height: 44px;
+    padding: 2px 6px;
+    font-size: 8px;
+  }
+  .town-actions button svg {
+    width: 17px;
+    height: 17px;
+  }
+  .town-actions .town-play {
+    min-width: 84px;
+    font-size: 16px;
+  }
+}
+body.gate-active footer {
+  display: none;
 }

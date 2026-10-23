@@ -132,6 +132,8 @@ type Hooks = {
 };
 export class AccountUI {
   account: Account | null = null;
+  /** The saved session has been checked (and the profile loaded, or failed). */
+  checked = false;
   /** Equipped raid look (undefined until loaded). */
   raidLook: RaidLoadout | undefined = undefined;
   /** Coins, owned items, missions (undefined until loaded or before migration 010). */
@@ -158,6 +160,7 @@ export class AccountUI {
   constructor(private hooks: Hooks) {
     this.renderNav();
     if (!this.client) {
+      this.checked = true;
       hooks.onSession(null);
       return;
     }
@@ -237,6 +240,14 @@ export class AccountUI {
             ? error.message
             : "Unable to load your profile.",
         );
+      }
+    }
+    this.checked = true;
+    if (this.account) {
+      try {
+        localStorage.setItem("arena-has-account", "yes");
+      } catch {
+        /* optional */
       }
     }
     this.renderNav();

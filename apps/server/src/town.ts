@@ -48,6 +48,9 @@ export class TownWorld {
   townOf(key: string) {
     return this.walkers.get(key)?.town;
   }
+  profileOf(key: string) {
+    return this.walkers.get(key)?.profile;
+  }
   keys() {
     return [...this.walkers.keys()];
   }

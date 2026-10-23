@@ -6,6 +6,9 @@ import {
   syncHomeScene,
   lastHomeFighter,
   rememberHomeFighter,
+  startRoomSection,
+  welcomeGate,
+  type GateStatus,
 } from "./home-screen";
 import { setupHomeNavigation } from "./home-navigation";
 import { watchHomePreview } from "./home-preview";
@@ -1106,24 +1109,115 @@ async function startAdventure(mode: string) {
   await request("select", selected);
   if (mode === "expedition-solo") await request("ready");
 }
-let closeTown: (() => void) | undefined;
-/** Elemental Plaza: walk around with everyone else who is online. */
-function enterTown() {
-  if (closeTown || !accountsUI.ensurePlayer()) return;
-  if (myId) return toast("Leave your current room first.");
-  if (!connected) return toast("Waiting for the server connection.");
-  audio.unlock();
-  closeTown = openTown({
+let gateAsked = false;
+/** Signed out (or still checking): the front door instead of the game. */
+function renderGate() {
+  syncTown();
+  const status: GateStatus = !accountsUI?.checked
+    ? "loading"
+    : accountsUI.session
+      ? "error"
+      : !accountsUI.client
+        ? "unavailable"
+        : "signed-out";
+  const invite = pendingInvite();
+  const key = `gate:${status}:${invite ?? ""}`;
+  if (screen === key) return;
+  screen = key;
+  audio.setTheme("lobby");
+  pwa.sync();
+  touch.reset();
+  document.body.classList.remove("battle-active", "battle-raid", "lobby-active");
+  document.body.classList.add("home-active", "gate-active");
+  $("battle").hidden = true;
+  syncBattleLoop();
+  $("menu").hidden = false;
+  $("menu").innerHTML = welcomeGate(status, invite);
+  const signup = document.getElementById("gate-signup"),
+    login = document.getElementById("gate-login"),
+    retry = document.getElementById("gate-retry");
+  if (signup) signup.onclick = () => accountsUI.showAuth("signup");
+  if (login) login.onclick = () => accountsUI.showAuth("login");
+  if (retry) retry.onclick = () => void accountsUI.refresh();
+  // New players see the sign-up panel straight away; returning ones, log in.
+  if (status === "signed-out" && !gateAsked) {
+    gateAsked = true;
+    let returning = false;
+    try {
+      returning = localStorage.getItem("arena-has-account") === "yes";
+    } catch {
+      /* optional */
+    }
+    accountsUI.showAuth(returning ? "login" : "signup");
+  }
+}
+
+let town: ReturnType<typeof openTown> | undefined;
+let townLook = "";
+let townRetry: ReturnType<typeof setTimeout> | undefined;
+let wantedTownClosed = false;
+/**
+ * The town is the hub: open whenever a signed-in, connected player is not in
+ * a room (and not about to resume or join one); closed otherwise.
+ */
+function syncTown() {
+  const want =
+    !!accountsUI?.account &&
+    connected &&
+    !myId &&
+    !watching &&
+    !state &&
+    !sessionStorage.getItem("arena-token") &&
+    !pendingInvite();
+  if (!want) {
+    if (town) {
+      wantedTownClosed = true;
+      town.close();
+      wantedTownClosed = false;
+    }
+    return;
+  }
+  // Same fighter and skin as the town shows: nothing to tell the server.
+  const look = `${selected}:${JSON.stringify(accountsUI.economy?.looks[selected] ?? null)}`;
+  if (town) {
+    if (look !== townLook) town.look(selected);
+    townLook = look;
+    return;
+  }
+  if (townRetry) return;
+  townLook = look;
+  town = openTown({
     socket,
     character: selected,
     request,
     reduced: reducedMotion,
-    onClose: (portal) => {
-      closeTown = undefined;
+    onPortal: (portal) => {
       if (portal === "raids") void showRaidBestiary();
       else if (portal === "shop") void accountsUI.showShop();
       else if (portal === "missions") void accountsUI.showMissions();
       else if (portal === "boss-rush") void accountsUI.showAdventure("expedition");
+      else homeNavigation.open("play");
+    },
+    onAction: (action) => {
+      if (action === "play") homeNavigation.open("play");
+      else if (action === "fighters") homeNavigation.open("fighters");
+      else if (action === "wardrobe") void accountsUI.showWardrobe();
+      else if (action === "friends") void accountsUI.showFriends();
+      else if (action === "adventure") void accountsUI.showAdventure();
+      else if (action === "raids") void showRaidBestiary();
+    },
+    onClose: (failed) => {
+      town = undefined;
+      if (wantedTownClosed) return;
+      // Closed by the server or a dropped connection: back in when possible
+      // (and not in a tight loop if the server keeps refusing).
+      townRetry = setTimeout(
+        () => {
+          townRetry = undefined;
+          syncTown();
+        },
+        failed ? 15000 : 1500,
+      );
     },
   });
 }
@@ -1178,8 +1272,6 @@ function wireRaidLobby() {
   if (bestiary) bestiary.onclick = () => void showRaidBestiary();
   const shop = document.getElementById("shop-open");
   if (shop) shop.onclick = () => void accountsUI.showShop();
-  const townButton = document.getElementById("town-open");
-  if (townButton) townButton.onclick = () => enterTown();
   const wardrobe = document.getElementById("wardrobe-open");
   if (wardrobe) wardrobe.onclick = () => void accountsUI.showWardrobe();
   const missions = document.getElementById("home-missions");
@@ -1292,6 +1384,10 @@ function renderMenu(revealSelection = false) {
   const p = state?.players.find((p) => p.id === myId);
   const isRoom = !!p;
   const watchingRoom = !isRoom && !!watching && state?.code === watching;
+  // Everyone plays from the shared town, so the game needs an account.
+  if (!isRoom && !watchingRoom && !accountsUI?.account) return renderGate();
+  document.body.classList.remove("gate-active");
+  syncTown();
   const raidChallenge = state?.raid
     ? `${state.raid.boss}/${state.raid.peril}/${state.raid.daily}`
     : "";
@@ -1347,7 +1443,7 @@ function renderMenu(revealSelection = false) {
     ? roomPanel(p!)
     : watchingRoom
       ? watchPanel()
-      : `<label for="name">Your display name</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><div class="home-play-options"><section><h3>Join your crew</h3><label for="code">Room code</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary btn-secondary">${iconLabel("enter", "Join")}</button></div><button id="watch" class="quiet full">${iconLabel("watch", "Watch this room instead")}</button></section><section><h3>Sharpen your skills</h3><div class="bot-picker" role="radiogroup" aria-label="Bot difficulty">${BOT_LEVELS.map(([id, label, hint]) => `<button type="button" role="radio" class="bot-level${botLevel === id ? " active" : ""}" data-bot="${id}" aria-checked="${botLevel === id}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button class="secondary btn-secondary full" id="bot-match">${iconLabel("bot", "Battle an AI bot")}</button>${accountsUI?.account ? '<button class="quiet full" id="practice">' + iconLabel("target", "Solo test mode") + "</button>" : ""}</section></div><small class="room-note">Free to play · Login required<br>Keyboard + mouse · Controller · Touch</small>`;
+      : `${startRoomSection(roomMode)}<label for="name">Your display name</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><div class="home-play-options"><section><h3>Join your crew</h3><label for="code">Room code</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary btn-secondary">${iconLabel("enter", "Join")}</button></div><button id="watch" class="quiet full">${iconLabel("watch", "Watch this room instead")}</button></section><section><h3>Sharpen your skills</h3><div class="bot-picker" role="radiogroup" aria-label="Bot difficulty">${BOT_LEVELS.map(([id, label, hint]) => `<button type="button" role="radio" class="bot-level${botLevel === id ? " active" : ""}" data-bot="${id}" aria-checked="${botLevel === id}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button class="secondary btn-secondary full" id="bot-match">${iconLabel("bot", "Battle an AI bot")}</button>${accountsUI?.account ? '<button class="quiet full" id="practice">' + iconLabel("target", "Solo test mode") + "</button>" : ""}</section></div><small class="room-note">Free to play · Login required<br>Keyboard + mouse · Controller · Touch</small>`;
   // A newly equipped Shop skin redraws the roster cards.
   const wornKey = JSON.stringify(accountsUI?.economy?.looks ?? {});
   const wornChanged = wornKey !== lastWornKey;
@@ -1404,7 +1500,7 @@ function renderMenu(revealSelection = false) {
       audio.unlock();
       const name = $<HTMLInputElement>("name").value.trim();
       localStorage.setItem("arena-name", name);
-      const button = $(event);
+      const button = $(event === "create" ? "play-create" : event);
       (button as HTMLButtonElement).disabled = true;
       const reply = await request(
         event,
@@ -1422,6 +1518,11 @@ function renderMenu(revealSelection = false) {
     // Boss Raid goes through the Raid Hub, where the boss is chosen.
     $("create").onclick = () =>
       roomMode === "raid" ? void accountsUI.showRaidHub() : void play("create");
+    $("play-create").onclick = () => {
+      homeNavigation.close();
+      if (roomMode === "raid") void accountsUI.showRaidHub();
+      else void play("create");
+    };
     $("join").onclick = () => void play("join");
     $("watch").onclick = () =>
       void watchRoom($<HTMLInputElement>("code").value);
@@ -1540,7 +1641,8 @@ async function leave() {
   menuOpen = false;
 }
 function renderBattle() {
-  document.body.classList.remove("home-active", "lobby-active");
+  document.body.classList.remove("home-active", "lobby-active", "gate-active");
+  syncTown();
   if (state) audio.setTheme(battleMusic(state, myId), state.raid?.phase ?? 1);
   if (!document.body.classList.contains("battle-active")) {
     document.body.classList.add("battle-active");
@@ -2015,6 +2117,7 @@ socket.on("connect", () => {
     screen = "";
     renderMenu();
   }
+  syncTown();
   $("connection").textContent = "SERVER CONNECTED";
   $("connection").classList.add("online");
   const token = sessionStorage.getItem("arena-token");

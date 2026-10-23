@@ -15,6 +15,7 @@ import {
 import { FighterRig } from "./animation/rig";
 import { rigAssets } from "./animation/assets";
 import { actionFor, controlPrefs } from "./controls";
+import { menuIcon } from "./menu-icons";
 import { drawCrystal, drawPortal, drawProp, paintTownFloor } from "./town-art";
 
 /**
@@ -27,9 +28,21 @@ export interface TownOptions {
   character: CharacterId;
   request: (event: string, data?: unknown) => Promise<Reply>;
   reduced: boolean;
-  /** Called after the town has closed (for any reason). */
-  onClose: (portal?: TownPortal["id"]) => void;
+  /** Walked into a portal and pressed enter (the town stays open behind it). */
+  onPortal: (portal: TownPortal["id"]) => void;
+  /** A button on the town's action bar. */
+  onAction: (action: TownAction) => void;
+  /** Called after the town has closed (`failed`: the server refused the join). */
+  onClose: (failed: boolean) => void;
 }
+export type TownAction = "play" | "fighters" | "wardrobe" | "friends" | "adventure" | "raids";
+const ACTIONS: [TownAction, string, string][] = [
+  ["fighters", "Fighters", "user"],
+  ["wardrobe", "Wardrobe", "wardrobe"],
+  ["raids", "Raids", "bestiary"],
+  ["adventure", "Journey", "sparkle"],
+  ["friends", "Friends", "friends"],
+];
 const EMOTE_ICON: Record<TownEmote, string> = { wave: "👋", heart: "❤️", laugh: "😂", gg: "GG", fire: "🔥" };
 const RIG_SCALE = 0.62;
 /** Rig pixels from the body pivot to the feet (see FighterRig). */
@@ -64,14 +77,17 @@ export function openTown(options: TownOptions) {
   layer.innerHTML = `<div class="town-canvas" id="town-canvas"></div>
 <header class="town-hud">
   <div class="town-place"><b>Elemental Plaza</b><small id="town-pop">Joining…</small></div>
-  <button type="button" class="town-leave btn-secondary" id="town-leave">Leave town</button>
 </header>
+<nav class="town-actions" aria-label="Main menu">${ACTIONS.map(
+    ([id, label, icon]) => `<button type="button" data-action="${id}" title="${label}">${menuIcon(icon as Parameters<typeof menuIcon>[0])}<span>${label}</span></button>`,
+  ).join("")}<button type="button" class="town-play primary btn-primary" data-action="play">${menuIcon("battle")}<span>Play</span></button></nav>
 <div class="town-prompt" id="town-prompt" hidden></div>
 <div class="town-emotes" role="group" aria-label="Emotes">${TOWN_EMOTES.map(
     (e) => `<button type="button" data-emote="${e}" aria-label="${e}" title="${e}">${EMOTE_ICON[e]}</button>`,
   ).join("")}</div>
 <div class="town-stick" id="town-stick" aria-hidden="true"><span></span></div>`;
   document.body.append(layer);
+  document.body.classList.add("town-active");
   const $ = <T extends HTMLElement>(id: string) => layer.querySelector<T>(`#${id}`)!;
 
   const profiles = new Map<number, TownProfile>();
@@ -102,10 +118,16 @@ export function openTown(options: TownOptions) {
     return len ? { x: x / len, y: y / len } : { x: 0, y: 0 };
   };
   const typing = () => ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName ?? "");
+  /** A panel or dialog is open over the town: it gets the keys, you stand still. */
+  const covered = () =>
+    !!document.querySelector("dialog[open], .home-drawer:not([hidden]), .header-menu[open]");
   const keydown = (e: KeyboardEvent) => {
-    if (typing()) return;
-    if (e.code === "Escape") return void close();
-    if ((e.code === "KeyE" || e.code === "Enter") && nearPortal) return void close(nearPortal.id);
+    if (typing() || covered()) return;
+    if ((e.code === "KeyE" || e.code === "Enter") && nearPortal) {
+      e.preventDefault();
+      held.clear();
+      return void options.onPortal(nearPortal.id);
+    }
     const digit = Number(e.key);
     if (digit >= 1 && digit <= TOWN_EMOTES.length) void emote(TOWN_EMOTES[digit - 1]);
     if (actionFor(controlPrefs().bindings, e.code)) {
@@ -190,9 +212,14 @@ export function openTown(options: TownOptions) {
   layer.querySelectorAll<HTMLButtonElement>("[data-emote]").forEach((b) => {
     b.onclick = () => void emote(b.dataset.emote as TownEmote);
   });
-  $("town-leave").onclick = () => close();
+  layer.querySelectorAll<HTMLButtonElement>("[data-action]").forEach((b) => {
+    b.onclick = () => {
+      held.clear();
+      options.onAction(b.dataset.action as TownAction);
+    };
+  });
   const prompt = $("town-prompt");
-  prompt.onclick = () => nearPortal && close(nearPortal.id);
+  prompt.onclick = () => nearPortal && options.onPortal(nearPortal.id);
 
   // --- Server --------------------------------------------------------------
   const onState = (s: TownState) => {
@@ -415,6 +442,11 @@ export function openTown(options: TownOptions) {
       const mine = bodies.get(me);
       // Your input: keys, stick or a clicked spot.
       let dir = stickInput();
+      if (covered()) {
+        held.clear();
+        walkTo = undefined;
+        dir = { x: 0, y: 0 };
+      }
       if (dir.x || dir.y) walkTo = undefined;
       else if (walkTo && mine) {
         const dx = walkTo.x - mine.x,
@@ -521,11 +553,11 @@ export function openTown(options: TownOptions) {
   window.addEventListener("resize", resize);
 
   void request("town-join", { character: options.character }).then((reply) => {
-    if (!reply.ok) close();
+    if (!reply.ok) close(true);
     else if (reply.me) me = reply.me;
   });
 
-  function close(portal?: TownPortal["id"]) {
+  function close(failed = false) {
     if (closed) return;
     closed = true;
     socket.off("town-state", onState);
@@ -539,7 +571,16 @@ export function openTown(options: TownOptions) {
     window.removeEventListener("resize", resize);
     game.destroy(true);
     layer.remove();
-    options.onClose(portal);
+    document.body.classList.remove("town-active");
+    options.onClose(failed);
   }
-  return close;
+  let character = options.character;
+  return {
+    close,
+    /** Switched fighter or equipped a skin: everyone sees the new look. */
+    look(next: CharacterId) {
+      character = next;
+      if (!closed) socket.timeout(3000).emit("town-look", { character }, () => undefined);
+    },
+  };
 }

@@ -1262,9 +1262,13 @@ export function createArenaServer(
         skin: null,
       });
       reply(cb, { ok: true, town: walker.town, me: walker.profile.id });
-      // Level and equipped skin need account lookups; they follow shortly.
+      lookUpTownProfile(parsed.data, true);
+    });
+    /** Level and the fighter's equipped skin need account lookups; they follow shortly. */
+    const lookUpTownProfile = (character: string, level: boolean) => {
       const token = socket.data.accessToken as string | undefined;
-      if (token) {
+      if (!token) return;
+      if (level)
         void accounts
           .rpc(token, "arena_journey", {})
           .then((j) => {
@@ -1272,14 +1276,28 @@ export function createArenaServer(
             if (Number.isFinite(xp)) town.updateProfile(socket.id, { level: playerLevel(xp).level });
           })
           .catch(() => undefined);
-        void accounts
-          .rpc(token, "arena_my_looks", {})
-          .then((looks) => {
-            const look = (looks as Record<string, { skin: string; stage?: number }> | null)?.[parsed.data];
-            if (look?.skin) town.updateProfile(socket.id, { skin: { skin: look.skin, stage: look.stage } });
-          })
-          .catch(() => undefined);
-      }
+      void accounts
+        .rpc(token, "arena_my_looks", {})
+        .then((looks) => {
+          // Ignore an answer for a fighter the player has since switched from.
+          if (town.profileOf(socket.id)?.character !== character) return;
+          const look = (looks as Record<string, { skin: string; stage?: number }> | null)?.[character];
+          const skin = look?.skin ? { skin: look.skin, stage: look.stage } : null;
+          if (JSON.stringify(skin) !== JSON.stringify(town.profileOf(socket.id)?.skin ?? null))
+            town.updateProfile(socket.id, { skin });
+        })
+        .catch(() => undefined);
+    };
+    // Switched fighter, or equipped a different skin, while in town.
+    socket.on("town-look", (data: unknown, cb: unknown) => {
+      if (!allowed(10)) return;
+      if (town.townOf(socket.id) === undefined) return fail(cb, "Not in town.");
+      const parsed = characterSchema.safeParse((data as { character?: unknown } | null)?.character);
+      if (!parsed.success) return fail(cb, "Choose a fighter first.");
+      if (town.profileOf(socket.id)?.character !== parsed.data)
+        town.updateProfile(socket.id, { character: parsed.data, skin: null });
+      lookUpTownProfile(parsed.data, false);
+      reply(cb, { ok: true });
     });
     socket.on("town-input", (data: unknown) => {
       if (!allowed(40)) return;

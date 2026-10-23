@@ -83,6 +83,21 @@ it("lets signed-in players walk the town, see each other and emote", async () =>
   expect(latest().population).toBe(1);
 });
 
+it("shows a fighter switch (and that fighter's own skin) to everyone", async () => {
+  const { connect, ticks } = await setup();
+  const a = await connect(),
+    b = await connect();
+  const joinA = await emit(a.socket, "town-join", { character: "cindrake" });
+  await emit(b.socket, "town-join", { character: "lumoth" });
+  await ticks(4);
+  expect(b.seen.profiles.get(joinA.me!)).toMatchObject({ character: "cindrake", skin: null });
+  expect(await emit(a.socket, "town-look", { character: "voltkit" })).toMatchObject({ ok: true });
+  await settle();
+  await ticks(2);
+  expect(b.seen.profiles.get(joinA.me!)).toMatchObject({ character: "voltkit", skin: { skin: "galaxy-voltkit" } });
+  expect((await emit(a.socket, "town-look", { character: "not-a-fighter" })).ok).toBe(false);
+});
+
 it("keeps signed-out players out of the town", async () => {
   const { connect } = await setup();
   const guest = await connect(false);
