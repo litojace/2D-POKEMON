@@ -21390,3 +21390,39 @@ body.battle-active:not(.touch-mode) #battle.desktop-hud-outside .enemy-bearing {
     bottom: calc(80px + env(safe-area-inset-bottom));
   }
 }
+@media (max-height: 500px) {
+  .town-hud {
+    top: max(8px, env(safe-area-inset-top));
+    left: max(12px, env(safe-area-inset-left));
+    right: max(12px, env(safe-area-inset-right));
+  }
+  .town-place {
+    padding: 5px 10px;
+  }
+  .town-place b {
+    font-size: 16px;
+  }
+  .town-place small {
+    font-size: 11px;
+  }
+  .town-leave {
+    min-height: 34px;
+    padding: 4px 12px;
+    font-size: 13px;
+  }
+  .town-emotes {
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(8px, env(safe-area-inset-bottom));
+    gap: 4px;
+    padding: 4px;
+  }
+  .town-emotes button {
+    width: 36px;
+    height: 36px;
+    font-size: 15px;
+  }
+  .town-prompt {
+    bottom: calc(60px + env(safe-area-inset-bottom));
+    padding: 6px 14px;
+  }
+}

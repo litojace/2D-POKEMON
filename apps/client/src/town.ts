@@ -295,7 +295,9 @@ export function openTown(options: TownOptions) {
       const w = this.scale.width / devicePixelRatio,
         h = this.scale.height / devicePixelRatio;
       // Never zoomed out past the edge of the map.
-      this.zoomBase = Math.max(w / TOWN.width, h / TOWN.height, Math.min(1.5, Math.min(w / 1100, h / 650) * 1.1));
+      // Short landscape phones get a closer view so fighters stay readable.
+      const view = h < 500 ? h / 430 : Math.min(1.5, Math.min(w / 1100, h / 650) * 1.1);
+      this.zoomBase = Math.max(w / TOWN.width, h / TOWN.height, view);
       const cam = this.cameras.main;
       cam.setZoom(this.zoomBase * devicePixelRatio);
       cam.setBounds(0, 0, TOWN.width, TOWN.height);
@@ -399,10 +401,11 @@ export function openTown(options: TownOptions) {
       g.fillStyle(0x000000, 0.18).fillRoundedRect(-27, -26, 56, 44, 14);
       g.fillStyle(0xffffff, 1).fillRoundedRect(-28, -28, 56, 44, 14);
       g.fillTriangle(-6, 14, 6, 14, 0, 24);
-      body.bubble = this.add.container(body.x, body.y, [g, text]).setDepth(6000);
+      const ui = Math.max(1, 1 / this.zoomBase);
+      body.bubble = this.add.container(body.x, body.y, [g, text]).setDepth(6000).setScale(ui);
       if (!options.reduced) {
-        body.bubble.setScale(0.3);
-        this.tweens.add({ targets: body.bubble, scale: 1, duration: 260, ease: "Back.Out" });
+        body.bubble.setScale(0.3 * ui);
+        this.tweens.add({ targets: body.bubble, scale: ui, duration: 260, ease: "Back.Out" });
       }
     }
     update(time: number, delta: number) {
@@ -490,9 +493,11 @@ export function openTown(options: TownOptions) {
         );
       }
       const head = body.y - 60;
-      body.name.setPosition(body.x, head);
-      body.title.setPosition(body.x, head - body.name.height + 4);
-      const top = head - body.name.height - (body.title.text ? body.title.height - 4 : 0);
+      const ui = Math.max(1, 1 / this.zoomBase);
+      body.name.setScale(ui).setPosition(body.x, head);
+      body.title.setScale(ui);
+      body.title.setPosition(body.x, head - (body.name.height - 4) * ui);
+      const top = head - (body.name.height + (body.title.text ? body.title.height - 4 : 0)) * ui;
       body.bubble?.setPosition(body.x, top - 28);
     }
   }
