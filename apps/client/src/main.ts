@@ -117,6 +117,7 @@ import { InterpolationBuffer } from "./networking/interpolation";
 import { AccountUI } from "./accounts";
 import "./style.css";
 import "./champion-selection.css";
+import "./friends.css";
 import "./wardrobe.css";
 import { FollowCamera, screenToWorld, outsideView } from "./follow-camera";
 import { updateNameplate } from "./player-nameplate";
@@ -1125,7 +1126,11 @@ function renderGate() {
   audio.setTheme("lobby");
   pwa.sync();
   touch.reset();
-  document.body.classList.remove("battle-active", "battle-raid", "lobby-active");
+  document.body.classList.remove(
+    "battle-active",
+    "battle-raid",
+    "lobby-active",
+  );
   document.body.classList.add("home-active", "gate-active");
   $("battle").hidden = true;
   syncBattleLoop();
@@ -1188,11 +1193,13 @@ function syncTown() {
     request,
     reduced: reducedMotion,
     onPortal: (spot) => {
-      if (spot.id === "raids") void accountsUI.showRaidHub(spot.boss ?? state?.raid?.boss);
+      if (spot.id === "raids")
+        void accountsUI.showRaidHub(spot.boss ?? state?.raid?.boss);
       else if (spot.id === "shop") void accountsUI.showShop(spot.tab);
       else if (spot.id === "wardrobe") void accountsUI.showWardrobe();
       else if (spot.id === "missions") void accountsUI.showMissions();
-      else if (spot.id === "boss-rush") void accountsUI.showAdventure("expedition");
+      else if (spot.id === "boss-rush")
+        void accountsUI.showAdventure("expedition");
       else if (spot.id === "leaderboard") $("leaderboard").click();
       else homeNavigation.open("play");
     },
@@ -3813,6 +3820,11 @@ accountsUI = new AccountUI({
   startRaid: (boss, options) => void startRaid(boss, options),
   startAdventure: (mode) => void startAdventure(mode),
   joinRoom: (code) => void joinByCode(code),
+  friendsRoom: () => ({
+    code: myId && state?.phase === "lobby" ? state.code : undefined,
+    canCreate: !myId && !watching,
+  }),
+  createFriendRoom: () => homeNavigation.open("play"),
   watchRoom: (code) => {
     if (myId) return toast("Leave your current room first.");
     void watchRoom(code);

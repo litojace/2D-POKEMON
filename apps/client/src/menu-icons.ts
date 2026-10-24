@@ -1,4 +1,7 @@
 const paths = {
+  star: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z"/>',
+  more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+  search: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>',
   wardrobe: '<path d="M9 6a3 3 0 0 1 6 0c0 2-3 2-3 5v1L3 18v3h18v-3l-9-6"/>',
   swipe:
     '<path d="M4 12h16M7 8l-4 4 4 4m10-8 4 4-4 4"/><path d="M9 4h6M9 20h6" opacity=".5"/>',
