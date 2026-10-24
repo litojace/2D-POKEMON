@@ -565,21 +565,17 @@ export function propSprite(kind: string): Sprite {
         draw(ctx) {
           const cx = 58,
             foot = 312;
-          // Three-step plinth.
-          const step = (y: number, hw: number, h: number, d: number) => {
-            ctx.fillStyle = STONE.top;
-            poly(ctx, [cx - hw, y - h, cx + hw, y - h, cx + hw - d, y - h - d, cx - hw + d, y - h - d]);
-            ctx.fill();
-            ctx.fillStyle = across(ctx, cx - hw, cx + hw, [STONE.light, STONE.mid, STONE.dark]);
-            ctx.fillRect(cx - hw, y - h, hw * 2, h);
-            ctx.strokeStyle = STONE.line;
-            ctx.lineWidth = 1;
-            ctx.strokeRect(cx - hw + 0.5, y - h + 0.5, hw * 2 - 1, h - 1);
+          // A round, three-tier plinth (like the tower's and the fountain's),
+          // each tier's top face visible from above.
+          const tier = (bottomCentre: number, rx: number, h: number) => {
+            const ry = rx * 0.36;
+            footing(ctx, cx, bottomCentre + ry, rx, h);
+            return bottomCentre - h;
           };
-          step(foot, 52, 12, 8);
-          step(foot - 20, 42, 12, 7);
-          step(foot - 39, 32, 14, 6);
-          const base = foot - 59;
+          let top1 = tier(foot - 54 * 0.36, 54, 12);
+          top1 = tier(top1, 43, 12);
+          top1 = tier(top1, 32, 14);
+          const base = top1 - 4;
           // Shaft: a square rotated 45°, left face lit, right face in shade.
           const bw = 22,
             tw = 13,

@@ -1796,8 +1796,18 @@ export function signpostSprite(label: string, color: string, left: boolean): Spr
     ax: W / 2,
     ay: H - 6,
     draw(ctx) {
+      // A small stone footing so the post stands in the ground.
+      const fx = W / 2,
+        fy = H - 6;
+      ctx.fillStyle = "#8f846f";
+      ellipse(ctx, fx, fy - 1, 11, 4);
+      ctx.fill();
+      ctx.fillRect(fx - 11, fy - 5, 22, 4);
+      ctx.fillStyle = "#c4b89c";
+      ellipse(ctx, fx, fy - 5, 11, 4);
+      ctx.fill();
       ctx.fillStyle = "#5a3e28";
-      ctx.fillRect(W / 2 - 4, 30, 8, H - 34);
+      ctx.fillRect(W / 2 - 4, 30, 8, H - 39);
       ctx.fillStyle = "#7a5638";
       ctx.fillRect(W / 2 - 4, 30, 3, H - 34);
       ctx.font = "700 15px 'Barlow Condensed', 'Arial Narrow', sans-serif";
@@ -1857,29 +1867,38 @@ export function statuePlinth(name: string | null, color: string): Sprite {
     draw(ctx) {
       const cx = W / 2,
         G = H - 6;
-      // Bottom step.
-      ctx.fillStyle = "#6f6a80";
-      roundRect(ctx, cx - 46, G - 12, 92, 12, 3);
+      // A round pedestal in the same ¾ view as the tower and fountain: a
+      // stepped foot, a drum lit from the left, and a cap whose top you see.
+      const R = 0.3,
+        lit = ["#d6d1e4", "#b4aec8", "#8a84a0", "#6a647e"];
+      // Foot step.
+      cylinder(ctx, cx, G - 46 * R, G - 46 * R - 8, 46, 46, R, lit);
+      ctx.fillStyle = "#c8c2d8";
+      ellipse(ctx, cx, G - 46 * R - 8, 46, 46 * R);
       ctx.fill();
-      ctx.fillStyle = "#a9a3bd";
-      roundRect(ctx, cx - 46, G - 16, 92, 7, 3);
+      // Drum.
+      const drumFoot = G - 46 * R - 8,
+        capY = G - STATUE_TOP;
+      cylinder(ctx, cx, drumFoot, capY + 6, 33, 33, R, ["#e4e0ee", "#c4bed6", "#9690ac", "#6f6a86"]);
+      // A band in the boss's colour near the foot of the drum.
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = 0.85;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.ellipse(cx, drumFoot - 5, 33, 33 * R, 0, 0.08, Math.PI - 0.08);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      // Cap: a disc a little wider than the drum, its top face in light.
+      cylinder(ctx, cx, capY + 6, capY, 40, 40, R, lit);
+      ctx.fillStyle = "#ebe7f3";
+      ellipse(ctx, cx, capY, 40, 40 * R);
       ctx.fill();
-      // Dado (the body), lit from the left.
-      const body = ctx.createLinearGradient(cx - 36, 0, cx + 36, 0);
-      body.addColorStop(0, "#9e98b4");
-      body.addColorStop(0.4, "#d6d1e4");
-      body.addColorStop(1, "#7e7896");
-      ctx.fillStyle = body;
-      ctx.fillRect(cx - 36, G - STATUE_TOP + 8, 72, STATUE_TOP - 22);
-      // Cap moulding the statue stands on, with the statue's contact shadow.
-      ctx.fillStyle = "#8a84a0";
-      roundRect(ctx, cx - 42, G - STATUE_TOP + 4, 84, 8, 2);
-      ctx.fill();
-      ctx.fillStyle = "#e4e0ee";
-      roundRect(ctx, cx - 42, G - STATUE_TOP, 84, 6, 2);
-      ctx.fill();
-      ctx.fillStyle = "rgba(50,40,70,0.35)";
-      ellipse(ctx, cx + 4, G - STATUE_TOP + 2, 34, 3.5);
+      ctx.strokeStyle = "rgba(90,80,120,0.35)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // The statue's contact shade on the cap.
+      ctx.fillStyle = "rgba(50,40,70,0.3)";
+      ellipse(ctx, cx + 3, capY + 1, 26, 26 * R * 0.8);
       ctx.fill();
       // The bronze plaque with the name engraved.
       const plaque = ctx.createLinearGradient(0, G - 44, 0, G - 26);
@@ -1900,16 +1919,6 @@ export function statuePlinth(name: string | null, color: string): Sprite {
         while (ctx.measureText(name.toUpperCase()).width > 48 && --size > 6);
         ctx.fillText(name.toUpperCase(), cx, G - 35);
       }
-      // A gem inlaid below the plaque.
-      ctx.fillStyle = "#3a3448";
-      ellipse(ctx, cx, G - 20, 5, 4);
-      ctx.fill();
-      ctx.fillStyle = color;
-      ellipse(ctx, cx, G - 20.5, 4, 3.2);
-      ctx.fill();
-      ctx.fillStyle = "rgba(255,255,255,0.75)";
-      ellipse(ctx, cx - 1.2, G - 21.5, 1.3, 1);
-      ctx.fill();
     },
   };
 }
