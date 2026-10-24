@@ -399,20 +399,6 @@ export class TownScenery {
         frequency: 14,
       })
       .setDepth(f.y + 0.15);
-    // Spray and mist where the falling water meets the pool.
-    const land = FOUNTAIN.mid.rx + 16;
-    s.add
-      .particles(0, 0, "town-drop", {
-        emitZone: { type: "edge", source: new Phaser.Geom.Ellipse(f.x, f.y + FOUNTAIN.pool.dy, land * 2, land * 0.94), quantity: 40 },
-        speedY: { min: -60, max: -25 },
-        speedX: { min: -14, max: 14 },
-        gravityY: 260,
-        scale: { start: 0.06, end: 0.03 },
-        alpha: { start: 0.8, end: 0 },
-        lifespan: 340,
-        frequency: 22,
-      })
-      .setDepth(f.y + 0.12);
     // Cloud shadows drifting over the town.
     bake(s, "town-cloud", softBlob("10,20,10"), 1);
     for (let i = 0; i < 6; i++)
@@ -558,8 +544,7 @@ export class TownScenery {
 
   /**
    * Water spilling over each bowl's lip in thin sheets, the strands behind
-   * the column drawn first, then the near ones; ripples, foam and glints
-   * on the pool.
+   * the column drawn first, then the near ones; foam and glints on the pool.
    */
   private drawFountain(t: number) {
     const f = TOWN_OBSTACLES[0],
@@ -568,12 +553,6 @@ export class TownScenery {
       front = this.waterG.clear(),
       still = this.reduced;
     const poolY = f.y + pool.dy;
-    // Ripples spreading from where the water lands.
-    for (let k = 0; k < 3 && !still; k++) {
-      const p = (t * 0.45 + k / 3) % 1,
-        rx = mid.rx + 18 + p * (pool.rx - mid.rx - 22);
-      back.lineStyle(1.5, 0xe8fbff, 0.45 * (1 - p)).strokeEllipse(f.x, poolY, rx * 2, rx * 2 * (pool.ry / pool.rx));
-    }
     // Glints twinkling on the pool.
     for (let k = 0; k < 12 && !still; k++) {
       const a = rnd(k * 5.3) * TAU,
