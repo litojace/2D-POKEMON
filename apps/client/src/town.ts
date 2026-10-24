@@ -18,6 +18,7 @@ import type { SkinLook } from "./creature-design";
 import { drawCollectionAura } from "./skins/collection-fx";
 import { actionFor, controlPrefs } from "./controls";
 import { menuIcon } from "./menu-icons";
+import { titleTreatment } from "./player-nameplate";
 import { SHADE, TownScenery } from "./town-life";
 import { SUN, TEXT_RES } from "./town-art";
 
@@ -81,7 +82,47 @@ interface Body {
   shadow: Phaser.GameObjects.Ellipse;
   name: Phaser.GameObjects.Text;
   title: Phaser.GameObjects.Text;
+  /** How the title is drawn (the same treatments as the arena nameplate). */
+  titleFx?: { kind: ReturnType<typeof titleTreatment>; color: string; text: string; step: number };
   bubble?: Phaser.GameObjects.Container;
+}
+
+/** Room around title text for its glow, so the blur isn't clipped. */
+const TITLE_PAD = { x: 12, y: 7 };
+/**
+ * Draw a title the way the arena nameplate does (see .player-title in
+ * style.css): every title glows in its colour, Master titles pulse slowly,
+ * Grandmaster ones faster, and Legendary titles are gold with a moving
+ * shimmer between two sparkles. `t` is seconds; animated looks step about
+ * 12 times a second so the text isn't redrawn every frame.
+ */
+function styleTitle(text: Phaser.GameObjects.Text, fx: NonNullable<Body["titleFx"]>, t: number, still: boolean) {
+  const pulse = (period: number) => (still ? 0 : (1 - Math.cos((t / period) * Math.PI * 2)) / 2);
+  if (fx.kind === "legendary") {
+    const shift = still ? 0.5 : (t / 2.4) % 1;
+    const w = Math.max(1, text.width);
+    const g = text.context.createLinearGradient(0, 0, w, 0);
+    // A band of light sliding across gold, like the arena's shimmer.
+    const stops: [number, string][] = [
+      [0, "#c38a15"],
+      [0.2, "#ffdf75"],
+      [0.5, "#ffcc39"],
+      [0.8, "#ffe995"],
+      [1, "#b97807"],
+    ];
+    for (const [o, c] of stops) g.addColorStop(o, c);
+    const at = 0.1 + shift * 0.8;
+    g.addColorStop(Math.max(0, at - 0.08), "rgba(255,226,120,1)");
+    g.addColorStop(at, "#fff4b0");
+    g.addColorStop(Math.min(1, at + 0.08), "rgba(255,210,80,1)");
+    text.setFill(g as unknown as string);
+    text.setShadow(0, 0, "#ffcc39", 5 + pulse(2) * 5, true, false);
+    return;
+  }
+  const blur = fx.kind === "grandmaster" ? 5 + pulse(1.8) * 7 : fx.kind === "master" ? 5 + pulse(2.6) * 5 : 5;
+  text.setFill(fx.color);
+  // A tight glow around the dark outline: visible on light stone, letters stay crisp.
+  text.setShadow(0, 0, fx.color, blur, true, false);
 }
 
 const esc = (s: string) =>
@@ -595,7 +636,8 @@ export function openTown(options: TownOptions) {
             fontStyle: "bold",
             color: "#c9d2e3",
             stroke: "#101318",
-            strokeThickness: 4,
+            strokeThickness: 3,
+            padding: { x: TITLE_PAD.x, y: TITLE_PAD.y },
           })
           .setOrigin(0.5, 1)
           .setDepth(5000),
@@ -610,7 +652,14 @@ export function openTown(options: TownOptions) {
       body.name
         .setText(`${level}${p.name}`)
         .setColor(body.id === me ? "#ffe27a" : "#ffffff");
-      body.title.setText(p.title ?? "").setColor(p.titleColor ?? "#c9d2e3");
+      const color = p.titleColor && /^#[0-9a-f]{6}$/i.test(p.titleColor) ? p.titleColor : "#ffd65b";
+      const kind = titleTreatment(p.title ?? "");
+      const text = p.title ? (kind === "legendary" ? `✦  ${p.title}  ✦` : p.title) : "";
+      if (!body.titleFx || body.titleFx.text !== text || body.titleFx.color !== color) {
+        body.title.setText(text);
+        body.titleFx = { kind, color, text, step: -1 };
+        styleTitle(body.title, body.titleFx, 0, options.reduced);
+      }
       const character = (
         p.character in CHARACTERS ? p.character : "voltkit"
       ) as CharacterId;
@@ -847,10 +896,19 @@ export function openTown(options: TownOptions) {
       body.title.setAlpha(labels).setVisible(labels > 0);
       body.name.setScale(ui).setPosition(body.x, head);
       body.title.setScale(ui);
-      body.title.setPosition(body.x, head - (body.name.height - 4) * ui);
+      // The title's canvas carries padding for its glow; line its text up as before.
+      body.title.setPosition(body.x, head - (body.name.height - 4 - TITLE_PAD.y) * ui);
+      const fx = body.titleFx;
+      if (fx && fx.text && fx.kind !== "glow" && !options.reduced && labels > 0) {
+        const step = Math.floor(now / 80);
+        if (step !== fx.step) {
+          fx.step = step;
+          styleTitle(body.title, fx, now / 1000, false);
+        }
+      }
       const top =
         head -
-        (body.name.height + (body.title.text ? body.title.height - 4 : 0)) * ui;
+        (body.name.height + (body.title.text ? body.title.height - 4 - TITLE_PAD.y * 2 : 0)) * ui;
       body.bubble?.setPosition(body.x, top - 28);
     }
   }

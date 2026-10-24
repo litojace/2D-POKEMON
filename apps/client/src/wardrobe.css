@@ -319,7 +319,10 @@ dialog.wardrobe-dialog > .dialog-content {
   height: 84px;
 }
 .wardrobe-item-copy {
-  display: grid;
+  /* Fills the rest of the card so the state line can sit at its foot. */
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   gap: 4px;
   min-width: 0;
 }
@@ -331,7 +334,18 @@ dialog.wardrobe-dialog > .dialog-content {
   color: var(--text-dim);
 }
 .wardrobe-item-state {
-  font: 600 11px/1.4 var(--body);
+  /* Pinned to the card's bottom-left, so the state lines in one row line
+     up however many lines the name and source take. */
+  margin-top: auto;
+  padding-top: 4px;
+  /* A fixed line box: the ✓ glyph comes from a fallback font with a taller
+     line, which would nudge "Equipped" off its neighbours' baseline. */
+  display: block;
+  height: 20px;
+  box-sizing: border-box;
+  overflow: hidden;
+  white-space: nowrap;
+  font: 600 11px/16px var(--body);
   color: var(--accent);
 }
 .wardrobe-empty {
@@ -614,5 +628,72 @@ dialog.wardrobe-dialog > .dialog-content {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* The fighter picker: the chosen name sits centred in the box, and the open
+   list is centred too. Browsers with the customizable select (Chrome/Edge
+   135+) draw a styled list; others keep their own list, with the closed box
+   still centred. */
+.wardrobe-fighter-picker select {
+  text-align: center;
+  text-align-last: center;
+}
+@supports (appearance: base-select) {
+  .wardrobe-fighter-picker select,
+  .wardrobe-fighter-picker select::picker(select) {
+    appearance: base-select;
+  }
+  .wardrobe-fighter-picker select {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-inline: 38px;
+    cursor: pointer;
+  }
+  .wardrobe-fighter-picker select::picker-icon {
+    content: "";
+    display: block;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: translateY(-2px) rotate(45deg);
+    position: absolute;
+    right: 16px;
+    color: var(--text-dim);
+    transition: rotate 0.15s;
+  }
+  .wardrobe-fighter-picker select:open::picker-icon {
+    rotate: 180deg;
+  }
+  .wardrobe-fighter-picker select::picker(select) {
+    margin-top: 6px;
+    padding: 6px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: #0d1426;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+  }
+  .wardrobe-fighter-picker option {
+    justify-content: center;
+    padding: 9px 12px;
+    border-radius: 8px;
+    color: var(--text);
+    font: 600 15px/1.2 var(--body);
+    text-align: center;
+  }
+  .wardrobe-fighter-picker option::checkmark {
+    display: none;
+  }
+  .wardrobe-fighter-picker option:hover,
+  .wardrobe-fighter-picker option:focus-visible {
+    background: rgba(255, 255, 255, 0.08);
+    outline: none;
+  }
+  .wardrobe-fighter-picker option:checked {
+    background: rgba(242, 194, 91, 0.18);
+    color: #f2c25b;
   }
 }
