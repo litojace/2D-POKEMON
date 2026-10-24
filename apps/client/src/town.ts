@@ -197,12 +197,15 @@ export function openTown(options: TownOptions) {
   canvasEl.addEventListener("pointercancel", stickEnd);
   // Desktop: click a spot to walk there.
   let walkTo: { x: number; y: number } | undefined;
+  let clickMark: { x: number; y: number; at: number } | undefined;
   canvasEl.addEventListener("pointerdown", (e) => {
     if (e.pointerType !== "mouse" || !scene) return;
     const cam = scene.cameras.main,
       rect = canvasEl.getBoundingClientRect(),
       p = cam.getWorldPoint((e.clientX - rect.left) * devicePixelRatio, (e.clientY - rect.top) * devicePixelRatio);
     walkTo = { x: p.x, y: p.y };
+    // Where you clicked: a marker on the ground (see drawClickMark).
+    clickMark = { x: p.x, y: p.y, at: scene.time.now };
   });
 
   const sendInput = (now: number, dir: { x: number; y: number }) => {
@@ -296,6 +299,48 @@ export function openTown(options: TownOptions) {
     private loading = new Set<string>();
     private zoomBase = 1;
     private following?: Body;
+    private clickG?: Phaser.GameObjects.Graphics;
+    /**
+     * The click-to-move marker: a ring that pops out where you clicked and
+     * fades, four arrows that close in on the spot, and a small dot that
+     * stays until you arrive (or set off somewhere else).
+     */
+    private drawClickMark(time: number) {
+      const g = (this.clickG ??= this.add.graphics().setDepth(-300)).clear();
+      if (!clickMark) return;
+      const age = (time - clickMark.at) / 1000,
+        { x, y } = clickMark,
+        gold = 0xffd65b;
+      const LIFE = 0.6;
+      if (age < LIFE) {
+        const t = age / LIFE,
+          ease = 1 - (1 - t) ** 3,
+          r = 12 + ease * 34;
+        g.lineStyle(3, gold, 1 - t).strokeEllipse(x, y, r * 2, r * 2 * 0.55);
+        g.lineStyle(2, 0xffffff, (1 - t) * 0.8).strokeEllipse(x, y, r * 1.3, r * 1.3 * 0.55);
+        if (!options.reduced)
+          for (let k = 0; k < 4; k++) {
+            const a = (k / 4) * Math.PI * 2 + Math.PI / 4,
+              d = 46 - ease * 26,
+              cx = x + Math.cos(a) * d,
+              cy = y + Math.sin(a) * d * 0.55,
+              ux = -Math.cos(a),
+              uy = -Math.sin(a) * 0.55,
+              px = -uy,
+              py = ux;
+            g.fillStyle(0x000000, (1 - t) * 0.35).fillTriangle(cx + ux * 11, cy + uy * 11 + 2, cx + px * 8, cy + py * 8 + 2, cx - px * 8, cy - py * 8 + 2);
+            g.fillStyle(gold, 1 - t).fillTriangle(cx + ux * 11, cy + uy * 11, cx + px * 8, cy + py * 8, cx - px * 8, cy - py * 8);
+          }
+      }
+      // While still walking there: a soft dot that gently pulses.
+      if (walkTo && Math.hypot(walkTo.x - x, walkTo.y - y) < 1) {
+        const pulse = options.reduced ? 0 : (Math.sin(time / 160) + 1) / 2;
+        g.fillStyle(0x000000, 0.25).fillEllipse(x, y + 2, 26, 13);
+        g.lineStyle(2.5, gold, 0.9).strokeEllipse(x, y, 24 + pulse * 6, (24 + pulse * 6) * 0.5);
+        g.fillStyle(gold, 0.95).fillEllipse(x, y, 9, 5);
+        g.fillStyle(0xffffff, 0.8).fillEllipse(x - 1.5, y - 1, 3.5, 2);
+      } else if (age >= LIFE) clickMark = undefined;
+    }
     constructor() {
       super("town");
     }
@@ -430,6 +475,7 @@ export function openTown(options: TownOptions) {
     update(time: number, delta: number) {
       const dt = Math.min(0.1, delta / 1000);
       this.scenery.update(time, dt, bodies.get(me));
+      this.drawClickMark(time);
       const mine = bodies.get(me);
       // Your input: keys, stick or a clicked spot.
       let dir = stickInput();
