@@ -47,6 +47,8 @@ import {
  */
 const num = (css: string) => parseInt(css.slice(1), 16);
 const TAU = Math.PI * 2;
+/** What the coliseum's screen cycles through. */
+const SCREEN_LINES = ["Walk to the gate to play", "Duels · 2v2 Teams · Free-for-all", "Party rules · Four arenas", "Bring a friend. Find a rival."];
 
 /**
  * Painted pictures are kept for the whole visit: the town's Phaser game is
@@ -290,30 +292,33 @@ export class TownScenery {
     }
   }
 
-  /** A screen mounted on the coliseum's top tier, above the gate. */
+  /** A screen mounted on the coliseum's top tier, above the gate; it grows to fit its text. */
   private bigScreen(x: number, y: number, depth: number) {
-    const g = this.scene.add.graphics().setDepth(depth),
-      w = 210,
-      h = 58;
+    const style = { resolution: TEXT_RES, fontFamily: "Barlow Condensed, sans-serif", fontStyle: "bold" };
+    const live = this.scene.add.text(0, 0, "LIVE", { ...style, fontSize: "12px", color: "#ffffff" }).setOrigin(0, 0.5).setDepth(depth + 0.01);
+    const title = this.scene.add.text(0, 0, "ELEMENTAL COLISEUM", { ...style, fontSize: "15px", color: "#ffd65b" }).setOrigin(0, 0.5).setDepth(depth + 0.01);
+    const lines = SCREEN_LINES;
+    this.screenText = this.scene.add
+      .text(x, y + 12, lines[0], { resolution: TEXT_RES, fontFamily: "DM Sans, sans-serif", fontSize: "12px", color: "#eef2ff", align: "center" })
+      .setOrigin(0.5)
+      .setDepth(depth + 0.01);
+    // Size the panel from the widest thing it will ever show, plus padding.
+    const badgeW = live.width + 10,
+      rowW = badgeW + 8 + title.width,
+      widest = Math.max(rowW, ...lines.map((l) => this.screenText!.setText(l).width));
+    this.screenText.setText(lines[0]);
+    const w = Math.ceil(widest + 36),
+      h = 58,
+      left = x - rowW / 2,
+      rowY = y - 10;
+    const g = this.scene.add.graphics().setDepth(depth);
     // Brackets fixing it to the wall, then the frame and the display.
     g.fillStyle(0x3a2a18, 1).fillRect(x - w / 2 + 16, y - h / 2 - 8, 6, h + 16).fillRect(x + w / 2 - 22, y - h / 2 - 8, 6, h + 16);
     g.fillStyle(0x2a2420, 1).fillRoundedRect(x - w / 2, y - h / 2, w, h, 8);
     g.fillStyle(0x0b1220, 1).fillRoundedRect(x - w / 2 + 6, y - h / 2 + 6, w - 12, h - 12, 5);
-    const style = { resolution: TEXT_RES, fontFamily: "Barlow Condensed, sans-serif", fontStyle: "bold" };
-    const live = this.scene.add.text(0, 0, "LIVE", { ...style, fontSize: "12px", color: "#ffffff" }).setOrigin(0, 0.5);
-    const title = this.scene.add.text(0, 0, "ELEMENTAL COLISEUM", { ...style, fontSize: "15px", color: "#ffd65b" }).setOrigin(0, 0.5);
-    // Badge and title as one centred row, whatever the font's width.
-    const badgeW = live.width + 10,
-      rowW = badgeW + 8 + title.width,
-      left = x - rowW / 2,
-      rowY = y - 10;
     g.fillStyle(0xff4d5a, 1).fillRoundedRect(left, rowY - 8, badgeW, 16, 4);
-    live.setPosition(left + 5, rowY).setDepth(depth + 0.01);
-    title.setPosition(left + badgeW + 8, rowY).setDepth(depth + 0.01);
-    this.screenText = this.scene.add
-      .text(x, y + 12, "", { resolution: TEXT_RES, fontFamily: "DM Sans, sans-serif", fontSize: "12px", color: "#eef2ff", align: "center" })
-      .setOrigin(0.5)
-      .setDepth(depth + 0.01);
+    live.setPosition(left + 5, rowY);
+    title.setPosition(left + badgeW + 8, rowY);
   }
 
   private smoke(x: number, y: number, depth: number) {
@@ -420,7 +425,7 @@ export class TownScenery {
     this.drawCrystal(t);
     this.drawMarkers(t, focus);
     if (this.screenText) {
-      const lines = ["Walk to the gate to play", "Duels · 2v2 Teams · Free-for-all", "Party rules · Four arenas", "Bring a friend. Find a rival."];
+      const lines = SCREEN_LINES;
       this.screenText.setText(lines[Math.floor(t / 4) % lines.length]);
     }
     if (this.reduced) return;
