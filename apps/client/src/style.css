@@ -21900,3 +21900,207 @@ body.town-active .town-hud {
     min-height: 34px;
   }
 }
+/* The header menu's icon: ☰ normally; in town one gear button opens the
+   same menu (Settings is its second item), replacing the separate gear. */
+.menu-burger,
+.menu-gear {
+  font-style: normal;
+}
+.menu-gear {
+  display: none;
+}
+body.town-active .home-settings {
+  display: none;
+}
+body.town-active .menu-burger {
+  display: none;
+}
+body.town-active .menu-gear {
+  display: inline-grid;
+  place-items: center;
+  color: #ffd65b;
+}
+body.town-active .menu-gear svg {
+  width: 20px;
+  height: 20px;
+}
+/* Friends is already in the town's own Menu (bottom left). */
+body.town-active .header-menu-panel #friends {
+  display: none;
+}
+/* How to play: getting around town. */
+.town-guide {
+  margin: 14px 0 18px;
+}
+.help-battle-eyebrow {
+  margin: 6px 0 10px;
+}
+.town-guide-scene {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 96px;
+  background: radial-gradient(ellipse at 50% 80%, rgba(95, 130, 67, 0.55), rgba(47, 66, 36, 0.35) 70%);
+}
+.town-guide-scene small {
+  color: var(--text-dim, #c9d2e3);
+  font-size: 11px;
+}
+.guide-key {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-bottom-width: 3px;
+  border-radius: 6px;
+  background: rgba(14, 26, 49, 0.85);
+  color: #fff;
+  font: 800 13px/1 "Barlow Condensed", sans-serif;
+}
+.guide-caption .guide-key {
+  min-width: 20px;
+  height: 20px;
+  font-size: 11px;
+}
+.town-guide-keys {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+}
+.town-guide-keys > span {
+  display: flex;
+  gap: 3px;
+}
+.town-guide-stick {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-radius: 50%;
+  background: rgba(16, 19, 24, 0.3);
+}
+.town-guide-stick i {
+  position: absolute;
+  left: 30px;
+  top: 12px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+}
+.town-guide-pad {
+  position: relative;
+  width: 96px;
+  height: 46px;
+  border: 3px solid #ffd65b;
+  border-radius: 50%;
+  background: rgba(255, 214, 91, 0.25);
+  box-shadow: 0 0 18px rgba(255, 214, 91, 0.6);
+}
+.town-guide-pad i {
+  position: absolute;
+  inset: -9px;
+  border: 2px dashed rgba(255, 214, 91, 0.75);
+  border-radius: 50%;
+}
+.town-guide-tap {
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: rgba(14, 26, 49, 0.85);
+  color: #ffd65b;
+  font: 800 14px/1 "Barlow Condensed", sans-serif;
+}
+.town-guide-menu {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 12px;
+  background: rgba(16, 19, 24, 0.75);
+}
+.town-guide-menu b,
+.town-guide-menu em,
+.town-guide-menu i {
+  display: grid;
+  place-items: center;
+  height: 30px;
+  border-radius: 8px;
+  font-style: normal;
+}
+.town-guide-menu b {
+  width: 30px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+.town-guide-menu em {
+  padding: 0 10px;
+  background: var(--stadium-red, #e8463a);
+  color: #fff;
+  font: 800 14px/1 "Barlow Condensed", sans-serif;
+}
+.town-guide-menu i {
+  width: 22px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.town-guide-emotes {
+  display: flex;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 12px;
+  background: rgba(16, 19, 24, 0.75);
+}
+.town-guide-emotes i {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font: 700 12px/1 "DM Sans", sans-serif;
+}
+.town-guide-places {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.12));
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+}
+.town-guide-places h4 {
+  margin: 0 0 8px;
+  font: 800 16px/1 "Barlow Condensed", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.town-guide-places ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 6px 16px;
+  margin: 0 0 8px;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  color: var(--text-dim, #c9d2e3);
+}
+.town-guide-places li span {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  border-radius: 50%;
+}
+.town-guide-places li b {
+  color: var(--text, #eef2ff);
+  margin-right: 4px;
+}
+.town-guide-places p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-dim, #c9d2e3);
+}
+.town-guide .guide-grid {
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
