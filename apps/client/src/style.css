@@ -21681,3 +21681,106 @@ button.is-equipped-text:disabled {
   opacity: 1;
   border-color: color-mix(in srgb, var(--equipped) 45%, transparent);
 }
+
+/* Town zoom: + / − under the settings button, top right. */
+.town-zoom {
+  position: absolute;
+  top: calc(max(10px, env(safe-area-inset-top)) + 52px);
+  right: max(14px, env(safe-area-inset-right));
+  z-index: 3;
+  display: grid;
+  overflow: hidden;
+  width: 42px;
+  border: 1px solid rgba(139, 174, 229, 0.25);
+  border-radius: 21px;
+  background: rgba(14, 26, 49, 0.82);
+  backdrop-filter: blur(6px);
+}
+.town-zoom button {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 40px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: #eef2ff;
+  box-shadow: none;
+  cursor: pointer;
+}
+.town-zoom button + button {
+  border-top: 1px solid rgba(139, 174, 229, 0.2);
+}
+.town-zoom button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+.town-zoom button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.town-zoom svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+@media (max-height: 500px) {
+  .town-zoom {
+    top: calc(max(10px, env(safe-area-inset-top)) + 44px);
+    width: 36px;
+  }
+  .town-zoom button {
+    height: 34px;
+  }
+}
+.town-zoom-reset {
+  position: absolute;
+  top: calc(max(10px, env(safe-area-inset-top)) + 52px + 82px + 8px);
+  right: max(14px, env(safe-area-inset-right));
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid rgba(242, 194, 91, 0.45);
+  border-radius: 50%;
+  background: rgba(14, 26, 49, 0.82);
+  backdrop-filter: blur(6px);
+  color: #f2c25b;
+  cursor: pointer;
+  animation: town-zoom-reset-in 0.18s ease-out;
+}
+.town-zoom-reset[hidden] {
+  display: none;
+}
+.town-zoom-reset:hover {
+  background: rgba(40, 52, 80, 0.9);
+}
+.town-zoom-reset svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+@keyframes town-zoom-reset-in {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+}
+@media (max-height: 500px) {
+  .town-zoom-reset {
+    top: calc(max(10px, env(safe-area-inset-top)) + 44px + 70px + 6px);
+    width: 36px;
+    height: 36px;
+  }
+}

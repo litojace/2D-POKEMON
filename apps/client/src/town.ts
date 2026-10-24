@@ -87,6 +87,22 @@ interface Body {
 const esc = (s: string) =>
   s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
+/** Zoom steps: buttons and keys, and one wheel notch. */
+const ZOOM_STEP = 1.25,
+  WHEEL_STEP = 1.1,
+  /** How far out / in from the screen's natural view (the map's edge also limits zooming out). */
+  ZOOM_MIN = 0.55,
+  ZOOM_MAX = 2;
+/** The player's zoom, relative to the natural view; kept between visits. */
+let userZoom = (() => {
+  try {
+    const v = Number(localStorage.getItem("town-zoom"));
+    return v >= ZOOM_MIN && v <= ZOOM_MAX ? v : 1;
+  } catch {
+    return 1;
+  }
+})();
+
 export function openTown(options: TownOptions) {
   const { socket, request } = options;
   const layer = document.createElement("div");
@@ -110,7 +126,12 @@ export function openTown(options: TownOptions) {
     (e) =>
       `<button type="button" data-emote="${e}" aria-label="${e}" title="${e}">${EMOTE_ICON[e]}</button>`,
   ).join("")}</div>
-<div class="town-stick" id="town-stick" aria-hidden="true"><span></span></div>`;
+<div class="town-stick" id="town-stick" aria-hidden="true"><span></span></div>
+<div class="town-zoom" role="group" aria-label="Zoom">
+  <button type="button" id="town-zoom-in" aria-label="Zoom in" title="Zoom in (+)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+  <button type="button" id="town-zoom-out" aria-label="Zoom out" title="Zoom out (−)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+</div>
+<button type="button" class="town-zoom-reset" id="town-zoom-reset" aria-label="Reset zoom" title="Reset zoom (0)" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg></button>`;
   document.body.append(layer);
   document.body.classList.add("town-active");
   const $ = <T extends HTMLElement>(id: string) =>
@@ -168,6 +189,16 @@ export function openTown(options: TownOptions) {
       e.preventDefault();
       held.clear();
       return void options.onPortal(nearPortal);
+    }
+    if (!e.ctrlKey && !e.metaKey && e.key === "0") {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      return void scene?.resetZoom();
+    }
+    if (!e.ctrlKey && !e.metaKey && ["+", "=", "-", "_"].includes(e.key)) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      return void scene?.zoomBy(e.key === "+" || e.key === "=" ? ZOOM_STEP : 1 / ZOOM_STEP);
     }
     const digit = Number(e.key);
     if (digit >= 1 && digit <= TOWN_EMOTES.length)
@@ -285,6 +316,20 @@ export function openTown(options: TownOptions) {
   layer.querySelectorAll<HTMLButtonElement>("[data-emote]").forEach((b) => {
     b.onclick = () => void emote(b.dataset.emote as TownEmote);
   });
+  // Zoom: the + / − buttons (top right, under the settings button), the
+  // mouse wheel and the + / − keys all step the same zoom.
+  const zoomIn = $<HTMLButtonElement>("town-zoom-in"),
+    zoomOut = $<HTMLButtonElement>("town-zoom-out");
+  zoomIn.onclick = () => scene?.zoomBy(ZOOM_STEP);
+  zoomOut.onclick = () => scene?.zoomBy(1 / ZOOM_STEP);
+  const zoomReset = $<HTMLButtonElement>("town-zoom-reset");
+  zoomReset.onclick = () => scene?.resetZoom();
+  const syncZoomButtons = (atMin: boolean, atMax: boolean, isDefault: boolean) => {
+    zoomIn.disabled = atMax;
+    zoomOut.disabled = atMin;
+    // Reset shows only once the view has been zoomed away from the default.
+    zoomReset.hidden = isDefault;
+  };
   // The menu button folds the actions away; tapping it fans them out.
   const menu = layer.querySelector<HTMLElement>(".town-actions")!,
     menuToggle = $("town-menu-toggle"),
@@ -375,6 +420,8 @@ export function openTown(options: TownOptions) {
     private scenery!: TownScenery;
     private loading = new Set<string>();
     private zoomBase = 1;
+    /** The camera's zoom right now, in CSS pixels per world pixel (labels scale against it). */
+    private zoomNow = 1;
     private following?: Body;
     private clickG?: Phaser.GameObjects.Graphics;
     /**
@@ -453,6 +500,10 @@ export function openTown(options: TownOptions) {
       cam.setBackgroundColor("#2f4224");
       this.fit();
       this.scale.on("resize", () => this.fit());
+      // Wheel zoom (a trackpad sends many small steps; the sign is what counts).
+      this.input.on("wheel", (_p: unknown, _o: unknown, _dx: number, dy: number) => {
+        if (dy) this.zoomBy(dy < 0 ? WHEEL_STEP : 1 / WHEEL_STEP, 90);
+      });
     }
     /** Show roughly 1100×650 of the world; phones see a closer, narrower slice. */
     fit() {
@@ -464,8 +515,46 @@ export function openTown(options: TownOptions) {
         h < 500 ? h / 430 : Math.min(1.5, Math.min(w / 1100, h / 650) * 1.1);
       this.zoomBase = Math.max(w / TOWN.width, h / TOWN.height, view);
       const cam = this.cameras.main;
-      cam.setZoom(this.zoomBase * devicePixelRatio);
       cam.setBounds(0, 0, TOWN.width, TOWN.height);
+      this.applyZoom(0);
+    }
+    /** Allowed zoom range for this screen: never past the map's edge, at most 2× closer. */
+    private zoomRange() {
+      const w = this.scale.width / devicePixelRatio,
+        h = this.scale.height / devicePixelRatio;
+      const fill = Math.max(w / TOWN.width, h / TOWN.height);
+      return { min: Math.max(fill, this.zoomBase * ZOOM_MIN), max: this.zoomBase * ZOOM_MAX };
+    }
+    resetZoom() {
+      userZoom = 1;
+      try {
+        localStorage.removeItem("town-zoom");
+      } catch {
+        /* Optional preference. */
+      }
+      this.applyZoom(220);
+    }
+    zoomBy(factor: number, ms = 160) {
+      const { min, max } = this.zoomRange();
+      const target = Math.min(max, Math.max(min, this.zoomBase * userZoom * factor));
+      userZoom = target / this.zoomBase;
+      // Stepping back to where you started counts as the default view again.
+      if (Math.abs(userZoom - 1) < 0.02) userZoom = 1;
+      try {
+        localStorage.setItem("town-zoom", userZoom.toFixed(3));
+      } catch {
+        /* Optional preference. */
+      }
+      this.applyZoom(ms);
+    }
+    private applyZoom(ms: number) {
+      const { min, max } = this.zoomRange();
+      const z = Math.min(max, Math.max(min, this.zoomBase * userZoom));
+      this.zoomNow = z;
+      const cam = this.cameras.main;
+      if (ms && !options.reduced) cam.zoomTo(z * devicePixelRatio, ms, "Sine.easeOut", true);
+      else cam.setZoom(z * devicePixelRatio);
+      syncZoomButtons(z <= min * 1.001, z >= max * 0.999, Math.abs(userZoom - 1) < 0.001);
     }
     addBody(id: number, x: number, y: number): Body {
       const body: Body = {
@@ -608,7 +697,7 @@ export function openTown(options: TownOptions) {
       g.fillStyle(0x000000, 0.18).fillRoundedRect(-27, -26, 56, 44, 14);
       g.fillStyle(0xffffff, 1).fillRoundedRect(-28, -28, 56, 44, 14);
       g.fillTriangle(-6, 14, 6, 14, 0, 24);
-      const ui = Math.max(1, 1 / this.zoomBase);
+      const ui = Math.max(1, 1 / this.zoomNow);
       body.bubble = this.add
         .container(body.x, body.y, [g, text])
         .setDepth(6000)
@@ -745,7 +834,7 @@ export function openTown(options: TownOptions) {
         body.y - 60 - lift,
         body.rig ? body.rig.root.y - 47 : Infinity,
       );
-      const ui = Math.max(1, 1 / this.zoomBase);
+      const ui = Math.max(1, 1 / this.zoomNow);
       body.name.setScale(ui).setPosition(body.x, head);
       body.title.setScale(ui);
       body.title.setPosition(body.x, head - (body.name.height - 4) * ui);
