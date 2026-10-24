@@ -1074,39 +1074,6 @@ export function propSprite(kind: string): Sprite {
           ctx.fillRect(12, 2, 16, 5);
         },
       };
-    case "bench":
-      // Seen from above: a slatted seat with its backrest on the far side.
-      // Drawn along +x; the town turns it to follow the plaza ring.
-      return {
-        w: 100,
-        h: 50,
-        ax: 50,
-        ay: 25,
-        draw(ctx) {
-          ctx.fillStyle = "rgba(20,28,12,0.28)";
-          roundRect(ctx, 8, 14, 88, 30, 6);
-          ctx.fill();
-          // Iron ends.
-          ctx.fillStyle = "#2c2a2e";
-          roundRect(ctx, 6, 6, 8, 34, 3);
-          ctx.fill();
-          roundRect(ctx, 86, 6, 8, 34, 3);
-          ctx.fill();
-          // Seat slats.
-          for (let k = 0; k < 4; k++) {
-            ctx.fillStyle = k % 2 ? "#a87a4c" : "#986c40";
-            roundRect(ctx, 12, 18 + k * 5.5, 76, 4.5, 2);
-            ctx.fill();
-          }
-          // Backrest (outer side), a little raised: lighter top edge.
-          ctx.fillStyle = "#7a5634";
-          roundRect(ctx, 10, 6, 80, 9, 3);
-          ctx.fill();
-          ctx.fillStyle = "#b58556";
-          roundRect(ctx, 10, 6, 80, 3, 2);
-          ctx.fill();
-        },
-      };
     case "crates":
       return {
         w: 80,

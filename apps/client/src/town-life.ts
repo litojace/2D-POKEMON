@@ -1,7 +1,6 @@
 import Phaser from "phaser";
 import {
   TOWN,
-  TOWN_BENCHES,
   TOWN_BUILDINGS,
   TOWN_DISTRICTS,
   TOWN_DUMMIES,
@@ -177,7 +176,7 @@ export class TownScenery {
 
   private props() {
     const s = this.scene;
-    // Fountain, element stones, lamps, benches, crates, well, dummies…
+    // Fountain, element stones, lamps, crates, well, dummies…
     const f = TOWN_OBSTACLES[0];
     place(s, "town-fountain", fountainSprite(), f.x, f.y + 10, f.y);
     const kinds = new Set(["stone", "lamp", "crates", "well", "dummy", "mirror", "obelisk", "board"]);
@@ -199,10 +198,6 @@ export class TownScenery {
       }
       void img;
     }
-    // Benches follow the plaza ring, backs out, seats toward the fountain.
-    const bench = bake(s, "town-bench", propSprite("bench"));
-    for (const b of TOWN_BENCHES)
-      s.add.image(b.x, b.y, bench.key).setOrigin(bench.ox, bench.oy).setScale(bench.scale, bench.scale * 0.85).setRotation(b.rotation).setDepth(b.y - 8);
     TOWN_STALLS.forEach((st, i) => place(s, `town-stall-${i}`, stallSprite(st.color, i), st.x, st.y + 26, st.y));
     void TOWN_DUMMIES;
     // Raid Hall statues: a pedestal, the boss's crest, and a glow.

@@ -34,7 +34,7 @@ export type TownEmote = (typeof TOWN_EMOTES)[number];
 
 /** Round obstacles (ellipses, the floor is seen at a slant) or boxes. */
 export type TownObstacle =
-  | { shape: "round"; x: number; y: number; rx: number; ry: number; kind: "fountain" | "tree" | "pillar" | "stone" | "statue" | "lamp" | "dummy" | "pond" | "mirror" | "obelisk" | "well" | "bench" }
+  | { shape: "round"; x: number; y: number; rx: number; ry: number; kind: "fountain" | "tree" | "pillar" | "stone" | "statue" | "lamp" | "dummy" | "pond" | "mirror" | "obelisk" | "well" }
   | { shape: "box"; x: number; y: number; w: number; h: number; kind: "building" | "stall" | "board" | "crates" };
 
 /** Things a building is: what the art draws for each footprint. */
@@ -150,28 +150,13 @@ export const TOWN_SPOTS: readonly TownSpot[] = [
   { id: "leaderboard", x: 2240, y: 1300, label: "Champions' Obelisk", sub: "Top players this month", color: "#ffe58f", reach: 70 },
 ];
 
-/**
- * Benches on the grass just outside the plaza, following its curve and
- * facing the fountain, one in each gap between the roads, with a lamp on
- * either side (degrees: 0 = east, 90 = south).
- */
+/** Lamps on the grass just outside the plaza ring, clear of the roads (degrees: 0 = east, 90 = south). */
 const RING = 405;
 const onRing = (deg: number) => {
   const a = (deg * Math.PI) / 180;
   return { x: Math.round(TOWN.plaza.x + Math.cos(a) * RING), y: Math.round(TOWN.plaza.y + Math.sin(a) * RING * 0.78) };
 };
 export const TOWN_PLAZA_LAMPS = [26, 70, 214, 242, 298, 334].map(onRing);
-export const TOWN_BENCHES = [48, 114, 228, 316].map((deg) => {
-  const a = (deg * Math.PI) / 180,
-    r = RING;
-  return {
-    x: Math.round(TOWN.plaza.x + Math.cos(a) * r),
-    y: Math.round(TOWN.plaza.y + Math.sin(a) * r * 0.78),
-    /** Along the ring (the tangent), so the seat faces the fountain. */
-    rotation: Math.atan2(Math.cos(a) * 0.78, -Math.sin(a)),
-  };
-});
-
 function buildObstacles(): TownObstacle[] {
   const { x, y } = TOWN.plaza;
   const list: TownObstacle[] = [{ shape: "round", x, y, rx: 100, ry: 76, kind: "fountain" }];
@@ -192,8 +177,6 @@ function buildObstacles(): TownObstacle[] {
     ...TOWN_PLAZA_LAMPS.map((l) => [l.x, l.y]), [2150, 1010], [2150, 1160], [1500, 760], [1700, 760], [1050, 1010], [1300, 1560], [1900, 1560],
   ];
   for (const [lx, ly] of lamps) list.push({ shape: "round", x: lx, y: ly, rx: 8, ry: 6, kind: "lamp" });
-  // Benches facing the fountain.
-  for (const b of TOWN_BENCHES) list.push({ shape: "round", x: b.x, y: b.y, rx: 28, ry: 18, kind: "bench" });
   for (const [cx, cy] of [[400, 1600], [1030, 1450], [2520, 1260]]) list.push({ shape: "box", x: cx, y: cy, w: 60, h: 30, kind: "crates" });
   list.push({ shape: "round", x: 2440, y: 600, rx: 30, ry: 20, kind: "well" });
   // Trees: a forest border plus groves, kept off roads, districts and buildings.
