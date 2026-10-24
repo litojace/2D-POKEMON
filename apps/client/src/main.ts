@@ -120,6 +120,7 @@ import "./style.css";
 import "./champion-selection.css";
 import "./friends.css";
 import "./wardrobe.css";
+import "./battle-dock.css";
 import { FollowCamera, screenToWorld, outsideView } from "./follow-camera";
 import { updateNameplate } from "./player-nameplate";
 import { fighterPack } from "./animation/pack-config";
@@ -1664,10 +1665,8 @@ function renderBattle() {
     syncBattleLoop();
     fitRenderer();
     $("practice-controls").hidden = !state.practice;
-    // Solo test mode: just Settings and Leave, no site menu.
+    // Solo test mode keeps its only leave action inside the Practice panel.
     document.body.classList.toggle("practice-active", !!state.practice);
-    $("battle-leave").hidden = !state.practice;
-    $("battle-leave").onclick = () => void leave();
     if (state.practice) {
       $("practice-controls").innerHTML =
         `<details id="practice-settings" class="practice-settings"><summary>Practice</summary><div class="practice-panel"><div class="practice-heading"><span class="eyebrow">Solo test mode</span><span id="practice-stats"></span></div><div class="practice-actions"><label>Creature <select id="practice-character">${Object.values(
@@ -2358,6 +2357,7 @@ function dialog(html: string) {
  * costs, while a match is actually under way.
  */
 function leaveButton() {
+  if (state?.practice) return "";
   const live =
     !!state &&
     !state.practice &&
@@ -2387,7 +2387,8 @@ function showSettings() {
   touch.bindSettings();
   $("open-controls").onclick = showControls;
   $("settings-report").onclick = () => accountsUI.showReport(reportContext());
-  if (myId || watching) $("exit-room").onclick = () => void leave();
+  const exitRoom = $("exit-room");
+  if (exitRoom) exitRoom.onclick = () => void leave();
 }
 /** Settings → Controls (see controls-screen.ts). */
 function showControls() {
