@@ -21136,19 +21136,17 @@ body.gate-active main {
 }
 .gate-backdrop {
   position: absolute;
-  inset: -4%;
+  inset: 0;
   z-index: -2;
-  background: url("/assets/backgrounds/elemental-plaza.webp") center / cover no-repeat;
-  background-image: image-set(
-    url("/assets/backgrounds/elemental-plaza-small.webp") 1x,
-    url("/assets/backgrounds/elemental-plaza.webp") 2x
-  );
-  animation: gate-drift 60s ease-in-out infinite alternate;
-  filter: saturate(1.05);
+  /* "Campfire night": all eight fighters around a fire, kept in the left part
+     of the frame so the account card never covers one. */
+  background: url("/assets/backgrounds/campfire-poster-small.webp") left center / cover no-repeat;
+  transform-origin: 25% 70%;
+  animation: gate-drift 40s ease-in-out infinite alternate;
 }
-@media (min-width: 1100px) {
+@media (min-width: 1100px), (min-resolution: 1.5dppx) {
   .gate-backdrop {
-    background-image: url("/assets/backgrounds/elemental-plaza.webp");
+    background-image: url("/assets/backgrounds/campfire-poster.webp");
   }
 }
 .welcome-gate::before {
@@ -21157,16 +21155,14 @@ body.gate-active main {
   inset: 0;
   z-index: -1;
   background:
-    linear-gradient(90deg, rgba(8, 14, 28, 0.94) 0%, rgba(8, 14, 28, 0.78) 34%, rgba(8, 14, 28, 0.25) 62%, rgba(8, 14, 28, 0.55) 100%),
-    linear-gradient(180deg, rgba(8, 14, 28, 0.5) 0%, rgba(8, 14, 28, 0) 30%, rgba(8, 14, 28, 0) 70%, rgba(8, 14, 28, 0.75) 100%),
-    radial-gradient(120% 90% at 70% 40%, rgba(255, 214, 140, 0.12), transparent 60%);
+    linear-gradient(90deg, rgba(6, 10, 28, 0.55) 0%, rgba(6, 10, 28, 0.2) 28%, rgba(6, 10, 28, 0) 46%, rgba(6, 10, 28, 0) 60%, rgba(6, 10, 28, 0.3) 100%);
 }
 @keyframes gate-drift {
   from {
-    transform: scale(1.04) translate(-1.2%, -0.8%);
+    transform: scale(1);
   }
   to {
-    transform: scale(1.1) translate(1.2%, 0.8%);
+    transform: scale(1.03);
   }
 }
 /* Floating motes of light. */
@@ -21223,6 +21219,8 @@ body.gate-active main {
   display: grid;
   gap: 14px;
   max-width: 560px;
+  align-self: start;
+  padding-top: 3vh;
 }
 .gate-mark {
   width: 44px;
@@ -21245,7 +21243,7 @@ body.gate-active main {
   font: 800 clamp(48px, 7vw, 92px) / 0.9 "Barlow Condensed", sans-serif;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  text-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.35), 0 4px 30px rgba(0, 0, 0, 0.55);
 }
 .gate-intro h1 span {
   display: block;
@@ -21255,73 +21253,12 @@ body.gate-active main {
 .gate-invite {
   margin: 4px 0 6px;
   max-width: 460px;
-  color: #c9d4e8;
+  color: #d6def0;
   font: 400 17px/1.5 "DM Sans", sans-serif;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
 }
 .gate-invite b {
   color: #fff;
-}
-.gate-points {
-  display: grid;
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.gate-points li {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.gate-points li > span {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  border: 1px solid rgba(242, 194, 91, 0.35);
-  border-radius: 11px;
-  background: rgba(242, 194, 91, 0.1);
-  color: #f2c25b;
-}
-.gate-points li > span svg {
-  width: 19px;
-  height: 19px;
-  color: inherit;
-}
-.gate-points b {
-  display: block;
-  font: 600 15px/1.2 "DM Sans", sans-serif;
-}
-.gate-points small {
-  color: #9fb0cc;
-  font: 400 13px/1.3 "DM Sans", sans-serif;
-}
-.gate-lineup {
-  display: flex;
-  align-items: flex-end;
-  margin-top: 10px;
-}
-.gate-fighter {
-  width: 64px;
-  margin-right: -10px;
-  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45));
-  animation: gate-bob 3.2s ease-in-out infinite;
-  animation-delay: calc(var(--i) * -0.4s);
-}
-.gate-fighter svg {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-@keyframes gate-bob {
-  50% {
-    transform: translateY(-5px);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .gate-fighter {
-    animation: none;
-  }
 }
 /* The card on the right (the account panel lives in it). */
 .gate-card {
@@ -21366,12 +21303,14 @@ body.gate-active main {
     grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
     gap: 24px;
   }
-  .gate-points,
-  .gate-lineup {
-    display: none;
-  }
   .gate-intro h1 {
     font-size: clamp(40px, 7vw, 64px);
+  }
+}
+@media (max-height: 560px) {
+  /* Keep the title clear of the fighters around the campfire. */
+  .gate-lead {
+    display: none;
   }
   .gate-lead,
   .gate-invite {
