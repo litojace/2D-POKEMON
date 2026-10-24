@@ -16,7 +16,9 @@ keyboard focus survive background presence updates. An unchanged response keeps
 the current DOM. Out-of-order responses are ignored, a failed refresh retains the
 last good list, and closing or replacing the screen stops its polling and listeners.
 
-Desktop uses a scrollable crew list and a separate add/share panel. Landscape
+Desktop uses a scrollable crew list and a separate add/share panel. Two columns
+start at 1280px; smaller windows keep wider cards in one column. Join and Watch
+share an action width, and every button has at least a 44px touch target. Landscape
 phones keep the filters and search fixed and open Add friend as a side panel with
 a pinned close button. The Requests filter replaces the larger request preview on
 compact screens. Controller directions and confirm use the existing menu controls;

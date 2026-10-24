@@ -9,6 +9,7 @@ Goal: make Element Arena look like a current hero-brawler (Brawl Stars, Pokémon
 - Keep every existing element `id` and every class/attribute that `tests/` or TypeScript code queries. Search `tests/` and `apps/client/src` for a selector before renaming it. Add new classes rather than renaming old ones when unsure.
 - Keep all features reachable: nothing gets deleted from the UI, only restyled or moved.
 - For every UI change, double-check spacing, alignment and visual balance in the rendered screen. Scale avatars and text to the space available; avoid tiny content inside oversized cards. Review both desktop and landscape phones, including safe areas, and check long names and selected states for clipping or overlap before calling the change finished.
+- Verify matching avatar/text start lines, aligned icon-label pairs and consistent widths for equivalent actions. Buttons need at least 44px touch targets. Review empty states, long names, populated lists and breakpoint boundaries in the browser before finishing.
 - Must keep working on: desktop (mouse + keyboard), controller, phone in landscape (PWA, safe-area insets, `rotate-gate`), and touch controls.
 - Respect `prefers-reduced-motion`: every new animation needs a reduced-motion fallback.
 - After each phase: `npm run typecheck`, `npm test`, `npm run format:check` must pass, and the game must run with `npm run dev` (open `http://localhost:5173`).
