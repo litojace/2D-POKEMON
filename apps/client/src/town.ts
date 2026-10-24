@@ -16,6 +16,7 @@ import { rigAssets } from "./animation/assets";
 import { actionFor, controlPrefs } from "./controls";
 import { menuIcon } from "./menu-icons";
 import { TownScenery } from "./town-life";
+import { TEXT_RES } from "./town-art";
 
 /**
  * Elemental Plaza, the client: a separate Phaser game in a fullscreen layer.
@@ -309,6 +310,7 @@ export function openTown(options: TownOptions) {
         shadow: this.add.ellipse(x, y, 46, 16, 0x000000, 0.25),
         name: this.add
           .text(x, y, "", {
+            resolution: TEXT_RES,
             fontFamily: "DM Sans, sans-serif",
             fontSize: "13px",
             fontStyle: "bold",
@@ -321,6 +323,7 @@ export function openTown(options: TownOptions) {
           .setDepth(5000),
         title: this.add
           .text(x, y, "", {
+            resolution: TEXT_RES,
             fontFamily: "DM Sans, sans-serif",
             fontSize: "11px",
             fontStyle: "bold",
@@ -383,6 +386,7 @@ export function openTown(options: TownOptions) {
       const kind = TOWN_EMOTES[body.emote - 1];
       const text = this.add
         .text(0, -4, EMOTE_ICON[kind], {
+          resolution: TEXT_RES,
           fontFamily: "DM Sans, sans-serif",
           fontSize: kind === "gg" ? "20px" : "24px",
           fontStyle: "bold",

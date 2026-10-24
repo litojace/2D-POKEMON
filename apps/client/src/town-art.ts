@@ -19,6 +19,12 @@ import {
 export type Ctx = CanvasRenderingContext2D;
 /** Buildings and props are drawn at this resolution for crisp edges. */
 export const ART_RES = 1.5;
+/**
+ * Phaser draws text into a texture at 1× and the camera then magnifies it
+ * (town zoom × device pixel ratio, up to ~4× on phones), which blurs it.
+ * Drawing text at the screen's real density keeps it sharp.
+ */
+export const TEXT_RES = Math.min(4, Math.ceil((typeof devicePixelRatio === "number" ? devicePixelRatio : 1) * 1.6));
 
 /** Deterministic noise so the town looks the same for everyone. */
 export const rnd = (i: number) => {

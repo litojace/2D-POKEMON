@@ -16,6 +16,7 @@ import { RAID_BOSSES } from "../../../packages/shared/src/raid-roster";
 import { raidCrest } from "./raid-crests";
 import {
   ART_RES,
+  TEXT_RES,
   WINDMILL_HUB,
   buildingSprite,
   chimneyOf,
@@ -203,7 +204,7 @@ export class TownScenery {
     const ped = bake(s, "town-pedestal", propSprite("pedestal"));
     s.add.image(TOWN_NEXT_STATUE.x, TOWN_NEXT_STATUE.y + 10, ped.key).setOrigin(ped.ox, ped.oy).setScale(ped.scale).setDepth(TOWN_NEXT_STATUE.y);
     s.add
-      .text(TOWN_NEXT_STATUE.x, TOWN_NEXT_STATUE.y - 52, "?", { fontFamily: "Barlow Condensed, sans-serif", fontSize: "40px", fontStyle: "bold", color: "#b59bff" })
+      .text(TOWN_NEXT_STATUE.x, TOWN_NEXT_STATUE.y - 52, "?", { resolution: TEXT_RES, fontFamily: "Barlow Condensed, sans-serif", fontSize: "40px", fontStyle: "bold", color: "#b59bff" })
       .setOrigin(0.5, 1)
       .setAlpha(0.7)
       .setDepth(TOWN_NEXT_STATUE.y + 0.1);
@@ -233,9 +234,9 @@ export class TownScenery {
     for (const d of TOWN_DISTRICTS) {
       const y = d.id === "raid" ? d.y - 470 : d.id === "arena" ? d.y - 470 : d.id === "training" ? d.y - 250 : d.id === "board" ? d.y - 300 : d.y - 340;
       const title = this.scene.add
-        .text(0, 0, d.label.toUpperCase(), { fontFamily: "Barlow Condensed, sans-serif", fontSize: "26px", fontStyle: "bold", color: d.color })
+        .text(0, 0, d.label.toUpperCase(), { resolution: TEXT_RES, fontFamily: "Barlow Condensed, sans-serif", fontSize: "26px", fontStyle: "bold", color: d.color })
         .setOrigin(0.5, 1);
-      const sub = this.scene.add.text(0, 2, d.sub, { fontFamily: "DM Sans, sans-serif", fontSize: "13px", color: "#c9d2e3" }).setOrigin(0.5, 0);
+      const sub = this.scene.add.text(0, 2, d.sub, { resolution: TEXT_RES, fontFamily: "DM Sans, sans-serif", fontSize: "13px", color: "#c9d2e3" }).setOrigin(0.5, 0);
       const w = Math.max(title.width, sub.width) + 36;
       const bg = this.scene.add.graphics();
       bg.fillStyle(0x0e1a31, 0.86).fillRoundedRect(-w / 2, -40, w, 64, 14);
@@ -249,10 +250,10 @@ export class TownScenery {
     g.fillStyle(0x3a3226, 1).fillRoundedRect(x - 120, y - 46, 240, 92, 10);
     g.fillStyle(0x0b1220, 1).fillRoundedRect(x - 112, y - 38, 224, 76, 6);
     g.fillStyle(0xff4d5a, 1).fillRoundedRect(x - 104, y - 32, 38, 16, 4);
-    this.scene.add.text(x - 85, y - 24, "LIVE", { fontFamily: "Barlow Condensed, sans-serif", fontSize: "13px", fontStyle: "bold", color: "#ffffff" }).setOrigin(0.5).setDepth(depth + 0.01);
-    this.scene.add.text(x + 14, y - 22, "ELEMENTAL COLISEUM", { fontFamily: "Barlow Condensed, sans-serif", fontSize: "17px", fontStyle: "bold", color: "#ffd65b" }).setOrigin(0.5).setDepth(depth + 0.01);
+    this.scene.add.text(x - 85, y - 24, "LIVE", { resolution: TEXT_RES, fontFamily: "Barlow Condensed, sans-serif", fontSize: "13px", fontStyle: "bold", color: "#ffffff" }).setOrigin(0.5).setDepth(depth + 0.01);
+    this.scene.add.text(x + 14, y - 22, "ELEMENTAL COLISEUM", { resolution: TEXT_RES, fontFamily: "Barlow Condensed, sans-serif", fontSize: "17px", fontStyle: "bold", color: "#ffd65b" }).setOrigin(0.5).setDepth(depth + 0.01);
     this.screenText = this.scene.add
-      .text(x, y + 12, "", { fontFamily: "DM Sans, sans-serif", fontSize: "13px", color: "#eef2ff", align: "center" })
+      .text(x, y + 12, "", { resolution: TEXT_RES, fontFamily: "DM Sans, sans-serif", fontSize: "13px", color: "#eef2ff", align: "center" })
       .setOrigin(0.5)
       .setDepth(depth + 0.01);
   }
