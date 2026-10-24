@@ -90,14 +90,13 @@ const esc = (s: string) =>
 /** Zoom steps: buttons and keys, and one wheel notch. */
 const ZOOM_STEP = 1.25,
   WHEEL_STEP = 1.1,
-  /** How far out / in from the screen's natural view (the map's edge also limits zooming out). */
-  ZOOM_MIN = 0.55,
+  /** How far in from the screen's natural view; zooming out goes until the town fills the screen. */
   ZOOM_MAX = 2;
 /** The player's zoom, relative to the natural view; kept between visits. */
 let userZoom = (() => {
   try {
     const v = Number(localStorage.getItem("town-zoom"));
-    return v >= ZOOM_MIN && v <= ZOOM_MAX ? v : 1;
+    return v > 0.05 && v <= ZOOM_MAX ? v : 1;
   } catch {
     return 1;
   }
@@ -518,12 +517,16 @@ export function openTown(options: TownOptions) {
       cam.setBounds(0, 0, TOWN.width, TOWN.height);
       this.applyZoom(0);
     }
-    /** Allowed zoom range for this screen: never past the map's edge, at most 2× closer. */
+    /**
+     * Allowed zoom range for this screen: out until the whole town fills it
+     * (on a 16:10 screen that's all of it; wider phones see its full width),
+     * in to 2× closer than the natural view.
+     */
     private zoomRange() {
       const w = this.scale.width / devicePixelRatio,
         h = this.scale.height / devicePixelRatio;
       const fill = Math.max(w / TOWN.width, h / TOWN.height);
-      return { min: Math.max(fill, this.zoomBase * ZOOM_MIN), max: this.zoomBase * ZOOM_MAX };
+      return { min: Math.min(fill, this.zoomBase), max: this.zoomBase * ZOOM_MAX };
     }
     resetZoom() {
       userZoom = 1;
@@ -552,7 +555,9 @@ export function openTown(options: TownOptions) {
       const z = Math.min(max, Math.max(min, this.zoomBase * userZoom));
       this.zoomNow = z;
       const cam = this.cameras.main;
-      if (ms && !options.reduced) cam.zoomTo(z * devicePixelRatio, ms, "Sine.easeOut", true);
+      // A plain tween (the camera's own zoom effect can stop short of its target).
+      this.tweens.killTweensOf(cam);
+      if (ms && !options.reduced) this.tweens.add({ targets: cam, zoom: z * devicePixelRatio, duration: ms, ease: "Sine.easeOut" });
       else cam.setZoom(z * devicePixelRatio);
       syncZoomButtons(z <= min * 1.001, z >= max * 0.999, Math.abs(userZoom - 1) < 0.001);
     }
@@ -835,6 +840,11 @@ export function openTown(options: TownOptions) {
         body.rig ? body.rig.root.y - 47 : Infinity,
       );
       const ui = Math.max(1, 1 / this.zoomNow);
+      // Zoomed far out the town reads as a map: names and titles fade away,
+      // and come back as you zoom in.
+      const labels = Math.min(1, Math.max(0, (this.zoomNow / this.zoomBase - 0.45) / 0.15));
+      body.name.setAlpha(labels).setVisible(labels > 0);
+      body.title.setAlpha(labels).setVisible(labels > 0);
       body.name.setScale(ui).setPosition(body.x, head);
       body.title.setScale(ui);
       body.title.setPosition(body.x, head - (body.name.height - 4) * ui);
