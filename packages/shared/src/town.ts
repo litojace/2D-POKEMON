@@ -197,28 +197,84 @@ function buildObstacles(): TownObstacle[] {
   return list;
 }
 
-/** Roads the trees keep clear of: plaza → each district, and an outer loop. */
-export const TOWN_ROADS: readonly [number, number, number, number][] = [
-  [1600, 1080, 2700, 1080],
-  [1600, 1080, 1600, 520],
-  [1600, 1080, 640, 960],
-  [1600, 1080, 760, 1600],
-  [1600, 1080, 1600, 1760],
-  [640, 960, 360, 760],
-  [2700, 1080, 2620, 1360],
-  [1600, 520, 2230, 420],
-  [1600, 520, 960, 400],
-  [2700, 1080, 2860, 460],
-  [760, 1600, 1100, 1880],
-  [1600, 1760, 2260, 1720],
-  [640, 960, 250, 1320],
+/**
+ * The road network, as smooth paths (a curve through each list of points).
+ * The first five are the main roads from the plaza to each district (the
+ * signposts stand on them); then side roads, house lanes that run to each
+ * front gate and door, and footpaths. Ends tuck under district floors, the
+ * terrace or a doorstep, so no road stops in the open.
+ */
+export type TownPath = { pts: readonly (readonly [number, number])[]; width: number };
+const MAIN = 112,
+  SIDE = 84,
+  LANE = 60,
+  FOOT = 44;
+export const TOWN_PATHS: readonly TownPath[] = [
+  // Main roads: plaza → Arena Gate, Raid Hall, Training Grounds, Market, Notice Board.
+  { width: MAIN, pts: [[1600, 1080], [2700, 1080]] },
+  { width: MAIN, pts: [[1600, 1080], [1600, 520]] },
+  { width: MAIN, pts: [[1600, 1080], [1250, 1000], [900, 930]] },
+  { width: MAIN, pts: [[1600, 1080], [1300, 1265], [1040, 1450], [800, 1580]] },
+  { width: MAIN, pts: [[1600, 1080], [1600, 1720]] },
+  // Boss Rush: leaves the training road and curves round the yard's fence to the tower door.
+  { width: SIDE, pts: [[1130, 980], [1010, 830], [830, 700], [590, 690], [460, 718], [395, 745]] },
+  // Arena → windmill door.
+  { width: SIDE, pts: [[2740, 960], [2790, 760], [2850, 580], [2860, 470]] },
+  // Arena → round the far side of the east house to its gate.
+  { width: SIDE, pts: [[2950, 1230], [2875, 1390], [2905, 1525], [3036, 1550]] },
+  // Notice Board → the south-east houses.
+  { width: SIDE, pts: [[1700, 1745], [1900, 1820], [2120, 1845], [2380, 1845]] },
+  // House lanes (gate and door).
+  { width: LANE, pts: [[1100, 640], [1040, 560], [990, 470], [976, 372]] },
+  { width: LANE, pts: [[2100, 640], [2170, 560], [2232, 470], [2247, 392]] },
+  { width: LANE, pts: [[2278, 1845], [2278, 1712]] },
+  { width: LANE, pts: [[2380, 1845], [2470, 1960], [2576, 1985]] },
+  { width: LANE, pts: [[2576, 1985], [2576, 1892]] },
+  { width: LANE, pts: [[3036, 1550], [3036, 1462]] },
+  { width: LANE, pts: [[440, 1585], [340, 1475], [275, 1395], [266, 1312]] },
+  { width: LANE, pts: [[950, 1730], [1010, 1895], [1117, 1980]] },
+  { width: LANE, pts: [[1117, 1980], [1117, 1892]] },
+  // Footpaths to the well and down to the pond.
+  { width: FOOT, pts: [[2195, 540], [2300, 595], [2405, 645]] },
+  { width: FOOT, pts: [[2690, 1300], [2655, 1400]] },
 ];
+/** Points along a path's curve (Catmull-Rom through its points), about every 24 px. */
+export function pathPoints(p: TownPath): [number, number][] {
+  const P = p.pts;
+  if (P.length === 2) {
+    const n = Math.max(1, Math.round(Math.hypot(P[1][0] - P[0][0], P[1][1] - P[0][1]) / 24));
+    return Array.from({ length: n + 1 }, (_, i) => [P[0][0] + ((P[1][0] - P[0][0]) * i) / n, P[0][1] + ((P[1][1] - P[0][1]) * i) / n]);
+  }
+  const out: [number, number][] = [];
+  for (let i = 0; i < P.length - 1; i++) {
+    const p0 = P[Math.max(0, i - 1)],
+      p1 = P[i],
+      p2 = P[i + 1],
+      p3 = P[Math.min(P.length - 1, i + 2)];
+    const n = Math.max(2, Math.round(Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / 24));
+    for (let k = 0; k < n; k++) {
+      const t = k / n,
+        t2 = t * t,
+        t3 = t2 * t;
+      const f = (a: number, b: number, c: number, d: number) => 0.5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3);
+      out.push([f(p0[0], p1[0], p2[0], p3[0]), f(p0[1], p1[1], p2[1], p3[1])]);
+    }
+  }
+  out.push([P[P.length - 1][0], P[P.length - 1][1]]);
+  return out;
+}
+/** Every path as short straight pieces [x1, y1, x2, y2, width] (for distance checks). */
+export const TOWN_ROADS: readonly [number, number, number, number, number][] = TOWN_PATHS.flatMap((p) => {
+  const pts = pathPoints(p);
+  return pts.slice(1).map(([x, y], i) => [pts[i][0], pts[i][1], x, y, p.width] as [number, number, number, number, number]);
+});
 const nearRoad = (x: number, y: number, pad: number) =>
-  TOWN_ROADS.some(([x1, y1, x2, y2]) => {
+  TOWN_ROADS.some(([x1, y1, x2, y2, w]) => {
     const dx = x2 - x1,
       dy = y2 - y1,
-      t = Math.max(0, Math.min(1, ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy)));
-    return Math.hypot(x - (x1 + dx * t), y - (y1 + dy * t)) < pad;
+      t = Math.max(0, Math.min(1, ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy || 1)));
+    // `pad` is the clearance from a main road's centre; narrower paths need less.
+    return Math.hypot(x - (x1 + dx * t), y - (y1 + dy * t)) < pad - (112 - w) / 2;
   });
 /** The Raid Hall's marble terrace (and a margin): no trees or bushes on it. */
 const onTerrace = (x: number, y: number) => x > 1020 && x < 2180 && y > 360 && y < 790;
@@ -262,7 +318,7 @@ export const TOWN_TREES = buildTrees();
  * right of each road, pointing the way to its district.
  */
 const ROAD_TO: TownDistrict["id"][] = ["arena", "raid", "training", "market", "board"];
-export const TOWN_SIGNPOSTS = TOWN_ROADS.slice(0, 5).map(([x1, y1, x2, y2], i) => {
+export const TOWN_SIGNPOSTS = TOWN_PATHS.slice(0, 5).map(({ pts: [[x1, y1], [x2, y2]] }, i) => {
   const len = Math.hypot(x2 - x1, y2 - y1),
     ux = (x2 - x1) / len,
     uy = (y2 - y1) / len,

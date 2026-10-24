@@ -5,6 +5,8 @@ import {
   TOWN_DUMMIES,
   TOWN_POND,
   TOWN_ROADS,
+  TOWN_PATHS,
+  pathPoints,
   TOWN_NEXT_STATUE,
   TOWN_OBSTACLES,
   TOWN_SHRUBS,
@@ -59,37 +61,62 @@ const distToSegment = (x: number, y: number, [x1, y1, x2, y2]: readonly number[]
   return Math.hypot(x - (x1 + dx * t), y - (y1 + dy * t));
 };
 
-/** Cobbles packed along a road: rows of rounded stones across its width. */
-function cobbleRoad(ctx: Ctx, road: readonly number[], width: number, seed: number) {
-  const [x1, y1, x2, y2] = road,
-    len = Math.hypot(x2 - x1, y2 - y1),
-    ux = (x2 - x1) / len,
-    uy = (y2 - y1) / len;
-  ctx.lineCap = "round";
-  // Packed dirt edge, then the mortar bed.
-  ctx.strokeStyle = "#7d6d52";
-  ctx.lineWidth = width + 22;
+/** Walk a sampled curve every `step` px, giving position and direction. */
+function walk(pts: readonly (readonly number[])[], step: number, fn: (x: number, y: number, ux: number, uy: number, d: number) => void) {
+  let d = 0,
+    next = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const [x1, y1] = pts[i - 1],
+      [x2, y2] = pts[i],
+      len = Math.hypot(x2 - x1, y2 - y1);
+    if (!len) continue;
+    const ux = (x2 - x1) / len,
+      uy = (y2 - y1) / len;
+    while (next <= d + len) {
+      const t = next - d;
+      fn(x1 + ux * t, y1 + uy * t, ux, uy, next);
+      next += step;
+    }
+    d += len;
+  }
+}
+const strokePath = (ctx: Ctx, pts: readonly (readonly number[])[]) => {
   ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  for (const [x, y] of pts.slice(1)) ctx.lineTo(x, y);
   ctx.stroke();
+};
+/** A road's bed: packed dirt edge and mortar (drawn for every road before any cobbles). */
+function roadBed(ctx: Ctx, pts: readonly (readonly number[])[], width: number) {
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = "#7d6d52";
+  ctx.lineWidth = width + (width > 60 ? 22 : 14);
+  strokePath(ctx, pts);
   ctx.strokeStyle = "#857a66";
   ctx.lineWidth = width;
-  ctx.stroke();
+  strokePath(ctx, pts);
+}
+/** Cobbles packed along a road: rows of rounded stones across its width, following its curve. */
+function cobbleRoad(ctx: Ctx, pts: readonly (readonly number[])[], width: number, seed: number) {
   const tones = ["#a99d86", "#9d917a", "#b3a78f", "#a1957d", "#bcb09a"];
-  for (let d = 0, row = 0; d < len; d += 15, row++) {
-    for (let k = -width / 2 + 9 + (row % 2) * 8; k < width / 2 - 6; k += 17) {
-      const i = seed * 1000 + row * 13 + k;
-      const cx = x1 + ux * d - uy * k + (rnd(i) - 0.5) * 3,
-        cy = y1 + uy * d + ux * k * 0.8 + (rnd(i + 1) - 0.5) * 3;
+  // Lanes and footpaths are laid with smaller stones.
+  const s = width > 60 ? 1 : 0.75;
+  let row = 0;
+  walk(pts, 15 * s, (x, y, ux, uy) => {
+    for (let k = -width / 2 + 9 * s + (row % 2) * 8 * s; k < width / 2 - 6 * s; k += 17 * s) {
+      const i = seed * 1000 + row * 13 + Math.round(k);
+      const cx = x - uy * k + (rnd(i) - 0.5) * 3,
+        cy = y + ux * k * 0.8 + (rnd(i + 1) - 0.5) * 3;
       ctx.fillStyle = tones[Math.floor(rnd(i + 2) * tones.length)];
-      roundRect(ctx, cx - 7, cy - 5, 14 + rnd(i + 3) * 3, 10, 4);
+      roundRect(ctx, cx - 7 * s, cy - 5 * s, (14 + rnd(i + 3) * 3) * s, 10 * s, 4 * s);
       ctx.fill();
       ctx.fillStyle = "rgba(255,255,255,0.12)";
-      roundRect(ctx, cx - 6, cy - 5, 9, 3, 2);
+      roundRect(ctx, cx - 6 * s, cy - 5 * s, 9 * s, 3 * s, 2 * s);
       ctx.fill();
     }
-  }
+    row++;
+  });
 }
 
 function grass(ctx: Ctx, W: number, H: number) {
@@ -295,6 +322,38 @@ function marketSquare(ctx: Ctx) {
     }
 }
 
+/** A small cobbled square in front of the Notice Board, where its roads meet. */
+function noticeCourt(ctx: Ctx) {
+  const x = 1600,
+    y = 1740,
+    rx = 220,
+    ry = 92;
+  ctx.fillStyle = "#7d6d52";
+  ellipse(ctx, x, y, rx + 10, ry + 8);
+  ctx.fill();
+  ctx.fillStyle = "#857a66";
+  ellipse(ctx, x, y, rx, ry);
+  ctx.fill();
+  const tones = ["#b3a78f", "#a99d86", "#bcb09a", "#a1957d"];
+  for (let ty = y - ry; ty < y + ry; ty += 14)
+    for (let tx = x - rx; tx < x + rx; tx += 19) {
+      const ox = (Math.floor(ty / 14) % 2) * 9;
+      if (Math.hypot((tx + ox + 8 - x) / (rx - 8), (ty + 6 - y) / (ry - 6)) > 1) continue;
+      ctx.fillStyle = tones[Math.floor(rnd(tx * 5 + ty) * 4)];
+      roundRect(ctx, tx + ox, ty, 17, 12, 4);
+      ctx.fill();
+    }
+  // Kerb ring.
+  ctx.strokeStyle = "#a49880";
+  ctx.lineWidth = 5;
+  ellipse(ctx, x, y, rx, ry);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(60,50,36,0.35)";
+  ctx.lineWidth = 1.5;
+  ellipse(ctx, x, y + 2, rx + 2, ry + 2);
+  ctx.stroke();
+}
+
 function pond(ctx: Ctx) {
   const { x, y, rx, ry } = TOWN_POND;
   ctx.fillStyle = "#c9b58a";
@@ -347,18 +406,19 @@ function pond(ctx: Ctx) {
 
 /** Ground: lawn, roads, district floors, the pond and every static shadow. */
 /** Kerb stones along both edges of a road, and worn earth just beyond them. */
-function kerbs(ctx: Ctx, road: readonly number[], width: number, seed: number) {
-  const [x1, y1, x2, y2] = road,
-    len = Math.hypot(x2 - x1, y2 - y1),
-    ux = (x2 - x1) / len,
-    uy = (y2 - y1) / len,
-    a = Math.atan2(uy, ux);
-  for (const side of [-1, 1])
-    for (let d = 0; d < len; d += 24) {
+function kerbs(ctx: Ctx, pts: readonly (readonly number[])[], width: number, seed: number, own: number) {
+  // No kerb across another road (where a lane joins, the kerb opens).
+  const onOtherRoad = (x: number, y: number) =>
+    TOWN_PATHS.some((p, j) => j !== own && PATH_PIECES[j].some((r) => distToSegment(x, y, r) < p.width / 2 + 3));
+  const small = width <= 60;
+  for (const side of [-1, 1]) {
+    let n = 0;
+    walk(pts, small ? 18 : 24, (cx, cy, ux, uy) => {
       const off = side * (width / 2 + 4),
-        x = x1 + ux * d - uy * off,
-        y = y1 + uy * d + ux * off * 0.8,
-        i = seed * 977 + d + side;
+        x = cx - uy * off,
+        y = cy + ux * off * 0.8,
+        i = seed * 977 + n++ * 7 + side;
+      if (onOtherRoad(x, y)) return;
       // Worn, bare earth where people step off the road.
       if (rnd(i * 1.3) < 0.35) {
         ctx.fillStyle = "rgba(120,96,64,0.35)";
@@ -367,16 +427,21 @@ function kerbs(ctx: Ctx, road: readonly number[], width: number, seed: number) {
       }
       ctx.save();
       ctx.translate(x, y);
-      ctx.rotate(a);
+      ctx.rotate(Math.atan2(uy * 0.8, ux));
+      const w = small ? 16 : 22;
       ctx.fillStyle = "#6f6656";
-      roundRect(ctx, -11, -4, 22, 8, 2);
+      roundRect(ctx, -w / 2, -4, w, 8, 2);
       ctx.fill();
       ctx.fillStyle = rnd(i * 3) > 0.5 ? "#a49880" : "#968a73";
-      roundRect(ctx, -11, -5, 21, 6, 2);
+      roundRect(ctx, -w / 2, -5, w - 1, 6, 2);
       ctx.fill();
       ctx.restore();
-    }
+    });
+  }
 }
+/** Each path's curve, sampled once. */
+const PATH_POINTS = TOWN_PATHS.map(pathPoints);
+const PATH_PIECES = PATH_POINTS.map((pts) => pts.slice(1).map(([x, y], i) => [pts[i][0], pts[i][1], x, y] as const));
 
 /** Fenced front yards and flower beds for the houses. */
 function yards(ctx: Ctx) {
@@ -406,7 +471,7 @@ function yards(ctx: Ctx) {
     // White picket fence: sides and front, with a gate gap in the middle.
     const picket = (x: number, y: number) => {
       // The fence stops where a road comes through.
-      if (TOWN_ROADS.some((r, k) => distToSegment(x, y, r) < (k < 5 ? 112 : 84) / 2 + 10)) return;
+      if (TOWN_ROADS.some((r) => distToSegment(x, y, r) < r[4] / 2 + 10)) return;
       ctx.fillStyle = `rgba(20,28,12,${SUN.alpha})`;
       ctx.fillRect(x - 1, y + 1, 5, 3);
       ctx.fillStyle = "#f2ede2";
@@ -444,8 +509,12 @@ export function paintGround(ground: Ctx) {
     ellipse(ctx, x, y, 80, 46);
     ctx.fill();
   }
-  TOWN_ROADS.forEach((r, i) => cobbleRoad(ctx, r, i < 5 ? 112 : 84, i + 1));
-  TOWN_ROADS.forEach((r, i) => kerbs(ctx, r, i < 5 ? 112 : 84, i + 1));
+  // Beds for every road first, then cobbles narrowest-first so wider roads
+  // pave over the ends of the lanes that join them, then the kerbs.
+  const order = TOWN_PATHS.map((p, i) => i).sort((a, b) => TOWN_PATHS[a].width - TOWN_PATHS[b].width);
+  for (const i of order) roadBed(ctx, PATH_POINTS[i], TOWN_PATHS[i].width);
+  for (const i of order) cobbleRoad(ctx, PATH_POINTS[i], TOWN_PATHS[i].width, i + 1);
+  for (const i of order) kerbs(ctx, PATH_POINTS[i], TOWN_PATHS[i].width, i + 1, i);
   yards(ctx);
   plaza(ctx);
   // Moss in the joints of the plaza's older stones.
@@ -471,10 +540,7 @@ export function paintGround(ground: Ctx) {
   marbleTerrace(ctx);
   trainingYard(ctx);
   marketSquare(ctx);
-  // A small paved court in front of the Notice Board.
-  ctx.fillStyle = "#9d917a";
-  ellipse(ctx, 1600, 1725, 190, 70);
-  ctx.fill();
+  noticeCourt(ctx);
   pond(ctx);
   // Shadows of everything tall (they fall down and to the right), drawn
   // solid into one layer, then blurred onto the ground once (see SUN).
@@ -519,7 +585,7 @@ export function paintGround(ground: Ctx) {
   for (let i = 0; i < 1600; i++) {
     const x = rnd(i * 4.7) * W,
       y = rnd(i * 6.1) * H,
-      d = Math.min(...TOWN_ROADS.map((r, k) => Math.abs(distToSegment(x, y, r) - (k < 5 ? 62 : 48))));
+      d = Math.min(...TOWN_ROADS.map((r) => Math.abs(distToSegment(x, y, r) - (r[4] / 2 + 6))));
     if (d > 6) continue;
     ctx.fillStyle = i % 2 ? "#5d8443" : "#6f9a52";
     ctx.fillRect(x, y - 3, 2, 6);
