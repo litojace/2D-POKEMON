@@ -38,8 +38,8 @@ dialog:has(.friends-hub) .dialog-heading {
   gap: 6px;
   min-width: 0;
 }
-.friends-hub button,
-.friends-hub summary {
+#dialog .friends-hub button,
+#dialog .friends-hub summary {
   min-height: 44px;
   margin: 0;
 }
@@ -265,7 +265,10 @@ dialog:has(.friends-hub) .dialog-heading {
   gap: 4px;
 }
 .friends-hub .friend-actions > :is(.primary, .secondary) {
-  min-width: 68px;
+  width: 80px;
+  min-width: 80px;
+  flex: none;
+  justify-content: center;
   padding: 8px 10px;
   border-radius: 10px;
   font-size: 15px;
@@ -465,7 +468,7 @@ dialog:has(.friends-hub) .dialog-heading {
   outline: 2px solid var(--accent);
   outline-offset: -3px;
 }
-@media (max-width: 1199px) {
+@media (max-width: 1279px) {
   .friends-hub .friend-list {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -638,7 +641,7 @@ dialog:has(.friends-hub) .dialog-heading {
     background: var(--bg-1);
   }
 }
-@media (min-width: 1200px) and (min-height: 601px) {
+@media (min-width: 1280px) and (min-height: 601px) {
   .friends-hub .friend-card .friend-name {
     align-self: start;
   }
