@@ -34,7 +34,7 @@ export type TownEmote = (typeof TOWN_EMOTES)[number];
 
 /** Round obstacles (ellipses, the floor is seen at a slant) or boxes. */
 export type TownObstacle =
-  | { shape: "round"; x: number; y: number; rx: number; ry: number; kind: "fountain" | "tree" | "pillar" | "stone" | "statue" | "lamp" | "dummy" | "pond" | "mirror" | "obelisk" | "well" }
+  | { shape: "round"; x: number; y: number; rx: number; ry: number; kind: "fountain" | "tree" | "pillar" | "stone" | "statue" | "lamp" | "dummy" | "pond" | "mirror" | "obelisk" | "well" | "bush" | "rock" | "signpost" }
   | { shape: "box"; x: number; y: number; w: number; h: number; kind: "building" | "stall" | "board" | "crates" };
 
 /** Things a building is: what the art draws for each footprint. */
@@ -174,13 +174,14 @@ function buildObstacles(): TownObstacle[] {
   list.push({ shape: "box", x: 1600, y: 1690, w: 280, h: 30, kind: "board" });
   // Lamps around the plaza and along the main roads.
   const lamps = [
-    ...TOWN_PLAZA_LAMPS.map((l) => [l.x, l.y]), [2150, 1010], [2150, 1160], [1500, 760], [1700, 760], [1050, 1010], [1300, 1560], [1900, 1560],
+    ...TOWN_PLAZA_LAMPS.map((l) => [l.x, l.y]), [2150, 1010], [2150, 1160], [1500, 760], [1050, 1010], [1300, 1560], [1900, 1560],
   ];
   for (const [lx, ly] of lamps) list.push({ shape: "round", x: lx, y: ly, rx: 8, ry: 6, kind: "lamp" });
   for (const [cx, cy] of [[400, 1600], [1030, 1450], [2520, 1260]]) list.push({ shape: "box", x: cx, y: cy, w: 60, h: 30, kind: "crates" });
   list.push({ shape: "round", x: 2440, y: 600, rx: 30, ry: 20, kind: "well" });
   // Trees: a forest border plus groves, kept off roads, districts and buildings.
   for (const t of TOWN_TREES) list.push({ shape: "round", x: t.x, y: t.y, rx: 26, ry: 18, kind: "tree" });
+  for (const p of TOWN_SIGNPOSTS) list.push({ shape: "round", x: p.x, y: p.y, rx: 8, ry: 6, kind: "signpost" });
   return list;
 }
 
@@ -227,18 +228,97 @@ function buildTrees() {
       inset = 60 + rnd(i + 0.3) * 120;
     const x = side === 0 ? along : side === 1 ? TOWN.width - inset : side === 2 ? along : inset,
       y = side === 0 ? inset + 40 : side === 1 ? along : side === 2 ? TOWN.height - inset : along;
-    if (clear(x, y)) trees.push({ x: Math.round(x), y: Math.round(y), variant: i % 3 });
+    if (clear(x, y)) trees.push({ x: Math.round(x), y: Math.round(y), variant: i % 5 });
   }
   // Groves between districts.
   for (let i = 0; i < 400 && trees.length < 150; i++) {
     const x = 200 + rnd(i * 3 + 11) * (TOWN.width - 400),
       y = 220 + rnd(i * 7 + 5) * (TOWN.height - 400);
-    if (clear(x, y)) trees.push({ x: Math.round(x), y: Math.round(y), variant: (i + 1) % 3 });
+    if (clear(x, y)) trees.push({ x: Math.round(x), y: Math.round(y), variant: (i + 1) % 5 });
   }
   return trees;
 }
 export const TOWN_TREES = buildTrees();
-export const TOWN_OBSTACLES: readonly TownObstacle[] = buildObstacles();
+
+/**
+ * Signposts where the five main roads leave the plaza, on the grass to the
+ * right of each road, pointing the way to its district.
+ */
+const ROAD_TO: TownDistrict["id"][] = ["arena", "raid", "training", "market", "board"];
+export const TOWN_SIGNPOSTS = TOWN_ROADS.slice(0, 5).map(([x1, y1, x2, y2], i) => {
+  const len = Math.hypot(x2 - x1, y2 - y1),
+    ux = (x2 - x1) / len,
+    uy = (y2 - y1) / len,
+    d = TOWN_DISTRICTS.find((dd) => dd.id === ROAD_TO[i])!;
+  // Just past the plaza's edge along the road, then off to its right side.
+  const along = Math.hypot(TOWN.plaza.r * ux, TOWN.plaza.r * 0.78 * uy) + 50;
+  return {
+    x: Math.round(x1 + ux * along - uy * 92),
+    y: Math.round(y1 + uy * along + ux * 92 * 0.78),
+    label: d.label,
+    color: d.color,
+    /**
+     * Which way the board points: toward the district for side roads, and
+     * away from the road for roads running up or down the screen, so the
+     * board never hangs over the path people walk on.
+     */
+    left: Math.abs(ux) > 0.2 ? ux < 0 : -uy < 0,
+  };
+});
+
+const BASE_OBSTACLES = buildObstacles();
+/** Inside an obstacle (grown by `pad`)? */
+function blocked(x: number, y: number, pad: number) {
+  return BASE_OBSTACLES.some((o) =>
+    o.shape === "round"
+      ? Math.hypot((x - o.x) / (o.rx + pad), (y - o.y) / (o.ry + pad * 0.78)) < 1
+      : Math.abs(x - o.x) < o.w / 2 + pad && Math.abs(y - o.y) < o.h / 2 + pad * 0.78,
+  );
+}
+/**
+ * Bushes and boulders: beside houses, along the grass between districts and
+ * around the pond, kept off roads, stations, floors and each other.
+ */
+function buildShrubs() {
+  const out: { x: number; y: number; kind: "bush" | "rock"; variant: number }[] = [];
+  const ok = (x: number, y: number, pad = 34) =>
+    x > 80 &&
+    x < TOWN.width - 80 &&
+    y > 120 &&
+    y < TOWN.height - 60 &&
+    !nearRoad(x, y, 92) &&
+    !blocked(x, y, pad) &&
+    Math.hypot((x - TOWN.plaza.x) / 1.25, y - TOWN.plaza.y) > TOWN.plaza.r + 70 &&
+    !TOWN_DISTRICTS.some((d) => Math.hypot((d.x - x) / 1.4, d.y - y) < 240) &&
+    !TOWN_SPOTS.some((s) => Math.hypot(s.x - x, s.y - y) < 120) &&
+    out.every((b) => Math.hypot(b.x - x, (b.y - y) * 1.3) > 56);
+  // Beside each house's front corners.
+  for (const b of TOWN_BUILDINGS.filter((bb) => bb.kind === "house"))
+    for (const side of [-1, 1]) {
+      const x = b.x + side * (b.w / 2 + 34),
+        y = b.y - 8;
+      if (ok(x, y, 20)) out.push({ x, y, kind: "bush", variant: out.length % 3 });
+    }
+  // Rocks on the pond's shore.
+  for (let k = 0; k < 8; k++) {
+    const a = Math.PI * (0.15 + k * 0.23),
+      x = Math.round(TOWN_POND.x + Math.cos(a) * (TOWN_POND.rx + 34)),
+      y = Math.round(TOWN_POND.y + Math.sin(a) * (TOWN_POND.ry + 26));
+    if (ok(x, y, 14)) out.push({ x, y, kind: k % 3 ? "rock" : "bush", variant: k % 3 });
+  }
+  // Scattered over the grass, in little clumps.
+  for (let i = 0; i < 900 && out.length < 120; i++) {
+    const x = Math.round(140 + rnd(i * 5 + 41) * (TOWN.width - 280)),
+      y = Math.round(180 + rnd(i * 9 + 13) * (TOWN.height - 300));
+    if (ok(x, y)) out.push({ x, y, kind: i % 5 === 0 ? "rock" : "bush", variant: i % 3 });
+  }
+  return out;
+}
+export const TOWN_SHRUBS = buildShrubs();
+export const TOWN_OBSTACLES: readonly TownObstacle[] = [
+  ...BASE_OBSTACLES,
+  ...TOWN_SHRUBS.map((b): TownObstacle => ({ shape: "round", x: b.x, y: b.y, rx: b.kind === "rock" ? 16 : 20, ry: b.kind === "rock" ? 10 : 12, kind: b.kind })),
+];
 
 /** Keep a point out of every obstacle and inside the map. */
 export function townCollide(x: number, y: number) {

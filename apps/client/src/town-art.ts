@@ -359,11 +359,115 @@ function pond(ctx: Ctx) {
 }
 
 /** Ground: lawn, roads, district floors, the pond and every static shadow. */
+/** Kerb stones along both edges of a road, and worn earth just beyond them. */
+function kerbs(ctx: Ctx, road: readonly number[], width: number, seed: number) {
+  const [x1, y1, x2, y2] = road,
+    len = Math.hypot(x2 - x1, y2 - y1),
+    ux = (x2 - x1) / len,
+    uy = (y2 - y1) / len,
+    a = Math.atan2(uy, ux);
+  for (const side of [-1, 1])
+    for (let d = 0; d < len; d += 24) {
+      const off = side * (width / 2 + 4),
+        x = x1 + ux * d - uy * off,
+        y = y1 + uy * d + ux * off * 0.8,
+        i = seed * 977 + d + side;
+      // Worn, bare earth where people step off the road.
+      if (rnd(i * 1.3) < 0.35) {
+        ctx.fillStyle = "rgba(120,96,64,0.35)";
+        ellipse(ctx, x - uy * side * 14, y + ux * side * 11, 10 + rnd(i) * 12, 4 + rnd(i * 2) * 4);
+        ctx.fill();
+      }
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(a);
+      ctx.fillStyle = "#6f6656";
+      roundRect(ctx, -11, -4, 22, 8, 2);
+      ctx.fill();
+      ctx.fillStyle = rnd(i * 3) > 0.5 ? "#a49880" : "#968a73";
+      roundRect(ctx, -11, -5, 21, 6, 2);
+      ctx.fill();
+      ctx.restore();
+    }
+}
+
+/** Fenced front yards and flower beds for the houses. */
+function yards(ctx: Ctx) {
+  for (const b of TOWN_BUILDINGS) {
+    if (b.kind !== "house") continue;
+    const left = b.x - b.w / 2 - 12,
+      right = b.x + b.w / 2 + 12,
+      back = b.y - 26,
+      front = b.y + 70;
+    // A slightly lusher lawn inside the fence.
+    ctx.fillStyle = "rgba(120,170,80,0.18)";
+    ctx.fillRect(left, back, right - left, front - back);
+    // Flower beds under the windows.
+    for (const fx of [b.x - b.w * 0.28, b.x + b.w * 0.36]) {
+      ctx.fillStyle = "#5a4330";
+      ellipse(ctx, fx, b.y + 10, 30, 8);
+      ctx.fill();
+      for (let k = 0; k < 9; k++) {
+        ctx.fillStyle = "#3f6a2c";
+        ellipse(ctx, fx - 24 + k * 6, b.y + 7 + (k % 2) * 3, 3, 2.4);
+        ctx.fill();
+        ctx.fillStyle = ["#ff7a9b", "#ffd65b", "#ffffff", "#b59bff"][(k + b.w) % 4];
+        ellipse(ctx, fx - 24 + k * 6, b.y + 4 + (k % 2) * 3, 2.6, 2.6);
+        ctx.fill();
+      }
+    }
+    // White picket fence: sides and front, with a gate gap in the middle.
+    const picket = (x: number, y: number) => {
+      // The fence stops where a road comes through.
+      if (TOWN_ROADS.some((r, k) => distToSegment(x, y, r) < (k < 5 ? 112 : 84) / 2 + 10)) return;
+      ctx.fillStyle = "rgba(0,0,0,0.22)";
+      ctx.fillRect(x - 1, y + 1, 5, 3);
+      ctx.fillStyle = "#f2ede2";
+      ctx.beginPath();
+      ctx.moveTo(x - 2, y);
+      ctx.lineTo(x - 2, y - 14);
+      ctx.lineTo(x, y - 17);
+      ctx.lineTo(x + 2, y - 14);
+      ctx.lineTo(x + 2, y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#c9c2b2";
+      ctx.fillRect(x + 1, y - 14, 1, 14);
+    };
+    for (let y = back; y <= front; y += 10) {
+      picket(left, y);
+      picket(right, y);
+    }
+    for (let x = left; x <= right; x += 10) if (Math.abs(x - b.x) > 40) picket(x, front);
+  }
+}
+
 export function paintGround(ctx: Ctx) {
   const { width: W, height: H } = TOWN;
   grass(ctx, W, H);
+  // Patches of bare earth in the lawn.
+  for (let i = 0; i < 26; i++) {
+    const x = rnd(i * 17.3) * W,
+      y = rnd(i * 23.9) * H,
+      g = ctx.createRadialGradient(x, y, 0, x, y, 40 + rnd(i) * 40);
+    g.addColorStop(0, "rgba(130,104,70,0.4)");
+    g.addColorStop(1, "rgba(130,104,70,0)");
+    ctx.fillStyle = g;
+    ellipse(ctx, x, y, 80, 46);
+    ctx.fill();
+  }
   TOWN_ROADS.forEach((r, i) => cobbleRoad(ctx, r, i < 5 ? 112 : 84, i + 1));
+  TOWN_ROADS.forEach((r, i) => kerbs(ctx, r, i < 5 ? 112 : 84, i + 1));
+  yards(ctx);
   plaza(ctx);
+  // Moss in the joints of the plaza's older stones.
+  for (let i = 0; i < 700; i++) {
+    const a = rnd(i * 3.7) * Math.PI * 2,
+      d = 160 + rnd(i * 5.3) * (TOWN.plaza.r - 160);
+    ctx.fillStyle = `rgba(80,110,50,${0.18 + rnd(i) * 0.2})`;
+    ellipse(ctx, TOWN.plaza.x + Math.cos(a) * d, TOWN.plaza.y + Math.sin(a) * d * 0.78, 2 + rnd(i * 2) * 2, 1.2);
+    ctx.fill();
+  }
   sandArena(ctx);
   marbleTerrace(ctx);
   trainingYard(ctx);
@@ -975,7 +1079,9 @@ const LEAVES = [
   ["#2c4a2e", "#3a6340", "#4f8655", "#72ad72"],
   ["#3d4a1f", "#57682b", "#78913a", "#a3bd5a"],
 ];
-export function treeTrunk(): Sprite {
+/** Tree kinds by variant: 0–2 leafy, 3 pine, 4 birch. */
+export function treeTrunk(variant = 0): Sprite {
+  const birch = variant === 4;
   return {
     w: 30,
     h: 50,
@@ -983,9 +1089,9 @@ export function treeTrunk(): Sprite {
     ay: 46,
     draw(ctx) {
       const g = ctx.createLinearGradient(6, 0, 24, 0);
-      g.addColorStop(0, "#4a3220");
-      g.addColorStop(0.5, "#7a5638");
-      g.addColorStop(1, "#3f2a1a");
+      g.addColorStop(0, birch ? "#b9b3a6" : "#4a3220");
+      g.addColorStop(0.5, birch ? "#f4f1ea" : "#7a5638");
+      g.addColorStop(1, birch ? "#a39d90" : "#3f2a1a");
       ctx.fillStyle = g;
       ctx.beginPath();
       ctx.moveTo(8, 46);
@@ -994,11 +1100,97 @@ export function treeTrunk(): Sprite {
       ctx.lineTo(22, 46);
       ctx.quadraticCurveTo(15, 50, 8, 46);
       ctx.fill();
+      // Bark: dark birch marks, or furrows.
+      for (let k = 0; k < 6; k++) {
+        ctx.fillStyle = birch ? "#2c2a28" : "rgba(30,18,10,0.35)";
+        ctx.fillRect(11 + rnd(k * 3 + variant) * 6, 4 + k * 7, birch ? 4 : 1.5, birch ? 2 : 6);
+      }
+    },
+  };
+}
+/** A pine: stacked boughs, darker and cooler than the leafy trees. */
+function pineCanopy(): Sprite {
+  const W = 110,
+    H = 180;
+  return {
+    w: W,
+    h: H,
+    ax: W / 2,
+    ay: H - 20,
+    draw(ctx) {
+      const tiers = 5;
+      for (let k = 0; k < tiers; k++) {
+        const t = k / (tiers - 1),
+          y = H - 14 - k * 30,
+          hw = 50 - t * 34;
+        for (const [dx, col] of [
+          [2, "#1d3a24"],
+          [0, "#2a5232"],
+        ] as const) {
+          ctx.fillStyle = col;
+          ctx.beginPath();
+          ctx.moveTo(W / 2 - hw + dx, y);
+          ctx.quadraticCurveTo(W / 2 + dx, y + 8, W / 2 + hw + dx, y);
+          ctx.lineTo(W / 2 + dx, y - 46);
+          ctx.closePath();
+          ctx.fill();
+        }
+        // Lit left side of each bough.
+        ctx.fillStyle = "#3f7046";
+        ctx.beginPath();
+        ctx.moveTo(W / 2 - hw + 4, y - 2);
+        ctx.lineTo(W / 2 - 2, y - 42);
+        ctx.lineTo(W / 2 - hw * 0.35, y - 4);
+        ctx.closePath();
+        ctx.fill();
+      }
+      for (let i = 0; i < 30; i++) {
+        ctx.fillStyle = i % 2 ? "#5a8a5c" : "#244a2c";
+        ellipse(ctx, W / 2 + (rnd(i * 7) - 0.5) * 60 * (rnd(i * 3) + 0.3), 30 + rnd(i * 11) * 130, 2.5, 1.5);
+        ctx.fill();
+      }
+    },
+  };
+}
+/** A birch crown: small, airy and yellow-green. */
+function birchCanopy(): Sprite {
+  const W = 100,
+    H = 120;
+  return {
+    w: W,
+    h: H,
+    ax: W / 2,
+    ay: H - 4,
+    draw(ctx) {
+      const pal = ["#6f8a3a", "#8fae4a", "#b8d06a", "#d9e88f"];
+      for (let i = 0; i < 26; i++) {
+        const a = rnd(i * 5.1) * Math.PI * 2,
+          d = rnd(i * 2.3) * 30;
+        ctx.fillStyle = pal[i % 3];
+        ellipse(ctx, W / 2 + Math.cos(a) * d, 58 + Math.sin(a) * d * 1.2, 13 + rnd(i) * 5, 11 + rnd(i * 4) * 4);
+        ctx.fill();
+      }
+      for (let i = 0; i < 40; i++) {
+        ctx.fillStyle = pal[3];
+        ellipse(ctx, W / 2 - 10 + (rnd(i * 9) - 0.5) * 50, 40 + rnd(i * 13) * 50, 2.5, 2);
+        ctx.fill();
+      }
+      // Branches showing through.
+      ctx.strokeStyle = "#e9e4d8";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(W / 2, H - 4);
+      ctx.lineTo(W / 2 - 12, 60);
+      ctx.moveTo(W / 2, H - 20);
+      ctx.lineTo(W / 2 + 14, 70);
+      ctx.stroke();
     },
   };
 }
 /** A leafy canopy, lit from the top left, anchored at its bottom centre. */
 export function treeCanopy(variant: number): Sprite {
+  if (variant === 3) return pineCanopy();
+  if (variant === 4) return birchCanopy();
   const W = 120,
     H = 120,
     pal = LEAVES[variant % 3];
@@ -1043,6 +1235,138 @@ export function treeCanopy(variant: number): Sprite {
           ellipse(ctx, W / 2 + (rnd(i * 13) - 0.5) * 70, 50 + (rnd(i * 17) - 0.5) * 50, 3.5, 3.5);
           ctx.fill();
         }
+    },
+  };
+}
+
+/** A leafy bush (variant 1 flowers) or a mossy boulder. */
+export function shrubSprite(kind: "bush" | "rock", variant: number): Sprite {
+  if (kind === "rock")
+    return {
+      w: 70,
+      h: 50,
+      ax: 35,
+      ay: 42,
+      draw(ctx) {
+        softShadow(ctx, 40, 42, 34, 9, 0.35);
+        const s = 0.8 + (variant % 3) * 0.15;
+        ctx.save();
+        ctx.translate(35, 42);
+        ctx.scale(s, s);
+        ctx.fillStyle = "#6f6a60";
+        ctx.beginPath();
+        ctx.moveTo(-26, 0);
+        ctx.lineTo(-22, -18);
+        ctx.lineTo(-6, -30);
+        ctx.lineTo(14, -26);
+        ctx.lineTo(26, -10);
+        ctx.lineTo(24, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = "#9a948a";
+        ctx.beginPath();
+        ctx.moveTo(-22, -18);
+        ctx.lineTo(-6, -30);
+        ctx.lineTo(6, -16);
+        ctx.lineTo(-14, -8);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = "#5d7a3a";
+        ellipse(ctx, -2, -24, 9, 4);
+        ctx.fill();
+        ctx.restore();
+      },
+    };
+  const pal = [
+    ["#2f5226", "#43703a", "#5f9150"],
+    ["#2f5226", "#43703a", "#5f9150"],
+    ["#3a4f22", "#56702f", "#7b9a45"],
+  ][variant % 3];
+  return {
+    w: 80,
+    h: 60,
+    ax: 40,
+    ay: 52,
+    draw(ctx) {
+      softShadow(ctx, 46, 52, 36, 10, 0.35);
+      const blobs: [number, number, number][] = [
+        [26, 38, 16],
+        [54, 38, 16],
+        [40, 30, 19],
+        [32, 24, 12],
+        [50, 24, 12],
+      ];
+      for (const [k, dx, dy] of [
+        [0, 1, 3],
+        [1, 0, 0],
+        [2, -3, -4],
+      ] as const)
+        for (const [x, y, r] of blobs) {
+          ctx.fillStyle = pal[k];
+          ellipse(ctx, x + dx, y + dy, r * (1 - k * 0.18), r * (1 - k * 0.18) * 0.9);
+          ctx.fill();
+        }
+      if (variant % 3 === 1)
+        for (let i = 0; i < 9; i++) {
+          ctx.fillStyle = ["#ffb3c7", "#ffffff", "#ffd65b"][i % 3];
+          ellipse(ctx, 18 + rnd(i * 7) * 44, 16 + rnd(i * 5) * 28, 2.6, 2.6);
+          ctx.fill();
+        }
+    },
+  };
+}
+
+/** A wooden signpost with one arrow board naming the district down the road. */
+export function signpostSprite(label: string, color: string, left: boolean): Sprite {
+  // Wide enough for the longest name on either side of the post.
+  const W = 380,
+    H = 120;
+  return {
+    w: W,
+    h: H,
+    ax: W / 2,
+    ay: H - 6,
+    draw(ctx) {
+      softShadow(ctx, W / 2 + 6, H - 6, 16, 5, 0.4);
+      ctx.fillStyle = "#5a3e28";
+      ctx.fillRect(W / 2 - 4, 30, 8, H - 34);
+      ctx.fillStyle = "#7a5638";
+      ctx.fillRect(W / 2 - 4, 30, 3, H - 34);
+      ctx.font = "700 15px 'Barlow Condensed', 'Arial Narrow', sans-serif";
+      const tw = ctx.measureText(label.toUpperCase()).width + 36,
+        x0 = left ? W / 2 + 10 - tw : W / 2 - 10,
+        y0 = 26;
+      // The board, with its pointed end toward the district.
+      ctx.fillStyle = "#a87a4c";
+      ctx.beginPath();
+      if (left) {
+        ctx.moveTo(x0 + tw, y0);
+        ctx.lineTo(x0 + 12, y0);
+        ctx.lineTo(x0, y0 + 13);
+        ctx.lineTo(x0 + 12, y0 + 26);
+        ctx.lineTo(x0 + tw, y0 + 26);
+      } else {
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(x0 + tw - 12, y0);
+        ctx.lineTo(x0 + tw, y0 + 13);
+        ctx.lineTo(x0 + tw - 12, y0 + 26);
+        ctx.lineTo(x0, y0 + 26);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = "#6e4f30";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = color;
+      ellipse(ctx, left ? x0 + tw - 10 : x0 + 10, y0 + 13, 4, 4);
+      ctx.fill();
+      ctx.fillStyle = "#2a1c10";
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "center";
+      ctx.fillText(label.toUpperCase(), x0 + tw / 2 + (left ? 3 : -3), y0 + 14);
+      // A cap on the post.
+      ctx.fillStyle = "#4a3220";
+      ctx.fillRect(W / 2 - 6, 20, 12, 6);
     },
   };
 }

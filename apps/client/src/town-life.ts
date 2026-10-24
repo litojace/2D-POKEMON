@@ -2,6 +2,8 @@ import Phaser from "phaser";
 import {
   TOWN,
   TOWN_BUILDINGS,
+  TOWN_SHRUBS,
+  TOWN_SIGNPOSTS,
   TOWN_DISTRICTS,
   TOWN_DUMMIES,
   TOWN_OBSTACLES,
@@ -26,6 +28,8 @@ import {
   paintGround,
   propSprite,
   rnd,
+  shrubSprite,
+  signpostSprite,
   softBlob,
   stallSprite,
   treeCanopy,
@@ -95,12 +99,17 @@ export class TownScenery {
   private critterG: Phaser.GameObjects.Graphics;
   private markerG: Phaser.GameObjects.Graphics;
   private screenText?: Phaser.GameObjects.Text;
+  /** District signs (to keep markers off them and fade them over your fighter). */
+  private signs: { box: Phaser.GameObjects.Container; left: number; right: number; top: number; bottom: number }[] = [];
+  private markers: { x: number; y: number; color: number; phase: number }[] = [];
   private lampGlows: { img: Phaser.GameObjects.Image; phase: number }[] = [];
   private statueGlows: Phaser.GameObjects.Image[] = [];
   private clouds: Phaser.GameObjects.Image[] = [];
   private birds: Mover[] = [];
   private butterflies: (Mover & { color: number; home: { x: number; y: number } })[] = [];
   private chickens: (Mover & { home: { x: number; y: number }; pause: number })[] = [];
+  /** A dog trotting laps around the plaza, stopping now and then to sniff. */
+  private dog = { a: 1.2, rest: 0, sniffAt: 6 };
   private ducks: { a: number; speed: number; r: number }[] = [];
 
   constructor(
@@ -163,8 +172,9 @@ export class TownScenery {
   }
 
   private trees() {
-    const trunk = bake(this.scene, "town-trunk", treeTrunk());
+    const trunks = [bake(this.scene, "town-trunk", treeTrunk(0)), bake(this.scene, "town-trunk-birch", treeTrunk(4))];
     TOWN_TREES.forEach((t, i) => {
+      const trunk = trunks[t.variant === 4 ? 1 : 0];
       this.scene.add.image(t.x, t.y, trunk.key).setOrigin(trunk.ox, trunk.oy).setScale(trunk.scale).setDepth(t.y);
       const c = bake(this.scene, `town-canopy-${t.variant}`, treeCanopy(t.variant));
       const size = 1.05 + rnd(i * 3.3) * 0.35;
@@ -174,6 +184,7 @@ export class TownScenery {
         .setScale(c.scale * size)
         .setFlipX(i % 2 === 0)
         .setDepth(t.y + 0.01);
+      if (t.variant === 3) img.setScale(c.scale * (size * 0.95));
       this.canopies.push({ img, phase: rnd(i * 7.7) * TAU });
     });
   }
@@ -205,6 +216,13 @@ export class TownScenery {
       }
       void img;
     }
+    // Bushes and boulders.
+    for (const b of TOWN_SHRUBS) {
+      const t = bake(s, `town-${b.kind}-${b.variant}`, shrubSprite(b.kind, b.variant));
+      s.add.image(b.x, b.y + 6, t.key).setOrigin(t.ox, t.oy).setScale(t.scale).setDepth(b.y);
+    }
+    // Signposts pointing down each road out of the plaza.
+    TOWN_SIGNPOSTS.forEach((p, i) => place(s, `town-signpost-${i}`, signpostSprite(p.label, p.color, p.left), p.x, p.y + 4, p.y, 2.5));
     TOWN_STALLS.forEach((st, i) => place(s, `town-stall-${i}`, stallSprite(st.color, i), st.x, st.y + 26, st.y));
     void TOWN_DUMMIES;
     // Raid Hall statues: a pedestal, the boss's crest, and a glow.
@@ -248,7 +266,18 @@ export class TownScenery {
       const bg = this.scene.add.graphics();
       bg.fillStyle(0x0e1a31, 0.86).fillRoundedRect(-w / 2, -40, w, 64, 14);
       bg.lineStyle(2, num(d.color), 0.9).strokeRoundedRect(-w / 2, -40, w, 64, 14);
-      this.scene.add.container(d.x, y, [bg, title, sub]).setDepth(4300);
+      const box = this.scene.add.container(d.x, y, [bg, title, sub]).setDepth(4300);
+      this.signs.push({ box, left: d.x - w / 2, right: d.x + w / 2, top: y - 40, bottom: y + 24 });
+    }
+    // Each station's marker floats above it, but never on a sign: if it
+    // would, it sits just above the sign instead.
+    for (const [i, sp] of TOWN_SPOTS.entries()) {
+      if (sp.boss) continue;
+      const lift = sp.id === "arena" ? 200 : sp.id === "raids" ? 230 : sp.id === "boss-rush" ? 120 : sp.id === "leaderboard" ? 330 : sp.id === "missions" ? 250 : 190;
+      let y = sp.y - lift;
+      for (const r of this.signs)
+        if (sp.x > r.left - 16 && sp.x < r.right + 16 && y + 26 > r.top - 6 && y - 26 < r.bottom + 6) y = r.top - 30;
+      this.markers.push({ x: sp.x, y, color: num(sp.color), phase: i });
     }
   }
 
@@ -520,15 +549,17 @@ export class TownScenery {
   /** A bobbing diamond over each place you can walk up to. */
   private drawMarkers(t: number, focus?: { x: number; y: number }) {
     const g = this.markerG.clear();
-    for (const [i, s] of TOWN_SPOTS.entries()) {
-      if (s.boss) continue;
-      if (focus && Math.hypot(s.x - focus.x, s.y - focus.y) > 900) continue;
-      const lift = s.id === "arena" ? 200 : s.id === "raids" ? 230 : s.id === "boss-rush" ? 120 : s.id === "leaderboard" ? 330 : s.id === "missions" ? 250 : 190;
-      const y = s.y - lift + Math.sin(t * 2.4 + i) * 6,
-        c = num(s.color);
-      g.fillStyle(0x000000, 0.25).fillTriangle(s.x, y - 12, s.x + 11, y + 2, s.x, y + 16);
-      g.fillStyle(c, 1).fillTriangle(s.x, y - 14, s.x + 10, y, s.x, y + 14).fillTriangle(s.x, y - 14, s.x - 10, y, s.x, y + 14);
-      g.fillStyle(0xffffff, 0.55).fillTriangle(s.x, y - 14, s.x - 10, y, s.x - 2, y);
+    for (const m of this.markers) {
+      if (focus && Math.hypot(m.x - focus.x, m.y - focus.y) > 1000) continue;
+      const y = m.y + Math.sin(t * 2.4 + m.phase) * 5;
+      g.fillStyle(0x000000, 0.25).fillTriangle(m.x, y - 12, m.x + 11, y + 2, m.x, y + 16);
+      g.fillStyle(m.color, 1).fillTriangle(m.x, y - 14, m.x + 10, y, m.x, y + 14).fillTriangle(m.x, y - 14, m.x - 10, y, m.x, y + 14);
+      g.fillStyle(0xffffff, 0.55).fillTriangle(m.x, y - 14, m.x - 10, y, m.x - 2, y);
+    }
+    // A sign over your fighter fades so it never hides you.
+    for (const r of this.signs) {
+      const behind = !!focus && focus.x > r.left - 40 && focus.x < r.right + 40 && focus.y > r.top && focus.y < r.bottom + 110;
+      r.box.setAlpha(r.box.alpha + ((behind ? 0.25 : 1) - r.box.alpha) * 0.15);
     }
   }
 
@@ -570,6 +601,33 @@ export class TownScenery {
   private drawCritters(t: number, dt: number) {
     // Chickens peck around a home spot, drawn on the ground layer.
     const g = this.critterG;
+    {
+      const d = this.dog;
+      d.sniffAt -= dt;
+      if (d.sniffAt <= 0) {
+        d.rest = 1.6 + rnd(t) * 1.4;
+        d.sniffAt = 7 + rnd(t * 3) * 8;
+      }
+      const moving = d.rest <= 0;
+      if (moving) d.a += dt * 0.11;
+      else d.rest -= dt;
+      const R = 455,
+        x = TOWN.plaza.x + Math.cos(d.a) * R,
+        y = TOWN.plaza.y + Math.sin(d.a) * R * 0.78,
+        dir = -Math.sin(d.a) >= 0 ? 1 : -1,
+        step = moving ? Math.sin(t * 14) : 0,
+        sniff = moving ? 0 : Math.max(0, Math.sin(t * 5)) * 3;
+      g.fillStyle(0x000000, 0.2).fillEllipse(x, y + 2, 30, 7);
+      g.fillStyle(0x7a4f2e, 1);
+      g.fillRect(x - 10, y - 9 - step, 3, 9 + step).fillRect(x + 7, y - 9 + step, 3, 9 - step);
+      g.fillStyle(0xa8703f, 1).fillEllipse(x, y - 13, 28, 13);
+      g.fillCircle(x + dir * 14, y - 19 + sniff, 7);
+      g.fillStyle(0x6a4224, 1).fillEllipse(x + dir * 11, y - 21 + sniff, 5, 9);
+      g.fillStyle(0x2a1c10, 1).fillCircle(x + dir * 20, y - 18 + sniff, 1.8);
+      // Wagging tail.
+      const wag = Math.sin(t * (moving ? 10 : 18)) * 5;
+      g.lineStyle(3, 0xa8703f, 1).lineBetween(x - dir * 13, y - 15, x - dir * 20, y - 22 + wag);
+    }
     for (const c of this.chickens) {
       c.pause -= dt;
       if (c.pause <= 0) {

@@ -21417,7 +21417,7 @@ body.battle-active:not(.touch-mode) #battle.desktop-hud-outside .enemy-bearing {
     font-size: 15px;
   }
   .town-prompt {
-    bottom: calc(60px + env(safe-area-inset-bottom));
+    bottom: calc(68px + env(safe-area-inset-bottom));
     padding: 6px 14px;
   }
 }
@@ -21693,4 +21693,30 @@ body.town-active .home-scene {
 }
 body.gate-active footer {
   display: none;
+}
+/* Narrow windows: the open menu and the emote bar can't share one row,
+   so the emotes sit on a row of their own above it. */
+@media (max-width: 960px) and (min-height: 501px) {
+  .town-layer:has(.town-actions[data-open="true"]) .town-emotes {
+    bottom: calc(max(16px, env(safe-area-inset-bottom)) + 76px);
+  }
+  .town-layer:has(.town-actions[data-open="true"]) .town-prompt {
+    bottom: calc(160px + env(safe-area-inset-bottom));
+  }
+}
+/* Small phones: with the menu open there's no room for the emote row. */
+@media (max-width: 700px) and (max-height: 500px) {
+  .town-layer:has(.town-actions[data-open="true"]) .town-emotes {
+    display: none;
+  }
+}
+/* Late-afternoon light over the town: warm sun from the top left, a
+   gentle vignette at the edges. Drawn over the world, under the HUD. */
+.town-light {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 90% at 12% -10%, rgba(255, 222, 150, 0.2), rgba(255, 222, 150, 0) 58%),
+    radial-gradient(150% 130% at 50% 45%, rgba(0, 0, 0, 0) 58%, rgba(14, 24, 16, 0.38) 100%);
 }

@@ -74,6 +74,7 @@ export function openTown(options: TownOptions) {
   const layer = document.createElement("div");
   layer.className = "town-layer";
   layer.innerHTML = `<div class="town-canvas" id="town-canvas"></div>
+<div class="town-light" aria-hidden="true"></div>
 <header class="town-hud">
   <div class="town-place"><b>Elemental Plaza</b><small id="town-pop">Joining…</small></div>
 </header>
