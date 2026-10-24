@@ -95,7 +95,7 @@ interface Body {
 /** Room around title text for its glow, so the blur isn't clipped. */
 const TITLE_PAD = { x: 12, y: 7 };
 /** Clear space between the title lettering and the player name below it. */
-const TITLE_GAP = 2;
+const TITLE_GAP = 1;
 /**
  * Draw a title the way the arena nameplate does (see .player-title in
  * style.css): every title glows in its colour, Master titles pulse slowly,
