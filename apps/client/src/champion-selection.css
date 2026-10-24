@@ -432,7 +432,9 @@
   min-width: 0;
 }
 #menu .champion-selector .champion-mastery .fighter-mastery-ring {
+  /* The footer ring must paint above the stage, unlike the portrait backdrop. */
   position: relative;
+  z-index: 0;
   inset: auto;
   flex: none;
   width: 36px;
