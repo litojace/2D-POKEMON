@@ -20,6 +20,7 @@ import {
   ART_RES,
   TEXT_RES,
   WINDMILL_HUB,
+  COLISEUM,
   buildingSprite,
   chimneyOf,
   FOUNTAIN,
@@ -152,11 +153,19 @@ export class TownScenery {
         this.smoke(b.x + c.dx, b.y + c.dy, b.y + 2);
       }
       if (b.kind === "coliseum") {
-        const rx = b.w / 2,
-          wallTop = b.y - 248;
-        for (const a of [Math.PI + 0.45, Math.PI + 1.0, Math.PI * 1.5, TAU - 1.0, TAU - 0.45])
-          this.flags.push({ x: b.x + Math.cos(a) * rx * 0.98, y: wallTop + Math.sin(a) * 120 - 10, color: [0xffd65b, 0xff7a4f, 0xffd65b, 0x7fe7ff, 0xffd65b][this.flags.length % 5], depth: b.y + 0.3, w: 34 });
-        this.bigScreen(b.x, b.y - 300, b.y + 0.4);
+        // Flags on masts round the rim, torches by the gate, the screen above it.
+        const { rx, ry, topY, masts, torches } = COLISEUM;
+        masts.forEach((a, k) =>
+          this.flags.push({
+            x: b.x + Math.cos(a) * (rx - 6),
+            y: b.y + topY + Math.sin(a) * (ry - 3) - 4,
+            color: [0xffd65b, 0xff7a4f, 0x7fe7ff, 0xffd65b, 0xb59bff, 0xff7a4f, 0x9be07a][k % 7],
+            depth: b.y + 0.3,
+            w: 30,
+          }),
+        );
+        if (!this.reduced) for (const t of torches) this.flame(b.x + t.dx, b.y + t.dy - 2, b.y + 0.5, 0.6);
+        this.bigScreen(b.x, b.y + topY + ry + 22, b.y + 0.4);
       }
       if (b.kind === "temple") {
         const ent = b.y - 286;
@@ -281,15 +290,28 @@ export class TownScenery {
     }
   }
 
+  /** A screen mounted on the coliseum's top tier, above the gate. */
   private bigScreen(x: number, y: number, depth: number) {
-    const g = this.scene.add.graphics().setDepth(depth);
-    g.fillStyle(0x3a3226, 1).fillRoundedRect(x - 120, y - 46, 240, 92, 10);
-    g.fillStyle(0x0b1220, 1).fillRoundedRect(x - 112, y - 38, 224, 76, 6);
-    g.fillStyle(0xff4d5a, 1).fillRoundedRect(x - 104, y - 32, 38, 16, 4);
-    this.scene.add.text(x - 85, y - 24, "LIVE", { resolution: TEXT_RES, fontFamily: "Barlow Condensed, sans-serif", fontSize: "13px", fontStyle: "bold", color: "#ffffff" }).setOrigin(0.5).setDepth(depth + 0.01);
-    this.scene.add.text(x + 14, y - 22, "ELEMENTAL COLISEUM", { resolution: TEXT_RES, fontFamily: "Barlow Condensed, sans-serif", fontSize: "17px", fontStyle: "bold", color: "#ffd65b" }).setOrigin(0.5).setDepth(depth + 0.01);
+    const g = this.scene.add.graphics().setDepth(depth),
+      w = 210,
+      h = 58;
+    // Brackets fixing it to the wall, then the frame and the display.
+    g.fillStyle(0x3a2a18, 1).fillRect(x - w / 2 + 16, y - h / 2 - 8, 6, h + 16).fillRect(x + w / 2 - 22, y - h / 2 - 8, 6, h + 16);
+    g.fillStyle(0x2a2420, 1).fillRoundedRect(x - w / 2, y - h / 2, w, h, 8);
+    g.fillStyle(0x0b1220, 1).fillRoundedRect(x - w / 2 + 6, y - h / 2 + 6, w - 12, h - 12, 5);
+    const style = { resolution: TEXT_RES, fontFamily: "Barlow Condensed, sans-serif", fontStyle: "bold" };
+    const live = this.scene.add.text(0, 0, "LIVE", { ...style, fontSize: "12px", color: "#ffffff" }).setOrigin(0, 0.5);
+    const title = this.scene.add.text(0, 0, "ELEMENTAL COLISEUM", { ...style, fontSize: "15px", color: "#ffd65b" }).setOrigin(0, 0.5);
+    // Badge and title as one centred row, whatever the font's width.
+    const badgeW = live.width + 10,
+      rowW = badgeW + 8 + title.width,
+      left = x - rowW / 2,
+      rowY = y - 10;
+    g.fillStyle(0xff4d5a, 1).fillRoundedRect(left, rowY - 8, badgeW, 16, 4);
+    live.setPosition(left + 5, rowY).setDepth(depth + 0.01);
+    title.setPosition(left + badgeW + 8, rowY).setDepth(depth + 0.01);
     this.screenText = this.scene.add
-      .text(x, y + 12, "", { resolution: TEXT_RES, fontFamily: "DM Sans, sans-serif", fontSize: "13px", color: "#eef2ff", align: "center" })
+      .text(x, y + 12, "", { resolution: TEXT_RES, fontFamily: "DM Sans, sans-serif", fontSize: "12px", color: "#eef2ff", align: "center" })
       .setOrigin(0.5)
       .setDepth(depth + 0.01);
   }
@@ -308,13 +330,13 @@ export class TownScenery {
       .setDepth(depth);
   }
 
-  private flame(x: number, y: number, depth: number) {
+  private flame(x: number, y: number, depth: number, size = 1) {
     bake(this.scene, "town-ember", softBlob("255,170,80"), 1);
     this.scene.add
       .particles(x, y, "town-ember", {
         speedY: { min: -70, max: -40 },
         speedX: { min: -10, max: 10 },
-        scale: { start: 0.32, end: 0.04 },
+        scale: { start: 0.32 * size, end: 0.04 },
         alpha: { start: 0.95, end: 0 },
         tint: [0xffe08a, 0xff9b3a, 0xff5c2a],
         lifespan: 700,

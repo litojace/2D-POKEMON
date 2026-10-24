@@ -34,7 +34,7 @@ export type TownEmote = (typeof TOWN_EMOTES)[number];
 
 /** Round obstacles (ellipses, the floor is seen at a slant) or boxes. */
 export type TownObstacle =
-  | { shape: "round"; x: number; y: number; rx: number; ry: number; kind: "fountain" | "tree" | "pillar" | "stone" | "statue" | "lamp" | "dummy" | "pond" | "mirror" | "obelisk" | "well" | "bush" | "rock" | "signpost" }
+  | { shape: "round"; x: number; y: number; rx: number; ry: number; kind: "fountain" | "tree" | "pillar" | "stone" | "statue" | "lamp" | "dummy" | "pond" | "mirror" | "obelisk" | "well" | "bush" | "rock" | "signpost" | "building" }
   | { shape: "box"; x: number; y: number; w: number; h: number; kind: "building" | "stall" | "board" | "crates" };
 
 /** Things a building is: what the art draws for each footprint. */
@@ -164,7 +164,13 @@ function buildObstacles(): TownObstacle[] {
     const a = (i / 8) * Math.PI * 2 - Math.PI / 2;
     list.push({ shape: "round", x: x + Math.cos(a) * 175, y: y + Math.sin(a) * 175 * 0.78, rx: 16, ry: 12, kind: "stone" });
   }
-  for (const b of TOWN_BUILDINGS) list.push({ shape: "box", x: b.x, y: b.y - b.d / 2, w: b.w, h: b.d, kind: "building" });
+  for (const b of TOWN_BUILDINGS)
+    list.push(
+      b.kind === "coliseum"
+        ? // A round building on a round podium (centre of its foot, plus the steps).
+          { shape: "round", x: b.x, y: b.y - 96, rx: b.w / 2 + 34, ry: 92, kind: "building" }
+        : { shape: "box", x: b.x, y: b.y - b.d / 2, w: b.w, h: b.d, kind: "building" },
+    );
   for (const s of [...TOWN_STATUES, TOWN_NEXT_STATUE]) list.push({ shape: "round", x: s.x, y: s.y, rx: 30, ry: 16, kind: "statue" });
   for (const s of TOWN_STALLS) list.push({ shape: "box", x: s.x, y: s.y, w: 160, h: 50, kind: "stall" });
   for (const d of TOWN_DUMMIES) list.push({ shape: "round", x: d.x, y: d.y, rx: 14, ry: 10, kind: "dummy" });

@@ -469,6 +469,18 @@ export function paintGround(ctx: Ctx) {
     ctx.fill();
   }
   sandArena(ctx);
+  // Paving all round the coliseum's podium, so it stands on stone.
+  for (const b of TOWN_BUILDINGS)
+    if (b.kind === "coliseum") {
+      const y = b.y + COLISEUM.footY + 14;
+      ctx.fillStyle = "#8a7f69";
+      ellipse(ctx, b.x, y, COLISEUM.rx + 70, COLISEUM.ry + 40);
+      ctx.fill();
+      ctx.fillStyle = "#a3977f";
+      ellipse(ctx, b.x, y - 2, COLISEUM.rx + 62, COLISEUM.ry + 36);
+      ctx.fill();
+      softShadow(ctx, b.x + 20, y + 6, COLISEUM.rx + 50, COLISEUM.ry + 30, 0.35);
+    }
   marbleTerrace(ctx);
   trainingYard(ctx);
   marketSquare(ctx);
@@ -525,134 +537,243 @@ const stoneWall = (ctx: Ctx, x: number, y: number, w: number, h: number, base: s
   }
 };
 
-/** Elemental Coliseum: two tiers of arches around an open bowl, a glowing gate. */
+/**
+ * Elemental Coliseum: a round arena building seen from above at a slant.
+ * It stands on a two-step stone podium; three tiers of arches wrap the
+ * wall (the ground tier opens all the way down to the podium), a glowing
+ * gate sits at the front, and through the open top you see the far stands.
+ * COLISEUM gives its shape in world units from the building's anchor
+ * (front of the podium), so the animated parts line up.
+ */
+export const COLISEUM = {
+  rx: 260,
+  ry: 80,
+  /** Centre of the wall's foot ellipse, and of its top rim. */
+  footY: -96,
+  topY: -306,
+  podium: 16,
+  /** The gate's centre line and top, and its torches. */
+  gateTop: -150,
+  torches: [-92, 92].map((dx) => ({ dx, dy: -98 })),
+  /** Masts along the rim, as angles round the top ellipse. */
+  masts: [Math.PI + 0.32, Math.PI + 0.95, Math.PI * 1.5, Math.PI * 2 - 0.95, Math.PI * 2 - 0.32, 0.5, Math.PI - 0.5],
+};
+const SAND = { light: "#ead7aa", mid: "#d6bd8a", dark: "#a98a5a", deep: "#7d6440", line: "rgba(110,84,50,0.45)" };
+
 function coliseum(b: TownBuilding): Sprite {
-  const W = b.w + 40,
-    H = 470;
+  const W = b.w + 140,
+    H = 420;
   return {
     w: W,
     h: H,
     ax: W / 2,
-    ay: H - 4,
+    ay: H - 8,
     draw(ctx) {
       const cx = W / 2,
-        base = H - 4,
-        rx = b.w / 2;
-      // The bowl seen from above: back wall, stands, arena sand.
-      const top = base - 250;
-      ctx.fillStyle = "#a88b5c";
-      ellipse(ctx, cx, top, rx, 120);
+        G = H - 8,
+        { rx, ry } = COLISEUM,
+        footY = G + COLISEUM.footY,
+        topY = G + COLISEUM.topY,
+        wallH = footY - topY;
+      // ── Podium: two stone steps, each a ring with a lit top and a shaded riser.
+      for (const [grow, drop] of [
+        [36, 16],
+        [18, 8],
+      ]) {
+        ctx.fillStyle = "#6f6553";
+        ellipse(ctx, cx, footY + drop + 8, rx + grow, ry + grow * 0.34);
+        ctx.fill();
+        const g = ctx.createLinearGradient(0, footY - ry, 0, footY + ry + drop);
+        g.addColorStop(0, "#cfc3a8");
+        g.addColorStop(1, "#b3a68b");
+        ctx.fillStyle = g;
+        ellipse(ctx, cx, footY + drop, rx + grow, ry + grow * 0.34);
+        ctx.fill();
+        // Joints in the step.
+        ctx.strokeStyle = "rgba(80,68,48,0.25)";
+        ctx.lineWidth = 1;
+        for (let k = 1; k < 24; k++) {
+          const a = (k / 24) * Math.PI;
+          ctx.beginPath();
+          ctx.moveTo(cx + Math.cos(a) * (rx + grow), footY + drop + Math.sin(a) * (ry + grow * 0.34));
+          ctx.lineTo(cx + Math.cos(a) * (rx + grow), footY + drop + 8 + Math.sin(a) * (ry + grow * 0.34));
+          ctx.stroke();
+        }
+      }
+      // Ambient shadow where the wall meets the podium.
+      const ao = ctx.createRadialGradient(cx, footY, rx * 0.8, cx, footY, rx + 26);
+      ao.addColorStop(0, "rgba(40,30,18,0.55)");
+      ao.addColorStop(1, "rgba(40,30,18,0)");
+      ctx.save();
+      ctx.translate(cx, footY);
+      ctx.scale(1, (ry + 10) / (rx + 26));
+      ctx.translate(-cx, -footY);
+      ctx.fillStyle = ao;
+      ellipse(ctx, cx, footY, rx + 26, rx + 26);
       ctx.fill();
-      for (let k = 0; k < 6; k++) {
-        ctx.fillStyle = k % 2 ? "#c8ad7c" : "#b89a68";
-        ellipse(ctx, cx, top + 8 + k * 4, rx - 18 - k * 22, 104 - k * 13);
+      ctx.restore();
+
+      // ── Through the open top: the far stands, the crowd and the arena floor.
+      ctx.save();
+      ellipse(ctx, cx, topY, rx - 18, ry - 8);
+      ctx.clip();
+      ctx.fillStyle = SAND.deep;
+      ctx.fillRect(cx - rx, topY - ry, rx * 2, ry * 2);
+      for (let k = 0; k < 9; k++) {
+        const t = k / 9;
+        ctx.fillStyle = k % 2 ? SAND.mid : SAND.dark;
+        ellipse(ctx, cx, topY + 6 + k * 7, (rx - 18) * (1 - t * 0.62), (ry - 8) * (1 - t * 0.5));
         ctx.fill();
       }
-      // Crowd specks in the stands.
-      for (let i = 0; i < 420; i++) {
-        const a = Math.PI + rnd(i * 3) * Math.PI,
-          d = 0.55 + rnd(i * 7) * 0.4;
-        ctx.fillStyle = ["#ff7a4f", "#ffd65b", "#7fe7ff", "#b59bff", "#9be07a", "#f4efe2"][i % 6];
-        ellipse(ctx, cx + Math.cos(a) * (rx - 30) * d, top + 12 + Math.sin(a) * 96 * d, 2.4, 2.4);
+      const colors = ["#ff7a4f", "#ffd65b", "#7fe7ff", "#b59bff", "#9be07a", "#f4efe2", "#ff8ad0"];
+      for (let i = 0; i < 520; i++) {
+        const a = Math.PI + rnd(i * 3.1) * Math.PI,
+          t = rnd(i * 7.7) * 0.85;
+        ctx.fillStyle = colors[i % colors.length];
+        ellipse(ctx, cx + Math.cos(a) * (rx - 26) * (1 - t * 0.62), topY + 8 + t * 60 + Math.sin(a) * (ry - 12) * (1 - t * 0.5), 2.3, 2.6);
         ctx.fill();
       }
-      ctx.fillStyle = "#e6d3a6";
-      ellipse(ctx, cx, top + 30, rx * 0.42, 40);
+      ctx.fillStyle = SAND.light;
+      ellipse(ctx, cx, topY + 70, rx * 0.34, ry * 0.36);
       ctx.fill();
-      // The curved front wall.
-      const wallTop = top + 6;
-      const grad = ctx.createLinearGradient(cx - rx, 0, cx + rx, 0);
-      grad.addColorStop(0, "#b2915e");
-      grad.addColorStop(0.35, "#e7d1a2");
-      grad.addColorStop(0.7, "#d9c08d");
-      grad.addColorStop(1, "#9e7f50");
-      ctx.fillStyle = grad;
+      ctx.restore();
+
+      // ── The outer wall: a cylinder lit from the upper left.
+      const wall = ctx.createLinearGradient(cx - rx, 0, cx + rx, 0);
+      wall.addColorStop(0, SAND.dark);
+      wall.addColorStop(0.28, SAND.light);
+      wall.addColorStop(0.62, SAND.mid);
+      wall.addColorStop(1, SAND.deep);
+      ctx.fillStyle = wall;
       ctx.beginPath();
-      ctx.moveTo(cx - rx, wallTop);
-      ctx.ellipse(cx, wallTop, rx, 120, 0, Math.PI, 0, true);
-      ctx.lineTo(cx + rx, base - 30);
-      ctx.ellipse(cx, base - 30, rx, 30, 0, 0, Math.PI);
+      ctx.ellipse(cx, topY, rx, ry, 0, 0, Math.PI);
+      ctx.lineTo(cx - rx, footY);
+      ctx.ellipse(cx, footY, rx, ry, 0, Math.PI, 0, true);
       ctx.closePath();
       ctx.fill();
-      // Two tiers of arches with cornices.
-      const tiers = [
-        [wallTop + 34, 84],
-        [wallTop + 136, 92],
+      // The rim's top face.
+      ctx.strokeStyle = SAND.light;
+      ctx.lineWidth = 10;
+      ellipse(ctx, cx, topY, rx - 5, ry - 3);
+      ctx.stroke();
+      ctx.strokeStyle = SAND.line;
+      ctx.lineWidth = 1.2;
+      ellipse(ctx, cx, topY, rx - 10, ry - 6);
+      ctx.stroke();
+
+      // ── Tiers: [top, height] from the rim downward; the ground tier reaches the foot.
+      const tiers: [number, number, "attic" | "arch" | "ground"][] = [
+        [0, 40, "attic"],
+        [40, 74, "arch"],
+        [114, wallH - 114, "ground"],
       ];
-      for (const [ty, th] of tiers) {
-        for (let k = -6; k <= 6; k++) {
-          const t = k / 7,
-            ax = cx + Math.sin(t * 1.35) * rx * 0.93,
-            curve = Math.cos(t * 1.35),
-            aw = 30 * curve,
-            ay = ty + (1 - curve) * -16 + 40 * (1 - curve) * 0.4 + (ty > wallTop + 100 ? 6 : 0);
-          if (Math.abs(k) <= 1 && ty > wallTop + 100) continue; // the gate
-          ctx.fillStyle = "#4a3624";
-          ctx.beginPath();
-          ctx.moveTo(ax - aw / 2, ay + th - 18);
-          ctx.lineTo(ax - aw / 2, ay + aw / 2);
-          ctx.arc(ax, ay + aw / 2, aw / 2, Math.PI, 0);
-          ctx.lineTo(ax + aw / 2, ay + th - 18);
-          ctx.closePath();
-          ctx.fill();
-          ctx.fillStyle = "rgba(255,214,140,0.12)";
-          ctx.fillRect(ax - aw / 2 + 2, ay + th - 34, aw - 4, 14);
-          // Columns between arches.
-          ctx.fillStyle = "rgba(255,255,255,0.18)";
-          ctx.fillRect(ax + aw / 2 + 3 * curve, ay, 4 * curve, th - 16);
+      const N = 18,
+        step = Math.PI / N;
+      for (const [off, th, kind] of tiers) {
+        for (let k = 0; k < N; k++) {
+          const a = (k + 0.5) * step,
+            sin = Math.sin(a),
+            x = cx + Math.cos(a) * rx,
+            y = topY + sin * ry + off,
+            w = rx * step * sin;
+          if (kind === "ground" && Math.abs(a - Math.PI / 2) < step * 1.6) continue; // the gate
+          const light = 0.35 + 0.65 * Math.max(0, Math.cos(a - Math.PI * 0.7));
+          if (kind === "attic") {
+            // Small square windows between pilasters.
+            ctx.fillStyle = `rgba(60,42,22,${0.55 + 0.25 * (1 - light)})`;
+            ctx.fillRect(x - w * 0.22, y + 12, w * 0.44, 14);
+          } else {
+            const aw = w * 0.62,
+              top = y + 8,
+              bot = y + th - (kind === "ground" ? 2 : 10);
+            ctx.fillStyle = "#3a2a18";
+            ctx.beginPath();
+            ctx.moveTo(x - aw / 2, bot);
+            ctx.lineTo(x - aw / 2, top + aw / 2);
+            ctx.arc(x, top + aw / 2, aw / 2, Math.PI, 0);
+            ctx.lineTo(x + aw / 2, bot);
+            ctx.closePath();
+            ctx.fill();
+            // Light falling on the inside of each arch.
+            ctx.fillStyle = `rgba(255,214,150,${0.08 + 0.1 * light})`;
+            ctx.fillRect(x - aw / 2 + 1, bot - Math.min(18, th * 0.25), aw * 0.45, Math.min(18, th * 0.25));
+          }
+          // Pilaster between bays.
+          const px = cx + Math.cos(a + step / 2) * rx,
+            pw = Math.max(1.5, 5 * Math.sin(a + step / 2));
+          ctx.fillStyle = `rgba(255,248,225,${0.1 + 0.25 * light})`;
+          ctx.fillRect(px - pw / 2, topY + Math.sin(a + step / 2) * ry + off + 2, pw, th - 4);
         }
-        ctx.fillStyle = "#8a6f45";
-        ctx.beginPath();
-        ctx.ellipse(cx, ty + th - 6, rx - 2, 30, 0, 0.05, Math.PI - 0.05);
-        ctx.ellipse(cx, ty + th + 2, rx - 2, 30, 0, Math.PI - 0.05, 0.05, true);
-        ctx.fill();
+        // A cornice under each tier.
+        if (kind !== "ground") {
+          const y = topY + off + th;
+          ctx.strokeStyle = SAND.deep;
+          ctx.lineWidth = 6;
+          ctx.beginPath();
+          ctx.ellipse(cx, y, rx + 1, ry, 0, 0.02, Math.PI - 0.02);
+          ctx.stroke();
+          ctx.strokeStyle = "rgba(255,244,214,0.55)";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.ellipse(cx, y - 3, rx + 1, ry, 0, 0.02, Math.PI - 0.02);
+          ctx.stroke();
+        }
       }
-      // Rim crenellation.
-      for (let a = Math.PI + 0.05; a < Math.PI * 2 - 0.05; a += 0.08) {
-        const px = cx + Math.cos(a) * rx,
-          py = wallTop + Math.sin(a) * 120;
-        ctx.fillStyle = "#c9ad7a";
-        ctx.fillRect(px - 6, py - 12, 12, 12);
-      }
-      for (let a = 0.08; a < Math.PI - 0.05; a += 0.08) {
-        const px = cx + Math.cos(a) * rx,
-          py = wallTop + Math.sin(a) * 18 - 10;
-        ctx.fillStyle = "#d9c08d";
-        ctx.fillRect(px - 6, py - 10, 12, 12);
-      }
-      // The gate: a tall glowing arch with a gilded frame.
-      const gw = 120,
-        gh = 150,
-        gx = cx - gw / 2,
-        gy = base - gh - 8;
-      ctx.fillStyle = "#8a6f45";
-      roundRect(ctx, gx - 14, gy - 14, gw + 28, gh + 18, 70);
+      // A plinth course along the foot of the wall.
+      ctx.strokeStyle = SAND.deep;
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.ellipse(cx, footY - 4, rx, ry, 0, 0.01, Math.PI - 0.01);
+      ctx.stroke();
+
+      // ── The gate: a tall arch reaching the podium, gilded, glowing within.
+      const gateFoot = footY + ry,
+        gateTop = G + COLISEUM.gateTop,
+        gw = 112;
+      ctx.fillStyle = SAND.dark;
+      roundRect(ctx, cx - gw / 2 - 16, gateTop - 16, gw + 32, gateFoot - gateTop + 16, 66);
       ctx.fill();
-      const glow = ctx.createRadialGradient(cx, gy + gh * 0.7, 10, cx, gy + gh * 0.6, 110);
+      const glow = ctx.createRadialGradient(cx, gateFoot - 30, 8, cx, gateFoot - 50, 120);
       glow.addColorStop(0, "#fff3c4");
       glow.addColorStop(0.35, "#ffd65b");
-      glow.addColorStop(0.7, "#b8741f");
+      glow.addColorStop(0.75, "#a8641a");
       glow.addColorStop(1, "#3a2410");
       ctx.fillStyle = glow;
-      roundRect(ctx, gx, gy, gw, gh, 60);
+      roundRect(ctx, cx - gw / 2, gateTop, gw, gateFoot - gateTop, 56);
       ctx.fill();
       ctx.strokeStyle = "#e9c25a";
       ctx.lineWidth = 5;
-      roundRect(ctx, gx - 4, gy - 4, gw + 8, gh + 8, 64);
+      roundRect(ctx, cx - gw / 2 - 4, gateTop - 4, gw + 8, gateFoot - gateTop + 4, 60);
       ctx.stroke();
-      // Keystone crest.
       ctx.fillStyle = "#e9c25a";
       ctx.beginPath();
-      ctx.moveTo(cx, gy - 34);
-      ctx.lineTo(cx + 18, gy - 12);
-      ctx.lineTo(cx, gy + 4);
-      ctx.lineTo(cx - 18, gy - 12);
+      ctx.moveTo(cx, gateTop - 30);
+      ctx.lineTo(cx + 16, gateTop - 10);
+      ctx.lineTo(cx, gateTop + 6);
+      ctx.lineTo(cx - 16, gateTop - 10);
       ctx.closePath();
       ctx.fill();
-      // Steps.
-      for (let k = 0; k < 3; k++) {
-        ctx.fillStyle = k % 2 ? "#cdb486" : "#bba274";
-        roundRect(ctx, gx - 20 - k * 8, base - 10 + k * 3 - 8, gw + 40 + k * 16, 8, 3);
+      // Torch brackets either side of the gate (the flames are animated).
+      for (const t of COLISEUM.torches) {
+        ctx.fillStyle = "#3a2a18";
+        ctx.fillRect(cx + t.dx - 3, G + t.dy, 6, 22);
+        ctx.fillStyle = "#5a4024";
+        ctx.beginPath();
+        ctx.moveTo(cx + t.dx - 10, G + t.dy);
+        ctx.lineTo(cx + t.dx + 10, G + t.dy);
+        ctx.lineTo(cx + t.dx + 5, G + t.dy + 8);
+        ctx.lineTo(cx + t.dx - 5, G + t.dy + 8);
+        ctx.closePath();
+        ctx.fill();
+      }
+      // Steps down from the gate across the podium to the ground.
+      for (let k = 0; k < 4; k++) {
+        const y = gateFoot + k * 6;
+        ctx.fillStyle = "#8f846f";
+        roundRect(ctx, cx - gw / 2 - 10 - k * 6, y + 2, gw + 20 + k * 12, 6, 2);
+        ctx.fill();
+        ctx.fillStyle = k % 2 ? "#d8cdb2" : "#cbbfa3";
+        roundRect(ctx, cx - gw / 2 - 10 - k * 6, y - 2, gw + 20 + k * 12, 5, 2);
         ctx.fill();
       }
     },
