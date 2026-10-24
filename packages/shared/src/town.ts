@@ -151,12 +151,19 @@ export const TOWN_SPOTS: readonly TownSpot[] = [
 ];
 
 /**
- * Benches around the plaza ring, facing the fountain, in the gaps between
- * the five roads (degrees: 0 = east, 90 = south).
+ * Benches on the grass just outside the plaza, following its curve and
+ * facing the fountain, one in each gap between the roads, with a lamp on
+ * either side (degrees: 0 = east, 90 = south).
  */
-export const TOWN_BENCHES = [30, 60, 119, 215, 245, 300, 330].map((deg) => {
+const RING = 405;
+const onRing = (deg: number) => {
+  const a = (deg * Math.PI) / 180;
+  return { x: Math.round(TOWN.plaza.x + Math.cos(a) * RING), y: Math.round(TOWN.plaza.y + Math.sin(a) * RING * 0.78) };
+};
+export const TOWN_PLAZA_LAMPS = [26, 70, 214, 242, 298, 334].map(onRing);
+export const TOWN_BENCHES = [48, 114, 228, 316].map((deg) => {
   const a = (deg * Math.PI) / 180,
-    r = 262;
+    r = RING;
   return {
     x: Math.round(TOWN.plaza.x + Math.cos(a) * r),
     y: Math.round(TOWN.plaza.y + Math.sin(a) * r * 0.78),
@@ -182,7 +189,7 @@ function buildObstacles(): TownObstacle[] {
   list.push({ shape: "box", x: 1600, y: 1690, w: 280, h: 30, kind: "board" });
   // Lamps around the plaza and along the main roads.
   const lamps = [
-    [1240, 880], [1960, 880], [1240, 1290], [1960, 1290], [2150, 1010], [2150, 1160], [1500, 760], [1700, 760], [1050, 1010], [1300, 1560], [1900, 1560],
+    ...TOWN_PLAZA_LAMPS.map((l) => [l.x, l.y]), [2150, 1010], [2150, 1160], [1500, 760], [1700, 760], [1050, 1010], [1300, 1560], [1900, 1560],
   ];
   for (const [lx, ly] of lamps) list.push({ shape: "round", x: lx, y: ly, rx: 8, ry: 6, kind: "lamp" });
   // Benches facing the fountain.
