@@ -77,9 +77,14 @@ export function openTown(options: TownOptions) {
 <header class="town-hud">
   <div class="town-place"><b>Elemental Plaza</b><small id="town-pop">Joining…</small></div>
 </header>
-<nav class="town-actions" aria-label="Main menu">${ACTIONS.map(
-    ([id, label, icon]) => `<button type="button" data-action="${id}" title="${label}">${menuIcon(icon as Parameters<typeof menuIcon>[0])}<span>${label}</span></button>`,
-  ).join("")}<button type="button" class="town-play primary btn-primary" data-action="play">${menuIcon("battle")}<span>Play</span></button></nav>
+<nav class="town-actions" aria-label="Main menu" data-open="false">
+  <button type="button" class="town-menu-toggle" id="town-menu-toggle" aria-expanded="false" aria-controls="town-menu-items" title="Menu (M)"><span class="town-burger" aria-hidden="true"><i></i><i></i><i></i></span><span>Menu</span></button>
+  <div class="town-menu-items" id="town-menu-items" inert>
+    <button type="button" class="town-play primary btn-primary" data-action="play" style="--i:0">${menuIcon("battle")}<span>Play</span></button>${ACTIONS.map(
+      ([id, label, icon], i) => `<button type="button" data-action="${id}" title="${label}" style="--i:${i + 1}">${menuIcon(icon as Parameters<typeof menuIcon>[0])}<span>${label}</span></button>`,
+    ).join("")}
+  </div>
+</nav>
 <div class="town-prompt" id="town-prompt" hidden></div>
 <div class="town-emotes" role="group" aria-label="Emotes">${TOWN_EMOTES.map(
     (e) => `<button type="button" data-emote="${e}" aria-label="${e}" title="${e}">${EMOTE_ICON[e]}</button>`,
@@ -122,6 +127,11 @@ export function openTown(options: TownOptions) {
     !!document.querySelector("dialog[open], .home-drawer:not([hidden]), .header-menu[open]");
   const keydown = (e: KeyboardEvent) => {
     if (typing() || covered()) return;
+    if (e.code === "KeyM" || (e.code === "Escape" && menu.dataset.open === "true")) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      return void setMenu(e.code === "KeyM" && menu.dataset.open !== "true");
+    }
     if ((e.code === "KeyE" || e.code === "Enter") && nearPortal) {
       e.preventDefault();
       held.clear();
@@ -152,6 +162,7 @@ export function openTown(options: TownOptions) {
     origin = { x: 0, y: 0 };
   const canvasEl = $("town-canvas");
   canvasEl.addEventListener("pointerdown", (e) => {
+    if (menu.dataset.open === "true") setMenu(false);
     if (e.pointerType === "mouse" || stickPointer >= 0) return;
     stickPointer = e.pointerId;
     origin = { x: e.clientX, y: e.clientY };
@@ -211,9 +222,20 @@ export function openTown(options: TownOptions) {
   layer.querySelectorAll<HTMLButtonElement>("[data-emote]").forEach((b) => {
     b.onclick = () => void emote(b.dataset.emote as TownEmote);
   });
+  // The menu button folds the actions away; tapping it fans them out.
+  const menu = layer.querySelector<HTMLElement>(".town-actions")!,
+    menuToggle = $("town-menu-toggle"),
+    menuItems = $("town-menu-items");
+  const setMenu = (open: boolean) => {
+    menu.dataset.open = String(open);
+    menuToggle.setAttribute("aria-expanded", String(open));
+    menuItems.inert = !open;
+  };
+  menuToggle.onclick = () => setMenu(menu.dataset.open !== "true");
   layer.querySelectorAll<HTMLButtonElement>("[data-action]").forEach((b) => {
     b.onclick = () => {
       held.clear();
+      setMenu(false);
       options.onAction(b.dataset.action as TownAction);
     };
   });
