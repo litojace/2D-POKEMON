@@ -34,8 +34,8 @@ export type TownEmote = (typeof TOWN_EMOTES)[number];
 
 /** Round obstacles (ellipses, the floor is seen at a slant) or boxes. */
 export type TownObstacle =
-  | { shape: "round"; x: number; y: number; rx: number; ry: number; kind: "fountain" | "tree" | "pillar" | "stone" | "statue" | "lamp" | "dummy" | "pond" | "mirror" | "obelisk" | "well" }
-  | { shape: "box"; x: number; y: number; w: number; h: number; kind: "building" | "stall" | "board" | "bench" | "crates" };
+  | { shape: "round"; x: number; y: number; rx: number; ry: number; kind: "fountain" | "tree" | "pillar" | "stone" | "statue" | "lamp" | "dummy" | "pond" | "mirror" | "obelisk" | "well" | "bench" }
+  | { shape: "box"; x: number; y: number; w: number; h: number; kind: "building" | "stall" | "board" | "crates" };
 
 /** Things a building is: what the art draws for each footprint. */
 export type TownBuilding = {
@@ -150,6 +150,21 @@ export const TOWN_SPOTS: readonly TownSpot[] = [
   { id: "leaderboard", x: 2240, y: 1300, label: "Champions' Obelisk", sub: "Top players this month", color: "#ffe58f", reach: 70 },
 ];
 
+/**
+ * Benches around the plaza ring, facing the fountain, in the gaps between
+ * the five roads (degrees: 0 = east, 90 = south).
+ */
+export const TOWN_BENCHES = [30, 60, 119, 215, 245, 300, 330].map((deg) => {
+  const a = (deg * Math.PI) / 180,
+    r = 262;
+  return {
+    x: Math.round(TOWN.plaza.x + Math.cos(a) * r),
+    y: Math.round(TOWN.plaza.y + Math.sin(a) * r * 0.78),
+    /** Along the ring (the tangent), so the seat faces the fountain. */
+    rotation: Math.atan2(Math.cos(a) * 0.78, -Math.sin(a)),
+  };
+});
+
 function buildObstacles(): TownObstacle[] {
   const { x, y } = TOWN.plaza;
   const list: TownObstacle[] = [{ shape: "round", x, y, rx: 100, ry: 76, kind: "fountain" }];
@@ -171,7 +186,7 @@ function buildObstacles(): TownObstacle[] {
   ];
   for (const [lx, ly] of lamps) list.push({ shape: "round", x: lx, y: ly, rx: 8, ry: 6, kind: "lamp" });
   // Benches facing the fountain.
-  for (const [bx, by] of [[1360, 1280], [1840, 1280], [1360, 880], [1840, 880]]) list.push({ shape: "box", x: bx, y: by, w: 80, h: 18, kind: "bench" });
+  for (const b of TOWN_BENCHES) list.push({ shape: "round", x: b.x, y: b.y, rx: 28, ry: 18, kind: "bench" });
   for (const [cx, cy] of [[400, 1600], [1030, 1450], [2520, 1260]]) list.push({ shape: "box", x: cx, y: cy, w: 60, h: 30, kind: "crates" });
   list.push({ shape: "round", x: 2440, y: 600, rx: 30, ry: 20, kind: "well" });
   // Trees: a forest border plus groves, kept off roads, districts and buildings.
