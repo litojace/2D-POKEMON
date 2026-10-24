@@ -30,7 +30,6 @@ import {
   fountainBase,
   fountainTop,
   paintGround,
-  propSprite,
   rnd,
   carveStatue,
   statuePlinth,
@@ -39,12 +38,13 @@ import {
   shrubSprite,
   signpostSprite,
   softBlob,
-  stallSprite,
   treeCanopy,
   treeTrunk,
   windmillSails,
   type Sprite,
 } from "./town-art";
+import { propSprite, stallSprite } from "./town-props";
+import { butterflySprite, DOG_FRAMES, dogSprite, duckSprite, GULL_FRAMES, gullSprite, HEN_FRAMES, henSprite, type DogPose } from "./town-animals";
 
 /**
  * Everything in the town that isn't a player: the painted ground, buildings,
@@ -124,8 +124,12 @@ export class TownScenery {
   private butterflies: (Mover & { color: number; home: { x: number; y: number } })[] = [];
   private chickens: (Mover & { home: { x: number; y: number }; pause: number })[] = [];
   /** A dog trotting laps around the plaza, stopping now and then to sniff. */
-  private dog = { a: 1.2, rest: 0, sniffAt: 6 };
-  private ducks: { a: number; speed: number; r: number }[] = [];
+  private dog = { a: 1.2, rest: 0, sniffAt: 6, pose: "sniff" as DogPose, img: undefined as Phaser.GameObjects.Image | undefined };
+  private ducks: { a: number; speed: number; r: number; female: boolean; img?: Phaser.GameObjects.Image }[] = [];
+  /** Animal pictures, painted once per frame of animation and swapped as they move. */
+  private henImgs: Phaser.GameObjects.Image[] = [];
+  private gullImgs: Phaser.GameObjects.Image[] = [];
+  private flyImgs: Phaser.GameObjects.Image[] = [];
 
   constructor(
     private scene: Phaser.Scene,
@@ -432,7 +436,46 @@ export class TownScenery {
       const home = i < 3 ? { x: 1000 + i * 40, y: 1420 } : { x: 2400 + i * 30, y: 1780 };
       this.chickens.push({ x: home.x, y: home.y, vx: 0, vy: 0, phase: rnd(i * 41) * TAU, home, pause: 0 });
     }
-    for (let i = 0; i < 3; i++) this.ducks.push({ a: (i / 3) * TAU, speed: 0.12 + i * 0.03, r: 0.55 + i * 0.12 });
+    for (let i = 0; i < 3; i++) this.ducks.push({ a: (i / 3) * TAU, speed: 0.12 + i * 0.03, r: 0.55 + i * 0.12, female: i === 1 });
+    this.animals();
+  }
+
+  /** Bake every animal frame and create one picture per animal. */
+  private animals() {
+    const s = this.scene,
+      RES = 3;
+    const img = (key: string, sprite: Sprite) => {
+      const t = bake(s, key, sprite, RES);
+      return s.add.image(0, 0, t.key).setOrigin(t.ox, t.oy).setScale(t.scale);
+    };
+    for (const [pose, n] of Object.entries(DOG_FRAMES) as [DogPose, number][])
+      for (let f = 0; f < n; f++) bake(s, `town-dog-${pose}-${f}`, dogSprite(pose, f), RES);
+    this.dog.img = img("town-dog-walk-0", dogSprite("walk", 0));
+    this.dog.img.setScale(this.dog.img.scale * 1.15);
+    for (const coat of ["white", "brown"] as const)
+      for (const [pose, n] of Object.entries(HEN_FRAMES) as ["walk" | "peck", number][])
+        for (let f = 0; f < n; f++) bake(s, `town-hen-${coat}-${pose}-${f}`, henSprite(coat, pose, f), RES);
+    this.chickens.forEach((c, i) => {
+      const coat = i % 2 ? "brown" : "white";
+      this.henImgs.push(img(`town-hen-${coat}-walk-0`, henSprite(coat, "walk", 0)).setData("coat", coat));
+      void c;
+    });
+    for (const female of [false, true])
+      for (const pose of ["swim", "dabble"] as const) bake(s, `town-duck-${female ? "f" : "m"}-${pose}`, duckSprite(pose, female), RES);
+    for (const d of this.ducks) d.img = img(`town-duck-${d.female ? "f" : "m"}-swim`, duckSprite("swim", d.female)).setScale(1.4 / RES);
+    for (let f = 0; f < GULL_FRAMES; f++) bake(s, `town-gull-${f}`, gullSprite(f), RES);
+    for (let i = 0; i < this.birds.length; i++) this.gullImgs.push(img("town-gull-1", gullSprite(1)).setDepth(9000));
+    const wings: [number, string, string][] = [[0xffd65b, "#ffd65b", "#8a5a10"], [0xff8ad0, "#ff8ad0", "#7a1e50"], [0x8fd0ff, "#8fd0ff", "#1e4a7a"], [0xffffff, "#ffffff", "#5a5a6a"]];
+    for (const b of this.butterflies) {
+      const [, fill, edge] = wings.find(([c]) => c === b.color) ?? wings[0];
+      this.flyImgs.push(img(`town-butterfly-${fill}`, butterflySprite(fill, edge)).setDepth(8500));
+    }
+    if (this.reduced) {
+      // Still pictures: everyone at home, standing.
+      this.drawCritters(0, 0);
+      this.drawBirds(0, 0);
+      this.drawBugs(0, 0);
+    }
   }
 
   /** Called every frame. `now` is the scene clock (ms), `dt` seconds. */
@@ -504,11 +547,12 @@ export class TownScenery {
         x = p.x + Math.cos(a) * p.rx * d.r,
         y = p.y + Math.sin(a) * p.ry * d.r,
         dir = -Math.sin(a) > 0 ? 1 : -1,
-        bob = Math.sin(t * 4 + d.a) * 1.2;
-      pg.lineStyle(1.5, 0xffffff, 0.35).strokeEllipse(x - dir * 14, y + 4, 26, 8);
-      pg.fillStyle(0xf4efe2, 1).fillEllipse(x, y + bob, 24, 13);
-      pg.fillStyle(0x2f7a4a, 1).fillCircle(x + dir * 10, y - 7 + bob, 6);
-      pg.fillStyle(0xffb03a, 1).fillTriangle(x + dir * 15, y - 8 + bob, x + dir * 21, y - 6 + bob, x + dir * 15, y - 4 + bob);
+        bob = Math.sin(t * 4 + d.a) * 1;
+      // Now and then a duck tips up to feed.
+      const dabble = Math.sin(t * 0.35 + d.a * 3) > 0.9;
+      pg.lineStyle(1.5, 0xffffff, 0.35).strokeEllipse(x - dir * 22, y + 2, 40, 9);
+      pg.lineStyle(1, 0xffffff, 0.2).strokeEllipse(x - dir * 38, y + 2, 34, 6);
+      d.img?.setTexture(`town-duck-${d.female ? "f" : "m"}-${dabble ? "dabble" : "swim"}`).setPosition(x, y + 4 + bob).setFlipX(dir < 0).setDepth(y);
     }
   }
 
@@ -663,49 +707,52 @@ export class TownScenery {
   }
 
   private drawBirds(t: number, dt: number) {
-    const g = this.skyG.clear(),
-      sh = this.birdShadowG.clear();
-    for (const b of this.birds) {
+    const sh = this.birdShadowG.clear();
+    this.skyG.clear();
+    this.birds.forEach((b, i) => {
       b.x += b.vx * dt;
       b.y += b.vy * dt + Math.sin(t * 0.7 + b.phase) * 6 * dt;
       if (b.x > TOWN.width + 80) {
         b.x = -80;
         b.y = 150 + rnd(b.phase * 7 + t) * (TOWN.height - 300);
       }
-      const flap = Math.sin(t * 9 + b.phase) * 7;
-      g.lineStyle(3, 0x2a2a35, 0.9);
-      g.beginPath();
-      g.moveTo(b.x - 12, b.y - flap);
-      g.lineTo(b.x, b.y);
-      g.lineTo(b.x + 12, b.y - flap);
-      g.strokePath();
-      sh.fillStyle(SHADE, SUN.alpha).fillEllipse(b.x + 60, b.y + 130, 18, 6);
-    }
+      // Flap in bursts, then glide on level wings.
+      const gliding = Math.sin(t * 0.9 + b.phase) > 0.2,
+        frame = gliding ? 1 : Math.floor(t * 9 + b.phase * 4) % GULL_FRAMES;
+      const img = this.gullImgs[i];
+      img?.setTexture(`town-gull-${frame}`).setPosition(b.x, b.y).setRotation(Math.atan2(b.vy, b.vx) + Math.PI / 2);
+      sh.fillStyle(SHADE, SUN.alpha).fillEllipse(b.x + 60, b.y + 130, 22, 7);
+    });
   }
 
   private drawBugs(t: number, dt: number) {
-    const g = this.bugG.clear();
-    for (const b of this.butterflies) {
+    this.bugG.clear();
+    this.butterflies.forEach((b, i) => {
       const tx = b.home.x + Math.sin(t * 0.5 + b.phase) * 70,
         ty = b.home.y + Math.sin(t * 0.8 + b.phase * 2) * 40;
-      b.x += (tx - b.x) * Math.min(1, dt * 1.5);
-      b.y += (ty - b.y) * Math.min(1, dt * 1.5);
-      const w = Math.abs(Math.sin(t * 14 + b.phase)) * 6 + 1,
-        y = b.y - 30 + Math.sin(t * 3 + b.phase) * 6;
-      g.fillStyle(b.color, 0.95).fillEllipse(b.x - w / 2 - 1, y, w, 7).fillEllipse(b.x + w / 2 + 1, y, w, 7);
-      g.fillStyle(0x2a2a35, 1).fillRect(b.x - 0.75, y - 3, 1.5, 6);
-    }
+      const dx = (tx - b.x) * Math.min(1, dt * 1.5),
+        dy = (ty - b.y) * Math.min(1, dt * 1.5);
+      b.x += dx;
+      b.y += dy;
+      const y = b.y - 30 + Math.sin(t * 3 + b.phase) * 6,
+        flap = 0.2 + Math.abs(Math.sin(t * 14 + b.phase)) * 0.8,
+        img = this.flyImgs[i];
+      if (!img) return;
+      const base = 1 / 3;
+      img.setPosition(b.x, y).setScale(base * flap, base).setRotation(dx || dy ? Math.atan2(dy, dx) + Math.PI / 2 : 0);
+    });
   }
 
   private drawCritters(t: number, dt: number) {
-    // Chickens peck around a home spot, drawn on the ground layer.
+    // Shadows go on the ground layer; the animals sort with everything else.
     const g = this.critterG;
     {
       const d = this.dog;
       d.sniffAt -= dt;
       if (d.sniffAt <= 0) {
-        d.rest = 1.6 + rnd(t) * 1.4;
+        d.rest = 1.8 + rnd(t) * 2;
         d.sniffAt = 7 + rnd(t * 3) * 8;
+        d.pose = rnd(t * 5) > 0.6 ? "sit" : "sniff";
       }
       const moving = d.rest <= 0;
       if (moving) d.a += dt * 0.11;
@@ -713,21 +760,16 @@ export class TownScenery {
       const R = 455,
         x = TOWN.plaza.x + Math.cos(d.a) * R,
         y = TOWN.plaza.y + Math.sin(d.a) * R * 0.78,
-        dir = -Math.sin(d.a) >= 0 ? 1 : -1,
-        step = moving ? Math.sin(t * 14) : 0,
-        sniff = moving ? 0 : Math.max(0, Math.sin(t * 5)) * 3;
-      g.fillStyle(SHADE, SUN.alpha).fillEllipse(x + 4, y + 2, 30, 7);
-      g.fillStyle(0x7a4f2e, 1);
-      g.fillRect(x - 10, y - 9 - step, 3, 9 + step).fillRect(x + 7, y - 9 + step, 3, 9 - step);
-      g.fillStyle(0xa8703f, 1).fillEllipse(x, y - 13, 28, 13);
-      g.fillCircle(x + dir * 14, y - 19 + sniff, 7);
-      g.fillStyle(0x6a4224, 1).fillEllipse(x + dir * 11, y - 21 + sniff, 5, 9);
-      g.fillStyle(0x2a1c10, 1).fillCircle(x + dir * 20, y - 18 + sniff, 1.8);
-      // Wagging tail.
-      const wag = Math.sin(t * (moving ? 10 : 18)) * 5;
-      g.lineStyle(3, 0xa8703f, 1).lineBetween(x - dir * 13, y - 15, x - dir * 20, y - 22 + wag);
+        dir = -Math.sin(d.a) >= 0 ? 1 : -1;
+      const key = moving
+        ? `town-dog-walk-${Math.floor(t * 10) % DOG_FRAMES.walk}`
+        : d.pose === "sit"
+          ? "town-dog-sit-0"
+          : `town-dog-sniff-${Math.floor(t * 4) % DOG_FRAMES.sniff}`;
+      g.fillStyle(SHADE, SUN.alpha).fillEllipse(x + dir * 2 + 4, y + 1, 34, 8);
+      d.img?.setTexture(key).setPosition(x, y).setFlipX(dir < 0).setDepth(y);
     }
-    for (const c of this.chickens) {
+    this.chickens.forEach((c, i) => {
       c.pause -= dt;
       if (c.pause <= 0) {
         const a = rnd(t * 3 + c.phase) * TAU;
@@ -745,14 +787,13 @@ export class TownScenery {
         c.vy = (c.home.y - c.y) * 0.5;
       }
       const dir = c.vx >= 0 ? 1 : -1,
-        hop = moving ? Math.abs(Math.sin(t * 12 + c.phase)) * 3 : 0,
-        peck = moving ? 0 : Math.max(0, Math.sin(t * 6 + c.phase)) * 4;
-      g.fillStyle(SHADE, SUN.alpha).fillEllipse(c.x + 3, c.y + 2, 18, 5);
-      g.fillStyle(0xfff6e0, 1).fillEllipse(c.x, c.y - 8 - hop, 18, 14);
-      g.fillStyle(0xfff6e0, 1).fillCircle(c.x + dir * 8, c.y - 15 - hop + peck, 5.5);
-      g.fillStyle(0xe8463a, 1).fillCircle(c.x + dir * 8, c.y - 21 - hop + peck, 2.5);
-      g.fillStyle(0xffb03a, 1).fillTriangle(c.x + dir * 13, c.y - 16 - hop + peck, c.x + dir * 18, c.y - 14 - hop + peck, c.x + dir * 13, c.y - 12 - hop + peck);
-      g.fillStyle(0x2a2a35, 1).fillCircle(c.x + dir * 9, c.y - 16 - hop + peck, 1.2);
-    }
+        img = this.henImgs[i],
+        coat = img?.getData("coat") ?? "white";
+      const key = moving
+        ? `town-hen-${coat}-walk-${Math.floor(t * 12 + c.phase * 4) % HEN_FRAMES.walk}`
+        : `town-hen-${coat}-peck-${Math.sin(t * 6 + c.phase) > 0.3 ? 1 : 0}`;
+      g.fillStyle(SHADE, SUN.alpha).fillEllipse(c.x + 3, c.y + 1, 20, 5);
+      img?.setTexture(key).setPosition(c.x, c.y).setFlipX(dir < 0).setDepth(c.y);
+    });
   }
 }

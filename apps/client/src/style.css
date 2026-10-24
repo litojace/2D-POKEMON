@@ -21599,3 +21599,67 @@ dialog .auth-panel {
     min-height: 42px;
   }
 }
+/* Phones held sideways: a wider, airier card that fits without scrolling.
+   The tabs already say which form is open, so its heading steps aside. */
+@media (max-height: 480px) {
+  .gate-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 460px);
+    gap: 20px;
+    padding-top: max(12px, env(safe-area-inset-top));
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+  .gate-intro {
+    gap: 8px;
+    padding-top: 1vh;
+  }
+  .gate-mark {
+    width: 32px;
+    height: 32px;
+  }
+  .gate-kicker {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+  }
+  .gate-intro h1 {
+    font-size: clamp(28px, 4.8vw, 52px);
+  }
+  .gate-card {
+    padding: 16px 20px;
+    border-radius: 18px;
+    max-height: calc(100dvh - 24px);
+  }
+  .auth-panel {
+    gap: 10px;
+  }
+  .auth-panel:has(.auth-tabs) .auth-head {
+    display: none;
+  }
+  .auth-title {
+    font-size: 18px;
+  }
+  .auth-tabs button {
+    min-height: 34px;
+    font-size: 13px;
+  }
+  .auth-form {
+    gap: 8px 12px;
+  }
+  .auth-field {
+    gap: 4px;
+  }
+  .auth-field > span:first-child {
+    font-size: 12px;
+  }
+  .auth-panel input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]) {
+    min-height: 36px;
+    font-size: 14px;
+  }
+  .auth-submit,
+  .auth-secondary,
+  .auth-guest button {
+    min-height: 38px;
+  }
+  .auth-divider {
+    margin: 0;
+  }
+}
