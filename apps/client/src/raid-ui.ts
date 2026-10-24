@@ -194,7 +194,7 @@ export function raidCosmeticOptions(
             : slot === "victory"
               ? "Your champion's own celebration"
               : `No ${SLOT_NAMES[slot].toLowerCase()}`;
-        return `<button class="secondary raid-cosmetic-option${active ? " is-equipped" : ""}" data-raid-slot="${slot}" data-raid-item="${id ?? ""}" data-raid-cosmetic="${id ?? ""}" ${!owned || active ? "disabled" : ""}><span class="raid-cosmetic-preview" data-cosmetic="${id ?? ""}" aria-hidden="true">${fighterAvatar(character, `cosmetic-${slot}-${id ?? "none"}`)}</span><span><b>${name}</b><small>${detail}</small></span><span class="raid-cosmetic-state">${active ? "✓ Equipped" : owned ? (id === null ? "Clear" : "Equip") : "Locked"}</span></button>`;
+        return `<button class="secondary raid-cosmetic-option${active ? " is-equipped" : ""}" data-raid-slot="${slot}" data-raid-item="${id ?? ""}" data-raid-cosmetic="${id ?? ""}" ${!owned || active ? "disabled" : ""}><span class="raid-cosmetic-preview" data-cosmetic="${id ?? ""}" aria-hidden="true">${fighterAvatar(character, `cosmetic-${slot}-${id ?? "none"}`)}</span><span><b>${name}</b><small>${detail}</small></span><span class="raid-cosmetic-state${active ? " is-equipped-text" : ""}">${active ? "✓ Equipped" : owned ? (id === null ? "Clear" : "Equip") : "Locked"}</span></button>`;
       };
       return `<div class="raid-slot"><h4>${SLOT_NAMES[slot]}</h4>${[null, ...items].map(option).join("")}</div>`;
     })

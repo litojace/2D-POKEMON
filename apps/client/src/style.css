@@ -8200,7 +8200,7 @@ body.battle-raid:not(.touch-mode) #battle {
   border-color: #7be3ac77;
   background: #16403944;
 }
-.raid-cosmetic-option.is-equipped :is(b, small, .raid-cosmetic-state) {
+.raid-cosmetic-option.is-equipped :is(b, small) {
   color: #a5edc1;
 }
 .raid-cosmetic-preview[data-cosmetic="cragbound"] > svg,
@@ -9514,8 +9514,8 @@ label.title-option {
   font-weight: 800;
   letter-spacing: 0.6px;
   text-transform: uppercase;
-  color: #18233c;
-  background: var(--accent);
+  color: #0f2a1c;
+  background: var(--equipped);
   border-radius: 999px;
   padding: 2px 7px;
 }
@@ -14274,7 +14274,7 @@ button.secondary.raid-cosmetic-option[aria-pressed="true"] {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  color: #a5edc1;
+  color: #b9c6da;
   font:
     600 11px/1.2 "DM Sans",
     sans-serif;
@@ -21662,4 +21662,22 @@ dialog .auth-panel {
   .auth-divider {
     margin: 0;
   }
+}
+
+/* Anything you have equipped reads in one green, everywhere (Wardrobe,
+   Shop, raid looks, journey rewards, titles), so it stands out from
+   "Owned" and slot labels at a glance. */
+:root {
+  --equipped: #5fe39a;
+}
+.is-equipped-text,
+button.is-equipped-text,
+button.is-equipped-text:disabled,
+.shop .shop-card-action > button.shop-unequip.is-equipped-text {
+  color: var(--equipped) !important;
+  font-weight: 700;
+}
+button.is-equipped-text:disabled {
+  opacity: 1;
+  border-color: color-mix(in srgb, var(--equipped) 45%, transparent);
 }

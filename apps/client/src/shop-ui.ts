@@ -157,7 +157,7 @@ export function itemAction(
         ? loadout[look.slot] === id
         : false;
     if (worn)
-      return `<button class="secondary shop-unequip" data-shop-unequip="${id}">${iconLabel("check", "Equipped")}</button>`;
+      return `<button class="secondary shop-unequip is-equipped-text" data-shop-unequip="${id}">${iconLabel("check", "Equipped")}</button>`;
     return `<button class="secondary" data-shop-equip="${id}">${iconLabel("swap", "Equip")}</button>`;
   }
   const price = shopPrice(id, e.owned, e.picks.deal);
@@ -184,7 +184,7 @@ function ownershipBadge(id: string, e: Economy | null, loadout: RaidLoadout) {
   const equipped = skin
     ? e.looks[skin.champion]?.skin === id
     : piece && loadout[piece.slot] === id;
-  return `<span class="shop-owned-badge">${iconLabel("check", equipped ? "Equipped" : "Owned")}</span>`;
+  return `<span class="shop-owned-badge${equipped ? " is-equipped-text" : ""}">${iconLabel("check", equipped ? "Equipped" : "Owned")}</span>`;
 }
 /** One item card (the hero is today's deal, laid out wide). */
 function card(
