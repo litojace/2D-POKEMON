@@ -2,8 +2,6 @@ import { frameLobbyPanel } from "./lobby-layout";
 import { fitDesktopBattleHud } from "./desktop-battle-layout";
 import {
   homeShell,
-  homeModeLabel,
-  syncHomeScene,
   lastHomeFighter,
   rememberHomeFighter,
   startRoomSection,
@@ -221,7 +219,7 @@ const escape = (s: string) =>
       ]!,
   );
 document.querySelector("#app")!.innerHTML =
-  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><div id="account-nav" class="account-nav"></div><button type="button" class="quiet home-settings" id="home-settings" aria-label="Settings" title="Settings">${menuIcon("settings")}</button><details class="header-menu" id="header-menu"><summary><i class="menu-burger" aria-hidden="true">☰</i><i class="menu-gear" aria-hidden="true">${menuIcon("settings")}</i> <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">${menuIcon("help")}<span>How to play</span></button><button class="quiet" id="settings">${menuIcon("settings")}<span>Settings</span></button><button class="quiet" id="leaderboard">${menuIcon("leaderboard")}<span>Leaderboard</span></button><button class="quiet" id="install-app">${menuIcon("fullscreen")}<span>Want fullscreen?</span></button><button class="quiet" id="report-problem">${menuIcon("report")}<span>Report a problem</span></button><button class="quiet" id="menu-logout">${menuIcon("leave")}<span>Log out</span></button><span class="connection" id="connection">Connecting</span></div></details></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-stage"><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span id="control-hints"></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu" title="Battle settings (Esc / controller Menu)">Settings</button></div></section></main><footer><span>ELEMENT ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Eight creatures. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
+  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><div id="account-nav" class="account-nav"></div><button type="button" class="quiet home-settings" id="home-settings" aria-label="Settings" title="Settings">${menuIcon("settings")}</button><details class="header-menu" id="header-menu"><summary><i class="menu-burger" aria-hidden="true">☰</i><i class="menu-gear" aria-hidden="true">${menuIcon("settings")}</i> <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">${menuIcon("help")}<span>How to play</span></button><button class="quiet" id="settings">${menuIcon("settings")}<span>Settings</span></button><button class="quiet" id="leaderboard">${menuIcon("leaderboard")}<span>Leaderboard</span></button><button class="quiet" id="install-app">${menuIcon("fullscreen")}<span>Want fullscreen?</span></button><button class="quiet" id="report-problem">${menuIcon("report")}<span>Report a problem</span></button><button class="quiet" id="menu-logout">${menuIcon("leave")}<span>Log out</span></button><span class="connection" id="connection">Connecting</span></div></details></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-stage"><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span id="control-hints"></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu" title="Battle settings (Esc / controller Menu)">Settings</button><button class="quiet battle-leave" id="battle-leave" hidden>${iconLabel("leave", "Leave")}</button></div></section></main><footer><span>ELEMENT ARENA <b>•</b> REAL-TIME CREATURE DUELS</span><button class="quiet" id="credits">Credits</button><span>Eight creatures. One arena. Your move.</span></footer><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
 // Measure wrapped HUDs for phone spacing and desktop boss-specific controls.
 let measuredRaidHud: HTMLElement | null = null;
 const battleHudSize = new ResizeObserver((entries) => {
@@ -784,11 +782,6 @@ function showSelection(revealSelection = false) {
   return true;
 }
 function syncHomePresentation() {
-  syncHomeScene($("menu"), selected, accountsUI?.economy, accountsUI?.raidLook);
-  const journey = document.getElementById("home-adventure");
-  if (journey) journey.onclick = () => void accountsUI.showAdventure();
-  const friends = document.getElementById("home-friends");
-  if (friends) friends.onclick = () => void accountsUI.showFriends();
   const avatar = document.querySelector("#account-profile .account-avatar");
   if (avatar && avatar.getAttribute("data-champion") !== selected) {
     avatar.innerHTML = fighterAvatar(
@@ -1109,17 +1102,22 @@ async function startAdventure(mode: string) {
   await request("select", selected);
   if (mode === "expedition-solo") await request("ready");
 }
-let gateAsked = false;
-/** Signed out (or still checking): the front door instead of the game. */
+/**
+ * The welcome screen: shown when signed out (with the sign-up / log-in
+ * panel in it), while the account loads, and while a signed-in player is
+ * (re)connecting to the town.
+ */
 function renderGate() {
   syncTown();
   const status: GateStatus = !accountsUI?.checked
     ? "loading"
-    : accountsUI.session
-      ? "error"
-      : !accountsUI.client
-        ? "unavailable"
-        : "signed-out";
+    : accountsUI.account
+      ? "connecting"
+      : accountsUI.session
+        ? "error"
+        : !accountsUI.client
+          ? "unavailable"
+          : "signed-out";
   const invite = pendingInvite();
   const key = `gate:${status}:${invite ?? ""}`;
   if (screen === key) return;
@@ -1133,22 +1131,20 @@ function renderGate() {
   syncBattleLoop();
   $("menu").hidden = false;
   $("menu").innerHTML = welcomeGate(status, invite);
-  const signup = document.getElementById("gate-signup"),
-    login = document.getElementById("gate-login"),
+  const login = document.getElementById("gate-login"),
     retry = document.getElementById("gate-retry");
-  if (signup) signup.onclick = () => accountsUI.showAuth("signup");
   if (login) login.onclick = () => accountsUI.showAuth("login");
   if (retry) retry.onclick = () => void accountsUI.refresh();
-  // New players see the sign-up panel straight away; returning ones, log in.
-  if (status === "signed-out" && !gateAsked) {
-    gateAsked = true;
+  // Signed out: the panel is right there. Returning players see Log in,
+  // new ones Create account.
+  if (status === "signed-out") {
     let returning = false;
     try {
       returning = localStorage.getItem("arena-has-account") === "yes";
     } catch {
       /* optional */
     }
-    accountsUI.showAuth(returning ? "login" : "signup");
+    accountsUI.showAuth(invite || returning ? "login" : "signup");
   }
 }
 
@@ -1270,14 +1266,6 @@ function wireRaidLobby() {
         .then(() => toast("Room code copied"))
         .catch(() => toast("Room code: " + (state?.code ?? "")));
 
-  const bestiary = document.getElementById("raid-bestiary");
-  if (bestiary) bestiary.onclick = () => void showRaidBestiary();
-  const shop = document.getElementById("shop-open");
-  if (shop) shop.onclick = () => void accountsUI.showShop();
-  const wardrobe = document.getElementById("wardrobe-open");
-  if (wardrobe) wardrobe.onclick = () => void accountsUI.showWardrobe();
-  const missions = document.getElementById("home-missions");
-  if (missions) missions.onclick = () => void accountsUI.showMissions();
   const peril = document.getElementById(
       "raid-peril",
     ) as HTMLInputElement | null,
@@ -1381,13 +1369,15 @@ function wireRoom() {
       );
 }
 function renderMenu(revealSelection = false) {
+  document.body.classList.remove("practice-active");
   audio.setTheme("lobby");
   pwa.sync();
   const p = state?.players.find((p) => p.id === myId);
   const isRoom = !!p;
   const watchingRoom = !isRoom && !!watching && state?.code === watching;
   // Everyone plays from the shared town, so the game needs an account.
-  if (!isRoom && !watchingRoom && !accountsUI?.account) return renderGate();
+  // No town without an account or a connection: the welcome screen instead.
+  if (!isRoom && !watchingRoom && (!accountsUI?.account || !connected)) return renderGate();
   document.body.classList.remove("gate-active");
   syncTown();
   const raidChallenge = state?.raid
@@ -1456,14 +1446,7 @@ function renderMenu(revealSelection = false) {
     panelMarkup,
     () =>
       home
-        ? homeShell(
-            panelMarkup,
-            fighterSelection(selected),
-            roomMode,
-            selected,
-            accountsUI?.economy,
-            accountsUI?.raidLook,
-          )
+        ? homeShell(panelMarkup, fighterSelection(selected))
         : `<header class="desktop-lobby-header"><div class="eyebrow">Elemental Coliseum</div><h1>Choose your fighter</h1><p>Pick your creature. Enter the arena.</p></header><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected)}</div><aside class="room-panel card">${panelMarkup}</aside></div>`,
     keepScroll !== null &&
       !wornChanged &&
@@ -1471,9 +1454,6 @@ function renderMenu(revealSelection = false) {
   );
   if (!home)
     frameLobbyPanel($("menu").querySelector<HTMLElement>(".room-panel")!);
-  const adventureButton = document.getElementById("home-adventure");
-  if (adventureButton)
-    adventureButton.onclick = () => void accountsUI.showAdventure();
   wireRoster(isRoom);
   syncRosterMastery($("menu"));
   syncMenuCosmetic();
@@ -1518,8 +1498,6 @@ function renderMenu(revealSelection = false) {
       if (reply.ok) await request("select", selected);
     };
     // Boss Raid goes through the Raid Hub, where the boss is chosen.
-    $("create").onclick = () =>
-      roomMode === "raid" ? void accountsUI.showRaidHub() : void play("create");
     $("play-create").onclick = () => {
       homeNavigation.close();
       if (roomMode === "raid") void accountsUI.showRaidHub();
@@ -1577,18 +1555,6 @@ function renderMenu(revealSelection = false) {
               b.classList.toggle("active", on);
               b.setAttribute("aria-checked", String(on));
             });
-          $("home-mode-toggle").querySelector("b")!.textContent =
-            homeModeLabel(roomMode);
-          $("create").setAttribute(
-            "aria-label",
-            roomMode === "raid"
-              ? "Play Boss Raid: open Raid Hub"
-              : `Play ${homeModeLabel(roomMode)}: create private room`,
-          );
-          $("menu").querySelector(".home-launch-hint")!.textContent =
-            roomMode === "raid"
-              ? "Choose your boss in the Raid Hub"
-              : "Create a private room · Invite your crew";
         }),
     );
     wireRaidLobby();
@@ -1645,6 +1611,7 @@ async function leave() {
 }
 function renderBattle() {
   document.body.classList.remove("home-active", "lobby-active", "gate-active");
+  if (!state?.practice) document.body.classList.remove("practice-active");
   syncTown();
   if (state) audio.setTheme(battleMusic(state, myId), state.raid?.phase ?? 1);
   if (!document.body.classList.contains("battle-active")) {
@@ -1685,6 +1652,10 @@ function renderBattle() {
     syncBattleLoop();
     fitRenderer();
     $("practice-controls").hidden = !state.practice;
+    // Solo test mode: just Settings and Leave, no site menu.
+    document.body.classList.toggle("practice-active", !!state.practice);
+    $("battle-leave").hidden = !state.practice;
+    $("battle-leave").onclick = () => void leave();
     if (state.practice) {
       $("practice-controls").innerHTML =
         `<details id="practice-settings" class="practice-settings"><summary>Practice</summary><div class="practice-panel"><div class="practice-heading"><span class="eyebrow">Solo test mode</span><span id="practice-stats"></span></div><div class="practice-actions"><label>Creature <select id="practice-character">${Object.values(
@@ -2120,6 +2091,10 @@ socket.on("connect", () => {
     screen = "";
     renderMenu();
   }
+  if (!myId && !watching && !state) {
+    screen = "";
+    renderMenu();
+  }
   syncTown();
   $("connection").textContent = "SERVER CONNECTED";
   $("connection").classList.add("online");
@@ -2140,6 +2115,10 @@ socket.on("connect", () => {
 socket.on("disconnect", () => {
   lobbySelection.reset();
   connected = false;
+  if (!myId && !watching && !state) {
+    screen = "";
+    renderMenu();
+  }
   $("connection").textContent = "RECONNECTING…";
   $("connection").classList.remove("online");
   pending = [];

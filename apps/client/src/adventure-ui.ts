@@ -66,9 +66,6 @@ export function resultXp(
   ).map((m) => m.title ?? JOURNEY_ITEM_BY_ID[m.item!].name);
   return `<section class="journey-result-xp" aria-label="Experience earned"><strong>+${gained} XP</strong>${gained > award.amount ? `<small class="journey-xp-breakdown">${award.amount} from this run · ${gained - award.amount} from daily missions</small>` : ""}${after > before ? `<p class="journey-level-up">LEVEL UP · ${before} → ${after}<small>+${(after - before) * LEVEL_COINS} coins${milestones.length ? ` · ${milestones.map(escape).join(" · ")}` : ""}</small></p>` : ""}${levelBar(j, true)}</section>`;
 }
-export function adventureHome(e: Economy | undefined) {
-  return `<button type="button" class="home-adventure" id="home-adventure"><span class="eyebrow">Your adventure</span>${e?.journey ? levelBar(e.journey, true) : "<b>Player levels & seasonal rewards</b>"}<span>Weekly arcade · Boss Rush · Free season rewards <i aria-hidden="true">→</i></span></button>`;
-}
 function glyph(slot: string, color = "#9ff3d8") {
   const shape =
     slot === "coins"

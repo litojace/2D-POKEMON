@@ -76,7 +76,7 @@ const EYE_OFF =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/><path d="M3 3l18 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
 /** Password input with an eye button inside the box to show or hide it. */
 const passwordField = (label: string, name: string, attrs: string) =>
-  `<label>${label}<span class="password-field"><input name="${name}" type="password" ${attrs}><button class="password-toggle" type="button" aria-label="Show password" aria-pressed="false" title="Show password">${EYE}</button></span></label>`;
+  `<label class="auth-field"><span>${label}</span><span class="password-field"><input name="${name}" type="password" ${attrs}><button class="password-toggle" type="button" aria-label="Show password" aria-pressed="false" title="Show password">${EYE}</button></span></label>`;
 const escape = (text: string) =>
   text.replace(
     /[&<>"']/g,
@@ -317,17 +317,42 @@ export class AccountUI {
     }
   }
   showAuth(mode: "login" | "signup" | "forgot" | "reset") {
-    const title = {
-      login: "Welcome back.",
-      signup: "Enter the arena.",
-      forgot: "Recover your account.",
-      reset: "Choose a new password.",
+    const copy = {
+      login: ["Welcome back", "Log in to step back into Elemental Plaza."],
+      signup: ["Create your account", "Free to play. Your level, skins and friends follow you everywhere."],
+      forgot: ["Reset your password", "Enter your email and we'll send you a recovery link."],
+      reset: ["Choose a new password", "Use at least 8 characters."],
     }[mode];
-    this.hooks.openDialog(
-      `<div class="eyebrow">Element Arena accounts</div><h2>${title}</h2>${!this.client ? "<p>Sign-in is not available yet. Accounts are being set up.</p>" : ""}<form id="auth-form" class="account-form">${mode === "signup" ? '<label>Display name<input name="displayName" maxlength="20" required autocomplete="nickname"></label>' : ""}${mode !== "reset" ? '<label>Email<input name="email" type="email" required autocomplete="email"></label>' : ""}${mode !== "forgot" ? passwordField("Password", "password", `${mode === "login" ? "" : 'minlength="8"'} maxlength="128" required autocomplete="${mode === "login" ? "current-password" : "new-password"}"`) : ""}${mode === "signup" || mode === "reset" ? passwordField("Confirm password", "confirmPassword", 'minlength="8" maxlength="128" required autocomplete="new-password"') : ""}${mode === "login" ? '<label class="checkbox-label"><input id="auth-remember" type="checkbox">Remember me</label>' : ""}<button class="primary" type="submit" ${!this.client ? "disabled" : ""}>${{ login: iconLabel("enter", "Log in"), signup: iconLabel("add-friend", "Create account"), forgot: "Send reset link", reset: iconLabel("save", "Update password") }[mode]}</button>${GOOGLE_SIGN_IN && (mode === "login" || mode === "signup") ? `<button id="auth-google" class="secondary" type="button" ${!this.client ? "disabled" : ""}>Continue with Google</button>` : ""}<p id="auth-message" role="status"></p></form>${(mode === "login" || mode === "signup") && this.client ? `<div class="guest-play"><span>Just want to try it?</span><form id="guest-form"><input name="nickname" maxlength="20" placeholder="Nickname (optional)" autocomplete="nickname" aria-label="Guest nickname"><button class="secondary" type="submit">${iconLabel("user", "Play as a guest")}</button></form><small>No email needed. Save your account later from your profile to keep your progress.</small></div>` : ""}<div class="auth-links"><button class="quiet" id="auth-switch">${mode === "login" ? "Create an account" : "Back to login"}</button>${mode === "login" ? '<button class="quiet" id="auth-forgot">Forgot password?</button>' : ""}</div>`,
-    );
-    element("auth-switch").onclick = () =>
-      this.showAuth(mode === "login" ? "signup" : "login");
+    const field = (label: string, input: string) => `<label class="auth-field"><span>${label}</span>${input}</label>`;
+    const tabs =
+      mode === "login" || mode === "signup"
+        ? `<div class="auth-tabs" role="tablist" aria-label="Account">${(["login", "signup"] as const).map((m) => `<button type="button" role="tab" data-auth-tab="${m}" aria-selected="${m === mode}">${m === "login" ? "Log in" : "Create account"}</button>`).join("")}</div>`
+        : "";
+    const fields = [
+      mode === "signup" ? field("Display name", '<input name="displayName" maxlength="20" required autocomplete="nickname" placeholder="Your player name">') : "",
+      mode !== "reset" ? field("Email", '<input name="email" type="email" required autocomplete="email" placeholder="you@example.com">') : "",
+      mode !== "forgot" ? passwordField(mode === "reset" ? "New password" : "Password", "password", `${mode === "login" ? "" : 'minlength="8"'} maxlength="128" required autocomplete="${mode === "login" ? "current-password" : "new-password"}" placeholder="${mode === "login" ? "Your password" : "8+ characters"}"`) : "",
+      mode === "signup" || mode === "reset" ? passwordField("Confirm password", "confirmPassword", 'minlength="8" maxlength="128" required autocomplete="new-password" placeholder="Type it again"') : "",
+    ].join("");
+    const extras =
+      mode === "login"
+        ? '<div class="auth-row"><label class="auth-check"><input id="auth-remember" type="checkbox"><span>Remember me</span></label><button type="button" class="auth-link" id="auth-forgot">Forgot password?</button></div>'
+        : "";
+    const submitLabel = { login: "Log in", signup: "Create account", forgot: "Send recovery link", reset: "Update password" }[mode];
+    const guest =
+      (mode === "login" || mode === "signup") && this.client
+        ? `<div class="auth-divider"><span>or</span></div><form id="guest-form" class="auth-guest"><input name="nickname" maxlength="20" placeholder="Nickname (optional)" autocomplete="nickname" aria-label="Guest nickname"><button class="auth-secondary" type="submit">${iconLabel("user", "Play as a guest")}</button></form><p class="auth-note">No email needed. Save your account later from your profile to keep your progress.</p>`
+        : "";
+    const back = mode === "forgot" || mode === "reset" ? '<button type="button" class="auth-link auth-back" id="auth-switch">← Back to log in</button>' : "";
+    const html = `<section class="auth-panel" data-mode="${mode}"><div class="auth-head"><span class="auth-crest" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="currentColor" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><div class="auth-title">${copy[0]}</div><p>${copy[1]}</p></div>${tabs}${!this.client ? '<p class="auth-warning">Sign-in isn\'t available right now. Please try again later.</p>' : ""}<form id="auth-form" class="auth-form">${fields}${extras}<button class="auth-submit" type="submit" ${!this.client ? "disabled" : ""}>${submitLabel}</button>${GOOGLE_SIGN_IN && (mode === "login" || mode === "signup") ? `<button id="auth-google" class="auth-secondary" type="button" ${!this.client ? "disabled" : ""}>Continue with Google</button>` : ""}<p id="auth-message" class="auth-message" role="status"></p></form>${guest}${back}</section>`;
+    // On the welcome screen the panel sits in the page; elsewhere in a dialog.
+    const host = document.getElementById("gate-auth");
+    if (host) host.innerHTML = html;
+    else this.hooks.openDialog(html);
+    document.querySelectorAll<HTMLButtonElement>("[data-auth-tab]").forEach((tab) => {
+      tab.onclick = () => this.showAuth(tab.dataset.authTab as "login" | "signup");
+    });
+    document.getElementById("auth-switch")?.addEventListener("click", () => this.showAuth("login"));
     if (mode === "login") {
       element("auth-forgot").onclick = () => this.showAuth("forgot");
       element<HTMLInputElement>("auth-remember").checked =

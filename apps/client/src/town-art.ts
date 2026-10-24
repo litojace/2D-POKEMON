@@ -5,7 +5,12 @@ import {
   TOWN_DUMMIES,
   TOWN_POND,
   TOWN_ROADS,
+  TOWN_NEXT_STATUE,
+  TOWN_OBSTACLES,
+  TOWN_SHRUBS,
+  TOWN_SIGNPOSTS,
   TOWN_STALLS,
+  TOWN_STATUES,
   TOWN_TREES,
   type TownBuilding,
 } from "../../../packages/shared/src/town";
@@ -45,22 +50,6 @@ const roundRect = (ctx: Ctx, x: number, y: number, w: number, h: number, r: numb
   ctx.beginPath();
   ctx.roundRect(x, y, w, h, r);
 };
-/** A soft round shadow on the ground. */
-export function softShadow(ctx: Ctx, x: number, y: number, rx: number, ry: number, a = 0.32) {
-  const g = ctx.createRadialGradient(x, y, 0, x, y, rx);
-  g.addColorStop(0, `rgba(20,28,12,${a})`);
-  g.addColorStop(0.6, `rgba(20,28,12,${a * 0.6})`);
-  g.addColorStop(1, "rgba(20,28,12,0)");
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(1, ry / rx);
-  ctx.translate(-x, -y);
-  ctx.fillStyle = g;
-  ellipse(ctx, x, y, rx, rx);
-  ctx.fill();
-  ctx.restore();
-}
-
 // ─────────────────────────── Ground ───────────────────────────
 
 const distToSegment = (x: number, y: number, [x1, y1, x2, y2]: readonly number[]) => {
@@ -147,7 +136,6 @@ function grass(ctx: Ctx, W: number, H: number) {
 
 function plaza(ctx: Ctx) {
   const { x, y, r } = TOWN.plaza;
-  softShadow(ctx, x, y + 14, r + 40, (r + 40) * 0.78, 0.25);
   ctx.fillStyle = "#7d7360";
   ellipse(ctx, x, y, r + 22, (r + 22) * 0.78);
   ctx.fill();
@@ -227,7 +215,6 @@ function marbleTerrace(ctx: Ctx) {
     x1 = 2120,
     y0 = 420,
     y1 = 720;
-  softShadow(ctx, 1600, 700, 560, 60, 0.3);
   ctx.fillStyle = "#7d7594";
   roundRect(ctx, x0 - 10, y0, x1 - x0 + 20, y1 - y0 + 12, 30);
   ctx.fill();
@@ -277,7 +264,7 @@ function trainingYard(ctx: Ctx) {
     if (a > -0.6 + Math.PI * 2 * 0 && a < 0.55) continue; // gap to the east
     const px = x + Math.cos(a) * 300,
       py = y + Math.sin(a) * 177;
-    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    ctx.fillStyle = `rgba(20,28,12,${SUN.alpha})`;
     ctx.fillRect(px - 2, py + 2, 6, 4);
     ctx.fillStyle = "#6e4f30";
     ctx.fillRect(px - 3, py - 16, 6, 18);
@@ -420,7 +407,7 @@ function yards(ctx: Ctx) {
     const picket = (x: number, y: number) => {
       // The fence stops where a road comes through.
       if (TOWN_ROADS.some((r, k) => distToSegment(x, y, r) < (k < 5 ? 112 : 84) / 2 + 10)) return;
-      ctx.fillStyle = "rgba(0,0,0,0.22)";
+      ctx.fillStyle = `rgba(20,28,12,${SUN.alpha})`;
       ctx.fillRect(x - 1, y + 1, 5, 3);
       ctx.fillStyle = "#f2ede2";
       ctx.beginPath();
@@ -442,7 +429,8 @@ function yards(ctx: Ctx) {
   }
 }
 
-export function paintGround(ctx: Ctx) {
+export function paintGround(ground: Ctx) {
+  let ctx = ground;
   const { width: W, height: H } = TOWN;
   grass(ctx, W, H);
   // Patches of bare earth in the lawn.
@@ -479,7 +467,6 @@ export function paintGround(ctx: Ctx) {
       ctx.fillStyle = "#a3977f";
       ellipse(ctx, b.x, y - 2, COLISEUM.rx + 62, COLISEUM.ry + 36);
       ctx.fill();
-      softShadow(ctx, b.x + 20, y + 6, COLISEUM.rx + 50, COLISEUM.ry + 30, 0.35);
     }
   marbleTerrace(ctx);
   trainingYard(ctx);
@@ -489,11 +476,45 @@ export function paintGround(ctx: Ctx) {
   ellipse(ctx, 1600, 1725, 190, 70);
   ctx.fill();
   pond(ctx);
-  // Shadows of everything tall (they fall down and to the right).
-  for (const b of TOWN_BUILDINGS) softShadow(ctx, b.x + b.w * 0.12, b.y + 6, b.w * 0.62, 46, 0.38);
-  for (const t of TOWN_TREES) softShadow(ctx, t.x + 16, t.y + 8, 52, 20, 0.34);
-  for (const s of TOWN_STALLS) softShadow(ctx, s.x + 10, s.y + 30, 100, 22, 0.3);
-  for (const d of TOWN_DUMMIES) softShadow(ctx, d.x + 6, d.y + 4, 22, 8, 0.3);
+  // Shadows of everything tall (they fall down and to the right), drawn
+  // solid into one layer, then blurred onto the ground once (see SUN).
+  const layer = document.createElement("canvas");
+  layer.width = W;
+  layer.height = H;
+  const lit = ctx;
+  ctx = layer.getContext("2d")!;
+  ctx.fillStyle = "#000";
+  for (const b of TOWN_BUILDINGS) castShadow(ctx, b);
+  {
+    const f = TOWN_OBSTACLES.find((o) => o.kind === "fountain")!;
+    sunShadow(ctx, f.x, f.y + 24, 112, 62, 40);
+  }
+  // Trees: trunk at the base, crown shadow further out.
+  for (const t of TOWN_TREES) {
+    const pine = t.variant === 3;
+    sunShadow(ctx, t.x, t.y + 2, 8, 4, 60);
+    sunShadow(ctx, t.x + 24, t.y + 6, pine ? 22 : 34, pine ? 9 : 14, pine ? 140 : 90, pine ? 0.8 : 1.15);
+  }
+  for (const st of TOWN_STALLS) sunShadow(ctx, st.x, st.y + 26, 86, 18, 140);
+  for (const d of TOWN_DUMMIES) sunShadow(ctx, d.x, d.y + 4, 14, 6, 90);
+  for (const sh of TOWN_SHRUBS) sunShadow(ctx, sh.x, sh.y + 4, sh.kind === "rock" ? 18 : 24, sh.kind === "rock" ? 7 : 9, sh.kind === "rock" ? 24 : 34);
+  for (const sp of TOWN_SIGNPOSTS) sunShadow(ctx, sp.x, sp.y + 2, 6, 3, 100);
+  for (const st of [...TOWN_STATUES, TOWN_NEXT_STATUE]) sunShadow(ctx, st.x, st.y + 6, 40, 12, 140);
+  for (const o of TOWN_OBSTACLES)
+    if (o.shape === "round" && o.kind === "lamp") sunShadow(ctx, o.x, o.y + 2, 6, 3, 120);
+    else if (o.shape === "round" && o.kind === "obelisk") sunShadow(ctx, o.x, o.y + 4, 30, 10, 280);
+    else if (o.shape === "round" && o.kind === "well") sunShadow(ctx, o.x, o.y + 4, 34, 12, 110);
+    else if (o.shape === "round" && o.kind === "mirror") sunShadow(ctx, o.x, o.y + 2, 20, 6, 150);
+    else if (o.shape === "box" && o.kind === "board") sunShadow(ctx, o.x, o.y + 8, 130, 14, 180);
+    else if (o.shape === "box" && o.kind === "crates") sunShadow(ctx, o.x, o.y + 6, 32, 12, 60);
+  lit.save();
+  lit.shadowColor = `rgba(20,28,12,${SUN.alpha})`;
+  lit.shadowBlur = SUN.blur;
+  lit.shadowOffsetX = W + 100;
+  lit.drawImage(layer, -(W + 100), 0);
+  lit.restore();
+  layer.width = layer.height = 0;
+  ctx = lit;
   // Grass tufts over the road edges keep them from looking stamped on.
   for (let i = 0; i < 1600; i++) {
     const x = rnd(i * 4.7) * W,
@@ -780,273 +801,464 @@ function coliseum(b: TownBuilding): Sprite {
   };
 }
 
-/** Raid Hall: a columned temple with a purple roof and glowing doors. */
+// Every building below is drawn in the same ¾ view as the coliseum: the
+// front stands upright on its foundation, the roof is seen from above so
+// it has depth, an eave or cornice throws shade on the wall, the base
+// darkens where it meets the ground, and the ground carries the building's
+// cast shadow (see castShadow). Geometry the animated parts need (flags,
+// smoke, sails, the brazier) is exported per kind.
+
+/** Shade under eaves and at the foot of walls. */
+function bandShade(ctx: Ctx, x0: number, x1: number, y: number, h: number, a: number) {
+  const g = ctx.createLinearGradient(0, y, 0, y + h);
+  g.addColorStop(0, `rgba(25,18,10,${a})`);
+  g.addColorStop(1, "rgba(25,18,10,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(x0, y, x1 - x0, h);
+}
+/** Darkening on the ground right along a building's front edge. */
+function footShade(ctx: Ctx, x0: number, x1: number, y: number) {
+  const g = ctx.createLinearGradient(0, y - 3, 0, y + 9);
+  // Same tint as every cast shadow; light, since the cast shadow is under it too.
+  g.addColorStop(0, `rgba(20,28,12,${SUN.alpha * 0.6})`);
+  g.addColorStop(1, "rgba(20,28,12,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(x0 - 4, y - 3, x1 - x0 + 8, 12);
+}
+/** A stepped ring (plinth) around a round building's foot. */
+function ringSteps(ctx: Ctx, cx: number, footY: number, rx: number, ry: number, steps: [number, number][], top: string, side: string) {
+  for (const [grow, drop] of steps) {
+    ctx.fillStyle = side;
+    ellipse(ctx, cx, footY + drop + 7, rx + grow, ry + grow * 0.4);
+    ctx.fill();
+    ctx.fillStyle = top;
+    ellipse(ctx, cx, footY + drop, rx + grow, ry + grow * 0.4);
+    ctx.fill();
+  }
+}
+/** Contact shadow where a round wall meets its plinth. */
+function ringShade(ctx: Ctx, cx: number, footY: number, rx: number, ry: number) {
+  ctx.save();
+  ctx.translate(cx, footY);
+  ctx.scale(1, (ry + 6) / (rx + 14));
+  const g = ctx.createRadialGradient(0, 0, rx * 0.75, 0, 0, rx + 14);
+  g.addColorStop(0, `rgba(20,28,12,${SUN.alpha})`);
+  g.addColorStop(1, "rgba(20,28,12,0)");
+  ctx.fillStyle = g;
+  ellipse(ctx, 0, 0, rx + 14, rx + 14);
+  ctx.fill();
+  ctx.restore();
+}
+/** A round wall from its foot ellipse up to its top ellipse, lit from the upper left. */
+function cylinder(ctx: Ctx, cx: number, footY: number, topY: number, rFoot: number, rTop: number, ratio: number, stops: string[]) {
+  const g = ctx.createLinearGradient(cx - rFoot, 0, cx + rFoot, 0);
+  stops.forEach((c, k) => g.addColorStop(k / (stops.length - 1), c));
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.ellipse(cx, topY, rTop, rTop * ratio, 0, 0, Math.PI);
+  ctx.lineTo(cx - rFoot, footY);
+  ctx.ellipse(cx, footY, rFoot, rFoot * ratio, 0, Math.PI, 0, true);
+  ctx.closePath();
+  ctx.fill();
+}
+
+// ── Raid Hall ──
+export const TEMPLE = {
+  /** Top of the entablature's front, the pediment apex, and how far the roof runs back. */
+  entTop: -292,
+  apex: -362,
+  back: 64,
+};
+/** Raid Hall: a columned temple on a stepped base, its roof running back. */
 function temple(b: TownBuilding): Sprite {
-  const W = b.w + 60,
-    H = 430;
+  const W = b.w + 140,
+    H = 450;
   return {
     w: W,
     h: H,
     ax: W / 2,
-    ay: H - 4,
+    ay: H - 8,
     draw(ctx) {
       const cx = W / 2,
-        base = H - 4,
+        G = H - 8,
         hw = b.w / 2;
-      // Steps.
-      for (let k = 0; k < 4; k++) {
-        ctx.fillStyle = k % 2 ? "#cfc8de" : "#b9b1cc";
-        ctx.fillRect(cx - hw - 20 + k * 8, base - 14 - k * 12, b.w + 40 - k * 16, 14);
+      // ── Stepped base: three steps, each with a lit tread and a shaded riser.
+      footShade(ctx, cx - hw - 40, cx + hw + 40, G);
+      for (let k = 0; k < 3; k++) {
+        const half = hw + 40 - k * 12,
+          riserTop = G - 12 * (k + 1) - 8 * k;
+        ctx.fillStyle = "#8f87ab";
+        ctx.fillRect(cx - half, riserTop, half * 2, 12);
         ctx.fillStyle = "rgba(0,0,0,0.12)";
-        ctx.fillRect(cx - hw - 20 + k * 8, base - 2 - k * 12, b.w + 40 - k * 16, 2);
+        ctx.fillRect(cx - half, riserTop + 10, half * 2, 2);
+        ctx.fillStyle = k % 2 ? "#ddd8ea" : "#cfc8de";
+        ctx.fillRect(cx - half, riserTop - 8, half * 2, 8);
       }
-      const floor = base - 50;
-      // Back wall in shade, then the glowing doorway.
-      ctx.fillStyle = "#4b4266";
-      ctx.fillRect(cx - hw + 20, floor - 200, b.w - 40, 200);
-      const door = ctx.createRadialGradient(cx, floor - 60, 10, cx, floor - 70, 120);
+      const floor = G - 12 * 3 - 8 * 3 + 8; // top tread
+      const colTop = floor - 196;
+      // ── The cella wall behind the columns, with the glowing doorway.
+      ctx.fillStyle = "#3f3760";
+      ctx.fillRect(cx - hw + 24, colTop, b.w - 48, floor - colTop);
+      bandShade(ctx, cx - hw + 24, cx + hw - 24, colTop, 50, 0.5);
+      const door = ctx.createRadialGradient(cx, floor - 50, 8, cx, floor - 70, 120);
       door.addColorStop(0, "#f2e7ff");
       door.addColorStop(0.3, "#b59bff");
       door.addColorStop(1, "#2a1f4a");
       ctx.fillStyle = door;
-      roundRect(ctx, cx - 60, floor - 170, 120, 170, 60);
+      roundRect(ctx, cx - 56, floor - 160, 112, 160, 56);
       ctx.fill();
-      // Columns with fluting and shading.
+      // Light from the door spilling onto the floor.
+      const spill = ctx.createRadialGradient(cx, floor + 2, 4, cx, floor + 2, 120);
+      spill.addColorStop(0, "rgba(220,200,255,0.5)");
+      spill.addColorStop(1, "rgba(220,200,255,0)");
+      ctx.fillStyle = spill;
+      ctx.fillRect(cx - 120, floor - 8, 240, 30);
+      // ── Columns, each with a base, fluting, a capital and shade at its foot.
       const n = 8;
       for (let k = 0; k < n; k++) {
         const px = cx - hw + 30 + (k * (b.w - 60)) / (n - 1);
         if (Math.abs(px - cx) < 70) continue;
+        ctx.fillStyle = "rgba(40,30,70,0.35)";
+        ellipse(ctx, px + 6, floor + 1, 26, 6);
+        ctx.fill();
         const g = ctx.createLinearGradient(px - 16, 0, px + 16, 0);
         g.addColorStop(0, "#a69ebf");
-        g.addColorStop(0.4, "#f1edf9");
-        g.addColorStop(1, "#8f87ab");
+        g.addColorStop(0.35, "#f4f1fa");
+        g.addColorStop(1, "#8a82a6");
         ctx.fillStyle = g;
-        ctx.fillRect(px - 16, floor - 200, 32, 200);
-        ctx.strokeStyle = "rgba(90,80,120,0.25)";
+        ctx.fillRect(px - 15, colTop + 10, 30, floor - colTop - 20);
+        ctx.strokeStyle = "rgba(90,80,120,0.22)";
         ctx.lineWidth = 1;
-        for (let f = -10; f <= 10; f += 5) {
+        for (let f = -9; f <= 9; f += 4.5) {
           ctx.beginPath();
-          ctx.moveTo(px + f, floor - 196);
-          ctx.lineTo(px + f, floor - 4);
+          ctx.moveTo(px + f, colTop + 14);
+          ctx.lineTo(px + f, floor - 12);
           ctx.stroke();
         }
-        ctx.fillStyle = "#d8d2ea";
-        ctx.fillRect(px - 20, floor - 12, 40, 12);
-        ctx.fillRect(px - 20, floor - 208, 40, 12);
-        // Hanging banners between some columns.
+        // Base (torus) and capital, each with a top face.
+        for (const [y, hgt] of [
+          [floor - 12, 12],
+          [colTop, 12],
+        ]) {
+          ctx.fillStyle = "#b9b1cc";
+          ctx.fillRect(px - 20, y, 40, hgt);
+          ctx.fillStyle = "#e4e0ee";
+          ctx.fillRect(px - 20, y, 40, 4);
+        }
         if (k === 1 || k === n - 2) {
+          // Banners hung between the outer columns.
+          const bx = px + 22;
           ctx.fillStyle = "#6c4fb0";
           ctx.beginPath();
-          ctx.moveTo(px + 26, floor - 190);
-          ctx.lineTo(px + 66, floor - 190);
-          ctx.lineTo(px + 66, floor - 80);
-          ctx.lineTo(px + 46, floor - 96);
-          ctx.lineTo(px + 26, floor - 80);
+          ctx.moveTo(bx, colTop + 20);
+          ctx.lineTo(bx + 40, colTop + 20);
+          ctx.lineTo(bx + 40, colTop + 120);
+          ctx.lineTo(bx + 20, colTop + 104);
+          ctx.lineTo(bx, colTop + 120);
           ctx.closePath();
           ctx.fill();
           ctx.fillStyle = "#e2c25b";
-          ctx.fillRect(px + 26, floor - 190, 40, 6);
+          ctx.fillRect(bx, colTop + 20, 40, 5);
           ctx.beginPath();
-          ctx.arc(px + 46, floor - 150, 9, 0, Math.PI * 2);
+          ctx.arc(bx + 20, colTop + 60, 8, 0, Math.PI * 2);
           ctx.fill();
         }
       }
-      // Entablature and pediment.
-      const ent = floor - 236;
+      // ── Entablature: a front face and a lit top face going back.
+      const entY = colTop - 30,
+        eh = hw + 6;
+      ctx.fillStyle = "#ece8f4";
+      ctx.beginPath();
+      ctx.moveTo(cx - eh, entY);
+      ctx.lineTo(cx - eh + 10, entY - TEMPLE.back * 0.35);
+      ctx.lineTo(cx + eh - 10, entY - TEMPLE.back * 0.35);
+      ctx.lineTo(cx + eh, entY);
+      ctx.closePath();
+      ctx.fill();
       ctx.fillStyle = "#d8d2ea";
-      ctx.fillRect(cx - hw, ent, b.w, 30);
+      ctx.fillRect(cx - eh, entY, eh * 2, 30);
       ctx.fillStyle = "#b9b1cc";
-      for (let tx = cx - hw + 10; tx < cx + hw - 10; tx += 34) ctx.fillRect(tx, ent + 8, 14, 14);
+      for (let tx = cx - eh + 10; tx < cx + eh - 10; tx += 34) ctx.fillRect(tx, entY + 9, 14, 13);
       ctx.fillStyle = "#e9c25a";
-      ctx.fillRect(cx - hw, ent + 28, b.w, 4);
-      const roof = ctx.createLinearGradient(0, ent - 120, 0, ent);
-      roof.addColorStop(0, "#8a6fd6");
-      roof.addColorStop(1, "#4f3c8f");
-      ctx.fillStyle = roof;
+      ctx.fillRect(cx - eh, entY + 27, eh * 2, 3);
+      bandShade(ctx, cx - hw + 24, cx + hw - 24, entY + 30, 26, 0.45);
+      // ── Roof: two slopes running back from the pediment to the ridge.
+      const apexY = entY - 70,
+        back = TEMPLE.back;
+      ctx.fillStyle = "#6a54b8";
       ctx.beginPath();
-      ctx.moveTo(cx - hw - 24, ent + 2);
-      ctx.lineTo(cx, ent - 120);
-      ctx.lineTo(cx + hw + 24, ent + 2);
+      ctx.moveTo(cx - eh - 14, entY + 2);
+      ctx.lineTo(cx, apexY);
+      ctx.lineTo(cx, apexY - back);
+      ctx.lineTo(cx - eh - 4, entY - back * 0.6);
       ctx.closePath();
       ctx.fill();
-      // Roof tiles.
-      ctx.strokeStyle = "rgba(255,255,255,0.12)";
+      ctx.fillStyle = "#4a3a8a";
+      ctx.beginPath();
+      ctx.moveTo(cx + eh + 14, entY + 2);
+      ctx.lineTo(cx, apexY);
+      ctx.lineTo(cx, apexY - back);
+      ctx.lineTo(cx + eh + 4, entY - back * 0.6);
+      ctx.closePath();
+      ctx.fill();
+      // Tile rows on both slopes.
+      ctx.strokeStyle = "rgba(255,255,255,0.1)";
       ctx.lineWidth = 2;
-      for (let k = 1; k < 7; k++) {
-        const t = k / 7;
-        ctx.beginPath();
-        ctx.moveTo(cx - (hw + 24) * t, ent - 120 + 122 * t);
-        ctx.lineTo(cx + (hw + 24) * t, ent - 120 + 122 * t);
-        ctx.stroke();
-      }
-      // Pediment emblem: a raid crest disc.
-      ctx.fillStyle = "#2a1f4a";
-      ellipse(ctx, cx, ent - 44, 34, 30);
-      ctx.fill();
-      ctx.strokeStyle = "#e9c25a";
-      ctx.lineWidth = 4;
-      ellipse(ctx, cx, ent - 44, 34, 30);
-      ctx.stroke();
-      ctx.fillStyle = "#e9c25a";
-      ctx.beginPath();
-      ctx.moveTo(cx, ent - 66);
-      ctx.lineTo(cx + 14, ent - 44);
-      ctx.lineTo(cx, ent - 22);
-      ctx.lineTo(cx - 14, ent - 44);
-      ctx.closePath();
-      ctx.fill();
-    },
-  };
-}
-
-/** Boss Rush tower: round stone keep, crenellations, a red banner, a brazier on top. */
-function tower(b: TownBuilding): Sprite {
-  const W = b.w + 60,
-    H = 440;
-  return {
-    w: W,
-    h: H,
-    ax: W / 2,
-    ay: H - 4,
-    draw(ctx) {
-      const cx = W / 2,
-        base = H - 4,
-        hw = b.w / 2,
-        top = base - 330;
-      const g = ctx.createLinearGradient(cx - hw, 0, cx + hw, 0);
-      g.addColorStop(0, "#5d5246");
-      g.addColorStop(0.35, "#9a8c78");
-      g.addColorStop(1, "#4c4237");
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.moveTo(cx - hw, base - 16);
-      ctx.lineTo(cx - hw + 12, top);
-      ctx.lineTo(cx + hw - 12, top);
-      ctx.lineTo(cx + hw, base - 16);
-      ctx.ellipse(cx, base - 16, hw, 18, 0, 0, Math.PI);
-      ctx.fill();
-      // Brick rows following the curve.
-      ctx.strokeStyle = "rgba(0,0,0,0.18)";
-      ctx.lineWidth = 1;
-      for (let y = top + 16, row = 0; y < base - 16; y += 16, row++) {
-        ctx.beginPath();
-        ctx.ellipse(cx, y, hw - 12 + ((y - top) / (base - top)) * 12, 8, 0, 0.1, Math.PI - 0.1);
-        ctx.stroke();
-        for (let k = -3; k <= 3; k++) {
-          const px = cx + Math.sin((k + (row % 2) * 0.5) * 0.42) * (hw - 10);
+      for (let k = 1; k < 6; k++) {
+        const t = k / 6;
+        for (const side of [-1, 1]) {
           ctx.beginPath();
-          ctx.moveTo(px, y + 2);
-          ctx.lineTo(px, y + 14);
+          ctx.moveTo(cx + side * (eh + 14) * (1 - t), entY + 2 + (apexY - entY - 2) * t);
+          ctx.lineTo(cx + side * (eh + 4) * (1 - t), entY - back * 0.6 + (apexY - back - entY + back * 0.6) * t);
           ctx.stroke();
         }
       }
-      // Crenellations and the top ring.
-      ctx.fillStyle = "#857866";
-      ellipse(ctx, cx, top, hw + 4, 18);
-      ctx.fill();
-      ctx.fillStyle = "#3a3229";
-      ellipse(ctx, cx, top - 2, hw - 8, 12);
-      ctx.fill();
-      for (let k = -2; k <= 2; k++) {
-        const px = cx + k * (hw / 2.6);
-        ctx.fillStyle = "#9a8c78";
-        ctx.fillRect(px - 10, top - 4, 20, 26);
-        ctx.fillStyle = "rgba(0,0,0,0.2)";
-        ctx.fillRect(px + 4, top - 4, 6, 26);
-      }
-      // Brazier bowl (the flame is animated).
-      ctx.fillStyle = "#3a2a20";
+      ctx.strokeStyle = "#e9c25a";
+      ctx.lineWidth = 4;
       ctx.beginPath();
-      ctx.moveTo(cx - 24, top - 30);
-      ctx.lineTo(cx + 24, top - 30);
-      ctx.lineTo(cx + 12, top - 8);
-      ctx.lineTo(cx - 12, top - 8);
+      ctx.moveTo(cx, apexY);
+      ctx.lineTo(cx, apexY - back);
+      ctx.stroke();
+      // ── The pediment: a gable on the front with a recessed tympanum.
+      ctx.fillStyle = "#e4e0ee";
+      ctx.beginPath();
+      ctx.moveTo(cx - eh - 16, entY + 2);
+      ctx.lineTo(cx, apexY - 4);
+      ctx.lineTo(cx + eh + 16, entY + 2);
       ctx.closePath();
       ctx.fill();
-      // Window and door glow.
-      const win = ctx.createRadialGradient(cx, top + 90, 2, cx, top + 90, 30);
-      win.addColorStop(0, "#ffe2a0");
-      win.addColorStop(1, "#c4521f");
-      ctx.fillStyle = win;
-      roundRect(ctx, cx - 12, top + 70, 24, 40, 12);
-      ctx.fill();
-      ctx.fillStyle = "#2a1c14";
-      roundRect(ctx, cx - 26, base - 86, 52, 72, 26);
-      ctx.fill();
-      ctx.fillStyle = "#ff7a4f";
-      ctx.globalAlpha = 0.5;
-      roundRect(ctx, cx - 20, base - 78, 40, 60, 20);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-      // Hanging red banner.
-      ctx.fillStyle = "#c43c2a";
+      ctx.fillStyle = "#b4acc8";
       ctx.beginPath();
-      ctx.moveTo(cx + 22, top + 140);
-      ctx.lineTo(cx + 58, top + 140);
-      ctx.lineTo(cx + 58, top + 230);
-      ctx.lineTo(cx + 40, top + 214);
-      ctx.lineTo(cx + 22, top + 230);
+      ctx.moveTo(cx - eh + 18, entY - 4);
+      ctx.lineTo(cx, apexY + 12);
+      ctx.lineTo(cx + eh - 18, entY - 4);
       ctx.closePath();
       ctx.fill();
-      ctx.fillStyle = "#ffd65b";
-      ctx.fillRect(cx + 22, top + 140, 36, 5);
+      bandShade(ctx, cx - eh + 30, cx + eh - 30, apexY + 14, 30, 0.25);
+      ctx.fillStyle = "#2a1f4a";
+      ellipse(ctx, cx, entY - 26, 22, 18);
+      ctx.fill();
+      ctx.strokeStyle = "#e9c25a";
+      ctx.lineWidth = 3;
+      ellipse(ctx, cx, entY - 26, 22, 18);
+      ctx.stroke();
+      ctx.fillStyle = "#e9c25a";
+      ctx.beginPath();
+      ctx.moveTo(cx, entY - 40);
+      ctx.lineTo(cx + 9, entY - 26);
+      ctx.lineTo(cx, entY - 12);
+      ctx.lineTo(cx - 9, entY - 26);
+      ctx.closePath();
+      ctx.fill();
     },
   };
 }
 
-/** Windmill body; its sails are a separate spinning picture. */
-function windmill(b: TownBuilding): Sprite {
-  const W = b.w + 40,
-    H = 340;
+// ── Boss Rush tower ──
+export const TOWER = { top: -320, brazier: -352, flag: { dx: -44, dy: -342 } };
+/** Boss Rush tower: a round stone keep on a plinth, with a crenellated top. */
+function tower(b: TownBuilding): Sprite {
+  const W = b.w + 90,
+    H = 450;
   return {
     w: W,
     h: H,
     ax: W / 2,
-    ay: H - 4,
+    ay: H - 8,
     draw(ctx) {
       const cx = W / 2,
-        base = H - 4,
-        hw = b.w / 2;
-      const g = ctx.createLinearGradient(cx - hw, 0, cx + hw, 0);
-      g.addColorStop(0, "#d8cdb8");
-      g.addColorStop(0.4, "#fbf6ea");
-      g.addColorStop(1, "#bfb39c");
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.moveTo(cx - hw, base - 10);
-      ctx.lineTo(cx - hw * 0.62, base - 230);
-      ctx.lineTo(cx + hw * 0.62, base - 230);
-      ctx.lineTo(cx + hw, base - 10);
-      ctx.closePath();
+        G = H - 8,
+        rx = b.w / 2,
+        ratio = 0.38,
+        ry = rx * ratio,
+        footY = G - ry - 12,
+        topY = G + TOWER.top;
+      ringSteps(ctx, cx, footY, rx, ry, [[18, 10], [8, 4]], "#a59a86", "#6f6553");
+      ringShade(ctx, cx, footY, rx, ry);
+      cylinder(ctx, cx, footY, topY, rx, rx - 8, ratio, ["#4f463c", "#a3957f", "#857866", "#3f362d"]);
+      // Brick courses that follow the curve.
+      ctx.strokeStyle = "rgba(0,0,0,0.2)";
+      ctx.lineWidth = 1;
+      for (let y = topY + 14, row = 0; y < footY; y += 15, row++) {
+        const r = rx - 8 + ((y - topY) / (footY - topY)) * 8;
+        ctx.beginPath();
+        ctx.ellipse(cx, y, r, r * ratio, 0, 0.08, Math.PI - 0.08);
+        ctx.stroke();
+        for (let k = -3; k <= 3; k++) {
+          const a = Math.PI / 2 + (k + (row % 2) * 0.5) * 0.36,
+            x = cx + Math.cos(a) * r,
+            yy = y + Math.sin(a) * r * ratio;
+          ctx.beginPath();
+          ctx.moveTo(x, yy + 1);
+          ctx.lineTo(x, yy + 13);
+          ctx.stroke();
+        }
+      }
+      // Arrow-slit windows glowing from inside, and the door with a step.
+      for (const [dx, y] of [
+        [-22, topY + 70],
+        [24, topY + 150],
+      ]) {
+        ctx.fillStyle = "#2a1c14";
+        roundRect(ctx, cx + dx - 6, y, 12, 30, 6);
+        ctx.fill();
+        ctx.fillStyle = "rgba(255,170,80,0.75)";
+        roundRect(ctx, cx + dx - 3, y + 4, 6, 22, 3);
+        ctx.fill();
+      }
+      const doorY = footY + ry - 2;
+      ctx.fillStyle = "#3a2a1e";
+      roundRect(ctx, cx - 27, doorY - 76, 54, 76, 27);
       ctx.fill();
-      // Timber bands, door, window.
-      ctx.fillStyle = "#7a5a3a";
-      for (const y of [base - 90, base - 170]) ctx.fillRect(cx - hw * (1 - (base - y) / 600) + 4, y, b.w * (1 - (base - y) / 600) - 8, 6);
       ctx.fillStyle = "#5a3e28";
-      roundRect(ctx, cx - 18, base - 60, 36, 50, 18);
+      roundRect(ctx, cx - 21, doorY - 70, 42, 70, 21);
       ctx.fill();
+      ctx.strokeStyle = "#2a1c14";
+      ctx.lineWidth = 2;
+      for (const dx of [-8, 8]) {
+        ctx.beginPath();
+        ctx.moveTo(cx + dx, doorY - 62);
+        ctx.lineTo(cx + dx, doorY);
+        ctx.stroke();
+      }
+      ctx.fillStyle = "#e9c25a";
+      ellipse(ctx, cx + 12, doorY - 32, 2.5, 2.5);
+      ctx.fill();
+      ctx.fillStyle = "#b8ad97";
+      ctx.fillRect(cx - 34, doorY, 68, 6);
+      ctx.fillStyle = "#7d7360";
+      ctx.fillRect(cx - 34, doorY + 6, 68, 5);
+      // Banner.
+      ctx.fillStyle = "#c43c2a";
+      ctx.beginPath();
+      ctx.moveTo(cx + 30, topY + 60);
+      ctx.lineTo(cx + 62, topY + 56);
+      ctx.lineTo(cx + 62, topY + 150);
+      ctx.lineTo(cx + 46, topY + 136);
+      ctx.lineTo(cx + 30, topY + 152);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#ffd65b";
+      ctx.fillRect(cx + 30, topY + 58, 32, 5);
+      // The top: a walkway floor inside a crenellated parapet.
+      const pr = rx - 2;
+      ctx.fillStyle = "#6f6553";
+      ellipse(ctx, cx, topY, pr + 6, (pr + 6) * ratio);
+      ctx.fill();
+      ctx.fillStyle = "#3d342b";
+      ellipse(ctx, cx, topY - 2, pr - 6, (pr - 6) * ratio);
+      ctx.fill();
+      // Back merlons, then the brazier, then front merlons.
+      const merlon = (a: number) => {
+        const x = cx + Math.cos(a) * pr,
+          y = topY + Math.sin(a) * pr * ratio,
+          w = 14 * Math.max(0.45, Math.abs(Math.sin(a)) * 0.6 + 0.4);
+        ctx.fillStyle = "#9a8c78";
+        ctx.fillRect(x - w / 2, y - 20, w, 20);
+        ctx.fillStyle = "#b8ad97";
+        ctx.fillRect(x - w / 2, y - 22, w, 4);
+      };
+      for (let k = 0; k < 7; k++) merlon(Math.PI + 0.25 + k * 0.45);
+      ctx.fillStyle = "#3a2a20";
+      ctx.beginPath();
+      ctx.moveTo(cx - 20, topY - 28);
+      ctx.lineTo(cx + 20, topY - 28);
+      ctx.lineTo(cx + 10, topY - 8);
+      ctx.lineTo(cx - 10, topY - 8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#2a1c14";
+      ctx.fillRect(cx - 3, topY - 10, 6, 10);
+      for (let k = 0; k < 7; k++) merlon(0.25 + k * 0.45);
+    },
+  };
+}
+
+// ── Windmill ──
+/** Where the sails' hub sits, relative to the windmill's ground anchor. */
+export const WINDMILL_HUB = { dx: 0, dy: -262 };
+/** Windmill body: a tapered tower on a stone base; the sails spin separately. */
+function windmill(b: TownBuilding): Sprite {
+  const W = b.w + 90,
+    H = 350;
+  return {
+    w: W,
+    h: H,
+    ax: W / 2,
+    ay: H - 8,
+    draw(ctx) {
+      const cx = W / 2,
+        G = H - 8,
+        rx = b.w / 2,
+        ratio = 0.38,
+        ry = rx * ratio,
+        footY = G - ry - 10,
+        topY = G + WINDMILL_HUB.dy + 34;
+      ringSteps(ctx, cx, footY, rx, ry, [[12, 8]], "#a59a86", "#6f6553");
+      ringShade(ctx, cx, footY, rx, ry);
+      // Stone base course, then white weatherboarded walls tapering up.
+      cylinder(ctx, cx, footY, footY - 36, rx, rx - 3, ratio, ["#6f6553", "#b8ad97", "#9a8e76", "#5d5446"]);
+      cylinder(ctx, cx, footY - 34, topY, rx - 3, rx * 0.6, ratio, ["#cfc5b0", "#fbf7ee", "#e2d8c4", "#b0a690"]);
+      ctx.strokeStyle = "rgba(120,100,70,0.22)";
+      ctx.lineWidth = 1;
+      for (let y = topY + 10; y < footY - 36; y += 9) {
+        const t = (y - topY) / (footY - 36 - topY),
+          r = rx * 0.6 + (rx - 3 - rx * 0.6) * t;
+        ctx.beginPath();
+        ctx.ellipse(cx, y, r, r * ratio, 0, 0.1, Math.PI - 0.1);
+        ctx.stroke();
+      }
+      // Gallery band, window and door with a step.
+      ctx.strokeStyle = "#6e4f30";
+      ctx.lineWidth = 6;
+      const gy = topY + (footY - topY) * 0.45,
+        gr = rx * 0.6 + (rx - 3 - rx * 0.6) * 0.45;
+      ctx.beginPath();
+      ctx.ellipse(cx, gy, gr + 6, (gr + 6) * ratio, 0, 0.05, Math.PI - 0.05);
+      ctx.stroke();
       ctx.fillStyle = "#ffe2a0";
-      roundRect(ctx, cx - 10, base - 150, 20, 26, 8);
+      roundRect(ctx, cx - 10, gy - 52, 20, 26, 8);
       ctx.fill();
-      // Cap roof.
-      ctx.fillStyle = "#a8453a";
-      ctx.beginPath();
-      ctx.moveTo(cx - hw * 0.75, base - 226);
-      ctx.quadraticCurveTo(cx, base - 320, cx + hw * 0.75, base - 226);
-      ctx.closePath();
+      ctx.fillStyle = "#5a3e28";
+      ctx.fillRect(cx - 12, gy - 54, 24, 3);
+      const doorY = footY + ry - 2;
+      ctx.fillStyle = "#4a3220";
+      roundRect(ctx, cx - 19, doorY - 54, 38, 54, 18);
       ctx.fill();
-      ctx.fillStyle = "rgba(255,255,255,0.15)";
+      ctx.fillStyle = "#6e4f30";
+      roundRect(ctx, cx - 15, doorY - 50, 30, 50, 15);
+      ctx.fill();
+      ctx.fillStyle = "#b8ad97";
+      ctx.fillRect(cx - 24, doorY, 48, 5);
+      ctx.fillStyle = "#7d7360";
+      ctx.fillRect(cx - 24, doorY + 5, 48, 4);
+      // The cap: a rounded wooden roof seen from above, its eave shading the wall.
+      const capR = rx * 0.6 + 10;
+      bandShade(ctx, cx - capR, cx + capR, topY + 2, 18, 0.35);
+      const cap = ctx.createLinearGradient(cx - capR, 0, cx + capR, 0);
+      cap.addColorStop(0, "#c25a48");
+      cap.addColorStop(0.4, "#d8735e");
+      cap.addColorStop(1, "#8a3a2e");
+      ctx.fillStyle = cap;
       ctx.beginPath();
-      ctx.moveTo(cx - hw * 0.6, base - 230);
-      ctx.quadraticCurveTo(cx - 20, base - 300, cx, base - 296);
-      ctx.lineTo(cx - 10, base - 236);
-      ctx.closePath();
+      ctx.ellipse(cx, topY, capR, capR * ratio, 0, 0, Math.PI);
+      ctx.quadraticCurveTo(cx - capR, topY - 70, cx, topY - 74);
+      ctx.quadraticCurveTo(cx + capR, topY - 70, cx + capR, topY);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.18)";
+      ctx.lineWidth = 2;
+      for (const dx of [-0.5, 0, 0.5]) {
+        ctx.beginPath();
+        ctx.moveTo(cx + dx * capR * 0.9, topY + capR * ratio * Math.sqrt(1 - dx * dx) - 2);
+        ctx.quadraticCurveTo(cx + dx * capR * 0.7, topY - 50, cx, topY - 72);
+        ctx.stroke();
+      }
+      ctx.fillStyle = "#6e4f30";
+      ellipse(ctx, cx, topY - 74, 5, 4);
       ctx.fill();
     },
   };
 }
-/** Where the sails' hub sits, relative to the windmill's ground anchor. */
-export const WINDMILL_HUB = { dx: 0, dy: -250 };
 export function windmillSails(): Sprite {
   const S = 320;
   return {
@@ -1082,108 +1294,246 @@ export function windmillSails(): Sprite {
   };
 }
 
+// ── Houses ──
 const ROOFS = ["#b24a3a", "#3f6fa8", "#4f8a4a"];
 const WALLS = ["#f2e6cf", "#efe2d0", "#f5ecd9"];
-/** A cosy house: timber-framed walls, a tiled gable roof, lit windows, a chimney. */
+const HOUSE = { found: 14, wall: 98, roof: 96, overhang: 16, hip: 34 };
+/** A cosy house in ¾ view: a stone foundation, a timber-framed front, and a tiled hip roof seen from above. */
 function house(b: TownBuilding): Sprite {
   const v = (b.variant ?? 0) % 3,
-    W = b.w + 50,
-    H = 300;
+    W = b.w + 80,
+    H = 270;
   return {
     w: W,
     h: H,
     ax: W / 2,
-    ay: H - 4,
+    ay: H - 8,
     draw(ctx) {
       const cx = W / 2,
-        base = H - 4,
-        hw = b.w / 2,
-        wallTop = base - 120;
-      // Side wall (in shade) for depth.
-      ctx.fillStyle = shade(WALLS[v], -0.22);
-      ctx.beginPath();
-      ctx.moveTo(cx + hw, base);
-      ctx.lineTo(cx + hw + 18, base - 26);
-      ctx.lineTo(cx + hw + 18, wallTop - 26);
-      ctx.lineTo(cx + hw, wallTop);
-      ctx.closePath();
-      ctx.fill();
-      // Front wall with stone footing and timber frame.
-      ctx.fillStyle = WALLS[v];
-      ctx.fillRect(cx - hw, wallTop, b.w, 120);
-      stoneWall(ctx, cx - hw, base - 22, b.w, 22, "#8f846f", v * 100);
+        G = H - 8,
+        x0 = cx - b.w / 2,
+        x1 = cx + b.w / 2,
+        wallBottom = G - HOUSE.found,
+        wallTop = wallBottom - HOUSE.wall;
+      footShade(ctx, x0, x1, G);
+      // Foundation: a stone course, slightly proud of the wall.
+      stoneWall(ctx, x0 - 4, wallBottom, b.w + 8, HOUSE.found, "#8f846f", v * 100);
+      ctx.fillStyle = "#b8ad97";
+      ctx.fillRect(x0 - 4, wallBottom, b.w + 8, 3);
+      // The front wall, lit from the left.
+      const wall = ctx.createLinearGradient(x0, 0, x1, 0);
+      wall.addColorStop(0, shade(WALLS[v], -0.04));
+      wall.addColorStop(0.3, WALLS[v]);
+      wall.addColorStop(1, shade(WALLS[v], -0.16));
+      ctx.fillStyle = wall;
+      ctx.fillRect(x0, wallTop, b.w, HOUSE.wall);
+      // Timber frame.
       ctx.fillStyle = "#6e4f30";
-      ctx.fillRect(cx - hw, wallTop, b.w, 7);
-      ctx.fillRect(cx - hw, wallTop, 7, 100);
-      ctx.fillRect(cx + hw - 7, wallTop, 7, 100);
-      ctx.fillRect(cx - 4, wallTop, 7, 100);
-      // Windows with warm light and flower boxes.
-      for (const wx of [cx - hw * 0.55, cx + hw * 0.55]) {
-        ctx.fillStyle = "#5a3e28";
-        ctx.fillRect(wx - 22, wallTop + 26, 44, 40);
-        const glow = ctx.createLinearGradient(0, wallTop + 30, 0, wallTop + 62);
+      ctx.fillRect(x0, wallTop, 7, HOUSE.wall);
+      ctx.fillRect(x1 - 7, wallTop, 7, HOUSE.wall);
+      ctx.fillRect(x0, wallBottom - 7, b.w, 7);
+      ctx.fillRect(cx - 3, wallTop, 7, HOUSE.wall);
+      // Windows with warm light, frames, sills and flower boxes.
+      for (const wx of [x0 + b.w * 0.24, x1 - b.w * 0.26]) {
+        const wy = wallTop + 26;
+        ctx.fillStyle = "#4a3220";
+        ctx.fillRect(wx - 23, wy - 3, 46, 42);
+        const glow = ctx.createLinearGradient(0, wy, 0, wy + 36);
         glow.addColorStop(0, "#ffefb8");
         glow.addColorStop(1, "#f2b93b");
         ctx.fillStyle = glow;
-        ctx.fillRect(wx - 18, wallTop + 30, 36, 32);
-        ctx.fillStyle = "#5a3e28";
-        ctx.fillRect(wx - 1.5, wallTop + 30, 3, 32);
-        ctx.fillRect(wx - 18, wallTop + 44, 36, 3);
-        ctx.fillStyle = "#7a5a3a";
-        ctx.fillRect(wx - 24, wallTop + 66, 48, 8);
-        for (let k = 0; k < 6; k++) {
+        ctx.fillRect(wx - 19, wy, 38, 34);
+        ctx.fillStyle = "#4a3220";
+        ctx.fillRect(wx - 1.5, wy, 3, 34);
+        ctx.fillRect(wx - 19, wy + 15, 38, 3);
+        ctx.fillStyle = "#8a6a44";
+        ctx.fillRect(wx - 26, wy + 36, 52, 7);
+        for (let k = 0; k < 7; k++) {
           ctx.fillStyle = ["#ff7a9b", "#ffd65b", "#ffffff"][(k + v) % 3];
-          ellipse(ctx, wx - 18 + k * 7, wallTop + 64, 3.5, 3.5);
+          ellipse(ctx, wx - 21 + k * 7, wy + 35, 3.5, 3.5);
           ctx.fill();
         }
       }
-      // Door.
-      ctx.fillStyle = "#5a3e28";
-      roundRect(ctx, cx - 18 + hw * 0.0 + 24, base - 70, 34, 52, 14);
+      // Door with a stone step that sits on the ground.
+      const dx = cx + b.w * 0.08;
+      ctx.fillStyle = "#3f2a1a";
+      roundRect(ctx, dx - 20, wallBottom - 62, 40, 62, 16);
+      ctx.fill();
+      ctx.fillStyle = "#6b4a2e";
+      roundRect(ctx, dx - 16, wallBottom - 58, 32, 58, 13);
       ctx.fill();
       ctx.fillStyle = "#e9c25a";
-      ellipse(ctx, cx + 34, base - 42, 2.5, 2.5);
+      ellipse(ctx, dx + 9, wallBottom - 28, 2.5, 2.5);
       ctx.fill();
-      // Roof: a tiled gable with an overhang.
-      const roof = ROOFS[v],
-        peak = wallTop - 110;
-      ctx.fillStyle = shade(roof, -0.3);
+      ctx.fillStyle = "#c2b79f";
+      ctx.fillRect(dx - 26, G - 6, 52, 5);
+      ctx.fillStyle = "#857a66";
+      ctx.fillRect(dx - 26, G - 1, 52, 4);
+      // Shade the eave throws on the wall.
+      bandShade(ctx, x0, x1, wallTop, 26, 0.42);
+      // ── Hip roof seen from above: the front slope runs from the eave up to
+      // the ridge; its ends slope back so the ridge is shorter than the eave.
+      const o = HOUSE.overhang,
+        eaveY = wallTop + 4,
+        ridgeY = eaveY - HOUSE.roof,
+        r0 = x0 + HOUSE.hip,
+        r1 = x1 - HOUSE.hip,
+        roof = ROOFS[v];
+      // Fascia (the eave's edge) and its underside.
+      ctx.fillStyle = shade(roof, -0.45);
+      ctx.fillRect(x0 - o, eaveY - 2, b.w + o * 2, 7);
+      // Hip ends: the left one catches light, the right one is in shade.
+      ctx.fillStyle = shade(roof, 0.12);
       ctx.beginPath();
-      ctx.moveTo(cx + 6, peak);
-      ctx.lineTo(cx + hw + 34, wallTop - 20);
-      ctx.lineTo(cx + hw + 22, wallTop + 4);
-      ctx.lineTo(cx, peak + 22);
+      ctx.moveTo(x0 - o, eaveY - 1);
+      ctx.lineTo(r0, ridgeY);
+      ctx.lineTo(r0 + 12, eaveY - 1);
       ctx.closePath();
       ctx.fill();
-      const rg = ctx.createLinearGradient(0, peak, 0, wallTop + 6);
-      rg.addColorStop(0, shade(roof, 0.12));
-      rg.addColorStop(1, shade(roof, -0.12));
-      ctx.fillStyle = rg;
+      ctx.fillStyle = shade(roof, -0.32);
       ctx.beginPath();
-      ctx.moveTo(cx - hw - 20, wallTop + 6);
-      ctx.lineTo(cx, peak);
-      ctx.lineTo(cx + hw + 20, wallTop + 6);
+      ctx.moveTo(x1 + o, eaveY - 1);
+      ctx.lineTo(r1, ridgeY);
+      ctx.lineTo(r1 - 12, eaveY - 1);
       ctx.closePath();
       ctx.fill();
-      ctx.strokeStyle = "rgba(0,0,0,0.16)";
-      ctx.lineWidth = 2;
-      for (let k = 1; k < 6; k++) {
-        const t = k / 6;
+      // The main slope.
+      const slope = ctx.createLinearGradient(0, ridgeY, 0, eaveY);
+      slope.addColorStop(0, shade(roof, 0.05));
+      slope.addColorStop(1, shade(roof, -0.12));
+      ctx.fillStyle = slope;
+      ctx.beginPath();
+      ctx.moveTo(r0 + 10, eaveY - 1);
+      ctx.lineTo(r0, ridgeY);
+      ctx.lineTo(r1, ridgeY);
+      ctx.lineTo(r1 - 10, eaveY - 1);
+      ctx.closePath();
+      ctx.fill();
+      // Tile courses across the whole roof, joints staggered.
+      for (let k = 1; k < 8; k++) {
+        const t = k / 8,
+          y = eaveY - 1 + (ridgeY - eaveY + 1) * t,
+          xl = x0 - o + (r0 - x0 + o) * t,
+          xr = x1 + o - (x1 + o - r1) * t;
+        ctx.strokeStyle = "rgba(0,0,0,0.2)";
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.moveTo(cx - (hw + 20) * t, peak + 116 * t);
-        ctx.lineTo(cx + (hw + 20) * t, peak + 116 * t);
+        ctx.moveTo(xl, y);
+        ctx.lineTo(xr, y);
         ctx.stroke();
+        ctx.strokeStyle = "rgba(0,0,0,0.12)";
+        ctx.lineWidth = 1;
+        for (let x = xl + (k % 2) * 8; x < xr; x += 16) {
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          ctx.lineTo(x, y + (eaveY - ridgeY) / 8);
+          ctx.stroke();
+        }
       }
-      // Chimney (smoke is animated).
+      // Hip and ridge lines with a cap.
+      ctx.strokeStyle = shade(roof, -0.4);
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(x0 - o, eaveY - 1);
+      ctx.lineTo(r0, ridgeY);
+      ctx.lineTo(r1, ridgeY);
+      ctx.lineTo(x1 + o, eaveY - 1);
+      ctx.stroke();
+      ctx.strokeStyle = shade(roof, 0.25);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(r0, ridgeY - 1.5);
+      ctx.lineTo(r1, ridgeY - 1.5);
+      ctx.stroke();
+      // Chimney standing on the slope (smoke is animated).
+      const chx = x1 - HOUSE.hip - 30,
+        chBase = ridgeY + 30;
+      ctx.fillStyle = "rgba(0,0,0,0.25)";
+      ctx.fillRect(chx + 4, chBase - 4, 26, 10);
       ctx.fillStyle = "#8f5a44";
-      ctx.fillRect(cx + hw * 0.45, peak + 18, 22, 44);
+      ctx.fillRect(chx - 11, chBase - 46, 22, 46);
       ctx.fillStyle = "#6e4334";
-      ctx.fillRect(cx + hw * 0.45 - 3, peak + 14, 28, 8);
+      ctx.fillRect(chx + 4, chBase - 46, 7, 46);
+      ctx.fillStyle = "#a86a52";
+      ctx.fillRect(chx - 14, chBase - 52, 28, 8);
+      ctx.fillStyle = "#3a2018";
+      ctx.fillRect(chx - 9, chBase - 52, 18, 4);
     },
   };
 }
 /** Where each house's chimney top is, relative to its ground anchor. */
-export const chimneyOf = (b: TownBuilding) => ({ dx: b.w * 0.225 + 11, dy: -216 });
+export const chimneyOf = (b: TownBuilding) => ({
+  dx: b.w / 2 - HOUSE.hip - 30,
+  dy: -HOUSE.found - HOUSE.wall + 4 - HOUSE.roof + 30 - 54,
+});
+
+/**
+ * A building's shadow on the ground. The sun is high in the upper left, so
+ * shadows fall to the right and a little toward the viewer. Drawn soft,
+ * into the ground picture, before the building stands on it.
+ */
+/** One sun for the whole town: every shadow uses this tone, blur and direction. */
+export const SUN = { alpha: 0.34, blur: 14, dx: 0.42, dy: 0.08 };
+/*
+ * Every shadow in town is drawn as a solid shape into one shadow layer,
+ * which is then blurred and laid on the ground once at SUN.alpha. So all
+ * shadows have exactly the same darkness, and where two overlap (a tree's
+ * shadow across a house's) they merge instead of getting darker, as real
+ * shadows do.
+ */
+
+/**
+ * The shadow of anything standing at (x, y): its footprint (rx × ry),
+ * stretched away from the sun in proportion to its height h. Trees, lamps,
+ * stalls, statues and buildings all use it, so they read as one scene.
+ * `top` widens the far end for things with a crown (trees).
+ */
+export function sunShadow(ctx: Ctx, x: number, y: number, rx: number, ry: number, h: number, top = 1) {
+  const steps = Math.max(4, Math.round(h / 12));
+  ctx.beginPath();
+  for (let k = 0; k <= steps; k++) {
+    const t = k / steps,
+      // A crown's shadow is widest near its far end.
+      w = rx * (1 + (top - 1) * Math.sin(t * Math.PI * 0.9)),
+      cx = x + h * SUN.dx * t,
+      cy = y + h * SUN.dy * t;
+    ctx.moveTo(cx + Math.max(1, w), cy);
+    ctx.ellipse(cx, cy, Math.max(1, w), Math.max(1, ry * (w / rx)), 0, 0, Math.PI * 2);
+  }
+  ctx.fill("nonzero");
+}
+export function castShadow(ctx: Ctx, b: TownBuilding) {
+  const box = (x0: number, x1: number, front: number, depth: number, h: number) => {
+    const sx = h * SUN.dx,
+      sy = h * SUN.dy;
+    ctx.beginPath();
+    ctx.moveTo(x0, front - depth);
+    ctx.lineTo(x0, front);
+    ctx.lineTo(x0 + sx * 0.5, front + sy);
+    ctx.lineTo(x1 + sx, front + sy);
+    ctx.lineTo(x1 + sx, front - depth + sy);
+    ctx.lineTo(x1, front - depth);
+    ctx.closePath();
+    ctx.fill();
+  };
+  const round = (cx: number, footY: number, rx: number, ry: number, h: number) => {
+    ctx.beginPath();
+    for (let k = 0; k <= 10; k++) {
+      const t = k / 10,
+        x = cx + h * SUN.dx * t,
+        y = footY + h * SUN.dy * t,
+        w = rx * (1 - t * 0.25);
+      ctx.moveTo(x + w, y);
+      ctx.ellipse(x, y, w, ry * (1 - t * 0.2), 0, 0, Math.PI * 2);
+    }
+    ctx.fill("nonzero");
+  };
+  if (b.kind === "house") box(b.x - b.w / 2, b.x + b.w / 2, b.y, b.d * 0.7, 200);
+  else if (b.kind === "temple") box(b.x - b.w / 2 - 30, b.x + b.w / 2 + 30, b.y - 50, 120, 330);
+  else if (b.kind === "tower") round(b.x, b.y - 40, b.w / 2, (b.w / 2) * 0.38, 400);
+  else if (b.kind === "windmill") round(b.x, b.y - 36, b.w / 2, (b.w / 2) * 0.38, 260);
+  else round(b.x, b.y - 96, 280, 100, 300);
+}
 
 export function buildingSprite(b: TownBuilding): Sprite {
   if (b.kind === "coliseum") return coliseum(b);
@@ -1369,7 +1719,6 @@ export function shrubSprite(kind: "bush" | "rock", variant: number): Sprite {
       ax: 35,
       ay: 42,
       draw(ctx) {
-        softShadow(ctx, 40, 42, 34, 9, 0.35);
         const s = 0.8 + (variant % 3) * 0.15;
         ctx.save();
         ctx.translate(35, 42);
@@ -1409,7 +1758,6 @@ export function shrubSprite(kind: "bush" | "rock", variant: number): Sprite {
     ax: 40,
     ay: 52,
     draw(ctx) {
-      softShadow(ctx, 46, 52, 36, 10, 0.35);
       const blobs: [number, number, number][] = [
         [26, 38, 16],
         [54, 38, 16],
@@ -1448,7 +1796,6 @@ export function signpostSprite(label: string, color: string, left: boolean): Spr
     ax: W / 2,
     ay: H - 6,
     draw(ctx) {
-      softShadow(ctx, W / 2 + 6, H - 6, 16, 5, 0.4);
       ctx.fillStyle = "#5a3e28";
       ctx.fillRect(W / 2 - 4, 30, 8, H - 34);
       ctx.fillStyle = "#7a5638";
@@ -1510,7 +1857,6 @@ export function statuePlinth(name: string | null, color: string): Sprite {
     draw(ctx) {
       const cx = W / 2,
         G = H - 6;
-      softShadow(ctx, cx + 10, G - 2, 58, 13, 0.4);
       // Bottom step.
       ctx.fillStyle = "#6f6a80";
       roundRect(ctx, cx - 46, G - 12, 92, 12, 3);
@@ -2019,7 +2365,6 @@ export function fountainBase(): Sprite {
     ay: cy,
     draw(ctx) {
       // Wet, darker paving and a soft contact shadow around the basin.
-      softShadow(ctx, cx + 8, cy + wall + 6, rx + 30, ry + 22, 0.32);
       ctx.fillStyle = "rgba(70,90,100,0.18)";
       ellipse(ctx, cx, cy + wall, rx + 16, ry + 12);
       ctx.fill();

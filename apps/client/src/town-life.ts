@@ -20,6 +20,9 @@ import {
   ART_RES,
   TEXT_RES,
   WINDMILL_HUB,
+  SUN,
+  TEMPLE,
+  TOWER,
   COLISEUM,
   buildingSprite,
   chimneyOf,
@@ -51,6 +54,8 @@ import {
  */
 const num = (css: string) => parseInt(css.slice(1), 16);
 const TAU = Math.PI * 2;
+/** The town's one shadow colour (see SUN in town-art). */
+export const SHADE = 0x141c0c;
 /** What the coliseum's screen cycles through. */
 const SCREEN_LINES = ["Walk to the gate to play", "Duels · 2v2 Teams · Free-for-all", "Party rules · Four arenas", "Bring a friend. Find a rival."];
 
@@ -178,14 +183,15 @@ export class TownScenery {
         this.bigScreen(b.x, b.y + topY + ry + 22, b.y + 0.4);
       }
       if (b.kind === "temple") {
-        const ent = b.y - 286;
-        this.flags.push({ x: b.x - b.w / 2 - 20, y: ent, color: 0xb59bff, depth: b.y + 0.3, w: 30 });
-        this.flags.push({ x: b.x + b.w / 2 + 20, y: ent, color: 0xb59bff, depth: b.y + 0.3, w: 30 });
-        this.flags.push({ x: b.x, y: ent - 122, color: 0xe9c25a, depth: b.y + 0.3, w: 38 });
+        const ent = b.y + TEMPLE.entTop;
+        // Flags at the front corners of the roof and on the ridge's far end.
+        this.flags.push({ x: b.x - b.w / 2 - 20, y: ent + 4, color: 0xb59bff, depth: b.y + 0.3, w: 30 });
+        this.flags.push({ x: b.x + b.w / 2 + 20, y: ent + 4, color: 0xb59bff, depth: b.y + 0.3, w: 30 });
+        this.flags.push({ x: b.x, y: b.y + TEMPLE.apex - TEMPLE.back + 6, color: 0xe9c25a, depth: b.y + 0.3, w: 38 });
       }
       if (b.kind === "tower") {
-        this.flags.push({ x: b.x - 40, y: b.y - 352, color: 0xc43c2a, depth: b.y + 0.3, w: 30 });
-        if (!this.reduced) this.flame(b.x, b.y - 362, b.y + 0.5);
+        this.flags.push({ x: b.x + TOWER.flag.dx, y: b.y + TOWER.flag.dy, color: 0xc43c2a, depth: b.y + 0.3, w: 30 });
+        if (!this.reduced) this.flame(b.x, b.y + TOWER.brazier, b.y + 0.5);
       }
     }
   }
@@ -673,7 +679,7 @@ export class TownScenery {
       g.lineTo(b.x, b.y);
       g.lineTo(b.x + 12, b.y - flap);
       g.strokePath();
-      sh.fillStyle(0x000000, 0.12).fillEllipse(b.x + 60, b.y + 130, 18, 6);
+      sh.fillStyle(SHADE, SUN.alpha).fillEllipse(b.x + 60, b.y + 130, 18, 6);
     }
   }
 
@@ -710,7 +716,7 @@ export class TownScenery {
         dir = -Math.sin(d.a) >= 0 ? 1 : -1,
         step = moving ? Math.sin(t * 14) : 0,
         sniff = moving ? 0 : Math.max(0, Math.sin(t * 5)) * 3;
-      g.fillStyle(0x000000, 0.2).fillEllipse(x, y + 2, 30, 7);
+      g.fillStyle(SHADE, SUN.alpha).fillEllipse(x + 4, y + 2, 30, 7);
       g.fillStyle(0x7a4f2e, 1);
       g.fillRect(x - 10, y - 9 - step, 3, 9 + step).fillRect(x + 7, y - 9 + step, 3, 9 - step);
       g.fillStyle(0xa8703f, 1).fillEllipse(x, y - 13, 28, 13);
@@ -741,7 +747,7 @@ export class TownScenery {
       const dir = c.vx >= 0 ? 1 : -1,
         hop = moving ? Math.abs(Math.sin(t * 12 + c.phase)) * 3 : 0,
         peck = moving ? 0 : Math.max(0, Math.sin(t * 6 + c.phase)) * 4;
-      g.fillStyle(0x000000, 0.18).fillEllipse(c.x, c.y + 2, 18, 5);
+      g.fillStyle(SHADE, SUN.alpha).fillEllipse(c.x + 3, c.y + 2, 18, 5);
       g.fillStyle(0xfff6e0, 1).fillEllipse(c.x, c.y - 8 - hop, 18, 14);
       g.fillStyle(0xfff6e0, 1).fillCircle(c.x + dir * 8, c.y - 15 - hop + peck, 5.5);
       g.fillStyle(0xe8463a, 1).fillCircle(c.x + dir * 8, c.y - 21 - hop + peck, 2.5);

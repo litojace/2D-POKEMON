@@ -16,8 +16,8 @@ import { FighterRig } from "./animation/rig";
 import { rigAssets } from "./animation/assets";
 import { actionFor, controlPrefs } from "./controls";
 import { menuIcon } from "./menu-icons";
-import { TownScenery } from "./town-life";
-import { TEXT_RES } from "./town-art";
+import { SHADE, TownScenery } from "./town-life";
+import { SUN, TEXT_RES } from "./town-art";
 
 /**
  * Elemental Plaza, the client: a separate Phaser game in a fullscreen layer.
@@ -397,7 +397,7 @@ export function openTown(options: TownOptions) {
         moving: false,
         emote: 0,
         seen: 0,
-        shadow: this.add.ellipse(x, y, 46, 16, 0x000000, 0.25),
+        shadow: this.add.ellipse(x, y, 46, 16, SHADE, SUN.alpha),
         name: this.add
           .text(x, y, "", {
             resolution: TEXT_RES,

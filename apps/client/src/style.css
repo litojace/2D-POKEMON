@@ -4276,12 +4276,7 @@ dialog:has(.admin-tabs) {
   box-shadow: 0 0 0 1px #f7d780 inset;
 }
 /* ---------- 2v2 teams ---------- */
-.mode-picker {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 6px;
-  margin: 4px 0 8px;
-}
+
 .mode-level.active {
   border-color: #f7d780;
   background: #f7d78022;
@@ -8266,9 +8261,10 @@ html::before {
   height: 100lvh;
   z-index: -1;
   pointer-events: none;
+  /* Elemental Plaza, dimmed, behind lobbies and other screens. */
   background:
-    linear-gradient(180deg, #08142630 0%, #08142666 45%, #08142630 100%),
-    url("/assets/backgrounds/celestial-coliseum.webp") center/cover no-repeat;
+    linear-gradient(180deg, #0b1424d9 0%, #0b1424e6 50%, #0b1424f2 100%),
+    url("/assets/backgrounds/elemental-plaza-small.webp") center/cover no-repeat;
 }
 html:has(body.battle-active)::before {
   display: none;
@@ -8276,125 +8272,6 @@ html:has(body.battle-active)::before {
 body.battle-active {
   background:
     radial-gradient(ellipse at 24% 12%, #1e3763 0, transparent 48%), #101c35;
-}
-
-/* Quiet atmosphere stays behind all UI and disappears during combat. */
-.celestial-atmosphere {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  overflow: hidden;
-  pointer-events: none;
-  contain: strict;
-}
-body.battle-active .celestial-atmosphere {
-  display: none;
-}
-.celestial-stars,
-.celestial-stars::after {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at 18% 115px, #e7f4ffcc 0 1px, transparent 2px),
-    radial-gradient(circle at 73% 150px, #fff1bac7 0 1px, transparent 2px),
-    radial-gradient(circle at 97% 34%, #d9eaffad 0 1px, transparent 2px),
-    radial-gradient(circle at 2% 55%, #d9eaff9c 0 1px, transparent 2px),
-    radial-gradient(circle at 98% 78%, #fff1ba99 0 1px, transparent 2px);
-  animation: celestial-twinkle 7s ease-in-out infinite alternate;
-}
-.celestial-stars::after {
-  content: "";
-  transform: translateY(45px);
-  animation-delay: -4s;
-  animation-duration: 11s;
-}
-.celestial-ember {
-  position: absolute;
-  left: var(--x);
-  top: var(--y);
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #fff0ba;
-  box-shadow: 0 0 8px 3px #ffd56f88;
-  opacity: 0;
-  animation: celestial-rise var(--duration, 12s) linear infinite;
-  animation-delay: var(--delay);
-}
-.celestial-ember:nth-child(2) {
-  --x: 1.5%;
-  --y: 65%;
-  --drift: 6px;
-  --delay: -4s;
-  --duration: 11s;
-}
-.celestial-ember:nth-child(3) {
-  --x: 97%;
-  --y: 75%;
-  --drift: -6px;
-  --delay: -8s;
-  --duration: 14s;
-}
-.celestial-ember:nth-child(4) {
-  --x: 65%;
-  --y: 210px;
-  --drift: 30px;
-  --delay: -6s;
-  --duration: 12s;
-}
-.celestial-ember:nth-child(5) {
-  --x: 28%;
-  --y: 200px;
-  --drift: 30px;
-  --delay: -10s;
-  --duration: 16s;
-}
-.celestial-ember:nth-child(6) {
-  --x: 2%;
-  --y: 90%;
-  --drift: 6px;
-  --delay: -3s;
-  --duration: 13s;
-}
-.celestial-ember:nth-child(7) {
-  --x: 97%;
-  --y: 40%;
-  --drift: -6px;
-  --delay: -7s;
-  --duration: 15s;
-}
-@keyframes celestial-twinkle {
-  from {
-    opacity: 0.2;
-  }
-  to {
-    opacity: 0.7;
-  }
-}
-@keyframes celestial-rise {
-  0% {
-    transform: translate3d(0, 30px, 0);
-    opacity: 0;
-  }
-  15%,
-  70% {
-    opacity: 0.9;
-  }
-  100% {
-    transform: translate3d(var(--drift), -160px, 0);
-    opacity: 0;
-  }
-}
-@media (max-width: 600px) {
-  .celestial-ember:nth-child(n + 5),
-  .celestial-stars::after {
-    display: none;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .celestial-atmosphere {
-    display: none;
-  }
 }
 
 /* Custom list keeps the open difficulty menu consistent across operating systems. */
@@ -10657,17 +10534,7 @@ button.raid-boss-card:hover:not(:disabled) {
 #shop-open .coin-chip {
   margin-left: auto;
 }
-.home-missions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-  width: 100%;
-  margin: 6px 0 0;
-  padding: 0;
-  background: none;
-  border: 0;
-  cursor: pointer;
-}
+
 .home-mission {
   display: grid;
   grid-template-rows: 1fr auto;
@@ -10699,9 +10566,6 @@ button.raid-boss-card:hover:not(:disabled) {
 }
 .home-mission.is-done small {
   color: #a5edc1;
-}
-.home-missions:hover .home-mission {
-  border-color: #ffd65b55;
 }
 
 dialog:has(.shop) {
@@ -11217,9 +11081,7 @@ dialog:has(.shop) {
   .shop-card-art > :is(svg, img) {
     height: 90px;
   }
-  .home-missions {
-    grid-template-columns: 1fr;
-  }
+
 }
 @media (prefers-reduced-motion: reduce) {
   .rarity-badge.rarity-mythical,
@@ -13509,15 +13371,7 @@ dialog.mission-instructions::backdrop {
 }
 
 /* Home: missions as their own card under the Shop button. */
-.home-missions {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-  margin-top: 8px;
-  padding: 8px;
-  border-radius: 12px;
-  background: linear-gradient(180deg, #6ae2a314, #0e1a31);
-  box-shadow: inset 0 0 0 1px #6ae2a333;
-}
+
 .home-missions-head {
   grid-column: 1 / -1;
   display: flex;
@@ -13551,9 +13405,6 @@ dialog.mission-instructions::backdrop {
 }
 .home-mission.tier-hard {
   --tier: #ff8a5b;
-}
-.home-missions:hover {
-  box-shadow: inset 0 0 0 1px #6ae2a377;
 }
 
 @media (max-width: 760px) {
@@ -15860,26 +15711,7 @@ dialog.framed-dialog > .dialog-content:focus-visible {
 }
 
 /* Adventure: compact horizontal panels, automatic rewards and one live preview. */
-.home-adventure {
-  display: grid;
-  gap: 9px;
-  width: 100%;
-  margin: 14px 0 0;
-  padding: 16px;
-  text-align: left;
-  border: 1px solid #9ff3d855;
-  border-radius: 18px;
-  background: linear-gradient(120deg, #243c50, #192942);
-  color: #e8f4fa;
-}
-.home-adventure > span:last-child {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  font-size: 11px;
-  color: #b7cbd8;
-}
+
 .nav-level {
   display: inline-flex;
   align-items: center;
@@ -17080,15 +16912,13 @@ dialog:has(.adventure) {
 }
 body.home-active {
   --home-top: calc(72px + var(--safe-top));
-  --home-rail: 176px;
   background: var(--bg-0);
   overflow: hidden;
 }
 html:has(body.home-active)::before {
   background: var(--bg-0);
 }
-body.home-active::before,
-body.home-active .celestial-atmosphere {
+body.home-active::before {
   display: none;
 }
 body.home-active #app {
@@ -17229,7 +17059,7 @@ body.home-active .header-menu summary > span {
 }
 body.home-active #app > footer {
   position: fixed;
-  left: calc(var(--home-rail) + var(--safe-left) + 32px);
+  left: calc(var(--safe-left) + 32px);
   right: calc(32px + var(--safe-right));
   bottom: calc(4px + var(--safe-bottom));
   z-index: 2;
@@ -17251,585 +17081,20 @@ body.home-active #credits {
   min-height: 32px;
   font-size: 12px;
 }
+/* Holds only the Fighters and Play panels (they slide over the town). */
 .home-screen {
   position: relative;
-  display: grid;
-  grid-template-columns: calc(var(--home-rail) + var(--safe-left)) minmax(
-      0,
-      1fr
-    );
-  height: calc(100dvh - var(--home-top));
-  min-height: 0;
   color: var(--text);
-  overflow: hidden;
 }
-.home-rail {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  padding: 32px 12px 44px calc(12px + var(--safe-left));
-  border-right: 1px solid var(--line);
-  background: var(--bg-0);
-  z-index: 1;
-}
-.home-rail-main {
-  display: grid;
-  gap: 8px;
-}
-.home-rail-item,
-.home-rail .home-missions {
-  position: relative;
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
-  align-items: center;
-  justify-content: flex-start;
-  gap: 13px;
-  padding: 16px 14px;
-  margin: 0;
-  min-height: 54px;
-  width: 100%;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text-dim);
-  font: 700 20px/1.2 var(--display);
-  letter-spacing: 1px;
-  text-align: left;
-}
-.home-rail-item > .menu-option-icon {
-  grid-column: 1;
-  grid-row: 1;
-  color: inherit;
-  width: 22px;
-  height: 22px;
-  flex: none;
-}
-.home-rail-item > span {
-  grid-column: 2;
-  grid-row: 1;
-}
-.home-rail #shop-open {
-  display: grid;
-  column-gap: 13px;
-}
-.home-rail-item.is-active {
-  color: var(--accent);
-  background: linear-gradient(90deg, #ffd65b16, transparent);
-}
-.home-rail-item.is-active::before {
-  content: "";
-  position: absolute;
-  width: 3px;
-  top: 10px;
-  bottom: 10px;
-  left: 0;
-  background: var(--accent);
-  border-radius: 4px;
-  box-shadow: 0 0 12px #ffd65b50;
-}
-.home-rail-item:hover:not(:disabled) {
-  color: var(--text);
-  background-color: #ffffff06;
-  filter: none;
-}
-.home-rail-extra {
-  padding-top: 20px;
-  margin-top: 20px;
-  border-top: 1px solid var(--line);
-}
-.home-rail .home-missions {
-  box-shadow: none;
-  row-gap: 6px;
-}
-.home-nav-badge {
-  grid-column: 2;
-  grid-row: 2;
-  justify-self: start;
-  font:
-    700 12px/1.2 "DM Sans",
-    sans-serif;
-  color: var(--accent);
-  background: #ffd65b16;
-  padding: 4px 7px;
-  margin-left: 0;
-}
-.home-rail-caption {
-  margin-top: auto;
-  padding: 20px 14px 0;
-  color: var(--text-dim);
-  font: 800 19px/1.05 var(--display);
-  letter-spacing: 3px;
-}
-.home-scene {
-  position: relative;
-  isolation: isolate;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 20px 32px;
-  padding: 28px calc(clamp(24px, 3vw, 56px) + var(--safe-right))
-    calc(52px + var(--safe-bottom)) clamp(24px, 3vw, 56px);
-  min-width: 0;
-  min-height: 0;
-  background:
-    radial-gradient(
-      ellipse at 48% 44%,
-      color-mix(in srgb, var(--element) 12%, transparent),
-      transparent 60%
-    ),
-    var(--bg-0);
-}
-.home-scene::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  opacity: 0.22;
-  pointer-events: none;
-  background-image:
-    linear-gradient(var(--line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--line) 1px, transparent 1px);
-  background-size: 80px 80px;
-  mask-image: radial-gradient(ellipse at 46% 38%, #000, transparent 70%);
-}
-.home-scene-heading {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  min-width: 0;
-}
-.home-scene-heading .eyebrow {
-  font-size: 13px;
-  letter-spacing: 1.8px;
-  color: var(--text-dim);
-}
-.home-scene-heading .eyebrow::before {
-  color: var(--accent);
-  box-shadow: none;
-  width: 5px;
-  height: 5px;
-}
-.home-scene-tag {
-  color: var(--text-dim);
-  font-size: 12px;
-  letter-spacing: 1.3px;
-}
-.home-feature {
-  grid-column: 1 / -1;
-  grid-row: 2;
-  justify-self: center;
-  align-self: center;
-  width: min(100%, 1280px);
-  height: 100%;
-  max-height: 660px;
-  min-width: 0;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr);
-  align-items: center;
-  gap: 32px;
-}
-.home-fighter-stage {
-  position: relative;
-  height: 100%;
-  min-height: 0;
-  min-width: 0;
-  display: grid;
-  place-items: center;
-}
-.home-fighter-stage .home-fighter-art {
-  position: absolute;
-  inset: 0;
-  margin: auto;
-  width: min(100%, 660px);
-  height: 100%;
-  display: grid;
-  place-items: center;
-  z-index: 1;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  overflow: visible;
-}
-#menu .home-fighter-art :is(svg, .creature-portrait) {
-  display: block;
-  width: 100%;
-  height: 100%;
-  max-height: 660px;
-  max-width: 660px;
-  object-fit: contain;
-}
-.home-fighter-stage > .home-fighter-halo {
-  position: absolute;
-  inset: 10% -4%;
-  display: block;
-  border-radius: 50%;
-  background: radial-gradient(
-    ellipse,
-    color-mix(in srgb, var(--element) 22%, transparent),
-    transparent 68%
-  );
-}
-.home-fighter-stage > .home-fighter-ground {
-  display: none;
-}
+
 /* SVG portraits carry a feathered contact shadow in the same coordinate frame
    as their feet. Image packs retain a quiet fallback, without a platform rim. */
-.home-fighter-stage:has(.creature-portrait) > .home-fighter-ground {
-  position: absolute;
-  left: 26%;
-  right: 26%;
-  bottom: 4%;
-  height: 8%;
-  display: block;
-  border: 0;
-  border-radius: 50%;
-  background: radial-gradient(
-    ellipse,
-    #02061280,
-    color-mix(in srgb, var(--element) 10%, transparent) 45%,
-    transparent 72%
-  );
-  pointer-events: none;
-}
-#menu .home-fighter-art > svg {
-  overflow: hidden;
-}
-#menu .home-fighter-art > canvas {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: contain;
-  opacity: 0;
-  pointer-events: none;
-}
-#menu .home-fighter-art.is-ready > canvas {
-  opacity: 1;
-}
-:is(.home-fighter-art, .fighter-rig-stage).is-ready
-  :is(.fighter-character, .fighter-scarf) {
-  visibility: hidden;
-}
-:is(.home-fighter-art, .fighter-rig-stage).is-ready
-  :is(.fighter-character, .fighter-scarf),
-:is(.home-fighter-art, .fighter-rig-stage).is-ready
-  :is(.fighter-character, .fighter-scarf)
-  * {
-  animation-play-state: paused !important;
-}
-:is(.home-fighter-art, .fighter-rig-stage) .ta-back {
-  opacity: 0.55;
-}
-:is(.home-fighter-art, .fighter-rig-stage) .ta-front {
-  opacity: 0.75;
-}
+
 /* The home contact shadow replaces the aura's repeated floor pools/rims. */
-:is(.home-fighter-art, .fighter-rig-stage)
-  .ta-back
-  > ellipse:is([cy="176"], [cy="178"]) {
-  display: none;
-}
+
 /* Cindrake keeps its crest and drifting embers; omit the flat-bottomed wall
    of flame used in the compact selection preview. */
-:is(.home-fighter-art, .fighter-rig-stage) .ta-back .ta-base {
-  display: none;
-}
-:is(.home-fighter-art, .fighter-rig-stage)
-  :is(.ta-back, .ta-front, .home-contact-shadow) {
-  pointer-events: none;
-}
-.home-fighter-copy {
-  position: relative;
-  z-index: 2;
-  min-width: 0;
-  align-self: center;
-  container-type: inline-size;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-.home-element-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--element);
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.4;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-}
-.home-element-label svg {
-  width: 18px;
-  height: 22px;
-}
-.home-fighter-copy h1 {
-  font: 800 clamp(52px, 7vw, 128px)/0.94 var(--display);
-  font-size: clamp(44px, 26cqi, 144px);
-  text-transform: uppercase;
-  letter-spacing: -0.5px;
-  margin: 12px 0 10px;
-  color: var(--text);
-  white-space: nowrap;
-  overflow-wrap: normal;
-  word-break: normal;
-  width: 100%;
-}
-.home-fighter-role {
-  margin: 0 0 20px;
-  color: var(--text-dim);
-  font-size: 16px;
-  line-height: 1.5;
-}
-.home-mastery {
-  justify-content: flex-start;
-  gap: 12px;
-  padding: 6px 0;
-  border-radius: 0;
-  color: var(--mastery);
-}
-.home-mastery > svg {
-  width: 32px;
-  height: 32px;
-  padding: 5px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-}
-.home-mastery > span {
-  display: grid;
-  gap: 6px;
-  font: 700 22px/1.15 var(--display);
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-}
-.home-mastery small {
-  color: var(--text-dim);
-  font:
-    400 14px/1.4 "DM Sans",
-    sans-serif;
-  text-transform: none;
-  letter-spacing: 0;
-}
-.home-change-fighter {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 44px;
-  padding: 10px 0;
-  margin-top: 10px;
-  font-size: 14px;
-  border-radius: 0;
-  text-align: left;
-}
-.home-change-fighter svg {
-  width: 18px;
-  height: 18px;
-}
-.home-journey-slot {
-  grid-column: 1;
-  grid-row: 3;
-  width: min(100%, 440px);
-  align-self: end;
-  min-width: 0;
-}
-.home-scene .home-season-card {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  width: 100%;
-  margin: 0;
-  padding: 18px;
-  background: linear-gradient(115deg, #1a2547aa, #121a3377);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  color: var(--text);
-  text-align: left;
-}
-.home-season-icon {
-  display: grid;
-  place-items: center;
-  flex: 0 0 30px;
-  width: 30px;
-  height: 38px;
-  color: var(--accent);
-}
-.home-season-icon svg {
-  width: 28px;
-  height: 28px;
-}
-.home-season-body {
-  display: grid;
-  gap: 10px;
-  flex: 1;
-  min-width: 0;
-}
-.home-season-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.home-season-heading b {
-  font: 700 22px/1.1 var(--display);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-.home-season-heading small {
-  color: var(--accent);
-  font-size: 12px;
-  white-space: nowrap;
-}
-.home-season-meta {
-  font-size: 13px;
-  line-height: 1.4;
-  color: var(--text-dim);
-}
-.home-season-card progress {
-  appearance: none;
-  display: block;
-  width: 100%;
-  height: 6px;
-  border: 0;
-  border-radius: 3px;
-  overflow: hidden;
-  background: #ffffff14;
-}
-.home-season-card progress::-webkit-progress-bar {
-  background: #ffffff14;
-}
-.home-season-card progress::-webkit-progress-value {
-  background: var(--accent);
-}
-.home-season-card progress::-moz-progress-bar {
-  background: var(--accent);
-}
-.home-launch {
-  grid-column: 2;
-  grid-row: 3;
-  justify-self: end;
-  align-self: end;
-  width: min(100%, 560px);
-  min-width: 0;
-}
-.home-more-play {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 36px;
-  margin: 0 0 8px auto;
-  padding: 8px 0;
-  border-radius: 0;
-  font-size: 14px;
-}
-.home-more-play svg {
-  width: 18px;
-  height: 18px;
-}
-.home-launch-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 180px;
-  gap: 12px;
-}
-.home-mode-wrap {
-  position: relative;
-  min-width: 0;
-}
-.home-mode-toggle {
-  width: 100%;
-  height: 70px;
-  min-height: 70px;
-  display: flex;
-  justify-content: space-between;
-  padding: 10px 16px;
-  background: var(--bg-1);
-  text-align: left;
-  text-transform: none;
-}
-.home-mode-toggle > span:first-child {
-  display: grid;
-  gap: 6px;
-  min-width: 0;
-}
-.home-mode-toggle small {
-  font:
-    600 12px/1.2 "DM Sans",
-    sans-serif;
-  color: var(--text-dim);
-  letter-spacing: 1px;
-}
-.home-mode-toggle b {
-  color: var(--text);
-  font: 700 26px/1.1 var(--display);
-  letter-spacing: 0.5px;
-}
-.home-mode-toggle[aria-expanded="true"] {
-  border-color: var(--accent);
-}
-.home-mode-wrap .mode-picker {
-  position: absolute;
-  bottom: calc(100% + 10px);
-  right: 0;
-  width: max(100%, 320px);
-  max-width: calc(100vw - var(--safe-left) - var(--safe-right) - 32px);
-  max-height: calc(100dvh - var(--home-top) - var(--safe-bottom) - 180px);
-  overflow-y: auto;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 6px;
-  z-index: 5;
-  padding: 10px;
-  margin: 0;
-  background: var(--bg-1);
-  box-shadow: 0 20px 60px #0008;
-}
-.home-mode-wrap .mode-level {
-  min-height: 64px;
-  padding: 12px 14px;
-  text-align: left;
-}
-.home-mode-wrap .mode-level b {
-  font-size: 22px;
-}
-.home-mode-wrap .mode-level small {
-  font-size: 13px;
-  line-height: 1.4;
-}
-.home-launch .home-play {
-  width: 100%;
-  height: 70px;
-  min-height: 70px;
-  padding: 12px 25px;
-  justify-content: space-between;
-  font: 800 36px/1 var(--display);
-  letter-spacing: 2px;
-  border-radius: var(--radius-sm);
-}
-.home-play svg {
-  width: 26px;
-  height: 26px;
-}
-.home-launch-hint {
-  font-size: 13px;
-  margin: 8px 0 0;
-  text-align: right;
-  line-height: 1.4;
-}
-.home-scene-index {
-  position: absolute;
-  right: clamp(24px, 3vw, 56px);
-  top: 16%;
-  color: var(--text-dim);
-  font: 600 14px/1 var(--display);
-  letter-spacing: 3px;
-}
+
 .home-panel-scrim {
   position: fixed;
   inset: 0;
@@ -17927,7 +17192,6 @@ body.home-active #credits {
 @media (orientation: landscape) and (max-height: 600px), (max-width: 1000px) {
   body.home-active {
     --home-top: calc(50px + var(--safe-top));
-    --home-rail: 60px;
   }
   body.home-active .topbar {
     padding-right: calc(12px + var(--safe-right));
@@ -17990,201 +17254,9 @@ body.home-active #credits {
     width: 18px;
     height: 18px;
   }
-  .home-rail {
-    padding: 10px 6px calc(10px + var(--safe-bottom))
-      calc(6px + var(--safe-left));
-  }
-  .home-rail-main {
-    gap: 2px;
-  }
-  .home-rail-item,
-  .home-rail .home-missions,
-  .home-rail #shop-open {
-    display: flex;
-    min-height: 40px;
-    height: 40px;
-    padding: 10px;
-    justify-content: center;
-  }
-  .home-rail-item > span {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-  .home-rail-item.is-active::before {
-    top: 7px;
-    bottom: 7px;
-    left: -2px;
-  }
-  .home-rail-extra {
-    margin-top: 8px;
-    padding-top: 8px;
-  }
-  .home-rail .home-missions {
-    flex-wrap: nowrap;
-  }
-  .home-nav-badge {
-    position: absolute;
-    top: 0;
-    right: -3px;
-    margin: 0;
-    padding: 2px 3px;
-    font-size: 10px;
-  }
-  .home-rail-caption {
-    display: none;
-  }
-  .home-scene {
-    padding: 10px calc(16px + var(--safe-right)) calc(26px + var(--safe-bottom))
-      16px;
-    gap: 6px 16px;
-    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.25fr);
-  }
-  .home-scene-heading {
-    gap: 12px;
-  }
-  .home-scene-heading .eyebrow {
-    font-size: 11px;
-    letter-spacing: 1px;
-  }
-  .home-scene-tag {
-    font-size: 10px;
-    letter-spacing: 0.5px;
-  }
-  .home-feature {
-    grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
-    gap: 20px;
-  }
-  .home-fighter-copy h1 {
-    font-size: clamp(40px, 21cqi, 72px);
-    line-height: 0.9;
-    margin: 6px 0 5px;
-  }
-  .home-element-label {
-    font-size: 12px;
-    line-height: 1.2;
-    letter-spacing: 2px;
-    gap: 6px;
-  }
-  .home-element-label svg {
-    width: 14px;
-    height: 15px;
-  }
-  .home-fighter-role {
-    font-size: 12px;
-    margin: 0 0 6px;
-    line-height: 1.4;
-  }
-  .home-mastery {
-    padding: 0;
-    gap: 8px;
-  }
-  .home-mastery > span {
-    display: flex;
-    align-items: baseline;
-    flex-wrap: wrap;
-    font-size: 16px;
-    gap: 3px 7px;
-  }
-  .home-mastery small {
-    font-size: 11px;
-  }
-  .home-mastery > svg {
-    width: 24px;
-    height: 24px;
-    padding: 3px;
-  }
-  .home-change-fighter {
-    min-height: 32px;
-    font-size: 12px;
-    margin-top: 4px;
-    padding: 6px 0;
-  }
-  .home-change-fighter svg {
-    width: 16px;
-    height: 16px;
-  }
-  .home-journey-slot {
-    width: 100%;
-  }
-  .home-scene .home-season-card {
-    gap: 8px;
-    padding: 12px;
-  }
-  .home-season-icon {
-    flex-basis: 20px;
-    width: 20px;
-  }
-  .home-season-icon svg {
-    width: 20px;
-    height: 20px;
-  }
-  .home-season-body {
-    gap: 6px;
-  }
-  .home-season-heading {
-    gap: 5px 8px;
-  }
-  .home-season-heading b {
-    font-size: 18px;
-  }
-  .home-season-heading small {
-    font-size: 11px;
-  }
-  .home-season-meta {
-    font-size: 11px;
-  }
-  .home-launch {
-    width: 100%;
-  }
-  .home-launch-row {
-    grid-template-columns: minmax(0, 1fr) 124px;
-    gap: 8px;
-  }
-  .home-mode-toggle {
-    min-height: 54px;
-    height: 54px;
-    padding: 7px 12px;
-  }
-  .home-mode-toggle small {
-    font-size: 11px;
-  }
-  .home-mode-toggle b {
-    font-size: 22px;
-  }
-  .home-mode-toggle > span:first-child {
-    gap: 3px;
-  }
-  .home-launch .home-play {
-    height: 54px;
-    min-height: 54px;
-    padding: 8px 16px;
-    font-size: 30px;
-  }
-  .home-play svg {
-    width: 22px;
-    height: 22px;
-  }
-  .home-more-play {
-    min-height: 30px;
-    font-size: 12px;
-    margin-bottom: 4px;
-    padding: 5px 0;
-  }
-  .home-launch-hint {
-    font-size: 11px;
-    margin-top: 4px;
-  }
-  .home-scene-index {
-    right: 16px;
-    top: 13%;
-    font-size: 11px;
-  }
+
   body.home-active #app > footer {
-    left: calc(var(--home-rail) + var(--safe-left) + 16px);
+    left: calc(var(--safe-left) + 16px);
     right: calc(16px + var(--safe-right));
     bottom: calc(1px + var(--safe-bottom));
     height: 24px;
@@ -18226,17 +17298,7 @@ body.home-active #credits {
   .home-drawer-scroll {
     padding: 12px 16px;
   }
-  .home-mode-wrap .mode-picker {
-    max-height: calc(100dvh - var(--home-top) - var(--safe-bottom) - 140px);
-    width: 280px;
-  }
-  .home-mode-wrap .mode-level {
-    min-height: 54px;
-    padding: 8px 12px;
-  }
-  .home-mode-wrap .mode-level small {
-    font-size: 12px;
-  }
+
   .home-play-options {
     gap: 18px;
     margin-top: 10px;
@@ -18250,71 +17312,7 @@ body.home-active #credits {
   body.home-active {
     --home-top: calc(44px + var(--safe-top));
   }
-  .home-scene {
-    padding-top: 6px;
-    gap: 4px 12px;
-  }
-  .home-scene-tag {
-    display: none;
-  }
-  .home-feature {
-    gap: 12px;
-  }
-  .home-fighter-copy h1 {
-    font-size: clamp(36px, 20cqi, 48px);
-    margin: 3px 0;
-  }
-  .home-element-label {
-    font-size: 11px;
-  }
-  .home-fighter-role {
-    font-size: 11px;
-    margin-bottom: 2px;
-  }
-  .home-mastery > span {
-    font-size: 14px;
-  }
-  .home-mastery small {
-    font-size: 11px;
-  }
-  .home-mastery > svg {
-    display: none;
-  }
-  .home-change-fighter {
-    min-height: 28px;
-    padding: 4px 0;
-    margin: 0;
-  }
-  .home-rail {
-    padding-top: 4px;
-    padding-bottom: 4px;
-  }
-  .home-rail-item,
-  .home-rail .home-missions,
-  .home-rail #shop-open {
-    min-height: 34px;
-    height: 34px;
-    padding: 7px;
-  }
-  .home-rail-extra {
-    margin-top: 4px;
-    padding-top: 4px;
-  }
-  .home-launch-row {
-    grid-template-columns: minmax(0, 1fr) 110px;
-  }
-  .home-scene .home-season-card {
-    padding: 8px;
-  }
-  .home-season-icon {
-    display: none;
-  }
-  .home-season-heading b {
-    font-size: 16px;
-  }
-  .home-launch-hint {
-    font-size: 11px;
-  }
+
   body.home-active #app > footer > span:first-child {
     font-size: 9px;
   }
@@ -21422,10 +20420,7 @@ body.battle-active:not(.touch-mode) #battle.desktop-hud-outside .enemy-bearing {
 }
 
 /* The town replaces the home scene: hide (and so pause) what it covers. */
-body.town-active .home-rail,
-body.town-active .home-scene {
-  display: none;
-}
+
 .town-actions {
   position: absolute;
   left: max(16px, env(safe-area-inset-left));
@@ -21562,106 +20557,6 @@ body.town-active .home-scene {
   text-align: left;
 }
 
-/* Welcome gate: sign up or log in to play. */
-.welcome-gate {
-  position: relative;
-  display: grid;
-  place-items: center;
-  min-height: calc(100dvh - var(--home-top, 72px));
-  padding: 24px max(16px, env(safe-area-inset-right)) 24px max(16px, env(safe-area-inset-left));
-  overflow: hidden;
-  background:
-    radial-gradient(ellipse at 50% 120%, rgba(181, 155, 255, 0.28), transparent 60%),
-    radial-gradient(ellipse at 50% 0%, #1d3157, #0a1427 75%);
-}
-.gate-lineup {
-  position: absolute;
-  inset: auto 0 0;
-  display: flex;
-  justify-content: center;
-  align-items: flex-end;
-  gap: 0;
-  height: 42%;
-  opacity: 0.9;
-  pointer-events: none;
-}
-.gate-fighter {
-  width: min(13vw, 150px);
-  margin: 0 -1.2vw;
-  filter: drop-shadow(0 0 24px color-mix(in srgb, var(--c) 45%, transparent));
-  animation: gate-bob 3.2s ease-in-out infinite;
-  animation-delay: calc(var(--i) * -0.4s);
-}
-.gate-fighter svg {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-@keyframes gate-bob {
-  50% {
-    transform: translateY(-6px);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .gate-fighter {
-    animation: none;
-  }
-}
-.gate-card {
-  position: relative;
-  display: grid;
-  justify-items: center;
-  gap: 12px;
-  max-width: 640px;
-  margin-bottom: 18vh;
-  padding: 28px 32px;
-  border: 1px solid var(--line, rgba(255, 255, 255, 0.12));
-  border-radius: 20px;
-  background: rgba(10, 16, 32, 0.78);
-  backdrop-filter: blur(8px);
-  text-align: center;
-}
-.gate-card h1 {
-  margin: 0;
-  font-family: "Barlow Condensed", sans-serif;
-  font-size: clamp(36px, 6vw, 64px);
-  line-height: 0.95;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-.gate-copy,
-.gate-status {
-  margin: 0;
-  color: var(--text-dim, #c9d2e3);
-}
-.gate-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 6px;
-}
-.gate-actions button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 46px;
-  padding: 0 22px;
-}
-.gate-note {
-  color: var(--text-dim, #c9d2e3);
-  font-size: 12px;
-}
-@media (max-height: 500px) {
-  .gate-card {
-    gap: 8px;
-    margin-bottom: 30vh;
-    padding: 16px 22px;
-  }
-  .gate-lineup {
-    height: 38%;
-  }
-}
 @media (max-height: 500px) {
   .town-actions {
     left: max(12px, env(safe-area-inset-left));
@@ -22208,4 +21103,560 @@ body.town-active .header-menu-panel #friends {
   color: #2a1a00;
   stroke: #2a1a00;
   stroke-width: 2.4;
+}
+/* Solo test mode: no site menu; Settings and Leave sit side by side. */
+body.practice-active .header-menu {
+  display: none;
+}
+.battle-leave {
+  color: #ff8a8a;
+}
+.battle-leave:hover {
+  color: #ffb0b0;
+}
+
+/* ── Welcome screen ──
+   A painting of Elemental Plaza drifts slowly behind the page; the pitch
+   sits on the left over a dark wash, the account panel on the right. */
+body.gate-active {
+  background: #0b1424;
+}
+body.gate-active .topbar {
+  display: none;
+}
+body.gate-active main {
+  padding: 0;
+}
+.welcome-gate {
+  position: relative;
+  min-height: 100dvh;
+  overflow: hidden;
+  isolation: isolate;
+  color: #eef2ff;
+}
+.gate-backdrop {
+  position: absolute;
+  inset: -4%;
+  z-index: -2;
+  background: url("/assets/backgrounds/elemental-plaza.webp") center / cover no-repeat;
+  background-image: image-set(
+    url("/assets/backgrounds/elemental-plaza-small.webp") 1x,
+    url("/assets/backgrounds/elemental-plaza.webp") 2x
+  );
+  animation: gate-drift 60s ease-in-out infinite alternate;
+  filter: saturate(1.05);
+}
+@media (min-width: 1100px) {
+  .gate-backdrop {
+    background-image: url("/assets/backgrounds/elemental-plaza.webp");
+  }
+}
+.welcome-gate::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(90deg, rgba(8, 14, 28, 0.94) 0%, rgba(8, 14, 28, 0.78) 34%, rgba(8, 14, 28, 0.25) 62%, rgba(8, 14, 28, 0.55) 100%),
+    linear-gradient(180deg, rgba(8, 14, 28, 0.5) 0%, rgba(8, 14, 28, 0) 30%, rgba(8, 14, 28, 0) 70%, rgba(8, 14, 28, 0.75) 100%),
+    radial-gradient(120% 90% at 70% 40%, rgba(255, 214, 140, 0.12), transparent 60%);
+}
+@keyframes gate-drift {
+  from {
+    transform: scale(1.04) translate(-1.2%, -0.8%);
+  }
+  to {
+    transform: scale(1.1) translate(1.2%, 0.8%);
+  }
+}
+/* Floating motes of light. */
+.gate-motes {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.gate-motes i {
+  position: absolute;
+  left: calc(4% + var(--i) * 7%);
+  bottom: -10px;
+  width: calc(3px + (var(--i) % 3) * 2px);
+  height: calc(3px + (var(--i) % 3) * 2px);
+  border-radius: 50%;
+  background: #ffe7a8;
+  box-shadow: 0 0 10px 2px rgba(255, 214, 140, 0.7);
+  opacity: 0;
+  animation: gate-mote calc(9s + (var(--i) % 5) * 2s) linear infinite;
+  animation-delay: calc(var(--i) * -1.3s);
+}
+@keyframes gate-mote {
+  10% {
+    opacity: 0.85;
+  }
+  90% {
+    opacity: 0.6;
+  }
+  to {
+    opacity: 0;
+    transform: translate(calc((var(--i) % 3 - 1) * 40px), -100vh);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gate-backdrop,
+  .gate-motes i {
+    animation: none;
+  }
+  .gate-motes {
+    display: none;
+  }
+}
+.gate-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 440px);
+  align-items: center;
+  gap: clamp(24px, 5vw, 80px);
+  min-height: 100dvh;
+  padding: max(28px, env(safe-area-inset-top)) max(28px, calc(env(safe-area-inset-right) + 5vw)) max(28px, env(safe-area-inset-bottom)) max(28px, calc(env(safe-area-inset-left) + 5vw));
+  box-sizing: border-box;
+}
+.gate-intro {
+  display: grid;
+  gap: 14px;
+  max-width: 560px;
+}
+.gate-mark {
+  width: 44px;
+  height: 44px;
+  color: #f2c25b;
+  filter: drop-shadow(0 0 14px rgba(242, 194, 91, 0.55));
+}
+.gate-mark svg {
+  width: 100%;
+  height: 100%;
+}
+.gate-kicker {
+  color: #f2c25b;
+  font: 700 12px/1 "DM Sans", sans-serif;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+.gate-intro h1 {
+  margin: 0;
+  font: 800 clamp(48px, 7vw, 92px) / 0.9 "Barlow Condensed", sans-serif;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+}
+.gate-intro h1 span {
+  display: block;
+  color: #f2c25b;
+}
+.gate-lead,
+.gate-invite {
+  margin: 4px 0 6px;
+  max-width: 460px;
+  color: #c9d4e8;
+  font: 400 17px/1.5 "DM Sans", sans-serif;
+}
+.gate-invite b {
+  color: #fff;
+}
+.gate-points {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.gate-points li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.gate-points li > span {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgba(242, 194, 91, 0.35);
+  border-radius: 11px;
+  background: rgba(242, 194, 91, 0.1);
+  color: #f2c25b;
+}
+.gate-points li > span svg {
+  width: 19px;
+  height: 19px;
+  color: inherit;
+}
+.gate-points b {
+  display: block;
+  font: 600 15px/1.2 "DM Sans", sans-serif;
+}
+.gate-points small {
+  color: #9fb0cc;
+  font: 400 13px/1.3 "DM Sans", sans-serif;
+}
+.gate-lineup {
+  display: flex;
+  align-items: flex-end;
+  margin-top: 10px;
+}
+.gate-fighter {
+  width: 64px;
+  margin-right: -10px;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45));
+  animation: gate-bob 3.2s ease-in-out infinite;
+  animation-delay: calc(var(--i) * -0.4s);
+}
+.gate-fighter svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+@keyframes gate-bob {
+  50% {
+    transform: translateY(-5px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gate-fighter {
+    animation: none;
+  }
+}
+/* The card on the right (the account panel lives in it). */
+.gate-card {
+  padding: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 22px;
+  background: rgba(12, 20, 38, 0.82);
+  backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.gate-wait {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 24px 0;
+  text-align: center;
+  color: #c9d4e8;
+}
+.gate-wait p {
+  margin: 0;
+}
+.gate-spinner {
+  width: 34px;
+  height: 34px;
+  border: 3px solid rgba(255, 255, 255, 0.14);
+  border-top-color: #f2c25b;
+  border-radius: 50%;
+  animation: gate-spin 0.9s linear infinite;
+}
+@keyframes gate-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.gate-actions {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+}
+@media (max-width: 900px), (max-height: 560px) {
+  .gate-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+    gap: 24px;
+  }
+  .gate-points,
+  .gate-lineup {
+    display: none;
+  }
+  .gate-intro h1 {
+    font-size: clamp(40px, 7vw, 64px);
+  }
+  .gate-lead,
+  .gate-invite {
+    font-size: 15px;
+  }
+  .gate-card {
+    max-height: calc(100dvh - 32px);
+    overflow-y: auto;
+    padding: 20px;
+  }
+}
+
+/* ── Account panel (sign up, log in, recovery) ── */
+.auth-panel {
+  display: grid;
+  gap: 16px;
+  color: #eef2ff;
+  font-family: "DM Sans", sans-serif;
+}
+dialog .auth-panel {
+  width: min(420px, 100%);
+  margin: 0 auto;
+}
+.auth-head {
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+}
+.auth-crest {
+  width: 30px;
+  height: 30px;
+  margin-bottom: 4px;
+  color: #f2c25b;
+}
+.auth-crest svg {
+  width: 100%;
+  height: 100%;
+}
+.auth-title {
+  font: 700 24px/1.15 "DM Sans", sans-serif;
+  letter-spacing: -0.01em;
+}
+.auth-head p {
+  margin: 0;
+  color: #9fb0cc;
+  font-size: 14px;
+  line-height: 1.45;
+}
+.auth-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding: 4px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+}
+.auth-tabs button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: #9fb0cc;
+  font: 600 14px/1 "DM Sans", sans-serif;
+  cursor: pointer;
+}
+.auth-tabs button[aria-selected="true"] {
+  background: #1d2b48;
+  color: #fff;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset, 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+.auth-form {
+  display: grid;
+  gap: 14px;
+}
+.auth-field {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+.auth-field > span:first-child {
+  color: #c9d4e8;
+  font: 600 13px/1 "DM Sans", sans-serif;
+}
+/* Matches the global input rule's specificity plus the panel class, so it wins. */
+.auth-panel input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]) {
+  width: 100%;
+  min-height: 46px;
+  box-sizing: border-box;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 11px;
+  background: rgba(5, 10, 22, 0.6);
+  color: #fff;
+  font: 400 15px/1 "DM Sans", sans-serif;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.auth-panel input::placeholder {
+  color: #63738f;
+}
+.auth-panel input:focus {
+  outline: none;
+  border-color: #f2c25b;
+  box-shadow: 0 0 0 3px rgba(242, 194, 91, 0.2);
+}
+.auth-panel .password-field {
+  position: relative;
+  display: block;
+}
+.auth-panel .password-field input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]) {
+  padding-right: 48px;
+}
+.auth-panel .password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: #8fa3c2;
+  transform: translateY(-50%);
+}
+.auth-panel .password-toggle:hover,
+.auth-panel .password-toggle[aria-pressed="true"] {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+.auth-form > :is(.auth-row, button, p) {
+  grid-column: 1 / -1;
+}
+.auth-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.auth-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #c9d4e8;
+  font-size: 13px;
+  cursor: pointer;
+}
+.auth-check input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #f2c25b;
+}
+.auth-link {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #f2c25b;
+  font: 600 13px/1 "DM Sans", sans-serif;
+  cursor: pointer;
+}
+.auth-link:hover {
+  text-decoration: underline;
+}
+.auth-back {
+  justify-self: start;
+}
+.auth-submit {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 2px;
+  border: 0;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffe08a, #f2b93b);
+  color: #2a1a00;
+  font: 700 15px/1 "DM Sans", sans-serif;
+  box-shadow: 0 8px 24px rgba(242, 185, 59, 0.28);
+  cursor: pointer;
+  transition: filter 0.15s, transform 0.1s;
+}
+.auth-submit:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+.auth-submit:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.auth-submit:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.auth-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #eef2ff;
+  font: 600 14px/1 "DM Sans", sans-serif;
+  cursor: pointer;
+}
+.auth-secondary:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+.auth-secondary svg {
+  width: 17px;
+  height: 17px;
+}
+.auth-message {
+  margin: 0;
+  color: #ffd68a;
+  font-size: 13px;
+  text-align: center;
+}
+.auth-message:empty {
+  display: none;
+}
+.auth-warning {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 120, 90, 0.12);
+  color: #ffb4a0;
+  font-size: 13px;
+}
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #6f809c;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+}
+.auth-guest {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+.auth-guest .auth-secondary {
+  width: auto;
+  padding: 0 16px;
+}
+.auth-note {
+  margin: -6px 0 0;
+  color: #7d8ea9;
+  font-size: 12px;
+  line-height: 1.4;
+}
+@media (max-height: 560px) {
+  .auth-panel {
+    gap: 12px;
+  }
+  .auth-head p,
+  .auth-note,
+  .auth-crest {
+    display: none;
+  }
+  .auth-title {
+    font-size: 20px;
+  }
+  .auth-tabs button {
+    min-height: 36px;
+  }
+  .auth-form {
+    gap: 10px;
+  }
+  /* Matches the global input rule's specificity plus the panel class, so it wins. */
+.auth-panel input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]) {
+    min-height: 40px;
+  }
+  .auth-submit,
+  .auth-secondary {
+    min-height: 42px;
+  }
 }
