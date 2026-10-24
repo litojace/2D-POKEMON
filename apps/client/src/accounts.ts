@@ -65,11 +65,13 @@ import {
   leaderboardSchema,
   progressSchema,
   friendsSchema,
+  friendCode,
 } from "../../../packages/shared/src/accounts";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import { renderOnline } from "./admin-online";
 import { leaderboardMarkup, progressMarkup, seasonName } from "./progress-view";
-import { friendsMarkup } from "./friends-view";
+import { friendsScreenMarkup, type FriendsRoom } from "./friends-view";
+import { FriendsHub } from "./friends-hub";
 const EYE =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg>';
 const EYE_OFF =
@@ -116,6 +118,8 @@ type Hooks = {
   /** Join or watch a friend's room from the friends list. */
   joinRoom?: (code: string) => void;
   watchRoom?: (code: string) => void;
+  friendsRoom?: () => FriendsRoom;
+  createFriendRoom?: () => void;
   notify: (message: string) => void;
   onChange: () => void;
   onSession: (token: string | null) => void;
@@ -1403,35 +1407,35 @@ export class AccountUI {
       }
     };
   }
-  /** Friends: your code, requests, and who's online with Join / Watch. */
+  /** Friends keep one stable screen while live presence refreshes in the background. */
   friendsOpen = false;
-  private friendsTimer: ReturnType<typeof setInterval> | undefined;
+  private friendsHub?: FriendsHub;
   async showFriends() {
     if (!this.ensurePlayer()) return;
+    this.friendsHub?.dispose();
+    const room = this.hooks.friendsRoom?.() ?? { canCreate: false };
     this.hooks.openDialog(
-      `<div class="friends-screen"><div class="eyebrow">Friends</div><h2>Your crew</h2><div class="friends-layout"><div class="friends-invite"><div class="friend-code-row"><span>Your friend code</span><button class="room-code small-code" id="friend-code" title="Copy">—</button></div><form id="friend-add" class="friend-add"><input name="code" maxlength="8" placeholder="Friend code (8 characters)" aria-label="Friend code" autocomplete="off"><button class="secondary">${iconLabel("add-friend", "Add friend")}</button></form><p id="friend-message" role="status"></p></div><div id="friends-body"><p class="muted">Loading…</p></div></div></div>`,
+      friendsScreenMarkup(friendCode(this.account!.id), room),
     );
     this.friendsOpen = true;
-    const dialog = element<HTMLDialogElement>("dialog");
-    const stop = () => {
-      this.friendsOpen = false;
-      clearInterval(this.friendsTimer);
-      dialog.removeEventListener("close", stop);
-    };
-    dialog.addEventListener("close", stop);
-    clearInterval(this.friendsTimer);
-    // Presence changes as friends come and go: refresh while it's open.
-    this.friendsTimer = setInterval(() => {
-      if (this.friendsOpen) void this.loadFriends();
-    }, 15000);
-    element<HTMLFormElement>("friend-add").onsubmit = async (event) => {
-      event.preventDefault();
-      const form = event.currentTarget as HTMLFormElement;
-      const code = String(new FormData(form).get("code") ?? "").trim();
-      await this.friendRequest({ code });
-      form.reset();
-    };
-    await this.loadFriends();
+    const hub = new FriendsHub(element<HTMLDialogElement>("dialog"), {
+      accountId: this.account!.id,
+      room,
+      api: (path, body) => this.api(path, body),
+      request: (body) => this.friendRequest(body),
+      notify: this.hooks.notify,
+      join: this.hooks.joinRoom,
+      watch: this.hooks.watchRoom,
+      createRoom: this.hooks.createFriendRoom,
+      onClose: () => {
+        if (this.friendsHub === hub) {
+          this.friendsOpen = false;
+          this.friendsHub = undefined;
+        }
+      },
+    });
+    this.friendsHub = hub;
+    await hub.refresh();
   }
   /** Send a friend request by code or player id; says what happened. */
   async friendRequest(body: { code?: string; playerId?: string }) {
@@ -1449,6 +1453,7 @@ export class AccountUI {
       if (message) message.textContent = text;
       else this.hooks.notify(text);
       if (this.friendsOpen) await this.loadFriends();
+      return true;
     } catch (error) {
       const text =
         error instanceof Error && /database needs an update/.test(error.message)
@@ -1458,77 +1463,11 @@ export class AccountUI {
             : "Couldn't send that request.";
       if (message) message.textContent = text;
       else this.hooks.notify(text);
+      return false;
     }
   }
   async loadFriends() {
-    const body = element("friends-body");
-    if (!body) return;
-    try {
-      const list = friendsSchema.parse(await this.api("/api/friends"));
-      if (!this.friendsOpen || !element("friends-body")) return;
-      element("friend-code").textContent = list.code;
-      element("friend-code").onclick = () =>
-        void navigator.clipboard
-          .writeText(list.code)
-          .then(() => this.hooks.notify("Friend code copied."))
-          .catch(() => this.hooks.notify(`Your friend code: ${list.code}`));
-      body.innerHTML = friendsMarkup(list);
-      const act = async (path: string, payload: unknown) => {
-        try {
-          await this.api(path, payload);
-        } catch (error) {
-          this.hooks.notify(
-            error instanceof Error ? error.message : "That didn't work.",
-          );
-        }
-        await this.loadFriends();
-      };
-      body.querySelectorAll<HTMLButtonElement>("[data-accept]").forEach(
-        (b) =>
-          (b.onclick = () =>
-            void act("/api/friends/respond", {
-              playerId: b.dataset.accept,
-              accept: true,
-            })),
-      );
-      body.querySelectorAll<HTMLButtonElement>("[data-decline]").forEach(
-        (b) =>
-          (b.onclick = () =>
-            void act("/api/friends/respond", {
-              playerId: b.dataset.decline,
-              accept: false,
-            })),
-      );
-      body
-        .querySelectorAll<HTMLButtonElement>("[data-remove]")
-        .forEach(
-          (b) =>
-            (b.onclick = () =>
-              void act("/api/friends/remove", { playerId: b.dataset.remove })),
-        );
-      body.querySelectorAll<HTMLButtonElement>("[data-join]").forEach(
-        (b) =>
-          (b.onclick = () => {
-            element<HTMLDialogElement>("dialog").close();
-            this.hooks.joinRoom?.(b.dataset.join!);
-          }),
-      );
-      body.querySelectorAll<HTMLButtonElement>("[data-watch]").forEach(
-        (b) =>
-          (b.onclick = () => {
-            element<HTMLDialogElement>("dialog").close();
-            this.hooks.watchRoom?.(b.dataset.watch!);
-          }),
-      );
-    } catch (error) {
-      body.innerHTML = `<p class="muted">${escape(
-        error instanceof Error && /database needs an update/.test(error.message)
-          ? "Friends switch on once the database update (migration 005) has been run."
-          : error instanceof Error
-            ? error.message
-            : "Couldn't load your friends.",
-      )}</p>`;
-    }
+    await this.friendsHub?.refresh();
   }
   /** Quick check after login: say if someone wants to be friends. */
   async checkFriendRequests() {

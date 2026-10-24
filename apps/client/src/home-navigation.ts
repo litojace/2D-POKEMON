@@ -211,7 +211,7 @@ export function setupHomeNavigation(menu: HTMLElement, settings: () => void) {
       const scroller = (
         document.activeElement as HTMLElement | null
       )?.closest<HTMLElement>(
-        ".wardrobe-inventory, .wardrobe-showcase, .skill-preview, .selected-info, .fighter-preview-slot, .lobby-room-content, .showcase-roster",
+        ".wardrobe-inventory, .wardrobe-showcase, #friends-body, .friends-invite, .skill-preview, .selected-info, .fighter-preview-slot, .lobby-room-content, .showcase-roster",
       );
       if (scroller && Math.abs(pad.axes[3] ?? 0) > 0.25)
         scroller.scrollBy({ top: pad.axes[3] * 10, behavior: "instant" });
@@ -248,9 +248,14 @@ export function setupHomeNavigation(menu: HTMLElement, settings: () => void) {
         else menu.querySelector<HTMLElement>("#create, #ready")?.focus();
       }
       if (pressed.has(1) && !previous.has(1)) {
-        if (dialog?.open)
-          dialog.querySelector<HTMLButtonElement>("#close-dialog")?.click();
-        else if (header?.open) header.open = false;
+        if (dialog?.open) {
+          const back = dialog.querySelector<HTMLButtonElement>(
+            ".friends-hub.is-adding [data-friend-add-close], .friends-hub [data-friend-remove-cancel]",
+          );
+          if (back?.getClientRects().length) back.click();
+          else
+            dialog.querySelector<HTMLButtonElement>("#close-dialog")?.click();
+        } else if (header?.open) header.open = false;
         else if (!backFromFighterDetails()) close();
       }
       if (pressed.has(9) && !previous.has(9)) {
