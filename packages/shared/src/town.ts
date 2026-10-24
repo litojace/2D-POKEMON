@@ -67,7 +67,10 @@ export interface TownSpot {
   label: string;
   sub: string;
   color: string;
-  /** How close you must stand (world px). */
+  /**
+   * How close you must stand (world px). The glowing pad on the ground
+   * covers the inner part of this, so standing anywhere on it works.
+   */
   reach: number;
   /** Raid Hall statues open the Raid Hub at their boss. */
   boss?: RaidBossId;
@@ -130,8 +133,8 @@ export const TOWN_DUMMIES = [
 ];
 
 export const TOWN_SPOTS: readonly TownSpot[] = [
-  { id: "arena", x: 2700, y: 1060, label: "Arena Gate", sub: "Start or join a match", color: "#ffd65b", reach: 90 },
-  { id: "raids", x: 1600, y: 500, label: "Raid Hall", sub: "Open the Raid Hub", color: "#b59bff", reach: 80 },
+  { id: "arena", x: 2700, y: 1060, label: "Arena Gate", sub: "Start or join a match", color: "#ffd65b", reach: 120 },
+  { id: "raids", x: 1600, y: 500, label: "Raid Hall", sub: "Open the Raid Hub", color: "#b59bff", reach: 110 },
   ...TOWN_STATUES.map((s) => ({
     id: "raids" as const,
     x: s.x,
@@ -139,15 +142,15 @@ export const TOWN_SPOTS: readonly TownSpot[] = [
     label: RAID_BOSSES[s.boss].name,
     sub: RAID_BOSSES[s.boss].epithet,
     color: RAID_BOSSES[s.boss].color,
-    reach: 50,
+    reach: 52,
     boss: s.boss,
   })),
-  { id: "boss-rush", x: 360, y: 750, label: "Boss Rush", sub: "This week's run", color: "#ff7a4f", reach: 70 },
-  { id: "training", x: 660, y: 1010, label: "Training Grounds", sub: "Battle a bot or test skills", color: "#ff9b6a", reach: 80 },
-  ...TOWN_STALLS.map((s) => ({ id: "shop" as const, x: s.x, y: s.y + 62, label: s.label, sub: "Shop", color: s.color, reach: 60, tab: s.tab })),
-  { id: "wardrobe", x: 1110, y: 1630, label: "Wardrobe", sub: "Change your look", color: "#bfefff", reach: 60 },
-  { id: "missions", x: 1600, y: 1740, label: "Notice Board", sub: "Daily missions", color: "#9be07a", reach: 80 },
-  { id: "leaderboard", x: 2240, y: 1300, label: "Champions' Obelisk", sub: "Top players this month", color: "#ffe58f", reach: 70 },
+  { id: "boss-rush", x: 360, y: 750, label: "Boss Rush", sub: "This week's run", color: "#ff7a4f", reach: 95 },
+  { id: "training", x: 660, y: 1010, label: "Training Grounds", sub: "Battle a bot or test skills", color: "#ff9b6a", reach: 110 },
+  ...TOWN_STALLS.map((s) => ({ id: "shop" as const, x: s.x, y: s.y + 62, label: s.label, sub: "Shop", color: s.color, reach: 80, tab: s.tab })),
+  { id: "wardrobe", x: 1110, y: 1630, label: "Wardrobe", sub: "Change your look", color: "#bfefff", reach: 80 },
+  { id: "missions", x: 1600, y: 1740, label: "Notice Board", sub: "Daily missions", color: "#9be07a", reach: 110 },
+  { id: "leaderboard", x: 2240, y: 1300, label: "Champions' Obelisk", sub: "Top players this month", color: "#ffe58f", reach: 90 },
 ];
 
 /** Lamps on the grass just outside the plaza ring, clear of the roads (degrees: 0 = east, 90 = south). */
@@ -214,6 +217,8 @@ const nearRoad = (x: number, y: number, pad: number) =>
       t = Math.max(0, Math.min(1, ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy)));
     return Math.hypot(x - (x1 + dx * t), y - (y1 + dy * t)) < pad;
   });
+/** The Raid Hall's marble terrace (and a margin): no trees or bushes on it. */
+const onTerrace = (x: number, y: number) => x > 1020 && x < 2180 && y > 360 && y < 790;
 const rnd = (i: number) => {
   const v = Math.sin(i * 127.1 + 311.7) * 43758.5453;
   return v - Math.floor(v);
@@ -222,6 +227,7 @@ function buildTrees() {
   const trees: { x: number; y: number; variant: number }[] = [];
   const clear = (x: number, y: number) =>
     !nearRoad(x, y, 120) &&
+    !onTerrace(x, y) &&
     Math.hypot((x - TOWN.plaza.x) / 1.25, y - TOWN.plaza.y) > TOWN.plaza.r + 90 &&
     !TOWN_DISTRICTS.some((d) => Math.hypot((d.x - x) / 1.4, d.y - y) < 260) &&
     !TOWN_BUILDINGS.some((b) => x > b.x - b.w / 2 - 70 && x < b.x + b.w / 2 + 70 && y > b.y - b.d - 160 && y < b.y + 90) &&
@@ -293,6 +299,7 @@ function buildShrubs() {
     y > 120 &&
     y < TOWN.height - 60 &&
     !nearRoad(x, y, 92) &&
+    !onTerrace(x, y) &&
     !blocked(x, y, pad) &&
     Math.hypot((x - TOWN.plaza.x) / 1.25, y - TOWN.plaza.y) > TOWN.plaza.r + 70 &&
     !TOWN_DISTRICTS.some((d) => Math.hypot((d.x - x) / 1.4, d.y - y) < 240) &&

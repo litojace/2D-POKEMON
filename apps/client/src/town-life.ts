@@ -29,6 +29,10 @@ import {
   paintGround,
   propSprite,
   rnd,
+  carveStatue,
+  statuePlinth,
+  veiledStatue,
+  STATUE_TOP,
   shrubSprite,
   signpostSprite,
   softBlob,
@@ -101,6 +105,9 @@ export class TownScenery {
   private bugG: Phaser.GameObjects.Graphics;
   private critterG: Phaser.GameObjects.Graphics;
   private markerG: Phaser.GameObjects.Graphics;
+  private padG: Phaser.GameObjects.Graphics;
+  /** The station you're standing on (its pad lights up). */
+  active?: (typeof TOWN_SPOTS)[number];
   private screenText?: Phaser.GameObjects.Text;
   /** District signs (to keep markers off them and fade them over your fighter). */
   private signs: { box: Phaser.GameObjects.Container; left: number; right: number; top: number; bottom: number }[] = [];
@@ -132,6 +139,7 @@ export class TownScenery {
     this.birdShadowG = scene.add.graphics().setDepth(-400);
     this.bugG = scene.add.graphics().setDepth(8500);
     this.critterG = scene.add.graphics().setDepth(-450);
+    this.padG = scene.add.graphics().setDepth(-350);
     this.markerG = scene.add.graphics().setDepth(4400);
     this.life();
   }
@@ -236,31 +244,41 @@ export class TownScenery {
     TOWN_SIGNPOSTS.forEach((p, i) => place(s, `town-signpost-${i}`, signpostSprite(p.label, p.color, p.left), p.x, p.y + 4, p.y, 2.5));
     TOWN_STALLS.forEach((st, i) => place(s, `town-stall-${i}`, stallSprite(st.color, i), st.x, st.y + 26, st.y));
     void TOWN_DUMMIES;
-    // Raid Hall statues: a pedestal, the boss's crest, and a glow.
-    const ped = bake(s, "town-pedestal", propSprite("pedestal"));
-    s.add.image(TOWN_NEXT_STATUE.x, TOWN_NEXT_STATUE.y + 10, ped.key).setOrigin(ped.ox, ped.oy).setScale(ped.scale).setDepth(TOWN_NEXT_STATUE.y);
-    s.add
-      .text(TOWN_NEXT_STATUE.x, TOWN_NEXT_STATUE.y - 52, "?", { resolution: TEXT_RES, fontFamily: "Barlow Condensed, sans-serif", fontSize: "40px", fontStyle: "bold", color: "#b59bff" })
-      .setOrigin(0.5, 1)
-      .setAlpha(0.7)
-      .setDepth(TOWN_NEXT_STATUE.y + 0.1);
+    // Raid Hall statues: each boss carved in stone on a plinth with its
+    // name on a bronze plaque; the next plinth waits under a cloth.
+    const next = TOWN_NEXT_STATUE;
+    place(s, "town-plinth-next", statuePlinth("???", "#b59bff"), next.x, next.y + 12, next.y, 3);
+    place(s, "town-veiled", veiledStatue(), next.x, next.y + 14 - STATUE_TOP, next.y + 0.1, 2).setScale(0.4);
     for (const st of TOWN_STATUES) {
-      s.add.image(st.x, st.y + 10, ped.key).setOrigin(ped.ox, ped.oy).setScale(ped.scale).setDepth(st.y);
-      const boss = RAID_BOSSES[st.boss];
+      const boss = RAID_BOSSES[st.boss],
+        foot = st.y + 12 - STATUE_TOP;
+      place(s, `town-plinth-${st.boss}`, statuePlinth(boss.name, boss.color), st.x, st.y + 12, st.y, 3);
       if (!this.reduced) {
-        const glow = place(s, "town-glow", softBlob("255,214,140"), st.x, st.y - 70, st.y + 0.05, 1);
-        glow.setTint(num(boss.color)).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.5).setScale(1.3);
+        // A faint light in the boss's colour, from below.
+        const glow = place(s, "town-glow", softBlob("255,214,140"), st.x, foot - 30, st.y + 0.05, 1);
+        glow.setTint(num(boss.color)).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.22).setScale(0.9, 1.1);
         this.statueGlows.push(glow);
       }
-      const key = `town-crest-${st.boss}`;
-      const add = () => s.add.image(st.x, st.y - 40, key).setOrigin(0.5, 1).setDepth(st.y + 0.1).setScale(0.42);
+      const key = `town-statue-${st.boss}`;
+      const add = () => {
+        if (!s.sys.isActive()) return;
+        const src = s.textures.get(key).getSourceImage() as HTMLCanvasElement;
+        // About 92 px tall, wider bosses scaled to fit the plinth.
+        const scale = Math.min(92 / src.height, 96 / src.width);
+        s.add.image(st.x, foot + 2, key).setOrigin(0.5, 1).setScale(scale).setDepth(st.y + 0.1);
+      };
+      if (!s.textures.exists(key) && painted.has(key)) s.textures.addCanvas(key, painted.get(key)!);
       if (s.textures.exists(key)) add();
       else {
         const svg = raidCrest(st.boss).replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" ');
-        // Phaser decodes data URLs as base64.
-        const b64 = btoa(String.fromCharCode(...new TextEncoder().encode(svg)));
-        s.load.svg(key, `data:image/svg+xml;base64,${b64}`, { width: 200, height: 200 });
-        s.load.once(`filecomplete-svg-${key}`, add);
+        const img = new Image();
+        img.onload = () => {
+          const carved = painted.get(key) ?? carveStatue(img, 300);
+          painted.set(key, carved);
+          if (!s.textures.exists(key)) s.textures.addCanvas(key, carved);
+          add();
+        };
+        img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
       }
     }
     s.load.start();
@@ -424,13 +442,14 @@ export class TownScenery {
     this.drawWater(t);
     this.drawCrystal(t);
     this.drawMarkers(t, focus);
+    this.drawPads(t, focus);
     if (this.screenText) {
       const lines = SCREEN_LINES;
       this.screenText.setText(lines[Math.floor(t / 4) % lines.length]);
     }
     if (this.reduced) return;
     for (const l of this.lampGlows) l.img.setAlpha(0.5 + Math.sin(t * 7 + l.phase) * 0.05 + Math.sin(t * 13 + l.phase) * 0.04);
-    for (const [i, g] of this.statueGlows.entries()) g.setAlpha(0.35 + Math.sin(t * 1.6 + i) * 0.15);
+    for (const [i, g] of this.statueGlows.entries()) g.setAlpha(0.2 + Math.sin(t * 1.6 + i) * 0.06);
     for (const c of this.clouds) {
       c.x += dt * 14;
       c.y += dt * 4;
@@ -570,6 +589,53 @@ export class TownScenery {
     for (let k = 0; k < 6; k++) {
       const a = t * 0.9 + (k / 6) * TAU;
       g.fillStyle(0xfff3c4, 0.8).fillCircle(f.x + Math.cos(a) * 40, cy + Math.sin(a) * 14, 2.2);
+    }
+  }
+
+  /**
+   * A glowing pad on the ground at every place you can use: a soft disc
+   * in the station's colour with a slowly turning dashed ring. Standing
+   * anywhere on it lets you press E (or tap); then it brightens, the ring
+   * thickens and sparks rise from it.
+   */
+  private drawPads(t: number, focus?: { x: number; y: number }) {
+    const g = this.padG.clear();
+    for (const [i, s] of TOWN_SPOTS.entries()) {
+      if (focus && Math.hypot(s.x - focus.x, s.y - focus.y) > 1100) continue;
+      const on = this.active === s,
+        c = num(s.color),
+        r = s.reach * 0.78,
+        x = s.x,
+        y = s.y + 10,
+        breathe = this.reduced ? 0 : Math.sin(t * 2.2 + i) * 0.5 + 0.5;
+      // Disc and its glow.
+      g.fillStyle(c, on ? 0.26 : 0.1 + breathe * 0.05).fillEllipse(x, y, r * 2, r);
+      g.fillStyle(c, on ? 0.22 : 0.08).fillEllipse(x, y, r * 1.3, r * 0.65);
+      // Solid inner ring.
+      g.lineStyle(on ? 3 : 2, c, on ? 0.95 : 0.6).strokeEllipse(x, y, r * 2, r);
+      // Dashed outer ring, turning.
+      const spin = this.reduced ? 0 : t * (on ? 1.2 : 0.5) + i,
+        dashes = Math.max(8, Math.round(r / 6)),
+        R = r + 7;
+      g.lineStyle(on ? 3 : 2, c, on ? 0.9 : 0.45);
+      for (let k = 0; k < dashes; k++) {
+        const a0 = spin + (k / dashes) * Math.PI * 2,
+          a1 = a0 + (Math.PI / dashes) * 0.9;
+        g.beginPath();
+        g.moveTo(x + Math.cos(a0) * R, y + Math.sin(a0) * R * 0.5);
+        g.lineTo(x + Math.cos(a1) * R, y + Math.sin(a1) * R * 0.5);
+        g.strokePath();
+      }
+      if (on && !this.reduced)
+        // Sparks rising off the pad.
+        for (let k = 0; k < 8; k++) {
+          const p = (t * 0.7 + k / 8) % 1,
+            a = k * 2.4 + i,
+            sx = x + Math.cos(a) * r * 0.75,
+            sy = y + Math.sin(a) * r * 0.37 - p * 46;
+          g.fillStyle(0xffffff, (1 - p) * 0.9).fillCircle(sx, sy, 2);
+          g.fillStyle(c, (1 - p) * 0.6).fillCircle(sx, sy, 4);
+        }
     }
   }
 

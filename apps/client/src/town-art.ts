@@ -1492,6 +1492,173 @@ export function signpostSprite(label: string, color: string, left: boolean): Spr
   };
 }
 
+/**
+ * A statue plinth for the Raid Hall: a stepped base, a tall dado with a
+ * bronze plaque bearing the boss's name, a moulded cap the statue stands
+ * on, and an inlaid gem in the boss's colour. Anchored at the front of the
+ * bottom step; the statue's feet go STATUE_TOP above that.
+ */
+export const STATUE_TOP = 58;
+export function statuePlinth(name: string | null, color: string): Sprite {
+  const W = 120,
+    H = 80;
+  return {
+    w: W,
+    h: H,
+    ax: W / 2,
+    ay: H - 6,
+    draw(ctx) {
+      const cx = W / 2,
+        G = H - 6;
+      softShadow(ctx, cx + 10, G - 2, 58, 13, 0.4);
+      // Bottom step.
+      ctx.fillStyle = "#6f6a80";
+      roundRect(ctx, cx - 46, G - 12, 92, 12, 3);
+      ctx.fill();
+      ctx.fillStyle = "#a9a3bd";
+      roundRect(ctx, cx - 46, G - 16, 92, 7, 3);
+      ctx.fill();
+      // Dado (the body), lit from the left.
+      const body = ctx.createLinearGradient(cx - 36, 0, cx + 36, 0);
+      body.addColorStop(0, "#9e98b4");
+      body.addColorStop(0.4, "#d6d1e4");
+      body.addColorStop(1, "#7e7896");
+      ctx.fillStyle = body;
+      ctx.fillRect(cx - 36, G - STATUE_TOP + 8, 72, STATUE_TOP - 22);
+      // Cap moulding the statue stands on, with the statue's contact shadow.
+      ctx.fillStyle = "#8a84a0";
+      roundRect(ctx, cx - 42, G - STATUE_TOP + 4, 84, 8, 2);
+      ctx.fill();
+      ctx.fillStyle = "#e4e0ee";
+      roundRect(ctx, cx - 42, G - STATUE_TOP, 84, 6, 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(50,40,70,0.35)";
+      ellipse(ctx, cx + 4, G - STATUE_TOP + 2, 34, 3.5);
+      ctx.fill();
+      // The bronze plaque with the name engraved.
+      const plaque = ctx.createLinearGradient(0, G - 44, 0, G - 26);
+      plaque.addColorStop(0, "#f2d27a");
+      plaque.addColorStop(1, "#b88a2e");
+      ctx.fillStyle = "#5a4520";
+      roundRect(ctx, cx - 28, G - 45, 56, 19, 3);
+      ctx.fill();
+      ctx.fillStyle = plaque;
+      roundRect(ctx, cx - 27, G - 44, 54, 17, 3);
+      ctx.fill();
+      if (name) {
+        ctx.fillStyle = "#3a2a10";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        let size = 11;
+        do ctx.font = `700 ${size}px 'Barlow Condensed', 'Arial Narrow', sans-serif`;
+        while (ctx.measureText(name.toUpperCase()).width > 48 && --size > 6);
+        ctx.fillText(name.toUpperCase(), cx, G - 35);
+      }
+      // A gem inlaid below the plaque.
+      ctx.fillStyle = "#3a3448";
+      ellipse(ctx, cx, G - 20, 5, 4);
+      ctx.fill();
+      ctx.fillStyle = color;
+      ellipse(ctx, cx, G - 20.5, 4, 3.2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.75)";
+      ellipse(ctx, cx - 1.2, G - 21.5, 1.3, 1);
+      ctx.fill();
+    },
+  };
+}
+
+/**
+ * Turns a coloured boss picture into a carved-stone statue: colours become
+ * shades of pale stone (dark lines stay as carved grooves), lit from above,
+ * with a little grain. Returns the trimmed canvas (no empty margins) so
+ * the statue's feet sit right on its plinth.
+ */
+export function carveStatue(src: CanvasImageSource, size: number): HTMLCanvasElement {
+  const c = document.createElement("canvas");
+  c.width = c.height = size;
+  const ctx = c.getContext("2d")!;
+  ctx.drawImage(src, 0, 0, size, size);
+  const img = ctx.getImageData(0, 0, size, size),
+    d = img.data;
+  let minX = size,
+    minY = size,
+    maxX = -1,
+    maxY = -1;
+  for (let y = 0; y < size; y++)
+    for (let x = 0; x < size; x++) {
+      const i = (y * size + x) * 4,
+        a = d[i + 3];
+      if (a < 8) continue;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+      // Luminance with contrast eased so flat colours keep some shape.
+      const lum = (0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2]) / 255,
+        // Dark colours become mid stone; near-black lines stay as grooves.
+        tone = lum < 0.12 ? 0.38 : 0.66 + Math.pow(lum, 0.8) * 0.48,
+        light = 1.08 - (y / size) * 0.28 - (x / size) * 0.1,
+        grain = 1 + (rnd(i * 0.37) - 0.5) * 0.08,
+        k = Math.min(1.15, tone * light * grain);
+      // Pale lavender-grey stone, like the Raid Hall's marble.
+      d[i] = Math.min(255, 196 * k);
+      d[i + 1] = Math.min(255, 190 * k);
+      d[i + 2] = Math.min(255, 210 * k);
+    }
+  ctx.putImageData(img, 0, 0);
+  if (maxX < 0) return c;
+  const out = document.createElement("canvas");
+  out.width = maxX - minX + 1;
+  out.height = maxY - minY + 1;
+  out.getContext("2d")!.drawImage(c, -minX, -minY);
+  return out;
+}
+
+/** A plinth waiting for the next boss: its statue is under a draped cloth. */
+export function veiledStatue(): Sprite {
+  const W = 110,
+    H = 110;
+  return {
+    w: W,
+    h: H,
+    ax: W / 2,
+    ay: H,
+    draw(ctx) {
+      const cx = W / 2,
+        G = H;
+      const cloth = ctx.createLinearGradient(cx - 40, 0, cx + 40, 0);
+      cloth.addColorStop(0, "#4b3a7a");
+      cloth.addColorStop(0.4, "#8a6fd6");
+      cloth.addColorStop(1, "#3f3068");
+      ctx.fillStyle = cloth;
+      ctx.beginPath();
+      ctx.moveTo(cx - 40, G);
+      ctx.quadraticCurveTo(cx - 44, G - 60, cx - 18, G - 92);
+      ctx.quadraticCurveTo(cx, G - 104, cx + 18, G - 92);
+      ctx.quadraticCurveTo(cx + 44, G - 60, cx + 40, G);
+      // A hem with gentle folds.
+      for (let k = 4; k >= 0; k--) ctx.quadraticCurveTo(cx - 40 + k * 16 + 8, G + 4, cx - 40 + k * 16, G);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = "rgba(20,10,40,0.35)";
+      ctx.lineWidth = 2;
+      for (const dx of [-18, 2, 20]) {
+        ctx.beginPath();
+        ctx.moveTo(cx + dx * 0.4, G - 88);
+        ctx.quadraticCurveTo(cx + dx * 0.8, G - 50, cx + dx, G - 2);
+        ctx.stroke();
+      }
+      ctx.fillStyle = "#e9c25a";
+      ctx.fillRect(cx - 40, G - 8, 80, 3);
+      ctx.font = "700 30px 'Barlow Condensed', 'Arial Narrow', sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillStyle = "rgba(255,240,200,0.85)";
+      ctx.fillText("?", cx, G - 44);
+    },
+  };
+}
+
 /** Small props, each anchored where it meets the ground. */
 export function propSprite(kind: string): Sprite {
   switch (kind) {

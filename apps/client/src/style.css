@@ -21257,8 +21257,7 @@ body.battle-active:not(.touch-mode) #battle.desktop-hud-outside .enemy-bearing {
 .town-layer {
   position: fixed;
   inset: 0;
-  /* Under the top bar (account, coins, settings, menu stay reachable). */
-  top: var(--home-top, 0px);
+  /* Full screen: the top bar floats over it as a game HUD (see below). */
   z-index: 60;
   background: #2f4224;
   color: #f4efe2;
@@ -21275,7 +21274,7 @@ body.battle-active:not(.touch-mode) #battle.desktop-hud-outside .enemy-bearing {
   left: 16px;
   right: 16px;
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: flex-start;
   gap: 12px;
   pointer-events: none;
@@ -21719,4 +21718,185 @@ body.gate-active footer {
   background:
     radial-gradient(120% 90% at 12% -10%, rgba(255, 222, 150, 0.2), rgba(255, 222, 150, 0) 58%),
     radial-gradient(150% 130% at 50% 45%, rgba(0, 0, 0, 0) 58%, rgba(14, 24, 16, 0.38) 100%);
+}
+
+/* ── The top bar as a game HUD while in town ──
+   The site header becomes floating glass pieces over the town: your player
+   card (portrait, name, level, XP, title) on the left, the town in the
+   middle, and coins, settings and the menu on the right. Log out moves
+   into the menu; the logo hides (the town is the brand). */
+body.town-active .topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 70;
+  height: auto;
+  min-height: 0;
+  padding: max(10px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 0 max(14px, env(safe-area-inset-left));
+  background: none;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  pointer-events: none;
+}
+body.town-active .topbar > *,
+body.town-active .top-links > * {
+  pointer-events: auto;
+}
+body.town-active .brand,
+body.town-active #account-logout {
+  display: none;
+}
+body.town-active .top-links {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  pointer-events: none;
+}
+body.town-active .account-nav {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  flex-wrap: nowrap;
+  pointer-events: none;
+}
+body.town-active .account-nav > * {
+  pointer-events: auto;
+}
+/* Player card. */
+body.town-active #account-profile {
+  display: grid;
+  grid-template-columns: 46px auto auto;
+  grid-template-areas: "art name level" "art xp xp" "art title title";
+  align-items: center;
+  column-gap: 8px;
+  row-gap: 3px;
+  min-height: 0;
+  padding: 6px 14px 6px 6px;
+  border: 1px solid rgba(139, 174, 229, 0.25);
+  border-radius: 16px;
+  background: rgba(14, 26, 49, 0.82);
+  backdrop-filter: blur(6px);
+  text-align: left;
+}
+body.town-active #account-profile .account-avatar {
+  grid-area: art;
+  display: block;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+body.town-active #account-profile .account-name {
+  grid-area: name;
+  font: 800 17px/1 "Barlow Condensed", sans-serif;
+  letter-spacing: 0.02em;
+}
+body.town-active #account-profile .nav-level {
+  grid-area: level;
+  justify-self: end;
+}
+body.town-active .nav-xp {
+  grid-area: xp;
+  display: block;
+  width: 132px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+body.town-active .nav-xp i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #ffe58f, #f2b93b);
+}
+body.town-active .nav-title {
+  display: block;
+  grid-area: title;
+  font: 700 11px/1 "DM Sans", sans-serif;
+}
+/* Coins: pushed to the right, a glass pill. */
+body.town-active #account-coins {
+  margin-left: auto;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+body.town-active #account-coins > * {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid rgba(242, 185, 59, 0.45);
+  border-radius: 999px;
+  background: rgba(14, 26, 49, 0.82);
+  backdrop-filter: blur(6px);
+}
+body.town-active #account-admin {
+  min-height: 40px;
+  border-radius: 999px;
+  background: rgba(14, 26, 49, 0.82);
+}
+/* Settings and menu: round glass buttons. */
+body.town-active .home-settings,
+body.town-active .header-menu > summary {
+  display: inline-grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  min-height: 0;
+  padding: 0;
+  border: 1px solid rgba(139, 174, 229, 0.25);
+  border-radius: 50%;
+  background: rgba(14, 26, 49, 0.82);
+  backdrop-filter: blur(6px);
+}
+body.town-active .header-menu > summary span {
+  display: none;
+}
+.nav-xp,
+.nav-title,
+#menu-logout {
+  display: none;
+}
+body.town-active #menu-logout {
+  display: flex;
+}
+/* The town's own chip sits in the middle of the top row. */
+body.town-active .town-hud {
+  top: max(12px, env(safe-area-inset-top));
+}
+@media (max-width: 900px) {
+  body.town-active .town-place {
+    display: none;
+  }
+}
+@media (max-height: 500px) {
+  body.town-active #account-profile {
+    grid-template-columns: 36px auto auto;
+    grid-template-areas: "art name level" "art xp xp";
+    padding: 4px 10px 4px 4px;
+  }
+  body.town-active #account-profile .account-avatar {
+    width: 36px;
+    height: 36px;
+  }
+  body.town-active .nav-title {
+    display: none;
+  }
+  body.town-active .nav-xp {
+    width: 100px;
+  }
+  body.town-active .home-settings,
+  body.town-active .header-menu > summary {
+    width: 36px;
+    height: 36px;
+  }
+  body.town-active #account-coins > * {
+    min-height: 34px;
+  }
 }

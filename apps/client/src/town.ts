@@ -530,6 +530,7 @@ export function openTown(options: TownOptions) {
         const near = TOWN_SPOTS.filter((p) => Math.hypot(p.x - mine.x, p.y + 10 - mine.y) < p.reach).sort((a, b) => Math.hypot(a.x - mine.x, a.y - mine.y) - Math.hypot(b.x - mine.x, b.y - mine.y))[0];
         if (near !== nearPortal) {
           nearPortal = near;
+          this.scenery.active = near;
           prompt.hidden = !near;
           if (near)
             prompt.innerHTML = `<b style="color:${near.color}">${esc(near.label)}</b><span>${esc(near.sub)} · ${
