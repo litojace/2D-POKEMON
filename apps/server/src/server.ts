@@ -1,10 +1,37 @@
-import { createExpedition, prepareExpedition, enterExpeditionCamp, chooseExpeditionCamp, advanceExpedition, restartExpedition, expeditionReceipt } from "./expedition.js";
+import {
+  createExpedition,
+  prepareExpedition,
+  enterExpeditionCamp,
+  chooseExpeditionCamp,
+  advanceExpedition,
+  restartExpedition,
+  expeditionReceipt,
+} from "./expedition.js";
 import { ArcadeArena } from "./arcade.js";
-import { arcadeWeek, ARCADE_IDS, type ArcadeId } from "../../../packages/shared/src/arcade.js";
+import {
+  arcadeWeek,
+  ARCADE_IDS,
+  type ArcadeId,
+} from "../../../packages/shared/src/arcade.js";
 import { RaidArena } from "./raid.js";
 import { createRaidArena } from "./raid-bosses.js";
 import type { ActivityReceipt } from "../../../packages/shared/src/shop.js";
-import { DREAM_RUNES, RAID_ATTACKS, RAID_PINGS, RAID_COSMETICS, raidAttacksOf, type RaidAttack, raidLookOf, raidDay, raidWeek, RAID_BOSSES, RAID_BOSS_ORDER, type RaidBossId, type RaidProgress, type RaidReceipt } from "../../../packages/shared/src/raid.js";
+import {
+  DREAM_RUNES,
+  RAID_ATTACKS,
+  RAID_PINGS,
+  RAID_COSMETICS,
+  raidAttacksOf,
+  type RaidAttack,
+  raidLookOf,
+  raidDay,
+  raidWeek,
+  RAID_BOSSES,
+  RAID_BOSS_ORDER,
+  type RaidBossId,
+  type RaidProgress,
+  type RaidReceipt,
+} from "../../../packages/shared/src/raid.js";
 import express from "express";
 import { createServer } from "node:http";
 import { randomBytes, randomInt, randomUUID } from "node:crypto";
@@ -28,8 +55,8 @@ import {
 } from "../../../packages/shared/src/index.js";
 import { Arena } from "./simulation.js";
 import { TownWorld } from "./town.js";
+import { TownAppearance } from "./town-appearance.js";
 import { TOWN } from "../../../packages/shared/src/town.js";
-import { playerLevel } from "../../../packages/shared/src/journey.js";
 import { MatchLedger, matchSummary } from "./match-summary.js";
 import {
   BotBrain,
@@ -38,7 +65,11 @@ import {
   type BotDifficulty,
 } from "./bot.js";
 const botMatchSchema = identitySchema
-  .extend({ character: characterSchema, difficulty: z.enum(BOT_DIFFICULTIES), arcade: z.enum(ARCADE_IDS as [ArcadeId, ...ArcadeId[]]).optional() })
+  .extend({
+    character: characterSchema,
+    difficulty: z.enum(BOT_DIFFICULTIES),
+    arcade: z.enum(ARCADE_IDS as [ArcadeId, ...ArcadeId[]]).optional(),
+  })
   .strict();
 const createSchema = identitySchema
   .extend({
@@ -57,7 +88,9 @@ const teamSchema = z
   .strict();
 const riteSchema = z.object({ id: z.string().min(1).max(64) }).strict();
 const mutatorsSchema = z
-  .object({ ids: z.array(z.enum(MUTATOR_IDS as [MutatorId, ...MutatorId[]])).max(8) })
+  .object({
+    ids: z.array(z.enum(MUTATOR_IDS as [MutatorId, ...MutatorId[]])).max(8),
+  })
   .strict();
 const BOT_NAMES = [
   "Pip",
@@ -123,6 +156,7 @@ export function createArenaServer(
   const ledger = new MatchLedger();
   /** Elemental Plaza: everyone walking around the shared town. */
   const town = new TownWorld();
+  const townAppearance = new TownAppearance(town, accounts);
   /** Friends watching a room: socket id → room code and display name. */
   const watchers = new Map<string, { code: string; name: string }>();
   const MAX_WATCHERS = 6;
@@ -157,11 +191,42 @@ export function createArenaServer(
         fighter.title = account.title;
         fighter.titleColor = account.titleColor;
       }
-      if(fighter) {
-        try {const progress=await accounts.rpc(socket.data.accessToken,'arena_raid_progress',{}) as RaidProgress;fighter.raidLook=raidLookOf(progress);}catch{/* Optional until migration 007 is configured. */}
-        try {fighter.championLooks=await accounts.rpc(socket.data.accessToken,'arena_my_looks',{}) as Fighter['championLooks'];}catch{/* Optional until migration 010 is configured. */}
+      if (fighter) {
+        try {
+          const progress = (await accounts.rpc(
+            socket.data.accessToken,
+            "arena_raid_progress",
+            {},
+          )) as RaidProgress;
+          fighter.raidLook = raidLookOf(progress);
+        } catch {
+          /* Optional until migration 007 is configured. */
+        }
+        try {
+          fighter.championLooks = (await accounts.rpc(
+            socket.data.accessToken,
+            "arena_my_looks",
+            {},
+          )) as Fighter["championLooks"];
+        } catch {
+          /* Optional until migration 010 is configured. */
+        }
       }
-      if(arena && fighter)broadcast(arena);
+      if (arena && fighter) broadcast(arena);
+      const visitor = town.profileOf(socket.id);
+      if (visitor) {
+        if (
+          visitor.name !== account.displayName ||
+          visitor.title !== account.title ||
+          visitor.titleColor !== account.titleColor
+        )
+          town.updateProfile(socket.id, {
+            name: account.displayName,
+            title: account.title,
+            titleColor: account.titleColor,
+          });
+        void townAppearance.refresh(socket.id, socket.data.accessToken, true);
+      }
       socket.emit("account-changed");
     } catch (error) {
       // An expired token is normal (Supabase tokens last an hour): ask the
@@ -338,23 +403,53 @@ export function createArenaServer(
   function getSession(socketId: string) {
     return [...sessions.values()].find((s) => s.socketId === socketId);
   }
-  const raidSaves = new WeakMap<RaidArena,string>();
+  const raidSaves = new WeakMap<RaidArena, string>();
   /** The Shop skin a fighter is wearing for the champion in play. */
   const lookFor = (p: Fighter) => p.championLooks?.[p.character]?.skin ?? null;
-  function recordActivity(receipt: ActivityReceipt, done?: (saved: boolean) => void, arena?: Arena) {
+  function recordActivity(
+    receipt: ActivityReceipt,
+    done?: (saved: boolean) => void,
+    arena?: Arena,
+  ) {
     if (arena) {
-      const eligible = new Set(receipt.players.filter(p=>p.activeSeconds>=20&&!p.abandoned&&p.participated!==false&&(receipt.kind!=='match'||p.vsPeople||p.botLevel)).map(p=>p.accountId));
+      const eligible = new Set(
+        receipt.players
+          .filter(
+            (p) =>
+              p.activeSeconds >= 20 &&
+              !p.abandoned &&
+              p.participated !== false &&
+              (receipt.kind !== "match" || p.vsPeople || p.botLevel),
+          )
+          .map((p) => p.accountId),
+      );
       const owners = fighterAccounts.get(arena);
-      arena.activityEligible = arena.players.filter(p=>eligible.has(owners?.get(p.id)??'')).map(p=>p.id);
+      arena.activityEligible = arena.players
+        .filter((p) => eligible.has(owners?.get(p.id) ?? ""))
+        .map((p) => p.id);
     }
-    if (!accounts.recordActivity || !receipt.players.length) { done?.(false); return; }
-    void accounts.recordActivity(receipt).then(() => {
-      done?.(true);
-      // Wallets and missions changed: let those players' games refresh.
-      for (const socket of io.sockets.sockets.values())
-        if (receipt.players.some((p) => p.accountId === socket.data.account?.id))
-          socket.emit("economy-changed");
-    }).catch((error) => { done?.(false); console.error("Activity not stored:", error instanceof Error ? error.message : error); });
+    if (!accounts.recordActivity || !receipt.players.length) {
+      done?.(false);
+      return;
+    }
+    void accounts
+      .recordActivity(receipt)
+      .then(() => {
+        done?.(true);
+        // Wallets and missions changed: let those players' games refresh.
+        for (const socket of io.sockets.sockets.values())
+          if (
+            receipt.players.some((p) => p.accountId === socket.data.account?.id)
+          )
+            socket.emit("economy-changed");
+      })
+      .catch((error) => {
+        done?.(false);
+        console.error(
+          "Activity not stored:",
+          error instanceof Error ? error.message : error,
+        );
+      });
   }
   function replaceRaidRoom(old: RaidArena, next: RaidArena) {
     const owners = fighterAccounts.get(old);
@@ -370,22 +465,69 @@ export function createArenaServer(
     if (arena instanceof RaidArena && arena.raid.expedition) {
       enterExpeditionCamp(arena);
       const receipt = expeditionReceipt(arena, fighterAccounts.get(arena));
-      if (receipt) recordActivity(receipt, saved => {
-        const e = arena.raid.expedition!;
-        e.saved = saved ? 'saved' : 'unavailable';
-        if (rooms.get(arena.code) === arena) broadcast(arena);
-      },arena);
+      if (receipt)
+        recordActivity(
+          receipt,
+          (saved) => {
+            const e = arena.raid.expedition!;
+            e.saved = saved ? "saved" : "unavailable";
+            if (rooms.get(arena.code) === arena) broadcast(arena);
+          },
+          arena,
+        );
     }
     // Wins and real attempts (not practice, not instant quits) are saved:
     // losses still count towards titles and tell us which attacks are unfair.
-    if(arena instanceof RaidArena && !arena.raid.expedition && arena.raid.result && !arena.raid.drill && (arena.raid.result==='victory'||arena.raid.elapsed>=20) && arena.raid.resultId && raidSaves.get(arena)!==arena.raid.resultId) {
-      raidSaves.set(arena,arena.raid.resultId);
-      const runId=arena.raid.resultId, r=arena.raid;
-      const owners=fighterAccounts.get(arena);
-      const players=arena.heroes().map(p=>{const c=r.contributions?.[p.id];return {accountId:owners?.get(p.id)??'',character:p.character,damage:Math.round(c?.damage??0),revives:c?.revives??0,pillars:c?.pillars??0,downs:c?.downs??0};}).filter(p=>p.accountId);
-      const receipt:RaidReceipt={id:runId,boss:r.boss,peril:r.peril,trait:r.trait,gilded:r.gilded,weekly:false,week:raidWeek(new Date(`${r.day}T12:00:00Z`)),daily:r.daily,day:r.day,feat:arena.feat(),seed:r.seed,partySize:r.partySize,seconds:Math.max(0.001,Math.round(r.elapsed*1000)/1000),downs:r.downs,revives:r.revives,result:r.result??undefined,phaseReached:r.phase,downCauses:{...arena.downCauses},players};
-      r.rewardStatus='saving';
-      arena.activityStatus='saving';
+    if (
+      arena instanceof RaidArena &&
+      !arena.raid.expedition &&
+      arena.raid.result &&
+      !arena.raid.drill &&
+      (arena.raid.result === "victory" || arena.raid.elapsed >= 20) &&
+      arena.raid.resultId &&
+      raidSaves.get(arena) !== arena.raid.resultId
+    ) {
+      raidSaves.set(arena, arena.raid.resultId);
+      const runId = arena.raid.resultId,
+        r = arena.raid;
+      const owners = fighterAccounts.get(arena);
+      const players = arena
+        .heroes()
+        .map((p) => {
+          const c = r.contributions?.[p.id];
+          return {
+            accountId: owners?.get(p.id) ?? "",
+            character: p.character,
+            damage: Math.round(c?.damage ?? 0),
+            revives: c?.revives ?? 0,
+            pillars: c?.pillars ?? 0,
+            downs: c?.downs ?? 0,
+          };
+        })
+        .filter((p) => p.accountId);
+      const receipt: RaidReceipt = {
+        id: runId,
+        boss: r.boss,
+        peril: r.peril,
+        trait: r.trait,
+        gilded: r.gilded,
+        weekly: false,
+        week: raidWeek(new Date(`${r.day}T12:00:00Z`)),
+        daily: r.daily,
+        day: r.day,
+        feat: arena.feat(),
+        seed: r.seed,
+        partySize: r.partySize,
+        seconds: Math.max(0.001, Math.round(r.elapsed * 1000) / 1000),
+        downs: r.downs,
+        revives: r.revives,
+        result: r.result ?? undefined,
+        phaseReached: r.phase,
+        downCauses: { ...arena.downCauses },
+        players,
+      };
+      r.rewardStatus = "saving";
+      arena.activityStatus = "saving";
       recordActivity(
         {
           id: `raid:${runId}`,
@@ -434,50 +576,86 @@ export function createArenaServer(
         },
         arena,
       );
-      void (accounts.recordRaid ? accounts.recordRaid(receipt) : Promise.reject(new Error('Raid rewards need server storage configuration.'))).then(()=>{
-        if(arena.raid.resultId!==runId)return;
-        r.rewardStatus='saved';for(const socket of io.sockets.sockets.values())if(players.some(p=>p.accountId===socket.data.account?.id))socket.emit('account-changed');broadcast(arena);
-      }).catch(()=>{if(arena.raid.resultId===runId){r.rewardStatus='unavailable';broadcast(arena);}});
+      void (
+        accounts.recordRaid
+          ? accounts.recordRaid(receipt)
+          : Promise.reject(
+              new Error("Raid rewards need server storage configuration."),
+            )
+      )
+        .then(() => {
+          if (arena.raid.resultId !== runId) return;
+          r.rewardStatus = "saved";
+          for (const socket of io.sockets.sockets.values())
+            if (players.some((p) => p.accountId === socket.data.account?.id))
+              socket.emit("account-changed");
+          broadcast(arena);
+        })
+        .catch(() => {
+          if (arena.raid.resultId === runId) {
+            r.rewardStatus = "unavailable";
+            broadcast(arena);
+          }
+        });
     }
 
     // A real match just ended: file its summary for the players to report.
-    if (arena.phase === "finished" && !arena.matchId && !arena.practice && arena.mode !== "raid") {
+    if (
+      arena.phase === "finished" &&
+      !arena.matchId &&
+      !arena.practice &&
+      arena.mode !== "raid"
+    ) {
       const matchId: string = randomUUID();
       arena.matchId = matchId;
       const owners = fighterAccounts.get(arena);
-      if (!arena.arcade) ledger.add(
-        matchId,
-        matchSummary(arena, (id) => owners?.get(id) ?? null),
-      );
+      if (!arena.arcade)
+        ledger.add(
+          matchId,
+          matchSummary(arena, (id) => owners?.get(id) ?? null),
+        );
       // Coins and missions: reported by the server, never by the players.
-      const humans = arena.players.filter((p) => !arena.bots.has(p.id) && owners?.get(p.id));
+      const humans = arena.players.filter(
+        (p) => !arena.bots.has(p.id) && owners?.get(p.id),
+      );
       const vsPeople = humans.length >= 2 && arena.bots.size === 0;
       const botLevel = [...arena.bots.values()][0]?.difficulty ?? null;
       arena.activityStatus = "saving";
-      recordActivity({
-        id: `match:${matchId}`,
-        kind: "match",
-        day: raidDay().day,
-        players: humans.map((p) => ({
-          accountId: owners!.get(p.id)!,
-          character: p.character,
-          won:
-            arena.winnerTeam !== null && arena.winnerTeam !== undefined
-              ? arena.teamOf(p) === arena.winnerTeam
-              : arena.winner === p.id,
-          vsPeople,
-          botLevel,
-          mode: arena.mode,
-          knockedOut: (p.stats.knocked ?? 0) > 0,
-          skillUses: p.stats.skills,
-          ults: p.stats.ults ?? 0,
-          activeSeconds: arena.playTime,
-          arcade: arena.arcade?.id,
-          participated: arena.engaged.has(p.id) || p.stats.skills > 0 || p.stats.dealt > 0,
-          abandoned: p.out || !p.connected,
-          skin: lookFor(p),
-        })),
-      }, saved => { if(arena.matchId!==matchId)return; arena.activityStatus=saved?"saved":"unavailable"; broadcast(arena); },arena);
+      recordActivity(
+        {
+          id: `match:${matchId}`,
+          kind: "match",
+          day: raidDay().day,
+          players: humans.map((p) => ({
+            accountId: owners!.get(p.id)!,
+            character: p.character,
+            won:
+              arena.winnerTeam !== null && arena.winnerTeam !== undefined
+                ? arena.teamOf(p) === arena.winnerTeam
+                : arena.winner === p.id,
+            vsPeople,
+            botLevel,
+            mode: arena.mode,
+            knockedOut: (p.stats.knocked ?? 0) > 0,
+            skillUses: p.stats.skills,
+            ults: p.stats.ults ?? 0,
+            activeSeconds: arena.playTime,
+            arcade: arena.arcade?.id,
+            participated:
+              arena.engaged.has(p.id) ||
+              p.stats.skills > 0 ||
+              p.stats.dealt > 0,
+            abandoned: p.out || !p.connected,
+            skin: lookFor(p),
+          })),
+        },
+        (saved) => {
+          if (arena.matchId !== matchId) return;
+          arena.activityStatus = saved ? "saved" : "unavailable";
+          broadcast(arena);
+        },
+        arena,
+      );
     }
     let remaining = 0;
     if (arena.phase === "paused") {
@@ -495,12 +673,19 @@ export function createArenaServer(
       eventCursors.set(arena, snapshot.events.at(-1)!.id);
     const wire = packSnapshot(snapshot);
     if (arena instanceof RaidArena && arena.raid.boss === "somnara") {
-      const recipients = [...sessions.values()].filter(s => s.code === arena.code && s.socketId);
+      const recipients = [...sessions.values()].filter(
+        (s) => s.code === arena.code && s.socketId,
+      );
       // Serialize shared world data once. The private sequence is added only
       // to the authenticated seat's socket, never a room/spectator broadcast.
-      io.to(arena.code).except(recipients.map(s => s.socketId!)).emit("state", wire);
+      io.to(arena.code)
+        .except(recipients.map((s) => s.socketId!))
+        .emit("state", wire);
       for (const session of recipients)
-        io.to(session.socketId!).emit("state", { ...wire, raidDream: arena.dreamFor(session.id) });
+        io.to(session.socketId!).emit("state", {
+          ...wire,
+          raidDream: arena.dreamFor(session.id),
+        });
     } else io.to(arena.code).emit("state", wire);
   }
   function resume(arena: Arena) {
@@ -525,10 +710,14 @@ export function createArenaServer(
     const standIn =
       arena instanceof RaidArena &&
       ["playing", "countdown", "intermission"].includes(arena.phase) &&
-      arena.heroes().some(
-        (h) =>
-          h.id !== p.id && h.connected && !arena.raid.standIns?.includes(h.id),
-      ) &&
+      arena
+        .heroes()
+        .some(
+          (h) =>
+            h.id !== p.id &&
+            h.connected &&
+            !arena.raid.standIns?.includes(h.id),
+        ) &&
       arena.standIn(p.id);
     if (!standIn && !["lobby", "finished", "paused"].includes(arena.phase)) {
       arena.previousPhase = arena.phase;
@@ -640,10 +829,26 @@ export function createArenaServer(
         socketId: socket.id,
         expires: Infinity,
       });
-      const attached=arena.players.find(p=>p.id===id);
-      void accounts.rpc(socket.data.accessToken,'arena_raid_progress',{}).then(value=>{if(attached){attached.raidLook=raidLookOf(value as RaidProgress);broadcast(arena);}}).catch(()=>{});
+      const attached = arena.players.find((p) => p.id === id);
+      void accounts
+        .rpc(socket.data.accessToken, "arena_raid_progress", {})
+        .then((value) => {
+          if (attached) {
+            attached.raidLook = raidLookOf(value as RaidProgress);
+            broadcast(arena);
+          }
+        })
+        .catch(() => {});
       // Equipped Shop skins (migration 010); the client shows the one for the champion in play.
-      void accounts.rpc(socket.data.accessToken,'arena_my_looks',{}).then(value=>{if(attached){attached.championLooks=value as Fighter['championLooks'];broadcast(arena);}}).catch(()=>{});
+      void accounts
+        .rpc(socket.data.accessToken, "arena_my_looks", {})
+        .then((value) => {
+          if (attached) {
+            attached.championLooks = value as Fighter["championLooks"];
+            broadcast(arena);
+          }
+        })
+        .catch(() => {});
       socket.join(arena.code);
       reply(cb, { ok: true, id, token, code: arena.code });
       if (publish) broadcast(arena);
@@ -741,10 +946,30 @@ export function createArenaServer(
         ).join("");
       } while (rooms.has(code));
       const weekly = arcadeWeek(raidDay().day);
-      if (result.data.arcade && (result.data.arcade !== weekly.id || !['duel','teams'].includes(result.data.mode ?? 'duel')))
-        return fail(cb, 'Choose this week’s arcade event in 1v1 or 2v2.');
-      if (result.data.expedition && (result.data.mode !== "raid" || result.data.arcade)) return fail(cb, "Boss Rush is a co-op raid expedition.");
-      const arena = result.data.mode === "raid" ? result.data.expedition ? createExpedition(code, raidDay().day) : createRaidArena(code, result.data.boss) : result.data.arcade ? new ArcadeArena(code, result.data.arcade, weekly.week, result.data.mode ?? 'duel') : new Arena(code, result.data.mode ?? "duel");
+      if (
+        result.data.arcade &&
+        (result.data.arcade !== weekly.id ||
+          !["duel", "teams"].includes(result.data.mode ?? "duel"))
+      )
+        return fail(cb, "Choose this week’s arcade event in 1v1 or 2v2.");
+      if (
+        result.data.expedition &&
+        (result.data.mode !== "raid" || result.data.arcade)
+      )
+        return fail(cb, "Boss Rush is a co-op raid expedition.");
+      const arena =
+        result.data.mode === "raid"
+          ? result.data.expedition
+            ? createExpedition(code, raidDay().day)
+            : createRaidArena(code, result.data.boss)
+          : result.data.arcade
+            ? new ArcadeArena(
+                code,
+                result.data.arcade,
+                weekly.week,
+                result.data.mode ?? "duel",
+              )
+            : new Arena(code, result.data.mode ?? "duel");
       arena.rotateArenas = true;
       rooms.set(code, arena);
       attach(arena, result.data.name, cb);
@@ -886,8 +1111,14 @@ export function createArenaServer(
         code = randomBytes(12).toString("hex");
       } while (rooms.has(code));
       const weekly = arcadeWeek(raidDay().day);
-      if (result.data.arcade && result.data.arcade !== weekly.id) return fail(cb, 'The weekly arcade event has changed. Reopen the menu.');
-      const a = result.data.arcade ? new ArcadeArena(code, result.data.arcade, weekly.week) : new Arena(code);
+      if (result.data.arcade && result.data.arcade !== weekly.id)
+        return fail(
+          cb,
+          "The weekly arcade event has changed. Reopen the menu.",
+        );
+      const a = result.data.arcade
+        ? new ArcadeArena(code, result.data.arcade, weekly.week)
+        : new Arena(code);
       a.rotateArenas = true;
       rooms.set(code, a);
       attach(a, result.data.name, cb, false);
@@ -978,58 +1209,155 @@ export function createArenaServer(
         broadcast(a);
       }),
     );
-    socket.on('raid-config',async(data:unknown,cb:unknown)=>{
-      if(!requirePlayer(cb)||!allowed(10))return;
-      const s=getSession(socket.id),a=s&&rooms.get(s.code);
-      if(!(a instanceof RaidArena)||a.raid.expedition||a.phase!=='lobby'||a.players[0]?.id!==s?.id)return fail(cb,'Only the raid host can change the challenge in the lobby.');
-      const result=z.object({peril:z.number().int().min(1).max(3),daily:z.boolean()}).strict().safeParse(data);
-      if(!result.success)return fail(cb,'Choose a valid raid challenge.');
-      const boss=a.raid.boss,today=raidDay();
-      if(result.data.daily&&today.boss!==boss)return fail(cb,`Today's raid is ${RAID_BOSSES[today.boss].name}.`);
-      let highest=0,unlocked=boss==='grumblecrag';
-      if((result.data.peril>1&&!result.data.daily)||!unlocked){
+    socket.on("raid-config", async (data: unknown, cb: unknown) => {
+      if (!requirePlayer(cb) || !allowed(10)) return;
+      const s = getSession(socket.id),
+        a = s && rooms.get(s.code);
+      if (
+        !(a instanceof RaidArena) ||
+        a.raid.expedition ||
+        a.phase !== "lobby" ||
+        a.players[0]?.id !== s?.id
+      )
+        return fail(
+          cb,
+          "Only the raid host can change the challenge in the lobby.",
+        );
+      const result = z
+        .object({ peril: z.number().int().min(1).max(3), daily: z.boolean() })
+        .strict()
+        .safeParse(data);
+      if (!result.success) return fail(cb, "Choose a valid raid challenge.");
+      const boss = a.raid.boss,
+        today = raidDay();
+      if (result.data.daily && today.boss !== boss)
+        return fail(cb, `Today's raid is ${RAID_BOSSES[today.boss].name}.`);
+      let highest = 0,
+        unlocked = boss === "grumblecrag";
+      if ((result.data.peril > 1 && !result.data.daily) || !unlocked) {
         try {
-          const progress=await accounts.rpc(socket.data.accessToken,'arena_raid_progress',{} ) as RaidProgress;
-          highest=progress.bosses?.[boss]?.highestPeril??(boss==='grumblecrag'?progress.highestPeril:0);
-          unlocked||=(progress.bosses?.grumblecrag?.clears??progress.clears)>0;
+          const progress = (await accounts.rpc(
+            socket.data.accessToken,
+            "arena_raid_progress",
+            {},
+          )) as RaidProgress;
+          highest =
+            progress.bosses?.[boss]?.highestPeril ??
+            (boss === "grumblecrag" ? progress.highestPeril : 0);
+          unlocked ||=
+            (progress.bosses?.grumblecrag?.clears ?? progress.clears) > 0;
+        } catch {
+          return fail(
+            cb,
+            "Raid progression is unavailable. Peril 1 is always open.",
+          );
         }
-        catch { return fail(cb,'Raid progression is unavailable. Peril 1 is always open.'); }
       }
       // Recheck state after the asynchronous account lookup.
-      if(a.phase!=='lobby'||getSession(socket.id)?.id!==s!.id)return fail(cb,'The room changed while checking this challenge.');
-      if(!unlocked)return fail(cb,'Clear Grumblecrag first to unlock this boss.');
-      if(!result.data.daily&&result.data.peril>highest+1)return fail(cb,'Clear the previous Peril first.');
-      a.configure(result.data.peril,result.data.daily);for(const p of a.players)p.ready=false;reply(cb,{ok:true});broadcast(a);
+      if (a.phase !== "lobby" || getSession(socket.id)?.id !== s!.id)
+        return fail(cb, "The room changed while checking this challenge.");
+      if (!unlocked)
+        return fail(cb, "Clear Grumblecrag first to unlock this boss.");
+      if (!result.data.daily && result.data.peril > highest + 1)
+        return fail(cb, "Clear the previous Peril first.");
+      a.configure(result.data.peril, result.data.daily);
+      for (const p of a.players) p.ready = false;
+      reply(cb, { ok: true });
+      broadcast(a);
     });
-    socket.on('raid-ping',(data:unknown,cb:unknown)=>
-      withRoom(cb,(a,id)=>{
-        const kind=z.object({kind:z.enum(Object.keys(RAID_PINGS) as ['stack','revive','bait'])}).strict().safeParse(data);
-        if(!(a instanceof RaidArena)||!kind.success)return fail(cb,'Pings are for raids.');
-        if(!a.ping(id,kind.data.kind))return fail(cb,'Wait a moment before pinging again.');
-        reply(cb,{ok:true});broadcast(a);
-      },false));
+    socket.on("raid-ping", (data: unknown, cb: unknown) =>
+      withRoom(
+        cb,
+        (a, id) => {
+          const kind = z
+            .object({
+              kind: z.enum(
+                Object.keys(RAID_PINGS) as ["stack", "revive", "bait"],
+              ),
+            })
+            .strict()
+            .safeParse(data);
+          if (!(a instanceof RaidArena) || !kind.success)
+            return fail(cb, "Pings are for raids.");
+          if (!a.ping(id, kind.data.kind))
+            return fail(cb, "Wait a moment before pinging again.");
+          reply(cb, { ok: true });
+          broadcast(a);
+        },
+        false,
+      ),
+    );
     socket.on("raid-rune", (data: unknown, cb: unknown) =>
+      withRoom(
+        cb,
+        (a, id) => {
+          const result = z
+            .object({ rune: z.enum(DREAM_RUNES) })
+            .strict()
+            .safeParse(data);
+          if (
+            !(a instanceof RaidArena) ||
+            !result.success ||
+            !a.callRune(id, result.data.rune)
+          )
+            return fail(
+              cb,
+              "Only the awake Dreamer can call a rune. Wait a moment between calls.",
+            );
+          reply(cb, { ok: true });
+          broadcast(a);
+        },
+        false,
+      ),
+    );
+    socket.on("raid-drill", (data: unknown, cb: unknown) =>
       withRoom(cb, (a, id) => {
-        const result = z.object({ rune: z.enum(DREAM_RUNES) }).strict().safeParse(data);
-        if (!(a instanceof RaidArena) || !result.success || !a.callRune(id, result.data.rune))
-          return fail(cb, "Only the awake Dreamer can call a rune. Wait a moment between calls.");
-        reply(cb, { ok: true }); broadcast(a);
-      }, false));
-    socket.on('raid-drill',(data:unknown,cb:unknown)=>
-      withRoom(cb,(a,id)=>{
-        const result=z.object({kind:z.enum(Object.keys(RAID_ATTACKS) as [RaidAttack,...RaidAttack[]]).nullable()}).strict().safeParse(data);
-        if(!(a instanceof RaidArena)||a.raid.expedition||!result.success||(result.data.kind!==null&&!raidAttacksOf(a.raid.boss).includes(result.data.kind)))return fail(cb,'Choose an attack to practise.');
-        if(a.players[0]?.id!==id)return fail(cb,'The host picks the practice attack.');
-        const kind=result.data.kind;
-        const ok=kind===null?a.stopDrill():a.raid.drill?a.setDrill(kind):a.startDrill(kind);
-        if(!ok)return fail(cb,'Practice opens from the raid lobby.');
-        reply(cb,{ok:true});broadcast(a);
-      }));
-    socket.on('expedition-choice', (data: unknown, cb: unknown) => withRoom(cb, (a,id) => {
-      const result = z.object({choice:z.enum(['rest','surge'])}).strict().safeParse(data);
-      if (!(a instanceof RaidArena) || !result.success || !chooseExpeditionCamp(a,id,result.data.choice)) return fail(cb,'Choose a camp option once between Boss Rush legs.');
-      reply(cb,{ok:true});broadcast(a);
-    }));
+        const result = z
+          .object({
+            kind: z
+              .enum(Object.keys(RAID_ATTACKS) as [RaidAttack, ...RaidAttack[]])
+              .nullable(),
+          })
+          .strict()
+          .safeParse(data);
+        if (
+          !(a instanceof RaidArena) ||
+          a.raid.expedition ||
+          !result.success ||
+          (result.data.kind !== null &&
+            !raidAttacksOf(a.raid.boss).includes(result.data.kind))
+        )
+          return fail(cb, "Choose an attack to practise.");
+        if (a.players[0]?.id !== id)
+          return fail(cb, "The host picks the practice attack.");
+        const kind = result.data.kind;
+        const ok =
+          kind === null
+            ? a.stopDrill()
+            : a.raid.drill
+              ? a.setDrill(kind)
+              : a.startDrill(kind);
+        if (!ok) return fail(cb, "Practice opens from the raid lobby.");
+        reply(cb, { ok: true });
+        broadcast(a);
+      }),
+    );
+    socket.on("expedition-choice", (data: unknown, cb: unknown) =>
+      withRoom(cb, (a, id) => {
+        const result = z
+          .object({ choice: z.enum(["rest", "surge"]) })
+          .strict()
+          .safeParse(data);
+        if (
+          !(a instanceof RaidArena) ||
+          !result.success ||
+          !chooseExpeditionCamp(a, id, result.data.choice)
+        )
+          return fail(cb, "Choose a camp option once between Boss Rush legs.");
+        reply(cb, { ok: true });
+        broadcast(a);
+      }),
+    );
     socket.on("ready", (_data: unknown, cb: unknown) =>
       withRoom(cb, (a, id) => {
         if (a.phase !== "lobby")
@@ -1115,11 +1443,17 @@ export function createArenaServer(
     // Party rules: the host switches them on or off in the lobby.
     socket.on("mutators", (data: unknown, cb: unknown) =>
       withRoom(cb, (a, id) => {
-        if (a.phase !== "lobby" || a.bots.size || a.practice || a.mode === "raid")
+        if (
+          a.phase !== "lobby" ||
+          a.bots.size ||
+          a.practice ||
+          a.mode === "raid"
+        )
           return fail(cb, "Party rules can only be changed in a room lobby.");
         if (a.players[0]?.id !== id)
           return fail(cb, "Only the room host can change the party rules.");
-        if (a.arcade) return fail(cb, "Weekly arcade rules are fixed for everyone.");
+        if (a.arcade)
+          return fail(cb, "Weekly arcade rules are fixed for everyone.");
         const result = mutatorsSchema.safeParse(data);
         if (!result.success) return fail(cb, "Unknown party rule.");
         a.mutators = new Set(result.data.ids);
@@ -1150,22 +1484,39 @@ export function createArenaServer(
       withRoom(undefined, (a, id) => {
         const result = inputSchema.safeParse(data);
         if (result.success)
-          a.submit(a.players.find((p) => p.id === id)!, result.data);
+          a.submit(
+            a.players.find((p) => p.id === id)!,
+            result.data,
+          );
       }),
     );
     socket.on("rematch", (_data: unknown, cb: unknown) =>
       withRoom(cb, (a, id) => {
-        if(a instanceof RaidArena){
-          if(a.raid.expedition){
-            if(a.phase!=='finished'||!a.heroes().every(p=>p.connected))return fail(cb,'Finish the expedition and reconnect before retrying.');
-            a.players.find(p=>p.id===id)!.ready=true;
-            if(a.heroes().every(p=>p.ready))a=replaceRaidRoom(a,restartExpedition(a,raidDay().day,true));
-            reply(cb,{ok:true});broadcast(a);return;
+        if (a instanceof RaidArena) {
+          if (a.raid.expedition) {
+            if (a.phase !== "finished" || !a.heroes().every((p) => p.connected))
+              return fail(
+                cb,
+                "Finish the expedition and reconnect before retrying.",
+              );
+            a.players.find((p) => p.id === id)!.ready = true;
+            if (a.heroes().every((p) => p.ready))
+              a = replaceRaidRoom(a, restartExpedition(a, raidDay().day, true));
+            reply(cb, { ok: true });
+            broadcast(a);
+            return;
           }
-          if(a.phase!=='finished'||!a.heroes().length||!a.heroes().every(p=>p.connected))return fail(cb,'Return to the lobby to refill the team.');
-          a.players.find(p=>p.id===id)!.ready=true;
-          if(a.heroes().every(p=>p.ready))a.retry();
-          reply(cb,{ok:true});broadcast(a);return;
+          if (
+            a.phase !== "finished" ||
+            !a.heroes().length ||
+            !a.heroes().every((p) => p.connected)
+          )
+            return fail(cb, "Return to the lobby to refill the team.");
+          a.players.find((p) => p.id === id)!.ready = true;
+          if (a.heroes().every((p) => p.ready)) a.retry();
+          reply(cb, { ok: true });
+          broadcast(a);
+          return;
         }
         if (
           a.phase !== "finished" ||
@@ -1188,9 +1539,15 @@ export function createArenaServer(
     );
     socket.on("lobby", (_data: unknown, cb: unknown) =>
       withRoom(cb, (a) => {
-        if (a instanceof RaidArena && a.raid.expedition && a.phase === 'finished') {
-          a = replaceRaidRoom(a,restartExpedition(a,raidDay().day,false));
-          reply(cb,{ok:true});broadcast(a);return;
+        if (
+          a instanceof RaidArena &&
+          a.raid.expedition &&
+          a.phase === "finished"
+        ) {
+          a = replaceRaidRoom(a, restartExpedition(a, raidDay().day, false));
+          reply(cb, { ok: true });
+          broadcast(a);
+          return;
         }
         if (a instanceof RaidArena && a.raid.drill) {
           a.stopDrill();
@@ -1241,7 +1598,12 @@ export function createArenaServer(
     // ───────────── Town ─────────────
     // Starting or joining a room takes you out of town.
     socket.use(([event]: unknown[], next: (error?: Error) => void) => {
-      if (["create", "join", "practice", "bot-match", "resume", "watch"].includes(String(event)) && town.townOf(socket.id) !== undefined) {
+      if (
+        ["create", "join", "practice", "bot-match", "resume", "watch"].includes(
+          String(event),
+        ) &&
+        town.townOf(socket.id) !== undefined
+      ) {
         town.leave(socket.id);
         socket.emit("town-closed");
       }
@@ -1249,8 +1611,11 @@ export function createArenaServer(
     });
     socket.on("town-join", (data: unknown, cb: unknown) => {
       if (!allowed(10) || !requirePlayer(cb)) return;
-      if (getSession(socket.id)) return fail(cb, "Leave your room before visiting the town.");
-      const parsed = characterSchema.safeParse((data as { character?: unknown } | null)?.character);
+      if (getSession(socket.id))
+        return fail(cb, "Leave your room before visiting the town.");
+      const parsed = characterSchema.safeParse(
+        (data as { character?: unknown } | null)?.character,
+      );
       if (!parsed.success) return fail(cb, "Choose a fighter first.");
       const me = account()!;
       const walker = town.join(socket.id, me.id, {
@@ -1262,41 +1627,24 @@ export function createArenaServer(
         skin: null,
       });
       reply(cb, { ok: true, town: walker.town, me: walker.profile.id });
-      lookUpTownProfile(parsed.data, true);
+      lookUpTownProfile(true);
     });
-    /** Level and the fighter's equipped skin need account lookups; they follow shortly. */
-    const lookUpTownProfile = (character: string, level: boolean) => {
+    /** Saved champion skin and wardrobe slots follow the town join or look change. */
+    const lookUpTownProfile = (level: boolean) => {
       const token = socket.data.accessToken as string | undefined;
-      if (!token) return;
-      if (level)
-        void accounts
-          .rpc(token, "arena_journey", {})
-          .then((j) => {
-            const xp = Number((j as { xp?: unknown } | null)?.xp);
-            if (Number.isFinite(xp)) town.updateProfile(socket.id, { level: playerLevel(xp).level });
-          })
-          .catch(() => undefined);
-      void accounts
-        .rpc(token, "arena_my_looks", {})
-        .then((looks) => {
-          // Ignore an answer for a fighter the player has since switched from.
-          if (town.profileOf(socket.id)?.character !== character) return;
-          const look = (looks as Record<string, { skin: string; stage?: number }> | null)?.[character];
-          const skin = look?.skin ? { skin: look.skin, stage: look.stage } : null;
-          if (JSON.stringify(skin) !== JSON.stringify(town.profileOf(socket.id)?.skin ?? null))
-            town.updateProfile(socket.id, { skin });
-        })
-        .catch(() => undefined);
+      if (token) void townAppearance.refresh(socket.id, token, level);
     };
     // Switched fighter, or equipped a different skin, while in town.
     socket.on("town-look", (data: unknown, cb: unknown) => {
       if (!allowed(10)) return;
       if (town.townOf(socket.id) === undefined) return fail(cb, "Not in town.");
-      const parsed = characterSchema.safeParse((data as { character?: unknown } | null)?.character);
+      const parsed = characterSchema.safeParse(
+        (data as { character?: unknown } | null)?.character,
+      );
       if (!parsed.success) return fail(cb, "Choose a fighter first.");
       if (town.profileOf(socket.id)?.character !== parsed.data)
         town.updateProfile(socket.id, { character: parsed.data, skin: null });
-      lookUpTownProfile(parsed.data, false);
+      lookUpTownProfile(false);
       reply(cb, { ok: true });
     });
     socket.on("town-input", (data: unknown) => {
@@ -1310,8 +1658,17 @@ export function createArenaServer(
     });
     socket.on("town-emote", (data: unknown, cb: unknown) => {
       if (!allowed(10)) return;
-      const ok = town.emote(socket.id, (data as { emote?: unknown } | null)?.emote, Date.now());
-      reply(cb, ok ? { ok: true } : { ok: false, error: "Wait a moment between emotes." });
+      const ok = town.emote(
+        socket.id,
+        (data as { emote?: unknown } | null)?.emote,
+        Date.now(),
+      );
+      reply(
+        cb,
+        ok
+          ? { ok: true }
+          : { ok: false, error: "Wait a moment between emotes." },
+      );
     });
     socket.on("town-leave", (_data: unknown, cb: unknown) => {
       town.leave(socket.id);
@@ -1334,7 +1691,7 @@ export function createArenaServer(
       a.tick();
       if (a instanceof RaidArena && a.raid.expedition?.camp) {
         const next = advanceExpedition(a);
-        if (next) a = replaceRaidRoom(a,next);
+        if (next) a = replaceRaidRoom(a, next);
       }
       if (before !== a.phase && a.phase === "finished")
         // Bots are always up for a rematch.
