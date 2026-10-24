@@ -13,7 +13,9 @@ import {
   type TownState,
 } from "../../../packages/shared/src/town";
 import { FighterRig } from "./animation/rig";
-import { rigAssets } from "./animation/assets";
+import { rigAssets, skinSuffix } from "./animation/assets";
+import type { SkinLook } from "./creature-design";
+import { drawCollectionAura } from "./skins/collection-fx";
 import { actionFor, controlPrefs } from "./controls";
 import { menuIcon } from "./menu-icons";
 import { SHADE, TownScenery } from "./town-life";
@@ -36,7 +38,8 @@ export interface TownOptions {
   /** Called after the town has closed (`failed`: the server refused the join). */
   onClose: (failed: boolean) => void;
 }
-export type TownAction = "play" | "fighters" | "wardrobe" | "friends" | "adventure" | "raids";
+export type TownAction =
+  "play" | "fighters" | "wardrobe" | "friends" | "adventure" | "raids";
 const ACTIONS: [TownAction, string, string][] = [
   ["fighters", "Fighters", "user"],
   ["wardrobe", "Wardrobe", "wardrobe"],
@@ -44,7 +47,13 @@ const ACTIONS: [TownAction, string, string][] = [
   ["adventure", "Journey", "sparkle"],
   ["friends", "Friends", "friends"],
 ];
-const EMOTE_ICON: Record<TownEmote, string> = { wave: "👋", heart: "❤️", laugh: "😂", gg: "GG", fire: "🔥" };
+const EMOTE_ICON: Record<TownEmote, string> = {
+  wave: "👋",
+  heart: "❤️",
+  laugh: "😂",
+  gg: "GG",
+  fire: "🔥",
+};
 const RIG_SCALE = 0.62;
 /** Rig pixels from the body pivot to the feet (see FighterRig). */
 const FEET = 21;
@@ -65,13 +74,18 @@ interface Body {
   jumping?: boolean;
   rig?: FighterRig;
   rigFor?: string;
+  rigVersion?: number;
+  /** Keep the last complete outfit until the next skin's textures are ready. */
+  worn?: TownProfile;
+  aura: Phaser.GameObjects.Graphics;
   shadow: Phaser.GameObjects.Ellipse;
   name: Phaser.GameObjects.Text;
   title: Phaser.GameObjects.Text;
   bubble?: Phaser.GameObjects.Container;
 }
 
-const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+const esc = (s: string) =>
+  s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 export function openTown(options: TownOptions) {
   const { socket, request } = options;
@@ -86,21 +100,26 @@ export function openTown(options: TownOptions) {
   <button type="button" class="town-menu-toggle" id="town-menu-toggle" aria-expanded="false" aria-controls="town-menu-items" title="Menu (M)"><span class="town-burger" aria-hidden="true"><i></i><i></i><i></i></span><span>Menu</span></button>
   <div class="town-menu-items" id="town-menu-items" inert>
     <button type="button" class="town-play primary btn-primary" data-action="play" style="--i:0">${menuIcon("battle")}<span>Play</span></button>${ACTIONS.map(
-      ([id, label, icon], i) => `<button type="button" data-action="${id}" title="${label}" style="--i:${i + 1}">${menuIcon(icon as Parameters<typeof menuIcon>[0])}<span>${label}</span></button>`,
+      ([id, label, icon], i) =>
+        `<button type="button" data-action="${id}" title="${label}" style="--i:${i + 1}">${menuIcon(icon as Parameters<typeof menuIcon>[0])}<span>${label}</span></button>`,
     ).join("")}
   </div>
 </nav>
 <div class="town-prompt" id="town-prompt" hidden></div>
 <div class="town-emotes" role="group" aria-label="Emotes">${TOWN_EMOTES.map(
-    (e) => `<button type="button" data-emote="${e}" aria-label="${e}" title="${e}">${EMOTE_ICON[e]}</button>`,
+    (e) =>
+      `<button type="button" data-emote="${e}" aria-label="${e}" title="${e}">${EMOTE_ICON[e]}</button>`,
   ).join("")}</div>
 <div class="town-stick" id="town-stick" aria-hidden="true"><span></span></div>`;
   document.body.append(layer);
   document.body.classList.add("town-active");
-  const $ = <T extends HTMLElement>(id: string) => layer.querySelector<T>(`#${id}`)!;
+  const $ = <T extends HTMLElement>(id: string) =>
+    layer.querySelector<T>(`#${id}`)!;
 
   const profiles = new Map<number, TownProfile>();
   const bodies = new Map<number, Body>();
+  const arrived = new Set<number>();
+  let ambient = new Set<number>();
   let me = 0,
     closed = false,
     scene: TownScene | undefined;
@@ -126,13 +145,21 @@ export function openTown(options: TownOptions) {
     const len = Math.hypot(x, y);
     return len ? { x: x / len, y: y / len } : { x: 0, y: 0 };
   };
-  const typing = () => ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement?.tagName ?? "");
+  const typing = () =>
+    ["INPUT", "TEXTAREA", "SELECT"].includes(
+      document.activeElement?.tagName ?? "",
+    );
   /** A panel or dialog is open over the town: it gets the keys, you stand still. */
   const covered = () =>
-    !!document.querySelector("dialog[open], .home-drawer:not([hidden]), .header-menu[open]");
+    !!document.querySelector(
+      "dialog[open], .home-drawer:not([hidden]), .header-menu[open]",
+    );
   const keydown = (e: KeyboardEvent) => {
     if (typing() || covered()) return;
-    if (e.code === "KeyM" || (e.code === "Escape" && menu.dataset.open === "true")) {
+    if (
+      e.code === "KeyM" ||
+      (e.code === "Escape" && menu.dataset.open === "true")
+    ) {
       e.preventDefault();
       e.stopImmediatePropagation();
       return void setMenu(e.code === "KeyM" && menu.dataset.open !== "true");
@@ -143,7 +170,8 @@ export function openTown(options: TownOptions) {
       return void options.onPortal(nearPortal);
     }
     const digit = Number(e.key);
-    if (digit >= 1 && digit <= TOWN_EMOTES.length) void emote(TOWN_EMOTES[digit - 1]);
+    if (digit >= 1 && digit <= TOWN_EMOTES.length)
+      void emote(TOWN_EMOTES[digit - 1]);
     const action = actionFor(controlPrefs().bindings, e.code);
     if (action === "jump") {
       e.preventDefault();
@@ -210,19 +238,29 @@ export function openTown(options: TownOptions) {
     if (e.pointerType !== "mouse" || !scene) return;
     const cam = scene.cameras.main,
       rect = canvasEl.getBoundingClientRect(),
-      p = cam.getWorldPoint((e.clientX - rect.left) * devicePixelRatio, (e.clientY - rect.top) * devicePixelRatio);
+      p = cam.getWorldPoint(
+        (e.clientX - rect.left) * devicePixelRatio,
+        (e.clientY - rect.top) * devicePixelRatio,
+      );
     walkTo = { x: p.x, y: p.y };
     // Where you clicked: a marker on the ground (see drawClickMark).
     clickMark = { x: p.x, y: p.y, at: scene.time.now };
   });
 
   const sendInput = (now: number, dir: { x: number; y: number }) => {
-    const changed = Math.abs(dir.x - sent.x) > 0.01 || Math.abs(dir.y - sent.y) > 0.01;
+    const changed =
+      Math.abs(dir.x - sent.x) > 0.01 || Math.abs(dir.y - sent.y) > 0.01;
     // On change (at most 20 a second), plus a slow keep-alive while walking.
-    if ((changed && now - sentAt > 50) || ((dir.x || dir.y) && now - sentAt > 1000)) {
+    if (
+      (changed && now - sentAt > 50) ||
+      ((dir.x || dir.y) && now - sentAt > 1000)
+    ) {
       sent = { ...dir };
       sentAt = now;
-      socket.emit("town-input", { dx: Math.round(dir.x * 100) / 100, dy: Math.round(dir.y * 100) / 100 });
+      socket.emit("town-input", {
+        dx: Math.round(dir.x * 100) / 100,
+        dy: Math.round(dir.y * 100) / 100,
+      });
     }
   };
   // Hop: shown at once for you, and sent so everyone nearby sees it.
@@ -237,7 +275,9 @@ export function openTown(options: TownOptions) {
     socket.emit("town-jump", {});
   };
   const emote = async (kind: TownEmote) => {
-    const button = layer.querySelector<HTMLButtonElement>(`[data-emote="${kind}"]`);
+    const button = layer.querySelector<HTMLButtonElement>(
+      `[data-emote="${kind}"]`,
+    );
     button?.classList.add("pressed");
     setTimeout(() => button?.classList.remove("pressed"), 300);
     socket.timeout(3000).emit("town-emote", { emote: kind }, () => undefined);
@@ -268,7 +308,8 @@ export function openTown(options: TownOptions) {
   // --- Server --------------------------------------------------------------
   const onState = (s: TownState) => {
     me = s.me;
-    $("town-pop").textContent = `Town ${s.town} · ${s.population} ${s.population === 1 ? "player" : "players"} here`;
+    $("town-pop").textContent =
+      `Town ${s.town} · ${s.population} ${s.population === 1 ? "player" : "players"} here`;
     const now = performance.now();
     for (const [id, x, y, angle, moving, emoteIndex, jumping] of s.walkers) {
       let body = bodies.get(id);
@@ -294,6 +335,20 @@ export function openTown(options: TownOptions) {
         scene?.showEmote(body);
       }
     }
+    // Reserve elaborate skin ambience for you and the three nearest visitors.
+    // Everyone still wears their full skin, colours and equipped aura.
+    const mine = bodies.get(me);
+    ambient = new Set(
+      [...bodies.values()]
+        .sort(
+          (a, b) =>
+            Number(b.id === me) - Number(a.id === me) ||
+            Math.hypot(a.tx - (mine?.tx ?? 0), a.ty - (mine?.ty ?? 0)) -
+              Math.hypot(b.tx - (mine?.tx ?? 0), b.ty - (mine?.ty ?? 0)),
+        )
+        .slice(0, 4)
+        .map((body) => body.id),
+    );
     // Gone out of view, or left.
     for (const [id, body] of bodies)
       if (body.seen !== now) {
@@ -339,7 +394,12 @@ export function openTown(options: TownOptions) {
           ease = 1 - (1 - t) ** 3,
           r = 12 + ease * 34;
         g.lineStyle(3, gold, 1 - t).strokeEllipse(x, y, r * 2, r * 2 * 0.55);
-        g.lineStyle(2, 0xffffff, (1 - t) * 0.8).strokeEllipse(x, y, r * 1.3, r * 1.3 * 0.55);
+        g.lineStyle(2, 0xffffff, (1 - t) * 0.8).strokeEllipse(
+          x,
+          y,
+          r * 1.3,
+          r * 1.3 * 0.55,
+        );
         if (!options.reduced)
           for (let k = 0; k < 4; k++) {
             const a = (k / 4) * Math.PI * 2 + Math.PI / 4,
@@ -350,15 +410,34 @@ export function openTown(options: TownOptions) {
               uy = -Math.sin(a) * 0.55,
               px = -uy,
               py = ux;
-            g.fillStyle(0x000000, (1 - t) * 0.35).fillTriangle(cx + ux * 11, cy + uy * 11 + 2, cx + px * 8, cy + py * 8 + 2, cx - px * 8, cy - py * 8 + 2);
-            g.fillStyle(gold, 1 - t).fillTriangle(cx + ux * 11, cy + uy * 11, cx + px * 8, cy + py * 8, cx - px * 8, cy - py * 8);
+            g.fillStyle(0x000000, (1 - t) * 0.35).fillTriangle(
+              cx + ux * 11,
+              cy + uy * 11 + 2,
+              cx + px * 8,
+              cy + py * 8 + 2,
+              cx - px * 8,
+              cy - py * 8 + 2,
+            );
+            g.fillStyle(gold, 1 - t).fillTriangle(
+              cx + ux * 11,
+              cy + uy * 11,
+              cx + px * 8,
+              cy + py * 8,
+              cx - px * 8,
+              cy - py * 8,
+            );
           }
       }
       // While still walking there: a soft dot that gently pulses.
       if (walkTo && Math.hypot(walkTo.x - x, walkTo.y - y) < 1) {
         const pulse = options.reduced ? 0 : (Math.sin(time / 160) + 1) / 2;
         g.fillStyle(0x000000, 0.25).fillEllipse(x, y + 2, 26, 13);
-        g.lineStyle(2.5, gold, 0.9).strokeEllipse(x, y, 24 + pulse * 6, (24 + pulse * 6) * 0.5);
+        g.lineStyle(2.5, gold, 0.9).strokeEllipse(
+          x,
+          y,
+          24 + pulse * 6,
+          (24 + pulse * 6) * 0.5,
+        );
         g.fillStyle(gold, 0.95).fillEllipse(x, y, 9, 5);
         g.fillStyle(0xffffff, 0.8).fillEllipse(x - 1.5, y - 1, 3.5, 2);
       } else if (age >= LIFE) clickMark = undefined;
@@ -367,6 +446,7 @@ export function openTown(options: TownOptions) {
       super("town");
     }
     create() {
+      if (closed) return;
       scene = this;
       this.scenery = new TownScenery(this, options.reduced);
       const cam = this.cameras.main;
@@ -380,7 +460,8 @@ export function openTown(options: TownOptions) {
         h = this.scale.height / devicePixelRatio;
       // Never zoomed out past the edge of the map.
       // Short landscape phones get a closer view so fighters stay readable.
-      const view = h < 500 ? h / 430 : Math.min(1.5, Math.min(w / 1100, h / 650) * 1.1);
+      const view =
+        h < 500 ? h / 430 : Math.min(1.5, Math.min(w / 1100, h / 650) * 1.1);
       this.zoomBase = Math.max(w / TOWN.width, h / TOWN.height, view);
       const cam = this.cameras.main;
       cam.setZoom(this.zoomBase * devicePixelRatio);
@@ -397,6 +478,7 @@ export function openTown(options: TownOptions) {
         moving: false,
         emote: 0,
         seen: 0,
+        aura: this.add.graphics(),
         shadow: this.add.ellipse(x, y, 46, 16, SHADE, SUN.alpha),
         name: this.add
           .text(x, y, "", {
@@ -431,39 +513,72 @@ export function openTown(options: TownOptions) {
       const p = profiles.get(body.id);
       if (!p) return;
       const level = p.level ? `Lv ${p.level}  ` : "";
-      body.name.setText(`${level}${p.name}`).setColor(body.id === me ? "#ffe27a" : "#ffffff");
+      body.name
+        .setText(`${level}${p.name}`)
+        .setColor(body.id === me ? "#ffe27a" : "#ffffff");
       body.title.setText(p.title ?? "").setColor(p.titleColor ?? "#c9d2e3");
-      const character = (p.character in CHARACTERS ? p.character : "voltkit") as CharacterId;
-      if (body.rigFor !== character) {
-        body.rig?.destroy();
-        body.rig = undefined;
-        body.rigFor = character;
-        this.ensureRig(character, () => {
-          if (bodies.get(body.id) !== body || body.rigFor !== character || body.rig) return;
+      const character = (
+        p.character in CHARACTERS ? p.character : "voltkit"
+      ) as CharacterId;
+      const skin = p.skin ?? null;
+      const key = character + skinSuffix(character, skin);
+      if (body.rigFor !== key) {
+        body.rigFor = key;
+        const version = (body.rigVersion = (body.rigVersion ?? 0) + 1);
+        this.ensureRig(character, skin, () => {
+          if (
+            closed ||
+            !this.sys.isActive() ||
+            bodies.get(body.id) !== body ||
+            body.rigFor !== key ||
+            body.rigVersion !== version
+          )
+            return;
+          body.rig?.destroy();
           body.rig = new FighterRig(this, character, rigAssets(character));
+          body.rig.wear(skin);
           body.rig.root.setScale(RIG_SCALE, RIG_SCALE);
+          body.worn = profiles.get(body.id);
         });
+      } else if (
+        body.rig?.character === character &&
+        key === character + skinSuffix(character, body.worn?.skin)
+      ) {
+        body.worn = p;
       }
     }
-    private ensureRig(id: CharacterId, ready: () => void) {
-      const assets = rigAssets(id);
+    private ensureRig(
+      id: CharacterId,
+      skin: SkinLook | null,
+      ready: () => void,
+    ) {
+      const suffix = skinSuffix(id, skin);
+      const key = id + suffix;
+      const base = rigAssets(id);
+      const assets = suffix ? [...base, ...rigAssets(id, skin)] : base;
       const missing = assets.filter((a) => !this.textures.exists(a.key));
       if (!missing.length) return ready();
-      this.load.once(`town-ready-${id}`, ready);
-      if (this.loading.has(id)) return;
-      this.loading.add(id);
-      for (const a of missing) this.load.svg(a.key, a.url, { width: a.width, height: a.height });
+      this.load.once(`town-ready-${key}`, ready);
+      if (this.loading.has(key)) return;
+      this.loading.add(key);
+      for (const a of missing)
+        this.load.svg(a.key, a.url, { width: a.width, height: a.height });
       const done = () => {
+        if (closed) {
+          this.load.off("complete", done);
+          return;
+        }
         if (assets.some((a) => !this.textures.exists(a.key))) return;
         this.load.off("complete", done);
-        this.loading.delete(id);
-        this.load.emit(`town-ready-${id}`);
+        this.loading.delete(key);
+        this.load.emit(`town-ready-${key}`);
       };
       this.load.on("complete", done);
       if (!this.load.isLoading()) this.load.start();
     }
     removeBody(body: Body) {
       body.rig?.destroy();
+      body.aura.destroy();
       body.shadow.destroy();
       body.name.destroy();
       body.title.destroy();
@@ -474,6 +589,12 @@ export function openTown(options: TownOptions) {
       body.bubble = undefined;
       if (!body.emote) return;
       const kind = TOWN_EMOTES[body.emote - 1];
+      if (!options.reduced && (kind === "wave" || kind === "gg"))
+        body.rig?.trigger(
+          kind === "wave" ? "wave" : "victory",
+          this.time.now,
+          2200,
+        );
       const text = this.add
         .text(0, -4, EMOTE_ICON[kind], {
           resolution: TEXT_RES,
@@ -488,10 +609,18 @@ export function openTown(options: TownOptions) {
       g.fillStyle(0xffffff, 1).fillRoundedRect(-28, -28, 56, 44, 14);
       g.fillTriangle(-6, 14, 6, 14, 0, 24);
       const ui = Math.max(1, 1 / this.zoomBase);
-      body.bubble = this.add.container(body.x, body.y, [g, text]).setDepth(6000).setScale(ui);
+      body.bubble = this.add
+        .container(body.x, body.y, [g, text])
+        .setDepth(6000)
+        .setScale(ui);
       if (!options.reduced) {
         body.bubble.setScale(0.3 * ui);
-        this.tweens.add({ targets: body.bubble, scale: ui, duration: 260, ease: "Back.Out" });
+        this.tweens.add({
+          targets: body.bubble,
+          scale: ui,
+          duration: 260,
+          ease: "Back.Out",
+        });
       }
     }
     update(time: number, delta: number) {
@@ -549,7 +678,13 @@ export function openTown(options: TownOptions) {
           this.cameras.main.startFollow(mine.shadow, true, 0.12, 0.12);
         }
         // The nearest place you can use.
-        const near = TOWN_SPOTS.filter((p) => Math.hypot(p.x - mine.x, p.y + 10 - mine.y) < p.reach).sort((a, b) => Math.hypot(a.x - mine.x, a.y - mine.y) - Math.hypot(b.x - mine.x, b.y - mine.y))[0];
+        const near = TOWN_SPOTS.filter(
+          (p) => Math.hypot(p.x - mine.x, p.y + 10 - mine.y) < p.reach,
+        ).sort(
+          (a, b) =>
+            Math.hypot(a.x - mine.x, a.y - mine.y) -
+            Math.hypot(b.x - mine.x, b.y - mine.y),
+        )[0];
         if (near !== nearPortal) {
           nearPortal = near;
           this.scenery.active = near;
@@ -568,8 +703,23 @@ export function openTown(options: TownOptions) {
         .setPosition(body.x, body.y)
         .setDepth(body.y - 0.5)
         .setScale(1 - lift / 120);
-      const p = profiles.get(body.id);
+      const p = body.worn;
+      const auraScale = RIG_SCALE / 1.2;
+      body.aura
+        .clear()
+        .setPosition(body.x, body.y)
+        .setScale(auraScale)
+        .setDepth(body.y - 0.2);
+      if (p?.look?.aura === "mountain-aura")
+        body.aura.lineStyle(3, 0xffd28c, 0.7).strokeEllipse(0, 0, 95, 45);
+      else if (p?.look?.aura)
+        drawCollectionAura(body.aura, p.look.aura, 0, 0, now, options.reduced);
       if (body.rig) {
+        if (p?.look !== undefined && !arrived.has(body.id)) {
+          arrived.add(body.id);
+          if (!options.reduced && !body.moving)
+            body.rig.trigger("wave", now, 1800);
+        }
         const character = body.rig.character;
         body.rig.root.setScale(RIG_SCALE, RIG_SCALE);
         body.rig.setDepth(body.y);
@@ -581,6 +731,8 @@ export function openTown(options: TownOptions) {
             dash: false,
             jump: lift > 0,
             skin: p?.skin ?? null,
+            look: p?.look ?? {},
+            ambient: ambient.has(body.id),
           },
           body.x,
           body.y - FEET * RIG_SCALE - lift,
@@ -589,12 +741,17 @@ export function openTown(options: TownOptions) {
           options.reduced,
         );
       }
-      const head = body.y - 60 - lift;
+      const head = Math.min(
+        body.y - 60 - lift,
+        body.rig ? body.rig.root.y - 47 : Infinity,
+      );
       const ui = Math.max(1, 1 / this.zoomBase);
       body.name.setScale(ui).setPosition(body.x, head);
       body.title.setScale(ui);
       body.title.setPosition(body.x, head - (body.name.height - 4) * ui);
-      const top = head - (body.name.height + (body.title.text ? body.title.height - 4 : 0)) * ui;
+      const top =
+        head -
+        (body.name.height + (body.title.text ? body.title.height - 4 : 0)) * ui;
       body.bubble?.setPosition(body.x, top - 28);
     }
   }
@@ -614,7 +771,11 @@ export function openTown(options: TownOptions) {
     render: { antialias: true },
     scene: [TownScene],
   });
-  const resize = () => game.scale.resize(Math.round(host.clientWidth * dpr), Math.round(host.clientHeight * dpr));
+  const resize = () =>
+    game.scale.resize(
+      Math.round(host.clientWidth * dpr),
+      Math.round(host.clientHeight * dpr),
+    );
   window.addEventListener("resize", resize);
 
   void request("town-join", { character: options.character }).then((reply) => {
@@ -634,7 +795,11 @@ export function openTown(options: TownOptions) {
     window.removeEventListener("keyup", keyup, true);
     window.removeEventListener("blur", blur);
     window.removeEventListener("resize", resize);
+    profiles.clear();
+    bodies.clear();
+    arrived.clear();
     game.destroy(true);
+    if (game.isRunning && !game.loop.running) game.loop.wake();
     layer.remove();
     document.body.classList.remove("town-active");
     options.onClose(failed);
@@ -645,7 +810,8 @@ export function openTown(options: TownOptions) {
     /** Switched fighter or equipped a skin: everyone sees the new look. */
     look(next: CharacterId) {
       character = next;
-      if (!closed) socket.timeout(3000).emit("town-look", { character }, () => undefined);
+      if (!closed)
+        socket.timeout(3000).emit("town-look", { character }, () => undefined);
     },
   };
 }

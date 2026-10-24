@@ -10,6 +10,7 @@ import {
 } from "./home-screen";
 import { setupHomeNavigation } from "./home-navigation";
 import { watchHomePreview } from "./home-preview";
+import { townOutfitKey } from "./town-outfit";
 import { raidDay } from "../../../packages/shared/src/raid";
 import { resultXp } from "./adventure-ui";
 import { arcadeWeek, ARCADE_EVENTS } from "../../../packages/shared/src/arcade";
@@ -1178,8 +1179,11 @@ function syncTown() {
     }
     return;
   }
-  // Same fighter and skin as the town shows: nothing to tell the server.
-  const look = `${selected}:${JSON.stringify(accountsUI.economy?.looks[selected] ?? null)}`;
+  const look = townOutfitKey(
+    selected,
+    accountsUI.economy?.looks[selected],
+    accountsUI.raidLook,
+  );
   if (town) {
     if (look !== townLook) town.look(selected);
     townLook = look;
@@ -1384,7 +1388,8 @@ function renderMenu(revealSelection = false) {
   const watchingRoom = !isRoom && !!watching && state?.code === watching;
   // Everyone plays from the shared town, so the game needs an account.
   // No town without an account or a connection: the welcome screen instead.
-  if (!isRoom && !watchingRoom && (!accountsUI?.account || !connected)) return renderGate();
+  if (!isRoom && !watchingRoom && (!accountsUI?.account || !connected))
+    return renderGate();
   document.body.classList.remove("gate-active");
   syncTown();
   const raidChallenge = state?.raid
@@ -3854,6 +3859,7 @@ accountsUI = new AccountUI({
       accountsUI?.account ?? null,
       !!accountsUI?.session,
       accountsUI?.raidLook ?? null,
+      accountsUI?.economy?.looks ?? null,
       accountsUI?.economy?.journey ?? null,
     ]);
     if (shown === accountShown) return;
