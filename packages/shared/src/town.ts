@@ -23,6 +23,9 @@ export const TOWN = {
   view: { w: 1400, h: 900 },
   /** How long an emote shows above a head (ms). */
   emoteMs: 2600,
+  /** A hop in town: how long it lasts and how often you may (ms). */
+  jumpMs: 650,
+  jumpEveryMs: 800,
   /** Fighters collide with obstacles as a circle of this radius. */
   radius: 18,
   spawn: { x: 1600, y: 1330 },
@@ -228,6 +231,8 @@ function buildTrees() {
   const clear = (x: number, y: number) =>
     !nearRoad(x, y, 120) &&
     !onTerrace(x, y) &&
+    // Keep every station (and the thing it belongs to) in view.
+    !TOWN_SPOTS.some((sp) => Math.abs(sp.x - x) < 130 && y > sp.y - 220 && y < sp.y + 120) &&
     Math.hypot((x - TOWN.plaza.x) / 1.25, y - TOWN.plaza.y) > TOWN.plaza.r + 90 &&
     !TOWN_DISTRICTS.some((d) => Math.hypot((d.x - x) / 1.4, d.y - y) < 260) &&
     !TOWN_BUILDINGS.some((b) => x > b.x - b.w / 2 - 70 && x < b.x + b.w / 2 + 70 && y > b.y - b.d - 160 && y < b.y + 90) &&
@@ -384,8 +389,12 @@ export function townCanSee(me: { x: number; y: number }, other: { x: number; y: 
   return Math.abs(other.x - me.x) < TOWN.view.w / 2 + 80 && Math.abs(other.y - me.y) < TOWN.view.h / 2 + 80;
 }
 
-/** The server's compact per-player update: [id, x, y, angle, moving, emote]. */
-export type TownWalker = [number, number, number, number, 0 | 1, number];
+/** The server's compact per-player update: [id, x, y, angle, moving, emote, jumping]. */
+export type TownWalker = [number, number, number, number, 0 | 1, number, 0 | 1];
+/** Height of a town hop at `ms` into it (world px; 0 when not jumping). */
+export function townHop(ms: number) {
+  return ms >= 0 && ms < TOWN.jumpMs ? Math.sin((Math.PI * ms) / TOWN.jumpMs) * 42 : 0;
+}
 /** Who someone is: sent once when they appear, not every update. */
 export interface TownProfile {
   id: number;

@@ -174,5 +174,6 @@ export function welcomeGate(status: GateStatus, invite?: string | null) {
 
 /** Start a room: the mode choice and Create button, for the town's Play panel. */
 export function startRoomSection(mode: HomeMode) {
-  return `<section class="play-start"><h3>Start a room</h3><div class="mode-grid" role="radiogroup" aria-label="Room type">${HOME_MODES.map(([value, label, hint]) => `<button type="button" role="radio" class="bot-level mode-level${mode === value ? " active" : ""}" data-mode="${value}" aria-checked="${mode === value}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button type="button" class="primary btn-primary full" id="play-create">${menuIcon("battle")}<span>Create room</span></button></section>`;
+  const icons = { duel: "battle", teams: "friends", ffa: "target", raid: "bestiary" } as const;
+  return `<section class="play-start"><h3>Start a room</h3><div class="mode-grid" role="radiogroup" aria-label="Room type">${HOME_MODES.map(([value, label, hint]) => `<button type="button" role="radio" class="bot-level mode-level mode-card${mode === value ? " active" : ""}" data-mode="${value}" aria-checked="${mode === value}"><span class="mode-card-icon" aria-hidden="true">${menuIcon(icons[value])}</span><span class="mode-card-text"><b>${label}</b><small>${hint}</small></span><span class="mode-card-check" aria-hidden="true">${menuIcon("check")}</span></button>`).join("")}</div><button type="button" class="primary btn-primary full" id="play-create">${menuIcon("battle")}<span>Create room</span></button></section>`;
 }

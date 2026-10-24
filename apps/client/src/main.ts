@@ -1569,10 +1569,11 @@ function renderMenu(revealSelection = false) {
           } catch {
             /* optional */
           }
+          // The same choice can appear in more than one list: match by value.
           document
             .querySelectorAll<HTMLButtonElement>("[data-mode]")
             .forEach((b) => {
-              const on = b === button;
+              const on = b.dataset.mode === roomMode;
               b.classList.toggle("active", on);
               b.setAttribute("aria-checked", String(on));
             });

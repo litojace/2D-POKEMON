@@ -1304,6 +1304,10 @@ export function createArenaServer(
       const d = data as { dx?: unknown; dy?: unknown } | null;
       town.input(socket.id, d?.dx, d?.dy);
     });
+    socket.on("town-jump", () => {
+      if (!allowed(10)) return;
+      town.jump(socket.id, Date.now());
+    });
     socket.on("town-emote", (data: unknown, cb: unknown) => {
       if (!allowed(10)) return;
       const ok = town.emote(socket.id, (data as { emote?: unknown } | null)?.emote, Date.now());

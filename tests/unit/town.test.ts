@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { TownWorld } from "../../apps/server/src/town.js";
-import { TOWN, TOWN_OBSTACLES, TOWN_SPOTS, TOWN_TREES, townCollide, townStep } from "../../packages/shared/src/town.js";
+import { TOWN, TOWN_OBSTACLES, TOWN_SPOTS, TOWN_TREES, townCollide, townHop, townStep } from "../../packages/shared/src/town.js";
 
 const profile = (name: string) => ({ name, title: null, titleColor: null, level: 3, character: "voltkit", skin: null });
 
@@ -56,6 +56,21 @@ describe("town", () => {
     expect(world.view("me")!.state.walkers[0][5]).toBe(2);
     world.step(0.05, 5000 + TOWN.emoteMs);
     expect(world.view("me")!.state.walkers[0][5]).toBe(0);
+  });
+
+  it("lets you hop, at most once per jumpEveryMs, and shows it to viewers", () => {
+    const world = new TownWorld();
+    world.join("me", "acct", profile("Me"));
+    world.step(0.05, 1000);
+    expect(world.jump("me", 1000)).toBe(true);
+    expect(world.jump("me", 1000 + TOWN.jumpEveryMs - 1)).toBe(false);
+    world.step(0.05, 1100);
+    expect(world.view("me")!.state.walkers[0][6]).toBe(1);
+    world.step(0.05, 1000 + TOWN.jumpMs + 1);
+    expect(world.view("me")!.state.walkers[0][6]).toBe(0);
+    expect(world.jump("me", 1000 + TOWN.jumpEveryMs)).toBe(true);
+    expect(townHop(TOWN.jumpMs / 2)).toBeGreaterThan(30);
+    expect(townHop(TOWN.jumpMs)).toBe(0);
   });
 
   it("shows only nearby walkers in your own town, and each profile once", () => {

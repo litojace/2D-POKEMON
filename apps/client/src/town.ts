@@ -5,6 +5,7 @@ import {
   TOWN,
   TOWN_EMOTES,
   TOWN_SPOTS,
+  townHop,
   townStep,
   type TownEmote,
   type TownSpot,
@@ -59,6 +60,9 @@ interface Body {
   moving: boolean;
   emote: number;
   seen: number;
+  /** When the current hop started (scene time, ms). */
+  jumpAt?: number;
+  jumping?: boolean;
   rig?: FighterRig;
   rigFor?: string;
   shadow: Phaser.GameObjects.Ellipse;
@@ -140,7 +144,11 @@ export function openTown(options: TownOptions) {
     }
     const digit = Number(e.key);
     if (digit >= 1 && digit <= TOWN_EMOTES.length) void emote(TOWN_EMOTES[digit - 1]);
-    if (actionFor(controlPrefs().bindings, e.code)) {
+    const action = actionFor(controlPrefs().bindings, e.code);
+    if (action === "jump") {
+      e.preventDefault();
+      if (!e.repeat) jump();
+    } else if (action) {
       held.add(e.code);
       e.preventDefault();
     }
@@ -217,6 +225,17 @@ export function openTown(options: TownOptions) {
       socket.emit("town-input", { dx: Math.round(dir.x * 100) / 100, dy: Math.round(dir.y * 100) / 100 });
     }
   };
+  // Hop: shown at once for you, and sent so everyone nearby sees it.
+  let lastJump = -Infinity;
+  const jump = () => {
+    const mine = bodies.get(me);
+    if (!scene || !mine) return;
+    const now = scene.time.now;
+    if (now - lastJump < TOWN.jumpEveryMs) return;
+    lastJump = now;
+    mine.jumpAt = now;
+    socket.emit("town-jump", {});
+  };
   const emote = async (kind: TownEmote) => {
     const button = layer.querySelector<HTMLButtonElement>(`[data-emote="${kind}"]`);
     button?.classList.add("pressed");
@@ -251,7 +270,7 @@ export function openTown(options: TownOptions) {
     me = s.me;
     $("town-pop").textContent = `Town ${s.town} · ${s.population} ${s.population === 1 ? "player" : "players"} here`;
     const now = performance.now();
-    for (const [id, x, y, angle, moving, emoteIndex] of s.walkers) {
+    for (const [id, x, y, angle, moving, emoteIndex, jumping] of s.walkers) {
       let body = bodies.get(id);
       if (!body) {
         if (!scene) continue;
@@ -266,7 +285,10 @@ export function openTown(options: TownOptions) {
       if (id !== me) {
         body.angle = angle;
         body.moving = !!moving;
+        // Someone else started a hop.
+        if (jumping && !body.jumping && scene) body.jumpAt = scene.time.now;
       }
+      body.jumping = !!jumping;
       if (emoteIndex !== body.emote) {
         body.emote = emoteIndex;
         scene?.showEmote(body);
@@ -540,7 +562,12 @@ export function openTown(options: TownOptions) {
       }
     }
     private place(body: Body, now: number) {
-      body.shadow.setPosition(body.x, body.y).setDepth(body.y - 0.5);
+      const lift = body.jumpAt === undefined ? 0 : townHop(now - body.jumpAt);
+      // The shadow stays on the ground and shrinks as you rise.
+      body.shadow
+        .setPosition(body.x, body.y)
+        .setDepth(body.y - 0.5)
+        .setScale(1 - lift / 120);
       const p = profiles.get(body.id);
       if (body.rig) {
         const character = body.rig.character;
@@ -552,17 +579,17 @@ export function openTown(options: TownOptions) {
             speed: body.moving ? CHARACTERS[character].speed : 0,
             angle: body.angle,
             dash: false,
-            jump: false,
+            jump: lift > 0,
             skin: p?.skin ?? null,
           },
           body.x,
-          body.y - FEET * RIG_SCALE,
+          body.y - FEET * RIG_SCALE - lift,
           now,
           1,
           options.reduced,
         );
       }
-      const head = body.y - 60;
+      const head = body.y - 60 - lift;
       const ui = Math.max(1, 1 / this.zoomBase);
       body.name.setScale(ui).setPosition(body.x, head);
       body.title.setScale(ui);

@@ -27,6 +27,8 @@ interface Walker {
   emote: number;
   emoteUntil: number;
   lastEmote: number;
+  jumpUntil: number;
+  lastJump: number;
   profile: TownProfile;
   /** Bumped whenever the profile changes, so viewers re-fetch it. */
   version: number;
@@ -76,6 +78,8 @@ export class TownWorld {
       emote: 0,
       emoteUntil: 0,
       lastEmote: 0,
+      jumpUntil: 0,
+      lastJump: -Infinity,
       profile: { ...profile, id: this.nextId++ },
       version: 1,
     };
@@ -109,6 +113,14 @@ export class TownWorld {
     w.emoteUntil = now + TOWN.emoteMs;
     return true;
   }
+  /** A hop (purely for show; it doesn't change where you can walk). */
+  jump(key: string, now: number) {
+    const w = this.walkers.get(key);
+    if (!w || now - w.lastJump < TOWN.jumpEveryMs) return false;
+    w.lastJump = now;
+    w.jumpUntil = now + TOWN.jumpMs;
+    return true;
+  }
   /** Level and skin arrive after joining (they need account lookups). */
   updateProfile(key: string, patch: Partial<Omit<TownProfile, "id">>) {
     const w = this.walkers.get(key);
@@ -116,7 +128,9 @@ export class TownWorld {
     w.profile = { ...w.profile, ...patch };
     w.version++;
   }
+  private clock = 0;
   step(dt: number, now: number) {
+    this.clock = now;
     for (const w of this.walkers.values()) {
       const next = townStep(w, w.dx, w.dy, dt);
       w.x = next.x;
@@ -135,7 +149,7 @@ export class TownWorld {
       profiles: TownProfile[] = [];
     for (const w of this.walkers.values()) {
       if (w.town !== me.town || (w !== me && !townCanSee(me, w))) continue;
-      walkers.push([w.profile.id, Math.round(w.x), Math.round(w.y), Math.round(w.angle * 100) / 100, w.moving ? 1 : 0, w.emote]);
+      walkers.push([w.profile.id, Math.round(w.x), Math.round(w.y), Math.round(w.angle * 100) / 100, w.moving ? 1 : 0, w.emote, w.jumpUntil > this.clock ? 1 : 0]);
       if (told.get(w.profile.id) !== w.version) {
         told.set(w.profile.id, w.version);
         profiles.push(w.profile);

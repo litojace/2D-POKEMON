@@ -22104,3 +22104,108 @@ body.town-active .header-menu-panel #friends {
 .town-guide .guide-grid {
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
 }
+
+/* Start a room: four clear option cards with an icon, a title and a
+   one-line description; the chosen one gets a gold outline and a tick
+   instead of a solid gold fill. */
+.play-start h3 {
+  margin: 0 0 4px;
+  font: 700 13px/1 "DM Sans", sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim, #a0afc8);
+}
+.play-start .mode-grid {
+  gap: 8px;
+}
+.play-start .mode-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 10px 34px 10px 12px;
+  border-radius: 14px;
+  background: rgba(8, 18, 36, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(139, 174, 229, 0.18);
+  color: #e6ecf7;
+  text-align: left;
+}
+.play-start .mode-card:hover:not(.active) {
+  background: rgba(20, 34, 60, 0.75);
+  box-shadow: inset 0 0 0 1px rgba(139, 174, 229, 0.38);
+}
+.mode-card-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: rgba(139, 174, 229, 0.12);
+  color: #c9d6ee;
+}
+.mode-card-icon svg {
+  width: 20px;
+  height: 20px;
+}
+.mode-card-text {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.play-start .mode-card b {
+  overflow: hidden;
+  font: 600 15px/1.2 "DM Sans", sans-serif;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.play-start .mode-card small {
+  overflow: hidden;
+  font: 400 12px/1.3 "DM Sans", sans-serif;
+  color: #93a4c0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mode-card-check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: none;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ffd65b;
+  color: #2a1a00;
+}
+.mode-card-check svg {
+  width: 12px;
+  height: 12px;
+}
+.play-start .mode-card.active {
+  background: rgba(255, 214, 91, 0.1);
+  box-shadow: inset 0 0 0 1.5px #ffd65b;
+  color: #fff;
+}
+.play-start .mode-card.active .mode-card-icon {
+  background: #ffd65b;
+  color: #2a1a00;
+}
+.play-start .mode-card.active small {
+  color: #d9c58c;
+}
+.play-start .mode-card.active .mode-card-check {
+  display: grid;
+}
+.mode-card .menu-option-icon {
+  color: inherit;
+  stroke: currentColor;
+}
+.play-start .mode-card.active .mode-card-icon .menu-option-icon,
+.mode-card-check .menu-option-icon {
+  color: #2a1a00;
+  stroke: #2a1a00;
+  stroke-width: 2.4;
+}
