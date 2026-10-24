@@ -4,11 +4,10 @@ import { CHARACTERS, type CharacterId, type Reply } from "@arena/shared";
 import {
   TOWN,
   TOWN_EMOTES,
-  TOWN_OBSTACLES,
-  TOWN_PORTALS,
+  TOWN_SPOTS,
   townStep,
   type TownEmote,
-  type TownPortal,
+  type TownSpot,
   type TownProfile,
   type TownState,
 } from "../../../packages/shared/src/town";
@@ -16,7 +15,7 @@ import { FighterRig } from "./animation/rig";
 import { rigAssets } from "./animation/assets";
 import { actionFor, controlPrefs } from "./controls";
 import { menuIcon } from "./menu-icons";
-import { drawCrystal, drawPortal, drawProp, paintTownFloor } from "./town-art";
+import { TownScenery } from "./town-life";
 
 /**
  * Elemental Plaza, the client: a separate Phaser game in a fullscreen layer.
@@ -29,7 +28,7 @@ export interface TownOptions {
   request: (event: string, data?: unknown) => Promise<Reply>;
   reduced: boolean;
   /** Walked into a portal and pressed enter (the town stays open behind it). */
-  onPortal: (portal: TownPortal["id"]) => void;
+  onPortal: (spot: TownSpot) => void;
   /** A button on the town's action bar. */
   onAction: (action: TownAction) => void;
   /** Called after the town has closed (`failed`: the server refused the join). */
@@ -47,7 +46,6 @@ const EMOTE_ICON: Record<TownEmote, string> = { wave: "👋", heart: "❤️", l
 const RIG_SCALE = 0.62;
 /** Rig pixels from the body pivot to the feet (see FighterRig). */
 const FEET = 21;
-const PORTAL_REACH = 78;
 
 interface Body {
   id: number;
@@ -99,7 +97,7 @@ export function openTown(options: TownOptions) {
   let stick = { x: 0, y: 0 };
   let sent = { x: 0, y: 0 },
     sentAt = 0;
-  let nearPortal: TownPortal | undefined;
+  let nearPortal: TownSpot | undefined;
 
   // --- Input -------------------------------------------------------------
   const stickInput = () => {
@@ -126,7 +124,7 @@ export function openTown(options: TownOptions) {
     if ((e.code === "KeyE" || e.code === "Enter") && nearPortal) {
       e.preventDefault();
       held.clear();
-      return void options.onPortal(nearPortal.id);
+      return void options.onPortal(nearPortal);
     }
     const digit = Number(e.key);
     if (digit >= 1 && digit <= TOWN_EMOTES.length) void emote(TOWN_EMOTES[digit - 1]);
@@ -219,7 +217,7 @@ export function openTown(options: TownOptions) {
     };
   });
   const prompt = $("town-prompt");
-  prompt.onclick = () => nearPortal && options.onPortal(nearPortal.id);
+  prompt.onclick = () => nearPortal && options.onPortal(nearPortal);
 
   // --- Server --------------------------------------------------------------
   const onState = (s: TownState) => {
@@ -231,7 +229,9 @@ export function openTown(options: TownOptions) {
       if (!body) {
         if (!scene) continue;
         body = scene.addBody(id, x, y);
+        // Registered before dressing: the rig callback checks the body is still ours.
         bodies.set(id, body);
+        scene.dressBody(body);
       }
       body.tx = x;
       body.ty = y;
@@ -268,8 +268,7 @@ export function openTown(options: TownOptions) {
 
   // --- Scene ---------------------------------------------------------------
   class TownScene extends Phaser.Scene {
-    private crystal!: Phaser.GameObjects.Graphics;
-    private portals: Phaser.GameObjects.Graphics[] = [];
+    private scenery!: TownScenery;
     private loading = new Set<string>();
     private zoomBase = 1;
     private following?: Body;
@@ -278,40 +277,7 @@ export function openTown(options: TownOptions) {
     }
     create() {
       scene = this;
-      const canvas = this.textures.createCanvas("town-floor", TOWN.width, TOWN.height)!;
-      paintTownFloor(canvas.getContext());
-      canvas.refresh();
-      this.add.image(0, 0, "town-floor").setOrigin(0).setDepth(-1000);
-      TOWN_OBSTACLES.forEach((o, i) => {
-        const g = this.add.graphics().setDepth(o.y);
-        drawProp(g, o, i);
-      });
-      const fountain = TOWN_OBSTACLES[0];
-      this.crystal = this.add.graphics().setDepth(fountain.y + 1);
-      for (const p of TOWN_PORTALS) {
-        this.portals.push(this.add.graphics().setDepth(p.y - 1));
-        this.add
-          .text(p.x, p.y - 112, p.label.toUpperCase(), {
-            fontFamily: "Barlow Condensed, sans-serif",
-            fontSize: "22px",
-            fontStyle: "bold",
-            color: p.color,
-            stroke: "#14161c",
-            strokeThickness: 5,
-          })
-          .setOrigin(0.5, 1)
-          .setDepth(p.y + 0.5);
-        this.add
-          .text(p.x, p.y - 136, p.sub, {
-            fontFamily: "DM Sans, sans-serif",
-            fontSize: "13px",
-            color: "#f4efe2",
-            stroke: "#14161c",
-            strokeThickness: 4,
-          })
-          .setOrigin(0.5, 1)
-          .setDepth(p.y + 0.5);
-      }
+      this.scenery = new TownScenery(this, options.reduced);
       const cam = this.cameras.main;
       cam.setBackgroundColor("#2f4224");
       this.fit();
@@ -365,7 +331,6 @@ export function openTown(options: TownOptions) {
           .setOrigin(0.5, 1)
           .setDepth(5000),
       };
-      this.dressBody(body);
       return body;
     }
     /** Nameplate and fighter once we know who this is. */
@@ -437,8 +402,7 @@ export function openTown(options: TownOptions) {
     }
     update(time: number, delta: number) {
       const dt = Math.min(0.1, delta / 1000);
-      drawCrystal(this.crystal, TOWN_OBSTACLES[0].x, TOWN_OBSTACLES[0].y, options.reduced ? 0 : time);
-      TOWN_PORTALS.forEach((p, i) => drawPortal(this.portals[i], p, options.reduced ? 0 : time));
+      this.scenery.update(time, dt, bodies.get(me));
       const mine = bodies.get(me);
       // Your input: keys, stick or a clicked spot.
       let dir = stickInput();
@@ -489,14 +453,14 @@ export function openTown(options: TownOptions) {
           this.following = mine;
           this.cameras.main.startFollow(mine.shadow, true, 0.12, 0.12);
         }
-        // Portal prompt.
-        const near = TOWN_PORTALS.find((p) => Math.hypot(p.x - mine.x, p.y + 10 - mine.y) < PORTAL_REACH);
+        // The nearest place you can use.
+        const near = TOWN_SPOTS.filter((p) => Math.hypot(p.x - mine.x, p.y + 10 - mine.y) < p.reach).sort((a, b) => Math.hypot(a.x - mine.x, a.y - mine.y) - Math.hypot(b.x - mine.x, b.y - mine.y))[0];
         if (near !== nearPortal) {
           nearPortal = near;
           prompt.hidden = !near;
           if (near)
-            prompt.innerHTML = `<b style="color:${near.color}">${esc(near.label)}</b><span>${
-              matchMedia("(pointer: coarse)").matches ? "Tap to enter" : "Press E to enter"
+            prompt.innerHTML = `<b style="color:${near.color}">${esc(near.label)}</b><span>${esc(near.sub)} · ${
+              matchMedia("(pointer: coarse)").matches ? "Tap" : "Press E"
             }</span>`;
         }
       }

@@ -1,15 +1,21 @@
+import { RAID_BOSSES, type RaidBossId } from "./raid-roster.js";
+
 /**
  * Elemental Plaza: the shared town. Layout, collision and movement live here
  * so the server (authoritative) and the client (instant local movement)
  * compute exactly the same step.
+ *
+ * Five districts around a fountain plaza: Arena Gate (east), Raid Hall
+ * (north), Training Grounds (west), Market (south-west) and the Notice Board
+ * (south), with houses, a pond and a windmill around them.
  */
 export const TOWN = {
-  width: 1600,
-  height: 900,
+  width: 3200,
+  height: 2000,
   /** Players per town copy; more open "Town 2", "Town 3"… */
   capacity: 50,
   /** Walking speed, the same for every fighter (px/s). */
-  speed: 230,
+  speed: 240,
   /** Server simulation and update rates (per second). */
   tick: 20,
   send: 10,
@@ -19,77 +25,244 @@ export const TOWN = {
   emoteMs: 2600,
   /** Fighters collide with obstacles as a circle of this radius. */
   radius: 18,
-  spawn: { x: 800, y: 640 },
-  plaza: { x: 800, y: 470, r: 330 },
+  spawn: { x: 1600, y: 1330 },
+  plaza: { x: 1600, y: 1080, r: 340 },
 } as const;
 
 export const TOWN_EMOTES = ["wave", "heart", "laugh", "gg", "fire"] as const;
 export type TownEmote = (typeof TOWN_EMOTES)[number];
 
-/** Round obstacles: the fountain, trees around the plaza, portal pillars. */
-export interface TownObstacle {
+/** Round obstacles (ellipses, the floor is seen at a slant) or boxes. */
+export type TownObstacle =
+  | { shape: "round"; x: number; y: number; rx: number; ry: number; kind: "fountain" | "tree" | "pillar" | "stone" | "statue" | "lamp" | "dummy" | "pond" | "mirror" | "obelisk" | "well" }
+  | { shape: "box"; x: number; y: number; w: number; h: number; kind: "building" | "stall" | "board" | "bench" | "crates" };
+
+/** Things a building is: what the art draws for each footprint. */
+export type TownBuilding = {
+  id: string;
+  kind: "coliseum" | "temple" | "tower" | "house" | "windmill";
+  /** Centre of the footprint's front edge (where it meets the ground). */
   x: number;
   y: number;
-  /** Horizontal and vertical radius (the floor is seen at a slant). */
-  rx: number;
-  ry: number;
-  kind: "fountain" | "tree" | "pillar" | "stone";
+  w: number;
+  /** Depth of the footprint (how far back the walls go). */
+  d: number;
+  variant?: number;
+};
+
+export type TownSpotId =
+  | "arena"
+  | "raids"
+  | "boss-rush"
+  | "shop"
+  | "wardrobe"
+  | "missions"
+  | "training"
+  | "leaderboard";
+/** A place you walk up to: press E (or tap) to open what it offers. */
+export interface TownSpot {
+  id: TownSpotId;
+  x: number;
+  y: number;
+  label: string;
+  sub: string;
+  color: string;
+  /** How close you must stand (world px). */
+  reach: number;
+  /** Raid Hall statues open the Raid Hub at their boss. */
+  boss?: RaidBossId;
+  /** Shop stalls open the Shop at a tab. */
+  tab?: "today" | "champions" | "mythic" | "collections";
 }
-export interface TownPortal {
-  id: "raids" | "arena" | "boss-rush" | "shop" | "missions";
+
+export interface TownDistrict {
+  id: "arena" | "raid" | "training" | "market" | "board";
   x: number;
   y: number;
   label: string;
   sub: string;
   color: string;
 }
-export const TOWN_PORTALS: readonly TownPortal[] = [
-  { id: "raids", x: 800, y: 105, label: "Raid Hub", sub: "Bosses · Peril 1–3", color: "#b59bff" },
-  { id: "arena", x: 1430, y: 470, label: "Arena", sub: "Duels · Teams · Arcade", color: "#ffd65b" },
-  { id: "boss-rush", x: 170, y: 470, label: "Boss Rush", sub: "Weekly run", color: "#ff7a4f" },
-  { id: "shop", x: 300, y: 800, label: "Shop", sub: "Today's picks", color: "#7fe7ff" },
-  { id: "missions", x: 1300, y: 800, label: "Missions", sub: "Daily goals", color: "#9be07a" },
+export const TOWN_DISTRICTS: readonly TownDistrict[] = [
+  { id: "arena", x: 2700, y: 1080, label: "Arena Gate", sub: "Duels · Teams · Free-for-all", color: "#ffd65b" },
+  { id: "raid", x: 1600, y: 560, label: "Raid Hall", sub: "Seven bosses · Raid of the Day", color: "#b59bff" },
+  { id: "training", x: 620, y: 900, label: "Training Grounds", sub: "Bots · Solo test · Boss Rush", color: "#ff7a4f" },
+  { id: "market", x: 720, y: 1580, label: "Market", sub: "Shop · Wardrobe", color: "#7fe7ff" },
+  { id: "board", x: 1600, y: 1740, label: "Notice Board", sub: "Daily missions · Top players", color: "#9be07a" },
+];
+
+export const TOWN_BUILDINGS: readonly TownBuilding[] = [
+  { id: "coliseum", kind: "coliseum", x: 2700, y: 1010, w: 520, d: 210 },
+  { id: "raid-hall", kind: "temple", x: 1600, y: 450, w: 620, d: 170 },
+  { id: "boss-rush", kind: "tower", x: 360, y: 700, w: 150, d: 90 },
+  { id: "windmill", kind: "windmill", x: 2860, y: 420, w: 150, d: 90 },
+  // Houses around the edge of town.
+  { id: "house-1", kind: "house", x: 2230, y: 380, w: 210, d: 110, variant: 0 },
+  { id: "house-2", kind: "house", x: 960, y: 360, w: 200, d: 110, variant: 1 },
+  { id: "house-3", kind: "house", x: 2260, y: 1700, w: 220, d: 110, variant: 2 },
+  { id: "house-4", kind: "house", x: 2560, y: 1880, w: 200, d: 100, variant: 0 },
+  { id: "house-5", kind: "house", x: 250, y: 1300, w: 200, d: 110, variant: 1 },
+  { id: "house-6", kind: "house", x: 1100, y: 1880, w: 210, d: 100, variant: 2 },
+  { id: "house-7", kind: "house", x: 3020, y: 1450, w: 200, d: 110, variant: 1 },
+];
+
+/** Raid Hall statues stand in an arc in front of the hall. */
+const STATUE_ORDER: RaidBossId[] = ["grumblecrag", "tidewyrm", "gloomshade", "somnara", "prismatail", "emberwing", "storm-twins"];
+// Four on the left, three on the right (a pedestal waits for the next boss),
+// with a wide aisle up the middle to the hall doors.
+const STATUE_X = [1145, 1250, 1355, 1460, 1740, 1845, 1950, 2055];
+const statueAt = (x: number) => ({ x, y: Math.round(650 - ((x - 1600) / 460) ** 2 * 60) });
+export const TOWN_STATUES = STATUE_ORDER.map((boss, i) => ({ boss, ...statueAt(STATUE_X[i]) }));
+/** The empty pedestal at the end of the right-hand row. */
+export const TOWN_NEXT_STATUE = statueAt(STATUE_X[7]);
+
+/** Market stalls: their footprint centres. */
+export const TOWN_STALLS = [
+  { x: 520, y: 1520, tab: "champions" as const, label: "Champion skins", color: "#ff7a9b" },
+  { x: 720, y: 1490, tab: "today" as const, label: "Today's picks", color: "#7fe7ff" },
+  { x: 920, y: 1520, tab: "collections" as const, label: "Collections", color: "#ffd65b" },
+];
+export const TOWN_POND = { x: 2620, y: 1520, rx: 190, ry: 110 };
+export const TOWN_DUMMIES = [
+  { x: 560, y: 900 },
+  { x: 660, y: 950 },
+  { x: 760, y: 900 },
+];
+
+export const TOWN_SPOTS: readonly TownSpot[] = [
+  { id: "arena", x: 2700, y: 1060, label: "Arena Gate", sub: "Start or join a match", color: "#ffd65b", reach: 90 },
+  { id: "raids", x: 1600, y: 500, label: "Raid Hall", sub: "Open the Raid Hub", color: "#b59bff", reach: 80 },
+  ...TOWN_STATUES.map((s) => ({
+    id: "raids" as const,
+    x: s.x,
+    y: s.y + 34,
+    label: RAID_BOSSES[s.boss].name,
+    sub: RAID_BOSSES[s.boss].epithet,
+    color: RAID_BOSSES[s.boss].color,
+    reach: 50,
+    boss: s.boss,
+  })),
+  { id: "boss-rush", x: 360, y: 750, label: "Boss Rush", sub: "This week's run", color: "#ff7a4f", reach: 70 },
+  { id: "training", x: 660, y: 1010, label: "Training Grounds", sub: "Battle a bot or test skills", color: "#ff9b6a", reach: 80 },
+  ...TOWN_STALLS.map((s) => ({ id: "shop" as const, x: s.x, y: s.y + 62, label: s.label, sub: "Shop", color: s.color, reach: 60, tab: s.tab })),
+  { id: "wardrobe", x: 1110, y: 1630, label: "Wardrobe", sub: "Change your look", color: "#bfefff", reach: 60 },
+  { id: "missions", x: 1600, y: 1740, label: "Notice Board", sub: "Daily missions", color: "#9be07a", reach: 80 },
+  { id: "leaderboard", x: 2240, y: 1300, label: "Champions' Obelisk", sub: "Top players this month", color: "#ffe58f", reach: 70 },
 ];
 
 function buildObstacles(): TownObstacle[] {
-  const { x, y, r } = TOWN.plaza;
-  const list: TownObstacle[] = [{ x, y, rx: 96, ry: 72, kind: "fountain" }];
-  // Eight element stones around the fountain.
+  const { x, y } = TOWN.plaza;
+  const list: TownObstacle[] = [{ shape: "round", x, y, rx: 100, ry: 76, kind: "fountain" }];
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * Math.PI * 2 - Math.PI / 2;
-    list.push({ x: x + Math.cos(a) * 150, y: y + Math.sin(a) * 150 * 0.78, rx: 16, ry: 12, kind: "stone" });
+    list.push({ shape: "round", x: x + Math.cos(a) * 175, y: y + Math.sin(a) * 175 * 0.78, rx: 16, ry: 12, kind: "stone" });
   }
-  // A ring of trees, leaving the five paths open.
-  for (let i = 0; i < 14; i++) {
-    const a = (i / 14) * Math.PI * 2 + 0.2,
-      tx = x + Math.cos(a) * (r + 70),
-      ty = y + Math.sin(a) * (r + 70) * 0.78;
-    if (TOWN_PORTALS.some((p) => Math.hypot(p.x - tx, p.y - ty) < 190)) continue;
-    list.push({ x: tx, y: ty, rx: 30, ry: 22, kind: "tree" });
-  }
-  // Each portal arch has two pillars; the gap between them is open.
-  for (const p of TOWN_PORTALS) {
-    list.push({ x: p.x - 49, y: p.y, rx: 12, ry: 10, kind: "pillar" });
-    list.push({ x: p.x + 49, y: p.y, rx: 12, ry: 10, kind: "pillar" });
-  }
+  for (const b of TOWN_BUILDINGS) list.push({ shape: "box", x: b.x, y: b.y - b.d / 2, w: b.w, h: b.d, kind: "building" });
+  for (const s of [...TOWN_STATUES, TOWN_NEXT_STATUE]) list.push({ shape: "round", x: s.x, y: s.y, rx: 30, ry: 16, kind: "statue" });
+  for (const s of TOWN_STALLS) list.push({ shape: "box", x: s.x, y: s.y, w: 160, h: 50, kind: "stall" });
+  for (const d of TOWN_DUMMIES) list.push({ shape: "round", x: d.x, y: d.y, rx: 14, ry: 10, kind: "dummy" });
+  list.push({ shape: "round", x: TOWN_POND.x, y: TOWN_POND.y, rx: TOWN_POND.rx, ry: TOWN_POND.ry, kind: "pond" });
+  list.push({ shape: "round", x: 1110, y: 1590, rx: 22, ry: 12, kind: "mirror" });
+  list.push({ shape: "round", x: 2240, y: 1260, rx: 30, ry: 18, kind: "obelisk" });
+  list.push({ shape: "box", x: 1600, y: 1690, w: 280, h: 30, kind: "board" });
+  // Lamps around the plaza and along the main roads.
+  const lamps = [
+    [1240, 880], [1960, 880], [1240, 1290], [1960, 1290], [2150, 1010], [2150, 1160], [1500, 760], [1700, 760], [1050, 1010], [1300, 1560], [1900, 1560],
+  ];
+  for (const [lx, ly] of lamps) list.push({ shape: "round", x: lx, y: ly, rx: 8, ry: 6, kind: "lamp" });
+  // Benches facing the fountain.
+  for (const [bx, by] of [[1360, 1280], [1840, 1280], [1360, 880], [1840, 880]]) list.push({ shape: "box", x: bx, y: by, w: 80, h: 18, kind: "bench" });
+  for (const [cx, cy] of [[400, 1600], [1030, 1450], [2520, 1260]]) list.push({ shape: "box", x: cx, y: cy, w: 60, h: 30, kind: "crates" });
+  list.push({ shape: "round", x: 2440, y: 600, rx: 30, ry: 20, kind: "well" });
+  // Trees: a forest border plus groves, kept off roads, districts and buildings.
+  for (const t of TOWN_TREES) list.push({ shape: "round", x: t.x, y: t.y, rx: 26, ry: 18, kind: "tree" });
   return list;
 }
+
+/** Roads the trees keep clear of: plaza → each district, and an outer loop. */
+export const TOWN_ROADS: readonly [number, number, number, number][] = [
+  [1600, 1080, 2700, 1080],
+  [1600, 1080, 1600, 520],
+  [1600, 1080, 640, 960],
+  [1600, 1080, 760, 1600],
+  [1600, 1080, 1600, 1760],
+  [640, 960, 360, 760],
+  [2700, 1080, 2620, 1360],
+  [1600, 520, 2230, 420],
+  [1600, 520, 960, 400],
+  [2700, 1080, 2860, 460],
+  [760, 1600, 1100, 1880],
+  [1600, 1760, 2260, 1720],
+  [640, 960, 250, 1320],
+];
+const nearRoad = (x: number, y: number, pad: number) =>
+  TOWN_ROADS.some(([x1, y1, x2, y2]) => {
+    const dx = x2 - x1,
+      dy = y2 - y1,
+      t = Math.max(0, Math.min(1, ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy)));
+    return Math.hypot(x - (x1 + dx * t), y - (y1 + dy * t)) < pad;
+  });
+const rnd = (i: number) => {
+  const v = Math.sin(i * 127.1 + 311.7) * 43758.5453;
+  return v - Math.floor(v);
+};
+function buildTrees() {
+  const trees: { x: number; y: number; variant: number }[] = [];
+  const clear = (x: number, y: number) =>
+    !nearRoad(x, y, 120) &&
+    Math.hypot((x - TOWN.plaza.x) / 1.25, y - TOWN.plaza.y) > TOWN.plaza.r + 90 &&
+    !TOWN_DISTRICTS.some((d) => Math.hypot((d.x - x) / 1.4, d.y - y) < 260) &&
+    !TOWN_BUILDINGS.some((b) => x > b.x - b.w / 2 - 70 && x < b.x + b.w / 2 + 70 && y > b.y - b.d - 160 && y < b.y + 90) &&
+    Math.hypot((x - TOWN_POND.x) / TOWN_POND.rx, (y - TOWN_POND.y) / TOWN_POND.ry) > 1.5 &&
+    trees.every((t) => Math.hypot(t.x - x, (t.y - y) * 1.3) > 85);
+  // A ring of forest just inside the map edge.
+  for (let i = 0; i < 260 && trees.length < 90; i++) {
+    const side = i % 4,
+      along = rnd(i) * (side % 2 ? TOWN.height : TOWN.width),
+      inset = 60 + rnd(i + 0.3) * 120;
+    const x = side === 0 ? along : side === 1 ? TOWN.width - inset : side === 2 ? along : inset,
+      y = side === 0 ? inset + 40 : side === 1 ? along : side === 2 ? TOWN.height - inset : along;
+    if (clear(x, y)) trees.push({ x: Math.round(x), y: Math.round(y), variant: i % 3 });
+  }
+  // Groves between districts.
+  for (let i = 0; i < 400 && trees.length < 150; i++) {
+    const x = 200 + rnd(i * 3 + 11) * (TOWN.width - 400),
+      y = 220 + rnd(i * 7 + 5) * (TOWN.height - 400);
+    if (clear(x, y)) trees.push({ x: Math.round(x), y: Math.round(y), variant: (i + 1) % 3 });
+  }
+  return trees;
+}
+export const TOWN_TREES = buildTrees();
 export const TOWN_OBSTACLES: readonly TownObstacle[] = buildObstacles();
 
 /** Keep a point out of every obstacle and inside the map. */
 export function townCollide(x: number, y: number) {
   const r = TOWN.radius;
   for (const o of TOWN_OBSTACLES) {
-    // Work in a space where the ellipse is a circle.
-    const ax = o.rx + r,
-      ay = o.ry + r * 0.78,
-      dx = (x - o.x) / ax,
-      dy = (y - o.y) / ay,
-      d = Math.hypot(dx, dy);
-    if (d < 1) {
-      const k = d > 1e-6 ? 1 / d : 1;
-      x = o.x + dx * k * ax + (d > 1e-6 ? 0 : ax);
-      y = o.y + dy * k * ay;
+    if (o.shape === "round") {
+      // Work in a space where the ellipse is a circle.
+      const ax = o.rx + r,
+        ay = o.ry + r * 0.78,
+        dx = (x - o.x) / ax,
+        dy = (y - o.y) / ay,
+        d = Math.hypot(dx, dy);
+      if (d < 1) {
+        const k = d > 1e-6 ? 1 / d : 1;
+        x = o.x + dx * k * ax + (d > 1e-6 ? 0 : ax);
+        y = o.y + dy * k * ay;
+      }
+    } else {
+      // A box, grown by the walker's radius: leave by the nearest side.
+      const hw = o.w / 2 + r,
+        hh = o.h / 2 + r * 0.78;
+      const dx = x - o.x,
+        dy = y - o.y;
+      if (Math.abs(dx) < hw && Math.abs(dy) < hh) {
+        const px = hw - Math.abs(dx),
+          py = hh - Math.abs(dy);
+        if (px < py) x = o.x + Math.sign(dx || 1) * hw;
+        else y = o.y + Math.sign(dy || 1) * hh;
+      }
     }
   }
   return {

@@ -1191,11 +1191,13 @@ function syncTown() {
     character: selected,
     request,
     reduced: reducedMotion,
-    onPortal: (portal) => {
-      if (portal === "raids") void showRaidBestiary();
-      else if (portal === "shop") void accountsUI.showShop();
-      else if (portal === "missions") void accountsUI.showMissions();
-      else if (portal === "boss-rush") void accountsUI.showAdventure("expedition");
+    onPortal: (spot) => {
+      if (spot.id === "raids") void accountsUI.showRaidHub(spot.boss ?? state?.raid?.boss);
+      else if (spot.id === "shop") void accountsUI.showShop(spot.tab);
+      else if (spot.id === "wardrobe") void accountsUI.showWardrobe();
+      else if (spot.id === "missions") void accountsUI.showMissions();
+      else if (spot.id === "boss-rush") void accountsUI.showAdventure("expedition");
+      else if (spot.id === "leaderboard") $("leaderboard").click();
       else homeNavigation.open("play");
     },
     onAction: (action) => {
