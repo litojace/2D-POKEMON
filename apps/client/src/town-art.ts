@@ -174,23 +174,23 @@ function plaza(ctx: Ctx) {
   // A compass star of the eight elements around the fountain.
   const elements = Object.values(CHARACTERS).map((c) => hex(c.color));
   ctx.fillStyle = "#d9cfb8";
-  ellipse(ctx, x, y, 128, 100);
+  ellipse(ctx, x, y, 158, 124);
   ctx.fill();
   elements.forEach((c, i) => {
     const a = (i / 8) * Math.PI * 2 - Math.PI / 2;
     ctx.fillStyle = c;
     ctx.globalAlpha = 0.75;
     ctx.beginPath();
-    ctx.moveTo(x + Math.cos(a) * 124, y + Math.sin(a) * 124 * 0.78);
-    ctx.lineTo(x + Math.cos(a + 0.2) * 100, y + Math.sin(a + 0.2) * 100 * 0.78);
-    ctx.lineTo(x + Math.cos(a - 0.2) * 100, y + Math.sin(a - 0.2) * 100 * 0.78);
+    ctx.moveTo(x + Math.cos(a) * 156, y + Math.sin(a) * 156 * 0.78);
+    ctx.lineTo(x + Math.cos(a + 0.13) * 134, y + Math.sin(a + 0.13) * 134 * 0.78);
+    ctx.lineTo(x + Math.cos(a - 0.13) * 134, y + Math.sin(a - 0.13) * 134 * 0.78);
     ctx.closePath();
     ctx.fill();
     ctx.globalAlpha = 1;
   });
   ctx.strokeStyle = "rgba(90,78,58,0.45)";
   ctx.lineWidth = 3;
-  ellipse(ctx, x, y, 128, 100);
+  ellipse(ctx, x, y, 158, 124);
   ctx.stroke();
 }
 
@@ -1357,44 +1357,237 @@ export function stallSprite(color: string, goods: number): Sprite {
   };
 }
 
-/** The fountain's stone basin and column (its water is animated). */
-export function fountainSprite(): Sprite {
+/**
+ * The fountain, in two pictures so falling water can pass between them:
+ * the basin (stone wall, rim and pool) and the column with its two bowls.
+ * Both are anchored at the basin's centre; FOUNTAIN gives the shape in
+ * world units from that centre, so the animated water lines up.
+ */
+export const FOUNTAIN = {
+  basin: { rx: 114, ry: 64, wall: 22, rim: 13 },
+  pool: { rx: 99, ry: 53, dy: 3 },
+  mid: { dy: -78, rx: 56, ry: 19, depth: 22 },
+  top: { dy: -134, rx: 25, ry: 8.5, depth: 12 },
+  spout: { dy: -156 },
+};
+const STONE = { light: "#e4dac4", mid: "#c9bda3", dark: "#9a8e76", deep: "#6f6553", line: "rgba(80,68,48,0.35)" };
+
+/** Ashlar blocks on a curved wall seen from the front (only the near half shows). */
+function curvedBlocks(ctx: Ctx, cx: number, cy: number, rx: number, ry: number, h: number, rows: number) {
+  ctx.strokeStyle = STONE.line;
+  ctx.lineWidth = 1;
+  for (let r = 1; r < rows; r++) {
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + (h * r) / rows, rx, ry, 0, 0.02, Math.PI - 0.02);
+    ctx.stroke();
+  }
+  for (let r = 0; r < rows; r++)
+    for (let k = 0; k < 14; k++) {
+      const a = ((k + (r % 2) * 0.5) / 14) * Math.PI;
+      if (a < 0.05 || a > Math.PI - 0.05) continue;
+      const x = cx + Math.cos(a) * rx,
+        y = cy + Math.sin(a) * ry + (h * r) / rows;
+      ctx.beginPath();
+      ctx.moveTo(x, y + 1);
+      ctx.lineTo(x, y + h / rows - 1);
+      ctx.stroke();
+    }
+}
+
+export function fountainBase(): Sprite {
+  const W = 280,
+    H = 190,
+    cx = 140,
+    cy = 80;
+  const { rx, ry, wall, rim } = FOUNTAIN.basin;
   return {
-    w: 240,
-    h: 220,
-    ax: 120,
-    ay: 160,
+    w: W,
+    h: H,
+    ax: cx,
+    ay: cy,
     draw(ctx) {
-      const cx = 120,
-        cy = 150;
-      ctx.fillStyle = "#6e6452";
-      ellipse(ctx, cx, cy + 8, 108, 62);
+      // Wet, darker paving and a soft contact shadow around the basin.
+      softShadow(ctx, cx + 8, cy + wall + 6, rx + 30, ry + 22, 0.32);
+      ctx.fillStyle = "rgba(70,90,100,0.18)";
+      ellipse(ctx, cx, cy + wall, rx + 16, ry + 12);
       ctx.fill();
-      const rim = ctx.createLinearGradient(0, cy - 60, 0, cy + 60);
-      rim.addColorStop(0, "#d6ccb6");
-      rim.addColorStop(1, "#9c917c");
-      ctx.fillStyle = rim;
-      ellipse(ctx, cx, cy, 104, 58);
+      // The basin's outer wall: a cylinder, lit from the upper left.
+      const side = ctx.createLinearGradient(cx - rx, 0, cx + rx, 0);
+      side.addColorStop(0, STONE.dark);
+      side.addColorStop(0.3, STONE.light);
+      side.addColorStop(0.65, STONE.mid);
+      side.addColorStop(1, STONE.deep);
+      ctx.fillStyle = side;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI);
+      ctx.lineTo(cx - rx, cy + wall);
+      ctx.ellipse(cx, cy + wall, rx, ry, 0, Math.PI, 0, true);
+      ctx.closePath();
       ctx.fill();
-      const water = ctx.createRadialGradient(cx - 20, cy - 10, 6, cx, cy, 92);
-      water.addColorStop(0, "#a6f0ff");
-      water.addColorStop(0.6, "#4fb2d8");
-      water.addColorStop(1, "#2b7fa8");
+      curvedBlocks(ctx, cx, cy, rx, ry, wall, 2);
+      // A plinth course along the foot.
+      ctx.fillStyle = "rgba(60,52,40,0.35)";
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + wall - 3, rx + 1, ry + 1, 0, 0.05, Math.PI - 0.05);
+      ctx.ellipse(cx, cy + wall + 1, rx + 1, ry + 1, 0, Math.PI - 0.05, 0.05, true);
+      ctx.fill();
+      // The rim: a broad coping stone with a rounded lit edge.
+      ctx.fillStyle = STONE.mid;
+      ellipse(ctx, cx, cy, rx, ry);
+      ctx.fill();
+      const top = ctx.createLinearGradient(0, cy - ry, 0, cy + ry);
+      top.addColorStop(0, STONE.light);
+      top.addColorStop(1, STONE.mid);
+      ctx.fillStyle = top;
+      ellipse(ctx, cx, cy - 2, rx - 1, ry - 1.5);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.45)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy - 2, rx - 2, ry - 2.5, 0, Math.PI * 1.05, Math.PI * 1.75);
+      ctx.stroke();
+      // Coping joints.
+      ctx.strokeStyle = STONE.line;
+      ctx.lineWidth = 1.2;
+      for (let k = 0; k < 16; k++) {
+        const a = (k / 16) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(a) * (rx - rim - 1), cy - 2 + Math.sin(a) * (ry - rim * 0.56 - 1));
+        ctx.lineTo(cx + Math.cos(a) * (rx - 1), cy - 2 + Math.sin(a) * (ry - 1.5));
+        ctx.stroke();
+      }
+      // Inner wall (in shade) down to the water.
+      const { rx: px, ry: py, dy } = FOUNTAIN.pool;
+      ctx.fillStyle = STONE.deep;
+      ellipse(ctx, cx, cy - 1, px + 1, py + 1);
+      ctx.fill();
+      // The pool: deep at the edges, bright in the middle, sky reflected on the far side.
+      const water = ctx.createRadialGradient(cx - 20, cy + dy - 12, 6, cx, cy + dy, px);
+      water.addColorStop(0, "#8fe3f4");
+      water.addColorStop(0.45, "#4fb4d4");
+      water.addColorStop(0.85, "#2a7ea4");
+      water.addColorStop(1, "#1d5f80");
       ctx.fillStyle = water;
-      ellipse(ctx, cx, cy - 2, 90, 46);
+      ellipse(ctx, cx, cy + dy, px - 1, py - 4);
       ctx.fill();
-      // Column and upper bowl.
-      const col = ctx.createLinearGradient(cx - 12, 0, cx + 12, 0);
-      col.addColorStop(0, "#9c917c");
-      col.addColorStop(0.5, "#ece3cf");
-      col.addColorStop(1, "#8d826d");
-      ctx.fillStyle = col;
-      ctx.fillRect(cx - 12, cy - 86, 24, 84);
-      ctx.fillStyle = "#c9bfa8";
-      ellipse(ctx, cx, cy - 86, 42, 14);
+      // Rim reflection on the water's far side and a coin-strewn floor glint.
+      ctx.fillStyle = "rgba(255,255,255,0.18)";
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + dy - 2, px - 6, py - 10, 0, Math.PI * 1.08, Math.PI * 1.92);
+      ctx.ellipse(cx, cy + dy + 2, px - 14, py - 16, 0, Math.PI * 1.92, Math.PI * 1.08, true);
       ctx.fill();
-      ctx.fillStyle = "#6fc8e8";
-      ellipse(ctx, cx, cy - 88, 34, 9);
+      for (let k = 0; k < 14; k++) {
+        const a = rnd(k * 7) * Math.PI * 2,
+          d = 0.25 + rnd(k * 11) * 0.55;
+        ctx.fillStyle = k % 3 ? "rgba(255,214,120,0.55)" : "rgba(220,230,235,0.5)";
+        ellipse(ctx, cx + Math.cos(a) * px * d, cy + dy + Math.sin(a) * py * d * 0.8 + 4, 2.4, 1.3);
+        ctx.fill();
+      }
+      // The column's foot standing in the water.
+      ctx.fillStyle = STONE.dark;
+      ellipse(ctx, cx, cy + dy + 2, 30, 11);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.25)";
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + dy + 2, 34, 13, 0, 0.1, Math.PI - 0.1);
+      ctx.stroke();
+    },
+  };
+}
+
+export function fountainTop(): Sprite {
+  const W = 160,
+    H = 210,
+    cx = 80,
+    cy = 190;
+  const { mid, top, spout } = FOUNTAIN;
+  const bowl = (y: number, rx: number, ry: number, depth: number) => {
+    // Underside: a shallow cup, darker toward the bottom.
+    const under = (ctx: Ctx) => {
+      const g = ctx.createLinearGradient(cx - rx, 0, cx + rx, 0);
+      g.addColorStop(0, STONE.dark);
+      g.addColorStop(0.35, STONE.light);
+      g.addColorStop(1, STONE.deep);
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + y, rx, ry, 0, 0, Math.PI);
+      ctx.quadraticCurveTo(cx - rx * 0.6, cy + y + depth * 1.4, cx, cy + y + depth);
+      ctx.quadraticCurveTo(cx + rx * 0.6, cy + y + depth * 1.4, cx + rx, cy + y);
+      ctx.fill();
+      // Scalloped lip.
+      ctx.fillStyle = STONE.mid;
+      for (let k = 0; k <= 10; k++) {
+        const a = (k / 10) * Math.PI;
+        ellipse(ctx, cx + Math.cos(a) * rx, cy + y + Math.sin(a) * ry + 2, rx / 9, 3.5);
+        ctx.fill();
+      }
+      ctx.fillStyle = STONE.light;
+      ellipse(ctx, cx, cy + y, rx, ry);
+      ctx.fill();
+      ctx.fillStyle = STONE.deep;
+      ellipse(ctx, cx, cy + y + 1, rx - 5, ry - 3);
+      ctx.fill();
+      const w = ctx.createRadialGradient(cx - rx * 0.3, cy + y - 2, 1, cx, cy + y + 1, rx);
+      w.addColorStop(0, "#a6f0ff");
+      w.addColorStop(1, "#3c9cc4");
+      ctx.fillStyle = w;
+      ellipse(ctx, cx, cy + y + 2, rx - 7, ry - 4.5);
+      ctx.fill();
+    };
+    return under;
+  };
+  const column = (ctx: Ctx, y0: number, y1: number, r0: number, r1: number) => {
+    const g = ctx.createLinearGradient(cx - r0, 0, cx + r0, 0);
+    g.addColorStop(0, STONE.dark);
+    g.addColorStop(0.35, STONE.light);
+    g.addColorStop(0.7, STONE.mid);
+    g.addColorStop(1, STONE.deep);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(cx - r0, cy + y0);
+    ctx.lineTo(cx - r1, cy + y1);
+    ctx.lineTo(cx + r1, cy + y1);
+    ctx.lineTo(cx + r0, cy + y0);
+    ctx.closePath();
+    ctx.fill();
+    // Fluting.
+    ctx.strokeStyle = "rgba(90,78,58,0.25)";
+    ctx.lineWidth = 1;
+    for (let k = -2; k <= 2; k++) {
+      ctx.beginPath();
+      ctx.moveTo(cx + k * r0 * 0.36, cy + y0 - 2);
+      ctx.lineTo(cx + k * r1 * 0.36, cy + y1 + 2);
+      ctx.stroke();
+    }
+  };
+  const ring = (ctx: Ctx, y: number, rx: number) => {
+    ctx.fillStyle = STONE.mid;
+    ellipse(ctx, cx, cy + y, rx, rx * 0.34);
+    ctx.fill();
+    ctx.fillStyle = STONE.light;
+    ellipse(ctx, cx, cy + y - 2, rx - 1, rx * 0.3);
+    ctx.fill();
+  };
+  return {
+    w: W,
+    h: H,
+    ax: cx,
+    ay: cy,
+    draw(ctx) {
+      // Lower column: a carved shaft with a moulded base.
+      ring(ctx, FOUNTAIN.pool.dy - 2, 24);
+      column(ctx, FOUNTAIN.pool.dy - 6, mid.dy + 6, 17, 12);
+      ring(ctx, mid.dy + 14, 16);
+      bowl(mid.dy, mid.rx, mid.ry, mid.depth)(ctx);
+      // Upper column and the small bowl.
+      column(ctx, mid.dy + 2, top.dy + 4, 9, 6);
+      ring(ctx, mid.dy, 12);
+      bowl(top.dy, top.rx, top.ry, top.depth)(ctx);
+      // The finial the spout rises from.
+      ctx.fillStyle = STONE.mid;
+      ctx.fillRect(cx - 3, cy + spout.dy, 6, top.dy - spout.dy + 2);
+      ctx.fillStyle = STONE.light;
+      ellipse(ctx, cx, cy + spout.dy, 5, 4);
       ctx.fill();
     },
   };

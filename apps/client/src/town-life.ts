@@ -20,7 +20,9 @@ import {
   WINDMILL_HUB,
   buildingSprite,
   chimneyOf,
-  fountainSprite,
+  FOUNTAIN,
+  fountainBase,
+  fountainTop,
   paintGround,
   propSprite,
   rnd,
@@ -85,6 +87,7 @@ export class TownScenery {
   private sails?: Phaser.GameObjects.Image;
   private flags: { x: number; y: number; color: number; depth: number; w: number; g?: Phaser.GameObjects.Graphics }[] = [];
   private waterG: Phaser.GameObjects.Graphics;
+  private waterBackG: Phaser.GameObjects.Graphics;
   private crystalG: Phaser.GameObjects.Graphics;
   private skyG: Phaser.GameObjects.Graphics;
   private birdShadowG: Phaser.GameObjects.Graphics;
@@ -110,7 +113,8 @@ export class TownScenery {
     this.props();
     this.labels();
     for (const f of this.flags) f.g = scene.add.graphics().setDepth(f.depth);
-    this.waterG = scene.add.graphics().setDepth(TOWN.plaza.y + 1);
+    this.waterBackG = scene.add.graphics().setDepth(TOWN.plaza.y - 0.2);
+    this.waterG = scene.add.graphics().setDepth(TOWN.plaza.y + 0.1);
     this.crystalG = scene.add.graphics().setDepth(TOWN.plaza.y + 2);
     this.skyG = scene.add.graphics().setDepth(9000);
     this.birdShadowG = scene.add.graphics().setDepth(-400);
@@ -178,7 +182,10 @@ export class TownScenery {
     const s = this.scene;
     // Fountain, element stones, lamps, crates, well, dummies…
     const f = TOWN_OBSTACLES[0];
-    place(s, "town-fountain", fountainSprite(), f.x, f.y + 10, f.y);
+    // The fountain: basin, then falling water behind the column, the column
+    // and bowls, then the water in front (see drawFountain).
+    place(s, "town-fountain-base", fountainBase(), f.x, f.y, f.y - 0.4);
+    place(s, "town-fountain-top", fountainTop(), f.x, f.y, f.y);
     const kinds = new Set(["stone", "lamp", "crates", "well", "dummy", "mirror", "obelisk", "board"]);
     for (const o of TOWN_OBSTACLES) {
       if (!kinds.has(o.kind)) continue;
@@ -293,20 +300,35 @@ export class TownScenery {
   private life() {
     const s = this.scene;
     if (this.reduced) return;
-    // Fountain spray from the upper bowl.
+    // The spout: a small jet that rises from the finial and falls back
+    // into the top bowl.
     const f = TOWN_OBSTACLES[0];
-    bake(s, "town-drop", softBlob("200,240,255"), 1);
+    bake(s, "town-drop", softBlob("215,245,255"), 1);
     s.add
-      .particles(f.x, f.y - 82, "town-drop", {
-        speed: { min: 60, max: 95 },
-        angle: { min: 205, max: 335 },
-        gravityY: 230,
-        scale: { start: 0.09, end: 0.05 },
-        alpha: { start: 0.9, end: 0.2 },
-        lifespan: 820,
-        frequency: 18,
+      .particles(f.x, f.y + FOUNTAIN.spout.dy, "town-drop", {
+        speed: { min: 95, max: 120 },
+        angle: { min: 262, max: 278 },
+        gravityY: 420,
+        scale: { start: 0.07, end: 0.045 },
+        alpha: { start: 0.95, end: 0.35 },
+        lifespan: 560,
+        frequency: 14,
       })
-      .setDepth(f.y + 1.5);
+      .setDepth(f.y + 0.15);
+    // Spray and mist where the falling water meets the pool.
+    const land = FOUNTAIN.mid.rx + 16;
+    s.add
+      .particles(0, 0, "town-drop", {
+        emitZone: { type: "edge", source: new Phaser.Geom.Ellipse(f.x, f.y + FOUNTAIN.pool.dy, land * 2, land * 0.94), quantity: 40 },
+        speedY: { min: -60, max: -25 },
+        speedX: { min: -14, max: 14 },
+        gravityY: 260,
+        scale: { start: 0.06, end: 0.03 },
+        alpha: { start: 0.8, end: 0 },
+        lifespan: 340,
+        frequency: 22,
+      })
+      .setDepth(f.y + 0.12);
     // Cloud shadows drifting over the town.
     bake(s, "town-cloud", softBlob("10,20,10"), 1);
     for (let i = 0; i < 6; i++)
@@ -383,13 +405,7 @@ export class TownScenery {
   }
 
   private drawWater(t: number) {
-    const g = this.waterG.clear();
-    const f = TOWN_OBSTACLES[0];
-    // Ripples in the fountain basin.
-    for (let k = 0; k < 3; k++) {
-      const p = (t * 0.6 + k / 3) % 1;
-      g.lineStyle(2, 0xe8fbff, 0.5 * (1 - p)).strokeEllipse(f.x, f.y + 8, 40 + p * 120, 18 + p * 58);
-    }
+    this.drawFountain(t);
     // Pond: shimmer lines and paddling ducks.
     const p = TOWN_POND;
     const pg = this.critterG;
@@ -415,10 +431,80 @@ export class TownScenery {
     }
   }
 
+  /**
+   * Water spilling over each bowl's lip in thin sheets, the strands behind
+   * the column drawn first, then the near ones; ripples, foam and glints
+   * on the pool.
+   */
+  private drawFountain(t: number) {
+    const f = TOWN_OBSTACLES[0],
+      { pool, mid, top } = FOUNTAIN,
+      back = this.waterBackG.clear(),
+      front = this.waterG.clear(),
+      still = this.reduced;
+    const poolY = f.y + pool.dy;
+    // Ripples spreading from where the water lands.
+    for (let k = 0; k < 3 && !still; k++) {
+      const p = (t * 0.45 + k / 3) % 1,
+        rx = mid.rx + 18 + p * (pool.rx - mid.rx - 22);
+      back.lineStyle(1.5, 0xe8fbff, 0.45 * (1 - p)).strokeEllipse(f.x, poolY, rx * 2, rx * 2 * (pool.ry / pool.rx));
+    }
+    // Glints twinkling on the pool.
+    for (let k = 0; k < 12 && !still; k++) {
+      const a = rnd(k * 5.3) * TAU,
+        d = 0.3 + rnd(k * 9.1) * 0.6,
+        tw = Math.max(0, Math.sin(t * 2.2 + k * 1.7));
+      back.fillStyle(0xffffff, 0.75 * tw).fillEllipse(f.x + Math.cos(a) * pool.rx * d, poolY + Math.sin(a) * pool.ry * d, 5 * tw + 1, 1.6);
+    }
+    // A sheet falling from a bowl's lip to the surface below it.
+    const sheet = (fromY: number, fromRx: number, fromRy: number, toY: number, toRx: number, toRy: number, strands: number, width: number) => {
+      for (let k = 0; k < strands; k++) {
+        const a = (k / strands) * TAU + 0.04,
+          sin = Math.sin(a),
+          g = sin < 0 ? back : front,
+          x0 = f.x + Math.cos(a) * fromRx,
+          y0 = fromY + sin * fromRy + 2,
+          x1 = f.x + Math.cos(a) * toRx,
+          y1 = toY + sin * toRy,
+          // The water leaves the lip outward, then curves down.
+          cx = x0 + Math.cos(a) * (toRx - fromRx) * 0.9,
+          cy = y0 + 2;
+        const sway = still ? 0 : Math.sin(t * 6 + k * 1.3) * 0.8;
+        const curve = new Phaser.Curves.QuadraticBezier(
+          new Phaser.Math.Vector2(x0, y0),
+          new Phaser.Math.Vector2(cx + sway, cy),
+          new Phaser.Math.Vector2(x1 + sway, y1),
+        );
+        const pts = curve.getPoints(10);
+        g.lineStyle(width, 0xbfeeff, sin < 0 ? 0.32 : 0.42).strokePoints(pts);
+        g.lineStyle(width * 0.4, 0xffffff, sin < 0 ? 0.25 : 0.45).strokePoints(pts);
+        // Bright beads running down the strand.
+        if (!still)
+          for (let b = 0; b < 2; b++) {
+            const u = (t * 1.6 + k * 0.37 + b * 0.5) % 1,
+              p = curve.getPoint(u * u);
+            g.fillStyle(0xffffff, 0.8).fillCircle(p.x, p.y, 1.4);
+          }
+      }
+    };
+    sheet(f.y + top.dy, top.rx - 2, top.ry - 1, f.y + mid.dy + 2, top.rx + 9, (top.rx + 9) * (mid.ry / mid.rx), 14, 2);
+    sheet(f.y + mid.dy, mid.rx - 3, mid.ry - 1.5, poolY, mid.rx + 16, (mid.rx + 16) * (pool.ry / pool.rx), 30, 3);
+    // Foam where the sheet lands, and the jet above the spout.
+    const land = mid.rx + 16,
+      landRy = land * (pool.ry / pool.rx);
+    for (let k = 0; k < 26; k++) {
+      const a = (k / 26) * TAU,
+        g = Math.sin(a) < 0 ? back : front,
+        wob = still ? 1 : 0.7 + 0.3 * Math.sin(t * 9 + k * 2.1);
+      g.fillStyle(0xf4fdff, 0.75 * wob).fillEllipse(f.x + Math.cos(a) * land, poolY + Math.sin(a) * landRy, 9 * wob, 4);
+    }
+    front.lineStyle(3, 0xd8f6ff, 0.75).lineBetween(f.x, f.y + FOUNTAIN.spout.dy, f.x, f.y + FOUNTAIN.spout.dy - 12 - (still ? 0 : Math.sin(t * 8) * 1.5));
+  }
+
   private drawCrystal(t: number) {
     const f = TOWN_OBSTACLES[0];
     const bob = Math.sin(t * 1.4) * 5,
-      cy = f.y - 150 + bob,
+      cy = f.y - 215 + bob,
       g = this.crystalG.clear();
     g.fillStyle(0xfff0be, 0.18).fillCircle(f.x, cy, 50);
     g.fillStyle(0xe9f7ff, 1).fillTriangle(f.x, cy - 36, f.x + 22, cy, f.x, cy + 36);
