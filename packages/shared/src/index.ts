@@ -1161,7 +1161,7 @@ export const MUTATORS = {
   },
   calm: {
     name: "Calm court",
-    description: "Always the Stone Court: no arena hazards.",
+    description: "Always the Coliseum Sands: no arena hazards.",
   },
   crown: {
     name: "Crown Hill",
@@ -1791,8 +1791,8 @@ const vent = (x: number, y: number, offset: number): Hazard => ({
 export const ARENAS: Record<ArenaId, ArenaDef> = {
   classic: {
     id: "classic",
-    name: "Stone Court",
-    tip: "The original court: four pillars and a centre block for cover.",
+    name: "Coliseum Sands",
+    tip: "The coliseum floor: four stone blocks and a centre block for cover.",
     obstacles: OBSTACLES,
     hazards: [],
   },

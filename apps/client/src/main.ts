@@ -168,6 +168,7 @@ import { matchReportReplySchema } from "../../../packages/shared/src/accounts";
 import { masteryMatches, setMastery, setWornSkins } from "./fighter-selection";
 import { shareResult } from "./share-card";
 import { openTown } from "./town";
+import { coliseumBlockFrame, paintColiseumBlock, paintColiseumFloor } from "./arena-coliseum";
 import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
 const audio = new AudioManager();
 audio.start();
@@ -1761,9 +1762,7 @@ function renderBattle() {
   $("round-label").textContent = state.practice
     ? "FREE PRACTICE"
     : `ROUND ${state.round} · BEST OF ${roundsNeeded(state.mutators) * 2 - 1}`;
-  $("network").textContent = state.practice
-    ? "SOLO PRACTICE · SERVER-VALIDATED COMBAT"
-    : "AUTHORITATIVE ONLINE MATCH";
+  $("network").textContent = `${state.raid ? "Raid" : (state.arena ?? "classic") === "classic" ? "Coliseum" : ARENAS[state.arena!].name} · ${state.practice ? "Practice" : state.raid ? "Boss fight" : "Online match"}`;
   const seconds = Math.ceil(state.remaining);
   $("timer").textContent = state.practice
     ? "∞"
@@ -2464,32 +2463,92 @@ class ArenaScene extends Phaser.Scene {
   flashUntil = new Map<string, number>();
   comboShown = new Map<string, number>();
   floor?: Phaser.GameObjects.Image;
-  floorArena: ArenaId = "classic";
+  floorArena: ArenaId | "coliseum" = "classic";
   floorScale = new Map<string, number>();
+  /**
+   * The coliseum court's stone blocks, as pictures that sort with the
+   * fighters by where they stand (so you can be in front of or behind one).
+   */
+  blocks: { img: Phaser.GameObjects.Image; o: (typeof OBSTACLES)[number] }[] = [];
   /** Bake an arena's floor once (2x on dense screens); returns its texture key. */
-  floorTexture(id: ArenaId) {
+  floorTexture(id: ArenaId | "coliseum") {
     const key = `arena-floor-${id}`;
     const bake = floorBake();
     if (!this.textures.exists(key)) {
       this.floorScale.set(key, bake);
-      const g = this.make.graphics({}, false);
-      paintArenaFloor(scaledPainter(g, bake), ARENAS[id]);
-      g.generateTexture(key, RULES.width * bake, RULES.height * bake);
-      g.destroy();
+      if (id === "coliseum") {
+        const canvas = document.createElement("canvas");
+        canvas.width = RULES.width * bake;
+        canvas.height = RULES.height * bake;
+        const ctx = canvas.getContext("2d")!;
+        ctx.scale(bake, bake);
+        paintColiseumFloor(ctx);
+        this.textures.addCanvas(key, canvas);
+      } else {
+        const g = this.make.graphics({}, false);
+        paintArenaFloor(scaledPainter(g, bake), ARENAS[id]);
+        g.generateTexture(key, RULES.width * bake, RULES.height * bake);
+        g.destroy();
+      }
     }
     return key;
   }
-  showArena(id: ArenaId) {
+  /** Bake and place the coliseum's blocks (once). */
+  private ensureBlocks() {
+    if (this.blocks.length) return;
+    const bake = floorBake();
+    OBSTACLES.forEach((o, i) => {
+      const frame = coliseumBlockFrame(o),
+        key = `coliseum-block-${i}`;
+      if (!this.textures.exists(key)) {
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.ceil(frame.w * bake);
+        canvas.height = Math.ceil(frame.h * bake);
+        const ctx = canvas.getContext("2d")!;
+        ctx.scale(bake, bake);
+        paintColiseumBlock(ctx, o, i);
+        this.textures.addCanvas(key, canvas);
+      }
+      const img = this.add
+        .image(frame.x, frame.y, key)
+        .setOrigin(0)
+        .setScale(1 / bake)
+        // Sorts by its front edge, in the same band as the fighters (see FIGHTER_DEPTH).
+        .setDepth(fighterDepth(o.y + o.h))
+        .setVisible(false);
+      this.blocks.push({ img, o });
+    });
+  }
+  /** The duel court is the coliseum's sands; raids keep their own floors. */
+  showArena(arena: ArenaId, raid: boolean) {
+    const id: ArenaId | "coliseum" = arena === "classic" && !raid ? "coliseum" : arena;
     if (id === this.floorArena || !this.floor) return;
     this.floorArena = id;
     const label = document.querySelector<HTMLElement>(".map-label");
-    if (label)
+    if (label) {
+      label.hidden = id === "coliseum";
       label.innerHTML =
         id === "cloud-deck"
           ? "CLOUD DECK <span>SOMNARA’S DREAM</span>"
-          : `${ARENAS[id].name.toUpperCase()} <span>ELEMENT ARENA</span>`;
+          : `${ARENAS[arena].name.toUpperCase()} <span>ELEMENT ARENA</span>`;
+    }
     const key = this.floorTexture(id);
     this.floor.setTexture(key).setScale(1 / (this.floorScale.get(key) ?? 1));
+    if (id === "coliseum") this.ensureBlocks();
+    for (const b of this.blocks) b.img.setVisible(id === "coliseum");
+  }
+  /**
+   * A block hides whoever stands just behind it, so it turns see-through
+   * while a fighter is there (they stay readable; the block still blocks).
+   */
+  private fadeBlocks(players: readonly { x: number; y: number }[]) {
+    if (this.floorArena !== "coliseum") return;
+    for (const { img, o } of this.blocks) {
+      const behind = players.some(
+        (p) => p.x > o.x - 30 && p.x < o.x + o.w + 30 && p.y < o.y + o.h && p.y > o.y - 95,
+      );
+      img.setAlpha(img.alpha + ((behind ? 0.45 : 1) - img.alpha) * 0.25);
+    }
   }
   /** Knockout moment: camera push-in multiplier and its end time. */
   koZoom = 1;
@@ -3014,7 +3073,8 @@ class ArenaScene extends Phaser.Scene {
         : obstaclesAt(state.arena, arenaClock()),
     );
     useSpeedScale(state.mutators?.includes("speed") ? MUTATOR_RULES.speed : 1);
-    this.showArena(state.arena ?? "classic");
+    this.showArena(state.arena ?? "classic", !!state.raid);
+    this.fadeBlocks(state.players);
     this.accumulator += Math.min(delta, 100);
     while (this.accumulator >= 1000 / RULES.tick) {
       this.accumulator -= 1000 / RULES.tick;
@@ -3473,6 +3533,8 @@ class ArenaScene extends Phaser.Scene {
       else if (p.raidLook?.aura)
         drawCollectionAura(g, p.raidLook.aura, x, y + 10, _time, reducedMotion);
       rig.setVisible(true);
+      // On the coliseum court fighters sort with the blocks by where they stand.
+      rig.setDepth(this.floorArena === "coliseum" ? fighterDepth(y) : 2);
       const casting =
         rig.controller.state === "basic" ||
         rig.controller.state.startsWith("skill") ||
@@ -3640,6 +3702,14 @@ class ArenaScene extends Phaser.Scene {
   }
 }
 /** Floors are baked at 2x on dense screens so they stay sharp when zoomed. */
+/**
+ * Depth for things standing on the court: a narrow band around the rigs'
+ * usual depth (2), ordered by ground y, so effects drawn above (3+) and
+ * floor marks below (<1) keep their places.
+ */
+function fighterDepth(y: number) {
+  return 2 + y / 10000;
+}
 function floorBake() {
   return renderScale() > 1.25 ? 2 : 1;
 }

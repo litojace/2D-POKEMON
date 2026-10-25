@@ -53,7 +53,7 @@ describe("party rules", () => {
     a.chargeUlt(p, 10);
     expect(p.ult).toBeCloseTo(10 * MUTATOR_RULES.turboUlt);
   });
-  it("orb rain doubles orbs; calm court stays on the Stone Court", () => {
+  it("orb rain doubles orbs; calm court stays on the Coliseum Sands", () => {
     const a = duel(["orbs"]);
     tick(a, RULES.orbFirst / 2 + 0.2);
     expect(a.orbs).toHaveLength(1);
