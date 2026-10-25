@@ -168,7 +168,7 @@ import { matchReportReplySchema } from "../../../packages/shared/src/accounts";
 import { masteryMatches, setMastery, setWornSkins } from "./fighter-selection";
 import { shareResult } from "./share-card";
 import { openTown } from "./town";
-import { courtBlockFrame, courtBlocks, isCourt, paintCourtBlock, paintCourtFloor, SHIFTING_BLOCK, type CourtId } from "./arena-courts";
+import { courtBlockFrame, courtBlocks, isCourt, paintCourtBlock, paintCourtFloor, paintCourtStands, SHIFTING_BLOCK, STANDS, type CourtId } from "./arena-courts";
 import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
 const audio = new AudioManager();
 audio.start();
@@ -2473,6 +2473,8 @@ class ArenaScene extends Phaser.Scene {
    */
   courtBlocks = new Map<CourtId, { img: Phaser.GameObjects.Image; o: { x: number; y: number; w: number; h: number }; shifting?: boolean }[]>();
   activeCourt?: CourtId;
+  /** What lies beyond each court's back edge, shown above it (world y < 0). */
+  stands = new Map<CourtId, Phaser.GameObjects.Image>();
   /** Bake an arena's floor once (2x on dense screens); returns its texture key. */
   floorTexture(id: string) {
     const key = `arena-floor-${id}`;
@@ -2546,6 +2548,23 @@ class ArenaScene extends Phaser.Scene {
     this.floor.setTexture(key).setScale(1 / (this.floorScale.get(key) ?? 1));
     if (court) this.ensureBlocks(court);
     for (const [cid, list] of this.courtBlocks) for (const b of list) b.img.setVisible(cid === court && !b.shifting);
+    if (court && !this.stands.has(court)) {
+      const bake = floorBake(),
+        skey = `court-stands-${court}`;
+      if (!this.textures.exists(skey)) {
+        const canvas = document.createElement("canvas");
+        canvas.width = RULES.width * bake;
+        canvas.height = STANDS * bake;
+        const ctx = canvas.getContext("2d")!;
+        ctx.scale(bake, bake);
+        paintCourtStands(ctx, court);
+        this.textures.addCanvas(skey, canvas);
+      }
+      this.stands.set(court, this.add.image(0, -STANDS, skey).setOrigin(0).setScale(1 / bake).setDepth(-10));
+    }
+    for (const [cid, img] of this.stands) img.setVisible(cid === court);
+    // The frame grows to show the stands on desktop (see .court-view in CSS).
+    document.body.classList.toggle("court-view", !!court);
   }
   /**
    * A block hides whoever stands just behind it, so it turns see-through
@@ -3022,6 +3041,7 @@ class ArenaScene extends Phaser.Scene {
       `${state?.code ?? "menu"}:${state?.round ?? 0}:${myId ?? ""}`,
       delta,
       reducedMotion,
+      this.activeCourt ? STANDS : 0,
     );
     this.cameras.main
       .setZoom(view.zoomX * this.koZoom, view.zoomY * this.koZoom)

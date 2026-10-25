@@ -32,8 +32,10 @@ export class FollowCamera {
     key: string,
     delta: number,
     reduced: boolean,
+    /** World the view may show above the court (y < 0), e.g. its stands. */
+    top = 0,
   ): CameraView {
-    const base = arenaViewport(width, height, landscape);
+    const base = arenaViewport(width, height, landscape, top);
     const snap = key !== this.identity;
     this.identity = key;
     const blend = 1 - Math.exp(-clamp(delta, 0, 100) / 180);
@@ -45,7 +47,7 @@ export class FollowCamera {
     const zoomX = base.zoomX * this.zoom,
       zoomY = base.zoomY * this.zoom;
     const halfW = Math.min(800, Math.max(1, width) / zoomX / 2);
-    const halfH = Math.min(450, Math.max(1, height) / zoomY / 2);
+    const halfH = Math.min(450 + top / 2, Math.max(1, height) / zoomY / 2);
     const aheadX = focus
       ? clamp(focus.vx * 0.16, -65, 65) +
         (focus.attacking ? Math.cos(focus.angle) * 45 : 0)
@@ -60,14 +62,14 @@ export class FollowCamera {
       1600 - halfW,
     );
     const ty = clamp(
-      focus && !reduced ? focus.y + aheadY : 450,
-      halfH,
+      focus && !reduced ? focus.y + aheadY : 450 - top / 2,
+      halfH - top,
       900 - halfH,
     );
     this.x = snap || reduced ? tx : this.x + (tx - this.x) * blend;
     this.y = snap || reduced ? ty : this.y + (ty - this.y) * blend;
     this.x = clamp(this.x, halfW, 1600 - halfW);
-    this.y = clamp(this.y, halfH, 900 - halfH);
+    this.y = clamp(this.y, halfH - top, 900 - halfH);
     return {
       x: this.x,
       y: this.y,

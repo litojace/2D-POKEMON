@@ -1086,3 +1086,225 @@ export function paintCourtBlock(c: Ctx, o: Rect, index: number, id: CourtId) {
   }
   c.restore();
 }
+
+// ─────────────────────────── Stands ───────────────────────────
+
+/** How much of the world above the court (y < 0) the match view shows on a court. */
+export const STANDS = 96;
+/**
+ * What lies beyond each court's back edge, painted into a W×STANDS picture
+ * whose bottom row meets the court's top row (world y = 0). Nobody can walk
+ * here, so it's free to be crowds, sea or walls.
+ */
+export function paintCourtStands(c: Ctx, id: CourtId) {
+  const S = STANDS;
+  if (id === "classic") {
+    // Tiers of seats rising away, a crowd on them, the parapet's coping at the front.
+    const back = c.createLinearGradient(0, 0, 0, S);
+    back.addColorStop(0, "#4e4434");
+    back.addColorStop(1, "#8f7f62");
+    c.fillStyle = back;
+    c.fillRect(0, 0, W, S);
+    const rows = 4;
+    for (let r = 0; r < rows; r++) {
+      const y = 2 + r * 20;
+      c.fillStyle = mix("#5e5240", "#8c7c5f", r / rows);
+      c.fillRect(0, y, W, 20);
+      c.fillStyle = mix("#7d6d52", "#b8a684", r / rows);
+      c.fillRect(0, y + 14, W, 6);
+      seed = 400 + r * 31;
+      for (let x = 6 + (r % 2) * 9; x < W; x += 15 + R() * 6) {
+        if (R() < 0.08) continue;
+        const shirt = ["#c94f4f", "#3f7fc9", "#e0b43a", "#7b5cc9", "#4f9a5a", "#d9824a", "#e8e2d4", "#2f3a52"][Math.floor(R() * 8)];
+        const skin = ["#f2d2a2", "#d9a878", "#a8703f", "#7a4f2e", "#f6e0c0"][Math.floor(R() * 5)];
+        const bob = R() < 0.25 ? -3 : 0;
+        c.fillStyle = mix(shirt, "#000000", 0.15);
+        c.beginPath();
+        c.roundRect(x - 5, y + 4 + bob, 10, 11, [4, 4, 1, 1]);
+        c.fill();
+        c.fillStyle = shirt;
+        c.fillRect(x - 5, y + 4 + bob, 5, 10);
+        c.fillStyle = skin;
+        ell(c, x, y + 1 + bob, 3.6, 3.8);
+        c.fill();
+        c.fillStyle = "rgba(0,0,0,0.25)";
+        ell(c, x + 1.4, y + 1.6 + bob, 1.8, 3);
+        c.fill();
+        if (bob) {
+          c.strokeStyle = skin;
+          c.lineWidth = 2;
+          c.beginPath();
+          c.moveTo(x + 4, y + 5 + bob);
+          c.lineTo(x + 7, y - 4 + bob);
+          c.stroke();
+        }
+      }
+    }
+    grain(c, 0, 0, W, S - 12, 0.25, 77, [
+      [40, 1],
+      [8, 0.5],
+    ]);
+    // The parapet's coping, and the banners' poles and heads above it.
+    c.fillStyle = "#8f7f60";
+    c.fillRect(0, S - 12, W, 12);
+    c.fillStyle = "#e6dac0";
+    c.fillRect(0, S - 12, W, 6);
+    for (const [x, col] of [
+      [150, "#d9a52a"],
+      [560, "#c9482e"],
+      [1040, "#2f8fc9"],
+      [1450, "#4f9a3e"],
+    ] as const) {
+      c.fillStyle = "#3a2e22";
+      c.fillRect(x - 2, S - 46, 4, 46);
+      c.fillStyle = "#e9c25a";
+      ell(c, x, S - 47, 4, 4);
+      c.fill();
+      const g = c.createLinearGradient(x - 20, 0, x + 20, 0);
+      g.addColorStop(0, mix(col, "#000000", 0.25));
+      g.addColorStop(0.45, mix(col, "#ffffff", 0.15));
+      g.addColorStop(1, mix(col, "#000000", 0.3));
+      c.fillStyle = g;
+      c.fillRect(x - 20, S - 38, 40, 38);
+      c.fillStyle = "rgba(255,240,200,0.8)";
+      c.beginPath();
+      c.moveTo(x, S - 30);
+      c.lineTo(x + 7, S - 19);
+      c.lineTo(x, S - 8);
+      c.lineTo(x - 7, S - 19);
+      c.closePath();
+      c.fill();
+      c.fillStyle = "#2a2014";
+      c.fillRect(x - 22, S - 40, 44, 4);
+    }
+  } else if (id === "tide-pools") {
+    // Open sea: deeper further out, whitecaps, a couple of rocks.
+    const sea = c.createLinearGradient(0, 0, 0, S);
+    sea.addColorStop(0, "#0f4a66");
+    sea.addColorStop(1, "#1f6f8f");
+    c.fillStyle = sea;
+    c.fillRect(0, 0, W, S);
+    seed = 61;
+    for (let k = 0; k < 9; k++) {
+      const y = 6 + k * 10 + R() * 4;
+      c.strokeStyle = `rgba(255,255,255,${0.12 + (k / 9) * 0.2})`;
+      c.lineWidth = 1.5;
+      c.beginPath();
+      const ph = R() * 6;
+      for (let x = 0; x <= W; x += 8) {
+        const yy = y + Math.sin(x / (30 + k * 3) + ph) * 2;
+        if (x === 0) c.moveTo(x, yy);
+        else c.lineTo(x, yy);
+      }
+      c.stroke();
+    }
+    for (const [x, y, s] of [
+      [240, 40, 1],
+      [1180, 26, 1.4],
+      [1420, 60, 0.8],
+    ] as const) {
+      c.fillStyle = "#3d4a4c";
+      ell(c, x, y, 26 * s, 12 * s);
+      c.fill();
+      c.fillStyle = "#6a7a7a";
+      ell(c, x - 6 * s, y - 4 * s, 16 * s, 7 * s);
+      c.fill();
+      c.strokeStyle = "rgba(255,255,255,0.55)";
+      c.lineWidth = 2;
+      ell(c, x, y + 6 * s, 32 * s, 8 * s);
+      c.stroke();
+    }
+  } else if (id === "ember-forge") {
+    // The forge wall rising into smoke: dark courses, chains, the furnaces' arches.
+    const wall = c.createLinearGradient(0, 0, 0, S);
+    wall.addColorStop(0, "#16110e");
+    wall.addColorStop(1, "#3a3531");
+    c.fillStyle = wall;
+    c.fillRect(0, 0, W, S);
+    seed = 71;
+    for (let row = 0; row < 8; row++)
+      for (let x = (row % 2) * -24; x < W; ) {
+        const w = 44 + R() * 30;
+        c.fillStyle = mix("#2e2a27", "#4c4641", R() * (row / 8));
+        c.fillRect(x + 1, row * 12 + 1, w - 2, 11);
+        x += w;
+      }
+    for (const x of [260, 800, 1340]) {
+      const g = c.createLinearGradient(0, S - 60, 0, S);
+      g.addColorStop(0, "#ff9a3a");
+      g.addColorStop(1, "#ffd27a");
+      c.fillStyle = "#1a1210";
+      c.beginPath();
+      c.roundRect(x - 46, S - 64, 92, 64, [46, 46, 0, 0]);
+      c.fill();
+      c.fillStyle = g;
+      c.beginPath();
+      c.roundRect(x - 38, S - 56, 76, 56, [38, 38, 0, 0]);
+      c.fill();
+      const glow = c.createRadialGradient(x, S - 20, 10, x, S - 20, 140);
+      glow.addColorStop(0, "rgba(255,140,60,0.35)");
+      glow.addColorStop(1, "rgba(255,140,60,0)");
+      c.fillStyle = glow;
+      c.fillRect(x - 140, 0, 280, S);
+    }
+    for (const x of [100, 530, 1070, 1500]) {
+      c.strokeStyle = "#5a524c";
+      c.lineWidth = 3;
+      c.setLineDash([6, 4]);
+      c.beginPath();
+      c.moveTo(x, 0);
+      c.lineTo(x, S - 20);
+      c.stroke();
+      c.setLineDash([]);
+    }
+  } else {
+    // Beyond the ruined wall: the wall's broken top, and woodland behind.
+    c.fillStyle = "#4f7a34";
+    c.fillRect(0, 0, W, S);
+    grain(c, 0, 0, W, S, 0.5, 81, [
+      [30, 1],
+      [6, 0.5],
+    ]);
+    seed = 82;
+    for (let i = 0; i < 40; i++) {
+      const x = R() * W,
+        y = 10 + R() * 40,
+        r = 20 + R() * 26;
+      const g = c.createRadialGradient(x - r * 0.3, y - r * 0.4, 2, x, y, r);
+      g.addColorStop(0, ["#7aa64c", "#6f9a48", "#8bbf5a"][i % 3]);
+      g.addColorStop(1, ["#2f5a24", "#3f6a2c", "#36602a"][i % 3]);
+      c.fillStyle = g;
+      ell(c, x, y, r, r * 0.8);
+      c.fill();
+    }
+    // The wall's upper courses and its broken coping.
+    const face = c.createLinearGradient(0, S - 34, 0, S);
+    face.addColorStop(0, "#c4b896");
+    face.addColorStop(1, "#b8a984");
+    c.fillStyle = face;
+    c.beginPath();
+    c.moveTo(0, S);
+    for (let x = 0; x <= W; x += 40) c.lineTo(x, S - 26 - Math.abs(Math.sin(x * 0.013) * 14) - (x % 120 === 0 ? 8 : 0));
+    c.lineTo(W, S);
+    c.closePath();
+    c.fill();
+    for (let row = 0; row < 3; row++)
+      for (let x = (row % 2) * -20; x < W; x += 50) {
+        c.strokeStyle = "rgba(60,46,28,0.3)";
+        c.lineWidth = 1;
+        c.strokeRect(x, S - 11 * (row + 1), 50, 11);
+      }
+    for (let i = 0; i < 18; i++) {
+      const x = R() * W;
+      c.fillStyle = "#3f6a2c";
+      ell(c, x, S - 30 + R() * 8, 14, 6);
+      c.fill();
+    }
+  }
+  // Settle it into the same light as the court.
+  const v = c.createLinearGradient(0, 0, 0, S);
+  v.addColorStop(0, "rgba(10,8,4,0.35)");
+  v.addColorStop(1, "rgba(10,8,4,0)");
+  c.fillStyle = v;
+  c.fillRect(0, 0, W, S);
+}

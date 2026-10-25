@@ -81,3 +81,31 @@ describe("fighter follow camera", () => {
     }
   });
 });
+
+describe("stands above the court", () => {
+  it("fits the court plus the stands on desktop, the court's bottom on the screen's bottom", () => {
+    const top = 96;
+    const view = new FollowCamera().update(1600, 996, false, undefined, "a", 16, false, top);
+    expect(view.zoomX).toBeCloseTo(1);
+    // Shows world y from -top to 900.
+    expect(view.y - 996 / view.zoomY / 2).toBeCloseTo(-top);
+    expect(view.y + 996 / view.zoomY / 2).toBeCloseTo(900);
+  });
+  it("never shows past the stands or below the court when following on a phone", () => {
+    const top = 96;
+    for (const [x, y] of [
+      [0, 0],
+      [1600, 900],
+    ]) {
+      const view = new FollowCamera().update(726, 310, true, focus(x, y), "room:1", 16, false, top);
+      const halfH = 310 / view.zoomY / 2;
+      expect(view.y - halfH).toBeGreaterThanOrEqual(-top - 1e-6);
+      expect(view.y + halfH).toBeLessThanOrEqual(900 + 1e-6);
+    }
+  });
+  it("keeps the old view when there are no stands", () => {
+    const a = new FollowCamera().update(800, 450, false, undefined, "a", 16, false);
+    const b = new FollowCamera().update(800, 450, false, undefined, "a", 16, false, 0);
+    expect(b).toEqual(a);
+  });
+});

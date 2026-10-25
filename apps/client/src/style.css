@@ -21833,3 +21833,23 @@ body.lobby-active #app > footer {
 body.lobby-active #account-profile {
   max-width: none;
 }
+
+/* On a painted court the desktop frame also shows the court's stands (STANDS
+   world px above it, see arena-courts.ts): 1600 × (900 + 96). */
+body.battle-active.court-view:not(.touch-mode) .arena-frame {
+  aspect-ratio: 1600 / 996;
+  width: min(100cqw, calc(100cqh * 1600 / 996 - 4px));
+}
+/* Court view changes the frame aspect after Phaser sized its canvas; pin the
+   canvas to #game (its buffer already matches #game × dpr) like raids do. */
+body.battle-active.court-view #game {
+  position: relative;
+  min-height: 0;
+}
+body.battle-active.court-view #game canvas {
+  position: absolute !important;
+  inset: 0;
+  margin: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
