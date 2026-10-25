@@ -61,8 +61,10 @@ const definitions: Record<Part, { bounds: number[]; pivot: number[] }> = {
   flame: { bounds: [30, -2, 140, 110], pivot: [100, 65] },
 };
 /** A part's crop box once its proportion transform is applied. */
-function box(part: Part) {
-  const [x, y, w, h] = definitions[part].bounds;
+function box(part: Part, dir: Facing) {
+  const [sourceX, y, w, h] = definitions[part].bounds;
+  // Tidefin's blade projects forward in profile; its crop follows the turn.
+  const x = dir === "left" && part === "armR" ? 200 - sourceX - w : sourceX;
   const [x0, y0] = proportioned(part, x, y),
     [x1, y1] = proportioned(part, x + w, y + h);
   return [x0, y0, x1 - x0, y1 - y0].map((v) => +v.toFixed(2));
@@ -101,8 +103,8 @@ function asset(
 ): RigAsset {
   const suffix = skinSuffix(id, look);
   const { pivot: defaultPivot } = definitions[part];
-  const b = box(part);
-  let q = dir === "right" && part === "tail" ? [70, 137] : defaultPivot;
+  const b = box(part, dir);
+  let q = defaultPivot;
   if (dir === "left" || dir === "right") {
     const side = dir === "right" ? 1 : -1;
     const projected: Partial<Record<Part, number>> = {
@@ -113,6 +115,10 @@ function asset(
     };
     if (projected[part] !== undefined)
       q = [100 + side * (projected[part]! - 100), defaultPivot[1]];
+    // The side tail grows from the rear hip; wings fold around the back.
+    if (part === "tail") q = [100 - side * 14, 144];
+    if (part === "wings" && id !== "auralynx")
+      q = [100 - side * 12, id === "terradon" ? 134 : 126];
   }
   q = pivot(part, q[0], q[1]);
   return {

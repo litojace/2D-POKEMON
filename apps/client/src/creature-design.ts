@@ -1,3 +1,4 @@
+import { creatureProfile } from "./creature-profile";
 import type { CharacterId } from "@arena/shared";
 import type { Facing } from "./animation/controller";
 import { awakeningSvg } from "./skins/mythic-art";
@@ -166,7 +167,9 @@ export function paletteFor(id: CharacterId, look?: SkinLook | null): Palette {
 }
 /** Only a skin made for this champion applies. */
 export function lookFor(id: CharacterId, look?: SkinLook | null) {
-  return look && look.skin.startsWith(`${id}-`) && SKIN_ART[look.skin] ? look : null;
+  return look && look.skin.startsWith(`${id}-`) && SKIN_ART[look.skin]
+    ? look
+    : null;
 }
 export function creatureLayers(
   id: CharacterId,
@@ -283,10 +286,6 @@ export function creatureLayers(
     scarf: "",
     flame: "",
   };
-  // Profile tweaks per creature, applied after the shared squeeze below.
-  let profileEye = (x: number) =>
-    eye(x, id === "voltkit" ? p.accent : p.glow, 8, 11);
-  let profileArm = (x: number) => hand(x);
   // Per-creature anatomy (evolved forms). Each block only replaces the parts
   // that make the creature distinct.
   if (id === "voltkit") {
@@ -323,7 +322,6 @@ export function creatureLayers(
     layers.legR = paw(122, 161, 16);
     layers.armL = `${hand(67)}${path("M57 144H77V150H57Z", p.accent)}<circle cx="67" cy="147" r="2.2" fill="${p.glow}" stroke="none"/>`;
     layers.tail = `${tailPath("M124 152Q164 162 178 138Q184 120 170 108Q166 126 154 134Q140 142 122 140Z", body)}${tailPath("M170 108Q156 96 164 80Q168 92 174 92Q174 80 182 72Q186 92 180 106Z", jewel)}${tailPath("M171 104Q166 96 170 88Q174 96 177 98Z", "#fff3b8", ' stroke="none"')}<circle cx="${tailX(152)}" cy="138" r="4" fill="${shine}" stroke="none"/>`;
-    profileArm = (x) => `${hand(x)}${path(`M${x - 10} 144H${x + 10}V150H${x - 10}Z`, p.accent)}`;
   }
   if (id === "tidefin") {
     // Tide corsair: long feathered gill fronds, a bandana with streaming
@@ -342,7 +340,6 @@ export function creatureLayers(
       `${path(`M${x - 2} 150Q${x + 4} 116 ${x + 20} 92Q${x + 30} 114 ${x + 8} 152Z`, `url(#${prefix}-jewel)`)}${line(`M${x + 4} 146Q${x + 10} 120 ${x + 19} 100`, "#ffffff", 1.6, 0.8)}${path(`M${x - 6} 150H${x + 14}L${x + 12} 156H${x - 4}Z`, "#ffe7c2")}`;
     layers.armL = hand(69);
     layers.armR = `${blade(131)}${hand(131)}`;
-    profileArm = (x) => `${blade(x)}${hand(x)}`;
   }
   if (id === "auralynx") {
     // Ascendant lynx monk: tall ears with crystal tips, a forehead gem, a
@@ -371,13 +368,14 @@ export function creatureLayers(
     };
     layers.wings = `<ellipse cx="100" cy="115" rx="74" ry="46" fill="none" stroke="${p.glow}" stroke-width="1.4" stroke-dasharray="3 7" opacity=".45"/>${shard(-2.6, 74, 9)}${shard(-0.5, 74, 7)}${shard(0.9, 74, 8)}${shard(2.4, 74, 6)}`;
     layers.tail = `${tailPath("M124 148Q144 152 148 138Q140 132 124 140Z", body)}${tailPath("M140 134Q148 134 148 140Q146 146 140 146Z", p.accent, ' stroke="none"')}`;
-    profileArm = (x) => gauntlet(x);
   }
   if (id === "lumoth") {
     // Luna moth: feathered antennae, four-lobed wings with eye-spots and
     // glitter, a cloud ruff and a fluffy forelock.
     const fern = (x0: number, dir: number) =>
-      `${line(`M${x0} 60Q${x0 + dir * 10} 34 ${x0 + dir * 28} 16`, p.dark, 2.4)}${[0, 1, 2, 3, 4]
+      `${line(`M${x0} 60Q${x0 + dir * 10} 34 ${x0 + dir * 28} 16`, p.dark, 2.4)}${[
+        0, 1, 2, 3, 4,
+      ]
         .map((i) => {
           const t = 0.2 + i * 0.17;
           const bx = x0 + dir * 28 * t * 1.05,
@@ -388,7 +386,9 @@ export function creatureLayers(
             2,
           );
         })
-        .join("")}<circle cx="${x0 + dir * 28}" cy="16" r="3.5" fill="${p.glow}" stroke="none"/>`;
+        .join(
+          "",
+        )}<circle cx="${x0 + dir * 28}" cy="16" r="3.5" fill="${p.glow}" stroke="none"/>`;
     layers.ears = fern(88, -1) + fern(112, 1);
     const wing = (dir: number) => {
       const x = (v: number) => 100 + dir * v;
@@ -421,7 +421,11 @@ export function creatureLayers(
     layers.armL = "";
     layers.armR = "";
     layers.legL = line("M88 164L84 172M92 164V173M96 164L99 172", p.glow, 3);
-    layers.legR = line("M104 164L101 172M108 164V173M112 164L116 172", p.glow, 3);
+    layers.legR = line(
+      "M104 164L101 172M108 164V173M112 164L116 172",
+      p.glow,
+      3,
+    );
     layers.tail = `${tailPath("M118 156Q136 176 156 166Q148 160 152 152Q140 158 132 150Q130 156 120 150Z", body)}${tailPath("M140 160L146 164", "none", ` stroke="${p.light}" stroke-width="2"`)}`;
   }
   if (id === "terradon") {
@@ -438,10 +442,6 @@ export function creatureLayers(
       return `${e(x, 94, 10.5, 9.5, INK)}${e(x, 96, 5.5, 4.5, p.glow)}<circle cx="${x - 3}" cy="97" r="2" fill="#fff"/>${path(`M${x - 11.5} 92Q${x} ${lid - 4} ${x + 11.5} 92Z`, p.mid)}${path(`M${x - 11.5} 92Q${x} ${lid + 3} ${x + 11.5} 92`, "none", ` stroke="${p.dark}" stroke-width="2"`)}${mood === "focus" ? brow(x, 10, 9) : ""}`;
     };
     layers.eyes = sleepy(81) + sleepy(119);
-    profileEye = (x) => {
-      if (mood !== "normal" && mood !== "focus") return moodEye(x, 10, 9);
-      return `${e(x, 94, 10.5, 9.5, INK)}${e(x, 96, 5.5, 4.5, p.glow)}<circle cx="${x - 3}" cy="97" r="2" fill="#fff"/>${path(`M${x - 11.5} 92Q${x} 80 ${x + 11.5} 92Z`, p.mid)}${mood === "focus" ? brow(x, 10, 9) : ""}`;
-    };
     layers.flame = `${line("M100 62Q98 48 101 38", "#5aa64a", 3.2)}${path("M100 50Q86 40 80 48Q90 56 100 50Z", p.glow)}${path("M100 46Q112 30 122 38Q112 48 100 46Z", p.glow)}${line("M100 50L86 47M100 46L114 38", "#5aa64a", 1.4, 0.7)}${flower(101, 36)}`;
     layers.body = `${e(100, 140, 33, 27)}${e(100, 144, 22, 18, pearl)}${line("M80 136H120M82 148H118", p.mid, 2, 0.6)}`;
     layers.legL = `${paw(76, 162, 17)}${line("M68 168V171M76 169V172M84 168V171", "#f6ead2", 2.4)}`;
@@ -450,7 +450,6 @@ export function creatureLayers(
       `${hand(x)}${path(`M${x - 10} 130Q${x} 118 ${x + 10} 130Q${x} 127 ${x - 10} 130Z`, p.accent)}`;
     layers.armL = pauldron(64);
     layers.armR = pauldron(136);
-    profileArm = (x) => pauldron(x);
     layers.tail = tailPath("M126 156Q146 162 150 152Q140 150 128 148Z", body);
   }
   if (id === "duskveil") {
@@ -471,7 +470,6 @@ export function creatureLayers(
       (mood === "normal"
         ? `<path d="M97 106Q100 109 103 106" stroke="${p.glow}" stroke-width="1.8" fill="none" stroke-linecap="round" opacity=".9"/>`
         : "");
-    profileEye = (x) => glowEye(x);
     layers.body = `${path("M72 116Q100 108 128 116Q136 150 144 172L132 162L124 174L114 162L106 175L98 162L88 174L78 162L66 172L56 166Q64 150 72 116Z", body)}${line("M100 122V160", p.light, 2, 0.35)}${line("M80 150Q84 156 82 162M120 150Q116 156 118 162", p.light, 1.6, 0.3)}`;
     layers.legL = "";
     layers.legR = "";
@@ -497,8 +495,15 @@ export function creatureLayers(
     layers.head = `${headShape}${highlight(78, 74, 24)}${path("M80 96Q100 108 120 96", "none", ` stroke="${p.light}" stroke-width="3" opacity=".45"`)}`;
     if (id === "voltkit") {
       // The glider stripe runs down the back; only the goggle strap shows.
-      layers.head += path("M96 58Q100 56 104 58L102 118Q100 120 98 118Z", p.dark, ' stroke="none" opacity=".7"');
-      layers.flame = path("M60 72Q100 54 140 72L138 79Q100 62 62 79Z", p.accent);
+      layers.head += path(
+        "M96 58Q100 56 104 58L102 118Q100 120 98 118Z",
+        p.dark,
+        ' stroke="none" opacity=".7"',
+      );
+      layers.flame = path(
+        "M60 72Q100 54 140 72L138 79Q100 62 62 79Z",
+        p.accent,
+      );
     }
     if (id === "tidefin")
       layers.flame = `${path("M60 76Q100 58 140 76L138 85Q100 70 62 85Z", p.accent)}${path("M96 78Q90 94 84 104M104 78Q110 94 116 104", "none", ` stroke="${p.accent}" stroke-width="5" stroke-linecap="round"`)}`;
@@ -507,44 +512,29 @@ export function creatureLayers(
       layers.flame = "";
       layers.body = `${e(100, 138, 29, 28)}${line("M86 128Q100 136 114 128M84 142Q100 150 116 142M86 156Q100 162 114 156", p.light, 2, 0.45)}`;
     }
-    if (id === "lumoth") layers.flame = path("M88 62Q86 48 98 46Q94 54 102 56Q100 48 110 46Q118 52 112 62Q100 58 88 62Z", p.accent);
+    if (id === "lumoth")
+      layers.flame = path(
+        "M88 62Q86 48 98 46Q94 54 102 56Q100 48 110 46Q118 52 112 62Q100 58 88 62Z",
+        p.accent,
+      );
     if (id === "cindrake")
       // Dorsal plates down the back.
       layers.body = `${e(100, 138, 31, 28)}${[118, 132, 146].map((y) => path(`M92 ${y + 6}L100 ${y - 4}L108 ${y + 6}Z`, p.accent)).join("")}${highlight(82, 126, 18)}`;
     else if (id !== "duskveil" && id !== "mystowl")
       layers.body = `${e(100, 138, id === "terradon" ? 33 : 29, 28)}${highlight(82, 126, 18)}`;
-    if (id === "tidefin") layers.armR = `${layers.armR.replace(hand(131), "")}${hand(131)}`;
-  } else if (profile) {
-    // Profile: compress depth, show one eye on the facing side and a short snout.
-    const px = (x: number) => 100 + side * (x - 100);
-    const squeeze = (s: string, sx: number, shift: number) =>
-      `<g transform="translate(${side * shift} 0) translate(100 0) scale(${sx} 1) translate(-100 0)">${s}</g>`;
-    if (id === "mystowl")
-      layers.head = `${e(100, 88, 41, 34, face)}${path(`M${px(104)} 74Q${px(120)} 66 ${px(132)} 80Q${px(138)} 100 ${px(118)} 108Q${px(104)} 104 ${px(104)} 74Z`, p.accent)}${path(`M${px(128)} 100L${px(136)} 104L${px(128)} 108Z`, p.glow)}${highlight(70, 70, 22)}`;
-    if (id === "voltkit")
-      layers.head = `${e(100, 88, 41, 33, face)}${path("M64 98Q100 128 136 98Q128 119 100 121Q72 119 64 98Z", p.light, ' stroke="none"')}${e(px(114), 93, 15, 16, p.dark).replace("/>", ' opacity=".22" stroke="none"/>')}${highlight(68, 76, 18)}`;
-    layers.head = squeeze(layers.head, 0.82, 4);
-    layers.ears = squeeze(layers.ears, 0.7, 2);
-    layers.flame = squeeze(layers.flame, 0.75, 3);
-    layers.scarf = squeeze(layers.scarf, 0.75, 4);
-    layers.body = squeeze(layers.body, 0.8, 2);
-    layers.wings = squeeze(layers.wings, id === "auralynx" ? 0.9 : 0.6, id === "auralynx" ? 0 : -side * 4);
-    if (id !== "duskveil" && id !== "mystowl") {
-      layers.head += e(px(136), 100, 7, 6, face);
-      layers.head += `<circle cx="${px(140)}" cy="98" r="1.6" fill="${p.dark}" stroke="none"/>`;
-    }
-    layers.eyes = profileEye(px(id === "duskveil" ? 116 : id === "terradon" ? 117 : 114));
-    // Far limbs tuck behind the body; near limbs swing on the projected pivots.
-    if (id !== "mystowl" && id !== "duskveil") {
-      layers.armL = "";
-      layers.armR = profileArm(px(120));
-      layers.legL = `<g opacity=".8">${paw(px(88), 158)}</g>`;
-      layers.legR = paw(px(112), 162);
-    }
-    if (id === "duskveil") {
-      layers.armL = "";
-      layers.armR = `${path(`M${px(118)} 124Q${px(136)} 134 ${px(136)} 152L${px(124)} 150Q${px(122)} 138 ${px(112)} 132Z`, body)}`;
-    }
+    if (id === "tidefin")
+      layers.armR = `${layers.armR.replace(hand(131), "")}${hand(131)}`;
+  } else if (dir === "left" || dir === "right") {
+    Object.assign(
+      layers,
+      creatureProfile(id, dir, {
+        palette: p,
+        prefix,
+        mood,
+        eye,
+        expression: moodEye,
+      }),
+    );
   }
   // Cragstone skin (menus): glowing cracks, hidden unless the skin is worn.
   // The rig paints its own cracks, and display="none" keeps them out of it.
@@ -552,7 +542,8 @@ export function creatureLayers(
     `<g class="crag-cracks" display="none" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="${d}" stroke="#ff9a2e" stroke-width="4.5" opacity=".35"/><path d="${d}" stroke="#ffcf7a" stroke-width="1.7"/></g>`;
   if (layers.body && !back)
     layers.body += crack("M88 127l6 7-3 6 7 8M113 131l-5 7 4 7");
-  else if (layers.body) layers.body += crack("M90 124l7 9-4 8 8 9M112 128l-6 9 5 8");
+  else if (layers.body)
+    layers.body += crack("M90 124l7 9-4 8 8 9M112 128l-6 9 5 8");
   if (layers.head)
     layers.head += back
       ? crack("M84 70l7 8-3 7 8 6M116 66l-6 9 4 7")
@@ -593,7 +584,9 @@ function dressLayers(
   const stage = look.stage ?? 1;
   const extras = [
     ...(art.accessories ?? []),
-    ...(art.stageAccessories ?? []).filter((s) => stage >= s.stage).map((s) => s.accessory),
+    ...(art.stageAccessories ?? [])
+      .filter((s) => stage >= s.stage)
+      .map((s) => s.accessory),
   ];
   for (const a of extras)
     for (const [part, svg] of accessorySvg(a, id, dir, p))
@@ -621,12 +614,16 @@ export function creatureSvgRenderer(
 ) {
   const { defs, layers } = creatureLayers(id, dir, mood, look);
   const stroke = paletteFor(id, lookFor(id, look)).dark;
+  const lowerParts: CreaturePart[] =
+    dir === "left" || dir === "right"
+      ? ["tail", "wings", "armL", "legL", "legR", "body", "armR"]
+      : ["tail", "wings", "legL", "legR", "body", "armL", "armR"];
   const group = (p: CreaturePart) =>
     `<g class="fighter-${p === "body" ? "torso" : p}">${layers[p]}</g>`;
   return (part?: CreaturePart, viewBox = CREATURE_VIEWBOX) => {
     const content = part
       ? layers[part]
-      : `<ellipse class="fighter-shadow" cx="100" cy="177" rx="40" ry="8" fill="#060d24" opacity=".25"/><g class="fighter-character">${(["tail", "wings", "legL", "legR", "body", "armL", "armR"] as CreaturePart[]).map(group).join("")}<g class="fighter-face">${(["head", "ears", "eyes", "flame"] as CreaturePart[]).map(group).join("")}</g>${group("scarf")}</g>`;
+      : `<ellipse class="fighter-shadow" cx="100" cy="177" rx="40" ry="8" fill="#060d24" opacity=".25"/><g class="fighter-character">${lowerParts.map(group).join("")}<g class="fighter-face">${(["head", "ears", "eyes", "flame"] as CreaturePart[]).map(group).join("")}</g>${group("scarf")}</g>`;
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}">${defs}<g stroke="${stroke}" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round">${content}</g></svg>`;
   };
 }
