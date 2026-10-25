@@ -28,7 +28,7 @@ it("loads a complete front preview with the same textures used in battle", () =>
   for (const look of looks) {
     const all = rigAssets("voltkit", look);
     const front = rigAssets("voltkit", look, ["down"]);
-    expect(all).toHaveLength(60);
+    expect(all).toHaveLength(71);
     expect(front).toHaveLength(16);
     expect(front).toEqual(
       all.filter((asset) => asset.key.startsWith("rig-voltkit-down-")),

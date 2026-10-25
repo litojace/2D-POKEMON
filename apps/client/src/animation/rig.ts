@@ -1,4 +1,5 @@
 import { cosmeticLayer, type Skin } from "./cosmetics";
+import { ContinuousArt } from "./continuous-art";
 import { drawElementGlyph } from "../element-effects";
 import Phaser from "phaser";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
@@ -18,6 +19,7 @@ import {
   rigAssets,
   rigPoint,
   skinSuffix,
+  wholeKey,
   type Part,
   type RigAsset,
 } from "./assets";
@@ -77,6 +79,7 @@ interface Particle {
 }
 
 export class FighterRig {
+  private continuous: ContinuousArt;
   readonly controller = new AnimationController();
   readonly root: Phaser.GameObjects.Container;
   private images = new Map<Part, Phaser.GameObjects.Image>();
@@ -134,6 +137,7 @@ export class FighterRig {
       this.images.set(part, image);
       this.root.add(image);
     }
+    this.continuous = new ContinuousArt(scene, character, assets, this.root);
     this.blinkAt = scene.time.now + 3000 + Math.random() * 4000;
     this.tiltAt = scene.time.now + 4000 + Math.random() * 3000;
   }
@@ -367,7 +371,7 @@ export class FighterRig {
       )!;
       this.images.get(part)!.setPosition(asset.x, asset.y);
     }
-    const profile = dir === "left" || dir === "right";
+    const profile = dir !== "down";
     if (this.character === "auralynx" && !profile) {
       armL.rotation = -0.35;
       armR.rotation = 0.35;
@@ -757,6 +761,34 @@ export class FighterRig {
         (this.suffix ? null : (pose.look?.skin ?? null)) as Skin | null,
       );
       if (image.texture.key !== texture) image.setTexture(texture);
+    }
+    if (dir !== "down") {
+      const expression =
+        dir === "up"
+          ? "normal"
+          : canBlink && (state === "blink" || now < this.blinkUntil)
+            ? "happy"
+            : mood;
+      const key = cosmeticLayer(
+        this.scene,
+        wholeKey(this.character, dir, expression, this.suffix),
+        (this.suffix ? null : (pose.look?.skin ?? null)) as Skin | null,
+      );
+      const shown = this.continuous.render(
+        dir,
+        key,
+        this.images,
+        reduced,
+        now,
+        this.suffix,
+      );
+      for (const [part, image] of this.images)
+        image.setVisible(
+          !shown || (part === "wings" && this.character === "auralynx"),
+        );
+    } else {
+      this.continuous.hide();
+      for (const image of this.images.values()) image.setVisible(true);
     }
     this.effects.clear();
     this.under.clear();

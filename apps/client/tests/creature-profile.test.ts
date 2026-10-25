@@ -45,6 +45,19 @@ describe("authored champion profiles", () => {
       }
   });
 
+  it("gives all eight champions illustrated backs without front-facing eyes", () => {
+    for (const id of FIGHTER_IDS) {
+      const { layers } = creatureLayers(id, "up");
+      expect(layers.head).toContain('data-reference-facing="up"');
+      expect(layers.eyes).not.toContain("<image");
+      expect(layers.eyes).not.toContain("profile-near-eye");
+      expect(svgMarkup(creatureSvg(id, "up"))).not.toMatch(
+        /NaN|undefined|Infinity/,
+      );
+      expect(layers.head).not.toBe(creatureLayers(id, "down").layers.head);
+    }
+  });
+
   it("renders the far shoulder behind the torso while preserving the front order", () => {
     for (const id of FIGHTER_IDS) {
       for (const dir of directions) {

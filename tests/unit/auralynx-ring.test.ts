@@ -51,6 +51,9 @@ class Image {
   setDepth() {
     return this;
   }
+  setVisible() {
+    return this;
+  }
   setAlpha() {
     return this;
   }

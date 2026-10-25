@@ -524,7 +524,8 @@ export function creatureLayers(
       layers.body = `${e(100, 138, id === "terradon" ? 33 : 29, 28)}${highlight(82, 126, 18)}`;
     if (id === "tidefin")
       layers.armR = `${layers.armR.replace(hand(131), "")}${hand(131)}`;
-  } else if (dir === "left" || dir === "right") {
+  }
+  if (dir === "left" || dir === "right" || dir === "up") {
     const painted = creatureProfile(id, dir, {
       palette: p,
       prefix,
@@ -614,21 +615,35 @@ export function creatureSvgRenderer(
   const { defs, layers } = creatureLayers(id, dir, mood, look);
   const stroke = paletteFor(id, lookFor(id, look)).dark;
   const lowerParts: CreaturePart[] =
-    dir === "left" || dir === "right"
-      ? ["tail", "wings", "armL", "legL", "legR", "body", "armR"]
-      : ["tail", "wings", "legL", "legR", "body", "armL", "armR"];
+    dir === "up"
+      ? ["body", "legL", "legR", "armL", "armR", "wings", "tail"]
+      : dir === "left" || dir === "right"
+        ? ["tail", "wings", "armL", "legL", "legR", "body", "armR"]
+        : ["tail", "wings", "legL", "legR", "body", "armL", "armR"];
   const group = (p: CreaturePart) =>
     `<g class="fighter-${p === "body" ? "torso" : p}">${layers[p]}</g>`;
-  return (part?: CreaturePart, viewBox = CREATURE_VIEWBOX) => {
+  return (
+    part?: CreaturePart,
+    viewBox = CREATURE_VIEWBOX,
+    omit: readonly CreaturePart[] = [],
+  ) => {
     if (
       !part &&
       viewBox === CREATURE_VIEWBOX &&
-      (dir === "left" || dir === "right")
+      (dir === "left" || dir === "right" || dir === "up")
     )
       viewBox = profileViewBox(id, dir);
     const content = part
       ? layers[part]
-      : `<ellipse class="fighter-shadow" cx="100" cy="177" rx="40" ry="8" fill="#060d24" opacity=".25"/><g class="fighter-character">${lowerParts.map(group).join("")}<g class="fighter-face">${(["head", "ears", "eyes", "flame"] as CreaturePart[]).map(group).join("")}</g>${group("scarf")}</g>`;
+      : `<ellipse class="fighter-shadow" cx="100" cy="177" rx="40" ry="8" fill="#060d24" opacity=".25"/><g class="fighter-character">${lowerParts
+          .filter((p) => !omit.includes(p))
+          .map(group)
+          .join("")}<g class="fighter-face">${(
+          ["head", "ears", "eyes", "flame"] as CreaturePart[]
+        )
+          .filter((p) => !omit.includes(p))
+          .map(group)
+          .join("")}</g>${omit.includes("scarf") ? "" : group("scarf")}</g>`;
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}">${defs}<g stroke="${stroke}" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round">${content}</g></svg>`;
   };
 }

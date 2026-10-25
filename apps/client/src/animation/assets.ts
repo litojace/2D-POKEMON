@@ -46,6 +46,14 @@ export function moodKey(id: CharacterId, dir: Facing, mood: Mood, suffix = "") {
     ? rigKey(id, dir, "eyes", suffix)
     : `${rigKey(id, dir, "eyes")}-${mood}${suffix}`;
 }
+export function wholeKey(
+  id: CharacterId,
+  dir: Facing,
+  mood: Mood = "normal",
+  suffix = "",
+) {
+  return `rig-${id}-${dir}-whole${mood === "normal" ? "" : `-${mood}`}${suffix}`;
+}
 const definitions: Record<Part, { bounds: number[]; pivot: number[] }> = {
   tail: { bounds: [0, 40, 200, 140], pivot: [130, 137] },
   wings: { bounds: [0, 30, 200, 145], pivot: [100, 115] },
@@ -71,7 +79,7 @@ function box(id: CharacterId, part: Part, dir: Facing) {
   const x = dir === "left" && part === "armR" ? 200 - sourceX - w : sourceX;
   const [x0, y0] = proportioned(part, x, y),
     [x1, y1] = proportioned(part, x + w, y + h);
-  const painted = profile ? profilePartBounds(id, dir, part) : undefined;
+  const painted = dir !== "down" ? profilePartBounds(id, dir, part) : undefined;
   const minX = Math.min(x0, painted ? painted[0] - 2 : x0),
     minY = Math.min(y0, painted ? painted[1] - 2 : y0),
     maxX = Math.max(x1, painted ? painted[0] + painted[2] + 2 : x1),
@@ -130,6 +138,23 @@ function asset(
       q = [100 - side * 12, id === "terradon" ? 134 : 126];
   }
   q = pivot(part, q[0], q[1]);
+  if (dir === "up") {
+    if (part === "armL") q = pivot(part, 80, 122);
+    if (part === "armR") q = pivot(part, 120, 122);
+    if (part === "legL") q = pivot(part, 87, 151);
+    if (part === "legR") q = pivot(part, 113, 151);
+    if (part === "tail")
+      q = [
+        id === "duskveil"
+          ? 123
+          : id === "cindrake"
+            ? 116
+            : id === "tidefin"
+              ? 110
+              : 100,
+        148,
+      ];
+  }
   return {
     key:
       part === "eyes"
@@ -174,6 +199,42 @@ export function rigAssets(
       .flatMap((dir) =>
         MOODS.map((mood) => asset(id, dir, "eyes", mood, look)),
       ),
+    ...directions
+      .filter((dir) => dir !== "down")
+      .flatMap((dir) => {
+        const boxes = parts.map((part) => box(id, part, dir));
+        const x = Math.min(...boxes.map((b) => b[0])) - 2,
+          y = Math.min(...boxes.map((b) => b[1])) - 2;
+        const w = Math.max(...boxes.map((b) => b[0] + b[2])) - x + 2,
+          h = Math.max(...boxes.map((b) => b[1] + b[3])) - y + 2;
+        return (
+          dir === "up"
+            ? (["normal"] as Mood[])
+            : (["normal", ...MOODS] as Mood[])
+        ).map((mood) => ({
+          key: wholeKey(id, dir, mood, skinSuffix(id, look)),
+          url:
+            "data:image/svg+xml;base64," +
+            btoa(
+              creatureSvgRenderer(
+                id,
+                dir,
+                mood,
+                look,
+              )(
+                undefined,
+                [x, y, w, h].join(" "),
+                id === "auralynx" ? ["wings"] : [],
+              ).replace(/<ellipse class="fighter-shadow"[^>]*\/>/, ""),
+            ),
+          width: w,
+          height: h,
+          originX: (100 - x) / w,
+          originY: (130 - y) / h,
+          x: 0,
+          y: 0,
+        }));
+      }),
   ];
 }
 /** A point of the creature art (200×190 canvas) in rig pixels from its root. */

@@ -2,6 +2,8 @@ import type { CharacterId } from "@arena/shared";
 import type { CreaturePart, Mood } from "./creature-design";
 import type { Palette } from "./skins/skin-art";
 import reference from "./art/reference-profiles.json";
+import rearReference from "./art/reference-backs.json";
+type PaintedFacing = "left" | "right" | "up";
 
 interface ProfileDrawing {
   palette: Palette;
@@ -21,23 +23,28 @@ interface PaintedPart {
 }
 interface PaintedProfile {
   parts: Partial<Record<CreaturePart, PaintedPart>>;
-  eye: { x: number; y: number; rx: number; ry: number; paint: number[] };
+  eye?: { x: number; y: number; rx: number; ry: number; paint: number[] };
 }
-const profiles = reference.profiles as Record<
-  CharacterId,
-  Record<"left" | "right", PaintedProfile>
->;
+const profiles = Object.fromEntries(
+  Object.keys(reference.profiles).map((id) => [
+    id,
+    {
+      ...reference.profiles[id as CharacterId],
+      ...rearReference.profiles[id as CharacterId],
+    },
+  ]),
+) as Record<CharacterId, Record<PaintedFacing, PaintedProfile>>;
 
 /** Final art coordinates, including the reference tails and ribbons. */
 export function profilePartBounds(
   id: CharacterId,
-  dir: "left" | "right",
+  dir: PaintedFacing,
   part: CreaturePart,
 ) {
   return profiles[id][dir].parts[part]?.bounds;
 }
 
-export function profileViewBox(id: CharacterId, dir: "left" | "right") {
+export function profileViewBox(id: CharacterId, dir: PaintedFacing) {
   const boxes = Object.values(profiles[id][dir].parts).map((a) => a.bounds);
   const x = Math.min(0, ...boxes.map((b) => b[0])) - 4;
   const y = Math.min(-12, ...boxes.map((b) => b[1])) - 4;
@@ -84,7 +91,7 @@ function hue(hex: string) {
  */
 export function creatureProfile(
   id: CharacterId,
-  direction: "left" | "right",
+  direction: PaintedFacing,
   drawing: ProfileDrawing,
 ): { layers: Record<CreaturePart, string>; defs: string } {
   const { palette, prefix, mood, expression } = drawing;
@@ -117,7 +124,7 @@ export function creatureProfile(
       const [x, y, width, height] = asset.bounds;
       art = `<image x="${x}" y="${y}" width="${width}" height="${height}" href="${asset.image}"/>`;
     }
-    if (part === "eyes") {
+    if (part === "eyes" && profile.eye) {
       const { x, y, rx, ry } = profile.eye;
       if (mood !== "normal" && mood !== "focus") {
         art = `<g transform="translate(${x} ${y}) scale(${rx / 10} ${ry / 12}) translate(-100 -93)">${expression(100, 9, 11, id === "duskveil" ? palette.glow : palette.dark)}</g>`;

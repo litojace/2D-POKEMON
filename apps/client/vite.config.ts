@@ -1,16 +1,6 @@
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 export default defineConfig({
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.endsWith("/src/art/reference-profiles.json"))
-            return "champion-reference-art";
-        },
-      },
-    },
-  },
   plugins: [
     VitePWA({
       strategies: "injectManifest",
@@ -24,6 +14,7 @@ export default defineConfig({
           "assets/*.{js,css}",
           "assets/fonts/*.woff2",
           "assets/backgrounds/*.webp",
+          "assets/town/*.webp",
           "assets/music/*.mp3",
           "assets/fighters/**/*.{svg,png,webp,json}",
         ],
@@ -74,6 +65,10 @@ export default defineConfig({
         // they stay cached across deploys, so an update downloads only the
         // game code (Phaser alone is about half the total).
         manualChunks(id) {
+          if (id.endsWith("/src/art/reference-profiles.json"))
+            return "champion-reference-art";
+          if (id.endsWith("/src/art/reference-backs.json"))
+            return "champion-back-art";
           if (!id.includes("node_modules")) return;
           if (id.includes("/phaser/")) return "phaser";
           return "vendor";

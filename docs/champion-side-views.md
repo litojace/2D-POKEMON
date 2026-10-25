@@ -1,33 +1,28 @@
-# Copied reference side views
+# Illustrated champion views
 
-The eight champions' left and right profiles now use the actual illustrations
-from the approved reference sheets. They replace the previous SVG redraws.
-Both directions are extracted separately; the right view is not a mirrored left
-view. Front and back artwork remains unchanged.
+All eight champions use the approved illustrations for their left, right and
+back views. Left and right are separate drawings. Front artwork stays unchanged.
+Source sheets are archived under `apps/client/art-source/side-views/` and
+`back-views/`; the importers record their checksums in the runtime JSON.
 
-The unmodified source sheets are in `apps/client/art-source/side-views/`.
-`apps/client/scripts/import-side-references.mjs` removes the sheet backgrounds,
-copies the native pixels into joint layers, and records source checksums in
-`apps/client/src/art/reference-profiles.json`. A one-pixel overlap prevents
-sampling seams. Hidden eye and shoulder paint covers the spaces exposed by
-blinks and arm movements. The visible default art comes from the source pixels.
+The illustrated facings now animate as one continuous textured surface. The
+existing rig still supplies the poses, but softly weighted shared vertices keep
+the head, goggles, fins, torso and limbs connected. Independently moving raster
+cutouts previously exposed unpainted gaps during motion. Auralynx's detached
+crystal orbit remains separate so it can rotate freely. Eyes change expression
+without compressing a rectangular cutout through the face. Canvas-only devices
+use a complete illustrated frame with subtle breathing and the normal root poses.
 
-The existing rig still drives expressions, movement, attacks, tails, wings,
-accessories and effects. The imported art keeps its original proportions;
-side poses do not receive the front artwork's extra head/body scaling or default
-arm rotations. Crops and static view boxes include the long reference tails.
-Equipped skins use colour filters over the copied art, followed by the existing
-patterns, equipment and Awakening accessories. Reduced motion remains supported.
+Skins, Colours, Awakening accessories, auras and ability effects remain driven by
+the existing appearance system. Rear views have no front-facing eyes. Asset
+chunks are split to stay within the offline cache's entry limit.
 
-Reference data has its own build chunk so each offline-cache entry stays below
-the existing size limit. The reference sheets themselves are not deployed.
+`tests/visual/champion-animation.spec.ts` runs the real Phaser rigs for all eight
+champions in left/right/back views, across fourteen animation states, rare and
+stage III Mythical skins, and removal of skins. It checks finite geometry,
+identical shared vertices, and that cutout images are hidden, in both WebGL and
+Canvas. The client art tests cover the imported rear artwork and its expressions.
 
-Checks cover every base part's crop, all 24 front/left/right rigs, 14 animation
-states, rare and Mythical skins, removal of skins, and desktop/landscape-phone
-town and practice. All 1,760 front/back comparisons remain identical.
-
-Review the actual game rigs: [original looks](champion-side-views.png),
-[stage III Mythical looks](champion-side-views-mythic.png).
-
-The matching [back-view study](champion-back-views-study.png) is generated for
-review only. It is not installed as runtime artwork.
+Actual game renderings: [all eight views](champion-joined-views.png),
+[walking](champion-joined-walk.png), and
+[Mythical outfits](champion-joined-mythic.png).
