@@ -36,6 +36,15 @@ export const TOWN = {
   },
 } as const;
 
+/** The paving frames the raised monument; the basin and elemental ring keep
+ * their ground centre at TOWN.plaza. Roads still meet inside the forecourt. */
+export const TOWN_PLAZA_ROAD = {
+  x: TOWN.plaza.x,
+  y: TOWN.plaza.y - 56,
+  rx: TOWN.plaza.r,
+  ry: TOWN.plaza.r * 0.78,
+} as const;
+
 export const TOWN_EMOTES = ["wave", "heart", "laugh", "gg", "fire"] as const;
 export type TownEmote = (typeof TOWN_EMOTES)[number];
 
@@ -358,8 +367,8 @@ const RING = 405;
 const onRing = (deg: number) => {
   const a = (deg * Math.PI) / 180;
   return {
-    x: Math.round(TOWN.plaza.x + Math.cos(a) * RING),
-    y: Math.round(TOWN.plaza.y + Math.sin(a) * RING * 0.78),
+    x: Math.round(TOWN_PLAZA_ROAD.x + Math.cos(a) * RING),
+    y: Math.round(TOWN_PLAZA_ROAD.y + Math.sin(a) * RING * 0.78),
   };
 };
 export const TOWN_PLAZA_LAMPS = [26, 70, 214, 242, 298, 334].map(onRing);
@@ -635,7 +644,14 @@ export const TOWN_SIGNPOSTS = TOWN_PATHS.slice(0, 5).map(({ pts: [[x1, y1], [x2,
     uy = (y2 - y1) / len,
     d = TOWN_DISTRICTS.find((dd) => dd.id === ROAD_TO[i])!;
   // Just past the plaza's edge along the road, then off to its right side.
-  const along = Math.hypot(TOWN.plaza.r * ux, TOWN.plaza.r * 0.78 * uy) + 50;
+  // Intersect the road's direction with the actual paving ellipse before
+  // stepping onto the grass; its visual centre can differ from the basin's.
+  const { x: cx, y: cy, rx, ry } = TOWN_PLAZA_ROAD;
+  const dx = x1 - cx, dy = y1 - cy;
+  const a = (ux / rx) ** 2 + (uy / ry) ** 2;
+  const b = 2 * (dx * ux / rx ** 2 + dy * uy / ry ** 2);
+  const c = (dx / rx) ** 2 + (dy / ry) ** 2 - 1;
+  const along = (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a) + 50;
   return {
     x: Math.round(x1 + ux * along - uy * 92),
     y: Math.round(y1 + uy * along + ux * 92 * 0.78),

@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import {
   TOWN,
+  TOWN_PLAZA_ROAD,
   TOWN_BUILDINGS,
   TOWN_SHRUBS,
   TOWN_SIGNPOSTS,
@@ -674,8 +675,8 @@ export class TownScenery {
       if (moving) d.a += dt * 0.11;
       else d.rest -= dt;
       const R = 455,
-        x = TOWN.plaza.x + Math.cos(d.a) * R,
-        y = TOWN.plaza.y + Math.sin(d.a) * R * 0.78,
+        x = TOWN_PLAZA_ROAD.x + Math.cos(d.a) * R,
+        y = TOWN_PLAZA_ROAD.y + Math.sin(d.a) * R * 0.78,
         dir = -Math.sin(d.a) >= 0 ? 1 : -1;
       const key = moving
         ? `town-dog-walk-${Math.floor(t * 10) % DOG_FRAMES.walk}`

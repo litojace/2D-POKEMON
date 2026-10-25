@@ -1,6 +1,7 @@
 import { CHARACTERS } from "@arena/shared";
 import {
   TOWN,
+  TOWN_PLAZA_ROAD,
   TOWN_BUILDINGS,
   TOWN_DUMMIES,
   TOWN_POND,
@@ -163,11 +164,12 @@ function grass(ctx: Ctx, W: number, H: number) {
 
 function plaza(ctx: Ctx) {
   const { x, y, r } = TOWN.plaza;
+  const roadY = TOWN_PLAZA_ROAD.y;
   ctx.fillStyle = "#7d7360";
-  ellipse(ctx, x, y, r + 22, (r + 22) * 0.78);
+  ellipse(ctx, x, roadY, r + 22, (r + 22) * 0.78);
   ctx.fill();
   ctx.fillStyle = "#8f846f";
-  ellipse(ctx, x, y, r, r * 0.78);
+  ellipse(ctx, x, roadY, r, r * 0.78);
   ctx.fill();
   // Rings of curved cobbles.
   const tones = ["#b9ad95", "#ada189", "#c2b69e", "#a89c84"];
@@ -175,7 +177,7 @@ function plaza(ctx: Ctx) {
     for (let a = 0, k = 0; a < Math.PI * 2; a += 20 / ring, k++) {
       const i = n * 997 + k;
       ctx.save();
-      ctx.translate(x + Math.cos(a + n * 0.3) * ring, y + Math.sin(a + n * 0.3) * ring * 0.78);
+      ctx.translate(x + Math.cos(a + n * 0.3) * ring, roadY + Math.sin(a + n * 0.3) * ring * 0.78);
       ctx.rotate(a + n * 0.3 + Math.PI / 2);
       ctx.scale(1, 0.85 + Math.abs(Math.sin(a)) * 0.15);
       ctx.fillStyle = tones[Math.floor(rnd(i) * tones.length)];
@@ -523,7 +525,7 @@ export function paintGround(ground: Ctx) {
     const a = rnd(i * 3.7) * Math.PI * 2,
       d = 160 + rnd(i * 5.3) * (TOWN.plaza.r - 160);
     ctx.fillStyle = `rgba(80,110,50,${0.18 + rnd(i) * 0.2})`;
-    ellipse(ctx, TOWN.plaza.x + Math.cos(a) * d, TOWN.plaza.y + Math.sin(a) * d * 0.78, 2 + rnd(i * 2) * 2, 1.2);
+    ellipse(ctx, TOWN_PLAZA_ROAD.x + Math.cos(a) * d, TOWN_PLAZA_ROAD.y + Math.sin(a) * d * 0.78, 2 + rnd(i * 2) * 2, 1.2);
     ctx.fill();
   }
   sandArena(ctx);
