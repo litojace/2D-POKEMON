@@ -1,3 +1,5 @@
+import { svgMarkup } from "./svg-markup";
+import reference from "../src/art/reference-profiles.json";
 import { describe, expect, it } from "vitest";
 import { FIGHTER_IDS } from "@arena/shared";
 import { CHAMPION_SKINS } from "../../../packages/shared/src/shop";
@@ -23,10 +25,11 @@ describe("authored champion profiles", () => {
         expect(layers.eyes.match(/class="profile-near-eye"/g), id).toHaveLength(
           1,
         );
-        expect(layers.head.includes("profile-mouth"), id).toBe(
-          id !== "duskveil" && id !== "mystowl",
+        expect(layers.head.includes("data:image/png;base64,"), id).toBe(true);
+        expect(layers.head).toContain(`data-reference-facing="${dir}"`);
+        expect(svgMarkup(creatureSvg(id, dir)), id).not.toMatch(
+          /NaN|undefined|Infinity/,
         );
-        expect(creatureSvg(id, dir), id).not.toMatch(/NaN|undefined|Infinity/);
       }
     }
   });
@@ -57,19 +60,24 @@ describe("authored champion profiles", () => {
     }
   });
 
-  it("retains species-specific anatomy and equipment in both side views", () => {
-    for (const dir of directions) {
-      expect(creatureLayers("tidefin", dir).layers.armR).toContain("-jewel)");
-      expect(creatureLayers("lumoth", dir).layers.wings).toContain(
-        "profile-wings",
-      );
-      expect(creatureLayers("terradon", dir).layers.wings).toContain("#bfe9ff");
-      expect(creatureLayers("duskveil", dir).layers.tail).toContain("-shine)");
-      for (const id of ["duskveil", "mystowl"] as const) {
-        expect(creatureLayers(id, dir).layers.head).not.toContain(
-          "profile-mouth",
-        );
+  it("copies separate left and right artwork with usable wing, shell and lantern layers", () => {
+    for (const id of FIGHTER_IDS) {
+      const pair = reference.profiles[id];
+      expect(pair.left.parts.head.image).not.toBe(pair.right.parts.head.image);
+      for (const dir of directions) {
+        for (const asset of Object.values(pair[dir].parts)) {
+          expect(asset.bounds.every(Number.isFinite)).toBe(true);
+          const png = Buffer.from(asset.image.split(",")[1], "base64");
+          expect(png.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
+          expect(png.readUInt32BE(16)).toBeGreaterThan(0);
+          expect(png.readUInt32BE(20)).toBeGreaterThan(0);
+        }
       }
+    }
+    for (const dir of directions) {
+      expect(creatureLayers("lumoth", dir).layers.wings).toContain("<image");
+      expect(creatureLayers("terradon", dir).layers.wings).toContain("<image");
+      expect(creatureLayers("duskveil", dir).layers.tail).toContain("<image");
     }
   });
 
@@ -84,9 +92,10 @@ describe("authored champion profiles", () => {
           expect(layers.head, skin.id).toContain("profile-head");
           expect(layers.body, skin.id).toContain("profile-body");
           expect(layers.eyes, skin.id).toContain("profile-near-eye");
-          expect(Object.values(layers).join(""), skin.id).not.toMatch(
-            /NaN|undefined|Infinity/,
-          );
+          expect(
+            svgMarkup(Object.values(layers).join("")),
+            skin.id,
+          ).not.toMatch(/NaN|undefined|Infinity/);
         }
   });
 

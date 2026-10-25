@@ -367,11 +367,12 @@ export class FighterRig {
       )!;
       this.images.get(part)!.setPosition(asset.x, asset.y);
     }
-    if (this.character === "auralynx") {
+    const profile = dir === "left" || dir === "right";
+    if (this.character === "auralynx" && !profile) {
       armL.rotation = -0.35;
       armR.rotation = 0.35;
     }
-    if (this.character === "tidefin") {
+    if (this.character === "tidefin" && !profile) {
       body.setScale(0.53, 0.47);
       legL.rotation = -0.18;
       legR.rotation = 0.18;

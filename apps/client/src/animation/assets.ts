@@ -10,6 +10,7 @@ import {
   type SkinLook,
 } from "../creature-design";
 import { SKIN_ART } from "../skins/skin-art";
+import { profilePartBounds } from "../creature-profile";
 import type { Facing } from "./controller";
 export type Part = CreaturePart;
 export const parts = creatureParts;
@@ -61,7 +62,7 @@ const definitions: Record<Part, { bounds: number[]; pivot: number[] }> = {
   flame: { bounds: [30, -2, 140, 110], pivot: [100, 65] },
 };
 /** A part's crop box once its proportion transform is applied. */
-function box(part: Part, dir: Facing) {
+function box(id: CharacterId, part: Part, dir: Facing) {
   const profile = dir === "left" || dir === "right";
   // Side headbands trail behind the gills; keep their ribbons in the crop.
   const [sourceX, y, w, h] =
@@ -70,7 +71,12 @@ function box(part: Part, dir: Facing) {
   const x = dir === "left" && part === "armR" ? 200 - sourceX - w : sourceX;
   const [x0, y0] = proportioned(part, x, y),
     [x1, y1] = proportioned(part, x + w, y + h);
-  return [x0, y0, x1 - x0, y1 - y0].map((v) => +v.toFixed(2));
+  const painted = profile ? profilePartBounds(id, dir, part) : undefined;
+  const minX = Math.min(x0, painted ? painted[0] - 2 : x0),
+    minY = Math.min(y0, painted ? painted[1] - 2 : y0),
+    maxX = Math.max(x1, painted ? painted[0] + painted[2] + 2 : x1),
+    maxY = Math.max(y1, painted ? painted[1] + painted[3] + 2 : y1);
+  return [minX, minY, maxX - minX, maxY - minY].map((v) => +v.toFixed(2));
 }
 const pivot = (part: Part, x: number, y: number) => proportioned(part, x, y);
 /**
@@ -106,7 +112,7 @@ function asset(
 ): RigAsset {
   const suffix = skinSuffix(id, look);
   const { pivot: defaultPivot } = definitions[part];
-  const b = box(part, dir);
+  const b = box(id, part, dir);
   let q = defaultPivot;
   if (dir === "left" || dir === "right") {
     const side = dir === "right" ? 1 : -1;

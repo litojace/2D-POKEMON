@@ -1,43 +1,33 @@
-# Champion side-view redesign
+# Copied reference side views
 
-All eight champions now have authored left/right anatomy, replacing the old
-compressed front-facing torso and face. The approved concept direction is drawn
-as layered SVG art in `apps/client/src/creature-profile.ts`, so the existing game
-rig can still animate limbs, eyes, ears, tails, wings and accessories separately.
+The eight champions' left and right profiles now use the actual illustrations
+from the approved reference sheets. They replace the previous SVG redraws.
+Both directions are extracted separately; the right view is not a mirrored left
+view. Front and back artwork remains unchanged.
 
-Each profile uses one properly positioned eye and a species-specific face edge:
-short glider/newt/cat muzzles, an axolotl lip, a moth face, an owl beak, a tortoise
-jaw, and a crescent hood opening for Duskveil. Turned bellies, overlapping far
-limbs, folded moth wings, the tortoise shell, gills, gauntlets and the lantern
-retain the roster's identities. Left-facing geometry is reflected per part before
-proportions, skin masks and accessories; the whole animated character is never
-flipped. The far shoulder sorts behind the torso in both complete SVGs and Phaser.
-Side tails pivot at the rear hip, wings at the back, and the left blade's crop
-follows Tidefin's facing.
+The unmodified source sheets are in `apps/client/art-source/side-views/`.
+`apps/client/scripts/import-side-references.mjs` removes the sheet backgrounds,
+copies the native pixels into joint layers, and records source checksums in
+`apps/client/src/art/reference-profiles.json`. A one-pixel overlap prevents
+sampling seams. Hidden eye and shoulder paint covers the spaces exposed by
+blinks and arm movements. The visible default art comes from the source pixels.
 
-The reference refinement gives the profiles fuller bodies, forward-set glossy
-eyes and shorter cheeks. Voltkit has diagonal goggles and a banded glider tail;
-Cindrake has a swept flame crest; Tidefin has trailing headband ribbons and a
-broad spotted tail; Auralynx has a seated belly and fluffy tail; Lumoth has large
-folded wings with two eyespots; Mystowl has swept feather tufts and layered wing
-feathers; Terradon has a rounded planted shell; Duskveil has a curled hood with
-a recessed opening. The side headband crop includes Tidefin's full ribbons.
-These are authored vector interpretations of the supplied painted concept
-sheets, not extracted or pixel-identical copies of those illustrations.
+The existing rig still drives expressions, movement, attacks, tails, wings,
+accessories and effects. The imported art keeps its original proportions;
+side poses do not receive the front artwork's extra head/body scaling or default
+arm rotations. Crops and static view boxes include the long reference tails.
+Equipped skins use colour filters over the copied art, followed by the existing
+patterns, equipment and Awakening accessories. Reduced motion remains supported.
 
-The shared renderer supplies these profiles to battles, practice and town, as
-well as any directional previews. Front/back artwork is unchanged. Existing
-skin palettes, patterns, accessories, Awakening stages, expressions and reduced
-motion remain in use. No server, database, gameplay values, hitboxes or timings
-were changed.
+Reference data has its own build chunk so each offline-cache entry stays below
+the existing size limit. The reference sheets themselves are not deployed.
 
-Validation includes comparison of 1,760 front/back drawings against the previous
-renderer; a pixel-bound check of every base side part against its texture crop;
-live Phaser rigs for all eight champions in both directions across movement,
-attacks, four skills, reactions, victory and wave; rare and stage III Mythical
-skins and their removal; desktop and landscape-phone town/practice checks; and
-unit tests for profile faces, expressions, equipment, skin stages and joint
-symmetry.
+Checks cover every base part's crop, all 24 front/left/right rigs, 14 animation
+states, rare and Mythical skins, removal of skins, and desktop/landscape-phone
+town and practice. All 1,760 front/back comparisons remain identical.
 
-Review the actual rendered game rigs: [original looks](champion-side-views.png),
+Review the actual game rigs: [original looks](champion-side-views.png),
 [stage III Mythical looks](champion-side-views-mythic.png).
+
+The matching [back-view study](champion-back-views-study.png) is generated for
+review only. It is not installed as runtime artwork.

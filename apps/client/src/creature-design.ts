@@ -1,4 +1,4 @@
-import { creatureProfile } from "./creature-profile";
+import { creatureProfile, profileViewBox } from "./creature-profile";
 import type { CharacterId } from "@arena/shared";
 import type { Facing } from "./animation/controller";
 import { awakeningSvg } from "./skins/mythic-art";
@@ -189,7 +189,7 @@ export function creatureLayers(
     pearl = `url(#${prefix}-pearl)`,
     jewel = `url(#${prefix}-jewel)`,
     shine = `url(#${prefix}-shine)`;
-  const defs = `<defs>
+  let defs = `<defs>
     <radialGradient id="${prefix}-body" cx="30%" cy="18%" r="95%"><stop stop-color="${p.light}"/><stop offset=".42" stop-color="${p.mid}"/><stop offset="1" stop-color="${p.dark}"/></radialGradient>
     <radialGradient id="${prefix}-face" cx="34%" cy="22%" r="85%"><stop stop-color="${p.light}"/><stop offset=".62" stop-color="${p.mid}"/><stop offset="1" stop-color="${p.dark}"/></radialGradient>
     <radialGradient id="${prefix}-pearl" cx="32%" cy="15%"><stop stop-color="#ffffff"/><stop offset=".55" stop-color="${p.light}"/><stop offset="1" stop-color="${p.mid}"/></radialGradient>
@@ -525,16 +525,15 @@ export function creatureLayers(
     if (id === "tidefin")
       layers.armR = `${layers.armR.replace(hand(131), "")}${hand(131)}`;
   } else if (dir === "left" || dir === "right") {
-    Object.assign(
-      layers,
-      creatureProfile(id, dir, {
-        palette: p,
-        prefix,
-        mood,
-        eye,
-        expression: moodEye,
-      }),
-    );
+    const painted = creatureProfile(id, dir, {
+      palette: p,
+      prefix,
+      mood,
+      eye,
+      expression: moodEye,
+    });
+    Object.assign(layers, painted.layers);
+    defs += painted.defs;
   }
   // Cragstone skin (menus): glowing cracks, hidden unless the skin is worn.
   // The rig paints its own cracks, and display="none" keeps them out of it.
@@ -621,6 +620,12 @@ export function creatureSvgRenderer(
   const group = (p: CreaturePart) =>
     `<g class="fighter-${p === "body" ? "torso" : p}">${layers[p]}</g>`;
   return (part?: CreaturePart, viewBox = CREATURE_VIEWBOX) => {
+    if (
+      !part &&
+      viewBox === CREATURE_VIEWBOX &&
+      (dir === "left" || dir === "right")
+    )
+      viewBox = profileViewBox(id, dir);
     const content = part
       ? layers[part]
       : `<ellipse class="fighter-shadow" cx="100" cy="177" rx="40" ry="8" fill="#060d24" opacity=".25"/><g class="fighter-character">${lowerParts.map(group).join("")}<g class="fighter-face">${(["head", "ears", "eyes", "flame"] as CreaturePart[]).map(group).join("")}</g>${group("scarf")}</g>`;

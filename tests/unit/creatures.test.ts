@@ -1,3 +1,4 @@
+import { svgMarkup } from "../../apps/client/tests/svg-markup";
 import { expect, it } from "vitest";
 import {
   CHARACTERS,
@@ -88,7 +89,7 @@ it("loads original art and valid public metadata for every fighter and direction
     for (const dir of ["up", "down", "left", "right"] as const) {
       const svg = creatureSvg(id, dir);
       expect(svg).toContain("radialGradient");
-      expect(svg).not.toMatch(/undefined|NaN|scale\(-1/);
+      expect(svgMarkup(svg)).not.toMatch(/undefined|NaN|scale\(-1/);
       expect(creatureLayers(id, dir).layers.eyes === "").toBe(dir === "up");
     }
     art.add(creatureSvg(id));

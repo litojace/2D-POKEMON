@@ -1,43 +1,86 @@
+import { svgMarkup } from "../../apps/client/tests/svg-markup";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import { CHAMPION_SKINS, LOOK_ITEMS } from "../../packages/shared/src/shop";
-import { SKIN_ART, fighterSkillColor, wornArt } from "../../apps/client/src/skins/skin-art";
+import {
+  SKIN_ART,
+  fighterSkillColor,
+  wornArt,
+} from "../../apps/client/src/skins/skin-art";
 import { creatureSvg, paletteFor } from "../../apps/client/src/creature-design";
 import { rigAssets, skinSuffix } from "../../apps/client/src/animation/assets";
 import { SKINS } from "../../apps/client/src/animation/cosmetics";
-import { drawCollectionAura, drawCollectionVictory, playCollectionEntrance } from "../../apps/client/src/skins/collection-fx";
+import {
+  drawCollectionAura,
+  drawCollectionVictory,
+  playCollectionEntrance,
+} from "../../apps/client/src/skins/collection-fx";
 
 const ids = Object.keys(CHARACTERS) as CharacterId[];
 const DIRS = ["down", "up", "left", "right"] as const;
 
 it("loads a complete front preview with the same textures used in battle", () => {
-  const looks = [null, ...[1, 2, 3].map(stage => ({ skin: "voltkit-stormcrown", stage }))];
+  const looks = [
+    null,
+    ...[1, 2, 3].map((stage) => ({ skin: "voltkit-stormcrown", stage })),
+  ];
   for (const look of looks) {
     const all = rigAssets("voltkit", look);
     const front = rigAssets("voltkit", look, ["down"]);
     expect(all).toHaveLength(60);
     expect(front).toHaveLength(16);
-    expect(front).toEqual(all.filter(asset => asset.key.startsWith("rig-voltkit-down-")));
+    expect(front).toEqual(
+      all.filter((asset) => asset.key.startsWith("rig-voltkit-down-")),
+    );
   }
 });
 /** A Graphics stand-in that accepts any chained drawing call. */
 const graphics = (): any =>
-  new Proxy({}, { get: (_t, key) => (key === "then" ? undefined : () => graphics()) });
+  new Proxy(
+    {},
+    { get: (_t, key) => (key === "then" ? undefined : () => graphics()) },
+  );
 
 describe("champion skin art", () => {
   it("has art for exactly the 56 skins in the catalog", () => {
-    expect(Object.keys(SKIN_ART).sort()).toEqual(CHAMPION_SKINS.map((s) => s.id).sort());
+    expect(Object.keys(SKIN_ART).sort()).toEqual(
+      CHAMPION_SKINS.map((s) => s.id).sort(),
+    );
   });
 
   it("gives each rarity what the design promises", () => {
     for (const s of CHAMPION_SKINS) {
       const art = SKIN_ART[s.id];
-      const extras = !!(art.pattern || art.accessories?.length || art.stageAccessories?.length);
-      if (s.rarity === "common") expect([extras, !!art.trail, art.skill, art.mythic], s.id).toEqual([false, false, undefined, undefined]);
-      if (s.rarity === "rare") expect([extras, !!art.trail, art.mythic], s.id).toEqual([true, true, undefined]);
-      if (s.rarity === "epic") expect([extras, !!art.trail, typeof art.skill, !!art.detail, art.mythic], s.id).toEqual([true, true, "number", true, undefined]);
-      if (s.rarity === "mythical") expect([!!art.trail, typeof art.skill, !!art.mythic], s.id).toEqual([true, "number", true]);
+      const extras = !!(
+        art.pattern ||
+        art.accessories?.length ||
+        art.stageAccessories?.length
+      );
+      if (s.rarity === "common")
+        expect([extras, !!art.trail, art.skill, art.mythic], s.id).toEqual([
+          false,
+          false,
+          undefined,
+          undefined,
+        ]);
+      if (s.rarity === "rare")
+        expect([extras, !!art.trail, art.mythic], s.id).toEqual([
+          true,
+          true,
+          undefined,
+        ]);
+      if (s.rarity === "epic")
+        expect(
+          [extras, !!art.trail, typeof art.skill, !!art.detail, art.mythic],
+          s.id,
+        ).toEqual([true, true, "number", true, undefined]);
+      if (s.rarity === "mythical")
+        expect([!!art.trail, typeof art.skill, !!art.mythic], s.id).toEqual([
+          true,
+          "number",
+          true,
+        ]);
     }
   });
 
@@ -45,51 +88,115 @@ describe("champion skin art", () => {
     for (const s of CHAMPION_SKINS)
       for (const dir of DIRS)
         for (const stage of [1, 2, 3]) {
-          const svg = creatureSvg(s.champion, dir, undefined, undefined, "normal", { skin: s.id, stage });
-          expect(svg, `${s.id} ${dir}`).not.toMatch(/NaN|undefined|Infinity/);
+          const svg = creatureSvg(
+            s.champion,
+            dir,
+            undefined,
+            undefined,
+            "normal",
+            { skin: s.id, stage },
+          );
+          expect(svgMarkup(svg), `${s.id} ${dir}`).not.toMatch(
+            /NaN|undefined|Infinity/,
+          );
           expect(svg).toContain(`${s.champion}-${dir}-${s.id}-body`);
-          expect(svg).toContain(`stroke="${paletteFor(s.champion, { skin: s.id }).dark}"`);
+          expect(svg).toContain(
+            `stroke="${paletteFor(s.champion, { skin: s.id }).dark}"`,
+          );
           // Every mask or filter id is defined once per drawing.
           const defined = [...svg.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
           expect(new Set(defined).size).toBe(defined.length);
-          for (const [, ref] of svg.matchAll(/url\(#([^)]+)\)/g)) expect(defined, `${s.id} ${dir}`).toContain(ref);
+          for (const [, ref] of svg.matchAll(/url\(#([^)]+)\)/g))
+            expect(defined, `${s.id} ${dir}`).toContain(ref);
         }
   });
 
   it("only applies a skin to the champion it was made for", () => {
     const base = creatureSvg("cindrake", "down");
-    expect(creatureSvg("cindrake", "down", undefined, undefined, "normal", { skin: "voltkit-midnight" })).toBe(base);
-    expect(skinSuffix("cindrake", { skin: "voltkit-midnight", stage: 1 })).toBe("");
-    expect(wornArt("cindrake", { skin: "voltkit-neon-arcade" })).toBeUndefined();
-    expect(fighterSkillColor({ character: "voltkit", championLooks: { voltkit: { skin: "voltkit-neon-arcade", stage: 1 } } })).toBe(0xff4fd8);
-    expect(fighterSkillColor({ character: "voltkit", championLooks: { voltkit: { skin: "voltkit-midnight", stage: 1 } } })).toBeUndefined();
+    expect(
+      creatureSvg("cindrake", "down", undefined, undefined, "normal", {
+        skin: "voltkit-midnight",
+      }),
+    ).toBe(base);
+    expect(skinSuffix("cindrake", { skin: "voltkit-midnight", stage: 1 })).toBe(
+      "",
+    );
+    expect(
+      wornArt("cindrake", { skin: "voltkit-neon-arcade" }),
+    ).toBeUndefined();
+    expect(
+      fighterSkillColor({
+        character: "voltkit",
+        championLooks: { voltkit: { skin: "voltkit-neon-arcade", stage: 1 } },
+      }),
+    ).toBe(0xff4fd8);
+    expect(
+      fighterSkillColor({
+        character: "voltkit",
+        championLooks: { voltkit: { skin: "voltkit-midnight", stage: 1 } },
+      }),
+    ).toBeUndefined();
   });
 
   it("gives every Mythical three distinct forms in every facing and keeps their battle textures separate", () => {
     for (const skin of CHAMPION_SKINS.filter((s) => s.rarity === "mythical")) {
       for (const dir of DIRS) {
-        const forms = [1, 2, 3].map(stage => creatureSvg(skin.champion, dir, undefined, undefined, "normal", { skin: skin.id, stage }));
-        expect(new Set(forms).size, `${skin.id} ${dir}: all three stages need visible artwork`).toBe(3);
+        const forms = [1, 2, 3].map((stage) =>
+          creatureSvg(skin.champion, dir, undefined, undefined, "normal", {
+            skin: skin.id,
+            stage,
+          }),
+        );
+        expect(
+          new Set(forms).size,
+          `${skin.id} ${dir}: all three stages need visible artwork`,
+        ).toBe(3);
       }
-      const stages = [1, 2, 3].map(stage => rigAssets(skin.champion, { skin: skin.id, stage }));
-      const keys = stages.flatMap(assets => assets.map(asset => asset.key));
-      expect(new Set(keys).size, `${skin.id}: switching stage must not reuse another stage's textures`).toBe(keys.length);
+      const stages = [1, 2, 3].map((stage) =>
+        rigAssets(skin.champion, { skin: skin.id, stage }),
+      );
+      const keys = stages.flatMap((assets) => assets.map((asset) => asset.key));
+      expect(
+        new Set(keys).size,
+        `${skin.id}: switching stage must not reuse another stage's textures`,
+      ).toBe(keys.length);
       // Compare the actual encoded images too, rather than just the cache keys.
-      expect(new Set(stages.map(assets => assets.map(asset => asset.url).join())).size, skin.id).toBe(3);
-      expect(skinSuffix(skin.champion, { skin: skin.id }), skin.id).toBe(skinSuffix(skin.champion, { skin: skin.id, stage: 1 }));
+      expect(
+        new Set(stages.map((assets) => assets.map((asset) => asset.url).join()))
+          .size,
+        skin.id,
+      ).toBe(3);
+      expect(skinSuffix(skin.champion, { skin: skin.id }), skin.id).toBe(
+        skinSuffix(skin.champion, { skin: skin.id, stage: 1 }),
+      );
     }
   });
 
   it("leaves non-Mythical texture keys alone", () => {
-    expect(skinSuffix("voltkit", { skin: "voltkit-midnight", stage: 1 })).toBe("~voltkit-midnight");
-    expect(skinSuffix("voltkit", { skin: "voltkit-midnight", stage: 3 })).toBe("~voltkit-midnight");
-    expect(skinSuffix("voltkit", { skin: "voltkit-stormcrown", stage: 2 })).toBe("~voltkit-stormcrown~2");
-    expect(skinSuffix("voltkit", { skin: "voltkit-stormcrown", stage: 3 })).toBe("~voltkit-stormcrown~3");
+    expect(skinSuffix("voltkit", { skin: "voltkit-midnight", stage: 1 })).toBe(
+      "~voltkit-midnight",
+    );
+    expect(skinSuffix("voltkit", { skin: "voltkit-midnight", stage: 3 })).toBe(
+      "~voltkit-midnight",
+    );
+    expect(
+      skinSuffix("voltkit", { skin: "voltkit-stormcrown", stage: 2 }),
+    ).toBe("~voltkit-stormcrown~2");
+    expect(
+      skinSuffix("voltkit", { skin: "voltkit-stormcrown", stage: 3 }),
+    ).toBe("~voltkit-stormcrown~3");
   });
 
   it("never changes a fighter's size, pivots or placement (fairness)", () => {
     for (const s of CHAMPION_SKINS) {
-      const shape = (a: ReturnType<typeof rigAssets>[number]) => [a.width, a.height, a.originX, a.originY, a.x, a.y];
+      const shape = (a: ReturnType<typeof rigAssets>[number]) => [
+        a.width,
+        a.height,
+        a.originX,
+        a.originY,
+        a.x,
+        a.y,
+      ];
       const base = rigAssets(s.champion).map(shape);
       for (const stage of [1, 2, 3]) {
         const skinned = rigAssets(s.champion, { skin: s.id, stage });
@@ -109,15 +216,37 @@ describe("collection pieces", () => {
       const emitted: unknown[] = [];
       const emit = (p: unknown) => emitted.push(p);
       if (item.slot === "skin") expect(SKINS, item.id).toContain(item.id);
-      if (item.slot === "aura") expect(drawCollectionAura(g, item.id, 0, 0, 1000, false), item.id).toBe(true);
+      if (item.slot === "aura")
+        expect(drawCollectionAura(g, item.id, 0, 0, 1000, false), item.id).toBe(
+          true,
+        );
       if (item.slot === "entrance") {
-        expect(playCollectionEntrance(emit, item.id, 0, 0, 1), item.id).toBe(true);
+        expect(playCollectionEntrance(emit, item.id, 0, 0, 1), item.id).toBe(
+          true,
+        );
         expect(emitted.length).toBeGreaterThan(0);
       }
       if (item.slot === "victory")
-        expect(drawCollectionVictory(g, g, emit, () => true, item.id, 0, 0, 1, 0.5, 0.016, true), item.id).toBe(true);
-      if (item.slot === "frame") expect(css, item.id).toContain(`[data-raid-cosmetic~="${item.id}"]`);
-      if (item.slot !== "frame") expect(css, item.id).toContain(`[data-cosmetic="${item.id}"]`);
+        expect(
+          drawCollectionVictory(
+            g,
+            g,
+            emit,
+            () => true,
+            item.id,
+            0,
+            0,
+            1,
+            0.5,
+            0.016,
+            true,
+          ),
+          item.id,
+        ).toBe(true);
+      if (item.slot === "frame")
+        expect(css, item.id).toContain(`[data-raid-cosmetic~="${item.id}"]`);
+      if (item.slot !== "frame")
+        expect(css, item.id).toContain(`[data-cosmetic="${item.id}"]`);
     }
   });
 });
@@ -134,14 +263,31 @@ describe("raid cosmetics", () => {
       const emitted: unknown[] = [];
       const emit = (p: unknown) => emitted.push(p);
       if (r.slot === "skin") expect(SKINS, r.id).toContain(r.id);
-      if (r.slot === "aura") expect(drawCollectionAura(g, r.id, 0, 0, 1000, false), r.id).toBe(true);
+      if (r.slot === "aura")
+        expect(drawCollectionAura(g, r.id, 0, 0, 1000, false), r.id).toBe(true);
       if (r.slot === "entrance") {
         expect(playCollectionEntrance(emit, r.id, 0, 0, 1), r.id).toBe(true);
         expect(emitted.length).toBeGreaterThan(0);
       }
       if (r.slot === "victory")
-        expect(drawCollectionVictory(g, g, emit, () => true, r.id, 0, 0, 1, 1, 0.2, true), r.id).toBe(true);
-      if (r.slot === "frame") expect(css, r.id).toContain(`[data-raid-cosmetic~="${r.id}"]`);
+        expect(
+          drawCollectionVictory(
+            g,
+            g,
+            emit,
+            () => true,
+            r.id,
+            0,
+            0,
+            1,
+            1,
+            0.2,
+            true,
+          ),
+          r.id,
+        ).toBe(true);
+      if (r.slot === "frame")
+        expect(css, r.id).toContain(`[data-raid-cosmetic~="${r.id}"]`);
       expect(css, r.id).toContain(`[data-cosmetic="${r.id}"]`);
     }
   });

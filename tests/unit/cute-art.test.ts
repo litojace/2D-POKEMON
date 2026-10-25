@@ -1,3 +1,4 @@
+import { svgMarkup } from "../../apps/client/tests/svg-markup";
 import { describe, expect, it } from "vitest";
 import { CHARACTERS, FIGHTER_IDS } from "@arena/shared";
 import {
@@ -63,7 +64,9 @@ describe("cute proportions", () => {
         expect(a.height, a.key).toBeGreaterThan(0);
         for (const v of [a.originX, a.originY, a.x, a.y])
           expect(Number.isFinite(v)).toBe(true);
-        expect(atob(a.url.split(",")[1])).not.toMatch(/NaN|undefined/);
+        expect(svgMarkup(atob(a.url.split(",")[1]))).not.toMatch(
+          /NaN|undefined/,
+        );
       }
       const eyes = assets.find((a) => a.key === `rig-${id}-down-eyes`)!;
       const box = atob(eyes.url.split(",")[1])
@@ -91,7 +94,7 @@ describe("trait auras", () => {
       expect(svg.match(/<svg /g)).toHaveLength(1);
       expect(svg).toContain('class="ta-back"');
       expect(svg).toContain('class="ta-front"');
-      expect(svg).not.toMatch(/NaN|undefined/);
+      expect(svgMarkup(svg)).not.toMatch(/NaN|undefined/);
       // No tag may carry the same attribute twice (e.g. two style attributes).
       for (const tag of svg.match(/<[a-zA-Z][^>]*>/g)!) {
         const names = [...tag.matchAll(/\s([a-zA-Z-]+)="/g)].map((m) => m[1]);
