@@ -13459,6 +13459,7 @@ dialog.mission-instructions::backdrop {
   --panel-bottom: #0e1a31;
   --panel-line: #8baee52b;
   --display: "Barlow Condensed", Impact, sans-serif;
+  --body: "DM Sans", sans-serif;
   --scroll-track: #081427;
   --scroll-thumb: #b99858;
   --scroll-thumb-light: #e3c47e;
@@ -21138,15 +21139,9 @@ body.town-active .header-menu-panel #friends {
   stroke: #2a1a00;
   stroke-width: 2.4;
 }
-/* Solo test mode: no site menu; Settings and Leave sit side by side. */
+/* Solo test mode: no site menu. */
 body.practice-active .header-menu {
   display: none;
-}
-.battle-leave {
-  color: #ff8a8a;
-}
-.battle-leave:hover {
-  color: #ffb0b0;
 }
 
 /* ── Welcome screen ──

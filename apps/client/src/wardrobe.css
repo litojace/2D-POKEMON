@@ -343,8 +343,8 @@ dialog.wardrobe-dialog > .dialog-content {
   gap: 4px;
   box-sizing: border-box;
   white-space: nowrap;
-  /* Same size as the line above it (named directly: --body isn't set here). */
-  font-family: "DM Sans", sans-serif;
+  /* Same size as the line above it. */
+  font-family: var(--body);
   font-weight: 600;
   line-height: 1.3;
   color: var(--accent);
