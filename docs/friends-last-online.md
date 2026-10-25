@@ -8,13 +8,11 @@ are not invented or inferred from their profile creation time. Labels keep aging
 while the panel is open, including during a failed refresh, and the existing
 focus, search, filter and scroll preservation remains in use.
 
-Apply `supabase/migrations/027_friends_last_online.sql` before deploying the new
-server/client. It adds nullable `arena_profiles.last_online_at`, a self-only
+`supabase/migrations/027_friends_last_online.sql` has been applied and verified on
+the hosted Supabase project. It adds nullable `arena_profiles.last_online_at`, a self-only
 `arena_touch_presence()` RPC using the database clock, and `lastOnline` in the
 existing accepted-friends response. The timestamp stays private from nonfriends,
 pending requests and anonymous users. Reapplying the migration preserves history.
-This migration is prepared and tested locally; it has not been applied to the
-hosted Supabase project as part of this change.
 
 The server records authenticated connections, throttles heartbeat writes to at
 most once a minute per account, and forces a final write when the last connected
@@ -34,7 +32,3 @@ long names, action spacing and focus/search preservation.
 
 Review: [desktop](friends-last-online-desktop.png),
 [landscape phone](friends-last-online-mobile.png).
-
-The latest pulled Coliseum update called `setDepth` through `FighterVisual` without
-including it in the interface or frame/portrait implementations. Those methods
-now forward depth to their containers, matching the existing layered rig.
