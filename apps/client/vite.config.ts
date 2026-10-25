@@ -67,6 +67,22 @@ export default defineConfig({
       devOptions: { enabled: false },
     }),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        // Libraries change far less often than the game. As their own files
+        // they stay cached across deploys, so an update downloads only the
+        // game code (Phaser alone is about half the total).
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (id.includes("/phaser/")) return "phaser";
+          return "vendor";
+        },
+      },
+    },
+    // Phaser is one ~1.5 MB library and can't be split further.
+    chunkSizeWarningLimit: 1600,
+  },
   server: {
     proxy: {
       "/socket.io": { target: "http://localhost:3001", ws: true },
