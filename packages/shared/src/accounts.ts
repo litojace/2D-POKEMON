@@ -248,7 +248,11 @@ export const friendSchema = z.object({
   title: z.string().nullable().optional(),
   titleColor: z.string().nullable().optional(),
   online: z.boolean().optional(),
-  activity: z.enum(["menu", "lobby", "match", "practice", "town"]).nullable().optional(),
+  lastOnline: z.string().datetime({ offset: true }).nullable().optional(),
+  activity: z
+    .enum(["menu", "lobby", "match", "practice", "town"])
+    .nullable()
+    .optional(),
   room: z.string().nullable().optional(),
   joinable: z.boolean().optional(),
   fighter: z.string().nullable().optional(),

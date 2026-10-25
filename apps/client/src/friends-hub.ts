@@ -101,7 +101,10 @@ export class FriendsHub {
     this.dialog.addEventListener("close", this.closed);
     document.addEventListener("visibilitychange", this.visibility);
     this.timer = setInterval(() => {
-      if (!document.hidden) void this.refresh();
+      if (!document.hidden) {
+        this.render();
+        void this.refresh();
+      }
     }, 15000);
     this.observer = new MutationObserver(() => {
       if (!this.root.isConnected) this.dispose();

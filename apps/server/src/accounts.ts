@@ -35,7 +35,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "026_six_daily_missions.sql";
+export const LATEST_MIGRATION = "027_friends_last_online.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -116,7 +116,10 @@ export function createAccountProvider(): AccountProvider {
       return accountSchema.parse(result.data);
     },
     async rpc(token, name, args) {
-      const result = await client(token).rpc(name, args);
+      const request = client(token).rpc(name, args);
+      const result = await (name === "arena_touch_presence"
+        ? request.abortSignal(AbortSignal.timeout(8000))
+        : request);
       // PGRST202: the function isn't in the database (a migration wasn't run).
       if (result.error?.code === "PGRST202")
         throw new AccountError(
@@ -262,7 +265,19 @@ export function installAccountRoutes(
         await provider.rpc(token, "arena_friends", {}),
       );
       list.friends = list.friends
-        .map((f) => ({ ...f, ...presence(f.id) }))
+        .map((f) => {
+          const live = presence(f.id);
+          return {
+            ...f,
+            ...live,
+            // A local reconnect cache must not replace newer saved history.
+            ...(f.lastOnline &&
+            (!live.lastOnline ||
+              Date.parse(f.lastOnline) > Date.parse(live.lastOnline))
+              ? { lastOnline: f.lastOnline }
+              : {}),
+          };
+        })
         .sort(
           (a, b) =>
             Number(!!b.online) - Number(!!a.online) ||

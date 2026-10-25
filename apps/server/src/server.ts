@@ -1,3 +1,4 @@
+import { PresenceHistory } from "./presence-history.js";
 import {
   createExpedition,
   prepareExpedition,
@@ -157,6 +158,7 @@ export function createArenaServer(
   /** Elemental Plaza: everyone walking around the shared town. */
   const town = new TownWorld();
   const townAppearance = new TownAppearance(town, accounts);
+  const presenceHistory = new PresenceHistory(accounts);
   /** Friends watching a room: socket id → room code and display name. */
   const watchers = new Map<string, { code: string; name: string }>();
   const MAX_WATCHERS = 6;
@@ -183,6 +185,8 @@ export function createArenaServer(
       const account = await authorize(accounts, socket.data.accessToken);
       socket.data.account = account;
       socket.data.expiredChecks = 0;
+      if (!account.guest)
+        void presenceHistory.touch(account.id, socket.data.accessToken);
       const session = getSession(socket.id);
       const arena = session && rooms.get(session.code);
       const fighter = arena?.players.find((p) => p.id === session!.id);
@@ -263,7 +267,15 @@ export function createArenaServer(
     (matchId, accountId) => ledger.forPlayer(matchId, accountId),
     (accountId) => {
       const me = listOnline().players.find((p) => p.id === accountId);
-      if (!me) return { online: false, activity: null, room: null };
+      if (!me)
+        return {
+          online: false,
+          activity: null,
+          room: null,
+          ...(presenceHistory.lastOnline(accountId)
+            ? { lastOnline: presenceHistory.lastOnline(accountId) }
+            : {}),
+        };
       const arena = me.room ? rooms.get(me.room) : undefined;
       return {
         online: true,
@@ -777,6 +789,9 @@ export function createArenaServer(
     } else broadcast(arena);
   }
   io.on("connection", (socket) => {
+    const signedIn = socket.data.account as Account | undefined;
+    if (signedIn && !signedIn.guest)
+      void presenceHistory.touch(signedIn.id, socket.data.accessToken);
     const account = () => socket.data.account as Account | undefined;
     const requirePlayer = (cb: unknown) => {
       if (!account()) {
@@ -913,6 +928,7 @@ export function createArenaServer(
           return fail(cb, "This connection belongs to a different account.");
         socket.data.accessToken = token;
         socket.data.account = next;
+        if (!next.guest) void presenceHistory.touch(next.id, token as string);
         socket.data.expiredChecks = 0;
         reply(cb, { ok: true });
       } catch (error) {
@@ -1675,6 +1691,17 @@ export function createArenaServer(
       reply(cb, { ok: true });
     });
     socket.on("disconnect", () => {
+      const who = account();
+      const stillOnline =
+        who &&
+        [...io.sockets.sockets.values()].some(
+          (other) =>
+            other.id !== socket.id &&
+            other.connected &&
+            other.data.account?.id === who.id,
+        );
+      if (who && !who.guest && !stillOnline)
+        void presenceHistory.touch(who.id, socket.data.accessToken, true);
       town.leave(socket.id);
       stopWatching();
       const s = getSession(socket.id);
@@ -1754,6 +1781,7 @@ export function createArenaServer(
       if (townTimer) clearInterval(townTimer);
       if (accountTimer) clearInterval(accountTimer);
       await new Promise<void>((resolve) => io.close(() => resolve()));
+      await presenceHistory.flush();
     },
   };
 }

@@ -33,9 +33,34 @@ const defaults = (): FriendsView => ({
   favorites: new Set(),
 });
 
-/** "In a match as Voltkit", "In a lobby", "Online", "Offline". */
-export function friendStatus(f: Friend) {
-  if (!f.online) return "Offline";
+function seenDate(value: Friend["lastOnline"]) {
+  const date = value ? new Date(value) : null;
+  return date && Number.isFinite(date.getTime()) ? date : null;
+}
+/** Live activity wins over saved history. Unknown history stays "Offline". */
+export function friendStatus(f: Friend, now = Date.now()) {
+  if (!f.online) {
+    const date = seenDate(f.lastOnline);
+    if (!date) return "Offline";
+    const age = Math.max(0, now - date.getTime());
+    const ago =
+      age < 60000
+        ? "just now"
+        : age < 3600000
+          ? `${Math.floor(age / 60000)}m ago`
+          : age < 86400000
+            ? `${Math.floor(age / 3600000)}h ago`
+            : age < 30 * 86400000
+              ? `${Math.floor(age / 86400000)}d ago`
+              : new Intl.DateTimeFormat(undefined, {
+                  month: "short",
+                  day: "numeric",
+                  ...(date.getFullYear() !== new Date(now).getFullYear()
+                    ? { year: "numeric" as const }
+                    : {}),
+                }).format(date);
+    return `Last online ${ago}`;
+  }
   const fighter: CharacterId | undefined = normalizeCharacterId(f.fighter);
   const as = fighter ? ` as ${CHARACTERS[fighter].name}` : "";
   switch (f.activity) {
@@ -113,7 +138,11 @@ function friendCard(f: Friend, view: FriendsView) {
     disabled = view.busy?.has(f.id) ? ' disabled aria-busy="true"' : "";
   const status = friendStatus(f),
     presence = f.online ? (f.activity ?? "menu") : "offline";
-  return `<li class="friend-card ${f.online ? "online" : ""}${pinned ? " is-pinned" : ""}" data-friend-row="${escape(f.id)}">${avatar(f)}<span class="friend-name"><b title="${escape(f.name)}">${escape(f.name)}</b><span class="friend-presence"><span class="friend-dot ${presence}"></span><small>${escape(status)}</small></span>${f.title ? `<small class="friend-title" style="color:${/^#[0-9a-f]{3,8}$/i.test(f.titleColor ?? "") ? f.titleColor : "var(--text-dim)"}">${escape(f.title)}</small>` : ""}</span><span class="friend-actions">${canJoinFriend(f) ? `<button type="button" class="primary small" data-join="${escape(f.room!)}" aria-label="Join ${escape(f.name)}’s room"${disabled}>${iconLabel("enter", "Join")}</button>` : canWatchFriend(f) ? `<button type="button" class="secondary small" data-watch="${escape(f.room!)}" aria-label="Watch ${escape(f.name)}’s match"${disabled}>${iconLabel("watch", "Watch")}</button>` : ""}<button type="button" class="quiet small friend-icon-action friend-pin" data-friend-pin="${escape(f.id)}" aria-pressed="${pinned}" aria-label="${pinned ? "Unpin" : "Pin"} ${escape(f.name)}" title="${pinned ? "Unpin friend" : "Pin friend"}"${disabled}>${buttonIcon("star")}</button><button type="button" class="quiet small friend-icon-action" data-remove="${escape(f.id)}" aria-label="Remove ${escape(f.name)} from friends" title="Remove friend"${disabled}>${buttonIcon("more")}</button></span>${view.removing === f.id ? `<div class="friend-remove-confirm" role="group" aria-label="Remove ${escape(f.name)}"><span>Remove ${escape(f.name)} from your friends?</span><button type="button" class="quiet" data-friend-remove-cancel${disabled}>Keep friend</button><button type="button" class="secondary" data-friend-remove-confirm="${escape(f.id)}"${disabled}>Remove</button></div>` : ""}</li>`;
+  const seen = f.online ? null : seenDate(f.lastOnline);
+  const statusMarkup = seen
+    ? `<time datetime="${seen.toISOString()}" title="${escape(`Last online ${new Intl.DateTimeFormat(undefined, { dateStyle: "full", timeStyle: "short" }).format(seen)}`)}">${escape(status)}</time>`
+    : escape(status);
+  return `<li class="friend-card ${f.online ? "online" : ""}${pinned ? " is-pinned" : ""}" data-friend-row="${escape(f.id)}">${avatar(f)}<span class="friend-name"><b title="${escape(f.name)}">${escape(f.name)}</b><span class="friend-presence"><span class="friend-dot ${presence}"></span><small>${statusMarkup}</small></span>${f.title ? `<small class="friend-title" style="color:${/^#[0-9a-f]{3,8}$/i.test(f.titleColor ?? "") ? f.titleColor : "var(--text-dim)"}">${escape(f.title)}</small>` : ""}</span><span class="friend-actions">${canJoinFriend(f) ? `<button type="button" class="primary small" data-join="${escape(f.room!)}" aria-label="Join ${escape(f.name)}’s room"${disabled}>${iconLabel("enter", "Join")}</button>` : canWatchFriend(f) ? `<button type="button" class="secondary small" data-watch="${escape(f.room!)}" aria-label="Watch ${escape(f.name)}’s match"${disabled}>${iconLabel("watch", "Watch")}</button>` : ""}<button type="button" class="quiet small friend-icon-action friend-pin" data-friend-pin="${escape(f.id)}" aria-pressed="${pinned}" aria-label="${pinned ? "Unpin" : "Pin"} ${escape(f.name)}" title="${pinned ? "Unpin friend" : "Pin friend"}"${disabled}>${buttonIcon("star")}</button><button type="button" class="quiet small friend-icon-action" data-remove="${escape(f.id)}" aria-label="Remove ${escape(f.name)} from friends" title="Remove friend"${disabled}>${buttonIcon("more")}</button></span>${view.removing === f.id ? `<div class="friend-remove-confirm" role="group" aria-label="Remove ${escape(f.name)}"><span>Remove ${escape(f.name)} from your friends?</span><button type="button" class="quiet" data-friend-remove-cancel${disabled}>Keep friend</button><button type="button" class="secondary" data-friend-remove-confirm="${escape(f.id)}"${disabled}>Remove</button></div>` : ""}</li>`;
 }
 function empty(title: string, text: string, action: string, attr: string) {
   return `<div class="friends-empty">${buttonIcon("friends")}<h3>${title}</h3><p>${text}</p><button type="button" class="secondary" ${attr}>${action}</button></div>`;
