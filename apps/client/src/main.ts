@@ -168,7 +168,7 @@ import { matchReportReplySchema } from "../../../packages/shared/src/accounts";
 import { masteryMatches, setMastery, setWornSkins } from "./fighter-selection";
 import { shareResult } from "./share-card";
 import { openTown } from "./town";
-import { coliseumBlockFrame, paintColiseumBlock, paintColiseumFloor } from "./arena-coliseum";
+import { courtBlockFrame, courtBlocks, isCourt, paintCourtBlock, paintCourtFloor, SHIFTING_BLOCK, type CourtId } from "./arena-courts";
 import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
 const audio = new AudioManager();
 audio.start();
@@ -2463,87 +2463,100 @@ class ArenaScene extends Phaser.Scene {
   flashUntil = new Map<string, number>();
   comboShown = new Map<string, number>();
   floor?: Phaser.GameObjects.Image;
-  floorArena: ArenaId | "coliseum" = "classic";
+  /** The floor on show: an arena id, or "court-<id>" for the duel courts. */
+  floorArena: string = "classic";
   floorScale = new Map<string, number>();
   /**
-   * The coliseum court's stone blocks, as pictures that sort with the
-   * fighters by where they stand (so you can be in front of or behind one).
+   * Each duel court's stone blocks, as pictures that sort with the fighters
+   * by where they stand (so you can be in front of or behind one). The
+   * Shifting Ruins centre block is flagged so it can rise and sink.
    */
-  blocks: { img: Phaser.GameObjects.Image; o: (typeof OBSTACLES)[number] }[] = [];
+  courtBlocks = new Map<CourtId, { img: Phaser.GameObjects.Image; o: { x: number; y: number; w: number; h: number }; shifting?: boolean }[]>();
+  activeCourt?: CourtId;
   /** Bake an arena's floor once (2x on dense screens); returns its texture key. */
-  floorTexture(id: ArenaId | "coliseum") {
+  floorTexture(id: string) {
     const key = `arena-floor-${id}`;
     const bake = floorBake();
     if (!this.textures.exists(key)) {
       this.floorScale.set(key, bake);
-      if (id === "coliseum") {
+      const court = id.startsWith("court-") ? id.slice(6) : "";
+      if (isCourt(court)) {
         const canvas = document.createElement("canvas");
         canvas.width = RULES.width * bake;
         canvas.height = RULES.height * bake;
         const ctx = canvas.getContext("2d")!;
         ctx.scale(bake, bake);
-        paintColiseumFloor(ctx);
+        paintCourtFloor(ctx, court);
         this.textures.addCanvas(key, canvas);
       } else {
         const g = this.make.graphics({}, false);
-        paintArenaFloor(scaledPainter(g, bake), ARENAS[id]);
+        paintArenaFloor(scaledPainter(g, bake), ARENAS[id as ArenaId]);
         g.generateTexture(key, RULES.width * bake, RULES.height * bake);
         g.destroy();
       }
     }
     return key;
   }
-  /** Bake and place the coliseum's blocks (once). */
-  private ensureBlocks() {
-    if (this.blocks.length) return;
+  /** Bake and place a court's blocks (once per court). */
+  private ensureBlocks(id: CourtId) {
+    if (this.courtBlocks.has(id)) return this.courtBlocks.get(id)!;
     const bake = floorBake();
-    OBSTACLES.forEach((o, i) => {
-      const frame = coliseumBlockFrame(o),
-        key = `coliseum-block-${i}`;
+    const list = courtBlocks(id).map((o) => ({ o, shifting: false }));
+    if (id === "shifting-ruins") list.push({ o: SHIFTING_BLOCK, shifting: true });
+    const made = list.map(({ o, shifting }, i) => {
+      const frame = courtBlockFrame(o),
+        key = `court-block-${id}-${i}`;
       if (!this.textures.exists(key)) {
         const canvas = document.createElement("canvas");
         canvas.width = Math.ceil(frame.w * bake);
         canvas.height = Math.ceil(frame.h * bake);
         const ctx = canvas.getContext("2d")!;
         ctx.scale(bake, bake);
-        paintColiseumBlock(ctx, o, i);
+        paintCourtBlock(ctx, o, i, id);
         this.textures.addCanvas(key, canvas);
       }
       const img = this.add
         .image(frame.x, frame.y, key)
         .setOrigin(0)
         .setScale(1 / bake)
-        // Sorts by its front edge, in the same band as the fighters (see FIGHTER_DEPTH).
+        // Sorts by its front edge, in the same band as the fighters (see fighterDepth).
         .setDepth(fighterDepth(o.y + o.h))
         .setVisible(false);
-      this.blocks.push({ img, o });
+      return { img, o, shifting };
     });
+    this.courtBlocks.set(id, made);
+    return made;
   }
-  /** The duel court is the coliseum's sands; raids keep their own floors. */
+  /** Duels play on the painted courts; raids keep their own floors. */
   showArena(arena: ArenaId, raid: boolean) {
-    const id: ArenaId | "coliseum" = arena === "classic" && !raid ? "coliseum" : arena;
+    const court = !raid && isCourt(arena) ? arena : undefined;
+    const id = court ? `court-${court}` : arena;
     if (id === this.floorArena || !this.floor) return;
     this.floorArena = id;
+    this.activeCourt = court;
     const label = document.querySelector<HTMLElement>(".map-label");
     if (label) {
-      label.hidden = id === "coliseum";
+      label.hidden = !!court;
       label.innerHTML =
-        id === "cloud-deck"
+        arena === "cloud-deck"
           ? "CLOUD DECK <span>SOMNARA’S DREAM</span>"
           : `${ARENAS[arena].name.toUpperCase()} <span>ELEMENT ARENA</span>`;
     }
     const key = this.floorTexture(id);
     this.floor.setTexture(key).setScale(1 / (this.floorScale.get(key) ?? 1));
-    if (id === "coliseum") this.ensureBlocks();
-    for (const b of this.blocks) b.img.setVisible(id === "coliseum");
+    if (court) this.ensureBlocks(court);
+    for (const [cid, list] of this.courtBlocks) for (const b of list) b.img.setVisible(cid === court && !b.shifting);
   }
   /**
    * A block hides whoever stands just behind it, so it turns see-through
    * while a fighter is there (they stay readable; the block still blocks).
+   * The Shifting Ruins block shows only while it's up.
    */
-  private fadeBlocks(players: readonly { x: number; y: number }[]) {
-    if (this.floorArena !== "coliseum") return;
-    for (const { img, o } of this.blocks) {
+  private updateBlocks(players: readonly { x: number; y: number }[], t: number) {
+    const list = this.activeCourt && this.courtBlocks.get(this.activeCourt);
+    if (!list) return;
+    for (const { img, o, shifting } of list) {
+      if (shifting) img.setVisible(shiftingUp(ARENAS["shifting-ruins"], t));
       const behind = players.some(
         (p) => p.x > o.x - 30 && p.x < o.x + o.w + 30 && p.y < o.y + o.h && p.y > o.y - 95,
       );
@@ -3074,7 +3087,7 @@ class ArenaScene extends Phaser.Scene {
     );
     useSpeedScale(state.mutators?.includes("speed") ? MUTATOR_RULES.speed : 1);
     this.showArena(state.arena ?? "classic", !!state.raid);
-    this.fadeBlocks(state.players);
+    this.updateBlocks(state.players, arenaClock());
     this.accumulator += Math.min(delta, 100);
     while (this.accumulator >= 1000 / RULES.tick) {
       this.accumulator -= 1000 / RULES.tick;
@@ -3174,7 +3187,7 @@ class ArenaScene extends Phaser.Scene {
         );
     }
     this.rigs.forEach((rig) => rig.setVisible(false));
-    drawArenaLive(g, state.arena ?? "classic", arenaClock(), _time);
+    drawArenaLive(g, state.arena ?? "classic", arenaClock(), _time, !!this.activeCourt);
     // Epic and Mythical skins recolour their wearer's moves (shapes never change).
     const tints = new Map(
       state.players.map((p) => [p.id, fighterSkillColor(p)] as const),
@@ -3534,7 +3547,7 @@ class ArenaScene extends Phaser.Scene {
         drawCollectionAura(g, p.raidLook.aura, x, y + 10, _time, reducedMotion);
       rig.setVisible(true);
       // On the coliseum court fighters sort with the blocks by where they stand.
-      rig.setDepth(this.floorArena === "coliseum" ? fighterDepth(y) : 2);
+      rig.setDepth(this.activeCourt ? fighterDepth(y) : 2);
       const casting =
         rig.controller.state === "basic" ||
         rig.controller.state.startsWith("skill") ||
@@ -3725,12 +3738,17 @@ function drawArenaLive(
   id: ArenaId,
   t: number,
   time: number,
+  /** On a painted court the risen block is its own picture (see updateBlocks). */
+  painted = false,
 ) {
   const arena = ARENAS[id];
   const wobble = reducedMotion ? 0 : Math.sin(time / 40) * 2;
   if (arena.shifting) {
     const r = arena.shifting.rect;
     if (shiftingUp(arena, t)) {
+      if (painted) {
+        // Nothing to draw: the block picture stands in its pit.
+      } else {
       g.fillStyle(0x10170f, 0.35).fillEllipse(
         r.x + r.w / 2 + 10,
         r.y + r.h + 6,
@@ -3749,6 +3767,7 @@ function drawArenaLive(
       g.lineStyle(2, 0x5e523d, 0.8)
         .lineBetween(r.x + 20, r.y + 40, r.x + 34, r.y + 66)
         .lineBetween(r.x + 34, r.y + 66, r.x + 26, r.y + 86);
+      }
     } else {
       const rising = shiftingRisesIn(arena, t);
       if (t >= 0 && rising <= arena.shifting.warn) {
