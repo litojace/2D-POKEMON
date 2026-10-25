@@ -20615,12 +20615,14 @@ body.gate-active footer {
     radial-gradient(150% 130% at 50% 45%, rgba(0, 0, 0, 0) 58%, rgba(14, 24, 16, 0.38) 100%);
 }
 
-/* ── The top bar as a game HUD while in town ──
+/* ── The top bar as a game HUD while in town (and in a room's lobby, so
+   every screen past the front door shares one game frame) ──
    The site header becomes floating glass pieces over the town: your player
    card (portrait, name, level, XP, title) on the left, the town in the
    middle, and coins, settings and the menu on the right. Log out moves
    into the menu; the logo hides (the town is the brand). */
-body.town-active .topbar {
+body.town-active .topbar,
+body.lobby-active .topbar {
   position: fixed;
   top: 0;
   left: 0;
@@ -20636,14 +20638,19 @@ body.town-active .topbar {
   pointer-events: none;
 }
 body.town-active .topbar > *,
-body.town-active .top-links > * {
+body.lobby-active .topbar > *,
+body.town-active .top-links > *,
+body.lobby-active .top-links > * {
   pointer-events: auto;
 }
 body.town-active .brand,
-body.town-active #account-logout {
+body.lobby-active .brand,
+body.town-active #account-logout,
+body.lobby-active #account-logout {
   display: none;
 }
-body.town-active .top-links {
+body.town-active .top-links,
+body.lobby-active .top-links {
   flex: 1;
   display: flex;
   justify-content: space-between;
@@ -20651,7 +20658,8 @@ body.town-active .top-links {
   gap: 8px;
   pointer-events: none;
 }
-body.town-active .account-nav {
+body.town-active .account-nav,
+body.lobby-active .account-nav {
   flex: 1;
   display: flex;
   align-items: flex-start;
@@ -20659,11 +20667,13 @@ body.town-active .account-nav {
   flex-wrap: nowrap;
   pointer-events: none;
 }
-body.town-active .account-nav > * {
+body.town-active .account-nav > *,
+body.lobby-active .account-nav > * {
   pointer-events: auto;
 }
 /* Player card. */
-body.town-active #account-profile {
+body.town-active #account-profile,
+body.lobby-active #account-profile {
   display: grid;
   grid-template-columns: 46px auto auto;
   grid-template-areas: "art name level" "art xp xp" "art title title";
@@ -20678,7 +20688,8 @@ body.town-active #account-profile {
   backdrop-filter: blur(6px);
   text-align: left;
 }
-body.town-active #account-profile .account-avatar {
+body.town-active #account-profile .account-avatar,
+body.lobby-active #account-profile .account-avatar {
   grid-area: art;
   display: block;
   width: 46px;
@@ -20686,16 +20697,19 @@ body.town-active #account-profile .account-avatar {
   border-radius: 12px;
   overflow: hidden;
 }
-body.town-active #account-profile .account-name {
+body.town-active #account-profile .account-name,
+body.lobby-active #account-profile .account-name {
   grid-area: name;
   font: 800 17px/1 "Barlow Condensed", sans-serif;
   letter-spacing: 0.02em;
 }
-body.town-active #account-profile .nav-level {
+body.town-active #account-profile .nav-level,
+body.lobby-active #account-profile .nav-level {
   grid-area: level;
   justify-self: end;
 }
-body.town-active .nav-xp {
+body.town-active .nav-xp,
+body.lobby-active .nav-xp {
   grid-area: xp;
   display: block;
   width: 132px;
@@ -20704,26 +20718,30 @@ body.town-active .nav-xp {
   background: rgba(255, 255, 255, 0.12);
   overflow: hidden;
 }
-body.town-active .nav-xp i {
+body.town-active .nav-xp i,
+body.lobby-active .nav-xp i {
   display: block;
   height: 100%;
   border-radius: 3px;
   background: linear-gradient(90deg, #ffe58f, #f2b93b);
 }
-body.town-active .nav-title {
+body.town-active .nav-title,
+body.lobby-active .nav-title {
   display: block;
   grid-area: title;
   font: 700 11px/1 "DM Sans", sans-serif;
 }
 /* Coins: pushed to the right, a glass pill. */
-body.town-active #account-coins {
+body.town-active #account-coins,
+body.lobby-active #account-coins {
   margin-left: auto;
   min-height: 0;
   padding: 0;
   border: 0;
   background: none;
 }
-body.town-active #account-coins > * {
+body.town-active #account-coins > *,
+body.lobby-active #account-coins > * {
   min-height: 40px;
   padding: 0 14px;
   border: 1px solid rgba(242, 185, 59, 0.45);
@@ -20731,14 +20749,17 @@ body.town-active #account-coins > * {
   background: rgba(14, 26, 49, 0.82);
   backdrop-filter: blur(6px);
 }
-body.town-active #account-admin {
+body.town-active #account-admin,
+body.lobby-active #account-admin {
   min-height: 40px;
   border-radius: 999px;
   background: rgba(14, 26, 49, 0.82);
 }
 /* Settings and menu: round glass buttons. */
 body.town-active .home-settings,
-body.town-active .header-menu > summary {
+body.lobby-active .home-settings,
+body.town-active .header-menu > summary,
+body.lobby-active .header-menu > summary {
   display: inline-grid;
   place-items: center;
   width: 42px;
@@ -20750,7 +20771,8 @@ body.town-active .header-menu > summary {
   background: rgba(14, 26, 49, 0.82);
   backdrop-filter: blur(6px);
 }
-body.town-active .header-menu > summary span {
+body.town-active .header-menu > summary span,
+body.lobby-active .header-menu > summary span {
   display: none;
 }
 .nav-xp,
@@ -20758,7 +20780,8 @@ body.town-active .header-menu > summary span {
 #menu-logout {
   display: none;
 }
-body.town-active #menu-logout {
+body.town-active #menu-logout,
+body.lobby-active #menu-logout {
   display: flex;
 }
 /* The town's own chip sits in the middle of the top row. */
@@ -20771,27 +20794,34 @@ body.town-active .town-hud {
   }
 }
 @media (max-height: 500px) {
-  body.town-active #account-profile {
+  body.town-active #account-profile,
+  body.lobby-active #account-profile {
     grid-template-columns: 36px auto auto;
     grid-template-areas: "art name level" "art xp xp";
     padding: 4px 10px 4px 4px;
   }
-  body.town-active #account-profile .account-avatar {
+  body.town-active #account-profile .account-avatar,
+  body.lobby-active #account-profile .account-avatar {
     width: 36px;
     height: 36px;
   }
-  body.town-active .nav-title {
+  body.town-active .nav-title,
+  body.lobby-active .nav-title {
     display: none;
   }
-  body.town-active .nav-xp {
+  body.town-active .nav-xp,
+  body.lobby-active .nav-xp {
     width: 100px;
   }
   body.town-active .home-settings,
-  body.town-active .header-menu > summary {
+  body.lobby-active .home-settings,
+  body.town-active .header-menu > summary,
+  body.lobby-active .header-menu > summary {
     width: 36px;
     height: 36px;
   }
-  body.town-active #account-coins > * {
+  body.town-active #account-coins > *,
+  body.lobby-active #account-coins > * {
     min-height: 34px;
   }
 }
@@ -20804,18 +20834,22 @@ body.town-active .town-hud {
 .menu-gear {
   display: none;
 }
-body.town-active .home-settings {
+body.town-active .home-settings,
+body.lobby-active .home-settings {
   display: none;
 }
-body.town-active .menu-burger {
+body.town-active .menu-burger,
+body.lobby-active .menu-burger {
   display: none;
 }
-body.town-active .menu-gear {
+body.town-active .menu-gear,
+body.lobby-active .menu-gear {
   display: inline-grid;
   place-items: center;
   color: #ffd65b;
 }
-body.town-active .menu-gear svg {
+body.town-active .menu-gear svg,
+body.lobby-active .menu-gear svg {
   width: 20px;
   height: 20px;
 }
@@ -21783,4 +21817,19 @@ button.is-equipped-text:disabled {
     width: 36px;
     height: 36px;
   }
+}
+
+/* A room's lobby: the same glass top bar, kept in the page flow at the
+   height the lobby layout reserves for it (--lobby-top), with no site footer. */
+body.lobby-active .topbar {
+  position: relative;
+  height: var(--lobby-top);
+  padding-top: max(8px, env(safe-area-inset-top));
+}
+body.lobby-active #app > footer {
+  display: none;
+}
+/* The player card keeps its full size here, as in town. */
+body.lobby-active #account-profile {
+  max-width: none;
 }
