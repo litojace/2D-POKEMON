@@ -29,6 +29,7 @@ import {
   FOUNTAIN,
   fountainBase,
   fountainTop,
+  paintedFountain,
   paintGround,
   rnd,
   carveStatue,
@@ -141,9 +142,10 @@ export class TownScenery {
     this.props();
     this.labels();
     for (const f of this.flags) f.g = scene.add.graphics().setDepth(f.depth);
-    this.waterBackG = scene.add.graphics().setDepth(TOWN.plaza.y - 0.2);
-    this.waterG = scene.add.graphics().setDepth(TOWN.plaza.y + 0.1);
-    this.crystalG = scene.add.graphics().setDepth(TOWN.plaza.y + 2);
+    const fountainY = TOWN_OBSTACLES.find((o) => o.kind === "fountain")!.y;
+    this.waterBackG = scene.add.graphics().setDepth(fountainY - 0.2);
+    this.waterG = scene.add.graphics().setDepth(fountainY + 0.1);
+    this.crystalG = scene.add.graphics().setDepth(fountainY + 2);
     this.skyG = scene.add.graphics().setDepth(9000);
     this.birdShadowG = scene.add.graphics().setDepth(-400);
     this.bugG = scene.add.graphics().setDepth(8500);
@@ -224,8 +226,11 @@ export class TownScenery {
     const f = TOWN_OBSTACLES[0];
     // The fountain: basin, then falling water behind the column, the column
     // and bowls, then the water in front (see drawFountain).
-    place(s, "town-fountain-base", fountainBase(), f.x, f.y, f.y - 0.4);
-    place(s, "town-fountain-top", fountainTop(), f.x, f.y, f.y);
+    const fountainSource = s.textures.exists("town-fountain-painted")
+      ? s.textures.get("town-fountain-painted").getSourceImage() as HTMLImageElement
+      : null;
+    place(s, fountainSource ? "town-fountain-painted-base" : "town-fountain-base", fountainSource ? paintedFountain(fountainSource, false) : fountainBase(), f.x, f.y, f.y - 0.4);
+    place(s, fountainSource ? "town-fountain-painted-top" : "town-fountain-top", fountainSource ? paintedFountain(fountainSource, true) : fountainTop(), f.x, f.y, f.y);
     const kinds = new Set(["stone", "lamp", "crates", "well", "dummy", "mirror", "obelisk", "board"]);
     for (const o of TOWN_OBSTACLES) {
       if (!kinds.has(o.kind)) continue;
@@ -563,7 +568,7 @@ export class TownScenery {
     // A sheet falling from a bowl's lip to the surface below it.
     const sheet = (fromY: number, fromRx: number, fromRy: number, toY: number, toRx: number, toRy: number, strands: number, width: number) => {
       for (let k = 0; k < strands; k++) {
-        const a = (k / strands) * TAU + 0.04,
+        const a = (k / strands) * TAU + 0.04 + (rnd(k * 11) - 0.5) * 0.055,
           sin = Math.sin(a),
           g = sin < 0 ? back : front,
           x0 = f.x + Math.cos(a) * fromRx,
@@ -580,14 +585,17 @@ export class TownScenery {
           new Phaser.Math.Vector2(x1 + sway, y1),
         );
         const pts = curve.getPoints(10);
-        g.lineStyle(width, 0xbfeeff, sin < 0 ? 0.32 : 0.42).strokePoints(pts);
-        g.lineStyle(width * 0.4, 0xffffff, sin < 0 ? 0.25 : 0.45).strokePoints(pts);
+        const flow = 0.68 + rnd(k * 7.1) * 0.5;
+        // A translucent ribbon with a fine bright edge, rather than solid wires.
+        g.lineStyle(width * flow * 1.8, 0x7ed4e5, sin < 0 ? 0.07 : 0.11).strokePoints(pts);
+        g.lineStyle(width * flow * 0.65, 0xd3f6ff, sin < 0 ? 0.24 : 0.35).strokePoints(pts);
+        if (k % 3) g.lineStyle(0.45, 0xffffff, sin < 0 ? 0.25 : 0.48).strokePoints(pts);
         // Bright beads running down the strand.
         if (!still)
           for (let b = 0; b < 2; b++) {
             const u = (t * 1.6 + k * 0.37 + b * 0.5) % 1,
               p = curve.getPoint(u * u);
-            g.fillStyle(0xffffff, 0.8).fillCircle(p.x, p.y, 1.4);
+            g.fillStyle(0xe7fbff, 0.65).fillEllipse(p.x, p.y, 0.9, 2.1);
           }
       }
     };
@@ -600,25 +608,33 @@ export class TownScenery {
       const a = (k / 26) * TAU,
         g = Math.sin(a) < 0 ? back : front,
         wob = still ? 1 : 0.7 + 0.3 * Math.sin(t * 9 + k * 2.1);
-      g.fillStyle(0xf4fdff, 0.75 * wob).fillEllipse(f.x + Math.cos(a) * land, poolY + Math.sin(a) * landRy, 9 * wob, 4);
+      const x = f.x + Math.cos(a) * land, y = poolY + Math.sin(a) * landRy;
+      g.fillStyle(0xdcfaff, 0.33 * wob).fillEllipse(x, y, 7 * wob, 2.4);
+      if (k % 3 === 0) {
+        const age = still ? 0.4 : (t * 0.8 + k * 0.137) % 1;
+        g.lineStyle(0.7, 0xc9f1f5, (1 - age) * 0.27).strokeEllipse(x, y, 5 + age * 12, 2 + age * 5);
+      }
     }
     front.lineStyle(3, 0xd8f6ff, 0.75).lineBetween(f.x, f.y + FOUNTAIN.spout.dy, f.x, f.y + FOUNTAIN.spout.dy - 12 - (still ? 0 : Math.sin(t * 8) * 1.5));
   }
 
   private drawCrystal(t: number) {
-    const f = TOWN_OBSTACLES[0];
-    const bob = Math.sin(t * 1.4) * 5,
-      cy = f.y - 215 + bob,
-      g = this.crystalG.clear();
-    g.fillStyle(0xfff0be, 0.18).fillCircle(f.x, cy, 50);
-    g.fillStyle(0xe9f7ff, 1).fillTriangle(f.x, cy - 36, f.x + 22, cy, f.x, cy + 36);
-    g.fillStyle(0xbfe8ff, 1).fillTriangle(f.x, cy - 36, f.x - 22, cy, f.x, cy + 36);
-    g.fillStyle(0x9fd9ff, 1).fillTriangle(f.x, cy - 36, f.x + 22, cy, f.x + 6, cy);
-    // Motes circling the crystal.
-    for (let k = 0; k < 6; k++) {
-      const a = t * 0.9 + (k / 6) * TAU;
-      g.fillStyle(0xfff3c4, 0.8).fillCircle(f.x + Math.cos(a) * 40, cy + Math.sin(a) * 14, 2.2);
-    }
+    const f = TOWN_OBSTACLES[0], { crystal } = FOUNTAIN;
+    const cy = f.y + crystal.dy, x = f.x, { rx, ry } = crystal;
+    const g = this.crystalG.clear();
+    // The crystal meets its stone mount; small facets give it glassy depth.
+    g.fillStyle(0xd9f8ff, 0.045).fillEllipse(x, cy, rx * 3.1, ry * 2.3);
+    g.fillStyle(0x548da7, 1).fillTriangle(x, cy - ry, x - rx, cy, x - 3, cy + ry);
+    g.fillStyle(0xc4f7ff, 1).fillTriangle(x, cy - ry, x - 5, cy - 3, x - rx, cy);
+    g.fillStyle(0x8cd9ef, 1).fillTriangle(x, cy - ry, x + rx, cy, x + 3, cy + ry);
+    g.fillStyle(0xf0feff, 1).fillTriangle(x, cy - ry, x + 4, cy - 3, x + rx, cy);
+    g.fillStyle(0xb4ebf7, 1).fillTriangle(x - rx, cy, x - 5, cy - 3, x - 3, cy + ry);
+    g.fillStyle(0x65abc7, 1).fillTriangle(x - 5, cy - 3, x + rx, cy, x + 3, cy + ry);
+    g.lineStyle(0.8, 0xeaffff, 0.9).lineBetween(x, cy - ry, x - rx, cy);
+    g.lineStyle(0.6, 0xeaffff, 0.55).lineBetween(x - rx, cy, x - 3, cy + ry);
+    const glint = this.reduced ? 0.5 : Math.max(0, Math.sin(t * 0.9));
+    g.lineStyle(1, 0xffffff, glint * 0.85).lineBetween(x + 4, cy - 11, x + 10, cy - 11);
+    g.lineBetween(x + 7, cy - 14, x + 7, cy - 8);
   }
 
   /**

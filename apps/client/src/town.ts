@@ -556,6 +556,9 @@ export function openTown(options: TownOptions) {
     constructor() {
       super("town");
     }
+    preload() {
+      this.load.image("town-fountain-painted", "/assets/town/fountain.webp");
+    }
     create() {
       if (closed) return;
       scene = this;
