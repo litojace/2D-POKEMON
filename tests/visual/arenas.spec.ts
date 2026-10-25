@@ -62,21 +62,21 @@ test("Grumblecrag raid plays on the court with broken pillars", async ({ page },
   expect(errors).toEqual([]);
 });
 
-// A shot flying just behind a stone block is hidden by the block (it used to
-// be drawn over the block's top). The Coliseum is drawn with and without the
-// shot: the block's top looks exactly the same, while a second shot out in the
-// open does show (so shots are drawn at all).
-test("a shot behind a block is hidden by it", async ({ page }, info) => {
+// The stone you see is exactly the area that stops attacks: its picture fills
+// the block's footprint and nothing behind it. A shot flying just behind a
+// block shows on the open sand there and leaves the stone untouched (it used
+// to be drawn over the stone's raised top, looking like it passed through).
+test("a block's picture is exactly its solid area", async ({ page }, info) => {
   const errors = await openTown(page);
-  const behind: [number, number] = [535, 222]; // just behind the top-left block (490–580 × 240–370)
-  const open: [number, number] = [800, 150];
+  // The top-left block's footprint is 490–580 × 240–370; the shot is just behind it.
+  const shot: [number, number] = [535, 212];
   const enter = async (shots: [number, number][]) => {
     await page.evaluate(
       (shots) => (window as any).__room("practice", { arena: "classic", character: "tidefin", pos: [300, 760, 1300, 760], shots }),
       shots,
     );
   };
-  await enter([behind, open]);
+  await enter([shot]);
   await openTownMenu(page);
   await page.click(".town-play");
   await page.click("#practice");
@@ -91,9 +91,9 @@ test("a shot behind a block is hidden by it", async ({ page }, info) => {
     width: (x1 - x0) * s,
     height: (y1 - y0) * s,
   });
-  const blockTop = clip(495, 190, 575, 300);
-  const openArea = clip(760, 110, 840, 190);
-  const withShot = { block: await page.screenshot({ clip: blockTop }), open: await page.screenshot({ clip: openArea }) };
+  const stone = clip(495, 250, 575, 362);
+  const behind = clip(510, 196, 560, 234);
+  const withShot = { stone: await page.screenshot({ clip: stone }), behind: await page.screenshot({ clip: behind }) };
   await snap(page, info, "shot-behind-block");
   await enter([]);
   for (let i = 0; i < 4; i++) {
@@ -101,8 +101,8 @@ test("a shot behind a block is hidden by it", async ({ page }, info) => {
     await page.waitForTimeout(400);
   }
   await page.waitForTimeout(1200);
-  const without = { block: await page.screenshot({ clip: blockTop }), open: await page.screenshot({ clip: openArea }) };
-  expect(withShot.open.equals(without.open)).toBe(false);
-  expect(withShot.block.equals(without.block)).toBe(true);
+  const without = { stone: await page.screenshot({ clip: stone }), behind: await page.screenshot({ clip: behind }) };
+  expect(withShot.behind.equals(without.behind)).toBe(false);
+  expect(withShot.stone.equals(without.stone)).toBe(true);
   expect(errors).toEqual([]);
 });

@@ -173,7 +173,7 @@ import { surfaceBurst } from "./court-surface-fx";
 import { fxFor } from "./fx-engine";
 import { isRaidFloor, paintRaidFloor } from "./raid-floors";
 import type { LayerAt } from "./raid-layers";
-import { BLOCK_H as BLOCK_H_WORLD, courtBlockFrame, courtBlocks, isCourt, paintCourtBlock, paintCourtFloor, paintCourtRubble, paintCourtStands, RUBBLE_PAD, SHIFTING_BLOCK, STANDS, type CourtId } from "./arena-courts";
+import { courtBlockFrame, courtBlocks, isCourt, paintCourtBlock, paintCourtFloor, paintCourtRubble, paintCourtStands, RUBBLE_PAD, SHIFTING_BLOCK, STANDS, type CourtId } from "./arena-courts";
 import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
 const audio = new AudioManager();
 audio.start();
@@ -2734,7 +2734,8 @@ class ArenaScene extends Phaser.Scene {
     });
     this.tweens.add({ targets: rubble, alpha: 1, delay: 160, duration: 300 });
     // Stones thrown off the top, landing around the footprint.
-    const top = o.y - BLOCK_H_WORLD;
+    // The stone's top face starts at its footprint's back edge (stoneBase).
+    const top = o.y;
     for (let k = 0; k < 12; k++) {
       const sx = o.x + Math.random() * o.w,
         sy = top + Math.random() * (o.h * 0.6);
@@ -2804,12 +2805,11 @@ class ArenaScene extends Phaser.Scene {
     return this.add.image(x, y, key).setOrigin(0).setScale(1 / bake).setDepth(-9).setVisible(false);
   }
   /**
-   * A block hides whoever stands just behind it, so it turns see-through
-   * while a fighter is there (they stay readable; the block still blocks).
-   * The Shifting Ruins block shows only while it's up.
+   * Blocks on show each frame: the Shifting Ruins block only while it's up,
+   * Grumblecrag's pillars crumbling and rising, and the cover effects sort
+   * behind (see Fx.at).
    */
   private updateBlocks(
-    players: readonly { x: number; y: number; raidBoss?: boolean }[],
     t: number,
     pillars?: readonly { broken: boolean }[],
   ) {
@@ -2832,11 +2832,10 @@ class ArenaScene extends Phaser.Scene {
         img.setVisible(!broken);
         this.rubble[i]?.setVisible(broken).setAlpha(1);
       }
-      // Grumblecrag is tall: it disappears further behind a block.
-      const behind = players.some(
-        (p) => p.x > o.x - 30 && p.x < o.x + o.w + 30 && p.y < o.y + o.h && p.y > o.y - (p.raidBoss ? 170 : 95),
-      );
-      img.setAlpha(img.alpha + ((behind ? 0.45 : 1) - img.alpha) * 0.25);
+      // The stone fills its footprint, so whatever stands behind it is clear
+      // of the picture: blocks stay solid (alpha 1; the crumble tweens own it
+      // while a pillar falls).
+      if (!this.pillarMoving.has(i)) img.setAlpha(1);
     }
   }
   /** Knockout moment: camera push-in multiplier and its end time. */
@@ -3387,7 +3386,7 @@ class ArenaScene extends Phaser.Scene {
     this.showArena(state.arena ?? "classic", !!state.raid);
     // Duel courts have their own background sound (crowd, sea, forge, wind).
     audio.setAmbience(this.activeCourt && !this.courtRaid ? this.activeCourt : null);
-    this.updateBlocks(state.players, arenaClock(), state.raid?.pillars);
+    this.updateBlocks(arenaClock(), state.raid?.pillars);
     this.accumulator += Math.min(delta, 100);
     while (this.accumulator >= 1000 / RULES.tick) {
       this.accumulator -= 1000 / RULES.tick;

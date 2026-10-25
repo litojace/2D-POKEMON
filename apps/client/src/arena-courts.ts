@@ -20,6 +20,14 @@ const W = RULES.width,
   H = RULES.height;
 /** How tall the stone blocks stand (px). */
 export const BLOCK_H = 58;
+/**
+ * Where a block stands, given its solid footprint (OBSTACLES): the base is the
+ * footprint's front part, and the raised top face fills the rest, so the
+ * whole stone you see is exactly the area that stops fighters and attacks.
+ */
+export function stoneBase(o: Rect): Rect {
+  return { x: o.x, y: o.y + BLOCK_H, w: o.w, h: o.h - BLOCK_H };
+}
 const K = 0.78;
 const SUNV = { x: 0.55, y: 0.12 };
 const SHADOW = { alpha: 0.34, blur: 14 };
@@ -129,7 +137,8 @@ function shadows(c: Ctx, draw: (s: Ctx) => void) {
   c.restore();
 }
 /** A block's shadow: its footprint swept along the sun by its height. */
-function blockShadow(s: Ctx, o: Rect) {
+function blockShadow(s: Ctx, footprint: Rect) {
+  const o = stoneBase(footprint);
   const dx = SUNV.x * BLOCK_H,
     dy = SUNV.y * BLOCK_H;
   const foot: [number, number][] = [
@@ -1039,7 +1048,8 @@ export function paintCourtRubble(c: Ctx, o: Rect, index: number) {
 /** How much room a block's picture has around its footprint (for chips and the gem's glow). */
 export const BLOCK_PAD = 14;
 /** A block's picture size (world px) and where its top-left sits. */
-export function courtBlockFrame(o: Rect) {
+export function courtBlockFrame(foot: Rect) {
+  const o = stoneBase(foot);
   return {
     x: o.x - BLOCK_PAD,
     y: o.y - BLOCK_H - BLOCK_PAD,
@@ -1048,11 +1058,14 @@ export function courtBlockFrame(o: Rect) {
   };
 }
 /**
- * One stone block, drawn so that the picture's top-left is courtBlockFrame(o).
- * Its top face is the footprint raised by BLOCK_H; its front face stands on
- * the footprint's front edge, which is what it sorts by.
+ * One stone block (given its solid footprint), drawn so that the picture's
+ * top-left is courtBlockFrame(foot). Its top face is its base (stoneBase)
+ * raised by BLOCK_H, which puts it at the footprint's back edge; its front
+ * face stands on the footprint's front edge, which is what it sorts by.
  */
-export function paintCourtBlock(c: Ctx, o: Rect, index: number, id: CourtId) {
+export function paintCourtBlock(c: Ctx, foot: Rect, index: number, id: CourtId) {
+  // Drawn from its base, so the picture fills the footprint exactly.
+  const o = stoneBase(foot);
   const m = STONE[id];
   c.save();
   c.translate(-(o.x - BLOCK_PAD), -(o.y - BLOCK_H - BLOCK_PAD));
