@@ -823,24 +823,7 @@ input::placeholder {
   width: 100%;
   margin-top: 10px;
 }
-footer {
-  border-top: 1px solid #ffffff0c;
-  margin: 15px 5vw 0;
-  padding: 18px 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 8px;
-  letter-spacing: 1px;
-  color: #99accb;
-}
-footer b {
-  color: var(--lime);
-  padding: 0 6px;
-}
-footer > span:last-child {
-  letter-spacing: 0;
-}
+
 .hud {
   display: grid;
   grid-template-columns: 1fr 180px 1fr;
@@ -1386,8 +1369,7 @@ dialog input[type="range"] {
   .ability {
     min-width: 42%;
   }
-  .battle-footer > span:nth-child(2),
-  footer > span:last-child {
+  .battle-footer > span:nth-child(2) {
     display: none;
   }
   .map-label {
@@ -1751,7 +1733,6 @@ body.battle-active.touch-mode {
   overscroll-behavior: none;
 }
 .battle-active.touch-mode .topbar,
-.battle-active.touch-mode footer,
 .battle-active.touch-mode #abilities,
 .battle-active.touch-mode .battle-footer > span {
   display: none;
@@ -2048,11 +2029,7 @@ main {
   padding-left: calc(5vw + var(--safe-left));
   padding-right: calc(5vw + var(--safe-right));
 }
-footer {
-  margin-left: calc(5vw + var(--safe-left));
-  margin-right: calc(5vw + var(--safe-right));
-  padding-bottom: calc(18px + var(--safe-bottom));
-}
+
 .primary {
   background: var(--stadium-red);
   color: #fff;
@@ -4606,7 +4583,6 @@ body.battle-active:not(.touch-mode) #app {
   display: flex;
   flex-direction: column;
 }
-body.battle-active:not(.touch-mode) #app > footer,
 body.battle-active:not(.touch-mode) #pwa-banner {
   display: none;
 }
@@ -16834,30 +16810,7 @@ body.home-active .header-menu summary {
 body.home-active .header-menu summary > span {
   display: none;
 }
-body.home-active #app > footer {
-  position: fixed;
-  left: calc(var(--safe-left) + 32px);
-  right: calc(32px + var(--safe-right));
-  bottom: calc(4px + var(--safe-bottom));
-  z-index: 2;
-  height: 36px;
-  min-height: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  gap: 18px;
-  font-size: 11px;
-  color: var(--text-dim);
-}
-body.home-active #app > footer > span:last-child {
-  margin-left: auto;
-}
-body.home-active #credits {
-  padding: 6px 8px;
-  min-height: 32px;
-  font-size: 12px;
-}
+
 /* Holds only the Fighters and Play panels (they slide over the town). */
 .home-screen {
   position: relative;
@@ -17032,22 +16985,9 @@ body.home-active #credits {
     height: 18px;
   }
 
-  body.home-active #app > footer {
-    left: calc(var(--safe-left) + 16px);
-    right: calc(16px + var(--safe-right));
-    bottom: calc(1px + var(--safe-bottom));
-    height: 24px;
-    font-size: 10px;
-    gap: 12px;
-  }
-  body.home-active #app > footer > span:last-child {
-    display: none;
-  }
-  body.home-active #credits {
-    font-size: 11px;
-    min-height: 24px;
-    padding: 2px 6px;
-  }
+  
+  
+  
   .home-drawer {
     inset: calc(10px + var(--safe-top)) calc(10px + var(--safe-right))
       calc(10px + var(--safe-bottom)) auto;
@@ -17090,9 +17030,7 @@ body.home-active #credits {
     --home-top: calc(44px + var(--safe-top));
   }
 
-  body.home-active #app > footer > span:first-child {
-    font-size: 9px;
-  }
+  
 }
 @media (prefers-reduced-motion: reduce) {
   .home-screen *,
@@ -17167,15 +17105,7 @@ body.lobby-active #menu .lobby-layout {
   min-height: 0;
   margin: 0;
 }
-body.lobby-active #app > footer {
-  position: fixed;
-  bottom: var(--safe-bottom);
-  inset-inline: 20px;
-  height: 24px;
-  padding: 4px 0;
-  margin: 0;
-  font-size: 11px;
-}
+
 body.lobby-active .roster-panel,
 .home-roster-drawer .roster-panel {
   display: grid;
@@ -17703,9 +17633,7 @@ body.lobby-active .roster-panel > .section-title {
   font-size: 13px;
   border-radius: var(--radius-sm);
 }
-body.lobby-active #app > footer {
-  margin: 0;
-}
+
 body.lobby-active .roster-panel > .section-title {
   display: none;
 }
@@ -17724,9 +17652,7 @@ body.lobby-active .roster-panel > .section-title {
     border-radius: var(--radius-sm);
     padding: 8px;
   }
-  body.lobby-active #app > footer {
-    font-size: 10px;
-  }
+  
 }
 @media (orientation: landscape) and (max-height: 600px) {
   body.lobby-active main {
@@ -20371,9 +20297,7 @@ body.battle-active:not(.touch-mode) #battle.desktop-hud-outside .enemy-bearing {
     margin-left: 4px;
   }
 }
-body.gate-active footer {
-  display: none;
-}
+
 /* Narrow windows: the open menu and the emote bar can't share one row,
    so the emotes sit on a row of their own above it. */
 @media (max-width: 960px) and (min-height: 501px) {
@@ -21606,9 +21530,7 @@ body.lobby-active .topbar {
   height: var(--lobby-top);
   padding-top: max(8px, env(safe-area-inset-top));
 }
-body.lobby-active #app > footer {
-  display: none;
-}
+
 /* The player card keeps its full size here, as in town. */
 body.lobby-active #account-profile {
   max-width: none;
@@ -21795,19 +21717,63 @@ body.battle-active.court-view #game canvas {
   color: var(--text);
   background: #ffffff0a;
 }
+/* Phones held sideways: each slider is one row (name, track, value) and
+   Motion is a single line, so Settings fits without scrolling. */
 @media (orientation: landscape) and (max-height: 500px) {
+  .prefs-note {
+    margin-bottom: 8px;
+    font-size: 12px;
+  }
+  .prefs-grid,
+  .credits-grid {
+    gap: 8px;
+  }
   .prefs-card {
-    padding: 10px 12px;
+    padding: 8px 12px;
   }
   .framed-dialog .prefs-card > h3 {
-    font-size: 17px;
-    margin-bottom: 4px;
+    font-size: 16px;
+    margin-bottom: 2px;
+  }
+  .prefs-card > h3 > .menu-option-icon {
+    width: 17px;
+    height: 17px;
+  }
+  .prefs-card > .prefs-note {
+    margin: 0 0 2px;
+    font-size: 11px;
   }
   .framed-dialog label.prefs-slider {
-    margin: 4px 0 6px;
+    grid-template-columns: 8.5rem minmax(0, 1fr) 4.5ch;
+    gap: 0 10px;
+    margin: 2px 0;
+    min-height: 32px;
+  }
+  .prefs-slider-label,
+  .prefs-slider > output {
+    font-size: 12px;
+  }
+  .prefs-slider > input {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .prefs-slider > output {
+    grid-column: 3;
+  }
+  .prefs-card:has(> .prefs-status) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .framed-dialog .prefs-card:has(> .prefs-status) > h3 {
+    margin: 0;
+  }
+  .prefs-status > span {
+    display: none;
   }
   .credits-hero {
     padding: 10px 12px;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
   }
 }

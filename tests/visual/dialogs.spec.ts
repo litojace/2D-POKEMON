@@ -21,6 +21,11 @@ for (const s of SCREENS)
         await expect(dialog.locator(id)).toBeVisible();
         expect(inside(await box(page, id), screen)).toBe(true);
       }
+      // Everything shows at once: the dialog's content doesn't need scrolling.
+      const scroll = await dialog
+        .locator(".dialog-content")
+        .evaluate((el) => el.scrollHeight - el.clientHeight);
+      expect(scroll).toBeLessThanOrEqual(1);
       // Sliders say their value.
       await expect(dialog.locator('output[data-pref-for="music"]')).toHaveText(/^\d+%$/);
       await snap(page, info, `settings-${s.name}`);
