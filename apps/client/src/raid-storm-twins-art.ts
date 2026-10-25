@@ -8,6 +8,7 @@ import {
   type StormPoint,
 } from "../../../packages/shared/src/raid";
 import type { RaidBossCue } from "./raid-boss-motion";
+import type { LayerAt } from "./raid-layers";
 type G = Phaser.GameObjects.Graphics;
 const TAU = Math.PI * 2;
 function bolt(g: G, a: StormPoint, b: StormPoint, color: number, alpha = 1) {
@@ -32,14 +33,17 @@ function sign(
   g.lineStyle(3, color, 1).lineBetween(x - size, y, x + size, y);
   if (value > 0) g.lineBetween(x, y - size, x, y + size);
 }
-export function drawConductorRing(g: G, state: Snapshot, reduced: boolean) {
+export function drawConductorRing(g: G, state: Snapshot, reduced: boolean, at?: LayerAt) {
   const r = state.raid!,
     t = reduced ? 0 : state.time;
-  for (const p of S.posts) {
+  for (const [i, p] of S.posts.entries()) {
     g.fillStyle(0x15253c, 0.6).fillEllipse(p.x, p.y + 12, 68, 26);
-    g.fillStyle(0x866958, 1).fillRoundedRect(p.x - 13, p.y - 22, 26, 39, 5);
-    g.lineStyle(4, 0xe6b985, 0.9).strokeEllipse(p.x, p.y - 22, 32, 15);
-    g.fillStyle(0xffd78b, 0.2).fillCircle(p.x, p.y - 22, 15);
+    // The post itself stands up, so it sorts with the raiders.
+    const post = at ? at(`post-${i}`, p.y + 17) : g;
+    post.fillStyle(0x866958, 1).fillRoundedRect(p.x - 13, p.y - 22, 26, 39, 5);
+    post.fillStyle(0xa98a6e, 1).fillRoundedRect(p.x - 13, p.y - 22, 9, 39, 4);
+    post.lineStyle(4, 0xe6b985, 0.9).strokeEllipse(p.x, p.y - 22, 32, 15);
+    post.fillStyle(0xffd78b, 0.2).fillCircle(p.x, p.y - 22, 15);
   }
   for (const f of r.stormFields ?? []) {
     g.fillStyle(0x7d9fff, 0.14).fillCircle(f.x, f.y, f.radius);
@@ -196,8 +200,10 @@ export function drawStormTwins(
   state: Snapshot,
   reduced: boolean,
   clock: number,
+  at?: LayerAt,
 ): RaidBossCue[] {
   const r = state.raid!;
+  const memory = g;
   let m = memories.get(g);
   if (
     !m ||
@@ -232,7 +238,9 @@ export function drawStormTwins(
       );
     if (old === 0 && p.hp > 0) cues.push("awaken");
     m.hp.set(p.id, p.hp);
-    const life = bossLife(g, state, p, clock, reduced);
+    const life = bossLife(memory, state, p, clock, reduced);
+    // Each twin draws on its own layer, sorted with the raiders by where it stands.
+    const g = at ? at(`twin-${i}`, p.y + 13) : memory;
     const down = p.hp <= 0,
       x = p.x;
     const pulse = Math.sin(t * (i ? 2.5 : 3.4) + i) * life.move;

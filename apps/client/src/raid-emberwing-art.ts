@@ -7,6 +7,7 @@ import {
   type RaidWarning,
 } from "../../../packages/shared/src/raid";
 import { RaidBossMotion, type RaidBossCue } from "./raid-boss-motion";
+import type { LayerAt } from "./raid-layers";
 type G = Phaser.GameObjects.Graphics;
 const TAU = Math.PI * 2;
 function flame(g: G, x: number, y: number, size: number, alpha = 1) {
@@ -29,7 +30,7 @@ function flame(g: G, x: number, y: number, size: number, alpha = 1) {
     y - size * 0.7,
   );
 }
-export function drawSkyTerrace(g: G, state: Snapshot, reduced: boolean) {
+export function drawSkyTerrace(g: G, state: Snapshot, reduced: boolean, at?: LayerAt) {
   const r = state.raid!,
     t = reduced ? 0 : state.time;
   for (const f of r.emberPatches ?? []) {
@@ -59,7 +60,7 @@ export function drawSkyTerrace(g: G, state: Snapshot, reduced: boolean) {
         0.8,
       );
   }
-  for (const b of r.braziers ?? []) {
+  for (const [bi, b] of (r.braziers ?? []).entries()) {
     const lit = b.litUntil > state.time,
       active =
         r.airborne &&
@@ -69,10 +70,13 @@ export function drawSkyTerrace(g: G, state: Snapshot, reduced: boolean) {
     // Circle matches the actual standing range. The stone bowl is decorative.
     g.fillStyle(ring, lit ? 0.1 : 0.045).fillCircle(b.x, b.y, E.brazierRadius);
     g.lineStyle(2, ring, lit ? 1 : 0.6).strokeCircle(b.x, b.y, E.brazierRadius);
-    g.fillStyle(0x354259, 1).fillRoundedRect(b.x - 19, b.y - 5, 38, 35, 5);
-    g.fillStyle(0x5c5862, 1).fillEllipse(b.x, b.y - 7, 64, 25);
-    g.lineStyle(3, 0xc3a37c, 0.9).strokeEllipse(b.x, b.y - 7, 64, 25);
-    g.fillStyle(0x152239, 1).fillEllipse(b.x, b.y - 10, 50, 14);
+    // The bowl and its flame stand up, so they sort with the raiders.
+    const bowl = at ? at(`brazier-${bi}`, b.y + 30) : g;
+    bowl.fillStyle(0x354259, 1).fillRoundedRect(b.x - 19, b.y - 5, 38, 35, 5);
+    bowl.fillStyle(0x4a5874, 1).fillRoundedRect(b.x - 19, b.y - 5, 12, 35, 4);
+    bowl.fillStyle(0x5c5862, 1).fillEllipse(b.x, b.y - 7, 64, 25);
+    bowl.lineStyle(3, 0xc3a37c, 0.9).strokeEllipse(b.x, b.y - 7, 64, 25);
+    bowl.fillStyle(0x152239, 1).fillEllipse(b.x, b.y - 10, 50, 14);
     if (lit) {
       const k = Math.max(
         0,
@@ -93,7 +97,7 @@ export function drawSkyTerrace(g: G, state: Snapshot, reduced: boolean) {
           false,
         )
         .strokePath();
-      flame(g, b.x, b.y - 25, 21 + (reduced ? 0 : Math.sin(t * 3) * 2));
+      flame(bowl, b.x, b.y - 25, 21 + (reduced ? 0 : Math.sin(t * 3) * 2));
     } else if (b.progress > 0) {
       g.lineStyle(5, 0x8be7d0, 1)
         .beginPath()
@@ -106,7 +110,7 @@ export function drawSkyTerrace(g: G, state: Snapshot, reduced: boolean) {
           false,
         )
         .strokePath();
-      flame(g, b.x, b.y - 17, 8 + b.progress * 8, 0.7);
+      flame(bowl, b.x, b.y - 17, 8 + b.progress * 8, 0.7);
     }
   }
   for (const ring of r.flameRings ?? []) {

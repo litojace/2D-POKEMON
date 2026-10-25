@@ -8,6 +8,8 @@ import {
 } from "./music-score";
 import { MusicSynth } from "./music-synth";
 import { MusicSampleBank } from "./music-samples";
+import { CourtAmbience } from "./court-ambience";
+import type { CourtId } from "./arena-courts";
 export { noteHz } from "./music-synth";
 // Original adaptive lobby, PvP and raid scores plus synthesized combat effects.
 const MIX = 0.5;
@@ -25,6 +27,9 @@ export class AudioManager {
   private phase = 1;
   private autoStarted = false;
   private startupListeners?: AbortController;
+  private ambience?: CourtAmbience;
+  /** The court whose ambience should play (kept until audio can start). */
+  private wantAmbience: CourtId | null = null;
   start() {
     if (this.autoStarted) return;
     this.autoStarted = true;
@@ -46,7 +51,24 @@ export class AudioManager {
     window.addEventListener("focus", foreground, { signal });
     this.unlock();
   }
+  /** Court ambience sits under the effects volume, quieter than the hits. */
+  private ambienceLevel() {
+    return document.hidden ? 0 : this.effects * 0.9;
+  }
+  /** Play a duel court's background sound, or none. */
+  setAmbience(id: CourtId | null) {
+    this.wantAmbience = id;
+    if (!this.context || !this.noise) return;
+    if (!id && !this.ambience) return;
+    this.ambience ??= new CourtAmbience(this.context, this.noise, this.context.destination);
+    this.ambience.play(id, this.ambienceLevel());
+  }
+  /** The Coliseum crowd reacts to a knockout. */
+  cheer() {
+    this.ambience?.cheer();
+  }
   private updateMusicGain() {
+    this.ambience?.setLevel(this.ambienceLevel());
     if (!this.context || !this.musicBus) return;
     this.musicBus.gain.setTargetAtTime(
       document.hidden ? 0 : this.music * MIX,
@@ -132,6 +154,7 @@ export class AudioManager {
       );
     }
     this.updateMusicGain();
+    if (this.wantAmbience && this.ambience?.id !== this.wantAmbience) this.setAmbience(this.wantAmbience);
     if (this.context.state === "running") this.schedule();
     // Look-ahead scheduler: queue notes slightly ahead so timing stays tight.
     this.timer ??= setInterval(() => this.schedule(), 25);
@@ -291,5 +314,6 @@ export class AudioManager {
     this[kind] = value;
     localStorage.setItem(`arena-${kind}`, String(value));
     if (kind === "music") this.updateMusicGain();
+    else this.ambience?.setLevel(this.ambienceLevel());
   }
 }

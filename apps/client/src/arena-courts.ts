@@ -189,8 +189,7 @@ export function courtBlocks(id: CourtId): Rect[] {
 /** Shifting Ruins' centre block: rises out of its pit and sinks again. */
 export const SHIFTING_BLOCK = OBSTACLES[4];
 
-/** Light pools from the court's own flames, as [x, y, radius, strength, rgb]. */
-type Light = [number, number, number, number, string];
+/** Light pools from the court's own flames, as [x, y, radius, strength, rgb] (see Light). */
 
 function sandBase(c: Ctx, top: string, bottom: string, s0: number) {
   const sand = c.createLinearGradient(0, 0, 0, H);
@@ -1440,3 +1439,30 @@ export function paintCourtStands(c: Ctx, id: CourtId) {
   c.fillStyle = v;
   c.fillRect(0, 0, W, S);
 }
+
+/**
+ * The same camera, sun and painting tools for other floors (the raid arenas
+ * in raid-floors.ts), so every arena shares one look.
+ */
+export const paintKit = {
+  K,
+  SUNV,
+  ell,
+  gEll,
+  mix,
+  hull,
+  fillPoly,
+  grain,
+  shadows,
+  contact,
+  lights,
+  grade,
+  flagstones,
+  pebbles,
+  /** Restart the shared random sequence (paintings are repeatable). */
+  reseed(n: number) {
+    seed = n;
+  },
+  rand: R,
+};
+export type Light = [number, number, number, number, string];

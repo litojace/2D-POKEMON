@@ -8,6 +8,7 @@ import {
   type RaidWarning,
 } from "../../../packages/shared/src/raid";
 import type { RaidBossCue } from "./raid-boss-motion";
+import type { LayerAt } from "./raid-layers";
 
 /**
  * Gloomshade and the Lantern Yard, drawn live each frame: the night closing
@@ -110,7 +111,7 @@ export function litAt(state: Snapshot, x: number, y: number) {
 }
 
 /** The night, the lanterns and their light, and curses on raiders. */
-export function drawLanternYard(g: G, state: Snapshot, reduced: boolean) {
+export function drawLanternYard(g: G, state: Snapshot, reduced: boolean, at?: LayerAt) {
   const r = state.raid!;
   const t = state.time;
   const lanterns = r.lanterns ?? [];
@@ -156,7 +157,9 @@ export function drawLanternYard(g: G, state: Snapshot, reduced: boolean) {
       );
     }
   }
-  for (const [i, l] of lanterns.entries()) lanternPost(g, l, i, t, reduced);
+  // Posts stand up: each sorts with the raiders by its base.
+  for (const [i, l] of lanterns.entries())
+    lanternPost(at ? at(`lantern-${i}`, l.y + 30) : g, l, i, t, reduced);
   // Curses: purple wisps circle the raider, one per stack; Haunted glows.
   for (const p of state.players) {
     const c = r.curses?.[p.id];
@@ -525,6 +528,7 @@ export function drawGloomshade(
   state: Snapshot,
   reduced: boolean,
   clock: number,
+  at?: LayerAt,
 ): RaidBossCue[] {
   const r = state.raid!;
   const boss = state.players.find((p) => p.raidBoss);
@@ -610,7 +614,8 @@ export function drawGloomshade(
   const appear = Math.min(1, (t - m.splitAt) / 0.4);
   for (const b of bodies) {
     const shake = b.real ? Math.sin(hurt * Math.PI * 3) * hurt * 6 * motion : 0;
-    shade(g, {
+    // Each body (the real one and every copy) sorts with the raiders.
+    shade(at ? at(`shade-${b.id}`, b.y + 12) : g, {
       x: b.x + shake,
       y: b.y,
       t: t + b.id * 0.37,

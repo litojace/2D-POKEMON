@@ -43,7 +43,15 @@ export async function pushUntilBattle(page: Page) {
 }
 
 export async function snap(page: Page, info: TestInfo, name: string) {
-  await info.attach(name, { body: await page.screenshot(), contentType: "image/png" });
+  const body = await page.screenshot();
+  await info.attach(name, { body, contentType: "image/png" });
+  // Locally, VISUAL_SHOTS=<folder> also saves each screen there to look over.
+  const dir = process.env.VISUAL_SHOTS;
+  if (dir) {
+    const { mkdirSync, writeFileSync } = await import("node:fs");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(`${dir}/${name}.png`, body);
+  }
 }
 
 export type Box = { x: number; y: number; width: number; height: number };

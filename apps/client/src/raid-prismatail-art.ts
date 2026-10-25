@@ -7,6 +7,7 @@ import {
   type RaidWarning,
 } from "../../../packages/shared/src/raid";
 import { RaidBossMotion, type RaidBossCue } from "./raid-boss-motion";
+import type { LayerAt } from "./raid-layers";
 type G = Phaser.GameObjects.Graphics;
 const TAU = Math.PI * 2;
 const diamond = (
@@ -26,7 +27,7 @@ const diamond = (
     ],
     true,
   );
-export function drawSunAtrium(g: G, state: Snapshot, reduced: boolean) {
+export function drawSunAtrium(g: G, state: Snapshot, reduced: boolean, at?: LayerAt) {
   const r = state.raid!,
     t = reduced ? 0 : state.time;
   // Inlaid glass stays quiet beneath the functional warnings.
@@ -82,9 +83,13 @@ export function drawSunAtrium(g: G, state: Snapshot, reduced: boolean) {
   }
   for (const [i, m] of (r.mirrors ?? []).entries()) {
     g.fillStyle(0x0d2034, 0.65).fillEllipse(m.x, m.y + 18, 80, 30);
-    g.fillStyle(0x42536c, 1).fillRoundedRect(m.x - 24, m.y - 12, 48, 35, 7);
-    g.lineStyle(3, 0xd9cf9d, 0.9).strokeCircle(m.x, m.y - 8, 29);
-    diamond(g, m.x, m.y - 8, 26, PRISM_COLORS[i], 0.9);
+    // The post and its crystal stand up, so they sort with the raiders; the
+    // arrow is painted on the floor.
+    const post = at ? at(`mirror-${i}`, m.y + 23) : g;
+    post.fillStyle(0x42536c, 1).fillRoundedRect(m.x - 24, m.y - 12, 48, 35, 7);
+    post.fillStyle(0x56698a, 1).fillRoundedRect(m.x - 24, m.y - 12, 14, 35, 6);
+    post.lineStyle(3, 0xd9cf9d, 0.9).strokeCircle(m.x, m.y - 8, 29);
+    diamond(post, m.x, m.y - 8, 26, PRISM_COLORS[i], 0.9);
     const dx = Math.cos(m.angle),
       dy = Math.sin(m.angle);
     g.lineStyle(5, 0xfff5c9, 1).lineBetween(

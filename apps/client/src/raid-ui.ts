@@ -36,6 +36,7 @@ import {
 } from "./raid-presentation";
 import { raidDifficulty } from "./raid-difficulty";
 import type Phaser from "phaser";
+import type { LayerAt } from "./raid-layers";
 import {
   CHARACTERS,
   type Fighter,
@@ -431,21 +432,26 @@ export function drawRaidArena(
   state: Snapshot,
   reduced = false,
   clock = performance.now() / 1000,
-  /** On the painted court the boss gets its own layer (sorted with the
-   * fighters) and broken pillars are drawn as rubble by the scene. */
-  court?: { boss: Phaser.GameObjects.Graphics },
+  /**
+   * Layers that sort with the fighters: `boss` for the boss (its depth is set
+   * by the scene from where it stands), `at` for standing scenery (posts,
+   * lanterns, braziers, mirrors) and for bosses with several bodies. On the
+   * Coliseum court (`court`) broken pillars are rubble drawn by the scene.
+   */
+  layers?: { boss: Phaser.GameObjects.Graphics; at: LayerAt; court: boolean },
 ) {
   const r = state.raid;
   if (!r) return;
+  const at = layers?.at;
   const tide = r.boss === "tidewyrm",
     gloom = r.boss === "gloomshade",
     dream = r.boss === "somnara";
-  if (r.boss === "storm-twins") drawConductorRing(g, state, reduced);
-  if (r.boss === "emberwing") drawSkyTerrace(g, state, reduced);
-  if (r.boss === "prismatail") drawSunAtrium(g, state, reduced);
+  if (r.boss === "storm-twins") drawConductorRing(g, state, reduced, at);
+  if (r.boss === "emberwing") drawSkyTerrace(g, state, reduced, at);
+  if (r.boss === "prismatail") drawSunAtrium(g, state, reduced, at);
   if (dream) drawCloudDeck(g, state, reduced);
   if (tide) drawLagoon(g, state, reduced);
-  if (gloom) drawLanternYard(g, state, reduced);
+  if (gloom) drawLanternYard(g, state, reduced, at);
   for (const w of r.warnings) {
     if (r.boss === "storm-twins" && drawStormWarning(g, state, w)) continue;
     if (r.boss === "emberwing" && drawEmberwingWarning(g, state, w)) continue;
@@ -660,7 +666,7 @@ export function drawRaidArena(
         .strokePath();
     }
   for (const p of r.pillars)
-    if (p.broken && !court) {
+    if (p.broken && !layers?.court) {
       g.fillStyle(0x21334e, 0.98).fillRoundedRect(
         p.x - 52,
         p.y - 72,
@@ -711,15 +717,18 @@ export function drawRaidArena(
       g.fillStyle(color, 1).fillCircle(p.x, y + bob, 3);
     }
   }
-  if (r.boss === "storm-twins") return drawStormTwins(g, state, reduced, clock);
-  if (r.boss === "emberwing") return drawEmberwing(g, state, reduced, clock);
-  if (r.boss === "prismatail") return drawPrismatail(g, state, reduced, clock);
-  if (dream) return drawSomnara(g, state, reduced, clock);
+  // Single-bodied bosses draw on the boss layer; the twins and Gloomshade's
+  // copies each get a layer of their own (their memory stays keyed on g).
+  const boss = layers?.boss ?? g;
+  if (r.boss === "storm-twins") return drawStormTwins(g, state, reduced, clock, at);
+  if (r.boss === "emberwing") return drawEmberwing(boss, state, reduced, clock);
+  if (r.boss === "prismatail") return drawPrismatail(boss, state, reduced, clock);
+  if (dream) return drawSomnara(boss, state, reduced, clock);
   return tide
-    ? drawTidewyrm(g, state, reduced, clock)
+    ? drawTidewyrm(boss, state, reduced, clock)
     : gloom
-      ? drawGloomshade(g, state, reduced, clock)
-      : drawRaidBoss(court?.boss ?? g, state, reduced, clock);
+      ? drawGloomshade(g, state, reduced, clock, at)
+      : drawRaidBoss(boss, state, reduced, clock);
 }
 
 /** Why the run was lost, from what downed people most. */

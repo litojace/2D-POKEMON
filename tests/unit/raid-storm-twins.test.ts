@@ -487,6 +487,26 @@ describe("Storm Twins attacks and presentation", () => {
     expect(raidCue(a.snapshot(), "p0")).toContain("revives in");
     expect(stormTwinHealth(a.snapshot())).toContain("REVIVES IN");
   });
+  it("draws each twin and each post on its own layer, sorted by where it stands", () => {
+    const a = setup(),
+      g: any = new Proxy({}, { get: () => vi.fn(() => g) }),
+      asked: [string, number][] = [];
+    const at = (key: string, y: number) => {
+      asked.push([key, y]);
+      return g;
+    };
+    const snap = a.snapshot();
+    drawConductorRing(g, snap, true, at);
+    drawStormTwins(g, snap, true, 0, at);
+    const twins = (snap.raid!.twins ?? []).map(
+      (m) => snap.players.find((p) => p.id === m.id)!,
+    );
+    expect(twins).toHaveLength(2);
+    expect(asked).toEqual([
+      ...S.posts.map((p, i) => [`post-${i}`, p.y + 17]),
+      ...twins.map((p, i) => [`twin-${i}`, p.y + 13]),
+    ]);
+  });
   it("draws the two bodies and every warning without changing the simulation snapshot", () => {
     const a = setup(),
       g: any = new Proxy({}, { get: () => vi.fn(() => g) }),

@@ -30,6 +30,24 @@ for (const size of SIZES)
       expect(errors).toEqual([]);
     });
 
+// Every other raid on its own painted arena, with its scenery and boss.
+for (const boss of ["tidewyrm", "gloomshade", "storm-twins", "emberwing", "prismatail", "somnara"] as const)
+  test(`${boss} raid arena loads and fits its frame`, async ({ page }, info) => {
+    const errors = await openTown(page);
+    await page.evaluate((boss) => (window as any).__room("raid", { boss, pos: [500, 450, 700, 600] }), boss);
+    await openTownMenu(page);
+    await page.click(".town-play");
+    await page.click("#play-create");
+    await pushUntilBattle(page);
+    await expect(page.locator("body")).toHaveClass(/battle-raid/);
+    const game = await box(page, "#game");
+    const canvas = await box(page, "#game canvas");
+    expect(Math.abs(canvas.width - game.width)).toBeLessThanOrEqual(1);
+    expect(Math.abs(canvas.height - game.height)).toBeLessThanOrEqual(1);
+    await snap(page, info, `raid-${boss}`);
+    expect(errors).toEqual([]);
+  });
+
 test("Grumblecrag raid plays on the court with broken pillars", async ({ page }, info) => {
   const errors = await openTown(page);
   await page.evaluate(() => (window as any).__room("raid", { boss: "grumblecrag", broken: [0, 4], pos: [535, 226, 700, 700] }));
