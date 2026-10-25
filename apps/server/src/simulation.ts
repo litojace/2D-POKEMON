@@ -44,6 +44,7 @@ import {
   blankInput,
   emptyStats,
   blocked,
+  currentObstacles,
   move,
   normalize,
   type Ability,
@@ -61,6 +62,7 @@ import {
   type Zone,
 } from "../../../packages/shared/src/index.js";
 import { chooseRite, type BotBrain } from "./bot.js";
+import { projectileContact } from "./projectile-collision.js";
 /** Free-for-all starting corners (seat order), opposite corners first. */
 const FFA_SPAWNS = [
   { x: 260, y: 250 },
@@ -75,7 +77,9 @@ export class Arena {
   activityEligible?: string[];
   arcade?: import("../../../packages/shared/src/arcade.js").ArcadeState;
   readonly engaged = new Set<string>();
-  get crownZone() { return CROWN; }
+  get crownZone() {
+    return CROWN;
+  }
   practice: Snapshot["practice"] = null;
   /** AI opponents in this room, by fighter id (solo vs bot). */
   bots = new Map<string, BotBrain>();
@@ -133,7 +137,11 @@ export class Arena {
   ) {
     this.mode = mode;
     // Small seeded generator (mulberry32) keyed on the room code.
-    let seed = [...code].reduce((h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619), 2166136261) >>> 0;
+    let seed =
+      [...code].reduce(
+        (h, c) => Math.imul(h ^ c.charCodeAt(0), 16777619),
+        2166136261,
+      ) >>> 0;
     this.random = () => {
       seed = (seed + 0x6d2b79f5) >>> 0;
       let t = seed;
@@ -352,7 +360,8 @@ export class Arena {
     // Fighter roulette: a fresh random fighter for everyone each round.
     if (this.rule("random") && !this.practice)
       for (const p of this.players) {
-        p.character = FIGHTER_IDS[Math.floor(this.random() * FIGHTER_IDS.length)];
+        p.character =
+          FIGHTER_IDS[Math.floor(this.random() * FIGHTER_IDS.length)];
         p.rites = [];
         p.flair = undefined;
       }
@@ -419,7 +428,15 @@ export class Arena {
   submit(p: Fighter, input: Input) {
     if (this.phase !== "playing" || input.seq <= p.ack) return;
     p.ack = input.seq;
-    if (input.dx || input.dy || input.basic || input.skill >= 0 || input.dash || input.jump) this.engaged.add(p.id);
+    if (
+      input.dx ||
+      input.dy ||
+      input.basic ||
+      input.skill >= 0 ||
+      input.dash ||
+      input.jump
+    )
+      this.engaged.add(p.id);
     p.lastInput = {
       ...input,
       basic: input.basic || p.lastInput.basic,
@@ -622,7 +639,7 @@ export class Arena {
       ...(comboName ? { combo: comboName } : {}),
     });
     if (counter && source && source !== target && source.hp > 0)
-      this.reflectDamage(source,target,amount);
+      this.reflectDamage(source, target, amount);
     // Setup: mark the target for this fighter's payoff (or the guard for
     // Mirror Guard, which primes the one who absorbed the hit).
     if (combo && !combo.self && !combo.anyDebuff && ability?.id === combo.setup)
@@ -650,27 +667,31 @@ export class Arena {
       move(target, dir.x * push, dir.y * push);
     }
   }
-  damageLimit(target: Fighter) { return target.hp; }
+  damageLimit(target: Fighter) {
+    return target.hp;
+  }
   /** Modes can adjust what a bot decided (raids: dodge boss telegraphs). */
   botInput(_bot: Fighter, input: Input) {
     return input;
   }
-  reflectDamage(source: Fighter,target: Fighter,amount:number) {
-      const reflected = Math.min(
-        source.hp,
-        amount * STATUS_RULES.counterReflection,
-      );
-      source.hp -= reflected;
-      source.stats.received += reflected;
-      target.stats.dealt += reflected;
-      this.event(
-        "hit",
-        source,
-        CHARACTERS[target.character].color,
-        Math.round(reflected),
-      );
+  reflectDamage(source: Fighter, target: Fighter, amount: number) {
+    const reflected = Math.min(
+      source.hp,
+      amount * STATUS_RULES.counterReflection,
+    );
+    source.hp -= reflected;
+    source.stats.received += reflected;
+    target.stats.dealt += reflected;
+    this.event(
+      "hit",
+      source,
+      CHARACTERS[target.character].color,
+      Math.round(reflected),
+    );
   }
-  hitRadius(p: Fighter) { return p.raidBoss ? 70 : RULES.radius; }
+  hitRadius(p: Fighter) {
+    return p.raidBoss ? 70 : RULES.radius;
+  }
   /** Enemy is in front of `p` within `range` and the cosine threshold `arc`. */
   inArc(p: Fighter, enemy: Fighter, range: number, arc: number) {
     const distance = Math.hypot(enemy.x - p.x, enemy.y - p.y);
@@ -701,17 +722,29 @@ export class Arena {
       );
     const projectile = (offset: number) => {
       if (this.projectiles.length >= RULES.maxProjectiles) return;
-      this.projectiles.push({
-        id: ++this.serial,
-        owner: p.id,
+      const muzzle = {
         x: p.x + Math.cos(angle + offset) * 30,
         y: p.y + Math.sin(angle + offset) * 30,
+      };
+      const contact = projectileContact(
+        p,
+        muzzle,
+        a.radius,
+        currentObstacles(),
+      );
+      const shot: Projectile = {
+        id: ++this.serial,
+        owner: p.id,
+        x: contact?.x ?? muzzle.x,
+        y: contact?.y ?? muzzle.y,
         vx: Math.cos(angle + offset) * a.speed,
         vy: Math.sin(angle + offset) * a.speed,
         remaining: a.range,
         ability: a,
         color,
-      });
+      };
+      if (contact) this.projectileImpact(shot);
+      else this.projectiles.push(shot);
     };
     if (a.kind === "projectile" || a.kind === "charged") projectile(0);
     if (a.kind === "barrage")
@@ -743,8 +776,7 @@ export class Arena {
     if (a.kind === "nova") {
       const radius = a.radius * (selfPrimed ? (combo.radius ?? 1) : 1);
       this.event("burst", p, color, undefined, p.id, a.id);
-      if (selfPrimed)
-        this.events[this.events.length - 1].combo = combo.name;
+      if (selfPrimed) this.events[this.events.length - 1].combo = combo.name;
       for (const enemy of enemies) {
         if (
           enemy.clone &&
@@ -762,12 +794,23 @@ export class Arena {
     if (a.kind === "beam") {
       const dx = Math.cos(angle),
         dy = Math.sin(angle);
+      const contact = projectileContact(
+        p,
+        { x: p.x + dx * a.range, y: p.y + dy * a.range },
+        a.radius,
+        currentObstacles(),
+      );
+      const reach = contact ? a.range * contact.fraction : a.range;
       let x = p.x,
         y = p.y;
       for (let travelled = 0; travelled < a.range; travelled += 8) {
+        if (contact && travelled >= reach) {
+          x = contact.x;
+          y = contact.y;
+          break;
+        }
         x = p.x + dx * travelled;
         y = p.y + dy * travelled;
-        if (travelled > RULES.radius && blocked(x, y, 2)) break;
         // The beam stops at the first decoy or enemy it reaches.
         const decoy = enemies.find(
           (e) =>
@@ -780,7 +823,8 @@ export class Arena {
         }
         const struck = enemies.find(
           (e) =>
-            e.hp > 0 && Math.hypot(x - e.x, y - e.y) < a.radius + this.hitRadius(e),
+            e.hp > 0 &&
+            Math.hypot(x - e.x, y - e.y) < a.radius + this.hitRadius(e),
         );
         if (struck) {
           this.damage(struck, a.damage, p.id, a);
@@ -856,7 +900,14 @@ export class Arena {
         (pr) =>
           pr.x < r.x || pr.x > r.x + r.w || pr.y < r.y || pr.y > r.y + r.h,
       );
-      this.event("hazard", { x: r.x + r.w / 2, y: r.y + r.h / 2 }, 0xb59b6b, undefined, undefined, "hazard-wall");
+      this.event(
+        "hazard",
+        { x: r.x + r.w / 2, y: r.y + r.h / 2 },
+        0xb59b6b,
+        undefined,
+        undefined,
+        "hazard-wall",
+      );
     }
     for (const h of def.hazards) {
       const inside = alive.filter(
@@ -867,7 +918,14 @@ export class Arena {
           if (p.jumpUntil <= this.time)
             this.status(p, h.status, h.statusDuration ?? 0.3);
       if (!triggers(h, before, t)) continue;
-      this.event("hazard", h, h.kind === "vent" ? 0xff7a3d : 0x4fd6e6, undefined, undefined, `hazard-${h.kind}`);
+      this.event(
+        "hazard",
+        h,
+        h.kind === "vent" ? 0xff7a3d : 0x4fd6e6,
+        undefined,
+        undefined,
+        `hazard-${h.kind}`,
+      );
       const hit = hazardAbility(h);
       for (const p of inside) {
         if (h.ground && p.jumpUntil > this.time) continue;
@@ -879,6 +937,19 @@ export class Arena {
         }
       }
     }
+  }
+  /** A wall contact, range expiry or direct exploding-projectile hit. */
+  private projectileImpact(pr: Projectile) {
+    this.event("impact", pr, pr.color, undefined, pr.owner, pr.ability.id);
+    if (pr.ability.explosion)
+      for (const enemy of this.enemiesOfOwner(pr.owner))
+        if (
+          enemy.hp > 0 &&
+          Math.hypot(pr.x - enemy.x, pr.y - enemy.y) <
+            pr.ability.explosion + this.hitRadius(enemy) &&
+          this.lineClear(pr, enemy)
+        )
+          this.damage(enemy, pr.ability.damage, pr.owner, pr.ability);
   }
   lineClear(a: { x: number; y: number }, b: { x: number; y: number }) {
     this.walls();
@@ -949,7 +1020,10 @@ export class Arena {
     for (const p of this.players) {
       // Knocked-out (2v2) or departed fighters sit still until the next round.
       // (A duel ends the round the same tick, so this only matters in 2v2.)
-      if (p.out || (p.hp <= 0 && (this.mode === "teams" || this.mode === "raid"))) {
+      if (
+        p.out ||
+        (p.hp <= 0 && (this.mode === "teams" || this.mode === "raid"))
+      ) {
         p.vx = p.vy = 0;
         p.charge = undefined;
         p.channel = undefined;
@@ -1095,23 +1169,22 @@ export class Arena {
         Math.ceil((Math.hypot(pr.vx, pr.vy) * dt) / 10),
       );
       const enemies = this.enemiesOfOwner(pr.owner);
-      const explode = () => {
-        this.event("impact", pr, pr.color, undefined, pr.owner, pr.ability.id);
-        if (pr.ability.explosion)
-          for (const enemy of enemies)
-            if (
-              enemy.hp > 0 &&
-              Math.hypot(pr.x - enemy.x, pr.y - enemy.y) <
-                pr.ability.explosion + this.hitRadius(enemy) &&
-              this.lineClear(pr, enemy)
-            )
-              this.damage(enemy, pr.ability.damage, pr.owner, pr.ability);
-      };
+      const explode = () => this.projectileImpact(pr);
       for (let i = 0; i < steps; i++) {
-        pr.x += (pr.vx * dt) / steps;
-        pr.y += (pr.vy * dt) / steps;
+        const next = {
+          x: pr.x + (pr.vx * dt) / steps,
+          y: pr.y + (pr.vy * dt) / steps,
+        };
+        const contact = projectileContact(
+          pr,
+          next,
+          pr.ability.radius,
+          currentObstacles(),
+        );
+        pr.x = contact?.x ?? next.x;
+        pr.y = contact?.y ?? next.y;
         pr.remaining -= (Math.hypot(pr.vx, pr.vy) * dt) / steps;
-        if (blocked(pr.x, pr.y, pr.ability.radius) || pr.remaining <= 0) {
+        if (contact || pr.remaining <= 0) {
           explode();
           return false;
         }
@@ -1144,7 +1217,14 @@ export class Arena {
           else {
             // Contact point, so the move's own impact effect plays on a hit
             // too (not only when it reaches a wall or the end of its range).
-            this.event("impact", pr, pr.color, undefined, pr.owner, pr.ability.id);
+            this.event(
+              "impact",
+              pr,
+              pr.color,
+              undefined,
+              pr.owner,
+              pr.ability.id,
+            );
             this.damage(struck, pr.ability.damage, pr.owner, pr.ability);
           }
           return false;
@@ -1215,11 +1295,7 @@ export class Arena {
       for (const p of this.players) {
         if (p.hp <= 0 || p.out) continue;
         if (this.overtime)
-          this.damage(
-            p,
-            12 * DRAIN_INTERVAL,
-            this.enemiesOf(p)[0]?.id ?? "",
-          );
+          this.damage(p, 12 * DRAIN_INTERVAL, this.enemiesOf(p)[0]?.id ?? "");
         // Outside the ring everyone loses health, and nobody's credited.
         if (
           ring !== null &&
@@ -1234,7 +1310,9 @@ export class Arena {
     if (this.rule("crown")) {
       const inside = this.sides.filter((t) =>
         this.standing(t).some(
-          (p) => Math.hypot(p.x - this.crownZone.x, p.y - this.crownZone.y) < this.crownZone.radius,
+          (p) =>
+            Math.hypot(p.x - this.crownZone.x, p.y - this.crownZone.y) <
+            this.crownZone.radius,
         ),
       );
       if (inside.length === 1) {
@@ -1486,9 +1564,17 @@ function triggers(h: Hazard, before: number, t: number) {
   return t >= h.offset && count(t) > count(before);
 }
 /** Move `p` to the nearest point just outside `r` (a wall rising under it). */
-function pushOut(p: { x: number; y: number }, r: { x: number; y: number; w: number; h: number }) {
+function pushOut(
+  p: { x: number; y: number },
+  r: { x: number; y: number; w: number; h: number },
+) {
   const pad = RULES.radius + 2;
-  if (p.x < r.x - pad || p.x > r.x + r.w + pad || p.y < r.y - pad || p.y > r.y + r.h + pad)
+  if (
+    p.x < r.x - pad ||
+    p.x > r.x + r.w + pad ||
+    p.y < r.y - pad ||
+    p.y > r.y + r.h + pad
+  )
     return;
   const options = [
     { x: r.x - pad, y: p.y, d: p.x - (r.x - pad) },
