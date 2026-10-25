@@ -1,16 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { TOWN, TOWN_OBSTACLES } from "../../../packages/shared/src/town";
-import { FOUNTAIN } from "../src/town-art";
 
 describe("central plaza fountain", () => {
   const f = TOWN_OBSTACLES.find((o) => o.kind === "fountain")!;
-  it("centres the entire monument's silhouette on the paving", () => {
-    const top = f.y + FOUNTAIN.crystal.dy - FOUNTAIN.crystal.ry;
-    const bottom = f.y + FOUNTAIN.basin.ry + FOUNTAIN.basin.wall;
+  it("centres the basin inside the eight elemental markers", () => {
+    const stones = TOWN_OBSTACLES.filter((o) => o.kind === "stone");
+    expect(stones).toHaveLength(8);
     expect(f.x).toBe(TOWN.plaza.x);
-    expect(Math.abs((top + bottom) / 2 - TOWN.plaza.y)).toBeLessThan(2);
+    expect(f.y).toBe(TOWN.plaza.y);
+    for (let i = 0; i < 4; i++) {
+      expect((stones[i].x + stones[i + 4].x) / 2).toBeCloseTo(f.x);
+      expect((stones[i].y + stones[i + 4].y) / 2).toBeCloseTo(f.y);
+    }
   });
-  it("keeps all eight element stones clear of the moved basin", () => {
+  it("keeps all eight element stones clear of the basin", () => {
     if (f.shape !== "round")
       throw new Error("Fountain requires an elliptical footprint");
     const stones = TOWN_OBSTACLES.filter((o) => o.kind === "stone");

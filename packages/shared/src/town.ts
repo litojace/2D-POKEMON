@@ -32,8 +32,6 @@ export const TOWN = {
   spawn: { x: 1600, y: 1330 },
   plaza: {
     x: 1600, y: 1080, r: 340,
-    // Centre the full raised monument in the paving, not only its basin.
-    fountainOffsetY: 68,
     stonesRadius: 215,
   },
 } as const;
@@ -368,7 +366,7 @@ export const TOWN_PLAZA_LAMPS = [26, 70, 214, 242, 298, 334].map(onRing);
 function buildObstacles(): TownObstacle[] {
   const { x, y } = TOWN.plaza;
   const list: TownObstacle[] = [
-    { shape: "round", x, y: y + TOWN.plaza.fountainOffsetY, rx: 100, ry: 76, kind: "fountain" },
+    { shape: "round", x, y, rx: 100, ry: 76, kind: "fountain" },
   ];
   for (let i = 0; i < 8; i++) {
     const a = (i / 8) * Math.PI * 2 - Math.PI / 2;
