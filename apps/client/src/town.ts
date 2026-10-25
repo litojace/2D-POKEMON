@@ -83,12 +83,19 @@ interface Body {
   name: Phaser.GameObjects.Text;
   title: Phaser.GameObjects.Text;
   /** How the title is drawn (the same treatments as the arena nameplate). */
-  titleFx?: { kind: ReturnType<typeof titleTreatment>; color: string; text: string; step: number };
+  titleFx?: {
+    kind: ReturnType<typeof titleTreatment>;
+    color: string;
+    text: string;
+    step: number;
+  };
   bubble?: Phaser.GameObjects.Container;
 }
 
 /** Room around title text for its glow, so the blur isn't clipped. */
 const TITLE_PAD = { x: 12, y: 7 };
+/** Clear space between the title lettering and the player name below it. */
+const TITLE_GAP = 1;
 /**
  * Draw a title the way the arena nameplate does (see .player-title in
  * style.css): every title glows in its colour, Master titles pulse slowly,
@@ -96,8 +103,14 @@ const TITLE_PAD = { x: 12, y: 7 };
  * shimmer between two sparkles. `t` is seconds; animated looks step about
  * 12 times a second so the text isn't redrawn every frame.
  */
-function styleTitle(text: Phaser.GameObjects.Text, fx: NonNullable<Body["titleFx"]>, t: number, still: boolean) {
-  const pulse = (period: number) => (still ? 0 : (1 - Math.cos((t / period) * Math.PI * 2)) / 2);
+function styleTitle(
+  text: Phaser.GameObjects.Text,
+  fx: NonNullable<Body["titleFx"]>,
+  t: number,
+  still: boolean,
+) {
+  const pulse = (period: number) =>
+    still ? 0 : (1 - Math.cos((t / period) * Math.PI * 2)) / 2;
   if (fx.kind === "legendary") {
     const shift = still ? 0.5 : (t / 2.4) % 1;
     const w = Math.max(1, text.width);
@@ -119,7 +132,12 @@ function styleTitle(text: Phaser.GameObjects.Text, fx: NonNullable<Body["titleFx
     text.setShadow(0, 0, "#ffcc39", 5 + pulse(2) * 5, true, false);
     return;
   }
-  const blur = fx.kind === "grandmaster" ? 5 + pulse(1.8) * 7 : fx.kind === "master" ? 5 + pulse(2.6) * 5 : 5;
+  const blur =
+    fx.kind === "grandmaster"
+      ? 5 + pulse(1.8) * 7
+      : fx.kind === "master"
+        ? 5 + pulse(2.6) * 5
+        : 5;
   text.setFill(fx.color);
   // A tight glow around the dark outline: visible on light stone, letters stay crisp.
   text.setShadow(0, 0, fx.color, blur, true, false);
@@ -238,7 +256,9 @@ export function openTown(options: TownOptions) {
     if (!e.ctrlKey && !e.metaKey && ["+", "=", "-", "_"].includes(e.key)) {
       e.preventDefault();
       e.stopImmediatePropagation();
-      return void scene?.zoomBy(e.key === "+" || e.key === "=" ? ZOOM_STEP : 1 / ZOOM_STEP);
+      return void scene?.zoomBy(
+        e.key === "+" || e.key === "=" ? ZOOM_STEP : 1 / ZOOM_STEP,
+      );
     }
     const digit = Number(e.key);
     if (digit >= 1 && digit <= TOWN_EMOTES.length)
@@ -364,7 +384,11 @@ export function openTown(options: TownOptions) {
   zoomOut.onclick = () => scene?.zoomBy(1 / ZOOM_STEP);
   const zoomReset = $<HTMLButtonElement>("town-zoom-reset");
   zoomReset.onclick = () => scene?.resetZoom();
-  const syncZoomButtons = (atMin: boolean, atMax: boolean, isDefault: boolean) => {
+  const syncZoomButtons = (
+    atMin: boolean,
+    atMax: boolean,
+    isDefault: boolean,
+  ) => {
     zoomIn.disabled = atMax;
     zoomOut.disabled = atMin;
     // Reset shows only once the view has been zoomed away from the default.
@@ -541,9 +565,12 @@ export function openTown(options: TownOptions) {
       this.fit();
       this.scale.on("resize", () => this.fit());
       // Wheel zoom (a trackpad sends many small steps; the sign is what counts).
-      this.input.on("wheel", (_p: unknown, _o: unknown, _dx: number, dy: number) => {
-        if (dy) this.zoomBy(dy < 0 ? WHEEL_STEP : 1 / WHEEL_STEP, 90);
-      });
+      this.input.on(
+        "wheel",
+        (_p: unknown, _o: unknown, _dx: number, dy: number) => {
+          if (dy) this.zoomBy(dy < 0 ? WHEEL_STEP : 1 / WHEEL_STEP, 90);
+        },
+      );
     }
     /** Show roughly 1100×650 of the world; phones see a closer, narrower slice. */
     fit() {
@@ -567,7 +594,10 @@ export function openTown(options: TownOptions) {
       const w = this.scale.width / devicePixelRatio,
         h = this.scale.height / devicePixelRatio;
       const fill = Math.max(w / TOWN.width, h / TOWN.height);
-      return { min: Math.min(fill, this.zoomBase), max: this.zoomBase * ZOOM_MAX };
+      return {
+        min: Math.min(fill, this.zoomBase),
+        max: this.zoomBase * ZOOM_MAX,
+      };
     }
     resetZoom() {
       userZoom = 1;
@@ -580,7 +610,10 @@ export function openTown(options: TownOptions) {
     }
     zoomBy(factor: number, ms = 160) {
       const { min, max } = this.zoomRange();
-      const target = Math.min(max, Math.max(min, this.zoomBase * userZoom * factor));
+      const target = Math.min(
+        max,
+        Math.max(min, this.zoomBase * userZoom * factor),
+      );
       userZoom = target / this.zoomBase;
       // Stepping back to where you started counts as the default view again.
       if (Math.abs(userZoom - 1) < 0.02) userZoom = 1;
@@ -598,9 +631,19 @@ export function openTown(options: TownOptions) {
       const cam = this.cameras.main;
       // A plain tween (the camera's own zoom effect can stop short of its target).
       this.tweens.killTweensOf(cam);
-      if (ms && !options.reduced) this.tweens.add({ targets: cam, zoom: z * devicePixelRatio, duration: ms, ease: "Sine.easeOut" });
+      if (ms && !options.reduced)
+        this.tweens.add({
+          targets: cam,
+          zoom: z * devicePixelRatio,
+          duration: ms,
+          ease: "Sine.easeOut",
+        });
       else cam.setZoom(z * devicePixelRatio);
-      syncZoomButtons(z <= min * 1.001, z >= max * 0.999, Math.abs(userZoom - 1) < 0.001);
+      syncZoomButtons(
+        z <= min * 1.001,
+        z >= max * 0.999,
+        Math.abs(userZoom - 1) < 0.001,
+      );
     }
     addBody(id: number, x: number, y: number): Body {
       const body: Body = {
@@ -652,10 +695,21 @@ export function openTown(options: TownOptions) {
       body.name
         .setText(`${level}${p.name}`)
         .setColor(body.id === me ? "#ffe27a" : "#ffffff");
-      const color = p.titleColor && /^#[0-9a-f]{6}$/i.test(p.titleColor) ? p.titleColor : "#ffd65b";
+      const color =
+        p.titleColor && /^#[0-9a-f]{6}$/i.test(p.titleColor)
+          ? p.titleColor
+          : "#ffd65b";
       const kind = titleTreatment(p.title ?? "");
-      const text = p.title ? (kind === "legendary" ? `✦  ${p.title}  ✦` : p.title) : "";
-      if (!body.titleFx || body.titleFx.text !== text || body.titleFx.color !== color) {
+      const text = p.title
+        ? kind === "legendary"
+          ? `✦  ${p.title}  ✦`
+          : p.title
+        : "";
+      if (
+        !body.titleFx ||
+        body.titleFx.text !== text ||
+        body.titleFx.color !== color
+      ) {
         body.title.setText(text);
         body.titleFx = { kind, color, text, step: -1 };
         styleTitle(body.title, body.titleFx, 0, options.reduced);
@@ -891,24 +945,36 @@ export function openTown(options: TownOptions) {
       const ui = Math.max(1, 1 / this.zoomNow);
       // Zoomed far out the town reads as a map: names and titles fade away,
       // and come back as you zoom in.
-      const labels = Math.min(1, Math.max(0, (this.zoomNow / this.zoomBase - 0.45) / 0.15));
+      const labels = Math.min(
+        1,
+        Math.max(0, (this.zoomNow / this.zoomBase - 0.45) / 0.15),
+      );
       body.name.setAlpha(labels).setVisible(labels > 0);
       body.title.setAlpha(labels).setVisible(labels > 0);
       body.name.setScale(ui).setPosition(body.x, head);
       body.title.setScale(ui);
-      // The title's canvas carries padding for its glow; line its text up as before.
-      body.title.setPosition(body.x, head - (body.name.height - 4 - TITLE_PAD.y) * ui);
+      // Measure from the lettering, keeping the glow padding out of the gap.
+      body.title.setPosition(
+        body.x,
+        head - (body.name.height + TITLE_GAP - TITLE_PAD.y) * ui,
+      );
       const fx = body.titleFx;
-      if (fx && fx.text && fx.kind !== "glow" && !options.reduced && labels > 0) {
+      if (
+        fx &&
+        fx.text &&
+        fx.kind !== "glow" &&
+        !options.reduced &&
+        labels > 0
+      ) {
         const step = Math.floor(now / 80);
         if (step !== fx.step) {
           fx.step = step;
           styleTitle(body.title, fx, now / 1000, false);
         }
       }
-      const top =
-        head -
-        (body.name.height + (body.title.text ? body.title.height - 4 - TITLE_PAD.y * 2 : 0)) * ui;
+      const top = body.title.text
+        ? body.title.y - body.title.height * ui
+        : head - body.name.height * ui;
       body.bubble?.setPosition(body.x, top - 28);
     }
   }
