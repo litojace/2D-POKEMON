@@ -62,7 +62,10 @@ const definitions: Record<Part, { bounds: number[]; pivot: number[] }> = {
 };
 /** A part's crop box once its proportion transform is applied. */
 function box(part: Part, dir: Facing) {
-  const [sourceX, y, w, h] = definitions[part].bounds;
+  const profile = dir === "left" || dir === "right";
+  // Side headbands trail behind the gills; keep their ribbons in the crop.
+  const [sourceX, y, w, h] =
+    profile && part === "flame" ? [10, -2, 180, 110] : definitions[part].bounds;
   // Tidefin's blade projects forward in profile; its crop follows the turn.
   const x = dir === "left" && part === "armR" ? 200 - sourceX - w : sourceX;
   const [x0, y0] = proportioned(part, x, y),

@@ -15,6 +15,16 @@ flipped. The far shoulder sorts behind the torso in both complete SVGs and Phase
 Side tails pivot at the rear hip, wings at the back, and the left blade's crop
 follows Tidefin's facing.
 
+The reference refinement gives the profiles fuller bodies, forward-set glossy
+eyes and shorter cheeks. Voltkit has diagonal goggles and a banded glider tail;
+Cindrake has a swept flame crest; Tidefin has trailing headband ribbons and a
+broad spotted tail; Auralynx has a seated belly and fluffy tail; Lumoth has large
+folded wings with two eyespots; Mystowl has swept feather tufts and layered wing
+feathers; Terradon has a rounded planted shell; Duskveil has a curled hood with
+a recessed opening. The side headband crop includes Tidefin's full ribbons.
+These are authored vector interpretations of the supplied painted concept
+sheets, not extracted or pixel-identical copies of those illustrations.
+
 The shared renderer supplies these profiles to battles, practice and town, as
 well as any directional previews. Front/back artwork is unchanged. Existing
 skin palettes, patterns, accessories, Awakening stages, expressions and reduced
