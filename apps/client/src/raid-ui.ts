@@ -431,6 +431,9 @@ export function drawRaidArena(
   state: Snapshot,
   reduced = false,
   clock = performance.now() / 1000,
+  /** On the painted court the boss gets its own layer (sorted with the
+   * fighters) and broken pillars are drawn as rubble by the scene. */
+  court?: { boss: Phaser.GameObjects.Graphics },
 ) {
   const r = state.raid;
   if (!r) return;
@@ -657,7 +660,7 @@ export function drawRaidArena(
         .strokePath();
     }
   for (const p of r.pillars)
-    if (p.broken) {
+    if (p.broken && !court) {
       g.fillStyle(0x21334e, 0.98).fillRoundedRect(
         p.x - 52,
         p.y - 72,
@@ -716,7 +719,7 @@ export function drawRaidArena(
     ? drawTidewyrm(g, state, reduced, clock)
     : gloom
       ? drawGloomshade(g, state, reduced, clock)
-      : drawRaidBoss(g, state, reduced, clock);
+      : drawRaidBoss(court?.boss ?? g, state, reduced, clock);
 }
 
 /** Why the run was lost, from what downed people most. */

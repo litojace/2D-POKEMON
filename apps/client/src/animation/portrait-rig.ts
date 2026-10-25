@@ -38,6 +38,9 @@ export class PortraitFighterVisual implements FighterVisual {
   setVisible(visible: boolean) {
     this.root.setVisible(visible);
   }
+  setDepth(depth: number) {
+    this.root.setDepth(depth);
+  }
   destroy() {
     this.root.destroy(true);
   }

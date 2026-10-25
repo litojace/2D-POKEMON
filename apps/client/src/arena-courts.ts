@@ -485,7 +485,7 @@ function coliseum(c: Ctx) {
   c.stroke();
   spawnPlates(c, "#8a7c60", "#cbbd9e");
   kerbs(c, "#a89a7c", "#ddd2bb");
-  courtShadows(c, courtBlocks("classic"), 48);
+  courtShadows(c, bareCourt ? [] : courtBlocks("classic"), 48);
   backWall(c, "#b6a585", "#8f7f62", 9);
   // Banner tails on the wall, torches, and the light they throw.
   for (const [x, col] of [
@@ -897,12 +897,144 @@ function shiftingRuins(c: Ctx) {
   grade(c, 0.14, 0.3);
 }
 
-/** Paint a court's floor: everything but its blocks (see paintCourtBlock). */
-export function paintCourtFloor(c: Ctx, id: CourtId) {
+/** Set while baking the Coliseum floor with no block shadows (for rubble). */
+let bareCourt = false;
+/**
+ * Paint a court's floor: everything but its blocks (see paintCourtBlock).
+ * `bare` leaves out the blocks' shadows (Coliseum only), so a broken
+ * pillar's patch of floor can be cut from it.
+ */
+export function paintCourtFloor(c: Ctx, id: CourtId, bare = false) {
+  bareCourt = bare;
   if (id === "tide-pools") tidePools(c);
   else if (id === "ember-forge") emberForge(c);
   else if (id === "shifting-ruins") shiftingRuins(c);
   else coliseum(c);
+  bareCourt = false;
+}
+
+/** Floor around a broken pillar that its rubble picture repaints (its shadow's blur). */
+export const RUBBLE_PAD = 26;
+/**
+ * A pillar Grumblecrag has smashed: a low jagged stump and a heap of its
+ * stones spilling forward, each with a short shadow along the sun. Drawn in
+ * world coordinates.
+ */
+export function paintCourtRubble(c: Ctx, o: Rect, index: number) {
+  const m = STONE.classic;
+  seed = (index + 3) * 131 + 7;
+  // Chunks: [x, y (ground), size, height], sorted back to front.
+  const chunks: [number, number, number, number][] = [];
+  for (let k = 0; k < 15; k++) {
+    const a = R() * Math.PI * 2,
+      d = Math.sqrt(R());
+    chunks.push([
+      o.x + o.w / 2 + Math.cos(a) * d * (o.w * 0.55),
+      o.y + o.h * 0.62 + Math.sin(a) * d * (o.h * 0.42) + 10,
+      6 + R() * 11,
+      4 + R() * 9,
+    ]);
+  }
+  chunks.sort((a, b) => a[1] - b[1]);
+  // Shadows first, as one soft layer.
+  c.save();
+  c.filter = "blur(4px)";
+  c.fillStyle = "rgba(25,20,10,0.32)";
+  const stumpH = 18;
+  c.fillRect(o.x + 6 + SUNV.x * stumpH, o.y + 14, o.w - 12, o.h * 0.62 + 4);
+  for (const [x, y, sz, h] of chunks) {
+    ell(c, x + SUNV.x * h, y + SUNV.y * h, sz * 1.05, sz * K * 0.9);
+    c.fill();
+  }
+  c.restore();
+  // The stump: the block's lowest course, snapped off unevenly.
+  const sx = o.x + 6,
+    sw = o.w - 12,
+    sy = o.y + 10,
+    sd = o.h * 0.62;
+  const jag: [number, number][] = [];
+  for (let k = 0; k <= 8; k++) jag.push([sx + (sw * k) / 8, sy - R() * 9]);
+  // Front face: one course of dressed stone, shaded toward the ground.
+  const fy = sy + sd;
+  const fg = c.createLinearGradient(0, fy - 4, 0, fy + stumpH);
+  fg.addColorStop(0, m.front[0]);
+  fg.addColorStop(1, mix(m.front[1], "#3a3020", 0.25));
+  c.fillStyle = fg;
+  c.beginPath();
+  c.moveTo(sx, fy + jag[0][1] - sy);
+  for (const [x, y] of jag) c.lineTo(x, fy + (y - sy) * 0.5);
+  c.lineTo(sx + sw, fy + stumpH);
+  c.lineTo(sx, fy + stumpH);
+  c.closePath();
+  c.fill();
+  c.fillStyle = "rgba(20,14,8,0.35)";
+  for (const f of [0.33, 0.7]) c.fillRect(sx + sw * f, fy, 1.5, stumpH);
+  // Its broken top: rough, darker than a dressed slab, cracked.
+  c.fillStyle = mix(m.vary[1], m.front[0], 0.45);
+  c.beginPath();
+  c.moveTo(jag[0][0], jag[0][1]);
+  for (const [x, y] of jag) c.lineTo(x, y);
+  c.lineTo(sx + sw, fy + (jag[8][1] - sy) * 0.5);
+  for (let k = jag.length - 1; k >= 0; k--) c.lineTo(jag[k][0], fy + (jag[k][1] - sy) * 0.5);
+  c.closePath();
+  c.fill();
+  c.save();
+  c.clip();
+  grain(c, sx, sy - 10, sw, sd + 10, 0.22, index * 5 + 2, [
+    [14, 1],
+    [5, 0.5],
+  ]);
+  c.restore();
+  c.strokeStyle = "rgba(50,38,24,0.5)";
+  c.lineWidth = 1.2;
+  for (let k = 0; k < 3; k++) {
+    let x = sx + sw * (0.2 + R() * 0.6),
+      y = sy + 4;
+    c.beginPath();
+    c.moveTo(x, y);
+    while (y < fy - 6) {
+      x += (R() - 0.5) * 12;
+      y += 8 + R() * 8;
+      c.lineTo(x, Math.min(y, fy - 4));
+    }
+    c.stroke();
+  }
+  // A lit lip along the back break.
+  c.strokeStyle = "rgba(255,248,230,0.45)";
+  c.lineWidth = 1.5;
+  c.beginPath();
+  jag.forEach(([x, y], k) => (k ? c.lineTo(x, y + 1) : c.moveTo(x, y + 1)));
+  c.stroke();
+  // The fallen stones.
+  for (const [x, y, sz, h] of chunks) {
+    const pts: [number, number][] = [];
+    const n = 5 + Math.floor(R() * 3);
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2 + R() * 0.5,
+        r = sz * (0.7 + R() * 0.35);
+      pts.push([x + Math.cos(a) * r, y + Math.sin(a) * r * K - h]);
+    }
+    // Sides: the top outline dropped to the ground.
+    c.fillStyle = mix(mix(m.front[0], m.front[1], R()), "#3a3020", 0.2);
+    fillPoly(c, hull([...pts, ...pts.map(([px, py]) => [px, py + h] as [number, number])]));
+    const tg = c.createLinearGradient(x - sz, y - h - sz, x + sz, y - h + sz);
+    tg.addColorStop(0, m.top[0]);
+    tg.addColorStop(1, m.vary[R() > 0.5 ? 0 : 1]);
+    c.fillStyle = tg;
+    fillPoly(c, pts);
+    c.strokeStyle = "rgba(40,30,18,0.3)";
+    c.lineWidth = 1;
+    c.beginPath();
+    pts.forEach(([px, py], k) => (k ? c.lineTo(px, py) : c.moveTo(px, py)));
+    c.closePath();
+    c.stroke();
+  }
+  // Dust settled around the heap.
+  for (let k = 0; k < 40; k++) {
+    c.fillStyle = `rgba(${R() > 0.5 ? "230,220,196" : "150,136,108"},${0.35 + R() * 0.3})`;
+    ell(c, o.x + o.w / 2 + (R() - 0.5) * o.w * 1.5, o.y + o.h * 0.6 + (R() - 0.5) * o.h * 0.9, 1 + R() * 2, 0.8 + R() * 1.2);
+    c.fill();
+  }
 }
 
 /** How much room a block's picture has around its footprint (for chips and the gem's glow). */

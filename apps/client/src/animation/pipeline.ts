@@ -29,6 +29,8 @@ export interface FighterVisual {
     reduced?: boolean,
   ): void;
   setVisible(visible: boolean): void;
+  /** Draw order (the coliseum courts sort fighters by where they stand). */
+  setDepth(depth: number): void;
   destroy(): void;
 }
 export function queueFighterAssets(
@@ -131,6 +133,9 @@ class FrameFighterVisual implements FighterVisual {
   }
   setVisible(visible: boolean) {
     this.root.setVisible(visible);
+  }
+  setDepth(depth: number) {
+    this.root.setDepth(depth);
   }
   destroy() {
     this.root.destroy(true);
