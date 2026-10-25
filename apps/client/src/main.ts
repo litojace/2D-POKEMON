@@ -169,6 +169,7 @@ import { masteryMatches, setMastery, setWornSkins } from "./fighter-selection";
 import { shareResult } from "./share-card";
 import { openTown } from "./town";
 import { surfaceBurst } from "./court-surface-fx";
+import { fxFor } from "./fx-engine";
 import { isRaidFloor, paintRaidFloor } from "./raid-floors";
 import type { LayerAt } from "./raid-layers";
 import { BLOCK_H as BLOCK_H_WORLD, courtBlockFrame, courtBlocks, isCourt, paintCourtBlock, paintCourtFloor, paintCourtRubble, paintCourtStands, RUBBLE_PAD, SHIFTING_BLOCK, STANDS, type CourtId } from "./arena-courts";
@@ -2811,6 +2812,11 @@ class ArenaScene extends Phaser.Scene {
     pillars?: readonly { broken: boolean }[],
   ) {
     const list = this.activeCourt && this.courtBlocks.get(this.activeCourt);
+    // Effects pass behind the blocks on show (see Fx.at); none off the courts.
+    fxFor(this).setOccluders(
+      list ? list.filter(({ img }) => img.visible).map(({ o }) => o.y + o.h) : [],
+      fighterDepth,
+    );
     if (!list) return;
     for (const [i, { img, o, shifting }] of list.entries()) {
       if (shifting) img.setVisible(shiftingUp(ARENAS["shifting-ruins"], t));

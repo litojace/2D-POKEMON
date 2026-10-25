@@ -1,6 +1,7 @@
 import type Phaser from "phaser";
 import type { Ability, Projectile, Zone } from "@arena/shared";
 import { mergeKits, type Shot } from "./fx-kits";
+import { fxFor } from "./fx-engine";
 import { electricKit } from "./skill-fx-electric";
 import { fireKit } from "./skill-fx-fire";
 import { waterKit } from "./skill-fx-water";
@@ -133,7 +134,17 @@ export function drawProjectile(
   reduced: boolean,
 ) {
   const kit = KIT.projectile[pr.ability.id];
-  if (kit && g.scene) return kit(g, pr, now);
+  if (kit && g.scene) {
+    // The shot sorts by where it is over the ground, so stone cover in front
+    // of it hides it (see Fx.at).
+    const fx = fxFor(g.scene);
+    fx.at(pr.y);
+    try {
+      return kit(g, pr, now);
+    } finally {
+      fx.at(null);
+    }
+  }
   const a = pr.ability,
     c = pr.color,
     r = a.radius,

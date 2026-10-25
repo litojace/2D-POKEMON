@@ -97,13 +97,39 @@ function makeTextures(scene: Phaser.Scene) {
   v.refresh();
 }
 
+/** One depth band's layers (see Fx.at). */
+type Band = {
+  g: Phaser.GameObjects.Graphics;
+  solid: Phaser.GameObjects.Graphics;
+  sparks: Phaser.GameObjects.Graphics;
+  /** Depths for this band's pooled sprites. */
+  glowDepth: number;
+  softDepth: number;
+};
+
 export class Fx {
   readonly scene: Phaser.Scene;
+  /** The band drawn above everything (no cover in front of it). */
+  private readonly top: Band;
+  /**
+   * Bands just behind each row of cover (keyed by its front edge's ground y),
+   * so an effect behind a stone block is hidden by it. See setOccluders.
+   */
+  private readonly bands = new Map<number, Band>();
+  private edges: number[] = [];
+  private depthOf: (y: number) => number = (y) => 2 + y / 10000;
+  private current: Band;
   /** Additive layer redrawn every frame (bolts, rings, cores). */
-  readonly g: Phaser.GameObjects.Graphics;
+  get g() {
+    return this.current.g;
+  }
   /** Normal-blend layer redrawn every frame (smoke, debris, dark shapes). */
-  readonly solid: Phaser.GameObjects.Graphics;
-  private readonly sparks: Phaser.GameObjects.Graphics;
+  get solid() {
+    return this.current.solid;
+  }
+  private get sparks() {
+    return this.current.sparks;
+  }
   private readonly decalLayer: Phaser.GameObjects.Graphics;
   /** Additive layer on the floor, under the fighters (electrified ground, glows). */
   readonly floor: Phaser.GameObjects.Graphics;
@@ -132,9 +158,14 @@ export class Fx {
     this.decalLayer = scene.add.graphics().setDepth(-5);
     this.floor = scene.add.graphics().setDepth(0.3).setBlendMode(ADD);
     this.floorSolid = scene.add.graphics().setDepth(0.28);
-    this.solid = scene.add.graphics().setDepth(3.6);
-    this.sparks = scene.add.graphics().setDepth(4.6).setBlendMode(ADD);
-    this.g = scene.add.graphics().setDepth(4.5).setBlendMode(ADD);
+    this.top = {
+      solid: scene.add.graphics().setDepth(3.6),
+      sparks: scene.add.graphics().setDepth(4.6).setBlendMode(ADD),
+      g: scene.add.graphics().setDepth(4.5).setBlendMode(ADD),
+      glowDepth: 4.4,
+      softDepth: 3.55,
+    };
+    this.current = this.top;
     const ev = scene.events;
     ev.on(PRE_UPDATE, this.begin, this);
     ev.on(POST_UPDATE, this.end, this);
@@ -149,14 +180,56 @@ export class Fx {
     this.usedSoft = 0;
     this.floor.clear();
     this.floorSolid.clear();
-    this.g.clear();
-    this.solid.clear();
+    this.current = this.top;
+    for (const band of [this.top, ...this.bands.values()]) {
+      band.g.clear();
+      band.solid.clear();
+    }
+  }
+
+  /**
+   * Cover on the ground that effects can pass behind: the front edges (ground
+   * y) of the stone blocks on show, and the depth the scene gives a ground y
+   * (fighters and blocks sort by it). No cover: everything draws on top.
+   */
+  setOccluders(edges: readonly number[], depthOf?: (y: number) => number) {
+    if (depthOf) this.depthOf = depthOf;
+    this.edges = [...new Set(edges)].sort((a, b) => a - b);
+  }
+
+  /**
+   * Draw what follows as standing at ground y (null: on top of everything).
+   * It goes just behind the first row of cover in front of y, so a shot
+   * flying behind a block is hidden by the block, like a fighter there is.
+   */
+  at(y: number | null) {
+    const edge = y === null ? undefined : this.edges.find((e) => e > y);
+    if (edge === undefined) {
+      this.current = this.top;
+      return;
+    }
+    let band = this.bands.get(edge);
+    if (!band) {
+      // Above every fighter in the band, below the block that closes it.
+      const base = this.depthOf(edge),
+        tick = 1e-6;
+      band = {
+        solid: this.scene.add.graphics().setDepth(base - 4 * tick),
+        g: this.scene.add.graphics().setDepth(base - 2 * tick).setBlendMode(ADD),
+        sparks: this.scene.add.graphics().setDepth(base - tick).setBlendMode(ADD),
+        glowDepth: base - 3 * tick,
+        softDepth: base - 5 * tick,
+      };
+      this.bands.set(edge, band);
+    }
+    this.current = band;
   }
 
   private end(_time: number, delta: number) {
     const dt = Math.min(0.05, delta / 1000);
     this.step(dt);
     this.drawParticles();
+    this.at(null);
     this.drawDecals(dt);
     this.drawUltimate();
     for (let i = this.used; i < this.glows.length; i++) this.glows[i].setVisible(false);
@@ -168,7 +241,12 @@ export class Fx {
     const ev = this.scene.events;
     ev.off(PRE_UPDATE, this.begin, this);
     ev.off(POST_UPDATE, this.end, this);
-    for (const o of [this.g, this.solid, this.sparks, this.decalLayer, this.floor, this.floorSolid, ...(this.vignette ? [this.vignette] : []), ...(this.wash ? [this.wash] : []), ...this.glows, ...this.floorGlows, ...this.softs]) o.destroy();
+    for (const band of [this.top, ...this.bands.values()]) {
+      band.g.destroy();
+      band.solid.destroy();
+      band.sparks.destroy();
+    }
+    for (const o of [this.decalLayer, this.floor, this.floorSolid, ...(this.vignette ? [this.vignette] : []), ...(this.wash ? [this.wash] : []), ...this.glows, ...this.floorGlows, ...this.softs]) o.destroy();
     instances.delete(this.scene);
   }
 
@@ -180,10 +258,11 @@ export class Fx {
     const index = onFloor ? this.usedFloor++ : this.used++;
     let img = pool[index];
     if (!img) {
-      img = this.scene.add.image(0, 0, "fx-glow").setBlendMode(ADD).setDepth(onFloor ? 0.25 : 4.4);
+      img = this.scene.add.image(0, 0, "fx-glow").setBlendMode(ADD);
       pool.push(img);
     }
     img
+      .setDepth(onFloor ? 0.25 : this.current.glowDepth)
       .setVisible(true)
       .setPosition(x, y)
       .setScale((radius * 2) / 128, ((radius * 2) / 128) * (onFloor ? 0.78 : stretchY))
@@ -196,10 +275,11 @@ export class Fx {
     if (radius <= 0 || alpha <= 0) return;
     let img = this.softs[this.usedSoft++];
     if (!img) {
-      img = this.scene.add.image(0, 0, "fx-glow").setDepth(3.55);
+      img = this.scene.add.image(0, 0, "fx-glow");
       this.softs.push(img);
     }
     img
+      .setDepth(this.current.softDepth)
       .setVisible(true)
       .setPosition(x, y)
       .setScale((radius * 2) / 128, ((radius * 2) / 128) * stretchY)
@@ -270,9 +350,11 @@ export class Fx {
   }
 
   private drawParticles() {
-    const g = this.sparks;
-    g.clear();
+    for (const band of [this.top, ...this.bands.values()]) band.sparks.clear();
     for (const p of this.particles) {
+      // Each particle sorts by where it is over the ground (see at).
+      this.at(p.y);
+      const g = this.sparks;
       const k = p.age / p.life,
         fade = 1 - k,
         sx = p.x,

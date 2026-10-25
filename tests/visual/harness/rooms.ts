@@ -1,7 +1,7 @@
 // Builds real room snapshots with the server's own code.
 import { Arena } from "../../../apps/server/src/simulation";
 import { createRaidArena } from "../../../apps/server/src/raid-bosses";
-import { packSnapshot, type ArenaId, type RaidBossId } from "../../../packages/shared/src/index";
+import { CHARACTERS, packSnapshot, type ArenaId, type CharacterId, type RaidBossId } from "../../../packages/shared/src/index";
 
 const w = window as unknown as Record<string, any>;
 export interface RoomOptions {
@@ -9,6 +9,10 @@ export interface RoomOptions {
   boss?: RaidBossId;
   broken?: number[];
   pos?: [number, number, number, number];
+  /** Practice: the player's fighter. */
+  character?: CharacterId;
+  /** Practice: the player's basic shots, frozen in flight at these points. */
+  shots?: [number, number][];
 }
 function room(kind: "practice" | "raid", o: RoomOptions) {
   if (kind === "raid") {
@@ -27,11 +31,25 @@ function room(kind: "practice" | "raid", o: RoomOptions) {
   }
   const a: any = new Arena("ABC123");
   a.practice = { unlimitedCooldowns: false, targetAttacks: false };
-  a.add("me", "tester", "voltkit");
+  a.add("me", "tester", o.character ?? "voltkit");
   a.add("target-ABC123", "Training target");
   a.resetPractice();
   if (o.arena) a.arenaId = o.arena;
   if (o.pos) [a.players[0].x, a.players[0].y, a.players[1].x, a.players[1].y] = o.pos;
+  const me = a.players[0],
+    basic = CHARACTERS[me.character as CharacterId].basic;
+  a.projectiles = (o.shots ?? []).map(([x, y], i) => ({
+    id: 900 + i,
+    owner: me.id,
+    x,
+    y,
+    // Barely moving, so the shot stays where the test put it.
+    vx: 1,
+    vy: 0,
+    remaining: 400,
+    ability: basic,
+    color: CHARACTERS[me.character as CharacterId].color,
+  }));
   return a;
 }
 /** Prepare a room; the next create/practice request joins it. */
