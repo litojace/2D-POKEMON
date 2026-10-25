@@ -1,4 +1,4 @@
-import { iconLabel } from "./menu-icons";
+import { iconLabel, menuIcon } from "./menu-icons";
 import { lockLandscape } from "./orientation";
 import { stadiumBands } from "./stadium";
 import { abilityIcon } from "./ability-icons";
@@ -298,12 +298,15 @@ export class TouchControls {
   settingsHTML() {
     if (!this.available) return "";
     return (
-      "<h3>Mobile Controls</h3><p>Fixed joystick · settings are saved on this device.</p>" +
+      `<h3 id="prefs-touch">${menuIcon("install")}Touch controls</h3><p class="prefs-note">Fixed joystick · saved on this device.</p>` +
       (["joystickSize", "buttonSize", "opacity"] as const)
-        .map(
-          (key) =>
-            `<label>${{ joystickSize: "JOYSTICK SIZE", buttonSize: "COMBAT BUTTON SIZE", opacity: "HUD OPACITY" }[key]} <input type="range" id="control-${key}" min="${key === "opacity" ? 0.4 : key === "buttonSize" ? 0.85 : 0.8}" max="${key === "opacity" ? 1 : key === "buttonSize" ? 1.2 : 1.25}" step=".05" value="${this.preferences[key]}"></label>`,
-        )
+        .map((key) => {
+          const value = this.preferences[key];
+          const [min, max] =
+            key === "opacity" ? [0.4, 1] : key === "buttonSize" ? [0.85, 1.2] : [0.8, 1.25];
+          const label = { joystickSize: "Joystick size", buttonSize: "Combat button size", opacity: "Controls opacity" }[key];
+          return `<label class="prefs-slider"><span class="prefs-slider-label">${label}</span><output for="control-${key}" data-pref-for="control-${key}">${Math.round(value * 100)}%</output><input type="range" id="control-${key}" min="${min}" max="${max}" step=".05" value="${value}"></label>`;
+        })
         .join("") +
       `<button class="secondary" id="control-reset">${iconLabel("again", "Reset mobile layout")}</button>`
     );

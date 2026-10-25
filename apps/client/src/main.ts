@@ -2373,10 +2373,31 @@ function leaveButton() {
   }
   return `<button id="exit-room" class="secondary btn-secondary leave-button is-costly"><span>${buttonIcon("leave")}Leave match</span><small>Counts as a forfeit</small></button>`;
 }
+/** A labelled slider with its value shown as a percentage beside the label. */
+function prefSlider(
+  id: string,
+  label: string,
+  value: number,
+  range: { min: number; max: number; step: number },
+) {
+  return `<label class="prefs-slider"><span class="prefs-slider-label">${label}</span><output for="${id}" data-pref-for="${id}">${Math.round(value * 100)}%</output><input type="range" id="${id}" min="${range.min}" max="${range.max}" step="${range.step}" value="${value}"></label>`;
+}
+/** Keep every slider's percentage in step with its knob. */
+function syncPrefOutputs(root: ParentNode) {
+  for (const out of Array.from(
+    root.querySelectorAll<HTMLOutputElement>("output[data-pref-for]"),
+  )) {
+    const input = document.getElementById(out.dataset.prefFor!) as HTMLInputElement | null;
+    if (input) out.value = `${Math.round(Number(input.value) * 100)}%`;
+  }
+}
+const syncDialogPrefs = () => syncPrefOutputs($<HTMLDialogElement>("dialog"));
 function showSettings() {
   settingsOpen = true;
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const touchHTML = touch.settingsHTML();
   dialog(
-    `<div class="settings-screen"><div class="eyebrow">Your preferences</div><h2>Find your rhythm.</h2><p>Online matches keep running while this menu is open.</p><div class="settings-layout"><div class="settings-audio"><label>Music <input type="range" id="music" min="0" max="1" step=".01" value="${audio.music}"></label><label>Sound effects <input type="range" id="effects" min="0" max="1" step=".01" value="${audio.effects}"></label><p>Reduced motion follows your system preference.</p><button id="open-controls" class="secondary btn-secondary full">${iconLabel("keyboard", "Controls &amp; key bindings")}</button></div><div class="settings-touch">${touch.settingsHTML()}</div><div class="settings-actions">${myId ? leaveButton() : watching ? `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>` : ""}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button></div></div></div>`,
+    `<div class="settings-screen"><h2>Settings</h2><p class="prefs-note">Online matches keep running while this is open.</p><div class="prefs-grid${touchHTML ? " has-touch" : ""}"><section class="prefs-card" aria-labelledby="prefs-sound"><h3 id="prefs-sound">${menuIcon("sound")}Sound</h3>${prefSlider("music", "Music", audio.music, { min: 0, max: 1, step: 0.01 })}${prefSlider("effects", "Sound effects", audio.effects, { min: 0, max: 1, step: 0.01 })}</section><section class="prefs-card" aria-labelledby="prefs-motion"><h3 id="prefs-motion">${menuIcon("motion")}Motion</h3><p class="prefs-status"><b class="${reduced ? "is-on" : ""}">Reduced motion ${reduced ? "on" : "off"}</b><span>Follows your device's accessibility setting.</span></p></section>${touchHTML ? `<section class="prefs-card prefs-touch" aria-labelledby="prefs-touch">${touchHTML}</section>` : ""}</div><div class="settings-actions"><button id="open-controls" class="secondary btn-secondary">${iconLabel("keyboard", "Controls &amp; key bindings")}</button>${myId ? leaveButton() : watching ? `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>` : ""}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button><button id="settings-credits" class="quiet">${iconLabel("star", "Credits")}</button></div></div>`,
   );
   for (const kind of ["music", "effects"] as const)
     $(kind).oninput = () => {
@@ -2384,10 +2405,25 @@ function showSettings() {
       audio.set(kind, Number($<HTMLInputElement>(kind).value));
     };
   touch.bindSettings();
+  const box = $<HTMLDialogElement>("dialog");
+  // Same function each time, so reopening Settings doesn't stack listeners.
+  box.addEventListener("input", syncDialogPrefs);
+  // Reset sets the knobs directly (no input event), so refresh after it.
+  document
+    .getElementById("control-reset")
+    ?.addEventListener("click", () => setTimeout(() => syncPrefOutputs(box)));
   $("open-controls").onclick = showControls;
   $("settings-report").onclick = () => accountsUI.showReport(reportContext());
+  $("settings-credits").onclick = () => showCredits(true);
   const exitRoom = $("exit-room");
   if (exitRoom) exitRoom.onclick = () => void leave();
+}
+/** Who and what made the game; from Settings it has a way back. */
+function showCredits(fromSettings = false) {
+  dialog(
+    `<div class="credits-screen">${fromSettings ? `<button type="button" class="quiet" id="credits-back">${iconLabel("back", "Settings")}</button>` : ""}<h2>Credits</h2><div class="credits-hero"><span class="credits-crest" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="credits-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#credits-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><div><b>Element Arena</b><small>Real-time creature duels from Elemental Plaza.</small></div></div><div class="credits-grid"><section class="prefs-card"><h3>${menuIcon("user")}Creatures &amp; world</h3><p>Eight original creatures, each an articulated shaded-vector rig with front, back and side views, plus the town and its coliseum.</p></section><section class="prefs-card"><h3>${menuIcon("sound")}Music</h3><p>Original music played on instrument recordings from the <a href="https://github.com/sgossner/VCSL" target="_blank" rel="noopener noreferrer">Versilian Community Sample Library</a> and <a href="https://github.com/sgossner/VSCO-2-CE" target="_blank" rel="noopener noreferrer">VSCO 2 Community Edition</a> (CC0 public domain).</p></section><section class="prefs-card"><h3>${menuIcon("keyboard")}Built with</h3><ul class="credits-tags">${["Phaser", "Socket.IO", "Express", "TypeScript", "Vite", "Supabase"].map((t) => `<li>${t}</li>`).join("")}</ul></section></div></div>`,
+  );
+  document.getElementById("credits-back")?.addEventListener("click", showSettings);
 }
 /** Settings → Controls (see controls-screen.ts). */
 function showControls() {
@@ -2430,10 +2466,7 @@ $("help").onclick = () =>
   dialog(
     `<div class="help-screen"><div class="eyebrow">How to play</div><h2>Welcome to Elemental Plaza.</h2><p>Everyone online shares this town. Walk to a building to use it, or open <b>Menu</b> (bottom left) and press <b>Play</b> to start a match. In battle, win three rounds to take the match.</p>${townGuide(usingPad)}<div class="eyebrow help-battle-eyebrow">In battle</div><div class="help-layout"><section class="help-controls" aria-label="Game controls">${controlsList(true)}</section>${illustratedHelp()}</div></div>`,
   );
-$("credits").onclick = () =>
-  dialog(
-    '<div class="credits-screen"><div class="eyebrow">Built for the duel</div><h2>Element Arena</h2><div class="credits-details"><p>Eight original creatures, each an articulated shaded-vector rig with front, back and side views, plus a stone coliseum and original music.</p><p>Instrument recordings: <a href="https://github.com/sgossner/VCSL" target="_blank" rel="noopener noreferrer">Versilian Community Sample Library</a> and <a href="https://github.com/sgossner/VSCO-2-CE" target="_blank" rel="noopener noreferrer">VSCO 2 Community Edition</a> (CC0 public domain).</p><p>Built with Phaser, Socket.IO, Express, TypeScript, Vite, and Supabase. Rendered sprite sheets or atlases can replace any creature through the fighter asset pipeline.</p></div></div>',
-  );
+$("credits").onclick = () => showCredits();
 $<HTMLDialogElement>("dialog").addEventListener("close", () => {
   settingsOpen = false;
   menuOpen = false;

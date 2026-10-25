@@ -14,7 +14,7 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
   const toolbar = document.createElement("div");
   toolbar.className = `dialog-toolbar${raid ? " raid-dialog-toolbar" : ""}`;
   const back = content.querySelector<HTMLButtonElement>(
-    "#raid-hub-back, #controls-back, #leaderboard-back",
+    "#raid-hub-back, #controls-back, #leaderboard-back, #credits-back",
   );
   if (back) toolbar.append(back);
   toolbar.append(close);
