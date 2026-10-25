@@ -1,7 +1,7 @@
 import type { PreviewPlacement, ShopPreviewHandle } from "./shop-preview";
 
-/** One Shop rig follows the visible Home or fighter-detail portrait. */
-export function watchHomePreview(
+/** One Shop rig follows the visible fighter-select portrait. */
+export function watchSelectionPreview(
   menu: HTMLElement,
   ...covers: (HTMLDialogElement | HTMLDetailsElement)[]
 ) {
@@ -21,12 +21,9 @@ export function watchHomePreview(
       detail.getClientRects().length
         ? detail
         : undefined;
-    const stage =
-      selection ?? menu.querySelector<HTMLElement>(".home-fighter-stage");
-    const placement: PreviewPlacement = selection ? "selection" : "home";
-    const host = stage?.querySelector<HTMLElement>(
-      selection ? ".fighter-rig-stage" : ".home-fighter-art",
-    );
+    const stage = selection;
+    const placement: PreviewPlacement = "selection";
+    const host = stage?.querySelector<HTMLElement>(".fighter-rig-stage");
     if (menu.hidden || !stage || !host?.querySelector(":scope > svg")) {
       preview?.();
       preview = undefined;

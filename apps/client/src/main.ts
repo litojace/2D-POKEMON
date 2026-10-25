@@ -9,7 +9,7 @@ import {
   type GateStatus,
 } from "./home-screen";
 import { setupHomeNavigation } from "./home-navigation";
-import { watchHomePreview } from "./home-preview";
+import { watchSelectionPreview } from "./selection-preview";
 import { townOutfitKey } from "./town-outfit";
 import { raidDay } from "../../../packages/shared/src/raid";
 import { resultXp } from "./adventure-ui";
@@ -254,7 +254,7 @@ const headerMenu = $("header-menu") as HTMLDetailsElement;
 // A dropdown-to-dialog transition keeps the same page position throughout.
 lockScrollWhileOpen($<HTMLDialogElement>("dialog"), headerMenu);
 watchMenuMotion($("menu"), $<HTMLDialogElement>("dialog"), headerMenu);
-watchHomePreview($("menu"), $<HTMLDialogElement>("dialog"), headerMenu);
+watchSelectionPreview($("menu"), $<HTMLDialogElement>("dialog"), headerMenu);
 headerMenu.addEventListener("click", (event) => {
   if ((event.target as Element).closest("button")) headerMenu.open = false;
 });

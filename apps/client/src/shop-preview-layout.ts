@@ -8,8 +8,8 @@ export const SHOP_PREVIEW = {
   cameraY: 130,
 } as const;
 
-/** Home keeps its padded SVG frame (-20 -40 240 250), at two pixels per art unit. */
-export const HOME_PREVIEW = {
+/** The fighter select keeps its padded SVG frame (-20 -40 240 250), at two pixels per art unit. */
+export const SELECTION_PREVIEW = {
   width: 480,
   height: 500,
   x: 240,

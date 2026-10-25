@@ -331,4 +331,3 @@ export function withUltimates(kit: Required<FxKit>): Required<FxKit> {
   impact["void-orb"] = then(kit.impact["void-orb"], voidOrb);
   return { ...kit, cast, zone, windup, impact };
 }
-export const ULTIMATE_IDS = ["overcharge", "sunfire-pillar", "riptide-wave", "nova-burst", "radiant-flare", "thoughtstrike", "tremor", "void-orb"];

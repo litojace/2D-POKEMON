@@ -32,8 +32,6 @@ export function mergeKits(kits: FxKit[]): Required<FxKit> {
     for (const key of Object.keys(out) as (keyof FxKit)[]) Object.assign(out[key], kit[key] ?? {});
   return out;
 }
-/** Where a fighter's mouth / hands are, relative to its floor position. */
-export const CHEST = 14;
 export const ease = (k: number) => 1 - (1 - k) ** 3;
 export const hash = (n: number) => {
   const x = Math.sin(n * 12.9898) * 43758.5453;

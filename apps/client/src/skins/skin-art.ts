@@ -576,9 +576,6 @@ export function accessorySvg(a: Accessory, id: CharacterId, dir: Facing, p: Pale
 export function skinArt(skinId: string | null | undefined) {
   return skinId ? SKIN_ART[skinId] : undefined;
 }
-export function skillColorFor(skinId: string | null | undefined) {
-  return skinArt(skinId)?.skill;
-}
 /** A worn skin's art, only when it was made for the champion being played. */
 export function wornArt(
   champion: string,

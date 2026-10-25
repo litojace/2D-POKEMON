@@ -11,9 +11,9 @@ import { SKINS } from "./animation/cosmetics";
 import { drawCollectionAura } from "./skins/collection-fx";
 import type { AnimationPose } from "./animation/controller";
 import type { SkinLook } from "./creature-design";
-import { HOME_PREVIEW, SHOP_PREVIEW, previewZoom } from "./shop-preview-layout";
+import { SELECTION_PREVIEW, SHOP_PREVIEW, previewZoom } from "./shop-preview-layout";
 
-export type PreviewPlacement = "shop" | "home" | "selection";
+export type PreviewPlacement = "shop" | "selection";
 export interface ShopPreviewHandle {
   (): void;
   update(panel: HTMLElement, placement?: PreviewPlacement): void;
@@ -25,8 +25,8 @@ export function mountShopPreview(
   initialPanel: HTMLElement,
   placement: PreviewPlacement = "shop",
 ): ShopPreviewHandle {
-  let home = placement !== "shop";
-  let framing = home ? HOME_PREVIEW : SHOP_PREVIEW;
+  let selection = placement === "selection";
+  let framing = selection ? SELECTION_PREVIEW : SHOP_PREVIEW;
   let suspended = false;
   let panel: HTMLElement;
   let host: HTMLElement;
@@ -134,19 +134,15 @@ export function mountShopPreview(
   const updatePanel = (next: HTMLElement, nextPlacement = placement) => {
     if (disposed) return;
     placement = nextPlacement;
-    home = placement !== "shop";
-    framing = home ? HOME_PREVIEW : SHOP_PREVIEW;
+    selection = placement === "selection";
+    framing = selection ? SELECTION_PREVIEW : SHOP_PREVIEW;
     revision++;
     cancelSelection();
     panel = next;
     observer.disconnect();
     host?.classList.remove("is-ready");
     host = panel.querySelector<HTMLElement>(
-      placement === "selection"
-        ? ".fighter-rig-stage"
-        : home
-          ? ".home-fighter-art"
-          : ".shop-live-stage",
+      selection ? ".fighter-rig-stage" : ".shop-live-stage",
     )!;
     host.classList.remove("is-ready");
     observer.observe(host);
@@ -158,7 +154,7 @@ export function mountShopPreview(
       : null;
     piece = LOOK_ITEM_BY_ID[id] ?? JOURNEY_ITEM_BY_ID[id];
     look =
-      home || host.dataset.previewLook !== undefined
+      selection || host.dataset.previewLook !== undefined
         ? JSON.parse(decodeURIComponent(host.dataset.previewLook ?? "%7B%7D"))
         : piece
           ? { [piece.slot]: id }
@@ -270,7 +266,7 @@ export function mountShopPreview(
           return;
         }
         this.floor.clear();
-        if (!home) {
+        if (!selection) {
           this.floor.fillStyle(0x040d20, 0.4).fillEllipse(200, 207, 160, 40);
           this.floor
             .lineStyle(1, CHARACTERS[champion].color, 0.3)
@@ -340,7 +336,7 @@ export function mountShopPreview(
           .lineStyle(3, 0xffd28c, 0.7)
           .strokeEllipse(
             x / auraScale,
-            (y + (home ? 21 * framing.scale : 38)) / auraScale,
+            (y + (selection ? 21 * framing.scale : 38)) / auraScale,
             95,
             45,
           );
@@ -349,7 +345,7 @@ export function mountShopPreview(
           this.aura,
           auraId,
           x / auraScale,
-          (y + (home ? 21 * framing.scale : 38)) / auraScale,
+          (y + (selection ? 21 * framing.scale : 38)) / auraScale,
           clock,
           paused,
         );

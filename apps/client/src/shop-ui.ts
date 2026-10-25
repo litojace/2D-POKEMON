@@ -459,4 +459,3 @@ export function shopMarkup(
 }
 /** Collection pieces' slot (for equipping). */
 export const lookSlot = (id: string) => LOOK_ITEM_BY_ID[id]?.slot;
-export const isLookItem = (id: string) => LOOK_ITEMS.some((i) => i.id === id);
