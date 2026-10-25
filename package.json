@@ -17,10 +17,12 @@
     "build": "npm run build -w packages/shared && npm run build -w apps/client && npm run build -w apps/server",
     "typecheck": "tsc --noEmit -p apps/client && tsc --noEmit -p apps/server",
     "test": "vitest run",
-    "start": "node apps/server/dist/apps/server/src/index.js"
+    "start": "node apps/server/dist/apps/server/src/index.js",
+    "test:visual": "playwright test --config tests/visual/playwright.config.ts"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.9",
+    "@playwright/test": "^1.56.0",
     "concurrently": "^9.2.0",
     "prettier": "^3.9.10",
     "typescript": "^5.9.0",

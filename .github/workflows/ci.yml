@@ -14,3 +14,22 @@ jobs:
       - run: npm run test
       - run: npm run build
       - run: node scripts/verify-pwa.mjs
+  visual:
+    # The real client in Chromium with no server: one fighter on the select
+    # screen, arenas filling their frames, dialogs fitting a phone.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:visual
+      - if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-report
+          path: playwright-report/
+          retention-days: 14

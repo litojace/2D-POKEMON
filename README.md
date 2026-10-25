@@ -94,6 +94,13 @@ node scripts/verify-pwa.mjs
 npx tsx scripts/export-fighters.ts
 ```
 
+Visual checks run the real client in Chromium with no server (`tests/visual/harness` stands in for the network, account API and town). They check what you'd notice by eye (one fighter on the select screen even with a skin on, each court filling its frame, Settings fitting a phone) and attach a screenshot of every screen to the report:
+
+```
+npx playwright install chromium   # once
+npm run test:visual
+```
+
 The asset export regenerates the original SVG prototypes and creates metadata for new folders. Existing manifests and rendered/artist portraits are preserved. `scripts/generate-icons.py` uses Pillow to regenerate the original elemental PWA emblem.
 
 Development-only previews:
