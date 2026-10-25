@@ -17486,6 +17486,15 @@ body.lobby-active .roster-panel > .section-title .eyebrow {
 #menu .fighter-preview-slot .fighter-rig-stage.is-ready > canvas {
   opacity: 1;
 }
+/* Once the animated fighter is drawn, the still artwork under it steps aside
+   (otherwise a skinned fighter shows twice, slightly out of line). */
+.fighter-rig-stage.is-ready :is(.fighter-character, .fighter-scarf) {
+  visibility: hidden;
+}
+.fighter-rig-stage.is-ready :is(.fighter-character, .fighter-scarf),
+.fighter-rig-stage.is-ready :is(.fighter-character, .fighter-scarf) * {
+  animation-play-state: paused !important;
+}
 .fighter-rig-stage > .selected-art-caption {
   grid-area: 2 / 1;
 }
