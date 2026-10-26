@@ -17,13 +17,21 @@ test("town loads the approved plaza art without relying on legacy cached URLs", 
   const expected = [
     "town-fountain",
     "town-ground",
-    "town-coliseum",
-    "town-raid-hall",
-    "town-buildings",
     "town-nature",
     "town-props",
     "town-animals",
     "town-animal-motion",
+    ...[
+      "red",
+      "teal",
+      "plum",
+      "market",
+      "tower",
+      "windmill",
+      "coliseum",
+      "raidHall",
+      "obelisk",
+    ].map((name) => `town-hd-${name}`),
   ];
   const loaded = expected.map((name) =>
     page.waitForResponse(

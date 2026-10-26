@@ -2,7 +2,7 @@
 
 `fountain.png` is the transparent production illustration of the approved
 higher-view perspective study. The compact source export is
-`src/art/town-fountain.webp`, resized to 800 pixels wide at WebP quality 90.
+`src/art/town-fountain.webp`, exported at its full 1402×1122 resolution at WebP quality 94.
 Vite gives the deployed file a content hash; `town-assets.ts` supplies this URL
 to the actual town and the fountain review renderer. The paved ground uses
 the same pipeline so both layers update with the approved perspective.
@@ -39,3 +39,9 @@ canopy, shrub picture and spinning sails rather than only collision centres.
 `arenaGroundFoot` describes the painted base ring and is shared by the ground
 apron, cast shadow and movement collision. Rebuild `town-ground.webp` with
 `scripts/bake-town-ground.mjs` whenever layout or shadow placement changes.
+
+## Current HD runtime
+
+See `architecture-hd/README.md` for the separate native-texture architecture,
+filtered zoom levels and the ivory/gold Champions’ Obelisk. The original atlas
+masters and shared source coordinates remain as the geometry reference.

@@ -1,6 +1,7 @@
-import { rendererDensity } from "./render-budget";
+import { townRendererDensity } from "./render-budget";
 import { watchRendererLifecycle } from "./renderer-lifecycle";
 import { TOWN_ART } from "./town-assets";
+import { TOWN_HD } from "./town-hd-assets";
 import {
   groundHeight,
   WORLD_ART,
@@ -577,9 +578,8 @@ export function openTown(options: TownOptions) {
       this.load.image("town-animals", TOWN_ART.animals);
       this.load.image("town-animal-motion", TOWN_ART.animalMotion);
       this.load.image("town-fountain-painted", TOWN_ART.fountain);
-      this.load.image("town-architecture-coliseum", TOWN_ART.coliseum);
-      this.load.image("town-architecture-raidHall", TOWN_ART.raidHall);
-      this.load.image("town-architecture-buildings", TOWN_ART.buildings);
+      for (const [name, url] of Object.entries(TOWN_HD))
+        this.load.image(`town-hd-${name}`, url);
     }
     create() {
       if (closed) return;
@@ -965,10 +965,12 @@ export function openTown(options: TownOptions) {
           options.reduced,
         );
       }
-      const head = Math.min(
-        body.y - 60 - lift,
-        body.rig ? body.rig.root.y - 47 : Infinity,
+      // Nameplates follow map movement, not the animated rig's hover/bob.
+      // Reserve the top of the idle hover range to keep the hood/ears clear.
+      const floating = ["auralynx", "lumoth", "mystowl", "duskveil"].includes(
+        body.rig?.character ?? body.worn?.character ?? "",
       );
+      const head = body.y - FEET * RIG_SCALE - 47 - (floating ? 9 * RIG_SCALE : 0);
       const ui = Math.max(1, 1 / this.zoomNow);
       // Zoomed far out the town reads as a map: names and titles fade away,
       // and come back as you zoom in.
@@ -1007,7 +1009,7 @@ export function openTown(options: TownOptions) {
   }
 
   const host = $("town-canvas");
-  const dpr = rendererDensity();
+  let dpr = townRendererDensity(host.clientWidth, host.clientHeight);
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: host,
@@ -1018,14 +1020,17 @@ export function openTown(options: TownOptions) {
       height: Math.round(host.clientHeight * dpr),
       zoom: 1 / dpr,
     },
-    render: { antialias: true },
+    render: { antialias: true, mipmapFilter: "LINEAR_MIPMAP_LINEAR" },
     scene: [TownScene],
   });
-  const resize = () =>
+  const resize = () => {
+    dpr = townRendererDensity(host.clientWidth, host.clientHeight);
+    game.scale.setZoom(1 / dpr);
     game.scale.resize(
       Math.round(host.clientWidth * dpr),
       Math.round(host.clientHeight * dpr),
     );
+  };
   window.addEventListener("resize", resize);
   watchRendererLifecycle(game, () => !closed, resize);
 

@@ -30,7 +30,34 @@ test("iOS Home Screen resumes Town and releases the old battle canvas on return"
       await page
         .locator(".town-canvas canvas")
         .evaluate((c: HTMLCanvasElement) => c.width),
-    ).toBe(1266);
+    ).toBe(1688);
+    // Crossing the adaptive pixel budget must keep CSS sizing and pointer
+    // coordinates aligned with the host, including an iPad-sized window.
+    await page.setViewportSize({ width: 1194, height: 834 });
+    await expect
+      .poll(() =>
+        page.locator(".town-canvas canvas").evaluate((c) => {
+          const host = c.parentElement!.getBoundingClientRect(),
+            r = c.getBoundingClientRect();
+          return (
+            Math.abs(host.width - r.width) + Math.abs(host.height - r.height)
+          );
+        }),
+      )
+      .toBeLessThan(2);
+    expect(
+      await page
+        .locator(".town-canvas canvas")
+        .evaluate((c: HTMLCanvasElement) => c.width * c.height),
+    ).toBeLessThanOrEqual(2_002_000);
+    await page.setViewportSize(iphone.viewport);
+    await expect
+      .poll(() =>
+        page
+          .locator(".town-canvas canvas")
+          .evaluate((c: HTMLCanvasElement) => c.width),
+      )
+      .toBe(1688);
     await page.evaluate(() => {
       (window as any).__keepApp = true;
       dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true }));

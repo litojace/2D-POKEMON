@@ -19,3 +19,16 @@ export function rendererDensity(
     Math.min(iosApp ? 1.5 : 2, Number.isFinite(dpr) ? dpr : 1),
   );
 }
+
+/** Town's static scenery has a separate budget from an active battle. A
+ * small iPhone can use a sharper 2× buffer; large iPad windows stay bounded. */
+export function townRendererDensity(
+  width: number,
+  height: number,
+  dpr = typeof devicePixelRatio === "number" ? devicePixelRatio : 1,
+  iosApp = isIOSWebApp(),
+) {
+  const pixels = Math.max(1, width * height);
+  const cap = iosApp ? Math.min(2, Math.sqrt(2_000_000 / pixels)) : 2;
+  return Math.max(1, Math.min(cap, Number.isFinite(dpr) ? dpr : 1));
+}

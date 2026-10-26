@@ -51,7 +51,7 @@ import {
 } from "./town-art";
 import { propSprite, stallSprite } from "./town-props";
 import { drawFountainWater } from "./town-fountain-water";
-import { architectureFrame, paintedBuilding, paintedStall } from "./town-architecture";
+import { architectureFrame, architectureName, nativeBuilding, nativeStall, paintedBuilding, paintedStall } from "./town-architecture";
 import { drawFountainCrystal } from "./town-fountain-crystal";
 import { butterflySprite, duckSprite, GULL_FRAMES, gullSprite, HEN_FRAMES, henSprite, type HenPose } from "./town-animals";
 
@@ -85,6 +85,13 @@ function paint(key: string, w: number, h: number, draw: (ctx: CanvasRenderingCon
   return canvas;
 }
 function bake(scene: Phaser.Scene, key: string, sprite: Sprite, res = ART_RES) {
+  const native=sprite.nativeImage;
+  if(native?.key&&scene.textures.exists(native.key)) {
+    const texture=scene.textures.get(native.key),frame=`native-${key}`;
+    const [sx,sy,sw,sh]=native.crop,[x,y,w,h]=native.rect;
+    if(!texture.has(frame))texture.add(frame,0,sx,sy,sw,sh);
+    return {key:native.key,frame,ox:(sprite.ax-x)/w,oy:(sprite.ay-y)/h,scale:w/sw,scaleY:h/sh};
+  }
   const pad = WORLD_ART.spritePadding;
   const width = sprite.w + pad * 2, height = sprite.h + pad * 2;
   if (!scene.textures.exists(key)) {
@@ -96,12 +103,19 @@ function bake(scene: Phaser.Scene, key: string, sprite: Sprite, res = ART_RES) {
     });
     scene.textures.addCanvas(key, canvas);
   }
-  return { key, ox: (sprite.ax + pad) / width, oy: (sprite.ay + pad) / height, scale: 1 / res };
+  return { key, frame:undefined, ox: (sprite.ax + pad) / width, oy: (sprite.ay + pad) / height, scale: 1 / res, scaleY:1/res };
 }
 
 function place(scene: Phaser.Scene, key: string, sprite: Sprite, x: number, y: number, depth = y, res = ART_RES) {
   const t = bake(scene, key, sprite, res);
-  return scene.add.image(x, y, t.key).setOrigin(t.ox, t.oy).setScale(t.scale).setDepth(depth);
+  const img=scene.add.image(x, y, t.key,t.frame).setOrigin(t.ox, t.oy).setScale(t.scale,t.scaleY).setDepth(depth);
+  if(sprite.nativeImage?.clip&&t.frame) {
+    const shape=scene.make.graphics({x:x-sprite.ax,y:y-sprite.ay},false);
+    shape.fillStyle(0xffffff).fillPoints(sprite.nativeImage.clip.map(([x,y])=>({x,y})),true);
+    const mask=shape.createGeometryMask();img.setMask(mask);
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN,()=>{mask.destroy();shape.destroy();});
+  }
+  return img;
 }
 
 interface Mover {
@@ -177,7 +191,7 @@ export class TownScenery {
     this.life();
     // These source atlases are only used to bake the smaller placed sprites.
     // Release their GPU copies, particularly in iOS Home Screen web apps.
-    for (const key of ["town-nature","town-scenery-props","town-animals","town-animal-motion","town-architecture-coliseum","town-architecture-raidHall","town-architecture-buildings","town-fountain-painted"]) {
+    for (const key of ["town-animals","town-animal-motion","town-architecture-coliseum","town-architecture-raidHall","town-architecture-buildings"]) {
       if(scene.textures.exists(key)) scene.textures.remove(key);
     }
   }
@@ -195,7 +209,9 @@ export class TownScenery {
   }
   private nature(kind: "crown"|"trunk"|"bush"|"rock", variant: number, frame: Sprite) {
     const source=this.environment("town-nature");
-    return source?paintedNature(source,kind,variant,frame):frame;
+    const sprite=source?paintedNature(source,kind,variant,frame):frame;
+    if(sprite.nativeImage)sprite.nativeImage.key="town-nature";
+    return sprite;
   }
   private animal(kind: "duck"|"hen"|"gull", pose: string, index: number, female: boolean, frame: Sprite) {
     const motion=this.environment("town-animal-motion");
@@ -207,11 +223,17 @@ export class TownScenery {
   private buildings() {
     for (const b of TOWN_BUILDINGS) {
       const frame = architectureFrame(b);
-      const imageKey = `town-architecture-${frame.asset}`;
+      const hdKey=`town-hd-${architectureName(b)}`;
+      const hd=this.scene.textures.exists(hdKey);
+      const imageKey = hd?hdKey:`town-architecture-${frame.asset}`;
       if (this.scene.textures.exists(imageKey)) {
         const source = this.scene.textures.get(imageKey).getSourceImage() as HTMLImageElement;
-        const art = paintedBuilding(source, b);
+        const art = hd?nativeBuilding(source,b,imageKey):paintedBuilding(source, b);
         place(this.scene, `town-painted-${b.id}`, art.sprite, b.x, b.y, b.y, 2);
+        if(hd&&art.flags.length) {
+          const poles=this.scene.add.graphics().setDepth(b.y+.1).lineStyle(1.6,0x86704d);
+          for(const p of art.flags)poles.lineBetween(b.x+p.x,b.y+p.y,b.x+p.x,b.y+p.y-44);
+        }
         for (const p of art.flags) this.flags.push({x:b.x+p.x,y:b.y+p.y,color:b.kind === "temple"?0xb59bff:0xffd65b,depth:b.y+.3,w:26});
         if (!this.reduced) {
           for (const p of art.flames) this.flame(b.x+p.x,b.y+p.y,b.y+.5,b.kind === "tower"?.6:.45);
@@ -264,11 +286,11 @@ export class TownScenery {
     const trunks = [bake(this.scene, "town-trunk", this.nature("trunk",0,treeTrunk(0))), bake(this.scene, "town-trunk-birch", this.nature("trunk",4,treeTrunk(4)))];
     TOWN_TREES.forEach((t, i) => {
       const trunk = trunks[t.variant === 4 ? 1 : 0];
-      this.scene.add.image(t.x, t.y, trunk.key).setOrigin(trunk.ox, trunk.oy).setScale(trunk.scale).setDepth(t.y);
+      this.scene.add.image(t.x, t.y, trunk.key,trunk.frame).setOrigin(trunk.ox, trunk.oy).setScale(trunk.scale,trunk.scaleY).setDepth(t.y);
       const c = bake(this.scene, `town-canopy-${t.variant}`, this.nature("crown",t.variant,treeCanopy(t.variant)));
       const size = 1.05 + rnd(i * 3.3) * 0.35;
       const img = this.scene.add
-        .image(t.x, t.y - 34, c.key)
+        .image(t.x, t.y - 34, c.key,c.frame)
         .setOrigin(c.ox, c.oy)
         .setScale(c.scale * size)
         .setDepth(t.y + 0.01);
@@ -286,13 +308,27 @@ export class TownScenery {
     const fountainSource = s.textures.exists("town-fountain-painted")
       ? s.textures.get("town-fountain-painted").getSourceImage() as HTMLImageElement
       : null;
-    place(s, fountainSource ? "town-fountain-painted-base" : "town-fountain-base", fountainSource ? paintedFountain(fountainSource, false) : fountainBase(), f.x, f.y, f.y - 0.4);
-    place(s, fountainSource ? "town-fountain-painted-top" : "town-fountain-top", fountainSource ? paintedFountain(fountainSource, true) : fountainTop(), f.x, f.y, f.y);
+    const base=fountainSource?paintedFountain(fountainSource,false):fountainBase();
+    const upper=fountainSource?paintedFountain(fountainSource,true):fountainTop();
+    if(base.nativeImage)base.nativeImage.key="town-fountain-painted";
+    if(upper.nativeImage)upper.nativeImage.key="town-fountain-painted";
+    place(s, fountainSource?"town-fountain-painted-base":"town-fountain-base",base,f.x,f.y,f.y-.4);
+    place(s, fountainSource?"town-fountain-painted-top":"town-fountain-top",upper,f.x,f.y,f.y);
     const kinds = new Set(["stone", "lamp", "crates", "well", "dummy", "mirror", "obelisk", "board"]);
     for (const o of TOWN_OBSTACLES) {
       if (!kinds.has(o.kind)) continue;
       const original = propSprite(o.kind), source=this.environment("town-scenery-props");
-      const sprite = source?paintedProp(source,o.kind,original):original;
+      let sprite = source?paintedProp(source,o.kind,original):original;
+      if(sprite.nativeImage)sprite.nativeImage.key="town-scenery-props";
+      if(o.kind==="obelisk") {
+        const image=this.environment("town-hd-obelisk");
+        if(image) {
+          // POT storage has a different aspect ratio; restore the monument's
+          // authored proportions instead of deriving them from GPU storage.
+          const w=104,h=309;
+          sprite={...original,nativeImage:{key:"town-hd-obelisk",crop:[0,0,image.naturalWidth,image.naturalHeight],rect:[original.ax-w/2,original.ay-h,w,h]}};
+        }
+      }
       const img = place(s, `town-prop-${o.kind}`, sprite, o.x, o.y + (o.shape === "box" ? o.h / 2 : 4), o.y);
       if (o.kind === "lamp" && !this.reduced) {
         const glow = place(s, "town-glow", softBlob("255,214,140"), o.x, o.y - 104, o.y + 0.2, 1);
@@ -311,12 +347,13 @@ export class TownScenery {
     // Bushes and boulders.
     for (const b of TOWN_SHRUBS) {
       const t = bake(s, `town-${b.kind}-${b.variant}`, this.nature(b.kind,b.variant,shrubSprite(b.kind, b.variant)));
-      s.add.image(b.x, b.y + 6, t.key).setOrigin(t.ox, t.oy).setScale(t.scale).setDepth(b.y);
+      s.add.image(b.x, b.y + 6, t.key,t.frame).setOrigin(t.ox, t.oy).setScale(t.scale,t.scaleY).setDepth(b.y);
     }
     // Signposts pointing down each road out of the plaza.
     TOWN_SIGNPOSTS.forEach((p, i) => place(s, `town-signpost-${i}`, signpostSprite(p.label, p.color, p.left), p.x, p.y + 4, p.y, 2.5));
     const marketSource = s.textures.exists("town-architecture-buildings") ? s.textures.get("town-architecture-buildings").getSourceImage() as HTMLImageElement : null;
-    TOWN_STALLS.forEach((st, i) => place(s, `town-${marketSource?"painted-":""}stall-${i}`, marketSource?paintedStall(marketSource,st.color):stallSprite(st.color, i), st.x, st.y + 26, st.y, 2));
+    const marketHD=this.environment("town-hd-market");
+    TOWN_STALLS.forEach((st, i) => place(s, `town-${marketSource||marketHD?"painted-":""}stall-${i}`, marketHD?nativeStall(marketHD,"town-hd-market"):marketSource?paintedStall(marketSource,st.color):stallSprite(st.color, i), st.x, st.y + 26, st.y, 2));
     void TOWN_DUMMIES;
     // Raid Hall statues: each boss carved in stone on a plinth with its
     // name on a bronze plaque; the next plinth waits under a cloth.

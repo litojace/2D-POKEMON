@@ -45,9 +45,22 @@ function painted(
   frame: Sprite,
   stretch = false,
   board = false,
+  direct = false,
 ): Sprite {
+  const [sx, sy, sw, sh] = crop,
+    scale = Math.min((frame.w - 8) / sw, (frame.ay - 3) / sh);
+  const w = stretch ? frame.w - 8 : sw * scale,
+    h = stretch ? frame.ay - 3 : sh * scale;
   return {
     ...frame,
+    ...(direct && !board
+      ? {
+          nativeImage: {
+            crop,
+            rect: [frame.ax - w / 2, frame.ay - h, w, h] as const,
+          },
+        }
+      : {}),
     draw(ctx) {
       const [sx, sy, sw, sh] = crop,
         maxW = frame.w - 8,
@@ -96,7 +109,14 @@ export function paintedNature(
           : variant === 1
             ? 6
             : 7;
-  return painted(source, NATURE_FRAMES[index], frame, kind === "trunk");
+  return painted(
+    source,
+    NATURE_FRAMES[index],
+    frame,
+    kind === "trunk",
+    false,
+    true,
+  );
 }
 export function paintedProp(
   source: CanvasImageSource,
@@ -105,7 +125,7 @@ export function paintedProp(
 ) {
   const crop = PROP_FRAMES[kind as keyof typeof PROP_FRAMES];
   return crop
-    ? painted(source, crop, frame, kind === "board", kind === "board")
+    ? painted(source, crop, frame, kind === "board", kind === "board", true)
     : frame;
 }
 export function paintedAnimal(
@@ -155,6 +175,16 @@ export function paintedAnimal(
   return painted(source, ANIMAL_FRAMES[cell], frame);
 }
 
+/** Actual blank gold plaque within the plinth source crop, in source pixels. */
+export const PLINTH_PLAQUE = { x: 110, y: 124, width: 110, height: 56 };
+export function plinthLabelBounds(frame: Sprite) {
+  return {
+    x: frame.ax - 48 + (PLINTH_PLAQUE.x * 96) / 330,
+    y: frame.ay - 67 + (PLINTH_PLAQUE.y * 67) / 350,
+    width: (PLINTH_PLAQUE.width * 96) / 330,
+    height: (PLINTH_PLAQUE.height * 67) / 350,
+  };
+}
 export function paintedPlinth(
   source: CanvasImageSource,
   frame: Sprite,
@@ -170,11 +200,55 @@ export function paintedPlinth(
       ctx.ellipse(frame.ax, frame.ay - 58, 22, 6, 0, 0, Math.PI * 2);
       ctx.fill();
       if (name) {
-        ctx.fillStyle = "#4d3613";
+        const plaque = plinthLabelBounds(frame),
+          pad = 0.8;
+        const words = name.toUpperCase().trim().split(/\s+/);
+        const lines =
+          words.length > 1
+            ? [words.slice(0, -1).join(" "), words.at(-1)!]
+            : words;
+        const lineHeight = (plaque.height - pad * 2) / lines.length;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(
+          plaque.x + pad,
+          plaque.y + pad,
+          plaque.width - pad * 2,
+          plaque.height - pad * 2,
+        );
+        ctx.clip();
+        ctx.fillStyle = "#3d2b10";
         ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.font = "700 8px 'Barlow Condensed',sans-serif";
-        ctx.fillText(name.toUpperCase(), frame.ax, frame.ay - 31, 48);
+        ctx.textBaseline = "alphabetic";
+        for (const [i, line] of lines.entries()) {
+          let size = lines.length > 1 ? 6.2 : 7;
+          do {
+            ctx.font = `700 ${size}px 'Barlow Condensed', 'Arial Narrow', sans-serif`;
+            const ink = ctx.measureText(line);
+            if (
+              Math.max(
+                ink.width,
+                ink.actualBoundingBoxLeft + ink.actualBoundingBoxRight,
+              ) <=
+              plaque.width - pad * 2
+            )
+              break;
+            size -= 0.25;
+          } while (size >= 4.5);
+          const metrics = ctx.measureText(line),
+            ascent = metrics.actualBoundingBoxAscent,
+            descent = metrics.actualBoundingBoxDescent;
+          const centre = plaque.y + pad + lineHeight * (i + 0.5);
+          ctx.fillText(
+            line,
+            plaque.x +
+              plaque.width / 2 -
+              (metrics.actualBoundingBoxRight - metrics.actualBoundingBoxLeft) /
+                2,
+            centre + (ascent - descent) / 2,
+          );
+        }
+        ctx.restore();
       }
     },
   };

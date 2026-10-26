@@ -624,6 +624,13 @@ export interface Sprite {
   ax: number;
   ay: number;
   draw: (ctx: Ctx) => void;
+  /** Reuse source pixels directly on the GPU instead of resampling a canvas. */
+  nativeImage?: {
+    key?: string;
+    crop: readonly [number, number, number, number];
+    rect: readonly [number, number, number, number];
+    clip?: readonly (readonly [number, number])[];
+  };
 }
 
 const stoneWall = (ctx: Ctx, x: number, y: number, w: number, h: number, base: string, seed: number) => {
@@ -1560,7 +1567,13 @@ export const chimneyOf = (b: TownBuilding) => ({
  * into the ground picture, before the building stands on it.
  */
 /** One sun for the whole town: every shadow uses this tone, blur and direction. */
-export const SUN = { ...WORLD_ART.shadow, dx: WORLD_ART.sun.x, dy: WORLD_ART.sun.y };
+export const SUN = {
+  ...WORLD_ART.shadow,
+  alpha: 0.43,
+  blur: 12,
+  dx: WORLD_ART.sun.x,
+  dy: WORLD_ART.sun.y,
+};
 /*
  * Every shadow in town is drawn as a solid shape into one shadow layer,
  * which is then blurred and laid on the ground once at SUN.alpha. So all
@@ -2128,15 +2141,17 @@ export const FOUNTAIN = {
  * below the water plane. Both passes use exactly the same pixel placement. */
 export function paintedFountain(source: CanvasImageSource, upper: boolean): Sprite {
   const scale = 114 / 437;
+  const image=source as HTMLImageElement,sw=image.naturalWidth||image.width,sh=image.naturalHeight||image.height;
+  const contour = [[450,110],[970,110],[970,613],[752,613],[752,666],[782,693],[788,725],[760,750],[712,763],[656,750],[627,726],[632,697],[671,668],[671,613],[450,613]];
   return {
     w: 1402 * scale, h: 1122 * scale,
     ax: 712 * scale, ay: 738 * scale,
+    ...(sw&&sh?{nativeImage:{crop:[0,0,sw,sh] as const,rect:[0,0,1402*scale,1122*scale] as const,clip:upper?contour.map(([x,y])=>[x*scale,y*scale] as const):undefined}}:{}),
     draw(ctx) {
       ctx.save();
       ctx.scale(scale, scale);
       if (upper) {
         ctx.beginPath();
-        const contour = [[450,110],[970,110],[970,613],[752,613],[752,666],[782,693],[788,725],[760,750],[712,763],[656,750],[627,726],[632,697],[671,668],[671,613],[450,613]];
         contour.forEach(([x,y],i) => i ? ctx.lineTo(x,y) : ctx.moveTo(x,y));
         ctx.closePath();
         ctx.clip();

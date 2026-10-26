@@ -21,12 +21,20 @@ let worn: Partial<Record<CharacterId, { skin: string; stage: number }>> = {};
 export function setWornSkins(value: typeof worn | undefined) {
   worn = value ?? {};
 }
+/** Keep Terradon's eye line aligned while giving its earless head the same
+ * visual presence as the other portraits. The sprout remains inside frame. */
+const rosterPortraitFrame = (id?: string) =>
+  id === "terradon" ? "30 3 140 140" : "22 -8 156 156";
 function art(id: CharacterId, large = false, aura = false) {
   const pack = fighterPack(id);
   if (pack && pack.kind !== "layered")
     return `<img class="creature-portrait" loading="lazy" decoding="async" src="/assets/fighters/${id}/${large ? pack.selection : pack.portrait}" alt="${CHARACTERS[id].name}">`;
   // Card and detail portrait of the same fighter need their own ids.
-  const svg = fighterArt(id, undefined, worn[id]);
+  const svg = fighterArt(
+    id,
+    large ? undefined : rosterPortraitFrame(id),
+    worn[id],
+  );
   const framed = large ? withSoftGround(svg, id) : svg;
   return scopeIds(
     aura ? withAura(framed, id, still()) : framed,
@@ -330,7 +338,9 @@ export function placeFighterDetail(root: ParentNode) {
     ),
   )) {
     const frame = portrait.closest(".card-art")
-      ? "22 -8 156 156"
+      ? rosterPortraitFrame(
+          portrait.closest<HTMLElement>("[data-character]")?.dataset.character,
+        )
       : "-20 -40 240 250";
     if (portrait.getAttribute("viewBox") !== frame)
       portrait.setAttribute("viewBox", frame);

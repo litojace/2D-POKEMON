@@ -70,6 +70,32 @@ export function paintedBuilding(source: CanvasImageSource, b: TownBuilding) {
   const { frame, width, offset } = architecturePlacement(b);
   return placement(source, frame, width, offset);
 }
+export function architectureName(
+  b: TownBuilding,
+): Exclude<keyof typeof ARCHITECTURE, "temple"> | "raidHall" {
+  const frame = architecturePlacement(b).frame;
+  const name = Object.entries(ARCHITECTURE).find(
+    ([, value]) => value === frame,
+  )![0] as keyof typeof ARCHITECTURE;
+  return name === "temple" ? "raidHall" : name;
+}
+/** HD exports are normalized to the original crop and doorstep coordinates.
+ * Share their source textures across houses, preserving every native pixel. */
+export function nativeBuilding(
+  source: HTMLImageElement,
+  b: TownBuilding,
+  key: string,
+) {
+  const art = paintedBuilding(source, b),
+    { frame, width } = architecturePlacement(b),
+    scale = width / frame.inkWidth;
+  art.sprite.nativeImage = {
+    key,
+    crop: [0, 0, source.naturalWidth, source.naturalHeight],
+    rect: [48, 48, frame.crop[2] * scale, frame.crop[3] * scale],
+  };
+  return art;
+}
 export function paintedStall(source: CanvasImageSource, color: string): Sprite {
   const p = placement(source, ARCHITECTURE.market, 220),
     draw = p.sprite.draw;
@@ -88,4 +114,19 @@ export function paintedStall(source: CanvasImageSource, color: string): Sprite {
     ctx.fill();
   };
   return p.sprite;
+}
+export function nativeStall(source: HTMLImageElement, key: string): Sprite {
+  const sprite = placement(source, ARCHITECTURE.market, 220).sprite,
+    scale = 220 / ARCHITECTURE.market.inkWidth;
+  sprite.nativeImage = {
+    key,
+    crop: [0, 0, source.naturalWidth, source.naturalHeight],
+    rect: [
+      48,
+      48,
+      ARCHITECTURE.market.crop[2] * scale,
+      ARCHITECTURE.market.crop[3] * scale,
+    ],
+  };
+  return sprite;
 }

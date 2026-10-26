@@ -32,13 +32,21 @@ assert(urls.includes("offline.html"));
 for (const art of [
   "town-fountain",
   "town-ground",
-  "town-coliseum",
-  "town-raid-hall",
-  "town-buildings",
   "town-nature",
   "town-props",
   "town-animals",
   "town-animal-motion",
+  ...[
+    "red",
+    "teal",
+    "plum",
+    "market",
+    "tower",
+    "windmill",
+    "coliseum",
+    "raidHall",
+    "obelisk",
+  ].map((name) => `town-hd-${name}`),
 ])
   assert(
     urls.some((url) => new RegExp(`^assets/${art}-[\\w-]+\\.webp$`).test(url)),
