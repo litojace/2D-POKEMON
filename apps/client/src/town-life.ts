@@ -470,8 +470,8 @@ export class TownScenery {
       this.butterflies.push({ x: home.x, y: home.y, vx: 0, vy: 0, phase: rnd(i * 31) * TAU, home, color: [0xffd65b, 0xff8ad0, 0x8fd0ff, 0xffffff][i % 4] });
     }
     for (let i = 0; i < 5; i++) {
-      const home = i < 3 ? { x: 1000 + i * 40, y: 1420 } : { x: 2400 + i * 30, y: 1780 };
-      this.chickens.push(createHenMotion(home,rnd(i * 41) * TAU));
+      const [x,y]=[[650,1100],[1000,1420],[1750,1450],[2350,1750],[2800,1200]][i];
+      this.chickens.push(createHenMotion({x,y},rnd(i * 41) * TAU,true));
     }
     for (let i = 0; i < 3; i++) this.ducks.push({ a: (i / 3) * TAU, speed: 0.12 + i * 0.03, r: 0.55 + i * 0.12, female: i === 1 });
     this.animals();

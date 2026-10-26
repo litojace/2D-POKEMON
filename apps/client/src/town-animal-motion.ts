@@ -2,6 +2,12 @@ import { TOWN_PLAZA_ROAD } from "../../../packages/shared/src/town";
 import { WORLD_ART } from "../../../packages/shared/src/world-art";
 import type { Sprite } from "./town-art";
 import type { DogPose, HenPose } from "./town-animals";
+import {
+  henCanStand,
+  henRoamStart,
+  planHenRoam,
+  type HenRoam,
+} from "./town-hen-roaming";
 
 export const MOTION_ATLAS = {
   width: 1536,
@@ -169,25 +175,29 @@ export interface HenMotion {
   clock: number;
   facing: number;
   choices: number;
+  roam?: HenRoam;
 }
 export function createHenMotion(
   home: { x: number; y: number },
   phase: number,
+  roaming = false,
 ): HenMotion {
+  const start = roaming ? henRoamStart(home) : home;
   return {
-    x: home.x,
-    y: home.y,
+    x: start.x,
+    y: start.y,
     vx: 0,
     vy: 0,
     home,
     phase,
-    target: home,
+    target: start,
     remaining: 0.2 + noise(phase) * 1.5,
     walking: false,
     gait: noise(phase),
     clock: 0,
     facing: 1,
     choices: 0,
+    roam: roaming ? { points: [], trip: 0, destination: start } : undefined,
   };
 }
 export function stepHen(c: HenMotion, elapsed: number) {
@@ -198,27 +208,61 @@ export function stepHen(c: HenMotion, elapsed: number) {
     c.clock = 0;
     c.choices++;
     c.remaining = c.walking
-      ? 1.5 + noise(c.phase + c.choices * 7) * 1.5
+      ? (c.roam ? 12 : 1.5) +
+        noise(c.phase + c.choices * 7) * (c.roam ? 14 : 1.5)
       : 1.8 + noise(c.phase + c.choices * 11) * 2;
     if (c.walking) {
-      const a = noise(c.phase + c.choices * 19) * TAU,
-        r = 20 + noise(c.phase + c.choices * 23) * 42;
-      c.target = {
-        x: c.home.x + Math.cos(a) * r,
-        y: c.home.y + Math.sin(a) * r * WORLD_ART.groundY,
-      };
+      if (c.roam) {
+        if (!c.roam.points.length)
+          c.roam = planHenRoam(c, c.phase, c.roam.trip);
+        c.target = c.roam.points[0] ?? { x: c.x, y: c.y };
+      } else {
+        const a = noise(c.phase + c.choices * 19) * TAU,
+          r = 20 + noise(c.phase + c.choices * 23) * 42;
+        c.target = {
+          x: c.home.x + Math.cos(a) * r,
+          y: c.home.y + Math.sin(a) * r * WORLD_ART.groundY,
+        };
+      }
+    }
+  }
+  if (
+    c.walking &&
+    c.roam &&
+    Math.hypot(c.target.x - c.x, c.target.y - c.y) < 3
+  ) {
+    c.roam.points.shift();
+    if (c.roam.points.length) c.target = c.roam.points[0];
+    else {
+      c.walking = false;
+      c.remaining = 2 + noise(c.phase + c.choices) * 2;
+      c.clock = 0;
     }
   }
   const dx = c.target.x - c.x,
     dy = c.target.y - c.y,
     distance = Math.hypot(dx, dy);
-  const speed = c.walking ? Math.min(25, distance * 3) : 0;
+  const speed = c.walking ? Math.min(c.roam ? 31 : 25, distance * 3) : 0;
   c.vx = ease(c.vx, distance > 1 ? (dx / distance) * speed : 0, dt);
   c.vy = ease(c.vy, distance > 1 ? (dy / distance) * speed : 0, dt);
-  c.x += c.vx * dt;
-  c.y += c.vy * dt;
+  const oldX = c.x,
+    oldY = c.y,
+    nextX = c.x + c.vx * dt,
+    nextY = c.y + c.vy * dt;
+  if (!c.roam || henCanStand(nextX, nextY)) {
+    c.x = nextX;
+    c.y = nextY;
+  } else {
+    // Reject a blocked step instead of pushing/teleporting the bird out of
+    // scenery. A fresh route after this pause resolves tight turning space.
+    c.vx = c.vy = 0;
+    c.walking = false;
+    c.remaining = 1.2;
+    c.clock = 0;
+    c.roam.points = [];
+  }
   const moving = Math.hypot(c.vx, c.vy) > 2;
-  c.gait += (Math.hypot(c.vx, c.vy) * dt) / 15;
+  c.gait += Math.hypot(c.x - oldX, c.y - oldY) / 15;
   if (Math.abs(c.vx) > 3) c.facing = c.vx < 0 ? -1 : 1;
   if (!moving) c.clock += dt;
   const peck = c.clock % 2.1;
