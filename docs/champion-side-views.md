@@ -36,6 +36,10 @@ Side heads are 8% wider with their eyes, ears, markings and accessories. The
 texture bounds and particle landmarks follow the same transform. Duskveil's
 side/rear lantern uses the front view's radial glow and bright core.
 
+Duskveil uses approved option A: the round dark face is inset into the hood
+and its eye, expressions and smile move together. The purple hood silhouette,
+front/rear faces, hovering pose and lantern are preserved.
+
 The former raster cutout JSON, whole-illustration deformation mesh and import
 pipeline have been retired. No flattened body frame is used for animation.
 Skins, Colours, Awakening stages and existing ability effects still apply to
@@ -44,6 +48,7 @@ their respective parts, and rear views have no front-facing eyes.
 ## Review
 
 - [All eight: front, left, right and rear](champion-articulated-views.webp).
+- [Duskveil's selected option A in all four views](duskveil-selected-a.webp).
 - [Side head width: 100% versus 108%](champion-head-width-comparison.webp).
 - [Terradon's tortoise anatomy and Duskveil's lantern](terradon-duskveil-review.webp).
 - [Auralynx: clean muzzle and all four angles](auralynx-profile-review.webp).

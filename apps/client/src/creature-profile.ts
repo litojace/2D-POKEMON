@@ -846,12 +846,12 @@ export function creatureProfile(
           "M64 111Q50 78 79 54Q94 35 101 17Q109 9 118 15Q107 26 115 42Q148 61 140 105L132 101L126 114L113 109Q94 124 74 116Z",
           face,
         ) +
-        e(76, 95, 22, 24, p.accent) +
+        e(84, 95, 20, 24, p.accent) +
         shine(74, 65, 18) +
         star(119, 58, 4);
     profiles.eyes = back
       ? ""
-      : `<g class="profile-near-eye">${mood !== "normal" && mood !== "focus" ? expression(75, 8, 9, p.glow) : e(75, 93, 7.5, mood === "focus" ? 6 : 9.5, p.glow) + e(72, 89, 3, 3, "#ffffff", ' stroke="none"')}${mood === "normal" ? line("M63 107q4 3 8-1", p.glow, 1.6) : ""}</g>`;
+      : `<g class="profile-near-eye" transform="translate(9 0)">${mood !== "normal" && mood !== "focus" ? expression(75, 8, 9, p.glow) : e(75, 93, 7.5, mood === "focus" ? 6 : 9.5, p.glow) + e(72, 89, 3, 3, "#ffffff", ' stroke="none"')}${mood === "normal" ? line("M63 107q4 3 8-1", p.glow, 1.6) : ""}</g>`;
     profiles.ears = profiles.flame = "";
     profiles.body =
       path(
