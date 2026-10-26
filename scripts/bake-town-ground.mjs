@@ -30,13 +30,30 @@ try {
   await page.route("**/paint-ground", (r) =>
     r.fulfill({ contentType: "text/html", body: "<body></body>" }),
   );
+  await page.route("**/terrain-materials.png", (r) =>
+    r.fulfill({
+      contentType: "image/png",
+      path: fileURLToPath(
+        new URL(
+          "../apps/client/art-source/town/terrain/materials.png",
+          import.meta.url,
+        ),
+      ),
+    }),
+  );
   await page.goto(`http://127.0.0.1:${address.port}/paint-ground`);
   const data = await page.evaluate(async () => {
     const { paintGround } = await import("/src/town-art.ts");
+    const materials = new Image();
+    materials.src = "/terrain-materials.png";
+    await materials.decode();
     const canvas = document.createElement("canvas");
     canvas.width = 3200;
     canvas.height = 2000;
-    paintGround(canvas.getContext("2d", { willReadFrequently: true }));
+    paintGround(
+      canvas.getContext("2d", { willReadFrequently: true }),
+      materials,
+    );
     return canvas.toDataURL("image/webp", 0.93);
   });
   if (!data.startsWith("data:image/webp;base64,"))

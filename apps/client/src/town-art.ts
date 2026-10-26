@@ -1,15 +1,22 @@
 import { WORLD_ART } from "../../../packages/shared/src/world-art";
 import { stonePaver } from "./world-materials";
+import {
+  terrainPaint,
+  TERRAIN,
+  type TerrainPaint,
+} from "./town-terrain-materials";
+import { groundRoadOutline } from "./town-ground-layout";
 import { rendererDensity } from "./render-budget";
-import { arenaGroundFoot, architecturePlacement } from "../../../packages/shared/src/town-building-layout";
+import {
+  arenaGroundFoot,
+  architecturePlacement,
+} from "../../../packages/shared/src/town-building-layout";
 import { CHARACTERS } from "@arena/shared";
 import {
   TOWN,
-  TOWN_PLAZA_ROAD,
   TOWN_BUILDINGS,
   TOWN_DUMMIES,
   TOWN_POND,
-  TOWN_ROADS,
   TOWN_PATHS,
   pathPoints,
   TOWN_NEXT_STATUE,
@@ -36,7 +43,12 @@ export const ART_RES = 1.5;
  * (town zoom × device pixel ratio, up to ~4× on phones), which blurs it.
  * Drawing text at the screen's real density keeps it sharp.
  */
-export const TEXT_RES = Math.min(4, Math.ceil((typeof devicePixelRatio === "number" ? rendererDensity() : 1) * 1.6));
+export const TEXT_RES = Math.min(
+  4,
+  Math.ceil(
+    (typeof devicePixelRatio === "number" ? rendererDensity() : 1) * 1.6,
+  ),
+);
 
 /** Deterministic noise so the town looks the same for everyone. */
 export const rnd = (i: number) => {
@@ -46,186 +58,269 @@ export const rnd = (i: number) => {
 const hex = (c: number) => `#${c.toString(16).padStart(6, "0")}`;
 const shade = (css: string, k: number) => {
   const n = parseInt(css.slice(1), 16),
-    f = (v: number) => Math.max(0, Math.min(255, Math.round(k > 0 ? v + (255 - v) * k : v * (1 + k))));
+    f = (v: number) =>
+      Math.max(
+        0,
+        Math.min(255, Math.round(k > 0 ? v + (255 - v) * k : v * (1 + k))),
+      );
   return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`;
 };
 const ellipse = (ctx: Ctx, x: number, y: number, rx: number, ry: number) => {
   ctx.beginPath();
   ctx.ellipse(x, y, Math.max(0.1, rx), Math.max(0.1, ry), 0, 0, Math.PI * 2);
 };
-const roundRect = (ctx: Ctx, x: number, y: number, w: number, h: number, r: number) => {
+const roundRect = (
+  ctx: Ctx,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+) => {
   ctx.beginPath();
   ctx.roundRect(x, y, w, h, r);
 };
 // ─────────────────────────── Ground ───────────────────────────
 
-const distToSegment = (x: number, y: number, [x1, y1, x2, y2]: readonly number[]) => {
-  const dx = x2 - x1,
-    dy = y2 - y1,
-    t = Math.max(0, Math.min(1, ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy)));
-  return Math.hypot(x - (x1 + dx * t), y - (y1 + dy * t));
-};
-
-/** Walk a sampled curve every `step` px, giving position and direction. */
-function walk(pts: readonly (readonly number[])[], step: number, fn: (x: number, y: number, ux: number, uy: number, d: number) => void) {
-  let d = 0,
-    next = 0;
-  for (let i = 1; i < pts.length; i++) {
-    const [x1, y1] = pts[i - 1],
-      [x2, y2] = pts[i],
-      len = Math.hypot(x2 - x1, y2 - y1);
-    if (!len) continue;
-    const ux = (x2 - x1) / len,
-      uy = (y2 - y1) / len;
-    while (next <= d + len) {
-      const t = next - d;
-      fn(x1 + ux * t, y1 + uy * t, ux, uy, next);
-      next += step;
+/** Every road uses one world-aligned stone pattern, including junctions. */
+function roadNetwork(ctx: Ctx, skin: TerrainPaint) {
+  const outlines = (extra: number) => {
+    for (let i = 0; i < TOWN_PATHS.length; i++) {
+      const points = groundRoadOutline(
+        PATH_POINTS[i],
+        TOWN_PATHS[i].width + extra,
+      );
+      ctx.beginPath();
+      ctx.moveTo(...points[0]);
+      for (const p of points.slice(1)) ctx.lineTo(...p);
+      ctx.closePath();
+      ctx.fill();
     }
-    d += len;
+  };
+  // A shallow soil shoulder fades into the turf; narrow cut-stone edging
+  // replaces the old thick brown outlines. Pave the whole network last so
+  // neither kerbs nor differently oriented stones cut across intersections.
+  for (const [extra, alpha, fill] of [
+    [24, 0.08, "#a18a56"],
+    [16, 0.12, "#a18a56"],
+    [9, 1, TERRAIN.edge],
+    [5, 1, TERRAIN.mortar],
+    [0, 1, skin.cobble],
+  ] as const) {
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = fill;
+    outlines(extra);
   }
-}
-const strokePath = (ctx: Ctx, pts: readonly (readonly number[])[]) => {
-  ctx.beginPath();
-  ctx.moveTo(pts[0][0], pts[0][1]);
-  for (const [x, y] of pts.slice(1)) ctx.lineTo(x, y);
-  ctx.stroke();
-};
-/** A road's bed: packed dirt edge and mortar (drawn for every road before any cobbles). */
-function roadBed(ctx: Ctx, pts: readonly (readonly number[])[], width: number) {
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.strokeStyle = "#7d6d52";
-  ctx.lineWidth = width + (width > 60 ? 22 : 14);
-  strokePath(ctx, pts);
-  ctx.strokeStyle = "#857a66";
-  ctx.lineWidth = width;
-  strokePath(ctx, pts);
-}
-/** Cobbles packed along a road: rows of rounded stones across its width, following its curve. */
-function cobbleRoad(ctx: Ctx, pts: readonly (readonly number[])[], width: number, seed: number) {
-  const tones = ["#a99d86", "#9d917a", "#b3a78f", "#a1957d", "#bcb09a"];
-  // Lanes and footpaths are laid with smaller stones.
-  const s = width > 60 ? 1 : 0.75;
-  let row = 0;
-  walk(pts, 15 * s, (x, y, ux, uy) => {
-    for (let k = -width / 2 + 9 * s + (row % 2) * 8 * s; k < width / 2 - 6 * s; k += 17 * s) {
-      const i = seed * 1000 + row * 13 + Math.round(k);
-      const cx = x - uy * k + (rnd(i) - 0.5) * 3,
-        cy = y + ux * k * 0.8 + (rnd(i + 1) - 0.5) * 3;
-      stonePaver(ctx, cx - 7 * s, cy - 5 * s, (14 + rnd(i + 3) * 3) * s, 10 * s, 4 * s, tones[Math.floor(rnd(i + 2) * tones.length)]);
-    }
-    row++;
-  });
+  ctx.globalAlpha = 1;
 }
 
-function grass(ctx: Ctx, W: number, H: number) {
-  const base = ctx.createLinearGradient(0, 0, W * 0.3, H);
-  base.addColorStop(0, "#5f8243");
-  base.addColorStop(1, "#4f7036");
-  ctx.fillStyle = base;
+function grass(ctx: Ctx, W: number, H: number, skin: TerrainPaint) {
+  ctx.fillStyle = skin.grass;
   ctx.fillRect(0, 0, W, H);
-  // Large soft light and dark patches (uneven, natural lawn).
-  for (let i = 0; i < 160; i++) {
+  // Broad glades and cool shade break up repetition without a visible grid.
+  for (let i = 0; i < 180; i++) {
     const x = rnd(i * 3.1) * W,
       y = rnd(i * 5.7) * H,
-      r = 80 + rnd(i * 7.3) * 220,
-      light = rnd(i * 1.9) > 0.5;
+      r = 70 + rnd(i * 7.3) * 200;
     const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, light ? "rgba(140,180,90,0.22)" : "rgba(40,70,30,0.22)");
+    g.addColorStop(0, i % 3 ? "rgba(17,58,43,.13)" : "rgba(209,209,124,.13)");
     g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(1, WORLD_ART.groundY);
     ctx.fillStyle = g;
+    ctx.translate(-x, -y);
     ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    ctx.restore();
   }
-  // Fine tapered blades grow in rooted clumps instead of rectangular dashes.
-  const blades = ["#6b9150", "#4b6a33", "#77a05a", "#58793d"];
-  for (let i = 0; i < 14000; i++) {
-    const x = rnd(i * 1.37) * W,
-      y = rnd(i * 2.71) * H;
-    const height = 3 + rnd(i) * 5;
-    ctx.strokeStyle = blades[i % 4];
-    ctx.lineWidth = .7;
-    ctx.beginPath();
-    for (let k = 0; k < 3; k++) {
-      const lean = (k - 1) * 2;
-      ctx.moveTo(x, y);
-      ctx.quadraticCurveTo(x + lean * .3, y - height * .7, x + lean, y - height);
-    }
-    ctx.stroke();
+  // Root collars and moist earth attach the new trees/rocks to their lawn.
+  for (const item of [...TOWN_TREES, ...TOWN_SHRUBS]) {
+    const r = "kind" in item ? 27 : 38;
+    ctx.save();
+    ctx.translate(item.x, item.y);
+    ctx.scale(1, WORLD_ART.groundY);
+    const g = ctx.createRadialGradient(0, 0, 3, 0, 0, r);
+    g.addColorStop(0, "rgba(65,57,32,.32)");
+    g.addColorStop(0.5, "rgba(64,72,35,.16)");
+    g.addColorStop(1, "rgba(64,72,35,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(-r, -r, r * 2, r * 2);
+    ctx.restore();
   }
-  // Wildflower clusters.
-  const petals = ["#f4d35e", "#ffb3c7", "#ffffff", "#b9a6ff", "#ff9b6a"];
-  for (let i = 0; i < 170; i++) {
+  const petals = ["#e8d787", "#e5b6c6", "#f1ead6", "#b9b1d8"];
+  for (let i = 0; i < 130; i++) {
     const x = rnd(i * 9.1) * W,
-      y = rnd(i * 4.3) * H,
-      c = petals[i % petals.length];
-    for (let k = 0; k < 7; k++) {
-      ctx.fillStyle = "#3f6a2c";
-      ctx.fillRect(x + (rnd(i * 31 + k) - 0.5) * 34, y + (rnd(i * 17 + k) - 0.5) * 20 + 3, 1.5, 4);
-      ctx.fillStyle = c;
-      ellipse(ctx, x + (rnd(i * 31 + k) - 0.5) * 34, y + (rnd(i * 17 + k) - 0.5) * 20, 2.6, 2.2);
+      y = rnd(i * 4.3) * H;
+    for (let k = 0; k < 5; k++) {
+      const px = x + (rnd(i * 31 + k) - 0.5) * 25,
+        py = y + (rnd(i * 17 + k) - 0.5) * 15;
+      ctx.fillStyle = "#5d8146";
+      ellipse(ctx, px, py + 2, 2.6, 1.2);
+      ctx.fill();
+      ctx.fillStyle = petals[i % 4];
+      ellipse(ctx, px, py, 1.5, 1.1);
       ctx.fill();
     }
   }
 }
 
-function plaza(ctx: Ctx) {
-  const { x, y, r } = TOWN.plaza;
-  const roadY = TOWN_PLAZA_ROAD.y;
-  ctx.fillStyle = "#7d7360";
-  ellipse(ctx, x, roadY, r + 22, (r + 22) * WORLD_ART.groundY);
+/** A flush stone court: soft turf contact, fine limestone lip, same paving
+ * origin as its approach roads. No raised grey discs beneath buildings. */
+function court(ctx: Ctx, skin: TerrainPaint, trace: () => void, slab = false) {
+  trace();
+  ctx.fillStyle = slab ? skin.slab : skin.cobble;
   ctx.fill();
-  ctx.fillStyle = "#8f846f";
-  ellipse(ctx, x, roadY, r, r * WORLD_ART.groundY);
+  ctx.save();
+  // Keep every road entrance open through the court's edging. Sequential
+  // clips subtract the UNION, including places where two roads overlap.
+  for (let i = 0; i < TOWN_PATHS.length; i++) {
+    const path = new Path2D();
+    path.rect(0, 0, TOWN.width, TOWN.height);
+    const outline = groundRoadOutline(PATH_POINTS[i], TOWN_PATHS[i].width + 2);
+    path.moveTo(...outline[0]);
+    for (const p of outline.slice(1)) path.lineTo(...p);
+    path.closePath();
+    ctx.clip(path, "evenodd");
+  }
+  trace();
+  ctx.strokeStyle = "rgba(68,61,35,.12)";
+  ctx.lineWidth = 14;
+  ctx.stroke();
+  ctx.strokeStyle = "#c8b99a";
+  ctx.lineWidth = 4;
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(255,241,199,.36)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** Contact paving follows the actual authored doorstep offsets. */
+function buildingCourts(ctx: Ctx, skin: TerrainPaint) {
+  for (const b of TOWN_BUILDINGS) {
+    if (b.kind === "coliseum" || b.kind === "temple") continue;
+    const { width, offset } = architecturePlacement(b),
+      x = b.x + offset[0],
+      y = b.y + offset[1];
+    if (b.kind === "house")
+      court(ctx, skin, () =>
+        roundRect(ctx, x - width * 0.51, y - 30, width * 1.02, 61, 15),
+      );
+    else
+      court(ctx, skin, () =>
+        ellipse(ctx, x, y - 12, width * 0.53, width * 0.19),
+      );
+  }
+}
+
+function plaza(ctx: Ctx, skin: TerrainPaint) {
+  const { x, y, r } = TOWN.plaza,
+    gy = WORLD_ART.groundY;
+  court(ctx, skin, () => ellipse(ctx, x, y, r + 8, (r + 8) * gy));
+  // Curved limestone courses are rotated IN THE GROUND PLANE. Previously
+  // each screen-space rectangle rotated after projection, making stones at
+  // the sides stand upright while those at the top stayed flat.
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(1, gy);
+  ctx.fillStyle = TERRAIN.mortar;
+  ellipse(ctx, 0, 0, r, r);
   ctx.fill();
-  // Rings of curved cobbles.
-  const tones = ["#b9ad95", "#ada189", "#c2b69e", "#a89c84"];
-  for (let ring = 130, n = 0; ring < r - 6; ring += 22, n++)
-    for (let a = 0, k = 0; a < Math.PI * 2; a += 20 / ring, k++) {
-      const i = n * 997 + k;
+  for (let ring = 196, n = 0; ring < r - 6; ring += 23, n++) {
+    const count = Math.round((Math.PI * 2 * ring) / 32);
+    for (let k = 0; k < count; k++) {
+      const a = ((k + (n % 2) * 0.5) / count) * Math.PI * 2;
       ctx.save();
-      ctx.translate(x + Math.cos(a + n * 0.3) * ring, roadY + Math.sin(a + n * 0.3) * ring * WORLD_ART.groundY);
-      ctx.rotate(a + n * 0.3 + Math.PI / 2);
-      ctx.scale(1, 0.85 + Math.abs(Math.sin(a)) * 0.15);
-      stonePaver(ctx, -9, -8, 18, 16, 4, tones[Math.floor(rnd(i) * tones.length)]);
+      ctx.translate(Math.cos(a) * ring, Math.sin(a) * ring);
+      ctx.rotate(a + Math.PI / 2);
+      stonePaver(
+        ctx,
+        -15,
+        -10.5,
+        30,
+        21,
+        2.5,
+        TERRAIN.stone[Math.floor(rnd(n * 997 + k) * 4)],
+      );
       ctx.restore();
     }
-  // A compass star of the eight elements around the fountain.
+  }
+  ctx.restore();
   const compass = TOWN.plaza.stonesRadius - 17;
-  const elements = Object.values(CHARACTERS).map((c) => hex(c.color));
-  ctx.fillStyle = "#d9cfb8";
-  ellipse(ctx, x, y, compass, compass * WORLD_ART.groundY);
+  ctx.fillStyle = skin.slab;
+  ellipse(ctx, x, y, compass, compass * gy);
   ctx.fill();
+  for (const [rr, colour, lw] of [
+    [compass, "#9f8760", 2],
+    [compass - 5, "#e0c98c", 2],
+    [r + 2, "#e0cba2", 3],
+  ] as const) {
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = lw;
+    ellipse(ctx, x, y, rr, rr * gy);
+    ctx.stroke();
+  }
+  const elements = Object.values(CHARACTERS).map((c) => hex(c.color));
   elements.forEach((c, i) => {
     const a = (i / 8) * Math.PI * 2 - Math.PI / 2;
     ctx.fillStyle = c;
-    ctx.globalAlpha = 0.75;
+    ctx.globalAlpha = 0.62;
     ctx.beginPath();
-    ctx.moveTo(x + Math.cos(a) * (compass - 2), y + Math.sin(a) * (compass - 2) * WORLD_ART.groundY);
-    ctx.lineTo(x + Math.cos(a + 0.13) * (compass - 24), y + Math.sin(a + 0.13) * (compass - 24) * WORLD_ART.groundY);
-    ctx.lineTo(x + Math.cos(a - 0.13) * (compass - 24), y + Math.sin(a - 0.13) * (compass - 24) * WORLD_ART.groundY);
+    for (const [angle, rr] of [
+      [a, compass - 11],
+      [a + 0.09, compass - 34],
+      [a - 0.09, compass - 34],
+    ]) {
+      ctx.lineTo(x + Math.cos(angle) * rr, y + Math.sin(angle) * rr * gy);
+    }
     ctx.closePath();
     ctx.fill();
     ctx.globalAlpha = 1;
   });
-  ctx.strokeStyle = "rgba(90,78,58,0.45)";
-  ctx.lineWidth = 3;
-  ellipse(ctx, x, y, compass, compass * WORLD_ART.groundY);
-  ctx.stroke();
 }
 
-function sandArena(ctx: Ctx) {
+/** Soil blends into turf at its perimeter, rather than a solid oval decal. */
+function earthCourt(
+  ctx: Ctx,
+  skin: TerrainPaint,
+  x: number,
+  y: number,
+  rx: number,
+  ry: number,
+  worn = false,
+) {
+  const tile = document.createElement("canvas");
+  tile.width = (rx + 8) * 2;
+  tile.height = (ry + 8) * 2;
+  const c = tile.getContext("2d")!;
+  c.translate(rx + 8, ry + 8);
+  c.translate(-x, -y);
+  c.fillStyle = skin.earth;
+  c.fillRect(x - rx - 8, y - ry - 8, tile.width, tile.height);
+  if (worn) {
+    c.fillStyle = "rgba(111,82,47,.18)";
+    c.fillRect(x - rx - 8, y - ry - 8, tile.width, tile.height);
+  }
+  c.globalCompositeOperation = "destination-in";
+  c.translate(x, y);
+  c.scale(1, ry / rx);
+  const edge = c.createRadialGradient(0, 0, 0, 0, 0, rx);
+  edge.addColorStop(0, "#000");
+  edge.addColorStop(0.9, "#000");
+  edge.addColorStop(1, "transparent");
+  const maskHeight = ((ry + 8) * rx) / ry;
+  c.fillStyle = edge;
+  c.fillRect(-rx - 8, -maskHeight, (rx + 8) * 2, maskHeight * 2);
+  ctx.drawImage(tile, x - rx - 8, y - ry - 8);
+}
+
+function sandArena(ctx: Ctx, skin: TerrainPaint) {
   const x = 2700,
     y = 1110;
-  ctx.fillStyle = "#b69c6c";
-  ellipse(ctx, x, y, 360, 220);
-  ctx.fill();
-  const g = ctx.createRadialGradient(x, y, 20, x, y, 340);
-  g.addColorStop(0, "#e2cd9c");
-  g.addColorStop(1, "#c9b080");
-  ctx.fillStyle = g;
-  ellipse(ctx, x, y, 340, 205);
-  ctx.fill();
+  earthCourt(ctx, skin, x, y, 360, 220);
+  ctx.save();
+  ellipse(ctx, x, y, 335, 198);
+  ctx.clip();
   // Raked lines and pebbles.
   ctx.strokeStyle = "rgba(140,110,70,0.25)";
   ctx.lineWidth = 2;
@@ -240,49 +335,40 @@ function sandArena(ctx: Ctx) {
     ellipse(ctx, x + Math.cos(a) * d, y + Math.sin(a) * d * 0.6, 2.4, 1.8);
     ctx.fill();
   }
+  ctx.restore();
 }
 
-function marbleTerrace(ctx: Ctx) {
+function marbleTerrace(ctx: Ctx, skin: TerrainPaint) {
   const x0 = 1080,
     x1 = 2120,
     y0 = 420,
     y1 = 720;
-  ctx.fillStyle = "#7d7594";
-  roundRect(ctx, x0 - 10, y0, x1 - x0 + 20, y1 - y0 + 12, 30);
-  ctx.fill();
-  for (let ty = y0; ty < y1; ty += 40)
-    for (let tx = x0; tx < x1; tx += 52) {
-      const i = tx * 7 + ty;
-      ctx.fillStyle = (Math.floor(tx / 52) + Math.floor(ty / 40)) % 2 ? "#ddd3c2" : "#cfc4af";
-      ctx.fillRect(tx + 1, ty + 1, 50, 38);
-      // Marble veins.
-      ctx.strokeStyle = "rgba(133,115,85,0.2)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(tx + rnd(i) * 50, ty + 2);
-      ctx.quadraticCurveTo(tx + rnd(i + 1) * 50, ty + 20, tx + rnd(i + 2) * 50, ty + 38);
-      ctx.stroke();
-    }
-  // A purple runner leading to the hall doors.
-  ctx.fillStyle = "#6c4fb0";
+  court(
+    ctx,
+    skin,
+    () => roundRect(ctx, x0 - 6, y0, x1 - x0 + 12, y1 - y0 + 6, 20),
+    true,
+  );
+  // A fine border defines the hall forecourt without a floating thick slab.
+  ctx.strokeStyle = "#a59471";
+  ctx.lineWidth = 2;
+  roundRect(ctx, x0 + 7, y0 + 8, x1 - x0 - 14, y1 - y0 - 8, 10);
+  ctx.stroke();
+  const runner = ctx.createLinearGradient(1550, 0, 1650, 0);
+  runner.addColorStop(0, "#574075");
+  runner.addColorStop(0.5, "#806399");
+  runner.addColorStop(1, "#574075");
+  ctx.fillStyle = runner;
   ctx.fillRect(1550, y0, 100, y1 - y0);
-  ctx.fillStyle = "#e2c25b";
-  ctx.fillRect(1550, y0, 6, y1 - y0);
-  ctx.fillRect(1644, y0, 6, y1 - y0);
+  ctx.fillStyle = "#cfb26b";
+  ctx.fillRect(1554, y0, 3, y1 - y0);
+  ctx.fillRect(1643, y0, 3, y1 - y0);
 }
 
-function trainingYard(ctx: Ctx) {
+function trainingYard(ctx: Ctx, skin: TerrainPaint) {
   const x = 640,
     y = 930;
-  ctx.fillStyle = "#86694a";
-  ellipse(ctx, x, y, 300, 175);
-  ctx.fill();
-  const g = ctx.createRadialGradient(x, y, 30, x, y, 290);
-  g.addColorStop(0, "#b49268");
-  g.addColorStop(1, "#9c7c55");
-  ctx.fillStyle = g;
-  ellipse(ctx, x, y, 285, 162);
-  ctx.fill();
+  earthCourt(ctx, skin, x, y, 300, 175, true);
   // Scuffs and footprints.
   for (let i = 0; i < 140; i++) {
     const a = rnd(i * 11) * Math.PI * 2,
@@ -310,75 +396,76 @@ function trainingYard(ctx: Ctx) {
   ctx.stroke();
 }
 
-function marketSquare(ctx: Ctx) {
-  const x = 740,
-    y = 1590;
-  ctx.fillStyle = "#857a66";
-  ellipse(ctx, x, y, 385, 180);
-  ctx.fill();
-  const tones = ["#c4ab8a", "#b89e7d", "#cdb595", "#b29776"];
-  for (let ty = y - 170; ty < y + 170; ty += 16)
-    for (let tx = x - 385; tx < x + 385; tx += 22) {
-      const ox = (Math.floor(ty / 16) % 2) * 11;
-      if (Math.hypot((tx + ox - x) / 373, (ty - y) / 170) > 1) continue;
-      stonePaver(ctx, tx + ox, ty, 20, 14, 3, tones[Math.floor(rnd(tx * 3 + ty) * 4)]);
-    }
+function marketSquare(ctx: Ctx, skin: TerrainPaint) {
+  court(ctx, skin, () => ellipse(ctx, 740, 1590, 385, 180));
 }
 
-/** A small cobbled square in front of the Notice Board, where its roads meet. */
-function noticeCourt(ctx: Ctx) {
-  const x = 1600,
-    y = 1740,
-    rx = 220,
-    ry = 92;
-  ctx.fillStyle = "#7d6d52";
-  ellipse(ctx, x, y, rx + 10, ry + 8);
-  ctx.fill();
-  ctx.fillStyle = "#857a66";
-  ellipse(ctx, x, y, rx, ry);
-  ctx.fill();
-  const tones = ["#b3a78f", "#a99d86", "#bcb09a", "#a1957d"];
-  for (let ty = y - ry; ty < y + ry; ty += 14)
-    for (let tx = x - rx; tx < x + rx; tx += 19) {
-      const ox = (Math.floor(ty / 14) % 2) * 9;
-      if (Math.hypot((tx + ox + 8 - x) / (rx - 8), (ty + 6 - y) / (ry - 6)) > 1) continue;
-      stonePaver(ctx, tx + ox, ty, 17, 12, 4, tones[Math.floor(rnd(tx * 5 + ty) * 4)]);
-    }
-  // Kerb ring.
-  ctx.strokeStyle = "#a49880";
-  ctx.lineWidth = 5;
-  ellipse(ctx, x, y, rx, ry);
-  ctx.stroke();
-  ctx.strokeStyle = "rgba(60,50,36,0.35)";
-  ctx.lineWidth = 1.5;
-  ellipse(ctx, x, y + 2, rx + 2, ry + 2);
-  ctx.stroke();
+/** Same limestone and stone scale as the market and all approach lanes. */
+function noticeCourt(ctx: Ctx, skin: TerrainPaint) {
+  court(ctx, skin, () => ellipse(ctx, 1600, 1740, 220, 92));
 }
 
 function pond(ctx: Ctx) {
   const { x, y, rx, ry } = TOWN_POND;
   // Wet earth, rounded shore stones and a submerged bank replace the flat rim.
-  ctx.fillStyle="#62704d"; ellipse(ctx,x,y+3,rx+24,ry+18);ctx.fill();
-  ctx.fillStyle="#777a60"; ellipse(ctx,x,y+2,rx+13,ry+10);ctx.fill();
-  for(let i=0;i<42;i++) {
-    const a=i/42*Math.PI*2,px=x+Math.cos(a)*(rx+12),py=y+Math.sin(a)*(ry+8);
-    const w=20+rnd(i*3)*13,h=11+rnd(i*7)*7;
-    ctx.save();ctx.translate(px,py);ctx.rotate(Math.cos(a)*.12);
-    stonePaver(ctx,-w/2,-h/2,w,h,5,["#c8bca2","#aba58b","#b9b59b","#d5c9ad"][i%4]);ctx.restore();
+  ctx.fillStyle = "#62704d";
+  ellipse(ctx, x, y + 3, rx + 24, ry + 18);
+  ctx.fill();
+  ctx.fillStyle = "#777a60";
+  ellipse(ctx, x, y + 2, rx + 13, ry + 10);
+  ctx.fill();
+  for (let i = 0; i < 42; i++) {
+    const a = (i / 42) * Math.PI * 2,
+      px = x + Math.cos(a) * (rx + 12),
+      py = y + Math.sin(a) * (ry + 8);
+    const w = 20 + rnd(i * 3) * 13,
+      h = 11 + rnd(i * 7) * 7;
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(Math.cos(a) * 0.12);
+    stonePaver(
+      ctx,
+      -w / 2,
+      -h / 2,
+      w,
+      h,
+      5,
+      ["#c8bca2", "#aba58b", "#b9b59b", "#d5c9ad"][i % 4],
+    );
+    ctx.restore();
   }
-  const g = ctx.createRadialGradient(x-45,y-28,12,x,y,rx);
-  g.addColorStop(0,"#53bcca");g.addColorStop(.45,"#2b91a7");g.addColorStop(.82,"#1c697f");g.addColorStop(1,"#255b62");
-  ctx.fillStyle=g;ellipse(ctx,x,y,rx,ry);ctx.fill();
-  ctx.save();ellipse(ctx,x,y,rx-1,ry-1);ctx.clip();
+  const g = ctx.createRadialGradient(x - 45, y - 28, 12, x, y, rx);
+  g.addColorStop(0, "#53bcca");
+  g.addColorStop(0.45, "#2b91a7");
+  g.addColorStop(0.82, "#1c697f");
+  g.addColorStop(1, "#255b62");
+  ctx.fillStyle = g;
+  ellipse(ctx, x, y, rx, ry);
+  ctx.fill();
+  ctx.save();
+  ellipse(ctx, x, y, rx - 1, ry - 1);
+  ctx.clip();
   // Pale pebbles remain visible through the shallow water near the bank.
-  for(let i=0;i<90;i++) {
-    const a=rnd(i*5.7)*Math.PI*2,r=.72+rnd(i*3.1)*.25;
-    ctx.globalAlpha=.1+rnd(i*7.3)*.15;ctx.fillStyle=i%2?"#c1d7b2":"#1c5556";
-    ellipse(ctx,x+Math.cos(a)*rx*r,y+Math.sin(a)*ry*r,3+rnd(i)*5,2+rnd(i*2)*2);ctx.fill();
+  for (let i = 0; i < 90; i++) {
+    const a = rnd(i * 5.7) * Math.PI * 2,
+      r = 0.72 + rnd(i * 3.1) * 0.25;
+    ctx.globalAlpha = 0.1 + rnd(i * 7.3) * 0.15;
+    ctx.fillStyle = i % 2 ? "#c1d7b2" : "#1c5556";
+    ellipse(
+      ctx,
+      x + Math.cos(a) * rx * r,
+      y + Math.sin(a) * ry * r,
+      3 + rnd(i) * 5,
+      2 + rnd(i * 2) * 2,
+    );
+    ctx.fill();
   }
-  const reflection=ctx.createLinearGradient(0,y-ry,0,y-ry*.1);
-  reflection.addColorStop(0,"rgba(20,57,44,.32)");reflection.addColorStop(1,"rgba(20,57,44,0)");
-  ctx.globalAlpha=1;ctx.fillStyle=reflection;ctx.fillRect(x-rx,y-ry,rx*2,ry);
+  const reflection = ctx.createLinearGradient(0, y - ry, 0, y - ry * 0.1);
+  reflection.addColorStop(0, "rgba(20,57,44,.32)");
+  reflection.addColorStop(1, "rgba(20,57,44,0)");
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = reflection;
+  ctx.fillRect(x - rx, y - ry, rx * 2, ry);
   ctx.restore();
   // Lily pads and reeds.
   for (let i = 0; i < 9; i++) {
@@ -386,22 +473,43 @@ function pond(ctx: Ctx) {
       d = 0.35 + rnd(i * 7) * 0.5,
       px = x + Math.cos(a) * rx * d,
       py = y + Math.sin(a) * ry * d;
-    ctx.fillStyle = "rgba(11,52,52,.25)";ellipse(ctx,px+2,py+2,14,8);ctx.fill();
-    const leaf=ctx.createLinearGradient(px-10,py-6,px+8,py+7);leaf.addColorStop(0,"#85ad6b");leaf.addColorStop(.6,"#619448");leaf.addColorStop(1,"#3a713e");
+    ctx.fillStyle = "rgba(11,52,52,.25)";
+    ellipse(ctx, px + 2, py + 2, 14, 8);
+    ctx.fill();
+    const leaf = ctx.createLinearGradient(px - 10, py - 6, px + 8, py + 7);
+    leaf.addColorStop(0, "#85ad6b");
+    leaf.addColorStop(0.6, "#619448");
+    leaf.addColorStop(1, "#3a713e");
     ctx.fillStyle = leaf;
     ctx.beginPath();
     ctx.ellipse(px, py, 13, 8, 0, 0.3, Math.PI * 2);
     ctx.lineTo(px, py);
     ctx.fill();
-    ctx.strokeStyle="rgba(195,220,149,.4)";ctx.lineWidth=.55;
-    for(let vein=1;vein<7;vein++) {const va=vein/7*Math.PI*2;ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(px+Math.cos(va)*11,py+Math.sin(va)*6);ctx.stroke();}
+    ctx.strokeStyle = "rgba(195,220,149,.4)";
+    ctx.lineWidth = 0.55;
+    for (let vein = 1; vein < 7; vein++) {
+      const va = (vein / 7) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.lineTo(px + Math.cos(va) * 11, py + Math.sin(va) * 6);
+      ctx.stroke();
+    }
     if (i % 3 === 0) {
-      for(let petal=0;petal<6;petal++) {
-        const angle=petal/6*Math.PI*2;
-        ctx.fillStyle=petal%2?"#ffe1ea":"#efa4bd";
-        ellipse(ctx,px+3+Math.cos(angle)*3,py-3+Math.sin(angle)*2,3,2);ctx.fill();
+      for (let petal = 0; petal < 6; petal++) {
+        const angle = (petal / 6) * Math.PI * 2;
+        ctx.fillStyle = petal % 2 ? "#ffe1ea" : "#efa4bd";
+        ellipse(
+          ctx,
+          px + 3 + Math.cos(angle) * 3,
+          py - 3 + Math.sin(angle) * 2,
+          3,
+          2,
+        );
+        ctx.fill();
       }
-      ctx.fillStyle="#f5d779";ellipse(ctx,px+3,py-3,1.8,1.4);ctx.fill();
+      ctx.fillStyle = "#f5d779";
+      ellipse(ctx, px + 3, py - 3, 1.8, 1.4);
+      ctx.fill();
     }
   }
   for (let i = 0; i < 26; i++) {
@@ -422,152 +530,26 @@ function pond(ctx: Ctx) {
   }
 }
 
-/** Ground: lawn, roads, district floors, the pond and every static shadow. */
-/** Kerb stones along both edges of a road, and worn earth just beyond them. */
-function kerbs(ctx: Ctx, pts: readonly (readonly number[])[], width: number, seed: number, own: number) {
-  // No kerb across another road (where a lane joins, the kerb opens).
-  const onOtherRoad = (x: number, y: number) =>
-    TOWN_PATHS.some((p, j) => j !== own && PATH_PIECES[j].some((r) => distToSegment(x, y, r) < p.width / 2 + 3));
-  const small = width <= 60;
-  for (const side of [-1, 1]) {
-    let n = 0;
-    walk(pts, small ? 18 : 24, (cx, cy, ux, uy) => {
-      const off = side * (width / 2 + 4),
-        x = cx - uy * off,
-        y = cy + ux * off * 0.8,
-        i = seed * 977 + n++ * 7 + side;
-      if (onOtherRoad(x, y)) return;
-      // Worn, bare earth where people step off the road.
-      if (rnd(i * 1.3) < 0.35) {
-        ctx.fillStyle = "rgba(120,96,64,0.35)";
-        ellipse(ctx, x - uy * side * 14, y + ux * side * 11, 10 + rnd(i) * 12, 4 + rnd(i * 2) * 4);
-        ctx.fill();
-      }
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(Math.atan2(uy * 0.8, ux));
-      const w = small ? 16 : 22;
-      ctx.fillStyle = "#6f6656";
-      roundRect(ctx, -w / 2, -4, w, 8, 2);
-      ctx.fill();
-      ctx.fillStyle = rnd(i * 3) > 0.5 ? "#a49880" : "#968a73";
-      roundRect(ctx, -w / 2, -5, w - 1, 6, 2);
-      ctx.fill();
-      ctx.restore();
-    });
-  }
-}
 /** Each path's curve, sampled once. */
 const PATH_POINTS = TOWN_PATHS.map(pathPoints);
-const PATH_PIECES = PATH_POINTS.map((pts) => pts.slice(1).map(([x, y], i) => [pts[i][0], pts[i][1], x, y] as const));
-
-/** Fenced front yards and flower beds for the houses. */
-function yards(ctx: Ctx) {
-  for (const b of TOWN_BUILDINGS) {
-    if (b.kind !== "house") continue;
-    const left = b.x - b.w / 2 - 12,
-      right = b.x + b.w / 2 + 12,
-      back = b.y - 26,
-      front = b.y + 70;
-    // A slightly lusher lawn inside the fence.
-    ctx.fillStyle = "rgba(120,170,80,0.18)";
-    ctx.fillRect(left, back, right - left, front - back);
-    // Flower beds under the windows.
-    for (const fx of [b.x - b.w * 0.28, b.x + b.w * 0.36]) {
-      ctx.fillStyle = "#5a4330";
-      ellipse(ctx, fx, b.y + 10, 30, 8);
-      ctx.fill();
-      for (let k = 0; k < 9; k++) {
-        ctx.fillStyle = "#3f6a2c";
-        ellipse(ctx, fx - 24 + k * 6, b.y + 7 + (k % 2) * 3, 3, 2.4);
-        ctx.fill();
-        ctx.fillStyle = ["#ff7a9b", "#ffd65b", "#ffffff", "#b59bff"][(k + b.w) % 4];
-        ellipse(ctx, fx - 24 + k * 6, b.y + 4 + (k % 2) * 3, 2.6, 2.6);
-        ctx.fill();
-      }
-    }
-    // White picket fence: sides and front, with a gate gap in the middle.
-    const picket = (x: number, y: number) => {
-      // The fence stops where a road comes through.
-      if (TOWN_ROADS.some((r) => distToSegment(x, y, r) < r[4] / 2 + 10)) return;
-      ctx.fillStyle = `rgba(20,28,12,${SUN.alpha})`;
-      ctx.fillRect(x - 1, y + 1, 5, 3);
-      ctx.fillStyle = "#f2ede2";
-      ctx.beginPath();
-      ctx.moveTo(x - 2, y);
-      ctx.lineTo(x - 2, y - 14);
-      ctx.lineTo(x, y - 17);
-      ctx.lineTo(x + 2, y - 14);
-      ctx.lineTo(x + 2, y);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = "#c9c2b2";
-      ctx.fillRect(x + 1, y - 14, 1, 14);
-    };
-    for (let y = back; y <= front; y += 10) {
-      picket(left, y);
-      picket(right, y);
-    }
-    for (let x = left; x <= right; x += 10) if (Math.abs(x - b.x) > 40) picket(x, front);
-  }
-}
-
-export function paintGround(ground: Ctx) {
+export function paintGround(ground: Ctx, materialSource?: HTMLImageElement) {
   let ctx = ground;
   const { width: W, height: H } = TOWN;
-  grass(ctx, W, H);
-  // Patches of bare earth in the lawn.
-  for (let i = 0; i < 26; i++) {
-    const x = rnd(i * 17.3) * W,
-      y = rnd(i * 23.9) * H,
-      g = ctx.createRadialGradient(x, y, 0, x, y, 40 + rnd(i) * 40);
-    g.addColorStop(0, "rgba(130,104,70,0.4)");
-    g.addColorStop(1, "rgba(130,104,70,0)");
-    ctx.fillStyle = g;
-    ellipse(ctx, x, y, 80, 46);
-    ctx.fill();
-  }
-  // Beds for every road first, then cobbles narrowest-first so wider roads
-  // pave over the ends of the lanes that join them, then the kerbs.
-  const order = TOWN_PATHS.map((p, i) => i).sort((a, b) => TOWN_PATHS[a].width - TOWN_PATHS[b].width);
-  for (const i of order) roadBed(ctx, PATH_POINTS[i], TOWN_PATHS[i].width);
-  for (const i of order) cobbleRoad(ctx, PATH_POINTS[i], TOWN_PATHS[i].width, i + 1);
-  for (const i of order) kerbs(ctx, PATH_POINTS[i], TOWN_PATHS[i].width, i + 1, i);
-  yards(ctx);
-  plaza(ctx);
-  // Moss in the joints of the plaza's older stones.
-  for (let i = 0; i < 700; i++) {
-    const a = rnd(i * 3.7) * Math.PI * 2,
-      d = 160 + rnd(i * 5.3) * (TOWN.plaza.r - 160);
-    ctx.fillStyle = `rgba(80,110,50,${0.18 + rnd(i) * 0.2})`;
-    ellipse(ctx, TOWN_PLAZA_ROAD.x + Math.cos(a) * d, TOWN_PLAZA_ROAD.y + Math.sin(a) * d * WORLD_ART.groundY, 2 + rnd(i * 2) * 2, 1.2);
-    ctx.fill();
-  }
-  sandArena(ctx);
-  // A narrow warm-stone apron follows the painted base ring. The old wide
-  // grey ellipse used the previous building's foot and looked detached.
+  const skin = terrainPaint(ctx, materialSource);
+  grass(ctx, W, H, skin);
+  roadNetwork(ctx, skin);
+  buildingCourts(ctx, skin);
+  plaza(ctx, skin);
+  sandArena(ctx, skin);
   for (const b of TOWN_BUILDINGS)
     if (b.kind === "coliseum") {
       const { x, y, rx, ry } = arenaGroundFoot(b);
-      ctx.save();
-      ellipse(ctx, x, y, rx + 14, ry + 9);
-      ctx.clip();
-      ctx.fillStyle = "#a7997d";
-      ctx.fillRect(x - rx - 16, y - ry - 12, (rx + 16) * 2, (ry + 12) * 2);
-      const tones = ["#c7b89b", "#d0c1a4", "#bfae90", "#d9c9ac"];
-      for (let row = 0, ty = y - ry - 12; ty < y + ry + 12; ty += 18, row++)
-        for (let tx = x - rx - 32; tx < x + rx + 32; tx += 32)
-          stonePaver(ctx, tx + (row % 2) * 16, ty, 30, 16, 2, tones[Math.floor(rnd(tx + ty * 3) * 4)]);
-      ctx.restore();
-      ctx.strokeStyle = "rgba(113,92,62,0.25)";
-      ctx.lineWidth = 1;
-      ellipse(ctx, x, y, rx + 14, ry + 9);
-      ctx.stroke();
+      court(ctx, skin, () => ellipse(ctx, x, y, rx + 10, ry + 6), true);
     }
-  marbleTerrace(ctx);
-  trainingYard(ctx);
-  marketSquare(ctx);
-  noticeCourt(ctx);
+  marbleTerrace(ctx, skin);
+  trainingYard(ctx, skin);
+  marketSquare(ctx, skin);
+  noticeCourt(ctx, skin);
   pond(ctx);
   // Shadows of everything tall (they fall down and to the right), drawn
   // solid into one layer, then blurred onto the ground once (see SUN).
@@ -586,20 +568,43 @@ export function paintGround(ground: Ctx) {
   for (const t of TOWN_TREES) {
     const pine = t.variant === 3;
     sunShadow(ctx, t.x, t.y + 2, 8, 4, 60);
-    sunShadow(ctx, t.x + 24, t.y + 6, pine ? 22 : 34, pine ? 9 : 14, pine ? 140 : 90, pine ? 0.8 : 1.15);
+    sunShadow(
+      ctx,
+      t.x + 24,
+      t.y + 6,
+      pine ? 22 : 34,
+      pine ? 9 : 14,
+      pine ? 140 : 90,
+      pine ? 0.8 : 1.15,
+    );
   }
   for (const st of TOWN_STALLS) sunShadow(ctx, st.x, st.y + 26, 86, 18, 140);
   for (const d of TOWN_DUMMIES) sunShadow(ctx, d.x, d.y + 4, 14, 6, 90);
-  for (const sh of TOWN_SHRUBS) sunShadow(ctx, sh.x, sh.y + 4, sh.kind === "rock" ? 18 : 24, sh.kind === "rock" ? 7 : 9, sh.kind === "rock" ? 24 : 34);
+  for (const sh of TOWN_SHRUBS)
+    sunShadow(
+      ctx,
+      sh.x,
+      sh.y + 4,
+      sh.kind === "rock" ? 18 : 24,
+      sh.kind === "rock" ? 7 : 9,
+      sh.kind === "rock" ? 24 : 34,
+    );
   for (const sp of TOWN_SIGNPOSTS) sunShadow(ctx, sp.x, sp.y + 2, 6, 3, 100);
-  for (const st of [...TOWN_STATUES, TOWN_NEXT_STATUE]) sunShadow(ctx, st.x, st.y + 6, 40, 12, 140);
+  for (const st of [...TOWN_STATUES, TOWN_NEXT_STATUE])
+    sunShadow(ctx, st.x, st.y + 6, 40, 12, 140);
   for (const o of TOWN_OBSTACLES)
-    if (o.shape === "round" && o.kind === "lamp") sunShadow(ctx, o.x, o.y + 2, 6, 3, 120);
-    else if (o.shape === "round" && o.kind === "obelisk") sunShadow(ctx, o.x, o.y + 4, 30, 10, 280);
-    else if (o.shape === "round" && o.kind === "well") sunShadow(ctx, o.x, o.y + 4, 34, 12, 110);
-    else if (o.shape === "round" && o.kind === "mirror") sunShadow(ctx, o.x, o.y + 2, 20, 6, 150);
-    else if (o.shape === "box" && o.kind === "board") sunShadow(ctx, o.x, o.y + 8, 130, 14, 180);
-    else if (o.shape === "box" && o.kind === "crates") sunShadow(ctx, o.x, o.y + 6, 32, 12, 60);
+    if (o.shape === "round" && o.kind === "lamp")
+      sunShadow(ctx, o.x, o.y + 2, 6, 3, 120);
+    else if (o.shape === "round" && o.kind === "obelisk")
+      sunShadow(ctx, o.x, o.y + 4, 30, 10, 280);
+    else if (o.shape === "round" && o.kind === "well")
+      sunShadow(ctx, o.x, o.y + 4, 34, 12, 110);
+    else if (o.shape === "round" && o.kind === "mirror")
+      sunShadow(ctx, o.x, o.y + 2, 20, 6, 150);
+    else if (o.shape === "box" && o.kind === "board")
+      sunShadow(ctx, o.x, o.y + 8, 130, 14, 180);
+    else if (o.shape === "box" && o.kind === "crates")
+      sunShadow(ctx, o.x, o.y + 6, 32, 12, 60);
   lit.save();
   lit.shadowColor = `rgba(20,28,12,${SUN.alpha})`;
   lit.shadowBlur = SUN.blur;
@@ -608,18 +613,7 @@ export function paintGround(ground: Ctx) {
   lit.restore();
   layer.width = layer.height = 0;
   ctx = lit;
-  // Grass tufts over the road edges keep them from looking stamped on.
-  for (let i = 0; i < 1600; i++) {
-    const x = rnd(i * 4.7) * W,
-      y = rnd(i * 6.1) * H,
-      d = Math.min(...TOWN_ROADS.map((r) => Math.abs(distToSegment(x, y, r) - (r[4] / 2 + 6))));
-    if (d > 6) continue;
-    ctx.fillStyle = i % 2 ? "#5d8443" : "#6f9a52";
-    ctx.fillRect(x, y - 3, 2, 6);
-    ctx.fillRect(x + 3, y - 1, 2, 5);
-  }
 }
-
 // ─────────────────────────── Buildings ───────────────────────────
 
 /** A picture to place in the world: drawn in local coordinates around an anchor. */
