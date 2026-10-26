@@ -1,3 +1,4 @@
+import { groundHeight } from "../../../packages/shared/src/world-art";
 import { bossLife, bossEye } from "./raid-boss-life";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
@@ -31,14 +32,14 @@ export function drawSunAtrium(g: G, state: Snapshot, reduced: boolean, at?: Laye
   const r = state.raid!,
     t = reduced ? 0 : state.time;
   // Inlaid glass stays quiet beneath the functional warnings.
-  g.lineStyle(2, 0xffd778, 0.12).strokeEllipse(800, 450, 1150, 660);
+  g.lineStyle(2, 0xffd778, 0.12).strokeEllipse(800, 450, 1150, groundHeight(1150));
   for (let i = 0; i < 12; i++) {
     const a = (i * TAU) / 12;
     g.lineStyle(2, PRISM_COLORS[i % 6], 0.13).lineBetween(
       800 + Math.cos(a) * 300,
-      450 + Math.sin(a) * 180,
+      450 + Math.sin(a) * groundHeight(300),
       800 + Math.cos(a) * 570,
-      450 + Math.sin(a) * 325,
+      450 + Math.sin(a) * groundHeight(570),
     );
   }
   const sources =
@@ -53,8 +54,8 @@ export function drawSunAtrium(g: G, state: Snapshot, reduced: boolean, at?: Laye
     for (const s of sources) {
       g.fillStyle(0xffe9ac, 0.06).fillCircle(s.x, s.y, range);
       g.lineStyle(2, 0xffe9ac, 0.25).strokeCircle(s.x, s.y, range);
-      g.fillStyle(0xffe9ac, 0.16).fillEllipse(s.x, s.y, 90, 50);
-      g.lineStyle(3, 0xffe9ac, 0.9).strokeEllipse(s.x, s.y, 64, 30);
+      g.fillStyle(0xffe9ac, 0.16).fillEllipse(s.x, s.y, 90, groundHeight(90));
+      g.lineStyle(3, 0xffe9ac, 0.9).strokeEllipse(s.x, s.y, 64, groundHeight(64));
       diamond(g, s.x, s.y - 23, 24, 0xffe9ac, 0.9);
       for (let i = 0; i < 6; i++) {
         const a = (i * TAU) / 6 + t * 0.18;
@@ -108,13 +109,13 @@ export function drawSunAtrium(g: G, state: Snapshot, reduced: boolean, at?: Laye
     );
   }
   for (const p of r.sunPillars ?? []) {
-    g.fillStyle(0xffb556, 0.2).fillEllipse(p.x, p.y, 80, 40);
+    g.fillStyle(0xffb556, 0.2).fillEllipse(p.x, p.y, 80, groundHeight(80));
     diamond(g, p.x, p.y - 35, 32, 0xffdb83, 0.85);
   }
   for (const p of state.players)
     if ((r.blinded?.[p.id] ?? 0) > state.time) {
       g.lineStyle(3, 0xd4caff, 0.9)
-        .strokeEllipse(p.x, p.y - 102, 32, 15)
+        .strokeEllipse(p.x, p.y - 102, 32, groundHeight(32))
         .lineBetween(p.x - 19, p.y - 90, p.x + 19, p.y - 114);
     }
 }
@@ -190,8 +191,8 @@ export function drawPrismatailWarning(g: G, state: Snapshot, w: RaidWarning) {
   }
   if (w.kind === "glare") {
     const y = w.y - 205;
-    g.fillStyle(0xfff3ce, 0.15 + progress * 0.15).fillEllipse(w.x, y, 100, 58);
-    g.lineStyle(4, 0xfff3ce, 1).strokeEllipse(w.x, y, 68, 30);
+    g.fillStyle(0xfff3ce, 0.15 + progress * 0.15).fillEllipse(w.x, y, 100, groundHeight(100));
+    g.lineStyle(4, 0xfff3ce, 1).strokeEllipse(w.x, y, 68, groundHeight(68));
     g.fillStyle(0xfff3ce, 1).fillCircle(w.x, y, 9 + progress * 5);
     g.lineStyle(4, 0xffe2ab, 0.9)
       .beginPath()

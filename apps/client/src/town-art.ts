@@ -1,3 +1,4 @@
+import { WORLD_ART } from "../../../packages/shared/src/world-art";
 import { CHARACTERS } from "@arena/shared";
 import {
   TOWN,
@@ -166,10 +167,10 @@ function plaza(ctx: Ctx) {
   const { x, y, r } = TOWN.plaza;
   const roadY = TOWN_PLAZA_ROAD.y;
   ctx.fillStyle = "#7d7360";
-  ellipse(ctx, x, roadY, r + 22, (r + 22) * 0.78);
+  ellipse(ctx, x, roadY, r + 22, (r + 22) * WORLD_ART.groundY);
   ctx.fill();
   ctx.fillStyle = "#8f846f";
-  ellipse(ctx, x, roadY, r, r * 0.78);
+  ellipse(ctx, x, roadY, r, r * WORLD_ART.groundY);
   ctx.fill();
   // Rings of curved cobbles.
   const tones = ["#b9ad95", "#ada189", "#c2b69e", "#a89c84"];
@@ -177,7 +178,7 @@ function plaza(ctx: Ctx) {
     for (let a = 0, k = 0; a < Math.PI * 2; a += 20 / ring, k++) {
       const i = n * 997 + k;
       ctx.save();
-      ctx.translate(x + Math.cos(a + n * 0.3) * ring, roadY + Math.sin(a + n * 0.3) * ring * 0.78);
+      ctx.translate(x + Math.cos(a + n * 0.3) * ring, roadY + Math.sin(a + n * 0.3) * ring * WORLD_ART.groundY);
       ctx.rotate(a + n * 0.3 + Math.PI / 2);
       ctx.scale(1, 0.85 + Math.abs(Math.sin(a)) * 0.15);
       ctx.fillStyle = tones[Math.floor(rnd(i) * tones.length)];
@@ -192,23 +193,23 @@ function plaza(ctx: Ctx) {
   const compass = TOWN.plaza.stonesRadius - 17;
   const elements = Object.values(CHARACTERS).map((c) => hex(c.color));
   ctx.fillStyle = "#d9cfb8";
-  ellipse(ctx, x, y, compass, compass * 0.78);
+  ellipse(ctx, x, y, compass, compass * WORLD_ART.groundY);
   ctx.fill();
   elements.forEach((c, i) => {
     const a = (i / 8) * Math.PI * 2 - Math.PI / 2;
     ctx.fillStyle = c;
     ctx.globalAlpha = 0.75;
     ctx.beginPath();
-    ctx.moveTo(x + Math.cos(a) * (compass - 2), y + Math.sin(a) * (compass - 2) * 0.78);
-    ctx.lineTo(x + Math.cos(a + 0.13) * (compass - 24), y + Math.sin(a + 0.13) * (compass - 24) * 0.78);
-    ctx.lineTo(x + Math.cos(a - 0.13) * (compass - 24), y + Math.sin(a - 0.13) * (compass - 24) * 0.78);
+    ctx.moveTo(x + Math.cos(a) * (compass - 2), y + Math.sin(a) * (compass - 2) * WORLD_ART.groundY);
+    ctx.lineTo(x + Math.cos(a + 0.13) * (compass - 24), y + Math.sin(a + 0.13) * (compass - 24) * WORLD_ART.groundY);
+    ctx.lineTo(x + Math.cos(a - 0.13) * (compass - 24), y + Math.sin(a - 0.13) * (compass - 24) * WORLD_ART.groundY);
     ctx.closePath();
     ctx.fill();
     ctx.globalAlpha = 1;
   });
   ctx.strokeStyle = "rgba(90,78,58,0.45)";
   ctx.lineWidth = 3;
-  ellipse(ctx, x, y, compass, compass * 0.78);
+  ellipse(ctx, x, y, compass, compass * WORLD_ART.groundY);
   ctx.stroke();
 }
 
@@ -525,7 +526,7 @@ export function paintGround(ground: Ctx) {
     const a = rnd(i * 3.7) * Math.PI * 2,
       d = 160 + rnd(i * 5.3) * (TOWN.plaza.r - 160);
     ctx.fillStyle = `rgba(80,110,50,${0.18 + rnd(i) * 0.2})`;
-    ellipse(ctx, TOWN_PLAZA_ROAD.x + Math.cos(a) * d, TOWN_PLAZA_ROAD.y + Math.sin(a) * d * 0.78, 2 + rnd(i * 2) * 2, 1.2);
+    ellipse(ctx, TOWN_PLAZA_ROAD.x + Math.cos(a) * d, TOWN_PLAZA_ROAD.y + Math.sin(a) * d * WORLD_ART.groundY, 2 + rnd(i * 2) * 2, 1.2);
     ctx.fill();
   }
   sandArena(ctx);
@@ -556,7 +557,7 @@ export function paintGround(ground: Ctx) {
   for (const b of TOWN_BUILDINGS) castShadow(ctx, b);
   {
     const f = TOWN_OBSTACLES.find((o) => o.kind === "fountain")!;
-    sunShadow(ctx, f.x, f.y + 24, 112, 62, 40);
+    sunShadow(ctx, f.x, f.y, 112, 112 * WORLD_ART.groundY, 40);
   }
   // Trees: trunk at the base, crown shadow further out.
   for (const t of TOWN_TREES) {
@@ -628,7 +629,7 @@ const stoneWall = (ctx: Ctx, x: number, y: number, w: number, h: number, base: s
 };
 
 /**
- * Elemental Coliseum: a round arena building seen from above at a slant.
+ * Elemental Coliseum: an oval stadium seen from above at a slant.
  * It stands on a two-step stone podium; three tiers of arches wrap the
  * wall (the ground tier opens all the way down to the podium), a glowing
  * gate sits at the front, and through the open top you see the far stands.
@@ -898,10 +899,10 @@ function footShade(ctx: Ctx, x0: number, x1: number, y: number) {
 function ringSteps(ctx: Ctx, cx: number, footY: number, rx: number, ry: number, steps: [number, number][], top: string, side: string) {
   for (const [grow, drop] of steps) {
     ctx.fillStyle = side;
-    ellipse(ctx, cx, footY + drop + 7, rx + grow, ry + grow * 0.4);
+    ellipse(ctx, cx, footY + drop + 7, rx + grow, ry + grow * WORLD_ART.groundY);
     ctx.fill();
     ctx.fillStyle = top;
-    ellipse(ctx, cx, footY + drop, rx + grow, ry + grow * 0.4);
+    ellipse(ctx, cx, footY + drop, rx + grow, ry + grow * WORLD_ART.groundY);
     ctx.fill();
   }
 }
@@ -1138,9 +1139,9 @@ function tower(b: TownBuilding): Sprite {
       const cx = W / 2,
         G = H - 8,
         rx = b.w / 2,
-        ratio = 0.38,
+        ratio = WORLD_ART.groundY,
         ry = rx * ratio,
-        footY = G - ry - 12,
+        footY = G - ry - 30,
         topY = G + TOWER.top;
       ringSteps(ctx, cx, footY, rx, ry, [[18, 10], [8, 4]], "#a59a86", "#6f6553");
       ringShade(ctx, cx, footY, rx, ry);
@@ -1259,9 +1260,9 @@ function windmill(b: TownBuilding): Sprite {
       const cx = W / 2,
         G = H - 8,
         rx = b.w / 2,
-        ratio = 0.38,
+        ratio = WORLD_ART.groundY,
         ry = rx * ratio,
-        footY = G - ry - 10,
+        footY = G - ry - 24,
         topY = G + WINDMILL_HUB.dy + 34;
       ringSteps(ctx, cx, footY, rx, ry, [[12, 8]], "#a59a86", "#6f6553");
       ringShade(ctx, cx, footY, rx, ry);
@@ -1542,7 +1543,7 @@ export const chimneyOf = (b: TownBuilding) => ({
  * into the ground picture, before the building stands on it.
  */
 /** One sun for the whole town: every shadow uses this tone, blur and direction. */
-export const SUN = { alpha: 0.34, blur: 14, dx: 0.42, dy: 0.08 };
+export const SUN = { ...WORLD_ART.shadow, dx: WORLD_ART.sun.x, dy: WORLD_ART.sun.y };
 /*
  * Every shadow in town is drawn as a solid shape into one shadow layer,
  * which is then blurred and laid on the ground once at SUN.alpha. So all
@@ -1599,8 +1600,8 @@ export function castShadow(ctx: Ctx, b: TownBuilding) {
   };
   if (b.kind === "house") box(b.x - b.w / 2, b.x + b.w / 2, b.y, b.d * 0.7, 200);
   else if (b.kind === "temple") box(b.x - b.w / 2 - 30, b.x + b.w / 2 + 30, b.y - 50, 120, 330);
-  else if (b.kind === "tower") round(b.x, b.y - 40, b.w / 2, (b.w / 2) * 0.38, 400);
-  else if (b.kind === "windmill") round(b.x, b.y - 36, b.w / 2, (b.w / 2) * 0.38, 260);
+  else if (b.kind === "tower") round(b.x, b.y - (b.w / 2) * WORLD_ART.groundY - 30, b.w / 2, (b.w / 2) * WORLD_ART.groundY, 400);
+  else if (b.kind === "windmill") round(b.x, b.y - (b.w / 2) * WORLD_ART.groundY - 24, b.w / 2, (b.w / 2) * WORLD_ART.groundY, 260);
   else round(b.x, b.y - 96, 280, 100, 300);
 }
 
@@ -1927,7 +1928,7 @@ export function signpostSprite(label: string, color: string, left: boolean): Spr
 export const STATUE_TOP = 58;
 export function statuePlinth(name: string | null, color: string): Sprite {
   const W = 120,
-    H = 80;
+    H = 112;
   return {
     w: W,
     h: H,
@@ -1938,7 +1939,7 @@ export function statuePlinth(name: string | null, color: string): Sprite {
         G = H - 6;
       // A round pedestal in the same ¾ view as the tower and fountain: a
       // stepped foot, a drum lit from the left, and a cap whose top you see.
-      const R = 0.3,
+      const R = WORLD_ART.groundY,
         lit = ["#d6d1e4", "#b4aec8", "#8a84a0", "#6a647e"];
       // Foot step.
       cylinder(ctx, cx, G - 46 * R, G - 46 * R - 8, 46, 46, R, lit);
@@ -2091,31 +2092,31 @@ export function veiledStatue(): Sprite {
  * world units from that centre, so the animated water lines up.
  */
 export const FOUNTAIN = {
-  basin: { rx: 114, ry: 51, wall: 25, rim: 13 },
-  pool: { rx: 97, ry: 38, dy: 0 },
-  mid: { dy: -78, rx: 55, ry: 19, depth: 30 },
-  top: { dy: -126, rx: 34, ry: 11, depth: 20 },
+  basin: { rx: 114, ry: 114 * WORLD_ART.groundY, wall: 12, rim: 13 },
+  pool: { rx: 97, ry: 97 * WORLD_ART.groundY, dy: -12.5 },
+  mid: { dy: -76, rx: 65, ry: 65 * WORLD_ART.groundY, depth: 14 },
+  top: { dy: -127, rx: 41, ry: 41 * WORLD_ART.groundY, depth: 9 },
   spout: { dy: -160 },
-  crystal: { dy: -186, rx: 17, ry: 26 },
+  crystal: { dy: -181, rx: 15, ry: 21 },
 };
-/** The two passes use identical source pixels and placement. Only the upper
- * pass is masked, so rear streams disappear behind the column and bowls. */
+/** Source pixels and the water share one ground anchor at the bottom plinth,
+ * below the water plane. Both passes use exactly the same pixel placement. */
 export function paintedFountain(source: CanvasImageSource, upper: boolean): Sprite {
-  const scale = 114 / 470;
+  const scale = 114 / 437;
   return {
-    w: 1322 * scale, h: 1190 * scale,
-    ax: 660 * scale, ay: 766 * scale,
+    w: 1402 * scale, h: 1122 * scale,
+    ax: 712 * scale, ay: 738 * scale,
     draw(ctx) {
       ctx.save();
       ctx.scale(scale, scale);
       if (upper) {
         ctx.beginPath();
-        const contour = [[425,90],[895,90],[895,585],[711,585],[711,746],[754,772],[754,809],[697,832],[623,832],[569,809],[569,772],[611,746],[611,585],[425,585]];
+        const contour = [[450,110],[970,110],[970,613],[752,613],[752,666],[782,693],[788,725],[760,750],[712,763],[656,750],[627,726],[632,697],[671,668],[671,613],[450,613]];
         contour.forEach(([x,y],i) => i ? ctx.lineTo(x,y) : ctx.moveTo(x,y));
         ctx.closePath();
         ctx.clip();
       }
-      ctx.drawImage(source, 0, 0, 1322, 1190);
+      ctx.drawImage(source, 0, 0, 1402, 1122);
       ctx.restore();
     },
   };
@@ -2183,7 +2184,7 @@ export function fountainBase(): Sprite {
     w: W,
     h: H,
     ax: cx,
-    ay: cy,
+    ay: cy + wall,
     draw(ctx) {
       // Wet, darker paving and a soft contact shadow around the basin.
       ctx.fillStyle = "rgba(70,90,100,0.18)";
@@ -2236,7 +2237,8 @@ export function fountainBase(): Sprite {
       }
       fountainStone(ctx, cx, cy, rx - 1, ry - 1, 19, wall);
       // Inner wall (in shade) down to the water.
-      const { rx: px, ry: py, dy } = FOUNTAIN.pool;
+      const { rx: px, ry: py, dy: poolY } = FOUNTAIN.pool;
+      const dy = poolY + wall;
       ctx.fillStyle = STONE.deep;
       ellipse(ctx, cx, cy - 1, px + 1, py + 1);
       ctx.fill();

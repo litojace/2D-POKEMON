@@ -1,3 +1,4 @@
+import { groundHeight } from "../../../../packages/shared/src/world-art";
 import type Phaser from "phaser";
 import type { SkinArt, Trail } from "./skin-art";
 
@@ -247,7 +248,7 @@ function mythic(ctx: FxContext, art: SkinArt, stage: number) {
         });
       if (stage >= 2) {
         const k = 0.5 + Math.sin(now / 300) * 0.5;
-        g.lineStyle(2 * sc, 0xffd65b, 0.25 + k * 0.25).strokeEllipse(x, y + 20 * sc, 50 * sc, 16 * sc);
+        g.lineStyle(2 * sc, 0xffd65b, 0.25 + k * 0.25).strokeEllipse(x, y + 20 * sc, 50 * sc, groundHeight(50 * sc));
       }
       if (stage >= 3) {
         // A slowly turning sun behind the fighter.
@@ -275,10 +276,10 @@ function mythic(ctx: FxContext, art: SkinArt, stage: number) {
       if (stage >= 2)
         for (let i = 0; i < 2; i++) {
           const k = ((now / 1400 + i / 2) % 1);
-          g.lineStyle(1.6 * sc, 0x7ff3ff, 0.5 * (1 - k)).strokeEllipse(x, y + 20 * sc, (40 + k * 40) * sc, (12 + k * 12) * sc);
+          g.lineStyle(1.6 * sc, 0x7ff3ff, 0.5 * (1 - k)).strokeEllipse(x, y + 20 * sc, (40 + k * 40) * sc, groundHeight((40 + k * 40) * sc));
         }
       if (stage >= 3) {
-        under.fillStyle(0x7ff3ff, 0.12).fillEllipse(x, y + 18 * sc, 90 * sc, 26 * sc);
+        under.fillStyle(0x7ff3ff, 0.12).fillEllipse(x, y + 18 * sc, 90 * sc, groundHeight(90 * sc));
         for (let i = 0; i < 6; i++) {
           const wx = x + (i - 2.5) * 13 * sc;
           const wy = y + 18 * sc + Math.sin(now / 260 + i) * 2 * sc;

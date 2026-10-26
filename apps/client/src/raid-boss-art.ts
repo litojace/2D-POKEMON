@@ -1,3 +1,4 @@
+import { groundHeight } from "../../../packages/shared/src/world-art";
 import { bossLife } from "./raid-boss-life";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
@@ -131,7 +132,7 @@ export function drawRaidBoss(
       boss.x,
       boss.y + 48,
       100 + spread * 2,
-      35 + spread,
+      groundHeight(100 + spread * 2),
     );
     for (let i = 0; i < 5; i++)
       g.fillStyle(face, strength * 0.16).fillEllipse(

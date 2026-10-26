@@ -1,3 +1,7 @@
+import {
+  WORLD_ART,
+  groundHeight,
+} from "../../../packages/shared/src/world-art";
 /** Shared framing for the static loading art and the battle rig. */
 export const SHOP_PREVIEW = {
   width: 400,
@@ -34,4 +38,17 @@ export function previewViewBox(action: string) {
     width / artScale,
     height / artScale,
   ].join(" ");
+}
+
+/** Keep the whole projected aura inside the frame, beneath the same foot line. */
+export function previewAuraScale(frame: {
+  height: number;
+  y: number;
+  scale: number;
+}) {
+  const feet = frame.y + WORLD_ART.fighterFeet * frame.scale;
+  return Math.min(
+    frame.scale / 1.2,
+    Math.max(0.1, ((frame.height - feet - 12) * 2) / groundHeight(128)),
+  );
 }

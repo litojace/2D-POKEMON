@@ -1,3 +1,4 @@
+import { groundHeight, WORLD_ART } from "../../../packages/shared/src/world-art";
 import { frameLobbyPanel } from "./lobby-layout";
 import { fitDesktopBattleHud } from "./desktop-battle-layout";
 import {
@@ -3785,9 +3786,13 @@ class ArenaScene extends Phaser.Scene {
           reducedMotion,
         );
       }
+      const giant = state.mutators?.includes("giants")
+        ? MUTATOR_RULES.giants
+        : 1;
+      const feetY = y + WORLD_ART.fighterFeet * view.fighterY * 0.7 * giant;
       g.fillStyle(0x081f19, 0.45).fillEllipse(
         x,
-        y + 15,
+        feetY,
         48 - jump * 0.2,
         18 - jump * 0.1,
       );
@@ -3798,7 +3803,7 @@ class ArenaScene extends Phaser.Scene {
           g,
           c.element,
           x,
-          y + 14,
+          feetY,
           this.feelClock / 1000,
           stealthed ? 0.5 : 0.9,
         );
@@ -3807,7 +3812,7 @@ class ArenaScene extends Phaser.Scene {
             g,
             c.element,
             serverPlayer.clone.x,
-            serverPlayer.clone.y + 14,
+            serverPlayer.clone.y + WORLD_ART.fighterFeet * view.fighterY * 0.7,
             this.feelClock / 1000,
             0.3,
           );
@@ -3822,7 +3827,7 @@ class ArenaScene extends Phaser.Scene {
               : 0xff5d6c
             : c.color,
         isTeams() ? 0.8 : 0.55,
-      ).strokeEllipse(x, y + 12, 72, 32);
+      ).strokeEllipse(x, feetY, 72, groundHeight(72));
       // Mastery flair: an outer ring in the tier's colour (Crystal shimmers).
       if (serverPlayer.flair) {
         const tier = MASTERY_TIERS.find((t) => t.name === serverPlayer.flair);
@@ -3831,9 +3836,9 @@ class ArenaScene extends Phaser.Scene {
             tier.name === "Crystal" && !reducedMotion
               ? Phaser.Display.Color.HSVToRGB((_time / 2400) % 1, 0.45, 1).color
               : Number.parseInt(tier.color.slice(1), 16);
-          g.lineStyle(2, colour, 0.75).strokeEllipse(x, y + 12, 86, 40);
+          g.lineStyle(2, colour, 0.75).strokeEllipse(x, feetY, 86, groundHeight(86));
           if (tier.name === "Gold" || tier.name === "Crystal")
-            g.lineStyle(6, colour, 0.18).strokeEllipse(x, y + 12, 90, 43);
+            g.lineStyle(6, colour, 0.18).strokeEllipse(x, feetY, 90, groundHeight(90));
         }
       }
       if (p.dashUntil > state.time && !reducedMotion) {
@@ -3845,18 +3850,15 @@ class ArenaScene extends Phaser.Scene {
         );
       }
       const rig = this.getRig(p.id, p.character);
-      const giant = state.mutators?.includes("giants")
-        ? MUTATOR_RULES.giants
-        : 1;
       // The rig keeps this as its base scale (squash and stretch multiply it).
       rig.root.setScale(
         view.fighterX * 0.7 * giant,
         view.fighterY * 0.7 * giant,
       );
       if (p.raidLook?.aura === "mountain-aura")
-        g.lineStyle(3, 0xffd28c, 0.7).strokeEllipse(x, y + 10, 95, 45);
+        g.lineStyle(3, 0xffd28c, 0.7).strokeEllipse(x, feetY, 95, groundHeight(95));
       else if (p.raidLook?.aura)
-        drawCollectionAura(g, p.raidLook.aura, x, y + 10, _time, reducedMotion);
+        drawCollectionAura(g, p.raidLook.aura, x, feetY, _time, reducedMotion);
       rig.setVisible(true);
       // On the coliseum court fighters sort with the blocks by where they stand.
       rig.setDepth(this.activeCourt || state?.raid ? fighterDepth(y) : 2);
@@ -3891,7 +3893,7 @@ class ArenaScene extends Phaser.Scene {
           0.55 + Math.sin(_time / 60) * 0.25,
         ).strokeCircle(x, y - jump - 10, 40);
       if (serverPlayer.statuses.some((s) => s.kind === "empower"))
-        g.lineStyle(2, 0xffb347, 0.7).strokeEllipse(x, y + 12, 84, 38);
+        g.lineStyle(2, 0xffb347, 0.7).strokeEllipse(x, feetY, 84, groundHeight(84));
       if (serverPlayer.channel) {
         const cone = c.skills[serverPlayer.channel.skill];
         if (cone)

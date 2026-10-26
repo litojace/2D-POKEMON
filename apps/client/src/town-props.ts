@@ -1,3 +1,4 @@
+import { WORLD_ART } from "../../../packages/shared/src/world-art";
 import { rnd, type Ctx, type Sprite } from "./town-art";
 
 /**
@@ -90,7 +91,7 @@ function barrel(ctx: Ctx, cx: number, foot: number, r: number, h: number) {
   ctx.beginPath();
   ctx.moveTo(cx - r * 0.9, top);
   ctx.quadraticCurveTo(cx - r * 1.08, (top + foot) / 2, cx - r * 0.9, foot);
-  ctx.ellipse(cx, foot, r * 0.9, r * 0.3, 0, Math.PI, 0, true);
+  ctx.ellipse(cx, foot, r * 0.9, r * 0.9 * WORLD_ART.groundY, 0, Math.PI, 0, true);
   ctx.lineTo(cx + r * 0.9, foot);
   ctx.quadraticCurveTo(cx + r * 1.08, (top + foot) / 2, cx + r * 0.9, top);
   ctx.closePath();
@@ -104,17 +105,17 @@ function barrel(ctx: Ctx, cx: number, foot: number, r: number, h: number) {
     ctx.strokeStyle = "#3b3f46";
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.ellipse(cx, y, w, r * 0.3, 0, 0, Math.PI);
+    ctx.ellipse(cx, y, w, r * 0.9 * WORLD_ART.groundY, 0, 0, Math.PI);
     ctx.stroke();
     ctx.strokeStyle = "rgba(255,255,255,0.25)";
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.ellipse(cx, y - 1, w, r * 0.3, 0, Math.PI * 0.55, Math.PI * 0.95);
+    ctx.ellipse(cx, y - 1, w, r * 0.9 * WORLD_ART.groundY, 0, Math.PI * 0.55, Math.PI * 0.95);
     ctx.stroke();
   }
   // Lid.
   ctx.fillStyle = "#b8895a";
-  ellipse(ctx, cx, top, r * 0.9, r * 0.3);
+  ellipse(ctx, cx, top, r * 0.9, r * 0.9 * WORLD_ART.groundY);
   ctx.fill();
   ctx.strokeStyle = "#3b3f46";
   ctx.lineWidth = 2.5;
@@ -145,7 +146,7 @@ function sack(ctx: Ctx, cx: number, foot: number, s: number) {
 
 /** A round stone footing seen from above-front (top ellipse + a short front band). */
 function footing(ctx: Ctx, cx: number, foot: number, rx: number, h: number) {
-  const ry = rx * 0.36;
+  const ry = rx * WORLD_ART.groundY;
   ctx.fillStyle = across(ctx, cx - rx, cx + rx, [STONE.light, STONE.mid, STONE.dark]);
   ctx.beginPath();
   ctx.ellipse(cx, foot - ry, rx, ry, 0, 0, Math.PI);
@@ -305,7 +306,7 @@ export function propSprite(kind: string): Sprite {
           const cx = 62,
             foot = 146,
             rx = 42,
-            ry = 15,
+            ry = 42 * WORLD_ART.groundY,
             rimY = 104;
           // Back of the rim (seen inside), then the water.
           ctx.fillStyle = STONE.dark;
@@ -341,7 +342,7 @@ export function propSprite(kind: string): Sprite {
           ctx.lineTo(cx + 42, 76);
           ctx.stroke();
           // Front wall of the well: a curved band of stones.
-          const wallH = foot - rimY - ry * 0.4;
+          const wallH = Math.max(8, foot - rimY - ry);
           ctx.fillStyle = across(ctx, cx - rx, cx + rx, [STONE.light, STONE.mid, STONE.mid, STONE.dark]);
           ctx.beginPath();
           ctx.ellipse(cx, rimY, rx, ry, 0, 0, Math.PI);
@@ -568,11 +569,11 @@ export function propSprite(kind: string): Sprite {
           // A round, three-tier plinth (like the tower's and the fountain's),
           // each tier's top face visible from above.
           const tier = (bottomCentre: number, rx: number, h: number) => {
-            const ry = rx * 0.36;
+            const ry = rx * WORLD_ART.groundY;
             footing(ctx, cx, bottomCentre + ry, rx, h);
             return bottomCentre - h;
           };
-          let top1 = tier(foot - 54 * 0.36, 54, 12);
+          let top1 = tier(foot - 54 * WORLD_ART.groundY, 54, 12);
           top1 = tier(top1, 43, 12);
           top1 = tier(top1, 32, 14);
           const base = top1 - 4;

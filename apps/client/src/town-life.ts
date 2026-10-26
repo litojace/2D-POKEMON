@@ -1,3 +1,4 @@
+import { WORLD_ART } from "../../../packages/shared/src/world-art";
 import Phaser from "phaser";
 import {
   TOWN,
@@ -79,15 +80,19 @@ function paint(key: string, w: number, h: number, draw: (ctx: CanvasRenderingCon
   return canvas;
 }
 function bake(scene: Phaser.Scene, key: string, sprite: Sprite, res = ART_RES) {
+  const pad = WORLD_ART.spritePadding;
+  const width = sprite.w + pad * 2, height = sprite.h + pad * 2;
   if (!scene.textures.exists(key)) {
-    const canvas = paint(key, Math.ceil(sprite.w * res), Math.ceil(sprite.h * res), (ctx) => {
+    const canvas = paint(key, Math.ceil(width * res), Math.ceil(height * res), (ctx) => {
       ctx.scale(res, res);
+      ctx.translate(pad, pad);
       sprite.draw(ctx);
     });
     scene.textures.addCanvas(key, canvas);
   }
-  return { key, ox: sprite.ax / sprite.w, oy: sprite.ay / sprite.h, scale: 1 / res };
+  return { key, ox: (sprite.ax + pad) / width, oy: (sprite.ay + pad) / height, scale: 1 / res };
 }
+
 function place(scene: Phaser.Scene, key: string, sprite: Sprite, x: number, y: number, depth = y, res = ART_RES) {
   const t = bake(scene, key, sprite, res);
   return scene.add.image(x, y, t.key).setOrigin(t.ox, t.oy).setScale(t.scale).setDepth(depth);
@@ -576,10 +581,10 @@ export class TownScenery {
         y = s.y + 10,
         breathe = this.reduced ? 0 : Math.sin(t * 2.2 + i) * 0.5 + 0.5;
       // Disc and its glow.
-      g.fillStyle(c, on ? 0.26 : 0.1 + breathe * 0.05).fillEllipse(x, y, r * 2, r);
-      g.fillStyle(c, on ? 0.22 : 0.08).fillEllipse(x, y, r * 1.3, r * 0.65);
+      g.fillStyle(c, on ? 0.26 : 0.1 + breathe * 0.05).fillEllipse(x, y, r * 2, r * 2 * WORLD_ART.groundY);
+      g.fillStyle(c, on ? 0.22 : 0.08).fillEllipse(x, y, r * 1.3, r * 1.3 * WORLD_ART.groundY);
       // Solid inner ring.
-      g.lineStyle(on ? 3 : 2, c, on ? 0.95 : 0.6).strokeEllipse(x, y, r * 2, r);
+      g.lineStyle(on ? 3 : 2, c, on ? 0.95 : 0.6).strokeEllipse(x, y, r * 2, r * 2 * WORLD_ART.groundY);
       // Dashed outer ring, turning.
       const spin = this.reduced ? 0 : t * (on ? 1.2 : 0.5) + i,
         dashes = Math.max(8, Math.round(r / 6)),
@@ -589,8 +594,8 @@ export class TownScenery {
         const a0 = spin + (k / dashes) * Math.PI * 2,
           a1 = a0 + (Math.PI / dashes) * 0.9;
         g.beginPath();
-        g.moveTo(x + Math.cos(a0) * R, y + Math.sin(a0) * R * 0.5);
-        g.lineTo(x + Math.cos(a1) * R, y + Math.sin(a1) * R * 0.5);
+        g.moveTo(x + Math.cos(a0) * R, y + Math.sin(a0) * R * WORLD_ART.groundY);
+        g.lineTo(x + Math.cos(a1) * R, y + Math.sin(a1) * R * WORLD_ART.groundY);
         g.strokePath();
       }
       if (on && !this.reduced)
@@ -599,7 +604,7 @@ export class TownScenery {
           const p = (t * 0.7 + k / 8) % 1,
             a = k * 2.4 + i,
             sx = x + Math.cos(a) * r * 0.75,
-            sy = y + Math.sin(a) * r * 0.37 - p * 46;
+            sy = y + Math.sin(a) * r * 0.75 * WORLD_ART.groundY - p * 46;
           g.fillStyle(0xffffff, (1 - p) * 0.9).fillCircle(sx, sy, 2);
           g.fillStyle(c, (1 - p) * 0.6).fillCircle(sx, sy, 4);
         }
@@ -676,7 +681,7 @@ export class TownScenery {
       else d.rest -= dt;
       const R = 455,
         x = TOWN_PLAZA_ROAD.x + Math.cos(d.a) * R,
-        y = TOWN_PLAZA_ROAD.y + Math.sin(d.a) * R * 0.78,
+        y = TOWN_PLAZA_ROAD.y + Math.sin(d.a) * R * WORLD_ART.groundY,
         dir = -Math.sin(d.a) >= 0 ? 1 : -1;
       const key = moving
         ? `town-dog-walk-${Math.floor(t * 10) % DOG_FRAMES.walk}`

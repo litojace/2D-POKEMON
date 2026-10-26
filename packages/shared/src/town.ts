@@ -1,3 +1,4 @@
+import { WORLD_ART } from "./world-art.js";
 import { RAID_BOSSES, type RaidBossId } from "./raid-roster.js";
 import type { RaidLoadout } from "./raid.js";
 
@@ -41,7 +42,7 @@ export const TOWN_PLAZA_ROAD = {
   x: TOWN.plaza.x,
   y: TOWN.plaza.y,
   rx: TOWN.plaza.r,
-  ry: TOWN.plaza.r * 0.78,
+  ry: TOWN.plaza.r * WORLD_ART.groundY,
 } as const;
 
 export const TOWN_EMOTES = ["wave", "heart", "laugh", "gg", "fire"] as const;
@@ -367,7 +368,7 @@ const onRing = (deg: number) => {
   const a = (deg * Math.PI) / 180;
   return {
     x: Math.round(TOWN_PLAZA_ROAD.x + Math.cos(a) * RING),
-    y: Math.round(TOWN_PLAZA_ROAD.y + Math.sin(a) * RING * 0.78),
+    y: Math.round(TOWN_PLAZA_ROAD.y + Math.sin(a) * RING * WORLD_ART.groundY),
   };
 };
 export const TOWN_PLAZA_LAMPS = [26, 70, 214, 242, 298, 334].map(onRing);
@@ -381,7 +382,7 @@ function buildObstacles(): TownObstacle[] {
     list.push({
       shape: "round",
       x: x + Math.cos(a) * TOWN.plaza.stonesRadius,
-      y: y + Math.sin(a) * TOWN.plaza.stonesRadius * 0.78,
+      y: y + Math.sin(a) * TOWN.plaza.stonesRadius * WORLD_ART.groundY,
       rx: 16,
       ry: 12,
       kind: "stone",
@@ -653,7 +654,7 @@ export const TOWN_SIGNPOSTS = TOWN_PATHS.slice(0, 5).map(({ pts: [[x1, y1], [x2,
   const along = (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a) + 50;
   return {
     x: Math.round(x1 + ux * along - uy * 92),
-    y: Math.round(y1 + uy * along + ux * 92 * 0.78),
+    y: Math.round(y1 + uy * along + ux * 92 * WORLD_ART.groundY),
     label: d.label,
     color: d.color,
     /**
@@ -670,10 +671,10 @@ const BASE_OBSTACLES = buildObstacles();
 function blocked(x: number, y: number, pad: number) {
   return BASE_OBSTACLES.some((o) =>
     o.shape === "round"
-      ? Math.hypot((x - o.x) / (o.rx + pad), (y - o.y) / (o.ry + pad * 0.78)) <
+      ? Math.hypot((x - o.x) / (o.rx + pad), (y - o.y) / (o.ry + pad * WORLD_ART.groundY)) <
         1
       : Math.abs(x - o.x) < o.w / 2 + pad &&
-        Math.abs(y - o.y) < o.h / 2 + pad * 0.78,
+        Math.abs(y - o.y) < o.h / 2 + pad * WORLD_ART.groundY,
   );
 }
 /**
@@ -745,7 +746,7 @@ export function townCollide(x: number, y: number) {
     if (o.shape === "round") {
       // Work in a space where the ellipse is a circle.
       const ax = o.rx + r,
-        ay = o.ry + r * 0.78,
+        ay = o.ry + r * WORLD_ART.groundY,
         dx = (x - o.x) / ax,
         dy = (y - o.y) / ay,
         d = Math.hypot(dx, dy);
@@ -757,7 +758,7 @@ export function townCollide(x: number, y: number) {
     } else {
       // A box, grown by the walker's radius: leave by the nearest side.
       const hw = o.w / 2 + r,
-        hh = o.h / 2 + r * 0.78;
+        hh = o.h / 2 + r * WORLD_ART.groundY;
       const dx = x - o.x,
         dy = y - o.y;
       if (Math.abs(dx) < hw && Math.abs(dy) < hh) {

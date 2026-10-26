@@ -1,3 +1,4 @@
+import { groundHeight } from "../../../packages/shared/src/world-art";
 import { bossLife, bossEye } from "./raid-boss-life";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
@@ -74,9 +75,9 @@ export function drawSkyTerrace(g: G, state: Snapshot, reduced: boolean, at?: Lay
     const bowl = at ? at(`brazier-${bi}`, b.y + 30) : g;
     bowl.fillStyle(0x354259, 1).fillRoundedRect(b.x - 19, b.y - 5, 38, 35, 5);
     bowl.fillStyle(0x4a5874, 1).fillRoundedRect(b.x - 19, b.y - 5, 12, 35, 4);
-    bowl.fillStyle(0x5c5862, 1).fillEllipse(b.x, b.y - 7, 64, 25);
-    bowl.lineStyle(3, 0xc3a37c, 0.9).strokeEllipse(b.x, b.y - 7, 64, 25);
-    bowl.fillStyle(0x152239, 1).fillEllipse(b.x, b.y - 10, 50, 14);
+    bowl.fillStyle(0x5c5862, 1).fillEllipse(b.x, b.y - 7, 64, groundHeight(64));
+    bowl.lineStyle(3, 0xc3a37c, 0.9).strokeEllipse(b.x, b.y - 7, 64, groundHeight(64));
+    bowl.fillStyle(0x152239, 1).fillEllipse(b.x, b.y - 10, 50, groundHeight(50));
     if (lit) {
       const k = Math.max(
         0,

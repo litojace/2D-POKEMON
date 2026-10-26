@@ -1,3 +1,4 @@
+import { groundHeight } from "../../../packages/shared/src/world-art";
 import { bossLife, bossEye } from "./raid-boss-life";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
@@ -42,7 +43,7 @@ export function drawConductorRing(g: G, state: Snapshot, reduced: boolean, at?: 
     const post = at ? at(`post-${i}`, p.y + 17) : g;
     post.fillStyle(0x866958, 1).fillRoundedRect(p.x - 13, p.y - 22, 26, 39, 5);
     post.fillStyle(0xa98a6e, 1).fillRoundedRect(p.x - 13, p.y - 22, 9, 39, 4);
-    post.lineStyle(4, 0xe6b985, 0.9).strokeEllipse(p.x, p.y - 22, 32, 15);
+    post.lineStyle(4, 0xe6b985, 0.9).strokeEllipse(p.x, p.y - 22, 32, groundHeight(32));
     post.fillStyle(0xffd78b, 0.2).fillCircle(p.x, p.y - 22, 15);
   }
   for (const f of r.stormFields ?? []) {

@@ -1,3 +1,7 @@
+import {
+  groundHeight,
+  WORLD_ART,
+} from "../../../../packages/shared/src/world-art";
 import { cosmeticLayer, type Skin } from "./cosmetics";
 import { ContinuousArt } from "./continuous-art";
 import { drawElementGlyph } from "../element-effects";
@@ -59,7 +63,7 @@ const SPRINGS: Partial<Record<Part, Spring>> = {
 /** Duskveil's lantern swings like a pendulum. */
 const LANTERN: Spring = { drag: 1 / 240, stiff: 32, damp: 3.2 };
 /** Rig pixels from the root (body pivot) down to the feet. */
-const FEET = 21;
+const FEET = WORLD_ART.fighterFeet;
 /** Rockslide Flex victory: how high the rock pile lifts the fighter (rig units). */
 const ROCK_PILE = 24;
 const MAX_PARTICLES = 48;
@@ -1353,13 +1357,13 @@ export class FighterRig {
         x,
         y + FEET * sc,
         (44 + pulse * 26) * sc,
-        (16 + pulse * 9) * sc,
+        groundHeight((44 + pulse * 26) * sc),
       );
       g.lineStyle(1.5, 0xffffff, 0.35).strokeEllipse(
         x,
         y + FEET * sc,
         44 * sc,
-        16 * sc,
+        groundHeight(44 * sc),
       );
     }
     // ---- Cast glyph (unchanged): the element sigil where the move leaves.

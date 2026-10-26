@@ -1,3 +1,4 @@
+import { WORLD_ART } from "../../../packages/shared/src/world-art";
 import Phaser from "phaser";
 import { FighterRig } from "./animation/rig";
 import { rigAssets } from "./animation/assets";
@@ -98,7 +99,7 @@ export function mountWelcomeAnimation(camp: HTMLElement): WelcomeAnimation {
         const vy = Number(profileViewBox(e.id, e.dir).split(" ")[1]);
         const scale = r.height / ((176 - vy) * 0.5);
         const x = r.x - bounds.x + r.width / 2,
-          y = r.bottom - bounds.y - 21 * scale;
+          y = r.bottom - bounds.y - WORLD_ART.fighterFeet * scale;
         e.rig!.root.setScale(scale);
         e.rig!.setDepth(Number(e.element.style.getPropertyValue("--layer")));
         e.rig!.render(

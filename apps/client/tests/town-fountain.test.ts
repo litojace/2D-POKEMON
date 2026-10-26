@@ -1,3 +1,4 @@
+import { WORLD_ART } from "../../../packages/shared/src/world-art";
 import { describe, expect, it } from "vitest";
 import {
   TOWN,
@@ -61,7 +62,8 @@ describe("central plaza fountain", () => {
       expect(
         Math.hypot(
           (lamp.x - TOWN_PLAZA_ROAD.x) / (TOWN_PLAZA_ROAD.rx + 22),
-          (lamp.y - TOWN_PLAZA_ROAD.y) / (TOWN_PLAZA_ROAD.ry + 22 * 0.78),
+          (lamp.y - TOWN_PLAZA_ROAD.y) /
+            (TOWN_PLAZA_ROAD.ry + 22 * WORLD_ART.groundY),
         ),
       ).toBeGreaterThan(1);
     }

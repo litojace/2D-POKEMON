@@ -1,3 +1,4 @@
+import { WORLD_ART, groundHeight } from "../../../packages/shared/src/world-art";
 import { JOURNEY_ITEM_BY_ID } from "../../../packages/shared/src/journey";
 import Phaser from "phaser";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
@@ -11,7 +12,7 @@ import { SKINS } from "./animation/cosmetics";
 import { drawCollectionAura } from "./skins/collection-fx";
 import type { AnimationPose } from "./animation/controller";
 import type { SkinLook } from "./creature-design";
-import { SELECTION_PREVIEW, SHOP_PREVIEW, previewZoom } from "./shop-preview-layout";
+import { SELECTION_PREVIEW, SHOP_PREVIEW, previewZoom, previewAuraScale } from "./shop-preview-layout";
 
 export type PreviewPlacement = "shop" | "selection";
 export interface ShopPreviewHandle {
@@ -221,7 +222,7 @@ export function mountShopPreview(
       this.aura = this.add
         .graphics()
         .setDepth(1)
-        .setScale(framing.scale / 1.2);
+        .setScale(previewAuraScale(framing));
       this.game.canvas.setAttribute("aria-hidden", "true");
       // Selection may have changed while Phaser was booting.
       if (host.classList.contains("is-frame")) this.game.canvas.remove();
@@ -267,10 +268,7 @@ export function mountShopPreview(
         }
         this.floor.clear();
         if (!selection) {
-          this.floor.fillStyle(0x040d20, 0.4).fillEllipse(200, 207, 160, 40);
-          this.floor
-            .lineStyle(1, CHARACTERS[champion].color, 0.3)
-            .strokeEllipse(200, 207, 180, 48);
+          this.floor.fillStyle(0x040d20, 0.4).fillEllipse(framing.x, framing.y + WORLD_ART.fighterFeet * framing.scale, 160, 40);
         }
         rig = new FighterRig(this, champion, layers);
         ready = true;
@@ -330,22 +328,23 @@ export function mountShopPreview(
         .centerOn(framing.x, framing.cameraY);
       this.aura.clear();
       const auraId = look.aura;
-      const auraScale = framing.scale / 1.2;
+      const auraScale = previewAuraScale(framing);
+      this.aura.setScale(auraScale);
       if (auraId === "mountain-aura")
         this.aura
           .lineStyle(3, 0xffd28c, 0.7)
           .strokeEllipse(
             x / auraScale,
-            (y + (selection ? 21 * framing.scale : 38)) / auraScale,
+            (y + WORLD_ART.fighterFeet * framing.scale) / auraScale,
             95,
-            45,
+            groundHeight(95),
           );
       else if (auraId)
         drawCollectionAura(
           this.aura,
           auraId,
           x / auraScale,
-          (y + (selection ? 21 * framing.scale : 38)) / auraScale,
+          (y + WORLD_ART.fighterFeet * framing.scale) / auraScale,
           clock,
           paused,
         );

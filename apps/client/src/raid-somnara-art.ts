@@ -1,3 +1,4 @@
+import { groundHeight } from "../../../packages/shared/src/world-art";
 import { bossLife, bossEye } from "./raid-boss-life";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
@@ -80,7 +81,12 @@ export function drawCloudDeck(g: G, state: Snapshot, reduced: boolean) {
     .find((c) => c.until > state.time);
   for (const pad of SOMNARA.pads) {
     const hot = called?.rune === pad.rune;
-    g.fillStyle(0x0e1732, 0.8).fillEllipse(pad.x, pad.y + 8, 140, 115);
+    g.fillStyle(0x0e1732, 0.8).fillEllipse(
+      pad.x,
+      pad.y + 8,
+      140,
+      groundHeight(140),
+    );
     g.fillStyle(colors[pad.rune], hot ? 0.24 : 0.09).fillCircle(
       pad.x,
       pad.y,

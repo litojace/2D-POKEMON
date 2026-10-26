@@ -7,7 +7,9 @@ the basin. The outer road, inner circle, markers and basin all share one ground
 centre. Cobbles, moss and perimeter lamps follow the same centre; signposts
 remain beside the roads at their exits.
 
-The new illustration adds carved limestone, weathering at wet joints, bronze
+The approved higher-view illustration matches the shared world perspective.
+Its ground anchor is the bottom stone plinth; the water surface sits above it.
+The illustration adds carved limestone, weathering at wet joints, bronze
 collars, depth in the bowls and refracted light in the water. Transparent animated
 water ribbons, falling droplets, landing ripples and a faceted crystal complete
 the monument. Both cascades start at their painted rims and accelerate toward
@@ -28,3 +30,5 @@ and identical frames with reduced motion enabled.
 
 [Actual animated scene, still frame](town-fountain.png).
 [Water animation close-up](fountain-water.gif).
+
+See [shared world art perspective](world-art-perspective.md) for the cross-scene rules and review.

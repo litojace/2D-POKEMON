@@ -1,3 +1,4 @@
+import { groundHeight } from "../../../packages/shared/src/world-art";
 import { bossLife } from "./raid-boss-life";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
@@ -647,7 +648,7 @@ export function drawTidewyrm(
         boss.x,
         boss.y,
         120 + p * 70,
-        46 + p * 26,
+        groundHeight(120 + p * 70),
       );
     }
     paintDrops();
@@ -678,7 +679,7 @@ export function drawTidewyrm(
         x,
         base + 4,
         120 + p * 120,
-        34 + p * 34,
+        groundHeight(120 + p * 120),
       );
     }
   } else g.fillStyle(0x3b2f1c, 0.3).fillEllipse(x, base + 10, 210, 50);

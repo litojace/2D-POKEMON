@@ -1,3 +1,7 @@
+import {
+  groundHeight,
+  WORLD_ART,
+} from "../../../packages/shared/src/world-art";
 import Phaser from "phaser";
 import type { Socket } from "socket.io-client";
 import { CHARACTERS, type CharacterId, type Reply } from "@arena/shared";
@@ -57,7 +61,7 @@ const EMOTE_ICON: Record<TownEmote, string> = {
 };
 const RIG_SCALE = 0.62;
 /** Rig pixels from the body pivot to the feet (see FighterRig). */
-const FEET = 21;
+const FEET = WORLD_ART.fighterFeet;
 
 interface Body {
   id: number;
@@ -504,21 +508,26 @@ export function openTown(options: TownOptions) {
         const t = age / LIFE,
           ease = 1 - (1 - t) ** 3,
           r = 12 + ease * 34;
-        g.lineStyle(3, gold, 1 - t).strokeEllipse(x, y, r * 2, r * 2 * 0.55);
+        g.lineStyle(3, gold, 1 - t).strokeEllipse(
+          x,
+          y,
+          r * 2,
+          groundHeight(r * 2),
+        );
         g.lineStyle(2, 0xffffff, (1 - t) * 0.8).strokeEllipse(
           x,
           y,
           r * 1.3,
-          r * 1.3 * 0.55,
+          groundHeight(r * 1.3),
         );
         if (!options.reduced)
           for (let k = 0; k < 4; k++) {
             const a = (k / 4) * Math.PI * 2 + Math.PI / 4,
               d = 46 - ease * 26,
               cx = x + Math.cos(a) * d,
-              cy = y + Math.sin(a) * d * 0.55,
+              cy = y + Math.sin(a) * d * WORLD_ART.groundY,
               ux = -Math.cos(a),
-              uy = -Math.sin(a) * 0.55,
+              uy = -Math.sin(a) * WORLD_ART.groundY,
               px = -uy,
               py = ux;
             g.fillStyle(0x000000, (1 - t) * 0.35).fillTriangle(
@@ -547,7 +556,7 @@ export function openTown(options: TownOptions) {
           x,
           y,
           24 + pulse * 6,
-          (24 + pulse * 6) * 0.5,
+          groundHeight(24 + pulse * 6),
         );
         g.fillStyle(gold, 0.95).fillEllipse(x, y, 9, 5);
         g.fillStyle(0xffffff, 0.8).fillEllipse(x - 1.5, y - 1, 3.5, 2);
@@ -911,7 +920,9 @@ export function openTown(options: TownOptions) {
         .setScale(auraScale)
         .setDepth(body.y - 0.2);
       if (p?.look?.aura === "mountain-aura")
-        body.aura.lineStyle(3, 0xffd28c, 0.7).strokeEllipse(0, 0, 95, 45);
+        body.aura
+          .lineStyle(3, 0xffd28c, 0.7)
+          .strokeEllipse(0, 0, 95, groundHeight(95));
       else if (p?.look?.aura)
         drawCollectionAura(body.aura, p.look.aura, 0, 0, now, options.reduced);
       if (body.rig) {

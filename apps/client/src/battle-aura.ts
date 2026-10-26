@@ -1,3 +1,7 @@
+import {
+  groundHeight,
+  WORLD_ART,
+} from "../../../packages/shared/src/world-art";
 /**
  * The in-battle version of each fighter's trait aura: a small, cheap ground
  * effect at the creature's feet drawn with plain Graphics primitives (no
@@ -45,7 +49,7 @@ function around(g: AuraPainter, cx: number, cy: number, s: number) {
 }
 /** Point on the flattened ground ellipse around the feet. */
 const onRing = (x: number, y: number, rx: number, a: number) =>
-  [x + Math.cos(a) * rx, y + Math.sin(a) * rx * 0.32] as const;
+  [x + Math.cos(a) * rx, y + Math.sin(a) * rx * WORLD_ART.groundY] as const;
 /**
  * @param x,y  the fighter's feet, in world pixels
  * @param t    time in seconds
@@ -64,7 +68,7 @@ export function drawBattleAura(
   const k = (v: number) => Math.max(0, Math.min(1, v * 1.15)) * a;
   switch (element.toLowerCase()) {
     case "electric": {
-      g.fillStyle(0x7ff3ff, k(0.16)).fillEllipse(x, y, 54, 16);
+      g.fillStyle(0x7ff3ff, k(0.16)).fillEllipse(x, y, 54, groundHeight(54));
       // A broken static ring that spins, plus one spark that jumps around it.
       for (let i = 0; i < 6; i++) {
         const a0 = t * 2.4 + (i * TAU) / 6;
@@ -86,7 +90,7 @@ export function drawBattleAura(
       break;
     }
     case "fire": {
-      g.fillStyle(0xff6a2a, k(0.2)).fillEllipse(x, y, 60, 18);
+      g.fillStyle(0xff6a2a, k(0.2)).fillEllipse(x, y, 60, groundHeight(60));
       for (let i = 0; i < 5; i++) {
         const fx = x - 22 + i * 11,
           h = 9 + Math.sin(t * 9 + i * 1.7) * 3 + (i === 2 ? 5 : 0);
@@ -116,7 +120,7 @@ export function drawBattleAura(
           x,
           y,
           22 + p * 46,
-          7 + p * 14,
+          groundHeight(22 + p * 46),
         );
       }
       for (let i = 0; i < 3; i++) {
@@ -131,7 +135,7 @@ export function drawBattleAura(
       break;
     }
     case "aura": {
-      g.fillStyle(0x7f9cff, k(0.14)).fillEllipse(x, y, 60, 18);
+      g.fillStyle(0x7f9cff, k(0.14)).fillEllipse(x, y, 60, groundHeight(60));
       // A slowly turning hexagon flattened onto the ground.
       for (let i = 0; i < 6; i++) {
         const [x0, y0] = onRing(x, y, 28, t * 0.8 + (i * TAU) / 6),
@@ -156,7 +160,7 @@ export function drawBattleAura(
         x,
         y,
         56,
-        16,
+        groundHeight(56),
       );
       for (let i = 0; i < 4; i++) {
         const p = (t * 0.4 + i / 4) % 1,
@@ -176,13 +180,13 @@ export function drawBattleAura(
           2,
           i ? 0x9ff7ff : 0xff79d2,
           k(0.75 * (1 - p)),
-        ).strokeEllipse(x, y, 18 + p * 50, 6 + p * 16);
+        ).strokeEllipse(x, y, 18 + p * 50, groundHeight(18 + p * 50));
       }
-      g.fillStyle(0xff79d2, k(0.16)).fillEllipse(x, y, 40, 12);
+      g.fillStyle(0xff79d2, k(0.16)).fillEllipse(x, y, 40, groundHeight(40));
       break;
     }
     case "earth": {
-      g.fillStyle(0xc79a5b, k(0.2)).fillEllipse(x, y, 62, 18);
+      g.fillStyle(0xc79a5b, k(0.2)).fillEllipse(x, y, 62, groundHeight(62));
       g.lineStyle(1.6, 0x8fd36a, k(0.55 + Math.sin(t * 2.2) * 0.2))
         .lineBetween(x - 26, y + 2, x - 16, y - 1)
         .lineBetween(x - 16, y - 1, x - 10, y + 3)
@@ -202,8 +206,8 @@ export function drawBattleAura(
       break;
     }
     case "shadow": {
-      g.fillStyle(0x120b26, k(0.55)).fillEllipse(x, y, 64, 18);
-      g.fillStyle(0x9c6bff, k(0.18)).fillEllipse(x, y, 44, 12);
+      g.fillStyle(0x120b26, k(0.55)).fillEllipse(x, y, 64, groundHeight(64));
+      g.fillStyle(0x9c6bff, k(0.18)).fillEllipse(x, y, 44, groundHeight(44));
       for (let i = 0; i < 2; i++) {
         const [px, py] = onRing(x, y - 10, 28, t * 1.4 + i * Math.PI),
           flick = 1 + Math.sin(t * 8 + i) * 0.15;

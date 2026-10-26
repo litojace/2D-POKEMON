@@ -1,3 +1,4 @@
+import { WORLD_ART } from "../../packages/shared/src/world-art";
 import { svgMarkup } from "../../apps/client/tests/svg-markup";
 import { describe, expect, it } from "vitest";
 import { CHARACTERS, FIGHTER_IDS } from "@arena/shared";
@@ -161,7 +162,9 @@ describe("battle auras", () => {
           expect(Number.isFinite(x) && Number.isFinite(y)).toBe(true);
           // Stays around the feet: within the scaled ring, rising no higher than the head.
           expect(Math.abs(x - 500)).toBeLessThanOrEqual(40 * AURA_SCALE);
-          expect(y - 400).toBeLessThanOrEqual(12 * AURA_SCALE);
+          expect(y - 400).toBeLessThanOrEqual(
+            40 * WORLD_ART.groundY * AURA_SCALE,
+          );
           expect(400 - y).toBeLessThanOrEqual(45 * AURA_SCALE);
         }
       }

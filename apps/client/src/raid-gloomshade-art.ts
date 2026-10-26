@@ -1,3 +1,4 @@
+import { groundHeight } from "../../../packages/shared/src/world-art";
 import { bossLife, type BossLifePose } from "./raid-boss-life";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
@@ -641,7 +642,7 @@ export function drawGloomshade(
   // Found: a golden ring and arrow over the real one.
   if ((revealed || exposed) && !dead) {
     const bob = reduced ? 0 : Math.sin(t * 4) * 4;
-    g.lineStyle(3, MOON, 0.9).strokeEllipse(boss.x, boss.y + 12, 150, 50);
+    g.lineStyle(3, MOON, 0.9).strokeEllipse(boss.x, boss.y + 12, 150, groundHeight(150));
     g.fillStyle(MOON, 1).fillTriangle(
       boss.x - 12,
       boss.y - 150 + bob,

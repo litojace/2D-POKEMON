@@ -1,3 +1,4 @@
+import { WORLD_ART } from "../../../packages/shared/src/world-art";
 import { ARENAS, OBSTACLES, RULES } from "@arena/shared";
 
 /**
@@ -28,9 +29,9 @@ export const BLOCK_H = 58;
 export function stoneBase(o: Rect): Rect {
   return { x: o.x, y: o.y + BLOCK_H, w: o.w, h: o.h - BLOCK_H };
 }
-const K = 0.78;
-const SUNV = { x: 0.55, y: 0.12 };
-const SHADOW = { alpha: 0.34, blur: 14 };
+const K = WORLD_ART.groundY;
+const SUNV = WORLD_ART.sun;
+const SHADOW = WORLD_ART.shadow;
 /** The arena wall's foot: just above the walkable area, so fighters stand in front of it. */
 const WALL_FOOT = RULES.radius - 2;
 /** Where duelists start (see the server's Arena.add), marked with plates. */
