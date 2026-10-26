@@ -285,7 +285,7 @@ export function creatureLayers(
   const blushColor = id === "mystowl" ? "#c2268a" : "#ff8fb0";
   const blush = (
     id === "terradon"
-      ? `${e(77, 114, 7, 4.2, blushColor)}${e(123, 114, 7, 4.2, blushColor)}`
+      ? `${e(72, 112, 9, 5.5, blushColor)}${e(128, 112, 9, 5.5, blushColor)}`
       : `${e(68, 108, 8, 4.5, blushColor)}${e(132, 108, 8, 4.5, blushColor)}`
   ).replace(/fill="([^"]+)"/g, 'fill="$1" opacity=".5" stroke="none"');
   const layers: Record<CreaturePart, string> = {
@@ -446,37 +446,29 @@ export function creatureLayers(
     layers.tail = `${tailPath("M118 156Q136 176 156 166Q148 160 152 152Q140 158 132 150Q130 156 120 150Z", body)}${tailPath("M140 160L146 164", "none", ` stroke="${p.light}" stroke-width="2"`)}`;
   }
   if (id === "terradon") {
-    // Grove tortoise, standing on two legs: a mossy shell worn on its back
-    // with flowers and a crystal cluster, a budding sapling, sleepy eyes, two
-    // arms with stone pauldrons and clawed feet.
-    const flower = (x: number, y: number, c = "#ffb3d1") =>
-      `${[0, 1, 2, 3, 4].map((i) => e(+(x + Math.cos((i * 2 * Math.PI) / 5) * 3.4).toFixed(1), +(y + Math.sin((i * 2 * Math.PI) / 5) * 3.4).toFixed(1), 2.8, 2.8, c).replace("/>", ' stroke="none"/>')).join("")}<circle cx="${x}" cy="${y}" r="2" fill="#fff3a0" stroke="none"/>`;
-    // The shell is worn on its back: a mossy dome that frames the torso,
-    // with its crystal cluster and flowers showing above the shoulders.
-    layers.wings = `${path("M58 152Q50 116 62 92Q78 66 100 64Q122 66 138 92Q150 116 142 152Q134 168 100 168Q66 168 58 152Z", body)}${line("M100 66V166M74 86Q100 96 126 86M64 116Q100 128 136 116M62 144Q100 156 138 144", p.dark, 2.4, 0.55)}${path("M66 94Q72 72 90 70Q100 62 112 68Q130 70 136 92Q124 84 112 88Q100 80 90 88Q78 84 66 94Z", p.glow)}${flower(72, 100)}${flower(130, 104, "#ffffff")}${flower(116, 76)}${path("M52 102L56 78L63 94L69 74L72 100L60 108Z", "#bfe9ff")}${line("M57 84L59 96M68 80L67 94", "#ffffff", 1.4, 0.8)}`;
-    layers.head = `${e(100, 98, 33, 27, face)}${highlight(77, 82, 20)}${line("M91 115Q100 121 109 115", p.dark, 1.8)}${e(94, 110, 1, 0.8, p.dark)}${e(106, 110, 1, 0.8, p.dark)}${line("M76 86Q82 82 88 84M124 86Q118 82 112 84", p.dark, 1.8, 0.35)}`;
-    // Sleepy eyes: heavy lids over small irises.
-    const sleepy = (x: number) => {
-      if (mood !== "normal" && mood !== "focus") return moodEye(x, 10, 9);
-      const lid = mood === "focus" ? 88 : 84;
-      return `${e(x, 94, 10.5, 9.5, INK)}${e(x, 96, 5.5, 4.5, p.glow)}<circle cx="${x - 3}" cy="97" r="2" fill="#fff"/>${path(`M${x - 11.5} 92Q${x} ${lid - 4} ${x + 11.5} 92Z`, p.mid)}${path(`M${x - 11.5} 92Q${x} ${lid + 3} ${x + 11.5} 92`, "none", ` stroke="${p.dark}" stroke-width="2"`)}${mood === "focus" ? brow(x, 10, 9) : ""}`;
-    };
-    layers.eyes = `<g transform="translate(0 8)">${sleepy(81)}${sleepy(119)}</g>`;
-    layers.flame = `${line("M100 73Q98 60 101 49", "#5aa64a", 3.2)}${path("M100 62Q86 52 80 60Q90 68 100 62Z", p.glow)}${path("M100 58Q112 42 122 50Q112 60 100 58Z", p.glow)}${flower(101, 47)}`;
-    // Standing upright: a round torso with its plated belly (plastron).
-    layers.body = `${e(100, 137, 27, 24)}${e(100, 141, 19, 19, pearl)}${line("M85 133Q100 138 115 133M84 143Q100 148 116 143M87 153Q100 157 113 153M100 124V158", p.mid, 1.8, 0.6)}`;
-    // Two sturdy legs with clawed feet.
-    layers.legL = paw(85, 165, 14);
-    layers.legR = paw(115, 165, 14);
-    // Two arms with stone pauldrons, hanging at its sides (hands clear of the ground).
+    // Sprout baby tortoise, standing on two legs: a big round head with
+    // glossy eyes and a smile, a sapling with a blossom, a round mossy shell
+    // on its back with flowers and a crystal cluster, and short chubby limbs.
+    const flower = (x: number, y: number, c = "#ffb3d1", r = 3.4) =>
+      `${[0, 1, 2, 3, 4].map((i) => e(+(x + Math.cos((i * 2 * Math.PI) / 5) * r).toFixed(1), +(y + Math.sin((i * 2 * Math.PI) / 5) * r).toFixed(1), r * 0.85, r * 0.85, c).replace("/>", ' stroke="none"/>')).join("")}<circle cx="${x}" cy="${y}" r="${(r * 0.6).toFixed(1)}" fill="#fff3a0" stroke="none"/>`;
+    // The shell, worn upright on its back: round, with moss along the top.
+    layers.wings = `${path("M56 150Q48 116 64 98Q82 80 100 80Q118 80 136 98Q152 116 144 150Q136 166 100 166Q64 166 56 150Z", body)}${line("M100 82V164M72 104Q100 112 128 104M62 132Q100 142 138 132", p.dark, 2.2, 0.45)}${path("M64 100Q72 84 88 84Q100 76 112 84Q128 84 136 100Q124 94 112 96Q100 88 88 96Q76 94 64 100Z", p.glow)}${flower(64, 108)}${flower(138, 112, "#ffffff")}${path("M140 98L144 76L151 90L157 72L160 96L148 104Z", "#bfe9ff")}${line("M145 82L147 94M156 78L155 92", "#ffffff", 1.4, 0.8)}`;
+    // A big round head with a little "w" smile.
+    layers.head = `${e(100, 91, 38, 34, face)}${highlight(72, 72, 22)}<path d="M94 110Q97 113.5 100 110.5Q103 113.5 106 110" stroke="${p.dark}" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+    layers.eyes = eye(81, p.glow, 10, 12) + eye(119, p.glow, 10, 12);
+    layers.flame = `${line("M100 60Q98 48 101 36", "#5aa64a", 3.4)}${path("M100 50Q84 38 76 46Q86 58 100 50Z", p.glow)}${path("M100 44Q114 28 126 36Q114 48 100 44Z", p.glow)}${flower(101, 34, "#ffb3d1", 3.8)}`;
+    // A round torso with its plated belly (plastron).
+    layers.body = `${e(100, 140, 24, 21)}${e(100, 143, 17, 16, pearl)}${line("M88 138Q100 142 112 138M88 148Q100 152 112 148", p.mid, 1.6, 0.55)}`;
+    // Short, chubby legs and arms; mossy stone pauldrons on its shoulders.
+    layers.legL = paw(87, 165, 12);
+    layers.legR = paw(113, 165, 12);
     const arm = (x: number) => {
       const out = x < 100 ? -1 : 1;
-      const hx = x + out * 3;
-      return `${e(x + out, 137, 9, 16)}${e(hx, 152, 10, 8)}${line(`M${hx - 5} 156v3M${hx} 157v3M${hx + 5} 156v3`, "#f6ead2", 2.1)}${e(x, 123, 12, 8, p.accent)}${e(x - 2, 117, 7, 3, p.glow)}`;
+      return `${e(x + out * 2, 140, 9, 12)}${e(x + out * 4, 150, 9, 7)}${e(x, 128, 11, 7, p.accent)}${e(x - 2, 123, 6, 2.6, p.glow)}`;
     };
-    layers.armL = arm(70);
-    layers.armR = arm(130);
-    layers.tail = `${tailPath("M132 150Q146 156 156 166Q146 170 130 160Z", body)}`;
+    layers.armL = arm(74);
+    layers.armR = arm(126);
+    layers.tail = `${tailPath("M128 152Q142 156 152 164Q142 168 126 160Z", body)}`;
   }
   if (id === "duskveil") {
     // Lantern wraith: a tall tattered hood with a star stitch, a void face,

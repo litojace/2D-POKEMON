@@ -724,33 +724,32 @@ export function creatureProfile(
         line("M126 153l22 8", p.light, 2);
   }
   if (id === "terradon") {
-    // A grove tortoise standing on two legs, its mossy shell worn on its back.
+    // The sprout baby tortoise standing on two legs, its round mossy shell
+    // worn on its back: a big round head, glossy eyes, a sapling with a blossom.
     profiles.head = back
-      ? e(100, 102, 29, 27, face) + shine(79, 84, 18)
+      ? e(100, 92, 37, 34, face) + shine(76, 72, 20)
       : path(
-          "M113 98Q112 77 92 72Q72 67 60 83Q54 91 55 102Q50 105 48 111Q47 117 55 121Q69 131 91 127Q112 124 115 108Z",
+          "M128 90Q128 60 98 56Q68 54 59 80Q56 90 53 96Q50 104 58 108Q66 124 96 124Q128 122 128 90Z",
           face,
         ) +
-        shine(66, 83, 20) +
-        grin(55, 119) +
-        e(52, 111, 1.2, 0.9, p.dark, ' stroke="none"') +
-        cheek(84, 116);
+        shine(70, 70, 20) +
+        grin(58, 106) +
+        e(55, 99, 1.2, 0.9, p.dark, ' stroke="none"') +
+        cheek(90, 110);
     profiles.ears = "";
-    profiles.eyes = back
-      ? ""
-      : `<g class="profile-near-eye" transform="translate(0 10)">${mood !== "normal" && mood !== "focus" ? expression(71, 10, 9) : eye(71, p.glow, 9.5, 9.2) + path("M59 89Q71 83 83 89L83 92Q71 88 59 92Z", p.mid) + line("M59 91q12-4 24 0", p.dark, 1.6)}</g>`;
-    const sproutX = back ? 100 : 87;
+    profiles.eyes = back ? "" : eyes(80, p.glow, 9.8, 11.8);
+    const sproutX = back ? 100 : 96;
     profiles.flame =
-      line(`M${sproutX} 76Q${sproutX - 2} 62 ${sproutX + 1} 49`, "#5aa64a", 3) +
+      line(`M${sproutX} 60Q${sproutX - 2} 48 ${sproutX + 1} 36`, "#5aa64a", 3.2) +
       path(
-        `M${sproutX} 64Q${sproutX - 15} 51 ${sproutX - 20} 58Q${sproutX - 12} 68 ${sproutX} 64Z`,
+        `M${sproutX} 50Q${sproutX - 16} 38 ${sproutX - 23} 45Q${sproutX - 14} 57 ${sproutX} 50Z`,
         p.glow,
       ) +
       path(
-        `M${sproutX} 58Q${sproutX + 12} 44 ${sproutX + 21} 49Q${sproutX + 13} 60 ${sproutX} 58Z`,
+        `M${sproutX} 44Q${sproutX + 14} 28 ${sproutX + 25} 35Q${sproutX + 14} 47 ${sproutX} 44Z`,
         p.glow,
       ) +
-      flower(sproutX + 1, 47);
+      flower(sproutX + 1, 34);
     // The shell: on its back (a dome behind the torso in profile, covering
     // the back from behind), with moss, flowers and the crystal cluster.
     profiles.wings =
@@ -778,19 +777,19 @@ export function creatureProfile(
       line(back ? "M61 102l2 12M71 98v14" : "M151 74v14M162 76v13", "#ffffff", 1.3, 0.8);
     // An upright torso with its plated belly.
     profiles.body = back
-      ? e(100, 121, 20, 17) + e(100, 141, 29, 27)
-      : e(100, 121, 20, 17) +
-        e(102, 141, 27, 27) +
-        e(92, 144, 16, 20, pearl) +
-        line("M80 136q12 4 24 0M79 147q12 4 25 0M81 157q11 3 22 0", p.mid, 1.8, 0.6);
+      ? e(100, 124, 18, 15) + e(100, 143, 26, 24)
+      : e(100, 124, 18, 15) +
+        e(102, 143, 24, 23) +
+        e(93, 146, 14, 17, pearl) +
+        line("M82 141q11 4 22 0M82 151q11 3 21 0", p.mid, 1.6, 0.55);
     // Two arms with stone pauldrons; two sturdy legs with clawed feet.
     const pauldron = (x: number, y = 121) =>
-      e(x, y, 12, 8, p.accent) + e(x - 2, y - 6, 7, 3, p.glow, ' stroke="none"');
+      e(x, y, 11, 7, p.accent) + e(x - 2, y - 5, 6, 2.6, p.glow, ' stroke="none"');
     // From behind, the shell covers its arms entirely.
-    profiles.armL = back ? "" : arm(85, 124, 9, 76) + pauldron(85);
-    profiles.armR = back ? "" : arm(111, 124, 9, 111) + pauldron(111);
-    profiles.legL = leg(back ? 84 : 89, 13);
-    profiles.legR = leg(back ? 116 : 112, 15);
+    profiles.armL = back ? "" : arm(86, 128, 8, 79) + pauldron(86, 126);
+    profiles.armR = back ? "" : arm(110, 128, 8, 108) + pauldron(110, 126);
+    profiles.legL = leg(back ? 86 : 90, 11);
+    profiles.legR = leg(back ? 114 : 111, 12);
     profiles.tail = back
       ? path("M96 160Q100 172 108 174L112 168L104 158Z")
       : path("M126 158Q146 160 158 168Q146 174 124 166Z");
