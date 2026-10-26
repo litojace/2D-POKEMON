@@ -1,5 +1,17 @@
 /* Reserve a footer row so desktop Settings sits clear of the court and skills. */
-body.battle-active:not(.touch-mode) #battle .battle-footer {
+body.battle-active:not(.touch-mode) #battle .battle-footer,
+body.battle-active:not(.touch-mode)
+  #battle:has(#practice-controls:not([hidden]))
+  .battle-footer {
+  min-height: 44px;
+}
+
+body.battle-active:not(.touch-mode)
+  #practice-controls
+  .practice-settings
+  > summary {
+  display: flex;
+  align-items: center;
   min-height: 44px;
 }
 

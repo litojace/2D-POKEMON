@@ -17,6 +17,16 @@ for (const size of SIZES)
       await page.click(".town-play");
       await page.click("#practice");
       await pushUntilBattle(page);
+      const footer = await page.evaluate(() => {
+        const centre = (selector: string) => {
+          const range = document.createRange();
+          range.selectNodeContents(document.querySelector(selector)!);
+          const r = range.getBoundingClientRect();
+          return r.y + r.height / 2;
+        };
+        return { label: centre("#network"), settings: centre("#battle-menu") };
+      });
+      expect(Math.abs(footer.label - footer.settings)).toBeLessThanOrEqual(1);
       await expect(page.locator("body")).toHaveClass(/court-view/);
       const game = await box(page, "#game");
       const canvas = await box(page, "#game canvas");
