@@ -1,7 +1,7 @@
 import { drawPondWater, pondDuckPose } from "./town-pond-water";
 import { isIOSWebApp } from "./render-budget";
 import { paintedNature, paintedProp, paintedAnimal, paintedPlinth } from "./town-environment-art";
-import { animalMotionSprite, createDogMotion, createHenMotion, gullMotion, stepDog, stepHen, type HenMotion } from "./town-animal-motion";
+import { animalMotionSprite, createHenMotion, gullMotion, stepHen, type HenMotion } from "./town-animal-motion";
 import { WORLD_ART } from "../../../packages/shared/src/world-art";
 import { materialContext, townMaterialFamily } from "./world-materials";
 import Phaser from "phaser";
@@ -53,7 +53,7 @@ import { propSprite, stallSprite } from "./town-props";
 import { drawFountainWater } from "./town-fountain-water";
 import { architectureFrame, paintedBuilding, paintedStall } from "./town-architecture";
 import { drawFountainCrystal } from "./town-fountain-crystal";
-import { butterflySprite, DOG_FRAMES, dogSprite, duckSprite, GULL_FRAMES, gullSprite, HEN_FRAMES, henSprite, type DogPose, type HenPose } from "./town-animals";
+import { butterflySprite, duckSprite, GULL_FRAMES, gullSprite, HEN_FRAMES, henSprite, type HenPose } from "./town-animals";
 
 /**
  * Everything in the town that isn't a player: the painted ground, buildings,
@@ -138,8 +138,6 @@ export class TownScenery {
   private birds: Mover[] = [];
   private butterflies: (Mover & { color: number; home: { x: number; y: number } })[] = [];
   private chickens: HenMotion[] = [];
-  /** A dog trotting laps around the plaza, stopping now and then to sniff. */
-  private dog = { ...createDogMotion(), img: undefined as Phaser.GameObjects.Image | undefined };
   private sideProfileBirds = false;
   private ducks: { a: number; speed: number; r: number; female: boolean; img?: Phaser.GameObjects.Image }[] = [];
   /** Animal pictures, painted once per frame of animation and swapped as they move. */
@@ -199,7 +197,7 @@ export class TownScenery {
     const source=this.environment("town-nature");
     return source?paintedNature(source,kind,variant,frame):frame;
   }
-  private animal(kind: "duck"|"hen"|"dog"|"gull", pose: string, index: number, female: boolean, frame: Sprite) {
+  private animal(kind: "duck"|"hen"|"gull", pose: string, index: number, female: boolean, frame: Sprite) {
     const motion=this.environment("town-animal-motion");
     if(motion && kind!=="duck")return animalMotionSprite(motion,kind,pose,index,female,frame);
     const source=this.environment("town-animals");
@@ -487,10 +485,6 @@ export class TownScenery {
       const t = bake(s, key, sprite, RES);
       return s.add.image(0, 0, t.key).setOrigin(t.ox, t.oy).setScale(t.scale);
     };
-    for (const [pose, n] of Object.entries(DOG_FRAMES) as [DogPose, number][])
-      for (let f = 0; f < n; f++) bake(s, `town-dog-${pose}-${f}`, this.animal("dog",pose,f,false,dogSprite(pose, f)), RES);
-    this.dog.img = img("town-dog-walk-0", this.animal("dog","walk",0,false,dogSprite("walk", 0)));
-    this.dog.img.setScale(this.dog.img.scale * 1.15);
     for (const coat of ["white", "brown"] as const)
       for (const [pose, n] of Object.entries(HEN_FRAMES) as [HenPose, number][])
         for (let f = 0; f < n; f++) bake(s, `town-hen-${coat}-${pose}-${f}`, this.animal("hen",pose,f,coat==="brown",henSprite(coat, pose, f)), RES);
@@ -512,7 +506,7 @@ export class TownScenery {
     }
     if (this.reduced) {
       // Still pictures: everyone at home, standing.
-      this.drawCritters(0, 0);
+      this.drawCritters(0);
       this.drawBirds(0, 0);
       this.drawBugs(0, 0);
     }
@@ -547,7 +541,7 @@ export class TownScenery {
     }
     this.drawBirds(t, dt);
     this.drawBugs(t, dt);
-    this.drawCritters(t, dt);
+    this.drawCritters(dt);
   }
 
   private drawFlags(t: number) {
@@ -692,15 +686,9 @@ export class TownScenery {
     });
   }
 
-  private drawCritters(t: number, dt: number) {
+  private drawCritters(dt: number) {
     // Shadows go on the ground layer; the animals sort with everything else.
     const g = this.critterG;
-    {
-      const d = this.dog, p = stepDog(d,t,dt), base = 1.15 / 3;
-      g.fillStyle(SHADE, SUN.alpha).fillEllipse(p.x + p.facing * 2 + 4, p.y + 1, 34, 8);
-      d.img?.setTexture(`town-dog-${p.pose}-${p.frame}`).setPosition(p.x,p.y)
-        .setFlipX(p.facing < 0).setScale(base,base*p.breath).setDepth(p.y);
-    }
     this.chickens.forEach((c, i) => {
       const pose=stepHen(c,dt),img=this.henImgs[i],coat=img?.getData("coat")??"white";
       g.fillStyle(SHADE, SUN.alpha).fillEllipse(c.x + 3, c.y + 1, 20, 5);
