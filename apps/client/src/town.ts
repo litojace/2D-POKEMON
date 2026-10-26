@@ -1,3 +1,5 @@
+import { rendererDensity } from "./render-budget";
+import { watchRendererLifecycle } from "./renderer-lifecycle";
 import { TOWN_ART } from "./town-assets";
 import {
   groundHeight,
@@ -335,8 +337,8 @@ export function openTown(options: TownOptions) {
     const cam = scene.cameras.main,
       rect = canvasEl.getBoundingClientRect(),
       p = cam.getWorldPoint(
-        (e.clientX - rect.left) * devicePixelRatio,
-        (e.clientY - rect.top) * devicePixelRatio,
+        (e.clientX - rect.left) * dpr,
+        (e.clientY - rect.top) * dpr,
       );
     walkTo = { x: p.x, y: p.y };
     // Where you clicked: a marker on the ground (see drawClickMark).
@@ -570,6 +572,9 @@ export function openTown(options: TownOptions) {
     }
     preload() {
       this.load.image("town-ground", TOWN_ART.ground);
+      this.load.image("town-nature", TOWN_ART.nature);
+      this.load.image("town-scenery-props", TOWN_ART.props);
+      this.load.image("town-animals", TOWN_ART.animals);
       this.load.image("town-fountain-painted", TOWN_ART.fountain);
       this.load.image("town-architecture-coliseum", TOWN_ART.coliseum);
       this.load.image("town-architecture-raidHall", TOWN_ART.raidHall);
@@ -593,8 +598,8 @@ export function openTown(options: TownOptions) {
     }
     /** Show roughly 1100×650 of the world; phones see a closer, narrower slice. */
     fit() {
-      const w = this.scale.width / devicePixelRatio,
-        h = this.scale.height / devicePixelRatio;
+      const w = this.scale.width / dpr,
+        h = this.scale.height / dpr;
       // Never zoomed out past the edge of the map.
       // Short landscape phones get a closer view so fighters stay readable.
       const view =
@@ -610,8 +615,8 @@ export function openTown(options: TownOptions) {
      * in to 2× closer than the natural view.
      */
     private zoomRange() {
-      const w = this.scale.width / devicePixelRatio,
-        h = this.scale.height / devicePixelRatio;
+      const w = this.scale.width / dpr,
+        h = this.scale.height / dpr;
       const fill = Math.max(w / TOWN.width, h / TOWN.height);
       return {
         min: Math.min(fill, this.zoomBase),
@@ -653,11 +658,11 @@ export function openTown(options: TownOptions) {
       if (ms && !options.reduced)
         this.tweens.add({
           targets: cam,
-          zoom: z * devicePixelRatio,
+          zoom: z * dpr,
           duration: ms,
           ease: "Sine.easeOut",
         });
-      else cam.setZoom(z * devicePixelRatio);
+      else cam.setZoom(z * dpr);
       syncZoomButtons(
         z <= min * 1.001,
         z >= max * 0.999,
@@ -1001,7 +1006,7 @@ export function openTown(options: TownOptions) {
   }
 
   const host = $("town-canvas");
-  const dpr = devicePixelRatio || 1;
+  const dpr = rendererDensity();
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: host,
@@ -1021,6 +1026,7 @@ export function openTown(options: TownOptions) {
       Math.round(host.clientHeight * dpr),
     );
   window.addEventListener("resize", resize);
+  watchRendererLifecycle(game, () => !closed, resize);
 
   void request("town-join", { character: options.character }).then((reply) => {
     if (!reply.ok) close(true);

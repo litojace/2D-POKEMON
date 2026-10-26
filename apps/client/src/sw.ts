@@ -17,7 +17,7 @@ registerRoute(
   new NavigationRoute(
     async ({ request }) => {
       try {
-        return await fetch(request);
+        return await fetch(request, { cache: "no-store" });
       } catch {
         return (await matchPrecache("/offline.html")) ?? Response.error();
       }

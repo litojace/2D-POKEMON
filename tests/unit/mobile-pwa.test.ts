@@ -95,6 +95,7 @@ it("allows updates only outside matches, including other tabs", () => {
     "briefing",
     "intermission",
     "paused",
+    "finished",
   ])
     expect(safeToUpdate(phase)).toBe(false);
   expect(safeToUpdate("lobby")).toBe(true);

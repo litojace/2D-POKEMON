@@ -27,8 +27,15 @@ in a two-column, three-row grid. The facades face forward with horizontal front
 steps; roof and canopy surfaces supply the higher viewpoint.
 
 Export each complete source to the matching `src/art/town-*.webp` at quality 89
-without resizing or stripping alpha. `town-architecture.ts` records source crops,
+without resizing or stripping alpha. `packages/shared/src/town-building-layout.ts` records source crops,
 front-step anchors and attachment points for flags, smoke, flames and sails.
 Those coordinates depend on the original source dimensions. Animation moves
 separate effects; it never slices or deforms the painted buildings. All three
 exports use Vite content hashes and are included in the offline precache.
+
+The shared source geometry also reserves the full visible bounds of each
+building and storefront before trees and shrubs are generated. Reserve the
+canopy, shrub picture and spinning sails rather than only collision centres.
+`arenaGroundFoot` describes the painted base ring and is shared by the ground
+apron, cast shadow and movement collision. Rebuild `town-ground.webp` with
+`scripts/bake-town-ground.mjs` whenever layout or shadow placement changes.

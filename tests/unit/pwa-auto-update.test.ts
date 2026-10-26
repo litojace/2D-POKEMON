@@ -54,6 +54,9 @@ it("waits through all live match phases and peer matches before activation or re
   expect(reload).not.toHaveBeenCalled();
   phase = "finished";
   await gate.sync();
+  expect(reload).not.toHaveBeenCalled();
+  phase = "lobby";
+  await gate.sync();
   expect(reload).toHaveBeenCalledTimes(1);
 });
 it("avoids duplicate activations and checks safety again when activation finishes", async () => {

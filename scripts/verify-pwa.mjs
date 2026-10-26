@@ -35,6 +35,9 @@ for (const art of [
   "town-coliseum",
   "town-raid-hall",
   "town-buildings",
+  "town-nature",
+  "town-props",
+  "town-animals",
 ])
   assert(
     urls.some((url) => new RegExp(`^assets/${art}-[\\w-]+\\.webp$`).test(url)),

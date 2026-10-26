@@ -1,3 +1,6 @@
+import { drawPondWater, pondDuckPose } from "./town-pond-water";
+import { isIOSWebApp } from "./render-budget";
+import { paintedNature, paintedProp, paintedAnimal, paintedPlinth } from "./town-environment-art";
 import { WORLD_ART } from "../../../packages/shared/src/world-art";
 import { materialContext, townMaterialFamily } from "./world-materials";
 import Phaser from "phaser";
@@ -10,7 +13,6 @@ import {
   TOWN_DISTRICTS,
   TOWN_DUMMIES,
   TOWN_OBSTACLES,
-  TOWN_POND,
   TOWN_SPOTS,
   TOWN_STALLS,
   TOWN_NEXT_STATUE,
@@ -110,6 +112,7 @@ interface Mover {
 }
 
 export class TownScenery {
+  private disposed = false;
   private canopies: { img: Phaser.GameObjects.Image; phase: number }[] = [];
   private sails?: Phaser.GameObjects.Image;
   private flags: { x: number; y: number; color: number; depth: number; w: number; g?: Phaser.GameObjects.Graphics }[] = [];
@@ -146,6 +149,14 @@ export class TownScenery {
     private scene: Phaser.Scene,
     private reduced: boolean,
   ) {
+    const dispose = () => {
+      this.disposed = true;
+      // Current scene textures retain their own canvases until destruction;
+      // do not retain another whole town while an iOS battle is running.
+      if (isIOSWebApp()) painted.clear();
+    };
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, dispose);
+    scene.events.once(Phaser.Scenes.Events.DESTROY, dispose);
     this.ground();
     this.buildings();
     this.trees();
@@ -163,6 +174,11 @@ export class TownScenery {
     this.padG = scene.add.graphics().setDepth(-350);
     this.markerG = scene.add.graphics().setDepth(4400);
     this.life();
+    // These source atlases are only used to bake the smaller placed sprites.
+    // Release their GPU copies, particularly in iOS Home Screen web apps.
+    for (const key of ["town-nature","town-scenery-props","town-animals","town-architecture-coliseum","town-architecture-raidHall","town-architecture-buildings","town-fountain-painted"]) {
+      if(scene.textures.exists(key)) scene.textures.remove(key);
+    }
   }
 
   // ───────── Static world ─────────
@@ -171,6 +187,18 @@ export class TownScenery {
     const key = "town-ground";
     if (!this.scene.textures.exists(key)) this.scene.textures.addCanvas(key, paint(key, TOWN.width, TOWN.height, paintGround));
     this.scene.add.image(0, 0, key).setOrigin(0).setDepth(-1000);
+  }
+
+  private environment(key: string) {
+    return this.scene.textures.exists(key) ? this.scene.textures.get(key).getSourceImage() as HTMLImageElement : undefined;
+  }
+  private nature(kind: "crown"|"trunk"|"bush"|"rock", variant: number, frame: Sprite) {
+    const source=this.environment("town-nature");
+    return source?paintedNature(source,kind,variant,frame):frame;
+  }
+  private animal(kind: "duck"|"hen"|"dog"|"gull", pose: string, index: number, female: boolean, frame: Sprite) {
+    const source=this.environment("town-animals");
+    return source?paintedAnimal(source,kind,pose,index,female,frame):frame;
   }
 
   private buildings() {
@@ -230,17 +258,16 @@ export class TownScenery {
   }
 
   private trees() {
-    const trunks = [bake(this.scene, "town-trunk", treeTrunk(0)), bake(this.scene, "town-trunk-birch", treeTrunk(4))];
+    const trunks = [bake(this.scene, "town-trunk", this.nature("trunk",0,treeTrunk(0))), bake(this.scene, "town-trunk-birch", this.nature("trunk",4,treeTrunk(4)))];
     TOWN_TREES.forEach((t, i) => {
       const trunk = trunks[t.variant === 4 ? 1 : 0];
       this.scene.add.image(t.x, t.y, trunk.key).setOrigin(trunk.ox, trunk.oy).setScale(trunk.scale).setDepth(t.y);
-      const c = bake(this.scene, `town-canopy-${t.variant}`, treeCanopy(t.variant));
+      const c = bake(this.scene, `town-canopy-${t.variant}`, this.nature("crown",t.variant,treeCanopy(t.variant)));
       const size = 1.05 + rnd(i * 3.3) * 0.35;
       const img = this.scene.add
         .image(t.x, t.y - 34, c.key)
         .setOrigin(c.ox, c.oy)
         .setScale(c.scale * size)
-        .setFlipX(i % 2 === 0)
         .setDepth(t.y + 0.01);
       if (t.variant === 3) img.setScale(c.scale * (size * 0.95));
       this.canopies.push({ img, phase: rnd(i * 7.7) * TAU });
@@ -261,7 +288,8 @@ export class TownScenery {
     const kinds = new Set(["stone", "lamp", "crates", "well", "dummy", "mirror", "obelisk", "board"]);
     for (const o of TOWN_OBSTACLES) {
       if (!kinds.has(o.kind)) continue;
-      const sprite = propSprite(o.kind);
+      const original = propSprite(o.kind), source=this.environment("town-scenery-props");
+      const sprite = source?paintedProp(source,o.kind,original):original;
       const img = place(s, `town-prop-${o.kind}`, sprite, o.x, o.y + (o.shape === "box" ? o.h / 2 : 4), o.y);
       if (o.kind === "lamp" && !this.reduced) {
         const glow = place(s, "town-glow", softBlob("255,214,140"), o.x, o.y - 104, o.y + 0.2, 1);
@@ -279,7 +307,7 @@ export class TownScenery {
     }
     // Bushes and boulders.
     for (const b of TOWN_SHRUBS) {
-      const t = bake(s, `town-${b.kind}-${b.variant}`, shrubSprite(b.kind, b.variant));
+      const t = bake(s, `town-${b.kind}-${b.variant}`, this.nature(b.kind,b.variant,shrubSprite(b.kind, b.variant)));
       s.add.image(b.x, b.y + 6, t.key).setOrigin(t.ox, t.oy).setScale(t.scale).setDepth(b.y);
     }
     // Signposts pointing down each road out of the plaza.
@@ -295,7 +323,8 @@ export class TownScenery {
     for (const st of TOWN_STATUES) {
       const boss = RAID_BOSSES[st.boss],
         foot = st.y + 12 - STATUE_TOP;
-      place(s, `town-plinth-${st.boss}`, statuePlinth(boss.name, boss.color), st.x, st.y + 12, st.y, 3);
+      const originalPlinth=statuePlinth(boss.name,boss.color),plinthSource=this.environment("town-scenery-props");
+      place(s, `town-plinth-${st.boss}`, plinthSource?paintedPlinth(plinthSource,originalPlinth,boss.name):originalPlinth, st.x, st.y + 12, st.y, 3);
       if (!this.reduced) {
         // A faint light in the boss's colour, from below.
         const glow = place(s, "town-glow", softBlob("255,214,140"), st.x, foot - 30, st.y + 0.05, 1);
@@ -304,7 +333,7 @@ export class TownScenery {
       }
       const key = `town-statue-${st.boss}`;
       const add = () => {
-        if (!s.sys.isActive()) return;
+        if (this.disposed || !s.sys.isActive()) return;
         const src = s.textures.get(key).getSourceImage() as HTMLCanvasElement;
         // About 92 px tall, wider bosses scaled to fit the plinth.
         const scale = Math.min(92 / src.height, 96 / src.width);
@@ -316,6 +345,7 @@ export class TownScenery {
         const svg = raidCrest(st.boss).replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" ');
         const img = new Image();
         img.onload = () => {
+          if (this.disposed) return;
           const carved = painted.get(key) ?? carveStatue(img, 300);
           painted.set(key, carved);
           if (!s.textures.exists(key)) s.textures.addCanvas(key, carved);
@@ -453,22 +483,23 @@ export class TownScenery {
       return s.add.image(0, 0, t.key).setOrigin(t.ox, t.oy).setScale(t.scale);
     };
     for (const [pose, n] of Object.entries(DOG_FRAMES) as [DogPose, number][])
-      for (let f = 0; f < n; f++) bake(s, `town-dog-${pose}-${f}`, dogSprite(pose, f), RES);
-    this.dog.img = img("town-dog-walk-0", dogSprite("walk", 0));
+      for (let f = 0; f < n; f++) bake(s, `town-dog-${pose}-${f}`, this.animal("dog",pose,f,false,dogSprite(pose, f)), RES);
+    this.dog.img = img("town-dog-walk-0", this.animal("dog","walk",0,false,dogSprite("walk", 0)));
     this.dog.img.setScale(this.dog.img.scale * 1.15);
     for (const coat of ["white", "brown"] as const)
       for (const [pose, n] of Object.entries(HEN_FRAMES) as ["walk" | "peck", number][])
-        for (let f = 0; f < n; f++) bake(s, `town-hen-${coat}-${pose}-${f}`, henSprite(coat, pose, f), RES);
+        for (let f = 0; f < n; f++) bake(s, `town-hen-${coat}-${pose}-${f}`, this.animal("hen",pose,f,coat==="brown",henSprite(coat, pose, f)), RES);
     this.chickens.forEach((c, i) => {
       const coat = i % 2 ? "brown" : "white";
-      this.henImgs.push(img(`town-hen-${coat}-walk-0`, henSprite(coat, "walk", 0)).setData("coat", coat));
+      this.henImgs.push(img(`town-hen-${coat}-walk-0`, this.animal("hen","walk",0,coat==="brown",henSprite(coat, "walk", 0))).setData("coat", coat));
       void c;
     });
     for (const female of [false, true])
-      for (const pose of ["swim", "dabble"] as const) bake(s, `town-duck-${female ? "f" : "m"}-${pose}`, duckSprite(pose, female), RES);
-    for (const d of this.ducks) d.img = img(`town-duck-${d.female ? "f" : "m"}-swim`, duckSprite("swim", d.female)).setScale(1.4 / RES);
-    for (let f = 0; f < GULL_FRAMES; f++) bake(s, `town-gull-${f}`, gullSprite(f), RES);
-    for (let i = 0; i < this.birds.length; i++) this.gullImgs.push(img("town-gull-1", gullSprite(1)).setDepth(9000));
+      for (const pose of ["swim", "dabble"] as const)
+        for (let frame=0;frame<2;frame++) bake(s, `town-duck-${female ? "f" : "m"}-${pose}-${frame}`, this.animal("duck",pose,frame,female,duckSprite(pose,female)), RES);
+    for (const d of this.ducks) d.img = img(`town-duck-${d.female ? "f" : "m"}-swim-0`, this.animal("duck","swim",0,d.female,duckSprite("swim", d.female))).setScale(1.4 / RES);
+    for (let f = 0; f < GULL_FRAMES; f++) bake(s, `town-gull-${f}`, this.animal("gull","fly",f,false,gullSprite(f)), RES);
+    for (let i = 0; i < this.birds.length; i++) this.gullImgs.push(img("town-gull-1", this.animal("gull","fly",1,false,gullSprite(1))).setDepth(9000));
     const wings: [number, string, string][] = [[0xffd65b, "#ffd65b", "#8a5a10"], [0xff8ad0, "#ff8ad0", "#7a1e50"], [0x8fd0ff, "#8fd0ff", "#1e4a7a"], [0xffffff, "#ffffff", "#5a5a6a"]];
     for (const b of this.butterflies) {
       const [, fill, edge] = wings.find(([c]) => c === b.color) ?? wings[0];
@@ -535,28 +566,13 @@ export class TownScenery {
   private drawWater(t: number) {
     this.drawFountain(t);
     // Pond: shimmer lines and paddling ducks.
-    const p = TOWN_POND;
     const pg = this.critterG;
-    pg.clear();
-    for (let k = 0; k < 14; k++) {
-      const a = rnd(k * 3) * TAU,
-        d = rnd(k * 5) * 0.75,
-        x = p.x + Math.cos(a) * p.rx * d,
-        y = p.y + Math.sin(a) * p.ry * d,
-        w = 10 + Math.sin(t * 2 + k) * 6;
-      pg.lineStyle(2, 0xd8f6ff, 0.35 + Math.sin(t * 3 + k) * 0.2).lineBetween(x - w, y, x + w, y);
-    }
+    drawPondWater(pg,t,this.reduced);
     for (const d of this.ducks) {
-      const a = d.a + t * d.speed,
-        x = p.x + Math.cos(a) * p.rx * d.r,
-        y = p.y + Math.sin(a) * p.ry * d.r,
-        dir = -Math.sin(a) > 0 ? 1 : -1,
-        bob = Math.sin(t * 4 + d.a) * 1;
-      // Now and then a duck tips up to feed.
-      const dabble = Math.sin(t * 0.35 + d.a * 3) > 0.9;
+      const { x,y,dir,bob,dabble,frame } = pondDuckPose(d,t,this.reduced);
       pg.lineStyle(1.5, 0xffffff, 0.35).strokeEllipse(x - dir * 22, y + 2, 40, 9);
       pg.lineStyle(1, 0xffffff, 0.2).strokeEllipse(x - dir * 38, y + 2, 34, 6);
-      d.img?.setTexture(`town-duck-${d.female ? "f" : "m"}-${dabble ? "dabble" : "swim"}`).setPosition(x, y + 4 + bob).setFlipX(dir < 0).setDepth(y);
+      d.img?.setTexture(`town-duck-${d.female ? "f" : "m"}-${dabble ? "dabble" : "swim"}-${frame}`).setPosition(x, y + 4 + bob).setFlipX(dir < 0).setDepth(y);
     }
   }
 

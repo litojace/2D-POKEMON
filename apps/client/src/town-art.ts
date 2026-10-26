@@ -1,5 +1,7 @@
 import { WORLD_ART } from "../../../packages/shared/src/world-art";
 import { stonePaver } from "./world-materials";
+import { rendererDensity } from "./render-budget";
+import { arenaGroundFoot, architecturePlacement } from "../../../packages/shared/src/town-building-layout";
 import { CHARACTERS } from "@arena/shared";
 import {
   TOWN,
@@ -34,7 +36,7 @@ export const ART_RES = 1.5;
  * (town zoom × device pixel ratio, up to ~4× on phones), which blurs it.
  * Drawing text at the screen's real density keeps it sharp.
  */
-export const TEXT_RES = Math.min(4, Math.ceil((typeof devicePixelRatio === "number" ? devicePixelRatio : 1) * 1.6));
+export const TEXT_RES = Math.min(4, Math.ceil((typeof devicePixelRatio === "number" ? rendererDensity() : 1) * 1.6));
 
 /** Deterministic noise so the town looks the same for everyone. */
 export const rnd = (i: number) => {
@@ -251,10 +253,10 @@ function marbleTerrace(ctx: Ctx) {
   for (let ty = y0; ty < y1; ty += 40)
     for (let tx = x0; tx < x1; tx += 52) {
       const i = tx * 7 + ty;
-      ctx.fillStyle = (Math.floor(tx / 52) + Math.floor(ty / 40)) % 2 ? "#c9c2da" : "#b4acc8";
+      ctx.fillStyle = (Math.floor(tx / 52) + Math.floor(ty / 40)) % 2 ? "#ddd3c2" : "#cfc4af";
       ctx.fillRect(tx + 1, ty + 1, 50, 38);
       // Marble veins.
-      ctx.strokeStyle = "rgba(120,110,150,0.25)";
+      ctx.strokeStyle = "rgba(133,115,85,0.2)";
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(tx + rnd(i) * 50, ty + 2);
@@ -312,13 +314,13 @@ function marketSquare(ctx: Ctx) {
   const x = 740,
     y = 1590;
   ctx.fillStyle = "#857a66";
-  ellipse(ctx, x, y, 330, 180);
+  ellipse(ctx, x, y, 385, 180);
   ctx.fill();
   const tones = ["#c4ab8a", "#b89e7d", "#cdb595", "#b29776"];
   for (let ty = y - 170; ty < y + 170; ty += 16)
-    for (let tx = x - 330; tx < x + 330; tx += 22) {
+    for (let tx = x - 385; tx < x + 385; tx += 22) {
       const ox = (Math.floor(ty / 16) % 2) * 11;
-      if (Math.hypot((tx + ox - x) / 318, (ty - y) / 170) > 1) continue;
+      if (Math.hypot((tx + ox - x) / 373, (ty - y) / 170) > 1) continue;
       stonePaver(ctx, tx + ox, ty, 20, 14, 3, tones[Math.floor(rnd(tx * 3 + ty) * 4)]);
     }
 }
@@ -355,34 +357,51 @@ function noticeCourt(ctx: Ctx) {
 
 function pond(ctx: Ctx) {
   const { x, y, rx, ry } = TOWN_POND;
-  ctx.fillStyle = "#c9b58a";
-  ellipse(ctx, x, y + 4, rx + 22, ry + 16);
-  ctx.fill();
-  ctx.fillStyle = "#7a6a4a";
-  ellipse(ctx, x, y + 2, rx + 6, ry + 5);
-  ctx.fill();
-  const g = ctx.createRadialGradient(x - 40, y - 20, 10, x, y, rx);
-  g.addColorStop(0, "#5ec0d8");
-  g.addColorStop(0.7, "#2f8aa8");
-  g.addColorStop(1, "#1f5f7a");
-  ctx.fillStyle = g;
-  ellipse(ctx, x, y, rx, ry);
-  ctx.fill();
+  // Wet earth, rounded shore stones and a submerged bank replace the flat rim.
+  ctx.fillStyle="#62704d"; ellipse(ctx,x,y+3,rx+24,ry+18);ctx.fill();
+  ctx.fillStyle="#777a60"; ellipse(ctx,x,y+2,rx+13,ry+10);ctx.fill();
+  for(let i=0;i<42;i++) {
+    const a=i/42*Math.PI*2,px=x+Math.cos(a)*(rx+12),py=y+Math.sin(a)*(ry+8);
+    const w=20+rnd(i*3)*13,h=11+rnd(i*7)*7;
+    ctx.save();ctx.translate(px,py);ctx.rotate(Math.cos(a)*.12);
+    stonePaver(ctx,-w/2,-h/2,w,h,5,["#c8bca2","#aba58b","#b9b59b","#d5c9ad"][i%4]);ctx.restore();
+  }
+  const g = ctx.createRadialGradient(x-45,y-28,12,x,y,rx);
+  g.addColorStop(0,"#53bcca");g.addColorStop(.45,"#2b91a7");g.addColorStop(.82,"#1c697f");g.addColorStop(1,"#255b62");
+  ctx.fillStyle=g;ellipse(ctx,x,y,rx,ry);ctx.fill();
+  ctx.save();ellipse(ctx,x,y,rx-1,ry-1);ctx.clip();
+  // Pale pebbles remain visible through the shallow water near the bank.
+  for(let i=0;i<90;i++) {
+    const a=rnd(i*5.7)*Math.PI*2,r=.72+rnd(i*3.1)*.25;
+    ctx.globalAlpha=.1+rnd(i*7.3)*.15;ctx.fillStyle=i%2?"#c1d7b2":"#1c5556";
+    ellipse(ctx,x+Math.cos(a)*rx*r,y+Math.sin(a)*ry*r,3+rnd(i)*5,2+rnd(i*2)*2);ctx.fill();
+  }
+  const reflection=ctx.createLinearGradient(0,y-ry,0,y-ry*.1);
+  reflection.addColorStop(0,"rgba(20,57,44,.32)");reflection.addColorStop(1,"rgba(20,57,44,0)");
+  ctx.globalAlpha=1;ctx.fillStyle=reflection;ctx.fillRect(x-rx,y-ry,rx*2,ry);
+  ctx.restore();
   // Lily pads and reeds.
   for (let i = 0; i < 9; i++) {
     const a = rnd(i * 5) * Math.PI * 2,
       d = 0.35 + rnd(i * 7) * 0.5,
       px = x + Math.cos(a) * rx * d,
       py = y + Math.sin(a) * ry * d;
-    ctx.fillStyle = "#4f9a4a";
+    ctx.fillStyle = "rgba(11,52,52,.25)";ellipse(ctx,px+2,py+2,14,8);ctx.fill();
+    const leaf=ctx.createLinearGradient(px-10,py-6,px+8,py+7);leaf.addColorStop(0,"#85ad6b");leaf.addColorStop(.6,"#619448");leaf.addColorStop(1,"#3a713e");
+    ctx.fillStyle = leaf;
     ctx.beginPath();
     ctx.ellipse(px, py, 13, 8, 0, 0.3, Math.PI * 2);
     ctx.lineTo(px, py);
     ctx.fill();
+    ctx.strokeStyle="rgba(195,220,149,.4)";ctx.lineWidth=.55;
+    for(let vein=1;vein<7;vein++) {const va=vein/7*Math.PI*2;ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(px+Math.cos(va)*11,py+Math.sin(va)*6);ctx.stroke();}
     if (i % 3 === 0) {
-      ctx.fillStyle = "#ffc6dc";
-      ellipse(ctx, px + 3, py - 2, 4, 3);
-      ctx.fill();
+      for(let petal=0;petal<6;petal++) {
+        const angle=petal/6*Math.PI*2;
+        ctx.fillStyle=petal%2?"#ffe1ea":"#efa4bd";
+        ellipse(ctx,px+3+Math.cos(angle)*3,py-3+Math.sin(angle)*2,3,2);ctx.fill();
+      }
+      ctx.fillStyle="#f5d779";ellipse(ctx,px+3,py-3,1.8,1.4);ctx.fill();
     }
   }
   for (let i = 0; i < 26; i++) {
@@ -525,16 +544,25 @@ export function paintGround(ground: Ctx) {
     ctx.fill();
   }
   sandArena(ctx);
-  // Paving all round the coliseum's podium, so it stands on stone.
+  // A narrow warm-stone apron follows the painted base ring. The old wide
+  // grey ellipse used the previous building's foot and looked detached.
   for (const b of TOWN_BUILDINGS)
     if (b.kind === "coliseum") {
-      const y = b.y + COLISEUM.footY + 14;
-      ctx.fillStyle = "#8a7f69";
-      ellipse(ctx, b.x, y, COLISEUM.rx + 70, COLISEUM.ry + 40);
-      ctx.fill();
-      ctx.fillStyle = "#a3977f";
-      ellipse(ctx, b.x, y - 2, COLISEUM.rx + 62, COLISEUM.ry + 36);
-      ctx.fill();
+      const { x, y, rx, ry } = arenaGroundFoot(b);
+      ctx.save();
+      ellipse(ctx, x, y, rx + 14, ry + 9);
+      ctx.clip();
+      ctx.fillStyle = "#a7997d";
+      ctx.fillRect(x - rx - 16, y - ry - 12, (rx + 16) * 2, (ry + 12) * 2);
+      const tones = ["#c7b89b", "#d0c1a4", "#bfae90", "#d9c9ac"];
+      for (let row = 0, ty = y - ry - 12; ty < y + ry + 12; ty += 18, row++)
+        for (let tx = x - rx - 32; tx < x + rx + 32; tx += 32)
+          stonePaver(ctx, tx + (row % 2) * 16, ty, 30, 16, 2, tones[Math.floor(rnd(tx + ty * 3) * 4)]);
+      ctx.restore();
+      ctx.strokeStyle = "rgba(113,92,62,0.25)";
+      ctx.lineWidth = 1;
+      ellipse(ctx, x, y, rx + 14, ry + 9);
+      ctx.stroke();
     }
   marbleTerrace(ctx);
   trainingYard(ctx);
@@ -1593,11 +1621,15 @@ export function castShadow(ctx: Ctx, b: TownBuilding) {
     }
     ctx.fill("nonzero");
   };
-  if (b.kind === "house") box(b.x - b.w / 2, b.x + b.w / 2, b.y, b.d * 0.7, 200);
-  else if (b.kind === "temple") box(b.x - b.w / 2 - 30, b.x + b.w / 2 + 30, b.y - 50, 120, 330);
-  else if (b.kind === "tower") round(b.x, b.y - (b.w / 2) * WORLD_ART.groundY - 30, b.w / 2, (b.w / 2) * WORLD_ART.groundY, 400);
-  else if (b.kind === "windmill") round(b.x, b.y - (b.w / 2) * WORLD_ART.groundY - 24, b.w / 2, (b.w / 2) * WORLD_ART.groundY, 260);
-  else round(b.x, b.y - 96, 280, 100, 300);
+  const { offset, width } = architecturePlacement(b),
+    x = b.x + offset[0], y = b.y + offset[1];
+  if (b.kind === "house") box(x - width * .47, x + width * .47, y, 32, 200);
+  else if (b.kind === "temple") box(x - width / 2, x + width / 2, y, 76, 330);
+  else if (b.kind === "tower" || b.kind === "windmill") round(x, y - 24, width * .46, 24, b.kind === "tower" ? 220 : 230);
+  else {
+    const foot = arenaGroundFoot(b);
+    round(foot.x, foot.y, foot.rx, foot.ry, 260);
+  }
 }
 
 export function buildingSprite(b: TownBuilding): Sprite {

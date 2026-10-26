@@ -1,4 +1,5 @@
 import { WORLD_ART } from "./world-art.js";
+import { arenaGroundFoot, buildingVisualBounds, stallVisualBounds, boundsOverlap, treeVisualBounds, shrubVisualBounds } from "./town-building-layout.js";
 import { RAID_BOSSES, type RaidBossId } from "./raid-roster.js";
 import type { RaidLoadout } from "./raid.js";
 
@@ -158,7 +159,7 @@ export const TOWN_DISTRICTS: readonly TownDistrict[] = [
   },
   {
     id: "market",
-    x: 720,
+    x: 740,
     y: 1580,
     label: "Market",
     sub: "Shop · Wardrobe",
@@ -248,26 +249,32 @@ export const TOWN_NEXT_STATUE = statueAt(STATUE_X[7]);
 /** Market stalls: their footprint centres. */
 export const TOWN_STALLS = [
   {
-    x: 520,
+    x: 480,
     y: 1520,
     tab: "champions" as const,
     label: "Champion skins",
     color: "#ff7a9b",
   },
   {
-    x: 720,
+    x: 740,
     y: 1490,
     tab: "today" as const,
     label: "Today's picks",
     color: "#7fe7ff",
   },
   {
-    x: 920,
+    x: 1000,
     y: 1520,
     tab: "collections" as const,
     label: "Collections",
     color: "#ffd65b",
   },
+];
+
+/** Keep complete roofs, stairs, sails and storefronts clear of separate scenery. */
+export const TOWN_BUILDING_SITES = [
+  ...TOWN_BUILDINGS.map(buildingVisualBounds),
+  ...TOWN_STALLS.map(stallVisualBounds),
 ];
 export const TOWN_POND = { x: 2620, y: 1520, rx: 190, ry: 110 };
 export const TOWN_DUMMIES = [
@@ -335,8 +342,8 @@ export const TOWN_SPOTS: readonly TownSpot[] = [
   })),
   {
     id: "wardrobe",
-    x: 1110,
-    y: 1630,
+    x: 1310,
+    y: 1580,
     label: "Wardrobe",
     sub: "Change your look",
     color: "#bfefff",
@@ -394,10 +401,7 @@ function buildObstacles(): TownObstacle[] {
         ? // A round building on a round podium (centre of its foot, plus the steps).
           {
             shape: "round",
-            x: b.x,
-            y: b.y - 96,
-            rx: b.w / 2 + 34,
-            ry: 92,
+            ...arenaGroundFoot(b),
             kind: "building",
           }
         : {
@@ -439,8 +443,8 @@ function buildObstacles(): TownObstacle[] {
   });
   list.push({
     shape: "round",
-    x: 1110,
-    y: 1590,
+    x: 1310,
+    y: 1540,
     rx: 22,
     ry: 12,
     kind: "mirror",
@@ -461,18 +465,18 @@ function buildObstacles(): TownObstacle[] {
     [2150, 1160],
     [1500, 760],
     [1050, 1010],
-    [1300, 1560],
+    [1420, 1460],
     [1900, 1560],
   ];
   for (const [lx, ly] of lamps)
     list.push({ shape: "round", x: lx, y: ly, rx: 8, ry: 6, kind: "lamp" });
   for (const [cx, cy] of [
-    [400, 1600],
-    [1030, 1450],
+    [350, 1680],
+    [1200, 1340],
     [2520, 1260],
   ])
     list.push({ shape: "box", x: cx, y: cy, w: 60, h: 30, kind: "crates" });
-  list.push({ shape: "round", x: 2440, y: 600, rx: 30, ry: 20, kind: "well" });
+  list.push({ shape: "round", x: 2330, y: 600, rx: 30, ry: 20, kind: "well" });
   // Trees: a forest border plus groves, kept off roads, districts and buildings.
   for (const t of TOWN_TREES)
     list.push({ shape: "round", x: t.x, y: t.y, rx: 26, ry: 18, kind: "tree" });
@@ -510,7 +514,7 @@ export const TOWN_PATHS: readonly TownPath[] = [
   // Boss Rush: leaves the training road and curves round the yard's fence to the tower door.
   { width: SIDE, pts: [[1130, 980], [1010, 830], [830, 700], [590, 690], [460, 718], [395, 745]] },
   // Arena → windmill door.
-  { width: SIDE, pts: [[2740, 960], [2790, 760], [2850, 580], [2860, 470]] },
+  { width: SIDE, pts: [[2740, 1080], [3000, 1080], [3080, 940], [3080, 730], [2970, 560], [2860, 470]] },
   // Arena → round the far side of the east house to its gate.
   { width: SIDE, pts: [[2950, 1230], [2875, 1390], [2905, 1525], [3036, 1550]] },
   // Notice Board → the south-east houses.
@@ -526,7 +530,8 @@ export const TOWN_PATHS: readonly TownPath[] = [
   { width: LANE, pts: [[950, 1730], [1010, 1895], [1117, 1980]] },
   { width: LANE, pts: [[1117, 1980], [1117, 1892]] },
   // Footpaths to the well and down to the pond.
-  { width: FOOT, pts: [[2195, 540], [2300, 595], [2405, 645]] },
+  { width: FOOT, pts: [[1040, 1570], [1160, 1540], [1310, 1580]] },
+  { width: FOOT, pts: [[2195, 540], [2260, 595], [2330, 645]] },
   { width: FOOT, pts: [[2690, 1300], [2655, 1400]] },
 ];
 /** Points along a path's curve (Catmull-Rom through its points), about every 24 px. */
@@ -586,13 +591,7 @@ function buildTrees() {
     Math.hypot((x - TOWN.plaza.x) / 1.25, y - TOWN.plaza.y) >
       TOWN.plaza.r + 90 &&
     !TOWN_DISTRICTS.some((d) => Math.hypot((d.x - x) / 1.4, d.y - y) < 260) &&
-    !TOWN_BUILDINGS.some(
-      (b) =>
-        x > b.x - b.w / 2 - 70 &&
-        x < b.x + b.w / 2 + 70 &&
-        y > b.y - b.d - 160 &&
-        y < b.y + 90,
-    ) &&
+    !TOWN_BUILDING_SITES.some((site) => boundsOverlap(site, treeVisualBounds(x, y), 20)) &&
     Math.hypot(
       (x - TOWN_POND.x) / TOWN_POND.rx,
       (y - TOWN_POND.y) / TOWN_POND.ry,
@@ -696,6 +695,7 @@ function buildShrubs() {
     !nearRoad(x, y, 92) &&
     !onTerrace(x, y) &&
     !blocked(x, y, pad) &&
+    !TOWN_BUILDING_SITES.some((site) => boundsOverlap(site, shrubVisualBounds(x, y), 20)) &&
     Math.hypot((x - TOWN.plaza.x) / 1.25, y - TOWN.plaza.y) >
       TOWN.plaza.r + 70 &&
     !TOWN_DISTRICTS.some((d) => Math.hypot((d.x - x) / 1.4, d.y - y) < 240) &&

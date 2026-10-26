@@ -1,3 +1,5 @@
+import { rendererDensity } from "./render-budget";
+import { watchRendererLifecycle } from "./renderer-lifecycle";
 import { groundHeight, WORLD_ART } from "../../../packages/shared/src/world-art";
 import { frameLobbyPanel } from "./lobby-layout";
 import { fitDesktopBattleHud } from "./desktop-battle-layout";
@@ -196,6 +198,7 @@ const socket = io(import.meta.env.VITE_SERVER_URL || undefined, {
 });
 let accountsUI: AccountUI;
 let gameInstance: Phaser.Game | undefined;
+let battleResizeObserver: ResizeObserver | undefined;
 let state: Snapshot | undefined,
   myId = "",
   selected: CharacterId = lastHomeFighter(),
@@ -2930,7 +2933,13 @@ class ArenaScene extends Phaser.Scene {
       .setOrigin(0)
       .setScale(1 / (this.floorScale.get("arena-floor-classic") ?? 1))
       .setDepth(-10);
-    new ResizeObserver(() => fitRenderer()).observe($("game"));
+    const clearDom = () => {
+      this.enemyBearing.remove();
+      for (const label of this.labels.values()) label.remove();
+      this.labels.clear();
+    };
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, clearDom);
+    this.events.once(Phaser.Scenes.Events.DESTROY, clearDom);
     this.graphics = this.add.graphics();
     this.bossGraphics = this.add.graphics();
     // Keys and mouse buttons are read through the player's bindings (see pressAction).
@@ -4152,7 +4161,7 @@ function flashWhite(root: Phaser.GameObjects.Container) {
  * keeps creatures, effects and text sharp. Capped at 2 to protect frame rate.
  */
 function renderScale() {
-  return Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+  return rendererDensity();
 }
 /** Size the drawing buffer to the arena box at device resolution. */
 function fitRenderer() {
@@ -4213,13 +4222,25 @@ function ensureBattleRenderer() {
   gameInstance.events.on(Phaser.Core.Events.RESUME, syncBattleLoop);
   addEventListener("resize", fitRenderer);
   // The arena box also changes when the HUD or skill bar changes height.
-  new ResizeObserver(() => fitRenderer()).observe($("game"));
+  battleResizeObserver = new ResizeObserver(() => fitRenderer());
+  battleResizeObserver.observe($("game"));
+  watchRendererLifecycle(gameInstance, () => !$("battle").hidden, fitRenderer);
 }
 /** A hidden battle canvas must not compete with the menu or Shop preview. */
 function syncBattleLoop() {
-  if (!gameInstance?.isRunning) return;
-  if ($("battle").hidden) gameInstance.loop.sleep();
-  else if (!gameInstance.loop.running) gameInstance.loop.wake();
+  if (!gameInstance) return;
+  if ($("battle").hidden) {
+    // Sleeping retains every fighter and arena texture. Release them before
+    // opening Town/Shop so iOS does not have to evict the whole web app.
+    const previous = gameInstance;
+    gameInstance = undefined;
+    scene = undefined;
+    battleResizeObserver?.disconnect();
+    battleResizeObserver = undefined;
+    window.removeEventListener("resize", fitRenderer);
+    previous.destroy(true);
+    if (previous.isRunning && !previous.loop.running) previous.loop.wake();
+  } else if (gameInstance.isRunning && !gameInstance.loop.running) gameInstance.loop.wake();
 }
 accountsUI = new AccountUI({
   selectedCharacter: () => selected,

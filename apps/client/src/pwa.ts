@@ -75,7 +75,7 @@ export function setupPWA(
     if (!banner.hidden) {
       message.textContent = idle()
         ? "Updating to the latest arena version…"
-        : "Update downloaded · applies automatically after the match.";
+        : "Update downloaded · applies when you return to Town or the lobby.";
     }
     void automatic.sync();
   };
