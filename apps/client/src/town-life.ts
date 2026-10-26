@@ -1,4 +1,5 @@
 import { WORLD_ART } from "../../../packages/shared/src/world-art";
+import { materialContext, townMaterialFamily } from "./world-materials";
 import Phaser from "phaser";
 import {
   TOWN,
@@ -86,7 +87,8 @@ function bake(scene: Phaser.Scene, key: string, sprite: Sprite, res = ART_RES) {
     const canvas = paint(key, Math.ceil(width * res), Math.ceil(height * res), (ctx) => {
       ctx.scale(res, res);
       ctx.translate(pad, pad);
-      sprite.draw(ctx);
+      const family = townMaterialFamily(key);
+      sprite.draw(family ? materialContext(ctx, family) : ctx);
     });
     scene.textures.addCanvas(key, canvas);
   }

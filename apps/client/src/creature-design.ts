@@ -1,4 +1,5 @@
 import { creatureProfile, profileViewBox } from "./creature-profile";
+import { championMaterials } from "./champion-materials";
 import type { CharacterId } from "@arena/shared";
 import type { Facing } from "./animation/controller";
 import { awakeningSvg } from "./skins/mythic-art";
@@ -536,6 +537,8 @@ export function creatureLayers(
     Object.assign(layers, painted.layers);
     defs += painted.defs;
   }
+  // Painted profiles already contain their source illustration's material detail.
+  if (dir === "down") defs += championMaterials(id, prefix, p, layers);
   // Cragstone skin (menus): glowing cracks, hidden unless the skin is worn.
   // The rig paints its own cracks, and display="none" keeps them out of it.
   const crack = (d: string) =>

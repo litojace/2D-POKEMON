@@ -1,4 +1,5 @@
 import { groundHeight } from "../../../packages/shared/src/world-art";
+import { bossSurface } from "./boss-materials";
 import { bossLife, bossEye } from "./raid-boss-life";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
@@ -400,7 +401,7 @@ export function drawSomnara(
   g.fillStyle(0x5d508d, alpha).fillEllipse(0, 25, 48, 73);
   g.restore();
   g.fillStyle(0x283452, alpha).fillEllipse(x, y, 255, 146);
-  g.fillStyle(skin, alpha).fillEllipse(x, y, 250, 144);
+  bossSurface(g, x, y, 250, 144, skin, "velvet", alpha);
   g.fillStyle(0xa797d7, alpha * 0.8).fillEllipse(x - 17, y - 28, 195, 72);
   g.fillStyle(0xcbbbea, alpha).fillEllipse(x - 9, y + 30, 211, 72);
   // Pleated throat and a second flipper make the silhouette read as a whale.

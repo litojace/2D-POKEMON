@@ -1,5 +1,6 @@
 import { groundHeight } from "../../../packages/shared/src/world-art";
 import { bossLife } from "./raid-boss-life";
+import { rockGrain } from "./boss-materials";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
 
@@ -77,6 +78,7 @@ export function drawRaidBoss(
     for (let i = 2; i < points.length; i += 2)
       g.lineTo(cx + points[i], cy + points[i + 1]);
     g.closePath().fillPath();
+    rockGrain(g, cx, cy, points, color, alpha);
   };
   const crystal = (cx: number, cy: number, size: number) => {
     poly(

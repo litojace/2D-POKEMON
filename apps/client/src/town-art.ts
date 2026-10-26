@@ -1,4 +1,5 @@
 import { WORLD_ART } from "../../../packages/shared/src/world-art";
+import { stonePaver } from "./world-materials";
 import { CHARACTERS } from "@arena/shared";
 import {
   TOWN,
@@ -110,12 +111,7 @@ function cobbleRoad(ctx: Ctx, pts: readonly (readonly number[])[], width: number
       const i = seed * 1000 + row * 13 + Math.round(k);
       const cx = x - uy * k + (rnd(i) - 0.5) * 3,
         cy = y + ux * k * 0.8 + (rnd(i + 1) - 0.5) * 3;
-      ctx.fillStyle = tones[Math.floor(rnd(i + 2) * tones.length)];
-      roundRect(ctx, cx - 7 * s, cy - 5 * s, (14 + rnd(i + 3) * 3) * s, 10 * s, 4 * s);
-      ctx.fill();
-      ctx.fillStyle = "rgba(255,255,255,0.12)";
-      roundRect(ctx, cx - 6 * s, cy - 5 * s, 9 * s, 3 * s, 2 * s);
-      ctx.fill();
+      stonePaver(ctx, cx - 7 * s, cy - 5 * s, (14 + rnd(i + 3) * 3) * s, 10 * s, 4 * s, tones[Math.floor(rnd(i + 2) * tones.length)]);
     }
     row++;
   });
@@ -139,13 +135,21 @@ function grass(ctx: Ctx, W: number, H: number) {
     ctx.fillStyle = g;
     ctx.fillRect(x - r, y - r, r * 2, r * 2);
   }
-  // Blades of grass in three tones.
+  // Fine tapered blades grow in rooted clumps instead of rectangular dashes.
   const blades = ["#6b9150", "#4b6a33", "#77a05a", "#58793d"];
   for (let i = 0; i < 14000; i++) {
     const x = rnd(i * 1.37) * W,
       y = rnd(i * 2.71) * H;
-    ctx.fillStyle = blades[i % 4];
-    ctx.fillRect(x, y, 2, 4 + rnd(i) * 4);
+    const height = 3 + rnd(i) * 5;
+    ctx.strokeStyle = blades[i % 4];
+    ctx.lineWidth = .7;
+    ctx.beginPath();
+    for (let k = 0; k < 3; k++) {
+      const lean = (k - 1) * 2;
+      ctx.moveTo(x, y);
+      ctx.quadraticCurveTo(x + lean * .3, y - height * .7, x + lean, y - height);
+    }
+    ctx.stroke();
   }
   // Wildflower clusters.
   const petals = ["#f4d35e", "#ffb3c7", "#ffffff", "#b9a6ff", "#ff9b6a"];
@@ -181,12 +185,7 @@ function plaza(ctx: Ctx) {
       ctx.translate(x + Math.cos(a + n * 0.3) * ring, roadY + Math.sin(a + n * 0.3) * ring * WORLD_ART.groundY);
       ctx.rotate(a + n * 0.3 + Math.PI / 2);
       ctx.scale(1, 0.85 + Math.abs(Math.sin(a)) * 0.15);
-      ctx.fillStyle = tones[Math.floor(rnd(i) * tones.length)];
-      roundRect(ctx, -9, -8, 18, 16, 4);
-      ctx.fill();
-      ctx.fillStyle = "rgba(255,255,255,0.12)";
-      roundRect(ctx, -8, -8, 12, 4, 2);
-      ctx.fill();
+      stonePaver(ctx, -9, -8, 18, 16, 4, tones[Math.floor(rnd(i) * tones.length)]);
       ctx.restore();
     }
   // A compass star of the eight elements around the fountain.
@@ -320,9 +319,7 @@ function marketSquare(ctx: Ctx) {
     for (let tx = x - 330; tx < x + 330; tx += 22) {
       const ox = (Math.floor(ty / 16) % 2) * 11;
       if (Math.hypot((tx + ox - x) / 318, (ty - y) / 170) > 1) continue;
-      ctx.fillStyle = tones[Math.floor(rnd(tx * 3 + ty) * 4)];
-      roundRect(ctx, tx + ox, ty, 20, 14, 3);
-      ctx.fill();
+      stonePaver(ctx, tx + ox, ty, 20, 14, 3, tones[Math.floor(rnd(tx * 3 + ty) * 4)]);
     }
 }
 
@@ -343,9 +340,7 @@ function noticeCourt(ctx: Ctx) {
     for (let tx = x - rx; tx < x + rx; tx += 19) {
       const ox = (Math.floor(ty / 14) % 2) * 9;
       if (Math.hypot((tx + ox + 8 - x) / (rx - 8), (ty + 6 - y) / (ry - 6)) > 1) continue;
-      ctx.fillStyle = tones[Math.floor(rnd(tx * 5 + ty) * 4)];
-      roundRect(ctx, tx + ox, ty, 17, 12, 4);
-      ctx.fill();
+      stonePaver(ctx, tx + ox, ty, 17, 12, 4, tones[Math.floor(rnd(tx * 5 + ty) * 4)]);
     }
   // Kerb ring.
   ctx.strokeStyle = "#a49880";
@@ -1755,7 +1750,11 @@ export function treeCanopy(variant: number): Sprite {
         [2, -4, -6, 0.75],
       ] as const)
         for (const [x, y, r] of blobs) {
-          ctx.fillStyle = pal[k];
+          const shade = ctx.createRadialGradient(x + dx - r * .3, y + dy - r * .4, r * .05, x + dx, y + dy, r * s);
+          shade.addColorStop(0, pal[Math.min(3, k + 1)]);
+          shade.addColorStop(.5, pal[k]);
+          shade.addColorStop(1, pal[Math.max(0, k - 1)]);
+          ctx.fillStyle = shade;
           ellipse(ctx, x + dx, y + dy, r * s, r * s);
           ctx.fill();
         }

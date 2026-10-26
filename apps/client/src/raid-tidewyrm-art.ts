@@ -1,5 +1,6 @@
 import { groundHeight } from "../../../packages/shared/src/world-art";
 import { bossLife } from "./raid-boss-life";
+import { bossSurface } from "./boss-materials";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
 import { TIDEWYRM, type RaidWarning } from "../../../packages/shared/src/raid";
@@ -715,7 +716,7 @@ export function drawTidewyrm(
   for (let i = 0; i < pts.length; i++) {
     const p = pts[i];
     g.fillStyle(DEEP, 1).fillCircle(p.x + 2, p.y + 3, p.r + 3);
-    g.fillStyle(skin, 1).fillCircle(p.x, p.y, p.r);
+    bossSurface(g, p.x, p.y, p.r * 2, p.r * 2, skin, "scales");
     g.fillStyle(belly, 0.85).fillEllipse(
       p.x - facing * p.r * 0.25,
       p.y + p.r * 0.2,
@@ -747,7 +748,7 @@ export function drawTidewyrm(
   const hx = head.x + facing * 12,
     hy = head.y - (stranded ? 6 : 14) - life.windup * 9 + life.breath;
   g.fillStyle(DEEP, 1).fillEllipse(hx + 2, hy + 3, 92, 74);
-  g.fillStyle(skin, 1).fillEllipse(hx, hy, 88, 70);
+  bossSurface(g, hx, hy, 88, 70, skin, "scales");
   g.fillStyle(belly, 1).fillEllipse(hx + facing * 22, hy + 14, 50, 34);
   g.fillStyle(DEEP, 0.7)
     .fillCircle(hx + facing * 34, hy + 8, 3)

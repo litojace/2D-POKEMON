@@ -1,4 +1,5 @@
 import { groundHeight } from "../../../packages/shared/src/world-art";
+import { bossSurface } from "./boss-materials";
 import { bossLife, bossEye } from "./raid-boss-life";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
@@ -281,7 +282,7 @@ export function drawStormTwins(
       width + 4,
       height + 4,
     );
-    g.fillStyle(body, alpha).fillEllipse(x, y, width, height);
+    bossSurface(g, x, y, width, height, body, "cloud", alpha);
     g.fillStyle(i ? 0x9ed9ed : 0xffe9a2, alpha).fillEllipse(
       x - 12,
       y - 15,
@@ -307,11 +308,8 @@ export function drawStormTwins(
         cy + 3,
         19 + (k % 2) * 4,
       );
-      g.fillStyle(i ? 0xd8e9f4 : 0xfff3cf, alpha).fillCircle(
-        cx - 1,
-        cy,
-        18 + (k % 2) * 4,
-      );
+      const diameter = (18 + (k % 2) * 4) * 2;
+      bossSurface(g, cx - 1, cy, diameter, diameter, i ? 0xd8e9f4 : 0xfff3cf, "cloud", alpha);
     }
     const boltColor = i ? 0x5e83c4 : 0xc99341;
     g.fillStyle(boltColor, alpha).fillPoints(

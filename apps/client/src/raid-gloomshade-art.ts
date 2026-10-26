@@ -1,4 +1,5 @@
 import { groundHeight } from "../../../packages/shared/src/world-art";
+import { bossSurface } from "./boss-materials";
 import { bossLife, type BossLifePose } from "./raid-boss-life";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
@@ -112,7 +113,12 @@ export function litAt(state: Snapshot, x: number, y: number) {
 }
 
 /** The night, the lanterns and their light, and curses on raiders. */
-export function drawLanternYard(g: G, state: Snapshot, reduced: boolean, at?: LayerAt) {
+export function drawLanternYard(
+  g: G,
+  state: Snapshot,
+  reduced: boolean,
+  at?: LayerAt,
+) {
   const r = state.raid!;
   const t = state.time;
   const lanterns = r.lanterns ?? [];
@@ -642,7 +648,12 @@ export function drawGloomshade(
   // Found: a golden ring and arrow over the real one.
   if ((revealed || exposed) && !dead) {
     const bob = reduced ? 0 : Math.sin(t * 4) * 4;
-    g.lineStyle(3, MOON, 0.9).strokeEllipse(boss.x, boss.y + 12, 150, groundHeight(150));
+    g.lineStyle(3, MOON, 0.9).strokeEllipse(
+      boss.x,
+      boss.y + 12,
+      150,
+      groundHeight(150),
+    );
     g.fillStyle(MOON, 1).fillTriangle(
       boss.x - 12,
       boss.y - 150 + bob,
@@ -762,7 +773,7 @@ function shade(g: G, o: ShadeLook) {
     104 + squash,
     104 - squash,
   );
-  g.fillStyle(body, alpha).fillEllipse(x, y, 100 + squash, 100 - squash);
+  bossSurface(g, x, y, 100 + squash, 100 - squash, body, "velvet", alpha);
   g.fillStyle(top, 0.6 * alpha).fillEllipse(x - facing * 10, y - 22, 64, 36);
   // Floppy ears hanging down each side, swaying.
   const ear = Math.sin(t * 1.8) * 5 * motion;
@@ -772,7 +783,7 @@ function shade(g: G, o: ShadeLook) {
       .translateCanvas(ex, y - 30)
       .rotateCanvas(side * (0.12 + o.life.windup * 0.2) + ear * 0.012);
     g.fillStyle(SHADE_EDGE, alpha).fillEllipse(side * 6, 26, 30, 70);
-    g.fillStyle(body, alpha).fillEllipse(side * 4, 24, 26, 66);
+    bossSurface(g, side * 4, 24, 26, 66, body, "velvet", alpha);
     g.fillStyle(0x7d66ab, 0.7 * alpha).fillEllipse(side * 3, 32, 12, 40);
     g.restore();
   }

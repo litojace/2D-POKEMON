@@ -1,4 +1,5 @@
 import { groundHeight } from "../../../packages/shared/src/world-art";
+import { bossSurface } from "./boss-materials";
 import { bossLife, bossEye } from "./raid-boss-life";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
@@ -331,10 +332,8 @@ export function drawEmberwing(
     g.restore();
   }
   g.fillStyle(0x713949, alpha).fillEllipse(x, y + 3, 145, 137);
-  g.fillStyle(
-    pose.hurt > 0.2 ? 0xffe0b1 : r.gilded ? 0xe2ab65 : 0xe98b58,
-    alpha,
-  ).fillEllipse(x, y, 138, 132 + life.breath * 2);
+  bossSurface(g, x, y, 138, 132 + life.breath * 2,
+    pose.hurt > 0.2 ? 0xffe0b1 : r.gilded ? 0xe2ab65 : 0xe98b58, "feathers", alpha);
   g.fillStyle(0xffd49c, alpha).fillEllipse(x - 6, y + 24, 98, 79);
   for (let i = 0; i < 3; i++)
     g.lineStyle(2, 0xe9a56e, alpha * 0.6)
@@ -343,7 +342,7 @@ export function drawEmberwing(
       .strokePath();
   const hx = x + life.lookX * 5,
     hy = y - 45 - life.windup * 8 + life.breath * 2;
-  g.fillStyle(0xf4b078, alpha).fillEllipse(hx, hy, 104, 84);
+  bossSurface(g, hx, hy, 104, 84, 0xf4b078, "feathers", alpha);
   // Three individually licking crest flames; no rapid glow flicker.
   for (const [dx, size, phase] of [
     [5, 29, 0],

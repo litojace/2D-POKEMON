@@ -1,4 +1,5 @@
 import { groundHeight } from "../../../packages/shared/src/world-art";
+import { bossSurface } from "./boss-materials";
 import { bossLife, bossEye } from "./raid-boss-life";
 import type Phaser from "phaser";
 import type { Snapshot } from "@arena/shared";
@@ -265,7 +266,7 @@ export function drawPrismatail(
       .translateCanvas(tx, ty)
       .rotateCanvas(a + Math.PI / 2);
     g.fillStyle(0x1a354c, alpha).fillEllipse(0, 0, 47, 89);
-    g.fillStyle(color, alpha * 0.85).fillEllipse(0, -2, 39, 79);
+    bossSurface(g, 0, -2, 39, 79, color, "pearl", alpha * .85);
     g.fillStyle(0xfff7cf, alpha * 0.5).fillEllipse(-6, -12, 10, 37);
     diamond(g, 0, -4, 22, 0xeefbff, alpha * 0.8);
     diamond(g, 0, -4, 15, color, alpha);
@@ -285,10 +286,8 @@ export function drawPrismatail(
     g.fillStyle(0xe3b567, alpha).fillEllipse(x + side * 25, boss.y + 9, 32, 12);
   }
   g.fillStyle(0x224659, alpha).fillEllipse(x, y + 16, 111, 120);
-  g.fillStyle(
-    pose.hurt > 0.2 ? 0xe5faff : r.gilded ? 0xf6c66f : 0x65bcca,
-    alpha,
-  ).fillEllipse(x, y + 12, 104, 119 + life.breath * 2);
+  bossSurface(g, x, y + 12, 104, 119 + life.breath * 2,
+    pose.hurt > 0.2 ? 0xe5faff : r.gilded ? 0xf6c66f : 0x65bcca, "feathers", alpha);
   g.fillStyle(0xffe9a4, alpha).fillEllipse(x, y + 28, 66, 78);
   for (const side of [-1, 1]) {
     g.save()
@@ -306,7 +305,7 @@ export function drawPrismatail(
   const hx = x + life.lookX * 5,
     hy = y - 53 + life.breath * 2 - life.windup * 9;
   g.fillStyle(0x3d91a5, alpha).fillEllipse(hx, hy + 20, 42, 57);
-  g.fillStyle(0x86dbe1, alpha).fillEllipse(hx, hy, 67, 69);
+  bossSurface(g, hx, hy, 67, 69, 0x86dbe1, "pearl", alpha);
   g.fillStyle(0xc6f1e4, alpha * 0.7).fillEllipse(hx - 10, hy - 13, 31, 20);
   for (const off of [-14, 0, 14]) {
     const tip =
