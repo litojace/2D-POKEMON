@@ -78,6 +78,32 @@
           assetFailed = false,
           reloading = false,
           timer;
+        // Reload from the server, not from this app's offline cache: an
+        // installed app can hold a broken copy of the game's files (a page
+        // stored in place of a script or stylesheet), and a plain reload
+        // would serve that copy again.
+        const reloadFresh = () => {
+          const jobs = [];
+          try {
+            if ("serviceWorker" in navigator)
+              jobs.push(
+                navigator.serviceWorker
+                  .getRegistrations()
+                  .then((list) => Promise.all(list.map((r) => r.unregister()))),
+              );
+            if (window.caches)
+              jobs.push(
+                caches
+                  .keys()
+                  .then((keys) => Promise.all(keys.map((k) => caches.delete(k)))),
+              );
+          } catch {
+            /* Fall back to a plain reload. */
+          }
+          Promise.all(jobs)
+            .catch(() => {})
+            .then(() => location.reload());
+        };
         const failed = () => {
           if (ready) return;
           const shell = document.getElementById("app-boot");
@@ -97,7 +123,7 @@
                 reloading = true;
                 sessionStorage.setItem("arena-boot-retry", String(Date.now()));
                 setTimeout(() => {
-                  if (!ready) location.reload();
+                  if (!ready) reloadFresh();
                 }, 400);
               }
             } catch {
@@ -124,6 +150,16 @@
         );
         window.addEventListener("arena:ready", () => {
           if (assetFailed) return;
+          // The code ran, but did its stylesheet apply? One served as a page
+          // can fail without an error event.
+          const styled = getComputedStyle(document.documentElement)
+            .getPropertyValue("--accent")
+            .trim();
+          if (!styled) {
+            assetFailed = true;
+            failed();
+            return;
+          }
           ready = true;
           clearTimeout(timer);
           try {
@@ -136,7 +172,7 @@
         window.addEventListener("DOMContentLoaded", () => {
           const shell = document.getElementById("app-boot");
           if (!shell) return;
-          shell.querySelector("button").onclick = () => location.reload();
+          shell.querySelector("button").onclick = reloadFresh;
           if (assetFailed) failed();
           timer = setTimeout(failed, 15000);
         });

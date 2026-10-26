@@ -429,9 +429,24 @@ export function createArenaServer(
           res.setHeader("Cache-Control", "no-cache");
         if (file.endsWith("manifest.webmanifest"))
           res.setHeader("Content-Type", "application/manifest+json");
+        // Build files carry a content hash in their name, so they never change.
+        else if (/[/\\]assets[/\\][^/\\]+-[A-Za-z0-9_-]{8}\.(?:js|css)$/.test(file))
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
       },
     }),
   );
+  // A file that isn't there is a 404, never the app page: answering a missing
+  // script or stylesheet with index.html (200, text/html) let the installed
+  // app's offline cache store the page in their place, so it opened unstyled
+  // on the rotate notice until its cache was cleared.
+  app.use((req, res, next) => {
+    if (req.path.startsWith("/assets/") || path.extname(req.path)) {
+      res.setHeader("Cache-Control", "no-store");
+      res.status(404).type("text/plain").send("Not found");
+      return;
+    }
+    next();
+  });
   app.get("*", (_req, res) => {
     res.setHeader("Cache-Control", "no-cache");
     res.sendFile(path.join(client, "index.html"));
