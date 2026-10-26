@@ -36,11 +36,10 @@ export const TOWN = {
   },
 } as const;
 
-/** The paving frames the raised monument; the basin and elemental ring keep
- * their ground centre at TOWN.plaza. Roads still meet inside the forecourt. */
+/** Every paving ring shares the basin and elemental markers' ground centre. */
 export const TOWN_PLAZA_ROAD = {
   x: TOWN.plaza.x,
-  y: TOWN.plaza.y - 56,
+  y: TOWN.plaza.y,
   rx: TOWN.plaza.r,
   ry: TOWN.plaza.r * 0.78,
 } as const;

@@ -5,7 +5,6 @@ import {
   TOWN_PLAZA_ROAD,
   TOWN_PLAZA_LAMPS,
 } from "../../../packages/shared/src/town";
-import { FOUNTAIN } from "../src/town-art";
 
 describe("central plaza fountain", () => {
   const f = TOWN_OBSTACLES.find((o) => o.kind === "fountain")!;
@@ -36,17 +35,17 @@ describe("central plaza fountain", () => {
     }
   });
 
-  it("frames the full fountain within the circular road", () => {
-    const top = f.y + FOUNTAIN.crystal.dy - FOUNTAIN.crystal.ry;
-    const bottom = f.y + FOUNTAIN.basin.ry + FOUNTAIN.basin.wall;
-    const above = top - (TOWN_PLAZA_ROAD.y - TOWN_PLAZA_ROAD.ry);
-    const below = TOWN_PLAZA_ROAD.y + TOWN_PLAZA_ROAD.ry - bottom;
-    expect(above).toBeGreaterThan(0);
-    expect(below).toBeGreaterThan(0);
-    expect(Math.abs(above - below)).toBeLessThan(32);
-    // The independent paving centre must not move the basin or tag circle.
-    expect(f.y).toBe(1080);
+  it("keeps the road, inner circle, markers and basin concentric", () => {
+    expect(TOWN_PLAZA_ROAD.x).toBe(f.x);
+    expect(TOWN_PLAZA_ROAD.y).toBe(f.y);
+    const radii: number[] = [];
     for (const stone of TOWN_OBSTACLES.filter((o) => o.kind === "stone")) {
+      radii.push(
+        Math.hypot(
+          (stone.x - TOWN_PLAZA_ROAD.x) / TOWN_PLAZA_ROAD.rx,
+          (stone.y - TOWN_PLAZA_ROAD.y) / TOWN_PLAZA_ROAD.ry,
+        ),
+      );
       expect(
         Math.hypot(
           (stone.x - TOWN_PLAZA_ROAD.x) / (TOWN_PLAZA_ROAD.rx - 16),
@@ -54,9 +53,10 @@ describe("central plaza fountain", () => {
         ),
       ).toBeLessThan(1);
     }
+    expect(Math.max(...radii) - Math.min(...radii)).toBeLessThan(1e-10);
   });
 
-  it("keeps the perimeter lamps outside the shifted paving", () => {
+  it("keeps the perimeter lamps outside the paving", () => {
     for (const lamp of TOWN_PLAZA_LAMPS) {
       expect(
         Math.hypot(
