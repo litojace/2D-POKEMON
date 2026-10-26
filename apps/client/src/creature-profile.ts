@@ -66,9 +66,17 @@ export function profilePartOrder(
 ): CreaturePart[] {
   const lower: CreaturePart[] =
     dir === "up"
-      ? ["tail", "legL", "legR", "armL", "armR", "body", "wings"]
+      ? id === "terradon"
+        ? // From behind, the shell (drawn after the head, below) hides its arms.
+          ["tail", "legL", "legR", "armL", "armR", "body"]
+        : ["tail", "legL", "legR", "armL", "armR", "body", "wings"]
       : ["tail", "wings", "armL", "legL", "legR", "body", "armR"];
-  return [...lower, ...profileFaceOrder(id, dir), "scarf"];
+  const face = profileFaceOrder(id, dir);
+  // Terradon's shell rises behind its head: from behind it covers the nape
+  // (but not the sapling on top).
+  if (id === "terradon" && dir === "up")
+    return [...lower, ...face.filter((p) => p !== "flame"), "wings", "flame", "scarf"];
+  return [...lower, ...face, "scarf"];
 }
 interface ProfileDrawing {
   palette: Palette;
@@ -109,13 +117,6 @@ export function profilePivot(
         wings:
           id === "auralynx" ? [100, 115] : [116, id === "terradon" ? 134 : 126],
       };
-  if (id === "terradon" && !rear)
-    Object.assign(points, {
-      armL: [77, 133],
-      armR: [89, 137],
-      legL: [126, 149],
-      legR: [143, 151],
-    });
   const point = points[part];
   return point && [dir === "right" ? 200 - point[0] : point[0], point[1]];
 }
@@ -126,8 +127,6 @@ export function profilePartBounds(
   _dir: ArticulatedFacing,
   part: CreaturePart,
 ) {
-  if (id === "terradon" && (part === "legL" || part === "legR"))
-    return [20, 130, 160, 50];
   if (part === "body") return [44, 88, 112, 91];
   if (part === "armL" || part === "armR") return [32, 104, 136, 75];
   if (part === "flame") return [10, -4, 180, 132];
@@ -725,24 +724,7 @@ export function creatureProfile(
         line("M126 153l22 8", p.light, 2);
   }
   if (id === "terradon") {
-    // A grove tortoise: the neck projects from a low dome, supported by four short legs.
-    const foot = (
-      x: number,
-      y: number,
-      px: number,
-      floor: number,
-      width: number,
-    ) =>
-      e(x, y, 11, 12) +
-      path(
-        `M${x - 9} ${y - 3}Q${px - width} ${floor - 22} ${px - width} ${floor - 5}Q${px} ${floor + 3} ${px + width} ${floor - 5}Q${px + width + 1} ${floor - 19} ${x + 9} ${y - 3}Z`,
-      ) +
-      e(px, floor - 5, width, 6) +
-      line(
-        `M${px - 6} ${floor - 5}v4M${px} ${floor - 4}v4M${px + 6} ${floor - 5}v4`,
-        "#f6ead2",
-        2.1,
-      );
+    // A grove tortoise standing on two legs, its mossy shell worn on its back.
     profiles.head = back
       ? e(100, 102, 29, 27, face) + shine(79, 84, 18)
       : path(
@@ -769,69 +751,49 @@ export function creatureProfile(
         p.glow,
       ) +
       flower(sproutX + 1, 47);
+    // The shell: on its back (a dome behind the torso in profile, covering
+    // the back from behind), with moss, flowers and the crystal cluster.
     profiles.wings =
       (back
-        ? path(
-            "M36 148Q32 117 59 101Q100 83 141 101Q168 117 164 148Q161 164 100 166Q39 164 36 148Z",
-          )
-        : path(
-            "M82 141Q80 109 109 97Q136 85 162 106Q182 122 178 148Q174 163 133 164Q94 164 82 150Z",
-          )) +
+        ? path("M60 152Q52 122 66 104Q82 90 100 90Q118 90 134 104Q148 122 140 152Q132 164 100 164Q68 164 60 152Z")
+        : path("M106 100Q116 72 136 76Q156 82 160 112Q164 146 150 166Q138 176 124 170Q108 160 110 138Q112 120 106 100Z")) +
       line(
         back
-          ? "M55 118Q70 108 82 110L100 123L118 110Q132 108 145 118M44 142L70 131L100 146L130 131L156 142M82 110L70 131M118 110L130 131M100 123V146"
-          : "M94 119Q111 105 126 108L144 122Q161 119 171 129M88 141L109 130L135 146L159 140L175 149M126 108L109 130M144 122L135 146V160",
+          ? "M100 92V163M74 108Q100 116 126 108M64 130Q100 140 136 130M64 150Q100 158 136 150"
+          : "M120 80Q150 98 152 166M114 104Q134 102 158 112M112 132Q134 132 162 140M116 156Q134 160 152 164",
         p.dark,
         2.4,
         0.6,
       ) +
-      line(
-        back ? "M40 150Q100 173 160 150" : "M85 147Q128 172 176 149",
-        p.light,
-        3,
-        0.65,
-      ) +
+      line(back ? "M62 154Q100 170 138 154" : "M110 140Q114 164 132 170", p.light, 3, 0.6) +
       path(
         back
-          ? "M42 122Q51 102 75 104Q85 93 101 100Q122 92 139 111Q153 110 159 128L140 121L123 124L103 114L81 119L60 116Z"
-          : "M86 123Q91 105 110 107Q119 94 136 104Q156 101 169 124L151 121L137 127L119 117L105 123Z",
+          ? "M70 110Q78 94 92 94Q100 88 110 92Q126 94 132 110Q122 104 110 106Q100 100 90 106Q80 104 70 110Z"
+          : "M108 98Q114 78 132 78Q148 80 156 100Q146 94 136 96Q126 88 116 96Z",
         p.glow,
       ) +
-      flower(back ? 61 : 120, back ? 119 : 111) +
-      flower(back ? 140 : 158, 134, "#ffffff") +
-      path(
-        back
-          ? "M43 122L48 99L57 114L63 96L68 123Z"
-          : "M153 124L158 100L166 115L172 103L178 130Z",
-        "#bfe9ff",
-      ) +
-      line(
-        back ? "M49 107l4 12M62 104v15" : "M159 107v14M171 111v13",
-        "#ffffff",
-        1.3,
-        0.8,
-      );
+      flower(back ? 76 : 124, back ? 116 : 90) +
+      flower(back ? 126 : 150, back ? 120 : 104, "#ffffff") +
+      path(back ? "M56 120L60 96L67 110L72 92L76 118Z" : "M146 92L150 68L157 82L163 70L166 96Z", "#bfe9ff") +
+      line(back ? "M61 102l2 12M71 98v14" : "M151 74v14M162 76v13", "#ffffff", 1.3, 0.8);
+    // An upright torso with its plated belly.
     profiles.body = back
-      ? e(100, 145, 41, 21)
-      : e(96, 126, 22, 18) +
-        e(112, 145, 40, 19) +
-        e(89, 148, 18, 15, pearl) +
-        line("M74 143q15 6 29 0M75 153q15 5 28 0", p.mid, 1.8, 0.65);
-    profiles.armL = back
-      ? foot(72, 122, 59, 168, 13)
-      : foot(77, 133, 69, 165, 12);
-    profiles.armR = back
-      ? foot(128, 122, 141, 168, 13)
-      : foot(89, 137, 81, 174, 15);
-    profiles.legL = back
-      ? foot(82, 151, 81, 174, 13)
-      : foot(126, 149, 129, 165, 12);
-    profiles.legR = back
-      ? foot(118, 151, 119, 174, 13)
-      : foot(143, 151, 149, 174, 15);
+      ? e(100, 121, 20, 17) + e(100, 141, 29, 27)
+      : e(100, 121, 20, 17) +
+        e(102, 141, 27, 27) +
+        e(92, 144, 16, 20, pearl) +
+        line("M80 136q12 4 24 0M79 147q12 4 25 0M81 157q11 3 22 0", p.mid, 1.8, 0.6);
+    // Two arms with stone pauldrons; two sturdy legs with clawed feet.
+    const pauldron = (x: number, y = 121) =>
+      e(x, y, 12, 8, p.accent) + e(x - 2, y - 6, 7, 3, p.glow, ' stroke="none"');
+    // From behind, the shell covers its arms entirely.
+    profiles.armL = back ? "" : arm(85, 124, 9, 76) + pauldron(85);
+    profiles.armR = back ? "" : arm(111, 124, 9, 111) + pauldron(111);
+    profiles.legL = leg(back ? 84 : 89, 13);
+    profiles.legR = leg(back ? 116 : 112, 15);
     profiles.tail = back
-      ? path("M96 150Q100 165 107 167L110 162L104 149Z")
-      : path("M119 144Q146 147 165 142L182 151Q174 161 149 154L119 155Z");
+      ? path("M96 160Q100 172 108 174L112 168L104 158Z")
+      : path("M126 158Q146 160 158 168Q146 174 124 166Z");
     profiles.scarf = "";
   }
   if (id === "duskveil") {

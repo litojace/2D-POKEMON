@@ -446,11 +446,14 @@ export function creatureLayers(
     layers.tail = `${tailPath("M118 156Q136 176 156 166Q148 160 152 152Q140 158 132 150Q130 156 120 150Z", body)}${tailPath("M140 160L146 164", "none", ` stroke="${p.light}" stroke-width="2"`)}`;
   }
   if (id === "terradon") {
-    // Grove tortoise: a mossy hex shell with flowers and a crystal cluster,
-    // a budding sapling, sleepy eyes, stone pauldrons and clawed feet.
+    // Grove tortoise, standing on two legs: a mossy shell worn on its back
+    // with flowers and a crystal cluster, a budding sapling, sleepy eyes, two
+    // arms with stone pauldrons and clawed feet.
     const flower = (x: number, y: number, c = "#ffb3d1") =>
       `${[0, 1, 2, 3, 4].map((i) => e(+(x + Math.cos((i * 2 * Math.PI) / 5) * 3.4).toFixed(1), +(y + Math.sin((i * 2 * Math.PI) / 5) * 3.4).toFixed(1), 2.8, 2.8, c).replace("/>", ' stroke="none"/>')).join("")}<circle cx="${x}" cy="${y}" r="2" fill="#fff3a0" stroke="none"/>`;
-    layers.wings = `${path("M35 151Q33 108 67 97Q100 83 133 97Q167 108 165 151Q153 164 100 163Q47 164 35 151Z", body)}${line("M58 112L78 100L100 110L122 100L142 112M48 136L70 126L90 138L110 128L132 138L152 130M78 100V126M122 100V128M100 110V138", p.dark, 2.4, 0.55)}${path("M40 120Q52 104 66 108Q60 96 76 92Q86 82 100 86Q114 80 126 90Q142 92 138 104Q152 104 160 120Q150 112 138 114Q130 106 118 110Q104 100 88 108Q74 104 66 114Q52 110 40 120Z", p.glow)}${flower(58, 110)}${flower(146, 112, "#ffffff")}${flower(126, 94)}${path("M30 112L34 88L42 104L48 84L52 108L40 118Z", "#bfe9ff")}${line("M35 94L37 106M47 90L46 104", "#ffffff", 1.4, 0.8)}`;
+    // The shell is worn on its back: a mossy dome that frames the torso,
+    // with its crystal cluster and flowers showing above the shoulders.
+    layers.wings = `${path("M58 152Q50 116 62 92Q78 66 100 64Q122 66 138 92Q150 116 142 152Q134 168 100 168Q66 168 58 152Z", body)}${line("M100 66V166M74 86Q100 96 126 86M64 116Q100 128 136 116M62 144Q100 156 138 144", p.dark, 2.4, 0.55)}${path("M66 94Q72 72 90 70Q100 62 112 68Q130 70 136 92Q124 84 112 88Q100 80 90 88Q78 84 66 94Z", p.glow)}${flower(72, 100)}${flower(130, 104, "#ffffff")}${flower(116, 76)}${path("M52 102L56 78L63 94L69 74L72 100L60 108Z", "#bfe9ff")}${line("M57 84L59 96M68 80L67 94", "#ffffff", 1.4, 0.8)}`;
     layers.head = `${e(100, 98, 33, 27, face)}${highlight(77, 82, 20)}${line("M91 115Q100 121 109 115", p.dark, 1.8)}${e(94, 110, 1, 0.8, p.dark)}${e(106, 110, 1, 0.8, p.dark)}${line("M76 86Q82 82 88 84M124 86Q118 82 112 84", p.dark, 1.8, 0.35)}`;
     // Sleepy eyes: heavy lids over small irises.
     const sleepy = (x: number) => {
@@ -460,14 +463,20 @@ export function creatureLayers(
     };
     layers.eyes = `<g transform="translate(0 8)">${sleepy(81)}${sleepy(119)}</g>`;
     layers.flame = `${line("M100 73Q98 60 101 49", "#5aa64a", 3.2)}${path("M100 62Q86 52 80 60Q90 68 100 62Z", p.glow)}${path("M100 58Q112 42 122 50Q112 60 100 58Z", p.glow)}${flower(101, 47)}`;
-    layers.body = `${e(65, 127, 12, 17)}${e(135, 127, 12, 17)}${e(100, 145, 40, 22)}${e(100, 148, 24, 15, pearl)}${line("M79 142Q100 148 121 142M79 152Q100 158 121 152", p.mid, 1.8, 0.6)}`;
-    layers.legL = paw(78, 161, 13);
-    layers.legR = paw(122, 161, 13);
-    const foreleg = (x: number) =>
-      `${e(x, 124, 11, 14)}${path(`M${x - 10} 125Q${x - 15} 145 ${x - 14} 164Q${x} 176 ${x + 14} 164Q${x + 15} 145 ${x + 10} 125Z`, body)}${e(x, 165, 15, 7)}${line(`M${x - 7} 166v4M${x} 167v4M${x + 7} 166v4`, "#f6ead2", 2.2)}`;
-    layers.armL = foreleg(65);
-    layers.armR = foreleg(135);
-    layers.tail = `${e(130, 137, 7, 7)}${tailPath("M126 136Q141 144 154 152Q148 163 124 153Z", body)}`;
+    // Standing upright: a round torso with its plated belly (plastron).
+    layers.body = `${e(100, 137, 27, 24)}${e(100, 141, 19, 19, pearl)}${line("M85 133Q100 138 115 133M84 143Q100 148 116 143M87 153Q100 157 113 153M100 124V158", p.mid, 1.8, 0.6)}`;
+    // Two sturdy legs with clawed feet.
+    layers.legL = paw(85, 165, 14);
+    layers.legR = paw(115, 165, 14);
+    // Two arms with stone pauldrons, hanging at its sides (hands clear of the ground).
+    const arm = (x: number) => {
+      const out = x < 100 ? -1 : 1;
+      const hx = x + out * 3;
+      return `${e(x + out, 137, 9, 16)}${e(hx, 152, 10, 8)}${line(`M${hx - 5} 156v3M${hx} 157v3M${hx + 5} 156v3`, "#f6ead2", 2.1)}${e(x, 123, 12, 8, p.accent)}${e(x - 2, 117, 7, 3, p.glow)}`;
+    };
+    layers.armL = arm(70);
+    layers.armR = arm(130);
+    layers.tail = `${tailPath("M132 150Q146 156 156 166Q146 170 130 160Z", body)}`;
   }
   if (id === "duskveil") {
     // Lantern wraith: a tall tattered hood with a star stitch, a void face,
@@ -597,15 +606,17 @@ export function creatureSvgRenderer(
 ) {
   const { defs, layers } = creatureLayers(id, dir, mood, look);
   const stroke = paletteFor(id, lookFor(id, look)).dark;
+  const FACE_PARTS: CreaturePart[] = ["head", "earFar", "ears", "eyes", "flame"];
+  const order = dir === "down" ? [] : profilePartOrder(dir, id);
+  // A part listed after the head (Terradon's shell from behind) draws over it.
+  const firstFace = order.findIndex((p) => FACE_PARTS.includes(p));
+  const lastFace = order.length - 1 - [...order].reverse().findIndex((p) => FACE_PARTS.includes(p));
   const lowerParts: CreaturePart[] =
     dir === "down"
       ? ["tail", "wings", "legL", "legR", "body", "armL", "armR"]
-      : profilePartOrder(dir, id).filter(
-          (part) =>
-            !["head", "earFar", "ears", "eyes", "flame", "scarf"].includes(
-              part,
-            ),
-        );
+      : order.slice(0, firstFace).filter((p) => p !== "scarf");
+  const faceParts: CreaturePart[] | null =
+    dir === "down" ? null : order.slice(firstFace, lastFace + 1);
   const group = (p: CreaturePart) =>
     `<g class="fighter-${p === "body" ? "torso" : p}">${layers[p]}</g>`;
   return (
@@ -625,9 +636,7 @@ export function creatureSvgRenderer(
           .filter((p) => !omit.includes(p))
           .map(group)
           .join("")}<g class="fighter-face">${(
-          (dir === "down"
-            ? ["head", "ears", "eyes", "flame"]
-            : profileFaceOrder(id, dir)) as CreaturePart[]
+          (faceParts ?? ["head", "ears", "eyes", "flame"]) as CreaturePart[]
         )
           .filter((p) => !omit.includes(p))
           .map(group)
