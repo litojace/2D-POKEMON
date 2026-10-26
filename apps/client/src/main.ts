@@ -11,7 +11,6 @@ import {
 } from "./home-screen";
 import { setupHomeNavigation } from "./home-navigation";
 import { watchSelectionPreview } from "./selection-preview";
-import { watchWelcomeMotion } from "./welcome-scene";
 import { townOutfitKey } from "./town-outfit";
 import { raidDay } from "../../../packages/shared/src/raid";
 import { resultXp } from "./adventure-ui";
@@ -261,7 +260,6 @@ const headerMenu = $("header-menu") as HTMLDetailsElement;
 lockScrollWhileOpen($<HTMLDialogElement>("dialog"), headerMenu);
 watchMenuMotion($("menu"), $<HTMLDialogElement>("dialog"), headerMenu);
 watchSelectionPreview($("menu"), $<HTMLDialogElement>("dialog"), headerMenu);
-watchWelcomeMotion($("menu"));
 headerMenu.addEventListener("click", (event) => {
   if ((event.target as Element).closest("button")) headerMenu.open = false;
 });

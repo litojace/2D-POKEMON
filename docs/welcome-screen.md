@@ -1,20 +1,22 @@
-# Animated welcome camp
+# Static plaza welcome
 
-The signed-out screen places the eight updated champion illustrations around a
-campfire, using a separate empty landscape rather than baked-in characters.
-One transparent Phaser canvas animates the actual game rigs, capped at 30 fps
-and 1.5 pixel density. The front row uses the new back illustrations.
+The signed-out screen uses one cohesive night-time painting of Elemental Plaza:
+turquoise fountain, warm lanterns, wet limestone and distant arena arches.
+The left third carries the artwork; the upper-left sky leaves room for the
+brand, and the quiet right side keeps the account form readable.
 
-Complete SVG figures provide an immediate fallback while the renderer loads.
-They breathe as whole figures, avoiding separated cutout joints. Auth forms
-retain their existing selectors, tabs, keyboard behavior and submit actions.
+There are no separate champions, campfire layers, motes, background drift or
+welcome Phaser renderer. Loading indicators and account controls retain their
+normal behaviour. The town and battle animation renderers are unaffected.
 
-The renderer pauses when hidden, is disposed on navigation, and sleeps after
-one frame when reduced motion is requested. Landscape phones keep the artwork
-beside an internally scrolling auth card. Safe-area padding protects controls.
+Responsive WebP exports use the same illustration: 1024 pixels wide for smaller
+screens and the original 1672 pixels for desktop/high-density displays. They
+remain still under normal and reduced-motion preferences. Landscape phones
+keep an internally scrolling account card within the viewport and safe areas.
 
-`tests/visual/welcome.spec.ts` checks desktop and 844×390 / 568×320 layouts,
-login/signup/recovery navigation, reduced-motion stability and canvas disposal.
+`tests/visual/welcome.spec.ts` checks 1440×900, 1280×720, 844×390 and 568×320,
+actual image loading, stillness, no welcome canvas/animation requests,
+login/signup/recovery navigation, reachable submit buttons and page overflow.
 
-Actual screenshots: [desktop](welcome-camp-desktop.png),
-[landscape phone](welcome-camp-phone.png).
+Actual screenshots: [desktop](welcome-plaza-desktop.webp),
+[landscape phone](welcome-plaza-phone.webp).

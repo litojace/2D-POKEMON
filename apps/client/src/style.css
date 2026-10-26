@@ -20854,7 +20854,7 @@ body.practice-active .header-menu {
 }
 
 /* ── Welcome screen ──
-   A painting of Elemental Plaza drifts slowly behind the page; the pitch
+   A static painting of Elemental Plaza sits behind the page; the pitch
    sits on the left over a dark wash, the account panel on the right. */
 body.gate-active {
   background: #0b1424;
@@ -20876,16 +20876,6 @@ body.gate-active main {
   position: absolute;
   inset: 0;
   z-index: -2;
-  /* "Campfire night": all eight fighters around a fire, kept in the left part
-     of the frame so the account card never covers one. */
-  background: url("/assets/backgrounds/campfire-poster-small.webp") left center / cover no-repeat;
-  transform-origin: 25% 70%;
-  animation: gate-drift 40s ease-in-out infinite alternate;
-}
-@media (min-width: 1100px), (min-resolution: 1.5dppx) {
-  .gate-backdrop {
-    background-image: url("/assets/backgrounds/campfire-poster.webp");
-  }
 }
 .welcome-gate::before {
   content: "";
@@ -20894,55 +20884,6 @@ body.gate-active main {
   z-index: -1;
   background:
     linear-gradient(90deg, rgba(6, 10, 28, 0.55) 0%, rgba(6, 10, 28, 0.2) 28%, rgba(6, 10, 28, 0) 46%, rgba(6, 10, 28, 0) 60%, rgba(6, 10, 28, 0.3) 100%);
-}
-@keyframes gate-drift {
-  from {
-    transform: scale(1);
-  }
-  to {
-    transform: scale(1.03);
-  }
-}
-/* Floating motes of light. */
-.gate-motes {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-}
-.gate-motes i {
-  position: absolute;
-  left: calc(4% + var(--i) * 7%);
-  bottom: -10px;
-  width: calc(3px + (var(--i) % 3) * 2px);
-  height: calc(3px + (var(--i) % 3) * 2px);
-  border-radius: 50%;
-  background: #ffe7a8;
-  box-shadow: 0 0 10px 2px rgba(255, 214, 140, 0.7);
-  opacity: 0;
-  animation: gate-mote calc(9s + (var(--i) % 5) * 2s) linear infinite;
-  animation-delay: calc(var(--i) * -1.3s);
-}
-@keyframes gate-mote {
-  10% {
-    opacity: 0.85;
-  }
-  90% {
-    opacity: 0.6;
-  }
-  to {
-    opacity: 0;
-    transform: translate(calc((var(--i) % 3 - 1) * 40px), -100vh);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .gate-backdrop,
-  .gate-motes i {
-    animation: none;
-  }
-  .gate-motes {
-    display: none;
-  }
 }
 .gate-layout {
   display: grid;
@@ -21046,7 +20987,7 @@ body.gate-active main {
   }
 }
 @media (max-height: 560px) {
-  /* Keep the title clear of the fighters around the campfire. */
+  /* Keep the landscape-phone header compact beside the account panel. */
   .gate-lead {
     display: none;
   }

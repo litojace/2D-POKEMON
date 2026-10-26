@@ -1,6 +1,6 @@
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import { menuIcon } from "./menu-icons";
-import { welcomeScene } from "./welcome-scene";
+import "./welcome-scene.css";
 
 export type HomeMode = "duel" | "teams" | "ffa" | "raid";
 export const HOME_MODES = [
@@ -37,7 +37,7 @@ export function homeShell(controls: string, roster: string) {
 export type GateStatus =
   "loading" | "connecting" | "signed-out" | "error" | "unavailable";
 /**
- * The front door, over a layered campfire scene of all eight fighters: the game's pitch on
+ * The front door, over a single still painting of the plaza: the game's pitch on
  * the left, and on the right the sign-up / log-in panel (filled in by
  * AccountUI.showAuth) or the current status.
  */
@@ -54,7 +54,7 @@ export function welcomeGate(status: GateStatus, invite?: string | null) {
           : status === "unavailable"
             ? `<div class="gate-wait" role="status"><p>Sign-in isn't available right now. Please try again later.</p></div>`
             : "";
-  return `<section class="welcome-gate" aria-labelledby="gate-title"><div class="gate-backdrop" aria-hidden="true"></div><div class="gate-motes" aria-hidden="true">${Array.from({ length: 14 }, (_, i) => `<i style="--i:${i}"></i>`).join("")}</div><div class="gate-layout"><div class="gate-intro"><div class="gate-heading"><span class="gate-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="currentColor" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><span class="gate-kicker">Real-time creature duels</span><h1 id="gate-title">Element<span>Arena</span></h1>${invite ? `<p class="gate-invite">You've been invited to room <b>${invite}</b>. Log in or create an account to join.</p>` : `<p class="gate-lead">Eight elemental fighters. One living town. Your next rival is already here.</p>`}</div>${welcomeScene()}</div><div class="gate-card" id="gate-auth">${panel}</div></div></section>`;
+  return `<section class="welcome-gate" aria-labelledby="gate-title"><div class="gate-backdrop" aria-hidden="true"></div><div class="gate-layout"><div class="gate-intro"><div class="gate-heading"><span class="gate-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="currentColor" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><span class="gate-kicker">Real-time creature duels</span><h1 id="gate-title">Element<span>Arena</span></h1>${invite ? `<p class="gate-invite">You've been invited to room <b>${invite}</b>. Log in or create an account to join.</p>` : `<p class="gate-lead">Eight elemental fighters. One living town. Your next rival is already here.</p>`}</div></div><div class="gate-card" id="gate-auth">${panel}</div></div></section>`;
 }
 
 /** Start a room: the mode choice and Create button, for the town's Play panel. */
