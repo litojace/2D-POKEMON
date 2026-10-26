@@ -49,7 +49,7 @@ Actual client captures:
 - [Village and new obelisk](town-hd-overview.webp)
 - [Boss plaques and stronger shadows](town-hd-bosses.webp)
 
-Validation: full build and PWA verification; 94 client unit tests; render-budget
+Validation: full build and PWA verification; 1,058 root tests and 94 client unit
 tests; browser checks for loaded HD bytes, native source reuse, actual mipmap
 filtering, shared fountain source/mask, GPU texture estimate below 140 MiB,
 and roster eye alignment. Chromium tests cover context loss/restoration and

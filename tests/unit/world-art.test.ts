@@ -19,11 +19,15 @@ import {
 } from "../../apps/client/src/shop-preview-layout";
 
 describe("shared world art perspective", () => {
-  it("uses the same ground projection and sun in town, PvP and raid paint kits", () => {
+  it("shares ground projection and sun direction while town casts stronger shadows", () => {
     expect(paintKit.K).toBe(WORLD_ART.groundY);
     expect(paintKit.SUNV).toEqual(WORLD_ART.sun);
     expect([SUN.dx, SUN.dy]).toEqual([WORLD_ART.sun.x, WORLD_ART.sun.y]);
-    expect(SUN.alpha).toBe(WORLD_ART.shadow.alpha);
+    // Town's detailed terrain needs more contrast; light direction and
+    // projection remain shared with combat, whose shadow budget is unchanged.
+    expect(SUN.alpha).toBeGreaterThan(WORLD_ART.shadow.alpha);
+    expect(SUN.alpha).toBeLessThanOrEqual(1);
+    expect(SUN.blur).toBeLessThanOrEqual(WORLD_ART.shadow.blur);
     expect(TOWN_PLAZA_ROAD.ry / TOWN_PLAZA_ROAD.rx).toBeCloseTo(paintKit.K);
     expect(TOWN_PLAZA_ROAD.y).toBe(TOWN.plaza.y);
     for (const bowl of [
