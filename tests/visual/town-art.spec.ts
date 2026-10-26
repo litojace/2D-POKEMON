@@ -14,7 +14,13 @@ test("town loads the approved plaza art without relying on legacy cached URLs", 
       return route.fulfill({ status: 404, body: "Stale legacy URL" });
     },
   );
-  const expected = ["town-fountain", "town-ground"];
+  const expected = [
+    "town-fountain",
+    "town-ground",
+    "town-coliseum",
+    "town-raid-hall",
+    "town-buildings",
+  ];
   const loaded = expected.map((name) =>
     page.waitForResponse(
       (response) =>

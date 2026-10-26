@@ -9,15 +9,27 @@ import {
 
 describe("painted fountain cascades", () => {
   it("starts at the two bowl rims and lands within the next pool", () => {
-    for (const [i, stream] of FOUNTAIN_STREAMS.entries()) {
-      const from = i < 12 ? FOUNTAIN.top : FOUNTAIN.mid;
-      const target = i < 12 ? FOUNTAIN.mid : FOUNTAIN.pool;
-      expect(
-        Math.hypot(
-          stream.start.x / (from.rx - 0.5),
-          (stream.start.y - from.dy - 1) / from.ry,
-        ),
-      ).toBeCloseTo(1);
+    for (const stream of FOUNTAIN_STREAMS) {
+      const target =
+        stream.source === "spout"
+          ? FOUNTAIN.top
+          : stream.source === "top"
+            ? FOUNTAIN.mid
+            : FOUNTAIN.pool;
+      if (stream.source === "spout") {
+        expect(Math.abs(stream.start.x)).toBeLessThanOrEqual(3);
+        expect(
+          Math.abs(stream.start.y - FOUNTAIN.spout.dy),
+        ).toBeLessThanOrEqual(1);
+      } else {
+        const from = FOUNTAIN[stream.source];
+        expect(
+          Math.hypot(
+            stream.start.x / (from.rx - 0.5),
+            (stream.start.y - from.dy - 1) / from.ry,
+          ),
+        ).toBeCloseTo(1);
+      }
       expect(
         Math.hypot(
           stream.end.x / (target.rx - 5),

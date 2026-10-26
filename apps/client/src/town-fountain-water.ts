@@ -6,6 +6,7 @@ interface Point {
   y: number;
 }
 export interface FountainStream {
+  source: "spout" | "top" | "mid";
   start: Point;
   control: Point;
   end: Point;
@@ -36,6 +37,7 @@ export function streamPoint(
 
 const { pool, mid, top } = FOUNTAIN;
 function cascade(
+  source: "top" | "mid",
   from: typeof mid | typeof top,
   targetY: number,
   landRx: number,
@@ -52,6 +54,7 @@ function cascade(
     };
     const end = { x: Math.cos(a) * landRx, y: targetY + Math.sin(a) * landRy };
     const stream: FountainStream = {
+      source,
       start,
       control: { x: start.x + (end.x - start.x) * 0.65, y: start.y + 1 },
       end,
@@ -71,20 +74,42 @@ function cascade(
 }
 
 export const FOUNTAIN_STREAMS = [
+  // Water fans out of the open nozzle below the hovering crystal, filling
+  // the upper bowl before overflowing through the two lower cascades.
+  ...Array.from({ length: 16 }, (_, i): FountainStream => {
+    const a = (i / 16) * Math.PI * 2;
+    const stream: FountainStream = {
+      source: "spout",
+      start: { x: Math.cos(a) * 2.6, y: FOUNTAIN.spout.dy + Math.sin(a) },
+      control: { x: Math.cos(a) * 16, y: FOUNTAIN.spout.dy + 1.5 },
+      end: { x: Math.cos(a) * 25, y: top.dy + Math.sin(a) * 16 },
+      front: Math.sin(a) >= 0,
+      period: 0.42 + rnd(i + 131) * 0.12,
+      phase: rnd(i * 5.7 + 131),
+      width: 1.1 + rnd(i * 9.1 + 131) * 0.5,
+      points: [],
+    };
+    stream.points = Array.from({ length: 17 }, (_, k) =>
+      streamPoint(stream, k / 16),
+    );
+    return stream;
+  }),
   ...cascade(
+    "top",
     top,
     mid.dy + 1,
     top.rx + 7,
     ((top.rx + 7) * mid.ry) / mid.rx,
-    12,
+    28,
     31,
   ),
   ...cascade(
+    "mid",
     mid,
     pool.dy,
     mid.rx + 17,
     ((mid.rx + 17) * pool.ry) / pool.rx,
-    24,
+    44,
     79,
   ),
 ];
@@ -107,30 +132,32 @@ export function drawFountainWater(
     const flow = reduced
       ? 1
       : 0.88 + Math.sin(t * 3.5 + stream.phase * 9) * 0.12;
-    g.lineStyle(stream.width * 3.2, 0x74cddd, 0.07 * light * flow).strokePoints(
+    g.lineStyle(stream.width * 5.5, 0x74cddd, 0.18 * light * flow).strokePoints(
       stream.points,
     );
-    g.lineStyle(stream.width, 0xd0f3f8, 0.32 * light * flow).strokePoints(
-      stream.points,
-    );
+    g.lineStyle(
+      stream.width * 1.45,
+      0xd0f3f8,
+      0.58 * light * flow,
+    ).strokePoints(stream.points);
 
     if (!reduced)
-      for (let drop = 0; drop < 2; drop++) {
-        const u = (t / stream.period + stream.phase + drop * 0.5) % 1;
+      for (let drop = 0; drop < 3; drop++) {
+        const u = (t / stream.period + stream.phase + drop / 3) % 1;
         // Short travelling highlights stretch as the water gains speed.
         const trail = Array.from({ length: 4 }, (_, k) =>
-          streamPoint(stream, Math.max(0, u - 0.055 + (k * 0.055) / 3)),
+          streamPoint(stream, Math.max(0, u - 0.08 + (k * 0.08) / 3)),
         );
-        g.lineStyle(stream.width * 0.55, 0xf1fdff, 0.62 * light).strokePoints(
+        g.lineStyle(stream.width * 0.75, 0xf1fdff, 0.85 * light).strokePoints(
           trail,
         );
         if (u > 0.55) {
           const p = streamPoint(stream, u);
-          g.fillStyle(0xe8fbff, 0.66 * light).fillEllipse(
+          g.fillStyle(0xe8fbff, 0.82 * light).fillEllipse(
             p.x,
             p.y,
             stream.width * 0.85,
-            1.3 + u,
+            1.5 + u * 2,
           );
         }
       }
@@ -138,18 +165,18 @@ export function drawFountainWater(
     // Each stream has its own impact clock. Both bowls receive foam and
     // spreading rings; splashes begin when a falling highlight reaches them.
     const sinceImpact =
-      ((t / stream.period + stream.phase) % 0.5) * stream.period;
+      ((t / stream.period + stream.phase) % (1 / 3)) * stream.period;
     const age = reduced ? 0.45 : Math.min(1, sinceImpact / 0.32);
     const { x: ex, y: ey } = stream.end;
     g.fillStyle(
       0xe4fbff,
-      (reduced ? 0.2 : 0.16 + (1 - age) * 0.16) * light,
-    ).fillEllipse(ex, ey, 3.5 + stream.width, 1.6);
-    g.lineStyle(0.65, 0xc6edf3, (1 - age) * 0.3 * light).strokeEllipse(
+      (reduced ? 0.2 : 0.2 + (1 - age) * 0.2) * light,
+    ).fillEllipse(ex, ey, 4.5 + stream.width, 2);
+    g.lineStyle(0.7, 0xc6edf3, (1 - age) * 0.34 * light).strokeEllipse(
       ex,
       ey,
-      2 + age * 9,
-      0.8 + age * 3.2,
+      2 + age * 11,
+      1.3 + age * 6,
     );
     if (!reduced && sinceImpact < 0.2) {
       const s = sinceImpact;
@@ -162,7 +189,7 @@ export function drawFountainWater(
       }
     }
     // Break the regular sheen with a few moving reflections in the pool.
-    if (i % 4 === 0) {
+    if (stream.source === "mid" && i % 4 === 0) {
       const twinkle = reduced ? 0.2 : Math.max(0, Math.sin(t * 1.7 + i)) * 0.35;
       back
         .lineStyle(0.6, 0xd5f5f7, twinkle)

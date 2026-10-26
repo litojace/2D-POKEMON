@@ -421,6 +421,7 @@ export function openTown(options: TownOptions) {
 
   // --- Server --------------------------------------------------------------
   const onState = (s: TownState) => {
+    if (closed) return;
     me = s.me;
     $("town-pop").textContent =
       `Town ${s.town} · ${s.population} ${s.population === 1 ? "player" : "players"} here`;
@@ -471,6 +472,7 @@ export function openTown(options: TownOptions) {
       }
   };
   const onProfiles = (list: TownProfile[]) => {
+    if (closed) return;
     for (const p of list) {
       profiles.set(p.id, p);
       const body = bodies.get(p.id);
@@ -569,6 +571,9 @@ export function openTown(options: TownOptions) {
     preload() {
       this.load.image("town-ground", TOWN_ART.ground);
       this.load.image("town-fountain-painted", TOWN_ART.fountain);
+      this.load.image("town-architecture-coliseum", TOWN_ART.coliseum);
+      this.load.image("town-architecture-raidHall", TOWN_ART.raidHall);
+      this.load.image("town-architecture-buildings", TOWN_ART.buildings);
     }
     create() {
       if (closed) return;
@@ -1037,6 +1042,7 @@ export function openTown(options: TownOptions) {
     profiles.clear();
     bodies.clear();
     arrived.clear();
+    scene = undefined;
     game.destroy(true);
     if (game.isRunning && !game.loop.running) game.loop.wake();
     layer.remove();

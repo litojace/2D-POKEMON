@@ -292,7 +292,7 @@ export function materialContext(ctx: Ctx, family: MaterialFamily): Ctx {
 
 export function townMaterialFamily(key: string): MaterialFamily | null {
   if (
-    /fountain-painted|statue-image|puff|ember|cloud|butterfly|dog-|hen-|duck-|gull-/.test(
+    /town-painted-|fountain-painted|statue-image|puff|ember|cloud|butterfly|dog-|hen-|duck-|gull-/.test(
       key,
     )
   )

@@ -16,8 +16,139 @@
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <link rel="icon" type="image/png" href="/icons/arena-192.png" />
     <title>Element Arena · Online duels</title>
+    <!-- Keep a usable loading/retry screen even when a release's JS or CSS
+         cannot load. This small shell deliberately has no external assets. -->
+    <style id="arena-boot-style">
+      html {
+        background: #0b1020;
+        color: #edf3ff;
+      }
+      body {
+        margin: 0;
+      }
+      #rotate-gate {
+        display: none;
+      }
+      #app-boot {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483001;
+        display: grid;
+        place-content: center;
+        gap: 14px;
+        padding: 24px;
+        background: #0b1020;
+        color: #edf3ff;
+        text-align: center;
+        font:
+          16px/1.5 system-ui,
+          sans-serif;
+      }
+      #app-boot h1 {
+        margin: 0;
+        color: #ffe08a;
+        font:
+          700 28px/1.2 system-ui,
+          sans-serif;
+      }
+      #app-boot p {
+        margin: 0;
+        color: #b0c2dd;
+      }
+      #app-boot button {
+        justify-self: center;
+        min-height: 44px;
+        margin: 4px 0 0;
+        padding: 10px 24px;
+        border: 0;
+        border-radius: 12px;
+        background: #ffdc76;
+        color: #211b0e;
+        font:
+          700 16px system-ui,
+          sans-serif;
+      }
+      #app-boot [hidden] {
+        display: none;
+      }
+    </style>
+    <script>
+      (() => {
+        let ready = false,
+          assetFailed = false,
+          reloading = false,
+          timer;
+        const failed = () => {
+          if (ready) return;
+          const shell = document.getElementById("app-boot");
+          if (!shell) return;
+          shell.querySelector("h1").textContent = "The arena couldn't load";
+          shell.querySelector("p").textContent =
+            "Reload to reconnect. Your account and progress are kept.";
+          shell.querySelector("button").hidden = false;
+          // A stale release URL or interrupted fetch can recover from fresh
+          // entry HTML. Retry once before startup, never during a running game.
+          if (assetFailed && !reloading && navigator.onLine) {
+            try {
+              const previous = Number(
+                sessionStorage.getItem("arena-boot-retry") || 0,
+              );
+              if (Date.now() - previous > 60000) {
+                reloading = true;
+                sessionStorage.setItem("arena-boot-retry", String(Date.now()));
+                setTimeout(() => {
+                  if (!ready) location.reload();
+                }, 400);
+              }
+            } catch {
+              /* Private/storage-restricted browsing keeps manual retry. */
+            }
+          }
+        };
+        window.addEventListener(
+          "error",
+          (event) => {
+            if (ready) return;
+            const target = event.target;
+            if (
+              event.error ||
+              (target instanceof HTMLScriptElement &&
+                target.type === "module") ||
+              (target instanceof HTMLLinkElement && target.rel === "stylesheet")
+            ) {
+              assetFailed = true;
+              failed();
+            }
+          },
+          true,
+        );
+        window.addEventListener("arena:ready", () => {
+          if (assetFailed) return;
+          ready = true;
+          clearTimeout(timer);
+          try {
+            sessionStorage.removeItem("arena-boot-retry");
+          } catch {
+            /* optional */
+          }
+          document.getElementById("app-boot")?.remove();
+        });
+        window.addEventListener("DOMContentLoaded", () => {
+          const shell = document.getElementById("app-boot");
+          if (!shell) return;
+          shell.querySelector("button").onclick = () => location.reload();
+          if (assetFailed) failed();
+          timer = setTimeout(failed, 15000);
+        });
+      })();
+    </script>
   </head>
   <body>
+    <section id="app-boot" role="status" aria-live="polite">
+      <h1>Entering the arena…</h1>
+      <p>Loading your game.</p>
+      <button type="button" hidden>Reload game</button>
+    </section>
     <div id="app"></div>
     <!-- Element Arena plays in landscape only. On touch devices held upright
          this covers everything (see rotate-gate.ts and style.css). -->

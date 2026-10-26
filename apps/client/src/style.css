@@ -14769,6 +14769,20 @@ dialog.framed-dialog > .dialog-toolbar > .dialog-tabs {
   overflow: hidden;
   scrollbar-gutter: auto;
 }
+/* Mobile hides the eyebrow. Explicit rows keep the result buttons in the
+   footer instead of auto-placing them in the shrinking scroll-content row. */
+#arena-overlay .action-overlay:not(.raid-draft) > .eyebrow {
+  grid-row: 1;
+}
+#arena-overlay .action-overlay:not(.raid-draft) > h2 {
+  grid-row: 2;
+}
+#arena-overlay .action-overlay:not(.raid-draft) > .panel-scroll {
+  grid-row: 3;
+}
+#arena-overlay .action-overlay:not(.raid-draft) > .panel-actions {
+  grid-row: 4;
+}
 .panel-scroll {
   min-width: 0;
   min-height: 0;
@@ -14777,6 +14791,7 @@ dialog.framed-dialog > .dialog-toolbar > .dialog-tabs {
   scrollbar-gutter: stable;
   padding: 0 8px;
   scroll-padding: 8px;
+  -webkit-overflow-scrolling: touch;
 }
 .panel-scroll:focus-visible {
   outline: 2px solid var(--accent);

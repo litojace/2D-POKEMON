@@ -4272,3 +4272,6 @@ accountsUI = new AccountUI({
     } else renderBattle();
   },
 });
+
+// Imported code and the UI shell are ready; dismiss the asset-independent loader.
+window.dispatchEvent(new Event("arena:ready"));

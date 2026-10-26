@@ -1,5 +1,6 @@
 // Builds real room snapshots with the server's own code.
 import { Arena } from "../../../apps/server/src/simulation";
+export { resultXp } from "../../../apps/client/src/adventure-ui";
 import { createRaidArena } from "../../../apps/server/src/raid-bosses";
 import { CHARACTERS, packSnapshot, type ArenaId, type CharacterId, type RaidBossId } from "../../../packages/shared/src/index";
 

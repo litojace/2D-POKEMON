@@ -25,6 +25,12 @@ test("both fountain cascades animate and honour reduced motion", async ({
     );
     await page.waitForTimeout(100);
     return {
+      spout: await page.screenshot({
+        clip: { x: 265, y: 140, width: 110, height: 105 },
+      }),
+      crystal: await page.screenshot({
+        clip: { x: 235, y: 0, width: 170, height: 180 },
+      }),
       upper: await page.screenshot({
         clip: { x: 220, y: 230, width: 200, height: 70 },
       }),
@@ -37,6 +43,8 @@ test("both fountain cascades animate and honour reduced motion", async ({
     next = await frame(1.17);
   expect(first.upper.equals(next.upper)).toBe(false);
   expect(first.lower.equals(next.lower)).toBe(false);
+  expect(first.crystal.equals(next.crystal)).toBe(false);
+  expect(first.spout.equals(next.spout)).toBe(false);
   await info.attach("falling-water", {
     body: await page.screenshot(),
     contentType: "image/png",
@@ -45,5 +53,7 @@ test("both fountain cascades animate and honour reduced motion", async ({
     later = await frame(9, true);
   expect(still.upper.equals(later.upper)).toBe(true);
   expect(still.lower.equals(later.lower)).toBe(true);
+  expect(still.crystal.equals(later.crystal)).toBe(true);
+  expect(still.spout.equals(later.spout)).toBe(true);
   expect(errors).toEqual([]);
 });

@@ -29,7 +29,6 @@ import {
   COLISEUM,
   buildingSprite,
   chimneyOf,
-  FOUNTAIN,
   fountainBase,
   fountainTop,
   paintedFountain,
@@ -49,6 +48,8 @@ import {
 } from "./town-art";
 import { propSprite, stallSprite } from "./town-props";
 import { drawFountainWater } from "./town-fountain-water";
+import { architectureFrame, paintedBuilding, paintedStall } from "./town-architecture";
+import { drawFountainCrystal } from "./town-fountain-crystal";
 import { butterflySprite, DOG_FRAMES, dogSprite, duckSprite, GULL_FRAMES, gullSprite, HEN_FRAMES, henSprite, type DogPose } from "./town-animals";
 
 /**
@@ -174,6 +175,23 @@ export class TownScenery {
 
   private buildings() {
     for (const b of TOWN_BUILDINGS) {
+      const frame = architectureFrame(b);
+      const imageKey = `town-architecture-${frame.asset}`;
+      if (this.scene.textures.exists(imageKey)) {
+        const source = this.scene.textures.get(imageKey).getSourceImage() as HTMLImageElement;
+        const art = paintedBuilding(source, b);
+        place(this.scene, `town-painted-${b.id}`, art.sprite, b.x, b.y, b.y, 2);
+        for (const p of art.flags) this.flags.push({x:b.x+p.x,y:b.y+p.y,color:b.kind === "temple"?0xb59bff:0xffd65b,depth:b.y+.3,w:26});
+        if (!this.reduced) {
+          for (const p of art.flames) this.flame(b.x+p.x,b.y+p.y,b.y+.5,b.kind === "tower"?.6:.45);
+          if (art.chimney) this.smoke(b.x+art.chimney.x,b.y+art.chimney.y,b.y+2);
+        }
+        if (art.hub) {
+          this.sails=place(this.scene,"town-sails",windmillSails(),b.x+art.hub.x,b.y+art.hub.y,b.y+1);
+          this.sails.setScale(this.sails.scaleX*art.rotorScale);
+        }
+        continue;
+      }
       const key = b.kind === "house" ? `town-house-${b.variant}-${b.w}` : `town-${b.id}`;
       place(this.scene, key, buildingSprite(b), b.x, b.y);
       if (b.kind === "windmill")
@@ -266,7 +284,8 @@ export class TownScenery {
     }
     // Signposts pointing down each road out of the plaza.
     TOWN_SIGNPOSTS.forEach((p, i) => place(s, `town-signpost-${i}`, signpostSprite(p.label, p.color, p.left), p.x, p.y + 4, p.y, 2.5));
-    TOWN_STALLS.forEach((st, i) => place(s, `town-stall-${i}`, stallSprite(st.color, i), st.x, st.y + 26, st.y));
+    const marketSource = s.textures.exists("town-architecture-buildings") ? s.textures.get("town-architecture-buildings").getSourceImage() as HTMLImageElement : null;
+    TOWN_STALLS.forEach((st, i) => place(s, `town-${marketSource?"painted-":""}stall-${i}`, marketSource?paintedStall(marketSource,st.color):stallSprite(st.color, i), st.x, st.y + 26, st.y, 2));
     void TOWN_DUMMIES;
     // Raid Hall statues: each boss carved in stone on a plinth with its
     // name on a bronze plaque; the next plinth waits under a cloth.
@@ -310,7 +329,7 @@ export class TownScenery {
 
   private labels() {
     for (const d of TOWN_DISTRICTS) {
-      const y = d.id === "raid" ? d.y - 470 : d.id === "arena" ? d.y - 470 : d.id === "training" ? d.y - 250 : d.id === "board" ? d.y - 300 : d.y - 340;
+      const y = d.id === "raid" ? d.y - 40 : d.id === "arena" ? d.y - 590 : d.id === "training" ? d.y - 250 : d.id === "board" ? d.y - 300 : d.y - 340;
       const title = this.scene.add
         .text(0, 0, d.label.toUpperCase(), { resolution: TEXT_RES, fontFamily: "Barlow Condensed, sans-serif", fontSize: "26px", fontStyle: "bold", color: d.color })
         .setOrigin(0.5, 1);
@@ -548,22 +567,8 @@ export class TownScenery {
   }
 
   private drawCrystal(t: number) {
-    const f = TOWN_OBSTACLES[0], { crystal } = FOUNTAIN;
-    const cy = f.y + crystal.dy, x = f.x, { rx, ry } = crystal;
-    const g = this.crystalG.clear();
-    // The crystal meets its stone mount; small facets give it glassy depth.
-    g.fillStyle(0xd9f8ff, 0.045).fillEllipse(x, cy, rx * 3.1, ry * 2.3);
-    g.fillStyle(0x548da7, 1).fillTriangle(x, cy - ry, x - rx, cy, x - 3, cy + ry);
-    g.fillStyle(0xc4f7ff, 1).fillTriangle(x, cy - ry, x - 5, cy - 3, x - rx, cy);
-    g.fillStyle(0x8cd9ef, 1).fillTriangle(x, cy - ry, x + rx, cy, x + 3, cy + ry);
-    g.fillStyle(0xf0feff, 1).fillTriangle(x, cy - ry, x + 4, cy - 3, x + rx, cy);
-    g.fillStyle(0xb4ebf7, 1).fillTriangle(x - rx, cy, x - 5, cy - 3, x - 3, cy + ry);
-    g.fillStyle(0x65abc7, 1).fillTriangle(x - 5, cy - 3, x + rx, cy, x + 3, cy + ry);
-    g.lineStyle(0.8, 0xeaffff, 0.9).lineBetween(x, cy - ry, x - rx, cy);
-    g.lineStyle(0.6, 0xeaffff, 0.55).lineBetween(x - rx, cy, x - 3, cy + ry);
-    const glint = this.reduced ? 0.5 : Math.max(0, Math.sin(t * 0.9));
-    g.lineStyle(1, 0xffffff, glint * 0.85).lineBetween(x + 4, cy - 11, x + 10, cy - 11);
-    g.lineBetween(x + 7, cy - 14, x + 7, cy - 8);
+    const f = TOWN_OBSTACLES[0];
+    drawFountainCrystal(this.crystalG, f.x, f.y, t, this.reduced);
   }
 
   /**

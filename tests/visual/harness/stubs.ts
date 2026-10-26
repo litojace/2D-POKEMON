@@ -16,11 +16,19 @@ export function io() {
       (handlers[ev] ??= []).push(fn);
       return s;
     },
-    off() {
+    off(ev?: string, fn?: Handler) {
+      if (!ev) {
+        for (const key of Object.keys(handlers)) delete handlers[key];
+      } else if (!fn) delete handlers[ev];
+      else handlers[ev] = (handlers[ev] ?? []).filter((h) => h !== fn);
       return s;
     },
     once(ev: string, fn: Handler) {
-      return s.on(ev, fn);
+      const once = (payload: unknown) => {
+        s.off(ev, once);
+        fn(payload);
+      };
+      return s.on(ev, once);
     },
     emit(ev: string, data: unknown, cb?: (r: unknown) => void) {
       w.__emit?.(ev, data);
@@ -43,7 +51,7 @@ export function io() {
     },
     io: { on() {}, opts: {} },
     fire(ev: string, payload: unknown) {
-      for (const fn of handlers[ev] ?? []) fn(payload);
+      for (const fn of [...(handlers[ev] ?? [])]) fn(payload);
     },
   };
   s.volatile = s;
@@ -69,7 +77,9 @@ export function createClient() {
       },
       getSession: async () => ({ data: { session } }),
       signOut: async () => ({}),
-      signInWithPassword: async () => ({ error: { message: "Offline harness" } }),
+      signInWithPassword: async () => ({
+        error: { message: "Offline harness" },
+      }),
     },
   };
 }

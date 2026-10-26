@@ -17,3 +17,18 @@ streams. Water trajectories and the animated crystal use the matching
 Keep the source unchanged when exporting the smaller WebP. The two passes must
 remain aligned, and the source anchor must describe the bottom plinth rather
 than the centre of the upper water plane.
+
+## Painted architecture
+
+`architecture/` keeps the generated transparent production source illustrations:
+`coliseum.png`, `raid-hall.png` and `small-buildings.png`. The small atlas contains
+red and teal cottages, a plum cottage and market stall, then a tower and windmill
+in a two-column, three-row grid. The facades face forward with horizontal front
+steps; roof and canopy surfaces supply the higher viewpoint.
+
+Export each complete source to the matching `src/art/town-*.webp` at quality 89
+without resizing or stripping alpha. `town-architecture.ts` records source crops,
+front-step anchors and attachment points for flags, smoke, flames and sails.
+Those coordinates depend on the original source dimensions. Animation moves
+separate effects; it never slices or deforms the painted buildings. All three
+exports use Vite content hashes and are included in the offline precache.

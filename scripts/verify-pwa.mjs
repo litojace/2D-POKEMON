@@ -29,7 +29,13 @@ assert(
   "Only public static assets may be cached",
 );
 assert(urls.includes("offline.html"));
-for (const art of ["town-fountain", "town-ground"])
+for (const art of [
+  "town-fountain",
+  "town-ground",
+  "town-coliseum",
+  "town-raid-hall",
+  "town-buildings",
+])
   assert(
     urls.some((url) => new RegExp(`^assets/${art}-[\\w-]+\\.webp$`).test(url)),
     `${art} must use a content-hashed URL and remain available offline`,
