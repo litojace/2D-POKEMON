@@ -2,6 +2,7 @@
 
 The signed-out screen uses one cohesive night-time painting of Elemental Plaza:
 turquoise fountain, warm lanterns, wet limestone and distant arena arches.
+One seated Voltkit is painted into the foreground beside the fountain.
 The left third carries the artwork; the upper-left sky leaves room for the
 brand, and the quiet right side keeps the account form readable.
 

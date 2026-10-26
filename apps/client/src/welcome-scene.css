@@ -1,12 +1,12 @@
-/* A single painting: the fountain sits on the left, with quiet space behind
+/* A single painting: Voltkit and the fountain sit on the left, with quiet space behind
    the account card. No moving scene, canvas or particles. */
 .welcome-gate .gate-backdrop {
-  background: #081326 url("/assets/backgrounds/plaza-night-small.webp") left
-    center / cover no-repeat;
+  background: #081326 url("/assets/backgrounds/plaza-night-voltkit-small.webp")
+    left center / cover no-repeat;
 }
 @media (min-width: 1100px), (min-resolution: 1.5dppx) {
   .welcome-gate .gate-backdrop {
-    background-image: url("/assets/backgrounds/plaza-night.webp");
+    background-image: url("/assets/backgrounds/plaza-night-voltkit.webp");
   }
 }
 .welcome-gate::before {
