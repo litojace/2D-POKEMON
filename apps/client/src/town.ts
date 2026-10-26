@@ -575,6 +575,7 @@ export function openTown(options: TownOptions) {
       this.load.image("town-nature", TOWN_ART.nature);
       this.load.image("town-scenery-props", TOWN_ART.props);
       this.load.image("town-animals", TOWN_ART.animals);
+      this.load.image("town-animal-motion", TOWN_ART.animalMotion);
       this.load.image("town-fountain-painted", TOWN_ART.fountain);
       this.load.image("town-architecture-coliseum", TOWN_ART.coliseum);
       this.load.image("town-architecture-raidHall", TOWN_ART.raidHall);

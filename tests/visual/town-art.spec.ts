@@ -23,6 +23,7 @@ test("town loads the approved plaza art without relying on legacy cached URLs", 
     "town-nature",
     "town-props",
     "town-animals",
+    "town-animal-motion",
   ];
   const loaded = expected.map((name) =>
     page.waitForResponse(

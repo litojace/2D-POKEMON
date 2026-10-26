@@ -7,6 +7,7 @@ import buildings from "./art/town-buildings.webp";
 import nature from "./art/town-nature.webp";
 import props from "./art/town-props.webp";
 import animals from "./art/town-animals.webp";
+import animalMotion from "./art/town-animal-motion.webp";
 
 /** Content-hashed URLs keep the approved plaza art tied to the client build. */
 export const TOWN_ART = {
@@ -18,4 +19,5 @@ export const TOWN_ART = {
   nature,
   props,
   animals,
+  animalMotion,
 };

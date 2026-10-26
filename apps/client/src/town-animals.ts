@@ -39,8 +39,8 @@ function leg(ctx: Ctx, x: number, y: number, len: number, a: number, bend: numbe
 
 // ───────────────────────────── Dog ─────────────────────────────
 
-export type DogPose = "walk" | "sniff" | "sit";
-export const DOG_FRAMES = { walk: 6, sniff: 2, sit: 1 } as const;
+export type DogPose = "walk" | "sniff" | "sit" | "idle";
+export const DOG_FRAMES = { walk: 8, sniff: 4, sit: 1, idle: 1 } as const;
 const DOG = { coat: ["#e0a868", "#c48446", "#8f5a2c"], dark: "#6a4022", belly: "#f2d2a2", collar: "#d8423a" };
 
 /** A medium tan dog in profile. Foot line at y = 40. */
@@ -156,8 +156,8 @@ export function dogSprite(pose: DogPose, frame: number): Sprite {
 
 // ─────────────────────────── Chicken ───────────────────────────
 
-export type HenPose = "walk" | "peck";
-export const HEN_FRAMES = { walk: 4, peck: 2 } as const;
+export type HenPose = "walk" | "peck" | "idle";
+export const HEN_FRAMES = { walk: 4, peck: 4, idle: 1 } as const;
 export const HEN_COLORS = {
   white: ["#ffffff", "#f2ead8", "#cfc2a4"],
   brown: ["#e8a464", "#b8683a", "#7a3e1e"],
@@ -206,8 +206,9 @@ export function henSprite(coat: keyof typeof HEN_COLORS, pose: HenPose, frame: n
       stroke(ctx, c[2], 0.8, [11, by + 1, 19, by - 1]);
       stroke(ctx, c[2], 0.8, [11, by + 3, 19, by + 1.5]);
       // Neck and head.
-      const hx = peck ? 28 + frame : 25,
-        hy = peck ? by + 4 + frame * 2 : by - 9;
+      const dip = [0, .5, 1, .35][frame % 4];
+      const hx = peck ? 25 + dip * 5 : 25,
+        hy = peck ? by - 9 + dip * 15 : by - 9;
       ctx.fillStyle = c[0];
       ctx.beginPath();
       ctx.moveTo(21, by - 4);
@@ -334,20 +335,20 @@ export function duckSprite(pose: DuckPose, female = false): Sprite {
 
 // ──────────────────────────── Gull ─────────────────────────────
 
-export const GULL_FRAMES = 4;
-/** A gull seen from above in flight, centred; wings beat through 4 frames. */
+export const GULL_FRAMES = 8;
+/** Fallback top view; the painted motion atlas uses an upright side profile. */
 export function gullSprite(frame: number): Sprite {
   return {
-    w: 60,
-    h: 30,
-    ax: 30,
-    ay: 15,
+    w: 64,
+    h: 56,
+    ax: 32,
+    ay: 28,
     draw(ctx) {
-      const cx = 30,
-        cy = 15;
-      // Wing tip height and span per frame: up, level, down, level.
-      const lift = [-9, 0, 6, 0][frame % 4],
-        span = [22, 27, 24, 27][frame % 4];
+      const cx = 32,
+        cy = 28;
+      // Two half-strokes with intermediate poses and a level glide frame.
+      const lift = [-9, -5, 0, 4, 6, 4, 0, -5][frame % 8],
+        span = [22, 25, 27, 26, 24, 26, 27, 25][frame % 8];
       for (const s of [-1, 1]) {
         ctx.fillStyle = "#c9ced8";
         ctx.beginPath();
