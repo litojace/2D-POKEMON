@@ -32,7 +32,7 @@ Town surface patterns are small cached 128-pixel tiles. Buildings and props are
 painted once and reused on later visits. Road stones reuse small cached images
 instead of running a separate clip/detail pass on every cobble.
 
-The large ground painting is shipped as `public/assets/town/ground.webp`
+The large ground painting is authored as `src/art/town-ground.webp`
 (3200 × 2000). Town preloads it, avoiding the large canvas painting on phones.
 The procedural painter remains the fallback if the asset cannot load.
 

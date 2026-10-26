@@ -11,14 +11,18 @@ export default defineConfig({
       includeAssets: ["icons/*.png", "offline.html"],
       injectManifest: {
         globPatterns: [
-          "assets/*.{js,css}",
+          "assets/*.{js,css,webp}",
           "assets/fonts/*.woff2",
           "assets/backgrounds/*.webp",
           "assets/town/*.webp",
           "assets/music/*.mp3",
           "assets/fighters/**/*.{svg,png,webp,json}",
         ],
-        globIgnores: ["assets/fighters/**/portrait-showcase-v1.webp"],
+        globIgnores: [
+          "assets/fighters/**/portrait-showcase-v1.webp",
+          "assets/town/fountain.webp",
+          "assets/town/ground.webp",
+        ],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
       },
       manifest: {

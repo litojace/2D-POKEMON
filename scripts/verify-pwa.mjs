@@ -29,6 +29,13 @@ assert(
   "Only public static assets may be cached",
 );
 assert(urls.includes("offline.html"));
+for (const art of ["town-fountain", "town-ground"])
+  assert(
+    urls.some((url) => new RegExp(`^assets/${art}-[\\w-]+\\.webp$`).test(url)),
+    `${art} must use a content-hashed URL and remain available offline`,
+  );
+assert(!urls.includes("assets/town/fountain.webp"));
+assert(!urls.includes("assets/town/ground.webp"));
 const music = JSON.parse(
   readFileSync("apps/client/public/assets/music/sources.json", "utf8"),
 );

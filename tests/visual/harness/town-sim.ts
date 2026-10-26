@@ -5,6 +5,10 @@ import { TOWN } from "../../../packages/shared/src/town";
 const w = window as unknown as Record<string, any>;
 const world = new TownWorld();
 const ME = "local";
+let localWalker: ReturnType<TownWorld["join"]> | undefined;
+w.__townPosition = (x: number, y: number) => {
+  if (localWalker) Object.assign(localWalker, { x, y, dx: 0, dy: 0 });
+};
 const handle = (ev: string, data: any) => {
   if (ev === "town-join") {
     const me = world.join(ME, "acct-me", {
@@ -17,6 +21,7 @@ const handle = (ev: string, data: any) => {
     });
     me.x = 1600;
     me.y = 1330;
+    localWalker = me;
     return { ok: true, town: 1, me: me.profile.id };
   }
   if (ev === "town-input") {
@@ -31,13 +36,16 @@ const handle = (ev: string, data: any) => {
     world.leave(ME);
     return { ok: true };
   }
-  if (ev === "town-emote") return { ok: world.emote(ME, data.emote, Date.now()) };
+  if (ev === "town-emote")
+    return { ok: world.emote(ME, data.emote, Date.now()) };
   if (ev === "town-jump") return { ok: world.jump(ME, Date.now()) };
   return undefined;
 };
-w.__reply = (ev: string, data: unknown) => (ev.startsWith("town-") ? handle(ev, data) : undefined);
+w.__reply = (ev: string, data: unknown) =>
+  ev.startsWith("town-") ? handle(ev, data) : undefined;
 w.__emit = (ev: string, data: unknown) => {
-  if (ev === "town-input" || ev === "town-leave" || ev === "town-jump") handle(ev, data);
+  if (ev === "town-input" || ev === "town-leave" || ev === "town-jump")
+    handle(ev, data);
 };
 setInterval(() => {
   world.step(1 / TOWN.tick, Date.now());

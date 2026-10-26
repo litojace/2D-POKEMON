@@ -19,8 +19,16 @@ Two matching image passes put rear streams behind the stone and
 near streams in front. A procedural fallback remains available if the image
 cannot load. Reduced motion leaves a still fountain.
 
-The compact WebP is included in the offline precache. Source artwork and its
-placement notes are in `apps/client/art-source/town/`. Client tests check the
+The compact fountain and ground WebPs are imported through `town-assets.ts` so their deployed URLs
+include content hashes. The actual town and water review use the same fountain
+asset; stale copies of the former fixed URL cannot replace the new build's art.
+The generated URLs are checked by `scripts/verify-pwa.mjs`.
+The previous public URLs remain available for older open clients, but only
+the versioned files are included in the new offline precache.
+
+Latest capture from the actual town: [in-game fountain](town-fountain-in-game.webp).
+
+Source artwork and placement notes are in `apps/client/art-source/town/`. Client tests check the
 basin against opposite pairs of markers and its clearance from all eight stones,
 concentric road and marker rings, and perimeter lamp placement;
 the town movement tests continue to check collision against the fountain.

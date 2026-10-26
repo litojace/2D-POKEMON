@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { TOWN_ART } from "../../../apps/client/src/town-assets";
 import {
   paintedFountain,
   type Sprite,
@@ -14,7 +15,7 @@ export function fountainReview() {
   });
   class Review extends Phaser.Scene {
     preload() {
-      this.load.image("fountain-art", "/assets/town/fountain.webp");
+      this.load.image("fountain-art", TOWN_ART.fountain);
     }
     create() {
       const source = this.textures

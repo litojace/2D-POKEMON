@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 
 const root = fileURLToPath(new URL("../apps/client", import.meta.url));
 const out = fileURLToPath(
-  new URL("../apps/client/public/assets/town/ground.webp", import.meta.url),
+  new URL("../apps/client/src/art/town-ground.webp", import.meta.url),
 );
 const server = await createServer({
   root,
@@ -41,7 +41,7 @@ try {
   });
   if (!data.startsWith("data:image/webp;base64,"))
     throw new Error("Browser did not encode WebP");
-  await mkdir(new URL("../apps/client/public/assets/town/", import.meta.url), {
+  await mkdir(new URL("../apps/client/src/art/", import.meta.url), {
     recursive: true,
   });
   const bytes = Buffer.from(data.split(",")[1], "base64");

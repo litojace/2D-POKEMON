@@ -1,3 +1,4 @@
+import { TOWN_ART } from "./town-assets";
 import {
   groundHeight,
   WORLD_ART,
@@ -566,8 +567,8 @@ export function openTown(options: TownOptions) {
       super("town");
     }
     preload() {
-      this.load.image("town-ground", "/assets/town/ground.webp");
-      this.load.image("town-fountain-painted", "/assets/town/fountain.webp");
+      this.load.image("town-ground", TOWN_ART.ground);
+      this.load.image("town-fountain-painted", TOWN_ART.fountain);
     }
     create() {
       if (closed) return;
