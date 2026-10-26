@@ -1,16 +1,14 @@
-# Approved side-view sources
+# Approved side-view references
 
-These are the original reference sheets selected by the user. Runtime side
-views copy their illustrations instead of approximating them with new shapes.
+These original reference sheets preserve the champions' approved identities:
 
 - `first-four.png`: Voltkit, Cindrake, Tidefin and Auralynx.
 - `last-four.png`: Lumoth, Mystowl, Terradon and Duskveil.
 
-To reimport, install ImageMagick and make Playwright/Chromium available, then run
-`node apps/client/scripts/import-side-references.mjs` from the repository root.
-Set `PLAYWRIGHT_MODULE` and `CHROMIUM_PATH` if they are not at the usual paths.
-Format the generated JSON with the repository's Prettier command afterward.
+Runtime views are now authored as full SVG body parts in `creature-profile.ts`,
+matching the front art's gradients, outlines and palettes. These paintings are
+visual references, not sprites sliced into animated pieces. The former raster
+import pipeline and generated cutout JSON have been retired.
 
-The import records each source's SHA-256 checksum. It copies and partitions the
-source pixels, with background matting and hidden joint/eye backing paint.
-These source sheets are kept outside `public/` and are not deployed.
+See `docs/champion-side-views.md` for anatomy, joints and current motion previews.
+Source sheets remain outside `public/` and are not deployed.

@@ -1,13 +1,14 @@
-# Champion back illustrations
+# Back-view references
 
-The approved rear designs were prepared as transparent source sheets:
+The original transparent design studies are kept here:
 `first-three.png` (Cindrake, Tidefin, Auralynx) and `remaining-five.png`
 (Voltkit, Lumoth, Mystowl, Terradon, Duskveil).
 
-Run `node apps/client/scripts/import-back-references.mjs` from the repository
-root with Chromium and Playwright available. `PLAYWRIGHT_MODULE` can point to
-an installed Playwright module. The importer removes transparent margins,
-retains detached accessories, aligns each fighter's feet, and writes cropped
-layers and source checksums to `apps/client/src/art/reference-backs.json`.
-Source sheets are not deployed. The animation renderer joins these layers into
-a continuous surface; the layers provide bone weights and skin decoration.
+Runtime backs now use full articulated SVG anatomy in `creature-profile.ts`,
+with complete hidden necks, shoulders and hips, separate appendages and
+accessories, and the same rendering style as the front. They have no
+front-facing facial features. The former raster importer, cutout JSON and
+whole-illustration deformation surface have been retired.
+
+See `docs/champion-side-views.md` for the current renderer and motion previews.
+These source sheets are retained as visual references and are not deployed.

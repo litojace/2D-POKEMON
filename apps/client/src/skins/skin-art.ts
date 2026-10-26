@@ -352,12 +352,12 @@ export const HEAD: Record<CharacterId, Record<Facing, { cx: number; top: number 
   auralynx: { down: { cx: 100, top: 45 }, up: { cx: 100, top: 44 }, left: { cx: 94, top: 45 }, right: { cx: 106, top: 45 } },
   lumoth: { down: { cx: 100, top: 45 }, up: { cx: 100, top: 44 }, left: { cx: 91, top: 45 }, right: { cx: 109, top: 45 } },
   mystowl: { down: { cx: 100, top: 43 }, up: { cx: 100, top: 44 }, left: { cx: 96, top: 43 }, right: { cx: 104, top: 43 } },
-  terradon: { down: { cx: 100, top: 51 }, up: { cx: 100, top: 44 }, left: { cx: 89, top: 51 }, right: { cx: 111, top: 51 } },
+  terradon: { down: { cx: 100, top: 63 }, up: { cx: 100, top: 68 }, left: { cx: 78, top: 61 }, right: { cx: 122, top: 61 } },
   duskveil: { down: { cx: 101, top: -5 }, up: { cx: 101, top: -5 }, left: { cx: 96, top: -5 }, right: { cx: 106, top: -5 } },
 };
 
 /** Default parts a pattern covers (the eyes are a separate layer and stay clear). */
-export const PATTERN_PARTS: CreaturePart[] = ["body", "head", "tail", "armL", "armR", "legL", "legR", "wings", "ears"];
+export const PATTERN_PARTS: CreaturePart[] = ["body", "head", "tail", "armL", "armR", "legL", "legR", "wings", "earFar", "ears"];
 
 /** A tiny repeatable random from a string (patterns never flicker). */
 function seeded(key: string) {

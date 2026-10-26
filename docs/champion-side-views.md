@@ -1,28 +1,64 @@
-# Illustrated champion views
+# Articulated champion views
 
-All eight champions use the approved illustrations for their left, right and
-back views. Left and right are separate drawings. Front artwork stays unchanged.
-Source sheets are archived under `apps/client/art-source/side-views/` and
-`back-views/`; the importers record their checksums in the runtime JSON.
+All eight champions have complete left, right and rear anatomy drawn in the
+same SVG style as their front view. The approved reference sheets remain as
+visual references under `apps/client/art-source/side-views/` and `back-views/`.
+Terradon now has a low tortoise dome, a projecting neck and four short legs in
+every view. Game properties and hitboxes are unchanged.
 
-The illustrated facings now animate as one continuous textured surface. The
-existing rig still supplies the poses, but softly weighted shared vertices keep
-the head, goggles, fins, torso and limbs connected. Independently moving raster
-cutouts previously exposed unpainted gaps during motion. Auralynx's detached
-crystal orbit remains separate so it can rotate freely. Eyes change expression
-without compressing a rectangular cutout through the face. Canvas-only devices
-use a complete illustrated frame with subtle breathing and the normal root poses.
+Each facing contains thirteen independently rendered parts: torso, head, eyes,
+near ears/gills, far ears, left/right arms, left/right legs, wings/shell, tail/lantern,
+scarf/collar and crest/headwear. Empty anatomical slots remain empty. Heads,
+limbs and accessories are full drawings, including the hidden areas beneath
+neighbouring parts, rather than fragments cropped out of a complete painting.
 
-Skins, Colours, Awakening accessories, auras and ability effects remain driven by
-the existing appearance system. Rear views have no front-facing eyes. Asset
-chunks are split to stay within the offline cache's entry limit.
+`creature-profile.ts` authors the anatomy, joint pivots, draw order and particle
+landmarks. It includes neck and shoulder underpainting and hip/tail overlap.
+The far shoulder sits behind the torso and the far ear behind the head. Near
+ear interiors remain visible; Cindrake’s crest sits behind its ears. Side
+views retain a three-quarter chest and two paws. Terradon’s rounded shell
+follows the torso rigidly; the rear shell covers the back. Right-hand views mirror the authored left anatomy,
+with lighting compensated so the key light remains on the same screen side.
 
-`tests/visual/champion-animation.spec.ts` runs the real Phaser rigs for all eight
-champions in left/right/back views, across fourteen animation states, rare and
-stage III Mythical skins, and removal of skins. It checks finite geometry,
-identical shared vertices, and that cutout images are hidden, in both WebGL and
-Canvas. The client art tests cover the imported rear artwork and its expressions.
+The Phaser rig uses the same individual sprites in WebGL and Canvas. Correct
+neck, shoulder and hip pivots allow each limb to rotate; the torso carries its
+attached parts. Local poses reset every frame to prevent accumulated drift.
+Goggles, headbands and forehead gems stay attached to the head. Animated sparks
+follow the transformed tail, crest or wings, rather than a fixed front-view
+coordinate. Auralynx's crystal orbit stays independent. Its tucked paws and gentle hover
+match the levitating menu pose in every direction; its muzzle has no white patch.
+Lumoth hovers with a shorter bob and fluttering wings; it no longer steps.
+Side cheeks retain each front view’s blush (including Mystowl’s deeper pink),
+positioned behind the near eye. Far ears retain their full height and crystal
+tips, with depth shown through overlap and a narrower silhouette.
 
-Actual game renderings: [all eight views](champion-joined-views.png),
-[walking](champion-joined-walk.png), and
-[Mythical outfits](champion-joined-mythic.png).
+Side heads are 8% wider with their eyes, ears, markings and accessories. The
+texture bounds and particle landmarks follow the same transform. Duskveil's
+side/rear lantern uses the front view's radial glow and bright core.
+
+The former raster cutout JSON, whole-illustration deformation mesh and import
+pipeline have been retired. No flattened body frame is used for animation.
+Skins, Colours, Awakening stages and existing ability effects still apply to
+their respective parts, and rear views have no front-facing eyes.
+
+## Review
+
+- [All eight: front, left, right and rear](champion-articulated-views.webp).
+- [Side head width: 100% versus 108%](champion-head-width-comparison.webp).
+- [Terradon's tortoise anatomy and Duskveil's lantern](terradon-duskveil-review.webp).
+- [Auralynx: clean muzzle and all four angles](auralynx-profile-review.webp).
+- [Auralynx hovering above a fixed ground shadow](auralynx-hover.gif).
+- [Lumoth hovering with fluttering wings](lumoth-hover.gif).
+- [Voltkit, Cindrake, Tidefin and Auralynx in motion](champion-articulated-first-four.gif).
+- [Lumoth, Mystowl, Terradon and Duskveil in motion](champion-articulated-last-four.gif).
+- [Mythical outfits](champion-articulated-mythical.webp).
+
+GIF columns are left / right / rear; each clip cycles through running,
+casting and basic attacks using the actual game renderer.
+
+The visual tests sample the actual texture alpha at neck, shoulder, hip and
+tail joints to verify both the part and the torso contain painted overlap.
+They run all 24 facings through fourteen states at five phases, validate
+finite sprite transforms and no positional drift, and exercise rare and
+stage III Mythical skins in WebGL and Canvas. Client art tests also check
+expressions, palette/skin application, occlusion and symmetric side pivots.

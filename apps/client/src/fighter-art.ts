@@ -11,9 +11,9 @@ export function withSoftGround(svg: string, id: CharacterId) {
   // The old floor at y=177 predates the chibi limb proportions. Anchor the
   // contact shade to the authored paws, using the same transform as the rig.
   // Hovering fighters keep a diffuse floor beneath their airborne idle.
-  const hovering = ["auralynx", "mystowl", "duskveil"].includes(id);
-  const pawY = id === "terradon" ? 173 : id === "cindrake" ? 172 : 171;
-  const pawX = id === "terradon" ? 76 : id === "cindrake" ? 78 : 80;
+  const hovering = ["auralynx", "lumoth", "mystowl", "duskveil"].includes(id);
+  const pawY = id === "terradon" ? 172 : id === "cindrake" ? 172 : 171;
+  const pawX = id === "terradon" ? 65 : id === "cindrake" ? 78 : 80;
   const [left, feet] = proportioned("legL", pawX, pawY);
   const ground = hovering ? 177 : feet;
   const contact = hovering

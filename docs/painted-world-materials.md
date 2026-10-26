@@ -12,9 +12,10 @@ It is a material and lighting pass, not a replacement of every illustration.
 - Trees and shrubs: rounded light and shade, small leaf marks and veins.
   Grass grows in tapered clumps instead of rectangular strokes.
 - Roads and squares: reusable bevelled stone paintings with fine mineral detail.
-- Eight front-facing champions: subtle fur, scale, feather, stone or velvet
+- Eight champions across all facings: subtle fur, scale, feather, stone or velvet
   marks follow the original articulated parts and equipped skin palette.
-  Expressions remain clear. Approved painted side and back art is retained.
+  Expressions remain clear. Side and back anatomy uses complete articulated
+  parts in the same drawing style as the front.
 - Seven raid bosses: material-specific body lighting, scale and feather marks,
   pearl highlights, soft cloud shading and mineral detail on rock facets.
   Fade opacity and Gloomshade's light-dependent shadow tell remain intact.
@@ -22,7 +23,8 @@ It is a material and lighting pass, not a replacement of every illustration.
   camera/sun; their combat markings and stone-block collision areas are retained.
 
 UI, hitboxes, navigation, damage areas and animation timing are unchanged.
-Painted side/back rigs continue to use their seamless deformation mesh.
+All facings now use complete articulated body parts with painted joint overlap;
+see [champion anatomy](champion-side-views.md).
 
 ## Performance and rebuilding
 

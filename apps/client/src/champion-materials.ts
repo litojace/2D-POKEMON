@@ -35,6 +35,7 @@ export function championMaterials(
     "armL",
     "armR",
     "head",
+    "earFar",
     "ears",
   ] as const) {
     if (!layers[part]) continue;

@@ -64,13 +64,16 @@ describe("painted world materials", () => {
   });
 
   it.each(FIGHTER_IDS)(
-    "bakes %s front material without texturing expressions or repainting approved profiles",
+    "bakes %s materials without texturing expressions across all articulated views",
     (id) => {
       const front = creatureLayers(id, "down");
       expect(front.layers.body).toContain('class="champion-material"');
       expect(front.layers.eyes).not.toContain('class="champion-material"');
       for (const dir of ["left", "right", "up"] as const) {
-        expect(creatureLayers(id, dir).defs).not.toContain("<pattern");
+        expect(creatureLayers(id, dir).defs).toContain("<pattern");
+        expect(creatureLayers(id, dir).layers.eyes).not.toContain(
+          'class="champion-material"',
+        );
       }
     },
   );

@@ -10,7 +10,11 @@ import {
   type SkinLook,
 } from "../creature-design";
 import { SKIN_ART } from "../skins/skin-art";
-import { profilePartBounds } from "../creature-profile";
+import {
+  profilePartBounds,
+  profilePivot,
+  profileArtX,
+} from "../creature-profile";
 import type { Facing } from "./controller";
 export type Part = CreaturePart;
 export const parts = creatureParts;
@@ -46,14 +50,6 @@ export function moodKey(id: CharacterId, dir: Facing, mood: Mood, suffix = "") {
     ? rigKey(id, dir, "eyes", suffix)
     : `${rigKey(id, dir, "eyes")}-${mood}${suffix}`;
 }
-export function wholeKey(
-  id: CharacterId,
-  dir: Facing,
-  mood: Mood = "normal",
-  suffix = "",
-) {
-  return `rig-${id}-${dir}-whole${mood === "normal" ? "" : `-${mood}`}${suffix}`;
-}
 const definitions: Record<Part, { bounds: number[]; pivot: number[] }> = {
   tail: { bounds: [0, 40, 200, 140], pivot: [130, 137] },
   wings: { bounds: [0, 30, 200, 145], pivot: [100, 115] },
@@ -64,6 +60,7 @@ const definitions: Record<Part, { bounds: number[]; pivot: number[] }> = {
   // Tall enough for Tidefin's fin-blade.
   armR: { bounds: [60, 84, 110, 86], pivot: [135, 122] },
   head: { bounds: [35, 8, 130, 123], pivot: [100, 100] },
+  earFar: { bounds: [5, 0, 190, 115], pivot: [100, 65] },
   ears: { bounds: [5, 0, 190, 115], pivot: [100, 65] },
   eyes: { bounds: [52, 68, 96, 44], pivot: [100, 93] },
   scarf: { bounds: [35, 90, 150, 84], pivot: [100, 118] },
@@ -79,11 +76,15 @@ function box(id: CharacterId, part: Part, dir: Facing) {
   const x = dir === "left" && part === "armR" ? 200 - sourceX - w : sourceX;
   const [x0, y0] = proportioned(part, x, y),
     [x1, y1] = proportioned(part, x + w, y + h);
-  const painted = dir !== "down" ? profilePartBounds(id, dir, part) : undefined;
-  const minX = Math.min(x0, painted ? painted[0] - 2 : x0),
-    minY = Math.min(y0, painted ? painted[1] - 2 : y0),
-    maxX = Math.max(x1, painted ? painted[0] + painted[2] + 2 : x1),
-    maxY = Math.max(y1, painted ? painted[1] + painted[3] + 2 : y1);
+  const extra = dir !== "down" ? profilePartBounds(id, dir, part) : undefined;
+  const [ex0, ey0] = extra ? proportioned(part, extra[0], extra[1]) : [x0, y0];
+  const [ex1, ey1] = extra
+    ? proportioned(part, extra[0] + extra[2], extra[1] + extra[3])
+    : [x1, y1];
+  const minX = profileArtX(dir, part, Math.min(x0, ex0 - 2)),
+    minY = Math.min(y0, ey0 - 2),
+    maxX = profileArtX(dir, part, Math.max(x1, ex1 + 2)),
+    maxY = Math.max(y1, ey1 + 2);
   return [minX, minY, maxX - minX, maxY - minY].map((v) => +v.toFixed(2));
 }
 const pivot = (part: Part, x: number, y: number) => proportioned(part, x, y);
@@ -110,6 +111,17 @@ export const rigAnchors = (() => {
     earsLift: (head - ears) * 0.5,
   };
 })();
+/** Head/face pivots follow the authored neck joint in each view. */
+export function rigAnchorsFor(id: CharacterId, dir: Facing) {
+  if (dir === "down") return rigAnchors;
+  const head = pivot("head", ...profilePivot(id, dir, "head")!)[1];
+  return {
+    headY: (head - 130) * 0.5,
+    eyesLift: (head - pivot("eyes", 100, 93)[1]) * 0.5,
+    earsLift: (head - pivot("ears", 100, 65)[1]) * 0.5,
+  };
+}
+
 function asset(
   id: CharacterId,
   dir: Facing,
@@ -121,40 +133,11 @@ function asset(
   const suffix = skinSuffix(id, look);
   const { pivot: defaultPivot } = definitions[part];
   const b = box(id, part, dir);
-  let q = defaultPivot;
-  if (dir === "left" || dir === "right") {
-    const side = dir === "right" ? 1 : -1;
-    const projected: Partial<Record<Part, number>> = {
-      armL: 88,
-      armR: 112,
-      legL: 87,
-      legR: 113,
-    };
-    if (projected[part] !== undefined)
-      q = [100 + side * (projected[part]! - 100), defaultPivot[1]];
-    // The side tail grows from the rear hip; wings fold around the back.
-    if (part === "tail") q = [100 - side * 14, 144];
-    if (part === "wings" && id !== "auralynx")
-      q = [100 - side * 12, id === "terradon" ? 134 : 126];
-  }
-  q = pivot(part, q[0], q[1]);
-  if (dir === "up") {
-    if (part === "armL") q = pivot(part, 80, 122);
-    if (part === "armR") q = pivot(part, 120, 122);
-    if (part === "legL") q = pivot(part, 87, 151);
-    if (part === "legR") q = pivot(part, 113, 151);
-    if (part === "tail")
-      q = [
-        id === "duskveil"
-          ? 123
-          : id === "cindrake"
-            ? 116
-            : id === "tidefin"
-              ? 110
-              : 100,
-        148,
-      ];
-  }
+  const joint =
+    dir === "down"
+      ? defaultPivot
+      : (profilePivot(id, dir, part) ?? defaultPivot);
+  const q = pivot(part, joint[0], joint[1]);
   return {
     key:
       part === "eyes"
@@ -180,7 +163,7 @@ export function rigAssets(
   look: SkinLook | null = null,
   directions: readonly Facing[] = DIRS,
 ): RigAsset[] {
-  // Each normal facing supplies twelve crops. Building its patterns, masks
+  // Each normal facing supplies thirteen crops. Building its patterns, masks
   // and Awakening accessories for every crop stalls the animation thread.
   const drawings = new Map(
     directions.map((dir) => [
@@ -199,42 +182,6 @@ export function rigAssets(
       .flatMap((dir) =>
         MOODS.map((mood) => asset(id, dir, "eyes", mood, look)),
       ),
-    ...directions
-      .filter((dir) => dir !== "down")
-      .flatMap((dir) => {
-        const boxes = parts.map((part) => box(id, part, dir));
-        const x = Math.min(...boxes.map((b) => b[0])) - 2,
-          y = Math.min(...boxes.map((b) => b[1])) - 2;
-        const w = Math.max(...boxes.map((b) => b[0] + b[2])) - x + 2,
-          h = Math.max(...boxes.map((b) => b[1] + b[3])) - y + 2;
-        return (
-          dir === "up"
-            ? (["normal"] as Mood[])
-            : (["normal", ...MOODS] as Mood[])
-        ).map((mood) => ({
-          key: wholeKey(id, dir, mood, skinSuffix(id, look)),
-          url:
-            "data:image/svg+xml;base64," +
-            btoa(
-              creatureSvgRenderer(
-                id,
-                dir,
-                mood,
-                look,
-              )(
-                undefined,
-                [x, y, w, h].join(" "),
-                id === "auralynx" ? ["wings"] : [],
-              ).replace(/<ellipse class="fighter-shadow"[^>]*\/>/, ""),
-            ),
-          width: w,
-          height: h,
-          originX: (100 - x) / w,
-          originY: (130 - y) / h,
-          x: 0,
-          y: 0,
-        }));
-      }),
   ];
 }
 /** A point of the creature art (200×190 canvas) in rig pixels from its root. */

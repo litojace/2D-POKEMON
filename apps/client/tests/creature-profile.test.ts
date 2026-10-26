@@ -1,5 +1,4 @@
 import { svgMarkup } from "./svg-markup";
-import reference from "../src/art/reference-profiles.json";
 import { describe, expect, it } from "vitest";
 import { FIGHTER_IDS } from "@arena/shared";
 import { CHAMPION_SKINS } from "../../../packages/shared/src/shop";
@@ -9,32 +8,29 @@ import {
   MOODS,
   type Mood,
 } from "../src/creature-design";
-import { rigAssets, rigKey } from "../src/animation/assets";
+import { rigAssets, rigKey, rigAnchorsFor } from "../src/animation/assets";
 
 const directions = ["left", "right"] as const;
-
-describe("authored champion profiles", () => {
-  it("gives every fighter a turned torso and one side eye instead of a compressed front", () => {
-    for (const id of FIGHTER_IDS) {
-      const front = creatureLayers(id, "down").layers;
+describe("complete articulated champion profiles", () => {
+  it("gives every side a turned torso and a single natural eye in the front's drawing style", () => {
+    for (const id of FIGHTER_IDS)
       for (const dir of directions) {
+        const front = creatureLayers(id, "down").layers;
         const { layers } = creatureLayers(id, dir);
-        expect(layers.body, id).toContain("profile-body");
-        expect(layers.body, id).not.toBe(front.body);
-        expect(layers.head, id).not.toBe(front.head);
-        expect(layers.eyes.match(/class="profile-near-eye"/g), id).toHaveLength(
-          1,
+        expect(layers.body).not.toBe(front.body);
+        expect(layers.head).not.toBe(front.head);
+        expect(layers.eyes.match(/class="profile-near-eye"/g)).toHaveLength(1);
+        for (const svg of Object.values(layers))
+          expect(svg).not.toContain("<image");
+        expect(layers.head).toContain(
+          'class="profile-part profile-head articulated-part"',
         );
-        expect(layers.head.includes("data:image/png;base64,"), id).toBe(true);
-        expect(layers.head).toContain(`data-reference-facing="${dir}"`);
-        expect(svgMarkup(creatureSvg(id, dir)), id).not.toMatch(
+        expect(svgMarkup(creatureSvg(id, dir))).not.toMatch(
           /NaN|undefined|Infinity/,
         );
       }
-    }
   });
-
-  it("keeps every side expression distinct and attached to the same eye layer", () => {
+  it("keeps all five expressions distinct on each side's eye layer", () => {
     for (const id of FIGHTER_IDS)
       for (const dir of directions) {
         const eyes = ["normal", ...MOODS].map(
@@ -44,89 +40,77 @@ describe("authored champion profiles", () => {
         for (const svg of eyes) expect(svg).toContain("profile-near-eye");
       }
   });
-
-  it("gives all eight champions illustrated backs without front-facing eyes", () => {
+  it("draws full backs without front-facing facial features", () => {
     for (const id of FIGHTER_IDS) {
       const { layers } = creatureLayers(id, "up");
-      expect(layers.head).toContain('data-reference-facing="up"');
-      expect(layers.eyes).not.toContain("<image");
-      expect(layers.eyes).not.toContain("profile-near-eye");
+      expect(layers.eyes).toBe("");
+      expect(layers.head).toContain('data-articulated-facing="up"');
+      expect(layers.head).not.toBe(creatureLayers(id, "down").layers.head);
       expect(svgMarkup(creatureSvg(id, "up"))).not.toMatch(
         /NaN|undefined|Infinity/,
       );
-      expect(layers.head).not.toBe(creatureLayers(id, "down").layers.head);
     }
   });
-
-  it("renders the far shoulder behind the torso while preserving the front order", () => {
-    for (const id of FIGHTER_IDS) {
+  it("occludes the far shoulder and far ear, while showing the near ear interior", () => {
+    for (const id of FIGHTER_IDS)
       for (const dir of directions) {
         const svg = creatureSvg(id, dir);
         expect(svg.indexOf('class="fighter-armL"')).toBeLessThan(
           svg.indexOf('class="fighter-torso"'),
         );
+        expect(svg.indexOf('class="fighter-earFar"')).toBeLessThan(
+          svg.indexOf('class="fighter-head"'),
+        );
+        if (["voltkit", "cindrake", "tidefin"].includes(id))
+          expect(svg.indexOf('class="fighter-ears"')).toBeGreaterThan(
+            svg.indexOf('class="fighter-head"'),
+          );
+        else
+          expect(svg.indexOf('class="fighter-ears"')).toBeLessThan(
+            svg.indexOf('class="fighter-head"'),
+          );
       }
-      const front = creatureSvg(id, "down");
-      expect(front.indexOf('class="fighter-armL"')).toBeGreaterThan(
-        front.indexOf('class="fighter-torso"'),
-      );
+  });
+  it("keeps wings, shells, gauntlets and lanterns in independent complete layers", () => {
+    for (const dir of [...directions, "up"] as const) {
+      for (const id of ["lumoth", "terradon"] as const)
+        expect(creatureLayers(id, dir).layers.wings).toContain("<path");
+      expect(creatureLayers("duskveil", dir).layers.tail).toContain("<path");
+      expect(creatureLayers("auralynx", dir).layers.armR).toContain("<path");
+      expect(creatureLayers("voltkit", dir).layers.flame).toContain("<path");
     }
   });
-
-  it("copies separate left and right artwork with usable wing, shell and lantern layers", () => {
-    for (const id of FIGHTER_IDS) {
-      const pair = reference.profiles[id];
-      expect(pair.left.parts.head.image).not.toBe(pair.right.parts.head.image);
-      for (const dir of directions) {
-        for (const asset of Object.values(pair[dir].parts)) {
-          expect(asset.bounds.every(Number.isFinite)).toBe(true);
-          const png = Buffer.from(asset.image.split(",")[1], "base64");
-          expect(png.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
-          expect(png.readUInt32BE(16)).toBeGreaterThan(0);
-          expect(png.readUInt32BE(20)).toBeGreaterThan(0);
-        }
-      }
-    }
-    for (const dir of directions) {
-      expect(creatureLayers("lumoth", dir).layers.wings).toContain("<image");
-      expect(creatureLayers("terradon", dir).layers.wings).toContain("<image");
-      expect(creatureLayers("duskveil", dir).layers.tail).toContain("<image");
-    }
-  });
-
-  it("uses side anatomy beneath every equipped skin and Awakening stage", () => {
+  it("preserves every equipped skin and Awakening stage over the new anatomy", () => {
     for (const skin of CHAMPION_SKINS)
-      for (const dir of directions)
+      for (const dir of [...directions, "up"] as const)
         for (const stage of [1, 2, 3]) {
           const { layers } = creatureLayers(skin.champion, dir, "normal", {
             skin: skin.id,
             stage,
           });
-          expect(layers.head, skin.id).toContain("profile-head");
-          expect(layers.body, skin.id).toContain("profile-body");
-          expect(layers.eyes, skin.id).toContain("profile-near-eye");
-          expect(
-            svgMarkup(Object.values(layers).join("")),
-            skin.id,
-          ).not.toMatch(/NaN|undefined|Infinity/);
+          expect(layers.head).toContain("profile-head");
+          expect(layers.body).toContain("profile-body");
+          expect(svgMarkup(Object.values(layers).join(""))).not.toMatch(
+            /NaN|undefined|Infinity/,
+          );
         }
   });
-
-  it("anchors side tails at the rear hip and mirrors the limb joints", () => {
+  it("places side joints symmetrically, with a real neck pivot and no whole-image textures", () => {
     for (const id of FIGHTER_IDS) {
       const a = rigAssets(id);
+      expect(a.some((v) => v.key.includes("whole"))).toBe(false);
       for (const part of ["tail", "armL", "armR", "legL", "legR"] as const) {
-        const left = a.find((v) => v.key === rigKey(id, "left", part))!;
-        const right = a.find((v) => v.key === rigKey(id, "right", part))!;
-        expect(left.x, id + part).toBeCloseTo(-right.x);
-        expect(left.y, id + part).toBeCloseTo(right.y);
+        const l = a.find((v) => v.key === rigKey(id, "left", part))!,
+          r = a.find((v) => v.key === rigKey(id, "right", part))!;
+        expect(l.x).toBeCloseTo(-r.x);
+        expect(l.y).toBeCloseTo(r.y);
       }
       expect(
         a.find((v) => v.key === rigKey(id, "right", "tail"))!.x,
       ).toBeLessThan(0);
-      expect(
-        a.find((v) => v.key === rigKey(id, "left", "tail"))!.x,
-      ).toBeGreaterThan(0);
+      expect(rigAnchorsFor(id, "left").headY).toBeGreaterThan(
+        rigAnchorsFor(id, "down").headY,
+      );
     }
   });
 });

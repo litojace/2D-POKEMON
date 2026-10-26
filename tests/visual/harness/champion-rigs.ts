@@ -3,8 +3,13 @@ import Phaser from "phaser";
 import { CHARACTERS, FIGHTER_IDS, type CharacterId } from "@arena/shared";
 import { CHAMPION_SKINS } from "../../../packages/shared/src/shop";
 import { FighterRig } from "../../../apps/client/src/animation/rig";
-import { rigAssets } from "../../../apps/client/src/animation/assets";
+import {
+  rigAssets,
+  rigKey,
+  rigPoint,
+} from "../../../apps/client/src/animation/assets";
 import type { SkinLook } from "../../../apps/client/src/creature-design";
+import { profilePivot } from "../../../apps/client/src/creature-profile";
 import type { AnimationState } from "../../../apps/client/src/animation/controller";
 
 export function reviewChampions(canvas = false) {
@@ -23,6 +28,7 @@ export function reviewChampions(canvas = false) {
     ready = resolve;
   });
   let clock = 1000;
+  let playback = "";
   class Review extends Phaser.Scene {
     preload() {
       for (const a of [...assets.values()].flat())
@@ -57,8 +63,38 @@ export function reviewChampions(canvas = false) {
     audio: { noAudio: true },
   });
   return {
+    game,
     loaded,
-    pose(state = "idle", reduced = false) {
+    /** Deterministic frames for reviewing actual joint movement as a short clip. */
+    frame(state: AnimationState, elapsed: number) {
+      game.loop.sleep();
+      if (state !== playback) {
+        clock += 1400;
+        playback = state;
+        for (const r of rigs) {
+          r.rig.controller.reset();
+          r.rig.trigger(state, clock, 1200);
+        }
+      }
+      for (const r of rigs)
+        r.rig.render(
+          {
+            hp: CHARACTERS[r.id].health,
+            speed: state === "run" ? CHARACTERS[r.id].speed : 0,
+            angle: r.angle,
+            dash: state === "dash",
+            jump: state === "jump",
+            skin: looks.get(r.id) ?? null,
+          },
+          r.x,
+          r.y,
+          clock + elapsed,
+          1,
+          false,
+        );
+      game.step(clock + elapsed, 0);
+    },
+    pose(state = "idle", reduced = false, phase = 250 / 900) {
       clock += 1200;
       for (const r of rigs) {
         r.rig.controller.reset();
@@ -80,7 +116,7 @@ export function reviewChampions(canvas = false) {
           },
           r.x,
           r.y,
-          clock + 250,
+          clock + phase * 900,
           1,
           reduced,
         );
@@ -109,34 +145,106 @@ export function reviewChampions(canvas = false) {
     },
     audit() {
       return rigs.map((r) => {
-        // Inspect the actual rendered triangles; a shared point may appear in
-        // several triangles but must never acquire several different positions.
-        const c = (r.rig as any).continuous;
-        let gap = 0,
-          finite = true;
-        const first = new Map<number, { x: number; y: number }>();
-        if (c.mesh)
-          c.geometry.indices.forEach((id: number, i: number) => {
-            const v = c.mesh.vertices[i];
-            finite &&= Number.isFinite(v.x) && Number.isFinite(v.y);
-            const p = first.get(id);
-            if (p)
-              gap = Math.max(gap, Math.abs(p.x - v.x), Math.abs(p.y - v.y));
-            else first.set(id, { x: v.x, y: v.y });
-          });
-        const drawn = c.mesh ?? c.flat;
+        const images = [...(r.rig as any).images] as [
+          string,
+          Phaser.GameObjects.Image,
+        ][];
         return {
           id: r.id,
-          finite,
-          gap,
-          visible: drawn?.visible ?? false,
-          key: drawn?.texture.key ?? "",
-          points: [...first.values()],
-          exposedParts: [...(r.rig as any).images]
-            .filter(([, image]: any) => image.visible)
-            .map(([part]: any) => part),
+          dir: (r.rig as any).dir,
+          anchorY: r.y,
+          rootY: r.rig.root.y,
+          finite: images.every(([, v]) =>
+            [v.x, v.y, v.rotation, v.scaleX, v.scaleY].every(Number.isFinite),
+          ),
+          visible: images.every(([, v]) => v.visible),
+          key: images.find(([p]) => p === "body")![1].texture.key,
+          points: images.map(([part, v]) => ({
+            part,
+            x: v.x,
+            y: v.y,
+            rotation: v.rotation,
+            scaleX: v.scaleX,
+            scaleY: v.scaleY,
+          })),
+          parts: images.filter(([, v]) => v.visible).map(([p]) => p),
+          whole: images.some(([, v]) => v.texture.key.includes("whole")),
+          headwearAttached:
+            !["voltkit", "tidefin", "auralynx"].includes(r.id) ||
+            Math.abs(
+              images.find(([part]) => part === "flame")![1].rotation -
+                images.find(([part]) => part === "head")![1].rotation,
+            ) < 1e-6,
         };
       });
+    },
+    coverage() {
+      const rows: {
+        id: string;
+        dir: string;
+        part: string;
+        limb: number;
+        torso: number;
+      }[] = [];
+      const alpha = (
+        asset: ReturnType<typeof rigAssets>[number],
+        x: number,
+        y: number,
+      ) => {
+        const image = scene.textures
+          .get(asset.key)
+          .getSourceImage() as HTMLImageElement;
+        const canvas = document.createElement("canvas");
+        canvas.width = image.width;
+        canvas.height = image.height;
+        const c = canvas.getContext("2d", { willReadFrequently: true })!;
+        c.drawImage(image, 0, 0);
+        const left = asset.x * 2 + 100 - asset.originX * asset.width,
+          top = asset.y * 2 + 130 - asset.originY * asset.height;
+        const px = Math.round(((x - left) * image.width) / asset.width),
+          py = Math.round(((y - top) * image.height) / asset.height);
+        return (
+          c
+            .getImageData(Math.max(0, px - 1), Math.max(0, py - 1), 3, 3)
+            .data.filter((_, i) => i % 4 === 3)
+            .reduce((sum, v) => sum + v, 0) / 9
+        );
+      };
+      for (const r of rigs) {
+        const dir = (r.rig as any).dir as "left" | "right" | "up";
+        const list = assets.get(r.id)!;
+        const torso = list.find((a) => a.key === rigKey(r.id, dir, "body"))!;
+        for (const part of [
+          "head",
+          "armL",
+          "armR",
+          "legL",
+          "legR",
+          "tail",
+        ] as const) {
+          if (r.id === "mystowl" && (part === "armL" || part === "armR"))
+            continue;
+          if (r.id === "duskveil" && (part === "legL" || part === "legR"))
+            continue;
+          if (r.id === "lumoth" && part === "tail") continue;
+          // Owl toes are line strokes: inspect the neck/tail rather than inventing a hip capsule.
+          if (r.id === "mystowl" && (part === "legL" || part === "legR"))
+            continue;
+          const joint = profilePivot(r.id, dir, part)!;
+          const point = rigPoint(part, ...joint);
+          const x = point.x * 2 + 100,
+            y = point.y * 2 + 130;
+          const a = list.find((a) => a.key === rigKey(r.id, dir, part))!;
+          rows.push({
+            id: r.id,
+            dir,
+            part,
+            limb: alpha(a, x, y),
+            torso: alpha(torso, x, y),
+          });
+        }
+      }
+      return rows;
     },
     destroy() {
       game.destroy(true);

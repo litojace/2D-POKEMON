@@ -89,7 +89,13 @@ it("loads original art and valid public metadata for every fighter and direction
     for (const dir of ["up", "down", "left", "right"] as const) {
       const svg = creatureSvg(id, dir);
       expect(svg).toContain("radialGradient");
-      expect(svgMarkup(svg)).not.toMatch(/undefined|NaN|scale\(-1/);
+      expect(svgMarkup(svg)).not.toMatch(/undefined|NaN/);
+      // A true side drawing can mirror its counterpart; it never compresses
+      // the front torso and face to manufacture a side view.
+      if (dir === "left" || dir === "right")
+        expect(creatureLayers(id, dir).layers.body).toContain(
+          "data-articulated-facing=",
+        );
       expect(creatureLayers(id, dir).layers.eyes === "").toBe(dir === "up");
     }
     art.add(creatureSvg(id));

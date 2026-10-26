@@ -65,10 +65,6 @@ export default defineConfig({
         // they stay cached across deploys, so an update downloads only the
         // game code (Phaser alone is about half the total).
         manualChunks(id) {
-          if (id.endsWith("/src/art/reference-profiles.json"))
-            return "champion-reference-art";
-          if (id.endsWith("/src/art/reference-backs.json"))
-            return "champion-back-art";
           if (!id.includes("node_modules")) return;
           if (id.includes("/phaser/")) return "phaser";
           return "vendor";
