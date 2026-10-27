@@ -32,6 +32,15 @@ test("town loads the approved plaza art without relying on legacy cached URLs", 
       "raidHall",
       "obelisk",
     ].map((name) => `town-hd-${name}`),
+    ...[
+      "grumblecrag",
+      "tidewyrm",
+      "gloomshade",
+      "somnara",
+      "prismatail",
+      "emberwing",
+      "storm-twins",
+    ].map((name) => `town-statue-${name}`),
   ];
   const loaded = expected.map((name) =>
     page.waitForResponse(

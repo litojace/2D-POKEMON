@@ -47,6 +47,15 @@ for (const art of [
     "raidHall",
     "obelisk",
   ].map((name) => `town-hd-${name}`),
+  ...[
+    "grumblecrag",
+    "tidewyrm",
+    "gloomshade",
+    "somnara",
+    "prismatail",
+    "emberwing",
+    "storm-twins",
+  ].map((name) => `town-statue-${name}`),
 ])
   assert(
     urls.some((url) => new RegExp(`^assets/${art}-[\\w-]+\\.webp$`).test(url)),

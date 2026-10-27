@@ -21,7 +21,7 @@ import {
   TOWN_TREES,
 } from "../../../packages/shared/src/town";
 import { RAID_BOSSES } from "../../../packages/shared/src/raid-roster";
-import { raidCrest } from "./raid-crests";
+import { bossStatue } from "./town-statue-art";
 import {
   ART_RES,
   TEXT_RES,
@@ -37,7 +37,6 @@ import {
   paintedFountain,
   paintGround,
   rnd,
-  carveStatue,
   statuePlinth,
   veiledStatue,
   STATUE_TOP,
@@ -372,27 +371,9 @@ export class TownScenery {
         this.statueGlows.push(glow);
       }
       const key = `town-statue-${st.boss}`;
-      const add = () => {
-        if (this.disposed || !s.sys.isActive()) return;
-        const src = s.textures.get(key).getSourceImage() as HTMLCanvasElement;
-        // About 92 px tall, wider bosses scaled to fit the plinth.
-        const scale = Math.min(92 / src.height, 96 / src.width);
-        s.add.image(st.x, foot + 2, key).setOrigin(0.5, 1).setScale(scale).setDepth(st.y + 0.1);
-      };
-      if (!s.textures.exists(key) && painted.has(key)) s.textures.addCanvas(key, painted.get(key)!);
-      if (s.textures.exists(key)) add();
-      else {
-        const svg = raidCrest(st.boss).replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" ');
-        const img = new Image();
-        img.onload = () => {
-          if (this.disposed) return;
-          const carved = painted.get(key) ?? carveStatue(img, 300);
-          painted.set(key, carved);
-          if (!s.textures.exists(key)) s.textures.addCanvas(key, carved);
-          add();
-        };
-        img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-      }
+      const source = this.environment(key);
+      if (source)
+        place(s, key, bossStatue(st.boss, source), st.x, foot, st.y + 0.1);
     }
     s.load.start();
   }
@@ -403,13 +384,16 @@ export class TownScenery {
       const title = this.scene.add
         .text(0, 0, d.label.toUpperCase(), { resolution: TEXT_RES, fontFamily: "Barlow Condensed, sans-serif", fontSize: "26px", fontStyle: "bold", color: d.color })
         .setOrigin(0.5, 1);
-      const sub = this.scene.add.text(0, 2, d.sub, { resolution: TEXT_RES, fontFamily: "DM Sans, sans-serif", fontSize: "13px", color: "#c9d2e3" }).setOrigin(0.5, 0);
+      // Keep the Raid Hall sign inside the central aisle, clear of both
+      // the whale's tail and the peacock's full crystal fan.
+      const sub = this.scene.add.text(0, 2, d.id === "raid" ? d.sub.replace(" · ", "\n") : d.sub, { resolution: TEXT_RES, fontFamily: "DM Sans, sans-serif", fontSize: "13px", color: "#c9d2e3", align: "center" }).setOrigin(0.5, 0);
       const w = Math.max(title.width, sub.width) + 36;
+      const h = d.id === "raid" ? 86 : 64;
       const bg = this.scene.add.graphics();
-      bg.fillStyle(0x0e1a31, 0.86).fillRoundedRect(-w / 2, -40, w, 64, 14);
-      bg.lineStyle(2, num(d.color), 0.9).strokeRoundedRect(-w / 2, -40, w, 64, 14);
+      bg.fillStyle(0x0e1a31, 0.86).fillRoundedRect(-w / 2, -40, w, h, 14);
+      bg.lineStyle(2, num(d.color), 0.9).strokeRoundedRect(-w / 2, -40, w, h, 14);
       const box = this.scene.add.container(d.x, y, [bg, title, sub]).setDepth(4300);
-      this.signs.push({ box, left: d.x - w / 2, right: d.x + w / 2, top: y - 40, bottom: y + 24 });
+      this.signs.push({ box, left: d.x - w / 2, right: d.x + w / 2, top: y - 40, bottom: y - 40 + h });
     }
     // Each station's marker floats above it, but never on a sign: if it
     // would, it sits just above the sign instead.

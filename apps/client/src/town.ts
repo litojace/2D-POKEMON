@@ -2,6 +2,7 @@ import { townRendererDensity } from "./render-budget";
 import { watchRendererLifecycle } from "./renderer-lifecycle";
 import { TOWN_ART } from "./town-assets";
 import { TOWN_HD } from "./town-hd-assets";
+import { TOWN_STATUE_ART } from "./town-statue-art";
 import {
   groundHeight,
   WORLD_ART,
@@ -580,6 +581,8 @@ export function openTown(options: TownOptions) {
       this.load.image("town-fountain-painted", TOWN_ART.fountain);
       for (const [name, url] of Object.entries(TOWN_HD))
         this.load.image(`town-hd-${name}`, url);
+      for (const [boss, url] of Object.entries(TOWN_STATUE_ART))
+        this.load.image(`town-statue-${boss}`, url);
     }
     create() {
       if (closed) return;

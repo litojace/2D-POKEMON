@@ -1,0 +1,37 @@
+{
+  "grumblecrag": {
+    "crop": [8, 16, 496, 480],
+    "foot": [243.0, 479],
+    "contactWidth": 388
+  },
+  "tidewyrm": {
+    "crop": [28, 8, 456, 496],
+    "foot": [227.5, 495],
+    "contactWidth": 431
+  },
+  "gloomshade": {
+    "crop": [8, 30, 496, 451],
+    "foot": [242.0, 450],
+    "contactWidth": 242
+  },
+  "somnara": {
+    "crop": [8, 30, 496, 451],
+    "foot": [275.5, 449],
+    "contactWidth": 347
+  },
+  "prismatail": {
+    "crop": [20, 8, 471, 496],
+    "foot": [261.5, 495],
+    "contactWidth": 155
+  },
+  "emberwing": {
+    "crop": [8, 13, 496, 485],
+    "foot": [241.5, 484],
+    "contactWidth": 253
+  },
+  "storm-twins": {
+    "crop": [8, 48, 496, 416],
+    "foot": [241.0, 415],
+    "contactWidth": 274
+  }
+}

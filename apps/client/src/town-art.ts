@@ -2031,53 +2031,6 @@ export function statuePlinth(name: string | null, color: string): Sprite {
   };
 }
 
-/**
- * Turns a coloured boss picture into a carved-stone statue: colours become
- * shades of pale stone (dark lines stay as carved grooves), lit from above,
- * with a little grain. Returns the trimmed canvas (no empty margins) so
- * the statue's feet sit right on its plinth.
- */
-export function carveStatue(src: CanvasImageSource, size: number): HTMLCanvasElement {
-  const c = document.createElement("canvas");
-  c.width = c.height = size;
-  const ctx = c.getContext("2d")!;
-  ctx.drawImage(src, 0, 0, size, size);
-  const img = ctx.getImageData(0, 0, size, size),
-    d = img.data;
-  let minX = size,
-    minY = size,
-    maxX = -1,
-    maxY = -1;
-  for (let y = 0; y < size; y++)
-    for (let x = 0; x < size; x++) {
-      const i = (y * size + x) * 4,
-        a = d[i + 3];
-      if (a < 8) continue;
-      if (x < minX) minX = x;
-      if (x > maxX) maxX = x;
-      if (y < minY) minY = y;
-      if (y > maxY) maxY = y;
-      // Luminance with contrast eased so flat colours keep some shape.
-      const lum = (0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2]) / 255,
-        // Dark colours become mid stone; near-black lines stay as grooves.
-        tone = lum < 0.12 ? 0.38 : 0.66 + Math.pow(lum, 0.8) * 0.48,
-        light = 1.08 - (y / size) * 0.28 - (x / size) * 0.1,
-        grain = 1 + (rnd(i * 0.37) - 0.5) * 0.08,
-        k = Math.min(1.15, tone * light * grain);
-      // Pale lavender-grey stone, like the Raid Hall's marble.
-      d[i] = Math.min(255, 196 * k);
-      d[i + 1] = Math.min(255, 190 * k);
-      d[i + 2] = Math.min(255, 210 * k);
-    }
-  ctx.putImageData(img, 0, 0);
-  if (maxX < 0) return c;
-  const out = document.createElement("canvas");
-  out.width = maxX - minX + 1;
-  out.height = maxY - minY + 1;
-  out.getContext("2d")!.drawImage(c, -minX, -minY);
-  return out;
-}
-
 /** A plinth waiting for the next boss: its statue is under a draped cloth. */
 export function veiledStatue(): Sprite {
   const W = 110,
