@@ -684,7 +684,7 @@ export function drawTidewyrm(
         groundHeight(120 + p * 120),
       );
     }
-  } else g.fillStyle(0x3b2f1c, 0.3).fillEllipse(x, base + 10, 210, 50);
+  } else g.fillStyle(0x3b2f1c, 0.3).fillEllipse(x, base + 10, 340, 60);
   // The body: a looping chain of segments, tail in the water.
   const segments = 12;
   const pts: { x: number; y: number; r: number }[] = [];
@@ -717,6 +717,8 @@ export function drawTidewyrm(
     paintedHead.y - (stranded ? 6 : 14) - life.windup * 9 + life.breath;
   if (
     paintedTide(g, {
+      groundX: boss.x,
+      groundY: boss.y,
       x: paintedX,
       y: paintedY,
       life,

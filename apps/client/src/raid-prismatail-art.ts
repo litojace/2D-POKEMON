@@ -252,6 +252,7 @@ export function drawPrismatail(
   g.fillStyle(0x101a2d, 0.32).fillEllipse(x, boss.y + 20, 184, 47);
   if (
     paintedPrisma(g, {
+      groundY: boss.y,
       x,
       y,
       life,

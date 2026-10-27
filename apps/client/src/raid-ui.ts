@@ -1,3 +1,4 @@
+import { drawBossBattleEffects } from "./boss-spell-art";
 import { renderExpeditionOverlay } from "./expedition-ui";
 import { resultXp } from "./adventure-ui";
 import {
@@ -720,6 +721,12 @@ export function drawRaidArena(
   // Single-bodied bosses draw on the boss layer; the twins and Gloomshade's
   // copies each get a layer of their own (their memory stays keyed on g).
   const boss = layers?.boss ?? g;
+  drawBossBattleEffects(
+    r.boss === "storm-twins" || gloom ? g : boss,
+    state,
+    reduced,
+    clock,
+  );
   if (r.boss === "storm-twins") return drawStormTwins(g, state, reduced, clock, at);
   if (r.boss === "emberwing") return drawEmberwing(boss, state, reduced, clock);
   if (r.boss === "prismatail") return drawPrismatail(boss, state, reduced, clock);

@@ -122,6 +122,9 @@
     <div id="board"></div>
     <script type="module">
       import Phaser from "phaser";
+      import { queueBossArt } from "./src/boss-painted-rig";
+      import { queueBossSpellArt } from "./src/boss-spell-flipbook";
+      import { drawBossBattleEffects } from "./src/boss-spell-art";
       import { createRaidArena } from "../server/src/raid-bosses";
       import { drawRaidBoss } from "./src/raid-boss-art";
       import { drawTidewyrm } from "./src/raid-tidewyrm-art";
@@ -173,6 +176,10 @@
         },
       };
       class Board extends Phaser.Scene {
+        preload() {
+          for (const [id] of roster) queueBossArt(this, id);
+          queueBossSpellArt(this);
+        }
         create() {
           this.elapsed = 0;
           this.items = roster.map(([id, name, subtitle, draw], i) => {
@@ -261,18 +268,26 @@
             s.raid.exposedUntil = mode === "exposed" ? this.elapsed + 1 : 0;
             s.raid.staggerUntil = mode === "exposed" ? this.elapsed + 1 : 0;
             s.raid.warnings =
-              mode === "cast"
+              mode === "cast" && this.elapsed % 3.8 < 2.5
                 ? [
                     {
-                      id: Math.floor(this.elapsed / 3),
-                      kind: "slam",
+                      id: Math.floor(this.elapsed / 3.8),
+                      kind: {
+                        grumblecrag: "slam",
+                        tidewyrm: "bubbles",
+                        gloomshade: "pulse",
+                        somnara: "lullaby",
+                        prismatail: "fan-display",
+                        emberwing: "flame-ring",
+                        "storm-twins": "thunderclap",
+                      }[s.raid.boss],
                       x: 800,
                       y: 475,
                       tx: 800,
                       ty: 475,
                       radius: 200,
-                      startedAt: Math.floor(this.elapsed / 3) * 3,
-                      at: Math.floor(this.elapsed / 3) * 3 + 3,
+                      startedAt: Math.floor(this.elapsed / 3.8) * 3.8,
+                      at: Math.floor(this.elapsed / 3.8) * 3.8 + 2.5,
                     },
                   ]
                 : [];
@@ -281,6 +296,7 @@
               .clear()
               .setPosition(cx - 800 * scale, cy + 6 - 430 * scale)
               .setScale(scale);
+            drawBossBattleEffects(v.g, s, reduced, now / 1000);
             v.draw(v.g, s, reduced, now / 1000);
             v.name
               .setPosition(cx, cy + ch / 2 - 48)
@@ -294,7 +310,8 @@
       await document.fonts.load('700 22px "Barlow Condensed"');
       await document.fonts.load('400 12px "DM Sans"');
       new Phaser.Game({
-        type: Phaser.CANVAS,
+        type: Phaser.WEBGL,
+        render: { pixelArt: false, antialias: true },
         parent: "board",
         scene: Board,
         scale: { mode: Phaser.Scale.RESIZE, width: 1280, height: 650 },

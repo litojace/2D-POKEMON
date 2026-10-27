@@ -1,3 +1,4 @@
+import { queueBossSpellArt } from "./boss-spell-flipbook";
 import { queueBossArt, retainBossArt } from "./boss-painted-rig";
 import { rendererDensity } from "./render-budget";
 import { watchRendererLifecycle } from "./renderer-lifecycle";
@@ -2916,7 +2917,10 @@ class ArenaScene extends Phaser.Scene {
     }
   }
   preload() {
-    if (state?.raid) queueBossArt(this, state.raid.boss);
+    if (state?.raid) {
+      queueBossArt(this, state.raid.boss);
+      queueBossSpellArt(this);
+    }
     for (const id of Object.keys(CHARACTERS) as CharacterId[])
       queueFighterAssets(this, id, this.assets[id]);
   }

@@ -31,6 +31,12 @@ const pose = (page: Page) =>
         visible: root.visible,
         alpha: root.alpha,
         depth: root.depth,
+        actor: {
+          x: root.list[0].x,
+          y: root.list[0].y,
+          sx: root.list[0].scaleX,
+          sy: root.list[0].scaleY,
+        },
         parts: root.list[0].list
           .filter((o: any) => o.type === "Image" && o.visible)
           .map((o: any) => ({
@@ -55,27 +61,74 @@ test("all seven living boss rigs animate, hold a pause and keep combat snapshots
   await page.evaluate(() => (window as any).__bossReview.frame(1, 0, false));
   const start = await pose(page);
   expect(start).toHaveLength(8); // two independently posed Storm Twins
-  expect(start.every((r) => r.visible && r.parts.length >= 2)).toBe(true);
+  expect(
+    start.every(
+      (r) =>
+        r.visible &&
+        r.parts.length >= 1 &&
+        r.parts.length <= 2 &&
+        r.parts.every((p) => p.name.startsWith("complete-body-")),
+    ),
+  ).toBe(true);
   await page.evaluate(() => {
     const r = (window as any).__bossReview;
-    for (let n = 1; n <= 80; n++) r.frame(2, n * 0.025, false);
+    const kinds = {
+      grumblecrag: "slam",
+      tidewyrm: "bubbles",
+      gloomshade: "pulse",
+      somnara: "lullaby",
+      prismatail: "fan-display",
+      emberwing: "flame-ring",
+      "storm-twins": "thunderclap",
+    };
+    for (const row of r.rows) {
+      const boss = row.state.players.find((p: any) => p.raidBoss);
+      row.state.raid.warnings = [
+        {
+          id: 91,
+          kind: kinds[row.id],
+          startedAt: 0,
+          at: 1.4,
+          x: boss.x,
+          y: boss.y,
+          tx: boss.x,
+          ty: boss.y,
+          radius: 120,
+        },
+      ];
+    }
+    for (let n = 1; n <= 12; n++) r.frame(1, n * 0.1, false);
   });
-  const moved = await pose(page);
-  for (const rig of moved) {
-    const before = start.find((r) => r.name === rig.name)!;
+  const gathered = await pose(page);
+  for (const rig of gathered)
     expect(
-      rig.parts.filter((p) => {
-        const b = before.parts.find((q) => q.name === p.name);
-        return (
-          b &&
-          (b.x !== p.x ||
-            b.y !== p.y ||
-            b.rotation !== p.rotation ||
-            b.sy !== p.sy)
-        );
-      }).length,
-      rig.name,
-    ).toBeGreaterThanOrEqual(2);
+      rig.parts.some(
+        (p) =>
+          p.frame ===
+          (rig.name.includes("emberwing") || rig.name.endsWith("twin-1")
+            ? "pose-5"
+            : "pose-1"),
+      ),
+    ).toBe(true);
+  await page.evaluate(() => {
+    const r = (window as any).__bossReview;
+    for (const row of r.rows) row.state.raid.warnings = [];
+    r.frame(1, 1.45, false);
+    r.frame(1, 1.5, false);
+    r.frame(1, 1.55, false);
+  });
+  const striking = await pose(page);
+  for (const rig of striking) {
+    expect(rig.parts.length).toBeLessThanOrEqual(2);
+    expect(
+      rig.parts.some(
+        (p) =>
+          p.frame ===
+          (rig.name.includes("emberwing") || rig.name.endsWith("twin-1")
+            ? "pose-6"
+            : "pose-2"),
+      ),
+    ).toBe(true);
     for (const p of rig.parts)
       for (const n of [p.x, p.y, p.rotation, p.sx, p.sy, p.alpha])
         expect(Number.isFinite(n)).toBe(true);
@@ -97,6 +150,36 @@ test("all seven living boss rigs animate, hold a pause and keep combat snapshots
   await page.evaluate(() => (window as any).__bossReview.frame(3, 22, true));
   expect(await pose(page)).toEqual(reduced);
   await snap(page, info, "seven-painted-bosses");
+  // A retry resets the presentation clock while the same scene/actors survive.
+  await page.evaluate(() => {
+    const r = (window as any).__bossReview;
+    for (const row of r.rows)
+      row.state.raid.warnings = [
+        {
+          id: 101,
+          kind: "slam",
+          startedAt: 29,
+          at: 31,
+          x: 0,
+          y: 0,
+          tx: 0,
+          ty: 0,
+          radius: 100,
+        },
+      ];
+    r.frame(1, 30, false);
+    r.frame(1, 30.05, false);
+    for (const row of r.rows) row.state.raid.warnings = [];
+    r.frame(1, 0, false);
+  });
+  for (const rig of await pose(page)) {
+    expect(rig.parts).toHaveLength(1);
+    expect(rig.parts[0].frame).toBe(
+      rig.name.includes("emberwing") || rig.name.endsWith("twin-1")
+        ? "pose-4"
+        : "pose-0",
+    );
+  }
   expect(errors).toEqual([]);
 });
 
@@ -272,7 +355,7 @@ test("an unavailable art file keeps the encounter playable without a request loo
   page,
 }) => {
   let requests = 0;
-  await page.route(/raid-painted-grumblecrag\.webp/, (route) => {
+  await page.route(/raid-whole-grumblecrag\.webp/, (route) => {
     if (route.request().resourceType() === "script") return route.continue();
     requests++;
     return route.abort();
@@ -304,12 +387,12 @@ test("an unavailable art file keeps the encounter playable without a request loo
   expect(errors).toEqual([]);
 });
 
-test("stranded Tidewyrm keeps its neck covered and its coil over the ground in both directions", async ({
+test("stranded Tidewyrm is one complete grounded creature in both directions", async ({
   page,
 }, info) => {
   const errors = await review(page);
   for (const facing of [1, -1]) {
-    const joint = await page.evaluate((facing) => {
+    const result = await page.evaluate((facing) => {
       const r = (window as any).__bossReview,
         row = r.rows.find((o: any) => o.id === "tidewyrm"),
         boss = row.state.players.find((p: any) => p.raidBoss);
@@ -323,42 +406,22 @@ test("stranded Tidewyrm keeps its neck covered and its coil over the ground in b
       const root = row.g.scene.children.list.find(
           (o: any) => o.name === "painted-boss-tidewyrm:body",
         ),
-        parts = root.list[0].list;
-      const head = parts.find((o: any) => o.name === "head"),
-        coil = parts.find((o: any) => o.name === "coil");
-      const socket = coil
-        .getWorldTransformMatrix()
-        .transformPoint(
-          ((coil.flipX ? 1 - 0.388 : 0.388) - coil.originX) * coil.width,
-          (0.35 - coil.originY) * coil.height,
+        images = root.list[0].list.filter(
+          (o: any) => o.type === "Image" && o.visible,
         );
-      const local = head
-        .getWorldTransformMatrix()
-        .applyInverse(socket.x, socket.y);
-      let u = (local.x + head.displayOriginX) / head.width;
-      if (head.flipX) u = 1 - u;
-      const v = (local.y + head.displayOriginY) / head.height;
-      const canvas = document.createElement("canvas"),
-        source = head.texture.getSourceImage();
-      canvas.width = source.width;
-      canvas.height = source.height;
-      const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(source, 0, 0);
-      const alpha =
-        u >= 0 && u <= 1 && v >= 0 && v <= 1
-          ? ctx.getImageData(
-              Math.floor(head.frame.cutX + u * head.frame.cutWidth),
-              Math.floor(head.frame.cutY + v * head.frame.cutHeight),
-              1,
-              1,
-            ).data[3]
-          : 0;
-      const ground = row.g
+      const image = images[0],
+        bounds = image.getBounds(),
+        f = r.poseData.tidewyrm.poses[4],
+        footU =
+          (image.flipX ? f.rect[2] - f.anchor[0] : f.anchor[0]) / f.rect[2],
+        ground = row.g
           .getWorldTransformMatrix()
-          .transformPoint(boss.x, boss.y + 40),
-        bounds = coil.getBounds();
+          .transformPoint(boss.x, boss.y + 35);
       return {
-        alpha,
+        count: images.length,
+        frame: image.frame.name,
+        flip: image.flipX,
+        anchorError: Math.round(bounds.left + footU * bounds.width - ground.x),
         grounded:
           bounds.left < ground.x &&
           bounds.right > ground.x &&
@@ -366,9 +429,178 @@ test("stranded Tidewyrm keeps its neck covered and its coil over the ground in b
           bounds.bottom > ground.y,
       };
     }, facing);
-    expect(joint.alpha).toBeGreaterThan(220);
-    expect(joint.grounded).toBe(true);
-    await snap(page, info, `tidewyrm-land-${facing > 0 ? "right" : "left"}`);
+    expect(result).toEqual({
+      count: 1,
+      frame: "pose-4",
+      flip: facing < 0,
+      anchorError: 0,
+      grounded: true,
+    });
+    await snap(
+      page,
+      info,
+      `whole-tidewyrm-land-${facing > 0 ? "right" : "left"}`,
+    );
   }
+  expect(errors).toEqual([]);
+});
+
+test("serpent and peacock heads share a continuous opaque silhouette with their bodies", async ({
+  page,
+}) => {
+  const errors = await review(page);
+  const results = await page.evaluate(() => {
+    const r = (window as any).__bossReview;
+    const heads = {
+      tidewyrm: [
+        [390, 165],
+        [1200, 305],
+        [896, 747],
+        [1268, 695],
+        [1900, 542],
+      ],
+      prismatail: [
+        [497, 162],
+        [1204, 120],
+        [713, 746],
+        [1280, 654],
+      ],
+    };
+    return Object.entries(heads).flatMap(([id, points]) =>
+      points.map((point, index) => {
+        const f = r.poseData[id].poses[index],
+          image = r.game.textures.get(`raid-painted-${id}`).getSourceImage();
+        const canvas = document.createElement("canvas");
+        canvas.width = f.rect[2];
+        canvas.height = f.rect[3];
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(image, ...f.rect, 0, 0, canvas.width, canvas.height);
+        const rgba = ctx.getImageData(0, 0, canvas.width, canvas.height).data,
+          w = canvas.width,
+          h = canvas.height;
+        const ratio = w / (f.source[2] - f.source[0]);
+        let sx = Math.round((point[0] - f.source[0]) * ratio),
+          sy = Math.round((point[1] - f.source[1]) * ratio);
+        let seed = -1;
+        for (let radius = 0; radius < 18 && seed < 0; radius++)
+          for (let dy = -radius; dy <= radius; dy++)
+            for (let dx = -radius; dx <= radius; dx++) {
+              const x = sx + dx,
+                y = sy + dy;
+              if (
+                x >= 0 &&
+                x < w &&
+                y >= 0 &&
+                y < h &&
+                rgba[(y * w + x) * 4 + 3] > 128
+              )
+                seed = y * w + x;
+            }
+        let total = 0;
+        for (let n = 3; n < rgba.length; n += 4) if (rgba[n] > 128) total++;
+        const seen = new Uint8Array(w * h),
+          queue = new Int32Array(w * h);
+        let read = 0,
+          write = 0;
+        if (seed >= 0) {
+          seen[seed] = 1;
+          queue[write++] = seed;
+        }
+        while (read < write) {
+          const p = queue[read++],
+            x = p % w;
+          for (const q of [
+            x > 0 ? p - 1 : -1,
+            x < w - 1 ? p + 1 : -1,
+            p >= w ? p - w : -1,
+            p < w * (h - 1) ? p + w : -1,
+          ])
+            if (q >= 0 && !seen[q] && rgba[q * 4 + 3] > 128) {
+              seen[q] = 1;
+              queue[write++] = q;
+            }
+        }
+        return { id, index, coverage: write / Math.max(1, total) };
+      }),
+    );
+  });
+  for (const result of results)
+    expect(
+      result.coverage,
+      `${result.id} pose ${result.index}`,
+    ).toBeGreaterThan(0.82);
+  expect(errors).toEqual([]);
+});
+
+test("confirmed casts have flipbook impacts, interrupted casts do not, and pause freezes the effect", async ({
+  page,
+}) => {
+  const errors = await review(page);
+  await page.evaluate(() => {
+    const r = (window as any).__bossReview,
+      row = r.rows.find((o: any) => o.id === "emberwing");
+    row.state.raid.warnings = [
+      {
+        id: 1,
+        kind: "flame-ring",
+        startedAt: 0,
+        at: 1,
+        x: 0,
+        y: 0,
+        tx: 0,
+        ty: 0,
+        radius: 90,
+      },
+    ];
+    r.frame(1, 0, false);
+    r.frame(1, 0.7, false);
+    row.state.raid.warnings = [];
+    r.frame(1, 0.75, false);
+    r.frame(1, 1.05, false);
+  });
+  const count = () =>
+    page.evaluate(
+      () =>
+        (window as any).__bossReview.rows[0].g.scene.children.list.filter(
+          (o: any) => o.name === "boss-spell-flipbook" && o.visible,
+        ).length,
+    );
+  expect(await count()).toBe(0);
+  await page.evaluate(() => {
+    const r = (window as any).__bossReview,
+      row = r.rows.find((o: any) => o.id === "emberwing");
+    row.state.raid.warnings = [
+      {
+        id: 2,
+        kind: "flame-ring",
+        startedAt: 1.1,
+        at: 2,
+        x: 0,
+        y: 0,
+        tx: 0,
+        ty: 0,
+        radius: 90,
+      },
+    ];
+    for (let n = 0; n < 19; n++) r.frame(1, 1.1 + n * 0.05, false);
+    row.state.raid.warnings = [];
+    r.frame(1, 2.05, false);
+    r.frame(1, 2.1, false);
+  });
+  expect(await count()).toBeGreaterThan(0);
+  await page.evaluate(() => {
+    const r = (window as any).__bossReview;
+    for (const row of r.rows) row.state.phase = "paused";
+    r.frame(1, 2.1, false);
+  });
+  const before = await page.screenshot();
+  await page.evaluate(() => (window as any).__bossReview.frame(1, 30, false));
+  expect((await page.screenshot()).equals(before)).toBe(true);
+  await page.evaluate(() => {
+    const r = (window as any).__bossReview;
+    for (const row of r.rows) row.state.phase = "playing";
+    r.frame(1, 30.05, true);
+  });
+  expect(await count()).toBe(0);
   expect(errors).toEqual([]);
 });

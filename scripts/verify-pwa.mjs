@@ -30,6 +30,7 @@ assert(
 );
 assert(urls.includes("offline.html"));
 for (const art of [
+  "raid-spell-flipbook",
   "town-fountain",
   "town-ground",
   "town-nature",
@@ -57,9 +58,14 @@ for (const art of [
     "storm-twins",
   ].map((name) => `town-statue-${name}`),
   ...[
-    "grumblecrag", "tidewyrm", "gloomshade", "somnara",
-    "prismatail", "emberwing", "storm-twins",
-  ].map((name) => `raid-painted-${name}`),
+    "grumblecrag",
+    "tidewyrm",
+    "gloomshade",
+    "somnara",
+    "prismatail",
+    "emberwing",
+    "storm-twins",
+  ].map((name) => `raid-whole-${name}`),
 ])
   assert(
     urls.some((url) => new RegExp(`^assets/${art}-[\\w-]+\\.webp$`).test(url)),
@@ -92,4 +98,5 @@ assert(!existsSync(root + "safe-preview.html"));
 assert(!existsSync(root + "readiness-preview.html"));
 
 assert(!existsSync(root + "animation-preview.html"));
+assert(!existsSync(root + "boss-animation-preview.html"));
 assert(!existsSync(root + "mobile-layout-preview.html"));

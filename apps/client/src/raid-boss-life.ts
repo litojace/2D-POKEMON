@@ -1,4 +1,5 @@
 import type Phaser from "phaser";
+import { BossPerformance } from "./boss-performance";
 import type { Fighter, Snapshot } from "@arena/shared";
 
 const clamp = (n: number) => Math.max(0, Math.min(1, n));
@@ -6,6 +7,7 @@ const clamp = (n: number) => Math.max(0, Math.min(1, n));
 /** Cosmetic posing only. Warning geometry, world positions and clocks stay authoritative. */
 export class BossLife {
   private run = "";
+  private performance = new BossPerformance();
   private serverTime = -1;
   private result: unknown;
   private clock = 0;
@@ -24,6 +26,7 @@ export class BossLife {
       aimY = Math.sin(boss.angle);
     if (reset) {
       this.run = run;
+      this.performance.reset(boss, r.phase);
       this.elapsed = 0;
       this.lookX = aimX;
       this.lookY = aimY;
@@ -67,6 +70,7 @@ export class BossLife {
         ? Math.sin(((blinkAt - 4.56) / 0.24) * Math.PI)
         : 0;
     return {
+      action: this.performance.sample(state, boss, dt, reduced, windup),
       time: t,
       breath: Math.sin(t * 1.8) * move,
       sway: Math.sin(t * 1.15) * move,

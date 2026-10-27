@@ -287,6 +287,7 @@ export function drawEmberwing(
   );
   if (
     paintedEmber(g, {
+      groundY: boss.y,
       x,
       y,
       life,

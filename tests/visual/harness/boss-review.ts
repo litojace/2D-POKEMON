@@ -1,3 +1,7 @@
+import wholePoseData from "../../../apps/client/src/art/raid-whole-frames.json";
+import { bossSkinAudit } from "../../../apps/client/src/boss-soft-mesh";
+import { queueBossSpellArt } from "../../../apps/client/src/boss-spell-flipbook";
+import { drawBossBattleEffects } from "../../../apps/client/src/boss-spell-art";
 import Phaser from "phaser";
 import {
   queueBossArt,
@@ -35,9 +39,16 @@ export function reviewBosses(preload = true) {
     g: Phaser.GameObjects.Graphics;
     state: ReturnType<ReturnType<typeof createRaidArena>["snapshot"]>;
   }[] = [];
+  let renderFrame: (() => void) | undefined;
   class Review extends Phaser.Scene {
+    update() {
+      renderFrame?.();
+    }
     preload() {
-      if (preload) for (const id of RAID_BOSS_ORDER) queueBossArt(this, id);
+      if (preload) {
+        for (const id of RAID_BOSS_ORDER) queueBossArt(this, id);
+        queueBossSpellArt(this);
+      }
     }
     create() {
       RAID_BOSS_ORDER.forEach((id, i) => {
@@ -84,6 +95,22 @@ export function reviewBosses(preload = true) {
     game,
     loaded,
     rows,
+    poseData: wholePoseData,
+    skins() {
+      return rows[0].g.scene.children.list
+        .filter((o) => o.name.startsWith("painted-boss-"))
+        .flatMap((root: any) =>
+          root.list[0].list
+            .filter((p: any) => p.type === "Image" && p.visible)
+            .map((p: any) => ({
+              boss: root.name,
+              part: p.name,
+              rotation: p.rotation,
+              frame: p.frame.name,
+              skin: bossSkinAudit(p),
+            })),
+        );
+    },
     retain(id: (typeof RAID_BOSS_ORDER)[number]) {
       retainBossArt(rows[0].g.scene, id);
     },
@@ -95,16 +122,19 @@ export function reviewBosses(preload = true) {
     ) {
       game.loop.sleep();
       game.loop.frame++;
-      for (const row of rows) {
-        row.g.clear();
-        if (!ids.includes(row.id)) continue;
-        row.state.raid!.phase = phase;
-        row.state.time = clock;
-        const before = JSON.stringify(row.state);
-        painters[row.id](row.g, row.state, reduced, clock);
-        if (JSON.stringify(row.state) !== before)
-          throw new Error(`${row.id} changed combat state`);
-      }
+      renderFrame = () => {
+        for (const row of rows) {
+          row.g.clear();
+          if (!ids.includes(row.id)) continue;
+          row.state.raid!.phase = phase;
+          row.state.time = clock;
+          const before = JSON.stringify(row.state);
+          drawBossBattleEffects(row.g, row.state, reduced, clock);
+          painters[row.id](row.g, row.state, reduced, clock);
+          if (JSON.stringify(row.state) !== before)
+            throw new Error(`${row.id} changed combat state`);
+        }
+      };
       game.step(clock * 1000, 0);
     },
   };
