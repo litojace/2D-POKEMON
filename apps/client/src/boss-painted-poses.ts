@@ -110,6 +110,9 @@ export function paintedTide(
 ) {
   const { x, y, life: l } = o,
     flip = o.facing < 0;
+  // On land the coil curls behind the head. Reverse the complete coil (not the
+  // head) so its neck joint stays beneath the face rather than exposing a stump.
+  const coilFlip = o.stranded ? !flip : flip;
   const headWidth = o.stranded ? 95 : 99;
   const headY = y + (o.stranded ? 0 : 9);
   const headOrigin = o.stranded ? 0.93 : 0.72;
@@ -127,13 +130,13 @@ export function paintedTide(
       part(
         "coil",
         "body",
-        x - o.facing * (o.stranded ? 100 : 18),
+        x - o.facing * (o.stranded ? 0 : 18),
         y + (o.stranded ? -32 : 27),
         o.stranded ? 180 : 157,
         {
-          ox: flip ? 0.67 : 0.33,
+          ox: coilFlip ? 0.67 : 0.33,
           oy: o.stranded ? 0.45 : 0.28,
-          flip,
+          flip: coilFlip,
           stretch:
             (o.stranded ? 0.42 : 1) * Math.max(0.08, o.rise * (1 - o.sink)),
           rotation: l.sway * 0.025,

@@ -712,7 +712,7 @@ export function drawTidewyrm(
     });
   }
   const paintedHead = pts[pts.length - 1];
-  const paintedX = paintedHead.x + facing * 12;
+  const paintedX = stranded ? boss.x + facing * 35 : paintedHead.x + facing * 12;
   const paintedY =
     paintedHead.y - (stranded ? 6 : 14) - life.windup * 9 + life.breath;
   if (

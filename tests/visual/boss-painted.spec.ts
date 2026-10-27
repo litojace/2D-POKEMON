@@ -303,3 +303,72 @@ test("an unavailable art file keeps the encounter playable without a request loo
   expect(await pose(page)).toEqual([]);
   expect(errors).toEqual([]);
 });
+
+test("stranded Tidewyrm keeps its neck covered and its coil over the ground in both directions", async ({
+  page,
+}, info) => {
+  const errors = await review(page);
+  for (const facing of [1, -1]) {
+    const joint = await page.evaluate((facing) => {
+      const r = (window as any).__bossReview,
+        row = r.rows.find((o: any) => o.id === "tidewyrm"),
+        boss = row.state.players.find((p: any) => p.raidBoss);
+      if (!row.state.raid.exposedUntil) r.frame();
+      row.state.raid.exposedUntil = 20;
+      row.state.raid.islands = [
+        { x: boss.x, y: boss.y, radius: 100, sunk: false },
+      ];
+      boss.angle = facing > 0 ? 0 : Math.PI;
+      r.frame(1, 6, true);
+      const root = row.g.scene.children.list.find(
+          (o: any) => o.name === "painted-boss-tidewyrm:body",
+        ),
+        parts = root.list[0].list;
+      const head = parts.find((o: any) => o.name === "head"),
+        coil = parts.find((o: any) => o.name === "coil");
+      const socket = coil
+        .getWorldTransformMatrix()
+        .transformPoint(
+          ((coil.flipX ? 1 - 0.388 : 0.388) - coil.originX) * coil.width,
+          (0.35 - coil.originY) * coil.height,
+        );
+      const local = head
+        .getWorldTransformMatrix()
+        .applyInverse(socket.x, socket.y);
+      let u = (local.x + head.displayOriginX) / head.width;
+      if (head.flipX) u = 1 - u;
+      const v = (local.y + head.displayOriginY) / head.height;
+      const canvas = document.createElement("canvas"),
+        source = head.texture.getSourceImage();
+      canvas.width = source.width;
+      canvas.height = source.height;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(source, 0, 0);
+      const alpha =
+        u >= 0 && u <= 1 && v >= 0 && v <= 1
+          ? ctx.getImageData(
+              Math.floor(head.frame.cutX + u * head.frame.cutWidth),
+              Math.floor(head.frame.cutY + v * head.frame.cutHeight),
+              1,
+              1,
+            ).data[3]
+          : 0;
+      const ground = row.g
+          .getWorldTransformMatrix()
+          .transformPoint(boss.x, boss.y + 40),
+        bounds = coil.getBounds();
+      return {
+        alpha,
+        grounded:
+          bounds.left < ground.x &&
+          bounds.right > ground.x &&
+          bounds.top < ground.y &&
+          bounds.bottom > ground.y,
+      };
+    }, facing);
+    expect(joint.alpha).toBeGreaterThan(220);
+    expect(joint.grounded).toBe(true);
+    await snap(page, info, `tidewyrm-land-${facing > 0 ? "right" : "left"}`);
+  }
+  expect(errors).toEqual([]);
+});

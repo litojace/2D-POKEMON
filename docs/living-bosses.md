@@ -16,12 +16,13 @@ footage. The desktop and iPhone images show the actual client raid scene.
 Complete anatomical parts rotate about overlapping joints. The head and torso
 are never sliced into moving horizontal bands. Existing presentation clocks,
 sounds, floor telegraphs, decoy tells, exposed-core indicators, defeat sequences,
-and encounter state remain authoritative. The old vector art is a network-failure
+and encounter state remain authoritative. Tidewyrm coils behind its head when
+stranded; both facings keep the neck covered and the body over its ground shadow. The old vector art is a network-failure
 fallback. The current encounter's atlas is loaded on demand; previous boss atlases
 are released when an expedition changes encounters.
 
 Validation: production build and PWA cache verification; 1,058 root tests and
-94 client tests; six focused Chromium browser checks and two WebKit checks cover
+94 client tests; seven focused Chromium browser checks and three WebKit checks cover
 animation, pause/reduced motion, immutable snapshots, stale-clone/submerge cleanup,
 fades, atlas replacement/revisit, failed asset requests, and real desktop/iPhone
 raid rendering.
