@@ -3303,7 +3303,10 @@ class ArenaScene extends Phaser.Scene {
     const view = this.followCamera.update(
       this.scale.width,
       this.scale.height,
+      // Raids need the whole arena: mechanics can start far from the fighter.
+      // Fit it below the mobile HUD rather than cropping it to fill the phone.
       touch.enabled &&
+        !state?.raid &&
         document.body.classList.contains("battle-active") &&
         innerWidth > innerHeight,
       touch.enabled &&
@@ -3311,10 +3314,7 @@ class ArenaScene extends Phaser.Scene {
         follow &&
         presented &&
         !state?.arcade &&
-        state?.raid?.boss !== "somnara" &&
-        state?.raid?.boss !== "prismatail" &&
-        state?.raid?.boss !== "emberwing" &&
-        state?.raid?.boss !== "storm-twins"
+        !state?.raid
         ? {
             ...follow,
             x: presented.x,

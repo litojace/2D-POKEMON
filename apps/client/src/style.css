@@ -21894,3 +21894,208 @@ body.battle-active.court-view #game canvas {
     margin-top: 5px;
   }
 }
+
+
+/* Centre the complete rite choice, including naturally wrapped descriptions. */
+#arena-overlay .raid-draft .panel-actions .raid-rite-options > button {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  place-items: center;
+  align-content: center;
+  gap: 0;
+}
+#arena-overlay .raid-draft .panel-actions .raid-rite-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  align-self: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 32ch;
+  min-height: 0;
+  gap: 12px;
+}
+.raid-rite-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  max-width: 100%;
+  gap: 20px;
+}
+#arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
+  min-width: 0;
+  grid-column: auto;
+  text-align: center;
+}
+#arena-overlay .raid-draft .panel-actions .raid-rite-copy > small {
+  grid-column: auto;
+  align-self: center;
+  margin: 0;
+  text-align: center;
+}
+.raid-rite-heading > .raid-rite-icon {
+  flex: 0 0 auto;
+}
+@media (orientation: landscape) and (max-height: 600px) {
+  .raid-rite-heading {
+    flex-direction: row;
+    gap: 9px;
+  }
+  #arena-overlay .raid-draft .panel-actions .raid-rite-copy {
+    gap: 8px;
+  }
+}
+@media (orientation: landscape) and (max-height: 350px) {
+  #arena-overlay .raid-draft .panel-actions .raid-rite-copy {
+    gap: 5px;
+  }
+}
+
+/* Give the raid HUD its own natural row. Target warnings and team health never
+   cover the arena, including when Safari changes the visible viewport height. */
+@media (orientation: landscape) {
+  body.battle-active.touch-mode.battle-raid #battle:not([hidden]) {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 6px;
+    padding: calc(var(--safe-top) + 4px) calc(var(--safe-right) + 4px)
+      calc(var(--safe-bottom) + 4px) calc(var(--safe-left) + 4px);
+  }
+  body.battle-active.touch-mode.battle-raid #hud {
+    display: none;
+  }
+  body.battle-active.touch-mode.battle-raid #raid-hud {
+    position: relative;
+    inset: auto;
+    grid-row: 1;
+    justify-self: center;
+    width: min(620px, 100%);
+    max-width: none;
+    margin: 0;
+    transform: none;
+  }
+  body.battle-active.touch-mode.battle-raid .arena-stage {
+    display: block;
+    position: relative;
+    grid-row: 2;
+    min-height: 0;
+    min-width: 0;
+  }
+  body.battle-active.touch-mode.battle-raid .arena-frame {
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  body.battle-active.touch-mode.battle-raid #mobile-controls {
+    display: contents;
+  }
+  /* Reserve two cue lines and a teammate status line so warnings don't resize
+     the court or change its zoom in the middle of a held movement gesture. */
+  .touch-mode .raid-status-row .raid-callout {
+    min-height: 2.6em;
+  }
+  .touch-mode .raid-party-bars > span {
+    grid-template-rows: 10px 3px 8px;
+    row-gap: 1px;
+  }
+  .touch-mode .raid-party-bars small {
+    display: block;
+    visibility: hidden;
+    font-size: 7px;
+    line-height: 8px;
+  }
+  .touch-mode .raid-party-bars :is(.downed, .is-targeted) small {
+    visibility: visible;
+    line-height: 8px;
+  }
+}
+
+@media (orientation: landscape) {
+  body.battle-active.touch-mode.battle-raid #arena-overlay:has(.overlay-card) {
+    position: fixed;
+    inset: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
+    z-index: 80;
+  }
+  /* Mechanic buttons keep their existing nodes/held gestures, but sit beside
+     the HUD instead of covering the newly visible centre of the court. */
+  body.battle-active.touch-mode.battle-raid #battle:has(
+    :is(#raid-prism-controls, #raid-dream-panel, #raid-storm-targets):not([hidden])
+  ) #raid-hud {
+    justify-self: start;
+    width: calc(100% - 228px);
+  }
+  body.battle-active.touch-mode.battle-raid :is(
+    #raid-prism-controls, #raid-dream-panel, #raid-storm-targets
+  ):not([hidden]) {
+    position: fixed;
+    top: calc(var(--safe-top) + 6px);
+    right: calc(var(--safe-right) + 6px);
+    left: auto;
+    width: 216px;
+    max-width: none;
+    transform: none;
+  }
+  body.battle-active.touch-mode.battle-raid :is(
+    #raid-prism-controls, #raid-storm-targets
+  ) > button {
+    flex: 1;
+    padding: 6px;
+    font-size: 11px;
+  }
+}
+@media (orientation: landscape) and (max-height: 350px) {
+  body.battle-active.touch-mode.battle-raid #raid-hud {
+    padding-block: 4px;
+  }
+  .touch-mode .raid-boss-heading {
+    font-size: 9px;
+    line-height: 1.1;
+  }
+  .touch-mode .raid-boss-heading > span {
+    font-size: 7px;
+  }
+  .touch-mode .raid-boss-health {
+    height: 4px;
+    margin: 3px 0 2px;
+  }
+  .touch-mode .raid-stagger {
+    height: 2px;
+    margin-bottom: 2px;
+  }
+  .touch-mode .raid-party-bars {
+    margin-top: 2px;
+  }
+  .touch-mode .raid-party-bars > span {
+    grid-template-columns: minmax(0, 1fr) 28px;
+    grid-template-rows: 9px 8px;
+    gap: 1px 4px;
+  }
+  .touch-mode .raid-party-bars i {
+    align-self: center;
+  }
+  .touch-mode .raid-party-bars small {
+    grid-column: 1 / -1;
+  }
+  .touch-mode .raid-status-row {
+    margin-top: 2px;
+  }
+  .touch-mode .raid-status-row .raid-callout {
+    font-size: 8px;
+  }
+}
+
+@media (orientation: landscape) {
+  .touch-mode #raid-dream-panel .dream-strip > span {
+    display: none;
+  }
+  .touch-mode .raid-party-bars b {
+    line-height: 10px;
+  }
+}
+@media (orientation: landscape) and (max-height: 350px) {
+  .touch-mode .raid-party-bars b {
+    line-height: 9px;
+  }
+}
