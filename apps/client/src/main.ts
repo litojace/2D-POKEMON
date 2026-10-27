@@ -1,3 +1,4 @@
+import { queueBossArt, retainBossArt } from "./boss-painted-rig";
 import { rendererDensity } from "./render-budget";
 import { watchRendererLifecycle } from "./renderer-lifecycle";
 import { groundHeight, WORLD_ART } from "../../../packages/shared/src/world-art";
@@ -2915,6 +2916,7 @@ class ArenaScene extends Phaser.Scene {
     }
   }
   preload() {
+    if (state?.raid) queueBossArt(this, state.raid.boss);
     for (const id of Object.keys(CHARACTERS) as CharacterId[])
       queueFighterAssets(this, id, this.assets[id]);
   }
@@ -3484,6 +3486,7 @@ class ArenaScene extends Phaser.Scene {
     const g = this.graphics;
     g.clear();
     this.bossGraphics.clear();
+    retainBossArt(this, state.raid?.boss);
     // In raids the boss and standing scenery sort with the raiders by where they stand.
     const boss = state.raid ? state.players.find((p) => p.raidBoss) : undefined;
     this.bossGraphics.setDepth(boss ? fighterDepth(boss.y) : 0);

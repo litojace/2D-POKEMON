@@ -1,3 +1,4 @@
+import { paintedEmber } from "./boss-painted-poses";
 import { groundHeight } from "../../../packages/shared/src/world-art";
 import { bossSurface } from "./boss-materials";
 import { bossLife, bossEye } from "./raid-boss-life";
@@ -284,6 +285,20 @@ export function drawEmberwing(
     170 - flight * 35,
     45 - flight * 10,
   );
+  if (
+    paintedEmber(g, {
+      x,
+      y,
+      life,
+      alpha,
+      exposed,
+      dead: pose.dead,
+      flight,
+      gilded: !!r.gilded,
+      hurt: pose.hurt > 0.2,
+    })
+  )
+    return pose.cues;
   // Tail plumes overlap and lag behind the chest, with warm shafts and ember tips.
   for (let i = 0; i < 7; i++) {
     const a = -0.82 + i * 0.25 + Math.sin(t * 1.7 + i * 0.4) * 0.04 * life.move;

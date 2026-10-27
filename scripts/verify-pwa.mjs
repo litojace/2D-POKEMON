@@ -56,6 +56,10 @@ for (const art of [
     "emberwing",
     "storm-twins",
   ].map((name) => `town-statue-${name}`),
+  ...[
+    "grumblecrag", "tidewyrm", "gloomshade", "somnara",
+    "prismatail", "emberwing", "storm-twins",
+  ].map((name) => `raid-painted-${name}`),
 ])
   assert(
     urls.some((url) => new RegExp(`^assets/${art}-[\\w-]+\\.webp$`).test(url)),

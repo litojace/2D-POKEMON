@@ -1,3 +1,4 @@
+import { paintedPrisma } from "./boss-painted-poses";
 import { groundHeight } from "../../../packages/shared/src/world-art";
 import { bossSurface } from "./boss-materials";
 import { bossLife, bossEye } from "./raid-boss-life";
@@ -249,6 +250,19 @@ export function drawPrismatail(
       : Math.max(0.2, 1 - pose.deathAge * 0.35)
     : 1;
   g.fillStyle(0x101a2d, 0.32).fillEllipse(x, boss.y + 20, 184, 47);
+  if (
+    paintedPrisma(g, {
+      x,
+      y,
+      life,
+      alpha,
+      exposed,
+      dead: pose.dead,
+      gilded: !!r.gilded,
+      hurt: pose.hurt > 0.2,
+    })
+  )
+    return pose.cues;
   // Layered, hinged feathers open in a travelling wave, rather than rigid spokes.
   const fan =
     1 + life.breath * 0.025 - life.windup * 0.12 - (exposed ? 0.1 : 0);

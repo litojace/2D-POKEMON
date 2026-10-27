@@ -1,3 +1,4 @@
+import { paintedGrumble } from "./boss-painted-poses";
 import { groundHeight } from "../../../packages/shared/src/world-art";
 import { bossLife } from "./raid-boss-life";
 import { rockGrain } from "./boss-materials";
@@ -173,6 +174,25 @@ export function drawRaidBoss(
   };
   if (pose.collapse >= 1) {
     rubble();
+    paintFragments();
+    return pose.cues;
+  }
+  if (
+    paintedGrumble(g, {
+      x,
+      y,
+      life,
+      gilded: !!r.gilded,
+      hurt: pose.hurt > 0.65,
+      exposed,
+      dead: pose.dead,
+      lift,
+      stride,
+      collapse: pose.collapse,
+      groundY: boss.y,
+      phase: r.phase,
+    })
+  ) {
     paintFragments();
     return pose.cues;
   }

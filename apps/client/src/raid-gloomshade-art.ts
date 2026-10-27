@@ -1,3 +1,4 @@
+import { paintedGloom } from "./boss-painted-poses";
 import { groundHeight } from "../../../packages/shared/src/world-art";
 import { bossSurface } from "./boss-materials";
 import { bossLife, type BossLifePose } from "./raid-boss-life";
@@ -623,6 +624,7 @@ export function drawGloomshade(
     const shake = b.real ? Math.sin(hurt * Math.PI * 3) * hurt * 6 * motion : 0;
     // Each body (the real one and every copy) sorts with the raiders.
     shade(at ? at(`shade-${b.id}`, b.y + 12) : g, {
+      key: `shade-${b.id}`,
       x: b.x + shake,
       y: b.y,
       t: t + b.id * 0.37,
@@ -695,6 +697,7 @@ function nearestLight(state: Snapshot, x: number, y: number) {
 }
 
 interface ShadeLook {
+  key: string;
   x: number;
   y: number;
   t: number;
@@ -732,6 +735,7 @@ function shade(g: G, o: ShadeLook) {
         32 - k * 3,
       );
   }
+  if (paintedGloom(g, { ...o, x, y })) return;
   const body = o.hurt ? 0x6e5aa8 : o.gilded ? 0x4a3d62 : SHADE;
   const top = o.gilded ? 0x8a7a52 : SHADE_TOP;
   // Tail: a crescent moon on a wisp, flickering on the real one.

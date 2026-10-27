@@ -1,3 +1,4 @@
+import { paintedTwin } from "./boss-painted-poses";
 import { groundHeight } from "../../../packages/shared/src/world-art";
 import { bossSurface } from "./boss-materials";
 import { bossLife, bossEye } from "./raid-boss-life";
@@ -250,6 +251,21 @@ export function drawStormTwins(
     const body = i ? 0x72bde6 : r.gilded ? 0xffd277 : 0xf4d675;
     const alpha = down ? 0.35 : 1;
     g.fillStyle(0x0e1a30, 0.27).fillEllipse(x, p.y + 13, 117, 30);
+    if (
+      paintedTwin(g, {
+        x,
+        y,
+        life,
+        alpha,
+        dead: down,
+        blue: !!i,
+        pulse,
+        key: `twin-${i}`,
+        gilded: !!r.gilded,
+        exposed: meta.exposedUntil > state.time,
+      })
+    )
+      continue;
     // Bell contraction drives the tendrils: each tip follows with a small delay.
     for (let j = 0; j < 5; j++) {
       const bx = x - 36 + j * 18;

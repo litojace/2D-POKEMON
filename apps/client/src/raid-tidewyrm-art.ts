@@ -1,3 +1,4 @@
+import { paintedTide } from "./boss-painted-poses";
 import { groundHeight } from "../../../packages/shared/src/world-art";
 import { bossLife } from "./raid-boss-life";
 import { bossSurface } from "./boss-materials";
@@ -709,6 +710,46 @@ export function drawTidewyrm(
       y: base + loop.y - (stranded ? 8 : 0) + sink * 60,
       r: 30 - k * 8 + (stranded ? 4 : 0),
     });
+  }
+  const paintedHead = pts[pts.length - 1];
+  const paintedX = paintedHead.x + facing * 12;
+  const paintedY =
+    paintedHead.y - (stranded ? 6 : 14) - life.windup * 9 + life.breath;
+  if (
+    paintedTide(g, {
+      x: paintedX,
+      y: paintedY,
+      life,
+      facing,
+      stranded,
+      rise,
+      sink,
+      exposed: stranded || stagger,
+      dead,
+      hurt: hurt > 0.6,
+      gilded: !!r.gilded,
+    })
+  ) {
+    if (stagger)
+      for (let i = 0; i < 3; i++) {
+        const a = t * 4 + (i * Math.PI * 2) / 3;
+        g.fillStyle(0xfff1a0, 1).fillCircle(
+          paintedX + Math.cos(a) * 34,
+          paintedY - 46 + Math.sin(a) * 8,
+          4,
+        );
+      }
+    if (dead)
+      for (let i = 0; i < 4; i++) {
+        const p = reduced ? i / 4 : (t * 0.6 + i / 4) % 1;
+        g.lineStyle(2, PEARL_GLOW, 1 - p).strokeCircle(
+          paintedX + 20 + i * 8,
+          paintedY - 40 - p * 70,
+          4 + p * 6,
+        );
+      }
+    paintDrops();
+    return cues;
   }
   const glow = stranded || stagger;
   const skin = hurt > 0.6 ? 0xd8fff6 : r.gilded ? 0xe8d48a : TEAL;
