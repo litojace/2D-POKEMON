@@ -76,7 +76,18 @@ export function raidGuideScene(
   if (kind === "runes") art = `<circle cx="48" cy="74" r="25" fill="#92efdb" fill-opacity=".13" stroke="#92efdb" stroke-width="2"/><circle cx="48" cy="74" r="10" fill="none" stroke="#92efdb" stroke-width="3"/><circle cx="158" cy="74" r="25" fill="#ffdf8d" fill-opacity=".13" stroke="#ffdf8d" stroke-width="2"/><path d="m158 60 4 8 10 2-7 6 1 10-8-5-8 5 1-10-7-6 10-2Z" fill="#ffdf8d"/><path d="M82 74h40m-8-6 8 6-8 6" fill="none" stroke="#e4d6ff" stroke-width="3"/><text x="110" y="128">ENTER EACH PAD IN ORDER</text>`;
   if (kind === "quiet") art = `<rect x="10" y="20" width="200" height="88" rx="12" fill="#ff647f" opacity=".15"/><ellipse cx="123" cy="76" rx="54" ry="32" fill="#92efdb" fill-opacity=".2" stroke="#92efdb" stroke-width="3"/>${hero(98, 40, "quiet")}<path d="M47 73h29m-8-7 8 7-8 7" fill="none" stroke="#92efdb" stroke-width="3"/><text x="110" y="128">FOLLOW THE QUIET ZONE</text>`;
   if (kind === "relay") art = `<circle cx="27" cy="60" r="15" fill="#ffe2a0"/>${hero(49, 55, "relay")}<path d="M27 60 70 83 132 57 187 80" fill="none" stroke="#ffe2a0" stroke-width="4"/><path d="m132 40 13 17-13 17-13-17Z" fill="#9ae4ee"/><path d="m187 65 10 15-10 15-10-15Z" fill="#ffe2a0"/><text x="110" y="128">LIGHT → MIRRORS → HEART</text>`;
-  if (kind === "mirror") art = `<ellipse cx="110" cy="98" rx="42" ry="12" fill="#08152b"/><path d="m110 30 25 32-25 32-25-32Z" fill="#9ae4ee" stroke="#ffe2a0" stroke-width="3"/><path d="M110 62h61m-12-9 12 9-12 9" stroke="#ffe2a0" stroke-width="4" fill="none"/><path d="M72 73a44 44 0 0 1 69-50m-13-2 13 2-3 13" stroke="#8cebd1" stroke-width="3" fill="none"/><text x="110" y="128">USE TURN MIRROR</text>`;
+  if (kind === "mirror") {
+    // The curved arrow's head follows its clockwise tangent. Keep it separate
+    // from the outgoing arrow, which points all the way to a visible next post.
+    art = `<ellipse cx="88" cy="92" rx="29" ry="8" fill="#08152b"/>
+      <ellipse cx="182" cy="92" rx="20" ry="6" fill="#08152b"/>
+      <path d="M88 66H182" fill="none" stroke="#ffe2a0" stroke-width="3" stroke-opacity=".45"/>
+      <path d="m88 40 20 26-20 26-20-26Z" fill="#9ae4ee" stroke="#ffe2a0" stroke-width="2.5"/>
+      <path d="m182 47 14 19-14 19-14-19Z" fill="#9ae4ee" stroke="#ffe2a0" stroke-width="2"/>
+      <path d="M88 66H158m-9-7 9 7-9 7" fill="none" stroke="#fff1c2" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path data-mirror-turn d="M52 64C42 19 101 8 122 37M110 33l12 4-1-13" fill="none" stroke="#8cebd1" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="182" y="107">NEXT POST</text><text x="110" y="128">USE TURN MIRROR</text>`;
+  }
   if (kind === "glare") art = `<path d="M70 43q40-35 80 0-40 35-80 0Z" fill="#ffe2a0" fill-opacity=".2" stroke="#ffe2a0" stroke-width="3"/><circle cx="110" cy="43" r="11" fill="#ffe2a0"/>${hero(89, 65, "glare")}<path d="M111 90v21m-7-8 7 8 7-8" fill="none" stroke="#8cebd1" stroke-width="3"/><text x="110" y="128">TURN AWAY FROM GLARE</text>`;
   if(kind === "braziers") art = `<path d="M110 30 45 100h130Z" fill="none" stroke="#ffcf91" stroke-width="2" stroke-dasharray="5 4"/>${[[110,30],[45,100],[175,100]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="18" fill="#ffad6c" fill-opacity=".2" stroke="#ffcf91"/><path d="M${x-8} ${y+3}q-4-8 8-19-2 8 6 9 8 12-14 10Z" fill="#ffcf91"/>`).join("")}${hero(24,60,"brazier")}<text x="110" y="128">STAND INSIDE · 1.5s</text>`;
   if(kind === "ground-bird") art = `<g transform="translate(65 52) scale(.75)">${raidGuideSprite("emberwing")}</g><path d="M110 42v50m-8-9 8 9 8-9" stroke="#ffcf91" stroke-width="3" fill="none"/>${hero(151,65,"fire")}<text x="110" y="128">ALL THREE LIT → GROUNDED</text>`;
