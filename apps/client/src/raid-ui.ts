@@ -68,7 +68,7 @@ import {
 } from "../../../packages/shared/src/raid";
 import { raidGuideBossFor } from "./raid-guide-art";
 import { raidBriefingGuide } from "./raid-briefing";
-import { raidRitePicture } from "./raid-rite-art";
+import { raidRiteChoices, raidRiteDetails, bindRaidRiteDetails } from "./raid-rite-cards";
 import { drawRaidBoss } from "./raid-boss-art";
 import {
   drawLagoon,
@@ -93,11 +93,6 @@ const escape = (s: string) =>
         c
       ]!,
   );
-/** Keep the longest rite readable in the three-card phone layout. */
-const riteDescription = (id: keyof typeof RAID_RITES) =>
-  id === "lucid"
-    ? "Dream Bubbles can’t make you Drowsy. Always see the first dream rune."
-    : RAID_RITES[id].text;
 const time = (s: number) =>
   `${Math.floor(s / 60)}:${Math.floor(s % 60)
     .toString()
@@ -320,7 +315,8 @@ export function renderRaidUI(
         ? "Choose your starting rite"
         : `Phase ${r.phase} · ${raidChapters(r.boss)[r.phase - 1].name}`;
     body = `<p class="raid-phase-objective">${raidChapters(r.boss)[r.phase - 1].detail}</p><details class="raid-team-summary"><summary>Team rites</summary><div class="raid-team-builds" aria-label="Team rites"></div></details>`;
-    actions = `<p class="raid-rite-intro"><span>Rites stack for this run.</span><span class="raid-choice-timer" role="timer" aria-label="Time left to choose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>Choose in</span><strong>${LIVE_SECONDS}</strong></span></p><div class="raid-rite-options">${(r.offers[me.id] ?? []).map((id) => `<button data-raid-rite="${id}" class="secondary raid-rite-${id}" title="${escape(RAID_RITES[id].text)}"><span class="raid-rite-copy"><span class="raid-rite-heading">${raidRitePicture(id)}<b>${RAID_RITES[id].name}</b></span><small>${riteDescription(id)}</small></span></button>`).join("") || "<p>Rite locked in · waiting for the team.</p>"}</div>`;
+    const offers = r.offers[me.id] ?? [];
+    actions = `<div class="raid-rite-intro"><span>Stacks this run</span><span class="raid-choice-timer" role="timer" aria-label="Time left to choose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>Choose in</span><strong>${LIVE_SECONDS}</strong></span>${raidRiteDetails(offers)}</div><div class="raid-rite-options">${raidRiteChoices(offers)}</div>`;
   } else if (state.phase === "countdown") {
     title = String(Math.ceil(state.remaining));
     body = `<p>${raidChapters(r.boss)[r.phase - 1].objective}</p>`;
@@ -409,6 +405,7 @@ export function renderRaidUI(
   overlay
     .querySelector(".raid-choice-timer")
     ?.classList.toggle("is-urgent", state.remaining <= 5);
+  bindRaidRiteDetails(overlay);
   const ready = overlay.querySelector<HTMLButtonElement>("#raid-instructions");
   if (ready) ready.onclick = () => void request("instructions-ready");
   for (const b of Array.from(
