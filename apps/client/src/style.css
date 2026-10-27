@@ -21780,8 +21780,13 @@ body.battle-active.court-view #game canvas {
   text-transform: none;
 }
 .raid-briefing .raid-guide-steps .raid-guide-scene {
-  height: 100px;
-  margin: 6px 0;
+  display: block;
+  flex: 0 0 auto;
+  height: 110px;
+  margin: 8px 0;
+  border: 1px solid #8baee51c;
+  border-radius: 9px;
+  background: #0b172a;
 }
 .raid-guide-action {
   margin: 6px 0;
@@ -21861,8 +21866,8 @@ body.battle-active.court-view #game canvas {
     font-size: 16px;
   }
   .raid-briefing .raid-guide-steps .raid-guide-scene {
-    height: 60px;
-    margin-block: 3px;
+    height: 84px;
+    margin-block: 6px;
   }
   .raid-guide-action {
     font-size: 13px;
@@ -21873,9 +21878,9 @@ body.battle-active.court-view #game canvas {
     padding-top: 6px;
   }
 }
-@media (orientation: landscape) and (max-height: 480px) {
+@media (orientation: landscape) and (max-height: 340px) {
   .raid-briefing .raid-guide-steps .raid-guide-scene {
-    display: none;
+    height: 64px;
   }
 }
 @media (max-width: 580px) and (orientation: portrait) {

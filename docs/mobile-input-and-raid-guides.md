@@ -21,9 +21,13 @@ Each of the seven raid briefings now leads with the fight's goal and three order
 actions, including a visible success cue. A separate survival line explains the
 main hazards. Champion tricks, team signals and the encounter modifier remain in
 an optional details section. Solo/team instructions differ where necessary. The
-ready action stays outside the native vertical scroller; short phone layouts omit
-the miniature diagrams so the instructions have room. Reading expanded details
-and scrolling survive ready-state updates.
+ready action stays outside the native vertical scroller. Every step keeps its
+miniature illustration on desktop and phones, including short Safari viewports.
+Boss diagrams reuse the complete battle artwork; arrows, target rings, mirrors,
+lantern light and floor pads explain where to stand and when to attack. The
+mirror caption names the actual Turn mirror action, and the curse illustration
+shows moving into lantern light to cleanse. Reading expanded details and scrolling
+survive ready-state updates.
 
 [Desktop guide](raid-guide-desktop.webp) · [Phone guide](raid-guide-mobile.webp)
 
@@ -32,5 +36,6 @@ control/over a disabled skill, missed terminal events, repeated gestures, held
 movement, simultaneous attack/skill/movement, held Look away, and trusted native
 touch after stale focus/menu changes. Chromium checks the actual battle input
 packets; WebKit checks control recovery and all seven briefing layouts. The guide
-layout is checked at desktop, phone landscape and Safari's short visible viewport.
+layout and decoded illustration assets are checked at desktop, phone landscape
+and Safari's short visible viewport.
 Unit tests, TypeScript, the production build and PWA verification also run.

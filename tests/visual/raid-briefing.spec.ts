@@ -49,6 +49,32 @@ for (const size of [
         await expect(page.locator(".raid-guide-steps > li")).toHaveCount(3);
         await expect(page.locator(".raid-guide-goal")).toBeVisible();
         await expect(page.locator("#raid-instructions")).toBeEnabled();
+        const diagrams = page.locator(
+          ".raid-guide-steps > li > .raid-guide-scene",
+        );
+        await expect(diagrams).toHaveCount(3);
+        for (const diagram of await diagrams.all()) {
+          await expect(diagram).toBeVisible();
+          const frame = await diagram.boundingBox();
+          expect(frame!.height).toBeGreaterThanOrEqual(60);
+          expect(frame!.width).toBeGreaterThan(100);
+        }
+        const sprites = page.locator(
+          ".raid-guide-scene image[data-guide-sprite]",
+        );
+        expect(await sprites.count()).toBeGreaterThan(0);
+        // Decode the same atlases used by SVG <image>, including cold-cache phones.
+        await sprites.evaluateAll(async (images) => {
+          await Promise.all(
+            [...new Set(images.map((el) => el.getAttribute("href")!))].map(
+              async (url) => {
+                const image = new Image();
+                image.src = url;
+                await image.decode();
+              },
+            ),
+          );
+        });
         const card = await box(page, ".raid-briefing"),
           start = await box(page, "#raid-instructions");
         expect(inside(start, card)).toBe(true);
@@ -57,7 +83,7 @@ for (const size of [
           .locator(".raid-guide-step-heading h3")
           .allTextContents())
           expect(title.length).toBeGreaterThan(5);
-        if (["prismatail", "emberwing"].includes(boss)) {
+        if (size.height === 900 || ["prismatail", "emberwing"].includes(boss)) {
           await page.locator(".raid-briefing").evaluate(async (el) => {
             await Promise.all(
               el.getAnimations().map((a) => a.finished.catch(() => {})),
