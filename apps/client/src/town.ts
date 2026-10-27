@@ -656,6 +656,18 @@ export function openTown(options: TownOptions) {
       const { min, max } = this.zoomRange();
       const z = Math.min(max, Math.max(min, this.zoomBase * userZoom));
       this.zoomNow = z;
+      // Text textures must cover the final magnification, not just initial DPR.
+      // Keep density changes at zoom/resize boundaries, outside the frame loop.
+      const resolution = this.nameplateResolution();
+      for (const body of bodies.values()) {
+        if (body.name.style.resolution !== resolution)
+          body.name.setResolution(resolution);
+        if (body.title.style.resolution !== resolution) {
+          body.title.setResolution(resolution);
+          if (body.titleFx)
+            styleTitle(body.title, body.titleFx, this.time.now / 1000, options.reduced);
+        }
+      }
       const cam = this.cameras.main;
       // A plain tween (the camera's own zoom effect can stop short of its target).
       this.tweens.killTweensOf(cam);
@@ -673,6 +685,13 @@ export function openTown(options: TownOptions) {
         Math.abs(userZoom - 1) < 0.001,
       );
     }
+    private nameplateResolution() {
+      const density = Math.min(3, Math.max(1, devicePixelRatio || 1));
+      return Math.min(
+        6,
+        Math.max(TEXT_RES, Math.ceil(Math.max(1, this.zoomNow) * density)),
+      );
+    }
     addBody(id: number, x: number, y: number): Body {
       const body: Body = {
         id,
@@ -688,7 +707,7 @@ export function openTown(options: TownOptions) {
         shadow: this.add.ellipse(x, y, 46, 16, SHADE, SUN.alpha),
         name: this.add
           .text(x, y, "", {
-            resolution: TEXT_RES,
+            resolution: this.nameplateResolution(),
             fontFamily: "DM Sans, sans-serif",
             fontSize: "13px",
             fontStyle: "bold",
@@ -701,7 +720,7 @@ export function openTown(options: TownOptions) {
           .setDepth(5000),
         title: this.add
           .text(x, y, "", {
-            resolution: TEXT_RES,
+            resolution: this.nameplateResolution(),
             fontFamily: "DM Sans, sans-serif",
             fontSize: "11px",
             fontStyle: "bold",
@@ -1023,7 +1042,13 @@ export function openTown(options: TownOptions) {
       height: Math.round(host.clientHeight * dpr),
       zoom: 1 / dpr,
     },
-    render: { antialias: true, mipmapFilter: "LINEAR_MIPMAP_LINEAR" },
+    // Phaser otherwise infers pixelArt=true from the fractional CSS zoom,
+    // overriding antialias and selecting nearest-neighbour texture sampling.
+    render: {
+      pixelArt: false,
+      antialias: true,
+      mipmapFilter: "LINEAR_MIPMAP_LINEAR",
+    },
     scene: [TownScene],
   });
   const resize = () => {

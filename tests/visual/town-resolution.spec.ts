@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { openTown } from "./helpers";
 
+// The fractional CSS scale on Retina used to silently enable pixel-art mode.
+test.use({ deviceScaleFactor: 2 });
+
 test("town keeps native architecture pixels, filtered zoom and a shared fountain source", async ({
   page,
 }, info) => {

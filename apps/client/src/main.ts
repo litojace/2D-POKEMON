@@ -4213,7 +4213,8 @@ function ensureBattleRenderer() {
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
     scene: [ArenaScene],
-    render: { antialias: true },
+    // CSS zoom compensates for DPR; it must not enable Phaser's pixel-art mode.
+    render: { pixelArt: false, antialias: true },
     // The camera maps the authoritative 1600x900 world onto the buffer.
     input: { activePointers: 4 },
   });
