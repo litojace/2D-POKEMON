@@ -176,10 +176,8 @@ export function openTown(options: TownOptions) {
   layer.className = "town-layer";
   layer.innerHTML = `<div class="town-canvas" id="town-canvas"></div>
 <div class="town-light" aria-hidden="true"></div>
-<header class="town-hud">
-  <div class="town-place"><b>Elemental Plaza</b><small id="town-pop">Joining…</small></div>
-</header>
 <nav class="town-actions" aria-label="Main menu" data-open="false">
+  <div class="town-menu-location" id="town-location" hidden><b>Elemental Plaza</b><small id="town-pop">Joining…</small></div>
   <button type="button" class="town-menu-toggle" id="town-menu-toggle" aria-expanded="false" aria-controls="town-menu-items" title="Menu (M)"><span class="town-burger" aria-hidden="true"><i></i><i></i><i></i></span><span>Menu</span></button>
   <div class="town-menu-items" id="town-menu-items" inert>
     <button type="button" class="town-play primary btn-primary" data-action="play" style="--i:0">${menuIcon("battle")}<span>Play</span></button>${ACTIONS.map(
@@ -411,6 +409,7 @@ export function openTown(options: TownOptions) {
     menu.dataset.open = String(open);
     menuToggle.setAttribute("aria-expanded", String(open));
     menuItems.inert = !open;
+    $("town-location").hidden = !open;
   };
   menuToggle.onclick = () => setMenu(menu.dataset.open !== "true");
   layer.querySelectorAll<HTMLButtonElement>("[data-action]").forEach((b) => {

@@ -19993,37 +19993,6 @@ body.battle-active:not(.touch-mode) #battle.desktop-hud-outside .enemy-bearing {
   position: absolute;
   inset: 0;
 }
-.town-hud {
-  position: absolute;
-  top: max(12px, env(safe-area-inset-top));
-  left: 16px;
-  right: 16px;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  gap: 12px;
-  pointer-events: none;
-}
-.town-hud > * {
-  pointer-events: auto;
-}
-.town-place {
-  display: grid;
-  padding: 8px 14px;
-  border-radius: 12px;
-  background: rgba(16, 19, 24, 0.72);
-  backdrop-filter: blur(6px);
-}
-.town-place b {
-  font-family: "Barlow Condensed", sans-serif;
-  font-size: 20px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-.town-place small {
-  color: #c9d2e3;
-  font-size: 12px;
-}
 .town-prompt {
   position: absolute;
   left: 50%;
@@ -20115,20 +20084,6 @@ body.battle-active:not(.touch-mode) #battle.desktop-hud-outside .enemy-bearing {
   }
 }
 @media (max-height: 500px) {
-  .town-hud {
-    top: max(8px, env(safe-area-inset-top));
-    left: max(12px, env(safe-area-inset-left));
-    right: max(12px, env(safe-area-inset-right));
-  }
-  .town-place {
-    padding: 5px 10px;
-  }
-  .town-place b {
-    font-size: 16px;
-  }
-  .town-place small {
-    font-size: 11px;
-  }
   .town-emotes {
     right: max(12px, env(safe-area-inset-right));
     bottom: max(8px, env(safe-area-inset-bottom));
@@ -20157,6 +20112,33 @@ body.battle-active:not(.touch-mode) #battle.desktop-hud-outside .enemy-bearing {
   padding: 6px;
   border-radius: 16px;
   background: rgba(16, 19, 24, 0.72);
+}
+.town-actions[data-open="true"] {
+  padding-top: 34px;
+}
+.town-menu-location {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.town-menu-location[hidden] {
+  display: none;
+}
+.town-menu-location b {
+  color: #ffe27a;
+  font: 700 10px/1.3 "DM Sans", sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.town-menu-location small {
+  color: #c9d2e3;
+  font: 400 11px/1.3 "DM Sans", sans-serif;
 }
 .town-actions button {
   display: grid;
@@ -20508,15 +20490,6 @@ body.lobby-active .header-menu > summary span {
 body.town-active #menu-logout,
 body.lobby-active #menu-logout {
   display: flex;
-}
-/* The town's own chip sits in the middle of the top row. */
-body.town-active .town-hud {
-  top: max(12px, env(safe-area-inset-top));
-}
-@media (max-width: 900px) {
-  body.town-active .town-place {
-    display: none;
-  }
 }
 @media (max-height: 500px) {
   body.town-active #account-profile,
