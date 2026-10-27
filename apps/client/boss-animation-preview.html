@@ -59,6 +59,8 @@
         display: flex;
         gap: 8px;
         align-items: center;
+        flex-wrap: wrap;
+        justify-content: flex-end;
       }
       button,
       select {
@@ -110,10 +112,18 @@
         >
       </div>
       <nav>
+        <select id="view" aria-label="Viewing direction">
+          <option value="auto">Auto turn</option>
+          <option value="front">Front</option>
+          <option value="back">Back</option>
+          <option value="left">Left</option>
+          <option value="right">Right</option>
+        </select>
         <select id="pose" aria-label="Boss state">
           <option value="idle">Idle</option>
           <option value="cast">Casting</option>
           <option value="exposed">Exposed</option>
+          <option value="grounded">Grounded</option>
           <option value="defeated">Defeated</option></select
         ><button id="pause">Pause</button
         ><button id="motion">Reduce motion</button>
@@ -146,7 +156,9 @@
       const roster = only ? entries.filter((e) => e[0] === only) : entries;
       let reduced = matchMedia("(prefers-reduced-motion:reduce)").matches,
         paused = false,
-        mode = "idle";
+        mode = "idle",
+        view = "auto";
+      document.querySelector("#view").onchange = (e) => (view = e.target.value);
       document.querySelector("#motion").onclick = () => {
         reduced = !reduced;
         document.querySelector("#motion").textContent = reduced
@@ -167,6 +179,9 @@
         },
         set mode(v) {
           mode = v;
+        },
+        set view(v) {
+          view = v;
         },
         set reduced(v) {
           reduced = v;
@@ -256,6 +271,20 @@
                 16,
               );
             const s = v.state;
+            const headings = {
+              front: Math.PI / 2,
+              back: -Math.PI / 2,
+              left: Math.PI,
+              right: 0,
+            };
+            const heading =
+              view === "auto"
+                ? ["front", "left", "back", "right"][
+                    Math.floor(this.elapsed / 3.8) % 4
+                  ]
+                : view;
+            for (const p of s.players)
+              if (p.raidBoss) p.angle = headings[heading];
             s.time = this.elapsed;
             s.phase = paused
               ? "paused"
@@ -267,6 +296,16 @@
               if (p.raidBoss) p.hp = mode === "defeated" ? 0 : v.hp.get(p.id);
             s.raid.exposedUntil = mode === "exposed" ? this.elapsed + 1 : 0;
             s.raid.staggerUntil = mode === "exposed" ? this.elapsed + 1 : 0;
+            if (s.raid.boss === "emberwing")
+              s.raid.airborne = mode !== "grounded" && mode !== "exposed";
+            if (s.raid.boss === "tidewyrm") {
+              s.raid.exposedUntil =
+                mode === "grounded" ? this.elapsed + 1 : s.raid.exposedUntil;
+              s.raid.islands =
+                mode === "grounded"
+                  ? [{ x: 800, y: 475, radius: 100, sunk: false }]
+                  : [];
+            }
             s.raid.warnings =
               mode === "cast" && this.elapsed % 3.8 < 2.5
                 ? [
@@ -291,7 +330,7 @@
                     },
                   ]
                 : [];
-            const scale = Math.min((cw - 40) / 400, (ch - 106) / 360);
+            const scale = Math.min((cw - 40) / 600, (ch - 106) / 360);
             v.g
               .clear()
               .setPosition(cx - 800 * scale, cy + 6 - 430 * scale)

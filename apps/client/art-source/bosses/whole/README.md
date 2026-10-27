@@ -24,7 +24,7 @@ with a 65 ms whole-frame blend. Breathing and secondary motion deform one
 continuous surface; the head and neck cannot be detached. The phoenix's central
 face is excluded from wing flex and the complete sprite remains level. Motion
 pauses with combat; reduced motion holds a whole authored pose. The renderer loads
-only the current encounter's atlas and evicts old encounter textures. Old vector
+only the current encounter's base and directional atlases and evicts old encounter textures. Old vector
 painters remain an asset-failure fallback.
 
 The source sheets are development assets and are not included in the shipped app.
@@ -33,3 +33,5 @@ checks in `tests/visual/boss-painted.spec.ts` exercise the real battle renderer,
 whole silhouettes, confirmed/interrupted casts, pause, reduced motion, stale actor
 cleanup, texture changes and actual desktop/iPhone raid scenes. See
 `docs/whole-bosses.md` for review captures.
+
+The four-view extension is documented in [directions](../directions/README.md).

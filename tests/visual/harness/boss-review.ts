@@ -1,4 +1,8 @@
 import wholePoseData from "../../../apps/client/src/art/raid-whole-frames.json";
+import {
+  BOSS_DIRECTIONS,
+  bossDirectionalFrame,
+} from "../../../apps/client/src/boss-directions";
 import { bossSkinAudit } from "../../../apps/client/src/boss-soft-mesh";
 import { queueBossSpellArt } from "../../../apps/client/src/boss-spell-flipbook";
 import { drawBossBattleEffects } from "../../../apps/client/src/boss-spell-art";
@@ -20,7 +24,7 @@ import { drawPrismatail } from "../../../apps/client/src/raid-prismatail-art";
 import { drawEmberwing } from "../../../apps/client/src/raid-emberwing-art";
 import { drawStormTwins } from "../../../apps/client/src/raid-storm-twins-art";
 
-const painters = {
+export const painters = {
   grumblecrag: drawRaidBoss,
   tidewyrm: drawTidewyrm,
   gloomshade: drawGloomshade,
@@ -64,6 +68,7 @@ export function reviewBosses(preload = true) {
         state.players.forEach((p) => {
           p.x -= x;
           p.y -= y;
+          if (p.raidBoss) p.angle = Math.PI / 2;
         });
         const left = (i % 2) * 800,
           top = Math.floor(i / 2) * 500;
@@ -96,6 +101,8 @@ export function reviewBosses(preload = true) {
     loaded,
     rows,
     poseData: wholePoseData,
+    directionData: BOSS_DIRECTIONS,
+    directionalFrame: bossDirectionalFrame,
     skins() {
       return rows[0].g.scene.children.list
         .filter((o) => o.name.startsWith("painted-boss-"))

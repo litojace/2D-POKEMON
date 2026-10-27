@@ -1,5 +1,6 @@
 import type Phaser from "phaser";
 import { BossPerformance } from "./boss-performance";
+import { BossFacing } from "./boss-facing";
 import type { Fighter, Snapshot } from "@arena/shared";
 
 const clamp = (n: number) => Math.max(0, Math.min(1, n));
@@ -8,6 +9,7 @@ const clamp = (n: number) => Math.max(0, Math.min(1, n));
 export class BossLife {
   private run = "";
   private performance = new BossPerformance();
+  private facing = new BossFacing();
   private serverTime = -1;
   private result: unknown;
   private clock = 0;
@@ -27,6 +29,7 @@ export class BossLife {
     if (reset) {
       this.run = run;
       this.performance.reset(boss, r.phase);
+      this.facing.reset(boss, state.time);
       this.elapsed = 0;
       this.lookX = aimX;
       this.lookY = aimY;
@@ -69,8 +72,14 @@ export class BossLife {
       move && windup < 0.25 && blinkAt > 4.56
         ? Math.sin(((blinkAt - 4.56) / 0.24) * Math.PI)
         : 0;
+    const action = this.performance.sample(state, boss, dt, reduced, windup);
     return {
-      action: this.performance.sample(state, boss, dt, reduced, windup),
+      action,
+      view: this.facing.sample(
+        state,
+        boss,
+        windup > 0 || action.casts.some((cast) => cast.age < 0.35),
+      ),
       time: t,
       breath: Math.sin(t * 1.8) * move,
       sway: Math.sin(t * 1.15) * move,

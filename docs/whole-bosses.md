@@ -1,5 +1,8 @@
 # Complete living raid bosses
 
+This records the initial whole-pose upgrade. The current four-direction artwork
+and combat capture are in [boss turnarounds](boss-turnarounds.md).
+
 All seven encounters now use complete authored creature poses, including
 Gloomshade and both Storm Twins. A whole pose replaces the previous collection of
 independently rotated anatomical parts. Tidewyrm and Prismatail have continuously

@@ -1,0 +1,2800 @@
+{
+  "grumblecrag": {
+    "size": [
+      2048,
+      1536
+    ],
+    "poses": [
+      {
+        "anchor": [
+          277.0,
+          440.0
+        ],
+        "core": [
+          277.0,
+          240.32
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.5,
+        "source": [
+          173,
+          81,
+          742,
+          546
+        ],
+        "master": "grumblecrag-back",
+        "cell": 0,
+        "rect": [
+          1137,
+          570,
+          569,
+          465
+        ]
+      },
+      {
+        "anchor": [
+          244.0,
+          529.0
+        ],
+        "core": [
+          244.0,
+          279.88
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.5,
+        "source": [
+          825,
+          0,
+          1359,
+          554
+        ],
+        "master": "grumblecrag-back",
+        "cell": 1,
+        "rect": [
+          8,
+          8,
+          534,
+          554
+        ]
+      },
+      {
+        "anchor": [
+          308.0,
+          385.0
+        ],
+        "core": [
+          308.0,
+          211.72
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.5,
+        "source": [
+          156,
+          585,
+          773,
+          995
+        ],
+        "master": "grumblecrag-back",
+        "cell": 2,
+        "rect": [
+          684,
+          1061,
+          617,
+          410
+        ]
+      },
+      {
+        "anchor": [
+          304.5,
+          464.0
+        ],
+        "core": [
+          304.5,
+          252.8
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.5,
+        "source": [
+          843,
+          520,
+          1373,
+          1009
+        ],
+        "master": "grumblecrag-back",
+        "cell": 3,
+        "rect": [
+          1046,
+          8,
+          530,
+          489
+        ]
+      },
+      {
+        "anchor": [
+          244.5,
+          458.0
+        ],
+        "core": [
+          244.5,
+          249.68
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.5,
+        "source": [
+          165,
+          51,
+          697,
+          534
+        ],
+        "master": "grumblecrag-side",
+        "cell": 0,
+        "rect": [
+          8,
+          570,
+          532,
+          483
+        ]
+      },
+      {
+        "anchor": [
+          243.5,
+          515.0
+        ],
+        "core": [
+          243.5,
+          274.04
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.5,
+        "source": [
+          866,
+          0,
+          1354,
+          540
+        ],
+        "master": "grumblecrag-side",
+        "cell": 1,
+        "rect": [
+          550,
+          8,
+          488,
+          540
+        ]
+      },
+      {
+        "anchor": [
+          333.5,
+          414.0
+        ],
+        "core": [
+          333.5,
+          226.8
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.5,
+        "source": [
+          73,
+          556,
+          741,
+          995
+        ],
+        "master": "grumblecrag-side",
+        "cell": 2,
+        "rect": [
+          8,
+          1061,
+          668,
+          439
+        ]
+      },
+      {
+        "anchor": [
+          269.5,
+          442.0
+        ],
+        "core": [
+          269.5,
+          241.36
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.5,
+        "source": [
+          878,
+          532,
+          1459,
+          999
+        ],
+        "master": "grumblecrag-side",
+        "cell": 3,
+        "rect": [
+          548,
+          570,
+          581,
+          467
+        ]
+      }
+    ],
+    "modes": {
+      "body": {
+        "front": {
+          "atlas": "base",
+          "poses": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "flip": false
+        },
+        "back": {
+          "atlas": "directions",
+          "poses": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "flip": false
+        },
+        "right": {
+          "atlas": "directions",
+          "poses": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "flip": false
+        },
+        "left": {
+          "atlas": "directions",
+          "poses": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "flip": true
+        }
+      }
+    }
+  },
+  "tidewyrm": {
+    "size": [
+      2048,
+      3072
+    ],
+    "poses": [
+      {
+        "anchor": [
+          426.0,
+          499.0
+        ],
+        "core": [
+          426.0,
+          267.64
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.42,
+        "source": [
+          44,
+          0,
+          737,
+          524
+        ],
+        "master": "tidewyrm-front",
+        "cell": 0,
+        "rect": [
+          8,
+          1108,
+          693,
+          524
+        ]
+      },
+      {
+        "anchor": [
+          288.0,
+          489.0
+        ],
+        "core": [
+          288.0,
+          260.04
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.42,
+        "source": [
+          814,
+          0,
+          1478,
+          514
+        ],
+        "master": "tidewyrm-front",
+        "cell": 1,
+        "rect": [
+          784,
+          1640,
+          664,
+          514
+        ]
+      },
+      {
+        "anchor": [
+          384.0,
+          491.0
+        ],
+        "core": [
+          384.0,
+          266.84000000000003
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.42,
+        "source": [
+          58,
+          504,
+          826,
+          1020
+        ],
+        "master": "tidewyrm-front",
+        "cell": 2,
+        "rect": [
+          8,
+          1640,
+          768,
+          516
+        ]
+      },
+      {
+        "anchor": [
+          232.0,
+          507.0
+        ],
+        "core": [
+          232.0,
+          275.15999999999997
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.42,
+        "source": [
+          901,
+          489,
+          1494,
+          1021
+        ],
+        "master": "tidewyrm-front",
+        "cell": 3,
+        "rect": [
+          776,
+          8,
+          593,
+          532
+        ]
+      },
+      {
+        "anchor": [
+          266.0,
+          503.0
+        ],
+        "core": [
+          266.0,
+          272.12
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.42,
+        "source": [
+          145,
+          0,
+          767,
+          528
+        ],
+        "master": "tidewyrm-back",
+        "cell": 0,
+        "rect": [
+          733,
+          568,
+          622,
+          528
+        ]
+      },
+      {
+        "anchor": [
+          242.0,
+          497.0
+        ],
+        "core": [
+          242.0,
+          264.68
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.42,
+        "source": [
+          909,
+          0,
+          1488,
+          522
+        ],
+        "master": "tidewyrm-back",
+        "cell": 1,
+        "rect": [
+          1319,
+          1108,
+          579,
+          522
+        ]
+      },
+      {
+        "anchor": [
+          364.0,
+          483.0
+        ],
+        "core": [
+          364.0,
+          262.68
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.42,
+        "source": [
+          0,
+          501,
+          916,
+          1009
+        ],
+        "master": "tidewyrm-back",
+        "cell": 2,
+        "rect": [
+          8,
+          2164,
+          916,
+          508
+        ]
+      },
+      {
+        "anchor": [
+          203.0,
+          498.0
+        ],
+        "core": [
+          203.0,
+          270.48
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.42,
+        "source": [
+          934,
+          499,
+          1536,
+          1022
+        ],
+        "master": "tidewyrm-back",
+        "cell": 3,
+        "rect": [
+          709,
+          1108,
+          602,
+          523
+        ]
+      },
+      {
+        "anchor": [
+          392.0,
+          527.0
+        ],
+        "core": [
+          392.0,
+          285.08000000000004
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.3,
+        "source": [
+          37,
+          0,
+          797,
+          552
+        ],
+        "master": "tidewyrm-ground-turns",
+        "cell": 0,
+        "rect": [
+          8,
+          8,
+          760,
+          552
+        ]
+      },
+      {
+        "anchor": [
+          547.0,
+          507.0
+        ],
+        "core": [
+          547.0,
+          275.15999999999997
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.3,
+        "source": [
+          798,
+          76,
+          1515,
+          608
+        ],
+        "master": "tidewyrm-ground-turns",
+        "cell": 1,
+        "rect": [
+          8,
+          568,
+          717,
+          532
+        ]
+      },
+      {
+        "anchor": [
+          434.0,
+          378.0
+        ],
+        "core": [
+          434.0,
+          208.08
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.3,
+        "source": [
+          0,
+          595,
+          804,
+          998
+        ],
+        "master": "tidewyrm-ground-turns",
+        "cell": 2,
+        "rect": [
+          932,
+          2164,
+          804,
+          403
+        ]
+      },
+      {
+        "anchor": [
+          347.0,
+          332.0
+        ],
+        "core": [
+          347.0,
+          184.16
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.3,
+        "source": [
+          784,
+          656,
+          1534,
+          1013
+        ],
+        "master": "tidewyrm-ground-turns",
+        "cell": 3,
+        "rect": [
+          8,
+          2680,
+          750,
+          357
+        ]
+      }
+    ],
+    "modes": {
+      "body": {
+        "front": {
+          "atlas": "directions",
+          "poses": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "flip": false
+        },
+        "back": {
+          "atlas": "directions",
+          "poses": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "flip": false
+        },
+        "right": {
+          "atlas": "base",
+          "poses": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "flip": false
+        },
+        "left": {
+          "atlas": "base",
+          "poses": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "flip": true
+        }
+      },
+      "stranded": {
+        "front": {
+          "atlas": "directions",
+          "poses": [
+            8
+          ],
+          "flip": false
+        },
+        "back": {
+          "atlas": "directions",
+          "poses": [
+            9
+          ],
+          "flip": false
+        },
+        "right": {
+          "atlas": "base",
+          "poses": [
+            4
+          ],
+          "flip": false
+        },
+        "left": {
+          "atlas": "base",
+          "poses": [
+            4
+          ],
+          "flip": true
+        }
+      }
+    }
+  },
+  "gloomshade": {
+    "size": [
+      2048,
+      1888
+    ],
+    "poses": [
+      {
+        "anchor": [
+          335.0,
+          465.0
+        ],
+        "core": [
+          335.0,
+          253.32000000000002
+        ],
+        "moon": [
+          145.07709339774559,
+          121.94041867954911
+        ],
+        "scale": 0.32,
+        "source": [
+          56,
+          22,
+          799,
+          512
+        ],
+        "master": "gloomshade-back",
+        "cell": 0,
+        "rect": [
+          820,
+          8,
+          743,
+          490
+        ]
+      },
+      {
+        "anchor": [
+          287.0,
+          374.0
+        ],
+        "core": [
+          287.0,
+          206.0
+        ],
+        "moon": [
+          595.2281238746849,
+          79.85451926539432
+        ],
+        "scale": 0.32,
+        "source": [
+          781,
+          101,
+          1533,
+          500
+        ],
+        "master": "gloomshade-back",
+        "cell": 1,
+        "rect": [
+          742,
+          1457,
+          752,
+          399
+        ]
+      },
+      {
+        "anchor": [
+          339.0,
+          486.0
+        ],
+        "core": [
+          339.0,
+          264.24
+        ],
+        "moon": [
+          138.6328695652174,
+          138.91826086956522
+        ],
+        "scale": 0.32,
+        "source": [
+          23,
+          488,
+          827,
+          999
+        ],
+        "master": "gloomshade-back",
+        "cell": 2,
+        "rect": [
+          8,
+          8,
+          804,
+          511
+        ]
+      },
+      {
+        "anchor": [
+          476.0,
+          455.0
+        ],
+        "core": [
+          476.0,
+          248.12
+        ],
+        "moon": [
+          573.0940382081686,
+          163.60276679841897
+        ],
+        "scale": 0.32,
+        "source": [
+          822,
+          499,
+          1526,
+          979
+        ],
+        "master": "gloomshade-back",
+        "cell": 3,
+        "rect": [
+          8,
+          527,
+          704,
+          480
+        ]
+      },
+      {
+        "anchor": [
+          403.0,
+          447.0
+        ],
+        "core": [
+          403.0,
+          243.96
+        ],
+        "moon": [
+          143.5056084296397,
+          81.65210740992522
+        ],
+        "scale": 0.32,
+        "source": [
+          14,
+          44,
+          709,
+          516
+        ],
+        "master": "gloomshade-side",
+        "cell": 0,
+        "rect": [
+          720,
+          527,
+          695,
+          472
+        ]
+      },
+      {
+        "anchor": [
+          521.0,
+          390.0
+        ],
+        "core": [
+          521.0,
+          214.32
+        ],
+        "moon": [
+          144.23870967741937,
+          79.13911290322581
+        ],
+        "scale": 0.32,
+        "source": [
+          771,
+          98,
+          1497,
+          513
+        ],
+        "master": "gloomshade-side",
+        "cell": 1,
+        "rect": [
+          8,
+          1457,
+          726,
+          415
+        ]
+      },
+      {
+        "anchor": [
+          695.0,
+          408.0
+        ],
+        "core": [
+          695.0,
+          223.68
+        ],
+        "moon": [
+          161.6207520611301,
+          78.32716670018098
+        ],
+        "scale": 0.32,
+        "source": [
+          12,
+          507,
+          891,
+          940
+        ],
+        "master": "gloomshade-side",
+        "cell": 2,
+        "rect": [
+          657,
+          1015,
+          879,
+          433
+        ]
+      },
+      {
+        "anchor": [
+          386.0,
+          409.0
+        ],
+        "core": [
+          386.0,
+          224.20000000000002
+        ],
+        "moon": [
+          154.96646657006832,
+          82.64955495756573
+        ],
+        "scale": 0.32,
+        "source": [
+          847,
+          558,
+          1488,
+          992
+        ],
+        "master": "gloomshade-side",
+        "cell": 3,
+        "rect": [
+          8,
+          1015,
+          641,
+          434
+        ]
+      }
+    ],
+    "modes": {
+      "body": {
+        "front": {
+          "atlas": "base",
+          "poses": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "flip": false
+        },
+        "back": {
+          "atlas": "directions",
+          "poses": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "flip": false
+        },
+        "right": {
+          "atlas": "directions",
+          "poses": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "flip": false
+        },
+        "left": {
+          "atlas": "directions",
+          "poses": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "flip": true
+        }
+      }
+    }
+  },
+  "somnara": {
+    "size": [
+      2048,
+      1568
+    ],
+    "poses": [
+      {
+        "anchor": [
+          330.68005216387263,
+          458.0
+        ],
+        "core": [
+          330.68005216387263,
+          249.68
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.5,
+        "source": [
+          73,
+          14,
+          707,
+          497
+        ],
+        "master": "somnara-front",
+        "cell": 0,
+        "rect": [
+          8,
+          1055,
+          634,
+          483
+        ]
+      },
+      {
+        "anchor": [
+          365.9550321839422,
+          471.0
+        ],
+        "core": [
+          365.9550321839422,
+          252.12
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.5,
+        "source": [
+          747,
+          0,
+          1449,
+          496
+        ],
+        "master": "somnara-front",
+        "cell": 1,
+        "rect": [
+          692,
+          537,
+          702,
+          496
+        ]
+      },
+      {
+        "anchor": [
+          381.01216908639356,
+          489.0
+        ],
+        "core": [
+          381.01216908639356,
+          265.8
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.5,
+        "source": [
+          25,
+          475,
+          751,
+          989
+        ],
+        "master": "somnara-front",
+        "cell": 2,
+        "rect": [
+          1221,
+          8,
+          726,
+          514
+        ]
+      },
+      {
+        "anchor": [
+          358.8947090836584,
+          485.0
+        ],
+        "core": [
+          358.8947090836584,
+          263.72
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.5,
+        "source": [
+          782,
+          481,
+          1458,
+          991
+        ],
+        "master": "somnara-front",
+        "cell": 3,
+        "rect": [
+          8,
+          537,
+          676,
+          510
+        ]
+      },
+      {
+        "anchor": [
+          300.6915832791248,
+          495.0
+        ],
+        "core": [
+          300.6915832791248,
+          266.04
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.5,
+        "source": [
+          114,
+          0,
+          717,
+          520
+        ],
+        "master": "somnara-back",
+        "cell": 0,
+        "rect": [
+          610,
+          8,
+          603,
+          520
+        ]
+      },
+      {
+        "anchor": [
+          263.39358287015693,
+          464.0
+        ],
+        "core": [
+          263.39358287015693,
+          250.88
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.5,
+        "source": [
+          860,
+          0,
+          1389,
+          489
+        ],
+        "master": "somnara-back",
+        "cell": 1,
+        "rect": [
+          1402,
+          537,
+          529,
+          489
+        ]
+      },
+      {
+        "anchor": [
+          253.12763710356865,
+          388.0
+        ],
+        "core": [
+          253.12763710356865,
+          213.28
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.5,
+        "source": [
+          162,
+          502,
+          668,
+          915
+        ],
+        "master": "somnara-back",
+        "cell": 2,
+        "rect": [
+          650,
+          1055,
+          506,
+          413
+        ]
+      },
+      {
+        "anchor": [
+          295.8572969253996,
+          496.0
+        ],
+        "core": [
+          295.8572969253996,
+          269.44
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.5,
+        "source": [
+          829,
+          503,
+          1423,
+          1024
+        ],
+        "master": "somnara-back",
+        "cell": 3,
+        "rect": [
+          8,
+          8,
+          594,
+          521
+        ]
+      }
+    ],
+    "modes": {
+      "body": {
+        "front": {
+          "atlas": "directions",
+          "poses": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "flip": false
+        },
+        "back": {
+          "atlas": "directions",
+          "poses": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "flip": false
+        },
+        "right": {
+          "atlas": "base",
+          "poses": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "flip": true
+        },
+        "left": {
+          "atlas": "base",
+          "poses": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "flip": false
+        }
+      }
+    }
+  },
+  "prismatail": {
+    "size": [
+      2048,
+      3200
+    ],
+    "poses": [
+      {
+        "anchor": [
+          326.5,
+          529.0
+        ],
+        "core": [
+          326.5,
+          283.24
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.45,
+        "source": [
+          95,
+          0,
+          661,
+          554
+        ],
+        "master": "prismatail-back",
+        "cell": 0,
+        "rect": [
+          1414,
+          8,
+          566,
+          554
+        ]
+      },
+      {
+        "anchor": [
+          393.0,
+          529.0
+        ],
+        "core": [
+          393.0,
+          279.88
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.45,
+        "source": [
+          739,
+          0,
+          1501,
+          554
+        ],
+        "master": "prismatail-back",
+        "cell": 1,
+        "rect": [
+          8,
+          579,
+          762,
+          554
+        ]
+      },
+      {
+        "anchor": [
+          607.0,
+          468.0
+        ],
+        "core": [
+          607.0,
+          254.88
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.45,
+        "source": [
+          14,
+          518,
+          871,
+          1011
+        ],
+        "master": "prismatail-back",
+        "cell": 2,
+        "rect": [
+          649,
+          2196,
+          857,
+          493
+        ]
+      },
+      {
+        "anchor": [
+          375.5,
+          479.0
+        ],
+        "core": [
+          375.5,
+          260.6
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.45,
+        "source": [
+          868,
+          516,
+          1501,
+          1020
+        ],
+        "master": "prismatail-back",
+        "cell": 3,
+        "rect": [
+          8,
+          2196,
+          633,
+          504
+        ]
+      },
+      {
+        "anchor": [
+          455.5,
+          538.0
+        ],
+        "core": [
+          455.5,
+          290.32000000000005
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.45,
+        "source": [
+          28,
+          0,
+          689,
+          563
+        ],
+        "master": "prismatail-side",
+        "cell": 0,
+        "rect": [
+          8,
+          8,
+          661,
+          563
+        ]
+      },
+      {
+        "anchor": [
+          497.5,
+          537.0
+        ],
+        "core": [
+          497.5,
+          288.36
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.45,
+        "source": [
+          749,
+          0,
+          1478,
+          562
+        ],
+        "master": "prismatail-side",
+        "cell": 1,
+        "rect": [
+          677,
+          8,
+          729,
+          562
+        ]
+      },
+      {
+        "anchor": [
+          543.5,
+          499.0
+        ],
+        "core": [
+          543.5,
+          271.0
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.45,
+        "source": [
+          3,
+          492,
+          853,
+          1016
+        ],
+        "master": "prismatail-side",
+        "cell": 2,
+        "rect": [
+          740,
+          1141,
+          850,
+          524
+        ]
+      },
+      {
+        "anchor": [
+          460.5,
+          444.0
+        ],
+        "core": [
+          460.5,
+          242.4
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.45,
+        "source": [
+          836,
+          547,
+          1509,
+          1016
+        ],
+        "master": "prismatail-side",
+        "cell": 3,
+        "rect": [
+          8,
+          2708,
+          673,
+          469
+        ]
+      },
+      {
+        "anchor": [
+          368.5,
+          506.0
+        ],
+        "core": [
+          368.5,
+          270.8
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.45,
+        "source": [
+          50,
+          0,
+          774,
+          531
+        ],
+        "master": "prismatail-front",
+        "cell": 0,
+        "rect": [
+          8,
+          1141,
+          724,
+          531
+        ]
+      },
+      {
+        "anchor": [
+          377.0,
+          507.0
+        ],
+        "core": [
+          377.0,
+          271.32000000000005
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.45,
+        "source": [
+          787,
+          0,
+          1536,
+          532
+        ],
+        "master": "prismatail-front",
+        "cell": 1,
+        "rect": [
+          778,
+          579,
+          749,
+          532
+        ]
+      },
+      {
+        "anchor": [
+          470.5,
+          481.0
+        ],
+        "core": [
+          470.5,
+          261.64
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.45,
+        "source": [
+          0,
+          513,
+          955,
+          1019
+        ],
+        "master": "prismatail-front",
+        "cell": 2,
+        "rect": [
+          663,
+          1680,
+          955,
+          506
+        ]
+      },
+      {
+        "anchor": [
+          326.0,
+          483.0
+        ],
+        "core": [
+          326.0,
+          262.68
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.45,
+        "source": [
+          889,
+          515,
+          1536,
+          1023
+        ],
+        "master": "prismatail-front",
+        "cell": 3,
+        "rect": [
+          8,
+          1680,
+          647,
+          508
+        ]
+      }
+    ],
+    "modes": {
+      "body": {
+        "front": {
+          "atlas": "directions",
+          "poses": [
+            8,
+            9,
+            10,
+            11
+          ],
+          "flip": false
+        },
+        "back": {
+          "atlas": "directions",
+          "poses": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "flip": false
+        },
+        "right": {
+          "atlas": "directions",
+          "poses": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "flip": false
+        },
+        "left": {
+          "atlas": "directions",
+          "poses": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "flip": true
+        }
+      }
+    }
+  },
+  "emberwing": {
+    "size": [
+      2048,
+      4000
+    ],
+    "poses": [
+      {
+        "anchor": [
+          380,
+          329
+        ],
+        "core": [
+          380,
+          239
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.49,
+        "source": [
+          63,
+          31,
+          784,
+          542
+        ],
+        "master": "emberwing-back",
+        "cell": 0,
+        "rect": [
+          8,
+          1625,
+          721,
+          511
+        ]
+      },
+      {
+        "anchor": [
+          375,
+          380
+        ],
+        "core": [
+          375,
+          290
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.49,
+        "source": [
+          800,
+          0,
+          1531,
+          551
+        ],
+        "master": "emberwing-back",
+        "cell": 1,
+        "rect": [
+          8,
+          8,
+          731,
+          551
+        ]
+      },
+      {
+        "anchor": [
+          444,
+          293
+        ],
+        "core": [
+          444,
+          203
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.49,
+        "source": [
+          4,
+          532,
+          836,
+          1015
+        ],
+        "master": "emberwing-back",
+        "cell": 2,
+        "rect": [
+          8,
+          2653,
+          832,
+          483
+        ]
+      },
+      {
+        "anchor": [
+          387,
+          355
+        ],
+        "core": [
+          387,
+          265
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.49,
+        "source": [
+          791,
+          500,
+          1515,
+          1022
+        ],
+        "master": "emberwing-back",
+        "cell": 3,
+        "rect": [
+          8,
+          567,
+          724,
+          522
+        ]
+      },
+      {
+        "anchor": [
+          565,
+          355
+        ],
+        "core": [
+          565,
+          265
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.49,
+        "source": [
+          9,
+          83,
+          803,
+          502
+        ],
+        "master": "emberwing-side",
+        "cell": 0,
+        "rect": [
+          925,
+          3144,
+          794,
+          419
+        ]
+      },
+      {
+        "anchor": [
+          460,
+          455
+        ],
+        "core": [
+          460,
+          365
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.49,
+        "source": [
+          833,
+          0,
+          1536,
+          522
+        ],
+        "master": "emberwing-side",
+        "cell": 1,
+        "rect": [
+          740,
+          567,
+          703,
+          522
+        ]
+      },
+      {
+        "anchor": [
+          629,
+          403
+        ],
+        "core": [
+          629,
+          313
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.49,
+        "source": [
+          2,
+          516,
+          911,
+          947
+        ],
+        "master": "emberwing-side",
+        "cell": 2,
+        "rect": [
+          8,
+          3144,
+          909,
+          431
+        ]
+      },
+      {
+        "anchor": [
+          480,
+          467
+        ],
+        "core": [
+          480,
+          377
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.49,
+        "source": [
+          860,
+          498,
+          1536,
+          1001
+        ],
+        "master": "emberwing-side",
+        "cell": 3,
+        "rect": [
+          1344,
+          1625,
+          676,
+          503
+        ]
+      },
+      {
+        "anchor": [
+          298.5,
+          481.0
+        ],
+        "core": [
+          298.5,
+          356.0
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.44,
+        "source": [
+          152,
+          0,
+          751,
+          506
+        ],
+        "master": "emberwing-ground-back",
+        "cell": 0,
+        "rect": [
+          737,
+          1625,
+          599,
+          506
+        ]
+      },
+      {
+        "anchor": [
+          319.5,
+          471.0
+        ],
+        "core": [
+          319.5,
+          346.0
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.44,
+        "source": [
+          805,
+          3,
+          1445,
+          499
+        ],
+        "master": "emberwing-ground-back",
+        "cell": 1,
+        "rect": [
+          701,
+          2144,
+          640,
+          496
+        ]
+      },
+      {
+        "anchor": [
+          452.5,
+          495.0
+        ],
+        "core": [
+          452.5,
+          370.0
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.44,
+        "source": [
+          12,
+          476,
+          907,
+          996
+        ],
+        "master": "emberwing-ground-back",
+        "cell": 2,
+        "rect": [
+          8,
+          1097,
+          895,
+          520
+        ]
+      },
+      {
+        "anchor": [
+          281.0,
+          492.0
+        ],
+        "core": [
+          281.0,
+          367.0
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.44,
+        "source": [
+          866,
+          485,
+          1428,
+          1002
+        ],
+        "master": "emberwing-ground-back",
+        "cell": 3,
+        "rect": [
+          911,
+          1097,
+          562,
+          517
+        ]
+      },
+      {
+        "anchor": [
+          361.0,
+          476.0
+        ],
+        "core": [
+          361.0,
+          351.0
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.44,
+        "source": [
+          30,
+          2,
+          715,
+          503
+        ],
+        "master": "emberwing-ground-side",
+        "cell": 0,
+        "rect": [
+          8,
+          2144,
+          685,
+          501
+        ]
+      },
+      {
+        "anchor": [
+          358.0,
+          371.0
+        ],
+        "core": [
+          358.0,
+          246.0
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.44,
+        "source": [
+          762,
+          104,
+          1516,
+          500
+        ],
+        "master": "emberwing-ground-side",
+        "cell": 1,
+        "rect": [
+          8,
+          3583,
+          754,
+          396
+        ]
+      },
+      {
+        "anchor": [
+          404.5,
+          503.0
+        ],
+        "core": [
+          404.5,
+          378.0
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.44,
+        "source": [
+          22,
+          475,
+          807,
+          1003
+        ],
+        "master": "emberwing-ground-side",
+        "cell": 2,
+        "rect": [
+          747,
+          8,
+          785,
+          528
+        ]
+      },
+      {
+        "anchor": [
+          368.5,
+          454.0
+        ],
+        "core": [
+          368.5,
+          329.0
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.44,
+        "source": [
+          789,
+          519,
+          1496,
+          998
+        ],
+        "master": "emberwing-ground-side",
+        "cell": 3,
+        "rect": [
+          848,
+          2653,
+          707,
+          479
+        ]
+      }
+    ],
+    "modes": {
+      "body": {
+        "front": {
+          "atlas": "base",
+          "poses": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "flip": false
+        },
+        "back": {
+          "atlas": "directions",
+          "poses": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "flip": false
+        },
+        "right": {
+          "atlas": "directions",
+          "poses": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "flip": false
+        },
+        "left": {
+          "atlas": "directions",
+          "poses": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "flip": true
+        }
+      },
+      "ground": {
+        "front": {
+          "atlas": "base",
+          "poses": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "flip": false
+        },
+        "back": {
+          "atlas": "directions",
+          "poses": [
+            8,
+            9,
+            10,
+            11
+          ],
+          "flip": false
+        },
+        "right": {
+          "atlas": "directions",
+          "poses": [
+            12,
+            13,
+            14,
+            15
+          ],
+          "flip": false
+        },
+        "left": {
+          "atlas": "directions",
+          "poses": [
+            12,
+            13,
+            14,
+            15
+          ],
+          "flip": true
+        }
+      }
+    }
+  },
+  "storm-twins": {
+    "size": [
+      2048,
+      1952
+    ],
+    "poses": [
+      {
+        "anchor": [
+          177.0,
+          468.0
+        ],
+        "core": [
+          177.0,
+          254.88
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.4,
+        "source": [
+          13,
+          29,
+          365,
+          522
+        ],
+        "master": "storm-twins-back",
+        "cell": 0,
+        "rect": [
+          1377,
+          8,
+          352,
+          493
+        ]
+      },
+      {
+        "anchor": [
+          150.0,
+          441.0
+        ],
+        "core": [
+          150.0,
+          240.84
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.4,
+        "source": [
+          396,
+          58,
+          711,
+          524
+        ],
+        "master": "storm-twins-back",
+        "cell": 1,
+        "rect": [
+          1021,
+          540,
+          315,
+          466
+        ]
+      },
+      {
+        "anchor": [
+          347.0,
+          498.0
+        ],
+        "core": [
+          347.0,
+          270.0
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.4,
+        "source": [
+          709,
+          0,
+          1203,
+          523
+        ],
+        "master": "storm-twins-back",
+        "cell": 2,
+        "rect": [
+          515,
+          8,
+          494,
+          523
+        ]
+      },
+      {
+        "anchor": [
+          173.0,
+          464.0
+        ],
+        "core": [
+          173.0,
+          252.8
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.4,
+        "source": [
+          1187,
+          34,
+          1528,
+          523
+        ],
+        "master": "storm-twins-back",
+        "cell": 3,
+        "rect": [
+          8,
+          540,
+          341,
+          489
+        ]
+      },
+      {
+        "anchor": [
+          177.0,
+          470.0
+        ],
+        "core": [
+          177.0,
+          255.92000000000002
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.4,
+        "source": [
+          17,
+          517,
+          369,
+          1012
+        ],
+        "master": "storm-twins-back",
+        "cell": 4,
+        "rect": [
+          1017,
+          8,
+          352,
+          495
+        ]
+      },
+      {
+        "anchor": [
+          154.0,
+          453.0
+        ],
+        "core": [
+          154.0,
+          247.08
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.4,
+        "source": [
+          401,
+          540,
+          717,
+          1018
+        ],
+        "master": "storm-twins-back",
+        "cell": 5,
+        "rect": [
+          697,
+          540,
+          316,
+          478
+        ]
+      },
+      {
+        "anchor": [
+          350.0,
+          499.0
+        ],
+        "core": [
+          350.0,
+          271.0
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.4,
+        "source": [
+          713,
+          496,
+          1212,
+          1020
+        ],
+        "master": "storm-twins-back",
+        "cell": 6,
+        "rect": [
+          8,
+          8,
+          499,
+          524
+        ]
+      },
+      {
+        "anchor": [
+          170.0,
+          463.0
+        ],
+        "core": [
+          170.0,
+          252.28
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.4,
+        "source": [
+          1196,
+          527,
+          1528,
+          1015
+        ],
+        "master": "storm-twins-back",
+        "cell": 7,
+        "rect": [
+          357,
+          540,
+          332,
+          488
+        ]
+      },
+      {
+        "anchor": [
+          238.0,
+          406.0
+        ],
+        "core": [
+          238.0,
+          222.64000000000001
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.4,
+        "source": [
+          0,
+          63,
+          391,
+          494
+        ],
+        "master": "storm-twins-side",
+        "cell": 0,
+        "rect": [
+          1332,
+          1037,
+          391,
+          431
+        ]
+      },
+      {
+        "anchor": [
+          146.0,
+          379.0
+        ],
+        "core": [
+          146.0,
+          208.6
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.4,
+        "source": [
+          395,
+          76,
+          762,
+          480
+        ],
+        "master": "storm-twins-side",
+        "cell": 1,
+        "rect": [
+          798,
+          1496,
+          367,
+          404
+        ]
+      },
+      {
+        "anchor": [
+          147.5,
+          414.0
+        ],
+        "core": [
+          147.5,
+          226.8
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.4,
+        "source": [
+          734,
+          66,
+          1192,
+          505
+        ],
+        "master": "storm-twins-side",
+        "cell": 2,
+        "rect": [
+          866,
+          1037,
+          458,
+          439
+        ]
+      },
+      {
+        "anchor": [
+          176.0,
+          402.0
+        ],
+        "core": [
+          176.0,
+          220.56
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.4,
+        "source": [
+          1163,
+          70,
+          1536,
+          497
+        ],
+        "master": "storm-twins-side",
+        "cell": 3,
+        "rect": [
+          8,
+          1496,
+          373,
+          427
+        ]
+      },
+      {
+        "anchor": [
+          181.0,
+          432.0
+        ],
+        "core": [
+          181.0,
+          236.16
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.4,
+        "source": [
+          0,
+          531,
+          399,
+          988
+        ],
+        "master": "storm-twins-side",
+        "cell": 4,
+        "rect": [
+          1344,
+          540,
+          399,
+          457
+        ]
+      },
+      {
+        "anchor": [
+          177.0,
+          393.0
+        ],
+        "core": [
+          177.0,
+          215.88
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.4,
+        "source": [
+          372,
+          539,
+          773,
+          957
+        ],
+        "master": "storm-twins-side",
+        "cell": 5,
+        "rect": [
+          389,
+          1496,
+          401,
+          418
+        ]
+      },
+      {
+        "anchor": [
+          308.5,
+          426.0
+        ],
+        "core": [
+          308.5,
+          233.04000000000002
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.4,
+        "source": [
+          725,
+          539,
+          1198,
+          990
+        ],
+        "master": "storm-twins-side",
+        "cell": 6,
+        "rect": [
+          8,
+          1037,
+          473,
+          451
+        ]
+      },
+      {
+        "anchor": [
+          190.0,
+          422.0
+        ],
+        "core": [
+          190.0,
+          230.96
+        ],
+        "moon": [
+          0,
+          0
+        ],
+        "scale": 0.4,
+        "source": [
+          1167,
+          534,
+          1536,
+          981
+        ],
+        "master": "storm-twins-side",
+        "cell": 7,
+        "rect": [
+          489,
+          1037,
+          369,
+          447
+        ]
+      }
+    ],
+    "modes": {
+      "body": {
+        "front": {
+          "atlas": "base",
+          "poses": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "flip": false
+        },
+        "back": {
+          "atlas": "directions",
+          "poses": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "flip": false
+        },
+        "right": {
+          "atlas": "directions",
+          "poses": [
+            8,
+            9,
+            10,
+            11
+          ],
+          "flip": false
+        },
+        "left": {
+          "atlas": "directions",
+          "poses": [
+            8,
+            9,
+            10,
+            11
+          ],
+          "flip": true
+        }
+      },
+      "blue": {
+        "front": {
+          "atlas": "base",
+          "poses": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "flip": false
+        },
+        "back": {
+          "atlas": "directions",
+          "poses": [
+            4,
+            5,
+            6,
+            7
+          ],
+          "flip": false
+        },
+        "right": {
+          "atlas": "directions",
+          "poses": [
+            12,
+            13,
+            14,
+            15
+          ],
+          "flip": false
+        },
+        "left": {
+          "atlas": "directions",
+          "poses": [
+            12,
+            13,
+            14,
+            15
+          ],
+          "flip": true
+        }
+      }
+    }
+  }
+}
