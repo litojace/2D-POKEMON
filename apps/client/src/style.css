@@ -21706,3 +21706,186 @@ body.battle-active.court-view #game canvas {
     margin-bottom: 8px;
   }
 }
+
+/* First raid visit: one goal, three concrete actions, then optional details. */
+#arena-overlay .raid-briefing {
+  background: #14213bf5;
+}
+.raid-briefing-body {
+  touch-action: pan-y;
+}
+.raid-guide-goal {
+  padding: 12px 14px;
+  border: 1px solid #ffdc7740;
+  border-radius: 12px;
+  background: #ffdc770a;
+}
+.raid-guide-goal > span {
+  display: block;
+  color: #ffdc77;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.raid-guide-goal > p {
+  margin: 5px 0 0;
+  color: #f0f4ff;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.raid-guide-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  list-style: none;
+  margin: 14px 0;
+  padding: 0;
+}
+.raid-guide-steps > li {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #8baee52b;
+  border-radius: 12px;
+  background: #14223b;
+}
+.raid-guide-step-heading {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 46px;
+}
+.raid-guide-step-number {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  color: #ffdc77;
+  background: #ffdc7712;
+  border: 1px solid #ffdc7750;
+  border-radius: 9px;
+  font-weight: 800;
+  font-size: 17px;
+}
+.raid-guide-step-heading h3 {
+  color: #f0f4ff;
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.2;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.raid-briefing .raid-guide-steps .raid-guide-scene {
+  height: 100px;
+  margin: 6px 0;
+}
+.raid-guide-action {
+  margin: 6px 0;
+  color: #d6e0f2;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.raid-guide-cue {
+  margin: auto 0 0;
+  padding-top: 10px;
+  color: #8ee0cb;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.raid-guide-safety {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 13px;
+  border: 1px solid #ffa97930;
+  border-radius: 10px;
+  background: #ffa97909;
+}
+.raid-guide-safety > b {
+  flex-shrink: 0;
+  color: #ffcf9d;
+  font-size: 13px;
+}
+.raid-guide-safety > p {
+  margin: 0;
+  color: #c7d2e7;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.raid-briefing-extra {
+  margin-top: 12px;
+  padding: 10px 0;
+  border-block: 1px solid #8baee526;
+  color: #acbdd7;
+  font-size: 13px;
+}
+.raid-briefing-extra > summary {
+  cursor: pointer;
+  font-weight: 600;
+  min-height: 24px;
+  align-content: center;
+}
+.raid-briefing-extra > p {
+  line-height: 1.5;
+}
+.raid-briefing-body > .raid-briefing-meta {
+  color: #a6b7d1;
+  font-size: 12px;
+  line-height: 1.4;
+  margin-bottom: 0;
+}
+@media (orientation: landscape) and (max-height: 600px) {
+  .raid-guide-goal {
+    padding: 8px 11px;
+  }
+  .raid-guide-goal > p {
+    font-size: 14px;
+    margin-top: 3px;
+  }
+  .raid-guide-steps {
+    gap: 9px;
+    margin-block: 10px;
+  }
+  .raid-guide-steps > li {
+    padding: 10px;
+  }
+  .raid-guide-step-heading {
+    min-height: 36px;
+    gap: 8px;
+  }
+  .raid-guide-step-heading h3 {
+    font-size: 16px;
+  }
+  .raid-briefing .raid-guide-steps .raid-guide-scene {
+    height: 60px;
+    margin-block: 3px;
+  }
+  .raid-guide-action {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .raid-guide-cue {
+    font-size: 11px;
+    padding-top: 6px;
+  }
+}
+@media (orientation: landscape) and (max-height: 480px) {
+  .raid-briefing .raid-guide-steps .raid-guide-scene {
+    display: none;
+  }
+}
+@media (max-width: 580px) and (orientation: portrait) {
+  .raid-guide-steps {
+    grid-template-columns: 1fr;
+  }
+  .raid-guide-safety {
+    display: block;
+  }
+  .raid-guide-safety > p {
+    margin-top: 5px;
+  }
+}

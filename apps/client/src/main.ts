@@ -331,7 +331,7 @@ function identity(reply: Reply) {
   remoteFrames.clear();
   sessionStorage.setItem("arena-token", reply.token!);
 }
-const touch = new TouchControls(
+const touch: TouchControls = new TouchControls(
   $("mobile-controls"),
   () => !!scene?.canControl(),
   (action) => {
@@ -2847,13 +2847,13 @@ class ArenaScene extends Phaser.Scene {
   koUntil = 0;
   accumulator = 0;
   actions = { skill: -1, dash: false, jump: false, basic: false };
-  canControl() {
+  canControl(): boolean {
     return (
       connected &&
       state?.phase === "playing" &&
       !($("practice-settings") as HTMLDetailsElement | null)?.open &&
       !$<HTMLDialogElement>("dialog").open &&
-      document.hasFocus() &&
+      (touch.enabled ? touch.focused : document.hasFocus()) &&
       !document.hidden &&
       !["INPUT", "TEXTAREA", "SELECT"].includes(
         document.activeElement?.tagName ?? "",
@@ -3410,7 +3410,7 @@ class ArenaScene extends Phaser.Scene {
         !settingsOpen &&
         !menuOpen &&
         !$<HTMLDialogElement>("dialog").open &&
-        document.hasFocus() &&
+        (touch.enabled ? touch.focused : document.hasFocus()) &&
         !document.hidden;
       const enemies = visibleEnemies(local, local);
       const target = enemies[0];

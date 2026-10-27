@@ -24,6 +24,13 @@ export class TouchControls {
   private buttons: HTMLButtonElement[];
   private geometry = { x: 0, y: 0, radius: 1 };
   private resetActions: () => void;
+  private captures = new Map<number, HTMLElement>();
+  private gestureFocus = false;
+  /** iOS standalone may report hasFocus=false after returning to a visible
+   * page. A fresh trusted touch re-arms it; blur/hide always revoke it. */
+  get focused() {
+    return !document.hidden && (document.hasFocus() || this.gestureFocus);
+  }
   get dx() {
     return this.input.dx;
   }
@@ -128,7 +135,27 @@ export class TouchControls {
         : "Enter fullscreen ⛶";
       this.resize();
     });
+    window.addEventListener(
+      "pointerdown",
+      (event) => {
+        // A new contact cannot belong to the old gesture, even when Safari
+        // recycled its pointerId without delivering the previous pointerup.
+        this.release(event.pointerId);
+        if (event.pointerType === "touch" && event.isPrimary) this.reset(true);
+        if (
+          event.isTrusted &&
+          event.pointerType === "touch" &&
+          this.enabled &&
+          this.root.contains(event.target as Node)
+        )
+          this.gestureFocus = true;
+      },
+      true,
+    );
     this.stick.onpointerdown = (event) => {
+      const previous = this.input.joystickPointer;
+      if (previous !== null && !this.hasCapture(previous))
+        this.release(previous);
       if (
         !this.enabled ||
         !canPlay() ||
@@ -145,23 +172,49 @@ export class TouchControls {
             0.32
           : 40,
       };
-      this.stick.setPointerCapture(event.pointerId);
+      this.capture(this.stick, event.pointerId);
       this.move(event);
     };
-    this.stick.onpointermove = (event) => {
-      if (!canPlay()) {
-        this.reset();
-        return;
-      }
-      this.move(event);
-    };
-    const release = (event: PointerEvent) => {
-      this.input.release(event.pointerId);
-      this.paint();
-    };
-    this.stick.onpointerup = release;
-    this.stick.onpointercancel = release;
-    this.stick.onlostpointercapture = release;
+    window.addEventListener(
+      "pointermove",
+      (event) => {
+        if (event.pointerId !== this.input.joystickPointer) return;
+        if (!canPlay()) {
+          this.reset();
+          return;
+        }
+        if (event.pointerType === "mouse" && event.buttons === 0) {
+          this.release(event.pointerId);
+          return;
+        }
+        this.move(event);
+      },
+      true,
+    );
+    // Capture at the window, including releases over disabled skill buttons,
+    // overlays and detached controls. Native capture is a convenience, not
+    // the only route through which an owned finger can be released.
+    for (const type of ["pointerup", "pointercancel", "lostpointercapture"])
+      window.addEventListener(
+        type,
+        (event) => {
+          const id = (event as PointerEvent).pointerId;
+          // An old lost-capture event may arrive after this pointerId was
+          // reclaimed by a new contact. Do not cancel the new capture.
+          if (event.type === "lostpointercapture" && this.hasCapture(id))
+            return;
+          this.release(id);
+        },
+        true,
+      );
+    for (const type of ["touchend", "touchcancel"])
+      window.addEventListener(
+        type,
+        (event) => {
+          if (!(event as TouchEvent).touches.length) this.reset(true);
+        },
+        { capture: true, passive: true },
+      );
     for (const button of this.buttons) {
       const action = (button.dataset.skill ??
         button.dataset.action) as TouchAction;
@@ -174,16 +227,13 @@ export class TouchControls {
         )
           return;
         event.preventDefault();
-        button.setPointerCapture(event.pointerId);
+        this.capture(button, event.pointerId);
         this.paint();
         if (action === "attack") fire({ basic: true });
         else if (action === "dash") fire({ dash: true });
         else if (action === "jump") fire({ jump: true });
         else fire({ skill: Number(action) });
       };
-      button.onpointerup = release;
-      button.onpointercancel = release;
-      button.onlostpointercapture = release;
     }
     window.addEventListener("blur", () => this.reset());
     window.addEventListener("pagehide", () => this.reset());
@@ -225,16 +275,58 @@ export class TouchControls {
       );
     }
   }
-  reset() {
+  private hasCapture(id: number) {
+    try {
+      return !!this.captures.get(id)?.hasPointerCapture(id);
+    } catch {
+      return false;
+    }
+  }
+  private capture(owner: HTMLElement, id: number) {
+    this.captures.set(id, owner);
+    try {
+      owner.setPointerCapture(id);
+    } catch {
+      /* Global move/end listeners also cover unavailable native capture. */
+    }
+  }
+  private release(id: number) {
+    const owner = this.captures.get(id);
     if (
+      !owner &&
+      this.input.joystickPointer !== id &&
+      !this.input.pointers.has(id)
+    )
+      return;
+    this.captures.delete(id);
+    this.input.release(id);
+    try {
+      if (owner?.hasPointerCapture(id)) owner.releasePointerCapture(id);
+    } catch {
+      /* The OS may already have cancelled this contact. */
+    }
+    this.paint();
+  }
+  reset(preserveFocus = false) {
+    if (!preserveFocus) this.gestureFocus = false;
+    if (
+      this.captures.size ||
       this.input.joystickPointer !== null ||
       this.input.pointers.size ||
       this.input.dx ||
       this.input.dy
     ) {
+      const owners = [...this.captures];
+      this.captures.clear();
       this.input.reset();
       this.resetActions();
       this.paint();
+      for (const [id, owner] of owners)
+        try {
+          if (owner.hasPointerCapture(id)) owner.releasePointerCapture(id);
+        } catch {
+          /* Already released by the browser. */
+        }
     }
   }
   resize() {
@@ -303,8 +395,16 @@ export class TouchControls {
         .map((key) => {
           const value = this.preferences[key];
           const [min, max] =
-            key === "opacity" ? [0.4, 1] : key === "buttonSize" ? [0.85, 1.2] : [0.8, 1.25];
-          const label = { joystickSize: "Joystick size", buttonSize: "Combat button size", opacity: "Controls opacity" }[key];
+            key === "opacity"
+              ? [0.4, 1]
+              : key === "buttonSize"
+                ? [0.85, 1.2]
+                : [0.8, 1.25];
+          const label = {
+            joystickSize: "Joystick size",
+            buttonSize: "Combat button size",
+            opacity: "Controls opacity",
+          }[key];
           return `<label class="prefs-slider"><span class="prefs-slider-label">${label}</span><output for="control-${key}" data-pref-for="control-${key}">${Math.round(value * 100)}%</output><input type="range" id="control-${key}" min="${min}" max="${max}" step=".05" value="${value}"></label>`;
         })
         .join("") +

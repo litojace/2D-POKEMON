@@ -66,7 +66,8 @@ import {
   type RaidProgress,
   type RaidSlot,
 } from "../../../packages/shared/src/raid";
-import { raidGuideScene, raidGuideBossFor } from "./raid-guide-art";
+import { raidGuideBossFor } from "./raid-guide-art";
+import { raidBriefingGuide } from "./raid-briefing";
 import { raidRitePicture } from "./raid-rite-art";
 import { drawRaidBoss } from "./raid-boss-art";
 import {
@@ -311,21 +312,7 @@ export function renderRaidUI(
     actions = "";
   if (state.phase === "briefing") {
     title = `${RAID_TRAITS[r.trait].name} ${RAID_BOSSES[r.boss].name}`;
-    const guide =
-      r.boss === "storm-twins"
-        ? `<span>${raidGuideScene("two-hearts", me.character)}<b>Balance both hearts</b><small>Lower both health bars. Tap Fizz or Crackle to choose a target.</small></span><span>${raidGuideScene("polarity-pair", me.character)}<b>Pair opposite signs</b><small>Meet an opposite sign in 4 seconds. Solo gets a floor pad.</small></span><span>${raidGuideScene("twin-finish", me.character)}<b>Finish together</b><small>When one falls, beat the other before the timer or it revives at 35% health.</small></span>`
-        : r.boss === "emberwing"
-          ? `<span>${raidGuideScene("braziers", me.character)}<b>Light the triangle</b><small>Stand on each brazier for 1.5 seconds. All three must burn together.</small></span><span>${raidGuideScene("ground-bird", me.character)}<b>Ground the sky</b><small>Bring it down to expose the heart and shrink burning ground.</small></span><span>${raidGuideScene("heat-spread", me.character)}<b>Spread for Heat Marks</b><small>Keep your blast away from allies. Jump the expanding flame ring.</small></span>`
-          : r.boss === "prismatail"
-            ? `<span>${raidGuideScene("relay", me.character)}<b>Carry the light</b><small>Skylight → raider → mirror posts → heart. Follow the gold beams.</small></span><span>${raidGuideScene("mirror", me.character)}<b>Turn the mirrors</b><small>Hit a post to turn its arrow 45°. A connected chain opens the shield.</small></span><span>${raidGuideScene("glare", me.character)}<b>Watch the crest</b><small>Step out of its numbered fan cone. Aim away from Glare, or hold Look away.</small></span>`
-            : r.boss === "somnara"
-              ? `<span>${raidGuideScene("dream", me.character)}<b>Call the dream</b><small>Only the Dreamer sees it. Call runes with 1–4 or the rune bar.</small></span><span>${raidGuideScene("runes", me.character)}<b>Step the pads in order</b><small>Enter a matching pad for each rune. Solve it to expose Somnara.</small></span><span>${raidGuideScene("quiet", me.character)}<b>Stay awake</b><small>Jump rings, pop bubbles and follow the moving Quiet Zone.</small></span>`
-              : r.boss === "gloomshade"
-                ? `<span>${raidGuideScene("lantern", me.character)}<b>Keep the lights on</b><small>Hit a dark lantern twice. Light cleanses curses.</small></span><span>${raidGuideScene("shadow", me.character)}<b>Find the real one</b><small>Only it casts a shadow in light. Copies curse you.</small></span><span>${raidGuideScene("curse", me.character)}<b>Spread out</b><small>Curses jump to anyone close. Three makes you Haunted.</small></span>`
-                : r.boss === "tidewyrm"
-                  ? `<span>${raidGuideScene("strand", me.character)}<b>Strand it</b><small>Lead the dive ripple onto an island, then step off.</small></span><span>${raidGuideScene("tide", me.character)}<b>Share the islands</b><small>High Tide floods the floor: two to an island.</small></span><span>${raidGuideScene("prison", me.character)}<b>Pop the bubble</b><small>Three hits free a trapped friend. Alone, mash attack.</small></span>`
-                  : `<span>${raidGuideScene("charge", me.character)}<b>Bait the charge</b><small>Lure the boss into a stone pillar.</small></span><span>${raidGuideScene("core", me.character)}<b>Strike the core</b><small>Armor breaks. Unleash your ultimate.</small></span><span>${raidGuideScene("revive", me.character)}<b>Revive together</b><small>Stand beside a fallen ally to revive.</small></span>`;
-    body = `<div class="raid-briefing-body" tabindex="0" role="region" aria-label="Raid instructions"><p>${escape(RAID_TRAITS[r.trait].text)}</p><div class="raid-instructions">${guide}</div>${perkLines(state, me.id)}${r.partySize > 1 ? `<p class="raid-signals">Team signals: ${(Object.keys(RAID_PINGS) as RaidPingKind[]).map((k) => `<b>${RAID_PINGS[k].key}</b> ${raidPingLabel(k, r.boss)}`).join(" · ")} (or use the on-screen buttons)</p>` : ""}<p>${r.expedition ? "One shorter final chapter · health and rites carry between trials" : "Three phases · one shared fight"} · ${r.partySize === 1 ? (r.peril >= 3 ? "no self-revive on Peril 3" : "one solo self-revive") : "no required healer"} · no PvP rating changes.</p></div><div class="raid-briefing-actions"><button class="primary" id="raid-instructions" ${state.instructionsReady.includes(me.id) ? "disabled" : ""}>${state.instructionsReady.includes(me.id) ? "Waiting for the team…" : iconLabel("battle", "Let’s raid")}</button></div>`;
+    body = `<div class="raid-briefing-body" tabindex="0" role="region" aria-label="Raid instructions">${raidBriefingGuide(r.boss, me.character, r.partySize === 1)}<details class="raid-briefing-extra" id="raid-briefing-extra"><summary>Your fighter, team &amp; modifiers</summary><p><b>${escape(RAID_TRAITS[r.trait].name)}</b> · ${escape(RAID_TRAITS[r.trait].text)}</p>${perkLines(state, me.id)}${r.partySize > 1 ? `<p class="raid-signals">Team signals: ${(Object.keys(RAID_PINGS) as RaidPingKind[]).map((k) => `<b>${RAID_PINGS[k].key}</b> ${raidPingLabel(k, r.boss)}`).join(" · ")} (or use the on-screen buttons)</p>` : ""}</details><p class="raid-briefing-meta">${r.expedition ? "One final phase · health and rites carry between trials" : "Three phases · one shared fight"} · ${r.partySize === 1 ? (r.peril >= 3 ? "Solo · no self-revive on Peril 3" : "Solo · one self-revive") : "Team · stand beside fallen allies to revive"}</p></div><div class="raid-briefing-actions"><button class="primary" id="raid-instructions" ${state.instructionsReady.includes(me.id) ? "disabled" : ""}>${state.instructionsReady.includes(me.id) ? "Waiting for the team…" : iconLabel("battle", "I’m ready — start raid")}</button></div>`;
   } else if (state.phase === "intermission") {
     title = r.expedition
       ? "Choose your expedition rite"
@@ -374,6 +361,7 @@ export function renderRaidUI(
       state.activityEligible?.includes(me.id) ?? true,
     );
   const previousCard = overlay.querySelector<HTMLElement>(".raid-overlay");
+  const guideExpanded = overlay.querySelector<HTMLDetailsElement>("#raid-briefing-extra")?.open ?? false;
   const previousScroller =
     overlay.querySelector<HTMLElement>(".raid-briefing-body") ??
     overlay.querySelector<HTMLElement>(".panel-scroll") ??
@@ -395,6 +383,10 @@ export function renderRaidUI(
     overlay.querySelector<HTMLElement>(".raid-briefing-body") ??
     overlay.querySelector<HTMLElement>(".panel-scroll") ??
     card;
+  if (replaced && guideExpanded) {
+    const extra = overlay.querySelector<HTMLDetailsElement>("#raid-briefing-extra");
+    if (extra) extra.open = true;
+  }
   if (replaced && scroller) scroller.scrollTop = scrollTop;
   if (replaced && focusId) {
     const button = document.getElementById(focusId);

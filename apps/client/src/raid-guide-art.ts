@@ -33,14 +33,17 @@ export function raidGuideBossFor(boss: string, exposed = false) {
       : raidGuideBoss(exposed);
 }
 export function raidGuideScene(
-  kind: "two-hearts" | "polarity-pair" | "twin-finish" | "braziers" | "ground-bird" | "heat-spread" | "relay" | "mirror" | "glare" | "charge" | "core" | "revive" | "strand" | "tide" | "prison" | "lantern" | "shadow" | "curse" | "dream" | "runes" | "quiet",
+  kind: "opening" | "two-hearts" | "polarity-pair" | "twin-finish" | "braziers" | "ground-bird" | "heat-spread" | "relay" | "mirror" | "glare" | "charge" | "core" | "revive" | "strand" | "tide" | "prison" | "lantern" | "shadow" | "curse" | "dream" | "runes" | "quiet",
   character: CharacterId,
+  boss = "grumblecrag",
 ) {
   const hero = (x: number, y: number, n: string) =>
     `<g transform="translate(${x} ${y})">${scopeIds(fighterArt(character), "raid-guide-" + kind + n).replace("<svg ", '<svg width="42" height="45" ')}</g>`;
   const floor =
     '<path d="M0 30h220M0 60h220M0 90h220M0 120h220M25 0v135M65 0v135M105 0v135M145 0v135M185 0v135" stroke="#8ca0bb" opacity=".12"/>';
   let art = "";
+  if (kind === "opening")
+    art = `${hero(18, 66, "open")}<g transform="translate(145 61) scale(.72)">${raidGuideBossFor(boss, true)}</g><path class="raid-guide-bolt" d="m67 89 19-12-2 10 24-11-18 20 1-10Z" fill="#ffe17b"/><circle class="raid-guide-core" cx="145" cy="75" r="25" fill="none" stroke="#82ffe7" stroke-width="2"/><text x="110" y="26">OPENING: ATTACK NOW</text>`;
   if (kind === "charge")
     art = `<path d="M25 51h148v39H25Z" fill="#ff4059" opacity=".18"/><path d="M25 51h148M25 90h148" stroke="#ff4059" stroke-width="2"/><path class="raid-guide-arrows" d="m84 61 10 10-10 10m21-20 10 10-10 10m21-20 10 10-10 10" fill="none" stroke="#ff8c99" stroke-width="3"/><g class="raid-guide-charger"><g transform="translate(39 61) scale(.57)">${raidGuideBoss()}</g></g><path d="m143 44 22-3 9 6v39l-25 4-9-7Z" fill="#738887" stroke="#253c3b" stroke-width="2"/><path d="m149 49 9 8-5 9 7 8" stroke="#c9ddd2" fill="none"/>${hero(177, 57, "a")}<path d="M194 102q-4 17-32 16" stroke="#8beed2" stroke-width="2" stroke-dasharray="4 4" fill="none"/><text x="155" y="31">PILLAR</text>`;
   if (kind === "core")

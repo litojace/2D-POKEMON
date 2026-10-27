@@ -58,7 +58,9 @@ export function renderPrismatailControls(
     !panel.hidden && (state.raid?.blinded?.[me.id] ?? 0) > state.time,
   );
   if (panel.hidden) {
-    panel.querySelector("[data-prism-away]")?.setAttribute("aria-pressed", "false");
+    panel
+      .querySelector("[data-prism-away]")
+      ?.setAttribute("aria-pressed", "false");
     lookingAway = false;
     turningUntil = 0;
     return;
@@ -72,14 +74,50 @@ export function renderPrismatailControls(
         turningUntil = performance.now() + 1400;
       };
     const away = panel.querySelector<HTMLButtonElement>("[data-prism-away]")!;
-    away.onpointerdown = (e) => {
-      lookingAway = true;
-      away.setPointerCapture(e.pointerId);
-      away.setAttribute("aria-pressed", "true");
-    };
+    let hold: AbortController | undefined;
     const release = () => {
       lookingAway = false;
       away.setAttribute("aria-pressed", "false");
+      hold?.abort();
+      hold = undefined;
+    };
+    away.onpointerdown = (e) => {
+      release();
+      lookingAway = true;
+      away.setAttribute("aria-pressed", "true");
+      hold = new AbortController();
+      const options = { capture: true, signal: hold.signal };
+      for (const type of ["pointerup", "pointercancel"])
+        window.addEventListener(
+          type,
+          (event) => {
+            if ((event as PointerEvent).pointerId === e.pointerId) release();
+          },
+          options,
+        );
+      window.addEventListener(
+        "pointerdown",
+        (event) => {
+          if (event.pointerType === "touch" && event.isPrimary) release();
+        },
+        options,
+      );
+      for (const type of ["touchend", "touchcancel"])
+        window.addEventListener(
+          type,
+          (event) => {
+            if (!(event as TouchEvent).touches.length) release();
+          },
+          { ...options, passive: true },
+        );
+      window.addEventListener("blur", release, options);
+      window.addEventListener("pagehide", release, options);
+      document.addEventListener("visibilitychange", release, options);
+      try {
+        away.setPointerCapture(e.pointerId);
+      } catch {
+        /* Window release listeners also cover iOS capture loss. */
+      }
     };
     away.onpointerup = release;
     away.onpointercancel = release;
