@@ -7,11 +7,10 @@ import {
   hazardIn,
   obstaclesAt,
   shiftingUp,
-  useObstacles,
-  useSpeedScale,
   FIGHTER_IDS,
   type ArenaId,
   type Hazard,
+  type MovementContext,
   RITE_BY_ID,
   RITE_RULES,
   kitOf,
@@ -44,7 +43,6 @@ import {
   blankInput,
   emptyStats,
   blocked,
-  currentObstacles,
   move,
   normalize,
   type Ability,
@@ -682,7 +680,7 @@ export class Arena {
         (primed ? (combo!.knockback ?? 1) : 1) *
         (this.gift(target, "Earth") ?? 1);
       const dir = normalize(target.x - source.x, target.y - source.y);
-      move(target, dir.x * push, dir.y * push);
+      move(target, dir.x * push, dir.y * push, RULES.radius, this.walls());
     }
   }
   damageLimit(target: Fighter) {
@@ -749,7 +747,7 @@ export class Arena {
         p,
         muzzle,
         a.radius,
-        currentObstacles(),
+        this.walls(),
       );
       const shot: Projectile = {
         id: ++this.serial,
@@ -817,7 +815,7 @@ export class Arena {
         p,
         { x: p.x + dx * a.range, y: p.y + dy * a.range },
         a.radius,
-        currentObstacles(),
+        this.walls(),
       );
       const reach = contact ? a.range * contact.fraction : a.range;
       let x = p.x,
@@ -899,11 +897,16 @@ export class Arena {
   arenaTime() {
     return this.phase === "playing" ? this.time - this.hazardClock : -1;
   }
-  /** Walls right now; also makes them the ones collision uses. */
+  /** Walls currently active in this room (including a moving pillar). */
   walls() {
-    const list = obstaclesAt(this.arenaId, this.arenaTime());
-    useObstacles(list);
-    return list;
+    return obstaclesAt(this.arenaId, this.arenaTime());
+  }
+  /** Movement settings are scoped to this arena instead of shared module state. */
+  movementContext(): MovementContext {
+    return {
+      obstacles: this.walls(),
+      speedScale: this.rule("speed") ? MUTATOR_RULES.speed : 1,
+    };
   }
   /** Hazards, the shifting wall and the pools' slow, once per tick. */
   stepArena(dt: number) {
@@ -952,7 +955,7 @@ export class Arena {
         if (h.knockback) {
           const d = normalize(p.x - h.x || 1, p.y - h.y);
           const len = Math.hypot(d.x, d.y) || 1;
-          move(p, (d.x / len) * h.knockback, (d.y / len) * h.knockback);
+          move(p, (d.x / len) * h.knockback, (d.y / len) * h.knockback, RULES.radius, this.walls());
         }
       }
     }
@@ -971,7 +974,7 @@ export class Arena {
           this.damage(enemy, pr.ability.damage, pr.owner, pr.ability);
   }
   lineClear(a: { x: number; y: number }, b: { x: number; y: number }) {
-    this.walls();
+    const obstacles = this.walls();
     const steps = Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 10);
     for (let i = 1; i < steps; i++)
       if (
@@ -979,14 +982,13 @@ export class Arena {
           a.x + ((b.x - a.x) * i) / steps,
           a.y + ((b.y - a.y) * i) / steps,
           2,
+          obstacles,
         )
       )
         return false;
     return true;
   }
   tick(dt = 1 / RULES.tick) {
-    // Movement rules are shared module state: set this room's before moving.
-    useSpeedScale(this.rule("speed") ? MUTATOR_RULES.speed : 1);
     if (
       this.phase === "briefing" ||
       this.phase === "paused" ||
@@ -1096,7 +1098,7 @@ export class Arena {
         p.jumpAt = freeCooldowns ? 0 : this.time + RULES.jumpCooldown;
         this.event("jump", p, CHARACTERS[p.character].color, undefined, p.id);
       }
-      advanceMovement(p, input, dt, this.time);
+      advanceMovement(p, input, dt, this.time, this.movementContext());
       if (p.charge && this.time >= p.charge.at) {
         const a = this.kit(p).skills[p.charge.skill];
         this.cast(p, p.charge.ex ? exAbility(a) : a, p.charge.ex);
@@ -1193,7 +1195,7 @@ export class Arena {
           pr,
           next,
           pr.ability.radius,
-          currentObstacles(),
+          this.walls(),
         );
         pr.x = contact?.x ?? next.x;
         pr.y = contact?.y ?? next.y;
@@ -1381,7 +1383,7 @@ export class Arena {
           };
           const goals = rushGoals(this.mode);
           if (
-            blocked(spot.x, spot.y, 22) ||
+            blocked(spot.x, spot.y, 22, this.walls()) ||
             goals.some((g) => Math.hypot(g.x - spot.x, g.y - spot.y) < 260)
           )
             continue;
@@ -1422,7 +1424,7 @@ export class Arena {
     for (let i = 0; i < n; i++) {
       const a = this.random() * Math.PI * 2;
       const spot = { x: p.x + Math.cos(a) * 60, y: p.y + Math.sin(a) * 60 };
-      if (blocked(spot.x, spot.y, 22)) {
+      if (blocked(spot.x, spot.y, 22, this.walls())) {
         spot.x = p.x;
         spot.y = p.y;
       }
