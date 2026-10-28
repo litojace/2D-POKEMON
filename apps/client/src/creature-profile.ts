@@ -743,7 +743,8 @@ export function creatureProfile(
         path("M57 96Q66 92 73 96Q71 104 62 105Q56 103 57 96Z", p.mid, ' stroke="none"') +
         line("M60 96q2 -1 4 0", p.dark, 1.5) +
         grin(57, 108) +
-        line("M70 75Q80 72 89 76", p.dark, 1.8, 0.48);
+        line("M70 75Q80 72 89 76", p.dark, 1.8, 0.48) +
+        cheek(90, 110);
     profiles.ears = "";
     profiles.eyes = back ? "" : eyes(80, p.glow, 9.8, 11.8);
     const sproutX = back ? 100 : 96;

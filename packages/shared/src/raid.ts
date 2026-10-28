@@ -196,10 +196,10 @@ export const RAID_ATTACKS: Record<
   "dream-sequence": { name: "Dream Sequence", tip: "The Dreamer sees the runes privately. Call them with 1–4 or the rune buttons, then enter the matching pads in order. Leave a pad before entering it again. A backwards arrow means read right to left.", practice: "Read your private sequence and step on the pads in order. Solo gives you 14 seconds." },
   nightmare: { name: "Nightmare", tip: "A wrong rune or expired sequence bursts across the team. A fresh Dreamer gets a new sequence; listen for their calls.", practice: "Get the rune sequence right before its timer expires." },
 };
-/** Each boss's attacks, in the order the Hub and the practice room list them. */
-export const RAID_BOSS_ATTACKS: Partial<Record<RaidBossId, RaidAttack[]>> = {
+/** Six attacks per boss, in Hub/practice order. Brazier lighting is an arena mechanic. */
+export const RAID_BOSS_ATTACKS: Record<RaidBossId, RaidAttack[]> = {
   "storm-twins": ["link-beam", "chain-lightning", "static-field", "twin-rush", "polarity", "thunderclap"],
-  emberwing: ["dive-bomb", "ember-rain", "wing-gust", "flame-ring", "scorched-earth", "heat-mark", "brazier-lighting"],
+  emberwing: ["dive-bomb", "ember-rain", "wing-gust", "flame-ring", "scorched-earth", "heat-mark"],
   prismatail: ["prism-lance", "fan-display", "glare", "refraction", "halo-crush", "light-relay"],
   grumblecrag: ["charge", "slam", "volley", "debris", "eruption", "share"],
   tidewyrm: ["dive", "wave", "bubbles", "hightide", "undertow", "prison"],

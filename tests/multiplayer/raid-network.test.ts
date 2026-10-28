@@ -376,8 +376,9 @@ it("creates Emberwing in the Sky Terrace, restricts practice to the host, and se
  const host=await connect(),peer=await connect();const created=await emit(host,'create',{name:'Fire host',mode:'raid',boss:'emberwing'});expect(created.ok).toBe(true);
  expect((await emit(peer,'join',{name:'Fire friend',code:created.code})).ok).toBe(true);
  const a=server!.rooms.get(created.code!)as RaidArena;expect(a.constructor.name).toBe('EmberwingArena');
- expect((await emit(peer,'raid-drill',{kind:'brazier-lighting'})).ok).toBe(false);expect((await emit(host,'raid-drill',{kind:'light-relay'})).ok).toBe(false);
- expect((await emit(host,'raid-drill',{kind:'brazier-lighting'})).ok).toBe(true);a.phase='playing';a.raid.phase=2;(a as any).started=true;(a as any).nextAttack=Infinity;
+ expect((await emit(peer,'raid-drill',{kind:'wing-gust'})).ok).toBe(false);expect((await emit(host,'raid-drill',{kind:'light-relay'})).ok).toBe(false);
+ expect((await emit(host,'raid-drill',{kind:'brazier-lighting'})).ok).toBe(false);
+ expect((await emit(host,'raid-drill',{kind:'wing-gust'})).ok).toBe(true);a.phase='playing';a.raid.phase=2;(a as any).takeoff();(a as any).started=true;(a as any).nextAttack=Infinity;
  const pending=new Promise<any>((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('No Emberwing snapshot')),2000);peer.on('state',s=>{if(s.raid?.airborne&&s.raid?.braziers?.length===3){clearTimeout(timer);resolve(s);}})});
  for(let i=0;i<10;i++)server!.step();const snapshot=await pending;expect(snapshot.arena).toBe('sky-terrace');expect(snapshot.raid.braziers.every((b:any)=>Number.isFinite(b.progress))).toBe(true);expect(snapshot.raidDream).toBeUndefined();
  expect((await emit(host,'raid-drill',{kind:null})).ok).toBe(true);expect(a.raid.airborne).toBe(false);

@@ -13,6 +13,9 @@ and leave-practice action expand on demand. Updating hit/dodge counters preserve
 the controls and focus rather than replacing the entire picker. On mobile, the
 expanded picker widens to 320px (within safe areas), allows full attack names to
 wrap, and keeps Leave practice outside the scrolling instructions/attack list.
+Each boss offers six attacks in two rows of three. Emberwing's brazier lighting
+remains an arena mechanic rather than a seventh attack button. The panel sits
+closer to the bottom edge (12px plus safe area on touch screens).
 Attack buttons are at least 36px tall; the collapsed strip keeps its compact size.
 The selected attack exposes its pressed state to assistive technology.
 

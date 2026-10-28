@@ -22797,7 +22797,7 @@ body.battle-active:not(.touch-mode)
     #battle
     #raid-drill:not([hidden]) {
     position: absolute;
-    inset: auto auto calc(var(--desktop-arena-bottom, 32px) + 12px)
+    inset: auto auto calc(var(--desktop-arena-bottom, 32px) + 4px)
       calc((100% - var(--desktop-arena-width, 100%)) / 2 + 12px);
     width: min(300px, 32vw);
     max-height: 36dvh;
@@ -22808,7 +22808,7 @@ body.battle-active:not(.touch-mode)
     #raid-drill:not([hidden]) {
     bottom: calc(
       var(--desktop-arena-bottom, 0px) -
-        var(--desktop-outside-skills-height, 0px) - 10px
+        var(--desktop-outside-skills-height, 0px) - 18px
     );
   }
   body.battle-active:not(.touch-mode).battle-raid #raid-hud .raid-callout {
@@ -22828,7 +22828,7 @@ body.battle-active.touch-mode.battle-raid
   #battle
   #raid-drill:not([hidden]) {
   position: fixed;
-  inset: auto auto calc(var(--safe-bottom) + 34px) 50%;
+  inset: auto auto calc(var(--safe-bottom) + 12px) 50%;
   width: min(
     190px,
     calc(100vw - var(--safe-left) - var(--safe-right) - 24px)
@@ -22885,7 +22885,7 @@ body.battle-active.touch-mode.battle-raid #raid-drill p {
 }
 @media (orientation: landscape) {
   body.battle-active.touch-mode.battle-raid #raid-drill:not([hidden]) {
-    bottom: calc(var(--safe-bottom) + 30px);
+    bottom: calc(var(--safe-bottom) + 12px);
     max-height: min(48dvh, 210px);
   }
 }
@@ -23484,4 +23484,17 @@ body.battle-active.touch-mode.battle-raid #raid-drill p {
   .settings-screen > .prefs-grid {
     clear: both;
   }
+}
+
+/* Six practice attacks form two even rows without crowding their labels. */
+body.battle-active.battle-raid #raid-drill .raid-drill-options,
+body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+body.battle-active.battle-raid #raid-drill .raid-drill-options button {
+  min-width: 0;
+  padding-inline: 4px;
+  white-space: normal;
+  line-height: 1.25;
 }

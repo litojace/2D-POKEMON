@@ -12,6 +12,17 @@ import { rigAssets, rigKey, rigAnchorsFor } from "../src/animation/assets";
 
 const directions = ["left", "right"] as const;
 describe("complete articulated champion profiles", () => {
+  it("keeps Terradon's pink cheek visible in either profile across expressions", () => {
+    for (const dir of directions)
+      for (const mood of ["normal", ...MOODS] as Mood[]) {
+        const head = creatureLayers("terradon", dir, mood).layers.head;
+        expect(head).toContain('class="profile-blush"');
+        expect(head).toContain('fill="#ff8fb0"');
+      }
+    expect(creatureLayers("terradon", "up").layers.head).not.toContain(
+      "profile-blush",
+    );
+  });
   it("gives every side a turned torso and a single natural eye in the front's drawing style", () => {
     for (const id of FIGHTER_IDS)
       for (const dir of directions) {

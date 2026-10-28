@@ -37,6 +37,7 @@ for (const viewport of [
       ]) {
         if (boss !== "grumblecrag")
           await page.click(`.raid-roster-card[data-raid-boss="${boss}"]`);
+        await expect(page.locator("[data-hub-practice]")).toHaveCount(6);
         const art = page.locator(".raid-showcase-splash > img");
         await expect(art).toBeVisible();
         await art.evaluate(async (img: HTMLImageElement) => {

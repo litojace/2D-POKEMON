@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   RAID_BOSSES,
   RAID_BOSS_ORDER,
+  raidAttacksOf,
   nextPacificDayAt,
   pacificDate,
 } from "../../packages/shared/src/raid";
@@ -10,6 +11,14 @@ describe("raid roster and Pacific calendar", () => {
   it("has seven playable bosses", () => {
     expect(RAID_BOSS_ORDER).toHaveLength(7);
     expect(RAID_BOSS_ORDER.every((id) => RAID_BOSSES[id].playable)).toBe(true);
+  });
+
+  it("offers six distinct practice attacks for every playable boss", () => {
+    for (const id of RAID_BOSS_ORDER) {
+      const attacks = raidAttacksOf(id);
+      expect(attacks, id).toHaveLength(6);
+      expect(new Set(attacks).size, id).toBe(6);
+    }
   });
 
   it("changes day at midnight Pacific, not UTC", () => {

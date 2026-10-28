@@ -96,15 +96,25 @@ for (const viewport of [
           },
           { boss, attack: attacks[0] },
         );
-        await expect(page.locator("[data-raid-drill]")).toHaveCount(
-          attacks.length,
-        );
+        await expect(page.locator("[data-raid-drill]")).toHaveCount(6);
         await expect(page.locator(".raid-drill-picker")).toHaveAttribute(
           "open",
           "",
         );
         const bounds = await box(page, "#raid-drill");
         expect(inside(bounds, { x: 0, y: 0, ...viewport })).toBe(true);
+        if (viewport.width < 1000)
+          expect(
+            viewport.height - bounds.y - bounds.height,
+          ).toBeLessThanOrEqual(14);
+        expect(
+          await page
+            .locator(".raid-drill-options")
+            .evaluate(
+              (el) =>
+                getComputedStyle(el).gridTemplateColumns.split(" ").length,
+            ),
+        ).toBe(3);
         const exit = await box(page, "#raid-drill-leave");
         expect(inside(exit, bounds)).toBe(true);
         await expect(page.locator("#raid-drill-leave")).toBeInViewport();
