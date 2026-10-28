@@ -533,7 +533,10 @@ export class AccountUI {
             : "Raid records are not available yet.";
       }
     const character = this.hooks.selectedCharacter?.() ?? "voltkit";
-    const view: { boss?: RaidBossId; tab: RaidHubTab } = { boss, tab };
+    const view: { boss?: RaidBossId; tab: RaidHubTab } = {
+      boss: boss ?? "grumblecrag",
+      tab,
+    };
     const dialogEl = () =>
       document.getElementById("dialog") as HTMLDialogElement | null;
     const render = (top = false) => {

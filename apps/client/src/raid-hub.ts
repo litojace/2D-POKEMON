@@ -42,6 +42,21 @@ export const RAID_HUB_TABS: [RaidHubTab, string][] = [
   ["records", "Records"],
 ];
 
+const RAID_SKILL_ICONS: Record<RaidAttack, Parameters<typeof menuIcon>[0]> = {
+  charge: "motion", slam: "battle", debris: "sparkle", volley: "swipe", eruption: "target", share: "target",
+  dive: "swipe", wave: "swipe", bubbles: "sparkle", hightide: "swipe", undertow: "motion", prison: "target",
+  "prism-lance": "motion", "fan-display": "swipe", glare: "search", refraction: "sparkle",
+  "halo-crush": "target", "light-relay": "sparkle", "dive-bomb": "motion", "ember-rain": "sparkle",
+  "wing-gust": "swipe", "flame-ring": "target", "scorched-earth": "sparkle", "heat-mark": "target",
+  "brazier-lighting": "sparkle", "link-beam": "motion", "chain-lightning": "motion", "static-field": "target",
+  "twin-rush": "motion", polarity: "fullscreen", thunderclap: "target", lunge: "motion", hands: "battle",
+  snuff: "target", curse: "sparkle", split: "fullscreen", pulse: "motion", lullaby: "sound",
+  "tail-splash": "swipe", "dream-bubbles": "sparkle", "falling-stars": "sparkle", "whale-song": "sound",
+  "dream-sequence": "sparkle", nightmare: "search",
+};
+
+const raidSkillIcon = (attack: RaidAttack) => menuIcon(RAID_SKILL_ICONS[attack]);
+
 /** The other bosses open after any Grumblecrag clear. */
 export function raidUnlocked(p: RaidProgress | null, boss: RaidBossId) {
   if (boss === "grumblecrag") return true;
@@ -100,19 +115,24 @@ function overview(id: RaidBossId) {
 
 function attacks(id: RaidBossId) {
   if (!RAID_BOSSES[id].playable) return `<p>Attack details arrive with the boss.</p>`;
-  const skillIcons: Record<RaidAttack, Parameters<typeof menuIcon>[0]> = {
-    charge: "motion", slam: "battle", debris: "sparkle", volley: "swipe", eruption: "target", share: "target",
-    dive: "swipe", wave: "swipe", bubbles: "sparkle", hightide: "swipe", undertow: "motion", prison: "target",
-    "prism-lance": "motion", "fan-display": "swipe", glare: "search",
-    refraction: "sparkle", "halo-crush": "target", "light-relay": "sparkle", "dive-bomb": "motion",
-    "ember-rain": "sparkle", "wing-gust": "swipe", "flame-ring": "target", "scorched-earth": "sparkle",
-    "heat-mark": "target", "brazier-lighting": "sparkle", "link-beam": "motion", "chain-lightning": "motion",
-    "static-field": "target", "twin-rush": "motion", polarity: "fullscreen", thunderclap: "target",
-    lunge: "motion", hands: "battle", snuff: "target", curse: "sparkle", split: "fullscreen", pulse: "motion",
-    lullaby: "sound", "tail-splash": "swipe", "dream-bubbles": "sparkle", "falling-stars": "sparkle",
-    "whale-song": "sound", "dream-sequence": "sparkle", nightmare: "search",
-  };
-  return `<ul class="raid-hub-attacks">${raidAttacksOf(id).map((a) => `<li><div class="raid-attack-title"><span class="raid-attack-skill-icon" aria-hidden="true">${menuIcon(skillIcons[a])}</span><b>${RAID_ATTACKS[a].name}</b></div><small>${RAID_ATTACKS[a].practice}</small><button type="button" class="secondary" data-hub-practice="${a}">${iconLabel("target", "Practise attack")}</button></li>`).join("")}</ul><p class="raid-hub-rules">Choose an attack to start a safe solo practice. Hits and dodges are counted; no health is lost.</p>`;
+  return `<ul class="raid-hub-attacks">${raidAttacksOf(id).map((a) => `<li><div class="raid-attack-title"><span class="raid-attack-skill-icon" aria-hidden="true">${raidSkillIcon(a)}</span><b>${RAID_ATTACKS[a].name}</b></div><small>${RAID_ATTACKS[a].practice}</small><button type="button" class="secondary" data-hub-practice="${a}">${iconLabel("target", "Practise attack")}</button></li>`).join("")}</ul><p class="raid-hub-rules">Choose an attack to start a safe solo practice. Hits and dodges are counted; no health is lost.</p>`;
+}
+
+function roster(p: RaidProgress | null, selected: RaidBossId) {
+  return `<nav class="raid-boss-roster" aria-label="Choose a raid boss">${RAID_BOSS_ORDER.map((id) => {
+    const b = RAID_BOSSES[id];
+    const record = p?.bosses?.[id] ?? (id === "grumblecrag" && p ? { highestPeril: p.highestPeril, clears: p.clears } : null);
+    const locked = b.playable && !raidUnlocked(p, id);
+    return `<button type="button" class="raid-roster-card${id === selected ? " is-selected" : ""}${locked ? " is-locked" : ""}" data-raid-boss="${id}" style="--boss:${b.color}" aria-pressed="${id === selected}" aria-label="${b.name}${locked ? ", locked" : ""}"><span class="raid-roster-art">${raidCrest(id)}</span><span class="raid-roster-name">${b.name}</span><span class="raid-roster-meta">${locked ? "Locked" : record?.clears ? `Peril ${record.highestPeril}` : b.element}</span></button>`;
+  }).join("")}</nav>`;
+}
+
+function showcase(id: RaidBossId, p: RaidProgress | null) {
+  const b = RAID_BOSSES[id];
+  const locked = b.playable && !raidUnlocked(p, id);
+  const moves = raidAttacksOf(id);
+  const skills = moves.map((attack) => `<button type="button" class="raid-showcase-skill" data-hub-practice="${attack}" title="Practise ${RAID_ATTACKS[attack].name}"${locked ? " disabled" : ""}><span class="raid-showcase-skill-icon" aria-hidden="true">${raidSkillIcon(attack)}</span><span><b>${RAID_ATTACKS[attack].name}</b><small>${RAID_ATTACKS[attack].practice}</small></span></button>`).join("");
+  return `<section class="raid-boss-showcase" style="--boss:${b.color}" aria-label="${b.name} boss overview"><div class="raid-showcase-stage"><span class="raid-showcase-aura"></span><svg class="raid-showcase-sprite" viewBox="-65 -65 130 115" aria-hidden="true" focusable="false"><g class="raid-showcase-pose raid-showcase-pose-idle">${raidGuideSprite(id, false, true, 0)}</g><g class="raid-showcase-pose raid-showcase-pose-action">${raidGuideSprite(id, false, false, 2)}</g></svg><span class="raid-showcase-ground"></span></div><div class="raid-showcase-content"><div class="raid-showcase-identity"><span class="eyebrow">${b.element} · ${b.epithet}</span><div class="raid-showcase-name"><h2>${b.name}</h2>${stars(b.stars)}</div><p>${b.blurb}</p></div><div class="raid-showcase-skills-head"><h3>Boss skills</h3><span>${moves.length} attacks · tap to practise</span></div><div class="raid-showcase-skills">${skills}</div>${locked ? `<p class="raid-hub-locked">${menuIcon("bestiary")}<span>Clear Grumblecrag once to unlock ${b.name}.</span></p>` : ""}</div></section>`;
 }
 
 function rewards(id: RaidBossId, p: RaidProgress | null) {
@@ -153,7 +173,8 @@ export function raidBossPageMarkup(
           : records(id, p);
   return `<div class="raid-hub raid-boss-page" style="--boss:${b.color}">
 <button type="button" class="quiet raid-hub-back" id="raid-hub-back">${iconLabel("back", "All bosses")}</button>
-<header class="raid-boss-head"><div class="raid-boss-art">${raidCrest(id)}</div><div><span class="eyebrow">${b.element}</span><h2>${b.name}</h2><p>${b.epithet} ${stars(b.stars)}</p></div></header>
+${showcase(id, p)}
+${roster(p, id)}
 <div class="raid-hub-tabs" role="tablist" aria-label="${b.name}">${RAID_HUB_TABS.map(([t, label]) => `<button type="button" role="tab" id="raid-tab-${t}" aria-selected="${t === tab}" aria-controls="raid-tab-panel" data-raid-tab="${t}" class="${t === tab ? "is-active" : ""}">${label}</button>`).join("")}</div>
 <section class="raid-hub-panel" id="raid-tab-panel" role="tabpanel" aria-labelledby="raid-tab-${tab}">${body}</section>
 ${

@@ -22807,3 +22807,329 @@ body.battle-active.battle-raid #raid-drill:not([hidden]) {position:fixed;inset:a
  .raid-rite-icon--buff .raid-rite-buff-stat {padding:2px;}
  #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {max-width:7ch;font-size:18px;}
 }
+
+/* Keep the centered raid cue out of the party column in letterboxed desktop HUDs. */
+body.battle-active:not(.touch-mode) #battle.desktop-hud-outside #raid-hud {
+  grid-template-columns:
+    minmax(0, 1.4fr)
+    minmax(0, 1.1fr)
+    minmax(190px, 0.9fr)
+    max-content;
+  grid-template-areas:
+    "health health party ."
+    "name cue party peril"
+    "timer timer party .";
+  column-gap: 10px;
+  row-gap: 3px;
+}
+body.battle-active:not(.touch-mode)
+  #battle.desktop-hud-outside
+  #raid-hud
+  .raid-boss-heading {
+  display: contents;
+}
+body.battle-active:not(.touch-mode)
+  #battle.desktop-hud-outside
+  #raid-hud
+  .raid-boss-heading > b {
+  grid-area: name;
+}
+body.battle-active:not(.touch-mode)
+  #battle.desktop-hud-outside
+  #raid-hud
+  .raid-boss-heading > span {
+  grid-area: peril;
+  align-self: center;
+}
+body.battle-active:not(.touch-mode)
+  #battle.desktop-hud-outside
+  #raid-hud
+  .raid-party-bars {
+  position: static;
+  grid-area: party;
+  align-self: stretch;
+  width: 100%;
+  margin: 0;
+}
+body.battle-active:not(.touch-mode)
+  #battle.desktop-hud-outside
+  #raid-hud
+  .raid-status-row {
+  display: contents;
+}
+body.battle-active:not(.touch-mode)
+  #battle.desktop-hud-outside
+  #raid-hud
+  .raid-callout {
+  grid-area: cue;
+  align-self: center;
+}
+body.battle-active:not(.touch-mode)
+  #battle.desktop-hud-outside
+  #raid-hud
+  .raid-elapsed {
+  grid-area: timer;
+}
+
+/* Raid boss roster showcase: a large animated boss and its kit above the roster. */
+.raid-boss-page {
+  gap: 14px;
+}
+.raid-boss-showcase {
+  display: grid;
+  grid-template-columns: minmax(230px, 0.82fr) minmax(0, 1.18fr);
+  gap: 18px;
+  min-width: 0;
+  padding: 16px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--boss) 32%, #8baee526);
+  border-radius: 18px;
+  background:
+    radial-gradient(ellipse at 18% 48%, color-mix(in srgb, var(--boss) 18%, transparent), transparent 60%),
+    linear-gradient(135deg, #172744, #101a30 72%);
+}
+.raid-showcase-stage {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 280px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--boss) 28%, #8baee51e);
+  border-radius: 14px;
+  background: radial-gradient(ellipse at 50% 68%, color-mix(in srgb, var(--boss) 20%, #263853), #111c32 72%);
+}
+.raid-showcase-aura {
+  position: absolute;
+  inset: 14% 12% 8%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, color-mix(in srgb, var(--boss) 21%, transparent), transparent 70%);
+  filter: blur(8px);
+}
+.raid-showcase-sprite {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  filter: drop-shadow(0 12px 13px #050a16a8);
+}
+.raid-showcase-pose {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation-duration: 2.8s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+.raid-showcase-pose-idle {
+  animation-name: raid-showcase-idle;
+}
+.raid-showcase-pose-action {
+  animation-name: raid-showcase-action;
+}
+@keyframes raid-showcase-idle {
+  0%, 36%, 72%, 100% { opacity: 1; transform: translateY(0) scale(1); }
+  44%, 64% { opacity: 0; transform: translateY(-3px) scale(1.025); }
+}
+@keyframes raid-showcase-action {
+  0%, 36%, 72%, 100% { opacity: 0; transform: translateY(4px) scale(.96); }
+  44%, 64% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.raid-showcase-ground {
+  position: absolute;
+  z-index: 0;
+  right: 18%;
+  bottom: 12%;
+  left: 18%;
+  height: 10px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--boss) 36%, transparent);
+  filter: blur(12px);
+}
+.raid-showcase-content {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+}
+.raid-showcase-identity > .eyebrow {
+  color: color-mix(in srgb, var(--boss) 78%, white);
+}
+.raid-showcase-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+}
+.raid-showcase-name h2 {
+  margin: 0;
+  font: 700 clamp(24px, 3vw, 36px)/1.1 var(--display);
+  letter-spacing: 0;
+}
+.raid-showcase-name .raid-stars {
+  font-size: 14px;
+}
+.raid-showcase-identity > p {
+  margin: 7px 0 0;
+  color: #c4d1e5;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.raid-showcase-skills-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+}
+.raid-showcase-skills-head h3 {
+  margin: 0;
+  color: #f1d78c;
+  font: 700 16px/1.2 var(--display);
+}
+.raid-showcase-skills-head > span {
+  color: #94a8c5;
+  font-size: 10px;
+}
+.raid-showcase-skills {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+button.raid-showcase-skill {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  min-height: 56px;
+  margin: 0;
+  padding: 7px 8px;
+  border: 1px solid #8baee52b;
+  border-radius: 10px;
+  background: #0d192dcc;
+  color: #e5edfc;
+  text-align: left;
+}
+button.raid-showcase-skill:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--boss) 65%, transparent);
+  filter: none;
+}
+button.raid-showcase-skill:disabled {
+  cursor: not-allowed;
+  opacity: .6;
+}
+.raid-showcase-skill-icon {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--boss) 18%, #12203a);
+  color: color-mix(in srgb, var(--boss) 70%, white);
+}
+.raid-showcase-skill-icon .menu-option-icon {
+  width: 17px;
+  height: 17px;
+}
+.raid-showcase-skill > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.raid-showcase-skill b {
+  overflow: hidden;
+  color: #edf3ff;
+  font-size: 11px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.raid-showcase-skill small {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #9fb1cc;
+  font-size: 10px;
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.raid-boss-roster {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  padding: 2px 1px 6px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #506582 transparent;
+}
+button.raid-roster-card {
+  display: grid;
+  flex: 1 0 104px;
+  min-width: 0;
+  min-height: 102px;
+  justify-items: center;
+  align-content: center;
+  gap: 4px;
+  margin: 0;
+  padding: 7px 6px;
+  border: 1px solid #8297b82b;
+  border-radius: 12px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--boss) 9%, #162541), #111c31);
+  color: #dce7f8;
+  scroll-snap-align: start;
+}
+button.raid-roster-card:hover {
+  border-color: color-mix(in srgb, var(--boss) 60%, transparent);
+  filter: none;
+}
+button.raid-roster-card.is-selected {
+  border-color: color-mix(in srgb, var(--boss) 85%, white 15%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--boss) 45%, transparent), 0 0 14px color-mix(in srgb, var(--boss) 15%, transparent);
+}
+.raid-roster-art {
+  display: block;
+  width: 48px;
+  height: 48px;
+  padding: 3px;
+  border-radius: 10px;
+  background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--boss) 32%, transparent), #0d192d 78%);
+}
+.raid-roster-name {
+  max-width: 100%;
+  overflow: hidden;
+  font: 700 12px/1.1 var(--display);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.raid-roster-meta {
+  color: #9eb0ca;
+  font-size: 9px;
+  line-height: 1.1;
+}
+.raid-roster-card.is-locked .raid-roster-meta {
+  color: #ffb3bb;
+}
+@media (prefers-reduced-motion: reduce) {
+  .raid-showcase-pose { animation: none; }
+  .raid-showcase-pose-idle { opacity: 1; }
+  .raid-showcase-pose-action { opacity: 0; }
+}
+@media (max-width: 720px) {
+  .raid-boss-showcase {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px;
+  }
+  .raid-showcase-stage { min-height: 220px; }
+  button.raid-roster-card { flex-basis: 94px; }
+}
+@media (orientation: landscape) and (max-height: 500px) {
+  .raid-boss-page { gap: 8px; }
+  .raid-boss-showcase { grid-template-columns: minmax(190px, .65fr) minmax(0, 1.35fr); gap: 10px; padding: 10px; }
+  .raid-showcase-stage { min-height: 190px; }
+  button.raid-roster-card { min-height: 82px; }
+  .raid-roster-art { width: 38px; height: 38px; }
+}
