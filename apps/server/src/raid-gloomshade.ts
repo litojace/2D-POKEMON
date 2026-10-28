@@ -3,7 +3,6 @@ import {
   RULES,
   move,
   normalize,
-  useObstacles,
   type Ability,
   type Fighter,
   type Input,
@@ -92,7 +91,6 @@ export class GloomshadeArena extends RaidArena {
   }
   /** Lanterns are posts you walk up to, not walls. */
   override walls() {
-    useObstacles([]);
     return [];
   }
   protected override alwaysExposed() {
