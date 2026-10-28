@@ -28,18 +28,13 @@ const escape = (s: string) =>
         c
       ]!,
   );
-const time = (s: number) =>
-  `${Math.floor(s / 60)}:${Math.floor(s % 60)
-    .toString()
-    .padStart(2, "0")}`;
 const stars = (n: number) =>
   `<span class="raid-stars" aria-label="Difficulty ${n} of 3">${"★".repeat(n)}<span aria-hidden="true">${"★".repeat(3 - n)}</span></span>`;
 
-export type RaidHubTab = "overview" | "rewards" | "records";
+export type RaidHubTab = "overview" | "rewards";
 export const RAID_HUB_TABS: [RaidHubTab, string][] = [
   ["overview", "Overview"],
   ["rewards", "Rewards"],
-  ["records", "Records"],
 ];
 
 const RAID_SKILL_ICONS: Record<RaidAttack, Parameters<typeof menuIcon>[0]> = {
@@ -127,7 +122,7 @@ function showcase(id: RaidBossId, p: RaidProgress | null) {
   const locked = b.playable && !raidUnlocked(p, id);
   const moves = raidAttacksOf(id);
   const skills = moves.map((attack) => `<button type="button" class="raid-showcase-skill" data-hub-practice="${attack}" title="Practise ${RAID_ATTACKS[attack].name}"${locked ? " disabled" : ""}><span class="raid-showcase-skill-icon" aria-hidden="true">${raidSkillIcon(attack)}</span><span><b>${RAID_ATTACKS[attack].name}</b><small>${RAID_ATTACKS[attack].practice}</small></span></button>`).join("");
-  return `<section class="raid-boss-showcase" style="--boss:${b.color}" aria-label="${b.name} boss overview"><div class="raid-showcase-stage"><span class="raid-showcase-aura"></span><svg class="raid-showcase-sprite" viewBox="-65 -65 130 115" aria-hidden="true" focusable="false"><g class="raid-showcase-pose raid-showcase-pose-idle">${raidGuideSprite(id, false, true, 0)}</g><g class="raid-showcase-pose raid-showcase-pose-action">${raidGuideSprite(id, false, false, 2)}</g></svg><span class="raid-showcase-ground"></span></div><div class="raid-showcase-content"><div class="raid-showcase-identity"><span class="eyebrow">${b.element} · ${b.epithet}</span><div class="raid-showcase-name"><h2>${b.name}</h2>${stars(b.stars)}</div><p>${b.blurb}</p></div><div class="raid-showcase-skills-head"><h3>Boss skills</h3><span>${moves.length} attacks · tap to practise</span></div><div class="raid-showcase-skills">${skills}</div>${locked ? `<p class="raid-hub-locked">${menuIcon("bestiary")}<span>Clear Grumblecrag once to unlock ${b.name}.</span></p>` : ""}</div></section>`;
+  return `<section class="raid-boss-showcase" style="--boss:${b.color}" aria-label="${b.name} boss overview"><div class="raid-showcase-stage" data-boss="${id}"><span class="raid-showcase-aura"></span><svg class="raid-showcase-sprite" viewBox="-65 -65 130 115" aria-hidden="true" focusable="false">${raidGuideSprite(id, false, true, 0)}</svg><span class="raid-showcase-ground"></span></div><div class="raid-showcase-content"><div class="raid-showcase-identity"><span class="eyebrow">${b.element} · ${b.epithet}</span><div class="raid-showcase-name"><h2>${b.name}</h2>${stars(b.stars)}</div><p>${b.blurb}</p></div><div class="raid-showcase-skills-head"><h3>Boss skills</h3><span>${moves.length} attacks · tap to practise</span></div><div class="raid-showcase-skills">${skills}</div>${locked ? `<p class="raid-hub-locked">${menuIcon("bestiary")}<span>Clear Grumblecrag once to unlock ${b.name}.</span></p>` : ""}</div></section>`;
 }
 
 function rewards(id: RaidBossId, p: RaidProgress | null) {
@@ -141,15 +136,7 @@ function rewards(id: RaidBossId, p: RaidProgress | null) {
     .join("")}</div>`;
 }
 
-function records(id: RaidBossId, p: RaidProgress | null) {
-  const b = RAID_BOSSES[id];
-  if (!b.playable) return `<p>No records yet.</p>`;
-  const r = p?.bosses?.[id] ?? (id === "grumblecrag" && p ? { clears: p.clears, highestPeril: p.highestPeril, bestSeconds: p.bestSeconds, runs: p.runs ?? 0 } : null);
-  const feats = p?.stats?.[id]?.feats ?? 0;
-  return `<div class="fighter-stats raid-hub-stats"><span><b>${r?.clears ?? 0}</b>Clears</span><span><b>${r?.highestPeril ?? 0}</b>Highest Peril</span><span><b>${r?.bestSeconds == null ? "—" : time(r.bestSeconds)}</b>Best clear</span><span><b>${r?.runs ?? 0}</b>Attempts</span><span><b>${feats}</b>Feats</span></div>`;
-}
-
-/** One boss: overview, rewards (with appearance) and records. */
+/** One boss: overview and rewards (with appearance). */
 export function raidBossPageMarkup(
   id: RaidBossId,
   tab: RaidHubTab,
@@ -158,14 +145,8 @@ export function raidBossPageMarkup(
 ) {
   const b = RAID_BOSSES[id];
   const locked = b.playable && !raidUnlocked(p, id);
-  const body =
-    tab === "overview"
-      ? overview(id)
-      : tab === "rewards"
-        ? rewards(id, p) + (b.playable ? appearance : "")
-        : records(id, p);
+  const body = tab === "overview" ? overview(id) : rewards(id, p) + (b.playable ? appearance : "");
   return `<div class="raid-hub raid-boss-page" style="--boss:${b.color}">
-<button type="button" class="quiet raid-hub-back" id="raid-hub-back">${iconLabel("back", "All bosses")}</button>
 ${tab === "overview" ? showcase(id, p) : ""}
 ${roster(p, id)}
 <div class="raid-hub-tabs" role="tablist" aria-label="${b.name}">${RAID_HUB_TABS.map(([t, label]) => `<button type="button" role="tab" id="raid-tab-${t}" aria-selected="${t === tab}" aria-controls="raid-tab-panel" data-raid-tab="${t}" class="${t === tab ? "is-active" : ""}">${label}</button>`).join("")}</div>

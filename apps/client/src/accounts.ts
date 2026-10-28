@@ -569,14 +569,9 @@ export class AccountUI {
         root.querySelectorAll<HTMLButtonElement>("[data-raid-boss]"),
       ))
         b.onclick = () => {
+          const choosingFromRoster = b.classList.contains("raid-roster-card");
           view.boss = b.dataset.raidBoss as RaidBossId;
-          view.tab = "overview";
-          render(true);
-        };
-      const back = root.querySelector<HTMLButtonElement>("#raid-hub-back");
-      if (back)
-        back.onclick = () => {
-          view.boss = undefined;
+          if (!choosingFromRoster) view.tab = "overview";
           render(true);
         };
       for (const b of Array.from(

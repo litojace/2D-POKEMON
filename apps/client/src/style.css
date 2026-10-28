@@ -9327,26 +9327,6 @@ dialog[open]:is(:has(.raid-hub), :has(.shop)) {
   outline: 2px solid var(--accent);
   outline-offset: -3px;
 }
-.raid-dialog-toolbar .raid-hub-back {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  flex: 0 1 auto;
-  min-width: 0;
-  height: 44px;
-  min-height: 44px;
-  margin: 0;
-  padding: 8px 12px;
-  border-radius: 10px;
-  line-height: 1.2;
-}
-.raid-dialog-toolbar .raid-hub-back:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -3px;
-}
-.raid-dialog-toolbar .raid-hub-back:hover {
-  background: #ffffff0a;
-}
 .dialog-content {
   min-width: 0;
   min-height: 0;
@@ -9541,10 +9521,6 @@ button.raid-boss-card:hover:not(:disabled) {
 }
 
 /* A boss's page. */
-.raid-hub-back {
-  justify-self: start;
-  margin: -6px 0 0 -8px;
-}
 .raid-boss-head {
   display: flex;
   gap: 16px;
@@ -9643,9 +9619,6 @@ button.raid-boss-card:hover:not(:disabled) {
   border-radius: 8px;
   background: #ffd65b14;
 }
-.raid-hub-stats {
-  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
-}
 .raid-hub-actions {
   display: flex;
   gap: 8px;
@@ -9722,7 +9695,7 @@ button.raid-boss-card:hover:not(:disabled) {
 @media (max-width: 720px), (orientation: landscape) and (max-height: 500px) {
   .raid-hub-tabs {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0;
   }
   .raid-hub-tabs button {
@@ -22811,7 +22784,7 @@ body.battle-active:not(.touch-mode)
   }
 }
 
-/* Raid boss roster showcase: a large animated boss and its kit above the roster. */
+/* Raid boss roster showcase: a still boss portrait over a themed scene. */
 .raid-boss-page {
   gap: 14px;
 }
@@ -22837,7 +22810,108 @@ body.battle-active:not(.touch-mode)
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--boss) 28%, #8baee51e);
   border-radius: 14px;
-  background: radial-gradient(ellipse at 50% 68%, color-mix(in srgb, var(--boss) 20%, #263853), #111c32 72%);
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 50% 68%, color-mix(in srgb, var(--boss) 24%, #263853), transparent 62%),
+    linear-gradient(180deg, #263751, #111c32 78%);
+}
+.raid-showcase-stage::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  content: "";
+  opacity: .82;
+  pointer-events: none;
+}
+.raid-showcase-stage[data-boss="grumblecrag"] {
+  background:
+    radial-gradient(ellipse at 50% 90%, #ff9a3b78, transparent 36%),
+    radial-gradient(ellipse at 50% 70%, #a3633a48, transparent 58%),
+    linear-gradient(180deg, #344157 0%, #1c2639 62%, #171b29 100%);
+}
+.raid-showcase-stage[data-boss="grumblecrag"]::before {
+  background:
+    linear-gradient(145deg, transparent 34%, #59616b55 34.5% 37%, transparent 37.5%) left bottom / 48% 60% no-repeat,
+    linear-gradient(215deg, transparent 34%, #59616b44 34.5% 37%, transparent 37.5%) right bottom / 46% 66% no-repeat,
+    radial-gradient(ellipse at 10% 5%, #c3d5ff22, transparent 45%);
+}
+.raid-showcase-stage[data-boss="tidewyrm"] {
+  background:
+    radial-gradient(ellipse at 50% 58%, #42eee455, transparent 38%),
+    radial-gradient(ellipse at 82% 18%, #4acbd833, transparent 32%),
+    linear-gradient(180deg, #17445b, #0b283f 70%, #101c32);
+}
+.raid-showcase-stage[data-boss="tidewyrm"]::before {
+  background:
+    repeating-linear-gradient(108deg, transparent 0 34px, #8df8ef14 36px, transparent 39px 72px),
+    radial-gradient(circle at 14% 28%, #b6fff044 0 2px, transparent 4px),
+    radial-gradient(circle at 83% 43%, #b6fff044 0 3px, transparent 5px),
+    radial-gradient(circle at 25% 72%, #b6fff033 0 2px, transparent 4px);
+}
+.raid-showcase-stage[data-boss="gloomshade"] {
+  background:
+    radial-gradient(ellipse at 50% 60%, #a176ff68, transparent 40%),
+    radial-gradient(ellipse at 8% 14%, #674bb055, transparent 40%),
+    linear-gradient(180deg, #282444, #17192f 76%, #111a2d);
+}
+.raid-showcase-stage[data-boss="gloomshade"]::before {
+  background:
+    radial-gradient(circle at 17% 19%, #fff0bdcc 0 1px, transparent 2px),
+    radial-gradient(circle at 79% 14%, #fff0bd99 0 1px, transparent 2px),
+    radial-gradient(circle at 88% 65%, #d9c8ffbb 0 1px, transparent 2px),
+    radial-gradient(ellipse at 50% 110%, #7964c855, transparent 55%);
+}
+.raid-showcase-stage[data-boss="somnara"] {
+  background:
+    radial-gradient(circle at 77% 22%, #fff0c566 0 5%, #d2b9ff22 5.5% 12%, transparent 12.5%),
+    radial-gradient(ellipse at 50% 64%, #b297ff52, transparent 44%),
+    linear-gradient(180deg, #302955, #20203d 66%, #111a31);
+}
+.raid-showcase-stage[data-boss="somnara"]::before {
+  background:
+    radial-gradient(circle at 18% 22%, #fff3ce 0 1px, transparent 2px),
+    radial-gradient(circle at 38% 12%, #e9dcff 0 1px, transparent 2px),
+    radial-gradient(circle at 89% 42%, #fff3ce 0 1px, transparent 2px),
+    linear-gradient(180deg, transparent 64%, #ac9bd21c);
+}
+.raid-showcase-stage[data-boss="prismatail"] {
+  background:
+    radial-gradient(ellipse at 50% 60%, #fff4bf88, transparent 36%),
+    conic-gradient(from 220deg at 50% 58%, #ff8f7b32, #ffe87a45, #87ecd932, #8fa8ff32, #d791ff32, #ff8f7b32),
+    linear-gradient(180deg, #354265, #1c2740 74%, #131c31);
+}
+.raid-showcase-stage[data-boss="prismatail"]::before {
+  background:
+    linear-gradient(118deg, transparent 28%, #fff7d622 28.3% 29%, transparent 29.3%),
+    linear-gradient(242deg, transparent 24%, #e8edff20 24.3% 25%, transparent 25.3%),
+    radial-gradient(circle at 20% 24%, #fff5cecc 0 1px, transparent 2px),
+    radial-gradient(circle at 84% 34%, #fff5cecc 0 1px, transparent 2px);
+}
+.raid-showcase-stage[data-boss="emberwing"] {
+  background:
+    radial-gradient(ellipse at 50% 88%, #ffb3429c, transparent 38%),
+    radial-gradient(ellipse at 50% 20%, #ff8d4b45, transparent 45%),
+    linear-gradient(180deg, #563b55, #382b42 58%, #211c30);
+}
+.raid-showcase-stage[data-boss="emberwing"]::before {
+  background:
+    repeating-linear-gradient(105deg, transparent 0 42px, #ffb34b1a 44px, transparent 47px 88px),
+    radial-gradient(circle at 15% 60%, #ffd17e 0 1px, transparent 3px),
+    radial-gradient(circle at 80% 48%, #ffab61 0 2px, transparent 4px),
+    radial-gradient(circle at 34% 33%, #ffe4a4 0 1px, transparent 3px);
+}
+.raid-showcase-stage[data-boss="storm-twins"] {
+  background:
+    radial-gradient(ellipse at 50% 60%, #80d8ff50, transparent 38%),
+    radial-gradient(ellipse at 18% 25%, #8699ff32, transparent 36%),
+    radial-gradient(ellipse at 86% 30%, #ffd36b2d, transparent 34%),
+    linear-gradient(180deg, #263454, #18243c 68%, #111a2e);
+}
+.raid-showcase-stage[data-boss="storm-twins"]::before {
+  background:
+    linear-gradient(128deg, transparent 40%, #c7ecff44 40.3% 40.8%, transparent 41.1%) 16% 0 / 42% 72% no-repeat,
+    linear-gradient(232deg, transparent 47%, #ffd87855 47.3% 47.8%, transparent 48.1%) 65% 5% / 35% 64% no-repeat,
+    repeating-linear-gradient(105deg, transparent 0 38px, #a9c9ff0b 39px, transparent 41px 72px);
 }
 .raid-showcase-aura {
   position: absolute;
@@ -22854,27 +22928,6 @@ body.battle-active:not(.touch-mode)
   height: 100%;
   overflow: hidden;
   filter: drop-shadow(0 12px 13px #050a16a8);
-}
-.raid-showcase-pose {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation-duration: 2.8s;
-  animation-timing-function: ease-in-out;
-  animation-iteration-count: infinite;
-}
-.raid-showcase-pose-idle {
-  animation-name: raid-showcase-idle;
-}
-.raid-showcase-pose-action {
-  animation-name: raid-showcase-action;
-}
-@keyframes raid-showcase-idle {
-  0%, 36%, 72%, 100% { opacity: 1; transform: translateY(0) scale(1); }
-  44%, 64% { opacity: 0; transform: translateY(-3px) scale(1.025); }
-}
-@keyframes raid-showcase-action {
-  0%, 36%, 72%, 100% { opacity: 0; transform: translateY(4px) scale(.96); }
-  44%, 64% { opacity: 1; transform: translateY(0) scale(1); }
 }
 .raid-showcase-ground {
   position: absolute;
@@ -23052,11 +23105,6 @@ button.raid-roster-card.is-selected {
 .raid-roster-card.is-locked .raid-roster-meta {
   color: #ffb3bb;
 }
-@media (prefers-reduced-motion: reduce) {
-  .raid-showcase-pose { animation: none; }
-  .raid-showcase-pose-idle { opacity: 1; }
-  .raid-showcase-pose-action { opacity: 0; }
-}
 @media (max-width: 720px) {
   .raid-boss-showcase {
     grid-template-columns: minmax(0, 1fr);
@@ -23088,6 +23136,15 @@ button.raid-roster-card.is-selected {
 .raid-boss-page .raid-hub-panel {
   font-size: 14px;
 }
+.raid-hub .raid-card-top > b {
+  font-size: 20px;
+}
+.raid-hub .raid-card-peril {
+  font-size: 14px;
+}
+.raid-boss-page .raid-showcase-name h2 {
+  font-size: clamp(26px, 3.2vw, 38px);
+}
 .raid-boss-page .raid-showcase-identity > .eyebrow {
   font-size: 12px;
 }
@@ -23110,7 +23167,10 @@ button.raid-roster-card.is-selected {
   line-height: 1.3;
 }
 .raid-boss-page .raid-roster-name {
-  font-size: 13px;
+  font-size: 15px;
+}
+.raid-boss-page .raid-roster-meta {
+  font-size: 14px;
 }
 .raid-boss-page .raid-hub-panel li small,
 .raid-boss-page .raid-hub-rules,
