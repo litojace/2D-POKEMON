@@ -23469,13 +23469,13 @@ body.battle-active.touch-mode.battle-raid #raid-drill p {
   line-height: 1.4;
 }
 
-/* Keep the fullscreen shortcut beside the note on short landscape screens. */
+/* Keep the optional Practice shortcut beside the note on short screens. */
 @media (orientation: landscape) and (max-height: 500px) {
   .settings-screen > .settings-quick-actions {
     float: right;
     margin: 0 0 8px 12px;
   }
-  .settings-screen > .prefs-note {
+  .settings-screen:has(> .settings-quick-actions) > .prefs-note {
     display: flex;
     align-items: center;
     min-height: 44px;

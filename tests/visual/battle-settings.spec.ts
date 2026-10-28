@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { box, openTown, openTownMenu, pushUntilBattle } from "./helpers";
 
-test("one corner gear opens Fullscreen and the separate Practice panel on a short phone", async ({
+test("one corner gear opens Settings and the separate Practice panel on a short phone", async ({
   browser,
 }) => {
   const context = await browser.newContext({
@@ -24,18 +24,8 @@ test("one corner gear opens Fullscreen and the separate Practice panel on a shor
     expect(gear.y).toBeLessThanOrEqual(8);
     expect(gear.width).toBeGreaterThanOrEqual(44);
     await page.click("#battle-menu");
-    await expect(page.locator("#settings-fullscreen")).toBeVisible();
+    await expect(page.locator("#settings-fullscreen")).toHaveCount(0);
     await expect(page.locator("#exit-room")).toHaveCount(0);
-    await page.evaluate(() => {
-      (window as any).__fullscreenCalls = 0;
-      document.documentElement.requestFullscreen = async () => {
-        (window as any).__fullscreenCalls++;
-      };
-    });
-    await page.click("#settings-fullscreen");
-    expect(await page.evaluate(() => (window as any).__fullscreenCalls)).toBe(
-      1,
-    );
     await page.click("#settings-practice");
     await expect(page.locator(".practice-panel")).toBeVisible();
     await expect(page.locator("#practice-exit")).toBeVisible();
@@ -84,7 +74,7 @@ test("desktop uses one round corner gear with the clock directly below it", asyn
     ).toBeLessThanOrEqual(10);
     await expect(page.locator(".topbar")).toBeHidden();
     await page.click("#battle-menu");
-    await expect(page.locator("#settings-fullscreen")).toBeVisible();
+    await expect(page.locator("#settings-fullscreen")).toHaveCount(0);
     expect(errors).toEqual([]);
   } finally {
     await context.close();

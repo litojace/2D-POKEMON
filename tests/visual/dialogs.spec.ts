@@ -10,24 +10,35 @@ for (const s of SCREENS)
   test.describe(s.name, () => {
     test.use({ viewport: s.viewport, hasTouch: s.touch, isMobile: s.touch });
 
-    test("Settings fits the screen with every action reachable", async ({ page }, info) => {
+    test("Settings fits the screen with every action reachable", async ({
+      page,
+    }, info) => {
       const errors = await openTown(page);
       await page.evaluate(() => document.getElementById("settings")!.click());
       const dialog = page.locator("#dialog");
       await expect(dialog.locator(".settings-screen")).toBeVisible();
       const screen = { x: 0, y: 0, ...s.viewport };
       expect(inside(await box(page, "#dialog"), screen)).toBe(true);
-      for (const id of ["#open-controls", "#settings-report", "#settings-credits"]) {
+      for (const id of [
+        "#open-controls",
+        "#settings-report",
+        "#settings-credits",
+      ]) {
         await expect(dialog.locator(id)).toBeVisible();
         expect(inside(await box(page, id), screen)).toBe(true);
       }
+      await expect(
+        dialog.locator("#settings-fullscreen, .settings-quick-actions"),
+      ).toHaveCount(0);
       // Everything shows at once: the dialog's content doesn't need scrolling.
       const scroll = await dialog
         .locator(".dialog-content")
         .evaluate((el) => el.scrollHeight - el.clientHeight);
       expect(scroll).toBeLessThanOrEqual(1);
       // Sliders say their value.
-      await expect(dialog.locator('output[data-pref-for="music"]')).toHaveText(/^\d+%$/);
+      await expect(dialog.locator('output[data-pref-for="music"]')).toHaveText(
+        /^\d+%$/,
+      );
       await snap(page, info, `settings-${s.name}`);
       await dialog.locator("#settings-credits").click();
       await expect(dialog.locator(".credits-screen")).toBeVisible();

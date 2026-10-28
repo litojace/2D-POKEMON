@@ -2168,7 +2168,7 @@ function renderBattle() {
         versus +
         teamUpNote(me) +
         `<p class="arena-brief"><b>Arena · ${escape(arena.name)}</b>${escape(state.arcade ? ARCADE_EVENTS[state.arcade.id].tip : arena.tip)}</p>` +
-        '<p class="mobile-howto">Touch mode: left joystick to move; big button for basic attacks, the four curved buttons for skills, DASH and JUMP below. Aim follows your nearest opponent. Open fullscreen from Settings.</p>' +
+        '<p class="mobile-howto">Touch mode: left joystick to move; big button for basic attacks, the four curved buttons for skills, DASH and JUMP below. Aim follows your nearest opponent.</p>' +
         controlsList() +
         "<p>" +
         (isTeams()
@@ -2651,7 +2651,7 @@ function showSettings() {
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const touchHTML = touch.settingsHTML();
   dialog(
-    `<div class="settings-screen"><h2>Settings</h2><div class="settings-quick-actions"><button id="settings-fullscreen" class="secondary btn-secondary">${iconLabel("fullscreen", "Fullscreen")}</button>${state?.practice && touch.enabled ? `<button id="settings-practice" class="secondary btn-secondary">${iconLabel("target", "Practice")}</button>` : ""}</div><p class="prefs-note">Online matches keep running while this is open.</p><div class="prefs-grid${touchHTML ? " has-touch" : ""}"><section class="prefs-card" aria-labelledby="prefs-sound"><h3 id="prefs-sound">${menuIcon("sound")}Sound</h3>${prefSlider("music", "Music", audio.music, { min: 0, max: 1, step: 0.01 })}${prefSlider("effects", "Sound effects", audio.effects, { min: 0, max: 1, step: 0.01 })}</section><section class="prefs-card" aria-labelledby="prefs-motion"><h3 id="prefs-motion">${menuIcon("motion")}Motion</h3><p class="prefs-status"><b class="${reduced ? "is-on" : ""}">Reduced motion ${reduced ? "on" : "off"}</b><span>Follows your device's accessibility setting.</span></p></section>${touchHTML ? `<section class="prefs-card prefs-touch" aria-labelledby="prefs-touch">${touchHTML}</section>` : ""}</div><div class="settings-actions"><button id="open-controls" class="secondary btn-secondary">${iconLabel("keyboard", "Controls &amp; key bindings")}</button>${myId ? leaveButton() : watching ? `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>` : ""}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button><button id="settings-credits" class="quiet">${iconLabel("star", "Credits")}</button></div></div>`,
+    `<div class="settings-screen"><h2>Settings</h2>${state?.practice && touch.enabled ? `<div class="settings-quick-actions"><button id="settings-practice" class="secondary btn-secondary">${iconLabel("target", "Practice")}</button></div>` : ""}<p class="prefs-note">Online matches keep running while this is open.</p><div class="prefs-grid${touchHTML ? " has-touch" : ""}"><section class="prefs-card" aria-labelledby="prefs-sound"><h3 id="prefs-sound">${menuIcon("sound")}Sound</h3>${prefSlider("music", "Music", audio.music, { min: 0, max: 1, step: 0.01 })}${prefSlider("effects", "Sound effects", audio.effects, { min: 0, max: 1, step: 0.01 })}</section><section class="prefs-card" aria-labelledby="prefs-motion"><h3 id="prefs-motion">${menuIcon("motion")}Motion</h3><p class="prefs-status"><b class="${reduced ? "is-on" : ""}">Reduced motion ${reduced ? "on" : "off"}</b><span>Follows your device's accessibility setting.</span></p></section>${touchHTML ? `<section class="prefs-card prefs-touch" aria-labelledby="prefs-touch">${touchHTML}</section>` : ""}</div><div class="settings-actions"><button id="open-controls" class="secondary btn-secondary">${iconLabel("keyboard", "Controls &amp; key bindings")}</button>${myId ? leaveButton() : watching ? `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>` : ""}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button><button id="settings-credits" class="quiet">${iconLabel("star", "Credits")}</button></div></div>`,
   );
   for (const kind of ["music", "effects"] as const)
     $(kind).oninput = () => {
@@ -2666,7 +2666,6 @@ function showSettings() {
   document
     .getElementById("control-reset")
     ?.addEventListener("click", () => setTimeout(() => syncPrefOutputs(box)));
-  $("settings-fullscreen").onclick = () => $("mobile-fullscreen").click();
   const practice = document.getElementById("settings-practice");
   if (practice) practice.onclick = () => {
     $<HTMLDialogElement>("dialog").close();
