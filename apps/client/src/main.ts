@@ -1429,9 +1429,12 @@ function requestRaidHud(event: string, data?: unknown): Promise<unknown> {
   return request(event, data).then(async (reply) => {
     if (endsHubPractice && reply.ok && raidPracticeReturn) {
       const destination = raidPracticeReturn;
-      raidPracticeReturn = undefined;
-      if (destination.leaveRoom) await leave();
-      void accountsUI.showRaidHub(destination.boss, destination.tab);
+      if (destination.leaveRoom) {
+        await leave();
+      } else {
+        raidPracticeReturn = undefined;
+        await accountsUI.showRaidHub(destination.boss, destination.tab);
+      }
     }
     return reply;
   });
@@ -1728,6 +1731,7 @@ async function leave() {
     await stopWatching();
     return;
   }
+  const returnToRaidHub = raidPracticeReturn;
   const reply = await request("leave", {
     token: sessionStorage.getItem("arena-token"),
   });
@@ -1748,6 +1752,8 @@ async function leave() {
   renderMenu();
   $<HTMLDialogElement>("dialog").close();
   menuOpen = false;
+  if (returnToRaidHub)
+    await accountsUI.showRaidHub(returnToRaidHub.boss, returnToRaidHub.tab);
 }
 function renderPvpSpectator() {
   const banner = $("spectate");
