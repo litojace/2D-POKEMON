@@ -1,8 +1,6 @@
 import { RaidArena } from "./raid.js";
 import {
-  useObstacles,
   normalize,
-  move,
   CHARACTERS,
   RULES,
   blankInput,
@@ -31,7 +29,6 @@ export class StormTwinsArena extends RaidArena {
     return { x: 960, y: 380 };
   }
   override walls() {
-    useObstacles([]);
     return [];
   }
   override hitRadius(p: Fighter) {
