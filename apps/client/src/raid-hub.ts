@@ -16,6 +16,7 @@ import {
 } from "../../../packages/shared/src/raid";
 import { raidCrest } from "./raid-crests";
 import { fighterAvatar } from "./fighter-art";
+import { raidGuideSprite } from "./raid-guide-sprites";
 import { raidGoal, raidGoals } from "./raid-presentation";
 import { iconLabel, menuIcon } from "./menu-icons";
 

@@ -269,6 +269,49 @@ for (const size of [
         w.__push();
       });
       await pushUntilBattle(page);
+      if (!mobile) {
+        await page.evaluate(() => ((window as any).__events = []));
+        for (const [code, axis, value] of [
+          ["KeyD", "dx", 1],
+          ["ArrowUp", "dy", -1],
+        ] as const) {
+          await page.keyboard.down(code);
+          await expect
+            .poll(() =>
+              page.evaluate(
+                (axis) =>
+                  (window as any).__events.some(
+                    (e: any) => e.event === "input" && e.data[axis] !== 0,
+                  ),
+                axis,
+              ),
+            )
+            .toBe(true);
+          expect(
+            await page.evaluate(
+              ({ axis, value }) =>
+                (window as any).__events.some(
+                  (e: any) => e.event === "input" && e.data[axis] === value,
+                ),
+              { axis, value },
+            ),
+          ).toBe(true);
+          await page.keyboard.up(code);
+          await expect
+            .poll(() =>
+              page.evaluate(
+                (axis) => {
+                  const inputs = (window as any).__events.filter(
+                    (e: any) => e.event === "input",
+                  );
+                  return inputs.at(-1)?.data[axis] ?? null;
+                },
+                axis,
+              ),
+            )
+            .toBe(0);
+        }
+      }
       if (mobile)
         await expect
           .poll(() =>

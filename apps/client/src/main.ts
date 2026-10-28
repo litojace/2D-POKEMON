@@ -412,7 +412,7 @@ function releaseAction(action: Action | PadAction) {
 }
 const matchKeys = () =>
   state?.phase === "playing" && !$<HTMLDialogElement>("dialog").open;
-window.addEventListener("keydown", (e) => {
+document.addEventListener("keydown", (e) => {
   if (controlsCapturing() || typingIn(e.target)) return;
   const rune = dreamRuneKey(state, myId, e.code);
   if (rune && matchKeys()) {
@@ -434,7 +434,7 @@ window.addEventListener("keydown", (e) => {
     !$<HTMLDialogElement>("dialog").open
   )
     pressAction(action);
-});
+}, true);
 // Raid team signals on Z / X / C (when those keys aren't bound to anything).
 const PING_KEYS: Record<string, "stack" | "revive" | "bait"> = {
   KeyZ: "stack",
@@ -520,11 +520,11 @@ function riteMarkup(me: Fighter, _seconds: number) {
     actions: "",
   };
 }
-window.addEventListener("keyup", (e) => {
+document.addEventListener("keyup", (e) => {
   if (!held.delete(e.code)) return;
   const action = actionFor(controlPrefs().bindings, e.code);
   if (action) releaseAction(action);
-});
+}, true);
 // mousedown/mouseup fire for every button (pointer events skip chorded buttons).
 $("game").addEventListener("mousedown", (e) => {
   audio.unlock();
