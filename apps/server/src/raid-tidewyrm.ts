@@ -3,7 +3,6 @@ import {
   RULES,
   move,
   normalize,
-  useObstacles,
   type Ability,
   type Fighter,
   type Input,
@@ -84,7 +83,6 @@ export class TidewyrmArena extends RaidArena {
   }
   /** Islands are walkable ground, not walls. */
   override walls() {
-    useObstacles([]);
     return [];
   }
   /** Chapter 3 does not open its core by itself: strand it. */
@@ -401,7 +399,13 @@ export class TidewyrmArena extends RaidArena {
         this.struck.add(p.id);
         this.damage(p, T.wave.damage, boss.id, this.splash());
         if (!r.drill)
-          move(p, wave.axis === "x" ? wave.dir * 60 : 0, wave.axis === "y" ? wave.dir * 60 : 0);
+          move(
+            p,
+            wave.axis === "x" ? wave.dir * 60 : 0,
+            wave.axis === "y" ? wave.dir * 60 : 0,
+            RULES.radius,
+            this.walls(),
+          );
       }
       this.hitBy = undefined;
       this.waveHits.set(wave.id, hit);
@@ -521,7 +525,13 @@ export class TidewyrmArena extends RaidArena {
       const dist = Math.hypot(u.x - p.x, u.y - p.y);
       if (dist > 4) {
         const d = normalize(u.x - p.x, u.y - p.y);
-        move(p, d.x * Math.min(dist, pull * dt), d.y * Math.min(dist, pull * dt));
+        move(
+          p,
+          d.x * Math.min(dist, pull * dt),
+          d.y * Math.min(dist, pull * dt),
+          RULES.radius,
+          this.walls(),
+        );
       }
       if (dist < u.radius + RULES.radius && !this.undertowHit.has(p.id)) {
         this.undertowHit.add(p.id);
@@ -633,7 +643,8 @@ export class TidewyrmArena extends RaidArena {
       if (!p || p.hp <= 0 || p.dashUntil > this.time) continue;
       const dx = p.x - at.x,
         dy = p.y - at.y;
-      if (dx || dy) move(p, dx * 0.15, dy * 0.15);
+      if (dx || dy)
+        move(p, dx * 0.15, dy * 0.15, RULES.radius, this.walls());
     }
   }
 
