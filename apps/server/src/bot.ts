@@ -20,6 +20,7 @@ import {
   type StatusKind,
   type Fighter,
   type Input,
+  type Rect,
 } from "../../../packages/shared/src/index.js";
 import type { Arena } from "./simulation.js";
 /**
@@ -142,14 +143,28 @@ export function waypoint(
   clear: (a: Point, b: Point) => boolean,
   from: Point,
   goal: Point,
+  obstacles: readonly Rect[] = OBSTACLES,
 ): Point | null {
   if (clear(from, goal)) return null;
+  // Use the active room's wall corners, not the Classic arena's everywhere.
+  const corners =
+    obstacles === OBSTACLES
+      ? CORNERS
+      : obstacles.flatMap((o) => {
+          const m = RULES.radius + 14;
+          return [
+            { x: o.x - m, y: o.y - m },
+            { x: o.x + o.w + m, y: o.y - m },
+            { x: o.x - m, y: o.y + o.h + m },
+            { x: o.x + o.w + m, y: o.y + o.h + m },
+          ];
+        });
   let best: Point | null = null,
     bestCost = Infinity,
     fallback: Point | null = null,
     fallbackCost = Infinity;
-  for (const c of CORNERS) {
-    if (blocked(c.x, c.y, RULES.radius) || !clear(from, c)) continue;
+  for (const c of corners) {
+    if (blocked(c.x, c.y, RULES.radius, obstacles) || !clear(from, c)) continue;
     const toGoal = Math.hypot(goal.x - c.x, goal.y - c.y),
       cost = Math.hypot(c.x - from.x, c.y - from.y) + toGoal;
     if (clear(c, goal) && cost < bestCost) {
@@ -340,7 +355,7 @@ export class BotBrain {
         this.random() < this.profile.skillUse + 0.2
       ) {
         const goal =
-          waypoint((a, b) => arena.lineClear(a, b), me, orb.o) ?? orb.o;
+          waypoint((a, b) => arena.lineClear(a, b), me, orb.o, arena.walls()) ?? orb.o;
         const gd = Math.hypot(goal.x - me.x, goal.y - me.y) || 1;
         this.plan = { dx: (goal.x - me.x) / gd, dy: (goal.y - me.y) / gd };
       }
@@ -461,7 +476,8 @@ export class BotBrain {
     const preferred = melee
       ? 70
       : clamp(basic.range * 0.5, 240, 400) + (hpRatio < 0.35 ? 90 : 0);
-    const via = waypoint((a, b) => arena.lineClear(a, b), me, target);
+    const obstacles = arena.walls();
+    const via = waypoint((a, b) => arena.lineClear(a, b), me, target, obstacles);
     let best = { dx: 0, dy: 0 },
       bestScore = -Infinity;
     for (let i = 0; i < 12; i++) {
@@ -471,8 +487,8 @@ export class BotBrain {
       const x = me.x + dx * 70,
         y = me.y + dy * 70;
       if (
-        blocked(x, y, RULES.radius) ||
-        blocked(me.x + dx * 30, me.y + dy * 30, RULES.radius)
+        blocked(x, y, RULES.radius, obstacles) ||
+        blocked(me.x + dx * 30, me.y + dy * 30, RULES.radius, obstacles)
       )
         continue;
       const d = Math.hypot(target.x - x, target.y - y);
