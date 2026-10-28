@@ -15,7 +15,7 @@ import {
   type RaidProgress,
 } from "../../../packages/shared/src/raid";
 import { raidCrest } from "./raid-crests";
-import { raidGuideSprite } from "./raid-guide-sprites";
+import { fighterAvatar } from "./fighter-art";
 import { raidGoal, raidGoals } from "./raid-presentation";
 import { iconLabel, menuIcon } from "./menu-icons";
 
@@ -92,7 +92,7 @@ function overview(id: RaidBossId) {
   const perks = Object.entries(raidPerksOf(id))
     .map(
       ([champ, perk]) =>
-        `<li><b>${CHARACTERS[champ as CharacterId].name} · ${perk!.skill}</b><small>${perk!.text}</small></li>`,
+        `<li><span class="raid-hub-perk-art" aria-hidden="true">${fighterAvatar(champ as CharacterId, `raid-perk-${id}-${champ}`)}</span><span class="raid-hub-perk-copy"><b>${CHARACTERS[champ as CharacterId].name} · ${perk!.skill}</b><small>${perk!.text}</small></span></li>`,
     )
     .join("");
   return `<p>${b.blurb}</p><h4>Three chapters</h4><ol class="raid-hub-chapters">${raidChapters(id).map((c) => `<li><b>${c.name}</b><small>${c.objective}</small></li>`).join("")}</ol><h4>Champion tricks</h4><ul class="raid-hub-perks">${perks}</ul><p class="raid-hub-rules">Solo: one self-revive on Peril 1–2, none on Peril 3. Teams revive each other. Raids never change your PvP rating.</p>`;
@@ -100,14 +100,19 @@ function overview(id: RaidBossId) {
 
 function attacks(id: RaidBossId) {
   if (!RAID_BOSSES[id].playable) return `<p>Attack details arrive with the boss.</p>`;
-  const attackArt = (attack: RaidAttack, index: number) => {
-    // These atlas poses match the boss's cast frames in battle. Alternate their
-    // order by attack so every row has its own animated action thumbnail.
-    const first = index % 2 ? 3 : 2,
-      second = first === 2 ? 3 : 2;
-    return `<span class="raid-attack-picture" data-attack="${attack}" aria-hidden="true"><svg viewBox="-65 -65 130 115" focusable="false"><g class="raid-attack-pose raid-attack-pose-a">${raidGuideSprite(id, false, false, first)}</g><g class="raid-attack-pose raid-attack-pose-b">${raidGuideSprite(id, false, false, second)}</g></svg></span>`;
+  const skillIcons: Record<RaidAttack, Parameters<typeof menuIcon>[0]> = {
+    charge: "motion", slam: "battle", debris: "sparkle", volley: "swipe", eruption: "target", share: "target",
+    dive: "swipe", wave: "swipe", bubbles: "sparkle", hightide: "swipe", undertow: "motion", prison: "target",
+    "prism-lance": "motion", "fan-display": "swipe", glare: "search",
+    refraction: "sparkle", "halo-crush": "target", "light-relay": "sparkle", "dive-bomb": "motion",
+    "ember-rain": "sparkle", "wing-gust": "swipe", "flame-ring": "target", "scorched-earth": "sparkle",
+    "heat-mark": "target", "brazier-lighting": "sparkle", "link-beam": "motion", "chain-lightning": "motion",
+    "static-field": "target", "twin-rush": "motion", polarity: "fullscreen", thunderclap: "target",
+    lunge: "motion", hands: "battle", snuff: "target", curse: "sparkle", split: "fullscreen", pulse: "motion",
+    lullaby: "sound", "tail-splash": "swipe", "dream-bubbles": "sparkle", "falling-stars": "sparkle",
+    "whale-song": "sound", "dream-sequence": "sparkle", nightmare: "search",
   };
-  return `<ul class="raid-hub-attacks">${raidAttacksOf(id).map((a, i) => `<li>${attackArt(a, i)}<div><b>${RAID_ATTACKS[a].name}</b><small>${RAID_ATTACKS[a].practice}</small><button type="button" class="secondary" data-hub-practice="${a}">${iconLabel("target", "Practise attack")}</button></div></li>`).join("")}</ul><p class="raid-hub-rules">Choose an attack to start a safe solo practice. Hits and dodges are counted; no health is lost.</p>`;
+  return `<ul class="raid-hub-attacks">${raidAttacksOf(id).map((a) => `<li><div class="raid-attack-title"><span class="raid-attack-skill-icon" aria-hidden="true">${menuIcon(skillIcons[a])}</span><b>${RAID_ATTACKS[a].name}</b></div><small>${RAID_ATTACKS[a].practice}</small><button type="button" class="secondary" data-hub-practice="${a}">${iconLabel("target", "Practise attack")}</button></li>`).join("")}</ul><p class="raid-hub-rules">Choose an attack to start a safe solo practice. Hits and dodges are counted; no health is lost.</p>`;
 }
 
 function rewards(id: RaidBossId, p: RaidProgress | null) {

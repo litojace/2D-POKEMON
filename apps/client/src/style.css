@@ -22413,35 +22413,34 @@ body.battle-active.touch-mode .battle-dock .practice-settings > summary {
 /* One shared boss layout: name on the HP track, cue and Peril below on the right. */
 .battle-raid #raid-hud {
   display: grid;
-  grid-template-areas: "health" "description" "meta";
-  grid-template-columns: minmax(0, 1fr);
-  gap: 2px;
+  grid-template-areas: "health health health" "name cue peril" "timer timer timer";
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) max-content;
+  column-gap: 8px;
+  row-gap: 3px;
 }
 .battle-raid #raid-hud .raid-boss-heading,
 .battle-raid #raid-hud .raid-status-row {
   display: contents;
 }
 .battle-raid #raid-hud .raid-boss-heading > b {
-  position: absolute;
-  z-index: 2;
-  top: 6px;
-  left: 10px;
-  max-width: 70%;
-  padding-inline: 4px;
-  border-radius: 3px;
+  grid-area: name;
+  position: static;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0;
   color: #fff7dc;
-  background: #08142899;
-  font-size: 12px;
-  line-height: 18px;
+  background: none;
+  font-size: 13px;
+  line-height: 16px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-shadow: 0 1px 2px #020612;
+  text-shadow: none;
 }
 .battle-raid #raid-hud .raid-boss-heading > span {
-  grid-area: meta;
-  font-size: 10px;
-  line-height: 12px;
+  grid-area: peril;
+  font-size: 11px;
+  line-height: 16px;
   text-align: right;
 }
 .battle-raid #raid-hud .raid-boss-health {
@@ -22457,18 +22456,21 @@ body.battle-active.touch-mode .battle-dock .practice-settings > summary {
   margin: 0;
 }
 .battle-raid #raid-hud .raid-callout {
-  grid-area: description;
+  grid-area: cue;
   display: block;
-  height: 14px;
-  min-height: 14px;
+  min-width: 0;
+  height: auto;
+  min-height: 16px;
   margin: 0;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  text-align: right;
-  font-size: 11px;
-  line-height: 14px;
+  text-align: center;
+  color: #ffdc72;
+  font-size: 12px;
+  line-height: 16px;
 }
+.battle-raid #raid-hud .raid-elapsed { grid-area: timer; }
 .battle-raid #raid-hud .raid-twin-health {
   grid-area: health;
   margin: 0;
@@ -22581,19 +22583,17 @@ body.battle-active:not(.touch-mode).battle-raid .raid-party-bars small {
     height: 14px;
   }
   .touch-mode.battle-raid #raid-hud .raid-boss-heading > b {
-    top: 4px;
-    font-size: 10px;
+    font-size: 11px;
     line-height: 14px;
   }
   .touch-mode.battle-raid #raid-hud .raid-boss-heading > span {
-    font-size: 8px;
-    line-height: 9px;
+    font-size: 10px;
+    line-height: 14px;
   }
   .touch-mode.battle-raid #raid-hud .raid-callout {
-    height: 10px;
-    min-height: 10px;
-    font-size: 9px;
-    line-height: 10px;
+    min-height: 14px;
+    font-size: 10px;
+    line-height: 14px;
   }
   .touch-mode.battle-raid #raid-hud .raid-elapsed {
     position: fixed;
@@ -22651,18 +22651,16 @@ body.battle-active:not(.touch-mode).battle-raid .raid-party-bars small {
     height: 12px;
   }
   .touch-mode.battle-raid #raid-hud .raid-boss-heading > b {
-    top: 3px;
-    font-size: 9px;
+    font-size: 10px;
     line-height: 12px;
   }
   .touch-mode.battle-raid #raid-hud .raid-callout {
-    height: 9px;
-    min-height: 9px;
-    font-size: 8px;
-    line-height: 9px;
+    min-height: 12px;
+    font-size: 9px;
+    line-height: 12px;
   }
   .touch-mode.battle-raid #raid-hud .raid-boss-heading > span {
-    line-height: 8px;
+    line-height: 12px;
   }
   body.battle-active.touch-mode.battle-raid :is(#raid-prism-controls, #raid-storm-targets):not([hidden]) {
     right: calc(var(--safe-right) + 52px);
@@ -22680,22 +22678,100 @@ body.battle-active:not(.touch-mode).battle-raid :is(#raid-prism-controls, #raid-
   transform: none;
 }
 
-/* Practice starts from illustrated boss pages, not the ready drawer. */
-.raid-hub-attacks > li {display:grid;grid-template-columns:80px minmax(0,1fr);gap:14px;align-items:center;text-align:left;}
-.raid-attack-picture {display:block;position:relative;width:80px;height:80px;overflow:hidden;border:1px solid #8ea7c855;border-radius:14px;background:radial-gradient(ellipse at 50% 65%,#39516c 0,#172941 65%,#101b30 100%);}
-.raid-attack-picture > svg {display:block;width:100%;height:100%;overflow:visible;}
-.raid-attack-pose {opacity:0;transform-box:fill-box;transform-origin:center;animation:raid-attack-pose 1.4s ease-in-out infinite;}
-.raid-attack-pose-a {opacity:1;animation-name:raid-attack-pose-a;}
-.raid-attack-pose-b {animation-name:raid-attack-pose-b;}
-@keyframes raid-attack-pose-a {0%,42%,100% {opacity:1;transform:translateY(0) scale(.98);}50%,92% {opacity:0;transform:translateY(-2px) scale(1.04);}}
-@keyframes raid-attack-pose-b {0%,42%,100% {opacity:0;transform:translateY(2px) scale(.96);}50%,92% {opacity:1;transform:translateY(0) scale(1.02);}}
-@media (prefers-reduced-motion:reduce) {
-  .raid-attack-pose {animation:none;}
-  .raid-attack-pose-a {opacity:1;}
-  .raid-attack-pose-b {opacity:0;}
+/* Attack cards use a still skill symbol and keep the description and action aligned. */
+.raid-hub-attacks {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+  gap: 10px;
 }
-.raid-hub-attacks > li > div {min-width:0;display:grid;gap:8px;}
-.raid-hub-attacks button {justify-self:start;border-radius:10px;white-space:normal;text-align:center;min-height:44px;}
+.raid-hub-attacks > li {
+  display: flex;
+  min-width: 0;
+  min-height: 174px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #8ea7c82b;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #172743, #111e35);
+  text-align: left;
+}
+.raid-attack-title {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 10px;
+}
+.raid-attack-title > b {
+  color: #edf3ff;
+  font-size: 13px;
+  line-height: 1.25;
+}
+.raid-attack-skill-icon {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--boss), transparent 55%);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--boss), #101a2d 84%);
+  color: color-mix(in srgb, var(--boss), white 36%);
+}
+.raid-attack-skill-icon .menu-option-icon {
+  width: 22px;
+  height: 22px;
+}
+.raid-hub-attacks > li > small {
+  flex: 1;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.raid-hub-attacks button {
+  display: flex;
+  width: 100%;
+  min-height: 40px;
+  justify-content: center;
+  border-radius: 9px;
+  white-space: nowrap;
+}
+.raid-hub-perks {
+  gap: 8px;
+}
+.raid-hub-perks > li {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 76px;
+  padding: 9px 11px;
+  border: 1px solid #8ea7c82b;
+  border-radius: 11px;
+  background: #13213b;
+}
+.raid-hub-perk-art {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  overflow: hidden;
+  place-items: center;
+  border: 1px solid #8ea7c844;
+  border-radius: 12px;
+  background: radial-gradient(ellipse at 50% 70%, #39516c, #101b30 76%);
+}
+.raid-hub-perk-art > svg {
+  width: 100%;
+  height: 100%;
+}
+.raid-hub-perk-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+.raid-hub-perk-copy > b {
+  line-height: 1.3;
+}
 body.battle-active.battle-raid #raid-drill:not([hidden]) {position:fixed;inset:auto auto calc(var(--safe-bottom) + 8px) 50%;transform:translateX(-50%);width:min(420px,calc(100vw - 360px));max-height:50dvh;overflow:auto;padding:8px 12px;border-radius:12px;z-index:45;}
 #raid-drill .raid-drill-head {display:flex;flex-wrap:wrap;gap:3px 12px;font-size:11px;}
 #raid-drill .raid-drill-picker > summary {min-height:32px;cursor:pointer;font-size:11px;color:#ffdf81;}
