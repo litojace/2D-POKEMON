@@ -23297,3 +23297,57 @@ button.raid-roster-card.is-selected {
     font-size: 14px;
   }
 }
+
+/* Keep the name, status and Peril in distinct cells on the same baseline. */
+body.battle-active.battle-raid #raid-hud .raid-callout,
+body.battle-active:not(.touch-mode).battle-raid #raid-hud .raid-callout,
+body.battle-active:not(.touch-mode) #battle.desktop-hud-outside #raid-hud .raid-callout {
+  grid-area: cue;
+  position: static;
+  left: auto;
+  justify-self: stretch;
+  align-self: center;
+  width: auto;
+  min-width: 0;
+  text-align: right;
+}
+body.battle-active.battle-raid #raid-hud .raid-boss-heading > b,
+body.battle-active.battle-raid #raid-hud:has(.raid-twin-health) .raid-boss-heading > b {
+  display: block;
+  align-self: center;
+}
+body.battle-active:not(.touch-mode).battle-raid #raid-hud,
+body.battle-active:not(.touch-mode) #battle.desktop-hud-outside #raid-hud {
+  grid-template-areas: "health health health party" "name cue peril party";
+  align-items: center;
+}
+body.battle-active:not(.touch-mode).battle-raid #raid-hud:has(.raid-twin-health) {
+  grid-template-areas: "health health health party" "name cue peril party";
+}
+@media (orientation: landscape) {
+  body.battle-active.touch-mode.battle-raid #raid-hud {
+    grid-template-areas: "health health health" "name cue peril";
+    grid-template-columns: minmax(0, 24%) minmax(0, 1fr) max-content;
+    align-items: center;
+  }
+  body.battle-active.touch-mode.battle-raid #raid-hud .raid-elapsed {
+    grid-area: auto;
+  }
+}
+
+body.battle-active:not(.touch-mode).battle-raid #raid-hud .raid-party-bars,
+body.battle-active:not(.touch-mode) #battle.desktop-hud-outside #raid-hud .raid-party-bars {
+  grid-area: party;
+}
+body.battle-active:not(.touch-mode).battle-raid #battle #raid-hud .raid-callout {
+  grid-column: 2;
+  grid-row: 2;
+  position: static;
+  left: auto;
+  width: auto;
+  justify-self: stretch;
+  text-align: right;
+}
+body.battle-active:not(.touch-mode).battle-raid #battle #raid-hud .raid-party-bars {
+  grid-area: party;
+}

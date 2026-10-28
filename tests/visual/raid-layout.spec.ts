@@ -10,6 +10,7 @@ import {
 
 for (const size of [
   { width: 1440, height: 900 },
+  { width: 1280, height: 1024 },
   { width: 1024, height: 500 },
   { width: 844, height: 390 },
   { width: 844, height: 280 },
@@ -17,7 +18,7 @@ for (const size of [
   test(`raid choices are centred and the mobile court clears the HUD at ${size.width}x${size.height}`, async ({
     browser,
   }, info) => {
-    const mobile = size.width !== 1440;
+    const mobile = size.width < 1200;
     const context = await browser.newContext({
       viewport: size,
       isMobile: mobile,
@@ -90,6 +91,15 @@ for (const size of [
           }
           w.__push();
         }, boss);
+        if (!mobile) {
+          const name = await box(page, ".raid-boss-heading > b"),
+            cue = await box(page, ".raid-callout"),
+            meta = await box(page, ".raid-boss-heading > span");
+          expect(Math.abs(name.y - cue.y)).toBeLessThanOrEqual(1);
+          expect(Math.abs(meta.y - cue.y)).toBeLessThanOrEqual(1);
+          expect(name.x + name.width).toBeLessThanOrEqual(cue.x);
+          expect(cue.x + cue.width).toBeLessThanOrEqual(meta.x);
+        }
         if (mobile) {
           const compactHud = await box(page, "#raid-hud");
           expect(compactHud.height).toBeLessThanOrEqual(
@@ -140,18 +150,15 @@ for (const size of [
             ),
             name = await box(
               page,
-              boss === "storm-twins"
-                ? ".raid-twin-bar b"
-                : ".raid-boss-heading > b",
+              ".raid-boss-heading > b",
             ),
             cue = await box(page, ".raid-callout"),
             meta = await box(page, ".raid-boss-heading > span");
-          expect(name.y).toBeGreaterThanOrEqual(health.y - 1);
-          expect(name.y + name.height).toBeLessThanOrEqual(
-            health.y + health.height + 1,
-          );
-          expect(cue.y).toBeGreaterThanOrEqual(health.y + health.height);
-          expect(meta.y).toBeGreaterThanOrEqual(cue.y + cue.height);
+          expect(name.y).toBeGreaterThanOrEqual(health.y + health.height);
+          expect(Math.abs(name.y - cue.y)).toBeLessThanOrEqual(1);
+          expect(Math.abs(meta.y - cue.y)).toBeLessThanOrEqual(1);
+          expect(name.x + name.width).toBeLessThanOrEqual(cue.x);
+          expect(cue.x + cue.width).toBeLessThanOrEqual(meta.x);
           // All four arena corners remain visible, even for the three bosses
           // that previously used the tight fighter-follow camera.
           await expect

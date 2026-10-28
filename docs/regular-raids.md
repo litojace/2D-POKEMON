@@ -13,8 +13,9 @@ ordinary raid clear as Voltkit or Auralynx, retaining its tier, target, reward,
 progress and payout state. Six missions, five free changes and the all-six streak
 goal are unchanged. No earned progress or inventory is deleted.
 
-The boss HUD places the name inside the left of a thin HP/stagger strip. The
-short objective and Peril/phase metadata sit below, aligned to the right.
+On PC and mobile, the boss name sits below the HP strip on the left. The
+short objective and Peril/phase metadata share that same row, with the objective
+immediately left of Peril. Each has its own grid cell to avoid overlapping.
 Twins show two individual HP bars instead of a duplicate aggregate bar. Player
 names and HP stack in a small left column below the boss, including solo. Down,
 target and trap alerts stay attached to their player and do not resize the court.
