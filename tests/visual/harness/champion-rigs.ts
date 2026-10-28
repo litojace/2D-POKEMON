@@ -227,6 +227,8 @@ export function reviewChampions(canvas = false) {
           if (r.id === "duskveil" && (part === "legL" || part === "legR"))
             continue;
           if (r.id === "lumoth" && part === "tail") continue;
+          // Terradon intentionally hides its arms behind the shell from the rear.
+          if (r.id === "terradon" && dir === "up" && (part === "armL" || part === "armR")) continue;
           // Owl toes are line strokes: inspect the neck/tail rather than inventing a hip capsule.
           if (r.id === "mystowl" && (part === "legL" || part === "legR"))
             continue;
