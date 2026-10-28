@@ -123,7 +123,7 @@ type Hooks = {
   inviteFriend?: (id: string) => Promise<{ ok: boolean; error?: string }>;
   notify: (message: string) => void;
   onChange: () => void;
-  onSession: (token: string | null) => void;
+  onSession: (token: string | null, accountId?: string) => void;
   /** Same player, fresh token (background refresh): keep it for reconnects only. */
   onToken: (token: string) => void;
   beforeSignOut: () => Promise<void>;
@@ -146,6 +146,9 @@ export class AccountUI {
   session: Session | null = null;
   private confirmedGuestLogout = false;
   generation = 0;
+  private sessionLoad:
+    | { accountId: string | null; promise: Promise<void> }
+    | undefined;
   client =
     import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY
       ? createClient(
@@ -182,7 +185,24 @@ export class AccountUI {
     if (location.pathname === "/email-confirmed")
       hooks.notify("Email confirmed. You can now log in.");
   }
-  async setSession(session: Session | null, force = false) {
+  setSession(session: Session | null, force = false): Promise<void> {
+    // Sign-in returns a session and also raises SIGNED_IN. Share the pending
+    // profile load instead of reconnecting twice before the profile arrives.
+    const accountId = session?.user.id ?? null;
+    if (!force && this.sessionLoad?.accountId === accountId) {
+      this.session = session;
+      if (session) this.hooks.onToken(session.access_token);
+      return this.sessionLoad.promise;
+    }
+    const loading = { accountId, promise: this.loadSession(session, force) };
+    this.sessionLoad = loading;
+    const clear = () => {
+      if (this.sessionLoad === loading) this.sessionLoad = undefined;
+    };
+    void loading.promise.then(clear, clear);
+    return loading.promise;
+  }
+  private async loadSession(session: Session | null, force: boolean) {
     // Supabase re-announces the session on every background token refresh and
     // whenever the tab regains focus. For the same signed-in player nothing on
     // screen changes: keep the fresh token quietly instead of reloading the
@@ -213,7 +233,7 @@ export class AccountUI {
       this.raidLook = undefined;
       this.economy = undefined;
     }
-    this.hooks.onSession(session?.access_token ?? null);
+    this.hooks.onSession(session?.access_token ?? null, session?.user.id);
     if (session) {
       try {
         const account = accountSchema.parse(await this.api("/api/account"));

@@ -150,6 +150,26 @@ export function createArenaServer(
   });
   const rooms = new Map<string, Arena>(),
     sessions = new Map<string, Session>();
+  // One live game connection per account, including town/menu/spectator seats.
+  const activeAccounts = new Map<string, string>();
+  const ownsConnection = (socket: import("socket.io").Socket) =>
+    socket.connected &&
+    !socket.data.sessionReplaced &&
+    (!socket.data.account ||
+      activeAccounts.get(socket.data.account.id) === socket.id);
+  function claimAccount(socket: import("socket.io").Socket) {
+    const id = socket.data.account?.id as string | undefined;
+    if (!id) return;
+    const previousId = activeAccounts.get(id);
+    activeAccounts.set(id, socket.id);
+    const previous = previousId && io.sockets.sockets.get(previousId);
+    if (previous && previous !== socket) {
+      previous.data.sessionReplaced = true;
+      previous.emit("session-replaced");
+      // A server disconnect stops Socket.IO's automatic reconnect loop.
+      previous.disconnect(true);
+    }
+  }
   const grace =
     options.reconnectMs ??
     Number(process.env.RECONNECT_MS ?? RULES.reconnectMs);
@@ -177,16 +197,20 @@ export function createArenaServer(
       }
       next();
     } catch (error) {
-      next(
-        new Error(
-          error instanceof Error ? error.message : "Unable to verify login.",
-        ),
-      );
+      const failure = new Error(
+        error instanceof Error ? error.message : "Unable to verify login.",
+      ) as Error & { data: { code: string; status: number } };
+      failure.data = {
+        code: "ACCOUNT_ERROR",
+        status: error instanceof AccountError ? error.status : 503,
+      };
+      next(failure);
     }
   });
   async function refreshSocket(socket: import("socket.io").Socket) {
     try {
       const account = await authorize(accounts, socket.data.accessToken);
+      if (!ownsConnection(socket)) return;
       socket.data.account = account;
       socket.data.expiredChecks = 0;
       if (!account.guest)
@@ -237,6 +261,7 @@ export function createArenaServer(
       }
       socket.emit("account-changed");
     } catch (error) {
+      if (!ownsConnection(socket)) return;
       // An expired token is normal (Supabase tokens last an hour): ask the
       // client for its refreshed one instead of kicking it out mid-match.
       // Only give up if no fresh token arrives for a few checks.
@@ -793,11 +818,16 @@ export function createArenaServer(
     } else broadcast(arena);
   }
   io.on("connection", (socket) => {
+    claimAccount(socket);
     const signedIn = socket.data.account as Account | undefined;
     if (signedIn && !signedIn.guest)
       void presenceHistory.touch(signedIn.id, socket.data.accessToken);
     const account = () => socket.data.account as Account | undefined;
     const requirePlayer = (cb: unknown) => {
+      if (!ownsConnection(socket)) {
+        fail(cb, "This account is playing on another device.");
+        return false;
+      }
       if (!account()) {
         fail(cb, "Please log in to play.");
         return false;
@@ -949,7 +979,10 @@ export function createArenaServer(
         const list = friendsSchema.parse(
           await accounts.rpc(socket.data.accessToken, "arena_friends", {}),
         );
-        if (targetId === sender.id || !list.friends.some((f) => f.id === targetId))
+        if (
+          targetId === sender.id ||
+          !list.friends.some((f) => f.id === targetId)
+        )
           return fail(cb, "You can only invite someone on your friends list.");
         // Recheck after the database call: the room may have filled or started.
         if (!lobbyAvailable()) return fail(cb, "This room is no longer open.");
@@ -988,11 +1021,14 @@ export function createArenaServer(
           : undefined;
       try {
         const next = await authorize(accounts, token);
+        if (!ownsConnection(socket))
+          return fail(cb, "This connection is no longer active.");
         const current = account();
         if (current && current.id !== next.id)
           return fail(cb, "This connection belongs to a different account.");
         socket.data.accessToken = token;
         socket.data.account = next;
+        claimAccount(socket);
         if (!next.guest) void presenceHistory.touch(next.id, token as string);
         socket.data.expiredChecks = 0;
         reply(cb, { ok: true });
@@ -1110,6 +1146,7 @@ export function createArenaServer(
         }
         if (s.socketId) return fail(cb, "This player is already connected.");
       }
+      if (!requirePlayer(cb)) return;
       s.socketId = socket.id;
       s.expires = Infinity;
       p.connected = true;
@@ -1133,6 +1170,7 @@ export function createArenaServer(
       action(a, s.id);
     };
     socket.on("practice", async (data: unknown, cb: unknown) => {
+      if (!ownsConnection(socket)) return;
       stopWatching();
       if (!allowed(15)) return fail(cb, "Too many requests.");
       try {
@@ -1147,6 +1185,7 @@ export function createArenaServer(
           error instanceof Error ? error.message : "Sign in required.",
         );
       }
+      if (!requirePlayer(cb)) return;
       const result = identitySchema
         .extend({ character: characterSchema })
         .safeParse(data);
@@ -1511,6 +1550,7 @@ export function createArenaServer(
         const progress = progressSchema.parse(
           await accounts.rpc(socket.data.accessToken, "arena_my_progress", {}),
         );
+        if (!requirePlayer(cb) || getSession(socket.id) !== s) return;
         const played = progress.fighters[p.character]?.matches ?? 0;
         if (played < wanted.matches)
           return fail(cb, "That mastery tier isn't unlocked for this fighter.");
@@ -1678,7 +1718,12 @@ export function createArenaServer(
     });
     // ───────────── Town ─────────────
     // Starting or joining a room takes you out of town.
-    socket.use(([event]: unknown[], next: (error?: Error) => void) => {
+    socket.use((args: unknown[], next: (error?: Error) => void) => {
+      if (!ownsConnection(socket)) {
+        fail(args.at(-1), "This connection is no longer active.");
+        return;
+      }
+      const [event] = args;
       if (
         ["create", "join", "practice", "bot-match", "resume", "watch"].includes(
           String(event),
@@ -1757,6 +1802,8 @@ export function createArenaServer(
     });
     socket.on("disconnect", () => {
       const who = account();
+      if (who && activeAccounts.get(who.id) === socket.id)
+        activeAccounts.delete(who.id);
       const stillOnline =
         who &&
         [...io.sockets.sockets.values()].some(

@@ -202,6 +202,9 @@ const socket = io(import.meta.env.VITE_SERVER_URL || undefined, {
   auth: { accessToken: null },
 });
 let accountsUI: AccountUI;
+// Keep a displaced tab paused across reloads. Only an explicit button press
+// may reclaim the game; token refresh/focus must not kick the other device.
+let replacedAccount = sessionStorage.getItem("arena-session-replaced");
 let gameInstance: Phaser.Game | undefined;
 let battleResizeObserver: ResizeObserver | undefined;
 let state: Snapshot | undefined,
@@ -316,10 +319,16 @@ function toast(message: string) {
   setTimeout(() => $("toast").classList.remove("show"), 4500);
 }
 function request(event: string, data: unknown = {}): Promise<Reply> {
+  if (!socket.connected) return Promise.resolve({ ok: false });
+  const connectionId = socket.id;
   return new Promise((resolve) =>
     socket
       .timeout(5000)
       .emit(event, data, (error: Error | null, reply: Reply) => {
+        // Auth switches and genuine reconnects invalidate old requests. Do not
+        // report their cancelled acknowledgements as a server failure.
+        if (!socket.connected || socket.id !== connectionId)
+          return resolve({ ok: false });
         if (error) {
           toast("Server did not respond. Check your connection.");
           resolve({ ok: false });
@@ -1217,15 +1226,17 @@ async function startAdventure(mode: string) {
  */
 function renderGate() {
   syncTown();
-  const status: GateStatus = !accountsUI?.checked
-    ? "loading"
-    : accountsUI.account
-      ? "connecting"
-      : accountsUI.session
-        ? "error"
-        : !accountsUI.client
-          ? "unavailable"
-          : "signed-out";
+  const status: GateStatus = replacedAccount
+    ? "session-replaced"
+    : !accountsUI?.checked
+      ? "loading"
+      : accountsUI.account
+        ? "connecting"
+        : accountsUI.session
+          ? "error"
+          : !accountsUI.client
+            ? "unavailable"
+            : "signed-out";
   const invite = pendingInvite();
   const key = `gate:${status}:${invite ?? ""}`;
   if (screen === key) return;
@@ -1246,7 +1257,16 @@ function renderGate() {
   const login = document.getElementById("gate-login"),
     retry = document.getElementById("gate-retry");
   if (login) login.onclick = () => accountsUI.showAuth("login");
-  if (retry) retry.onclick = () => void accountsUI.refresh();
+  if (retry)
+    retry.onclick = () => {
+      if (replacedAccount) {
+        replacedAccount = null;
+        sessionStorage.removeItem("arena-session-replaced");
+        socket.connect();
+        screen = "";
+        renderMenu();
+      } else void accountsUI.refresh();
+    };
   // Signed out: the panel is right there. Returning players see Log in,
   // new ones Create account.
   if (status === "signed-out") {
@@ -2276,6 +2296,10 @@ function renderBattle() {
   }
 }
 socket.on("connect", () => {
+  if (replacedAccount) {
+    socket.disconnect();
+    return;
+  }
   connected = true;
   // Reconnected while watching: take the ringside seat again.
   if (watching && !myId)
@@ -2308,21 +2332,55 @@ socket.on("connect", () => {
       }
     });
 });
-socket.on("disconnect", () => {
+socket.on("disconnect", (reason: string) => {
   lobbySelection.reset();
   connected = false;
   if (!myId && !watching && !state) {
     screen = "";
     renderMenu();
   }
-  $("connection").textContent = "RECONNECTING…";
+  $("connection").textContent = replacedAccount
+    ? "SESSION PAUSED"
+    : "RECONNECTING…";
   $("connection").classList.remove("online");
   pending = [];
-  toast("Connection lost. Reconnecting to your session…");
+  if (reason !== "io client disconnect" && !replacedAccount)
+    toast("Connection lost. Reconnecting to your session…");
 });
-socket.on("connect_error", (error: Error) => {
-  toast(error.message);
-  $("connection").textContent = "LOGIN REQUIRED";
+socket.on("session-replaced", () => {
+  replacedAccount =
+    accountsUI.session?.user.id ?? accountsUI.account?.id ?? "paused";
+  sessionStorage.setItem("arena-session-replaced", replacedAccount);
+  // Stop inputs, stale snapshots, room reservations and automatic rejoining.
+  socket.disconnect();
+  sessionStorage.removeItem("arena-token");
+  roomInvites.clear();
+  lobbySelection.reset();
+  lockedRoomPick = savingRoomPick = "";
+  lockAttempt++;
+  state = undefined;
+  myId = watching = "";
+  local = undefined;
+  pending = [];
+  remoteFrames.clear();
+  touch.reset();
+  document
+    .querySelectorAll<HTMLDialogElement>("dialog[open]")
+    .forEach((panel) => panel.close());
+  screen = "";
+  renderMenu();
+});
+socket.on("connect_error", (error: Error & { data?: { code?: string; status?: number } }) => {
+  if (replacedAccount) return;
+  $("connection").classList.remove("online");
+  if (error.data?.code === "ACCOUNT_ERROR") {
+    toast(error.message);
+    $("connection").textContent = error.data.status === 401 ? "LOGIN REQUIRED" : "SIGN-IN UNAVAILABLE";
+  } else {
+    // Socket.IO retries temporary transport failures. During sign-in these
+    // are not evidence that the account login failed.
+    $("connection").textContent = "RECONNECTING…";
+  }
 });
 socket.on("account-changed", () => void accountsUI.refresh());
 // Coins, missions or Awakening changed after a match or raid.
@@ -2362,6 +2420,7 @@ socket.on("access-revoked", ({ error }: { error: string }) => {
   void accountsUI.refresh();
 });
 socket.on("state", (snapshot: WireSnapshot) => {
+  if (replacedAccount) return;
   const spectator = !myId && !!watching;
   // A stale room (we left it) can still send a last snapshot: ignore it.
   if (spectator && snapshot.code !== watching) return;
@@ -4447,12 +4506,17 @@ accountsUI = new AccountUI({
     roomInvites.clear();
     if (myId) await leave();
   },
-  onSession: (token) => {
+  onSession: (token, accountId) => {
     if (!token) roomInvites.clear();
+    if (!token || (accountId && accountId !== replacedAccount)) {
+      replacedAccount = null;
+      sessionStorage.removeItem("arena-session-replaced");
+    }
     const previous = (
       socket.auth as { accessToken?: string | null } | undefined
     )?.accessToken;
     socket.auth = { accessToken: token };
+    if (replacedAccount) return;
     if (previous !== token) socket.disconnect();
     socket.connect();
   },

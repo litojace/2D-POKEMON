@@ -86,23 +86,23 @@ it("delivers an authenticated invitation only to a friend, who can join the actu
     (await request(f.sender, "room-invite", { playerId: f.pal.account.id })).ok,
   ).toBe(true);
   await new Promise((r) => setTimeout(r, 15));
-  expect(received).toHaveLength(1);
-  expect(second).toEqual(received);
+  expect(received).toEqual([]); // Replaced tabs must not receive invitations.
+  expect(second).toHaveLength(1);
   expect(others).toEqual([]);
-  expect(received[0]).toMatchObject({
+  expect(second[0]).toMatchObject({
     fromId: f.host.account.id,
     name: f.host.account.displayName,
     code: f.room.code,
     mode: "ffa",
   });
-  expect(received[0].expiresAt - Date.now()).toBeGreaterThan(85000);
+  expect(second[0].expiresAt - Date.now()).toBeGreaterThan(85000);
   expect(
     (await request(f.sender, "room-invite", { playerId: f.pal.account.id }))
       .error,
   ).toMatch(/already sent/i);
-  const joined = await request(f.receiver, "join", {
+  const joined = await request(secondTab, "join", {
     name: "Pal",
-    code: received[0].code,
+    code: second[0].code,
   });
   expect(joined.ok).toBe(true);
   expect(server!.rooms.get(f.room.code!)!.players.map((p) => p.id)).toContain(

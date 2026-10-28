@@ -92,17 +92,123 @@ it("rejects anonymous gameplay and forged admin payloads", async () => {
     ).status,
   ).toBe(403);
 });
-it("rejects invalid credentials, suspension, and account reuse", async () => {
-  await expect(connect("invalid")).rejects.toThrow("expired");
+it("rejects invalid credentials/suspension and replaces the previous game connection", async () => {
+  await expect(connect("invalid")).rejects.toMatchObject({
+    message: expect.stringContaining("expired"),
+    data: { code: "ACCOUNT_ERROR", status: 401 },
+  });
   const banned = accounts.add();
   banned.account.suspended = true;
   await expect(connect(banned.token)).rejects.toThrow("suspended");
   const user = accounts.add(false);
-  const one = await connect(user.token),
-    two = await connect(user.token);
-  await emit(one, "create", { name: "One" });
-  expect((await emit(two, "create", { name: "Two" })).ok).toBe(false);
+  const one = await connect(user.token);
+  const room = await emit(one, "create", { name: "One" });
+  const replaced = new Promise<void>((resolve) =>
+    one.once("session-replaced", resolve),
+  );
+  const disconnected = new Promise<string>((resolve) =>
+    one.once("disconnect", resolve),
+  );
+  const two = await connect(user.token);
+  await replaced;
+  expect(await disconnected).toBe("io server disconnect");
+  expect(one.active).toBe(false); // Socket.IO must not automatically reclaim it.
+  expect((await emit(two, "resume", { token: room.token })).ok).toBe(true);
+  expect([...server.sessions.values()][0].socketId).toBe(two.id);
+  expect(server.io.sockets.sockets.size).toBe(1);
   expect(server.rooms.size).toBe(1);
+});
+it("replaces a town visitor even when the new device uses a different token for the account", async () => {
+  const user = accounts.add(false);
+  accounts.users.set("second-device-token", user.account);
+  const old = await connect(user.token);
+  expect((await emit(old, "town-join", { character: "voltkit" })).ok).toBe(
+    true,
+  );
+  expect(server.town.size).toBe(1);
+  const next = await connect("second-device-token");
+  await expect.poll(() => old.connected).toBe(false);
+  expect(server.town.size).toBe(0);
+  expect((await emit(next, "town-join", { character: "lumoth" })).ok).toBe(
+    true,
+  );
+  expect(server.town.size).toBe(1);
+  // A refreshed token on the winning socket must not disconnect it.
+  expect((await emit(next, "token", { token: user.token })).ok).toBe(true);
+  expect(next.connected).toBe(true);
+  expect(server.io.sockets.sockets.size).toBe(1);
+});
+it.each(["practice", "token"])(
+  "does not revive a replaced socket after a pending %s authorization",
+  async (event) => {
+    const user = accounts.add(false);
+    const old = await connect(user.token);
+    const authenticate = accounts.provider.authenticate;
+    let release!: () => void;
+    let entered!: () => void;
+    const waiting = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let hold = true;
+    accounts.provider.authenticate = async (token) => {
+      if (hold) {
+        hold = false;
+        entered();
+        await gate;
+      }
+      return authenticate(token);
+    };
+    old.emit(
+      event,
+      event === "practice"
+        ? { name: "Old", character: "voltkit" }
+        : { token: user.token },
+    );
+    await waiting;
+    const next = await connect(user.token);
+    await expect.poll(() => old.connected).toBe(false);
+    release();
+    // Drain the pending authorization before asking the winning socket to play.
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(server.rooms.size).toBe(0);
+    expect((await emit(next, "create", { name: "New" })).ok).toBe(true);
+    expect(server.io.sockets.sockets.size).toBe(1);
+    expect([...server.sessions.values()][0].socketId).toBe(next.id);
+  },
+);
+it("claims an account authenticated after an anonymous connection", async () => {
+  const user = accounts.add(false);
+  const old = await connect(user.token);
+  const next = await connect();
+  expect((await emit(next, "token", { token: user.token })).ok).toBe(true);
+  await expect.poll(() => old.connected).toBe(false);
+  expect((await emit(next, "create", { name: "New" })).ok).toBe(true);
+});
+it("neutralizes the old fighter immediately when another device takes over mid-match", async () => {
+  const user = accounts.add(false);
+  const old = await connect(user.token);
+  const room = await emit(old, "bot-match", {
+    name: "Player",
+    character: "voltkit",
+    difficulty: "easy",
+  });
+  expect(room.ok).toBe(true);
+  const arena = server.rooms.get(room.code!)!;
+  const fighter = arena.players.find((p) => p.id === room.id)!;
+  arena.phase = "playing";
+  fighter.lastInput.dx = 1;
+  fighter.lastInput.basic = true;
+  const next = await connect(user.token);
+  await expect.poll(() => old.connected).toBe(false);
+  expect(fighter.connected).toBe(false);
+  expect(fighter.lastInput.dx).toBe(0);
+  expect(fighter.lastInput.basic).toBe(false);
+  expect(arena.phase).toBe("paused");
+  expect((await emit(next, "resume", { token: room.token })).ok).toBe(true);
+  expect(arena.phase).toBe("playing");
 });
 it("suspended players cannot change or restart a practice session", async () => {
   const admin = accounts.add();
@@ -324,14 +430,12 @@ it("clears a detached reservation when the owner explicitly leaves after reconne
   expect(server.sessions.size).toBe(0);
   expect((await emit(next, "create", { name: "Admin" })).ok).toBe(true);
 });
-it("allows a new room after a lost disconnected reservation but protects active rooms", async () => {
+it("allows a new device to start a room after replacing the old connection", async () => {
   const owner = accounts.add(true),
     socket = await connect(owner.token);
   await emit(socket, "practice", { name: "Admin", character: "voltkit" });
   const second = await connect(owner.token);
-  expect((await emit(second, "create", { name: "Admin" })).ok).toBe(false);
-  socket.disconnect();
-  await new Promise((resolve) => setTimeout(resolve, 30));
+  await expect.poll(() => socket.connected).toBe(false);
   expect((await emit(second, "create", { name: "Admin" })).ok).toBe(true);
   expect(server.sessions.size).toBe(1);
   expect(server.rooms.size).toBe(1);
@@ -370,7 +474,7 @@ it("lists who is online for administrators only", async () => {
   expect((await online()).status).toBe(401);
   expect((await online(host.token)).status).toBe(403);
   await connect(admin.token);
-  await connect(admin.token); // second tab merges into one entry
+  await connect(admin.token); // second tab replaces the previous connection
   await connect(); // guest
   const hostSocket = await connect(host.token);
   const room = await emit(hostSocket, "create", { name: "Host" });
@@ -392,7 +496,7 @@ it("lists who is online for administrators only", async () => {
   const byId = Object.fromEntries(list.players.map((p) => [p.id, p]));
   expect(byId[admin.account.id]).toMatchObject({
     activity: "menu",
-    connections: 2,
+    connections: 1,
     isAdmin: true,
     room: null,
   });
