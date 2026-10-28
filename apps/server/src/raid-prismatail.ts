@@ -1,6 +1,5 @@
 import { RaidArena } from "./raid.js";
 import {
-  useObstacles,
   RULES,
   normalize,
   type Fighter,
@@ -54,7 +53,6 @@ export class PrismatailArena extends RaidArena {
     return false;
   }
   override walls() {
-    useObstacles([]);
     return [];
   }
   protected override pattern() {
