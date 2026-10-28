@@ -22808,67 +22808,56 @@ body.battle-active.battle-raid #raid-drill:not([hidden]) {position:fixed;inset:a
  #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {max-width:7ch;font-size:18px;}
 }
 
-/* Keep the centered raid cue out of the party column in letterboxed desktop HUDs. */
+/* Use the same non-overlapping party and cue columns in every desktop court layout. */
+body.battle-active:not(.touch-mode).battle-raid #raid-hud,
 body.battle-active:not(.touch-mode) #battle.desktop-hud-outside #raid-hud {
   grid-template-columns:
-    minmax(0, 1.4fr)
-    minmax(0, 1.1fr)
-    minmax(190px, 0.9fr)
-    max-content;
+    minmax(0, 1.35fr)
+    minmax(0, 1fr)
+    minmax(190px, 0.85fr);
   grid-template-areas:
-    "health health party ."
-    "name cue party peril"
-    "timer timer party .";
+    "health health party"
+    "name . party"
+    "cue peril party"
+    "timer timer party";
   column-gap: 10px;
   row-gap: 3px;
 }
-body.battle-active:not(.touch-mode)
-  #battle.desktop-hud-outside
-  #raid-hud
-  .raid-boss-heading {
-  display: contents;
-}
-body.battle-active:not(.touch-mode)
-  #battle.desktop-hud-outside
-  #raid-hud
-  .raid-boss-heading > b {
-  grid-area: name;
-}
-body.battle-active:not(.touch-mode)
-  #battle.desktop-hud-outside
-  #raid-hud
-  .raid-boss-heading > span {
-  grid-area: peril;
-  align-self: center;
-}
+body.battle-active:not(.touch-mode).battle-raid #raid-hud .raid-party-bars,
 body.battle-active:not(.touch-mode)
   #battle.desktop-hud-outside
   #raid-hud
   .raid-party-bars {
   position: static;
+  display: grid;
   grid-area: party;
-  align-self: stretch;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-row: auto;
+  align-self: center;
   width: 100%;
   margin: 0;
 }
-body.battle-active:not(.touch-mode)
-  #battle.desktop-hud-outside
-  #raid-hud
-  .raid-status-row {
-  display: contents;
-}
+body.battle-active:not(.touch-mode).battle-raid #raid-hud .raid-callout,
 body.battle-active:not(.touch-mode)
   #battle.desktop-hud-outside
   #raid-hud
   .raid-callout {
-  grid-area: cue;
   align-self: center;
 }
-body.battle-active:not(.touch-mode)
-  #battle.desktop-hud-outside
-  #raid-hud
-  .raid-elapsed {
-  grid-area: timer;
+
+/* In raid practice, park the picker beside the PC skill row, clear of the court. */
+@media (min-width: 760px) and (pointer: fine) {
+  body.battle-active:not(.touch-mode).battle-raid #battle #raid-drill:not([hidden]) {
+    right: auto;
+    left: 12px;
+    width: min(360px, 32vw);
+    transform: none;
+  }
+  body.battle-active:not(.touch-mode).battle-raid
+    #battle.desktop-hud-outside
+    #raid-drill:not([hidden]) {
+    bottom: calc(-1 * (var(--desktop-outside-skills-height) + 10px));
+  }
 }
 
 /* Raid boss roster showcase: a large animated boss and its kit above the roster. */
