@@ -113,6 +113,24 @@ describe("AI bot", () => {
       arena.tick();
     }
   });
+  it("routes around only the walls in the current arena", () => {
+    const wall = [{ x: 700, y: 360, w: 100, h: 180 }];
+    const from = { x: 600, y: 450 };
+    const goal = { x: 900, y: 450 };
+    // A path blocked by the new wall requires a corner of that wall.
+    const clear = (a: typeof from, b: typeof from) => {
+      const arena = new Arena("BOT-WALL");
+      arena.arenaId = "classic";
+      arena.walls = () => wall;
+      return arena.lineClear(a, b);
+    };
+    const via = waypoint(clear, from, goal, wall);
+    expect(via).not.toBeNull();
+    expect(clear(from, via!)).toBe(true);
+    expect(clear(via!, goal)).toBe(true);
+    // When the active arena is obstacle-free, the same route is direct.
+    expect(waypoint(() => true, from, goal, [])).toBeNull();
+  });
   it("walks around pillars instead of into them", () => {
     const o = OBSTACLES[4];
     const clear = (a: { x: number; y: number }, b: { x: number; y: number }) =>
