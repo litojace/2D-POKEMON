@@ -80,7 +80,7 @@ export class TownWorld {
       lastEmote: 0,
       jumpUntil: 0,
       lastJump: -Infinity,
-      profile: { ...profile, id: this.nextId++ },
+      profile: { ...profile, accountId, id: this.nextId++ },
       version: 1,
     };
     this.walkers.set(key, walker);

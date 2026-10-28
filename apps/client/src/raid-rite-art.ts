@@ -179,5 +179,5 @@ export function raidRiteBuffPicture(id: RaidRite) {
     buff = buffs[id];
   const stat = (value: string, unit: string, second = false) =>
     `<span class="raid-rite-buff-stat${second ? " raid-rite-buff-stat--second" : ""}"><span class="raid-rite-buff-value">${value}</span><span class="raid-rite-buff-unit">${unit}</span></span>`;
-  return `<span class="raid-rite-icon raid-rite-icon--buff${buff.second ? " raid-rite-icon--dual" : ""}" style="--rite-color:${color}" aria-hidden="true"><svg data-rite-picture="${id}" viewBox="0 0 160 116" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">${buff.art}</svg>${stat(buff.value, buff.unit)}${buff.second ? stat(buff.second.value, buff.second.unit, true) : ""}</span>`;
+  return `<span class="raid-rite-icon raid-rite-icon--buff${buff.second ? " raid-rite-icon--dual" : ""}" style="--rite-color:${color}" aria-hidden="true"><svg data-rite-picture="${id}" viewBox="0 0 128 96" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="64" cy="48" r="44" fill="currentColor" fill-opacity=".05" stroke-opacity=".15"/>${pictures[id].art}</svg><span class="raid-rite-stats">${stat(buff.value, buff.unit)}${buff.second ? stat(buff.second.value, buff.second.unit, true) : ""}</span></span>`;
 }

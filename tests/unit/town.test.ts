@@ -86,6 +86,7 @@ describe("town", () => {
     expect(ids).toContain(near.profile.id);
     expect(ids).not.toContain(far.profile.id);
     expect(first.profiles.map((p) => p.name).sort()).toEqual(["Me", "Near"]);
+    expect(first.profiles.find(p => p.id === near.profile.id)?.accountId).toBe("a1");
     expect(world.view("me")!.profiles).toEqual([]);
     world.updateProfile("near", { level: 12 });
     expect(world.view("me")!.profiles.map((p) => p.level)).toEqual([12]);

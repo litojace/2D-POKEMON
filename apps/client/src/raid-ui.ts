@@ -102,17 +102,6 @@ export function raidLookList(look: RaidLoadout | null | undefined) {
     .join(" ");
 }
 export { portraitAvatar, portraitCosmetics } from "./portraits";
-/** Host-only practice: pick one boss attack to repeat. */
-function practicePicker(host: boolean, boss: RaidBossId) {
-  return `<details class="raid-practice"><summary>Practice the boss's attacks</summary><p>The boss repeats one attack. Nobody gets hurt: hits and dodges are just counted.${host ? "" : " The host picks the attack."}</p><div class="raid-practice-options">${raidAttacksOf(
-    boss,
-  )
-    .map(
-      (id) =>
-        `<button type="button" class="secondary" data-raid-drill="${id}" ${host ? "" : "disabled"}><b>${RAID_ATTACKS[id].name}</b><small>${RAID_ATTACKS[id].practice}</small></button>`,
-    )
-    .join("")}</div></details>`;
-}
 export function raidLobby(
   state: Snapshot,
   myId: string,
@@ -134,7 +123,7 @@ export function raidLobby(
     <section class="raid-challenge" aria-label="Raid challenge"><div class="raid-section-heading"><h3>Choose your challenge</h3><span>${host ? "HOST CONTROLS" : "HOST SELECTS"}</span></div>${raidDifficulty(r.peril, !host)}<p class="raid-unlock-note">Clear a Peril to unlock the next difficulty.</p></section>
 
     <div class="raid-lobby-rules"><span><svg class="raid-rule-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v10m-5-5h10"/></svg><span>${party.length === 1 ? (r.peril >= 3 ? "Peril 3 solo: no self-revive" : "One solo self-revive") : "Stand near allies to revive"}</span></span><span><svg class="raid-rule-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 3 8 4v6c0 5-8 8-8 8s-8-3-8-8V7Z"/><path d="m8 12 3 3 5-6"/></svg><span>Separate from PvP rating</span></span></div>
-    ${practicePicker(host, r.boss)}
+
     <div class="raid-lobby-actions"><button class="primary" id="ready"><span class="ready-label">${buttonIcon(me.ready ? "cancel" : "battle")}${me.ready ? "Cancel ready" : "Ready for the raid"}</span><span aria-hidden="true">${me.ready ? "" : "→"}</span></button><div><button class="secondary raid-icon-button" id="raid-bestiary">${menuIcon("bestiary")}<span>Raid Hub & rewards</span></button><button class="quiet leave-button" id="leave">${iconLabel("leave", "Leave room")}</button></div></div>
   </div>`;
 }
@@ -830,10 +819,14 @@ function raidControls(
   drill.hidden = !r.drill;
   if (!r.drill) return;
   const host = state.players[0]?.id === me.id;
-  const key = `${r.drill}|${host}|${r.drillStats?.hits}|${r.drillStats?.dodges}`;
+  const stats = `Dodged ${r.drillStats?.dodges ?? 0} · Hit ${r.drillStats?.hits ?? 0}`;
+  const counter = drill.querySelector(".raid-drill-count");
+  if (counter) counter.textContent = stats;
+  const key = `${r.drill}|${host}`;
   if (drill.dataset.key === key) return;
   drill.dataset.key = key;
-  drill.innerHTML = `<div class="raid-drill-head"><b>Practice · ${RAID_ATTACKS[r.drill].name}</b><span>Dodged ${r.drillStats?.dodges ?? 0} · Hit ${r.drillStats?.hits ?? 0}</span></div><p>${escape(RAID_ATTACKS[r.drill].tip)}</p><div class="raid-drill-options">${raidAttacksOf(
+  const expanded = drill.querySelector<HTMLDetailsElement>("details")?.open ?? false;
+  drill.innerHTML = `<div class="raid-drill-head"><b>Practice · ${RAID_ATTACKS[r.drill].name}</b><span class="raid-drill-count">${stats}</span></div><details class="raid-drill-picker"><summary>Change attack / instructions</summary><p>${escape(RAID_ATTACKS[r.drill].tip)}</p><div class="raid-drill-options">${raidAttacksOf(
     r.boss,
   )
     .map(
@@ -842,7 +835,8 @@ function raidControls(
     )
     .join(
       "",
-    )}<button type="button" class="quiet leave-button" id="raid-drill-leave">${host ? iconLabel("leave", "Leave practice") : "Host ends practice"}</button></div>`;
+    )}<button type="button" class="quiet leave-button" id="raid-drill-leave">${host ? iconLabel("leave", "Leave practice") : "Host ends practice"}</button></div></details>`;
+  drill.querySelector<HTMLDetailsElement>("details")!.open = expanded;
   for (const b of Array.from(
     drill.querySelectorAll<HTMLButtonElement>("[data-raid-drill]"),
   ))

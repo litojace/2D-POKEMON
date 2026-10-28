@@ -802,6 +802,7 @@ export function townHop(ms: number) {
 /** Who someone is: sent once when they appear, not every update. */
 export interface TownProfile {
   id: number;
+  accountId?: string;
   name: string;
   title: string | null;
   titleColor: string | null;

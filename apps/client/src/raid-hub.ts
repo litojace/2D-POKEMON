@@ -35,7 +35,7 @@ const stars = (n: number) =>
 export type RaidHubTab = "overview" | "attacks" | "rewards" | "records";
 export const RAID_HUB_TABS: [RaidHubTab, string][] = [
   ["overview", "Overview"],
-  ["attacks", "Attacks"],
+  ["attacks", "Attacks & practice"],
   ["rewards", "Rewards"],
   ["records", "Records"],
 ];
@@ -78,7 +78,7 @@ export function raidHubMarkup(p: RaidProgress | null) {
   return `<div class="raid-hub">
 <header class="raid-hub-head"><div><div class="eyebrow">Boss raids · co-op · 1–4 players</div><h2>Raid Hub</h2></div><div class="raid-hub-totals"><span><b>${counts.earned}/${counts.total}</b>rewards</span><span><b>${p?.totalClears ?? p?.clears ?? 0}</b>clears</span></div></header>
 <section class="raid-boss-grid" aria-label="Bosses">${cards}</section>
-<section class="raid-hub-join"><label for="raid-join-code">Join a friend's raid</label><div class="join-row"><input id="raid-join-code" maxlength="6" placeholder="ABC123" autocomplete="off"><button type="button" class="secondary" id="raid-join">${iconLabel("enter", "Join")}</button></div></section>
+
 ${p ? "" : '<p class="raid-appearance-note">Log in to save clears and rewards. Peril 1 is always open.</p>'}
 </div>`;
 }
@@ -98,7 +98,7 @@ function overview(id: RaidBossId) {
 
 function attacks(id: RaidBossId) {
   if (!RAID_BOSSES[id].playable) return `<p>Attack details arrive with the boss.</p>`;
-  return `<ul class="raid-hub-attacks">${raidAttacksOf(id).map((a) => `<li><b>${RAID_ATTACKS[a].name}</b><small>${RAID_ATTACKS[a].tip}</small></li>`).join("")}</ul><p class="raid-hub-rules">Practice any attack from the raid lobby: the host opens <i>Practice the boss's attacks</i>.</p>`;
+  return `<ul class="raid-hub-attacks">${raidAttacksOf(id).map((a) => `<li><span class="raid-attack-picture">${raidCrest(id)}</span><div><b>${RAID_ATTACKS[a].name}</b><small>${RAID_ATTACKS[a].practice}</small><button type="button" class="secondary" data-hub-practice="${a}">${iconLabel("target", "Practise attack")}</button></div></li>`).join("")}</ul><p class="raid-hub-rules">Choose an attack to start a safe solo practice. Hits and dodges are counted; no health is lost.</p>`;
 }
 
 function rewards(id: RaidBossId, p: RaidProgress | null) {

@@ -1326,6 +1326,7 @@ function syncTown() {
       else if (spot.id === "leaderboard") $("leaderboard").click();
       else homeNavigation.open("play");
     },
+    onAddFriend: (playerId) => void accountsUI.friendRequest({ playerId }),
     onAction: (action) => {
       if (action === "play") homeNavigation.open("play");
       else if (action === "fighters") homeNavigation.open("fighters");
@@ -1352,12 +1353,20 @@ function syncTown() {
 async function showRaidBestiary() {
   await accountsUI.showRaidHub(state?.raid?.boss);
 }
-/** Create a raid room for a boss from the Raid Hub (optionally today's raid, or straight in solo). */
+/** Start a raid or safe attack practice from the Raid Hub. */
 async function startRaid(
   boss: RaidBossId,
-  options: { solo?: boolean },
+  options: { solo?: boolean; drill?: string },
 ) {
   if (!accountsUI.ensurePlayer()) return;
+  if (myId && options.drill && state?.raid?.boss === boss) {
+    const reply = await request("raid-drill", {kind: options.drill});
+    if (!reply.ok) return toast(reply.error ?? "The host starts practice from the lobby.");
+    $<HTMLDialogElement>("dialog").close();
+    settingsOpen = false;
+    menuOpen = false;
+    return;
+  }
   if (myId) return toast("Leave your current room first.");
   if (!connected) return toast("Waiting for the server connection.");
   if (watching) await stopWatching();
@@ -1377,7 +1386,10 @@ async function startRaid(
   identity(reply);
   if (!reply.ok) return;
   await request("select", selected);
-  if (options.solo) await request("ready");
+  if (options.drill) {
+    const drill = await request("raid-drill", {kind: options.drill});
+    if (!drill.ok) toast(drill.error ?? "Could not start practice.");
+  } else if (options.solo) await request("ready");
 }
 function wireRaidLobby() {
   wireRaidDifficulty();

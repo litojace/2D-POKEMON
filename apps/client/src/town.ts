@@ -45,6 +45,7 @@ export interface TownOptions {
   onPortal: (spot: TownSpot) => void;
   /** A button on the town's action bar. */
   onAction: (action: TownAction) => void;
+  onAddFriend?: (playerId: string) => void;
   /** Called after the town has closed (`failed`: the server refused the join). */
   onClose: (failed: boolean) => void;
 }
@@ -186,7 +187,7 @@ export function openTown(options: TownOptions) {
     ).join("")}
   </div>
 </nav>
-<div class="town-prompt" id="town-prompt" hidden></div>
+<div class="town-prompt" id="town-prompt" hidden></div><div class="town-nearby" id="town-nearby" hidden></div>
 <div class="town-emotes" role="group" aria-label="Emotes">${TOWN_EMOTES.map(
     (e) =>
       `<button type="button" data-emote="${e}" aria-label="${e}" title="${e}">${EMOTE_ICON[e]}</button>`,
@@ -214,6 +215,8 @@ export function openTown(options: TownOptions) {
   let sent = { x: 0, y: 0 },
     sentAt = 0;
   let nearPortal: TownSpot | undefined;
+  let nearbyKey = "";
+  let nearbyAt = 0;
 
   // --- Input -------------------------------------------------------------
   const stickInput = () => {
@@ -664,7 +667,12 @@ export function openTown(options: TownOptions) {
         if (body.title.style.resolution !== resolution) {
           body.title.setResolution(resolution);
           if (body.titleFx)
-            styleTitle(body.title, body.titleFx, this.time.now / 1000, options.reduced);
+            styleTitle(
+              body.title,
+              body.titleFx,
+              this.time.now / 1000,
+              options.reduced,
+            );
         }
       }
       const cam = this.cameras.main;
@@ -903,8 +911,8 @@ export function openTown(options: TownOptions) {
           if (err > 160) {
             body.x = body.tx;
             body.y = body.ty;
-          } else if (err > (body.moving ? 48 : 2)) {
-            const k = 1 - Math.exp(-dt / (body.moving ? 0.3 : 0.15));
+          } else if (err > (body.moving ? 100 : 2)) {
+            const k = 1 - Math.exp(-dt / (body.moving ? 0.8 : 0.15));
             body.x += ex * k;
             body.y += ey * k;
           }
@@ -916,9 +924,56 @@ export function openTown(options: TownOptions) {
         this.place(body, time);
       }
       if (mine) {
+        if (time - nearbyAt > 250) {
+          nearbyAt = time;
+          const people = [...bodies.values()]
+            .filter(
+              (b) =>
+                b !== mine &&
+                profiles.get(b.id)?.accountId &&
+                Math.hypot(b.x - mine.x, b.y - mine.y) < 240,
+            )
+            .sort(
+              (a, b) =>
+                Math.hypot(a.x - mine.x, a.y - mine.y) -
+                Math.hypot(b.x - mine.x, b.y - mine.y),
+            )
+            .slice(0, 3);
+          const key = people
+            .map((b) => b.id + ":" + profiles.get(b.id)?.name)
+            .join("|");
+          if (key !== nearbyKey) {
+            nearbyKey = key;
+            const panel = $("town-nearby");
+            panel.hidden = !people.length;
+            panel.innerHTML =
+              `<b>Nearby players</b>` +
+              people
+                .map(
+                  (b) =>
+                    `<button type="button" data-nearby="${b.id}">${menuIcon("friends")}<span>${esc(profiles.get(b.id)!.name)}</span><small>Add friend</small></button>`,
+                )
+                .join("");
+            panel.querySelectorAll<HTMLButtonElement>("button").forEach(
+              (button) =>
+                (button.onclick = () => {
+                  const id = profiles.get(
+                    Number(button.dataset.nearby),
+                  )?.accountId;
+                  if (id) {
+                    options.onAddFriend?.(id);
+                  }
+                }),
+            );
+          }
+        }
+        this.cameras.main.setLerp(
+          1 - Math.exp(-dt / 0.13),
+          1 - Math.exp(-dt / 0.13),
+        );
         if (this.following !== mine) {
           this.following = mine;
-          this.cameras.main.startFollow(mine.shadow, true, 0.12, 0.12);
+          this.cameras.main.startFollow(mine.shadow, false, 0.12, 0.12);
         }
         // The nearest place you can use.
         const near = TOWN_SPOTS.filter(
@@ -991,7 +1046,8 @@ export function openTown(options: TownOptions) {
       const floating = ["auralynx", "lumoth", "mystowl", "duskveil"].includes(
         body.rig?.character ?? body.worn?.character ?? "",
       );
-      const head = body.y - FEET * RIG_SCALE - 47 - (floating ? 9 * RIG_SCALE : 0);
+      const head =
+        body.y - FEET * RIG_SCALE - 47 - (floating ? 9 * RIG_SCALE : 0);
       const ui = Math.max(1, 1 / this.zoomNow);
       // Zoomed far out the town reads as a map: names and titles fade away,
       // and come back as you zoom in.
