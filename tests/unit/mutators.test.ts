@@ -132,8 +132,8 @@ describe("fun party rules", () => {
   it("double time makes fighters run faster, on server and in prediction alike", async () => {
     const shared = await import("@arena/shared");
     const run = (scale: number) => {
-      shared.useSpeedScale(scale);
       const a = new Arena("RUN");
+      const context = { obstacles: shared.OBSTACLES, speedScale: scale };
       a.add("one", "One", "voltkit");
       const p = a.players[0];
       Object.assign(p, { x: 300, y: 450, vx: 0, vy: 0 });
@@ -143,12 +143,12 @@ describe("fun party rules", () => {
           { ...shared.blankInput(), dx: 1, aimX: 1600, aimY: 450 },
           1 / 30,
           i / 30,
+          context,
         );
       return p.x - 300;
     };
     const normal = run(1),
       fast = run(MUTATOR_RULES.speed);
-    shared.useSpeedScale(1);
     expect(fast / normal).toBeGreaterThan(1.4);
     // Each arena applies its own rule every tick (rooms share the module).
     const travel = (rules: string[]) => {
