@@ -399,7 +399,7 @@ export class TownScenery {
     // would, it sits just above the sign instead.
     for (const [i, sp] of TOWN_SPOTS.entries()) {
       if (sp.boss) continue;
-      const lift = sp.id === "arena" ? 200 : sp.id === "raids" ? 230 : sp.id === "boss-rush" ? 120 : sp.id === "leaderboard" ? 330 : sp.id === "missions" ? 250 : 190;
+      const lift = sp.id === "arena" ? 200 : sp.id === "raids" ? 230 : sp.id === "leaderboard" ? 330 : sp.id === "missions" ? 250 : 190;
       let y = sp.y - lift;
       for (const r of this.signs)
         if (sp.x > r.left - 16 && sp.x < r.right + 16 && y + 26 > r.top - 6 && y - 26 < r.bottom + 6) y = r.top - 30;

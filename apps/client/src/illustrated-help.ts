@@ -88,7 +88,7 @@ export function townGuide(pad = false) {
   const places = [
     ["#ffd65b", "Arena Gate", "start or join a match"],
     ["#b59bff", "Raid Hall", "boss raids; each statue opens its boss"],
-    ["#ff7a4f", "Training Grounds", "AI bots, solo test and the Boss Rush tower"],
+    ["#ff7a4f", "Training Grounds", "AI bots and solo test mode"],
     ["#7fe7ff", "Market", "the Shop stalls and the Wardrobe mirror"],
     ["#9be07a", "Notice Board", "daily missions"],
     ["#ffe58f", "Champions’ Obelisk", "top players this month"],

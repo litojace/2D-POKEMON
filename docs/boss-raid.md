@@ -1,6 +1,10 @@
 # Boss Raid
 
-Choose **Boss Raid · Co-op · 1–4 players** and press **Open the Raid Hub**. The Hub shows this week's seven bosses (one featured each day), today's Raid of the Day, and a card for every boss. Open a boss to see its chapters, attacks, rewards and records, then **Create raid room** (share its code) or **Play solo now**. Grumblecrag, Tidewyrm, Gloomshade and Somnara are built; the other three are listed as coming soon (see [the roster design](raid-roster-design.md)). New bosses unlock after a first Grumblecrag clear.
+Open **Raids** from the town menu. The Hub offers all seven bosses, with ordinary
+solo and 1–4-player co-op raids. Open a boss for chapters, attacks, rewards and
+records, then **Create raid room** and invite friends, or **Play solo now**.
+New bosses unlock after a first Grumblecrag clear. Boss Rush and Raid of the Day
+have been retired; apply migration 028 after 027. Earned rewards remain owned.
 
 In a raid room Every human readies up, confirms the illustrated boss introduction, and chooses a starting rite. Solo needs no AI partner and gets one automatic self-revive on Peril 1–2 (none on Peril 3). Existing champion selection, custom controls, touch joystick, camera and Socket.IO reconnection remain in use.
 
@@ -24,7 +28,7 @@ Contextual combat prompts shorten after the first two uses of each attack. Downe
 
 Normal crowd control adds stagger rather than stun-locking the boss. The boss cannot be pushed around by ordinary knockback. Downed teammates can crawl; standing nearby revives them. Being hit interrupts the rescuer, but progress is retained. A solo run gets one self-revive on Peril 1–2; another down ends it. Solo Peril 3 has no self-revive: one down ends the run. A wiped co-op team loses.
 
-## Tidewyrm (Friday's boss)
+## Tidewyrm
 
 A sleepy sea serpent fought in the **Lagoon Court**: shallow water with four raised islands you can stand on (no walls). Its numbers live in `TIDEWYRM` and its attack order in `tidewyrmPattern` (`packages/shared/src/raid.ts`); the fight is `TidewyrmArena` in `apps/server/src/raid-tidewyrm.ts`, which reuses the raid core (chapters, rites, downs, stagger, practice, stand-ins).
 
@@ -38,7 +42,7 @@ A sleepy sea serpent fought in the **Lagoon Court**: shallow water with four rai
 - **Traits:** Murky (fainter ripples, strands last 1 s longer), Rip Current (stronger Undertow, slower waves), Spring Tide (longer High Tide, bigger islands). **Themed rite:** Sure Footing (no bubble roots, 15% faster in water). **Signal:** the third key is "Island here".
 - **Rewards** (migration 012): Tidebreaker (first clear), Seafoam colors (5 clears), Pearlscale skin (10), Riptide entrance (Peril 2), Leviathan's Bane title + Reef frame (Peril 3), Tidal aura (Peril 3, no downs), Splashdown victory (feat: strand it 4 times in one run), Flash Flood (Peril 2 solo under 4:00), Lone Current (Peril 3 solo), Shipwright (30 strands, wins and losses).
 
-## Gloomshade (Monday's boss)
+## Gloomshade
 
 A floppy-eared puff of shadow with a crescent-moon tail, fought in the **Lantern Yard**: a moonlit courtyard with four lanterns that make pools of light (no walls). The edges of the yard dim as lanterns go out, but it never goes fully dark. Its numbers live in `GLOOMSHADE` and its attack order in `gloomshadePattern` (`packages/shared/src/raid.ts`); the fight is `GloomshadeArena` in `apps/server/src/raid-gloomshade.ts`. Health: 1050, +1000 per extra raider (more of it comes with each raider than for the other bosses, because finding the real one costs a solo raider more time).
 
@@ -52,7 +56,7 @@ A floppy-eared puff of shadow with a crescent-moon tail, fought in the **Lantern
 - **Traits:** Moonlit (wider lantern light, one extra copy), Restless Spirits (more Grasping Hands, slower curse spread), Hollow (fewer copies, fainter shadow). **Themed rite:** Lamplighter (one hit relights a lantern; lantern light heals 1% a second). **Signal:** the third key is "That's the real one".
 - **Rewards** (migration 013): Lightbringer (first clear), Dusk colors (5 clears), Moonlit skin (10), Shadowstep entrance (Peril 2), Night's End title + Crescent frame (Peril 3), Nightmote aura (Peril 3, no downs), Crescent Bow victory (feat: nobody hits a copy all run, with at least one split), Moonrunner (Peril 2 solo under 4:00), Lone Lantern (Peril 3 solo), Lamplighter (50 lanterns relit, wins and losses; a run counts at most 20).
 
-## Somnara (Wednesday's boss)
+## Somnara
 
 A sleepy lavender sky whale carries a cottage on its back above the **Cloud Deck**. Four pads show Circle, Star, Moon and Wave. The camera keeps the complete deck visible so teams can coordinate.
 

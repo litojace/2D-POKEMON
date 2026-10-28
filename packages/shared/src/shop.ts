@@ -536,7 +536,6 @@ export type MissionMetric =
   | "skill-uses"
   | "ults"
   | "raid-clear"
-  | "daily-clear"
   | "revives"
   | "raid-peril3"
   | "raid-flawless"
@@ -614,9 +613,10 @@ export const MISSIONS: Mission[] = [
   mission(
     "daily-1",
     "medium",
-    "Clear today's Raid of the Day",
-    "daily-clear",
+    "Clear a raid as Voltkit or Auralynx",
+    "raid-clear",
     1,
+    ["voltkit", "auralynx"],
   ),
   together(
     mission(

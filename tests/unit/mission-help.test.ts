@@ -64,7 +64,7 @@ describe("mission completion instructions", () => {
       "Peril 1 clears do not count",
     );
     expect(missionHelp("daily-1")).toContain(
-      "A regular raid against the same boss does not count",
+      "as Voltkit or Auralynx",
     );
   });
   it("explains casts, ultimates and time tracking without counting basic attacks or menus", () => {
@@ -81,7 +81,7 @@ describe("mission completion instructions", () => {
       "minutes-10",
       "minutes-30",
     ])
-      expect(missionHelp(id)).toContain("Boss Rush");
+      expect(missionHelp(id)).not.toContain("Boss Rush");
   });
   it("lists the actual boss feat requirements from the reward catalog", () => {
     const examples = missionFeatExamples("feat-1");

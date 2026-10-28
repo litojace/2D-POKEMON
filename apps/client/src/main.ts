@@ -21,7 +21,7 @@ import {
 import { setupHomeNavigation } from "./home-navigation";
 import { watchSelectionPreview } from "./selection-preview";
 import { townOutfitKey } from "./town-outfit";
-import { raidDay } from "../../../packages/shared/src/raid";
+import { pacificDate } from "../../../packages/shared/src/raid";
 import { resultXp } from "./adventure-ui";
 import { arcadeWeek, ARCADE_EVENTS } from "../../../packages/shared/src/arcade";
 import { drawArcade } from "./arcade-art";
@@ -238,7 +238,7 @@ const escape = (s: string) =>
       ]!,
   );
 document.querySelector("#app")!.innerHTML =
-  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><div id="account-nav" class="account-nav"></div><button type="button" class="quiet home-settings" id="home-settings" aria-label="Settings" title="Settings">${menuIcon("settings")}</button><details class="header-menu" id="header-menu"><summary><i class="menu-burger" aria-hidden="true">☰</i><i class="menu-gear" aria-hidden="true">${menuIcon("settings")}</i> <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">${menuIcon("help")}<span>How to play</span></button><button class="quiet" id="settings">${menuIcon("settings")}<span>Settings</span></button><button class="quiet" id="leaderboard">${menuIcon("leaderboard")}<span>Leaderboard</span></button><button class="quiet" id="install-app">${menuIcon("fullscreen")}<span>Want fullscreen?</span></button><button class="quiet" id="report-problem">${menuIcon("report")}<span>Report a problem</span></button><button class="quiet" id="menu-logout">${menuIcon("leave")}<span>Log out</span></button><span class="connection" id="connection">Connecting</span></div></details></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-stage"><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span id="control-hints"></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu" title="Battle settings (Esc / controller Menu)">Settings</button></div></section></main><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
+  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><div id="account-nav" class="account-nav"></div><button type="button" class="quiet home-settings" id="home-settings" aria-label="Settings" title="Settings">${menuIcon("settings")}</button><details class="header-menu" id="header-menu"><summary><i class="menu-burger" aria-hidden="true">☰</i><i class="menu-gear" aria-hidden="true">${menuIcon("settings")}</i> <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">${menuIcon("help")}<span>How to play</span></button><button class="quiet" id="settings">${menuIcon("settings")}<span>Settings</span></button><button class="quiet" id="leaderboard">${menuIcon("leaderboard")}<span>Leaderboard</span></button><button class="quiet" id="install-app">${menuIcon("fullscreen")}<span>Want fullscreen?</span></button><button class="quiet" id="report-problem">${menuIcon("report")}<span>Report a problem</span></button><button class="quiet" id="menu-logout">${menuIcon("leave")}<span>Log out</span></button><span class="connection" id="connection">Connecting</span></div></details></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-stage"><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span id="control-hints"></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu" aria-label="Battle settings" title="Battle settings (Esc / controller Menu)">${menuIcon("settings")}</button></div></section></main><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
 // Measure wrapped HUDs for phone spacing and desktop boss-specific controls.
 let measuredRaidHud: HTMLElement | null = null;
 let battleLayoutFrame = 0;
@@ -370,6 +370,7 @@ if (touch.available)
     $("battle-menu").parentElement!,
     $("practice-controls"),
   );
+else $("battle").append($("battle-menu"));
 // ---- Keyboard, mouse and controller (bindings live in controls.ts) ----
 /** Physical keys and mouse buttons ("KeyQ", "Mouse0") currently held. */
 const held = new Set<string>();
@@ -1197,24 +1198,21 @@ async function startAdventure(mode: string) {
         name,
         character: selected,
         difficulty: botLevel,
-        arcade: arcadeWeek(raidDay().day).id,
+        arcade: arcadeWeek(pacificDate()).id,
       }),
     );
     return;
   }
-  const expedition = mode.startsWith("expedition-");
-  roomMode = expedition ? "raid" : mode === "arcade-teams" ? "teams" : "duel";
+  if (!["arcade-duel", "arcade-teams"].includes(mode)) return;
+  roomMode = mode === "arcade-teams" ? "teams" : "duel";
   const reply = await request("create", {
     name,
     mode: roomMode,
-    ...(expedition
-      ? { expedition: true }
-      : { arcade: arcadeWeek(raidDay().day).id }),
+    arcade: arcadeWeek(pacificDate()).id,
   });
   identity(reply);
   if (!reply.ok) return;
   await request("select", selected);
-  if (mode === "expedition-solo") await request("ready");
 }
 /**
  * The welcome screen: shown when signed out (with the sign-up / log-in
@@ -1325,8 +1323,6 @@ function syncTown() {
       else if (spot.id === "shop") void accountsUI.showShop(spot.tab);
       else if (spot.id === "wardrobe") void accountsUI.showWardrobe();
       else if (spot.id === "missions") void accountsUI.showMissions();
-      else if (spot.id === "boss-rush")
-        void accountsUI.showAdventure("expedition");
       else if (spot.id === "leaderboard") $("leaderboard").click();
       else homeNavigation.open("play");
     },
@@ -1359,7 +1355,7 @@ async function showRaidBestiary() {
 /** Create a raid room for a boss from the Raid Hub (optionally today's raid, or straight in solo). */
 async function startRaid(
   boss: RaidBossId,
-  options: { daily?: boolean; solo?: boolean },
+  options: { solo?: boolean },
 ) {
   if (!accountsUI.ensurePlayer()) return;
   if (myId) return toast("Leave your current room first.");
@@ -1381,42 +1377,18 @@ async function startRaid(
   identity(reply);
   if (!reply.ok) return;
   await request("select", selected);
-  if (options.daily) {
-    const daily = (await request("raid-config", { peril: 2, daily: true })) as {
-      ok?: boolean;
-      error?: string;
-    };
-    if (!daily.ok && daily.error) toast(daily.error);
-  }
   if (options.solo) await request("ready");
 }
 function wireRaidLobby() {
   wireRaidDifficulty();
-  const peril = document.getElementById(
-      "raid-peril",
-    ) as HTMLInputElement | null,
-    daily = document.getElementById(
-      "raid-daily-toggle",
-    ) as HTMLInputElement | null;
-  const configure = () => {
-    const isDaily = daily?.checked ?? false;
-    // The daily raid grants access to Peril 2 before regular Peril 2 is unlocked.
-    // Always allow leaving it by returning to the first regular difficulty.
-    const difficulty =
-      !isDaily && state?.raid?.daily ? 1 : Number(peril?.value ?? 1);
-    void request("raid-config", { peril: difficulty, daily: isDaily }).then(
-      (reply) => {
-        const result = reply as { ok?: boolean; error?: string };
-        if (!result.ok) {
-          if (result.error) toast(result.error);
-          // Restore the authoritative values when a locked challenge is rejected.
-          if (state?.phase === "lobby") {
-            screen = "";
-            renderMenu();
-          }
-        }
-      },
-    );
+  const peril = document.getElementById("raid-peril") as HTMLInputElement | null;
+  if (peril) peril.onchange = () => {
+    void request("raid-config", { peril: Number(peril.value) }).then((reply) => {
+      if (!reply.ok && state?.phase === "lobby") {
+        screen = "";
+        renderMenu();
+      }
+    });
   };
   // Practice: the host picks one boss attack to repeat.
   document
@@ -1430,8 +1402,6 @@ function wireRaidLobby() {
           },
         );
     });
-  if (peril) peril.onchange = configure;
-  if (daily) daily.onchange = configure;
 }
 function wireRoom() {
   wireRaidLobby();
@@ -1490,7 +1460,7 @@ function renderMenu(revealSelection = false) {
   document.body.classList.remove("gate-active");
   syncTown();
   const raidChallenge = state?.raid
-    ? `${state.raid.boss}/${state.raid.peril}/${state.raid.daily}`
+    ? `${state.raid.boss}/${state.raid.peril}`
     : "";
   const key = `${isRoom ? `room-${state!.mode ?? "duel"}` : watchingRoom ? `watch-${watching}` : "home"}:${(state?.mutators ?? []).join(",")}|${raidChallenge}|${(state?.watchers ?? []).join(",")}:${state?.players
     .map(
@@ -1795,7 +1765,7 @@ function renderBattle() {
     document.body.classList.toggle("practice-active", !!state.practice);
     if (state.practice) {
       $("practice-controls").innerHTML =
-        `<details id="practice-settings" class="practice-settings"><summary>Practice</summary><div class="practice-panel"><div class="practice-heading"><span class="eyebrow">Solo test mode</span><span id="practice-stats"></span></div><div class="practice-actions"><label>Creature <select id="practice-character">${Object.values(
+        `<details id="practice-settings" class="practice-settings"><summary>Practice</summary><div class="practice-panel"><div class="practice-heading"><span class="eyebrow">Solo test mode</span><span id="practice-stats"></span><button type="button" class="quiet" id="practice-close" aria-label="Close Practice">×</button></div><div class="practice-actions"><label>Creature <select id="practice-character">${Object.values(
           CHARACTERS,
         )
           .map(
@@ -1808,6 +1778,9 @@ function renderBattle() {
       $("practice-settings").addEventListener("toggle", () => {
         if (($("practice-settings") as HTMLDetailsElement).open) stopControls();
       });
+      $("practice-close").onclick = () => {
+        ($("practice-settings") as HTMLDetailsElement).open = false;
+      };
       $("practice-character").onchange = () =>
         void request(
           "practice-character",
@@ -2130,7 +2103,7 @@ function renderBattle() {
         versus +
         teamUpNote(me) +
         `<p class="arena-brief"><b>Arena · ${escape(arena.name)}</b>${escape(state.arcade ? ARCADE_EVENTS[state.arcade.id].tip : arena.tip)}</p>` +
-        '<p class="mobile-howto">Touch mode: left joystick to move; big button for basic attacks, the four curved buttons for skills, DASH and JUMP below. Aim follows your nearest opponent. Use Enter fullscreen below the arena.</p>' +
+        '<p class="mobile-howto">Touch mode: left joystick to move; big button for basic attacks, the four curved buttons for skills, DASH and JUMP below. Aim follows your nearest opponent. Open fullscreen from Settings.</p>' +
         controlsList() +
         "<p>" +
         (isTeams()
@@ -2611,7 +2584,7 @@ function showSettings() {
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const touchHTML = touch.settingsHTML();
   dialog(
-    `<div class="settings-screen"><h2>Settings</h2><p class="prefs-note">Online matches keep running while this is open.</p><div class="prefs-grid${touchHTML ? " has-touch" : ""}"><section class="prefs-card" aria-labelledby="prefs-sound"><h3 id="prefs-sound">${menuIcon("sound")}Sound</h3>${prefSlider("music", "Music", audio.music, { min: 0, max: 1, step: 0.01 })}${prefSlider("effects", "Sound effects", audio.effects, { min: 0, max: 1, step: 0.01 })}</section><section class="prefs-card" aria-labelledby="prefs-motion"><h3 id="prefs-motion">${menuIcon("motion")}Motion</h3><p class="prefs-status"><b class="${reduced ? "is-on" : ""}">Reduced motion ${reduced ? "on" : "off"}</b><span>Follows your device's accessibility setting.</span></p></section>${touchHTML ? `<section class="prefs-card prefs-touch" aria-labelledby="prefs-touch">${touchHTML}</section>` : ""}</div><div class="settings-actions"><button id="open-controls" class="secondary btn-secondary">${iconLabel("keyboard", "Controls &amp; key bindings")}</button>${myId ? leaveButton() : watching ? `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>` : ""}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button><button id="settings-credits" class="quiet">${iconLabel("star", "Credits")}</button></div></div>`,
+    `<div class="settings-screen"><h2>Settings</h2><div class="settings-quick-actions"><button id="settings-fullscreen" class="secondary btn-secondary">${iconLabel("fullscreen", "Fullscreen")}</button>${state?.practice && touch.enabled ? `<button id="settings-practice" class="secondary btn-secondary">${iconLabel("target", "Practice")}</button>` : ""}</div><p class="prefs-note">Online matches keep running while this is open.</p><div class="prefs-grid${touchHTML ? " has-touch" : ""}"><section class="prefs-card" aria-labelledby="prefs-sound"><h3 id="prefs-sound">${menuIcon("sound")}Sound</h3>${prefSlider("music", "Music", audio.music, { min: 0, max: 1, step: 0.01 })}${prefSlider("effects", "Sound effects", audio.effects, { min: 0, max: 1, step: 0.01 })}</section><section class="prefs-card" aria-labelledby="prefs-motion"><h3 id="prefs-motion">${menuIcon("motion")}Motion</h3><p class="prefs-status"><b class="${reduced ? "is-on" : ""}">Reduced motion ${reduced ? "on" : "off"}</b><span>Follows your device's accessibility setting.</span></p></section>${touchHTML ? `<section class="prefs-card prefs-touch" aria-labelledby="prefs-touch">${touchHTML}</section>` : ""}</div><div class="settings-actions"><button id="open-controls" class="secondary btn-secondary">${iconLabel("keyboard", "Controls &amp; key bindings")}</button>${myId ? leaveButton() : watching ? `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>` : ""}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button><button id="settings-credits" class="quiet">${iconLabel("star", "Credits")}</button></div></div>`,
   );
   for (const kind of ["music", "effects"] as const)
     $(kind).oninput = () => {
@@ -2626,6 +2599,13 @@ function showSettings() {
   document
     .getElementById("control-reset")
     ?.addEventListener("click", () => setTimeout(() => syncPrefOutputs(box)));
+  $("settings-fullscreen").onclick = () => $("mobile-fullscreen").click();
+  const practice = document.getElementById("settings-practice");
+  if (practice) practice.onclick = () => {
+    $<HTMLDialogElement>("dialog").close();
+    settingsOpen = false;
+    ($("practice-settings") as HTMLDetailsElement).open = true;
+  };
   $("open-controls").onclick = showControls;
   $("settings-report").onclick = () => accountsUI.showReport(reportContext());
   $("settings-credits").onclick = showCredits;

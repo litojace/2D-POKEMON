@@ -91,6 +91,14 @@ for (const size of [
           w.__push();
         }, boss);
         if (mobile) {
+          const compactHud = await box(page, "#raid-hud");
+          expect(compactHud.height).toBeLessThanOrEqual(
+            size.height <= 350 ? 42 : 48,
+          );
+          if (boss === "storm-twins")
+            await expect(
+              page.locator("#raid-hud > .raid-boss-health"),
+            ).toBeHidden();
           await expect
             .poll(async () => {
               const hud = await box(page, "#raid-hud"),
@@ -98,6 +106,52 @@ for (const size of [
               return game.y - (hud.y + hud.height);
             })
             .toBeGreaterThanOrEqual(5);
+          await expect
+            .poll(async () => {
+              const party = await box(page, ".raid-party-bars"),
+                hud = await box(page, "#raid-hud");
+              return party.y - (hud.y + hud.height);
+            })
+            .toBeGreaterThanOrEqual(6);
+          const party = await box(page, ".raid-party-bars");
+          expect(party.x).toBeLessThanOrEqual(10);
+          expect(party.width).toBeLessThanOrEqual(104);
+          const partyRows = await page
+            .locator(".raid-party-bars > span")
+            .evaluateAll((rows) =>
+              rows.map((row) => {
+                const r = row.getBoundingClientRect();
+                return { top: r.top, bottom: r.bottom };
+              }),
+            );
+          for (let i = 1; i < partyRows.length; i++)
+            expect(partyRows[i].top).toBeGreaterThanOrEqual(
+              partyRows[i - 1].bottom + 1,
+            );
+          const clock = await box(page, ".raid-elapsed"),
+            gear = await box(page, "#battle-menu");
+          expect(clock.y).toBeGreaterThanOrEqual(gear.y + gear.height + 2);
+          expect(
+            Math.abs(clock.x + clock.width / 2 - gear.x - gear.width / 2),
+          ).toBeLessThanOrEqual(2);
+          const health = await box(
+              page,
+              boss === "storm-twins" ? ".raid-twin-track" : ".raid-boss-health",
+            ),
+            name = await box(
+              page,
+              boss === "storm-twins"
+                ? ".raid-twin-bar b"
+                : ".raid-boss-heading > b",
+            ),
+            cue = await box(page, ".raid-callout"),
+            meta = await box(page, ".raid-boss-heading > span");
+          expect(name.y).toBeGreaterThanOrEqual(health.y - 1);
+          expect(name.y + name.height).toBeLessThanOrEqual(
+            health.y + health.height + 1,
+          );
+          expect(cue.y).toBeGreaterThanOrEqual(health.y + health.height);
+          expect(meta.y).toBeGreaterThanOrEqual(cue.y + cue.height);
           // All four arena corners remain visible, even for the three bosses
           // that previously used the tight fighter-follow camera.
           await expect
@@ -125,7 +179,42 @@ for (const size of [
             if (await panel.isVisible()) {
               const controls = await box(page, selector),
                 game = await box(page, "#game");
-              expect(controls.y + controls.height).toBeLessThanOrEqual(game.y);
+              const hud = await box(page, "#raid-hud");
+              const obstacles = await page
+                .locator(
+                  ".touch-buttons button, #battle-menu, .raid-elapsed, .raid-party-bars",
+                )
+                .evaluateAll((items) =>
+                  items.map((item) => {
+                    const r = item.getBoundingClientRect();
+                    return { x: r.x, y: r.y, width: r.width, height: r.height };
+                  }),
+                );
+              expect(controls.y).toBeGreaterThanOrEqual(hud.y + hud.height);
+              for (const obstacle of obstacles) {
+                const overlaps =
+                  controls.x < obstacle.x + obstacle.width - 1 &&
+                  controls.x + controls.width > obstacle.x + 1 &&
+                  controls.y < obstacle.y + obstacle.height - 1 &&
+                  controls.y + controls.height > obstacle.y + 1;
+                expect(
+                  overlaps,
+                  `${boss}: ${selector} overlaps another control`,
+                ).toBe(false);
+              }
+              if (selector === "#raid-prism-controls") {
+                const buttons = await panel
+                  .locator("button")
+                  .evaluateAll((items) =>
+                    items.map((item) => item.getBoundingClientRect().y),
+                  );
+                expect(Math.abs(buttons[0] - buttons[1])).toBeLessThanOrEqual(
+                  1,
+                );
+                expect(
+                  size.width - controls.x - controls.width,
+                ).toBeLessThanOrEqual(size.height <= 350 ? 54 : 8);
+              }
               expect(controls.x).toBeGreaterThanOrEqual(0);
               expect(controls.x + controls.width).toBeLessThanOrEqual(
                 size.width,
@@ -180,7 +269,8 @@ for (const size of [
           w.__snap.raid.partySize = 1;
           w.__push();
         });
-        await expect(page.locator(".raid-party-bars")).toBeHidden();
+        await expect(page.locator(".raid-party-bars")).toBeVisible();
+        await expect(page.locator(".raid-party-bars > span")).toHaveCount(1);
         await expect
           .poll(async () => {
             const hud = await box(page, "#raid-hud"),

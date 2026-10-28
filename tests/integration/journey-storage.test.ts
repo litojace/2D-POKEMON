@@ -219,26 +219,13 @@ it("completes weekly goals once and grants all twenty free season tiers automati
     ).rows[0].n,
   ).toBe(20);
 });
-it("gives partial Boss Rush completion its own XP and limited coin rewards", async () => {
-  const p = await receipt("expedition", {
-    vsPeople: false,
-    expedition: { completed: 2 },
-  });
-  await record(p);
-  await record(p);
+it("does not award XP or coins for a retired Boss Rush receipt", async () => {
+  const p = await receipt("expedition", { vsPeople: false, expedition: { completed: 2 } });
+  await expect(record(p)).rejects.toThrow("retired");
   await login();
-  expect(
-    (await journey()).recent.find((r: any) => r.ref === p.id)?.amount,
-  ).toBe(180);
+  expect((await journey()).recent.find((r: any) => r.ref === p.id)).toBeUndefined();
   await db.exec("reset role");
-  expect(
-    (
-      await db.query<{ amount: number }>(
-        "select amount from public.arena_coin_ledger where player_id=$1 and reason='expedition' and ref=$2",
-        [player, p.id],
-      )
-    ).rows,
-  ).toEqual([{ amount: 60 }]);
+  expect((await db.query("select amount from public.arena_coin_ledger where player_id=$1 and ref=$2", [player, p.id])).rows).toEqual([]);
 });
 it("does not let admins mint earned levels, and preserves progress when the migration is reapplied", async () => {
   await login(admin);

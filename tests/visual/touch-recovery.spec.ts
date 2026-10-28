@@ -11,8 +11,14 @@ async function mount(page: Page) {
   );
   await page.goto("/touch-recovery-page");
   await page.evaluate(async () => {
+    // Synthetic contacts cannot grant trusted gesture focus in WebKit. Model
+    // an active page here; the separate trusted-touch test covers focus recovery.
+    document.hasFocus = () => true;
     const { touchRecovery } = await import("/touch-recovery.ts");
     touchRecovery();
+    // Let the initial ResizeObserver reset finish before a simulated finger
+    // begins. WebKit can deliver that first layout after evaluate returns.
+    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
   });
   return errors;
 }

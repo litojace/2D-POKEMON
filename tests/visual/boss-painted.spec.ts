@@ -218,7 +218,7 @@ test("copies, submerging and fades cannot leave stale boss sprites on cleared la
   expect(errors).toEqual([]);
 });
 
-test("late expedition loads retain only the current boss atlas and can revisit a boss", async ({
+test("late boss loads retain only the current boss atlas and can revisit a boss", async ({
   page,
 }) => {
   const errors = await review(page, false);

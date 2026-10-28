@@ -14,7 +14,6 @@ import { formSubmitButton } from "./dialog";
 import { raidAppearance, raidCosmeticOptions } from "./raid-ui";
 import {
   raidBossPageMarkup,
-  raidCountdown,
   raidHubMarkup,
   type RaidHubTab,
 } from "./raid-hub";
@@ -37,7 +36,6 @@ import {
 } from "../../../packages/shared/src/shop";
 import {
   RAID_COSMETICS,
-  featuredOn,
   pacificDate,
   raidLookOf,
   type RaidBossId,
@@ -132,7 +130,7 @@ type Hooks = {
   startAdventure?: (mode: string) => void;
   startRaid?: (
     boss: RaidBossId,
-    options: { daily?: boolean; solo?: boolean },
+    options: { solo?: boolean },
   ) => void;
 };
 export class AccountUI {
@@ -519,7 +517,7 @@ export class AccountUI {
       }
     };
   }
-  /** The Raid Hub: every boss, today's raid, rewards and appearance. */
+  /** The Raid Hub: every boss, rewards and appearance. */
   async showRaidHub(boss?: RaidBossId, tab: RaidHubTab = "overview") {
     let progress: RaidProgress | null = null;
     let problem = "";
@@ -538,9 +536,7 @@ export class AccountUI {
     const view: { boss?: RaidBossId; tab: RaidHubTab } = { boss, tab };
     const dialogEl = () =>
       document.getElementById("dialog") as HTMLDialogElement | null;
-    let timer: ReturnType<typeof setInterval> | undefined;
     const render = (top = false) => {
-      clearInterval(timer);
       this.hooks.openDialog(
         (view.boss
           ? raidBossPageMarkup(
@@ -590,15 +586,6 @@ export class AccountUI {
             .querySelector<HTMLButtonElement>(`[data-raid-tab="${view.tab}"]`)
             ?.focus();
         };
-      const daily = root.querySelector<HTMLButtonElement>("#raid-daily");
-      if (daily)
-        daily.onclick = () =>
-          this.hooks.startRaid?.(
-            featuredOn(progress?.today?.day ?? pacificDate()).boss,
-            {
-              daily: true,
-            },
-          );
       for (const b of Array.from(
         root.querySelectorAll<HTMLButtonElement>("[data-raid-start]"),
       ))
@@ -621,19 +608,6 @@ export class AccountUI {
           if (event.key === "Enter") go();
         };
       }
-      // "Next boss in …": ticks while the Hub is open, then refreshes.
-      const clock = root.querySelector<HTMLElement>("[data-raid-next]");
-      if (clock)
-        timer = setInterval(() => {
-          if (!clock.isConnected) return clearInterval(timer);
-          const left = Number(clock.dataset.raidNext) - Date.now();
-          if (left <= 0) {
-            clearInterval(timer);
-            void this.showRaidHub(view.boss, view.tab);
-            return;
-          }
-          clock.textContent = raidCountdown(left);
-        }, 1000);
       const options = root.querySelector<HTMLElement>(".raid-equip");
       if (options && progress)
         this.bindAppearance(options, progress, character);

@@ -910,7 +910,6 @@ export interface RaidWave {
   high: boolean;
 }
 export interface RaidState {
-  expedition?: import("./expedition.js").ExpeditionState;
   /** The boss entity's player id. */
   bossId: string;
   /** Which boss this raid is (Grumblecrag, …). */
@@ -940,7 +939,7 @@ export interface RaidState {
   wards: { x: number; y: number; until: number }[];
   rites: Record<string, RaidRite[]>;
   offers: Record<string, RaidRite[]>;
-  /** Raid of the Day: today's featured boss at Peril 2, shared seed. */
+  /** Legacy receipt compatibility; new runs are always ordinary raids. */
   daily: boolean;
   /** Pacific calendar date (YYYY-MM-DD) the run counts for. */
   day: string;
@@ -1081,14 +1080,11 @@ export interface RaidProgress {
   cosmetics: string[];
   /** Pre-009 weekly board (empty from migration 009). */
   weekly: RaidBoardRow[];
-  /** From migration 009: per-boss records, earned reward ids, today's board. */
+  /** Per-boss records and earned rewards. */
   bosses?: Partial<Record<RaidBossId, RaidBossProgress>>;
   earned?: string[];
   stats?: Partial<Record<RaidBossId, { pillars: number; revives: number; feats: number }>>;
   totalClears?: number;
-  today?: { day: string; boss: RaidBossId; cleared: boolean; board: RaidBoardRow[] };
-  /** Days this Pacific week (Sun–Sat) with a Raid of the Day clear. */
-  dailyClears?: string[];
 }
 export function raidWeek(date = new Date()) {
   const start = new Date(

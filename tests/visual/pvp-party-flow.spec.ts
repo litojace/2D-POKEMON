@@ -28,10 +28,14 @@ test("raid room invites open Friends instead of displaying a room code", async (
     await openTownMenu(page);
     await page.click(".town-play");
     await page.click("#play-create");
-    await expect.poll(async () => {
-      await page.evaluate(() => (window as any).__push());
-      return page.evaluate(() => document.body.classList.contains("lobby-active"));
-    }).toBe(true);
+    await expect
+      .poll(async () => {
+        await page.evaluate(() => (window as any).__push());
+        return page.evaluate(() =>
+          document.body.classList.contains("lobby-active"),
+        );
+      })
+      .toBe(true);
     await page.locator(".lobby-room-drawer > summary").click();
     await expect(page.locator("#copy, #invite, #raid-copy-code")).toHaveCount(
       0,
@@ -293,10 +297,7 @@ for (const size of [
       expect(watchingBox.x + watchingBox.width).toBeLessThanOrEqual(
         size.width / 2 - 80,
       );
-      for (const selector of [
-        "#battle-menu",
-        ...(mobile ? ["#mobile-fullscreen"] : []),
-      ]) {
+      for (const selector of ["#battle-menu"]) {
         const control = await box(page, selector);
         expect(
           watchingBox.x + watchingBox.width <= control.x ||
@@ -304,6 +305,13 @@ for (const size of [
         ).toBe(true);
       }
       if (mobile) {
+        await expect(page.locator("#mobile-fullscreen")).toBeHidden();
+        const gear = await box(page, "#battle-menu");
+        expect(gear.y).toBeLessThanOrEqual(8);
+        expect(gear.x).toBeGreaterThan(size.width - 54);
+        await page.locator("#battle-menu").click();
+        await expect(page.locator("#settings-fullscreen")).toBeVisible();
+        await page.click("#close-dialog");
         await expect(page.locator(".joystick-area")).toBeHidden();
         await expect(page.locator(".touch-buttons")).toBeHidden();
         for (const button of await page.locator(".touch-buttons button").all())

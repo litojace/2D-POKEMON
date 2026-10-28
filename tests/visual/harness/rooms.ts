@@ -1,6 +1,7 @@
 // Builds real room snapshots with the server's own code.
 import { Arena } from "../../../apps/server/src/simulation";
 export { Arena };
+export { TOWN_SPOTS } from "../../../packages/shared/src/town";
 export {
   CHARACTERS,
   packSnapshot,

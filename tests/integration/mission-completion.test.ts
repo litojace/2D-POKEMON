@@ -96,7 +96,6 @@ const qualifying = async (m: Mission) => {
   let kind: ActivityReceipt["kind"] = "match";
   const raidMetrics = [
     "raid-clear",
-    "daily-clear",
     "revives",
     "raid-peril3",
     "raid-flawless",
@@ -115,12 +114,11 @@ const qualifying = async (m: Mission) => {
   if (m.metric === "skill-uses") fields.skillUses = 1;
   if (m.metric === "ults") fields.ults = 1;
   if (m.metric === "minutes") fields.activeSeconds = 60;
-  if (m.metric === "wins-with") fields.character = m.champions![0];
+  if (m.champions) fields.character = m.champions![0];
   if (m.metric === "teams-unharmed") fields.mode = "teams";
   if (m.metric === "ffa-wins") fields.mode = "ffa";
   if (m.metric === "play") fields.won = false;
   if (fields.raid) {
-    if (m.metric === "daily-clear") fields.raid.daily = true;
     if (m.metric === "revives") fields.raid.revives = 1;
     if (m.metric === "raid-peril3") fields.raid.peril = 3;
     if (m.metric === "raid-solo-p2") fields.raid.peril = 2;
@@ -194,7 +192,7 @@ it.each(MISSIONS)(
   },
 );
 
-it("carries leftover seconds across short bot matches, raids and Boss Rush", async () => {
+it("carries leftover seconds across short bot matches and raids", async () => {
   await give(["minutes-10", "ults-8", "minutes-30"]);
   for (let n = 0; n < 3; n++)
     await record(await receipt("match", { activeSeconds: 12.5 }));
@@ -205,14 +203,7 @@ it("carries leftover seconds across short bot matches, raids and Boss Rush", asy
     }),
   );
   expect((await progress()).map((p) => p.progress)).toEqual([0, 0, 0]);
-  await record(
-    await receipt("expedition", {
-      mode: "raid",
-      botLevel: null,
-      expedition: { completed: 0 },
-      activeSeconds: 0.001,
-    }),
-  );
+  await record(await receipt("match", { activeSeconds: 0.001 }));
   expect((await progress()).map((p) => p.progress)).toEqual([1, 0, 1]);
   // A second full minute is earned from three more 20-second matches.
   for (let n = 0; n < 3; n++)
@@ -220,33 +211,91 @@ it("carries leftover seconds across short bot matches, raids and Boss Rush", asy
   expect((await progress()).map((p) => p.progress)).toEqual([2, 0, 2]);
 });
 
-it("counts Boss Rush skills and ultimates once without granting ordinary raid clears", async () => {
+it("rejects retired activity modes before crediting missions or writing a receipt", async () => {
   await give(["skills-30", "ults-8", "raid-p3"]);
   const p = await receipt("expedition", {
     mode: "raid",
     botLevel: null,
-    skillUses: 15,
-    ults: 4,
+    skillUses: 30,
+    ults: 8,
     activeSeconds: 120,
     expedition: { completed: 3 },
   });
-  await record(p);
-  await record(p);
-  expect((await progress()).map((p) => p.progress)).toEqual([15, 4, 0]);
-  await record(
-    await receipt("expedition", {
-      ...p.players[0],
-      expedition: { completed: 1 },
-    }),
-  );
-  expect((await progress()).map((p) => p.progress)).toEqual([30, 8, 0]);
-  expect((await progress()).map((p) => p.done)).toEqual([true, true, false]);
-  await give(["raid-1", "raid-solo-1", "feat-1"]);
-  await record(await receipt("expedition", { ...p.players[0] }));
+  await db.exec("savepoint retired_activity");
+  await expect(record(p)).rejects.toThrow("retired");
+  await db.exec("rollback to savepoint retired_activity;reset role");
   expect((await progress()).map((p) => p.progress)).toEqual([0, 0, 0]);
+  expect(
+    (
+      await db.query<{ n: number }>(
+        "select count(*)::int n from public.arena_journey_receipts where id=$1",
+        [p.id],
+      )
+    ).rows[0].n,
+  ).toBe(0);
 });
 
-it.each(["match", "raid", "expedition"] as const)(
+it("keeps earned mission progress and coins when retirement is applied again", async () => {
+  await give(["daily-1", "skills-30", "raid-p3"]);
+  await record(await receipt("raid", raidFields()));
+  await db.exec("reset role");
+  const before = await progress();
+  const wallet = await db.query(
+    "select balance from public.arena_wallets where player_id=$1",
+    [player],
+  );
+  const migration = (
+    await readFile("supabase/migrations/028_retire_raid_modes.sql", "utf8")
+  )
+    .replace(/^begin;$/m, "")
+    .replace(/^commit;$/m, "");
+  await db.exec(migration);
+  await db.exec(migration);
+  expect(await progress()).toEqual(before);
+  expect(
+    (
+      await db.query(
+        "select balance from public.arena_wallets where player_id=$1",
+        [player],
+      )
+    ).rows,
+  ).toEqual(wallet.rows);
+  await login();
+  const e = (await db.query<{ e: any }>("select public.arena_economy() e"))
+    .rows[0].e;
+  expect(e.missions).toHaveLength(6);
+  expect(e.rerollLimit).toBe(5);
+  expect(e.missions.find((m: any) => m.id === "daily-1").text).toBe(
+    "Clear a raid as Voltkit or Auralynx",
+  );
+  const raids = (
+    await db.query<{ p: any }>("select public.arena_raid_progress() p")
+  ).rows[0].p;
+  expect(raids).not.toHaveProperty("today");
+  expect(raids).not.toHaveProperty("dailyClears");
+});
+
+it("rejects daily raid activity before any reward or mission changes", async () => {
+  const p = await receipt("raid", raidFields({ daily: true }));
+  await db.exec("savepoint retired_daily");
+  await expect(record(p)).rejects.toThrow("retired");
+  await db.exec("rollback to savepoint retired_daily;reset role");
+  expect((await progress()).every((m) => m.progress === 0)).toBe(true);
+  for (const name of [
+    "arena_record_activity_before_mode_retirement(jsonb)",
+    "arena_record_raid_before_mode_retirement(jsonb)",
+  ])
+    expect(
+      (
+        await db.query<{ allowed: boolean }>(
+          "select has_function_privilege('service_role',$1,'execute') allowed",
+          ["public." + name],
+        )
+      ).rows[0].allowed,
+    ).toBe(false);
+});
+
+it.each(["match", "raid"] as const)(
   "excludes idle and abandoned %s results from every common counter",
   async (kind) => {
     await give(["skills-30", "ults-8", "minutes-30"]);
@@ -292,7 +341,7 @@ const rejected: [
   ["ffa-win", "match", { mode: "ffa", vsPeople: false, botLevel: "hard" }],
   ["ffa-win", "match", { mode: "duel", vsPeople: true, botLevel: null }],
   ["raid-1", "raid", raidFields({ cleared: false })],
-  ["daily-1", "raid", raidFields({ daily: false })],
+  ["daily-1", "raid", { ...raidFields(), character: "terradon" }],
   ["revives-3", "raid", raidFields({ revives: 0 })],
   ["raid-p3", "raid", raidFields({ peril: 2 })],
   ["raid-flawless", "raid", raidFields({ flawless: false })],
@@ -391,7 +440,7 @@ it("keeps co-op classification with an idle or departed teammate without rewardi
   expect(coins.rows[0].n).toBe(0);
 });
 
-it("completes all four weekly goals once from eligible results, including Boss Rush legs", async () => {
+it("completes all four weekly goals once from matches and ordinary raid clears", async () => {
   for (let n = 0; n < 3; n++) {
     const p = await receipt("match", {
       arcade: "crown-chase",
@@ -401,22 +450,15 @@ it("completes all four weekly goals once from eligible results, including Boss R
     await record(p);
     await record(p);
   }
-  const rush = await receipt("expedition", {
-    mode: "raid",
-    botLevel: null,
-    skillUses: 20,
-    activeSeconds: 120,
-    expedition: { completed: 2 },
-  });
-  await record(rush);
-  await record(rush);
-  await record(
-    await receipt("raid", {
-      ...raidFields({ cleared: false }),
-      won: false,
-      activeSeconds: 20,
-    }),
-  );
+  for (let n = 0; n < 2; n++) {
+    const raid = await receipt("raid", {
+      ...raidFields(),
+      skillUses: 10,
+      activeSeconds: 120,
+    });
+    await record(raid);
+    await record(raid);
+  }
   await login();
   const j = (await db.query<{ j: any }>("select public.arena_journey() j"))
     .rows[0].j;
@@ -450,13 +492,11 @@ it("pays the all-six and seventh-day streak bonuses once and keeps all mission w
     "bot-wins-3",
     "minutes-30",
   ]);
-  const p = await receipt("expedition", {
-    mode: "raid",
-    botLevel: null,
+  const p = await receipt("raid", {
+    ...raidFields({ cleared: false }),
     skillUses: 30,
     ults: 8,
     activeSeconds: 1800,
-    expedition: { completed: 0 },
   });
   await record(p);
   await record(p);

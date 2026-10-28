@@ -1,4 +1,3 @@
-import { raidCrest } from "./raid-crests";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import {
   playerLevel,
@@ -14,17 +13,15 @@ import {
   type Journey,
 } from "../../../packages/shared/src/journey";
 import { ARCADE_EVENTS, arcadeWeek } from "../../../packages/shared/src/arcade";
-import { expeditionRoute } from "../../../packages/shared/src/expedition";
 import {
   pacificDate,
-  RAID_BOSSES,
   type RaidLoadout,
 } from "../../../packages/shared/src/raid";
 import type { Economy } from "../../../packages/shared/src/shop";
 import { fighterAvatar } from "./fighter-art";
 import { coinChip } from "./shop-ui";
 import { iconLabel } from "./menu-icons";
-export type AdventureTab = "levels" | "season" | "arcade" | "expedition";
+export type AdventureTab = "levels" | "season" | "arcade";
 export interface AdventureView {
   tab: AdventureTab;
   preview?: string;
@@ -119,7 +116,7 @@ function levels(
   look: RaidLoadout,
 ) {
   const level = e?.journey ? playerLevel(e.journey.xp).level : 0;
-  return `${e?.journey ? levelBar(e.journey) : ""}<p class="adventure-intro">Every level earns ${LEVEL_COINS} coins. Every five levels brings a milestone. Your level never changes combat stats.</p><div class="journey-layout">${preview(view, e, champion, look)}<div class="journey-rewards">${LEVEL_MILESTONES.map((m) => rewardCard(m.item, m.title ?? "", `LEVEL ${m.level}`, level >= m.level, view.preview, !m.item)).join("")}</div></div><details class="journey-help"><summary>How to earn XP</summary><p>Finish a PvP match: 50 XP, plus 25 for a win. AI matches: 25 XP. Raid clears: 100 / 150 / 200 XP by Peril. Raid attempts earn 20 XP per phase reached. Daily missions add 50 XP. Boss Rush awards XP for your progress.</p><p>Results need at least 20 seconds of play and participation. Practice and abandoned matches do not award XP. Rewards are added automatically.</p></details>`;
+  return `${e?.journey ? levelBar(e.journey) : ""}<p class="adventure-intro">Every level earns ${LEVEL_COINS} coins. Every five levels brings a milestone. Your level never changes combat stats.</p><div class="journey-layout">${preview(view, e, champion, look)}<div class="journey-rewards">${LEVEL_MILESTONES.map((m) => rewardCard(m.item, m.title ?? "", `LEVEL ${m.level}`, level >= m.level, view.preview, !m.item)).join("")}</div></div><details class="journey-help"><summary>How to earn XP</summary><p>Finish a PvP match: 50 XP, plus 25 for a win. AI matches: 25 XP. Raid clears: 100 / 150 / 200 XP by Peril. Raid attempts earn 20 XP per phase reached. Daily missions add 50 XP.</p><p>Results need at least 20 seconds of play and participation. Practice and abandoned matches do not award XP. Rewards are added automatically.</p></details>`;
 }
 function season(
   view: AdventureView,
@@ -159,10 +156,6 @@ function arcade() {
     event = ARCADE_EVENTS[weekly.id];
   return `<div class="adventure-mode-hero" style="--journey-color:${event.color}"><span class="eyebrow">THIS WEEK’S ARCADE · UNTIL ${weekly.end}</span><h2>${event.name}</h2><p>${event.text}</p><div class="arcade-illustration arcade-${weekly.id}" aria-hidden="true"><span>✦</span><i></i><b>${weekly.id === "crown-chase" ? "CHASE THE CROWN" : weekly.id === "meteor-mayhem" ? "WATCH THE SKY" : "UNLEASH YOUR ULTIMATE"}</b></div></div><div class="adventure-mode-details"><article><h3>Make your move</h3><p>${event.tip}</p></article><article><h3>Play your way</h3><p>Challenge an AI opponent, share a private 1v1 code, or bring three friends for 2v2. Arcade earns XP and weekly-goal progress. PvP rating stays separate.</p></article></div><div class="adventure-actions"><button class="primary" data-adventure-play="arcade-bot">${iconLabel("bot", "Play vs AI")}</button><button class="secondary" data-adventure-play="arcade-duel">${iconLabel("battle", "Private 1v1")}</button><button class="secondary" data-adventure-play="arcade-teams">${iconLabel("friends", "Private 2v2")}</button></div>`;
 }
-function expedition() {
-  const route = expeditionRoute(pacificDate());
-  return `<div class="adventure-mode-hero expedition-hero"><span class="eyebrow">BOSS RUSH · 1–4 PLAYERS</span><h2>One team. Three trials.</h2><p>Three shorter boss encounters. Carry your health and rites between fights, then choose healing or power at each camp.</p></div><ol class="expedition-route">${route.map((id, i) => `<li><span>${i + 1}</span><div class="expedition-boss-glyph" style="--journey-color:${RAID_BOSSES[id].color}">${raidCrest(id)}</div><b>${RAID_BOSSES[id].name}</b><small>${RAID_BOSSES[id].element} · ${i === 2 ? "FINAL TRIAL" : "TRIAL " + (i + 1)}</small></li>`).join("")}</ol><div class="adventure-mode-details"><article><h3>Build a run</h3><p>Each boss uses its final chapter at half the normal health. Start at Peril 1. Rites stack across all three fights; every boss has a briefing before you enter.</p></article><article><h3>Keep what you earn</h3><p>Earn 80 XP per cleared leg, plus 100 for completing the route. Failed runs earn 20 additional XP. Completed legs also earn coins for your first three qualifying expeditions each day. Ordinary raid titles and clear counts come from regular raids.</p></article></div><div class="adventure-actions"><button class="primary" data-adventure-play="expedition-solo">${iconLabel("battle", "Start solo")}</button><button class="secondary" data-adventure-play="expedition-party">${iconLabel("friends", "Create co-op room")}</button></div>`;
-}
 export function adventureMarkup(
   view: AdventureView,
   e: Economy | undefined,
@@ -174,7 +167,6 @@ export function adventureMarkup(
       ["levels", "Player levels"],
       ["season", "Season"],
       ["arcade", "Weekly arcade"],
-      ["expedition", "Boss Rush"],
     ] as const
   )
     .map(
@@ -184,7 +176,7 @@ export function adventureMarkup(
     .join("");
   const message =
     e && !e.journey
-      ? '<p class="journey-update" role="status">Saving player XP and seasonal rewards needs database migration 022_player_journey.sql. Arcade and Boss Rush are ready to play.</p>'
+      ? '<p class="journey-update" role="status">Saving player XP and seasonal rewards needs database migration 022_player_journey.sql. Weekly arcade is ready to play.</p>'
       : "";
-  return `<div class="adventure"><nav class="adventure-tabs" role="tablist" aria-label="Adventure sections">${tabs}</nav><header class="adventure-head"><h2>${iconLabel("bestiary", "Adventure")}</h2>${coinChip(e?.balance, "", e?.unlimitedCoins)}</header>${message}${view.tab === "levels" ? levels(view, e, champion, look) : view.tab === "season" ? season(view, e, champion, look) : view.tab === "arcade" ? arcade() : expedition()}<p class="adventure-status" role="status"></p></div>`;
+  return `<div class="adventure"><nav class="adventure-tabs" role="tablist" aria-label="Adventure sections">${tabs}</nav><header class="adventure-head"><h2>${iconLabel("bestiary", "Adventure")}</h2>${coinChip(e?.balance, "", e?.unlimitedCoins)}</header>${message}${view.tab === "levels" ? levels(view, e, champion, look) : view.tab === "season" ? season(view, e, champion, look) : arcade()}<p class="adventure-status" role="status"></p></div>`;
 }

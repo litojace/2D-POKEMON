@@ -1148,9 +1148,9 @@ function temple(b: TownBuilding): Sprite {
   };
 }
 
-// ── Boss Rush tower ──
+// ── Training tower ──
 export const TOWER = { top: -320, brazier: -352, flag: { dx: -44, dy: -342 } };
-/** Boss Rush tower: a round stone keep on a plinth, with a crenellated top. */
+/** Training tower: a round stone keep on a plinth, with a crenellated top. */
 function tower(b: TownBuilding): Sprite {
   const W = b.w + 90,
     H = 450;

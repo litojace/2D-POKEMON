@@ -60,7 +60,7 @@ export function stormTwinHealth(state: Snapshot) {
         hp = Math.max(0, p?.hp ?? 0),
         percent = Math.max(0, Math.min(100, (hp / t.maxHp) * 100)),
         down = hp <= 0;
-      return `<div class="raid-twin-bar" style="--twin-color:${i ? "#8edfff" : "#ffe18b"}"><div><b>${t.name}</b><span>${down ? (state.phase === "finished" ? (r.result === "victory" ? "DEFEATED" : "DOWN") : `REVIVES IN ${Math.max(0, Math.ceil((t.reviveAt ?? state.time) - state.time))}s`) : t.exposedUntil > state.time ? "CORE EXPOSED" : `${Math.ceil(hp)} HP`}</span></div><div class="raid-twin-track" role="progressbar" aria-label="${t.name} health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(percent)}"><i style="width:${percent}%"></i></div><div class="raid-twin-stagger" title="${t.name} stagger"><i style="width:${t.exposedUntil > state.time ? 100 : t.stagger}%"></i></div></div>`;
+      return `<div class="raid-twin-bar" style="--twin-color:${i ? "#8edfff" : "#ffe18b"}"><div><b>${t.name}</b><span>${down ? (state.phase === "finished" ? (r.result === "victory" ? "DEFEATED" : "DOWN") : `REVIVES IN ${Math.max(0, Math.ceil((t.reviveAt ?? state.time) - state.time))}s`) : t.exposedUntil > state.time ? "CORE EXPOSED" : ""}</span></div><div class="raid-twin-track" role="progressbar" aria-label="${t.name} health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(percent)}"><i style="width:${percent}%"></i></div><div class="raid-twin-stagger" title="${t.name} stagger"><i style="width:${t.exposedUntil > state.time ? 100 : t.stagger}%"></i></div></div>`;
     })
     .join("")}</div>`;
 }

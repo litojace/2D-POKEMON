@@ -99,7 +99,6 @@ export type TownBuilding = {
 export type TownSpotId =
   | "arena"
   | "raids"
-  | "boss-rush"
   | "shop"
   | "wardrobe"
   | "missions"
@@ -146,7 +145,7 @@ export const TOWN_DISTRICTS: readonly TownDistrict[] = [
     x: 1600,
     y: 560,
     label: "Raid Hall",
-    sub: "Seven bosses · Raid of the Day",
+    sub: "Seven bosses · Solo or co-op",
     color: "#b59bff",
   },
   {
@@ -154,7 +153,7 @@ export const TOWN_DISTRICTS: readonly TownDistrict[] = [
     x: 620,
     y: 900,
     label: "Training Grounds",
-    sub: "Bots · Solo test · Boss Rush",
+    sub: "Bots · Solo test",
     color: "#ff7a4f",
   },
   {
@@ -178,7 +177,7 @@ export const TOWN_DISTRICTS: readonly TownDistrict[] = [
 export const TOWN_BUILDINGS: readonly TownBuilding[] = [
   { id: "coliseum", kind: "coliseum", x: 2700, y: 1010, w: 520, d: 210 },
   { id: "raid-hall", kind: "temple", x: 1600, y: 450, w: 620, d: 170 },
-  { id: "boss-rush", kind: "tower", x: 360, y: 700, w: 150, d: 90 },
+  { id: "training-tower", kind: "tower", x: 360, y: 700, w: 150, d: 90 },
   { id: "windmill", kind: "windmill", x: 2860, y: 420, w: 150, d: 90 },
   // Houses around the edge of town.
   { id: "house-1", kind: "house", x: 2230, y: 380, w: 210, d: 110, variant: 0 },
@@ -312,15 +311,6 @@ export const TOWN_SPOTS: readonly TownSpot[] = [
     reach: 52,
     boss: s.boss,
   })),
-  {
-    id: "boss-rush",
-    x: 360,
-    y: 750,
-    label: "Boss Rush",
-    sub: "This week's run",
-    color: "#ff7a4f",
-    reach: 95,
-  },
   {
     id: "training",
     x: 660,
@@ -511,7 +501,7 @@ export const TOWN_PATHS: readonly TownPath[] = [
   { width: MAIN, pts: [[1600, 1080], [1250, 1000], [900, 930]] },
   { width: MAIN, pts: [[1600, 1080], [1300, 1265], [1040, 1450], [800, 1580]] },
   { width: MAIN, pts: [[1600, 1080], [1600, 1720]] },
-  // Boss Rush: leaves the training road and curves round the yard's fence to the tower door.
+  // Training tower: leaves the training road and curves round the yard's fence to the tower door.
   { width: SIDE, pts: [[1130, 980], [1010, 830], [830, 700], [590, 690], [460, 718], [395, 745]] },
   // Arena → windmill door.
   { width: SIDE, pts: [[2740, 1080], [3000, 1080], [3080, 940], [3080, 730], [2970, 560], [2860, 470]] },

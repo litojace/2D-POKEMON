@@ -322,7 +322,7 @@ export function raidRewardProgress(
   // Rare Gilded encounters are never "next": they can't be worked towards.
   const goal = raidGoals(progress, boss).find((g) => !g.done && g.reward.rule.kind !== "gilded") ?? {
     name: "All milestone rewards earned",
-    text: "Try a new champion or today's Raid of the Day board.",
+    text: "Try a new champion, a different boss or a higher Peril.",
     value: 1,
     max: 1,
   };

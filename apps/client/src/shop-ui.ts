@@ -21,7 +21,7 @@ import {
 } from "../../../packages/shared/src/raid";
 import { JOURNEY_ITEM_BY_ID } from "../../../packages/shared/src/journey";
 import { colourPreview, hasColourPalette } from "./colour-preview";
-import { nextRaidDayAt } from "../../../packages/shared/src/raid-roster";
+import { nextPacificDayAt } from "../../../packages/shared/src/raid-roster";
 import { fighterArt, fighterAvatar, scopeIds } from "./fighter-art";
 import { buttonIcon, iconLabel } from "./menu-icons";
 import { creatureSvg, type SkinLook } from "./creature-design";
@@ -82,7 +82,7 @@ const rarityBadge = (r: Rarity | null) =>
 export function picksCountdown(now = Date.now()) {
   const minutes = Math.max(
     1,
-    Math.round((nextRaidDayAt(new Date(now)) - now) / 60_000),
+    Math.round((nextPacificDayAt(new Date(now)) - now) / 60_000),
   );
   const h = Math.floor(minutes / 60),
     m = minutes % 60;

@@ -3,7 +3,7 @@ import { io, type Socket } from "socket.io-client";
 import { createArenaServer } from "../../apps/server/src/server";
 import { fakeAccounts } from "../helpers/accounts";
 import { arcadeWeek, ARCADE_IDS } from "../../packages/shared/src/arcade";
-import { raidDay } from "../../packages/shared/src/raid";
+import { pacificDate } from "../../packages/shared/src/raid";
 import { blankInput, type Reply } from "@arena/shared";
 import type { RaidArena } from "../../apps/server/src/raid";
 import type { ArcadeArena } from "../../apps/server/src/arcade";
@@ -59,7 +59,7 @@ const setup = async () => {
 it("starts this week’s fixed arcade with an AI and awards an arcade-tagged result", async () => {
   const { connect, recordActivity } = await setup(),
     host = await connect(),
-    weekly = arcadeWeek(raidDay().day);
+    weekly = arcadeWeek(pacificDate());
   const other = ARCADE_IDS.find((id) => id !== weekly.id)!;
   expect(
     (
@@ -112,7 +112,7 @@ it("keeps private weekly rules fixed for both players and separate from regular 
   const { connect, recordActivity } = await setup(),
     host = await connect(),
     peer = await connect();
-  const weekly = arcadeWeek(raidDay().day);
+  const weekly = arcadeWeek(pacificDate());
   const r = await emit(host, "create", {
     name: "Host",
     mode: "duel",
@@ -135,69 +135,26 @@ it("keeps private weekly rules fixed for both players and separate from regular 
   expect(recordActivity.mock.calls[0][0].players[0].vsPeople).toBe(true);
   expect(a.snapshot().arcade?.week).toBe(weekly.week);
 });
-it("runs three expedition legs with two real clients, retains room identity and saves only the expedition", async () => {
-  const { connect, recordActivity, recordRaid } = await setup(),
-    host = await connect(),
-    peer = await connect();
-  const r = await emit(host, "create", {
-    name: "Leader",
-    mode: "raid",
-    expedition: true,
-  });
-  expect(r.ok).toBe(true);
-  expect((await emit(peer, "join", { name: "Ally", code: r.code })).ok).toBe(
-    true,
-  );
-  expect((await emit(host, "raid-config", { peril: 2, daily: false })).ok).toBe(
-    false,
-  );
-  expect((await emit(host, "raid-drill", { kind: "charge" })).ok).toBe(false);
-  await emit(host, "ready");
-  await emit(peer, "ready");
-  const get = () => server!.rooms.get(r.code!) as RaidArena;
-  for (let leg = 0; leg < 3; leg++) {
-    const a = get();
-    expect(a.raid.expedition!.leg).toBe(leg);
-    expect(a.phase).toBe("briefing");
-    expect(a.raid.phase).toBe(3);
-    await emit(host, "instructions-ready");
-    await emit(peer, "instructions-ready");
-    for (const [id, offer] of Object.entries(a.raid.offers))
-      await emit(id === r.id ? host : peer, "rite", { id: offer[0] });
-    for (let i = 0; i < 125; i++) server!.step();
-    expect(a.phase).toBe("playing");
-    a.raid.elapsed = 60;
-    a.engaged.add(r.id!);
-    for (const boss of a.players.filter((p) => p.raidBoss))
-      a.damage(boss, 1e6, r.id!);
-    server!.step();
-    if (leg < 2) {
-      expect(a.raid.expedition!.camp).toBe(true);
-      expect(recordActivity).not.toHaveBeenCalled();
-      await emit(host, "expedition-choice", { choice: "surge" });
-      await emit(peer, "expedition-choice", { choice: "rest" });
-      for (let i = 0; i < 35; i++) server!.step();
-      expect(get()).not.toBe(a);
-      expect(
-        get()
-          .heroes()
-          .map((p) => p.id),
-      ).toEqual(a.heroes().map((p) => p.id));
-    }
-  }
-  await new Promise((r) => setTimeout(r, 20));
-  expect(get().raid.result).toBe("victory");
-  expect(recordRaid).not.toHaveBeenCalled();
-  expect(recordActivity).toHaveBeenCalledTimes(1);
-  expect(recordActivity.mock.calls[0][0]).toMatchObject({ kind: "expedition" });
-  expect(recordActivity.mock.calls[0][0].players).toHaveLength(2);
-  expect(recordActivity.mock.calls[0][0].players[0].expedition.completed).toBe(
-    3,
-  );
-  expect(get().raid.expedition!.saved).toBe("saved");
-  const old = get().raid.expedition!.id;
-  expect((await emit(host, "lobby")).ok).toBe(true);
-  expect(get().phase).toBe("lobby");
-  expect(get().raid.expedition!.leg).toBe(0);
-  expect(get().raid.expedition!.id).not.toBe(old);
+it("rejects retired Boss Rush create requests without allocating a room", async () => {
+  const { connect } = await setup(),
+    host = await connect();
+  expect(
+    (
+      await emit(host, "create", {
+        name: "Leader",
+        mode: "raid",
+        expedition: true,
+      })
+    ).ok,
+  ).toBe(false);
+  expect(server!.rooms.size).toBe(0);
+  expect(
+    (
+      await emit(host, "create", {
+        name: "Leader",
+        mode: "raid",
+        boss: "grumblecrag",
+      })
+    ).ok,
+  ).toBe(true);
 });

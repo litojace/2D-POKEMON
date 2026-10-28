@@ -185,7 +185,7 @@ export const LEVEL_MILESTONES = [
 export const WEEKLY_GOALS = [
   { id: "play", text: "Finish 5 matches or raid attempts", target: 5 },
   { id: "skills", text: "Use 50 skills", target: 50 },
-  { id: "raids", text: "Clear 2 raids or Boss Rush legs", target: 2 },
+  { id: "raids", text: "Clear 2 raids", target: 2 },
   { id: "arcade", text: "Finish 3 weekly arcade matches", target: 3 },
 ] as const;
 export interface Journey {

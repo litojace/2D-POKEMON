@@ -11,8 +11,6 @@ import {
   SEASON_THEMES,
 } from "../../packages/shared/src/journey";
 import { arcadeWeek, ARCADE_IDS } from "../../packages/shared/src/arcade";
-import { expeditionRoute } from "../../packages/shared/src/expedition";
-import { RAID_BOSSES, featuredOn } from "../../packages/shared/src/raid";
 import { adventureMarkup, resultXp } from "../../apps/client/src/adventure-ui";
 describe("player levels", () => {
   for (let level = 2; level <= MAX_PLAYER_LEVEL; level++)
@@ -51,21 +49,6 @@ describe("calendar rotations", () => {
     expect(new Set(ids)).toEqual(new Set(ARCADE_IDS));
     expect(arcadeWeek("2026-10-26").week).toBe("2026-10-26");
   });
-  it("returns three built bosses for every expedition route without affecting the daily raid", () => {
-    const seen = new Set();
-    for (let n = 1; n <= 28; n++) {
-      const day = `2026-10-${String(n).padStart(2, "0")}`,
-        route = expeditionRoute(day);
-      expect(route).toHaveLength(3);
-      expect(new Set(route).size).toBe(3);
-      route.forEach((id) => {
-        expect(RAID_BOSSES[id].playable).toBe(true);
-        seen.add(id);
-      });
-      expect(RAID_BOSSES[featuredOn(day).boss].playable).toBe(true);
-    }
-    expect(seen.size).toBe(7);
-  });
   it("resolves all season themes and four valid cosmetic milestones without a purchase gate", () => {
     const seen = new Set();
     for (let month = 1; month <= 12; month++) {
@@ -83,7 +66,7 @@ describe("calendar rotations", () => {
   });
 });
 it("renders unavailable storage honestly and offers every new mode", () => {
-  for (const tab of ["levels", "season", "arcade", "expedition"] as const) {
+  for (const tab of ["levels", "season", "arcade"] as const) {
     const html = adventureMarkup({ tab }, undefined, "voltkit");
     expect(html).not.toMatch(/NaN|undefined/);
     expect(html).toContain('data-adventure-tab="season"');
@@ -91,9 +74,6 @@ it("renders unavailable storage honestly and offers every new mode", () => {
   expect(adventureMarkup({ tab: "arcade" }, undefined, "voltkit")).toContain(
     "arcade-bot",
   );
-  expect(
-    adventureMarkup({ tab: "expedition" }, undefined, "voltkit"),
-  ).toContain("expedition-solo");
   expect(resultXp(undefined, "x")).toBe("");
 });
 it("shows mission XP, level-ups and the actual coin reward together on the result card", () => {

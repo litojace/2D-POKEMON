@@ -371,6 +371,7 @@ export class TouchControls {
     const cluster = this.root.querySelector<HTMLElement>(".touch-buttons")!;
     cluster.style.width = layout.width + "px";
     cluster.style.height = layout.height + "px";
+    document.body.style.setProperty("--combat-cluster-height", layout.height + "px");
     for (const target of layout.targets) {
       const button = this.buttons.find(
         (b) => (b.dataset.skill ?? b.dataset.action) === target.action,

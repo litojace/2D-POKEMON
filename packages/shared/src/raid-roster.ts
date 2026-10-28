@@ -133,13 +133,6 @@ export const RAID_BOSS_ORDER: RaidBossId[] = [
   "storm-twins",
 ];
 
-/** Featured boss by weekday, Sunday first (the old planet names of the week). */
-export const RAID_DAY_SCHEDULE: RaidBossId[] = [0, 1, 2, 3, 4, 5, 6].map(
-  (day) => RAID_BOSS_ORDER.find((id) => RAID_BOSSES[id].day === day)!,
-);
-
-export const RAID_WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
 /** The group plays on Pacific time; the day changes at midnight there. */
 export const RAID_TIME_ZONE = "America/Los_Angeles";
 
@@ -155,20 +148,8 @@ export function pacificDate(date = new Date()) {
   return datePart.format(date);
 }
 
-/** Weekday (0 = Sunday) of a YYYY-MM-DD calendar date. */
-export function weekdayOf(day: string) {
-  return new Date(`${day}T12:00:00Z`).getUTCDay();
-}
-
-/** Calendar date `n` days after a YYYY-MM-DD date. */
-export function addDays(day: string, n: number) {
-  const d = new Date(`${day}T12:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-}
-
 /** When the next Pacific day starts (handles 23- and 25-hour days). */
-export function nextRaidDayAt(date = new Date()) {
+export function nextPacificDayAt(date = new Date()) {
   const today = pacificDate(date);
   // Step forward by hours to the first instant of the next date, then refine.
   let t = date.getTime();
@@ -181,40 +162,4 @@ export function nextRaidDayAt(date = new Date()) {
     else hi = mid;
   }
   return hi;
-}
-
-const hash = (text: string) => {
-  let seed = 2166136261;
-  for (const ch of text)
-    seed = Math.imul(seed ^ ch.charCodeAt(0), 16777619) >>> 0;
-  return seed;
-};
-
-/**
- * The featured raid on a calendar date: the scheduled boss when it can be
- * played, otherwise the playable bosses take turns. Everyone gets the same
- * seed for that day.
- */
-export function featuredOn(day: string) {
-  const weekday = weekdayOf(day);
-  const scheduled = RAID_DAY_SCHEDULE[weekday];
-  const playable = RAID_BOSS_ORDER.filter((id) => RAID_BOSSES[id].playable);
-  const dayNumber = Math.round(
-    new Date(`${day}T12:00:00Z`).getTime() / 86_400_000,
-  );
-  const boss = RAID_BOSSES[scheduled].playable
-    ? scheduled
-    : playable[dayNumber % playable.length];
-  return { day, weekday, scheduled, boss, seed: hash(`${day}:${boss}`), peril: 2 as const };
-}
-
-/** Today's featured raid (Pacific calendar). */
-export function raidDay(date = new Date()) {
-  return featuredOn(pacificDate(date));
-}
-
-/** The Sunday–Saturday week containing a date (for the Hub's week strip). */
-export function raidWeekDays(day = pacificDate()) {
-  const start = addDays(day, -weekdayOf(day));
-  return [0, 1, 2, 3, 4, 5, 6].map((i) => featuredOn(addDays(start, i)));
 }

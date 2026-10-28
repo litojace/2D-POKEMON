@@ -14,13 +14,3 @@ body.battle-active:not(.touch-mode)
   align-items: center;
   min-height: 44px;
 }
-
-body.battle-active:not(.touch-mode) #battle-menu {
-  position: fixed;
-  right: calc(var(--safe-right) + 8px);
-  bottom: calc(var(--safe-bottom) + 4px);
-  z-index: 27;
-  min-width: 88px;
-  min-height: 44px;
-  margin: 0;
-}

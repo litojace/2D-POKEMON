@@ -1,13 +1,4 @@
 import { PresenceHistory } from "./presence-history.js";
-import {
-  createExpedition,
-  prepareExpedition,
-  enterExpeditionCamp,
-  chooseExpeditionCamp,
-  advanceExpedition,
-  restartExpedition,
-  expeditionReceipt,
-} from "./expedition.js";
 import { ArcadeArena } from "./arcade.js";
 import {
   arcadeWeek,
@@ -25,7 +16,7 @@ import {
   raidAttacksOf,
   type RaidAttack,
   raidLookOf,
-  raidDay,
+  pacificDate,
   raidWeek,
   RAID_BOSSES,
   RAID_BOSS_ORDER,
@@ -76,7 +67,6 @@ const createSchema = identitySchema
   .extend({
     mode: z.enum(["duel", "teams", "ffa", "raid"]).optional(),
     arcade: z.enum(ARCADE_IDS as [ArcadeId, ...ArcadeId[]]).optional(),
-    expedition: z.boolean().optional(),
     // Only bosses that are built can be raided.
     boss: z
       .enum(RAID_BOSS_ORDER as [RaidBossId, ...RaidBossId[]])
@@ -495,36 +485,14 @@ export function createArenaServer(
         );
       });
   }
-  function replaceRaidRoom(old: RaidArena, next: RaidArena) {
-    const owners = fighterAccounts.get(old);
-    if (owners) fighterAccounts.set(next, owners);
-    rooms.set(old.code, next);
-    return next;
-  }
   function startArena(a: Arena) {
     a.start();
-    if (a instanceof RaidArena) prepareExpedition(a);
   }
   function broadcast(arena: Arena) {
-    if (arena instanceof RaidArena && arena.raid.expedition) {
-      enterExpeditionCamp(arena);
-      const receipt = expeditionReceipt(arena, fighterAccounts.get(arena));
-      if (receipt)
-        recordActivity(
-          receipt,
-          (saved) => {
-            const e = arena.raid.expedition!;
-            e.saved = saved ? "saved" : "unavailable";
-            if (rooms.get(arena.code) === arena) broadcast(arena);
-          },
-          arena,
-        );
-    }
     // Wins and real attempts (not practice, not instant quits) are saved:
     // losses still count towards titles and tell us which attacks are unfair.
     if (
       arena instanceof RaidArena &&
-      !arena.raid.expedition &&
       arena.raid.result &&
       !arena.raid.drill &&
       (arena.raid.result === "victory" || arena.raid.elapsed >= 20) &&
@@ -669,7 +637,7 @@ export function createArenaServer(
         {
           id: `match:${matchId}`,
           kind: "match",
-          day: raidDay().day,
+          day: pacificDate(),
           players: humans.map((p) => ({
             accountId: owners!.get(p.id)!,
             character: p.character,
@@ -1069,23 +1037,16 @@ export function createArenaServer(
           () => chars[randomInt(chars.length)],
         ).join("");
       } while (rooms.has(code));
-      const weekly = arcadeWeek(raidDay().day);
+      const weekly = arcadeWeek(pacificDate());
       if (
         result.data.arcade &&
         (result.data.arcade !== weekly.id ||
           !["duel", "teams"].includes(result.data.mode ?? "duel"))
       )
         return fail(cb, "Choose this week’s arcade event in 1v1 or 2v2.");
-      if (
-        result.data.expedition &&
-        (result.data.mode !== "raid" || result.data.arcade)
-      )
-        return fail(cb, "Boss Rush is a co-op raid expedition.");
       const arena =
         result.data.mode === "raid"
-          ? result.data.expedition
-            ? createExpedition(code, raidDay().day)
-            : createRaidArena(code, result.data.boss)
+          ? createRaidArena(code, result.data.boss)
           : result.data.arcade
             ? new ArcadeArena(
                 code,
@@ -1238,7 +1199,7 @@ export function createArenaServer(
       do {
         code = randomBytes(12).toString("hex");
       } while (rooms.has(code));
-      const weekly = arcadeWeek(raidDay().day);
+      const weekly = arcadeWeek(pacificDate());
       if (result.data.arcade && result.data.arcade !== weekly.id)
         return fail(
           cb,
@@ -1343,7 +1304,6 @@ export function createArenaServer(
         a = s && rooms.get(s.code);
       if (
         !(a instanceof RaidArena) ||
-        a.raid.expedition ||
         a.phase !== "lobby" ||
         a.players[0]?.id !== s?.id
       )
@@ -1352,17 +1312,14 @@ export function createArenaServer(
           "Only the raid host can change the challenge in the lobby.",
         );
       const result = z
-        .object({ peril: z.number().int().min(1).max(3), daily: z.boolean() })
+        .object({ peril: z.number().int().min(1).max(3), daily: z.literal(false).optional() })
         .strict()
         .safeParse(data);
       if (!result.success) return fail(cb, "Choose a valid raid challenge.");
-      const boss = a.raid.boss,
-        today = raidDay();
-      if (result.data.daily && today.boss !== boss)
-        return fail(cb, `Today's raid is ${RAID_BOSSES[today.boss].name}.`);
+      const boss = a.raid.boss;
       let highest = 0,
         unlocked = boss === "grumblecrag";
-      if ((result.data.peril > 1 && !result.data.daily) || !unlocked) {
+      if (result.data.peril > 1 || !unlocked) {
         try {
           const progress = (await accounts.rpc(
             socket.data.accessToken,
@@ -1386,9 +1343,9 @@ export function createArenaServer(
         return fail(cb, "The room changed while checking this challenge.");
       if (!unlocked)
         return fail(cb, "Clear Grumblecrag first to unlock this boss.");
-      if (!result.data.daily && result.data.peril > highest + 1)
+      if (result.data.peril > highest + 1)
         return fail(cb, "Clear the previous Peril first.");
-      a.configure(result.data.peril, result.data.daily);
+      a.configure(result.data.peril);
       for (const p of a.players) p.ready = false;
       reply(cb, { ok: true });
       broadcast(a);
@@ -1425,7 +1382,7 @@ export function createArenaServer(
             .safeParse(data);
           if (
             !(a instanceof RaidArena) ||
-            !result.success ||
+          !result.success ||
             !a.callRune(id, result.data.rune)
           )
             return fail(
@@ -1450,7 +1407,6 @@ export function createArenaServer(
           .safeParse(data);
         if (
           !(a instanceof RaidArena) ||
-          a.raid.expedition ||
           !result.success ||
           (result.data.kind !== null &&
             !raidAttacksOf(a.raid.boss).includes(result.data.kind))
@@ -1466,22 +1422,6 @@ export function createArenaServer(
               ? a.setDrill(kind)
               : a.startDrill(kind);
         if (!ok) return fail(cb, "Practice opens from the raid lobby.");
-        reply(cb, { ok: true });
-        broadcast(a);
-      }),
-    );
-    socket.on("expedition-choice", (data: unknown, cb: unknown) =>
-      withRoom(cb, (a, id) => {
-        const result = z
-          .object({ choice: z.enum(["rest", "surge"]) })
-          .strict()
-          .safeParse(data);
-        if (
-          !(a instanceof RaidArena) ||
-          !result.success ||
-          !chooseExpeditionCamp(a, id, result.data.choice)
-        )
-          return fail(cb, "Choose a camp option once between Boss Rush legs.");
         reply(cb, { ok: true });
         broadcast(a);
       }),
@@ -1622,19 +1562,6 @@ export function createArenaServer(
     socket.on("rematch", (_data: unknown, cb: unknown) =>
       withRoom(cb, (a, id) => {
         if (a instanceof RaidArena) {
-          if (a.raid.expedition) {
-            if (a.phase !== "finished" || !a.heroes().every((p) => p.connected))
-              return fail(
-                cb,
-                "Finish the expedition and reconnect before retrying.",
-              );
-            a.players.find((p) => p.id === id)!.ready = true;
-            if (a.heroes().every((p) => p.ready))
-              a = replaceRaidRoom(a, restartExpedition(a, raidDay().day, true));
-            reply(cb, { ok: true });
-            broadcast(a);
-            return;
-          }
           if (
             a.phase !== "finished" ||
             !a.heroes().length ||
@@ -1668,16 +1595,6 @@ export function createArenaServer(
     );
     socket.on("lobby", (_data: unknown, cb: unknown) =>
       withRoom(cb, (a) => {
-        if (
-          a instanceof RaidArena &&
-          a.raid.expedition &&
-          a.phase === "finished"
-        ) {
-          a = replaceRaidRoom(a, restartExpedition(a, raidDay().day, false));
-          reply(cb, { ok: true });
-          broadcast(a);
-          return;
-        }
         if (a instanceof RaidArena && a.raid.drill) {
           a.stopDrill();
           reply(cb, { ok: true });
@@ -1836,10 +1753,6 @@ export function createArenaServer(
     for (let a of [...rooms.values()]) {
       const before = a.phase;
       a.tick();
-      if (a instanceof RaidArena && a.raid.expedition?.camp) {
-        const next = advanceExpedition(a);
-        if (next) a = replaceRaidRoom(a, next);
-      }
       if (before !== a.phase && a.phase === "finished")
         // Bots are always up for a rematch.
         for (const p of a.players) p.ready = a.bots.has(p.id);

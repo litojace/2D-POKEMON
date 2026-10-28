@@ -7,7 +7,6 @@ import {
   packSnapshot,
   unpackSnapshot,
 } from "@arena/shared";
-import { featuredOn, raidDay } from "../../packages/shared/src/raid";
 const raid = (players = 1) => {
   const a = new RaidArena("TEST");
   for (let i = 0; i < players; i++) a.add("p" + i, "Player " + i);
@@ -163,28 +162,14 @@ it("rate limits crawling by simulation time and rejects downed attack packets", 
   expect(p.x - x).toBeLessThan(2);
   expect(p.stats.skills).toBe(0);
 });
-it("daily seeds and traits are stable across rooms and team sizes", () => {
-  // 10 a.m. and 11 p.m. Pacific on the same day share the challenge.
-  const one = raidDay(new Date("2026-10-17T17:00:00Z")),
-    two = raidDay(new Date("2026-10-18T06:00:00Z"));
-  expect(one).toEqual(two);
-  expect(one).not.toEqual(raidDay(new Date("2026-10-18T08:00:00Z")));
-  expect(featuredOn("2026-10-17").seed).toBe(one.seed);
-  const a = createRaidArena("AAA", raidDay().boss),
-    b = createRaidArena("BBB", raidDay().boss);
+it("uses ordinary Peril rules even if an internal legacy caller requests daily mode", () => {
+  const a = createRaidArena("AAA", "grumblecrag");
   a.add("a", "A");
-  b.add("b", "B");
-  b.add("c", "C");
   a.configure(1, true);
-  b.configure(1, true);
   a.start();
-  b.start();
-  expect(a.raid.daily).toBe(true);
-  expect(a.raid.seed).toBe(b.raid.seed);
-  expect(a.raid.seed).toBe(raidDay().seed);
-  expect(a.raid.trait).toBe(b.raid.trait);
-  expect(a.raid.peril).toBe(2);
-  expect(a.raid.gilded).toBe(false);
+  expect(a.raid.daily).toBe(false);
+  expect(a.raid.peril).toBe(1);
+  expect(a.raid.phase).toBe(1);
 });
 
 it("solo raiders self-revive up to Peril 2, but not on Peril 3", () => {
@@ -338,11 +323,11 @@ it("ends a final-phase slam combination with debris and a recovery window", () =
   expect(before - a.boss()!.hp).toBeGreaterThan(10);
 });
 
-it("varies teammates' rite offers while preserving daily seat reproducibility", () => {
+it("varies teammates' rite offers within an ordinary raid", () => {
   const make = (code: string) => {
-    const a = createRaidArena(code, raidDay().boss);
+    const a = createRaidArena(code, "grumblecrag");
     for (let i = 0; i < 4; i++) a.add(code + i, "Player");
-    a.configure(1, true);
+    a.configure(1);
     a.start();
     a.heroes().forEach((p) => a.acknowledgeInstructions(p.id));
     return a;
@@ -351,7 +336,7 @@ it("varies teammates' rite offers while preserving daily seat reproducibility", 
     b = make("B");
   const offers = Object.values(a.raid.offers);
   expect(new Set(offers.map((v) => v.join(","))).size).toBe(4);
-  expect(offers).toEqual(Object.values(b.raid.offers));
+  expect(Object.values(b.raid.offers)).toHaveLength(4);
 });
 
 it("credits actual damage and pillar baiting, and resets contributions on quick retry", () => {

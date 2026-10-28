@@ -182,3 +182,14 @@ After migration 024, run [025_mission_completion.sql](../supabase/migrations/025
 After migration 025, run [026_six_daily_missions.sql](../supabase/migrations/026_six_daily_missions.sql) in the Supabase SQL Editor. All three verification columns should read **true**. Refresh Daily missions afterward: each account receives six distinct missions (two per difficulty tier) and five free changes shared across the unfinished list each Pacific calendar day. Solo players receive solo-friendly missions; team players also have solo options and can swap a social mission for a solo one. A changed mission never duplicates another mission on the list.
 
 Complete **all six** to earn the daily +50 coin bonus and advance the streak; every seventh completed day still grants +300 coins. Individual mission rewards remain 40/70/120 coins by tier. Existing slots, progress, leftover seconds and changes already spent today are preserved, and the three extra missions appear when the account next loads its economy. Previously earned daily and streak bonuses remain earned and are not paid twice. Deploy the matching server update so the three added slots can be changed. Until this migration is applied, the UI shows the database's existing mission list and allowance.
+
+
+## Retired raid modes
+
+Run [028_retire_raid_modes.sql](../supabase/migrations/028_retire_raid_modes.sql) after 027.
+It blocks new Boss Rush/daily-raid reward receipts, removes daily-board fields
+from the public progress RPC, and converts the old daily-clear mission to an
+ordinary Voltkit/Auralynx raid clear. Existing six-slot days, five changes,
+mission progress, coins, XP, unlocks and owned items are preserved. The game
+server also rejects retired create/config requests. No client credential changes
+are needed. Historical migration files and already-earned records are retained.
