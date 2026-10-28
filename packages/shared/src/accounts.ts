@@ -265,6 +265,22 @@ export const friendsSchema = z.object({
 });
 export type Friend = z.infer<typeof friendSchema>;
 export type FriendList = z.infer<typeof friendsSchema>;
+
+/** Short-lived, authenticated invitations to an existing private lobby. */
+export const roomInviteRequestSchema = z
+  .object({ playerId: z.string().uuid() })
+  .strict();
+export const roomInviteSchema = z
+  .object({
+    id: z.string().uuid(),
+    fromId: z.string().uuid(),
+    name: z.string().min(1).max(20),
+    code: z.string().regex(/^[A-Z0-9]{6}$/),
+    mode: z.enum(["duel", "teams", "ffa", "raid"]),
+    expiresAt: z.number().finite(),
+  })
+  .strict();
+export type RoomInvite = z.infer<typeof roomInviteSchema>;
 export const friendRequestSchema = z
   .object({
     code: z

@@ -425,9 +425,25 @@ export class Arena {
     this.phase = "countdown";
     this.deadline = this.time + RULES.countdown;
   }
+  /** Cancel all ongoing and buffered actions as soon as a fighter is down. */
+  private stopKnockedOut(p: Fighter) {
+    p.vx = p.vy = 0;
+    p.dashUntil = p.jumpUntil = 0;
+    p.charge = undefined;
+    p.channel = undefined;
+    p.lastInput = {
+      ...blankInput(),
+      aimX: p.lastInput.aimX,
+      aimY: p.lastInput.aimY,
+    };
+  }
   submit(p: Fighter, input: Input) {
     if (this.phase !== "playing" || input.seq <= p.ack) return;
     p.ack = input.seq;
+    if (p.out || (p.hp <= 0 && this.mode !== "raid")) {
+      this.stopKnockedOut(p);
+      return;
+    }
     if (
       input.dx ||
       input.dy ||
@@ -594,8 +610,10 @@ export class Arena {
     const standing = target.hp > 0;
     target.hp = Math.max(0, target.hp - dealt);
     target.stats.received += dealt;
-    if (standing && target.hp <= 0)
+    if (standing && target.hp <= 0) {
       target.stats.knocked = (target.stats.knocked ?? 0) + 1;
+      this.stopKnockedOut(target);
+    }
     if (source) source.stats.dealt += dealt;
     if (
       source &&
@@ -703,6 +721,7 @@ export class Arena {
     );
   }
   cast(p: Fighter, a: Ability, ex = false) {
+    if (p.hp <= 0 || p.out) return;
     this.walls();
     p.statuses = p.statuses.filter((s) => s.kind !== "stealth");
     const color = CHARACTERS[p.character].color;
@@ -1018,24 +1037,14 @@ export class Arena {
       if (bot) bot.lastInput = this.botInput(bot, brain.think(this, bot));
     }
     for (const p of this.players) {
-      // Knocked-out (2v2) or departed fighters sit still until the next round.
-      // (A duel ends the round the same tick, so this only matters in 2v2.)
-      if (
-        p.out ||
-        (p.hp <= 0 && (this.mode === "teams" || this.mode === "raid"))
-      ) {
-        p.vx = p.vy = 0;
-        p.charge = undefined;
-        p.channel = undefined;
-        p.lastInput = {
-          ...blankInput(),
-          aimX: p.lastInput.aimX,
-          aimY: p.lastInput.aimY,
-        };
+      // Every mode can have a knocked-out fighter while others still fight.
+      if (p.out || p.hp <= 0) {
+        this.stopKnockedOut(p);
         continue;
       }
       p.statuses = p.statuses.filter((s) => s.until > this.time);
       for (const s of p.statuses) {
+        if (p.hp <= 0) break;
         if (s.kind === "sleep" && s.amount && this.time >= s.nextTick) {
           s.nextTick += STATUS_RULES.restInterval;
           const before = p.hp;
@@ -1050,6 +1059,11 @@ export class Arena {
             s.by ?? this.enemiesOf(p)[0]?.id ?? "",
           );
         }
+      }
+      // A burn tick above can kill this fighter before their queued action.
+      if (p.hp <= 0) {
+        this.stopKnockedOut(p);
+        continue;
       }
       const input = p.lastInput;
       const freeCooldowns =

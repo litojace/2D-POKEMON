@@ -120,6 +120,7 @@ type Hooks = {
   watchRoom?: (code: string) => void;
   friendsRoom?: () => FriendsRoom;
   createFriendRoom?: () => void;
+  inviteFriend?: (id: string) => Promise<{ ok: boolean; error?: string }>;
   notify: (message: string) => void;
   onChange: () => void;
   onSession: (token: string | null) => void;
@@ -1446,6 +1447,8 @@ export class AccountUI {
     const hub = new FriendsHub(element<HTMLDialogElement>("dialog"), {
       accountId: this.account!.id,
       room,
+      getRoom: this.hooks.friendsRoom,
+      invite: this.hooks.inviteFriend,
       api: (path, body) => this.api(path, body),
       request: (body) => this.friendRequest(body),
       notify: this.hooks.notify,

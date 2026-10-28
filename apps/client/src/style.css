@@ -22384,3 +22384,81 @@ body.battle-active.court-view #game canvas {
     gap: 2px;
   }
 }
+
+/* A confirmed fighter has one clear next step: return to the room and ready. */
+#menu .champion-selector .champion-lock.is-locked:disabled {
+  opacity: 1;
+  color: #c3ffe7;
+  background: #234b44;
+  border-color: #83e8cf;
+  box-shadow: inset 0 0 0 1px #83e8cf44;
+}
+@keyframes room-ready-glow {
+  0%, 100% { box-shadow: 0 0 0 1px #ffd65b66, 0 0 8px #ffd65b22; }
+  50% { box-shadow: 0 0 0 2px #ffd65b99, 0 0 22px #ffd65b55; }
+}
+.lobby-room-drawer.needs-ready > summary,
+#ready.needs-ready {
+  border-color: var(--accent);
+  animation: room-ready-glow 1.8s ease-in-out infinite;
+}
+.lobby-room-drawer.needs-ready > summary {
+  background: #3c3521;
+  color: #ffe390;
+}
+@media (max-width: 1000px) and (orientation: landscape) {
+  .lobby-room-drawer > summary {
+    min-height: 44px;
+    top: calc(var(--safe-top) + 4px);
+    left: calc(10px + var(--safe-left));
+    right: auto;
+  }
+  body.lobby-active #menu .lobby-room-drawer > .lobby-room-panel {
+    top: calc(var(--lobby-top) + 8px);
+    left: calc(10px + var(--safe-left));
+    right: auto;
+    height: calc(100dvh - var(--lobby-top) - var(--safe-bottom) - 22px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lobby-room-drawer.needs-ready > summary, #ready.needs-ready { animation: none; }
+}
+
+/* Spectating keeps the combat field clear and the switch controls reachable. */
+.spectate-banner.pvp-spectator {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px;
+  border-radius: 14px;
+  max-width: calc(100% - 20px);
+  letter-spacing: 0;
+  white-space: normal;
+  background: #111b32f5;
+}
+.spectate-banner.pvp-spectator button {
+  flex: 0 0 44px;
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-radius: 10px;
+  background: #273651;
+  color: #ffe390;
+  font: 700 26px/1 var(--display);
+}
+.spectate-banner.pvp-spectator button:disabled { opacity: .3; }
+.spectator-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  max-width: 240px;
+  text-align: center;
+}
+.spectator-copy small { color: #a6bad4; font: 500 10px/1.2 "DM Sans", sans-serif; }
+.spectator-copy b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 14px/1.3 "DM Sans", sans-serif; }
+body.pvp-knocked-out #mobile-controls .joystick-area,
+body.pvp-knocked-out #mobile-controls .touch-buttons,
+body.pvp-knocked-out #abilities { visibility: hidden; pointer-events: none; }
+
+#menu .champion-selector .champion-lock.is-locked > .button-icon { color: inherit; }

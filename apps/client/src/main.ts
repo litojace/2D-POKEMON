@@ -1,3 +1,6 @@
+import { RoomInvites } from "./room-invites";
+import { PvpSpectator } from "./pvp-spectator";
+import { predictFighter } from "./predict-fighter";
 import { queueBossSpellArt } from "./boss-spell-flipbook";
 import { queueBossArt, retainBossArt } from "./boss-painted-rig";
 import { rendererDensity } from "./render-budget";
@@ -107,9 +110,7 @@ import {
   RITE_RULES,
   kitOf,
   skillReady,
-  advanceMovement,
   normalize,
-  move,
   unpackSnapshot,
   type WireSnapshot,
   type CharacterId,
@@ -236,24 +237,32 @@ document.querySelector("#app")!.innerHTML =
   `<header class="topbar"><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><div id="account-nav" class="account-nav"></div><button type="button" class="quiet home-settings" id="home-settings" aria-label="Settings" title="Settings">${menuIcon("settings")}</button><details class="header-menu" id="header-menu"><summary><i class="menu-burger" aria-hidden="true">☰</i><i class="menu-gear" aria-hidden="true">${menuIcon("settings")}</i> <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">${menuIcon("help")}<span>How to play</span></button><button class="quiet" id="settings">${menuIcon("settings")}<span>Settings</span></button><button class="quiet" id="leaderboard">${menuIcon("leaderboard")}<span>Leaderboard</span></button><button class="quiet" id="install-app">${menuIcon("fullscreen")}<span>Want fullscreen?</span></button><button class="quiet" id="report-problem">${menuIcon("report")}<span>Report a problem</span></button><button class="quiet" id="menu-logout">${menuIcon("leave")}<span>Log out</span></button><span class="connection" id="connection">Connecting</span></div></details></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-stage"><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span id="control-hints"></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu" title="Battle settings (Esc / controller Menu)">Settings</button></div></section></main><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
 // Measure wrapped HUDs for phone spacing and desktop boss-specific controls.
 let measuredRaidHud: HTMLElement | null = null;
-const battleHudSize = new ResizeObserver((entries) => {
-  const raidEntry = entries.find((entry) => entry.target.id === "raid-hud");
-  if (raidEntry)
-    $("battle").style.setProperty(
-      "--desktop-raid-hud-height",
-      `${Math.ceil(raidEntry.target.getBoundingClientRect().height)}px`,
+let battleLayoutFrame = 0;
+/** Layout writes from a resize callback must wait until the next frame (Safari). */
+function scheduleBattleLayout() {
+  if (battleLayoutFrame) return;
+  battleLayoutFrame = requestAnimationFrame(() => {
+    battleLayoutFrame = 0;
+    if ($("battle").hidden) return;
+    const raidHud = document.getElementById("raid-hud");
+    if (raidHud)
+      $("battle").style.setProperty(
+        "--desktop-raid-hud-height",
+        `${Math.ceil(raidHud.getBoundingClientRect().height)}px`,
+      );
+    const panel = $("hud").getBoundingClientRect();
+    const callout = document
+      .getElementById("phase-label")
+      ?.getBoundingClientRect();
+    const height = Math.ceil(
+      Math.max(panel.bottom, callout?.bottom ?? panel.bottom) - panel.top,
     );
-  if ($("battle").hidden) return;
-  const panel = $("hud").getBoundingClientRect();
-  const callout = document
-    .getElementById("phase-label")
-    ?.getBoundingClientRect();
-  const height = Math.ceil(
-    Math.max(panel.bottom, callout?.bottom ?? panel.bottom) - panel.top,
-  );
-  $("battle").style.setProperty("--match-hud-height", `${height + 8}px`);
-  fitRenderer();
-});
+    $("battle").style.setProperty("--match-hud-height", `${height + 8}px`);
+    fitRenderer();
+  });
+}
+const battleHudSize = new ResizeObserver(scheduleBattleLayout);
+
 battleHudSize.observe($("hud"));
 battleHudSize.observe($("abilities"));
 // Touch battles lock zoom (pinch and double tap); menus keep it for accessibility.
@@ -637,6 +646,43 @@ const pwa = setupPWA(() => state?.phase, dialog, toast);
 wireRotateGate();
 // Remember a room from an invite link (?room=ABC123) before the first render.
 if (captureInvite()) inviteHinted = false;
+let lockedRoomPick = "";
+let savingRoomPick = "";
+let lockAttempt = 0;
+function syncRosterLock() {
+  const me = state?.players.find((p) => p.id === myId);
+  const lock = document.querySelector<HTMLButtonElement>(
+    "#menu [data-fighter-lock]",
+  );
+  const inRoom = !!me && state?.phase === "lobby";
+  const pick =
+    inRoom && lock ? `${state!.code}:${lock.dataset.fighterLock}` : "";
+  const locked = !!pick && lockedRoomPick === pick;
+  const saving = !!pick && savingRoomPick === pick;
+  if (lock) {
+    lock.disabled = locked || saving;
+    lock.classList.toggle("is-locked", locked);
+    lock.setAttribute("aria-busy", String(saving));
+    lock.innerHTML = locked
+      ? iconLabel("check", "Locked in")
+      : saving
+        ? "Confirming…"
+        : "Lock in";
+    lock.setAttribute(
+      "aria-label",
+      `${locked ? "Locked in" : saving ? "Confirming" : "Lock in"} ${CHARACTERS[lock.dataset.fighterLock as CharacterId].name}`,
+    );
+  }
+  const needsReady = inRoom && !me.ready && locked && !saving;
+  const drawer = document.querySelector<HTMLElement>(".lobby-room-drawer");
+  drawer?.classList.toggle("needs-ready", needsReady);
+  const summary = drawer?.querySelector<HTMLElement>("summary");
+  const label = needsReady ? "Room · Ready up" : "Room & ready";
+  if (summary && summary.querySelector("span")?.textContent !== label)
+    summary.innerHTML = iconLabel("friends", label);
+  document.getElementById("ready")?.classList.toggle("needs-ready", needsReady);
+}
+
 function wireRoster(isRoom: boolean) {
   const panel = document.querySelector<HTMLElement>("#menu .roster-panel");
   if (!panel) return;
@@ -672,13 +718,23 @@ function wireRoster(isRoom: boolean) {
     audio.unlock();
     const choice = lock.dataset.fighterLock as CharacterId;
     if (!isRoom) homeNavigation.close();
-    if (choice === selected) {
-      if (isRoom)
-        toast(
-          `${CHARACTERS[choice].name} is selected. Ready up when you're set.`,
-        );
+    if (
+      isRoom &&
+      choice === selected &&
+      state?.players.some((p) => p.id === myId && p.character === choice)
+    ) {
+      lockedRoomPick = `${state.code}:${choice}`;
+      syncRosterLock();
+      toast(
+        `${CHARACTERS[choice].name} locked in. Open Room & ready to ready up.`,
+      );
       return;
     }
+    if (choice === selected && !isRoom) return;
+    const roomCode = state?.code;
+    const attempt = ++lockAttempt;
+    savingRoomPick = isRoom ? `${roomCode}:${choice}` : "";
+    lockedRoomPick = "";
     selected = choice;
     confirm();
     rememberHomeFighter(choice);
@@ -687,6 +743,21 @@ function wireRoster(isRoom: boolean) {
     if (!isRoom) return;
     const reply = await request("select", choice);
     const mine = state?.players.find((p) => p.id === myId);
+    if (attempt === lockAttempt) {
+      savingRoomPick = "";
+      if (
+        reply.ok &&
+        state &&
+        state.code === roomCode &&
+        state.phase === "lobby"
+      ) {
+        lockedRoomPick = `${roomCode}:${choice}`;
+        toast(
+          `${CHARACTERS[choice].name} locked in. Open Room & ready to ready up.`,
+        );
+      }
+      syncRosterLock();
+    }
     // The server said no (e.g. the match is starting): show its pick again.
     if (
       !reply.ok &&
@@ -700,6 +771,7 @@ function wireRoster(isRoom: boolean) {
     }
   };
 }
+
 /** A player's equipped champion skins (yours update as soon as you equip). */
 function looksOf(p: Pick<Fighter, "id" | "championLooks"> | undefined) {
   return p?.id === myId && accountsUI?.economy
@@ -748,6 +820,7 @@ function syncMenuCosmetic() {
     .find((row) => row.dataset.raidPlayer === myId)
     ?.querySelector<HTMLElement>(".raid-party-avatar");
   if (avatar) avatar.dataset.raidCosmetic = worn;
+  syncRosterLock();
 }
 /** Move the selection highlight and swap the detail panel without re-rendering. */
 function showSelection(revealSelection = false) {
@@ -949,9 +1022,15 @@ function teamUpNote(me: Fighter) {
 }
 /** Join a friend's room from the friends list. */
 async function joinByCode(code: string) {
-  if (!accountsUI.ensurePlayer()) return;
-  if (myId) return toast("Leave your current room first.");
-  if (!connected) return toast("Waiting for the server connection.");
+  if (!accountsUI.ensurePlayer()) return false;
+  if (myId) {
+    toast("Leave your current room first.");
+    return false;
+  }
+  if (!connected) {
+    toast("Waiting for the server connection.");
+    return false;
+  }
   if (watching) await stopWatching();
   audio.unlock();
   const reply = await request("join", {
@@ -959,10 +1038,23 @@ async function joinByCode(code: string) {
     code,
   });
   identity(reply);
-  if (reply.ok) await request("select", selected);
+  if (reply.ok) {
+    await request("select", selected);
+    $<HTMLDialogElement>("dialog").close();
+    menuOpen = false;
+    settingsOpen = false;
+  }
+  return reply.ok;
 }
+
 /** Room code being watched (no seat), or "". */
 let watching = "";
+const pvpSpectator = new PvpSpectator();
+const roomInvites = new RoomInvites({
+  accountId: () => accountsUI?.account?.id,
+  canJoin: () => connected && !!accountsUI?.account && !myId,
+  join: joinByCode,
+});
 async function watchRoom(raw: string) {
   if (!accountsUI.ensurePlayer()) return;
   const code = raw.trim().toUpperCase();
@@ -1036,7 +1128,7 @@ function roomPanel(me: Fighter) {
     return `<div${p.id === myId ? " data-me" : ""}><span class="player-avatar" data-raid-cosmetic="${portraitCosmetics({ character: fighter.id, raidLook: p.raidLook, championLooks: looksOf(p) })}" style="--element:#${fighter.color.toString(16).padStart(6, "0")}" title="${fighter.name}">${fighterAvatar(fighter.id, `lobby${state!.players.indexOf(p)}`, skinOf(p, fighter.id))}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small class="player-fighter">${fighter.name}${p.flair ? ` · <b class="flair flair-${p.flair.toLowerCase()}">★ ${p.flair}</b>` : ""}</small></span><b class="status-pill ${!p.connected ? "offline" : p.ready ? "ready" : "choosing"}">${!p.connected ? "Offline" : p.ready ? "Ready" : "Choosing"}</b></div>`;
   };
   const ready = `<button class="primary btn-primary" id="ready">${me.ready ? iconLabel("cancel", "Cancel ready") : iconLabel("battle", "Ready to battle")}</button><button class="quiet full leave-button" id="leave">${iconLabel("leave", "Leave room")}</button>`;
-  const code = `<button id="copy" class="room-code">${state!.code}<span>${COPY_ICON}Copy code</span></button><button id="invite" class="secondary btn-secondary full invite-link">${iconLabel("share", "Share invite link")}</button>`;
+  const code = `<button id="copy" class="room-code">${state!.code}<span>${COPY_ICON}Copy code</span></button><button id="invite" class="secondary btn-secondary full invite-link">${iconLabel("share", "Share invite link")}</button><button type="button" class="secondary btn-secondary full" id="invite-friends">${iconLabel("add-friend", "Invite friends")}</button>`;
   if (isFfa()) {
     const open = Math.max(0, 4 - state!.players.length);
     const slots = Array.from(
@@ -1332,6 +1424,8 @@ function wireRaidLobby() {
 }
 function wireRoom() {
   wireRaidLobby();
+  const inviteFriends = document.getElementById("invite-friends");
+  if (inviteFriends) inviteFriends.onclick = () => void accountsUI.showFriends();
   $("ready").onclick = () => {
     audio.unlock();
     const preview =
@@ -1441,7 +1535,7 @@ function renderMenu(revealSelection = false) {
   // Keep the reader's place when the menu re-renders while already visible.
   const keepScroll = !$("menu").hidden ? scrollY : null;
   touch.reset();
-  document.body.classList.remove("battle-active", "battle-raid");
+  document.body.classList.remove("battle-active", "battle-raid", "pvp-knocked-out");
   audio.setAmbience(null);
   const home = !isRoom && !watchingRoom;
   document.body.classList.toggle("home-active", home);
@@ -1625,6 +1719,8 @@ async function leave() {
   }
   sessionStorage.removeItem("arena-token");
   lobbySelection.reset();
+  lockedRoomPick = savingRoomPick = "";
+  lockAttempt++;
   state = undefined;
   myId = "";
   local = undefined;
@@ -1634,6 +1730,29 @@ async function leave() {
   $<HTMLDialogElement>("dialog").close();
   menuOpen = false;
 }
+function renderPvpSpectator() {
+  const banner = $("spectate");
+  const target = state && pvpSpectator.target(state, myId);
+  banner.classList.toggle("pvp-spectator", !!target);
+  banner.hidden = !target;
+  if (!state || !target) return;
+  const candidates = pvpSpectator.candidates(state, myId);
+  const alive = state.players.filter((p) => p.hp > 0 && !p.out).length;
+  const markup = `<button type="button" data-spectate-step="-1" aria-label="Watch previous survivor"${candidates.length < 2 ? " disabled" : ""}>‹</button><span class="spectator-copy"><small>Knocked out · ${alive} still fighting</small><b>Watching ${escape(target.name)}</b></span><button type="button" data-spectate-step="1" aria-label="Watch next survivor"${candidates.length < 2 ? " disabled" : ""}>›</button>`;
+  if (banner.innerHTML !== markup) {
+    banner.innerHTML = markup;
+    banner
+      .querySelectorAll<HTMLButtonElement>("[data-spectate-step]")
+      .forEach((button) => {
+        button.onclick = () => {
+          if (!state) return;
+          pvpSpectator.cycle(state, myId, Number(button.dataset.spectateStep));
+          renderPvpSpectator();
+        };
+      });
+  }
+}
+
 function renderBattle() {
   document.body.classList.remove("home-active", "lobby-active", "gate-active");
   if (!state?.practice) document.body.classList.remove("practice-active");
@@ -1659,6 +1778,9 @@ function renderBattle() {
   );
   document.body.classList.toggle("battle-raid", !!state.raid);
   document.body.classList.toggle("spectating", !myId && !!watching);
+  const knockedOut = !state.raid && !state.practice && (me.hp <= 0 || !!me.out);
+  document.body.classList.toggle("pvp-knocked-out", knockedOut);
+  if (!knockedOut) $("spectate").classList.remove("pvp-spectator");
   queueMicrotask(refreshControlLabels);
   const hudOrder = isTeams()
     ? [
@@ -1866,7 +1988,7 @@ function renderBattle() {
       ? `${(me.jumpAt - state.time).toFixed(1)}s`
       : "READY";
   touch.update(
-    state.phase === "playing" && connected && !!myId,
+    state.phase === "playing" && connected && !!myId && !knockedOut,
     CHARACTERS[me.character].skills.map((a) => a.name),
     me.cooldowns.map((t) => Math.max(0, t - state!.time)),
     Math.max(0, me.dashAt - state.time),
@@ -1918,20 +2040,9 @@ function renderBattle() {
     return;
   }
   if (state.phase === "playing") {
-    const partner =
-      isTeams() && me.hp <= 0
-        ? state.players.find(
-            (p) => p.id !== myId && teamOf(p) === teamOf(me) && p.hp > 0,
-          )
-        : undefined;
     // Its own element: a non-empty overlay dims the whole screen on phones.
     setOverlayMarkup(overlay, "");
-    const banner = $("spectate");
-    const outOfRound = isFfa() && me.hp <= 0 && !me.out;
-    banner.hidden = !partner && !outOfRound;
-    if (partner) banner.textContent = `Knocked out · watching ${partner.name}`;
-    else if (outOfRound)
-      banner.textContent = `Knocked out · ${state.players.filter((p) => p.hp > 0 && !p.out).length} still fighting`;
+    renderPvpSpectator();
     overlay.style.pointerEvents = "none";
   } else {
     $("spectate").hidden = true;
@@ -2152,6 +2263,7 @@ socket.on("connect_error", (error: Error) => {
 socket.on("account-changed", () => void accountsUI.refresh());
 // Coins, missions or Awakening changed after a match or raid.
 socket.on("economy-changed", () => void accountsUI.loadEconomy());
+socket.on("room-invite", (data: unknown) => roomInvites.receive(data));
 socket.on("friends-changed", () => {
   if (accountsUI.friendsOpen) void accountsUI.loadFriends();
   else
@@ -2174,6 +2286,8 @@ socket.on("token-expired", () => {
 socket.on("access-revoked", ({ error }: { error: string }) => {
   sessionStorage.removeItem("arena-token");
   lobbySelection.reset();
+  lockedRoomPick = savingRoomPick = "";
+  lockAttempt++;
   state = undefined;
   myId = "";
   local = undefined;
@@ -2190,6 +2304,10 @@ socket.on("state", (snapshot: WireSnapshot) => {
   if (state?.phase !== snapshot.phase || state?.round !== snapshot.round)
     remoteFrames.clear();
   const previous = state;
+  if (snapshot.phase === "lobby" && (previous?.phase !== "lobby" || previous.code !== snapshot.code)) {
+    lockedRoomPick = savingRoomPick = "";
+    lockAttempt++;
+  }
   state = unpackSnapshot(snapshot);
   scene?.observeSnapshot(state, previous);
   pwa.sync();
@@ -2210,6 +2328,13 @@ socket.on("state", (snapshot: WireSnapshot) => {
   if (state.phase === "lobby") syncFlair(me);
   seq = Math.max(seq, me.ack);
   pending = pending.filter((i) => i.seq > me.ack);
+  if (me.hp <= 0 || me.out) {
+    pending = [];
+    if (previous?.players.some((p) => p.id === myId && p.hp > 0 && !p.out)) {
+      stopControls();
+      exArmedUntil = 0;
+    }
+  }
   local = structuredClone(me);
   for (const [i, input] of pending.entries())
     predict(local, input, state.time + (i + 1) / RULES.tick);
@@ -2331,23 +2456,9 @@ async function reportMatch(matchId: string, attempt = 0) {
   if (state?.phase === "finished") renderBattle();
 }
 function predict(p: Fighter, input: Input, time: number) {
-  if (state?.raid && p.hp <= 0) {
-    if (!p.out) {
-      const d = normalize(input.dx, input.dy);
-      move(p, (d.x * 35) / RULES.tick, (d.y * 35) / RULES.tick);
-    }
-    return;
-  }
-
-  if (input.dash && time >= p.dashAt) {
-    const d = normalize(input.dx, input.dy);
-    p.dashX = (d.x || d.y ? d.x : Math.cos(p.angle)) * RULES.dashSpeed;
-    p.dashY = (d.x || d.y ? d.y : Math.sin(p.angle)) * RULES.dashSpeed;
-    p.dashUntil = time + RULES.dashDuration;
-    p.dashAt = time + RULES.dashCooldown;
-  }
-  advanceMovement(p, input, 1 / RULES.tick, time);
+  predictFighter(p, input, time, !!state?.raid);
 }
+
 function dialog(html: string) {
   menuOpen = true;
   // Pin the page before showModal moves focus, rather than after its mutation.
@@ -2851,6 +2962,7 @@ class ArenaScene extends Phaser.Scene {
     return (
       connected &&
       state?.phase === "playing" &&
+      !!local && !local.out && (local.hp > 0 || !!state.raid) &&
       !($("practice-settings") as HTMLDetailsElement | null)?.open &&
       !$<HTMLDialogElement>("dialog").open &&
       (touch.enabled ? touch.focused : document.hasFocus()) &&
@@ -3289,7 +3401,8 @@ class ArenaScene extends Phaser.Scene {
             (p) => p.id !== myId && teamOf(p) === teamOf(me) && p.hp > 0,
           )
         : undefined;
-    const tracked = partner ?? me;
+    const spectated = state && pvpSpectator.target(state, myId);
+    const tracked = spectated ?? partner ?? me;
     const myTeam = me ? teamOf(me) : 0;
     const follow =
       state?.phase === "playing" && tracked && tracked.hp > 0
@@ -3309,12 +3422,8 @@ class ArenaScene extends Phaser.Scene {
         !state?.raid &&
         document.body.classList.contains("battle-active") &&
         innerWidth > innerHeight,
-      touch.enabled &&
-        innerWidth > innerHeight &&
-        follow &&
-        presented &&
-        !state?.arcade &&
-        !state?.raid
+      ((touch.enabled && innerWidth > innerHeight) || !!spectated) &&
+        follow && presented && !state?.arcade && !state?.raid
         ? {
             ...follow,
             x: presented.x,
@@ -3332,6 +3441,7 @@ class ArenaScene extends Phaser.Scene {
       delta,
       reducedMotion,
       this.activeCourt && !this.courtRaid ? STANDS : 0,
+      state?.practice ? 1.65 : 1.2,
     );
     this.cameras.main
       .setZoom(view.zoomX * this.koZoom, view.zoomY * this.koZoom)
@@ -3414,7 +3524,8 @@ class ArenaScene extends Phaser.Scene {
         !document.hidden;
       const enemies = visibleEnemies(local, local);
       const target = enemies[0];
-      let skill = active ? this.actions.skill : -1;
+      const combatActive = active && local.hp > 0 && !local.out;
+      let skill = combatActive ? this.actions.skill : -1;
       // EX skills: the ultimate button before the meter is full arms an EX
       // version of your next skill (costs a third of the meter).
       const meter = local.ult ?? 0;
@@ -3469,7 +3580,7 @@ class ArenaScene extends Phaser.Scene {
         aimX: aimAt.x,
         aimY: aimAt.y,
         basic:
-          active &&
+          combatActive &&
           (prismAim
             ? prismAim.basic
             : (touch.enabled
@@ -3478,8 +3589,8 @@ class ArenaScene extends Phaser.Scene {
               this.actions.basic),
         skill,
         ...(ex ? { ex: true } : {}),
-        dash: active && this.actions.dash,
-        jump: active && this.actions.jump,
+        dash: combatActive && this.actions.dash,
+        jump: combatActive && this.actions.jump,
       };
       this.actions = { skill: -1, dash: false, jump: false, basic: false };
       socket.emit("input", input);
@@ -4230,7 +4341,7 @@ function ensureBattleRenderer() {
   gameInstance.events.on(Phaser.Core.Events.RESUME, syncBattleLoop);
   addEventListener("resize", fitRenderer);
   // The arena box also changes when the HUD or skill bar changes height.
-  battleResizeObserver = new ResizeObserver(() => fitRenderer());
+  battleResizeObserver = new ResizeObserver(scheduleBattleLayout);
   battleResizeObserver.observe($("game"));
   watchRendererLifecycle(gameInstance, () => !$("battle").hidden, fitRenderer);
 }
@@ -4259,7 +4370,9 @@ accountsUI = new AccountUI({
   friendsRoom: () => ({
     code: myId && state?.phase === "lobby" ? state.code : undefined,
     canCreate: !myId && !watching,
+    canInvite: !!myId && state?.phase === "lobby" && !state.practice && !state.vsBot && state.players.length < ((state.mode ?? "duel") === "duel" ? 2 : 4),
   }),
+  inviteFriend: (playerId) => request("room-invite", { playerId }),
   createFriendRoom: () => homeNavigation.open("play"),
   watchRoom: (code) => {
     if (myId) return toast("Leave your current room first.");
@@ -4267,9 +4380,11 @@ accountsUI = new AccountUI({
   },
   notify: toast,
   beforeSignOut: async () => {
+    roomInvites.clear();
     if (myId) await leave();
   },
   onSession: (token) => {
+    if (!token) roomInvites.clear();
     const previous = (
       socket.auth as { accessToken?: string | null } | undefined
     )?.accessToken;

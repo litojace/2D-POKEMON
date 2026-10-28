@@ -30,6 +30,8 @@ export function readPinnedFriends(accountId: string): Set<string> {
 interface Hooks {
   accountId: string;
   room: FriendsRoom;
+  getRoom?: () => FriendsRoom;
+  invite?: (id: string) => Promise<{ ok: boolean; error?: string }>;
   api: (path: string, body?: unknown) => Promise<unknown>;
   request: (body: { code: string }) => Promise<boolean>;
   notify: (message: string) => void;
@@ -45,6 +47,7 @@ export class FriendsHub {
   private view: FriendsView;
   private list?: FriendList;
   private pending = new Set<string>();
+  private invited = new Map<string, number>();
   private revision = 0;
   private disposed = false;
   private markup = "";
@@ -83,6 +86,7 @@ export class FriendsHub {
       query: "",
       favorites: readPinnedFriends(hooks.accountId),
       busy: this.pending,
+      room: hooks.room,
     };
     this.root.addEventListener("click", this.click);
     this.root.addEventListener("keydown", this.keydown);
@@ -146,6 +150,14 @@ export class FriendsHub {
   }
   private render() {
     if (!this.list || this.disposed) return;
+    this.view.room = this.hooks.getRoom?.() ?? this.hooks.room;
+    for (const [key, until] of this.invited)
+      if (until <= Date.now()) this.invited.delete(key);
+    this.view.invited = new Set(
+      [...this.invited.keys()]
+        .filter((key) => key.startsWith(`${this.view.room?.code}:`))
+        .map((key) => key.split(":")[1]),
+    );
     const list = this.list,
       counts = friendCounts(list, this.view.favorites);
     this.root.querySelector<HTMLElement>("#friends-summary")!.textContent =
@@ -182,6 +194,7 @@ export class FriendsHub {
             "remove",
             "join",
             "watch",
+            "friendInvite",
             "friendPin",
             "friendRemoveConfirm",
             "friendRemoveCancel",
@@ -333,6 +346,37 @@ export class FriendsHub {
       );
     }
   }
+  private async invite(id: string) {
+    const room = this.hooks.getRoom?.() ?? this.hooks.room;
+    if (
+      !room.code ||
+      !room.canInvite ||
+      this.pending.has(id) ||
+      !this.hooks.invite
+    )
+      return;
+    this.pending.add(id);
+    this.render();
+    try {
+      const reply = await this.hooks.invite(id);
+      if (reply.ok) {
+        this.invited.set(`${room.code}:${id}`, Date.now() + 30000);
+        this.message(
+          "Room invite sent. Your friend can join from the invitation.",
+        );
+      } else
+        this.message(
+          reply.error ?? "Couldn't send this invitation. Try again.",
+        );
+    } catch {
+      this.message(
+        "Couldn't send this invitation. Check your connection and try again.",
+      );
+    } finally {
+      this.pending.delete(id);
+      this.render();
+    }
+  }
   private async copyCode(share = false) {
     const code =
       this.list?.code ??
@@ -418,6 +462,8 @@ export class FriendsHub {
     else if (button.hasAttribute("data-friend-remove-cancel")) {
       this.view.removing = undefined;
       this.render();
+    } else if (d.friendInvite && this.hooks.invite) {
+      void this.invite(d.friendInvite);
     } else if (d.join && this.hooks.join) {
       this.dialog.close();
       this.hooks.join(d.join);

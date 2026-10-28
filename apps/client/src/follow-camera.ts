@@ -34,12 +34,14 @@ export class FollowCamera {
     reduced: boolean,
     /** World the view may show above the court (y < 0), e.g. its stands. */
     top = 0,
+    /** Mobile PvP uses a wider field of view than solo practice. */
+    focusZoom = 1.65,
   ): CameraView {
     const base = arenaViewport(width, height, landscape, top);
     const snap = key !== this.identity;
     this.identity = key;
     const blend = 1 - Math.exp(-clamp(delta, 0, 100) / 180);
-    const targetZoom = focus && !reduced ? 1.65 : 1;
+    const targetZoom = focus && !reduced ? focusZoom : 1;
     this.zoom =
       snap || reduced
         ? targetZoom

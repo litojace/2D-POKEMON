@@ -113,6 +113,8 @@ import {
 } from "./accounts.js";
 import {
   friendCode,
+  friendsSchema,
+  roomInviteRequestSchema,
   MASTERY_TIERS,
   progressSchema,
   type Account,
@@ -162,6 +164,8 @@ export function createArenaServer(
   /** Friends watching a room: socket id → room code and display name. */
   const watchers = new Map<string, { code: string; name: string }>();
   const MAX_WATCHERS = 6;
+  const roomInviteCooldowns = new Map<string, number>();
+  const roomInvitesPending = new Set<string>();
   const watchersOf = (code: string) =>
     [...watchers.values()].filter((w) => w.code === code).map((w) => w.name);
   io.use(async (socket, next) => {
@@ -913,6 +917,67 @@ export function createArenaServer(
     socket.on("unwatch", (_data: unknown, cb: unknown) => {
       stopWatching();
       reply(cb, { ok: true });
+    });
+    socket.on("room-invite", async (data: unknown, cb: unknown) => {
+      if (!requirePlayer(cb)) return;
+      if (!allowed(10)) return fail(cb, "Too many requests.");
+      const parsed = roomInviteRequestSchema.safeParse(data);
+      if (!parsed.success) return fail(cb, "Choose a friend to invite.");
+      const sender = account()!,
+        targetId = parsed.data.playerId;
+      const seat = getSession(socket.id),
+        arena = seat && rooms.get(seat.code);
+      const lobbyAvailable = () =>
+        !!arena &&
+        arena.phase === "lobby" &&
+        !arena.practice &&
+        !arena.bots.size &&
+        arena.players.length < arena.size &&
+        getSession(socket.id) === seat &&
+        socket.connected;
+      if (!lobbyAvailable())
+        return fail(cb, "Open a room with an available seat first.");
+      const key = `${sender.id}:${targetId}`;
+      for (const [id, until] of roomInviteCooldowns)
+        if (until <= Date.now()) roomInviteCooldowns.delete(id);
+      if (roomInvitesPending.has(key) || roomInviteCooldowns.has(key))
+        return fail(cb, "Invite already sent. Give your friend a moment.");
+      if (roomInviteCooldowns.size >= 1000)
+        return fail(cb, "Try inviting again in a moment.");
+      roomInvitesPending.add(key);
+      try {
+        const list = friendsSchema.parse(
+          await accounts.rpc(socket.data.accessToken, "arena_friends", {}),
+        );
+        if (targetId === sender.id || !list.friends.some((f) => f.id === targetId))
+          return fail(cb, "You can only invite someone on your friends list.");
+        // Recheck after the database call: the room may have filled or started.
+        if (!lobbyAvailable()) return fail(cb, "This room is no longer open.");
+        const targets = [...io.sockets.sockets.values()].filter(
+          (s) => s.data.account?.id === targetId && !s.data.account?.suspended,
+        );
+        if (!targets.length) return fail(cb, "Your friend is offline.");
+        if ([...sessions.values()].some((s) => s.accountId === targetId))
+          return fail(cb, "Your friend is already in a room.");
+        if (targets.some((s) => watchers.has(s.id)))
+          return fail(cb, "Your friend is watching a match.");
+        const expiresAt = Date.now() + 90000;
+        roomInviteCooldowns.set(key, Date.now() + 30000);
+        const invite = {
+          id: randomUUID(),
+          fromId: sender.id,
+          name: sender.displayName,
+          code: arena!.code,
+          mode: arena!.mode,
+          expiresAt,
+        };
+        for (const target of targets) target.emit("room-invite", invite);
+        reply(cb, { ok: true });
+      } catch {
+        fail(cb, "Couldn't check your friends. Try again.");
+      } finally {
+        roomInvitesPending.delete(key);
+      }
     });
     // The client hands over each refreshed login token (they expire hourly).
     socket.on("token", async (data: unknown, cb: unknown) => {

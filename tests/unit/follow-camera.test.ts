@@ -109,3 +109,31 @@ describe("stands above the court", () => {
     expect(b).toEqual(a);
   });
 });
+
+it("widens the phone PvP view while preserving projection and court boundaries", () => {
+  const narrow = new FollowCamera().update(
+    844,
+    390,
+    true,
+    focus(),
+    "old",
+    16,
+    false,
+  );
+  const wide = new FollowCamera().update(
+    844,
+    390,
+    true,
+    focus(),
+    "pvp",
+    16,
+    false,
+    0,
+    1.2,
+  );
+  expect(844 / wide.zoomX).toBeGreaterThan(1300);
+  expect(844 / wide.zoomX / (844 / narrow.zoomX)).toBeGreaterThan(1.35);
+  expect(wide.zoomX).toBe(wide.zoomY);
+  expect(wide.x - 844 / wide.zoomX / 2).toBeGreaterThanOrEqual(0);
+  expect(wide.x + 844 / wide.zoomX / 2).toBeLessThanOrEqual(1600);
+});

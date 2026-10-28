@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { FriendList } from "../../../packages/shared/src/accounts";
 import {
   canJoinFriend,
+  canInviteFriend,
   canWatchFriend,
   friendCounts,
   friendsMarkup,
@@ -69,6 +70,28 @@ describe("friends hub", () => {
     expect(html).toContain('data-watch="ROOM01"');
     expect(html).not.toContain('data-join="ROOM01"');
     expect(html).not.toContain('data-watch="STALE1"');
+  });
+  it("invites only available online friends into an open lobby and preserves the sent state", () => {
+    const room = { code: "ROOM42", canCreate: false, canInvite: true };
+    const town = list.friends.find((f) => f.id === "town")!;
+    expect(canInviteFriend(town, room)).toBe(true);
+    for (const id of ["offline", "match", "lobby"])
+      expect(
+        canInviteFriend(
+          list.friends.find((f) => f.id === id)!,
+          room,
+        ),
+      ).toBe(false);
+    expect(canInviteFriend(town, { ...room, canInvite: false })).toBe(false);
+    expect(canInviteFriend(town)).toBe(false);
+    const html = friendsMarkup(
+      list,
+      view({ room, invited: new Set(["town"]) }),
+    );
+    expect(html).toContain('data-friend-invite="town"');
+    expect(html).toContain(">Invited</span>");
+    expect(html).not.toContain('data-friend-invite="offline"');
+    expect(html).not.toContain('data-friend-invite="match"');
   });
   it("prioritizes open rooms and online friends without mutating server data", () => {
     const original = list.friends.map((f) => f.id);

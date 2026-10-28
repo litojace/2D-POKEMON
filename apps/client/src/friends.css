@@ -646,3 +646,100 @@ dialog:has(.friends-hub) .dialog-heading {
     align-self: start;
   }
 }
+
+/* The invite is available on each eligible friend's row, alongside room actions. */
+.friend-room-invite {
+  white-space: nowrap;
+}
+.room-invite-notice[hidden] {
+  display: none;
+}
+.room-invite-notice {
+  position: fixed;
+  inset: auto calc(16px + var(--safe-right, 0px))
+    calc(16px + var(--safe-bottom, 0px)) auto;
+  margin: 0;
+  z-index: 200;
+  width: min(
+    340px,
+    calc(100vw - var(--safe-left, 0px) - var(--safe-right, 0px) - 24px)
+  );
+  max-height: calc(
+    100dvh - var(--safe-top, 0px) - var(--safe-bottom, 0px) - 24px
+  );
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 16px;
+  border: 1px solid #ffd65b88;
+  border-radius: 16px;
+  color: #edf3ff;
+  background: #14213a;
+  box-shadow: 0 12px 40px #0008;
+  font:
+    400 14px/1.4 "DM Sans",
+    sans-serif;
+}
+.room-invite-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #ffe390;
+  font-weight: 700;
+}
+.room-invite-heading .button-icon {
+  width: 18px;
+  height: 18px;
+}
+.room-invite-heading > small {
+  margin-left: auto;
+  color: #afc2db;
+  font-size: 11px;
+}
+.room-invite-notice p {
+  margin: 10px 0 3px;
+}
+.room-invite-mode {
+  color: #afc2db;
+  font-size: 12px;
+}
+.room-invite-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 14px;
+}
+.room-invite-notice .room-invite-actions > button {
+  min-height: 44px;
+  margin: 0;
+  padding: 8px;
+  font-size: 14px;
+}
+.room-invite-status {
+  display: block;
+  margin-top: 8px;
+  color: #ffd88e;
+  font-size: 12px;
+}
+.room-invite-status:empty {
+  display: none;
+}
+@media (max-height: 350px) {
+  .room-invite-notice {
+    padding: 12px;
+  }
+}
+
+.friends-hub .friend-actions > .friend-room-invite {
+  width: 96px;
+  min-width: 96px;
+}
+.friends-hub .friend-room-invite:disabled {
+  opacity: 1;
+  color: #b6f5d6;
+  background: #25463e;
+  border-color: #78d8b566;
+  box-shadow: none;
+}
+.friends-hub .friend-room-invite:disabled > .button-icon {
+  color: inherit;
+}
