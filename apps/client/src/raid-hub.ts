@@ -35,10 +35,9 @@ const time = (s: number) =>
 const stars = (n: number) =>
   `<span class="raid-stars" aria-label="Difficulty ${n} of 3">${"★".repeat(n)}<span aria-hidden="true">${"★".repeat(3 - n)}</span></span>`;
 
-export type RaidHubTab = "overview" | "attacks" | "rewards" | "records";
+export type RaidHubTab = "overview" | "rewards" | "records";
 export const RAID_HUB_TABS: [RaidHubTab, string][] = [
   ["overview", "Overview"],
-  ["attacks", "Attacks & practice"],
   ["rewards", "Rewards"],
   ["records", "Records"],
 ];
@@ -114,11 +113,6 @@ function overview(id: RaidBossId) {
   return `<p>${b.blurb}</p><h4>Three chapters</h4><ol class="raid-hub-chapters">${raidChapters(id).map((c) => `<li><b>${c.name}</b><small>${c.objective}</small></li>`).join("")}</ol><h4>Champion tricks</h4><ul class="raid-hub-perks">${perks}</ul><p class="raid-hub-rules">Solo: one self-revive on Peril 1–2, none on Peril 3. Teams revive each other. Raids never change your PvP rating.</p>`;
 }
 
-function attacks(id: RaidBossId) {
-  if (!RAID_BOSSES[id].playable) return `<p>Attack details arrive with the boss.</p>`;
-  return `<ul class="raid-hub-attacks">${raidAttacksOf(id).map((a) => `<li><div class="raid-attack-title"><span class="raid-attack-skill-icon" aria-hidden="true">${raidSkillIcon(a)}</span><b>${RAID_ATTACKS[a].name}</b></div><small>${RAID_ATTACKS[a].practice}</small><button type="button" class="secondary" data-hub-practice="${a}">${iconLabel("target", "Practise attack")}</button></li>`).join("")}</ul><p class="raid-hub-rules">Choose an attack to start a safe solo practice. Hits and dodges are counted; no health is lost.</p>`;
-}
-
 function roster(p: RaidProgress | null, selected: RaidBossId) {
   return `<nav class="raid-boss-roster" aria-label="Choose a raid boss">${RAID_BOSS_ORDER.map((id) => {
     const b = RAID_BOSSES[id];
@@ -155,7 +149,7 @@ function records(id: RaidBossId, p: RaidProgress | null) {
   return `<div class="fighter-stats raid-hub-stats"><span><b>${r?.clears ?? 0}</b>Clears</span><span><b>${r?.highestPeril ?? 0}</b>Highest Peril</span><span><b>${r?.bestSeconds == null ? "—" : time(r.bestSeconds)}</b>Best clear</span><span><b>${r?.runs ?? 0}</b>Attempts</span><span><b>${feats}</b>Feats</span></div>`;
 }
 
-/** One boss: overview, attacks, rewards (with appearance) and records. */
+/** One boss: overview, rewards (with appearance) and records. */
 export function raidBossPageMarkup(
   id: RaidBossId,
   tab: RaidHubTab,
@@ -167,11 +161,9 @@ export function raidBossPageMarkup(
   const body =
     tab === "overview"
       ? overview(id)
-      : tab === "attacks"
-        ? attacks(id)
-        : tab === "rewards"
-          ? rewards(id, p) + (b.playable ? appearance : "")
-          : records(id, p);
+      : tab === "rewards"
+        ? rewards(id, p) + (b.playable ? appearance : "")
+        : records(id, p);
   return `<div class="raid-hub raid-boss-page" style="--boss:${b.color}">
 <button type="button" class="quiet raid-hub-back" id="raid-hub-back">${iconLabel("back", "All bosses")}</button>
 ${showcase(id, p)}

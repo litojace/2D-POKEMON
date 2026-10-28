@@ -9604,8 +9604,7 @@ button.raid-boss-card:hover:not(:disabled) {
   margin: 0;
 }
 .raid-hub-chapters,
-.raid-hub-perks,
-.raid-hub-attacks {
+.raid-hub-perks {
   display: grid;
   gap: 6px;
   margin: 0;
@@ -9616,8 +9615,7 @@ button.raid-boss-card:hover:not(:disabled) {
   counter-reset: chapter;
 }
 .raid-hub-chapters li,
-.raid-hub-perks li,
-.raid-hub-attacks li {
+.raid-hub-perks li {
   display: grid;
   gap: 2px;
   padding: 8px 12px;
@@ -11355,8 +11353,7 @@ dialog:has(.shop) {
   .raid-hub-chapters {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-  .raid-hub-perks,
-  .raid-hub-attacks {
+  .raid-hub-perks {
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   }
   .raid-rewards {
@@ -22678,63 +22675,6 @@ body.battle-active:not(.touch-mode).battle-raid :is(#raid-prism-controls, #raid-
   transform: none;
 }
 
-/* Attack cards use a still skill symbol and keep the description and action aligned. */
-.raid-hub-attacks {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
-  gap: 10px;
-}
-.raid-hub-attacks > li {
-  display: flex;
-  min-width: 0;
-  min-height: 174px;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid #8ea7c82b;
-  border-radius: 12px;
-  background: linear-gradient(145deg, #172743, #111e35);
-  text-align: left;
-}
-.raid-attack-title {
-  display: flex;
-  min-height: 42px;
-  align-items: center;
-  gap: 10px;
-}
-.raid-attack-title > b {
-  color: #edf3ff;
-  font-size: 13px;
-  line-height: 1.25;
-}
-.raid-attack-skill-icon {
-  display: grid;
-  width: 40px;
-  height: 40px;
-  flex: 0 0 40px;
-  place-items: center;
-  border: 1px solid color-mix(in srgb, var(--boss), transparent 55%);
-  border-radius: 11px;
-  background: color-mix(in srgb, var(--boss), #101a2d 84%);
-  color: color-mix(in srgb, var(--boss), white 36%);
-}
-.raid-attack-skill-icon .menu-option-icon {
-  width: 22px;
-  height: 22px;
-}
-.raid-hub-attacks > li > small {
-  flex: 1;
-  font-size: 12px;
-  line-height: 1.45;
-}
-.raid-hub-attacks button {
-  display: flex;
-  width: 100%;
-  min-height: 40px;
-  justify-content: center;
-  border-radius: 9px;
-  white-space: nowrap;
-}
 .raid-hub-perks {
   gap: 8px;
 }
@@ -22808,18 +22748,18 @@ body.battle-active.battle-raid #raid-drill:not([hidden]) {position:fixed;inset:a
  #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {max-width:7ch;font-size:18px;}
 }
 
-/* Use the same non-overlapping party and cue columns in every desktop court layout. */
+/* Keep the boss health and name together, with the cue and Peril in the center. */
 body.battle-active:not(.touch-mode).battle-raid #raid-hud,
 body.battle-active:not(.touch-mode) #battle.desktop-hud-outside #raid-hud {
   grid-template-columns:
     minmax(0, 1.35fr)
     minmax(0, 1fr)
-    minmax(190px, 0.85fr);
+    max-content
+    minmax(160px, 0.85fr);
   grid-template-areas:
-    "health health party"
-    "name . party"
-    "cue peril party"
-    "timer timer party";
+    "health . . party"
+    "name cue peril party"
+    "timer timer timer party";
   column-gap: 10px;
   row-gap: 3px;
 }
@@ -22836,6 +22776,17 @@ body.battle-active:not(.touch-mode)
   align-self: center;
   width: 100%;
   margin: 0;
+}
+body.battle-active:not(.touch-mode).battle-raid
+  #raid-hud
+  .raid-party-bars[data-party-size="1"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+body.battle-active:not(.touch-mode).battle-raid #raid-hud:has(.raid-twin-health) {
+  grid-template-areas:
+    "health health health party"
+    "name cue peril party"
+    "timer timer timer party";
 }
 body.battle-active:not(.touch-mode).battle-raid #raid-hud .raid-callout,
 body.battle-active:not(.touch-mode)
