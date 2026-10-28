@@ -955,7 +955,13 @@ export class Arena {
         if (h.knockback) {
           const d = normalize(p.x - h.x || 1, p.y - h.y);
           const len = Math.hypot(d.x, d.y) || 1;
-          move(p, (d.x / len) * h.knockback, (d.y / len) * h.knockback, RULES.radius, this.walls());
+          move(
+            p,
+            (d.x / len) * h.knockback,
+            (d.y / len) * h.knockback,
+            RULES.radius,
+            this.walls(),
+          );
         }
       }
     }
@@ -998,7 +1004,7 @@ export class Arena {
       return;
     this.time += dt;
     if (this.phase === "playing") this.playTime += dt;
-    this.walls();
+    const movementContext = this.movementContext();
     if (this.phase === "countdown" || this.phase === "intermission") {
       if (this.time >= this.deadline) {
         if (this.phase === "intermission") {
@@ -1098,7 +1104,7 @@ export class Arena {
         p.jumpAt = freeCooldowns ? 0 : this.time + RULES.jumpCooldown;
         this.event("jump", p, CHARACTERS[p.character].color, undefined, p.id);
       }
-      advanceMovement(p, input, dt, this.time, this.movementContext());
+      advanceMovement(p, input, dt, this.time, movementContext);
       if (p.charge && this.time >= p.charge.at) {
         const a = this.kit(p).skills[p.charge.skill];
         this.cast(p, p.charge.ex ? exAbility(a) : a, p.charge.ex);
