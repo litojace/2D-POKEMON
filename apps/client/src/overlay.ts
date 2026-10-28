@@ -1,6 +1,14 @@
 const markupByElement = new WeakMap<HTMLElement, string>();
 /** Countdown values are filled separately so timer ticks preserve focused cards. */
 export const LIVE_SECONDS = '<span class="live-seconds"></span>';
+/** Countdown digits update in place so the overlay card is not remounted each second. */
+export const LIVE_COUNTDOWN = '<span class="live-countdown"></span>';
+export function fillLiveCountdown(root: HTMLElement, seconds: number) {
+  const text = String(Math.max(1, Math.ceil(seconds)));
+  root.querySelectorAll<HTMLElement>(".live-countdown").forEach((slot) => {
+    if (slot.textContent !== text) slot.textContent = text;
+  });
+}
 export function fillLiveSeconds(root: HTMLElement, seconds: number) {
   const n = Math.max(0, Math.ceil(seconds));
   const text = `${n} second${n === 1 ? "" : "s"}`;

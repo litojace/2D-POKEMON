@@ -82,7 +82,13 @@ import {
 import { fighterAvatar } from "./fighter-art";
 import { portraitAvatar, portraitCosmetics } from "./portraits";
 import { LOOK_ITEMS } from "../../../packages/shared/src/shop";
-import { setOverlayMarkup, LIVE_SECONDS, fillLiveSeconds } from "./overlay";
+import {
+  setOverlayMarkup,
+  LIVE_SECONDS,
+  LIVE_COUNTDOWN,
+  fillLiveSeconds,
+  fillLiveCountdown,
+} from "./overlay";
 const escape = (s: string) =>
   s.replace(
     /[&<>"']/g,
@@ -302,7 +308,7 @@ export function renderRaidUI(
     const offers = r.offers[me.id] ?? [];
     actions = `<div class="raid-rite-intro"><span>Stacks this run</span><span class="raid-choice-timer" role="timer" aria-label="Time left to choose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>Choose in</span><strong>${LIVE_SECONDS}</strong></span>${raidRiteDetails(offers)}</div><div class="raid-rite-options">${raidRiteChoices(offers)}</div>`;
   } else if (state.phase === "countdown") {
-    title = String(Math.ceil(state.remaining));
+    title = LIVE_COUNTDOWN;
     body = `<p>${raidChapters(r.boss)[r.phase - 1].objective}</p>`;
   } else if (state.phase === "paused") {
     title = "A teammate disconnected";
@@ -386,6 +392,8 @@ export function renderRaidUI(
         .join(""),
     );
   fillLiveSeconds(overlay, state.remaining);
+  if (state.phase === "countdown")
+    fillLiveCountdown(overlay, state.remaining);
   overlay
     .querySelector(".raid-choice-timer")
     ?.classList.toggle("is-urgent", state.remaining <= 5);

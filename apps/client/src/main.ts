@@ -57,7 +57,13 @@ import {
   type FighterVisual,
 } from "./animation/pipeline";
 import { rigAssets } from "./animation/assets";
-import { setOverlayMarkup, LIVE_SECONDS, fillLiveSeconds } from "./overlay";
+import {
+  setOverlayMarkup,
+  LIVE_SECONDS,
+  LIVE_COUNTDOWN,
+  fillLiveSeconds,
+  fillLiveCountdown,
+} from "./overlay";
 import { fighterArt, fighterAvatar, scopeIds } from "./fighter-art";
 import { fighterSkillColor, wornArt } from "./skins/skin-art";
 import { drawCollectionAura } from "./skins/collection-fx";
@@ -982,7 +988,7 @@ function renderWatchOverlay(overlay: HTMLElement) {
       )}</div><p class="arena-brief"><b>Arena · ${escape(ARENAS[state!.arena ?? "classic"].name)}</b>${escape(ARENAS[state!.arena ?? "classic"].tip)}</p>${partyRulesNote()}`;
   }
   if (state!.phase === "countdown") {
-    heading = `${Math.ceil(state!.remaining)}`;
+    heading = LIVE_COUNTDOWN;
     details = "Here we go.";
   }
   if (state!.phase === "intermission") {
@@ -1018,6 +1024,8 @@ function renderWatchOverlay(overlay: HTMLElement) {
     overlay,
     state!.phase === "paused" ? state!.pauseRemaining : state!.remaining,
   );
+  if (state!.phase === "countdown")
+    fillLiveCountdown(overlay, state!.remaining);
   const stop = document.getElementById("watch-stop");
   if (stop) stop.onclick = () => void stopWatching();
 }
@@ -2166,7 +2174,7 @@ function renderBattle() {
       actions = `<button class="primary btn-primary" id="instructions-ready" ${confirmed ? "disabled" : ""}>${confirmed ? "Waiting for the others…" : "I’m ready"}</button>`;
     }
     if (state.phase === "countdown") {
-      heading = `${Math.ceil(state.remaining)}`;
+      heading = LIVE_COUNTDOWN;
       details = "Get ready. Make your move.";
     }
     if (state.phase === "intermission") {
@@ -2249,6 +2257,8 @@ function renderBattle() {
       overlay,
       state.phase === "paused" ? state.pauseRemaining : state.remaining,
     );
+    if (state.phase === "countdown")
+      fillLiveCountdown(overlay, state.remaining);
     if (state.phase === "briefing")
       $("instructions-ready").onclick = () => {
         // Phones: go fullscreen and turn sideways where the browser allows it.

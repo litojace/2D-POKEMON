@@ -19354,12 +19354,6 @@ body.battle-active:not(.touch-mode) #battle.desktop-hud-outside #raid-hud {
 }
 body.battle-active:not(.touch-mode)
   #battle.desktop-hud-outside
-  #raid-hud
-  > :not(.raid-party-bars) {
-  grid-column: 1;
-}
-body.battle-active:not(.touch-mode)
-  #battle.desktop-hud-outside
   .raid-party-bars {
   position: static;
   display: grid;
@@ -22730,7 +22724,7 @@ body.battle-active:not(.touch-mode) #battle.desktop-hud-outside #raid-hud {
     max-content
     minmax(160px, 0.85fr);
   grid-template-areas:
-    "health . . party"
+    "health health health party"
     "name cue peril party"
     "timer timer timer party";
   column-gap: 10px;
