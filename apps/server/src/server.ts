@@ -150,6 +150,9 @@ export function createArenaServer(
   });
   const rooms = new Map<string, Arena>(),
     sessions = new Map<string, Session>();
+  // Input packets arrive every simulation tick: avoid scanning all sessions
+  // to identify the sending socket on this hot path.
+  const socketSessions = new Map<string, Session>();
   // One live game connection per account, including town/menu/spectator seats.
   const activeAccounts = new Map<string, string>();
   const ownsConnection = (socket: import("socket.io").Socket) =>
@@ -442,7 +445,7 @@ export function createArenaServer(
     res.sendFile(path.join(client, "index.html"));
   });
   function getSession(socketId: string) {
-    return [...sessions.values()].find((s) => s.socketId === socketId);
+    return socketSessions.get(socketId);
   }
   const raidSaves = new WeakMap<RaidArena, string>();
   /** The Shop skin a fighter is wearing for the champion in play. */
@@ -746,6 +749,7 @@ export function createArenaServer(
     p.connected = false;
     p.ready = false;
     p.lastInput = blankInput();
+    if (session.socketId) socketSessions.delete(session.socketId);
     session.socketId = null;
     session.expires = Date.now() + (permanent ? 0 : grace);
     const standIn =
@@ -770,6 +774,7 @@ export function createArenaServer(
   function expire(session: Session) {
     const arena = rooms.get(session.code);
     sessions.delete(session.token);
+    if (session.socketId) socketSessions.delete(session.socketId);
     if (!arena) return;
     const other = arena.players.find((p) => p.id !== session.id);
     const leaver = arena.players.find((p) => p.id === session.id);
@@ -870,14 +875,16 @@ export function createArenaServer(
       });
       if (!fighterAccounts.has(arena)) fighterAccounts.set(arena, new Map());
       fighterAccounts.get(arena)!.set(id, profile.id);
-      sessions.set(token, {
+      const session: Session = {
         accountId: profile.id,
         id,
         token,
         code: arena.code,
         socketId: socket.id,
         expires: Infinity,
-      });
+      };
+      sessions.set(token, session);
+      socketSessions.set(socket.id, session);
       const attached = arena.players.find((p) => p.id === id);
       void accounts
         .rpc(socket.data.accessToken, "arena_raid_progress", {})
@@ -1148,6 +1155,7 @@ export function createArenaServer(
       }
       if (!requirePlayer(cb)) return;
       s.socketId = socket.id;
+      socketSessions.set(socket.id, s);
       s.expires = Infinity;
       p.connected = true;
       p.lastInput = blankInput();
