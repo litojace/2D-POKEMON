@@ -1458,30 +1458,27 @@ export interface Rect {
   w: number;
   h: number;
 }
-/**
- * The walls collision uses right now. Each arena (and the moving pillar in
- * Shifting Ruins) has its own; the server sets this before simulating a room
- * and the client before predicting, so movement code needn't pass it around.
- */
-let activeObstacles: readonly Rect[] = OBSTACLES;
-/** Movement speed multiplier for the room being simulated (Double time). */
-let speedScale = 1;
-export function useSpeedScale(scale: number) {
-  speedScale = scale;
+/** Room-specific rules used by deterministic movement and collision. */
+export interface MovementContext {
+  obstacles: readonly Rect[];
+  speedScale: number;
 }
-export function useObstacles(list: readonly Rect[]) {
-  activeObstacles = list;
-}
-export function currentObstacles() {
-  return activeObstacles;
-}
-export function blocked(x: number, y: number, r = RULES.radius): boolean {
+const DEFAULT_MOVEMENT_CONTEXT: MovementContext = {
+  obstacles: OBSTACLES,
+  speedScale: 1,
+};
+export function blocked(
+  x: number,
+  y: number,
+  r = RULES.radius,
+  obstacles: readonly Rect[] = OBSTACLES,
+): boolean {
   return (
     x < r ||
     y < r ||
     x > RULES.width - r ||
     y > RULES.height - r ||
-    activeObstacles.some(
+    obstacles.some(
       (o) =>
         Math.hypot(
           x - Math.max(o.x, Math.min(x, o.x + o.w)),
@@ -1495,11 +1492,14 @@ export function move(
   dx: number,
   dy: number,
   r = RULES.radius,
+  obstacles: readonly Rect[] = OBSTACLES,
 ): void {
   const steps = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 10));
   for (let i = 0; i < steps; i++) {
-    if (!blocked(body.x + dx / steps, body.y, r)) body.x += dx / steps;
-    if (!blocked(body.x, body.y + dy / steps, r)) body.y += dy / steps;
+    if (!blocked(body.x + dx / steps, body.y, r, obstacles))
+      body.x += dx / steps;
+    if (!blocked(body.x, body.y + dy / steps, r, obstacles))
+      body.y += dy / steps;
   }
 }
 export function advanceMovement(
@@ -1507,6 +1507,7 @@ export function advanceMovement(
   input: Input,
   dt: number,
   time: number,
+  context: MovementContext = DEFAULT_MOVEMENT_CONTEXT,
 ): void {
   const dir = normalize(input.dx, input.dy);
   p.angle = Math.atan2(input.aimY - p.y, input.aimX - p.x);
@@ -1524,7 +1525,7 @@ export function advanceMovement(
     p.vy = p.dashY;
   } else {
     const factor = 1 - Math.exp(-RULES.acceleration * dt);
-    const speed = CHARACTERS[p.character].speed * modifier * speedScale;
+    const speed = CHARACTERS[p.character].speed * modifier * context.speedScale;
     p.vx += (dir.x * speed - p.vx) * factor;
     p.vy += (dir.y * speed - p.vy) * factor;
   }
@@ -1532,7 +1533,7 @@ export function advanceMovement(
     p.vx = 0;
     p.vy = 0;
   }
-  move(p, p.vx * dt, p.vy * dt);
+  move(p, p.vx * dt, p.vy * dt, RULES.radius, context.obstacles);
 }
 export const blankInput = (): Input => ({
   seq: 0,
