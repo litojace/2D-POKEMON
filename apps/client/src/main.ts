@@ -185,6 +185,7 @@ import { openTown } from "./town";
 import { surfaceBurst } from "./court-surface-fx";
 import { fxFor } from "./fx-engine";
 import { isRaidFloor, paintRaidFloor } from "./raid-floors";
+import { isIllustratedRaidFloor, loadRaidArenaArt, paintIllustratedRaidFloor } from "./raid-arena-art";
 import type { LayerAt } from "./raid-layers";
 import { courtBlockFrame, courtBlocks, isCourt, paintCourtBlock, paintCourtFloor, paintCourtRubble, paintCourtStands, RUBBLE_PAD, SHIFTING_BLOCK, STANDS, type CourtId } from "./arena-courts";
 import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
@@ -2786,7 +2787,8 @@ class ArenaScene extends Phaser.Scene {
   stands = new Map<CourtId, Phaser.GameObjects.Image>();
   /** Grumblecrag's raid plays on the Coliseum court (no stands strip). */
   courtRaid = false;
-  /** A broken pillar's rubble, with the floor under it (no block shadow). */
+  raidPillarShadows: Phaser.GameObjects.Ellipse[] = [];
+  /** Transparent rubble over the current raid material. */
   rubble: Phaser.GameObjects.Image[] = [];
   /** Each pillar's broken state last frame, to animate the change. */
   pillarBroken: boolean[] = [];
@@ -2808,14 +2810,24 @@ class ArenaScene extends Phaser.Scene {
         ctx.scale(bake, bake);
         paintCourtFloor(ctx, court, bare);
         this.textures.addCanvas(key, canvas);
-      } else if (isRaidFloor(id)) {
+      } else if (isIllustratedRaidFloor(id)) {
         const canvas = document.createElement("canvas");
         canvas.width = RULES.width * bake;
         canvas.height = RULES.height * bake;
         const ctx = canvas.getContext("2d")!;
         ctx.scale(bake, bake);
-        paintRaidFloor(ctx, id);
+        if (isRaidFloor(id)) paintRaidFloor(ctx, id);
+        else paintCourtFloor(ctx, "classic", true);
         this.textures.addCanvas(key, canvas);
+        loadRaidArenaArt(id, image => {
+          if (!this.textures?.exists(key)) return;
+          ctx.save();
+          ctx.setTransform(bake, 0, 0, bake, 0, 0);
+          paintIllustratedRaidFloor(ctx, id, image);
+          ctx.restore();
+          canvas.dataset.raidArtwork = id;
+          (this.textures.get(key) as Phaser.Textures.CanvasTexture).refresh();
+        });
       } else {
         const g = this.make.graphics({}, false);
         paintArenaFloor(scaledPainter(g, bake), ARENAS[id as ArenaId]);
@@ -2875,7 +2887,7 @@ class ArenaScene extends Phaser.Scene {
           ? "CLOUD DECK <span>SOMNARA’S DREAM</span>"
           : `${ARENAS[arena].name.toUpperCase()} <span>ELEMENT ARENA</span>`;
     }
-    const key = this.floorTexture(court ? `court-${court}` : arena);
+    const key = this.floorTexture(this.courtRaid ? "raid-coliseum" : court ? `court-${court}` : arena);
     this.floor.setTexture(key).setScale(1 / (this.floorScale.get(key) ?? 1));
     if (court) this.ensureBlocks(court);
     for (const [cid, list] of this.courtBlocks) for (const b of list) b.img.setVisible(cid === court && !b.shifting);
@@ -2896,6 +2908,10 @@ class ArenaScene extends Phaser.Scene {
     for (const [cid, img] of this.stands) img.setVisible(standsOn && cid === court);
     if (this.courtRaid && !this.rubble.length) this.rubble = courtBlocks("classic").map((o, i) => this.rubbleImage(o, i));
     for (const img of this.rubble) img.setVisible(false);
+    if (this.courtRaid && !this.raidPillarShadows.length) {
+      this.raidPillarShadows = courtBlocks("classic").map(o => this.add.ellipse(o.x+o.w/2+8,o.y+o.h-5,o.w+25,o.h*.45,0x080b13,.28).setDepth(-9.5));
+    }
+    for (const shadow of this.raidPillarShadows) shadow.setVisible(this.courtRaid);
     // The frame grows to show the stands on desktop (see .court-view in CSS).
     document.body.classList.toggle("court-view", standsOn);
   }
@@ -3032,9 +3048,8 @@ class ArenaScene extends Phaser.Scene {
     if (rubble) this.tweens.add({ targets: rubble, alpha: 0, duration: 300 });
   }
   /**
-   * Where a pillar stood once Grumblecrag breaks it: the court floor without
-   * that block's shadow, and a low heap of its stones (walkable, so it sits
-   * on the ground under everyone).
+   * Transparent rubble sits directly on the raid's current floor, so loading
+   * the painted material cannot leave a rectangular patch of the old court.
    */
   private rubbleImage(o: { x: number; y: number; w: number; h: number }, index: number) {
     const bake = floorBake(),
@@ -3044,12 +3059,10 @@ class ArenaScene extends Phaser.Scene {
       w = o.w + RUBBLE_PAD * 2 + 32,
       h = o.h + RUBBLE_PAD * 2 + 8;
     if (!this.textures.exists(key)) {
-      const bare = this.textures.get(this.floorTexture("court-classic-bare")).getSourceImage() as HTMLCanvasElement;
       const canvas = document.createElement("canvas");
       canvas.width = Math.ceil(w * bake);
       canvas.height = Math.ceil(h * bake);
       const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(bare, x * bake, y * bake, w * bake, h * bake, 0, 0, w * bake, h * bake);
       ctx.scale(bake, bake);
       ctx.translate(-x, -y);
       paintCourtRubble(ctx, o, index);
@@ -3079,6 +3092,7 @@ class ArenaScene extends Phaser.Scene {
         const broken = !!pillars?.[i]?.broken,
           was = this.pillarBroken[i];
         this.pillarBroken[i] = broken;
+        this.raidPillarShadows[i]?.setVisible(!broken);
         if (was !== undefined && broken && !was) this.crumblePillar(i, img, o);
         else if (was && !broken) this.raisePillar(i, img);
         if (this.pillarMoving.has(i)) continue;
