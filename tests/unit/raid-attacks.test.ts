@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { createRaidArena } from "../../apps/server/src/raid-bosses";
 import { RaidArena } from "../../apps/server/src/raid";
 import { CHARACTERS, blankInput, type CharacterId } from "@arena/shared";
 import {
   GRUMBLECRAG,
+  RAID_BOSSES,
+  raidAttacksOf,
+  type RaidBossId,
   raidPattern,
   type RaidWarning,
 } from "../../packages/shared/src/raid";
@@ -225,6 +229,27 @@ describe("difficulty and champions", () => {
 });
 
 describe("pings, practice and stand-ins", () => {
+  it.each(Object.keys(RAID_BOSSES) as RaidBossId[])(
+    "%s practice accepts movement immediately without a countdown or rite choice",
+    (boss) => {
+      const a = createRaidArena("DRILL", boss);
+      const hero = a.add("p0", "Learner", "voltkit");
+      expect(a.startDrill(raidAttacksOf(boss)[0])).toBe(true);
+      expect(a.phase).toBe("playing");
+      expect(a.raid.offers).toEqual({});
+      const y = hero.y;
+      hero.lastInput = { ...blankInput(), dy: 1 };
+      a.tick();
+      expect(hero.y).toBeGreaterThan(y);
+      expect(a.raid.elapsed).toBeGreaterThan(0);
+      expect(a.raid.warnings).toHaveLength(0);
+      expect(a.stopDrill()).toBe(true);
+      expect(a.phase).toBe("lobby");
+      expect(a.startDrill(raidAttacksOf(boss)[0])).toBe(true);
+      expect(a.phase).toBe("playing");
+    },
+  );
+
   it("shows a ping for a few seconds and limits spam", () => {
     const a = raid(["voltkit", "cindrake"]);
     expect(a.ping("p0", "stack")).toBe(true);
@@ -240,7 +265,7 @@ describe("pings, practice and stand-ins", () => {
     const a = new RaidArena("DRILL");
     a.add("p0", "Learner", "voltkit");
     expect(a.startDrill("volley")).toBe(true);
-    expect(a.phase).toBe("countdown");
+    expect(a.phase).toBe("playing");
     for (let i = 0; i < 30 * 12; i++) a.tick();
     expect(a.phase).toBe("playing");
     const stats = a.raid.drillStats!;

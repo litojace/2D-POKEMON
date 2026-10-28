@@ -5,6 +5,9 @@ mechanic icon, a short practice instruction and a dedicated practice action. The
 ready drawer no longer contains the picker, and the Hub no longer offers code
 joining. Friends invitations remain the way to join a party.
 
+Practice enters the playing phase immediately, without a countdown or rite choice;
+players can move right away while the first attack keeps its normal warning lead-in.
+
 The in-court practice strip starts collapsed. Its instructions, attack switcher
 and leave-practice action expand on demand. Updating hit/dodge counters preserves
 the controls and focus rather than replacing the entire picker. On mobile, the

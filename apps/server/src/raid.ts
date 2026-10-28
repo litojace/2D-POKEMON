@@ -969,8 +969,8 @@ export class RaidArena extends Arena {
     this.start();
     this.raid.message = `Practice · ${RAID_ATTACKS[kind].name}`;
     this.instructionsReady = this.players.map((p) => p.id);
-    this.phase = "countdown";
-    this.deadline = this.time + 3;
+    this.phase = "playing";
+    this.deadline = this.time + RAID.timeLimit;
     return true;
   }
   setDrill(kind: RaidAttack) {
