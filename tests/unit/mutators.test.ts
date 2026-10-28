@@ -150,7 +150,7 @@ describe("fun party rules", () => {
     const normal = run(1),
       fast = run(MUTATOR_RULES.speed);
     expect(fast / normal).toBeGreaterThan(1.4);
-    // Each arena applies its own rule every tick (rooms share the module).
+    // Each arena applies its own rule each tick without cross-room bleed.
     const travel = (rules: string[]) => {
       const a = duel(rules);
       const p = a.players[0];
