@@ -15,7 +15,11 @@ Supabase migration or change to stored progress is required. The authority is th
 same server process that owns the in-memory rooms.
 
 Sign-in/sign-up results and duplicate Supabase auth callbacks share an in-flight
-profile load. Intentional auth reconnects and cancelled requests from an older
+profile load. Each new profile load resets the gate to **Checking your account**
+before notifying the view; the render key includes that loading state. A previous
+signed-out check therefore cannot show a profile-error panel while sign-in or
+sign-up is still loading. A real failed profile request still offers **Try again**,
+which shows loading again and can recover normally. Intentional auth reconnects and cancelled requests from an older
 socket do not produce connection-loss/server-timeout toasts. Temporary transport
 connection errors retain the reconnecting status, while structured account
 errors still show the real sign-in failure.

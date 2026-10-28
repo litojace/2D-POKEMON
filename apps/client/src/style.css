@@ -7453,46 +7453,6 @@ body.battle-raid:not(.touch-mode) #battle {
   width: 64px;
   height: 64px;
 }
-.raid-invite {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 14px;
-  border: 1px solid #91aed331;
-  border-radius: 12px;
-  background: #102039;
-}
-.raid-invite > div {
-  display: grid;
-  gap: 6px;
-}
-.raid-invite > div > span {
-  font-size: 8px;
-  letter-spacing: 1.4px;
-  color: #9fb3d0;
-}
-.raid-invite b {
-  font-size: 21px;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 3px;
-  color: #ffe099;
-}
-.raid-invite #raid-copy-code {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  margin: 0;
-  padding: 10px;
-  min-height: 40px;
-  white-space: nowrap;
-}
-.raid-invite button svg {
-  width: 16px;
-  height: 16px;
-}
 .raid-section-heading {
   display: flex;
   align-items: center;

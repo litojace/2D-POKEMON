@@ -8,6 +8,46 @@ import {
   snap,
 } from "./helpers";
 const pal = "22222222-2222-4222-8222-222222222222";
+test("raid room invites open Friends instead of displaying a room code", async ({
+  browser,
+}, info) => {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openTown(page);
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__room("raid", { boss: "grumblecrag" });
+      w.__snap.phase = "lobby";
+      w.__snap.players = w.__snap.players.filter((p: any) => !p.raidBoss);
+    });
+    await openTownMenu(page);
+    await page.click(".town-play");
+    await page.click("#play-create");
+    await expect.poll(async () => {
+      await page.evaluate(() => (window as any).__push());
+      return page.evaluate(() => document.body.classList.contains("lobby-active"));
+    }).toBe(true);
+    await page.locator(".lobby-room-drawer > summary").click();
+    await expect(page.locator("#copy, #invite, #raid-copy-code")).toHaveCount(
+      0,
+    );
+    await expect(page.locator("#invite-friends")).toHaveCount(1);
+    await expect(page.locator(".raid-lobby")).not.toContainText(
+      "Invite your party",
+    );
+    await snap(page, info, "raid-friends-invite-844x390");
+    await page.locator("#invite-friends").click();
+    await expect(page.locator(".friends-hub")).toBeVisible();
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
 for (const size of [
   { width: 1440, height: 900 },
   { width: 844, height: 390 },
@@ -176,6 +216,9 @@ for (const size of [
       });
       await snap(page, info, `locked-in-${size.width}x${size.height}`);
       if (mobile) await page.locator(".lobby-room-drawer > summary").click();
+      await expect(page.locator("#copy, #invite, #raid-copy-code")).toHaveCount(
+        0,
+      );
       await page.locator("#invite-friends").click();
       const invite = page.locator(`[data-friend-invite="${pal}"]`);
       await expect(invite).toBeVisible();

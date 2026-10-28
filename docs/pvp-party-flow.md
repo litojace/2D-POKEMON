@@ -1,7 +1,9 @@
 # Private-room invitations and PvP knockout flow
 
 Players can open **Invite friends** in either a PvP or raid lobby and send an
-invitation from an eligible friend's row. The receiver gets **Join room** and
+invitation from an eligible friend's row. Room & ready uses this action in place
+of room-code copying and invite-link sharing. In raid lobbies it sits above the
+party roster; there is a single Invite friends button. The receiver gets **Join room** and
 **Decline**, including while Friends is open. Joining uses the ordinary room
 validation: a filled or started room cannot be joined. Invitations expire after
 90 seconds, can be resent after 30 seconds, and never automatically leave a room

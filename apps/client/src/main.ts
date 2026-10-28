@@ -156,7 +156,6 @@ import {
   captureInvite,
   clearInvite,
   pendingInvite,
-  shareInvite,
 } from "./invite";
 import { lockScrollWhileOpen, setScrollLock } from "./scroll-lock";
 import { watchMenuMotion } from "./menu-motion";
@@ -935,8 +934,6 @@ let roomMode: RoomMode = (() => {
     return "duel";
   }
 })();
-const COPY_ICON =
-  '<svg class="copy-icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
 /** Lobby panel: a duel list, or Blue/Red columns for 2v2. */
 /** Orb Rush HUD line: gems you carry, your side's bank and the best rival's. */
 function rushLabel(me: Fighter) {
@@ -1139,7 +1136,7 @@ function roomPanel(me: Fighter) {
     return `<div${p.id === myId ? " data-me" : ""}><span class="player-avatar" data-raid-cosmetic="${portraitCosmetics({ character: fighter.id, raidLook: p.raidLook, championLooks: looksOf(p) })}" style="--element:#${fighter.color.toString(16).padStart(6, "0")}" title="${fighter.name}">${fighterAvatar(fighter.id, `lobby${state!.players.indexOf(p)}`, skinOf(p, fighter.id))}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small class="player-fighter">${fighter.name}${p.flair ? ` · <b class="flair flair-${p.flair.toLowerCase()}">★ ${p.flair}</b>` : ""}</small></span><b class="status-pill ${!p.connected ? "offline" : p.ready ? "ready" : "choosing"}">${!p.connected ? "Offline" : p.ready ? "Ready" : "Choosing"}</b></div>`;
   };
   const ready = `<button class="primary btn-primary" id="ready">${me.ready ? iconLabel("cancel", "Cancel ready") : iconLabel("battle", "Ready to battle")}</button><button class="quiet full leave-button" id="leave">${iconLabel("leave", "Leave room")}</button>`;
-  const code = `<button id="copy" class="room-code">${state!.code}<span>${COPY_ICON}Copy code</span></button><button id="invite" class="secondary btn-secondary full invite-link">${iconLabel("share", "Share invite link")}</button><button type="button" class="secondary btn-secondary full" id="invite-friends">${iconLabel("add-friend", "Invite friends")}</button>`;
+  const invite = `<button type="button" class="secondary btn-secondary full" id="invite-friends">${iconLabel("add-friend", "Invite friends")}</button>`;
   if (isFfa()) {
     const open = Math.max(0, 4 - state!.players.length);
     const slots = Array.from(
@@ -1147,10 +1144,10 @@ function roomPanel(me: Fighter) {
       (_, k) =>
         `<div class="open-slot"><span class="slot-mark">＋</span><span>Open slot<small>${state!.players.length + k < 3 ? "Needed to start" : "Optional fourth fighter"}</small></span></div>`,
     ).join("");
-    return `<div class="eyebrow">Private free-for-all</div><h2>Last one standing.</h2><p>Share this code with two or three friends. Everyone fights everyone; the last fighter standing takes the round.</p>${code}<div class="players">${state!.players.map(row).join("")}${slots}</div>${partyRules(state!.players[0]?.id === myId)}${ready}<small class="room-note">First to ${roundsNeeded(state!.mutators)} round wins. Starts when everyone here is ready (3 or 4 players).</small>`;
+    return `<div class="eyebrow">Private free-for-all</div><h2>Last one standing.</h2><p>Invite two or three friends from your Friends list. Everyone fights everyone; the last fighter standing takes the round.</p>${invite}<div class="players">${state!.players.map(row).join("")}${slots}</div>${partyRules(state!.players[0]?.id === myId)}${ready}<small class="room-note">First to ${roundsNeeded(state!.mutators)} round wins. Starts when everyone here is ready (3 or 4 players).</small>`;
   }
   if (!isTeams())
-    return `<div class="eyebrow">Private lobby</div><h2>Your duel starts here.</h2><p>Share this code with your friend.</p>${code}<div class="players">${state!.players.map(row).join("")}${state!.players.length < 2 ? '<div class="waiting"><span>＋</span> Waiting for your opponent…</div>' : ""}</div>${partyRules(state!.players[0]?.id === myId)}${ready}<small class="room-note">The match begins when both players are ready.</small>`;
+    return `<div class="eyebrow">Private lobby</div><h2>Your duel starts here.</h2><p>Invite a friend from your Friends list.</p>${invite}<div class="players">${state!.players.map(row).join("")}${state!.players.length < 2 ? '<div class="waiting"><span>＋</span> Waiting for your opponent…</div>' : ""}</div>${partyRules(state!.players[0]?.id === myId)}${ready}<small class="room-note">The match begins when both players are ready.</small>`;
   const mine = teamOf(me),
     host = state!.players[0]?.id === myId;
   const columns = ([0, 1] as const)
@@ -1166,7 +1163,7 @@ function roomPanel(me: Fighter) {
       return `<div class="team-column team-${t}${t === mine ? " mine" : ""}"><div class="team-head">${TEAM_LABELS[t]} team</div><div class="players">${members.map(row).join("")}${slots}</div></div>`;
     })
     .join("");
-  return `<div class="eyebrow">Private 2v2 lobby</div><h2>Two on two.</h2><p>Share this code with three friends, then pick a side.</p>${code}<div class="team-columns">${columns}</div>${host ? `<button class="quiet full" id="shuffle">${iconLabel("shuffle", "Shuffle teams")}</button>` : ""}${teamUpNote({ ...me, character: selected })}${partyRules(host)}${ready}<small class="room-note">First team to ${roundsNeeded(state!.mutators)} round wins. Starts when all four players are ready.</small>`;
+  return `<div class="eyebrow">Private 2v2 lobby</div><h2>Two on two.</h2><p>Invite three friends from your Friends list, then pick a side.</p>${invite}<div class="team-columns">${columns}</div>${host ? `<button class="quiet full" id="shuffle">${iconLabel("shuffle", "Shuffle teams")}</button>` : ""}${teamUpNote({ ...me, character: selected })}${partyRules(host)}${ready}<small class="room-note">First team to ${roundsNeeded(state!.mutators)} round wins. Starts when all four players are ready.</small>`;
 }
 type BotLevel = "easy" | "normal" | "hard";
 const BOT_LEVELS: [BotLevel, string, string][] = [
@@ -1395,14 +1392,6 @@ async function startRaid(
 }
 function wireRaidLobby() {
   wireRaidDifficulty();
-  const copy = document.getElementById("raid-copy-code");
-  if (copy)
-    copy.onclick = () =>
-      void navigator.clipboard
-        .writeText(state?.code ?? "")
-        .then(() => toast("Room code copied"))
-        .catch(() => toast("Room code: " + (state?.code ?? "")));
-
   const peril = document.getElementById(
       "raid-peril",
     ) as HTMLInputElement | null,
@@ -1486,26 +1475,6 @@ function wireRoom() {
         void request("mutators", { ids: [...on] });
       };
     });
-  // The raid lobby has its own copy button and no invite link.
-  const copy = document.getElementById("copy");
-  if (copy)
-    copy.onclick = () =>
-      void navigator.clipboard
-        .writeText(state!.code)
-        .then(() => toast("Room code copied."))
-        .catch(() => toast(`Share this code: ${state!.code}`));
-  const invite = document.getElementById("invite");
-  if (invite)
-    invite.onclick = () =>
-      void shareInvite(state!.code).then((how) =>
-        toast(
-          how === "copied"
-            ? "Invite link copied. Friends who open it join this room."
-            : how === "failed"
-              ? `Share this code: ${state!.code}`
-              : "Invite sent.",
-        ),
-      );
 }
 function renderMenu(revealSelection = false) {
   document.body.classList.remove("practice-active");
@@ -4532,6 +4501,7 @@ accountsUI = new AccountUI({
     const shown = JSON.stringify([
       accountsUI?.account ?? null,
       !!accountsUI?.session,
+      accountsUI?.checked,
       accountsUI?.raidLook ?? null,
       accountsUI?.economy?.looks ?? null,
       accountsUI?.economy?.journey ?? null,

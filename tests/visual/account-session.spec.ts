@@ -167,6 +167,12 @@ for (const mode of ["login", "signup"] as const) {
     await page.waitForFunction(() => !!(window as any).__releaseProfile);
     // Let the queued auth event run while the first profile request is pending.
     await page.waitForTimeout(100);
+    await expect(page.locator("#gate-auth")).toContainText(
+      "Checking your account",
+    );
+    await expect(page.locator("#gate-auth")).not.toContainText(
+      "couldn't load your profile",
+    );
     expect(await page.evaluate(() => (window as any).__profileLoads)).toBe(1);
     expect(await page.evaluate(() => (window as any).__authConnects)).toBe(1);
     await page.evaluate(() => (window as any).__releaseProfile());
@@ -190,3 +196,56 @@ for (const mode of ["login", "signup"] as const) {
     await expect(page.locator("#connection")).toHaveText("LOGIN REQUIRED");
   });
 }
+
+test("shows a profile error only after a failed response, then shows loading while retrying", async ({
+  page,
+}) => {
+  await exposeAccount(page);
+  const errors = await openTown(page);
+  await page.evaluate(async () => {
+    const w = window as any,
+      account = w.__account,
+      session = account.session;
+    await account.setSession(null);
+    const fetch = window.fetch.bind(window);
+    w.__profileFails = true;
+    window.fetch = async (input, init) => {
+      if (String(input).includes("/api/account")) {
+        await new Promise<void>((resolve) => {
+          w.__finishProfile = resolve;
+        });
+        if (w.__profileFails)
+          return new Response(
+            JSON.stringify({ error: "Profile temporarily unavailable" }),
+            { status: 503 },
+          );
+      }
+      return fetch(input, init);
+    };
+    void account.setSession(session);
+  });
+  await expect(page.locator("#gate-auth")).toContainText(
+    "Checking your account",
+  );
+  await expect(page.locator("#gate-auth")).not.toContainText(
+    "couldn't load your profile",
+  );
+  await page.evaluate(() => (window as any).__finishProfile());
+  await expect(page.locator("#gate-auth")).toContainText(
+    "couldn't load your profile",
+  );
+  await page.click("#gate-retry");
+  await expect(page.locator("#gate-auth")).toContainText(
+    "Checking your account",
+  );
+  await expect(page.locator("#gate-auth")).not.toContainText(
+    "couldn't load your profile",
+  );
+  await page.evaluate(() => {
+    const w = window as any;
+    w.__profileFails = false;
+    w.__finishProfile();
+  });
+  await expect(page.locator("#town-menu-toggle")).toBeVisible();
+  expect(errors).toEqual([]);
+});

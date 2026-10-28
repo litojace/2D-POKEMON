@@ -223,6 +223,9 @@ export class AccountUI {
       !!session && !!this.account && session.user?.id === this.account.id;
     this.session = session;
     if (!samePlayer) {
+      // A previous signed-out check says nothing about this new profile load.
+      // Keep the gate in its loading state until this request has completed.
+      this.checked = false;
       this.wardrobePanel?.dispose();
       this.wardrobePanel = undefined;
       const wardrobe = document.querySelector<HTMLDialogElement>(
@@ -234,6 +237,7 @@ export class AccountUI {
       this.economy = undefined;
     }
     this.hooks.onSession(session?.access_token ?? null, session?.user.id);
+    if (session && !samePlayer) this.hooks.onChange();
     if (session) {
       try {
         const account = accountSchema.parse(await this.api("/api/account"));
