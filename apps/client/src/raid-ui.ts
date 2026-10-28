@@ -822,8 +822,9 @@ function raidControls(
   if (!drill) {
     drill = document.createElement("div");
     drill.id = "raid-drill";
-    frame.append(drill);
   }
+  const battle = document.getElementById("battle");
+  if (battle && drill.parentElement !== battle) battle.append(drill);
   drill.hidden = !r.drill;
   if (!r.drill) return;
   const host = state.players[0]?.id === me.id;
