@@ -22823,40 +22823,71 @@ body.battle-active:not(.touch-mode)
   }
 }
 
-/* Mobile: keep the picker compact under the raid HUD, above champion controls. */
+/* Mobile practice picker sits in the lower control band and opens upward. */
 body.battle-active.touch-mode.battle-raid
   #battle
   #raid-drill:not([hidden]) {
-  position: absolute;
-  inset: calc(
-        var(--safe-top) + max(var(--desktop-raid-hud-height, 52px), 64px) + 10px
-      ) auto auto calc(var(--safe-left) + 8px);
+  position: fixed;
+  inset: auto auto calc(var(--safe-bottom) + 34px) 50%;
   width: min(
-    248px,
-    calc(100vw - var(--safe-left) - var(--safe-right) - 16px)
+    190px,
+    calc(100vw - var(--safe-left) - var(--safe-right) - 24px)
   );
-  max-height: min(32dvh, 220px);
-  padding: 5px 7px;
-  transform: none;
+  max-height: min(28dvh, 210px);
+  padding: 5px 6px;
+  transform: translateX(-50%);
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-head {
-  gap: 2px 8px;
-  font-size: 10px;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+}
+body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-head b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-count {
+  flex: 0 0 auto;
+  font-size: 9px;
 }
 body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-picker > summary {
   min-height: 28px;
   font-size: 10px;
+  white-space: nowrap;
 }
 body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;
 }
 body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-options button {
-  min-height: 28px;
-  padding: 3px 6px;
+  width: 100%;
+  min-width: 0;
+  min-height: 27px;
+  padding: 3px 5px;
   font-size: 9px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body.battle-active.touch-mode.battle-raid #raid-drill #raid-drill-leave {
+  grid-column: 1 / -1;
 }
 body.battle-active.touch-mode.battle-raid #raid-drill p {
-  font-size: 10px;
+  margin: 2px 0 5px;
+  font-size: 9px;
+  line-height: 1.25;
+}
+@media (orientation: landscape) {
+  body.battle-active.touch-mode.battle-raid #raid-drill:not([hidden]) {
+    bottom: calc(var(--safe-bottom) + 30px);
+    max-height: min(48dvh, 210px);
+  }
 }
 
 /* Raid boss roster showcase: a still boss portrait over a themed scene. */
