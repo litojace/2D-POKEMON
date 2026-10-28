@@ -115,6 +115,38 @@ it("faces the real locked cone even while the server's body angle steers elsewhe
   expect(facing.sample(state, boss, false)).toBe("right");
 });
 
+it("keeps a locked wing gust facing when another raid warning overlaps", () => {
+  const { state, boss, facing } = setup();
+  boss.angle = 0;
+  state.time = 0.2;
+  state.raid!.warnings = [
+    {
+      id: 1,
+      kind: "wing-gust",
+      startedAt: 0,
+      at: 1,
+      x: boss.x,
+      y: boss.y,
+      tx: boss.x,
+      ty: boss.y - 200,
+      radius: 400,
+      spread: 0.6,
+    },
+    {
+      id: 2,
+      kind: "dive-bomb",
+      startedAt: 0,
+      at: 0.8,
+      x: boss.x,
+      y: boss.y,
+      tx: boss.x + 200,
+      ty: boss.y,
+      radius: 40,
+    },
+  ];
+  expect(facing.sample(state, boss, true)).toBe("back");
+});
+
 describe("whole-creature directional artwork", () => {
   it.each(Object.keys(BOSS_DIRECTIONS) as RaidBossId[])(
     "has all animated directions for %s",
