@@ -9,6 +9,7 @@ export default defineConfig({
   publicDir: here("../../apps/client/public"),
   resolve: {
     alias: {
+      "/world-materials.ts": here("../../apps/client/src/world-materials.ts"),
       "socket.io-client": here("./harness/stubs.ts"),
       "@supabase/supabase-js": here("./harness/stubs.ts"),
       "virtual:pwa-register": here("./harness/stubs.ts"),

@@ -8,8 +8,7 @@ test("material painting preserves paths, transforms, holes and transparent washe
   );
   await page.goto("/material-review");
   const result = await page.evaluate(async () => {
-    const { materialContext } =
-      await import("/@fs/workspace/2D-POKEMON/apps/client/src/world-materials.ts");
+    const { materialContext } = await import("/world-materials.ts");
     const draw = (decorated: boolean, wash = false) => {
       const canvas = document.createElement("canvas");
       canvas.width = canvas.height = 160;

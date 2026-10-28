@@ -230,6 +230,13 @@ export function reviewChampions(canvas = false) {
           // Owl toes are line strokes: inspect the neck/tail rather than inventing a hip capsule.
           if (r.id === "mystowl" && (part === "legL" || part === "legR"))
             continue;
+          // Rear tortoise arms are fully occluded by the shell, not disconnected.
+          if (
+            r.id === "terradon" &&
+            dir === "up" &&
+            (part === "armL" || part === "armR")
+          )
+            continue;
           const joint = profilePivot(r.id, dir, part)!;
           const point = rigPoint(part, ...joint);
           const x = point.x * 2 + 100,

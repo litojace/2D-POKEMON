@@ -40,7 +40,7 @@ for (const viewport of [
       });
       await openTownMenu(page);
       await page.click('#town-menu-items [data-action="raids"]');
-      await expect(page.locator(".raid-boss-card")).toHaveCount(7);
+      await expect(page.locator(".raid-roster-card")).toHaveCount(7);
       await expect(
         page.locator(".raid-week, .raid-today, #raid-daily"),
       ).toHaveCount(0);
@@ -55,7 +55,7 @@ for (const viewport of [
       await page.click('[data-raid-boss="grumblecrag"]');
       await expect(page.locator('[data-raid-start="room"]')).toBeVisible();
       await expect(page.locator('[data-raid-start="solo"]')).toBeVisible();
-      await page.click("#raid-tab-records");
+      await page.click("#raid-tab-rewards");
       await expect(page.locator(".raid-hub")).not.toContainText(
         "Today's board",
       );

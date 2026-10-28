@@ -72,9 +72,19 @@ for (const size of [
       width: Math.round(size.width * 0.4),
       height: Math.round(size.height * 0.4),
     };
-    const first = await page.screenshot({ clip });
-    await page.waitForTimeout(350);
-    expect((await page.screenshot({ clip })).equals(first)).toBe(true);
+    // A decoded CSS background may still be uploading to the compositor on a
+    // busy GPU. Wait for a still pair rather than treating that first paint as
+    // continuous animation; keep ordinary animation preferences enabled.
+    await expect
+      .poll(
+        async () => {
+          const first = await page.screenshot({ clip });
+          await page.waitForTimeout(350);
+          return (await page.screenshot({ clip })).equals(first);
+        },
+        { timeout: 5000 },
+      )
+      .toBe(true);
     for (const mode of ["signup", "login", "forgot"]) {
       if (mode === "forgot") await page.click("#auth-forgot");
       else await page.click(`[data-auth-tab="${mode}"]`);

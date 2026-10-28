@@ -23468,3 +23468,20 @@ body.battle-active.touch-mode.battle-raid #raid-drill p {
   font-size: 11px;
   line-height: 1.4;
 }
+
+/* Keep the fullscreen shortcut beside the note on short landscape screens. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .settings-screen > .settings-quick-actions {
+    float: right;
+    margin: 0 0 8px 12px;
+  }
+  .settings-screen > .prefs-note {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    margin: 0 0 8px;
+  }
+  .settings-screen > .prefs-grid {
+    clear: both;
+  }
+}

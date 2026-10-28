@@ -37,11 +37,12 @@ describe("cute proportions", () => {
             );
       }
   });
-  it("draws blush on front faces only (not the void-faced wisp)", () => {
+  it("keeps front blush on the six champions whose designs use it", () => {
+    // Terradon's refined tortoise face and Duskveil's void face omit blush.
     for (const id of FIGHTER_IDS) {
       const front = creatureLayers(id, "down").layers.head;
       expect(front.includes('opacity=".5" stroke="none"'), id).toBe(
-        id !== "duskveil",
+        id !== "duskveil" && id !== "terradon",
       );
     }
   });

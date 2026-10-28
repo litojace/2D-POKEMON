@@ -350,6 +350,24 @@ for (const mobile of [false, true])
         );
       });
       await page.waitForTimeout(650);
+      // Freeze the server fixture during the locked cone, then wait for the
+      // renderer to consume it. Slow CI GPUs may still be drawing the prior frame.
+      await page.evaluate(() => clearInterval((window as any).__turnTimer));
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            const w = window as any;
+            return w.__paintedBattle.scene
+              .getScenes(true)
+              .flatMap((s: any) => s.children.list)
+              .find(
+                (o: any) =>
+                  o.name === "painted-boss-emberwing:body" && o.visible,
+              )
+              ?.getData("bossView");
+          }),
+        )
+        .toBe("back");
       const locked = await page.evaluate(() => {
         const w = window as any,
           root = w.__paintedBattle.scene

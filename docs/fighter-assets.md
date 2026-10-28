@@ -31,7 +31,8 @@ body and limbs down toward the feet. The scale is baked into every part, and
 `animation/assets.ts` maps each part's crop box and pivot through the same
 transform (`proportioned()`), so author new art in the original 200x190 space
 and the rig stays attached. Faces share big sparkly eyes, small `:3` mouths and
-blush (Duskveil keeps its void face with round glowing eyes).
+blush. Terradon's refined tortoise face omits blush; Duskveil keeps its void
+face with round glowing eyes.
 
 Each fighter also has a trait aura built from its element:
 
