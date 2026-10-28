@@ -81,6 +81,7 @@ import Phaser from "phaser";
 import { io } from "socket.io-client";
 import {
   CHARACTERS,
+  OBSTACLES,
   RING,
   ringRadius,
   CROWN,
@@ -94,6 +95,7 @@ import {
   MUTATOR_RULES,
   roundsNeeded,
   type MutatorId,
+  type MovementContext,
   RULES,
   STATUS_RULES,
   ULT_SLOT,
@@ -101,6 +103,7 @@ import {
   COMBOS,
   DEBUFFS,
   hazardIn,
+  obstaclesAt,
   shiftingRisesIn,
   shiftingUp,
   type ArenaId,
@@ -2574,8 +2577,33 @@ async function reportMatch(matchId: string, attempt = 0) {
   }
   if (state?.phase === "finished") renderBattle();
 }
+function predictionMovementContext(): MovementContext {
+  const snapshot = state;
+  let obstacles = OBSTACLES;
+  if (snapshot?.raid) {
+    const arenaHasNoPillars = [
+      "lagoon",
+      "lantern-yard",
+      "cloud-deck",
+      "sun-atrium",
+      "sky-terrace",
+      "conductor-ring",
+    ].includes(snapshot.arena ?? "classic");
+    obstacles = arenaHasNoPillars
+      ? []
+      : OBSTACLES.filter((_, i) => !snapshot.raid?.pillars[i]?.broken);
+  } else if (snapshot?.arena) {
+    obstacles = obstaclesAt(snapshot.arena, arenaClock());
+  }
+  return {
+    obstacles,
+    speedScale: snapshot?.mutators?.includes("speed")
+      ? MUTATOR_RULES.speed
+      : 1,
+  };
+}
 function predict(p: Fighter, input: Input, time: number) {
-  predictFighter(p, input, time, !!state?.raid);
+  predictFighter(p, input, time, !!state?.raid, predictionMovementContext());
 }
 
 function dialog(html: string) {
