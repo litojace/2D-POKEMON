@@ -26,6 +26,23 @@ const input = (overrides: Partial<ReturnType<typeof blankInput>> = {}) => ({
   ...overrides,
 });
 describe("authoritative simulation", () => {
+  it("keeps movement obstacles and speed scoped to each call", () => {
+    const p = duel().players[0];
+    const q = structuredClone(p);
+    const wall = [{ x: p.x + 35, y: p.y - 40, w: 50, h: 80 }];
+    const normal = { obstacles: wall, speedScale: 1 };
+    const fast = { obstacles: [], speedScale: 1.5 };
+
+    expect(blocked(p.x + 40, p.y, RULES.radius, normal.obstacles)).toBe(true);
+    expect(blocked(p.x + 40, p.y, RULES.radius, fast.obstacles)).toBe(false);
+
+    for (let i = 0; i < 30; i++) {
+      advanceMovement(p, input({ dx: 1 }), 1 / 30, i / 30, normal);
+      advanceMovement(q, input({ dx: 1 }), 1 / 30, i / 30, fast);
+    }
+
+    expect(p.x).toBeLessThan(q.x);
+  });
   it("normalizes diagonal movement without accelerating beyond cardinal speed", () => {
     expect(Math.hypot(...Object.values(normalize(1, 1)))).toBeCloseTo(1);
     const a = duel(),
