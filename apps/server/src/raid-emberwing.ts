@@ -1,6 +1,5 @@
 import { RaidArena } from "./raid.js";
 import {
-  useObstacles,
   normalize,
   move,
   RULES,
@@ -43,7 +42,6 @@ export class EmberwingArena extends RaidArena {
     return E.home;
   }
   override walls() {
-    useObstacles([]);
     return [];
   }
   protected override pattern() {
@@ -366,7 +364,8 @@ export class EmberwingArena extends RaidArena {
             p.dashUntil > this.time &&
             p.lastInput.dx * dir.x + p.lastInput.dy * dir.y < -0.25;
         this.damage(p, E.gust.damage, boss.id);
-        if (!resist) move(p, dir.x * E.gust.push, dir.y * E.gust.push);
+        if (!resist)
+          move(p, dir.x * E.gust.push, dir.y * E.gust.push, RULES.radius, this.walls());
       } else if (
         (w.kind === "heat-mark" || w.kind === "ember-rain") &&
         Math.hypot(p.x - w.x, p.y - w.y) < w.radius + RULES.radius
