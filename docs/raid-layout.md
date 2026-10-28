@@ -1,9 +1,13 @@
 # Raid choices and mobile arena visibility
 
-Rite cards use filled action-and-result pictograms, a short trigger and a highlighted
-stat instead of a paragraph. All twelve retain their important conditions: dashing
-creates an ally ward, energy pickups share ultimate charge, exposed-core hits add
-limited bonus damage, and the boss-specific rites show their own mechanics.
+Rite cards put their buff figures inside the illustrated payoff: damage reduction
+on the ward shield, shared ultimate charge beside the allies, bonus damage inside
+the exposed core, and healing inside a heart. A short trigger remains below the
+name. Helping Paws and Fireproof show both bonuses next to the relevant symbols;
+Grounded and Lucid show their actual mechanics instead of invented percentages.
+Numbers remain readable HTML over vector artwork, including short phone layouts.
+There is no separate, repeated stat-description badge. All twelve retain their
+important conditions and the full reference retains the authoritative game rules.
 
 The complete shared rule text remains in hover/accessibility labels and the separate
 **Rite details** reference. Opening it never picks a rite; covered choices become
@@ -18,7 +22,7 @@ Safari viewports use a more compact HUD. Prismatail, Somnara and Storm Twins mec
 controls sit beside the HUD, retaining their existing buttons and held gestures.
 Briefings, rite choices and results still use the full safe viewport.
 
-[Mobile rites](raid-rites-mobile.webp) · [Desktop rites](raid-rites-desktop.webp) · [Full effect reference](raid-rite-details-mobile.webp) · [Mobile boss arena](raid-arena-mobile.webp)
+[All twelve buff emblems](raid-rite-buffs.webp) · [Mobile rites](raid-rites-mobile.webp) · [Desktop rites](raid-rites-desktop.webp) · [Full effect reference](raid-rite-details-mobile.webp) · [Mobile boss arena](raid-arena-mobile.webp)
 
 Validation checks all twelve rites at desktop, tablet landscape and two phone
 heights. It checks all seven boss cameras against every arena corner, separates
@@ -29,6 +33,7 @@ buttons. Camera projection and raid overlay unit checks, TypeScript, the product
 client build and PWA verification cover the related runtime paths.
 
 The pictogram checks cover all twelve effects, drawing bounds and SVG parsing,
-short triggers and stat visibility, opening/closing details without a selection,
+short triggers, exact buff values, readable stat sizes and emblem containment,
+opening/closing details without a selection,
 unchanged open state during live countdown updates, native finger scrolling on a
 short phone, and exactly one request when a choice is selected.

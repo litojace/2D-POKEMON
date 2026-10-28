@@ -1,30 +1,5 @@
 import type { RaidRite } from "../../../packages/shared/src/raid";
 
-/** Read the trigger and payoff without turning a choice into a paragraph. */
-export const RAID_RITE_CUES: Record<
-  RaidRite,
-  { trigger: string; effect: string }
-> = {
-  shelter: { trigger: "Dash → ally ward", effect: "−25% damage · 3s" },
-  sharing: { trigger: "Pick up energy", effect: "Allies +12 ult charge" },
-  core: { trigger: "Hit an exposed core", effect: "+8 damage · 1×/s" },
-  rescue: { trigger: "Revive an ally", effect: "+35% speed · +15% HP" },
-  courage: { trigger: "Below 50% HP", effect: "Damage +20%" },
-  mending: { trigger: "Ultimate → nearby allies", effect: "Heal 12% HP" },
-  grounded: {
-    trigger: "Stop lightning chains",
-    effect: "Wrong sign: normal damage",
-  },
-  fireproof: { trigger: "Burning ground −50%", effect: "Brazier lighting ×2" },
-  polished: { trigger: "Carry light safely", effect: "+60 relay range" },
-  lucid: { trigger: "Dream Bubbles: no Drowsy", effect: "First rune revealed" },
-  footing: { trigger: "No bubble roots", effect: "Water speed +15%" },
-  lamplighter: {
-    trigger: "Relight in 1 hit",
-    effect: "In light: heal 1% HP/s",
-  },
-};
-
 // Filled pictograms connect an action to its result. The small characters mean
 // nearby allies, not a particular champion or an unrelated elemental skill.
 const arrow = (x: number, y: number, width = 20) =>
@@ -104,4 +79,105 @@ const pictures: Record<RaidRite, { color: string; art: string }> = {
 export function raidRitePicture(id: RaidRite) {
   const { color, art } = pictures[id];
   return `<span class="raid-rite-icon" style="--rite-color:${color}"><svg data-rite-picture="${id}" viewBox="0 0 128 96" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${art}</svg></span>`;
+}
+
+/** The payoff is part of the emblem, not a separate sentence below it.
+ * Text stays in HTML so small phone layouts retain readable, unscaled figures.
+ * Rites without a numeric bonus show their actual mechanic instead. */
+const buffs: Record<
+  RaidRite,
+  {
+    art: string;
+    value: string;
+    unit: string;
+    trigger: string;
+    second?: { value: string; unit: string };
+  }
+> = {
+  shelter: {
+    art: `${paw(29, 62, 0.85)}${arrow(52, 51, 16)}<path d="m113 8 39 15v33c0 30-39 49-39 49S74 86 74 56V23Z" fill="currentColor" fill-opacity=".2"/>${ally(113, 32, 0.65)}`,
+    value: "−25%",
+    unit: "damage · 3s",
+    trigger: "Dash → ward nearby allies",
+  },
+  sharing: {
+    art: `<circle cx="28" cy="52" r="22" fill="#ffeab0" stroke="#806a36"/>${bolt(28, 52, 0.65)}${arrow(55, 51, 14)}<circle cx="113" cy="56" r="42" fill="currentColor" fill-opacity=".12"/>${ally(101, 29, 0.65)}${ally(125, 29, 0.65)}`,
+    value: "+12",
+    unit: "ult charge / ally",
+    trigger: "Pick up energy → share charge",
+  },
+  core: {
+    art: `<path d="m94 8 38 8 24 35-16 46-42 10-26-35 5-39Z" fill="#34465b" stroke="#a6b6ca"/><path d="m113 23 29 32-29 39-29-39Z" fill="currentColor" fill-opacity=".22"/><path d="m81 21 13 13-7 11m57 26-13 3 5 16" fill="none" stroke="#dbe4ef" stroke-opacity=".6"/><path d="m9 78 23-31 10 8-24 32-9 2 1-12m23-25 16-20 8 8-16 20" fill="#fff0bf" stroke="#9d7e47"/>${arrow(51, 51, 15)}`,
+    value: "+8",
+    unit: "damage · 1×/s",
+    trigger: "Hit an exposed core",
+  },
+  rescue: {
+    art: `<circle cx="40" cy="39" r="25" fill="currentColor" fill-opacity=".14"/><path d="M34 7h12m-6 7v8m0 17V25m0 14 11 6" fill="none"/>${heart(119, 40, 1.13)}${plus(119, 31, 0.45)}`,
+    value: "+15%",
+    unit: "revived HP",
+    trigger: "Revive an ally",
+    second: { value: "+35%", unit: "revive speed" },
+  },
+  courage: {
+    art: `${heart(28, 42, 0.9)}<rect x="7" y="71" width="43" height="9" rx="4" fill="#28354e" stroke="#56657d"/><rect x="8" y="72" width="15" height="7" rx="3" fill="#ff8ca7" stroke="none"/><path d="M29 69v13" stroke="#e7edf8" stroke-dasharray="2 2"/>${arrow(55, 51, 13)}<path d="m83 74 45-58 15-2 1 15-51 54Z" fill="#ffe5e9" stroke="#a8657a"/><path d="m76 70 25 18m-15-10-9 13" stroke-width="5"/><rect x="74" y="47" width="78" height="48" rx="16" fill="#382c42" stroke-opacity=".6"/>`,
+    value: "+20%",
+    unit: "damage",
+    trigger: "While below 50% HP",
+  },
+  mending: {
+    art: `<path d="m28 22 7 14 15 4-11 12 1 17-12-8-13 8 1-17L5 40l16-4Z" fill="#ffe6a5" stroke="#8d7948"/>${arrow(55, 51, 13)}${heart(113, 51, 1.55)}${ally(103, 29, 0.55)}${ally(123, 29, 0.55)}`,
+    value: "12%",
+    unit: "ally HP healed",
+    trigger: "Use ultimate → heal nearby allies",
+  },
+  grounded: {
+    art: `${bolt(28, 51, 0.95)}${arrow(54, 51, 14)}<path d="m113 8 39 15v33c0 30-39 49-39 49S74 86 74 56V23Z" fill="currentColor" fill-opacity=".17"/><path d="m102 26 7 7-7 7m14-14 7 7-7 7m-16 0 25-16" fill="none" stroke="#ffb4c0"/>`,
+    value: "NO",
+    unit: "chain jumps",
+    trigger: "Wrong polarity: normal damage",
+  },
+  fireproof: {
+    art: `${fire(40, 40, 0.92)}${shield(40, 32, 0.62)}${fire(119, 32, 0.7)}<path d="M96 48h46l-7 12h-32Zm10 14-4 10m30-10 4 10" fill="#535d70" stroke="#c5cfda"/>`,
+    value: "×2",
+    unit: "brazier speed",
+    trigger: "Resist fire · light braziers faster",
+    second: { value: "−50%", unit: "ground dmg" },
+  },
+  polished: {
+    art: `<circle cx="17" cy="28" r="12" fill="#ffe9a6" stroke="#b3994e"/>${ally(33, 68, 0.85)}<path d="m20 32 15 26 40-16" stroke="#ffe9a6" stroke-width="4" fill="none"/><path d="m113 8 39 43-39 53-39-53Z" fill="#4c7682" stroke="#b7f2fa"/><path d="m104 18 9 8 9-8" stroke-opacity=".6"/>`,
+    value: "+60",
+    unit: "relay range (px)",
+    trigger: "Carry sunlight without burning",
+  },
+  lucid: {
+    art: `<circle cx="28" cy="49" r="23" fill="currentColor" fill-opacity=".14"/><path d="M15 38h16L15 55h16m2-26h11l-11 11h11M10 69l37-42" fill="none" stroke="#e4dbfc"/>${arrow(56, 51, 12)}<rect x="73" y="13" width="80" height="89" rx="20" fill="currentColor" fill-opacity=".12"/>${eye(113, 32, 0.7)}`,
+    value: "1st",
+    unit: "rune revealed",
+    trigger: "Dream Bubbles: no Drowsy",
+  },
+  footing: {
+    art: `<circle cx="27" cy="45" r="21" fill="currentColor" fill-opacity=".12" stroke-dasharray="12 7"/><path d="m12 61 30-32M74 96q10-8 20 0t20 0 20 0 20 0M74 106q10-6 20 0t20 0 20 0 20 0" fill="none"/>${arrow(54, 51, 14)}${paw(113, 32, 0.62)}<rect x="73" y="47" width="80" height="46" rx="15" fill="#203b4b" stroke-opacity=".6"/>`,
+    value: "+15%",
+    unit: "water speed",
+    trigger: "Bubbles cannot root you",
+  },
+  lamplighter: {
+    art: `${lantern(29, 55)}<path d="M7 18h10m-5-5v10" stroke="#ffe9a6"/>${arrow(54, 51, 14)}${heart(113, 51, 1.55)}${plus(113, 27, 0.45)}`,
+    value: "1%",
+    unit: "HP / second",
+    trigger: "1 hit relights · heal in lantern light",
+  },
+};
+
+export function raidRiteBuffTrigger(id: RaidRite) {
+  return buffs[id].trigger;
+}
+
+export function raidRiteBuffPicture(id: RaidRite) {
+  const { color } = pictures[id],
+    buff = buffs[id];
+  const stat = (value: string, unit: string, second = false) =>
+    `<span class="raid-rite-buff-stat${second ? " raid-rite-buff-stat--second" : ""}"><span class="raid-rite-buff-value">${value}</span><span class="raid-rite-buff-unit">${unit}</span></span>`;
+  return `<span class="raid-rite-icon raid-rite-icon--buff${buff.second ? " raid-rite-icon--dual" : ""}" style="--rite-color:${color}" aria-hidden="true"><svg data-rite-picture="${id}" viewBox="0 0 160 116" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">${buff.art}</svg>${stat(buff.value, buff.unit)}${buff.second ? stat(buff.second.value, buff.second.unit, true) : ""}</span>`;
 }

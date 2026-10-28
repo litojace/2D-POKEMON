@@ -1,5 +1,9 @@
 import { RAID_RITES, type RaidRite } from "../../../packages/shared/src/raid";
-import { raidRitePicture, RAID_RITE_CUES } from "./raid-rite-art";
+import {
+  raidRitePicture,
+  raidRiteBuffPicture,
+  raidRiteBuffTrigger,
+} from "./raid-rite-art";
 
 const escape = (s: string) =>
   s.replace(
@@ -18,9 +22,8 @@ export function raidRiteChoices(offers: readonly RaidRite[]) {
   return (
     offers
       .map((id) => {
-        const rite = RAID_RITES[id],
-          cue = RAID_RITE_CUES[id];
-        return `<button data-raid-rite="${id}" class="secondary raid-rite-${id}" title="${escape(rite.text)}" aria-label="${escape(rite.name + ". " + rite.text)}"><span class="raid-rite-copy"><span class="raid-rite-heading">${raidRitePicture(id)}<b>${rite.name}</b></span><small class="raid-rite-trigger">${cue.trigger}</small><span class="raid-rite-effect">${cue.effect}</span></span></button>`;
+        const rite = RAID_RITES[id];
+        return `<button data-raid-rite="${id}" class="secondary raid-rite-${id}" title="${escape(rite.text)}" aria-label="${escape(rite.name + ". " + rite.text)}"><span class="raid-rite-copy"><span class="raid-rite-heading">${raidRiteBuffPicture(id)}<b>${rite.name}</b></span><small class="raid-rite-trigger">${raidRiteBuffTrigger(id)}</small></span></button>`;
       })
       .join("") || "<p>Rite locked in · waiting for the team.</p>"
   );

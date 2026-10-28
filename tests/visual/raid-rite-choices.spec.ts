@@ -8,6 +8,21 @@ import {
   snap,
 } from "./helpers";
 
+const buffValues: Record<string, string[]> = {
+  shelter: ["−25%"],
+  sharing: ["+12"],
+  core: ["+8"],
+  rescue: ["+15%", "+35%"],
+  courage: ["+20%"],
+  mending: ["12%"],
+  grounded: ["NO"],
+  fireproof: ["×2", "−50%"],
+  polished: ["+60"],
+  lucid: ["1st"],
+  footing: ["+15%"],
+  lamplighter: ["1%"],
+};
+
 for (const size of [
   { width: 1440, height: 900 },
   { width: 1024, height: 500 },
@@ -94,12 +109,43 @@ for (const size of [
             ".raid-rite-icon",
             "b",
             ".raid-rite-trigger",
-            ".raid-rite-effect",
+            ".raid-rite-buff-stat",
           ]) {
             expect(inside(await box(page, selector + " " + part), button)).toBe(
               true,
             );
           }
+          const emblem = await box(page, selector + " .raid-rite-icon--buff");
+          for (const stat of await page
+            .locator(selector + " .raid-rite-buff-stat")
+            .all()) {
+            const statBox = await stat.boundingBox();
+            expect(statBox && inside(statBox, emblem)).toBe(true);
+            const value = stat.locator(".raid-rite-buff-value"),
+              unit = stat.locator(".raid-rite-buff-unit");
+            for (const label of [value, unit]) {
+              const labelBox = await label.boundingBox();
+              expect(
+                labelBox && inside(labelBox, emblem),
+                `${id}: ${await label.textContent()} must stay in its emblem`,
+              ).toBe(true);
+            }
+            expect(
+              await value.evaluate((e) =>
+                parseFloat(getComputedStyle(e).fontSize),
+              ),
+            ).toBeGreaterThanOrEqual(22);
+            expect(
+              await unit.evaluate((e) =>
+                parseFloat(getComputedStyle(e).fontSize),
+              ),
+            ).toBeGreaterThanOrEqual(10);
+          }
+          expect(
+            await page
+              .locator(selector + " .raid-rite-buff-value")
+              .allTextContents(),
+          ).toEqual(buffValues[id]);
           const svg = page.locator(selector + " svg");
           await expect(svg).toHaveAttribute("data-rite-picture", id);
           const ink = await svg.evaluate((e: SVGGraphicsElement) => {
@@ -113,12 +159,12 @@ for (const size of [
           });
           expect(ink.x).toBeGreaterThanOrEqual(1);
           expect(ink.y).toBeGreaterThanOrEqual(1);
-          expect(ink.right).toBeLessThanOrEqual(127);
-          expect(ink.bottom).toBeLessThanOrEqual(95);
+          expect(ink.right).toBeLessThanOrEqual(159);
+          expect(ink.bottom).toBeLessThanOrEqual(115);
         }
         await expect(
           page.locator("[data-raid-rite] .raid-rite-effect"),
-        ).toHaveCount(3);
+        ).toHaveCount(0);
         const more = page.locator(".raid-rite-more"),
           summary = more.locator("summary");
         expect(inside(await box(page, ".raid-rite-more > summary"), card)).toBe(
@@ -194,7 +240,7 @@ for (const size of [
           "inert",
           false,
         );
-        if (offers[0] === "shelter" || size.height === 900) {
+        {
           await snap(
             page,
             info,
