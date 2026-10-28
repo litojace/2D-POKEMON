@@ -93,7 +93,13 @@ export class BossFacing {
             w.at >= state.time &&
             Math.hypot(w.tx - w.x, w.ty - w.y) > 1,
         )
-        .sort((a, b) => a.at - b.at)[0];
+        // When incidental telegraphs overlap a directional attack, keep
+        // the locked cone/charge facing instead of switching to a later marker.
+        .sort((a, b) =>
+          Number(b.kind === "wing-gust" || b.kind === "volley" || b.kind === "charge") -
+            Number(a.kind === "wing-gust" || a.kind === "volley" || a.kind === "charge") ||
+          a.at - b.at,
+        )[0];
       if (warning) {
         this.castX = warning.tx - warning.x;
         this.castY = warning.ty - warning.y;
