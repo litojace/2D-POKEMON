@@ -509,12 +509,20 @@ export function creatureProfile(
         path("M73 67Q62 47 70 20Q87 34 94 65Z") +
         path("M75 57L73 32Q84 43 87 60Z", p.light, ' stroke="none"') +
         path("M70 21L66 8L75 17Z", jewel);
+    // Keep the front's two-lobed white cheek fluff as part of the head, so it
+    // follows every head tilt. In profile the near tuft sits behind the eye;
+    // from behind both tufts break the head/neck silhouette, above the ruff.
+    if (back)
+      profiles.head +=
+        path("M62 94Q50 100 58 106Q52 114 72 112Z", p.light) +
+        path("M138 94Q150 100 142 106Q148 114 128 112Z", p.light);
     if (!back)
       profiles.head =
         path(
           "M124 86Q124 62 103 56Q84 52 70 64Q61 74 63 91L59 99Q58 102 63 104Q66 116 84 120Q108 124 122 111Q129 101 124 86Z",
           face,
         ) +
+        path("M124 94Q138 100 130 106Q136 114 116 112Z", p.light) +
         path("M59 99Q61 97 64 99L62 102Z", p.dark, ' stroke="none"') +
         shine(77, 70, 20) +
         grin(65, 108) +
