@@ -456,8 +456,8 @@ export function creatureLayers(
     layers.head = `${e(100, 88, 40, 33, face)}${highlight(72, 70, 26)}${mouth}`;
     layers.eyes = frontEyes(p.glow, 10, 12);
     layers.flame = `${line("M100 60Q98 48 101 36", "#5aa64a", 3.4)}${path("M100 50Q84 38 76 46Q86 58 100 50Z", p.glow)}${path("M100 44Q114 28 126 36Q114 48 100 44Z", p.glow)}${flower(101, 34, "#ffb3d1", 3.8)}`;
-    // A round torso with its plated belly (plastron).
-    layers.body = `${e(100, 140, 24, 21)}${e(100, 143, 17, 16, pearl)}${line("M88 138Q100 142 112 138M88 148Q100 152 112 148", p.mid, 1.6, 0.55)}`;
+    // A slightly broader, lifted torso tucks under the head to avoid a neck gap.
+    layers.body = `${e(100, 136, 28, 25)}${e(100, 142, 18, 18, pearl)}${line("M86 135Q100 139 114 135M87 146Q100 150 113 146", p.mid, 1.6, 0.55)}`;
     // Short, chubby legs and arms; mossy stone pauldrons on its shoulders.
     layers.legL = paw(87, 165, 12);
     layers.legR = paw(113, 165, 12);

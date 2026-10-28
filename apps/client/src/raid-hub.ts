@@ -166,7 +166,7 @@ export function raidBossPageMarkup(
         : records(id, p);
   return `<div class="raid-hub raid-boss-page" style="--boss:${b.color}">
 <button type="button" class="quiet raid-hub-back" id="raid-hub-back">${iconLabel("back", "All bosses")}</button>
-${showcase(id, p)}
+${tab === "overview" ? showcase(id, p) : ""}
 ${roster(p, id)}
 <div class="raid-hub-tabs" role="tablist" aria-label="${b.name}">${RAID_HUB_TABS.map(([t, label]) => `<button type="button" role="tab" id="raid-tab-${t}" aria-selected="${t === tab}" aria-controls="raid-tab-panel" data-raid-tab="${t}" class="${t === tab ? "is-active" : ""}">${label}</button>`).join("")}</div>
 <section class="raid-hub-panel" id="raid-tab-panel" role="tabpanel" aria-labelledby="raid-tab-${tab}">${body}</section>
