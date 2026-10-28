@@ -835,16 +835,16 @@ function raidControls(
   if (drill.dataset.key === key) return;
   drill.dataset.key = key;
   const expanded = drill.querySelector<HTMLDetailsElement>("details")?.open ?? false;
-  drill.innerHTML = `<div class="raid-drill-head"><b>Practice · ${RAID_ATTACKS[r.drill].name}</b><span class="raid-drill-count">${stats}</span></div><details class="raid-drill-picker"><summary>Change attack / instructions</summary><p>${escape(RAID_ATTACKS[r.drill].tip)}</p><div class="raid-drill-options">${raidAttacksOf(
+  drill.innerHTML = `<div class="raid-drill-head"><b>Practice · ${RAID_ATTACKS[r.drill].name}</b><span class="raid-drill-count">${stats}</span></div><details class="raid-drill-picker"><summary>Change attack / instructions</summary><div class="raid-drill-body"><p>${escape(RAID_ATTACKS[r.drill].tip)}</p><div class="raid-drill-options">${raidAttacksOf(
     r.boss,
   )
     .map(
       (id) =>
-        `<button type="button" class="${id === r.drill ? "is-active" : ""}" data-raid-drill="${id}" ${host ? "" : "disabled"}>${RAID_ATTACKS[id].name}</button>`,
+        `<button type="button" class="${id === r.drill ? "is-active" : ""}" aria-pressed="${id === r.drill}" data-raid-drill="${id}" ${host ? "" : "disabled"}>${RAID_ATTACKS[id].name}</button>`,
     )
     .join(
       "",
-    )}<button type="button" class="quiet leave-button" id="raid-drill-leave">${host ? iconLabel("leave", "Leave practice") : "Host ends practice"}</button></div></details>`;
+    )}</div></div><button type="button" class="quiet leave-button" id="raid-drill-leave">${host ? iconLabel("leave", "Leave practice") : "Host ends practice"}</button></details>`;
   drill.querySelector<HTMLDetailsElement>("details")!.open = expanded;
   for (const b of Array.from(
     drill.querySelectorAll<HTMLButtonElement>("[data-raid-drill]"),

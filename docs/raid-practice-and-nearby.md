@@ -1,13 +1,17 @@
 # Raid practice, rites and nearby friends
 
-Boss practice starts in Raid Hub → boss → Attacks. Each attack has the boss's
-illustration, its practice instruction and a dedicated practice action. The raid
+Boss practice starts in Raid Hub → boss → Overview → Boss skills. Each attack has a
+mechanic icon, a short practice instruction and a dedicated practice action. The raid
 ready drawer no longer contains the picker, and the Hub no longer offers code
 joining. Friends invitations remain the way to join a party.
 
 The in-court practice strip starts collapsed. Its instructions, attack switcher
 and leave-practice action expand on demand. Updating hit/dodge counters preserves
-the controls and focus rather than replacing the entire picker.
+the controls and focus rather than replacing the entire picker. On mobile, the
+expanded picker widens to 320px (within safe areas), allows full attack names to
+wrap, and keeps Leave practice outside the scrolling instructions/attack list.
+Attack buttons are at least 36px tall; the collapsed strip keeps its compact size.
+The selected attack exposes its pressed state to assistive technology.
 
 Rites use authored effect illustrations with aligned stat badges beneath them;
 on very short landscape screens these sit side by side. Buff values and mechanics

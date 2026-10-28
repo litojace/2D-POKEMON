@@ -23418,3 +23418,53 @@ button[data-raid-boss="prismatail"] .raid-splash-image { object-position: 60% 40
 @media (orientation: landscape) and (max-height: 350px) {
   .raid-showcase-stage.raid-showcase-splash { height: clamp(110px, 44dvh, 150px); }
 }
+
+/* Keep practice controls readable, with the exit outside the scrolling list. */
+body.battle-active.battle-raid #raid-drill .raid-drill-body {
+  max-height: max(72px, calc(36dvh - 112px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 2px 8px;
+  scrollbar-gutter: stable;
+}
+body.battle-active.battle-raid #raid-drill #raid-drill-leave {
+  width: 100%;
+  min-height: 36px;
+  margin-top: 4px;
+  border-radius: 8px;
+  font-size: 11px;
+}
+body.battle-active.touch-mode.battle-raid #battle #raid-drill:not([hidden]) {
+  width: min(250px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
+  max-height: min(65dvh, 300px);
+  padding: 7px 9px;
+}
+body.battle-active.touch-mode.battle-raid #battle #raid-drill:has(details[open]) {
+  width: min(320px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
+}
+body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-head {
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  font-size: 11px;
+}
+body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-head b {
+  white-space: normal;
+}
+body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-count {
+  font-size: 10px;
+}
+body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-body {
+  max-height: max(60px, calc(min(65dvh, 300px) - 116px));
+}
+body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-options button {
+  min-height: 36px;
+  font-size: 11px;
+  line-height: 1.25;
+  white-space: normal;
+  overflow: visible;
+  padding: 5px;
+}
+body.battle-active.touch-mode.battle-raid #raid-drill p {
+  font-size: 11px;
+  line-height: 1.4;
+}
