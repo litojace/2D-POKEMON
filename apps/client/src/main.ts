@@ -42,6 +42,7 @@ import {
 import { townGuide, illustratedHelp } from "./illustrated-help";
 import { buttonIcon, iconLabel, menuIcon } from "./menu-icons";
 import type { RaidBossId } from "../../../packages/shared/src/raid";
+import type { RaidHubTab } from "./raid-hub";
 import {
   fighterSelection,
   syncRosterMastery,
@@ -213,6 +214,9 @@ let state: Snapshot | undefined,
   local: Fighter | undefined,
   pending: Input[] = [],
   scene: ArenaScene | undefined;
+let raidPracticeReturn:
+  | { boss: RaidBossId; tab: RaidHubTab; leaveRoom: boolean }
+  | undefined;
 let accountShown = "";
 /** Last known "ultimate ready" state, for the ready sound. */
 let ultWasReady = false;
@@ -1356,12 +1360,20 @@ async function showRaidBestiary() {
 /** Start a raid or safe attack practice from the Raid Hub. */
 async function startRaid(
   boss: RaidBossId,
-  options: { solo?: boolean; drill?: string },
+  options: { solo?: boolean; drill?: string; returnTab?: RaidHubTab },
 ) {
   if (!accountsUI.ensurePlayer()) return;
   if (myId && options.drill && state?.raid?.boss === boss) {
+    raidPracticeReturn = {
+      boss,
+      tab: options.returnTab ?? "overview",
+      leaveRoom: false,
+    };
     const reply = await request("raid-drill", {kind: options.drill});
-    if (!reply.ok) return toast(reply.error ?? "The host starts practice from the lobby.");
+    if (!reply.ok) {
+      raidPracticeReturn = undefined;
+      return toast(reply.error ?? "The host starts practice from the lobby.");
+    }
     $<HTMLDialogElement>("dialog").close();
     settingsOpen = false;
     menuOpen = false;
@@ -1370,6 +1382,9 @@ async function startRaid(
   if (myId) return toast("Leave your current room first.");
   if (!connected) return toast("Waiting for the server connection.");
   if (watching) await stopWatching();
+  raidPracticeReturn = options.drill
+    ? { boss, tab: options.returnTab ?? "overview", leaveRoom: true }
+    : undefined;
   audio.unlock();
   $<HTMLDialogElement>("dialog").close();
   settingsOpen = false;
@@ -1384,12 +1399,34 @@ async function startRaid(
     boss,
   });
   identity(reply);
-  if (!reply.ok) return;
+  if (!reply.ok) {
+    raidPracticeReturn = undefined;
+    return;
+  }
   await request("select", selected);
   if (options.drill) {
     const drill = await request("raid-drill", {kind: options.drill});
-    if (!drill.ok) toast(drill.error ?? "Could not start practice.");
+    if (!drill.ok) {
+      raidPracticeReturn = undefined;
+      toast(drill.error ?? "Could not start practice.");
+    }
   } else if (options.solo) await request("ready");
+}
+function requestRaidHud(event: string, data?: unknown): Promise<unknown> {
+  const endsHubPractice =
+    event === "raid-drill" &&
+    !!data &&
+    typeof data === "object" &&
+    (data as { kind?: unknown }).kind === null;
+  return request(event, data).then(async (reply) => {
+    if (endsHubPractice && reply.ok && raidPracticeReturn) {
+      const destination = raidPracticeReturn;
+      raidPracticeReturn = undefined;
+      if (destination.leaveRoom) await leave();
+      void accountsUI.showRaidHub(destination.boss, destination.tab);
+    }
+    return reply;
+  });
 }
 function wireRaidLobby() {
   wireRaidDifficulty();
@@ -1690,6 +1727,7 @@ async function leave() {
     toast("Could not leave the room yet. Reconnect and try again.");
     return;
   }
+  raidPracticeReturn = undefined;
   sessionStorage.removeItem("arena-token");
   lobbySelection.reset();
   lockedRoomPick = savingRoomPick = "";
@@ -2047,7 +2085,7 @@ function renderBattle() {
     renderRaidUI(
       state,
       me,
-      request,
+      requestRaidHud,
       async () =>
         (await accountsUI.api(
           "/api/raids",

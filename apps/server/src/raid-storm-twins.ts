@@ -205,6 +205,7 @@ export class StormTwinsArena extends RaidArena {
       kind === "thunderclap"
         ? [...actors].sort((a, b) => a.hp - b.hp)[0]
         : actors[(this.attacks + r.seed) % actors.length];
+    caster.angle = Math.atan2(target.y - caster.y, target.x - caster.x);
     const warn = (
       kind: RaidAttack,
       from: Fighter,
@@ -244,6 +245,8 @@ export class StormTwinsArena extends RaidArena {
       if (actors.length < 2) return this.startAttack("thunderclap", target);
       const [a, b] = actors,
         post = r.phase >= 2 ? (r.seed + this.attacks) % 4 : undefined;
+      a.angle = Math.atan2(b.y - a.y, b.x - a.x);
+      b.angle = Math.atan2(a.y - b.y, a.x - b.x);
       Object.assign(
         warn(kind, a, a.x, a.y, b.x, b.y, S.link.width, S.link.delay),
         { beamPost: post },
@@ -268,6 +271,7 @@ export class StormTwinsArena extends RaidArena {
       return;
     }
     const cast = (from: Fighter, to: Fighter, extra = 0) => {
+      from.angle = Math.atan2(to.y - from.y, to.x - from.x);
       if (kind === "chain-lightning")
         warn(
           kind,

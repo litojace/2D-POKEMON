@@ -130,7 +130,7 @@ type Hooks = {
   startAdventure?: (mode: string) => void;
   startRaid?: (
     boss: RaidBossId,
-    options: { solo?: boolean; drill?: string },
+    options: { solo?: boolean; drill?: string; returnTab?: RaidHubTab },
   ) => void;
 };
 export class AccountUI {
@@ -593,7 +593,7 @@ export class AccountUI {
             solo: b.dataset.raidStart === "solo",
           });
       for (const button of Array.from(root.querySelectorAll<HTMLButtonElement>("[data-hub-practice]")))
-        button.onclick = () => view.boss && this.hooks.startRaid?.(view.boss, {drill: button.dataset.hubPractice});
+        button.onclick = () => view.boss && this.hooks.startRaid?.(view.boss, {drill: button.dataset.hubPractice, returnTab: view.tab});
       const options = root.querySelector<HTMLElement>(".raid-equip");
       if (options && progress)
         this.bindAppearance(options, progress, character);
