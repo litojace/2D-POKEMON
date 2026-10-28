@@ -2,7 +2,6 @@ import {
   CHARACTERS,
   RULES,
   normalize,
-  useObstacles,
   type Ability,
   type Fighter,
   type Input,
@@ -63,7 +62,6 @@ export class SomnaraArena extends RaidArena {
     return false;
   }
   override walls() {
-    useObstacles([]);
     return [];
   }
   protected override setupArena() {
