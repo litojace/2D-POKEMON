@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { OBSTACLES, blocked, useObstacles } from "@arena/shared";
+import { OBSTACLES, blocked } from "@arena/shared";
 import { BLOCK_H, BLOCK_PAD, courtBlockFrame, stoneBase } from "../../apps/client/src/arena-courts";
 
 describe("stone blocks: what you see is what's solid", () => {
@@ -21,7 +21,6 @@ describe("stone blocks: what you see is what's solid", () => {
   });
 
   it("keeps movement exactly as before (the footprint is the solid area)", () => {
-    useObstacles(OBSTACLES);
     const o = OBSTACLES[0];
     // Just behind and just in front of the block's footprint are open.
     expect(blocked(o.x + o.w / 2, o.y - 25)).toBe(false);
