@@ -104,6 +104,7 @@ export class BossFacing {
         aimY = this.castY;
       }
     }
+    // Continue showing the committed attack direction while its warning is active.
     const travelling = !attacking && state.time - this.movedAt < 0.35;
     const next = bossView(
       travelling ? this.dx : aimX,
