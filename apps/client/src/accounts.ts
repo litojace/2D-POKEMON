@@ -573,7 +573,13 @@ export class AccountUI {
           view.boss = b.dataset.raidBoss as RaidBossId;
           if (!choosingFromRoster) view.tab = "overview";
           render(true);
+          dialogEl()?.querySelector<HTMLButtonElement>(`.raid-roster-card[data-raid-boss="${view.boss}"]`)?.focus({preventScroll: true});
         };
+      const selectedBoss = root.querySelector<HTMLElement>(".raid-roster-card.is-selected");
+      if (selectedBoss) requestAnimationFrame(() => {
+        if (root.open && selectedBoss.isConnected)
+          selectedBoss.scrollIntoView({block: "nearest", inline: "nearest"});
+      });
       for (const b of Array.from(
         root.querySelectorAll<HTMLButtonElement>("[data-raid-tab]"),
       ))

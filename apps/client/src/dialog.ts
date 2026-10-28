@@ -21,6 +21,8 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
   const tabs = content.querySelector<HTMLElement>(
     ".raid-hub-tabs, .shop-tabs, .admin-tabs, .adventure-tabs",
   );
+  const raidRoster = content.querySelector<HTMLElement>(".raid-boss-roster");
+  dialog.classList.toggle("has-raid-roster", !!raidRoster);
   if (tabs) tabs.classList.add("dialog-tabs");
   dialog.classList.toggle("has-dialog-tabs", !!tabs);
   const inlineTabs = !!tabs && !back;
@@ -70,6 +72,7 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
   dialog.replaceChildren(
     toolbar,
     ...(tabs && !inlineTabs ? [tabs] : []),
+    ...(raidRoster ? [raidRoster] : []),
     content,
     ...(footer.childElementCount ? [footer] : []),
   );
