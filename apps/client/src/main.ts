@@ -81,7 +81,6 @@ import Phaser from "phaser";
 import { io } from "socket.io-client";
 import {
   CHARACTERS,
-  OBSTACLES,
   RING,
   ringRadius,
   CROWN,
@@ -102,11 +101,8 @@ import {
   COMBOS,
   DEBUFFS,
   hazardIn,
-  obstaclesAt,
   shiftingRisesIn,
   shiftingUp,
-  useObstacles,
-  useSpeedScale,
   type ArenaId,
   RITE_BY_ID,
   RITE_RULES,
@@ -3616,20 +3612,6 @@ class ArenaScene extends Phaser.Scene {
       audio.setAmbience(null);
       return;
     }
-    // Walls for prediction (the Shifting Ruins block comes and goes) and the floor.
-    useObstacles(
-      state.raid
-        ? state.arena === "lagoon" ||
-          state.arena === "lantern-yard" ||
-          state.arena === "cloud-deck" ||
-          state.arena === "sun-atrium" ||
-          state.arena === "sky-terrace" ||
-          state.arena === "conductor-ring"
-          ? []
-          : OBSTACLES.filter((_, i) => !state!.raid!.pillars[i]?.broken)
-        : obstaclesAt(state.arena, arenaClock()),
-    );
-    useSpeedScale(state.mutators?.includes("speed") ? MUTATOR_RULES.speed : 1);
     this.showArena(state.arena ?? "classic", !!state.raid);
     // Duel courts have their own background sound (crowd, sea, forge, wind).
     audio.setAmbience(this.activeCourt && !this.courtRaid ? this.activeCourt : null);
