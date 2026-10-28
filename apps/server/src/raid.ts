@@ -16,7 +16,6 @@ import {
   blankInput,
   move,
   normalize,
-  useObstacles,
   type Ability,
   type CharacterId,
   type Fighter,
@@ -312,7 +311,6 @@ export class RaidArena extends Arena {
   }
   override walls() {
     const list = OBSTACLES.filter((_, i) => !this.raid?.pillars[i]?.broken);
-    useObstacles(list);
     return list;
   }
   override damageLimit(target: Fighter) {
@@ -507,7 +505,7 @@ export class RaidArena extends Arena {
       if (p.hp > 0) continue;
       const crawl = this.crawl.get(p.id) ?? { dx: 0, dy: 0 },
         dir = normalize(crawl.dx, crawl.dy);
-      move(p, dir.x * 35 * dt, dir.y * 35 * dt);
+      move(p, dir.x * 35 * dt, dir.y * 35 * dt, RULES.radius, this.walls());
       const down = this.raid.downed[p.id];
       if (!down) continue;
       if (down.self && !this.selfUsed) {
