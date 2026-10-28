@@ -4,7 +4,6 @@ import {
   ARENAS,
   ARENA_ROTATION,
   CHARACTERS,
-  OBSTACLES,
   RULES,
   blocked,
   hazardIn,
