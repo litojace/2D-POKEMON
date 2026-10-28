@@ -1,3 +1,5 @@
+import { setHudText, setHudAttribute, setHudStyle } from "./hud-dom";
+import { battleCurves } from "./battle-curves";
 import { RoomInvites } from "./room-invites";
 import { PvpSpectator } from "./pvp-spectator";
 import { predictFighter } from "./predict-fighter";
@@ -1772,7 +1774,8 @@ function renderBattle() {
     state?.players.find((p) => p.id === myId) ??
     (watching && state?.code === watching ? state.players[0] : undefined);
   if (!state || !me) return;
-  document.body.style.setProperty(
+  setHudStyle(
+    document.body,
     "--element",
     `#${CHARACTERS[me.character].color.toString(16).padStart(6, "0")}`,
   );
@@ -1849,62 +1852,90 @@ function renderBattle() {
   }
   hudOrder.forEach((p, i) => {
     const c = CHARACTERS[p.character];
-    $(`health-${i}`).style.width = `${(100 * Math.max(0, p.hp)) / c.health}%`;
-    $(`health-text-${i}`).textContent = p.out
-      ? "LEFT THE MATCH"
-      : `${Math.ceil(Math.max(0, p.hp))} / ${c.health} HP`;
-    $(`score-${i}`).textContent = state!.practice
-      ? p.id === myId
-        ? "TRAINER"
-        : "TARGET"
-      : isTeams()
-        ? `${state!.teamScores?.[teamOf(p)] ?? 0} / ${roundsNeeded(state!.mutators)}`
-        : `${state!.scores[p.id]} / ${roundsNeeded(state!.mutators)}`;
+    setHudStyle(
+      $(`health-${i}`),
+      "width",
+      `${(100 * Math.max(0, p.hp)) / c.health}%`,
+    );
+    setHudText(
+      $(`health-text-${i}`),
+      p.out
+        ? "LEFT THE MATCH"
+        : `${Math.ceil(Math.max(0, p.hp))} / ${c.health} HP`,
+    );
+    setHudText(
+      $(`score-${i}`),
+      state!.practice
+        ? p.id === myId
+          ? "TRAINER"
+          : "TARGET"
+        : isTeams()
+          ? `${state!.teamScores?.[teamOf(p)] ?? 0} / ${roundsNeeded(state!.mutators)}`
+          : `${state!.scores[p.id]} / ${roundsNeeded(state!.mutators)}`,
+    );
     const charge = Math.min(
       100,
       Math.max(0, (100 * (p.ult ?? 0)) / RULES.ultMax),
     );
-    $(`ult-text-${i}`).textContent =
-      charge >= 100 ? "READY" : `${Math.floor(charge)}%`;
-    $(`ult-meter-${i}`).style.width = `${charge}%`;
-    $(`ult-meter-${i}`).parentElement!.setAttribute(
+    setHudText(
+      $(`ult-text-${i}`),
+      charge >= 100 ? "READY" : `${Math.floor(charge)}%`,
+    );
+    setHudStyle($(`ult-meter-${i}`), "width", `${charge}%`);
+    setHudAttribute(
+      $(`ult-meter-${i}`).parentElement!,
       "aria-valuenow",
       String(Math.floor(charge)),
     );
     $(`ult-meter-${i}`)
       .closest(".hud-ultimate")
       ?.classList.toggle("is-ready", charge >= 100);
-    $(`status-${i}`).textContent = p.statuses
-      .map((s) =>
-        s.kind === "sleep"
-          ? `SLEEP +${Math.round((STATUS_RULES.sleepVulnerability - 1) * 100)}% DMG`
-          : s.kind === "mark"
-            ? comboOf(s.by).toUpperCase()
-            : s.kind.toUpperCase(),
-      )
-      .join(" · ");
+    setHudText(
+      $(`status-${i}`),
+      p.statuses
+        .map((s) =>
+          s.kind === "sleep"
+            ? `SLEEP +${Math.round((STATUS_RULES.sleepVulnerability - 1) * 100)}% DMG`
+            : s.kind === "mark"
+              ? comboOf(s.by).toUpperCase()
+              : s.kind.toUpperCase(),
+        )
+        .join(" · "),
+    );
   });
   if (state.practice) {
-    $("practice-stats").textContent =
-      `Damage dealt: ${Math.round(me.stats.dealt)} · Damage taken: ${Math.round(me.stats.received)} · Skills used: ${me.stats.skills}`;
+    setHudText(
+      $("practice-stats"),
+      `Damage dealt: ${Math.round(me.stats.dealt)} · Damage taken: ${Math.round(me.stats.received)} · Skills used: ${me.stats.skills}`,
+    );
     $<HTMLInputElement>("practice-unlimited").checked =
       state.practice.unlimitedCooldowns;
     $<HTMLInputElement>("practice-attacks").checked =
       state.practice.targetAttacks;
   }
-  $("round-label").textContent = state.practice
-    ? "FREE PRACTICE"
-    : `ROUND ${state.round} · BEST OF ${roundsNeeded(state.mutators) * 2 - 1}`;
-  $("network").textContent = `${state.raid ? "Raid" : (state.arena ?? "classic") === "classic" ? "Coliseum" : ARENAS[state.arena!].name} · ${state.practice ? "Practice" : state.raid ? "Boss fight" : "Online match"}`;
+  setHudText(
+    $("round-label"),
+    state.practice
+      ? "FREE PRACTICE"
+      : `ROUND ${state.round} · BEST OF ${roundsNeeded(state.mutators) * 2 - 1}`,
+  );
+  setHudText(
+    $("network"),
+    `${state.raid ? "Raid" : (state.arena ?? "classic") === "classic" ? "Coliseum" : ARENAS[state.arena!].name} · ${state.practice ? "Practice" : state.raid ? "Boss fight" : "Online match"}`,
+  );
   const seconds = Math.ceil(state.remaining);
-  $("timer").textContent = state.practice
-    ? "∞"
-    : state.overtime
-      ? "OVERTIME"
-      : `${Math.floor(seconds / 60)
-          .toString()
-          .padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`;
-  $("phase-label").textContent =
+  setHudText(
+    $("timer"),
+    state.practice
+      ? "∞"
+      : state.overtime
+        ? "OVERTIME"
+        : `${Math.floor(seconds / 60)
+            .toString()
+            .padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`,
+  );
+  setHudText(
+    $("phase-label"),
     state.phase === "playing"
       ? state.practice
         ? "TEST YOUR SKILLS"
@@ -1915,78 +1946,111 @@ function renderBattle() {
             : ringRadius(state.remaining, state.overtime) !== null
               ? "RING CLOSING · STAY INSIDE"
               : `LIVE · ${ARENAS[state.arena ?? "classic"].name.toUpperCase()}`
-      : state.phase.toUpperCase();
+      : state.phase.toUpperCase(),
+  );
   $("timer").classList.toggle(
     "ring-on",
     !state.practice &&
       state.phase === "playing" &&
       ringRadius(state.remaining, state.overtime) !== null,
   );
-  kitOf(me.character, me.rites).skills.forEach((a, i) => {
-    $(`ability-${i}`).title = `${a.name}: ${a.description}`;
-    $(`ability-${i}`).setAttribute("aria-label", `${a.name}: ${a.description}`);
-    if (i === ULT_SLOT) {
-      // The ultimate fills a meter by fighting instead of a cooldown.
-      const full = (me.ult ?? 0) >= RULES.ultMax;
-      if (full && !ultWasReady && state!.phase === "playing" && myId) {
-        audio.play("orb");
-        // A one-off pop the moment the meter fills.
-        const button = $(`ability-${i}`);
-        button.classList.add("ult-burst");
-        setTimeout(() => button.classList.remove("ult-burst"), 650);
-      }
-      ultWasReady = full;
-      const charge = Math.floor(me.ult ?? 0),
-        ready = skillReady(
-          me,
-          i,
-          state!.time,
-          !!state!.practice?.unlimitedCooldowns,
-        );
-      const armed = exArmedUntil > performance.now();
-      const exReady = !ready && charge >= EX.cost && !state!.practice;
-      $(`cooldown-${i}`).textContent = ready
-        ? "READY"
-        : armed
-          ? "EX ARMED"
-          : exReady
-            ? `${charge}% · EX`
-            : `${charge}%`;
-      $(`fill-${i}`).style.height = `${ready ? 0 : 100 - charge}%`;
-      $(`ability-${i}`).style.setProperty(
-        "--cooldown",
-        `${ready ? 0 : 100 - charge}%`,
-      );
-      $(`ability-${i}`).classList.toggle("cooling", !ready);
-      $(`ability-${i}`).classList.toggle("ult-ready", ready);
-      $(`ability-${i}`).classList.toggle("ex-ready", exReady && !armed);
-      $(`ability-${i}`).title = ready
-        ? `${a.name}: ${a.description}`
-        : `${a.name}: ${a.description} Press it before the meter is full to arm an EX skill (costs ${EX.cost}% of the meter): your next skill hits ${Math.round((EX.damage - 1) * 100)}% harder and ${Math.round((EX.radius - 1) * 100)}% wider.`;
-      return;
+  // Sound/state feedback is shared by both control layouts. Only the hidden
+  // desktop button's decoration is omitted on touch screens.
+  const fullMeter = (me.ult ?? 0) >= RULES.ultMax;
+  if (fullMeter && !ultWasReady && state.phase === "playing" && myId) {
+    audio.play("orb");
+    if (!touch.enabled) {
+      const button = $(`ability-${ULT_SLOT}`);
+      button.classList.add("ult-burst");
+      setTimeout(() => button.classList.remove("ult-burst"), 650);
     }
-    $(`ability-${i}`).classList.toggle(
-      "ex-armed",
-      exArmedUntil > performance.now(),
+  }
+  ultWasReady = fullMeter;
+  if (!touch.enabled) {
+    kitOf(me.character, me.rites).skills.forEach((a, i) => {
+      setHudAttribute(
+        $(`ability-${i}`),
+        "title",
+        `${a.name}: ${a.description}`,
+      );
+      setHudAttribute(
+        $(`ability-${i}`),
+        "aria-label",
+        `${a.name}: ${a.description}`,
+      );
+      if (i === ULT_SLOT) {
+        // The ultimate fills a meter by fighting instead of a cooldown.
+        const charge = Math.floor(me.ult ?? 0),
+          ready = skillReady(
+            me,
+            i,
+            state!.time,
+            !!state!.practice?.unlimitedCooldowns,
+          );
+        const armed = exArmedUntil > performance.now();
+        const exReady = !ready && charge >= EX.cost && !state!.practice;
+        setHudText(
+          $(`cooldown-${i}`),
+          ready
+            ? "READY"
+            : armed
+              ? "EX ARMED"
+              : exReady
+                ? `${charge}% · EX`
+                : `${charge}%`,
+        );
+        setHudStyle($(`fill-${i}`), "height", `${ready ? 0 : 100 - charge}%`);
+        setHudStyle(
+          $(`ability-${i}`),
+          "--cooldown",
+          `${ready ? 0 : 100 - charge}%`,
+        );
+        $(`ability-${i}`).classList.toggle("cooling", !ready);
+        $(`ability-${i}`).classList.toggle("ult-ready", ready);
+        $(`ability-${i}`).classList.toggle("ex-ready", exReady && !armed);
+        setHudAttribute(
+          $(`ability-${i}`),
+          "title",
+          ready
+            ? `${a.name}: ${a.description}`
+            : `${a.name}: ${a.description} Press it before the meter is full to arm an EX skill (costs ${EX.cost}% of the meter): your next skill hits ${Math.round((EX.damage - 1) * 100)}% harder and ${Math.round((EX.radius - 1) * 100)}% wider.`,
+        );
+        return;
+      }
+      $(`ability-${i}`).classList.toggle(
+        "ex-armed",
+        exArmedUntil > performance.now(),
+      );
+      const left = Math.max(0, me.cooldowns[i] - state!.time);
+      setHudText(
+        $(`cooldown-${i}`),
+        left > 0 ? `${left.toFixed(1)}s` : "READY",
+      );
+      setHudStyle(
+        $(`fill-${i}`),
+        "height",
+        `${(100 * left) / (a.cooldown * cooldownScale())}%`,
+      );
+      setHudStyle(
+        $(`ability-${i}`),
+        "--cooldown",
+        `${Math.min(100, (100 * left) / (a.cooldown * cooldownScale()))}%`,
+      );
+      $(`ability-${i}`).classList.toggle("cooling", left > 0);
+    });
+    setHudText(
+      $("dash-cd"),
+      me.dashAt > state.time
+        ? `${(me.dashAt - state.time).toFixed(1)}s`
+        : "READY",
     );
-    const left = Math.max(0, me.cooldowns[i] - state!.time);
-    $(`cooldown-${i}`).textContent = left > 0 ? `${left.toFixed(1)}s` : "READY";
-    $(`fill-${i}`).style.height =
-      `${(100 * left) / (a.cooldown * cooldownScale())}%`;
-    $(`ability-${i}`).style.setProperty(
-      "--cooldown",
-      `${Math.min(100, (100 * left) / (a.cooldown * cooldownScale()))}%`,
+    setHudText(
+      $("jump-cd"),
+      me.jumpAt > state.time
+        ? `${(me.jumpAt - state.time).toFixed(1)}s`
+        : "READY",
     );
-    $(`ability-${i}`).classList.toggle("cooling", left > 0);
-  });
-  $("dash-cd").textContent =
-    me.dashAt > state.time
-      ? `${(me.dashAt - state.time).toFixed(1)}s`
-      : "READY";
-  $("jump-cd").textContent =
-    me.jumpAt > state.time
-      ? `${(me.jumpAt - state.time).toFixed(1)}s`
-      : "READY";
+  }
   touch.update(
     state.phase === "playing" && connected && !!myId && !knockedOut,
     CHARACTERS[me.character].skills.map((a) => a.name),
@@ -2615,7 +2679,7 @@ class ArenaScene extends Phaser.Scene {
   layerAt: LayerAt = (key, groundY) => {
     let layer = this.layers.get(key);
     if (!layer) {
-      layer = this.add.graphics();
+      layer = battleCurves(this.add.graphics());
       this.layers.set(key, layer);
     }
     if (!this.layersUsed.has(key)) {
@@ -3058,7 +3122,7 @@ class ArenaScene extends Phaser.Scene {
     };
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, clearDom);
     this.events.once(Phaser.Scenes.Events.DESTROY, clearDom);
-    this.graphics = this.add.graphics();
+    this.graphics = battleCurves(this.add.graphics());
     this.bossGraphics = this.add.graphics();
     // Keys and mouse buttons are read through the player's bindings (see pressAction).
     this.input.mouse!.disableContextMenu();

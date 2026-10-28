@@ -29,3 +29,41 @@ it("bounds buffered snapshots and clears across round transitions", () => {
   b.clear();
   expect(b.sample("one", 2000)).toBeUndefined();
 });
+
+it("does not move remote fighters backwards when an otherwise ordered packet arrives late", () => {
+  const arena = new Arena("JITTER");
+  const p = arena.add("remote", "Remote");
+  const buffer = new InterpolationBuffer();
+  const add = (time: number, received: number) => {
+    arena.time = time;
+    p.x = time * 1000;
+    buffer.add(arena.snapshot(), received);
+  };
+  add(0, 1000);
+  add(0.066, 1066);
+  const before = buffer.sample("remote", 1219)!.x;
+  add(0.133, 1220); // 87ms more arrival delay than the preceding frame
+  const after = buffer.sample("remote", 1220)!.x;
+  expect(after).toBeGreaterThanOrEqual(before);
+  expect(after).toBeCloseTo(120);
+});
+it("keeps the playhead monotonic as the arrival window changes and resets it for another round", () => {
+  const arena = new Arena("JITTER"),
+    p = arena.add("remote", "Remote"),
+    b = new InterpolationBuffer();
+  let position = 0;
+  for (let i = 0; i < 50; i++) {
+    arena.time = i / 15;
+    p.x = i * 10;
+    const received = 1000 + (i * 1000) / 15 + (i > 12 ? 60 : 0) + (i % 3) * 10;
+    b.add(arena.snapshot(), received);
+    const next = b.sample("remote", received)!.x;
+    expect(next).toBeGreaterThanOrEqual(position);
+    position = next;
+  }
+  b.clear();
+  arena.time = 0;
+  p.x = 10;
+  b.add(arena.snapshot(), 5000);
+  expect(b.sample("remote", 5000)!.x).toBe(10);
+});

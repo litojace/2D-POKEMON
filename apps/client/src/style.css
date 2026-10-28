@@ -22462,3 +22462,66 @@ body.pvp-knocked-out #mobile-controls .touch-buttons,
 body.pvp-knocked-out #abilities { visibility: hidden; pointer-events: none; }
 
 #menu .champion-selector .champion-lock.is-locked > .button-icon { color: inherit; }
+
+/* Use the idle control corner after a knockout, leaving the middle of the court clear. */
+.spectate-banner.pvp-spectator,
+.battle-active.touch-mode .spectate-banner.pvp-spectator {
+  position: fixed;
+  top: auto;
+  bottom: calc(var(--safe-bottom) + 8px);
+  left: calc(var(--safe-left) + 12px);
+  right: auto;
+  transform: none;
+  width: min(280px, calc(50vw - 90px));
+  max-width: none;
+  box-sizing: border-box;
+}
+body.pvp-knocked-out #control-hints { visibility: hidden; }
+
+/* Lower the complete compact lobby into its unused bottom space without
+   reducing the fighter preview's height or creating a second scroll area. */
+@media (orientation: landscape) and (max-height: 600px) {
+  body.lobby-active {
+    --lobby-drop: clamp(8px, 3dvh, 18px);
+    --lobby-top: calc(50px + var(--safe-top) + var(--lobby-drop));
+  }
+  body.lobby-active .topbar {
+    padding-top: calc(max(8px, env(safe-area-inset-top)) + var(--lobby-drop));
+  }
+  body.lobby-active main {
+    height: calc(100dvh - var(--lobby-top) - 40px - var(--safe-bottom) + var(--lobby-drop));
+  }
+  .lobby-room-drawer > summary {
+    top: calc(var(--safe-top) + 4px + var(--lobby-drop));
+  }
+}
+@keyframes room-ready-beacon {
+  0% { opacity: .85; transform: scale(1); }
+  80%, 100% { opacity: 0; transform: scale(1.06, 1.2); }
+}
+.lobby-room-drawer.needs-ready > summary {
+  isolation: isolate;
+  border: 2px solid #fff4bc;
+  color: #241a09;
+  background: linear-gradient(180deg, #fff0ac, #ffd65b);
+  box-shadow: 0 0 20px #ffd65b66;
+}
+.lobby-room-drawer.needs-ready > summary::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  z-index: -1;
+  border: 2px solid #ffdf75;
+  border-radius: inherit;
+  pointer-events: none;
+  animation: room-ready-beacon 1.8s ease-out infinite;
+}
+.lobby-room-drawer.needs-ready > summary::after {
+  content: "➜";
+  margin-left: 3px;
+  font-size: 20px;
+  line-height: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lobby-room-drawer.needs-ready > summary::before { animation: none; opacity: .55; }
+}

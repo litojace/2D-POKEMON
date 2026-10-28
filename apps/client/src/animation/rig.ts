@@ -1,3 +1,4 @@
+import { battleCurves } from "../battle-curves";
 import {
   groundHeight,
   WORLD_ART,
@@ -127,8 +128,8 @@ export class FighterRig {
     private assets: RigAsset[],
   ) {
     this.root = scene.add.container(0, 0).setDepth(2);
-    this.effects = scene.add.graphics().setDepth(3);
-    this.under = scene.add.graphics().setDepth(1.9);
+    this.effects = battleCurves(scene.add.graphics()).setDepth(3);
+    this.under = battleCurves(scene.add.graphics()).setDepth(1.9);
     for (const part of parts) {
       const asset = assets.find(
         (a) => a.key === rigKey(character, "down", part),

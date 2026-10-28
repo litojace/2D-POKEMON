@@ -245,6 +245,21 @@ for (const size of [
       expect(
         inside(await box(page, "#spectate"), { x: 0, y: 0, ...size }),
       ).toBe(true);
+      const watchingBox = await box(page, "#spectate");
+      expect(watchingBox.y).toBeGreaterThan(size.height * 0.65);
+      expect(watchingBox.x + watchingBox.width).toBeLessThanOrEqual(
+        size.width / 2 - 80,
+      );
+      for (const selector of [
+        "#battle-menu",
+        ...(mobile ? ["#mobile-fullscreen"] : []),
+      ]) {
+        const control = await box(page, selector);
+        expect(
+          watchingBox.x + watchingBox.width <= control.x ||
+            control.x + control.width <= watchingBox.x,
+        ).toBe(true);
+      }
       if (mobile) {
         await expect(page.locator(".joystick-area")).toBeHidden();
         await expect(page.locator(".touch-buttons")).toBeHidden();

@@ -1,3 +1,4 @@
+import { setHudAttribute, setHudStyle } from "./hud-dom";
 import { iconLabel, menuIcon } from "./menu-icons";
 import { lockLandscape } from "./orientation";
 import { stadiumBands } from "./stadium";
@@ -513,7 +514,8 @@ export class TouchControls {
             : action === "jump"
               ? 2
               : basic.duration;
-      button.style.setProperty(
+      setHudStyle(
+        button,
         "--cooldown",
         Math.min(100, (100 * left) / duration) + "%",
       );
@@ -530,7 +532,8 @@ export class TouchControls {
         "ex-armed",
         exArmed && skill !== undefined && !isUlt,
       );
-      button.setAttribute(
+      setHudAttribute(
+        button,
         "aria-label",
         left <= 0
           ? name + (isUlt ? " · ultimate ready" : "")

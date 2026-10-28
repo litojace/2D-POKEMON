@@ -1,3 +1,4 @@
+import { battleCurves } from "./battle-curves";
 import type Phaser from "phaser";
 import type { Ability, Projectile, Zone } from "@arena/shared";
 import { mergeKits, type Shot } from "./fx-kits";
@@ -617,7 +618,7 @@ function oneShot(
   draw: (g: G, k: number) => void,
   depth = 4,
 ) {
-  const g = scene.add.graphics().setDepth(depth);
+  const g = battleCurves(scene.add.graphics()).setDepth(depth);
   draw(g, 0);
   scene.tweens.addCounter({
     from: 0,

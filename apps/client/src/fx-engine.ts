@@ -1,3 +1,4 @@
+import { battleCurves } from "./battle-curves";
 import type Phaser from "phaser";
 // Phaser constants as literals, so this module loads without Phaser (tests).
 const ADD = 1; // ADD
@@ -155,13 +156,13 @@ export class Fx {
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
     makeTextures(scene);
-    this.decalLayer = scene.add.graphics().setDepth(-5);
-    this.floor = scene.add.graphics().setDepth(0.3).setBlendMode(ADD);
-    this.floorSolid = scene.add.graphics().setDepth(0.28);
+    this.decalLayer = battleCurves(scene.add.graphics()).setDepth(-5);
+    this.floor = battleCurves(scene.add.graphics()).setDepth(0.3).setBlendMode(ADD);
+    this.floorSolid = battleCurves(scene.add.graphics()).setDepth(0.28);
     this.top = {
-      solid: scene.add.graphics().setDepth(3.6),
-      sparks: scene.add.graphics().setDepth(4.6).setBlendMode(ADD),
-      g: scene.add.graphics().setDepth(4.5).setBlendMode(ADD),
+      solid: battleCurves(scene.add.graphics()).setDepth(3.6),
+      sparks: battleCurves(scene.add.graphics()).setDepth(4.6).setBlendMode(ADD),
+      g: battleCurves(scene.add.graphics()).setDepth(4.5).setBlendMode(ADD),
       glowDepth: 4.4,
       softDepth: 3.55,
     };
@@ -214,9 +215,9 @@ export class Fx {
       const base = this.depthOf(edge),
         tick = 1e-6;
       band = {
-        solid: this.scene.add.graphics().setDepth(base - 4 * tick),
-        g: this.scene.add.graphics().setDepth(base - 2 * tick).setBlendMode(ADD),
-        sparks: this.scene.add.graphics().setDepth(base - tick).setBlendMode(ADD),
+        solid: battleCurves(this.scene.add.graphics()).setDepth(base - 4 * tick),
+        g: battleCurves(this.scene.add.graphics()).setDepth(base - 2 * tick).setBlendMode(ADD),
+        sparks: battleCurves(this.scene.add.graphics()).setDepth(base - tick).setBlendMode(ADD),
         glowDepth: base - 3 * tick,
         softDepth: base - 5 * tick,
       };
