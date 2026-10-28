@@ -1,3 +1,4 @@
+import { raidCameraView } from "./raid-camera";
 import { setHudText, setHudAttribute, setHudStyle } from "./hud-dom";
 import { battleCurves } from "./battle-curves";
 import { RoomInvites } from "./room-invites";
@@ -214,6 +215,7 @@ let accountsUI: AccountUI;
 let replacedAccount = sessionStorage.getItem("arena-session-replaced");
 let gameInstance: Phaser.Game | undefined;
 let battleResizeObserver: ResizeObserver | undefined;
+let raidCameraHudBottom = 0;
 let state: Snapshot | undefined,
   myId = "",
   selected: CharacterId = lastHomeFighter(),
@@ -2787,6 +2789,8 @@ class ArenaScene extends Phaser.Scene {
   /** Grumblecrag's raid plays on the Coliseum court (no stands strip). */
   courtRaid = false;
   raidPillarShadows: Phaser.GameObjects.Ellipse[] = [];
+  /** Shared floor textures continue into dim, non-playable scenery around the court. */
+  raidSurround: Phaser.GameObjects.Image[] = [];
   /** Transparent rubble over the current raid material. */
   rubble: Phaser.GameObjects.Image[] = [];
   /** Each pillar's broken state last frame, to animate the change. */
@@ -2871,7 +2875,7 @@ class ArenaScene extends Phaser.Scene {
     // Every raid but Grumblecrag's brings its own arena; its pillars are the
     // Coliseum's blocks, so it fights on that court.
     const court = isCourt(arena) && (!raid || arena === "classic") ? arena : undefined;
-    const id = court ? `court-${court}${raid ? ":raid" : ""}` : arena;
+    const id = court ? `court-${court}${raid ? ":raid" : ""}` : `${arena}${raid ? ":raid" : ""}`;
     if (id === this.floorArena || !this.floor) return;
     this.floorArena = id;
     this.activeCourt = court;
@@ -2888,6 +2892,16 @@ class ArenaScene extends Phaser.Scene {
     }
     const key = this.floorTexture(this.courtRaid ? "raid-coliseum" : court ? `court-${court}` : arena);
     this.floor.setTexture(key).setScale(1 / (this.floorScale.get(key) ?? 1));
+    if (raid && !this.raidSurround.length) {
+      for (const x of [-1600, 0, 1600]) for (const y of [-900, 0, 900]) {
+        if (!x && !y) continue;
+        this.raidSurround.push(this.add.image(x, y, key).setOrigin(0)
+          .setFlipX(x !== 0).setFlipY(y !== 0).setDisplaySize(1600, 900)
+          .setTint(0x627185).setDepth(-12));
+      }
+    }
+    for (const image of this.raidSurround)
+      image.setTexture(key).setDisplaySize(1600, 900).setVisible(raid);
     if (court) this.ensureBlocks(court);
     for (const [cid, list] of this.courtBlocks) for (const b of list) b.img.setVisible(cid === court && !b.shifting);
     if (standsOn && court && !this.stands.has(court)) {
@@ -3564,38 +3578,40 @@ class ArenaScene extends Phaser.Scene {
     const presented = follow
       ? (this.positions.get(follow.id) ?? follow)
       : undefined;
-    const view = this.followCamera.update(
-      this.scale.width,
-      this.scale.height,
-      // Raids need the whole arena: mechanics can start far from the fighter.
-      // Fit it below the mobile HUD rather than cropping it to fill the phone.
-      touch.enabled &&
-        !state?.raid &&
-        document.body.classList.contains("battle-active") &&
-        innerWidth > innerHeight,
-      ((touch.enabled && innerWidth > innerHeight) || !!spectated) &&
-        follow && presented && !state?.arcade && !state?.raid
-        ? {
-            ...follow,
-            x: presented.x,
-            y: presented.y,
-            attacking:
-              this.getRig(follow.id, follow.character).controller.state ===
-                "basic" ||
-              this.getRig(
-                follow.id,
-                follow.character,
-              ).controller.state.startsWith("skill"),
-          }
-        : undefined,
-      `${state?.code ?? "menu"}:${state?.round ?? 0}:${myId ?? ""}`,
-      delta,
-      reducedMotion,
-      this.activeCourt && !this.courtRaid ? STANDS : 0,
-      state?.practice ? 1.65 : 1.2,
-    );
+    // Raid camera fits all mechanics; only PvP/practice follows a fighter.
+    const view = state?.raid
+      ? raidCameraView(this.scale.width, this.scale.height, raidCameraHudBottom)
+      : this.followCamera.update(
+          this.scale.width,
+          this.scale.height,
+          touch.enabled &&
+            !state?.raid &&
+            document.body.classList.contains("battle-active") &&
+            innerWidth > innerHeight,
+          ((touch.enabled && innerWidth > innerHeight) || !!spectated) &&
+            follow && presented && !state?.arcade && !state?.raid
+            ? {
+                ...follow,
+                x: presented.x,
+                y: presented.y,
+                attacking:
+                  this.getRig(follow.id, follow.character).controller.state ===
+                    "basic" ||
+                  this.getRig(
+                    follow.id,
+                    follow.character,
+                  ).controller.state.startsWith("skill"),
+              }
+            : undefined,
+          `${state?.code ?? "menu"}:${state?.round ?? 0}:${myId ?? ""}`,
+          delta,
+          reducedMotion,
+          this.activeCourt && !this.courtRaid ? STANDS : 0,
+          state?.practice ? 1.65 : 1.2,
+        );
+    const hitZoom = state?.raid ? 1 : this.koZoom;
     this.cameras.main
-      .setZoom(view.zoomX * this.koZoom, view.zoomY * this.koZoom)
+      .setZoom(view.zoomX * hitZoom, view.zoomY * hitZoom)
       .centerOn(view.x, view.y);
     const aim = screenToWorld(
       this.input.activePointer.x,
@@ -4441,6 +4457,10 @@ function fitRenderer() {
   // Anchor desktop HUD and controls to the displayed court, including letterboxing.
   const frame = parent.parentElement!.getBoundingClientRect();
   const battle = $("battle").getBoundingClientRect();
+  const raidHud = document.getElementById("raid-hud");
+  raidCameraHudBottom = state?.raid && raidHud && !raidHud.hidden
+    ? Math.max(0, raidHud.getBoundingClientRect().bottom - frame.top + 6) * dpr
+    : 0;
   $("battle").style.setProperty("--desktop-arena-width", `${frame.width}px`);
   $("battle").style.setProperty(
     "--desktop-arena-top",

@@ -131,9 +131,34 @@ for (const viewport of [
         .toBe("raid-coliseum");
       expect(requests.length).toBe(before);
       expect(new Set(requests).size).toBe(7);
-      await page.evaluate(() => {const w=window as any;w.__room("practice");w.__push();});
-      await expect.poll(() => page.evaluate(() => (window as any).__raidArtGame.scene.getScene("arena").floor.texture.key)).toBe("arena-floor-court-classic");
-      expect(await page.evaluate(() => (window as any).__raidArtGame.scene.getScene("arena").raidPillarShadows.every((s:any)=>!s.visible))).toBe(true);
+      await page.evaluate(() => {
+        const w = window as any;
+        w.__room("practice");
+        w.__push();
+      });
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () =>
+              (window as any).__raidArtGame.scene.getScene("arena").floor
+                .texture.key,
+          ),
+        )
+        .toBe("arena-floor-court-classic");
+      expect(
+        await page.evaluate(() =>
+          (window as any).__raidArtGame.scene
+            .getScene("arena")
+            .raidPillarShadows.every((s: any) => !s.visible),
+        ),
+      ).toBe(true);
+      expect(
+        await page.evaluate(() =>
+          (window as any).__raidArtGame.scene
+            .getScene("arena")
+            .raidSurround.every((s: any) => !s.visible),
+        ),
+      ).toBe(true);
       expect(errors).toEqual([]);
     } finally {
       await context.close();

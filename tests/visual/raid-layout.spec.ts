@@ -1,4 +1,5 @@
-import { expect, test } from "@playwright/test";
+import { raidAttacksOf, type RaidBossId } from "../../packages/shared/src/raid";
+import { expect, test, type Page } from "@playwright/test";
 import {
   box,
   inside,
@@ -7,6 +8,29 @@ import {
   pushUntilBattle,
   snap,
 } from "./helpers";
+
+async function floorHudGap(page: Page) {
+  const hud = await box(page, "#raid-hud"),
+    game = await box(page, "#game");
+  const floorTop = await page.evaluate(() => {
+    const scene = (window as any).__raidLayoutGame.scene.getScene("arena"),
+      c = scene.cameras.main;
+    return (
+      (-c.worldView.y *
+        c.zoomY *
+        document.getElementById("game")!.clientHeight) /
+      scene.scale.height
+    );
+  });
+  return game.y + floorTop - hud.y - hud.height;
+}
+async function cameraSignature(page: Page) {
+  return page.evaluate(() => {
+    const c = (window as any).__raidLayoutGame.scene.getScene("arena").cameras
+      .main;
+    return [c.zoomX, c.zoomY, c.scrollX, c.scrollY];
+  });
+}
 
 for (const size of [
   { width: 1440, height: 900 },
@@ -91,6 +115,21 @@ for (const size of [
           }
           w.__push();
         }, boss);
+        await expect
+          .poll(async () => {
+            const frame = await box(page, "#game"),
+              stage = await box(page, ".arena-stage");
+            return Math.abs(frame.height - stage.height);
+          })
+          .toBeLessThanOrEqual(2);
+        const scenery = await page.evaluate(() => {
+          const s = (window as any).__raidLayoutGame.scene.getScene("arena");
+          return s.raidSurround.filter(
+            (image: any) =>
+              image.visible && image.texture.key === s.floor.texture.key,
+          ).length;
+        });
+        expect(scenery).toBe(8);
         if (!mobile) {
           const name = await box(page, ".raid-boss-heading > b"),
             cue = await box(page, ".raid-callout"),
@@ -109,13 +148,7 @@ for (const size of [
             await expect(
               page.locator("#raid-hud > .raid-boss-health"),
             ).toBeHidden();
-          await expect
-            .poll(async () => {
-              const hud = await box(page, "#raid-hud"),
-                game = await box(page, "#game");
-              return game.y - (hud.y + hud.height);
-            })
-            .toBeGreaterThanOrEqual(5);
+          await expect.poll(() => floorHudGap(page)).toBeGreaterThanOrEqual(5);
           await expect
             .poll(async () => {
               const party = await box(page, ".raid-party-bars"),
@@ -148,10 +181,7 @@ for (const size of [
               page,
               boss === "storm-twins" ? ".raid-twin-track" : ".raid-boss-health",
             ),
-            name = await box(
-              page,
-              ".raid-boss-heading > b",
-            ),
+            name = await box(page, ".raid-boss-heading > b"),
             cue = await box(page, ".raid-callout"),
             meta = await box(page, ".raid-boss-heading > span");
           expect(name.y).toBeGreaterThanOrEqual(health.y + health.height);
@@ -264,6 +294,52 @@ for (const size of [
           if (boss === "prismatail")
             await snap(page, info, `raid-wide-${size.width}x${size.height}`);
         }
+        await expect.poll(() => floorHudGap(page)).toBeGreaterThanOrEqual(5);
+        const camera = await cameraSignature(page);
+        await page.evaluate(
+          (drill) => {
+            const w = window as any;
+            w.__snap.raid.drill = drill;
+            const hero = w.__snap.players.find((p: any) => p.id === "me");
+            hero.x = 1500;
+            hero.y = 800;
+            w.__snap.time += 1;
+            w.__push();
+          },
+          raidAttacksOf(boss as RaidBossId)[0],
+        );
+        await expect(page.locator("#raid-drill")).toBeVisible();
+        await expect.poll(() => cameraSignature(page)).toEqual(camera);
+        if (boss === "prismatail") {
+          // Review screenshots show the loaded illustration, not the temporary fallback.
+          await expect
+            .poll(() =>
+              page.evaluate(() => {
+                const s = (window as any).__raidLayoutGame.scene.getScene(
+                  "arena",
+                );
+                return (
+                  s.floor.texture.getSourceImage().dataset?.raidArtwork ===
+                    "sun-atrium" &&
+                  s.children.list.some(
+                    (o: any) =>
+                      o.name === "painted-boss-prismatail:body" && o.visible,
+                  )
+                );
+              }),
+            )
+            .toBe(true);
+          await snap(
+            page,
+            info,
+            `raid-practice-wide-${size.width}x${size.height}`,
+          );
+        }
+        await page.evaluate(() => {
+          const w = window as any;
+          w.__snap.raid.drill = null;
+          w.__push();
+        });
       }
 
       if (mobile) {
@@ -278,13 +354,7 @@ for (const size of [
         });
         await expect(page.locator(".raid-party-bars")).toBeVisible();
         await expect(page.locator(".raid-party-bars > span")).toHaveCount(1);
-        await expect
-          .poll(async () => {
-            const hud = await box(page, "#raid-hud"),
-              game = await box(page, "#game");
-            return game.y - (hud.y + hud.height);
-          })
-          .toBeGreaterThanOrEqual(5);
+        await expect.poll(() => floorHudGap(page)).toBeGreaterThanOrEqual(5);
         // Resizing the canvas clears its drawing buffer. Capture after Phaser
         // has painted the new solo layout, rather than that transient clear.
         await page.evaluate(
@@ -364,13 +434,7 @@ for (const size of [
         });
         for (const height of [280, 390]) {
           await page.setViewportSize({ width: size.width, height });
-          await expect
-            .poll(async () => {
-              const hud = await box(page, "#raid-hud"),
-                game = await box(page, "#game");
-              return game.y - (hud.y + hud.height);
-            })
-            .toBeGreaterThanOrEqual(5);
+          await expect.poll(() => floorHudGap(page)).toBeGreaterThanOrEqual(5);
           await expect
             .poll(() =>
               page.evaluate(() => {

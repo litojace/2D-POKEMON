@@ -23498,3 +23498,24 @@ body.battle-active.battle-raid #raid-drill .raid-drill-options button {
   white-space: normal;
   line-height: 1.25;
 }
+
+/* Raid scenery fills the viewport; the camera keeps the fighting floor below HP. */
+body.battle-active:not(.touch-mode).battle-raid .arena-frame {
+  width: 100cqw;
+  height: 100cqh;
+  aspect-ratio: auto;
+}
+@media (orientation: landscape) {
+  body.battle-active.touch-mode.battle-raid #battle:not([hidden]) {
+    grid-template-rows: minmax(0, 1fr);
+  }
+  body.battle-active.touch-mode.battle-raid .arena-stage {
+    grid-row: 1;
+  }
+  body.battle-active.touch-mode.battle-raid #raid-hud {
+    position: absolute;
+    top: calc(var(--safe-top) + 4px);
+    left: calc(var(--safe-left) + 4px);
+    z-index: 26;
+  }
+}

@@ -1,6 +1,10 @@
 /** Use the court's vertical letterboxing for controls without reducing its size. */
 export function fitDesktopBattleHud(battle: HTMLElement) {
-  if (document.body.classList.contains("touch-mode") || battle.hidden) {
+  if (
+    document.body.classList.contains("touch-mode") ||
+    document.body.classList.contains("battle-raid") ||
+    battle.hidden
+  ) {
     battle.classList.remove("desktop-hud-outside");
     return;
   }
