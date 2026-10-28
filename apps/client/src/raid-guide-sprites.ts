@@ -13,9 +13,10 @@ export function raidGuideSprite(
   boss: RaidBossId,
   exposed = false,
   shadow = true,
+  action = 0,
 ) {
   const draw = (mode: BossArtMode, x: number, width: number) => {
-    const f = bossDirectionalFrame(boss, mode, "front", 0),
+    const f = bossDirectionalFrame(boss, mode, "front", action),
       [sx, sy, w, h] = f.pose.rect,
       [aw, ah] =
         f.atlas === "base" ? base[boss].size : BOSS_DIRECTIONS[boss].size,

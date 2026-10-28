@@ -10,10 +10,12 @@ import {
   raidAttacksOf,
   raidChapters,
   raidPerksOf,
+  type RaidAttack,
   type RaidBossId,
   type RaidProgress,
 } from "../../../packages/shared/src/raid";
 import { raidCrest } from "./raid-crests";
+import { raidGuideSprite } from "./raid-guide-sprites";
 import { raidGoal, raidGoals } from "./raid-presentation";
 import { iconLabel, menuIcon } from "./menu-icons";
 
@@ -98,7 +100,14 @@ function overview(id: RaidBossId) {
 
 function attacks(id: RaidBossId) {
   if (!RAID_BOSSES[id].playable) return `<p>Attack details arrive with the boss.</p>`;
-  return `<ul class="raid-hub-attacks">${raidAttacksOf(id).map((a) => `<li><span class="raid-attack-picture">${raidCrest(id)}</span><div><b>${RAID_ATTACKS[a].name}</b><small>${RAID_ATTACKS[a].practice}</small><button type="button" class="secondary" data-hub-practice="${a}">${iconLabel("target", "Practise attack")}</button></div></li>`).join("")}</ul><p class="raid-hub-rules">Choose an attack to start a safe solo practice. Hits and dodges are counted; no health is lost.</p>`;
+  const attackArt = (attack: RaidAttack, index: number) => {
+    // These atlas poses match the boss's cast frames in battle. Alternate their
+    // order by attack so every row has its own animated action thumbnail.
+    const first = index % 2 ? 3 : 2,
+      second = first === 2 ? 3 : 2;
+    return `<span class="raid-attack-picture" data-attack="${attack}" aria-hidden="true"><svg viewBox="-65 -65 130 115" focusable="false"><g class="raid-attack-pose raid-attack-pose-a">${raidGuideSprite(id, false, false, first)}</g><g class="raid-attack-pose raid-attack-pose-b">${raidGuideSprite(id, false, false, second)}</g></svg></span>`;
+  };
+  return `<ul class="raid-hub-attacks">${raidAttacksOf(id).map((a, i) => `<li>${attackArt(a, i)}<div><b>${RAID_ATTACKS[a].name}</b><small>${RAID_ATTACKS[a].practice}</small><button type="button" class="secondary" data-hub-practice="${a}">${iconLabel("target", "Practise attack")}</button></div></li>`).join("")}</ul><p class="raid-hub-rules">Choose an attack to start a safe solo practice. Hits and dodges are counted; no health is lost.</p>`;
 }
 
 function rewards(id: RaidBossId, p: RaidProgress | null) {

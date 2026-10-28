@@ -19448,6 +19448,11 @@ body.battle-active:not(.touch-mode) #battle.desktop-hud-outside .enemy-bearing {
   position: absolute;
   inset: 0;
 }
+.town-canvas > canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
 .town-prompt {
   position: absolute;
   left: 50%;
@@ -22677,8 +22682,18 @@ body.battle-active:not(.touch-mode).battle-raid :is(#raid-prism-controls, #raid-
 
 /* Practice starts from illustrated boss pages, not the ready drawer. */
 .raid-hub-attacks > li {display:grid;grid-template-columns:80px minmax(0,1fr);gap:14px;align-items:center;text-align:left;}
-.raid-attack-picture {display:block;width:80px;height:80px;}
-.raid-attack-picture svg {width:100%;height:100%;}
+.raid-attack-picture {display:block;position:relative;width:80px;height:80px;overflow:hidden;border:1px solid #8ea7c855;border-radius:14px;background:radial-gradient(ellipse at 50% 65%,#39516c 0,#172941 65%,#101b30 100%);}
+.raid-attack-picture > svg {display:block;width:100%;height:100%;overflow:visible;}
+.raid-attack-pose {opacity:0;transform-box:fill-box;transform-origin:center;animation:raid-attack-pose 1.4s ease-in-out infinite;}
+.raid-attack-pose-a {opacity:1;animation-name:raid-attack-pose-a;}
+.raid-attack-pose-b {animation-name:raid-attack-pose-b;}
+@keyframes raid-attack-pose-a {0%,42%,100% {opacity:1;transform:translateY(0) scale(.98);}50%,92% {opacity:0;transform:translateY(-2px) scale(1.04);}}
+@keyframes raid-attack-pose-b {0%,42%,100% {opacity:0;transform:translateY(2px) scale(.96);}50%,92% {opacity:1;transform:translateY(0) scale(1.02);}}
+@media (prefers-reduced-motion:reduce) {
+  .raid-attack-pose {animation:none;}
+  .raid-attack-pose-a {opacity:1;}
+  .raid-attack-pose-b {opacity:0;}
+}
 .raid-hub-attacks > li > div {min-width:0;display:grid;gap:8px;}
 .raid-hub-attacks button {justify-self:start;border-radius:10px;white-space:normal;text-align:center;min-height:44px;}
 body.battle-active.battle-raid #raid-drill:not([hidden]) {position:fixed;inset:auto auto calc(var(--safe-bottom) + 8px) 50%;transform:translateX(-50%);width:min(420px,calc(100vw - 360px));max-height:50dvh;overflow:auto;padding:8px 12px;border-radius:12px;z-index:45;}

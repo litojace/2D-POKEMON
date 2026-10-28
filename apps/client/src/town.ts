@@ -614,6 +614,14 @@ export function openTown(options: TownOptions) {
       const cam = this.cameras.main;
       cam.setBounds(0, 0, TOWN.width, TOWN.height);
       this.applyZoom(0);
+      // Keep the followed player centered after viewport or orientation changes.
+      // Phaser preserves the old scroll position when only the canvas size changes.
+      const mine = bodies.get(me);
+      if (mine) {
+        cam.centerOn(mine.shadow.x, mine.shadow.y);
+        cam.startFollow(mine.shadow, false, 1, 1);
+        this.following = mine;
+      } else cam.centerOn(TOWN.spawn.x, TOWN.spawn.y);
     }
     /**
      * Allowed zoom range for this screen: out until the whole town fills it
@@ -1107,13 +1115,31 @@ export function openTown(options: TownOptions) {
     scene: [TownScene],
   });
   const resize = () => {
-    dpr = townRendererDensity(host.clientWidth, host.clientHeight);
-    game.scale.setZoom(1 / dpr);
-    game.scale.resize(
-      Math.round(host.clientWidth * dpr),
-      Math.round(host.clientHeight * dpr),
-    );
+    cancelAnimationFrame(resizeFrame);
+    resizeFrame = requestAnimationFrame(() => {
+      if (closed) return;
+      const width = host.clientWidth,
+        height = host.clientHeight;
+      if (!width || !height) return;
+      const nextDpr = townRendererDensity(width, height),
+        pixelWidth = Math.round(width * nextDpr),
+        pixelHeight = Math.round(height * nextDpr);
+      if (
+        dpr === nextDpr &&
+        game.scale.width === pixelWidth &&
+        game.scale.height === pixelHeight
+      )
+        return;
+      dpr = nextDpr;
+      game.scale.setZoom(1 / dpr);
+      game.scale.resize(pixelWidth, pixelHeight);
+    });
   };
+  let resizeFrame = 0;
+  const resizeObserver = new ResizeObserver(resize);
+  resizeObserver.observe(host);
+  window.visualViewport?.addEventListener("resize", resize);
+  screen.orientation?.addEventListener("change", resize);
   window.addEventListener("resize", resize);
   watchRendererLifecycle(game, () => !closed, resize);
 
@@ -1133,6 +1159,10 @@ export function openTown(options: TownOptions) {
     window.removeEventListener("keydown", keydown, true);
     window.removeEventListener("keyup", keyup, true);
     window.removeEventListener("blur", blur);
+    cancelAnimationFrame(resizeFrame);
+    resizeObserver.disconnect();
+    window.visualViewport?.removeEventListener("resize", resize);
+    screen.orientation?.removeEventListener("change", resize);
     window.removeEventListener("resize", resize);
     profiles.clear();
     bodies.clear();
