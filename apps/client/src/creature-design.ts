@@ -446,15 +446,14 @@ export function creatureLayers(
     layers.tail = `${tailPath("M118 156Q136 176 156 166Q148 160 152 152Q140 158 132 150Q130 156 120 150Z", body)}${tailPath("M140 160L146 164", "none", ` stroke="${p.light}" stroke-width="2"`)}`;
   }
   if (id === "terradon") {
-    // Sprout baby tortoise, standing on two legs: a big round head with
-    // glossy eyes and a smile, a sapling with a blossom, a round mossy shell
-    // on its back with flowers and a crystal cluster, and short chubby limbs.
+    // Sprout tortoise boy: a broad brow, tapered jaw and small beak-like snout,
+    // with a sapling, a mossy shell and short, sturdy limbs.
     const flower = (x: number, y: number, c = "#ffb3d1", r = 3.4) =>
       `${[0, 1, 2, 3, 4].map((i) => e(+(x + Math.cos((i * 2 * Math.PI) / 5) * r).toFixed(1), +(y + Math.sin((i * 2 * Math.PI) / 5) * r).toFixed(1), r * 0.85, r * 0.85, c).replace("/>", ' stroke="none"/>')).join("")}<circle cx="${x}" cy="${y}" r="${(r * 0.6).toFixed(1)}" fill="#fff3a0" stroke="none"/>`;
     // The shell, worn upright on its back: round, with moss along the top.
     layers.wings = `${path("M56 150Q48 116 64 98Q82 80 100 80Q118 80 136 98Q152 116 144 150Q136 166 100 166Q64 166 56 150Z", body)}${line("M100 82V164M72 104Q100 112 128 104M62 132Q100 142 138 132", p.dark, 2.2, 0.45)}${path("M64 100Q72 84 88 84Q100 76 112 84Q128 84 136 100Q124 94 112 96Q100 88 88 96Q76 94 64 100Z", p.glow)}${flower(64, 108)}${flower(138, 112, "#ffffff")}${path("M140 98L144 76L151 90L157 72L160 96L148 104Z", "#bfe9ff")}${line("M145 82L147 94M156 78L155 92", "#ffffff", 1.4, 0.8)}`;
-    // A big round head with a little "w" smile.
-    layers.head = `${e(100, 91, 38, 34, face)}${highlight(72, 72, 22)}<path d="M94 110Q97 113.5 100 110.5Q103 113.5 106 110" stroke="${p.dark}" stroke-width="2" fill="none" stroke-linecap="round"/>`;
+    // Wider at the brow and gently tapered at the chin, with a little turtle beak.
+    layers.head = `${path("M100 56Q78 56 66 71Q58 83 62 99Q66 117 82 125Q91 130 100 129Q109 130 118 125Q134 117 138 99Q142 83 134 71Q122 56 100 56Z", face)}${highlight(72, 70, 22)}${path("M88 103Q100 108 112 103Q111 114 100 117Q89 114 88 103Z", p.mid, ' stroke="none"')}<path d="M94 111Q97 114 100 111Q103 114 106 111" stroke="${p.dark}" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="96" cy="104" r="1.15" fill="${p.dark}" stroke="none"/><circle cx="104" cy="104" r="1.15" fill="${p.dark}" stroke="none"/><path d="M69 78Q79 74 89 78M111 78Q121 74 131 78" stroke="${p.dark}" stroke-width="2" fill="none" stroke-linecap="round" opacity=".48"/>`;
     layers.eyes = eye(81, p.glow, 10, 12) + eye(119, p.glow, 10, 12);
     layers.flame = `${line("M100 60Q98 48 101 36", "#5aa64a", 3.4)}${path("M100 50Q84 38 76 46Q86 58 100 50Z", p.glow)}${path("M100 44Q114 28 126 36Q114 48 100 44Z", p.glow)}${flower(101, 34, "#ffb3d1", 3.8)}`;
     // A round torso with its plated belly (plastron).
@@ -497,7 +496,8 @@ export function creatureLayers(
     // Lantern on a crook, hanging from its tip; the rig swings this layer.
     layers.tail = `${tailPath("M126 150Q150 148 156 120Q160 98 172 92Q180 92 180 100", "none", ` stroke="${p.dark}" stroke-width="4" stroke-linecap="round"`)}${line(`M${tailX(180)} 100V106`, p.dark, 2)}<circle cx="${tailX(180)}" cy="118" r="17" fill="${shine}" stroke="none"/>${path(`M${tailX(173)} 108H${tailX(187)}L${tailX(185)} 128H${tailX(175)}Z`, p.accent)}${e(tailX(180), 118, 4.5, 7, p.glow)}${e(tailX(180), 120, 2, 3.5, "#ffffff")}${line(`M${tailX(172)} 107H${tailX(188)}M${tailX(174)} 129H${tailX(186)}`, p.dark, 3)}`;
   }
-  if (dir === "down" && id !== "duskveil") layers.head += blush;
+  if (dir === "down" && id !== "duskveil" && id !== "terradon")
+    layers.head += blush;
   if (dir === "left" || dir === "right" || dir === "up") {
     const painted = creatureProfile(id, dir, {
       palette: p,

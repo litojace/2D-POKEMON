@@ -732,18 +732,18 @@ export function creatureProfile(
         line("M126 153l22 8", p.light, 2);
   }
   if (id === "terradon") {
-    // The sprout baby tortoise standing on two legs, its round mossy shell
-    // worn on its back: a big round head, glossy eyes, a sapling with a blossom.
+    // The sprout tortoise boy: a tapered jaw and a small beak-like snout in profile.
     profiles.head = back
       ? e(100, 92, 37, 34, face) + shine(76, 72, 20)
       : path(
-          "M128 90Q128 60 98 56Q68 54 59 80Q56 90 53 96Q50 104 58 108Q66 124 96 124Q128 122 128 90Z",
+          "M128 88Q128 61 101 56Q74 53 63 73Q57 84 57 94Q53 99 55 104Q57 109 65 109Q75 123 98 124Q124 121 128 98Z",
           face,
         ) +
         shine(70, 70, 20) +
-        grin(58, 106) +
-        e(55, 99, 1.2, 0.9, p.dark, ' stroke="none"') +
-        cheek(90, 110);
+        path("M57 96Q66 92 73 96Q71 104 62 105Q56 103 57 96Z", p.mid, ' stroke="none"') +
+        line("M60 96q2 -1 4 0", p.dark, 1.5) +
+        grin(57, 108) +
+        line("M70 75Q80 72 89 76", p.dark, 1.8, 0.48);
     profiles.ears = "";
     profiles.eyes = back ? "" : eyes(80, p.glow, 9.8, 11.8);
     const sproutX = back ? 100 : 96;
