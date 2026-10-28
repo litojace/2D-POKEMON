@@ -10,7 +10,6 @@ import {
   hazardIn,
   obstaclesAt,
   shiftingUp,
-  useObstacles,
   type ArenaId,
 } from "@arena/shared";
 
@@ -47,17 +46,17 @@ describe("arenas", () => {
   it("keeps spawns, orbs and hazards clear of walls", () => {
     for (const id of ARENA_ROTATION) {
       const def = ARENAS[id];
-      useObstacles(obstaclesAt(id, 0));
+      const obstacles = obstaclesAt(id, 0);
       for (const spot of [
         { x: 260, y: 450 },
         { x: 1340, y: 450 },
         { x: 260, y: 330 },
         { x: 1340, y: 570 },
       ])
-        expect(blocked(spot.x, spot.y)).toBe(false);
-      for (const h of def.hazards) expect(blocked(h.x, h.y)).toBe(false);
+        expect(blocked(spot.x, spot.y, RULES.radius, obstacles)).toBe(false);
+      for (const h of def.hazards)
+        expect(blocked(h.x, h.y, RULES.radius, obstacles)).toBe(false);
     }
-    useObstacles(OBSTACLES);
   });
   it("Ember Forge vents burn whoever stands on them, but not a jumper", () => {
     const { arena, p, q } = live("ember-forge");
@@ -101,10 +100,10 @@ describe("arenas", () => {
     run(arena, s.up + 0.5);
     const centre = { x: s.rect.x + s.rect.w / 2, y: s.rect.y + s.rect.h / 2 };
     Object.assign(p, centre);
-    expect(blocked(p.x, p.y)).toBe(false);
+    expect(blocked(p.x, p.y, RULES.radius, arena.walls())).toBe(false);
     run(arena, s.down);
     expect(shiftingUp(def, arena.arenaTime())).toBe(true);
-    expect(blocked(p.x, p.y)).toBe(false);
+    expect(blocked(p.x, p.y, RULES.radius, arena.walls())).toBe(false);
     expect(Math.hypot(p.x - centre.x, p.y - centre.y)).toBeGreaterThan(40);
   });
   it("hazard timing helper counts down to the next trigger", () => {
