@@ -22696,10 +22696,16 @@ body.battle-active.battle-raid #raid-drill:not([hidden]) {
   gap: 3px 12px;
   font-size: 11px;
 }
+#raid-drill .raid-drill-picker {
+  margin-top: 6px;
+}
 #raid-drill .raid-drill-picker > summary {
   min-height: 32px;
+  padding-top: 3px;
   cursor: pointer;
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
   color: #ffdf81;
 }
 #raid-drill .raid-drill-options {
@@ -22856,8 +22862,8 @@ body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-count {
   font-size: 9px;
 }
 body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-picker > summary {
-  min-height: 28px;
-  font-size: 10px;
+  min-height: 32px;
+  font-size: 12px;
   white-space: nowrap;
 }
 body.battle-active.touch-mode.battle-raid #raid-drill .raid-drill-options {
