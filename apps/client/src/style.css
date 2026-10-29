@@ -22245,9 +22245,11 @@ body.battle-active.touch-mode.pvp-knocked-out #battle-menu {
     padding-bottom: calc(var(--safe-bottom) + 28px);
   }
   body.battle-active.touch-mode.battle-raid #raid-hud {
-    width: calc(100% - 56px);
+    width: auto;
+    left: calc(var(--safe-left) + 4px);
+    right: calc(var(--safe-right) + 56px);
     min-height: 0;
-    justify-self: start;
+    justify-self: stretch;
   }
   .touch-mode.battle-raid .raid-status-row {
     position: fixed;
@@ -23525,9 +23527,20 @@ body.battle-active:not(.touch-mode).battle-raid .arena-frame {
 @media (orientation: landscape) {
   body.battle-active.touch-mode.battle-raid #battle:not([hidden]) {
     grid-template-rows: minmax(0, 1fr);
+    padding: 0;
   }
   body.battle-active.touch-mode.battle-raid .arena-stage {
     grid-row: 1;
+    position: absolute;
+    inset: 0;
+  }
+  body.battle-active.touch-mode.battle-raid .arena-frame {
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: auto;
+    border: 0;
+    border-radius: 0;
   }
   body.battle-active.touch-mode.battle-raid #raid-hud {
     position: absolute;
@@ -23739,3 +23752,45 @@ body.battle-active:not(.touch-mode).battle-raid .arena-frame {
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+
+/* Boss HUD bounds include the notch; scenery itself remains edge-to-edge. */
+.battle-raid #raid-hud :is(.raid-boss-health, .raid-twin-health) {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+}
+.battle-raid #raid-hud .raid-party-bars > span,
+.battle-raid #raid-hud .raid-party-bars b,
+.battle-raid #raid-hud .raid-party-bars small {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+body.battle-active.battle-raid #spectate:not(.pvp-spectator) {
+  position: absolute;
+  top: auto;
+  bottom: calc(var(--safe-bottom) + 12px);
+  right: calc(var(--safe-right) + 12px);
+  left: auto;
+  transform: none;
+  width: min(280px, calc(100% - var(--safe-left) - var(--safe-right) - 24px));
+  max-width: 100%;
+  padding: 10px 12px;
+  border-radius: 14px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
+  letter-spacing: normal;
+  background: #101c35f2;
+  border-color: #a1b9d866;
+}
+.raid-revive-head { display: flex; align-items: center; gap: 8px; font-size: 14px; line-height: 18px; }
+.raid-revive-head > svg { width: 18px; height: 18px; color: #83dfc7; flex: none; }
+.battle-raid .spectate-banner .raid-revive-head > b { display: inline; min-width: 0; flex: 1; }
+.raid-revive-head > span { color: #83dfc7; font-variant-numeric: tabular-nums; }
+.raid-revive-progress { height: 5px; border-radius: 4px; overflow: hidden; background: #53698555; margin: 7px 0; }
+.raid-revive-progress > i { display: block; height: 100%; background: #83dfc7; border-radius: inherit; }
+.raid-revive-instruction { margin: 0; color: #e6edf8; font-size: 12px; font-weight: 500; line-height: 16px; }
+.battle-raid .spectate-banner .raid-revive-cause { margin-top: 4px; color: #a9bad2; font-size: 11px; line-height: 14px; }
+body.battle-raid.raid-downed #mobile-controls .touch-buttons { visibility: hidden; pointer-events: none; }

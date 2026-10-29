@@ -212,6 +212,8 @@ export function renderRaidUI(
 ) {
   const r = state.raid!,
     boss = state.players.find((p) => p.id === r.bossId);
+  document.body.classList.toggle("raid-downed", state.phase === "playing" && me.hp <= 0);
+  if (state.phase !== "playing") document.getElementById("spectate")?.setAttribute("hidden", "");
   let hud = document.getElementById("raid-hud");
   if (!hud) {
     hud = document.createElement("div");
@@ -290,7 +292,10 @@ export function renderRaidUI(
     overlay.style.pointerEvents = "none";
     const banner = document.getElementById("spectate")!;
     banner.hidden = me.hp > 0;
-    if (me.hp <= 0) banner.innerHTML = downedCard(state, me.id);
+    if (me.hp <= 0) {
+      const markup = downedCard(state, me.id);
+      if (banner.innerHTML !== markup) banner.innerHTML = markup;
+    }
     return;
   }
   overlay.style.pointerEvents = "auto";
@@ -751,15 +756,13 @@ function defeatTip(state: Snapshot) {
 export function downedCard(state: Snapshot, myId: string) {
   const r = state.raid!;
   const down = r.downed[myId];
-  const head = down?.self
-    ? "One self-revive charging…"
-    : "Downed · crawl toward allies. Teammates revive by standing nearby.";
+  const percent = Math.max(0, Math.min(100, Math.round((down?.progress ?? 0) * 100)));
+  const head = down?.self ? "Self-revive" : percent > 0 ? "Reviving" : "Downed";
+  const instruction = down?.self ? "Reviving automatically" : r.partySize > 1 ? "Crawl toward an ally to revive" : "Waiting for raid result";
   const cause = down?.cause;
-  if (!cause)
-    return r.closingRadius
-      ? `<b>${head}</b><small>The closing arena: stay inside the shrinking ring.</small>`
-      : `<b>${head}</b>`;
-  return `<b>${head}</b><small><b>${RAID_ATTACKS[cause].name}</b> · ${escape(RAID_ATTACKS[cause].tip)}</small>`;
+  const causeText = cause ? `Hit by ${RAID_ATTACKS[cause].name}` : r.closingRadius ? "Outside the closing ring" : "";
+  const tip = cause ? RAID_ATTACKS[cause].tip : "Stay inside the shrinking ring.";
+  return `<div class="raid-revive-head">${menuIcon("motion")}<b>${head}</b><span>${percent}%</span></div><div class="raid-revive-progress" role="progressbar" aria-label="Revive progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><i style="width:${percent}%"></i></div><p class="raid-revive-instruction">${instruction}</p>${causeText ? `<small class="raid-revive-cause" title="${escape(tip)}">${escape(causeText)}</small>` : ""}`;
 }
 /** What the party's champions can do against this boss. */
 function perkLines(state: Snapshot, myId: string) {

@@ -1257,6 +1257,7 @@ function renderGate() {
   document.body.classList.remove(
     "battle-active",
     "battle-raid",
+    "raid-downed",
     "lobby-active",
   );
   document.body.classList.add("home-active", "gate-active");
@@ -1582,7 +1583,7 @@ function renderMenu(revealSelection = false) {
   // Keep the reader's place when the menu re-renders while already visible.
   const keepScroll = !$("menu").hidden ? scrollY : null;
   touch.reset();
-  document.body.classList.remove("battle-active", "battle-raid", "pvp-knocked-out");
+  document.body.classList.remove("battle-active", "battle-raid", "raid-downed", "pvp-knocked-out");
   audio.setAmbience(null);
   const home = !isRoom && !watchingRoom;
   document.body.classList.toggle("home-active", home);
@@ -1829,6 +1830,7 @@ function renderBattle() {
     `#${CHARACTERS[me.character].color.toString(16).padStart(6, "0")}`,
   );
   document.body.classList.toggle("battle-raid", !!state.raid);
+  if (!state.raid) document.body.classList.remove("raid-downed");
   document.body.classList.toggle("spectating", !myId && !!watching);
   const knockedOut = !state.raid && !state.practice && (me.hp <= 0 || !!me.out);
   document.body.classList.toggle("pvp-knocked-out", knockedOut);
