@@ -188,7 +188,7 @@ import { fxFor } from "./fx-engine";
 import { isRaidFloor, paintRaidFloor } from "./raid-floors";
 import { isIllustratedRaidFloor, loadRaidArenaArt, paintIllustratedRaidFloor } from "./raid-arena-art";
 import type { LayerAt } from "./raid-layers";
-import { courtBlockFrame, courtBlocks, isCourt, paintCourtBlock, paintCourtFloor, paintCourtRubble, paintCourtStands, RUBBLE_PAD, SHIFTING_BLOCK, STANDS, type CourtId } from "./arena-courts";
+import { courtBlockFrame, courtBlocks, isCourt, paintCourtBlock, paintCourtFloor, paintCourtRubble, paintCourtStands, paintCourtApron, COURT_APRON, RUBBLE_PAD, SHIFTING_BLOCK, STANDS, type CourtId } from "./arena-courts";
 import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
 const audio = new AudioManager();
 audio.start();
@@ -2809,6 +2809,7 @@ class ArenaScene extends Phaser.Scene {
   activeCourt?: CourtId;
   /** What lies beyond each court's back edge, shown above it (world y < 0). */
   stands = new Map<CourtId, Phaser.GameObjects.Image>();
+  courtAprons = new Map<CourtId, Phaser.GameObjects.Image>();
   /** Grumblecrag's raid plays on the Coliseum court (no stands strip). */
   courtRaid = false;
   raidPillarShadows: Phaser.GameObjects.Ellipse[] = [];
@@ -2942,6 +2943,21 @@ class ArenaScene extends Phaser.Scene {
       this.stands.set(court, this.add.image(0, -STANDS, skey).setOrigin(0).setScale(1 / bake).setDepth(-10));
     }
     for (const [cid, img] of this.stands) img.setVisible(standsOn && cid === court);
+    if (standsOn && court && !this.courtAprons.has(court)) {
+      const bake = floorBake(), akey = `court-apron-${court}`;
+      if (!this.textures.exists(akey)) {
+        const canvas = document.createElement("canvas");
+        canvas.width = RULES.width * bake;
+        canvas.height = COURT_APRON * bake;
+        const ctx = canvas.getContext("2d")!;
+        ctx.scale(bake, bake);
+        paintCourtApron(ctx, court);
+        this.textures.addCanvas(akey, canvas);
+      }
+      this.courtAprons.set(court, this.add.image(0, RULES.height, akey).setOrigin(0).setScale(1 / bake).setDepth(-10));
+    }
+    for (const [cid, img] of this.courtAprons) img.setVisible(standsOn && cid === court);
+
     if (this.courtRaid && !this.rubble.length) this.rubble = courtBlocks("classic").map((o, i) => this.rubbleImage(o, i));
     for (const img of this.rubble) img.setVisible(false);
     if (this.courtRaid && !this.raidPillarShadows.length) {
@@ -3632,6 +3648,7 @@ class ArenaScene extends Phaser.Scene {
           reducedMotion,
           this.activeCourt && !this.courtRaid ? STANDS : 0,
           state?.practice ? 1.65 : 1.2,
+          touch.enabled && innerWidth > innerHeight && this.activeCourt && !this.courtRaid ? COURT_APRON : 0,
         );
     const hitZoom = state?.raid ? 1 : this.koZoom;
     this.cameras.main

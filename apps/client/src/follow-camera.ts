@@ -36,6 +36,8 @@ export class FollowCamera {
     top = 0,
     /** Mobile PvP uses a wider field of view than solo practice. */
     focusZoom = 1.65,
+    /** Decorative world below the playable court; does not change the zoom. */
+    bottom = 0,
   ): CameraView {
     const base = arenaViewport(width, height, landscape, top);
     const snap = key !== this.identity;
@@ -49,7 +51,7 @@ export class FollowCamera {
     const zoomX = base.zoomX * this.zoom,
       zoomY = base.zoomY * this.zoom;
     const halfW = Math.min(800, Math.max(1, width) / zoomX / 2);
-    const halfH = Math.min(450 + top / 2, Math.max(1, height) / zoomY / 2);
+    const halfH = Math.min(450 + (top + bottom) / 2, Math.max(1, height) / zoomY / 2);
     const aheadX = focus
       ? clamp(focus.vx * 0.16, -65, 65) +
         (focus.attacking ? Math.cos(focus.angle) * 45 : 0)
@@ -66,12 +68,12 @@ export class FollowCamera {
     const ty = clamp(
       focus && !reduced ? focus.y + aheadY : 450 - top / 2,
       halfH - top,
-      900 - halfH,
+      900 + bottom - halfH,
     );
     this.x = snap || reduced ? tx : this.x + (tx - this.x) * blend;
     this.y = snap || reduced ? ty : this.y + (ty - this.y) * blend;
     this.x = clamp(this.x, halfW, 1600 - halfW);
-    this.y = clamp(this.y, halfH - top, 900 - halfH);
+    this.y = clamp(this.y, halfH - top, 900 + bottom - halfH);
     return {
       x: this.x,
       y: this.y,

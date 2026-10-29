@@ -137,3 +137,17 @@ it("widens the phone PvP view while preserving projection and court boundaries",
   expect(wide.x - 844 / wide.zoomX / 2).toBeGreaterThanOrEqual(0);
   expect(wide.x + 844 / wide.zoomX / 2).toBeLessThanOrEqual(1600);
 });
+
+it("reveals the same decorative margin at both mobile court edges without zooming out", () => {
+  for (const [w,h] of [[844,390],[932,430],[844,280]]) {
+    const make = (y:number,bottom:number) => new FollowCamera().update(w,h,true,{...focus(800,y),vx:0,vy:0},"edge",16,false,96,1.2,bottom);
+    const old = make(900,0),lower=make(900,96),upper=make(0,96);
+    expect(lower.zoomX).toBe(old.zoomX);
+    expect(lower.zoomY).toBe(old.zoomY);
+    expect(lower.y+h/lower.zoomY/2).toBeCloseTo(996);
+    expect(upper.y-h/upper.zoomY/2).toBeCloseTo(-96);
+    expect(lower.y).toBeGreaterThan(old.y);
+    const point=screenToWorld(w/2,h/2,w,h,lower);
+    expect(point.y).toBe(lower.y);
+  }
+});

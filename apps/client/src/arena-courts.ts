@@ -1480,3 +1480,57 @@ export const paintKit = {
   rand: R,
 };
 export type Light = [number, number, number, number, string];
+
+
+/** Non-playable foreground revealed only as the mobile camera reaches the edge. */
+export const COURT_APRON = 96;
+export function paintCourtApron(c: Ctx, id: CourtId) {
+  const h = COURT_APRON;
+  const sea = id === "tide-pools";
+  const forge = id === "ember-forge";
+  const ruins = id === "shifting-ruins";
+  const base = c.createLinearGradient(0, 0, 0, h);
+  base.addColorStop(0, sea ? "#287d91" : forge ? "#514139" : ruins ? "#6b7950" : "#ab9673");
+  base.addColorStop(1, sea ? "#154d67" : forge ? "#272321" : ruins ? "#3d5c35" : "#77684e");
+  c.fillStyle = base;
+  c.fillRect(0, 0, W, h);
+  seed = 512;
+  if (sea) {
+    for (let row = 0; row < 8; row++) {
+      c.strokeStyle = `rgba(215,247,248,${0.26-row*0.02})`;
+      c.lineWidth = row === 0 ? 3 : 1.5;
+      c.beginPath();
+      for (let x=0;x<=W;x+=8) {
+        const y=8+row*11+Math.sin(x/(35+row*8)+row)*2;
+        if (!x) c.moveTo(x,y); else c.lineTo(x,y);
+      }
+      c.stroke();
+    }
+  } else {
+    // Shallow paving beyond the existing court border, keeping the same sun
+    // and ground perspective. It never looks like extra walkable sand.
+    for(let row=0;row<3;row++) for(let x=-((row%2)*48);x<W;x+=96) {
+      const y=6+row*28;
+      const tone = forge ? "#51483e" : ruins ? "#aaa084" : "#b4a17e";
+      c.fillStyle=mix(tone,"#181b1a",R()*0.2);
+      c.beginPath(); c.roundRect(x+2,y,92,25,2); c.fill();
+      c.fillStyle="rgba(255,239,202,0.16)"; c.fillRect(x+4,y,88,2);
+      c.fillStyle="rgba(10,16,13,0.26)"; c.fillRect(x+4,y+23,88,2);
+      if (ruins && R()<0.42) {
+        c.fillStyle="#496333"; ell(c,x+7,y+20,10,3); c.fill();
+      }
+    }
+    if(forge) for(const x of [300,800,1300]) {
+      c.fillStyle="#1a1715";c.fillRect(x-44,35,88,30);
+      const glow=c.createLinearGradient(0,36,0,64);
+      glow.addColorStop(0,"#c45d26");glow.addColorStop(1,"#502b1c");
+      c.fillStyle=glow;c.fillRect(x-40,39,80,22);
+      c.fillStyle="#27231f";for(let dx=-36;dx<=36;dx+=12)c.fillRect(x+dx,38,4,24);
+    }
+    grain(c,0,0,W,h,0.25,513,[[25,1],[4,0.5]]);
+  }
+  // A continuous coping/shadow anchors the foreground to the court at y=900.
+  c.fillStyle=sea ? "#c8c8ad" : forge ? "#776655" : "#c7b692";
+  c.fillRect(0,0,W,5);
+  c.fillStyle="rgba(7,14,18,0.3)";c.fillRect(0,5,W,5);
+}
