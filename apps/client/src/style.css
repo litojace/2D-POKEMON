@@ -23695,3 +23695,16 @@ body.battle-active:not(.touch-mode).battle-raid .arena-frame {
 
 .raid-roster-lock { position: absolute; right: 0; bottom: 0; display: grid; place-items: center; width: 17px; height: 17px; border: 1px solid #f2c4cb66; border-radius: 5px; background: #111b2ff0; color: #f1b6c1; }
 .raid-roster-lock svg { width: 12px; height: 12px; }
+
+/* Mobile thumb arc: larger circles retain their original icon scale. */
+.touch-buttons button:is(.touch-skill, .touch-attack, .touch-ultimate, [data-action]) .skill-icon {
+  width: var(--combat-icon-size, 56%);
+  height: var(--combat-icon-size, 56%);
+}
+.touch-buttons .touch-ultimate:not(.ult-ready) .skill-icon { visibility: hidden; }
+.touch-buttons .touch-ultimate:not(.ult-ready) .touch-key {
+  position: absolute; bottom: clamp(7px, 20%, 12px); font-size: 9px; opacity: 1;
+}
+.touch-buttons .touch-ultimate:not(.ult-ready) .touch-cooldown {
+  font-size: 18px; line-height: 1; transform: translateY(-3px);
+}

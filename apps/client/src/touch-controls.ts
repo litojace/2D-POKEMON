@@ -376,6 +376,7 @@ export class TouchControls {
       const button = this.buttons.find(
         (b) => (b.dataset.skill ?? b.dataset.action) === target.action,
       )!;
+      button.style.setProperty("--combat-icon-size", target.iconSize === undefined ? "" : `${target.iconSize}px`);
       Object.assign(button.style, {
         left: target.x - target.size / 2 + "px",
         top: target.y - target.size / 2 + "px",
@@ -480,8 +481,8 @@ export class TouchControls {
         button.innerHTML =
           abilityIcon(name) +
           '<span class="touch-key">' +
-          // Touch has no keys: number the skills 1–4 (4 is the ultimate).
-          (skill !== undefined
+          // Touch labels use 1–3 and a separate ULT button.
+          (isUlt ? "ULT" : skill !== undefined
             ? Number(skill) + 1
             : action === "attack"
               ? "BASIC"
@@ -500,9 +501,7 @@ export class TouchControls {
           : isUlt
             ? exArmed
               ? "EX ✓"
-              : exReady
-                ? `EX ${Math.floor(ult)}%`
-                : `${Math.floor(ult)}%`
+              : `${Math.floor(ult)}%`
             : left.toFixed(1);
       const label = button.querySelector(".touch-cooldown")!;
       if (label.textContent !== text) label.textContent = text;
@@ -539,7 +538,7 @@ export class TouchControls {
         left <= 0
           ? name + (isUlt ? " · ultimate ready" : "")
           : isUlt
-            ? name + " · charging " + text
+            ? name + " · charging " + text + (exReady ? " · tap to arm EX" : "")
             : name + " · " + text + " seconds",
       );
     }

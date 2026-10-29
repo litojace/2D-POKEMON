@@ -70,6 +70,7 @@ export interface TouchTarget {
   x: number;
   y: number;
   size: number;
+  iconSize?: number;
 }
 export function mobileLayout(
   width: number,
@@ -134,32 +135,34 @@ export function mobileLayout(
       (available - joystick - 32) / 4.4,
     ),
   );
-  const scale = unit / 60;
-  const target = (
-    action: TouchAction,
-    x: number,
-    y: number,
-    size: number,
-  ): TouchTarget => ({
-    action,
-    x: x * scale,
-    y: y * scale,
-    size: Math.max(44, size * scale),
+  // The approved thumb arc: larger hit circles, with equal angles/radii for
+  // skills 1–3. Height includes the HUD allowance removed by TouchControls.
+  const scale = Math.max(44 / 68, Math.min(
+    0.94 * prefs.buttonSize,
+    ((height + 88) / 390) * 0.88 * prefs.buttonSize,
+    (available - joystick - 32) / 237,
+  ));
+  const target = (action: TouchAction, x: number, y: number, size: number): TouchTarget => ({
+    action, x: x * scale, y: y * scale, size: Math.max(44, size * scale),
+    // Grow the touch circle without enlarging the established icon artwork.
+    iconSize: action === "attack" ? Math.max(1, (unit / 60) * 88 - 15) * 0.5 :
+      action === "dash" || action === "jump" ? (Math.max(44, (unit / 60) * 48) - 15) * 0.56 : Math.max(1, unit - 15) * 0.56,
+  });
+  const arc = [154, 196, 238].map((degrees, i) => {
+    const angle = degrees * Math.PI / 180;
+    return target(String(i) as TouchAction, 139 + 104 * Math.cos(angle), 186 + 104 * Math.sin(angle), 68);
   });
   return {
     compact: false,
     joystick,
-    width: 262 * scale,
-    height: Math.max(253 * scale, 225 * scale + 22),
+    width: Math.max(237 * scale, 213 * scale + 22),
+    height: Math.max(266 * scale, 242 * scale + 22),
     targets: [
-      // Four skills curve around the large basic attack button.
-      target("0", 34, 196, 60),
-      target("1", 40, 118, 60),
-      target("2", 94, 56, 60),
-      target("3", 168, 34, 60),
-      target("attack", 160, 170, 88),
-      target("dash", 225, 100, 48),
-      target("jump", 230, 225, 48),
+      ...arc,
+      target("3", 152, 36, 72),
+      target("attack", 139, 186, 104),
+      target("dash", 213, 117, 48),
+      target("jump", 213, 242, 48),
     ],
   };
 }
