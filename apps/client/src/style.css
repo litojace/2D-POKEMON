@@ -23710,3 +23710,32 @@ body.battle-active:not(.touch-mode).battle-raid .arena-frame {
 .touch-buttons .touch-ultimate:not(.ult-ready) .touch-cooldown {
   font-size: 18px; line-height: 1; transform: translateY(-3px);
 }
+
+/* Storm Twins share one bounded HP row, including Safari's intrinsic sizing. */
+.battle-raid #raid-hud .raid-twin-health {
+  display: flex;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+.battle-raid #raid-hud .raid-twin-bar {
+  flex: 1 1 0%;
+  min-width: 0;
+}
+.battle-raid #raid-hud .raid-twin-track,
+.battle-raid #raid-hud .raid-twin-stagger {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.battle-raid #raid-hud .raid-twin-bar > div:first-child {
+  min-width: 0;
+  overflow: hidden;
+}
+.battle-raid #raid-hud .raid-twin-bar :is(b, span) {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
