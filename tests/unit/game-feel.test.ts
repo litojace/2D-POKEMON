@@ -32,3 +32,15 @@ describe("hit feel", () => {
     expect(r.flashMs).toBeGreaterThan(0);
   });
 });
+
+it("never freezes a live match for any participant, while keeping hit confirmation", () => {
+  for (const strength of ["weak", "strong", "critical"] as const)
+    for (const role of ["victim", "attacker", "spectator"] as const) {
+      const feel = hitFeel(strength, role, false, true);
+      expect(feel.stopMs).toBe(0);
+      expect(feel.flashMs).toBeGreaterThan(0);
+      expect(feel.shakeMs).toBeLessThanOrEqual(80);
+      expect(feel.shake).toBeLessThanOrEqual(0.0025);
+    }
+  expect(hitFeel("critical", "victim", true, true).shake).toBe(0);
+});

@@ -62,15 +62,17 @@ export function hitFeel(
   strength: HitStrength,
   role: "victim" | "attacker" | "spectator",
   reducedMotion = false,
+  liveCombat = false,
 ): HitFeel {
   const base = BASE[strength];
   const shakeScale = role === "victim" ? 1 : role === "attacker" ? 0.5 : 0;
   const rumbleScale = role === "victim" ? 1 : role === "attacker" ? 0.4 : 0;
   return {
-    // Everyone sees the freeze (it reads as impact), but not the shake.
-    stopMs: reducedMotion ? 0 : base.stopMs,
-    shakeMs: reducedMotion || !shakeScale ? 0 : base.shakeMs,
-    shake: reducedMotion ? 0 : base.shake * shakeScale,
+    // The server keeps moving during a hit. Freezing a live match makes every
+    // participant jump ahead on resume, especially with simultaneous hits.
+    stopMs: reducedMotion || liveCombat ? 0 : base.stopMs,
+    shakeMs: reducedMotion || !shakeScale ? 0 : Math.min(base.shakeMs, liveCombat ? 80 : Infinity),
+    shake: reducedMotion ? 0 : Math.min(base.shake * shakeScale, liveCombat ? 0.0025 : Infinity),
     flashMs: base.flashMs,
     rumbleMs: rumbleScale ? base.rumbleMs : 0,
     rumble: base.rumble * rumbleScale,

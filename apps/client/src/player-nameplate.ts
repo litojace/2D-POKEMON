@@ -55,14 +55,18 @@ export function updateNameplate(
     el.innerHTML =
       '<span class="player-title"></span><strong class="player-name"></strong>';
   const badge = el.children[0] as HTMLElement;
-  badge.textContent = title ?? "";
-  badge.hidden = !title;
-  badge.className = `player-title title-${titleTreatment(title ?? "")} ${reduced ? "steady" : ""}`;
-  el.style.setProperty(
-    "--title-color",
-    color && /^#[0-9a-f]{6}$/i.test(color) ? color : "#ffd65b",
-  );
-  el.children[1].textContent = name + (own ? " · YOU" : "");
+  // This runs for every visible fighter on every frame. Replacing even the
+  // same text recreates text nodes and invalidates layout/title animation.
+  const titleText = title ?? "";
+  if (badge.textContent !== titleText) badge.textContent = titleText;
+  if (badge.hidden !== !title) badge.hidden = !title;
+  const className = `player-title title-${titleTreatment(titleText)} ${reduced ? "steady" : ""}`;
+  if (badge.className !== className) badge.className = className;
+  const titleColor = color && /^#[0-9a-f]{6}$/i.test(color) ? color : "#ffd65b";
+  if (el.style.getPropertyValue("--title-color") !== titleColor)
+    el.style.setProperty("--title-color", titleColor);
+  const nameText = name + (own ? " · YOU" : "");
+  if (el.children[1].textContent !== nameText) el.children[1].textContent = nameText;
 }
 const escapeHtml = (value: string) =>
   value.replace(

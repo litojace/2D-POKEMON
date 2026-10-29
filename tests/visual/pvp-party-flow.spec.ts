@@ -353,7 +353,8 @@ for (const size of [
         expect(gear.y).toBeLessThanOrEqual(8);
         expect(gear.x).toBeGreaterThan(size.width - 54);
         await page.locator("#battle-menu").click();
-        await expect(page.locator("#settings-fullscreen")).toBeVisible();
+        await expect(page.locator("#dialog").getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
+        await expect(page.locator("#settings-fullscreen")).toHaveCount(0);
         await page.click("#close-dialog");
         await expect(page.locator(".joystick-area")).toBeHidden();
         await expect(page.locator(".touch-buttons")).toBeHidden();

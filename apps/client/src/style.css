@@ -3103,6 +3103,11 @@ dialog {
   white-space: nowrap;
   filter: drop-shadow(0 2px 2px #080f24);
 }
+.battle-nameplate {
+  left: 0;
+  top: 0;
+  will-change: transform;
+}
 .player-nameplate[hidden],
 .player-title[hidden] {
   display: none;

@@ -3543,6 +3543,7 @@ class ArenaScene extends Phaser.Scene {
       event.combo && strength === "weak" ? "strong" : strength,
       role,
       reducedMotion,
+      state?.phase === "playing",
     );
     const now = performance.now();
     // Burn ticks and other chip damage don't flash, or burning fighters strobe.
@@ -3553,7 +3554,7 @@ class ArenaScene extends Phaser.Scene {
     if (feel.shakeMs) this.cameras.main.shake(feel.shakeMs, feel.shake, false);
     rumble(feel.rumbleMs, feel.rumble);
     if (event.ko) audio.cheer();
-    if (event.ko && !reducedMotion) {
+    if (event.ko && !reducedMotion && state?.phase !== "playing") {
       // Knockout: hold the moment and push the camera in, then ease back.
       this.koUntil = now + KO_FEEL.holdMs;
       if (!this.cameras.main.flashEffect.isRunning) {
@@ -4290,7 +4291,7 @@ class ArenaScene extends Phaser.Scene {
       let label = this.labels.get(p.id);
       if (!label) {
         label = document.createElement("div");
-        label.className = "player-nameplate";
+        label.className = "player-nameplate battle-nameplate";
         $("game").parentElement!.append(label);
         this.labels.set(p.id, label);
       }
@@ -4313,9 +4314,8 @@ class ArenaScene extends Phaser.Scene {
           view.zoomY +
           this.scale.height / 2) *
         css;
-      label.style.left = labelX + "px";
-      label.style.top = Math.max(36, labelY) + "px";
-      label.style.opacity = p.hp > 0 ? "1" : "0.4";
+      label.style.transform = `translate3d(${labelX}px, ${Math.max(36, labelY)}px, 0) translate(-50%, -100%)`;
+      setHudStyle(label, "opacity", p.hp > 0 ? "1" : "0.4");
       label.classList.toggle(
         "team-ally",
         isTeams() && p.id !== myId && teamOf(p) === myTeam,
