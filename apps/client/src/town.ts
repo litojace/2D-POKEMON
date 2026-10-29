@@ -1,3 +1,4 @@
+import type { FriendList } from "../../../packages/shared/src/accounts";
 import { townRendererDensity } from "./render-budget";
 import { watchRendererLifecycle } from "./renderer-lifecycle";
 import { TOWN_ART } from "./town-assets";
@@ -45,7 +46,9 @@ export interface TownOptions {
   onPortal: (spot: TownSpot) => void;
   /** A button on the town's action bar. */
   onAction: (action: TownAction) => void;
-  onAddFriend?: (playerId: string) => void;
+  loadNearbyFriends?: () => Promise<FriendList>;
+  onAddFriend?: (playerId: string) => Promise<boolean>;
+  onInviteFriend?: (playerId: string) => Promise<boolean>;
   /** Called after the town has closed (`failed`: the server refused the join). */
   onClose: (failed: boolean) => void;
 }
@@ -217,6 +220,12 @@ export function openTown(options: TownOptions) {
   let nearPortal: TownSpot | undefined;
   let nearbyKey = "";
   let nearbyAt = 0;
+  let socialAt = -Infinity;
+  let socialLoading = false;
+  let social: FriendList | undefined;
+  const requested = new Set<string>();
+  const busy = new Set<string>();
+  const invited = new Map<string, number>();
 
   // --- Input -------------------------------------------------------------
   const stickInput = () => {
@@ -947,8 +956,24 @@ export function openTown(options: TownOptions) {
                 Math.hypot(b.x - mine.x, b.y - mine.y),
             )
             .slice(0, 3);
+          if (people.length && options.loadNearbyFriends && !socialLoading && time - socialAt > 15000) {
+            socialLoading = true;
+            socialAt = time;
+            void options.loadNearbyFriends().then((list) => {
+              if (!closed) { social = list; nearbyKey = ""; }
+            }).catch(() => { /* Keep the last known relationships; retry quietly. */ })
+              .finally(() => { socialLoading = false; });
+          }
+          const status = (id: string) => {
+            if (busy.has(id)) return "Sending…";
+            if ((invited.get(id) ?? 0) > Date.now()) return "Invite sent";
+            if (social?.friends.some((f) => f.id === id)) return "Invite to play";
+            if (requested.has(id) || social?.outgoing.some((f) => f.id === id)) return "Request sent";
+            if (!social) return "Check friends";
+            return social.incoming.some((f) => f.id === id) ? "Accept friend" : "Add friend";
+          };
           const key = people
-            .map((b) => b.id + ":" + profiles.get(b.id)?.name)
+            .map((b) => b.id + ":" + profiles.get(b.id)?.name + ":" + status(profiles.get(b.id)!.accountId!))
             .join("|");
           if (key !== nearbyKey) {
             nearbyKey = key;
@@ -959,17 +984,39 @@ export function openTown(options: TownOptions) {
               people
                 .map(
                   (b) =>
-                    `<button type="button" data-nearby="${b.id}">${menuIcon("friends")}<span>${esc(profiles.get(b.id)!.name)}</span><small>Add friend</small></button>`,
+                    `<button type="button" data-nearby="${b.id}" ${["Sending…", "Request sent", "Invite sent"].includes(status(profiles.get(b.id)!.accountId!)) ? "disabled" : ""}>${menuIcon("friends")}<span>${esc(profiles.get(b.id)!.name)}</span><small>${status(profiles.get(b.id)!.accountId!)}</small></button>`,
                 )
                 .join("");
             panel.querySelectorAll<HTMLButtonElement>("button").forEach(
               (button) =>
-                (button.onclick = () => {
+                (button.onclick = async () => {
                   const id = profiles.get(
                     Number(button.dataset.nearby),
                   )?.accountId;
                   if (id) {
-                    options.onAddFriend?.(id);
+                    if (busy.has(id)) return;
+                    busy.add(id);
+                    button.disabled = true;
+                    try {
+                      // Resolve again at click time: accepting on another device must
+                      // never turn an existing friend into an Add friend action.
+                      if (options.loadNearbyFriends) social = await options.loadNearbyFriends();
+                      const friend = social?.friends.some((f) => f.id === id);
+                      if (friend) {
+                        if (await options.onInviteFriend?.(id)) invited.set(id, Date.now() + 30000);
+                      } else if (!social?.outgoing.some((f) => f.id === id)) {
+                        if (await options.onAddFriend?.(id)) {
+                          social = await options.loadNearbyFriends?.();
+                          if (!social?.friends.some((f) => f.id === id)) requested.add(id);
+                        }
+                      }
+                    } catch {
+                      // Open the Friends screen so a failed lookup is recoverable.
+                      if (!closed) options.onAction("friends");
+                    } finally {
+                      busy.delete(id);
+                      nearbyKey = "";
+                    }
                   }
                 }),
             );

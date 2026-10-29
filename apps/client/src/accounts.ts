@@ -1455,6 +1455,9 @@ export class AccountUI {
     this.friendsHub = hub;
     await hub.refresh();
   }
+  async nearbyFriends() {
+    return friendsSchema.parse(await this.api("/api/friends"));
+  }
   /** Send a friend request by code or player id; says what happened. */
   async friendRequest(body: { code?: string; playerId?: string }) {
     const message = element("friend-message");

@@ -1292,6 +1292,7 @@ function renderGate() {
 
 let town: ReturnType<typeof openTown> | undefined;
 let townLook = "";
+let townInvitePending = false;
 let townRetry: ReturnType<typeof setTimeout> | undefined;
 let wantedTownClosed = false;
 /**
@@ -1341,7 +1342,29 @@ function syncTown() {
       else if (spot.id === "leaderboard") $("leaderboard").click();
       else homeNavigation.open("play");
     },
-    onAddFriend: (playerId) => void accountsUI.friendRequest({ playerId }),
+    loadNearbyFriends: () => accountsUI.nearbyFriends(),
+    onAddFriend: (playerId) => accountsUI.friendRequest({ playerId }),
+    onInviteFriend: async (playerId) => {
+      if (townInvitePending) return false;
+      if (!connected) { toast("Waiting for the server connection."); return false; }
+      townInvitePending = true;
+      try {
+        // Town has no room yet. Create a private duel lobby before sending the
+        // same authenticated invitation used by the Friends list.
+        if (!myId) {
+          roomMode = "duel";
+          const reply = await request("create", {
+            name: accountsUI.account?.displayName ?? "Player", mode: roomMode,
+          });
+          identity(reply);
+          if (!reply.ok) return false;
+          await request("select", selected);
+        }
+        const reply = await request("room-invite", { playerId });
+        toast(reply.ok ? "Room invite sent. Your friend can join from the invitation." : reply.error ?? "Couldn't send this invitation. Try again from Friends.");
+        return reply.ok;
+      } finally { townInvitePending = false; }
+    },
     onAction: (action) => {
       if (action === "play") homeNavigation.open("play");
       else if (action === "fighters") homeNavigation.open("fighters");
