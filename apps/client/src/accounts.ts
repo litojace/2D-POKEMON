@@ -539,7 +539,7 @@ export class AccountUI {
     };
     const dialogEl = () =>
       document.getElementById("dialog") as HTMLDialogElement | null;
-    const render = (top = false) => {
+    const render = (top = false, revealBoss = false) => {
       this.hooks.openDialog(
         (view.boss
           ? raidBossPageMarkup(
@@ -560,9 +560,9 @@ export class AccountUI {
           dialogEl()?.querySelector<HTMLElement>(".raid-dialog-content") ??
           dialogEl()
         )?.scrollTo?.(0, 0);
-      wire();
+      wire(revealBoss);
     };
-    const wire = () => {
+    const wire = (revealBoss: boolean) => {
       const root = dialogEl();
       if (!root) return;
       for (const b of Array.from(
@@ -572,13 +572,21 @@ export class AccountUI {
           const choosingFromRoster = b.classList.contains("raid-roster-card");
           view.boss = b.dataset.raidBoss as RaidBossId;
           if (!choosingFromRoster) view.tab = "overview";
-          render(true);
+          render(true, !choosingFromRoster);
           dialogEl()?.querySelector<HTMLButtonElement>(`.raid-roster-card[data-raid-boss="${view.boss}"]`)?.focus({preventScroll: true});
         };
       const selectedBoss = root.querySelector<HTMLElement>(".raid-roster-card.is-selected");
-      if (selectedBoss) requestAnimationFrame(() => {
-        if (root.open && selectedBoss.isConnected)
-          selectedBoss.scrollIntoView({block: "nearest", inline: "nearest"});
+      if (selectedBoss && revealBoss) requestAnimationFrame(() => {
+        if (!root.open || !selectedBoss.isConnected) return;
+        const rail = selectedBoss.closest<HTMLElement>(".raid-boss-roster");
+        if (!rail) return;
+        // Only the rail can scroll. scrollIntoView would also move the dialog
+        // and page, and is unnecessary after clicking a visible avatar.
+        const r = rail.getBoundingClientRect(), b = selectedBoss.getBoundingClientRect();
+        if (b.top < r.top) rail.scrollTop += b.top - r.top;
+        else if (b.bottom > r.bottom) rail.scrollTop += b.bottom - r.bottom;
+        if (b.left < r.left) rail.scrollLeft += b.left - r.left;
+        else if (b.right > r.right) rail.scrollLeft += b.right - r.right;
       });
       for (const b of Array.from(
         root.querySelectorAll<HTMLButtonElement>("[data-raid-tab]"),
@@ -588,7 +596,7 @@ export class AccountUI {
           render();
           root
             .querySelector<HTMLButtonElement>(`[data-raid-tab="${view.tab}"]`)
-            ?.focus();
+            ?.focus({preventScroll: true});
         };
       for (const b of Array.from(
         root.querySelectorAll<HTMLButtonElement>("[data-raid-start]"),
@@ -604,7 +612,7 @@ export class AccountUI {
       if (options && progress)
         this.bindAppearance(options, progress, character);
     };
-    render();
+    render(false, true);
   }
   /** Equip buttons on a boss's Rewards tab (saved on the server, then shown). */
   private bindAppearance(

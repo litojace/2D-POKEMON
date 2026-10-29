@@ -21,3 +21,15 @@ Only boss pages use this frame arrangement. Opening another menu removes the rai
 navigation class and restores the shared dialog layout. The game's landscape
 requirement for touch play is unchanged; portrait checks cover narrow desktop
 browser windows rather than bypassing the rotation prompt.
+
+Boss/tab changes preserve the connected roster navigation, its keyed buttons,
+decoded avatar image nodes, focus and scroll position. The dialog builds new
+content off-screen and patches selection attributes rather than clearing the
+live rail. Only the initial Hub opening reveals the selected boss, by scrolling
+the rail itself; selecting a visible boss never scrolls the dialog/page. The
+roster has no scroll snapping, avoiding extra movement after selection.
+
+The scroll regression covers repeated last-row selections, rewards/overview
+tabs, vertical and horizontal rails, normal/short phones, desktop and returning
+to Settings. It verifies node identity, no rail detachment, stable scroll/geometry
+and correct selected/focused boss.

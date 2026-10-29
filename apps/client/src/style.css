@@ -23561,10 +23561,12 @@ body.battle-active:not(.touch-mode).battle-raid .arena-frame {
   overflow-y: auto;
   border-right: 1px solid #8baee526;
   background: #0d172a;
-  scroll-snap-type: y proximity;
+  scroll-snap-type: none;
+  overscroll-behavior: contain;
   scroll-padding: 10px;
 }
 .has-raid-roster .raid-roster-card {
+  scroll-snap-align: none;
   grid-template-columns: 40px minmax(0, 1fr);
   grid-template-rows: auto auto;
   justify-items: start;
@@ -23677,7 +23679,7 @@ body.battle-active:not(.touch-mode).battle-raid .arena-frame {
     grid-template-rows: 48px auto minmax(0, 1fr) auto;
     grid-template-areas: "toolbar" "bosses" "content" "actions";
   }
-  .has-raid-roster > .raid-boss-roster { display: flex; gap: 6px; padding: 8px; overflow-x: auto; overflow-y: hidden; border-right: 0; border-bottom: 1px solid #8baee526; scroll-snap-type: x proximity; }
+  .has-raid-roster > .raid-boss-roster { display: flex; gap: 6px; padding: 8px; overflow-x: auto; overflow-y: hidden; border-right: 0; border-bottom: 1px solid #8baee526; scroll-snap-type: none; }
   .has-raid-roster .raid-roster-card { flex: 0 0 92px; grid-template-columns: minmax(0, 1fr); justify-items: center; min-height: 72px; gap: 3px; padding: 5px; }
   .has-raid-roster .raid-roster-art { grid-row: auto; width: 36px; height: 36px; }
   .has-raid-roster .raid-roster-name { font-size: 13px; }
