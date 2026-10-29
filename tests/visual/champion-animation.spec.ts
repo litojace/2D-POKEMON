@@ -3,7 +3,9 @@ for (const canvas of [false, true])
   test(`all eight articulated champions stay joined in ${canvas ? "Canvas fallback" : "WebGL"}`, async ({
     page,
   }, info) => {
-    test.setTimeout(150_000);
+    // 70 poses × 24 articulated views plus skin loads can exceed 150 seconds
+    // on CI software rendering. Keep all geometry checks and allow that work.
+    test.setTimeout(process.env.CI ? 300_000 : 150_000);
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));
     await page.setViewportSize({ width: 1440, height: 2080 });

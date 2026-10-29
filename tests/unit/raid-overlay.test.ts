@@ -23,6 +23,7 @@ it("preserves raid choices during countdown and teammate picks, but redraws chan
   };
   const hud = { innerHTML: "" };
   vi.stubGlobal("document", {
+    body: { classList: { toggle: vi.fn() } },
     getElementById: (id: string) =>
       id === "raid-hud" ? hud : id === "arena-overlay" ? overlay : null,
   });
@@ -92,6 +93,7 @@ it.each(["finished", "briefing", "intermission"])(
     };
     const hud = { innerHTML: "" };
     vi.stubGlobal("document", {
+      body: { classList: { toggle: vi.fn() } },
       getElementById: (id: string) =>
         id === "raid-hud" ? hud : id === "arena-overlay" ? overlay : null,
     });
