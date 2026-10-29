@@ -23794,3 +23794,112 @@ body.battle-active.battle-raid #spectate:not(.pvp-spectator) {
 .raid-revive-instruction { margin: 0; color: #e6edf8; font-size: 12px; font-weight: 500; line-height: 16px; }
 .battle-raid .spectate-banner .raid-revive-cause { margin-top: 4px; color: #a9bad2; font-size: 11px; line-height: 14px; }
 body.battle-raid.raid-downed #mobile-controls .touch-buttons { visibility: hidden; pointer-events: none; }
+
+/* Static shell remains available while the separate game server wakes up. */
+.server-startup {
+  position: fixed;
+  inset: 0;
+  z-index: 2147482000;
+  display: grid;
+  place-items: center;
+  padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+  overflow: auto;
+  background: radial-gradient(ellipse at 50% 32%, #1c3153 0%, #101a31 42%, #080e1d 85%);
+  color: #f2f5ff;
+  text-align: center;
+}
+.server-startup-card {
+  width: min(420px, 100%);
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+}
+.server-startup-brand {
+  color: #e7c77f;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+}
+.server-startup h1 {
+  margin: 0;
+  font-size: clamp(26px, 5vw, 38px);
+  line-height: 1.15;
+}
+.server-startup p {
+  margin: 0;
+  max-width: 340px;
+  min-height: 2.8em;
+  color: #b8c9e3;
+  font-size: 14px;
+  line-height: 1.5;
+  text-wrap: balance;
+}
+.server-startup-art {
+  position: relative;
+  width: 124px;
+  height: 112px;
+  margin-bottom: 4px;
+}
+.server-startup-ring {
+  position: absolute;
+  inset: 50px 4px 0;
+  border: 1px solid #b99c5c;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, #69d9f92e, transparent 70%);
+  box-shadow: 0 0 24px #79dfff1a, inset 0 0 18px #79dfff14;
+}
+.server-startup-crystal {
+  position: absolute;
+  left: 40px;
+  top: 10px;
+  width: 44px;
+  height: 66px;
+  background: conic-gradient(from 0deg at 50% 50%, #e9fcff 0deg 90deg, #79c6e8 90deg 180deg, #357cb5 180deg 270deg, #a8e9ff 270deg);
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  animation: server-crystal-float 2.6s ease-in-out infinite;
+}
+.server-startup-art > i {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  top: 40px;
+  left: 20px;
+  border-radius: 50%;
+  background: #ffe7a4;
+  box-shadow: 0 0 12px #ffdf86;
+  animation: server-sparkle 2s ease-in-out infinite;
+}
+.server-startup-art > i:nth-of-type(2) { left: 100px; top: 28px; animation-delay: -0.7s; }
+.server-startup-art > i:nth-of-type(3) { left: 90px; top: 85px; animation-delay: -1.3s; }
+.server-startup-dots { display: flex; gap: 7px; padding: 5px 0; }
+.server-startup-dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #f3d58c;
+  animation: server-sparkle 1.5s ease-in-out infinite;
+}
+.server-startup-dots i:nth-child(2) { animation-delay: 0.2s; }
+.server-startup-dots i:nth-child(3) { animation-delay: 0.4s; }
+.server-startup button {
+  min-height: 44px;
+  min-width: 180px;
+  padding: 10px 24px;
+  border: 1px solid #ffe9aa;
+  border-radius: 12px;
+  background: linear-gradient(#ffe8a3, #efc654);
+  color: #302610;
+  font-weight: 700;
+}
+.server-startup [hidden],
+.server-startup[data-status="failed"] .server-startup-dots { display: none; }
+@keyframes server-crystal-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+@keyframes server-sparkle { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+@media (max-height: 320px) {
+  .server-startup-card { gap: 6px; }
+  .server-startup-art { height: 88px; margin: -8px 0 0; transform: scale(0.8); transform-origin: top center; }
+  .server-startup h1 { font-size: 26px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .server-startup *, .server-startup *::before { animation: none !important; }
+}

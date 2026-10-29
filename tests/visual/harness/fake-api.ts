@@ -48,6 +48,7 @@ const realFetch = window.fetch.bind(window);
 window.fetch = async (input, init) => {
   const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, location.href);
   if (url.pathname.startsWith("/api/")) {
+    if (url.pathname === "/api/health") return Response.json({ ok: true });
     const body = API[url.pathname];
     return new Response(JSON.stringify(body ?? { error: "Not in the offline harness." }), {
       status: body === undefined ? 404 : 200,

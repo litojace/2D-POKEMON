@@ -1,4 +1,5 @@
 import { PresenceHistory } from "./presence-history.js";
+import { apiCors } from "./api-cors.js";
 import { ArcadeArena } from "./arcade.js";
 import {
   arcadeWeek,
@@ -130,6 +131,7 @@ export function createArenaServer(
 ) {
   const app = express();
   const accounts = options.accounts ?? createAccountProvider();
+  app.use("/api", apiCors(process.env.CLIENT_ORIGIN));
   app.use(express.json({ limit: "4kb" }));
   const http = createServer(app);
   const io = new Server(http, {

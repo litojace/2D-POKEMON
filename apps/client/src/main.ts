@@ -132,6 +132,7 @@ import {
 import { AudioManager } from "./audio";
 import { InterpolationBuffer } from "./networking/interpolation";
 import { AccountUI } from "./accounts";
+import { waitForServer, onServerStartupRetry } from "./server-connection";
 import "./style.css";
 import "./champion-selection.css";
 import "./friends.css";
@@ -210,6 +211,7 @@ const socket = io(import.meta.env.VITE_SERVER_URL || undefined, {
   auth: { accessToken: null },
 });
 let accountsUI: AccountUI;
+let authConnectionAttempt = 0;
 // Keep a displaced tab paused across reloads. Only an explicit button press
 // may reclaim the game; token refresh/focus must not kick the other device.
 let replacedAccount = sessionStorage.getItem("arena-session-replaced");
@@ -4597,6 +4599,7 @@ accountsUI = new AccountUI({
     if (myId) await leave();
   },
   onSession: (token, accountId) => {
+    const attempt = ++authConnectionAttempt;
     if (!token) roomInvites.clear();
     if (!token || (accountId && accountId !== replacedAccount)) {
       replacedAccount = null;
@@ -4607,8 +4610,16 @@ accountsUI = new AccountUI({
     )?.accessToken;
     socket.auth = { accessToken: token };
     if (replacedAccount) return;
+    if (previous === token && socket.connected) return;
     if (previous !== token) socket.disconnect();
-    socket.connect();
+    void waitForServer()
+      .then(() => {
+        // A sign-out/auth switch cancels older attempts. Token refreshes keep
+        // this attempt and connect with the latest token in socket.auth.
+        if (!replacedAccount && authConnectionAttempt === attempt)
+          socket.connect();
+      })
+      .catch(() => { /* The startup panel owns the retry action. */ });
   },
   onToken: (token) => {
     // Keep the live connection's login fresh (tokens expire hourly) and use
@@ -4637,4 +4648,8 @@ accountsUI = new AccountUI({
 });
 
 // Imported code and the UI shell are ready; dismiss the asset-independent loader.
+onServerStartupRetry(() => {
+  void waitForServer().then(() => accountsUI.refresh()).catch(() => {});
+});
+void waitForServer().catch(() => {});
 window.dispatchEvent(new Event("arena:ready"));

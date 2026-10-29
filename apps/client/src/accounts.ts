@@ -51,6 +51,7 @@ import {
   updateNameplate,
 } from "./player-nameplate";
 import { isQuietRefresh } from "./session-refresh";
+import { waitForServer } from "./server-connection";
 import { createClient, type Session } from "@supabase/supabase-js";
 import {
   accountSchema,
@@ -238,6 +239,8 @@ export class AccountUI {
     if (session && !samePlayer) this.hooks.onChange();
     if (session) {
       try {
+        if (!samePlayer) await waitForServer();
+        if (version !== this.generation) return;
         const account = accountSchema.parse(await this.api("/api/account"));
         if (version !== this.generation) return;
         this.account = account;

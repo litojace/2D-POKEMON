@@ -23,6 +23,8 @@ describe("landscape only", () => {
     const code = css.replace(/\/\*[\s\S]*?\*\//g, "");
     let depth = 0;
     for (const ch of code) {
+      // Only delimiters change depth; skip identical assertions for ordinary text.
+      if (ch !== "{" && ch !== "}") continue;
       if (ch === "{") depth++;
       if (ch === "}") depth--;
       expect(depth).toBeGreaterThanOrEqual(0);
