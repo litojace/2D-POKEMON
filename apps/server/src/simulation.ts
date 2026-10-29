@@ -72,6 +72,8 @@ const FFA_SPAWNS = [
 ];
 /** Seconds between overtime / closing-ring damage ticks. */
 const DRAIN_INTERVAL = 0.5;
+/** Preserve a discrete skill tap through a short attack recovery, never a long cast. */
+const SKILL_INPUT_BUFFER = 0.18;
 export class Arena {
   activityStatus?: "saving" | "saved" | "unavailable";
   activityEligible?: string[];
@@ -83,6 +85,11 @@ export class Arena {
   practice: Snapshot["practice"] = null;
   /** AI opponents in this room, by fighter id (solo vs bot). */
   bots = new Map<string, BotBrain>();
+  private bufferedSkills = new Map<string, { slot: number; ex: boolean; until: number }>();
+  protected clearBufferedSkills(id?: string) {
+    if (id === undefined) this.bufferedSkills.clear();
+    else this.bufferedSkills.delete(id);
+  }
   nextPracticeZone = 0;
   time = 0;
   phase: Phase = "lobby";
@@ -357,6 +364,7 @@ export class Arena {
     this.nextPracticeZone = this.time + 3;
   }
   resetRound() {
+    this.clearBufferedSkills();
     // Fighter roulette: a fresh random fighter for everyone each round.
     if (this.rule("random") && !this.practice)
       for (const p of this.players) {
@@ -427,6 +435,7 @@ export class Arena {
   }
   /** Cancel all ongoing and buffered actions as soon as a fighter is down. */
   private stopKnockedOut(p: Fighter) {
+    this.clearBufferedSkills(p.id);
     p.vx = p.vy = 0;
     p.dashUntil = p.jumpUntil = 0;
     p.charge = undefined;
@@ -453,6 +462,17 @@ export class Arena {
       input.jump
     )
       this.engaged.add(p.id);
+    if (input.skill >= 0) {
+      // Latest intent wins. Held Basic/neutral packets never erase a skill tap
+      // while its current animation recovers, or refresh its expiry.
+      this.clearBufferedSkills(p.id);
+      const free = !!this.practice?.unlimitedCooldowns && p === this.players[0];
+      if (input.skill < SKILL_SLOTS && p.hp > 0 &&
+          skillReady(p, input.skill, this.time, free) &&
+          p.recoveryUntil <= this.time + SKILL_INPUT_BUFFER &&
+          !p.statuses.some(s => s.until > this.time && ["stun", "freeze", "sleep"].includes(s.kind)))
+        this.bufferedSkills.set(p.id, { slot: input.skill, ex: !!input.ex, until: this.time + SKILL_INPUT_BUFFER });
+    }
     p.lastInput = {
       ...input,
       basic: input.basic || p.lastInput.basic,
@@ -985,6 +1005,7 @@ export class Arena {
     return true;
   }
   tick(dt = 1 / RULES.tick) {
+    if (this.phase !== "playing") this.clearBufferedSkills();
     // Movement rules are shared module state: set this room's before moving.
     useSpeedScale(this.rule("speed") ? MUTATOR_RULES.speed : 1);
     if (
@@ -1075,6 +1096,7 @@ export class Arena {
         (s) => s.kind === "stun" || s.kind === "freeze" || s.kind === "sleep",
       );
       if (disabled) {
+        this.clearBufferedSkills(p.id);
         p.charge = undefined;
         p.channel = undefined;
       }
@@ -1102,6 +1124,12 @@ export class Arena {
         this.cast(p, p.charge.ex ? exAbility(a) : a, p.charge.ex);
         p.charge = undefined;
       }
+      const buffered = this.bufferedSkills.get(p.id);
+      if (buffered && this.time > buffered.until) this.clearBufferedSkills(p.id);
+      else if (buffered && !disabled) {
+        input.skill = buffered.slot;
+        input.ex = buffered.ex;
+      }
       if (!disabled && this.time >= p.recoveryUntil && !p.charge) {
         const character = CHARACTERS[p.character];
         const kit = this.kit(p);
@@ -1109,6 +1137,7 @@ export class Arena {
           input.skill >= 0 &&
           skillReady(p, input.skill, this.time, freeCooldowns)
         ) {
+          this.clearBufferedSkills(p.id);
           // EX: a stronger skill 1-3 for a third of the ultimate meter.
           const ex =
             !!input.ex &&

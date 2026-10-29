@@ -365,7 +365,10 @@ export class TidewyrmArena extends RaidArena {
       const sealed = r.prisons?.some((q) => q.playerId === p.id);
       if (sealed || (this.rootedUntil.get(p.id) ?? 0) > this.time) {
         p.lastInput = { ...p.lastInput, dx: 0, dy: 0, dash: false, jump: false };
-        if (sealed) p.lastInput = { ...p.lastInput, basic: false, skill: -1 };
+        if (sealed) {
+          this.clearBufferedSkills(p.id);
+          p.lastInput = { ...p.lastInput, basic: false, skill: -1 };
+        }
       }
     }
   }

@@ -1002,6 +1002,7 @@ export class RaidArena extends Arena {
   standIn(id: string) {
     const p = this.heroes().find((q) => q.id === id);
     if (!p || this.bots.has(id)) return false;
+    this.clearBufferedSkills(id);
     this.bots.set(id, new BotBrain(id, "normal", (this.raid.seed % 9973) + 1));
     this.raid.standIns = [...(this.raid.standIns ?? []), id];
     return true;
@@ -1089,6 +1090,7 @@ export class RaidArena extends Arena {
     this.finish(false);
   }
   override tick(dt = 1 / RULES.tick) {
+    if (this.phase !== "playing") this.clearBufferedSkills();
     if (["lobby", "briefing", "paused", "finished"].includes(this.phase))
       return;
     if (this.phase === "intermission") {

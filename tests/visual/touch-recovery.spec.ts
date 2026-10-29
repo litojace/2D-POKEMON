@@ -241,3 +241,25 @@ test("Look away releases outside the button and cannot steal or strand movement"
   expect((await state(page)).dx).toBeGreaterThan(0.5);
   expect(errors).toEqual([]);
 });
+
+
+test("held Basic and movement survive repeated skill, Dash and Jump taps",async({page})=>{
+  const errors=await mount(page);
+  await down(page,".joystick-area",61,true);
+  await down(page,'[data-action="attack"]',62);
+  const movement=(await state(page)).dx;
+  let pointer=63;
+  for(const selector of ['[data-skill="0"]','[data-skill="1"]','[data-skill="2"]','[data-action="dash"]','[data-action="jump"]']) {
+    await down(page,selector,pointer);
+    await page.dispatchEvent('body','pointerup',{pointerId:pointer++,pointerType:'touch'});
+    expect(await state(page)).toMatchObject({id:61,basic:true,held:1,dx:movement});
+  }
+  expect(await page.evaluate(()=>(window as any).__fired)).toEqual([
+    {basic:true},{skill:0},{skill:1},{skill:2},{dash:true},{jump:true},
+  ]);
+  await page.dispatchEvent('body','pointerup',{pointerId:62,pointerType:'touch'});
+  expect(await state(page)).toMatchObject({id:61,basic:false,held:0});
+  await page.dispatchEvent('body','pointerup',{pointerId:61,pointerType:'touch'});
+  expect(await state(page)).toMatchObject({id:null,dx:0,dy:0,basic:false});
+  expect(errors).toEqual([]);
+});
