@@ -115,14 +115,14 @@ export function mobileLayout(
       compact: true,
       joystick: compactJoystick,
       width: 270 * scale,
-      height: (short ? 92 : 100) * scale,
+      height: (short ? 96 : 102) * scale,
       targets: [
         target("0", 28, short ? 22 : 26, 44),
         target("1", 84, short ? 22 : 26, 44),
         target("2", 140, short ? 22 : 26, 44),
         target("3", 28, short ? 70 : 78, 44),
         target("attack", 220, short ? 47 : 51, 88),
-        target("dash", 84, short ? 70 : 78, 44),
+        target("dash", 84, short ? 72 : 78, 48),
         target("jump", 140, short ? 70 : 78, 44),
       ],
     };
@@ -140,10 +140,10 @@ export function mobileLayout(
   const scale = Math.max(44 / 68, Math.min(
     0.94 * prefs.buttonSize,
     ((height + 88) / 390) * 0.88 * prefs.buttonSize,
-    (available - joystick - 32) / 237,
+    (available - joystick - 32) / 243,
   ));
   const target = (action: TouchAction, x: number, y: number, size: number): TouchTarget => ({
-    action, x: x * scale, y: y * scale, size: Math.max(44, size * scale),
+    action, x: x * scale, y: y * scale, size: Math.max(action === "dash" ? 48 : 44, size * scale),
     // Grow the touch circle without enlarging the established icon artwork.
     iconSize: action === "attack" ? Math.max(1, (unit / 60) * 88 - 15) * 0.5 :
       action === "dash" || action === "jump" ? (Math.max(44, (unit / 60) * 48) - 15) * 0.56 : Math.max(1, unit - 15) * 0.56,
@@ -155,13 +155,13 @@ export function mobileLayout(
   return {
     compact: false,
     joystick,
-    width: Math.max(237 * scale, 213 * scale + 22),
+    width: Math.max(243 * scale, 213 * scale + 24),
     height: Math.max(266 * scale, 242 * scale + 22),
     targets: [
       ...arc,
       target("3", 152, 36, 72),
       target("attack", 139, 186, 104),
-      target("dash", 213, 117, 48),
+      target("dash", 213, 117, 60),
       target("jump", 213, 242, 48),
     ],
   };

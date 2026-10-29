@@ -47,6 +47,8 @@ describe("independent touch state", () => {
 describe("responsive touch layout", () => {
   for (const [width, height] of [
     [320, 568],
+    [568, 280],
+    [568, 320],
     [667, 375],
     [844, 390],
     [1024, 768],

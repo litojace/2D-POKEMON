@@ -37,12 +37,15 @@ for (const size of [{width:844,height:390},{width:932,height:430},{width:844,hei
         expect(t.y+t.r).toBeLessThanOrEqual(size.height);
         for (const other of Object.keys(targets)) if (id!==other) expect(gap(id,other)).toBeGreaterThan(3);
       }
+      expect(targets.dash.r).toBeGreaterThanOrEqual(24);
+      expect(targets.dash.r).toBeGreaterThan(targets.jump.r);
       const ult = page.locator('.touch-ultimate');
       await expect(ult.locator('.touch-key')).toHaveText("ULT");
       await expect(ult.locator('.touch-cooldown')).toHaveText("72%");
       if(size.height===390) {
         expect(targets["0"].r*2).toBeCloseTo(59.84,1);
         expect(targets.attack.r*2).toBeCloseTo(91.52,1);
+        expect(targets.dash.r*2).toBeCloseTo(52.8,1);
       }
       await snap(page,info,`mobile-combat-live-${size.width}x${size.height}`);
       await ult.tap();

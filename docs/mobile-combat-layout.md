@@ -6,7 +6,8 @@ Skills use a common 104-unit radius around Basic with 42-degree intervals,
 so both neighbouring gaps and their clearance from Basic are equal.
 
 On an 844×390 viewport with default settings, skill circles are about 60 CSS px,
-Basic 92 px, and Ultimate 63 px. The icon artwork retains its previous scale.
+Basic 92 px, Ultimate 63 px, and Dash 53 px. Dash has a minimum 48 px target
+and a slightly larger circle in the compact fallback too. The icon artwork retains its previous scale.
 Button-size preferences still apply, with minimum 44 px targets; very small
 screens retain the existing compact fallback.
 
