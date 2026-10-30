@@ -12,13 +12,42 @@ import { sparkle } from "./skin-fx";
 type G = Phaser.GameObjects.Graphics;
 const TAU = Math.PI * 2;
 
-/** Auras sit under the fighter, like the Mountain aura. Returns false if unknown. */
-export function drawCollectionAura(g: G, id: string, x: number, y: number, now: number, reduced: boolean) {
+/**
+ * How high above the ground the aura's items circle (aura units): about hip
+ * height, so the near half crosses in front of the fighter's legs and body
+ * and the far half goes round behind its back.
+ */
+export const AURA_LIFT = 24;
+/**
+ * Auras: a ring on the ground plus items circling the fighter. Pass `front`
+ * (a layer drawn over the fighter) and the items come round in front of the
+ * fighter on the near half of the circle, a little larger, and pass behind
+ * it on the far half, a little smaller and fainter, so the ring has depth.
+ * Without it everything draws on `g`. Returns false if the id is unknown.
+ */
+export function drawCollectionAura(g: G, id: string, x: number, y: number, now: number, reduced: boolean, front?: G) {
   const t = reduced ? 0 : now;
-  const ring = (n: number, rx: number, _legacyRy: number, speed: number, draw: (px: number, py: number, i: number, a: number) => void) => {
+  /** Each item gets its layer, a size factor `d` and an opacity factor `f`. */
+  const ring = (
+    n: number,
+    rx: number,
+    _legacyRy: number,
+    speed: number,
+    draw: (gg: G, px: number, py: number, i: number, a: number, d: number, f: number) => void,
+    lift = AURA_LIFT,
+  ) => {
     for (let i = 0; i < n; i++) {
       const a = t / speed + (i / n) * TAU;
-      draw(x + Math.cos(a) * rx, y + Math.sin(a) * rx * WORLD_ART.groundY, i, a);
+      const near = Math.sin(a);
+      draw(
+        front && near > 0 ? front : g,
+        x + Math.cos(a) * rx,
+        y - lift + near * rx * WORLD_ART.groundY,
+        i,
+        a,
+        1 + 0.16 * near,
+        0.82 + 0.18 * near,
+      );
     }
   };
   const journey=JOURNEY_ITEM_BY_ID[id];
@@ -26,17 +55,18 @@ export function drawCollectionAura(g: G, id: string, x: number, y: number, now: 
     const color=parseInt(journey.color.slice(1),16), accent=parseInt(journey.accent.slice(1),16);
     g.lineStyle(1.6,color,.7).strokeEllipse(x,y,102,groundHeight(102));
     g.lineStyle(1,accent,.4).strokeEllipse(x,y,114,groundHeight(114));
-    ring(id==='astral-aura'?8:6,49,20,6200,(px,py,i)=>{
+    ring(id==='astral-aura'?8:6,49,20,6200,(gg,px,py,i,_a,d,f)=>{
       const c=i%2?color:accent;
-      g.fillStyle(c,.9).fillTriangle(px,py-5,px+3,py,px,py+5).fillTriangle(px,py-5,px-3,py,px,py+5);
+      gg.fillStyle(c,.9*f).fillTriangle(px,py-5*d,px+3*d,py,px,py+5*d).fillTriangle(px,py-5*d,px-3*d,py,px,py+5*d);
     });
     return true;
   }
   switch (id) {
     case "candy-aura": {
       const colors = [0xff6fa8, 0x6fd6ff, 0xffd65b, 0x8fe06a, 0xc89aff];
-      ring(16, 46, 20, 3000, (px, py, i, a) =>
-        g.lineStyle(3, colors[i % colors.length], 0.9).lineBetween(px - Math.cos(a + i) * 3, py - Math.sin(a + i) * 2, px + Math.cos(a + i) * 3, py + Math.sin(a + i) * 2),
+      ring(16, 46, 20, 3000, (gg, px, py, i, a, d, f) =>
+        gg.lineStyle(3 * d, colors[i % colors.length], 0.9 * f).lineBetween(px - Math.cos(a + i) * 3 * d, py - Math.sin(a + i) * 2 * d, px + Math.cos(a + i) * 3 * d, py + Math.sin(a + i) * 2 * d),
+        0,
       );
       return true;
     }
@@ -44,83 +74,86 @@ export function drawCollectionAura(g: G, id: string, x: number, y: number, now: 
       const k = reduced ? 0.5 : 0.5 + Math.sin(now / 900) * 0.5;
       g.fillStyle(0x4a3a9a, 0.16 + k * 0.08).fillEllipse(x, y, 104, groundHeight(104));
       g.fillStyle(0xc86bff, 0.12).fillEllipse(x + Math.cos(t / 1800) * 10, y, 70, groundHeight(70));
-      ring(6, 48, 19, 5000, (px, py) => sparkle(g, px, py, 2.4, 0xffffff, 0.85));
+      ring(6, 48, 19, 5000, (gg, px, py, _i, _a, d, f) => sparkle(gg, px, py, 2.4 * d, 0xffffff, 0.85 * f));
       return true;
     }
     case "retro-aura":
-      ring(8, 46, 19, 3600, (px, py) => {
+      ring(8, 46, 19, 3600, (gg, px, py, _i, _a, d, f) => {
         // A tiny pixel heart.
-        g.fillStyle(0xff3a5a, 0.95);
+        const u = 1.6 * d;
+        gg.fillStyle(0xff3a5a, 0.95 * f);
         for (const [dx, dy] of [[-2, -1], [-1, -2], [1, -2], [2, -1], [-2, 0], [-1, 0], [0, -1], [0, 0], [1, 0], [2, 0], [-1, 1], [0, 1], [1, 1], [0, 2]])
-          g.fillRect(px + dx * 1.6, py + dy * 1.6, 1.6, 1.6);
+          gg.fillRect(px + dx * u, py + dy * u, u, u);
       });
       return true;
     case "festival-aura":
-      ring(5, 44, 18, 4200, (px, py, i) => {
+      ring(5, 44, 18, 4200, (gg, px, py, i, _a, d, f) => {
         const bob = reduced ? 0 : Math.sin(now / 400 + i) * 2;
-        g.fillStyle(0xd8262a, 0.95).fillEllipse(px, py - 8 + bob, 9, 11);
-        g.fillStyle(0xffd65b, 0.9).fillRect(px - 3, py - 14 + bob, 6, 1.6).fillRect(px - 3, py - 3 + bob, 6, 1.6);
-        g.fillStyle(0xffd65b, 0.25).fillCircle(px, py - 8 + bob, 9);
+        gg.fillStyle(0xd8262a, 0.95 * f).fillEllipse(px, py + (-8 + bob) * d, 9 * d, 11 * d);
+        gg.fillStyle(0xffd65b, 0.9 * f).fillRect(px - 3 * d, py + (-14 + bob) * d, 6 * d, 1.6 * d).fillRect(px - 3 * d, py + (-3 + bob) * d, 6 * d, 1.6 * d);
+        gg.fillStyle(0xffd65b, 0.25 * f).fillCircle(px, py + (-8 + bob) * d, 9 * d);
       });
       return true;
     case "garden-aura":
-      ring(10, 46, 19, 4600, (px, py, i, a) => {
-        const dx = Math.cos(a * 2 + i) * 4,
-          dy = Math.sin(a * 2 + i) * 2;
-        g.fillStyle(i % 2 ? 0xffb3cf : 0xfff0f5, 0.95).fillTriangle(px - dx, py - dy, px + dx, py + dy, px - dy, py + dx * 0.6);
+      ring(10, 46, 19, 4600, (gg, px, py, i, a, d, f) => {
+        const dx = Math.cos(a * 2 + i) * 4 * d,
+          dy = Math.sin(a * 2 + i) * 2 * d;
+        gg.fillStyle(i % 2 ? 0xffb3cf : 0xfff0f5, 0.95 * f).fillTriangle(px - dx, py - dy, px + dx, py + dy, px - dy, py + dx * 0.6);
       });
       return true;
     case "tidal-aura": {
       // Tidewyrm's reward: a rolling ring of water with foam crests.
       g.fillStyle(0x1f8fa6, 0.18).fillEllipse(x, y, 104, groundHeight(104));
       g.lineStyle(3, 0x7fe9ff, 0.8).strokeEllipse(x, y, 96, groundHeight(96));
-      ring(10, 48, 20, 2600, (px, py, i) =>
-        g.fillStyle(i % 2 ? 0xffffff : 0xbff6ff, 0.9).fillCircle(px, py - 2, 3.4),
+      ring(10, 48, 20, 2600, (gg, px, py, i, _a, d, f) =>
+        gg.fillStyle(i % 2 ? 0xffffff : 0xbff6ff, 0.9 * f).fillCircle(px, py - 2 * d, 3.4 * d),
+        0,
       );
       return true;
     }
     case "spark-aura": {
       g.lineStyle(1.5,0x9fe4ff,.55).strokeEllipse(x,y,100,groundHeight(100));
-      ring(8,48,19,5200,(px,py,i)=>{const color=i%2?0x8edfff:0xffe18b;g.lineStyle(2,color,.95).lineBetween(px-3,py-5,px+1,py).lineBetween(px+1,py,px-2,py+5);});
+      ring(8,48,19,5200,(gg,px,py,i,_a,d,f)=>{const color=i%2?0x8edfff:0xffe18b;gg.lineStyle(2*d,color,.95*f).lineBetween(px-3*d,py-5*d,px+1*d,py).lineBetween(px+1*d,py,px-2*d,py+5*d);});
       return true;
     }
     case "ember-aura": {
       g.lineStyle(2,0xffa66c,.8).strokeEllipse(x,y,100,groundHeight(100));
       g.fillStyle(0xff8558,.1).fillEllipse(x,y,110,groundHeight(110));
-      ring(8,48,19,6200,(px,py,i)=>{const rise=reduced?0:Math.sin(now/1000+i)*5;g.fillStyle(i%2?0xffd28b:0xff8765,.85).fillEllipse(px,py-5+rise,3,6);});
+      ring(8,48,19,6200,(gg,px,py,i,_a,d,f)=>{const rise=reduced?0:Math.sin(now/1000+i)*5;gg.fillStyle(i%2?0xffd28b:0xff8765,.85*f).fillEllipse(px,py+(-5+rise)*d,3*d,6*d);});
       return true;
     }
     case "halo-aura": {
       g.lineStyle(3,0xffe5a0,.85).strokeEllipse(x,y,100,groundHeight(100));
       g.lineStyle(1,0xfff3cf,.4).strokeEllipse(x,y,112,groundHeight(112));
-      ring(6,50,20,6500,(px,py,i)=>{ const color=[0xff899e,0xffd778,0x9aefb5,0x80e1ff,0xa5adff,0xe5a0ff][i];g.fillStyle(color,.9).fillTriangle(px,py-6,px+4,py,px,py+6).fillTriangle(px,py-6,px-4,py,px,py+6); });
+      ring(6,50,20,6500,(gg,px,py,i,_a,d,f)=>{ const color=[0xff899e,0xffd778,0x9aefb5,0x80e1ff,0xa5adff,0xe5a0ff][i];gg.fillStyle(color,.9*f).fillTriangle(px,py-6*d,px+4*d,py,px,py+6*d).fillTriangle(px,py-6*d,px-4*d,py,px,py+6*d); });
       return true;
     }
     case "lullaby-aura": {
       g.fillStyle(0x8977c5, 0.12).fillEllipse(x, y, 102, groundHeight(102));
       g.lineStyle(1.5, 0xc9a3ff, 0.45).strokeEllipse(x, y, 98, groundHeight(98));
-      ring(6, 46, 19, 6000, (px, py, i) => {
-        const bob = reduced ? 0 : Math.sin(now / 750 + i) * 3;
-        g.fillStyle(i % 2 ? 0xc9a3ff : 0xffdf8d, 0.9).fillEllipse(px, py + bob, 5, 3);
-        g.lineStyle(1.4, i % 2 ? 0xc9a3ff : 0xffdf8d, 0.9).lineBetween(px + 2, py + bob, px + 2, py - 10 + bob).lineBetween(px + 2, py - 10 + bob, px + 7, py - 7 + bob);
+      ring(6, 46, 19, 6000, (gg, px, py, i, _a, d, f) => {
+        const bob = (reduced ? 0 : Math.sin(now / 750 + i) * 3) * d;
+        const c = i % 2 ? 0xc9a3ff : 0xffdf8d;
+        gg.fillStyle(c, 0.9 * f).fillEllipse(px, py + bob, 5 * d, 3 * d);
+        gg.lineStyle(1.4 * d, c, 0.9 * f).lineBetween(px + 2 * d, py + bob, px + 2 * d, py - 10 * d + bob).lineBetween(px + 2 * d, py - 10 * d + bob, px + 7 * d, py - 7 * d + bob);
       });
       return true;
     }
     case "nightmote": {
       // Gloomshade's reward: fireflies of lantern light circling beneath you.
       g.fillStyle(0x2b2245, 0.22).fillEllipse(x, y, 100, groundHeight(100));
-      ring(7, 46, 19, 4400, (px, py, i) => {
+      ring(7, 46, 19, 4400, (gg, px, py, i, _a, d, f) => {
         const bob = reduced ? 0 : Math.sin(now / 350 + i * 1.3) * 4;
-        const blink = reduced ? 1 : 0.55 + 0.45 * Math.abs(Math.sin(now / 500 + i * 2.1));
-        g.fillStyle(0xffd27a, 0.25 * blink).fillCircle(px, py - 6 + bob, 7);
-        g.fillStyle(0xfff1c2, 0.95 * blink).fillCircle(px, py - 6 + bob, 2.6);
+        const blink = (reduced ? 1 : 0.55 + 0.45 * Math.abs(Math.sin(now / 500 + i * 2.1))) * f;
+        gg.fillStyle(0xffd27a, 0.25 * blink).fillCircle(px, py + (-6 + bob) * d, 7 * d);
+        gg.fillStyle(0xfff1c2, 0.95 * blink).fillCircle(px, py + (-6 + bob) * d, 2.6 * d);
       });
       return true;
     }
     case "winter-aura":
-      ring(8, 46, 19, 5200, (px, py, i) => {
-        const s = 4;
-        g.lineStyle(1.4, i % 2 ? 0xffffff : 0xbfe8ff, 0.95)
+      ring(8, 46, 19, 5200, (gg, px, py, i, _a, d, f) => {
+        const s = 4 * d;
+        gg.lineStyle(1.4 * d, i % 2 ? 0xffffff : 0xbfe8ff, 0.95 * f)
           .lineBetween(px - s, py, px + s, py)
           .lineBetween(px - s / 2, py - s * 0.86, px + s / 2, py + s * 0.86)
           .lineBetween(px - s / 2, py + s * 0.86, px + s / 2, py - s * 0.86);

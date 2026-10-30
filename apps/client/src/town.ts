@@ -92,6 +92,8 @@ interface Body {
   /** Keep the last complete outfit until the next skin's textures are ready. */
   worn?: TownProfile;
   aura: Phaser.GameObjects.Graphics;
+  /** The aura's items on the near side, drawn over the fighter. */
+  auraFront: Phaser.GameObjects.Graphics;
   shadow: Phaser.GameObjects.Ellipse;
   name: Phaser.GameObjects.Text;
   title: Phaser.GameObjects.Text;
@@ -741,6 +743,7 @@ export function openTown(options: TownOptions) {
         emote: 0,
         seen: 0,
         aura: this.add.graphics(),
+        auraFront: this.add.graphics(),
         shadow: this.add.ellipse(x, y, 46, 16, SHADE, SUN.alpha),
         name: this.add
           .text(x, y, "", {
@@ -860,6 +863,7 @@ export function openTown(options: TownOptions) {
     removeBody(body: Body) {
       body.rig?.destroy();
       body.aura.destroy();
+      body.auraFront.destroy();
       body.shadow.destroy();
       body.name.destroy();
       body.title.destroy();
@@ -1086,12 +1090,17 @@ export function openTown(options: TownOptions) {
         .setPosition(body.x, body.y)
         .setScale(auraScale)
         .setDepth(body.y - 0.2);
+      body.auraFront
+        .clear()
+        .setPosition(body.x, body.y)
+        .setScale(auraScale)
+        .setDepth(body.y + 0.2);
       if (p?.look?.aura === "mountain-aura")
         body.aura
           .lineStyle(3, 0xffd28c, 0.7)
           .strokeEllipse(0, 0, 95, groundHeight(95));
       else if (p?.look?.aura)
-        drawCollectionAura(body.aura, p.look.aura, 0, 0, now, options.reduced);
+        drawCollectionAura(body.aura, p.look.aura, 0, 0, now, options.reduced, body.auraFront);
       if (body.rig) {
         if (p?.look !== undefined && !arrived.has(body.id)) {
           arrived.add(body.id);

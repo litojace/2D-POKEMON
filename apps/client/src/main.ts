@@ -4202,8 +4202,6 @@ class ArenaScene extends Phaser.Scene {
       );
       if (p.raidLook?.aura === "mountain-aura")
         g.lineStyle(3, 0xffd28c, 0.7).strokeEllipse(x, feetY, 95, groundHeight(95));
-      else if (p.raidLook?.aura)
-        drawCollectionAura(g, p.raidLook.aura, x, feetY, _time, reducedMotion);
       rig.setVisible(true);
       // On the coliseum court fighters sort with the blocks by where they stand.
       rig.setDepth(this.activeCourt || state?.raid ? fighterDepth(y) : 2);
@@ -4227,6 +4225,10 @@ class ArenaScene extends Phaser.Scene {
         reducedMotion,
       );
       if ((this.flashUntil.get(p.id) ?? 0) > feelNow) flashWhite(rig.root);
+      // After render (it clears the rig's layers): the aura's near items
+      // pass in front of the fighter, the rest go round behind.
+      if (p.raidLook?.aura && p.raidLook.aura !== "mountain-aura")
+        drawCollectionAura(g, p.raidLook.aura, x, feetY, _time, reducedMotion, rig.front);
       if (serverPlayer.statuses.some((s) => s.kind === "shield")) {
         g.fillStyle(c.color, 0.1).fillCircle(x, y - jump - 10, 46);
         g.lineStyle(3, c.color, 0.8).strokeCircle(x, y - jump - 10, 46);

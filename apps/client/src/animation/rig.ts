@@ -157,6 +157,17 @@ export class FighterRig {
     this.effects.setVisible(visible);
     this.under.setVisible(visible);
   }
+  /**
+   * The layer drawn over the fighter (world coordinates), cleared at the
+   * start of each render: draw on it after render() to pass in front.
+   */
+  get front() {
+    return this.effects;
+  }
+  /** The layer just under the fighter, cleared like `front`. */
+  get behind() {
+    return this.under;
+  }
   /** Sort the fighter (with its effects and ground layer) among other objects. */
   setDepth(depth: number) {
     this.under.setDepth(depth - 0.1);
@@ -1397,8 +1408,14 @@ export class FighterRig {
         const a = now / 700 + i * Math.PI;
         const wx = x + Math.cos(a) * 30 * sc,
           wy = y - 12 * sc + Math.sin(a) * 10 * sc;
-        g.fillStyle(glow ?? 0x7dffe1, 0.18).fillCircle(wx, wy, 5 * sc);
-        g.fillStyle(glow ?? 0x7dffe1, 0.85).fillCircle(wx, wy, 1.8 * sc);
+        // The near half of the circle passes in front, the far half behind.
+        const near = Math.sin(a),
+          layer = near > 0 ? g : this.under,
+          d = 1 + 0.18 * near;
+        layer.fillStyle(glow ?? 0x7dffe1, 0.18).fillCircle(wx, wy, 5 * sc * d);
+        layer
+          .fillStyle(glow ?? 0x7dffe1, 0.85 * (0.8 + 0.2 * near))
+          .fillCircle(wx, wy, 1.8 * sc * d);
       }
     if (state === "defeat") {
       const top = at("head", 100, 46);

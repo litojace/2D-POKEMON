@@ -31,6 +31,8 @@ export interface FighterVisual {
   setVisible(visible: boolean): void;
   /** Draw order (the coliseum courts sort fighters by where they stand). */
   setDepth(depth: number): void;
+  /** A layer over the fighter, cleared by render() (rigs only). */
+  readonly front?: Phaser.GameObjects.Graphics;
   destroy(): void;
 }
 export function queueFighterAssets(

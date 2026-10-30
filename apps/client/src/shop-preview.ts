@@ -213,6 +213,8 @@ export function mountShopPreview(
   class PreviewScene extends Phaser.Scene {
     private floor!: Phaser.GameObjects.Graphics;
     private aura!: Phaser.GameObjects.Graphics;
+    /** The aura's near items, over the fighter. */
+    private auraFront!: Phaser.GameObjects.Graphics;
     private loading = false;
     private selection = -1;
     create() {
@@ -222,6 +224,10 @@ export function mountShopPreview(
       this.aura = this.add
         .graphics()
         .setDepth(1)
+        .setScale(previewAuraScale(framing));
+      this.auraFront = this.add
+        .graphics()
+        .setDepth(4)
         .setScale(previewAuraScale(framing));
       this.game.canvas.setAttribute("aria-hidden", "true");
       // Selection may have changed while Phaser was booting.
@@ -327,9 +333,11 @@ export function mountShopPreview(
         .setZoom(previewZoom(action))
         .centerOn(framing.x, framing.cameraY);
       this.aura.clear();
+      this.auraFront.clear();
       const auraId = look.aura;
       const auraScale = previewAuraScale(framing);
       this.aura.setScale(auraScale);
+      this.auraFront.setScale(auraScale);
       if (auraId === "mountain-aura")
         this.aura
           .lineStyle(3, 0xffd28c, 0.7)
@@ -347,6 +355,7 @@ export function mountShopPreview(
           (y + WORLD_ART.fighterFeet * framing.scale) / auraScale,
           clock,
           paused,
+          this.auraFront,
         );
       rig.root.setScale(framing.scale);
       rig.render(pose, x, y, clock, 1, paused && motion.matches);

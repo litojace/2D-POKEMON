@@ -22,7 +22,16 @@ function kit(id: CharacterId, still: boolean) {
     still
       ? ""
       : ` style="animation:ta-${name} ${dur}s ${ease} ${n1(-delay)}s infinite"`;
-  /** Items ride an ellipse (SMIL) so they keep their shape while orbiting. */
+  /** Orbit items on the far side of the creature; traitAura draws them behind it. */
+  const behind: string[] = [];
+  /**
+   * Items ride an ellipse (SMIL) so they keep their shape while orbiting.
+   * Each item has a copy behind the creature and one in front, on the same
+   * clock: the far half of the circle shows the one behind (a little smaller
+   * and fainter), the near half the one in front (a little larger). They swap
+   * at the left and right ends, where both are the same size. Returns the
+   * front copies; the ones behind go to `behind`.
+   */
   const orbit = (
     rx: number,
     ry: number,
@@ -34,15 +43,29 @@ function kit(id: CharacterId, still: boolean) {
   ) => {
     const sweep = reverse ? 0 : 1;
     const d = `M${100 - rx} ${cy}A${rx} ${ry} 0 1 ${sweep} ${100 + rx} ${cy}A${rx} ${ry} 0 1 ${sweep} ${100 - rx} ${cy}`;
-    return range(n)
-      .map((i) => {
-        if (still) {
-          const a = (i / n) * Math.PI * 2 + 0.4;
-          return `<g transform="translate(${n1(100 + Math.cos(a) * rx)} ${n1(cy + Math.sin(a) * ry)})">${item(i)}</g>`;
-        }
-        return `<g>${item(i)}<animateMotion dur="${dur}s" begin="${n1(-(i / n) * dur)}s" repeatCount="indefinite" path="${d}"/></g>`;
-      })
-      .join("");
+    // Clockwise (sweep 1) from the left end goes over the top (far) first.
+    const farFirst = !reverse;
+    const front: string[] = [];
+    for (const i of range(n)) {
+      if (still) {
+        const a = (i / n) * Math.PI * 2 + 0.4;
+        const near = Math.sin(a);
+        const g = `<g transform="translate(${n1(100 + Math.cos(a) * rx)} ${n1(cy + near * ry)}) scale(${n1(1 + 0.14 * near)})"${near > 0 ? "" : ` opacity="${n1(0.85 + 0.15 * near)}"`}>${item(i)}</g>`;
+        (near > 0 ? front : behind).push(g);
+        continue;
+      }
+      const begin = `begin="${n1(-(i / n) * dur)}s" dur="${dur}s" repeatCount="indefinite"`;
+      const scale = farFirst ? "1;.86;1;1.14;1" : "1;1.14;1;.86;1";
+      const fade = farFirst ? "1;.72;1;1;1" : "1;1;1;.72;1";
+      const show = (isFront: boolean) =>
+        isFront === farFirst ? "hidden;visible" : "visible;hidden";
+      const art = item(i);
+      const copy = (isFront: boolean) =>
+        `<g><g>${art}<animateTransform attributeName="transform" type="scale" values="${scale}" keyTimes="0;.25;.5;.75;1" ${begin}/><animate attributeName="opacity" values="${fade}" keyTimes="0;.25;.5;.75;1" ${begin}/></g><animate attributeName="visibility" values="${show(isFront)}" keyTimes="0;.5" calcMode="discrete" ${begin}/><animateMotion ${begin} path="${d}"/></g>`;
+      front.push(copy(true));
+      behind.push(copy(false));
+    }
+    return front.join("");
   };
   const defs = (c: string) =>
     `<filter id="ta-${id}-blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter><filter id="ta-${id}-soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2.2"/></filter><radialGradient id="ta-${id}-pool"><stop stop-color="${c}" stop-opacity=".7"/><stop offset="1" stop-color="${c}" stop-opacity="0"/></radialGradient>`;
@@ -93,6 +116,7 @@ function kit(id: CharacterId, still: boolean) {
       })
       .join(" ");
   return {
+    behind,
     r,
     range,
     n1,
@@ -265,7 +289,10 @@ const AURAS: Record<CharacterId, (k: Kit, id: CharacterId) => TraitAura> = {
   }),
 };
 export function traitAura(id: CharacterId, still = false): TraitAura {
-  return AURAS[id](kit(id, still), id);
+  const k = kit(id, still);
+  const aura = AURAS[id](k, id);
+  // Orbiting items' far-side copies go behind the creature.
+  return { ...aura, back: aura.back + k.behind.join("") };
 }
 /** Wrap a creature SVG (from creatureSvg) with its aura behind and in front. */
 export function withAura(svg: string, id: CharacterId, still = false) {
