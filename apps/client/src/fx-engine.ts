@@ -62,7 +62,11 @@ export interface BurstOptions {
   drag?: number;
   bounce?: number;
 }
-const MAX_PARTICLES = 700;
+/** Shared limits keep simultaneous casts bounded, especially on touch devices. */
+export const FX_BUDGETS = {
+  desktop: { particles: 700, glows: 144, floorGlows: 64, softs: 96, animations: 64, accents: 16, detail: 168, boltDepth: 5 },
+  compact: { particles: 280, glows: 64, floorGlows: 32, softs: 40, animations: 32, accents: 8, detail: 72, boltDepth: 4 },
+} as const;
 const TAU = Math.PI * 2;
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
 const hash = (n: number) => {
@@ -146,6 +150,12 @@ export class Fx {
   private readonly decals: Decal[] = [];
   private readonly lastEmit = new Map<string | number, number>();
   readonly reduced = reducedMotion();
+  readonly compact = typeof matchMedia !== "undefined" && matchMedia("(pointer: coarse), (max-width: 1000px)").matches;
+  readonly limits = FX_BUDGETS[this.compact ? "compact" : "desktop"];
+  private readonly animations: { start: number; ms: number; draw: (k: number) => void; y: number | null; accent: boolean }[] = [];
+  private groundY: number | null = null;
+  private details = 0;
+  private persistentDetails = 0;
   private vignette?: Phaser.GameObjects.Image;
   private wash?: Phaser.GameObjects.Image;
   private ult = { start: 0, until: 0, color: 0xffffff, dark: false };
@@ -155,6 +165,8 @@ export class Fx {
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
+    const clock = scene.time?.now;
+    this.time = typeof clock === "number" ? clock : 0;
     makeTextures(scene);
     this.decalLayer = battleCurves(scene.add.graphics()).setDepth(-5);
     this.floor = battleCurves(scene.add.graphics()).setDepth(0.3).setBlendMode(ADD);
@@ -179,6 +191,8 @@ export class Fx {
     this.used = 0;
     this.usedFloor = 0;
     this.usedSoft = 0;
+    this.details = this.persistentDetails = 0;
+    this.groundY = null;
     this.floor.clear();
     this.floorSolid.clear();
     this.current = this.top;
@@ -204,6 +218,7 @@ export class Fx {
    * flying behind a block is hidden by the block, like a fighter there is.
    */
   at(y: number | null) {
+    this.groundY = y;
     const edge = y === null ? undefined : this.edges.find((e) => e > y);
     if (edge === undefined) {
       this.current = this.top;
@@ -228,6 +243,7 @@ export class Fx {
 
   private end(_time: number, delta: number) {
     const dt = Math.min(0.05, delta / 1000);
+    this.drawAnimations();
     this.step(dt);
     this.drawParticles();
     this.at(null);
@@ -242,6 +258,9 @@ export class Fx {
     const ev = this.scene.events;
     ev.off(PRE_UPDATE, this.begin, this);
     ev.off(POST_UPDATE, this.end, this);
+    ev.off(SHUTDOWN, this.destroy, this);
+    this.animations.length = this.particles.length = this.decals.length = 0;
+    this.lastEmit.clear();
     for (const band of [this.top, ...this.bands.values()]) {
       band.g.destroy();
       band.solid.destroy();
@@ -251,10 +270,47 @@ export class Fx {
     instances.delete(this.scene);
   }
 
+  /** Cosmetic timelines share the engine layers; no empty Graphics/tween per cast. */
+  animate(ms: number, draw: (k: number) => void, y: number | null = this.groundY, accent = false) {
+    if (accent && (this.reduced || this.animations.filter((a) => a.accent).length >= this.limits.accents)) return;
+    if (this.animations.length >= this.limits.animations) {
+      const replace = accent ? -1 : this.animations.findIndex((a) => a.accent);
+      if (replace < 0) return;
+      this.animations.splice(replace, 1);
+    }
+    this.animations.push({ start: this.time, ms: Math.max(1, ms), draw, y, accent });
+  }
+
+  private drawAnimations() {
+    for (let i = this.animations.length - 1; i >= 0; i--) {
+      const a = this.animations[i];
+      const k = Math.min(1, Math.max(0, (this.time - a.start) / a.ms));
+      this.at(a.y);
+      a.draw(k);
+      if (k >= 1) this.animations.splice(i, 1);
+    }
+    this.at(null);
+  }
+
+  /** Reserve some frame work for cast/impact accents even in a barrage. */
+  detail(cost: number, transient = false) {
+    if (this.reduced || this.details + cost > this.limits.detail) return false;
+    if (!transient && this.persistentDetails + cost > this.limits.detail * 0.65) return false;
+    this.details += cost;
+    if (!transient) this.persistentDetails += cost;
+    return true;
+  }
+
+  /** Counts used by the rendering checks; no gameplay state is exposed. */
+  diagnostics() {
+    return { particles: this.particles.length, animations: this.animations.length, glows: this.glows.length, floorGlows: this.floorGlows.length, softs: this.softs.length, detail: this.details };
+  }
+
   // ─────────────── Light ───────────────
   /** A soft additive light this frame. Call again next frame to keep it lit. */
   glow(x: number, y: number, radius: number, color: number, alpha = 1, onFloor = false, stretchY = 1) {
     if (radius <= 0 || alpha <= 0) return;
+    if (onFloor ? this.usedFloor >= this.limits.floorGlows : this.used >= this.limits.glows) return;
     const pool = onFloor ? this.floorGlows : this.glows;
     const index = onFloor ? this.usedFloor++ : this.used++;
     let img = pool[index];
@@ -274,6 +330,7 @@ export class Fx {
   /** A soft normal-blend puff (solid flame body, smoke, dust) this frame. */
   soft(x: number, y: number, radius: number, color: number, alpha = 1, stretchY = 1) {
     if (radius <= 0 || alpha <= 0) return;
+    if (this.usedSoft >= this.limits.softs) return;
     let img = this.softs[this.usedSoft++];
     if (!img) {
       img = this.scene.add.image(0, 0, "fx-glow");
@@ -291,7 +348,7 @@ export class Fx {
   // ─────────────── Particles ───────────────
   burst(o: BurstOptions) {
     const count = Math.round(o.count * (this.reduced ? 0.35 : 1));
-    for (let i = 0; i < count && this.particles.length < MAX_PARTICLES; i++) {
+    for (let i = 0; i < count && this.particles.length < this.limits.particles; i++) {
       const a = o.angle === undefined ? Math.random() * TAU : o.angle + rand(-1, 1) * (o.spread ?? Math.PI);
       const s = rand(o.speed[0], o.speed[1]);
       const colors = Array.isArray(o.color) ? o.color : [o.color];
@@ -488,7 +545,7 @@ export class Fx {
     let pts = [{ x: x0, y: y0 }, { x: x1, y: y1 }];
     const len = Math.hypot(x1 - x0, y1 - y0);
     let amp = (o.jag ?? 0.22) * len;
-    const depth = o.depth ?? (len > 140 ? 5 : 4);
+    const depth = Math.min(this.limits.boltDepth, o.depth ?? (len > 140 ? 5 : 4));
     for (let d = 0; d < depth; d++) {
       const next = [pts[0]];
       for (let i = 0; i < pts.length - 1; i++) {
@@ -511,7 +568,7 @@ export class Fx {
     g.lineStyle(width * 4, color, 0.16 * alpha).strokePoints(pts, false);
     g.lineStyle(width * 1.8, color, 0.55 * alpha).strokePoints(pts, false);
     g.lineStyle(Math.max(1, width * 0.7), 0xffffff, 0.95 * alpha).strokePoints(pts, false);
-    const branches = o.branches ?? 0;
+    const branches = Math.min(this.compact ? 1 : 3, o.branches ?? 0);
     for (let b = 0; b < branches; b++) {
       const i = 2 + Math.floor(hash(seed + b * 5) * (pts.length - 4)),
         p = pts[i];
