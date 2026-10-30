@@ -16,12 +16,12 @@ function updateProgress() {
   lastTick = now;
   const meter = panel?.querySelector<HTMLElement>(".server-startup-progress");
   if (!meter) return;
-  // Render exposes readiness, not a boot percentage. Ease an estimated bar
-  // toward 92%; only a successful health response is allowed to complete it.
+  // Pace the estimate across the typical one-minute cold start. Hold at 92%
+  // if it takes longer; only a successful health response may complete it.
   const amount =
     currentStatus === "ready"
       ? 1
-      : 0.08 + 0.84 * (1 - Math.exp(-activeMs / 24_000));
+      : 0.08 + 0.84 * Math.min(activeMs / 60_000, 1);
   meter.style.setProperty("--startup-progress", String(amount));
   meter.setAttribute(
     "aria-valuetext",

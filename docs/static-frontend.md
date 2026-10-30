@@ -64,8 +64,9 @@ disabled under `prefers-reduced-motion`. Profiles and socket connections wait fo
 readiness; authenticated mutations are never automatically replayed.
 
 The gold connection bar is an estimate, since Render does not expose boot
-percentages. It advances smoothly toward 92% while waiting, pauses when offline
-or timed out, and resets on retry. Only a successful health response fills it
+percentages. It advances steadily from 8% to 92% over one minute of active waiting,
+then holds if the server takes longer. It pauses when offline or timed out and
+resets on retry. Only a successful health response fills it
 completely; the finished bar remains briefly before the overlay closes. No
 estimated numerical percentage is presented as measured loading progress.
 
