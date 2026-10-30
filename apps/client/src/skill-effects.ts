@@ -12,17 +12,16 @@ import { psychicKit } from "./skill-fx-psychic";
 import { earthKit } from "./skill-fx-earth";
 import { shadowKit } from "./skill-fx-shadow";
 import { withUltimates } from "./skill-fx-ultimates";
-import { withSkillSignatures } from "./skill-fx-signatures";
 /** New-style effects by move; anything not listed keeps its classic drawing. */
-const KIT = withSkillSignatures(
-  withUltimates(mergeKits([electricKit, fireKit, waterKit, auraKit, lightKit, psychicKit, earthKit, shadowKit])),
+const KIT = withUltimates(
+  mergeKits([electricKit, fireKit, waterKit, auraKit, lightKit, psychicKit, earthKit, shadowKit]),
 );
 /** For tests: which moves have a new-style effect. */
 export const effectKit = KIT;
 const shotIn =
-  (scene: Phaser.Scene, groundY: number): Shot =>
+  (scene: Phaser.Scene): Shot =>
   (ms, draw) =>
-    fxFor(scene).animate(ms, draw, groundY);
+    oneShot(scene, ms, (_g, k) => draw(k));
 /**
  * Per-move visual effects. Purely cosmetic: every size comes from the shared
  * ability definition (radius, range, arc, explosion), so what players see
@@ -662,7 +661,7 @@ export function playCast(
   reduced: boolean,
 ) {
   const kit = KIT.cast[a.id];
-  if (kit) return kit(scene, a, x, y, angle, color, shotIn(scene, y));
+  if (kit) return kit(scene, a, x, y, angle, color, shotIn(scene));
   const cy = y - 10;
   const d = reduced ? 160 : 1;
   switch (a.id) {
@@ -978,7 +977,7 @@ export function playBeam(
   reduced: boolean,
 ) {
   const kit = KIT.beam[a.id];
-  if (kit) return kit(scene, a, x, y, tx, ty, color, shotIn(scene, Math.min(y, ty)));
+  if (kit) return kit(scene, a, x, y, tx, ty, color, shotIn(scene));
   const sy = y - 12;
   oneShot(scene, reduced ? 140 : 320, (g, k) => {
     g.lineStyle(a.radius * 2 * (1 - k * 0.5), color, 0.3 * (1 - k)).lineBetween(
@@ -1017,7 +1016,7 @@ export function playImpact(
   reduced: boolean,
 ) {
   const kit = KIT.impact[a.id];
-  if (kit) return kit(scene, a, x, y, color, shotIn(scene, y));
+  if (kit) return kit(scene, a, x, y, color, shotIn(scene));
   const blast = a.explosion ?? 0;
   if (blast > 0)
     return oneShot(
@@ -1092,7 +1091,7 @@ export function playHit(
   reduced: boolean,
 ) {
   const kit = KIT.hit[element.toLowerCase()];
-  if (kit) return kit(scene, x, y, color, shotIn(scene, y));
+  if (kit) return kit(scene, x, y, color, shotIn(scene));
   if (reduced) return;
   const cy = y - 12;
   oneShot(
