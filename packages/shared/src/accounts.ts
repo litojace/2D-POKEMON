@@ -59,7 +59,7 @@ export const reportSchema = z
     category: z.enum(["bug", "player", "account", "other"]),
     message: z.string().trim().min(5).max(1000),
     context: z
-      .record(z.string().max(300))
+      .record(z.string(), z.string().max(300))
       .refine((value) => Object.keys(value).length <= 12, "Too many details"),
   })
   .strict();
@@ -190,7 +190,7 @@ export const progressSchema = z.object({
       earnedAt: z.string().nullable(),
     }),
   ),
-  fighters: z.record(z.object({ matches: z.number(), wins: z.number() })),
+  fighters: z.record(z.string(), z.object({ matches: z.number(), wins: z.number() })),
   season: z.object({ id: z.string(), matches: z.number(), wins: z.number() }),
   rating: ratingSchema.optional(),
 });

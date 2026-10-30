@@ -29,8 +29,8 @@ export const fighterPackSchema = z
       .object({
         ...common,
         kind: z.literal("frames"),
-        files: z.record(file),
-        animations: z.record(animation),
+        files: z.record(z.string(), file),
+        animations: z.record(z.string(), animation),
       })
       .strict(),
     z
@@ -40,7 +40,7 @@ export const fighterPackSchema = z
         image: file,
         frameWidth: z.number().int().min(1).max(2048),
         frameHeight: z.number().int().min(1).max(2048),
-        animations: z.record(animation),
+        animations: z.record(z.string(), animation),
       })
       .strict(),
     z
@@ -49,7 +49,7 @@ export const fighterPackSchema = z
         kind: z.literal("atlas"),
         image: file,
         data: file,
-        animations: z.record(animation),
+        animations: z.record(z.string(), animation),
       })
       .strict(),
   ])
