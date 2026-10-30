@@ -63,6 +63,12 @@ servers. Offline status recovers automatically during the wait. The motion is
 disabled under `prefers-reduced-motion`. Profiles and socket connections wait for
 readiness; authenticated mutations are never automatically replayed.
 
+The gold connection bar is an estimate, since Render does not expose boot
+percentages. It advances smoothly toward 92% while waiting, pauses when offline
+or timed out, and resets on retry. Only a successful health response fills it
+completely; the finished bar remains briefly before the overlay closes. No
+estimated numerical percentage is presented as measured loading progress.
+
 Success is reused for 60 seconds and rechecked on later auth transitions. There
 is no periodic keep-alive and ordinary gameplay/API actions do not show this
 startup overlay. This improves the waiting experience; it does not remove Render's

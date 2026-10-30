@@ -48,6 +48,30 @@ for (const size of [
       const panel = page.locator("#server-startup");
       await expect(panel).toBeVisible();
       await expect(panel).toContainText("Opening the arena");
+      const progress = panel.getByRole("progressbar");
+      await expect(progress).toBeVisible();
+      await expect(progress).not.toHaveAttribute("aria-valuenow");
+      const before = await progress.evaluate((el) =>
+        Number(
+          (el as HTMLElement).style.getPropertyValue("--startup-progress"),
+        ),
+      );
+      await expect
+        .poll(() =>
+          progress.evaluate((el) =>
+            Number(
+              (el as HTMLElement).style.getPropertyValue("--startup-progress"),
+            ),
+          ),
+        )
+        .toBeGreaterThan(before);
+      expect(
+        await progress.evaluate((el) =>
+          Number(
+            (el as HTMLElement).style.getPropertyValue("--startup-progress"),
+          ),
+        ),
+      ).toBeLessThan(0.93);
       expect(
         inside(await box(page, ".server-startup-card"), {
           x: 0,
@@ -62,7 +86,21 @@ for (const size of [
         await page.evaluate(() => (window as any).__startupHealthRequests),
       ).toBe(1);
       await snap(page, info, `server-waking-${size.width}x${size.height}`);
+      await progress.evaluate((el) => {
+        new MutationObserver((_mutations, observer) => {
+          if (el.getAttribute("aria-valuenow") === "100") {
+            (window as any).__startupCompleted = true;
+            observer.disconnect();
+          }
+        }).observe(el, {
+          attributes: true,
+          attributeFilter: ["aria-valuenow"],
+        });
+      });
       await page.evaluate(() => (window as any).__releaseStartup());
+      await expect
+        .poll(() => page.evaluate(() => (window as any).__startupCompleted))
+        .toBe(true);
       await expect(panel).toHaveCount(0);
       await expect
         .poll(() =>
@@ -96,6 +134,18 @@ test("offline startup resumes without a login error when the network returns", a
   });
   await page.goto("/");
   await expect(page.locator("#server-startup")).toContainText("You’re offline");
+  const progress = page.getByRole("progressbar", {
+    name: "Game server connection",
+  });
+  const paused = await progress.evaluate((el) =>
+    (el as HTMLElement).style.getPropertyValue("--startup-progress"),
+  );
+  await page.waitForTimeout(350);
+  expect(
+    await progress.evaluate((el) =>
+      (el as HTMLElement).style.getPropertyValue("--startup-progress"),
+    ),
+  ).toBe(paused);
   await page.evaluate(() => {
     (window as any).__online = true;
   });
@@ -136,6 +186,18 @@ test("a startup timeout exposes a working retry without reloading the page", asy
   const retry = page.locator("#server-startup button");
   await expect(retry).toBeVisible();
   await expect(page.locator("#server-startup")).toContainText("taking longer");
+  const progress = page.getByRole("progressbar", {
+    name: "Game server connection",
+  });
+  const paused = await progress.evaluate((el) =>
+    (el as HTMLElement).style.getPropertyValue("--startup-progress"),
+  );
+  await page.waitForTimeout(350);
+  expect(
+    await progress.evaluate((el) =>
+      (el as HTMLElement).style.getPropertyValue("--startup-progress"),
+    ),
+  ).toBe(paused);
   const before = await page.evaluate(
     () => (window as any).__startupHealthRequests,
   );
