@@ -101,6 +101,7 @@
   max-height: 480px;
   max-width: min(64vw, 480px);
   aspect-ratio: 1;
+  animation: server-sigil-float 7s ease-in-out infinite;
 }
 .server-startup-art > img {
   position: absolute;
@@ -109,7 +110,6 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  animation: server-sigil-float 7s ease-in-out infinite;
 }
 .server-startup-aura {
   position: absolute;
@@ -123,14 +123,30 @@
   );
   animation: server-sigil-glow 5s ease-in-out infinite;
 }
-.server-startup-ring {
+.server-startup-orbits {
   position: absolute;
-  inset: 7%;
-  border: 1px solid #e6c47488;
-  border-radius: 50%;
-  transform: translateY(20%) rotate(-12deg) scaleX(1.4) scaleY(0.32);
-  box-shadow: 0 0 8px #efcc7420;
-  animation: server-sigil-glow 6s ease-in-out -2s infinite;
+  inset: -5%;
+  width: 110%;
+  height: 110%;
+  overflow: visible;
+  pointer-events: none;
+  fill: none;
+  stroke: #edc77b;
+}
+.server-startup-orbits ellipse {
+  vector-effect: non-scaling-stroke;
+}
+.server-startup-orbit {
+  stroke-width: 0.85px;
+  stroke-opacity: 0.8;
+  animation: server-sigil-glow var(--orbit-duration) ease-in-out
+    var(--orbit-delay) infinite;
+}
+.server-startup-orbits g:nth-child(2) .server-startup-orbit {
+  stroke-opacity: 0.6;
+}
+.server-startup-orbits g:nth-child(3) .server-startup-orbit {
+  stroke-opacity: 0.4;
 }
 .server-startup-art > i {
   position: absolute;

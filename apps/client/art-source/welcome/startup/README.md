@@ -15,8 +15,11 @@ Original PNGs are preserved in the task's generated-image artifacts:
 `exec-aa20913a-d2ee-40b9-896f-722cea544969.png` (crest).
 The runtime files are imported by Vite for content-hashed URLs and PWA precaching.
 
-The logo has two optically centered lines with equal tracking. The crest floats
-by four pixels; its aura, orbit and six small particles provide restrained motion.
+The logo has two optically centered lines with equal tracking. The crest and
+three SVG orbit paths float together by four pixels. All paths share the
+crystal's center, with different tilts matching H, and use no nonuniform CSS
+scaling or downward offset. Unbroken paths pulse softly; the aura
+and six small particles provide restrained motion.
 The background stays still. Reduced-motion preferences disable all motion.
 
 The screen adapts its middle art area to the remaining height between the logo

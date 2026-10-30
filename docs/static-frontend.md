@@ -65,7 +65,9 @@ readiness; authenticated mutations are never automatically replayed.
 
 The loading screen uses approved concept H, **Starforged Sigil**: a still navy
 starfield, a transparent gold-and-cyan compass crest, a gently floating emblem,
-soft aura/orbit light and six drifting sparks. The stacked ELEMENT / ARENA logo
+soft aura/orbit light and six drifting sparks. Three smooth, differently tilted
+SVG orbits stay centered on the crystal and float with it; their unbroken paths
+pulse softly without flattening or shifting the loops. The stacked ELEMENT / ARENA logo
 is real centered text with balanced tracking. The crest fits between the logo
 and footer at each viewport height; short phones also have a compact retry row.
 Both WebP plates use content-hashed Vite URLs and are included in PWA precaching.

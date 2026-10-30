@@ -3,6 +3,14 @@ import starfield from "./art/startup-starfield.webp";
 import sigil from "./art/startup-sigil.webp";
 import "./server-connection.css";
 
+/** Centered paths keep their shape while the crest floats and their light pulses. */
+const orbitPaths = [
+  { rx: 185, ry: 48, angle: -18 },
+  { rx: 171, ry: 65, angle: 24 },
+  { rx: 110, ry: 140, angle: 14 },
+];
+const orbits = `<svg class="server-startup-orbits" viewBox="0 0 320 320" aria-hidden="true" focusable="false">${orbitPaths.map(({ rx, ry, angle }, index) => `<g transform="rotate(${angle} 160 160)" style="--orbit-duration:${6 + index * 2}s;--orbit-delay:${-index * 2}s"><ellipse class="server-startup-orbit" cx="160" cy="160" rx="${rx}" ry="${ry}"/></g>`).join("")}</svg>`;
+
 let retry: (() => void) | undefined;
 let panel: HTMLElement | undefined;
 let reveal: ReturnType<typeof setTimeout> | undefined;
@@ -91,7 +99,7 @@ function renderStatus() {
     panel.className = "server-startup";
     panel.setAttribute("aria-label", "Connecting to Element Arena");
     panel.style.setProperty("--startup-backdrop", `url("${starfield}")`);
-    panel.innerHTML = `<div class="server-startup-card"><header class="server-startup-brand"><h1 aria-label="Element Arena"><span aria-hidden="true">ELEMENT</span><span aria-hidden="true">ARENA</span></h1><span class="server-startup-divider" aria-hidden="true"></span></header><div class="server-startup-scene" aria-hidden="true"><div class="server-startup-art"><span class="server-startup-aura"></span><span class="server-startup-ring"></span><img src="${sigil}" width="1254" height="1254" alt="" decoding="async" draggable="false"><i></i><i></i><i></i><i></i><i></i><i></i></div></div><div class="server-startup-loading"><h2>Opening the arena…</h2><div class="server-startup-progress" role="progressbar" aria-label="Game server connection" aria-valuemin="0" aria-valuemax="100"><i></i></div><p role="status" aria-live="polite"></p><button type="button" hidden>Try again</button></div></div>`;
+    panel.innerHTML = `<div class="server-startup-card"><header class="server-startup-brand"><h1 aria-label="Element Arena"><span aria-hidden="true">ELEMENT</span><span aria-hidden="true">ARENA</span></h1><span class="server-startup-divider" aria-hidden="true"></span></header><div class="server-startup-scene" aria-hidden="true"><div class="server-startup-art"><span class="server-startup-aura"></span>${orbits}<img src="${sigil}" width="1254" height="1254" alt="" decoding="async" draggable="false"><i></i><i></i><i></i><i></i><i></i><i></i></div></div><div class="server-startup-loading"><h2>Opening the arena…</h2><div class="server-startup-progress" role="progressbar" aria-label="Game server connection" aria-valuemin="0" aria-valuemax="100"><i></i></div><p role="status" aria-live="polite"></p><button type="button" hidden>Try again</button></div></div>`;
     const emblem = panel.querySelector("img")!;
     emblem.addEventListener(
       "error",

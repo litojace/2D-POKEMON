@@ -67,6 +67,36 @@ for (const size of [
       }
       expect(art.y).toBeGreaterThanOrEqual(logo.y + logo.height);
       expect(art.y + art.height).toBeLessThanOrEqual(loading.y);
+      // Check the real rendered centers at the peak of the floating motion.
+      // The old separate CSS ring stayed behind while the crystal moved.
+      const orbitOffsets = await panel.evaluate((el) => {
+        for (const animation of el.getAnimations({ subtree: true })) {
+          if (
+            animation instanceof CSSAnimation &&
+            animation.animationName === "server-sigil-float"
+          ) {
+            animation.pause();
+            animation.currentTime = 3500;
+          }
+        }
+        const crest = el
+          .querySelector(".server-startup-art img")!
+          .getBoundingClientRect();
+        return [
+          ...el.querySelectorAll<SVGEllipseElement>(".server-startup-orbit"),
+        ].map((orbit) => {
+          const center = new DOMPoint(
+            orbit.cx.baseVal.value,
+            orbit.cy.baseVal.value,
+          ).matrixTransform(orbit.getScreenCTM()!);
+          return Math.hypot(
+            center.x - crest.x - crest.width / 2,
+            center.y - crest.y - crest.height / 2,
+          );
+        });
+      });
+      expect(orbitOffsets).toHaveLength(3);
+      for (const offset of orbitOffsets) expect(offset).toBeLessThan(0.75);
       const progress = panel.getByRole("progressbar");
       await expect(progress).toBeVisible();
       await expect(progress).not.toHaveAttribute("aria-valuenow");
