@@ -24,6 +24,30 @@ let flashIds = new Set<string>();
 let flashTimer: ReturnType<typeof setTimeout> | undefined;
 let expanded = false;
 let last: { economy: Economy | undefined; open: () => void } | undefined;
+let playerCard: HTMLElement | null = null;
+let cardSize: ResizeObserver | undefined;
+
+/** Follow the whole player card, including titles, frames and responsive sizing. */
+function positionTracker() {
+  const root = document.getElementById("quest-tracker");
+  const bounds = playerCard?.getBoundingClientRect();
+  if (!root || !bounds?.height) return;
+  // Leave room above the button for its animated notification badge.
+  root.style.setProperty("--quest-top", `${Math.ceil(bounds.bottom) + 20}px`);
+  root.style.setProperty("--quest-left", `${Math.ceil(bounds.left)}px`);
+}
+function followPlayerCard() {
+  const next = document.getElementById("account-profile");
+  if (next !== playerCard) {
+    cardSize?.disconnect();
+    playerCard = next;
+    if (next) {
+      cardSize ??= new ResizeObserver(positionTracker);
+      cardSize.observe(next);
+    }
+  }
+  positionTracker();
+}
 
 type Mission = Economy["missions"][number];
 /** Unfinished missions, closest to done first (then in their usual order). */
@@ -54,6 +78,7 @@ let listening = false;
 function listen() {
   if (listening) return;
   listening = true;
+  window.addEventListener("resize", positionTracker);
   document.addEventListener(
     "pointerdown",
     (e) => {
@@ -70,7 +95,11 @@ function listen() {
 
 const row = (m: Mission, fresh: boolean) => {
   const value = Math.min(m.progress, m.target);
-  const cls = m.done ? (fresh ? "quest is-done is-complete" : "quest is-done") : "quest";
+  const cls = m.done
+    ? fresh
+      ? "quest is-done is-complete"
+      : "quest is-done"
+    : "quest";
   const state = m.done
     ? `<span class="quest-check" aria-label="Done">${buttonIcon("check")}</span>`
     : `<span>${value}/${m.target}</span>`;
@@ -87,6 +116,8 @@ export function syncQuestTracker(
   const missions = economy?.missions ?? [];
   if (!missions.length) {
     root?.remove();
+    cardSize?.disconnect();
+    playerCard = null;
     expanded = false;
     return;
   }
@@ -96,6 +127,7 @@ export function syncQuestTracker(
     root.setAttribute("aria-label", "Daily missions");
     document.body.append(root);
   }
+  followPlayerCard();
   // Which missions finished since we last looked (not on first load).
   const day = missions[0].day;
   const done = new Set(missions.filter((m) => m.done).map((m) => m.id));
@@ -128,9 +160,13 @@ export function syncQuestTracker(
           .join("")
       : "";
   const panel = expanded
-    ? `<div class="quest-panel" id="quest-panel"><button type="button" class="quest-title" title="Open daily missions"><span>Daily missions</span><span class="quest-count">${finished}/${total}</span><svg class="quest-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button><ul class="quest-list">${listedMissions(missions)
+    ? `<div class="quest-panel" id="quest-panel"><button type="button" class="quest-title" title="Open daily missions"><span>Daily missions</span><span class="quest-count">${finished}/${total}</span><svg class="quest-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button><ul class="quest-list">${listedMissions(
+        missions,
+      )
         .map((m) => row(m, flashing && flashIds.has(m.id)))
-        .join("")}</ul>${allDone ? `<p class="quest-all-done">${buttonIcon("check")}All done for today · new missions tomorrow</p>` : ""}</div>`
+        .join(
+          "",
+        )}</ul>${allDone ? `<p class="quest-all-done">${buttonIcon("check")}All done for today · new missions tomorrow</p>` : ""}</div>`
     : "";
   root.classList.toggle("is-expanded", expanded);
   root.classList.toggle("has-open", !allDone);

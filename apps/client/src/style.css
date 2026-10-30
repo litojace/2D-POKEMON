@@ -23803,10 +23803,11 @@ body.battle-raid.raid-downed #mobile-controls .touch-buttons { visibility: hidde
   display: none;
 }
 body.town-active #quest-tracker {
+  --quest-top: calc(max(10px, env(safe-area-inset-top)) + 92px);
   position: fixed;
   z-index: 69;
-  top: calc(max(10px, env(safe-area-inset-top)) + 72px);
-  left: max(14px, env(safe-area-inset-left));
+  top: var(--quest-top);
+  left: var(--quest-left, max(14px, env(safe-area-inset-left)));
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -23872,8 +23873,8 @@ body.town-active:has(dialog[open], .home-drawer:not([hidden])) #quest-tracker {
 }
 #quest-tracker .quest-panel {
   width: 270px;
-  max-height: calc(100vh - max(10px, env(safe-area-inset-top)) - 72px - 12px);
-  max-height: calc(100dvh - max(10px, env(safe-area-inset-top)) - 72px - 12px);
+  max-height: calc(100vh - var(--quest-top) - 12px);
+  max-height: calc(100dvh - var(--quest-top) - 12px);
   display: flex;
   flex-direction: column;
   border: 1px solid rgba(255, 214, 91, 0.35);
@@ -24063,7 +24064,7 @@ body.town-active:has(dialog[open], .home-drawer:not([hidden])) #quest-tracker {
 }
 @media (max-height: 500px) {
   body.town-active #quest-tracker {
-    top: calc(max(10px, env(safe-area-inset-top)) + 56px);
+    --quest-top: calc(max(10px, env(safe-area-inset-top)) + 76px);
     font-size: 12px;
   }
   #quest-tracker .quest-toggle {
@@ -24078,8 +24079,8 @@ body.town-active:has(dialog[open], .home-drawer:not([hidden])) #quest-tracker {
   }
   #quest-tracker .quest-panel {
     width: 250px;
-    max-height: calc(100vh - max(10px, env(safe-area-inset-top)) - 56px - 8px);
-    max-height: calc(100dvh - max(10px, env(safe-area-inset-top)) - 56px - 8px);
+    max-height: calc(100vh - var(--quest-top) - 12px);
+    max-height: calc(100dvh - var(--quest-top) - 12px);
   }
   #quest-tracker .quest-title {
     min-height: 32px;
