@@ -380,7 +380,11 @@ export function mountShopPreview(
       banner: false,
       audio: { noAudio: true },
       input: { keyboard: false, mouse: false, touch: false, gamepad: false },
-      fps: { target: 30, forceSetTimeOut: true },
+      // Paced by the display (requestAnimationFrame). A 30 fps setTimeout
+      // clock is not in step with a 60/120 Hz screen: frames were held for
+      // uneven times, which reads as a jerky idle. The loop still sleeps
+      // whenever the preview is hidden, covered or paused.
+      fps: { target: 60, smoothStep: true },
       scene: PreviewScene,
     });
   } catch {

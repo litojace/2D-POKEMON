@@ -254,6 +254,15 @@ export function openTown(options: TownOptions) {
     !!document.querySelector(
       "dialog[open], .home-drawer:not([hidden]), .header-menu[open]",
     );
+  /**
+   * The roster, Shop or a dialog fills the screen: the town behind it stops
+   * drawing (after you have stopped walking) so the panel, and its animated
+   * fighter, get the whole device. It wakes as soon as the panel closes.
+   */
+  const hidesTown = () =>
+    !!document.querySelector("dialog[open], .home-drawer:not([hidden])");
+  let frozen = false,
+    coveredAt: number | undefined;
   const keydown = (e: KeyboardEvent) => {
     if (typing() || covered()) return;
     if (
@@ -916,6 +925,16 @@ export function openTown(options: TownOptions) {
         else dir = { x: dx / len, y: dy / len };
       }
       sendInput(time, dir);
+      if (hidesTown()) {
+        // Wall-clock time: Phaser smooths delta, so it can't time this.
+        coveredAt ??= performance.now();
+        if (performance.now() - coveredAt > 300 && !sent.x && !sent.y) {
+          frozen = true;
+          coveredAt = undefined;
+          host.dataset.frozen = "true";
+          this.game.loop.sleep();
+        }
+      } else coveredAt = undefined;
       for (const body of bodies.values()) {
         if (body === mine) {
           const step = townStep(body, dir.x, dir.y, dt);
@@ -1193,6 +1212,18 @@ export function openTown(options: TownOptions) {
   screen.orientation?.addEventListener("change", resize);
   window.addEventListener("resize", resize);
   watchRendererLifecycle(game, () => !closed, resize);
+  const thaw = new MutationObserver(() => {
+    if (!frozen || closed || hidesTown() || document.hidden) return;
+    frozen = false;
+    host.dataset.frozen = "false";
+    game.loop.wake();
+  });
+  thaw.observe(document.body, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    attributeFilter: ["open", "hidden"],
+  });
 
   void request("town-join", { character: options.character }).then((reply) => {
     if (!reply.ok) close(true);
@@ -1212,6 +1243,7 @@ export function openTown(options: TownOptions) {
     window.removeEventListener("blur", blur);
     cancelAnimationFrame(resizeFrame);
     resizeObserver.disconnect();
+    thaw.disconnect();
     window.visualViewport?.removeEventListener("resize", resize);
     screen.orientation?.removeEventListener("change", resize);
     window.removeEventListener("resize", resize);
