@@ -1,0 +1,83 @@
+/* Frame artwork is shared with Wardrobe, lobbies and raid results. */
+.portrait-frame.raid-cosmetic-preview {
+  display: grid;
+  place-items: center;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: visible;
+}
+.portrait-frame.raid-cosmetic-preview > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
+.friend-avatar:has(> .portrait-frame),
+.player-avatar:has(> .portrait-frame) {
+  overflow: visible;
+  border-color: transparent;
+  background: transparent;
+}
+body:is(.home-active, .town-active, .lobby-active)
+  #account-profile
+  .account-avatar:has(> .portrait-frame) {
+  overflow: visible;
+  border-color: transparent;
+  background: transparent;
+}
+body.home-active #account-profile:has(.portrait-frame) {
+  gap: 14px;
+  padding-left: 8px;
+}
+body:is(.town-active, .lobby-active) #account-profile:has(.portrait-frame) {
+  column-gap: 14px;
+  padding-left: 12px;
+}
+/* Badge/tassel geometry follows the smaller header portrait, not a 48px preview. */
+.account-avatar .portrait-frame[data-cosmetic="conqueror"]::after {
+  width: 22%;
+  height: 22%;
+  bottom: -12%;
+}
+.account-avatar .portrait-frame[data-cosmetic="reef"]::after {
+  width: 25%;
+  height: 25%;
+  bottom: -14%;
+}
+.account-avatar .portrait-frame[data-cosmetic="crescent"]::after {
+  width: 29%;
+  height: 29%;
+  top: -16%;
+}
+.account-avatar .portrait-frame[data-cosmetic="moonglass"]::after {
+  width: 27%;
+  height: 27%;
+  top: 8%;
+  right: 6%;
+}
+.account-avatar .portrait-frame[data-cosmetic="galaxy-frame"]::after {
+  width: 29%;
+  height: 29%;
+  right: -14%;
+  top: -10%;
+}
+.account-avatar .portrait-frame[data-cosmetic="festival-frame"]::after {
+  width: 8%;
+  height: 25%;
+  bottom: -27%;
+}
+.account-avatar .portrait-frame[data-cosmetic="garden-frame"]::after {
+  width: 25%;
+  height: 17%;
+  left: -12%;
+  top: -8%;
+}
+.account-avatar .portrait-frame[data-cosmetic="winter-frame"]::after {
+  width: 38%;
+  height: 19%;
+  bottom: -21%;
+  background-size: 33.333% 100%;
+}

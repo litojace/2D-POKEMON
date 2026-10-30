@@ -62,6 +62,73 @@ const setup = async () => {
   return { connect, ticks, accounts, url };
 };
 
+it("shares verified frames with friends across town, wardrobe changes and rooms", async () => {
+  const { connect, ticks, accounts, url } = await setup();
+  const viewer = await connect(),
+    owner = await connect();
+  let frame: string | null = "galaxy-frame";
+  accounts.provider.rpc = async (token, name, args) => {
+    if (name === "arena_friends")
+      return {
+        code: "ABCDEF12",
+        friends: [
+          { id: owner.account!.id, name: owner.account!.displayName, frame },
+        ],
+        incoming: [],
+        outgoing: [],
+      };
+    if (name === "arena_equip_raid_slot" && token === owner.token)
+      frame = args.p_item as string | null;
+    if (name === "arena_raid_progress" || name === "arena_equip_raid_slot")
+      return { loadout: { frame: token === owner.token ? frame : null } };
+    if (name === "arena_my_looks") return {};
+    if (name === "arena_journey") return { xp: 900 };
+    return {};
+  };
+  await emit(owner.socket, "town-join", { character: "auralynx" });
+  await ticks(3);
+  const friend = async () =>
+    (
+      await (
+        await fetch(url + "/api/friends", {
+          headers: { Authorization: `Bearer ${viewer.token}` },
+        })
+      ).json()
+    ).friends[0];
+  await expect
+    .poll(friend)
+    .toMatchObject({ fighter: "auralynx", frame: "galaxy-frame" });
+  await emit(owner.socket, "town-look", {
+    character: "auralynx",
+    look: { frame: "conqueror" },
+  });
+  await ticks(2);
+  expect((await friend()).frame).toBe("galaxy-frame");
+  const equip = async (item: string | null) =>
+    fetch(url + "/api/raids/equip", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${owner.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ slot: "frame", item }),
+    });
+  expect((await equip(null)).ok).toBe(true);
+  await ticks(3);
+  expect((await friend()).frame).toBeNull();
+  expect(
+    (await emit(owner.socket, "create", { name: owner.account!.displayName })).ok,
+  ).toBe(true);
+  expect((await equip("conqueror")).ok).toBe(true);
+  await expect
+    .poll(friend)
+    .toMatchObject({ activity: "lobby", frame: "conqueror" });
+  owner.socket.disconnect();
+  await expect
+    .poll(friend)
+    .toMatchObject({ online: false, frame: "conqueror" });
+});
+
 it("lets signed-in players walk the town, see each other and emote", async () => {
   const { connect, ticks } = await setup();
   const a = await connect(),

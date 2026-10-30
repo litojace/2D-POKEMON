@@ -1,5 +1,6 @@
 import { buttonIcon, iconLabel } from "./menu-icons";
 import { fighterAvatar } from "./fighter-art";
+import { framePortrait } from "./portraits";
 import {
   CHARACTERS,
   normalizeCharacterId,
@@ -126,12 +127,12 @@ export function friendCounts(list: FriendList, favorites: ReadonlySet<string>) {
     requests: list.incoming.length + list.outgoing.length,
   };
 }
-function avatar(friend: Pick<Friend, "id" | "name" | "fighter">) {
+function avatar(friend: Pick<Friend, "id" | "name" | "fighter" | "frame">) {
   const fighter = normalizeCharacterId(friend.fighter);
   const art = fighter
     ? fighterAvatar(fighter, `friend-${friend.id.replace(/[^a-z0-9]/gi, "")}`)
     : `<span>${escape(Array.from(friend.name.trim())[0]?.toUpperCase() ?? "?")}</span>`;
-  return `<span class="friend-avatar" aria-hidden="true">${art}</span>`;
+  return `<span class="friend-avatar" aria-hidden="true">${framePortrait(art, friend.frame)}</span>`;
 }
 function requestCards(
   requests: FriendList["incoming"],

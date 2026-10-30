@@ -51,6 +51,16 @@ beforeAll(async () => {
     await db.query("select public.arena_me()");
     await db.exec("reset role");
   }
+  // Only the appearance columns read by the public friends projection are needed.
+  await db.exec(
+    `create table public.arena_raid_loadouts(player_id uuid primary key references public.arena_profiles(id),frame text);alter table public.arena_raid_loadouts enable row level security;revoke all on public.arena_raid_loadouts from anon,authenticated;`,
+  );
+  await db.exec(
+    await readFile(
+      "supabase/migrations/029_friend_portrait_frames.sql",
+      "utf8",
+    ),
+  );
   await db.exec(
     `insert into public.arena_friendships(a,b)values('${ana}','${ben}');insert into public.arena_friend_requests(from_id,to_id)values('${cy}','${ana}')`,
   );
@@ -63,6 +73,31 @@ afterEach(async () => {
   await db.exec("rollback;reset role");
 });
 afterAll(async () => db.close());
+it("shows a saved frame to accepted friends while offline without exposing request cosmetics", async () => {
+  await db.exec("reset role");
+  await db.query(
+    "insert into public.arena_raid_loadouts values($1,$2),($3,$4)",
+    [ben, "conqueror", cy, "galaxy-frame"],
+  );
+  await as();
+  const friends = await list();
+  expect(friends.friends[0]).toMatchObject({
+    id: ben,
+    frame: "conqueror",
+    lastOnline: null,
+  });
+  expect(friends.incoming).toEqual([{ id: cy, name: "Cy" }]);
+  await expect(
+    attempt(() => db.query("select * from public.arena_raid_loadouts")),
+  ).rejects.toThrow();
+  await db.exec("reset role");
+  await db.query(
+    "update public.arena_raid_loadouts set frame=null where player_id=$1",
+    [ben],
+  );
+  await as();
+  expect((await list()).friends[0].frame).toBeNull();
+});
 it("does not invent history for existing friends or reveal request activity", async () => {
   const l = await list();
   expect(l.friends[0].lastOnline).toBeNull();

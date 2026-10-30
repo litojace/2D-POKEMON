@@ -132,6 +132,7 @@ import {
 import { AudioManager } from "./audio";
 import { InterpolationBuffer } from "./networking/interpolation";
 import { AccountUI } from "./accounts";
+import { framedAvatar } from "./portraits";
 import { waitForServer, onServerStartupRetry } from "./server-connection";
 import "./style.css";
 import "./champion-selection.css";
@@ -910,15 +911,7 @@ function showSelection(revealSelection = false) {
   return true;
 }
 function syncHomePresentation() {
-  const avatar = document.querySelector("#account-profile .account-avatar");
-  if (avatar && avatar.getAttribute("data-champion") !== selected) {
-    avatar.innerHTML = fighterAvatar(
-      selected,
-      "account-nav",
-      accountsUI?.economy?.looks[selected],
-    );
-    avatar.setAttribute("data-champion", selected);
-  }
+  accountsUI?.syncAvatar();
   homeNavigation.refresh();
 }
 /** Blue = 0, Red = 1. Older snapshots without teams fall back to seat order. */
@@ -1126,7 +1119,7 @@ function watchPanel() {
   const rows = state!.players
     .map((p) => {
       const c = CHARACTERS[p.character];
-      return `<div><span class="player-avatar" style="--element:#${c.color.toString(16).padStart(6, "0")}" title="${c.name}">${fighterAvatar(c.id, `watch${state!.players.indexOf(p)}`, skinOf(p, c.id))}</span><span><strong>${escape(p.name)}</strong><small class="player-fighter">${c.name}</small></span><b class="status-pill ${!p.connected ? "offline" : p.ready ? "ready" : "choosing"}">${!p.connected ? "Offline" : p.ready ? "Ready" : "Choosing"}</b></div>`;
+      return `<div><span class="player-avatar" style="--element:#${c.color.toString(16).padStart(6, "0")}" title="${c.name}">${framedAvatar({ character: c.id, raidLook: p.raidLook, championLooks: looksOf(p) }, `watch${state!.players.indexOf(p)}`)}</span><span><strong>${escape(p.name)}</strong><small class="player-fighter">${c.name}</small></span><b class="status-pill ${!p.connected ? "offline" : p.ready ? "ready" : "choosing"}">${!p.connected ? "Offline" : p.ready ? "Ready" : "Choosing"}</b></div>`;
     })
     .join("");
   return `<div class="eyebrow">Watching room ${escape(state!.code)}</div><h2>Ringside seat.</h2><p>You'll see the match live as soon as everyone's ready. Watching: ${escape((state!.watchers ?? []).join(", ") || "just you")}.</p><div class="players">${rows}</div>${partyRulesNote()}<button class="secondary btn-secondary full leave-button" id="stop-watching">${iconLabel("stop-watching", "Stop watching")}</button>`;

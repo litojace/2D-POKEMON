@@ -301,11 +301,19 @@ export function createArenaServer(
             : {}),
         };
       const arena = me.room ? rooms.get(me.room) : undefined;
+      const socketId = activeAccounts.get(accountId);
+      const session = socketId ? getSession(socketId) : undefined;
+      const fighter = session
+        ? rooms.get(session.code)?.players.find((p) => p.id === session.id)
+        : undefined;
+      const visitor = socketId ? town.profileOf(socketId) : undefined;
+      const look = fighter?.raidLook ?? visitor?.look;
       return {
         online: true,
         activity: me.activity,
         room: me.room,
-        fighter: me.fighter,
+        fighter: me.fighter ?? visitor?.character ?? null,
+        ...(look !== undefined ? { frame: look.frame ?? null } : {}),
         joinable:
           !!arena &&
           arena.phase === "lobby" &&

@@ -256,6 +256,8 @@ export const friendSchema = z.object({
   room: z.string().nullable().optional(),
   joinable: z.boolean().optional(),
   fighter: z.string().nullable().optional(),
+  /** Verified equipped portrait frame, when appearance is available. */
+  frame: z.string().max(80).nullable().optional(),
 });
 export const friendsSchema = z.object({
   code: z.string(),
