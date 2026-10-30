@@ -231,14 +231,16 @@ export function openTown(options: TownOptions) {
   const stickInput = () => {
     if (stick.x || stick.y) return stick;
     const bindings = controlPrefs().bindings;
+    // Opposite directions held together: the one pressed last wins (held
+    // keeps press order), so changing direction never stops you.
     let x = 0,
       y = 0;
     for (const code of held) {
       const action = actionFor(bindings, code);
-      if (action === "left") x -= 1;
-      else if (action === "right") x += 1;
-      else if (action === "up") y -= 1;
-      else if (action === "down") y += 1;
+      if (action === "left") x = -1;
+      else if (action === "right") x = 1;
+      else if (action === "up") y = -1;
+      else if (action === "down") y = 1;
     }
     const len = Math.hypot(x, y);
     return len ? { x: x / len, y: y / len } : { x: 0, y: 0 };
@@ -287,6 +289,8 @@ export function openTown(options: TownOptions) {
       e.preventDefault();
       if (!e.repeat) jump();
     } else if (action) {
+      // A fresh press moves the key to the end: the latest press wins.
+      if (!e.repeat) held.delete(e.code);
       held.add(e.code);
       e.preventDefault();
     }

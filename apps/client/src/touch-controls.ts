@@ -264,10 +264,10 @@ export class TouchControls {
       event.clientY - this.geometry.y,
       this.geometry.radius,
     );
-    this.knob.style.transform = `translate(${this.dx * this.geometry.radius}px,${this.dy * this.geometry.radius}px)`;
+    this.knob.style.transform = `translate(${this.input.knobX}px,${this.input.knobY}px)`;
   }
   private paint() {
-    this.knob.style.transform = `translate(${this.dx * this.geometry.radius}px,${this.dy * this.geometry.radius}px)`;
+    this.knob.style.transform = `translate(${this.input.knobX}px,${this.input.knobY}px)`;
     for (const button of this.buttons) {
       const action = button.dataset.skill ?? button.dataset.action;
       button.classList.toggle(

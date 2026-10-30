@@ -442,6 +442,8 @@ document.addEventListener("keydown", (e) => {
   if (e.repeat) return;
   usingPad = false;
   // Held keys are tracked in every phase, so movement held through the countdown works at "Fight".
+  // A fresh press moves the key to the end: the latest press wins (heldAxis).
+  held.delete(e.code);
   held.add(e.code);
   if (live) pressAction(action);
   else if (
@@ -564,6 +566,19 @@ window.addEventListener("blur", () => {
 });
 const heldAction = (action: Action) =>
   controlPrefs().bindings[action].some((code) => !!code && held.has(code));
+/**
+ * One movement axis from the held keys. With both directions held, the one
+ * pressed last wins (held keeps press order): holding A and pressing D turns
+ * right at once, instead of the two cancelling and the fighter stopping.
+ */
+function heldAxis(negative: Action, positive: Action) {
+  const bindings = controlPrefs().bindings;
+  let value = 0;
+  for (const code of held)
+    if (bindings[negative].includes(code)) value = -1;
+    else if (bindings[positive].includes(code)) value = 1;
+  return value;
+}
 /** Poll the controller once per frame; returns its movement for this frame. */
 function pollPad() {
   const pad = firstPad();
@@ -3759,8 +3774,8 @@ class ArenaScene extends Phaser.Scene {
         exArmedUntil = 0;
       }
       if (exArmedUntil && performance.now() >= exArmedUntil) exArmedUntil = 0;
-      const keyX = Number(heldAction("right")) - Number(heldAction("left")),
-        keyY = Number(heldAction("down")) - Number(heldAction("up"));
+      const keyX = heldAxis("left", "right"),
+        keyY = heldAxis("up", "down");
       // Aim: touch and an idle right stick follow the nearest opponent;
       // the right stick aims by direction and tilt; otherwise the mouse.
       let aimAt = { x: aim.x, y: aim.y };

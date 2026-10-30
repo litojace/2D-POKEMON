@@ -22,17 +22,39 @@ export function controlPreferences(value: unknown): ControlPreferences {
     opacity: clamp(input.opacity, 0.4, 1, 0.85),
   };
 }
+/** Below this share of the ring's radius the stick is neutral (a resting thumb). */
+export const JOYSTICK_DEAD = 0.12;
+/** From this share of the radius the fighter runs at full speed. */
+export const JOYSTICK_FULL = 0.55;
+/** The speed at the first push past the dead zone, so it moves at once. */
+const JOYSTICK_START = 0.35;
+/**
+ * Movement from the thumb's offset. A thumb rarely pushes to the rim on a
+ * phone, and speed proportional to the push made half a push feel like half
+ * speed (laggy); full speed is reached at about half the radius instead.
+ */
 export function joystickVector(x: number, y: number, radius: number) {
   const length = Math.hypot(x, y);
-  if (radius <= 0 || !Number.isFinite(length) || length < radius * 0.12)
+  if (radius <= 0 || !Number.isFinite(length) || length < radius * JOYSTICK_DEAD)
     return { dx: 0, dy: 0 };
-  const scale = Math.max(radius, length);
-  return { dx: x / scale, dy: y / scale };
+  const t = Math.min(1, (length / radius - JOYSTICK_DEAD) / (JOYSTICK_FULL - JOYSTICK_DEAD));
+  const speed = JOYSTICK_START + (1 - JOYSTICK_START) * t;
+  return { dx: (x / length) * speed, dy: (y / length) * speed };
+}
+/** Where the knob sits: under the thumb, kept inside the ring. */
+export function joystickKnob(x: number, y: number, radius: number) {
+  const length = Math.hypot(x, y);
+  if (!Number.isFinite(length) || length === 0 || radius <= 0) return { x: 0, y: 0 };
+  const k = Math.min(1, radius / length);
+  return { x: x * k, y: y * k };
 }
 export type TouchAction = "attack" | "dash" | "jump" | "0" | "1" | "2" | "3";
 export class TouchInputState {
   dx = 0;
   dy = 0;
+  /** The knob's offset in pixels (follows the thumb; speed follows dx/dy). */
+  knobX = 0;
+  knobY = 0;
   joystickPointer: number | null = null;
   readonly pointers = new Map<number, TouchAction>();
   get basic() {
@@ -44,8 +66,12 @@ export class TouchInputState {
     return true;
   }
   move(id: number, x: number, y: number, radius: number) {
-    if (id === this.joystickPointer)
+    if (id === this.joystickPointer) {
       Object.assign(this, joystickVector(x, y, radius));
+      const knob = joystickKnob(x, y, radius);
+      this.knobX = knob.x;
+      this.knobY = knob.y;
+    }
   }
   press(id: number, action: TouchAction) {
     if (id === this.joystickPointer || this.pointers.has(id)) return false;
@@ -56,13 +82,13 @@ export class TouchInputState {
     this.pointers.delete(id);
     if (id === this.joystickPointer) {
       this.joystickPointer = null;
-      this.dx = this.dy = 0;
+      this.dx = this.dy = this.knobX = this.knobY = 0;
     }
   }
   reset() {
     this.joystickPointer = null;
     this.pointers.clear();
-    this.dx = this.dy = 0;
+    this.dx = this.dy = this.knobX = this.knobY = 0;
   }
 }
 export interface TouchTarget {
