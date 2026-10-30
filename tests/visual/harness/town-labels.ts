@@ -28,13 +28,24 @@ export async function auditBossPlinths() {
     }[] = [];
     const native = ctx.fillText.bind(ctx);
     ctx.fillText = (text, x, y, maxWidth) => {
-      const m = ctx.measureText(text);
+      // Text metrics are rounded to whole pixels of the font size; measure
+      // at 16x for the real ink bounds of these 5-7px labels.
+      const font = ctx.font;
+      ctx.font = font.replace(/([\d.]+)px/, (_, px) => `${Number(px) * 16}px`);
+      const big = ctx.measureText(text);
+      ctx.font = font;
+      const m = {
+        left: big.actualBoundingBoxLeft / 16,
+        right: big.actualBoundingBoxRight / 16,
+        ascent: big.actualBoundingBoxAscent / 16,
+        descent: big.actualBoundingBoxDescent / 16,
+      };
       glyphs.push({
         text,
-        x: x - m.actualBoundingBoxLeft,
-        y: y - m.actualBoundingBoxAscent,
-        right: x + m.actualBoundingBoxRight,
-        bottom: y + m.actualBoundingBoxDescent,
+        x: x - m.left,
+        y: y - m.ascent,
+        right: x + m.right,
+        bottom: y + m.descent,
       });
       if (maxWidth === undefined) native(text, x, y);
       else native(text, x, y, maxWidth);

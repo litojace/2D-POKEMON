@@ -24134,3 +24134,23 @@ body.town-active:has(dialog[open], .home-drawer:not([hidden])) #quest-tracker {
     padding: 5px 10px 6px;
   }
 }
+
+/* The selected fighter's aura in the roster: the animated fighter (a canvas)
+   lies over the artwork, so the aura's front half is drawn again above it,
+   and the artwork's own front half steps aside. Before the canvas is ready
+   the artwork shows its aura whole. */
+#menu .fighter-preview-slot .fighter-rig-stage > svg.ta-front-layer {
+  display: none;
+  pointer-events: none;
+}
+#menu .fighter-preview-slot .fighter-rig-stage.is-ready > canvas {
+  z-index: 1;
+}
+/* Placed by the same rules as the artwork (a grid cell or absolute). */
+#menu .fighter-preview-slot .fighter-rig-stage.is-ready > svg.ta-front-layer {
+  display: block;
+  z-index: 2;
+}
+.fighter-rig-stage.is-ready > svg:not(.ta-front-layer) .ta-front {
+  visibility: hidden;
+}

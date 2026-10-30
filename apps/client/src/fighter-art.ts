@@ -27,11 +27,11 @@ export function withSoftGround(svg: string, id: CharacterId) {
   return svg
     .replace(
       "</defs>",
-      '<radialGradient id="home-contact"><stop stop-color="#020612" stop-opacity=".65"/><stop offset=".45" stop-color="#020612" stop-opacity=".4"/><stop offset="1" stop-color="#020612" stop-opacity="0"/></radialGradient><radialGradient id="home-floor-light"><stop stop-color="var(--element)" stop-opacity=".2"/><stop offset="1" stop-color="var(--element)" stop-opacity="0"/></radialGradient></defs>',
+      '<radialGradient id="home-contact"><stop stop-color="#020612" stop-opacity=".65"/><stop offset=".45" stop-color="#020612" stop-opacity=".4"/><stop offset="1" stop-color="#020612" stop-opacity="0"/></radialGradient></defs>',
     )
     .replace(
       /<ellipse class="fighter-shadow"[^>]*\/>/,
-      `<g class="home-contact-shadow" stroke="none"><ellipse cx="100" cy="${ground + 1}" rx="62" ry="11" fill="url(#home-floor-light)"/><ellipse class="fighter-shadow" cx="100" cy="${ground}" rx="42" ry="${hovering ? 9 : 6}" fill="url(#home-contact)"/>${contact}</g>`,
+      `<g class="home-contact-shadow" stroke="none"><ellipse class="fighter-shadow" cx="100" cy="${ground}" rx="42" ry="${hovering ? 9 : 6}" fill="url(#home-contact)"/>${contact}</g>`,
     );
 }
 /**

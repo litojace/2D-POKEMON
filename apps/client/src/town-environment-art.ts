@@ -185,6 +185,24 @@ export function plinthLabelBounds(frame: Sprite) {
     height: (PLINTH_PLAQUE.height * 67) / 350,
   };
 }
+const plaqueFont = (size: number) =>
+  `700 ${size}px 'Barlow Condensed', 'Arial Narrow', sans-serif`;
+/**
+ * Ink bounds of a plaque line. Browsers round text metrics to whole pixels of
+ * the font size (6.2px caps measured 6px tall, really about 4.3), which put
+ * names off-centre and over the plaque's edge, so measure at 16x and scale.
+ */
+function plaqueInk(ctx: CanvasRenderingContext2D, line: string, size: number) {
+  ctx.font = plaqueFont(size * 16);
+  const m = ctx.measureText(line);
+  return {
+    width: m.width / 16,
+    left: m.actualBoundingBoxLeft / 16,
+    right: m.actualBoundingBoxRight / 16,
+    ascent: m.actualBoundingBoxAscent / 16,
+    descent: m.actualBoundingBoxDescent / 16,
+  };
+}
 export function paintedPlinth(
   source: CanvasImageSource,
   frame: Sprite,
@@ -221,31 +239,21 @@ export function paintedPlinth(
         ctx.textAlign = "center";
         ctx.textBaseline = "alphabetic";
         for (const [i, line] of lines.entries()) {
-          let size = lines.length > 1 ? 6.2 : 7;
-          do {
-            ctx.font = `700 ${size}px 'Barlow Condensed', 'Arial Narrow', sans-serif`;
-            const ink = ctx.measureText(line);
-            if (
-              Math.max(
-                ink.width,
-                ink.actualBoundingBoxLeft + ink.actualBoundingBoxRight,
-              ) <=
-              plaque.width - pad * 2
-            )
-              break;
-            size -= 0.25;
-          } while (size >= 4.5);
-          const metrics = ctx.measureText(line),
-            ascent = metrics.actualBoundingBoxAscent,
-            descent = metrics.actualBoundingBoxDescent;
+          // Largest size whose ink fits the plaque's width and its line.
+          let size = lines.length > 1 ? 6.2 : 7,
+            ink = plaqueInk(ctx, line, size);
+          while (
+            size > 4.5 &&
+            (Math.max(ink.width, ink.left + ink.right) > plaque.width - pad * 2 ||
+              ink.ascent + ink.descent > lineHeight - 0.2)
+          )
+            ink = plaqueInk(ctx, line, (size -= 0.25));
+          ctx.font = plaqueFont(size);
           const centre = plaque.y + pad + lineHeight * (i + 0.5);
           ctx.fillText(
             line,
-            plaque.x +
-              plaque.width / 2 -
-              (metrics.actualBoundingBoxRight - metrics.actualBoundingBoxLeft) /
-                2,
-            centre + (ascent - descent) / 2,
+            plaque.x + plaque.width / 2 - (ink.right - ink.left) / 2,
+            centre + (ink.ascent - ink.descent) / 2,
           );
         }
         ctx.restore();

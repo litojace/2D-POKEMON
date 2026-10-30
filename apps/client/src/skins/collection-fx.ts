@@ -13,11 +13,11 @@ type G = Phaser.GameObjects.Graphics;
 const TAU = Math.PI * 2;
 
 /**
- * How high above the ground the aura's items circle (aura units): about hip
- * height, so the near half crosses in front of the fighter's legs and body
- * and the far half goes round behind its back.
+ * How high above the ground the aura's items circle (aura units): just off
+ * the floor, around the shadow, so the near half passes in front of the feet
+ * and the far half behind them.
  */
-export const AURA_LIFT = 24;
+export const AURA_LIFT = 3;
 /**
  * Auras: a ring on the ground plus items circling the fighter. Pass `front`
  * (a layer drawn over the fighter) and the items come round in front of the

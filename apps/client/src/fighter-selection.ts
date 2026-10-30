@@ -36,10 +36,22 @@ function art(id: CharacterId, large = false, aura = false) {
     worn[id],
   );
   const framed = large ? withSoftGround(svg, id) : svg;
-  return scopeIds(
-    aura ? withAura(framed, id, still()) : framed,
-    large ? "detail" : "card",
+  const scope = large ? "detail" : "card";
+  const full = aura ? withAura(framed, id, still()) : framed;
+  return (
+    scopeIds(full, scope) +
+    // The animated fighter is a canvas laid over this artwork, which hid the
+    // aura's front half. The same front half again, drawn above the canvas.
+    (aura && large ? scopeIds(auraFrontLayer(full), "detail-front") : "")
   );
+}
+/** Only the front half of an aura SVG (same frame and defs), to lay on top. */
+function auraFrontLayer(svg: string) {
+  const open = svg.match(/^<svg[^>]*>/)?.[0],
+    defs = svg.match(/<defs>[\s\S]*?<\/defs>/)?.[0] ?? "",
+    front = svg.lastIndexOf('<g class="ta-front">');
+  if (!open || front < 0) return "";
+  return `${open.replace('class="trait-aura"', 'class="trait-aura ta-front-layer" aria-hidden="true"')}${defs}${svg.slice(front)}`;
 }
 /** Long range when the basic attack reaches across the arena, else close range. */
 export function attackRange(id: CharacterId): "long" | "close" {
