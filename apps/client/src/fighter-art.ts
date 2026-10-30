@@ -21,7 +21,7 @@ export function withSoftGround(svg: string, id: CharacterId) {
     : [left, 200 - left]
         .map(
           (x) =>
-            `<ellipse cx="${x}" cy="${feet}" rx="12" ry="3" fill="url(#home-contact)"/>`,
+            `<ellipse cx="${x}" cy="${feet}" rx="9" ry="2.4" fill="url(#home-contact)"/>`,
         )
         .join("");
   return svg
@@ -31,7 +31,7 @@ export function withSoftGround(svg: string, id: CharacterId) {
     )
     .replace(
       /<ellipse class="fighter-shadow"[^>]*\/>/,
-      `<g class="home-contact-shadow" stroke="none"><ellipse class="fighter-shadow" cx="100" cy="${ground}" rx="42" ry="${hovering ? 9 : 6}" fill="url(#home-contact)"/>${contact}</g>`,
+      `<g class="home-contact-shadow" stroke="none"><ellipse class="fighter-shadow" cx="100" cy="${ground}" rx="32" ry="${hovering ? 7 : 4.5}" fill="url(#home-contact)"/>${contact}</g>`,
     );
 }
 /**

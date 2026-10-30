@@ -274,7 +274,7 @@ export function mountShopPreview(
         }
         this.floor.clear();
         if (!selection) {
-          this.floor.fillStyle(0x040d20, 0.4).fillEllipse(framing.x, framing.y + WORLD_ART.fighterFeet * framing.scale, 160, 40);
+          this.floor.fillStyle(0x040d20, 0.4).fillEllipse(framing.x, framing.y + WORLD_ART.fighterFeet * framing.scale, 116, 28);
         }
         rig = new FighterRig(this, champion, layers);
         ready = true;
