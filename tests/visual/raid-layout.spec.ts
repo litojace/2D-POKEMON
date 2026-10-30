@@ -1,5 +1,6 @@
 import { raidAttacksOf, type RaidBossId } from "../../packages/shared/src/raid";
 import { expect, test, type Page } from "@playwright/test";
+
 import {
   box,
   inside,
@@ -8,6 +9,29 @@ import {
   pushUntilBattle,
   snap,
 } from "./helpers";
+
+/** Peril · NAME · Phase in one centred row, the bar below, the callout under it. */
+async function expectBossFrame(page: Page, boss: string) {
+  const peril = await box(page, ".raid-boss-peril"),
+    name = await box(page, ".raid-boss-heading > b"),
+    phase = await box(page, ".raid-boss-phase"),
+    health = await box(page, boss === "storm-twins" ? ".raid-twin-health" : ".raid-boss-health"),
+    cue = await box(page, ".raid-callout"),
+    hud = await box(page, "#raid-hud");
+  const mid = (b: { y: number; height: number }) => b.y + b.height / 2;
+  expect(peril.x + peril.width).toBeLessThanOrEqual(name.x);
+  expect(name.x + name.width).toBeLessThanOrEqual(phase.x);
+  expect(Math.abs(mid(peril) - mid(name))).toBeLessThanOrEqual(2);
+  expect(Math.abs(mid(phase) - mid(name))).toBeLessThanOrEqual(2);
+  expect(health.y).toBeGreaterThanOrEqual(Math.max(peril.y + peril.height, name.y + name.height));
+  expect(cue.y).toBeGreaterThanOrEqual(health.y + health.height);
+  // Centred on the bar, and the bar inside the HUD.
+  expect(Math.abs(name.x + name.width / 2 - (health.x + health.width / 2))).toBeLessThanOrEqual(2);
+  expect(Math.abs(cue.x + cue.width / 2 - (health.x + health.width / 2))).toBeLessThanOrEqual(2);
+  expect(health.x).toBeGreaterThanOrEqual(hud.x - 1);
+  expect(health.x + health.width).toBeLessThanOrEqual(hud.x + hud.width + 1);
+  await expect(page.locator(".raid-party-bars")).toHaveCount(0);
+}
 
 async function floorHudGap(page: Page) {
   const hud = await box(page, "#raid-hud"),
@@ -130,15 +154,10 @@ for (const size of [
           ).length;
         });
         expect(scenery).toBe(8);
-        if (!mobile) {
-          const name = await box(page, ".raid-boss-heading > b"),
-            cue = await box(page, ".raid-callout"),
-            meta = await box(page, ".raid-boss-heading > span");
-          expect(Math.abs(name.y - cue.y)).toBeLessThanOrEqual(1);
-          expect(Math.abs(meta.y - cue.y)).toBeLessThanOrEqual(1);
-          expect(name.x + name.width).toBeLessThanOrEqual(cue.x);
-          expect(cue.x + cue.width).toBeLessThanOrEqual(meta.x);
-        }
+        // The boss frame: Peril, name, Phase on one centred row; the bar
+        // below; the callout centred under it. No party bars (fighters'
+        // health is on their nameplates).
+        await expectBossFrame(page, boss);
         if (mobile) {
           const compactHud = await box(page, "#raid-hud");
           expect(compactHud.height).toBeLessThanOrEqual(
@@ -149,46 +168,12 @@ for (const size of [
               page.locator("#raid-hud > .raid-boss-health"),
             ).toBeHidden();
           await expect.poll(() => floorHudGap(page)).toBeGreaterThanOrEqual(5);
-          await expect
-            .poll(async () => {
-              const party = await box(page, ".raid-party-bars"),
-                hud = await box(page, "#raid-hud");
-              return party.y - (hud.y + hud.height);
-            })
-            .toBeGreaterThanOrEqual(6);
-          const party = await box(page, ".raid-party-bars");
-          expect(party.x).toBeLessThanOrEqual(10);
-          expect(party.width).toBeLessThanOrEqual(104);
-          const partyRows = await page
-            .locator(".raid-party-bars > span")
-            .evaluateAll((rows) =>
-              rows.map((row) => {
-                const r = row.getBoundingClientRect();
-                return { top: r.top, bottom: r.bottom };
-              }),
-            );
-          for (let i = 1; i < partyRows.length; i++)
-            expect(partyRows[i].top).toBeGreaterThanOrEqual(
-              partyRows[i - 1].bottom + 1,
-            );
           const clock = await box(page, ".raid-elapsed"),
             gear = await box(page, "#battle-menu");
           expect(clock.y).toBeGreaterThanOrEqual(gear.y + gear.height + 2);
           expect(
             Math.abs(clock.x + clock.width / 2 - gear.x - gear.width / 2),
           ).toBeLessThanOrEqual(2);
-          const health = await box(
-              page,
-              boss === "storm-twins" ? ".raid-twin-track" : ".raid-boss-health",
-            ),
-            name = await box(page, ".raid-boss-heading > b"),
-            cue = await box(page, ".raid-callout"),
-            meta = await box(page, ".raid-boss-heading > span");
-          expect(name.y).toBeGreaterThanOrEqual(health.y + health.height);
-          expect(Math.abs(name.y - cue.y)).toBeLessThanOrEqual(1);
-          expect(Math.abs(meta.y - cue.y)).toBeLessThanOrEqual(1);
-          expect(name.x + name.width).toBeLessThanOrEqual(cue.x);
-          expect(cue.x + cue.width).toBeLessThanOrEqual(meta.x);
           // All four arena corners remain visible, even for the three bosses
           // that previously used the tight fighter-follow camera.
           await expect
@@ -219,7 +204,7 @@ for (const size of [
               const hud = await box(page, "#raid-hud");
               const obstacles = await page
                 .locator(
-                  ".touch-buttons button, #battle-menu, .raid-elapsed, .raid-party-bars",
+                  ".touch-buttons button, #battle-menu, .raid-elapsed",
                 )
                 .evaluateAll((items) =>
                   items.map((item) => {
@@ -283,9 +268,8 @@ for (const size of [
             ];
             w.__push();
           });
-          await expect(
-            page.locator(".raid-party-bars .is-targeted"),
-          ).toHaveCount(1);
+          // The callout tells who is targeted (no party bars).
+          await expect(page.locator(".raid-callout")).not.toBeEmpty();
           const after = await box(page, "#game");
           expect(Math.abs(after.y - before.y)).toBeLessThanOrEqual(1);
           expect(Math.abs(after.height - before.height)).toBeLessThanOrEqual(1);
@@ -352,8 +336,7 @@ for (const size of [
           w.__snap.raid.partySize = 1;
           w.__push();
         });
-        await expect(page.locator(".raid-party-bars")).toBeVisible();
-        await expect(page.locator(".raid-party-bars > span")).toHaveCount(1);
+        await expect(page.locator(".raid-party-bars")).toHaveCount(0);
         await expect.poll(() => floorHudGap(page)).toBeGreaterThanOrEqual(5);
         // Resizing the canvas clears its drawing buffer. Capture after Phaser
         // has painted the new solo layout, rather than that transient clear.

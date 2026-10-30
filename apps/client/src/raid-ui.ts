@@ -1,3 +1,4 @@
+import { healthTrail } from "./raid-health-trail";
 import { drawBossBattleEffects } from "./boss-spell-art";
 import { resultXp } from "./adventure-ui";
 import {
@@ -220,15 +221,10 @@ export function renderRaidUI(
     hud.id = "raid-hud";
     document.getElementById("battle")!.prepend(hud);
   }
-  const charge = r.warnings.find(
-    (w) => w.kind === "charge" || w.kind === "dive",
-  );
-  const meteor = r.warnings.find((w) => w.kind === "share");
-  const erupting = r.warnings.find((w) => w.kind === "eruption");
-  const sealed = (id: string) => r.prisons?.some((q) => q.playerId === id);
+  // Each fighter's health is on its overhead nameplate, and who is targeted,
+  // sealed or down is told in the callout and on the court, so the HUD shows
+  // the boss only.
   raidControls(state, me, request);
-  const targetLocked =
-    charge?.lockAt !== undefined && state.time >= charge.lockAt;
   const healthPercent = Math.max(
     0,
     Math.min(
@@ -242,15 +238,7 @@ export function renderRaidUI(
         100,
     ),
   );
-  hud.innerHTML = `<div class="raid-boss-heading"><b>${r.gilded ? "✦ GILDED " : ""}${RAID_BOSSES[r.boss].name.toUpperCase()}${r.boss !== "storm-twins" && (r.exposedUntil > state.time || r.staggerUntil > state.time || r.permanentGround) ? " · EXPOSED" : ""}</b><span aria-label="Peril ${r.peril}, phase ${r.phase} of 3">Peril ${r.peril} · ${r.phase}/3</span></div>${r.boss === "storm-twins" ? stormTwinHealth(state) : ""}<div class="raid-boss-health" role="progressbar" aria-label="Boss health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(healthPercent)}" aria-valuetext="${Math.round(healthPercent)}% health. Rite choices open at 67% and 33% health."><i style="width:${healthPercent}%"></i>${[67, 33].map((mark, index) => `<span class="raid-health-mark${r.phase > index + 1 ? " is-passed" : ""}" style="left:${mark}%" aria-hidden="true"></span>`).join("")}</div><div class="raid-stagger" ${r.boss === "storm-twins" ? "hidden" : ""}><i style="width:${r.boss === "emberwing" ? (r.permanentGround || r.exposedUntil > state.time ? 100 : r.airborne ? ((r.braziers ?? []).filter((b) => b.litUntil > state.time).length / 3) * 100 : r.stagger) : r.boss === "prismatail" ? (r.exposedUntil > state.time ? 100 : Math.min(100, ((r.lightHold ?? 0) / (r.phase === 3 && r.partySize === 1 ? 2 : 0.65)) * 100)) : r.staggerUntil > state.time ? 100 : r.stagger}%"></i><span>${r.boss === "emberwing" ? (r.permanentGround ? "WINGS BROKEN · HEART OPEN" : r.airborne ? `AIRBORNE · ${(r.braziers ?? []).filter((b) => b.litUntil > state.time).length}/3 BRAZIERS` : r.exposedUntil > state.time ? "GROUNDED · HEART EXPOSED" : "STAGGER") : r.boss === "prismatail" ? (r.exposedUntil > state.time ? "HEART EXPOSED" : "LIGHT RELAY · SHIELDED") : r.staggerUntil > state.time ? "STAGGER · CORE EXPOSED" : "STAGGER"}</span></div><div class="raid-party-bars" data-party-size="${state.players.filter((p) => !p.raidBoss && !p.out).length}">${state.players
-    .filter((p) => !p.raidBoss)
-    .map(
-      (p) =>
-        `<span class="${p.hp <= 0 ? "downed" : sealed(p.id) || erupting?.targetId === p.id ? "has-alert" : charge?.targetId === p.id || meteor?.targetId === p.id ? "is-targeted" : ""}"><b>${escape(p.name)}${r.standIns?.includes(p.id) ? " · AI" : ""}</b><i role="progressbar" aria-label="${escape(p.name)} health" aria-valuemin="0" aria-valuemax="${CHARACTERS[p.character].health}" aria-valuenow="${Math.ceil(Math.max(0, p.hp))}" style="--hp:${Math.max(0, (p.hp / CHARACTERS[p.character].health) * 100)}%"></i><small>${p.out ? "LEFT" : p.hp <= 0 ? `DOWN · ${Math.round((r.downed[p.id]?.progress ?? 0) * 100)}%` : sealed(p.id) ? (r.partySize > 1 ? "TRAPPED · POP IT" : "TRAPPED · MASH") : charge?.targetId === p.id ? (charge.kind === "dive" ? (targetLocked ? "LOCKED · STEP OFF" : "RIPPLE · ISLAND") : targetLocked ? "LOCKED · DODGE" : "TARGET · BAIT") : meteor?.targetId === p.id ? (meteor.lockAt !== undefined ? "METEOR · DODGE" : "METEOR · STACK") : erupting?.targetId === p.id ? "ERUPTING · RUN" : ""}</small></span>`,
-    )
-    .join(
-      "",
-    )}</div><div class="raid-status-row"><p class="raid-callout" role="status" title="${escape(raidCue(state, me.id))}">${escape(raidCue(state, me.id))}</p><div class="raid-elapsed" role="timer" aria-label="Raid elapsed time"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><b>${time(r.elapsed)}</b></div></div>`;
+  hud.innerHTML = `<div class="raid-boss-heading"><span class="raid-boss-peril">Peril ${r.peril}</span><b>${r.gilded ? "✦ GILDED " : ""}${RAID_BOSSES[r.boss].name.toUpperCase()}${r.boss !== "storm-twins" && (r.exposedUntil > state.time || r.staggerUntil > state.time || r.permanentGround) ? " · EXPOSED" : ""}</b><span class="raid-boss-phase" aria-label="Phase ${r.phase} of 3">Phase ${r.phase}/3</span></div>${r.boss === "storm-twins" ? stormTwinHealth(state) : ""}<div class="raid-boss-health" role="progressbar" aria-label="Boss health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(healthPercent)}" aria-valuetext="${Math.round(healthPercent)}% health. Rite choices open at 67% and 33% health."><i class="raid-boss-trail" style="width:${healthTrail(`raid:${r.boss}`, healthPercent)}%"></i><i class="raid-boss-fill" style="width:${healthPercent}%"></i>${[67, 33].map((mark, index) => `<span class="raid-health-mark${r.phase > index + 1 ? " is-passed" : ""}" style="left:${mark}%" aria-hidden="true"></span>`).join("")}<span class="raid-boss-pct" aria-hidden="true">${Math.ceil(healthPercent)}%</span></div><div class="raid-stagger" ${r.boss === "storm-twins" ? "hidden" : ""}><i style="width:${r.boss === "emberwing" ? (r.permanentGround || r.exposedUntil > state.time ? 100 : r.airborne ? ((r.braziers ?? []).filter((b) => b.litUntil > state.time).length / 3) * 100 : r.stagger) : r.boss === "prismatail" ? (r.exposedUntil > state.time ? 100 : Math.min(100, ((r.lightHold ?? 0) / (r.phase === 3 && r.partySize === 1 ? 2 : 0.65)) * 100)) : r.staggerUntil > state.time ? 100 : r.stagger}%"></i><span>${r.boss === "emberwing" ? (r.permanentGround ? "WINGS BROKEN · HEART OPEN" : r.airborne ? `AIRBORNE · ${(r.braziers ?? []).filter((b) => b.litUntil > state.time).length}/3 BRAZIERS` : r.exposedUntil > state.time ? "GROUNDED · HEART EXPOSED" : "STAGGER") : r.boss === "prismatail" ? (r.exposedUntil > state.time ? "HEART EXPOSED" : "LIGHT RELAY · SHIELDED") : r.staggerUntil > state.time ? "STAGGER · CORE EXPOSED" : "STAGGER"}</span></div><div class="raid-status-row"><p class="raid-callout" role="status" title="${escape(raidCue(state, me.id))}">${escape(raidCue(state, me.id))}</p><div class="raid-elapsed" role="timer" aria-label="Raid elapsed time"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><b>${time(r.elapsed)}</b></div></div>`;
   const overlay = document.getElementById("arena-overlay")!;
   let progress = resultProgress.get(overlay);
   if (

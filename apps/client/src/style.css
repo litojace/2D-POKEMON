@@ -24154,3 +24154,288 @@ body.town-active:has(dialog[open], .home-drawer:not([hidden])) #quest-tracker {
 .fighter-rig-stage.is-ready > svg:not(.ta-front-layer) .ta-front {
   visibility: hidden;
 }
+
+/* ── Raid boss bar ──
+   A centred boss frame like action RPGs: the name between Peril and Phase
+   chips, one wide framed health bar with a damage trail, its percentage and
+   the rite marks, a slim stagger bar, and the callout below. Fighters' own
+   health is on their overhead nameplates, so no party bars here. The HUD box
+   keeps its size and place (the timer and gear hang off it); only its
+   content is centred. Three ids outrank the layered layouts above. */
+body.battle-raid #battle #raid-hud#raid-hud {
+  grid-template-areas: "head" "health" "stagger" "cue";
+  grid-template-columns: minmax(0, 760px);
+  justify-content: center;
+  align-content: start;
+  align-items: center;
+  row-gap: 6px;
+  padding: 4px 0 3px;
+  border: 0;
+  border-radius: 0;
+  background: radial-gradient(
+    60% 100% at 50% 0%,
+    rgba(4, 8, 18, 0.82),
+    rgba(4, 8, 18, 0.5) 60%,
+    rgba(4, 8, 18, 0) 100%
+  );
+  box-shadow: none;
+  backdrop-filter: none;
+}
+body.battle-raid #battle #raid-hud#raid-hud .raid-party-bars {
+  display: none;
+}
+body.battle-raid #battle #raid-hud#raid-hud .raid-boss-heading {
+  grid-area: head;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+body.battle-raid #battle #raid-hud#raid-hud .raid-boss-heading > b {
+  grid-area: auto;
+  grid-column: 2;
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: #fff3d6;
+  font: 700 17px/1.1 var(--display);
+  letter-spacing: 0.14em;
+  text-shadow: 0 2px 6px #000d, 0 0 14px #ffb45a33;
+}
+body.battle-raid #battle #raid-hud#raid-hud .raid-boss-heading > span {
+  grid-area: auto;
+  padding: 1px 8px;
+  border: 1px solid #d9b46a66;
+  border-radius: 999px;
+  background: #0a1222cc;
+  color: #e9cf95;
+  font: 700 10px/14px var(--body);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+body.battle-raid #battle #raid-hud#raid-hud .raid-boss-peril {
+  grid-column: 1;
+  justify-self: end;
+}
+body.battle-raid #battle #raid-hud#raid-hud .raid-boss-phase {
+  grid-column: 3;
+  justify-self: start;
+}
+/* The framed bar (and each Storm Twin's). */
+body.battle-raid #battle #raid-hud#raid-hud :is(.raid-boss-health, .raid-twin-track) {
+  position: relative;
+  height: 14px;
+  margin: 0;
+  overflow: visible;
+  border: 1px solid #e7c27a99;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #1b0b12, #2c1219);
+  box-shadow:
+    0 0 0 1px #000a,
+    inset 0 1px 3px #000c;
+}
+body.battle-raid #battle #raid-hud#raid-hud .raid-boss-health {
+  grid-area: health;
+}
+body.battle-raid #battle #raid-hud#raid-hud :is(.raid-boss-health, .raid-twin-track) > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  display: block;
+  height: auto;
+  max-width: 100%;
+  border-radius: 2px;
+}
+body.battle-raid #battle #raid-hud#raid-hud .raid-boss-trail {
+  background: linear-gradient(180deg, #fff6dc, #ffd9a0);
+  opacity: 0.85;
+}
+body.battle-raid #battle #raid-hud#raid-hud .raid-boss-health > .raid-boss-fill {
+  background: linear-gradient(180deg, #ff9a6a 0%, #e5483a 52%, #a3232c 100%);
+  box-shadow: inset 0 1px 0 #ffffff55;
+}
+body.battle-raid #battle #raid-hud#raid-hud .raid-twin-track > .raid-boss-fill {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--twin-color) 82%, #fff) 0%,
+    var(--twin-color) 50%,
+    color-mix(in srgb, var(--twin-color) 60%, #000) 100%
+  );
+  box-shadow: inset 0 1px 0 #ffffff55;
+}
+/* Text on a bar of any colour: a dark outline under the white. */
+body.battle-raid #battle #raid-hud#raid-hud :is(.raid-boss-pct, .raid-twin-bar > div:first-child b, .raid-twin-bar > div:first-child span) {
+  -webkit-text-stroke: 2.5px #0a0710;
+  paint-order: stroke fill;
+}
+body.battle-raid #battle #raid-hud#raid-hud .raid-boss-pct {
+  position: absolute;
+  z-index: 3;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  color: #fff;
+  font: 700 10px/1 var(--body);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 2px #000, 0 0 3px #000;
+}
+/* Rite marks at 67% and 33%: gold ticks with a small diamond. */
+body.battle-raid #battle #raid-hud#raid-hud .raid-health-mark {
+  position: absolute;
+  z-index: 2;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  transform: translateX(-50%);
+  border-radius: 1px;
+  background: #ffd98a;
+  box-shadow: 0 0 0 1px #000a;
+}
+body.battle-raid #battle #raid-hud#raid-hud .raid-health-mark::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  transform: translateX(-50%) rotate(45deg);
+  background: #ffd98a;
+  box-shadow: 0 0 0 1px #000a;
+}
+body.battle-raid #battle #raid-hud#raid-hud .raid-health-mark.is-passed,
+body.battle-raid #battle #raid-hud#raid-hud .raid-health-mark.is-passed::before {
+  background: #6c7489;
+}
+body.battle-raid #battle #raid-hud#raid-hud .raid-stagger {
+  grid-area: stagger;
+  align-self: start;
+  height: 3px;
+  margin: -3px 0 0;
+  border-radius: 2px;
+  background: #0b1a2ccc;
+  overflow: hidden;
+}
+body.battle-raid #battle #raid-hud#raid-hud .raid-stagger > i {
+  background: linear-gradient(90deg, #4fd6c2, #a8fff0);
+}
+/* Storm Twins: two framed bars side by side, name and status on the bar. */
+body.battle-raid #battle #raid-hud#raid-hud .raid-twin-health {
+  grid-area: health;
+  display: flex;
+  gap: 14px;
+  margin: 0;
+}
+body.battle-raid #battle #raid-hud#raid-hud .raid-twin-bar > div:first-child {
+  position: absolute;
+  z-index: 3;
+  inset: 0 34px 0 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  pointer-events: none;
+}
+body.battle-raid #battle #raid-hud#raid-hud .raid-twin-bar > div:first-child b {
+  color: #fff;
+  font: 700 10px/1 var(--body);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px #000, 0 0 3px #000;
+}
+body.battle-raid #battle #raid-hud#raid-hud .raid-twin-bar > div:first-child span {
+  color: #ffe9b0;
+  font: 700 9px/1 var(--body);
+  text-shadow: 0 1px 2px #000;
+}
+body.battle-raid #battle #raid-hud#raid-hud .raid-twin-stagger {
+  position: absolute;
+  inset: auto 0 -5px;
+  height: 2px;
+  margin: 0;
+  background: #0b1a2ccc;
+}
+body.battle-raid #battle #raid-hud#raid-hud .raid-status-row {
+  display: contents;
+}
+body.battle-raid #battle #raid-hud#raid-hud .raid-callout {
+  grid-area: cue;
+  grid-column: 1;
+  grid-row: auto;
+  justify-self: center;
+  width: auto;
+  max-width: 100%;
+  min-height: 0;
+  height: auto;
+  margin: 1px 0 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: center;
+  color: #ffdc72;
+  font: 600 12px/16px var(--body);
+  text-shadow: 0 1px 3px #000c;
+  -webkit-line-clamp: unset;
+  display: block;
+}
+/* Phones: the same frame, compact (the HUD stays within 48px so the court
+   keeps its height); the stagger bar lies along the health bar's lower edge. */
+body.battle-raid.touch-mode #battle #raid-hud#raid-hud {
+  grid-template-areas: "head" "health" "cue";
+  grid-template-columns: minmax(0, 560px);
+  row-gap: 3px;
+  padding: 2px 0;
+}
+body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-boss-heading > b {
+  font-size: 12px;
+  line-height: 12px;
+}
+body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-boss-heading > span {
+  padding: 0 6px;
+  font-size: 8px;
+  line-height: 10px;
+}
+body.battle-raid.touch-mode #battle #raid-hud#raid-hud :is(.raid-boss-health, .raid-twin-track) {
+  height: 10px;
+}
+body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-stagger {
+  grid-area: health;
+  align-self: end;
+  z-index: 2;
+  height: 2px;
+  margin: 0 1px 1px;
+}
+body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-twin-stagger {
+  inset: auto 1px 1px;
+  z-index: 2;
+}
+body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-boss-pct,
+body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-twin-bar > div:first-child b {
+  font-size: 8px;
+}
+body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-twin-bar > div:first-child span {
+  font-size: 7px;
+}
+body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-callout {
+  margin: 0;
+  font-size: 10px;
+  line-height: 12px;
+}
+@media (orientation: landscape) and (max-height: 350px) {
+  body.battle-raid.touch-mode #battle #raid-hud#raid-hud {
+    row-gap: 2px;
+  }
+  body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-boss-heading > b {
+    font-size: 11px;
+    line-height: 11px;
+  }
+  body.battle-raid.touch-mode #battle #raid-hud#raid-hud :is(.raid-boss-health, .raid-twin-track) {
+    height: 9px;
+  }
+  body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-callout {
+    font-size: 9px;
+    line-height: 11px;
+  }
+}
