@@ -229,6 +229,9 @@ let state: Snapshot | undefined,
 let raidPracticeReturn:
   | { boss: RaidBossId; tab: RaidHubTab; leaveRoom: boolean }
   | undefined;
+let raidRoomReturn:
+  | { code: string; boss: RaidBossId; tab: RaidHubTab }
+  | undefined;
 let accountShown = "";
 /** Last known "ultimate ready" state, for the ready sound. */
 let ultWasReady = false;
@@ -1448,6 +1451,11 @@ async function startRaid(
     raidPracticeReturn = undefined;
     return;
   }
+  raidRoomReturn = {
+    code: reply.code!,
+    boss,
+    tab: options.returnTab ?? "overview",
+  };
   await request("select", selected);
   if (options.drill) {
     const drill = await request("raid-drill", {kind: options.drill});
@@ -1763,12 +1771,19 @@ function renderMenu(revealSelection = false) {
       };
   }
 }
-async function leave() {
+async function leave(returnToHub = true) {
   if (watching && !myId) {
     await stopWatching();
     return;
   }
-  const returnToRaidHub = raidPracticeReturn;
+  const returnToRaidHub = returnToHub
+    ? raidPracticeReturn ??
+      (state?.raid
+        ? raidRoomReturn?.code === state.code
+          ? raidRoomReturn
+          : { boss: state.raid.boss, tab: "overview" as const }
+        : undefined)
+    : undefined;
   const reply = await request("leave", {
     token: sessionStorage.getItem("arena-token"),
   });
@@ -1777,6 +1792,7 @@ async function leave() {
     return;
   }
   raidPracticeReturn = undefined;
+  raidRoomReturn = undefined;
   sessionStorage.removeItem("arena-token");
   lobbySelection.reset();
   lockedRoomPick = savingRoomPick = "";
@@ -4606,7 +4622,7 @@ accountsUI = new AccountUI({
   notify: toast,
   beforeSignOut: async () => {
     roomInvites.clear();
-    if (myId) await leave();
+    if (myId) await leave(false);
   },
   onSession: (token, accountId) => {
     const attempt = ++authConnectionAttempt;

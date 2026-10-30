@@ -634,6 +634,7 @@ export class AccountUI {
           view.boss &&
           this.hooks.startRaid?.(view.boss, {
             solo: b.dataset.raidStart === "solo",
+            returnTab: view.tab,
           });
       for (const button of Array.from(root.querySelectorAll<HTMLButtonElement>("[data-hub-practice]")))
         button.onclick = () => view.boss && this.hooks.startRaid?.(view.boss, {drill: button.dataset.hubPractice, returnTab: view.tab});
