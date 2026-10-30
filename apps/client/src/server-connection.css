@@ -1,0 +1,383 @@
+/* Approved H / Starforged Sigil. Artwork never contains UI text. */
+.server-startup {
+  position: fixed;
+  inset: 0;
+  z-index: 2147482000;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  padding: max(20px, env(safe-area-inset-top))
+    max(24px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom))
+    max(24px, env(safe-area-inset-left));
+  overflow: auto;
+  background: #040d1e;
+  color: #f2f5ff;
+  text-align: center;
+}
+.server-startup::before,
+.server-startup::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.server-startup::before {
+  z-index: -2;
+  background: var(--startup-backdrop) center / cover no-repeat;
+}
+.server-startup::after {
+  z-index: -1;
+  background: linear-gradient(180deg, #02081544, #02081508 45%, #02081599);
+}
+.server-startup-card {
+  position: relative;
+  width: min(1080px, 100%);
+  height: 100%;
+  max-height: 900px;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  justify-items: center;
+  gap: clamp(8px, 2vh, 18px);
+}
+.server-startup-brand {
+  display: grid;
+  justify-items: center;
+  gap: clamp(7px, 1.2vh, 12px);
+}
+.server-startup-brand h1 {
+  margin: 0;
+  color: #f2f5ff;
+  font:
+    600 clamp(27px, 7.2vh, 60px) / 0.96 "Barlow Condensed",
+    Impact,
+    sans-serif;
+  text-transform: uppercase;
+  text-shadow:
+    0 2px 14px #020714,
+    0 0 25px #9dcfff22;
+}
+.server-startup-brand h1 > span {
+  display: block;
+  letter-spacing: 0.17em;
+  /* Balance the tracking after the final glyph for optical centering. */
+  padding-left: 0.17em;
+}
+.server-startup-divider {
+  position: relative;
+  display: block;
+  width: clamp(94px, 17vh, 150px);
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #dfbd6b 35%,
+    #dfbd6b 65%,
+    transparent
+  );
+}
+.server-startup-divider::after {
+  content: "";
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  top: -3px;
+  left: calc(50% - 3px);
+  transform: rotate(45deg);
+  background: #f3d58c;
+  box-shadow: 0 0 10px #e8bf6a88;
+}
+.server-startup-scene {
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  width: 100%;
+  min-height: 0;
+  height: 100%;
+}
+.server-startup-art {
+  position: relative;
+  height: 100%;
+  max-height: 480px;
+  max-width: min(64vw, 480px);
+  aspect-ratio: 1;
+}
+.server-startup-art > img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  animation: server-sigil-float 7s ease-in-out infinite;
+}
+.server-startup-aura {
+  position: absolute;
+  inset: 13%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    #7adfff24,
+    #348bcf14 42%,
+    transparent 72%
+  );
+  animation: server-sigil-glow 5s ease-in-out infinite;
+}
+.server-startup-ring {
+  position: absolute;
+  inset: 7%;
+  border: 1px solid #e6c47488;
+  border-radius: 50%;
+  transform: translateY(20%) rotate(-12deg) scaleX(1.4) scaleY(0.32);
+  box-shadow: 0 0 8px #efcc7420;
+  animation: server-sigil-glow 6s ease-in-out -2s infinite;
+}
+.server-startup-art > i {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  top: 16%;
+  left: 16%;
+  border-radius: 50%;
+  background: #ffe6a0;
+  box-shadow:
+    0 0 8px #f7d383,
+    0 0 18px #f7d38366;
+  animation: server-ember 5s ease-in-out infinite;
+}
+.server-startup-art > i:nth-of-type(2) {
+  top: 36%;
+  left: 92%;
+  animation-delay: -1.2s;
+}
+.server-startup-art > i:nth-of-type(3) {
+  top: 77%;
+  left: 14%;
+  animation-delay: -2.3s;
+}
+.server-startup-art > i:nth-of-type(4) {
+  top: 93%;
+  left: 71%;
+  animation-delay: -3.4s;
+}
+.server-startup-art > i:nth-of-type(5) {
+  top: 7%;
+  left: 79%;
+  animation-delay: -4.2s;
+  background: #b0eaff;
+}
+.server-startup-art > i:nth-of-type(6) {
+  top: 53%;
+  left: 4%;
+  animation-delay: -1.8s;
+  background: #b0eaff;
+}
+.server-startup-loading {
+  width: min(520px, 100%);
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+.server-startup-loading h2 {
+  margin: 0;
+  color: #f1f4fc;
+  font:
+    500 clamp(14px, 2.1vh, 18px) / 1.3 "DM Sans",
+    sans-serif;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 10px #020714;
+}
+.server-startup-loading p {
+  margin: 0;
+  min-height: 2.8em;
+  max-width: 500px;
+  color: #acbed6;
+  font:
+    400 clamp(11px, 1.6vh, 13px) / 1.4 "DM Sans",
+    sans-serif;
+  text-wrap: balance;
+  text-shadow: 0 1px 8px #020714;
+}
+.server-startup-progress {
+  position: relative;
+  width: 100%;
+  height: 12px;
+  padding: 2px;
+  border: 1px solid #d7b56ddd;
+  border-radius: 999px;
+  background: #050e20e6;
+  box-shadow:
+    0 0 0 2px #070e1a99,
+    inset 0 1px 4px #0008,
+    0 0 18px #edc97516;
+}
+.server-startup-progress::before,
+.server-startup-progress::after {
+  content: "";
+  position: absolute;
+  top: calc(50% - 3px);
+  width: 6px;
+  height: 6px;
+  transform: rotate(45deg);
+  background: #e9c87b;
+  box-shadow: 0 0 7px #edc97555;
+}
+.server-startup-progress::before {
+  left: -13px;
+}
+.server-startup-progress::after {
+  right: -13px;
+}
+.server-startup-progress > i {
+  position: relative;
+  display: block;
+  width: calc(var(--startup-progress, 0.08) * 100%);
+  height: 100%;
+  overflow: hidden;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #b98432, #edc76a 55%, #fff1b8);
+  box-shadow: 0 0 10px #f3cf8770;
+  transition: width 450ms linear;
+}
+.server-startup-progress > i::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    #fff9 50%,
+    transparent 80%
+  );
+  animation: server-loading-sheen 2.4s ease-in-out infinite;
+}
+.server-startup:is(
+    [data-status="offline"],
+    [data-status="failed"],
+    [data-status="ready"]
+  )
+  .server-startup-progress
+  > i::after {
+  animation: none;
+  opacity: 0;
+}
+.server-startup[data-status="failed"] .server-startup-progress {
+  border-color: #d99d77;
+}
+.server-startup button {
+  min-height: 44px;
+  min-width: 180px;
+  padding: 10px 24px;
+  border: 1px solid #ffe9aa;
+  border-radius: 12px;
+  background: linear-gradient(#ffe8a3, #efc654);
+  color: #302610;
+  font-weight: 700;
+}
+.server-startup [hidden] {
+  display: none;
+}
+@keyframes server-loading-sheen {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  35%,
+  65% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+@keyframes server-sigil-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+@keyframes server-sigil-glow {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+@keyframes server-ember {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-9px);
+  }
+}
+@media (max-height: 500px) {
+  .server-startup {
+    padding: max(14px, env(safe-area-inset-top))
+      max(28px, env(safe-area-inset-right))
+      max(14px, env(safe-area-inset-bottom))
+      max(28px, env(safe-area-inset-left));
+  }
+  .server-startup-card {
+    gap: 8px;
+  }
+  .server-startup-loading {
+    width: min(430px, 100%);
+    gap: 7px;
+  }
+}
+@media (max-height: 320px) {
+  .server-startup {
+    padding-top: max(10px, env(safe-area-inset-top));
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+  }
+  .server-startup-brand {
+    gap: 7px;
+  }
+  .server-startup-brand h1 {
+    font-size: 23px;
+  }
+  .server-startup-loading {
+    gap: 6px;
+  }
+  .server-startup-loading h2 {
+    font-size: 13px;
+  }
+  .server-startup-loading p {
+    font-size: 11px;
+  }
+  .server-startup[data-status="failed"] .server-startup-loading {
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 24px;
+  }
+  .server-startup[data-status="failed"] .server-startup-loading h2 {
+    grid-column: 1 / -1;
+  }
+  .server-startup[data-status="failed"] .server-startup-loading p {
+    grid-column: 1;
+    min-height: 0;
+  }
+  .server-startup[data-status="failed"] .server-startup-loading button {
+    grid-column: 2;
+    grid-row: 2 / 4;
+    min-width: 124px;
+    align-self: center;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .server-startup *,
+  .server-startup *::before,
+  .server-startup *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

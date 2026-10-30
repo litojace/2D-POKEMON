@@ -48,6 +48,25 @@ for (const size of [
       const panel = page.locator("#server-startup");
       await expect(panel).toBeVisible();
       await expect(panel).toContainText("Opening the arena");
+      await expect
+        .poll(() =>
+          page
+            .locator(".server-startup-art img")
+            .evaluate((el) => (el as HTMLImageElement).naturalWidth),
+        )
+        .toBeGreaterThan(0);
+      await page.evaluate(() => document.fonts.ready);
+      const logo = await box(page, ".server-startup-brand");
+      const art = await box(page, ".server-startup-art");
+      const loading = await box(page, ".server-startup-loading");
+      for (const rect of [logo, art, loading]) {
+        expect(inside(rect, { x: 0, y: 0, ...size })).toBe(true);
+        expect(Math.abs(rect.x + rect.width / 2 - size.width / 2)).toBeLessThan(
+          1,
+        );
+      }
+      expect(art.y).toBeGreaterThanOrEqual(logo.y + logo.height);
+      expect(art.y + art.height).toBeLessThanOrEqual(loading.y);
       const progress = panel.getByRole("progressbar");
       await expect(progress).toBeVisible();
       await expect(progress).not.toHaveAttribute("aria-valuenow");
@@ -244,6 +263,75 @@ test("a token refresh during cold start connects once with the fresh token", asy
   await expect
     .poll(() => page.evaluate(() => (window as any).__startupConnects))
     .toEqual(["fresh-token"]);
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__startupProfileRequests))
+    .toBe(1);
+});
+
+test("the short phone retry layout fits without covering the logo or progress", async ({
+  browser,
+}, info) => {
+  const size = { width: 844, height: 280 };
+  const context = await browser.newContext({
+    viewport: size,
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    await page.addInitScript(() =>
+      Object.defineProperty(navigator, "onLine", { get: () => false }),
+    );
+    await page.route(/\/server-startup\.ts(?:\?|$)/, async (route) => {
+      const response = await route.fetch();
+      await route.fulfill({
+        response,
+        body: (await response.text()).replace(
+          /deadlineMs:\s*[\d_e]+/,
+          "deadlineMs: 1500",
+        ),
+      });
+    });
+    await page.goto("/");
+    const retry = page.locator("#server-startup button");
+    await expect(retry).toBeVisible();
+    const logo = await box(page, ".server-startup-brand");
+    const footer = await box(page, ".server-startup-loading");
+    for (const rect of [
+      logo,
+      footer,
+      await box(page, "#server-startup button"),
+    ])
+      expect(inside(rect, { x: 0, y: 0, ...size })).toBe(true);
+    expect(logo.y + logo.height).toBeLessThan(footer.y);
+    await snap(page, info, "server-starforged-retry-844x280");
+  } finally {
+    await context.close();
+  }
+});
+
+test("unavailable artwork still allows connection and entry", async ({
+  page,
+}) => {
+  await page.route(/startup-(sigil|starfield)\.webp(?:\?|$)/, (route) =>
+    route.request().resourceType() === "image"
+      ? route.abort()
+      : route.continue(),
+  );
+  await coldServer(page);
+  await page.goto("/");
+  await expect(page.locator("#server-startup")).toBeVisible();
+  await expect(
+    page
+      .locator("#server-startup")
+      .getByRole("heading", { name: "Element Arena", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("progressbar", { name: "Game server connection" }),
+  ).toBeVisible();
+  await expect(page.locator(".server-startup-art img")).toBeHidden();
+  await page.evaluate(() => (window as any).__releaseStartup());
+  await expect(page.locator("#server-startup")).toHaveCount(0);
   await expect
     .poll(() => page.evaluate(() => (window as any).__startupProfileRequests))
     .toBe(1);

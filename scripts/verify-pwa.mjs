@@ -30,6 +30,8 @@ assert(
 );
 assert(urls.includes("offline.html"));
 for (const art of [
+  "startup-starfield",
+  "startup-sigil",
   "raid-spell-flipbook",
   "town-fountain",
   "town-ground",

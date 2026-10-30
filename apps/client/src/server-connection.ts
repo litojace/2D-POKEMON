@@ -1,4 +1,7 @@
 import { ServerStartup, type StartupStatus } from "./server-startup";
+import starfield from "./art/startup-starfield.webp";
+import sigil from "./art/startup-sigil.webp";
+import "./server-connection.css";
 
 let retry: (() => void) | undefined;
 let panel: HTMLElement | undefined;
@@ -87,7 +90,16 @@ function renderStatus() {
     panel.id = "server-startup";
     panel.className = "server-startup";
     panel.setAttribute("aria-label", "Connecting to Element Arena");
-    panel.innerHTML = `<div class="server-startup-card"><div class="server-startup-art" aria-hidden="true"><span class="server-startup-ring"></span><span class="server-startup-crystal"></span><i></i><i></i><i></i></div><span class="server-startup-brand">ELEMENT ARENA</span><h1>Opening the arena</h1><p role="status" aria-live="polite"></p><div class="server-startup-progress" role="progressbar" aria-label="Game server connection" aria-valuemin="0" aria-valuemax="100"><i></i></div><button type="button" hidden>Try again</button></div>`;
+    panel.style.setProperty("--startup-backdrop", `url("${starfield}")`);
+    panel.innerHTML = `<div class="server-startup-card"><header class="server-startup-brand"><h1 aria-label="Element Arena"><span aria-hidden="true">ELEMENT</span><span aria-hidden="true">ARENA</span></h1><span class="server-startup-divider" aria-hidden="true"></span></header><div class="server-startup-scene" aria-hidden="true"><div class="server-startup-art"><span class="server-startup-aura"></span><span class="server-startup-ring"></span><img src="${sigil}" width="1254" height="1254" alt="" decoding="async" draggable="false"><i></i><i></i><i></i><i></i><i></i><i></i></div></div><div class="server-startup-loading"><h2>Opening the arena…</h2><div class="server-startup-progress" role="progressbar" aria-label="Game server connection" aria-valuemin="0" aria-valuemax="100"><i></i></div><p role="status" aria-live="polite"></p><button type="button" hidden>Try again</button></div></div>`;
+    const emblem = panel.querySelector("img")!;
+    emblem.addEventListener(
+      "error",
+      () => {
+        emblem.hidden = true;
+      },
+      { once: true },
+    );
     panel.querySelector("button")!.onclick = () => retry?.();
     document.body.append(panel);
   }

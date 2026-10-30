@@ -58,10 +58,18 @@ page, gateway failures and network errors are retried. Each request has an
 8-second timeout, retries are 2 seconds apart, and the whole wait is bounded at
 2 minutes. The retry button starts a fresh wait and reloads the profile.
 
-The crystal animation appears only after 250 ms, avoiding flashes on warm
+The startup scene appears only after 250 ms, avoiding flashes on warm
 servers. Offline status recovers automatically during the wait. The motion is
 disabled under `prefers-reduced-motion`. Profiles and socket connections wait for
 readiness; authenticated mutations are never automatically replayed.
+
+The loading screen uses approved concept H, **Starforged Sigil**: a still navy
+starfield, a transparent gold-and-cyan compass crest, a gently floating emblem,
+soft aura/orbit light and six drifting sparks. The stacked ELEMENT / ARENA logo
+is real centered text with balanced tracking. The crest fits between the logo
+and footer at each viewport height; short phones also have a compact retry row.
+Both WebP plates use content-hashed Vite URLs and are included in PWA precaching.
+Unavailable artwork does not block the connection or hide the retry controls.
 
 The gold connection bar is an estimate, since Render does not expose boot
 percentages. It advances steadily from 8% to 92% over one minute of active waiting,
