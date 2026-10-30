@@ -49,7 +49,13 @@ window.fetch = async (input, init) => {
   const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, location.href);
   if (url.pathname.startsWith("/api/")) {
     if (url.pathname === "/api/health") return Response.json({ ok: true });
-    const body = API[url.pathname];
+    // Tests can set window.__missions (before load, or then refresh the
+    // economy) to give the player today's missions.
+    const missions = (window as unknown as { __missions?: unknown[] }).__missions;
+    const body =
+      url.pathname === "/api/economy" && missions
+        ? { ...(API[url.pathname] as object), missions }
+        : API[url.pathname];
     return new Response(JSON.stringify(body ?? { error: "Not in the offline harness." }), {
       status: body === undefined ? 404 : 200,
       headers: { "Content-Type": "application/json" },

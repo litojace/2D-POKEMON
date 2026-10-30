@@ -29,6 +29,7 @@ import {
   type ShopView,
 } from "./shop-ui";
 import { missionsMarkup } from "./missions-ui";
+import { syncQuestTracker } from "./quest-tracker";
 import {
   CHAMPION_SKIN_BY_ID,
   LOOK_ITEM_BY_ID,
@@ -308,6 +309,10 @@ export class AccountUI {
     return true;
   }
   renderNav() {
+    // Today's missions under the player card in town (see quest-tracker.ts).
+    syncQuestTracker(this.account ? this.economy : undefined, () =>
+      void this.showMissions(),
+    );
     const root = element("account-nav");
     if (!root) return;
     root.innerHTML = this.account
