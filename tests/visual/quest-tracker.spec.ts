@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { box, openTown, snap } from "./helpers";
 
-// The quest tracker under the player card in town: today's missions at a
-// glance, closest to done first, and a tap opens the Missions screen.
+// The missions button under the player card in town: a gold "!" while some
+// are left, a tap expands the whole list, its title opens the Missions screen.
 const day = new Date().toISOString().slice(0, 10);
 const m = (slot: number, id: string, tier: string, text: string, progress: number, target: number, coins: number) => ({
   day, slot, id, text, tier, progress, target, coins, done: progress >= target,
@@ -15,50 +15,64 @@ const MISSIONS = [
   m(4, "raids-2", "medium", "Clear 2 raids", 1, 2, 45),
   m(5, "raid-p3", "hard", "Clear any raid on Peril 3", 0, 1, 80),
 ];
+/** Every corner of the element is on top (nothing else covers it). */
+const onTop = (page: import("@playwright/test").Page, selector: string) =>
+  page.evaluate((selector) => {
+    const el = document.querySelector(selector)!;
+    const r = el.getBoundingClientRect();
+    const points = [[r.left + 6, r.top + 6], [r.right - 6, r.top + 6], [r.left + 6, r.bottom - 6], [r.right - 6, r.bottom - 6]];
+    return points.every(([x, y]) => el.contains(document.elementFromPoint(x, y)));
+  }, selector);
 
-for (const [name, size, rows] of [
-  ["desktop", { width: 1440, height: 900 }, 3],
-  ["phone", { width: 844, height: 390 }, 2],
+for (const [name, size] of [
+  ["desktop", { width: 1440, height: 900 }],
+  ["phone", { width: 844, height: 390 }],
 ] as const) {
-  test(`town shows today's missions under the player card (${name})`, async ({ page }, info) => {
+  test(`town has a missions button that expands today's list (${name})`, async ({ page }, info) => {
     await page.setViewportSize(size);
     await page.addInitScript((missions) => ((window as any).__missions = missions), MISSIONS);
     await openTown(page);
     const tracker = page.locator("#quest-tracker");
-    await expect(tracker).toBeVisible();
-    await expect(tracker.locator(".quest-count")).toHaveText("1/6");
+    const toggle = tracker.locator(".quest-toggle");
+    await expect(toggle).toBeVisible();
     await expect(tracker.locator(".quest-alert")).toBeVisible();
-    await expect(tracker.locator(".quest:not(.is-complete)")).toHaveCount(rows);
-    // Closest to done first: 2/3 bots, then 1/2 raids.
-    await expect(tracker.locator(".quest-text").first()).toHaveText("Win 3 matches against bots");
-
+    await expect(tracker.locator(".quest-panel")).toHaveCount(0);
     const card = await box(page, "#account-profile");
-    const panel = await box(page, "#quest-tracker");
-    expect(panel.y).toBeGreaterThanOrEqual(card.y + card.height);
-    expect(panel.x).toBeLessThan(card.x + 24);
-    expect(panel.y + panel.height).toBeLessThan(size.height);
-    // Nothing else in the town's corner sits over it.
-    const clear = await page.evaluate(() => {
-      const r = document.getElementById("quest-tracker")!.getBoundingClientRect();
-      const points = [[r.left + 10, r.top + 10], [r.right - 10, r.top + 10], [r.left + 10, r.bottom - 10], [r.right - 10, r.bottom - 10]];
-      return points.every(([x, y]) => document.getElementById("quest-tracker")!.contains(document.elementFromPoint(x, y)));
-    });
-    expect(clear).toBe(true);
-    await snap(page, info, `quest-tracker-${name}`);
+    const button = await box(page, "#quest-tracker .quest-toggle");
+    expect(button.y).toBeGreaterThanOrEqual(card.y + card.height);
+    expect(button.x).toBeLessThan(card.x + 24);
+    expect(await onTop(page, "#quest-tracker .quest-toggle")).toBe(true);
+    await snap(page, info, `quest-button-${name}`);
 
-    await tracker.locator(".quest-open").click();
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(tracker.locator(".quest")).toHaveCount(6);
+    await expect(tracker.locator(".quest-count")).toHaveText("1/6");
+    // What's left first (closest to done), the finished one last.
+    await expect(tracker.locator(".quest-text").first()).toHaveText("Win 3 matches against bots");
+    await expect(tracker.locator(".quest").last()).toHaveClass(/is-done/);
+    const panel = await box(page, "#quest-tracker .quest-panel");
+    expect(panel.y + panel.height).toBeLessThanOrEqual(size.height);
+    expect(await onTop(page, "#quest-tracker .quest-panel")).toBe(true);
+    // The opening animation finishes first (slow here: the town renders on the CPU).
+    await page.evaluate(() =>
+      Promise.all(
+        document
+          .getAnimations()
+          .filter((a) => (a as CSSAnimation).animationName === "quest-pop")
+          .map((a) => a.finished),
+      ),
+    );
+    await snap(page, info, `quest-list-${name}`);
+
+    // A tap elsewhere folds it back.
+    await page.mouse.click(size.width / 2, size.height / 2);
+    await expect(tracker.locator(".quest-panel")).toHaveCount(0);
+
+    // The title opens the full Missions screen.
+    await toggle.click();
+    await tracker.locator(".quest-title").click();
     await expect(page.locator("dialog[open]")).toBeVisible();
     await expect(tracker).toBeHidden();
   });
 }
-
-test("the quest tracker folds to its header and remembers it", async ({ page }) => {
-  await page.addInitScript((missions) => ((window as any).__missions = missions), MISSIONS);
-  await openTown(page);
-  await page.click("#quest-tracker .quest-fold");
-  await expect(page.locator("#quest-tracker .quest-list")).toHaveCount(0);
-  await expect(page.locator("#quest-tracker .quest-title")).toBeVisible();
-  await page.reload();
-  await openTown(page);
-  await expect(page.locator("#quest-tracker")).toHaveClass(/is-folded/);
-});

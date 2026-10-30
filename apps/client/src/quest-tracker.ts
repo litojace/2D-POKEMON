@@ -2,11 +2,11 @@ import type { Economy } from "../../../packages/shared/src/shop";
 import { buttonIcon } from "./menu-icons";
 
 /**
- * The quest tracker under the player card in town, as in most adventure
- * games: today's missions at a glance (the closest to done first), a "!"
- * while some are left, a short "Mission complete" flash when one finishes,
- * and a tap to open the full Missions screen. It shows only in town (CSS)
- * and folds to its header; the choice is kept on this device.
+ * The missions button under the player card in town. Small like the town's
+ * MENU button, with a gold "!" while some of today's missions are left. A
+ * tap expands today's whole list beside it; the "Daily missions" title in
+ * that list opens the full Missions screen. A mission that just finished
+ * flashes a short "Mission complete" note. Shown only in town (CSS).
  */
 const escape = (s: string) =>
   s.replace(
@@ -16,23 +16,18 @@ const escape = (s: string) =>
         c
       ]!,
   );
-const FOLD_KEY = "arena-quest-tracker-folded";
-const folded = () => {
-  try {
-    return localStorage.getItem(FOLD_KEY) === "1";
-  } catch {
-    return false;
-  }
-};
 /** Missions already seen as done, to flash the ones that just finished. */
 let seenDone: Set<string> | undefined;
 let seenDay = "";
 let flashUntil = 0;
 let flashIds = new Set<string>();
+let flashTimer: ReturnType<typeof setTimeout> | undefined;
+let expanded = false;
+let last: { economy: Economy | undefined; open: () => void } | undefined;
 
 type Mission = Economy["missions"][number];
-/** The missions to list: unfinished ones, closest to done first. */
-export function trackedMissions(missions: Mission[], limit: number) {
+/** Unfinished missions, closest to done first (then in their usual order). */
+export function trackedMissions(missions: Mission[], limit = Infinity) {
   return missions
     .filter((m) => !m.done)
     .sort(
@@ -41,15 +36,58 @@ export function trackedMissions(missions: Mission[], limit: number) {
     )
     .slice(0, limit);
 }
+/** The expanded list: what's left (closest to done first), then what's done. */
+export function listedMissions(missions: Mission[]) {
+  return [
+    ...trackedMissions(missions),
+    ...missions.filter((m) => m.done).sort((a, b) => a.slot - b.slot),
+  ];
+}
+
+function setExpanded(next: boolean) {
+  if (expanded === next) return;
+  expanded = next;
+  if (last) syncQuestTracker(last.economy, last.open);
+}
+// A tap anywhere else, or Escape, folds the list back into the button.
+let listening = false;
+function listen() {
+  if (listening) return;
+  listening = true;
+  document.addEventListener(
+    "pointerdown",
+    (e) => {
+      if (!expanded) return;
+      const root = document.getElementById("quest-tracker");
+      if (root && !root.contains(e.target as Node)) setExpanded(false);
+    },
+    true,
+  );
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && expanded) setExpanded(false);
+  });
+}
+
+const row = (m: Mission, fresh: boolean) => {
+  const value = Math.min(m.progress, m.target);
+  const cls = m.done ? (fresh ? "quest is-done is-complete" : "quest is-done") : "quest";
+  const state = m.done
+    ? `<span class="quest-check" aria-label="Done">${buttonIcon("check")}</span>`
+    : `<span>${value}/${m.target}</span>`;
+  return `<li class="${cls}"><span class="quest-text">${escape(m.text)}</span>${m.done ? "" : `<span class="quest-bar" aria-hidden="true"><i style="width:${Math.round((value / m.target) * 100)}%"></i></span>`}<span class="quest-meta">${state}<span class="quest-coins">${buttonIcon("coin")}${m.coins}</span></span></li>`;
+};
 
 export function syncQuestTracker(
   economy: Economy | undefined,
   open: () => void,
 ) {
+  last = { economy, open };
+  listen();
   let root = document.getElementById("quest-tracker");
   const missions = economy?.missions ?? [];
   if (!missions.length) {
     root?.remove();
+    expanded = false;
     return;
   }
   if (!root) {
@@ -66,7 +104,10 @@ export function syncQuestTracker(
     if (fresh.length) {
       flashIds = new Set(fresh);
       flashUntil = performance.now() + 4500;
-      setTimeout(() => syncQuestTracker(economy, open), 4600);
+      clearTimeout(flashTimer);
+      flashTimer = setTimeout(() => {
+        if (last) syncQuestTracker(last.economy, last.open);
+      }, 4600);
     }
   }
   seenDone = done;
@@ -75,44 +116,31 @@ export function syncQuestTracker(
 
   const finished = done.size,
     total = missions.length,
-    left = total - finished;
-  const isFolded = folded();
-  const limit = matchMedia("(max-height: 500px)").matches ? 2 : 3;
-  const rows = trackedMissions(missions, limit)
-    .map((m) => {
-      const value = Math.min(m.progress, m.target);
-      return `<li class="quest"><span class="quest-text">${escape(m.text)}</span><span class="quest-bar" aria-hidden="true"><i style="width:${Math.round((value / m.target) * 100)}%"></i></span><span class="quest-meta"><span>${value}/${m.target}</span><span class="quest-coins">${buttonIcon("coin")}${m.coins}</span></span></li>`;
-    })
-    .join("");
-  const flash = flashing
-    ? missions
-        .filter((m) => flashIds.has(m.id))
-        .map(
-          (m) =>
-            `<li class="quest is-complete" role="status"><span class="quest-done-label">${buttonIcon("check")}Mission complete</span><span class="quest-text">${escape(m.text)}</span><span class="quest-coins">+${m.coins}</span></li>`,
-        )
-        .join("")
+    allDone = finished === total;
+  const toast =
+    flashing && !expanded
+      ? missions
+          .filter((m) => flashIds.has(m.id))
+          .map(
+            (m) =>
+              `<div class="quest-toast" role="status"><span class="quest-done-label">${buttonIcon("check")}Mission complete</span><span class="quest-text">${escape(m.text)}</span><span class="quest-coins">+${m.coins}</span></div>`,
+          )
+          .join("")
+      : "";
+  const panel = expanded
+    ? `<div class="quest-panel" id="quest-panel"><button type="button" class="quest-title" title="Open daily missions"><span>Daily missions</span><span class="quest-count">${finished}/${total}</span><svg class="quest-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button><ul class="quest-list">${listedMissions(missions)
+        .map((m) => row(m, flashing && flashIds.has(m.id)))
+        .join("")}</ul>${allDone ? `<p class="quest-all-done">${buttonIcon("check")}All done for today · new missions tomorrow</p>` : ""}</div>`
     : "";
-  const allDone = left === 0;
-  const summary = allDone
-    ? `<li class="quest is-all-done"><span class="quest-done-label">${buttonIcon("check")}All done for today</span><span class="quest-text">New missions tomorrow · +50 for finishing them all</span></li>`
-    : "";
-  root.classList.toggle("is-folded", isFolded);
+  root.classList.toggle("is-expanded", expanded);
   root.classList.toggle("has-open", !allDone);
-  root.innerHTML = `<div class="quest-head"><button type="button" class="quest-open" aria-label="Open daily missions: ${finished} of ${total} done">${allDone ? "" : '<span class="quest-alert" aria-hidden="true">!</span>'}<span class="quest-icon" aria-hidden="true">${buttonIcon("missions")}</span><span class="quest-title">Daily missions</span><span class="quest-count">${finished}/${total}</span></button><button type="button" class="quest-fold" aria-expanded="${!isFolded}" aria-label="${isFolded ? "Show" : "Hide"} missions">${buttonIcon(isFolded ? "more" : "cancel")}</button></div>${isFolded ? "" : `<ul class="quest-list">${flash}${rows}${summary}</ul>`}`;
-  root.querySelector<HTMLButtonElement>(".quest-open")!.onclick = open;
-  const list = root.querySelector<HTMLElement>(".quest-list");
-  if (list) {
-    list.onclick = open;
-    list.setAttribute("role", "list");
-  }
-  root.querySelector<HTMLButtonElement>(".quest-fold")!.onclick = () => {
-    try {
-      localStorage.setItem(FOLD_KEY, isFolded ? "0" : "1");
-    } catch {
-      /* Folding still works for this visit. */
-    }
-    root!.classList.toggle("is-folded", !isFolded);
-    syncQuestTracker(economy, open);
-  };
+  root.innerHTML = `<button type="button" class="quest-toggle" aria-expanded="${expanded}" aria-controls="quest-panel" aria-label="Daily missions: ${finished} of ${total} done">${buttonIcon("missions")}<span>Missions</span>${allDone ? "" : '<span class="quest-alert" aria-hidden="true">!</span>'}</button>${panel}${toast}`;
+  root.querySelector<HTMLButtonElement>(".quest-toggle")!.onclick = () =>
+    setExpanded(!expanded);
+  const title = root.querySelector<HTMLButtonElement>(".quest-title");
+  if (title)
+    title.onclick = () => {
+      expanded = false;
+      open();
+    };
 }
