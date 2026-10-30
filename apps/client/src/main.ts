@@ -140,7 +140,7 @@ import "./friends.css";
 import "./wardrobe.css";
 import "./battle-dock.css";
 import { FollowCamera, screenToWorld, outsideView } from "./follow-camera";
-import { updateNameplate } from "./player-nameplate";
+import { updateNameplate, updateNameplateHealth } from "./player-nameplate";
 import { fighterPack } from "./animation/pack-config";
 import { fullscreenLandscape } from "./orientation";
 import { wireRotateGate } from "./rotate-gate";
@@ -4350,6 +4350,16 @@ class ArenaScene extends Phaser.Scene {
         p.id === myId,
         reducedMotion,
       );
+      updateNameplateHealth(
+        label,
+        serverPlayer.hp,
+        c.health,
+        p.id === myId
+          ? "self"
+          : state.raid || (isTeams() && teamOf(p) === myTeam)
+            ? "ally"
+            : "enemy",
+      );
       // Canvas pixels → CSS pixels for the HTML nameplates.
       const css = this.scale.zoom;
       const labelX = ((x - view.x) * view.zoomX + this.scale.width / 2) * css;
@@ -4357,11 +4367,12 @@ class ArenaScene extends Phaser.Scene {
         ((y -
           jump -
           view.y -
-          (fighterPack(p.character)?.kind === "layered" ? 56 : 78)) *
+          // Leave room below the health row for the status markers.
+          (fighterPack(p.character)?.kind === "layered" ? 68 : 90) * giant) *
           view.zoomY +
           this.scale.height / 2) *
         css;
-      label.style.transform = `translate3d(${labelX}px, ${Math.max(36, labelY)}px, 0) translate(-50%, -100%)`;
+      label.style.transform = `translate3d(${labelX}px, ${Math.max(54, labelY)}px, 0) translate(-50%, -100%)`;
       setHudStyle(label, "opacity", p.hp > 0 ? "1" : "0.4");
       label.classList.toggle(
         "team-ally",
@@ -4375,14 +4386,6 @@ class ArenaScene extends Phaser.Scene {
         serverPlayer.statuses.some(
           (s) => s.kind === "stealth" && p.id !== myId,
         );
-      g.fillStyle(0x0b1a32).fillRoundedRect(x - 30, y + 29, 60, 6, 3);
-      g.fillStyle(c.color).fillRoundedRect(
-        x - 30,
-        y + 29,
-        Math.max(0, (60 * serverPlayer.hp) / c.health),
-        6,
-        3,
-      );
     }
     if (touch.enabled) return;
     g.lineStyle(1, 0xffffff, 0.6).strokeCircle(aim.x, aim.y, 10);

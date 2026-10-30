@@ -66,7 +66,42 @@ export function updateNameplate(
   if (el.style.getPropertyValue("--title-color") !== titleColor)
     el.style.setProperty("--title-color", titleColor);
   const nameText = name + (own ? " · YOU" : "");
-  if (el.children[1].textContent !== nameText) el.children[1].textContent = nameText;
+  if (el.children[1].textContent !== nameText)
+    el.children[1].textContent = nameText;
+}
+/** A battle-only health row follows the name without rebuilding the label. */
+export function updateNameplateHealth(
+  el: HTMLElement,
+  hp: number,
+  maxHp: number,
+  relation: "self" | "ally" | "enemy",
+) {
+  let track = el.children[2] as HTMLElement | undefined;
+  if (!track) {
+    track = document.createElement("span");
+    track.className = "fighter-health";
+    track.setAttribute("role", "meter");
+    track.setAttribute("aria-label", "Health");
+    track.setAttribute("aria-valuemin", "0");
+    track.append(document.createElement("i"));
+    el.append(track);
+  }
+  const maximum = Math.max(1, maxHp);
+  const current = Math.max(0, Math.min(hp, maximum));
+  const maximumText = String(Math.ceil(maximum));
+  const currentText = String(Math.ceil(current));
+  if (track.getAttribute("aria-valuemax") !== maximumText)
+    track.setAttribute("aria-valuemax", maximumText);
+  if (track.getAttribute("aria-valuenow") !== currentText)
+    track.setAttribute("aria-valuenow", currentText);
+  if (track.dataset.team !== relation) track.dataset.team = relation;
+  // One division represents 25 HP in this game's smaller health pool.
+  const step = `${(100 * 25) / maximum}%`;
+  if (track.style.getPropertyValue("--health-step") !== step)
+    track.style.setProperty("--health-step", step);
+  const fill = track.firstElementChild as HTMLElement;
+  const amount = `scaleX(${Math.round((current / maximum) * 10000) / 10000})`;
+  if (fill.style.transform !== amount) fill.style.transform = amount;
 }
 const escapeHtml = (value: string) =>
   value.replace(
