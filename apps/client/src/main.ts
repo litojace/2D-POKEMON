@@ -4244,7 +4244,8 @@ class ArenaScene extends Phaser.Scene {
       // After render (it clears the rig's layers): the aura's near items
       // pass in front of the fighter, the rest go round behind.
       if (p.raidLook?.aura && p.raidLook.aura !== "mountain-aura")
-        drawCollectionAura(g, p.raidLook.aura, x, feetY, _time, reducedMotion, rig.front);
+        // On the shadow's plane (48×18 at the feet): same flatness.
+        drawCollectionAura(g, p.raidLook.aura, x, feetY, _time, reducedMotion, rig.front, 18 / 48, 0);
       if (serverPlayer.statuses.some((s) => s.kind === "shield")) {
         g.fillStyle(c.color, 0.1).fillCircle(x, y - jump - 10, 46);
         g.lineStyle(3, c.color, 0.8).strokeCircle(x, y - jump - 10, 46);

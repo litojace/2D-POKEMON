@@ -25,8 +25,10 @@ export const AURA_LIFT = 3;
  * it on the far half, a little smaller and fainter, so the ring has depth.
  * Without it everything draws on `g`. Returns false if the id is unknown.
  */
-export function drawCollectionAura(g: G, id: string, x: number, y: number, now: number, reduced: boolean, front?: G) {
+export function drawCollectionAura(g: G, id: string, x: number, y: number, now: number, reduced: boolean, front?: G, flat: number = WORLD_ART.groundY, lift = AURA_LIFT) {
   const t = reduced ? 0 : now;
+  /** Height of a floor ellipse this wide, on the aura's plane. */
+  const groundHeight = (w: number) => w * flat;
   /** Each item gets its layer, a size factor `d` and an opacity factor `f`. */
   const ring = (
     n: number,
@@ -34,7 +36,7 @@ export function drawCollectionAura(g: G, id: string, x: number, y: number, now: 
     _legacyRy: number,
     speed: number,
     draw: (gg: G, px: number, py: number, i: number, a: number, d: number, f: number) => void,
-    lift = AURA_LIFT,
+    itemLift = lift,
   ) => {
     for (let i = 0; i < n; i++) {
       const a = t / speed + (i / n) * TAU;
@@ -42,7 +44,7 @@ export function drawCollectionAura(g: G, id: string, x: number, y: number, now: 
       draw(
         front && near > 0 ? front : g,
         x + Math.cos(a) * rx,
-        y - lift + near * rx * WORLD_ART.groundY,
+        y - itemLift + near * rx * flat,
         i,
         a,
         1 + 0.16 * near,

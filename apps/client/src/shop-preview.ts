@@ -10,6 +10,7 @@ import { rigAssets, skinSuffix, type RigAsset } from "./animation/assets";
 import { FighterRig } from "./animation/rig";
 import { SKINS } from "./animation/cosmetics";
 import { drawCollectionAura } from "./skins/collection-fx";
+import { menuShadow } from "./fighter-art";
 import type { AnimationPose } from "./animation/controller";
 import type { SkinLook } from "./creature-design";
 import { SELECTION_PREVIEW, SHOP_PREVIEW, previewZoom, previewAuraScale } from "./shop-preview-layout";
@@ -335,27 +336,40 @@ export function mountShopPreview(
       this.aura.clear();
       this.auraFront.clear();
       const auraId = look.aura;
-      const auraScale = previewAuraScale(framing);
+      // In the roster the aura lies on the artwork's own shadow: same centre,
+      // same flatness, a ring a little wider than the shadow.
+      let auraScale = previewAuraScale(framing),
+        auraX = x,
+        auraY = y + WORLD_ART.fighterFeet * framing.scale,
+        flat: number = WORLD_ART.groundY,
+        lift: number | undefined;
+      if (selection) {
+        const shadow = menuShadow(champion);
+        // SVG frame (-20 -40 240 250) at two canvas pixels per art unit;
+        // the ring (about 48 aura units) spans 1.6 times the shadow.
+        auraX = (shadow.cx + 20) * 2;
+        auraY = (shadow.cy + 40) * 2;
+        auraScale = (shadow.rx * 2 * 1.6) / 48;
+        flat = shadow.ry / shadow.rx;
+        lift = 0;
+      }
       this.aura.setScale(auraScale);
       this.auraFront.setScale(auraScale);
       if (auraId === "mountain-aura")
         this.aura
           .lineStyle(3, 0xffd28c, 0.7)
-          .strokeEllipse(
-            x / auraScale,
-            (y + WORLD_ART.fighterFeet * framing.scale) / auraScale,
-            95,
-            groundHeight(95),
-          );
+          .strokeEllipse(auraX / auraScale, auraY / auraScale, 95, 95 * flat);
       else if (auraId)
         drawCollectionAura(
           this.aura,
           auraId,
-          x / auraScale,
-          (y + WORLD_ART.fighterFeet * framing.scale) / auraScale,
+          auraX / auraScale,
+          auraY / auraScale,
           clock,
           paused,
           this.auraFront,
+          flat,
+          lift,
         );
       rig.root.setScale(framing.scale);
       rig.render(pose, x, y, clock, 1, paused && motion.matches);

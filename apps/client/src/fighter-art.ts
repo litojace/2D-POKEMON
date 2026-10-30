@@ -7,6 +7,14 @@ import {
 } from "./creature-design";
 
 /** A borderless contact shadow shared by Home and full fighter previews. */
+/** The menu art's contact shadow (SVG art units), for anything on its plane. */
+export function menuShadow(id: CharacterId) {
+  const hovering = ["auralynx", "lumoth", "mystowl", "duskveil"].includes(id);
+  const pawY = id === "terradon" ? 172 : id === "cindrake" ? 172 : 171;
+  const pawX = id === "terradon" ? 65 : id === "cindrake" ? 78 : 80;
+  const feet = proportioned("legL", pawX, pawY)[1];
+  return { cx: 100, cy: hovering ? 177 : feet, rx: 32, ry: hovering ? 7 : 4.5 };
+}
 export function withSoftGround(svg: string, id: CharacterId) {
   // The old floor at y=177 predates the chibi limb proportions. Anchor the
   // contact shade to the authored paws, using the same transform as the rig.
@@ -15,7 +23,8 @@ export function withSoftGround(svg: string, id: CharacterId) {
   const pawY = id === "terradon" ? 172 : id === "cindrake" ? 172 : 171;
   const pawX = id === "terradon" ? 65 : id === "cindrake" ? 78 : 80;
   const [left, feet] = proportioned("legL", pawX, pawY);
-  const ground = hovering ? 177 : feet;
+  const shadow = menuShadow(id),
+    ground = shadow.cy;
   const contact = hovering
     ? ""
     : [left, 200 - left]
@@ -31,7 +40,7 @@ export function withSoftGround(svg: string, id: CharacterId) {
     )
     .replace(
       /<ellipse class="fighter-shadow"[^>]*\/>/,
-      `<g class="home-contact-shadow" stroke="none"><ellipse class="fighter-shadow" cx="100" cy="${ground}" rx="32" ry="${hovering ? 7 : 4.5}" fill="url(#home-contact)"/>${contact}</g>`,
+      `<g class="home-contact-shadow" stroke="none"><ellipse class="fighter-shadow" cx="${shadow.cx}" cy="${ground}" rx="${shadow.rx}" ry="${shadow.ry}" fill="url(#home-contact)"/>${contact}</g>`,
     );
 }
 /**

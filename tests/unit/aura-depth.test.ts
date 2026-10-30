@@ -32,6 +32,19 @@ describe("aura items circle in front of and behind the fighter", () => {
     expect(items(back.ys).length).toBeGreaterThan(0);
     expect(items(back.ys).every((y) => y <= -AURA_LIFT)).toBe(true);
   });
+  it("lies on the shadow's plane: same centre and flatness", () => {
+    const back = layer(),
+      front = layer();
+    // Battle shadow 48×18: items stay within the ring's height on that plane.
+    drawCollectionAura(back.g, "galaxy-aura", 0, 0, 1000, false, front.g, 18 / 48, 0);
+    const items = [...back.ys, ...front.ys].filter((y) => y !== 0);
+    // Six sparkles of four triangles each.
+    expect(items.length).toBe(24);
+    // Ring half-height 18, plus a sparkle's own half-size (2.4 × 1.16 × 0.35).
+    for (const y of items) expect(Math.abs(y)).toBeLessThanOrEqual(18 + 1);
+    expect(front.ys.filter((y) => y !== 0).every((y) => y > 0)).toBe(true);
+    expect(back.ys.filter((y) => y !== 0).every((y) => y < 0)).toBe(true);
+  });
   it("without a front layer everything still draws (frame fighters)", () => {
     const back = layer();
     drawCollectionAura(back.g, "galaxy-aura", 0, 0, 1000, false);

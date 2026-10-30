@@ -1100,7 +1100,8 @@ export function openTown(options: TownOptions) {
           .lineStyle(3, 0xffd28c, 0.7)
           .strokeEllipse(0, 0, 95, groundHeight(95));
       else if (p?.look?.aura)
-        drawCollectionAura(body.aura, p.look.aura, 0, 0, now, options.reduced, body.auraFront);
+        // On the shadow's plane (46×16): same centre and flatness.
+        drawCollectionAura(body.aura, p.look.aura, 0, 0, now, options.reduced, body.auraFront, 16 / 46, 0);
       if (body.rig) {
         if (p?.look !== undefined && !arrived.has(body.id)) {
           arrived.add(body.id);
