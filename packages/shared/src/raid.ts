@@ -836,6 +836,54 @@ export const RAID_RITES = {
   },
 } as const;
 export type RaidRite = keyof typeof RAID_RITES;
+/**
+ * Rites are chosen once, before the fight: each raider picks this many from
+ * RAID_RITE_OFFER options (their boss's own rite among them). Nothing is
+ * chosen mid-fight; instead every rite grows a step when the boss enters
+ * chapter 2 and again at chapter 3 (RITE_TIERS).
+ */
+export const RAID_RITE_PICKS = 2;
+export const RAID_RITE_OFFER = 5;
+/** Each rite's number in chapters 1, 2 and 3 (the text shows chapter 1's). */
+export const RITE_TIERS = {
+  /** Allies near a dash ward take this much less damage. */
+  shelter: [0.25, 0.3, 0.35],
+  /** Ultimate charge given to nearby allies per energy pickup. */
+  sharing: [12, 15, 18],
+  /** Extra damage on the exposed core, once a second. */
+  core: [8, 10, 12],
+  /** Faster revives. */
+  rescue: [0.35, 0.45, 0.55],
+  /** Extra damage below half health. */
+  courage: [0.2, 0.25, 0.3],
+  /** Allies healed by your ultimate (share of their health). */
+  mending: [0.12, 0.15, 0.18],
+  /** Less damage from burning ground. */
+  fireproof: [0.5, 0.6, 0.7],
+  /** Extra relay range (px). */
+  polished: [60, 80, 100],
+  /** Faster through water. */
+  footing: [0.15, 0.2, 0.25],
+  /** Health healed per second in lantern light (share). */
+  lamplighter: [0.01, 0.015, 0.02],
+} as const satisfies Partial<Record<RaidRite, readonly [number, number, number]>>;
+/** Helping Paws: extra health on revive, by chapter. */
+export const RESCUE_HEALTH = [0.15, 0.2, 0.25] as const;
+export type TieredRite = keyof typeof RITE_TIERS;
+const chapterIndex = (chapter: number) => Math.max(0, Math.min(2, Math.round(chapter) - 1));
+/** A rite's number in the given chapter (1-3). */
+export function riteValue(rite: TieredRite, chapter: number): number {
+  return RITE_TIERS[rite][chapterIndex(chapter)];
+}
+/** "25% → 30% → 35%": how a rite grows over the fight (for its card). */
+export function riteGrowth(rite: RaidRite): string | undefined {
+  if (!(rite in RITE_TIERS)) return undefined;
+  const values = RITE_TIERS[rite as TieredRite];
+  const percent = rite !== "sharing" && rite !== "core" && rite !== "polished";
+  const show = (v: number) =>
+    percent ? `${Math.round(v * 1000) / 10}%` : rite === "polished" ? `${v}px` : String(v);
+  return values.map(show).join(" → ");
+}
 /** Themed rites only offered against their own boss. */
 export const RAID_BOSS_RITES: Partial<Record<RaidRite, RaidBossId>> = {
   footing: "tidewyrm",

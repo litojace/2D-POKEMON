@@ -2562,6 +2562,15 @@ socket.on("state", (snapshot: WireSnapshot) => {
     remoteFrames.clear();
   const previous = state;
   if (snapshot.raid?.boss) prefetchRaidArena(snapshot.raid.boss);
+  // No rite choice mid-fight: at each new chapter the rites grow a step.
+  if (
+    snapshot.raid &&
+    previous?.raid &&
+    previous.code === snapshot.code &&
+    snapshot.raid.phase > previous.raid.phase &&
+    (snapshot.raid.rites[myId ?? ""] ?? []).length
+  )
+    toast(`Chapter ${snapshot.raid.phase} · your rites grow stronger`);
   if (snapshot.phase === "lobby" && (previous?.phase !== "lobby" || previous.code !== snapshot.code)) {
     lockedRoomPick = savingRoomPick = "";
     lockAttempt++;

@@ -203,7 +203,8 @@ describe("Somnara's encounter", () => {
     addStacks(a, "p0");
     a.damage(a.boss()!, 1e6, "p0");
     a.tick();
-    expect(a.phase).toBe("intermission");
+    expect(a.raid.phase).toBe(2);
+    expect(a.phase).toBe("playing");
     expect(a.raid.dream).toBeUndefined();
     expect(a.dreamFor("p0")).toBeUndefined();
     expect(a.heroes()[0].statuses.some((s) => s.kind === "sleep")).toBe(false);

@@ -106,15 +106,14 @@ describe("Storm Twins encounter lifecycle", () => {
     expect(f.hp + c.hp).toBeCloseTo(a.raid.maxHp * 0.67);
     a.tick();
     expect(a.raid.phase).toBe(2);
-    expect(a.phase).toBe("intermission");
-    a.phase = "playing";
+    expect(a.phase).toBe("playing");
     a.damage(f, 100000, "p0");
     expect(f.hp).toBe(1);
     expect(a.raid.result).toBeNull();
     a.damage(c, 100000, "p0");
     a.tick();
     expect(a.raid.phase).toBe(3);
-    expect(a.phase).toBe("intermission");
+    expect(a.phase).toBe("playing");
   });
   it("staggers and exposes one twin without exposing its partner", () => {
     const a = setup(),

@@ -18,6 +18,7 @@ import {
   type RelayNode,
   type RaidAttack,
   type RaidWarning,
+  riteValue,
 } from "../../../packages/shared/src/raid.js";
 export const prismDistanceToSegment = (
   p: { x: number; y: number },
@@ -345,7 +346,7 @@ export class PrismatailArena extends RaidArena {
         x: p.x,
         y: p.y,
         player: true,
-        range: range + (this.hasRite(p, "polished") ? 60 : 0),
+        range: range + (this.hasRite(p, "polished") ? riteValue("polished", this.raid.phase) : 0),
         broadcast: (this.flareUntil.get(p.id) ?? 0) > this.time,
       })),
       ...(r.mirrors ?? []).map((m, i) => ({ ...m, id: `mirror-${i}` })),

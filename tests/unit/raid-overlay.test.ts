@@ -48,7 +48,7 @@ it("preserves raid choices during countdown and teammate picks, but redraws chan
   a.raid.offers.hero = [];
   render(1);
   expect(writes).toBe(2);
-  expect(html).toContain("Rite locked in");
+  expect(html).toContain("Rites locked in");
 });
 
 it.each(["finished", "briefing", "intermission"])(

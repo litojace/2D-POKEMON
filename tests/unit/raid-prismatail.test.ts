@@ -184,7 +184,8 @@ describe("Prismatail light relay", () => {
     a.damage(b, 100000, p.id);
     a.tick();
     expect(a.raid.phase).toBe(2);
-    expect(a.phase).toBe("intermission");
+    // No rite screen: the next chapter starts at once.
+    expect(a.phase).toBe("playing");
     expect(a.raid.lightLinks).toEqual([]);
   });
   it("credits once per completion and unlocks the three-quick-break feat only on victory", () => {

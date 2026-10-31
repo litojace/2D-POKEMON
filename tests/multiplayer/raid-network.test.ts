@@ -71,15 +71,19 @@ it("starts a regular-player solo raid, enforces Peril unlocks, and records a ver
   expect(a.phase).toBe("briefing");
   await emit(host, "instructions-ready");
   expect(a.phase).toBe("intermission");
+  // Two rites each, chosen before the fight.
   await emit(host, "rite", { id: a.raid.offers[created.id!][0] });
+  await emit(host, "rite", { id: a.raid.offers[created.id!][0] });
+  expect(a.raid.rites[created.id!]).toHaveLength(2);
   for (let i = 0; i < 125; i++) server!.step();
   expect(a.phase).toBe("playing");
   for (let stage = 1; stage <= 3; stage++) {
     a.damage(a.boss()!, 100000, created.id!);
     server!.step();
+    // No rite choice between chapters: the fight goes straight on.
     if (stage < 3) {
-      await emit(host, "rite", { id: a.raid.offers[created.id!][0] });
-      for (let i = 0; i < 125; i++) server!.step();
+      expect(a.phase).toBe("playing");
+      expect(a.raid.offers[created.id!]).toBeUndefined();
     }
   }
   server!.step();
@@ -389,7 +393,7 @@ it("starts Storm Twins with both NPCs acknowledged, broadcasts separate health, 
  const host=await connect(),peer=await connect();const created=await emit(host,'create',{name:'Storm host',mode:'raid',boss:'storm-twins'});expect(created.ok).toBe(true);
  expect((await emit(peer,'join',{name:'Storm friend',code:created.code})).ok).toBe(true);await emit(host,'ready');await emit(peer,'ready');
  const a=server!.rooms.get(created.code!)as RaidArena;expect(a.constructor.name).toBe('StormTwinsArena');expect(a.players.filter(p=>p.raidBoss)).toHaveLength(2);expect(a.raid.partySize).toBe(2);expect(a.phase).toBe('briefing');
- await emit(host,'instructions-ready');await emit(peer,'instructions-ready');expect(a.phase).toBe('intermission');for(const[id,offer]of Object.entries(a.raid.offers))await emit(id===created.id?host:peer,'rite',{id:offer[0]});for(let i=0;i<125;i++)server!.step();expect(a.phase).toBe('playing');
+ await emit(host,'instructions-ready');await emit(peer,'instructions-ready');expect(a.phase).toBe('intermission');for(let pick=0;pick<2;pick++)for(const[id,offer]of Object.entries(a.raid.offers))await emit(id===created.id?host:peer,'rite',{id:offer[0]});for(let i=0;i<125;i++)server!.step();expect(a.phase).toBe('playing');
  a.raid.phase=3;(a as any).started=true;(a as any).nextAttack=Infinity;const bosses=a.players.filter(p=>p.raidBoss);
  const snapshot=new Promise<any>((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('No twin snapshot')),2000);peer.on('state',s=>{if(s.raid?.twins?.length===2){clearTimeout(timer);resolve(s);}})});
  for(let i=0;i<6;i++)server!.step();const state=await snapshot;expect(state.arena).toBe('conductor-ring');expect(state.players.filter((p:any)=>p.raidBoss)).toHaveLength(2);

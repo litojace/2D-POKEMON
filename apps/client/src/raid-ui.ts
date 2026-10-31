@@ -45,6 +45,7 @@ import {
   type CharacterId,
 } from "@arena/shared";
 import {
+  RAID_RITE_PICKS,
   RAID,
   RAID_ATTACKS,
   raidAttacksOf,
@@ -294,12 +295,12 @@ export function renderRaidUI(
     title = `${RAID_TRAITS[r.trait].name} ${RAID_BOSSES[r.boss].name}`;
     body = `<div class="raid-briefing-body" tabindex="0" role="region" aria-label="Raid instructions">${raidBriefingGuide(r.boss, me.character, r.partySize === 1)}<details class="raid-briefing-extra" id="raid-briefing-extra"><summary>Your fighter, team &amp; modifiers</summary><p><b>${escape(RAID_TRAITS[r.trait].name)}</b> · ${escape(RAID_TRAITS[r.trait].text)}</p>${perkLines(state, me.id)}${r.partySize > 1 ? `<p class="raid-signals">Team signals: ${(Object.keys(RAID_PINGS) as RaidPingKind[]).map((k) => `<b>${RAID_PINGS[k].key}</b> ${raidPingLabel(k, r.boss)}`).join(" · ")} (or use the on-screen buttons)</p>` : ""}</details><p class="raid-briefing-meta">Three phases · one shared fight · ${r.partySize === 1 ? (r.peril >= 3 ? "Solo · no self-revive on Peril 3" : "Solo · one self-revive") : "Team · stand beside fallen allies to revive"}</p></div><div class="raid-briefing-actions"><button class="primary" id="raid-instructions" ${state.instructionsReady.includes(me.id) ? "disabled" : ""}>${state.instructionsReady.includes(me.id) ? "Waiting for the team…" : iconLabel("battle", "I’m ready — start raid")}</button></div>`;
   } else if (state.phase === "intermission") {
-    title = r.phase === 1
-        ? "Choose your starting rite"
-        : `Phase ${r.phase} · ${raidChapters(r.boss)[r.phase - 1].name}`;
+    // Rites are chosen once, before the fight (RAID_RITE_PICKS each).
+    const picked = Math.min(RAID_RITE_PICKS, (r.rites[me.id] ?? []).length);
+    title = `Choose ${RAID_RITE_PICKS} rites · ${picked}/${RAID_RITE_PICKS}`;
     body = `<p class="raid-phase-objective">${raidChapters(r.boss)[r.phase - 1].detail}</p><details class="raid-team-summary"><summary>Team rites</summary><div class="raid-team-builds" aria-label="Team rites"></div></details>`;
     const offers = r.offers[me.id] ?? [];
-    actions = `<div class="raid-rite-intro"><span>Stacks this run</span><span class="raid-choice-timer" role="timer" aria-label="Time left to choose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>Choose in</span><strong>${LIVE_SECONDS}</strong></span>${raidRiteDetails(offers)}</div><div class="raid-rite-options">${raidRiteChoices(offers)}</div>`;
+    actions = `<div class="raid-rite-intro"><span>Grow stronger each chapter</span><span class="raid-choice-timer" role="timer" aria-label="Time left to choose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><span>Choose in</span><strong>${LIVE_SECONDS}</strong></span>${raidRiteDetails(offers)}</div><div class="raid-rite-options">${raidRiteChoices(offers)}</div>`;
   } else if (state.phase === "countdown") {
     title = LIVE_COUNTDOWN;
     body = `<p>${raidChapters(r.boss)[r.phase - 1].objective}</p>`;
@@ -380,7 +381,7 @@ export function renderRaidUI(
         .filter((p) => !p.raidBoss && !p.out)
         .map(
           (p) =>
-            `<div><b>${escape(p.name)}</b><span>${(r.rites[p.id] ?? []).map((id) => RAID_RITES[id].name).join(" · ") || "Choosing a starting rite"}${r.offers[p.id]?.length && r.rites[p.id]?.length ? " · Choosing…" : ""}</span></div>`,
+            `<div><b>${escape(p.name)}</b><span>${(r.rites[p.id] ?? []).map((id) => RAID_RITES[id].name).join(" · ") || "Choosing rites"}${r.offers[p.id]?.length && r.rites[p.id]?.length ? " · Choosing…" : ""}</span></div>`,
         )
         .join(""),
     );

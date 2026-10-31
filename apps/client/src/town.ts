@@ -262,15 +262,30 @@ export function openTown(options: TownOptions) {
   // What covers the town, looked up once per DOM change instead of twice a
   // frame (the observer clears the answer when a panel opens or closes).
   let cover: { covered: boolean; hides: boolean } | undefined;
-  // (Attributes anywhere, but only children of the body itself: text in the
-  // HUD changes every frame and must not clear it.)
-  const coverWatch = new MutationObserver(() => (cover = undefined));
+  // An open/hidden change anywhere clears it, and so does a panel added or
+  // removed anywhere (a drawer taken out with its parent once left the town
+  // asleep for good). HUD text changing every frame is ignored: only element
+  // nodes that are, or hold, a panel count.
+  const COVERS = "dialog, .home-drawer, .header-menu";
+  const coverWatch = new MutationObserver((records) => {
+    if (!cover) return;
+    for (const r of records) {
+      if (r.type === "attributes") return void (cover = undefined);
+      for (const list of [r.addedNodes, r.removedNodes])
+        for (const node of Array.from(list))
+          if (
+            node instanceof Element &&
+            (node.matches(COVERS) || node.querySelector(COVERS))
+          )
+            return void (cover = undefined);
+    }
+  });
   coverWatch.observe(document.body, {
     subtree: true,
+    childList: true,
     attributes: true,
     attributeFilter: ["open", "hidden"],
   });
-  coverWatch.observe(document.body, { childList: true });
   const coverNow = () =>
     (cover ??= {
       covered: !!document.querySelector(
@@ -1287,13 +1302,21 @@ export function openTown(options: TownOptions) {
   screen.orientation?.addEventListener("change", resize);
   window.addEventListener("resize", resize);
   watchRendererLifecycle(game, () => !closed, resize);
-  const thaw = new MutationObserver(() => {
-    // (coverWatch, created first, has already cleared a stale answer.)
+  const wakeIfUncovered = () => {
     if (!frozen || closed || hidesTown() || document.hidden) return;
     frozen = false;
     host.dataset.frozen = "false";
     game.loop.wake();
-  });
+  };
+  // (coverWatch, created first, has already cleared a stale answer.)
+  const thaw = new MutationObserver(wakeIfUncovered);
+  // Safety net: while asleep, look again each second without the cache, so
+  // a missed change can never leave the town frozen.
+  const thawCheck = setInterval(() => {
+    if (!frozen) return;
+    cover = undefined;
+    wakeIfUncovered();
+  }, 1000);
   thaw.observe(document.body, {
     subtree: true,
     childList: true,
@@ -1321,6 +1344,7 @@ export function openTown(options: TownOptions) {
     resizeObserver.disconnect();
     thaw.disconnect();
     coverWatch.disconnect();
+    clearInterval(thawCheck);
     window.visualViewport?.removeEventListener("resize", resize);
     screen.orientation?.removeEventListener("change", resize);
     window.removeEventListener("resize", resize);

@@ -14,6 +14,7 @@ import {
   emberwingPattern,
   type RaidAttack,
   type RaidWarning,
+  riteValue,
 } from "../../../packages/shared/src/raid.js";
 const segmentDistance = (
   p: { x: number; y: number },
@@ -473,7 +474,7 @@ export class EmberwingArena extends RaidArena {
             b.progress +
               dt /
                 (E.lightSeconds *
-                  (this.hasRite(lighter, "fireproof") ? 0.5 : 1)),
+                  (this.hasRite(lighter, "fireproof") ? 1 - riteValue("fireproof", this.raid.phase) : 1)),
           );
           if (b.progress >= 1) this.light(i, lighter);
         } else b.progress = 0;
@@ -522,7 +523,7 @@ export class EmberwingArena extends RaidArena {
             p,
             E.fire.damage *
               Math.min(0.55, this.time - at) *
-              (this.hasRite(p, "fireproof") ? 0.5 : 1),
+              (this.hasRite(p, "fireproof") ? 1 - riteValue("fireproof", this.raid.phase) : 1),
             boss.id,
           );
           this.floorAt.set(p.id, this.time);

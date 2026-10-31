@@ -13,6 +13,7 @@ import {
   type RaidAttack,
   type RaidIsland,
   type RaidWarning,
+  riteValue,
 } from "../../../packages/shared/src/raid.js";
 import { RaidArena, type RaidBossNumbers } from "./raid.js";
 
@@ -636,7 +637,8 @@ export class TidewyrmArena extends RaidArena {
       if (!p || p.hp <= 0 || p.dashUntil > this.time) continue;
       const dx = p.x - at.x,
         dy = p.y - at.y;
-      if (dx || dy) move(p, dx * 0.15, dy * 0.15);
+      const extra = riteValue("footing", this.raid.phase);
+      if (dx || dy) move(p, dx * extra, dy * extra);
     }
   }
 

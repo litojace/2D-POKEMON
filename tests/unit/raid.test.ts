@@ -30,33 +30,46 @@ it("supports solo and four-player co-op with one distinct boss and scaled health
   const wire = packSnapshot(team.snapshot());
   expect(unpackSnapshot(wire).raid?.phase).toBe(1);
 });
-it("offers one starting rite and new stackable choices at each HP-gated phase", () => {
+it("rites are chosen once before the fight: two of five, then no choice mid-fight", () => {
   const a = raid();
   expect(a.acknowledgeInstructions("p0")).toBe(true);
   expect(a.phase).toBe("intermission");
-  const first = a.raid.offers.p0[0];
+  expect(a.raid.offers.p0).toHaveLength(5);
+  const [first, second] = a.raid.offers.p0;
   expect(a.pickRite("p0", "forged")).toBe(false);
   expect(a.pickRite("p0", first)).toBe(true);
+  // One more to pick: the rest stay on offer, the picked one doesn't.
+  expect(a.raid.offers.p0).toHaveLength(4);
+  expect(a.raid.offers.p0).not.toContain(first);
+  expect(a.pickRite("p0", first)).toBe(false);
+  expect(a.pickRite("p0", second)).toBe(true);
+  expect(a.raid.offers.p0).toBeUndefined();
+  expect(a.raid.rites.p0).toEqual([first, second]);
   fight(a);
   a.damage(a.boss()!, 100000, "p0");
   a.tick();
+  // Chapter 2 starts at once: no rite screen.
   expect(a.raid.phase).toBe(2);
-  expect(a.phase).toBe("intermission");
-  expect(a.raid.rites.p0).toContain(first);
-  expect(a.raid.offers.p0).not.toContain(first);
-  a.pickRite("p0", a.raid.offers.p0[0]);
-  fight(a);
+  expect(a.phase).toBe("playing");
+  expect(a.raid.offers.p0).toBeUndefined();
   a.damage(a.boss()!, 100000, "p0");
   a.tick();
   expect(a.raid.phase).toBe(3);
-  a.pickRite("p0", a.raid.offers.p0[0]);
-  fight(a);
+  expect(a.phase).toBe("playing");
   a.damage(a.boss()!, 100000, "p0");
   a.tick();
   expect(a.raid.result).toBe("victory");
   expect(a.winnerTeam).toBe(0);
-  expect(a.raid.rites.p0).toHaveLength(3);
+  expect(a.raid.rites.p0).toHaveLength(2);
   expect(a.raid.resultId).toBeTruthy();
+});
+it("time running out fills both picks", () => {
+  const a = raid();
+  a.acknowledgeInstructions("p0");
+  const offered = [...a.raid.offers.p0];
+  a.tick(16);
+  expect(a.raid.rites.p0).toEqual(offered.slice(0, 2));
+  expect(a.phase).toBe("countdown");
 });
 it("advances at fractional health gates despite floating-point roundoff", () => {
   const a = raid();
@@ -67,8 +80,7 @@ it("advances at fractional health gates despite floating-point roundoff", () => 
     a.boss()!.hp = a.raid.maxHp * (phase === 1 ? 0.67 : 0.33) + 1e-12;
     a.tick();
     expect(a.raid.phase).toBe(phase + 1);
-    expect(a.phase).toBe("intermission");
-    expect(a.raid.offers.p0.length).toBeGreaterThan(0);
+    expect(a.phase).toBe("playing");
   }
 });
 it("telegraphs boss attacks, breaks pillars on charge, and exposes the weak point", () => {
@@ -372,7 +384,7 @@ it("credits actual damage and pillar baiting, and resets contributions on quick 
     pillars: 0,
     downs: 0,
   });
-  expect(a.raid.offers.p0).toHaveLength(3);
+  expect(a.raid.offers.p0).toHaveLength(5);
 });
 
 it("credits all participating rescuers, including help before an interruption", () => {
@@ -391,34 +403,42 @@ it("credits all participating rescuers, including help before an interruption", 
   expect(a.raid.contributions![p.id].revives).toBe(0);
 });
 
-it("allows fifteen seconds to read rites in every chapter, with early completion when everyone picks", () => {
-  for (const chapter of [1, 2, 3]) {
-    const a = raid(2);
-    if (chapter === 1) {
-      a.heroes().forEach((p) => a.acknowledgeInstructions(p.id));
-    } else {
-      fight(a);
-      a.raid.phase = chapter - 1;
-      a.boss()!.hp = a.raid.maxHp * (chapter === 2 ? 0.67 : 0.33);
-      a.tick();
-    }
-    expect(a.raid.phase).toBe(chapter);
-    expect(a.deadline - a.time).toBeCloseTo(15);
-    a.tick(5);
-    expect(a.phase).toBe("intermission");
-    expect(Object.keys(a.raid.offers)).toHaveLength(2);
-    a.pickRite("p0", a.raid.offers.p0[0]);
-    expect(a.deadline - a.time).toBeCloseTo(10);
-    a.pickRite("p1", a.raid.offers.p1[0]);
-    expect(a.deadline - a.time).toBeCloseTo(1);
-    a.tick(1);
-    expect(a.phase).toBe("countdown");
-  }
-  const a = raid();
-  a.acknowledgeInstructions("p0");
-  a.tick(14.9);
+it("allows fifteen seconds to choose rites before the fight, ending early once everyone has both", () => {
+  const a = raid(2);
+  a.heroes().forEach((p) => a.acknowledgeInstructions(p.id));
+  expect(a.raid.phase).toBe(1);
+  expect(a.deadline - a.time).toBeCloseTo(15);
+  a.tick(5);
   expect(a.phase).toBe("intermission");
-  a.tick(0.2);
+  expect(Object.keys(a.raid.offers)).toHaveLength(2);
+  a.pickRite("p0", a.raid.offers.p0[0]);
+  a.pickRite("p0", a.raid.offers.p0[0]);
+  expect(a.deadline - a.time).toBeCloseTo(10);
+  a.pickRite("p1", a.raid.offers.p1[0]);
+  // One teammate still has a pick left.
+  expect(a.deadline - a.time).toBeCloseTo(10);
+  a.pickRite("p1", a.raid.offers.p1[0]);
+  expect(a.deadline - a.time).toBeCloseTo(1);
+  a.tick(1);
   expect(a.phase).toBe("countdown");
-  expect(a.raid.rites.p0).toHaveLength(1);
+  const b = raid();
+  b.acknowledgeInstructions("p0");
+  b.tick(14.9);
+  expect(b.phase).toBe("intermission");
+  b.tick(0.2);
+  expect(b.phase).toBe("countdown");
+  expect(b.raid.rites.p0).toHaveLength(2);
+});
+
+it("Grumblecrag always fights in the Coliseum, even in a room with arena rotation", () => {
+  for (let run = 0; run < 4; run++) {
+    const a = new RaidArena("ROOM");
+    a.rotateArenas = true;
+    a.add("p0", "Player 0");
+    a.start();
+    expect(a.snapshot().arena).toBe("classic");
+    a.phase = "finished";
+    a.retry();
+    expect(a.snapshot().arena).toBe("classic");
+  }
 });

@@ -31,6 +31,10 @@ import {
   raidChapters,
   raidTraitFor,
   ritesFor,
+  riteValue,
+  RESCUE_HEALTH,
+  RAID_RITE_OFFER,
+  RAID_RITE_PICKS,
   RAID_PING_SECONDS,
   RAID_TRAITS,
   eruptionChain,
@@ -217,6 +221,10 @@ export class RaidArena extends Arena {
   }
   /** The arena's features at the start of a run (Grumblecrag: four pillars). */
   protected setupArena() {
+    // Grumblecrag fights in the Coliseum. Rooms made with "create" turn on
+    // PvP arena rotation, which would otherwise have picked a duel court
+    // (the other bosses set their own arena).
+    this.arenaId = "classic";
     this.raid.pillars = OBSTACLES.map((o) => ({
       x: o.x + o.w / 2,
       y: o.y + o.h / 2,
@@ -254,7 +262,7 @@ export class RaidArena extends Arena {
         (this.raid.seed + this.raid.phase * 7 + seat) %
         Math.max(1, options.length);
       this.raid.offers[p.id] = Array.from(
-        { length: Math.min(3, options.length) },
+        { length: Math.min(RAID_RITE_OFFER, options.length) },
         (_, i) => options[(offset + i) % options.length],
       );
     }
@@ -265,8 +273,10 @@ export class RaidArena extends Arena {
       !this.raid.offers[id]?.includes(riteId as RaidRite)
     )
       return false;
-    this.raid.rites[id] = [...(this.raid.rites[id] ?? []), riteId as RaidRite];
-    delete this.raid.offers[id];
+    const rites = (this.raid.rites[id] = [...(this.raid.rites[id] ?? []), riteId as RaidRite]);
+    const left = this.raid.offers[id].filter((r) => r !== riteId);
+    if (rites.length >= RAID_RITE_PICKS || !left.length) delete this.raid.offers[id];
+    else this.raid.offers[id] = left;
     if (!Object.keys(this.raid.offers).length) this.deadline = this.time + 1;
     return true;
   }
@@ -335,14 +345,14 @@ export class RaidArena extends Arena {
         this.hasRite(source, "courage") &&
         source.hp < CHARACTERS[source.character].health * 0.5
       )
-        amount *= 1.2;
+        amount *= 1 + riteValue("courage", r.phase);
       if (
         source &&
         exposed &&
         this.hasRite(source, "core") &&
         this.time >= (this.coreAt.get(source.id) ?? 0)
       ) {
-        amount += 8;
+        amount += riteValue("core", r.phase);
         this.coreAt.set(source.id, this.time + 1);
       }
       this.addBossStagger(target, Math.min(1.3, amount * 0.025));
@@ -355,7 +365,7 @@ export class RaidArena extends Arena {
           Math.hypot(w.x - target.x, w.y - target.y) < 130,
       )
     )
-      amount *= 0.75;
+      amount *= 1 - riteValue("shelter", r.phase);
     if (target.raidBoss) amount = Math.min(amount, this.damageLimit(target));
     const before = target.hp;
     super.damage(target, amount, owner, ability);
@@ -410,7 +420,7 @@ export class RaidArena extends Arena {
           const before = hero.hp;
           hero.hp = Math.min(
             CHARACTERS[hero.character].health,
-            hero.hp + CHARACTERS[hero.character].health * 0.12,
+            hero.hp + CHARACTERS[hero.character].health * riteValue("mending", this.raid.phase),
           );
           this.event(
             "heal",
@@ -450,11 +460,13 @@ export class RaidArena extends Arena {
               p.hp > 0 &&
               Math.hypot(p.x - owner.x, p.y - owner.y) < 320
             )
-              this.chargeUlt(p, 12);
+              this.chargeUlt(p, riteValue("sharing", this.raid.phase));
       }
   }
   protected revive(p: Fighter, extra = false) {
-    p.hp = CHARACTERS[p.character].health * (extra ? 0.6 : 0.45);
+    p.hp =
+      CHARACTERS[p.character].health *
+      (0.45 + (extra ? RESCUE_HEALTH[Math.max(0, Math.min(2, this.raid.phase - 1))] : 0));
     p.statuses = [];
     p.lastInput = blankInput();
     p.immuneUntil = this.time + 2;
@@ -499,7 +511,7 @@ export class RaidArena extends Arena {
         const fast = rescuers.some((q) => this.hasRite(q, "rescue"));
         down.progress = Math.min(
           1,
-          down.progress + (dt / RAID.reviveSeconds) * (fast ? 1.35 : 1),
+          down.progress + (dt / RAID.reviveSeconds) * (fast ? 1 + riteValue("rescue", this.raid.phase) : 1),
         );
         if (down.progress >= 1) {
           for (const id of credit)
@@ -1096,8 +1108,9 @@ export class RaidArena extends Arena {
     if (this.phase === "intermission") {
       this.time += dt;
       if (this.time >= this.deadline) {
-        for (const [id, options] of Object.entries(this.raid.offers))
-          if (options[0]) this.pickRite(id, options[0]);
+        // Time's up: the first options left fill the remaining picks.
+        for (const id of Object.keys(this.raid.offers))
+          while (this.raid.offers[id]?.[0]) this.pickRite(id, this.raid.offers[id][0]);
         this.phase = "countdown";
         this.deadline = this.time + 3;
       }
@@ -1150,7 +1163,8 @@ export class RaidArena extends Arena {
       this.raid.staggerUntil = 0;
       this.raid.exposedUntil = 0;
       this.onChapter();
-      this.offerRaidRites();
+      // No rite choice mid-fight: the rites chosen at the start grow a step
+      // (riteValue reads the chapter; the client announces it).
     }
   }
   /** Separate health and stagger hooks let multi-boss raids share the same phase and reward flow. */

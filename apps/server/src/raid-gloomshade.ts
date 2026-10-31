@@ -15,6 +15,7 @@ import {
   lanternRadius,
   type RaidAttack,
   type RaidWarning,
+  riteValue,
 } from "../../../packages/shared/src/raid.js";
 import { RaidArena, type RaidBossNumbers } from "./raid.js";
 
@@ -368,11 +369,11 @@ export class GloomshadeArena extends RaidArena {
     this.stepHits(boss);
     this.stepCurses(dt, boss);
     r.lights = (r.lights ?? []).filter((l) => l.until > this.time);
-    // Lamplighter: lantern light heals 1% a second.
+    // Lamplighter: lantern light heals 1% a second (more in later chapters).
     for (const p of this.heroes())
       if (p.hp > 0 && this.hasRite(p, "lamplighter") && this.lit(p.x, p.y)) {
         const max = CHARACTERS[p.character].health;
-        p.hp = Math.min(max, p.hp + max * 0.01 * dt);
+        p.hp = Math.min(max, p.hp + max * riteValue("lamplighter", this.raid.phase) * dt);
       }
   }
   /** Gloomshade and its copies drift between spots, all the same way. */

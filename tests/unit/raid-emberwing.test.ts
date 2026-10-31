@@ -8,6 +8,7 @@ import {
 import { createRaidArena } from "../../apps/server/src/raid-bosses";
 import { EmberwingArena } from "../../apps/server/src/raid-emberwing";
 import {
+  riteValue,
   EMBERWING as E,
   RAID_BOSSES,
   RAID_BOSS_ATTACKS,
@@ -342,7 +343,8 @@ describe("Emberwing attacks and champion answers", () => {
     attack(b, "scorched-earth");
     resolve(b);
     run(b, 1.1);
-    expect(CHARACTERS.voltkit.health - q.hp).toBeCloseTo(full * 0.5);
+    // Fireproof's share grows by chapter (50% / 60% / 70% less).
+    expect(CHARACTERS.voltkit.health - q.hp).toBeCloseTo(full * (1 - riteValue("fireproof", b.raid.phase)));
     a.time = patch.growAt + 0.1;
     (a as any).worldStep(0.01, a.boss());
     expect(patch.radius).toBeGreaterThan(E.fire.initialRadius);
