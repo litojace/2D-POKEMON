@@ -10,7 +10,7 @@ test("town keeps native architecture pixels, filtered zoom and a shared fountain
   await page.route(/\/apps\/client\/src\/town\.ts(?:\?|$)/, async (route) => {
     const response = await route.fetch(),
       body = await response.text();
-    const marker = "this.scenery = new TownScenery(this, options.reduced);";
+    const marker = "this.scenery = new TownScenery(this, options.reduced, low);";
     expect(body).toContain(marker);
     await route.fulfill({
       response,

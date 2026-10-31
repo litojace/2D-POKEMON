@@ -34,8 +34,8 @@ for (const mobile of [false, true])
             response,
             body: body
               .replace(
-                "this.scenery = new TownScenery(this, options.reduced);",
-                "this.scenery = new TownScenery(this, options.reduced);window.__densityScene=this;",
+                "this.scenery = new TownScenery(this, options.reduced, low);",
+                "this.scenery = new TownScenery(this, options.reduced, low);window.__densityScene=this;",
               )
               .replace(
                 "return body;",

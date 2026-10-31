@@ -8,7 +8,7 @@ test("all seven carved bosses use native art and rest centrally on their pedesta
   await page.route(/\/apps\/client\/src\/town\.ts(?:\?|$)/, async (route) => {
     const response = await route.fetch(),
       body = await response.text(),
-      marker = "this.scenery = new TownScenery(this, options.reduced);";
+      marker = "this.scenery = new TownScenery(this, options.reduced, low);";
     expect(body).toContain(marker);
     await route.fulfill({
       response,

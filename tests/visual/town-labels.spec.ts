@@ -38,8 +38,8 @@ test("a floating town fighter keeps its name and title steady while the rig bobs
       response,
       body: body
         .replace(
-          "this.scenery = new TownScenery(this, options.reduced);",
-          "this.scenery = new TownScenery(this, options.reduced);window.__labelScene=this;",
+          "this.scenery = new TownScenery(this, options.reduced, low);",
+          "this.scenery = new TownScenery(this, options.reduced, low);window.__labelScene=this;",
         )
         .replace("return body;", "window.__labelBody=body;return body;"),
     });
