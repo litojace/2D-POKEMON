@@ -1,4 +1,5 @@
 import { raidCameraView } from "./raid-camera";
+import { addCanvasTexture, updateCanvasTexture } from "./canvas-texture";
 import { setHudText, setHudAttribute, setHudStyle } from "./hud-dom";
 import { battleCurves } from "./battle-curves";
 import { RoomInvites } from "./room-invites";
@@ -189,7 +190,7 @@ import { matchReportReplySchema } from "../../../packages/shared/src/accounts";
 import { masteryMatches, setMastery, setWornSkins } from "./fighter-selection";
 import { shareResult } from "./share-card";
 import { openTown } from "./town";
-import { surfaceBurst } from "./court-surface-fx";
+import { prepareSurfaceTextures, surfaceBurst } from "./court-surface-fx";
 import { fxFor } from "./fx-engine";
 import { isRaidFloor, paintRaidFloor } from "./raid-floors";
 import { isIllustratedRaidFloor, loadRaidArenaArt, paintIllustratedRaidFloor } from "./raid-arena-art";
@@ -2928,7 +2929,7 @@ class ArenaScene extends Phaser.Scene {
         const ctx = canvas.getContext("2d")!;
         ctx.scale(bake, bake);
         paintCourtFloor(ctx, court, bare);
-        this.textures.addCanvas(key, canvas);
+        addCanvasTexture(this.textures, key, canvas);
       } else if (isIllustratedRaidFloor(id)) {
         const canvas = document.createElement("canvas");
         canvas.width = RULES.width * bake;
@@ -2937,7 +2938,7 @@ class ArenaScene extends Phaser.Scene {
         ctx.scale(bake, bake);
         if (isRaidFloor(id)) paintRaidFloor(ctx, id);
         else paintCourtFloor(ctx, "classic", true);
-        this.textures.addCanvas(key, canvas);
+        addCanvasTexture(this.textures, key, canvas);
         loadRaidArenaArt(id, image => {
           if (!this.textures?.exists(key)) return;
           ctx.save();
@@ -2945,7 +2946,7 @@ class ArenaScene extends Phaser.Scene {
           paintIllustratedRaidFloor(ctx, id, image);
           ctx.restore();
           canvas.dataset.raidArtwork = id;
-          (this.textures.get(key) as Phaser.Textures.CanvasTexture).refresh();
+          updateCanvasTexture(this.textures, key);
         });
       } else {
         const g = this.make.graphics({}, false);
@@ -2972,7 +2973,7 @@ class ArenaScene extends Phaser.Scene {
         const ctx = canvas.getContext("2d")!;
         ctx.scale(bake, bake);
         paintCourtBlock(ctx, o, i, id);
-        this.textures.addCanvas(key, canvas);
+        addCanvasTexture(this.textures, key, canvas);
       }
       const img = this.add
         .image(frame.x, frame.y, key)
@@ -3030,7 +3031,7 @@ class ArenaScene extends Phaser.Scene {
         const ctx = canvas.getContext("2d")!;
         ctx.scale(bake, bake);
         paintCourtStands(ctx, court);
-        this.textures.addCanvas(skey, canvas);
+        addCanvasTexture(this.textures, skey, canvas);
       }
       this.stands.set(court, this.add.image(0, -STANDS, skey).setOrigin(0).setScale(1 / bake).setDepth(-10));
     }
@@ -3044,7 +3045,7 @@ class ArenaScene extends Phaser.Scene {
         const ctx = canvas.getContext("2d")!;
         ctx.scale(bake, bake);
         paintCourtApron(ctx, court);
-        this.textures.addCanvas(akey, canvas);
+        addCanvasTexture(this.textures, akey, canvas);
       }
       this.courtAprons.set(court, this.add.image(0, RULES.height, akey).setOrigin(0).setScale(1 / bake).setDepth(-10));
     }
@@ -3071,7 +3072,7 @@ class ArenaScene extends Phaser.Scene {
     g.addColorStop(1, "rgba(206,190,156,0)");
     d.fillStyle = g;
     d.fillRect(0, 0, 64, 64);
-    this.textures.addCanvas("crumble-dust", dust);
+    addCanvasTexture(this.textures, "crumble-dust", dust);
     for (let k = 0; k < 3; k++) {
       const c = document.createElement("canvas");
       c.width = c.height = 24;
@@ -3092,7 +3093,7 @@ class ArenaScene extends Phaser.Scene {
       x.beginPath();
       pts.forEach(([px, py], n) => (n ? x.lineTo(px, py - 1) : x.moveTo(px, py - 1)));
       x.fill();
-      this.textures.addCanvas(`crumble-chunk-${k}`, c);
+      addCanvasTexture(this.textures, `crumble-chunk-${k}`, c);
     }
   }
   /**
@@ -3210,7 +3211,7 @@ class ArenaScene extends Phaser.Scene {
       ctx.scale(bake, bake);
       ctx.translate(-x, -y);
       paintCourtRubble(ctx, o, index);
-      this.textures.addCanvas(key, canvas);
+      addCanvasTexture(this.textures, key, canvas);
     }
     return this.add.image(x, y, key).setOrigin(0).setScale(1 / bake).setDepth(-9).setVisible(false);
   }
@@ -3340,6 +3341,11 @@ class ArenaScene extends Phaser.Scene {
       '<span aria-hidden="true">➜</span><strong></strong>';
     $("game").parentElement!.append(this.enemyBearing);
     this.cameras.main.setBackgroundColor("#142746");
+    // Effect sprites are painted now, not when they first appear mid-fight
+    // (the first hit, the first skill, the first pillar to crumble).
+    fxFor(this);
+    prepareSurfaceTextures(this);
+    this.crumbleTextures();
     // Paint the court once and bake it into a texture so it costs nothing per frame.
     // High-density screens get a 2x bake so the floor stays sharp when zoomed in.
     this.floor = this.add

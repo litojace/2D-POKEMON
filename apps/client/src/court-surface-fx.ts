@@ -1,4 +1,5 @@
 import type Phaser from "phaser";
+import { addCanvasTexture } from "./canvas-texture";
 import { ARENAS } from "@arena/shared";
 import type { CourtId } from "./arena-courts";
 
@@ -19,7 +20,7 @@ function textures(scene: Phaser.Scene) {
     canvas.width = w;
     canvas.height = h;
     draw(canvas.getContext("2d")!);
-    scene.textures.addCanvas(key, canvas);
+    addCanvasTexture(scene.textures, key, canvas);
   };
   // White shapes, tinted per court.
   make(TEX.dust, 64, 64, (c) => {
@@ -51,6 +52,10 @@ function textures(scene: Phaser.Scene) {
   });
 }
 
+/** Paint the burst sprites ahead of time (the arena scene's start), not on the first hit. */
+export function prepareSurfaceTextures(scene: Phaser.Scene) {
+  textures(scene);
+}
 /** Per court: dust tint, grain tints, and what else flies. */
 const LOOK: Record<CourtId, { dust: number; grains: number[]; extra?: "spark" | "leaf" }> = {
   classic: { dust: 0xe2cfa4, grains: [0xd9c08c, 0xbfa472, 0xeadbb8] },

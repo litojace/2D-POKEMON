@@ -1,4 +1,5 @@
 import { drawPondWater, pondDuckPose } from "./town-pond-water";
+import { addCanvasTexture } from "./canvas-texture";
 import { isIOSWebApp } from "./render-budget";
 import { paintedNature, paintedProp, paintedAnimal, paintedPlinth } from "./town-environment-art";
 import { animalMotionSprite, createHenMotion, gullMotion, stepHen, type HenMotion } from "./town-animal-motion";
@@ -100,7 +101,7 @@ function bake(scene: Phaser.Scene, key: string, sprite: Sprite, res = ART_RES) {
       const family = townMaterialFamily(key);
       sprite.draw(family ? materialContext(ctx, family) : ctx);
     });
-    scene.textures.addCanvas(key, canvas);
+    addCanvasTexture(scene.textures, key, canvas);
   }
   return { key, frame:undefined, ox: (sprite.ax + pad) / width, oy: (sprite.ay + pad) / height, scale: 1 / res, scaleY:1/res };
 }
@@ -199,7 +200,7 @@ export class TownScenery {
 
   private ground() {
     const key = "town-ground";
-    if (!this.scene.textures.exists(key)) this.scene.textures.addCanvas(key, paint(key, TOWN.width, TOWN.height, paintGround));
+    if (!this.scene.textures.exists(key)) addCanvasTexture(this.scene.textures, key, paint(key, TOWN.width, TOWN.height, paintGround));
     this.scene.add.image(0, 0, key).setOrigin(0).setDepth(-1000);
   }
 

@@ -1,4 +1,5 @@
 import { battleCurves } from "./battle-curves";
+import { addCanvasTexture } from "./canvas-texture";
 import type Phaser from "phaser";
 // Phaser constants as literals, so this module loads without Phaser (tests).
 const ADD = 1; // ADD
@@ -76,8 +77,10 @@ const reducedMotion = () =>
 function makeTextures(scene: Phaser.Scene) {
   if (scene.textures.exists("fx-glow")) return;
   const size = 128;
-  const canvas = scene.textures.createCanvas("fx-glow", size, size)!;
-  const ctx = canvas.getContext();
+  // Plain canvases added as images: no pixel read-back (see canvas-texture).
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
   const grad = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
   grad.addColorStop(0, "rgba(255,255,255,1)");
   grad.addColorStop(0.18, "rgba(255,255,255,0.75)");
@@ -85,17 +88,18 @@ function makeTextures(scene: Phaser.Scene) {
   grad.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, size, size);
-  canvas.refresh();
+  addCanvasTexture(scene.textures, "fx-glow", canvas);
   // Screen vignette for ultimates: clear centre, dark edges.
-  const v = scene.textures.createCanvas("fx-vignette", 256, 256)!;
-  const vc = v.getContext();
+  const v = document.createElement("canvas");
+  v.width = v.height = 256;
+  const vc = v.getContext("2d")!;
   const vg = vc.createRadialGradient(128, 128, 60, 128, 128, 182);
   vg.addColorStop(0, "rgba(0,0,0,0)");
   vg.addColorStop(0.55, "rgba(0,0,0,0.35)");
   vg.addColorStop(1, "rgba(0,0,0,1)");
   vc.fillStyle = vg;
   vc.fillRect(0, 0, 256, 256);
-  v.refresh();
+  addCanvasTexture(scene.textures, "fx-vignette", v);
 }
 
 /** One depth band's layers (see Fx.at). */

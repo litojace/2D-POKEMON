@@ -1,4 +1,5 @@
 import type Phaser from "phaser";
+import { addCanvasTexture } from "../canvas-texture";
 
 export type Skin =
   | "cragbound"
@@ -317,7 +318,7 @@ export function cosmeticLayer(
           context.stroke();
         }
     }
-    scene.textures.addCanvas(styled, canvas);
+    addCanvasTexture(scene.textures, styled, canvas);
   }
   return styled;
 }
