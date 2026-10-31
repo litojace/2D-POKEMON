@@ -121,6 +121,10 @@ export class AnimationController {
     }
     return this.state;
   }
+  /** End this move early (a predicted cast the server refused). */
+  cancel(state: AnimationState) {
+    if (this.state === state) this.until = 0;
+  }
   reset() {
     this.state = "idle";
     this.started = 0;

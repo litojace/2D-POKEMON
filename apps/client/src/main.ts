@@ -4,6 +4,8 @@ import { battleCurves } from "./battle-curves";
 import { RoomInvites } from "./room-invites";
 import { PvpSpectator } from "./pvp-spectator";
 import { predictFighter } from "./predict-fighter";
+import { startPingBadge } from "./ping-badge";
+import { CastPredictor, canBasic, canCastSkill, canDash, type CastAction } from "./cast-prediction";
 import { queueBossSpellArt } from "./boss-spell-flipbook";
 import { queueBossArt, retainBossArt } from "./boss-painted-rig";
 import { rendererDensity } from "./render-budget";
@@ -394,6 +396,64 @@ else $("battle").append($("battle-menu"));
 /** Physical keys and mouse buttons ("KeyQ", "Mouse0") currently held. */
 const held = new Set<string>();
 const caster = new SkillCaster();
+const castPredictor = new CastPredictor();
+// The ping badge by the battle gear; predicted casts wait about one round trip.
+startPingBadge(
+  socket,
+  () =>
+    !$("battle").hidden && myId && state && state.phase !== "lobby"
+      ? $("battle-menu")
+      : null,
+  (ms) => (castPredictor.rtt = ms),
+);
+/**
+ * A skill you just cast (predicted) shows its cooldown before the server's
+ * snapshot does; the server's value takes over as soon as it has one.
+ */
+const optimisticCooldowns = new Map<number, { until: number; at: number }>();
+function cooldownLeft(me: Fighter, slot: number, time: number) {
+  const server = Math.max(0, (me.cooldowns[slot] ?? 0) - time);
+  if (server > 0) {
+    optimisticCooldowns.delete(slot);
+    return server;
+  }
+  const guess = optimisticCooldowns.get(slot);
+  if (!guess) return 0;
+  // The server refused or never answered: drop the guess.
+  if (performance.now() - guess.at > Math.max(400, castPredictor.rtt + 300)) {
+    optimisticCooldowns.delete(slot);
+    return 0;
+  }
+  return Math.max(0, guess.until - time);
+}
+/** The skill's buttons answer the press at once: a flash, and the cooldown starts. */
+function flashSkillButton(slot: number, ok: boolean) {
+  const buttons = [
+    document.getElementById(`ability-${slot}`),
+    document.querySelector<HTMLElement>(`#mobile-controls [data-skill="${slot}"]`),
+  ];
+  for (const button of buttons) {
+    if (!button) continue;
+    button.classList.remove("press-ok", "press-denied");
+    void button.offsetWidth; // restart the animation
+    button.classList.add(ok ? "press-ok" : "press-denied");
+    const press = button;
+    setTimeout(() => press.classList.remove("press-ok", "press-denied"), 260);
+    if (ok && slot !== ULT_SLOT) {
+      button.classList.add("cooling");
+      button.style.setProperty("--cooldown", "100%");
+    }
+  }
+}
+/** How long a basic (slot -1) or skill animation plays. */
+function castDuration(c: (typeof CHARACTERS)[CharacterId], slot: number) {
+  return slot >= 0
+    ? Math.max(
+        c.skills[slot].kind === "cone" ? c.skills[slot].duration * 1000 : 0,
+        slot === 3 ? 650 : 360,
+      )
+    : 220;
+}
 let padHeld = new Set<PadAction>();
 /** The controller was used last (aim from the right stick, pad labels). */
 let usingPad = false;
@@ -2101,7 +2161,7 @@ function renderBattle() {
         "ex-armed",
         exArmedUntil > performance.now(),
       );
-      const left = Math.max(0, me.cooldowns[i] - state!.time);
+      const left = cooldownLeft(me, i, state!.time);
       setHudText(
         $(`cooldown-${i}`),
         left > 0 ? `${left.toFixed(1)}s` : "READY",
@@ -2134,7 +2194,7 @@ function renderBattle() {
   touch.update(
     state.phase === "playing" && connected && !!myId && !knockedOut,
     CHARACTERS[me.character].skills.map((a) => a.name),
-    me.cooldowns.map((t) => Math.max(0, t - state!.time)),
+    me.cooldowns.map((_, i) => cooldownLeft(me, i, state!.time)),
     Math.max(0, me.dashAt - state.time),
     Math.max(0, me.jumpAt - state.time),
     kitOf(me.character, me.rites).skills.map(
@@ -3296,6 +3356,58 @@ class ArenaScene extends Phaser.Scene {
     this.input.mouse!.disableContextMenu();
     this.scale.refresh();
   }
+  /** Start your own basic, skill or dash feedback on the press (see cast-prediction). */
+  predictCasts(local: Fighter, input: Input, time: number) {
+    if (!this.animationLive || !state) return;
+    const now = performance.now();
+    const c = CHARACTERS[local.character];
+    const free = !!state.practice?.unlimitedCooldowns;
+    // The server takes a skill over a basic in the same step.
+    if (input.skill >= 0) {
+      const windUp = c.skills[input.skill].cast;
+      // A wind-up skill shows its charging pose now (as the server's charge
+      // will); its cast arrives from the server when the charge ends, so it
+      // is not marked as already shown.
+      const action: CastAction = windUp > 0 ? "charge" : (`skill${input.skill}` as CastAction);
+      if (castPredictor.waiting(action, now)) {
+        // Already shown; the server has it.
+      } else if (canCastSkill(local, input.skill, time, free)) {
+        this.getRig(local.id, local.character).trigger(
+          windUp > 0 ? "skill3" : (action as "skill0"),
+          this.feelClock,
+          windUp > 0 ? windUp * 1000 : castDuration(c, input.skill),
+        );
+        if (windUp <= 0) audio.play("cast");
+        castPredictor.predict(action, now);
+        if (input.skill !== ULT_SLOT && !free)
+          optimisticCooldowns.set(input.skill, {
+            until: time + kitOf(local.character, local.rites).skills[input.skill].cooldown * cooldownScale(),
+            at: now,
+          });
+        flashSkillButton(input.skill, true);
+      } else if (!skillReady(local, input.skill, time, free)) flashSkillButton(input.skill, false);
+    } else if (input.basic && !castPredictor.waiting("basic", now) && canBasic(local, time)) {
+      this.getRig(local.id, local.character).trigger("basic", this.feelClock, castDuration(c, -1));
+      audio.play("cast");
+      castPredictor.predict("basic", now);
+    }
+    if (input.dash && !castPredictor.waiting("dash", now) && canDash(local, time)) {
+      audio.play("dash");
+      castPredictor.predict("dash", now);
+    }
+  }
+  /** Is this server event the echo of a cast or dash already shown? */
+  predictedEcho(event: Snapshot["events"][number]) {
+    const now = performance.now();
+    if (event.kind === "dash") return castPredictor.confirm("dash", now);
+    if (event.kind !== "cast" || !event.abilityId) return false;
+    const me = state?.players.find((p) => p.id === myId);
+    if (!me) return false;
+    const c = CHARACTERS[me.character];
+    const slot = c.skills.findIndex((a) => a.id === event.abilityId);
+    if (slot < 0 && event.abilityId !== c.basic.id) return false;
+    return castPredictor.confirm(slot >= 0 ? (`skill${slot}` as CastAction) : "basic", now);
+  }
   effect(event: Snapshot["events"][number]) {
     if (event.kind === "raid-impact") {
       const ring = this.add
@@ -3310,19 +3422,24 @@ class ArenaScene extends Phaser.Scene {
       });
     }
 
+    // Your own cast or dash that was already shown on the key press (a
+    // predicted cast) is not played a second time when the server confirms.
+    const echo = event.owner === myId && this.predictedEcho(event);
     if (
-      (event.owner === myId &&
+      ((event.owner === myId &&
         event.kind !== "impact" &&
         event.kind !== "raid-impact") ||
-      event.kind === "hit" ||
-      event.kind === "round"
+        event.kind === "hit" ||
+        event.kind === "round") &&
+      !echo
     )
       audio.play(event.kind);
     if (
       this.animationLive &&
       event.kind === "cast" &&
       event.owner &&
-      event.abilityId
+      event.abilityId &&
+      !echo
     ) {
       const p = state?.players.find((p) => p.id === event.owner);
       if (p) {
@@ -3334,14 +3451,7 @@ class ArenaScene extends Phaser.Scene {
               ? (`skill${slot}` as "skill0" | "skill1" | "skill2" | "skill3")
               : "basic",
             this.feelClock,
-            slot >= 0
-              ? Math.max(
-                  c.skills[slot].kind === "cone"
-                    ? c.skills[slot].duration * 1000
-                    : 0,
-                  slot === 3 ? 650 : 360,
-                )
-              : 220,
+            castDuration(c, slot),
             event.id,
           );
       }
@@ -3722,7 +3832,15 @@ class ArenaScene extends Phaser.Scene {
       this.actions = { skill: -1, dash: false, jump: false, basic: false };
       caster.cancel();
       touch.reset();
+      castPredictor.clear();
+      optimisticCooldowns.clear();
     }
+    // A predicted cast the server never confirmed (it refused) ends early.
+    const refused = castPredictor.expired(performance.now());
+    if (refused.length && local)
+      for (const action of refused)
+        if (action !== "dash" && action !== "charge")
+          this.getRig(local.id, local.character).controller.cancel(action);
     if (!state || state.phase === "lobby") {
       this.rigs.forEach((rig) => rig.setVisible(false));
       this.labels.forEach((label) => (label.hidden = true));
@@ -3830,6 +3948,9 @@ class ArenaScene extends Phaser.Scene {
       };
       this.actions = { skill: -1, dash: false, jump: false, basic: false };
       socket.emit("input", input);
+      // Show your own cast now (before this step's movement changes the
+      // fighter), at the time this input is predicted to run.
+      this.predictCasts(local, input, state.time + (pending.length + 1) / RULES.tick);
       pending.push(input);
       if (pending.length > 90) pending.shift();
       predict(local, input, state.time + pending.length / RULES.tick);

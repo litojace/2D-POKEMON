@@ -1574,6 +1574,10 @@ export function createArenaServer(
         broadcast(a);
       }),
     );
+    // Round-trip check for the in-battle ping badge: answer at once.
+    socket.on("rtt", (_data: unknown, cb: unknown) => {
+      if (typeof cb === "function") cb();
+    });
     socket.on("input", (data: unknown) =>
       withRoom(undefined, (a, id) => {
         const result = inputSchema.safeParse(data);
