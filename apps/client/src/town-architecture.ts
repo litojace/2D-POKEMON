@@ -176,13 +176,18 @@ export function recolorCloth(data: Uint8ClampedArray, color: ClothColor) {
     data[i + 2] = Math.round((B + m) * 255);
   }
 }
-/** The stall picture with its cloth recoloured, on a canvas (painted once). */
-export function recoloredStall(source: HTMLImageElement, color: ClothColor) {
+/**
+ * The stall picture with its cloth recoloured, on a canvas (painted once).
+ * At `size` pixels square (512: the stall is about 220 units wide, so this
+ * stays sharp at normal zoom while three of them cost what one 1024 did).
+ */
+export function recoloredStall(source: HTMLImageElement, color: ClothColor, size = 512) {
   const canvas = document.createElement("canvas");
-  canvas.width = source.naturalWidth;
-  canvas.height = source.naturalHeight;
+  canvas.width = size;
+  canvas.height = size;
   const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
-  ctx.drawImage(source, 0, 0);
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(source, 0, 0, size, size);
   const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
   recolorCloth(pixels.data, color);
   ctx.putImageData(pixels, 0, 0);

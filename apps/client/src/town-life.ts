@@ -290,9 +290,9 @@ export class TownScenery {
       front = this.scene.make.graphics({}, false).setDepth(this.waterG.depth);
     drawFountainWater(back, front, f.x, f.y, 0, false, "base");
     this.streamBodies = [
-      bakeGraphics(this.scene, back, "town-fountain-streams-back", FOUNTAIN_WATER_BOUNDS, 3),
+      bakeGraphics(this.scene, back, "town-fountain-streams-back", FOUNTAIN_WATER_BOUNDS),
       // Just under the moving front layer, still over the stone.
-      bakeGraphics(this.scene, front, "town-fountain-streams-front", FOUNTAIN_WATER_BOUNDS, 3).setDepth(this.waterG.depth - 0.05),
+      bakeGraphics(this.scene, front, "town-fountain-streams-front", FOUNTAIN_WATER_BOUNDS).setDepth(this.waterG.depth - 0.05),
     ];
     back.destroy();
     front.destroy();
@@ -491,6 +491,8 @@ export class TownScenery {
       const img = place(s, `town-${marketSource||marketHD?"painted-":""}stall-${i}`, art, st.x, st.y + 26, st.y, 2);
       if (i === MIRRORED_STALL) img.setFlipX(true);
     });
+    // The three recoloured stalls replace the shared picture: free its GPU copy.
+    if (marketHD && s.textures.exists("town-hd-market")) s.textures.remove("town-hd-market");
     void TOWN_DUMMIES;
     // Raid Hall statues: each boss carved in stone on a plinth with its
     // name on a bronze plaque; the next plinth waits under a cloth.
