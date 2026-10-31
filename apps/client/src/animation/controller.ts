@@ -35,6 +35,20 @@ const priority: Record<AnimationState, number> = {
   hurt: 80,
   defeat: 100,
 };
+/**
+ * How long an attack holds the whole body before running takes over again
+ * (ms). Moving while casting is allowed (the server never roots a caster),
+ * so once the throw has visibly happened the legs go back to running
+ * instead of sliding in a planted pose until the move's end (a breath
+ * attack lasts seconds). Standing still, the move plays out in full.
+ */
+export const RUN_THROUGH_AFTER: Partial<Record<AnimationState, number>> = {
+  basic: 140,
+  skill0: 240,
+  skill1: 240,
+  skill2: 240,
+  skill3: 380,
+};
 export interface AnimationPose {
   /** Equipped raid appearance (skin and entrance affect the rig). */
   look?: RaidLoadout;
@@ -97,6 +111,14 @@ export class AnimationController {
     if (
       (this.state === "wave" || this.state === "victory") &&
       (pose.speed > 12 || pose.dash || pose.jump || pose.charging)
+    )
+      this.until = 0;
+    const runThrough = RUN_THROUGH_AFTER[this.state];
+    if (
+      runThrough !== undefined &&
+      !pose.charging &&
+      pose.speed > runThreshold &&
+      now - this.started >= runThrough
     )
       this.until = 0;
     if (now < this.until) return this.state;
