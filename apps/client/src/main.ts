@@ -5,6 +5,8 @@ import { RoomInvites } from "./room-invites";
 import { PvpSpectator } from "./pvp-spectator";
 import { predictFighter } from "./predict-fighter";
 import { startPingBadge } from "./ping-badge";
+import { TargetLock, drawTargetReticle } from "./target-lock";
+import { renderTargetPicker } from "./target-picker";
 import { CastPredictor, canBasic, canCastSkill, canDash, type CastAction } from "./cast-prediction";
 import { queueBossSpellArt } from "./boss-spell-flipbook";
 import { queueBossArt, retainBossArt } from "./boss-painted-rig";
@@ -397,6 +399,8 @@ else $("battle").append($("battle-menu"));
 const held = new Set<string>();
 const caster = new SkillCaster();
 const castPredictor = new CastPredictor();
+/** The enemy a phone player locked on to (tap it, or its name in the target row). */
+const targetLock = new TargetLock();
 // The ping badge by the battle gear; predicted casts wait about one round trip.
 startPingBadge(
   socket,
@@ -3354,7 +3358,39 @@ class ArenaScene extends Phaser.Scene {
     this.bossGraphics = this.add.graphics();
     // Keys and mouse buttons are read through the player's bindings (see pressAction).
     this.input.mouse!.disableContextMenu();
+    // Phones: tap an enemy on the court to aim at it; tap it again for
+    // automatic aiming. A tap on empty ground keeps the current lock.
+    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      if (!touch.enabled || state?.phase !== "playing" || !local) return;
+      const hit = targetLock.pickAt(pointer.worldX, pointer.worldY, visibleEnemies(local, local));
+      if (hit) targetLock.toggle(hit.id);
+    });
     this.scale.refresh();
+  }
+  /** The phone target row (two or more enemies) and the lock's lifetime. */
+  syncTargetPicker() {
+    const me = state?.players.find((p) => p.id === myId);
+    targetLock.keepIf((id) => !!state?.players.some((p) => p.id === id && !p.out));
+    const frame = document.getElementById("game")?.parentElement;
+    if (!frame) return;
+    const show =
+      touch.enabled &&
+      !!me &&
+      !me.out &&
+      state?.phase === "playing" &&
+      state.raid?.boss !== "storm-twins";
+    const myTeam = me ? teamOf(me) : undefined;
+    const enemies = show
+      ? state!.players
+          .filter((p) => p.id !== myId && !p.out && teamOf(p) !== myTeam)
+          .map((p) => ({
+            id: p.id,
+            name: p.raidBoss && state!.raid ? state!.raid.name : p.name,
+            color: `#${CHARACTERS[p.character].color.toString(16).padStart(6, "0")}`,
+            available: p.hp > 0 && !p.statuses.some((s) => s.kind === "stealth"),
+          }))
+      : [];
+    renderTargetPicker(frame, show, enemies, targetLock.id, (id) => targetLock.toggle(id));
   }
   /** Start your own basic, skill or dash feedback on the press (see cast-prediction). */
   predictCasts(local: Fighter, input: Input, time: number) {
@@ -3828,6 +3864,7 @@ class ArenaScene extends Phaser.Scene {
         this.positions.delete(id);
       }
     const pad = pollPad();
+    this.syncTargetPicker();
     if (!this.canControl()) {
       this.actions = { skill: -1, dash: false, jump: false, basic: false };
       caster.cancel();
@@ -3877,7 +3914,8 @@ class ArenaScene extends Phaser.Scene {
         (touch.enabled ? touch.focused : document.hasFocus()) &&
         !document.hidden;
       const enemies = visibleEnemies(local, local);
-      const target = enemies[0];
+      // A locked enemy (touch or controller) before the nearest one.
+      const target = targetLock.resolve(enemies) ?? enemies[0];
       const combatActive = active && local.hp > 0 && !local.out;
       let skill = combatActive ? this.actions.skill : -1;
       // EX skills: the ultimate button before the meter is full arms an EX
@@ -4310,6 +4348,9 @@ class ArenaScene extends Phaser.Scene {
             : c.color,
         isTeams() ? 0.8 : 0.55,
       ).strokeEllipse(x, feetY, 72, groundHeight(72));
+      // The enemy you locked on to (phones): turning corner brackets.
+      if (p.id === targetLock.id && touch.enabled && p.hp > 0 && !serverPlayer.statuses.some((s) => s.kind === "stealth"))
+        drawTargetReticle(g, x, feetY, reducedMotion ? 0 : _time / 1000);
       // Mastery flair: an outer ring in the tier's colour (Crystal shimmers).
       if (serverPlayer.flair) {
         const tier = MASTERY_TIERS.find((t) => t.name === serverPlayer.flair);

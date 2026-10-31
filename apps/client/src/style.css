@@ -24512,3 +24512,96 @@ body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-callout {
 #battle-menu .ping-badge[data-level="poor"] {
   --ping: #ff5d6c;
 }
+
+/* Phones: the target row (two or more enemies), right side above the skill
+   cluster, like the Storm Twins target buttons. */
+#target-picker[hidden] {
+  display: none;
+}
+#target-picker {
+  position: fixed;
+  z-index: 27;
+  top: max(
+    var(--target-row-top, calc(var(--safe-top, 0px) + 62px)),
+    calc(100dvh - var(--safe-bottom, 0px) - var(--combat-cluster-height, 192px) - 50px)
+  );
+  right: calc(var(--safe-right, 0px) + 6px);
+  display: flex;
+  gap: 6px;
+  max-width: calc(100vw - var(--safe-left, 0px) - var(--safe-right, 0px) - 220px);
+}
+#target-picker button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid #ff5d6c66;
+  background: #14243bea;
+  color: #f4efe2;
+  font: 600 12px/1 "DM Sans", sans-serif;
+  touch-action: manipulation;
+}
+#target-picker button > i {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--target-color);
+  box-shadow: 0 0 0 2px #0b1222;
+}
+#target-picker button > span {
+  min-width: 0;
+  max-width: 96px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+#target-picker button[aria-pressed="true"] {
+  border-color: #ff5d6c;
+  background: #4a1a26f0;
+  box-shadow: 0 0 12px #ff5d6c66;
+}
+#target-picker button:disabled {
+  opacity: 0.4;
+}
+/* PvP: the fighter cards reach the gear, so the badge sits under it (raids
+   keep it beside the gear: the raid timer is under it). */
+body:not(.battle-raid) #battle-menu .ping-badge {
+  top: calc(100% + 4px);
+  right: 50%;
+  translate: 50% 0;
+}
+/* Short phones: the row fits between the fighter cards and the ULT button. */
+@media (max-height: 320px) {
+  #target-picker {
+    --target-row-top: calc(var(--safe-top, 0px) + 57px);
+  }
+  #target-picker button {
+    height: 28px;
+    min-height: 28px;
+    padding: 0 9px;
+    font-size: 11px;
+  }
+}
+/* Phones: no room for the number by the gear (fighter cards, target row),
+   so the badge is just its coloured dot on the gear's corner. */
+body.touch-mode #battle-menu .ping-badge {
+  top: 1px;
+  right: 1px;
+  translate: none;
+  width: 11px;
+  height: 11px;
+  padding: 0;
+  gap: 0;
+  justify-content: center;
+  font-size: 0;
+  background: #0b1222;
+}
+body.touch-mode #battle-menu .ping-badge::before {
+  width: 7px;
+  height: 7px;
+}
