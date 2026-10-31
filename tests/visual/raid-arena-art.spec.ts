@@ -67,6 +67,8 @@ for (const viewport of [
               const scene = (window as any).__raidArtGame.scene.getScene(
                 "arena",
               );
+              // Shown through its own texture once painted (not re-uploaded in place).
+              if (!scene.floor.texture.key.endsWith(":art")) return "stand-in";
               return scene.floor.texture.getSourceImage().dataset?.raidArtwork;
             }),
           )

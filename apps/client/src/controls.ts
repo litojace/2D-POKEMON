@@ -26,14 +26,7 @@ export interface ControlPrefs {
   cast: CastMode;
   /** Mouse only: basic attacks lean toward an opponent near the cursor. */
   aimAssist: boolean;
-  /**
-   * How the fighter moves on a computer: "keys" (WASD / arrows) or "mouse"
-   * (hold or click the left button where to go; skills still aim at the
-   * cursor, the keyboard's movement keys do nothing).
-   */
-  move: MoveMode;
 }
-export type MoveMode = "keys" | "mouse";
 
 export const ACTIONS: { id: Action; label: string; group: string }[] = [
   { id: "up", label: "Move up", group: "Movement" },
@@ -64,30 +57,11 @@ export const DEFAULT_BINDINGS: Bindings = {
   dash: ["Mouse2", "ShiftLeft"],
   jump: ["Space", null],
 };
-/**
- * Keys for mouse movement (the left button walks): 1 basic attack (hold to
- * keep attacking), 2 3 4 5 the four skills (Q E R F still work as backups),
- * right button dash. Movement keys stay bound but are ignored.
- */
-export const MOUSE_BINDINGS: Bindings = {
-  ...DEFAULT_BINDINGS,
-  basic: ["Digit1", null],
-  skill1: ["Digit2", "KeyQ"],
-  skill2: ["Digit3", "KeyE"],
-  skill3: ["Digit4", "KeyR"],
-  skill4: ["Digit5", "KeyF"],
-  dash: ["Mouse2", "ShiftLeft"],
-};
 export const DEFAULT_PREFS: ControlPrefs = {
   bindings: DEFAULT_BINDINGS,
   cast: "preview",
   aimAssist: false,
-  move: "keys",
 };
-/** Switch movement scheme, with that scheme's keys. */
-export function withMoveMode(prefs: ControlPrefs, move: MoveMode): ControlPrefs {
-  return { ...prefs, move, bindings: move === "mouse" ? MOUSE_BINDINGS : DEFAULT_BINDINGS };
-}
 
 /** Keys the browser or the game needs for itself. */
 const RESERVED = new Set([
@@ -203,7 +177,10 @@ export function parsePrefs(raw: unknown): ControlPrefs {
   >;
   let bindings = DEFAULT_BINDINGS;
   const saved = data.bindings as Partial<Record<Action, unknown>> | undefined;
-  if (saved && typeof saved === "object") {
+  // A short-lived mouse-movement option saved its own keys (1-5, no left
+  // button attack); it is gone, so those players get the default keys back.
+  const mouseScheme = (data as Record<string, unknown>).move === "mouse";
+  if (saved && typeof saved === "object" && !mouseScheme) {
     bindings = Object.fromEntries(
       ACTIONS.map(({ id }) => [id, [null, null] as Binding]),
     ) as Bindings;
@@ -222,7 +199,6 @@ export function parsePrefs(raw: unknown): ControlPrefs {
     bindings,
     cast: data.cast === "instant" ? "instant" : "preview",
     aimAssist: data.aimAssist === true,
-    move: data.move === "mouse" ? "mouse" : "keys",
   };
 }
 

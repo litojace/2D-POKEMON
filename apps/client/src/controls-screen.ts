@@ -7,10 +7,8 @@ import {
   codeLabel,
   controlPrefs,
   setControlPrefs,
-  withMoveMode,
   type Action,
   type CastMode,
-  type MoveMode,
 } from "./controls";
 import { PAD_LABELS, type PadAction } from "./gamepad";
 
@@ -44,14 +42,6 @@ const esc = (s: string) =>
       ]!,
   );
 const actionName = (id: Action) => ACTIONS.find((a) => a.id === id)!.label;
-const MOVE_CHOICES: [MoveMode, string, string][] = [
-  ["keys", "Keyboard", "WASD or the arrows move; the left mouse button attacks."],
-  [
-    "mouse",
-    "Mouse",
-    "Hold or click the left button where to go. 1 attacks (hold to keep going), 2 3 4 5 are your skills, right button dashes.",
-  ],
-];
 const CAST_CHOICES: [CastMode, string, string][] = [
   [
     "preview",
@@ -81,10 +71,6 @@ export function controlsScreenHTML(padConnected: boolean, touchHTML = "") {
           .join("") + "</section>",
     )
     .join("");
-  const move = MOVE_CHOICES.map(
-    ([value, title, hint]) =>
-      `<label class="choice"><input type="radio" name="move" value="${value}"${prefs.move === value ? " checked" : ""}><span><b>${title}</b><small>${hint}</small></span></label>`,
-  ).join("");
   const cast = CAST_CHOICES.map(
     ([value, title, hint]) =>
       `<label class="choice"><input type="radio" name="cast" value="${value}"${prefs.cast === value ? " checked" : ""}><span><b>${title}</b><small>${hint}</small></span></label>`,
@@ -97,7 +83,7 @@ export function controlsScreenHTML(padConnected: boolean, touchHTML = "") {
     .join("");
   return (
     `<div class="eyebrow">Controls</div><h2>Make it yours.</h2>` +
-    `<div class="controls-layout"><div class="controls-preferences">${touchHTML ? `<section class="prefs-card prefs-touch" aria-labelledby="prefs-touch">${touchHTML}</section>` : ""}<fieldset class="cast-mode move-mode"><legend>Movement</legend>${move}</fieldset><fieldset class="cast-mode"><legend>Skill casting</legend>${cast}</fieldset>` +
+    `<div class="controls-layout"><div class="controls-preferences">${touchHTML ? `<section class="prefs-card prefs-touch" aria-labelledby="prefs-touch">${touchHTML}</section>` : ""}<fieldset class="cast-mode"><legend>Skill casting</legend>${cast}</fieldset>` +
     `<label class="choice assist"><input type="checkbox" id="aim-assist"${prefs.aimAssist ? " checked" : ""}><span><b>Aim assist (mouse)</b><small>Basic attacks snap to an opponent close to your cursor. Skills always go exactly where you aim.</small></span></label>` +
     `</div><div class="controls-bindings"><div class="bindings" role="group" aria-label="Key bindings">${rows}</div>` +
     `<p class="binding-note" id="binding-note" role="status">Click a box, then press a key or click it with the mouse button you want. Delete clears it, Esc cancels.</p>` +
@@ -195,17 +181,6 @@ export function showControlsScreen(options: ControlsScreenOptions) {
   ))
     radio.onchange = () =>
       setControlPrefs({ ...controlPrefs(), cast: radio.value as CastMode });
-  for (const radio of Array.from(
-    box.querySelectorAll<HTMLInputElement>('input[name="move"]'),
-  ))
-    radio.onchange = () => {
-      setControlPrefs(withMoveMode(controlPrefs(), radio.value as MoveMode));
-      showControlsScreen(options); // The key table changes with the scheme.
-      box.querySelector("#binding-note")!.textContent =
-        radio.value === "mouse"
-          ? "Mouse movement: left button walks, 1 attacks, 2 3 4 5 cast, right button dashes."
-          : "Keyboard movement: WASD or the arrows walk, the left button attacks.";
-    };
   box.querySelector<HTMLInputElement>("#aim-assist")!.onchange = (e) =>
     setControlPrefs({
       ...controlPrefs(),

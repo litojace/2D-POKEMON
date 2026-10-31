@@ -1,6 +1,7 @@
 import { RULES } from "@arena/shared";
 import { paintKit } from "./arena-courts";
 import type { RaidFloorId } from "./raid-floors";
+import type { RaidBossId } from "../../../packages/shared/src/raid-roster";
 import { GLOOMSHADE } from "../../../packages/shared/src/raid";
 import grumblecrag from "./art/raid-arenas/grumblecrag.webp";
 import tidewyrm from "./art/raid-arenas/tidewyrm.webp";
@@ -23,6 +24,31 @@ export const RAID_ARENA_ART: Record<IllustratedRaidFloor, string> = {
 export const isIllustratedRaidFloor = (
   id: string,
 ): id is IllustratedRaidFloor => Object.hasOwn(RAID_ARENA_ART, id);
+
+/** Each boss's illustrated arena (Grumblecrag fights in the Coliseum). */
+export const RAID_BOSS_ARENA: Record<RaidBossId, IllustratedRaidFloor> = {
+  grumblecrag: "raid-coliseum",
+  tidewyrm: "lagoon",
+  gloomshade: "lantern-yard",
+  somnara: "cloud-deck",
+  prismatail: "sun-atrium",
+  emberwing: "sky-terrace",
+  "storm-twins": "conductor-ring",
+};
+const prefetched = new Map<string, HTMLImageElement>();
+/**
+ * Start downloading a boss's arena picture while the party is still in the
+ * lobby or briefing, so it is in the browser's cache (and painted at once)
+ * when the fight starts, instead of the stand-in floor showing meanwhile.
+ */
+export function prefetchRaidArena(boss: RaidBossId) {
+  const id = RAID_BOSS_ARENA[boss];
+  if (!id || prefetched.has(id)) return;
+  const image = new Image();
+  image.decoding = "async";
+  image.src = RAID_ARENA_ART[id];
+  prefetched.set(id, image);
+}
 
 /** Only the selected arena is decoded; bake once, then release the source image. */
 export function loadRaidArenaArt(
