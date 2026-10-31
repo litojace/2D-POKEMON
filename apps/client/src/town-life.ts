@@ -2,7 +2,7 @@ import { drawPondWater, pondDuckPose } from "./town-pond-water";
 import { TOWN_POND } from "../../../packages/shared/src/town";
 import { addCanvasTexture } from "./canvas-texture";
 import { isIOSWebApp } from "./render-budget";
-import { paintedNature, paintedProp, paintedAnimal, paintedPlinth } from "./town-environment-art";
+import { paintedNature, paintedProp, paintedAnimal, paintedPlinth, paintedCrateStack } from "./town-environment-art";
 import { animalMotionSprite, createHenMotion, gullMotion, stepHen, type HenMotion } from "./town-animal-motion";
 import { warmHenRoaming } from "./town-hen-roaming";
 import { WORLD_ART } from "../../../packages/shared/src/world-art";
@@ -54,7 +54,7 @@ import {
 import { propSprite, stallSprite } from "./town-props";
 import { drawFountainWater, FOUNTAIN_WATER_BOUNDS } from "./town-fountain-water";
 import { bakeGraphics, inView, type BakeBounds } from "./town-bake";
-import { architectureFrame, architectureName, nativeBuilding, nativeStall, paintedBuilding, paintedStall } from "./town-architecture";
+import { architectureFrame, architectureName, nativeBuilding, nativeStall, paintedBuilding, paintedStall, recoloredStall, type ClothColor } from "./town-architecture";
 import { drawFountainCrystal } from "./town-fountain-crystal";
 import { butterflySprite, duckSprite, GULL_FRAMES, gullSprite, HEN_FRAMES, henSprite, type HenPose } from "./town-animals";
 
@@ -85,6 +85,18 @@ const num = (css: string) => parseInt(css.slice(1), 16);
 const TAU = Math.PI * 2;
 /** The town's one shadow colour (see SUN in town-art). */
 export const SHADE = 0x141c0c;
+/**
+ * Each market stall's cloth, so the three don't look identical: rose for
+ * champion skins, teal for today's picks, gold for collections (the colours
+ * of their pads). The middle stall is also mirrored, and the three crate
+ * piles differ (the full pile, the same pile mirrored, crates alone).
+ */
+const STALL_CLOTH: readonly ClothColor[] = [
+  { hue: 342, sat: 0.85, val: 1.05 },
+  { hue: 185, sat: 0.9, val: 0.85 },
+  { hue: 42, sat: 1, val: 1.05 },
+];
+const MIRRORED_STALL = 1;
 /** What the coliseum's screen cycles through. */
 const SCREEN_LINES = ["Walk to the gate to play", "Duels · 2v2 Teams · Free-for-all", "Party rules · Four arenas", "Bring a friend. Find a rival."];
 
@@ -422,9 +434,16 @@ export class TownScenery {
     place(s, fountainSource?"town-fountain-painted-base":"town-fountain-base",base,f.x,f.y,f.y-.4);
     place(s, fountainSource?"town-fountain-painted-top":"town-fountain-top",upper,f.x,f.y,f.y);
     const kinds = new Set(["stone", "lamp", "crates", "well", "dummy", "mirror", "obelisk", "board"]);
+    let crates = 0;
     for (const o of TOWN_OBSTACLES) {
       if (!kinds.has(o.kind)) continue;
       const original = propSprite(o.kind), source=this.environment("town-scenery-props");
+      // Crate piles: the full pile, mirrored, then the two crates alone.
+      const pile = o.kind === "crates" ? crates++ % 3 : 0;
+      if (pile === 2 && source) {
+        place(s, "town-prop-crates-stack", paintedCrateStack(source, original), o.x, o.y + (o.shape === "box" ? o.h / 2 : 4), o.y);
+        continue;
+      }
       let sprite = source?paintedProp(source,o.kind,original):original;
       if(sprite.nativeImage)sprite.nativeImage.key="town-scenery-props";
       if(o.kind==="obelisk") {
@@ -437,6 +456,7 @@ export class TownScenery {
         }
       }
       const img = place(s, `town-prop-${o.kind}`, sprite, o.x, o.y + (o.shape === "box" ? o.h / 2 : 4), o.y);
+      if (pile === 1) img.setFlipX(true);
       if (o.kind === "lamp" && !this.reduced) {
         const glow = place(s, "town-glow", softBlob("255,214,140"), o.x, o.y - 104, o.y + 0.2, 1);
         glow.setScale(0.9).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.6);
@@ -460,7 +480,17 @@ export class TownScenery {
     TOWN_SIGNPOSTS.forEach((p, i) => place(s, `town-signpost-${i}`, signpostSprite(p.label, p.color, p.left), p.x, p.y + 4, p.y, 2.5));
     const marketSource = s.textures.exists("town-architecture-buildings") ? s.textures.get("town-architecture-buildings").getSourceImage() as HTMLImageElement : null;
     const marketHD=this.environment("town-hd-market");
-    TOWN_STALLS.forEach((st, i) => place(s, `town-${marketSource||marketHD?"painted-":""}stall-${i}`, marketHD?nativeStall(marketHD,"town-hd-market"):marketSource?paintedStall(marketSource,st.color):stallSprite(st.color, i), st.x, st.y + 26, st.y, 2));
+    TOWN_STALLS.forEach((st, i) => {
+      let art = marketHD ? nativeStall(marketHD, "town-hd-market") : marketSource ? paintedStall(marketSource, st.color) : stallSprite(st.color, i);
+      const cloth = STALL_CLOTH[i % STALL_CLOTH.length];
+      if (marketHD) {
+        const key = `town-hd-market-${i}`;
+        if (!s.textures.exists(key)) addCanvasTexture(s.textures, key, painted.get(key) ?? painted.set(key, recoloredStall(marketHD, cloth)).get(key)!);
+        art = nativeStall(painted.get(key)!, key);
+      }
+      const img = place(s, `town-${marketSource||marketHD?"painted-":""}stall-${i}`, art, st.x, st.y + 26, st.y, 2);
+      if (i === MIRRORED_STALL) img.setFlipX(true);
+    });
     void TOWN_DUMMIES;
     // Raid Hall statues: each boss carved in stone on a plinth with its
     // name on a bronze plaque; the next plinth waits under a cloth.

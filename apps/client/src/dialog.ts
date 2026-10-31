@@ -54,7 +54,6 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
       ".missions-shop",
       ".raid-hub-actions",
       "#controls-reset",
-      "#control-reset",
       "#open-controls",
       "#profile-save > button",
       "#profile-title > button",

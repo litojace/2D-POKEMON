@@ -115,12 +115,17 @@ export function paintedStall(source: CanvasImageSource, color: string): Sprite {
   };
   return p.sprite;
 }
-export function nativeStall(source: HTMLImageElement, key: string): Sprite {
+export function nativeStall(source: HTMLImageElement | HTMLCanvasElement, key: string): Sprite {
   const sprite = placement(source, ARCHITECTURE.market, 220).sprite,
     scale = 220 / ARCHITECTURE.market.inkWidth;
   sprite.nativeImage = {
     key,
-    crop: [0, 0, source.naturalWidth, source.naturalHeight],
+    crop: [
+      0,
+      0,
+      "naturalWidth" in source ? source.naturalWidth : source.width,
+      "naturalHeight" in source ? source.naturalHeight : source.height,
+    ],
     rect: [
       48,
       48,
@@ -129,4 +134,57 @@ export function nativeStall(source: HTMLImageElement, key: string): Sprite {
     ],
   };
   return sprite;
+}
+
+/** A market stall's cloth colour: hue (degrees) and saturation/brightness
+ * multipliers applied to the painted red awning stripes and table runner. */
+export interface ClothColor {
+  hue: number;
+  sat: number;
+  val: number;
+}
+/**
+ * Recolour the red cloth in RGBA pixels (in place). Only strongly red
+ * pixels change (hue within 20° of red, saturated, not near black), so the
+ * cream stripes, wood, lantern and blue curtain keep their colours; the
+ * shading of the cloth is kept by changing hue only and scaling the rest.
+ */
+export function recolorCloth(data: Uint8ClampedArray, color: ClothColor) {
+  const hue = (((color.hue % 360) + 360) % 360) / 60;
+  for (let i = 0; i < data.length; i += 4) {
+    if (!data[i + 3]) continue;
+    const r = data[i] / 255,
+      g = data[i + 1] / 255,
+      b = data[i + 2] / 255;
+    const max = Math.max(r, g, b);
+    if (max !== r || max < 0.25) continue;
+    const min = Math.min(g, b),
+      d = max - min;
+    if (d / max <= 0.45) continue;
+    const h = ((g - b) / d) * 60; // -60..60 around red
+    if (h > 16 || h < -20) continue;
+    const v = Math.min(1, max * color.val),
+      s = Math.min(1, (d / max) * color.sat),
+      c = v * s,
+      x = c * (1 - Math.abs((hue % 2) - 1)),
+      m = v - c;
+    const k = Math.floor(hue) % 6;
+    const [R, G, B] =
+      k === 0 ? [c, x, 0] : k === 1 ? [x, c, 0] : k === 2 ? [0, c, x] : k === 3 ? [0, x, c] : k === 4 ? [x, 0, c] : [c, 0, x];
+    data[i] = Math.round((R + m) * 255);
+    data[i + 1] = Math.round((G + m) * 255);
+    data[i + 2] = Math.round((B + m) * 255);
+  }
+}
+/** The stall picture with its cloth recoloured, on a canvas (painted once). */
+export function recoloredStall(source: HTMLImageElement, color: ClothColor) {
+  const canvas = document.createElement("canvas");
+  canvas.width = source.naturalWidth;
+  canvas.height = source.naturalHeight;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
+  ctx.drawImage(source, 0, 0);
+  const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  recolorCloth(pixels.data, color);
+  ctx.putImageData(pixels, 0, 0);
+  return canvas;
 }

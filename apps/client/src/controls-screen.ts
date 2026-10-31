@@ -23,6 +23,9 @@ export interface ControlsScreenOptions {
   box: HTMLDialogElement;
   onBack(): void;
   padConnected: boolean;
+  /** Phones: the touch controls' sliders (joystick, buttons, opacity), shown
+   * first here, and the function that wires them up. */
+  touch?: { html: string; bind(): void };
 }
 type Capture = { action: Action; slot: 0 | 1; button: HTMLButtonElement };
 let capturing: Capture | undefined;
@@ -48,7 +51,7 @@ const CAST_CHOICES: [CastMode, string, string][] = [
   ["instant", "Instant", "Cast the moment you press the key."],
 ];
 
-export function controlsScreenHTML(padConnected: boolean) {
+export function controlsScreenHTML(padConnected: boolean, touchHTML = "") {
   const prefs = controlPrefs();
   const groups = [...new Set(ACTIONS.map((a) => a.group))];
   const rows = groups
@@ -80,7 +83,7 @@ export function controlsScreenHTML(padConnected: boolean) {
     .join("");
   return (
     `<div class="eyebrow">Controls</div><h2>Make it yours.</h2>` +
-    `<div class="controls-layout"><div class="controls-preferences"><fieldset class="cast-mode"><legend>Skill casting</legend>${cast}</fieldset>` +
+    `<div class="controls-layout"><div class="controls-preferences">${touchHTML ? `<section class="prefs-card prefs-touch" aria-labelledby="prefs-touch">${touchHTML}</section>` : ""}<fieldset class="cast-mode"><legend>Skill casting</legend>${cast}</fieldset>` +
     `<label class="choice assist"><input type="checkbox" id="aim-assist"${prefs.aimAssist ? " checked" : ""}><span><b>Aim assist (mouse)</b><small>Basic attacks snap to an opponent close to your cursor. Skills always go exactly where you aim.</small></span></label>` +
     `</div><div class="controls-bindings"><div class="bindings" role="group" aria-label="Key bindings">${rows}</div>` +
     `<p class="binding-note" id="binding-note" role="status">Click a box, then press a key or click it with the mouse button you want. Delete clears it, Esc cancels.</p>` +
@@ -93,7 +96,8 @@ export function controlsScreenHTML(padConnected: boolean) {
 export function showControlsScreen(options: ControlsScreenOptions) {
   cleanupScreen?.();
   const { box } = options;
-  options.open(controlsScreenHTML(options.padConnected));
+  options.open(controlsScreenHTML(options.padConnected, options.touch?.html));
+  options.touch?.bind();
   const note = box.querySelector<HTMLElement>("#binding-note")!;
   const buttons = () =>
     box.querySelectorAll<HTMLButtonElement>("button.binding");

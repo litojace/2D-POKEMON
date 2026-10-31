@@ -2806,9 +2806,8 @@ const syncDialogPrefs = () => syncPrefOutputs($<HTMLDialogElement>("dialog"));
 function showSettings() {
   settingsOpen = true;
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const touchHTML = touch.settingsHTML();
   dialog(
-    `<div class="settings-screen"><h2>Settings</h2>${state?.practice && touch.enabled ? `<div class="settings-quick-actions"><button id="settings-practice" class="secondary btn-secondary">${iconLabel("target", "Practice")}</button></div>` : ""}<p class="prefs-note">Online matches keep running while this is open.</p><div class="prefs-grid${touchHTML ? " has-touch" : ""}"><section class="prefs-card" aria-labelledby="prefs-sound"><h3 id="prefs-sound">${menuIcon("sound")}Sound</h3>${prefSlider("music", "Music", audio.music, { min: 0, max: 1, step: 0.01 })}${prefSlider("effects", "Sound effects", audio.effects, { min: 0, max: 1, step: 0.01 })}</section><section class="prefs-card" aria-labelledby="prefs-motion"><h3 id="prefs-motion">${menuIcon("motion")}Motion</h3><p class="prefs-status"><b class="${reduced ? "is-on" : ""}">Reduced motion ${reduced ? "on" : "off"}</b><span>Follows your device's accessibility setting.</span></p></section>${graphicsCard()}${touchHTML ? `<section class="prefs-card prefs-touch" aria-labelledby="prefs-touch">${touchHTML}</section>` : ""}</div><div class="settings-actions"><button id="open-controls" class="secondary btn-secondary">${iconLabel("keyboard", "Controls &amp; key bindings")}</button>${myId ? leaveButton() : watching ? `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>` : ""}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button><button id="settings-credits" class="quiet">${iconLabel("star", "Credits")}</button></div></div>`,
+    `<div class="settings-screen"><h2>Settings</h2>${state?.practice && touch.enabled ? `<div class="settings-quick-actions"><button id="settings-practice" class="secondary btn-secondary">${iconLabel("target", "Practice")}</button></div>` : ""}<p class="prefs-note">Online matches keep running while this is open.</p><div class="prefs-grid"><section class="prefs-card" aria-labelledby="prefs-sound"><h3 id="prefs-sound">${menuIcon("sound")}Sound</h3>${prefSlider("music", "Music", audio.music, { min: 0, max: 1, step: 0.01 })}${prefSlider("effects", "Sound effects", audio.effects, { min: 0, max: 1, step: 0.01 })}</section><section class="prefs-card" aria-labelledby="prefs-motion"><h3 id="prefs-motion">${menuIcon("motion")}Motion</h3><p class="prefs-status"><b class="${reduced ? "is-on" : ""}">Reduced motion ${reduced ? "on" : "off"}</b><span>Follows your device's accessibility setting.</span></p></section>${state ? "" : graphicsCard()}</div><div class="settings-actions"><button id="open-controls" class="secondary btn-secondary">${iconLabel("keyboard", "Controls &amp; key bindings")}</button>${myId ? leaveButton() : watching ? `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>` : ""}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button><button id="settings-credits" class="quiet">${iconLabel("star", "Credits")}</button></div></div>`,
   );
   bindGraphicsCard();
   for (const kind of ["music", "effects"] as const)
@@ -2816,14 +2815,9 @@ function showSettings() {
       audio.unlock();
       audio.set(kind, Number($<HTMLInputElement>(kind).value));
     };
-  touch.bindSettings();
   const box = $<HTMLDialogElement>("dialog");
   // Same function each time, so reopening Settings doesn't stack listeners.
   box.addEventListener("input", syncDialogPrefs);
-  // Reset sets the knobs directly (no input event), so refresh after it.
-  document
-    .getElementById("control-reset")
-    ?.addEventListener("click", () => setTimeout(() => syncPrefOutputs(box)));
   const practice = document.getElementById("settings-practice");
   if (practice) practice.onclick = () => {
     $<HTMLDialogElement>("dialog").close();
@@ -2851,6 +2845,22 @@ function showControls() {
     box: $<HTMLDialogElement>("dialog"),
     onBack: showSettings,
     padConnected: !!firstPad(),
+    // Touch controls live here (Settings keeps room for Graphics).
+    touch: touch.available
+      ? {
+          html: touch.settingsHTML(),
+          bind() {
+            touch.bindSettings();
+            const box = $<HTMLDialogElement>("dialog");
+            // Same function each time, so reopening doesn't stack listeners.
+            box.addEventListener("input", syncDialogPrefs);
+            // Reset sets the knobs directly (no input event), so refresh after it.
+            document
+              .getElementById("control-reset")
+              ?.addEventListener("click", () => setTimeout(() => syncPrefOutputs(box)));
+          },
+        }
+      : undefined,
   });
 }
 $("mobile-settings").onclick = showSettings;

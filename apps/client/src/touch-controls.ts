@@ -411,7 +411,7 @@ export class TouchControls {
           return `<label class="prefs-slider"><span class="prefs-slider-label">${label}</span><output for="control-${key}" data-pref-for="control-${key}">${Math.round(value * 100)}%</output><input type="range" id="control-${key}" min="${min}" max="${max}" step=".05" value="${value}"></label>`;
         })
         .join("") +
-      `<button class="secondary" id="control-reset">${iconLabel("again", "Reset mobile layout")}</button>`
+      `<button type="button" class="quiet" id="control-reset">${iconLabel("again", "Reset mobile layout")}</button>`
     );
   }
   bindSettings() {

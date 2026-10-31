@@ -128,6 +128,34 @@ export function paintedProp(
     ? painted(source, crop, frame, kind === "board", kind === "board", true)
     : frame;
 }
+/**
+ * Just the two stacked crates from the crates-barrel-sack picture, at the
+ * same size as in the full pile (so the town's crate piles differ). The
+ * barrel's edge peeking out behind the upper crate is clipped away.
+ */
+export function paintedCrateStack(source: CanvasImageSource, frame: Sprite): Sprite {
+  const [sx, sy, sw, sh] = PROP_FRAMES.crates,
+    scale = Math.min((frame.w - 8) / sw, (frame.ay - 3) / sh);
+  const STACK_W = 213, // the lower crate's right edge
+    UPPER_W = 193, // the upper crate's right edge
+    LOWER_TOP = 112; // where the lower crate starts
+  return {
+    ...frame,
+    draw(ctx) {
+      const w = STACK_W * scale,
+        h = sh * scale,
+        x = frame.ax - w / 2,
+        y = frame.ay - h;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x, y, UPPER_W * scale, h);
+      ctx.rect(x, y + LOWER_TOP * scale, w, h - LOWER_TOP * scale);
+      ctx.clip();
+      ctx.drawImage(source, sx, sy, STACK_W, sh, x, y, w, h);
+      ctx.restore();
+    },
+  };
+}
 export function paintedAnimal(
   source: CanvasImageSource,
   kind: "duck" | "hen" | "dog" | "gull",

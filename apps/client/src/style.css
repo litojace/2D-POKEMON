@@ -20973,15 +20973,6 @@ body.battle-active.court-view #game canvas {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
   align-items: start;
 }
-@media (min-width: 700px) {
-  .prefs-grid.has-touch {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .prefs-grid.has-touch > .prefs-touch {
-    grid-column: 2;
-    grid-row: 1 / span 2;
-  }
-}
 .prefs-card {
   min-width: 0;
   padding: 14px 16px;
@@ -21202,6 +21193,36 @@ body.battle-active.court-view #game canvas {
     margin: 0;
   }
   .prefs-status > span {
+    display: none;
+  }
+  /* Sound on the left, Motion and Graphics stacked on the right. */
+  .prefs-grid:has(> .prefs-graphics) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .prefs-grid:has(> .prefs-graphics) > :first-child {
+    grid-row: span 2;
+  }
+  /* Graphics: one line too (name, then Auto / High / Low). */
+  .prefs-card.prefs-graphics {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .framed-dialog .prefs-card.prefs-graphics > h3 {
+    margin: 0;
+  }
+  .prefs-graphics .prefs-choice {
+    flex: 0 1 230px;
+    margin: 0;
+    padding: 2px;
+  }
+  .framed-dialog .prefs-graphics .prefs-choice > button {
+    min-height: 28px;
+    padding: 3px 6px;
+    font-size: 12px;
+  }
+  .prefs-graphics-note {
     display: none;
   }
   .credits-hero {
