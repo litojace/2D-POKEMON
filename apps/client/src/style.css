@@ -24656,3 +24656,163 @@ body.touch-mode #battle-menu .ping-badge::before {
   width: 7px;
   height: 7px;
 }
+
+/* ── Raid rites: six cards, an even 3 × 2 grid (2 × 3 on a portrait phone).
+   Rows take their content's height (the older one-row layout squeezed six
+   cards into fixed rows and their art and names spilled out). Tall screens
+   get the illustrated card; landscape phones a compact card with the art
+   and stat chips side by side. ── */
+/* The choices and their footer hug their content and sit centred in the
+   card (Rite details covers exactly the choices, above its close button). */
+body #arena-overlay .raid-draft > .panel-actions {
+  grid-template-rows: auto auto;
+  align-content: start;
+  align-self: safe center;
+}
+body #arena-overlay .raid-draft .panel-actions .raid-rite-options {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: none;
+  grid-auto-rows: auto;
+  align-content: start;
+  gap: 12px;
+  overflow: visible;
+}
+body #arena-overlay .raid-draft .panel-actions .raid-rite-options > button {
+  grid-template-rows: auto;
+  align-content: center;
+  place-items: stretch;
+  min-height: 0;
+  height: auto;
+  padding: 14px 14px 14px;
+  gap: 0;
+}
+body #arena-overlay .raid-draft .panel-actions .raid-rite-options > button::before {
+  content: none;
+}
+body #arena-overlay .raid-draft .panel-actions .raid-rite-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: none;
+  width: 100%;
+  gap: 6px;
+}
+body #arena-overlay .raid-draft .panel-actions .raid-rite-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+body #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  height: auto;
+  gap: 6px;
+  background: none;
+}
+body #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff > svg {
+  width: 96px;
+  height: 72px;
+}
+body #arena-overlay .raid-draft .panel-actions .raid-rite-stats {
+  justify-content: center;
+  gap: 6px;
+  width: auto;
+  max-width: 100%;
+}
+body #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff .raid-rite-buff-stat {
+  flex: 0 1 auto;
+  min-width: 76px;
+  padding: 4px 8px;
+}
+body #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
+  max-width: none;
+  font-size: 22px;
+  line-height: 1.1;
+}
+body #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
+  font-size: 12px;
+  line-height: 1.3;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Landscape phones and short windows: art and chips side by side. */
+@media (orientation: landscape) and (max-height: 600px), (max-width: 559px) {
+  body #arena-overlay .raid-draft .panel-actions .raid-rite-options {
+    gap: 8px;
+  }
+  body #arena-overlay .raid-draft .panel-actions .raid-rite-options > button {
+    padding: 7px 8px 6px;
+    border-radius: 12px;
+  }
+  body #arena-overlay .raid-draft .panel-actions .raid-rite-copy,
+  body #arena-overlay .raid-draft .panel-actions .raid-rite-heading {
+    gap: 2px;
+  }
+  body #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff {
+    flex-direction: row;
+    justify-content: center;
+    gap: 6px;
+  }
+  body #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff > svg {
+    flex: none;
+    width: 52px;
+    height: 39px;
+  }
+  body #arena-overlay .raid-draft .panel-actions .raid-rite-stats {
+    flex-direction: row;
+    gap: 4px;
+  }
+  body #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff .raid-rite-buff-stat {
+    min-width: 0;
+    padding: 2px 6px;
+  }
+  body #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
+    font-size: 17px;
+  }
+  body #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
+    font-size: 11px;
+  }
+}
+/* Portrait phones: two columns. */
+@media (max-width: 559px) {
+  body #arena-overlay .raid-draft .panel-actions .raid-rite-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+/* Short screens: the chapter tip was in the briefing a moment ago; the
+   six choices get its room. */
+@media (orientation: landscape) and (max-height: 560px) {
+  body #arena-overlay .raid-draft .raid-phase-objective {
+    display: none;
+  }
+}
+/* Very short screens: the one-line description lives in Rite details. */
+@media (orientation: landscape) and (max-height: 350px) {
+  body #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
+    display: none;
+  }
+  body #arena-overlay .raid-draft .panel-actions .raid-rite-heading > b {
+    font-size: 15px;
+  }
+  body #arena-overlay .raid-draft .panel-actions .raid-rite-options > button {
+    padding: 4px 6px;
+  }
+  body #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff > svg {
+    width: 44px;
+    height: 33px;
+  }
+  body #arena-overlay .raid-draft .panel-actions .raid-rite-buff-value {
+    font-size: 20px;
+  }
+  /* Teammates' picks show once you have chosen; its whole strip goes. */
+  body #arena-overlay .raid-draft > .panel-scroll {
+    display: none;
+  }
+}

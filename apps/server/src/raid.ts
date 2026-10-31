@@ -35,6 +35,7 @@ import {
   RESCUE_HEALTH,
   RAID_RITE_OFFER,
   RAID_RITE_PICKS,
+  RAID_BOSS_RITES,
   RAID_PING_SECONDS,
   RAID_TRAITS,
   eruptionChain,
@@ -256,15 +257,20 @@ export class RaidArena extends Arena {
     const all = ritesFor(this.raid.boss);
     for (const [seat, p] of this.heroes().entries()) {
       const owned = this.raid.rites[p.id] ?? [];
-      const options = all.filter((id) => !owned.includes(id));
+      // The boss's own rite always leads the offer (it answers its mechanic).
+      const own = all.filter((id) => !owned.includes(id) && RAID_BOSS_RITES[id] === this.raid.boss);
+      const shared = all.filter((id) => !owned.includes(id) && !own.includes(id));
+      const room = Math.max(0, RAID_RITE_OFFER - own.length);
+      const options = shared;
       // Stable by party seat for daily fairness, while teammates see varied offers.
       const offset =
         (this.raid.seed + this.raid.phase * 7 + seat) %
         Math.max(1, options.length);
-      this.raid.offers[p.id] = Array.from(
-        { length: Math.min(RAID_RITE_OFFER, options.length) },
-        (_, i) => options[(offset + i) % options.length],
-      );
+      this.raid.offers[p.id] = [
+        ...own,
+        // Rotated by seat, so teammates see a different order (and keys 1-4).
+        ...Array.from({ length: Math.min(room, options.length) }, (_, i) => options[(offset + i) % options.length]),
+      ];
     }
   }
   override pickRite(id: string, riteId: string) {

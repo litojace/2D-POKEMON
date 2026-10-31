@@ -34,12 +34,12 @@ it("rites are chosen once before the fight: two of five, then no choice mid-figh
   const a = raid();
   expect(a.acknowledgeInstructions("p0")).toBe(true);
   expect(a.phase).toBe("intermission");
-  expect(a.raid.offers.p0).toHaveLength(5);
+  expect(a.raid.offers.p0).toHaveLength(6);
   const [first, second] = a.raid.offers.p0;
   expect(a.pickRite("p0", "forged")).toBe(false);
   expect(a.pickRite("p0", first)).toBe(true);
   // One more to pick: the rest stay on offer, the picked one doesn't.
-  expect(a.raid.offers.p0).toHaveLength(4);
+  expect(a.raid.offers.p0).toHaveLength(5);
   expect(a.raid.offers.p0).not.toContain(first);
   expect(a.pickRite("p0", first)).toBe(false);
   expect(a.pickRite("p0", second)).toBe(true);
@@ -384,7 +384,7 @@ it("credits actual damage and pillar baiting, and resets contributions on quick 
     pillars: 0,
     downs: 0,
   });
-  expect(a.raid.offers.p0).toHaveLength(5);
+  expect(a.raid.offers.p0).toHaveLength(6);
 });
 
 it("credits all participating rescuers, including help before an interruption", () => {
@@ -440,5 +440,22 @@ it("Grumblecrag always fights in the Coliseum, even in a room with arena rotatio
     a.phase = "finished";
     a.retry();
     expect(a.snapshot().arena).toBe("classic");
+  }
+});
+
+it("every boss offers six rites, its own rite always among them", async () => {
+  const { RAID_BOSS_RITES } = await import("../../packages/shared/src/raid");
+  for (const boss of ["grumblecrag", "tidewyrm", "gloomshade", "somnara", "prismatail", "emberwing", "storm-twins"] as const) {
+    const a = createRaidArena("ROOM", boss);
+    for (let i = 0; i < 4; i++) a.add("p" + i, "Player " + i);
+    a.start();
+    for (const p of a.heroes()) a.acknowledgeInstructions(p.id);
+    for (const p of a.heroes()) {
+      const offer = a.raid.offers[p.id];
+      expect(offer).toHaveLength(6);
+      expect(new Set(offer).size).toBe(6);
+      const own = Object.entries(RAID_BOSS_RITES).find(([, b]) => b === boss)?.[0];
+      if (own) expect(offer[0]).toBe(own);
+    }
   }
 });

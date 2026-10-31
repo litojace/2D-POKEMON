@@ -843,7 +843,7 @@ export type RaidRite = keyof typeof RAID_RITES;
  * chapter 2 and again at chapter 3 (RITE_TIERS).
  */
 export const RAID_RITE_PICKS = 2;
-export const RAID_RITE_OFFER = 5;
+export const RAID_RITE_OFFER = 6;
 /** Each rite's number in chapters 1, 2 and 3 (the text shows chapter 1's). */
 export const RITE_TIERS = {
   /** Allies near a dash ward take this much less damage. */

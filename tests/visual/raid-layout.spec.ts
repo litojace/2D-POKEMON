@@ -357,10 +357,8 @@ for (const size of [
         await snap(page, info, `raid-solo-wide-${size.width}x${size.height}`);
       }
       for (const offers of [
-        ["shelter", "sharing", "core"],
-        ["rescue", "courage", "mending"],
-        ["grounded", "fireproof", "polished"],
-        ["lucid", "footing", "lamplighter"],
+        ["shelter", "sharing", "core", "rescue", "courage", "mending"],
+        ["grounded", "fireproof", "polished", "lucid", "footing", "lamplighter"],
       ]) {
         await page.evaluate((offers) => {
           const w = window as any;
@@ -369,7 +367,7 @@ for (const size of [
           w.__snap.raid.offers.me = offers;
           w.__push();
         }, offers);
-        await expect(page.locator("[data-raid-rite]")).toHaveCount(3);
+        await expect(page.locator("[data-raid-rite]")).toHaveCount(6);
         await page.locator(".raid-draft").evaluate(async (el) => {
           await Promise.all(
             el.getAnimations().map((a) => a.finished.catch(() => {})),
@@ -392,7 +390,8 @@ for (const size of [
               content.y + content.height / 2 - (button.y + button.height / 2),
             ),
           ).toBeLessThanOrEqual(2);
-          for (const child of [".raid-rite-icon", "b", "small"]) {
+          // Very short screens keep the description in Rite details.
+          for (const child of [".raid-rite-icon", "b", ...(size.height > 350 ? ["small"] : [])]) {
             expect(
               inside(
                 await box(page, `[data-raid-rite="${id}"] ${child}`),

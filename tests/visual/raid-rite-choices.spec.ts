@@ -69,11 +69,10 @@ for (const size of [
         };
       });
       watchRites = true;
+      // Six rites on offer, an even 3 x 2 grid.
       for (const offers of [
-        ["shelter", "sharing", "core"],
-        ["rescue", "courage", "mending"],
-        ["grounded", "fireproof", "polished"],
-        ["lucid", "footing", "lamplighter"],
+        ["shelter", "sharing", "core", "rescue", "courage", "mending"],
+        ["grounded", "fireproof", "polished", "lucid", "footing", "lamplighter"],
       ]) {
         await page.evaluate((offers) => {
           const w = window as any;
@@ -82,7 +81,7 @@ for (const size of [
           w.__snap.raid.offers.me = offers;
           w.__push();
         }, offers);
-        await expect(page.locator("[data-raid-rite]")).toHaveCount(3);
+        await expect(page.locator("[data-raid-rite]")).toHaveCount(6);
         await page.locator(".raid-draft").evaluate(async (e) => {
           await Promise.all(
             e.getAnimations().map((a) => a.finished.catch(() => {})),
@@ -105,10 +104,11 @@ for (const size of [
               content.y + content.height / 2 - button.y - button.height / 2,
             ),
           ).toBeLessThanOrEqual(2);
+          // Very short screens keep the one-line description in Rite details.
           for (const part of [
             ".raid-rite-icon",
             "b",
-            ".raid-rite-trigger",
+            ...(size.height > 350 ? [".raid-rite-trigger"] : []),
             ".raid-rite-buff-stat",
           ]) {
             expect(inside(await box(page, selector + " " + part), button)).toBe(
@@ -134,7 +134,7 @@ for (const size of [
               await value.evaluate((e) =>
                 parseFloat(getComputedStyle(e).fontSize),
               ),
-            ).toBeGreaterThanOrEqual(22);
+            ).toBeGreaterThanOrEqual(size.height > 350 ? 22 : 20);
             expect(
               await unit.evaluate((e) =>
                 parseFloat(getComputedStyle(e).fontSize),
@@ -176,7 +176,7 @@ for (const size of [
           "inert",
           true,
         );
-        await expect(page.locator(".raid-rite-reference li")).toHaveCount(3);
+        await expect(page.locator(".raid-rite-reference li")).toHaveCount(6);
         expect(inside(await box(page, ".raid-rite-reference"), card)).toBe(
           true,
         );
