@@ -405,6 +405,17 @@ else $("battle").append($("battle-menu"));
 // ---- Keyboard, mouse and controller (bindings live in controls.ts) ----
 /** Physical keys and mouse buttons ("KeyQ", "Mouse0") currently held. */
 const held = new Set<string>();
+/**
+ * Mouse movement (Controls → Movement → Mouse): the left button held walks
+ * toward the cursor; a click walks to that spot and stops there.
+ */
+const mouseWalk: {
+  held: boolean;
+  /** Pressed since the last step (a quick click can be up again before it). */
+  clicked: boolean;
+  target?: { x: number; y: number };
+} = { held: false, clicked: false };
+const mouseMoves = () => !touch.enabled && controlPrefs().move === "mouse";
 const caster = new SkillCaster();
 const castPredictor = new CastPredictor();
 /** The enemy a phone player locked on to (tap it, or its name in the target row). */
@@ -458,6 +469,8 @@ function flashSkillButton(slot: number, ok: boolean) {
   }
 }
 /** How long a basic (slot -1) or skill animation plays. */
+/** Mouse movement stops this close to the clicked spot (court units). */
+const MOUSE_ARRIVE = 14;
 function castDuration(c: (typeof CHARACTERS)[CharacterId], slot: number) {
   return slot >= 0
     ? Math.max(
@@ -625,11 +638,18 @@ $("game").addEventListener("mousedown", (e) => {
   const code = `Mouse${e.button}`;
   usingPad = false;
   if (e.button === 1) e.preventDefault(); // No middle-click autoscroll.
+  if (e.button === 0 && mouseMoves()) {
+    // The left button walks (its spot is read from the cursor each step).
+    mouseWalk.held = true;
+    mouseWalk.clicked = true;
+    return;
+  }
   held.add(code);
   const action = actionFor(controlPrefs().bindings, code);
   if (action && matchKeys()) pressAction(action);
 });
 window.addEventListener("mouseup", (e) => {
+  if (e.button === 0) mouseWalk.held = false;
   const code = `Mouse${e.button}`;
   if (!held.delete(code)) return;
   const action = actionFor(controlPrefs().bindings, code);
@@ -638,6 +658,8 @@ window.addEventListener("mouseup", (e) => {
 $("game").addEventListener("mousemove", () => (usingPad = false));
 window.addEventListener("blur", () => {
   held.clear();
+  mouseWalk.held = false;
+  mouseWalk.target = undefined;
   caster.cancel();
 });
 const heldAction = (action: Action) =>
@@ -692,7 +714,7 @@ function keyText(action: Action) {
   return actionLabel(controlPrefs().bindings, action);
 }
 const moveText = () =>
-  usingPad ? "L-STICK" : movementLabel(controlPrefs().bindings);
+  usingPad ? "L-STICK" : mouseMoves() ? "LEFT CLICK" : movementLabel(controlPrefs().bindings);
 const skillsText = () =>
   usingPad
     ? SKILL_ACTIONS.map((a) => PAD_LABELS[a]).join(" ")
@@ -3995,8 +4017,25 @@ class ArenaScene extends Phaser.Scene {
         exArmedUntil = 0;
       }
       if (exArmedUntil && performance.now() >= exArmedUntil) exArmedUntil = 0;
-      const keyX = heldAxis("left", "right"),
+      let keyX = heldAxis("left", "right"),
         keyY = heldAxis("up", "down");
+      if (mouseMoves()) {
+        // Walk toward the held cursor, or on to the clicked spot.
+        if (!active) mouseWalk.target = undefined;
+        else if (mouseWalk.held || mouseWalk.clicked)
+          mouseWalk.target = {
+            x: Phaser.Math.Clamp(aim.x, 0, RULES.width),
+            y: Phaser.Math.Clamp(aim.y, 0, RULES.height),
+          };
+        mouseWalk.clicked = false;
+        const t = mouseWalk.target;
+        const dx = t ? t.x - local.x : 0,
+          dy = t ? t.y - local.y : 0,
+          far = Math.hypot(dx, dy);
+        if (t && far < MOUSE_ARRIVE) mouseWalk.target = undefined;
+        keyX = t && far >= MOUSE_ARRIVE ? dx / far : 0;
+        keyY = t && far >= MOUSE_ARRIVE ? dy / far : 0;
+      }
       // Aim: touch and an idle right stick follow the nearest opponent;
       // the right stick aims by direction and tilt; otherwise the mouse.
       let aimAt = { x: aim.x, y: aim.y };
@@ -4051,6 +4090,13 @@ class ArenaScene extends Phaser.Scene {
     }
     const g = this.graphics;
     g.clear();
+    // Mouse movement: where you're walking to, a small ring on the floor.
+    if (mouseWalk.target && local && mouseMoves()) {
+      const { x, y } = mouseWalk.target,
+        pulse = (Math.sin(performance.now() / 140) + 1) / 2;
+      g.lineStyle(2.5, 0xffd65b, 0.85).strokeEllipse(x, y, 30 + pulse * 6, (30 + pulse * 6) * 0.65, 20);
+      g.fillStyle(0xffd65b, 0.9).fillEllipse(x, y, 6, 4, 10);
+    }
     this.bossGraphics.clear();
     retainBossArt(this, state.raid?.boss);
     // In raids the boss and standing scenery sort with the raiders by where they stand.
