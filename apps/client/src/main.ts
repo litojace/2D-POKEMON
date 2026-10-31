@@ -1,3 +1,10 @@
+import {
+  autoChoosesLow,
+  graphicsSetting,
+  lowGraphics,
+  setGraphicsSetting,
+  type GraphicsSetting,
+} from "./graphics-quality";
 import { raidCameraView } from "./raid-camera";
 import { addCanvasTexture, updateCanvasTexture } from "./canvas-texture";
 import { setHudText, setHudAttribute, setHudStyle } from "./hud-dom";
@@ -2745,6 +2752,38 @@ function leaveButton() {
   }
   return `<button id="exit-room" class="secondary btn-secondary leave-button is-costly"><span>${buttonIcon("leave")}Leave match</span><small>Counts as a forfeit</small></button>`;
 }
+/** Settings → Graphics: Auto, High or Low for the town (graphics-quality.ts). */
+function graphicsCard() {
+  const setting = graphicsSetting();
+  const option = (value: GraphicsSetting, label: string) =>
+    `<button type="button" role="radio" data-graphics="${value}" aria-checked="${setting === value}">${label}</button>`;
+  return `<section class="prefs-card prefs-graphics" aria-labelledby="prefs-graphics"><h3 id="prefs-graphics">${menuIcon("sparkle")}Graphics</h3><div class="prefs-choice" role="radiogroup" aria-labelledby="prefs-graphics">${option("auto", "Auto")}${option("high", "High")}${option("low", "Low")}</div><p class="prefs-graphics-note">${graphicsNote(setting)}</p></section>`;
+}
+function graphicsNote(setting: GraphicsSetting) {
+  if (setting === "high") return "The living town: animals, swaying trees, flickering torches and moving water.";
+  if (setting === "low") return "A still town at 30 fps for older phones: no animals, still trees, lamps and water. Battles are unchanged.";
+  return autoChoosesLow()
+    ? "Auto picked <b>Low</b> for this device (the town ran slowly). Pick High to try it again."
+    : "Starts on High and switches to Low if the town runs slowly on this device.";
+}
+function bindGraphicsCard() {
+  for (const b of Array.from(document.querySelectorAll<HTMLButtonElement>("[data-graphics]")))
+    b.onclick = () => {
+      const value = b.dataset.graphics as GraphicsSetting;
+      setGraphicsSetting(value);
+      for (const other of Array.from(document.querySelectorAll<HTMLButtonElement>("[data-graphics]")))
+        other.setAttribute("aria-checked", String(other === b));
+      const note = document.querySelector(".prefs-graphics-note");
+      if (note) note.innerHTML = graphicsNote(value);
+      // The town behind the dialog reloads at the new quality.
+      if (town && town.graphics() !== (lowGraphics() ? "low" : "high")) {
+        wantedTownClosed = true;
+        town.close();
+        wantedTownClosed = false;
+        syncTown();
+      }
+    };
+}
 /** A labelled slider with its value shown as a percentage beside the label. */
 function prefSlider(
   id: string,
@@ -2769,8 +2808,9 @@ function showSettings() {
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const touchHTML = touch.settingsHTML();
   dialog(
-    `<div class="settings-screen"><h2>Settings</h2>${state?.practice && touch.enabled ? `<div class="settings-quick-actions"><button id="settings-practice" class="secondary btn-secondary">${iconLabel("target", "Practice")}</button></div>` : ""}<p class="prefs-note">Online matches keep running while this is open.</p><div class="prefs-grid${touchHTML ? " has-touch" : ""}"><section class="prefs-card" aria-labelledby="prefs-sound"><h3 id="prefs-sound">${menuIcon("sound")}Sound</h3>${prefSlider("music", "Music", audio.music, { min: 0, max: 1, step: 0.01 })}${prefSlider("effects", "Sound effects", audio.effects, { min: 0, max: 1, step: 0.01 })}</section><section class="prefs-card" aria-labelledby="prefs-motion"><h3 id="prefs-motion">${menuIcon("motion")}Motion</h3><p class="prefs-status"><b class="${reduced ? "is-on" : ""}">Reduced motion ${reduced ? "on" : "off"}</b><span>Follows your device's accessibility setting.</span></p></section>${touchHTML ? `<section class="prefs-card prefs-touch" aria-labelledby="prefs-touch">${touchHTML}</section>` : ""}</div><div class="settings-actions"><button id="open-controls" class="secondary btn-secondary">${iconLabel("keyboard", "Controls &amp; key bindings")}</button>${myId ? leaveButton() : watching ? `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>` : ""}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button><button id="settings-credits" class="quiet">${iconLabel("star", "Credits")}</button></div></div>`,
+    `<div class="settings-screen"><h2>Settings</h2>${state?.practice && touch.enabled ? `<div class="settings-quick-actions"><button id="settings-practice" class="secondary btn-secondary">${iconLabel("target", "Practice")}</button></div>` : ""}<p class="prefs-note">Online matches keep running while this is open.</p><div class="prefs-grid${touchHTML ? " has-touch" : ""}"><section class="prefs-card" aria-labelledby="prefs-sound"><h3 id="prefs-sound">${menuIcon("sound")}Sound</h3>${prefSlider("music", "Music", audio.music, { min: 0, max: 1, step: 0.01 })}${prefSlider("effects", "Sound effects", audio.effects, { min: 0, max: 1, step: 0.01 })}</section><section class="prefs-card" aria-labelledby="prefs-motion"><h3 id="prefs-motion">${menuIcon("motion")}Motion</h3><p class="prefs-status"><b class="${reduced ? "is-on" : ""}">Reduced motion ${reduced ? "on" : "off"}</b><span>Follows your device's accessibility setting.</span></p></section>${graphicsCard()}${touchHTML ? `<section class="prefs-card prefs-touch" aria-labelledby="prefs-touch">${touchHTML}</section>` : ""}</div><div class="settings-actions"><button id="open-controls" class="secondary btn-secondary">${iconLabel("keyboard", "Controls &amp; key bindings")}</button>${myId ? leaveButton() : watching ? `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>` : ""}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button><button id="settings-credits" class="quiet">${iconLabel("star", "Credits")}</button></div></div>`,
   );
+  bindGraphicsCard();
   for (const kind of ["music", "effects"] as const)
     $(kind).oninput = () => {
       audio.unlock();

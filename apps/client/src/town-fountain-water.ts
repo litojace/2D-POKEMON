@@ -36,6 +36,10 @@ export function streamPoint(
 }
 
 const { pool, mid, top } = FOUNTAIN;
+/** Sides for the few-pixel foam and drop ellipses (Phaser's default is 32,
+ * re-triangulated every frame; at this size 8 or 12 look the same). */
+const TINY = 8,
+  SMALL = 12;
 function cascade(
   source: "top" | "mid",
   from: typeof mid | typeof top,
@@ -114,6 +118,20 @@ export const FOUNTAIN_STREAMS = [
   ),
 ];
 
+/**
+ * Which part to draw: everything, only the streams' steady bodies ("base",
+ * which never move, so the town paints them once into a picture), or
+ * everything except those ("moving": highlights, foam and splashes).
+ */
+export type FountainPart = "all" | "base" | "moving";
+/** The pool's local box (x, y, width, height) around everything drawn here. */
+export const FOUNTAIN_WATER_BOUNDS = {
+  x: -(pool.rx + 24),
+  y: FOUNTAIN.spout.dy - 12,
+  w: 2 * (pool.rx + 24),
+  h: pool.dy + pool.ry + 18 - (FOUNTAIN.spout.dy - 12),
+};
+
 /** The caller supplies separate layers behind and in front of the stone. */
 export function drawFountainWater(
   back: Phaser.GameObjects.Graphics,
@@ -122,6 +140,7 @@ export function drawFountainWater(
   y: number,
   time: number,
   reduced: boolean,
+  part: FountainPart = "all",
 ) {
   back.clear().setPosition(x, y);
   front.clear().setPosition(x, y);
@@ -129,17 +148,25 @@ export function drawFountainWater(
   for (const [i, stream] of FOUNTAIN_STREAMS.entries()) {
     const g = stream.front ? front : back;
     const light = stream.front ? 1 : 0.65;
-    const flow = reduced
-      ? 1
-      : 0.88 + Math.sin(t * 3.5 + stream.phase * 9) * 0.12;
-    g.lineStyle(stream.width * 5.5, 0x74cddd, 0.18 * light * flow).strokePoints(
-      stream.points,
-    );
-    g.lineStyle(
-      stream.width * 1.45,
-      0xd0f3f8,
-      0.58 * light * flow,
-    ).strokePoints(stream.points);
+    if (part !== "moving") {
+      // A painted body holds its average brightness; drawn live it
+      // shimmers a little with each stream's own phase.
+      const flow =
+        reduced
+          ? 1
+          : part === "base"
+            ? 0.88
+            : 0.88 + Math.sin(t * 3.5 + stream.phase * 9) * 0.12;
+      g.lineStyle(stream.width * 5.5, 0x74cddd, 0.18 * light * flow).strokePoints(
+        stream.points,
+      );
+      g.lineStyle(
+        stream.width * 1.45,
+        0xd0f3f8,
+        0.58 * light * flow,
+      ).strokePoints(stream.points);
+    }
+    if (part === "base") continue;
 
     if (!reduced)
       for (let drop = 0; drop < 3; drop++) {
@@ -158,6 +185,7 @@ export function drawFountainWater(
             p.y,
             stream.width * 0.85,
             1.5 + u * 2,
+            TINY,
           );
         }
       }
@@ -171,12 +199,13 @@ export function drawFountainWater(
     g.fillStyle(
       0xe4fbff,
       (reduced ? 0.2 : 0.2 + (1 - age) * 0.2) * light,
-    ).fillEllipse(ex, ey, 4.5 + stream.width, 2);
+    ).fillEllipse(ex, ey, 4.5 + stream.width, 2, TINY);
     g.lineStyle(0.7, 0xc6edf3, (1 - age) * 0.34 * light).strokeEllipse(
       ex,
       ey,
       2 + age * 11,
       1.3 + age * 6,
+      SMALL,
     );
     if (!reduced && sinceImpact < 0.2) {
       const s = sinceImpact;
@@ -198,6 +227,7 @@ export function drawFountainWater(
           pool.dy + Math.sin(i * 2.7) * pool.ry * 0.65,
           7,
           1.6,
+          TINY,
         );
     }
   }

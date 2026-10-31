@@ -8,7 +8,9 @@ export interface HenRoam {
   destination: HenPoint;
 }
 const CELL = 48,
-  MARGIN = 64;
+  MARGIN = 64,
+  /** Longest straight leg: 16 cells (768 px). */
+  LOOK_AHEAD = 16;
 const COLS = Math.floor((TOWN.width - 2 * MARGIN) / CELL) + 1;
 const ROWS = Math.floor((TOWN.height - 2 * MARGIN) / CELL) + 1;
 const point = (n: number): HenPoint => ({
@@ -20,22 +22,50 @@ const noise = (n: number) => {
   return v - Math.floor(v);
 };
 
+/** Each obstacle's footprint grown by a hen's radius, bucketed into a coarse
+ * grid once, so a standing test checks only the few obstacles near it
+ * instead of all of them (route planning makes thousands of these tests). */
+type Footprint =
+  | { round: true; x: number; y: number; rx: number; ry: number }
+  | { round: false; x: number; y: number; hw: number; hh: number };
+const BUCKET = 64;
+const BUCKET_COLS = Math.ceil(TOWN.width / BUCKET) + 1;
+const BUCKET_ROWS = Math.ceil(TOWN.height / BUCKET) + 1;
+let buckets: Footprint[][] | undefined;
+function footprintBuckets() {
+  if (buckets) return buckets;
+  const r = TOWN.radius,
+    out: Footprint[][] = Array.from({ length: BUCKET_COLS * BUCKET_ROWS }, () => []);
+  for (const o of TOWN_OBSTACLES) {
+    const f: Footprint =
+      o.shape === "round"
+        ? { round: true, x: o.x, y: o.y, rx: o.rx + r, ry: o.ry + r * WORLD_ART.groundY }
+        : { round: false, x: o.x, y: o.y, hw: o.w / 2 + r, hh: o.h / 2 + r * WORLD_ART.groundY };
+    const hw = f.round ? f.rx : f.hw,
+      hh = f.round ? f.ry : f.hh;
+    const c0 = Math.max(0, Math.floor((f.x - hw) / BUCKET)),
+      c1 = Math.min(BUCKET_COLS - 1, Math.floor((f.x + hw) / BUCKET)),
+      r0 = Math.max(0, Math.floor((f.y - hh) / BUCKET)),
+      r1 = Math.min(BUCKET_ROWS - 1, Math.floor((f.y + hh) / BUCKET));
+    for (let row = r0; row <= r1; row++)
+      for (let col = c0; col <= c1; col++) out[row * BUCKET_COLS + col].push(f);
+  }
+  return (buckets = out);
+}
+
 /** Use the real movement footprints, including the pond, fountain, trees,
  * market stalls and the painted arena footing. Hens stay on dry open ground. */
 export function henCanStand(x: number, y: number) {
   const r = TOWN.radius;
   if (x < r || y < r + 40 || x > TOWN.width - r || y > TOWN.height - r)
     return false;
-  for (const o of TOWN_OBSTACLES) {
-    if (o.shape === "round") {
-      const dx = (x - o.x) / (o.rx + r),
-        dy = (y - o.y) / (o.ry + r * WORLD_ART.groundY);
+  const near = footprintBuckets()[Math.floor(y / BUCKET) * BUCKET_COLS + Math.floor(x / BUCKET)];
+  for (const f of near) {
+    if (f.round) {
+      const dx = (x - f.x) / f.rx,
+        dy = (y - f.y) / f.ry;
       if (dx * dx + dy * dy < 1) return false;
-    } else if (
-      Math.abs(x - o.x) < o.w / 2 + r &&
-      Math.abs(y - o.y) < o.h / 2 + r * WORLD_ART.groundY
-    )
-      return false;
+    } else if (Math.abs(x - f.x) < f.hw && Math.abs(y - f.y) < f.hh) return false;
   }
   return true;
 }
@@ -92,22 +122,35 @@ function neighbours(n: number) {
   edges.set(n, out);
   return out;
 }
+/** Build the whole walking graph now (while the town loads) rather than on
+ * the first hen's first trip, mid-play. */
+export function warmHenRoaming() {
+  const free = groundGrid();
+  for (let n = 0; n < free.length; n++) if (free[n]) neighbours(n);
+}
 function nearest(p: HenPoint, requireVisible = true) {
+  // Grid points by distance, nearest first; usually the first one or two
+  // are in sight, so pick minima one at a time instead of sorting them all.
   const free = groundGrid(),
-    candidates: { n: number; distance: number }[] = [];
+    distance = new Float64Array(free.length).fill(Infinity);
   for (let n = 0; n < free.length; n++)
     if (free[n]) {
-      const candidate = point(n);
-      candidates.push({
-        n,
-        distance: Math.hypot(candidate.x - p.x, candidate.y - p.y),
-      });
+      const q = point(n);
+      distance[n] = Math.hypot(q.x - p.x, q.y - p.y);
     }
-  candidates.sort((a, b) => a.distance - b.distance);
-  return (
-    candidates.find(({ n }) => !requireVisible || henCanWalk(p, point(n)))?.n ??
-    -1
-  );
+  for (let tries = 0; tries < 16; tries++) {
+    let best = -1;
+    for (let n = 0; n < distance.length; n++)
+      if (distance[n] < Infinity && (best < 0 || distance[n] < distance[best])) best = n;
+    if (best < 0) return -1;
+    if (!requireVisible || henCanWalk(p, point(best))) return best;
+    distance[best] = Infinity;
+  }
+  // Rarely (hemmed in by walls): order the rest once.
+  const rest: number[] = [];
+  for (let n = 0; n < distance.length; n++) if (distance[n] < Infinity) rest.push(n);
+  rest.sort((a, b) => distance[a] - distance[b] || a - b);
+  return rest.find((n) => henCanWalk(p, point(n))) ?? -1;
 }
 export function henRoamStart(p: HenPoint) {
   if (henCanStand(p.x, p.y)) return { ...p };
@@ -142,13 +185,18 @@ export function planHenRoam(
   for (let n = end; n >= 0; n = parents[n]) raw.push(point(n));
   raw.reverse();
   // Skip visible intermediate grid nodes, leaving gentle long legs around
-  // actual obstacles instead of a staircase through every 48px cell.
+  // actual obstacles instead of a staircase through every 48px cell. Each
+  // leg looks at most LOOK_AHEAD nodes ahead, furthest first, and takes the
+  // first one in sight (testing every later node made planning quadratic).
   const points: HenPoint[] = [];
   let anchor = from;
   for (let i = 0; i < raw.length;) {
     let furthest = i;
-    for (let j = i + 1; j < raw.length; j++)
-      if (henCanWalk(anchor, raw[j])) furthest = j;
+    for (let j = Math.min(raw.length - 1, i + LOOK_AHEAD); j > i; j--)
+      if (henCanWalk(anchor, raw[j])) {
+        furthest = j;
+        break;
+      }
     anchor = raw[furthest];
     points.push(anchor);
     i = furthest + 1;

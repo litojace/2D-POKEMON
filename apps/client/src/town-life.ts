@@ -1,8 +1,10 @@
 import { drawPondWater, pondDuckPose } from "./town-pond-water";
+import { TOWN_POND } from "../../../packages/shared/src/town";
 import { addCanvasTexture } from "./canvas-texture";
 import { isIOSWebApp } from "./render-budget";
 import { paintedNature, paintedProp, paintedAnimal, paintedPlinth } from "./town-environment-art";
 import { animalMotionSprite, createHenMotion, gullMotion, stepHen, type HenMotion } from "./town-animal-motion";
+import { warmHenRoaming } from "./town-hen-roaming";
 import { WORLD_ART } from "../../../packages/shared/src/world-art";
 import { materialContext, townMaterialFamily } from "./world-materials";
 import Phaser from "phaser";
@@ -50,7 +52,8 @@ import {
   type Sprite,
 } from "./town-art";
 import { propSprite, stallSprite } from "./town-props";
-import { drawFountainWater } from "./town-fountain-water";
+import { drawFountainWater, FOUNTAIN_WATER_BOUNDS } from "./town-fountain-water";
+import { bakeGraphics, inView, type BakeBounds } from "./town-bake";
 import { architectureFrame, architectureName, nativeBuilding, nativeStall, paintedBuilding, paintedStall } from "./town-architecture";
 import { drawFountainCrystal } from "./town-fountain-crystal";
 import { butterflySprite, duckSprite, GULL_FRAMES, gullSprite, HEN_FRAMES, henSprite, type HenPose } from "./town-animals";
@@ -60,7 +63,24 @@ import { butterflySprite, duckSprite, GULL_FRAMES, gullSprite, HEN_FRAMES, henSp
  * trees and props (sorted by their foot so fighters pass behind them), and
  * the life on top: water, flags, smoke, birds, butterflies, ducks, chickens,
  * drifting cloud shadows and swaying trees.
+ *
+ * At Low graphics (see graphics-quality.ts) the town holds still: no
+ * animals, birds, butterflies, clouds, smoke or torch flames; trees, lamps,
+ * flags and water stand still, and the water, crystal and flags are painted
+ * once into pictures instead of being redrawn every frame. Reduced motion
+ * gets the same still pictures.
  */
+/** Local boxes around the fountain's crystal and the pond's water. */
+const CRYSTAL_BOUNDS: BakeBounds = { x: -64, y: -250, w: 128, h: 120 };
+const POND_BOUNDS: BakeBounds = {
+  x: TOWN_POND.x - TOWN_POND.rx - 24,
+  y: TOWN_POND.y - TOWN_POND.ry - 20,
+  w: 2 * TOWN_POND.rx + 48,
+  h: 2 * TOWN_POND.ry + 40,
+};
+/** Sides for small floor shadows (Phaser's default 32 are re-triangulated
+ * every frame; at a few pixels tall 10 look the same). */
+const SHADOW_SIDES = 10;
 const num = (css: string) => parseInt(css.slice(1), 16);
 const TAU = Math.PI * 2;
 /** The town's one shadow colour (see SUN in town-art). */
@@ -126,11 +146,24 @@ interface Mover {
   phase: number;
 }
 
+type Flag = { x: number; y: number; color: number; depth: number; w: number; g?: Phaser.GameObjects.Graphics; pts?: { x: number; y: number }[] };
+
 export class TownScenery {
   private disposed = false;
   private canopies: { img: Phaser.GameObjects.Image; phase: number }[] = [];
   private sails?: Phaser.GameObjects.Image;
-  private flags: { x: number; y: number; color: number; depth: number; w: number; g?: Phaser.GameObjects.Graphics }[] = [];
+  private flags: Flag[] = [];
+  /** Torch flames and chimney smoke (gone at Low). */
+  private emitters: Phaser.GameObjects.Particles.ParticleEmitter[] = [];
+  /** Where the torch flames burn (at Low a still glow stands in). */
+  private flameSpots: { x: number; y: number; depth: number; size: number }[] = [];
+  private pondG: Phaser.GameObjects.Graphics;
+  /** The fountain streams' steady bodies, painted once (High). */
+  private streamBodies: Phaser.GameObjects.Image[] = [];
+  /** Still water, crystal and flags have been painted into pictures. */
+  private baked = false;
+  private padsDrawn?: { active: unknown; x: number; y: number };
+  private padImgs = new Map<(typeof TOWN_SPOTS)[number], Phaser.GameObjects.Image>();
   private waterG: Phaser.GameObjects.Graphics;
   private waterBackG: Phaser.GameObjects.Graphics;
   private crystalG: Phaser.GameObjects.Graphics;
@@ -162,6 +195,7 @@ export class TownScenery {
   constructor(
     private scene: Phaser.Scene,
     private reduced: boolean,
+    private low = false,
   ) {
     const dispose = () => {
       this.disposed = true;
@@ -185,15 +219,88 @@ export class TownScenery {
     this.birdShadowG = scene.add.graphics().setDepth(-400);
     this.bugG = scene.add.graphics().setDepth(8500);
     this.critterG = scene.add.graphics().setDepth(-450);
+    this.pondG = scene.add.graphics().setDepth(-450);
     this.padG = scene.add.graphics().setDepth(-350);
     this.markerG = scene.add.graphics().setDepth(4400);
     this.sideProfileBirds = !!this.environment("town-animals") || !!this.environment("town-animal-motion");
     this.life();
+    if (!this.still) this.paintStreamBodies();
     // These source atlases are only used to bake the smaller placed sprites.
     // Release their GPU copies, particularly in iOS Home Screen web apps.
     for (const key of ["town-animals","town-animal-motion","town-architecture-coliseum","town-architecture-raidHall","town-architecture-buildings"]) {
       if(scene.textures.exists(key)) scene.textures.remove(key);
     }
+  }
+
+  /** Nothing moves: Low graphics or reduced motion. */
+  private get still() {
+    return this.reduced || this.low;
+  }
+  get isLow() {
+    return this.low;
+  }
+
+  /**
+   * Switch a running town to Low (Auto found the device too slow): the
+   * animals, birds, butterflies, clouds, smoke and flames go, a still glow
+   * replaces each flame, and the water, crystal and flags are painted once.
+   */
+  goLow() {
+    if (this.low) return;
+    this.low = true;
+    for (const e of this.emitters) e.destroy();
+    this.emitters = [];
+    if (!this.reduced) for (const f of this.flameSpots) this.stillFlame(f.x, f.y, f.depth, f.size);
+    for (const img of [...this.clouds, ...this.gullImgs, ...this.flyImgs, ...this.henImgs]) img.destroy();
+    for (const d of this.ducks) d.img?.destroy();
+    this.clouds = [];
+    this.gullImgs = [];
+    this.flyImgs = [];
+    this.henImgs = [];
+    this.birds = [];
+    this.butterflies = [];
+    this.chickens = [];
+    this.ducks = [];
+    for (const g of [this.skyG, this.birdShadowG, this.bugG, this.critterG]) g.clear();
+    for (const c of this.canopies) c.img.rotation = 0;
+    for (const img of this.streamBodies) img.destroy();
+    this.streamBodies = [];
+    this.waterBackG.setVisible(true);
+    this.waterG.setVisible(true);
+    this.baked = false;
+  }
+
+  /** High: the fountain streams' steady bodies as two pictures, so each
+   * frame only draws the highlights, foam and splashes moving over them. */
+  private paintStreamBodies() {
+    const f = TOWN_OBSTACLES[0];
+    const back = this.scene.make.graphics({}, false).setDepth(this.waterBackG.depth),
+      front = this.scene.make.graphics({}, false).setDepth(this.waterG.depth);
+    drawFountainWater(back, front, f.x, f.y, 0, false, "base");
+    this.streamBodies = [
+      bakeGraphics(this.scene, back, "town-fountain-streams-back", FOUNTAIN_WATER_BOUNDS, 3),
+      // Just under the moving front layer, still over the stone.
+      bakeGraphics(this.scene, front, "town-fountain-streams-front", FOUNTAIN_WATER_BOUNDS, 3).setDepth(this.waterG.depth - 0.05),
+    ];
+    back.destroy();
+    front.destroy();
+  }
+
+  /** Still: paint the water, crystal, pond and flags once. */
+  private bakeStill() {
+    const f = TOWN_OBSTACLES[0];
+    drawFountainWater(this.waterBackG, this.waterG, f.x, f.y, 0, true);
+    bakeGraphics(this.scene, this.waterBackG, "town-still-water-back", FOUNTAIN_WATER_BOUNDS);
+    bakeGraphics(this.scene, this.waterG, "town-still-water-front", FOUNTAIN_WATER_BOUNDS);
+    drawFountainCrystal(this.crystalG, f.x, f.y, 0, true);
+    bakeGraphics(this.scene, this.crystalG, "town-still-crystal", CRYSTAL_BOUNDS, 3);
+    drawPondWater(this.pondG, 0, true);
+    bakeGraphics(this.scene, this.pondG, "town-still-pond", POND_BOUNDS);
+    this.flags.forEach((fl, i) => {
+      this.drawFlag(fl, 0);
+      bakeGraphics(this.scene, fl.g!, `town-still-flag-${i}`, { x: fl.x - 4, y: fl.y - 50, w: fl.w + 8, h: 56 }, 3);
+    });
+    this.baked = true;
   }
 
   // ───────── Static world ─────────
@@ -237,7 +344,7 @@ export class TownScenery {
         for (const p of art.flags) this.flags.push({x:b.x+p.x,y:b.y+p.y,color:b.kind === "temple"?0xb59bff:0xffd65b,depth:b.y+.3,w:26});
         if (!this.reduced) {
           for (const p of art.flames) this.flame(b.x+p.x,b.y+p.y,b.y+.5,b.kind === "tower"?.6:.45);
-          if (art.chimney) this.smoke(b.x+art.chimney.x,b.y+art.chimney.y,b.y+2);
+          if (art.chimney && !this.low) this.smoke(b.x+art.chimney.x,b.y+art.chimney.y,b.y+2);
         }
         if (art.hub) {
           this.sails=place(this.scene,"town-sails",windmillSails(),b.x+art.hub.x,b.y+art.hub.y,b.y+1);
@@ -249,7 +356,7 @@ export class TownScenery {
       place(this.scene, key, buildingSprite(b), b.x, b.y);
       if (b.kind === "windmill")
         this.sails = place(this.scene, "town-sails", windmillSails(), b.x + WINDMILL_HUB.dx, b.y + WINDMILL_HUB.dy, b.y + 1);
-      if (b.kind === "house" && !this.reduced) {
+      if (b.kind === "house" && !this.still) {
         const c = chimneyOf(b);
         this.smoke(b.x + c.dx, b.y + c.dy, b.y + 2);
       }
@@ -393,7 +500,10 @@ export class TownScenery {
       const bg = this.scene.add.graphics();
       bg.fillStyle(0x0e1a31, 0.86).fillRoundedRect(-w / 2, -40, w, h, 14);
       bg.lineStyle(2, num(d.color), 0.9).strokeRoundedRect(-w / 2, -40, w, h, 14);
-      const box = this.scene.add.container(d.x, y, [bg, title, sub]).setDepth(4300);
+      const box = this.scene.add.container(d.x, y, [title, sub]).setDepth(4300);
+      // The board never changes: a picture, not shapes re-triangulated every frame.
+      box.addAt(bakeGraphics(this.scene, bg, `town-sign-${d.id}`, { x: -w / 2 - 2, y: -42, w: w + 4, h: h + 4 }, 3), 0);
+      bg.destroy();
       this.signs.push({ box, left: d.x - w / 2, right: d.x + w / 2, top: y - 40, bottom: y - 40 + h });
     }
     // Each station's marker floats above it, but never on a sign: if it
@@ -439,7 +549,7 @@ export class TownScenery {
 
   private smoke(x: number, y: number, depth: number) {
     bake(this.scene, "town-puff", softBlob("230,230,230"), 1);
-    this.scene.add
+    const e = this.scene.add
       .particles(x, y, "town-puff", {
         speedY: { min: -30, max: -18 },
         speedX: { min: 4, max: 14 },
@@ -449,11 +559,14 @@ export class TownScenery {
         frequency: 420,
       })
       .setDepth(depth);
+    this.emitters.push(e);
   }
 
   private flame(x: number, y: number, depth: number, size = 1) {
+    this.flameSpots.push({ x, y, depth, size });
+    if (this.low) return this.stillFlame(x, y, depth, size);
     bake(this.scene, "town-ember", softBlob("255,170,80"), 1);
-    this.scene.add
+    const e = this.scene.add
       .particles(x, y, "town-ember", {
         speedY: { min: -70, max: -40 },
         speedX: { min: -10, max: 10 },
@@ -465,13 +578,19 @@ export class TownScenery {
         blendMode: Phaser.BlendModes.ADD,
       })
       .setDepth(depth);
+    this.emitters.push(e);
+  }
+  /** A torch at Low: a steady warm glow where the flame would burn. */
+  private stillFlame(x: number, y: number, depth: number, size: number) {
+    const glow = place(this.scene, "town-glow", softBlob("255,214,140"), x, y - 6, depth, 1);
+    glow.setScale(0.32 * size, 0.42 * size).setTint(0xffa040).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0.85);
   }
 
   // ───────── Moving life ─────────
 
   private life() {
     const s = this.scene;
-    if (this.reduced) return;
+    if (this.still) return;
     // Cloud shadows drifting over the town.
     bake(s, "town-cloud", softBlob("10,20,10"), 1);
     for (let i = 0; i < 6; i++)
@@ -491,6 +610,7 @@ export class TownScenery {
       const home = flowerSpots[i % flowerSpots.length];
       this.butterflies.push({ x: home.x, y: home.y, vx: 0, vy: 0, phase: rnd(i * 31) * TAU, home, color: [0xffd65b, 0xff8ad0, 0x8fd0ff, 0xffffff][i % 4] });
     }
+    warmHenRoaming();
     for (let i = 0; i < 5; i++) {
       const [x,y]=[[650,1100],[1000,1420],[1750,1450],[2350,1750],[2800,1200]][i];
       this.chickens.push(createHenMotion({x,y},rnd(i * 41) * TAU,true));
@@ -536,13 +656,14 @@ export class TownScenery {
 
   /** Called every frame. `now` is the scene clock (ms), `dt` seconds. */
   update(now: number, dt: number, focus?: { x: number; y: number }) {
-    const t = this.reduced ? 0 : now / 1000;
+    if (this.still) return this.updateStill(now, focus);
+    const t = now / 1000;
     // Swaying trees (only those near the camera are worth moving).
     for (const c of this.canopies) {
       if (focus && Math.abs(c.img.x - focus.x) > 1200) continue;
-      c.img.rotation = this.reduced ? 0 : Math.sin(t * 1.1 + c.phase) * 0.025 + Math.sin(t * 2.7 + c.phase) * 0.008;
+      c.img.rotation = Math.sin(t * 1.1 + c.phase) * 0.025 + Math.sin(t * 2.7 + c.phase) * 0.008;
     }
-    if (this.sails && !this.reduced) this.sails.rotation = t * 0.6;
+    if (this.sails) this.sails.rotation = t * 0.6;
     this.drawFlags(t);
     this.drawWater(t);
     this.drawCrystal(t);
@@ -552,7 +673,6 @@ export class TownScenery {
       const lines = SCREEN_LINES;
       this.screenText.setText(lines[Math.floor(t / 4) % lines.length]);
     }
-    if (this.reduced) return;
     for (const l of this.lampGlows) l.img.setAlpha(0.5 + Math.sin(t * 7 + l.phase) * 0.05 + Math.sin(t * 13 + l.phase) * 0.04);
     for (const [i, g] of this.statueGlows.entries()) g.setAlpha(0.2 + Math.sin(t * 1.6 + i) * 0.06);
     for (const c of this.clouds) {
@@ -566,46 +686,78 @@ export class TownScenery {
     this.drawCritters(dt);
   }
 
+  /** Still town: paint once, then only the lit pad (when the station you
+   * stand on changes) and the markers and sign fades. */
+  private updateStill(now: number, focus?: { x: number; y: number }) {
+    if (!this.baked) this.bakeStill();
+    // The coliseum screen still changes its line (reduced motion keeps the first).
+    if (this.screenText && !this.reduced)
+      this.screenText.setText(SCREEN_LINES[Math.floor(now / 4000) % SCREEN_LINES.length]);
+    this.stillPads();
+    this.drawMarkers(0, focus);
+  }
+
   private drawFlags(t: number) {
+    const cam = this.scene.cameras.main;
     for (const f of this.flags) {
-      const g = f.g!.clear();
-      g.fillStyle(0x3a2a20, 1).fillRect(f.x - 1.5, f.y - 44, 3, 46);
-      const pts: Phaser.Math.Vector2[] = [];
-      const seg = 8;
-      for (let k = 0; k <= seg; k++) {
-        const u = k / seg;
-        pts.push(new Phaser.Math.Vector2(f.x + u * f.w, f.y - 42 + Math.sin(t * 5 - u * 4 + f.x) * 4 * u));
-      }
-      for (let k = seg; k >= 0; k--) {
-        const u = k / seg;
-        pts.push(new Phaser.Math.Vector2(f.x + u * f.w, f.y - 24 + Math.sin(t * 5 - u * 4 + f.x) * 4 * u - (k === seg ? 4 : 0)));
-      }
-      g.fillStyle(f.color, 1).fillPoints(pts, true);
+      // Off screen: neither drawn nor replayed by the renderer.
+      const shown = inView(cam, f.x - 4, f.y - 50, f.w + 8, 56);
+      f.g!.setVisible(shown);
+      if (shown) this.drawFlag(f, t);
     }
+  }
+  private drawFlag(f: Flag, t: number) {
+    const g = f.g!.clear();
+    g.fillStyle(0x3a2a20, 1).fillRect(f.x - 1.5, f.y - 44, 3, 46);
+    const seg = 8,
+      pts = (f.pts ??= Array.from({ length: 2 * (seg + 1) }, () => ({ x: 0, y: 0 })));
+    for (let k = 0; k <= seg; k++) {
+      const u = k / seg,
+        wave = Math.sin(t * 5 - u * 4 + f.x) * 4 * u;
+      pts[k].x = pts[2 * seg + 1 - k].x = f.x + u * f.w;
+      pts[k].y = f.y - 42 + wave;
+      pts[2 * seg + 1 - k].y = f.y - 24 + wave - (k === seg ? 4 : 0);
+    }
+    g.fillStyle(f.color, 1).fillPoints(pts, true);
   }
 
   private drawWater(t: number) {
-    this.drawFountain(t);
+    const cam = this.scene.cameras.main,
+      f = TOWN_OBSTACLES[0],
+      b = FOUNTAIN_WATER_BOUNDS;
+    const fountain = inView(cam, f.x + b.x, f.y + b.y, b.w, b.h);
+    this.waterBackG.setVisible(fountain);
+    this.waterG.setVisible(fountain);
+    if (fountain) this.drawFountain(t);
     // Pond: shimmer lines and paddling ducks.
-    const pg = this.critterG;
+    const pg = this.pondG;
+    const pond = inView(cam, POND_BOUNDS.x, POND_BOUNDS.y, POND_BOUNDS.w, POND_BOUNDS.h);
+    pg.setVisible(pond);
+    if (!pond) {
+      for (const d of this.ducks) d.img?.setVisible(false);
+      return;
+    }
     drawPondWater(pg,t,this.reduced);
     for (const d of this.ducks) {
       const { x,y,dir,bob,dabble,frame } = pondDuckPose(d,t,this.reduced);
-      pg.lineStyle(1.5, 0xffffff, 0.35).strokeEllipse(x - dir * 22, y + 2, 40, 9);
-      pg.lineStyle(1, 0xffffff, 0.2).strokeEllipse(x - dir * 38, y + 2, 34, 6);
-      d.img?.setTexture(`town-duck-${d.female ? "f" : "m"}-${dabble ? "dabble" : "swim"}-${frame}`).setPosition(x, y + 4 + bob).setFlipX(dir < 0).setDepth(y);
+      pg.lineStyle(1.5, 0xffffff, 0.35).strokeEllipse(x - dir * 22, y + 2, 40, 9, 16);
+      pg.lineStyle(1, 0xffffff, 0.2).strokeEllipse(x - dir * 38, y + 2, 34, 6, 16);
+      d.img?.setVisible(true).setTexture(`town-duck-${d.female ? "f" : "m"}-${dabble ? "dabble" : "swim"}-${frame}`).setPosition(x, y + 4 + bob).setFlipX(dir < 0).setDepth(y);
     }
   }
 
   /** Layered cascades follow the painted rims and land inside each pool. */
   private drawFountain(t: number) {
     const f = TOWN_OBSTACLES[0];
-    drawFountainWater(this.waterBackG, this.waterG, f.x, f.y, t, this.reduced);
+    drawFountainWater(this.waterBackG, this.waterG, f.x, f.y, t, false, "moving");
   }
 
   private drawCrystal(t: number) {
-    const f = TOWN_OBSTACLES[0];
-    drawFountainCrystal(this.crystalG, f.x, f.y, t, this.reduced);
+    const f = TOWN_OBSTACLES[0],
+      b = CRYSTAL_BOUNDS;
+    const shown = inView(this.scene.cameras.main, f.x + b.x, f.y + b.y, b.w, b.h);
+    this.crystalG.setVisible(shown);
+    if (shown) drawFountainCrystal(this.crystalG, f.x, f.y, t, false);
   }
 
   /**
@@ -618,19 +770,41 @@ export class TownScenery {
     const g = this.padG.clear();
     for (const [i, s] of TOWN_SPOTS.entries()) {
       if (focus && Math.hypot(s.x - focus.x, s.y - focus.y) > 1100) continue;
-      const on = this.active === s,
-        c = num(s.color),
+      this.drawPad(g, s, i, this.active === s, t);
+    }
+  }
+  /** Still town: every pad painted once as a picture; only the one you
+   * stand on is drawn (lit) on top, when that changes. */
+  private stillPads() {
+    if (!this.padImgs.size)
+      for (const [i, s] of TOWN_SPOTS.entries()) {
+        const tmp = this.scene.make.graphics({}, false).setDepth(this.padG.depth);
+        this.drawPad(tmp, s, i, false, 0);
+        const R = s.reach * 0.78 + 10,
+          gy = WORLD_ART.groundY;
+        this.padImgs.set(s, bakeGraphics(this.scene, tmp, `town-still-pad-${i}`, { x: s.x - R, y: s.y + 10 - R * gy - 2, w: 2 * R, h: 2 * R * gy + 4 }));
+        tmp.destroy();
+      }
+    if (this.padsDrawn?.active === this.active) return;
+    this.padsDrawn = { active: this.active, x: 0, y: 0 };
+    const g = this.padG.clear();
+    for (const [s, img] of this.padImgs) img.setVisible(s !== this.active);
+    if (this.active) this.drawPad(g, this.active, TOWN_SPOTS.indexOf(this.active), true, 0);
+  }
+  private drawPad(g: Phaser.GameObjects.Graphics, s: (typeof TOWN_SPOTS)[number], i: number, on: boolean, t: number) {
+    {
+      const c = num(s.color),
         r = s.reach * 0.78,
         x = s.x,
         y = s.y + 10,
-        breathe = this.reduced ? 0 : Math.sin(t * 2.2 + i) * 0.5 + 0.5;
+        breathe = this.still ? 0 : Math.sin(t * 2.2 + i) * 0.5 + 0.5;
       // Disc and its glow.
       g.fillStyle(c, on ? 0.26 : 0.1 + breathe * 0.05).fillEllipse(x, y, r * 2, r * 2 * WORLD_ART.groundY);
       g.fillStyle(c, on ? 0.22 : 0.08).fillEllipse(x, y, r * 1.3, r * 1.3 * WORLD_ART.groundY);
       // Solid inner ring.
       g.lineStyle(on ? 3 : 2, c, on ? 0.95 : 0.6).strokeEllipse(x, y, r * 2, r * 2 * WORLD_ART.groundY);
       // Dashed outer ring, turning.
-      const spin = this.reduced ? 0 : t * (on ? 1.2 : 0.5) + i,
+      const spin = this.still ? 0 : t * (on ? 1.2 : 0.5) + i,
         dashes = Math.max(8, Math.round(r / 6)),
         R = r + 7;
       g.lineStyle(on ? 3 : 2, c, on ? 0.9 : 0.45);
@@ -642,7 +816,7 @@ export class TownScenery {
         g.lineTo(x + Math.cos(a1) * R, y + Math.sin(a1) * R * WORLD_ART.groundY);
         g.strokePath();
       }
-      if (on && !this.reduced)
+      if (on && !this.still)
         // Sparks rising off the pad.
         for (let k = 0; k < 8; k++) {
           const p = (t * 0.7 + k / 8) % 1,
@@ -686,7 +860,7 @@ export class TownScenery {
       this.gullImgs[i]?.setTexture(`town-gull-${pose.frame}`)
         .setPosition(b.x, b.y + pose.lift).setFlipX(pose.flipX).setRotation(pose.rotation);
 
-      sh.fillStyle(SHADE, SUN.alpha).fillEllipse(b.x + 60, b.y + 130, 22, 7);
+      sh.fillStyle(SHADE, SUN.alpha).fillEllipse(b.x + 60, b.y + 130, 22, 7, SHADOW_SIDES);
     });
   }
 
@@ -710,10 +884,10 @@ export class TownScenery {
 
   private drawCritters(dt: number) {
     // Shadows go on the ground layer; the animals sort with everything else.
-    const g = this.critterG;
+    const g = this.critterG.clear();
     this.chickens.forEach((c, i) => {
       const pose=stepHen(c,dt),img=this.henImgs[i],coat=img?.getData("coat")??"white";
-      g.fillStyle(SHADE, SUN.alpha).fillEllipse(c.x + 3, c.y + 1, 20, 5);
+      g.fillStyle(SHADE, SUN.alpha).fillEllipse(c.x + 3, c.y + 1, 20, 5, SHADOW_SIDES);
       img?.setTexture(`town-hen-${coat}-${pose.pose}-${pose.frame}`)
         .setPosition(c.x,c.y).setFlipX(pose.facing<0).setDepth(c.y);
     });

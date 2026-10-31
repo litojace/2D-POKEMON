@@ -1,5 +1,12 @@
 import type { FriendList } from "../../../packages/shared/src/accounts";
 import { townRendererDensity } from "./render-budget";
+import {
+  FrameRateProbe,
+  graphicsSetting,
+  LOW_FPS,
+  lowGraphics,
+  rememberAutoLow,
+} from "./graphics-quality";
 import { watchRendererLifecycle } from "./renderer-lifecycle";
 import { TOWN_ART } from "./town-assets";
 import { TOWN_HD } from "./town-hd-assets";
@@ -252,19 +259,46 @@ export function openTown(options: TownOptions) {
       document.activeElement?.tagName ?? "",
     );
   /** A panel or dialog is open over the town: it gets the keys, you stand still. */
-  const covered = () =>
-    !!document.querySelector(
-      "dialog[open], .home-drawer:not([hidden]), .header-menu[open]",
-    );
+  // What covers the town, looked up once per DOM change instead of twice a
+  // frame (the observer clears the answer when a panel opens or closes).
+  let cover: { covered: boolean; hides: boolean } | undefined;
+  // (Attributes anywhere, but only children of the body itself: text in the
+  // HUD changes every frame and must not clear it.)
+  const coverWatch = new MutationObserver(() => (cover = undefined));
+  coverWatch.observe(document.body, {
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["open", "hidden"],
+  });
+  coverWatch.observe(document.body, { childList: true });
+  const coverNow = () =>
+    (cover ??= {
+      covered: !!document.querySelector(
+        "dialog[open], .home-drawer:not([hidden]), .header-menu[open]",
+      ),
+      hides: !!document.querySelector(
+        "dialog[open], .home-drawer:not([hidden])",
+      ),
+    });
+  const covered = () => coverNow().covered;
   /**
    * The roster, Shop or a dialog fills the screen: the town behind it stops
    * drawing (after you have stopped walking) so the panel, and its animated
    * fighter, get the whole device. It wakes as soon as the panel closes.
    */
-  const hidesTown = () =>
-    !!document.querySelector("dialog[open], .home-drawer:not([hidden])");
+  const hidesTown = () => coverNow().hides;
   let frozen = false,
     coveredAt: number | undefined;
+  // Graphics quality (see graphics-quality.ts): Low draws at 1× and caps
+  // the town at 30 frames a second; Auto measures and may switch to Low.
+  let low = lowGraphics();
+  const probe =
+    graphicsSetting() === "auto" && !low ? new FrameRateProbe() : undefined;
+  const density = (width: number, height: number) =>
+    low ? 1 : townRendererDensity(width, height);
+  /** Phaser's limiter runs a step once the summed deltas pass its rate; just
+   * above 30 so a 60 or 120 Hz screen steps every 2nd or 4th frame. */
+  const limit = LOW_FPS + 1;
   const keydown = (e: KeyboardEvent) => {
     if (typing() || covered()) return;
     if (
@@ -613,7 +647,7 @@ export function openTown(options: TownOptions) {
     create() {
       if (closed) return;
       scene = this;
-      this.scenery = new TownScenery(this, options.reduced);
+      this.scenery = new TownScenery(this, options.reduced, low);
       const cam = this.cameras.main;
       cam.setBackgroundColor("#2f4224");
       this.fit();
@@ -908,8 +942,32 @@ export function openTown(options: TownOptions) {
         });
       }
     }
+    /** Auto found this device too slow: the town holds still from now on. */
+    goLow() {
+      this.scenery.goLow();
+      const loop = this.game.loop;
+      loop.fpsLimit = limit;
+      loop.hasFpsLimit = true;
+      (loop as unknown as { _limitRate: number })._limitRate = 1000 / limit;
+      // The loop picks its stepping function when it starts.
+      setTimeout(() => {
+        if (closed || !loop.running) return;
+        loop.sleep();
+        loop.wake();
+        resize();
+      });
+    }
     update(time: number, delta: number) {
       const dt = Math.min(0.1, delta / 1000);
+      if (probe && !low) {
+        if (covered() || document.hidden) probe.pause();
+        else if (probe.frame(performance.now()) === "low") {
+          low = true;
+          rememberAutoLow();
+          host.dataset.graphics = "low";
+          this.goLow();
+        }
+      }
       this.scenery.update(time, dt, bodies.get(me));
       this.drawClickMark(time);
       const mine = bodies.get(me);
@@ -937,6 +995,7 @@ export function openTown(options: TownOptions) {
           coveredAt = undefined;
           host.dataset.frozen = "true";
           this.game.loop.sleep();
+          probe?.pause();
         }
       } else coveredAt = undefined;
       for (const body of bodies.values()) {
@@ -1174,8 +1233,10 @@ export function openTown(options: TownOptions) {
   }
 
   const host = $("town-canvas");
-  let dpr = townRendererDensity(host.clientWidth, host.clientHeight);
+  let dpr = density(host.clientWidth, host.clientHeight);
+  host.dataset.graphics = low ? "low" : "high";
   const game = new Phaser.Game({
+    fps: low ? { limit } : undefined,
     type: Phaser.AUTO,
     parent: host,
     backgroundColor: "#2f4224",
@@ -1201,7 +1262,7 @@ export function openTown(options: TownOptions) {
       const width = host.clientWidth,
         height = host.clientHeight;
       if (!width || !height) return;
-      const nextDpr = townRendererDensity(width, height),
+      const nextDpr = density(width, height),
         pixelWidth = Math.round(width * nextDpr),
         pixelHeight = Math.round(height * nextDpr);
       if (
@@ -1213,6 +1274,10 @@ export function openTown(options: TownOptions) {
       dpr = nextDpr;
       game.scale.setZoom(1 / dpr);
       game.scale.resize(pixelWidth, pixelHeight);
+      // Phaser skips the canvas's CSS size when zoom is exactly 1 (pixels
+      // equal CSS pixels), leaving the size from before: set it here.
+      game.canvas.style.width = `${width}px`;
+      game.canvas.style.height = `${height}px`;
     });
   };
   let resizeFrame = 0;
@@ -1223,6 +1288,7 @@ export function openTown(options: TownOptions) {
   window.addEventListener("resize", resize);
   watchRendererLifecycle(game, () => !closed, resize);
   const thaw = new MutationObserver(() => {
+    // (coverWatch, created first, has already cleared a stale answer.)
     if (!frozen || closed || hidesTown() || document.hidden) return;
     frozen = false;
     host.dataset.frozen = "false";
@@ -1254,6 +1320,7 @@ export function openTown(options: TownOptions) {
     cancelAnimationFrame(resizeFrame);
     resizeObserver.disconnect();
     thaw.disconnect();
+    coverWatch.disconnect();
     window.visualViewport?.removeEventListener("resize", resize);
     screen.orientation?.removeEventListener("change", resize);
     window.removeEventListener("resize", resize);
@@ -1270,6 +1337,8 @@ export function openTown(options: TownOptions) {
   let character = options.character;
   return {
     close,
+    /** The quality the town is drawn at now (Auto may have switched it). */
+    graphics: () => (low ? "low" : "high") as "low" | "high",
     /** Switched fighter or equipped a skin: everyone sees the new look. */
     look(next: CharacterId) {
       character = next;

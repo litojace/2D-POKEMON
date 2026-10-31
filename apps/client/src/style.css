@@ -21062,6 +21062,36 @@ body.battle-active.court-view #game canvas {
 .prefs-card a {
   color: var(--accent);
 }
+/* Settings → Graphics: Auto / High / Low. */
+.prefs-choice {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  margin: 0 0 10px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #00000033;
+}
+.framed-dialog .prefs-choice > button {
+  min-height: 36px;
+  margin: 0;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  font: 700 14px/1.1 var(--body);
+  color: var(--text-dim);
+  background: transparent;
+  box-shadow: none;
+}
+.framed-dialog .prefs-choice > button[aria-checked="true"] {
+  color: var(--text);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.prefs-graphics-note b {
+  color: var(--accent);
+}
 /* Credits: the crest and name, then what made the game. */
 .credits-hero {
   display: flex;
