@@ -67,7 +67,7 @@ it("time running out fills both picks", () => {
   const a = raid();
   a.acknowledgeInstructions("p0");
   const offered = [...a.raid.offers.p0];
-  a.tick(16);
+  a.tick(21);
   expect(a.raid.rites.p0).toEqual(offered.slice(0, 2));
   expect(a.phase).toBe("countdown");
 });
@@ -403,27 +403,27 @@ it("credits all participating rescuers, including help before an interruption", 
   expect(a.raid.contributions![p.id].revives).toBe(0);
 });
 
-it("allows fifteen seconds to choose rites before the fight, ending early once everyone has both", () => {
+it("allows twenty seconds to choose rites before the fight, ending early once everyone has both", () => {
   const a = raid(2);
   a.heroes().forEach((p) => a.acknowledgeInstructions(p.id));
   expect(a.raid.phase).toBe(1);
-  expect(a.deadline - a.time).toBeCloseTo(15);
+  expect(a.deadline - a.time).toBeCloseTo(20);
   a.tick(5);
   expect(a.phase).toBe("intermission");
   expect(Object.keys(a.raid.offers)).toHaveLength(2);
   a.pickRite("p0", a.raid.offers.p0[0]);
   a.pickRite("p0", a.raid.offers.p0[0]);
-  expect(a.deadline - a.time).toBeCloseTo(10);
+  expect(a.deadline - a.time).toBeCloseTo(15);
   a.pickRite("p1", a.raid.offers.p1[0]);
   // One teammate still has a pick left.
-  expect(a.deadline - a.time).toBeCloseTo(10);
+  expect(a.deadline - a.time).toBeCloseTo(15);
   a.pickRite("p1", a.raid.offers.p1[0]);
   expect(a.deadline - a.time).toBeCloseTo(1);
   a.tick(1);
   expect(a.phase).toBe("countdown");
   const b = raid();
   b.acknowledgeInstructions("p0");
-  b.tick(14.9);
+  b.tick(19.9);
   expect(b.phase).toBe("intermission");
   b.tick(0.2);
   expect(b.phase).toBe("countdown");
