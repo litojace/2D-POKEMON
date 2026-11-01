@@ -24816,3 +24816,78 @@ body #arena-overlay .raid-draft .panel-actions .raid-rite-trigger {
     display: none;
   }
 }
+
+/* Illustrated skill icons (skill-art.ts): a painted scene, framed by its
+   container. Rounded squares in lists and cards, circles in the round
+   in-match buttons. */
+.skill-icon.skill-art {
+  border-radius: 24%;
+  filter: none;
+  box-shadow: 0 0 0 1px #ffffff1f, 0 2px 6px #0007;
+  overflow: hidden;
+}
+.ability .skill-icon.skill-art,
+.basic-hint .skill-icon.skill-art,
+.touch-buttons .skill-icon.skill-art {
+  border-radius: 50%;
+}
+/* In-match buttons: the illustration fills the round button; key, READY and
+   cooldown text sit on it with a shadow. It dims while cooling (as before). */
+body.battle-active:not(.touch-mode) :is(.ability, .basic-hint) > span {
+  position: static;
+}
+body.battle-active:not(.touch-mode) :is(.ability, .basic-hint) > span > .skill-icon.skill-art {
+  position: absolute;
+  inset: 3px;
+  width: auto;
+  height: auto;
+  margin: 0;
+  border-radius: 50%;
+  box-shadow: none;
+  z-index: 0;
+}
+body.battle-active:not(.touch-mode) :is(.ability, .basic-hint) > span:has(> .skill-art) > small {
+  position: relative;
+  z-index: 2;
+  margin-top: 24px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #060a16b8;
+  text-shadow: 0 1px 2px #000;
+}
+.touch-buttons button .skill-icon.skill-art {
+  position: absolute;
+  inset: 5px;
+  width: auto;
+  height: auto;
+  margin: 0;
+  border-radius: 50%;
+  box-shadow: none;
+  filter: none;
+  z-index: 0;
+}
+.touch-buttons button:has(> .skill-art) :is(.touch-key, .touch-cooldown) {
+  z-index: 2;
+  text-shadow: 0 1px 3px #000, 0 0 6px #000;
+}
+.touch-buttons button:has(> .skill-art) .touch-key {
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: #060a16b0;
+}
+/* Roster and kit lists: big enough to see the scene. */
+body .selected-info .champion-skill-buttons button > .skill-icon.skill-art {
+  width: 44px !important;
+  height: 44px !important;
+  max-width: none;
+}
+body .skill-preview .preview-skills > div > .skill-icon.skill-art,
+body .basic-description > .skill-icon.skill-art {
+  width: 40px !important;
+  height: 40px !important;
+  max-width: none;
+  flex: none;
+}
+body .fighter-preview-slot .preview-skills > div:has(> .skill-art) {
+  grid-template-columns: 36px 40px minmax(0, 1fr) 32px;
+}

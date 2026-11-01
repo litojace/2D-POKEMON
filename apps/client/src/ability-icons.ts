@@ -1,4 +1,5 @@
 import { CHARACTERS } from "@arena/shared";
+import { skillArt } from "./skill-art";
 // Each combat icon is drawn for its exact ability, rather than guessed from keywords.
 const electric = "#ffe17b",
   fire = "#ffa16b",
@@ -237,6 +238,10 @@ abilityArtwork["Ripple Stars"] = {
   art: '<path d="m24 4 6 13 15 7-15 6-6 15-6-15-15-6 15-7Z"/><circle cx="24" cy="24" r="5"/>',
 };
 export function abilityIcon(name: string) {
+  // Champion moves have an illustrated scene (skill-art.ts); generic glyphs
+  // (Jump, Attack, …) keep the line icons below.
+  const illustrated = skillArt(name);
+  if (illustrated) return illustrated;
   const design = abilityArtwork[name];
   const color =
     design?.color ??
