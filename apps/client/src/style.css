@@ -24883,3 +24883,29 @@ body.battle-active:not(.touch-mode) :is(.ability, .basic-hint) > span:has(> .ski
   border-radius: 999px;
   background: #060a16b0;
 }
+
+/* Touch buttons: the art is the label (no 1–3 / BASIC / ULT text over it).
+   The ultimate shows its art while charging, its ring fills, and the charge
+   (or READY / EX) sits in a small pill on the bottom edge. */
+.touch-buttons .touch-ultimate:not(.ult-ready) .skill-icon {
+  visibility: visible;
+}
+.touch-buttons .touch-ultimate.cooling .skill-icon {
+  opacity: 0.5;
+}
+.touch-buttons button.touch-ultimate:is(.ult-ready, :not(.ult-ready)) .touch-cooldown {
+  position: absolute;
+  inset: auto auto 1px 50%;
+  display: block;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #060a16cc;
+  font: 800 10px/12px var(--display);
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+.touch-buttons button.touch-ultimate:is(.ult-ready, :not(.ult-ready)) .touch-cooldown:empty {
+  display: none;
+}

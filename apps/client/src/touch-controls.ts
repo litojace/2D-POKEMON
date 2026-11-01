@@ -489,20 +489,15 @@ export class TouchControls {
       button.disabled =
         !active || (action !== "attack" && left > 0 && !exReady);
       if (button.dataset.iconName !== name) {
+        // The art is the label: skills, the basic attack and the ultimate
+        // carry no text over it (1–3 were keyboard keys anyway). Dash and
+        // Jump use plain glyphs, so they keep a small word under the icon.
         button.innerHTML =
           abilityIcon(name) +
-          '<span class="touch-key">' +
-          // Touch labels use 1–3 and a separate ULT button.
-          (isUlt
-            ? "ULT"
-            : skill !== undefined
-              ? Number(skill) + 1
-              : action === "attack"
-                ? "BASIC"
-                : action === "dash"
-                  ? "DASH"
-                  : "JUMP") +
-          '</span><span class="touch-cooldown"></span>';
+          (action === "dash" || action === "jump"
+            ? `<span class="touch-key">${action.toUpperCase()}</span>`
+            : "") +
+          '<span class="touch-cooldown"></span>';
         button.dataset.iconName = name;
         button.title = name;
       }

@@ -40,8 +40,15 @@ for (const size of [{width:844,height:390},{width:932,height:430},{width:844,hei
       expect(targets.dash.r).toBeGreaterThanOrEqual(24);
       expect(targets.dash.r).toBeGreaterThan(targets.jump.r);
       const ult = page.locator('.touch-ultimate');
-      await expect(ult.locator('.touch-key')).toHaveText("ULT");
+      // The art is the label: no 1–3 / BASIC / ULT text over skill art.
+      await expect(page.locator('.touch-buttons :is(.touch-skill,.touch-attack,.touch-ultimate) .touch-key')).toHaveCount(0);
+      await expect(page.locator('.touch-buttons [data-action="dash"] .touch-key')).toHaveText("DASH");
+      await expect(ult.locator('.skill-icon')).toBeVisible();
       await expect(ult.locator('.touch-cooldown')).toHaveText("72%");
+      // The charge is a small pill on the bottom edge, not over the middle.
+      const [ub, pill] = [await ult.boundingBox(), await ult.locator('.touch-cooldown').boundingBox()];
+      expect(pill!.y).toBeGreaterThan(ub!.y + ub!.height * 0.6);
+      expect(pill!.height).toBeLessThanOrEqual(16);
       if(size.height===390) {
         expect(targets["0"].r*2).toBeCloseTo(59.84,1);
         expect(targets.attack.r*2).toBeCloseTo(91.52,1);
