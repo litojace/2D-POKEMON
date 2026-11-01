@@ -154,3 +154,39 @@ test("missions follow a resized player card and viewport", async ({ page }) => {
   await expect.poll(gap).toBeLessThan(22);
   expect(await onTop(page, "#quest-tracker .quest-toggle")).toBe(true);
 });
+
+// The account bar re-renders often (economy, raid progress). An open list
+// used to be rebuilt each time, replaying its pop-in: it blinked.
+test("an open missions list is not rebuilt by unchanged re-renders", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1180, height: 820 });
+  await page.addInitScript(
+    (missions) => ((window as any).__missions = missions),
+    MISSIONS,
+  );
+  await openTown(page);
+  await page.locator("#quest-tracker .quest-toggle").click();
+  await expect(page.locator("#quest-tracker .quest-panel")).toBeVisible();
+  const tracker = new URL(
+    "../../apps/client/src/quest-tracker.ts",
+    import.meta.url,
+  ).pathname;
+  const result = await page.evaluate(async (path) => {
+    const before = document.querySelector("#quest-tracker .quest-panel");
+    let changes = 0;
+    new MutationObserver((l) => (changes += l.length)).observe(
+      document.getElementById("quest-tracker")!,
+      { childList: true },
+    );
+    const q = await import(/* @vite-ignore */ `/@fs${path}`);
+    for (let i = 0; i < 5; i++)
+      q.syncQuestTracker({ missions: (window as any).__missions }, () => {});
+    await new Promise((r) => setTimeout(r, 50));
+    return {
+      same: document.querySelector("#quest-tracker .quest-panel") === before,
+      changes,
+    };
+  }, tracker);
+  expect(result).toEqual({ same: true, changes: 0 });
+});

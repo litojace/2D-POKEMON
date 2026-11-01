@@ -23982,8 +23982,9 @@ body.town-active:has(dialog[open], .home-drawer:not([hidden])) #quest-tracker {
   border: 1px solid rgba(255, 214, 91, 0.35);
   border-radius: 14px;
   overflow: hidden;
-  background: linear-gradient(180deg, rgba(30, 40, 70, 0.95), rgba(14, 24, 46, 0.93));
-  backdrop-filter: blur(6px);
+  /* Nearly opaque already: no backdrop blur, which made the list flicker
+     over the live town canvas on Safari. */
+  background: linear-gradient(180deg, rgba(30, 40, 70, 0.97), rgba(14, 24, 46, 0.96));
   box-shadow: 0 8px 22px #0008;
   animation: quest-pop 0.18s ease-out;
 }

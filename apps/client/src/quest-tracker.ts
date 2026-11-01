@@ -26,6 +26,8 @@ let expanded = false;
 let last: { economy: Economy | undefined; open: () => void } | undefined;
 let playerCard: HTMLElement | null = null;
 let cardSize: ResizeObserver | undefined;
+/** The markup each tracker element shows now. */
+const rendered = new WeakMap<HTMLElement, string>();
 
 /** Follow the whole player card, including titles, frames and responsive sizing. */
 function positionTracker() {
@@ -170,13 +172,19 @@ export function syncQuestTracker(
     : "";
   root.classList.toggle("is-expanded", expanded);
   root.classList.toggle("has-open", !allDone);
-  root.innerHTML = `<button type="button" class="quest-toggle" aria-expanded="${expanded}" aria-controls="quest-panel" aria-label="Daily missions: ${finished} of ${total} done">${buttonIcon("missions")}<span>Missions</span>${allDone ? "" : '<span class="quest-alert" aria-hidden="true">!</span>'}</button>${panel}${toast}`;
+  const html = `<button type="button" class="quest-toggle" aria-expanded="${expanded}" aria-controls="quest-panel" aria-label="Daily missions: ${finished} of ${total} done">${buttonIcon("missions")}<span>Missions</span>${allDone ? "" : '<span class="quest-alert" aria-hidden="true">!</span>'}</button>${panel}${toast}`;
+  // The account bar re-renders often (economy, raid progress, purchases).
+  // Rebuilding identical markup restarted the panel's pop-in and the "!"
+  // bob each time, so an open list blinked; leave unchanged markup alone.
+  if (rendered.get(root) === html) return;
+  rendered.set(root, html);
+  root.innerHTML = html;
   root.querySelector<HTMLButtonElement>(".quest-toggle")!.onclick = () =>
     setExpanded(!expanded);
   const title = root.querySelector<HTMLButtonElement>(".quest-title");
   if (title)
     title.onclick = () => {
-      expanded = false;
-      open();
+      setExpanded(false);
+      last?.open();
     };
 }
