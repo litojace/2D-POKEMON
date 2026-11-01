@@ -96,3 +96,51 @@ for (const width of [1440, 844]) {
     expect(errors).toEqual([]);
   });
 }
+
+test("a nearby player's card shows their frame stars, look and bosses beaten", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 932, height: 430 });
+  const errors = await openTown(page);
+  await page.evaluate(() => {
+    const sock = (window as any).__sock;
+    sock.fire("town-profiles", [
+      {
+        id: 999,
+        accountId: "22222222-2222-4222-8222-222222222222",
+        name: "Nearby Mina",
+        title: "Mountain Conqueror",
+        titleColor: "#ffd76a",
+        level: 12,
+        character: "lumoth",
+        skin: null,
+        look: { frame: "conqueror", aura: "mountain-aura" },
+        raid: { grumblecrag: 34, tidewyrm: 3, emberwing: 1 },
+      },
+    ]);
+    const fire = sock.fire.bind(sock);
+    sock.fire = (event: string, data: any) => {
+      if (event === "town-state")
+        data.walkers.push([999, 1670, 1330, 0, 0, 0, 0]);
+      return fire(event, data);
+    };
+    sock.fire("town-state", {
+      town: 1,
+      population: 2,
+      me: 1,
+      walkers: [[1, 1600, 1330, 0, 0, 0, 0]],
+    });
+  });
+  await page.getByRole("button", { name: "View Nearby Mina's card" }).click();
+  const card = page.locator("dialog .player-card");
+  await expect(card).toBeVisible();
+  await expect(page.locator("dialog h2").first()).toHaveText("Nearby Mina");
+  // 34 Grumblecrag clears: three stars on its Conqueror frame.
+  await expect(card.locator(".frame-stars")).toHaveText("★★★☆☆");
+  await expect(card.locator(".player-card-boss.is-beaten")).toHaveCount(3);
+  await expect(card).toContainText("Mountain aura");
+  await expect(card).toContainText("3/7 · 38 clears");
+  await page.waitForTimeout(600);
+  await snap(page, info, "town-player-card");
+  expect(errors).toEqual([]);
+});

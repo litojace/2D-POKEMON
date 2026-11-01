@@ -31,9 +31,12 @@ import {
   LOOK_ITEM_BY_ID,
   type Economy,
 } from "../../../packages/shared/src/shop";
+import { noteSeenRewards } from "./reward-reveal";
 import {
   RAID_COSMETICS,
   pacificDate,
+  bossClears,
+  frameStars,
   raidLookOf,
   type RaidBossId,
   type RaidCosmetic,
@@ -137,6 +140,8 @@ export class AccountUI {
   checked = false;
   /** Equipped raid look (undefined until loaded). */
   raidLook: RaidLoadout | undefined = undefined;
+  /** Saved clears per boss: stars on your boss frame. */
+  raidClears: Partial<Record<RaidBossId, number>> = {};
   /** Coins, owned items, missions (undefined until loaded or before migration 010). */
   economy: Economy | undefined = undefined;
   session: Session | null = null;
@@ -229,6 +234,7 @@ export class AccountUI {
       wardrobe?.close();
       this.account = null;
       this.raidLook = undefined;
+      this.raidClears = {};
       this.economy = undefined;
     }
     this.hooks.onSession(session?.access_token ?? null, session?.user.id);
@@ -244,6 +250,8 @@ export class AccountUI {
           const progress = (await this.api("/api/raids")) as RaidProgress;
           if (version !== this.generation) return;
           this.raidLook = raidLookOf(progress);
+          noteSeenRewards(account.id, progress);
+          this.raidClears = bossClears(progress);
         } catch {
           /* Raid storage is optional until migration 007 is installed. */
         }
@@ -314,6 +322,7 @@ export class AccountUI {
       character,
       this.economy?.looks[character] ?? null,
       this.raidLook?.frame ?? null,
+      frameStars(this.raidLook?.frame, this.raidClears),
     ]);
     if (avatar.dataset.avatarLook === key) return;
     avatar.innerHTML = framedAvatar(
@@ -323,6 +332,7 @@ export class AccountUI {
         championLooks: this.economy?.looks,
       },
       "account-nav",
+      frameStars(this.raidLook?.frame, this.raidClears),
     );
     avatar.dataset.champion = character;
     avatar.dataset.avatarLook = key;
@@ -596,6 +606,7 @@ export class AccountUI {
       try {
         progress = (await this.api("/api/raids")) as RaidProgress;
         this.raidLook = raidLookOf(progress);
+        this.raidClears = bossClears(progress);
         this.hooks.onChange();
       } catch (error) {
         problem =
@@ -736,6 +747,7 @@ export class AccountUI {
           if (saved.progress) Object.assign(progress, saved.progress);
           else progress.loadout = { ...raidLookOf(progress), [slot]: item };
           this.raidLook = raidLookOf(progress);
+          this.raidClears = bossClears(progress);
           // The save worked: a hiccup redrawing the page behind the dialog
           // must not be reported as a failed save.
           try {
@@ -819,6 +831,7 @@ export class AccountUI {
     let progress =
       raids.status === "fulfilled" ? (raids.value as RaidProgress) : null;
     if (progress) this.raidLook = raidLookOf(progress);
+    if (progress) this.raidClears = bossClears(progress);
     this.wardrobePanel?.dispose();
     this.wardrobePanel = openWardrobe(
       root,
@@ -853,6 +866,7 @@ export class AccountUI {
             if (generation !== this.generation) return;
             progress = result.progress;
             this.raidLook = raidLookOf(progress);
+            this.raidClears = bossClears(progress);
           }
           this.renderNav();
           try {
@@ -962,6 +976,7 @@ export class AccountUI {
               item: item.id,
             })) as { progress: RaidProgress };
             this.raidLook = raidLookOf(result.progress);
+            this.raidClears = bossClears(result.progress);
             this.hooks.onChange();
             render();
           } catch (error) {
@@ -1422,6 +1437,7 @@ export class AccountUI {
     this.raidLook = saved.progress
       ? raidLookOf(saved.progress)
       : { ...this.raidLook, [slot]: item };
+    if (saved.progress) this.raidClears = bossClears(saved.progress);
   }
   async showProfile() {
     if (!this.account) return;

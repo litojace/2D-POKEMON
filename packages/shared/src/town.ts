@@ -811,6 +811,8 @@ export interface TownProfile {
   skin: { skin: string; stage?: number } | null;
   /** Verified wardrobe slots, including colours, aura, entrance, victory and portrait frame. */
   look?: RaidLoadout;
+  /** Saved raid clears per boss (frame stars and the profile card). */
+  raid?: Partial<Record<RaidBossId, number>>;
 }
 export interface TownState {
   town: number;

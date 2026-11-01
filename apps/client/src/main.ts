@@ -43,7 +43,7 @@ import {
 import { setupHomeNavigation } from "./home-navigation";
 import { watchSelectionPreview } from "./selection-preview";
 import { townOutfitKey } from "./town-outfit";
-import { pacificDate } from "../../../packages/shared/src/raid";
+import { bossClears, pacificDate } from "../../../packages/shared/src/raid";
 import { resultXp } from "./adventure-ui";
 import { arcadeWeek, ARCADE_EVENTS } from "../../../packages/shared/src/arcade";
 import { drawArcade } from "./arcade-art";
@@ -165,6 +165,8 @@ import { fighterPack } from "./animation/pack-config";
 import { fullscreenLandscape } from "./orientation";
 import { wireRotateGate } from "./rotate-gate";
 import { watchRotation } from "./orientation-settle";
+import { showRewardReveal, takeNewRewards } from "./reward-reveal";
+import { playerCardMarkup } from "./player-card";
 import {
   SKILL_ACTIONS,
   SkillCaster,
@@ -1462,6 +1464,7 @@ function syncTown() {
       else homeNavigation.open("play");
     },
     loadNearbyFriends: () => accountsUI.nearbyFriends(),
+    onInspect: (profile) => dialog(playerCardMarkup(profile)),
     onAddFriend: (playerId) => accountsUI.friendRequest({ playerId }),
     onInviteFriend: async (playerId) => {
       if (townInvitePending) return false;
@@ -2266,10 +2269,21 @@ function renderBattle() {
       state,
       me,
       requestRaidHud,
-      async () =>
-        (await accountsUI.api(
+      async () => {
+        const progress = (await accountsUI.api(
           "/api/raids",
-        )) as import("../../../packages/shared/src/raid").RaidProgress,
+        )) as import("../../../packages/shared/src/raid").RaidProgress;
+        // Frame stars follow the new clear count straight away.
+        accountsUI.raidClears = bossClears(progress);
+        accountsUI.syncAvatar();
+        const fresh = takeNewRewards(accountsUI.account?.id, progress);
+        // Let the victory screen land, then turn the new cards over.
+        if (fresh.length) {
+          const champion = me.character;
+          setTimeout(() => void showRewardReveal(fresh, champion), 1800);
+        }
+        return progress;
+      },
       accountsUI.economy?.journey,
     );
     const raidHud = document.getElementById("raid-hud");

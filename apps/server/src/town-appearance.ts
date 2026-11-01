@@ -1,5 +1,6 @@
 import { playerLevel } from "../../../packages/shared/src/journey.js";
 import {
+  bossClears,
   raidLookOf,
   type RaidProgress,
 } from "../../../packages/shared/src/raid.js";
@@ -62,8 +63,10 @@ export class TownAppearance {
         )?.[character];
         patch.skin = look?.skin ? { skin: look.skin, stage: look.stage } : null;
       }
-      if (appearance.status === "fulfilled")
+      if (appearance.status === "fulfilled") {
         patch.look = raidLookOf(appearance.value as RaidProgress | null);
+        patch.raid = bossClears(appearance.value as RaidProgress | null);
+      }
       apply(patch);
       await level;
     } finally {

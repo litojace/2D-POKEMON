@@ -7,7 +7,12 @@ import {
   type Economy,
 } from "../../../packages/shared/src/shop";
 import {
+  FRAME_MAX_STARS,
+  FRAME_STAR_CLEARS,
   RAID_BOSSES,
+  bossClears,
+  frameStars,
+  rewardBoss,
   RAID_COSMETICS,
   RAID_REWARDS,
   type RaidProgress,
@@ -158,6 +163,18 @@ export function wardrobePreviewParts(
     footer: `<footer class="wardrobe-footer" data-selection="${!!selected || !!(original && e.looks[view.champion])}"><div class="wardrobe-selection"><small>${trying ? "TRYING ON · NOT SAVED" : "EQUIPPED OUTFIT"}</small><b>${escape(selected?.name ?? (original ? "Original skin" : CHARACTERS[view.champion].name))}</b><p>${escape(selected?.description ?? "Browse your collection to preview a change.")}${selected?.slot === "skin" && skinned ? " Your champion skin covers these colours; take it off to reveal them." : ""}</p></div><p class="wardrobe-status" role="status"></p><div class="wardrobe-save">${action}</div></footer>`,
   };
 }
+/** Boss frames: stars earned and the clears for the next one. */
+export function frameStarNote(id: string, p: RaidProgress | null) {
+  const boss = rewardBoss(id);
+  if (
+    !boss ||
+    RAID_COSMETICS[id as keyof typeof RAID_COSMETICS]?.slot !== "frame"
+  )
+    return "";
+  const clears = bossClears(p)[boss] ?? 0,
+    stars = frameStars(id, bossClears(p));
+  return `<small class="wardrobe-frame-stars${stars >= FRAME_MAX_STARS ? " is-legendary" : ""}">${"★".repeat(stars)}${"☆".repeat(FRAME_MAX_STARS - stars)} ${stars >= FRAME_MAX_STARS ? "Legendary" : `${clears}/${(stars + 1) * FRAME_STAR_CLEARS} clears`}</small>`;
+}
 export function wardrobeMarkup(
   view: WardrobeView,
   e: Economy,
@@ -174,7 +191,7 @@ export function wardrobeMarkup(
   const cards = items
     .map((i) => {
       const worn = wardrobeWorn(i.slot, view.champion, e, loadout) === i.id;
-      return `<button type="button" class="wardrobe-item${view.preview === i.id ? " is-selected" : ""}" data-wardrobe-preview="${i.id}" aria-pressed="${view.preview === i.id}"><span class="wardrobe-item-art">${itemPicture(i.id, view.champion, `wardrobe-${i.id}`, e.looks[view.champion]?.skin === i.id ? e.looks[view.champion]!.stage : (e.awakening[i.id]?.stage ?? 1))}</span><span class="wardrobe-item-copy"><b>${escape(i.name)}</b><small>${escape(i.source)}</small><span class="wardrobe-item-state${worn ? " is-equipped-text" : ""}">${worn ? `${menuIcon("check")}Equipped` : WARDROBE_SLOTS.find(([s]) => s === i.slot)![1]}</span></span></button>`;
+      return `<button type="button" class="wardrobe-item${view.preview === i.id ? " is-selected" : ""}" data-wardrobe-preview="${i.id}" aria-pressed="${view.preview === i.id}"><span class="wardrobe-item-art">${itemPicture(i.id, view.champion, `wardrobe-${i.id}`, e.looks[view.champion]?.skin === i.id ? e.looks[view.champion]!.stage : (e.awakening[i.id]?.stage ?? 1))}</span><span class="wardrobe-item-copy"><b>${escape(i.name)}</b><small>${escape(i.source)}</small>${frameStarNote(i.id, p)}<span class="wardrobe-item-state${worn ? " is-equipped-text" : ""}">${worn ? `${menuIcon("check")}Equipped` : WARDROBE_SLOTS.find(([s]) => s === i.slot)![1]}</span></span></button>`;
     })
     .join("");
   const wearing = WARDROBE_SLOTS.map(([slot, label]) => {

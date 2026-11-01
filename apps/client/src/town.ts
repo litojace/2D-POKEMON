@@ -56,6 +56,8 @@ export interface TownOptions {
   loadNearbyFriends?: () => Promise<FriendList>;
   onAddFriend?: (playerId: string) => Promise<boolean>;
   onInviteFriend?: (playerId: string) => Promise<boolean>;
+  /** Open another player's card (Nearby players → their portrait button). */
+  onInspect?: (profile: TownProfile) => void;
   /** Called after the town has closed (`failed`: the server refused the join). */
   onClose: (failed: boolean) => void;
 }
@@ -1116,10 +1118,18 @@ export function openTown(options: TownOptions) {
               people
                 .map(
                   (b) =>
-                    `<button type="button" data-nearby="${b.id}" ${["Sending…", "Request sent", "Invite sent"].includes(status(profiles.get(b.id)!.accountId!)) ? "disabled" : ""}>${menuIcon("friends")}<span>${esc(profiles.get(b.id)!.name)}</span><small>${status(profiles.get(b.id)!.accountId!)}</small></button>`,
+                    `<div class="town-nearby-row"><button type="button" data-nearby="${b.id}" ${["Sending…", "Request sent", "Invite sent"].includes(status(profiles.get(b.id)!.accountId!)) ? "disabled" : ""}>${menuIcon("friends")}<span>${esc(profiles.get(b.id)!.name)}</span><small>${status(profiles.get(b.id)!.accountId!)}</small></button>${options.onInspect ? `<button type="button" class="town-nearby-card" data-inspect="${b.id}" aria-label="View ${esc(profiles.get(b.id)!.name)}'s card" title="View card">${menuIcon("user")}</button>` : ""}</div>`,
                 )
                 .join("");
-            panel.querySelectorAll<HTMLButtonElement>("button").forEach(
+            panel
+              .querySelectorAll<HTMLButtonElement>("[data-inspect]")
+              .forEach((button) => {
+                button.onclick = () => {
+                  const profile = profiles.get(Number(button.dataset.inspect));
+                  if (profile) options.onInspect?.(profile);
+                };
+              });
+            panel.querySelectorAll<HTMLButtonElement>("[data-nearby]").forEach(
               (button) =>
                 (button.onclick = async () => {
                   const id = profiles.get(

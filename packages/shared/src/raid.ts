@@ -2317,3 +2317,39 @@ export function raidLookOf(
   if (progress.equipped === "mountain-aura") return { aura: "mountain-aura" };
   return {};
 }
+
+/**
+ * Boss frames grow with you: one star for every 10 clears of that frame's
+ * boss, up to 5. At 5 stars the frame turns legendary gold.
+ */
+export const FRAME_STAR_CLEARS = 10;
+export const FRAME_MAX_STARS = 5;
+/** The boss a reward belongs to (null for cross-boss or non-raid items). */
+export function rewardBoss(id: string | null | undefined): RaidBossId | null {
+  if (!id) return null;
+  return RAID_REWARDS.find((r) => r.id === id)?.boss ?? null;
+}
+/** Stars on a worn frame, from clears per boss. Non-boss frames have none. */
+export function frameStars(
+  frame: string | null | undefined,
+  clears: Partial<Record<RaidBossId, number>> | null | undefined,
+) {
+  const boss = rewardBoss(frame);
+  if (!boss || RAID_REWARDS.find((r) => r.id === frame)?.slot !== "frame")
+    return 0;
+  return Math.min(
+    FRAME_MAX_STARS,
+    Math.floor((clears?.[boss] ?? 0) / FRAME_STAR_CLEARS),
+  );
+}
+/** Clears per boss from saved progress (old saves keep Grumblecrag's total). */
+export function bossClears(
+  progress: Pick<RaidProgress, "bosses" | "clears"> | null | undefined,
+): Partial<Record<RaidBossId, number>> {
+  if (!progress) return {};
+  const out: Partial<Record<RaidBossId, number>> = {};
+  for (const [id, record] of Object.entries(progress.bosses ?? {}))
+    if (record?.clears) out[id as RaidBossId] = record.clears;
+  if (!progress.bosses && progress.clears) out.grumblecrag = progress.clears;
+  return out;
+}

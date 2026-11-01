@@ -22828,8 +22828,9 @@ body.battle-active.battle-raid #raid-drill:not([hidden]) {
   font-size: 11px;
 }
 #raid-drill p { font-size: 12px; }
-.town-nearby {position:absolute;right:calc(var(--safe-right) + 12px);top:calc(var(--safe-top) + 80px);z-index:15;display:grid;gap:6px;padding:10px;border:1px solid #7895bc77;border-radius:12px;background:#101d32ed;width:210px;}
+.town-nearby {position:absolute;right:calc(var(--safe-right) + 12px);top:calc(var(--safe-top) + 80px);z-index:15;display:grid;gap:6px;padding:10px;border:1px solid #7895bc77;border-radius:12px;background:#101d32ed;width:244px;}
 .town-nearby > b {font-size:11px;color:#aebfd9;}
+.town-nearby-row {display:grid;grid-template-columns:minmax(0,1fr) 34px;gap:4px;}
 .town-nearby button {appearance:none;-webkit-appearance:none;display:grid;grid-template-columns:20px minmax(0,1fr);gap:3px 8px;text-align:left;border:1px solid #6581aa66;background:linear-gradient(135deg,#263d59,#192c45);color:#eef5ff;border-radius:8px;padding:9px;min-height:54px;font:inherit;box-shadow:inset 0 1px #ffffff0a;}
 .town-nearby button:not(:disabled):hover {background:#304b6c;border-color:#e9cc7b;}
 .town-nearby button:disabled {opacity:.7;cursor:default;}
@@ -22851,7 +22852,7 @@ body.battle-active.battle-raid #raid-drill:not([hidden]) {
  #arena-overlay .raid-draft .raid-rite-icon--buff > svg {width:96px;height:72px;}
  #arena-overlay .raid-draft .panel-actions .raid-rite-icon--buff {gap:4px;}
  .raid-rite-buff-value {font-size:20px;}
- .town-nearby {top:calc(var(--safe-top) + 58px);width:170px;padding:6px;}
+ .town-nearby {top:calc(var(--safe-top) + 58px);width:204px;padding:6px;}
 }
 @media (orientation:landscape) and (max-height:450px) {
  .raid-rite-buff-value {font-size:22px;}
@@ -24908,4 +24909,26 @@ body.battle-active:not(.touch-mode) :is(.ability, .basic-hint) > span:has(> .ski
 }
 .touch-buttons button.touch-ultimate:is(.ult-ready, :not(.ult-ready)) .touch-cooldown:empty {
   display: none;
+}
+
+/* Boss frame stars in the wardrobe list. */
+.wardrobe-item .wardrobe-frame-stars {
+  color: #ffd76a;
+  letter-spacing: 0.5px;
+}
+.wardrobe-item .wardrobe-frame-stars.is-legendary {
+  color: #fff2b0;
+  text-shadow: 0 0 6px #ffcf4a99;
+}
+
+/* Nearby players: a small portrait button opens their card. */
+.town-nearby .town-nearby-card {
+  display: grid;
+  grid-template-columns: 1fr;
+  place-items: center;
+  min-height: 0;
+  padding: 0;
+}
+.town-nearby .town-nearby-card svg {
+  grid-row: auto;
 }
