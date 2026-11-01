@@ -1295,3 +1295,37 @@
     display: none;
   }
 }
+
+/* Illustrated skill icons (skill-art.ts) fill their tile at every size:
+   the tile is 64px tall on desktop (10px padding), 42px on landscape phones
+   (6px), 36px on very short screens. Kit rows widen their icon column. */
+#menu .champion-selector .champion-skill-buttons .skill-icon.skill-art {
+  width: 44px;
+  height: 44px;
+}
+#menu .champion-selector .preview-skills > div:has(> .skill-art) {
+  grid-template-columns: 42px 40px minmax(0, 1fr) 48px;
+}
+#menu .champion-selector .preview-skills > div > .skill-icon.skill-art {
+  width: 40px;
+  height: 40px;
+}
+@media (max-width: 1000px) and (orientation: landscape) {
+  #menu .champion-selector .champion-skill-buttons .skill-icon.skill-art {
+    width: 30px;
+    height: 30px;
+  }
+  #menu .champion-selector .preview-skills > div:has(> .skill-art) {
+    grid-template-columns: 28px 32px minmax(0, 1fr) 36px;
+  }
+  #menu .champion-selector .preview-skills > div > .skill-icon.skill-art {
+    width: 32px;
+    height: 32px;
+  }
+}
+@media (max-height: 350px) and (orientation: landscape) {
+  #menu .champion-selector .champion-skill-buttons .skill-icon.skill-art {
+    width: 24px;
+    height: 24px;
+  }
+}

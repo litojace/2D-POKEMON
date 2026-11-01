@@ -24875,19 +24875,3 @@ body.battle-active:not(.touch-mode) :is(.ability, .basic-hint) > span:has(> .ski
   border-radius: 999px;
   background: #060a16b0;
 }
-/* Roster and kit lists: big enough to see the scene. */
-body .selected-info .champion-skill-buttons button > .skill-icon.skill-art {
-  width: 44px !important;
-  height: 44px !important;
-  max-width: none;
-}
-body .skill-preview .preview-skills > div > .skill-icon.skill-art,
-body .basic-description > .skill-icon.skill-art {
-  width: 40px !important;
-  height: 40px !important;
-  max-width: none;
-  flex: none;
-}
-body .fighter-preview-slot .preview-skills > div:has(> .skill-art) {
-  grid-template-columns: 36px 40px minmax(0, 1fr) 32px;
-}
