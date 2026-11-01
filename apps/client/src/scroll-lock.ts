@@ -9,6 +9,8 @@
  * stylesheet stops its scroll from chaining to the page.
  */
 let locked = false;
+/** The body was actually pinned (the page could scroll when the lock began). */
+let pinned = false;
 let savedY = 0;
 let savedX = 0;
 const properties = ["position", "top", "left", "right", "width"] as const;
@@ -16,7 +18,7 @@ let savedStyles: string[] = [];
 let savedGutter = "";
 let bodyWidthInset = 0;
 const resizeLockedPage = () => {
-  if (!locked) return;
+  if (!locked || !pinned) return;
   document.body.style.width = `${Math.max(0, document.documentElement.clientWidth - bodyWidthInset)}px`;
 };
 
@@ -30,6 +32,16 @@ export function setScrollLock(on: boolean) {
   const body = document.body,
     root = document.documentElement;
   if (on) {
+    // A page that cannot scroll (the town, a lobby, a battle: everything is
+    // fixed to the screen) needs no pinning. Pinning it anyway made iPadOS
+    // home-screen apps shift the whole game up by the status bar's height
+    // whenever the menu or a dialog opened, leaving a dark band at the bottom.
+    pinned =
+      window.scrollY !== 0 ||
+      window.scrollX !== 0 ||
+      root.scrollHeight > root.clientHeight + 1 ||
+      root.scrollWidth > root.clientWidth + 1;
+    if (!pinned) return;
     savedY = window.scrollY;
     savedX = window.scrollX;
     savedStyles = properties.map((property) => body.style[property]);
@@ -49,6 +61,8 @@ export function setScrollLock(on: boolean) {
     });
     window.addEventListener("resize", resizeLockedPage);
   } else {
+    if (!pinned) return;
+    pinned = false;
     window.removeEventListener("resize", resizeLockedPage);
     root.classList.remove("scroll-locked");
     properties.forEach((property, index) => {

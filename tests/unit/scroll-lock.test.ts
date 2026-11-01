@@ -126,3 +126,23 @@ it("fits the new viewport when rotating with a menu open and retires the resize 
   expect(style.width).toBe("");
   expect(window.removeEventListener).toHaveBeenCalledWith("resize", resize);
 });
+
+it("leaves a page that cannot scroll untouched (iPad home-screen town shifted up)", () => {
+  const win = window as unknown as { scrollX: number; scrollY: number };
+  win.scrollX = 0;
+  win.scrollY = 0;
+  Object.assign(document.documentElement, {
+    clientHeight: 820,
+    scrollHeight: 820,
+    scrollWidth: 1000,
+  });
+  setScrollLock(true);
+  expect(isScrollLocked()).toBe(true);
+  expect(style.position).toBe("relative");
+  expect(style.top).toBe("");
+  expect(rootStyle.scrollbarGutter).toBe("auto");
+  expect(document.documentElement.classList.add).not.toHaveBeenCalled();
+  setScrollLock(false);
+  expect(isScrollLocked()).toBe(false);
+  expect(scrollTo).not.toHaveBeenCalled();
+});

@@ -8222,6 +8222,13 @@ body:not(.battle-active)::before {
     background: #13233de8;
   }
 }
+/* In town and a room's lobby the game runs edge to edge under the status
+   bar, and the HUD already keeps clear of it (safe-area padding). The
+   frosted strip there only blurred the top of the map. */
+body.town-active::before,
+body.lobby-active::before {
+  display: none;
+}
 
 /* The header (and its open menu) always stays above the page. The lobby
    panels keep a transform from their entrance animation, which makes them

@@ -57,3 +57,21 @@ describe("Want fullscreen? help", () => {
     ).toContain("already fullscreen");
   });
 });
+
+it("explains on iPad that the status bar cannot be hidden", () => {
+  const ipad = fullscreenHelp({
+    standalone: true,
+    platform: "ipad",
+    canPrompt: false,
+    canFullscreen: false,
+  });
+  expect(ipad).toContain("iPadOS");
+  expect(ipad).toContain("Turn your iPad sideways");
+  const phone = fullscreenHelp({
+    standalone: true,
+    platform: "iphone",
+    canPrompt: false,
+    canFullscreen: false,
+  });
+  expect(phone).not.toContain("iPadOS");
+});
