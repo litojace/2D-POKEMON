@@ -1,5 +1,12 @@
 name: Arena checks
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+# A newer push to the same branch replaces a run still in progress.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -17,6 +24,9 @@ jobs:
   visual:
     # The real client in Chromium with no server: one fighter on the select
     # screen, arenas filling their frames, dialogs fitting a phone.
+    # About 35 minutes, so it runs for main (what Render deploys), pull
+    # requests and manual runs, not again for the same commit on work.
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
