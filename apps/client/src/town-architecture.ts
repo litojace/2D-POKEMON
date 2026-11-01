@@ -115,7 +115,10 @@ export function paintedStall(source: CanvasImageSource, color: string): Sprite {
   };
   return p.sprite;
 }
-export function nativeStall(source: HTMLImageElement | HTMLCanvasElement, key: string): Sprite {
+export function nativeStall(
+  source: HTMLImageElement | HTMLCanvasElement,
+  key: string,
+): Sprite {
   const sprite = placement(source, ARCHITECTURE.market, 220).sprite,
     scale = 220 / ARCHITECTURE.market.inkWidth;
   sprite.nativeImage = {
@@ -170,7 +173,17 @@ export function recolorCloth(data: Uint8ClampedArray, color: ClothColor) {
       m = v - c;
     const k = Math.floor(hue) % 6;
     const [R, G, B] =
-      k === 0 ? [c, x, 0] : k === 1 ? [x, c, 0] : k === 2 ? [0, c, x] : k === 3 ? [0, x, c] : k === 4 ? [x, 0, c] : [c, 0, x];
+      k === 0
+        ? [c, x, 0]
+        : k === 1
+          ? [x, c, 0]
+          : k === 2
+            ? [0, c, x]
+            : k === 3
+              ? [0, x, c]
+              : k === 4
+                ? [x, 0, c]
+                : [c, 0, x];
     data[i] = Math.round((R + m) * 255);
     data[i + 1] = Math.round((G + m) * 255);
     data[i + 2] = Math.round((B + m) * 255);
@@ -181,7 +194,11 @@ export function recolorCloth(data: Uint8ClampedArray, color: ClothColor) {
  * At `size` pixels square (512: the stall is about 220 units wide, so this
  * stays sharp at normal zoom while three of them cost what one 1024 did).
  */
-export function recoloredStall(source: HTMLImageElement, color: ClothColor, size = 512) {
+export function recoloredStall(
+  source: HTMLImageElement,
+  color: ClothColor,
+  size = 512,
+) {
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;

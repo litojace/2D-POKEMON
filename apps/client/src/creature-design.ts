@@ -496,8 +496,7 @@ export function creatureLayers(
     // Lantern on a crook, hanging from its tip; the rig swings this layer.
     layers.tail = `${tailPath("M126 150Q150 148 156 120Q160 98 172 92Q180 92 180 100", "none", ` stroke="${p.dark}" stroke-width="4" stroke-linecap="round"`)}${line(`M${tailX(180)} 100V106`, p.dark, 2)}<circle cx="${tailX(180)}" cy="118" r="17" fill="${shine}" stroke="none"/>${path(`M${tailX(173)} 108H${tailX(187)}L${tailX(185)} 128H${tailX(175)}Z`, p.accent)}${e(tailX(180), 118, 4.5, 7, p.glow)}${e(tailX(180), 120, 2, 3.5, "#ffffff")}${line(`M${tailX(172)} 107H${tailX(188)}M${tailX(174)} 129H${tailX(186)}`, p.dark, 3)}`;
   }
-  if (dir === "down" && id !== "duskveil")
-    layers.head += blush;
+  if (dir === "down" && id !== "duskveil") layers.head += blush;
   if (dir === "left" || dir === "right" || dir === "up") {
     const painted = creatureProfile(id, dir, {
       palette: p,
@@ -598,11 +597,20 @@ export function creatureSvgRenderer(
 ) {
   const { defs, layers } = creatureLayers(id, dir, mood, look);
   const stroke = paletteFor(id, lookFor(id, look)).dark;
-  const FACE_PARTS: CreaturePart[] = ["head", "earFar", "ears", "eyes", "flame"];
+  const FACE_PARTS: CreaturePart[] = [
+    "head",
+    "earFar",
+    "ears",
+    "eyes",
+    "flame",
+  ];
   const order = dir === "down" ? [] : profilePartOrder(dir, id);
   // A part listed after the head (Terradon's shell from behind) draws over it.
   const firstFace = order.findIndex((p) => FACE_PARTS.includes(p));
-  const lastFace = order.length - 1 - [...order].reverse().findIndex((p) => FACE_PARTS.includes(p));
+  const lastFace =
+    order.length -
+    1 -
+    [...order].reverse().findIndex((p) => FACE_PARTS.includes(p));
   const lowerParts: CreaturePart[] =
     dir === "down"
       ? ["tail", "wings", "legL", "legR", "body", "armL", "armR"]

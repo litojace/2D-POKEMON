@@ -60,8 +60,9 @@ describe("mission completion instructions", () => {
     expect(missionHelp("teams-unharmed")).toContain(
       "Your teammate may be knocked out",
     );
+    // raid-solo-p2 now asks for two no-downs clears (migration 030).
     expect(missionHelp("raid-solo-p2")).toContain(
-      "Peril 1 clears do not count",
+      "without anyone in the party being downed",
     );
     expect(missionHelp("daily-1")).toContain(
       "as Voltkit or Auralynx",

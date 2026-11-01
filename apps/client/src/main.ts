@@ -15,12 +15,21 @@ import { predictFighter } from "./predict-fighter";
 import { startPingBadge } from "./ping-badge";
 import { TargetLock, drawTargetReticle } from "./target-lock";
 import { renderTargetPicker } from "./target-picker";
-import { CastPredictor, canBasic, canCastSkill, canDash, type CastAction } from "./cast-prediction";
+import {
+  CastPredictor,
+  canBasic,
+  canCastSkill,
+  canDash,
+  type CastAction,
+} from "./cast-prediction";
 import { queueBossSpellArt } from "./boss-spell-flipbook";
 import { queueBossArt, retainBossArt } from "./boss-painted-rig";
 import { rendererDensity } from "./render-budget";
 import { watchRendererLifecycle } from "./renderer-lifecycle";
-import { groundHeight, WORLD_ART } from "../../../packages/shared/src/world-art";
+import {
+  groundHeight,
+  WORLD_ART,
+} from "../../../packages/shared/src/world-art";
 import { frameLobbyPanel } from "./lobby-layout";
 import { fitDesktopBattleHud } from "./desktop-battle-layout";
 import {
@@ -43,7 +52,6 @@ import { prismatailAim } from "./prismatail-controls";
 import { dreamRuneKey } from "./somnara-controls";
 import { battleMusic } from "./battle-music";
 import { setDialogContent } from "./dialog";
-import { wireRaidDifficulty } from "./raid-difficulty";
 import { updateMenuShell } from "./menu-shell";
 import {
   raidLobby,
@@ -175,11 +183,7 @@ import { drawPreview, previewShape } from "./skill-preview";
 import { controlsCapturing, showControlsScreen } from "./controls-screen";
 import { watchBattleZoom } from "./zoom-guard";
 import { KO_FEEL, hitFeel, hitStrength, rumble } from "./game-feel";
-import {
-  captureInvite,
-  clearInvite,
-  pendingInvite,
-} from "./invite";
+import { captureInvite, clearInvite, pendingInvite } from "./invite";
 import { lockScrollWhileOpen, setScrollLock } from "./scroll-lock";
 import { watchMenuMotion } from "./menu-motion";
 import {
@@ -201,9 +205,28 @@ import { openTown } from "./town";
 import { prepareSurfaceTextures, surfaceBurst } from "./court-surface-fx";
 import { fxFor } from "./fx-engine";
 import { isRaidFloor, paintRaidFloor } from "./raid-floors";
-import { isIllustratedRaidFloor, loadRaidArenaArt, paintIllustratedRaidFloor, prefetchRaidArena } from "./raid-arena-art";
+import {
+  isIllustratedRaidFloor,
+  loadRaidArenaArt,
+  paintIllustratedRaidFloor,
+  prefetchRaidArena,
+} from "./raid-arena-art";
 import type { LayerAt } from "./raid-layers";
-import { courtBlockFrame, courtBlocks, isCourt, paintCourtBlock, paintCourtFloor, paintCourtRubble, paintCourtStands, paintCourtApron, COURT_APRON, RUBBLE_PAD, SHIFTING_BLOCK, STANDS, type CourtId } from "./arena-courts";
+import {
+  courtBlockFrame,
+  courtBlocks,
+  isCourt,
+  paintCourtBlock,
+  paintCourtFloor,
+  paintCourtRubble,
+  paintCourtStands,
+  paintCourtApron,
+  COURT_APRON,
+  RUBBLE_PAD,
+  SHIFTING_BLOCK,
+  STANDS,
+  type CourtId,
+} from "./arena-courts";
 import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
 const audio = new AudioManager();
 audio.start();
@@ -240,11 +263,9 @@ let state: Snapshot | undefined,
   pending: Input[] = [],
   scene: ArenaScene | undefined;
 let raidPracticeReturn:
-  | { boss: RaidBossId; tab: RaidHubTab; leaveRoom: boolean }
-  | undefined;
+  { boss: RaidBossId; tab: RaidHubTab; leaveRoom: boolean } | undefined;
 let raidRoomReturn:
-  | { code: string; boss: RaidBossId; tab: RaidHubTab }
-  | undefined;
+  { code: string; boss: RaidBossId; tab: RaidHubTab } | undefined;
 let accountShown = "";
 /** Last known "ultimate ready" state, for the ready sound. */
 let ultWasReady = false;
@@ -443,7 +464,9 @@ function cooldownLeft(me: Fighter, slot: number, time: number) {
 function flashSkillButton(slot: number, ok: boolean) {
   const buttons = [
     document.getElementById(`ability-${slot}`),
-    document.querySelector<HTMLElement>(`#mobile-controls [data-skill="${slot}"]`),
+    document.querySelector<HTMLElement>(
+      `#mobile-controls [data-skill="${slot}"]`,
+    ),
   ];
   for (const button of buttons) {
     if (!button) continue;
@@ -504,31 +527,35 @@ function releaseAction(action: Action | PadAction) {
 }
 const matchKeys = () =>
   state?.phase === "playing" && !$<HTMLDialogElement>("dialog").open;
-document.addEventListener("keydown", (e) => {
-  if (controlsCapturing() || typingIn(e.target)) return;
-  const rune = dreamRuneKey(state, myId, e.code);
-  if (rune && matchKeys()) {
-    e.preventDefault();
-    if (!e.repeat) void request("raid-rune", { rune });
-    return;
-  }
-  const action = actionFor(controlPrefs().bindings, e.code);
-  if (!action) return;
-  const live = matchKeys();
-  if (live) e.preventDefault(); // Space, arrows and friends must not scroll or click.
-  if (e.repeat) return;
-  usingPad = false;
-  // Held keys are tracked in every phase, so movement held through the countdown works at "Fight".
-  // A fresh press moves the key to the end: the latest press wins (heldAxis).
-  held.delete(e.code);
-  held.add(e.code);
-  if (live) pressAction(action);
-  else if (
-    state?.phase === "intermission" &&
-    !$<HTMLDialogElement>("dialog").open
-  )
-    pressAction(action);
-}, true);
+document.addEventListener(
+  "keydown",
+  (e) => {
+    if (controlsCapturing() || typingIn(e.target)) return;
+    const rune = dreamRuneKey(state, myId, e.code);
+    if (rune && matchKeys()) {
+      e.preventDefault();
+      if (!e.repeat) void request("raid-rune", { rune });
+      return;
+    }
+    const action = actionFor(controlPrefs().bindings, e.code);
+    if (!action) return;
+    const live = matchKeys();
+    if (live) e.preventDefault(); // Space, arrows and friends must not scroll or click.
+    if (e.repeat) return;
+    usingPad = false;
+    // Held keys are tracked in every phase, so movement held through the countdown works at "Fight".
+    // A fresh press moves the key to the end: the latest press wins (heldAxis).
+    held.delete(e.code);
+    held.add(e.code);
+    if (live) pressAction(action);
+    else if (
+      state?.phase === "intermission" &&
+      !$<HTMLDialogElement>("dialog").open
+    )
+      pressAction(action);
+  },
+  true,
+);
 // Raid team signals on Z / X / C (when those keys aren't bound to anything).
 const PING_KEYS: Record<string, "stack" | "revive" | "bait"> = {
   KeyZ: "stack",
@@ -614,11 +641,15 @@ function riteMarkup(me: Fighter, _seconds: number) {
     actions: "",
   };
 }
-document.addEventListener("keyup", (e) => {
-  if (!held.delete(e.code)) return;
-  const action = actionFor(controlPrefs().bindings, e.code);
-  if (action) releaseAction(action);
-}, true);
+document.addEventListener(
+  "keyup",
+  (e) => {
+    if (!held.delete(e.code)) return;
+    const action = actionFor(controlPrefs().bindings, e.code);
+    if (action) releaseAction(action);
+  },
+  true,
+);
 // mousedown/mouseup fire for every button (pointer events skip chorded buttons).
 $("game").addEventListener("mousedown", (e) => {
   audio.unlock();
@@ -1434,7 +1465,10 @@ function syncTown() {
     onAddFriend: (playerId) => accountsUI.friendRequest({ playerId }),
     onInviteFriend: async (playerId) => {
       if (townInvitePending) return false;
-      if (!connected) { toast("Waiting for the server connection."); return false; }
+      if (!connected) {
+        toast("Waiting for the server connection.");
+        return false;
+      }
       townInvitePending = true;
       try {
         // Town has no room yet. Create a private duel lobby before sending the
@@ -1442,16 +1476,24 @@ function syncTown() {
         if (!myId) {
           roomMode = "duel";
           const reply = await request("create", {
-            name: accountsUI.account?.displayName ?? "Player", mode: roomMode,
+            name: accountsUI.account?.displayName ?? "Player",
+            mode: roomMode,
           });
           identity(reply);
           if (!reply.ok) return false;
           await request("select", selected);
         }
         const reply = await request("room-invite", { playerId });
-        toast(reply.ok ? "Room invite sent. Your friend can join from the invitation." : reply.error ?? "Couldn't send this invitation. Try again from Friends.");
+        toast(
+          reply.ok
+            ? "Room invite sent. Your friend can join from the invitation."
+            : (reply.error ??
+                "Couldn't send this invitation. Try again from Friends."),
+        );
         return reply.ok;
-      } finally { townInvitePending = false; }
+      } finally {
+        townInvitePending = false;
+      }
     },
     onAction: (action) => {
       if (action === "play") homeNavigation.open("play");
@@ -1491,7 +1533,7 @@ async function startRaid(
       tab: options.returnTab ?? "overview",
       leaveRoom: false,
     };
-    const reply = await request("raid-drill", {kind: options.drill});
+    const reply = await request("raid-drill", { kind: options.drill });
     if (!reply.ok) {
       raidPracticeReturn = undefined;
       return toast(reply.error ?? "The host starts practice from the lobby.");
@@ -1532,7 +1574,7 @@ async function startRaid(
   };
   await request("select", selected);
   if (options.drill) {
-    const drill = await request("raid-drill", {kind: options.drill});
+    const drill = await request("raid-drill", { kind: options.drill });
     if (!drill.ok) {
       raidPracticeReturn = undefined;
       toast(drill.error ?? "Could not start practice.");
@@ -1559,16 +1601,6 @@ function requestRaidHud(event: string, data?: unknown): Promise<unknown> {
   });
 }
 function wireRaidLobby() {
-  wireRaidDifficulty();
-  const peril = document.getElementById("raid-peril") as HTMLInputElement | null;
-  if (peril) peril.onchange = () => {
-    void request("raid-config", { peril: Number(peril.value) }).then((reply) => {
-      if (!reply.ok && state?.phase === "lobby") {
-        screen = "";
-        renderMenu();
-      }
-    });
-  };
   // Practice: the host picks one boss attack to repeat.
   document
     .querySelectorAll<HTMLButtonElement>("#menu [data-raid-drill]")
@@ -1585,7 +1617,8 @@ function wireRaidLobby() {
 function wireRoom() {
   wireRaidLobby();
   const inviteFriends = document.getElementById("invite-friends");
-  if (inviteFriends) inviteFriends.onclick = () => void accountsUI.showFriends();
+  if (inviteFriends)
+    inviteFriends.onclick = () => void accountsUI.showFriends();
   $("ready").onclick = () => {
     audio.unlock();
     const preview =
@@ -1675,7 +1708,12 @@ function renderMenu(revealSelection = false) {
   // Keep the reader's place when the menu re-renders while already visible.
   const keepScroll = !$("menu").hidden ? scrollY : null;
   touch.reset();
-  document.body.classList.remove("battle-active", "battle-raid", "raid-downed", "pvp-knocked-out");
+  document.body.classList.remove(
+    "battle-active",
+    "battle-raid",
+    "raid-downed",
+    "pvp-knocked-out",
+  );
   audio.setAmbience(null);
   const home = !isRoom && !watchingRoom;
   document.body.classList.toggle("home-active", home);
@@ -1851,12 +1889,12 @@ async function leave(returnToHub = true) {
     return;
   }
   const returnToRaidHub = returnToHub
-    ? raidPracticeReturn ??
+    ? (raidPracticeReturn ??
       (state?.raid
         ? raidRoomReturn?.code === state.code
           ? raidRoomReturn
           : { boss: state.raid.boss, tab: "overview" as const }
-        : undefined)
+        : undefined))
     : undefined;
   const reply = await request("leave", {
     token: sessionStorage.getItem("arena-token"),
@@ -2506,18 +2544,22 @@ socket.on("session-replaced", () => {
   screen = "";
   renderMenu();
 });
-socket.on("connect_error", (error: Error & { data?: { code?: string; status?: number } }) => {
-  if (replacedAccount) return;
-  $("connection").classList.remove("online");
-  if (error.data?.code === "ACCOUNT_ERROR") {
-    toast(error.message);
-    $("connection").textContent = error.data.status === 401 ? "LOGIN REQUIRED" : "SIGN-IN UNAVAILABLE";
-  } else {
-    // Socket.IO retries temporary transport failures. During sign-in these
-    // are not evidence that the account login failed.
-    $("connection").textContent = "RECONNECTING…";
-  }
-});
+socket.on(
+  "connect_error",
+  (error: Error & { data?: { code?: string; status?: number } }) => {
+    if (replacedAccount) return;
+    $("connection").classList.remove("online");
+    if (error.data?.code === "ACCOUNT_ERROR") {
+      toast(error.message);
+      $("connection").textContent =
+        error.data.status === 401 ? "LOGIN REQUIRED" : "SIGN-IN UNAVAILABLE";
+    } else {
+      // Socket.IO retries temporary transport failures. During sign-in these
+      // are not evidence that the account login failed.
+      $("connection").textContent = "RECONNECTING…";
+    }
+  },
+);
 socket.on("account-changed", () => void accountsUI.refresh());
 // Coins, missions or Awakening changed after a match or raid.
 socket.on("economy-changed", () => void accountsUI.loadEconomy());
@@ -2573,7 +2615,10 @@ socket.on("state", (snapshot: WireSnapshot) => {
     (snapshot.raid.rites[myId ?? ""] ?? []).length
   )
     toast(`Chapter ${snapshot.raid.phase} · your rites grow stronger`);
-  if (snapshot.phase === "lobby" && (previous?.phase !== "lobby" || previous.code !== snapshot.code)) {
+  if (
+    snapshot.phase === "lobby" &&
+    (previous?.phase !== "lobby" || previous.code !== snapshot.code)
+  ) {
     lockedRoomPick = savingRoomPick = "";
     lockAttempt++;
   }
@@ -2772,18 +2817,24 @@ function graphicsCard() {
   return `<section class="prefs-card prefs-graphics" aria-labelledby="prefs-graphics"><h3 id="prefs-graphics">${menuIcon("sparkle")}Graphics</h3><div class="prefs-choice" role="radiogroup" aria-labelledby="prefs-graphics">${option("auto", "Auto")}${option("high", "High")}${option("low", "Low")}</div><p class="prefs-graphics-note">${graphicsNote(setting)}</p></section>`;
 }
 function graphicsNote(setting: GraphicsSetting) {
-  if (setting === "high") return "The living town: animals, swaying trees, flickering torches and moving water.";
-  if (setting === "low") return "A still town at 30 fps for older phones: no animals, still trees, lamps and water. Battles are unchanged.";
+  if (setting === "high")
+    return "The living town: animals, swaying trees, flickering torches and moving water.";
+  if (setting === "low")
+    return "A still town at 30 fps for older phones: no animals, still trees, lamps and water. Battles are unchanged.";
   return autoChoosesLow()
     ? "Auto picked <b>Low</b> for this device (the town ran slowly). Pick High to try it again."
     : "Starts on High and switches to Low if the town runs slowly on this device.";
 }
 function bindGraphicsCard() {
-  for (const b of Array.from(document.querySelectorAll<HTMLButtonElement>("[data-graphics]")))
+  for (const b of Array.from(
+    document.querySelectorAll<HTMLButtonElement>("[data-graphics]"),
+  ))
     b.onclick = () => {
       const value = b.dataset.graphics as GraphicsSetting;
       setGraphicsSetting(value);
-      for (const other of Array.from(document.querySelectorAll<HTMLButtonElement>("[data-graphics]")))
+      for (const other of Array.from(
+        document.querySelectorAll<HTMLButtonElement>("[data-graphics]"),
+      ))
         other.setAttribute("aria-checked", String(other === b));
       const note = document.querySelector(".prefs-graphics-note");
       if (note) note.innerHTML = graphicsNote(value);
@@ -2810,7 +2861,9 @@ function syncPrefOutputs(root: ParentNode) {
   for (const out of Array.from(
     root.querySelectorAll<HTMLOutputElement>("output[data-pref-for]"),
   )) {
-    const input = document.getElementById(out.dataset.prefFor!) as HTMLInputElement | null;
+    const input = document.getElementById(
+      out.dataset.prefFor!,
+    ) as HTMLInputElement | null;
     if (input) out.value = `${Math.round(Number(input.value) * 100)}%`;
   }
 }
@@ -2831,11 +2884,12 @@ function showSettings() {
   // Same function each time, so reopening Settings doesn't stack listeners.
   box.addEventListener("input", syncDialogPrefs);
   const practice = document.getElementById("settings-practice");
-  if (practice) practice.onclick = () => {
-    $<HTMLDialogElement>("dialog").close();
-    settingsOpen = false;
-    ($("practice-settings") as HTMLDetailsElement).open = true;
-  };
+  if (practice)
+    practice.onclick = () => {
+      $<HTMLDialogElement>("dialog").close();
+      settingsOpen = false;
+      ($("practice-settings") as HTMLDetailsElement).open = true;
+    };
   $("open-controls").onclick = showControls;
   $("settings-report").onclick = () => accountsUI.showReport(reportContext());
   $("settings-credits").onclick = showCredits;
@@ -2869,7 +2923,9 @@ function showControls() {
             // Reset sets the knobs directly (no input event), so refresh after it.
             document
               .getElementById("control-reset")
-              ?.addEventListener("click", () => setTimeout(() => syncPrefOutputs(box)));
+              ?.addEventListener("click", () =>
+                setTimeout(() => syncPrefOutputs(box)),
+              );
           },
         }
       : undefined,
@@ -2960,7 +3016,14 @@ class ArenaScene extends Phaser.Scene {
    * by where they stand (so you can be in front of or behind one). The
    * Shifting Ruins centre block is flagged so it can rise and sink.
    */
-  courtBlocks = new Map<CourtId, { img: Phaser.GameObjects.Image; o: { x: number; y: number; w: number; h: number }; shifting?: boolean }[]>();
+  courtBlocks = new Map<
+    CourtId,
+    {
+      img: Phaser.GameObjects.Image;
+      o: { x: number; y: number; w: number; h: number };
+      shifting?: boolean;
+    }[]
+  >();
   activeCourt?: CourtId;
   /** What lies beyond each court's back edge, shown above it (world y < 0). */
   stands = new Map<CourtId, Phaser.GameObjects.Image>();
@@ -2985,7 +3048,9 @@ class ArenaScene extends Phaser.Scene {
     if (!this.textures.exists(key)) {
       this.floorScale.set(key, bake);
       const bare = id.endsWith("-bare");
-      const court = id.startsWith("court-") ? id.slice(6).replace(/-bare$/, "") : "";
+      const court = id.startsWith("court-")
+        ? id.slice(6).replace(/-bare$/, "")
+        : "";
       if (isCourt(court)) {
         const canvas = document.createElement("canvas");
         canvas.width = RULES.width * bake;
@@ -3003,7 +3068,7 @@ class ArenaScene extends Phaser.Scene {
         if (isRaidFloor(id)) paintRaidFloor(ctx, id);
         else paintCourtFloor(ctx, "classic", true);
         addCanvasTexture(this.textures, key, canvas);
-        loadRaidArenaArt(id, image => {
+        loadRaidArenaArt(id, (image) => {
           if (!this.textures?.exists(key)) return;
           ctx.save();
           ctx.setTransform(bake, 0, 0, bake, 0, 0);
@@ -3015,7 +3080,8 @@ class ArenaScene extends Phaser.Scene {
           // fight stayed on the stand-in floor (the next fight, painted
           // already, was fine). Whatever shows the stand-in switches over.
           const art = `${key}:art`;
-          if (!this.textures.exists(art)) addCanvasTexture(this.textures, art, canvas);
+          if (!this.textures.exists(art))
+            addCanvasTexture(this.textures, art, canvas);
           this.floorScale.set(art, bake);
           for (const img of [this.floor, ...this.raidSurround])
             if (img?.texture.key === key) img.setTexture(art);
@@ -3036,7 +3102,8 @@ class ArenaScene extends Phaser.Scene {
     if (this.courtBlocks.has(id)) return this.courtBlocks.get(id)!;
     const bake = floorBake();
     const list = courtBlocks(id).map((o) => ({ o, shifting: false }));
-    if (id === "shifting-ruins") list.push({ o: SHIFTING_BLOCK, shifting: true });
+    if (id === "shifting-ruins")
+      list.push({ o: SHIFTING_BLOCK, shifting: true });
     const made = list.map(({ o, shifting }, i) => {
       const frame = courtBlockFrame(o),
         key = `court-block-${id}-${i}`;
@@ -3065,8 +3132,11 @@ class ArenaScene extends Phaser.Scene {
   showArena(arena: ArenaId, raid: boolean) {
     // Every raid but Grumblecrag's brings its own arena; its pillars are the
     // Coliseum's blocks, so it fights on that court.
-    const court = isCourt(arena) && (!raid || arena === "classic") ? arena : undefined;
-    const id = court ? `court-${court}${raid ? ":raid" : ""}` : `${arena}${raid ? ":raid" : ""}`;
+    const court =
+      isCourt(arena) && (!raid || arena === "classic") ? arena : undefined;
+    const id = court
+      ? `court-${court}${raid ? ":raid" : ""}`
+      : `${arena}${raid ? ":raid" : ""}`;
     if (id === this.floorArena || !this.floor) return;
     this.floorArena = id;
     this.activeCourt = court;
@@ -3081,20 +3151,31 @@ class ArenaScene extends Phaser.Scene {
           ? "CLOUD DECK <span>SOMNARA’S DREAM</span>"
           : `${ARENAS[arena].name.toUpperCase()} <span>ELEMENT ARENA</span>`;
     }
-    const key = this.floorTexture(this.courtRaid ? "raid-coliseum" : court ? `court-${court}` : arena);
+    const key = this.floorTexture(
+      this.courtRaid ? "raid-coliseum" : court ? `court-${court}` : arena,
+    );
     this.floor.setTexture(key).setScale(1 / (this.floorScale.get(key) ?? 1));
     if (raid && !this.raidSurround.length) {
-      for (const x of [-1600, 0, 1600]) for (const y of [-900, 0, 900]) {
-        if (!x && !y) continue;
-        this.raidSurround.push(this.add.image(x, y, key).setOrigin(0)
-          .setFlipX(x !== 0).setFlipY(y !== 0).setDisplaySize(1600, 900)
-          .setTint(0x627185).setDepth(-12));
-      }
+      for (const x of [-1600, 0, 1600])
+        for (const y of [-900, 0, 900]) {
+          if (!x && !y) continue;
+          this.raidSurround.push(
+            this.add
+              .image(x, y, key)
+              .setOrigin(0)
+              .setFlipX(x !== 0)
+              .setFlipY(y !== 0)
+              .setDisplaySize(1600, 900)
+              .setTint(0x627185)
+              .setDepth(-12),
+          );
+        }
     }
     for (const image of this.raidSurround)
       image.setTexture(key).setDisplaySize(1600, 900).setVisible(raid);
     if (court) this.ensureBlocks(court);
-    for (const [cid, list] of this.courtBlocks) for (const b of list) b.img.setVisible(cid === court && !b.shifting);
+    for (const [cid, list] of this.courtBlocks)
+      for (const b of list) b.img.setVisible(cid === court && !b.shifting);
     if (standsOn && court && !this.stands.has(court)) {
       const bake = floorBake(),
         skey = `court-stands-${court}`;
@@ -3107,11 +3188,20 @@ class ArenaScene extends Phaser.Scene {
         paintCourtStands(ctx, court);
         addCanvasTexture(this.textures, skey, canvas);
       }
-      this.stands.set(court, this.add.image(0, -STANDS, skey).setOrigin(0).setScale(1 / bake).setDepth(-10));
+      this.stands.set(
+        court,
+        this.add
+          .image(0, -STANDS, skey)
+          .setOrigin(0)
+          .setScale(1 / bake)
+          .setDepth(-10),
+      );
     }
-    for (const [cid, img] of this.stands) img.setVisible(standsOn && cid === court);
+    for (const [cid, img] of this.stands)
+      img.setVisible(standsOn && cid === court);
     if (standsOn && court && !this.courtAprons.has(court)) {
-      const bake = floorBake(), akey = `court-apron-${court}`;
+      const bake = floorBake(),
+        akey = `court-apron-${court}`;
       if (!this.textures.exists(akey)) {
         const canvas = document.createElement("canvas");
         canvas.width = RULES.width * bake;
@@ -3121,16 +3211,39 @@ class ArenaScene extends Phaser.Scene {
         paintCourtApron(ctx, court);
         addCanvasTexture(this.textures, akey, canvas);
       }
-      this.courtAprons.set(court, this.add.image(0, RULES.height, akey).setOrigin(0).setScale(1 / bake).setDepth(-10));
+      this.courtAprons.set(
+        court,
+        this.add
+          .image(0, RULES.height, akey)
+          .setOrigin(0)
+          .setScale(1 / bake)
+          .setDepth(-10),
+      );
     }
-    for (const [cid, img] of this.courtAprons) img.setVisible(standsOn && cid === court);
+    for (const [cid, img] of this.courtAprons)
+      img.setVisible(standsOn && cid === court);
 
-    if (this.courtRaid && !this.rubble.length) this.rubble = courtBlocks("classic").map((o, i) => this.rubbleImage(o, i));
+    if (this.courtRaid && !this.rubble.length)
+      this.rubble = courtBlocks("classic").map((o, i) =>
+        this.rubbleImage(o, i),
+      );
     for (const img of this.rubble) img.setVisible(false);
     if (this.courtRaid && !this.raidPillarShadows.length) {
-      this.raidPillarShadows = courtBlocks("classic").map(o => this.add.ellipse(o.x+o.w/2+8,o.y+o.h-5,o.w+25,o.h*.45,0x080b13,.28).setDepth(-9.5));
+      this.raidPillarShadows = courtBlocks("classic").map((o) =>
+        this.add
+          .ellipse(
+            o.x + o.w / 2 + 8,
+            o.y + o.h - 5,
+            o.w + 25,
+            o.h * 0.45,
+            0x080b13,
+            0.28,
+          )
+          .setDepth(-9.5),
+      );
     }
-    for (const shadow of this.raidPillarShadows) shadow.setVisible(this.courtRaid);
+    for (const shadow of this.raidPillarShadows)
+      shadow.setVisible(this.courtRaid);
     // The frame grows to show the stands on desktop (see .court-view in CSS).
     document.body.classList.toggle("court-view", standsOn);
   }
@@ -3161,11 +3274,15 @@ class ArenaScene extends Phaser.Scene {
       ];
       x.fillStyle = "#8b7e64";
       x.beginPath();
-      pts.forEach(([px, py], n) => (n ? x.lineTo(px, py + 2) : x.moveTo(px, py + 2)));
+      pts.forEach(([px, py], n) =>
+        n ? x.lineTo(px, py + 2) : x.moveTo(px, py + 2),
+      );
       x.fill();
       x.fillStyle = ["#e9e0cc", "#d9cdb2", "#c9bd9f"][k];
       x.beginPath();
-      pts.forEach(([px, py], n) => (n ? x.lineTo(px, py - 1) : x.moveTo(px, py - 1)));
+      pts.forEach(([px, py], n) =>
+        n ? x.lineTo(px, py - 1) : x.moveTo(px, py - 1),
+      );
       x.fill();
       addCanvasTexture(this.textures, `crumble-chunk-${k}`, c);
     }
@@ -3174,7 +3291,11 @@ class ArenaScene extends Phaser.Scene {
    * A pillar Grumblecrag charged into: it shudders, drops into its rubble and
    * throws stones and dust (reduced motion: the dust alone).
    */
-  private crumblePillar(i: number, img: Phaser.GameObjects.Image, o: { x: number; y: number; w: number; h: number }) {
+  private crumblePillar(
+    i: number,
+    img: Phaser.GameObjects.Image,
+    o: { x: number; y: number; w: number; h: number },
+  ) {
     this.crumbleTextures();
     const rubble = this.rubble[i];
     const depth = fighterDepth(o.y + o.h) + 0.0001;
@@ -3191,7 +3312,11 @@ class ArenaScene extends Phaser.Scene {
     // Dust rolling out from the base.
     for (let k = 0; k < (reducedMotion ? 3 : 7); k++) {
       const puff = this.add
-        .image(o.x + o.w * (0.1 + 0.8 * Math.random()), foot - Math.random() * 20, "crumble-dust")
+        .image(
+          o.x + o.w * (0.1 + 0.8 * Math.random()),
+          foot - Math.random() * 20,
+          "crumble-dust",
+        )
         .setDepth(depth)
         .setScale(0.6, 0.45)
         .setAlpha(0.8);
@@ -3243,7 +3368,13 @@ class ArenaScene extends Phaser.Scene {
         ease: "Bounce.Out",
         delay: 60,
       });
-      this.tweens.add({ targets: stone, alpha: 0, delay: 900 + Math.random() * 400, duration: 400, onComplete: () => stone.destroy() });
+      this.tweens.add({
+        targets: stone,
+        alpha: 0,
+        delay: 900 + Math.random() * 400,
+        duration: 400,
+        onComplete: () => stone.destroy(),
+      });
     }
   }
   /** All pillars broken: they grow back out of their rubble. */
@@ -3252,7 +3383,10 @@ class ArenaScene extends Phaser.Scene {
     if (reducedMotion) return;
     const baseY = img.y;
     this.pillarMoving.add(i);
-    img.setVisible(true).setAlpha(0).setY(baseY + 24);
+    img
+      .setVisible(true)
+      .setAlpha(0)
+      .setY(baseY + 24);
     this.tweens.add({
       targets: img,
       y: baseY,
@@ -3270,7 +3404,10 @@ class ArenaScene extends Phaser.Scene {
    * Transparent rubble sits directly on the raid's current floor, so loading
    * the painted material cannot leave a rectangular patch of the old court.
    */
-  private rubbleImage(o: { x: number; y: number; w: number; h: number }, index: number) {
+  private rubbleImage(
+    o: { x: number; y: number; w: number; h: number },
+    index: number,
+  ) {
     const bake = floorBake(),
       key = `court-rubble-${index}`;
     const x = o.x - RUBBLE_PAD,
@@ -3287,21 +3424,25 @@ class ArenaScene extends Phaser.Scene {
       paintCourtRubble(ctx, o, index);
       addCanvasTexture(this.textures, key, canvas);
     }
-    return this.add.image(x, y, key).setOrigin(0).setScale(1 / bake).setDepth(-9).setVisible(false);
+    return this.add
+      .image(x, y, key)
+      .setOrigin(0)
+      .setScale(1 / bake)
+      .setDepth(-9)
+      .setVisible(false);
   }
   /**
    * Blocks on show each frame: the Shifting Ruins block only while it's up,
    * Grumblecrag's pillars crumbling and rising, and the cover effects sort
    * behind (see Fx.at).
    */
-  private updateBlocks(
-    t: number,
-    pillars?: readonly { broken: boolean }[],
-  ) {
+  private updateBlocks(t: number, pillars?: readonly { broken: boolean }[]) {
     const list = this.activeCourt && this.courtBlocks.get(this.activeCourt);
     // Effects pass behind the blocks on show (see Fx.at); none off the courts.
     fxFor(this).setOccluders(
-      list ? list.filter(({ img }) => img.visible).map(({ o }) => o.y + o.h) : [],
+      list
+        ? list.filter(({ img }) => img.visible).map(({ o }) => o.y + o.h)
+        : [],
       fighterDepth,
     );
     if (!list) return;
@@ -3333,7 +3474,9 @@ class ArenaScene extends Phaser.Scene {
     return (
       connected &&
       state?.phase === "playing" &&
-      !!local && !local.out && (local.hp > 0 || !!state.raid) &&
+      !!local &&
+      !local.out &&
+      (local.hp > 0 || !!state.raid) &&
       !($("practice-settings") as HTMLDetailsElement | null)?.open &&
       !$<HTMLDialogElement>("dialog").open &&
       (touch.enabled ? touch.focused : document.hasFocus()) &&
@@ -3442,7 +3585,11 @@ class ArenaScene extends Phaser.Scene {
     // automatic aiming. A tap on empty ground keeps the current lock.
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
       if (!touch.enabled || state?.phase !== "playing" || !local) return;
-      const hit = targetLock.pickAt(pointer.worldX, pointer.worldY, visibleEnemies(local, local));
+      const hit = targetLock.pickAt(
+        pointer.worldX,
+        pointer.worldY,
+        visibleEnemies(local, local),
+      );
       if (hit) targetLock.toggle(hit.id);
     });
     this.scale.refresh();
@@ -3450,7 +3597,9 @@ class ArenaScene extends Phaser.Scene {
   /** The phone target row (two or more enemies) and the lock's lifetime. */
   syncTargetPicker() {
     const me = state?.players.find((p) => p.id === myId);
-    targetLock.keepIf((id) => !!state?.players.some((p) => p.id === id && !p.out));
+    targetLock.keepIf(
+      (id) => !!state?.players.some((p) => p.id === id && !p.out),
+    );
     const frame = document.getElementById("game")?.parentElement;
     if (!frame) return;
     const show =
@@ -3467,10 +3616,13 @@ class ArenaScene extends Phaser.Scene {
             id: p.id,
             name: p.raidBoss && state!.raid ? state!.raid.name : p.name,
             color: `#${CHARACTERS[p.character].color.toString(16).padStart(6, "0")}`,
-            available: p.hp > 0 && !p.statuses.some((s) => s.kind === "stealth"),
+            available:
+              p.hp > 0 && !p.statuses.some((s) => s.kind === "stealth"),
           }))
       : [];
-    renderTargetPicker(frame, show, enemies, targetLock.id, (id) => targetLock.toggle(id));
+    renderTargetPicker(frame, show, enemies, targetLock.id, (id) =>
+      targetLock.toggle(id),
+    );
   }
   /** Start your own basic, skill or dash feedback on the press (see cast-prediction). */
   predictCasts(local: Fighter, input: Input, time: number) {
@@ -3484,7 +3636,8 @@ class ArenaScene extends Phaser.Scene {
       // A wind-up skill shows its charging pose now (as the server's charge
       // will); its cast arrives from the server when the charge ends, so it
       // is not marked as already shown.
-      const action: CastAction = windUp > 0 ? "charge" : (`skill${input.skill}` as CastAction);
+      const action: CastAction =
+        windUp > 0 ? "charge" : (`skill${input.skill}` as CastAction);
       if (castPredictor.waiting(action, now)) {
         // Already shown; the server has it.
       } else if (canCastSkill(local, input.skill, time, free)) {
@@ -3497,17 +3650,33 @@ class ArenaScene extends Phaser.Scene {
         castPredictor.predict(action, now);
         if (input.skill !== ULT_SLOT && !free)
           optimisticCooldowns.set(input.skill, {
-            until: time + kitOf(local.character, local.rites).skills[input.skill].cooldown * cooldownScale(),
+            until:
+              time +
+              kitOf(local.character, local.rites).skills[input.skill].cooldown *
+                cooldownScale(),
             at: now,
           });
         flashSkillButton(input.skill, true);
-      } else if (!skillReady(local, input.skill, time, free)) flashSkillButton(input.skill, false);
-    } else if (input.basic && !castPredictor.waiting("basic", now) && canBasic(local, time)) {
-      this.getRig(local.id, local.character).trigger("basic", this.feelClock, castDuration(c, -1));
+      } else if (!skillReady(local, input.skill, time, free))
+        flashSkillButton(input.skill, false);
+    } else if (
+      input.basic &&
+      !castPredictor.waiting("basic", now) &&
+      canBasic(local, time)
+    ) {
+      this.getRig(local.id, local.character).trigger(
+        "basic",
+        this.feelClock,
+        castDuration(c, -1),
+      );
       audio.play("cast");
       castPredictor.predict("basic", now);
     }
-    if (input.dash && !castPredictor.waiting("dash", now) && canDash(local, time)) {
+    if (
+      input.dash &&
+      !castPredictor.waiting("dash", now) &&
+      canDash(local, time)
+    ) {
       audio.play("dash");
       castPredictor.predict("dash", now);
     }
@@ -3522,7 +3691,10 @@ class ArenaScene extends Phaser.Scene {
     const c = CHARACTERS[me.character];
     const slot = c.skills.findIndex((a) => a.id === event.abilityId);
     if (slot < 0 && event.abilityId !== c.basic.id) return false;
-    return castPredictor.confirm(slot >= 0 ? (`skill${slot}` as CastAction) : "basic", now);
+    return castPredictor.confirm(
+      slot >= 0 ? (`skill${slot}` as CastAction) : "basic",
+      now,
+    );
   }
   effect(event: Snapshot["events"][number]) {
     if (event.kind === "raid-impact") {
@@ -3798,7 +3970,15 @@ class ArenaScene extends Phaser.Scene {
     } else if (event.kind === "land") kind = "land";
     else if (event.kind === "dash") kind = "dash";
     else return;
-    surfaceBurst(this, this.activeCourt, x, y + 6, kind, fighterDepth(y) - 0.0001, reducedMotion);
+    surfaceBurst(
+      this,
+      this.activeCourt,
+      x,
+      y + 6,
+      kind,
+      fighterDepth(y) - 0.0001,
+      reducedMotion,
+    );
   }
   /** Freeze, shake, flash and rumble for one hit, scaled by its size. */
   feelHit(event: Snapshot["events"][number]) {
@@ -3883,7 +4063,10 @@ class ArenaScene extends Phaser.Scene {
             document.body.classList.contains("battle-active") &&
             innerWidth > innerHeight,
           ((touch.enabled && innerWidth > innerHeight) || !!spectated) &&
-            follow && presented && !state?.arcade && !state?.raid
+            follow &&
+            presented &&
+            !state?.arcade &&
+            !state?.raid
             ? {
                 ...follow,
                 x: presented.x,
@@ -3902,7 +4085,12 @@ class ArenaScene extends Phaser.Scene {
           reducedMotion,
           this.activeCourt && !this.courtRaid ? STANDS : 0,
           state?.practice ? 1.65 : 1.2,
-          touch.enabled && innerWidth > innerHeight && this.activeCourt && !this.courtRaid ? COURT_APRON : 0,
+          touch.enabled &&
+            innerWidth > innerHeight &&
+            this.activeCourt &&
+            !this.courtRaid
+            ? COURT_APRON
+            : 0,
         );
     const hitZoom = state?.raid ? 1 : this.koZoom;
     this.cameras.main
@@ -3980,7 +4168,9 @@ class ArenaScene extends Phaser.Scene {
     useSpeedScale(state.mutators?.includes("speed") ? MUTATOR_RULES.speed : 1);
     this.showArena(state.arena ?? "classic", !!state.raid);
     // Duel courts have their own background sound (crowd, sea, forge, wind).
-    audio.setAmbience(this.activeCourt && !this.courtRaid ? this.activeCourt : null);
+    audio.setAmbience(
+      this.activeCourt && !this.courtRaid ? this.activeCourt : null,
+    );
     this.updateBlocks(arenaClock(), state.raid?.pillars);
     this.accumulator += Math.min(delta, 100);
     while (this.accumulator >= 1000 / RULES.tick) {
@@ -4068,7 +4258,11 @@ class ArenaScene extends Phaser.Scene {
       socket.emit("input", input);
       // Show your own cast now (before this step's movement changes the
       // fighter), at the time this input is predicted to run.
-      this.predictCasts(local, input, state.time + (pending.length + 1) / RULES.tick);
+      this.predictCasts(
+        local,
+        input,
+        state.time + (pending.length + 1) / RULES.tick,
+      );
       pending.push(input);
       if (pending.length > 90) pending.shift();
       predict(local, input, state.time + pending.length / RULES.tick);
@@ -4087,9 +4281,12 @@ class ArenaScene extends Phaser.Scene {
         state,
         reducedMotion,
         _time / 1000,
-        state.raid ? { boss: this.bossGraphics, at: this.layerAt, court: this.courtRaid } : undefined,
+        state.raid
+          ? { boss: this.bossGraphics, at: this.layerAt, court: this.courtRaid }
+          : undefined,
       ) ?? [];
-    for (const [key, layer] of this.layers) if (!this.layersUsed.has(key)) layer.clear();
+    for (const [key, layer] of this.layers)
+      if (!this.layersUsed.has(key)) layer.clear();
     for (const cue of raidCues) {
       audio.playRaid(cue);
       if (!reducedMotion && ["slam", "crash", "awaken", "fall"].includes(cue))
@@ -4100,7 +4297,13 @@ class ArenaScene extends Phaser.Scene {
         );
     }
     this.rigs.forEach((rig) => rig.setVisible(false));
-    drawArenaLive(g, state.arena ?? "classic", arenaClock(), _time, !!this.activeCourt);
+    drawArenaLive(
+      g,
+      state.arena ?? "classic",
+      arenaClock(),
+      _time,
+      !!this.activeCourt,
+    );
     // Epic and Mythical skins recolour their wearer's moves (shapes never change).
     const tints = new Map(
       state.players.map((p) => [p.id, fighterSkillColor(p)] as const),
@@ -4429,7 +4632,12 @@ class ArenaScene extends Phaser.Scene {
         isTeams() ? 0.8 : 0.55,
       ).strokeEllipse(x, feetY, 72, groundHeight(72));
       // The enemy you locked on to (phones): turning corner brackets.
-      if (p.id === targetLock.id && touch.enabled && p.hp > 0 && !serverPlayer.statuses.some((s) => s.kind === "stealth"))
+      if (
+        p.id === targetLock.id &&
+        touch.enabled &&
+        p.hp > 0 &&
+        !serverPlayer.statuses.some((s) => s.kind === "stealth")
+      )
         drawTargetReticle(g, x, feetY, reducedMotion ? 0 : _time / 1000);
       // Mastery flair: an outer ring in the tier's colour (Crystal shimmers).
       if (serverPlayer.flair) {
@@ -4439,9 +4647,19 @@ class ArenaScene extends Phaser.Scene {
             tier.name === "Crystal" && !reducedMotion
               ? Phaser.Display.Color.HSVToRGB((_time / 2400) % 1, 0.45, 1).color
               : Number.parseInt(tier.color.slice(1), 16);
-          g.lineStyle(2, colour, 0.75).strokeEllipse(x, feetY, 86, groundHeight(86));
+          g.lineStyle(2, colour, 0.75).strokeEllipse(
+            x,
+            feetY,
+            86,
+            groundHeight(86),
+          );
           if (tier.name === "Gold" || tier.name === "Crystal")
-            g.lineStyle(6, colour, 0.18).strokeEllipse(x, feetY, 90, groundHeight(90));
+            g.lineStyle(6, colour, 0.18).strokeEllipse(
+              x,
+              feetY,
+              90,
+              groundHeight(90),
+            );
         }
       }
       if (p.dashUntil > state.time && !reducedMotion) {
@@ -4459,7 +4677,12 @@ class ArenaScene extends Phaser.Scene {
         view.fighterY * 0.7 * giant,
       );
       if (p.raidLook?.aura === "mountain-aura")
-        g.lineStyle(3, 0xffd28c, 0.7).strokeEllipse(x, feetY, 95, groundHeight(95));
+        g.lineStyle(3, 0xffd28c, 0.7).strokeEllipse(
+          x,
+          feetY,
+          95,
+          groundHeight(95),
+        );
       rig.setVisible(true);
       // On the coliseum court fighters sort with the blocks by where they stand.
       rig.setDepth(this.activeCourt || state?.raid ? fighterDepth(y) : 2);
@@ -4487,7 +4710,17 @@ class ArenaScene extends Phaser.Scene {
       // pass in front of the fighter, the rest go round behind.
       if (p.raidLook?.aura && p.raidLook.aura !== "mountain-aura")
         // On the shadow's plane (48×18 at the feet): same flatness.
-        drawCollectionAura(g, p.raidLook.aura, x, feetY, _time, reducedMotion, rig.front, 18 / 48, 0);
+        drawCollectionAura(
+          g,
+          p.raidLook.aura,
+          x,
+          feetY,
+          _time,
+          reducedMotion,
+          rig.front,
+          18 / 48,
+          0,
+        );
       if (serverPlayer.statuses.some((s) => s.kind === "shield")) {
         g.fillStyle(c.color, 0.1).fillCircle(x, y - jump - 10, 46);
         g.lineStyle(3, c.color, 0.8).strokeCircle(x, y - jump - 10, 46);
@@ -4499,7 +4732,12 @@ class ArenaScene extends Phaser.Scene {
           0.55 + Math.sin(_time / 60) * 0.25,
         ).strokeCircle(x, y - jump - 10, 40);
       if (serverPlayer.statuses.some((s) => s.kind === "empower"))
-        g.lineStyle(2, 0xffb347, 0.7).strokeEllipse(x, feetY, 84, groundHeight(84));
+        g.lineStyle(2, 0xffb347, 0.7).strokeEllipse(
+          x,
+          feetY,
+          84,
+          groundHeight(84),
+        );
       if (serverPlayer.channel) {
         const cone = c.skills[serverPlayer.channel.skill];
         if (cone)
@@ -4671,24 +4909,30 @@ function drawArenaLive(
       if (painted) {
         // Nothing to draw: the block picture stands in its pit.
       } else {
-      g.fillStyle(0x10170f, 0.35).fillEllipse(
-        r.x + r.w / 2 + 10,
-        r.y + r.h + 6,
-        r.w + 40,
-        34,
-      );
-      g.fillStyle(0x7f6f55).fillRoundedRect(r.x, r.y, r.w, r.h, 12);
-      g.fillStyle(0x968566).fillRoundedRect(
-        r.x + 5,
-        r.y + 5,
-        r.w - 10,
-        r.h - 22,
-        9,
-      );
-      g.fillStyle(0xc9b892).fillRoundedRect(r.x + 6, r.y + 4, r.w - 12, 22, 8);
-      g.lineStyle(2, 0x5e523d, 0.8)
-        .lineBetween(r.x + 20, r.y + 40, r.x + 34, r.y + 66)
-        .lineBetween(r.x + 34, r.y + 66, r.x + 26, r.y + 86);
+        g.fillStyle(0x10170f, 0.35).fillEllipse(
+          r.x + r.w / 2 + 10,
+          r.y + r.h + 6,
+          r.w + 40,
+          34,
+        );
+        g.fillStyle(0x7f6f55).fillRoundedRect(r.x, r.y, r.w, r.h, 12);
+        g.fillStyle(0x968566).fillRoundedRect(
+          r.x + 5,
+          r.y + 5,
+          r.w - 10,
+          r.h - 22,
+          9,
+        );
+        g.fillStyle(0xc9b892).fillRoundedRect(
+          r.x + 6,
+          r.y + 4,
+          r.w - 12,
+          22,
+          8,
+        );
+        g.lineStyle(2, 0x5e523d, 0.8)
+          .lineBetween(r.x + 20, r.y + 40, r.x + 34, r.y + 66)
+          .lineBetween(r.x + 34, r.y + 66, r.x + 26, r.y + 86);
       }
     } else {
       const rising = shiftingRisesIn(arena, t);
@@ -4774,9 +5018,11 @@ function fitRenderer() {
   const frame = parent.parentElement!.getBoundingClientRect();
   const battle = $("battle").getBoundingClientRect();
   const raidHud = document.getElementById("raid-hud");
-  raidCameraHudBottom = state?.raid && raidHud && !raidHud.hidden
-    ? Math.max(0, raidHud.getBoundingClientRect().bottom - frame.top + 6) * dpr
-    : 0;
+  raidCameraHudBottom =
+    state?.raid && raidHud && !raidHud.hidden
+      ? Math.max(0, raidHud.getBoundingClientRect().bottom - frame.top + 6) *
+        dpr
+      : 0;
   $("battle").style.setProperty("--desktop-arena-width", `${frame.width}px`);
   $("battle").style.setProperty(
     "--desktop-arena-top",
@@ -4846,7 +5092,8 @@ function syncBattleLoop() {
     window.removeEventListener("resize", fitRenderer);
     previous.destroy(true);
     if (previous.isRunning && !previous.loop.running) previous.loop.wake();
-  } else if (gameInstance.isRunning && !gameInstance.loop.running) gameInstance.loop.wake();
+  } else if (gameInstance.isRunning && !gameInstance.loop.running)
+    gameInstance.loop.wake();
 }
 accountsUI = new AccountUI({
   selectedCharacter: () => selected,
@@ -4857,7 +5104,12 @@ accountsUI = new AccountUI({
   friendsRoom: () => ({
     code: myId && state?.phase === "lobby" ? state.code : undefined,
     canCreate: !myId && !watching,
-    canInvite: !!myId && state?.phase === "lobby" && !state.practice && !state.vsBot && state.players.length < ((state.mode ?? "duel") === "duel" ? 2 : 4),
+    canInvite:
+      !!myId &&
+      state?.phase === "lobby" &&
+      !state.practice &&
+      !state.vsBot &&
+      state.players.length < ((state.mode ?? "duel") === "duel" ? 2 : 4),
   }),
   inviteFriend: (playerId) => request("room-invite", { playerId }),
   createFriendRoom: () => homeNavigation.open("play"),
@@ -4891,7 +5143,9 @@ accountsUI = new AccountUI({
         if (!replacedAccount && authConnectionAttempt === attempt)
           socket.connect();
       })
-      .catch(() => { /* The startup panel owns the retry action. */ });
+      .catch(() => {
+        /* The startup panel owns the retry action. */
+      });
   },
   onToken: (token) => {
     // Keep the live connection's login fresh (tokens expire hourly) and use
@@ -4921,7 +5175,9 @@ accountsUI = new AccountUI({
 
 // Imported code and the UI shell are ready; dismiss the asset-independent loader.
 onServerStartupRetry(() => {
-  void waitForServer().then(() => accountsUI.refresh()).catch(() => {});
+  void waitForServer()
+    .then(() => accountsUI.refresh())
+    .catch(() => {});
 });
 void waitForServer().catch(() => {});
 window.dispatchEvent(new Event("arena:ready"));

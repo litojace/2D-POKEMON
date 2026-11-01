@@ -35,12 +35,27 @@ let buckets: Footprint[][] | undefined;
 function footprintBuckets() {
   if (buckets) return buckets;
   const r = TOWN.radius,
-    out: Footprint[][] = Array.from({ length: BUCKET_COLS * BUCKET_ROWS }, () => []);
+    out: Footprint[][] = Array.from(
+      { length: BUCKET_COLS * BUCKET_ROWS },
+      () => [],
+    );
   for (const o of TOWN_OBSTACLES) {
     const f: Footprint =
       o.shape === "round"
-        ? { round: true, x: o.x, y: o.y, rx: o.rx + r, ry: o.ry + r * WORLD_ART.groundY }
-        : { round: false, x: o.x, y: o.y, hw: o.w / 2 + r, hh: o.h / 2 + r * WORLD_ART.groundY };
+        ? {
+            round: true,
+            x: o.x,
+            y: o.y,
+            rx: o.rx + r,
+            ry: o.ry + r * WORLD_ART.groundY,
+          }
+        : {
+            round: false,
+            x: o.x,
+            y: o.y,
+            hw: o.w / 2 + r,
+            hh: o.h / 2 + r * WORLD_ART.groundY,
+          };
     const hw = f.round ? f.rx : f.hw,
       hh = f.round ? f.ry : f.hh;
     const c0 = Math.max(0, Math.floor((f.x - hw) / BUCKET)),
@@ -59,13 +74,17 @@ export function henCanStand(x: number, y: number) {
   const r = TOWN.radius;
   if (x < r || y < r + 40 || x > TOWN.width - r || y > TOWN.height - r)
     return false;
-  const near = footprintBuckets()[Math.floor(y / BUCKET) * BUCKET_COLS + Math.floor(x / BUCKET)];
+  const near =
+    footprintBuckets()[
+      Math.floor(y / BUCKET) * BUCKET_COLS + Math.floor(x / BUCKET)
+    ];
   for (const f of near) {
     if (f.round) {
       const dx = (x - f.x) / f.rx,
         dy = (y - f.y) / f.ry;
       if (dx * dx + dy * dy < 1) return false;
-    } else if (Math.abs(x - f.x) < f.hw && Math.abs(y - f.y) < f.hh) return false;
+    } else if (Math.abs(x - f.x) < f.hw && Math.abs(y - f.y) < f.hh)
+      return false;
   }
   return true;
 }
@@ -141,14 +160,16 @@ function nearest(p: HenPoint, requireVisible = true) {
   for (let tries = 0; tries < 16; tries++) {
     let best = -1;
     for (let n = 0; n < distance.length; n++)
-      if (distance[n] < Infinity && (best < 0 || distance[n] < distance[best])) best = n;
+      if (distance[n] < Infinity && (best < 0 || distance[n] < distance[best]))
+        best = n;
     if (best < 0) return -1;
     if (!requireVisible || henCanWalk(p, point(best))) return best;
     distance[best] = Infinity;
   }
   // Rarely (hemmed in by walls): order the rest once.
   const rest: number[] = [];
-  for (let n = 0; n < distance.length; n++) if (distance[n] < Infinity) rest.push(n);
+  for (let n = 0; n < distance.length; n++)
+    if (distance[n] < Infinity) rest.push(n);
   rest.sort((a, b) => distance[a] - distance[b] || a - b);
   return rest.find((n) => henCanWalk(p, point(n))) ?? -1;
 }

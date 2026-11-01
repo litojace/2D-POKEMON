@@ -5,7 +5,8 @@ import { raidGuideBoss } from "./raid-guide-art";
  * Small original emblems for each boss, drawn in a 100×100 box. Grumblecrag
  * reuses its guide art; the others are teasers until their fights are built.
  */
-const ink = 'stroke="#14203a" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"';
+const ink =
+  'stroke="#14203a" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"';
 const CRESTS: Record<RaidBossId, string> = {
   grumblecrag: `<g transform="translate(50 56) scale(.78)">${raidGuideBoss()}</g>`,
   // A round-snouted sea serpent looping through a wave, pearl on its brow.

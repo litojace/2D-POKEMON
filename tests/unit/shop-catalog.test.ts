@@ -25,8 +25,24 @@ describe("shop catalog", () => {
     // The retirement migration changes one existing mission without rewriting history.
     for (const line of missionsSql
       .split("\n")
-      .filter((l) => !l.includes("'daily-1'")))
+      .filter(
+        (l) =>
+          !["'daily-1'", "'raid-p3'", "'raid-solo-p2'"].some((id) =>
+            l.includes(id),
+          ),
+      ))
       expect(missionMigration).toContain(line);
+    // 030 (one-difficulty raids) gives the two Peril missions new goals.
+    const oneDifficulty = readFileSync(
+      "supabase/migrations/030_one_difficulty_raids.sql",
+      "utf8",
+    );
+    expect(oneDifficulty).toContain(
+      "set text = 'Clear 2 raids on your own', metric = 'raid-solo', target = 2",
+    );
+    expect(oneDifficulty).toContain(
+      "set text = 'Clear 2 raids with no downs', metric = 'raid-flawless', target = 2",
+    );
     const retired = readFileSync(
       "supabase/migrations/028_retire_raid_modes.sql",
       "utf8",
@@ -107,7 +123,7 @@ describe("shop catalog", () => {
         expect(Object.keys(CHARACTERS)).toContain(c);
   });
 
-  it("awakens Mythicals at 25 wins, and fully at 75 wins plus a Peril 3 clear", () => {
+  it("awakens Mythicals at 25 wins, and fully at 75 wins plus a raid clear", () => {
     expect(awakeningStage(0, false)).toBe(1);
     expect(awakeningStage(AWAKENING.stage2Wins, false)).toBe(2);
     expect(awakeningStage(200, false)).toBe(2);

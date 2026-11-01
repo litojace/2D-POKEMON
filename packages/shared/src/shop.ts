@@ -513,7 +513,7 @@ export const DAILY_MISSION_COUNT = 6;
 
 /** Coins (all granted by the game server, never the browser). */
 export const COINS = {
-  /** Raid clear by Peril (index = Peril). */
+  /** Raid clear by Peril (index = Peril; raids are always Peril 3 now). */
   raidClear: [0, 30, 45, 60],
   dailyFirstClear: 50,
   pvpWin: 15,
@@ -674,7 +674,8 @@ export const MISSIONS: Mission[] = [
     ),
   ),
   // Hard
-  mission("raid-p3", "hard", "Clear any raid on Peril 3", "raid-peril3", 1),
+  // Migration 030 retargets these two: raids have one difficulty now.
+  mission("raid-p3", "hard", "Clear 2 raids on your own", "raid-solo", 2),
   mission(
     "raid-flawless",
     "hard",
@@ -706,9 +707,9 @@ export const MISSIONS: Mission[] = [
   mission(
     "raid-solo-p2",
     "hard",
-    "Clear a raid on your own on Peril 2 or higher",
-    "raid-solo-p2",
-    1,
+    "Clear 2 raids with no downs",
+    "raid-flawless",
+    2,
   ),
   mission("minutes-30", "hard", "Play for 30 minutes", "minutes", 30),
   together(mission("ffa-win", "hard", "Win a free-for-all", "ffa-wins", 1)),

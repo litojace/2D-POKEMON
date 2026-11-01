@@ -81,7 +81,8 @@ export function illustratedHelp() {
  * wording for controller wording; touch screens get their own.
  */
 export function townGuide(pad = false) {
-  const touch = typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
+  const touch =
+    typeof matchMedia === "function" && matchMedia("(pointer: coarse)").matches;
   const key = (k: string) => `<kbd class="guide-key">${k}</kbd>`;
   const card = (title: string, picture: string, caption: string) =>
     `<article class="guide-card town-guide-card"><div class="guide-scene town-guide-scene" aria-hidden="true">${picture}</div><div class="guide-caption"><h3>${title}</h3><p>${caption}</p></div></article>`;

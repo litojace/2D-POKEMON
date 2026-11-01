@@ -46,7 +46,8 @@ const ell = (c: Ctx, x: number, y: number, rx: number, ry: number, rot = 0) => {
   c.beginPath();
   c.ellipse(x, y, Math.max(0.1, rx), Math.max(0.1, ry), rot, 0, Math.PI * 2);
 };
-const gEll = (c: Ctx, x: number, y: number, r: number) => ell(c, x, y, r, r * K);
+const gEll = (c: Ctx, x: number, y: number, r: number) =>
+  ell(c, x, y, r, r * K);
 const mix = (a: string, b: string, t: number) => {
   const p = (h: string) =>
     h.startsWith("rgb")
@@ -58,15 +59,24 @@ const mix = (a: string, b: string, t: number) => {
 };
 function hull(pts: [number, number][]) {
   const p = [...pts].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
-  const cross = (o: number[], a: number[], b: number[]) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const cross = (o: number[], a: number[], b: number[]) =>
+    (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
   const lo: [number, number][] = [],
     up: [number, number][] = [];
   for (const q of p) {
-    while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop();
+    while (
+      lo.length >= 2 &&
+      cross(lo[lo.length - 2], lo[lo.length - 1], q) <= 0
+    )
+      lo.pop();
     lo.push(q);
   }
   for (const q of [...p].reverse()) {
-    while (up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop();
+    while (
+      up.length >= 2 &&
+      cross(up[up.length - 2], up[up.length - 1], q) <= 0
+    )
+      up.pop();
     up.push(q);
   }
   return [...lo.slice(0, -1), ...up.slice(0, -1)];
@@ -78,7 +88,12 @@ function fillPoly(s: Ctx, pts: [number, number][]) {
   s.fill();
 }
 /** Soft value noise: blotches at several scales, for natural variation. */
-function noiseCanvas(w: number, h: number, scales: [number, number][], s0: number) {
+function noiseCanvas(
+  w: number,
+  h: number,
+  scales: [number, number][],
+  s0: number,
+) {
   const out = document.createElement("canvas");
   out.width = w;
   out.height = h;
@@ -105,7 +120,16 @@ function noiseCanvas(w: number, h: number, scales: [number, number][], s0: numbe
   }
   return out;
 }
-function grain(c: Ctx, x: number, y: number, w: number, h: number, strength: number, s0: number, scales: [number, number][]) {
+function grain(
+  c: Ctx,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  strength: number,
+  s0: number,
+  scales: [number, number][],
+) {
   const n = noiseCanvas(Math.ceil(w), Math.ceil(h), scales, s0);
   c.save();
   c.globalCompositeOperation = "overlay";
@@ -148,10 +172,23 @@ function blockShadow(s: Ctx, footprint: Rect) {
     [o.x + o.w, o.y + o.h],
     [o.x, o.y + o.h],
   ];
-  fillPoly(s, hull([...foot, ...foot.map(([x, y]) => [x + dx, y + dy] as [number, number])]));
+  fillPoly(
+    s,
+    hull([
+      ...foot,
+      ...foot.map(([x, y]) => [x + dx, y + dy] as [number, number]),
+    ]),
+  );
 }
 /** The ground darkens right where something stands on it. */
-function contact(c: Ctx, x: number, y: number, w: number, depth: number, a: number) {
+function contact(
+  c: Ctx,
+  x: number,
+  y: number,
+  w: number,
+  depth: number,
+  a: number,
+) {
   const g = c.createLinearGradient(0, y, 0, y + depth);
   g.addColorStop(0, `rgba(25,20,10,${a})`);
   g.addColorStop(1, "rgba(25,20,10,0)");
@@ -180,21 +217,53 @@ function lightPool(c: Ctx, x: number, y: number, r: number, a: number) {
 // ─────────────────────────── Courts ───────────────────────────
 
 /** The duel courts painted in this style (raid arenas keep their own floors). */
-export const COURT_ARENAS = ["classic", "tide-pools", "ember-forge", "shifting-ruins"] as const;
+export const COURT_ARENAS = [
+  "classic",
+  "tide-pools",
+  "ember-forge",
+  "shifting-ruins",
+] as const;
 export type CourtId = (typeof COURT_ARENAS)[number];
-export const isCourt = (id: string): id is CourtId => (COURT_ARENAS as readonly string[]).includes(id);
+export const isCourt = (id: string): id is CourtId =>
+  (COURT_ARENAS as readonly string[]).includes(id);
 
 /** Each court's materials. */
 const STONE = {
-  classic: { top: ["#f2eada", "#ddd2bb"], front: ["#b9ab8f", "#8b7e64"], vary: ["#c9bd9f", "#a5977b"], growth: ["#4f7a34", "#638f3f", "#7aa64c", "#3f6a2c"], seam: null as string | null },
-  "tide-pools": { top: ["#e3e6e0", "#c4c9c3"], front: ["#a3aaa6", "#737c7a"], vary: ["#b5bcb7", "#8c9592"], growth: ["#2f7a6a", "#3f8f7c", "#5aa58c", "#256456"], seam: null },
-  "ember-forge": { top: ["#7a726a", "#5a534c"], front: ["#4c4641", "#2e2a27"], vary: ["#585049", "#3a3531"], growth: [] as string[], seam: "#ff7a2a" },
-  "shifting-ruins": { top: ["#e6dcc4", "#cbbf9f"], front: ["#a99a78", "#7d7058"], vary: ["#b8a984", "#968866"], growth: ["#4f7a34", "#638f3f", "#7aa64c", "#3f6a2c"], seam: null },
+  classic: {
+    top: ["#f2eada", "#ddd2bb"],
+    front: ["#b9ab8f", "#8b7e64"],
+    vary: ["#c9bd9f", "#a5977b"],
+    growth: ["#4f7a34", "#638f3f", "#7aa64c", "#3f6a2c"],
+    seam: null as string | null,
+  },
+  "tide-pools": {
+    top: ["#e3e6e0", "#c4c9c3"],
+    front: ["#a3aaa6", "#737c7a"],
+    vary: ["#b5bcb7", "#8c9592"],
+    growth: ["#2f7a6a", "#3f8f7c", "#5aa58c", "#256456"],
+    seam: null,
+  },
+  "ember-forge": {
+    top: ["#7a726a", "#5a534c"],
+    front: ["#4c4641", "#2e2a27"],
+    vary: ["#585049", "#3a3531"],
+    growth: [] as string[],
+    seam: "#ff7a2a",
+  },
+  "shifting-ruins": {
+    top: ["#e6dcc4", "#cbbf9f"],
+    front: ["#a99a78", "#7d7058"],
+    vary: ["#b8a984", "#968866"],
+    growth: ["#4f7a34", "#638f3f", "#7aa64c", "#3f6a2c"],
+    seam: null,
+  },
 } satisfies Record<CourtId, unknown>;
 
 /** Where each court's blocks stand (shifting ruins' centre block is drawn by itself, see SHIFTING_BLOCK). */
 export function courtBlocks(id: CourtId): Rect[] {
-  return id === "classic" || id === "ember-forge" ? OBSTACLES : OBSTACLES.slice(0, 4);
+  return id === "classic" || id === "ember-forge"
+    ? OBSTACLES
+    : OBSTACLES.slice(0, 4);
 }
 /** Shifting Ruins' centre block: rises out of its pit and sinks again. */
 export const SHIFTING_BLOCK = OBSTACLES[4];
@@ -250,15 +319,21 @@ function footprints(c: Ctx, n: number, color: string, s0: number) {
  * slab is lit from the upper left, with a hairline of grout between.
  * Returns the joints between slabs (for glowing seams).
  */
-function flagstones(c: Ctx, tones: [string, string], grout: string, s0: number, missing = 0) {
+function flagstones(
+  c: Ctx,
+  tones: [string, string],
+  grout: string,
+  s0: number,
+  missing = 0,
+) {
   c.fillStyle = grout;
   c.fillRect(0, 0, W, H);
   seed = s0;
   const joints: [number, number, number, number][] = [];
-  for (let y = -20; y < H + 20; ) {
+  for (let y = -20; y < H + 20;) {
     const side = 96 + R() * 34,
       rh = side * K;
-    for (let x = -side * R(); x < W + 20; ) {
+    for (let x = -side * R(); x < W + 20;) {
       const w = side * (0.75 + R() * 0.6);
       // Slabs aren't cut perfectly: corners wander a few pixels.
       const j = () => (R() - 0.5) * 4;
@@ -298,7 +373,13 @@ function flagstones(c: Ctx, tones: [string, string], grout: string, s0: number, 
         // Wear: a few pits and a hairline crack now and then.
         for (let k = 0; k < 3; k++) {
           c.fillStyle = "rgba(20,14,8,0.18)";
-          ell(c, x + 8 + R() * (w - 16), y + 6 + R() * (rh - 12), 1.5 + R() * 2, 1 + R());
+          ell(
+            c,
+            x + 8 + R() * (w - 16),
+            y + 6 + R() * (rh - 12),
+            1.5 + R() * 2,
+            1 + R(),
+          );
           c.fill();
         }
         if (R() < 0.18) {
@@ -372,7 +453,7 @@ function backWall(c: Ctx, light: string, dark: string, s0: number) {
   c.fillRect(0, 0, W, WALL_FOOT);
   seed = s0;
   for (let row = 0; row < 2; row++)
-    for (let x = row * -20; x < W; ) {
+    for (let x = row * -20; x < W;) {
       const w = 40 + R() * 30;
       c.fillStyle = mix(light, dark, R());
       c.fillRect(x + 1, row * 11 + 1, w - 2, 10);
@@ -424,14 +505,26 @@ function grade(c: Ctx, warm: number, vignette: number) {
   c.fillStyle = l;
   c.fillRect(0, 0, W, H);
   c.restore();
-  const v = c.createRadialGradient(W / 2, H / 2, H * 0.45, W / 2, H / 2, H * 1.05);
+  const v = c.createRadialGradient(
+    W / 2,
+    H / 2,
+    H * 0.45,
+    W / 2,
+    H / 2,
+    H * 1.05,
+  );
   v.addColorStop(0, "rgba(0,0,0,0)");
   v.addColorStop(1, `rgba(10,8,4,${vignette})`);
   c.fillStyle = v;
   c.fillRect(0, 0, W, H);
 }
 /** Every shadow and contact shade for a court's blocks and back wall. */
-function courtShadows(c: Ctx, blocks: Rect[], wallHeight: number, extra?: (s: Ctx) => void) {
+function courtShadows(
+  c: Ctx,
+  blocks: Rect[],
+  wallHeight: number,
+  extra?: (s: Ctx) => void,
+) {
   shadows(c, (s) => {
     for (const o of blocks) blockShadow(s, o);
     s.fillRect(0, 0, W, WALL_FOOT + SUNV.y * wallHeight + 2);
@@ -518,7 +611,12 @@ function coliseum(c: Ctx) {
     c.fill();
   }
   for (const x of [355, 800, 1245]) torch(c, x);
-  lights(c, [355, 800, 1245].map((x) => [x, WALL_FOOT + 18, 170, 0.32, "255,190,110"] as Light));
+  lights(
+    c,
+    [355, 800, 1245].map(
+      (x) => [x, WALL_FOOT + 18, 170, 0.32, "255,190,110"] as Light,
+    ),
+  );
   grade(c, 0.16, 0.3);
 }
 
@@ -541,7 +639,8 @@ function tidePools(c: Ctx) {
     c.strokeStyle = "rgba(255,246,220,0.14)";
     c.beginPath();
     for (let x = 0; x <= W; x += 8) {
-      const yy = y - 2 + Math.sin(x / 38 + ph) * 3 + Math.sin(x / 97 + ph * 2) * 4;
+      const yy =
+        y - 2 + Math.sin(x / 38 + ph) * 3 + Math.sin(x / 97 + ph * 2) * 4;
       if (x === 0) c.moveTo(x, yy);
       else c.lineTo(x, yy);
     }
@@ -555,7 +654,14 @@ function tidePools(c: Ctx) {
   c.fillRect(0, 0, W, 220);
   const pool = ARENAS["tide-pools"].hazards[0];
   {
-    const g = c.createRadialGradient(pool.x, pool.y, pool.radius, pool.x, pool.y, pool.radius + 120);
+    const g = c.createRadialGradient(
+      pool.x,
+      pool.y,
+      pool.radius,
+      pool.x,
+      pool.y,
+      pool.radius + 120,
+    );
     g.addColorStop(0, "rgba(80,66,44,0.4)");
     g.addColorStop(1, "rgba(80,66,44,0)");
     c.fillStyle = g;
@@ -614,7 +720,14 @@ function tidePools(c: Ctx) {
       s.fill();
     }
   });
-  const water = c.createRadialGradient(pool.x - 20, pool.y - 14, 10, pool.x, pool.y, r + 4);
+  const water = c.createRadialGradient(
+    pool.x - 20,
+    pool.y - 14,
+    10,
+    pool.x,
+    pool.y,
+    r + 4,
+  );
   water.addColorStop(0, "#155f78");
   water.addColorStop(0.65, "#1f86a0");
   water.addColorStop(1, "#59c2c8");
@@ -627,7 +740,13 @@ function tidePools(c: Ctx) {
     const a = R() * 6.28,
       d = Math.sqrt(R()) * r * 0.9;
     c.fillStyle = `rgba(${R() > 0.5 ? "190,180,150" : "90,110,100"},0.22)`;
-    ell(c, pool.x + Math.cos(a) * d, pool.y + Math.sin(a) * d * K, 3 + R() * 6, 2 + R() * 3);
+    ell(
+      c,
+      pool.x + Math.cos(a) * d,
+      pool.y + Math.sin(a) * d * K,
+      3 + R() * 6,
+      2 + R() * 3,
+    );
     c.fill();
   }
   // Caustic light lines and a sky reflection.
@@ -646,7 +765,12 @@ function tidePools(c: Ctx) {
     }
     c.stroke();
   }
-  const sky = c.createLinearGradient(pool.x - r, pool.y - r * K, pool.x + r, pool.y + r * K);
+  const sky = c.createLinearGradient(
+    pool.x - r,
+    pool.y - r * K,
+    pool.x + r,
+    pool.y + r * K,
+  );
   sky.addColorStop(0, "rgba(255,255,255,0.28)");
   sky.addColorStop(0.35, "rgba(255,255,255,0)");
   c.fillStyle = sky;
@@ -665,7 +789,14 @@ function tidePools(c: Ctx) {
       y = pool.y + Math.sin(a) * rr * K,
       bw = 13 + R() * 6,
       bh = 9 + R() * 4;
-    const g = c.createRadialGradient(x - bw * 0.4, y - bh * 0.6, 1, x, y, bw * 1.2);
+    const g = c.createRadialGradient(
+      x - bw * 0.4,
+      y - bh * 0.6,
+      1,
+      x,
+      y,
+      bw * 1.2,
+    );
     g.addColorStop(0, "#c9ccc4");
     g.addColorStop(0.6, "#8d938c");
     g.addColorStop(1, "#5d635e");
@@ -750,7 +881,14 @@ function emberForge(c: Ctx) {
   const vents = ARENAS["ember-forge"].hazards;
   // Scorch marks round each vent, then the vent: a stone collar, an iron grate, embers below.
   for (const h of vents) {
-    const g = c.createRadialGradient(h.x, h.y, h.radius * 0.5, h.x, h.y, h.radius * 1.7);
+    const g = c.createRadialGradient(
+      h.x,
+      h.y,
+      h.radius * 0.5,
+      h.x,
+      h.y,
+      h.radius * 1.7,
+    );
     g.addColorStop(0, "rgba(10,6,4,0.55)");
     g.addColorStop(1, "rgba(10,6,4,0)");
     c.fillStyle = g;
@@ -818,7 +956,9 @@ function emberForge(c: Ctx) {
   }
   lights(c, [
     ...vents.map((h) => [h.x, h.y, 180, 0.4, "255,120,50"] as Light),
-    ...[260, 800, 1340].map((x) => [x, WALL_FOOT + 30, 240, 0.4, "255,140,60"] as Light),
+    ...[260, 800, 1340].map(
+      (x) => [x, WALL_FOOT + 30, 240, 0.4, "255,140,60"] as Light,
+    ),
   ]);
   grade(c, 0.06, 0.42);
 }
@@ -868,7 +1008,13 @@ function shiftingRuins(c: Ctx) {
   seed = 34;
   for (let k = 0; k < 9; k++) {
     c.fillStyle = mix("#8d7d62", "#5a4c36", R());
-    ell(c, p.x + R() * p.w, p.y + depth + R() * (p.h - depth - 4), 4 + R() * 5, 3 + R() * 2);
+    ell(
+      c,
+      p.x + R() * p.w,
+      p.y + depth + R() * (p.h - depth - 4),
+      4 + R() * 5,
+      3 + R() * 2,
+    );
     c.fill();
   }
   c.strokeStyle = "#cbbf9f";
@@ -984,7 +1130,8 @@ export function paintCourtRubble(c: Ctx, o: Rect, index: number) {
   c.moveTo(jag[0][0], jag[0][1]);
   for (const [x, y] of jag) c.lineTo(x, y);
   c.lineTo(sx + sw, fy + (jag[8][1] - sy) * 0.5);
-  for (let k = jag.length - 1; k >= 0; k--) c.lineTo(jag[k][0], fy + (jag[k][1] - sy) * 0.5);
+  for (let k = jag.length - 1; k >= 0; k--)
+    c.lineTo(jag[k][0], fy + (jag[k][1] - sy) * 0.5);
   c.closePath();
   c.fill();
   c.save();
@@ -1025,7 +1172,13 @@ export function paintCourtRubble(c: Ctx, o: Rect, index: number) {
     }
     // Sides: the top outline dropped to the ground.
     c.fillStyle = mix(mix(m.front[0], m.front[1], R()), "#3a3020", 0.2);
-    fillPoly(c, hull([...pts, ...pts.map(([px, py]) => [px, py + h] as [number, number])]));
+    fillPoly(
+      c,
+      hull([
+        ...pts,
+        ...pts.map(([px, py]) => [px, py + h] as [number, number]),
+      ]),
+    );
     const tg = c.createLinearGradient(x - sz, y - h - sz, x + sz, y - h + sz);
     tg.addColorStop(0, m.top[0]);
     tg.addColorStop(1, m.vary[R() > 0.5 ? 0 : 1]);
@@ -1041,7 +1194,13 @@ export function paintCourtRubble(c: Ctx, o: Rect, index: number) {
   // Dust settled around the heap.
   for (let k = 0; k < 40; k++) {
     c.fillStyle = `rgba(${R() > 0.5 ? "230,220,196" : "150,136,108"},${0.35 + R() * 0.3})`;
-    ell(c, o.x + o.w / 2 + (R() - 0.5) * o.w * 1.5, o.y + o.h * 0.6 + (R() - 0.5) * o.h * 0.9, 1 + R() * 2, 0.8 + R() * 1.2);
+    ell(
+      c,
+      o.x + o.w / 2 + (R() - 0.5) * o.w * 1.5,
+      o.y + o.h * 0.6 + (R() - 0.5) * o.h * 0.9,
+      1 + R() * 2,
+      0.8 + R() * 1.2,
+    );
     c.fill();
   }
 }
@@ -1064,7 +1223,12 @@ export function courtBlockFrame(foot: Rect) {
  * raised by BLOCK_H, which puts it at the footprint's back edge; its front
  * face stands on the footprint's front edge, which is what it sorts by.
  */
-export function paintCourtBlock(c: Ctx, foot: Rect, index: number, id: CourtId) {
+export function paintCourtBlock(
+  c: Ctx,
+  foot: Rect,
+  index: number,
+  id: CourtId,
+) {
   // Drawn from its base, so the picture fills the footprint exactly.
   const o = stoneBase(foot);
   const m = STONE[id];
@@ -1082,7 +1246,11 @@ export function paintCourtBlock(c: Ctx, foot: Rect, index: number, id: CourtId) 
     const y = front + r * ch;
     while (x < o.x + o.w - 1) {
       const sw = Math.min(o.x + o.w - x, 26 + R() * 30);
-      c.fillStyle = mix(mix(m.front[0], m.front[1], 0.25), R() > 0.5 ? m.vary[0] : m.vary[1], 0.25);
+      c.fillStyle = mix(
+        mix(m.front[0], m.front[1], 0.25),
+        R() > 0.5 ? m.vary[0] : m.vary[1],
+        0.25,
+      );
       c.fillRect(x, y, sw, ch);
       c.fillStyle = "rgba(255,248,230,0.28)";
       c.fillRect(x + 1, y + 1, sw - 2, 2);
@@ -1164,13 +1332,20 @@ export function paintCourtBlock(c: Ctx, foot: Rect, index: number, id: CourtId) 
     const tuft = (x: number, y: number, r: number) => {
       for (let k = 0; k < 6; k++) {
         c.fillStyle = m.growth[k % m.growth.length];
-        ell(c, x + (R() - 0.5) * r * 1.6, y + (R() - 0.5) * r * 0.6, r * (0.35 + R() * 0.4), r * (0.25 + R() * 0.25));
+        ell(
+          c,
+          x + (R() - 0.5) * r * 1.6,
+          y + (R() - 0.5) * r * 0.6,
+          r * (0.35 + R() * 0.4),
+          r * (0.25 + R() * 0.25),
+        );
         c.fill();
       }
     };
     tuft(o.x + 8 + R() * 14, top + 6 + R() * 10, 12);
     tuft(o.x + o.w * 0.6, top + o.h - 6, 8);
-    for (let k = 0; k < 4; k++) tuft(o.x + R() * o.w, o.y + o.h - 4, 6 + R() * 4);
+    for (let k = 0; k < 4; k++)
+      tuft(o.x + R() * o.w, o.y + o.h - 4, 6 + R() * 4);
     c.strokeStyle = m.growth[0];
     c.lineWidth = 2;
     const vx = o.x + 10 + R() * 18;
@@ -1180,7 +1355,14 @@ export function paintCourtBlock(c: Ctx, foot: Rect, index: number, id: CourtId) 
     c.stroke();
     for (let k = 0; k < 5; k++) {
       c.fillStyle = m.growth[2];
-      ell(c, vx + (k % 2 ? 5 : -3), front + 6 + k * 8, 3.4, 2, k % 2 ? 0.6 : -0.6);
+      ell(
+        c,
+        vx + (k % 2 ? 5 : -3),
+        front + 6 + k * 8,
+        3.4,
+        2,
+        k % 2 ? 0.6 : -0.6,
+      );
       c.fill();
     }
   }
@@ -1260,8 +1442,19 @@ export function paintCourtStands(c: Ctx, id: CourtId) {
       seed = 400 + r * 31;
       for (let x = 6 + (r % 2) * 9; x < W; x += 15 + R() * 6) {
         if (R() < 0.08) continue;
-        const shirt = ["#c94f4f", "#3f7fc9", "#e0b43a", "#7b5cc9", "#4f9a5a", "#d9824a", "#e8e2d4", "#2f3a52"][Math.floor(R() * 8)];
-        const skin = ["#f2d2a2", "#d9a878", "#a8703f", "#7a4f2e", "#f6e0c0"][Math.floor(R() * 5)];
+        const shirt = [
+          "#c94f4f",
+          "#3f7fc9",
+          "#e0b43a",
+          "#7b5cc9",
+          "#4f9a5a",
+          "#d9824a",
+          "#e8e2d4",
+          "#2f3a52",
+        ][Math.floor(R() * 8)];
+        const skin = ["#f2d2a2", "#d9a878", "#a8703f", "#7a4f2e", "#f6e0c0"][
+          Math.floor(R() * 5)
+        ];
         const bob = R() < 0.25 ? -3 : 0;
         c.fillStyle = mix(shirt, "#000000", 0.15);
         c.beginPath();
@@ -1368,7 +1561,7 @@ export function paintCourtStands(c: Ctx, id: CourtId) {
     c.fillRect(0, 0, W, S);
     seed = 71;
     for (let row = 0; row < 8; row++)
-      for (let x = (row % 2) * -24; x < W; ) {
+      for (let x = (row % 2) * -24; x < W;) {
         const w = 44 + R() * 30;
         c.fillStyle = mix("#2e2a27", "#4c4641", R() * (row / 8));
         c.fillRect(x + 1, row * 12 + 1, w - 2, 11);
@@ -1429,7 +1622,11 @@ export function paintCourtStands(c: Ctx, id: CourtId) {
     c.fillStyle = face;
     c.beginPath();
     c.moveTo(0, S);
-    for (let x = 0; x <= W; x += 40) c.lineTo(x, S - 26 - Math.abs(Math.sin(x * 0.013) * 14) - (x % 120 === 0 ? 8 : 0));
+    for (let x = 0; x <= W; x += 40)
+      c.lineTo(
+        x,
+        S - 26 - Math.abs(Math.sin(x * 0.013) * 14) - (x % 120 === 0 ? 8 : 0),
+      );
     c.lineTo(W, S);
     c.closePath();
     c.fill();
@@ -1481,7 +1678,6 @@ export const paintKit = {
 };
 export type Light = [number, number, number, number, string];
 
-
 /** Non-playable foreground revealed only as the mobile camera reaches the edge. */
 export const COURT_APRON = 96;
 export function paintCourtApron(c: Ctx, id: CourtId) {
@@ -1490,47 +1686,70 @@ export function paintCourtApron(c: Ctx, id: CourtId) {
   const forge = id === "ember-forge";
   const ruins = id === "shifting-ruins";
   const base = c.createLinearGradient(0, 0, 0, h);
-  base.addColorStop(0, sea ? "#287d91" : forge ? "#514139" : ruins ? "#6b7950" : "#ab9673");
-  base.addColorStop(1, sea ? "#154d67" : forge ? "#272321" : ruins ? "#3d5c35" : "#77684e");
+  base.addColorStop(
+    0,
+    sea ? "#287d91" : forge ? "#514139" : ruins ? "#6b7950" : "#ab9673",
+  );
+  base.addColorStop(
+    1,
+    sea ? "#154d67" : forge ? "#272321" : ruins ? "#3d5c35" : "#77684e",
+  );
   c.fillStyle = base;
   c.fillRect(0, 0, W, h);
   seed = 512;
   if (sea) {
     for (let row = 0; row < 8; row++) {
-      c.strokeStyle = `rgba(215,247,248,${0.26-row*0.02})`;
+      c.strokeStyle = `rgba(215,247,248,${0.26 - row * 0.02})`;
       c.lineWidth = row === 0 ? 3 : 1.5;
       c.beginPath();
-      for (let x=0;x<=W;x+=8) {
-        const y=8+row*11+Math.sin(x/(35+row*8)+row)*2;
-        if (!x) c.moveTo(x,y); else c.lineTo(x,y);
+      for (let x = 0; x <= W; x += 8) {
+        const y = 8 + row * 11 + Math.sin(x / (35 + row * 8) + row) * 2;
+        if (!x) c.moveTo(x, y);
+        else c.lineTo(x, y);
       }
       c.stroke();
     }
   } else {
     // Shallow paving beyond the existing court border, keeping the same sun
     // and ground perspective. It never looks like extra walkable sand.
-    for(let row=0;row<3;row++) for(let x=-((row%2)*48);x<W;x+=96) {
-      const y=6+row*28;
-      const tone = forge ? "#51483e" : ruins ? "#aaa084" : "#b4a17e";
-      c.fillStyle=mix(tone,"#181b1a",R()*0.2);
-      c.beginPath(); c.roundRect(x+2,y,92,25,2); c.fill();
-      c.fillStyle="rgba(255,239,202,0.16)"; c.fillRect(x+4,y,88,2);
-      c.fillStyle="rgba(10,16,13,0.26)"; c.fillRect(x+4,y+23,88,2);
-      if (ruins && R()<0.42) {
-        c.fillStyle="#496333"; ell(c,x+7,y+20,10,3); c.fill();
+    for (let row = 0; row < 3; row++)
+      for (let x = -((row % 2) * 48); x < W; x += 96) {
+        const y = 6 + row * 28;
+        const tone = forge ? "#51483e" : ruins ? "#aaa084" : "#b4a17e";
+        c.fillStyle = mix(tone, "#181b1a", R() * 0.2);
+        c.beginPath();
+        c.roundRect(x + 2, y, 92, 25, 2);
+        c.fill();
+        c.fillStyle = "rgba(255,239,202,0.16)";
+        c.fillRect(x + 4, y, 88, 2);
+        c.fillStyle = "rgba(10,16,13,0.26)";
+        c.fillRect(x + 4, y + 23, 88, 2);
+        if (ruins && R() < 0.42) {
+          c.fillStyle = "#496333";
+          ell(c, x + 7, y + 20, 10, 3);
+          c.fill();
+        }
       }
-    }
-    if(forge) for(const x of [300,800,1300]) {
-      c.fillStyle="#1a1715";c.fillRect(x-44,35,88,30);
-      const glow=c.createLinearGradient(0,36,0,64);
-      glow.addColorStop(0,"#c45d26");glow.addColorStop(1,"#502b1c");
-      c.fillStyle=glow;c.fillRect(x-40,39,80,22);
-      c.fillStyle="#27231f";for(let dx=-36;dx<=36;dx+=12)c.fillRect(x+dx,38,4,24);
-    }
-    grain(c,0,0,W,h,0.25,513,[[25,1],[4,0.5]]);
+    if (forge)
+      for (const x of [300, 800, 1300]) {
+        c.fillStyle = "#1a1715";
+        c.fillRect(x - 44, 35, 88, 30);
+        const glow = c.createLinearGradient(0, 36, 0, 64);
+        glow.addColorStop(0, "#c45d26");
+        glow.addColorStop(1, "#502b1c");
+        c.fillStyle = glow;
+        c.fillRect(x - 40, 39, 80, 22);
+        c.fillStyle = "#27231f";
+        for (let dx = -36; dx <= 36; dx += 12) c.fillRect(x + dx, 38, 4, 24);
+      }
+    grain(c, 0, 0, W, h, 0.25, 513, [
+      [25, 1],
+      [4, 0.5],
+    ]);
   }
   // A continuous coping/shadow anchors the foreground to the court at y=900.
-  c.fillStyle=sea ? "#c8c8ad" : forge ? "#776655" : "#c7b692";
-  c.fillRect(0,0,W,5);
-  c.fillStyle="rgba(7,14,18,0.3)";c.fillRect(0,5,W,5);
+  c.fillStyle = sea ? "#c8c8ad" : forge ? "#776655" : "#c7b692";
+  c.fillRect(0, 0, W, 5);
+  c.fillStyle = "rgba(7,14,18,0.3)";
+  c.fillRect(0, 5, W, 5);
 }

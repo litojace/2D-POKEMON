@@ -29,7 +29,11 @@ export class CourtAmbience {
 
   /** Ambience level: 0..1 (the effects volume), 0 while hidden. */
   setLevel(level: number) {
-    this.out.gain.setTargetAtTime(this.id ? level : 0, this.ctx.currentTime, 0.4);
+    this.out.gain.setTargetAtTime(
+      this.id ? level : 0,
+      this.ctx.currentTime,
+      0.4,
+    );
   }
 
   play(id: CourtId | null, level: number) {
@@ -151,7 +155,10 @@ export class CourtAmbience {
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.0001, at);
     g.gain.linearRampToValueAtTime(0.25 + Math.random() * 0.3, at + 0.004);
-    g.gain.exponentialRampToValueAtTime(0.0001, at + 0.04 + Math.random() * 0.05);
+    g.gain.exponentialRampToValueAtTime(
+      0.0001,
+      at + 0.04 + Math.random() * 0.05,
+    );
     src.connect(f).connect(g).connect(this.out);
     src.start(at, Math.random() * (this.noise.duration - 0.2));
     src.stop(at + 0.12);

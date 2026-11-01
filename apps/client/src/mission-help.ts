@@ -22,15 +22,14 @@ export function missionHelp(id: string) {
     "skill-uses":
       "Activate skills 1–4 in matches or raids. Successful casts, including ultimates, count across multiple games. Basic attacks do not count.",
     ults: "Fill your ultimate meter, then activate skill 4 in a match or raid. Repeat across matches or raids until you reach the target. EX skills do not count as ultimates.",
-    "raid-clear":
-      `Choose Boss Raid${champions ? ` as ${champions}` : ""} and defeat a boss on any Peril. Solo and party clears count. Defeats do not count.`,
+    "raid-clear": `Choose Boss Raid${champions ? ` as ${champions}` : ""} and defeat a boss. Solo and party clears count. Defeats do not count.`,
     revives:
       "Play a raid with allies. Stand close to a downed ally to fill their revive bar. Each completed revive you helped with counts, even if another ally also helped. Solo self-revives do not count.",
     "raid-peril3":
-      "Choose Boss Raid, select Peril 3, and defeat the boss. Clear lower Perils first if Peril 3 is locked. Solo or party clears count.",
+      "Choose Boss Raid and defeat the boss. Solo or party clears count.",
     "raid-flawless":
-      "Defeat a raid boss without anyone in the party being downed during the entire run. You can do this solo on any Peril. Taking damage is allowed; being revived does not restore a flawless run.",
-    feat: "Win a raid while completing that boss's special feat. Any Peril counts; the challenges below must be completed within one run.",
+      "Defeat a raid boss without anyone in the party being downed during the entire run. You can do this solo. Taking damage is allowed; being revived does not restore a flawless run.",
+    feat: "Win a raid while completing that boss's special feat. The challenges below must be completed within one run.",
     "hard-bot-win":
       "Choose Hard under bot difficulty on the home screen, then select Battle an AI bot and win the full match. Completed matches count at any duration. Easy and Normal bots do not count.",
     "wins-with": `Choose ${champions ?? "one of the fighters named on this card"}, then win a match against a bot or other players. Completed bot matches have no minimum duration; matches against players must last at least 20 seconds. Raid clears do not count.`,
@@ -43,11 +42,11 @@ export function missionHelp(id: string) {
     "raid-play":
       "Finish a raid by defeating the boss or reaching a defeat result. A defeat must last at least 20 seconds to count. Leaving early or using attack practice does not count.",
     "raid-solo":
-      "Start a Boss Raid with only yourself in the party and defeat the boss. Any Peril counts. Clearing a raid with another player does not count as solo.",
+      "Start a Boss Raid with only yourself in the party and defeat the boss. Clearing a raid with another player does not count as solo.",
     "raid-solo-p2":
-      "Start a Boss Raid alone on Peril 2 or Peril 3 and defeat the boss. Peril 1 clears do not count.",
+      "Start a Boss Raid with only yourself in the party and defeat the boss.",
     "raid-party":
-      "Create a Boss Raid room, invite someone from your Friends list, and defeat the boss together. Any Peril counts.",
+      "Create a Boss Raid room, invite someone from your Friends list, and defeat the boss together.",
     "ffa-wins":
       "Choose Free-for-all, play against other players with no bots, and win the full match. The match must last at least 20 seconds. Duel and 2v2 wins do not count.",
   };

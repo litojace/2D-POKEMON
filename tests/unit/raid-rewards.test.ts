@@ -32,6 +32,17 @@ const seeded = [
   name: name.replace(/''/g, "'"),
   rule: JSON.parse(rule),
 }));
+// Later migrations may rewrite a rule in place (030: one-difficulty raids).
+for (const [, rule, id] of readdirSync("supabase/migrations")
+  .sort()
+  .map((f: string) => readFileSync(`supabase/migrations/${f}`, "utf8"))
+  .join("\n")
+  .matchAll(
+    /update public\.arena_raid_rewards set rule = '(\{[^']*\})' where id = '([a-z-]+)';/g,
+  )) {
+  const row = seeded.find((r) => r.id === id);
+  if (row) row.rule = JSON.parse(rule);
+}
 
 describe("raid rewards", () => {
   it("matches the database seed exactly", () => {

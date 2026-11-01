@@ -151,15 +151,16 @@ export function drawFountainWater(
     if (part !== "moving") {
       // A painted body holds its average brightness; drawn live it
       // shimmers a little with each stream's own phase.
-      const flow =
-        reduced
-          ? 1
-          : part === "base"
-            ? 0.88
-            : 0.88 + Math.sin(t * 3.5 + stream.phase * 9) * 0.12;
-      g.lineStyle(stream.width * 5.5, 0x74cddd, 0.18 * light * flow).strokePoints(
-        stream.points,
-      );
+      const flow = reduced
+        ? 1
+        : part === "base"
+          ? 0.88
+          : 0.88 + Math.sin(t * 3.5 + stream.phase * 9) * 0.12;
+      g.lineStyle(
+        stream.width * 5.5,
+        0x74cddd,
+        0.18 * light * flow,
+      ).strokePoints(stream.points);
       g.lineStyle(
         stream.width * 1.45,
         0xd0f3f8,

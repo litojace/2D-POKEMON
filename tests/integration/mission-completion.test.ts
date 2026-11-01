@@ -343,12 +343,12 @@ const rejected: [
   ["raid-1", "raid", raidFields({ cleared: false })],
   ["daily-1", "raid", { ...raidFields(), character: "terradon" }],
   ["revives-3", "raid", raidFields({ revives: 0 })],
-  ["raid-p3", "raid", raidFields({ peril: 2 })],
+  // 030: raid-p3 is "Clear 2 raids on your own", raid-solo-p2 "Clear 2 raids with no downs".
+  ["raid-p3", "raid", raidFields(), true],
   ["raid-flawless", "raid", raidFields({ flawless: false })],
   ["feat-1", "raid", raidFields({ feat: false })],
   ["raid-solo-1", "raid", raidFields(), true],
-  ["raid-solo-p2", "raid", raidFields({ peril: 1 })],
-  ["raid-solo-p2", "raid", raidFields({ peril: 2 }), true],
+  ["raid-solo-p2", "raid", raidFields({ flawless: false })],
   ["raid-party", "raid", raidFields()],
 ];
 it.each(rejected)(

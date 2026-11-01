@@ -13,7 +13,13 @@ export interface PickerEnemy {
   available: boolean;
 }
 const escape = (s: string) =>
-  s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+  s.replace(
+    /[&<>"']/g,
+    (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+        c
+      ]!,
+  );
 
 export function renderTargetPicker(
   frame: HTMLElement,
@@ -44,16 +50,24 @@ export function renderTargetPicker(
           `<button type="button" data-target-id="${escape(e.id)}" style="--target-color:${escape(e.color)}" aria-pressed="false"><i aria-hidden="true"></i><span>${escape(e.name)}</span></button>`,
       )
       .join("");
-    for (const b of Array.from(panel.querySelectorAll<HTMLButtonElement>("button")))
+    for (const b of Array.from(
+      panel.querySelectorAll<HTMLButtonElement>("button"),
+    ))
       b.onclick = () => pick(b.dataset.targetId!);
   }
-  for (const b of Array.from(panel.querySelectorAll<HTMLButtonElement>("button"))) {
+  for (const b of Array.from(
+    panel.querySelectorAll<HTMLButtonElement>("button"),
+  )) {
     const e = enemies.find((x) => x.id === b.dataset.targetId);
     const pressed = String(lockedId === b.dataset.targetId);
-    if (b.getAttribute("aria-pressed") !== pressed) b.setAttribute("aria-pressed", pressed);
+    if (b.getAttribute("aria-pressed") !== pressed)
+      b.setAttribute("aria-pressed", pressed);
     const disabled = !e?.available;
     if (b.disabled !== disabled) b.disabled = disabled;
-    const title = lockedId === b.dataset.targetId ? `Aiming at ${e?.name}. Tap again for automatic aiming.` : `Aim at ${e?.name}`;
+    const title =
+      lockedId === b.dataset.targetId
+        ? `Aiming at ${e?.name}. Tap again for automatic aiming.`
+        : `Aim at ${e?.name}`;
     if (b.title !== title) b.title = title;
   }
 }

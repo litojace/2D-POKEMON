@@ -133,7 +133,10 @@ export function paintedProp(
  * same size as in the full pile (so the town's crate piles differ). The
  * barrel's edge peeking out behind the upper crate is clipped away.
  */
-export function paintedCrateStack(source: CanvasImageSource, frame: Sprite): Sprite {
+export function paintedCrateStack(
+  source: CanvasImageSource,
+  frame: Sprite,
+): Sprite {
   const [sx, sy, sw, sh] = PROP_FRAMES.crates,
     scale = Math.min((frame.w - 8) / sw, (frame.ay - 3) / sh);
   const STACK_W = 213, // the lower crate's right edge
@@ -272,7 +275,8 @@ export function paintedPlinth(
             ink = plaqueInk(ctx, line, size);
           while (
             size > 4.5 &&
-            (Math.max(ink.width, ink.left + ink.right) > plaque.width - pad * 2 ||
+            (Math.max(ink.width, ink.left + ink.right) >
+              plaque.width - pad * 2 ||
               ink.ascent + ink.descent > lineHeight - 0.2)
           )
             ink = plaqueInk(ctx, line, (size -= 0.25));

@@ -95,18 +95,19 @@ it("counts wins, bot wins and time played from a bot match", async () => {
 it("tells solo raid clears from party ones, and counts raids played", async () => {
   await give(solo, 0, "raid-play-1");
   await give(solo, 1, "raid-solo-1");
-  await give(solo, 2, "raid-solo-p2");
+  // raid-p3 (migration 030): "Clear 2 raids on your own".
+  await give(solo, 2, "raid-p3");
   await give(social, 1, "raid-party");
-  await give(social, 2, "raid-solo-p2");
-  // A Peril 1 solo clear finishes the first two, not the Peril 2 one.
-  await report("raid", [raider(solo, 1)]);
+  await give(social, 2, "raid-p3");
+  // A solo clear finishes the first two and half of the two-clear one.
+  await report("raid", [raider(solo, 3)]);
   expect((await progressOf(solo, 0)).done).toBe(true);
   expect((await progressOf(solo, 1)).done).toBe(true);
-  expect((await progressOf(solo, 2)).progress).toBe(0);
-  await report("raid", [raider(solo, 2)]);
+  expect((await progressOf(solo, 2)).progress).toBe(1);
+  await report("raid", [raider(solo, 3)]);
   expect((await progressOf(solo, 2)).done).toBe(true);
   // Together, it's a party clear for both, and not a solo one.
-  await report("raid", [raider(social, 2), raider(solo, 2)]);
+  await report("raid", [raider(social, 3), raider(solo, 3)]);
   expect((await progressOf(social, 1)).done).toBe(true);
   expect((await progressOf(social, 2)).progress).toBe(0);
 });

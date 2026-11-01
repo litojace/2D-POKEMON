@@ -22,8 +22,10 @@ export const RAID = {
   reviveRange: 100,
   selfReviveDelay: 6,
   staggerSeconds: 6,
-  /** Solo raiders get one self-revive up to this Peril; Peril 3 solo has none. */
-  soloSelfReviveMaxPeril: 2,
+  /** Solo raiders get one self-revive (raids are always Peril 3 now). */
+  soloSelfReviveMaxPeril: 3,
+  /** Solo raiders face this share of the boss's health. */
+  soloHealth: 0.85,
   phases: ["Wake the mountain", "Break the armor", "Heart of the mountain"],
 } as const;
 export const RAID_CHAPTERS = [
@@ -75,33 +77,138 @@ export type RaidAttack =
   | "split"
   | "pulse"
   // Somnara
-  | "lullaby" | "tail-splash" | "dream-bubbles" | "falling-stars" | "whale-song" | "dream-sequence" | "nightmare"
-  | "prism-lance" | "fan-display" | "glare" | "refraction" | "halo-crush" | "light-relay"
-  | "dive-bomb" | "ember-rain" | "wing-gust" | "flame-ring" | "scorched-earth" | "heat-mark" | "brazier-lighting"
-  | "link-beam" | "chain-lightning" | "static-field" | "twin-rush" | "polarity" | "thunderclap";
+  | "lullaby"
+  | "tail-splash"
+  | "dream-bubbles"
+  | "falling-stars"
+  | "whale-song"
+  | "dream-sequence"
+  | "nightmare"
+  | "prism-lance"
+  | "fan-display"
+  | "glare"
+  | "refraction"
+  | "halo-crush"
+  | "light-relay"
+  | "dive-bomb"
+  | "ember-rain"
+  | "wing-gust"
+  | "flame-ring"
+  | "scorched-earth"
+  | "heat-mark"
+  | "brazier-lighting"
+  | "link-beam"
+  | "chain-lightning"
+  | "static-field"
+  | "twin-rush"
+  | "polarity"
+  | "thunderclap";
 export const RAID_ATTACKS: Record<
   RaidAttack,
   { name: string; tip: string; practice: string }
 > = {
-  "prism-lance": { name: "Prism Lance", tip: "Sidestep the thin red lane after it locks.", practice: "A locked straight beam. Step sideways." },
-  "fan-display": { name: "Fan Display", tip: "The numbered colour on the crest is the only cone that fires. Leave that cone.", practice: "Six numbered cones appear; only the crest\u2019s matching colour fires." },
-  "glare": { name: "Glare", tip: "Aim away from the boss when the eye warning fills. On touch, hold Look away. Mystowl\u2019s Ward protects allies inside.", practice: "Turn away before the white crest flashes to avoid 1.5 seconds of blindness." },
-  "refraction": { name: "Refraction", tip: "Lances bounce off mirror posts. Both segments are marked before they fire.", practice: "Leave both marked beam segments." },
-  "halo-crush": { name: "Halo Crush", tip: "The ring closes around the marked point. Move through the teal gap or dash clear.", practice: "A closing halo has one marked safe gap." },
-  "light-relay": { name: "Light Relay", tip: "Stand between the skylight and a mirror. Hit mirrors to rotate them 45\u00b0. Chain light into the heart. In the final phase, solo holds one beam for 2 seconds; teams need both paths within 3 seconds.", practice: "Connect skylight \u2192 raider \u2192 mirrors \u2192 heart. Hit a mirror to turn its arrow." },
-  "dive-bomb": {"name": "Dive Bomb", "tip": "Sidestep the locked lane. The dive leaves a burning trail for 4 seconds. Auralynx can reflect it with Mirror Guard.", "practice": "A locked lane marks the dive. Step sideways; avoid the burning trail."},
-  "ember-rain": {"name": "Ember Rain", "tip": "Keep moving between the small marked circles. Each ember lands separately.", "practice": "Embers rain down on staggered circles. Step between them."},
-  "wing-gust": {"name": "Wing Gust", "tip": "Leave the arrow cone or dash into the gust to resist its push. Avoid being pushed into fire.", "practice": "The cone pushes you away. Dash toward the boss as it lands."},
-  "flame-ring": {"name": "Flame Ring", "tip": "Jump as the expanding edge reaches you. Standing inside the ring after it passes is safe.", "practice": "Jump over the expanding ring of fire."},
-  "scorched-earth": {"name": "Scorched Earth", "tip": "Avoid growing fire patches. Grounding Emberwing shrinks all fire; Tidefin\u2019s Whirlpool extinguishes nearby patches.", "practice": "Fire patches grow over time. Ground the boss to shrink them."},
-  "heat-mark": {"name": "Heat Mark", "tip": "Spread out from marked allies before the 3-second timer expires. Each marked raider takes their own hit; standing in another blast adds damage.", "practice": "A blast follows you for 3 seconds. Spread out, then stay clear of other marked raiders."},
-  "brazier-lighting": {"name": "Brazier Lighting", "tip": "Stand inside a brazier ring for 1.5 seconds. Light all three together to ground Emberwing. Solo flames last 12 seconds (8 on Peril 3). Fireproof halves the lighting time.", "practice": "Run the triangle and light all three braziers before the first goes out."},
-  "link-beam": {"name": "Link Beam", "tip": "Jump across the bright ribbon or leave its path. From phase 2 copper posts bend it. Mirror Guard reflects it into a twin.", "practice": "The ribbon brightens, then sweeps. Jump across it or stay clear."},
-  "chain-lightning": {"name": "Chain Lightning", "tip": "Spread more than 200px apart. The strike jumps up to three raiders. Voltkit absorbs it for 15 ultimate charge; Grounded prevents it jumping from you.", "practice": "A marked raider starts a chain. Spread out so it cannot jump."},
-  "static-field": {"name": "Static Field", "tip": "Avoid the crackling circle or jump across it. Standing inside hurts and slows you.", "practice": "A static field remains on the floor. Jump while crossing it."},
-  "twin-rush": {"name": "Twin Rush", "tip": "Leave both locked lanes before the twins rush through. The crossing point is dangerous.", "practice": "Two lanes cross. Sidestep before both twins dash."},
-  "polarity": {"name": "Polarity", "tip": "Stand within 125px of an opposite sign before the 4-second timer ends. Same signs together take double damage. Solo: enter your opposite-sign floor pad. Terradon\u2019s Hibernate blocks the blast.", "practice": "Pair with an opposite sign. Solo: reach the matching floor pad."},
-  "thunderclap": {"name": "Thunderclap", "tip": "The twin with less health marks a circle. Jump as it fills or step outside.", "practice": "A ring fills around the weaker twin. Jump or leave it."},
+  "prism-lance": {
+    name: "Prism Lance",
+    tip: "Sidestep the thin red lane after it locks.",
+    practice: "A locked straight beam. Step sideways.",
+  },
+  "fan-display": {
+    name: "Fan Display",
+    tip: "The numbered colour on the crest is the only cone that fires. Leave that cone.",
+    practice:
+      "Six numbered cones appear; only the crest\u2019s matching colour fires.",
+  },
+  glare: {
+    name: "Glare",
+    tip: "Aim away from the boss when the eye warning fills. On touch, hold Look away. Mystowl\u2019s Ward protects allies inside.",
+    practice:
+      "Turn away before the white crest flashes to avoid 1.5 seconds of blindness.",
+  },
+  refraction: {
+    name: "Refraction",
+    tip: "Lances bounce off mirror posts. Both segments are marked before they fire.",
+    practice: "Leave both marked beam segments.",
+  },
+  "halo-crush": {
+    name: "Halo Crush",
+    tip: "The ring closes around the marked point. Move through the teal gap or dash clear.",
+    practice: "A closing halo has one marked safe gap.",
+  },
+  "light-relay": {
+    name: "Light Relay",
+    tip: "Stand between the skylight and a mirror. Hit mirrors to rotate them 45\u00b0. Chain light into the heart. In the final phase, solo holds one beam for 2 seconds; teams need both paths within 3 seconds.",
+    practice:
+      "Connect skylight \u2192 raider \u2192 mirrors \u2192 heart. Hit a mirror to turn its arrow.",
+  },
+  "dive-bomb": {
+    name: "Dive Bomb",
+    tip: "Sidestep the locked lane. The dive leaves a burning trail for 4 seconds. Auralynx can reflect it with Mirror Guard.",
+    practice:
+      "A locked lane marks the dive. Step sideways; avoid the burning trail.",
+  },
+  "ember-rain": {
+    name: "Ember Rain",
+    tip: "Keep moving between the small marked circles. Each ember lands separately.",
+    practice: "Embers rain down on staggered circles. Step between them.",
+  },
+  "wing-gust": {
+    name: "Wing Gust",
+    tip: "Leave the arrow cone or dash into the gust to resist its push. Avoid being pushed into fire.",
+    practice: "The cone pushes you away. Dash toward the boss as it lands.",
+  },
+  "flame-ring": {
+    name: "Flame Ring",
+    tip: "Jump as the expanding edge reaches you. Standing inside the ring after it passes is safe.",
+    practice: "Jump over the expanding ring of fire.",
+  },
+  "scorched-earth": {
+    name: "Scorched Earth",
+    tip: "Avoid growing fire patches. Grounding Emberwing shrinks all fire; Tidefin\u2019s Whirlpool extinguishes nearby patches.",
+    practice: "Fire patches grow over time. Ground the boss to shrink them.",
+  },
+  "heat-mark": {
+    name: "Heat Mark",
+    tip: "Spread out from marked allies before the 3-second timer expires. Each marked raider takes their own hit; standing in another blast adds damage.",
+    practice:
+      "A blast follows you for 3 seconds. Spread out, then stay clear of other marked raiders.",
+  },
+  "brazier-lighting": {
+    name: "Brazier Lighting",
+    tip: "Stand inside a brazier ring for 1.5 seconds. Light all three together to ground Emberwing. Solo flames last 8 seconds. Fireproof halves the lighting time.",
+    practice:
+      "Run the triangle and light all three braziers before the first goes out.",
+  },
+  "link-beam": {
+    name: "Link Beam",
+    tip: "Jump across the bright ribbon or leave its path. From phase 2 copper posts bend it. Mirror Guard reflects it into a twin.",
+    practice:
+      "The ribbon brightens, then sweeps. Jump across it or stay clear.",
+  },
+  "chain-lightning": {
+    name: "Chain Lightning",
+    tip: "Spread more than 200px apart. The strike jumps up to three raiders. Voltkit absorbs it for 15 ultimate charge; Grounded prevents it jumping from you.",
+    practice: "A marked raider starts a chain. Spread out so it cannot jump.",
+  },
+  "static-field": {
+    name: "Static Field",
+    tip: "Avoid the crackling circle or jump across it. Standing inside hurts and slows you.",
+    practice: "A static field remains on the floor. Jump while crossing it.",
+  },
+  "twin-rush": {
+    name: "Twin Rush",
+    tip: "Leave both locked lanes before the twins rush through. The crossing point is dangerous.",
+    practice: "Two lanes cross. Sidestep before both twins dash.",
+  },
+  polarity: {
+    name: "Polarity",
+    tip: "Stand within 125px of an opposite sign before the 4-second timer ends. Same signs together take double damage. Solo: enter your opposite-sign floor pad. Terradon\u2019s Hibernate blocks the blast.",
+    practice: "Pair with an opposite sign. Solo: reach the matching floor pad.",
+  },
+  thunderclap: {
+    name: "Thunderclap",
+    tip: "The twin with less health marks a circle. Jump as it fills or step outside.",
+    practice: "A ring fills around the weaker twin. Jump or leave it.",
+  },
   charge: {
     name: "Mountain Charge",
     tip: "When you're targeted, stand so a pillar is between you and the boss, then step aside as the lane locks.",
@@ -135,12 +242,14 @@ export const RAID_ATTACKS: Record<
   dive: {
     name: "Dive & Surface",
     tip: "When the ripple follows you, lead it onto an island, then step off before it locks. It surfaces stranded on dry land.",
-    practice: "A ripple follows you, then locks. Lead it onto an island and step off.",
+    practice:
+      "A ripple follows you, then locks. Lead it onto an island and step off.",
   },
   wave: {
     name: "Tidal Wave",
     tip: "A low wave (chapter 1) can be jumped. A high wave can't: be standing on an island when it passes.",
-    practice: "A wave sweeps the arena. Jump a low one; stand on an island for a high one.",
+    practice:
+      "A wave sweeps the arena. Jump a low one; stand on an island for a high one.",
   },
   bubbles: {
     name: "Bubble Barrage",
@@ -155,12 +264,14 @@ export const RAID_ATTACKS: Record<
   undertow: {
     name: "Undertow",
     tip: "Dash away from the whirlpool and keep walking outward. Touching its centre hurts.",
-    practice: "A whirlpool pulls everyone to the centre. Walk and dash outward.",
+    practice:
+      "A whirlpool pulls everyone to the centre. Walk and dash outward.",
   },
   prison: {
     name: "Bubble Prison",
     tip: "Teammates pop the bubble with three hits. Alone, mash your attack to break out before it reaches the boss's mouth.",
-    practice: "A bubble seals you and drifts to the boss. Mash attack (or have friends pop it).",
+    practice:
+      "A bubble seals you and drifts to the boss. Mash attack (or have friends pop it).",
   },
   lunge: {
     name: "Shadow Lunge",
@@ -169,7 +280,7 @@ export const RAID_ATTACKS: Record<
   },
   hands: {
     name: "Grasping Hands",
-    tip: "Half the floor's tiles darken: stand on a lit tile. From Peril 2 the pattern flips once, so watch it.",
+    tip: "Half the floor's tiles darken: stand on a lit tile. The pattern flips once, so watch it.",
     practice: "Tiles darken in a checkerboard. Stand on a lit one.",
   },
   snuff: {
@@ -192,25 +303,83 @@ export const RAID_ATTACKS: Record<
     tip: "Every copy sends a ring, but only the real one's hurts: jump it. The pulse also shows you which one is real.",
     practice: "Rings from every copy. Jump the real one's.",
   },
-  lullaby: { name: "Lullaby Rings", tip: "Jump the expanding rings or keep out of their path. Three Drowsy stacks put you to sleep; a teammate can hit you awake without hurting you.", practice: "Jump the three soft rings. Each hit adds Drowsy." },
-  "tail-splash": { name: "Tail Splash", tip: "Leave the marked rectangle before Somnara's tail splashes down.", practice: "A wide rectangle marks the tail's reach. Step outside it." },
-  "dream-bubbles": { name: "Dream Bubbles", tip: "Pop the drifting bubbles with an attack or outrun them. Touching one adds Drowsy.", practice: "Slow bubbles follow you. Pop them or keep moving." },
-  "falling-stars": { name: "Falling Stars", tip: "Remember the constellation and stand between the marked stars before they land.", practice: "A constellation flashes; stars land on each marked point." },
-  "whale-song": { name: "Whale Song", tip: "Stay inside the moving teal Quiet Zone until the song ends. Everyone fits; it shrinks on higher Perils.", practice: "Follow the moving Quiet Zone for four seconds." },
-  "dream-sequence": { name: "Dream Sequence", tip: "The Dreamer sees the runes privately. Call them with 1–4 or the rune buttons, then enter the matching pads in order. Leave a pad before entering it again. A backwards arrow means read right to left.", practice: "Read your private sequence and step on the pads in order. Solo gives you 14 seconds." },
-  nightmare: { name: "Nightmare", tip: "A wrong rune or expired sequence bursts across the team. A fresh Dreamer gets a new sequence; listen for their calls.", practice: "Get the rune sequence right before its timer expires." },
+  lullaby: {
+    name: "Lullaby Rings",
+    tip: "Jump the expanding rings or keep out of their path. Three Drowsy stacks put you to sleep; a teammate can hit you awake without hurting you.",
+    practice: "Jump the three soft rings. Each hit adds Drowsy.",
+  },
+  "tail-splash": {
+    name: "Tail Splash",
+    tip: "Leave the marked rectangle before Somnara's tail splashes down.",
+    practice: "A wide rectangle marks the tail's reach. Step outside it.",
+  },
+  "dream-bubbles": {
+    name: "Dream Bubbles",
+    tip: "Pop the drifting bubbles with an attack or outrun them. Touching one adds Drowsy.",
+    practice: "Slow bubbles follow you. Pop them or keep moving.",
+  },
+  "falling-stars": {
+    name: "Falling Stars",
+    tip: "Remember the constellation and stand between the marked stars before they land.",
+    practice: "A constellation flashes; stars land on each marked point.",
+  },
+  "whale-song": {
+    name: "Whale Song",
+    tip: "Stay inside the moving teal Quiet Zone until the song ends. Everyone fits, but it is small.",
+    practice: "Follow the moving Quiet Zone for four seconds.",
+  },
+  "dream-sequence": {
+    name: "Dream Sequence",
+    tip: "The Dreamer sees the runes privately. Call them with 1–4 or the rune buttons, then enter the matching pads in order. Leave a pad before entering it again. A backwards arrow means read right to left.",
+    practice:
+      "Read your private sequence and step on the pads in order. Solo gives you 14 seconds.",
+  },
+  nightmare: {
+    name: "Nightmare",
+    tip: "A wrong rune or expired sequence bursts across the team. A fresh Dreamer gets a new sequence; listen for their calls.",
+    practice: "Get the rune sequence right before its timer expires.",
+  },
 };
 /** Six attacks per boss, in Hub/practice order. Brazier lighting is an arena mechanic. */
 export const RAID_BOSS_ATTACKS: Record<RaidBossId, RaidAttack[]> = {
-  "storm-twins": ["link-beam", "chain-lightning", "static-field", "twin-rush", "polarity", "thunderclap"],
-  emberwing: ["dive-bomb", "ember-rain", "wing-gust", "flame-ring", "scorched-earth", "heat-mark"],
-  prismatail: ["prism-lance", "fan-display", "glare", "refraction", "halo-crush", "light-relay"],
+  "storm-twins": [
+    "link-beam",
+    "chain-lightning",
+    "static-field",
+    "twin-rush",
+    "polarity",
+    "thunderclap",
+  ],
+  emberwing: [
+    "dive-bomb",
+    "ember-rain",
+    "wing-gust",
+    "flame-ring",
+    "scorched-earth",
+    "heat-mark",
+  ],
+  prismatail: [
+    "prism-lance",
+    "fan-display",
+    "glare",
+    "refraction",
+    "halo-crush",
+    "light-relay",
+  ],
   grumblecrag: ["charge", "slam", "volley", "debris", "eruption", "share"],
   tidewyrm: ["dive", "wave", "bubbles", "hightide", "undertow", "prison"],
   gloomshade: ["lunge", "hands", "snuff", "curse", "split", "pulse"],
-  somnara: ["lullaby", "tail-splash", "dream-bubbles", "falling-stars", "whale-song", "dream-sequence"],
+  somnara: [
+    "lullaby",
+    "tail-splash",
+    "dream-bubbles",
+    "falling-stars",
+    "whale-song",
+    "dream-sequence",
+  ],
 };
-export const raidAttacksOf = (boss: RaidBossId) => RAID_BOSS_ATTACKS[boss] ?? [];
+export const raidAttacksOf = (boss: RaidBossId) =>
+  RAID_BOSS_ATTACKS[boss] ?? [];
 /**
  * Grumblecrag's numbers in one place, so tuning (or a second boss) is a
  * matter of data. Damage is before the Peril multiplier.
@@ -275,9 +444,24 @@ export const TIDEWYRM = {
     cracks: 2,
   },
   wave: { delay: 1.4, speed: 520, ripSpeed: 400, width: 70, damage: 22 },
-  bubbles: { delay: 0.9, speed: 150, radius: 20, damage: 10, root: 0.8, life: 5, spread: 0.9 },
+  bubbles: {
+    delay: 0.9,
+    speed: 150,
+    radius: 20,
+    damage: 10,
+    root: 0.8,
+    life: 5,
+    spread: 0.9,
+  },
   highTide: { delay: 2, seconds: 5, springSeconds: 7, dps: 7 },
-  undertow: { delay: 1.2, seconds: 3, pull: 120, ripPull: 160, centreRadius: 75, damage: 24 },
+  undertow: {
+    delay: 1.2,
+    seconds: 3,
+    pull: 120,
+    ripPull: 160,
+    centreRadius: 75,
+    damage: 24,
+  },
   prison: { delay: 1, seconds: 6, hits: 3, presses: 8, radius: 34 },
   /** Peril 3, last chapter: an island sinks for good this often (min 2 left). */
   sinkEvery: 45,
@@ -327,7 +511,16 @@ export const GLOOMSHADE = {
   /** Grasping Hands: the floor as a checkerboard of tiles. */
   hands: { cols: 8, rows: 5, delay: 1.6, shiftAt: 0.7, damage: 20 },
   snuff: { delay: 1.5, finalDelay: 0.75 },
-  curse: { radius: 120, spreadSeconds: 2, restlessSpread: 3, haunted: 3, hauntSeconds: 6, dps: 5, cleanseSeconds: 2, soloStill: 2.5 },
+  curse: {
+    radius: 120,
+    spreadSeconds: 2,
+    restlessSpread: 3,
+    haunted: 3,
+    hauntSeconds: 6,
+    dps: 5,
+    cleanseSeconds: 2,
+    soloStill: 2.5,
+  },
   split: { delay: 1.2, copies: 3, peril3Copies: 4 },
   pulse: { delay: 1.4, radius: 260, damage: 24, pairGap: 1.2 },
   /** Hits on the real one in a row that expose it. */
@@ -350,7 +543,11 @@ export function handsTileDark(x: number, y: number, parity: number) {
   return (col + row) % 2 === parity;
 }
 /** Gloomshade's attack order for a chapter. */
-export function gloomshadePattern(phase: number, peril: number, restless = false): RaidAttack[] {
+export function gloomshadePattern(
+  phase: number,
+  peril: number,
+  restless = false,
+): RaidAttack[] {
   const hands: RaidAttack[] = restless ? ["hands"] : [];
   if (phase === 1)
     return [
@@ -362,9 +559,28 @@ export function gloomshadePattern(phase: number, peril: number, restless = false
       "hands",
       ...hands,
     ];
-  if (phase === 2) return ["split", "lunge", "curse", "hands", "snuff", "pulse", "lunge", ...hands];
+  if (phase === 2)
+    return [
+      "split",
+      "lunge",
+      "curse",
+      "hands",
+      "snuff",
+      "pulse",
+      "lunge",
+      ...hands,
+    ];
   // Witching Hour: pulses come in pairs (the server adds the second).
-  return ["pulse", "lunge", "curse", "snuff", "hands", "pulse", "lunge", ...hands];
+  return [
+    "pulse",
+    "lunge",
+    "curse",
+    "snuff",
+    "hands",
+    "pulse",
+    "lunge",
+    ...hands,
+  ];
 }
 /** Tidewyrm's attack order for a chapter. */
 export function tidewyrmPattern(phase: number, peril: number): RaidAttack[] {
@@ -373,7 +589,15 @@ export function tidewyrmPattern(phase: number, peril: number): RaidAttack[] {
       ? ["dive", "bubbles", "wave", "dive", "wave", "bubbles"]
       : ["dive", "bubbles", "wave", "dive", "bubbles"];
   if (phase === 2)
-    return ["dive", "hightide", "bubbles", "prison", "dive", "undertow", "wave"];
+    return [
+      "dive",
+      "hightide",
+      "bubbles",
+      "prison",
+      "dive",
+      "undertow",
+      "wave",
+    ];
   // Storm Surge: High Tide leads straight into a dive, Undertow into a wave.
   return ["hightide", "dive", "undertow", "prison", "bubbles", "dive"];
 }
@@ -415,7 +639,10 @@ export const RAID_PINGS: Record<RaidPingKind, { label: string; key: string }> =
   };
 export const RAID_PING_SECONDS = 3.5;
 /** The third signal means something different on each boss. */
-export function raidPingLabel(kind: RaidPingKind, boss: RaidBossId = "grumblecrag") {
+export function raidPingLabel(
+  kind: RaidPingKind,
+  boss: RaidBossId = "grumblecrag",
+) {
   if (kind === "bait" && boss === "tidewyrm") return "Island here";
   if (kind === "bait" && boss === "storm-twins") return "Focus here";
   if (kind === "bait" && boss === "emberwing") return "Brazier here";
@@ -450,25 +677,64 @@ export const RAID_PERKS: Partial<
 };
 /** Champion tricks per boss (docs/raid-roster-design.md §6). */
 export const RAID_BOSS_PERKS: Partial<
-  Record<RaidBossId, Partial<Record<CharacterId, { skill: string; text: string }>>>
+  Record<
+    RaidBossId,
+    Partial<Record<CharacterId, { skill: string; text: string }>>
+  >
 > = {
   prismatail: {
-    cindrake: { skill: "Sunfire Pillar", text: "Your pillar relays the sunbeam for 4 seconds." },
-    lumoth: { skill: "Radiant Flare", text: "For 4 seconds, light reaching you fans out through nearby allies." },
-    mystowl: { skill: "Ward", text: "Your ward protects nearby allies from Glare." },
-    duskveil: { skill: "Void Orb", text: "A Void Orb on a lance lane swallows that segment." },
+    cindrake: {
+      skill: "Sunfire Pillar",
+      text: "Your pillar relays the sunbeam for 4 seconds.",
+    },
+    lumoth: {
+      skill: "Radiant Flare",
+      text: "For 4 seconds, light reaching you fans out through nearby allies.",
+    },
+    mystowl: {
+      skill: "Ward",
+      text: "Your ward protects nearby allies from Glare.",
+    },
+    duskveil: {
+      skill: "Void Orb",
+      text: "A Void Orb on a lance lane swallows that segment.",
+    },
   },
   emberwing: {
-    cindrake: { skill: "Blaze Whirl", text: "Your flames light any brazier they touch, including while you move." },
-    tidefin: { skill: "Whirlpool", text: "Your water extinguishes fire patches and dive trails where it lands." },
-    auralynx: { skill: "Mirror Guard", text: "Reflecting a Dive Bomb adds 20 stagger to Emberwing." },
-    lumoth: { skill: "Starfall Spray", text: "Your stars deal full damage to an airborne Emberwing." },
+    cindrake: {
+      skill: "Blaze Whirl",
+      text: "Your flames light any brazier they touch, including while you move.",
+    },
+    tidefin: {
+      skill: "Whirlpool",
+      text: "Your water extinguishes fire patches and dive trails where it lands.",
+    },
+    auralynx: {
+      skill: "Mirror Guard",
+      text: "Reflecting a Dive Bomb adds 20 stagger to Emberwing.",
+    },
+    lumoth: {
+      skill: "Starfall Spray",
+      text: "Your stars deal full damage to an airborne Emberwing.",
+    },
   },
   "storm-twins": {
-    voltkit: { skill: "Electric affinity", text: "Absorb Chain Lightning: it stops on you and grants 15 ultimate charge." },
-    auralynx: { skill: "Mirror Guard", text: "Reflect Link Beam into a twin for 20 extra stagger." },
-    terradon: { skill: "Hibernate", text: "Your sleeping shell blocks Polarity damage." },
-    duskveil: { skill: "Void Orb", text: "A hit pulls that twin toward its partner, shortening the Link Beam." },
+    voltkit: {
+      skill: "Electric affinity",
+      text: "Absorb Chain Lightning: it stops on you and grants 15 ultimate charge.",
+    },
+    auralynx: {
+      skill: "Mirror Guard",
+      text: "Reflect Link Beam into a twin for 20 extra stagger.",
+    },
+    terradon: {
+      skill: "Hibernate",
+      text: "Your sleeping shell blocks Polarity damage.",
+    },
+    duskveil: {
+      skill: "Void Orb",
+      text: "A hit pulls that twin toward its partner, shortening the Link Beam.",
+    },
   },
   grumblecrag: RAID_PERKS,
   tidewyrm: {
@@ -508,31 +774,92 @@ export const RAID_BOSS_PERKS: Partial<
     },
   },
   somnara: {
-    cindrake: { skill: "Ember Gust", text: "Wakes every sleeping ally caught in the cone, without hurting them." },
-    tidefin: { skill: "Mirror Mist", text: "Your clone can enter a rune pad and count as a step." },
-    mystowl: { skill: "Thoughtstrike", text: "Reveals the current dream sequence to the whole team." },
-    duskveil: { skill: "Shade Crawl", text: "Leaves a shadow trail that pops Dream Bubbles." },
+    cindrake: {
+      skill: "Ember Gust",
+      text: "Wakes every sleeping ally caught in the cone, without hurting them.",
+    },
+    tidefin: {
+      skill: "Mirror Mist",
+      text: "Your clone can enter a rune pad and count as a step.",
+    },
+    mystowl: {
+      skill: "Thoughtstrike",
+      text: "Reveals the current dream sequence to the whole team.",
+    },
+    duskveil: {
+      skill: "Shade Crawl",
+      text: "Leaves a shadow trail that pops Dream Bubbles.",
+    },
   },
 };
 export const raidPerksOf = (boss: RaidBossId) => RAID_BOSS_PERKS[boss] ?? {};
 /** Chapter names and goals per boss. */
 export const RAID_BOSS_CHAPTERS: Partial<
-  Record<RaidBossId, readonly { name: string; objective: string; detail: string }[]>
+  Record<
+    RaidBossId,
+    readonly { name: string; objective: string; detail: string }[]
+  >
 > = {
   prismatail: [
-    { name: "Dawn", objective: "Carry skylight through mirrors into the shielded heart.", detail: "Stand within the skylight ring to take the beam. Light travels up to 300px between raiders and mirror posts, and 260px into the heart. Hit a mirror to turn its arrow 45°. A connected chain shatters the shield for 6 seconds. Carrying light burns 3 health per second." },
-    { name: "High Noon", objective: "Follow reflected lanes. Escape through the halo gap.", detail: "Prismatail moves farther from the skylight. Refraction shows both sides of the bounce before firing. The closing halo leaves a teal gap. The Polished rite prevents beam burn and extends your relay range." },
-    { name: "Solar Crown", objective: "Complete both light paths within 3 seconds.", detail: "Teams connect two skylights to the heart within 3 seconds; mirrors can carry either path. Solo needs one continuous connection for 2 seconds. Turn your aim away from Glare, or hold Look away on touch. Save ultimates for the exposed heart." },
+    {
+      name: "Dawn",
+      objective: "Carry skylight through mirrors into the shielded heart.",
+      detail:
+        "Stand within the skylight ring to take the beam. Light travels up to 300px between raiders and mirror posts, and 260px into the heart. Hit a mirror to turn its arrow 45°. A connected chain shatters the shield for 6 seconds. Carrying light burns 3 health per second.",
+    },
+    {
+      name: "High Noon",
+      objective: "Follow reflected lanes. Escape through the halo gap.",
+      detail:
+        "Prismatail moves farther from the skylight. Refraction shows both sides of the bounce before firing. The closing halo leaves a teal gap. The Polished rite prevents beam burn and extends your relay range.",
+    },
+    {
+      name: "Solar Crown",
+      objective: "Complete both light paths within 3 seconds.",
+      detail:
+        "Teams connect two skylights to the heart within 3 seconds; mirrors can carry either path. Solo needs one continuous connection for 2 seconds. Turn your aim away from Glare, or hold Look away on touch. Save ultimates for the exposed heart.",
+    },
   ],
   emberwing: [
-    { name: "Takeoff", objective: "Sidestep dives. Jump the expanding flame ring.", detail: "Emberwing stays on the ground while you learn its attacks. Avoid the locked dive lane and its burning trail, step between falling embers, and dash toward the boss to resist Wing Gust." },
-    { name: "High Flight", objective: "Light all three braziers together to ground Emberwing.", detail: "Stand on a brazier for 1.5 seconds. Team flames last 6 seconds; solo flames last 12 seconds (8 on Peril 3). Grounding exposes Emberwing for 6 seconds and shrinks fire patches. Melee cannot hit it in the air; ranged damage is halved. Spread out for Heat Marks." },
-    { name: "Blazing Sky", objective: "Ground it twice to keep the heart open.", detail: "Team braziers stay lit for 4 seconds, while solo keeps the longer timer. Fire spreads faster. Bring Emberwing down twice this chapter and it stays grounded, exposed for the rest of the fight. Fireproof halves lighting time and reduces floor-fire damage by 50%." },
+    {
+      name: "Takeoff",
+      objective: "Sidestep dives. Jump the expanding flame ring.",
+      detail:
+        "Emberwing stays on the ground while you learn its attacks. Avoid the locked dive lane and its burning trail, step between falling embers, and dash toward the boss to resist Wing Gust.",
+    },
+    {
+      name: "High Flight",
+      objective: "Light all three braziers together to ground Emberwing.",
+      detail:
+        "Stand on a brazier for 1.5 seconds. Team flames last 6 seconds; solo flames last 8 seconds. Grounding exposes Emberwing for 6 seconds and shrinks fire patches. Melee cannot hit it in the air; ranged damage is halved. Spread out for Heat Marks.",
+    },
+    {
+      name: "Blazing Sky",
+      objective: "Ground it twice to keep the heart open.",
+      detail:
+        "Team braziers stay lit for 4 seconds, while solo keeps the longer timer. Fire spreads faster. Bring Emberwing down twice this chapter and it stays grounded, exposed for the rest of the fight. Fireproof halves lighting time and reduces floor-fire damage by 50%.",
+    },
   ],
   "storm-twins": [
-    { name: "Spark", objective: "Watch both health bars. Jump the link and spread from chains.", detail: "Fizz and Crackle have separate health and stagger. Split your damage between them. Their combined health opens rites at 67% and 33%; the finishing blows unlock in Supercell. Jump across Link Beam and leave both Twin Rush lanes." },
-    { name: "Storm", objective: "Pair opposite signs. Follow the beam around copper posts.", detail: "Polarity marks everyone for 4 seconds: stand near an opposite sign to cancel it. Same signs together take double damage. Solo gets an opposite-sign floor pad. Static Fields slow and hurt; jump while crossing them. Each twin staggers separately." },
-    { name: "Supercell", objective: "Bring both low, then defeat them within the countdown.", detail: "When one twin falls, finish the other within 15/12/8 seconds on Peril 1/2/3. Solo gets 3 more seconds. If time expires, the fallen twin returns at 35% health. Keep both low before dealing a finishing blow. Touch players can tap Fizz or Crackle to switch targets." },
+    {
+      name: "Spark",
+      objective:
+        "Watch both health bars. Jump the link and spread from chains.",
+      detail:
+        "Fizz and Crackle have separate health and stagger. Split your damage between them. Their combined health opens rites at 67% and 33%; the finishing blows unlock in Supercell. Jump across Link Beam and leave both Twin Rush lanes.",
+    },
+    {
+      name: "Storm",
+      objective: "Pair opposite signs. Follow the beam around copper posts.",
+      detail:
+        "Polarity marks everyone for 4 seconds: stand near an opposite sign to cancel it. Same signs together take double damage. Solo gets an opposite-sign floor pad. Static Fields slow and hurt; jump while crossing them. Each twin staggers separately.",
+    },
+    {
+      name: "Supercell",
+      objective: "Bring both low, then defeat them within the countdown.",
+      detail:
+        "When one twin falls, finish the other within 8 seconds. Solo gets 3 more seconds. If time expires, the fallen twin returns at 35% health. Keep both low before dealing a finishing blow. Touch players can tap Fizz or Crackle to switch targets.",
+    },
   ],
   grumblecrag: RAID_CHAPTERS,
   tidewyrm: [
@@ -552,7 +879,7 @@ export const RAID_BOSS_CHAPTERS: Partial<
       name: "Storm Surge",
       objective: "Keep stranding it. Survive the combinations.",
       detail:
-        "The rhythm quickens: High Tide leads straight into a dive, and the Undertow into a wave. On Peril 3 an island sinks for good every 45 seconds.",
+        "The rhythm quickens: High Tide leads straight into a dive, and the Undertow into a wave. An island sinks for good every 45 seconds.",
     },
   ],
   gloomshade: [
@@ -576,9 +903,24 @@ export const RAID_BOSS_CHAPTERS: Partial<
     },
   ],
   somnara: [
-    { name: "Dozing", objective: "Read the dream. Step the runes in order.", detail: "Only the Dreamer sees the sequence. Call Circle, Star, Moon and Wave with 1–4 or the rune buttons, then enter the pads in order to expose Somnara for 6 seconds. Jump Lullaby Rings and pop Dream Bubbles. Three Drowsy stacks put you to sleep; allies can tap you awake." },
-    { name: "Deep Sleep", objective: "Remember the stars. Follow the Quiet Zone.", detail: "Sequences get longer. Falling Stars land at the constellation points, and Whale Song hurts everyone outside its moving teal Quiet Zone. Solo sequences are shorter and give you 14 seconds." },
-    { name: "Waking Dream", objective: "Call clearly. Solve the dream through the attacks.", detail: "Attacks continue while the sequence is active. On Peril 3 some dreams are displayed backwards: the arrow means read right to left. Spread out for stars, then gather in the Quiet Zone." },
+    {
+      name: "Dozing",
+      objective: "Read the dream. Step the runes in order.",
+      detail:
+        "Only the Dreamer sees the sequence. Call Circle, Star, Moon and Wave with 1–4 or the rune buttons, then enter the pads in order to expose Somnara for 6 seconds. Jump Lullaby Rings and pop Dream Bubbles. Three Drowsy stacks put you to sleep; allies can tap you awake.",
+    },
+    {
+      name: "Deep Sleep",
+      objective: "Remember the stars. Follow the Quiet Zone.",
+      detail:
+        "Sequences get longer. Falling Stars land at the constellation points, and Whale Song hurts everyone outside its moving teal Quiet Zone. Solo sequences are shorter and give you 14 seconds.",
+    },
+    {
+      name: "Waking Dream",
+      objective: "Call clearly. Solve the dream through the attacks.",
+      detail:
+        "Attacks continue while the sequence is active. Some dreams are displayed backwards: the arrow means read right to left. Spread out for stars, then gather in the Quiet Zone.",
+    },
   ],
 };
 export const raidChapters = (boss: RaidBossId) =>
@@ -611,10 +953,30 @@ export type RaidCosmetic =
   | "crescent"
   | "nightmote"
   | "crescent-bow"
-  | "twilight-colors" | "starlit-skin" | "dreamdrift" | "moonglass" | "lullaby-aura" | "sweet-dreams"
-  | "dawn-colors" | "prismatic-skin" | "sunburst" | "stained-glass" | "halo-aura" | "rainbow-fan"
-  | "ember-colors" | "cinderplume" | "firefall" | "brazier-frame" | "ember-aura" | "feather-fall"
-  | "static-colors" | "thundercell" | "lightning-strike" | "conductor-frame" | "spark-aura" | "twin-spark";
+  | "twilight-colors"
+  | "starlit-skin"
+  | "dreamdrift"
+  | "moonglass"
+  | "lullaby-aura"
+  | "sweet-dreams"
+  | "dawn-colors"
+  | "prismatic-skin"
+  | "sunburst"
+  | "stained-glass"
+  | "halo-aura"
+  | "rainbow-fan"
+  | "ember-colors"
+  | "cinderplume"
+  | "firefall"
+  | "brazier-frame"
+  | "ember-aura"
+  | "feather-fall"
+  | "static-colors"
+  | "thundercell"
+  | "lightning-strike"
+  | "conductor-frame"
+  | "spark-aura"
+  | "twin-spark";
 /** A raid reward or a Shop collection piece (see shop.ts LOOK_ITEMS). */
 export type AppearanceItem = RaidCosmetic | (string & {});
 export type RaidLoadout = Partial<Record<RaidSlot, AppearanceItem | null>>;
@@ -624,7 +986,9 @@ export type RaidLoadout = Partial<Record<RaidSlot, AppearanceItem | null>>;
  * a unit test keeps the two lists identical.
  */
 export type RaidRule =
-  | { kind: "clears"; n: number }
+  /** `legacyPeril`: also earned by a clear on that Peril before raids
+   * became one difficulty (migration 030), so nothing earned is lost. */
+  | { kind: "clears"; n: number; legacyPeril?: number }
   | { kind: "peril"; n: number }
   | { kind: "flawless"; peril: number }
   | { kind: "solo"; peril: number }
@@ -644,89 +1008,730 @@ export interface RaidReward {
   rule: RaidRule;
 }
 export const RAID_REWARDS: RaidReward[] = [
-  {"id": "stormsplitter", "boss": "storm-twins", "slot": "title", "name": "Stormsplitter", "description": "Title", "goal": "First clear", "rule": {"kind": "clears", "n": 1}},
-  {"id": "static-colors", "boss": "storm-twins", "slot": "skin", "name": "Static colors", "description": "Storm blue with sunny yellow highlights", "goal": "5 clears", "rule": {"kind": "clears", "n": 5}},
-  {"id": "thundercell", "boss": "storm-twins", "slot": "skin", "name": "Thundercell skin", "description": "Cloud-white markings with electric blue lightning flecks", "goal": "10 clears", "rule": {"kind": "clears", "n": 10}},
-  {"id": "lightning-strike", "boss": "storm-twins", "slot": "entrance", "name": "Lightning-strike entrance", "description": "Arrive between twin bolts of yellow and blue light", "goal": "Clear Peril 2", "rule": {"kind": "peril", "n": 2}},
-  {"id": "eye-of-the-storm", "boss": "storm-twins", "slot": "title", "name": "Eye of the Storm", "description": "Title", "goal": "Clear Peril 3", "rule": {"kind": "peril", "n": 3}},
-  {"id": "conductor-frame", "boss": "storm-twins", "slot": "frame", "name": "Conductor frame", "description": "Copper corners linked by yellow and blue arcs", "goal": "Clear Peril 3", "rule": {"kind": "peril", "n": 3}},
-  {"id": "spark-aura", "boss": "storm-twins", "slot": "aura", "name": "Spark aura", "description": "Yellow and blue sparks orbit beneath your fighter", "goal": "Clear Peril 3 with no downs", "rule": {"kind": "flawless", "peril": 3}},
-  {"id": "twin-spark", "boss": "storm-twins", "slot": "victory", "name": "Twin Spark", "description": "Two little thunder-jellies meet in a shower of sparks", "goal": "Feat: defeat both twins within 2 seconds of each other", "rule": {"kind": "feat"}},
-  {"id": "flashpoint", "boss": "storm-twins", "slot": "title", "name": "Flashpoint", "description": "Title", "goal": "Clear Peril 2 solo in under 4:00", "rule": {"kind": "speed", "peril": 2, "party": 1, "seconds": 240}},
-  {"id": "lone-conductor", "boss": "storm-twins", "slot": "title", "name": "Lone Conductor", "description": "Title", "goal": "Clear Peril 3 solo (no self-revive)", "rule": {"kind": "solo", "peril": 3}},
-  {"id": "perfect-pair", "boss": "storm-twins", "slot": "title", "name": "Perfect Pair", "description": "Title", "goal": "Cancel 40 polarity marks with an opposite sign (wins and losses)", "rule": {"kind": "stat", "stat": "pillars", "n": 40}},
+  {
+    id: "stormsplitter",
+    boss: "storm-twins",
+    slot: "title",
+    name: "Stormsplitter",
+    description: "Title",
+    goal: "First clear",
+    rule: { kind: "clears", n: 1 },
+  },
+  {
+    id: "static-colors",
+    boss: "storm-twins",
+    slot: "skin",
+    name: "Static colors",
+    description: "Storm blue with sunny yellow highlights",
+    goal: "5 clears",
+    rule: { kind: "clears", n: 5 },
+  },
+  {
+    id: "thundercell",
+    boss: "storm-twins",
+    slot: "skin",
+    name: "Thundercell skin",
+    description: "Cloud-white markings with electric blue lightning flecks",
+    goal: "10 clears",
+    rule: { kind: "clears", n: 10 },
+  },
+  {
+    id: "lightning-strike",
+    boss: "storm-twins",
+    slot: "entrance",
+    name: "Lightning-strike entrance",
+    description: "Arrive between twin bolts of yellow and blue light",
+    goal: "Clear once",
+    rule: { kind: "clears", n: 1, legacyPeril: 2 },
+  },
+  {
+    id: "eye-of-the-storm",
+    boss: "storm-twins",
+    slot: "title",
+    name: "Eye of the Storm",
+    description: "Title",
+    goal: "Clear 3 times",
+    rule: { kind: "clears", n: 3, legacyPeril: 3 },
+  },
+  {
+    id: "conductor-frame",
+    boss: "storm-twins",
+    slot: "frame",
+    name: "Conductor frame",
+    description: "Copper corners linked by yellow and blue arcs",
+    goal: "Clear 3 times",
+    rule: { kind: "clears", n: 3, legacyPeril: 3 },
+  },
+  {
+    id: "spark-aura",
+    boss: "storm-twins",
+    slot: "aura",
+    name: "Spark aura",
+    description: "Yellow and blue sparks orbit beneath your fighter",
+    goal: "Clear with no downs",
+    rule: { kind: "flawless", peril: 3 },
+  },
+  {
+    id: "twin-spark",
+    boss: "storm-twins",
+    slot: "victory",
+    name: "Twin Spark",
+    description: "Two little thunder-jellies meet in a shower of sparks",
+    goal: "Feat: defeat both twins within 2 seconds of each other",
+    rule: { kind: "feat" },
+  },
+  {
+    id: "flashpoint",
+    boss: "storm-twins",
+    slot: "title",
+    name: "Flashpoint",
+    description: "Title",
+    goal: "Clear solo in under 4:00",
+    rule: { kind: "speed", peril: 2, party: 1, seconds: 240 },
+  },
+  {
+    id: "lone-conductor",
+    boss: "storm-twins",
+    slot: "title",
+    name: "Lone Conductor",
+    description: "Title",
+    goal: "Clear solo without going down",
+    rule: { kind: "solo", peril: 3 },
+  },
+  {
+    id: "perfect-pair",
+    boss: "storm-twins",
+    slot: "title",
+    name: "Perfect Pair",
+    description: "Title",
+    goal: "Cancel 40 polarity marks with an opposite sign (wins and losses)",
+    rule: { kind: "stat", stat: "pillars", n: 40 },
+  },
 
-  {"id": "skyfeller", "boss": "emberwing", "slot": "title", "name": "Skyfeller", "description": "Title", "goal": "First clear", "rule": {"kind": "clears", "n": 1}},
-  {"id": "ember-colors", "boss": "emberwing", "slot": "skin", "name": "Ember colors", "description": "Burnished orange with warm golden highlights", "goal": "5 clears", "rule": {"kind": "clears", "n": 5}},
-  {"id": "cinderplume", "boss": "emberwing", "slot": "skin", "name": "Cinderplume skin", "description": "Charcoal feathers with glowing ember flecks", "goal": "10 clears", "rule": {"kind": "clears", "n": 10}},
-  {"id": "firefall", "boss": "emberwing", "slot": "entrance", "name": "Firefall entrance", "description": "Arrive in a shower of glowing feathers", "goal": "Clear Peril 2", "rule": {"kind": "peril", "n": 2}},
-  {"id": "wingbreaker", "boss": "emberwing", "slot": "title", "name": "Wingbreaker", "description": "Title", "goal": "Clear Peril 3", "rule": {"kind": "peril", "n": 3}},
-  {"id": "brazier-frame", "boss": "emberwing", "slot": "frame", "name": "Brazier frame", "description": "A dark bronze frame with burning corners", "goal": "Clear Peril 3", "rule": {"kind": "peril", "n": 3}},
-  {"id": "ember-aura", "boss": "emberwing", "slot": "aura", "name": "Ember aura", "description": "Warm embers drift around a glowing ring", "goal": "Clear Peril 3 with no downs", "rule": {"kind": "flawless", "peril": 3}},
-  {"id": "feather-fall", "boss": "emberwing", "slot": "victory", "name": "Feather Fall", "description": "Fiery feathers fan out and drift gently around you", "goal": "Feat: ground Emberwing within 20 seconds of takeoff three times", "rule": {"kind": "feat"}},
-  {"id": "flashfire", "boss": "emberwing", "slot": "title", "name": "Flashfire", "description": "Title", "goal": "Clear Peril 2 solo in under 4:00", "rule": {"kind": "speed", "peril": 2, "party": 1, "seconds": 240}},
-  {"id": "lone-phoenix", "boss": "emberwing", "slot": "title", "name": "Lone Phoenix", "description": "Title", "goal": "Clear Peril 3 solo (no self-revive)", "rule": {"kind": "solo", "peril": 3}},
-  {"id": "torchbearer", "boss": "emberwing", "slot": "title", "name": "Torchbearer", "description": "Title", "goal": "Light 60 braziers (wins and losses)", "rule": {"kind": "stat", "stat": "pillars", "n": 60}},
+  {
+    id: "skyfeller",
+    boss: "emberwing",
+    slot: "title",
+    name: "Skyfeller",
+    description: "Title",
+    goal: "First clear",
+    rule: { kind: "clears", n: 1 },
+  },
+  {
+    id: "ember-colors",
+    boss: "emberwing",
+    slot: "skin",
+    name: "Ember colors",
+    description: "Burnished orange with warm golden highlights",
+    goal: "5 clears",
+    rule: { kind: "clears", n: 5 },
+  },
+  {
+    id: "cinderplume",
+    boss: "emberwing",
+    slot: "skin",
+    name: "Cinderplume skin",
+    description: "Charcoal feathers with glowing ember flecks",
+    goal: "10 clears",
+    rule: { kind: "clears", n: 10 },
+  },
+  {
+    id: "firefall",
+    boss: "emberwing",
+    slot: "entrance",
+    name: "Firefall entrance",
+    description: "Arrive in a shower of glowing feathers",
+    goal: "Clear once",
+    rule: { kind: "clears", n: 1, legacyPeril: 2 },
+  },
+  {
+    id: "wingbreaker",
+    boss: "emberwing",
+    slot: "title",
+    name: "Wingbreaker",
+    description: "Title",
+    goal: "Clear 3 times",
+    rule: { kind: "clears", n: 3, legacyPeril: 3 },
+  },
+  {
+    id: "brazier-frame",
+    boss: "emberwing",
+    slot: "frame",
+    name: "Brazier frame",
+    description: "A dark bronze frame with burning corners",
+    goal: "Clear 3 times",
+    rule: { kind: "clears", n: 3, legacyPeril: 3 },
+  },
+  {
+    id: "ember-aura",
+    boss: "emberwing",
+    slot: "aura",
+    name: "Ember aura",
+    description: "Warm embers drift around a glowing ring",
+    goal: "Clear with no downs",
+    rule: { kind: "flawless", peril: 3 },
+  },
+  {
+    id: "feather-fall",
+    boss: "emberwing",
+    slot: "victory",
+    name: "Feather Fall",
+    description: "Fiery feathers fan out and drift gently around you",
+    goal: "Feat: ground Emberwing within 20 seconds of takeoff three times",
+    rule: { kind: "feat" },
+  },
+  {
+    id: "flashfire",
+    boss: "emberwing",
+    slot: "title",
+    name: "Flashfire",
+    description: "Title",
+    goal: "Clear solo in under 4:00",
+    rule: { kind: "speed", peril: 2, party: 1, seconds: 240 },
+  },
+  {
+    id: "lone-phoenix",
+    boss: "emberwing",
+    slot: "title",
+    name: "Lone Phoenix",
+    description: "Title",
+    goal: "Clear solo without going down",
+    rule: { kind: "solo", peril: 3 },
+  },
+  {
+    id: "torchbearer",
+    boss: "emberwing",
+    slot: "title",
+    name: "Torchbearer",
+    description: "Title",
+    goal: "Light 60 braziers (wins and losses)",
+    rule: { kind: "stat", stat: "pillars", n: 60 },
+  },
 
-  {"id": "prismbreaker", "boss": "prismatail", "slot": "title", "name": "Prismbreaker", "description": "Title", "goal": "First clear", "rule": {"kind": "clears", "n": 1}},
-  {"id": "dawn-colors", "boss": "prismatail", "slot": "skin", "name": "Dawn colors", "description": "Warm gold with rose and peach highlights", "goal": "5 clears", "rule": {"kind": "clears", "n": 5}},
-  {"id": "prismatic-skin", "boss": "prismatail", "slot": "skin", "name": "Prismatic skin", "description": "Crystal-white skin edged in rainbow light", "goal": "10 clears", "rule": {"kind": "clears", "n": 10}},
-  {"id": "sunburst", "boss": "prismatail", "slot": "entrance", "name": "Sunburst entrance", "description": "Arrive in a burst of golden rays", "goal": "Clear Peril 2", "rule": {"kind": "peril", "n": 2}},
-  {"id": "sunshatter", "boss": "prismatail", "slot": "title", "name": "Sunshatter", "description": "Title", "goal": "Clear Peril 3", "rule": {"kind": "peril", "n": 3}},
-  {"id": "stained-glass", "boss": "prismatail", "slot": "frame", "name": "Stained-glass frame", "description": "A rainbow crystal portrait frame", "goal": "Clear Peril 3", "rule": {"kind": "peril", "n": 3}},
-  {"id": "halo-aura", "boss": "prismatail", "slot": "aura", "name": "Halo aura", "description": "A golden halo with orbiting prism crystals", "goal": "Clear Peril 3 with no downs", "rule": {"kind": "flawless", "peril": 3}},
-  {"id": "rainbow-fan", "boss": "prismatail", "slot": "victory", "name": "Rainbow Fan", "description": "A fan of rainbow crystal feathers blooms behind you", "goal": "Feat: shatter the shield within 8 seconds three times", "rule": {"kind": "feat"}},
-  {"id": "sunbeam-sprint", "boss": "prismatail", "slot": "title", "name": "Sunbeam Sprint", "description": "Title", "goal": "Clear Peril 2 solo in under 4:00", "rule": {"kind": "speed", "peril": 2, "party": 1, "seconds": 240}},
-  {"id": "lone-sun", "boss": "prismatail", "slot": "title", "name": "Lone Sun", "description": "Title", "goal": "Clear Peril 3 solo (no self-revive)", "rule": {"kind": "solo", "peril": 3}},
-  {"id": "lightkeeper", "boss": "prismatail", "slot": "title", "name": "Lightkeeper", "description": "Title", "goal": "Relay light 80 times (wins and losses)", "rule": {"kind": "stat", "stat": "pillars", "n": 80}},
+  {
+    id: "prismbreaker",
+    boss: "prismatail",
+    slot: "title",
+    name: "Prismbreaker",
+    description: "Title",
+    goal: "First clear",
+    rule: { kind: "clears", n: 1 },
+  },
+  {
+    id: "dawn-colors",
+    boss: "prismatail",
+    slot: "skin",
+    name: "Dawn colors",
+    description: "Warm gold with rose and peach highlights",
+    goal: "5 clears",
+    rule: { kind: "clears", n: 5 },
+  },
+  {
+    id: "prismatic-skin",
+    boss: "prismatail",
+    slot: "skin",
+    name: "Prismatic skin",
+    description: "Crystal-white skin edged in rainbow light",
+    goal: "10 clears",
+    rule: { kind: "clears", n: 10 },
+  },
+  {
+    id: "sunburst",
+    boss: "prismatail",
+    slot: "entrance",
+    name: "Sunburst entrance",
+    description: "Arrive in a burst of golden rays",
+    goal: "Clear once",
+    rule: { kind: "clears", n: 1, legacyPeril: 2 },
+  },
+  {
+    id: "sunshatter",
+    boss: "prismatail",
+    slot: "title",
+    name: "Sunshatter",
+    description: "Title",
+    goal: "Clear 3 times",
+    rule: { kind: "clears", n: 3, legacyPeril: 3 },
+  },
+  {
+    id: "stained-glass",
+    boss: "prismatail",
+    slot: "frame",
+    name: "Stained-glass frame",
+    description: "A rainbow crystal portrait frame",
+    goal: "Clear 3 times",
+    rule: { kind: "clears", n: 3, legacyPeril: 3 },
+  },
+  {
+    id: "halo-aura",
+    boss: "prismatail",
+    slot: "aura",
+    name: "Halo aura",
+    description: "A golden halo with orbiting prism crystals",
+    goal: "Clear with no downs",
+    rule: { kind: "flawless", peril: 3 },
+  },
+  {
+    id: "rainbow-fan",
+    boss: "prismatail",
+    slot: "victory",
+    name: "Rainbow Fan",
+    description: "A fan of rainbow crystal feathers blooms behind you",
+    goal: "Feat: shatter the shield within 8 seconds three times",
+    rule: { kind: "feat" },
+  },
+  {
+    id: "sunbeam-sprint",
+    boss: "prismatail",
+    slot: "title",
+    name: "Sunbeam Sprint",
+    description: "Title",
+    goal: "Clear solo in under 4:00",
+    rule: { kind: "speed", peril: 2, party: 1, seconds: 240 },
+  },
+  {
+    id: "lone-sun",
+    boss: "prismatail",
+    slot: "title",
+    name: "Lone Sun",
+    description: "Title",
+    goal: "Clear solo without going down",
+    rule: { kind: "solo", peril: 3 },
+  },
+  {
+    id: "lightkeeper",
+    boss: "prismatail",
+    slot: "title",
+    name: "Lightkeeper",
+    description: "Title",
+    goal: "Relay light 80 times (wins and losses)",
+    rule: { kind: "stat", stat: "pillars", n: 80 },
+  },
 
-  { id: "cragbreaker", boss: "grumblecrag", slot: "title", name: "Cragbreaker", description: "Title", goal: "First clear", rule: { kind: "clears", n: 1 } },
-  { id: "cragbound", boss: "grumblecrag", slot: "skin", name: "Cragbound colors", description: "Earthy gold colors", goal: "5 clears", rule: { kind: "clears", n: 5 } },
-  { id: "cragstone", boss: "grumblecrag", slot: "skin", name: "Cragstone skin", description: "Stone markings with glowing amber cracks", goal: "10 clears", rule: { kind: "clears", n: 10 } },
-  { id: "mountainborn", boss: "grumblecrag", slot: "entrance", name: "Mountainborn entrance", description: "Arrive in a burst of pebbles each round", goal: "Clear Peril 2", rule: { kind: "peril", n: 2 } },
-  { id: "mountain-conqueror", boss: "grumblecrag", slot: "title", name: "Mountain Conqueror", description: "Title", goal: "Clear Peril 3", rule: { kind: "peril", n: 3 } },
-  { id: "conqueror", boss: "grumblecrag", slot: "frame", name: "Conqueror frame", description: "A carved stone portrait frame with a glowing core", goal: "Clear Peril 3", rule: { kind: "peril", n: 3 } },
-  { id: "mountain-aura", boss: "grumblecrag", slot: "aura", name: "Mountain aura", description: "A golden ring beneath your fighter", goal: "Clear Peril 3 with no downs", rule: { kind: "flawless", peril: 3 } },
-  { id: "rockslide-flex", boss: "grumblecrag", slot: "victory", name: "Rockslide Flex", description: "Leap onto a rising pile of rocks and flex as pebbles bounce away", goal: "Feat: every charge in a run hits a pillar (3+ charges)", rule: { kind: "feat" } },
-  { id: "avalanche", boss: "grumblecrag", slot: "title", name: "Avalanche", description: "Title", goal: "Clear Peril 2 solo in under 3:30", rule: { kind: "speed", peril: 2, party: 1, seconds: 210 } },
-  { id: "lone-mountain", boss: "grumblecrag", slot: "title", name: "Lone Mountain", description: "Title", goal: "Clear Peril 3 solo (no self-revive)", rule: { kind: "solo", peril: 3 } },
-  { id: "gilded-cragbreaker", boss: "grumblecrag", slot: "title", name: "Gilded Cragbreaker", description: "Title", goal: "Defeat a rare Gilded Grumblecrag", rule: { kind: "gilded" } },
-  { id: "pillar-breaker", boss: "grumblecrag", slot: "title", name: "Pillar Breaker", description: "Title", goal: "Bait 25 charges into pillars (wins and losses)", rule: { kind: "stat", stat: "pillars", n: 25 } },
-  { id: "mountain-guardian", boss: "grumblecrag", slot: "title", name: "Mountain Guardian", description: "Title", goal: "Help revive teammates 20 times (wins and losses)", rule: { kind: "stat", stat: "revives", n: 20 } },
-  { id: "tidebreaker", boss: "tidewyrm", slot: "title", name: "Tidebreaker", description: "Title", goal: "First clear", rule: { kind: "clears", n: 1 } },
-  { id: "seafoam", boss: "tidewyrm", slot: "skin", name: "Seafoam colors", description: "Sea-glass teal and foam white", goal: "5 clears", rule: { kind: "clears", n: 5 } },
-  { id: "pearlscale", boss: "tidewyrm", slot: "skin", name: "Pearlscale skin", description: "Shimmering scales with pearl freckles", goal: "10 clears", rule: { kind: "clears", n: 10 } },
-  { id: "riptide", boss: "tidewyrm", slot: "entrance", name: "Riptide entrance", description: "Burst up out of a splash each round", goal: "Clear Peril 2", rule: { kind: "peril", n: 2 } },
-  { id: "leviathans-bane", boss: "tidewyrm", slot: "title", name: "Leviathan's Bane", description: "Title", goal: "Clear Peril 3", rule: { kind: "peril", n: 3 } },
-  { id: "reef", boss: "tidewyrm", slot: "frame", name: "Reef frame", description: "A coral portrait frame with a pearl", goal: "Clear Peril 3", rule: { kind: "peril", n: 3 } },
-  { id: "tidal-aura", boss: "tidewyrm", slot: "aura", name: "Tidal aura", description: "A rolling ring of water beneath your fighter", goal: "Clear Peril 3 with no downs", rule: { kind: "flawless", peril: 3 } },
-  { id: "splashdown", boss: "tidewyrm", slot: "victory", name: "Splashdown", description: "A wave rises and crashes in a burst of spray behind you", goal: "Feat: strand Tidewyrm 4 times in one run", rule: { kind: "feat" } },
-  { id: "flash-flood", boss: "tidewyrm", slot: "title", name: "Flash Flood", description: "Title", goal: "Clear Peril 2 solo in under 4:00", rule: { kind: "speed", peril: 2, party: 1, seconds: 240 } },
-  { id: "lone-current", boss: "tidewyrm", slot: "title", name: "Lone Current", description: "Title", goal: "Clear Peril 3 solo (no self-revive)", rule: { kind: "solo", peril: 3 } },
-  { id: "shipwright", boss: "tidewyrm", slot: "title", name: "Shipwright", description: "Title", goal: "Strand Tidewyrm 30 times (wins and losses)", rule: { kind: "stat", stat: "pillars", n: 30 } },
-  { id: "lightbringer", boss: "gloomshade", slot: "title", name: "Lightbringer", description: "Title", goal: "First clear", rule: { kind: "clears", n: 1 } },
-  { id: "dusk-colors", boss: "gloomshade", slot: "skin", name: "Dusk colors", description: "Twilight violet and lantern gold", goal: "5 clears", rule: { kind: "clears", n: 5 } },
-  { id: "moonlit-skin", boss: "gloomshade", slot: "skin", name: "Moonlit skin", description: "A silver moon-glow with drifting stars", goal: "10 clears", rule: { kind: "clears", n: 10 } },
-  { id: "shadowstep", boss: "gloomshade", slot: "entrance", name: "Shadowstep entrance", description: "Rise out of a pool of shadow each round", goal: "Clear Peril 2", rule: { kind: "peril", n: 2 } },
-  { id: "nights-end", boss: "gloomshade", slot: "title", name: "Night's End", description: "Title", goal: "Clear Peril 3", rule: { kind: "peril", n: 3 } },
-  { id: "crescent", boss: "gloomshade", slot: "frame", name: "Crescent frame", description: "A night-blue portrait frame with a golden moon", goal: "Clear Peril 3", rule: { kind: "peril", n: 3 } },
-  { id: "nightmote", boss: "gloomshade", slot: "aura", name: "Nightmote aura", description: "Fireflies of lantern light circle beneath you", goal: "Clear Peril 3 with no downs", rule: { kind: "flawless", peril: 3 } },
-  { id: "crescent-bow", boss: "gloomshade", slot: "victory", name: "Crescent Bow", description: "A crescent moon rises behind you as you take a bow", goal: "Feat: nobody hits a copy all run", rule: { kind: "feat" } },
-  { id: "moonrunner", boss: "gloomshade", slot: "title", name: "Moonrunner", description: "Title", goal: "Clear Peril 2 solo in under 4:00", rule: { kind: "speed", peril: 2, party: 1, seconds: 240 } },
-  { id: "lone-lantern", boss: "gloomshade", slot: "title", name: "Lone Lantern", description: "Title", goal: "Clear Peril 3 solo (no self-revive)", rule: { kind: "solo", peril: 3 } },
-  { id: "lamplighter-title", boss: "gloomshade", slot: "title", name: "Lamplighter", description: "Title", goal: "Relight 50 lanterns (wins and losses)", rule: { kind: "stat", stat: "pillars", n: 50 } },
-  { id: "boss-hunter", boss: null, slot: "title", name: "Boss Hunter", description: "Title", goal: "100 raid clears across every boss", rule: { kind: "total-clears", n: 100 } },
-  {"id": "dreamwaker", "boss": "somnara", "slot": "title", "name": "Dreamwaker", "description": "Title", "goal": "First clear", "rule": {"kind": "clears", "n": 1}},
-  {"id": "twilight-colors", "boss": "somnara", "slot": "skin", "name": "Twilight colors", "description": "Lavender dusk with soft rose highlights", "goal": "5 clears", "rule": {"kind": "clears", "n": 5}},
-  {"id": "starlit-skin", "boss": "somnara", "slot": "skin", "name": "Starlit skin", "description": "Midnight lavender with twinkling star flecks", "goal": "10 clears", "rule": {"kind": "clears", "n": 10}},
-  {"id": "dreamdrift", "boss": "somnara", "slot": "entrance", "name": "Dreamdrift entrance", "description": "Arrive on a cloud of shimmering dream bubbles", "goal": "Clear Peril 2", "rule": {"kind": "peril", "n": 2}},
-  {"id": "lucid-legend", "boss": "somnara", "slot": "title", "name": "Lucid Legend", "description": "Title", "goal": "Clear Peril 3", "rule": {"kind": "peril", "n": 3}},
-  {"id": "moonglass", "boss": "somnara", "slot": "frame", "name": "Moonglass frame", "description": "A glassy lavender frame with a silver crescent", "goal": "Clear Peril 3", "rule": {"kind": "peril", "n": 3}},
-  {"id": "lullaby-aura", "boss": "somnara", "slot": "aura", "name": "Lullaby aura", "description": "Floating musical notes circle beneath your fighter", "goal": "Clear Peril 3 with no downs", "rule": {"kind": "flawless", "peril": 3}},
-  {"id": "sweet-dreams", "boss": "somnara", "slot": "victory", "name": "Sweet Dreams", "description": "A little dream whale swims through a starry cloud behind you", "goal": "Feat: solve a dream and finish with no wrong runes or timeouts", "rule": {"kind": "feat"}},
-  {"id": "daydream-dash", "boss": "somnara", "slot": "title", "name": "Daydream Dash", "description": "Title", "goal": "Clear Peril 2 solo in under 4:00", "rule": {"kind": "speed", "peril": 2, "party": 1, "seconds": 240}},
-  {"id": "lone-dreamer", "boss": "somnara", "slot": "title", "name": "Lone Dreamer", "description": "Title", "goal": "Clear Peril 3 solo (no self-revive)", "rule": {"kind": "solo", "peril": 3}},
-  {"id": "dream-weaver", "boss": "somnara", "slot": "title", "name": "Dream Weaver", "description": "Title", "goal": "Step 60 correct runes (wins and losses)", "rule": {"kind": "stat", "stat": "pillars", "n": 60}},
+  {
+    id: "cragbreaker",
+    boss: "grumblecrag",
+    slot: "title",
+    name: "Cragbreaker",
+    description: "Title",
+    goal: "First clear",
+    rule: { kind: "clears", n: 1 },
+  },
+  {
+    id: "cragbound",
+    boss: "grumblecrag",
+    slot: "skin",
+    name: "Cragbound colors",
+    description: "Earthy gold colors",
+    goal: "5 clears",
+    rule: { kind: "clears", n: 5 },
+  },
+  {
+    id: "cragstone",
+    boss: "grumblecrag",
+    slot: "skin",
+    name: "Cragstone skin",
+    description: "Stone markings with glowing amber cracks",
+    goal: "10 clears",
+    rule: { kind: "clears", n: 10 },
+  },
+  {
+    id: "mountainborn",
+    boss: "grumblecrag",
+    slot: "entrance",
+    name: "Mountainborn entrance",
+    description: "Arrive in a burst of pebbles each round",
+    goal: "Clear once",
+    rule: { kind: "clears", n: 1, legacyPeril: 2 },
+  },
+  {
+    id: "mountain-conqueror",
+    boss: "grumblecrag",
+    slot: "title",
+    name: "Mountain Conqueror",
+    description: "Title",
+    goal: "Clear 3 times",
+    rule: { kind: "clears", n: 3, legacyPeril: 3 },
+  },
+  {
+    id: "conqueror",
+    boss: "grumblecrag",
+    slot: "frame",
+    name: "Conqueror frame",
+    description: "A carved stone portrait frame with a glowing core",
+    goal: "Clear 3 times",
+    rule: { kind: "clears", n: 3, legacyPeril: 3 },
+  },
+  {
+    id: "mountain-aura",
+    boss: "grumblecrag",
+    slot: "aura",
+    name: "Mountain aura",
+    description: "A golden ring beneath your fighter",
+    goal: "Clear with no downs",
+    rule: { kind: "flawless", peril: 3 },
+  },
+  {
+    id: "rockslide-flex",
+    boss: "grumblecrag",
+    slot: "victory",
+    name: "Rockslide Flex",
+    description:
+      "Leap onto a rising pile of rocks and flex as pebbles bounce away",
+    goal: "Feat: every charge in a run hits a pillar (3+ charges)",
+    rule: { kind: "feat" },
+  },
+  {
+    id: "avalanche",
+    boss: "grumblecrag",
+    slot: "title",
+    name: "Avalanche",
+    description: "Title",
+    goal: "Clear solo in under 3:30",
+    rule: { kind: "speed", peril: 2, party: 1, seconds: 210 },
+  },
+  {
+    id: "lone-mountain",
+    boss: "grumblecrag",
+    slot: "title",
+    name: "Lone Mountain",
+    description: "Title",
+    goal: "Clear solo without going down",
+    rule: { kind: "solo", peril: 3 },
+  },
+  {
+    id: "gilded-cragbreaker",
+    boss: "grumblecrag",
+    slot: "title",
+    name: "Gilded Cragbreaker",
+    description: "Title",
+    goal: "Defeat a rare Gilded Grumblecrag",
+    rule: { kind: "gilded" },
+  },
+  {
+    id: "pillar-breaker",
+    boss: "grumblecrag",
+    slot: "title",
+    name: "Pillar Breaker",
+    description: "Title",
+    goal: "Bait 25 charges into pillars (wins and losses)",
+    rule: { kind: "stat", stat: "pillars", n: 25 },
+  },
+  {
+    id: "mountain-guardian",
+    boss: "grumblecrag",
+    slot: "title",
+    name: "Mountain Guardian",
+    description: "Title",
+    goal: "Help revive teammates 20 times (wins and losses)",
+    rule: { kind: "stat", stat: "revives", n: 20 },
+  },
+  {
+    id: "tidebreaker",
+    boss: "tidewyrm",
+    slot: "title",
+    name: "Tidebreaker",
+    description: "Title",
+    goal: "First clear",
+    rule: { kind: "clears", n: 1 },
+  },
+  {
+    id: "seafoam",
+    boss: "tidewyrm",
+    slot: "skin",
+    name: "Seafoam colors",
+    description: "Sea-glass teal and foam white",
+    goal: "5 clears",
+    rule: { kind: "clears", n: 5 },
+  },
+  {
+    id: "pearlscale",
+    boss: "tidewyrm",
+    slot: "skin",
+    name: "Pearlscale skin",
+    description: "Shimmering scales with pearl freckles",
+    goal: "10 clears",
+    rule: { kind: "clears", n: 10 },
+  },
+  {
+    id: "riptide",
+    boss: "tidewyrm",
+    slot: "entrance",
+    name: "Riptide entrance",
+    description: "Burst up out of a splash each round",
+    goal: "Clear once",
+    rule: { kind: "clears", n: 1, legacyPeril: 2 },
+  },
+  {
+    id: "leviathans-bane",
+    boss: "tidewyrm",
+    slot: "title",
+    name: "Leviathan's Bane",
+    description: "Title",
+    goal: "Clear 3 times",
+    rule: { kind: "clears", n: 3, legacyPeril: 3 },
+  },
+  {
+    id: "reef",
+    boss: "tidewyrm",
+    slot: "frame",
+    name: "Reef frame",
+    description: "A coral portrait frame with a pearl",
+    goal: "Clear 3 times",
+    rule: { kind: "clears", n: 3, legacyPeril: 3 },
+  },
+  {
+    id: "tidal-aura",
+    boss: "tidewyrm",
+    slot: "aura",
+    name: "Tidal aura",
+    description: "A rolling ring of water beneath your fighter",
+    goal: "Clear with no downs",
+    rule: { kind: "flawless", peril: 3 },
+  },
+  {
+    id: "splashdown",
+    boss: "tidewyrm",
+    slot: "victory",
+    name: "Splashdown",
+    description: "A wave rises and crashes in a burst of spray behind you",
+    goal: "Feat: strand Tidewyrm 4 times in one run",
+    rule: { kind: "feat" },
+  },
+  {
+    id: "flash-flood",
+    boss: "tidewyrm",
+    slot: "title",
+    name: "Flash Flood",
+    description: "Title",
+    goal: "Clear solo in under 4:00",
+    rule: { kind: "speed", peril: 2, party: 1, seconds: 240 },
+  },
+  {
+    id: "lone-current",
+    boss: "tidewyrm",
+    slot: "title",
+    name: "Lone Current",
+    description: "Title",
+    goal: "Clear solo without going down",
+    rule: { kind: "solo", peril: 3 },
+  },
+  {
+    id: "shipwright",
+    boss: "tidewyrm",
+    slot: "title",
+    name: "Shipwright",
+    description: "Title",
+    goal: "Strand Tidewyrm 30 times (wins and losses)",
+    rule: { kind: "stat", stat: "pillars", n: 30 },
+  },
+  {
+    id: "lightbringer",
+    boss: "gloomshade",
+    slot: "title",
+    name: "Lightbringer",
+    description: "Title",
+    goal: "First clear",
+    rule: { kind: "clears", n: 1 },
+  },
+  {
+    id: "dusk-colors",
+    boss: "gloomshade",
+    slot: "skin",
+    name: "Dusk colors",
+    description: "Twilight violet and lantern gold",
+    goal: "5 clears",
+    rule: { kind: "clears", n: 5 },
+  },
+  {
+    id: "moonlit-skin",
+    boss: "gloomshade",
+    slot: "skin",
+    name: "Moonlit skin",
+    description: "A silver moon-glow with drifting stars",
+    goal: "10 clears",
+    rule: { kind: "clears", n: 10 },
+  },
+  {
+    id: "shadowstep",
+    boss: "gloomshade",
+    slot: "entrance",
+    name: "Shadowstep entrance",
+    description: "Rise out of a pool of shadow each round",
+    goal: "Clear once",
+    rule: { kind: "clears", n: 1, legacyPeril: 2 },
+  },
+  {
+    id: "nights-end",
+    boss: "gloomshade",
+    slot: "title",
+    name: "Night's End",
+    description: "Title",
+    goal: "Clear 3 times",
+    rule: { kind: "clears", n: 3, legacyPeril: 3 },
+  },
+  {
+    id: "crescent",
+    boss: "gloomshade",
+    slot: "frame",
+    name: "Crescent frame",
+    description: "A night-blue portrait frame with a golden moon",
+    goal: "Clear 3 times",
+    rule: { kind: "clears", n: 3, legacyPeril: 3 },
+  },
+  {
+    id: "nightmote",
+    boss: "gloomshade",
+    slot: "aura",
+    name: "Nightmote aura",
+    description: "Fireflies of lantern light circle beneath you",
+    goal: "Clear with no downs",
+    rule: { kind: "flawless", peril: 3 },
+  },
+  {
+    id: "crescent-bow",
+    boss: "gloomshade",
+    slot: "victory",
+    name: "Crescent Bow",
+    description: "A crescent moon rises behind you as you take a bow",
+    goal: "Feat: nobody hits a copy all run",
+    rule: { kind: "feat" },
+  },
+  {
+    id: "moonrunner",
+    boss: "gloomshade",
+    slot: "title",
+    name: "Moonrunner",
+    description: "Title",
+    goal: "Clear solo in under 4:00",
+    rule: { kind: "speed", peril: 2, party: 1, seconds: 240 },
+  },
+  {
+    id: "lone-lantern",
+    boss: "gloomshade",
+    slot: "title",
+    name: "Lone Lantern",
+    description: "Title",
+    goal: "Clear solo without going down",
+    rule: { kind: "solo", peril: 3 },
+  },
+  {
+    id: "lamplighter-title",
+    boss: "gloomshade",
+    slot: "title",
+    name: "Lamplighter",
+    description: "Title",
+    goal: "Relight 50 lanterns (wins and losses)",
+    rule: { kind: "stat", stat: "pillars", n: 50 },
+  },
+  {
+    id: "boss-hunter",
+    boss: null,
+    slot: "title",
+    name: "Boss Hunter",
+    description: "Title",
+    goal: "100 raid clears across every boss",
+    rule: { kind: "total-clears", n: 100 },
+  },
+  {
+    id: "dreamwaker",
+    boss: "somnara",
+    slot: "title",
+    name: "Dreamwaker",
+    description: "Title",
+    goal: "First clear",
+    rule: { kind: "clears", n: 1 },
+  },
+  {
+    id: "twilight-colors",
+    boss: "somnara",
+    slot: "skin",
+    name: "Twilight colors",
+    description: "Lavender dusk with soft rose highlights",
+    goal: "5 clears",
+    rule: { kind: "clears", n: 5 },
+  },
+  {
+    id: "starlit-skin",
+    boss: "somnara",
+    slot: "skin",
+    name: "Starlit skin",
+    description: "Midnight lavender with twinkling star flecks",
+    goal: "10 clears",
+    rule: { kind: "clears", n: 10 },
+  },
+  {
+    id: "dreamdrift",
+    boss: "somnara",
+    slot: "entrance",
+    name: "Dreamdrift entrance",
+    description: "Arrive on a cloud of shimmering dream bubbles",
+    goal: "Clear once",
+    rule: { kind: "clears", n: 1, legacyPeril: 2 },
+  },
+  {
+    id: "lucid-legend",
+    boss: "somnara",
+    slot: "title",
+    name: "Lucid Legend",
+    description: "Title",
+    goal: "Clear 3 times",
+    rule: { kind: "clears", n: 3, legacyPeril: 3 },
+  },
+  {
+    id: "moonglass",
+    boss: "somnara",
+    slot: "frame",
+    name: "Moonglass frame",
+    description: "A glassy lavender frame with a silver crescent",
+    goal: "Clear 3 times",
+    rule: { kind: "clears", n: 3, legacyPeril: 3 },
+  },
+  {
+    id: "lullaby-aura",
+    boss: "somnara",
+    slot: "aura",
+    name: "Lullaby aura",
+    description: "Floating musical notes circle beneath your fighter",
+    goal: "Clear with no downs",
+    rule: { kind: "flawless", peril: 3 },
+  },
+  {
+    id: "sweet-dreams",
+    boss: "somnara",
+    slot: "victory",
+    name: "Sweet Dreams",
+    description: "A little dream whale swims through a starry cloud behind you",
+    goal: "Feat: solve a dream and finish with no wrong runes or timeouts",
+    rule: { kind: "feat" },
+  },
+  {
+    id: "daydream-dash",
+    boss: "somnara",
+    slot: "title",
+    name: "Daydream Dash",
+    description: "Title",
+    goal: "Clear solo in under 4:00",
+    rule: { kind: "speed", peril: 2, party: 1, seconds: 240 },
+  },
+  {
+    id: "lone-dreamer",
+    boss: "somnara",
+    slot: "title",
+    name: "Lone Dreamer",
+    description: "Title",
+    goal: "Clear solo without going down",
+    rule: { kind: "solo", peril: 3 },
+  },
+  {
+    id: "dream-weaver",
+    boss: "somnara",
+    slot: "title",
+    name: "Dream Weaver",
+    description: "Title",
+    goal: "Step 60 correct runes (wins and losses)",
+    rule: { kind: "stat", stat: "pillars", n: 60 },
+  },
 ];
 export const RAID_COSMETICS = Object.fromEntries(
   RAID_REWARDS.filter((r) => r.slot !== "title").map((r) => [
@@ -750,18 +1755,54 @@ export const RAID_COSMETICS = Object.fromEntries(
   }
 >;
 export const RAID_TRAITS = {
-  bickering: { name: "Bickering", text: "The twins drift farther apart, but Link Beam deals less damage." },
-  "in-sync": { name: "In Sync", text: "Both twins cast together, but the finishing window lasts 3 seconds longer." },
-  overloaded: { name: "Overloaded", text: "More Static Fields, but each twin staggers 20% faster." },
-  updraft: { name: "Updraft", text: "A longer opening flight, but grounding exposes the heart for 2 extra seconds." },
-  smouldering: { name: "Smouldering", text: "Fire patches last longer, but less Ember Rain falls." },
-  molting: { name: "Molting", text: "Dives come more often, but fallen feathers grant 10 ultimate charge." },
-  dazzling: { name: "Dazzling", text: "More Glare, but relay range grows by 60px." },
-  overcast: { name: "Overcast", text: "Light needs an extra relay link, but fewer lances fire." },
-  kaleidoscope: { name: "Kaleidoscope", text: "Eight fan cones, but the heart stays exposed a second longer." },
-  "deep-slumber": { name: "Deep Slumber", text: "One more rune in each sequence, but exposure lasts 2 seconds longer." },
-  "restless-dream": { name: "Restless Dream", text: "More Dream Bubbles, but one fewer rune per sequence." },
-  "starry-night": { name: "Starry Night", text: "More Falling Stars, but a larger Quiet Zone." },
+  bickering: {
+    name: "Bickering",
+    text: "The twins drift farther apart, but Link Beam deals less damage.",
+  },
+  "in-sync": {
+    name: "In Sync",
+    text: "Both twins cast together, but the finishing window lasts 3 seconds longer.",
+  },
+  overloaded: {
+    name: "Overloaded",
+    text: "More Static Fields, but each twin staggers 20% faster.",
+  },
+  updraft: {
+    name: "Updraft",
+    text: "A longer opening flight, but grounding exposes the heart for 2 extra seconds.",
+  },
+  smouldering: {
+    name: "Smouldering",
+    text: "Fire patches last longer, but less Ember Rain falls.",
+  },
+  molting: {
+    name: "Molting",
+    text: "Dives come more often, but fallen feathers grant 10 ultimate charge.",
+  },
+  dazzling: {
+    name: "Dazzling",
+    text: "More Glare, but relay range grows by 60px.",
+  },
+  overcast: {
+    name: "Overcast",
+    text: "Light needs an extra relay link, but fewer lances fire.",
+  },
+  kaleidoscope: {
+    name: "Kaleidoscope",
+    text: "Eight fan cones, but the heart stays exposed a second longer.",
+  },
+  "deep-slumber": {
+    name: "Deep Slumber",
+    text: "One more rune in each sequence, but exposure lasts 2 seconds longer.",
+  },
+  "restless-dream": {
+    name: "Restless Dream",
+    text: "More Dream Bubbles, but one fewer rune per sequence.",
+  },
+  "starry-night": {
+    name: "Starry Night",
+    text: "More Falling Stars, but a larger Quiet Zone.",
+  },
   restless: {
     name: "Restless",
     text: "Faster attacks, but the exposed core takes extra damage.",
@@ -771,12 +1812,27 @@ export const RAID_TRAITS = {
     text: "More falling debris; pillars break armor for longer.",
   },
   ancient: { name: "Ancient", text: "Slower charges and wider shockwaves." },
-  murky: { name: "Murky", text: "Dive ripples are harder to see, but strands last a second longer." },
-  "rip-current": { name: "Rip Current", text: "A stronger Undertow, but slower waves." },
-  "spring-tide": { name: "Spring Tide", text: "High Tide lasts longer, but the islands are bigger." },
+  murky: {
+    name: "Murky",
+    text: "Dive ripples are harder to see, but strands last a second longer.",
+  },
+  "rip-current": {
+    name: "Rip Current",
+    text: "A stronger Undertow, but slower waves.",
+  },
+  "spring-tide": {
+    name: "Spring Tide",
+    text: "High Tide lasts longer, but the islands are bigger.",
+  },
   moonlit: { name: "Moonlit", text: "A brighter yard, but one extra copy." },
-  "restless-spirits": { name: "Restless Spirits", text: "Grasping Hands come more often, but curses spread slower." },
-  hollow: { name: "Hollow", text: "Fewer copies, but the real one's shadow is fainter." },
+  "restless-spirits": {
+    name: "Restless Spirits",
+    text: "Grasping Hands come more often, but curses spread slower.",
+  },
+  hollow: {
+    name: "Hollow",
+    text: "Fewer copies, but the real one's shadow is fainter.",
+  },
 } as const;
 export type RaidTrait = keyof typeof RAID_TRAITS;
 /** Each boss's three traits; a run rolls one from its seed. */
@@ -794,10 +1850,26 @@ export const raidTraitFor = (boss: RaidBossId, seed: number) => {
   return list[seed % list.length];
 };
 export const RAID_RITES = {
-  grounded: { name: "Grounded", text: "Chain Lightning cannot jump from you. A Polarity mismatch deals normal damage to you.", icon: "Storm Grid" },
-  fireproof: { name: "Fireproof", text: "Take 50% less damage from burning ground and light braziers twice as fast.", icon: "Blaze Whirl" },
-  polished: { name: "Polished", text: "Carry sunlight without burning. Your relay range grows by 60px.", icon: "Mirror Guard" },
-  lucid: { name: "Lucid", text: "Dream Bubbles cannot make you Drowsy. See the first rune of every sequence, even when someone else is the Dreamer.", icon: "Rest" },
+  grounded: {
+    name: "Grounded",
+    text: "Chain Lightning cannot jump from you. A Polarity mismatch deals normal damage to you.",
+    icon: "Storm Grid",
+  },
+  fireproof: {
+    name: "Fireproof",
+    text: "Take 50% less damage from burning ground and light braziers twice as fast.",
+    icon: "Blaze Whirl",
+  },
+  polished: {
+    name: "Polished",
+    text: "Carry sunlight without burning. Your relay range grows by 60px.",
+    icon: "Mirror Guard",
+  },
+  lucid: {
+    name: "Lucid",
+    text: "Dream Bubbles cannot make you Drowsy. See the first rune of every sequence, even when someone else is the Dreamer.",
+    icon: "Rest",
+  },
   shelter: {
     name: "Sheltering Step",
     text: "Dashing leaves a ward. Nearby allies take 25% less damage for 3 seconds.",
@@ -870,11 +1942,14 @@ export const RITE_TIERS = {
   footing: [0.15, 0.2, 0.25],
   /** Health healed per second in lantern light (share). */
   lamplighter: [0.01, 0.015, 0.02],
-} as const satisfies Partial<Record<RaidRite, readonly [number, number, number]>>;
+} as const satisfies Partial<
+  Record<RaidRite, readonly [number, number, number]>
+>;
 /** Helping Paws: extra health on revive, by chapter. */
 export const RESCUE_HEALTH = [0.15, 0.2, 0.25] as const;
 export type TieredRite = keyof typeof RITE_TIERS;
-const chapterIndex = (chapter: number) => Math.max(0, Math.min(2, Math.round(chapter) - 1));
+const chapterIndex = (chapter: number) =>
+  Math.max(0, Math.min(2, Math.round(chapter) - 1));
 /** A rite's number in the given chapter (1-3). */
 export function riteValue(rite: TieredRite, chapter: number): number {
   return RITE_TIERS[rite][chapterIndex(chapter)];
@@ -885,7 +1960,11 @@ export function riteGrowth(rite: RaidRite): string | undefined {
   const values = RITE_TIERS[rite as TieredRite];
   const percent = rite !== "sharing" && rite !== "core" && rite !== "polished";
   const show = (v: number) =>
-    percent ? `${Math.round(v * 1000) / 10}%` : rite === "polished" ? `${v}px` : String(v);
+    percent
+      ? `${Math.round(v * 1000) / 10}%`
+      : rite === "polished"
+        ? `${v}px`
+        : String(v);
   return values.map(show).join(" → ");
 }
 /** Themed rites only offered against their own boss. */
@@ -1009,9 +2088,24 @@ export interface RaidState {
   /** High Tide: the floor is flooded until this time. */
   floodUntil?: number;
   waves?: RaidWave[];
-  bubbles?: { id: number; x: number; y: number; vx: number; vy: number; until: number }[];
+  bubbles?: {
+    id: number;
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    until: number;
+  }[];
   /** Raiders sealed in a Bubble Prison, drifting to the boss's mouth. */
-  prisons?: { playerId: string; x: number; y: number; hits: number; presses: number; until: number; startedAt: number }[];
+  prisons?: {
+    playerId: string;
+    x: number;
+    y: number;
+    hits: number;
+    presses: number;
+    until: number;
+    startedAt: number;
+  }[];
   /** The Undertow's whirlpool, while it pulls. */
   undertow?: { x: number; y: number; until: number; radius: number };
   /** Times Tidewyrm has been stranded this run (its feat). */
@@ -1029,30 +2123,95 @@ export interface RaidState {
   /** Hits on the real Gloomshade in a row (6 exposes it). */
   streak?: number;
   /** Somnara: public progress only; the sequence lives on the server. */
-  dream?: { id: number; dreamerId: string; step: number; length: number; until: number; startedAt: number; backwards: boolean };
-  dreamRings?: { id: number; x: number; y: number; radius: number; startedAt: number }[];
+  dream?: {
+    id: number;
+    dreamerId: string;
+    step: number;
+    length: number;
+    until: number;
+    startedAt: number;
+    backwards: boolean;
+  };
+  dreamRings?: {
+    id: number;
+    x: number;
+    y: number;
+    radius: number;
+    startedAt: number;
+  }[];
   dreamBubbles?: { id: number; x: number; y: number; until: number }[];
-  quietZone?: { x: number; y: number; radius: number; startedAt: number; until: number };
+  quietZone?: {
+    x: number;
+    y: number;
+    radius: number;
+    startedAt: number;
+    until: number;
+  };
   drowsy?: Record<string, { stacks: number; sleepUntil: number }>;
-  runeCalls?: { id: number; playerId: string; rune: DreamRune; step: number; until: number }[];
+  runeCalls?: {
+    id: number;
+    playerId: string;
+    rune: DreamRune;
+    step: number;
+    until: number;
+  }[];
   dreamTrails?: { x: number; y: number; until: number }[];
   dreamsSolved?: number;
   dreamMistakes?: number;
   twins?: import("./raid-storm-twins.js").StormTwin[];
   twinRevivals?: number;
-  stormBeam?: { points:import("./raid-storm-twins.js").StormPoint[]; post?:number; until:number };
-  stormFields?: { id:number; x:number; y:number; radius:number; until:number; casterId:string }[];
-  stormRushes?: { id:string; x:number; y:number; tx:number; ty:number; until:number }[];
-  stormChain?: { points:import("./raid-storm-twins.js").StormPoint[]; until:number };
-  polarities?: { playerId:string; sign:1|-1; until:number; cancelled:boolean }[];
-  polarityPad?: { x:number; y:number; sign:1|-1; until:number };
+  stormBeam?: {
+    points: import("./raid-storm-twins.js").StormPoint[];
+    post?: number;
+    until: number;
+  };
+  stormFields?: {
+    id: number;
+    x: number;
+    y: number;
+    radius: number;
+    until: number;
+    casterId: string;
+  }[];
+  stormRushes?: {
+    id: string;
+    x: number;
+    y: number;
+    tx: number;
+    ty: number;
+    until: number;
+  }[];
+  stormChain?: {
+    points: import("./raid-storm-twins.js").StormPoint[];
+    until: number;
+  };
+  polarities?: {
+    playerId: string;
+    sign: 1 | -1;
+    until: number;
+    cancelled: boolean;
+  }[];
+  polarityPad?: { x: number; y: number; sign: 1 | -1; until: number };
   airborne?: boolean;
   braziers?: import("./raid-emberwing.js").RaidBrazier[];
   emberPatches?: import("./raid-emberwing.js").EmberPatch[];
   emberTrails?: import("./raid-emberwing.js").EmberTrail[];
-  flameRings?: { id:number; x:number; y:number; radius:number; startedAt:number }[];
-  emberFeathers?: { id:number; x:number; y:number; until:number }[];
-  emberDive?: { x:number; y:number; tx:number; ty:number; startedAt:number; until:number };
+  flameRings?: {
+    id: number;
+    x: number;
+    y: number;
+    radius: number;
+    startedAt: number;
+  }[];
+  emberFeathers?: { id: number; x: number; y: number; until: number }[];
+  emberDive?: {
+    x: number;
+    y: number;
+    tx: number;
+    ty: number;
+    startedAt: number;
+    until: number;
+  };
   groundings?: number;
   quickGroundings?: number;
   chapterGroundings?: number;
@@ -1135,7 +2294,9 @@ export interface RaidProgress {
   /** Per-boss records and earned rewards. */
   bosses?: Partial<Record<RaidBossId, RaidBossProgress>>;
   earned?: string[];
-  stats?: Partial<Record<RaidBossId, { pillars: number; revives: number; feats: number }>>;
+  stats?: Partial<
+    Record<RaidBossId, { pillars: number; revives: number; feats: number }>
+  >;
   totalClears?: number;
 }
 export function raidWeek(date = new Date()) {

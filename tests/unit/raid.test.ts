@@ -184,17 +184,15 @@ it("uses ordinary Peril rules even if an internal legacy caller requests daily m
   expect(a.raid.phase).toBe(1);
 });
 
-it("solo raiders self-revive up to Peril 2, but not on Peril 3", () => {
-  for (const peril of [2, 3]) {
-    const a = raid();
-    a.configure(peril, false);
-    fight(a);
-    const [p] = a.heroes();
-    a.damage(p, 999, a.boss()!.id);
-    expect(a.raid.downed[p.id].self).toBe(peril < 3);
-    for (let i = 0; i < 3; i++) a.tick();
-    expect(a.raid.result).toBe(peril < 3 ? null : "defeat");
-  }
+it("solo raiders keep one self-revive (raids are always Peril 3)", () => {
+  const a = raid();
+  a.configure(3, false);
+  fight(a);
+  const [p] = a.heroes();
+  a.damage(p, 999, a.boss()!.id);
+  expect(a.raid.downed[p.id].self).toBe(true);
+  for (let i = 0; i < 3; i++) a.tick();
+  expect(a.raid.result).toBe(null);
 });
 
 it("the feat needs every charge (at least three) to hit a pillar", () => {
@@ -215,6 +213,7 @@ it("the feat needs every charge (at least three) to hit a pillar", () => {
 
 it("raid rites protect allies, share energy and heal without leaking into PvP kits", () => {
   const a = raid(2);
+  a.configure(1, false); // plain boss damage, to read the rite's share
   fight(a);
   const [p, q] = a.heroes();
   a.raid.rites[p.id] = ["shelter", "sharing", "mending"];

@@ -159,7 +159,8 @@ export async function drawShareCard(
 function fit(g: CanvasRenderingContext2D, text: string, width: number) {
   if (g.measureText(text).width <= width) return text;
   let t = text;
-  while (t.length > 1 && g.measureText(`${t}…`).width > width) t = t.slice(0, -1);
+  while (t.length > 1 && g.measureText(`${t}…`).width > width)
+    t = t.slice(0, -1);
   return `${t}…`;
 }
 
@@ -187,7 +188,8 @@ export async function shareResult(
   await drawShareCard(canvas, state, myId, site);
   // Some browsers refuse to export a canvas with SVG drawn on it: redraw plain.
   let blob = await toBlob(canvas);
-  if (!blob) blob = await toBlob(await drawShareCard(canvas, state, myId, site, false));
+  if (!blob)
+    blob = await toBlob(await drawShareCard(canvas, state, myId, site, false));
   if (!blob) return "failed";
   const file = new File([blob], "element-arena-result.png", {
     type: "image/png",
@@ -197,7 +199,11 @@ export async function shareResult(
   };
   if (nav.share && nav.canShare?.({ files: [file] })) {
     try {
-      await nav.share({ files: [file], text: `${text} ${site}`, title: "Element Arena" });
+      await nav.share({
+        files: [file],
+        text: `${text} ${site}`,
+        title: "Element Arena",
+      });
       return "shared";
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError")

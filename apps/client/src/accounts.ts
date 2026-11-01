@@ -12,11 +12,7 @@ import {
 } from "../../../packages/shared/src/journey";
 import { formSubmitButton } from "./dialog";
 import { raidAppearance, raidCosmeticOptions } from "./raid-ui";
-import {
-  raidBossPageMarkup,
-  raidHubMarkup,
-  type RaidHubTab,
-} from "./raid-hub";
+import { raidBossPageMarkup, raidHubMarkup, type RaidHubTab } from "./raid-hub";
 import { iconLabel } from "./menu-icons";
 import {
   coinChip,
@@ -147,8 +143,7 @@ export class AccountUI {
   private confirmedGuestLogout = false;
   generation = 0;
   private sessionLoad:
-    | { accountId: string | null; promise: Promise<void> }
-    | undefined;
+    { accountId: string | null; promise: Promise<void> } | undefined;
   client =
     import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY
       ? createClient(
@@ -322,7 +317,11 @@ export class AccountUI {
     ]);
     if (avatar.dataset.avatarLook === key) return;
     avatar.innerHTML = framedAvatar(
-      { character, raidLook: this.raidLook, championLooks: this.economy?.looks },
+      {
+        character,
+        raidLook: this.raidLook,
+        championLooks: this.economy?.looks,
+      },
       "account-nav",
     );
     avatar.dataset.champion = character;
@@ -336,8 +335,9 @@ export class AccountUI {
       : `<button class="quiet" id="account-login">${iconLabel("enter", "Log in")}</button><button class="secondary" id="account-signup">${iconLabel("add-friend", "Sign up")}</button>`;
     this.syncAvatar();
     // Measure the new player card before positioning its missions button.
-    syncQuestTracker(this.account ? this.economy : undefined, () =>
-      void this.showMissions(),
+    syncQuestTracker(
+      this.account ? this.economy : undefined,
+      () => void this.showMissions(),
     );
     if (this.account) {
       element("account-profile").onclick = () => void this.showProfile();
@@ -375,40 +375,82 @@ export class AccountUI {
   showAuth(mode: "login" | "signup" | "forgot" | "reset") {
     const copy = {
       login: ["Welcome back", "Log in to step back into Elemental Plaza."],
-      signup: ["Create your account", "Free to play. Your level, skins and friends follow you everywhere."],
-      forgot: ["Reset your password", "Enter your email and we'll send you a recovery link."],
+      signup: [
+        "Create your account",
+        "Free to play. Your level, skins and friends follow you everywhere.",
+      ],
+      forgot: [
+        "Reset your password",
+        "Enter your email and we'll send you a recovery link.",
+      ],
       reset: ["Choose a new password", "Use at least 8 characters."],
     }[mode];
-    const field = (label: string, input: string) => `<label class="auth-field"><span>${label}</span>${input}</label>`;
+    const field = (label: string, input: string) =>
+      `<label class="auth-field"><span>${label}</span>${input}</label>`;
     const tabs =
       mode === "login" || mode === "signup"
         ? `<div class="auth-tabs" role="tablist" aria-label="Account">${(["login", "signup"] as const).map((m) => `<button type="button" role="tab" data-auth-tab="${m}" aria-selected="${m === mode}">${m === "login" ? "Log in" : "Create account"}</button>`).join("")}</div>`
         : "";
     const fields = [
-      mode === "signup" ? field("Display name", '<input name="displayName" maxlength="20" required autocomplete="nickname" placeholder="Your player name">') : "",
-      mode !== "reset" ? field("Email", '<input name="email" type="email" required autocomplete="email" placeholder="you@example.com">') : "",
-      mode !== "forgot" ? passwordField(mode === "reset" ? "New password" : "Password", "password", `${mode === "login" ? "" : 'minlength="8"'} maxlength="128" required autocomplete="${mode === "login" ? "current-password" : "new-password"}" placeholder="${mode === "login" ? "Your password" : "8+ characters"}"`) : "",
-      mode === "signup" || mode === "reset" ? passwordField("Confirm password", "confirmPassword", 'minlength="8" maxlength="128" required autocomplete="new-password" placeholder="Type it again"') : "",
+      mode === "signup"
+        ? field(
+            "Display name",
+            '<input name="displayName" maxlength="20" required autocomplete="nickname" placeholder="Your player name">',
+          )
+        : "",
+      mode !== "reset"
+        ? field(
+            "Email",
+            '<input name="email" type="email" required autocomplete="email" placeholder="you@example.com">',
+          )
+        : "",
+      mode !== "forgot"
+        ? passwordField(
+            mode === "reset" ? "New password" : "Password",
+            "password",
+            `${mode === "login" ? "" : 'minlength="8"'} maxlength="128" required autocomplete="${mode === "login" ? "current-password" : "new-password"}" placeholder="${mode === "login" ? "Your password" : "8+ characters"}"`,
+          )
+        : "",
+      mode === "signup" || mode === "reset"
+        ? passwordField(
+            "Confirm password",
+            "confirmPassword",
+            'minlength="8" maxlength="128" required autocomplete="new-password" placeholder="Type it again"',
+          )
+        : "",
     ].join("");
     const extras =
       mode === "login"
         ? '<div class="auth-row"><label class="auth-check"><input id="auth-remember" type="checkbox"><span>Remember me</span></label><button type="button" class="auth-link" id="auth-forgot">Forgot password?</button></div>'
         : "";
-    const submitLabel = { login: "Log in", signup: "Create account", forgot: "Send recovery link", reset: "Update password" }[mode];
+    const submitLabel = {
+      login: "Log in",
+      signup: "Create account",
+      forgot: "Send recovery link",
+      reset: "Update password",
+    }[mode];
     const guest =
       (mode === "login" || mode === "signup") && this.client
         ? `<div class="auth-divider"><span>or</span></div><form id="guest-form" class="auth-guest"><input name="nickname" maxlength="20" placeholder="Nickname (optional)" autocomplete="nickname" aria-label="Guest nickname"><button class="auth-secondary" type="submit">${iconLabel("user", "Play as a guest")}</button></form><p class="auth-note">No email needed. Save your account later from your profile to keep your progress.</p>`
         : "";
-    const back = mode === "forgot" || mode === "reset" ? '<button type="button" class="auth-link auth-back" id="auth-switch">← Back to log in</button>' : "";
+    const back =
+      mode === "forgot" || mode === "reset"
+        ? '<button type="button" class="auth-link auth-back" id="auth-switch">← Back to log in</button>'
+        : "";
     const html = `<section class="auth-panel" data-mode="${mode}"><div class="auth-head"><span class="auth-crest" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="currentColor" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><div class="auth-title">${copy[0]}</div><p>${copy[1]}</p></div>${tabs}${!this.client ? '<p class="auth-warning">Sign-in isn\'t available right now. Please try again later.</p>' : ""}<form id="auth-form" class="auth-form">${fields}${extras}<button class="auth-submit" type="submit" ${!this.client ? "disabled" : ""}>${submitLabel}</button>${GOOGLE_SIGN_IN && (mode === "login" || mode === "signup") ? `<button id="auth-google" class="auth-secondary" type="button" ${!this.client ? "disabled" : ""}>Continue with Google</button>` : ""}<p id="auth-message" class="auth-message" role="status"></p></form>${guest}${back}</section>`;
     // On the welcome screen the panel sits in the page; elsewhere in a dialog.
     const host = document.getElementById("gate-auth");
     if (host) host.innerHTML = html;
     else this.hooks.openDialog(html);
-    document.querySelectorAll<HTMLButtonElement>("[data-auth-tab]").forEach((tab) => {
-      tab.onclick = () => this.showAuth(tab.dataset.authTab as "login" | "signup");
-    });
-    document.getElementById("auth-switch")?.addEventListener("click", () => this.showAuth("login"));
+    document
+      .querySelectorAll<HTMLButtonElement>("[data-auth-tab]")
+      .forEach((tab) => {
+        tab.onclick = () =>
+          this.showAuth(tab.dataset.authTab as "login" | "signup");
+      });
+    document
+      .getElementById("auth-switch")
+      ?.addEventListener("click", () => this.showAuth("login"));
     if (mode === "login") {
       element("auth-forgot").onclick = () => this.showAuth("forgot");
       element<HTMLInputElement>("auth-remember").checked =
@@ -581,7 +623,7 @@ export class AccountUI {
             )
           : raidHubMarkup(progress)) +
           (problem
-            ? `<p class="raid-appearance-note raid-update-needed">${escape(problem)} Raids are still playable at Peril 1; saved rewards need the database update (migrations 007–009) and server storage configuration.</p>`
+            ? `<p class="raid-appearance-note raid-update-needed">${escape(problem)} Raids are still playable; saved rewards need the database update (migrations 007–009) and server storage configuration.</p>`
             : ""),
       );
       if (top)
@@ -602,21 +644,29 @@ export class AccountUI {
           view.boss = b.dataset.raidBoss as RaidBossId;
           if (!choosingFromRoster) view.tab = "overview";
           render(true, !choosingFromRoster);
-          dialogEl()?.querySelector<HTMLButtonElement>(`.raid-roster-card[data-raid-boss="${view.boss}"]`)?.focus({preventScroll: true});
+          dialogEl()
+            ?.querySelector<HTMLButtonElement>(
+              `.raid-roster-card[data-raid-boss="${view.boss}"]`,
+            )
+            ?.focus({ preventScroll: true });
         };
-      const selectedBoss = root.querySelector<HTMLElement>(".raid-roster-card.is-selected");
-      if (selectedBoss && revealBoss) requestAnimationFrame(() => {
-        if (!root.open || !selectedBoss.isConnected) return;
-        const rail = selectedBoss.closest<HTMLElement>(".raid-boss-roster");
-        if (!rail) return;
-        // Only the rail can scroll. scrollIntoView would also move the dialog
-        // and page, and is unnecessary after clicking a visible avatar.
-        const r = rail.getBoundingClientRect(), b = selectedBoss.getBoundingClientRect();
-        if (b.top < r.top) rail.scrollTop += b.top - r.top;
-        else if (b.bottom > r.bottom) rail.scrollTop += b.bottom - r.bottom;
-        if (b.left < r.left) rail.scrollLeft += b.left - r.left;
-        else if (b.right > r.right) rail.scrollLeft += b.right - r.right;
-      });
+      const selectedBoss = root.querySelector<HTMLElement>(
+        ".raid-roster-card.is-selected",
+      );
+      if (selectedBoss && revealBoss)
+        requestAnimationFrame(() => {
+          if (!root.open || !selectedBoss.isConnected) return;
+          const rail = selectedBoss.closest<HTMLElement>(".raid-boss-roster");
+          if (!rail) return;
+          // Only the rail can scroll. scrollIntoView would also move the dialog
+          // and page, and is unnecessary after clicking a visible avatar.
+          const r = rail.getBoundingClientRect(),
+            b = selectedBoss.getBoundingClientRect();
+          if (b.top < r.top) rail.scrollTop += b.top - r.top;
+          else if (b.bottom > r.bottom) rail.scrollTop += b.bottom - r.bottom;
+          if (b.left < r.left) rail.scrollLeft += b.left - r.left;
+          else if (b.right > r.right) rail.scrollLeft += b.right - r.right;
+        });
       for (const b of Array.from(
         root.querySelectorAll<HTMLButtonElement>("[data-raid-tab]"),
       ))
@@ -625,7 +675,7 @@ export class AccountUI {
           render();
           root
             .querySelector<HTMLButtonElement>(`[data-raid-tab="${view.tab}"]`)
-            ?.focus({preventScroll: true});
+            ?.focus({ preventScroll: true });
         };
       for (const b of Array.from(
         root.querySelectorAll<HTMLButtonElement>("[data-raid-start]"),
@@ -636,8 +686,15 @@ export class AccountUI {
             solo: b.dataset.raidStart === "solo",
             returnTab: view.tab,
           });
-      for (const button of Array.from(root.querySelectorAll<HTMLButtonElement>("[data-hub-practice]")))
-        button.onclick = () => view.boss && this.hooks.startRaid?.(view.boss, {drill: button.dataset.hubPractice, returnTab: view.tab});
+      for (const button of Array.from(
+        root.querySelectorAll<HTMLButtonElement>("[data-hub-practice]"),
+      ))
+        button.onclick = () =>
+          view.boss &&
+          this.hooks.startRaid?.(view.boss, {
+            drill: button.dataset.hubPractice,
+            returnTab: view.tab,
+          });
       const options = root.querySelector<HTMLElement>(".raid-equip");
       if (options && progress)
         this.bindAppearance(options, progress, character);
@@ -1378,8 +1435,7 @@ export class AccountUI {
       .then((value) => {
         const p = value as RaidProgress,
           box = element("profile-raid-stats");
-        if (box)
-          box.textContent = `Boss raids: ${p.clears} clears · highest Peril ${p.highestPeril}`;
+        if (box) box.textContent = `Boss raids: ${p.clears} clears`;
       })
       .catch(() => {});
     const save = element<HTMLFormElement>("profile-save");

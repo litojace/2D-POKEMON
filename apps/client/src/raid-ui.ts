@@ -35,7 +35,6 @@ import {
   raidGoals,
   raidRewardProgress,
 } from "./raid-presentation";
-import { raidDifficulty } from "./raid-difficulty";
 import type Phaser from "phaser";
 import type { LayerAt } from "./raid-layers";
 import {
@@ -68,7 +67,11 @@ import {
 } from "../../../packages/shared/src/raid";
 import { raidGuideBossFor } from "./raid-guide-art";
 import { raidBriefingGuide } from "./raid-briefing";
-import { raidRiteChoices, raidRiteDetails, bindRaidRiteDetails } from "./raid-rite-cards";
+import {
+  raidRiteChoices,
+  raidRiteDetails,
+  bindRaidRiteDetails,
+} from "./raid-rite-cards";
 import { drawRaidBoss } from "./raid-boss-art";
 import {
   drawLagoon,
@@ -128,9 +131,8 @@ export function raidLobby(
     <div class="raid-lobby-banner"><div><span class="eyebrow">Co-op raid · 1–4 players</span><h2>${RAID_BOSSES[r.boss].name}</h2><p>${RAID_BOSSES[r.boss].epithet}</p></div><svg viewBox="-65 -65 130 115" aria-hidden="true">${raidGuideBossFor(r.boss)}</svg></div>
     <button type="button" class="secondary full" id="invite-friends">${iconLabel("add-friend", "Invite friends")}</button>
     <section class="raid-party-section" aria-label="Raid party"><div class="raid-section-heading"><h3>Your party</h3><span>${ready}/${party.length} ready</span></div><div class="raid-party-list">${party.map((p) => `<div class="raid-party-member" data-raid-player="${escape(p.id)}"><span class="raid-party-avatar" data-raid-cosmetic="${portraitCosmetics(p)}">${portraitAvatar(p, "raid-lobby-" + p.id)}</span><div class="raid-party-identity"><b>${escape(p.name)}</b><span><span class="raid-player-character">${CHARACTERS[p.character].name}</span>${p.id === state.players[0]?.id ? " · Host" : ""}</span></div><span class="raid-ready-badge ${p.ready ? "is-ready" : ""}">${p.ready ? "Ready" : "Choosing"}</span></div>`).join("")}<div class="raid-open-slots">${Array.from({ length: Math.max(0, 4 - party.length) }, () => '<div class="raid-party-empty"><span aria-hidden="true">+</span>Open slot</div>').join("")}</div></div></section>
-    <section class="raid-challenge" aria-label="Raid challenge"><div class="raid-section-heading"><h3>Choose your challenge</h3><span>${host ? "HOST CONTROLS" : "HOST SELECTS"}</span></div>${raidDifficulty(r.peril, !host)}<p class="raid-unlock-note">Clear a Peril to unlock the next difficulty.</p></section>
 
-    <div class="raid-lobby-rules"><span><svg class="raid-rule-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v10m-5-5h10"/></svg><span>${party.length === 1 ? (r.peril >= 3 ? "Peril 3 solo: no self-revive" : "One solo self-revive") : "Stand near allies to revive"}</span></span><span><svg class="raid-rule-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 3 8 4v6c0 5-8 8-8 8s-8-3-8-8V7Z"/><path d="m8 12 3 3 5-6"/></svg><span>Separate from PvP rating</span></span></div>
+    <div class="raid-lobby-rules"><span><svg class="raid-rule-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v10m-5-5h10"/></svg><span>${party.length === 1 ? "One solo self-revive" : "Stand near allies to revive"}</span></span><span><svg class="raid-rule-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 3 8 4v6c0 5-8 8-8 8s-8-3-8-8V7Z"/><path d="m8 12 3 3 5-6"/></svg><span>Separate from PvP rating</span></span></div>
 
     <div class="raid-lobby-actions"><button class="primary" id="ready"><span class="ready-label">${buttonIcon(me.ready ? "cancel" : "battle")}${me.ready ? "Cancel ready" : "Ready for the raid"}</span><span aria-hidden="true">${me.ready ? "" : "→"}</span></button><div><button class="secondary raid-icon-button" id="raid-bestiary">${menuIcon("bestiary")}<span>Raid Hub & rewards</span></button><button class="quiet leave-button" id="leave">${iconLabel("leave", "Leave room")}</button></div></div>
   </div>`;
@@ -214,8 +216,12 @@ export function renderRaidUI(
 ) {
   const r = state.raid!,
     boss = state.players.find((p) => p.id === r.bossId);
-  document.body.classList.toggle("raid-downed", state.phase === "playing" && me.hp <= 0);
-  if (state.phase !== "playing") document.getElementById("spectate")?.setAttribute("hidden", "");
+  document.body.classList.toggle(
+    "raid-downed",
+    state.phase === "playing" && me.hp <= 0,
+  );
+  if (state.phase !== "playing")
+    document.getElementById("spectate")?.setAttribute("hidden", "");
   let hud = document.getElementById("raid-hud");
   if (!hud) {
     hud = document.createElement("div");
@@ -239,7 +245,7 @@ export function renderRaidUI(
         100,
     ),
   );
-  hud.innerHTML = `<div class="raid-boss-heading"><span class="raid-boss-peril">Peril ${r.peril}</span><b>${r.gilded ? "✦ GILDED " : ""}${RAID_BOSSES[r.boss].name.toUpperCase()}${r.boss !== "storm-twins" && (r.exposedUntil > state.time || r.staggerUntil > state.time || r.permanentGround) ? " · EXPOSED" : ""}</b><span class="raid-boss-phase" aria-label="Phase ${r.phase} of 3">Phase ${r.phase}/3</span></div>${r.boss === "storm-twins" ? stormTwinHealth(state) : ""}<div class="raid-boss-health" role="progressbar" aria-label="Boss health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(healthPercent)}" aria-valuetext="${Math.round(healthPercent)}% health. Rite choices open at 67% and 33% health."><i class="raid-boss-trail" style="width:${healthTrail(`raid:${r.boss}`, healthPercent)}%"></i><i class="raid-boss-fill" style="width:${healthPercent}%"></i>${[67, 33].map((mark, index) => `<span class="raid-health-mark${r.phase > index + 1 ? " is-passed" : ""}" style="left:${mark}%" aria-hidden="true"></span>`).join("")}<span class="raid-boss-pct" aria-hidden="true">${Math.ceil(healthPercent)}%</span></div><div class="raid-stagger" ${r.boss === "storm-twins" ? "hidden" : ""}><i style="width:${r.boss === "emberwing" ? (r.permanentGround || r.exposedUntil > state.time ? 100 : r.airborne ? ((r.braziers ?? []).filter((b) => b.litUntil > state.time).length / 3) * 100 : r.stagger) : r.boss === "prismatail" ? (r.exposedUntil > state.time ? 100 : Math.min(100, ((r.lightHold ?? 0) / (r.phase === 3 && r.partySize === 1 ? 2 : 0.65)) * 100)) : r.staggerUntil > state.time ? 100 : r.stagger}%"></i><span>${r.boss === "emberwing" ? (r.permanentGround ? "WINGS BROKEN · HEART OPEN" : r.airborne ? `AIRBORNE · ${(r.braziers ?? []).filter((b) => b.litUntil > state.time).length}/3 BRAZIERS` : r.exposedUntil > state.time ? "GROUNDED · HEART EXPOSED" : "STAGGER") : r.boss === "prismatail" ? (r.exposedUntil > state.time ? "HEART EXPOSED" : "LIGHT RELAY · SHIELDED") : r.staggerUntil > state.time ? "STAGGER · CORE EXPOSED" : "STAGGER"}</span></div><div class="raid-status-row"><p class="raid-callout" role="status" title="${escape(raidCue(state, me.id))}">${escape(raidCue(state, me.id))}</p><div class="raid-elapsed" role="timer" aria-label="Raid elapsed time"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><b>${time(r.elapsed)}</b></div></div>`;
+  hud.innerHTML = `<div class="raid-boss-heading"><b>${r.gilded ? "✦ GILDED " : ""}${RAID_BOSSES[r.boss].name.toUpperCase()}${r.boss !== "storm-twins" && (r.exposedUntil > state.time || r.staggerUntil > state.time || r.permanentGround) ? " · EXPOSED" : ""}</b><span class="raid-boss-phase" aria-label="Phase ${r.phase} of 3">Phase ${r.phase}/3</span></div>${r.boss === "storm-twins" ? stormTwinHealth(state) : ""}<div class="raid-boss-health" role="progressbar" aria-label="Boss health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(healthPercent)}" aria-valuetext="${Math.round(healthPercent)}% health. Rite choices open at 67% and 33% health."><i class="raid-boss-trail" style="width:${healthTrail(`raid:${r.boss}`, healthPercent)}%"></i><i class="raid-boss-fill" style="width:${healthPercent}%"></i>${[67, 33].map((mark, index) => `<span class="raid-health-mark${r.phase > index + 1 ? " is-passed" : ""}" style="left:${mark}%" aria-hidden="true"></span>`).join("")}<span class="raid-boss-pct" aria-hidden="true">${Math.ceil(healthPercent)}%</span></div><div class="raid-stagger" ${r.boss === "storm-twins" ? "hidden" : ""}><i style="width:${r.boss === "emberwing" ? (r.permanentGround || r.exposedUntil > state.time ? 100 : r.airborne ? ((r.braziers ?? []).filter((b) => b.litUntil > state.time).length / 3) * 100 : r.stagger) : r.boss === "prismatail" ? (r.exposedUntil > state.time ? 100 : Math.min(100, ((r.lightHold ?? 0) / (r.phase === 3 && r.partySize === 1 ? 2 : 0.65)) * 100)) : r.staggerUntil > state.time ? 100 : r.stagger}%"></i><span>${r.boss === "emberwing" ? (r.permanentGround ? "WINGS BROKEN · HEART OPEN" : r.airborne ? `AIRBORNE · ${(r.braziers ?? []).filter((b) => b.litUntil > state.time).length}/3 BRAZIERS` : r.exposedUntil > state.time ? "GROUNDED · HEART EXPOSED" : "STAGGER") : r.boss === "prismatail" ? (r.exposedUntil > state.time ? "HEART EXPOSED" : "LIGHT RELAY · SHIELDED") : r.staggerUntil > state.time ? "STAGGER · CORE EXPOSED" : "STAGGER"}</span></div><div class="raid-status-row"><p class="raid-callout" role="status" title="${escape(raidCue(state, me.id))}">${escape(raidCue(state, me.id))}</p><div class="raid-elapsed" role="timer" aria-label="Raid elapsed time"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><b>${time(r.elapsed)}</b></div></div>`;
   const overlay = document.getElementById("arena-overlay")!;
   let progress = resultProgress.get(overlay);
   if (
@@ -293,7 +299,7 @@ export function renderRaidUI(
     actions = "";
   if (state.phase === "briefing") {
     title = `${RAID_TRAITS[r.trait].name} ${RAID_BOSSES[r.boss].name}`;
-    body = `<div class="raid-briefing-body" tabindex="0" role="region" aria-label="Raid instructions">${raidBriefingGuide(r.boss, me.character, r.partySize === 1)}<details class="raid-briefing-extra" id="raid-briefing-extra"><summary>Your fighter, team &amp; modifiers</summary><p><b>${escape(RAID_TRAITS[r.trait].name)}</b> · ${escape(RAID_TRAITS[r.trait].text)}</p>${perkLines(state, me.id)}${r.partySize > 1 ? `<p class="raid-signals">Team signals: ${(Object.keys(RAID_PINGS) as RaidPingKind[]).map((k) => `<b>${RAID_PINGS[k].key}</b> ${raidPingLabel(k, r.boss)}`).join(" · ")} (or use the on-screen buttons)</p>` : ""}</details><p class="raid-briefing-meta">Three phases · one shared fight · ${r.partySize === 1 ? (r.peril >= 3 ? "Solo · no self-revive on Peril 3" : "Solo · one self-revive") : "Team · stand beside fallen allies to revive"}</p></div><div class="raid-briefing-actions"><button class="primary" id="raid-instructions" ${state.instructionsReady.includes(me.id) ? "disabled" : ""}>${state.instructionsReady.includes(me.id) ? "Waiting for the team…" : iconLabel("battle", "I’m ready — start raid")}</button></div>`;
+    body = `<div class="raid-briefing-body" tabindex="0" role="region" aria-label="Raid instructions">${raidBriefingGuide(r.boss, me.character, r.partySize === 1)}<details class="raid-briefing-extra" id="raid-briefing-extra"><summary>Your fighter, team &amp; modifiers</summary><p><b>${escape(RAID_TRAITS[r.trait].name)}</b> · ${escape(RAID_TRAITS[r.trait].text)}</p>${perkLines(state, me.id)}${r.partySize > 1 ? `<p class="raid-signals">Team signals: ${(Object.keys(RAID_PINGS) as RaidPingKind[]).map((k) => `<b>${RAID_PINGS[k].key}</b> ${raidPingLabel(k, r.boss)}`).join(" · ")} (or use the on-screen buttons)</p>` : ""}</details><p class="raid-briefing-meta">Three phases · one shared fight · ${r.partySize === 1 ? "Solo · one self-revive" : "Team · stand beside fallen allies to revive"}</p></div><div class="raid-briefing-actions"><button class="primary" id="raid-instructions" ${state.instructionsReady.includes(me.id) ? "disabled" : ""}>${state.instructionsReady.includes(me.id) ? "Waiting for the team…" : iconLabel("battle", "I’m ready — start raid")}</button></div>`;
   } else if (state.phase === "intermission") {
     // Rites are chosen once, before the fight (RAID_RITE_PICKS each).
     const picked = Math.min(RAID_RITE_PICKS, (r.rites[me.id] ?? []).length);
@@ -329,7 +335,7 @@ export function renderRaidUI(
     actions = `<div class="result-actions raid-result-actions"><button class="primary" id="raid-retry" ${me.ready || !heroes.every((p) => p.connected) ? "disabled" : ""}>${me.ready ? "Waiting for the team…" : iconLabel("again", "Run again")}</button><button class="secondary" id="raid-lobby" aria-label="Change champion or challenge" title="Change champion or challenge">${iconLabel("swap", "Change setup")}</button><button class="secondary raid-icon-button" id="raid-rewards">${menuIcon("bestiary")}<span>Raid Hub & rewards</span></button><button class="quiet" id="raid-exit">${iconLabel("home", "Return to menu")}</button></div>`;
     body = `<div class="raid-result-summary"><div class="raid-result-art" aria-hidden="true"><svg viewBox="-65 -65 130 115">${raidGuideBossFor(r.boss)}</svg></div><div class="raid-result-stats"><span><b>${time(r.elapsed)}</b>${r.result === "victory" ? "Clear time" : "Time survived"}</span><span><b>${r.revives}</b>Revives</span><span><b>${r.downs}</b>Downs</span></div></div><div class="raid-result-body">${raidContributions(state)}<div class="raid-result-next">${
       r.result === "victory"
-        ? `<p class="raid-save-state" role="status">${r.rewardStatus === "saved" ? "✓ Rewards saved to your account." : r.rewardStatus === "unavailable" ? "This clear could not be saved. Your reward progress has not been updated." : "Saving your rewards…"}</p>${r.rewardStatus === "saved" ? raidRewardProgress(loadProgress ? progress?.progress : null, r.boss) : ""}<p class="raid-next-challenge">${r.peril < 3 ? `Next challenge: Peril ${r.peril + 1} · ${r.boss === "storm-twins" ? (r.peril === 1 ? "A shorter finishing window" : "The tightest finishing window, no solo self-revive") : r.boss === "emberwing" ? (r.peril === 1 ? "Stronger heat and dives" : "Less room for mistakes, no solo self-revive") : r.boss === "prismatail" ? (r.peril === 1 ? "Stronger light attacks" : "Faster attacks and no solo self-revive") : r.boss === "somnara" ? (r.peril === 1 ? "Longer rune sequences" : "Backwards dreams and faster attacks") : r.boss === "tidewyrm" ? (r.peril === 1 ? "Shorter strands, harder hits" : "Islands sink for good") : r.boss === "gloomshade" ? (r.peril === 1 ? "Faster hands and more copies" : "Paired pulses and shifting tiles") : r.peril === 1 ? "Falling debris" : "Closing arena"}` : "Next challenge: a no-downs clear or a different boss."}</p>`
+        ? `<p class="raid-save-state" role="status">${r.rewardStatus === "saved" ? "✓ Rewards saved to your account." : r.rewardStatus === "unavailable" ? "This clear could not be saved. Your reward progress has not been updated." : "Saving your rewards…"}</p>${r.rewardStatus === "saved" ? raidRewardProgress(loadProgress ? progress?.progress : null, r.boss) : ""}<p class="raid-next-challenge">Next challenge: a no-downs clear, a faster time or a different boss.</p>`
         : `${r.rewardStatus === "saved" ? `<p class="raid-save-state" role="status">✓ Progress saved: your ${r.boss === "tidewyrm" ? "strands" : r.boss === "gloomshade" ? "relights" : r.boss === "storm-twins" ? "polarity pairs" : r.boss === "emberwing" ? "braziers lit" : r.boss === "prismatail" ? "light relays" : r.boss === "somnara" ? "correct runes" : "pillars"} and revives count towards titles.</p>` : ""}<p class="raid-retry-tip">${defeatTip(state)}</p>`
     }<div class="raid-retry-status">${heroes.length === 1 ? "Same champion and challenge · choose fresh rites" : `${readyCount}/${heroes.length} ready · everyone confirms to run again`}</div>${!heroes.every((p) => p.connected) ? '<p class="raid-retry-tip">A teammate is disconnected. Return to the lobby to refill the party.</p>' : ""}</div></div>`;
   }
@@ -341,7 +347,9 @@ export function renderRaidUI(
       state.activityEligible?.includes(me.id) ?? true,
     );
   const previousCard = overlay.querySelector<HTMLElement>(".raid-overlay");
-  const guideExpanded = overlay.querySelector<HTMLDetailsElement>("#raid-briefing-extra")?.open ?? false;
+  const guideExpanded =
+    overlay.querySelector<HTMLDetailsElement>("#raid-briefing-extra")?.open ??
+    false;
   const previousScroller =
     overlay.querySelector<HTMLElement>(".raid-briefing-body") ??
     overlay.querySelector<HTMLElement>(".panel-scroll") ??
@@ -364,7 +372,9 @@ export function renderRaidUI(
     overlay.querySelector<HTMLElement>(".panel-scroll") ??
     card;
   if (replaced && guideExpanded) {
-    const extra = overlay.querySelector<HTMLDetailsElement>("#raid-briefing-extra");
+    const extra = overlay.querySelector<HTMLDetailsElement>(
+      "#raid-briefing-extra",
+    );
     if (extra) extra.open = true;
   }
   if (replaced && scroller) scroller.scrollTop = scrollTop;
@@ -386,8 +396,7 @@ export function renderRaidUI(
         .join(""),
     );
   fillLiveSeconds(overlay, state.remaining);
-  if (state.phase === "countdown")
-    fillLiveCountdown(overlay, state.remaining);
+  if (state.phase === "countdown") fillLiveCountdown(overlay, state.remaining);
   overlay
     .querySelector(".raid-choice-timer")
     ?.classList.toggle("is-urgent", state.remaining <= 5);
@@ -702,9 +711,11 @@ export function drawRaidArena(
     reduced,
     clock,
   );
-  if (r.boss === "storm-twins") return drawStormTwins(g, state, reduced, clock, at);
+  if (r.boss === "storm-twins")
+    return drawStormTwins(g, state, reduced, clock, at);
   if (r.boss === "emberwing") return drawEmberwing(boss, state, reduced, clock);
-  if (r.boss === "prismatail") return drawPrismatail(boss, state, reduced, clock);
+  if (r.boss === "prismatail")
+    return drawPrismatail(boss, state, reduced, clock);
   if (dream) return drawSomnara(boss, state, reduced, clock);
   return tide
     ? drawTidewyrm(boss, state, reduced, clock)
@@ -745,12 +756,25 @@ function defeatTip(state: Snapshot) {
 export function downedCard(state: Snapshot, myId: string) {
   const r = state.raid!;
   const down = r.downed[myId];
-  const percent = Math.max(0, Math.min(100, Math.round((down?.progress ?? 0) * 100)));
+  const percent = Math.max(
+    0,
+    Math.min(100, Math.round((down?.progress ?? 0) * 100)),
+  );
   const head = down?.self ? "Self-revive" : percent > 0 ? "Reviving" : "Downed";
-  const instruction = down?.self ? "Reviving automatically" : r.partySize > 1 ? "Crawl toward an ally to revive" : "Waiting for raid result";
+  const instruction = down?.self
+    ? "Reviving automatically"
+    : r.partySize > 1
+      ? "Crawl toward an ally to revive"
+      : "Waiting for raid result";
   const cause = down?.cause;
-  const causeText = cause ? `Hit by ${RAID_ATTACKS[cause].name}` : r.closingRadius ? "Outside the closing ring" : "";
-  const tip = cause ? RAID_ATTACKS[cause].tip : "Stay inside the shrinking ring.";
+  const causeText = cause
+    ? `Hit by ${RAID_ATTACKS[cause].name}`
+    : r.closingRadius
+      ? "Outside the closing ring"
+      : "";
+  const tip = cause
+    ? RAID_ATTACKS[cause].tip
+    : "Stay inside the shrinking ring.";
   return `<div class="raid-revive-head">${menuIcon("motion")}<b>${head}</b><span>${percent}%</span></div><div class="raid-revive-progress" role="progressbar" aria-label="Revive progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><i style="width:${percent}%"></i></div><p class="raid-revive-instruction">${instruction}</p>${causeText ? `<small class="raid-revive-cause" title="${escape(tip)}">${escape(causeText)}</small>` : ""}`;
 }
 /** What the party's champions can do against this boss. */
@@ -826,7 +850,8 @@ function raidControls(
   const key = `${r.drill}|${host}`;
   if (drill.dataset.key === key) return;
   drill.dataset.key = key;
-  const expanded = drill.querySelector<HTMLDetailsElement>("details")?.open ?? false;
+  const expanded =
+    drill.querySelector<HTMLDetailsElement>("details")?.open ?? false;
   drill.innerHTML = `<div class="raid-drill-head"><b>Practice · ${RAID_ATTACKS[r.drill].name}</b><span class="raid-drill-count">${stats}</span></div><details class="raid-drill-picker"><summary>Change attack / instructions</summary><div class="raid-drill-body"><p>${escape(RAID_ATTACKS[r.drill].tip)}</p><div class="raid-drill-options">${raidAttacksOf(
     r.boss,
   )

@@ -68,7 +68,8 @@ export function controlsScreenHTML(padConnected: boolean, touchHTML = "") {
                 )
                 .join("")}</div>`,
           )
-          .join("") + "</section>",
+          .join("") +
+        "</section>",
     )
     .join("");
   const cast = CAST_CHOICES.map(

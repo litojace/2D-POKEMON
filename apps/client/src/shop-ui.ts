@@ -318,8 +318,8 @@ function awakeningNote(id: string, e: Economy | null) {
     return "Admin testing · All three stages are available to equip.";
   const a = e?.awakening[id];
   if (!a)
-    return `Stage II: ${AWAKENING.stage2Wins} wins wearing it. Stage III: ${AWAKENING.stage3Wins} wins and a Peril 3 raid clear with this champion.`;
-  return `Your Awakening: Stage ${"I".repeat(a.stage)} · ${a.wins} wins wearing it${a.stage < 3 ? ` · next at ${a.stage < 2 ? AWAKENING.stage2Wins : AWAKENING.stage3Wins} wins${a.stage === 2 && !a.peril3 ? " and a Peril 3 clear" : ""}` : ""}.`;
+    return `Stage II: ${AWAKENING.stage2Wins} wins wearing it. Stage III: ${AWAKENING.stage3Wins} wins and a raid clear with this champion.`;
+  return `Your Awakening: Stage ${"I".repeat(a.stage)} · ${a.wins} wins wearing it${a.stage < 3 ? ` · next at ${a.stage < 2 ? AWAKENING.stage2Wins : AWAKENING.stage3Wins} wins${a.stage === 2 && !a.peril3 ? " and a raid clear" : ""}` : ""}.`;
 }
 
 function todayTab(view: ShopView, e: Economy | null, loadout: RaidLoadout) {

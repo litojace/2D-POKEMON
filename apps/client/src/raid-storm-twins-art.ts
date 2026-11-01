@@ -36,7 +36,12 @@ function sign(
   g.lineStyle(3, color, 1).lineBetween(x - size, y, x + size, y);
   if (value > 0) g.lineBetween(x, y - size, x, y + size);
 }
-export function drawConductorRing(g: G, state: Snapshot, reduced: boolean, at?: LayerAt) {
+export function drawConductorRing(
+  g: G,
+  state: Snapshot,
+  reduced: boolean,
+  at?: LayerAt,
+) {
   const r = state.raid!,
     t = reduced ? 0 : state.time;
   for (const [i, p] of S.posts.entries()) {
@@ -45,7 +50,9 @@ export function drawConductorRing(g: G, state: Snapshot, reduced: boolean, at?: 
     const post = at ? at(`post-${i}`, p.y + 17) : g;
     post.fillStyle(0x866958, 1).fillRoundedRect(p.x - 13, p.y - 22, 26, 39, 5);
     post.fillStyle(0xa98a6e, 1).fillRoundedRect(p.x - 13, p.y - 22, 9, 39, 4);
-    post.lineStyle(4, 0xe6b985, 0.9).strokeEllipse(p.x, p.y - 22, 32, groundHeight(32));
+    post
+      .lineStyle(4, 0xe6b985, 0.9)
+      .strokeEllipse(p.x, p.y - 22, 32, groundHeight(32));
     post.fillStyle(0xffd78b, 0.2).fillCircle(p.x, p.y - 22, 15);
   }
   for (const f of r.stormFields ?? []) {
@@ -325,7 +332,16 @@ export function drawStormTwins(
         19 + (k % 2) * 4,
       );
       const diameter = (18 + (k % 2) * 4) * 2;
-      bossSurface(g, cx - 1, cy, diameter, diameter, i ? 0xd8e9f4 : 0xfff3cf, "cloud", alpha);
+      bossSurface(
+        g,
+        cx - 1,
+        cy,
+        diameter,
+        diameter,
+        i ? 0xd8e9f4 : 0xfff3cf,
+        "cloud",
+        alpha,
+      );
     }
     const boltColor = i ? 0x5e83c4 : 0xc99341;
     g.fillStyle(boltColor, alpha).fillPoints(

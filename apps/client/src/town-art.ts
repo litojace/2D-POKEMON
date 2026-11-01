@@ -633,14 +633,27 @@ export interface Sprite {
   };
 }
 
-const stoneWall = (ctx: Ctx, x: number, y: number, w: number, h: number, base: string, seed: number) => {
+const stoneWall = (
+  ctx: Ctx,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  base: string,
+  seed: number,
+) => {
   ctx.fillStyle = base;
   ctx.fillRect(x, y, w, h);
   for (let ty = y, row = 0; ty < y + h; ty += 14, row++)
     for (let tx = x - (row % 2) * 14; tx < x + w; tx += 28) {
       const i = seed + row * 31 + tx;
       ctx.fillStyle = `rgba(${rnd(i) > 0.5 ? "255,255,255" : "0,0,0"},${0.04 + rnd(i + 1) * 0.06})`;
-      ctx.fillRect(Math.max(x, tx + 1), ty + 1, Math.min(26, x + w - tx - 1), 12);
+      ctx.fillRect(
+        Math.max(x, tx + 1),
+        ty + 1,
+        Math.min(26, x + w - tx - 1),
+        12,
+      );
     }
   ctx.strokeStyle = "rgba(0,0,0,0.12)";
   ctx.lineWidth = 1;
@@ -671,9 +684,23 @@ export const COLISEUM = {
   gateTop: -150,
   torches: [-92, 92].map((dx) => ({ dx, dy: -98 })),
   /** Masts along the rim, as angles round the top ellipse. */
-  masts: [Math.PI + 0.32, Math.PI + 0.95, Math.PI * 1.5, Math.PI * 2 - 0.95, Math.PI * 2 - 0.32, 0.5, Math.PI - 0.5],
+  masts: [
+    Math.PI + 0.32,
+    Math.PI + 0.95,
+    Math.PI * 1.5,
+    Math.PI * 2 - 0.95,
+    Math.PI * 2 - 0.32,
+    0.5,
+    Math.PI - 0.5,
+  ],
 };
-const SAND = { light: "#ead7aa", mid: "#d6bd8a", dark: "#a98a5a", deep: "#7d6440", line: "rgba(110,84,50,0.45)" };
+const SAND = {
+  light: "#ead7aa",
+  mid: "#d6bd8a",
+  dark: "#a98a5a",
+  deep: "#7d6440",
+  line: "rgba(110,84,50,0.45)",
+};
 
 function coliseum(b: TownBuilding): Sprite {
   const W = b.w + 140,
@@ -710,13 +737,26 @@ function coliseum(b: TownBuilding): Sprite {
         for (let k = 1; k < 24; k++) {
           const a = (k / 24) * Math.PI;
           ctx.beginPath();
-          ctx.moveTo(cx + Math.cos(a) * (rx + grow), footY + drop + Math.sin(a) * (ry + grow * 0.34));
-          ctx.lineTo(cx + Math.cos(a) * (rx + grow), footY + drop + 8 + Math.sin(a) * (ry + grow * 0.34));
+          ctx.moveTo(
+            cx + Math.cos(a) * (rx + grow),
+            footY + drop + Math.sin(a) * (ry + grow * 0.34),
+          );
+          ctx.lineTo(
+            cx + Math.cos(a) * (rx + grow),
+            footY + drop + 8 + Math.sin(a) * (ry + grow * 0.34),
+          );
           ctx.stroke();
         }
       }
       // Ambient shadow where the wall meets the podium.
-      const ao = ctx.createRadialGradient(cx, footY, rx * 0.8, cx, footY, rx + 26);
+      const ao = ctx.createRadialGradient(
+        cx,
+        footY,
+        rx * 0.8,
+        cx,
+        footY,
+        rx + 26,
+      );
       ao.addColorStop(0, "rgba(40,30,18,0.55)");
       ao.addColorStop(1, "rgba(40,30,18,0)");
       ctx.save();
@@ -737,15 +777,35 @@ function coliseum(b: TownBuilding): Sprite {
       for (let k = 0; k < 9; k++) {
         const t = k / 9;
         ctx.fillStyle = k % 2 ? SAND.mid : SAND.dark;
-        ellipse(ctx, cx, topY + 6 + k * 7, (rx - 18) * (1 - t * 0.62), (ry - 8) * (1 - t * 0.5));
+        ellipse(
+          ctx,
+          cx,
+          topY + 6 + k * 7,
+          (rx - 18) * (1 - t * 0.62),
+          (ry - 8) * (1 - t * 0.5),
+        );
         ctx.fill();
       }
-      const colors = ["#ff7a4f", "#ffd65b", "#7fe7ff", "#b59bff", "#9be07a", "#f4efe2", "#ff8ad0"];
+      const colors = [
+        "#ff7a4f",
+        "#ffd65b",
+        "#7fe7ff",
+        "#b59bff",
+        "#9be07a",
+        "#f4efe2",
+        "#ff8ad0",
+      ];
       for (let i = 0; i < 520; i++) {
         const a = Math.PI + rnd(i * 3.1) * Math.PI,
           t = rnd(i * 7.7) * 0.85;
         ctx.fillStyle = colors[i % colors.length];
-        ellipse(ctx, cx + Math.cos(a) * (rx - 26) * (1 - t * 0.62), topY + 8 + t * 60 + Math.sin(a) * (ry - 12) * (1 - t * 0.5), 2.3, 2.6);
+        ellipse(
+          ctx,
+          cx + Math.cos(a) * (rx - 26) * (1 - t * 0.62),
+          topY + 8 + t * 60 + Math.sin(a) * (ry - 12) * (1 - t * 0.5),
+          2.3,
+          2.6,
+        );
         ctx.fill();
       }
       ctx.fillStyle = SAND.light;
@@ -791,7 +851,8 @@ function coliseum(b: TownBuilding): Sprite {
             x = cx + Math.cos(a) * rx,
             y = topY + sin * ry + off,
             w = rx * step * sin;
-          if (kind === "ground" && Math.abs(a - Math.PI / 2) < step * 1.6) continue; // the gate
+          if (kind === "ground" && Math.abs(a - Math.PI / 2) < step * 1.6)
+            continue; // the gate
           const light = 0.35 + 0.65 * Math.max(0, Math.cos(a - Math.PI * 0.7));
           if (kind === "attic") {
             // Small square windows between pilasters.
@@ -811,13 +872,23 @@ function coliseum(b: TownBuilding): Sprite {
             ctx.fill();
             // Light falling on the inside of each arch.
             ctx.fillStyle = `rgba(255,214,150,${0.08 + 0.1 * light})`;
-            ctx.fillRect(x - aw / 2 + 1, bot - Math.min(18, th * 0.25), aw * 0.45, Math.min(18, th * 0.25));
+            ctx.fillRect(
+              x - aw / 2 + 1,
+              bot - Math.min(18, th * 0.25),
+              aw * 0.45,
+              Math.min(18, th * 0.25),
+            );
           }
           // Pilaster between bays.
           const px = cx + Math.cos(a + step / 2) * rx,
             pw = Math.max(1.5, 5 * Math.sin(a + step / 2));
           ctx.fillStyle = `rgba(255,248,225,${0.1 + 0.25 * light})`;
-          ctx.fillRect(px - pw / 2, topY + Math.sin(a + step / 2) * ry + off + 2, pw, th - 4);
+          ctx.fillRect(
+            px - pw / 2,
+            topY + Math.sin(a + step / 2) * ry + off + 2,
+            pw,
+            th - 4,
+          );
         }
         // A cornice under each tier.
         if (kind !== "ground") {
@@ -846,9 +917,23 @@ function coliseum(b: TownBuilding): Sprite {
         gateTop = G + COLISEUM.gateTop,
         gw = 112;
       ctx.fillStyle = SAND.dark;
-      roundRect(ctx, cx - gw / 2 - 16, gateTop - 16, gw + 32, gateFoot - gateTop + 16, 66);
+      roundRect(
+        ctx,
+        cx - gw / 2 - 16,
+        gateTop - 16,
+        gw + 32,
+        gateFoot - gateTop + 16,
+        66,
+      );
       ctx.fill();
-      const glow = ctx.createRadialGradient(cx, gateFoot - 30, 8, cx, gateFoot - 50, 120);
+      const glow = ctx.createRadialGradient(
+        cx,
+        gateFoot - 30,
+        8,
+        cx,
+        gateFoot - 50,
+        120,
+      );
       glow.addColorStop(0, "#fff3c4");
       glow.addColorStop(0.35, "#ffd65b");
       glow.addColorStop(0.75, "#a8641a");
@@ -858,7 +943,14 @@ function coliseum(b: TownBuilding): Sprite {
       ctx.fill();
       ctx.strokeStyle = "#e9c25a";
       ctx.lineWidth = 5;
-      roundRect(ctx, cx - gw / 2 - 4, gateTop - 4, gw + 8, gateFoot - gateTop + 4, 60);
+      roundRect(
+        ctx,
+        cx - gw / 2 - 4,
+        gateTop - 4,
+        gw + 8,
+        gateFoot - gateTop + 4,
+        60,
+      );
       ctx.stroke();
       ctx.fillStyle = "#e9c25a";
       ctx.beginPath();
@@ -903,7 +995,14 @@ function coliseum(b: TownBuilding): Sprite {
 // smoke, sails, the brazier) is exported per kind.
 
 /** Shade under eaves and at the foot of walls. */
-function bandShade(ctx: Ctx, x0: number, x1: number, y: number, h: number, a: number) {
+function bandShade(
+  ctx: Ctx,
+  x0: number,
+  x1: number,
+  y: number,
+  h: number,
+  a: number,
+) {
   const g = ctx.createLinearGradient(0, y, 0, y + h);
   g.addColorStop(0, `rgba(25,18,10,${a})`);
   g.addColorStop(1, "rgba(25,18,10,0)");
@@ -920,10 +1019,25 @@ function footShade(ctx: Ctx, x0: number, x1: number, y: number) {
   ctx.fillRect(x0 - 4, y - 3, x1 - x0 + 8, 12);
 }
 /** A stepped ring (plinth) around a round building's foot. */
-function ringSteps(ctx: Ctx, cx: number, footY: number, rx: number, ry: number, steps: [number, number][], top: string, side: string) {
+function ringSteps(
+  ctx: Ctx,
+  cx: number,
+  footY: number,
+  rx: number,
+  ry: number,
+  steps: [number, number][],
+  top: string,
+  side: string,
+) {
   for (const [grow, drop] of steps) {
     ctx.fillStyle = side;
-    ellipse(ctx, cx, footY + drop + 7, rx + grow, ry + grow * WORLD_ART.groundY);
+    ellipse(
+      ctx,
+      cx,
+      footY + drop + 7,
+      rx + grow,
+      ry + grow * WORLD_ART.groundY,
+    );
     ctx.fill();
     ctx.fillStyle = top;
     ellipse(ctx, cx, footY + drop, rx + grow, ry + grow * WORLD_ART.groundY);
@@ -931,7 +1045,13 @@ function ringSteps(ctx: Ctx, cx: number, footY: number, rx: number, ry: number, 
   }
 }
 /** Contact shadow where a round wall meets its plinth. */
-function ringShade(ctx: Ctx, cx: number, footY: number, rx: number, ry: number) {
+function ringShade(
+  ctx: Ctx,
+  cx: number,
+  footY: number,
+  rx: number,
+  ry: number,
+) {
   ctx.save();
   ctx.translate(cx, footY);
   ctx.scale(1, (ry + 6) / (rx + 14));
@@ -944,7 +1064,16 @@ function ringShade(ctx: Ctx, cx: number, footY: number, rx: number, ry: number) 
   ctx.restore();
 }
 /** A round wall from its foot ellipse up to its top ellipse, lit from the upper left. */
-function cylinder(ctx: Ctx, cx: number, footY: number, topY: number, rFoot: number, rTop: number, ratio: number, stops: string[]) {
+function cylinder(
+  ctx: Ctx,
+  cx: number,
+  footY: number,
+  topY: number,
+  rFoot: number,
+  rTop: number,
+  ratio: number,
+  stops: string[],
+) {
   const g = ctx.createLinearGradient(cx - rFoot, 0, cx + rFoot, 0);
   stops.forEach((c, k) => g.addColorStop(k / (stops.length - 1), c));
   ctx.fillStyle = g;
@@ -994,7 +1123,14 @@ function temple(b: TownBuilding): Sprite {
       ctx.fillStyle = "#3f3760";
       ctx.fillRect(cx - hw + 24, colTop, b.w - 48, floor - colTop);
       bandShade(ctx, cx - hw + 24, cx + hw - 24, colTop, 50, 0.5);
-      const door = ctx.createRadialGradient(cx, floor - 50, 8, cx, floor - 70, 120);
+      const door = ctx.createRadialGradient(
+        cx,
+        floor - 50,
+        8,
+        cx,
+        floor - 70,
+        120,
+      );
       door.addColorStop(0, "#f2e7ff");
       door.addColorStop(0.3, "#b59bff");
       door.addColorStop(1, "#2a1f4a");
@@ -1002,7 +1138,14 @@ function temple(b: TownBuilding): Sprite {
       roundRect(ctx, cx - 56, floor - 160, 112, 160, 56);
       ctx.fill();
       // Light from the door spilling onto the floor.
-      const spill = ctx.createRadialGradient(cx, floor + 2, 4, cx, floor + 2, 120);
+      const spill = ctx.createRadialGradient(
+        cx,
+        floor + 2,
+        4,
+        cx,
+        floor + 2,
+        120,
+      );
       spill.addColorStop(0, "rgba(220,200,255,0.5)");
       spill.addColorStop(1, "rgba(220,200,255,0)");
       ctx.fillStyle = spill;
@@ -1072,7 +1215,8 @@ function temple(b: TownBuilding): Sprite {
       ctx.fillStyle = "#d8d2ea";
       ctx.fillRect(cx - eh, entY, eh * 2, 30);
       ctx.fillStyle = "#b9b1cc";
-      for (let tx = cx - eh + 10; tx < cx + eh - 10; tx += 34) ctx.fillRect(tx, entY + 9, 14, 13);
+      for (let tx = cx - eh + 10; tx < cx + eh - 10; tx += 34)
+        ctx.fillRect(tx, entY + 9, 14, 13);
       ctx.fillStyle = "#e9c25a";
       ctx.fillRect(cx - eh, entY + 27, eh * 2, 3);
       bandShade(ctx, cx - hw + 24, cx + hw - 24, entY + 30, 26, 0.45);
@@ -1102,8 +1246,14 @@ function temple(b: TownBuilding): Sprite {
         const t = k / 6;
         for (const side of [-1, 1]) {
           ctx.beginPath();
-          ctx.moveTo(cx + side * (eh + 14) * (1 - t), entY + 2 + (apexY - entY - 2) * t);
-          ctx.lineTo(cx + side * (eh + 4) * (1 - t), entY - back * 0.6 + (apexY - back - entY + back * 0.6) * t);
+          ctx.moveTo(
+            cx + side * (eh + 14) * (1 - t),
+            entY + 2 + (apexY - entY - 2) * t,
+          );
+          ctx.lineTo(
+            cx + side * (eh + 4) * (1 - t),
+            entY - back * 0.6 + (apexY - back - entY + back * 0.6) * t,
+          );
           ctx.stroke();
         }
       }
@@ -1167,9 +1317,26 @@ function tower(b: TownBuilding): Sprite {
         ry = rx * ratio,
         footY = G - ry - 30,
         topY = G + TOWER.top;
-      ringSteps(ctx, cx, footY, rx, ry, [[18, 10], [8, 4]], "#a59a86", "#6f6553");
+      ringSteps(
+        ctx,
+        cx,
+        footY,
+        rx,
+        ry,
+        [
+          [18, 10],
+          [8, 4],
+        ],
+        "#a59a86",
+        "#6f6553",
+      );
       ringShade(ctx, cx, footY, rx, ry);
-      cylinder(ctx, cx, footY, topY, rx, rx - 8, ratio, ["#4f463c", "#a3957f", "#857866", "#3f362d"]);
+      cylinder(ctx, cx, footY, topY, rx, rx - 8, ratio, [
+        "#4f463c",
+        "#a3957f",
+        "#857866",
+        "#3f362d",
+      ]);
       // Brick courses that follow the curve.
       ctx.strokeStyle = "rgba(0,0,0,0.2)";
       ctx.lineWidth = 1;
@@ -1291,8 +1458,18 @@ function windmill(b: TownBuilding): Sprite {
       ringSteps(ctx, cx, footY, rx, ry, [[12, 8]], "#a59a86", "#6f6553");
       ringShade(ctx, cx, footY, rx, ry);
       // Stone base course, then white weatherboarded walls tapering up.
-      cylinder(ctx, cx, footY, footY - 36, rx, rx - 3, ratio, ["#6f6553", "#b8ad97", "#9a8e76", "#5d5446"]);
-      cylinder(ctx, cx, footY - 34, topY, rx - 3, rx * 0.6, ratio, ["#cfc5b0", "#fbf7ee", "#e2d8c4", "#b0a690"]);
+      cylinder(ctx, cx, footY, footY - 36, rx, rx - 3, ratio, [
+        "#6f6553",
+        "#b8ad97",
+        "#9a8e76",
+        "#5d5446",
+      ]);
+      cylinder(ctx, cx, footY - 34, topY, rx - 3, rx * 0.6, ratio, [
+        "#cfc5b0",
+        "#fbf7ee",
+        "#e2d8c4",
+        "#b0a690",
+      ]);
       ctx.strokeStyle = "rgba(120,100,70,0.22)";
       ctx.lineWidth = 1;
       for (let y = topY + 10; y < footY - 36; y += 9) {
@@ -1343,7 +1520,10 @@ function windmill(b: TownBuilding): Sprite {
       ctx.lineWidth = 2;
       for (const dx of [-0.5, 0, 0.5]) {
         ctx.beginPath();
-        ctx.moveTo(cx + dx * capR * 0.9, topY + capR * ratio * Math.sqrt(1 - dx * dx) - 2);
+        ctx.moveTo(
+          cx + dx * capR * 0.9,
+          topY + capR * ratio * Math.sqrt(1 - dx * dx) - 2,
+        );
         ctx.quadraticCurveTo(cx + dx * capR * 0.7, topY - 50, cx, topY - 72);
         ctx.stroke();
       }
@@ -1411,7 +1591,15 @@ function house(b: TownBuilding): Sprite {
         wallTop = wallBottom - HOUSE.wall;
       footShade(ctx, x0, x1, G);
       // Foundation: a stone course, slightly proud of the wall.
-      stoneWall(ctx, x0 - 4, wallBottom, b.w + 8, HOUSE.found, "#8f846f", v * 100);
+      stoneWall(
+        ctx,
+        x0 - 4,
+        wallBottom,
+        b.w + 8,
+        HOUSE.found,
+        "#8f846f",
+        v * 100,
+      );
       ctx.fillStyle = "#b8ad97";
       ctx.fillRect(x0 - 4, wallBottom, b.w + 8, 3);
       // The front wall, lit from the left.
@@ -1588,7 +1776,15 @@ export const SUN = {
  * stalls, statues and buildings all use it, so they read as one scene.
  * `top` widens the far end for things with a crown (trees).
  */
-export function sunShadow(ctx: Ctx, x: number, y: number, rx: number, ry: number, h: number, top = 1) {
+export function sunShadow(
+  ctx: Ctx,
+  x: number,
+  y: number,
+  rx: number,
+  ry: number,
+  h: number,
+  top = 1,
+) {
   const steps = Math.max(4, Math.round(h / 12));
   ctx.beginPath();
   for (let k = 0; k <= steps; k++) {
@@ -1598,12 +1794,26 @@ export function sunShadow(ctx: Ctx, x: number, y: number, rx: number, ry: number
       cx = x + h * SUN.dx * t,
       cy = y + h * SUN.dy * t;
     ctx.moveTo(cx + Math.max(1, w), cy);
-    ctx.ellipse(cx, cy, Math.max(1, w), Math.max(1, ry * (w / rx)), 0, 0, Math.PI * 2);
+    ctx.ellipse(
+      cx,
+      cy,
+      Math.max(1, w),
+      Math.max(1, ry * (w / rx)),
+      0,
+      0,
+      Math.PI * 2,
+    );
   }
   ctx.fill("nonzero");
 }
 export function castShadow(ctx: Ctx, b: TownBuilding) {
-  const box = (x0: number, x1: number, front: number, depth: number, h: number) => {
+  const box = (
+    x0: number,
+    x1: number,
+    front: number,
+    depth: number,
+    h: number,
+  ) => {
     const sx = h * SUN.dx,
       sy = h * SUN.dy;
     ctx.beginPath();
@@ -1616,7 +1826,13 @@ export function castShadow(ctx: Ctx, b: TownBuilding) {
     ctx.closePath();
     ctx.fill();
   };
-  const round = (cx: number, footY: number, rx: number, ry: number, h: number) => {
+  const round = (
+    cx: number,
+    footY: number,
+    rx: number,
+    ry: number,
+    h: number,
+  ) => {
     ctx.beginPath();
     for (let k = 0; k <= 10; k++) {
       const t = k / 10,
@@ -1629,10 +1845,12 @@ export function castShadow(ctx: Ctx, b: TownBuilding) {
     ctx.fill("nonzero");
   };
   const { offset, width } = architecturePlacement(b),
-    x = b.x + offset[0], y = b.y + offset[1];
-  if (b.kind === "house") box(x - width * .47, x + width * .47, y, 32, 200);
+    x = b.x + offset[0],
+    y = b.y + offset[1];
+  if (b.kind === "house") box(x - width * 0.47, x + width * 0.47, y, 32, 200);
   else if (b.kind === "temple") box(x - width / 2, x + width / 2, y, 76, 330);
-  else if (b.kind === "tower" || b.kind === "windmill") round(x, y - 24, width * .46, 24, b.kind === "tower" ? 220 : 230);
+  else if (b.kind === "tower" || b.kind === "windmill")
+    round(x, y - 24, width * 0.46, 24, b.kind === "tower" ? 220 : 230);
   else {
     const foot = arenaGroundFoot(b);
     round(foot.x, foot.y, foot.rx, foot.ry, 260);
@@ -1678,7 +1896,12 @@ export function treeTrunk(variant = 0): Sprite {
       // Bark: dark birch marks, or furrows.
       for (let k = 0; k < 6; k++) {
         ctx.fillStyle = birch ? "#2c2a28" : "rgba(30,18,10,0.35)";
-        ctx.fillRect(11 + rnd(k * 3 + variant) * 6, 4 + k * 7, birch ? 4 : 1.5, birch ? 2 : 6);
+        ctx.fillRect(
+          11 + rnd(k * 3 + variant) * 6,
+          4 + k * 7,
+          birch ? 4 : 1.5,
+          birch ? 2 : 6,
+        );
       }
     },
   };
@@ -1721,7 +1944,13 @@ function pineCanopy(): Sprite {
       }
       for (let i = 0; i < 30; i++) {
         ctx.fillStyle = i % 2 ? "#5a8a5c" : "#244a2c";
-        ellipse(ctx, W / 2 + (rnd(i * 7) - 0.5) * 60 * (rnd(i * 3) + 0.3), 30 + rnd(i * 11) * 130, 2.5, 1.5);
+        ellipse(
+          ctx,
+          W / 2 + (rnd(i * 7) - 0.5) * 60 * (rnd(i * 3) + 0.3),
+          30 + rnd(i * 11) * 130,
+          2.5,
+          1.5,
+        );
         ctx.fill();
       }
     },
@@ -1742,12 +1971,24 @@ function birchCanopy(): Sprite {
         const a = rnd(i * 5.1) * Math.PI * 2,
           d = rnd(i * 2.3) * 30;
         ctx.fillStyle = pal[i % 3];
-        ellipse(ctx, W / 2 + Math.cos(a) * d, 58 + Math.sin(a) * d * 1.2, 13 + rnd(i) * 5, 11 + rnd(i * 4) * 4);
+        ellipse(
+          ctx,
+          W / 2 + Math.cos(a) * d,
+          58 + Math.sin(a) * d * 1.2,
+          13 + rnd(i) * 5,
+          11 + rnd(i * 4) * 4,
+        );
         ctx.fill();
       }
       for (let i = 0; i < 40; i++) {
         ctx.fillStyle = pal[3];
-        ellipse(ctx, W / 2 - 10 + (rnd(i * 9) - 0.5) * 50, 40 + rnd(i * 13) * 50, 2.5, 2);
+        ellipse(
+          ctx,
+          W / 2 - 10 + (rnd(i * 9) - 0.5) * 50,
+          40 + rnd(i * 13) * 50,
+          2.5,
+          2,
+        );
         ctx.fill();
       }
       // Branches showing through.
@@ -1779,7 +2020,11 @@ export function treeCanopy(variant: number): Sprite {
       for (let i = 0; i < 9; i++) {
         const a = (i / 9) * Math.PI * 2 + variant,
           d = 18 + rnd(i * 3 + variant * 17) * 12;
-        blobs.push([W / 2 + Math.cos(a) * d, 64 + Math.sin(a) * d * 0.8, 22 + rnd(i * 5 + variant) * 8]);
+        blobs.push([
+          W / 2 + Math.cos(a) * d,
+          64 + Math.sin(a) * d * 0.8,
+          22 + rnd(i * 5 + variant) * 8,
+        ]);
       }
       blobs.push([W / 2, 60, 30]);
       // Dark base, then mid, then lit top-left.
@@ -1789,9 +2034,16 @@ export function treeCanopy(variant: number): Sprite {
         [2, -4, -6, 0.75],
       ] as const)
         for (const [x, y, r] of blobs) {
-          const shade = ctx.createRadialGradient(x + dx - r * .3, y + dy - r * .4, r * .05, x + dx, y + dy, r * s);
+          const shade = ctx.createRadialGradient(
+            x + dx - r * 0.3,
+            y + dy - r * 0.4,
+            r * 0.05,
+            x + dx,
+            y + dy,
+            r * s,
+          );
           shade.addColorStop(0, pal[Math.min(3, k + 1)]);
-          shade.addColorStop(.5, pal[k]);
+          shade.addColorStop(0.5, pal[k]);
           shade.addColorStop(1, pal[Math.max(0, k - 1)]);
           ctx.fillStyle = shade;
           ellipse(ctx, x + dx, y + dy, r * s, r * s);
@@ -1811,7 +2063,13 @@ export function treeCanopy(variant: number): Sprite {
       if (variant === 1)
         for (let i = 0; i < 6; i++) {
           ctx.fillStyle = "#ff8a6a";
-          ellipse(ctx, W / 2 + (rnd(i * 13) - 0.5) * 70, 50 + (rnd(i * 17) - 0.5) * 50, 3.5, 3.5);
+          ellipse(
+            ctx,
+            W / 2 + (rnd(i * 13) - 0.5) * 70,
+            50 + (rnd(i * 17) - 0.5) * 50,
+            3.5,
+            3.5,
+          );
           ctx.fill();
         }
     },
@@ -1880,7 +2138,13 @@ export function shrubSprite(kind: "bush" | "rock", variant: number): Sprite {
       ] as const)
         for (const [x, y, r] of blobs) {
           ctx.fillStyle = pal[k];
-          ellipse(ctx, x + dx, y + dy, r * (1 - k * 0.18), r * (1 - k * 0.18) * 0.9);
+          ellipse(
+            ctx,
+            x + dx,
+            y + dy,
+            r * (1 - k * 0.18),
+            r * (1 - k * 0.18) * 0.9,
+          );
           ctx.fill();
         }
       if (variant % 3 === 1)
@@ -1894,7 +2158,11 @@ export function shrubSprite(kind: "bush" | "rock", variant: number): Sprite {
 }
 
 /** A wooden signpost with one arrow board naming the district down the road. */
-export function signpostSprite(label: string, color: string, left: boolean): Sprite {
+export function signpostSprite(
+  label: string,
+  color: string,
+  left: boolean,
+): Sprite {
   // Wide enough for the longest name on either side of the post.
   const W = 380,
     H = 120;
@@ -1987,7 +2255,12 @@ export function statuePlinth(name: string | null, color: string): Sprite {
       // Drum.
       const drumFoot = G - 46 * R - 8,
         capY = G - STATUE_TOP;
-      cylinder(ctx, cx, drumFoot, capY + 6, 33, 33, R, ["#e4e0ee", "#c4bed6", "#9690ac", "#6f6a86"]);
+      cylinder(ctx, cx, drumFoot, capY + 6, 33, 33, R, [
+        "#e4e0ee",
+        "#c4bed6",
+        "#9690ac",
+        "#6f6a86",
+      ]);
       // A band in the boss's colour near the foot of the drum.
       ctx.strokeStyle = color;
       ctx.globalAlpha = 0.85;
@@ -2023,7 +2296,8 @@ export function statuePlinth(name: string | null, color: string): Sprite {
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         let size = 11;
-        do ctx.font = `700 ${size}px 'Barlow Condensed', 'Arial Narrow', sans-serif`;
+        do
+          ctx.font = `700 ${size}px 'Barlow Condensed', 'Arial Narrow', sans-serif`;
         while (ctx.measureText(name.toUpperCase()).width > 48 && --size > 6);
         ctx.fillText(name.toUpperCase(), cx, G - 35);
       }
@@ -2054,7 +2328,8 @@ export function veiledStatue(): Sprite {
       ctx.quadraticCurveTo(cx, G - 104, cx + 18, G - 92);
       ctx.quadraticCurveTo(cx + 44, G - 60, cx + 40, G);
       // A hem with gentle folds.
-      for (let k = 4; k >= 0; k--) ctx.quadraticCurveTo(cx - 40 + k * 16 + 8, G + 4, cx - 40 + k * 16, G);
+      for (let k = 4; k >= 0; k--)
+        ctx.quadraticCurveTo(cx - 40 + k * 16 + 8, G + 4, cx - 40 + k * 16, G);
       ctx.closePath();
       ctx.fill();
       ctx.strokeStyle = "rgba(20,10,40,0.35)";
@@ -2092,20 +2367,55 @@ export const FOUNTAIN = {
 };
 /** Source pixels and the water share one ground anchor at the bottom plinth,
  * below the water plane. Both passes use exactly the same pixel placement. */
-export function paintedFountain(source: CanvasImageSource, upper: boolean): Sprite {
+export function paintedFountain(
+  source: CanvasImageSource,
+  upper: boolean,
+): Sprite {
   const scale = 114 / 437;
-  const image=source as HTMLImageElement,sw=image.naturalWidth||image.width,sh=image.naturalHeight||image.height;
-  const contour = [[450,110],[970,110],[970,613],[752,613],[752,666],[782,693],[788,725],[760,750],[712,763],[656,750],[627,726],[632,697],[671,668],[671,613],[450,613]];
+  const image = source as HTMLImageElement,
+    sw = image.naturalWidth || image.width,
+    sh = image.naturalHeight || image.height;
+  const contour = [
+    [450, 110],
+    [970, 110],
+    [970, 613],
+    [752, 613],
+    [752, 666],
+    [782, 693],
+    [788, 725],
+    [760, 750],
+    [712, 763],
+    [656, 750],
+    [627, 726],
+    [632, 697],
+    [671, 668],
+    [671, 613],
+    [450, 613],
+  ];
   return {
-    w: 1402 * scale, h: 1122 * scale,
-    ax: 712 * scale, ay: 738 * scale,
-    ...(sw&&sh?{nativeImage:{crop:[0,0,sw,sh] as const,rect:[0,0,1402*scale,1122*scale] as const,clip:upper?contour.map(([x,y])=>[x*scale,y*scale] as const):undefined}}:{}),
+    w: 1402 * scale,
+    h: 1122 * scale,
+    ax: 712 * scale,
+    ay: 738 * scale,
+    ...(sw && sh
+      ? {
+          nativeImage: {
+            crop: [0, 0, sw, sh] as const,
+            rect: [0, 0, 1402 * scale, 1122 * scale] as const,
+            clip: upper
+              ? contour.map(([x, y]) => [x * scale, y * scale] as const)
+              : undefined,
+          },
+        }
+      : {}),
     draw(ctx) {
       ctx.save();
       ctx.scale(scale, scale);
       if (upper) {
         ctx.beginPath();
-        contour.forEach(([x,y],i) => i ? ctx.lineTo(x,y) : ctx.moveTo(x,y));
+        contour.forEach(([x, y], i) =>
+          i ? ctx.lineTo(x, y) : ctx.moveTo(x, y),
+        );
         ctx.closePath();
         ctx.clip();
       }
@@ -2115,10 +2425,24 @@ export function paintedFountain(source: CanvasImageSource, upper: boolean): Spri
   };
 }
 
-const STONE = { light: "#e4dac4", mid: "#c9bda3", dark: "#9a8e76", deep: "#6f6553", line: "rgba(80,68,48,0.35)" };
+const STONE = {
+  light: "#e4dac4",
+  mid: "#c9bda3",
+  dark: "#9a8e76",
+  deep: "#6f6553",
+  line: "rgba(80,68,48,0.35)",
+};
 
 /** Mineral grain and shallow veins, painted once into each stone surface. */
-function fountainStone(ctx: Ctx, x: number, y: number, rx: number, ry: number, seed: number, height = 0) {
+function fountainStone(
+  ctx: Ctx,
+  x: number,
+  y: number,
+  rx: number,
+  ry: number,
+  seed: number,
+  height = 0,
+) {
   ctx.save();
   ctx.beginPath();
   ctx.ellipse(x, y, rx, ry, 0, Math.PI, 0);
@@ -2146,7 +2470,15 @@ function fountainStone(ctx: Ctx, x: number, y: number, rx: number, ry: number, s
 }
 
 /** Ashlar blocks on a curved wall seen from the front (only the near half shows). */
-function curvedBlocks(ctx: Ctx, cx: number, cy: number, rx: number, ry: number, h: number, rows: number) {
+function curvedBlocks(
+  ctx: Ctx,
+  cx: number,
+  cy: number,
+  rx: number,
+  ry: number,
+  h: number,
+  rows: number,
+) {
   ctx.strokeStyle = STONE.line;
   ctx.lineWidth = 1;
   for (let r = 1; r < rows; r++) {
@@ -2201,7 +2533,16 @@ export function fountainBase(): Sprite {
       ctx.fillStyle = "rgba(60,52,40,0.35)";
       ctx.beginPath();
       ctx.ellipse(cx, cy + wall - 3, rx + 1, ry + 1, 0, 0.05, Math.PI - 0.05);
-      ctx.ellipse(cx, cy + wall + 1, rx + 1, ry + 1, 0, Math.PI - 0.05, 0.05, true);
+      ctx.ellipse(
+        cx,
+        cy + wall + 1,
+        rx + 1,
+        ry + 1,
+        0,
+        Math.PI - 0.05,
+        0.05,
+        true,
+      );
       ctx.fill();
       // The rim: a broad coping stone with a rounded lit edge.
       ctx.fillStyle = STONE.mid;
@@ -2216,7 +2557,15 @@ export function fountainBase(): Sprite {
       ctx.strokeStyle = "rgba(255,255,255,0.45)";
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.ellipse(cx, cy - 2, rx - 2, ry - 2.5, 0, Math.PI * 1.05, Math.PI * 1.75);
+      ctx.ellipse(
+        cx,
+        cy - 2,
+        rx - 2,
+        ry - 2.5,
+        0,
+        Math.PI * 1.05,
+        Math.PI * 1.75,
+      );
       ctx.stroke();
       // Coping joints.
       ctx.strokeStyle = STONE.line;
@@ -2224,8 +2573,14 @@ export function fountainBase(): Sprite {
       for (let k = 0; k < 16; k++) {
         const a = (k / 16) * Math.PI * 2;
         ctx.beginPath();
-        ctx.moveTo(cx + Math.cos(a) * (rx - rim - 1), cy - 2 + Math.sin(a) * (ry - rim * 0.56 - 1));
-        ctx.lineTo(cx + Math.cos(a) * (rx - 1), cy - 2 + Math.sin(a) * (ry - 1.5));
+        ctx.moveTo(
+          cx + Math.cos(a) * (rx - rim - 1),
+          cy - 2 + Math.sin(a) * (ry - rim * 0.56 - 1),
+        );
+        ctx.lineTo(
+          cx + Math.cos(a) * (rx - 1),
+          cy - 2 + Math.sin(a) * (ry - 1.5),
+        );
         ctx.stroke();
       }
       fountainStone(ctx, cx, cy, rx - 1, ry - 1, 19, wall);
@@ -2236,7 +2591,14 @@ export function fountainBase(): Sprite {
       ellipse(ctx, cx, cy - 1, px + 1, py + 1);
       ctx.fill();
       // The pool: deep at the edges, bright in the middle, sky reflected on the far side.
-      const water = ctx.createRadialGradient(cx - 20, cy + dy - 12, 6, cx, cy + dy, px);
+      const water = ctx.createRadialGradient(
+        cx - 20,
+        cy + dy - 12,
+        6,
+        cx,
+        cy + dy,
+        px,
+      );
       water.addColorStop(0, "#8fe3f4");
       water.addColorStop(0.45, "#4fb4d4");
       water.addColorStop(0.85, "#2a7ea4");
@@ -2253,11 +2615,23 @@ export function fountainBase(): Sprite {
       for (let k = -5; k <= 5; k++) {
         ctx.beginPath();
         ctx.moveTo(cx - px, cy + dy + k * 9);
-        ctx.bezierCurveTo(cx - 28, cy + dy + k * 7 - 6, cx + 38, cy + dy + k * 8 + 7, cx + px, cy + dy + k * 9 - 2);
+        ctx.bezierCurveTo(
+          cx - 28,
+          cy + dy + k * 7 - 6,
+          cx + 38,
+          cy + dy + k * 8 + 7,
+          cx + px,
+          cy + dy + k * 9 - 2,
+        );
         ctx.stroke();
       }
       // The column casts a soft, tapered reflection into the basin.
-      const reflection = ctx.createLinearGradient(0, cy + dy - 6, 0, cy + dy + 43);
+      const reflection = ctx.createLinearGradient(
+        0,
+        cy + dy - 6,
+        0,
+        cy + dy + 43,
+      );
       reflection.addColorStop(0, "rgba(29,66,73,0.34)");
       reflection.addColorStop(1, "rgba(29,66,73,0)");
       ctx.fillStyle = reflection;
@@ -2271,14 +2645,38 @@ export function fountainBase(): Sprite {
       // Rim reflection on the water's far side and a coin-strewn floor glint.
       ctx.fillStyle = "rgba(255,255,255,0.18)";
       ctx.beginPath();
-      ctx.ellipse(cx, cy + dy - 2, px - 6, py - 10, 0, Math.PI * 1.08, Math.PI * 1.92);
-      ctx.ellipse(cx, cy + dy + 2, px - 14, py - 16, 0, Math.PI * 1.92, Math.PI * 1.08, true);
+      ctx.ellipse(
+        cx,
+        cy + dy - 2,
+        px - 6,
+        py - 10,
+        0,
+        Math.PI * 1.08,
+        Math.PI * 1.92,
+      );
+      ctx.ellipse(
+        cx,
+        cy + dy + 2,
+        px - 14,
+        py - 16,
+        0,
+        Math.PI * 1.92,
+        Math.PI * 1.08,
+        true,
+      );
       ctx.fill();
       for (let k = 0; k < 14; k++) {
         const a = rnd(k * 7) * Math.PI * 2,
           d = 0.25 + rnd(k * 11) * 0.55;
-        ctx.fillStyle = k % 3 ? "rgba(255,214,120,0.55)" : "rgba(220,230,235,0.5)";
-        ellipse(ctx, cx + Math.cos(a) * px * d, cy + dy + Math.sin(a) * py * d * 0.8 + 4, 2.4, 1.3);
+        ctx.fillStyle =
+          k % 3 ? "rgba(255,214,120,0.55)" : "rgba(220,230,235,0.5)";
+        ellipse(
+          ctx,
+          cx + Math.cos(a) * px * d,
+          cy + dy + Math.sin(a) * py * d * 0.8 + 4,
+          2.4,
+          1.3,
+        );
         ctx.fill();
       }
       // The column's foot standing in the water.
@@ -2309,15 +2707,31 @@ export function fountainTop(): Sprite {
       ctx.fillStyle = g;
       ctx.beginPath();
       ctx.ellipse(cx, cy + y, rx, ry, 0, 0, Math.PI);
-      ctx.quadraticCurveTo(cx - rx * 0.6, cy + y + depth * 1.4, cx, cy + y + depth);
-      ctx.quadraticCurveTo(cx + rx * 0.6, cy + y + depth * 1.4, cx + rx, cy + y);
+      ctx.quadraticCurveTo(
+        cx - rx * 0.6,
+        cy + y + depth * 1.4,
+        cx,
+        cy + y + depth,
+      );
+      ctx.quadraticCurveTo(
+        cx + rx * 0.6,
+        cy + y + depth * 1.4,
+        cx + rx,
+        cy + y,
+      );
       ctx.fill();
       fountainStone(ctx, cx, cy + y, rx, ry, 37 + rx, depth);
       // Scalloped lip.
       ctx.fillStyle = STONE.mid;
       for (let k = 0; k <= 10; k++) {
         const a = (k / 10) * Math.PI;
-        ellipse(ctx, cx + Math.cos(a) * rx, cy + y + Math.sin(a) * ry + 2, rx / 9, 3.5);
+        ellipse(
+          ctx,
+          cx + Math.cos(a) * rx,
+          cy + y + Math.sin(a) * ry + 2,
+          rx / 9,
+          3.5,
+        );
         ctx.fill();
       }
       ctx.fillStyle = STONE.light;
@@ -2327,12 +2741,27 @@ export function fountainTop(): Sprite {
       ctx.strokeStyle = "rgba(255,249,223,0.7)";
       ctx.lineWidth = 1.2;
       ctx.beginPath();
-      ctx.ellipse(cx, cy + y - 0.5, rx - 1.5, ry - 1, 0, Math.PI * 1.08, Math.PI * 1.78);
+      ctx.ellipse(
+        cx,
+        cy + y - 0.5,
+        rx - 1.5,
+        ry - 1,
+        0,
+        Math.PI * 1.08,
+        Math.PI * 1.78,
+      );
       ctx.stroke();
       ctx.fillStyle = STONE.deep;
       ellipse(ctx, cx, cy + y + 1, rx - 5, ry - 3);
       ctx.fill();
-      const w = ctx.createRadialGradient(cx - rx * 0.3, cy + y - 2, 1, cx, cy + y + 1, rx);
+      const w = ctx.createRadialGradient(
+        cx - rx * 0.3,
+        cy + y - 2,
+        1,
+        cx,
+        cy + y + 1,
+        rx,
+      );
       w.addColorStop(0, "#a6f0ff");
       w.addColorStop(1, "#3c9cc4");
       ctx.fillStyle = w;

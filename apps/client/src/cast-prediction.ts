@@ -11,7 +11,8 @@ import { skillReady, type Fighter } from "../../../packages/shared/src/index";
  * animation is cut short. Damage, hits and cooldowns stay the server's.
  */
 /** "charge": a skill with a wind-up (its cast comes when the charge ends). */
-export type CastAction = "basic" | "skill0" | "skill1" | "skill2" | "skill3" | "dash" | "charge";
+export type CastAction =
+  "basic" | "skill0" | "skill1" | "skill2" | "skill3" | "dash" | "charge";
 
 const DISABLING = ["stun", "freeze", "sleep"];
 
@@ -25,7 +26,12 @@ function canAct(p: Fighter, time: number) {
   );
 }
 /** Would the server start this skill now? */
-export function canCastSkill(p: Fighter, slot: number, time: number, free = false) {
+export function canCastSkill(
+  p: Fighter,
+  slot: number,
+  time: number,
+  free = false,
+) {
   return canAct(p, time) && skillReady(p, slot, time, free);
 }
 /** Would the server swing a basic attack now? */

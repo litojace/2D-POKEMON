@@ -7,16 +7,36 @@ import type { Ctx, Sprite } from "./town-art";
  * fliers, at the body's centre). Light comes from the upper left.
  */
 
-const ellipse = (ctx: Ctx, x: number, y: number, rx: number, ry: number, rot = 0) => {
+const ellipse = (
+  ctx: Ctx,
+  x: number,
+  y: number,
+  rx: number,
+  ry: number,
+  rot = 0,
+) => {
   ctx.beginPath();
   ctx.ellipse(x, y, Math.max(0.1, rx), Math.max(0.1, ry), rot, 0, Math.PI * 2);
 };
 const radial = (ctx: Ctx, x: number, y: number, r: number, stops: string[]) => {
-  const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.45, r * 0.1, x, y, r);
+  const g = ctx.createRadialGradient(
+    x - r * 0.35,
+    y - r * 0.45,
+    r * 0.1,
+    x,
+    y,
+    r,
+  );
   stops.forEach((c, i) => g.addColorStop(i / (stops.length - 1), c));
   return g;
 };
-const stroke = (ctx: Ctx, color: string, w: number, pts: number[], close = false) => {
+const stroke = (
+  ctx: Ctx,
+  color: string,
+  w: number,
+  pts: number[],
+  close = false,
+) => {
   ctx.strokeStyle = color;
   ctx.lineWidth = w;
   ctx.lineCap = "round";
@@ -28,7 +48,16 @@ const stroke = (ctx: Ctx, color: string, w: number, pts: number[], close = false
   ctx.stroke();
 };
 /** A two-segment leg from hip (x, y) swung by `a` radians, knee bending `bend`. */
-function leg(ctx: Ctx, x: number, y: number, len: number, a: number, bend: number, color: string, w: number) {
+function leg(
+  ctx: Ctx,
+  x: number,
+  y: number,
+  len: number,
+  a: number,
+  bend: number,
+  color: string,
+  w: number,
+) {
   const kx = x + Math.sin(a) * len * 0.5,
     ky = y + Math.cos(a) * len * 0.5,
     fx = kx + Math.sin(a + bend) * len * 0.5,
@@ -41,7 +70,12 @@ function leg(ctx: Ctx, x: number, y: number, len: number, a: number, bend: numbe
 
 export type DogPose = "walk" | "sniff" | "sit" | "idle";
 export const DOG_FRAMES = { walk: 8, sniff: 4, sit: 1, idle: 1 } as const;
-const DOG = { coat: ["#e0a868", "#c48446", "#8f5a2c"], dark: "#6a4022", belly: "#f2d2a2", collar: "#d8423a" };
+const DOG = {
+  coat: ["#e0a868", "#c48446", "#8f5a2c"],
+  dark: "#6a4022",
+  belly: "#f2d2a2",
+  collar: "#d8423a",
+};
 
 /** A medium tan dog in profile. Foot line at y = 40. */
 export function dogSprite(pose: DogPose, frame: number): Sprite {
@@ -58,7 +92,14 @@ export function dogSprite(pose: DogPose, frame: number): Sprite {
       const bob = pose === "walk" ? Math.abs(Math.sin(phase)) * -1.2 : 0;
       const by = foot - 15 + bob;
       // Tail: up and curved; wags between frames.
-      const wag = pose === "walk" ? Math.sin(phase) * 0.25 : sniff ? (frame ? 0.45 : -0.2) : 0.1;
+      const wag =
+        pose === "walk"
+          ? Math.sin(phase) * 0.25
+          : sniff
+            ? frame
+              ? 0.45
+              : -0.2
+            : 0.1;
       ctx.save();
       ctx.translate(sit ? 15 : 12, sit ? foot - 6 : by - 3);
       ctx.rotate(-0.9 + wag);
@@ -82,9 +123,32 @@ export function dogSprite(pose: DogPose, frame: number): Sprite {
           ctx.fill();
           return;
         }
-        const s = pose === "walk" ? Math.sin(phase + (near ? 0 : Math.PI)) * 0.45 : near ? 0.08 : -0.08;
-        const [fx, fy] = leg(ctx, 39, by + 3, 15, -s * 0.85, s > 0 ? 0.25 : 0, c, 4.4);
-        const [bx, bY] = leg(ctx, 17, by + 3, 15, s * 0.85, s < 0 ? -0.25 : 0.12, c, 4.8);
+        const s =
+          pose === "walk"
+            ? Math.sin(phase + (near ? 0 : Math.PI)) * 0.45
+            : near
+              ? 0.08
+              : -0.08;
+        const [fx, fy] = leg(
+          ctx,
+          39,
+          by + 3,
+          15,
+          -s * 0.85,
+          s > 0 ? 0.25 : 0,
+          c,
+          4.4,
+        );
+        const [bx, bY] = leg(
+          ctx,
+          17,
+          by + 3,
+          15,
+          s * 0.85,
+          s < 0 ? -0.25 : 0.12,
+          c,
+          4.8,
+        );
         ctx.fillStyle = c;
         ellipse(ctx, fx + 1.5, fy - 0.5, 3, 1.6);
         ctx.fill();
@@ -122,7 +186,12 @@ export function dogSprite(pose: DogPose, frame: number): Sprite {
       ctx.closePath();
       ctx.fill();
       // Collar with a tag.
-      stroke(ctx, DOG.collar, 3, [(38 + hx) / 2 - 2, (by - 5 + hy - 4) / 2, (40 + hx) / 2 + 1, (by + 4 + hy + 4) / 2]);
+      stroke(ctx, DOG.collar, 3, [
+        (38 + hx) / 2 - 2,
+        (by - 5 + hy - 4) / 2,
+        (40 + hx) / 2 + 1,
+        (by + 4 + hy + 4) / 2,
+      ]);
       ctx.fillStyle = "#ffd65b";
       ellipse(ctx, (40 + hx) / 2 + 1, (by + 4 + hy + 4) / 2 + 2, 1.6, 1.6);
       ctx.fill();
@@ -164,7 +233,11 @@ export const HEN_COLORS = {
 } as const;
 
 /** A hen in profile. Feet at y = 30. */
-export function henSprite(coat: keyof typeof HEN_COLORS, pose: HenPose, frame: number): Sprite {
+export function henSprite(
+  coat: keyof typeof HEN_COLORS,
+  pose: HenPose,
+  frame: number,
+): Sprite {
   const c = HEN_COLORS[coat];
   return {
     w: 36,
@@ -179,7 +252,10 @@ export function henSprite(coat: keyof typeof HEN_COLORS, pose: HenPose, frame: n
         by = foot - 11 + bob;
       // Legs.
       const step = pose === "walk" ? Math.sin(phase) * 0.5 : 0;
-      for (const [k, s] of [[0, step], [1, -step]] as const) {
+      for (const [k, s] of [
+        [0, step],
+        [1, -step],
+      ] as const) {
         const [fx, fy] = leg(ctx, 15 + k * 3, by + 5, 8, s, 0, "#e8a030", 1.6);
         stroke(ctx, "#e8a030", 1.2, [fx - 2, fy, fx + 3, fy]);
       }
@@ -206,7 +282,7 @@ export function henSprite(coat: keyof typeof HEN_COLORS, pose: HenPose, frame: n
       stroke(ctx, c[2], 0.8, [11, by + 1, 19, by - 1]);
       stroke(ctx, c[2], 0.8, [11, by + 3, 19, by + 1.5]);
       // Neck and head.
-      const dip = [0, .5, 1, .35][frame % 4];
+      const dip = [0, 0.5, 1, 0.35][frame % 4];
       const hx = peck ? 25 + dip * 5 : 25,
         hy = peck ? by - 9 + dip * 15 : by - 9;
       ctx.fillStyle = c[0];
@@ -255,7 +331,9 @@ export function duckSprite(pose: DuckPose, female = false): Sprite {
     ay: 24,
     draw(ctx) {
       const wl = 24;
-      const body = female ? ["#c8a070", "#9a7046", "#6a4a2a"] : ["#e8e4dc", "#b8b4ac", "#7d7a74"];
+      const body = female
+        ? ["#c8a070", "#9a7046", "#6a4a2a"]
+        : ["#e8e4dc", "#b8b4ac", "#7d7a74"];
       if (pose === "dabble") {
         // Head under water, tail up.
         ctx.fillStyle = radial(ctx, 18, wl - 6, 12, body);
@@ -311,7 +389,15 @@ export function duckSprite(pose: DuckPose, female = false): Sprite {
       ctx.quadraticCurveTo(30, wl - 10, 29, wl - 6);
       ctx.closePath();
       ctx.fill();
-      ctx.fillStyle = radial(ctx, 29, wl - 17, 5, female ? ["#c09a6a", "#a07a50", "#6a4a2a"] : ["#4ab878", "#1f6a3a", "#0f3a1e"]);
+      ctx.fillStyle = radial(
+        ctx,
+        29,
+        wl - 17,
+        5,
+        female
+          ? ["#c09a6a", "#a07a50", "#6a4a2a"]
+          : ["#4ab878", "#1f6a3a", "#0f3a1e"],
+      );
       ellipse(ctx, 29, wl - 17, 4.6, 4.2);
       ctx.fill();
       if (!female) {
@@ -353,8 +439,18 @@ export function gullSprite(frame: number): Sprite {
         ctx.fillStyle = "#c9ced8";
         ctx.beginPath();
         ctx.moveTo(cx + s * 3, cy - 3);
-        ctx.quadraticCurveTo(cx + s * span * 0.5, cy - 4 + lift * 0.6, cx + s * span, cy + lift);
-        ctx.quadraticCurveTo(cx + s * span * 0.55, cy + 2 + lift * 0.4, cx + s * 3, cy + 3);
+        ctx.quadraticCurveTo(
+          cx + s * span * 0.5,
+          cy - 4 + lift * 0.6,
+          cx + s * span,
+          cy + lift,
+        );
+        ctx.quadraticCurveTo(
+          cx + s * span * 0.55,
+          cy + 2 + lift * 0.4,
+          cx + s * 3,
+          cy + 3,
+        );
         ctx.closePath();
         ctx.fill();
         // Black tips and a lit leading edge.
@@ -365,7 +461,12 @@ export function gullSprite(frame: number): Sprite {
         ctx.lineTo(cx + s * span * 0.8, cy + 1.5 + lift * 0.7);
         ctx.closePath();
         ctx.fill();
-        stroke(ctx, "rgba(255,255,255,0.8)", 1, [cx + s * 4, cy - 3, cx + s * span * 0.5, cy - 4 + lift * 0.6]);
+        stroke(ctx, "rgba(255,255,255,0.8)", 1, [
+          cx + s * 4,
+          cy - 3,
+          cx + s * span * 0.5,
+          cy - 4 + lift * 0.6,
+        ]);
       }
       // Body, head, tail.
       ctx.fillStyle = radial(ctx, cx, cy, 6, ["#ffffff", "#eef0f4", "#c8ccd4"]);

@@ -6,4 +6,7 @@ import type Phaser from "phaser";
  * in front of it. The same key gets the same layer every frame (cleared once
  * per frame), so per-graphics animation memory keeps working.
  */
-export type LayerAt = (key: string, groundY: number) => Phaser.GameObjects.Graphics;
+export type LayerAt = (
+  key: string,
+  groundY: number,
+) => Phaser.GameObjects.Graphics;

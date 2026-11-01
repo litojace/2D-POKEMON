@@ -170,7 +170,7 @@ it("keeps a departed raid teammate in the receipt so a co-op clear cannot become
     payload.players.find((p) => p.accountId === host.account.id),
   ).toMatchObject({
     participated: true,
-    raid: { cleared: true, peril: 1, flawless: true },
+    raid: { cleared: true, peril: 3, flawless: true },
   });
   expect(
     payload.players.find((p) => p.accountId === host.account.id)!.abandoned,

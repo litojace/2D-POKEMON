@@ -1,4 +1,8 @@
-import { RAID_RITES, riteGrowth, type RaidRite } from "../../../packages/shared/src/raid";
+import {
+  RAID_RITES,
+  riteGrowth,
+  type RaidRite,
+} from "../../../packages/shared/src/raid";
 import {
   raidRitePicture,
   raidRiteBuffPicture,

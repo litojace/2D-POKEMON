@@ -51,7 +51,10 @@ export class FollowCamera {
     const zoomX = base.zoomX * this.zoom,
       zoomY = base.zoomY * this.zoom;
     const halfW = Math.min(800, Math.max(1, width) / zoomX / 2);
-    const halfH = Math.min(450 + (top + bottom) / 2, Math.max(1, height) / zoomY / 2);
+    const halfH = Math.min(
+      450 + (top + bottom) / 2,
+      Math.max(1, height) / zoomY / 2,
+    );
     const aheadX = focus
       ? clamp(focus.vx * 0.16, -65, 65) +
         (focus.attacking ? Math.cos(focus.angle) * 45 : 0)

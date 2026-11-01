@@ -12,18 +12,17 @@ import {
 
 /** Peril · NAME · Phase in one centred row, the bar below, the callout under it. */
 async function expectBossFrame(page: Page, boss: string) {
-  const peril = await box(page, ".raid-boss-peril"),
-    name = await box(page, ".raid-boss-heading > b"),
+  const name = await box(page, ".raid-boss-heading > b"),
     phase = await box(page, ".raid-boss-phase"),
     health = await box(page, boss === "storm-twins" ? ".raid-twin-health" : ".raid-boss-health"),
     cue = await box(page, ".raid-callout"),
     hud = await box(page, "#raid-hud");
   const mid = (b: { y: number; height: number }) => b.y + b.height / 2;
-  expect(peril.x + peril.width).toBeLessThanOrEqual(name.x);
+  // One difficulty: no Peril chip beside the name.
+  await expect(page.locator(".raid-boss-peril")).toHaveCount(0);
   expect(name.x + name.width).toBeLessThanOrEqual(phase.x);
-  expect(Math.abs(mid(peril) - mid(name))).toBeLessThanOrEqual(2);
   expect(Math.abs(mid(phase) - mid(name))).toBeLessThanOrEqual(2);
-  expect(health.y).toBeGreaterThanOrEqual(Math.max(peril.y + peril.height, name.y + name.height));
+  expect(health.y).toBeGreaterThanOrEqual(name.y + name.height);
   expect(cue.y).toBeGreaterThanOrEqual(health.y + health.height);
   // Centred on the bar, and the bar inside the HUD.
   expect(Math.abs(name.x + name.width / 2 - (health.x + health.width / 2))).toBeLessThanOrEqual(2);

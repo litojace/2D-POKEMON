@@ -75,7 +75,13 @@ export function profilePartOrder(
   // Terradon's shell rises behind its head: from behind it covers the nape
   // (but not the sapling on top).
   if (id === "terradon" && dir === "up")
-    return [...lower, ...face.filter((p) => p !== "flame"), "wings", "flame", "scarf"];
+    return [
+      ...lower,
+      ...face.filter((p) => p !== "flame"),
+      "wings",
+      "flame",
+      "scarf",
+    ];
   return [...lower, ...face, "scarf"];
 }
 interface ProfileDrawing {
@@ -740,7 +746,11 @@ export function creatureProfile(
           face,
         ) +
         shine(70, 70, 20) +
-        path("M57 96Q66 92 73 96Q71 104 62 105Q56 103 57 96Z", p.mid, ' stroke="none"') +
+        path(
+          "M57 96Q66 92 73 96Q71 104 62 105Q56 103 57 96Z",
+          p.mid,
+          ' stroke="none"',
+        ) +
         line("M60 96q2 -1 4 0", p.dark, 1.5) +
         grin(57, 108) +
         line("M70 75Q80 72 89 76", p.dark, 1.8, 0.48) +
@@ -749,7 +759,11 @@ export function creatureProfile(
     profiles.eyes = back ? "" : eyes(80, p.glow, 9.8, 11.8);
     const sproutX = back ? 100 : 96;
     profiles.flame =
-      line(`M${sproutX} 60Q${sproutX - 2} 48 ${sproutX + 1} 36`, "#5aa64a", 3.2) +
+      line(
+        `M${sproutX} 60Q${sproutX - 2} 48 ${sproutX + 1} 36`,
+        "#5aa64a",
+        3.2,
+      ) +
       path(
         `M${sproutX} 50Q${sproutX - 16} 38 ${sproutX - 23} 45Q${sproutX - 14} 57 ${sproutX} 50Z`,
         p.glow,
@@ -763,8 +777,12 @@ export function creatureProfile(
     // the back from behind), with moss, flowers and the crystal cluster.
     profiles.wings =
       (back
-        ? path("M60 152Q52 122 66 104Q82 90 100 90Q118 90 134 104Q148 122 140 152Q132 164 100 164Q68 164 60 152Z")
-        : path("M106 100Q116 72 136 76Q156 82 160 112Q164 146 150 166Q138 176 124 170Q108 160 110 138Q112 120 106 100Z")) +
+        ? path(
+            "M60 152Q52 122 66 104Q82 90 100 90Q118 90 134 104Q148 122 140 152Q132 164 100 164Q68 164 60 152Z",
+          )
+        : path(
+            "M106 100Q116 72 136 76Q156 82 160 112Q164 146 150 166Q138 176 124 170Q108 160 110 138Q112 120 106 100Z",
+          )) +
       line(
         back
           ? "M100 92V163M74 108Q100 116 126 108M64 130Q100 140 136 130M64 150Q100 158 136 150"
@@ -773,7 +791,12 @@ export function creatureProfile(
         2.4,
         0.6,
       ) +
-      line(back ? "M62 154Q100 170 138 154" : "M110 140Q114 164 132 170", p.light, 3, 0.6) +
+      line(
+        back ? "M62 154Q100 170 138 154" : "M110 140Q114 164 132 170",
+        p.light,
+        3,
+        0.6,
+      ) +
       path(
         back
           ? "M70 110Q78 94 92 94Q100 88 110 92Q126 94 132 110Q122 104 110 106Q100 100 90 106Q80 104 70 110Z"
@@ -782,8 +805,18 @@ export function creatureProfile(
       ) +
       flower(back ? 76 : 124, back ? 116 : 90) +
       flower(back ? 126 : 150, back ? 120 : 104, "#ffffff") +
-      path(back ? "M56 120L60 96L67 110L72 92L76 118Z" : "M146 92L150 68L157 82L163 70L166 96Z", "#bfe9ff") +
-      line(back ? "M61 102l2 12M71 98v14" : "M151 74v14M162 76v13", "#ffffff", 1.3, 0.8);
+      path(
+        back
+          ? "M56 120L60 96L67 110L72 92L76 118Z"
+          : "M146 92L150 68L157 82L163 70L166 96Z",
+        "#bfe9ff",
+      ) +
+      line(
+        back ? "M61 102l2 12M71 98v14" : "M151 74v14M162 76v13",
+        "#ffffff",
+        1.3,
+        0.8,
+      );
     // An upright torso with its plated belly.
     profiles.body = back
       ? e(100, 124, 18, 15) + e(100, 143, 26, 24)
@@ -793,7 +826,8 @@ export function creatureProfile(
         line("M82 141q11 4 22 0M82 151q11 3 21 0", p.mid, 1.6, 0.55);
     // Two arms with stone pauldrons; two sturdy legs with clawed feet.
     const pauldron = (x: number, y = 121) =>
-      e(x, y, 11, 7, p.accent) + e(x - 2, y - 5, 6, 2.6, p.glow, ' stroke="none"');
+      e(x, y, 11, 7, p.accent) +
+      e(x - 2, y - 5, 6, 2.6, p.glow, ' stroke="none"');
     // From behind, the shell covers its arms entirely.
     profiles.armL = back ? "" : arm(86, 128, 8, 79) + pauldron(86, 126);
     profiles.armR = back ? "" : arm(110, 128, 8, 108) + pauldron(110, 126);

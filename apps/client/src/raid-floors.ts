@@ -17,7 +17,19 @@ type Ctx = CanvasRenderingContext2D;
 const W = RULES.width,
   H = RULES.height;
 const BORDER = 36;
-const { SUNV, ell, mix, grain, shadows, lights, grade, pebbles, fillPoly, reseed, rand: R } = paintKit;
+const {
+  SUNV,
+  ell,
+  mix,
+  grain,
+  shadows,
+  lights,
+  grade,
+  pebbles,
+  fillPoly,
+  reseed,
+  rand: R,
+} = paintKit;
 
 export const RAID_FLOORS = [
   "lagoon",
@@ -42,7 +54,14 @@ export function paintRaidFloor(c: Ctx, id: RaidFloorId) {
 
 // ─────────────────────────── helpers ───────────────────────────
 
-function rounded(c: Ctx, x: number, y: number, w: number, h: number, r: number) {
+function rounded(
+  c: Ctx,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+) {
   c.beginPath();
   c.roundRect(x, y, w, h, r);
 }
@@ -57,7 +76,12 @@ function tiles(
   tones: [string, string],
   grout: string,
   s0: number,
-  opts: { radius?: number; checker?: number; veins?: string; bevel?: number } = {},
+  opts: {
+    radius?: number;
+    checker?: number;
+    veins?: string;
+    bevel?: number;
+  } = {},
 ) {
   c.fillStyle = grout;
   c.fillRect(x0, y0, x1 - x0, y1 - y0);
@@ -71,7 +95,8 @@ function tiles(
       const col = Math.round((x - x0) / size),
         row = Math.round((y - y0) / size);
       let base = mix(tones[0], tones[1], R());
-      if (opts.checker && (col + row) % 2) base = mix(base, "#ffffff", opts.checker);
+      if (opts.checker && (col + row) % 2)
+        base = mix(base, "#ffffff", opts.checker);
       const g = c.createLinearGradient(x, y, x + w, y + h);
       g.addColorStop(0, mix(base, "#ffffff", 0.08));
       g.addColorStop(1, mix(base, "#000000", 0.12));
@@ -102,20 +127,37 @@ function tiles(
         while (vy < y + h - 4) {
           vx += (R() - 0.5) * 22;
           vy += 8 + R() * 14;
-          c.lineTo(Math.max(x + 3, Math.min(x + w - 3, vx)), Math.min(vy, y + h - 4));
+          c.lineTo(
+            Math.max(x + 3, Math.min(x + w - 3, vx)),
+            Math.min(vy, y + h - 4),
+          );
         }
         c.stroke();
       }
       // A few pits of wear.
       for (let k = 0; k < 2; k++) {
         c.fillStyle = "rgba(0,0,0,0.12)";
-        ell(c, x + 8 + R() * (w - 16), y + 8 + R() * (h - 16), 1 + R() * 2, 0.8 + R());
+        ell(
+          c,
+          x + 8 + R() * (w - 16),
+          y + 8 + R() * (h - 16),
+          1 + R() * 2,
+          0.8 + R(),
+        );
         c.fill();
       }
     }
 }
 /** A true circle (in world space, like the live warnings) as an inlaid band. */
-function inlayRing(c: Ctx, x: number, y: number, r: number, width: number, color: string, glint = 0.35) {
+function inlayRing(
+  c: Ctx,
+  x: number,
+  y: number,
+  r: number,
+  width: number,
+  color: string,
+  glint = 0.35,
+) {
   c.strokeStyle = "rgba(0,0,0,0.35)";
   c.lineWidth = width + 2;
   c.beginPath();
@@ -138,7 +180,15 @@ function inlayRing(c: Ctx, x: number, y: number, r: number, width: number, color
  * a blur filter on the whole floor canvas costs a full-canvas pass per puff,
  * which froze the page for floors with dozens of clouds.
  */
-function cloud(c: Ctx, x: number, y: number, size: number, lit: string, shade: string, alpha = 1) {
+function cloud(
+  c: Ctx,
+  x: number,
+  y: number,
+  size: number,
+  lit: string,
+  shade: string,
+  alpha = 1,
+) {
   const scale = Math.hypot(c.getTransform().a, c.getTransform().b) || 1,
     blur = Math.max(2, size * 0.08),
     // Room for the puffs' spread plus the blur's tail.
@@ -154,7 +204,14 @@ function cloud(c: Ctx, x: number, y: number, size: number, lit: string, shade: s
     const px = x + (R() - 0.5) * size * 1.6,
       py = y + (R() - 0.5) * size * 0.5,
       r = size * (0.35 + R() * 0.35);
-    const g = p.createRadialGradient(px - r * 0.35, py - r * 0.4, r * 0.1, px, py, r);
+    const g = p.createRadialGradient(
+      px - r * 0.35,
+      py - r * 0.4,
+      r * 0.1,
+      px,
+      py,
+      r,
+    );
     g.addColorStop(0, lit);
     g.addColorStop(1, shade);
     p.fillStyle = g;
@@ -173,7 +230,16 @@ function cloud(c: Ctx, x: number, y: number, size: number, lit: string, shade: s
   c.restore();
 }
 /** Coloured light falling on the floor (stained glass, glowing rings). */
-function glow(c: Ctx, x: number, y: number, rx: number, ry: number, rgb: string, a: number, rot = 0) {
+function glow(
+  c: Ctx,
+  x: number,
+  y: number,
+  rx: number,
+  ry: number,
+  rgb: string,
+  a: number,
+  rot = 0,
+) {
   c.save();
   c.globalCompositeOperation = "screen";
   c.translate(x, y);
@@ -190,7 +256,14 @@ function glow(c: Ctx, x: number, y: number, rx: number, ry: number, rgb: string,
   c.restore();
 }
 function vignette(c: Ctx, rgb: string, a: number, inner = 0.45) {
-  const v = c.createRadialGradient(W / 2, H / 2, H * inner, W / 2, H / 2, H * 1.05);
+  const v = c.createRadialGradient(
+    W / 2,
+    H / 2,
+    H * inner,
+    W / 2,
+    H / 2,
+    H * 1.05,
+  );
   v.addColorStop(0, `rgba(${rgb},0)`);
   v.addColorStop(1, `rgba(${rgb},${a})`);
   c.fillStyle = v;
@@ -226,7 +299,14 @@ function lagoon(c: Ctx) {
   c.save();
   rounded(c, BORDER, BORDER, W - BORDER * 2, H - BORDER * 2, 40);
   c.clip();
-  const water = c.createRadialGradient(W / 2, H / 2, 80, W / 2, H / 2, W * 0.62);
+  const water = c.createRadialGradient(
+    W / 2,
+    H / 2,
+    80,
+    W / 2,
+    H / 2,
+    W * 0.62,
+  );
   water.addColorStop(0, "#47c3cf");
   water.addColorStop(0.45, "#2a9fb3");
   water.addColorStop(0.8, "#17778f");
@@ -241,7 +321,8 @@ function lagoon(c: Ctx) {
     c.strokeStyle = `rgba(230,214,160,${0.06 + R() * 0.05})`;
     c.beginPath();
     for (let x = BORDER; x <= W - BORDER; x += 10) {
-      const y = y0 + Math.sin(x / 38 + row * 1.7) * 4 + Math.sin(x / 11 + row) * 1.2;
+      const y =
+        y0 + Math.sin(x / 38 + row * 1.7) * 4 + Math.sin(x / 11 + row) * 1.2;
       if (x === BORDER) c.moveTo(x, y);
       else c.lineTo(x, y);
     }
@@ -292,7 +373,14 @@ function lagoon(c: Ctx) {
   c.restore();
   c.strokeStyle = "rgba(255,255,255,0.4)";
   c.lineWidth = 2;
-  rounded(c, BORDER + 9, BORDER + 9, W - BORDER * 2 - 18, H - BORDER * 2 - 18, 34);
+  rounded(
+    c,
+    BORDER + 9,
+    BORDER + 9,
+    W - BORDER * 2 - 18,
+    H - BORDER * 2 - 18,
+    34,
+  );
   c.stroke();
   // Sun glints on the water.
   reseed(105);
@@ -324,7 +412,12 @@ function rock(c: Ctx, x: number, y: number, s: number) {
   ell(c, x + 10 * s, y + 6 * s, 30 * s, 14 * s);
   c.fill();
   c.restore();
-  const g = c.createLinearGradient(x - 24 * s, y - 20 * s, x + 20 * s, y + 14 * s);
+  const g = c.createLinearGradient(
+    x - 24 * s,
+    y - 20 * s,
+    x + 20 * s,
+    y + 14 * s,
+  );
   g.addColorStop(0, "#9aa29c");
   g.addColorStop(1, "#4d5651");
   c.fillStyle = g;
@@ -346,7 +439,13 @@ function lanternYard(c: Ctx) {
   for (let i = 0; i < 520; i++) {
     const x = R() * W,
       y = R() * H;
-    if (x > BORDER + 6 && x < W - BORDER - 6 && y > BORDER + 6 && y < H - BORDER - 6) continue;
+    if (
+      x > BORDER + 6 &&
+      x < W - BORDER - 6 &&
+      y > BORDER + 6 &&
+      y < H - BORDER - 6
+    )
+      continue;
     const r = 8 + R() * 12;
     const g = c.createRadialGradient(x - r * 0.4, y - r * 0.4, 1, x, y, r);
     g.addColorStop(0, ["#3b6556", "#355e50", "#41705f"][i % 3]);
@@ -406,12 +505,24 @@ function lanternYard(c: Ctx) {
       // Moss in the joints, dew catching the moon.
       for (let k = 0; k < 7; k++) {
         c.fillStyle = `rgba(70,120,96,${0.35 + R() * 0.3})`;
-        ell(c, ax + 4 + R() * (bx - ax - 8), R() < 0.5 ? ay + 3 : ay + (by - ay) * split, 2 + R() * 3, 1.5 + R());
+        ell(
+          c,
+          ax + 4 + R() * (bx - ax - 8),
+          R() < 0.5 ? ay + 3 : ay + (by - ay) * split,
+          2 + R() * 3,
+          1.5 + R(),
+        );
         c.fill();
       }
       for (let k = 0; k < 5; k++) {
         c.fillStyle = "rgba(230,230,255,0.35)";
-        ell(c, ax + 10 + R() * (bx - ax - 20), ay + 10 + R() * (by - ay - 20), 1, 1);
+        ell(
+          c,
+          ax + 10 + R() * (bx - ax - 20),
+          ay + 10 + R() * (by - ay - 20),
+          1,
+          1,
+        );
         c.fill();
       }
     }
@@ -435,7 +546,14 @@ function lanternYard(c: Ctx) {
   c.stroke();
   c.strokeStyle = "rgba(200,190,240,0.35)";
   c.lineWidth = 2;
-  rounded(c, BORDER + 5, BORDER + 5, W - BORDER * 2 - 10, H - BORDER * 2 - 10, 14);
+  rounded(
+    c,
+    BORDER + 5,
+    BORDER + 5,
+    W - BORDER * 2 - 10,
+    H - BORDER * 2 - 10,
+    14,
+  );
   c.stroke();
   // Cold moonlight from the upper left, falling off into the night.
   glow(c, 520, 260, 900, 650, "170,170,240", 0.16);
@@ -455,11 +573,27 @@ function skyTerrace(c: Ctx) {
   reseed(301);
   for (let i = 0; i < 26; i++) {
     const top = i % 2 === 0;
-    cloud(c, (i / 26) * W * 1.1, top ? 10 + R() * 20 : H - 10 - R() * 20, 70 + R() * 50, "#ffe6d0", "rgba(150,140,190,0)", 0.75);
+    cloud(
+      c,
+      (i / 26) * W * 1.1,
+      top ? 10 + R() * 20 : H - 10 - R() * 20,
+      70 + R() * 50,
+      "#ffe6d0",
+      "rgba(150,140,190,0)",
+      0.75,
+    );
   }
   for (let i = 0; i < 10; i++) {
     const left = i % 2 === 0;
-    cloud(c, left ? 12 : W - 12, 80 + (i / 10) * (H - 160), 60 + R() * 40, "#ffd9c4", "rgba(150,140,190,0)", 0.6);
+    cloud(
+      c,
+      left ? 12 : W - 12,
+      80 + (i / 10) * (H - 160),
+      60 + R() * 40,
+      "#ffd9c4",
+      "rgba(150,140,190,0)",
+      0.6,
+    );
   }
   // The terrace slab's drop shadow on the clouds.
   shadows(c, (s) => {
@@ -470,7 +604,18 @@ function skyTerrace(c: Ctx) {
   c.save();
   rounded(c, 35, 35, W - 70, H - 70, 35);
   c.clip();
-  tiles(c, 35, 35, W - 35, H - 35, 100, ["#a99880", "#bba98f"], "#6e6150", 302, { radius: 4 });
+  tiles(
+    c,
+    35,
+    35,
+    W - 35,
+    H - 35,
+    100,
+    ["#a99880", "#bba98f"],
+    "#6e6150",
+    302,
+    { radius: 4 },
+  );
   grain(c, 35, 35, W - 70, H - 70, 0.4, 303, [
     [130, 1],
     [28, 0.6],
@@ -549,15 +694,32 @@ function sunAtrium(c: Ctx) {
   rounded(c, 38, 38, W - 76, H - 76, 24);
   c.stroke();
   // Stained-glass windows along both long walls, and the coloured light they cast.
-  const colors = ["#d97c91", "#e0ba70", "#80b9a8", "#70a9c7", "#8d8dc0", "#b18dbd"];
-  const rgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)).join(",");
+  const colors = [
+    "#d97c91",
+    "#e0ba70",
+    "#80b9a8",
+    "#70a9c7",
+    "#8d8dc0",
+    "#b18dbd",
+  ];
+  const rgb = (h: string) =>
+    [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)).join(",");
   for (let i = 0; i < 8; i++)
     for (const [y, dir] of [
       [24, 1],
       [818, -1],
     ] as const) {
       const x = 130 + i * 190;
-      glow(c, x + 60, y + 29 + dir * 170, 150, 70, rgb(colors[i % 6]), 0.16, 0.5);
+      glow(
+        c,
+        x + 60,
+        y + 29 + dir * 170,
+        150,
+        70,
+        rgb(colors[i % 6]),
+        0.16,
+        0.5,
+      );
     }
   for (let i = 0; i < 8; i++)
     for (const y of [24, 818]) {
@@ -617,7 +779,10 @@ function sunAtrium(c: Ctx) {
 
 /** A slate stage, rain-wet, with copper conductor tracks and riveted plates. */
 function conductorRing(c: Ctx) {
-  tiles(c, 0, 0, W, H, 100, ["#33465c", "#3c5169"], "#1a2738", 501, { radius: 6, bevel: 0.16 });
+  tiles(c, 0, 0, W, H, 100, ["#33465c", "#3c5169"], "#1a2738", 501, {
+    radius: 6,
+    bevel: 0.16,
+  });
   // Rivets at the plate corners.
   for (let y = 0; y <= H; y += 100)
     for (let x = 0; x <= W; x += 100) {
@@ -644,7 +809,13 @@ function conductorRing(c: Ctx) {
   }
   c.restore();
   // Copper tracks: ellipses with their own highlight.
-  const track = (rx: number, ry: number, color: string, width: number, glint: number) => {
+  const track = (
+    rx: number,
+    ry: number,
+    color: string,
+    width: number,
+    glint: number,
+  ) => {
     c.strokeStyle = "rgba(0,0,0,0.4)";
     c.lineWidth = width + 3;
     c.beginPath();
@@ -685,7 +856,11 @@ function conductorRing(c: Ctx) {
 function cloudDeck(c: Ctx) {
   c.fillStyle = "#141c38";
   c.fillRect(0, 0, W, H);
-  tiles(c, 0, 0, W, H, 100, ["#3a4a72", "#45577f"], "#212b4c", 601, { radius: 18, checker: 0.04, bevel: 0.2 });
+  tiles(c, 0, 0, W, H, 100, ["#3a4a72", "#45577f"], "#212b4c", 601, {
+    radius: 18,
+    checker: 0.04,
+    bevel: 0.2,
+  });
   grain(c, 0, 0, W, H, 0.25, 602, [
     [150, 1],
     [30, 0.5],
@@ -724,12 +899,36 @@ function cloudDeck(c: Ctx) {
   // Cloud banks drifting over the deck's edges.
   reseed(603);
   for (let x = -40; x < W + 80; x += 90) {
-    cloud(c, x, -6 + R() * 16, 60 + R() * 30, "#c9d2f0", "rgba(110,120,170,0)", 0.55);
-    cloud(c, x + 40, H + 6 - R() * 16, 60 + R() * 30, "#c3cbea", "rgba(110,120,170,0)", 0.55);
+    cloud(
+      c,
+      x,
+      -6 + R() * 16,
+      60 + R() * 30,
+      "#c9d2f0",
+      "rgba(110,120,170,0)",
+      0.55,
+    );
+    cloud(
+      c,
+      x + 40,
+      H + 6 - R() * 16,
+      60 + R() * 30,
+      "#c3cbea",
+      "rgba(110,120,170,0)",
+      0.55,
+    );
   }
   for (let y = 60; y < H - 40; y += 110) {
     cloud(c, -10, y, 50 + R() * 20, "#c3cbea", "rgba(110,120,170,0)", 0.4);
-    cloud(c, W + 10, y + 40, 50 + R() * 20, "#c3cbea", "rgba(110,120,170,0)", 0.4);
+    cloud(
+      c,
+      W + 10,
+      y + 40,
+      50 + R() * 20,
+      "#c3cbea",
+      "rgba(110,120,170,0)",
+      0.4,
+    );
   }
   // Dream light: soft violet from the middle.
   glow(c, 800, 450, 760, 460, "180,150,255", 0.12);

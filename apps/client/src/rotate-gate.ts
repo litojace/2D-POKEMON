@@ -8,10 +8,15 @@ import { fullscreenLandscape } from "./orientation";
  * iPhone and iPad can't be rotated by a web page, so they only see the hint.
  */
 export function wireRotateGate() {
-  const button = document.getElementById("rotate-gate-lock") as HTMLButtonElement | null;
+  const button = document.getElementById(
+    "rotate-gate-lock",
+  ) as HTMLButtonElement | null;
   if (!button) return;
-  const orientation = screen.orientation as (ScreenOrientation & { lock?: unknown }) | undefined;
-  const canTry = typeof orientation?.lock === "function" && document.fullscreenEnabled !== false;
+  const orientation = screen.orientation as
+    (ScreenOrientation & { lock?: unknown }) | undefined;
+  const canTry =
+    typeof orientation?.lock === "function" &&
+    document.fullscreenEnabled !== false;
   button.hidden = !canTry;
   button.onclick = async () => {
     button.disabled = true;

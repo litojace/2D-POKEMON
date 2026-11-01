@@ -76,6 +76,7 @@ describe("Grumblecrag's attack plan", () => {
         GRUMBLECRAG.health.base *
           RAID.healthScale *
           RAID.perilHealth[solo.raid.peril] *
+          RAID.soloHealth * // solo raiders face a little less health
           gild(solo),
       ),
     );
@@ -333,7 +334,10 @@ describe("boss health by Peril", () => {
       a.start();
       return a.raid.maxHp / (a.raid.gilded ? GRUMBLECRAG.health.gilded : 1);
     };
-    expect(hp(1)).toBeCloseTo(GRUMBLECRAG.health.base * RAID.healthScale, -1);
+    expect(hp(1)).toBeCloseTo(
+      GRUMBLECRAG.health.base * RAID.healthScale * RAID.soloHealth,
+      -1,
+    );
     expect(hp(2)).toBeGreaterThan(hp(1));
     expect(hp(3)).toBeGreaterThan(hp(2));
   });

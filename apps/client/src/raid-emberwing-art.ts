@@ -33,7 +33,12 @@ function flame(g: G, x: number, y: number, size: number, alpha = 1) {
     y - size * 0.7,
   );
 }
-export function drawSkyTerrace(g: G, state: Snapshot, reduced: boolean, at?: LayerAt) {
+export function drawSkyTerrace(
+  g: G,
+  state: Snapshot,
+  reduced: boolean,
+  at?: LayerAt,
+) {
   const r = state.raid!,
     t = reduced ? 0 : state.time;
   for (const f of r.emberPatches ?? []) {
@@ -78,8 +83,12 @@ export function drawSkyTerrace(g: G, state: Snapshot, reduced: boolean, at?: Lay
     bowl.fillStyle(0x354259, 1).fillRoundedRect(b.x - 19, b.y - 5, 38, 35, 5);
     bowl.fillStyle(0x4a5874, 1).fillRoundedRect(b.x - 19, b.y - 5, 12, 35, 4);
     bowl.fillStyle(0x5c5862, 1).fillEllipse(b.x, b.y - 7, 64, groundHeight(64));
-    bowl.lineStyle(3, 0xc3a37c, 0.9).strokeEllipse(b.x, b.y - 7, 64, groundHeight(64));
-    bowl.fillStyle(0x152239, 1).fillEllipse(b.x, b.y - 10, 50, groundHeight(50));
+    bowl
+      .lineStyle(3, 0xc3a37c, 0.9)
+      .strokeEllipse(b.x, b.y - 7, 64, groundHeight(64));
+    bowl
+      .fillStyle(0x152239, 1)
+      .fillEllipse(b.x, b.y - 10, 50, groundHeight(50));
     if (lit) {
       const k = Math.max(
         0,
@@ -348,8 +357,16 @@ export function drawEmberwing(
     g.restore();
   }
   g.fillStyle(0x713949, alpha).fillEllipse(x, y + 3, 145, 137);
-  bossSurface(g, x, y, 138, 132 + life.breath * 2,
-    pose.hurt > 0.2 ? 0xffe0b1 : r.gilded ? 0xe2ab65 : 0xe98b58, "feathers", alpha);
+  bossSurface(
+    g,
+    x,
+    y,
+    138,
+    132 + life.breath * 2,
+    pose.hurt > 0.2 ? 0xffe0b1 : r.gilded ? 0xe2ab65 : 0xe98b58,
+    "feathers",
+    alpha,
+  );
   g.fillStyle(0xffd49c, alpha).fillEllipse(x - 6, y + 24, 98, 79);
   for (let i = 0; i < 3; i++)
     g.lineStyle(2, 0xe9a56e, alpha * 0.6)

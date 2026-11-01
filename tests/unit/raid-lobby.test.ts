@@ -36,7 +36,8 @@ it("marks earned rewards completed and keeps unearned cosmetics visibly locked",
     weekly: [],
     equipped: null,
   });
-  expect(html.match(/class="raid-goal is-complete"/g)).toHaveLength(1);
+  // The first clear earns the title and (one difficulty) the entrance.
+  expect(html.match(/class="raid-goal is-complete"/g)).toHaveLength(2);
   expect(html).toContain("Unlock: 5 clears");
   expect(html).toContain("1/5 clears");
   expect(html).toMatch(

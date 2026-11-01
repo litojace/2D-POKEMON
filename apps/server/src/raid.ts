@@ -130,7 +130,7 @@ export class RaidArena extends Arena {
       bossId: "raid-boss",
       boss,
       name: RAID_BOSSES[boss].name,
-      peril: 1,
+      peril: RAID.maxPeril,
       trait: "ancient",
       gilded: false,
       phase: 1,
@@ -170,7 +170,9 @@ export class RaidArena extends Arena {
   protected def(): RaidBossNumbers {
     return BOSS;
   }
-  configure(peril: number, _legacyDaily = false) {
+  /** Raids have one difficulty now: always Peril 3 (the argument is kept
+   * for tests and the engine's Peril-based rules). */
+  configure(peril: number = RAID.maxPeril, _legacyDaily = false) {
     this.raid.peril = peril;
     this.raid.daily = false;
   }
@@ -211,6 +213,7 @@ export class RaidArena extends Arena {
       (def.health.base + def.health.perExtraPlayer * (r.partySize - 1)) *
         RAID.healthScale *
         (RAID.perilHealth[r.peril] ?? 1) *
+        (r.partySize === 1 ? RAID.soloHealth : 1) *
         (r.gilded ? def.health.gilded : 1),
     );
     r.pings = [];

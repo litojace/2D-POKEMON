@@ -19,6 +19,7 @@ import {
   raidLookOf,
   pacificDate,
   raidWeek,
+  RAID,
   RAID_BOSSES,
   RAID_BOSS_ORDER,
   type RaidBossId,
@@ -438,7 +439,9 @@ export function createArenaServer(
         if (file.endsWith("manifest.webmanifest"))
           res.setHeader("Content-Type", "application/manifest+json");
         // Build files carry a content hash in their name, so they never change.
-        else if (/[/\\]assets[/\\][^/\\]+-[A-Za-z0-9_-]{8}\.(?:js|css)$/.test(file))
+        else if (
+          /[/\\]assets[/\\][^/\\]+-[A-Za-z0-9_-]{8}\.(?:js|css)$/.test(file)
+        )
           res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
       },
     }),
@@ -1336,41 +1339,16 @@ export function createArenaServer(
           cb,
           "Only the raid host can change the challenge in the lobby.",
         );
+      // Raids have one difficulty now (Peril 3); old clients may still ask.
       const result = z
-        .object({ peril: z.number().int().min(1).max(3), daily: z.literal(false).optional() })
+        .object({
+          peril: z.number().int().min(1).max(3),
+          daily: z.literal(false).optional(),
+        })
         .strict()
         .safeParse(data);
       if (!result.success) return fail(cb, "Choose a valid raid challenge.");
-      const boss = a.raid.boss;
-      let highest = 0,
-        unlocked = boss === "grumblecrag";
-      if (result.data.peril > 1 || !unlocked) {
-        try {
-          const progress = (await accounts.rpc(
-            socket.data.accessToken,
-            "arena_raid_progress",
-            {},
-          )) as RaidProgress;
-          highest =
-            progress.bosses?.[boss]?.highestPeril ??
-            (boss === "grumblecrag" ? progress.highestPeril : 0);
-          unlocked ||=
-            (progress.bosses?.grumblecrag?.clears ?? progress.clears) > 0;
-        } catch {
-          return fail(
-            cb,
-            "Raid progression is unavailable. Peril 1 is always open.",
-          );
-        }
-      }
-      // Recheck state after the asynchronous account lookup.
-      if (a.phase !== "lobby" || getSession(socket.id)?.id !== s!.id)
-        return fail(cb, "The room changed while checking this challenge.");
-      if (!unlocked)
-        return fail(cb, "Clear Grumblecrag first to unlock this boss.");
-      if (result.data.peril > highest + 1)
-        return fail(cb, "Clear the previous Peril first.");
-      a.configure(result.data.peril);
+      a.configure(RAID.maxPeril);
       for (const p of a.players) p.ready = false;
       reply(cb, { ok: true });
       broadcast(a);
@@ -1407,7 +1385,7 @@ export function createArenaServer(
             .safeParse(data);
           if (
             !(a instanceof RaidArena) ||
-          !result.success ||
+            !result.success ||
             !a.callRune(id, result.data.rune)
           )
             return fail(

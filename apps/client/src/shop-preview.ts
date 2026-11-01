@@ -1,4 +1,7 @@
-import { WORLD_ART, groundHeight } from "../../../packages/shared/src/world-art";
+import {
+  WORLD_ART,
+  groundHeight,
+} from "../../../packages/shared/src/world-art";
 import { JOURNEY_ITEM_BY_ID } from "../../../packages/shared/src/journey";
 import Phaser from "phaser";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
@@ -13,7 +16,12 @@ import { drawCollectionAura } from "./skins/collection-fx";
 import { menuShadow } from "./fighter-art";
 import type { AnimationPose } from "./animation/controller";
 import type { SkinLook } from "./creature-design";
-import { SELECTION_PREVIEW, SHOP_PREVIEW, previewZoom, previewAuraScale } from "./shop-preview-layout";
+import {
+  SELECTION_PREVIEW,
+  SHOP_PREVIEW,
+  previewZoom,
+  previewAuraScale,
+} from "./shop-preview-layout";
 
 export type PreviewPlacement = "shop" | "selection";
 export interface ShopPreviewHandle {
@@ -275,7 +283,14 @@ export function mountShopPreview(
         }
         this.floor.clear();
         if (!selection) {
-          this.floor.fillStyle(0x040d20, 0.4).fillEllipse(framing.x, framing.y + WORLD_ART.fighterFeet * framing.scale, 116, 28);
+          this.floor
+            .fillStyle(0x040d20, 0.4)
+            .fillEllipse(
+              framing.x,
+              framing.y + WORLD_ART.fighterFeet * framing.scale,
+              116,
+              28,
+            );
         }
         rig = new FighterRig(this, champion, layers);
         ready = true;

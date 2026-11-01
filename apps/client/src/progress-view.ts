@@ -1,9 +1,6 @@
 import { levelBar } from "./adventure-ui";
 import type { Journey } from "../../../packages/shared/src/journey";
-import {
-  CHARACTERS,
-  FIGHTER_IDS,
-} from "../../../packages/shared/src/index";
+import { CHARACTERS, FIGHTER_IDS } from "../../../packages/shared/src/index";
 import {
   masteryTier,
   nextMastery,
@@ -80,7 +77,16 @@ export function progressMarkup(progress: Progress, journey?: Journey) {
       return `<li style="--element:${color}${tier ? `;--tier:${tier.color}` : ""}" class="${tier ? "ranked" : ""}"><b>${CHARACTERS[id].name}</b><span>${tier ? `${tier.name} · ` : ""}${record.matches} played · ${record.wins} won</span><small>${next ? `${next.left} more for ${next.name}` : "Top tier"}</small></li>`;
     },
   ).join("")}</ul>`;
-  return (journey ? levelBar(journey) + '<p><button class="secondary" id="profile-adventure">Player levels & seasonal rewards →</button></p>' : "") + ratingMarkup(progress.rating) + totals + achievements + mastery;
+  return (
+    (journey
+      ? levelBar(journey) +
+        '<p><button class="secondary" id="profile-adventure">Player levels & seasonal rewards →</button></p>'
+      : "") +
+    ratingMarkup(progress.rating) +
+    totals +
+    achievements +
+    mastery
+  );
 }
 
 /** The leaderboard: ranked players by rating, with this month's record. */
@@ -115,10 +121,7 @@ function ratedBoardMarkup(board: Leaderboard) {
     : `<tr><td colspan="4" class="empty">Nobody is ranked yet: play ${PLACEMENT_MATCHES} matches against friends to get a rank.</td></tr>`;
   const unranked = board.unranked?.length
     ? `<p class="muted unranked">Placing: ${board.unranked
-        .map(
-          (u) =>
-            `${escape(u.name)} (${u.left} to go)`,
-        )
+        .map((u) => `${escape(u.name)} (${u.left} to go)`)
         .join(" · ")}</p>`
     : "";
   return `<div class="leaderboard-layout"><aside class="leaderboard-summary">${ratingMarkup(board.rating)}${ranksHelpMarkup()}</aside><div class="leaderboard-results"><table class="leaderboard"><thead><tr><th scope="col">#</th><th scope="col">Player</th><th scope="col">Rating</th><th scope="col" title="Wins and losses against players this month">This month</th></tr></thead><tbody>${rows}</tbody></table>${unranked}</div></div>`;

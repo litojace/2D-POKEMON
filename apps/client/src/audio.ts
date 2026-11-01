@@ -60,7 +60,11 @@ export class AudioManager {
     this.wantAmbience = id;
     if (!this.context || !this.noise) return;
     if (!id && !this.ambience) return;
-    this.ambience ??= new CourtAmbience(this.context, this.noise, this.context.destination);
+    this.ambience ??= new CourtAmbience(
+      this.context,
+      this.noise,
+      this.context.destination,
+    );
     this.ambience.play(id, this.ambienceLevel());
   }
   /** The Coliseum crowd reacts to a knockout. */
@@ -154,7 +158,8 @@ export class AudioManager {
       );
     }
     this.updateMusicGain();
-    if (this.wantAmbience && this.ambience?.id !== this.wantAmbience) this.setAmbience(this.wantAmbience);
+    if (this.wantAmbience && this.ambience?.id !== this.wantAmbience)
+      this.setAmbience(this.wantAmbience);
     if (this.context.state === "running") this.schedule();
     // Look-ahead scheduler: queue notes slightly ahead so timing stays tight.
     this.timer ??= setInterval(() => this.schedule(), 25);

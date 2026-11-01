@@ -49,7 +49,7 @@ const setup = async () => {
   };
   return { connect, recordRaid, accounts };
 };
-it("starts a regular-player solo raid, enforces Peril unlocks, and records a verified victory once outside Elo", async () => {
+it("starts a regular-player solo raid at the one difficulty and records a verified victory once outside Elo", async () => {
   const { connect, recordRaid } = await setup(),
     host = await connect();
   // Unknown boss IDs are rejected even now that the entire roster is playable.
@@ -61,12 +61,12 @@ it("starts a regular-player solo raid, enforces Peril unlocks, and records a ver
   const a = server!.rooms.get(created.code!) as RaidArena;
   expect(a).toBeInstanceOf(RaidArena);
   expect(a.raid.boss).toBe("grumblecrag");
-  expect(
-    (await emit(host, "raid-config", { peril: 3, daily: false })).ok,
-  ).toBe(false);
+  // One difficulty: every raid is Peril 3, whatever an old client asks.
+  expect(a.raid.peril).toBe(3);
   expect(
     (await emit(host, "raid-config", { peril: 1, daily: false })).ok,
   ).toBe(true);
+  expect(a.raid.peril).toBe(3);
   await emit(host, "ready");
   expect(a.phase).toBe("briefing");
   await emit(host, "instructions-ready");
@@ -93,7 +93,7 @@ it("starts a regular-player solo raid, enforces Peril unlocks, and records a ver
   expect(recordRaid.mock.calls[0][0]).toMatchObject({
     boss: "grumblecrag",
     partySize: 1,
-    peril: 1,
+    peril: 3,
     daily: false,
     weekly: false,
     feat: false,
@@ -107,7 +107,7 @@ it("starts a regular-player solo raid, enforces Peril unlocks, and records a ver
   expect(a.raid.result).toBeNull();
   expect(a.players).toHaveLength(2);
 });
-it("rejects retired daily mode without bypassing regular Peril unlocks", async () => {
+it("rejects retired daily mode; raids stay at the one difficulty", async () => {
   const { connect, accounts } = await setup(),
     host = await connect();
   accounts.provider.rpc = async () => ({
@@ -125,10 +125,9 @@ it("rejects retired daily mode without bypassing regular Peril unlocks", async (
   expect((await emit(host, "raid-config", { peril: 2, daily: true })).ok).toBe(
     false,
   );
-  expect((await emit(host, "raid-config", { peril: 2 })).ok).toBe(false);
   expect((await emit(host, "raid-config", { peril: 1 })).ok).toBe(true);
   expect(a.raid.daily).toBe(false);
-  expect(a.raid.peril).toBe(1);
+  expect(a.raid.peril).toBe(3);
 });
 
 it("synchronizes four teammates against the same boss and preserves disconnect recovery", async () => {

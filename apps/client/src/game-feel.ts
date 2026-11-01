@@ -71,8 +71,13 @@ export function hitFeel(
     // The server keeps moving during a hit. Freezing a live match makes every
     // participant jump ahead on resume, especially with simultaneous hits.
     stopMs: reducedMotion || liveCombat ? 0 : base.stopMs,
-    shakeMs: reducedMotion || !shakeScale ? 0 : Math.min(base.shakeMs, liveCombat ? 80 : Infinity),
-    shake: reducedMotion ? 0 : Math.min(base.shake * shakeScale, liveCombat ? 0.0025 : Infinity),
+    shakeMs:
+      reducedMotion || !shakeScale
+        ? 0
+        : Math.min(base.shakeMs, liveCombat ? 80 : Infinity),
+    shake: reducedMotion
+      ? 0
+      : Math.min(base.shake * shakeScale, liveCombat ? 0.0025 : Infinity),
     flashMs: base.flashMs,
     rumbleMs: rumbleScale ? base.rumbleMs : 0,
     rumble: base.rumble * rumbleScale,

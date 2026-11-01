@@ -30,11 +30,21 @@ const diamond = (
     ],
     true,
   );
-export function drawSunAtrium(g: G, state: Snapshot, reduced: boolean, at?: LayerAt) {
+export function drawSunAtrium(
+  g: G,
+  state: Snapshot,
+  reduced: boolean,
+  at?: LayerAt,
+) {
   const r = state.raid!,
     t = reduced ? 0 : state.time;
   // Inlaid glass stays quiet beneath the functional warnings.
-  g.lineStyle(2, 0xffd778, 0.12).strokeEllipse(800, 450, 1150, groundHeight(1150));
+  g.lineStyle(2, 0xffd778, 0.12).strokeEllipse(
+    800,
+    450,
+    1150,
+    groundHeight(1150),
+  );
   for (let i = 0; i < 12; i++) {
     const a = (i * TAU) / 12;
     g.lineStyle(2, PRISM_COLORS[i % 6], 0.13).lineBetween(
@@ -57,7 +67,12 @@ export function drawSunAtrium(g: G, state: Snapshot, reduced: boolean, at?: Laye
       g.fillStyle(0xffe9ac, 0.06).fillCircle(s.x, s.y, range);
       g.lineStyle(2, 0xffe9ac, 0.25).strokeCircle(s.x, s.y, range);
       g.fillStyle(0xffe9ac, 0.16).fillEllipse(s.x, s.y, 90, groundHeight(90));
-      g.lineStyle(3, 0xffe9ac, 0.9).strokeEllipse(s.x, s.y, 64, groundHeight(64));
+      g.lineStyle(3, 0xffe9ac, 0.9).strokeEllipse(
+        s.x,
+        s.y,
+        64,
+        groundHeight(64),
+      );
       diamond(g, s.x, s.y - 23, 24, 0xffe9ac, 0.9);
       for (let i = 0; i < 6; i++) {
         const a = (i * TAU) / 6 + t * 0.18;
@@ -193,7 +208,12 @@ export function drawPrismatailWarning(g: G, state: Snapshot, w: RaidWarning) {
   }
   if (w.kind === "glare") {
     const y = w.y - 205;
-    g.fillStyle(0xfff3ce, 0.15 + progress * 0.15).fillEllipse(w.x, y, 100, groundHeight(100));
+    g.fillStyle(0xfff3ce, 0.15 + progress * 0.15).fillEllipse(
+      w.x,
+      y,
+      100,
+      groundHeight(100),
+    );
     g.lineStyle(4, 0xfff3ce, 1).strokeEllipse(w.x, y, 68, groundHeight(68));
     g.fillStyle(0xfff3ce, 1).fillCircle(w.x, y, 9 + progress * 5);
     g.lineStyle(4, 0xffe2ab, 0.9)
@@ -281,7 +301,7 @@ export function drawPrismatail(
       .translateCanvas(tx, ty)
       .rotateCanvas(a + Math.PI / 2);
     g.fillStyle(0x1a354c, alpha).fillEllipse(0, 0, 47, 89);
-    bossSurface(g, 0, -2, 39, 79, color, "pearl", alpha * .85);
+    bossSurface(g, 0, -2, 39, 79, color, "pearl", alpha * 0.85);
     g.fillStyle(0xfff7cf, alpha * 0.5).fillEllipse(-6, -12, 10, 37);
     diamond(g, 0, -4, 22, 0xeefbff, alpha * 0.8);
     diamond(g, 0, -4, 15, color, alpha);
@@ -301,8 +321,16 @@ export function drawPrismatail(
     g.fillStyle(0xe3b567, alpha).fillEllipse(x + side * 25, boss.y + 9, 32, 12);
   }
   g.fillStyle(0x224659, alpha).fillEllipse(x, y + 16, 111, 120);
-  bossSurface(g, x, y + 12, 104, 119 + life.breath * 2,
-    pose.hurt > 0.2 ? 0xe5faff : r.gilded ? 0xf6c66f : 0x65bcca, "feathers", alpha);
+  bossSurface(
+    g,
+    x,
+    y + 12,
+    104,
+    119 + life.breath * 2,
+    pose.hurt > 0.2 ? 0xe5faff : r.gilded ? 0xf6c66f : 0x65bcca,
+    "feathers",
+    alpha,
+  );
   g.fillStyle(0xffe9a4, alpha).fillEllipse(x, y + 28, 66, 78);
   for (const side of [-1, 1]) {
     g.save()

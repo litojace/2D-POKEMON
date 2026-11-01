@@ -18,7 +18,11 @@ interface Trail {
 const trails = new Map<string, Trail>();
 
 /** Where the trail ends (0–100) for a bar now at `percent`. */
-export function healthTrail(key: string, percent: number, now = performance.now()) {
+export function healthTrail(
+  key: string,
+  percent: number,
+  now = performance.now(),
+) {
   const t = trails.get(key);
   if (!t || percent >= t.value) {
     // A new bar, healing or a revive: nothing trails.
@@ -29,7 +33,10 @@ export function healthTrail(key: string, percent: number, now = performance.now(
   if (percent < t.last) t.holdUntil = now + HOLD_MS;
   const drainFrom = Math.max(t.at, t.holdUntil);
   if (now > drainFrom)
-    t.value = Math.max(percent, t.value - ((now - drainFrom) / 1000) * DRAIN_PER_S);
+    t.value = Math.max(
+      percent,
+      t.value - ((now - drainFrom) / 1000) * DRAIN_PER_S,
+    );
   t.last = percent;
   t.at = now;
   return t.value;

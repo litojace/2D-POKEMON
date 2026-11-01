@@ -11,11 +11,21 @@ import type { CourtId } from "./arena-courts";
  */
 export type SurfaceKind = "hit" | "ko" | "land" | "dash";
 
-const TEX = { dust: "surface-dust", grain: "surface-grain", spark: "surface-spark", leaf: "surface-leaf" };
+const TEX = {
+  dust: "surface-dust",
+  grain: "surface-grain",
+  spark: "surface-spark",
+  leaf: "surface-leaf",
+};
 
 function textures(scene: Phaser.Scene) {
   if (scene.textures.exists(TEX.dust)) return;
-  const make = (key: string, w: number, h: number, draw: (c: CanvasRenderingContext2D) => void) => {
+  const make = (
+    key: string,
+    w: number,
+    h: number,
+    draw: (c: CanvasRenderingContext2D) => void,
+  ) => {
     const canvas = document.createElement("canvas");
     canvas.width = w;
     canvas.height = h;
@@ -57,11 +67,22 @@ export function prepareSurfaceTextures(scene: Phaser.Scene) {
   textures(scene);
 }
 /** Per court: dust tint, grain tints, and what else flies. */
-const LOOK: Record<CourtId, { dust: number; grains: number[]; extra?: "spark" | "leaf" }> = {
+const LOOK: Record<
+  CourtId,
+  { dust: number; grains: number[]; extra?: "spark" | "leaf" }
+> = {
   classic: { dust: 0xe2cfa4, grains: [0xd9c08c, 0xbfa472, 0xeadbb8] },
   "tide-pools": { dust: 0xcdbf9c, grains: [0x9e8c66, 0x8a7a58, 0xbcae8c] },
-  "ember-forge": { dust: 0x8a817a, grains: [0x5a534c, 0x77706a], extra: "spark" },
-  "shifting-ruins": { dust: 0xd8ccae, grains: [0xb8a984, 0x968866, 0xcbbf9f], extra: "leaf" },
+  "ember-forge": {
+    dust: 0x8a817a,
+    grains: [0x5a534c, 0x77706a],
+    extra: "spark",
+  },
+  "shifting-ruins": {
+    dust: 0xd8ccae,
+    grains: [0xb8a984, 0x968866, 0xcbbf9f],
+    extra: "leaf",
+  },
 };
 
 /** Spray of water instead of sand when the hit lands in or by the tide pool. */
@@ -84,12 +105,17 @@ export function surfaceBurst(
   textures(scene);
   const look = LOOK[court];
   const wet = nearPool(court, x, y);
-  const size = kind === "ko" ? 1.8 : kind === "hit" ? 1 : kind === "land" ? 0.8 : 0.55;
+  const size =
+    kind === "ko" ? 1.8 : kind === "hit" ? 1 : kind === "land" ? 0.8 : 0.55;
   // A low cloud along the ground.
   const puffs = reduced ? 1 : kind === "ko" ? 6 : kind === "dash" ? 2 : 3;
   for (let k = 0; k < puffs; k++) {
     const puff = scene.add
-      .image(x + (Math.random() - 0.5) * 30 * size, y + (Math.random() - 0.5) * 8, TEX.dust)
+      .image(
+        x + (Math.random() - 0.5) * 30 * size,
+        y + (Math.random() - 0.5) * 8,
+        TEX.dust,
+      )
       .setTint(wet ? 0xd8f1ff : look.dust)
       .setAlpha(wet ? 0.5 : 0.55)
       .setScale(0.5 * size, 0.28 * size)
@@ -135,7 +161,13 @@ export function surfaceBurst(
           duration: 240,
           ease: "Quad.In",
           onComplete: () =>
-            scene.tweens.add({ targets: g, alpha: 0, duration: 260, delay: 120, onComplete: () => g.destroy() }),
+            scene.tweens.add({
+              targets: g,
+              alpha: 0,
+              duration: 260,
+              delay: 120,
+              onComplete: () => g.destroy(),
+            }),
         }),
     });
   }
@@ -167,7 +199,11 @@ export function surfaceBurst(
     // A leaf or two shaken loose, drifting down.
     for (let k = 0; k < (kind === "ko" ? 3 : 1); k++) {
       const l = scene.add
-        .image(x + (Math.random() - 0.5) * 30, y - 30 - Math.random() * 20, TEX.leaf)
+        .image(
+          x + (Math.random() - 0.5) * 30,
+          y - 30 - Math.random() * 20,
+          TEX.leaf,
+        )
         .setTint([0x638f3f, 0x7aa64c, 0x9a8a4a][k % 3])
         .setRotation(Math.random() * 6)
         .setDepth(depth);
@@ -179,7 +215,13 @@ export function surfaceBurst(
         duration: 900 + Math.random() * 500,
         ease: "Sine.InOut",
         onComplete: () =>
-          scene.tweens.add({ targets: l, alpha: 0, duration: 600, delay: 600, onComplete: () => l.destroy() }),
+          scene.tweens.add({
+            targets: l,
+            alpha: 0,
+            duration: 600,
+            delay: 600,
+            onComplete: () => l.destroy(),
+          }),
       });
     }
   }

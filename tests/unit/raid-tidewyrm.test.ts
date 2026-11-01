@@ -75,6 +75,7 @@ describe("Tidewyrm's setup", () => {
         TIDEWYRM.health.base *
           RAID.healthScale *
           RAID.perilHealth[a.raid.peril] *
+          (a.raid.partySize === 1 ? RAID.soloHealth : 1) *
           gild,
       ),
     );

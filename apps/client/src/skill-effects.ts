@@ -14,7 +14,16 @@ import { shadowKit } from "./skill-fx-shadow";
 import { withUltimates } from "./skill-fx-ultimates";
 /** New-style effects by move; anything not listed keeps its classic drawing. */
 const KIT = withUltimates(
-  mergeKits([electricKit, fireKit, waterKit, auraKit, lightKit, psychicKit, earthKit, shadowKit]),
+  mergeKits([
+    electricKit,
+    fireKit,
+    waterKit,
+    auraKit,
+    lightKit,
+    psychicKit,
+    earthKit,
+    shadowKit,
+  ]),
 );
 /** For tests: which moves have a new-style effect. */
 export const effectKit = KIT;

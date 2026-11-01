@@ -14,22 +14,93 @@ export interface FxKit {
   zone?: Record<string, (g: G, z: Zone, progress: number, now: number) => void>;
   windup?: Record<
     string,
-    (g: G, a: Ability, x: number, y: number, angle: number, aimX: number, aimY: number, color: number, k: number, now: number) => void
+    (
+      g: G,
+      a: Ability,
+      x: number,
+      y: number,
+      angle: number,
+      aimX: number,
+      aimY: number,
+      color: number,
+      k: number,
+      now: number,
+    ) => void
   >;
-  channel?: Record<string, (g: G, a: Ability, x: number, y: number, angle: number, color: number, now: number) => void>;
-  cast?: Record<string, (scene: Phaser.Scene, a: Ability, x: number, y: number, angle: number, color: number, shot: Shot) => void>;
-  impact?: Record<string, (scene: Phaser.Scene, a: Ability, x: number, y: number, color: number, shot: Shot) => void>;
+  channel?: Record<
+    string,
+    (
+      g: G,
+      a: Ability,
+      x: number,
+      y: number,
+      angle: number,
+      color: number,
+      now: number,
+    ) => void
+  >;
+  cast?: Record<
+    string,
+    (
+      scene: Phaser.Scene,
+      a: Ability,
+      x: number,
+      y: number,
+      angle: number,
+      color: number,
+      shot: Shot,
+    ) => void
+  >;
+  impact?: Record<
+    string,
+    (
+      scene: Phaser.Scene,
+      a: Ability,
+      x: number,
+      y: number,
+      color: number,
+      shot: Shot,
+    ) => void
+  >;
   beam?: Record<
     string,
-    (scene: Phaser.Scene, a: Ability, x: number, y: number, tx: number, ty: number, color: number, shot: Shot) => void
+    (
+      scene: Phaser.Scene,
+      a: Ability,
+      x: number,
+      y: number,
+      tx: number,
+      ty: number,
+      color: number,
+      shot: Shot,
+    ) => void
   >;
   /** Keyed by lower-case element name. */
-  hit?: Record<string, (scene: Phaser.Scene, x: number, y: number, color: number, shot: Shot) => void>;
+  hit?: Record<
+    string,
+    (
+      scene: Phaser.Scene,
+      x: number,
+      y: number,
+      color: number,
+      shot: Shot,
+    ) => void
+  >;
 }
 export function mergeKits(kits: FxKit[]): Required<FxKit> {
-  const out: Required<FxKit> = { projectile: {}, zone: {}, windup: {}, channel: {}, cast: {}, impact: {}, beam: {}, hit: {} };
+  const out: Required<FxKit> = {
+    projectile: {},
+    zone: {},
+    windup: {},
+    channel: {},
+    cast: {},
+    impact: {},
+    beam: {},
+    hit: {},
+  };
   for (const kit of kits)
-    for (const key of Object.keys(out) as (keyof FxKit)[]) Object.assign(out[key], kit[key] ?? {});
+    for (const key of Object.keys(out) as (keyof FxKit)[])
+      Object.assign(out[key], kit[key] ?? {});
   return out;
 }
 export const ease = (k: number) => 1 - (1 - k) ** 3;

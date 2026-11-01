@@ -15,7 +15,8 @@ const SHUTDOWN = "shutdown"; // SHUTDOWN
  * height, so sparks arc up, fall under gravity and bounce on the ground
  * instead of sliding flat across the screen.
  */
-export type ParticleKind = "spark" | "mote" | "ember" | "smoke" | "debris" | "drop" | "flame";
+export type ParticleKind =
+  "spark" | "mote" | "ember" | "smoke" | "debris" | "drop" | "flame";
 interface Particle {
   kind: ParticleKind;
   x: number;
@@ -81,7 +82,14 @@ function makeTextures(scene: Phaser.Scene) {
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = size;
   const ctx = canvas.getContext("2d")!;
-  const grad = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  const grad = ctx.createRadialGradient(
+    size / 2,
+    size / 2,
+    0,
+    size / 2,
+    size / 2,
+    size / 2,
+  );
   grad.addColorStop(0, "rgba(255,255,255,1)");
   grad.addColorStop(0.18, "rgba(255,255,255,0.75)");
   grad.addColorStop(0.45, "rgba(255,255,255,0.22)");
@@ -161,11 +169,15 @@ export class Fx {
     this.scene = scene;
     makeTextures(scene);
     this.decalLayer = battleCurves(scene.add.graphics()).setDepth(-5);
-    this.floor = battleCurves(scene.add.graphics()).setDepth(0.3).setBlendMode(ADD);
+    this.floor = battleCurves(scene.add.graphics())
+      .setDepth(0.3)
+      .setBlendMode(ADD);
     this.floorSolid = battleCurves(scene.add.graphics()).setDepth(0.28);
     this.top = {
       solid: battleCurves(scene.add.graphics()).setDepth(3.6),
-      sparks: battleCurves(scene.add.graphics()).setDepth(4.6).setBlendMode(ADD),
+      sparks: battleCurves(scene.add.graphics())
+        .setDepth(4.6)
+        .setBlendMode(ADD),
       g: battleCurves(scene.add.graphics()).setDepth(4.5).setBlendMode(ADD),
       glowDepth: 4.4,
       softDepth: 3.55,
@@ -219,9 +231,15 @@ export class Fx {
       const base = this.depthOf(edge),
         tick = 1e-6;
       band = {
-        solid: battleCurves(this.scene.add.graphics()).setDepth(base - 4 * tick),
-        g: battleCurves(this.scene.add.graphics()).setDepth(base - 2 * tick).setBlendMode(ADD),
-        sparks: battleCurves(this.scene.add.graphics()).setDepth(base - tick).setBlendMode(ADD),
+        solid: battleCurves(this.scene.add.graphics()).setDepth(
+          base - 4 * tick,
+        ),
+        g: battleCurves(this.scene.add.graphics())
+          .setDepth(base - 2 * tick)
+          .setBlendMode(ADD),
+        sparks: battleCurves(this.scene.add.graphics())
+          .setDepth(base - tick)
+          .setBlendMode(ADD),
         glowDepth: base - 3 * tick,
         softDepth: base - 5 * tick,
       };
@@ -237,9 +255,12 @@ export class Fx {
     this.at(null);
     this.drawDecals(dt);
     this.drawUltimate();
-    for (let i = this.used; i < this.glows.length; i++) this.glows[i].setVisible(false);
-    for (let i = this.usedFloor; i < this.floorGlows.length; i++) this.floorGlows[i].setVisible(false);
-    for (let i = this.usedSoft; i < this.softs.length; i++) this.softs[i].setVisible(false);
+    for (let i = this.used; i < this.glows.length; i++)
+      this.glows[i].setVisible(false);
+    for (let i = this.usedFloor; i < this.floorGlows.length; i++)
+      this.floorGlows[i].setVisible(false);
+    for (let i = this.usedSoft; i < this.softs.length; i++)
+      this.softs[i].setVisible(false);
   }
 
   destroy() {
@@ -251,13 +272,31 @@ export class Fx {
       band.solid.destroy();
       band.sparks.destroy();
     }
-    for (const o of [this.decalLayer, this.floor, this.floorSolid, ...(this.vignette ? [this.vignette] : []), ...(this.wash ? [this.wash] : []), ...this.glows, ...this.floorGlows, ...this.softs]) o.destroy();
+    for (const o of [
+      this.decalLayer,
+      this.floor,
+      this.floorSolid,
+      ...(this.vignette ? [this.vignette] : []),
+      ...(this.wash ? [this.wash] : []),
+      ...this.glows,
+      ...this.floorGlows,
+      ...this.softs,
+    ])
+      o.destroy();
     instances.delete(this.scene);
   }
 
   // ─────────────── Light ───────────────
   /** A soft additive light this frame. Call again next frame to keep it lit. */
-  glow(x: number, y: number, radius: number, color: number, alpha = 1, onFloor = false, stretchY = 1) {
+  glow(
+    x: number,
+    y: number,
+    radius: number,
+    color: number,
+    alpha = 1,
+    onFloor = false,
+    stretchY = 1,
+  ) {
     if (radius <= 0 || alpha <= 0) return;
     const pool = onFloor ? this.floorGlows : this.glows;
     const index = onFloor ? this.usedFloor++ : this.used++;
@@ -270,13 +309,23 @@ export class Fx {
       .setDepth(onFloor ? 0.25 : this.current.glowDepth)
       .setVisible(true)
       .setPosition(x, y)
-      .setScale((radius * 2) / 128, ((radius * 2) / 128) * (onFloor ? 0.78 : stretchY))
+      .setScale(
+        (radius * 2) / 128,
+        ((radius * 2) / 128) * (onFloor ? 0.78 : stretchY),
+      )
       .setTint(color)
       .setAlpha(Math.min(1, alpha));
   }
 
   /** A soft normal-blend puff (solid flame body, smoke, dust) this frame. */
-  soft(x: number, y: number, radius: number, color: number, alpha = 1, stretchY = 1) {
+  soft(
+    x: number,
+    y: number,
+    radius: number,
+    color: number,
+    alpha = 1,
+    stretchY = 1,
+  ) {
     if (radius <= 0 || alpha <= 0) return;
     let img = this.softs[this.usedSoft++];
     if (!img) {
@@ -296,7 +345,10 @@ export class Fx {
   burst(o: BurstOptions) {
     const count = Math.round(o.count * (this.reduced ? 0.35 : 1));
     for (let i = 0; i < count && this.particles.length < MAX_PARTICLES; i++) {
-      const a = o.angle === undefined ? Math.random() * TAU : o.angle + rand(-1, 1) * (o.spread ?? Math.PI);
+      const a =
+        o.angle === undefined
+          ? Math.random() * TAU
+          : o.angle + rand(-1, 1) * (o.spread ?? Math.PI);
       const s = rand(o.speed[0], o.speed[1]);
       const colors = Array.isArray(o.color) ? o.color : [o.color];
       this.particles.push({
@@ -341,7 +393,12 @@ export class Fx {
       const k = Math.exp(-p.drag * dt);
       p.vx *= k;
       p.vy *= k;
-      p.vz = p.vz * (p.kind === "smoke" || p.kind === "ember" || p.kind === "flame" ? k : 1) - p.grav * dt;
+      p.vz =
+        p.vz *
+          (p.kind === "smoke" || p.kind === "ember" || p.kind === "flame"
+            ? k
+            : 1) -
+        p.grav * dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       p.z += p.vz * dt;
@@ -374,14 +431,28 @@ export class Fx {
           g.lineStyle(p.size * 2.4, p.color, 0.35 * fade);
           g.lineBetween(sx - (vx / sp) * len, sy - (vy / sp) * len, sx, sy);
           g.lineStyle(p.size, 0xffffff, 0.95 * fade);
-          g.lineBetween(sx - (vx / sp) * len * 0.6, sy - (vy / sp) * len * 0.6, sx, sy);
+          g.lineBetween(
+            sx - (vx / sp) * len * 0.6,
+            sy - (vy / sp) * len * 0.6,
+            sx,
+            sy,
+          );
           break;
         }
         case "mote":
         case "ember": {
-          const flick = p.kind === "ember" ? 0.6 + hash(p.x + this.frame) * 0.4 : 1;
-          g.fillStyle(p.color, 0.3 * fade * flick).fillCircle(sx, sy, p.size * 2.6);
-          g.fillStyle(0xffffff, 0.9 * fade * flick).fillCircle(sx, sy, p.size * 0.8);
+          const flick =
+            p.kind === "ember" ? 0.6 + hash(p.x + this.frame) * 0.4 : 1;
+          g.fillStyle(p.color, 0.3 * fade * flick).fillCircle(
+            sx,
+            sy,
+            p.size * 2.6,
+          );
+          g.fillStyle(0xffffff, 0.9 * fade * flick).fillCircle(
+            sx,
+            sy,
+            p.size * 0.8,
+          );
           break;
         }
         case "flame": {
@@ -389,30 +460,54 @@ export class Fx {
           // core only while young: reads as fire on light and dark floors.
           const s = p.size * (0.8 + k * 1.3),
             hot = Math.max(0, 1 - k * 2.4);
-          this.soft(sx, sy, s * 1.5, k < 0.35 ? 0xffa53a : p.color, 0.85 * fade);
+          this.soft(
+            sx,
+            sy,
+            s * 1.5,
+            k < 0.35 ? 0xffa53a : p.color,
+            0.85 * fade,
+          );
           this.glow(sx, sy, s * 1.1, 0xffc65a, 0.5 * fade * (0.3 + hot));
           if (hot > 0) this.glow(sx, sy, s * 0.5, 0xfff4c8, 0.7 * hot);
           break;
         }
         case "drop":
           // Solid droplet with a glint; its floor shadow shows the height.
-          if (p.z > 2) this.solid.fillStyle(0x000000, 0.12 * fade).fillEllipse(p.x, p.y + 1, p.size * 1.8, p.size * 0.8);
+          if (p.z > 2)
+            this.solid
+              .fillStyle(0x000000, 0.12 * fade)
+              .fillEllipse(p.x, p.y + 1, p.size * 1.8, p.size * 0.8);
           this.solid.fillStyle(p.color, 0.9 * fade).fillCircle(sx, sy, p.size);
-          this.solid.fillStyle(0xffffff, 0.85 * fade).fillCircle(sx - p.size * 0.3, sy - p.size * 0.3, p.size * 0.4);
+          this.solid
+            .fillStyle(0xffffff, 0.85 * fade)
+            .fillCircle(sx - p.size * 0.3, sy - p.size * 0.3, p.size * 0.4);
           break;
         case "smoke":
-          this.soft(sx, sy, p.size * 1.6 * (1 + k * 1.6), p.color, 0.5 * fade * Math.min(1, k * 6));
+          this.soft(
+            sx,
+            sy,
+            p.size * 1.6 * (1 + k * 1.6),
+            p.color,
+            0.5 * fade * Math.min(1, k * 6),
+          );
           break;
         case "debris": {
           const r = p.size,
             a = p.age * p.spin;
           // Shadow on the floor sells the height.
-          this.solid.fillStyle(0x000000, 0.18 * fade).fillEllipse(p.x, p.y + 2, r * 2, r);
-          this.solid.fillStyle(p.color, fade).fillTriangle(
-            sx + Math.cos(a) * r, sy + Math.sin(a) * r,
-            sx + Math.cos(a + 2.2) * r, sy + Math.sin(a + 2.2) * r,
-            sx + Math.cos(a + 4.1) * r * 0.8, sy + Math.sin(a + 4.1) * r * 0.8,
-          );
+          this.solid
+            .fillStyle(0x000000, 0.18 * fade)
+            .fillEllipse(p.x, p.y + 2, r * 2, r);
+          this.solid
+            .fillStyle(p.color, fade)
+            .fillTriangle(
+              sx + Math.cos(a) * r,
+              sy + Math.sin(a) * r,
+              sx + Math.cos(a + 2.2) * r,
+              sy + Math.sin(a + 2.2) * r,
+              sx + Math.cos(a + 4.1) * r * 0.8,
+              sy + Math.sin(a + 4.1) * r * 0.8,
+            );
           break;
         }
       }
@@ -438,10 +533,19 @@ export class Fx {
       const k = d.age / d.life,
         a = k < 0.7 ? 1 : 1 - (k - 0.7) / 0.3;
       if (d.kind === "scorch") {
-        g.fillStyle(0x0b0a12, 0.32 * a).fillEllipse(d.x, d.y, d.r * 2, d.r * 1.55);
+        g.fillStyle(0x0b0a12, 0.32 * a).fillEllipse(
+          d.x,
+          d.y,
+          d.r * 2,
+          d.r * 1.55,
+        );
         g.fillStyle(0x0b0a12, 0.25 * a).fillEllipse(d.x, d.y, d.r * 1.3, d.r);
         // Still-hot rim fades first.
-        g.lineStyle(2, d.color, 0.55 * a * Math.max(0, 1 - k * 3)).strokeEllipse(d.x, d.y, d.r * 1.6, d.r * 1.24);
+        g.lineStyle(
+          2,
+          d.color,
+          0.55 * a * Math.max(0, 1 - k * 3),
+        ).strokeEllipse(d.x, d.y, d.r * 1.6, d.r * 1.24);
       }
       if (d.kind === "scorch" || d.kind === "crack") {
         g.lineStyle(2, 0x0b0a12, 0.45 * a);
@@ -460,20 +564,52 @@ export class Fx {
           }
         }
       }
-      if (d.kind === "wet") g.fillStyle(d.color, 0.18 * a).fillEllipse(d.x, d.y, d.r * 2, d.r * 1.5);
+      if (d.kind === "wet")
+        g.fillStyle(d.color, 0.18 * a).fillEllipse(
+          d.x,
+          d.y,
+          d.r * 2,
+          d.r * 1.5,
+        );
       if (d.kind === "molten") {
         // Lava that glows orange, crusts over and cools to dark rock.
         const hot = Math.max(0, 1 - k * 1.6);
-        g.fillStyle(0x2a1610, 0.45 * a).fillEllipse(d.x, d.y, d.r * 2, d.r * 1.6);
-        g.fillStyle(0xff7a2a, 0.75 * hot).fillEllipse(d.x, d.y, d.r * 1.6, d.r * 1.25);
-        g.fillStyle(0xffd27a, 0.7 * hot * hot).fillEllipse(d.x, d.y, d.r * 0.9, d.r * 0.7);
+        g.fillStyle(0x2a1610, 0.45 * a).fillEllipse(
+          d.x,
+          d.y,
+          d.r * 2,
+          d.r * 1.6,
+        );
+        g.fillStyle(0xff7a2a, 0.75 * hot).fillEllipse(
+          d.x,
+          d.y,
+          d.r * 1.6,
+          d.r * 1.25,
+        );
+        g.fillStyle(0xffd27a, 0.7 * hot * hot).fillEllipse(
+          d.x,
+          d.y,
+          d.r * 0.9,
+          d.r * 0.7,
+        );
         g.lineStyle(2, 0x2a1610, 0.6 * a);
         for (let j = 0; j < 5; j++) {
           const ang = d.seed + j * 1.3;
-          g.lineBetween(d.x + Math.cos(ang) * d.r * 0.2, d.y + Math.sin(ang) * d.r * 0.16, d.x + Math.cos(ang + 0.5) * d.r * 0.75, d.y + Math.sin(ang + 0.5) * d.r * 0.6);
+          g.lineBetween(
+            d.x + Math.cos(ang) * d.r * 0.2,
+            d.y + Math.sin(ang) * d.r * 0.16,
+            d.x + Math.cos(ang + 0.5) * d.r * 0.75,
+            d.y + Math.sin(ang + 0.5) * d.r * 0.6,
+          );
         }
       }
-      if (d.kind === "glyph") g.lineStyle(2, d.color, 0.4 * a).strokeEllipse(d.x, d.y, d.r * 2, d.r * 1.6);
+      if (d.kind === "glyph")
+        g.lineStyle(2, d.color, 0.4 * a).strokeEllipse(
+          d.x,
+          d.y,
+          d.r * 2,
+          d.r * 1.6,
+        );
     }
   }
 
@@ -483,13 +619,28 @@ export class Fx {
    * `seed` changes a few times per second so the bolt crackles.
    */
   bolt(
-    x0: number, y0: number, x1: number, y1: number, color: number,
-    o: { width?: number; jag?: number; branches?: number; seed?: number; alpha?: number; depth?: number; onFloor?: boolean } = {},
+    x0: number,
+    y0: number,
+    x1: number,
+    y1: number,
+    color: number,
+    o: {
+      width?: number;
+      jag?: number;
+      branches?: number;
+      seed?: number;
+      alpha?: number;
+      depth?: number;
+      onFloor?: boolean;
+    } = {},
   ) {
     const width = o.width ?? 3,
       alpha = o.alpha ?? 1,
       seed = o.seed ?? Math.floor(this.time / 50);
-    let pts = [{ x: x0, y: y0 }, { x: x1, y: y1 }];
+    let pts = [
+      { x: x0, y: y0 },
+      { x: x1, y: y1 },
+    ];
     const len = Math.hypot(x1 - x0, y1 - y0);
     let amp = (o.jag ?? 0.22) * len;
     const depth = o.depth ?? (len > 140 ? 5 : 4);
@@ -502,7 +653,13 @@ export class Fx {
           dy = b.y - a.y,
           l = Math.hypot(dx, dy) || 1,
           off = (hash(seed * 31 + d * 97 + i * 13) - 0.5) * amp;
-        next.push({ x: (a.x + b.x) / 2 + (-dy / l) * off, y: (a.y + b.y) / 2 + (dx / l) * off }, b);
+        next.push(
+          {
+            x: (a.x + b.x) / 2 + (-dy / l) * off,
+            y: (a.y + b.y) / 2 + (dx / l) * off,
+          },
+          b,
+        );
       }
       pts = next;
       amp *= 0.55;
@@ -514,26 +671,61 @@ export class Fx {
       .strokePoints(pts, false);
     g.lineStyle(width * 4, color, 0.16 * alpha).strokePoints(pts, false);
     g.lineStyle(width * 1.8, color, 0.55 * alpha).strokePoints(pts, false);
-    g.lineStyle(Math.max(1, width * 0.7), 0xffffff, 0.95 * alpha).strokePoints(pts, false);
+    g.lineStyle(Math.max(1, width * 0.7), 0xffffff, 0.95 * alpha).strokePoints(
+      pts,
+      false,
+    );
     const branches = o.branches ?? 0;
     for (let b = 0; b < branches; b++) {
       const i = 2 + Math.floor(hash(seed + b * 5) * (pts.length - 4)),
         p = pts[i];
       if (!p) continue;
-      const dir = Math.atan2(y1 - y0, x1 - x0) + (hash(seed + b * 11) - 0.5) * 1.8,
+      const dir =
+          Math.atan2(y1 - y0, x1 - x0) + (hash(seed + b * 11) - 0.5) * 1.8,
         bl = len * (0.18 + hash(seed + b * 3) * 0.22);
-      this.bolt(p.x, p.y, p.x + Math.cos(dir) * bl, p.y + Math.sin(dir) * bl, color, {
-        width: width * 0.55, jag: 0.35, branches: 0, seed: seed + b * 17, alpha: alpha * 0.8, depth: 3, onFloor: o.onFloor,
-      });
+      this.bolt(
+        p.x,
+        p.y,
+        p.x + Math.cos(dir) * bl,
+        p.y + Math.sin(dir) * bl,
+        color,
+        {
+          width: width * 0.55,
+          jag: 0.35,
+          branches: 0,
+          seed: seed + b * 17,
+          alpha: alpha * 0.8,
+          depth: 3,
+          onFloor: o.onFloor,
+        },
+      );
     }
   }
 
   /** Expanding shockwave: bright leading edge with a soft wake. */
-  shockwave(x: number, y: number, r: number, k: number, color: number, width = 10, squash = 0.82, onFloor = true) {
+  shockwave(
+    x: number,
+    y: number,
+    r: number,
+    k: number,
+    color: number,
+    width = 10,
+    squash = 0.82,
+    onFloor = true,
+  ) {
     const a = 1 - k,
       g = onFloor ? this.floor : this.g;
-    g.lineStyle(width * (1.6 - k), color, 0.25 * a).strokeEllipse(x, y, r * 2, r * 2 * squash);
-    g.lineStyle(Math.max(1, width * 0.45 * (1 - k * 0.6)), 0xffffff, 0.85 * a).strokeEllipse(x, y, r * 2, r * 2 * squash);
+    g.lineStyle(width * (1.6 - k), color, 0.25 * a).strokeEllipse(
+      x,
+      y,
+      r * 2,
+      r * 2 * squash,
+    );
+    g.lineStyle(
+      Math.max(1, width * 0.45 * (1 - k * 0.6)),
+      0xffffff,
+      0.85 * a,
+    ).strokeEllipse(x, y, r * 2, r * 2 * squash);
   }
 
   /**
@@ -556,8 +748,15 @@ export class Fx {
     const cam = this.scene.cameras.main,
       z = cam.zoom || 1;
     if (!this.vignette) {
-      this.vignette = this.scene.add.image(0, 0, "fx-vignette").setScrollFactor(0).setDepth(4.9);
-      this.wash = this.scene.add.image(0, 0, "fx-glow").setScrollFactor(0).setDepth(4.95).setBlendMode(ADD);
+      this.vignette = this.scene.add
+        .image(0, 0, "fx-vignette")
+        .setScrollFactor(0)
+        .setDepth(4.9);
+      this.wash = this.scene.add
+        .image(0, 0, "fx-glow")
+        .setScrollFactor(0)
+        .setDepth(4.95)
+        .setBlendMode(ADD);
     }
     // Rise fast, hold, ease out.
     const env = k < 0.12 ? k / 0.12 : k < 0.5 ? 1 : 1 - (k - 0.5) / 0.5;
@@ -566,8 +765,7 @@ export class Fx {
       .setPosition(cam.width / 2, cam.height / 2)
       .setScale((cam.width / z / 256) * 1.15, (cam.height / z / 256) * 1.15)
       .setAlpha((dark ? 0.75 : 0.5) * env);
-    this.wash!
-      .setVisible(!dark)
+    this.wash!.setVisible(!dark)
       .setPosition(cam.width / 2, cam.height / 2)
       .setScale((cam.width / z / 128) * 1.3, (cam.height / z / 128) * 1.3)
       .setTint(color)
