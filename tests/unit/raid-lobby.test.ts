@@ -4,7 +4,10 @@ import { raidAppearance, raidLobby } from "../../apps/client/src/raid-ui";
 import { raidBossPageMarkup } from "../../apps/client/src/raid-hub";
 import type { RaidProgress } from "../../packages/shared/src/raid";
 // The Rewards tab of Grumblecrag's page in the Raid Hub.
-const raidBestiary = (p: RaidProgress, character: "voltkit" | "tidefin" = "voltkit") =>
+const raidBestiary = (
+  p: RaidProgress,
+  character: "voltkit" | "tidefin" = "voltkit",
+) =>
   raidBossPageMarkup("grumblecrag", "rewards", p, raidAppearance(p, character));
 
 it("uses the local pending champion for its party avatar while keeping teammates unchanged", () => {
@@ -36,7 +39,9 @@ it("marks earned rewards completed and keeps unearned cosmetics visibly locked",
   expect(html.match(/class="raid-goal is-complete"/g)).toHaveLength(1);
   expect(html).toContain("Unlock: 5 clears");
   expect(html).toContain("1/5 clears");
-  expect(html).toMatch(/data-raid-item="cragbound" data-raid-cosmetic="cragbound" disabled/);
+  expect(html).toMatch(
+    /data-raid-item="cragbound" data-raid-cosmetic="cragbound" disabled/,
+  );
   // Before migration 008 the lifetime titles say when they start counting.
   expect(html).toContain("Counts from the next raid update");
 });
@@ -47,7 +52,13 @@ it("equips one item per slot and shows exact title progress", () => {
       highestPeril: 3,
       bestSeconds: 60,
       titles: [],
-      cosmetics: ["cragbound", "cragstone", "mountain-aura", "mountainborn", "conqueror"],
+      cosmetics: [
+        "cragbound",
+        "cragstone",
+        "mountain-aura",
+        "mountainborn",
+        "conqueror",
+      ],
       weekly: [],
       loadout: { skin: "cragstone", frame: "conqueror" },
       pillars: 7,
@@ -56,8 +67,12 @@ it("equips one item per slot and shows exact title progress", () => {
     },
     "tidefin",
   );
-  expect(html).toMatch(/is-equipped" data-raid-slot="skin" data-raid-item="cragstone"/);
-  expect(html).toMatch(/is-equipped" data-raid-slot="frame" data-raid-item="conqueror"/);
+  expect(html).toMatch(
+    /is-equipped" data-raid-slot="skin" data-raid-item="cragstone"/,
+  );
+  expect(html).toMatch(
+    /is-equipped" data-raid-slot="frame" data-raid-item="conqueror"/,
+  );
   // The aura slot is empty, so its "None" option is the equipped one.
   expect(html).toMatch(/is-equipped" data-raid-slot="aura" data-raid-item=""/);
   expect(html).toContain("7/25 pillars baited");
@@ -77,5 +92,7 @@ it("offers the Victory slot alongside the other appearance slots", () => {
     loadout: { victory: "rockslide-flex" },
   });
   expect(html).toContain("<h4>Victory</h4>");
-  expect(html).toMatch(/is-equipped" data-raid-slot="victory" data-raid-item="rockslide-flex"/);
+  expect(html).toMatch(
+    /is-equipped" data-raid-slot="victory" data-raid-item="rockslide-flex"/,
+  );
 });

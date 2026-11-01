@@ -23,7 +23,7 @@ export interface EmberTrail {
 }
 export const EMBERWING = {
   health: { base: 1250, perExtraPlayer: 830, gilded: 1.12 },
-  perilDamage: [1, 1, 1.12, 1.24],
+  perilDamage: [1, 1, 1.25, 1.5],
   cadence: { normal: 4.5, restless: 3.9, finalPhase: 0.8 },
   home: { x: 1100, y: 480 },
   braziers: [

@@ -172,6 +172,8 @@ export class RaidArena extends Arena {
     const def = this.def();
     r.maxHp = Math.round(
       (def.health.base + def.health.perExtraPlayer * (r.partySize - 1)) *
+        RAID.healthScale *
+        (RAID.perilHealth[r.peril] ?? 1) *
         (r.gilded ? def.health.gilded : 1),
     );
     r.pings = [];

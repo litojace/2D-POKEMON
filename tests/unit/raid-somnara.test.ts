@@ -1,3 +1,4 @@
+import { RAID } from "../../packages/shared/src/raid";
 import { drawSomnara } from "../../apps/client/src/raid-somnara-art";
 import { describe, it, expect, vi } from "vitest";
 import {
@@ -73,8 +74,9 @@ describe("Somnara's encounter", () => {
     expect(a.arenaId).toBe("cloud-deck");
     expect(a.walls()).toEqual([]);
     expect(a.raid.pillars).toEqual([]);
+    const f = RAID.healthScale * RAID.perilHealth[a.raid.peril];
     expect(
-      a.raid.maxHp / (a.raid.maxHp > 2200 ? SOMNARA.health.gilded : 1),
+      a.raid.maxHp / f / (a.raid.gilded ? SOMNARA.health.gilded : 1),
     ).toBeCloseTo(2050, 0);
     expect(ritesFor("somnara")).toContain("lucid");
     expect(ritesFor("grumblecrag")).not.toContain("lucid");

@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { healthTrail, resetHealthTrails } from "../../apps/client/src/raid-health-trail";
+import {
+  healthTrail,
+  resetHealthTrails,
+} from "../../apps/client/src/raid-health-trail";
 
 describe("boss health damage trail", () => {
   beforeEach(resetHealthTrails);

@@ -1,3 +1,4 @@
+import { RAID } from "../../packages/shared/src/raid";
 import { describe, it, expect, vi } from "vitest";
 import {
   CHARACTERS,
@@ -85,7 +86,13 @@ describe("Storm Twins encounter lifecycle", () => {
     expect(a.raid.twins).toHaveLength(2);
     expect(a.instructionsReady).toEqual(twins(a).map((p) => p.id));
     for (const t of a.raid.twins!)
-      expect([2240, Math.round(4480 * 1.12) / 2]).toContain(t.maxHp);
+      expect([
+        Math.round(4480 * RAID.healthScale * RAID.perilHealth[a.raid.peril]) /
+          2,
+        Math.round(
+          4480 * RAID.healthScale * RAID.perilHealth[a.raid.peril] * 1.12,
+        ) / 2,
+      ]).toContain(t.maxHp);
     expect(a.raid.maxHp).toBe(a.raid.twins!.reduce((s, t) => s + t.maxHp, 0));
     expect(a.arenaId).toBe("conductor-ring");
     expect(a.walls()).toEqual([]);
@@ -497,8 +504,8 @@ describe("Storm Twins attacks and presentation", () => {
     const snap = a.snapshot();
     drawConductorRing(g, snap, true, at);
     drawStormTwins(g, snap, true, 0, at);
-    const twins = (snap.raid!.twins ?? []).map(
-      (m) => snap.players.find((p) => p.id === m.id)!,
+    const twins = (snap.raid!.twins ?? []).map((m) =>
+      snap.players.find((p) => p.id === m.id)!,
     );
     expect(twins).toHaveLength(2);
     expect(asked).toEqual([

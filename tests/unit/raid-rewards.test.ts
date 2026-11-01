@@ -9,7 +9,15 @@ import {
 } from "../../packages/shared/src/raid";
 
 /** Migrations that seed arena_raid_rewards (009: Grumblecrag; 012: Tidewyrm; 013: Gloomshade; 015: Somnara; 019: Prismatail; 020: Emberwing). */
-const sql = ["009_raid_hub.sql", "012_tidewyrm.sql", "013_gloomshade.sql", "015_somnara.sql", "019_prismatail.sql", "020_emberwing.sql", "021_storm_twins.sql"]
+const sql = [
+  "009_raid_hub.sql",
+  "012_tidewyrm.sql",
+  "013_gloomshade.sql",
+  "015_somnara.sql",
+  "019_prismatail.sql",
+  "020_emberwing.sql",
+  "021_storm_twins.sql",
+]
   .map((f) => readFileSync(`supabase/migrations/${f}`, "utf8"))
   .join("\n");
 /** Rows of the arena_raid_rewards seeds (SQL doubles a quote inside a name). */
@@ -69,9 +77,15 @@ describe("raid rewards", () => {
   it("seeds every boss in the roster, and only playable ones can be raided", () => {
     for (const id of RAID_BOSS_ORDER) {
       // 009 seeds the roster; later migrations switch bosses on as they ship.
-      const enabled = new RegExp(`set playable = true where id = '${id}'`).test(sql);
-      expect(sql).toContain(`('${id}', '${RAID_BOSSES[id].name}', ${id === "grumblecrag"})`);
-      expect(id === "grumblecrag" || enabled, id).toBe(RAID_BOSSES[id].playable);
+      const enabled = new RegExp(`set playable = true where id = '${id}'`).test(
+        sql,
+      );
+      expect(sql).toContain(
+        `('${id}', '${RAID_BOSSES[id].name}', ${id === "grumblecrag"})`,
+      );
+      expect(id === "grumblecrag" || enabled, id).toBe(
+        RAID_BOSSES[id].playable,
+      );
     }
   });
 });

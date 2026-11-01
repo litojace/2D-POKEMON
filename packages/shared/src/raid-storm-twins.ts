@@ -14,7 +14,7 @@ export interface StormPoint {
 }
 export const STORM_TWINS = {
   health: { base: 1600, perExtraPlayer: 960, gilded: 1.12 },
-  perilDamage: [1, 1, 1.12, 1.24],
+  perilDamage: [1, 1, 1.25, 1.5],
   cadence: { normal: 4.6, restless: 4, finalPhase: 0.8 },
   home: { x: 960, y: 450 },
   posts: [

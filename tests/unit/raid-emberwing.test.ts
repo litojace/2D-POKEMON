@@ -1,3 +1,4 @@
+import { RAID } from "../../packages/shared/src/raid";
 import { describe, it, expect, vi } from "vitest";
 import {
   CHARACTERS,
@@ -85,7 +86,10 @@ describe("Emberwing flight and brazier puzzle", () => {
     expect(a.walls()).toEqual([]);
     expect(a.raid.pillars).toEqual([]);
     expect(RAID_BOSSES.emberwing.playable).toBe(true);
-    expect([3740, Math.round(3740 * 1.12)]).toContain(a.raid.maxHp);
+    const f = RAID.healthScale * RAID.perilHealth[a.raid.peril];
+    expect([Math.round(3740 * f), Math.round(3740 * f * 1.12)]).toContain(
+      a.raid.maxHp,
+    );
     expect(ritesFor("emberwing")).toContain("fireproof");
     expect(ritesFor("prismatail")).not.toContain("fireproof");
     for (const phase of [1, 2, 3]) {
@@ -344,7 +348,9 @@ describe("Emberwing attacks and champion answers", () => {
     resolve(b);
     run(b, 1.1);
     // Fireproof's share grows by chapter (50% / 60% / 70% less).
-    expect(CHARACTERS.voltkit.health - q.hp).toBeCloseTo(full * (1 - riteValue("fireproof", b.raid.phase)));
+    expect(CHARACTERS.voltkit.health - q.hp).toBeCloseTo(
+      full * (1 - riteValue("fireproof", b.raid.phase)),
+    );
     a.time = patch.growAt + 0.1;
     (a as any).worldStep(0.01, a.boss());
     expect(patch.radius).toBeGreaterThan(E.fire.initialRadius);

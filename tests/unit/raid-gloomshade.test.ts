@@ -1,3 +1,4 @@
+import { RAID } from "../../packages/shared/src/raid";
 import { describe, expect, it } from "vitest";
 import { createRaidArena } from "../../apps/server/src/raid-bosses";
 import { GloomshadeArena } from "../../apps/server/src/raid-gloomshade";
@@ -24,7 +25,8 @@ const gloom = (characters: CharacterId[] = ["voltkit"], peril = 1) => {
   (a as unknown as { started: boolean }).started = true;
   return a;
 };
-const player = (a: GloomshadeArena, id: string) => a.players.find((q) => q.id === id)!;
+const player = (a: GloomshadeArena, id: string) =>
+  a.players.find((q) => q.id === id)!;
 const place = (a: GloomshadeArena, id: string, x: number, y: number) => {
   const p = player(a, id);
   p.x = x;
@@ -39,9 +41,22 @@ const run = (a: GloomshadeArena, seconds: number) => {
   for (let t = 0; t < seconds; t += 1 / 30) a.tick(1 / 30);
 };
 let serial = 9000;
-const warn = (a: GloomshadeArena, w: Partial<RaidWarning> & Pick<RaidWarning, "kind">) => {
+const warn = (
+  a: GloomshadeArena,
+  w: Partial<RaidWarning> & Pick<RaidWarning, "kind">,
+) => {
   const boss = a.boss()!;
-  const warning = { id: ++serial, x: boss.x, y: boss.y, tx: boss.x, ty: boss.y, radius: 100, at: a.time, startedAt: a.time, ...w } as RaidWarning;
+  const warning = {
+    id: ++serial,
+    x: boss.x,
+    y: boss.y,
+    tx: boss.x,
+    ty: boss.y,
+    radius: 100,
+    at: a.time,
+    startedAt: a.time,
+    ...w,
+  } as RaidWarning;
   a.raid.warnings.push(warning);
   return warning;
 };
@@ -87,7 +102,14 @@ describe("Gloomshade's setup", () => {
     expect(a.raid.lanterns!.every((l) => l.lit)).toBe(true);
     expect(["moonlit", "restless-spirits", "hollow"]).toContain(a.raid.trait);
     const gild = a.raid.gilded ? GLOOMSHADE.health.gilded : 1;
-    expect(a.raid.maxHp).toBe(Math.round(GLOOMSHADE.health.base * gild));
+    expect(a.raid.maxHp).toBe(
+      Math.round(
+        GLOOMSHADE.health.base *
+          RAID.healthScale *
+          RAID.perilHealth[a.raid.peril] *
+          gild,
+      ),
+    );
   });
   it("keeps the copies and curses for chapter 2 on", () => {
     const one = raidPattern(1, 3, 1, "gloomshade");
@@ -118,7 +140,16 @@ describe("Shadow Lunge and Grasping Hands", () => {
     park(a, 400, 450);
     place(a, "p0", 900, 450);
     place(a, "p1", 900, 600);
-    warn(a, { kind: "lunge", x: 400, y: 450, tx: 1160, ty: 450, radius: GLOOMSHADE.lunge.width, at: a.time + 0.05, lockAt: a.time });
+    warn(a, {
+      kind: "lunge",
+      x: 400,
+      y: 450,
+      tx: 1160,
+      ty: 450,
+      radius: GLOOMSHADE.lunge.width,
+      at: a.time + 0.05,
+      lockAt: a.time,
+    });
     run(a, 0.2);
     expect(hurt(a, "p0")).toBeGreaterThan(0);
     expect(hurt(a, "p1")).toBe(0);
@@ -152,7 +183,13 @@ describe("Snuff Out and the lanterns", () => {
   it("snuffs a lantern, and two hits from a raider relight it (credited)", () => {
     const a = gloom();
     park(a);
-    warn(a, { kind: "snuff", lantern: 0, x: lantern.x, y: lantern.y, at: a.time + 0.05 });
+    warn(a, {
+      kind: "snuff",
+      lantern: 0,
+      x: lantern.x,
+      y: lantern.y,
+      at: a.time + 0.05,
+    });
     run(a, 0.2);
     expect(a.raid.lanterns![0].lit).toBe(false);
     expect(a.lit(lantern.x, lantern.y)).toBe(false);
@@ -183,7 +220,10 @@ describe("Snuff Out and the lanterns", () => {
     place(a, "p1", lantern.x + 140, lantern.y + 60);
     a.raid.curses = { p1: { stacks: 2, hauntedUntil: 0 } };
     lumoth.lastInput = { ...blankInput(), aimX: lumoth.x, aimY: lumoth.y };
-    a.cast(lumoth, CHARACTERS.lumoth.skills.find((s) => s.id === "radiant-flare")!);
+    a.cast(
+      lumoth,
+      CHARACTERS.lumoth.skills.find((s) => s.id === "radiant-flare")!,
+    );
     expect(a.raid.lanterns![0].lit).toBe(true);
     expect(a.raid.curses.p1).toBeUndefined();
   });
@@ -201,7 +241,10 @@ describe("Snuff Out and the lanterns", () => {
     const p = place(a, "p0", 800, 800);
     p.lastInput = { ...blankInput(), aimX: 1100, aimY: 800 };
     expect(a.lit(1100, 800)).toBe(false);
-    a.cast(p, CHARACTERS.voltkit.skills.find((s) => s.id === "ball-lightning")!);
+    a.cast(
+      p,
+      CHARACTERS.voltkit.skills.find((s) => s.id === "ball-lightning")!,
+    );
     expect(a.lit(1100, 800)).toBe(true);
     run(a, GLOOMSHADE.sparkLight + 0.2);
     expect(a.lit(1100, 800)).toBe(false);
@@ -215,7 +258,12 @@ describe("Creeping Curse", () => {
     place(a, "p0", 800, 800);
     place(a, "p1", 1500, 100);
     for (let i = 0; i < 3; i++) {
-      warn(a, { kind: "curse", targetId: "p0", at: a.time + 0.05, lockAt: a.time });
+      warn(a, {
+        kind: "curse",
+        targetId: "p0",
+        at: a.time + 0.05,
+        lockAt: a.time,
+      });
       run(a, 0.1);
     }
     expect(a.raid.curses!.p0.hauntedUntil).toBeGreaterThan(a.time);
@@ -251,7 +299,8 @@ describe("Creeping Curse", () => {
 describe("Mirror Split", () => {
   it("splits into copies (one fewer when solo) on separate spots", () => {
     const party = gloom(["voltkit", "terradon"]);
-    if (party.raid.trait !== "restless-spirits") party.raid.trait = "restless-spirits";
+    if (party.raid.trait !== "restless-spirits")
+      party.raid.trait = "restless-spirits";
     warn(party, { kind: "split", at: party.time + 0.05 });
     run(party, 0.1);
     expect(party.raid.decoys).toHaveLength(GLOOMSHADE.split.copies - 1);
@@ -261,7 +310,9 @@ describe("Mirror Split", () => {
     run(solo, 0.1);
     expect(solo.raid.decoys).toHaveLength(GLOOMSHADE.split.copies - 2);
     const boss = party.boss()!;
-    const spots = [boss, ...party.raid.decoys!].map((d) => `${Math.round(d.x)},${Math.round(d.y)}`);
+    const spots = [boss, ...party.raid.decoys!].map(
+      (d) => `${Math.round(d.x)},${Math.round(d.y)}`,
+    );
     expect(new Set(spots).size).toBe(spots.length);
   });
   it("curses whoever hits a copy, and the feat is lost", () => {
@@ -314,11 +365,17 @@ describe("Mirror Split", () => {
     const boss = park(a, 800, 430);
     const owl = place(a, "p0", 400, 430);
     owl.lastInput = { ...blankInput(), aimX: 1200, aimY: 430 };
-    a.cast(owl, CHARACTERS.mystowl.skills.find((s) => s.id === "focus-ray")!);
+    a.cast(
+      owl,
+      CHARACTERS.mystowl.skills.find((s) => s.id === "focus-ray")!,
+    );
     expect(a.raid.revealUntil).toBeCloseTo(a.time + GLOOMSHADE.revealRay);
     const dusk = place(a, "p1", 800, 800);
     dusk.lastInput = { ...blankInput(), aimX: boss.x, aimY: boss.y };
-    a.cast(dusk, CHARACTERS.duskveil.skills.find((s) => s.id === "curse-mark")!);
+    a.cast(
+      dusk,
+      CHARACTERS.duskveil.skills.find((s) => s.id === "curse-mark")!,
+    );
     expect(a.raid.revealUntil).toBeCloseTo(a.time + GLOOMSHADE.revealMark);
   });
 });
@@ -329,7 +386,11 @@ describe("Nightmare Pulse", () => {
     const boss = park(a);
     place(a, "p0", boss.x + 120, boss.y);
     const jumper = place(a, "p1", boss.x - 120, boss.y);
-    warn(a, { kind: "pulse", radius: GLOOMSHADE.pulse.radius, at: a.time + 0.05 });
+    warn(a, {
+      kind: "pulse",
+      radius: GLOOMSHADE.pulse.radius,
+      at: a.time + 0.05,
+    });
     jumper.jumpUntil = a.time + 1;
     run(a, 0.1);
     expect(hurt(a, "p0")).toBeGreaterThan(0);
@@ -341,7 +402,10 @@ describe("Nightmare Pulse", () => {
 describe("a whole run", () => {
   it("plays through every chapter with stand-ins and uses every attack", () => {
     const a = createRaidArena("SIM", "gloomshade") as GloomshadeArena;
-    for (const [i, c] of (["voltkit", "lumoth", "terradon"] as CharacterId[]).entries()) a.add("b" + i, "Bot " + i, c);
+    for (const [i, c] of (
+      ["voltkit", "lumoth", "terradon"] as CharacterId[]
+    ).entries())
+      a.add("b" + i, "Bot " + i, c);
     a.configure(3, false);
     a.start();
     for (const p of a.heroes()) a.standIn(p.id);
@@ -361,13 +425,15 @@ describe("a whole run", () => {
       for (const w of a.raid.warnings) seen.add(w.kind);
       copies = Math.max(copies, a.raid.decoys?.length ?? 0);
       if ((a.phase as string) === "intermission") {
-        for (const [id, offer] of Object.entries(a.raid.offers)) a.pickRite(id, offer[0]);
+        for (const [id, offer] of Object.entries(a.raid.offers))
+          a.pickRite(id, offer[0]);
         a.tick(1 / 30);
       }
       if (a.raid.phase === 3) thirdFor += 1 / 30;
     }
     expect(a.raid.phase).toBe(3);
     expect(copies).toBeGreaterThan(0);
-    for (const kind of RAID_BOSS_ATTACKS.gloomshade!) expect([...seen]).toContain(kind);
+    for (const kind of RAID_BOSS_ATTACKS.gloomshade!)
+      expect([...seen]).toContain(kind);
   });
 });

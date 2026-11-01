@@ -13,7 +13,7 @@ export interface LightLink extends LightPoint {
 }
 export const PRISMATAIL = {
   health: { base: 1350, perExtraPlayer: 880, gilded: 1.12 },
-  perilDamage: [1, 1, 1.12, 1.24],
+  perilDamage: [1, 1, 1.25, 1.5],
   cadence: { normal: 4.4, restless: 4, finalPhase: 0.78 },
   source: { x: 350, y: 450 },
   mirrors: [

@@ -1,3 +1,4 @@
+import { RAID } from "../../packages/shared/src/raid";
 import { describe, expect, it } from "vitest";
 import { createRaidArena } from "../../apps/server/src/raid-bosses";
 import { TidewyrmArena } from "../../apps/server/src/raid-tidewyrm";
@@ -37,9 +38,22 @@ const run = (a: TidewyrmArena, seconds: number) => {
   for (let t = 0; t < seconds; t += 1 / 30) a.tick(1 / 30);
 };
 let serial = 9000;
-const warn = (a: TidewyrmArena, w: Partial<RaidWarning> & Pick<RaidWarning, "kind">) => {
+const warn = (
+  a: TidewyrmArena,
+  w: Partial<RaidWarning> & Pick<RaidWarning, "kind">,
+) => {
   const boss = a.boss()!;
-  const warning = { id: ++serial, x: boss.x, y: boss.y, tx: boss.x, ty: boss.y, radius: 100, at: a.time, startedAt: a.time, ...w } as RaidWarning;
+  const warning = {
+    id: ++serial,
+    x: boss.x,
+    y: boss.y,
+    tx: boss.x,
+    ty: boss.y,
+    radius: 100,
+    at: a.time,
+    startedAt: a.time,
+    ...w,
+  } as RaidWarning;
   a.raid.warnings.push(warning);
   return warning;
 };
@@ -56,7 +70,14 @@ describe("Tidewyrm's setup", () => {
     expect(a.raid.islands).toHaveLength(4);
     expect(["murky", "rip-current", "spring-tide"]).toContain(a.raid.trait);
     const gild = a.raid.gilded ? TIDEWYRM.health.gilded : 1;
-    expect(a.raid.maxHp).toBe(Math.round(TIDEWYRM.health.base * gild));
+    expect(a.raid.maxHp).toBe(
+      Math.round(
+        TIDEWYRM.health.base *
+          RAID.healthScale *
+          RAID.perilHealth[a.raid.peril] *
+          gild,
+      ),
+    );
   });
   it("teaches stranding first and adds the tide attacks from chapter 2", () => {
     const one = raidPattern(1, 1, 1, "tidewyrm");
@@ -81,7 +102,13 @@ describe("Dive & Surface", () => {
     const a = tide(["voltkit", "cindrake"], 2);
     place(a, "p0", island.x, island.y);
     place(a, "p1", 1400, 800);
-    const w = warn(a, { kind: "dive", targetId: "p0", lockAt: a.time + 0.2, at: a.time + 0.3, radius: TIDEWYRM.dive.radius });
+    const w = warn(a, {
+      kind: "dive",
+      targetId: "p0",
+      lockAt: a.time + 0.2,
+      at: a.time + 0.3,
+      radius: TIDEWYRM.dive.radius,
+    });
     a.raid.submerged = true;
     run(a, 0.1);
     // The ripple follows the target until it locks.
@@ -101,7 +128,17 @@ describe("Dive & Surface", () => {
   it("splashes whoever stays on the spot, and lingers in water when it misses land", () => {
     const a = tide(["voltkit"], 1);
     place(a, "p0", 800, 700);
-    warn(a, { kind: "dive", targetId: "p0", lockAt: a.time, at: a.time + 0.05, x: 800, y: 700, tx: 800, ty: 700, radius: TIDEWYRM.dive.radius });
+    warn(a, {
+      kind: "dive",
+      targetId: "p0",
+      lockAt: a.time,
+      at: a.time + 0.05,
+      x: 800,
+      y: 700,
+      tx: 800,
+      ty: 700,
+      radius: TIDEWYRM.dive.radius,
+    });
     a.raid.submerged = true;
     run(a, 0.2);
     expect(hurt(a, "p0")).toBeCloseTo(TIDEWYRM.dive.damage, 0);
@@ -119,7 +156,17 @@ describe("Dive & Surface", () => {
     const a = tide(["voltkit"], 1);
     for (let n = 0; n < 2; n++) {
       place(a, "p0", 1400, 820);
-      warn(a, { kind: "dive", targetId: "p1", lockAt: a.time, at: a.time + 0.03, x: island.x, y: island.y, tx: island.x, ty: island.y, radius: 110 });
+      warn(a, {
+        kind: "dive",
+        targetId: "p1",
+        lockAt: a.time,
+        at: a.time + 0.03,
+        x: island.x,
+        y: island.y,
+        tx: island.x,
+        ty: island.y,
+        radius: 110,
+      });
       run(a, 0.1);
       a.raid.exposedUntil = a.time; // strand over
       run(a, 0.1);
@@ -133,7 +180,12 @@ describe("Dive & Surface", () => {
     const a = tide(["tidefin"], 1);
     const p = place(a, "p0", 300, 450);
     p.clone = { x: island.x, y: island.y, until: a.time + 3 };
-    const w = warn(a, { kind: "dive", targetId: "p0", lockAt: a.time + 1, at: a.time + 1.5 });
+    const w = warn(a, {
+      kind: "dive",
+      targetId: "p0",
+      lockAt: a.time + 1,
+      at: a.time + 1.5,
+    });
     run(a, 0.1);
     expect([w.x, w.y]).toEqual([island.x, island.y]);
   });
@@ -145,7 +197,15 @@ describe("waves, bubbles and the tide", () => {
     const jumper = place(low, "p0", 400, 450),
       stander = place(low, "p1", 400, 300);
     jumper.jumpUntil = low.time + 5;
-    warn(low, { kind: "wave", x: 0, y: 450, tx: 1, ty: 450, radius: 70, high: false });
+    warn(low, {
+      kind: "wave",
+      x: 0,
+      y: 450,
+      tx: 1,
+      ty: 450,
+      radius: 70,
+      high: false,
+    });
     run(low, 1.5);
     expect(hurt(low, "p0")).toBe(0);
     expect(hurt(low, "p1")).toBeGreaterThan(0);
@@ -154,7 +214,15 @@ describe("waves, bubbles and the tide", () => {
     const safe = place(high, "p0", island.x, island.y),
       jumping = place(high, "p1", 400, 450);
     jumping.jumpUntil = high.time + 5;
-    warn(high, { kind: "wave", x: 0, y: 450, tx: 1, ty: 450, radius: 70, high: true });
+    warn(high, {
+      kind: "wave",
+      x: 0,
+      y: 450,
+      tx: 1,
+      ty: 450,
+      radius: 70,
+      high: true,
+    });
     run(high, 1.5);
     void safe;
     expect(hurt(high, "p0")).toBe(0);
@@ -167,12 +235,27 @@ describe("waves, bubbles and the tide", () => {
     place(a, "p0", boss.x + 120, boss.y - 60);
     place(a, "p1", boss.x + 120, boss.y + 60);
     a.raid.bubbles = [
-      { id: 1, x: boss.x + 120, y: boss.y - 60, vx: 0, vy: 0, until: a.time + 3 },
-      { id: 2, x: boss.x + 120, y: boss.y + 60, vx: 0, vy: 0, until: a.time + 3 },
+      {
+        id: 1,
+        x: boss.x + 120,
+        y: boss.y - 60,
+        vx: 0,
+        vy: 0,
+        until: a.time + 3,
+      },
+      {
+        id: 2,
+        x: boss.x + 120,
+        y: boss.y + 60,
+        vx: 0,
+        vy: 0,
+        until: a.time + 3,
+      },
     ];
     run(a, 0.05);
     expect(hurt(a, "p0")).toBeGreaterThan(0);
-    const rooted = (a as unknown as { rootedUntil: Map<string, number> }).rootedUntil;
+    const rooted = (a as unknown as { rootedUntil: Map<string, number> })
+      .rootedUntil;
     expect(rooted.get("p0")).toBeGreaterThan(a.time);
     expect(rooted.has("p1")).toBe(false);
   });
@@ -187,7 +270,9 @@ describe("waves, bubbles and the tide", () => {
     a.raid.floodUntil = a.time + 2;
     run(a, 0.5);
     const p2 = a.players.find((q) => q.id === "p2")!;
-    expect(Math.hypot(p2.x - island.x, p2.y - island.y)).toBeGreaterThan(TIDEWYRM.islandRadius);
+    expect(Math.hypot(p2.x - island.x, p2.y - island.y)).toBeGreaterThan(
+      TIDEWYRM.islandRadius,
+    );
     expect(hurt(a, "p0")).toBe(0);
     expect(hurt(a, "p1")).toBe(0);
     expect(hurt(a, "p2")).toBeGreaterThan(0);
@@ -195,7 +280,12 @@ describe("waves, bubbles and the tide", () => {
   it("pulls everyone toward the whirlpool and hurts at its centre", () => {
     const a = tide(["voltkit"], 1);
     const p = place(a, "p0", 800 + 300, 450);
-    a.raid.undertow = { x: 800, y: 450, until: a.time + 3, radius: TIDEWYRM.undertow.centreRadius };
+    a.raid.undertow = {
+      x: 800,
+      y: 450,
+      until: a.time + 3,
+      radius: TIDEWYRM.undertow.centreRadius,
+    };
     run(a, 1);
     expect(p.x).toBeLessThan(800 + 300 - 80);
     run(a, 2);
@@ -208,7 +298,17 @@ describe("Bubble Prison", () => {
     const a = tide(["voltkit", "cindrake"], 1);
     place(a, "p0", 400, 450);
     const friend = place(a, "p1", 460, 450);
-    a.raid.prisons = [{ playerId: "p0", x: 400, y: 450, hits: 0, presses: 0, until: a.time + 6, startedAt: a.time }];
+    a.raid.prisons = [
+      {
+        playerId: "p0",
+        x: 400,
+        y: 450,
+        hits: 0,
+        presses: 0,
+        until: a.time + 6,
+        startedAt: a.time,
+      },
+    ];
     friend.lastInput = { ...blankInput(), basic: true, aimX: 400, aimY: 450 };
     for (let i = 0; i < 40 && a.raid.prisons!.length; i++) {
       friend.lastInput = { ...friend.lastInput, basic: true };
@@ -223,9 +323,29 @@ describe("Bubble Prison", () => {
     const a = tide(["voltkit", "cindrake"], 1);
     place(a, "p0", 400, 450);
     place(a, "p1", 900, 450);
-    a.raid.prisons = [{ playerId: "p0", x: 400, y: 450, hits: 0, presses: 0, until: a.time + 6, startedAt: a.time }];
+    a.raid.prisons = [
+      {
+        playerId: "p0",
+        x: 400,
+        y: 450,
+        hits: 0,
+        presses: 0,
+        until: a.time + 6,
+        startedAt: a.time,
+      },
+    ];
     const bomb = CHARACTERS.cindrake.skills.find((s) => s.id === "magma-bomb")!;
-    a.projectiles.push({ id: 777, owner: "p1", x: 405, y: 450, vx: 0, vy: 0, remaining: 50, ability: bomb, color: 0xff7a4f });
+    a.projectiles.push({
+      id: 777,
+      owner: "p1",
+      x: 405,
+      y: 450,
+      vx: 0,
+      vy: 0,
+      remaining: 50,
+      ability: bomb,
+      color: 0xff7a4f,
+    });
     run(a, 0.04);
     expect(a.raid.prisons).toHaveLength(0);
   });
@@ -233,7 +353,17 @@ describe("Bubble Prison", () => {
     const a = tide(["voltkit"], 1);
     place(a, "p0", 400, 450);
     a.standIn("p0");
-    a.raid.prisons = [{ playerId: "p0", x: 400, y: 450, hits: 0, presses: 0, until: a.time + 6, startedAt: a.time }];
+    a.raid.prisons = [
+      {
+        playerId: "p0",
+        x: 400,
+        y: 450,
+        hits: 0,
+        presses: 0,
+        until: a.time + 6,
+        startedAt: a.time,
+      },
+    ];
     run(a, 4);
     expect(a.raid.prisons).toHaveLength(0);
     expect(a.players.find((q) => q.id === "p0")!.hp).toBeGreaterThan(0);
@@ -241,7 +371,17 @@ describe("Bubble Prison", () => {
   it("lets a solo raider mash out, and downs them at the mouth", () => {
     const solo = tide(["voltkit"], 1);
     const p = place(solo, "p0", 400, 450);
-    solo.raid.prisons = [{ playerId: "p0", x: 400, y: 450, hits: 0, presses: 0, until: solo.time + 6, startedAt: solo.time }];
+    solo.raid.prisons = [
+      {
+        playerId: "p0",
+        x: 400,
+        y: 450,
+        hits: 0,
+        presses: 0,
+        until: solo.time + 6,
+        startedAt: solo.time,
+      },
+    ];
     for (let i = 1; i <= TIDEWYRM.prison.presses * 2; i++)
       solo.submit(p, { ...blankInput(), seq: i, basic: i % 2 === 1 });
     run(solo, 0.05);
@@ -249,7 +389,17 @@ describe("Bubble Prison", () => {
     const late = tide(["voltkit", "cindrake"], 1);
     place(late, "p0", 400, 450);
     place(late, "p1", 1400, 800);
-    late.raid.prisons = [{ playerId: "p0", x: 400, y: 450, hits: 0, presses: 0, until: late.time + 1, startedAt: late.time }];
+    late.raid.prisons = [
+      {
+        playerId: "p0",
+        x: 400,
+        y: 450,
+        hits: 0,
+        presses: 0,
+        until: late.time + 1,
+        startedAt: late.time,
+      },
+    ];
     run(late, 1.2);
     const caught = late.players.find((q) => q.id === "p0")!;
     expect(caught.hp).toBeLessThanOrEqual(0);
@@ -260,7 +410,10 @@ describe("Bubble Prison", () => {
 describe("a whole run", () => {
   it("plays through every chapter with stand-ins and uses every attack", () => {
     const a = createRaidArena("SIM", "tidewyrm") as TidewyrmArena;
-    for (const [i, c] of (["voltkit", "tidefin", "terradon"] as CharacterId[]).entries()) a.add("b" + i, "Bot " + i, c);
+    for (const [i, c] of (
+      ["voltkit", "tidefin", "terradon"] as CharacterId[]
+    ).entries())
+      a.add("b" + i, "Bot " + i, c);
     a.configure(3, false);
     a.start();
     for (const p of a.heroes()) a.standIn(p.id);
@@ -278,12 +431,21 @@ describe("a whole run", () => {
       boss.hp = before - (a.phase === "playing" ? chip : 0);
       for (const w of a.raid.warnings) seen.add(w.kind);
       if ((a.phase as string) === "intermission") {
-        for (const [id, offer] of Object.entries(a.raid.offers)) a.pickRite(id, offer[0]);
+        for (const [id, offer] of Object.entries(a.raid.offers))
+          a.pickRite(id, offer[0]);
         a.tick(1 / 30);
       }
       if (a.raid.phase === 3) thirdFor += 1 / 30;
     }
     expect(a.raid.phase).toBe(3);
-    for (const kind of ["dive", "wave", "bubbles", "hightide", "undertow", "prison"]) expect([...seen]).toContain(kind);
+    for (const kind of [
+      "dive",
+      "wave",
+      "bubbles",
+      "hightide",
+      "undertow",
+      "prison",
+    ])
+      expect([...seen]).toContain(kind);
   });
 });

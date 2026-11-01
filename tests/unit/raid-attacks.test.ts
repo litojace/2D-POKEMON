@@ -1,3 +1,4 @@
+import { RAID } from "../../packages/shared/src/raid";
 import { describe, expect, it } from "vitest";
 import { createRaidArena } from "../../apps/server/src/raid-bosses";
 import { RaidArena } from "../../apps/server/src/raid";
@@ -29,7 +30,10 @@ const place = (a: RaidArena, id: string, x: number, y: number) => {
   return p;
 };
 let serial = 5000;
-const warn = (a: RaidArena, w: Partial<RaidWarning> & Pick<RaidWarning, "kind">) => {
+const warn = (
+  a: RaidArena,
+  w: Partial<RaidWarning> & Pick<RaidWarning, "kind">,
+) => {
   const boss = a.boss()!;
   const warning = {
     id: ++serial,
@@ -64,13 +68,22 @@ describe("Grumblecrag's attack plan", () => {
     const solo = raid(["voltkit"]),
       duo = raid(["voltkit", "cindrake"]);
     // A rare Gilded boss is a little tougher.
-    const gild = (a: RaidArena) => (a.raid.gilded ? GRUMBLECRAG.health.gilded : 1);
+    const gild = (a: RaidArena) =>
+      a.raid.gilded ? GRUMBLECRAG.health.gilded : 1;
+    // Every boss is scaled up, and more so on higher Peril.
     expect(solo.raid.maxHp).toBe(
-      Math.round(GRUMBLECRAG.health.base * gild(solo)),
+      Math.round(
+        GRUMBLECRAG.health.base *
+          RAID.healthScale *
+          RAID.perilHealth[solo.raid.peril] *
+          gild(solo),
+      ),
     );
     expect(duo.raid.maxHp).toBe(
       Math.round(
         (GRUMBLECRAG.health.base + GRUMBLECRAG.health.perExtraPlayer) *
+          RAID.healthScale *
+          RAID.perilHealth[duo.raid.peril] *
           gild(duo),
       ),
     );
@@ -213,7 +226,10 @@ describe("difficulty and champions", () => {
     a.damage(ally, 10000, a.boss()!.id);
     expect(a.raid.downed.p1).toBeDefined();
     const lumoth = place(a, "p0", 450, 300);
-    a.cast(lumoth, CHARACTERS.lumoth.skills.find((s) => s.id === "kindle")!);
+    a.cast(
+      lumoth,
+      CHARACTERS.lumoth.skills.find((s) => s.id === "kindle")!,
+    );
     expect(a.raid.downed.p1.progress).toBeGreaterThanOrEqual(0.5);
   });
   it("remembers what downed each raider", () => {
@@ -306,5 +322,19 @@ describe("pings, practice and stand-ins", () => {
     const first = cadence();
     a.raid.phase = 3;
     expect(cadence()).toBeLessThan(first);
+  });
+});
+
+describe("boss health by Peril", () => {
+  it("grows with Peril, so higher Peril fights last longer", () => {
+    const hp = (peril: number) => {
+      const a = raid(["voltkit"]);
+      a.raid.peril = peril;
+      a.start();
+      return a.raid.maxHp / (a.raid.gilded ? GRUMBLECRAG.health.gilded : 1);
+    };
+    expect(hp(1)).toBeCloseTo(GRUMBLECRAG.health.base * RAID.healthScale, -1);
+    expect(hp(2)).toBeGreaterThan(hp(1));
+    expect(hp(3)).toBeGreaterThan(hp(2));
   });
 });

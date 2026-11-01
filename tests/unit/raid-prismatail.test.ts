@@ -1,3 +1,4 @@
+import { RAID } from "../../packages/shared/src/raid";
 import {
   drawCollectionAura,
   playCollectionEntrance,
@@ -78,7 +79,10 @@ describe("Prismatail light relay", () => {
     expect(a.walls()).toEqual([]);
     expect(a.raid.pillars).toEqual([]);
     expect(RAID_BOSSES.prismatail.playable).toBe(true);
-    expect([3990, Math.round(3990 * 1.12)]).toContain(a.raid.maxHp);
+    const f = RAID.healthScale * RAID.perilHealth[a.raid.peril];
+    expect([Math.round(3990 * f), Math.round(3990 * f * 1.12)]).toContain(
+      a.raid.maxHp,
+    );
     expect(ritesFor("prismatail")).toContain("polished");
     expect(ritesFor("somnara")).not.toContain("polished");
     for (const phase of [1, 2, 3]) {

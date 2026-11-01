@@ -12,7 +12,11 @@ export * from "./raid-roster.js";
 export const RAID = {
   name: "Grumblecrag",
   maxPeril: 3,
-  timeLimit: 480,
+  timeLimit: 600,
+  /** Every boss's health × this (they went down in about a minute). */
+  healthScale: 1.6,
+  /** Extra boss health at Peril 1, 2 and 3 (index = Peril). */
+  perilHealth: [1, 1, 1.2, 1.4],
   riteChoiceSeconds: 20,
   reviveSeconds: 3,
   reviveRange: 100,
@@ -216,7 +220,7 @@ export const GRUMBLECRAG = {
   name: "Grumblecrag",
   health: { base: 1450, perExtraPlayer: 900, gilded: 1.12 },
   /** Boss damage at Peril 1, 2 and 3 (index = Peril). */
-  perilDamage: [1, 1, 1.1, 1.2],
+  perilDamage: [1, 1, 1.25, 1.5],
   /** Seconds between attacks, and the final phase's faster rhythm. */
   cadence: { normal: 5.2, restless: 4.4, finalPhase: 0.85 },
   charge: { damage: 28, width: 80, delay: 1.7, lock: 1, speed: 650 },
@@ -242,7 +246,7 @@ export const TIDEWYRM = {
   id: "tidewyrm",
   name: "Tidewyrm",
   health: { base: 1350, perExtraPlayer: 850, gilded: 1.12 },
-  perilDamage: [1, 1, 1.1, 1.2],
+  perilDamage: [1, 1, 1.25, 1.5],
   cadence: { normal: 5, restless: 4.4, finalPhase: 0.85 },
   /** The Lagoon Court: four raised islands you can stand on. */
   islands: [
@@ -292,7 +296,7 @@ export const GLOOMSHADE = {
   // Finding the real one costs a solo raider more time than a party, so
   // more of its health comes with each extra raider than for the others.
   health: { base: 1050, perExtraPlayer: 1000, gilded: 1.12 },
-  perilDamage: [1, 1, 1.1, 1.2],
+  perilDamage: [1, 1, 1.25, 1.5],
   cadence: { normal: 4.8, restless: 4.4, finalPhase: 0.85 },
   /** The Lantern Yard's four lanterns and how far their light reaches. */
   lanterns: [

@@ -17,7 +17,7 @@ export interface RaidDreamView {
 }
 export const SOMNARA = {
   health: { base: 1050, perExtraPlayer: 1000, gilded: 1.12 },
-  perilDamage: [1, 1, 1.1, 1.2],
+  perilDamage: [1, 1, 1.25, 1.5],
   cadence: { normal: 4.8, restless: 4.3, finalPhase: 0.8 },
   home: { x: 800, y: 450 },
   pads: [
