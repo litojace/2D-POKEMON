@@ -6,6 +6,7 @@ import {
   type RaidReward,
 } from "../../../packages/shared/src/raid";
 import { itemPicture } from "./shop-ui";
+import { tierChip } from "./tier-chip";
 import "./reward-reveal.css";
 
 /**
@@ -76,7 +77,7 @@ export function rewardCard(r: RaidReward, champion: CharacterId) {
     r.slot === "title"
       ? `<span class="reveal-title-art">${escape(r.name)}</span>`
       : itemPicture(r.id, champion, `reveal-${r.id}`);
-  return `<div class="reveal-card" style="--reveal:${boss?.color ?? "#ffd76a"}"><div class="reveal-face reveal-back" aria-hidden="true"><span>?</span></div><div class="reveal-face reveal-front"><span class="reveal-slot">${SLOT_LABEL[r.slot] ?? r.slot}</span><span class="reveal-art">${art}</span><b class="reveal-name">${escape(r.name)}</b><small class="reveal-source">${boss ? escape(boss.name) : "Boss raids"} · ${escape(r.goal)}</small></div></div>`;
+  return `<div class="reveal-card" style="--reveal:${boss?.color ?? "#ffd76a"}"><div class="reveal-face reveal-back" aria-hidden="true"><span>?</span></div><div class="reveal-face reveal-front"><span class="reveal-slot">${SLOT_LABEL[r.slot] ?? r.slot}</span>${r.slot === "title" ? "" : tierChip(r.id)}<span class="reveal-art">${art}</span><b class="reveal-name">${escape(r.name)}</b><small class="reveal-source">${boss ? escape(boss.name) : "Boss raids"} · ${escape(r.goal)}</small></div></div>`;
 }
 
 /** Show the new rewards one card at a time. Resolves when dismissed. */

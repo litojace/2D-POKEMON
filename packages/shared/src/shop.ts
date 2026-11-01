@@ -470,17 +470,40 @@ const LOOK_SETS: [Collection, [string, string][]][] = [
     ],
   ],
 ];
+/**
+ * Collection tiers (migration 031): Candy, Garden and Retro are the standard
+ * sets; Winter and Festival are premium (Epic pieces, about 1.6× the price);
+ * Galaxy is the showcase set (Mythical pieces, 2.5×). Colours stay one step
+ * below the set's other pieces. Pricier, rarer pieces get grander effects.
+ */
+export const COLLECTION_TIER: Record<Collection, 0 | 1 | 2> = {
+  candy: 0,
+  garden: 0,
+  retro: 0,
+  arcade: 0,
+  celestial: 0,
+  winter: 1,
+  festival: 1,
+  galaxy: 2,
+};
+const TIER_PRICE = [1, 1.6, 2.5] as const;
+const lookRarity = (base: Rarity, slug: string, tier: 0 | 1 | 2): Rarity => {
+  if (tier === 0) return base;
+  if (tier === 1) return slug === "colours" ? "rare" : "epic";
+  return slug === "colours" ? "epic" : "mythical";
+};
 export const LOOK_ITEMS: LookItem[] = LOOK_SETS.flatMap(([collection, items]) =>
   items.map(([name, description], i) => {
     const [slot, slug, rarity, price] = LOOK_SLOTS[i];
+    const tier = COLLECTION_TIER[collection] ?? 0;
     return {
       id: `${collection}-${slug}`,
       slot,
       name,
-      rarity,
+      rarity: lookRarity(rarity, slug, tier),
       collection,
       description,
-      price,
+      price: Math.round((price * TIER_PRICE[tier]) / 10) * 10,
     };
   }),
 );

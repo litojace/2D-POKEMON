@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { AURA_LIFT, drawCollectionAura } from "../../apps/client/src/skins/collection-fx";
+import {
+  AURA_LIFT,
+  drawCollectionAura,
+  drawCollectionAuraBase,
+} from "../../apps/client/src/skins/collection-fx";
 import { traitAura } from "../../apps/client/src/trait-effects";
 
 /** A Graphics stand-in that records the y of every filled shape. */
@@ -23,7 +27,8 @@ describe("aura items circle in front of and behind the fighter", () => {
     const back = layer(),
       front = layer();
     // Galaxy: 6 sparkles at 60° apart, at t=1000 none sits exactly on the sides.
-    drawCollectionAura(back.g, "galaxy-aura", 0, 0, 1000, false, front.g);
+    // The piece's own items (its rarity flourish is tested in tier-fx).
+    drawCollectionAuraBase(back.g, "galaxy-aura", 0, 0, 1000, false, front.g);
     expect(front.ys.length).toBeGreaterThan(0);
     // Items circle at hip height: the ones in front are on the near half of
     // that circle (lower on screen), the ones behind on the far half.
@@ -36,7 +41,7 @@ describe("aura items circle in front of and behind the fighter", () => {
     const back = layer(),
       front = layer();
     // Battle shadow 48×18: items stay within the ring's height on that plane.
-    drawCollectionAura(back.g, "galaxy-aura", 0, 0, 1000, false, front.g, 18 / 48, 0);
+    drawCollectionAuraBase(back.g, "galaxy-aura", 0, 0, 1000, false, front.g, 18 / 48, 0);
     const items = [...back.ys, ...front.ys].filter((y) => y !== 0);
     // Six sparkles of four triangles each.
     expect(items.length).toBe(24);

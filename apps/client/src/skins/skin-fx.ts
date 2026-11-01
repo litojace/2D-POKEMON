@@ -21,7 +21,11 @@ export type FxShape =
   | "coin"
   | "pixel"
   | "flake"
-  | "ring";
+  | "ring"
+  /** A column of light rising from the feet (tiered entrances). */
+  | "beam"
+  /** A flat ring sweeping out across the ground. */
+  | "shock";
 export interface FxParticle {
   x: number;
   y: number;
@@ -32,6 +36,8 @@ export interface FxParticle {
   color: number;
   shape: FxShape;
   spin?: number;
+  /** A soft halo under the particle (cosmetic entrances and victories). */
+  glow?: boolean;
 }
 export interface FxContext {
   g: Phaser.GameObjects.Graphics;
@@ -443,6 +449,21 @@ export function drawFxParticle(
     case "ring":
       g.lineStyle(3, p.color, fade).strokeCircle(p.x, p.y, p.size * (1 + p.age * 6));
       return true;
+    case "beam": {
+      // Narrow core inside a wider soft glow; it thins as it fades.
+      const k = 1 - p.age / p.life,
+        h = s * 9;
+      g.fillStyle(p.color, 0.22 * fade).fillRect(p.x - s * 1.6 * k, p.y - h, s * 3.2 * k, h);
+      g.fillStyle(0xffffff, 0.55 * fade).fillRect(p.x - s * 0.35 * k, p.y - h, s * 0.7 * k, h);
+      g.fillStyle(p.color, 0.3 * fade).fillEllipse(p.x, p.y, s * 5 * k, s * 1.6 * k);
+      return true;
+    }
+    case "shock": {
+      const r = s * (1 + p.age * 9);
+      g.lineStyle(2.6, p.color, fade).strokeEllipse(p.x, p.y, r * 2, r * 0.75);
+      g.lineStyle(6, p.color, 0.25 * fade).strokeEllipse(p.x, p.y, r * 2.1, r * 0.8);
+      return true;
+    }
     case "flake":
       g.lineStyle(1.1, p.color, fade)
         .lineBetween(p.x - s, p.y, p.x + s, p.y)
@@ -451,4 +472,35 @@ export function drawFxParticle(
       return true;
   }
   return false;
+}
+
+/**
+ * Draw any particle: the skin shapes above plus the rig's own (dot, bubble,
+ * puff, pebble, spark, star). Shared by the rig and the Shop/Wardrobe live
+ * thumbnails so both show exactly the same effect.
+ */
+export function drawAnyParticle(
+  g: Phaser.GameObjects.Graphics,
+  p: FxParticle & { age: number },
+  fade: number,
+) {
+  if (p.glow && p.shape !== "ring" && p.shape !== "beam" && p.shape !== "shock")
+    g.fillStyle(p.color, 0.16 * fade).fillCircle(p.x, p.y, p.size * 2.6);
+  if (drawFxParticle(g, p, fade)) return;
+  const s = p.size;
+  if (p.shape === "dot") g.fillStyle(p.color, 0.85 * fade).fillCircle(p.x, p.y, s);
+  else if (p.shape === "bubble")
+    g.lineStyle(1.2, p.color, 0.8 * fade).strokeCircle(p.x, p.y, s);
+  else if (p.shape === "puff")
+    g.fillStyle(p.color, 0.35 * fade).fillCircle(p.x, p.y, s * (1 + p.age * 2));
+  else if (p.shape === "pebble")
+    g.fillStyle(p.color, fade)
+      .fillTriangle(p.x - s, p.y, p.x, p.y - s * 0.8, p.x + s, p.y)
+      .fillTriangle(p.x - s, p.y, p.x, p.y + s * 0.7, p.x + s, p.y);
+  else if (p.shape === "spark")
+    g.lineStyle(1.6, p.color, fade)
+      .lineBetween(p.x - s, p.y, p.x, p.y - s * 0.6)
+      .lineBetween(p.x, p.y - s * 0.6, p.x + s * 0.4, p.y + s * 0.5);
+  // A tiny four-point star.
+  else sparkle(g, p.x, p.y, s, p.color, 0.9 * fade);
 }

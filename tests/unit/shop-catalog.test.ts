@@ -21,7 +21,29 @@ const missionMigration = readFileSync(
 
 describe("shop catalog", () => {
   it("is seeded into the database exactly as defined", () => {
-    expect(migration).toContain(shopItemsSql);
+    // 031 (collection tiers) re-prices the premium and showcase sets in
+    // place: compare against the 010 seed with those rows as 031 sets them.
+    const tiers = readFileSync(
+      "supabase/migrations/031_collection_tiers.sql",
+      "utf8",
+    );
+    const updated = new Map(
+      [
+        ...tiers.matchAll(
+          /set rarity = '([a-z]+)', price = (\d+) where id = '([a-z-]+)';/g,
+        ),
+      ].map(([, rarity, price, id]) => [id, { rarity, price: Number(price) }]),
+    );
+    for (const line of shopItemsSql.split("\n")) {
+      const id = line.match(/^ {2}\('([a-z-]+)', 'look'/)?.[1];
+      const change = id ? updated.get(id) : undefined;
+      if (!change) {
+        expect(migration).toContain(line);
+        continue;
+      }
+      expect(line).toContain(`'${change.rarity}'`);
+      expect(line).toContain(`, ${change.price}, null)`);
+    }
     // The retirement migration changes one existing mission without rewriting history.
     for (const line of missionsSql
       .split("\n")

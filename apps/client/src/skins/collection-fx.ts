@@ -3,6 +3,7 @@ import { JOURNEY_ITEM_BY_ID } from "../../../../packages/shared/src/journey";
 import type Phaser from "phaser";
 import type { FxParticle } from "./skin-fx";
 import { sparkle } from "./skin-fx";
+import { auraFlourish, entranceFlourish, victoryFlourish } from "./tier-fx";
 
 /**
  * The Shop's all-fighter collection pieces in play: auras under the fighter,
@@ -25,7 +26,8 @@ export const AURA_LIFT = 3;
  * it on the far half, a little smaller and fainter, so the ring has depth.
  * Without it everything draws on `g`. Returns false if the id is unknown.
  */
-export function drawCollectionAura(g: G, id: string, x: number, y: number, now: number, reduced: boolean, front?: G, flat: number = WORLD_ART.groundY, lift = AURA_LIFT) {
+/** The piece's own ring and items, without its rarity flourish. */
+export function drawCollectionAuraBase(g: G, id: string, x: number, y: number, now: number, reduced: boolean, front?: G, flat: number = WORLD_ART.groundY, lift = AURA_LIFT) {
   const t = reduced ? 0 : now;
   /** Height of a floor ellipse this wide, on the aura's plane. */
   const groundHeight = (w: number) => w * flat;
@@ -152,6 +154,17 @@ export function drawCollectionAura(g: G, id: string, x: number, y: number, now: 
       });
       return true;
     }
+    case "mountain-aura": {
+      // Grumblecrag's reward: a golden ring of carved stone chips.
+      g.lineStyle(3, 0xffd28c, 0.75).strokeEllipse(x, y, 98, groundHeight(98));
+      g.lineStyle(1, 0xb88a52, 0.5).strokeEllipse(x, y, 110, groundHeight(110));
+      ring(8, 50, 20, 7000, (gg, px, py, i, _a, d, f) => {
+        const s = (i % 2 ? 4.2 : 3.2) * d;
+        gg.fillStyle(i % 2 ? 0x9b8466 : 0xc8a06a, 0.95 * f).fillTriangle(px - s, py, px, py - s * 1.1, px + s, py).fillTriangle(px - s, py, px, py + s * 0.6, px + s, py);
+        gg.fillStyle(0xffd28c, 0.8 * f).fillCircle(px, py - s * 0.3, 1.1 * d);
+      });
+      return true;
+    }
     case "winter-aura":
       ring(8, 46, 19, 5200, (gg, px, py, i, _a, d, f) => {
         const s = 4 * d;
@@ -169,7 +182,7 @@ type Emit = (p: FxParticle) => void;
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 
 /** A one-off burst when the round greeting starts. Returns false if unknown. */
-export function playCollectionEntrance(emit: Emit, id: string, x: number, y: number, sc: number) {
+function baseEntrance(emit: Emit, id: string, x: number, y: number, sc: number) {
   const burst = (n: number, make: (i: number) => Omit<FxParticle, "x" | "y"> & { x?: number; y?: number }) => {
     for (let i = 0; i < n; i++) {
       const p = make(i);
@@ -280,7 +293,7 @@ function pixelText(g: G, text: string, cx: number, cy: number, px: number, color
  * Victory finales, drawn every frame of the celebration (t seconds in).
  * The champion keeps its own victory move; these play around it.
  */
-export function drawCollectionVictory(
+function baseVictory(
   g: G,
   under: G,
   emit: Emit,
@@ -444,4 +457,43 @@ export function drawCollectionVictory(
     }
   }
   return false;
+}
+
+/**
+ * Auras: the piece's own ring and items, then its rarity flourish
+ * (tier-fx.ts). Returns false if the id is unknown.
+ */
+export function drawCollectionAura(g: G, id: string, x: number, y: number, now: number, reduced: boolean, front?: G, flat: number = WORLD_ART.groundY, lift = AURA_LIFT) {
+  if (!drawCollectionAuraBase(g, id, x, y, now, reduced, front, flat, lift)) return false;
+  auraFlourish(g, id, x, y, now, reduced, flat, front);
+  return true;
+}
+/** A one-off burst when the round greeting starts, plus its rarity flourish. */
+export function playCollectionEntrance(emit0: Emit, id: string, x: number, y: number, sc: number, flourishOnly = false) {
+  const emit: Emit = (p) => emit0({ ...p, glow: true });
+  const known = flourishOnly || baseEntrance(emit, id, x, y, sc);
+  if (known) entranceFlourish(emit, id, x, y, sc);
+  return known;
+}
+/** Victory finales (t seconds in), plus their rarity flourish. */
+export function drawCollectionVictory(
+  g: G,
+  under: G,
+  emit: Emit,
+  chance: (rate: number, dt: number) => boolean,
+  id: string,
+  x: number,
+  y: number,
+  sc: number,
+  t: number,
+  dt: number,
+  first: boolean,
+) {
+  const emit0 = emit;
+  emit = (p) => emit0({ ...p, glow: true });
+  const known = baseVictory(g, under, emit, chance, id, x, y, sc, t, dt, first);
+  // Rig-drawn pieces (Rockslide Flex) still get their flourish.
+  if (known || id === "rockslide-flex")
+    victoryFlourish(g, under, emit, chance, id, x, y, sc, t, dt);
+  return known;
 }

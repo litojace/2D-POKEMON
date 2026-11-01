@@ -165,6 +165,7 @@ import { fighterPack } from "./animation/pack-config";
 import { fullscreenLandscape } from "./orientation";
 import { wireRotateGate } from "./rotate-gate";
 import { watchRotation } from "./orientation-settle";
+import { watchCosmeticPreviews } from "./cosmetic-fx-preview";
 import { showRewardReveal, takeNewRewards } from "./reward-reveal";
 import { playerCardMarkup } from "./player-card";
 import {
@@ -796,6 +797,7 @@ document.addEventListener("visibilitychange", stopControls);
 const pwa = setupPWA(() => state?.phase, dialog, toast);
 wireRotateGate();
 watchRotation();
+watchCosmeticPreviews();
 // Remember a room from an invite link (?room=ABC123) before the first render.
 if (captureInvite()) inviteHinted = false;
 let lockedRoomPick = "";
@@ -4690,13 +4692,6 @@ class ArenaScene extends Phaser.Scene {
         view.fighterX * 0.7 * giant,
         view.fighterY * 0.7 * giant,
       );
-      if (p.raidLook?.aura === "mountain-aura")
-        g.lineStyle(3, 0xffd28c, 0.7).strokeEllipse(
-          x,
-          feetY,
-          95,
-          groundHeight(95),
-        );
       rig.setVisible(true);
       // On the coliseum court fighters sort with the blocks by where they stand.
       rig.setDepth(this.activeCourt || state?.raid ? fighterDepth(y) : 2);
@@ -4722,7 +4717,7 @@ class ArenaScene extends Phaser.Scene {
       if ((this.flashUntil.get(p.id) ?? 0) > feelNow) flashWhite(rig.root);
       // After render (it clears the rig's layers): the aura's near items
       // pass in front of the fighter, the rest go round behind.
-      if (p.raidLook?.aura && p.raidLook.aura !== "mountain-aura")
+      if (p.raidLook?.aura)
         // On the shadow's plane (48×18 at the feet): same flatness.
         drawCollectionAura(
           g,

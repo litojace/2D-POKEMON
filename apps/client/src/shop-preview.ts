@@ -370,11 +370,7 @@ export function mountShopPreview(
       }
       this.aura.setScale(auraScale);
       this.auraFront.setScale(auraScale);
-      if (auraId === "mountain-aura")
-        this.aura
-          .lineStyle(3, 0xffd28c, 0.7)
-          .strokeEllipse(auraX / auraScale, auraY / auraScale, 95, 95 * flat);
-      else if (auraId)
+      if (auraId)
         drawCollectionAura(
           this.aura,
           auraId,

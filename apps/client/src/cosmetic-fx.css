@@ -1,0 +1,387 @@
+/* Live item thumbnails (cosmetic-fx-preview.ts): the real effect, drawn on
+   a canvas behind the fighter (ground rings, victory art) and one in front
+   (items passing in front, particles). */
+.raid-cosmetic-preview:has(> .fx-live) {
+  position: relative;
+  isolation: isolate;
+}
+.raid-cosmetic-preview > .fx-live {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.raid-cosmetic-preview > .fx-back {
+  z-index: 0;
+}
+.raid-cosmetic-preview:has(> .fx-live) > :is(svg, img) {
+  position: relative;
+  z-index: 1;
+}
+.raid-cosmetic-preview > .fx-front {
+  z-index: 3;
+}
+
+/* Rarity colours (cosmetic-tier.ts TIER_COLORS). */
+[data-tier="common"] {
+  --tier: #a7b3c6;
+}
+[data-tier="rare"] {
+  --tier: #4fa8ff;
+}
+[data-tier="epic"] {
+  --tier: #b56bff;
+}
+[data-tier="legendary"] {
+  --tier: #ffbf3c;
+}
+[data-tier="mythic"] {
+  --tier: #ff4f7b;
+}
+
+/* A live thumbnail replaces the old static sketch of the effect with a
+   clean stage tinted by rarity; the canvas shows the real effect. */
+.raid-cosmetic-preview:has(> .fx-live) {
+  background:
+    radial-gradient(
+      circle at 50% 62%,
+      color-mix(in srgb, var(--tier, #4fa8ff) 26%, transparent),
+      transparent 70%
+    ),
+    linear-gradient(180deg, #17254a, #0b1430) !important;
+  border-color: color-mix(
+    in srgb,
+    var(--tier, #4fa8ff) 65%,
+    transparent
+  ) !important;
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--tier, #4fa8ff) 45%, transparent) !important;
+  animation: none !important;
+}
+.raid-cosmetic-preview:has(> .fx-live)::before,
+.raid-cosmetic-preview:has(> .fx-live)::after {
+  content: none !important;
+}
+
+/* ── Frames dress up by rarity (inspired by prestige borders) ──
+   .tier-fx sits just outside the frame's own artwork:
+   Rare       a polished edge with a light sheen sweeping round
+   Epic       a turning two-colour edge and a soft glow
+   Legendary  a golden turning edge, a breathing halo, orbiting sparks
+   Mythic     a prismatic edge that shifts colour, a strong halo, sparks
+              orbiting both ways
+   Common frames have no extra. */
+.raid-cosmetic-preview > .tier-fx {
+  position: absolute;
+  inset: -3px;
+  z-index: 2;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.raid-cosmetic-preview[data-tier="common"] > .tier-fx {
+  display: none;
+}
+/* The edge: a ring cut out of a gradient. */
+.raid-cosmetic-preview[data-tier] > .tier-fx {
+  padding: 2px;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+}
+.raid-cosmetic-preview[data-tier="rare"] > .tier-fx {
+  background:
+    linear-gradient(115deg, transparent 35%, #ffffffd9 48%, transparent 60%) 0
+      0 / 300% 100%,
+    linear-gradient(135deg, #cfe6ff, #4fa8ff 45%, #a9d2ff 70%, #2f6fc0);
+  animation: tier-sheen 3.6s ease-in-out infinite;
+}
+@keyframes tier-sheen {
+  0%,
+  35% {
+    background-position:
+      120% 0,
+      0 0;
+  }
+  75%,
+  100% {
+    background-position:
+      -40% 0,
+      0 0;
+  }
+}
+@property --tier-turn {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+.raid-cosmetic-preview[data-tier="epic"] > .tier-fx {
+  inset: -4px;
+  padding: 3px;
+  background: conic-gradient(
+    from var(--tier-turn),
+    #b56bff,
+    #f0d7ff,
+    #6a3fd6,
+    #e2a8ff,
+    #b56bff
+  );
+  box-shadow: 0 0 10px #b56bff88;
+  animation: tier-turn 5s linear infinite;
+}
+.raid-cosmetic-preview[data-tier="legendary"] > .tier-fx {
+  inset: -5px;
+  padding: 3px;
+  background: conic-gradient(
+    from var(--tier-turn),
+    #ffbf3c,
+    #fff4c4,
+    #c97a12,
+    #ffe08a,
+    #ffbf3c
+  );
+  animation: tier-turn 4s linear infinite;
+}
+.raid-cosmetic-preview[data-tier="mythic"] > .tier-fx {
+  inset: -6px;
+  padding: 4px;
+  background: conic-gradient(
+    from var(--tier-turn),
+    #ff4f7b,
+    #ffd36b,
+    #8ff0b5,
+    #7fd8ff,
+    #b59bff,
+    #ff4f7b
+  );
+  animation: tier-turn 3s linear infinite;
+}
+@keyframes tier-turn {
+  to {
+    --tier-turn: 360deg;
+  }
+}
+/* Halo around the whole frame (legendary and mythic). */
+.raid-cosmetic-preview[data-tier="legendary"]:has(> .tier-fx) {
+  animation: tier-halo-gold 2.6s ease-in-out infinite;
+}
+.raid-cosmetic-preview[data-tier="mythic"]:has(> .tier-fx) {
+  animation: tier-halo-prism 3s linear infinite;
+}
+@keyframes tier-halo-gold {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 3px #ffbf3c99);
+  }
+  50% {
+    filter: drop-shadow(0 0 9px #ffd76add);
+  }
+}
+@keyframes tier-halo-prism {
+  0% {
+    filter: drop-shadow(0 0 7px #ff4f7bcc);
+  }
+  33% {
+    filter: drop-shadow(0 0 7px #ffd36bcc);
+  }
+  66% {
+    filter: drop-shadow(0 0 7px #7fd8ffcc);
+  }
+  100% {
+    filter: drop-shadow(0 0 7px #ff4f7bcc);
+  }
+}
+/* Orbiting sparks: a separate layer that turns round the frame. */
+.raid-cosmetic-preview > .tier-orbit {
+  display: none;
+  position: absolute;
+  inset: -12%;
+  z-index: 4;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.raid-cosmetic-preview[data-tier="legendary"] > .tier-orbit,
+.raid-cosmetic-preview[data-tier="mythic"] > .tier-orbit {
+  display: block;
+  background:
+    radial-gradient(circle at 50% 3%, #fffbe8 0 2.4%, transparent 4%),
+    radial-gradient(
+      circle at 97% 50%,
+      var(--spark-b, #ffd76a) 0 1.8%,
+      transparent 3.2%
+    ),
+    radial-gradient(
+      circle at 15% 85%,
+      var(--spark-c, #fff4c4) 0 1.5%,
+      transparent 2.8%
+    );
+  animation: tier-orbit 4.5s linear infinite;
+}
+.raid-cosmetic-preview[data-tier="mythic"] > .tier-orbit {
+  --spark-b: #7fd8ff;
+  --spark-c: #ff8fb0;
+  background:
+    radial-gradient(circle at 50% 3%, #fffbe8 0 2.4%, transparent 4%),
+    radial-gradient(circle at 97% 50%, #7fd8ff 0 1.8%, transparent 3.2%),
+    radial-gradient(circle at 15% 85%, #ff8fb0 0 1.5%, transparent 2.8%),
+    radial-gradient(circle at 50% 97%, #8ff0b5 0 1.6%, transparent 3%),
+    radial-gradient(circle at 3% 40%, #b59bff 0 1.6%, transparent 3%);
+  animation-duration: 3s;
+}
+@keyframes tier-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .raid-cosmetic-preview > .tier-fx,
+  .raid-cosmetic-preview:has(> .tier-fx),
+  .raid-cosmetic-preview > .tier-orbit {
+    animation: none !important;
+  }
+}
+
+.tier-chip {
+  display: inline-block;
+  padding: 0 7px;
+  border: 1px solid color-mix(in srgb, var(--tier) 70%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tier) 18%, #0b1222);
+  color: color-mix(in srgb, var(--tier) 80%, #fff);
+  font: 700 10px/16px var(--body, sans-serif);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.tier-chip[data-tier="mythic"] {
+  background: linear-gradient(90deg, #ff4f7b33, #ffd36b33, #7fd8ff33);
+}
+
+/* ── Stronger frame tiers ──
+   Epic       thicker turning edge, purple glow, four gems turning slowly
+   Legendary  gold edge, breathing halo, slow golden light rays behind
+   Mythic     prismatic edge, prismatic rays turning, sparks both ways */
+.raid-cosmetic-preview:has(> .tier-fx) {
+  isolation: isolate;
+}
+.raid-cosmetic-preview[data-tier="rare"] > .tier-fx {
+  box-shadow: 0 0 8px #4fa8ff66;
+}
+.raid-cosmetic-preview[data-tier="epic"] > .tier-fx {
+  inset: -5px;
+  padding: 4px;
+  box-shadow:
+    0 0 12px #b56bffaa,
+    inset 0 0 6px #e2a8ff88;
+}
+.raid-cosmetic-preview[data-tier="epic"] > .tier-orbit {
+  display: block;
+  inset: -9%;
+  background:
+    radial-gradient(
+      circle at 50% 2.5%,
+      #f0d7ff 0 2.2%,
+      #b56bff 2.6%,
+      transparent 4%
+    ),
+    radial-gradient(
+      circle at 97.5% 50%,
+      #f0d7ff 0 2.2%,
+      #b56bff 2.6%,
+      transparent 4%
+    ),
+    radial-gradient(
+      circle at 50% 97.5%,
+      #f0d7ff 0 2.2%,
+      #b56bff 2.6%,
+      transparent 4%
+    ),
+    radial-gradient(
+      circle at 2.5% 50%,
+      #f0d7ff 0 2.2%,
+      #b56bff 2.6%,
+      transparent 4%
+    );
+  animation: tier-orbit 12s linear infinite;
+}
+.raid-cosmetic-preview[data-tier="legendary"] > .tier-fx {
+  inset: -6px;
+  padding: 4px;
+  box-shadow:
+    0 0 14px #ffbf3cbb,
+    inset 0 0 6px #fff4c499;
+}
+.raid-cosmetic-preview[data-tier="mythic"] > .tier-fx {
+  inset: -7px;
+  padding: 5px;
+  box-shadow:
+    0 0 16px #ff4f7bbb,
+    0 0 26px #7fd8ff66,
+    inset 0 0 8px #ffffff88;
+}
+/* Light rays turning behind the frame. */
+.raid-cosmetic-preview > .tier-rays {
+  display: none;
+  position: absolute;
+  inset: -34%;
+  z-index: -1;
+  border-radius: 50%;
+  pointer-events: none;
+  -webkit-mask: radial-gradient(
+    circle,
+    transparent 0 29%,
+    #000 31%,
+    transparent 70%
+  );
+  mask: radial-gradient(circle, transparent 0 29%, #000 31%, transparent 70%);
+}
+.raid-cosmetic-preview[data-tier="legendary"] > .tier-rays {
+  display: block;
+  background: repeating-conic-gradient(
+    from var(--tier-turn),
+    #ffd76a66 0 6deg,
+    transparent 6deg 22deg
+  );
+  animation: tier-turn 14s linear infinite;
+}
+.raid-cosmetic-preview[data-tier="mythic"] > .tier-rays {
+  display: block;
+  background: repeating-conic-gradient(
+    from var(--tier-turn),
+    #ff4f7b55 0 5deg,
+    transparent 5deg 15deg,
+    #7fd8ff55 15deg 20deg,
+    transparent 20deg 30deg,
+    #ffd36b55 30deg 35deg,
+    transparent 35deg 45deg
+  );
+  animation: tier-turn 10s linear infinite;
+}
+.raid-cosmetic-preview[data-tier="mythic"] > .tier-orbit::after {
+  /* A second ring of sparks turning the other way. */
+  content: "";
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 2%, #ffd36b 0 2.4%, transparent 4%),
+    radial-gradient(circle at 98% 50%, #ff8fb0 0 2%, transparent 3.6%),
+    radial-gradient(circle at 2% 50%, #8ff0b5 0 2%, transparent 3.6%);
+  animation: tier-orbit 4s linear infinite reverse;
+}
+/* Small identity portraits keep the edge but drop the rays and sparks. */
+:is(.account-avatar, .player-avatar, .friend-avatar)
+  .raid-cosmetic-preview
+  > :is(.tier-rays, .tier-orbit) {
+  display: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .raid-cosmetic-preview > .tier-rays,
+  .raid-cosmetic-preview > .tier-orbit::after {
+    animation: none !important;
+  }
+}

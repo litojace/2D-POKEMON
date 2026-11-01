@@ -6,6 +6,7 @@ import {
   LOOK_ITEM_BY_ID,
   type Economy,
 } from "../../../packages/shared/src/shop";
+import { tierChip } from "./tier-chip";
 import {
   FRAME_MAX_STARS,
   FRAME_STAR_CLEARS,
@@ -191,7 +192,7 @@ export function wardrobeMarkup(
   const cards = items
     .map((i) => {
       const worn = wardrobeWorn(i.slot, view.champion, e, loadout) === i.id;
-      return `<button type="button" class="wardrobe-item${view.preview === i.id ? " is-selected" : ""}" data-wardrobe-preview="${i.id}" aria-pressed="${view.preview === i.id}"><span class="wardrobe-item-art">${itemPicture(i.id, view.champion, `wardrobe-${i.id}`, e.looks[view.champion]?.skin === i.id ? e.looks[view.champion]!.stage : (e.awakening[i.id]?.stage ?? 1))}</span><span class="wardrobe-item-copy"><b>${escape(i.name)}</b><small>${escape(i.source)}</small>${frameStarNote(i.id, p)}<span class="wardrobe-item-state${worn ? " is-equipped-text" : ""}">${worn ? `${menuIcon("check")}Equipped` : WARDROBE_SLOTS.find(([s]) => s === i.slot)![1]}</span></span></button>`;
+      return `<button type="button" class="wardrobe-item${view.preview === i.id ? " is-selected" : ""}" data-wardrobe-preview="${i.id}" aria-pressed="${view.preview === i.id}"><span class="wardrobe-item-art">${itemPicture(i.id, view.champion, `wardrobe-${i.id}`, e.looks[view.champion]?.skin === i.id ? e.looks[view.champion]!.stage : (e.awakening[i.id]?.stage ?? 1))}</span><span class="wardrobe-item-copy"><b>${escape(i.name)}</b>${i.slot === "champion" ? "" : tierChip(i.id, frameStars(i.id, bossClears(p)))}<small>${escape(i.source)}</small>${frameStarNote(i.id, p)}<span class="wardrobe-item-state${worn ? " is-equipped-text" : ""}">${worn ? `${menuIcon("check")}Equipped` : WARDROBE_SLOTS.find(([s]) => s === i.slot)![1]}</span></span></button>`;
     })
     .join("");
   const wearing = WARDROBE_SLOTS.map(([slot, label]) => {

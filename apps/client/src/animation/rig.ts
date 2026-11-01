@@ -31,7 +31,7 @@ import { paletteFor, type SkinLook } from "../creature-design";
 import { hexToNumber, wornArt } from "../skins/skin-art";
 import {
   FX_GRAVITY,
-  drawFxParticle,
+  drawAnyParticle,
   drawSkinFx,
   type FxShape,
 } from "../skins/skin-fx";
@@ -1313,7 +1313,15 @@ export class FighterRig {
     }
     // ---- Shop collection pieces: entrance burst and victory finale.
     if (state === "wave" && this.fxState !== "wave" && pose.look?.entrance)
-      playCollectionEntrance((p) => this.emit(p), pose.look.entrance, x, y, sc);
+      playCollectionEntrance(
+        (p) => this.emit(p),
+        pose.look.entrance,
+        x,
+        y,
+        sc,
+        // The rig bursts Mountainborn's pebbles itself; add only its flourish.
+        pose.look.entrance === "mountainborn",
+      );
     if (state === "victory" && pose.look?.victory)
       drawCollectionVictory(
         g,
@@ -1337,71 +1345,8 @@ export class FighterRig {
       p.vy += (FX_GRAVITY[p.shape] ?? 0) * dt;
     }
     this.particles = this.particles.filter((p) => p.age < p.life);
-    for (const p of this.particles) {
-      const fade = 1 - p.age / p.life;
-      if (drawFxParticle(g, p, fade)) continue;
-      if (p.shape === "dot")
-        g.fillStyle(p.color, 0.85 * fade).fillCircle(p.x, p.y, p.size);
-      else if (p.shape === "bubble")
-        g.lineStyle(1.2, p.color, 0.8 * fade).strokeCircle(p.x, p.y, p.size);
-      else if (p.shape === "puff")
-        g.fillStyle(p.color, 0.35 * fade).fillCircle(
-          p.x,
-          p.y,
-          p.size * (1 + p.age * 2),
-        );
-      else if (p.shape === "pebble") {
-        const s = p.size;
-        g.fillStyle(p.color, fade)
-          .fillTriangle(p.x - s, p.y, p.x, p.y - s * 0.8, p.x + s, p.y)
-          .fillTriangle(p.x - s, p.y, p.x, p.y + s * 0.7, p.x + s, p.y);
-      } else if (p.shape === "spark")
-        g.lineStyle(1.6, p.color, fade)
-          .lineBetween(p.x - p.size, p.y, p.x, p.y - p.size * 0.6)
-          .lineBetween(
-            p.x,
-            p.y - p.size * 0.6,
-            p.x + p.size * 0.4,
-            p.y + p.size * 0.5,
-          );
-      else {
-        // A tiny four-point star.
-        const s = p.size;
-        g.fillStyle(p.color, 0.9 * fade)
-          .fillTriangle(
-            p.x - s * 0.35,
-            p.y,
-            p.x + s * 0.35,
-            p.y,
-            p.x,
-            p.y - s * 1.3,
-          )
-          .fillTriangle(
-            p.x - s * 0.35,
-            p.y,
-            p.x + s * 0.35,
-            p.y,
-            p.x,
-            p.y + s * 1.3,
-          )
-          .fillTriangle(
-            p.x,
-            p.y - s * 0.35,
-            p.x,
-            p.y + s * 0.35,
-            p.x - s * 1.3,
-            p.y,
-          )
-          .fillTriangle(
-            p.x,
-            p.y - s * 0.35,
-            p.x,
-            p.y + s * 0.35,
-            p.x + s * 1.3,
-            p.y,
-          );
-      }
-    }
+    for (const p of this.particles)
+      drawAnyParticle(g, p, 1 - p.age / p.life);
     // ---- Duskveil's wisps orbit; dizzy stars circle a fainted head.
     if (this.character === "duskveil" && state !== "defeat")
       for (let i = 0; i < 2; i++) {

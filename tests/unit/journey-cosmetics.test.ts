@@ -33,7 +33,8 @@ it.each(JOURNEY_ITEMS.filter((i) => i.slot === "aura"))(
       b = graphics();
     expect(drawCollectionAura(a.g, item.id, 0, 0, 1000, false)).toBe(true);
     expect(drawCollectionAura(b.g, item.id, 0, 0, 1800, false)).toBe(true);
-    expect(a.commands.length).toBeLessThan(40);
+    // Bounded per frame, including the rarity flourish (tier-fx.ts).
+    expect(a.commands.length).toBeLessThan(130);
     expect(a.commands).not.toEqual(b.commands);
     const c = graphics(),
       d = graphics();
@@ -52,7 +53,8 @@ it.each(JOURNEY_ITEMS.filter((i) => i.slot === "victory"))(
         a.g,
         a.g,
         emit,
-        () => true,
+        // No random extras: count only the finale's own opening burst.
+        () => false,
         item.id,
         0,
         0,
@@ -67,7 +69,7 @@ it.each(JOURNEY_ITEMS.filter((i) => i.slot === "victory"))(
       a.g,
       a.g,
       emit,
-      () => true,
+      () => false,
       item.id,
       0,
       0,

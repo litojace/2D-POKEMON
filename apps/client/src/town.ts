@@ -1213,11 +1213,7 @@ export function openTown(options: TownOptions) {
         .setPosition(body.x, body.y)
         .setScale(auraScale)
         .setDepth(body.y + 0.2);
-      if (p?.look?.aura === "mountain-aura")
-        body.aura
-          .lineStyle(3, 0xffd28c, 0.7)
-          .strokeEllipse(0, 0, 95, groundHeight(95));
-      else if (p?.look?.aura)
+      if (p?.look?.aura)
         // On the shadow's plane (46×16): same centre and flatness.
         drawCollectionAura(
           body.aura,
