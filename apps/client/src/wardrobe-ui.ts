@@ -202,7 +202,7 @@ export function wardrobeMarkup(
     return `<div class="wardrobe-worn-row"><button type="button" data-wardrobe-slot="${slot}" aria-label="Browse ${label}"><span>${label}</span><b>${escape(info?.name ?? (slot === "champion" ? "Original skin" : "None"))}</b>${covered ? "<small>Covered by champion skin</small>" : ""}</button>${id ? `<button type="button" class="wardrobe-clear" data-wardrobe-clear="${slot}" aria-label="Take off ${escape(info?.name ?? label)}">${menuIcon("cancel")}</button>` : ""}</div>`;
   }).join("");
   return `<section class="wardrobe"><header class="wardrobe-heading"><span class="eyebrow">YOUR COLLECTION</span><h2>${iconLabel("wardrobe", "Wardrobe")}</h2><p>Champion skins for each fighter. Colors and effects shared across your roster.</p></header>
-  <div class="wardrobe-layout"><aside class="wardrobe-showcase"><div class="wardrobe-fighter-picker"><label for="wardrobe-champion">Fighter</label><button type="button" class="wardrobe-step" data-wardrobe-step="-1" aria-label="Previous fighter">${menuIcon("back")}</button><select id="wardrobe-champion">${Object.entries(
+  <div class="wardrobe-layout"><aside class="wardrobe-showcase"><div class="wardrobe-fighter-picker"><label for="wardrobe-champion">Fighter</label><select id="wardrobe-champion">${Object.entries(
     CHARACTERS,
   )
     .map(
@@ -211,7 +211,7 @@ export function wardrobeMarkup(
     )
     .join(
       "",
-    )}</select><button type="button" class="wardrobe-step" data-wardrobe-step="1" aria-label="Next fighter">${menuIcon("back")}</button></div>
+    )}</select></div>
   ${parts.stage}
   ${parts.animations}
   <div class="wardrobe-wearing"><h3>Currently wearing</h3>${wearing}</div></aside>

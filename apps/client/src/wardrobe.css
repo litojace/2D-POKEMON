@@ -91,25 +91,6 @@ dialog.wardrobe-dialog > .dialog-content {
   padding: 8px 12px;
   border-radius: 10px;
 }
-.wardrobe-step {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 44px;
-  height: 44px;
-  padding: 10px;
-  border: 1px solid var(--line);
-  background: var(--bg-1);
-  color: var(--text-dim);
-  border-radius: 10px;
-}
-.wardrobe-step svg {
-  width: 20px;
-  height: 20px;
-}
-.wardrobe-step[data-wardrobe-step="1"] svg {
-  transform: rotate(180deg);
-}
 .wardrobe .wardrobe-preview {
   display: block;
   position: relative;
@@ -461,8 +442,7 @@ dialog.wardrobe-dialog > .dialog-content {
     position: sticky;
     top: 0;
     z-index: 5;
-    display: grid;
-    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    display: flex;
     margin-top: -6px;
     padding: 6px 0;
     gap: 6px;

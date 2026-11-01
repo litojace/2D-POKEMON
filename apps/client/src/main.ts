@@ -160,6 +160,7 @@ import "./friends.css";
 import "./wardrobe.css";
 import "./battle-dock.css";
 import "./mobile-store.css";
+import "./mobile-panels.css";
 import { FollowCamera, screenToWorld, outsideView } from "./follow-camera";
 import { updateNameplate, updateNameplateHealth } from "./player-nameplate";
 import { fighterPack } from "./animation/pack-config";

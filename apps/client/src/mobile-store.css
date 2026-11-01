@@ -9,7 +9,9 @@
   dialog[open]:has(.shop),
   dialog[open]:has(.wardrobe) {
     width: calc(100vw - 12px - var(--safe-left) - var(--safe-right)) !important;
-    height: calc(100dvh - 10px - var(--safe-top) - var(--safe-bottom)) !important;
+    height: calc(
+      100dvh - 10px - var(--safe-top) - var(--safe-bottom)
+    ) !important;
     max-width: none !important;
     max-height: none !important;
   }
@@ -190,9 +192,17 @@
     width: auto;
     max-width: 100%;
   }
-  dialog:has(.shop) .shop-card-art .shop-look-preview > img {
-    width: 62px;
-    height: 62px;
+  /* Effect thumbnails: the whole fighter, small, so the aura, frame or
+     entrance around it shows too (not just a cropped head). */
+  dialog:has(.shop) .shop-card-art .shop-look-preview {
+    width: 72px !important;
+    max-width: 100%;
+    overflow: visible;
+  }
+  dialog:has(.shop) .shop-card-art .shop-look-preview > img,
+  dialog:has(.shop) .shop-card-art .shop-look-preview > svg {
+    width: 54px !important;
+    height: 54px !important;
   }
   dialog:has(.shop) .shop-card-body {
     display: grid;
@@ -224,6 +234,7 @@
     display: none;
   }
   dialog:has(.shop) .shop-card .shop-buy,
+  dialog:has(.shop) .shop-card-action button,
   dialog:has(.shop) .shop-card .shop-state,
   dialog:has(.shop) .shop-card .shop-owned-badge {
     min-height: 30px !important;
@@ -281,7 +292,8 @@
     margin-left: auto;
     font-size: 14px;
   }
-  dialog:has(.shop) :is(.shop-rarity-filter, .shop-ownership, .shop-result-count) {
+  dialog:has(.shop)
+    :is(.shop-rarity-filter, .shop-ownership, .shop-result-count) {
     font-size: 11px;
   }
   dialog:has(.shop) .shop-rarity-filter button,
@@ -399,7 +411,11 @@
   dialog:has(.shop) .shop-card.is-hero {
     grid-column: auto !important;
     grid-template-rows: auto !important;
-    background: linear-gradient(180deg, color-mix(in srgb, var(--tone) 18%, #16264a), #0e1a31 75%);
+    background: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--tone) 18%, #16264a),
+      #0e1a31 75%
+    );
   }
   dialog:has(.shop) .shop-card.is-hero .shop-card-art {
     grid-row: auto !important;
@@ -428,11 +444,17 @@
   dialog:is(:has(.shop), :has(.wardrobe)).framed-dialog > .dialog-toolbar {
     padding: 0 6px !important;
   }
-  dialog:is(:has(.shop), :has(.wardrobe)).framed-dialog > .dialog-toolbar > .dialog-tabs,
-  dialog:is(:has(.shop), :has(.wardrobe)).framed-dialog > .dialog-toolbar .close {
+  dialog:is(:has(.shop), :has(.wardrobe)).framed-dialog
+    > .dialog-toolbar
+    > .dialog-tabs,
+  dialog:is(:has(.shop), :has(.wardrobe)).framed-dialog
+    > .dialog-toolbar
+    .close {
     min-height: 38px !important;
   }
-  dialog:is(:has(.shop), :has(.wardrobe)).framed-dialog > .dialog-toolbar .close {
+  dialog:is(:has(.shop), :has(.wardrobe)).framed-dialog
+    > .dialog-toolbar
+    .close {
     width: 38px !important;
     height: 38px !important;
   }
@@ -442,7 +464,9 @@
     padding: 4px 12px !important;
     font-size: 15px !important;
   }
-  dialog:is(:has(.shop), :has(.wardrobe)) .dialog-toolbar :is(h2, .dialog-heading) {
+  dialog:is(:has(.shop), :has(.wardrobe))
+    .dialog-toolbar
+    :is(h2, .dialog-heading) {
     font-size: 18px !important;
   }
   dialog:has(.shop) .shop-state.shop-locked,
@@ -540,11 +564,13 @@
     padding: 5px !important;
   }
   .wardrobe-fighter-picker {
-    grid-template-columns: 36px minmax(0, 1fr) 36px !important;
+    padding: 2px 0 8px !important;
   }
-  .wardrobe-fighter-picker :is(select, button) {
+  .wardrobe-fighter-picker select {
     height: 36px !important;
     min-height: 36px !important;
+    padding-block: 0 !important;
+    font-size: 14px !important;
   }
   .wardrobe-inventory-heading :is(a, button) {
     min-height: 30px;
@@ -641,5 +667,17 @@
   }
   dialog:has(.shop) .shop .shop-collection {
     padding: 6px !important;
+  }
+}
+
+/* One fighter dropdown (no arrows). This layout turns the browser's own
+   chevron off, so draw one. */
+@media (orientation: landscape) and (max-height: 600px) {
+  .wardrobe-fighter-picker select {
+    padding-inline: 34px !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%2393a8c6' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 14px center !important;
+    background-size: 12px 8px !important;
   }
 }

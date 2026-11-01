@@ -161,16 +161,7 @@ export function openWardrobe(
       );
       if (!button || saving) return;
       const { economy, progress } = hooks.state();
-      if (button.hasAttribute("data-wardrobe-step")) {
-        const ids = Object.keys(CHARACTERS) as CharacterId[];
-        const step = Number(button.dataset.wardrobeStep);
-        view.champion =
-          ids[(ids.indexOf(view.champion) + step + ids.length) % ids.length];
-        view.preview = undefined;
-        view.action = "idle";
-        message = "";
-        render(`[data-wardrobe-step="${step}"]`, false, true);
-      } else if (button.hasAttribute("data-wardrobe-slot")) {
+      if (button.hasAttribute("data-wardrobe-slot")) {
         view.slot = button.dataset.wardrobeSlot as WardrobeView["slot"];
         render(`.wardrobe-filters [data-wardrobe-slot="${view.slot}"]`);
       } else if (button.hasAttribute("data-wardrobe-preview")) {
