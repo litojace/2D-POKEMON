@@ -35,16 +35,24 @@ const JOYSTICK_START = 0.35;
  */
 export function joystickVector(x: number, y: number, radius: number) {
   const length = Math.hypot(x, y);
-  if (radius <= 0 || !Number.isFinite(length) || length < radius * JOYSTICK_DEAD)
+  if (
+    radius <= 0 ||
+    !Number.isFinite(length) ||
+    length < radius * JOYSTICK_DEAD
+  )
     return { dx: 0, dy: 0 };
-  const t = Math.min(1, (length / radius - JOYSTICK_DEAD) / (JOYSTICK_FULL - JOYSTICK_DEAD));
+  const t = Math.min(
+    1,
+    (length / radius - JOYSTICK_DEAD) / (JOYSTICK_FULL - JOYSTICK_DEAD),
+  );
   const speed = JOYSTICK_START + (1 - JOYSTICK_START) * t;
   return { dx: (x / length) * speed, dy: (y / length) * speed };
 }
 /** Where the knob sits: under the thumb, kept inside the ring. */
 export function joystickKnob(x: number, y: number, radius: number) {
   const length = Math.hypot(x, y);
-  if (!Number.isFinite(length) || length === 0 || radius <= 0) return { x: 0, y: 0 };
+  if (!Number.isFinite(length) || length === 0 || radius <= 0)
+    return { x: 0, y: 0 };
   const k = Math.min(1, radius / length);
   return { x: x * k, y: y * k };
 }
@@ -163,20 +171,40 @@ export function mobileLayout(
   );
   // The approved thumb arc: larger hit circles, with equal angles/radii for
   // skills 1–3. Height includes the HUD allowance removed by TouchControls.
-  const scale = Math.max(44 / 68, Math.min(
-    0.94 * prefs.buttonSize,
-    ((height + 88) / 390) * 0.88 * prefs.buttonSize,
-    (available - joystick - 32) / 243,
-  ));
-  const target = (action: TouchAction, x: number, y: number, size: number): TouchTarget => ({
-    action, x: x * scale, y: y * scale, size: Math.max(action === "dash" ? 48 : 44, size * scale),
+  const scale = Math.max(
+    44 / 68,
+    Math.min(
+      0.94 * prefs.buttonSize,
+      ((height + 88) / 390) * 0.88 * prefs.buttonSize,
+      (available - joystick - 32) / 243,
+    ),
+  );
+  const target = (
+    action: TouchAction,
+    x: number,
+    y: number,
+    size: number,
+  ): TouchTarget => ({
+    action,
+    x: x * scale,
+    y: y * scale,
+    size: Math.max(action === "dash" ? 48 : 44, size * scale),
     // Grow the touch circle without enlarging the established icon artwork.
-    iconSize: action === "attack" ? Math.max(1, (unit / 60) * 88 - 15) * 0.5 :
-      action === "dash" || action === "jump" ? (Math.max(44, (unit / 60) * 48) - 15) * 0.56 : Math.max(1, unit - 15) * 0.56,
+    iconSize:
+      action === "attack"
+        ? Math.max(1, (unit / 60) * 88 - 15) * 0.5
+        : action === "dash" || action === "jump"
+          ? (Math.max(44, (unit / 60) * 48) - 15) * 0.56
+          : Math.max(1, unit - 15) * 0.56,
   });
   const arc = [154, 196, 238].map((degrees, i) => {
-    const angle = degrees * Math.PI / 180;
-    return target(String(i) as TouchAction, 139 + 104 * Math.cos(angle), 186 + 104 * Math.sin(angle), 68);
+    const angle = (degrees * Math.PI) / 180;
+    return target(
+      String(i) as TouchAction,
+      139 + 104 * Math.cos(angle),
+      186 + 104 * Math.sin(angle),
+      68,
+    );
   });
   return {
     compact: false,
@@ -193,6 +221,15 @@ export function mobileLayout(
   };
 }
 
+/**
+ * The length (CSS px) to size touch controls from: the larger of the visual
+ * viewport and the window. The visual viewport alone shrinks while the
+ * on-screen keyboard is open or the page is zoomed in, which is not the
+ * screen the battle fills.
+ */
+export function controlExtent(visual: number | undefined, window: number) {
+  return Math.max(visual ?? 0, window);
+}
 export function safeViewport(
   width: number,
   height: number,

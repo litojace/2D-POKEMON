@@ -5,6 +5,7 @@ import { stadiumBands } from "./stadium";
 import { abilityIcon } from "./ability-icons";
 import {
   TouchInputState,
+  controlExtent,
   mobileLayout,
   safeViewport,
   controlPreferences,
@@ -332,10 +333,14 @@ export class TouchControls {
   }
   resize() {
     this.reset();
+    // Size the controls from the screen the game fills, not the visual
+    // viewport alone: that shrinks while the on-screen keyboard is up or the
+    // page is zoomed, and a battle that began then kept tiny controls (seen
+    // in raids: joystick and buttons at their minimum on a large phone).
     const width = document.body.classList.contains("battle-active")
-      ? (window.visualViewport?.width ?? innerWidth)
+      ? controlExtent(window.visualViewport?.width, innerWidth)
       : this.root.clientWidth || innerWidth;
-    const height = window.visualViewport?.height ?? innerHeight;
+    const height = controlExtent(window.visualViewport?.height, innerHeight);
     const safe = getComputedStyle(this.root);
     const insets = Object.fromEntries(
       ["top", "right", "bottom", "left"].map((dir) => [
@@ -371,12 +376,18 @@ export class TouchControls {
     const cluster = this.root.querySelector<HTMLElement>(".touch-buttons")!;
     cluster.style.width = layout.width + "px";
     cluster.style.height = layout.height + "px";
-    document.body.style.setProperty("--combat-cluster-height", layout.height + "px");
+    document.body.style.setProperty(
+      "--combat-cluster-height",
+      layout.height + "px",
+    );
     for (const target of layout.targets) {
       const button = this.buttons.find(
         (b) => (b.dataset.skill ?? b.dataset.action) === target.action,
       )!;
-      button.style.setProperty("--combat-icon-size", target.iconSize === undefined ? "" : `${target.iconSize}px`);
+      button.style.setProperty(
+        "--combat-icon-size",
+        target.iconSize === undefined ? "" : `${target.iconSize}px`,
+      );
       Object.assign(button.style, {
         left: target.x - target.size / 2 + "px",
         top: target.y - target.size / 2 + "px",
@@ -482,13 +493,15 @@ export class TouchControls {
           abilityIcon(name) +
           '<span class="touch-key">' +
           // Touch labels use 1–3 and a separate ULT button.
-          (isUlt ? "ULT" : skill !== undefined
-            ? Number(skill) + 1
-            : action === "attack"
-              ? "BASIC"
-              : action === "dash"
-                ? "DASH"
-                : "JUMP") +
+          (isUlt
+            ? "ULT"
+            : skill !== undefined
+              ? Number(skill) + 1
+              : action === "attack"
+                ? "BASIC"
+                : action === "dash"
+                  ? "DASH"
+                  : "JUMP") +
           '</span><span class="touch-cooldown"></span>';
         button.dataset.iconName = name;
         button.title = name;
