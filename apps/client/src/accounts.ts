@@ -805,6 +805,7 @@ export class AccountUI {
   async showWardrobe() {
     if (!this.ensurePlayer()) return;
     const generation = this.generation;
+    const accountId = this.account?.id;
     this.wardrobePanel?.dispose();
     this.hooks.openDialog(
       '<section class="wardrobe-loading"><h2>Wardrobe</h2><p role="status">Loading your collection…</p></section>',
@@ -846,7 +847,10 @@ export class AccountUI {
         shop: () => void this.showShop(),
         raids: () => void this.showRaidHub(),
         save: async (slot, item, champion, stage) => {
-          if (generation !== this.generation)
+          // Equipping reloads the same player's profile (a new generation),
+          // so only a different signed-in account stops further saves.
+          const sameAccount = () => this.account?.id === accountId;
+          if (!sameAccount())
             throw new Error(
               "Your session changed. Reopen Wardrobe to continue.",
             );
@@ -856,14 +860,14 @@ export class AccountUI {
               skin: item,
               ...(item ? { stage: stage ?? 1 } : {}),
             })) as { economy: Economy };
-            if (generation !== this.generation) return;
+            if (!sameAccount()) return;
             this.economy = result.economy;
           } else {
             const result = (await this.api("/api/raids/equip", {
               slot,
               item,
             })) as { progress: RaidProgress };
-            if (generation !== this.generation) return;
+            if (!sameAccount()) return;
             progress = result.progress;
             this.raidLook = raidLookOf(progress);
             this.raidClears = bossClears(progress);

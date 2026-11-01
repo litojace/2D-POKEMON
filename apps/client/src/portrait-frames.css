@@ -87,8 +87,9 @@ body:is(.town-active, .lobby-active) #account-profile:has(.portrait-frame) {
 .portrait-frame .frame-stars {
   position: absolute;
   left: 50%;
-  bottom: -9%;
-  z-index: 3;
+  /* Below the frame's bottom ornament (pearl, gem), never over it. */
+  bottom: -20%;
+  z-index: 6;
   transform: translateX(-50%);
   padding: 0 4px;
   border-radius: 999px;
@@ -112,5 +113,5 @@ body:is(.town-active, .lobby-active) #account-profile:has(.portrait-frame) {
 }
 .account-avatar .portrait-frame .frame-stars {
   font-size: 7px;
-  bottom: -14%;
+  bottom: -24%;
 }

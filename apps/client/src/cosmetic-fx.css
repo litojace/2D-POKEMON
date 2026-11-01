@@ -345,3 +345,9 @@
     animation: none !important;
   }
 }
+
+/* A frame's own ornament (pearl, gem, planet, lantern, moon…) is part of
+   the frame: it sits on top of the tier edge, not under it. */
+.raid-cosmetic-preview:has(> .tier-fx)::after {
+  z-index: 5;
+}

@@ -100,6 +100,25 @@ for (const size of [
         "data-portrait-frame",
         "galaxy-frame",
       );
+      // Equipping reloads the same player's profile (a new generation). A
+      // second equip in the same Wardrobe must still save, not say the
+      // session changed.
+      await page.evaluate(() => (window as any).__account.generation++);
+      await page.click('[data-wardrobe-preview="conqueror"]');
+      await page.click('[data-wardrobe-save="conqueror"]');
+      await expect(headerFrame).toHaveAttribute(
+        "data-portrait-frame",
+        "conqueror",
+      );
+      await expect(page.locator(".wardrobe-status")).not.toContainText(
+        "session changed",
+      );
+      await page.click('[data-wardrobe-preview="galaxy-frame"]');
+      await page.click('[data-wardrobe-save="galaxy-frame"]');
+      await expect(headerFrame).toHaveAttribute(
+        "data-portrait-frame",
+        "galaxy-frame",
+      );
       await closePanel(page);
       await page.evaluate(() => (window as any).__choosePortrait("auralynx"));
       await expect(page.locator(".account-avatar")).toHaveAttribute(
