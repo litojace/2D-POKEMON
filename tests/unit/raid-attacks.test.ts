@@ -338,3 +338,82 @@ describe("boss health by Peril", () => {
     expect(hp(3)).toBeGreaterThan(hp(2));
   });
 });
+
+describe("boss target choice", () => {
+  type Smart = {
+    chooseTarget(kind: string, alive: unknown[]): { id: string };
+    threat: Map<string, number>;
+    lastTargetId?: string;
+  };
+  const smart = (a: RaidArena) => a as unknown as Smart;
+  const party = (peril: number) => {
+    const a = raid(["voltkit", "cindrake", "tidefin"], peril);
+    place(a, "p0", 600, 450);
+    place(a, "p1", 700, 450);
+    place(a, "p2", 650, 520);
+    return a;
+  };
+  const alive = (a: RaidArena) => a.heroes().filter((p) => p.hp > 0);
+
+  it("practice keeps a plain rotation", () => {
+    const a = raid(["voltkit", "cindrake"]);
+    a.raid.drill = "slam" as never;
+    const picks = new Set<string>();
+    for (let i = 0; i < 4; i++) {
+      (a as unknown as { attacks: number }).attacks = i;
+      picks.add(smart(a).chooseTarget("slam", alive(a)).id);
+    }
+    expect(picks.size).toBe(2);
+  });
+  it("turns on whoever is hurting it most", () => {
+    const a = party(3);
+    smart(a).threat.set("p2", 400);
+    smart(a).threat.set("p0", 20);
+    expect(smart(a).chooseTarget("slam", alive(a)).id).toBe("p2");
+  });
+  it("punishes a raider kneeling to revive a fallen ally", () => {
+    const a = party(3);
+    const down = a.players.find((p) => p.id === "p1")!;
+    down.hp = 0;
+    place(a, "p2", down.x + 40, down.y);
+    place(a, "p0", 200, 200);
+    expect(smart(a).chooseTarget("slam", alive(a)).id).toBe("p2");
+  });
+  it("throws a charge at the raider keeping their distance", () => {
+    const a = party(3);
+    const boss = a.boss()!;
+    place(a, "p0", boss.x + 80, boss.y);
+    place(a, "p1", boss.x - 90, boss.y);
+    place(a, "p2", 100, 100);
+    expect(smart(a).chooseTarget("charge", alive(a)).id).toBe("p2");
+  });
+  it("rarely picks the same raider twice in a row", () => {
+    const a = party(2);
+    let repeats = 0;
+    for (let i = 0; i < 40; i++) {
+      (a as unknown as { attacks: number }).attacks = i;
+      const id = smart(a).chooseTarget("slam", alive(a)).id;
+      if (id === smart(a).lastTargetId) repeats++;
+      smart(a).lastTargetId = id;
+    }
+    expect(repeats).toBe(0);
+  });
+});
+
+describe("volley aim", () => {
+  const aim = (peril: number) => {
+    const a = raid(["voltkit"], peril);
+    const boss = a.boss()!;
+    const p = place(a, "p0", boss.x + 300, boss.y);
+    p.vy = 300; // running down the screen
+    const w = (
+      a as unknown as { warnVolley(t: unknown, teach: boolean): { ty: number } }
+    ).warnVolley(p, false);
+    return w.ty - boss.y;
+  };
+  it("aims straight at the raider on Peril 1 and a little ahead from Peril 2", () => {
+    expect(Math.abs(aim(1))).toBeLessThan(1);
+    expect(aim(2)).toBeGreaterThan(20);
+    expect(aim(3)).toBeGreaterThan(aim(2));
+  });
+});

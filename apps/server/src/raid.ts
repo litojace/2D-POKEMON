@@ -54,11 +54,43 @@ import { BotBrain } from "./bot.js";
 const BOSS = GRUMBLECRAG;
 /** The numbers every boss shares the shape of (health, Peril damage, rhythm). */
 export type RaidBossNumbers = {
-  readonly health: { readonly base: number; readonly perExtraPlayer: number; readonly gilded: number };
+  readonly health: {
+    readonly base: number;
+    readonly perExtraPlayer: number;
+    readonly gilded: number;
+  };
   readonly perilDamage: readonly number[];
-  readonly cadence: { readonly normal: number; readonly restless: number; readonly finalPhase: number };
+  readonly cadence: {
+    readonly normal: number;
+    readonly restless: number;
+    readonly finalPhase: number;
+  };
 };
 
+/** Attacks thrown across the arena: aimed at raiders keeping their distance. */
+const FAR_ATTACKS = new Set<string>([
+  "charge",
+  "volley",
+  "dive",
+  "wave",
+  "lunge",
+  "prism-lance",
+  "dive-bomb",
+  "twin-rush",
+]);
+/** Attacks that jump between raiders standing close: aimed into a crowd. */
+const CROWD_ATTACKS = new Set<string>(["chain-lightning"]);
+/** A repeatable 0–1 jitter for target choice (same raid, same choices). */
+export function raidJitter(seed: number, attack: number, index: number) {
+  let h =
+    (seed ^
+      Math.imul(attack + 1, 0x9e3779b1) ^
+      Math.imul(index + 1, 0x85ebca6b)) >>>
+    0;
+  h = Math.imul(h ^ (h >>> 16), 0x7feb352d) >>> 0;
+  h = Math.imul(h ^ (h >>> 15), 0x846ca68b) >>> 0;
+  return ((h ^ (h >>> 16)) >>> 0) / 2 ** 32;
+}
 export class RaidArena extends Arena {
   raid: RaidState;
   protected nextAttack = 0;
@@ -86,6 +118,9 @@ export class RaidArena extends Arena {
   protected pingAt = new Map<string, number>();
   /** Charges this run that hit a pillar, and ones that ran their course. */
   chargeBaits = 0;
+  /** Threat: recent damage each raider dealt to the boss (fades in seconds). */
+  protected threat = new Map<string, number>();
+  protected lastTargetId: string | undefined;
   chargeMisses = 0;
   /** Raiders hit by the attack that is resolving (practice dodge count). */
   protected struck = new Set<string>();
@@ -168,6 +203,8 @@ export class RaidArena extends Arena {
     r.trait = raidTraitFor(r.boss, r.seed);
     r.gilded = randomInt(20) === 0;
     this.chargeBaits = 0;
+    this.threat.clear();
+    this.lastTargetId = undefined;
     this.chargeMisses = 0;
     const def = this.def();
     r.maxHp = Math.round(
@@ -260,8 +297,12 @@ export class RaidArena extends Arena {
     for (const [seat, p] of this.heroes().entries()) {
       const owned = this.raid.rites[p.id] ?? [];
       // The boss's own rite always leads the offer (it answers its mechanic).
-      const own = all.filter((id) => !owned.includes(id) && RAID_BOSS_RITES[id] === this.raid.boss);
-      const shared = all.filter((id) => !owned.includes(id) && !own.includes(id));
+      const own = all.filter(
+        (id) => !owned.includes(id) && RAID_BOSS_RITES[id] === this.raid.boss,
+      );
+      const shared = all.filter(
+        (id) => !owned.includes(id) && !own.includes(id),
+      );
       const room = Math.max(0, RAID_RITE_OFFER - own.length);
       const options = shared;
       // Stable by party seat for daily fairness, while teammates see varied offers.
@@ -271,7 +312,10 @@ export class RaidArena extends Arena {
       this.raid.offers[p.id] = [
         ...own,
         // Rotated by seat, so teammates see a different order (and keys 1-4).
-        ...Array.from({ length: Math.min(room, options.length) }, (_, i) => options[(offset + i) % options.length]),
+        ...Array.from(
+          { length: Math.min(room, options.length) },
+          (_, i) => options[(offset + i) % options.length],
+        ),
       ];
     }
   }
@@ -281,9 +325,13 @@ export class RaidArena extends Arena {
       !this.raid.offers[id]?.includes(riteId as RaidRite)
     )
       return false;
-    const rites = (this.raid.rites[id] = [...(this.raid.rites[id] ?? []), riteId as RaidRite]);
+    const rites = (this.raid.rites[id] = [
+      ...(this.raid.rites[id] ?? []),
+      riteId as RaidRite,
+    ]);
     const left = this.raid.offers[id].filter((r) => r !== riteId);
-    if (rites.length >= RAID_RITE_PICKS || !left.length) delete this.raid.offers[id];
+    if (rites.length >= RAID_RITE_PICKS || !left.length)
+      delete this.raid.offers[id];
     else this.raid.offers[id] = left;
     if (!Object.keys(this.raid.offers).length) this.deadline = this.time + 1;
     return true;
@@ -377,6 +425,12 @@ export class RaidArena extends Arena {
     if (target.raidBoss) amount = Math.min(amount, this.damageLimit(target));
     const before = target.hp;
     super.damage(target, amount, owner, ability);
+    if (target.raidBoss && source && !source.raidBoss)
+      this.threat.set(
+        source.id,
+        (this.threat.get(source.id) ?? 0) +
+          Math.max(0, before - Math.max(0, target.hp)),
+      );
     if (target.raidBoss && source && r.contributions?.[source.id])
       r.contributions[source.id].damage += Math.max(
         0,
@@ -428,7 +482,9 @@ export class RaidArena extends Arena {
           const before = hero.hp;
           hero.hp = Math.min(
             CHARACTERS[hero.character].health,
-            hero.hp + CHARACTERS[hero.character].health * riteValue("mending", this.raid.phase),
+            hero.hp +
+              CHARACTERS[hero.character].health *
+                riteValue("mending", this.raid.phase),
           );
           this.event(
             "heal",
@@ -474,7 +530,10 @@ export class RaidArena extends Arena {
   protected revive(p: Fighter, extra = false) {
     p.hp =
       CHARACTERS[p.character].health *
-      (0.45 + (extra ? RESCUE_HEALTH[Math.max(0, Math.min(2, this.raid.phase - 1))] : 0));
+      (0.45 +
+        (extra
+          ? RESCUE_HEALTH[Math.max(0, Math.min(2, this.raid.phase - 1))]
+          : 0));
     p.statuses = [];
     p.lastInput = blankInput();
     p.immuneUntil = this.time + 2;
@@ -519,7 +578,9 @@ export class RaidArena extends Arena {
         const fast = rescuers.some((q) => this.hasRite(q, "rescue"));
         down.progress = Math.min(
           1,
-          down.progress + (dt / RAID.reviveSeconds) * (fast ? 1 + riteValue("rescue", this.raid.phase) : 1),
+          down.progress +
+            (dt / RAID.reviveSeconds) *
+              (fast ? 1 + riteValue("rescue", this.raid.phase) : 1),
         );
         if (down.progress >= 1) {
           for (const id of credit)
@@ -580,7 +641,13 @@ export class RaidArena extends Arena {
   /** A cone of stones from the boss towards a raider. */
   protected warnVolley(target: Fighter, teach: boolean) {
     const boss = this.boss()!;
-    const d = normalize(target.x - boss.x, target.y - boss.y);
+    // From Peril 2 the boss aims a little ahead of a running raider.
+    const lead =
+      this.raid.peril >= 2 ? BOSS.volley.delay * 0.35 * this.cunning() : 0;
+    const d = normalize(
+      target.x + (target.vx ?? 0) * lead - boss.x,
+      target.y + (target.vy ?? 0) * lead - boss.y,
+    );
     const range = BOSS.volley.range + (this.raid.trait === "ancient" ? 40 : 0);
     return Object.assign(
       this.warn(
@@ -629,7 +696,9 @@ export class RaidArena extends Arena {
       {
         targetId: target.id,
         teach,
-        ...(alone ? { lockAt: this.time + BOSS.share.delay - BOSS.share.soloLock } : {}),
+        ...(alone
+          ? { lockAt: this.time + BOSS.share.delay - BOSS.share.soloLock }
+          : {}),
       },
     );
   }
@@ -640,8 +709,14 @@ export class RaidArena extends Arena {
       dist = Math.hypot(dx, dy);
     if (dist > w.radius + RULES.radius) return false;
     const aim = Math.atan2(w.ty - w.y, w.tx - w.x);
-    const off = Math.atan2(Math.sin(Math.atan2(dy, dx) - aim), Math.cos(Math.atan2(dy, dx) - aim));
-    if (Math.abs(off) > (w.spread ?? 0.45) + Math.atan2(RULES.radius, Math.max(dist, 1)))
+    const off = Math.atan2(
+      Math.sin(Math.atan2(dy, dx) - aim),
+      Math.cos(Math.atan2(dy, dx) - aim),
+    );
+    if (
+      Math.abs(off) >
+      (w.spread ?? 0.45) + Math.atan2(RULES.radius, Math.max(dist, 1))
+    )
       return false;
     return this.lineClear(w, p);
   }
@@ -712,15 +787,24 @@ export class RaidArena extends Arena {
       this.charging = undefined;
       this.nextAttack = r.staggerUntil + 1;
     }
+    // Threat fades: what you did in the last few seconds is what counts.
+    const fade = Math.exp(-dt / 6);
+    for (const [id, value] of this.threat) this.threat.set(id, value * fade);
     this.worldStep(dt, boss);
     if (r.staggerUntil > this.time) return;
     this.followWarnings(boss);
-    if (this.time >= this.nextAttack && this.canStartAttack() && !r.warnings.length) {
+    if (
+      this.time >= this.nextAttack &&
+      this.canStartAttack() &&
+      !r.warnings.length
+    ) {
       const alive = this.heroes().filter((p) => p.hp > 0);
       if (!alive.length) return;
-      const target = alive[(this.attacks + r.seed) % alive.length];
       const pattern = r.drill ? [r.drill] : this.pattern();
-      const kind = pattern[this.attacks++ % pattern.length];
+      const kind = pattern[this.attacks % pattern.length];
+      const target = this.chooseTarget(kind, alive);
+      this.attacks++;
+      this.lastTargetId = target.id;
       this.startAttack(kind, target);
       this.nextAttack = this.time + (r.drill ? 3.2 : this.cadence());
       if (r.drill) this.drillReset();
@@ -735,6 +819,63 @@ export class RaidArena extends Arena {
   }
   /** Arena upkeep that carries on even while the boss is staggered. */
   protected worldStep(_dt: number, _boss: Fighter) {}
+  /** How cleverly the boss picks targets and aims: 0 in practice, more on higher Peril. */
+  protected cunning() {
+    const r = this.raid;
+    return r.drill ? 0 : r.peril >= 3 ? 1 : r.peril === 2 ? 0.8 : 0.5;
+  }
+  /**
+   * Who the next attack goes after. Practice keeps a plain rotation. In a
+   * raid the boss reads the fight: it turns on whoever is hurting it most
+   * right now, punishes a raider kneeling to revive someone, throws far
+   * attacks (charges, volleys) at raiders keeping their distance, drops a
+   * shared meteor on whoever strayed from the group, starts chain lightning
+   * in a crowd, and rarely picks the
+   * same raider twice in a row. A seeded jitter keeps it from being exact.
+   */
+  protected chooseTarget(kind: RaidAttack, alive: Fighter[]) {
+    const r = this.raid,
+      c = this.cunning(),
+      rotation = alive[(this.attacks + r.seed) % alive.length];
+    if (alive.length < 2 || c <= 0) return rotation;
+    const boss = this.boss()!;
+    const total = alive.reduce(
+      (sum, p) => sum + (this.threat.get(p.id) ?? 0),
+      0,
+    );
+    const downed = this.heroes().filter((p) => p.hp <= 0);
+    let best = rotation,
+      bestScore = -Infinity;
+    alive.forEach((p, i) => {
+      const distance = Math.hypot(p.x - boss.x, p.y - boss.y);
+      const nearestAlly = Math.min(
+        ...alive
+          .filter((q) => q !== p)
+          .map((q) => Math.hypot(q.x - p.x, q.y - p.y)),
+      );
+      let score = raidJitter(r.seed, this.attacks, i) * 0.6;
+      if (total > 1) score += ((this.threat.get(p.id) ?? 0) / total) * 1.5 * c;
+      if (
+        downed.some((d) => Math.hypot(d.x - p.x, d.y - p.y) <= RAID.reviveRange)
+      )
+        score += 1.2 * c;
+      if (FAR_ATTACKS.has(kind)) score += Math.min(1, distance / 900) * c;
+      if (kind === "share") score += Math.min(1, nearestAlly / 600) * c;
+      if (CROWD_ATTACKS.has(kind))
+        score +=
+          (alive.filter(
+            (q) => q !== p && Math.hypot(q.x - p.x, q.y - p.y) < 220,
+          ).length /
+            (alive.length - 1)) *
+          c;
+      if (p.id === this.lastTargetId) score -= 0.8;
+      if (score > bestScore) {
+        bestScore = score;
+        best = p;
+      }
+    });
+    return best;
+  }
   /** This chapter's attack order. */
   protected pattern() {
     const r = this.raid;
@@ -939,10 +1080,7 @@ export class RaidArena extends Arena {
             this.damage(p, BOSS.charge.damage, boss.id);
           }
         this.hitBy = undefined;
-        if (
-          this.charging &&
-          (len < 10 || this.time >= this.charging.until)
-        ) {
+        if (this.charging && (len < 10 || this.time >= this.charging.until)) {
           // The charge ran its course without meeting a pillar.
           if (!r.drill) this.chargeMisses++;
           this.struck = new Set(c.hit);
@@ -960,8 +1098,12 @@ export class RaidArena extends Arena {
     }
   }
   /** Recipient-only Somnara information; ordinary raids have none. */
-  dreamFor(_id: string): RaidDreamView | undefined { return undefined; }
-  callRune(_id: string, _rune: DreamRune): boolean { return false; }
+  dreamFor(_id: string): RaidDreamView | undefined {
+    return undefined;
+  }
+  callRune(_id: string, _rune: DreamRune): boolean {
+    return false;
+  }
   /** A quick team signal over a raider's head. */
   ping(id: string, kind: RaidPingKind) {
     const p = this.heroes().find((q) => q.id === id);
@@ -1088,7 +1230,10 @@ export class RaidArena extends Arena {
     const down = this.heroes().find(
       (p) => p.hp <= 0 && r.downed[p.id] && !r.downed[p.id].self,
     );
-    if (down && Math.hypot(down.x - bot.x, down.y - bot.y) > RAID.reviveRange * 0.6)
+    if (
+      down &&
+      Math.hypot(down.x - bot.x, down.y - bot.y) > RAID.reviveRange * 0.6
+    )
       return go(down.x, down.y, false);
     return input;
   }
@@ -1118,7 +1263,8 @@ export class RaidArena extends Arena {
       if (this.time >= this.deadline) {
         // Time's up: the first options left fill the remaining picks.
         for (const id of Object.keys(this.raid.offers))
-          while (this.raid.offers[id]?.[0]) this.pickRite(id, this.raid.offers[id][0]);
+          while (this.raid.offers[id]?.[0])
+            this.pickRite(id, this.raid.offers[id][0]);
         this.phase = "countdown";
         this.deadline = this.time + 3;
       }
@@ -1180,7 +1326,11 @@ export class RaidArena extends Arena {
     return this.boss()?.hp ?? 0;
   }
   protected bossExposed(_target: Fighter) {
-    return this.alwaysExposed() || this.raid.exposedUntil > this.time || this.raid.staggerUntil > this.time;
+    return (
+      this.alwaysExposed() ||
+      this.raid.exposedUntil > this.time ||
+      this.raid.staggerUntil > this.time
+    );
   }
   protected addBossStagger(_target: Fighter, amount: number) {
     this.raid.stagger = Math.min(100, this.raid.stagger + amount);
