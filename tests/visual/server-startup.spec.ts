@@ -366,3 +366,28 @@ test("unavailable artwork still allows connection and entry", async ({
     .poll(() => page.evaluate(() => (window as any).__startupProfileRequests))
     .toBe(1);
 });
+
+test("the startup sigil still fits after turning the phone upright and back", async ({
+  browser,
+}) => {
+  const land = { width: 956, height: 440 };
+  const context = await browser.newContext({ viewport: land, isMobile: true, hasTouch: true });
+  try {
+    const page = await context.newPage();
+    await coldServer(page);
+    await page.goto("/");
+    await expect(page.locator("#server-startup")).toBeVisible();
+    await page.setViewportSize({ width: 440, height: 956 });
+    await page.waitForTimeout(300);
+    await page.setViewportSize(land);
+    await page.waitForTimeout(300);
+    const logo = await box(page, ".server-startup-brand");
+    const art = await box(page, ".server-startup-art");
+    const loading = await box(page, ".server-startup-loading");
+    expect(art.y).toBeGreaterThanOrEqual(logo.y + logo.height);
+    expect(art.y + art.height).toBeLessThanOrEqual(loading.y);
+    expect(art.width).toBeCloseTo(art.height, 0);
+  } finally {
+    await context.close();
+  }
+});

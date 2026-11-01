@@ -94,13 +94,16 @@
   width: 100%;
   min-height: 0;
   height: 100%;
+  /* The sigil is sized from this box (cq units), not from a percentage
+     height plus aspect-ratio: iOS kept that stale after a rotation, and the
+     sigil spilled over the title and progress bar until turned again. */
+  container-type: size;
 }
 .server-startup-art {
   position: relative;
-  height: 100%;
-  max-height: 480px;
-  max-width: min(64vw, 480px);
-  aspect-ratio: 1;
+  --sigil: min(100cqh, 100cqw, 64vw, 480px);
+  width: var(--sigil);
+  height: var(--sigil);
   animation: server-sigil-float 7s ease-in-out infinite;
 }
 .server-startup-art > img {
