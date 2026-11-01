@@ -165,41 +165,15 @@
     --tier-turn: 360deg;
   }
 }
-/* Halo around the whole frame (legendary and mythic). */
-.raid-cosmetic-preview[data-tier="legendary"]:has(> .tier-fx) {
-  animation: tier-halo-gold 2.6s ease-in-out infinite;
-}
-.raid-cosmetic-preview[data-tier="mythic"]:has(> .tier-fx) {
-  animation: tier-halo-prism 3s linear infinite;
-}
-@keyframes tier-halo-gold {
-  0%,
-  100% {
-    filter: drop-shadow(0 0 3px #ffbf3c99);
-  }
-  50% {
-    filter: drop-shadow(0 0 9px #ffd76add);
-  }
-}
-@keyframes tier-halo-prism {
-  0% {
-    filter: drop-shadow(0 0 7px #ff4f7bcc);
-  }
-  33% {
-    filter: drop-shadow(0 0 7px #ffd36bcc);
-  }
-  66% {
-    filter: drop-shadow(0 0 7px #7fd8ffcc);
-  }
-  100% {
-    filter: drop-shadow(0 0 7px #ff4f7bcc);
-  }
-}
+/* Halo: a still glow on the edge layer (box-shadow below). Animating a
+   filter on the whole frame repainted the portrait every frame, which made
+   the orbiting sparks stutter on phones. */
 /* Orbiting sparks: a separate layer that turns round the frame. */
 .raid-cosmetic-preview > .tier-orbit {
   display: none;
   position: absolute;
-  inset: -12%;
+  inset: -16%;
+  will-change: transform;
   z-index: 4;
   border-radius: 50%;
   pointer-events: none;
@@ -326,6 +300,7 @@
 /* Light rays turning behind the frame. */
 .raid-cosmetic-preview > .tier-rays {
   display: none;
+  will-change: transform;
   position: absolute;
   inset: -34%;
   z-index: -1;
@@ -342,16 +317,14 @@
 .raid-cosmetic-preview[data-tier="legendary"] > .tier-rays {
   display: block;
   background: repeating-conic-gradient(
-    from var(--tier-turn),
     #ffd76a66 0 6deg,
     transparent 6deg 22deg
   );
-  animation: tier-turn 14s linear infinite;
+  animation: tier-orbit 14s linear infinite;
 }
 .raid-cosmetic-preview[data-tier="mythic"] > .tier-rays {
   display: block;
   background: repeating-conic-gradient(
-    from var(--tier-turn),
     #ff4f7b55 0 5deg,
     transparent 5deg 15deg,
     #7fd8ff55 15deg 20deg,
@@ -359,19 +332,7 @@
     #ffd36b55 30deg 35deg,
     transparent 35deg 45deg
   );
-  animation: tier-turn 10s linear infinite;
-}
-.raid-cosmetic-preview[data-tier="mythic"] > .tier-orbit::after {
-  /* A second ring of sparks turning the other way. */
-  content: "";
-  position: absolute;
-  inset: 8%;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 50% 2%, #ffd36b 0 2.4%, transparent 4%),
-    radial-gradient(circle at 98% 50%, #ff8fb0 0 2%, transparent 3.6%),
-    radial-gradient(circle at 2% 50%, #8ff0b5 0 2%, transparent 3.6%);
-  animation: tier-orbit 4s linear infinite reverse;
+  animation: tier-orbit 10s linear infinite;
 }
 /* Small identity portraits keep the edge but drop the rays and sparks. */
 :is(.account-avatar, .player-avatar, .friend-avatar)
@@ -380,8 +341,7 @@
   display: none !important;
 }
 @media (prefers-reduced-motion: reduce) {
-  .raid-cosmetic-preview > .tier-rays,
-  .raid-cosmetic-preview > .tier-orbit::after {
+  .raid-cosmetic-preview > .tier-rays {
     animation: none !important;
   }
 }

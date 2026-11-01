@@ -106,19 +106,9 @@ body:is(.town-active, .lobby-active) #account-profile:has(.portrait-frame) {
     0 0 0 1px #ffd76a,
     0 0 8px #ffcf4a99;
 }
+/* A still glow: an animated filter repaints the portrait every frame. */
 .portrait-frame.is-legendary-frame {
-  filter: drop-shadow(0 0 4px #ffcf4acc) saturate(1.15);
-  animation: legendary-frame 2.8s ease-in-out infinite;
-}
-@keyframes legendary-frame {
-  50% {
-    filter: drop-shadow(0 0 8px #ffe08aee) saturate(1.3);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .portrait-frame.is-legendary-frame {
-    animation: none;
-  }
+  filter: drop-shadow(0 0 6px #ffcf4add) saturate(1.2);
 }
 .account-avatar .portrait-frame .frame-stars {
   font-size: 7px;
