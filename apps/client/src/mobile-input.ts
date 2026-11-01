@@ -169,55 +169,89 @@ export function mobileLayout(
       (available - joystick - 32) / 4.4,
     ),
   );
-  // The approved thumb arc: larger hit circles, with equal angles/radii for
-  // skills 1–3. Height includes the HUD allowance removed by TouchControls.
+  // One even ring around the basic attack, like a console MOBA: skills 1–3
+  // low-left to top, then the ultimate, Dash and Jump down the right. Every
+  // button keeps the same gap to the attack button and to its neighbours.
+  const DESIGN: [TouchAction, number][] = [
+    ["attack", 104],
+    ["0", 68],
+    ["1", 68],
+    ["2", 68],
+    ["3", 72],
+    ["dash", 60],
+    ["jump", 48],
+  ];
+  const ringOf = (sizes: number[], gap: number) => {
+    const [attack, ...rest] = sizes;
+    // Skill 1 sits low on the left; the rest follow clockwise (screen y down).
+    let angle = (154 * Math.PI) / 180;
+    let previous: { d: number; r: number } | undefined;
+    const placed = [{ x: 0, y: 0, size: attack }];
+    for (const size of rest) {
+      const r = size / 2,
+        d = attack / 2 + r + gap;
+      if (previous) {
+        // Law of cosines: the step that leaves exactly `gap` to the last one.
+        const want = previous.r + r + gap;
+        angle += Math.acos(
+          Math.min(
+            1,
+            (previous.d ** 2 + d ** 2 - want ** 2) / (2 * previous.d * d),
+          ),
+        );
+      }
+      previous = { d, r };
+      placed.push({ x: d * Math.cos(angle), y: d * Math.sin(angle), size });
+    }
+    const left = Math.min(...placed.map((b) => b.x - b.size / 2)),
+      top = Math.min(...placed.map((b) => b.y - b.size / 2)),
+      right = Math.max(...placed.map((b) => b.x + b.size / 2)),
+      bottom = Math.max(...placed.map((b) => b.y + b.size / 2));
+    return { placed, left, top, width: right - left, height: bottom - top };
+  };
+  const GAP = 14,
+    MARGIN = 6;
+  const design = ringOf(
+    DESIGN.map(([, size]) => size),
+    GAP,
+  );
+  // Height includes the HUD allowance removed by TouchControls.
   const scale = Math.max(
     44 / 68,
     Math.min(
       0.94 * prefs.buttonSize,
       ((height + 88) / 390) * 0.88 * prefs.buttonSize,
-      (available - joystick - 32) / 243,
+      (available - joystick - 32) / (design.width + 2 * MARGIN),
     ),
   );
-  const target = (
-    action: TouchAction,
-    x: number,
-    y: number,
-    size: number,
-  ): TouchTarget => ({
-    action,
-    x: x * scale,
-    y: y * scale,
-    size: Math.max(action === "dash" ? 48 : 44, size * scale),
+  // Real sizes (small screens keep 44 px touch targets, 48 for Dash), then
+  // the ring again at real size so the gaps stay even after that floor.
+  const sizes = DESIGN.map(([action, size]) =>
+    Math.max(action === "dash" ? 48 : 44, size * scale),
+  );
+  const ring = ringOf(sizes, GAP * scale);
+  const margin = MARGIN * scale;
+  const iconSize = (action: TouchAction) =>
     // Grow the touch circle without enlarging the established icon artwork.
-    iconSize:
-      action === "attack"
-        ? Math.max(1, (unit / 60) * 88 - 15) * 0.5
-        : action === "dash" || action === "jump"
-          ? (Math.max(44, (unit / 60) * 48) - 15) * 0.56
-          : Math.max(1, unit - 15) * 0.56,
-  });
-  const arc = [154, 196, 238].map((degrees, i) => {
-    const angle = (degrees * Math.PI) / 180;
-    return target(
-      String(i) as TouchAction,
-      139 + 104 * Math.cos(angle),
-      186 + 104 * Math.sin(angle),
-      68,
-    );
-  });
+    action === "attack"
+      ? Math.max(1, (unit / 60) * 88 - 15) * 0.5
+      : action === "dash" || action === "jump"
+        ? (Math.max(44, (unit / 60) * 48) - 15) * 0.56
+        : Math.max(1, unit - 15) * 0.56;
+  const targets: TouchTarget[] = DESIGN.map(([action], i) => ({
+    action,
+    x: ring.placed[i].x - ring.left + margin,
+    y: ring.placed[i].y - ring.top + margin,
+    size: sizes[i],
+    iconSize: iconSize(action),
+  }));
+  const order: TouchAction[] = ["0", "1", "2", "3", "attack", "dash", "jump"];
   return {
     compact: false,
     joystick,
-    width: Math.max(243 * scale, 213 * scale + 24),
-    height: Math.max(266 * scale, 242 * scale + 22),
-    targets: [
-      ...arc,
-      target("3", 152, 36, 72),
-      target("attack", 139, 186, 104),
-      target("dash", 213, 117, 60),
-      target("jump", 213, 242, 48),
-    ],
+    width: ring.width + 2 * margin,
+    height: ring.height + 2 * margin,
+    targets: order.map((action) => targets.find((t) => t.action === action)!),
   };
 }
 

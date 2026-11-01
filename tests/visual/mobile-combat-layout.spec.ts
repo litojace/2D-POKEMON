@@ -24,11 +24,18 @@ for (const size of [{width:844,height:390},{width:932,height:430},{width:844,hei
         return [el.dataset.skill ?? el.dataset.action, {x:r.x+r.width/2,y:r.y+r.height/2,r:r.width/2}];
       })));
       const gap = (a:string,b:string) => Math.hypot(targets[a].x-targets[b].x,targets[a].y-targets[b].y)-targets[a].r-targets[b].r;
-      expect(gap("0","1")).toBeCloseTo(gap("1","2"),1);
-      expect(gap("0","attack")).toBeCloseTo(gap("1","attack"),1);
-      expect(gap("1","attack")).toBeCloseTo(gap("2","attack"),1);
-      expect(targets["3"].y).toBeLessThan(targets["2"].y-25);
+      // One even ring: every neighbour pair, and every button to the basic
+      // attack, has the same gap (within a pixel).
+      const pairs: [string,string][] = [["0","1"],["1","2"],["2","3"],["3","dash"],["dash","jump"],
+        ...["0","1","2","3","dash","jump"].map((id) => [id,"attack"] as [string,string])];
+      const gaps = pairs.map(([a,b]) => gap(a,b));
+      expect(Math.max(...gaps) - Math.min(...gaps)).toBeLessThanOrEqual(1);
+      expect(Math.min(...gaps)).toBeGreaterThanOrEqual(8);
       expect(targets.attack.r).toBeGreaterThan(targets["0"].r*1.4);
+      expect(targets["3"].r).toBeGreaterThan(targets["0"].r);
+      // The ultimate stays clear of the target picker above it.
+      const picker = await page.locator("#target-picker").boundingBox();
+      if (picker) expect(targets["3"].y - targets["3"].r).toBeGreaterThanOrEqual(picker.y + picker.height + 8);
       for (const [id,t] of Object.entries(targets)) {
         expect(t.r*2).toBeGreaterThanOrEqual(44);
         expect(t.x-t.r).toBeGreaterThanOrEqual(0);
@@ -49,11 +56,6 @@ for (const size of [{width:844,height:390},{width:932,height:430},{width:844,hei
       const [ub, pill] = [await ult.boundingBox(), await ult.locator('.touch-cooldown').boundingBox()];
       expect(pill!.y).toBeGreaterThan(ub!.y + ub!.height * 0.6);
       expect(pill!.height).toBeLessThanOrEqual(16);
-      if(size.height===390) {
-        expect(targets["0"].r*2).toBeCloseTo(59.84,1);
-        expect(targets.attack.r*2).toBeCloseTo(91.52,1);
-        expect(targets.dash.r*2).toBeCloseTo(52.8,1);
-      }
       await snap(page,info,`mobile-combat-live-${size.width}x${size.height}`);
       await ult.tap();
       await expect.poll(async () => {
