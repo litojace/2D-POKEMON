@@ -30,7 +30,7 @@ import { iconLabel, menuIcon } from "./menu-icons";
 export type WardrobeSlot = "champion" | RaidSlot;
 export const WARDROBE_SLOTS: [WardrobeSlot, string][] = [
   ["champion", "Champion skin"],
-  ["skin", "Colours"],
+  ["skin", "Colors"],
   ["aura", "Aura"],
   ["entrance", "Entrance"],
   ["victory", "Victory"],
@@ -161,7 +161,7 @@ export function wardrobePreviewParts(
   return {
     stage: `<section class="shop-preview wardrobe-preview" aria-label="Complete outfit preview"><div class="shop-live-stage" data-preview-champion="${view.champion}" data-preview-item="${outfit.skin?.skin ?? ""}" data-preview-stage="${outfit.skin?.stage ?? 1}" data-preview-action="${view.action}" data-preview-look="${encodeURIComponent(JSON.stringify(outfit.look))}" role="img" aria-label="${CHARACTERS[view.champion].name} ${trying ? "try-on" : "equipped outfit"}"><div class="shop-preview-fallback${palette ? ` raid-cosmetic-preview${hasColourPalette(palette) ? " is-colour-matched" : ""}` : ""}" data-cosmetic="${palette}">${fallback}</div></div></section>`,
     animations: `<div class="wardrobe-preview-actions${view.effects ? " is-open" : ""}"><button type="button" class="wardrobe-effects-toggle" data-wardrobe-effects aria-label="Preview outfit animations" aria-expanded="${!!view.effects}">${menuIcon("sparkle")}</button><div class="wardrobe-animation-buttons" role="group" aria-label="Preview outfit animations"><button type="button" class="secondary" data-wardrobe-action="entrance" aria-label="Preview entrance" title="Preview entrance" aria-pressed="${view.action === "entrance"}">${iconLabel("enter", "Entrance")}</button><button type="button" class="secondary" data-wardrobe-action="victory" aria-label="Preview victory" title="Preview victory" aria-pressed="${view.action === "victory"}">${iconLabel("sparkle", "Victory")}</button><button type="button" class="secondary" data-wardrobe-action="idle" aria-pressed="${view.action === "idle"}">Idle</button></div>${portrait}</div>`,
-    footer: `<footer class="wardrobe-footer" data-selection="${!!selected || !!(original && e.looks[view.champion])}"><div class="wardrobe-selection"><small>${trying ? "TRYING ON · NOT SAVED" : "EQUIPPED OUTFIT"}</small><b>${escape(selected?.name ?? (original ? "Original skin" : CHARACTERS[view.champion].name))}</b><p>${escape(selected?.description ?? "Browse your collection to preview a change.")}${selected?.slot === "skin" && skinned ? " Your champion skin covers these colours; take it off to reveal them." : ""}</p></div><p class="wardrobe-status" role="status"></p><div class="wardrobe-save">${action}</div></footer>`,
+    footer: `<footer class="wardrobe-footer" data-selection="${!!selected || !!(original && e.looks[view.champion])}"><div class="wardrobe-selection"><small>${trying ? "TRYING ON · NOT SAVED" : "EQUIPPED OUTFIT"}</small><b>${escape(selected?.name ?? (original ? "Original skin" : CHARACTERS[view.champion].name))}</b><p>${escape(selected?.description ?? "Browse your collection to preview a change.")}${selected?.slot === "skin" && skinned ? " Your champion skin covers these colors; take it off to reveal them." : ""}</p></div><p class="wardrobe-status" role="status"></p><div class="wardrobe-save">${action}</div></footer>`,
   };
 }
 /** Boss frames: stars earned and the clears for the next one. */
@@ -201,7 +201,7 @@ export function wardrobeMarkup(
     const covered = slot === "skin" && id && e.looks[view.champion];
     return `<div class="wardrobe-worn-row"><button type="button" data-wardrobe-slot="${slot}" aria-label="Browse ${label}"><span>${label}</span><b>${escape(info?.name ?? (slot === "champion" ? "Original skin" : "None"))}</b>${covered ? "<small>Covered by champion skin</small>" : ""}</button>${id ? `<button type="button" class="wardrobe-clear" data-wardrobe-clear="${slot}" aria-label="Take off ${escape(info?.name ?? label)}">${menuIcon("cancel")}</button>` : ""}</div>`;
   }).join("");
-  return `<section class="wardrobe"><header class="wardrobe-heading"><span class="eyebrow">YOUR COLLECTION</span><h2>${iconLabel("wardrobe", "Wardrobe")}</h2><p>Champion skins for each fighter. Colours and effects shared across your roster.</p></header>
+  return `<section class="wardrobe"><header class="wardrobe-heading"><span class="eyebrow">YOUR COLLECTION</span><h2>${iconLabel("wardrobe", "Wardrobe")}</h2><p>Champion skins for each fighter. Colors and effects shared across your roster.</p></header>
   <div class="wardrobe-layout"><aside class="wardrobe-showcase"><div class="wardrobe-fighter-picker"><label for="wardrobe-champion">Fighter</label><button type="button" class="wardrobe-step" data-wardrobe-step="-1" aria-label="Previous fighter">${menuIcon("back")}</button><select id="wardrobe-champion">${Object.entries(
     CHARACTERS,
   )

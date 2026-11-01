@@ -114,9 +114,9 @@ export const RAID_ATTACKS: Record<
   },
   "fan-display": {
     name: "Fan Display",
-    tip: "The numbered colour on the crest is the only cone that fires. Leave that cone.",
+    tip: "The numbered color on the crest is the only cone that fires. Leave that cone.",
     practice:
-      "Six numbered cones appear; only the crest\u2019s matching colour fires.",
+      "Six numbered cones appear; only the crest\u2019s matching color fires.",
   },
   glare: {
     name: "Glare",

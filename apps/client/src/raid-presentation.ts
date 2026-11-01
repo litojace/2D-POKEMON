@@ -88,7 +88,7 @@ export function raidCue(state: Snapshot, myId: string) {
     if (w?.kind === "glare")
       return "Glare — aim away from the boss or hold Look away!";
     if (w?.kind === "fan-display")
-      return `Fan ${(w.prismIndex ?? 0) + 1} fires — leave the matching colour and pip count!`;
+      return `Fan ${(w.prismIndex ?? 0) + 1} fires — leave the matching color and pip count!`;
     if (w?.kind === "halo-crush")
       return "Halo closing — move through the teal gap!";
     if (w?.kind === "refraction")

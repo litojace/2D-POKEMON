@@ -134,7 +134,7 @@ function itemLine(id: string) {
   if (skin) return `${CHARACTERS[skin.champion].name} skin`;
   const look = LOOK_ITEM_BY_ID[id];
   if (look)
-    return `${COLLECTION_NAMES[look.collection]} · ${look.slot === "skin" ? "Colours" : look.slot[0].toUpperCase() + look.slot.slice(1)} for every fighter`;
+    return `${COLLECTION_NAMES[look.collection]} · ${look.slot === "skin" ? "Colors" : look.slot[0].toUpperCase() + look.slot.slice(1)} for every fighter`;
   return "Collection set";
 }
 /** Mythic Trial wins with a champion so far. */
@@ -252,7 +252,7 @@ export function shopPreviewMarkup(
   const text = skin
     ? escape(skin.description)
     : piece
-      ? `${escape(piece.description)}. Worn by every fighter${piece.slot === "skin" ? " (a champion skin wins over Colours)" : ""}.`
+      ? `${escape(piece.description)}. Worn by every fighter${piece.slot === "skin" ? " (a champion skin wins over Colors)" : ""}.`
       : "Pick a skin to see it in the live preview.";
   const frame = piece?.slot === "frame";
   // Each item plays the animation that shows it off; no picker needed.
@@ -434,7 +434,7 @@ function collectionsTab(
       return `<section class="shop-collection"><header><h3>${COLLECTION_NAMES[b.collection as Collection]}</h3><small>All five pieces · 20% off what you don't own</small>${action}${bonus}</header><div class="shop-grid">${b.items.map((id) => card(id, view, e, loadout)).join("")}</div></section>`;
     })
     .join("");
-  return `<p class="shop-intro">Collection pieces work on every fighter. Choose a set to explore its colours, aura, frame, entrance and victory effect. Previewing on ${CHARACTERS[view.champion].name}.</p>${picker}${sets}`;
+  return `<p class="shop-intro">Collection pieces work on every fighter. Choose a set to explore its colors, aura, frame, entrance and victory effect. Previewing on ${CHARACTERS[view.champion].name}.</p>${picker}${sets}`;
 }
 export function shopMarkup(
   view: ShopView,

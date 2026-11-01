@@ -34,11 +34,27 @@ describe("shop catalog", () => {
         ),
       ].map(([, rarity, price, id]) => [id, { rarity, price: Number(price) }]),
     );
+    const names = new Map(
+      [
+        ...readFileSync(
+          "supabase/migrations/032_colors_spelling.sql",
+          "utf8",
+        ).matchAll(/set name = '([^']+)' where id = '([a-z-]+)';/g),
+      ].map(([, name, id]) => [id, name]),
+    );
     for (const line of shopItemsSql.split("\n")) {
       const id = line.match(/^ {2}\('([a-z-]+)', 'look'/)?.[1];
       const change = id ? updated.get(id) : undefined;
+      // 032 renames the Colors pieces (American spelling) in place.
+      const renamed = id ? names.get(id) : undefined;
+      const seedLine = renamed
+        ? line.replace(
+            `'${renamed}'`,
+            `'${renamed.replace(" colors", " colours")}'`,
+          )
+        : line;
       if (!change) {
-        expect(migration).toContain(line);
+        expect(migration).toContain(seedLine);
         continue;
       }
       expect(line).toContain(`'${change.rarity}'`);

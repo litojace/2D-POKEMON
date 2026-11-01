@@ -8,6 +8,7 @@ import {
   playCollectionEntrance,
 } from "./skins/collection-fx";
 import { canvasGraphics } from "./skins/fx-canvas";
+import { drawColorsFx, isColors } from "./skins/colors-fx";
 import "./cosmetic-fx.css";
 import { FX_GRAVITY, drawAnyParticle, type FxParticle } from "./skins/skin-fx";
 
@@ -18,7 +19,7 @@ import { FX_GRAVITY, drawAnyParticle, type FxParticle } from "./skins/skin-fx";
  * gets its tier (data-tier) so frames and cards can dress up by rarity.
  * Only thumbnails on screen animate, at 30 frames a second.
  */
-type Kind = "aura" | "entrance" | "victory";
+type Kind = "aura" | "entrance" | "victory" | "skin";
 interface Live {
   el: HTMLElement;
   id: string;
@@ -119,8 +120,11 @@ function draw(live: Live, now: number) {
       ? (w * 0.86) / 118
       : live.kind === "entrance"
         ? Math.min(w / 104, h / 92)
-        : Math.min(w / 165, h / 118);
-  const feetY = h * (live.kind === "aura" ? 0.76 : 0.9);
+        : live.kind === "skin"
+          ? h / 100
+          : Math.min(w / 165, h / 118);
+  const feetY =
+    h * (live.kind === "aura" ? 0.76 : live.kind === "skin" ? 0.98 : 0.9);
   for (const c of [back, front])
     c.setTransform(scale, 0, 0, scale, w / 2, feetY);
   const gb = canvasGraphics(back),
@@ -129,7 +133,26 @@ function draw(live: Live, now: number) {
   live.last = now;
   const still = reduced.matches;
   const emit = (p: FxParticle) => live.particles.push({ ...p, age: 0 });
-  if (live.kind === "aura") {
+  if (live.kind === "skin") {
+    // Colors: the set's motif, glints and tier extras around the fighter.
+    drawColorsFx(
+      {
+        g: gf,
+        under: gb,
+        emit,
+        // Thumbnails are small: twice the rate, larger motifs.
+        chance: (rate, d) => Math.random() < rate * 2 * d,
+        x: 0,
+        y: 0,
+        sc: 1.5,
+        now: still ? 0 : now,
+        dt,
+        moving: false,
+        portrait: true,
+      },
+      live.id,
+    );
+  } else if (live.kind === "aura") {
     drawCollectionAura(
       gb,
       live.id,
@@ -235,7 +258,13 @@ function attach(el: HTMLElement) {
       fx.setAttribute("aria-hidden", "true");
       el.append(fx);
     }
-  if (slot !== "aura" && slot !== "entrance" && slot !== "victory") return;
+  const kind: Kind | undefined =
+    slot === "aura" || slot === "entrance" || slot === "victory"
+      ? slot
+      : slot === "skin" && isColors(id)
+        ? "skin"
+        : undefined;
+  if (!kind) return;
   // Small identity portraits (headers, nameplates) keep still.
   if (el.closest(".account-avatar, .player-avatar, .friend-avatar")) return;
   const back = document.createElement("canvas"),
@@ -250,7 +279,7 @@ function attach(el: HTMLElement) {
   const live: Live = {
     el,
     id,
-    kind: slot,
+    kind,
     back,
     front,
     particles: [],

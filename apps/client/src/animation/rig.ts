@@ -29,6 +29,7 @@ import {
 } from "./assets";
 import { paletteFor, type SkinLook } from "../creature-design";
 import { hexToNumber, wornArt } from "../skins/skin-art";
+import { drawColorsFx } from "../skins/colors-fx";
 import {
   FX_GRAVITY,
   drawAnyParticle,
@@ -1311,6 +1312,24 @@ export class FighterRig {
         stage,
       );
     }
+    // ---- Colors (all-fighter palettes): their motif and tier extras. A
+    // champion skin wins over Colors, so it draws only without one.
+    if (!this.suffix && !art && pose.look?.skin)
+      drawColorsFx(
+        {
+          g,
+          under: this.under,
+          emit: (p) => this.emit(p),
+          chance: (rate, d) => this.chance(rate, d),
+          x,
+          y,
+          sc,
+          now,
+          dt,
+          moving,
+        },
+        pose.look.skin,
+      );
     // ---- Shop collection pieces: entrance burst and victory finale.
     if (state === "wave" && this.fxState !== "wave" && pose.look?.entrance)
       playCollectionEntrance(

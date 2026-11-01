@@ -160,7 +160,7 @@ export function bossBriefing(boss: RaidBossId, solo: boolean): BossBriefing {
           ),
         ],
         avoid:
-          "Fan: leave the wedge matching the crest’s colour and dot count. Glare: hold Look away until the flash ends.",
+          "Fan: leave the wedge matching the crest’s color and dot count. Glare: hold Look away until the flash ends.",
       };
     case "emberwing":
       return {

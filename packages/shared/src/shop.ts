@@ -252,7 +252,7 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
     "aurora",
     "Aurora",
     "epic",
-    "Wings that ripple through northern-lights colours",
+    "Wings that ripple through northern-lights colors",
     "winter",
   ),
   skin(
@@ -412,7 +412,7 @@ const LOOK_SETS: [Collection, [string, string][]][] = [
   [
     "candy",
     [
-      ["Candy colours", "Pastel swirls"],
+      ["Candy colors", "Pastel swirls"],
       ["Sprinkle aura", "A ring of rainbow sprinkles"],
       ["Gift-box entrance", "Pop out of a gift box"],
       ["Cookie frame", "A frosted-cookie border"],
@@ -422,7 +422,7 @@ const LOOK_SETS: [Collection, [string, string][]][] = [
   [
     "galaxy",
     [
-      ["Galaxy colours", "A deep-space tint"],
+      ["Galaxy colors", "A deep-space tint"],
       ["Nebula aura", "A slow, glowing nebula ring"],
       ["Star-tunnel entrance", "Warp in through a tunnel of stars"],
       ["Planet-ring frame", "A border with a ringed planet"],
@@ -432,7 +432,7 @@ const LOOK_SETS: [Collection, [string, string][]][] = [
   [
     "retro",
     [
-      ["Retro colours", "An 8-bit palette"],
+      ["Retro colors", "An 8-bit palette"],
       ["Pixel-heart aura", "A ring of pixel hearts"],
       ["Player One entrance", "A blocky pixel spawn"],
       ["Cartridge frame", "A game-cartridge border"],
@@ -442,7 +442,7 @@ const LOOK_SETS: [Collection, [string, string][]][] = [
   [
     "festival",
     [
-      ["Festival colours", "Lantern red and gold"],
+      ["Festival colors", "Lantern red and gold"],
       ["Lantern aura", "Floating paper lanterns"],
       ["Firecracker entrance", "Arrive with a firecracker pop"],
       ["Tassel frame", "A knot-and-tassel border"],
@@ -452,7 +452,7 @@ const LOOK_SETS: [Collection, [string, string][]][] = [
   [
     "garden",
     [
-      ["Spring colours", "Fresh spring greens"],
+      ["Spring colors", "Fresh spring greens"],
       ["Petal aura", "A ring of drifting petals"],
       ["Bloom entrance", "Bloom out of a flower"],
       ["Vine frame", "A leafy vine border"],
@@ -462,7 +462,7 @@ const LOOK_SETS: [Collection, [string, string][]][] = [
   [
     "winter",
     [
-      ["Frost colours", "A frosty tint"],
+      ["Frost colors", "A frosty tint"],
       ["Snowflake aura", "A ring of snowflakes"],
       ["Flurry entrance", "Arrive in a snow flurry"],
       ["Icicle frame", "An icicle border"],
