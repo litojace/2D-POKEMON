@@ -179,12 +179,14 @@ export function mobileLayout(
     ["2", 68],
     ["3", 72],
     ["dash", 60],
-    ["jump", 48],
+    ["jump", 60],
   ];
   const ringOf = (sizes: number[], gap: number) => {
     const [attack, ...rest] = sizes;
     // Skill 1 sits low on the left; the rest follow clockwise (screen y down).
-    let angle = (154 * Math.PI) / 180;
+    // Started at 142° so the ultimate, Dash and Jump sit high enough for the
+    // right thumb.
+    let angle = (142 * Math.PI) / 180;
     let previous: { d: number; r: number } | undefined;
     const placed = [{ x: 0, y: 0, size: attack }];
     for (const size of rest) {
@@ -224,10 +226,10 @@ export function mobileLayout(
       (available - joystick - 32) / (design.width + 2 * MARGIN),
     ),
   );
-  // Real sizes (small screens keep 44 px touch targets, 48 for Dash), then
+  // Real sizes (small screens keep 44 px touch targets, 48 for Dash and Jump), then
   // the ring again at real size so the gaps stay even after that floor.
   const sizes = DESIGN.map(([action, size]) =>
-    Math.max(action === "dash" ? 48 : 44, size * scale),
+    Math.max(action === "dash" || action === "jump" ? 48 : 44, size * scale),
   );
   const ring = ringOf(sizes, GAP * scale);
   const margin = MARGIN * scale;

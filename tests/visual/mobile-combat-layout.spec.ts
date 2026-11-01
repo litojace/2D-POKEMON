@@ -45,7 +45,7 @@ for (const size of [{width:844,height:390},{width:932,height:430},{width:844,hei
         for (const other of Object.keys(targets)) if (id!==other) expect(gap(id,other)).toBeGreaterThan(3);
       }
       expect(targets.dash.r).toBeGreaterThanOrEqual(24);
-      expect(targets.dash.r).toBeGreaterThan(targets.jump.r);
+      expect(Math.abs(targets.dash.r-targets.jump.r)).toBeLessThanOrEqual(0.5); // Jump as big as Dash
       const ult = page.locator('.touch-ultimate');
       // The art is the label: no 1–3 / BASIC / ULT text over skill art.
       await expect(page.locator('.touch-buttons :is(.touch-skill,.touch-attack,.touch-ultimate) .touch-key')).toHaveCount(0);

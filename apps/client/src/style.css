@@ -22695,7 +22695,7 @@ body.battle-active:not(.touch-mode).battle-raid .raid-party-bars small {
     font-size: 11px;
   }
   body.battle-active.touch-mode.battle-raid :is(#raid-prism-controls, #raid-storm-targets):not([hidden]) {
-    top: max(calc(var(--safe-top) + 50px), calc(100dvh - var(--safe-bottom) - var(--combat-cluster-height, 192px) - 50px));
+    top: max(calc(var(--safe-top) + 50px), calc(100dvh - var(--safe-bottom) - var(--combat-cluster-height, 192px) - 60px));
     right: calc(var(--safe-right) + 6px);
     bottom: auto;
   }
@@ -24582,7 +24582,7 @@ body.battle-raid.touch-mode #battle #raid-hud#raid-hud .raid-callout {
   z-index: 27;
   top: max(
     var(--target-row-top, calc(var(--safe-top, 0px) + 62px)),
-    calc(100dvh - var(--safe-bottom, 0px) - var(--combat-cluster-height, 192px) - 50px)
+    calc(100dvh - var(--safe-bottom, 0px) - var(--combat-cluster-height, 192px) - 60px)
   );
   right: calc(var(--safe-right, 0px) + 6px);
   display: flex;
