@@ -307,7 +307,7 @@ export function openTown(options: TownOptions) {
   // Graphics quality (see graphics-quality.ts): Low draws at 1× and caps
   // the town at 30 frames a second; Auto measures and may switch to Low.
   let low = lowGraphics();
-  const probe =
+  let probe =
     graphicsSetting() === "auto" && !low ? new FrameRateProbe() : undefined;
   const density = (width: number, height: number) =>
     low ? 1 : townRendererDensity(width, height);
@@ -976,11 +976,16 @@ export function openTown(options: TownOptions) {
       const dt = Math.min(0.1, delta / 1000);
       if (probe && !low) {
         if (covered() || document.hidden) probe.pause();
-        else if (probe.frame(performance.now()) === "low") {
-          low = true;
-          rememberAutoLow();
-          host.dataset.graphics = "low";
-          this.goLow();
+        else {
+          const verdict = probe.frame(performance.now());
+          if (verdict === "low") {
+            low = true;
+            rememberAutoLow();
+            host.dataset.graphics = "low";
+            this.goLow();
+          } else if (verdict === "ok")
+            // Keep watching: a busier plaza later can still be too much.
+            probe = new FrameRateProbe(0);
         }
       }
       this.scenery.update(time, dt, bodies.get(me));
@@ -1057,24 +1062,50 @@ export function openTown(options: TownOptions) {
                 Math.hypot(b.x - mine.x, b.y - mine.y),
             )
             .slice(0, 3);
-          if (people.length && options.loadNearbyFriends && !socialLoading && time - socialAt > 15000) {
+          if (
+            people.length &&
+            options.loadNearbyFriends &&
+            !socialLoading &&
+            time - socialAt > 15000
+          ) {
             socialLoading = true;
             socialAt = time;
-            void options.loadNearbyFriends().then((list) => {
-              if (!closed) { social = list; nearbyKey = ""; }
-            }).catch(() => { /* Keep the last known relationships; retry quietly. */ })
-              .finally(() => { socialLoading = false; });
+            void options
+              .loadNearbyFriends()
+              .then((list) => {
+                if (!closed) {
+                  social = list;
+                  nearbyKey = "";
+                }
+              })
+              .catch(() => {
+                /* Keep the last known relationships; retry quietly. */
+              })
+              .finally(() => {
+                socialLoading = false;
+              });
           }
           const status = (id: string) => {
             if (busy.has(id)) return "Sending…";
             if ((invited.get(id) ?? 0) > Date.now()) return "Invite sent";
-            if (social?.friends.some((f) => f.id === id)) return "Invite to play";
-            if (requested.has(id) || social?.outgoing.some((f) => f.id === id)) return "Request sent";
+            if (social?.friends.some((f) => f.id === id))
+              return "Invite to play";
+            if (requested.has(id) || social?.outgoing.some((f) => f.id === id))
+              return "Request sent";
             if (!social) return "Check friends";
-            return social.incoming.some((f) => f.id === id) ? "Accept friend" : "Add friend";
+            return social.incoming.some((f) => f.id === id)
+              ? "Accept friend"
+              : "Add friend";
           };
           const key = people
-            .map((b) => b.id + ":" + profiles.get(b.id)?.name + ":" + status(profiles.get(b.id)!.accountId!))
+            .map(
+              (b) =>
+                b.id +
+                ":" +
+                profiles.get(b.id)?.name +
+                ":" +
+                status(profiles.get(b.id)!.accountId!),
+            )
             .join("|");
           if (key !== nearbyKey) {
             nearbyKey = key;
@@ -1101,14 +1132,17 @@ export function openTown(options: TownOptions) {
                     try {
                       // Resolve again at click time: accepting on another device must
                       // never turn an existing friend into an Add friend action.
-                      if (options.loadNearbyFriends) social = await options.loadNearbyFriends();
+                      if (options.loadNearbyFriends)
+                        social = await options.loadNearbyFriends();
                       const friend = social?.friends.some((f) => f.id === id);
                       if (friend) {
-                        if (await options.onInviteFriend?.(id)) invited.set(id, Date.now() + 30000);
+                        if (await options.onInviteFriend?.(id))
+                          invited.set(id, Date.now() + 30000);
                       } else if (!social?.outgoing.some((f) => f.id === id)) {
                         if (await options.onAddFriend?.(id)) {
                           social = await options.loadNearbyFriends?.();
-                          if (!social?.friends.some((f) => f.id === id)) requested.add(id);
+                          if (!social?.friends.some((f) => f.id === id))
+                            requested.add(id);
                         }
                       }
                     } catch {
@@ -1175,7 +1209,17 @@ export function openTown(options: TownOptions) {
           .strokeEllipse(0, 0, 95, groundHeight(95));
       else if (p?.look?.aura)
         // On the shadow's plane (46×16): same centre and flatness.
-        drawCollectionAura(body.aura, p.look.aura, 0, 0, now, options.reduced, body.auraFront, 16 / 46, 0);
+        drawCollectionAura(
+          body.aura,
+          p.look.aura,
+          0,
+          0,
+          now,
+          options.reduced,
+          body.auraFront,
+          16 / 46,
+          0,
+        );
       if (body.rig) {
         if (p?.look !== undefined && !arrived.has(body.id)) {
           arrived.add(body.id);

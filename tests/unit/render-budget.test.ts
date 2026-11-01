@@ -14,11 +14,12 @@ it("caps an installed iOS drawing buffer without changing CSS coordinates", () =
   expect(rendererDensity(1, true)).toBe(1);
   expect(rendererDensity(NaN, true)).toBe(1);
 });
-it("sharpens a small installed town while bounding large iPad buffers", () => {
-  expect(townRendererDensity(844, 390, 3, true)).toBe(2);
+it("draws the town at battle density on touch screens, bounding large iPad buffers", () => {
+  expect(townRendererDensity(844, 390, 3, true)).toBe(1.5);
+  expect(townRendererDensity(844, 390, 3, false, true)).toBe(1.5);
   const ipad = townRendererDensity(1194, 834, 3, true);
   expect(1194 * 834 * ipad * ipad).toBeLessThanOrEqual(2_000_001);
-  expect(townRendererDensity(1440, 900, 2, false)).toBe(2);
+  expect(townRendererDensity(1440, 900, 2, false, false)).toBe(2);
   expect(townRendererDensity(844, 390, 1, true)).toBe(1);
   expect(rendererDensity(3, true)).toBe(1.5);
 });

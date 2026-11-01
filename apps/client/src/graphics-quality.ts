@@ -9,8 +9,8 @@
  * affected.
  *
  * Auto starts High and watches the town's real frame rate for a few
- * seconds; a device that cannot hold about 40 frames a second switches to
- * Low and is remembered, so its next visit starts Low straight away (a
+ * seconds, and keeps watching while you play; a device that cannot hold
+ * about 50 frames a second switches to Low and is remembered, so its next visit starts Low straight away (a
  * device reporting 2 GB of memory or less starts Low too). Choosing High or
  * Low by hand overrides Auto.
  */
@@ -63,7 +63,7 @@ export function lowGraphics(setting = graphicsSetting()) {
 /** The town's frame cap at Low (frames a second). */
 export const LOW_FPS = 30;
 /** Below this many frames a second, Auto switches to Low. */
-export const AUTO_MIN_FPS = 40;
+export const AUTO_MIN_FPS = 50;
 
 /**
  * Measures the town's frame rate for Auto. Feed it the time of every frame

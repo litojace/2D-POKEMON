@@ -30,7 +30,7 @@ test("iOS Home Screen resumes Town and releases the old battle canvas on return"
       await page
         .locator(".town-canvas canvas")
         .evaluate((c: HTMLCanvasElement) => c.width),
-    ).toBe(1688);
+    ).toBe(1266); // 844 × 1.5: phones draw the town at battle density
     // Crossing the adaptive pixel budget must keep CSS sizing and pointer
     // coordinates aligned with the host, including an iPad-sized window.
     await page.setViewportSize({ width: 1194, height: 834 });
@@ -57,7 +57,7 @@ test("iOS Home Screen resumes Town and releases the old battle canvas on return"
           .locator(".town-canvas canvas")
           .evaluate((c: HTMLCanvasElement) => c.width),
       )
-      .toBe(1688);
+      .toBe(1266); // 844 × 1.5: phones draw the town at battle density
     await page.evaluate(() => {
       (window as any).__keepApp = true;
       dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true }));
