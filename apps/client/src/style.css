@@ -12238,18 +12238,6 @@ dialog :is(.profile-layout, .friends-layout, .help-layout) {
   border: 0;
   border-radius: 12px;
   background:
-    linear-gradient(
-        100deg,
-        transparent 38%,
-        color-mix(in srgb, var(--tone) 16%, transparent) 50%,
-        transparent 62%
-      )
-      50% 0 / 100% 78% no-repeat,
-    radial-gradient(
-      ellipse 30% 9% at 50% 80%,
-      color-mix(in srgb, var(--tone) 55%, transparent),
-      transparent 72%
-    ),
     radial-gradient(
       ellipse 60% 70% at 50% 30%,
       color-mix(in srgb, var(--tone) 22%, transparent),

@@ -15,17 +15,14 @@ import {
   type Economy,
   type Rarity,
 } from "../../../packages/shared/src/shop";
-import {
-  RAID_COSMETICS,
-  type RaidLoadout,
-} from "../../../packages/shared/src/raid";
-import { JOURNEY_ITEM_BY_ID } from "../../../packages/shared/src/journey";
+import type { RaidLoadout } from "../../../packages/shared/src/raid";
 import { colourPreview, hasColourPalette } from "./colour-preview";
 import { nextPacificDayAt } from "../../../packages/shared/src/raid-roster";
 import { fighterArt, fighterAvatar, scopeIds } from "./fighter-art";
 import { buttonIcon, iconLabel } from "./menu-icons";
 import { creatureSvg, type SkinLook } from "./creature-design";
 import { previewViewBox } from "./shop-preview-layout";
+import { cosmeticPicture } from "./cosmetic-picture";
 
 /**
  * The Shop and daily missions (design §10). Markup only: AccountUI wires the
@@ -104,7 +101,7 @@ function skinThumbnail(id: string, champion: CharacterId, stage: number) {
   return `<img src="${url}" alt="" aria-hidden="true" width="200" height="202" loading="lazy" decoding="async">`;
 }
 
-/** A small picture of any item, worn by the previewed champion. */
+/** A small picture of the actual item; only skins and Colors use a fighter. */
 export function itemPicture(
   id: string,
   champion: CharacterId,
@@ -113,13 +110,7 @@ export function itemPicture(
 ) {
   const skin = CHAMPION_SKIN_BY_ID[id];
   if (skin) return skinThumbnail(id, skin.champion, stage);
-  const look =
-    LOOK_ITEM_BY_ID[id] ??
-    RAID_COSMETICS[id as keyof typeof RAID_COSMETICS] ??
-    JOURNEY_ITEM_BY_ID[id];
-  if (look)
-    return `<span class="raid-cosmetic-preview shop-look-preview" data-cosmetic="${id}">${hasColourPalette(id) ? `<img src="data:image/svg+xml,${encodeURIComponent(colourPreview(fighterAvatar(champion, scope), id))}" width="84" height="84" alt="" loading="lazy" decoding="async">` : fighterAvatar(champion, scope)}</span>`;
-  return "";
+  return cosmeticPicture(id, champion, scope);
 }
 function itemName(id: string) {
   return (
@@ -255,6 +246,7 @@ export function shopPreviewMarkup(
       ? `${escape(piece.description)}. Worn by every fighter${piece.slot === "skin" ? " (a champion skin wins over Colors)" : ""}.`
       : "Pick a skin to see it in the live preview.";
   const frame = piece?.slot === "frame";
+  const effectOnly = !!piece && piece.slot !== "skin";
   // Each item plays the animation that shows it off; no picker needed.
   const action =
     piece?.slot === "entrance"
@@ -262,7 +254,7 @@ export function shopPreviewMarkup(
       : piece?.slot === "victory"
         ? "victory"
         : "idle";
-  const fallback = frame
+  const fallback = effectOnly
     ? itemPicture(piece.id, champion, "shop-piece-preview")
     : scopeIds(
         colourPreview(
@@ -296,7 +288,7 @@ export function shopPreviewMarkup(
   const purchase = id
     ? `<div class="shop-preview-purchase" aria-label="Selected item actions">${itemAction(id, e, loadout)}${shortfall}</div>`
     : "";
-  return `<section class="shop-preview rarity-${(id && shopRarity(id)) || "set"}" aria-label="Cosmetic preview"><div class="shop-preview-visual"><div class="shop-live-stage${frame ? " is-frame" : ""}" data-preview-champion="${champion}" data-preview-item="${id ?? ""}" data-preview-stage="${stage}" data-preview-action="${action}" role="img" aria-label="${title} ${frame ? "profile frame" : "animated preview"}"><div class="shop-preview-fallback${fallbackClass}"${piece?.slot === "skin" ? ` data-cosmetic="${piece.id}"` : ""}>${fallback}</div></div>${frame ? '<p class="shop-frame-caption">Profile frame</p>' : ""}${controls}</div><div class="shop-preview-text"><div class="shop-preview-kicker">${rarityBadge(id ? shopRarity(id) : null)}<span>${frame ? "Portrait frame" : "Live preview"}</span></div><h3>${title}</h3><p>${text}</p>${stages}${purchase}</div></section>`;
+  return `<section class="shop-preview rarity-${(id && shopRarity(id)) || "set"}" aria-label="Cosmetic preview"><div class="shop-preview-visual"><div class="shop-live-stage${effectOnly ? " is-item" : ""}${frame ? " is-frame" : ""}" data-preview-champion="${champion}" data-preview-item="${id ?? ""}" data-preview-stage="${stage}" data-preview-action="${action}" role="img" aria-label="${title} ${frame ? "profile frame" : "animated preview"}"><div class="shop-preview-fallback${fallbackClass}"${piece?.slot === "skin" ? ` data-cosmetic="${piece.id}"` : ""}>${fallback}</div></div>${frame ? '<p class="shop-frame-caption">Profile frame</p>' : ""}${controls}</div><div class="shop-preview-text"><div class="shop-preview-kicker">${rarityBadge(id ? shopRarity(id) : null)}<span>${frame ? "Portrait frame" : "Live preview"}</span></div><h3>${title}</h3><p>${text}</p>${stages}${purchase}</div></section>`;
 }
 /** Match the front-facing live preview while its textures load. */
 function frontPreviewArt(

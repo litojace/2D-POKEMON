@@ -294,7 +294,7 @@ describe("Shop live previews", () => {
         angle: pose.angle,
         x,
         y,
-      }).toEqual({ speed: 0, dash: false, angle: Math.PI / 2, x: 200, y: 174 });
+      }).toEqual({ speed: 0, dash: false, angle: Math.PI / 2, x: 200, y: 154 });
       expect(pose.greet || pose.victory).toBe(false);
     }
     dispose();
@@ -409,19 +409,24 @@ describe("Shop live previews", () => {
     expect(mock.textures.has("voltkit-voltkit-snowcap-1")).toBe(true);
     dispose();
   });
-  it("keeps frames static and releases the renderer even if a load is unfinished", () => {
-    const { dispose } = preview();
-    draw();
-    change(dispose, panel("idle", "galaxy-frame"));
-    mock.render.mockClear();
-    draw();
-    expect(mock.render).not.toHaveBeenCalled();
-    expect(mock.canvas.remove).toHaveBeenCalledOnce();
-    mock.autoLoad = false;
-    change(dispose, panel("idle", "voltkit-midnight"));
-    dispose();
-    mock.finish!();
-    expect(mock.destroy).toHaveBeenCalledExactlyOnceWith(true);
-    expect(mock.rigs).toHaveBeenCalledTimes(1);
-  });
+  it.each(["galaxy-frame", "galaxy-aura", "galaxy-entrance", "galaxy-victory"])(
+    "keeps %s free of a fighter and releases an unfinished renderer",
+    (item) => {
+      const { dispose } = preview();
+      draw();
+      const next = panel("idle", item);
+      next.host.classList.add("is-item");
+      change(dispose, next);
+      mock.render.mockClear();
+      draw();
+      expect(mock.render).not.toHaveBeenCalled();
+      expect(mock.canvas.remove).toHaveBeenCalledOnce();
+      mock.autoLoad = false;
+      change(dispose, panel("idle", "voltkit-midnight"));
+      dispose();
+      mock.finish!();
+      expect(mock.destroy).toHaveBeenCalledExactlyOnceWith(true);
+      expect(mock.rigs).toHaveBeenCalledTimes(1);
+    },
+  );
 });

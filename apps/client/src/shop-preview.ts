@@ -98,7 +98,10 @@ export function mountShopPreview(
       !document.hidden &&
       !portraitCover.matches &&
       !failedSelection &&
-      !host.classList.contains("is-frame") &&
+      !(
+        host.classList.contains("is-frame") ||
+        host.classList.contains("is-item")
+      ) &&
       (!paused || dirty || !drawn);
     host.dataset.rendering = String(running);
     if (running && !game.loop.running) game.loop.wake();
@@ -197,8 +200,13 @@ export function mountShopPreview(
         );
         reset();
       };
-    // Frames are static. Keep the renderer available, but outside the DOM.
-    if (host.classList.contains("is-frame")) game?.canvas?.remove();
+    // Item-only effects use their own canvas; retain the fighter renderer
+    // asleep, outside the DOM, for switching back to skins or Colors.
+    if (
+      host.classList.contains("is-frame") ||
+      host.classList.contains("is-item")
+    )
+      game?.canvas?.remove();
     else {
       if (game?.canvas) {
         host.appendChild(game.canvas);
@@ -240,7 +248,11 @@ export function mountShopPreview(
         .setScale(previewAuraScale(framing));
       this.game.canvas.setAttribute("aria-hidden", "true");
       // Selection may have changed while Phaser was booting.
-      if (host.classList.contains("is-frame")) this.game.canvas.remove();
+      if (
+        host.classList.contains("is-frame") ||
+        host.classList.contains("is-item")
+      )
+        this.game.canvas.remove();
       else {
         host.appendChild(this.game.canvas);
         this.select();
@@ -252,7 +264,8 @@ export function mountShopPreview(
         disposed ||
         this.loading ||
         this.selection === revision ||
-        host.classList.contains("is-frame")
+        host.classList.contains("is-frame") ||
+        host.classList.contains("is-item")
       )
         return;
       const selected = (this.selection = revision);
@@ -283,14 +296,28 @@ export function mountShopPreview(
         }
         this.floor.clear();
         if (!selection) {
+          const feet = framing.y + WORLD_ART.fighterFeet * framing.scale;
+          // Light, contact shadow and fighter share canvas coordinates, even
+          // when a tall phone panel letterboxes the canvas.
+          for (let i = 0; i < 12; i++) {
+            const k = i / 12;
+            this.floor
+              .fillStyle(0xffdc85, 0.012)
+              .fillTriangle(
+                framing.x - 18,
+                -40,
+                framing.x - 84 * (1 - k),
+                feet,
+                framing.x + 84 * (1 - k),
+                feet,
+              );
+            this.floor
+              .fillStyle(0xffdc85, 0.025)
+              .fillEllipse(framing.x, feet, 168 * (1 - k), 36 * (1 - k));
+          }
           this.floor
             .fillStyle(0x040d20, 0.4)
-            .fillEllipse(
-              framing.x,
-              framing.y + WORLD_ART.fighterFeet * framing.scale,
-              116,
-              28,
-            );
+            .fillEllipse(framing.x, feet, 128, 26);
         }
         rig = new FighterRig(this, champion, layers);
         ready = true;

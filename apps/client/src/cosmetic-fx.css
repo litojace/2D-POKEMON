@@ -23,6 +23,23 @@
   z-index: 3;
 }
 
+/* Item-only previews fill the stage without a champion obscuring the effect. */
+.shop-live-stage.is-item .shop-preview-fallback {
+  padding: 20px;
+}
+.shop-live-stage.is-item .fx-live {
+  visibility: visible;
+}
+.shop-live-stage.is-item:not(.is-frame)
+  .shop-preview-fallback
+  > .raid-cosmetic-preview {
+  width: 100%;
+  height: 100%;
+  max-width: 420px;
+  max-height: 320px;
+  border-radius: 12px;
+}
+
 /* Rarity colours (cosmetic-tier.ts TIER_COLORS). */
 [data-tier="common"] {
   --tier: #a7b3c6;

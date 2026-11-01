@@ -38,6 +38,8 @@ export interface FxParticle {
   spin?: number;
   /** A soft halo under the particle (cosmetic entrances and victories). */
   glow?: boolean;
+  /** Cosmetic sparks emitted behind the body stay behind as they rise. */
+  behind?: boolean;
 }
 export interface FxContext {
   g: Phaser.GameObjects.Graphics;
@@ -201,6 +203,32 @@ const orbit = (ctx: FxContext, i: number, n: number, speed: number, rx: number, 
   };
 };
 
+/** Split a ground ring at its side points so its far arc is occluded. */
+function groundRing(
+  ctx: FxContext,
+  width: number,
+  color: number,
+  alpha: number,
+  lineWidth: number,
+) {
+  const { x, y, sc, g, under } = ctx;
+  const cy = y + 20 * sc,
+    rx = width / 2,
+    ry = groundHeight(width) / 2;
+  for (let half = 0; half < 2; half++) {
+    const layer = half === 0 ? g : under;
+    layer.lineStyle(lineWidth, color, alpha).beginPath();
+    for (let i = 0; i <= 32; i++) {
+      const a = half * Math.PI + (i / 32) * Math.PI;
+      const px = x + Math.cos(a) * rx,
+        py = cy + Math.sin(a) * ry;
+      if (i === 0) layer.moveTo(px, py);
+      else layer.lineTo(px, py);
+    }
+    layer.strokePath();
+  }
+}
+
 /**
  * Mythical Awakening effects. Stage 1 is the skin's signature effect,
  * stage 2 adds an orbit, stage 3 the full form (and its accessory).
@@ -251,10 +279,11 @@ function mythic(ctx: FxContext, art: SkinArt, stage: number) {
           size: (1.4 + Math.random()) * sc,
           color: Math.random() < 0.5 ? 0xffd65b : 0xffb02e,
           shape: "dot",
+          behind: true,
         });
       if (stage >= 2) {
         const k = 0.5 + Math.sin(now / 300) * 0.5;
-        g.lineStyle(2 * sc, 0xffd65b, 0.25 + k * 0.25).strokeEllipse(x, y + 20 * sc, 50 * sc, groundHeight(50 * sc));
+        groundRing(ctx, 50 * sc, 0xffd65b, 0.25 + k * 0.25, 2 * sc);
       }
       if (stage >= 3) {
         // A slowly turning sun behind the fighter.
@@ -278,11 +307,11 @@ function mythic(ctx: FxContext, art: SkinArt, stage: number) {
       tgt.fillStyle(0xc8f6ff, 0.95).fillCircle(o.x, o.y, 5 * sc);
       tgt.fillStyle(0x070d24, 1).fillCircle(o.x + 2.4 * sc, o.y - 1 * sc, 4.4 * sc);
       if (ctx.ambient && ctx.chance(6, ctx.dt))
-        ctx.emit({ x: x + (Math.random() - 0.5) * 30 * sc, y: y + 14 * sc, vx: 0, vy: -26, life: 0.9, size: 2 * sc, color: 0x7ff3ff, shape: "bubble" });
+        ctx.emit({ x: x + (Math.random() - 0.5) * 30 * sc, y: y + 14 * sc, vx: 0, vy: -26, life: 0.9, size: 2 * sc, color: 0x7ff3ff, shape: "bubble", behind: true });
       if (stage >= 2)
         for (let i = 0; i < 2; i++) {
           const k = ((now / 1400 + i / 2) % 1);
-          g.lineStyle(1.6 * sc, 0x7ff3ff, 0.5 * (1 - k)).strokeEllipse(x, y + 20 * sc, (40 + k * 40) * sc, groundHeight((40 + k * 40) * sc));
+          groundRing(ctx, (40 + k * 40) * sc, 0x7ff3ff, 0.5 * (1 - k), 1.6 * sc);
         }
       if (stage >= 3) {
         under.fillStyle(0x7ff3ff, 0.12).fillEllipse(x, y + 18 * sc, 90 * sc, groundHeight(90 * sc));

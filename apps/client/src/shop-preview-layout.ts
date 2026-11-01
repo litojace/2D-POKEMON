@@ -7,8 +7,8 @@ export const SHOP_PREVIEW = {
   width: 400,
   height: 260,
   x: 200,
-  y: 174,
-  scale: 1.8,
+  y: 154,
+  scale: 2.1,
   cameraY: 130,
 } as const;
 

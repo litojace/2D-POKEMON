@@ -78,6 +78,17 @@ const EMOTE_ICON: Record<TownEmote, string> = {
   fire: "🔥",
 };
 const RIG_SCALE = 0.62;
+// Fit the stable name block to each silhouette, including its idle motion.
+const NAME_CLEARANCE: Record<CharacterId, number> = {
+  voltkit: 39,
+  cindrake: 51,
+  tidefin: 39,
+  auralynx: 50,
+  lumoth: 44,
+  mystowl: 47,
+  terradon: 41,
+  duskveil: 45,
+};
 /** Rig pixels from the body pivot to the feet (see FighterRig). */
 const FEET = WORLD_ART.fighterFeet;
 
@@ -1255,11 +1266,15 @@ export function openTown(options: TownOptions) {
       }
       // Nameplates follow map movement, not the animated rig's hover/bob.
       // Reserve the top of the idle hover range to keep the hood/ears clear.
+      const character = body.rig?.character ?? body.worn?.character;
       const floating = ["auralynx", "lumoth", "mystowl", "duskveil"].includes(
-        body.rig?.character ?? body.worn?.character ?? "",
+        character ?? "",
       );
+      // Tall ears and Cindrake's crest still need clearance; the shorter
+      // silhouettes no longer inherit that extra empty space.
+      const clearance = NAME_CLEARANCE[character as CharacterId] ?? 47;
       const head =
-        body.y - FEET * RIG_SCALE - 47 - (floating ? 9 * RIG_SCALE : 0);
+        body.y - FEET * RIG_SCALE - clearance - (floating ? 9 * RIG_SCALE : 0);
       const ui = Math.max(1, 1 / this.zoomNow);
       // Zoomed far out the town reads as a map: names and titles fade away,
       // and come back as you zoom in.

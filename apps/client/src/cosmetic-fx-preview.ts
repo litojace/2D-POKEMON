@@ -117,14 +117,14 @@ function draw(live: Live, now: number) {
   // World units around the fighter's feet, fitted to the thumbnail.
   const scale =
     live.kind === "aura"
-      ? (w * 0.86) / 118
+      ? Math.min((w * 0.86) / 128, h / 110)
       : live.kind === "entrance"
         ? Math.min(w / 104, h / 92)
         : live.kind === "skin"
           ? h / 100
           : Math.min(w / 165, h / 118);
   const feetY =
-    h * (live.kind === "aura" ? 0.76 : live.kind === "skin" ? 0.98 : 0.9);
+    h * (live.kind === "aura" ? 0.65 : live.kind === "skin" ? 0.98 : 0.82);
   for (const c of [back, front])
     c.setTransform(scale, 0, 0, scale, w / 2, feetY);
   const gb = canvasGraphics(back),

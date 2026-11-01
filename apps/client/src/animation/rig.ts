@@ -81,6 +81,7 @@ interface Particle {
   color: number;
   shape: ParticleShape;
   spin?: number;
+  behind?: boolean;
 }
 
 export class FighterRig {
@@ -1365,7 +1366,7 @@ export class FighterRig {
     }
     this.particles = this.particles.filter((p) => p.age < p.life);
     for (const p of this.particles)
-      drawAnyParticle(g, p, 1 - p.age / p.life);
+      drawAnyParticle(p.behind ? this.under : g, p, 1 - p.age / p.life);
     // ---- Duskveil's wisps orbit; dizzy stars circle a fainted head.
     if (this.character === "duskveil" && state !== "defeat")
       for (let i = 0; i < 2; i++) {
