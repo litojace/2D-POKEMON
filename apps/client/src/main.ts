@@ -156,6 +156,7 @@ import { updateNameplate, updateNameplateHealth } from "./player-nameplate";
 import { fighterPack } from "./animation/pack-config";
 import { fullscreenLandscape } from "./orientation";
 import { wireRotateGate } from "./rotate-gate";
+import { watchRotation } from "./orientation-settle";
 import {
   SKILL_ACTIONS,
   SkillCaster,
@@ -761,6 +762,7 @@ window.addEventListener("pagehide", stopControls);
 document.addEventListener("visibilitychange", stopControls);
 const pwa = setupPWA(() => state?.phase, dialog, toast);
 wireRotateGate();
+watchRotation();
 // Remember a room from an invite link (?room=ABC123) before the first render.
 if (captureInvite()) inviteHinted = false;
 let lockedRoomPick = "";
