@@ -121,7 +121,9 @@ export function auraFlourish(
   for (let s = 0; s < 2; s++) {
     const base = t * 1.6 + s * Math.PI;
     for (let i = 0; i < 9; i++) {
-      const a0 = base + i * 0.09,
+      // The bright head leads; the fading tail follows behind it (same
+      // clockwise turn as the aura's own items).
+      const a0 = base - i * 0.09,
         a1 = a0 + 0.09;
       const fade = (1 - i / 9) * 0.9;
       (Math.sin(a0) > 0 ? over : g)
