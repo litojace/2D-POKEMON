@@ -24932,3 +24932,15 @@ body.battle-active:not(.touch-mode) :is(.ability, .basic-hint) > span:has(> .ski
 .town-nearby .town-nearby-card svg {
   grid-row: auto;
 }
+
+/* Big phones: the side safe areas exist for the camera island (mid-height)
+   and rounded corners, not for thumbs at the bottom. Let the joystick and
+   skills sit closer to the edges so they cover less of the arena. Phones
+   without side insets keep their 16px gutter. */
+@media (orientation: landscape) {
+  body.battle-active.touch-mode .touch-pad,
+  body.battle-active.touch-mode.compact-landscape .touch-pad {
+    left: calc(max(10px, var(--safe-left) * 0.4) + 6px);
+    right: calc(max(10px, var(--safe-right) * 0.4) + 6px);
+  }
+}
