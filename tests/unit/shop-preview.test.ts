@@ -141,6 +141,7 @@ function panel(
     querySelector: () => null,
     getAttribute: () => "Snowcap animated preview",
     setAttribute: vi.fn(),
+    removeAttribute: vi.fn(),
     appendChild: vi.fn(),
   };
   const compare = {
@@ -462,4 +463,70 @@ describe("Shop live previews", () => {
       expect(mock.rigs).toHaveBeenCalledTimes(1);
     },
   );
+});
+
+it("holds the previous posed rig until a complete new look is ready, preserving idle time", () => {
+  const { dispose } = preview();
+  draw();
+  const before = Number(mock.render.mock.lastCall![3]);
+  mock.autoLoad = false;
+  mock.rigDestroy.mockClear();
+  const next = panel("idle", "voltkit-midnight");
+  change(dispose, next);
+  expect(next.host.classList.contains("is-ready")).toBe(true);
+  expect(next.compare.disabled).toBe(true);
+  expect(mock.rigDestroy).not.toHaveBeenCalled();
+  expect(next.host.setAttribute).toHaveBeenCalledWith("aria-busy", "true");
+  const draws = mock.render.mock.calls.length;
+  draw();
+  expect(mock.render).toHaveBeenCalledTimes(draws);
+  mock.finish!();
+  expect(mock.rigDestroy).toHaveBeenCalledOnce();
+  draw();
+  expect(mock.render.mock.lastCall![0].skin.skin).toBe("voltkit-midnight");
+  expect(Number(mock.render.mock.lastCall![3])).toBeGreaterThan(before);
+  expect(next.host.removeAttribute).toHaveBeenCalledWith("aria-busy");
+  expect(next.compare.disabled).toBe(false);
+  expect(mock.games).toHaveBeenCalledOnce();
+  dispose();
+});
+it("keeps the last visible look through rapid pending switches and shows only the latest", () => {
+  const { dispose } = preview();
+  draw();
+  mock.autoLoad = false;
+  mock.rigDestroy.mockClear();
+  const middle = panel("idle", "voltkit-midnight");
+  change(dispose, middle);
+  const oldFinish = mock.finish!;
+  const latest = panel("idle", "tidefin-moontide", "tidefin", 3);
+  change(dispose, latest);
+  expect(latest.host.classList.contains("is-ready")).toBe(true);
+  oldFinish();
+  expect(mock.rigDestroy).not.toHaveBeenCalled();
+  mock.finish!();
+  draw();
+  expect(mock.rigDestroy).toHaveBeenCalledOnce();
+  expect(mock.render.mock.lastCall![0].skin.skin).toBe("tidefin-moontide");
+  dispose();
+});
+
+it("bounds cached source art after repeated decoding failures too", () => {
+  const { dispose } = preview();
+  draw();
+  mock.autoLoad = false;
+  let failedLoad!: () => void;
+  mock.scene.load.once = (_event: string, finish: () => void) => {
+    failedLoad = finish;
+  };
+  for (const skin of Object.values(CHAMPION_SKIN_BY_ID)
+    .filter((s) => s.id !== "voltkit-snowcap")
+    .slice(0, 14)) {
+    change(dispose, panel("idle", skin.id, skin.champion));
+    mock.pending = []; // No missing image decoded successfully.
+    failedLoad();
+  }
+  const generated = mock.assets.mock.calls.length;
+  change(dispose, panel());
+  expect(mock.assets.mock.calls.length).toBeGreaterThan(generated);
+  dispose();
 });

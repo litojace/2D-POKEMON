@@ -173,12 +173,25 @@ export function mountShopPreview(
     if (disposed) return;
     ready = false;
     failedSelection = true;
+    rig?.destroy();
+    rig = undefined;
+    scene?.trimCache();
+    host.removeAttribute("aria-busy");
     host.classList.remove("is-ready");
     if (compare) compare.disabled = true;
     syncLoop();
   };
   const updatePanel = (next: HTMLElement, nextPlacement = placement) => {
     if (disposed) return;
+    // Keep the last fully posed rig visible while the next look decodes. Hiding
+    // it first caused a static-art flash on every skin/champion switch.
+    const retainPose =
+      placement === "shop" &&
+      nextPlacement === "shop" &&
+      !!rig &&
+      !!host?.classList.contains("is-ready");
+    const previousChampion = champion,
+      previousAction = action;
     placement = nextPlacement;
     selection = placement === "selection";
     framing = selection ? SELECTION_PREVIEW : SHOP_PREVIEW;
@@ -211,14 +224,18 @@ export function mountShopPreview(
     originalLabel = host.getAttribute("aria-label")!;
     compare = panel.querySelector<HTMLButtonElement>("[data-preview-compare]");
     original = false;
-    clock = 0;
-    cycle = 0;
+    // Browsing skins on one champion should not restart its idle bob.
+    if (
+      !retainPose ||
+      previousChampion !== champion ||
+      previousAction !== action
+    )
+      clock = 0;
+    cycle = Math.floor(clock / 4400);
     ready = false;
     failedSelection = false;
     drawn = false;
     dirty = true;
-    rig?.destroy();
-    rig = undefined;
     if (compare)
       compare.onclick = () => {
         original = !original;
@@ -240,9 +257,14 @@ export function mountShopPreview(
     if (
       host.classList.contains("is-frame") ||
       host.classList.contains("is-item")
-    )
+    ) {
+      rig?.destroy();
+      rig = undefined;
+      host.removeAttribute("aria-busy");
       game?.canvas?.remove();
-    else {
+    } else {
+      if (retainPose) host.classList.add("is-ready");
+      host.setAttribute("aria-busy", "true");
       if (game?.canvas) {
         host.appendChild(game.canvas);
         // Phaser also keeps its own parent for resize/bounds calculations.
@@ -261,6 +283,7 @@ export function mountShopPreview(
           }, 0);
         });
     }
+    syncControls();
     syncLoop();
   };
   class PreviewScene extends Phaser.Scene {
@@ -308,18 +331,6 @@ export function mountShopPreview(
       const selected = (this.selection = revision);
       layers = assets(null);
       const requested = [...layers, ...(worn ? assets(worn) : [])];
-      // The previous rig is gone, so no displayed texture can be evicted here.
-      while (cached.size > 8) {
-        const key = cached.keys().next().value!;
-        for (const asset of cached.get(key)!) {
-          for (const texture of [
-            asset.key,
-            ...SKINS.map((skin) => `${skin}:${asset.key}`),
-          ])
-            if (this.textures.exists(texture)) this.textures.remove(texture);
-        }
-        cached.delete(key);
-      }
       const missing = requested.filter((a) => !this.textures.exists(a.key));
       const complete = () => {
         if (disposed) return;
@@ -331,6 +342,10 @@ export function mountShopPreview(
           failed();
           return;
         }
+        // Only replace the visible rig once the entire selected look is ready.
+        rig?.destroy();
+        rig = undefined;
+        this.trimCache();
         this.paintFloor();
         rig = new FighterRig(this, champion, layers);
         ready = true;
@@ -352,6 +367,20 @@ export function mountShopPreview(
         complete();
       });
       this.load.start();
+    }
+    /** A discarded rig no longer pins textures, even if image decoding failed. */
+    trimCache() {
+      while (cached.size > 8) {
+        const key = cached.keys().next().value!;
+        for (const asset of cached.get(key)!) {
+          for (const texture of [
+            asset.key,
+            ...SKINS.map((skin) => `${skin}:${asset.key}`),
+          ])
+            if (this.textures.exists(texture)) this.textures.remove(texture);
+        }
+        cached.delete(key);
+      }
     }
     paintFloor() {
       this.floor.clear();
@@ -458,6 +487,7 @@ export function mountShopPreview(
         this.game.events.once(Phaser.Core.Events.POST_RENDER, () => {
           if (disposed || selected !== revision) return;
           host.classList.add("is-ready");
+          host.removeAttribute("aria-busy");
           syncControls();
         });
       }
