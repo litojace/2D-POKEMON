@@ -942,9 +942,12 @@ export function createArenaServer(
       const arena = rooms.get(code);
       if (!arena || arena.practice || arena.bots.size)
         return fail(cb, "Room not found. Check the code with your friend.");
-      stopWatching();
-      if (watchersOf(code).length >= MAX_WATCHERS)
+      // Check the seat before leaving any room already being watched, so a
+      // full room doesn't also end the current watch.
+      const already = watchers.get(socket.id)?.code === code;
+      if (!already && watchersOf(code).length >= MAX_WATCHERS)
         return fail(cb, "This room already has the most watchers it allows.");
+      stopWatching();
       watchers.set(socket.id, { code, name: account()!.displayName });
       socket.join(code);
       reply(cb, { ok: true, code });

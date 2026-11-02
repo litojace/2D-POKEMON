@@ -446,3 +446,24 @@ it("lets only the host change party rules, in the lobby", async () => {
   expect((await emit(one, "mutators", { ids: [] })).ok).toBe(true);
   expect(arena.mutators.size).toBe(0);
 });
+it("a full room doesn't end the watch you already have", async () => {
+  const a = await lobby();
+  const b = await lobby();
+  // Fill room B with the six watchers it allows.
+  for (let i = 0; i < 6; i++) {
+    const viewer = await connect();
+    expect((await emit(viewer, "watch", { code: b.host.code })).ok).toBe(true);
+  }
+  const fan = await connect();
+  expect((await emit(fan, "watch", { code: a.host.code })).ok).toBe(true);
+  const refused = await emit(fan, "watch", { code: b.host.code });
+  expect(refused).toMatchObject({ ok: false });
+  expect(refused.error).toMatch(/most watchers/);
+  // Still watching room A, and re-watching it is fine.
+  server.broadcast(a.arena);
+  let seen: Snapshot | undefined;
+  fan.once("state", (s: Snapshot) => (seen = s));
+  server.broadcast(a.arena);
+  await until(() => !!seen);
+  expect((await emit(fan, "watch", { code: a.host.code })).ok).toBe(true);
+});

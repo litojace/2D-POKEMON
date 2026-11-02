@@ -14,7 +14,6 @@ export default defineConfig({
           "assets/*.{js,css,webp}",
           "assets/fonts/*.woff2",
           "assets/backgrounds/*.webp",
-          "assets/town/*.webp",
           "assets/music/*.mp3",
           "assets/fighters/**/*.{svg,png,webp,json}",
         ],

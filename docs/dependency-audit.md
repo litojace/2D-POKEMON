@@ -26,3 +26,17 @@ it is not a compatible security update for the current injectManifest/PWA setup.
 That downgrade is deliberately not applied. Render may therefore still show the
 four low development-tool warnings after deployment; high and critical entries
 are resolved.
+
+## November 2026 recheck
+
+`npm audit --omit=dev` still reports **zero vulnerabilities**: nothing the
+deployed game server loads is affected. The complete audit now reports **ten
+entries (2 low, 8 moderate, no high or critical)**, all inside the PWA build
+chain under `vite-plugin-pwa` → `workbox-build`: the same `deepmerge` advisory,
+plus new `minimatch`/`glob` advisories reached through `ejs` → `jake` →
+`filelist`. These run only while `npm run build` generates the service worker,
+over the project's own files.
+
+The force-fix suggestion is now `vite-plugin-pwa@1.1.0`, again a major
+downgrade from 2.x, and is deliberately not applied. Recheck when a
+`vite-plugin-pwa`/`workbox-build` release updates these dependencies.
