@@ -39,7 +39,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "039_farm_weather.sql";
+export const LATEST_MIGRATION = "040_farm_orders.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -436,6 +436,27 @@ export function installAccountRoutes(
       qty: z.number().int().min(1).max(10000).optional(),
     })
     .strict();
+  // Deliver or skip an order on the farm's board (migration 040).
+  app.post(
+    "/api/farm/order",
+    route(false, async (req, res, token, account) => {
+      const data = z
+        .object({
+          request: z.string().uuid(),
+          slot: z.number().int().min(0).max(2),
+          kind: z.enum(["deliver", "skip"]),
+        })
+        .strict()
+        .parse(req.body);
+      const result = await provider.rpc(token, "arena_farm_order", {
+        p_request: data.request,
+        p_slot: data.slot,
+        p_kind: data.kind,
+      });
+      onPlayerChanged(account.id);
+      res.json(result);
+    }),
+  );
   app.post(
     "/api/farm/act",
     route(false, async (req, res, token, account) => {

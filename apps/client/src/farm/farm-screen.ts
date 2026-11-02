@@ -2,6 +2,7 @@ import type { Economy } from "../../../../packages/shared/src/shop";
 import type {
   FarmAction,
   FarmActResult,
+  FarmOrderResult,
   FarmState,
 } from "../../../../packages/shared/src/farm";
 import { openFarm } from "./farm-scene";
@@ -21,6 +22,10 @@ export interface FarmScreenOptions {
   economy(): Economy | undefined;
   /** The leaf balance changed (top bar pill). */
   onLeaves(balance: number): void;
+  /** Deliver or skip an order on the board (migration 040). */
+  order(slot: number, kind: "deliver" | "skip"): Promise<FarmOrderResult>;
+  /** A fighter's picture (who placed an order). */
+  art(character: string): string;
   reduced: boolean;
 }
 export interface FarmScreen {

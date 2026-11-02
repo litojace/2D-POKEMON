@@ -653,6 +653,8 @@ export interface FarmState {
   shop: { window: string; restockAt: string; stock: Record<string, number> };
   /** Harvests per crop (the crop book). */
   harvests: Record<string, number>;
+  /** The order board (migration 040; absent before it). */
+  orders?: FarmOrder[];
   /** The weather now and the forecast (migration 039; absent before it). */
   weather?: {
     now: FarmWeatherId | "none";
@@ -681,4 +683,28 @@ export interface FarmActResult {
   xp?: number;
   /** The same request id was already applied; nothing changed. */
   repeated?: boolean;
+}
+/** One slot of the order board: an order, or a wait for the next one. */
+export interface FarmOrder {
+  slot: number;
+  /** [[crop, count], …], or null while the slot waits. */
+  items: [string, number][] | null;
+  leaves: number | null;
+  xp: number | null;
+  bonus: FertilizerKind | null;
+  who: string | null;
+  face: string | null;
+  waitUntil: string | null;
+}
+export interface FarmOrderResult {
+  farm: FarmState;
+  ok: boolean;
+  error?: string | null;
+  repeated?: boolean;
+  gained?: {
+    leaves: number;
+    xp: number;
+    bonus: FertilizerKind | null;
+    who: string;
+  } | null;
 }

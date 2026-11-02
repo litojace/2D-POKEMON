@@ -56,6 +56,38 @@ async function fakeFarm(page: Page) {
       },
       leaves: 1234,
       weather: { now: "storm", next: "rainbow", later: "sun", until: at(5000) },
+      orders: [
+        {
+          slot: 0,
+          items: [["wheat", 3]],
+          leaves: 20,
+          xp: 9,
+          bonus: "super",
+          who: "Tidefin's Kitchen",
+          face: "tidefin",
+          waitUntil: null,
+        },
+        {
+          slot: 1,
+          items: [["carrot", 4]],
+          leaves: 30,
+          xp: 16,
+          bonus: null,
+          who: "Raid Hall",
+          face: "auralynx",
+          waitUntil: null,
+        },
+        {
+          slot: 2,
+          items: null,
+          leaves: null,
+          xp: null,
+          bonus: null,
+          who: null,
+          face: null,
+          waitUntil: at(240),
+        },
+      ],
     };
     w.__farmRequests = [];
     const fetch = window.fetch.bind(window);
@@ -82,6 +114,31 @@ async function fakeFarm(page: Page) {
           return { ok: false, error: "Not in this test" };
         });
         return json({ farm: { ...farm, now: now() }, results });
+      }
+      if (url.endsWith("/api/farm/order")) {
+        const body = JSON.parse(String(init?.body));
+        w.__farmRequests.push(body);
+        const o = farm.orders[body.slot];
+        const gained = {
+          leaves: o.leaves,
+          xp: o.xp,
+          bonus: o.bonus,
+          who: o.who,
+        };
+        farm.orders[body.slot] = {
+          ...o,
+          items: null,
+          waitUntil: at(body.kind === "deliver" ? 4800 : 300),
+        };
+        if (body.kind === "deliver") {
+          farm.barn = [{ crop: "wheat", mutation: "", qty: 1 }];
+          farm.leaves += gained.leaves;
+        }
+        return json({
+          farm: { ...farm, now: now() },
+          ok: true,
+          gained: body.kind === "deliver" ? gained : null,
+        });
       }
       const response = await fetch(input, init);
       if (!url.includes("/api/economy")) return response;
@@ -221,6 +278,35 @@ test("the weather orb shows the weather now and the forecast", async ({
   await orb.click();
   await expect(pop).toBeHidden();
   await expect(page.locator('#fm-chips [data-orb="barn"]')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test("the order board delivers what the barn holds", async ({ page }, info) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openLobby(page);
+  await fakeFarm(page);
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  // One order can be filled from the barn (4 wheat): the menu shows a dot.
+  await expect(page.locator("#fm-ord-dot")).toBeVisible();
+  await page.click('#fm-dock [data-sheet="orders"]');
+  const sheet = page.locator("#fm-sheet");
+  await expect(sheet).toContainText("Order board");
+  await expect(sheet.locator(".order")).toHaveCount(3);
+  await expect(sheet.locator('[data-ord="0"]')).toBeEnabled();
+  await expect(sheet.locator('[data-ord="1"]')).toBeDisabled(); // no carrots
+  await expect(sheet.locator(".order.wait")).toContainText("New order in");
+  await snap(page, info, "farm-orders-1280x800");
+  await sheet.locator('[data-ord="0"]').click();
+  await expect(page.locator("#toast")).toContainText(
+    "Delivered to Tidefin's Kitchen: +20 Gold Leaves",
+  );
+  expect(
+    await page.evaluate(() =>
+      (window as any).__farmRequests.find((r: any) => r.slot === 0),
+    ),
+  ).toMatchObject({ slot: 0, kind: "deliver", request: expect.any(String) });
+  await expect(sheet.locator(".order.wait")).toHaveCount(2);
+  await expect(page.locator("#fm-ord-dot")).toBeHidden();
   expect(errors).toEqual([]);
 });
 

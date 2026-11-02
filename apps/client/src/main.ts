@@ -52,6 +52,7 @@ import {
 import { openFarmScreen, type FarmScreen } from "./farm/farm-screen";
 import type {
   FarmActResult,
+  FarmOrderResult,
   FarmState,
 } from "../../../packages/shared/src/farm";
 import {
@@ -105,7 +106,7 @@ import {
   fillLiveSeconds,
   fillLiveCountdown,
 } from "./overlay";
-import { fighterArt, scopeIds } from "./fighter-art";
+import { fighterArt, fighterAvatar, scopeIds } from "./fighter-art";
 import { fighterSkillColor, wornArt } from "./skins/skin-art";
 import { drawCollectionAura } from "./skins/collection-fx";
 import { withAura } from "./trait-effects";
@@ -1789,6 +1790,22 @@ function syncFarm(want: boolean) {
     playerName: () => accountsUI.account?.displayName ?? "Your",
     economy: () => accountsUI.economy ?? undefined,
     onLeaves: (balance) => accountsUI.setLeaves(balance),
+    order: async (slot, kind) =>
+      (await accountsUI.api("/api/farm/order", {
+        request: crypto.randomUUID(),
+        slot,
+        kind,
+      })) as FarmOrderResult,
+    art: (character) =>
+      "data:image/svg+xml;charset=utf-8," +
+      encodeURIComponent(
+        fighterAvatar(
+          (Object.hasOwn(CHARACTERS, character)
+            ? character
+            : "voltkit") as CharacterId,
+          `order-${character}`,
+        ),
+      ),
   });
 }
 /** Menu, cards and party slots on the Lobby. */

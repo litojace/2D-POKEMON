@@ -1037,6 +1037,21 @@ it("passes farm actions and leaf trades to the database only when the request is
     { lots: 1, coins: 5 },
   ])
     expect((await send("/api/leaves/trade", body)).status).toBe(400);
+  // Orders: a slot 0–2 and deliver/skip, nothing else.
+  expect(
+    (await send("/api/farm/order", { request, slot: 1, kind: "skip" })).status,
+  ).toBe(200);
+  for (const body of [
+    { request, slot: 3, kind: "skip" },
+    { request, slot: 1, kind: "steal" },
+    { request, slot: 1, kind: "deliver", leaves: 999 },
+    { request: "x", slot: 1, kind: "skip" },
+  ])
+    expect((await send("/api/farm/order", body)).status).toBe(400);
+  expect(calls.pop()).toEqual([
+    "arena_farm_order",
+    { p_request: request, p_slot: 1, p_kind: "skip" },
+  ]);
   expect((await send("/api/farm", undefined, "invalid")).status).toBe(401);
   expect(
     (

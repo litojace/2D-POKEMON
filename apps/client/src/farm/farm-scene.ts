@@ -92,6 +92,7 @@ const FARM_HTML = `<div class="fm" id="fm">
     <nav class="fm-dock glass" id="fm-dock" aria-label="Farm">
       <button type="button" class="dk-t" aria-expanded="false" aria-controls="fm-dock"><span>Menu</span></button>
       <button type="button" data-sheet="shop">${I("shop")}<span>Shop</span></button>
+      <button type="button" data-sheet="orders">${I("orders")}<span>Orders</span><b class="dot" id="fm-ord-dot" hidden></b></button>
       <button type="button" data-sheet="market">${I("market")}<span>Market</span></button>
       <button type="button" data-sheet="barn">${I("barn")}<span>Barn</span></button>
       <button type="button" data-sheet="book">${I("book")}<span>Almanac</span></button>
@@ -257,6 +258,7 @@ export function openFarm(options) {
     ),
     seeds: {},
     barn: {},
+    orders: [],
     barnCap: 80,
     barnUp: 0,
     ferts: { norm: 0, super: 0, gold: 0 },
@@ -334,6 +336,17 @@ export function openFarm(options) {
     };
     F.leaves = st.leaves;
     options.onLeaves?.(st.leaves);
+    // The order board (migration 040; none before it).
+    F.orders = (st.orders ?? []).map((o) => ({
+      slot: o.slot,
+      who: o.who,
+      face: o.face,
+      items: o.items ?? null,
+      leaves: o.leaves,
+      xp: o.xp,
+      bonus: o.bonus,
+      waitUntil: o.waitUntil ? Date.parse(o.waitUntil) : 0,
+    }));
     // The weather now and the forecast (none before migration 039).
     const wx = (w) => (w && w !== "none" ? w : null);
     F.weather = st.weather
@@ -2134,7 +2147,8 @@ export function openFarm(options) {
     draw(T);
     if (Math.floor(T * 4) !== Math.floor((T - dt) * 4)) {
       renderChips();
-      if (sheet && ["shop", "market"].includes(sheet)) updateSheetTimers();
+      if (sheet && ["shop", "market", "orders"].includes(sheet))
+        updateSheetTimers();
       if (hoverI >= 0) showTip(hoverI);
     }
   }
@@ -2201,7 +2215,14 @@ export function openFarm(options) {
       }
     });
     if (orbOpen) renderOrbPop();
+    $("fm-ord-dot").hidden = !F.orders.some((o) => o.items && canFill(o));
   }
+  const canFill = (o) => o.items.every(([id, n]) => owned(id) >= n);
+  const FERT_NAME = {
+    norm: "Fertilizer",
+    super: "Super Fertilizer",
+    gold: "Gold Fertilizer",
+  };
   function renderOrbPop() {
     const el = $("fm-orbpop"),
       k = orbOpen,
@@ -2440,6 +2461,26 @@ export function openFarm(options) {
       }
       html += `</div>`;
     }
+    if (sheet === "orders") {
+      html =
+        head("Order board", "Orders") +
+        `<div class="sh-body"><p class="sh-note">Deliver the crops to earn Gold Leaves and XP. Orders pay more than the market.</p>` +
+        F.orders
+          .map((o) =>
+            !o.items
+              ? `<div class="order wait">New order in <b data-ordwait="${o.slot}">${fmtSecs(Math.max(0, (o.waitUntil - serverNow()) / 1000))}</b></div>`
+              : `<div class="order"><div class="who"><img src="${options.art(o.face)}" alt=""><div><b>${esc(o.who)}</b><small>needs these soon</small></div></div><div class="needs">${o.items
+                  .map(
+                    ([id, n]) =>
+                      `<span class="oneed ${owned(id) >= n ? "ok" : "no"}"><img src="${icon(id)}" alt="">${owned(id)}/${n} ${CROP[id].n}</span>`,
+                  )
+                  .join(
+                    "",
+                  )}</div><div class="rw"><span>+${o.leaves} ${L} · +${o.xp} XP${o.bonus ? ` · +1 ${FERT_NAME[o.bonus]}` : ""}</span><span style="display:flex;gap:6px"><button type="button" class="btn-s ghost" data-ordskip="${o.slot}">Skip</button><button type="button" class="btn-s green" data-ord="${o.slot}" ${canFill(o) ? "" : "disabled"}>Deliver</button></span></div></div>`,
+          )
+          .join("") +
+        `</div>`;
+    }
     if (sheet === "barn") {
       const rows = Object.entries(F.barn).filter(([, n]) => n > 0);
       html =
@@ -2488,7 +2529,25 @@ export function openFarm(options) {
     if (r) r.textContent = fmtSecs(restockIn());
     const m = $("fm-sheet").querySelector("[data-mkt]");
     if (m) m.textContent = fmtSecs(marketIn());
+    let due = false;
+    $("fm-sheet")
+      .querySelectorAll("[data-ordwait]")
+      .forEach((el) => {
+        const o = F.orders.find((x) => x.slot === +el.dataset.ordwait),
+          left = o ? Math.max(0, (o.waitUntil - serverNow()) / 1000) : 0;
+        el.textContent = fmtSecs(left);
+        if (!left) due = true;
+      });
+    // A waiting order is ready: opening the farm again brings it.
+    if (due && !ordersRefreshing) {
+      ordersRefreshing = true;
+      refresh().finally(() => {
+        ordersRefreshing = false;
+        if (sheet === "orders") renderSheet();
+      });
+    }
   }
+  let ordersRefreshing = false;
   $("fm-sheet").addEventListener("click", async (e) => {
     const t = e.target.closest("button, a");
     if (!t) return;
@@ -2518,6 +2577,29 @@ export function openFarm(options) {
       return;
     }
     if (d.landbuy) return landClick(+d.landbuy);
+    if (d.ord !== undefined || d.ordskip !== undefined) {
+      const slot = +(d.ord ?? d.ordskip),
+        kind = d.ord !== undefined ? "deliver" : "skip";
+      t.disabled = true;
+      try {
+        await flush();
+        const r = await options.order(slot, kind);
+        if (r?.farm) applyState(r.farm);
+        if (r?.ok && kind === "deliver") {
+          toast(
+            `Delivered to ${r.gained.who}: +${r.gained.leaves} Gold Leaves`,
+          );
+          log(
+            `Delivered to <b>${esc(r.gained.who)}</b> +${r.gained.leaves} ${L} +${r.gained.xp} XP`,
+            "good",
+          );
+        } else if (!r?.ok && r?.error) toast(r.error);
+      } catch (err) {
+        toast(err?.message || "Couldn't reach the order board.");
+      }
+      renderChips();
+      return renderSheet();
+    }
     if (d.sell) {
       const [id, mut] = d.sell.split("|"),
         n = +d.n;
