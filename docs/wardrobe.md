@@ -12,8 +12,15 @@ and the wearing list explains when colours are covered.
 Selecting an item tries it on without saving. **Equip**, **Take off**, and the
 remove buttons in Currently wearing use the existing account endpoints. The
 wearing list updates from saved account data. Failed saves leave the outfit
-unchanged. Portrait frames have their own portrait sample; Entrance and Victory
-controls replay the complete outfit's effects. Original skins remain available.
+unchanged. Portrait frame reviews use the same live frame and circular champion
+avatar as the rest of the game, including the currently equipped skin/stage or
+Colors. The portrait fills the preview column; star levels use a compact single
+row, and changing a level or frame keeps unchanged avatar art mounted. Choosing a
+different fighter keeps the selected shared frame and try-on level. Future levels
+remain previews only, and equipping returns the review to its earned level.
+Inventory tiles show the frame alone in a padded square display case, keeping
+its circular edge and ornaments inside the tile on phones and PC. Entrance and
+Victory controls replay the complete outfit's effects. Original skins remain available.
 
 The inventory and wearing panel scroll independently, with the selected-item
 information and save action fixed below them. Fighter arrows, native selection,

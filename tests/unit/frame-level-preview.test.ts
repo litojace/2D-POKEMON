@@ -77,16 +77,15 @@ it("future levels are try-ons only, while the earned level and equip action stay
     expect(parts.stage).toContain(
       `data-tier="${cosmeticTier("conqueror", stars)}"`,
     );
-    expect(parts.stage).not.toContain("<svg");
+    expect(parts.stage).toContain('data-fighter="voltkit"');
+    expect(parts.stage).toContain('class="portrait-disc"');
     expect(parts.animations.match(/data-wardrobe-frame-stars=/g)).toHaveLength(
       6,
     );
     expect(parts.animations).toContain("Your level: 1★");
     expect(parts.footer).toContain('data-wardrobe-save="conqueror"');
     if (stars > 1)
-      expect(parts.animations).toContain(
-        `Unlock at ${stars * 10} wins against Grumblecrag.`,
-      );
+      expect(parts.animations).toContain(`Unlock at ${stars * 10} wins`);
   }
   expect(JSON.stringify({ economy, p })).toBe(before);
 });
@@ -123,4 +122,45 @@ it("viewing a lower level on a maxed frame never invents a sixth star", () => {
   expect(parts.animations).toContain("Your level: 5★");
   expect(parts.animations).toContain("Maximum level earned.");
   expect(parts.animations).not.toContain("50/60");
+});
+
+it("reviews the actual equipped champion skin and awakening stage inside the chosen frame", () => {
+  const e = {
+    ...economy,
+    looks: { tidefin: { skin: "tidefin-moontide", stage: 3 } },
+  };
+  const parts = wardrobePreviewParts(
+    {
+      champion: "tidefin",
+      slot: "frame",
+      preview: "conqueror",
+      action: "idle",
+    },
+    e,
+    progress(40),
+    { skin: "candy-colours" },
+  );
+  expect(parts.stage).toContain('data-portrait-frame="conqueror"');
+  expect(parts.stage).toContain('data-frame-stars="4"');
+  expect(parts.stage).toContain('data-fighter="tidefin"');
+  expect(parts.stage).toContain("tidefin-moontide");
+  expect(parts.stage).not.toContain("preview-palette-candy-colours");
+});
+it("shows equipped Colors on the avatar when no champion skin covers them", () => {
+  const parts = wardrobePreviewParts(
+    {
+      champion: "terradon",
+      slot: "frame",
+      preview: "conqueror",
+      action: "idle",
+    },
+    economy,
+    progress(20),
+    { skin: "candy-colours" },
+  );
+  expect(parts.stage).toContain('data-fighter="terradon"');
+  expect(parts.stage).toContain(
+    'id="preview-palette-candy-colours-wardrobe-frame-live-colors"',
+  );
+  expect(parts.stage).toContain('data-frame-stars="2"');
 });

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openTown, snap } from "./helpers";
+import { openTown, snap, box, inside } from "./helpers";
 
 async function closePanel(page: Page) {
   await page.evaluate(
@@ -13,6 +13,7 @@ async function closePanel(page: Page) {
 }
 for (const size of [
   { width: 1440, height: 900 },
+  { width: 1280, height: 589 },
   { width: 844, height: 390 },
   { width: 844, height: 280 },
 ]) {
@@ -34,7 +35,7 @@ for (const size of [
             response,
             body: (await response.text()).replace(
               'window.dispatchEvent(new Event("arena:ready"));',
-              'window.__account=accountsUI;window.dispatchEvent(new Event("arena:ready"));',
+              'window.__account=accountsUI;window.__chooseFrame=(id)=>{selected=id;syncHomePresentation();};window.dispatchEvent(new Event("arena:ready"));',
             ),
           });
         },
@@ -46,24 +47,48 @@ for (const size of [
           body: `${await response.text()}
 window.__clears=16;window.__frame=null;window.__equips=[];
 const previousFrameLevelFetch=window.fetch.bind(window);
-const frameLevelProgress=()=>({v:1,stats:{},unlocked:[],cosmetics:['conqueror'],earned:['conqueror'],bosses:{grumblecrag:{clears:window.__clears}},loadout:{frame:window.__frame}});
+const frameLevelProgress=()=>({v:1,stats:{},unlocked:[],cosmetics:['conqueror','conductor-frame','brazier-frame','reef','crescent','moonglass','stained-glass'],earned:['conqueror','conductor-frame','brazier-frame','reef','crescent','moonglass','stained-glass'],bosses:{grumblecrag:{clears:window.__clears}},loadout:{frame:window.__frame}});
 window.fetch=async(input,init)=>{
  const path=new URL(String(input),location.href).pathname;
  if(path==='/api/raids')return Response.json(frameLevelProgress());
  if(path==='/api/raids/equip'){const body=JSON.parse(init.body);window.__equips.push(body);window.__frame=body.item;return Response.json({progress:frameLevelProgress()});}
  const response=await previousFrameLevelFetch(input,init);
  if(path!=='/api/economy')return response;
- const body=await response.json();body.owned.push('galaxy-frame');return Response.json(body);
+ const body=await response.json();body.owned.push('galaxy-frame','winter-frame','festival-frame','garden-frame','tidefin-moontide','auralynx-celestial-sage');body.looks.tidefin={skin:'tidefin-moontide',stage:3};body.looks.auralynx={skin:'auralynx-celestial-sage',stage:2};return Response.json(body);
 };`,
         });
       });
       const errors = await openTown(page);
-      await page.evaluate(() => void (window as any).__account.showWardrobe());
+      await page.evaluate(() => {
+        (window as any).__chooseFrame("tidefin");
+        void (window as any).__account.showWardrobe();
+      });
       await page.click(".wardrobe-filters [data-wardrobe-slot=frame]");
+      await page.click("[data-wardrobe-preview=conqueror]");
       const art = page.locator(".wardrobe-frame-stage .raid-cosmetic-preview");
       await expect(art).toHaveAttribute("data-frame-stars", "1");
       await expect(page.locator("[data-wardrobe-frame-stars]")).toHaveCount(6);
-      await expect(art.locator("svg,img")).toHaveCount(0);
+      await expect(art.locator("svg[data-fighter=tidefin]")).toHaveCount(1);
+      expect(await art.innerHTML()).toContain("tidefin-moontide");
+      await expect(page.locator(".wardrobe-frame-stage > canvas")).toHaveCount(
+        0,
+      );
+      await page.evaluate(() => {
+        (window as any).__frameReviewSvg = document.querySelector(
+          ".wardrobe-frame-avatar svg",
+        );
+        (window as any).__frameReviewStage = document.querySelector(
+          ".wardrobe-frame-stage",
+        );
+        (window as any).__frameReviewY = document
+          .querySelector(".wardrobe-frame-avatar")!
+          .getBoundingClientRect().y;
+      });
+      await snap(
+        page,
+        info,
+        `frame-review-initial-${size.width}x${size.height}`,
+      );
       const baseTile = page.locator(
         "[data-wardrobe-preview=conqueror] .raid-cosmetic-preview",
       );
@@ -86,6 +111,25 @@ window.fetch=async(input,init)=>{
           "Your level: 1★",
         );
         await expect(baseTile).toHaveAttribute("data-frame-stars", "1");
+        expect(
+          await page.evaluate(() =>
+            Math.abs(
+              (window as any).__frameReviewY -
+                document
+                  .querySelector(".wardrobe-frame-avatar")!
+                  .getBoundingClientRect().y,
+            ),
+          ),
+        ).toBeLessThan(1);
+        expect(
+          await page.evaluate(
+            () =>
+              (window as any).__frameReviewSvg ===
+                document.querySelector(".wardrobe-frame-avatar svg") &&
+              (window as any).__frameReviewStage ===
+                document.querySelector(".wardrobe-frame-stage"),
+          ),
+        ).toBe(true);
       }
       await expect(page.locator(".wardrobe-frame-summary")).toContainText(
         "Unlock at 50 wins",
@@ -94,6 +138,72 @@ window.fetch=async(input,init)=>{
         page.locator(".wardrobe-frame-stage .tier-rays"),
       ).toBeVisible();
       expect(await page.evaluate(() => (window as any).__equips)).toEqual([]);
+      const stageBox = await box(page, ".wardrobe-frame-stage");
+      const controlsBox = await box(page, ".is-frame-preview");
+      expect(stageBox.height).toBeGreaterThan(controlsBox.height);
+      const circleBox = await box(page, ".wardrobe-frame-avatar");
+      expect(circleBox.width).toBeGreaterThan(55);
+      expect(Math.abs(circleBox.width - circleBox.height)).toBeLessThan(1);
+      expect(inside(circleBox, stageBox)).toBe(true);
+      expect(
+        inside(
+          await box(page, ".wardrobe-frame-avatar .frame-stars"),
+          stageBox,
+        ),
+      ).toBe(true);
+      const levels = await page
+        .locator("[data-wardrobe-frame-stars]")
+        .evaluateAll((els) =>
+          els.map((el) => ({
+            y: el.getBoundingClientRect().y,
+            height: el.getBoundingClientRect().height,
+          })),
+        );
+      expect(
+        Math.max(...levels.map((r) => r.y)) -
+          Math.min(...levels.map((r) => r.y)),
+      ).toBeLessThan(1);
+      for (const { height } of levels) expect(height).toBeLessThanOrEqual(44);
+      const cases = await page
+        .locator(".wardrobe-item-art.is-frame-art")
+        .evaluateAll((els) =>
+          els.map((el) => {
+            const outer = el.getBoundingClientRect(),
+              ring = el
+                .querySelector(".raid-cosmetic-preview")!
+                .getBoundingClientRect();
+            const edge = el.querySelector(".tier-fx")?.getBoundingClientRect();
+            return {
+              width: outer.width,
+              height: outer.height,
+              ring: {
+                x: ring.x - outer.x,
+                y: ring.y - outer.y,
+                width: ring.width,
+                height: ring.height,
+              },
+              edge: edge
+                ? {
+                    x: edge.x - outer.x,
+                    y: edge.y - outer.y,
+                    width: edge.width,
+                    height: edge.height,
+                  }
+                : undefined,
+            };
+          }),
+        );
+      expect(cases.length).toBeGreaterThan(7);
+      for (const c of cases) {
+        expect(Math.abs(c.width - c.height)).toBeLessThan(1);
+        expect(
+          inside(c.ring, { x: 0, y: 0, width: c.width, height: c.height }),
+        ).toBe(true);
+        if (c.edge)
+          expect(
+            inside(c.edge, { x: 0, y: 0, width: c.width, height: c.height }),
+          ).toBe(true);
+      }
       await page
         .locator(".wardrobe-showcase")
         .evaluate((el) => el.scrollTo({ top: 0 }));
@@ -115,6 +225,18 @@ window.fetch=async(input,init)=>{
       await expect(page.locator("[data-wardrobe-frame-stars]")).toHaveCount(0);
       await page.click("[data-wardrobe-preview=conqueror]");
       await expect(art).toHaveAttribute("data-frame-stars", "1");
+      if (await page.locator("#wardrobe-champion").isVisible()) {
+        await page.click('[data-wardrobe-frame-stars="3"]');
+        await page.locator("#wardrobe-champion").selectOption("auralynx");
+        await expect(art).toHaveAttribute("data-frame-stars", "3");
+        await expect(art.locator("svg[data-fighter=auralynx]")).toHaveCount(1);
+        expect(await art.innerHTML()).toContain("auralynx-celestial-sage");
+        await snap(
+          page,
+          info,
+          `frame-review-auralynx-${size.width}x${size.height}`,
+        );
+      }
       // Highest earned level uses the same label and visuals in all pickers.
       await closePanel(page);
       await page.evaluate(() => {

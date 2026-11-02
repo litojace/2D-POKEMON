@@ -690,61 +690,84 @@ dialog.wardrobe-dialog > .dialog-content {
   }
 }
 
-/* The frame itself, at any earned or future star level. */
+/* Frame reviews use the same circular avatar and frame as player identity.
+   Give the portrait the available space; the six level buttons stay one row. */
+.wardrobe-showcase:has(.wardrobe-frame-stage) {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  min-height: 0;
+}
+.wardrobe-showcase:has(.wardrobe-frame-stage) .wardrobe-wearing {
+  display: none;
+}
+.wardrobe-showcase:has(.wardrobe-frame-stage) .wardrobe-preview {
+  grid-column: 1;
+  grid-row: 2;
+  min-height: 0;
+}
+.wardrobe .wardrobe-frame-stage {
+  height: 100%;
+  min-height: 0;
+  aspect-ratio: auto;
+  container-type: size;
+  background:
+    radial-gradient(ellipse at 65% 15%, #c7dbef24, transparent 60%),
+    radial-gradient(circle at 50% 50%, #1b3152, #080f20 80%);
+}
 .wardrobe-frame-stage .shop-preview-fallback {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   padding: 0;
 }
-.wardrobe-frame-stage .shop-preview-fallback > .raid-cosmetic-preview {
-  width: auto;
-  height: 58%;
+.wardrobe-frame-avatar {
+  position: relative;
+  width: min(64cqw, 64cqh, 280px);
   aspect-ratio: 1;
-  max-width: 140px;
-  max-height: 140px;
-  flex: none;
+  /* Reserve badge space without moving the avatar when switching star levels. */
+  transform: translateY(-10%);
+}
+.wardrobe-frame-avatar .frame-stars {
+  bottom: -24%;
+  font-size: clamp(8px, 4cqh, 12px);
 }
 .wardrobe .wardrobe-preview-actions.is-frame-preview {
+  grid-column: 1;
+  grid-row: 3;
   display: grid;
   height: auto;
-  gap: 10px;
-  margin: 14px 0;
+  gap: 5px;
+  margin: 10px 0 0;
   z-index: auto;
 }
 .wardrobe-frame-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
   gap: 6px;
 }
 .wardrobe-frame-heading > b {
-  font: 700 18px/1.2 var(--display);
+  font: 700 15px/1.2 var(--display);
 }
 .wardrobe-frame-levels {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
 }
 .wardrobe-frame-levels > button {
   display: grid;
-  place-content: center;
-  gap: 3px;
+  place-items: center;
   min-width: 0;
-  min-height: 44px;
-  padding: 6px 4px;
+  min-height: 36px;
+  padding: 4px 0;
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: 8px;
   background: var(--bg-1);
   color: var(--text-dim);
   text-align: center;
 }
 .wardrobe-frame-levels > button b {
-  font: 700 17px/1 var(--display);
-}
-.wardrobe-frame-levels > button small {
-  font: 400 10px/1.2 var(--body);
+  font: 700 15px/1 var(--display);
 }
 .wardrobe-frame-levels > button[aria-pressed="true"] {
   border-color: var(--accent);
@@ -752,72 +775,60 @@ dialog.wardrobe-dialog > .dialog-content {
   color: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent);
 }
-.wardrobe-frame-summary,
-.wardrobe-frame-preview-note {
+.wardrobe-frame-summary {
   margin: 0;
-  font: 400 12px/1.5 var(--body);
+  font: 400 11px/1.4 var(--body);
   color: var(--text-dim);
 }
-.wardrobe-frame-summary b {
-  color: var(--text);
+/* A square display case reserves space for the complete circular frame,
+   tier edge, rays and ornaments rather than clipping a fixed 92px ring. */
+.wardrobe-item-art.is-frame-art {
+  height: auto;
+  aspect-ratio: 1;
+  min-width: 0;
+  isolation: isolate;
+  background: radial-gradient(circle, #213856, #080f20 76%);
 }
-.wardrobe-frame-preview-note {
-  font-size: 11px;
-}
-@media (orientation: landscape) and (max-height: 600px) {
-  .wardrobe .wardrobe-preview-actions.is-frame-preview {
-    gap: 6px;
-    margin: 10px 0;
-  }
-  .wardrobe-frame-heading > b {
-    font-size: 15px;
-  }
-  .wardrobe-frame-levels {
-    gap: 4px;
-  }
-  .wardrobe-frame-summary,
-  .wardrobe-frame-preview-note {
-    font-size: 10px;
-    line-height: 1.4;
-  }
+.wardrobe-item-art.is-frame-art > .shop-look-preview {
+  width: 56%;
+  height: 56%;
+  min-width: 0;
+  min-height: 0;
 }
 @media (orientation: landscape) and (max-height: 600px) {
-  .wardrobe-showcase:has(.wardrobe-frame-stage)
-    :is(.wardrobe-fighter-picker, .wardrobe-wearing) {
+  .wardrobe-showcase:has(.wardrobe-frame-stage) {
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+  .wardrobe-showcase:has(.wardrobe-frame-stage) .wardrobe-fighter-picker {
     display: none;
   }
   .wardrobe-showcase:has(.wardrobe-frame-stage) .wardrobe-preview {
-    position: sticky;
-    top: -6px;
-    z-index: 3;
-    padding-top: 6px;
-    background: var(--bg-0);
+    grid-row: 1;
+    position: static;
+    padding: 0;
   }
-  .wardrobe .wardrobe-frame-stage {
-    height: 90px;
-    min-height: 90px;
+  .wardrobe .wardrobe-preview-actions.is-frame-preview {
+    grid-row: 2;
+    gap: 4px;
+    margin: 6px 0 0;
   }
-}
-@media (orientation: landscape) and (max-height: 320px) {
-  .wardrobe .wardrobe-frame-stage {
-    height: 64px;
-    min-height: 64px;
-  }
-  .wardrobe-frame-levels {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 3px;
+  .wardrobe-frame-heading > b {
+    font-size: 13px;
   }
   .wardrobe-frame-levels > button {
     min-height: 40px;
-    padding: 4px 0;
   }
   .wardrobe-frame-levels > button b {
     font-size: 14px;
   }
-  .wardrobe-frame-levels > button small {
-    font-size: 8px;
+  .wardrobe-frame-summary {
+    font-size: 10px;
   }
-  .wardrobe-frame-preview-note {
+}
+/* Browser chrome can leave less than 320px. The portrait keeps the space;
+   level names/progress remain in the button labels and selected-item footer. */
+@media (orientation: landscape) and (max-height: 320px) {
+  .is-frame-preview :is(.wardrobe-frame-heading, .wardrobe-frame-summary) {
     display: none;
   }
 }

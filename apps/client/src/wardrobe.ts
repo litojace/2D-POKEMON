@@ -32,6 +32,48 @@ interface WardrobeHooks {
   shop(): void;
   raids(): void;
 }
+/** Star/frame try-ons update the live frame without replacing unchanged avatar art. */
+function updateFramePreview(current: HTMLElement, html: string) {
+  const live = current.querySelector<HTMLElement>(
+    ".wardrobe-frame-avatar .portrait-frame",
+  );
+  if (!live) return false;
+  const template = document.createElement("div");
+  template.innerHTML = html;
+  const next = template.querySelector<HTMLElement>(
+    ".wardrobe-frame-avatar .portrait-frame",
+  );
+  const nextStage = template.querySelector<HTMLElement>(
+    ".wardrobe-frame-stage",
+  );
+  if (
+    !next ||
+    !nextStage ||
+    !live
+      .querySelector(".portrait-disc")
+      ?.isEqualNode(next.querySelector(".portrait-disc"))
+  )
+    return false;
+  const stage = current.querySelector<HTMLElement>(".wardrobe-frame-stage")!;
+  for (const name of ["data-preview-item", "data-tier", "aria-label"])
+    stage.setAttribute(name, nextStage.getAttribute(name)!);
+  for (const name of [
+    "class",
+    "data-cosmetic",
+    "data-portrait-frame",
+    "data-frame-stars",
+  ])
+    if (live.getAttribute(name) !== next.getAttribute(name))
+      live.setAttribute(name, next.getAttribute(name)!);
+  live.dataset.tier = nextStage.dataset.tier;
+  const stars = live.querySelector(".frame-stars"),
+    nextStars = next.querySelector(".frame-stars");
+  if (!stars?.isEqualNode(nextStars)) {
+    stars?.remove();
+    if (nextStars) live.append(nextStars);
+  }
+  return true;
+}
 /** A single preview renderer and delegated controls survive inventory refreshes. */
 export function openWardrobe(
   root: HTMLDialogElement,
@@ -66,9 +108,12 @@ export function openWardrobe(
       (s) => [s, root.querySelector(s)?.scrollTop ?? 0] as const,
     );
     const { economy, progress, look } = hooks.state();
+    let retainedFrame = false;
     if (previewOnly) {
       const parts = wardrobePreviewParts(view, economy, progress, look);
-      root.querySelector(".wardrobe-preview")!.outerHTML = parts.stage;
+      const current = root.querySelector<HTMLElement>(".wardrobe-preview")!;
+      retainedFrame = updateFramePreview(current, parts.stage);
+      if (!retainedFrame) current.outerHTML = parts.stage;
       root.querySelector(".wardrobe-preview-actions")!.outerHTML =
         parts.animations;
       root.querySelector(".wardrobe-footer")!.outerHTML = parts.footer;
@@ -88,8 +133,8 @@ export function openWardrobe(
     status.setAttribute("role", failed ? "alert" : "status");
     status.classList.toggle("is-error", failed);
     const panel = root.querySelector<HTMLElement>(".wardrobe-preview")!;
-    if (preview) preview.update(panel);
-    else if (!importing) {
+    if (preview && !retainedFrame) preview.update(panel);
+    else if (!preview && !importing) {
       importing = true;
       void import("./shop-preview")
         .then(({ mountShopPreview }) => {
@@ -127,7 +172,7 @@ export function openWardrobe(
         ? `${wardrobeItem(item)?.name ?? "Item"} equipped${slot === "champion" ? " on this fighter" : " for every fighter"}.`
         : `${WARDROBE_SLOTS.find(([s]) => s === slot)![1]} taken off.`;
       failed = false;
-      view.preview = undefined;
+      if (slot !== "frame") view.preview = undefined;
       view.frameStars = undefined;
     } catch (error) {
       message =
@@ -148,8 +193,10 @@ export function openWardrobe(
       );
       if (!select || saving) return;
       view.champion = select.value as CharacterId;
-      view.preview = undefined;
-      view.frameStars = undefined;
+      if (wardrobeItem(view.preview ?? "")?.slot !== "frame") {
+        view.preview = undefined;
+        view.frameStars = undefined;
+      }
       view.action = "idle";
       message = "";
       render("#wardrobe-champion", false, true);

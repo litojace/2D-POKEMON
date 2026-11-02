@@ -315,14 +315,16 @@
     border-radius: 10px;
   }
   .wardrobe-item-art {
-    height: 62px !important;
     margin-bottom: 3px !important;
+  }
+  .wardrobe-item-art:not(.is-frame-art) {
+    height: 62px !important;
   }
   .wardrobe-item-art > :is(svg, img) {
     height: 60px !important;
   }
-  .wardrobe-item-art .shop-look-preview,
-  .wardrobe-item-art .raid-cosmetic-preview {
+  .wardrobe-item-art:not(.is-frame-art) .shop-look-preview,
+  .wardrobe-item-art:not(.is-frame-art) .raid-cosmetic-preview {
     width: 58px !important;
     height: 58px !important;
   }
