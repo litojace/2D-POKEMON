@@ -184,7 +184,7 @@ export function wardrobePreviewParts(
     "wardrobe-preview",
   );
   const portrait = frame
-    ? `<span class="raid-cosmetic-preview wardrobe-frame" data-cosmetic="${frame}" data-frame-stars="${earnedStars}" aria-label="${escape(wardrobeItem(frame)?.name ?? "Equipped portrait frame")}">${colourPreview(fighterAvatar(view.champion, "wardrobe-frame", outfit.skin), palette)}</span>`
+    ? `<span class="raid-cosmetic-preview wardrobe-frame" data-cosmetic="${frame}" data-frame-stars="${earnedStars}" aria-label="${escape(wardrobeItem(frame)?.name ?? "Equipped portrait frame")}"><span class="portrait-disc">${scopeIds(colourPreview(fighterAvatar(view.champion, "wardrobe-frame", outfit.skin), palette), "wardrobe-avatar-colors")}</span></span>`
     : "";
   return {
     stage: `<section class="shop-preview wardrobe-preview" aria-label="Complete outfit preview"><div class="shop-live-stage" data-preview-champion="${view.champion}" data-preview-item="${outfit.skin?.skin ?? ""}" data-preview-stage="${outfit.skin?.stage ?? 1}" data-preview-action="${view.action}" data-preview-look="${encodeURIComponent(JSON.stringify(outfit.look))}" role="img" aria-label="${CHARACTERS[view.champion].name} ${trying ? "try-on" : "equipped outfit"}"><div class="shop-preview-fallback${palette ? ` raid-cosmetic-preview${hasColourPalette(palette) ? " is-colour-matched" : ""}` : ""}" data-cosmetic="${palette}">${fallback}</div></div></section>`,

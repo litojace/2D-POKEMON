@@ -88,7 +88,7 @@ import {
   drawLanternYard,
 } from "./raid-gloomshade-art";
 import { fighterAvatar } from "./fighter-art";
-import { portraitAvatar, portraitCosmetics } from "./portraits";
+import { framedAvatar } from "./portraits";
 import { LOOK_ITEMS } from "../../../packages/shared/src/shop";
 import {
   setOverlayMarkup,
@@ -133,7 +133,7 @@ export function raidLobby(
   return `<div class="raid-lobby">
     <div class="raid-lobby-banner"><div><span class="eyebrow">Co-op raid · 1–4 players</span><h2>${RAID_BOSSES[r.boss].name}</h2><p>${RAID_BOSSES[r.boss].epithet}</p></div><svg viewBox="-65 -65 130 115" aria-hidden="true">${raidGuideBossFor(r.boss)}</svg></div>
     <button type="button" class="secondary full" id="invite-friends">${iconLabel("add-friend", "Invite friends")}</button>
-    <section class="raid-party-section" aria-label="Raid party"><div class="raid-section-heading"><h3>Your party</h3><span>${ready}/${party.length} ready</span></div><div class="raid-party-list">${party.map((p) => `<div class="raid-party-member" data-raid-player="${escape(p.id)}"><span class="raid-party-avatar" data-raid-cosmetic="${portraitCosmetics(p)}">${portraitAvatar(p, "raid-lobby-" + p.id)}</span><div class="raid-party-identity"><b>${escape(p.name)}</b><span><span class="raid-player-character">${CHARACTERS[p.character].name}</span>${p.id === state.players[0]?.id ? " · Host" : ""}</span></div><span class="raid-ready-badge ${p.ready ? "is-ready" : ""}">${p.ready ? "Ready" : "Choosing"}</span></div>`).join("")}<div class="raid-open-slots">${Array.from({ length: Math.max(0, 4 - party.length) }, () => '<div class="raid-party-empty"><span aria-hidden="true">+</span>Open slot</div>').join("")}</div></div></section>
+    <section class="raid-party-section" aria-label="Raid party"><div class="raid-section-heading"><h3>Your party</h3><span>${ready}/${party.length} ready</span></div><div class="raid-party-list">${party.map((p) => `<div class="raid-party-member" data-raid-player="${escape(p.id)}"><span class="raid-party-avatar">${framedAvatar(p, "raid-lobby-" + p.id)}</span><div class="raid-party-identity"><b>${escape(p.name)}</b><span><span class="raid-player-character">${CHARACTERS[p.character].name}</span>${p.id === state.players[0]?.id ? " · Host" : ""}</span></div><span class="raid-ready-badge ${p.ready ? "is-ready" : ""}">${p.ready ? "Ready" : "Choosing"}</span></div>`).join("")}<div class="raid-open-slots">${Array.from({ length: Math.max(0, 4 - party.length) }, () => '<div class="raid-party-empty"><span aria-hidden="true">+</span>Open slot</div>').join("")}</div></div></section>
 
     <div class="raid-lobby-rules"><span><svg class="raid-rule-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v10m-5-5h10"/></svg><span>${party.length === 1 ? "One solo self-revive" : "Stand near allies to revive"}</span></span><span><svg class="raid-rule-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 3 8 4v6c0 5-8 8-8 8s-8-3-8-8V7Z"/><path d="m8 12 3 3 5-6"/></svg><span>Separate from PvP rating</span></span></div>
 

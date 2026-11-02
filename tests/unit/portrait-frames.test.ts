@@ -30,10 +30,13 @@ it("ignores cleared, unknown and non-frame cosmetics", () => {
     "halo-aura",
     '" onclick="alert(1)',
     "not-a-real-frame",
-  ])
-    expect(framePortrait("portrait", frame)).toBe("portrait");
+  ]) {
+    const html = framePortrait("portrait", frame);
+    expect(html).toBe('<span class="portrait-disc">portrait</span>');
+    expect(html).not.toContain("data-portrait-frame");
+  }
 });
-it("keeps the worn champion skin and legacy lobby frame rendering separate", () => {
+it("uses the worn champion skin inside a single circular frame", () => {
   const player = {
     character: "voltkit" as const,
     raidLook: { frame: "conqueror" },
@@ -66,4 +69,63 @@ it("preserves saved frames on offline friend initials and on live champion avata
   expect(html).toContain('data-portrait-frame="galaxy-frame"');
   expect(html).toContain("Mia");
   expect(html).toContain("auralynx");
+});
+
+it("applies equipped Colors consistently and isolates SVG filters per placement", () => {
+  const player = {
+    character: "terradon" as const,
+    raidLook: { skin: "candy-colours" as const },
+  };
+  const left = framedAvatar(player, "left"),
+    right = framedAvatar(player, "right");
+  expect(left).toContain('id="preview-palette-candy-colours-left-colors"');
+  expect(right).toContain("url(#preview-palette-candy-colours-right-colors)");
+  expect(left).toContain('class="portrait-disc"');
+  expect(
+    framedAvatar(
+      {
+        ...player,
+        championLooks: { terradon: { skin: "terradon-mossy", stage: 1 } },
+      },
+      "skinned",
+    ),
+  ).not.toContain("preview-palette");
+});
+it("uses earned frame stars from the same saved clear counts everywhere and bounds malformed values", () => {
+  const player = {
+    character: "tidefin" as const,
+    raidLook: { frame: "conqueror" as const },
+    raidClears: { grumblecrag: 53 },
+  };
+  expect(framedAvatar(player, "party")).toContain('data-frame-stars="5"');
+  expect(framedAvatar(player, "party")).toContain("★★★★★");
+  for (const invalid of [NaN, Infinity, -5])
+    expect(framePortrait("art", "conqueror", invalid)).toContain(
+      'data-frame-stars="0"',
+    );
+  expect(framePortrait("art", "conqueror", 8.5)).toContain(
+    'data-frame-stars="5"',
+  );
+});
+it("shows the saved champion skin, awakening stage and evolved frame on offline friends", () => {
+  const html = friendsMarkup({
+    code: "ABCDEF12",
+    friends: [
+      {
+        id: "friend",
+        name: "Pal",
+        online: false,
+        fighter: "tidefin",
+        frame: "conqueror",
+        look: { frame: "conqueror", skin: "candy-colours" },
+        championLooks: { tidefin: { skin: "tidefin-moontide", stage: 3 } },
+        raidClears: { grumblecrag: 40 },
+      },
+    ],
+    incoming: [],
+    outgoing: [],
+  });
+  expect(html).toContain("tidefin-moontide");
+  expect(html).toContain('data-frame-stars="4"');
+  expect(html).not.toContain("preview-palette");
 });

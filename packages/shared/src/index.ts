@@ -1,4 +1,4 @@
-import type { RaidLoadout, RaidState } from "./raid.js";
+import type { RaidBossId, RaidLoadout, RaidState } from "./raid.js";
 import type { ChampionLook } from "./shop.js";
 import { z } from "zod";
 export const RULES = {
@@ -1083,6 +1083,8 @@ export interface Fighter extends Vec {
   raidLook?: RaidLoadout;
   /** Equipped Shop skin for each champion (only the one being played shows). */
   championLooks?: Partial<Record<CharacterId, ChampionLook>>;
+  /** Verified boss clears, used for the equipped portrait frame’s earned stars. */
+  raidClears?: Partial<Record<RaidBossId, number>>;
   team?: Team;
   /** Left the match for good (2v2): stays on the scoreboard, out of play. */
   out?: boolean;

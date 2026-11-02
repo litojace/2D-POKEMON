@@ -4,14 +4,12 @@ import {
   RAID_BOSSES,
   RAID_BOSS_ORDER,
   RAID_COSMETICS,
-  frameStars,
   type RaidBossId,
 } from "../../../packages/shared/src/raid";
 import { LOOK_ITEM_BY_ID } from "../../../packages/shared/src/shop";
 import { JOURNEY_ITEM_BY_ID } from "../../../packages/shared/src/journey";
 import type { TownProfile } from "../../../packages/shared/src/town";
-import { fighterAvatar } from "./fighter-art";
-import { framePortrait } from "./portraits";
+import { framedAvatar } from "./portraits";
 import { raidSplashImage } from "./raid-splash-art";
 import "./player-card.css";
 
@@ -40,11 +38,14 @@ export function playerCardMarkup(p: TownProfile) {
   const character = (
     p.character in CHARACTERS ? p.character : "voltkit"
   ) as CharacterId;
-  const stars = frameStars(p.look?.frame, p.raid);
-  const portrait = framePortrait(
-    fighterAvatar(character, `card-${p.id}`, p.skin ?? undefined),
-    p.look?.frame,
-    stars,
+  const portrait = framedAvatar(
+    {
+      character,
+      raidLook: p.look,
+      championLooks: p.skin ? { [character]: p.skin } : {},
+      raidClears: p.raid,
+    },
+    `card-${p.id}`,
   );
   const worn = (
     [

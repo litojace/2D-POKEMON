@@ -1,4 +1,4 @@
-import { portraitAvatar, portraitCosmetics } from "./portraits";
+import { framedAvatar } from "./portraits";
 import { CHARACTERS, type Snapshot } from "@arena/shared";
 import {
   raidChapters,
@@ -361,7 +361,7 @@ export function raidContributions(state: Snapshot) {
         revives: 0,
         pillars: 0,
       };
-      return `<div class="raid-score-row"><div class="raid-score-player"><span class="raid-score-avatar" aria-hidden="true" data-raid-cosmetic="${portraitCosmetics(p)}">${portraitAvatar(p, "raid-result-" + p.id)}</span><span><b>${escape(p.name)}</b><small>${CHARACTERS[p.character].name}${p.out ? " · Left" : ""}${r.standIns?.includes(p.id) ? " · AI stand-in" : ""}</small>${(roles[p.id] ?? []).map((role) => `<em class="raid-role">${role}</em>`).join("")}</span></div><span aria-label="Damage">${Math.round(stats.damage).toLocaleString("en-US")}</span><span aria-label="Revives">${stats.revives}</span><span aria-label="${r.boss === "tidewyrm" ? "Strands" : r.boss === "gloomshade" ? "Lanterns relit" : r.boss === "storm-twins" ? "Polarity pairs" : r.boss === "emberwing" ? "Braziers lit" : r.boss === "prismatail" ? "Light relays" : r.boss === "somnara" ? "Correct runes" : "Pillars broken"}">${stats.pillars}</span></div>`;
+      return `<div class="raid-score-row"><div class="raid-score-player"><span class="raid-score-avatar" aria-hidden="true">${framedAvatar(p, "raid-result-" + p.id)}</span><span><b>${escape(p.name)}</b><small>${CHARACTERS[p.character].name}${p.out ? " · Left" : ""}${r.standIns?.includes(p.id) ? " · AI stand-in" : ""}</small>${(roles[p.id] ?? []).map((role) => `<em class="raid-role">${role}</em>`).join("")}</span></div><span aria-label="Damage">${Math.round(stats.damage).toLocaleString("en-US")}</span><span aria-label="Revives">${stats.revives}</span><span aria-label="${r.boss === "tidewyrm" ? "Strands" : r.boss === "gloomshade" ? "Lanterns relit" : r.boss === "storm-twins" ? "Polarity pairs" : r.boss === "emberwing" ? "Braziers lit" : r.boss === "prismatail" ? "Light relays" : r.boss === "somnara" ? "Correct runes" : "Pillars broken"}">${stats.pillars}</span></div>`;
     })
     .join(
       "",

@@ -274,7 +274,12 @@ function attach(el: HTMLElement) {
         : undefined;
   if (!kind) return;
   // Small identity portraits (headers, nameplates) keep still.
-  if (el.closest(".account-avatar, .player-avatar, .friend-avatar")) return;
+  if (
+    el.closest(
+      ".account-avatar, .player-avatar, .friend-avatar, .raid-party-avatar, .raid-score-avatar, .player-card-portrait",
+    )
+  )
+    return;
   const back = document.createElement("canvas"),
     front = document.createElement("canvas");
   back.className = "fx-live fx-back";

@@ -352,7 +352,14 @@
   animation: tier-orbit 10s linear infinite;
 }
 /* Small identity portraits keep the edge but drop the rays and sparks. */
-:is(.account-avatar, .player-avatar, .friend-avatar)
+:is(
+    .account-avatar,
+    .player-avatar,
+    .friend-avatar,
+    .raid-party-avatar,
+    .raid-score-avatar,
+    .player-card-portrait
+  )
   .raid-cosmetic-preview
   > :is(.tier-rays, .tier-orbit) {
   display: none !important;

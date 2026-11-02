@@ -190,7 +190,10 @@ export const progressSchema = z.object({
       earnedAt: z.string().nullable(),
     }),
   ),
-  fighters: z.record(z.string(), z.object({ matches: z.number(), wins: z.number() })),
+  fighters: z.record(
+    z.string(),
+    z.object({ matches: z.number(), wins: z.number() }),
+  ),
   season: z.object({ id: z.string(), matches: z.number(), wins: z.number() }),
   rating: ratingSchema.optional(),
 });
@@ -256,6 +259,26 @@ export const friendSchema = z.object({
   room: z.string().nullable().optional(),
   joinable: z.boolean().optional(),
   fighter: z.string().nullable().optional(),
+  /** Public equipped appearance, never owned inventory. */
+  look: z
+    .object({
+      skin: z.string().max(80).nullable().optional(),
+      aura: z.string().max(80).nullable().optional(),
+      entrance: z.string().max(80).nullable().optional(),
+      frame: z.string().max(80).nullable().optional(),
+      victory: z.string().max(80).nullable().optional(),
+    })
+    .optional(),
+  championLooks: z
+    .record(
+      z.string(),
+      z.object({
+        skin: z.string().max(80),
+        stage: z.number().int().min(1).max(3),
+      }),
+    )
+    .optional(),
+  raidClears: z.record(z.string(), z.number().int().nonnegative()).optional(),
   /** Verified equipped portrait frame, when appearance is available. */
   frame: z.string().max(80).nullable().optional(),
 });

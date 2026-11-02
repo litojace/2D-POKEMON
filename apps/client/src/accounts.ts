@@ -322,7 +322,7 @@ export class AccountUI {
     const key = JSON.stringify([
       character,
       this.economy?.looks[character] ?? null,
-      this.raidLook?.frame ?? null,
+      this.raidLook ?? null,
       frameStars(this.raidLook?.frame, this.raidClears),
     ]);
     if (avatar.dataset.avatarLook === key) return;

@@ -85,7 +85,7 @@ import {
   fillLiveSeconds,
   fillLiveCountdown,
 } from "./overlay";
-import { fighterArt, fighterAvatar, scopeIds } from "./fighter-art";
+import { fighterArt, scopeIds } from "./fighter-art";
 import { fighterSkillColor, wornArt } from "./skins/skin-art";
 import { drawCollectionAura } from "./skins/collection-fx";
 import { withAura } from "./trait-effects";
@@ -941,6 +941,35 @@ function skinOf(
 ) {
   return looksOf(p)?.[character] ?? null;
 }
+/** The local saved Wardrobe updates immediately; peers use verified snapshots. */
+function identityOf(p: Fighter, character = p.character): Fighter {
+  return p.id === myId && accountsUI?.account
+    ? {
+        ...p,
+        character,
+        raidLook: accountsUI.raidLook ?? p.raidLook,
+        championLooks: looksOf(p),
+        raidClears:
+          accountsUI.raidLook !== undefined
+            ? accountsUI.raidClears
+            : p.raidClears,
+      }
+    : { ...p, character };
+}
+function syncRoomAvatar(avatar: HTMLElement | null | undefined, scope: string) {
+  const me = state?.players.find((p) => p.id === myId);
+  if (!avatar || !me) return;
+  const portrait = identityOf(me, selected);
+  const key = JSON.stringify([
+    portrait.character,
+    portrait.raidLook,
+    portrait.championLooks,
+    portrait.raidClears,
+  ]);
+  if (avatar.dataset.avatarLook === key) return;
+  avatar.innerHTML = framedAvatar(portrait, scope);
+  avatar.dataset.avatarLook = key;
+}
 let lastWornKey = "{}";
 function syncMenuCosmetic() {
   const panel = document.querySelector<HTMLElement>("#menu .roster-panel");
@@ -949,11 +978,6 @@ function syncMenuCosmetic() {
     accountsUI?.account && accountsUI.raidLook !== undefined
       ? accountsUI.raidLook
       : fighter?.raidLook;
-  const worn = portraitCosmetics({
-    character: selected,
-    raidLook: look,
-    championLooks: accountsUI?.economy?.looks ?? fighter?.championLooks,
-  });
   if (panel)
     panel.dataset.raidCosmetic = portraitCosmetics({
       character:
@@ -975,7 +999,11 @@ function syncMenuCosmetic() {
   )
     .find((row) => row.dataset.raidPlayer === myId)
     ?.querySelector<HTMLElement>(".raid-party-avatar");
-  if (avatar) avatar.dataset.raidCosmetic = worn;
+  syncRoomAvatar(avatar, "raid-lobby-" + myId);
+  syncRoomAvatar(
+    document.querySelector<HTMLElement>("#menu [data-me] .player-avatar"),
+    "lobby-self",
+  );
   syncRosterLock();
 }
 /** Move the selection highlight and swap the detail panel without re-rendering. */
@@ -994,14 +1022,7 @@ function showSelection(revealSelection = false) {
       `#${fighter.color.toString(16).padStart(6, "0")}`,
     );
     avatar.title = fighter.name;
-    avatar.innerHTML = fighterAvatar(
-      fighter.id,
-      `lobby${state?.players.findIndex((p) => p.id === myId) ?? 0}`,
-      skinOf(
-        state?.players.find((p) => p.id === myId),
-        fighter.id,
-      ),
-    );
+    syncRoomAvatar(avatar, "lobby-self");
   }
   const raidMe = Array.from(
     document.querySelectorAll<HTMLElement>("#menu [data-raid-player]"),
@@ -1009,15 +1030,7 @@ function showSelection(revealSelection = false) {
   if (raidMe) {
     const avatar = raidMe.querySelector<HTMLElement>(".raid-party-avatar");
     const name = raidMe.querySelector<HTMLElement>(".raid-player-character");
-    if (avatar)
-      avatar.innerHTML = fighterAvatar(
-        selected,
-        "raid-lobby-" + myId,
-        skinOf(
-          state?.players.find((p) => p.id === myId),
-          selected,
-        ),
-      );
+    syncRoomAvatar(avatar, "raid-lobby-" + myId);
     if (name) name.textContent = CHARACTERS[selected].name;
   }
   syncMenuCosmetic();
@@ -1233,7 +1246,7 @@ function watchPanel() {
   const rows = state!.players
     .map((p) => {
       const c = CHARACTERS[p.character];
-      return `<div><span class="player-avatar" style="--element:#${c.color.toString(16).padStart(6, "0")}" title="${c.name}">${framedAvatar({ character: c.id, raidLook: p.raidLook, championLooks: looksOf(p) }, `watch${state!.players.indexOf(p)}`)}</span><span><strong>${escape(p.name)}</strong><small class="player-fighter">${c.name}</small></span><b class="status-pill ${!p.connected ? "offline" : p.ready ? "ready" : "choosing"}">${!p.connected ? "Offline" : p.ready ? "Ready" : "Choosing"}</b></div>`;
+      return `<div><span class="player-avatar" style="--element:#${c.color.toString(16).padStart(6, "0")}" title="${c.name}">${framedAvatar(identityOf(p, c.id), `watch${state!.players.indexOf(p)}`)}</span><span><strong>${escape(p.name)}</strong><small class="player-fighter">${c.name}</small></span><b class="status-pill ${!p.connected ? "offline" : p.ready ? "ready" : "choosing"}">${!p.connected ? "Offline" : p.ready ? "Ready" : "Choosing"}</b></div>`;
     })
     .join("");
   return `<div class="eyebrow">Watching room ${escape(state!.code)}</div><h2>Ringside seat.</h2><p>You'll see the match live as soon as everyone's ready. Watching: ${escape((state!.watchers ?? []).join(", ") || "just you")}.</p><div class="players">${rows}</div>${partyRulesNote()}<button class="secondary btn-secondary full leave-button" id="stop-watching">${iconLabel("stop-watching", "Stop watching")}</button>`;
@@ -1270,10 +1283,15 @@ function partyRules(host: boolean) {
   return `<details class="party-rules"${on.size ? " open" : ""}><summary>Party rules${on.size ? ` · ${on.size} on` : host ? " · optional" : ""}</summary><div class="rule-chips">${chips}</div>${host ? "<small>Only you (the host) can change these. Everyone readies up again after a change.</small>" : ""}</details>`;
 }
 function roomPanel(me: Fighter) {
-  if (state?.raid) return raidLobby(state, myId, selected);
+  if (state?.raid)
+    return raidLobby(
+      { ...state, players: state.players.map((p) => identityOf(p)) },
+      myId,
+      selected,
+    );
   const row = (p: Fighter) => {
     const fighter = CHARACTERS[p.id === myId ? selected : p.character];
-    return `<div${p.id === myId ? " data-me" : ""}><span class="player-avatar" data-raid-cosmetic="${portraitCosmetics({ character: fighter.id, raidLook: p.raidLook, championLooks: looksOf(p) })}" style="--element:#${fighter.color.toString(16).padStart(6, "0")}" title="${fighter.name}">${fighterAvatar(fighter.id, `lobby${state!.players.indexOf(p)}`, skinOf(p, fighter.id))}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small class="player-fighter">${fighter.name}${p.flair ? ` · <b class="flair flair-${p.flair.toLowerCase()}">★ ${p.flair}</b>` : ""}</small></span><b class="status-pill ${!p.connected ? "offline" : p.ready ? "ready" : "choosing"}">${!p.connected ? "Offline" : p.ready ? "Ready" : "Choosing"}</b></div>`;
+    return `<div${p.id === myId ? " data-me" : ""}><span class="player-avatar" style="--element:#${fighter.color.toString(16).padStart(6, "0")}" title="${fighter.name}">${framedAvatar(identityOf(p, fighter.id), `lobby${state!.players.indexOf(p)}`)}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small class="player-fighter">${fighter.name}${p.flair ? ` · <b class="flair flair-${p.flair.toLowerCase()}">★ ${p.flair}</b>` : ""}</small></span><b class="status-pill ${!p.connected ? "offline" : p.ready ? "ready" : "choosing"}">${!p.connected ? "Offline" : p.ready ? "Ready" : "Choosing"}</b></div>`;
   };
   const ready = `<button class="primary btn-primary" id="ready">${me.ready ? iconLabel("cancel", "Cancel ready") : iconLabel("battle", "Ready to battle")}</button><button class="quiet full leave-button" id="leave">${iconLabel("leave", "Leave room")}</button>`;
   const invite = `<button type="button" class="secondary btn-secondary full" id="invite-friends">${iconLabel("add-friend", "Invite friends")}</button>`;
@@ -1684,7 +1702,7 @@ function renderMenu(revealSelection = false) {
   const key = `${isRoom ? `room-${state!.mode ?? "duel"}` : watchingRoom ? `watch-${watching}` : "home"}:${(state?.mutators ?? []).join(",")}|${raidChallenge}|${(state?.watchers ?? []).join(",")}:${state?.players
     .map(
       (p) =>
-        `${p.id}${p.id === myId ? "" : p.character}${p.ready}${p.connected}${p.team ?? ""}${p.flair ?? ""}${raidLookList(p.raidLook)}${Object.values(
+        `${p.id}${p.id === myId ? "" : p.character}${p.ready}${p.connected}${p.team ?? ""}${p.flair ?? ""}${raidLookList(identityOf(p).raidLook)}${JSON.stringify(identityOf(p).raidClears ?? {})}${Object.values(
           looksOf(p) ?? {},
         )
           .map((l) => `${l?.skin}${l?.stage}`)
@@ -5172,6 +5190,7 @@ accountsUI = new AccountUI({
       !!accountsUI?.session,
       accountsUI?.checked,
       accountsUI?.raidLook ?? null,
+      accountsUI?.raidClears ?? null,
       accountsUI?.economy?.looks ?? null,
       accountsUI?.economy?.journey ?? null,
     ]);

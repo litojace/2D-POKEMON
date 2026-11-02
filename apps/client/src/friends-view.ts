@@ -1,11 +1,11 @@
 import { buttonIcon, iconLabel } from "./menu-icons";
-import { fighterAvatar } from "./fighter-art";
-import { framePortrait } from "./portraits";
+import { framePortrait, framedAvatar } from "./portraits";
 import {
   CHARACTERS,
   normalizeCharacterId,
   type CharacterId,
 } from "../../../packages/shared/src/index";
+import type { RaidLoadout } from "../../../packages/shared/src/raid";
 import type { Friend, FriendList } from "../../../packages/shared/src/accounts";
 
 const escape = (s: string) =>
@@ -127,12 +127,36 @@ export function friendCounts(list: FriendList, favorites: ReadonlySet<string>) {
     requests: list.incoming.length + list.outgoing.length,
   };
 }
-function avatar(friend: Pick<Friend, "id" | "name" | "fighter" | "frame">) {
+function avatar(
+  friend: Pick<
+    Friend,
+    | "id"
+    | "name"
+    | "fighter"
+    | "frame"
+    | "look"
+    | "championLooks"
+    | "raidClears"
+  >,
+) {
   const fighter = normalizeCharacterId(friend.fighter);
   const art = fighter
-    ? fighterAvatar(fighter, `friend-${friend.id.replace(/[^a-z0-9]/gi, "")}`)
-    : `<span>${escape(Array.from(friend.name.trim())[0]?.toUpperCase() ?? "?")}</span>`;
-  return `<span class="friend-avatar" aria-hidden="true">${framePortrait(art, friend.frame)}</span>`;
+    ? framedAvatar(
+        {
+          character: fighter,
+          raidLook: (friend.look ?? {
+            frame: friend.frame,
+          }) as RaidLoadout,
+          championLooks: friend.championLooks,
+          raidClears: friend.raidClears,
+        },
+        `friend-${friend.id.replace(/[^a-z0-9]/gi, "")}`,
+      )
+    : framePortrait(
+        `<span>${escape(Array.from(friend.name.trim())[0]?.toUpperCase() ?? "?")}</span>`,
+        friend.look?.frame ?? friend.frame,
+      );
+  return `<span class="friend-avatar" aria-hidden="true">${art}</span>`;
 }
 function requestCards(
   requests: FriendList["incoming"],

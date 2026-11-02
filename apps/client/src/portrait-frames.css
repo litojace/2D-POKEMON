@@ -9,12 +9,6 @@
   min-height: 0;
   overflow: visible;
 }
-.portrait-frame.raid-cosmetic-preview > svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-  border-radius: inherit;
-}
 .friend-avatar:has(> .portrait-frame),
 .player-avatar:has(> .portrait-frame) {
   overflow: visible;
@@ -36,46 +30,46 @@ body:is(.town-active, .lobby-active) #account-profile:has(.portrait-frame) {
   column-gap: 14px;
   padding-left: 12px;
 }
-/* Badge/tassel geometry follows the smaller header portrait, not a 48px preview. */
-.account-avatar .portrait-frame[data-cosmetic="conqueror"]::after {
+/* Ornaments scale with each identity portrait’s size. */
+.portrait-frame[data-cosmetic="conqueror"]::after {
   width: 22%;
   height: 22%;
   bottom: -12%;
 }
-.account-avatar .portrait-frame[data-cosmetic="reef"]::after {
+.portrait-frame[data-cosmetic="reef"]::after {
   width: 25%;
   height: 25%;
   bottom: -14%;
 }
-.account-avatar .portrait-frame[data-cosmetic="crescent"]::after {
+.portrait-frame[data-cosmetic="crescent"]::after {
   width: 29%;
   height: 29%;
   top: -16%;
 }
-.account-avatar .portrait-frame[data-cosmetic="moonglass"]::after {
+.portrait-frame[data-cosmetic="moonglass"]::after {
   width: 27%;
   height: 27%;
   top: 8%;
   right: 6%;
 }
-.account-avatar .portrait-frame[data-cosmetic="galaxy-frame"]::after {
+.portrait-frame[data-cosmetic="galaxy-frame"]::after {
   width: 29%;
   height: 29%;
   right: -14%;
   top: -10%;
 }
-.account-avatar .portrait-frame[data-cosmetic="festival-frame"]::after {
+.portrait-frame[data-cosmetic="festival-frame"]::after {
   width: 8%;
   height: 25%;
   bottom: -27%;
 }
-.account-avatar .portrait-frame[data-cosmetic="garden-frame"]::after {
+.portrait-frame[data-cosmetic="garden-frame"]::after {
   width: 25%;
   height: 17%;
   left: -12%;
   top: -8%;
 }
-.account-avatar .portrait-frame[data-cosmetic="winter-frame"]::after {
+.portrait-frame[data-cosmetic="winter-frame"]::after {
   width: 38%;
   height: 19%;
   bottom: -21%;
@@ -114,4 +108,70 @@ body:is(.town-active, .lobby-active) #account-profile:has(.portrait-frame) {
 .account-avatar .portrait-frame .frame-stars {
   font-size: 7px;
   bottom: -24%;
+}
+
+/* Identity widgets share one circular portrait at every responsive size. */
+:is(
+  .account-avatar,
+  .player-avatar,
+  .raid-party-avatar,
+  .raid-score-avatar,
+  .friend-avatar,
+  .player-card-portrait
+) {
+  border-radius: 50% !important;
+  overflow: visible;
+  flex-shrink: 0;
+  position: relative;
+  aspect-ratio: 1;
+}
+:is(
+  .account-avatar,
+  .player-avatar,
+  .raid-party-avatar,
+  .raid-score-avatar,
+  .friend-avatar,
+  .player-card-portrait
+):has(> .portrait-frame) {
+  border-color: transparent;
+  background: transparent;
+}
+.raid-cosmetic-preview:is(.portrait-frame, [data-frame-stars]) {
+  border-radius: 50% !important;
+}
+.portrait-disc {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  isolation: isolate;
+  background: radial-gradient(circle at 50% 40%, #28486b, #0b1428 85%);
+}
+.portrait-frame > .portrait-disc {
+  position: relative;
+  z-index: 1;
+}
+.portrait-disc > :is(svg, img) {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.portrait-frame .frame-stars {
+  font-size: 7px;
+  letter-spacing: 0.2px;
+}
+.player-card-portrait .frame-stars {
+  font-size: 9px;
+}
+/* Extra room below the circle keeps badges/stars away from the next row. */
+.raid-party-member:has(.frame-stars),
+.raid-score-row:has(.frame-stars) {
+  min-height: 58px;
+}
+.player-card-head:has(.frame-stars) {
+  padding-bottom: 14px;
 }

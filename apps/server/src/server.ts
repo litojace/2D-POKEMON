@@ -1,3 +1,4 @@
+import { FighterAppearance, PortraitChoice } from "./fighter-appearance.js";
 import { PresenceHistory } from "./presence-history.js";
 import { apiCors } from "./api-cors.js";
 import { ArcadeArena } from "./arcade.js";
@@ -16,7 +17,6 @@ import {
   RAID_COSMETICS,
   raidAttacksOf,
   type RaidAttack,
-  raidLookOf,
   pacificDate,
   raidWeek,
   RAID,
@@ -132,6 +132,8 @@ export function createArenaServer(
 ) {
   const app = express();
   const accounts = options.accounts ?? createAccountProvider();
+  const fighterAppearance = new FighterAppearance(accounts);
+  const portraitChoice = new PortraitChoice(accounts);
   app.use("/api", apiCors(process.env.CLIENT_ORIGIN));
   app.use(express.json({ limit: "4kb" }));
   const http = createServer(app);
@@ -219,27 +221,17 @@ export function createArenaServer(
         fighter.title = account.title;
         fighter.titleColor = account.titleColor;
       }
-      if (fighter) {
-        try {
-          const progress = (await accounts.rpc(
-            socket.data.accessToken,
-            "arena_raid_progress",
-            {},
-          )) as RaidProgress;
-          fighter.raidLook = raidLookOf(progress);
-        } catch {
-          /* Optional until migration 007 is configured. */
-        }
-        try {
-          fighter.championLooks = (await accounts.rpc(
-            socket.data.accessToken,
-            "arena_my_looks",
-            {},
-          )) as Fighter["championLooks"];
-        } catch {
-          /* Optional until migration 010 is configured. */
-        }
-      }
+      if (fighter && arena)
+        await fighterAppearance.refresh(
+          fighter,
+          socket.data.accessToken,
+          () =>
+            ownsConnection(socket) &&
+            getSession(socket.id)?.code === arena.code &&
+            arena.players.includes(fighter),
+          () => {},
+        );
+      if (!ownsConnection(socket)) return;
       if (arena && fighter) broadcast(arena);
       const visitor = town.profileOf(socket.id);
       if (visitor) {
@@ -313,8 +305,24 @@ export function createArenaServer(
         online: true,
         activity: me.activity,
         room: me.room,
-        fighter: me.fighter ?? visitor?.character ?? null,
-        ...(look !== undefined ? { frame: look.frame ?? null } : {}),
+        ...((me.fighter ?? visitor?.character)
+          ? { fighter: me.fighter ?? visitor?.character }
+          : {}),
+        ...(look !== undefined ? { frame: look.frame ?? null, look } : {}),
+        ...(fighter?.championLooks !== undefined
+          ? { championLooks: fighter.championLooks }
+          : visitor?.look !== undefined
+            ? {
+                championLooks: visitor.skin
+                  ? { [visitor.character]: visitor.skin }
+                  : {},
+              }
+            : {}),
+        ...(fighter?.raidClears !== undefined
+          ? { raidClears: fighter.raidClears }
+          : visitor?.raid !== undefined
+            ? { raidClears: visitor.raid }
+            : {}),
         joinable:
           !!arena &&
           arena.phase === "lobby" &&
@@ -882,25 +890,16 @@ export function createArenaServer(
       sessions.set(token, session);
       socketSessions.set(socket.id, session);
       const attached = arena.players.find((p) => p.id === id);
-      void accounts
-        .rpc(socket.data.accessToken, "arena_raid_progress", {})
-        .then((value) => {
-          if (attached) {
-            attached.raidLook = raidLookOf(value as RaidProgress);
-            broadcast(arena);
-          }
-        })
-        .catch(() => {});
-      // Equipped Shop skins (migration 010); the client shows the one for the champion in play.
-      void accounts
-        .rpc(socket.data.accessToken, "arena_my_looks", {})
-        .then((value) => {
-          if (attached) {
-            attached.championLooks = value as Fighter["championLooks"];
-            broadcast(arena);
-          }
-        })
-        .catch(() => {});
+      if (attached)
+        void fighterAppearance.refresh(
+          attached,
+          socket.data.accessToken,
+          () =>
+            ownsConnection(socket) &&
+            getSession(socket.id) === session &&
+            arena.players.includes(attached),
+          () => broadcast(arena),
+        );
       socket.join(arena.code);
       reply(cb, { ok: true, id, token, code: arena.code });
       if (publish) broadcast(arena);
@@ -1321,6 +1320,13 @@ export function createArenaServer(
         const p = a.players.find((p) => p.id === id)!;
         if (p.character !== result.data) p.flair = undefined;
         p.character = result.data;
+        const owner = account();
+        if (owner && !owner.guest)
+          void portraitChoice.save(
+            owner.id,
+            socket.data.accessToken,
+            result.data,
+          );
         p.ready = false;
         reply(cb, { ok: true });
         broadcast(a);
@@ -1686,6 +1692,8 @@ export function createArenaServer(
       });
       reply(cb, { ok: true, town: walker.town, me: walker.profile.id });
       lookUpTownProfile(true);
+      if (!me.guest)
+        void portraitChoice.save(me.id, socket.data.accessToken, parsed.data);
     });
     /** Saved champion skin and wardrobe slots follow the town join or look change. */
     const lookUpTownProfile = (level: boolean) => {
@@ -1700,8 +1708,16 @@ export function createArenaServer(
         (data as { character?: unknown } | null)?.character,
       );
       if (!parsed.success) return fail(cb, "Choose a fighter first.");
-      if (town.profileOf(socket.id)?.character !== parsed.data)
+      if (town.profileOf(socket.id)?.character !== parsed.data) {
         town.updateProfile(socket.id, { character: parsed.data, skin: null });
+        const owner = account();
+        if (owner && !owner.guest)
+          void portraitChoice.save(
+            owner.id,
+            socket.data.accessToken,
+            parsed.data,
+          );
+      }
       lookUpTownProfile(false);
       reply(cb, { ok: true });
     });
