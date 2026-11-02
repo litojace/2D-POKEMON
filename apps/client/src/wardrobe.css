@@ -68,7 +68,9 @@ dialog.wardrobe-dialog > .dialog-content {
 }
 .wardrobe-showcase {
   min-width: 0;
-  overflow: auto;
+  /* Only scroll vertically. A frame's turning sparks and rays briefly reach
+     past the column edge, which made a horizontal scrollbar blink. */
+  overflow: hidden auto;
   padding: 0 18px 16px;
   border-right: 1px solid var(--line);
 }
@@ -247,11 +249,11 @@ dialog.wardrobe-dialog > .dialog-content {
   font-size: 12px;
   color: var(--text-dim);
 }
-.wardrobe-inventory-heading > button {
+/* Visit Shop mirrors the Shop's Wardrobe button. */
+.wardrobe-inventory-heading > [data-wardrobe-shop] {
   margin-left: auto;
+  flex: none;
   min-height: 44px;
-  font-size: 13px;
-  padding: 4px 6px;
 }
 .wardrobe-grid {
   display: grid;

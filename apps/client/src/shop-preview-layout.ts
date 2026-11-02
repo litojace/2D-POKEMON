@@ -1,7 +1,4 @@
-import {
-  WORLD_ART,
-  groundHeight,
-} from "../../../packages/shared/src/world-art";
+import { WORLD_ART } from "../../../packages/shared/src/world-art";
 /** Shared framing for the static loading art and the battle rig. */
 export const SHOP_PREVIEW = {
   width: 400,
@@ -48,15 +45,26 @@ export function previewViewBox(
   ].join(" ");
 }
 
-/** Keep the whole projected aura inside the frame, beneath the same foot line. */
-export function previewAuraScale(frame: {
-  height: number;
-  y: number;
-  scale: number;
-}) {
+/** The fitting room's contact shadow at the fighter's feet, in canvas pixels. */
+export const SHOP_SHADOW = { width: 128, height: 26 } as const;
+/** Ground plane of the fitting room: the shadow's own flatness. */
+export const SHOP_GROUND_FLAT = SHOP_SHADOW.height / SHOP_SHADOW.width;
+
+/**
+ * Auras lie on the same plane as the shadow (SHOP_GROUND_FLAT), a ring wider
+ * than it, and the whole projected aura stays inside the frame.
+ */
+export function previewAuraScale(
+  frame: {
+    height: number;
+    y: number;
+    scale: number;
+  },
+  flat: number = SHOP_GROUND_FLAT,
+) {
   const feet = frame.y + WORLD_ART.fighterFeet * frame.scale;
   return Math.min(
     frame.scale / 1.2,
-    Math.max(0.1, ((frame.height - feet - 12) * 2) / groundHeight(128)),
+    Math.max(0.1, ((frame.height - feet - 12) * 2) / (128 * flat)),
   );
 }

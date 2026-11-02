@@ -23,6 +23,8 @@ import {
   shopPreviewZoom,
   previewViewBox,
   previewAuraScale,
+  SHOP_SHADOW,
+  SHOP_GROUND_FLAT,
 } from "./shop-preview-layout";
 
 export type PreviewPlacement = "shop" | "selection";
@@ -392,25 +394,34 @@ export function mountShopPreview(
       const zoom = cameraZoom();
       const worldWidth = framing.width / zoom;
       const top = framing.cameraY - viewportHeight / (2 * zoom);
-      // The soft beam enters above the full stage's upper-right corner.
-      // Its footprint stays on the same plane as the fighter's shadow.
+      // The soft beam enters above the full stage's upper-right corner and
+      // pools on the floor around the fighter's shadow. Each layer is one
+      // shape (beam plus the lower half of its pool), so the pool has one
+      // even tone; drawn separately, the beam doubled the light above the
+      // foot line only.
       const source = framing.x + worldWidth * 0.55;
       for (let i = 0; i < 24; i++) {
         const fade = 1 - i / 24;
-        this.floor.fillStyle(0xffdc85, 0.019).fillPoints(
+        const rx = 110 * fade,
+          ry = rx * SHOP_GROUND_FLAT;
+        const pool: { x: number; y: number }[] = [];
+        for (let a = -60; a <= 240; a += 10)
+          pool.push({
+            x: framing.x + Math.cos((a * Math.PI) / 180) * rx,
+            y: feet + Math.sin((a * Math.PI) / 180) * ry,
+          });
+        this.floor.fillStyle(0xffdc85, 0.028).fillPoints(
           [
             { x: source - worldWidth * 0.28 * fade, y: top - 40 },
             { x: source + worldWidth * 0.28 * fade, y: top - 40 },
-            { x: framing.x + 110 * fade, y: feet },
-            { x: framing.x - 110 * fade, y: feet },
+            ...pool,
           ],
           true,
         );
-        this.floor
-          .fillStyle(0xffdc85, 0.022)
-          .fillEllipse(framing.x, feet, 220 * fade, 42 * fade);
       }
-      this.floor.fillStyle(0x040d20, 0.4).fillEllipse(framing.x, feet, 128, 26);
+      this.floor
+        .fillStyle(0x040d20, 0.4)
+        .fillEllipse(framing.x, feet, SHOP_SHADOW.width, SHOP_SHADOW.height);
     }
     update(_time: number, delta: number) {
       if (
@@ -450,12 +461,12 @@ export function mountShopPreview(
       this.aura.clear();
       this.auraFront.clear();
       const auraId = look.aura;
-      // In the roster the aura lies on the artwork's own shadow: same centre,
-      // same flatness, a ring a little wider than the shadow.
+      // The aura lies on the fighter's own shadow: same centre, same
+      // flatness, a ring a little wider than the shadow.
       let auraScale = previewAuraScale(framing),
         auraX = x,
         auraY = y + WORLD_ART.fighterFeet * framing.scale,
-        flat: number = WORLD_ART.groundY,
+        flat: number = SHOP_GROUND_FLAT,
         lift: number | undefined;
       if (selection) {
         const shadow = menuShadow(champion);

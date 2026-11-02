@@ -574,9 +574,11 @@
     padding-block: 0 !important;
     font-size: 14px !important;
   }
-  .wardrobe-inventory-heading :is(a, button) {
-    min-height: 30px;
-    font-size: 12px;
+  /* Same compact size as the Shop's Wardrobe button. */
+  .wardrobe-inventory-heading > [data-wardrobe-shop] {
+    min-height: 32px;
+    padding: 4px 10px;
+    font-size: 13px;
   }
 }
 

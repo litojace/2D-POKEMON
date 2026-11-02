@@ -25,6 +25,12 @@ Victory selections immediately replay the complete outfit's real effects in both
 Wardrobe and Shop; the smaller item tiles still display the effect alone.
 Original skins remain available.
 
+In both fitting rooms an aura lies on the fighter's shadow plane: it shares the
+shadow's centre and flatness and is a ring wider than it. The stage light pools
+on the floor in one even tone. The **Visit Shop** button uses the same style as
+the Shop's **Wardrobe** button. The preview column scrolls vertically only, so a
+frame's turning sparks never flash a horizontal scrollbar.
+
 Shop previews keep the same image size across all categories and Mythical stages.
 Compact I/II/III controls and a requirements popover leave room for the model and
 purchase actions, including on short landscape screens.
