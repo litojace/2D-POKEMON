@@ -437,6 +437,9 @@ export function createArenaServer(
   );
   app.use(
     express.static(client, {
+      // The build puts copies of the game page at old auth paths for the
+      // Static Site; here the catch-all below serves them, with no redirect.
+      redirect: false,
       setHeaders(res, file) {
         if (
           /[/\\](sw\.js|manifest\.webmanifest|index\.html|offline\.html)$/.test(

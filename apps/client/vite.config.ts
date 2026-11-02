@@ -1,7 +1,44 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
+import { copyFileSync, mkdirSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { LEGACY_AUTH_PATHS } from "./src/auth-redirect";
+
+/**
+ * Emails sent before auth links moved to `/?auth=…` still point at
+ * `/email-confirmed`, `/reset-password` and `/auth/callback`. The Static Site
+ * has no rewrite rule for them (and a blanket `/*` rewrite would answer
+ * missing scripts with HTML), so put the game page at those paths instead:
+ * `<path>/index.html` and `<path>.html`, whichever form the host resolves.
+ * The app reads the path itself (`readAuthReturn`), and every asset URL is
+ * absolute, so the copy works at any depth.
+ */
+function legacyAuthPages(): Plugin {
+  let outDir = "dist";
+  return {
+    name: "legacy-auth-pages",
+    apply: "build",
+    configResolved(config) {
+      outDir = resolve(config.root, config.build.outDir);
+    },
+    closeBundle() {
+      const page = join(outDir, "index.html");
+      for (const path of LEGACY_AUTH_PATHS) {
+        for (const file of [
+          join(outDir, path, "index.html"),
+          join(outDir, `${path}.html`),
+        ]) {
+          mkdirSync(dirname(file), { recursive: true });
+          copyFileSync(page, file);
+        }
+      }
+    },
+  };
+}
+
 export default defineConfig({
   plugins: [
+    legacyAuthPages(),
     VitePWA({
       strategies: "injectManifest",
       srcDir: "src",

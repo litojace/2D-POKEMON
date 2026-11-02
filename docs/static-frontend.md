@@ -37,19 +37,16 @@ Render's custom-domain/DNS instructions. Keep the backend `.onrender.com` URL in
 `VITE_SERVER_URL`; do not point it back at the static domain. Keep the Web Service
 running for API/gameplay. Set Static Site cache headers for `/sw.js`,
 `/index.html` and `/manifest.webmanifest` to `Cache-Control: no-cache`, so installed
-clients can discover updates. Under **Redirects/Rewrites**, add these three
-**Rewrite** rules (each destination is `/index.html`):
+clients can discover updates.
 
-| Source             | Destination   | Action  |
-| ------------------ | ------------- | ------- |
-| `/email-confirmed` | `/index.html` | Rewrite |
-| `/reset-password`  | `/index.html` | Rewrite |
-| `/auth/callback`   | `/index.html` | Rewrite |
-
-New auth emails return to `/?auth=…` on the site root, which needs no rule;
-these rewrites keep links from older emails working. They serve the app at the
-old callback paths while preserving the URL for Supabase. Do not add a blanket `/*` SPA rewrite: missing JS must return 404,
-not HTML. Verify the three callback paths return the app on the final domain.
+New auth emails return to `/?auth=…` on the site root. Links in older emails
+still point at `/email-confirmed`, `/reset-password` and `/auth/callback`; the
+client build copies `index.html` to each of those paths (`<path>/index.html` and
+`<path>.html`, see `apps/client/vite.config.ts`), so the Static Site serves the
+app there with **no Redirects/Rewrites rule**, and `scripts/verify-pwa.mjs`
+checks the copies exist. Do not add a blanket `/*` SPA rewrite: missing JS must
+return 404, not HTML. Verify the three callback paths return the app on the
+final domain.
 
 ## Startup behavior
 
