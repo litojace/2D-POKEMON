@@ -405,7 +405,9 @@ export function mountShopPreview(
         const rx = 110 * fade,
           ry = rx * SHOP_GROUND_FLAT;
         const pool: { x: number; y: number }[] = [];
-        for (let a = -60; a <= 240; a += 10)
+        // The cone's edges land on the pool's widest points (0° and 180°),
+        // so the light spreads as wide as the gold pool on the floor.
+        for (let a = 0; a <= 180; a += 10)
           pool.push({
             x: framing.x + Math.cos((a * Math.PI) / 180) * rx,
             y: feet + Math.sin((a * Math.PI) / 180) * ry,

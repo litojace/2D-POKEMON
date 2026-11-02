@@ -583,6 +583,21 @@ const frames = [
   },
 ];
 
+/** Mythic: four twinkling star flares on the diagonals (orbit box). */
+const flare = svg(
+  [
+    [19, 19],
+    [81, 19],
+    [81, 81],
+    [19, 81],
+  ]
+    .map(
+      ([x, y]) =>
+        `<circle cx='${x}' cy='${y}' r='4.5' fill='#fff' opacity='.35'/><path d='M${x} ${y - 8}Q${x + 1} ${y - 1} ${x + 8} ${y}Q${x + 1} ${y + 1} ${x} ${y + 8}Q${x - 1} ${y + 1} ${x - 8} ${y}Q${x - 1} ${y - 1} ${x} ${y - 8}Z' fill='#fff'/>`,
+    )
+    .join(""),
+  "0 0 100 100",
+);
 const ids = frames.map((x) => `[data-cosmetic="${x.id}"]`).join(", ");
 const all = `.raid-cosmetic-preview:is(${ids})`;
 let css = `/* Raid boss portrait frames. Each boss has its own silhouette, palette and
@@ -649,7 +664,13 @@ ${all}[data-tier="mythic"] > .tier-fx {
     0 0 32px var(--frame-a),
     inset 0 0 8px #ffffffaa;
 }
-${all}:is([data-tier="legendary"], [data-tier="mythic"]) > .tier-orbit {
+${all}[data-tier="legendary"] > .tier-orbit {
+  background:
+    radial-gradient(circle at 50% 8%, #fffbe8 0 2.4%, transparent 4%),
+    radial-gradient(circle at 92% 50%, var(--frame-a) 0 1.8%, transparent 3.2%),
+    radial-gradient(circle at 20% 80%, var(--frame-c) 0 1.5%, transparent 2.8%);
+}
+${all}[data-tier="mythic"] > .tier-orbit {
   background:
     radial-gradient(circle at 50% 8%, #fffbe8 0 2.4%, transparent 4%),
     radial-gradient(circle at 92% 50%, var(--frame-a) 0 1.8%, transparent 3.2%),
@@ -673,6 +694,58 @@ ${all}[data-tier="mythic"] > .tier-rays {
     var(--frame-ray2) 15deg 20deg,
     transparent 20deg 30deg
   );
+}
+/* ── Mythic (five stars) goes beyond Legendary ──
+   a white comet races round the edge, a rune ring turns the other way
+   outside the frame, the boss's colours breathe behind it, four star
+   flares twinkle on the diagonals and the ring art itself burns brighter. */
+${all}[data-tier="mythic"]::before {
+  filter: saturate(1.3) brightness(1.12) drop-shadow(0 0 3px var(--frame-glow));
+}
+${all}[data-tier="mythic"] > .tier-fx {
+  background:
+    conic-gradient(from var(--tier-turn), transparent 0 290deg, #ffffffcc 340deg, #fff 352deg, transparent 360deg),
+    conic-gradient(from var(--tier-turn), var(--frame-a), var(--frame-b), var(--frame-c), var(--frame-d), var(--frame-a));
+}
+${all}[data-tier="mythic"] > .tier-orbit::before,
+${all}[data-tier="mythic"] > .tier-orbit::after,
+${all}[data-tier="mythic"] > .tier-rays::before {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+/* The orbit turns once every 3s; these children undo or reverse that. */
+${all}[data-tier="mythic"] > .tier-orbit::before {
+  inset: -10%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle closest-side, transparent 0 91%, var(--frame-b) 91.5% 92.5%, transparent 93%),
+    repeating-conic-gradient(var(--frame-a) 0 2.5deg, transparent 2.5deg 9deg, var(--frame-b) 9deg 11deg, transparent 11deg 18deg);
+  -webkit-mask: radial-gradient(circle closest-side, transparent 0 90%, #000 90.5% 98.5%, transparent 99%);
+  mask: radial-gradient(circle closest-side, transparent 0 90%, #000 90.5% 98.5%, transparent 99%);
+  opacity: 0.9;
+  animation: tier-orbit 2.4s linear infinite reverse;
+}
+${all}[data-tier="mythic"] > .tier-orbit::after {
+  inset: 0;
+  background: center / 100% 100% no-repeat ${uri(flare)};
+  animation:
+    tier-orbit 3s linear infinite reverse,
+    frame-twinkle 1.4s ease-in-out infinite alternate;
+}
+${all}[data-tier="mythic"] > .tier-rays::before {
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle closest-side, transparent 58%, var(--frame-glow) 68%, transparent 84%);
+  animation: frame-breathe 2.4s ease-in-out infinite alternate;
+}
+@keyframes frame-twinkle {
+  from { opacity: 0.35; }
+  to { opacity: 1; }
+}
+@keyframes frame-breathe {
+  from { opacity: 0.35; }
+  to { opacity: 1; }
 }
 @keyframes frame-flash {
   0%, 70%, 78%, 100% { opacity: 1; }
@@ -699,7 +772,10 @@ ${all}[data-tier="mythic"] > .tier-rays {
   to { translate: 4% -6%; }
 }
 @media (prefers-reduced-motion: reduce) {
-  ${all}::after {
+  ${all}::after,
+  ${all} > .tier-orbit::before,
+  ${all} > .tier-orbit::after,
+  ${all} > .tier-rays::before {
     animation: none !important;
   }
 }
