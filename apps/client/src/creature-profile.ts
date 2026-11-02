@@ -214,7 +214,22 @@ export function creatureProfile(
     );
   const eyes = (x = 80, ring = p.glow, w = 8.3, h = 10.2) =>
     `<g class="profile-near-eye">${eye(x, ring, w, h)}</g>`;
-  const grin = (x = 66, y = 108) => line(`M${x} ${y}q2.5 2 5 -.5`, p.dark, 1.6);
+  // The side view of each champion's own mouth (see MOUTHS in creature-design.ts).
+  const grin = (x = 66, y = 108) => {
+    if (id === "voltkit")
+      return `${path(`M${x - 1} ${y - 1.5}q3.5 -1 7 0q-1 6 -3.8 6q-2.6 0 -3.2 -6Z`, "#1b1636", ' stroke="none"')}${e(x + 2.6, y + 2.6, 2, 1.4, "#ff7d9c", ' stroke="none"')}`;
+    if (id === "cindrake")
+      return `${line(`M${x - 1} ${y + 0.5}q3.5 2.5 7.5 -2`, p.dark, 1.6)}${path(`M${x + 1} ${y + 1.4}l1 3l1.2 -2.6Z`, "#ffffff", ` stroke="${p.dark}" stroke-width=".8"`)}`;
+    if (id === "tidefin")
+      return line(`M${x - 3} ${y - 1.5}q5 5 10 -1`, p.dark, 1.8);
+    if (id === "auralynx")
+      return `${path(`M${x - 0.5} ${y - 4}h4l-2 2.4Z`, "#ff9fc0", ` stroke="${p.dark}" stroke-width=".8"`)}${line(`M${x} ${y}q1.5 2 3 0q1.5 2 3 0`, p.dark, 1.5)}`;
+    if (id === "lumoth")
+      return e(x + 2.5, y + 0.5, 2, 2.6, "#1b1636", ' stroke="none"');
+    if (id === "terradon")
+      return line(`M${x - 1} ${y}q3.5 3.5 7 0`, p.dark, 1.7);
+    return line(`M${x} ${y}q2.5 2 5 -.5`, p.dark, 1.6);
+  };
   const profiles: Record<CreaturePart, string> = {
     tail: "",
     wings: "",

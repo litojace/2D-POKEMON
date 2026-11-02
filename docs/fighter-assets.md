@@ -30,9 +30,28 @@ the face parts (head, ears, eyes, crest) up from just above the chin and the
 body and limbs down toward the feet. The scale is baked into every part, and
 `animation/assets.ts` maps each part's crop box and pivot through the same
 transform (`proportioned()`), so author new art in the original 200x190 space
-and the rig stays attached. Faces share big sparkly eyes, small `:3` mouths and
-blush, including Terradon's two pink cheeks. Duskveil keeps its void face with
-round glowing eyes.
+and the rig stays attached.
+
+Every champion has its own face, so they read apart at a glance and not only by
+colour. `EYE_STYLE` in `creature-design.ts` picks the eye shape and the `MOUTHS`
+table the mouth; cheeks vary too. The side views reuse the same eye and a
+matching mouth (`grin()` in `creature-profile.ts`).
+
+| Fighter  | Personality | Face                                                                |
+| -------- | ----------- | ------------------------------------------------------------------- |
+| Voltkit  | Hyper       | Star-shaped catchlights, open grin with a tongue                    |
+| Cindrake | Cocky       | Lids tipped toward the nose, ember glint, fang smirk, blush slashes |
+| Tidefin  | Chill       | Small wide-set eyes, wide axolotl smile, freckles                   |
+| Auralynx | Calm        | Almond eyes with slit pupils, cat nose and `ω` mouth, whiskers      |
+| Lumoth   | Dreamy      | Dewy eyes with lashes and a lower shine, tiny `o` mouth             |
+| Mystowl  | Mystic      | Concentric ring eyes over its beak                                  |
+| Terradon | Sleepy      | Drowsy half-lowered lids, soft smile, two pink cheeks               |
+| Duskveil | Spooky      | Void face with round glowing eyes                                   |
+
+The happy, hurt and dizzy moods still use the shared expression shapes, the
+focus mood adds a brow over each champion's own eye, and blinking squashes the
+eyes texture as before. Keep new eye details inside the eyes crop box
+(`animation/assets.ts`: x 52–148, y 68–112 in the 200x190 space).
 
 Each fighter also has a trait aura built from its element:
 
