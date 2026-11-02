@@ -16,7 +16,9 @@ three and Mythical at five.
 
 The account header and own lobby portrait update immediately from the saved
 Wardrobe. Peers use server-authenticated appearance reads in `FighterAppearance`.
-These load wardrobe slots, champion skins and clear counts together, ignore older
+Raid reward saves refresh these portraits immediately, including a newly earned
+star. A refresh loads wardrobe slots, champion skins and clear counts together,
+ignores older
 responses and departed rooms, preserve verified gear during provider failures,
 and explicitly clear unequipped items. Appearance metadata survives ordinary
 battle snapshots, including all aura/entrance/victory slots already consumed by

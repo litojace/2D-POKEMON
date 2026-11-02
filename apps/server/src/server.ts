@@ -635,8 +635,12 @@ export function createArenaServer(
           if (arena.raid.resultId !== runId) return;
           r.rewardStatus = "saved";
           for (const socket of io.sockets.sockets.values())
-            if (players.some((p) => p.accountId === socket.data.account?.id))
+            if (players.some((p) => p.accountId === socket.data.account?.id)) {
               socket.emit("account-changed");
+              // New frame stars must reach peers/results as soon as the clear
+              // is saved, rather than waiting for the periodic profile refresh.
+              void refreshSocket(socket);
+            }
           broadcast(arena);
         })
         .catch(() => {

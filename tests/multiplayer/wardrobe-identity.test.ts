@@ -1,6 +1,7 @@
 import { afterEach, expect, it } from "vitest";
 import { io, type Socket } from "socket.io-client";
 import { createArenaServer } from "../../apps/server/src/server";
+import type { RaidArena } from "../../apps/server/src/raid";
 import { fakeAccounts } from "../helpers/accounts";
 import type { Reply, Snapshot } from "../../packages/shared/src/index";
 let server: ReturnType<typeof createArenaServer> | undefined;
@@ -30,7 +31,11 @@ it("keeps saved wardrobe appearance identical in snapshots, parties and live fri
     string,
     { skin: string; stage: number }
   >;
-  let chosen = "voltkit";
+  let chosen = "voltkit",
+    clears = 50;
+  f.provider.recordRaid = async () => {
+    clears = 60;
+  };
   f.provider.rpc = async (token, name, args) => {
     if (name === "arena_friends")
       return {
@@ -50,7 +55,7 @@ it("keeps saved wardrobe appearance identical in snapshots, parties and live fri
         outgoing: [],
       };
     if (name === "arena_raid_progress")
-      return { loadout: look, bosses: { grumblecrag: { clears: 50 } } };
+      return { loadout: look, bosses: { grumblecrag: { clears } } };
     if (name === "arena_my_looks") return looks;
     if (name === "arena_set_portrait_character") {
       expect(token).toBe(owner.token);
@@ -124,4 +129,18 @@ it("keeps saved wardrobe appearance identical in snapshots, parties and live fri
     look: { frame: null, skin: null },
     championLooks: {},
   });
+  const raid = server.rooms.get(room.code!) as RaidArena;
+  raid.phase = "finished";
+  raid.raid.result = "victory";
+  raid.raid.resultId = "22222222-2222-4222-8222-222222222222";
+  raid.raid.elapsed = 40;
+  server.broadcast(raid);
+  await expect
+    .poll(
+      () =>
+        snapshot?.players.find((p) => p.id === room.id)?.raidClears
+          ?.grumblecrag,
+    )
+    .toBe(60);
+  expect((await list()).raidClears.grumblecrag).toBe(60);
 });
