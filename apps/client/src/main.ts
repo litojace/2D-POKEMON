@@ -49,6 +49,11 @@ import {
   type LobbyHandle,
   type LobbyMode,
 } from "./lobby-screen";
+import { openFarmScreen, type FarmScreen } from "./farm/farm-screen";
+import type {
+  FarmActResult,
+  FarmState,
+} from "../../../packages/shared/src/farm";
 import {
   saveHubScene,
   savedHubScene,
@@ -1598,6 +1603,7 @@ function syncTown() {
   syncHubScenes(hub);
   syncParty();
   syncLobby(hub && hubScene === "lobby");
+  syncFarm(hub && hubScene === "farm");
   const want = hub && hubScene === "plaza";
   if (!want) {
     if (town) {
@@ -1770,6 +1776,33 @@ function syncLobby(want: boolean) {
   }
   lobby.update(lobbyView());
 }
+/** The Farm scene (hub redesign phase 4): server state, server time. */
+let farmScreen: FarmScreen | undefined;
+function syncFarm(want: boolean) {
+  if (!want) {
+    farmScreen?.close();
+    farmScreen = undefined;
+    return;
+  }
+  if (farmScreen) return;
+  farmScreen = openFarmScreen({
+    reduced: reducedMotion,
+    load: async () => (await accountsUI.api("/api/farm")) as FarmState,
+    act: async (actions) =>
+      (await accountsUI.api("/api/farm/act", {
+        request: crypto.randomUUID(),
+        actions,
+      })) as FarmActResult,
+    trade: async (lots) => {
+      await accountsUI.api("/api/leaves/trade", { lots });
+      await accountsUI.loadEconomy();
+    },
+    toast,
+    playerName: () => accountsUI.account?.displayName ?? "Your",
+    economy: () => accountsUI.economy ?? undefined,
+    onLeaves: (balance) => accountsUI.setLeaves(balance),
+  });
+}
 /** Menu, cards and party slots on the Lobby. */
 function lobbyAction(action: LobbyAction) {
   audio.unlock();
@@ -1783,6 +1816,7 @@ function lobbyAction(action: LobbyAction) {
   else if (action === "ranks") $("leaderboard").click();
   else if (action === "invite") void showPartyInvite();
   else if (action === "leave-party") void request("party-leave");
+  else if (action === "farm") setHubScene("farm");
   else void accountsUI.showFriends();
 }
 /** PLAY: the remembered mode, through the same controls as the Play panel. */
@@ -5487,6 +5521,7 @@ function syncBattleLoop() {
 }
 accountsUI = new AccountUI({
   selectedCharacter: () => selected,
+  openFarm: () => setHubScene("farm"),
   openDialog: dialog,
   startRaid: (boss, options) => void startRaid(boss, options),
   startAdventure: (mode) => void startAdventure(mode),

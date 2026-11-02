@@ -19667,7 +19667,7 @@ body.battle-active:not(.touch-mode) #battle.desktop-hud-outside .enemy-bearing {
    into the menu; the logo hides (the town is the brand). */
 body.town-active .topbar,
 body.lobby-active .topbar,
-body.hub-lobby .topbar {
+body.hub-screen .topbar {
   position: fixed;
   top: 0;
   left: 0;
@@ -19684,23 +19684,23 @@ body.hub-lobby .topbar {
 }
 body.town-active .topbar > *,
 body.lobby-active .topbar > *,
-body.hub-lobby .topbar > *,
+body.hub-screen .topbar > *,
 body.town-active .top-links > *,
 body.lobby-active .top-links > *,
-body.hub-lobby .top-links > * {
+body.hub-screen .top-links > * {
   pointer-events: auto;
 }
 body.town-active .brand,
 body.lobby-active .brand,
-body.hub-lobby .brand,
+body.hub-screen .brand,
 body.town-active #account-logout,
 body.lobby-active #account-logout,
-body.hub-lobby #account-logout {
+body.hub-screen #account-logout {
   display: none;
 }
 body.town-active .top-links,
 body.lobby-active .top-links,
-body.hub-lobby .top-links {
+body.hub-screen .top-links {
   flex: 1;
   display: flex;
   justify-content: space-between;
@@ -19710,7 +19710,7 @@ body.hub-lobby .top-links {
 }
 body.town-active .account-nav,
 body.lobby-active .account-nav,
-body.hub-lobby .account-nav {
+body.hub-screen .account-nav {
   flex: 1;
   display: flex;
   align-items: flex-start;
@@ -19720,13 +19720,13 @@ body.hub-lobby .account-nav {
 }
 body.town-active .account-nav > *,
 body.lobby-active .account-nav > *,
-body.hub-lobby .account-nav > * {
+body.hub-screen .account-nav > * {
   pointer-events: auto;
 }
 /* Player card. */
 body.town-active #account-profile,
 body.lobby-active #account-profile,
-body.hub-lobby #account-profile {
+body.hub-screen #account-profile {
   display: grid;
   grid-template-columns: 46px auto auto;
   grid-template-areas: "art name level" "art xp xp" "art title title";
@@ -19743,7 +19743,7 @@ body.hub-lobby #account-profile {
 }
 body.town-active #account-profile .account-avatar,
 body.lobby-active #account-profile .account-avatar,
-body.hub-lobby #account-profile .account-avatar {
+body.hub-screen #account-profile .account-avatar {
   grid-area: art;
   display: block;
   width: 46px;
@@ -19753,20 +19753,20 @@ body.hub-lobby #account-profile .account-avatar {
 }
 body.town-active #account-profile .account-name,
 body.lobby-active #account-profile .account-name,
-body.hub-lobby #account-profile .account-name {
+body.hub-screen #account-profile .account-name {
   grid-area: name;
   font: 800 17px/1 "Barlow Condensed", sans-serif;
   letter-spacing: 0.02em;
 }
 body.town-active #account-profile .nav-level,
 body.lobby-active #account-profile .nav-level,
-body.hub-lobby #account-profile .nav-level {
+body.hub-screen #account-profile .nav-level {
   grid-area: level;
   justify-self: end;
 }
 body.town-active .nav-xp,
 body.lobby-active .nav-xp,
-body.hub-lobby .nav-xp {
+body.hub-screen .nav-xp {
   grid-area: xp;
   display: block;
   width: 132px;
@@ -19777,7 +19777,7 @@ body.hub-lobby .nav-xp {
 }
 body.town-active .nav-xp i,
 body.lobby-active .nav-xp i,
-body.hub-lobby .nav-xp i {
+body.hub-screen .nav-xp i {
   display: block;
   height: 100%;
   border-radius: 3px;
@@ -19785,7 +19785,7 @@ body.hub-lobby .nav-xp i {
 }
 body.town-active .nav-title,
 body.lobby-active .nav-title,
-body.hub-lobby .nav-title {
+body.hub-screen .nav-title {
   display: block;
   grid-area: title;
   font: 700 11px/1 "DM Sans", sans-serif;
@@ -19793,7 +19793,7 @@ body.hub-lobby .nav-title {
 /* Coins: pushed to the right, a glass pill. */
 body.town-active #account-coins,
 body.lobby-active #account-coins,
-body.hub-lobby #account-coins {
+body.hub-screen #account-coins {
   margin-left: auto;
   min-height: 0;
   padding: 0;
@@ -19802,7 +19802,7 @@ body.hub-lobby #account-coins {
 }
 body.town-active #account-coins > *,
 body.lobby-active #account-coins > *,
-body.hub-lobby #account-coins > * {
+body.hub-screen #account-coins > * {
   min-height: 40px;
   padding: 0 14px;
   border: 1px solid rgba(242, 185, 59, 0.45);
@@ -19812,7 +19812,7 @@ body.hub-lobby #account-coins > * {
 }
 body.town-active #account-admin,
 body.lobby-active #account-admin,
-body.hub-lobby #account-admin {
+body.hub-screen #account-admin {
   min-height: 40px;
   border-radius: 999px;
   background: rgba(14, 26, 49, 0.82);
@@ -19820,10 +19820,10 @@ body.hub-lobby #account-admin {
 /* Settings and menu: round glass buttons. */
 body.town-active .home-settings,
 body.lobby-active .home-settings,
-body.hub-lobby .home-settings,
+body.hub-screen .home-settings,
 body.town-active .header-menu > summary,
 body.lobby-active .header-menu > summary,
-body.hub-lobby .header-menu > summary {
+body.hub-screen .header-menu > summary {
   display: inline-grid;
   place-items: center;
   width: 42px;
@@ -19837,7 +19837,7 @@ body.hub-lobby .header-menu > summary {
 }
 body.town-active .header-menu > summary span,
 body.lobby-active .header-menu > summary span,
-body.hub-lobby .header-menu > summary span {
+body.hub-screen .header-menu > summary span {
   display: none;
 }
 .nav-xp,
@@ -19847,45 +19847,45 @@ body.hub-lobby .header-menu > summary span {
 }
 body.town-active #menu-logout,
 body.lobby-active #menu-logout,
-body.hub-lobby #menu-logout {
+body.hub-screen #menu-logout {
   display: flex;
 }
 @media (max-height: 500px) {
   body.town-active #account-profile,
   body.lobby-active #account-profile,
-  body.hub-lobby #account-profile {
+  body.hub-screen #account-profile {
     grid-template-columns: 36px auto auto;
     grid-template-areas: "art name level" "art xp xp";
     padding: 4px 10px 4px 4px;
   }
   body.town-active #account-profile .account-avatar,
   body.lobby-active #account-profile .account-avatar,
-  body.hub-lobby #account-profile .account-avatar {
+  body.hub-screen #account-profile .account-avatar {
     width: 36px;
     height: 36px;
   }
   body.town-active .nav-title,
   body.lobby-active .nav-title,
-  body.hub-lobby .nav-title {
+  body.hub-screen .nav-title {
     display: none;
   }
   body.town-active .nav-xp,
   body.lobby-active .nav-xp,
-  body.hub-lobby .nav-xp {
+  body.hub-screen .nav-xp {
     width: 100px;
   }
   body.town-active .home-settings,
   body.lobby-active .home-settings,
-  body.hub-lobby .home-settings,
+  body.hub-screen .home-settings,
   body.town-active .header-menu > summary,
   body.lobby-active .header-menu > summary,
-  body.hub-lobby .header-menu > summary {
+  body.hub-screen .header-menu > summary {
     width: 36px;
     height: 36px;
   }
   body.town-active #account-coins > *,
   body.lobby-active #account-coins > *,
-  body.hub-lobby #account-coins > * {
+  body.hub-screen #account-coins > * {
     min-height: 34px;
   }
 }
@@ -19900,24 +19900,24 @@ body.hub-lobby #menu-logout {
 }
 body.town-active .home-settings,
 body.lobby-active .home-settings,
-body.hub-lobby .home-settings {
+body.hub-screen .home-settings {
   display: none;
 }
 body.town-active .menu-burger,
 body.lobby-active .menu-burger,
-body.hub-lobby .menu-burger {
+body.hub-screen .menu-burger {
   display: none;
 }
 body.town-active .menu-gear,
 body.lobby-active .menu-gear,
-body.hub-lobby .menu-gear {
+body.hub-screen .menu-gear {
   display: inline-grid;
   place-items: center;
   color: #ffd65b;
 }
 body.town-active .menu-gear svg,
 body.lobby-active .menu-gear svg,
-body.hub-lobby .menu-gear svg {
+body.hub-screen .menu-gear svg {
   width: 20px;
   height: 20px;
 }

@@ -355,6 +355,78 @@ export function installAccountRoutes(
       res.json({ ok: true, economy });
     }),
   );
+  // Gold Leaves: 100 leaves → 5 coins, up to 40 coins a day (migration 036).
+  app.post(
+    "/api/leaves/trade",
+    route(false, async (req, res, token, account) => {
+      const data = z
+        .object({ lots: z.number().int().min(1).max(8) })
+        .strict()
+        .parse(req.body);
+      const economy = await provider.rpc(token, "arena_trade_leaves", {
+        p_lots: data.lots,
+      });
+      onPlayerChanged(account.id);
+      res.json({ ok: true, economy });
+    }),
+  );
+  // The farm (migration 037): its state at the server's time, and actions.
+  app.get(
+    "/api/farm",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await provider.rpc(token, "arena_farm", {}));
+    }),
+  );
+  const farmAction = z
+    .object({
+      a: z.enum([
+        "plant",
+        "water",
+        "fertilize",
+        "harvest",
+        "dig",
+        "buy-seeds",
+        "buy-land",
+        "sell",
+        "buy-fertilizer",
+        "upgrade-barn",
+      ]),
+      plot: z.number().int().min(0).max(49).optional(),
+      crop: z
+        .string()
+        .max(32)
+        .regex(/^[a-z]+$/)
+        .optional(),
+      kind: z.enum(["norm", "super", "gold"]).optional(),
+      mutation: z
+        .string()
+        .max(64)
+        .regex(/^[a-z+]*$/)
+        .optional(),
+      qty: z.number().int().min(1).max(10000).optional(),
+    })
+    .strict();
+  app.post(
+    "/api/farm/act",
+    route(false, async (req, res, token, account) => {
+      const data = z
+        .object({
+          request: z.string().uuid(),
+          actions: z.array(farmAction).min(1).max(60),
+        })
+        .strict()
+        .parse(req.body);
+      const result = await provider.rpc(token, "arena_farm_act", {
+        p_request: data.request,
+        p_actions: data.actions,
+      });
+      // Selling and buying change the leaf wallet shown in the top bar.
+      if (data.actions.some((x) => x.a !== "water" && x.a !== "harvest"))
+        onPlayerChanged(account.id);
+      res.json(result);
+    }),
+  );
   app.post(
     "/api/shop/equip",
     route(false, async (req, res, token, account) => {

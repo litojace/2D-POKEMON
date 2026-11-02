@@ -559,5 +559,27 @@ export interface FarmState {
   market: { day: string; mult: Record<string, number>; hot: string };
   /** Seed stock this restock window: crop → seeds left for you. */
   shop: { window: string; restockAt: string; stock: Record<string, number> };
+  /** Harvests per crop (the crop book). */
+  harvests: Record<string, number>;
   leaves: number;
+}
+/** One action in a farm request (arena_farm_act). */
+export type FarmAction =
+  | { a: "plant"; plot: number; crop: string }
+  | { a: "water" | "harvest" | "dig" | "buy-land"; plot: number }
+  | { a: "fertilize"; plot: number; kind: FertilizerKind }
+  | { a: "buy-seeds"; crop: string; qty: number }
+  | { a: "sell"; crop: string; mutation: string; qty: number }
+  | { a: "buy-fertilizer"; kind: FertilizerKind }
+  | { a: "upgrade-barn" };
+export interface FarmActResult {
+  farm: FarmState;
+  results: (
+    | { ok: true; crop?: string; qty?: number; xp?: number; leaves?: number }
+    | { ok: false; error: string }
+  )[];
+  combo?: number;
+  xp?: number;
+  /** The same request id was already applied; nothing changed. */
+  repeated?: boolean;
 }

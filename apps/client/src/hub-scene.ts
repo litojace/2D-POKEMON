@@ -5,8 +5,8 @@
  */
 export type HubScene = "lobby" | "plaza" | "farm";
 const KEY = "ea-hub-scene";
-/** The Farm tab stays hidden until the farm ships (hub redesign phase 4). */
-export const FARM_OPEN = false;
+/** The Farm tab (hub redesign phase 4). */
+export const FARM_OPEN = true;
 export const HUB_SCENES: readonly { id: HubScene; label: string }[] = [
   { id: "lobby", label: "Lobby" },
   { id: "plaza", label: "Plaza" },

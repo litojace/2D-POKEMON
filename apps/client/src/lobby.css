@@ -445,6 +445,13 @@
   height: 6px;
   accent-color: #9ff3d8;
 }
+.lobby-farm-card {
+  background: linear-gradient(
+    120deg,
+    rgba(63, 122, 51, 0.6),
+    var(--lobby-glass) 72%
+  );
+}
 .lobby-raid-card {
   background: linear-gradient(
     120deg,
@@ -802,6 +809,13 @@
   }
 }
 @media (max-height: 420px) {
+  .lobby-farm-card {
+    background: linear-gradient(
+      120deg,
+      rgba(63, 122, 51, 0.6),
+      var(--lobby-glass) 72%
+    );
+  }
   .lobby-raid-card {
     display: none !important;
   }
@@ -909,10 +923,41 @@ body.hub-active .nav-title {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-body.hub-active #account-coins > * {
+body.hub-active #account-coins > *,
+body.hub-active #account-leaves > * {
   justify-content: center;
   width: 132px;
   font-variant-numeric: tabular-nums;
+}
+/* The Gold Leaves pill sits beside the coins, the same size, green-rimmed. */
+#account-leaves {
+  order: 1;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+#account-leaves .coin-chip {
+  gap: 5px;
+}
+#account-leaves .coin-chip b {
+  font-size: 16px;
+  line-height: 1.2;
+}
+#account-leaves .coin-chip .button-icon {
+  width: 15px;
+  height: 15px;
+}
+#account-leaves > * {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid rgba(127, 214, 90, 0.5);
+  border-radius: 999px;
+  background: rgba(14, 26, 49, 0.82);
+  backdrop-filter: blur(6px);
+}
+body:not(.hub-active) #account-leaves {
+  display: none;
 }
 @media (max-height: 500px) {
   .hub-scenes {
@@ -920,7 +965,7 @@ body.hub-active #account-coins > * {
     padding: 3px;
   }
   .hub-scenes button {
-    width: 76px;
+    width: 64px;
     height: 32px;
     font-size: 13px;
   }
@@ -933,19 +978,28 @@ body.hub-active #account-coins > * {
     height: 18px;
     font-size: 11px;
   }
-  body.hub-active #account-coins > * {
-    width: 112px;
+  body.hub-active #account-coins > *,
+  body.hub-active #account-leaves > * {
+    width: 96px;
+  }
+  #account-leaves > * {
+    min-height: 34px;
   }
 }
 @media (max-width: 760px) {
   .hub-scenes button {
-    width: 66px;
+    width: 60px;
   }
   body.hub-active #account-profile {
-    width: 168px;
+    width: 160px;
   }
-  body.hub-active #account-coins > * {
-    width: 104px;
+  body.hub-active #account-coins > *,
+  body.hub-active #account-leaves > * {
+    width: 88px;
+  }
+  #account-coins .coin-chip b,
+  #account-leaves .coin-chip b {
+    font-size: 14px;
   }
 }
 

@@ -56,6 +56,12 @@ const escape = (s: string) =>
       ]!,
   );
 export const coins = (n: number) => n.toLocaleString("en-US");
+/** Short form for the fixed-size top bar pills: 99,999 · 100K · 1.25M · 10M. */
+export function compactCoins(n: number) {
+  if (n < 100_000) return coins(n);
+  if (n < 1_000_000) return `${Math.floor(n / 1000)}K`;
+  return `${(n / 1e6).toFixed(n >= 1e7 ? 1 : 2).replace(/\.?0+$/, "")}M`;
+}
 const CHAMPIONS = Object.keys(CHARACTERS) as CharacterId[];
 const MYTHIC_SLUG = Object.fromEntries(
   CHAMPION_SKINS.filter((s) => s.rarity === "mythical").map((s) => [
@@ -69,8 +75,13 @@ export function coinChip(
   balance: number | null | undefined,
   id = "",
   unlimited = false,
+  compact = false,
 ) {
-  return `<span class="coin-chip pill"${id ? ` id="${id}"` : ""}>${unlimited ? '<span class="sr-only">Unlimited </span>' : ""}${buttonIcon("coin")}<b${unlimited ? ' aria-hidden="true" title="Unlimited coins · Purchases don’t spend coins"' : ""}>${unlimited ? "∞" : balance == null ? "—" : coins(balance)}</b><span class="sr-only"> coins</span></span>`;
+  return `<span class="coin-chip pill"${id ? ` id="${id}"` : ""}>${unlimited ? '<span class="sr-only">Unlimited </span>' : ""}${buttonIcon("coin")}<b${unlimited ? ' aria-hidden="true" title="Unlimited coins · Purchases don’t spend coins"' : ""}>${unlimited ? "∞" : balance == null ? "—" : compact ? compactCoins(balance) : coins(balance)}</b><span class="sr-only"> coins</span></span>`;
+}
+/** The Gold Leaves pill (hub redesign): the same box as the coin chip. */
+export function leafChip(balance: number) {
+  return `<span class="coin-chip pill leaf-chip"><svg class="button-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19C5 10 10 5 20 4c0 10-5 15-15 15z" fill="#7fd65a" stroke="#3f8a2e" stroke-width="1.3" stroke-linejoin="round"/><path d="M5 19 14 10" stroke="#3f8a2e" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg><b>${compactCoins(balance)}</b><span class="sr-only"> Gold Leaves</span></span>`;
 }
 const rarityBadge = (r: Rarity | null) =>
   r
