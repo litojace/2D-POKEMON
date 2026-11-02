@@ -1534,6 +1534,10 @@ export interface Reply {
   /** Town joins: which town copy, and your walker id in it. */
   town?: number;
   me?: number;
+  /** Plaza joins: which Plaza copy (with `me`). */
+  plaza?: number;
+  /** Gold Leaves left after a Plaza purchase. */
+  leaves?: number;
 }
 export const normalize = (x: number, y: number): Vec => {
   const length = Math.hypot(x, y);
