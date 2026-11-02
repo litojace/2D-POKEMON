@@ -868,9 +868,34 @@ export function creatureProfile(
         e(84, 95, 20, 24, p.accent) +
         shine(74, 65, 18) +
         star(119, 58, 4);
+    // The same glowing eye as the front view (glowEye in creature-design.ts):
+    // a halo, the eye and its highlight; on focus it squints under a glowing
+    // brow that slopes toward the snout.
+    const duskEye = (x: number) => {
+      const halo = (r: number, o: number) =>
+        `<circle cx="${x}" cy="93" r="${r}" fill="url(#${prefix}-shine)" stroke="none" opacity="${o}"/>`;
+      if (mood !== "normal" && mood !== "focus")
+        return halo(12, 0.55) + expression(x, 8, 9, p.glow);
+      const squint = mood === "focus";
+      return (
+        halo(14, 0.7) +
+        e(x, squint ? 95 : 93, 7.5, squint ? 6 : 9.5, p.glow) +
+        e(
+          x - 2.5,
+          squint ? 93 : 89.5,
+          3,
+          squint ? 2 : 3.4,
+          "#ffffff",
+          ' stroke="none"',
+        ) +
+        (squint
+          ? `<path d="M${x + 7.5} 75.5L${x - 6.4} 82.5" stroke="${p.glow}" stroke-width="4.4" stroke-linecap="round" fill="none"/>`
+          : "")
+      );
+    };
     profiles.eyes = back
       ? ""
-      : `<g class="profile-near-eye" transform="translate(9 0)">${mood !== "normal" && mood !== "focus" ? expression(75, 8, 9, p.glow) : e(75, 93, 7.5, mood === "focus" ? 6 : 9.5, p.glow) + e(72, 89, 3, 3, "#ffffff", ' stroke="none"')}${mood === "normal" ? line("M63 107q4 3 8-1", p.glow, 1.6) : ""}</g>`;
+      : `<g class="profile-near-eye" transform="translate(9 0)">${duskEye(75)}${mood === "normal" ? line("M63 107q4 3 8-1", p.glow, 1.6) : ""}</g>`;
     profiles.ears = profiles.flame = "";
     profiles.body =
       path(
