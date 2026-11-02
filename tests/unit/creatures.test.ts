@@ -112,7 +112,9 @@ it("loads original art and valid public metadata for every fighter and direction
     expect(detail).toContain(i === ULT_SLOT ? "ULT" : `${a.cooldown}s`);
   });
   expect(detail).toContain(COMBOS.terradon.text);
-  expect(detail).toContain("600 ms between attacks");
+  expect(detail).toContain(
+    `${Math.round((CHARACTERS.terradon.basic.interval ?? 0) * 1000)} ms between attacks`,
+  );
   expect(detail).not.toContain("PLACEHOLDER");
   expect(fighterSelection("voltkit")).toContain("Overcharge");
 });
