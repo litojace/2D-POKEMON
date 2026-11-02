@@ -337,6 +337,7 @@ export function openFarm(options) {
     F.leaves = st.leaves;
     options.onLeaves?.(st.leaves);
     F.bookRewards = st.bookRewards ?? [];
+    F.wishReady = !!st.wishReady;
     // The order board (migration 040; none before it).
     F.orders = (st.orders ?? []).map((o) => ({
       slot: o.slot,
@@ -438,6 +439,37 @@ export function openFarm(options) {
     applyLocal(a);
     clearTimeout(flushTimer);
     flushTimer = setTimeout(flush, now ? 0 : dragging ? 450 : 90);
+  }
+  /** The wishing well: 3 seeds once a Pacific day (migration 042). */
+  let wishing = false;
+  async function wishWell() {
+    if (!F.wishReady)
+      return toast("You already made a wish today. Come back tomorrow");
+    if (wishing) return;
+    wishing = true;
+    try {
+      await flush();
+      const r = await options.wish();
+      if (r?.farm) applyState(r.farm);
+      if (!r?.ok) return toast(r?.error ?? "The well is quiet right now.");
+      const names = r.seeds.map((id) => CROP[id]?.n ?? id);
+      for (let k = 0; k < 10; k++)
+        FX.push({
+          text: "✦",
+          x: WELL.x + Math.random() * 60 - 30,
+          y: WELL.y - 100 - Math.random() * 40,
+          t: Math.random() * 0.3,
+          life: 1,
+          color: "#ffe27a",
+        });
+      log(`The well granted: <b>${names.join(", ")}</b>`, "good");
+      toast(`Wish granted: ${names.join(", ")} seeds`);
+      renderTools();
+    } catch (err) {
+      toast(err?.message || "Couldn't reach the well.");
+    } finally {
+      wishing = false;
+    }
   }
   /** Crop book rewards (migration 041), by crops found. */
   const BOOK_REWARDS = [
@@ -1912,6 +1944,12 @@ export function openFarm(options) {
     });
     nameTag(ctx, "MARKET", STALL.x, STALL.y - 178);
     nameTag(ctx, "BARN", BARN.x + 10, BARN.y - 214);
+    nameTag(
+      ctx,
+      F.wishReady ? "WISHING WELL ✦" : "WISHING WELL",
+      WELL.x,
+      WELL.y - 140,
+    );
     drawFence(ctx);
     drawPastureFence(ctx, true);
     s.plots.forEach((p, i) => drawPlot(ctx, i, p, time, s));
@@ -2860,6 +2898,7 @@ export function openFarm(options) {
       w.y < BARN.y
     )
       return openSheet("barn");
+    if (Math.hypot(w.x - WELL.x, w.y - (WELL.y - 50)) < 60) return wishWell();
     const i = plotAt(w.x, w.y);
     if (i < 0) {
       panning = {
@@ -3137,6 +3176,16 @@ export function openFarm(options) {
     /** Debug handle for tests. */
     _dbg: {
       F,
+      /** Where a world point is on the page (tests). */
+      worldClient: (x, y) => {
+        const r = cv.getBoundingClientRect(),
+          sp = toScreen(x, y);
+        return {
+          x: r.left + (sp.x * r.width) / NW,
+          y: r.top + (sp.y * r.height) / NH,
+        };
+      },
+      well: WELL,
       plotClient: (i) => {
         const r = cv.getBoundingClientRect(),
           pr = plotRect(i),

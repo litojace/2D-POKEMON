@@ -49,7 +49,11 @@ import {
   type LobbyHandle,
   type LobbyMode,
 } from "./lobby-screen";
-import { openFarmScreen, type FarmScreen } from "./farm/farm-screen";
+import {
+  openFarmScreen,
+  type FarmScreen,
+  type FarmScreenOptions,
+} from "./farm/farm-screen";
 import type {
   FarmActResult,
   FarmOrderResult,
@@ -1790,6 +1794,10 @@ function syncFarm(want: boolean) {
     playerName: () => accountsUI.account?.displayName ?? "Your",
     economy: () => accountsUI.economy ?? undefined,
     onLeaves: (balance) => accountsUI.setLeaves(balance),
+    wish: async () =>
+      (await accountsUI.api("/api/farm/wish", {})) as Awaited<
+        ReturnType<FarmScreenOptions["wish"]>
+      >,
     order: async (slot, kind) =>
       (await accountsUI.api("/api/farm/order", {
         request: crypto.randomUUID(),

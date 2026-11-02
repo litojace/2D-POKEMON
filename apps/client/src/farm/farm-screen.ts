@@ -26,6 +26,13 @@ export interface FarmScreenOptions {
   order(slot: number, kind: "deliver" | "skip"): Promise<FarmOrderResult>;
   /** A fighter's picture (who placed an order). */
   art(character: string): string;
+  /** Today's wish at the well (migration 042). */
+  wish(): Promise<{
+    farm: FarmState;
+    ok: boolean;
+    error?: string;
+    seeds?: string[];
+  }>;
   reduced: boolean;
 }
 export interface FarmScreen {

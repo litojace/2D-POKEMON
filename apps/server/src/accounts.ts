@@ -39,7 +39,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "041_farm_book.sql";
+export const LATEST_MIGRATION = "042_farm_wish.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -436,6 +436,13 @@ export function installAccountRoutes(
       qty: z.number().int().min(1).max(10000).optional(),
     })
     .strict();
+  // The wishing well: 3 seeds once a Pacific day (migration 042).
+  app.post(
+    "/api/farm/wish",
+    route(false, async (_req, res, token) => {
+      res.json(await provider.rpc(token, "arena_farm_wish", {}));
+    }),
+  );
   // Deliver or skip an order on the farm's board (migration 040).
   app.post(
     "/api/farm/order",

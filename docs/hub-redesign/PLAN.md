@@ -86,6 +86,23 @@ open to change.
 - **Not yet:** treats thrown in the Plaza (farm systems, phase 5), and the
   photo album (the polaroid can be saved as a picture).
 
+## Farm systems progress (phase 5)
+
+Done (each with its own migration and tests): weather and mutations (039),
+the order board (040), crop book rewards (041), the wishing well (042).
+
+Still to come: crop mastery (Lv 40), farmer perks, guard dogs, crows and
+bugs, friends' farms, decorations and charm, the pasture, and treats in the
+Plaza. Two things to settle first:
+
+- **Perks follow your Lobby fighter.** A passive growth perk (Lumoth +20%)
+  would apply to the whole time since a plot was last touched if the
+  server simply read your current fighter, so switching fighter before
+  harvesting would pay. The server needs to re-baseline every plot when the
+  farmer changes, or keep perks to one-off effects.
+- **Crows, bugs and thieves** only happen while you are on the farm (README
+  decision); they need a server rule for how often, checked from server time.
+
 ## Phases
 
 Each phase: branch from `main`, pull request into `main`. Before every push:

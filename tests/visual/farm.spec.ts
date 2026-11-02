@@ -57,6 +57,7 @@ async function fakeFarm(page: Page) {
       leaves: 1234,
       weather: { now: "storm", next: "rainbow", later: "sun", until: at(5000) },
       bookRewards: [5],
+      wishReady: true,
       orders: [
         {
           slot: 0,
@@ -115,6 +116,16 @@ async function fakeFarm(page: Page) {
           return { ok: false, error: "Not in this test" };
         });
         return json({ farm: { ...farm, now: now() }, results });
+      }
+      if (url.endsWith("/api/farm/wish")) {
+        w.__farmRequests.push({ wish: true });
+        farm.wishReady = false;
+        farm.seeds = { ...farm.seeds, mint: 1, voltberry: 2 };
+        return json({
+          farm: { ...farm, now: now() },
+          ok: true,
+          seeds: ["mint", "voltberry", "voltberry"],
+        });
       }
       if (url.endsWith("/api/farm/order")) {
         const body = JSON.parse(String(init?.body));
@@ -313,6 +324,16 @@ test("the order board delivers what the barn holds", async ({ page }, info) => {
   ).toMatchObject({ slot: 0, kind: "deliver", request: expect.any(String) });
   await expect(sheet.locator(".order.wait")).toHaveCount(2);
   await expect(page.locator("#fm-ord-dot")).toBeHidden();
+  // The wishing well grants seeds once a day.
+  await page.locator("#fm-sheet [data-close]").click();
+  const well = await page.evaluate(() => {
+    const f = (window as any).__farm;
+    return f.worldClient(f.well.x, f.well.y - 50);
+  });
+  await page.mouse.click(well.x, well.y);
+  await expect(page.locator("#toast")).toContainText(
+    "Wish granted: Spirit Mint, Volt Berry, Volt Berry seeds",
+  );
   expect(errors).toEqual([]);
 });
 
