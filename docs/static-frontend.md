@@ -41,8 +41,8 @@ clients can discover updates.
 
 New auth emails return to `/?auth=…` on the site root. Links in older emails
 still point at `/email-confirmed`, `/reset-password` and `/auth/callback`; the
-client build copies `index.html` to each of those paths (`<path>/index.html` and
-`<path>.html`, see `apps/client/vite.config.ts`), so the Static Site serves the
+client build copies `index.html` to `<path>.html` for each of them (Render serves
+it for both `/<path>` and `/<path>/`; see `apps/client/vite.config.ts`), so the Static Site serves the
 app there with **no Redirects/Rewrites rule**, and `scripts/verify-pwa.mjs`
 checks the copies exist. Do not add a blanket `/*` SPA rewrite: missing JS must
 return 404, not HTML. Verify the three callback paths return the app on the
