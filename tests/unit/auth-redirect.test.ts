@@ -1,7 +1,10 @@
 import { expect, it } from "vitest";
 import {
+  authErrorMessage,
   authRedirectUrl,
+  readAuthError,
   readAuthReturn,
+  withoutAuthError,
   withoutAuthMarker,
 } from "../../apps/client/src/auth-redirect";
 
@@ -58,4 +61,37 @@ it("drops only its own marker and keeps what Supabase reads", () => {
   expect(withoutAuthMarker("https://parena.litojace.com/?room=AB12CD")).toBe(
     "/?room=AB12CD",
   );
+});
+
+it("reports expired or reused links instead of claiming success", () => {
+  const expired =
+    "#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired&sb=";
+  expect(readAuthError("", expired)).toBe("otp_expired");
+  expect(readAuthError("?error=access_denied", "")).toBe("access_denied");
+  expect(readAuthError("?code=abc", "#access_token=t&type=signup")).toBe(
+    undefined,
+  );
+  expect(authErrorMessage("email-confirmed", "otp_expired")).toMatch(
+    /expired or was already used/,
+  );
+  expect(authErrorMessage(undefined, "otp_expired")).toMatch(/expired/);
+  expect(authErrorMessage("reset-password", "otp_expired")).toMatch(
+    /Forgot password/,
+  );
+  expect(authErrorMessage("auth-callback", "access_denied")).toMatch(/Google/);
+});
+
+it("clears Supabase's error from the address but keeps everything else", () => {
+  expect(
+    withoutAuthError(
+      "/#error=access_denied&error_code=otp_expired&error_description=x&sb=",
+    ),
+  ).toBe("/");
+  expect(withoutAuthError("/?room=AB12CD&error=access_denied")).toBe(
+    "/?room=AB12CD",
+  );
+  expect(withoutAuthError("/#access_token=t&type=signup")).toBe(
+    "/#access_token=t&type=signup",
+  );
+  expect(withoutAuthError("/?code=abc")).toBe("/?code=abc");
 });

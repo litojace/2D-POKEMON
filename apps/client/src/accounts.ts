@@ -74,7 +74,10 @@ import { friendsScreenMarkup, type FriendsRoom } from "./friends-view";
 import { FriendsHub } from "./friends-hub";
 import {
   authRedirectUrl,
+  authErrorMessage,
+  readAuthError,
   readAuthReturn,
+  withoutAuthError,
   withoutAuthMarker,
 } from "./auth-redirect";
 const EYE =
@@ -189,11 +192,20 @@ export class AccountUI {
       .getSession()
       .then(({ data }) => this.setSession(data.session));
     const returned = readAuthReturn(location.pathname, location.search);
-    if (returned) {
-      // Keep Supabase's own ?code= / #access_token; drop only our marker so a
-      // refresh doesn't announce the confirmation again.
-      history.replaceState(history.state, "", withoutAuthMarker(location.href));
-      if (returned === "email-confirmed")
+    // An expired or reused link still returns here, with Supabase's error in
+    // the hash; it can also land on the bare root when the redirect was not
+    // accepted. Report the failure instead of claiming the email is confirmed.
+    const failed = readAuthError(location.search, location.hash);
+    if (returned || failed) {
+      // Keep Supabase's own ?code= / #access_token; drop only our marker and
+      // any error so a refresh doesn't announce the result again.
+      history.replaceState(
+        history.state,
+        "",
+        withoutAuthError(withoutAuthMarker(location.href)),
+      );
+      if (failed) hooks.notify(authErrorMessage(returned, failed));
+      else if (returned === "email-confirmed")
         hooks.notify("Email confirmed. You can now log in.");
     }
   }
