@@ -26,13 +26,30 @@ import {
   featureLabel,
   raidContributions,
 } from "../../apps/client/src/raid-presentation";
-const setup = (chars: CharacterId[] = ["voltkit"], peril = 1) => {
+const setup = (
+  chars: CharacterId[] = ["voltkit"],
+  peril = 1,
+  gilded = false,
+) => {
   const a = createRaidArena("DREAM", "somnara") as SomnaraArena;
   chars.forEach((c, i) => a.add(`p${i}`, `Player ${i}`, c));
   a.configure(peril, false);
-  a.start();
+  // start() rolls the seed and a 1-in-20 Gilded chance, and bakes Gilded
+  // into maxHp. Clearing raid.gilded afterwards would leave a Gilded health
+  // pool behind, so pin both rolls instead (20 % 20 === 0 is Gilded).
+  const roll = vi
+    .spyOn(crypto, "getRandomValues")
+    .mockImplementation((buffer: any) => {
+      buffer.fill(gilded ? 20 : 1);
+      return buffer;
+    });
+  try {
+    a.start();
+  } finally {
+    roll.mockRestore();
+  }
+  expect(a.raid.gilded, "setup pins the Gilded roll").toBe(gilded);
   a.phase = "playing";
-  a.raid.gilded = false;
   a.raid.trait = "starry-night";
   (a as any).started = true;
   (a as any).nextAttack = Infinity;
@@ -75,9 +92,10 @@ describe("Somnara's encounter", () => {
     expect(a.walls()).toEqual([]);
     expect(a.raid.pillars).toEqual([]);
     const f = RAID.healthScale * RAID.perilHealth[a.raid.peril];
-    expect(
-      a.raid.maxHp / f / (a.raid.gilded ? SOMNARA.health.gilded : 1),
-    ).toBeCloseTo(2050, 0);
+    expect(a.raid.maxHp / f).toBeCloseTo(2050, 0);
+    // A Gilded Somnara is a little tougher.
+    const gilded = setup(["voltkit", "terradon"], 1, true);
+    expect(gilded.raid.maxHp / f / SOMNARA.health.gilded).toBeCloseTo(2050, 0);
     expect(ritesFor("somnara")).toContain("lucid");
     expect(ritesFor("grumblecrag")).not.toContain("lucid");
     for (const phase of [1, 2, 3]) {
