@@ -15,6 +15,11 @@ const PATHS: Record<string, AuthReturn> = {
   "/reset-password": "reset-password",
   "/auth/callback": "auth-callback",
 };
+/**
+ * The old callback paths. The build copies the game page to each of them so a
+ * static host serves it there with no rewrite rule (see vite.config.ts).
+ */
+export const LEGACY_AUTH_PATHS = Object.keys(PATHS);
 const KINDS = new Set<string>(Object.values(PATHS));
 
 /** The URL to hand Supabase as `emailRedirectTo` / `redirectTo`. */
