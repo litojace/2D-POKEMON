@@ -74,6 +74,21 @@ const FFA_SPAWNS = [
 const DRAIN_INTERVAL = 0.5;
 /** Preserve a discrete skill tap through a short attack recovery, never a long cast. */
 const SKILL_INPUT_BUFFER = 0.18;
+/**
+ * Network input queue (Arena.enqueue/drainInputs). One input per tick keeps
+ * the server's steps in lockstep with client prediction; `depth` bounds the
+ * extra latency a burst can leave behind (2 ticks, 67 ms), and a queue
+ * that stays at least 2 deep for `standingTicks` is shortened by one.
+ * Clients send every tick while playing (even when idle), so inputs that
+ * stop for `staleTicks` mean a lost connection: the fighter stops walking
+ * instead of running on its last input until the socket times out.
+ */
+export const INPUT_QUEUE = {
+  depth: 2,
+  cap: 8,
+  standingTicks: 30,
+  staleTicks: 15,
+};
 export class Arena {
   activityStatus?: "saving" | "saved" | "unavailable";
   activityEligible?: string[];
@@ -90,6 +105,21 @@ export class Arena {
     if (id === undefined) this.bufferedSkills.clear();
     else this.bufferedSkills.delete(id);
   }
+  /**
+   * Network inputs wait here and are applied one per tick (see
+   * drainInputs), so each acknowledged input stands for exactly one
+   * simulated step, as the client predicts it.
+   */
+  private inputQueues = new Map<
+    string,
+    {
+      inputs: Input[];
+      last: number;
+      standing: number;
+      minDepth: number;
+      idle: number;
+    }
+  >();
   nextPracticeZone = 0;
   time = 0;
   phase: Phase = "lobby";
@@ -365,6 +395,7 @@ export class Arena {
   }
   resetRound() {
     this.clearBufferedSkills();
+    this.clearInputQueue();
     // Fighter roulette: a fresh random fighter for everyone each round.
     if (this.rule("random") && !this.practice)
       for (const p of this.players) {
@@ -445,6 +476,79 @@ export class Arena {
       aimX: p.lastInput.aimX,
       aimY: p.lastInput.aimY,
     };
+  }
+  /**
+   * Queue a network input. Applied by drainInputs() at the next tick:
+   * normally exactly one per tick; a burst (after a stall) is applied at
+   * once, merged as before, so stale movement never piles up and every
+   * skill, dash, jump and Basic press still reaches submit().
+   */
+  enqueue(p: Fighter, input: Input) {
+    if (this.phase !== "playing") return;
+    let q = this.inputQueues.get(p.id);
+    if (!q) {
+      q = {
+        inputs: [],
+        last: p.ack,
+        standing: 0,
+        minDepth: Infinity,
+        idle: 0,
+      };
+      this.inputQueues.set(p.id, q);
+    }
+    if (input.seq <= Math.max(q.last, p.ack)) return;
+    q.last = input.seq;
+    // Activity counts when it arrives, even if the match ends first.
+    if (
+      input.dx ||
+      input.dy ||
+      input.basic ||
+      input.skill >= 0 ||
+      input.dash ||
+      input.jump
+    )
+      this.engaged.add(p.id);
+    q.inputs.push(input);
+    // A flood can never hold more than a burst's worth.
+    if (q.inputs.length > INPUT_QUEUE.cap) this.submit(p, q.inputs.shift()!);
+  }
+  /** Forget queued inputs (round reset, reconnect, leaving). */
+  clearInputQueue(id?: string) {
+    if (id === undefined) this.inputQueues.clear();
+    else this.inputQueues.delete(id);
+  }
+  /** Apply this tick's queued inputs. Call before tick(). */
+  drainInputs() {
+    if (this.phase !== "playing") {
+      if (this.inputQueues.size) this.inputQueues.clear();
+      return;
+    }
+    for (const [id, q] of this.inputQueues) {
+      const p = this.players.find((f) => f.id === id);
+      if (!p) {
+        this.inputQueues.delete(id);
+        continue;
+      }
+      q.minDepth = Math.min(q.minDepth, q.inputs.length);
+      if (!q.inputs.length) {
+        if (++q.idle === INPUT_QUEUE.staleTicks)
+          p.lastInput = { ...p.lastInput, dx: 0, dy: 0, basic: false };
+        continue;
+      }
+      q.idle = 0;
+      // Burst: catch up to the newest inputs now (merged as they always
+      // were), keeping at most `depth` waiting.
+      let apply = Math.max(1, q.inputs.length - INPUT_QUEUE.depth);
+      // A queue that never emptied for a second adds standing latency:
+      // apply one extra input to shorten it.
+      if (++q.standing >= INPUT_QUEUE.standingTicks) {
+        if (q.minDepth >= 2) apply++;
+        q.standing = 0;
+        q.minDepth = Infinity;
+      }
+      for (let i = 0; i < apply && q.inputs.length; i++)
+        this.submit(p, q.inputs.shift()!);
+    }
   }
   submit(p: Fighter, input: Input) {
     if (this.phase !== "playing" || input.seq <= p.ack) return;

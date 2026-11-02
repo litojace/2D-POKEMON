@@ -61,9 +61,11 @@ sound/state feedback remains shared.
 Remote playback no longer resets its clock to each packet's arrival time. It
 uses the least delayed recent arrival as the clock offset and a bounded,
 monotonic playhead. Ordered packets arriving late therefore cannot rewind a
-steadily moving opponent. The normal 100ms interpolation delay and server
-simulation rules remain the same. This improves rendering and visible jitter;
-it does not reduce the physical network round-trip time.
+steadily moving opponent. The server simulation rules remain the same. This
+improves rendering and visible jitter; it does not reduce the physical network
+round-trip time. (Later: the fixed 100ms delay became an adaptive 80–200ms
+delay with a rate-limited playhead, and the server applies one input per tick;
+see [networking and battle performance](network-performance.md).)
 
 A five-second controlled 4-player browser sample measured total scripting time
 from 1.43s to 0.75s, and HUD mutations per snapshot from 48.2 to 6.2. Total main

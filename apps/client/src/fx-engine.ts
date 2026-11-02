@@ -158,6 +158,10 @@ export class Fx {
   private readonly decals: Decal[] = [];
   private readonly lastEmit = new Map<string | number, number>();
   readonly reduced = reducedMotion();
+  /** Battle quality (battle-quality.ts): share of decorative particles. */
+  density = 1;
+  /** Battle quality: trails emit this much less often. */
+  trailScale = 1;
   private vignette?: Phaser.GameObjects.Image;
   private wash?: Phaser.GameObjects.Image;
   private ult = { start: 0, until: 0, color: 0xffffff, dark: false };
@@ -343,7 +347,10 @@ export class Fx {
 
   // ─────────────── Particles ───────────────
   burst(o: BurstOptions) {
-    const count = Math.round(o.count * (this.reduced ? 0.35 : 1));
+    // Reduced motion keeps its own stricter limit at every quality level.
+    const count = Math.round(
+      o.count * Math.min(this.reduced ? 0.35 : 1, this.density),
+    );
     for (let i = 0; i < count && this.particles.length < MAX_PARTICLES; i++) {
       const a =
         o.angle === undefined
@@ -374,7 +381,8 @@ export class Fx {
   /** Emit at most once per `every` seconds for a moving source (trails). */
   trail(key: string | number, every: number, emit: () => void) {
     const last = this.lastEmit.get(key) ?? -Infinity;
-    if (this.time - last < every * 1000 * (this.reduced ? 2.5 : 1)) return;
+    const slower = Math.max(this.reduced ? 2.5 : 1, this.trailScale);
+    if (this.time - last < every * 1000 * slower) return;
     this.lastEmit.set(key, this.time);
     if (this.lastEmit.size > 400) this.lastEmit.clear();
     emit();

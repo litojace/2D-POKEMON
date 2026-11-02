@@ -7,7 +7,13 @@ import { RAID_FUNCTIONS_MIGRATION } from "../../apps/server/src/accounts";
 import { TidewyrmArena } from "../../apps/server/src/raid-tidewyrm";
 import { SomnaraArena } from "../../apps/server/src/raid-somnara";
 import { GloomshadeArena } from "../../apps/server/src/raid-gloomshade";
-import { blankInput, type Reply } from "@arena/shared";
+import {
+  blankInput,
+  MetaCache,
+  unpackSnapshot,
+  type Reply,
+  type WireSnapshot,
+} from "@arena/shared";
 let server: ReturnType<typeof createArenaServer> | undefined;
 const sockets: Socket[] = [];
 afterEach(async () => {
@@ -186,9 +192,12 @@ it("broadcasts an equipped cosmetic and its removal to an existing room immediat
   const host = await connect();
   const created = await emit(host, "create", { name: "Raider", mode: "raid" });
   const address = server!.http.address() as { port: number };
+  // Decode as the client does: appearance arrives in versioned meta blocks.
+  const meta = new MetaCache();
   for (const cosmetic of ["cragbound", null]) {
     const update = new Promise<void>((resolve) => {
-      const listener = (state: any) => {
+      const listener = (wire: WireSnapshot) => {
+        const state = unpackSnapshot(wire, meta);
         if (
           (state.players.find((p: any) => p.id === created.id)?.raidLook
             ?.skin ?? null) === cosmetic

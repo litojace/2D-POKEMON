@@ -6,7 +6,10 @@ export {
   CHARACTERS,
   packSnapshot,
   blankInput,
+  MetaTracker,
 } from "../../../packages/shared/src/index";
+export { createRaidArena } from "../../../apps/server/src/raid-bosses";
+export { dressUp } from "../../../scripts/perf/workloads";
 export { resultXp } from "../../../apps/client/src/adventure-ui";
 import { createRaidArena } from "../../../apps/server/src/raid-bosses";
 import {
