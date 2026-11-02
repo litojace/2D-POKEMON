@@ -253,6 +253,7 @@ describe("collection pieces", () => {
 
 describe("raid cosmetics", () => {
   const css = readFileSync("apps/client/src/style.css", "utf8");
+  const bossFrames = readFileSync("apps/client/src/boss-frames.css", "utf8");
   /** Grumblecrag's originals are drawn by the rig and main.ts directly. */
   const special = ["mountain-aura", "mountainborn", "rockslide-flex"];
   it("every raid reward in an appearance slot is drawn somewhere", async () => {
@@ -286,9 +287,15 @@ describe("raid cosmetics", () => {
           ),
           r.id,
         ).toBe(true);
-      if (r.slot === "frame")
-        expect(css, r.id).toContain(`[data-raid-cosmetic~="${r.id}"]`);
-      expect(css, r.id).toContain(`[data-cosmetic="${r.id}"]`);
+      // Boss frames are drawn as their own SVG ring and ornament.
+      if (r.slot === "frame") {
+        expect(bossFrames, r.id).toMatch(
+          new RegExp(
+            `\\[data-cosmetic="${r.id}"\\]::before \\{\\s*background-image: url\\("data:image/svg`,
+          ),
+        );
+        expect(bossFrames, r.id).toContain(`[data-cosmetic="${r.id}"]::after`);
+      } else expect(css, r.id).toContain(`[data-cosmetic="${r.id}"]`);
     }
   });
 });

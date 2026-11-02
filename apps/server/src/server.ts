@@ -495,8 +495,9 @@ export function createArenaServer(
   );
   app.use(
     express.static(client, {
-      // The build puts copies of the game page at old auth paths for the
-      // Static Site; here the catch-all below serves them, with no redirect.
+      // Old auth paths have no file here (the build's `<path>.html` copies are
+      // for the Static Site); the catch-all below serves them, with no
+      // directory redirect (`/auth/` exists because of auth/callback.html).
       redirect: false,
       setHeaders(res, file) {
         if (

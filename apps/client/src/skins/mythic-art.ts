@@ -230,48 +230,42 @@ export function awakeningSvg(
         );
       }
       break;
-    case "world-shell":
-      add(
-        "scarf",
-        path(
-          `M${111 + side * 5} 119Q${125 + side * 5} 132 ${116 + side * 5} 147Q${108 + side * 5} 155 ${120 + side * 5} 167`,
-          "none",
-          "#58b8e8",
-          9,
-        ) +
-          path(
-            `M${109 + side * 5} 120Q${122 + side * 5} 132 ${113 + side * 5} 148Q${107 + side * 5} 157 ${118 + side * 5} 166`,
-            "none",
-            "#cefbff",
-            3,
-          ),
-      );
+    case "world-shell": {
+      // Stage II: a gold torc with a little globe pendant. Stage III: a
+      // second tree on the island and a rainbow in the waterfall's spray.
+      const dx = side * 5;
+      // Facing away, only the torc's clasp shows at the nape.
+      if (dir === "up")
+        add(
+          "scarf",
+          path("M84 119Q100 125 116 119", "none", "#8a5a12", 4.4) +
+            path("M84 119Q100 125 116 119", "none", "#ffd65b", 2.4) +
+            path("M100 118L104 122L100 126L96 122Z", "#ffd65b", "#8a5a12", 1.2),
+        );
+      else
+        add(
+          "scarf",
+          path(`M${76 + dx} 121Q${100 + dx} 134 ${124 + dx} 121`, "none", "#8a5a12", 4.4) +
+            path(`M${76 + dx} 121Q${100 + dx} 134 ${124 + dx} 121`, "none", "#ffd65b", 2.4) +
+            circle(100 + dx, 133, 5.6, "#2f86d0", "#ffd65b", 2) +
+            path(`M${97 + dx} 131q2 -2 5 0q1 3 -2 4q-3 0 -3 -4z`, "#5fbf5a", "none", 0) +
+            `<circle cx="${98.4 + dx}" cy="130.6" r="1.2" fill="#ffffff" stroke="none"/>`,
+        );
       if (full) {
+        const y = top - 22;
         add(
           "flame",
-          paired(
-            (s) =>
-              path(
-                `M${100 + s * 34} ${top + 1}V${top - 22}`,
-                "none",
-                "#5a3a1a",
-                4,
-              ) +
-              `<ellipse cx="${100 + s * 34}" cy="${top - 24}" rx="14" ry="12" fill="#4a8a2a" stroke="#2a3a1c" stroke-width="1.5"/><ellipse cx="${100 + s * 29}" cy="${top - 29}" rx="9" ry="7" fill="#9ccf63" stroke="none"/>`,
-          ),
-        );
-        add(
-          "body",
-          `<ellipse cx="${97 + side * 5}" cy="153" rx="18" ry="8" fill="#58b8e8" stroke="#c8f6ff" stroke-width="2"/>` +
-            path(
-              `M${86 + side * 5} 153Q${97 + side * 5} 158 ${108 + side * 5} 153`,
-              "none",
-              "#cefbff",
-              1.5,
-            ),
+          // A small rainbow in the waterfall's spray.
+          path(`M${cx + 16} ${y + 24}A9 8 0 0 1 ${cx + 34} ${y + 24}`, "none", "#ff8fa8", 1.6) +
+            path(`M${cx + 18} ${y + 24}A7 6 0 0 1 ${cx + 32} ${y + 24}`, "none", "#ffd65b", 1.6) +
+            path(`M${cx + 20} ${y + 24}A5 4 0 0 1 ${cx + 30} ${y + 24}`, "none", "#7fd8ff", 1.6) +
+            path(`M${cx + 18} ${y - 2}V${y - 10}`, "none", "#6a4424", 2.6) +
+            circle(cx + 18, y - 13, 5.6, "#4faa3f", p.dark, 1.3) +
+            `<circle cx="${cx + 16.5}" cy="${y - 15}" r="2.6" fill="#8fe06a" stroke="none"/>`,
         );
       }
       break;
+    }
     case "eclipse":
       add(
         "head",

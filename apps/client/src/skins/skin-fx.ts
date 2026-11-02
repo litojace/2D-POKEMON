@@ -1,4 +1,4 @@
-import { groundHeight } from "../../../../packages/shared/src/world-art";
+import { WORLD_ART } from "../../../../packages/shared/src/world-art";
 import type Phaser from "phaser";
 import type { SkinArt, Trail } from "./skin-art";
 
@@ -68,6 +68,8 @@ export interface FxContext {
   ultimate: boolean;
   /** Extra ambient particles are within the on-screen budget; ornaments always draw. */
   ambient: boolean;
+  /** Height/width of the ground plane (the fighter's shadow and auras). */
+  flat?: number;
 }
 
 const TRAIL_SHAPE: Record<Trail, FxShape> = {
@@ -203,6 +205,11 @@ const orbit = (ctx: FxContext, i: number, n: number, speed: number, rx: number, 
   };
 };
 
+/** Skin rings lie where the shadow and auras do: centred on the feet, on the
+ * same ground plane, so they stay parallel with them. */
+const groundFlat = (ctx: FxContext) => ctx.flat ?? WORLD_ART.groundY;
+const groundY = (ctx: FxContext) => ctx.y + WORLD_ART.fighterFeet * ctx.sc;
+
 /** Split a ground ring at its side points so its far arc is occluded. */
 function groundRing(
   ctx: FxContext,
@@ -211,10 +218,10 @@ function groundRing(
   alpha: number,
   lineWidth: number,
 ) {
-  const { x, y, sc, g, under } = ctx;
-  const cy = y + 20 * sc,
+  const { x, sc, g, under } = ctx;
+  const cy = groundY(ctx),
     rx = width / 2,
-    ry = groundHeight(width) / 2;
+    ry = (width * groundFlat(ctx)) / 2;
   for (let half = 0; half < 2; half++) {
     const layer = half === 0 ? g : under;
     layer.lineStyle(lineWidth, color, alpha).beginPath();
@@ -314,10 +321,10 @@ function mythic(ctx: FxContext, art: SkinArt, stage: number) {
           groundRing(ctx, (40 + k * 40) * sc, 0x7ff3ff, 0.5 * (1 - k), 1.6 * sc);
         }
       if (stage >= 3) {
-        under.fillStyle(0x7ff3ff, 0.12).fillEllipse(x, y + 18 * sc, 90 * sc, groundHeight(90 * sc));
+        under.fillStyle(0x7ff3ff, 0.12).fillEllipse(x, groundY(ctx), 90 * sc, 90 * sc * groundFlat(ctx));
         for (let i = 0; i < 6; i++) {
           const wx = x + (i - 2.5) * 13 * sc;
-          const wy = y + 18 * sc + Math.sin(now / 260 + i) * 2 * sc;
+          const wy = groundY(ctx) + Math.sin(now / 260 + i) * 2 * sc;
           under.lineStyle(1.4 * sc, 0xc8f6ff, 0.6).lineBetween(wx - 5 * sc, wy, wx + 5 * sc, wy);
         }
       }
@@ -354,21 +361,22 @@ function mythic(ctx: FxContext, art: SkinArt, stage: number) {
       break;
     }
     case "world-shell": {
-      // Clouds drift around the little island; birds at stage 3.
+      // Clouds drift under the floating island, its waterfall drips, and
+      // birds circle above it at stage 3 (island art: skin-art "island").
       const clouds = stage >= 2 ? 2 : 1;
       for (let i = 0; i < clouds; i++) {
         const o = orbit(ctx, i, clouds, 2200, 24, 6, 0);
         const cx = ctx.headX + (o.x - x),
-          cy = ctx.headY - 12 * sc + (o.y - y) * 0.6;
+          cy = ctx.headY + 2 * sc + (o.y - y) * 0.6;
         (o.front ? g : under).fillStyle(0xffffff, 0.85).fillCircle(cx - 3 * sc, cy, 3.4 * sc).fillCircle(cx + 2 * sc, cy - 1.5 * sc, 4 * sc).fillCircle(cx + 6 * sc, cy, 3 * sc);
       }
       if (ctx.ambient && ctx.chance(stage >= 2 ? 4 : 2, ctx.dt))
-        ctx.emit({ x: ctx.headX + 12 * sc, y: ctx.headY - 6 * sc, vx: 4, vy: 30, life: 0.5, size: 1.4 * sc, color: 0x7fd0ff, shape: "dot" });
+        ctx.emit({ x: ctx.headX + 25 * sc, y: ctx.headY + 6 * sc, vx: 4, vy: 30, life: 0.5, size: 1.4 * sc, color: 0x7fd0ff, shape: "dot" });
       if (stage >= 3)
         for (let i = 0; i < 2; i++) {
           const a = now / 800 + i * Math.PI;
           const bx = ctx.headX + Math.cos(a) * 30 * sc,
-            by = ctx.headY - 26 * sc + Math.sin(a * 2) * 4 * sc;
+            by = ctx.headY - 32 * sc + Math.sin(a * 2) * 4 * sc;
           const flap = Math.sin(now / 80 + i) * 2 * sc;
           g.lineStyle(1.3 * sc, 0x2a3a1c, 0.9).lineBetween(bx - 3 * sc, by - flap, bx, by).lineBetween(bx, by, bx + 3 * sc, by - flap);
         }

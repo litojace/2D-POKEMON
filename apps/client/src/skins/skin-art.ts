@@ -33,7 +33,8 @@ export type PatternKind =
   | "glowdots"
   | "petals"
   | "snow"
-  | "drips";
+  | "drips"
+  | "world";
 export type Accessory =
   | "earmuffs"
   | "ribbon"
@@ -305,8 +306,10 @@ export const SKIN_ART: Record<string, SkinArt> = {
     detail: "pulse",
   },
   "terradon-world-shell": {
-    palette: { light: "#e6f0c8", mid: "#7a9a5a", dark: "#2a3a1c", glow: "#7fd0ff", accent: "#5a8a3a" },
-    pattern: { kind: "spots", color: "#4a7a3a", opacity: 0.45, parts: ["body", "tail"] },
+    // Jade skin with gold trim; the shell is a little world (ocean, lands,
+    // clouds) and a floating island with a waterfall hovers over the sprout.
+    palette: { light: "#eafff4", mid: "#6cc7a4", dark: "#173c3a", glow: "#ffd65b", accent: "#2a6fb0" },
+    pattern: { kind: "world", color: "#5fbf5a", color2: "#2f86d0", opacity: 1, parts: ["wings"] },
     accessories: ["island"],
     trail: { kind: "leaf", colors: [0x6fbf4a, 0x7fd0ff] },
     skill: 0x8fe0a0,
@@ -496,6 +499,31 @@ export function patternSvg(kind: PatternKind, color: string, color2 = color, see
         out.push(`<path d="M${n(x - s)} ${n(y)}H${n(x + s)}M${n(x)} ${n(y - s)}V${n(y + s)}M${n(x - s * 0.7)} ${n(y - s * 0.7)}L${n(x + s * 0.7)} ${n(y + s * 0.7)}M${n(x + s * 0.7)} ${n(y - s * 0.7)}L${n(x - s * 0.7)} ${n(y + s * 0.7)}" stroke="${color}" stroke-width=".9"/>`);
       }
       break;
+    case "world": {
+      // A tiny planet: ocean, lands with sandy coasts and forests, drifting
+      // clouds and faint gold lines of latitude and longitude.
+      out.push(`<rect x="-40" y="-60" width="280" height="280" fill="${color2}"/>`);
+      for (let i = 0; i < 26; i++) {
+        const x = 30 + r() * 140,
+          y = 80 + r() * 92;
+        out.push(`<path d="M${n(x - 5)} ${n(y)}q5 -2 10 0" stroke="#7cc4f2" stroke-width="1.4" fill="none" stroke-linecap="round" opacity=".7"/>`);
+      }
+      const lands: [number, number, number][] = [
+        [62, 104, 1.1], [92, 92, 0.9], [128, 100, 1.2], [70, 140, 1.25], [106, 128, 1], [138, 142, 1.1], [92, 160, 0.9], [48, 124, 0.8], [152, 120, 0.8], [118, 164, 0.8],
+      ];
+      for (const [x, y, k] of lands) {
+        const a = Math.round(r() * 360);
+        const d = `M${n(x - 11 * k)} ${n(y)}q${n(2 * k)} ${n(-9 * k)} ${n(10 * k)} ${n(-8 * k)}q${n(6 * k)} ${n(-4 * k)} ${n(11 * k)} ${n(2 * k)}q${n(4 * k)} ${n(6 * k)} ${n(-2 * k)} ${n(10 * k)}q${n(-5 * k)} ${n(5 * k)} ${n(-12 * k)} ${n(2 * k)}q${n(-8 * k)} ${n(-1 * k)} ${n(-7 * k)} ${n(-6 * k)}z`;
+        out.push(`<g transform="rotate(${a} ${x} ${y})"><path d="${d}" fill="#f2df9a" stroke="#f2df9a" stroke-width="3" stroke-linejoin="round"/><path d="${d}" fill="${color}"/><circle cx="${n(x)}" cy="${n(y - 1)}" r="${n(3 * k)}" fill="#3f8f3a"/></g>`);
+      }
+      for (let i = 0; i < 7; i++) {
+        const x = 40 + r() * 120,
+          y = 84 + r() * 84;
+        out.push(`<path d="M${n(x - 8)} ${n(y)}q4 -4 8 -1q4 -4 9 0" stroke="#ffffff" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/>`);
+      }
+      out.push(`<ellipse cx="100" cy="124" rx="46" ry="14" fill="none" stroke="#ffe9a0" stroke-width="1.2" opacity=".55"/><ellipse cx="100" cy="124" rx="16" ry="44" fill="none" stroke="#ffe9a0" stroke-width="1.2" opacity=".55"/>`);
+      break;
+    }
     case "drips":
       // Wax running down from the hood's rim.
       for (let i = 0; i < 9; i++) {
@@ -558,8 +586,37 @@ export function accessorySvg(a: Accessory, id: CharacterId, dir: Facing, p: Pale
         const a = (k / 10) * Math.PI * 2;
         return `<path d="M${n(cx + Math.cos(a) * 22)} ${n(top - 2 + Math.sin(a) * 18)}L${n(cx + Math.cos(a) * 32)} ${n(top - 2 + Math.sin(a) * 27)}" stroke="#ffd65b" stroke-width="3" stroke-linecap="round"/>`;
       }).join("")}`]];
-    case "island":
-      return [["flame", `<path d="M${cx - 30} ${top - 2}Q${cx} ${top - 14} ${cx + 30} ${top - 2}Q${cx + 10} ${top + 10} ${cx - 30} ${top - 2}Z" fill="#6a8a3a" stroke="${ink}"/><path d="M${cx - 18} ${top - 6}v-12M${cx + 14} ${top - 6}v-10" stroke="#5a3a1a" stroke-width="3"/><circle cx="${cx - 18}" cy="${top - 22}" r="8" fill="#4a8a2a" stroke="${ink}"/><circle cx="${cx + 14}" cy="${top - 19}" r="7" fill="#6fbf4a" stroke="${ink}"/><path d="M${cx - 4} ${top - 10}h10v-6l-5 -5l-5 5z" fill="#fff3d0" stroke="${ink}"/><path d="M${cx + 26} ${top - 4}q2 8 0 14" stroke="#7fd0ff" stroke-width="3" fill="none"/>`]];
+    case "island": {
+      // A floating islet hovering over the sprout: layered rock beneath, a
+      // grassy top with a tree and a gold-domed shrine, and a waterfall
+      // spilling off the edge into mist.
+      const y = top - 22;
+      const rock = `M${cx - 26} ${y}Q${cx - 23} ${y + 9} ${cx - 12} ${y + 13}L${cx - 4} ${y + 21}L${cx + 5} ${y + 14}Q${cx + 21} ${y + 10} ${cx + 26} ${y}Z`;
+      return [
+        [
+          "flame",
+          `<ellipse cx="${cx}" cy="${y + 23}" rx="15" ry="2.6" fill="#bff4ff" opacity=".4" stroke="none"/>` +
+            `<path d="${rock}" fill="#9a7650" stroke="${ink}" stroke-width="1.6" stroke-linejoin="round"/>` +
+            `<path d="M${cx - 22} ${y + 6}Q${cx} ${y + 10} ${cx + 22} ${y + 6}M${cx - 12} ${y + 13}Q${cx} ${y + 15} ${cx + 8} ${y + 13}" stroke="#5e4630" stroke-width="1.4" fill="none" opacity=".8"/>` +
+            `<path d="M${cx - 18} ${y + 3}Q${cx - 6} ${y + 6} ${cx + 4} ${y + 4}" stroke="#d2a874" stroke-width="1.6" fill="none" stroke-linecap="round"/>` +
+            `<path d="M${cx - 4} ${y + 21}l-1 5M${cx + 2} ${y + 17}l1 4" stroke="#6fcf5a" stroke-width="1.4" stroke-linecap="round"/>` +
+            `<path d="M${cx + 24} ${y + 1}Q${cx + 26} ${y + 10} ${cx + 25} ${y + 22}" stroke="#58b8e8" stroke-width="4.4" fill="none" stroke-linecap="round"/>` +
+            `<path d="M${cx + 24} ${y + 1}Q${cx + 25.6} ${y + 10} ${cx + 24.6} ${y + 21}" stroke="#e6fbff" stroke-width="1.4" fill="none" stroke-linecap="round"/>` +
+            `<circle cx="${cx + 23}" cy="${y + 24}" r="2.6" fill="#ffffff" opacity=".85" stroke="none"/><circle cx="${cx + 27.5}" cy="${y + 23.5}" r="2" fill="#ffffff" opacity=".7" stroke="none"/>` +
+            `<ellipse cx="${cx}" cy="${y}" rx="27" ry="6.5" fill="#5fbf4a" stroke="${ink}" stroke-width="1.6"/>` +
+            `<ellipse cx="${cx - 3}" cy="${y - 1.5}" rx="20" ry="3.6" fill="#9be070" stroke="none"/>` +
+            `<path d="M${cx - 12} ${y - 2}V${y - 13}" stroke="#6a4424" stroke-width="3" stroke-linecap="round"/>` +
+            `<circle cx="${cx - 12}" cy="${y - 17}" r="7.5" fill="#3f9a3a" stroke="${ink}" stroke-width="1.4"/><circle cx="${cx - 14.5}" cy="${y - 19.5}" r="3.6" fill="#7fd05a" stroke="none"/>` +
+            // A flowering bush (it also hides the sprout's own bloom).
+            `<circle cx="${cx + 1}" cy="${y - 5}" r="6.6" fill="#4faa3f" stroke="${ink}" stroke-width="1.2"/><circle cx="${cx - 4}" cy="${y - 2.5}" r="4" fill="#4faa3f" stroke="${ink}" stroke-width="1.2"/>` +
+            `<circle cx="${cx - 2}" cy="${y - 7}" r="1.4" fill="#ffb3d1" stroke="none"/><circle cx="${cx + 2.5}" cy="${y - 9}" r="1.3" fill="#fff3a0" stroke="none"/><circle cx="${cx + 3}" cy="${y - 4}" r="1.4" fill="#ffb3d1" stroke="none"/><circle cx="${cx - 4.5}" cy="${y - 2.5}" r="1.2" fill="#ffb3d1" stroke="none"/>` +
+            `<path d="M${cx + 3} ${y - 1}V${y - 7}H${cx + 13}V${y - 1}Z" fill="#fff3d6" stroke="${ink}" stroke-width="1.2" stroke-linejoin="round"/>` +
+            `<path d="M${cx + 2} ${y - 7}Q${cx + 8} ${y - 15} ${cx + 14} ${y - 7}Z" fill="#ffd65b" stroke="${ink}" stroke-width="1.2" stroke-linejoin="round"/>` +
+            `<path d="M${cx + 8} ${y - 11}V${y - 14}" stroke="#ffd65b" stroke-width="1.2" stroke-linecap="round"/>` +
+            `<path d="M${cx + 7} ${y - 1}V${y - 4}H${cx + 9}V${y - 1}" fill="#6a4424" stroke="none"/>`,
+        ],
+      ];
+    }
     case "halo":
       return [["flame", `<ellipse cx="${cx}" cy="${top - 12}" rx="26" ry="6" fill="none" stroke="#fff3b0" stroke-width="3"/>`]];
     case "third-eye":

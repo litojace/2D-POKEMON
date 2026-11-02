@@ -8873,37 +8873,6 @@ body.lobby-active::before {
   filter: grayscale(0.55) sepia(0.25) brightness(0.92)
     drop-shadow(0 0 2px #ff9a2e55);
 }
-/* Carved stone ring with a glowing core gem at the bottom. */
-.raid-cosmetic-preview[data-cosmetic="conqueror"],
-:is(
-  .raid-party-avatar,
-  .raid-score-avatar,
-  .player-avatar
-)[data-raid-cosmetic~="conqueror"] {
-  position: relative;
-  border-radius: 50%;
-  box-shadow:
-    0 0 0 3px #6f6152,
-    0 0 0 5px #a99782,
-    0 0 12px 5px #ffb44d55;
-}
-.raid-cosmetic-preview[data-cosmetic="conqueror"]::after,
-:is(
-    .raid-party-avatar,
-    .raid-score-avatar,
-    .player-avatar
-  )[data-raid-cosmetic~="conqueror"]::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: -6px;
-  width: 10px;
-  height: 10px;
-  transform: translateX(-50%) rotate(45deg);
-  background: radial-gradient(circle, #fff3c4, #ffb44d 60%, #b8651b);
-  border: 2px solid #6f6152;
-  box-shadow: 0 0 8px #ffb44d;
-}
 .raid-cosmetic-preview[data-cosmetic="mountainborn"] {
   border-radius: 50%;
   box-shadow: inset 0 -10px 12px -6px #a99782;
@@ -11085,37 +11054,6 @@ dialog:has(.shop) {
     radial-gradient(circle at 54% 34%, var(--accent) 0 19%, transparent 20%),
     #161a30;
 }
-/* Crescent frame: a night-blue ring with a golden moon at the top. */
-.raid-cosmetic-preview[data-cosmetic="crescent"],
-:is(
-  .raid-party-avatar,
-  .raid-score-avatar,
-  .player-avatar
-)[data-raid-cosmetic~="crescent"] {
-  position: relative;
-  border-radius: 50%;
-  box-shadow:
-    0 0 0 3px #2b2245,
-    0 0 0 5px #7b5cd6,
-    0 0 10px 3px #ffd65b44;
-}
-.raid-cosmetic-preview[data-cosmetic="crescent"]::after,
-:is(
-    .raid-party-avatar,
-    .raid-score-avatar,
-    .player-avatar
-  )[data-raid-cosmetic~="crescent"]::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: -8px;
-  width: 14px;
-  height: 14px;
-  transform: translateX(-50%) rotate(-30deg);
-  border-radius: 50%;
-  box-shadow: inset -4px 2px 0 0 var(--accent);
-  filter: drop-shadow(0 0 3px var(--accent));
-}
 
 /* ---- Tidewyrm raid rewards ---- */
 .raid-cosmetic-preview[data-cosmetic="seafoam"] > svg,
@@ -11172,39 +11110,6 @@ dialog:has(.shop) {
       transparent 67%
     ),
     #14213a;
-}
-/* Reef frame: coral branches around the portrait, a pearl at the bottom. */
-.raid-cosmetic-preview[data-cosmetic="reef"],
-:is(
-  .raid-party-avatar,
-  .raid-score-avatar,
-  .player-avatar
-)[data-raid-cosmetic~="reef"] {
-  position: relative;
-  border-radius: 50%;
-  box-shadow:
-    0 0 0 3px #ff8fa8,
-    0 0 0 5px #ffd2dc,
-    0 0 10px 3px #7fe9ff55;
-}
-.raid-cosmetic-preview[data-cosmetic="reef"]::after,
-:is(
-    .raid-party-avatar,
-    .raid-score-avatar,
-    .player-avatar
-  )[data-raid-cosmetic~="reef"]::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: -7px;
-  width: 12px;
-  height: 12px;
-  transform: translateX(-50%);
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #ffffff, #fff3f8 45%, #c9b8d6);
-  box-shadow:
-    0 0 0 2px #ff8fa8,
-    0 0 8px #bff6ff;
 }
 
 .binding-section {
@@ -14132,19 +14037,6 @@ dialog:is(:has(.raid-hub), :has(.shop)) .dialog-content {
   svg {
   filter: hue-rotate(240deg) saturate(0.4) drop-shadow(0 0 4px #e6ddff88);
 }
-.raid-cosmetic-preview[data-cosmetic="moonglass"],
-:is(
-  .raid-party-avatar,
-  .raid-score-avatar,
-  .player-avatar
-)[data-raid-cosmetic~="moonglass"] {
-  border-radius: 18%;
-  background: linear-gradient(135deg, #c9a3ff22, #8bceff11);
-  box-shadow:
-    0 0 0 3px #b9a7e3,
-    inset 0 0 0 4px #dce4ff66,
-    0 0 14px #b9a7e344;
-}
 .raid-cosmetic-preview[data-cosmetic="lullaby-aura"] {
   border-radius: 50%;
   box-shadow:
@@ -14173,30 +14065,6 @@ dialog:is(:has(.raid-hub), :has(.shop)) .dialog-content {
   margin: 0 !important;
   width: 100% !important;
   height: 100% !important;
-}
-.raid-cosmetic-preview[data-cosmetic="moonglass"],
-:is(
-  .raid-party-avatar,
-  .raid-score-avatar,
-  .player-avatar
-)[data-raid-cosmetic~="moonglass"] {
-  position: relative;
-}
-.raid-cosmetic-preview[data-cosmetic="moonglass"]::after,
-:is(
-    .raid-party-avatar,
-    .raid-score-avatar,
-    .player-avatar
-  )[data-raid-cosmetic~="moonglass"]::after {
-  content: "";
-  position: absolute;
-  top: 4px;
-  right: 3px;
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  box-shadow: -4px 1px 0 #f3f0ff;
-  pointer-events: none;
 }
 .raid-cosmetic-preview[data-cosmetic="lullaby-aura"]::after {
   content: "♪";
@@ -14728,26 +14596,6 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   filter: saturate(0.45) brightness(1.3) drop-shadow(-2px 0 2px #ff899e88)
     drop-shadow(2px 0 2px #80e1ff99);
 }
-.raid-cosmetic-preview[data-cosmetic="stained-glass"],
-:is(
-  .raid-party-avatar,
-  .raid-score-avatar,
-  .player-avatar
-)[data-raid-cosmetic~="stained-glass"] {
-  border-radius: 18%;
-  box-shadow:
-    0 0 0 3px #ffe2a0,
-    0 0 14px #80e1ff44;
-  background: conic-gradient(
-    #ff899e66,
-    #ffd77866,
-    #9aefb566,
-    #80e1ff66,
-    #a5adff66,
-    #e5a0ff66,
-    #ff899e66
-  );
-}
 .raid-cosmetic-preview[data-cosmetic="halo-aura"] {
   border-radius: 50%;
   box-shadow:
@@ -14805,21 +14653,6 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   svg {
   filter: sepia(0.25) saturate(0.6) brightness(0.7)
     drop-shadow(0 0 3px #ff985a77);
-}
-.raid-cosmetic-preview[data-cosmetic="brazier-frame"],
-:is(
-  .raid-party-avatar,
-  .raid-score-avatar,
-  .player-avatar
-)[data-raid-cosmetic~="brazier-frame"] {
-  border-radius: 18%;
-  box-shadow:
-    0 0 0 3px #b87e58,
-    inset 0 0 0 4px #ffcd8a44,
-    0 0 15px #ff985a44;
-  background:
-    radial-gradient(circle at 0 0, #ffbb7780, transparent 40%),
-    radial-gradient(circle at 100% 100%, #ff876580, transparent 40%), #243149;
 }
 .raid-cosmetic-preview[data-cosmetic="ember-aura"] {
   border-radius: 50%;
@@ -14957,19 +14790,6 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   )[data-raid-cosmetic~="thundercell"]
   svg {
   filter: saturate(0.35) brightness(1.25) drop-shadow(0 0 3px #8edfff88);
-}
-.raid-cosmetic-preview[data-cosmetic="conductor-frame"],
-:is(
-  .raid-party-avatar,
-  .raid-score-avatar,
-  .player-avatar
-)[data-raid-cosmetic~="conductor-frame"] {
-  border-radius: 18%;
-  box-shadow:
-    0 0 0 3px #bd926c,
-    inset 0 0 0 4px #8edfff55,
-    0 0 14px #ffe18b44;
-  background: linear-gradient(135deg, #ffe18b33, #8edfff22);
 }
 .raid-cosmetic-preview[data-cosmetic="spark-aura"] {
   border-radius: 50%;

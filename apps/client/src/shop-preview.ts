@@ -394,18 +394,20 @@ export function mountShopPreview(
       const zoom = cameraZoom();
       const worldWidth = framing.width / zoom;
       const top = framing.cameraY - viewportHeight / (2 * zoom);
-      // The soft beam enters above the full stage's upper-right corner and
-      // pools on the floor around the fighter's shadow. Each layer is one
-      // shape (beam plus the lower half of its pool), so the pool has one
-      // even tone; drawn separately, the beam doubled the light above the
-      // foot line only.
+      // The soft beam enters above the full stage's upper-right corner as a
+      // narrow source and widens like a real light cone until it pools on
+      // the floor around the fighter's shadow. Each layer is one shape (beam
+      // plus the lower half of its pool), so the pool has one even tone;
+      // drawn separately, the beam doubled the light above the foot line.
       const source = framing.x + worldWidth * 0.55;
       for (let i = 0; i < 24; i++) {
         const fade = 1 - i / 24;
         const rx = 110 * fade,
           ry = rx * SHOP_GROUND_FLAT;
         const pool: { x: number; y: number }[] = [];
-        for (let a = -60; a <= 240; a += 10)
+        // The cone's edges land on the pool's widest points (0° and 180°),
+        // so the light spreads as wide as the gold pool on the floor.
+        for (let a = 0; a <= 180; a += 10)
           pool.push({
             x: framing.x + Math.cos((a * Math.PI) / 180) * rx,
             y: feet + Math.sin((a * Math.PI) / 180) * ry,
@@ -414,8 +416,8 @@ export function mountShopPreview(
           .fillStyle(0xffdc85, 0.028)
           .fillPoints(
             [
-              { x: source - worldWidth * 0.28 * fade, y: top - 40 },
-              { x: source + worldWidth * 0.28 * fade, y: top - 40 },
+              { x: source - worldWidth * 0.045 * fade, y: top - 40 },
+              { x: source + worldWidth * 0.045 * fade, y: top - 40 },
               ...pool,
             ],
             true,
@@ -494,6 +496,8 @@ export function mountShopPreview(
           flat,
           lift,
         );
+      // Skin rings (Mythical Awakening) lie on the same floor as the aura.
+      rig.groundFlat = flat;
       rig.root.setScale(framing.scale);
       rig.render(pose, x, y, clock, 1, paused && motion.matches);
       if (!drawn) {
