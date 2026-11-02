@@ -386,7 +386,10 @@ export function creatureLayers(
           `${e(72, 112, 9, 5.5, blushColor)}${e(128, 112, 9, 5.5, blushColor)}`,
         )
       : id === "cindrake"
-        ? // Anime blush slashes.
+        ? // Anime blush slashes over a soft pink patch.
+          soft(
+            `${e(69, 106, 8, 4.5, blushColor)}${e(131, 106, 8, 4.5, blushColor)}`,
+          ) +
           stroke(
             "M63 106l3-4M68 107l3-4M73 108l3-4M127 108l-3-4M132 107l-3-4M137 106l-3-4",
             "#ff6f6f",
