@@ -336,6 +336,7 @@ export function openFarm(options) {
     };
     F.leaves = st.leaves;
     options.onLeaves?.(st.leaves);
+    F.bookRewards = st.bookRewards ?? [];
     // The order board (migration 040; none before it).
     F.orders = (st.orders ?? []).map((o) => ({
       slot: o.slot,
@@ -438,6 +439,13 @@ export function openFarm(options) {
     clearTimeout(flushTimer);
     flushTimer = setTimeout(flush, now ? 0 : dragging ? 450 : 90);
   }
+  /** Crop book rewards (migration 041), by crops found. */
+  const BOOK_REWARDS = [
+    [5, `+100 ${L}`],
+    [10, "Gold Fertilizer ×2"],
+    [20, `+1,000 ${L}`],
+    [25, "Title: Elemental Botanist"],
+  ];
   async function flush() {
     clearTimeout(flushTimer);
     if (sending || !queue.length) return;
@@ -456,6 +464,13 @@ export function openFarm(options) {
           "good",
         );
       if (r.farm.level > lvBefore) levelUp(lvBefore, r.farm.level);
+      for (const n of r.book ?? []) {
+        const reward = BOOK_REWARDS.find(([k]) => k === n)?.[1] ?? "";
+        toast(
+          `Crop book: ${n} crops found · ${reward.replace(/<[^>]+>/g, "").trim()}`,
+        );
+        log(`Crop book: <b>${n} crops</b> found · ${reward}`, "good");
+      }
     } catch (e) {
       queue = queue.slice(actions.length);
       toast(e?.message || "Couldn't reach your farm. Check your connection.");
@@ -2517,6 +2532,13 @@ export function openFarm(options) {
           (c) => {
             const n = F.harv[c.id] || 0;
             return `<div class="bk${n ? "" : " unk"}" title="${n ? `${c.n} · harvested ${n}×` : `Unlocks at Lv ${c.lv}`}"><img src="${icon(c.id)}" alt=""><span>${n ? c.n : `??? · Lv ${c.lv}`}</span><span class="muts"><small>${n ? `${n}×` : ""}</small></span></div>`;
+          },
+        ).join(
+          "",
+        )}</div><h4 style="margin:.4em 0 0;font-family:var(--display);text-transform:uppercase">Collection rewards</h4><div class="miles">${BOOK_REWARDS.map(
+          ([n, r]) => {
+            const got = (F.bookRewards ?? []).includes(n);
+            return `<div class="mile${got ? " done" : ""}"><span>${got ? "✓" : "○"} ${n} crops</span><span>${r}</span></div>`;
           },
         ).join("")}</div></div>`;
     }

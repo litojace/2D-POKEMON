@@ -56,6 +56,7 @@ async function fakeFarm(page: Page) {
       },
       leaves: 1234,
       weather: { now: "storm", next: "rainbow", later: "sun", until: at(5000) },
+      bookRewards: [5],
       orders: [
         {
           slot: 0,
@@ -278,6 +279,11 @@ test("the weather orb shows the weather now and the forecast", async ({
   await orb.click();
   await expect(pop).toBeHidden();
   await expect(page.locator('#fm-chips [data-orb="barn"]')).toBeVisible();
+  // The almanac lists the crop book rewards, with the one already paid.
+  await page.click('#fm-dock [data-sheet="book"]');
+  await expect(page.locator("#fm-sheet")).toContainText("Collection rewards");
+  await expect(page.locator("#fm-sheet .mile.done")).toHaveCount(1);
+  await expect(page.locator("#fm-sheet .mile")).toHaveCount(4);
   expect(errors).toEqual([]);
 });
 
