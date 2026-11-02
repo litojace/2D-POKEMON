@@ -100,13 +100,14 @@ assert(
 assert(urls.every((url) => existsSync(root + url)));
 // Links in old emails land on these paths; each must be the game page.
 const page = readFileSync(root + "index.html", "utf8");
-for (const path of ["email-confirmed", "reset-password", "auth/callback"])
-  for (const file of [`${path}/index.html`, `${path}.html`])
-    assert.equal(
-      readFileSync(root + file, "utf8"),
-      page,
-      `Old auth link page ${file} must match index.html`,
-    );
+for (const path of ["email-confirmed", "reset-password", "auth/callback"]) {
+  assert.equal(
+    readFileSync(root + `${path}.html`, "utf8"),
+    page,
+    `Old auth link page ${path}.html must match index.html`,
+  );
+  assert(!existsSync(root + path), `Drop the unused ${path}/ copy`);
+}
 assert(!existsSync(root + "touch-preview.html"));
 assert(!existsSync(root + "ability-preview.html"));
 console.log(

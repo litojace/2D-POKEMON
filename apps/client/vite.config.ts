@@ -8,8 +8,9 @@ import { LEGACY_AUTH_PATHS } from "./src/auth-redirect";
  * Emails sent before auth links moved to `/?auth=…` still point at
  * `/email-confirmed`, `/reset-password` and `/auth/callback`. The Static Site
  * has no rewrite rule for them (and a blanket `/*` rewrite would answer
- * missing scripts with HTML), so put the game page at those paths instead:
- * `<path>/index.html` and `<path>.html`, whichever form the host resolves.
+ * missing scripts with HTML), so put the game page at `<path>.html`. Render
+ * serves `<path>.html` for both `/<path>` and `/<path>/` (checked on the live
+ * site with `/index` and `/index/`), so no `<path>/index.html` copy is needed.
  * The app reads the path itself (`readAuthReturn`), and every asset URL is
  * absolute, so the copy works at any depth.
  */
@@ -24,13 +25,9 @@ function legacyAuthPages(): Plugin {
     closeBundle() {
       const page = join(outDir, "index.html");
       for (const path of LEGACY_AUTH_PATHS) {
-        for (const file of [
-          join(outDir, path, "index.html"),
-          join(outDir, `${path}.html`),
-        ]) {
-          mkdirSync(dirname(file), { recursive: true });
-          copyFileSync(page, file);
-        }
+        const file = join(outDir, `${path}.html`);
+        mkdirSync(dirname(file), { recursive: true });
+        copyFileSync(page, file);
       }
     },
   };
