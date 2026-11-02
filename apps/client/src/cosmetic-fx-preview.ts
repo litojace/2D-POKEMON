@@ -222,17 +222,25 @@ function tick(now: number) {
   lastTick = now;
   for (const live of visible) {
     if (!live.el.isConnected) {
-      visible.delete(live);
-      lives.delete(live.el);
+      release(live);
       continue;
     }
     draw(live, now);
   }
 }
+function release(live: Live) {
+  visible.delete(live);
+  lives.delete(live.el);
+  onScreen.unobserve(live.el);
+}
 const onScreen = new IntersectionObserver((entries) => {
   for (const e of entries) {
     const live = lives.get(e.target as HTMLElement);
     if (!live) continue;
+    if (!live.el.isConnected) {
+      release(live);
+      continue;
+    }
     if (e.isIntersecting) {
       visible.add(live);
       live.last = performance.now();
@@ -340,6 +348,12 @@ export function watchCosmeticPreviews(root: HTMLElement = document.body) {
         if (n instanceof HTMLElement) scan(n);
       });
     }
+    // Offscreen thumbnails have already left `visible`, so the animation
+    // loop cannot release them. Drop their canvases/observer references as
+    // soon as a tab, preview or dialog removes them.
+    if (records.some((r) => r.removedNodes.length))
+      for (const live of lives.values())
+        if (!live.el.isConnected) release(live);
   }).observe(root, {
     childList: true,
     subtree: true,

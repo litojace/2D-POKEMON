@@ -40,8 +40,9 @@ export function setupPWA(
     }
     return peerMatchActive(records, Date.now());
   };
+  const menuOpen = () => !!document.querySelector("dialog[open]");
   const idle = () =>
-    safeToUpdate(getPhase()) &&
+    safeToUpdate(getPhase(), menuOpen()) &&
     !peers() &&
     document.visibilityState === "visible" &&
     navigator.onLine;
@@ -75,21 +76,32 @@ export function setupPWA(
     if (!banner.hidden) {
       message.textContent = idle()
         ? "Updating to the latest arena version…"
-        : "Update downloaded · applies when you return to Town or the lobby.";
+        : "Update downloaded · applies after closing menus and returning to Town or the lobby.";
     }
     void automatic.sync();
   };
   let lastBeat = 0,
+    lastMenuOpen = false,
     lastPhase: string | undefined;
   const heartbeat = () => {
     const now = Date.now();
-    if (lastPhase === getPhase() && now - lastBeat < 9000) return;
+    const open = menuOpen();
+    if (
+      lastPhase === getPhase() &&
+      lastMenuOpen === open &&
+      now - lastBeat < 9000
+    )
+      return;
     lastPhase = getPhase();
+    lastMenuOpen = open;
     lastBeat = now;
     try {
       localStorage.setItem(
         id,
-        JSON.stringify({ active: !safeToUpdate(getPhase()), at: Date.now() }),
+        JSON.stringify({
+          active: !safeToUpdate(getPhase(), open),
+          at: Date.now(),
+        }),
       );
     } catch {
       /* Storage is optional. */
@@ -117,6 +129,12 @@ export function setupPWA(
     },
   });
   heartbeat();
+  const dialog = document.getElementById("dialog");
+  if (dialog)
+    new MutationObserver(heartbeat).observe(dialog, {
+      attributes: true,
+      attributeFilter: ["open"],
+    });
   setInterval(heartbeat, 10000);
   window.addEventListener("storage", paint);
   setInterval(() => void checkForUpdate(), 60000);

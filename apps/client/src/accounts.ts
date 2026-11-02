@@ -1,5 +1,6 @@
 import { framedAvatar } from "./portraits";
 import { openWardrobe } from "./wardrobe";
+import { ShopContent } from "./shop-content";
 import {
   adventureMarkup,
   type AdventureTab,
@@ -799,6 +800,7 @@ export class AccountUI {
   /** Re-render the open Shop (set while it's open). */
   private shopRefresh?: () => void;
   private shopPreviewCleanup?: () => void;
+  private shopRequest = 0;
   private shopView: ShopView = { tab: "today", champion: "voltkit" };
   private wardrobePanel?: ReturnType<typeof openWardrobe>;
   /** One inventory for purchased pieces and earned boss cosmetics. */
@@ -1001,15 +1003,30 @@ export class AccountUI {
   /** The Shop: Today's Picks, champion skins, the Mythic Hall, collections and missions. */
   async showShop(tab?: ShopTab) {
     if (!this.ensurePlayer()) return;
+    const request = ++this.shopRequest,
+      accountId = this.account?.id;
+    const openingDialog = document.getElementById(
+      "dialog",
+    ) as HTMLDialogElement;
+    const openingContent = openingDialog.querySelector(".dialog-content");
+    const wasOpen = openingDialog.open;
+    const currentRequest = () =>
+      request === this.shopRequest &&
+      this.account?.id === accountId &&
+      openingDialog.querySelector(".dialog-content") === openingContent &&
+      (!wasOpen || openingDialog.open);
     const view = this.shopView;
     if (tab) view.tab = tab;
     if (!view.preview)
       view.champion = this.hooks.selectedCharacter?.() ?? view.champion;
     let problem = "";
     try {
-      this.economy = (await this.api("/api/economy")) as Economy;
+      const economy = (await this.api("/api/economy")) as Economy;
+      if (!currentRequest()) return;
+      this.economy = economy;
       this.renderNav();
     } catch (error) {
+      if (!currentRequest()) return;
       problem =
         error instanceof Error
           ? `${error.message} The Shop needs the latest database update (migration 010).`
@@ -1027,12 +1044,20 @@ export class AccountUI {
     };
     this.shopPreviewCleanup?.();
     let preview: import("./shop-preview").ShopPreviewHandle | undefined;
+    let mountedHost: Element | null | undefined;
     let importing = false;
     let cancelled = false;
     const root = dialogEl()!;
+    const content = new ShopContent(root, (html) =>
+      this.hooks.openDialog(html),
+    );
     const cleanup = () => {
       if (cancelled) return;
       cancelled = true;
+      if (this.shopPreviewCleanup === cleanup) {
+        this.shopRefresh = undefined;
+        this.shopPreviewCleanup = undefined;
+      }
       preview?.();
       observer.disconnect();
       root.removeEventListener("close", cleanup);
@@ -1044,6 +1069,7 @@ export class AccountUI {
     root.addEventListener("close", cleanup);
     this.shopPreviewCleanup = cleanup;
     const render = (keepScroll = true, previewOnly = false) => {
+      if (cancelled) return;
       const root = dialogEl();
       const top =
         (root?.querySelector<HTMLElement>(".dialog-content") ?? root)
@@ -1051,23 +1077,14 @@ export class AccountUI {
       const panel = root?.querySelector<HTMLElement>(".shop-preview");
       if (previewOnly && panel) {
         // Keep catalog SVGs, focus and scroll position intact while browsing.
-        panel.outerHTML = shopPreviewMarkup(
-          view,
-          this.economy ?? null,
-          this.raidLook ?? {},
+        content.preview(
+          shopPreviewMarkup(view, this.economy ?? null, this.raidLook ?? {}),
         );
-        const selected = previewItem(view, this.economy ?? null);
-        for (const button of Array.from(
-          root!.querySelectorAll<HTMLElement>("[data-shop-preview]"),
-        )) {
-          const active = button.dataset.shopPreview === selected;
-          button.setAttribute("aria-pressed", String(active));
-          button.closest(".shop-card")?.classList.toggle("is-selected", active);
-        }
       } else
-        this.hooks.openDialog(
+        content.render(
           shopMarkup(view, this.economy ?? null, this.raidLook ?? {}, problem),
         );
+      content.select(previewItem(view, this.economy ?? null));
       if (root && keepScroll)
         (root.querySelector<HTMLElement>(".dialog-content") ?? root).scrollTop =
           top;
@@ -1086,10 +1103,19 @@ export class AccountUI {
           ".shop button, .dialog-tabs [data-shop-tab]",
         ) ?? [],
       );
+      const disabled = all.map((b) => b.disabled);
+      const restoreButtons = () => {
+        all.forEach((b, i) => {
+          if (b.isConnected) b.disabled = disabled[i];
+        });
+        button.removeAttribute("aria-busy");
+      };
       all.forEach((b) => (b.disabled = true));
       button.setAttribute("aria-busy", "true");
       try {
         const message = await work();
+        if (cancelled) return;
+        restoreButtons();
         this.renderNav();
         try {
           this.hooks.onChange();
@@ -1099,6 +1125,8 @@ export class AccountUI {
         render();
         status(message);
       } catch (error) {
+        if (cancelled) return;
+        restoreButtons();
         render();
         status(
           error instanceof Error
@@ -1112,14 +1140,22 @@ export class AccountUI {
       const root = dialogEl();
       if (!root) return;
       const panel = root.querySelector<HTMLElement>(".shop-preview");
-      if (panel && preview) preview.update(panel);
-      else if (panel && !importing && !cancelled) {
+      if (
+        panel &&
+        preview &&
+        mountedHost !== panel.querySelector(".shop-live-stage")
+      ) {
+        preview.update(panel);
+        mountedHost = panel.querySelector(".shop-live-stage");
+      } else if (panel && !preview && !importing && !cancelled) {
         importing = true;
         void import("./shop-preview")
           .then(({ mountShopPreview }) => {
             const current = root.querySelector<HTMLElement>(".shop-preview");
-            if (!cancelled && root.open && current)
+            if (!cancelled && root.open && current) {
               preview = mountShopPreview(current);
+              mountedHost = current.querySelector(".shop-live-stage");
+            }
           })
           .catch(() => {
             const toggle = root.querySelector<HTMLButtonElement>(

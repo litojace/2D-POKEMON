@@ -118,3 +118,25 @@ it("retries failed activation automatically with backoff and waits while hidden 
   expect(activate).toHaveBeenCalledTimes(2);
   expect(gate.waiting).toBe(true);
 });
+it("defers activation and an already-activated reload while a Shop or other menu is open", async () => {
+  let menuOpen = true;
+  const activate = vi.fn(async () => {}),
+    reload = vi.fn();
+  const gate = new PwaAutoUpdate({
+    safe: () => safeToUpdate(undefined, menuOpen),
+    activate,
+    reload,
+    now: () => 0,
+  });
+  gate.available();
+  await gate.sync();
+  expect(activate).not.toHaveBeenCalled();
+  gate.activated();
+  await gate.sync();
+  expect(reload).not.toHaveBeenCalled();
+  menuOpen = false;
+  await gate.sync();
+  expect(reload).toHaveBeenCalledOnce();
+  expect(safeToUpdate("lobby", true)).toBe(false);
+  expect(safeToUpdate("playing", false)).toBe(false);
+});

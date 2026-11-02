@@ -1,7 +1,7 @@
-export function safeToUpdate(phase: string | undefined) {
+export function safeToUpdate(phase: string | undefined, menuOpen = false) {
   // Results still have active buttons and scroll position. Wait for the
   // player to return to Town/lobby instead of reloading underneath a tap.
-  return !phase || phase === "lobby";
+  return !menuOpen && (!phase || phase === "lobby");
 }
 export function peerMatchActive(
   records: { active: boolean; at: number }[],
