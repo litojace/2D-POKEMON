@@ -46,8 +46,9 @@ clients can discover updates. Under **Redirects/Rewrites**, add these three
 | `/reset-password`  | `/index.html` | Rewrite |
 | `/auth/callback`   | `/index.html` | Rewrite |
 
-These serve the app at the auth callback paths while preserving the URL for
-Supabase. Do not add a blanket `/*` SPA rewrite: missing JS must return 404,
+New auth emails return to `/?auth=…` on the site root, which needs no rule;
+these rewrites keep links from older emails working. They serve the app at the
+old callback paths while preserving the URL for Supabase. Do not add a blanket `/*` SPA rewrite: missing JS must return 404,
 not HTML. Verify the three callback paths return the app on the final domain.
 
 ## Startup behavior

@@ -72,6 +72,11 @@ import { renderOnline } from "./admin-online";
 import { leaderboardMarkup, progressMarkup, seasonName } from "./progress-view";
 import { friendsScreenMarkup, type FriendsRoom } from "./friends-view";
 import { FriendsHub } from "./friends-hub";
+import {
+  authRedirectUrl,
+  readAuthReturn,
+  withoutAuthMarker,
+} from "./auth-redirect";
 const EYE =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg>';
 const EYE_OFF =
@@ -183,8 +188,14 @@ export class AccountUI {
     void this.client.auth
       .getSession()
       .then(({ data }) => this.setSession(data.session));
-    if (location.pathname === "/email-confirmed")
-      hooks.notify("Email confirmed. You can now log in.");
+    const returned = readAuthReturn(location.pathname, location.search);
+    if (returned) {
+      // Keep Supabase's own ?code= / #access_token; drop only our marker so a
+      // refresh doesn't announce the confirmation again.
+      history.replaceState(history.state, "", withoutAuthMarker(location.href));
+      if (returned === "email-confirmed")
+        hooks.notify("Email confirmed. You can now log in.");
+    }
   }
   setSession(session: Session | null, force = false): Promise<void> {
     // Sign-in returns a session and also raises SIGNED_IN. Share the pending
@@ -498,7 +509,7 @@ export class AccountUI {
         );
         const { error } = await this.client.auth.signInWithOAuth({
           provider: "google",
-          options: { redirectTo: new URL("/auth/callback", site).toString() },
+          options: { redirectTo: authRedirectUrl(site, "auth-callback") },
         });
         if (error) message.textContent = error.message;
       };
@@ -566,7 +577,7 @@ export class AccountUI {
               data: {
                 display_name: String(fields.get("displayName") ?? "").trim(),
               },
-              emailRedirectTo: new URL("/email-confirmed", site).toString(),
+              emailRedirectTo: authRedirectUrl(site, "email-confirmed"),
             },
           });
           if (result.error) throw result.error;
@@ -576,7 +587,7 @@ export class AccountUI {
         }
         if (mode === "forgot") {
           const result = await this.client.auth.resetPasswordForEmail(email, {
-            redirectTo: new URL("/reset-password", site).toString(),
+            redirectTo: authRedirectUrl(site, "reset-password"),
           });
           if (result.error) throw result.error;
           message.textContent =
@@ -1506,7 +1517,7 @@ export class AccountUI {
         const site = import.meta.env.VITE_SITE_URL || location.origin;
         const { error } = await this.client.auth.updateUser(
           { email },
-          { emailRedirectTo: new URL("/email-confirmed", site).toString() },
+          { emailRedirectTo: authRedirectUrl(site, "email-confirmed") },
         );
         status.textContent = error
           ? error.message

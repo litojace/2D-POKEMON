@@ -38,18 +38,18 @@ Enable email/password in Supabase Authentication and keep email confirmation ena
 
 Supabase's default email sender only delivers to addresses belonging to your project's team. Use your Supabase team email for the first administrator test. Before inviting other players, configure a custom SMTP provider under Authentication's email/SMTP settings. See [Supabase SMTP setup](https://supabase.com/docs/guides/auth/auth-smtp).
 
-Under Authentication → URL Configuration, set Site URL to `https://parena.litojace.com` and allow:
+Under Authentication → URL Configuration, set Site URL to `https://parena.litojace.com`.
+
+Email confirmation, password recovery and Google sign-in all return to the **site root** with a marker, for example `https://parena.litojace.com/?auth=email-confirmed` (also `?auth=reset-password` and `?auth=auth-callback`). The root is served by both the Web Service and the Static Site, so a missing rewrite rule can never turn an email link into a "Not Found" page. Supabase always accepts a redirect on the same scheme, host and port as the Site URL, so production needs no extra entry. For local development, allow:
 
 ```text
-https://parena.litojace.com/email-confirmed
-https://parena.litojace.com/auth/callback
-https://parena.litojace.com/reset-password
-http://localhost:5173/email-confirmed
-http://localhost:5173/auth/callback
-http://localhost:5173/reset-password
+http://localhost:5173/**
+http://localhost:3001/**
 ```
 
-Add matching localhost:3001 URLs for local production testing. Leave `VITE_SITE_URL` unset during same-device local development. Email links must point to an address accessible from the device opening the email.
+Older emails used `/email-confirmed`, `/reset-password` and `/auth/callback`; the app still recognises those paths wherever they are served, so keep them in the allow list until old links have expired.
+
+Leave `VITE_SITE_URL` unset during same-device local development. Email links must point to an address accessible from the device opening the email.
 
 ## Your administrator account
 
