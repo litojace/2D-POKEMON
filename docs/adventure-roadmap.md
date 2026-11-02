@@ -3,12 +3,13 @@
 Boss Rush and Raid of the Day were retired by migration 028; previous rewards stay owned. Progression is cosmetic; account levels never alter fighter stats or rating. Existing mastery, raid unlocks, purchases and admin testing stay independent.
 
 - [x] Account levels 1–50: 100 + 25 × (level − 1) XP per next level. Verified completed PvP 50 (+25 win), AI 25, raid clears 100/150/200, partial raid XP by phase. Daily missions add 50. Thirty coins per level; ten milestones every five levels.
+- [x] Levels 51–100 (migration 035, hub redesign phase 1): about 1,450 XP for level 50 → 51, rising to 9,075 by level 70 and 11,250 at the top (`xpToNextLevel` in `packages/shared/src/journey.ts`; 431,625 XP in total). Every level from 50 pays 100 coins. New titles at 60 (Arena Veteran), 75 (Mythic Champion), 90 (Ascendant) and 100 (Element Master). The level 55–100 cosmetics come later with their art and will be granted to anyone already past those levels.
+- [x] Daily Spark (migration 035): the first 500 XP each Pacific day count double, for every XP source, and the bonus also counts for the season. Each bonus is its own XP ledger row (source `spark`, ref `<source>:<ref>`), so a replayed result never doubles twice.
 - [x] Weekly arcade: Monday rotation in Pacific time. Crown Chase (moving hill), Meteor Mayhem (telegraphed hazards), Ultimate Overload (4× meter charge). Supports private 1v1/2v2 and an AI opponent; separate from rating.
-- [x] Free monthly seasonal journey: twenty 400-XP tiers, four themed cosmetic milestones, automatic rewards, four weekly goals. Previous rewards stay owned. No purchase gate.
+- [x] Free monthly seasonal journey: twenty 400-XP tiers, four themed cosmetic milestones, automatic rewards, four weekly goals. Previous rewards stay owned. No purchase gate. From the month after migration 035 runs: thirty 1,200-XP tiers, with the same four cosmetics at tiers 5, 12, 20 and 30 (`arena_season_rules`).
 - [x] Regression, persistence/permissions/replay tests, desktop and mobile browser review; push to main.
 
 Apply the SQL migrations in order, through 028. The client handles a missing migration without inventing saved progress.
-
 
 Deployment: run `022_player_journey.sql` in Supabase after migration 021, then deploy this commit. The final SQL query returns `journey_enabled = true`. Reapplying 022 preserves XP, wallets, earned items, admin privileges and previous seasons. Existing player levels start at 1; past matches are not backfilled. The normal raid ledger and rating ledger remain separate from arcade.
 
