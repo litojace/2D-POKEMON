@@ -90,14 +90,19 @@ function conductor() {
   b += stud(0, "#8fe3ff", "#1d5f8a", false);
   return svg(b);
 }
-// Ornament: a two-tone lightning bolt over the top of the frame.
-function twinBolt() {
-  const p = "M3 0 L-7 16 L0 16 L-5 32 L10 11 L3 11 L9 0Z";
+// Ornament: a Tesla orb on a copper cap — half yellow, half blue, with a
+// spark arcing between the two charges.
+function teslaOrb() {
   return svg(
-    `<defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='0'><stop offset='.5' stop-color='#ffe45c'/><stop offset='.5' stop-color='#8fe3ff'/></linearGradient></defs>` +
-      `<path d='${p}' fill='url(#g)' stroke='#20140a' stroke-width='1.4' stroke-linejoin='round'/>` +
-      `<path d='M4 2 L-3 14' stroke='#fff' stroke-width='1.1' stroke-linecap='round' opacity='.8'/>`,
-    "-9 -1 20 34",
+    `<defs><linearGradient id='o' x1='0' y1='0' x2='1' y2='0'><stop offset='.5' stop-color='#ffe45c'/><stop offset='.5' stop-color='#8fe3ff'/></linearGradient>` +
+      `<radialGradient id='h'><stop offset='.45' stop-color='#fff7c4' stop-opacity='.7'/><stop offset='1' stop-color='#8fe3ff' stop-opacity='0'/></radialGradient></defs>` +
+      `<circle cy='-2' r='12' fill='url(#h)'/>` +
+      `<path d='M-6 6 H6 L8 12.5 H-8Z' fill='#a8643a' stroke='#3d1d0c' stroke-width='1.1' stroke-linejoin='round'/>` +
+      `<path d='M-6.6 8.4 H6.6 M-7.3 10.6 H7.3' stroke='#f2b987' stroke-width='.8'/>` +
+      `<circle cy='-2' r='8' fill='url(#o)' stroke='#20140a' stroke-width='1.3'/>` +
+      `<path d='M-5.6 -1 L-2.6 -4 L-0.6 0.4 L1.6 -4.4 L5.6 -1.6' fill='none' stroke='#ffffff' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'/>` +
+      `<ellipse cx='-3.4' cy='-6' rx='2.2' ry='1.2' fill='#ffffff' opacity='.85'/>`,
+    "-12 -14 24 27",
   );
 }
 
@@ -486,12 +491,12 @@ function prism() {
 const frames = [
   {
     id: "conductor-frame",
-    note: "Conductor (Storm Twins): copper coil, yellow + and blue − charges, crackling bolts and lightning rods; a two-tone bolt strikes the crown.",
+    note: "Conductor (Storm Twins): copper coil, yellow + and blue − charges, crackling bolts and lightning rods; a Tesla orb charges on the crown.",
     ring: conductor(),
-    orn: twinBolt(),
+    orn: teslaOrb(),
     place:
-      "top: -26%; left: 50%; width: 17%; height: 28%; transform: translateX(-50%);",
-    anim: "frame-flash 2.4s steps(1, end) infinite",
+      "top: -34%; left: 50%; width: 25%; height: 28%; transform: translateX(-50%); transform-origin: 50% 70%;",
+    anim: "frame-charge 1.8s ease-in-out infinite alternate",
     tier: ["#ffe45c", "#fff7c4", "#2fb8ff", "#e8fbff"],
     glow: "#8fe3ffaa",
     ray: "#ffe45c66",
@@ -747,9 +752,9 @@ ${all}[data-tier="mythic"] > .tier-rays::before {
   from { opacity: 0.35; }
   to { opacity: 1; }
 }
-@keyframes frame-flash {
-  0%, 70%, 78%, 100% { opacity: 1; }
-  74% { opacity: 0.35; }
+@keyframes frame-charge {
+  from { scale: 0.94; opacity: 0.85; }
+  to { scale: 1.06; opacity: 1; }
 }
 @keyframes frame-flicker {
   from { scale: 1 1; }
