@@ -30,6 +30,7 @@ export interface ShopPreviewHandle {
   (): void;
   update(panel: HTMLElement, placement?: PreviewPlacement): void;
   suspend(value: boolean): void;
+  replay(): void;
 }
 
 /** Shared idle rig for Shop and Home. Keep decoded textures when browsing. */
@@ -210,8 +211,9 @@ export function mountShopPreview(
     visible = true;
     champion = host.dataset.previewChampion as CharacterId;
     id = host.dataset.previewItem!;
-    worn = CHAMPION_SKIN_BY_ID[id]
-      ? { skin: id, stage: Number(host.dataset.previewStage) }
+    const modelSkin = host.dataset.previewSkin ?? id;
+    worn = CHAMPION_SKIN_BY_ID[modelSkin]
+      ? { skin: modelSkin, stage: Number(host.dataset.previewStage) }
       : null;
     piece = LOOK_ITEM_BY_ID[id] ?? JOURNEY_ITEM_BY_ID[id];
     look =
@@ -228,7 +230,8 @@ export function mountShopPreview(
     if (
       !retainPose ||
       previousChampion !== champion ||
-      previousAction !== action
+      previousAction !== action ||
+      action !== "idle"
     )
       clock = 0;
     cycle = Math.floor(clock / 4400);
@@ -538,6 +541,13 @@ export function mountShopPreview(
     },
     {
       update: updatePanel,
+      replay() {
+        clock = 0;
+        cycle = -1;
+        dirty = true;
+        rig?.controller.reset();
+        syncLoop();
+      },
       suspend(value: boolean) {
         suspended = value;
         syncLoop();

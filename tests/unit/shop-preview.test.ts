@@ -443,7 +443,7 @@ describe("Shop live previews", () => {
     expect(mock.textures.has("voltkit-voltkit-snowcap-1")).toBe(true);
     dispose();
   });
-  it.each(["galaxy-frame", "galaxy-aura", "galaxy-entrance", "galaxy-victory"])(
+  it.each(["galaxy-frame"])(
     "keeps %s free of a fighter and releases an unfinished renderer",
     (item) => {
       const { dispose } = preview();
@@ -530,3 +530,42 @@ it("bounds cached source art after repeated decoding failures too", () => {
   expect(mock.assets.mock.calls.length).toBeGreaterThan(generated);
   dispose();
 });
+
+it.each(["entrance", "victory"])(
+  "shows the equipped champion with the real %s effect, and replays without reloading",
+  (action) => {
+    const { dispose } = preview();
+    draw();
+    const effect = `galaxy-${action}`;
+    const next = panel(action, effect, "tidefin", 3);
+    Object.assign(next.host.dataset, {
+      previewSkin: "tidefin-moontide",
+      previewLook: encodeURIComponent(
+        JSON.stringify({ [action]: effect, aura: "galaxy-aura" }),
+      ),
+    });
+    change(dispose, next);
+    draw();
+    const pose = mock.render.mock.lastCall![0];
+    expect(pose.skin).toEqual({ skin: "tidefin-moontide", stage: 3 });
+    expect(pose.look[action]).toBe(effect);
+    expect(pose[action === "entrance" ? "greet" : "victory"]).toBe(true);
+    for (let i = 0; i < 75; i++) mock.scene.update(0, 50);
+    expect(
+      mock.render.mock.lastCall![0][
+        action === "entrance" ? "greet" : "victory"
+      ],
+    ).toBe(false);
+    const rigs = mock.rigs.mock.calls.length;
+    dispose.replay();
+    draw();
+    expect(
+      mock.render.mock.lastCall![0][
+        action === "entrance" ? "greet" : "victory"
+      ],
+    ).toBe(true);
+    expect(mock.rigs).toHaveBeenCalledTimes(rigs);
+    expect(mock.games).toHaveBeenCalledOnce();
+    dispose();
+  },
+);

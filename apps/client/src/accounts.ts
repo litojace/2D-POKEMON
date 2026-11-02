@@ -1252,6 +1252,8 @@ export class AccountUI {
               ? this.economy.looks[view.champion]!.stage
               : 1;
           render(true, true);
+          const slot = LOOK_ITEM_BY_ID[id]?.slot;
+          if (slot === "entrance" || slot === "victory") preview?.replay();
           // Bring an offscreen preview into view, without moving the catalog
           // when the selected look is already visible alongside it.
           const panel = root.querySelector<HTMLElement>(".shop-preview");

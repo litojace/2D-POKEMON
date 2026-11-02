@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SHOP_BUNDLES, shopPrice, type Economy } from "../../packages/shared/src/shop";
-import { SHOP_TABS, itemAction, picksCountdown, shopMarkup } from "../../apps/client/src/shop-ui";
+import { SHOP_TABS, itemAction, picksCountdown, shopMarkup, shopPreviewMarkup } from "../../apps/client/src/shop-ui";
 import { missionsBlock, missionsMarkup } from "../../apps/client/src/missions-ui";
 
 const economy = (extra: Partial<Economy> = {}): Economy => ({
@@ -64,8 +64,9 @@ describe("shop buttons", () => {
     expect(action).not.toContain("disabled");
     expect(action).not.toContain("Mythic Trial");
     const html = shopMarkup({ tab: "mythic", champion: "auralynx", preview: "auralynx-celestial-sage", stage: 3 }, e);
-    expect(html).toContain("All three stages are available to equip");
-    expect(html).toContain("Mythic Trials and raid clears are bypassed");
+    expect(html).toContain("All stages unlocked for testing.");
+    expect(html).not.toContain("All three stages available for testing");
+    expect(html).not.toContain("Mythic Trials and raid clears are bypassed");
     expect(html).not.toContain("Trial 0/30");
     expect(html).not.toContain("more coins needed");
     expect(itemAction("auralynx-celestial-sage", economy({ unlimitedCoins: true, mythicTesting: false, trialWins: {} }))).toContain("Mythic Trial 0/30");
@@ -189,4 +190,50 @@ describe("shop page", () => {
     const allDone = economy().missions.map((m) => ({ ...m, done: true, progress: m.target }));
     expect(track(economy({ streak: 7, missions: allDone }))).toBe(7);
   });
+});
+
+it("uses the worn champion skin and stage with real effect try-ons, without changing equipment", () => {
+  const e = economy({
+    looks: { tidefin: { skin: "tidefin-moontide", stage: 3 } },
+  });
+  const loadout = {
+    skin: "candy-colours" as const,
+    frame: "conqueror" as const,
+  };
+  const saved = JSON.stringify({ e, loadout });
+  for (const slot of ["aura", "entrance", "victory"] as const) {
+    const html = shopPreviewMarkup(
+      { tab: "collections", champion: "tidefin", preview: `galaxy-${slot}` },
+      e,
+      loadout,
+    );
+    expect(html).toContain('data-preview-skin="tidefin-moontide"');
+    expect(html).toContain('data-preview-stage="3"');
+    expect(html).not.toContain("is-item");
+    const look = JSON.parse(
+      decodeURIComponent(html.match(/data-preview-look="([^"]+)"/)![1]),
+    );
+    expect(look).toEqual({ ...loadout, [slot]: `galaxy-${slot}` });
+  }
+  expect(JSON.stringify({ e, loadout })).toBe(saved);
+});
+it("uses a fitted frame-only Shop tile and the equipped portrait in the large review", () => {
+  const e = economy({
+    looks: { tidefin: { skin: "tidefin-moontide", stage: 3 } },
+  });
+  const html = shopPreviewMarkup(
+    { tab: "collections", champion: "tidefin", preview: "galaxy-frame" },
+    e,
+    {},
+  );
+  expect(html).toContain('class="portrait-review-avatar"');
+  expect(html).toContain('data-portrait-frame="galaxy-frame"');
+  expect(html).toContain('data-fighter="tidefin"');
+  expect(html).toContain("tidefin-moontide");
+  const markup = shopMarkup(
+    { tab: "collections", champion: "tidefin", collection: "galaxy" },
+    e,
+    {},
+  );
+  expect(markup).toContain('class="shop-card-art frame-display-case"');
 });

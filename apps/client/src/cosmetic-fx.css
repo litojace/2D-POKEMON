@@ -191,22 +191,25 @@
   position: absolute;
   inset: -16%;
   will-change: transform;
-  z-index: 4;
-  border-radius: 50%;
+  /* Sparks pass in front of ornaments rather than being sliced by them. */
+  z-index: 7;
+  /* A circular background clip sliced the edge sparks into half discs. */
+  border-radius: 0;
+  overflow: visible;
   pointer-events: none;
 }
 .raid-cosmetic-preview[data-tier="legendary"] > .tier-orbit,
 .raid-cosmetic-preview[data-tier="mythic"] > .tier-orbit {
   display: block;
   background:
-    radial-gradient(circle at 50% 3%, #fffbe8 0 2.4%, transparent 4%),
+    radial-gradient(circle at 50% 8%, #fffbe8 0 2.4%, transparent 4%),
     radial-gradient(
-      circle at 97% 50%,
+      circle at 92% 50%,
       var(--spark-b, #ffd76a) 0 1.8%,
       transparent 3.2%
     ),
     radial-gradient(
-      circle at 15% 85%,
+      circle at 20% 80%,
       var(--spark-c, #fff4c4) 0 1.5%,
       transparent 2.8%
     );
@@ -216,11 +219,11 @@
   --spark-b: #7fd8ff;
   --spark-c: #ff8fb0;
   background:
-    radial-gradient(circle at 50% 3%, #fffbe8 0 2.4%, transparent 4%),
-    radial-gradient(circle at 97% 50%, #7fd8ff 0 1.8%, transparent 3.2%),
-    radial-gradient(circle at 15% 85%, #ff8fb0 0 1.5%, transparent 2.8%),
-    radial-gradient(circle at 50% 97%, #8ff0b5 0 1.6%, transparent 3%),
-    radial-gradient(circle at 3% 40%, #b59bff 0 1.6%, transparent 3%);
+    radial-gradient(circle at 50% 8%, #fffbe8 0 2.4%, transparent 4%),
+    radial-gradient(circle at 92% 50%, #7fd8ff 0 1.8%, transparent 3.2%),
+    radial-gradient(circle at 20% 80%, #ff8fb0 0 1.5%, transparent 2.8%),
+    radial-gradient(circle at 50% 92%, #8ff0b5 0 1.6%, transparent 3%),
+    radial-gradient(circle at 8% 40%, #b59bff 0 1.6%, transparent 3%);
   animation-duration: 3s;
 }
 @keyframes tier-orbit {
@@ -271,28 +274,28 @@
 }
 .raid-cosmetic-preview[data-tier="epic"] > .tier-orbit {
   display: block;
-  inset: -9%;
+  inset: -16%;
   background:
     radial-gradient(
-      circle at 50% 2.5%,
+      circle at 50% 8%,
       #f0d7ff 0 2.2%,
       #b56bff 2.6%,
       transparent 4%
     ),
     radial-gradient(
-      circle at 97.5% 50%,
+      circle at 92% 50%,
       #f0d7ff 0 2.2%,
       #b56bff 2.6%,
       transparent 4%
     ),
     radial-gradient(
-      circle at 50% 97.5%,
+      circle at 50% 92%,
       #f0d7ff 0 2.2%,
       #b56bff 2.6%,
       transparent 4%
     ),
     radial-gradient(
-      circle at 2.5% 50%,
+      circle at 8% 50%,
       #f0d7ff 0 2.2%,
       #b56bff 2.6%,
       transparent 4%
@@ -319,17 +322,22 @@
   display: none;
   will-change: transform;
   position: absolute;
-  inset: -34%;
+  inset: -18%;
   z-index: -1;
   border-radius: 50%;
   pointer-events: none;
   -webkit-mask: radial-gradient(
-    circle,
-    transparent 0 29%,
-    #000 31%,
-    transparent 70%
+    circle closest-side,
+    transparent 0 58%,
+    #000 62%,
+    transparent 100%
   );
-  mask: radial-gradient(circle, transparent 0 29%, #000 31%, transparent 70%);
+  mask: radial-gradient(
+    circle closest-side,
+    transparent 0 58%,
+    #000 62%,
+    transparent 100%
+  );
 }
 .raid-cosmetic-preview[data-tier="legendary"] > .tier-rays {
   display: block;
@@ -350,19 +358,6 @@
     transparent 35deg 45deg
   );
   animation: tier-orbit 10s linear infinite;
-}
-/* Small identity portraits keep the edge but drop the rays and sparks. */
-:is(
-    .account-avatar,
-    .player-avatar,
-    .friend-avatar,
-    .raid-party-avatar,
-    .raid-score-avatar,
-    .player-card-portrait
-  )
-  .raid-cosmetic-preview
-  > :is(.tier-rays, .tier-orbit) {
-  display: none !important;
 }
 @media (prefers-reduced-motion: reduce) {
   .raid-cosmetic-preview > .tier-rays {

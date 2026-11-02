@@ -18,9 +18,16 @@ Colors. The portrait fills the preview column; star levels use a compact single
 row, and changing a level or frame keeps unchanged avatar art mounted. Choosing a
 different fighter keeps the selected shared frame and try-on level. Future levels
 remain previews only, and equipping returns the review to its earned level.
-Inventory tiles show the frame alone in a padded square display case, keeping
-its circular edge and ornaments inside the tile on phones and PC. Entrance and
-Victory controls replay the complete outfit's effects. Original skins remain available.
+Inventory and Shop tiles show the frame alone in a shared padded square display
+case, keeping its circular edge, ornaments and sparks inside the tile on phones
+and PC. Their large reviews include the equipped champion portrait. Entrance and
+Victory selections immediately replay the complete outfit's real effects in both
+Wardrobe and Shop; the smaller item tiles still display the effect alone.
+Original skins remain available.
+
+Shop previews keep the same image size across all categories and Mythical stages.
+Compact I/II/III controls and a requirements popover leave room for the model and
+purchase actions, including on short landscape screens.
 
 The inventory and wearing panel scroll independently, with the selected-item
 information and save action fixed below them. Fighter arrows, native selection,

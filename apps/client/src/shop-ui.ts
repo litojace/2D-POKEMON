@@ -23,6 +23,7 @@ import { buttonIcon, iconLabel } from "./menu-icons";
 import { creatureSvg, type SkinLook } from "./creature-design";
 import { previewViewBox } from "./shop-preview-layout";
 import { cosmeticPicture } from "./cosmetic-picture";
+import { framedAvatar } from "./portraits";
 
 /**
  * The Shop and daily missions (design §10). Markup only: AccountUI wires the
@@ -69,7 +70,7 @@ export function coinChip(
   id = "",
   unlimited = false,
 ) {
-  return `<span class="coin-chip pill"${id ? ` id="${id}"` : ""}>${unlimited ? '<span class="sr-only">Unlimited </span>' : ""}${buttonIcon("coin")}<b${unlimited ? ' aria-hidden="true" title="Unlimited coins · Admin testing"' : ""}>${unlimited ? "∞" : balance == null ? "—" : coins(balance)}</b><span class="sr-only"> coins</span></span>`;
+  return `<span class="coin-chip pill"${id ? ` id="${id}"` : ""}>${unlimited ? '<span class="sr-only">Unlimited </span>' : ""}${buttonIcon("coin")}<b${unlimited ? ' aria-hidden="true" title="Unlimited coins · Purchases don’t spend coins"' : ""}>${unlimited ? "∞" : balance == null ? "—" : coins(balance)}</b><span class="sr-only"> coins</span></span>`;
 }
 const rarityBadge = (r: Rarity | null) =>
   r
@@ -195,7 +196,7 @@ function card(
     ? `<p class="shop-card-blurb">${escape(CHAMPION_SKIN_BY_ID[id]?.description ?? LOOK_ITEM_BY_ID[id]?.description ?? "")}</p>`
     : "";
   return `<article class="shop-card rarity-${rarity ?? "set"}${selected ? " is-selected" : ""}${deal ? " is-deal" : ""}${hero ? " is-hero" : ""}">
-    <button class="shop-card-art" data-shop-preview="${id}" aria-label="Preview ${escape(itemName(id))}" aria-pressed="${selected}">${itemPicture(id, view.champion, `shop-${view.tab}-${id}`)}</button>
+    <button class="shop-card-art${LOOK_ITEM_BY_ID[id]?.slot === "frame" ? " frame-display-case" : ""}" data-shop-preview="${id}" aria-label="Preview ${escape(itemName(id))}" aria-pressed="${selected}">${itemPicture(id, view.champion, `shop-${view.tab}-${id}`)}</button>
     <div class="shop-card-body"><div class="shop-card-badges">${rarityBadge(rarity)}${deal ? '<span class="deal-badge">20% off today</span>' : ""}${ownershipBadge(id, e, loadout)}</div><b class="shop-card-name">${escape(itemName(id))}</b><small>${escape(itemLine(id))}</small>${blurb}${extra}</div>
     <div class="shop-card-action">${itemAction(id, e, loadout)}</div>
   </article>`;
@@ -225,18 +226,26 @@ export function shopPreviewMarkup(
   const skin = id ? CHAMPION_SKIN_BY_ID[id] : undefined;
   const champion = skin?.champion ?? view.champion;
   const stage = skin?.rarity === "mythical" ? (view.stage ?? 1) : 1;
-  const look = skin ? { skin: skin.id, stage } : null;
   const piece = id ? LOOK_ITEM_BY_ID[id] : undefined;
+  const look = skin
+    ? { skin: skin.id, stage }
+    : piece?.slot !== "skin"
+      ? (e?.looks[champion] ?? null)
+      : null;
+  const outfit = piece ? { ...loadout, [piece.slot]: piece.id } : loadout;
+  const palette = look ? "" : (outfit.skin ?? "");
   const stages =
     skin?.rarity === "mythical"
-      ? `<div class="shop-stages" role="group" aria-label="Awakening stage">${[
+      ? `<div class="shop-awakening"><div class="shop-stages" role="group" aria-label="Awakening stage">${[
           1, 2, 3,
         ]
           .map(
             (s) =>
-              `<button type="button" class="${s === stage ? "active" : ""}" data-shop-stage="${s}" aria-pressed="${s === stage}">Stage ${"I".repeat(s)}</button>`,
+              `<button type="button" class="${s === stage ? "active" : ""}" data-shop-stage="${s}" aria-pressed="${s === stage}" aria-label="Show Stage ${"I".repeat(s)}" title="Stage ${"I".repeat(s)}">${"I".repeat(s)}</button>`,
           )
-          .join("")}</div><p class="shop-note">${awakeningNote(skin.id, e)}</p>`
+          .join(
+            "",
+          )}</div><details class="shop-awakening-details"><summary aria-label="Awakening requirements" title="Awakening requirements">i</summary><p>${awakeningNote(skin.id, e)}</p></details><small>${e?.mythicTesting ? "" : e?.awakening[skin.id]?.stage === 3 ? "Max stage" : e?.awakening[skin.id] ? `${e.awakening[skin.id].wins}/${e.awakening[skin.id].stage < 2 ? AWAKENING.stage2Wins : AWAKENING.stage3Wins} wins` : "II: 25 · III: 75 + raid"}</small></div>`
       : "";
   const title = id
     ? escape(itemName(id))
@@ -244,10 +253,11 @@ export function shopPreviewMarkup(
   const text = skin
     ? escape(skin.description)
     : piece
-      ? `${escape(piece.description)}. Worn by every fighter${piece.slot === "skin" ? " (a champion skin wins over Colors)" : ""}.`
+      ? escape(piece.description)
       : "Pick a skin to see it in the live preview.";
   const frame = piece?.slot === "frame";
-  const effectOnly = !!piece && piece.slot !== "skin";
+  // Thumbnails stay item-only; the fitting room shows the real equipped model.
+  const effectOnly = frame;
   // Each item plays the animation that shows it off; no picker needed.
   const action =
     piece?.slot === "entrance"
@@ -255,18 +265,15 @@ export function shopPreviewMarkup(
       : piece?.slot === "victory"
         ? "victory"
         : "idle";
-  const fallback = effectOnly
-    ? itemPicture(piece.id, champion, "shop-piece-preview")
+  const fallback = frame
+    ? `<div class="portrait-review-avatar">${framedAvatar({ character: champion, raidLook: outfit, championLooks: e?.looks }, "shop-frame-review")}</div>`
     : scopeIds(
-        colourPreview(
-          frontPreviewArt(champion, look, action),
-          piece?.slot === "skin" ? piece.id : "",
-        ),
+        colourPreview(frontPreviewArt(champion, look, action), palette),
         "shop-live-fallback",
       );
   const fallbackClass =
-    piece?.slot === "skin"
-      ? ` raid-cosmetic-preview shop-preview-colours${hasColourPalette(piece.id) ? " is-colour-matched" : ""}`
+    !frame && palette
+      ? ` raid-cosmetic-preview shop-preview-colours${hasColourPalette(palette) ? " is-colour-matched" : ""}`
       : "";
   const compare =
     skin || piece?.slot === "skin"
@@ -284,12 +291,12 @@ export function shopPreviewMarkup(
     trial(e, champion) < MYTHIC_TRIAL_WINS;
   const shortfall =
     e && !e.unlimitedCoins && price !== null && price > e.balance && !locked
-      ? `<p class="shop-shortfall">${coins(price - e.balance)} more coins needed</p><button type="button" class="secondary shop-earn" data-shop-missions>${iconLabel("coin", "Earn coins · Daily missions")}</button>`
+      ? `<button type="button" class="secondary shop-earn" data-shop-missions aria-label="${coins(price - e.balance)} more coins needed · Earn coins from daily missions"><span>Earn coins</span><small>${coins(price - e.balance)} needed</small></button>`
       : "";
   const purchase = id
     ? `<div class="shop-preview-purchase" aria-label="Selected item actions">${itemAction(id, e, loadout)}${shortfall}</div>`
     : "";
-  return `<section class="shop-preview rarity-${(id && shopRarity(id)) || "set"}" aria-label="Cosmetic preview"><div class="shop-preview-visual"><div class="shop-live-stage${effectOnly ? " is-item" : ""}${frame ? " is-frame" : ""}" data-preview-champion="${champion}" data-preview-item="${id ?? ""}" data-preview-stage="${stage}" data-preview-action="${action}" role="img" aria-label="${title} ${frame ? "profile frame" : "animated preview"}"><div class="shop-preview-fallback${fallbackClass}"${piece?.slot === "skin" ? ` data-cosmetic="${piece.id}"` : ""}>${fallback}</div></div>${frame ? '<p class="shop-frame-caption">Profile frame</p>' : ""}${controls}</div><div class="shop-preview-text"><div class="shop-preview-kicker">${rarityBadge(id ? shopRarity(id) : null)}<span>${frame ? "Portrait frame" : "Live preview"}</span></div><h3>${title}</h3><p>${text}</p>${stages}${purchase}</div></section>`;
+  return `<section class="shop-preview rarity-${(id && shopRarity(id)) || "set"}" aria-label="Cosmetic preview"><div class="shop-preview-visual"><div class="shop-live-stage${effectOnly ? " is-item" : ""}${frame ? " is-frame portrait-review-stage" : ""}" data-preview-champion="${champion}" data-preview-item="${id ?? ""}" data-preview-skin="${look?.skin ?? ""}" data-preview-stage="${look?.stage ?? 1}" data-preview-look="${encodeURIComponent(JSON.stringify(outfit))}" data-preview-action="${action}" role="img" aria-label="${title} ${frame ? "profile frame" : "animated preview"}"><div class="shop-preview-fallback${fallbackClass}"${!frame && palette ? ` data-cosmetic="${palette}"` : ""}>${fallback}</div></div>${controls}</div><div class="shop-preview-text"><div class="shop-preview-kicker">${rarityBadge(id ? shopRarity(id) : null)}<span>${frame ? "Portrait frame" : "Live preview"}</span></div><h3>${title}</h3><p class="shop-preview-description" title="${text}">${text}</p>${stages}${purchase}</div></section>`;
 }
 /** Match the front-facing live preview while its textures load. */
 function frontPreviewArt(
@@ -307,8 +314,7 @@ function frontPreviewArt(
   ).replace("<svg ", '<svg aria-hidden="true" ');
 }
 function awakeningNote(id: string, e: Economy | null) {
-  if (e?.mythicTesting)
-    return "Admin testing · All three stages are available to equip.";
+  if (e?.mythicTesting) return "All stages unlocked for testing.";
   const a = e?.awakening[id];
   if (!a)
     return `Stage II: ${AWAKENING.stage2Wins} wins wearing it. Stage III: ${AWAKENING.stage3Wins} wins and a raid clear with this champion.`;
@@ -387,15 +393,15 @@ function mythicTab(view: ShopView, e: Economy | null, loadout: RaidLoadout) {
     (s) => s.rarity === "mythical" && matchesOwnership(s.id, view, e),
   );
   const intro = e?.mythicTesting
-    ? "Admin testing · Mythic Trials and raid clears are bypassed. Get a skin and choose any Awakening stage."
-    : `Mythicals can't be bought with coins alone: win <b>${MYTHIC_TRIAL_WINS} matches or raid clears</b> with the champion first (wins against players and raid clears count, bots don't). They awaken as you win in them.`;
-  return `<p class="shop-intro">${intro}</p>${browseFilters(view, skins.length)}${!skins.length ? emptyResults : ""}<div class="shop-grid">${skins
+    ? ""
+    : `<p class="shop-intro">Unlock with ${MYTHIC_TRIAL_WINS} PvP wins or raid clears per champion.</p>`;
+  return `${intro}${browseFilters(view, skins.length)}${!skins.length ? emptyResults : ""}<div class="shop-grid">${skins
     .map((s) => {
       const t = e ? trial(e, s.champion) : 0;
       const owned = e?.owned.includes(s.id);
       const a = e?.awakening[s.id];
       const bar = e?.mythicTesting
-        ? '<span class="shop-progress"><small>All three stages available for testing</small></span>'
+        ? ""
         : owned
           ? `<span class="shop-progress"><progress max="${AWAKENING.stage3Wins}" value="${Math.min(AWAKENING.stage3Wins, a?.wins ?? 0)}"></progress><small>Awakening Stage ${"I".repeat(a?.stage ?? 1)} · ${a?.wins ?? 0}/${AWAKENING.stage3Wins} wins</small></span>`
           : `<span class="shop-progress"><progress max="${MYTHIC_TRIAL_WINS}" value="${t}"></progress><small>Trial ${t}/${MYTHIC_TRIAL_WINS} wins as ${CHARACTERS[s.champion].name}</small></span>`;
@@ -427,7 +433,7 @@ function collectionsTab(
       return `<section class="shop-collection"><header><h3>${COLLECTION_NAMES[b.collection as Collection]}</h3><small>All five pieces · 20% off what you don't own</small>${action}${bonus}</header><div class="shop-grid">${b.items.map((id) => card(id, view, e, loadout)).join("")}</div></section>`;
     })
     .join("");
-  return `<p class="shop-intro">Collection pieces work on every fighter. Choose a set to explore its colors, aura, frame, entrance and victory effect. Previewing on ${CHARACTERS[view.champion].name}.</p>${picker}${sets}`;
+  return `<p class="shop-intro">Colors and effects for every champion · Previewing on ${CHARACTERS[view.champion].name}.</p>${picker}${sets}`;
 }
 export function shopMarkup(
   view: ShopView,
@@ -448,7 +454,7 @@ export function shopMarkup(
         collections: collectionsTab,
       }[view.tab](view, e, loadout);
   const preview = shopPreviewMarkup(view, e, loadout);
-  return `<div class="shop"><header class="shop-head"><h2>${iconLabel("shop", "Shop")}</h2><button type="button" class="secondary" data-wardrobe-open>${iconLabel("wardrobe", "Wardrobe")}</button>${coinChip(e?.balance, "", e?.unlimitedCoins)}</header>${tabs}${preview}<div class="shop-body">${e?.unlimitedCoins ? '<p class="shop-note">Admin testing · Purchases don’t spend coins.</p>' : ""}${body}</div><p class="shop-status" role="status"></p></div>`;
+  return `<div class="shop"><header class="shop-head"><h2>${iconLabel("shop", "Shop")}</h2><button type="button" class="secondary" data-wardrobe-open>${iconLabel("wardrobe", "Wardrobe")}</button>${coinChip(e?.balance, "", e?.unlimitedCoins)}</header>${tabs}${preview}<div class="shop-body">${body}</div><p class="shop-status" role="status"></p></div>`;
 }
 /** Collection pieces' slot (for equipping). */
 export const lookSlot = (id: string) => LOOK_ITEM_BY_ID[id]?.slot;

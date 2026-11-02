@@ -10,7 +10,9 @@ roster cards and item-only cosmetic previews keep their respective layouts.
 The inner `portrait-disc` clips artwork to a circle. The outer circular frame
 stays unclipped so its ornaments, rarity edge and earned stars remain visible.
 All frame item previews are circular as well. Small identity widgets use a still
-portrait and the rarity edge instead of allocating particle canvases. Frame stars
+portrait with the same CSS halo, rays and orbiting sparks as the fitting room;
+they do not allocate particle canvases. Sparks keep their full circular shape
+throughout their orbit. Frame stars
 use the existing progression: one per ten clears, capped at five; Legendary at
 three and Mythical at five.
 

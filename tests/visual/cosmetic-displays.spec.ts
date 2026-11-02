@@ -79,12 +79,18 @@ window.fetch=async(input,init)=>{
       await page.click("[data-shop-collection=galaxy]");
       for (const suffix of ["aura", "entrance", "victory", "frame"]) {
         await page.click(`[data-shop-preview="galaxy-${suffix}"]`);
-        await expect(stage).toHaveClass(/is-item/);
-        await expect(stage.locator("svg, img")).toHaveCount(0);
-        await expect(stage.locator(":scope > canvas")).toHaveCount(0);
-        if (suffix !== "frame") {
-          await expect(stage.locator(".fx-live")).toHaveCount(2);
-          await expect(stage.locator(".fx-front")).toBeVisible();
+        if (suffix === "frame") {
+          await expect(stage).toHaveClass(/is-item/);
+          await expect(stage.locator(".portrait-disc svg")).toHaveCount(1);
+          await expect(stage.locator(":scope > canvas")).toHaveCount(0);
+        } else {
+          await expect(stage).not.toHaveClass(/is-item/);
+          await expect(stage).toHaveClass(/is-ready/);
+          await expect(stage.locator(":scope > canvas")).toHaveCount(1);
+          await expect(stage).toHaveAttribute(
+            "data-preview-action",
+            suffix === "aura" ? "idle" : suffix,
+          );
         }
       }
       await page.click("[data-shop-preview=galaxy-aura]");

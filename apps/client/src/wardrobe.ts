@@ -255,6 +255,7 @@ export function openWardrobe(
             : "idle";
         message = "";
         render(`[data-wardrobe-preview="${id}"]`, true);
+        if (view.action !== "idle") preview?.replay();
       } else if (button.hasAttribute("data-wardrobe-effects")) {
         view.effects = !view.effects;
         render("[data-wardrobe-effects]", true);
@@ -267,6 +268,7 @@ export function openWardrobe(
             : `[data-wardrobe-action="${view.action}"]`,
           true,
         );
+        if (view.action !== "idle") preview?.replay();
       } else if (button.hasAttribute("data-wardrobe-clear")) {
         const slot = button.dataset.wardrobeClear as WardrobeSlot;
         if (WARDROBE_SLOTS.some(([s]) => s === slot))
