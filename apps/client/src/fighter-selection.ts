@@ -25,7 +25,7 @@ export function setWornSkins(value: typeof worn | undefined) {
  * visual presence as the other portraits. The sprout remains inside frame. */
 const rosterPortraitFrame = (id?: string) =>
   id === "terradon" ? "30 3 140 140" : "22 -8 156 156";
-function art(id: CharacterId, large = false, aura = false) {
+function art(id: CharacterId, large = false, aura = false, scopeName?: string) {
   const pack = fighterPack(id);
   if (pack && pack.kind !== "layered")
     return `<img class="creature-portrait" loading="lazy" decoding="async" src="/assets/fighters/${id}/${large ? pack.selection : pack.portrait}" alt="${CHARACTERS[id].name}">`;
@@ -36,14 +36,18 @@ function art(id: CharacterId, large = false, aura = false) {
     worn[id],
   );
   const framed = large ? withSoftGround(svg, id) : svg;
-  const scope = large ? "detail" : "card";
+  const scope = scopeName ?? (large ? "detail" : "card");
   const full = aura ? withAura(framed, id, still()) : framed;
   return (
     scopeIds(full, scope) +
     // The animated fighter is a canvas laid over this artwork, which hid the
     // aura's front half. The same front half again, drawn above the canvas.
-    (aura && large ? scopeIds(auraFrontLayer(full), "detail-front") : "")
+    (aura && large ? scopeIds(auraFrontLayer(full), `${scope}-front`) : "")
   );
+}
+/** The large fighter art with its worn skin and aura, for the Lobby stage. */
+export function fighterStageArt(id: CharacterId) {
+  return art(id, true, true, "lobby");
 }
 /** Only the front half of an aura SVG (same frame and defs), to lay on top. */
 function auraFrontLayer(svg: string) {
