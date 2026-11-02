@@ -1,0 +1,15 @@
+const { chromium } = require('./pw');
+(async () => { const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1340, height: 1000 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message)); p.on('console', m => m.type() === 'error' && errs.push(m.text()));
+  await p.goto('file://' + __dirname + '/preview-t.html'); await p.waitForTimeout(900);
+  const f = await p.$('#frame'); await f.scrollIntoViewIfNeeded(); await f.screenshot({ path: 'w-lobby.png' });
+  await p.click('.rail [data-drawer="missions"]'); await p.waitForTimeout(500); await f.screenshot({ path: 'w-missions.png' });
+  const coins0 = await p.textContent('#coins'); await p.click('[data-mclaim]'); await p.waitForTimeout(300);
+  const coins1 = await p.textContent('#coins'); const badge = await p.evaluate(() => { const b = document.querySelector('.rail [data-drawer="missions"] .badge'); return b.hidden ? 'hidden' : b.textContent; });
+  await p.click('[data-mswap]'); await p.waitForTimeout(300); const ch = await p.textContent('.ms-top');
+  console.log('coins', coins0, '->', coins1, '| missions badge', badge, '|', ch);
+  await p.click('.drawer .close'); await p.click('.rail [data-drawer="journey"]'); await p.waitForTimeout(600); await f.screenshot({ path: 'w-journey.png' });
+  await p.click('[data-wclaim]'); await p.waitForTimeout(300);
+  console.log('journey card:', (await p.textContent('#jr-card')).replace(/\s+/g, ' '), '| journey badge', await p.evaluate(() => document.querySelector('.rail [data-drawer="journey"] .badge').hidden));
+  await p.click('.drawer .close'); await p.click('.journey-card [data-drawer="journey"]'); await p.waitForTimeout(300); console.log('card opens', await p.textContent('.drawer h4'));
+  console.log('errs', JSON.stringify(errs)); await b.close(); })();

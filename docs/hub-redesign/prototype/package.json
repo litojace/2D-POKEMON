@@ -1,0 +1,5 @@
+{
+  "private": true,
+  "type": "commonjs",
+  "description": "Hub redesign prototype: build with python3 app/build.py, test scripts are plain Node + Playwright (CommonJS)."
+}
