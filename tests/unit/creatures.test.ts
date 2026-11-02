@@ -39,14 +39,14 @@ it("has eight fighters, forty unique moves and four special skills per fighter",
 });
 it("pins roster health (November 2026 balance pass) and movement speeds", () => {
   const baseline: Record<string, [number, number]> = {
-    voltkit: [152, 270],
-    cindrake: [138, 240],
-    tidefin: [159, 285],
-    auralynx: [164, 235],
+    voltkit: [146, 270],
+    cindrake: [144, 240],
+    tidefin: [154, 285],
+    auralynx: [171, 235],
     lumoth: [142, 265],
-    mystowl: [153, 255],
-    terradon: [188, 222],
-    duskveil: [143, 260],
+    mystowl: [148, 255],
+    terradon: [195, 222],
+    duskveil: [138, 260],
   };
   for (const [id, stats] of Object.entries(baseline)) {
     const c = CHARACTERS[id as CharacterId];
