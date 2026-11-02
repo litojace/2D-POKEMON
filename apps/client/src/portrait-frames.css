@@ -31,28 +31,8 @@ body:is(.town-active, .lobby-active) #account-profile:has(.portrait-frame) {
   padding-left: 12px;
 }
 /* Ornaments scale with each identity portrait’s size. Candy, Garden,
-   Festival and Winter ornaments are sized in collection-frames.css. */
-.portrait-frame[data-cosmetic="conqueror"]::after {
-  width: 22%;
-  height: 22%;
-  bottom: -12%;
-}
-.portrait-frame[data-cosmetic="reef"]::after {
-  width: 25%;
-  height: 25%;
-  bottom: -14%;
-}
-.portrait-frame[data-cosmetic="crescent"]::after {
-  width: 29%;
-  height: 29%;
-  top: -16%;
-}
-.portrait-frame[data-cosmetic="moonglass"]::after {
-  width: 27%;
-  height: 27%;
-  top: 8%;
-  right: 6%;
-}
+   Festival and Winter ornaments are sized in collection-frames.css, boss
+   frame ornaments in boss-frames.css. */
 .portrait-frame[data-cosmetic="galaxy-frame"]::after {
   width: 29%;
   height: 29%;

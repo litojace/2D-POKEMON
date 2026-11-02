@@ -124,6 +124,9 @@ export class FighterRig {
   private fxState: AnimationState = "idle";
   /** Auralynx's ring keeps its phase when its speed or the scene clock changes. */
   private auraRingAngle = 0;
+  /** Height/width of the ground plane skin rings lie on. The fitting room's
+   * floor is flatter than the arena's, so its preview sets its own. */
+  groundFlat: number = WORLD_ART.groundY;
   constructor(
     private scene: Phaser.Scene,
     readonly character: CharacterId,
@@ -1308,6 +1311,7 @@ export class FighterRig {
           knockedOut: state === "defeat" && this.fxState !== "defeat",
           ultimate: skill === 3 && this.lastProgress < 0.3 && progress >= 0.3,
           ambient: pose.ambient !== false,
+          flat: this.groundFlat,
         },
         art,
         stage,
