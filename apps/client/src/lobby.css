@@ -313,6 +313,75 @@
   height: 13px;
 }
 
+/* Party: members stand beside you; the bar above says how many. */
+.lobby-slot-wrap {
+  display: flex;
+  align-items: flex-end;
+  flex: none;
+}
+.lobby-member {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  width: 112px;
+  margin: 0 0 3%;
+}
+.lobby-member-art {
+  display: block;
+  width: 112px;
+  height: 112px;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45));
+}
+.lobby-member-art svg {
+  width: 100%;
+  height: 100%;
+}
+.lobby-member figcaption {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 112px;
+  padding: 2px 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--lobby-glass);
+  font:
+    700 11px/1.3 "DM Sans",
+    sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lobby-crown {
+  color: #ffd65b;
+}
+.lobby-party-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px 4px 12px;
+  border: 1px solid var(--lobby-line);
+  border-radius: 999px;
+  background: var(--lobby-glass);
+  font:
+    700 12px/1 "DM Sans",
+    sans-serif;
+  pointer-events: auto;
+}
+.lobby-party-bar[hidden] {
+  display: none;
+}
+.lobby-party-bar button {
+  height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(239, 79, 97, 0.2);
+  color: #ffb3bb;
+  font:
+    700 11px/1 "DM Sans",
+    sans-serif;
+}
+
 /* Cards on the right. */
 .lobby-cards {
   right: var(--lobby-gutter-r);
@@ -639,6 +708,20 @@
   .lobby-slot small {
     font-size: 10px;
   }
+  .lobby-member,
+  .lobby-member-art {
+    width: 64px;
+  }
+  .lobby-member-art {
+    height: 64px;
+  }
+  .lobby-member figcaption {
+    max-width: 72px;
+    font-size: 9px;
+  }
+  .lobby-party-bar {
+    font-size: 10px;
+  }
   .lobby-nameplate {
     grid-template-columns: 32px 150px 32px;
     gap: 6px;
@@ -731,6 +814,14 @@
   .lobby-slot {
     width: 50px;
     height: 50px;
+  }
+  .lobby-member,
+  .lobby-member-art {
+    width: 54px;
+    height: auto;
+  }
+  .lobby-member-art {
+    height: 54px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -915,4 +1006,36 @@ body.hub-active #account-coins > * {
   .prefs-display .prefs-switch {
     height: 28px;
   }
+}
+
+/* Party invitation picker (Lobby → Invite). */
+.party-invite-list {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.party-invite-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px 8px 14px;
+  border: 1px solid rgba(139, 174, 229, 0.25);
+  border-radius: 12px;
+  background: rgba(14, 26, 49, 0.6);
+}
+.party-invite-list li > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.party-invite-list b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.party-invite-list small {
+  color: #43d971;
 }

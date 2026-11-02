@@ -17,6 +17,7 @@ const modeName = {
   teams: "2v2 teams",
   ffa: "Free-for-all",
   raid: "Boss raid",
+  party: "Party",
 };
 
 /** Invitations never interrupt a battle or replace an open social/settings screen. */
@@ -33,7 +34,9 @@ export class RoomInvites {
     private hooks: {
       accountId: () => string | undefined;
       canJoin: () => boolean;
-      join: (code: string) => Promise<boolean>;
+      /** A declined party invitation (room invitations just expire). */
+      decline?: (code: string) => void;
+      join: (code: string, mode: RoomInvite["mode"]) => Promise<boolean>;
     },
   ) {
     this.root.className = "room-invite-notice";
@@ -86,12 +89,15 @@ export class RoomInvites {
       return;
     }
     this.root.hidden = false;
-    this.root.innerHTML = `<div class="room-invite-heading">${iconLabel("friends", "Room invitation")}${this.queue.length > 1 ? `<small>${this.queue.length} waiting</small>` : ""}</div><p><b>${escape(invite.name)}</b> invited you to play</p><span class="room-invite-mode">${modeName[invite.mode]} · ${invite.code}</span><div class="room-invite-actions"><button type="button" class="quiet" data-invite-decline>Decline</button><button type="button" class="primary btn-primary" data-invite-join>${iconLabel("enter", "Join room")}</button></div><small class="room-invite-status" role="status" aria-live="polite"></small>`;
+    const party = invite.mode === "party",
+      joinLabel = party ? "Join party" : "Join room";
+    this.root.innerHTML = `<div class="room-invite-heading">${iconLabel("friends", party ? "Party invitation" : "Room invitation")}${this.queue.length > 1 ? `<small>${this.queue.length} waiting</small>` : ""}</div><p><b>${escape(invite.name)}</b> ${party ? "invited you to their party" : "invited you to play"}</p><span class="room-invite-mode">${party ? "Stand together in the Lobby, then play" : `${modeName[invite.mode]} · ${invite.code}`}</span><div class="room-invite-actions"><button type="button" class="quiet" data-invite-decline>Decline</button><button type="button" class="primary btn-primary" data-invite-join>${iconLabel("enter", joinLabel)}</button></div><small class="room-invite-status" role="status" aria-live="polite"></small>`;
     this.root.querySelector<HTMLButtonElement>(
       "[data-invite-decline]",
     )!.onclick = () => {
       if (this.joining) return;
       this.queue.shift();
+      if (party) this.hooks.decline?.(invite.code);
       this.render();
     };
     this.root.querySelector<HTMLButtonElement>("[data-invite-join]")!.onclick =
@@ -115,12 +121,13 @@ export class RoomInvites {
         button.disabled = true;
         button.textContent = "Joining…";
         try {
-          if (await this.hooks.join(invite.code)) {
+          if (await this.hooks.join(invite.code, invite.mode)) {
             this.queue = [];
             this.render();
           } else
-            status.textContent =
-              "Room unavailable. It may be full or already started.";
+            status.textContent = party
+              ? "That party is full or no longer open."
+              : "Room unavailable. It may be full or already started.";
         } catch {
           status.textContent =
             "Couldn't join. Check your connection and try again.";
@@ -128,7 +135,7 @@ export class RoomInvites {
           this.joining = false;
           decline.disabled = false;
           button.disabled = false;
-          button.innerHTML = iconLabel("enter", "Join room");
+          button.innerHTML = iconLabel("enter", joinLabel);
         }
       };
     this.mount();

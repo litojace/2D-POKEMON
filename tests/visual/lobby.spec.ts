@@ -288,3 +288,99 @@ test("PLAY creates a private room in the chosen mode", async ({ browser }) => {
     await context.close();
   }
 });
+
+test("a party shows friends beside you, and a party invitation joins it", async ({
+  browser,
+}, info) => {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    const me = "11111111-1111-4111-8111-111111111111",
+      pal = "33333333-3333-4333-8333-333333333333",
+      lead = "44444444-4444-4444-8444-444444444444";
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__requests = [];
+      w.__reply = (ev: string, data: unknown) => {
+        w.__requests.push([ev, data]);
+        return { ok: true };
+      };
+    });
+    await page.evaluate(
+      ([me, pal]) =>
+        (window as any).__sock.fire("party", {
+          code: "PARTY2",
+          leader: me,
+          members: [
+            { id: me, name: "tester", character: "voltkit" },
+            { id: pal, name: "Pal", character: "tidefin" },
+          ],
+        }),
+      [me, pal],
+    );
+    await expect(page.locator("#lobby-party-bar")).toContainText("Party · 2/4");
+    await expect(page.locator("#lobby-slot-0 .lobby-member")).toContainText(
+      "Pal",
+    );
+    await expect(
+      page.locator("#lobby-slot-1 [data-lobby-action=invite]"),
+    ).toBeVisible();
+    await snap(page, info, "lobby-party-844x390");
+    // A party invitation from someone else.
+    await page.evaluate(
+      (lead) =>
+        (window as any).__sock.fire("room-invite", {
+          id: "55555555-5555-4555-8555-555555555555",
+          fromId: lead,
+          name: "Lead",
+          code: "PARTY9",
+          mode: "party",
+          expiresAt: Date.now() + 60000,
+        }),
+      lead,
+    );
+    const notice = page.locator(".room-invite-notice");
+    await expect(notice).toContainText("Party invitation");
+    await expect(notice).toContainText("invited you to their party");
+    await notice.locator("[data-invite-join]").click();
+    await expect(notice).toBeHidden();
+    const accept = await page.evaluate(() =>
+      (window as any).__requests.find(
+        ([ev]: [string]) => ev === "party-accept",
+      ),
+    );
+    expect(accept?.[1]).toMatchObject({ code: "PARTY9" });
+    // Leaving the party asks the server.
+    const leave = page.locator('[data-lobby-action="leave-party"]');
+    await expect(leave).toBeVisible();
+    const hit = await leave.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const top = document.elementFromPoint(
+        r.left + r.width / 2,
+        r.top + r.height / 2,
+      );
+      return el.contains(top)
+        ? "ok"
+        : (top?.outerHTML.slice(0, 120) ?? "nothing");
+    });
+    expect(hit).toBe("ok");
+    await leave.click();
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          (window as any).__requests.some(
+            ([ev]: [string]) => ev === "party-leave",
+          ),
+        ),
+      )
+      .toBe(true);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
