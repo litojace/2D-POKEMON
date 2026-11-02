@@ -4,7 +4,9 @@ Paste the block below as the first message of a new chat on `litojace/2d-pokemon
 
 ```text
 We are starting the real implementation of the hub redesign (Lobby, Plaza, Elemental Farm).
-The design was finished as a prototype in an earlier session. Read these first, in this order:
+The design was finished as a prototype in an earlier session. The handoff lives in docs/hub-redesign/ on branch
+claude/nifty-meitner-sbrujw (until it is merged into main: git fetch origin claude/nifty-meitner-sbrujw and read it there).
+Read these first, in this order:
 
 1. docs/hub-redesign/README.md       – what was built, decisions, rules for the real game, suggested phases, open questions
 2. docs/hub-redesign/NUMBERS.md      – every tuning number (generated from the prototype source)
