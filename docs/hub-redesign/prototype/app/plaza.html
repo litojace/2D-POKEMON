@@ -1,0 +1,30 @@
+        <div class="pz scene-only scene-plaza" id="pz">
+          <canvas id="pz-cv" aria-label="Plaza"></canvas>
+          <div class="pz-hud">
+            <div class="pz-banner" id="pz-banner" aria-live="polite"></div>
+            <div class="pz-event" id="pz-event" hidden></div>
+            <div class="pz-timer" id="pz-timer" hidden></div>
+            <div class="pz-mini" id="pz-mini" title="Click to walk there"><canvas id="pz-mcv"></canvas><button type="button" class="pz-clock" id="pz-clock" title="Toggle day / night">14:20</button></div>
+            <aside class="pz-quests" id="pz-quests"></aside>
+            <div class="pz-feed" id="pz-feed" aria-live="polite"></div>
+            <div class="pz-runcard" id="pz-runcard" hidden></div>
+            <div class="pz-joy" id="pz-joy"><div class="ring" id="pz-ring"><div class="knob" id="pz-knob"></div></div></div>
+            <div class="pz-left">
+              <button type="button" class="pz-round" id="pz-wheel-btn" aria-label="Emotes"><i class="ico-slot" data-ico="smile"></i><small>Emote</small></button>
+              <button type="button" class="pz-round" id="pz-treat" aria-label="Throw a treat"><i class="ico-slot" data-ico="berry"></i><small id="pz-treats">0</small></button>
+            </div>
+            <div class="pz-wheel" id="pz-wheel" hidden>
+              <button type="button" data-emote="👋" style="--a:0">👋</button><button type="button" data-emote="❤️" style="--a:1">❤️</button>
+              <button type="button" data-emote="😂" style="--a:2">😂</button><button type="button" data-emote="GG" style="--a:3">GG</button>
+              <button type="button" data-emote="🔥" style="--a:4">🔥</button><button type="button" data-emote="👏" style="--a:5">👏</button>
+              <button type="button" data-emote="💃" style="--a:6">💃</button><button type="button" data-emote="😎" style="--a:7">😎</button>
+            </div>
+            <div class="pz-actions">
+              <button type="button" class="pz-act pz-interact" id="pz-interact" hidden></button>
+              <button type="button" class="pz-act" id="pz-dash">Dash<small>Shift</small></button>
+              <button type="button" class="pz-act big" id="pz-jump">Jump<small>Space</small></button>
+            </div>
+            <div class="pz-photo" id="pz-photo" hidden></div>
+            <div class="pz-start" id="pz-start"><b>Plaza</b><span>Click to play</span><div class="pz-keys"><span><kbd>WASD</kbd> move</span><span><kbd>Space</kbd> jump</span><span><kbd>Shift</kbd> dash</span><span><kbd>E</kbd> interact</span><span><kbd>Q</kbd> emote</span><span><kbd>T</kbd> throw treat</span></div></div>
+          </div>
+        </div>

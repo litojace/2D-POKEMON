@@ -1,0 +1,1625 @@
+<title>Sảnh Arena</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=DM+Sans:wght@400;500;700&display=swap">
+<style>
+/* Layout: a document page around one scaled game screen (native 1280×800 or 844×390), dark only to match Element Arena. */
+:root {
+  --bg-0: #0b1020;
+  --bg-1: #121a33;
+  --bg-2: #1a2547;
+  --line: #ffffff1f;
+  --line-2: #ffffff33;
+  --text: #eef2ff;
+  --dim: #a0afc8;
+  --accent: #ffd65b;
+  --accent-ink: #2a1a00;
+  --danger: #ef4f61;
+  --ok: #43d971;
+  --display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --body: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-pop: cubic-bezier(0.3, 1.5, 0.5, 1);
+  color-scheme: dark;
+}
+html, body { background: var(--bg-0); color: var(--text); }
+body { font-family: var(--body); font-size: 15px; line-height: 1.55; }
+* { box-sizing: border-box; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.page { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 36px 64px; display: grid; gap: 56px; }
+.page > * { min-width: 0; }
+.eyebrow { font-family: var(--display); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); font-size: 14px; }
+h1 { font-family: var(--display); font-weight: 800; text-transform: uppercase; font-size: clamp(44px, 7vw, 76px); line-height: .92; margin: 8px 0 14px; letter-spacing: .01em; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 800; text-transform: uppercase; font-size: 32px; line-height: 1; margin: 0 0 6px; letter-spacing: .02em; text-wrap: balance; }
+h3 { font-family: var(--display); font-weight: 700; font-size: 21px; margin: 0; letter-spacing: .02em; }
+.lead { max-width: 68ch; color: var(--dim); font-size: 17px; margin: 0; }
+.lead b, p b { color: var(--text); }
+section > p.sub { color: var(--dim); max-width: 70ch; margin: 0 0 18px; }
+
+/* ---------- demo controls ---------- */
+.demo-bar { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin-bottom: 14px; }
+.seg { display: inline-flex; background: var(--bg-1); border: 1px solid var(--line); border-radius: 999px; padding: 4px; }
+.seg button { border: 0; background: transparent; padding: 8px 16px; border-radius: 999px; cursor: pointer; font-weight: 500; color: var(--dim); min-height: 40px; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.try { color: var(--dim); font-size: 14px; margin: 0; min-width: 0; flex: 1 1 280px; }
+.frame { width: 100%; position: relative; overflow: hidden; }
+.frame-inner { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.frame-note { color: var(--dim); font-size: 13px; margin-top: 10px; }
+
+/* ======================================================================
+   GAME SCREEN (native pixels, scaled as a whole)
+   ====================================================================== */
+.screen { --el: #ffd84a; position: relative; width: 1280px; height: 800px; overflow: hidden; border-radius: 20px; background: var(--bg-0); box-shadow: 0 30px 80px #0008, 0 0 0 1px var(--line); font-family: var(--body); user-select: none; -webkit-user-select: none; }
+.screen.phone { width: 844px; height: 390px; border-radius: 28px; }
+.screen img { max-width: none; }
+
+/* backdrop */
+.bg { position: absolute; inset: -30px; background-size: cover; background-position: center 40%; filter: blur(6px) brightness(.42) saturate(1.15); transition: opacity .5s var(--ease-out); }
+.tint { position: absolute; inset: 0; pointer-events: none; background:
+  radial-gradient(ellipse 42% 46% at var(--stage-x, 42.5%) 66%, color-mix(in srgb, var(--el) 42%, transparent), transparent 70%),
+  linear-gradient(180deg, #0b102099 0%, transparent 22%, transparent 60%, #0b1020e6 100%);
+  transition: background .6s; }
+.lobby-only, .plaza-only { transition: opacity .45s var(--ease-out), visibility 0s; }
+.screen[data-scene="plaza"] .bg, .screen[data-scene="plaza"] .tint { opacity: 0; }
+.screen.phone[data-scene="plaza"] .bg { opacity: 1; }
+.screen:not([data-scene="lobby"]) .lobby-only, .screen:not([data-scene="plaza"]) .plaza-only { opacity: 0; visibility: hidden; transition: opacity .45s var(--ease-out), visibility 0s linear .45s; }
+
+/* top bar */
+.topbar { position: absolute; left: 16px; right: 16px; top: 14px; height: 52px; display: flex; align-items: center; justify-content: space-between; z-index: 20; pointer-events: none; }
+.topbar > * { pointer-events: auto; }
+.profile { display: flex; align-items: center; gap: 10px; background: #0b1020b3; border: 1px solid var(--line); border-radius: 14px; padding: 6px 14px 6px 6px; backdrop-filter: blur(6px); cursor: pointer; }
+.avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--bg-2); border: 2px solid var(--el); overflow: hidden; display: grid; place-items: center; flex: none; }
+.avatar img { width: 120%; height: 120%; object-fit: cover; object-position: 50% 18%; }
+.profile b { font-weight: 700; font-size: 15px; display: block; line-height: 1.1; }
+.profile small { color: var(--accent); font-size: 12px; font-weight: 500; }
+.xp { width: 110px; height: 5px; background: #ffffff1a; border-radius: 3px; overflow: hidden; margin-top: 4px; }
+.xp i { display: block; height: 100%; width: 38%; background: var(--accent); }
+.lv { font-family: var(--display); font-weight: 700; font-size: 14px; border: 1px solid var(--line-2); border-radius: 6px; padding: 0 6px; color: var(--accent); margin-left: 4px; align-self: flex-start; margin-top: 2px; }
+.scene-switch { position: absolute; left: 50%; transform: translateX(-50%); }
+.scene-switch .seg { background: #0b1020cc; backdrop-filter: blur(6px); }
+.scene-switch .seg button { font-family: var(--display); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 16px; padding: 6px 18px; min-height: 36px; display: inline-flex; align-items: center; gap: 8px; }
+.scene-switch .count { font-family: var(--body); font-size: 11px; letter-spacing: 0; background: #ffffff1f; border-radius: 999px; padding: 1px 7px; font-weight: 700; }
+.scene-switch button[aria-pressed="true"] .count { background: #2a1a0026; }
+.wallet { display: flex; gap: 8px; align-items: center; }
+.pill { display: inline-flex; align-items: center; gap: 6px; background: #0b1020b3; border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font-weight: 700; font-variant-numeric: tabular-nums; backdrop-filter: blur(6px); }
+.coin { width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff6cf, var(--accent) 55%, #b8860b); box-shadow: inset 0 0 0 1.5px #8a6410; }
+.icon-btn { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: #0b1020b3; border: 1px solid var(--line); cursor: pointer; }
+.icon-btn svg, .rail svg, .play svg, .mode-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* left rail */
+.rail { position: absolute; left: 16px; top: 86px; z-index: 18; display: grid; gap: 6px; }
+.rail button { position: relative; width: 64px; min-height: 60px; border: 1px solid var(--line); border-radius: 14px; background: #0b1020b3; backdrop-filter: blur(6px); cursor: pointer; display: grid; place-items: center; gap: 2px; padding: 6px 2px; color: var(--text); transition: transform .15s var(--ease-pop), background .2s; }
+.rail button span { font-size: 11px; font-weight: 500; color: var(--dim); }
+.rail button:hover { background: var(--bg-2); transform: translateX(2px); }
+.rail button[aria-expanded="true"] { background: var(--bg-2); border-color: var(--accent); }
+.rail button[aria-expanded="true"] span { color: var(--accent); }
+.badge { position: absolute; top: -5px; right: -5px; min-width: 20px; height: 20px; border-radius: 10px; background: var(--danger); color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; padding: 0 5px; border: 2px solid var(--bg-0); }
+.badge.green { background: var(--ok); color: #062b12; }
+
+/* horizon crowd (lobby) */
+.horizon { position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: 2; pointer-events: none; }
+.walker { position: absolute; width: 40px; height: 44px; margin: -44px 0 0 -20px; cursor: pointer; pointer-events: auto; transition: filter .2s; border: 0; background: transparent; padding: 0; }
+.walker img { width: 40px; height: 40px; display: block; transition: transform .2s; }
+.walker.flip img { transform: scaleX(-1); }
+.walker::after { content: ""; position: absolute; left: 6px; right: 6px; bottom: 0; height: 6px; border-radius: 50%; background: #0007; z-index: -1; }
+.walker:hover { filter: drop-shadow(0 0 6px #fff9); }
+.walker .tag { position: absolute; left: 50%; bottom: 100%; transform: translateX(-50%); white-space: nowrap; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 6px; background: #0b1020cc; color: var(--text); opacity: 0; transition: opacity .15s; pointer-events: none; }
+.walker:hover .tag, .walker:focus-visible .tag, .plaza .you .tag { opacity: 1; }
+.horizon .walker { filter: brightness(.8) saturate(.8); }
+.horizon .walker:hover { filter: brightness(1) drop-shadow(0 0 6px #fff9); }
+
+/* stage */
+.stage { position: absolute; left: var(--stage-x, 42.5%); bottom: 132px; width: 0; height: 0; z-index: 5; }
+.slot { position: absolute; bottom: 0; transform: translateX(-50%); display: grid; justify-items: center; gap: 6px; }
+.podium { position: absolute; left: 50%; bottom: -14px; transform: translateX(-50%); width: 120%; height: 34px; border-radius: 50%; background: radial-gradient(ellipse at 50% 40%, color-mix(in srgb, var(--c, var(--el)) 55%, #1a2547) 0%, #121a33 62%, transparent 72%); box-shadow: 0 0 0 2px color-mix(in srgb, var(--c, var(--el)) 50%, transparent) inset; z-index: -1; }
+.main { left: 0; width: 300px; }
+.main .hero { width: 300px; height: 300px; cursor: pointer; filter: drop-shadow(0 18px 18px #0009); animation: bob 3.2s ease-in-out infinite; transition: transform .25s var(--ease-pop); }
+.main .hero:hover { transform: scale(1.03); }
+@keyframes bob { 50% { translate: 0 -6px; } }
+.hero.swap { animation: pop .38s var(--ease-pop); }
+@keyframes pop { 0% { transform: scale(.7) translateY(20px); opacity: 0; } 100% { transform: none; opacity: 1; } }
+.nameplate { position: absolute; top: calc(100% + 26px); left: 50%; transform: translateX(-50%); text-align: center; white-space: nowrap; }
+.nameplate .champ-name { font-family: var(--display); font-weight: 800; font-size: 40px; line-height: .9; text-transform: uppercase; letter-spacing: .04em; text-shadow: 0 2px 0 #0008; }
+.nameplate .meta { display: inline-flex; gap: 8px; align-items: center; margin-top: 6px; font-size: 13px; color: var(--dim); }
+.chip-el { display: inline-flex; align-items: center; gap: 5px; padding: 2px 10px; border-radius: 999px; background: color-mix(in srgb, var(--el) 22%, transparent); color: var(--el); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+.chip-el::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.arrow { position: absolute; top: calc(100% + 30px); width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--line-2); background: #0b1020b3; cursor: pointer; display: grid; place-items: center; font-size: 22px; line-height: 1; }
+.arrow.prev { left: 4px; } .arrow.next { right: 4px; }
+.friend { width: 150px; }
+.friend.far { width: 120px; }
+.friend .who { width: 150px; height: 150px; display: grid; place-items: center; border-radius: 50%; border: 2px dashed var(--line-2); background: #0b10204d; cursor: pointer; color: var(--dim); font-weight: 700; font-size: 13px; transition: border-color .2s, background .2s, transform .2s var(--ease-pop); position: relative; }
+.friend.far .who { width: 116px; height: 116px; }
+.friend .who:hover { border-color: var(--accent); color: var(--accent); background: #0b102099; transform: translateY(-3px); }
+.friend .who .plus { font-size: 30px; line-height: 1; display: block; font-weight: 500; }
+.friend.filled .who { border: 0; background: transparent; }
+.friend.filled .who img { width: 150px; height: 150px; filter: drop-shadow(0 10px 10px #0009); animation: pop .4s var(--ease-pop); }
+.friend.far.filled .who img { width: 116px; height: 116px; }
+.friend .label { font-size: 13px; font-weight: 700; white-space: nowrap; background: #0b1020cc; border: 1px solid var(--line); padding: 2px 10px; border-radius: 8px; display: inline-flex; gap: 6px; align-items: center; }
+.friend .label .ready { color: var(--ok); }
+.friend .label .wait { color: var(--accent); }
+.kick { position: absolute; top: 4px; right: 4px; width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--line-2); background: #0b1020e6; display: none; place-items: center; cursor: pointer; font-size: 14px; color: var(--dim); }
+.friend.filled:hover .kick, .friend.filled:focus-within .kick { display: grid; }
+.party-hint { position: absolute; left: 50%; transform: translateX(-50%); bottom: -122px; white-space: nowrap; font-size: 12px; color: var(--dim); }
+
+/* emote bubble */
+.bubble { position: absolute; left: 50%; bottom: calc(100% - 8px); transform: translateX(-50%); background: #fff; color: #111; border-radius: 14px; padding: 4px 10px; font-size: 22px; font-weight: 800; font-family: var(--display); animation: bubble 2.6s var(--ease-out) forwards; pointer-events: none; white-space: nowrap; z-index: 9; }
+.bubble::after { content: ""; position: absolute; left: 50%; top: 100%; margin-left: -6px; border: 6px solid transparent; border-top-color: #fff; }
+.bubble.sm { font-size: 14px; padding: 2px 6px; border-radius: 9px; }
+@keyframes bubble { 0% { opacity: 0; transform: translate(-50%, 8px) scale(.6); } 10% { opacity: 1; transform: translate(-50%, 0) scale(1); } 85% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -8px); } }
+
+/* right column cards */
+.side { position: absolute; right: 16px; top: 86px; width: 256px; display: grid; gap: 10px; z-index: 6; }
+.card { background: #0b1020c2; border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; backdrop-filter: blur(8px); }
+.card-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.card-head h4 { margin: 0; font-family: var(--display); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; font-size: 13px; color: var(--dim); }
+.card-head a, .linkish { font-size: 12px; color: var(--accent); cursor: pointer; background: none; border: 0; padding: 0; font-weight: 700; }
+.raid-card { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; cursor: pointer; --c: #d9a35b; background: linear-gradient(120deg, color-mix(in srgb, var(--c) 30%, #0b1020c2), #0b1020c2 70%); }
+.raid-card b { font-family: var(--display); font-size: 24px; font-weight: 800; text-transform: uppercase; letter-spacing: .03em; line-height: 1; }
+.raid-card small { color: var(--dim); font-size: 12px; grid-column: 1; }
+.raid-card .bonus { grid-row: 1 / span 3; grid-column: 2; font-family: var(--display); font-weight: 800; font-size: 13px; text-align: center; color: var(--c); border: 1px solid color-mix(in srgb, var(--c) 60%, transparent); border-radius: 10px; padding: 6px 8px; line-height: 1.1; }
+.mission { display: grid; gap: 4px; margin-top: 8px; font-size: 13px; }
+.mission .bar { height: 6px; border-radius: 3px; background: #ffffff1a; overflow: hidden; }
+.mission .bar i { display: block; height: 100%; background: var(--ok); border-radius: 3px; }
+.mission .row { display: flex; justify-content: space-between; gap: 8px; }
+.mission .row span:last-child { color: var(--dim); font-variant-numeric: tabular-nums; }
+.frow { display: grid; grid-template-columns: 32px 1fr auto; gap: 8px; align-items: center; padding: 5px 0; }
+.frow + .frow { border-top: 1px solid var(--line); }
+.frow .avatar { width: 32px; height: 32px; border-width: 2px; }
+.frow b { font-size: 13px; display: block; line-height: 1.15; }
+.frow small { font-size: 11px; color: var(--dim); display: flex; align-items: center; gap: 5px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); display: inline-block; }
+.dot.match { background: var(--el-fire, #ff7a45); }
+.mini-btn { border: 1px solid var(--line-2); background: var(--bg-2); border-radius: 8px; padding: 5px 10px; font-size: 12px; font-weight: 700; cursor: pointer; min-height: 30px; }
+.mini-btn:hover { border-color: var(--accent); color: var(--accent); }
+.mini-btn:disabled { opacity: .5; cursor: default; color: var(--dim); border-color: var(--line); }
+
+/* bottom HUD */
+.emotes { position: absolute; left: 96px; bottom: 16px; display: flex; gap: 6px; z-index: 15; }
+.emotes button { width: 48px; height: 48px; border-radius: 12px; border: 1px solid var(--line); background: #0b1020b3; cursor: pointer; font-size: 20px; font-family: var(--display); font-weight: 800; transition: transform .12s var(--ease-pop); }
+.emotes button:active { transform: scale(.88); }
+.emote-toggle { display: none; }
+.play-zone { position: absolute; right: 16px; bottom: 16px; width: 256px; display: grid; gap: 8px; z-index: 16; }
+.mode-btn { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 12px; border-radius: 14px; border: 1px solid var(--line-2); background: #0b1020d9; cursor: pointer; text-align: left; backdrop-filter: blur(6px); }
+.mode-btn .mi { width: 34px; height: 34px; border-radius: 10px; background: var(--bg-2); display: grid; place-items: center; color: var(--accent); flex: none; }
+.mode-btn b { font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: .03em; text-transform: uppercase; display: block; line-height: 1; }
+.mode-btn small { color: var(--dim); font-size: 12px; }
+.mode-btn .chev { margin-left: auto; color: var(--dim); }
+.play { position: relative; width: 100%; height: 86px; border: 0; border-radius: 18px; cursor: pointer; background: linear-gradient(180deg, #ffe58f, var(--accent) 45%, #e9b52c); color: var(--accent-ink); font-family: var(--display); font-weight: 800; font-size: 46px; letter-spacing: .08em; text-transform: uppercase; box-shadow: 0 6px 0 #a87a12, 0 14px 28px #0009, inset 0 2px 0 #fff8; display: flex; align-items: center; justify-content: center; gap: 12px; transition: transform .1s, box-shadow .1s; overflow: hidden; }
+.play::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, #ffffff80 45%, transparent 60%); transform: translateX(-100%); animation: shine 3.6s ease-in-out infinite 1s; }
+@keyframes shine { 0%, 60% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+.play:active { transform: translateY(4px); box-shadow: 0 2px 0 #a87a12, 0 8px 18px #0009, inset 0 2px 0 #fff8; }
+.play svg { width: 34px; height: 34px; stroke-width: 2.6; }
+.play small { font-family: var(--body); font-size: 12px; letter-spacing: 0; font-weight: 700; display: block; text-transform: none; opacity: .75; }
+
+/* room / queue card */
+.room { background: #0b1020eb; border: 1px solid var(--accent); border-radius: 18px; padding: 14px; display: grid; gap: 10px; box-shadow: 0 14px 28px #0009; animation: pop .3s var(--ease-pop); }
+.room .r-top { display: flex; justify-content: space-between; align-items: center; }
+.room .r-top span { font-family: var(--display); letter-spacing: .12em; font-weight: 700; color: var(--dim); font-size: 13px; text-transform: uppercase; }
+.room .code { font-family: var(--display); font-weight: 800; font-size: 34px; letter-spacing: .16em; line-height: 1; color: var(--accent); }
+.room .status { font-size: 13px; color: var(--dim); display: flex; align-items: center; gap: 8px; }
+.spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #ffffff33; border-top-color: var(--accent); animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.room .r-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.room .r-actions .mini-btn { min-height: 36px; }
+.room .cancel { grid-column: span 2; background: transparent; }
+
+/* countdown */
+.countdown { position: absolute; inset: 0; z-index: 40; display: grid; place-items: center; background: radial-gradient(circle, #0b102066, #0b1020e6); }
+.countdown div { text-align: center; }
+.countdown b { display: block; font-family: var(--display); font-weight: 800; font-size: 150px; line-height: 1; color: var(--accent); text-shadow: 0 6px 0 #a87a12; animation: pop .5s var(--ease-pop); }
+.countdown span { font-family: var(--display); font-size: 22px; letter-spacing: .14em; text-transform: uppercase; color: var(--text); }
+
+/* popovers & drawers */
+.pop { position: absolute; z-index: 30; background: var(--bg-1); border: 1px solid var(--line-2); border-radius: 16px; padding: 8px; box-shadow: 0 20px 40px #000a; animation: pop .22s var(--ease-out); }
+.modes { right: 16px; bottom: 170px; width: 320px; }
+.modes h5, .picker h5 { margin: 4px 8px 6px; font-family: var(--display); letter-spacing: .12em; text-transform: uppercase; font-size: 13px; color: var(--dim); font-weight: 700; }
+.opt { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; width: 100%; text-align: left; padding: 8px; border-radius: 12px; border: 1px solid transparent; background: transparent; cursor: pointer; }
+.opt:hover { background: var(--bg-2); }
+.opt[aria-checked="true"] { border-color: var(--accent); background: #ffd65b14; }
+.opt .mi { width: 34px; height: 34px; border-radius: 10px; background: var(--bg-2); display: grid; place-items: center; color: var(--accent); }
+.opt .mi svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.opt b { display: block; font-size: 14px; }
+.opt small { color: var(--dim); font-size: 12px; }
+.opt .need { font-size: 11px; font-weight: 700; color: var(--dim); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; white-space: nowrap; }
+.opt .need.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 50%, transparent); }
+.bots { display: flex; gap: 6px; padding: 2px 8px 6px 52px; }
+.bots button { border: 1px solid var(--line-2); background: transparent; border-radius: 8px; padding: 4px 10px; font-size: 12px; font-weight: 700; cursor: pointer; color: var(--dim); }
+.bots button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.picker { width: 250px; }
+.drawer { position: absolute; left: 92px; top: 86px; bottom: 16px; width: 400px; z-index: 25; background: #121a33f2; border: 1px solid var(--line-2); border-radius: 18px; box-shadow: 0 20px 50px #000b; display: flex; flex-direction: column; animation: slidein .28s var(--ease-out); backdrop-filter: blur(10px); }
+@keyframes slidein { from { transform: translateX(-24px); opacity: 0; } }
+.drawer header { display: flex; justify-content: space-between; align-items: flex-start; padding: 16px 16px 10px; border-bottom: 1px solid var(--line); }
+.drawer header .k { font-family: var(--display); letter-spacing: .14em; font-size: 12px; color: var(--accent); font-weight: 700; text-transform: uppercase; }
+.drawer header h4 { margin: 0; font-family: var(--display); font-weight: 800; font-size: 28px; text-transform: uppercase; line-height: 1; }
+.drawer .body { padding: 12px 16px 16px; overflow: auto; display: grid; gap: 10px; align-content: start; }
+.drawer .close { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line-2); background: transparent; cursor: pointer; font-size: 18px; }
+.fgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.ftile { border: 1px solid var(--line); background: var(--bg-2); border-radius: 12px; padding: 6px 4px 8px; cursor: pointer; display: grid; justify-items: center; gap: 2px; --c: #fff; }
+.ftile img { width: 64px; height: 64px; }
+.ftile b { font-size: 12px; }
+.ftile small { font-size: 10px; color: var(--c); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.ftile[aria-pressed="true"] { border-color: var(--c); box-shadow: 0 0 0 1px var(--c) inset, 0 0 18px color-mix(in srgb, var(--c) 35%, transparent); }
+.tile-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stile { border: 1px solid var(--line); border-radius: 12px; padding: 8px; background: var(--bg-2); display: grid; gap: 2px; justify-items: center; text-align: center; font-size: 12px; }
+.stile img { width: 70px; height: 70px; }
+.stile .tier { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
+.list-row { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border-radius: 12px; background: var(--bg-2); border: 1px solid var(--line); font-size: 13px; }
+.list-row .sw { width: 30px; height: 30px; border-radius: 9px; background: var(--c); }
+.list-row b { display: block; }
+.list-row small { color: var(--dim); }
+.note-demo { font-size: 12px; color: var(--dim); border-top: 1px dashed var(--line-2); padding-top: 10px; }
+
+/* mini player card */
+.pcard { width: 210px; padding: 12px; display: grid; gap: 8px; }
+.pcard .top { display: flex; gap: 10px; align-items: center; }
+.pcard .top img { width: 48px; height: 48px; }
+.pcard b { font-size: 14px; display: block; }
+.pcard small { font-size: 12px; color: var(--dim); }
+.pcard .acts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+/* toast */
+.toast { position: absolute; top: 76px; left: 50%; transform: translateX(-50%); z-index: 45; background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 999px; padding: 8px 18px; font-size: 14px; font-weight: 500; box-shadow: 0 10px 24px #0009; animation: pop .25s var(--ease-pop); white-space: nowrap; }
+
+/* ---------- plaza scene ---------- */
+.plaza { position: absolute; z-index: 1; width: 1422px; height: 800px; left: -71px; top: 0; }
+.screen.phone .plaza { width: 693px; height: 390px; left: 75px; top: 0; }
+.plaza > img.map { position: absolute; inset: 0; width: 100%; height: 100%; display: block; filter: saturate(1.05); }
+.plaza::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, #0b102080, transparent 20%, transparent 80%, #0b1020a6); pointer-events: none; }
+.plaza .walker { z-index: 3; }
+.plaza .walker img { width: 46px; height: 46px; }
+.plaza .walker { width: 46px; height: 50px; margin: -50px 0 0 -23px; }
+.plaza .you { z-index: 4; transition: left .7s var(--ease-out), top .7s var(--ease-out); }
+.plaza .you .tag { background: var(--accent); color: var(--accent-ink); }
+.plaza .you::before { content: ""; position: absolute; left: 50%; bottom: -4px; width: 44px; height: 14px; margin-left: -22px; border-radius: 50%; border: 2px solid var(--accent); z-index: -1; }
+.hot { position: absolute; z-index: 2000; transform: translate(-50%, -50%); border: 0; background: transparent; cursor: pointer; padding: 0; width: 56px; height: 56px; }
+.hot .ring { position: absolute; inset: 14px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 4px #0b1020aa, 0 0 18px var(--c); }
+.hot .ring::after { content: ""; position: absolute; inset: -8px; border-radius: 50%; border: 2px solid var(--c); animation: ping 2s var(--ease-out) infinite; }
+@keyframes ping { from { transform: scale(.6); opacity: 1; } to { transform: scale(1.6); opacity: 0; } }
+.hot .lbl { position: absolute; left: 50%; bottom: 44px; transform: translateX(-50%); white-space: nowrap; background: #0b1020e0; border: 1px solid color-mix(in srgb, var(--c) 60%, transparent); border-radius: 10px; padding: 3px 10px; text-align: center; transition: transform .2s var(--ease-pop); }
+.hot .lbl b { display: block; font-family: var(--display); font-weight: 800; text-transform: uppercase; letter-spacing: .06em; font-size: 15px; color: var(--c); line-height: 1.1; }
+.hot .lbl small { display: block; font-size: 11px; color: var(--dim); }
+.hot.below .lbl { bottom: auto; top: 44px; }
+.hot:hover .lbl, .hot:focus-visible .lbl { transform: translateX(-50%) translateY(-3px) scale(1.05); }
+.plaza-hint { position: absolute; right: 16px; top: 76px; z-index: 12; font-size: 13px; color: var(--dim); background: #0b1020c2; border: 1px solid var(--line); border-radius: 999px; padding: 4px 14px; white-space: nowrap; }
+
+/* ---------- phone overrides ---------- */
+.screen.phone .topbar { left: 12px; right: 12px; top: 8px; height: 44px; }
+.screen.phone .profile { padding: 4px 10px 4px 4px; gap: 8px; border-radius: 12px; }
+.screen.phone .avatar { width: 34px; height: 34px; }
+.screen.phone .profile b { font-size: 13px; }
+.screen.phone .profile small { display: none; }
+.screen.phone .xp { width: 70px; }
+.screen.phone .scene-switch .seg button { font-size: 14px; padding: 4px 12px; min-height: 32px; }
+.screen.phone .pill { padding: 4px 10px; font-size: 13px; }
+.screen.phone .icon-btn { width: 36px; height: 36px; }
+.screen.phone .rail { left: 12px; top: 60px; gap: 4px; }
+.screen.phone .rail [data-drawer="journey"] { display: none; }
+.screen.phone .rail button { width: 46px; min-height: 40px; border-radius: 12px; padding: 4px 2px; }
+.screen.phone .rail button span { display: none; }
+.screen.phone .rail svg { width: 20px; height: 20px; }
+.screen.phone .badge { min-width: 16px; height: 16px; font-size: 9px; top: -4px; right: -4px; }
+.screen.phone .stage { bottom: 82px; }
+.screen.phone .main { width: 150px; }
+.screen.phone .main .hero { width: 150px; height: 150px; }
+.screen.phone .nameplate { top: calc(100% + 14px); }
+.screen.phone .nameplate .champ-name { font-size: 24px; }
+.screen.phone .nameplate .meta { margin-top: 2px; font-size: 11px; }
+.screen.phone .nameplate .meta .mastery { display: none; }
+.screen.phone .chip-el { font-size: 10px; padding: 1px 8px; }
+.screen.phone .arrow { width: 32px; height: 32px; font-size: 18px; }
+.screen.phone .arrow { top: calc(100% + 10px); }
+.screen.phone .arrow.prev { left: -30px; } .screen.phone .arrow.next { right: -30px; }
+.screen.phone .friend, .screen.phone .friend .who, .screen.phone .friend.filled .who img { width: 84px; }
+.screen.phone .friend .who, .screen.phone .friend.filled .who img { height: 84px; }
+.screen.phone .friend.far, .screen.phone .friend.far .who, .screen.phone .friend.far.filled .who img { width: 70px; }
+.screen.phone .friend.far .who, .screen.phone .friend.far.filled .who img { height: 70px; }
+.screen.phone .friend .who { font-size: 10px; }
+.screen.phone .friend .who .plus { font-size: 22px; }
+.screen.phone .friend .label { font-size: 10px; padding: 1px 6px; }
+.screen.phone .podium { height: 20px; bottom: -8px; }
+.screen.phone .party-hint { display: none; }
+.screen.phone .side { right: 12px; top: 60px; width: 172px; gap: 6px; }
+.screen.phone .card { padding: 7px 10px; border-radius: 12px; }
+.screen.phone .raid-card b { font-size: 16px; }
+.screen.phone .raid-card small { font-size: 10px; }
+.screen.phone .raid-card .bonus { font-size: 10px; padding: 4px 5px; }
+.screen.phone .card-head { margin-bottom: 2px; }
+.screen.phone .card-head h4 { font-size: 11px; }
+.screen.phone .mission { margin-top: 3px; font-size: 10px; gap: 2px; }
+.screen.phone .mission .bar { height: 4px; }
+.screen.phone .mission.extra, .screen.phone .friends-card { display: none; }
+.screen.phone .emotes { left: 66px; bottom: 10px; }
+.screen.phone .emotes button { display: none; width: 40px; height: 40px; font-size: 17px; }
+.screen.phone .emotes .emote-toggle { display: block; }
+.screen.phone .emotes.open button { display: block; }
+.screen.phone .play-zone { right: 12px; bottom: 10px; width: 196px; gap: 6px; }
+.screen.phone .mode-btn { padding: 5px 10px; border-radius: 12px; gap: 8px; }
+.screen.phone .mode-btn .mi { width: 26px; height: 26px; border-radius: 8px; }
+.screen.phone .mode-btn .mi svg { width: 16px; height: 16px; }
+.screen.phone .mode-btn b { font-size: 15px; }
+.screen.phone .mode-btn small { font-size: 10px; }
+.screen.phone .play { height: 58px; font-size: 32px; border-radius: 14px; box-shadow: 0 4px 0 #a87a12, 0 10px 20px #0009, inset 0 2px 0 #fff8; }
+.screen.phone .play svg { width: 24px; height: 24px; }
+.screen.phone .play small { display: none; }
+.screen.phone .room { padding: 9px; gap: 6px; border-radius: 14px; }
+.screen.phone .room .code { font-size: 24px; }
+.screen.phone .room .status { font-size: 11px; }
+.screen.phone .room .r-actions .mini-btn { min-height: 28px; padding: 3px 6px; font-size: 11px; }
+.screen.phone .modes { right: 12px; bottom: 112px; top: 56px; width: 300px; overflow: auto; }
+.screen.phone .opt { padding: 5px 8px; }
+.screen.phone .drawer { left: 66px; top: 58px; bottom: 8px; width: 380px; }
+.screen.phone .drawer header { padding: 10px 12px 8px; }
+.screen.phone .drawer header h4 { font-size: 22px; }
+.screen.phone .drawer .body { padding: 8px 12px 12px; }
+.screen.phone .ftile img { width: 48px; height: 48px; }
+.screen.phone .toast { top: 58px; font-size: 12px; }
+.screen.phone .countdown b { font-size: 96px; }
+.screen.phone .plaza-hint { right: 12px; top: 58px; font-size: 11px; }
+.screen.phone .hot .lbl { padding: 2px 7px; bottom: 40px; }
+.screen.phone .hot .lbl b { font-size: 12px; }
+.screen.phone .hot .lbl small { display: none; }
+.screen.phone .plaza .walker, .screen.phone .plaza .walker img { width: 34px; }
+.screen.phone .plaza .walker img { height: 34px; }
+.screen.phone .plaza .walker { height: 38px; margin: -38px 0 0 -17px; }
+.screen.phone .walker .tag { font-size: 9px; }
+.screen.phone .walker:not(.you) .tag { display: none; }
+
+/* ---------- document sections ---------- */
+.grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 860px) { .grid-3 { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 620px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+.box { background: var(--bg-1); border: 1px solid var(--line); border-radius: 16px; padding: 18px; min-width: 0; }
+.box p { margin: 6px 0 0; color: var(--dim); font-size: 14px; }
+.box .take { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 14px; color: var(--text); }
+.box .take::before { content: "Lấy về: "; color: var(--accent); font-weight: 700; }
+.game-tag { font-family: var(--display); font-weight: 700; font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); }
+.keep-drop { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.keep-drop li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; font-size: 14px; color: var(--dim); }
+.keep-drop li b { color: var(--text); }
+.mk { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; font-weight: 800; font-size: 13px; }
+.mk.y { background: color-mix(in srgb, var(--ok) 22%, transparent); color: var(--ok); }
+.mk.n { background: color-mix(in srgb, var(--danger) 22%, transparent); color: var(--danger); }
+.mk.m { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--accent); }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; }
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 14px; }
+th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--display); letter-spacing: .1em; text-transform: uppercase; font-size: 13px; color: var(--dim); background: var(--bg-1); font-weight: 700; }
+td:first-child { color: var(--dim); }
+tr:last-child td { border-bottom: 0; }
+td.good { color: var(--ok); }
+.steps { counter-reset: s; display: grid; gap: 12px; list-style: none; padding: 0; margin: 0; }
+.steps li { counter-increment: s; display: grid; grid-template-columns: 44px 1fr; gap: 14px; background: var(--bg-1); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+.steps li::before { content: counter(s); width: 44px; height: 44px; border-radius: 12px; background: var(--bg-2); color: var(--accent); font-family: var(--display); font-weight: 800; font-size: 24px; display: grid; place-items: center; }
+.steps b { display: block; font-size: 15px; }
+.steps p { margin: 4px 0 0; color: var(--dim); font-size: 14px; }
+.steps code, p code, li code, td code { font-size: 12.5px; background: var(--bg-2); padding: 1px 5px; border-radius: 5px; color: var(--text); }
+.sources { font-size: 13px; color: var(--dim); display: grid; gap: 4px; padding-left: 18px; margin: 0; }
+.sources a { color: var(--accent); }
+
+/* ---------- fitting room (Shop & Wardrobe) ---------- */
+.fit-only { transition: opacity .45s var(--ease-out), visibility 0s; }
+.screen:not([data-scene="fit"]) .fit-only, .screen[data-scene="fit"] .hud { opacity: 0; visibility: hidden; transition: opacity .3s var(--ease-out), visibility 0s linear .3s; }
+.screen[data-scene="fit"] .tint { opacity: 0; }
+.fit { position: absolute; inset: 0; z-index: 7; }
+.fitstage { position: absolute; left: 96px; top: 76px; bottom: 16px; width: 470px; border-radius: 22px; overflow: hidden; border: 1px solid var(--line); background: radial-gradient(ellipse 90% 55% at 50% 100%, color-mix(in srgb, var(--r, #ffd65b) 16%, #1a2547), #0b1020 72%); }
+.beam { position: absolute; right: -40px; top: -90px; width: 280px; height: 690px; transform-origin: 50% 0; transform: rotate(13deg); background: linear-gradient(180deg, #ffe9a6, #ffe9a600 88%); clip-path: polygon(44% 0, 56% 0, 100% 100%, 0 100%); filter: blur(12px); opacity: .42; pointer-events: none; }
+.pool { position: absolute; left: 50%; bottom: 150px; width: 320px; height: 72px; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(ellipse, #ffe9a650, #ffe9a600 70%); }
+.aura { position: absolute; left: 50%; bottom: 45px; width: 280px; height: 280px; margin-left: -140px; transform: rotateX(72deg); pointer-events: none; --rad: 124px; }
+.aura-ring { position: absolute; inset: 0; animation: spin 14s linear infinite; }
+.aura-ring i { position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; margin: -7px; border-radius: 50%; transform: rotate(var(--a)) translateX(var(--rad)); background: var(--pc); box-shadow: 0 0 10px var(--pc); font-style: normal; }
+.aura-ring.p-glow i { width: 26px; height: 26px; margin: -13px; filter: blur(4px); opacity: .85; }
+.aura-ring.p-glow::before { content: ""; position: absolute; inset: 10%; border-radius: 50%; border: 6px solid #9c7bff88; box-shadow: 0 0 30px #9c7bff, inset 0 0 30px #6b8cff; }
+.aura-ring.p-heart i, .aura-ring.p-snow i { background: none; box-shadow: none; color: var(--pc); font-size: 20px; line-height: 14px; text-align: center; text-shadow: 0 0 8px var(--pc); }
+.aura-ring.p-lantern i { width: 14px; height: 20px; margin: -10px -7px; border-radius: 6px; }
+.aura-ring.p-petal i { width: 16px; height: 9px; border-radius: 50% 0; }
+.fhero { position: absolute; left: 50%; bottom: 152px; width: 320px; height: 323px; transform: translateX(-50%); filter: drop-shadow(0 16px 16px #0009); pointer-events: none; }
+.fhero.enter { animation: enter .65s var(--ease-pop); }
+@keyframes enter { from { transform: translateX(-50%) translateY(-70px) scale(.5); opacity: 0; } }
+.fbadge { position: absolute; left: 16px; top: 16px; display: grid; justify-items: center; gap: 4px; font-size: 11px; color: var(--dim); }
+.fav { position: relative; width: 84px; height: 84px; border-radius: 50%; background: radial-gradient(circle at 50% 30%, #2a3a66, #121a33); border: 3px solid var(--line-2); overflow: hidden; }
+.fav img { position: absolute; width: 150%; height: 150%; left: -25%; top: -4%; max-width: none; }
+.fr-cookie { border: 6px dotted #c58a4a; box-shadow: 0 0 0 3px #f2d2a0, 0 0 0 5px #ff9bd2; }
+.fr-planet { border: 4px solid #9c7bff; box-shadow: 0 0 0 3px #2b1f5c, 0 0 16px #9c7bff; }
+.fr-cart { border-radius: 14px; border: 5px solid #8d93a6; box-shadow: 0 0 0 3px #3a3f52, inset 0 -10px 0 #ff4f6d55; }
+.fr-tassel { border: 5px solid #d9342b; box-shadow: 0 0 0 2px #ffd65b, 0 6px 0 -2px #d9342b; }
+.fr-vine { border: 5px solid #3f8f3a; box-shadow: 0 0 0 3px #9be07a, 0 0 0 6px #ffb3d155; }
+.fr-icicle { border: 5px solid #dff6ff; box-shadow: 0 0 0 2px #7fd4ff, 0 0 14px #bfefff; }
+.fxbtns { position: absolute; right: 14px; top: 14px; display: grid; gap: 6px; justify-items: end; }
+.fxbtns button { border: 1px solid var(--line-2); background: #0b1020c2; border-radius: 999px; padding: 5px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.fxbtns button:hover { border-color: var(--accent); color: var(--accent); }
+.finfo { position: absolute; left: 20px; right: 20px; bottom: 16px; display: grid; gap: 4px; }
+.finfo .rr { font-size: 12px; font-weight: 700; color: var(--r, var(--dim)); display: flex; gap: 8px; align-items: center; }
+.finfo .rr span { color: var(--dim); font-weight: 500; }
+.finfo b { font-family: var(--display); font-weight: 800; font-size: 34px; line-height: .95; text-transform: uppercase; letter-spacing: .02em; }
+.finfo p { margin: 0; color: var(--dim); font-size: 13px; line-height: 1.35; }
+.finfo .row { display: flex; gap: 8px; align-items: center; margin-top: 4px; flex-wrap: wrap; }
+.stages { display: inline-flex; border: 1px solid var(--line-2); border-radius: 9px; overflow: hidden; }
+.stages button { border: 0; background: transparent; padding: 4px 11px; font-family: var(--display); font-weight: 800; cursor: pointer; color: var(--dim); }
+.stages button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.compare { border: 1px solid var(--line-2); background: #0b1020c2; border-radius: 9px; padding: 5px 10px; font-size: 12px; font-weight: 700; cursor: pointer; touch-action: none; }
+.burst { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.burst span { position: absolute; left: 50%; top: 56%; font-size: 26px; animation: burst 1.25s var(--ease-out) forwards; }
+.burst .big { font-family: var(--display); font-weight: 800; font-size: 54px; color: var(--accent); text-shadow: 0 4px 0 #a87a12; white-space: nowrap; animation: lvl 1.4s var(--ease-pop) forwards; }
+@keyframes burst { from { transform: translate(-50%, -50%) scale(.3); opacity: 1; } to { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.1) rotate(var(--rot)); opacity: 0; } }
+@keyframes lvl { 0% { transform: translate(-50%, -20%) scale(.4); opacity: 0; } 25% { transform: translate(-50%, -120%) scale(1.1); opacity: 1; } 80% { opacity: 1; } 100% { transform: translate(-50%, -150%) scale(1); opacity: 0; } }
+
+.fpanel { position: absolute; left: 582px; right: 16px; top: 76px; bottom: 16px; display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; background: #0b1020de; border: 1px solid var(--line-2); border-radius: 22px; backdrop-filter: blur(10px); overflow: hidden; }
+.fp-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px 8px; }
+.fp-switch button { font-family: var(--display); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; font-size: 17px; min-height: 36px; padding: 4px 16px; }
+.fp-head .hint { color: var(--dim); font-size: 12px; flex: 1; min-width: 0; }
+.fp-head .close { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line-2); background: transparent; cursor: pointer; font-size: 16px; flex: none; }
+.fp-tabs { display: flex; gap: 2px; padding: 0 10px; border-bottom: 1px solid var(--line); }
+.fp-tabs button { background: none; border: 0; border-bottom: 3px solid transparent; padding: 9px 12px 7px; font-family: var(--display); font-weight: 700; font-size: 16px; letter-spacing: .05em; text-transform: uppercase; color: var(--dim); cursor: pointer; }
+.fp-tabs button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+.fp-tabs .n { font-family: var(--body); font-size: 10px; background: var(--danger); color: #fff; border-radius: 999px; padding: 0 5px; margin-left: 4px; vertical-align: 2px; }
+.fp-body { overflow: auto; padding: 12px 14px 16px; display: grid; grid-auto-rows: max-content; gap: 12px; align-content: start; min-height: 0; overscroll-behavior: contain; }
+.fp-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.fp-row h5, .sethead h5 { margin: 0; font-family: var(--display); font-weight: 800; font-size: 22px; text-transform: uppercase; letter-spacing: .02em; }
+.fp-row small, .sethead small, .rule { color: var(--dim); font-size: 12px; margin: 0; }
+.timer { color: var(--accent); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.fp-foot { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-top: 1px solid var(--line); background: #0b1020f0; min-height: 84px; }
+.fp-foot .ft { min-width: 0; flex: 1; display: flex; gap: 10px; align-items: center; }
+.fp-foot .ft img { width: 52px; height: 52px; object-fit: contain; flex: none; }
+.fp-foot .ft b { display: block; font-family: var(--display); font-weight: 800; font-size: 21px; text-transform: uppercase; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fp-foot .ft small { color: var(--dim); font-size: 12px; display: block; }
+.fp-foot .ft small.warn { color: var(--accent); }
+.fp-foot .acts { display: flex; gap: 8px; flex: none; }
+.buy { height: 58px; min-width: 200px; border: 0; border-radius: 14px; background: linear-gradient(180deg, #ffe58f, var(--accent) 45%, #e9b52c); color: var(--accent-ink); font-family: var(--display); font-weight: 800; font-size: 24px; letter-spacing: .05em; text-transform: uppercase; box-shadow: 0 5px 0 #a87a12, inset 0 2px 0 #fff8; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 18px; cursor: pointer; transition: transform .1s; }
+.buy:active { transform: translateY(3px); }
+.buy s { font-size: 16px; opacity: .6; }
+.buy.ghost { background: var(--bg-2); color: var(--text); box-shadow: 0 4px 0 #0007; border: 1px solid var(--line-2); min-width: 0; font-size: 18px; }
+.buy.green { background: linear-gradient(180deg, #7ff0a2, #2fb45c); color: #062b12; box-shadow: 0 5px 0 #1d7a3c, inset 0 2px 0 #fff8; }
+.buy.trial { background: linear-gradient(180deg, #ffc3e4, #ff9bd2 50%, #d96aa8); box-shadow: 0 5px 0 #8f3f6c, inset 0 2px 0 #fff8; color: #3a0d26; }
+.buy[disabled] { opacity: .55; cursor: default; transform: none; }
+.coin.sm { width: 14px; height: 14px; }
+.grid { display: grid; gap: 10px; }
+.g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.g5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.g6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.itile { position: relative; display: grid; gap: 2px; text-align: left; padding: 8px; border-radius: 14px; background: var(--bg-1); border: 1px solid color-mix(in srgb, var(--r) 45%, transparent); cursor: pointer; align-content: start; min-width: 0; transition: transform .15s var(--ease-pop), box-shadow .15s; }
+.itile:hover { transform: translateY(-2px); }
+.itile .ia { position: relative; aspect-ratio: 1.12; border-radius: 10px; background: radial-gradient(ellipse at 50% 85%, color-mix(in srgb, var(--r) 26%, #1a2547), #0b1020 75%); display: grid; place-items: center; overflow: hidden; margin-bottom: 4px; }
+.itile .ia > img { width: 94%; height: 94%; object-fit: contain; }
+.itile .ir { font-size: 11px; font-weight: 700; color: var(--r); display: flex; gap: 6px; align-items: center; white-space: nowrap; }
+.itile .ir::before { content: ""; width: 7px; height: 7px; transform: rotate(45deg); background: var(--r); }
+.itile b { font-family: var(--display); font-weight: 700; font-size: 17px; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.itile small { font-size: 11px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.itile .ip { margin-top: 4px; font-weight: 800; font-size: 13px; display: flex; align-items: center; gap: 5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.itile .ip s { color: var(--dim); font-weight: 500; }
+.itile .ip.ok { color: var(--ok); }
+.itile .ip.trial { color: #ff9bd2; }
+.itile .ip.dim { color: var(--dim); font-weight: 700; }
+.itile.sel { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset, 0 8px 18px #0008; }
+.itile.locked .ia > img { filter: grayscale(.55) brightness(.7); }
+.itile.notmine { opacity: .6; }
+.itile.notmine:hover, .itile.notmine.sel { opacity: 1; }
+.itile .tagx { position: absolute; top: 6px; right: 6px; font-size: 10px; font-weight: 800; background: #0b1020d9; border-radius: 6px; padding: 1px 6px; color: var(--text); z-index: 2; }
+.fxmini { position: relative; width: 82%; height: 82%; display: grid; place-items: center; }
+.fxmini .aura { transform: rotateX(62deg) scale(.36); left: 50%; top: 50%; bottom: auto; margin: -140px 0 0 -140px; }
+.fxmini .glyph { font-size: 42px; filter: drop-shadow(0 0 10px var(--r)); }
+.fxmini .glyph.txt { font-family: var(--display); font-weight: 800; font-size: 22px; color: #ffd65b; filter: none; text-shadow: 0 2px 0 #a87a12; }
+.fxmini .fav { width: 66%; height: auto; aspect-ratio: 1; }
+.fchips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.fchip { width: 60px; flex: none; display: grid; justify-items: center; gap: 1px; border: 1px solid var(--line); background: var(--bg-1); border-radius: 12px; padding: 4px 2px 5px; cursor: pointer; }
+.fchip img { width: 46px; height: 46px; object-fit: contain; }
+.fchip span { font-size: 10px; font-weight: 700; color: var(--dim); }
+.fchip[aria-pressed="true"] { border-color: var(--accent); background: #ffd65b14; }
+.fchip[aria-pressed="true"] span { color: var(--accent); }
+.fseg { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+.fseg .seg button { min-height: 32px; padding: 4px 12px; font-size: 13px; }
+.deal { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; align-items: center; text-align: left; border: 2px solid var(--accent); border-radius: 16px; padding: 10px; background: linear-gradient(110deg, #ffd65b22, #121a33 60%); cursor: pointer; --r: #4fb3ff; }
+.deal .ia { height: 168px; border-radius: 12px; background: radial-gradient(ellipse at 50% 85%, color-mix(in srgb, var(--r) 30%, #1a2547), #0b1020 75%); display: grid; place-items: center; overflow: hidden; }
+.deal .ia img { height: 96%; }
+.deal .top { display: flex; gap: 8px; align-items: center; font-size: 12px; font-weight: 700; color: var(--r); }
+.deal .off { background: var(--danger); color: #fff; border-radius: 999px; padding: 2px 10px; font-weight: 800; }
+.deal b { display: block; font-family: var(--display); font-weight: 800; font-size: 36px; text-transform: uppercase; line-height: 1; margin-top: 6px; }
+.deal small { color: var(--dim); font-size: 12px; }
+.deal p { margin: 6px 0 10px; color: var(--dim); font-size: 13px; }
+.deal .pr { display: inline-flex; gap: 8px; align-items: center; font-weight: 800; font-size: 20px; }
+.deal .pr s { color: var(--dim); font-weight: 500; font-size: 14px; }
+.deal.sel { box-shadow: 0 0 0 2px var(--accent), 0 10px 22px #0009; }
+.earn { display: flex; gap: 12px; align-items: center; border: 1px dashed var(--line-2); border-radius: 14px; padding: 10px 12px; font-size: 13px; color: var(--dim); }
+.earn b { color: var(--text); }
+.earn .meter { flex: none; width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; font-family: var(--display); font-weight: 800; color: var(--text); background: conic-gradient(var(--ok) calc(var(--p) * 1%), #ffffff1a 0); position: relative; }
+.earn .meter::before { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: var(--bg-0); }
+.earn .meter span { position: relative; font-size: 15px; }
+.earn > div { flex: 1; min-width: 0; }
+.mlist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.mcard { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 10px; text-align: left; padding: 8px; border-radius: 14px; background: linear-gradient(120deg, #ff9bd214, var(--bg-1) 60%); border: 1px solid #ff9bd250; cursor: pointer; align-items: center; }
+.mcard img { width: 76px; height: 76px; object-fit: contain; }
+.mcard.locked img { filter: grayscale(.5) brightness(.75); }
+.mcard b { font-family: var(--display); font-weight: 700; font-size: 18px; display: block; line-height: 1.05; }
+.mcard small { font-size: 11px; color: var(--dim); display: block; }
+.mcard .bar { height: 6px; border-radius: 3px; background: #ffffff1a; overflow: hidden; margin: 6px 0 3px; }
+.mcard .bar i { display: block; height: 100%; background: linear-gradient(90deg, #ff9bd2, #ffd65b); border-radius: 3px; }
+.mcard .st { font-size: 11px; font-weight: 700; color: #ff9bd2; }
+.mcard .st.ok { color: var(--ok); }
+.mcard.sel { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+.setchips { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.setchip { text-align: left; padding: 7px 9px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg-1); cursor: pointer; min-width: 0; }
+.setchip b { display: block; font-family: var(--display); font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.setchip small { font-size: 11px; color: var(--dim); }
+.setchip[aria-pressed="true"] { border-color: var(--accent); background: #ffd65b14; }
+.setchip[aria-pressed="true"] b { color: var(--accent); }
+.sethead { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.presets { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.presets button { border: 1px solid var(--line-2); background: transparent; border-radius: 999px; padding: 5px 12px; font-size: 12px; font-weight: 700; cursor: pointer; color: var(--dim); }
+.presets button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.newtag { font-size: 10px; font-weight: 800; color: var(--accent-ink); background: var(--accent); border-radius: 5px; padding: 1px 5px; letter-spacing: .06em; }
+.shuffle { font-size: 12px; color: var(--dim); display: flex; gap: 6px; align-items: center; margin-left: auto; cursor: pointer; }
+.slot-btn { display: grid; justify-items: center; gap: 3px; padding: 8px 4px 7px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg-1); cursor: pointer; text-align: center; min-width: 0; }
+.slot-btn .si { width: 44px; height: 44px; border-radius: 10px; background: var(--bg-2); display: grid; place-items: center; overflow: hidden; position: relative; }
+.slot-btn .si img { width: 100%; height: 100%; object-fit: contain; }
+.slot-btn .si .glyph { font-size: 22px; }
+.slot-btn .si .fav { width: 34px; height: 34px; border-width: 3px; }
+.slot-btn .si .aura { transform: rotateX(60deg) scale(.17); top: 50%; left: 50%; bottom: auto; margin: -140px 0 0 -140px; }
+.slot-btn small { font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: .05em; white-space: nowrap; }
+.slot-btn b { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.slot-btn b.none { color: var(--dim); font-weight: 500; }
+.slot-btn[aria-pressed="true"] { border-color: var(--accent); background: #ffd65b14; }
+.slot-btn.changed b { color: var(--accent); }
+.covered { font-size: 11px; color: var(--accent); }
+
+/* fitting room on a phone */
+.screen.phone .fitstage { left: 64px; top: 56px; bottom: 8px; width: 268px; border-radius: 16px; }
+.screen.phone .beam { width: 170px; height: 380px; right: -30px; top: -60px; }
+.screen.phone .pool { width: 180px; height: 38px; bottom: 95px; }
+.screen.phone .fhero { width: 176px; height: 178px; bottom: 96px; }
+.screen.phone .aura { width: 170px; height: 170px; margin-left: -85px; bottom: 29px; --rad: 74px; }
+.screen.phone .aura-ring i { width: 9px; height: 9px; margin: -4.5px; }
+.screen.phone .fxmini .aura, .screen.phone .slot-btn .si .aura { width: 280px; height: 280px; bottom: auto; margin: -140px 0 0 -140px; --rad: 124px; }
+.screen.phone .fxmini .aura { transform: rotateX(62deg) scale(.26); }
+.screen.phone .slot-btn .si .aura { transform: rotateX(60deg) scale(.11); }
+.screen.phone .fxmini .aura-ring i, .screen.phone .slot-btn .aura-ring i { width: 14px; height: 14px; margin: -7px; }
+.screen.phone .fbadge { left: 8px; top: 8px; }
+.screen.phone .fbadge span { display: none; }
+.screen.phone .fav { width: 46px; height: 46px; border-width: 3px; }
+.screen.phone .fxbtns { right: 8px; top: 8px; gap: 4px; }
+.screen.phone .fxbtns button { padding: 3px 8px; font-size: 10px; }
+.screen.phone .finfo { left: 10px; right: 10px; bottom: 8px; gap: 2px; }
+.screen.phone .finfo b { font-size: 19px; }
+.screen.phone .finfo p { display: none; }
+.screen.phone .finfo .rr { font-size: 10px; }
+.screen.phone .stages button { padding: 2px 8px; font-size: 12px; }
+.screen.phone .compare { padding: 3px 7px; font-size: 10px; }
+.screen.phone .fpanel { left: 340px; right: 8px; top: 56px; bottom: 8px; border-radius: 16px; }
+.screen.phone .fp-head { padding: 6px 8px 4px; gap: 6px; }
+.screen.phone .fp-head .hint { display: none; }
+.screen.phone .fp-switch button { font-size: 13px; min-height: 28px; padding: 2px 10px; }
+.screen.phone .fp-head .close { width: 28px; height: 28px; font-size: 12px; margin-left: auto; }
+.screen.phone .fp-tabs { padding: 0 4px; }
+.screen.phone .fp-tabs button { padding: 5px 7px 4px; font-size: 12px; }
+.screen.phone .fp-body { padding: 8px; gap: 8px; }
+.screen.phone .fp-row h5, .screen.phone .sethead h5 { font-size: 15px; }
+.screen.phone .fp-row small, .screen.phone .sethead small, .screen.phone .rule { font-size: 10px; }
+.screen.phone .g4, .screen.phone .g5 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.screen.phone .grid { gap: 6px; }
+.screen.phone .itile { padding: 4px; border-radius: 10px; }
+.screen.phone .itile .ia { margin-bottom: 2px; border-radius: 7px; }
+.screen.phone .itile b { font-size: 12px; }
+.screen.phone .itile small { display: none; }
+.screen.phone .itile .ir { font-size: 9px; }
+.screen.phone .itile .ip { font-size: 10px; margin-top: 1px; }
+.screen.phone .itile .tagx { font-size: 8px; top: 3px; right: 3px; }
+.screen.phone .fxmini .glyph { font-size: 24px; }
+.screen.phone .fxmini .glyph.txt { font-size: 12px; }
+.screen.phone .deal { grid-template-columns: 96px minmax(0, 1fr); gap: 8px; padding: 6px; }
+.screen.phone .deal .ia { height: 86px; }
+.screen.phone .deal b { font-size: 18px; margin-top: 2px; }
+.screen.phone .deal p, .screen.phone .deal small { display: none; }
+.screen.phone .deal .pr { font-size: 14px; }
+.screen.phone .deal .top { font-size: 10px; }
+.screen.phone .earn { display: none; }
+.screen.phone .mlist { grid-template-columns: 1fr; gap: 6px; }
+.screen.phone .mcard { grid-template-columns: 44px minmax(0, 1fr); padding: 5px; gap: 8px; }
+.screen.phone .mcard img { width: 44px; height: 44px; }
+.screen.phone .mcard b { font-size: 14px; }
+.screen.phone .setchips { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.screen.phone .setchip { padding: 3px 6px; border-radius: 8px; }
+.screen.phone .setchip b { font-size: 12px; }
+.screen.phone .setchip small { font-size: 9px; }
+.screen.phone .fchip { width: 42px; padding: 2px; border-radius: 9px; }
+.screen.phone .fchip img { width: 34px; height: 34px; }
+.screen.phone .fchip span { display: none; }
+.screen.phone .fseg .seg button { min-height: 26px; padding: 2px 9px; font-size: 11px; }
+.screen.phone .presets button { padding: 2px 8px; font-size: 10px; }
+.screen.phone .shuffle, .screen.phone .newtag { display: none; }
+.screen.phone .slot-btn { padding: 4px 2px; border-radius: 9px; gap: 1px; }
+.screen.phone .slot-btn .si { width: 30px; height: 30px; border-radius: 7px; }
+.screen.phone .slot-btn small { font-size: 8px; }
+.screen.phone .slot-btn b { font-size: 9px; }
+.screen.phone .fp-foot { padding: 6px 8px; gap: 8px; min-height: 0; }
+.screen.phone .fp-foot .ft img { width: 32px; height: 32px; }
+.screen.phone .fp-foot .ft b { font-size: 14px; }
+.screen.phone .fp-foot .ft small { font-size: 10px; }
+.screen.phone .buy { height: 40px; min-width: 110px; font-size: 16px; border-radius: 10px; box-shadow: 0 3px 0 #a87a12, inset 0 2px 0 #fff8; padding: 0 10px; }
+.screen.phone .buy.ghost { font-size: 13px; min-width: 0; }
+.screen.phone .buy.green { box-shadow: 0 3px 0 #1d7a3c; }
+.screen.phone .buy.trial { box-shadow: 0 3px 0 #8f3f6c; }
+
+/* before / after figures */
+.shots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.shots.two { grid-template-columns: 1.6fr 1fr; }
+@media (max-width: 760px) { .shots, .shots.two { grid-template-columns: 1fr; } }
+.shots figure { margin: 0; background: var(--bg-1); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; min-width: 0; }
+.shots img { display: block; width: 100%; height: auto; }
+.shots figcaption { padding: 8px 12px 10px; font-size: 13px; color: var(--dim); }
+.shots figcaption b { color: var(--text); }
+.jump { display: flex; gap: 10px; flex-wrap: wrap; margin: 4px 0 0; }
+.jump button { border: 1px solid var(--accent); background: #ffd65b14; color: var(--accent); border-radius: 999px; padding: 8px 16px; font-weight: 700; cursor: pointer; min-height: 40px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+
+<main class="page">
+  <header>
+    <div class="eyebrow">Đề xuất redesign · Element Arena</div>
+    <h1>Sảnh Arena</h1>
+    <p class="lead">Thay bản đồ đi bộ <b>Elemental Plaza</b> (3200×2000 px) bằng một <b>sảnh một màn hình</b>: tướng của bạn đứng giữa sân khấu, bạn bè đứng cạnh, nút <b>PLAY</b> luôn ở góc phải. Quảng trường vẫn còn, nhưng thu về <b>một màn hình cố định</b>, bấm vào công trình là vào thẳng, không phải đi bộ. <b>Shop</b> và <b>Wardrobe</b> thành một phòng thử đồ dùng chung ngay trong sảnh. Bản demo bên dưới bấm thử được.</p>
+  </header>
+
+  <section aria-labelledby="demo-h">
+    <h2 id="demo-h">Demo bấm thử</h2>
+    <div class="demo-bar">
+      <div class="seg" role="group" aria-label="Thiết bị">
+        <button type="button" id="dev-desktop" aria-pressed="true">PC 1280×800</button>
+        <button type="button" id="dev-phone" aria-pressed="false">Điện thoại ngang 844×390</button>
+      </div>
+      <p class="try">Thử: bấm mũi tên đổi tướng · bấm ô <b>+ Invite</b> để mời bạn vào party · đổi chế độ rồi bấm <b>PLAY</b> · chuyển <b>Lobby ⇄ Plaza</b> ở giữa thanh trên · bấm người chơi đi lang thang · emote · mở <b>Shop</b> / <b>Wardrobe</b> ở thanh trái (hoặc bấm ô coins).</p>
+    </div>
+    <div class="frame" id="frame"><div class="frame-inner" id="frame-inner">
+
+      <div class="screen" id="screen" data-scene="lobby">
+        <!-- LOBBY backdrop -->
+        <div class="bg" id="bg" style="background-image:url(__PLAZA__)"></div>
+        <div class="tint"></div>
+        <div class="horizon lobby-only" id="horizon"></div>
+
+        <!-- PLAZA scene -->
+        <div class="plaza plaza-only" id="plaza" aria-hidden="true">
+          <img class="map" src="__PLAZA__" alt="">
+        </div>
+        <div class="plaza-hint plaza-only">Click a building to open it</div>
+
+        <!-- top bar -->
+        <div class="topbar">
+          <div class="profile" id="profile" role="button" tabindex="0" aria-label="Your profile">
+            <div class="avatar"><img id="p-avatar" alt=""></div>
+            <div><b>tester</b><small>Cragbreaker</small><div class="xp"><i></i></div></div>
+            <span class="lv">Lv 12</span>
+          </div>
+          <div class="scene-switch">
+            <div class="seg" role="group" aria-label="Scene">
+              <button type="button" id="sc-lobby" aria-pressed="true">Lobby</button>
+              <button type="button" id="sc-plaza" aria-pressed="false">Plaza <span class="count" id="pop">24</span></button>
+            </div>
+          </div>
+          <div class="wallet">
+            <button type="button" class="pill" id="coin-pill" aria-label="Shop: your coins" style="cursor:pointer"><i class="coin"></i><span id="coins">2,340</span></button>
+            <button type="button" class="icon-btn" aria-label="Settings" data-drawer="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+          </div>
+        </div>
+
+        <!-- left rail -->
+        <nav class="rail" aria-label="Main menu">
+          <button type="button" data-drawer="fighters" aria-expanded="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg><span>Fighters</span></button>
+          <button type="button" data-fit="wardrobe" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M8 3 4 6l2 4 2-1v12h8V9l2 1 2-4-4-3c-1 2-2 3-4 3S9 5 8 3z"/></svg><span>Wardrobe</span></button>
+          <button type="button" data-fit="shop" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M3 9h18l-2 11H5z"/><path d="M8 9V7a4 4 0 0 1 8 0v2"/></svg><span>Shop</span><i class="badge">New</i></button>
+          <button type="button" data-drawer="raids" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M12 2 4 6v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6z"/><path d="m9 12 2 2 4-4"/></svg><span>Raids</span></button>
+          <button type="button" data-drawer="journey" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M6 18l2-2M16 8l2-2"/></svg><span>Journey</span></button>
+          <button type="button" data-drawer="missions" aria-expanded="false"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg><span>Missions</span><i class="badge">2</i></button>
+          <button type="button" data-drawer="ranks" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/></svg><span>Ranks</span></button>
+          <button type="button" data-drawer="friends" aria-expanded="false"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c.8-3.5 3.5-5 7-5s6.2 1.5 7 5"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c2.5 0 4.3 1.2 5 4"/></svg><span>Friends</span><i class="badge green" id="fr-badge">3</i></button>
+        </nav>
+
+        <!-- stage -->
+        <div class="stage lobby-only" id="stage"></div>
+
+        <!-- side cards -->
+        <aside class="side lobby-only">
+          <div class="card raid-card" id="raid-card" role="button" tabindex="0">
+            <div class="card-head" style="grid-column:1;margin:0"><h4>Raid of the day</h4></div>
+            <b>Grumblecrag</b>
+            <small>The living mountain · 1–4 players</small>
+            <span class="bonus">2×<br>rewards</span>
+          </div>
+          <div class="card">
+            <div class="card-head"><h4>Journey · this week</h4><button type="button" class="linkish" data-drawer="missions">All</button></div>
+            <div class="mission"><div class="row"><span>Finish 5 matches or raids</span><span>3/5</span></div><div class="bar"><i style="width:60%"></i></div></div>
+            <div class="mission extra"><div class="row"><span>Use 50 skills</span><span>50/50</span></div><div class="bar"><i style="width:100%"></i></div></div>
+          </div>
+          <div class="card friends-card">
+            <div class="card-head"><h4>Friends online</h4><button type="button" class="linkish" data-drawer="friends">All</button></div>
+            <div id="friend-rows"></div>
+          </div>
+        </aside>
+
+        <!-- bottom HUD -->
+        <div class="emotes hud" id="emotes" role="group" aria-label="Emotes">
+          <button type="button" class="emote-toggle" id="emote-toggle" aria-label="Emotes">😊</button>
+          <button type="button" data-emote="👋" aria-label="Wave">👋</button>
+          <button type="button" data-emote="❤️" aria-label="Heart">❤️</button>
+          <button type="button" data-emote="😂" aria-label="Laugh">😂</button>
+          <button type="button" data-emote="GG" aria-label="GG">GG</button>
+          <button type="button" data-emote="🔥" aria-label="Fire">🔥</button>
+        </div>
+        <div class="play-zone hud" id="play-zone"></div>
+
+        <div class="fit fit-only" id="fit"><div class="fitstage" id="fitstage"></div><section class="fpanel" id="fpanel" aria-label="Shop and Wardrobe"></section></div>
+
+        <div id="layer"></div>
+      </div>
+
+    </div></div>
+    <p class="frame-note">Demo dựng bằng HTML. Ảnh tướng và skin là SVG xuất thẳng từ <code>fighterArt()</code> của game, Colors dùng đúng bộ lọc màu <code>colourPreview()</code>; tên, độ hiếm, giá và luật Mythic lấy từ <code>packages/shared/src/shop.ts</code>. Aura, khung, Entrance, Victory là hình minh họa đơn giản, game thật dùng hiệu ứng riêng. Coins, đồ đã có, bạn bè, mã phòng là dữ liệu mẫu.</p>
+  </section>
+
+  <section aria-labelledby="why-h">
+    <h2 id="why-h">Town hiện tại: giữ gì, bỏ gì</h2>
+    <p class="sub">Ảnh chụp từ code mới nhất trên <code>main</code> (commit <code>8cf9f34</code>, 2/11/2026), chạy bằng harness <code>tests/visual</code> với API giả. Bản trước của trang này lỡ dùng ảnh cũ trong <code>docs/</code>; phần dưới đã sửa theo bản hiện tại.</p>
+    <div class="shots two" style="margin-bottom:16px"><figure><img src="__NOW_town-1440__" alt="Town hiện tại trên PC" loading="lazy"><figcaption><b>PC 1440×900, hiện tại.</b> Camera bám sát nhân vật: chỉ thấy đài phun nước, Notice Board và gương Wardrobe.</figcaption></figure><figure><img src="__NOW_town-menu-844__" alt="Town hiện tại trên điện thoại, menu mở" loading="lazy"><figcaption><b>Điện thoại 844×390, đã mở Menu.</b> Play và 5 nút nằm trong thanh dưới. Dòng trên ghi "Town 1 · 1 player here".</figcaption></figure></div>
+    <div class="grid-2">
+      <div class="box">
+        <h3>Đang vướng</h3>
+        <ul class="keep-drop" style="margin-top:12px">
+          <li><span class="mk n">!</span><span><b>Nút Play bị giấu.</b> Nó nằm trong menu thu gọn (bấm Menu → Play). Không mở menu thì phải đi bộ tới Arena Gate: cách điểm spawn khoảng 1.130 px, tốc độ đi 240 px/s, tức khoảng 4 giây đường thẳng, mỗi lần muốn đánh.</span></li>
+          <li><span class="mk n">!</span><span><b>Phần lớn bản đồ là trang trí.</b> 7 điểm có chức năng nằm rải trên 3200×2000 px; nhà, cối xay gió, ao, vịt, gà không làm gì cả nhưng vẫn phải vẽ.</span></li>
+          <li><span class="mk n">!</span><span><b>Tốn GPU trên điện thoại.</b> Nhiều commit chỉ để giữ town trong ngân sách: bake texture, chế độ Auto/Low, sửa iOS đóng băng, giải phóng atlas.</span></li>
+          <li><span class="mk n">!</span><span><b>Ít người thì town trống.</b> Mỗi bản town chứa 50 người. Thanh menu ghi "Town 1 · 1 player here": một bản đồ lớn với một người trông vắng hơn là một sảnh nhỏ.</span></li>
+          <li><span class="mk n">!</span><span><b>Camera ở gần, cả PC lẫn điện thoại chỉ thấy một khoảng nhỏ.</b> Muốn biết Raid Hall hay Arena Gate ở đâu thì phải zoom ra hoặc đi thử.</span></li>
+          <li><span class="mk n">!</span><span><b>Shop không có nút trong menu.</b> Vào bằng cách bấm ô coins ở góc phải, đi tới Market, hoặc từ Wardrobe/Missions.</span></li>
+        </ul>
+      </div>
+      <div class="box">
+        <h3>Đáng giữ</h3>
+        <ul class="keep-drop" style="margin-top:12px">
+          <li><span class="mk y">✓</span><span><b>Cảm giác thế giới sống.</b> Thấy người khác đi lại, emote, mặc skin. Đây là điểm khác biệt của game, không nên bỏ hẳn.</span></li>
+          <li><span class="mk y">✓</span><span><b>Server presence đã có sẵn.</b> <code>TownWorld</code> trên server biết ai đang online, mặc gì, emote gì. Sảnh mới dùng lại để vẽ đám đông.</span></li>
+          <li><span class="mk y">✓</span><span><b>Bộ tranh quảng trường.</b> Raid Hall, Coliseum, đài phun nước đã đẹp. Chúng thành phông nền sảnh và bản đồ Plaza một màn hình.</span></li>
+          <li><span class="mk y">✓</span><span><b>Emote, bảng tên, title, aura.</b> Giữ nguyên, chỉ đổi chỗ hiển thị.</span></li>
+          <li><span class="mk m">~</span><span><b>Đi bộ tự do.</b> Không bắt buộc nữa. Nếu số liệu cho thấy người chơi thích, có thể giữ town cũ thành một nút "Walk around" trong Plaza.</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+
+  <section aria-labelledby="shop-h">
+    <h2 id="shop-h">Shop &amp; Wardrobe</h2>
+    <p class="sub">Hiện tại đây là hai cửa sổ to phủ lên town, mỗi cái có khung xem trước riêng. Bản mới gộp lại thành <b>một phòng thử đồ</b> ngay trong sảnh: tướng đứng bên trái dưới đèn chiếu, danh mục bên phải, nút mua/mặc luôn ở góc dưới phải, đúng chỗ nút PLAY. Chuyển Shop ⇄ Wardrobe không đổi màn hình, chỉ đổi danh mục.</p>
+    <div class="jump" style="margin-bottom:16px"><button type="button" data-jump="shop">Mở Shop trong demo</button><button type="button" data-jump="wardrobe">Mở Wardrobe trong demo</button></div>
+    <div class="shots" style="margin-bottom:16px">
+      <figure><img src="__NOW_shop-today-1440__" alt="Shop hiện tại, tab Today" loading="lazy"><figcaption><b>Hiện tại · Shop › Today.</b> Deal 20% to ở trên, đồng hồ "New picks in…".</figcaption></figure>
+      <figure><img src="__NOW_shop-champions-1440__" alt="Shop hiện tại, tab Champion skins" loading="lazy"><figcaption><b>Hiện tại · Champion skins.</b> Khung preview nhỏ bên trái, lưới thẻ bên phải.</figcaption></figure>
+      <figure><img src="__NOW_wardrobe-1440__" alt="Wardrobe hiện tại" loading="lazy"><figcaption><b>Hiện tại · Wardrobe.</b> Chọn tướng bằng dropdown, chỉ hiện đồ đã có. (Dòng báo lỗi là do API giả của harness.)</figcaption></figure>
+    </div>
+    <div class="grid-2">
+      <div class="box">
+        <h3>Shop mới</h3>
+        <ul class="keep-drop" style="margin-top:12px">
+          <li><span class="mk y">✓</span><span><b>Giữ 4 tab và toàn bộ luật.</b> Today, Champion skins, Mythic Hall, Collections; giá, giảm 20% và luật Mythic lấy thẳng từ <code>shop.ts</code>.</span></li>
+          <li><span class="mk y">✓</span><span><b>Bấm là mặc thử trên sân khấu lớn.</b> Giữ "Hold to compare" và nút I/II/III cho Mythical.</span></li>
+          <li><span class="mk y">✓</span><span><b>Mythic Hall xếp theo tiến độ.</b> Món chưa mở có nút <b>Play as &lt;tướng&gt;</b>, đưa về sảnh với tướng đó đã chọn.</span></li>
+          <li><span class="mk y">✓</span><span><b>Nói rõ cách kiếm coins.</b> Today ghi thắng +15, thua +6, nhiệm vụ +40/+70/+120 và số coins nhiệm vụ còn lại. Thiếu coins thì nút ghi thiếu bao nhiêu.</span></li>
+          <li><span class="mk y">✓</span><span><b>Nút mua ở góc dưới phải,</b> cùng chỗ với PLAY. Có thể mở Shop từ thanh trái hoặc bấm ô coins như bây giờ.</span></li>
+        </ul>
+      </div>
+      <div class="box">
+        <h3>Wardrobe mới</h3>
+        <ul class="keep-drop" style="margin-top:12px">
+          <li><span class="mk y">✓</span><span><b>Chọn tướng bằng hàng avatar</b> giống Shop, thay cho dropdown.</span></li>
+          <li><span class="mk y">✓</span><span><b>6 ô trang phục luôn hiện:</b> skin, colors, aura, entrance, victory, frame. Bấm ô nào thì lưới bên dưới lọc theo ô đó.</span></li>
+          <li><span class="mk y">✓</span><span><b>Món chưa có vẫn hiện,</b> mờ hơn và có nhãn Shop. Mặc thử được, nút đổi thành <b>Get in Shop</b>.</span></li>
+          <li><span class="mk y">✓</span><span><b>Thử nhiều món rồi Equip một lần,</b> Revert để bỏ. Thử thì không lưu, giống bây giờ.</span></li>
+          <li><span class="mk m">~</span><span><b>Ý tưởng mới: 3 bộ Outfit</b> và "Random outfit each match". Cần lưu trên server, game chưa có.</span></li>
+        </ul>
+      </div>
+    </div>
+    <h3 style="margin:22px 0 10px">Học từ đâu</h3>
+    <div class="grid-3">
+      <div class="box"><div class="game-tag">Brawl Stars · 4/2026</div><h3>Làm lại Shop để dễ tìm</h3><p>Ghi chú phát hành tháng 4/2026 của Supercell nói Shop được làm lại hoàn toàn để dễ tìm offer và chuyển giữa các mục. Nội dung Catalog cũ chuyển sang màn hình từng Brawler.</p><p class="take">Wardrobe gắn với tướng và hiện cả món chưa có, nên không cần lục Shop mới biết còn gì để mua.</p></div>
+      <div class="box"><div class="game-tag">Valorant</div><h3>Offer hằng ngày có đồng hồ</h3><p>Cửa hàng có các offer xoay vòng với đồng hồ đếm ngược, bundle nổi bật có timer riêng, và Night Market giảm giá riêng cho từng người.</p><p class="take">Today giữ deal 20% to ở đầu và đồng hồ đổi picks (game đã có), thêm thanh "kiếm coins".</p></div>
+      <div class="box"><div class="game-tag">Fortnite Locker</div><h3>Đổi đồ phải nhanh</h3><p>Bản Locker làm lại năm 2023 bị chê vì cuộn chậm trên console và tách preset; người chơi đòi lưu được nhiều bộ đồ.</p><p class="take">6 ô trang phục luôn trong tầm mắt, một nút Equip cho cả bộ, và đề xuất 3 bộ Outfit.</p></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="learn-h">
+    <h2 id="learn-h">Học từ các game đang nổi</h2>
+    <p class="sub">Mỗi game giải bài toán "sảnh" khác nhau. Đây là những gì mình lấy về cho Element Arena.</p>
+    <div class="grid-3">
+      <div class="box"><div class="game-tag">Splatoon 3</div><h3>Có hub đi bộ, nhưng menu mới làm nó dùng được</h3><p>Splatsville là thành phố đi lại được và được khen là sống động. Nhưng reviewer chê bản đồ khó điều hướng; điều cứu nó là menu mở được ở bất cứ đâu để vào trận ngay.</p><p class="take">Vào trận không bao giờ phụ thuộc việc đi bộ. PLAY luôn ở trên màn hình.</p></div>
+      <div class="box"><div class="game-tag">Monster Hunter Wilds</div><h3>Khu xã hội là nơi tự chọn vào</h3><p>Grand Hub được thêm vào bằng bản cập nhật tháng 4/2025 như một khu tụ tập riêng (căng tin, khu khoe đồ, vật tay). Lobby chỉ hiện tối đa 16 người cùng lúc.</p><p class="take">Plaza là một tab, không phải cửa bắt buộc. Giới hạn số người vẽ ra để máy yếu vẫn mượt.</p></div>
+      <div class="box"><div class="game-tag">Fortnite</div><h3>Party đứng cạnh nhau trên sân khấu</h3><p>Sảnh là nơi tập hợp trước trận, đổi đồ và nói chuyện; bạn bè vào party hiện ngay cạnh nhân vật của bạn. Bản đại tu UI năm 2023 (v26.30) bị nhiều người chơi chê vì đổi quá đột ngột.</p><p class="take">Ô party nằm ngay trên sân khấu. Chuyển dần, giữ đường lui về town cũ một thời gian.</p></div>
+      <div class="box"><div class="game-tag">Brawl Stars</div><h3>Một tướng lớn ở giữa, một nút Play to</h3><p>Nhân vật đang chọn chiếm giữa màn hình, nút Play lớn ở góc dưới phải, chế độ chơi chọn ngay cạnh nút, đồng đội đứng hai bên. Bố cục này gần như không đổi từ 2018 đến nay.</p><p class="take">Bố cục chính của sảnh: tướng giữa, PLAY góc phải, chế độ nằm sát nút PLAY.</p></div>
+      <div class="box"><div class="game-tag">Pokémon Unite</div><h3>Bạn bè online luôn trong tầm mắt</h3><p>Bản cập nhật tháng 10/2021 đưa danh sách bạn bè lên cạnh trái màn hình chính và thêm nút Events; trong lobby có thể mời người đang online chỉ bằng một nút.</p><p class="take">Thẻ "Friends online" có nút Invite/Join/Watch ngay trên sảnh.</p></div>
+      <div class="box"><div class="game-tag">Clash Royale</div><h3>Giao diện hòa vào thế giới game</h3><p>Bài phân tích trên Game Developer chê kiểu màn hình chính "nhiều cửa" chung chung của game mobile vì gây khựng khi chuyển khu vực, và lấy Clash Royale làm ví dụ giao diện ăn khớp với phong cách game.</p><p class="take">Sảnh dùng chính tranh quảng trường làm nền và tô theo màu hệ của tướng, không phải khung menu rời rạc.</p></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="cmp-h">
+    <h2 id="cmp-h">So sánh nhanh</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th></th><th>Town hiện tại</th><th>Sảnh Arena (đề xuất)</th></tr></thead>
+        <tbody>
+          <tr><td>Từ sảnh vào trận</td><td>Menu → Play → chọn chế độ → Create, hoặc đi bộ ~4 giây tới Arena Gate</td><td class="good">1 lần bấm PLAY (nhớ chế độ lần trước)</td></tr>
+          <tr><td>Mời bạn vào party</td><td>Tạo phòng trước, rồi mời từ trong phòng</td><td class="good">Bấm ô trống cạnh tướng, mời trước khi chọn chế độ</td></tr>
+          <tr><td>Thấy người chơi khác</td><td>Có, nếu đi tới gần họ</td><td>Có: đám đông nhỏ ở nền Lobby, đầy đủ ở Plaza</td></tr>
+          <tr><td>Những gì phải vẽ</td><td>Thế giới 3200×2000, Phaser, nước, động vật, camera</td><td class="good">Một tranh nền tĩnh + tối đa 16 sprite người chơi; DOM cho UI</td></tr>
+          <tr><td>Điện thoại ngang</td><td>Thấy một góc bản đồ, phải zoom/kéo</td><td class="good">Mọi thứ trong một màn hình 844×390</td></tr>
+          <tr><td>Mở Shop</td><td>Bấm ô coins, đi tới Market, hoặc Wardrobe → Visit Shop</td><td class="good">Nút Shop trên thanh trái (ô coins vẫn mở được)</td></tr>
+          <tr><td>Thử đồ</td><td>Khung preview riêng trong mỗi cửa sổ</td><td class="good">Một sân khấu lớn dùng chung cho Shop và Wardrobe</td></tr>
+          <tr><td>Rủi ro</td><td>—</td><td>Người thích đi dạo sẽ hụt hẫng → giữ town cũ sau nút "Walk around" lúc đầu</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="plan-h">
+    <h2 id="plan-h">Nếu làm thật: thứ tự triển khai</h2>
+    <ol class="steps">
+      <li><div><b>Sảnh Lobby bằng DOM, thay lớp town khi đăng nhập xong</b><p>Dùng lại <code>homeShell</code> (drawer Fighters/Play), <code>startRoomSection</code>, các nút trong <code>ACTIONS</code>. Phông nền là <code>elemental-plaza-small.webp</code> làm mờ. Không cần Phaser cho màn hình này. Town cũ vẫn mở được qua một nút.</p></div></li>
+      <li><div><b>Ô party trên sân khấu</b><p>Nối vào luồng mời bạn đã có (<code>docs/pvp-party-flow.md</code>: invite hết hạn sau 90 giây, gửi lại sau 30 giây). Cần thêm khái niệm "party trước khi có phòng" trên server; đây là phần thay đổi server duy nhất đáng kể.</p></div></li>
+      <li><div><b>Đám đông và Plaza một màn hình</b><p>Server <code>TownWorld</code> giữ nguyên vai trò presence, nhưng gửi danh sách tối đa 16 người gần nhất thay vì vị trí theo khung nhìn 1400×900. Client đặt họ lên các vùng đứng cố định quanh đài phun nước.</p></div></li>
+      <li><div><b>Đo rồi mới quyết bỏ town cũ</b><p>Đếm số lần mở "Walk around", thời gian từ đăng nhập tới trận đầu, FPS trên iPhone. Nếu ít ai đi dạo, gỡ town cũ và phần lớn <code>town-*.ts</code> (khoảng 10.000 dòng client).</p></div></li>
+    </ol>
+  </section>
+
+  <section aria-labelledby="src-h">
+    <h2 id="src-h" style="font-size:22px">Nguồn tham khảo</h2>
+    <ul class="sources">
+      <li><a href="https://tantron.pages.dev/posts/splatoon-3-could-use-a-rework-to-its-splatsville-menu" target="_blank" rel="noopener">Splatoon 3 could use a rework to its Splatsville menu</a> · <a href="https://superjumpmagazine.com/splatoon-3-review" target="_blank" rel="noopener">Super Jump review</a> · <a href="https://splatoonwiki.org/wiki/Lobby" target="_blank" rel="noopener">Inkipedia: Lobby</a></li>
+      <li><a href="https://gamesradar.com/games/monster-hunter/monster-hunter-wilds-title-update-1-is-out-april-4-and-looks-stacked-zoh-shia-returns-the-grand-hub-adds-a-social-space-plus-arch-tempered-rey-dau-arena-speedrun-contests-and-mizutsune" target="_blank" rel="noopener">GamesRadar: MH Wilds Title Update 1 / Grand Hub</a> · <a href="https://icy-veins.com/monster-hunter-wilds/grand-hub" target="_blank" rel="noopener">Icy Veins: Grand Hub guide</a></li>
+      <li><a href="https://fortnite.fandom.com/wiki/File:Winterfest_2021_-_Lobby_Background_-_Fortnite.png" target="_blank" rel="noopener">Fortnite Wiki: Lobby</a> · <a href="https://www.wepc.com/news/fortnite-players-disgusted-layout-change/" target="_blank" rel="noopener">WePC: player reaction to the layout change</a></li>
+      <li><a href="https://game8.co/games/Pokemon-UNITE/archives/348065" target="_blank" rel="noopener">Game8: Pokémon Unite home screen update</a> · <a href="https://www.imore.com/pokemon-unite-how-invite-friends" target="_blank" rel="noopener">iMore: inviting friends</a></li>
+      <li><a href="https://gamedeveloper.com/audio/6-examples-of-ui-design-that-every-game-developer-should-study" target="_blank" rel="noopener">Game Developer: 6 examples of UI design every game developer should study</a></li>
+      <li><a href="https://supercell.com/en/games/brawlstars/blog/release-notes/release-notes-april-2026/" target="_blank" rel="noopener">Supercell: Brawl Stars release notes, April 2026</a> · <a href="https://gamingonphone.com/news/brawl-stars-cosmetic-system-update-brings-major-bling-changes-shop-revamp-and-more" target="_blank" rel="noopener">GamingOnPhone: shop revamp</a></li>
+      <li><a href="https://www.exitlag.com/blog/valorant-night-market-guide" target="_blank" rel="noopener">ExitLag: Valorant Night Market</a> · <a href="https://www.dodge.gg/news/night-market-guide-2026" target="_blank" rel="noopener">dodge.gg: Night Market guide 2026</a></li>
+      <li><a href="https://www.gfinityesports.com/news/fortnite-players-cant-stand-its-awful-revised-locker-system" target="_blank" rel="noopener">Gfinity: revised Locker reaction</a> · <a href="https://dexerto.com/fortnite/fortnite-players-beg-for-locker-update-to-overhaul-skin-loadouts-1746268" target="_blank" rel="noopener">Dexerto: players ask for loadouts</a></li>
+      <li>Bố cục sảnh Brawl Stars: theo hiểu biết chung về game, không có nguồn bài viết riêng.</li>
+    </ul>
+  </section>
+</main>
+
+<script type="application/json" id="art-data">__ART__</script>
+<script>
+(() => {
+const ART = JSON.parse(document.getElementById("art-data").textContent);
+const svgUrl = svg => "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+const IMG = Object.fromEntries(["voltkit","cindrake","tidefin","auralynx","lumoth","mystowl","terradon","duskveil"].map(id => [id, svgUrl(ART[id + ":base"])]));
+const CH = [
+  { id: "voltkit",  name: "Voltkit",  el: "Electric", c: "#ffd84a", m: "Gold · 34 matches" },
+  { id: "cindrake", name: "Cindrake", el: "Fire",     c: "#ff7a45", m: "Silver · 18 matches" },
+  { id: "tidefin",  name: "Tidefin",  el: "Water",    c: "#4fb3ff", m: "Bronze · 9 matches" },
+  { id: "auralynx", name: "Auralynx", el: "Aura",     c: "#7fe7ff", m: "Silver · 21 matches" },
+  { id: "lumoth",   name: "Lumoth",   el: "Light",    c: "#fff1a8", m: "Bronze · 6 matches" },
+  { id: "mystowl",  name: "Mystowl",  el: "Psychic",  c: "#c47dff", m: "Crystal · 62 matches" },
+  { id: "terradon", name: "Terradon", el: "Earth",    c: "#c8955a", m: "Bronze · 5 matches" },
+  { id: "duskveil", name: "Duskveil", el: "Shadow",   c: "#8a6bff", m: "Silver · 16 matches" },
+];
+const byId = Object.fromEntries(CH.map(c => [c.id, c]));
+const FRIENDS = [
+  { n: "minh_anh",  c: "cindrake", st: "online", where: "In Plaza" },
+  { n: "BaoTide",   c: "tidefin",  st: "match",  where: "In a 2v2 match" },
+  { n: "kenji.owl", c: "mystowl",  st: "online", where: "In Plaza" },
+  { n: "lyly",      c: "lumoth",   st: "online", where: "Picking a fighter" },
+];
+const ICON = {
+  battle: '<svg viewBox="0 0 24 24"><path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2"/></svg>',
+  teams: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2 20c.8-3.5 3.5-5 7-5s6.2 1.5 7 5"/><circle cx="17" cy="9" r="2.5"/><path d="M17 14c2.5 0 4.3 1.2 5 4"/></svg>',
+  ffa: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>',
+  raid: '<svg viewBox="0 0 24 24"><path d="M12 2 4 6v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6z"/></svg>',
+  bot: '<svg viewBox="0 0 24 24"><rect x="5" y="8" width="14" height="11" rx="3"/><path d="M12 8V4M9 13h.01M15 13h.01M9 16h6"/></svg>',
+  practice: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  chev: '<svg viewBox="0 0 24 24"><path d="m6 15 6-6 6 6"/></svg>',
+  play: '<svg viewBox="0 0 24 24"><path d="M7 4v16l13-8z" fill="currentColor" stroke="none"/></svg>',
+};
+const MODES = [
+  { id: "duel",     name: "1v1 Duel",     sub: "Best of five",        icon: "battle",   min: 2, max: 2 },
+  { id: "teams",    name: "2v2 Teams",    sub: "Best of five",        icon: "teams",    min: 4, max: 4 },
+  { id: "ffa",      name: "Free-for-all", sub: "3–4 players",         icon: "ffa",      min: 3, max: 4 },
+  { id: "raid",     name: "Boss Raid",    sub: "Grumblecrag · 1–4",   icon: "raid",     min: 1, max: 4 },
+  { id: "bot",      name: "vs AI bot",    sub: "Solo · best of five", icon: "bot",      min: 1, max: 1 },
+  { id: "practice", name: "Practice",     sub: "Target dummy, no cooldowns", icon: "practice", min: 1, max: 1 },
+];
+const BOSSES = [["Grumblecrag","The living mountain","#d9a35b"],["Tidewyrm","The rising tide","#4fd6c8"],["Gloomshade","Lights out","#9c7bff"],["Somnara","The dream whale","#c9a3ff"],["Prismatail","Carry the light","#ffe27a"],["Emberwing","Ground the sky","#ff8a4f"],["Storm Twins","Fizz & Crackle","#ffd65b"]];
+const CROWD_NAMES = ["sunny","Rin","quang.vo","Hikari","tomtom","Zed","an_nhien","Kai","mochi","Lena","duy99","Nova","PhucLe","Yuki"];
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const $ = id => document.getElementById(id);
+const screen = $("screen"), layer = $("layer");
+const S = { champ: 0, party: [null, null, null], pending: [false, false, false], mode: "duel", bot: "normal", scene: "lobby", room: null, phone: false };
+const partySize = () => 1 + S.party.filter(Boolean).length;
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+
+/* ---------- scaling ---------- */
+const frame = $("frame"), inner = $("frame-inner");
+function fit() {
+  const w = S.phone ? 844 : 1280, h = S.phone ? 390 : 800;
+  const s = Math.min(1, frame.clientWidth / w);
+  inner.style.transform = `scale(${s})`;
+  inner.style.left = `${Math.max(0, (frame.clientWidth - w * s) / 2)}px`;
+  frame.style.height = `${Math.round(h * s)}px`;
+}
+new ResizeObserver(fit).observe(frame);
+function setDevice(phone) {
+  S.phone = phone;
+  screen.classList.toggle("phone", phone);
+  $("dev-desktop").setAttribute("aria-pressed", String(!phone));
+  $("dev-phone").setAttribute("aria-pressed", String(phone));
+  closeLayer();
+  fit(); layoutStage(); renderStage(); seedCrowd();
+}
+$("dev-desktop").onclick = () => setDevice(false);
+$("dev-phone").onclick = () => setDevice(true);
+
+/* ---------- stage ---------- */
+function layoutStage() {
+  // Stage centre sits between the rail and the side column.
+  screen.style.setProperty("--stage-x", S.phone ? "45%" : "42.5%");
+}
+function renderStage(swap) {
+  const ch = CH[S.champ];
+  screen.style.setProperty("--el", ch.c);
+  $("p-avatar").src = heroArt(ch.id);
+  const off = S.phone ? [-150, 150, -262] : [-222, 222, -398];
+  const lift = S.phone ? [14, 14, 30] : [26, 26, 52];
+  const slots = S.party.map((f, i) => {
+    const far = i === 2 ? " far" : "";
+    const style = `left:${off[i]}px;bottom:${lift[i]}px;${f ? `--c:${byId[f.c].c}` : ""}`;
+    if (!f) {
+      const pend = S.pending[i];
+      return `<div class="slot friend${far}" style="${style}"><button type="button" class="who" data-slot="${i}" aria-label="Invite a friend to slot ${i + 1}">${pend ? '<span><span class="spinner" style="display:inline-block"></span><br>Inviting…</span>' : '<span><span class="plus">+</span>Invite</span>'}</button><div class="podium" style="opacity:.5"></div></div>`;
+    }
+    return `<div class="slot friend filled${far}" style="${style}"><div class="who"><img src="${IMG[f.c]}" alt="${esc(f.n)}"><button type="button" class="kick" data-kick="${i}" aria-label="Remove ${esc(f.n)} from party">✕</button></div><div class="podium"></div><span class="label">${esc(f.n)} <span class="ready">✓</span></span></div>`;
+  }).join("");
+  $("stage").innerHTML = `${slots}
+    <div class="slot main" style="--c:${ch.c}">
+      <img class="hero${swap ? " swap" : ""}" id="hero" src="${heroArt(ch.id)}" alt="${ch.name}" title="Open Fighters">
+      <div class="podium"></div>
+      <button type="button" class="arrow prev" id="prev" aria-label="Previous fighter">‹</button>
+      <button type="button" class="arrow next" id="next" aria-label="Next fighter">›</button>
+      <div class="nameplate"><div class="champ-name">${ch.name}</div><div class="meta"><span class="chip-el">${ch.el}</span><span class="mastery">${ch.m}</span></div></div>
+    </div>
+    <div class="party-hint">Party ${partySize()}/4 · your party joins the match with you</div>`;
+  $("prev").onclick = () => setChamp(S.champ - 1);
+  $("next").onclick = () => setChamp(S.champ + 1);
+  $("hero").onclick = () => openDrawer("fighters");
+  $("stage").querySelectorAll("[data-slot]").forEach(b => b.onclick = e => { e.stopPropagation(); if (!S.pending[+b.dataset.slot]) openPicker(+b.dataset.slot, b); });
+  $("stage").querySelectorAll("[data-kick]").forEach(b => b.onclick = () => { const f = S.party[+b.dataset.kick]; S.party[+b.dataset.kick] = null; toast(`${f.n} left the party`); renderAll(); });
+}
+function setChamp(i) {
+  S.champ = (i + CH.length) % CH.length;
+  renderStage(true);
+  if (S.scene === "plaza") placeYou();
+}
+
+/* ---------- party ---------- */
+const busy = f => S.party.some(p => p && p.n === f.n) || S.pending.includes(f.n);
+function freeFriends() { return FRIENDS.filter(f => f.st === "online" && !busy(f)); }
+function invite(f, slot) {
+  if (slot == null) slot = S.party.findIndex((p, i) => !p && !S.pending[i]);
+  if (slot < 0) return toast("Party is full (4/4)");
+  if (busy(f)) return;
+  S.pending[slot] = f.n; renderStage(); toast(`Invite sent to ${f.n}`);
+  setTimeout(() => { S.pending[slot] = false; S.party[slot] = f; toast(`${f.n} joined your party`); renderAll(); }, 1100);
+  renderFriends();
+}
+function openPicker(slot, anchor) {
+  closeLayer();
+  const list = freeFriends();
+  const el = document.createElement("div");
+  el.className = "pop picker";
+  el.innerHTML = `<h5>Invite to party</h5>${list.length ? list.map(f => `<button type="button" class="opt" data-n="${esc(f.n)}"><span class="avatar" style="width:34px;height:34px;--el:${byId[f.c].c}"><img src="${IMG[f.c]}" alt=""></span><span><b>${esc(f.n)}</b><small>${f.where}</small></span><span class="need ok">Invite</span></button>`).join("") : '<p style="margin:6px 8px;color:var(--dim);font-size:13px">No online friends left. Share your friend code from Friends.</p>'}`;
+  layer.append(el);
+  placeNear(el, anchor);
+  el.querySelectorAll("[data-n]").forEach(b => b.onclick = () => { closeLayer(); invite(FRIENDS.find(f => f.n === b.dataset.n), slot); });
+}
+function renderFriends() {
+  $("friend-rows").innerHTML = FRIENDS.slice(0, 3).map(f => {
+    const inParty = busy(f);
+    const btn = f.st === "match" ? `<button type="button" class="mini-btn" data-watch="${esc(f.n)}">Watch</button>` : `<button type="button" class="mini-btn" data-inv="${esc(f.n)}" ${inParty ? "disabled" : ""}>${inParty ? "Invited" : "Invite"}</button>`;
+    return `<div class="frow"><span class="avatar" style="--el:${byId[f.c].c}"><img src="${IMG[f.c]}" alt=""></span><div><b>${esc(f.n)}</b><small><i class="dot${f.st === "match" ? " match" : ""}"></i>${f.where}</small></div>${btn}</div>`;
+  }).join("");
+  bindFriendButtons(screen);
+}
+function bindFriendButtons(root) {
+  root.querySelectorAll("[data-inv]").forEach(b => b.onclick = () => invite(FRIENDS.find(f => f.n === b.dataset.inv)));
+  root.querySelectorAll("[data-watch]").forEach(b => b.onclick = () => toast(`Watching ${b.dataset.watch}'s match (demo)`));
+}
+
+/* ---------- mode & play ---------- */
+function modeObj() { return MODES.find(m => m.id === S.mode); }
+function needText(m) {
+  const n = partySize();
+  if (n > m.max) return { t: `Party too big (${n})`, ok: false };
+  if (m.id === "bot" || m.id === "practice") return { t: "Starts now", ok: true };
+  if (n >= m.min) return { t: "Party ready", ok: true };
+  return { t: `Room code · ${n}/${m.min}`, ok: false };
+}
+function renderPlay() {
+  const z = $("play-zone");
+  if (S.room) {
+    const m = modeObj();
+    z.innerHTML = `<div class="room"><div class="r-top"><span>${m.name} · Room</span><button type="button" class="linkish" id="copy">Copy</button></div><div class="code">${S.room}</div><div class="status"><span class="spinner"></span>Waiting for players · ${partySize()}/${m.min}</div><div class="r-actions"><button type="button" class="mini-btn" data-drawer="friends">Invite friends</button><button type="button" class="mini-btn" id="botfill">Fill with bot</button><button type="button" class="mini-btn cancel" id="cancel">Leave room</button></div></div>`;
+    $("copy").onclick = () => { navigator.clipboard?.writeText(S.room).then(() => toast("Room code copied"), () => toast(`Code: ${S.room}`)); };
+    $("cancel").onclick = () => { S.room = null; renderPlay(); toast("Left the room"); };
+    $("botfill").onclick = () => { S.room = null; renderPlay(); countdown(`${m.name} · bots filled the empty spots`); };
+    return;
+  }
+  const m = modeObj(), need = needText(m);
+  const sub = m.id === "bot" ? `${S.bot[0].toUpperCase() + S.bot.slice(1)} bot` : m.sub;
+  z.innerHTML = `<button type="button" class="mode-btn" id="mode-btn" aria-haspopup="true"><span class="mi">${ICON[m.icon]}</span><span><b>${m.name}</b><small>${sub}</small></span><span class="chev">${ICON.chev}</span></button>
+    <button type="button" class="play" id="play">${ICON.play}<span>Play<small>${partySize() > m.max ? `party of ${partySize()} is too big` : need.ok ? (partySize() > 1 ? `with party of ${partySize()}` : "") : `opens a room · ${partySize()}/${m.min} players`}</small></span></button>`;
+  $("mode-btn").onclick = e => { e.stopPropagation(); openModes(); };
+  $("play").onclick = play;
+}
+function openModes() {
+  closeLayer();
+  const el = document.createElement("div");
+  el.className = "pop modes";
+  el.innerHTML = `<h5>Choose a mode</h5>${MODES.map(m => { const n = needText(m); return `<button type="button" role="radio" class="opt" data-mode="${m.id}" aria-checked="${m.id === S.mode}"><span class="mi">${ICON[m.icon]}</span><span><b>${m.name}</b><small>${m.sub}</small></span><span class="need${n.ok ? " ok" : ""}">${n.t}</span></button>${m.id === "bot" ? `<div class="bots">${["easy", "normal", "hard"].map(b => `<button type="button" data-bot="${b}" aria-pressed="${S.bot === b}">${b[0].toUpperCase() + b.slice(1)}</button>`).join("")}</div>` : ""}`; }).join("")}`;
+  layer.append(el);
+  el.querySelectorAll("[data-mode]").forEach(b => b.onclick = () => { S.mode = b.dataset.mode; closeLayer(); renderPlay(); });
+  el.querySelectorAll("[data-bot]").forEach(b => b.onclick = () => { S.mode = "bot"; S.bot = b.dataset.bot; closeLayer(); renderPlay(); });
+}
+function play() {
+  closeLayer();
+  const m = modeObj(), n = partySize();
+  if (n > m.max) return toast(`${m.name} is for ${m.max} player${m.max > 1 ? "s" : ""}. Remove someone or pick another mode.`);
+  if (m.id === "bot") return countdown(`vs ${S.bot} bot · random fighter`);
+  if (m.id === "practice") return countdown("Practice · Training Grounds");
+  if (m.id === "raid") return countdown(`Grumblecrag raid · party of ${n}`);
+  if (n >= m.min) return countdown(`${m.name} · your party of ${n}`);
+  const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  S.room = Array.from({ length: 6 }, () => A[Math.floor(Math.random() * A.length)]).join("");
+  renderPlay();
+}
+function countdown(label) {
+  const el = document.createElement("div");
+  el.className = "countdown";
+  layer.append(el);
+  let i = 3;
+  const tick = () => {
+    if (i === 0) { el.innerHTML = `<div><b style="font-size:${S.phone ? 54 : 84}px">FIGHT!</b><span>Demo ends here · the real match runs in the game</span></div>`; setTimeout(() => el.remove(), 1500); return; }
+    el.innerHTML = `<div><b>${i}</b><span>${esc(label)}</span></div>`;
+    i--; setTimeout(tick, 750);
+  };
+  tick();
+}
+
+/* ---------- drawers ---------- */
+function drawerContent(kind) {
+  const ch = CH[S.champ];
+  switch (kind) {
+    case "fighters": return ["Your roster", "Fighters", `<div class="fgrid">${CH.map((c, i) => `<button type="button" class="ftile" style="--c:${c.c}" data-champ="${i}" aria-pressed="${i === S.champ}"><img src="${IMG[c.id]}" alt=""><b>${c.name}</b><small>${c.el}</small></button>`).join("")}</div><p class="note-demo">Picking a fighter swaps them onto the stage right away.</p>`];
+    case "raids": return ["Raid Hall", "Raids", BOSSES.map(([n, e, c], i) => `<div class="list-row" style="--c:${c}"><span class="sw"></span><span><b>${n}</b><small>${e}</small></span>${i === 0 ? '<span class="need ok" style="font-size:11px;font-weight:700;border:1px solid;border-radius:6px;padding:1px 6px">Today 2×</span>' : '<button type="button" class="mini-btn" data-raidpick>Pick</button>'}</div>`).join("")];
+    case "journey": return ["This week", "Journey", [["Finish 5 matches or raid attempts", 3, 5], ["Use 50 skills", 50, 50], ["Clear 2 raids", 1, 2], ["Finish 3 weekly arcade matches", 0, 3]].map(([t, a, b]) => `<div class="mission"><div class="row"><span>${t}</span><span>${a}/${b}</span></div><div class="bar"><i style="width:${a / b * 100}%"></i></div></div>`).join("")];
+    case "missions": return ["Notice Board", "Missions", [["Finish 5 matches or raid attempts", 3, 5], ["Use 50 skills", 50, 50], ["Clear 2 raids", 1, 2]].map(([t, a, b]) => `<div class="mission"><div class="row"><span>${t}</span><span>${a}/${b}</span></div><div class="bar"><i style="width:${a / b * 100}%"></i></div></div>`).join("") + '<p class="note-demo">Sample progress.</p>'];
+    case "ranks": return ["Champions' Obelisk", "Ranks · this month", ["Hikari", "quang.vo", "Nova", "tester", "Rin"].map((n, i) => `<div class="list-row" style="--c:${CH[(i * 3) % 8].c}"><span class="sw" style="display:grid;place-items:center;color:#0b1020;font-weight:800">${i + 1}</span><span><b>${n}</b><small>${[48, 41, 37, 30, 28][i]} wins</small></span><span></span></div>`).join("")];
+    case "friends": return ["Friend code 7KQ2-MZ4D", "Friends", FRIENDS.map(f => { const inParty = busy(f); return `<div class="frow"><span class="avatar" style="--el:${byId[f.c].c}"><img src="${IMG[f.c]}" alt=""></span><div><b>${esc(f.n)}</b><small><i class="dot${f.st === "match" ? " match" : ""}"></i>${f.where}</small></div>${f.st === "match" ? `<button type="button" class="mini-btn" data-watch="${esc(f.n)}">Watch</button>` : `<button type="button" class="mini-btn" data-inv="${esc(f.n)}" ${inParty ? "disabled" : ""}>${inParty ? "In party" : "Invite"}</button>`}</div>`; }).join("")];
+    case "settings": return ["Settings", "Settings", '<p class="note-demo">Graphics, controls and audio settings.</p>'];
+  }
+}
+function openDrawer(kind) {
+  closeLayer();
+  const [k, title, body] = drawerContent(kind);
+  const el = document.createElement("section");
+  el.className = "drawer";
+  el.setAttribute("role", "dialog");
+  el.setAttribute("aria-label", title);
+  el.innerHTML = `<header><div><div class="k">${k}</div><h4>${title}</h4></div><button type="button" class="close" aria-label="Close">✕</button></header><div class="body">${body}</div>`;
+  layer.append(el);
+  screen.querySelectorAll(`.rail [data-drawer]`).forEach(b => b.setAttribute("aria-expanded", String(b.dataset.drawer === kind)));
+  el.querySelector(".close").onclick = closeLayer;
+  el.querySelectorAll("[data-champ]").forEach(b => b.onclick = () => { setChamp(+b.dataset.champ); el.querySelectorAll("[data-champ]").forEach(x => x.setAttribute("aria-pressed", String(x === b))); });
+  el.querySelectorAll("[data-raidpick]").forEach(b => b.onclick = () => { S.mode = "raid"; closeLayer(); renderPlay(); toast("Raid selected · press Play"); });
+  bindFriendButtons(el);
+  el.querySelectorAll("[data-inv]").forEach(b => { const o = b.onclick; b.onclick = () => { o(); b.disabled = true; b.textContent = "Invited"; }; });
+}
+function closeLayer() {
+  layer.querySelectorAll(".pop, .drawer").forEach(e => e.remove());
+  screen.querySelectorAll(`.rail [data-drawer]`).forEach(b => b.setAttribute("aria-expanded", "false"));
+}
+screen.addEventListener("click", e => {
+  const fb = e.target.closest(".rail [data-fit]");
+  if (fb) { e.stopPropagation(); if (S.scene === "fit" && F.mode === fb.dataset.fit) closeFit(); else openFit(fb.dataset.fit, fb.dataset.fit === "shop" ? { tab: "today" } : { slot: "skin" }); return; }
+  if (e.target.closest("#coin-pill")) { openFit("shop", { tab: "today" }); return; }
+  const d = e.target.closest("[data-drawer]");
+  if (d && !d.closest(".drawer")) { e.stopPropagation(); if (d.getAttribute("aria-expanded") === "true") closeLayer(); else openDrawer(d.dataset.drawer); return; }
+  if (!e.target.closest(".pop, .drawer, .walker, .hot, #mode-btn, [data-slot]")) closeLayer();
+});
+$("raid-card").onclick = () => openDrawer("raids");
+$("profile").onclick = () => openDrawer("fighters");
+
+/* ---------- popover placement ---------- */
+function placeNear(el, anchor, pt) {
+  const sr = screen.getBoundingClientRect(), s = sr.width / (S.phone ? 844 : 1280);
+  let x, y;
+  if (pt) { x = pt.x; y = pt.y; }
+  else { const r = anchor.getBoundingClientRect(); x = (r.left + r.width / 2 - sr.left) / s; y = (r.top - sr.top) / s; }
+  const W = S.phone ? 844 : 1280, H = S.phone ? 390 : 800;
+  const w = el.offsetWidth, h = el.offsetHeight;
+  el.style.left = `${Math.max(12, Math.min(W - w - 12, x - w / 2))}px`;
+  el.style.top = `${Math.max(56, Math.min(H - h - 12, y - h - 10))}px`;
+}
+
+/* ---------- toast ---------- */
+let toastT;
+function toast(msg) {
+  layer.querySelector(".toast")?.remove();
+  const el = document.createElement("div");
+  el.className = "toast"; el.textContent = msg; el.setAttribute("role", "status");
+  layer.append(el);
+  clearTimeout(toastT); toastT = setTimeout(() => el.remove(), 2200);
+}
+
+/* ---------- emotes ---------- */
+function bubbleOn(host, text, small) {
+  host.querySelector(".bubble")?.remove();
+  const b = document.createElement("div");
+  b.className = `bubble${small ? " sm" : ""}`; b.textContent = text;
+  host.append(b);
+  setTimeout(() => b.remove(), 2600); // TOWN.emoteMs
+}
+$("emotes").querySelectorAll("[data-emote]").forEach(b => b.onclick = () => {
+  const host = S.scene === "plaza" ? plaza.querySelector(".you") : $("stage").querySelector(".main");
+  if (host) bubbleOn(host, b.dataset.emote, S.scene === "plaza");
+  $("emotes").classList.remove("open");
+});
+$("emote-toggle").onclick = () => $("emotes").classList.toggle("open");
+
+/* ---------- crowd (lobby horizon + plaza) ---------- */
+const plaza = $("plaza"), horizon = $("horizon");
+const ZONES = [ // plaza image %, ellipse centre and radii
+  { x: 50, y: 61.5, rx: 11, ry: 14.5, hole: .55, w: 5 },
+  { x: 82, y: 64, rx: 7, ry: 8, hole: 0, w: 2 },
+  { x: 22, y: 84, rx: 8, ry: 4.5, hole: 0, w: 2 },
+  { x: 19, y: 52, rx: 6, ry: 6, hole: 0, w: 1 },
+];
+function zonePoint(z) {
+  const a = Math.random() * Math.PI * 2, r = z.hole + (1 - z.hole) * Math.sqrt(Math.random());
+  return { x: z.x + Math.cos(a) * z.rx * r, y: z.y + Math.sin(a) * z.ry * r };
+}
+let crowd = [], you = null;
+function seedCrowd() {
+  horizon.innerHTML = ""; plaza.querySelectorAll(".walker").forEach(w => w.remove());
+  crowd = [];
+  const zonesW = ZONES.flatMap((z, i) => Array(z.w).fill(i));
+  const nPlaza = 13, nLobby = S.phone ? 6 : 9;
+  for (let i = 0; i < nPlaza; i++) {
+    const z = ZONES[zonesW[i % zonesW.length]], p = zonePoint(z);
+    crowd.push(makeWalker(plaza, { name: CROWD_NAMES[i], c: CH[(i * 5 + 2) % 8].id, x: p.x, y: p.y, zone: z, pct: true }));
+  }
+  const W = S.phone ? 844 : 1280, H = S.phone ? 390 : 800;
+  for (let i = 0; i < nLobby; i++) {
+    const y = H * (S.phone ? .36 : .40) + (i % 3) * (S.phone ? 9 : 16);
+    crowd.push(makeWalker(horizon, { name: CROWD_NAMES[(i + 4) % CROWD_NAMES.length], c: CH[(i * 3 + 1) % 8].id, x: 120 + Math.random() * (W - 420), y, minX: S.phone ? 90 : 120, maxX: W - (S.phone ? 210 : 300), pct: false }));
+  }
+  you = makeWalker(plaza, { name: "tester", c: CH[S.champ].id, x: 50, y: 78, pct: true, you: true });
+  $("pop").textContent = String(nPlaza + 11);
+}
+function makeWalker(host, o) {
+  const el = document.createElement("button");
+  el.type = "button";
+  el.className = `walker${o.you ? " you" : ""}`;
+  el.setAttribute("aria-label", o.you ? "You" : `Player ${o.name}`);
+  el.innerHTML = `<img src="${IMG[o.c]}" alt=""><span class="tag">${o.you ? "You" : esc(o.name)}</span>`;
+  host.append(el);
+  const w = { ...o, el, tx: o.x, ty: o.y, wait: Math.random() * 2000, speed: o.pct ? 2.2 + Math.random() * 1.5 : 18 + Math.random() * 16 };
+  if (!o.pct) w.tx = o.minX + Math.random() * (o.maxX - o.minX);
+  draw(w);
+  if (!o.you) el.onclick = e => { e.stopPropagation(); playerCard(w, e); };
+  return w;
+}
+function draw(w) {
+  w.el.style.left = w.pct ? `${w.x}%` : `${w.x}px`;
+  w.el.style.top = w.pct ? `${w.y}%` : `${w.y}px`;
+  w.el.style.zIndex = String(Math.round(w.y * (w.pct ? 10 : 1)));
+}
+function placeYou() { if (you) you.el.querySelector("img").src = heroArt(CH[S.champ].id); }
+let last = performance.now();
+function step(t) {
+  const dt = Math.min(100, t - last) / 1000; last = t;
+  if (!reduced) for (const w of crowd) {
+    if (w.wait > 0) { w.wait -= dt * 1000; continue; }
+    const dx = w.tx - w.x, dy = w.ty - w.y, d = Math.hypot(dx, dy);
+    if (d < .3) {
+      w.wait = 900 + Math.random() * 2600;
+      if (w.pct) { const p = zonePoint(w.zone); w.tx = p.x; w.ty = p.y; }
+      else w.tx = w.minX + Math.random() * (w.maxX - w.minX);
+      continue;
+    }
+    const m = Math.min(d, w.speed * dt);
+    w.x += dx / d * m; w.y += dy / d * m;
+    w.el.classList.toggle("flip", dx < 0);
+    draw(w);
+  }
+  requestAnimationFrame(step);
+}
+requestAnimationFrame(step);
+setInterval(() => {
+  if (reduced || !crowd.length) return;
+  const pool = crowd.filter(w => (S.scene === "plaza") === w.pct);
+  const w = pool[Math.floor(Math.random() * pool.length)];
+  if (w) bubbleOn(w.el, ["👋", "GG", "🔥", "😂", "❤️"][Math.floor(Math.random() * 5)], true);
+}, 3800);
+function playerCard(w, e) {
+  closeLayer();
+  const c = byId[w.c];
+  const el = document.createElement("div");
+  el.className = "pop pcard";
+  el.innerHTML = `<div class="top"><img src="${IMG[w.c]}" alt=""><div><b>${esc(w.name)}</b><small>Lv ${10 + (w.name.length * 7) % 30} · ${c.name}</small></div></div><div class="acts"><button type="button" class="mini-btn" data-a="add">Add friend</button><button type="button" class="mini-btn" data-a="card">View card</button></div>`;
+  layer.append(el);
+  const sr = screen.getBoundingClientRect(), s = sr.width / (S.phone ? 844 : 1280);
+  placeNear(el, null, { x: (e.clientX - sr.left) / s, y: (e.clientY - sr.top) / s - 20 });
+  el.querySelector('[data-a="add"]').onclick = () => { closeLayer(); toast(`Friend request sent to ${w.name}`); };
+  el.querySelector('[data-a="card"]').onclick = () => { closeLayer(); toast(`Opens ${w.name}'s player card (existing)`); };
+}
+
+/* ---------- plaza hotspots ---------- */
+const HOTS = [
+  { x: 50,   y: 18,  below: true, l: "Raid Hall", s: "7 bosses · Raid of the day", c: "#b59bff", go: () => openDrawer("raids") },
+  { x: 85.4, y: 43,  l: "Arena Gate",         s: "Duels · Teams · FFA",        c: "#ffd65b", go: () => { if (["bot", "practice", "raid"].includes(S.mode)) { S.mode = "duel"; renderPlay(); } openModes(); } },
+  { x: 18.8, y: 50,  l: "Training Grounds",   s: "Bot · Practice",             c: "#ff9b6a", go: () => { S.mode = "bot"; renderPlay(); openModes(); } },
+  { x: 21.9, y: 79,  l: "Market",             s: "Shop",                       c: "#ff7a9b", go: () => openFit("shop", { tab: "today" }) },
+  { x: 33.9, y: 85,  l: "Wardrobe",           s: "Change your look",           c: "#bfefff", go: () => openFit("wardrobe") },
+  { x: 50,   y: 87,  l: "Notice Board",       s: "Missions",                   c: "#9be07a", go: () => openDrawer("missions") },
+  { x: 70.8, y: 61,  l: "Champions' Obelisk", s: "Top players",                c: "#ffe58f", go: () => openDrawer("ranks") },
+];
+HOTS.forEach(h => {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = `hot${h.below ? " below" : ""}`;
+  b.style.cssText = `left:${h.x}%;top:${h.y}%;--c:${h.c}`;
+  b.setAttribute("aria-label", `${h.l}: ${h.s}`);
+  b.innerHTML = `<span class="ring"></span><span class="lbl"><b>${h.l}</b><small>${h.s}</small></span>`;
+  b.onclick = e => {
+    e.stopPropagation();
+    you.x = you.tx = h.x; you.y = you.ty = h.y + 3; draw(you);
+    setTimeout(h.go, reduced ? 0 : 420);
+  };
+  plaza.append(b);
+});
+
+/* ======================================================================
+   SHOP & WARDROBE: one fitting stage, catalog on the right
+   ====================================================================== */
+const CAT = __CATALOG__;
+const TONES = __TONES__;
+const RAR = { common: "#a0afc8", rare: "#4fb3ff", epic: "#c47dff", mythical: "#ff9bd2" };
+const RAR_NAME = { common: "Common", rare: "Rare", epic: "Epic", mythical: "Mythical" };
+const SKINS = CAT.skins.map(([id, champ, name, rarity, desc, col]) => ({ kind: "skin", id, champ, name, rarity, desc, col, price: CAT.prices[rarity] }));
+const LOOKS = CAT.looks.map(([id, slot, name, rarity, col, desc, price]) => ({ kind: "look", id, slot: slot === "skin" ? "colours" : slot, name, rarity, col, desc, price }));
+const SETS = CAT.sets.map(([id, col, items]) => ({ kind: "set", id, col, items, name: `${CAT.names[col]} set`, rarity: "epic", desc: "All five pieces for every fighter" }));
+const ITEM = Object.fromEntries([...SKINS, ...LOOKS, ...SETS].map(i => [i.id, i]));
+const COLS = ["candy", "garden", "retro", "festival", "winter", "galaxy"];
+const SLOTS = [["skin", "Champion skin"], ["colours", "Colors"], ["aura", "Aura"], ["entrance", "Entrance"], ["victory", "Victory"], ["frame", "Portrait frame"]];
+const SLOT_NAME = Object.fromEntries(SLOTS);
+const FX = {
+  candy:    { pc: ["#ff6fae", "#ffd65b", "#7fe7ff", "#9be07a"], p: "dot",     ent: "🎁", vic: "🎂", fr: "cookie" },
+  galaxy:   { pc: ["#c47dff", "#6b8cff", "#ffffff"],            p: "glow",    ent: "🌌", vic: "💥", fr: "planet" },
+  retro:    { pc: ["#ff4f6d"],                                   p: "heart",   ent: "👾", vic: "LEVEL UP!", fr: "cart" },
+  festival: { pc: ["#ff5d4a", "#ffd65b"],                        p: "lantern", ent: "🧨", vic: "🎆", fr: "tassel" },
+  garden:   { pc: ["#ffb3d1", "#fff4fa"],                        p: "petal",   ent: "🌷", vic: "🌸", fr: "vine" },
+  winter:   { pc: ["#ffffff", "#bfefff"],                        p: "snow",    ent: "❄️", vic: "☃️", fr: "icicle" },
+};
+const fmt = n => n.toLocaleString("en-US");
+const coin = '<i class="coin sm"></i>';
+
+/* sample account (clearly example data) */
+const E = {
+  coins: 2340,
+  own: new Set(["voltkit-midnight", "voltkit-stormcrown", "mystowl-snowy", "candy-colours", "candy-frame", "garden-aura", "winter-entrance"]),
+  skin: { voltkit: "voltkit-stormcrown" },
+  wear: { colours: "candy-colours", aura: "garden-aura", entrance: null, victory: null, frame: "candy-frame" },
+  trial: { voltkit: 31, cindrake: 12, tidefin: 4, auralynx: 8, lumoth: 0, mystowl: 22, terradon: 2, duskveil: 15 },
+  awaken: { "voltkit-stormcrown": { wins: 31, stage: 2 } },
+  picks: { deal: "cindrake-blue-flame", items: ["cindrake-blue-flame", "lumoth-starweaver", "mystowl-scholar", "galaxy-aura"] },
+  missions: { done: 3, total: 6, left: 230 },
+};
+const PRESETS = [null, { skin: { voltkit: "voltkit-midnight" }, wear: { colours: null, aura: null, entrance: "winter-entrance", victory: null, frame: null } }, { skin: {}, wear: { colours: "candy-colours", aura: "garden-aura", entrance: null, victory: null, frame: "candy-frame" } }];
+let preset = 0;
+
+const F = { mode: "shop", tab: "today", champ: "voltkit", sel: null, slot: "skin", stage: 2, own: "all", setCol: "candy", compare: false, preview: null };
+
+const equipped = c => ({ skin: E.skin[c] || null, ...E.wear });
+const owns = id => { const it = ITEM[id]; return it.kind === "set" ? it.items.every(i => E.own.has(i)) : E.own.has(id); };
+function price(id) {
+  const it = ITEM[id];
+  if (it.kind === "set") { const left = it.items.filter(i => !E.own.has(i)); return left.length ? Math.round(left.reduce((s, i) => s + ITEM[i].price, 0) * 0.8 / 10) * 10 : null; }
+  if (E.own.has(id)) return null;
+  return id === E.picks.deal ? Math.round(it.price * 0.8 / 10) * 10 : it.price;
+}
+const trialLocked = it => it.kind === "skin" && it.rarity === "mythical" && !E.own.has(it.id) && (E.trial[it.champ] ?? 0) < CAT.trial;
+const isOn = id => { const it = ITEM[id]; if (it.kind === "skin") return E.skin[it.champ] === id; if (it.kind === "look") return E.wear[it.slot] === id; return it.items.every(i => E.wear[ITEM[i].slot] === i); };
+function applyItem(look, id) {
+  const l = { ...look };
+  if (id.startsWith("orig:")) { l.skin = null; return l; }
+  const it = ITEM[id];
+  if (it.kind === "skin") l.skin = id;
+  else if (it.kind === "look") l[it.slot] = id;
+  else it.items.forEach(i => { l[ITEM[i].slot] = i; });
+  return l;
+}
+
+/* art: the game's own fighterArt SVGs, Colors tinted with the game's palette filter */
+const artCache = new Map();
+function tint(svg, id) {
+  const spec = TONES[id], f = `pp-${id}`;
+  const ch = [16, 8, 0].map(sh => spec.tones.map(c => ((c >> sh) & 255) / 255).join(" "));
+  const shader = `<filter id="${f}" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB"><feColorMatrix type="matrix" values=".299 .587 .114 0 0 .299 .587 .114 0 0 .299 .587 .114 0 0 0 0 0 1 0"/><feComponentTransfer>${ch.map((t, i) => `<feFunc${"RGB"[i]} type="table" tableValues="${t}"/>`).join("")}</feComponentTransfer><feComposite in2="SourceGraphic" operator="arithmetic" k1="0" k2="${1 - spec.keep}" k3="${spec.keep}" k4="0"/></filter>`;
+  return svg.replace("</defs>", `${shader}</defs>`).replace(/<g class="fighter-(tail|wings|legL|legR|torso|armL|armR|head|ears|flame|scarf)"/g, `$& filter="url(#${f})"`);
+}
+function lookArt(c, look, stage = 1) {
+  let key, make;
+  if (look.skin) { const st = ITEM[look.skin].rarity === "mythical" ? stage : 1; key = `${look.skin}:${st}`; make = () => ART[key]; }
+  else if (look.colours && TONES[look.colours]) { key = `${c}:${look.colours}`; make = () => tint(ART[`${c}:base`], look.colours); }
+  else { key = `${c}:base`; make = () => ART[key]; }
+  if (!artCache.has(key)) artCache.set(key, svgUrl(make()));
+  return artCache.get(key);
+}
+const wornStage = id => E.awaken[id]?.stage ?? 1;
+const heroArt = c => { const l = equipped(c); return lookArt(c, l, l.skin ? wornStage(l.skin) : 1); };
+
+/* effect visuals */
+function auraHTML(id, n = 14) {
+  if (!id) return "";
+  const fx = FX[ITEM[id].col];
+  return `<div class="aura"><div class="aura-ring p-${fx.p}">${Array.from({ length: n }, (_, i) => `<i style="--a:${(360 / n) * i}deg;--pc:${fx.pc[i % fx.pc.length]}">${fx.p === "heart" ? "♥" : fx.p === "snow" ? "❄" : ""}</i>`).join("")}</div></div>`;
+}
+const frameClass = id => (id ? `fr-${FX[ITEM[id].col].fr}` : "");
+function itemArt(id, c) {
+  if (id.startsWith("orig:")) return `<img src="${lookArt(id.slice(5), {})}" alt="">`;
+  const it = ITEM[id];
+  if (it.kind === "skin") return `<img src="${lookArt(it.champ, { skin: id })}" alt="">`;
+  if (it.kind === "set") return `<span class="fxmini"><img src="${lookArt(c, { colours: TONES[it.col + "-colours"] ? it.col + "-colours" : null })}" alt="" style="width:100%;height:100%;object-fit:contain"></span>`;
+  const fx = FX[it.col];
+  if (it.slot === "colours") return TONES[id] ? `<img src="${lookArt(c, { colours: id })}" alt="">` : `<span class="fxmini"><img src="${lookArt(c, {})}" alt="" style="width:100%;height:100%;object-fit:contain;filter:saturate(1.6) contrast(1.2) hue-rotate(80deg)"></span>`;
+  if (it.slot === "aura") return `<span class="fxmini">${auraHTML(id, 12)}</span>`;
+  if (it.slot === "frame") return `<span class="fxmini"><span class="fav ${frameClass(id)}"><img src="${lookArt(c, {})}" alt=""></span></span>`;
+  const g = it.slot === "entrance" ? fx.ent : fx.vic;
+  return `<span class="fxmini"><span class="glyph${g.length > 3 ? " txt" : ""}">${g}</span></span>`;
+}
+function burst(kind, id) {
+  const st = $("fitstage"); if (!st) return;
+  st.querySelector(".burst")?.remove();
+  const b = document.createElement("div"); b.className = "burst";
+  const fx = id ? FX[ITEM[id].col] : null;
+  const g = fx ? (kind === "entrance" ? fx.ent : fx.vic) : "✨";
+  if (g.length > 3) b.innerHTML = `<span class="big">${g}</span>`;
+  else b.innerHTML = Array.from({ length: 16 }, (_, i) => { const a = (Math.PI * 2 * i) / 16, d = 120 + Math.random() * 80; return `<span style="--dx:${Math.cos(a) * d}px;--dy:${Math.sin(a) * d * .8 - 40}px;--rot:${Math.random() * 180 - 90}deg">${g}</span>`; }).join("");
+  st.append(b);
+  if (kind === "entrance") { const h = st.querySelector(".fhero"); h.classList.remove("enter"); void h.offsetWidth; h.classList.add("enter"); }
+  setTimeout(() => b.remove(), 1500);
+}
+
+/* ---------- open / close ---------- */
+function openFit(mode, opts = {}) {
+  closeLayer();
+  F.mode = mode; F.champ = opts.champ ?? CH[S.champ].id; F.sel = null; F.preview = null; F.compare = false;
+  if (opts.tab) F.tab = opts.tab;
+  if (opts.slot) F.slot = opts.slot;
+  setScene("fit");
+  screen.querySelectorAll(".rail [data-fit]").forEach(b => b.setAttribute("aria-expanded", String(b.dataset.fit === mode)));
+  if (opts.sel) select(opts.sel); else renderFit();
+}
+function closeFit() { screen.querySelectorAll(".rail [data-fit]").forEach(b => b.setAttribute("aria-expanded", "false")); setScene("lobby"); renderStage(); }
+
+function select(id) {
+  F.sel = id;
+  if (!id.startsWith("orig:")) {
+    const it = ITEM[id];
+    if (it.kind === "skin") { F.champ = it.champ; F.stage = it.rarity === "mythical" ? (E.awaken[id]?.stage ?? 1) : 1; }
+  }
+  // Shop shows one item at a time on your saved outfit; Wardrobe builds up an outfit to equip at once.
+  F.preview = applyItem(F.mode === "wardrobe" ? (F.preview ?? equipped(F.champ)) : equipped(F.champ), id);
+  renderFit();
+}
+function stageLook() { return F.preview ?? equipped(F.champ); }
+
+/* ---------- render ---------- */
+function renderFit() {
+  renderFitStage();
+  const p = $("fpanel");
+  const head = `<div class="fp-head"><div class="seg fp-switch" role="group" aria-label="Shop or Wardrobe"><button type="button" data-fitmode="shop" aria-pressed="${F.mode === "shop"}">Shop</button><button type="button" data-fitmode="wardrobe" aria-pressed="${F.mode === "wardrobe"}">Wardrobe</button></div><span class="hint">${F.mode === "shop" ? "Click any item to try it on the stage" : "Your items · ones you don't own are dimmed"}</span><button type="button" class="close" data-fitclose aria-label="Back to lobby" title="Back to lobby">✕</button></div>`;
+  const tabs = F.mode === "shop" ? `<nav class="fp-tabs" role="tablist">${[["today", "Today"], ["skins", "Champion skins"], ["mythic", "Mythic Hall"], ["collections", "Collections"]].map(([t, l]) => `<button type="button" role="tab" data-ftab="${t}" aria-selected="${F.tab === t}">${l}${t === "today" ? '<span class="n">NEW</span>' : ""}</button>`).join("")}</nav>` : `<div></div>`;
+  const body = F.mode === "shop" ? { today: tabToday, skins: tabSkins, mythic: tabMythic, collections: tabCollections }[F.tab]() : tabWardrobe();
+  const top = p.querySelector(".fp-body")?.scrollTop ?? 0;
+  const sameView = p.dataset.view === `${F.mode}:${F.tab}`;
+  p.innerHTML = `${head}${tabs}<div class="fp-body">${body}</div>${footer()}`;
+  p.dataset.view = `${F.mode}:${F.tab}`;
+  if (sameView) p.querySelector(".fp-body").scrollTop = top;
+}
+function renderFitStage() {
+  const look = stageLook(), c = F.champ;
+  const shown = F.compare ? {} : look;
+  const sel = F.sel && !F.sel.startsWith("orig:") ? ITEM[F.sel] : null;
+  const skinIt = shown.skin ? ITEM[shown.skin] : null;
+  const r = RAR[(sel ?? skinIt)?.rarity] ?? "#ffd65b";
+  const mythic = skinIt && skinIt.rarity === "mythical";
+  const st = $("fitstage");
+  st.style.setProperty("--r", r);
+  const title = sel ? sel.name : skinIt ? skinIt.name : byId[c].name;
+  const line = sel ? (sel.kind === "skin" ? `${byId[sel.champ].name} skin` : sel.kind === "set" ? "Collection set" : `${CAT.names[sel.col]} · ${SLOT_NAME[sel.slot]} for every fighter`) : skinIt ? `${byId[c].name} skin · equipped` : F.mode === "wardrobe" ? "Your outfit" : "Original look";
+  const covered = shown.skin && shown.colours ? `<span class="covered">Colors covered by champion skin</span>` : "";
+  st.innerHTML = `<div class="beam"></div><div class="pool"></div>${shown.aura ? auraHTML(shown.aura) : ""}
+    <img class="fhero" src="${lookArt(c, shown, F.stage)}" alt="${esc(title)}">
+    <div class="fbadge"><span class="fav ${frameClass(shown.frame)}"><img src="${lookArt(c, shown, F.stage)}" alt=""></span><span>Portrait frame</span></div>
+    <div class="fxbtns"><button type="button" data-replay="entrance">↻ Entrance</button><button type="button" data-replay="victory">↻ Victory</button></div>
+    <div class="finfo"><div class="rr">${sel ? RAR_NAME[sel.rarity] ?? "" : ""}<span>${F.compare ? "Original look" : F.preview ? "Live preview" : "Equipped"}</span></div><b>${esc(title)}</b><p>${esc(sel ? sel.desc : line)}</p>
+    <div class="row">${mythic && !F.compare ? `<span class="stages" role="group" aria-label="Awakening stage">${[1, 2, 3].map(n => `<button type="button" data-stage="${n}" aria-pressed="${F.stage === n}">${"I".repeat(n)}</button>`).join("")}</span>` : ""}<button type="button" class="compare" id="compare">Hold to compare</button>${covered}</div></div>`;
+}
+function tile(id, opts = {}) {
+  const orig = id.startsWith("orig:");
+  const it = orig ? null : ITEM[id];
+  const c = opts.champ ?? F.champ;
+  const rar = orig ? "common" : it.rarity;
+  const owned = orig || owns(id), on = orig ? !E.skin[id.slice(5)] : isOn(id);
+  const locked = !orig && trialLocked(it);
+  const pr = orig ? null : price(id);
+  let ip;
+  if (on) ip = `<span class="ip ok">✓ Equipped</span>`;
+  else if (owned) ip = `<span class="ip ok">Owned</span>`;
+  else if (locked) ip = `<span class="ip trial">Trial ${E.trial[it.champ] ?? 0}/${CAT.trial}</span>`;
+  else ip = `<span class="ip">${coin}${id === E.picks.deal ? `<s>${fmt(it.price)}</s>` : ""}${fmt(pr)}</span>`;
+  const line = orig ? "Always yours" : it.kind === "skin" ? `${byId[it.champ].name} skin` : it.kind === "set" ? "Set" : SLOT_NAME[it.slot];
+  return `<button type="button" class="itile${F.sel === id ? " sel" : ""}${locked ? " locked" : ""}${opts.dimUnowned && !owned ? " notmine" : ""}" data-sel="${id}" style="--r:${RAR[rar]}">${!owned && opts.dimUnowned ? '<span class="tagx">Shop</span>' : ""}<span class="ia">${itemArt(id, c)}</span><span class="ir">${orig ? "Original" : RAR_NAME[rar]}</span><b>${esc(orig ? "Original look" : it.name)}</b><small>${line}</small>${ip}</button>`;
+}
+function champChips(attr) {
+  return `<div class="fchips">${CH.map(ch => `<button type="button" class="fchip" ${attr}="${ch.id}" aria-pressed="${F.champ === ch.id}"><img src="${heroArt(ch.id)}" alt=""><span>${ch.name}</span></button>`).join("")}</div>`;
+}
+function laHour() {
+  try {
+    const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/Los_Angeles", hour: "numeric", minute: "numeric", hourCycle: "h23" }).formatToParts(new Date()).map(x => [x.type, x.value]));
+    const left = 24 * 60 - (+p.hour * 60 + +p.minute);
+    return `${Math.floor(left / 60)} h ${left % 60} min`;
+  } catch { return "a few hours"; }
+}
+function tabToday() {
+  const d = ITEM[E.picks.deal];
+  const deal = `<button type="button" class="deal${F.sel === d.id ? " sel" : ""}" data-sel="${d.id}" style="--r:${RAR[d.rarity]}"><span class="ia"><img src="${lookArt(d.champ, { skin: d.id })}" alt=""></span><span><span class="top">${RAR_NAME[d.rarity]} <span class="off">20% off today</span></span><b>${d.name}</b><small>${byId[d.champ].name} skin</small><p>${esc(d.desc)}</p><span class="pr">${owns(d.id) ? '<span style="color:var(--ok)">Owned</span>' : `${coin}<s>${fmt(d.price)}</s>${fmt(price(d.id))}`}</span></span></button>`;
+  return `<div class="fp-row"><h5>Today's picks</h5><span class="timer">New picks in ${laHour()}</span></div>${deal}
+    <div class="grid g3">${E.picks.items.slice(1).map(id => tile(id)).join("")}</div>
+    <div class="earn"><span class="meter" style="--p:${(E.missions.done / E.missions.total) * 100}"><span>${E.missions.done}/${E.missions.total}</span></span><div><b>Coins come only from playing.</b> Win +15 · loss +6 · missions +40 / +70 / +120. Today's missions still pay <b>${E.missions.left} coins</b>.</div><button type="button" class="mini-btn" data-drawer="missions">Missions</button></div>`;
+}
+function tabSkins() {
+  const list = [`orig:${F.champ}`, ...SKINS.filter(s => s.champ === F.champ).map(s => s.id)].filter(id => F.own === "all" || (F.own === "owned") === (id.startsWith("orig:") || owns(id)));
+  return `${champChips("data-fchamp")}<div class="fseg"><div class="seg" role="group" aria-label="Filter">${[["all", "All"], ["owned", "Owned"], ["not", "Not owned"]].map(([v, l]) => `<button type="button" data-fown="${v}" aria-pressed="${F.own === v}">${l}</button>`).join("")}</div><small style="color:var(--dim);font-size:12px">${list.length} looks</small></div><div class="grid g4">${list.map(id => tile(id)).join("")}</div>`;
+}
+function tabMythic() {
+  const rows = SKINS.filter(s => s.rarity === "mythical").map(s => ({ s, w: E.trial[s.champ] ?? 0, own: E.own.has(s.id) })).sort((a, b) => (b.own - a.own) || (b.w - a.w));
+  return `<p class="rule">Win ${CAT.trial} PvP matches or raid clears with a fighter to unlock their Mythical. Wear it to Awaken: Stage II at ${CAT.awakening.stage2Wins} wins, Stage III at ${CAT.awakening.stage3Wins} wins plus a raid clear. Closest to unlocking first.</p>
+  <div class="mlist">${rows.map(({ s, w, own }) => { const a = E.awaken[s.id]; const pct = own ? (a.wins / CAT.awakening.stage3Wins) * 100 : (Math.min(w, CAT.trial) / CAT.trial) * 100; const ready = !own && w >= CAT.trial; return `<button type="button" class="mcard${own ? "" : " locked"}${F.sel === s.id ? " sel" : ""}" data-sel="${s.id}"><img src="${lookArt(s.champ, { skin: s.id }, own ? a.stage : 1)}" alt=""><span><b>${s.name}</b><small>${byId[s.champ].name} skin</small><span class="bar"><i style="width:${pct}%"></i></span><span class="st${own ? " ok" : ""}">${own ? `Owned · Stage ${"I".repeat(a.stage)} · ${a.wins}/${CAT.awakening.stage3Wins} wins` : ready ? `Trial done · ${fmt(CAT.prices.mythical)} coins` : `${w}/${CAT.trial} wins as ${byId[s.champ].name} · ${CAT.trial - w} to go`}</span></span></button>`; }).join("")}</div>`;
+}
+function tabCollections() {
+  const set = SETS.find(s => s.col === F.setCol);
+  const n = c => SETS.find(s => s.col === c).items.filter(i => E.own.has(i)).length;
+  const pr = price(set.id);
+  return `<div class="setchips">${COLS.map(c => `<button type="button" class="setchip" data-fset="${c}" aria-pressed="${F.setCol === c}"><b>${CAT.names[c]}</b><small>${n(c)}/5 owned</small></button>`).join("")}</div>
+  <div class="sethead"><div><h5>${CAT.names[set.col]}</h5><small>Five pieces for every fighter · the full set is 20% off what you don't own${pr ? ` · ${fmt(pr)} coins` : ""}</small></div><button type="button" class="mini-btn" data-sel="${set.id}">Try the whole set</button></div>
+  <div class="grid g5">${set.items.map(id => tile(id)).join("")}</div>
+  <p class="rule">Trying on ${byId[F.champ].name}. Press Entrance or Victory on the stage to see the effect.</p>`;
+}
+function tabWardrobe() {
+  const look = stageLook(), eq = equipped(F.champ);
+  const slotBtn = ([k, label]) => {
+    const id = look[k], changed = id !== eq[k];
+    let ic = `<span class="glyph">—</span>`;
+    if (k === "skin") ic = `<img src="${lookArt(F.champ, { skin: id })}" alt="">`;
+    else if (id) ic = itemArt(id, F.champ).replace('class="fxmini"', 'class="fxmini" style="width:100%;height:100%"');
+    return `<button type="button" class="slot-btn${changed ? " changed" : ""}" data-fslot="${k}" aria-pressed="${F.slot === k}"><span class="si">${ic}</span><small>${label.replace("Champion ", "").replace("Portrait ", "")}</small><b class="${id || k === "skin" ? "" : "none"}">${id ? esc(ITEM[id].name) : k === "skin" ? "Original" : "None"}</b></button>`;
+  };
+  let ids;
+  if (F.slot === "skin") ids = [`orig:${F.champ}`, ...SKINS.filter(s => s.champ === F.champ).map(s => s.id)];
+  else ids = LOOKS.filter(l => l.slot === F.slot).map(l => l.id);
+  const mine = ids.filter(id => id.startsWith("orig:") || owns(id)), rest = ids.filter(id => !mine.includes(id));
+  const none = F.slot !== "skin" ? `<button type="button" class="itile${look[F.slot] ? "" : " sel"}" data-takeoff="${F.slot}" style="--r:#a0afc8"><span class="ia"><span class="fxmini"><span class="glyph" style="filter:none;color:var(--dim)">∅</span></span></span><span class="ir">Empty</span><b>Take off</b><small>${SLOT_NAME[F.slot]}</small><span class="ip dim">No ${SLOT_NAME[F.slot].toLowerCase()}</span></button>` : "";
+  return `${champChips("data-fchamp")}
+  <div class="presets"><button type="button" data-preset="0" aria-pressed="${preset === 0}">Outfit 1</button><button type="button" data-preset="1" aria-pressed="${preset === 1}">Outfit 2</button><button type="button" data-preset="2" aria-pressed="${preset === 2}">Outfit 3</button><span class="newtag">IDEA</span><label class="shuffle"><input type="checkbox" id="shuffle"> Random outfit each match</label></div>
+  <div class="grid g6">${SLOTS.map(slotBtn).join("")}</div>
+  <div class="fp-row"><h5>${SLOT_NAME[F.slot]}</h5><small>${mine.length} owned · ${rest.length} more in the Shop</small></div>
+  <div class="grid g4">${none}${mine.map(id => tile(id)).join("")}${rest.map(id => tile(id, { dimUnowned: true })).join("")}</div>`;
+}
+function footer() {
+  const look = stageLook(), eq = equipped(F.champ);
+  const changed = Object.keys(eq).filter(k => look[k] !== eq[k]);
+  const thumb = id => `<img src="${id && !id.startsWith("orig:") && ITEM[id].kind === "skin" ? lookArt(ITEM[id].champ, { skin: id }) : lookArt(F.champ, look, F.stage)}" alt="">`;
+  if (F.mode === "wardrobe") {
+    if (!changed.length) return `<div class="fp-foot"><div class="ft">${thumb(look.skin)}<div><b>${byId[F.champ].name}</b><small>Outfit saved. Pick a slot above to change it.</small></div></div><div class="acts"><button type="button" class="buy green" disabled>✓ Saved</button></div></div>`;
+    const missing = changed.map(k => look[k]).filter(id => id && !owns(id));
+    const names = changed.map(k => `${SLOT_NAME[k]}: ${look[k] ? ITEM[look[k]].name : k === "skin" ? "Original" : "none"}`).join(" · ");
+    if (missing.length) { const m = missing[0]; return `<div class="fp-foot"><div class="ft">${thumb(look.skin)}<div><b>Trying on</b><small class="warn">${esc(ITEM[m].name)} not owned · ${trialLocked(ITEM[m]) ? `Mythic Trial ${E.trial[ITEM[m].champ]}/${CAT.trial}` : `${fmt(price(m))} coins`}</small></div></div><div class="acts"><button type="button" class="buy ghost" data-revert>Revert</button><button type="button" class="buy" data-goshop="${m}">Get in Shop</button></div></div>`; }
+    return `<div class="fp-foot"><div class="ft">${thumb(look.skin)}<div><b>Trying on</b><small>${esc(names)}</small></div></div><div class="acts"><button type="button" class="buy ghost" data-revert>Revert</button><button type="button" class="buy green" data-equip-look>Equip</button></div></div>`;
+  }
+  if (!F.sel) return `<div class="fp-foot"><div class="ft"><img src="${heroArt(F.champ)}" alt=""><div><b>Pick an item</b><small>Try-ons are free. You only pay when you press Buy.</small></div></div><div class="acts"><button type="button" class="buy" disabled>${coin}Buy</button></div></div>`;
+  const id = F.sel;
+  if (id.startsWith("orig:")) { const on = !E.skin[F.champ]; return `<div class="fp-foot"><div class="ft">${thumb(id)}<div><b>Original look</b><small>Always available</small></div></div><div class="acts"><button type="button" class="buy green" data-equip="${id}" ${on ? "disabled" : ""}>${on ? "✓ Equipped" : "Equip"}</button></div></div>`; }
+  const it = ITEM[id], pr = price(id);
+  const sub = it.kind === "skin" ? `${RAR_NAME[it.rarity]} · ${byId[it.champ].name} skin` : it.kind === "set" ? `${it.items.filter(i => !E.own.has(i)).length} pieces left · 20% off` : `${RAR_NAME[it.rarity]} · ${SLOT_NAME[it.slot]} for every fighter`;
+  let act;
+  if (owns(id)) act = isOn(id) ? `<button type="button" class="buy green" disabled>✓ Equipped</button>` : `<button type="button" class="buy green" data-equip="${id}">Equip</button>`;
+  else if (trialLocked(it)) act = `<button type="button" class="buy trial" data-playas="${it.champ}">Play as ${byId[it.champ].name}</button>`;
+  else if (pr > E.coins) act = `<button type="button" class="buy ghost" data-drawer="missions">Earn coins</button><button type="button" class="buy" disabled>${coin}${fmt(pr)}</button>`;
+  else act = `<button type="button" class="buy" data-buy="${id}">${coin}${id === E.picks.deal ? `<s>${fmt(it.price)}</s>` : ""}${fmt(pr)}</button>`;
+  const warn = !owns(id) && trialLocked(it) ? `<small class="warn">Mythic Trial ${E.trial[it.champ]}/${CAT.trial}: win ${CAT.trial - E.trial[it.champ]} more as ${byId[it.champ].name}</small>` : !owns(id) && pr > E.coins ? `<small class="warn">You need ${fmt(pr - E.coins)} more coins</small>` : `<small>${esc(sub)}</small>`;
+  return `<div class="fp-foot"><div class="ft">${thumb(id)}<div><b>${esc(it.name)}</b>${warn}</div></div><div class="acts">${act}</div></div>`;
+}
+function setCoins() { $("coins").textContent = fmt(E.coins); }
+
+/* ---------- events ---------- */
+$("fit").addEventListener("click", e => {
+  const t = e.target.closest("button, input, label"); if (!t) return;
+  const d = t.dataset;
+  if (d.fitmode) { F.mode = d.fitmode; F.sel = null; F.preview = null; screen.querySelectorAll(".rail [data-fit]").forEach(b => b.setAttribute("aria-expanded", String(b.dataset.fit === F.mode))); return renderFit(); }
+  if ("fitclose" in d) return closeFit();
+  if (d.ftab) { F.tab = d.ftab; return renderFit(); }
+  if (d.fchamp) { F.champ = d.fchamp; F.sel = null; F.preview = null; return renderFit(); }
+  if (d.fown) { F.own = d.fown; return renderFit(); }
+  if (d.fset) { F.setCol = d.fset; return renderFit(); }
+  if (d.fslot) { F.slot = d.fslot; return renderFit(); }
+  if (d.stage) { F.stage = +d.stage; return renderFitStage(); }
+  if (d.replay) { const l = stageLook(); return burst(d.replay, l[d.replay]); }
+  if (d.takeoff) { F.sel = null; F.preview = { ...stageLook(), [d.takeoff]: null }; return renderFit(); }
+  if (d.sel) { select(d.sel); const it = ITEM[d.sel]; if (it?.kind === "look" && (it.slot === "entrance" || it.slot === "victory")) setTimeout(() => burst(it.slot, d.sel), 150); return; }
+  if ("revert" in d) { F.sel = null; F.preview = null; return renderFit(); }
+  if (d.buy) {
+    const it = ITEM[d.buy], pr = price(d.buy);
+    E.coins -= pr; (it.kind === "set" ? it.items : [d.buy]).forEach(i => E.own.add(i)); setCoins();
+    toast(`Bought ${it.name} · −${fmt(pr)} coins`); return renderFit();
+  }
+  if (d.equip) {
+    if (d.equip.startsWith("orig:")) delete E.skin[F.champ];
+    else { const it = ITEM[d.equip]; if (it.kind === "skin") E.skin[it.champ] = it.id; else (it.kind === "set" ? it.items : [it.id]).forEach(i => { E.wear[ITEM[i].slot] = i; }); }
+    F.preview = null; toast("Equipped · everyone sees it in the lobby and in matches"); renderStage(); return renderFit();
+  }
+  if ("equipLook" in d) {
+    const l = stageLook(); if (l.skin) E.skin[F.champ] = l.skin; else delete E.skin[F.champ];
+    for (const k of ["colours", "aura", "entrance", "victory", "frame"]) E.wear[k] = l[k];
+    F.preview = null; F.sel = null; toast("Outfit saved"); renderStage(); return renderFit();
+  }
+  if (d.goshop) {
+    const it = ITEM[d.goshop];
+    F.mode = "shop";
+    if (it.kind === "skin") F.tab = it.rarity === "mythical" ? "mythic" : "skins"; else { F.tab = "collections"; F.setCol = it.col; }
+    screen.querySelectorAll(".rail [data-fit]").forEach(b => b.setAttribute("aria-expanded", String(b.dataset.fit === "shop")));
+    return renderFit();
+  }
+  if (d.playas) {
+    S.champ = CH.findIndex(c => c.id === d.playas); S.mode = "duel";
+    closeFit(); renderPlay(); toast(`Win ${CAT.trial - E.trial[d.playas]} more as ${byId[d.playas].name} to unlock the Mythical`); return;
+  }
+  if (d.preset) {
+    PRESETS[preset] = { skin: { ...E.skin }, wear: { ...E.wear } };
+    preset = +d.preset; const p = PRESETS[preset];
+    if (p) { E.skin = { ...p.skin }; E.wear = { ...p.wear }; }
+    F.preview = null; F.sel = null; toast(`Outfit ${preset + 1} on`); renderStage(); return renderFit();
+  }
+});
+const holdOn = e => { if (e.target.id === "compare") { F.compare = true; renderFitStage(); $("compare")?.setPointerCapture?.(e.pointerId); } };
+const holdOff = () => { if (F.compare) { F.compare = false; renderFitStage(); } };
+$("fit").addEventListener("pointerdown", holdOn);
+$("fit").addEventListener("pointerup", holdOff);
+$("fit").addEventListener("pointercancel", holdOff);
+
+/* ---------- scenes ---------- */
+function setScene(sc) {
+  S.scene = sc; screen.dataset.scene = sc; closeLayer();
+  $("sc-lobby").setAttribute("aria-pressed", String(sc === "lobby"));
+  $("sc-plaza").setAttribute("aria-pressed", String(sc === "plaza"));
+  plaza.setAttribute("aria-hidden", String(sc !== "plaza"));
+  placeYou();
+}
+$("sc-lobby").onclick = () => { if (S.scene === "fit") closeFit(); else setScene("lobby"); };
+$("sc-plaza").onclick = () => { screen.querySelectorAll(".rail [data-fit]").forEach(b => b.setAttribute("aria-expanded", "false")); setScene("plaza"); };
+document.querySelectorAll("[data-jump]").forEach(b => b.onclick = () => { $("demo-h").scrollIntoView({ behavior: reduced ? "auto" : "smooth", block: "start" }); openFit(b.dataset.jump, b.dataset.jump === "shop" ? { tab: "today" } : { slot: "skin" }); });
+
+function renderAll() { renderStage(); renderFriends(); renderPlay(); $("fr-badge").textContent = String(FRIENDS.filter(f => f.st !== "offline").length); }
+layoutStage(); renderAll(); seedCrowd(); fit();
+})();
+</script>

@@ -1,0 +1,148 @@
+/* =====================================================================
+   PHONE (landscape) LAYOUT, following Element Arena's mobile rules:
+   landscape only, text ≥ 10px, buttons ≥ ~38–44px, nothing overlaps,
+   safe areas respected, no accidental double-tap zoom.
+   ===================================================================== */
+.screen { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.screen canvas { touch-action: none; }
+
+/* ---------- page frame on phones ---------- */
+.rotate-gate { display: none; }
+@media (orientation: portrait) and (pointer: coarse) {
+  .frame:not(.fs) { height: 300px !important; }
+  .frame .rotate-gate { position: absolute; inset: 0; z-index: 50; display: grid; place-items: center; align-content: center; gap: 14px; padding: 24px; text-align: center; background: radial-gradient(circle at 50% 40%, #1b2550, #070a14 75%); color: #fff; border-radius: 20px; }
+  .frame.fs .rotate-gate { border-radius: 0; }
+}
+.rotate-gate .ph { width: 46px; height: 76px; border: 4px solid #ffd65b; border-radius: 10px; position: relative; animation: rg-turn 2.4s var(--ease-out) infinite; }
+.rotate-gate .ph::after { content: ""; position: absolute; left: 50%; bottom: 5px; width: 12px; height: 3px; margin-left: -6px; border-radius: 2px; background: #ffd65b; }
+.rotate-gate b { font-family: var(--display); font-size: 26px; text-transform: uppercase; letter-spacing: .04em; line-height: 1; }
+.rotate-gate span { color: var(--dim); font-size: 14px; max-width: 280px; }
+@keyframes rg-turn { 0%, 25% { transform: rotate(0); } 55%, 100% { transform: rotate(-90deg); } }
+@media (prefers-reduced-motion: reduce) { .rotate-gate .ph { animation: none; transform: rotate(-90deg); } }
+
+/* tap-to-play card shown once on touch phones held sideways */
+.tap-play { position: absolute; inset: 0; z-index: 40; display: grid; place-items: center; align-content: center; gap: 10px; background: #070a14b3; backdrop-filter: blur(3px); }
+.tap-play button { border: 0; cursor: pointer; font-family: var(--display); font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+.tap-play .go { min-height: 52px; padding: 0 28px; border-radius: 16px; font-size: 22px; background: linear-gradient(180deg, #ffe58f, var(--accent) 45%, #e9b52c); color: var(--accent-ink); box-shadow: 0 5px 0 #a87a12, 0 12px 24px #0009; }
+.tap-play .here { min-height: 40px; padding: 0 16px; border-radius: 12px; font-size: 15px; background: #0b1020cc; color: #fff; border: 1px solid var(--line-2); }
+.frame.fs { padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); box-sizing: border-box; }
+html.fs-lock, html.fs-lock body { overflow: hidden; overscroll-behavior: none; }
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 560px) {
+  .frame:not(.fs) { margin-left: calc(50% - 50vw); width: 100vw; }
+}
+
+/* ---------- lobby ---------- */
+.screen.phone .scene-switch .seg button { min-height: 36px; }
+.screen.phone .wallet .pill { height: 36px; }
+.screen.phone .icon-btn { width: 38px; height: 38px; }
+.screen.phone .rail { top: 56px; gap: 3px; }
+.screen.phone .rail [data-drawer="journey"] { display: grid; }
+.screen.phone .rail button { min-height: 38px; height: 38px; }
+.screen.phone .badge { min-width: 18px; height: 18px; font-size: 10px; padding-top: calc((14px - 1cap) / 2); }
+.screen.phone .arrow { width: 40px; height: 40px; font-size: 20px; }
+.screen.phone .arrow.prev { left: -40px; } .screen.phone .arrow.next { right: -40px; }
+.screen.phone .drawer .close { width: 40px; height: 40px; }
+.screen.phone .mini-btn { min-height: 34px; }
+.screen.phone .ms-row .mini-btn { height: 34px; }
+.screen.phone .jr-lv small, .screen.phone .chip-el, .screen.phone .ir { font-size: 10px; }
+/* shop & wardrobe */
+.screen.phone .fxbtns button { min-height: 32px; padding: 0 10px; font-size: 11px; }
+.screen.phone .fp-switch button { min-height: 34px; }
+.screen.phone .fp-head .close { width: 34px; height: 34px; }
+.screen.phone .fp-tabs button { min-height: 34px; }
+.screen.phone .stages button { min-width: 30px; min-height: 30px; }
+.screen.phone #compare { min-height: 32px; }
+
+/* ---------- plaza ---------- */
+.screen.phone .pz-hud { font-size: 12px; }
+.screen.phone .pz-feed { display: none; }
+.screen.phone .pz-event { top: 56px; width: 16em; }
+.screen.phone .pz-event small { display: none; }
+.screen.phone .pz-mini { top: 56px; width: 150px; }
+.screen.phone .pz-clock { font-size: 11px; width: 5.2em; }
+.screen.phone .pz-quests { left: 12px; right: auto; top: 56px; width: 200px; font-size: 11px; }
+.screen.phone .pz-quests h5 button { min-width: 32px; min-height: 28px; font-size: 13px; }
+.screen.phone .pz-actions { right: 12px; bottom: 12px; gap: 8px; align-items: flex-end; }
+.screen.phone .pz-act { width: 54px; height: 54px; font-size: 13px; }
+.screen.phone .pz-act.big { width: 68px; height: 68px; font-size: 14px; }
+.screen.phone .pz-act small { font-size: 10px; }
+.screen.phone .pz-interact { width: 13em; height: 42px; font-size: 12px; align-self: center; }
+.screen.phone .pz-left, .coarse.screen.phone .pz-left { left: auto; right: 12px; top: auto; bottom: 92px; flex-direction: row; gap: 8px; }
+.screen.phone .pz-round { width: 46px; height: 46px; font-size: 13px; }
+.screen.phone .pz-round small { font-size: 10px; }
+.screen.phone .pz-runcard { bottom: 90px; font-size: 11px; }
+.screen.phone .pz-wheel { scale: .85; }
+.coarse.screen.phone .pz-joy { width: 45%; height: 70%; }
+
+/* ---------- farm ---------- */
+.screen.phone .fm-hud { font-size: 12px; }
+.screen.phone .fm-badge { left: 12px; top: 56px; width: 150px; padding: 3px 10px 3px 3px; gap: 8px; }
+.screen.phone .fm-ring { width: 32px; height: 32px; }
+.screen.phone .fm-ring b { font-size: 16px; }
+.screen.phone .fm-badge strong { font-size: 14px; }
+.screen.phone .fm-badge small.row2 { display: none; }
+.screen.phone .fm-weather { left: 172px; transform: none; top: 56px; width: 212px; padding: 3px 10px 3px 3px; gap: 8px; }
+.screen.phone .fm-weather .wi { width: 30px; height: 30px; font-size: 12px; }
+.screen.phone .fm-weather .wt small, .screen.phone .fm-weather .next small { display: none; }
+.screen.phone .fm-weather .wt b { font-size: 13px; }
+.screen.phone .fm-weather .next { width: 5em; }
+.screen.phone .fm-chips { right: 12px; top: 56px; gap: 4px; }
+.screen.phone .fm-chip { height: 36px; font-size: 12px; }
+.screen.phone .fm-chip .ci { width: 28px; height: 28px; }
+.screen.phone .fm-chip.c-perk { width: 36px; padding: 3px; }
+.screen.phone .fm-chip.c-perk .tx { display: none; }
+.screen.phone .fm-chip.c-dog { width: 9.2em; }
+.screen.phone .fm-chip.c-dog .t { display: none; }
+.screen.phone .fm-chip.c-dog small { display: block; font-size: 1em; font-weight: 700; color: #fff; }
+.screen.phone .fm-chip.c-barn { width: 7em; }
+/* side menu: 2 columns of icon buttons */
+.screen.phone #fm-dock { display: grid; grid-template-columns: repeat(2, 42px); gap: 4px; right: 12px; top: 100px; }
+.screen.phone #fm-dock button { width: 42px; min-height: 42px; height: 42px; padding: 0; border-radius: 12px; }
+.screen.phone #fm-dock button .ico { width: 1.4em; height: 1.4em; }
+.screen.phone .fm-zoom { display: none; }
+.screen.phone .fm-hint { bottom: 72px; font-size: 11px; }
+/* tool bar */
+.screen.phone .fm-tools { bottom: 8px; gap: 4px; padding: 5px; }
+.screen.phone .fm-tool { width: 52px; height: 52px; border-radius: 12px; }
+.screen.phone .fm-tool > .ico, .screen.phone .fm-tool .seedico { width: 26px; height: 26px; }
+.screen.phone .fm-tool > span:not(.seedico) { font-size: 10px; }
+.screen.phone .fm-tool b { font-size: 10px; }
+.screen.phone .fm-tool em { font-size: 10px; }
+.screen.phone .fm-tip { font-size: 11px; }
+/* seed picker: a centred panel with bigger cards */
+.screen.phone .fm-pop.seedpick { left: 50% !important; top: 50px !important; transform: translateX(-50%); width: 476px !important; max-height: 326px; font-size: 12px; }
+.screen.phone .fm-pop.seedpick .grid { grid-template-columns: repeat(5, 1fr); }
+.screen.phone .fm-pop .opt.sp > span { font-size: 11px; }
+.screen.phone .fm-pop .opt.sp small, .screen.phone .fm-pop .opt b { font-size: 10px; }
+.screen.phone .fm-pop .sp-tip { display: none; }
+.screen.phone .fm-pop h6 { font-size: 11px; }
+/* sheets, deed, level-up */
+.screen.phone .fm-sheet { left: 12px; right: 112px; top: 52px; bottom: 8px; width: auto; font-size: 12px; }
+.screen.phone .fm-sheet .btn-s { min-height: 32px; min-width: 40px; }
+.screen.phone .fm-sheet .sh-tabs button { min-height: 34px; }
+.screen.phone .fm-sheet .x { width: 36px; height: 36px; }
+.screen.phone .deed, .screen.phone .lvcard { font-size: 12px; }
+.screen.phone .fm-visit { top: 100px; }
+/* sheet + deed text: nothing under 10px on a phone */
+.screen.phone .fm-sheet { font-size: 13px; }
+.screen.phone .fm-sheet :is(small, .sh-note, .k, .price, .bd, .bk span) { font-size: 11px; }
+.screen.phone .fm-sheet :is(.tag, .stock, .mut, .trend) { font-size: 10px; }
+.screen.phone .fm-sheet .btn-s, .screen.phone .deed .btn-s { font-size: 12px; }
+.screen.phone .fm-sheet .book { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.screen.phone .deed .deed-top { font-size: 11px; }
+.screen.phone .fm-pop.seedpick { top: 56px !important; }
+.screen.phone .pz-clock { height: 24px; }
+.screen.phone .pz-interact kbd, .screen.phone .pz-quests h5 span { font-size: 11px; }
+.screen.phone .itile .ir { font-size: 10px; }
+/* 16:9 phones (game screen narrower than 780): compact top bar */
+.screen.phone.narrow .scene-switch .seg button { padding: 4px 10px; gap: 6px; font-size: 13px; }
+.screen.phone.narrow .scene-switch .count { width: 22px; }
+.screen.phone.narrow .wallet { gap: 6px; }
+.screen.phone.narrow .wallet .pill { width: 84px; padding: 4px 8px; }
+.screen.phone.narrow .profile, .screen.phone.narrow .fm-badge { width: 150px; }
+.screen.phone.narrow .fm-weather { left: 170px; width: 200px; }
+.fm-chip i.w { font-style: normal; }
+.screen.phone .fm-chip i.w { display: none; }
+.screen.phone.narrow .profile, .screen.phone.narrow .fm-badge { width: 160px; }
+.screen.phone.narrow .profile { gap: 6px; }
+.screen.phone.narrow .fm-weather { left: 180px; width: 192px; }

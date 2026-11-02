@@ -1,0 +1,21 @@
+const { chromium } = require('./pw');
+(async () => {
+  const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1340, height: 1000 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message + ' @' + (e.stack || '').split('\n')[1]));
+  await p.goto('file://' + __dirname + '/preview-t.html'); await p.waitForTimeout(800);
+  const shot = async n => { const f = await p.$('#frame'); await f.screenshot({ path: 'k-' + n + '.png' }); };
+  await p.click('#sc-farm'); await p.waitForTimeout(800);
+  const clickPlot = async i => { const f = await p.$('#frame'); await f.scrollIntoViewIfNeeded(); const c = await p.evaluate(i => __FM._dbg.plotClient(i), i); await p.mouse.click(c.x, c.y); await p.waitForTimeout(250); };
+  const st = () => p.evaluate(() => { const F = __FM._dbg.F; return { land: F.land, owned: F.plots.filter(x => !x.locked).length, leaves: __ECON.leaves, lv: F.lv, past: F.pasture }; });
+  console.log('start', await st());
+  await clickPlot(49); console.log('non-adjacent opens modal?', await p.evaluate(() => !document.getElementById('fm-modal').hidden), await p.evaluate(() => document.querySelector('.toast')?.textContent));
+  await clickPlot(5); await shot('deed'); await p.click('[data-deedyes]'); console.log('buy 5', await st());
+  await clickPlot(6); await p.click('[data-deedyes]'); console.log('buy 6', await st());
+  await p.evaluate(() => { __ECON.leaves = 9999; });
+  await clickPlot(30); await p.click('[data-deedyes]'); console.log('buy 30', await st());
+  await clickPlot(31); console.log('5th button', await p.evaluate(() => { const b = document.querySelector('[data-deedyes]'); return b.disabled + ' / ' + b.textContent; })); await shot('deed-locked'); await p.click('[data-deedno]');
+  await p.click('[data-sheet="shop"]'); await p.click('[data-tab="land"]'); await p.waitForTimeout(200); await shot('landtab');
+  await p.evaluate(() => { __FM._dbg.F.lv = 10; __ECON.leaves = 3000; }); await p.click('[data-tab="seeds"]'); await p.click('[data-tab="land"]'); await p.click('[data-pasture]'); await p.waitForTimeout(300); console.log('pasture', await st());
+  await p.click('[data-sheet="shop"]'); await p.waitForTimeout(400); await shot('pasture');
+  console.log('errs', JSON.stringify(errs)); await b.close();
+})();
