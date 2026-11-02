@@ -25,6 +25,10 @@ import {
   isStartPlot,
   touchesOwned,
 } from "../../../../packages/shared/src/farm";
+import {
+  FARM_WEATHER_BY_ID,
+  FARM_WEATHER_SECONDS,
+} from "../../../../packages/shared/src/farm";
 import { cropFieldSvg, cropItemSvg } from "./crop-art";
 import { GFX } from "./farm-gfx";
 import {
@@ -330,6 +334,16 @@ export function openFarm(options) {
     };
     F.leaves = st.leaves;
     options.onLeaves?.(st.leaves);
+    // The weather now and the forecast (none before migration 039).
+    const wx = (w) => (w && w !== "none" ? w : null);
+    F.weather = st.weather
+      ? {
+          cur: wx(st.weather.now),
+          next: wx(st.weather.next),
+          next2: wx(st.weather.later),
+          until: Date.parse(st.weather.until),
+        }
+      : { cur: null };
     for (const p of st.plots)
       Object.assign(F.plots[p.i], {
         locked: !p.owned,
@@ -2134,33 +2148,105 @@ export function openFarm(options) {
   const ringCol = (p) =>
     p > 0.5 ? "#7ff0a2" : p > 0.2 ? "#ffd65b" : "#ff6b5a";
   let orbOpen = null;
+  /* status orbs: weather and barn. The ring shows what is left (or how full); tap for the details */
+  let orbKey = "";
+  const weatherLeft = () =>
+    Math.max(0, ((F.weather.until ?? 0) - serverNow()) / 1000);
   function renderChips() {
     const used = barnUsed(),
       bp = Math.min(1, used / F.barnCap),
-      box = $("fm-chips");
-    if (!box.firstElementChild)
-      box.innerHTML = `<button type="button" class="fm-orb" data-orb="barn"><span class="ci">${I("barn")}</span></button>`;
-    const b = box.firstElementChild,
-      label = `Barn ${used}/${F.barnCap}`;
-    b.className = `fm-orb o-barn${bp >= 0.9 ? " full" : ""}`;
-    b.style.setProperty("--p", bp.toFixed(3));
-    b.style.setProperty(
-      "--rc",
-      bp >= 0.9 ? "#ff6b5a" : bp >= 0.75 ? "#ffd65b" : "#7ff0a2",
-    );
-    if (b.title !== label) {
-      b.title = label;
-      b.setAttribute("aria-label", label);
+      wn = F.weather.cur ? FARM_WEATHER_BY_ID[F.weather.cur] : null,
+      wp = Math.max(0, Math.min(1, weatherLeft() / FARM_WEATHER_SECONDS));
+    const want = [
+      wn && [
+        "weather",
+        "o-weather",
+        wp,
+        wn.color,
+        `<span class="wx-ic">${I(wn.icon)}</span>`,
+        `${wn.name}: ${wn.text}. Changes in ${fmtSecs(weatherLeft())}`,
+      ],
+      [
+        "barn",
+        `o-barn${bp >= 0.9 ? " full" : ""}`,
+        bp,
+        bp >= 0.9 ? "#ff6b5a" : bp >= 0.75 ? "#ffd65b" : "#7ff0a2",
+        I("barn"),
+        `Barn ${used}/${F.barnCap}`,
+      ],
+    ].filter(Boolean);
+    // Built once, then updated in place, so a tap never lands on a button that was just replaced.
+    const box = $("fm-chips"),
+      sig = want
+        .map((w) => w[0] + (w[0] === "weather" ? F.weather.cur : ""))
+        .join();
+    if (box.dataset.sig !== sig) {
+      box.dataset.sig = sig;
+      box.innerHTML = want
+        .map(
+          ([k, , , , inner]) =>
+            `<button type="button" class="fm-orb" data-orb="${k}"><span class="ci">${inner}</span></button>`,
+        )
+        .join("");
     }
-    b.setAttribute("aria-expanded", String(orbOpen === "barn"));
+    want.forEach(([k, cls, p, col, , label]) => {
+      const b = box.querySelector(`[data-orb="${k}"]`);
+      b.className = `fm-orb ${cls}`;
+      b.style.setProperty("--p", p.toFixed(3));
+      b.style.setProperty("--rc", col);
+      b.setAttribute("aria-expanded", String(orbOpen === k));
+      if (b.title !== label) {
+        b.title = label;
+        b.setAttribute("aria-label", label);
+      }
+    });
     if (orbOpen) renderOrbPop();
   }
   function renderOrbPop() {
     const el = $("fm-orbpop"),
-      btn = $("fm-chips").querySelector('[data-orb="barn"]');
-    const u = barnUsed(),
-      p = u / F.barnCap;
-    el.innerHTML = `<div class="op-h">${I("barn")}<b>Barn</b><span class="op-tag${p >= 0.9 ? " warn" : ""}">${p >= 0.9 ? "Almost full" : "Storage"}</span></div><div class="op-big">${u}<small>/ ${F.barnCap} items</small></div><div class="op-bar" style="--rc:${p >= 0.9 ? "#ff6b5a" : p >= 0.75 ? "#ffd65b" : "#7ff0a2"}"><i style="width:${p * 100}%"></i></div><p>Harvests go here. Sell them at the market to make room.</p><button type="button" class="btn-s" data-orbgo="barn">Open barn</button>`;
+      k = orbOpen,
+      btn = k && $("fm-chips").querySelector(`[data-orb="${k}"]`);
+    if (!btn) {
+      orbOpen = null;
+      el.hidden = true;
+      return;
+    }
+    let h = "";
+    if (k === "weather") {
+      const w = FARM_WEATHER_BY_ID[F.weather.cur],
+        n = F.weather.next ? FARM_WEATHER_BY_ID[F.weather.next] : null,
+        p = Math.max(0, Math.min(1, weatherLeft() / FARM_WEATHER_SECONDS));
+      h = `<div class="op-h">${I(w.icon)}<b>${w.name}</b><span class="op-tag">Now</span></div><p>${w.text}.</p><div class="op-big">${fmtSecs(weatherLeft())}<small>until it changes</small></div><div class="op-bar" style="--rc:${w.color}"><i style="width:${p * 100}%"></i></div>${n ? `<div class="op-next"><span>Next</span>${I(n.icon)}<b>${n.name}</b></div><p class="op-note">${n.text}.</p>` : ""}`;
+    } else {
+      const u = barnUsed(),
+        p = u / F.barnCap;
+      h = `<div class="op-h">${I("barn")}<b>Barn</b><span class="op-tag${p >= 0.9 ? " warn" : ""}">${p >= 0.9 ? "Almost full" : "Storage"}</span></div><div class="op-big">${u}<small>/ ${F.barnCap} items</small></div><div class="op-bar" style="--rc:${p >= 0.9 ? "#ff6b5a" : p >= 0.75 ? "#ffd65b" : "#7ff0a2"}"><i style="width:${p * 100}%"></i></div><p>Harvests go here. Sell them at the market to make room.</p><button type="button" class="btn-s" data-orbgo="barn">Open barn</button>`;
+    }
+    // The card is built once; after that only the clock and the bar change.
+    const key =
+      k +
+      "|" +
+      h.replace(
+        /<div class="op-big">.*?<\/div>|<i style="width:[^"]*"><\/i>|style="--rc:[^"]*"/g,
+        "",
+      );
+    if (key !== orbKey || el.hidden) {
+      el.innerHTML = h;
+      orbKey = key;
+    } else {
+      const tmp = document.createElement("div");
+      tmp.innerHTML = h;
+      const nb = tmp.querySelector(".op-big"),
+        ob = el.querySelector(".op-big");
+      if (nb && ob && ob.innerHTML !== nb.innerHTML)
+        ob.innerHTML = nb.innerHTML;
+      const nr = tmp.querySelector(".op-bar"),
+        or = el.querySelector(".op-bar");
+      if (nr && or) {
+        or.style.cssText = nr.style.cssText;
+        or.firstElementChild.style.width = nr.firstElementChild.style.width;
+      }
+    }
     el.hidden = false;
     const hud = el.parentElement.getBoundingClientRect(),
       r = btn.getBoundingClientRect(),
@@ -2255,9 +2341,14 @@ export function openFarm(options) {
     const [id, mut] = k.split("|"),
       c = CROP[id],
       m = F.market.mult[id]?.m ?? 1;
-    return (
-      Math.max(1, Math.round(c.sell * m)) *
-      (mut ? mut.split("+").reduce((a, x) => a * (MUTS[x]?.x ?? 1), 1) : 1)
+    // The server's sell price: one rounding, after every multiplier.
+    return Math.max(
+      1,
+      Math.round(
+        c.sell *
+          m *
+          (mut ? mut.split("+").reduce((a, x) => a * (MUTS[x]?.x ?? 1), 1) : 1),
+      ),
     );
   };
   function renderSheet() {
@@ -2457,7 +2548,7 @@ export function openFarm(options) {
   $("fm-chips").addEventListener("click", (e) => {
     const b = e.target.closest("[data-orb]");
     if (!b) return;
-    orbOpen = orbOpen ? null : b.dataset.orb;
+    orbOpen = orbOpen === b.dataset.orb ? null : b.dataset.orb;
     renderChips();
     if (!orbOpen) $("fm-orbpop").hidden = true;
   });

@@ -60,6 +60,10 @@ beforeAll(async () => {
     .filter((f) => f.endsWith(".sql"))
     .sort())
     await db.exec(await readFile("supabase/migrations/" + f, "utf8"));
+  // These tests are about growth and prices: no weather (migration 039).
+  await db.exec(
+    "reset role;insert into public.arena_farm_weather_pin(id, weather) values (1, 'none') on conflict (id) do update set weather = 'none'",
+  );
   for (const id of [player, other]) {
     await db.exec(
       `reset role;insert into auth.users values('${id}','{"display_name":"Farm tester"}')`,
@@ -130,7 +134,13 @@ it("grows a crop on the server's clock: no early harvest, then two crops and XP"
   expect((await farm()).plots[0].progress).toBeCloseTo(0.5, 2);
   await pass(1801);
   r = await act([{ a: "harvest", plot: 0 }]);
-  expect(r.results[0]).toEqual({ ok: true, crop: "wheat", qty: 2, xp: 3 });
+  expect(r.results[0]).toEqual({
+    ok: true,
+    crop: "wheat",
+    qty: 2,
+    xp: 3,
+    mutation: "",
+  });
   expect(r.farm.barn).toEqual([{ crop: "wheat", mutation: "", qty: 2 }]);
   expect(r.farm.xp).toBe(3);
   expect(r.farm.plots[0].crop).toBeNull();
@@ -321,12 +331,15 @@ it("keeps the farm tables and internal functions away from players", async () =>
 
 it("can be run again without changing any farm", async () => {
   const before = await farm();
-  await db.exec(
-    "reset role;" +
-      (await readFile("supabase/migrations/037_farm.sql", "utf8")),
-  );
+  // 037 and every migration after it, newest last (as the README says).
+  for (const f of (await readdir("supabase/migrations"))
+    .filter((f) => f.endsWith(".sql") && f >= "037")
+    .sort())
+    await db.exec(
+      "reset role;" + (await readFile("supabase/migrations/" + f, "utf8")),
+    );
   const after = await farm();
-  // Growing crops keep growing while the file runs: compare growth loosely.
+  // Growing crops keep growing while the files run: compare growth loosely.
   const still = (f: any) => ({
     ...f,
     now: null,

@@ -507,6 +507,98 @@ export const FERTILIZERS: Record<
     text: "Gold mutation odds ×3 for that crop",
   },
 };
+/** Farm weather (migration 039): one per 4-hour UTC window, the same for everyone. */
+export type FarmWeatherId =
+  "sun" | "rain" | "storm" | "moon" | "frost" | "rainbow";
+export const FARM_WEATHERS: readonly {
+  id: FarmWeatherId;
+  name: string;
+  icon: string;
+  color: string;
+  text: string;
+  /** Chance weight (they add up to 100). */
+  weight: number;
+  /** Growth speed while it lasts. */
+  speed: number;
+}[] = [
+  {
+    id: "sun",
+    name: "Sunny",
+    icon: "sun",
+    color: "#ffd65b",
+    text: "Crops grow 10% faster",
+    weight: 30,
+    speed: 1.1,
+  },
+  {
+    id: "rain",
+    name: "Rain",
+    icon: "rain",
+    color: "#4fb3ff",
+    text: "Waters every plot · 30% Wet ×1.5",
+    weight: 22,
+    speed: 1,
+  },
+  {
+    id: "storm",
+    name: "Thunderstorm",
+    icon: "storm",
+    color: "#9fd0ff",
+    text: "25% Shocked ×3",
+    weight: 14,
+    speed: 1,
+  },
+  {
+    id: "moon",
+    name: "Moonlit Night",
+    icon: "moon",
+    color: "#c9a3ff",
+    text: "25% Moonlit ×2.5",
+    weight: 14,
+    speed: 1,
+  },
+  {
+    id: "frost",
+    name: "Frost",
+    icon: "snow",
+    color: "#dff6ff",
+    text: "25% Frozen ×2 · crops grow 15% slower",
+    weight: 12,
+    speed: 0.85,
+  },
+  {
+    id: "rainbow",
+    name: "Rainbow",
+    icon: "rainbow",
+    color: "#ff9bd2",
+    text: "Gold odds ×3 · Rainbow odds ×10",
+    weight: 8,
+    speed: 1,
+  },
+];
+export const FARM_WEATHER_BY_ID = Object.fromEntries(
+  FARM_WEATHERS.map((w) => [w.id, w]),
+) as Record<FarmWeatherId, (typeof FARM_WEATHERS)[number]>;
+/** A weather window lasts 4 hours. */
+export const FARM_WEATHER_SECONDS = 4 * 3600;
+/** Mutations a ripe crop can have, and what they do to its sell price. */
+export const MUTATIONS: readonly { id: string; name: string; mult: number }[] =
+  [
+    { id: "gold", name: "Gold", mult: 5 },
+    { id: "rainbow", name: "Rainbow", mult: 15 },
+    { id: "shock", name: "Shocked", mult: 3 },
+    { id: "moon", name: "Moonlit", mult: 2.5 },
+    { id: "frost", name: "Frozen", mult: 2 },
+    { id: "wet", name: "Wet", mult: 1.5 },
+  ];
+/** The sell multiplier of a mutation key ("" or names joined by "+"). */
+export function mutationMultiplier(key: string) {
+  return key
+    ? key
+        .split("+")
+        .reduce((x, m) => x * (MUTATIONS.find((v) => v.id === m)?.mult ?? 1), 1)
+    : 1;
+}
 /** 100 Gold Leaves trade for 5 coins, up to 40 coins a day (migration 036). */
 export const LEAF_TRADE = { leaves: 100, coins: 5, dailyCoins: 40 } as const;
 
@@ -561,6 +653,13 @@ export interface FarmState {
   shop: { window: string; restockAt: string; stock: Record<string, number> };
   /** Harvests per crop (the crop book). */
   harvests: Record<string, number>;
+  /** The weather now and the forecast (migration 039; absent before it). */
+  weather?: {
+    now: FarmWeatherId | "none";
+    next: FarmWeatherId | "none";
+    later: FarmWeatherId | "none";
+    until: string;
+  };
   leaves: number;
 }
 /** One action in a farm request (arena_farm_act). */

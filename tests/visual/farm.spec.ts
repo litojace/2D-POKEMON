@@ -26,6 +26,12 @@ async function fakeFarm(page: Page) {
       wet: true,
     });
     Object.assign(plots[2], { crop: "wheat", progress: 0.8, ripeAt: at(700) });
+    Object.assign(plots[4], {
+      crop: "carrot",
+      progress: 1,
+      ripeAt: at(-30),
+      mutation: "gold",
+    });
     const farm = {
       now: now(),
       level: 3,
@@ -49,6 +55,7 @@ async function fakeFarm(page: Page) {
         stock: { wheat: 24, carrot: 22, voltberry: 21, mint: 25 },
       },
       leaves: 1234,
+      weather: { now: "storm", next: "rainbow", later: "sun", until: at(5000) },
     };
     w.__farmRequests = [];
     const fetch = window.fetch.bind(window);
@@ -192,6 +199,30 @@ for (const viewport of [
     }
   });
 }
+
+test("the weather orb shows the weather now and the forecast", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openLobby(page);
+  await fakeFarm(page);
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  const orb = page.locator('#fm-chips [data-orb="weather"]');
+  await expect(orb).toBeVisible();
+  await expect(orb).toHaveAttribute("aria-label", /Thunderstorm: 25% Shocked/);
+  await orb.click();
+  const pop = page.locator("#fm-orbpop");
+  await expect(pop).toBeVisible();
+  await expect(pop).toContainText("Thunderstorm");
+  await expect(pop).toContainText("until it changes");
+  await expect(pop.locator(".op-next")).toContainText("Rainbow");
+  await snap(page, info, "farm-weather-orb");
+  // Tapping it again closes it; the barn orb sits beside it.
+  await orb.click();
+  await expect(pop).toBeHidden();
+  await expect(page.locator('#fm-chips [data-orb="barn"]')).toBeVisible();
+  expect(errors).toEqual([]);
+});
 
 test("tapping a ripe plot harvests it, and an empty plot opens the seed picker", async ({
   browser,
