@@ -29,7 +29,7 @@ for (const resource of ["main.ts", "style.css"]) {
     await expect
       .poll(async () => {
         await page.evaluate(() => (window as any).__sock.fire("connect"));
-        return page.locator("#town-menu-toggle").isVisible();
+        return page.locator("#lobby-play").isVisible();
       })
       .toBe(true);
   });

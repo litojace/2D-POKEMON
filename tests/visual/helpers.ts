@@ -11,6 +11,8 @@ export async function openTown(page: Page) {
     try {
       if (!(window as any).__graphicsAuto && localStorage.getItem("ea-graphics") === null)
         localStorage.setItem("ea-graphics", "high");
+      // The hub opens on the Lobby; these tests walk around the Plaza.
+      if (localStorage.getItem("ea-hub-scene") === null) localStorage.setItem("ea-hub-scene", "plaza");
     } catch {
       /* No storage: Auto. */
     }
@@ -23,6 +25,32 @@ export async function openTown(page: Page) {
       async () => {
         await page.evaluate(() => (window as any).__sock.fire("connect"));
         return page.locator("#town-menu-toggle").isVisible();
+      },
+      { timeout: 30_000, intervals: [500, 1000] },
+    )
+    .toBe(true);
+  return errors;
+}
+
+/** Load the client signed in and wait for the Lobby (the hub's first scene). */
+export async function openLobby(page: Page) {
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(String(e)));
+  await page.addInitScript(() => {
+    try {
+      if (localStorage.getItem("ea-graphics") === null) localStorage.setItem("ea-graphics", "high");
+      localStorage.setItem("ea-hub-scene", "lobby");
+    } catch {
+      /* No storage. */
+    }
+  });
+  await page.goto("/");
+  await page.waitForFunction(() => !!(window as any).__sock);
+  await expect
+    .poll(
+      async () => {
+        await page.evaluate(() => (window as any).__sock.fire("connect"));
+        return page.locator("#lobby-play").isVisible();
       },
       { timeout: 30_000, intervals: [500, 1000] },
     )
