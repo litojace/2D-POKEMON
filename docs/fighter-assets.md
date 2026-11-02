@@ -41,15 +41,16 @@ matching mouth (`grin()` in `creature-profile.ts`).
 | -------- | ----------- | ------------------------------------------------------------------- |
 | Voltkit  | Hyper       | Star-shaped catchlights, open grin with a tongue                    |
 | Cindrake | Cocky       | Lids tipped toward the nose, ember glint, fang smirk, blush slashes |
-| Tidefin  | Chill       | Small wide-set eyes, wide axolotl smile, freckles                   |
-| Auralynx | Calm        | Almond eyes with slit pupils, cat nose and `ω` mouth, whiskers      |
+| Tidefin  | Chill       | Round eyes with a water-drop catchlight, wide smile, pink blush     |
+| Auralynx | Calm        | Diamond-shaped crystal catchlights, cat nose and `ω` mouth          |
 | Lumoth   | Dreamy      | Dewy eyes with lashes and a lower shine, tiny `o` mouth             |
 | Mystowl  | Mystic      | Concentric ring eyes over its beak                                  |
 | Terradon | Sleepy      | Drowsy half-lowered lids, soft smile, two pink cheeks               |
 | Duskveil | Spooky      | Void face with round glowing eyes                                   |
 
 The happy, hurt and dizzy moods still use the shared expression shapes, the
-focus mood adds a brow over each champion's own eye, and blinking squashes the
+focus mood adds a brow over each champion's own eye (in side views it slopes
+toward the snout, since those are drawn facing left), and blinking squashes the
 eyes texture as before. Keep new eye details inside the eyes crop box
 (`animation/assets.ts`: x 52–148, y 68–112 in the 200x190 space).
 

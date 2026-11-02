@@ -168,12 +168,12 @@ function mirrorPath(d: string) {
  * glowing void eyes). Moods (happy, hurt, dizzy) still use the shared shapes.
  */
 type EyeStyle =
-  "round" | "sparkle" | "fierce" | "bead" | "cat" | "dewy" | "owl" | "sleepy";
+  "round" | "sparkle" | "fierce" | "drop" | "gem" | "dewy" | "owl" | "sleepy";
 export const EYE_STYLE: Partial<Record<CharacterId, EyeStyle>> = {
   voltkit: "sparkle",
   cindrake: "fierce",
-  tidefin: "bead",
-  auralynx: "cat",
+  tidefin: "drop",
+  auralynx: "gem",
   lumoth: "dewy",
   mystowl: "owl",
   terradon: "sleepy",
@@ -254,6 +254,12 @@ export function creatureLayers(
   // ---- Eyes, with the rig's expressions.
   const INK = "#1b1636";
   /**
+   * +1 when the nose is to the right of this eye, -1 when it is to the left.
+   * Side views are drawn facing left (the right view mirrors that drawing),
+   * so their eye always looks toward -x.
+   */
+  const toNose = (x: number) => (profile ? -1 : x < 100 ? 1 : -1);
+  /**
    * Expression shapes drawn in place of an eye: happy arcs, squeezed
    * chevrons, dizzy spirals. `inward` points the chevron towards the nose.
    */
@@ -263,7 +269,7 @@ export function creatureLayers(
     if (mood === "happy")
       return `<path d="M${x - w * 0.95} ${y + 3}Q${x} ${y - h * 1.05} ${x + w * 0.95} ${y + 3}"${s}/>`;
     if (mood === "hurt") {
-      const k = x < 100 ? 1 : -1;
+      const k = toNose(x);
       return `<path d="M${x - k * w * 0.75} ${y - h * 0.6}L${x + k * w * 0.6} ${y}L${x - k * w * 0.75} ${y + h * 0.6}"${s}/>`;
     }
     if (mood === "dizzy") {
@@ -281,7 +287,7 @@ export function creatureLayers(
   };
   /** A determined brow over an eye (the "focus" expression). */
   const brow = (x: number, w: number, h: number, ink = INK) => {
-    const k = x < 100 ? 1 : -1,
+    const k = toNose(x),
       y = 93 - h - 3;
     return `<path d="M${x - k * w} ${y - 5}L${x + k * w * 0.85} ${y + 2}" stroke="${ink}" stroke-width="4.4" stroke-linecap="round" fill="none"/>`;
   };
@@ -296,8 +302,7 @@ export function creatureLayers(
     h: number,
     ring: string,
   ) => {
-    // Points toward the nose: +1 for the left eye, -1 for the right.
-    const k = x < 100 ? 1 : -1;
+    const k = toNose(x);
     const glints = `${e(x - w * 0.3, y - h * 0.36, w * 0.44, h * 0.38, "#ffffff")}<circle cx="${n(x + w * 0.38)}" cy="${n(y + h * 0.34)}" r="${n(w * 0.17)}" fill="#fff"/><circle cx="${n(x + w * 0.42)}" cy="${n(y - h * 0.5)}" r="${n(w * 0.09)}" fill="#fff"/>`;
     const round = `${e(x, y, w, h, INK)}${e(x, y + h * 0.3, w * 0.74, h * 0.52, ring)}${e(x, y + h * 0.22, w * 0.42, h * 0.4, INK)}`;
     if (style === "sparkle")
@@ -307,11 +312,6 @@ export function creatureLayers(
       // A slightly flattened upper lid, tipped a little toward the nose: cocky, not cross.
       const shape = `M${n(x - k * w)} ${y}A${n(w)} ${n(h)} 0 0 ${k === 1 ? 0 : 1} ${n(x + k * w)} ${y}Q${n(x + k * w)} ${n(y - h * 0.62)} ${n(x + k * w * 0.4)} ${n(y - h * 0.76)}Q${x} ${n(y - h * 0.9)} ${n(x - k * w * 0.45)} ${n(y - h * 0.9)}Q${n(x - k * w)} ${n(y - h * 0.84)} ${n(x - k * w)} ${y}Z`;
       return `<path d="${shape}" fill="${INK}"/>${e(x, y + h * 0.28, w * 0.72, h * 0.5, ring)}${e(x, y + h * 0.2, w * 0.4, h * 0.36, INK)}${e(x - k * w * 0.22, y - h * 0.24, w * 0.4, h * 0.32, "#ffffff")}<circle cx="${n(x + k * w * 0.32)}" cy="${n(y + h * 0.36)}" r="${n(w * 0.15)}" fill="#fff"/>${e(x + k * w * 0.38, y - h * 0.48, w * 0.09, h * 0.08, "#ffd34d")}`;
-    }
-    if (style === "cat") {
-      // Almond eye with a slit pupil.
-      const lens = `M${n(x - w)} ${y}Q${x} ${n(y - h * 1.3)} ${n(x + w)} ${y}Q${x} ${n(y + h * 1.3)} ${n(x - w)} ${y}Z`;
-      return `<path d="${lens}" fill="${INK}"/>${e(x, y, w * 0.62, h * 0.6, ring)}${e(x, y, w * 0.14, h * 0.5, INK)}${e(x - w * 0.3, y - h * 0.24, w * 0.18, h * 0.14, "#ffffff")}<circle cx="${n(x + w * 0.28)}" cy="${n(y + h * 0.22)}" r="${n(w * 0.09)}" fill="#fff"/>`;
     }
     if (style === "dewy") {
       // Extra-glossy eyes with lashes and a lower shine: dreamy.
@@ -326,6 +326,16 @@ export function creatureLayers(
         .join("");
       return `${round}${glints}<path d="M${n(x - w * 0.5)} ${n(y + h * 0.55)}Q${x} ${n(y + h * 0.82)} ${n(x + w * 0.5)} ${n(y + h * 0.55)}" stroke="#ffffff" stroke-width="2" opacity=".55" fill="none" stroke-linecap="round"/>${sparkle(n(x + k * w * 0.05), n(y + h * 0.1), n(w * 0.14))}<path d="${lashes}" stroke="${INK}" stroke-width="2.6" stroke-linecap="round" fill="none"/>`;
     }
+    if (style === "drop") {
+      // A water-drop catchlight.
+      const cx = x - w * 0.27,
+        cy = y - h * 0.26,
+        r = w * 0.27;
+      return `${round}<path d="M${n(cx)} ${n(cy - r * 1.55)}C${n(cx + r * 0.25)} ${n(cy - r * 0.7)} ${n(cx + r)} ${n(cy - r * 0.25)} ${n(cx + r)} ${n(cy + r * 0.25)}A${n(r)} ${n(r)} 0 0 1 ${n(cx - r)} ${n(cy + r * 0.25)}C${n(cx - r)} ${n(cy - r * 0.25)} ${n(cx - r * 0.25)} ${n(cy - r * 0.7)} ${n(cx)} ${n(cy - r * 1.55)}Z" fill="#fff" stroke="none"/><circle cx="${n(x + w * 0.38)}" cy="${n(y + h * 0.36)}" r="${n(w * 0.15)}" fill="#fff"/>${sparkle(n(x + w * 0.4), n(y - h * 0.5), n(w * 0.16))}`;
+    }
+    if (style === "gem")
+      // Diamond-shaped catchlights, like the crystals Auralynx wears.
+      return `${round}<path d="M${n(x - w * 0.28)} ${n(y - h * 0.66)}L${n(x - w * 0.02)} ${n(y - h * 0.3)}L${n(x - w * 0.28)} ${n(y + h * 0.06)}L${n(x - w * 0.54)} ${n(y - h * 0.3)}Z" fill="#fff" stroke="none"/><path d="M${n(x + w * 0.38)} ${n(y + h * 0.2)}L${n(x + w * 0.5)} ${n(y + h * 0.36)}L${n(x + w * 0.38)} ${n(y + h * 0.52)}L${n(x + w * 0.26)} ${n(y + h * 0.36)}Z" fill="#fff" stroke="none"/>`;
     if (style === "owl")
       // Concentric rings: a hypnotic owl stare.
       return `${e(x, y, w, h, INK)}${e(x, y, w * 0.8, h * 0.8, ring)}${e(x, y, w * 0.6, h * 0.6, p.dark)}${e(x, y, w * 0.44, h * 0.44, ring)}${e(x, y, w * 0.27, h * 0.27, INK)}${e(x - w * 0.32, y - h * 0.34, w * 0.36, h * 0.3, "#ffffff")}<circle cx="${n(x + w * 0.34)}" cy="${n(y + h * 0.32)}" r="${n(w * 0.14)}" fill="#fff"/>`;
@@ -334,13 +344,11 @@ export function creatureLayers(
       const shape = `M${n(x - w)} ${n(y - h * 0.08)}Q${x} ${n(y - h * 0.6)} ${n(x + w)} ${n(y - h * 0.08)}A${n(w)} ${n(h)} 0 0 1 ${n(x - w)} ${n(y - h * 0.08)}Z`;
       return `<path d="${shape}" fill="${INK}"/>${e(x, y + h * 0.3, w * 0.72, h * 0.48, ring)}${e(x, y + h * 0.26, w * 0.4, h * 0.34, INK)}${e(x - w * 0.3, y - h * 0.02, w * 0.28, h * 0.2, "#ffffff")}<circle cx="${n(x + w * 0.34)}" cy="${n(y + h * 0.38)}" r="${n(w * 0.12)}" fill="#fff"/><path d="M${n(x - w * 0.96)} ${n(y - h * 0.08)}Q${x} ${n(y - h * 0.6)} ${n(x + w * 0.96)} ${n(y - h * 0.08)}" stroke="${p.dark}" stroke-width="1.8" stroke-linecap="round" opacity=".6" fill="none"/>`;
     }
-    // "round" and "bead" (bead is drawn smaller by the caller).
     return round + glints;
   };
   const eye = (x: number, ring = p.glow, w0 = 9, h0 = 11) => {
-    const scale = style === "bead" ? 0.78 : 1;
-    const w = w0 * 1.3 * scale,
-      h = h0 * 1.22 * scale,
+    const w = w0 * 1.3,
+      h = h0 * 1.22,
       y = 93;
     if (mood !== "normal" && mood !== "focus") return moodEye(x, w, h);
     const open = styledEye(x, y, w, h, ring);
@@ -384,24 +392,13 @@ export function creatureLayers(
             "#ff6f6f",
             2,
           )
-        : id === "auralynx"
-          ? // Whiskers over a faint blush.
-            `${soft(`${e(68, 108, 7, 4, blushColor)}${e(132, 108, 7, 4, blushColor)}`)}${stroke("M58 104l10 2M58 110l10-1M142 104l-10 2M142 110l-10-1", p.dark, 1.4).replace('stroke-width="1.4"', 'stroke-width="1.4" opacity=".55"')}`
-          : id === "tidefin"
-            ? // Freckles.
-              [66, 71, 68, 129, 134, 132]
-                .map(
-                  (x, i) =>
-                    `<circle cx="${x}" cy="${i % 3 === 2 ? 110 : 106}" r="1.6" fill="${p.light}" stroke="none"/>`,
-                )
-                .join("")
-            : id === "lumoth"
-              ? soft(
-                  `${e(66, 109, 10, 5.5, blushColor)}${e(134, 109, 10, 5.5, blushColor)}`,
-                )
-              : soft(
-                  `${e(68, 108, 8, 4.5, blushColor)}${e(132, 108, 8, 4.5, blushColor)}`,
-                );
+        : id === "lumoth"
+          ? soft(
+              `${e(66, 109, 10, 5.5, blushColor)}${e(134, 109, 10, 5.5, blushColor)}`,
+            )
+          : soft(
+              `${e(68, 108, 8, 4.5, blushColor)}${e(132, 108, 8, 4.5, blushColor)}`,
+            );
   const layers: Record<CreaturePart, string> = {
     tail: "",
     wings: "",
@@ -461,10 +458,10 @@ export function creatureLayers(
       `${path(`M${x} ${y - 4}Q${x + dx * 0.5} ${y - 18} ${x + dx} ${y - 8}Q${x + dx * 0.55} ${y + 10} ${x} ${y + 6}Z`, p.glow)}${line(`M${x + dx * 0.15} ${y}Q${x + dx * 0.55} ${y - 4} ${x + dx * 0.85} ${y - 6}`, "#ffd2e4", 1.6, 0.9)}`;
     layers.ears = `${frond(64, 70, -40)}${frond(61, 84, -46)}${frond(65, 98, -36)}${frond(136, 70, 40)}${frond(139, 84, 46)}${frond(135, 98, 36)}`;
     // A wide axolotl smile.
-    layers.head = `${e(100, 90, 42, 31, face)}${highlight(70, 78, 22)}${path("M85 106Q100 119 115 106", "none", ` stroke="${p.dark}" stroke-width="2.2" stroke-linecap="round"`)}`;
+    layers.head = `${e(100, 90, 42, 31, face)}${highlight(70, 78, 22)}${path("M88 107Q100 117 112 107", "none", ` stroke="${p.dark}" stroke-width="2.2" stroke-linecap="round"`)}`;
     layers.flame = `${path("M60 76Q100 58 140 76L138 85Q100 70 62 85Z", p.accent)}${path("M138 80Q150 84 156 96Q146 94 138 86Z", p.accent)}${path("M138 82Q154 82 162 88Q150 90 138 86Z", p.accent)}${path("M94 66Q100 58 106 66Q104 74 100 75Q96 74 94 66Z", "#ffe7c2")}${line("M97 64L100 70L103 64", p.mid, 1.4, 0.8)}`;
-    // Small, wide-set bead eyes.
-    layers.eyes = eye(72, "#7cf6ff", 8, 9) + eye(128, "#7cf6ff", 8, 9);
+    // Round eyes with a water-drop catchlight.
+    layers.eyes = eye(78, "#7cf6ff", 8.6, 9.8) + eye(122, "#7cf6ff", 8.6, 9.8);
     layers.body = `${e(100, 138, 26, 28)}${e(100, 142, 15, 19, pearl)}`;
     layers.scarf = `${path("M74 144Q100 152 126 144L127 152Q100 160 73 152Z", p.accent)}${path("M120 150Q138 156 146 170Q132 168 122 157Z", p.accent)}<circle cx="100" cy="153" r="4" fill="#ffe7c2"/>`;
     layers.tail = `${tailPath("M122 150Q164 154 186 126Q168 130 158 126Q170 116 180 94Q150 108 140 128Q132 138 120 140Z", body)}${tailPath("M180 94Q168 114 158 126Q170 130 186 126", "none", ` stroke="${p.light}" stroke-width="2"`)}<circle cx="${tailX(146)}" cy="134" r="3" fill="${p.light}" stroke="none"/><circle cx="${tailX(160)}" cy="140" r="2.2" fill="${p.light}" stroke="none"/>`;
