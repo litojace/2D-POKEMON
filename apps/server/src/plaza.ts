@@ -283,7 +283,12 @@ export class PlazaWorld {
         events.push({
           type: "news",
           plaza: v.plaza,
-          news: { kind: "lap", name: v.profile.name, ms: lap.lapMs },
+          news: {
+            kind: "lap",
+            id: v.profile.id,
+            name: v.profile.name,
+            ms: lap.lapMs,
+          },
         });
       }
       const runway = onRunway(v.body.x, v.body.y);
@@ -292,7 +297,7 @@ export class PlazaWorld {
         events.push({
           type: "news",
           plaza: v.plaza,
-          news: { kind: "runway", name: v.profile.name },
+          news: { kind: "runway", id: v.profile.id, name: v.profile.name },
         });
       }
       v.onRunway = runway;
@@ -333,7 +338,12 @@ export class PlazaWorld {
         events.push({
           type: "news",
           plaza: c.id,
-          news: { kind: "goal", name: scorer.profile.name, side: kick.goal },
+          news: {
+            kind: "goal",
+            id: scorer.profile.id,
+            name: scorer.profile.name,
+            side: kick.goal,
+          },
         });
     }
     this.stepOrbs(c, players, now, events);

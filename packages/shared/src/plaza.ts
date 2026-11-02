@@ -948,12 +948,9 @@ export interface PlazaProgress {
 }
 /** Things everyone in a Plaza copy hears about (the feed). */
 export type PlazaNews =
-  | { kind: "goal"; name: string; side: 0 | 1 }
-  | { kind: "lap"; name: string; ms: number; best?: boolean }
-  | { kind: "runway"; name: string }
-  | { kind: "quest"; text: string; leaves: number }
-  | { kind: "orb"; leaves: number }
-  | { kind: "boba"; seconds: number };
+  | { kind: "goal"; id: number; name: string; side: 0 | 1 }
+  | { kind: "lap"; id: number; name: string; ms: number }
+  | { kind: "runway"; id: number; name: string };
 /** What the game server reports to the database (arena_plaza_record). */
 export interface PlazaRecord {
   player: string;

@@ -1093,3 +1093,9 @@ body:not(.hub-active) #account-leaves {
 .party-invite-list small {
   color: #43d971;
 }
+
+/* Behind a dialog or a full-screen drawer the Lobby holds still. */
+.lobby-layer.is-covered,
+.lobby-layer.is-covered * {
+  animation-play-state: paused !important;
+}

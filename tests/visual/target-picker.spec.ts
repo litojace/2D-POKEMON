@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openTown, openTownMenu, pushUntilBattle, snap } from "./helpers";
+import { openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
 
 // Phones aim at the nearest enemy; with two or more enemies the player can
 // lock on to another one (a target row, or a tap on the fighter).
@@ -11,15 +11,14 @@ async function ffa(page: Page) {
     expect(body).toContain(marker);
     await route.fulfill({ response, body: body.replace(marker, "window.__targetGame=gameInstance;" + marker) });
   });
-  const errors = await openTown(page);
+  const errors = await openHub(page);
   await page.evaluate(() => {
     const w = window as any;
     w.__events = [];
     w.__emit = (event: string, data: unknown) => w.__events.push({ event, data });
     w.__room("pvp", { mode: "ffa", phase: "playing" });
   });
-  await openTownMenu(page);
-  await page.click(".town-play");
+  await openPlayPanel(page);
   await page.click("#play-create");
   await pushUntilBattle(page);
   // Spread the fighters out (all on a phone's screen): Kai nearest to you,

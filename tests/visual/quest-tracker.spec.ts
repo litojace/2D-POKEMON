@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { box, openTown, snap } from "./helpers";
+import { box, openHub, snap } from "./helpers";
 
 // The missions button under the player card in town: a gold "!" while some
 // are left, a tap expands the whole list, its title opens the Missions screen.
@@ -72,7 +72,7 @@ window.fetch=(input,init)=>new URL(String(input),location.href).pathname==='/api
  : missionFetch(input,init);`,
       });
     });
-    await openTown(page);
+    await openHub(page);
     const tracker = page.locator("#quest-tracker");
     const toggle = tracker.locator(".quest-toggle");
     await expect(toggle).toBeVisible();
@@ -128,7 +128,7 @@ test("missions follow a resized player card and viewport", async ({ page }) => {
     (missions) => ((window as any).__missions = missions),
     MISSIONS,
   );
-  await openTown(page);
+  await openHub(page);
   const gap = () =>
     page.evaluate(() => {
       const card = document
@@ -165,7 +165,7 @@ test("an open missions list is not rebuilt by unchanged re-renders", async ({
     (missions) => ((window as any).__missions = missions),
     MISSIONS,
   );
-  await openTown(page);
+  await openHub(page);
   await page.locator("#quest-tracker .quest-toggle").click();
   await expect(page.locator("#quest-tracker .quest-panel")).toBeVisible();
   const tracker = new URL(

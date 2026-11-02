@@ -323,6 +323,22 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     }
   };
   layer.addEventListener("keydown", onKey);
+  // A dialog or a full-screen drawer covers the Lobby: its animations pause
+  // (the fighter's idle and aura) so the panel gets the device, and resume
+  // when it closes.
+  const syncCovered = () =>
+    layer.classList.toggle(
+      "is-covered",
+      !!document.querySelector("dialog[open], .home-drawer:not([hidden])"),
+    );
+  const coverWatch = new MutationObserver(syncCovered);
+  coverWatch.observe(document.body, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    attributeFilter: ["open", "hidden"],
+  });
+  syncCovered();
   return {
     update(view) {
       if (view.character !== character) {
@@ -372,6 +388,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     },
     close() {
       clearTimeout(bubbleTimer);
+      coverWatch.disconnect();
       layer.removeEventListener("keydown", onKey);
       layer.remove();
       if (!document.querySelector(".farm-layer"))

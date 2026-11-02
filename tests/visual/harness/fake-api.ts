@@ -56,7 +56,9 @@ window.fetch = async (input, init) => {
     const body =
       url.pathname === "/api/economy" && missions
         ? { ...(API[url.pathname] as object), missions }
-        : API[url.pathname];
+        : url.pathname === "/api/plaza"
+          ? (window as unknown as { __plazaProgress?: unknown }).__plazaProgress
+          : API[url.pathname];
     return new Response(JSON.stringify(body ?? { error: "Not in the offline harness." }), {
       status: body === undefined ? 404 : 200,
       headers: { "Content-Type": "application/json" },

@@ -1,12 +1,12 @@
 import { RAID_BOSSES, raidAttacksOf } from "../../packages/shared/src/raid";
 import { expect, test } from "@playwright/test";
 import {
-  openTown,
-  openTownMenu,
+  openHub,
   box,
   inside,
   pushUntilBattle,
   snap,
+  hubMenu,
 } from "./helpers";
 for (const viewport of [
   { width: 1440, height: 900 },
@@ -23,7 +23,7 @@ for (const viewport of [
     });
     try {
       const page = await context.newPage();
-      const errors = await openTown(page);
+      const errors = await openHub(page);
       await page.evaluate(() => {
         const w = window as any;
         w.__events = [];
@@ -31,8 +31,7 @@ for (const viewport of [
           w.__events.push({ event, data });
         w.__room("raid", { boss: "grumblecrag" });
       });
-      await openTownMenu(page);
-      await page.click('[data-action="raids"]');
+      await hubMenu(page, "raids");
       await expect(page.locator("#raid-join-code")).toHaveCount(0);
       if (await page.locator(".raid-boss-card").count())
         await page.click('[data-raid-boss="grumblecrag"]');

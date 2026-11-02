@@ -75,7 +75,7 @@ export function friendStatus(f: Friend, now = Date.now()) {
     case "practice":
       return "Practising";
     case "town":
-      return "In town";
+      return "In the Plaza";
     default:
       return "Online";
   }

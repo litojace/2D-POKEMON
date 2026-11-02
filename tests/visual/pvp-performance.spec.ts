@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openTown, openTownMenu, pushUntilBattle } from "./helpers";
+import { openHub, pushUntilBattle, openPlayPanel } from "./helpers";
 
 test("profiles a four-player PvP snapshot/render stream", async ({
   browser,
@@ -28,12 +28,11 @@ test("profiles a four-player PvP snapshot/render stream", async ({
         ),
       });
     });
-    const errors = await openTown(page);
+    const errors = await openHub(page);
     await page.evaluate(() =>
       (window as any).__room("pvp", { mode: "ffa", phase: "playing" }),
     );
-    await openTownMenu(page);
-    await page.click(".town-play");
+    await openPlayPanel(page);
     await page.click("#play-create");
     await pushUntilBattle(page);
     await page.evaluate(async () => {

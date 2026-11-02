@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openTown, openTownMenu, pushUntilBattle, snap } from "./helpers";
+import { openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
 
 for(const size of [{width:844,height:390},{width:844,height:280}]) {
   test(`mobile camera reveals themed foreground at the lower court edge ${size.height}`,async({browser},info)=>{
@@ -13,9 +13,9 @@ for(const size of [{width:844,height:390},{width:844,height:280}]) {
           "window.__edgeGame=gameInstance;gameInstance.events.once(Phaser.Core.Events.POST_RENDER, syncBattleLoop);",
         )});
       });
-      const errors=await openTown(page);
+      const errors=await openHub(page);
       await page.evaluate(()=> (window as any).__room("pvp",{mode:"duel",phase:"playing",arena:"classic",pos:[800,882,1300,300]}));
-      await openTownMenu(page);await page.click(".town-play");await page.click("#play-create");
+      await openPlayPanel(page);await page.click("#play-create");
       await pushUntilBattle(page);
       for(const arena of ["classic","tide-pools","ember-forge","shifting-ruins"]){
         await page.evaluate((arena)=>{

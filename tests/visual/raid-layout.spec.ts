@@ -1,14 +1,7 @@
 import { raidAttacksOf, type RaidBossId } from "../../packages/shared/src/raid";
 import { expect, test, type Page } from "@playwright/test";
 
-import {
-  box,
-  inside,
-  openTown,
-  openTownMenu,
-  pushUntilBattle,
-  snap,
-} from "./helpers";
+import { box, inside, openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
 
 /** Peril · NAME · Phase in one centred row, the bar below, the callout under it. */
 async function expectBossFrame(page: Page, boss: string) {
@@ -91,12 +84,11 @@ for (const size of [
           });
         },
       );
-      const errors = await openTown(page);
+      const errors = await openHub(page);
       await page.evaluate(() =>
         (window as any).__room("raid", { boss: "grumblecrag" }),
       );
-      await openTownMenu(page);
-      await page.click(".town-play");
+      await openPlayPanel(page);
       await page.click("#play-create");
       await pushUntilBattle(page);
 

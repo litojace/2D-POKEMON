@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openTown, openTownMenu, pushUntilBattle } from "./helpers";
+import { openHub, pushUntilBattle, openPlayPanel } from "./helpers";
 
 // Predicted casts: your own skill starts on the key press, not one network
 // round trip later. The offline harness never sends the server's "cast"
@@ -13,15 +13,14 @@ async function practice(page: Page) {
     expect(body).toContain(marker);
     await route.fulfill({ response, body: body.replace(marker, "window.__castGame=gameInstance;" + marker) });
   });
-  await openTown(page);
+  await openHub(page);
   await page.evaluate(() => {
     const w = window as any;
     w.__events = [];
     w.__emit = (event: string, data: unknown) => w.__events.push({ event, data });
   });
   await page.evaluate(() => (window as any).__room("practice", { arena: "classic", pos: [800, 760, 1300, 200] }));
-  await openTownMenu(page);
-  await page.click(".town-play");
+  await openPlayPanel(page);
   await page.click("#practice");
   await pushUntilBattle(page);
   await page.evaluate(() => {

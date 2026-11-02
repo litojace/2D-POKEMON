@@ -144,7 +144,7 @@ describe("the Plaza world", () => {
     expect(events).toContainEqual({
       type: "news",
       plaza: 1,
-      news: { kind: "runway", name: "Ann" },
+      news: { kind: "runway", id: 1, name: "Ann" },
     });
     // A friend's cheer emote counts too.
     place(world, "s2", 1350, 700);
@@ -198,7 +198,7 @@ describe("the Plaza world", () => {
     expect(events).toContainEqual({
       type: "news",
       plaza: 1,
-      news: { kind: "goal", name: "Ann", side: 0 },
+      news: { kind: "goal", id: 1, name: "Ann", side: 0 },
     });
     expect(world.view("s1")!.state.score).toEqual([1, 0]);
   });

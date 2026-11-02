@@ -1,5 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openTown, openTownMenu, pushUntilBattle, snap } from "./helpers";
+import {
+  openHub,
+  pushUntilBattle,
+  snap,
+  openPlayPanel,
+  hubMenu,
+} from "./helpers";
 
 async function prepareRaid(page: Page, lobby = false, drill?: string) {
   await page.evaluate(
@@ -60,7 +66,7 @@ for (const viewport of [
     });
     try {
       const page = await context.newPage();
-      const errors = await openTown(page);
+      const errors = await openHub(page);
       await page.evaluate(() => {
         const fetch = window.fetch.bind(window);
         window.fetch = (input, init) =>
@@ -79,8 +85,7 @@ for (const viewport of [
               )
             : fetch(input, init);
       });
-      await openTownMenu(page);
-      await page.click('[data-action="raids"]');
+      await hubMenu(page, "raids");
       await page.click('.raid-roster-card[data-raid-boss="prismatail"]');
       await page.click("#raid-tab-rewards");
       await prepareRaid(page, true);
@@ -140,13 +145,12 @@ for (const viewport of [
       await page.evaluate(() =>
         (window as any).__room("pvp", { mode: "duel", phase: "lobby" }),
       );
-      await openTownMenu(page);
-      await page.click(".town-play");
+      await openPlayPanel(page);
       await page.click('[data-mode="duel"]');
       await page.click("#play-create");
       await waitForLobby(page);
       await page.click("#leave");
-      await expect(page.locator("#town-menu-toggle")).toBeVisible();
+      await expect(page.locator("#lobby-play")).toBeVisible();
       await expect(page.locator("dialog[open]")).toHaveCount(0);
       expect(errors).toEqual([]);
     } finally {
