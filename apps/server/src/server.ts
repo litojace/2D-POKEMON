@@ -1,4 +1,5 @@
 import { FighterAppearance, PortraitChoice } from "./fighter-appearance.js";
+import { ServerDiagnostics } from "./diagnostics.js";
 import { PresenceHistory } from "./presence-history.js";
 import { apiCors } from "./api-cors.js";
 import { ArcadeArena } from "./arcade.js";
@@ -40,6 +41,8 @@ import {
   RULES,
   blankInput,
   packSnapshot,
+  MetaTracker,
+  type WireSnapshot,
   practiceOptionsSchema,
   FIGHTER_IDS,
   MUTATOR_IDS,
@@ -123,13 +126,26 @@ type Session = {
   socketId: string | null;
   expires: number;
 };
+/** When a socket counts as congested (see broadcast). */
+export const BACKPRESSURE = { bytes: 16 * 1024, messages: 4 };
 export function createArenaServer(
   options: {
     reconnectMs?: number;
     autoTick?: boolean;
     accounts?: AccountProvider;
+    /** Collect tick/broadcast/CPU/memory/byte measurements (see diagnostics.ts). */
+    diagnostics?: boolean;
+    /**
+     * Hold snapshots back from congested sockets (see broadcast). Needs the
+     * steady 15 Hz loop to deliver the catch-up, so it defaults to autoTick.
+     */
+    backpressure?: boolean;
   } = {},
 ) {
+  const diagnosticsEvery = Number(process.env.ARENA_DIAGNOSTICS ?? 0);
+  const diagnostics = new ServerDiagnostics(
+    options.diagnostics ?? diagnosticsEvery > 0,
+  );
   const app = express();
   const accounts = options.accounts ?? createAccountProvider();
   const fighterAppearance = new FighterAppearance(accounts);
@@ -143,6 +159,13 @@ export function createArenaServer(
       ? { origin: process.env.CLIENT_ORIGIN }
       : undefined,
   });
+  if (diagnostics.enabled)
+    io.engine.on("connection", (conn: import("engine.io").Socket) =>
+      conn.on("packetCreate", (packet: { data?: unknown }) => {
+        if (typeof packet.data === "string")
+          diagnostics.packet(Buffer.byteLength(packet.data));
+      }),
+    );
   const rooms = new Map<string, Arena>(),
     sessions = new Map<string, Session>();
   // Input packets arrive every simulation tick: avoid scanning all sessions
@@ -172,6 +195,41 @@ export function createArenaServer(
     options.reconnectMs ??
     Number(process.env.RECONNECT_MS ?? RULES.reconnectMs);
   const eventCursors = new WeakMap<Arena, number>();
+  /** Per room: which appearance revision fighters wear (snapshot-meta.ts). */
+  const metaTrackers = new WeakMap<Arena, MetaTracker>();
+  /** Congested sockets: their room and the last event they received. */
+  const laggingSockets = new Map<string, { code: string; from: number }>();
+  /**
+   * Truly congested, not merely mid-write: the WebSocket has more than a
+   * couple of snapshots waiting for the kernel, or Engine.IO has queued
+   * several messages behind an unfinished write. (Long-polling keeps its
+   * own buffering.)
+   */
+  const backpressure = options.backpressure ?? options.autoTick !== false;
+  const congested = (socket: import("socket.io").Socket) => {
+    if (!backpressure) return false;
+    const conn = socket.conn as unknown as {
+      transport?: { name?: string; socket?: { bufferedAmount?: number } };
+      writeBuffer?: unknown[];
+    };
+    if (conn.transport?.name !== "websocket") return false;
+    return (
+      (conn.transport.socket?.bufferedAmount ?? 0) > BACKPRESSURE.bytes ||
+      (conn.writeBuffer?.length ?? 0) >= BACKPRESSURE.messages
+    );
+  };
+  /** Rooms where a socket just joined/resumed/started watching. */
+  const metaWanted = new WeakSet<Arena>();
+  const metaTracker = (arena: Arena) => {
+    let tracker = metaTrackers.get(arena);
+    if (!tracker) metaTrackers.set(arena, (tracker = new MetaTracker()));
+    return tracker;
+  };
+  /** Join the room's broadcast channel and send it everyone's appearance. */
+  const joinChannel = (socket: import("socket.io").Socket, arena: Arena) => {
+    socket.join(arena.code);
+    metaWanted.add(arena);
+  };
   /** Which account plays each fighter (kept after a player leaves). */
   const fighterAccounts = new WeakMap<Arena, Map<string, string>>();
   const ledger = new MatchLedger();
@@ -529,6 +587,7 @@ export function createArenaServer(
     a.start();
   }
   function broadcast(arena: Arena) {
+    const started = diagnostics.now();
     // Wins and real attempts (not practice, not instant quits) are saved:
     // losses still count towards titles and tell us which attacks are unfair.
     if (
@@ -722,27 +781,71 @@ export function createArenaServer(
     }
     const snapshot = arena.snapshot(remaining);
     snapshot.watchers = watchersOf(arena.code);
-    snapshot.events = snapshot.events.filter(
-      (e) => e.id > (eventCursors.get(arena) ?? 0),
-    );
+    const cursor = eventCursors.get(arena) ?? 0;
+    snapshot.events = snapshot.events.filter((e) => e.id > cursor);
     if (snapshot.events.length)
       eventCursors.set(arena, snapshot.events.at(-1)!.id);
-    const wire = packSnapshot(snapshot);
-    if (arena instanceof RaidArena && arena.raid.boss === "somnara") {
-      const recipients = [...sessions.values()].filter(
-        (s) => s.code === arena.code && s.socketId,
-      );
-      // Serialize shared world data once. The private sequence is added only
-      // to the authenticated seat's socket, never a room/spectator broadcast.
-      io.to(arena.code)
-        .except(recipients.map((s) => s.socketId!))
-        .emit("state", wire);
-      for (const session of recipients)
-        io.to(session.socketId!).emit("state", {
-          ...wire,
-          raidDream: arena.dreamFor(session.id),
-        });
-    } else io.to(arena.code).emit("state", wire);
+    // Appearance only travels when it changes or someone (re)joins.
+    const tracker = metaTracker(arena);
+    const changed = tracker.update(snapshot.players);
+    const wanted = metaWanted.delete(arena);
+    const wire = packSnapshot(snapshot, {
+      compact: true,
+      metaRev: tracker.rev,
+      meta: changed || wanted ? tracker.meta(snapshot.players) : undefined,
+    });
+    // Sampled: measuring every payload would cost as much as sending it.
+    if (diagnostics.enabled && ticks % 20 === 0)
+      diagnostics.snapshot(Buffer.byteLength(JSON.stringify(wire)));
+    // Backpressure: a socket still writing an earlier message is congested.
+    // Queuing more 15 Hz snapshots behind it only makes it later, so it is
+    // skipped; its first snapshot once it drains carries every event it
+    // missed (from the room's recent-event history) and the appearance.
+    const held = new Set<string>();
+    const personal = new Map<string, WireSnapshot>();
+    for (const id of io.sockets.adapter.rooms.get(arena.code) ?? []) {
+      const socket = io.sockets.sockets.get(id);
+      if (!socket) continue;
+      const behind = laggingSockets.get(id);
+      if (congested(socket)) {
+        held.add(id);
+        if (!behind || behind.code !== arena.code)
+          laggingSockets.set(id, { code: arena.code, from: cursor });
+        diagnostics.skip();
+        continue;
+      }
+      if (!behind) continue;
+      laggingSockets.delete(id);
+      if (behind.code !== arena.code) continue;
+      held.add(id);
+      personal.set(id, {
+        ...wire,
+        events: arena.events.filter((e) => e.id > behind.from),
+        meta: tracker.meta(snapshot.players),
+      });
+    }
+    // Serialize shared world data once. Somnara's private sequence is added
+    // only to the authenticated seat's socket, never a room/spectator broadcast.
+    const seats =
+      arena instanceof RaidArena && arena.raid.boss === "somnara"
+        ? [...sessions.values()].filter(
+            (s) => s.code === arena.code && s.socketId,
+          )
+        : [];
+    for (const session of seats) held.add(session.socketId!);
+    if (held.size) io.to(arena.code).except([...held]).emit("state", wire);
+    else io.to(arena.code).emit("state", wire);
+    for (const session of seats) {
+      const id = session.socketId!;
+      if (laggingSockets.has(id) && !personal.has(id)) continue;
+      io.to(id).emit("state", {
+        ...(personal.get(id) ?? wire),
+        raidDream: (arena as RaidArena).dreamFor(session.id),
+      });
+      personal.delete(id);
+    }
+    for (const [id, catchUp] of personal) io.to(id).emit("state", catchUp);
+    diagnostics.broadcast(started);
   }
   function resume(arena: Arena) {
     if (
@@ -761,6 +864,7 @@ export function createArenaServer(
     p.connected = false;
     p.ready = false;
     p.lastInput = blankInput();
+    arena.clearInputQueue(p.id);
     if (session.socketId) socketSessions.delete(session.socketId);
     session.socketId = null;
     session.expires = Date.now() + (permanent ? 0 : grace);
@@ -908,7 +1012,7 @@ export function createArenaServer(
             arena.players.includes(attached),
           () => broadcast(arena),
         );
-      socket.join(arena.code);
+      joinChannel(socket, arena);
       reply(cb, { ok: true, id, token, code: arena.code });
       if (publish) broadcast(arena);
     };
@@ -953,7 +1057,7 @@ export function createArenaServer(
         return fail(cb, "This room already has the most watchers it allows.");
       stopWatching();
       watchers.set(socket.id, { code, name: account()!.displayName });
-      socket.join(code);
+      joinChannel(socket, arena);
       reply(cb, { ok: true, code });
       broadcast(arena);
     });
@@ -1158,8 +1262,9 @@ export function createArenaServer(
       s.expires = Infinity;
       p.connected = true;
       p.lastInput = blankInput();
+      arena.clearInputQueue(p.id);
       if (arena instanceof RaidArena) arena.release(p.id);
-      socket.join(s.code);
+      joinChannel(socket, arena);
       resume(arena);
       reply(cb, { ok: true, id: s.id, code: s.code, token: s.token });
       broadcast(arena);
@@ -1569,6 +1674,17 @@ export function createArenaServer(
         broadcast(a);
       }),
     );
+    // A client whose appearance cache missed a revision asks for it again.
+    socket.on("snapshot-meta", (_data: unknown, cb: unknown) => {
+      if (typeof cb !== "function") return;
+      if (!allowed(30)) return fail(cb, "Too many requests.");
+      const code = getSession(socket.id)?.code ?? watchers.get(socket.id)?.code;
+      const arena = code ? rooms.get(code) : undefined;
+      if (!arena || !socket.rooms.has(arena.code))
+        return fail(cb, "Join a room first.");
+      const tracker = metaTracker(arena);
+      cb({ ok: true, code: arena.code, meta: tracker.meta(arena.players) });
+    });
     // Round-trip check for the in-battle ping badge: answer at once.
     socket.on("rtt", (_data: unknown, cb: unknown) => {
       if (typeof cb === "function") cb();
@@ -1577,7 +1693,7 @@ export function createArenaServer(
       withRoom(undefined, (a, id) => {
         const result = inputSchema.safeParse(data);
         if (result.success)
-          a.submit(
+          a.enqueue(
             a.players.find((p) => p.id === id)!,
             result.data,
           );
@@ -1774,6 +1890,7 @@ export function createArenaServer(
       if (who && !who.guest && !stillOnline)
         void presenceHistory.touch(who.id, socket.data.accessToken, true);
       town.leave(socket.id);
+      laggingSockets.delete(socket.id);
       stopWatching();
       const s = getSession(socket.id);
       if (s) detach(s);
@@ -1781,11 +1898,13 @@ export function createArenaServer(
   });
   let ticks = 0;
   const step = () => {
+    const started = diagnostics.now();
     ticks++;
     for (const s of sessions.values())
       if (!s.socketId && s.expires <= Date.now()) expire(s);
     for (let a of [...rooms.values()]) {
       const before = a.phase;
+      a.drainInputs();
       a.tick();
       if (before !== a.phase && a.phase === "finished")
         // Bots are always up for a rematch.
@@ -1796,6 +1915,7 @@ export function createArenaServer(
       )
         broadcast(a);
     }
+    diagnostics.tick(started);
   };
   const timer =
     options.autoTick === false
@@ -1825,6 +1945,23 @@ export function createArenaServer(
       : setInterval(() => {
           if (town.size) townStep();
         }, 1000 / TOWN.tick);
+  const diagnosticsTimer =
+    diagnosticsEvery > 0 && options.autoTick !== false
+      ? setInterval(
+          () =>
+            console.log(
+              "arena-diagnostics",
+              JSON.stringify(
+                diagnostics.report({
+                  rooms: rooms.size,
+                  sockets: io.engine.clientsCount,
+                  town: town.size,
+                }),
+              ),
+            ),
+          diagnosticsEvery * 1000,
+        )
+      : undefined;
   const accountTimer =
     options.autoTick === false
       ? undefined
@@ -1843,10 +1980,13 @@ export function createArenaServer(
     broadcast,
     town,
     townStep,
+    diagnostics,
     close: async () => {
       if (timer) clearInterval(timer);
       if (townTimer) clearInterval(townTimer);
       if (accountTimer) clearInterval(accountTimer);
+      if (diagnosticsTimer) clearInterval(diagnosticsTimer);
+      diagnostics.close();
       await new Promise<void>((resolve) => io.close(() => resolve()));
       await presenceHistory.flush();
     },

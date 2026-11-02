@@ -3,7 +3,13 @@ import { io, type Socket } from "socket.io-client";
 import { createArenaServer } from "../../apps/server/src/server";
 import type { RaidArena } from "../../apps/server/src/raid";
 import { fakeAccounts } from "../helpers/accounts";
-import type { Reply, Snapshot } from "../../packages/shared/src/index";
+import {
+  MetaCache,
+  unpackSnapshot,
+  type Reply,
+  type Snapshot,
+  type WireSnapshot,
+} from "../../packages/shared/src/index";
 let server: ReturnType<typeof createArenaServer> | undefined;
 const clients: Socket[] = [];
 afterEach(async () => {
@@ -77,8 +83,10 @@ it("keeps saved wardrobe appearance identical in snapshots, parties and live fri
     socket.once("connect_error", j);
   });
   let snapshot: Snapshot | undefined;
-  socket.on("state", (s) => {
-    snapshot = s;
+  // Decode as the client does: appearance arrives in versioned meta blocks.
+  const meta = new MetaCache();
+  socket.on("state", (s: WireSnapshot) => {
+    snapshot = unpackSnapshot(s, meta);
   });
   const room = await emit(socket, "create", { mode: "raid", name: "Owner" });
   expect(room.ok).toBe(true);

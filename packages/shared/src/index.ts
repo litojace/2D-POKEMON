@@ -1,6 +1,13 @@
 import type { RaidBossId, RaidLoadout, RaidState } from "./raid.js";
 import type { ChampionLook } from "./shop.js";
 import { z } from "zod";
+import {
+  META_KEYS,
+  type MetaCache,
+  type MetaKey,
+  type SnapshotMeta,
+} from "./snapshot-meta.js";
+export * from "./snapshot-meta.js";
 export const RULES = {
   width: 1600,
   height: 900,
@@ -1387,16 +1394,79 @@ export interface Snapshot {
   arena?: ArenaId;
   hazardClock?: number;
 }
-export type WireSnapshot = Omit<Snapshot, "projectiles" | "zones"> & {
+export type WireSnapshot = Omit<
+  Snapshot,
+  "projectiles" | "zones" | "players"
+> & {
+  /** Compact snapshots omit META_KEYS and send lastInput as just the aim. */
+  players: (Omit<Fighter, MetaKey | "lastInput"> &
+    Partial<Pick<Fighter, MetaKey>> & {
+      lastInput: Pick<Input, "aimX" | "aimY"> & Partial<Input>;
+    })[];
   projectiles: (Omit<Projectile, "ability"> & { abilityId: string })[];
   zones: (Omit<Zone, "ability"> & { abilityId: string })[];
+  /** Appearance revision this snapshot's fighters wear (compact snapshots). */
+  metaRev?: number;
+  /** Appearance block, sent when it changes or a socket (re)joins. */
+  meta?: SnapshotMeta;
 };
+const META_KEY_SET: ReadonlySet<string> = new Set(META_KEYS);
+/** Display-only positions: 0.01 px is far below anything drawn. */
+const fine = (n: number) => Math.round(n * 100) / 100;
+/**
+ * Fighters keep every value the client's prediction replays (position,
+ * velocity, dash, times) exact: rounding a position can flip how a step
+ * slides around a pillar corner. Only display values are rounded.
+ */
+function compactFighter(p: Fighter) {
+  const out: Record<string, unknown> = {};
+  for (const key in p)
+    if (!META_KEY_SET.has(key)) out[key] = p[key as keyof Fighter];
+  // Prediction re-aims every step; facing is drawn, 0.0001 rad is invisible.
+  out.angle = Math.round(p.angle * 1e4) / 1e4;
+  // Never show an ultimate as ready before the server's meter is full.
+  if (p.ult !== undefined) out.ult = Math.floor(p.ult * 100) / 100;
+  // Clients only draw other fighters' aim (wind-up telegraphs).
+  out.lastInput = { aimX: fine(p.lastInput.aimX), aimY: fine(p.lastInput.aimY) };
+  return out as WireSnapshot["players"][number];
+}
 const abilities = Object.fromEntries(
   Object.values(CHARACTERS)
     .flatMap((c) => [c.basic, ...c.skills])
     .map((a) => [a.id, a]),
 );
-export function packSnapshot(s: Snapshot): WireSnapshot {
+/**
+ * Snapshot for the wire. Without options every fighter is sent in full (as
+ * older clients and tests expect). With `compact`, appearance moves to the
+ * optional `meta` block (see snapshot-meta.ts) and positions are rounded.
+ */
+export function packSnapshot(
+  s: Snapshot,
+  options?: { compact: true; metaRev: number; meta?: SnapshotMeta },
+): WireSnapshot {
+  if (options?.compact)
+    return {
+      ...s,
+      players: s.players.map((p) => ({
+        ...compactFighter(p),
+        character: normalizeCharacterId(p.character) ?? "voltkit",
+      })),
+      projectiles: s.projectiles.map(({ ability, ...pr }) => ({
+        ...pr,
+        x: fine(pr.x),
+        y: fine(pr.y),
+        vx: fine(pr.vx),
+        vy: fine(pr.vy),
+        remaining: fine(pr.remaining),
+        abilityId: ability.id,
+      })),
+      zones: s.zones.map(({ ability, ...zone }) => ({
+        ...zone,
+        abilityId: ability.id,
+      })),
+      metaRev: options.metaRev,
+      ...(options.meta ? { meta: options.meta } : {}),
+    };
   return {
     ...s,
     players: s.players.map((p) => ({
@@ -1422,13 +1492,28 @@ function ownedAbility(s: WireSnapshot, owner: string, id: string): Ability {
       : undefined) ?? abilities[id]
   );
 }
-export function unpackSnapshot(s: WireSnapshot): Snapshot {
+/**
+ * Back to a full Snapshot. Compact fighters get their appearance from
+ * `cache` (updated here from any `meta` block); full ones are used as sent.
+ */
+export function unpackSnapshot(s: WireSnapshot, cache?: MetaCache): Snapshot {
+  if (s.meta && cache) cache.apply(s.code, s.meta);
+  const { meta: _meta, metaRev: _rev, ...rest } = s;
   return {
-    ...s,
-    players: s.players.map((p) => ({
-      ...p,
-      character: normalizeCharacterId(p.character) ?? "voltkit",
-    })),
+    ...rest,
+    players: s.players.map((p) => {
+      const known =
+        s.metaRev !== undefined
+          ? (cache?.get(s.code, p.id) ?? s.meta?.players[p.id])
+          : undefined;
+      return {
+        ...(known ?? {}),
+        ...p,
+        name: p.name ?? known?.name ?? "",
+        lastInput: { ...blankInput(), ...p.lastInput },
+        character: normalizeCharacterId(p.character) ?? "voltkit",
+      } as Fighter;
+    }),
     // Owners' rites can change an ability (e.g. a wider blast): use their kit.
     projectiles: s.projectiles.map(({ abilityId, ...pr }) => ({
       ...pr,

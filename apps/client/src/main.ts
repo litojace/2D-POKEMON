@@ -6,9 +6,11 @@ import {
   type GraphicsSetting,
 } from "./graphics-quality";
 import { raidCameraView } from "./raid-camera";
+import { BattleQualityGovernor, resetBattleQuality } from "./battle-quality";
 import { addCanvasTexture } from "./canvas-texture";
 import { setHudText, setHudAttribute, setHudStyle } from "./hud-dom";
 import { battleCurves } from "./battle-curves";
+import { generateGraphicsTexture } from "./graphics-bake";
 import { RoomInvites } from "./room-invites";
 import { PvpSpectator } from "./pvp-spectator";
 import { predictFighter } from "./predict-fighter";
@@ -142,6 +144,8 @@ import {
   skillReady,
   normalize,
   unpackSnapshot,
+  MetaCache,
+  type SnapshotMeta,
   type WireSnapshot,
   type CharacterId,
   type Fighter,
@@ -250,6 +254,33 @@ const abilityColor = new Map(
   ),
 );
 const remoteFrames = new InterpolationBuffer();
+/** Adapts optional battle decoration to the device (Settings → Graphics). */
+const battleQuality = new BattleQualityGovernor();
+let battleStill: boolean | undefined;
+/** Fighters' names and equipped looks, sent apart from combat snapshots. */
+const snapshotMeta = new MetaCache();
+let snapshotMetaAsked = "";
+/** A snapshot named an appearance revision we never received: ask once. */
+function recoverSnapshotMeta(code: string, rev: number) {
+  const key = `${code}:${rev}`;
+  if (snapshotMetaAsked === key || !connected) return;
+  snapshotMetaAsked = key;
+  socket
+    .timeout(4000)
+    .emit(
+      "snapshot-meta",
+      {},
+      (
+        error: Error | null,
+        reply: Reply & { code?: string; meta?: SnapshotMeta },
+      ) => {
+        if (!error && reply?.ok && reply.code && reply.meta)
+          snapshotMeta.apply(reply.code, reply.meta);
+        // Let a later snapshot ask again if this one failed.
+        if (error || !reply?.ok) snapshotMetaAsked = "";
+      },
+    );
+}
 const lobbySelection = new LobbySelection();
 const socket = io(import.meta.env.VITE_SERVER_URL || undefined, {
   autoConnect: false,
@@ -2661,7 +2692,12 @@ socket.on("state", (snapshot: WireSnapshot) => {
     lockedRoomPick = savingRoomPick = "";
     lockAttempt++;
   }
-  state = unpackSnapshot(snapshot);
+  state = unpackSnapshot(snapshot, snapshotMeta);
+  if (
+    snapshot.metaRev !== undefined &&
+    !snapshotMeta.current(snapshot.code, snapshot.metaRev)
+  )
+    recoverSnapshotMeta(snapshot.code, snapshot.metaRev);
   scene?.observeSnapshot(state, previous);
   pwa.sync();
   remoteFrames.add(state, performance.now());
@@ -2859,10 +2895,10 @@ function graphicsNote(setting: GraphicsSetting) {
   if (setting === "high")
     return "The living town: animals, swaying trees, flickering torches and moving water.";
   if (setting === "low")
-    return "A still town at 30 fps for older phones: no animals, still trees, lamps and water. Battles are unchanged.";
+    return "A still town at 30 fps for older phones: no animals, still trees, lamps and water. Battles keep every attack, telegraph and skill but draw fewer decorative sparks.";
   return autoChoosesLow()
-    ? "Auto picked <b>Low</b> for this device (the town ran slowly). Pick High to try it again."
-    : "Starts on High and switches to Low if the town runs slowly on this device.";
+    ? "Auto picked <b>Low</b> for the town on this device (it ran slowly). Battles adapt on their own. Pick High to try it again."
+    : "Starts on High. The town switches to Low if it runs slowly; battles trim decorative sparks only while frames stay slow.";
 }
 function bindGraphicsCard() {
   for (const b of Array.from(
@@ -2871,6 +2907,8 @@ function bindGraphicsCard() {
     b.onclick = () => {
       const value = b.dataset.graphics as GraphicsSetting;
       setGraphicsSetting(value);
+      // Picking Auto again measures battles afresh too.
+      if (value === "auto") battleQuality.reset(resetBattleQuality);
       for (const other of Array.from(
         document.querySelectorAll<HTMLButtonElement>("[data-graphics]"),
       ))
@@ -3130,7 +3168,7 @@ class ArenaScene extends Phaser.Scene {
       } else {
         const g = this.make.graphics({}, false);
         paintArenaFloor(scaledPainter(g, bake), ARENAS[id as ArenaId]);
-        g.generateTexture(key, RULES.width * bake, RULES.height * bake);
+        generateGraphicsTexture(g, key, RULES.width * bake, RULES.height * bake);
         g.destroy();
       }
     }
@@ -3554,6 +3592,29 @@ class ArenaScene extends Phaser.Scene {
     }
     return rig;
   }
+  /**
+   * Feed live-play frame times to the quality governor (never menus, hidden
+   * tabs or rounds not being played) and apply its decoration knobs.
+   */
+  private applyBattleQuality(now: number) {
+    if (
+      state?.phase === "playing" &&
+      !document.hidden &&
+      !menuOpen &&
+      !settingsOpen &&
+      !$<HTMLDialogElement>("dialog").open
+    )
+      battleQuality.frame(now);
+    else battleQuality.pause();
+    const knobs = battleQuality.knobs();
+    const fx = fxFor(this);
+    fx.density = knobs.particles;
+    fx.trailScale = knobs.trails;
+    if (battleStill !== knobs.stillBackground) {
+      battleStill = knobs.stillBackground;
+      document.body.classList.toggle("battle-still", battleStill);
+    }
+  }
   observeSnapshot(next: Snapshot, previous?: Snapshot) {
     this.animationLive = !this.needsHydration && previous?.code === next.code;
     this.needsHydration = false;
@@ -3591,6 +3652,7 @@ class ArenaScene extends Phaser.Scene {
   }
   create() {
     scene = this;
+    battleQuality.restart();
     this.enemyBearing.className = "enemy-bearing";
     this.enemyBearing.hidden = true;
     this.enemyBearing.innerHTML =
@@ -4065,6 +4127,7 @@ class ArenaScene extends Phaser.Scene {
   }
   update(_time: number, delta: number) {
     const feelNow = performance.now();
+    this.applyBattleQuality(feelNow);
     const stopped = feelNow < this.stopUntil;
     if (!stopped) this.feelClock += delta;
     this.tweens.timeScale = stopped
@@ -4545,9 +4608,10 @@ class ArenaScene extends Phaser.Scene {
             wornArt(q.character, q.championLooks?.[q.character])?.mythic,
         )
         .sort((a, b) => Number(b.id === myId) - Number(a.id === myId))
-        .slice(0, 2)
+        .slice(0, battleQuality.knobs().mythicAmbient)
         .map((q) => q.id),
     );
+    const sampledAt = performance.now();
     for (const serverPlayer of state.players) {
       const p = serverPlayer.id === myId && local ? local : serverPlayer;
       let pos = this.positions.get(p.id);
@@ -4555,7 +4619,7 @@ class ArenaScene extends Phaser.Scene {
       const factor = 1 - Math.exp(-delta / 30);
       const interpolated =
         p.id !== myId && state.phase === "playing"
-          ? remoteFrames.sample(p.id, performance.now())
+          ? remoteFrames.sample(p.id, sampledAt)
           : undefined;
       if (stopped) {
         // Hit-stop: hold everyone in place for a few frames.

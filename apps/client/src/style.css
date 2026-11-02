@@ -2459,6 +2459,10 @@ dialog {
     animation: none;
   }
 }
+/* Battle quality Low: the stands' crowd stands still (decoration only). */
+body.battle-still .spectator {
+  animation: none;
+}
 @media (orientation: landscape) {
   .battle-active.touch-mode.compact-landscape .arena-frame {
     left: calc(var(--safe-left) + 12px);
