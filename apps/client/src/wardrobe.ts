@@ -4,6 +4,7 @@ import type {
   RaidLoadout,
   RaidProgress,
 } from "../../../packages/shared/src/raid";
+import { FRAME_MAX_STARS, rewardBoss } from "../../../packages/shared/src/raid";
 import type { ShopPreviewHandle } from "./shop-preview";
 import {
   WARDROBE_SLOTS,
@@ -127,6 +128,7 @@ export function openWardrobe(
         : `${WARDROBE_SLOTS.find(([s]) => s === slot)![1]} taken off.`;
       failed = false;
       view.preview = undefined;
+      view.frameStars = undefined;
     } catch (error) {
       message =
         error instanceof Error
@@ -147,6 +149,7 @@ export function openWardrobe(
       if (!select || saving) return;
       view.champion = select.value as CharacterId;
       view.preview = undefined;
+      view.frameStars = undefined;
       view.action = "idle";
       message = "";
       render("#wardrobe-champion", false, true);
@@ -160,10 +163,37 @@ export function openWardrobe(
         ".wardrobe button",
       );
       if (!button || saving) return;
-      const { economy, progress } = hooks.state();
+      const { economy, progress, look } = hooks.state();
       if (button.hasAttribute("data-wardrobe-slot")) {
         view.slot = button.dataset.wardrobeSlot as WardrobeView["slot"];
+        if (
+          view.slot === "frame" &&
+          wardrobeItem(view.preview ?? "")?.slot !== "frame"
+        ) {
+          const frames = wardrobeOwned(economy, progress, view.champion).filter(
+            (i) => i.slot === "frame",
+          );
+          view.preview =
+            frames.find((i) => i.id === look.frame)?.id ??
+            frames.find((i) => rewardBoss(i.id))?.id ??
+            frames[0]?.id;
+          view.frameStars = undefined;
+          view.action = "idle";
+        }
         render(`.wardrobe-filters [data-wardrobe-slot="${view.slot}"]`);
+      } else if (button.hasAttribute("data-wardrobe-frame-stars")) {
+        const item = view.preview ? wardrobeItem(view.preview) : undefined;
+        const stars = Number(button.dataset.wardrobeFrameStars);
+        if (
+          item?.slot !== "frame" ||
+          !rewardBoss(item.id) ||
+          !Number.isInteger(stars) ||
+          stars < 0 ||
+          stars > FRAME_MAX_STARS
+        )
+          return;
+        view.frameStars = stars;
+        render(`[data-wardrobe-frame-stars="${stars}"]`, true);
       } else if (button.hasAttribute("data-wardrobe-preview")) {
         const id = button.dataset.wardrobePreview!;
         const item = wardrobeOwned(economy, progress, view.champion).find(
@@ -171,6 +201,7 @@ export function openWardrobe(
         );
         if (id !== "original" && !item) return;
         view.preview = id;
+        view.frameStars = undefined;
         view.action =
           item?.slot === "entrance" || item?.slot === "victory"
             ? item.slot

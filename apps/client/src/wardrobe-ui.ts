@@ -8,6 +8,11 @@ import {
 } from "../../../packages/shared/src/shop";
 import { tierChip } from "./tier-chip";
 import {
+  cosmeticTier,
+  TIER_NAMES,
+} from "../../../packages/shared/src/cosmetic-tier";
+import { cosmeticPicture } from "./cosmetic-picture";
+import {
   FRAME_MAX_STARS,
   FRAME_STAR_CLEARS,
   RAID_BOSSES,
@@ -42,6 +47,8 @@ export interface WardrobeView {
   preview?: string;
   action: "idle" | "entrance" | "victory";
   effects?: boolean;
+  /** Local try-on only; equipment always uses saved boss clears. */
+  frameStars?: number;
 }
 export interface WardrobeItem {
   id: string;
@@ -136,13 +143,6 @@ export function wardrobePreviewParts(
   const outfit = wardrobeOutfit(view, e, loadout);
   const skinned = !!outfit.skin;
   const palette = !skinned ? (outfit.look.skin ?? "") : "";
-  const fallback = scopeIds(
-    colourPreview(
-      fighterArt(view.champion, previewViewBox(view.action), outfit.skin),
-      palette,
-    ),
-    "wardrobe-preview",
-  );
   const current = selected
     ? wardrobeWorn(selected.slot, view.champion, e, loadout) === selected.id
     : false;
@@ -155,8 +155,36 @@ export function wardrobePreviewParts(
       ? `<button type="button" class="primary btn-primary" data-wardrobe-clear="champion">${iconLabel("check", "Use original skin")}</button>`
       : '<span class="wardrobe-equipped-label">Your equipped outfit</span>';
   const frame = outfit.look.frame;
+  const earnedStars = frameStars(frame, bossClears(p));
+  const frameOnly = selected?.slot === "frame";
+  if (frameOnly) {
+    const boss = rewardBoss(selected.id);
+    const stars = boss
+      ? Math.max(
+          0,
+          Math.min(FRAME_MAX_STARS, Math.trunc(view.frameStars ?? earnedStars)),
+        )
+      : 0;
+    const tier = cosmeticTier(selected.id, stars);
+    const clears = boss ? (bossClears(p)[boss] ?? 0) : 0;
+    const levels = boss
+      ? `<div class="wardrobe-frame-levels" role="group" aria-label="Preview frame stars">${Array.from({ length: FRAME_MAX_STARS + 1 }, (_, level) => `<button type="button" data-wardrobe-frame-stars="${level}" data-locked="${level > earnedStars}" aria-pressed="${level === stars}" aria-label="Preview ${level} stars · ${TIER_NAMES[cosmeticTier(selected.id, level)]}${level === earnedStars ? " · Current level" : level > earnedStars ? " · Not yet earned" : ""}"><b>${level}★</b><small>${level ? `${level * FRAME_STAR_CLEARS} wins` : "Base"}</small></button>`).join("")}</div>`
+      : "";
+    return {
+      stage: `<section class="shop-preview wardrobe-preview" aria-label="Frame preview"><div class="shop-live-stage is-item is-frame wardrobe-frame-stage" data-preview-champion="${view.champion}" data-preview-item="${selected.id}" data-preview-action="idle" role="img" aria-label="${escape(selected.name)} · ${boss ? `${stars} stars · ` : ""}${TIER_NAMES[tier]}"><div class="shop-preview-fallback">${cosmeticPicture(selected.id, view.champion, "wardrobe-frame-level", stars)}</div></div></section>`,
+      animations: `<div class="wardrobe-preview-actions is-frame-preview"><div class="wardrobe-frame-heading"><b>${boss ? "Frame evolution" : "Portrait frame"}</b>${tierChip(selected.id, stars)}</div>${levels}${boss ? `<p class="wardrobe-frame-summary" role="status"><b>Viewing ${stars}★</b> · Your level: ${earnedStars}★<br>${stars > earnedStars ? `Unlock at ${stars * FRAME_STAR_CLEARS} wins against ${RAID_BOSSES[boss].name}.` : earnedStars === FRAME_MAX_STARS ? "Maximum level earned." : `${clears}/${(earnedStars + 1) * FRAME_STAR_CLEARS} wins toward your next star.`}</p><p class="wardrobe-frame-preview-note">Preview only · Effects evolve at 3★ and 5★. Equipping uses your earned level.</p>` : ""}</div>`,
+      footer: `<footer class="wardrobe-footer" data-selection="true"><div class="wardrobe-selection"><small>${boss && stars !== earnedStars ? `PREVIEWING ${stars}★ · YOUR FRAME IS ${earnedStars}★` : trying ? "TRYING ON · NOT SAVED" : "EQUIPPED FRAME"}</small><b>${escape(selected.name)}</b><p>${escape(selected.description)}</p></div><p class="wardrobe-status" role="status"></p><div class="wardrobe-save">${action}</div></footer>`,
+    };
+  }
+  const fallback = scopeIds(
+    colourPreview(
+      fighterArt(view.champion, previewViewBox(view.action), outfit.skin),
+      palette,
+    ),
+    "wardrobe-preview",
+  );
   const portrait = frame
-    ? `<span class="raid-cosmetic-preview wardrobe-frame" data-cosmetic="${frame}" aria-label="${escape(wardrobeItem(frame)?.name ?? "Equipped portrait frame")}">${colourPreview(fighterAvatar(view.champion, "wardrobe-frame", outfit.skin), palette)}</span>`
+    ? `<span class="raid-cosmetic-preview wardrobe-frame" data-cosmetic="${frame}" data-frame-stars="${earnedStars}" aria-label="${escape(wardrobeItem(frame)?.name ?? "Equipped portrait frame")}">${colourPreview(fighterAvatar(view.champion, "wardrobe-frame", outfit.skin), palette)}</span>`
     : "";
   return {
     stage: `<section class="shop-preview wardrobe-preview" aria-label="Complete outfit preview"><div class="shop-live-stage" data-preview-champion="${view.champion}" data-preview-item="${outfit.skin?.skin ?? ""}" data-preview-stage="${outfit.skin?.stage ?? 1}" data-preview-action="${view.action}" data-preview-look="${encodeURIComponent(JSON.stringify(outfit.look))}" role="img" aria-label="${CHARACTERS[view.champion].name} ${trying ? "try-on" : "equipped outfit"}"><div class="shop-preview-fallback${palette ? ` raid-cosmetic-preview${hasColourPalette(palette) ? " is-colour-matched" : ""}` : ""}" data-cosmetic="${palette}">${fallback}</div></div></section>`,
@@ -174,7 +202,7 @@ export function frameStarNote(id: string, p: RaidProgress | null) {
     return "";
   const clears = bossClears(p)[boss] ?? 0,
     stars = frameStars(id, bossClears(p));
-  return `<small class="wardrobe-frame-stars${stars >= FRAME_MAX_STARS ? " is-legendary" : ""}">${"★".repeat(stars)}${"☆".repeat(FRAME_MAX_STARS - stars)} ${stars >= FRAME_MAX_STARS ? "Legendary" : `${clears}/${(stars + 1) * FRAME_STAR_CLEARS} clears`}</small>`;
+  return `<small class="wardrobe-frame-stars${stars >= FRAME_MAX_STARS ? " is-legendary" : ""}">${"★".repeat(stars)}${"☆".repeat(FRAME_MAX_STARS - stars)} ${stars >= FRAME_MAX_STARS ? TIER_NAMES[cosmeticTier(id, stars)] : `${clears}/${(stars + 1) * FRAME_STAR_CLEARS} clears`}</small>`;
 }
 export function wardrobeMarkup(
   view: WardrobeView,
@@ -192,7 +220,7 @@ export function wardrobeMarkup(
   const cards = items
     .map((i) => {
       const worn = wardrobeWorn(i.slot, view.champion, e, loadout) === i.id;
-      return `<button type="button" class="wardrobe-item${view.preview === i.id ? " is-selected" : ""}" data-wardrobe-preview="${i.id}" aria-pressed="${view.preview === i.id}"><span class="wardrobe-item-art">${itemPicture(i.id, view.champion, `wardrobe-${i.id}`, e.looks[view.champion]?.skin === i.id ? e.looks[view.champion]!.stage : (e.awakening[i.id]?.stage ?? 1))}</span><span class="wardrobe-item-copy"><b>${escape(i.name)}</b>${i.slot === "champion" ? "" : tierChip(i.id, frameStars(i.id, bossClears(p)))}<small>${escape(i.source)}</small>${frameStarNote(i.id, p)}<span class="wardrobe-item-state${worn ? " is-equipped-text" : ""}">${worn ? `${menuIcon("check")}Equipped` : WARDROBE_SLOTS.find(([s]) => s === i.slot)![1]}</span></span></button>`;
+      return `<button type="button" class="wardrobe-item${view.preview === i.id ? " is-selected" : ""}" data-wardrobe-preview="${i.id}" aria-pressed="${view.preview === i.id}"><span class="wardrobe-item-art">${itemPicture(i.id, view.champion, `wardrobe-${i.id}`, e.looks[view.champion]?.skin === i.id ? e.looks[view.champion]!.stage : (e.awakening[i.id]?.stage ?? 1), frameStars(i.id, bossClears(p)))}</span><span class="wardrobe-item-copy"><b>${escape(i.name)}</b>${i.slot === "champion" ? "" : tierChip(i.id, frameStars(i.id, bossClears(p)))}<small>${escape(i.source)}</small>${frameStarNote(i.id, p)}<span class="wardrobe-item-state${worn ? " is-equipped-text" : ""}">${worn ? `${menuIcon("check")}Equipped` : WARDROBE_SLOTS.find(([s]) => s === i.slot)![1]}</span></span></button>`;
     })
     .join("");
   const wearing = WARDROBE_SLOTS.map(([slot, label]) => {
@@ -209,9 +237,7 @@ export function wardrobeMarkup(
       ([id, c]) =>
         `<option value="${id}"${id === view.champion ? " selected" : ""}>${c.name}</option>`,
     )
-    .join(
-      "",
-    )}</select></div>
+    .join("")}</select></div>
   ${parts.stage}
   ${parts.animations}
   <div class="wardrobe-wearing"><h3>Currently wearing</h3>${wearing}</div></aside>

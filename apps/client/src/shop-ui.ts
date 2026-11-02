@@ -107,10 +107,11 @@ export function itemPicture(
   champion: CharacterId,
   scope: string,
   stage = 1,
+  stars = 0,
 ) {
   const skin = CHAMPION_SKIN_BY_ID[id];
   if (skin) return skinThumbnail(id, skin.champion, stage);
-  return cosmeticPicture(id, champion, scope);
+  return cosmeticPicture(id, champion, scope, stars);
 }
 function itemName(id: string) {
   return (

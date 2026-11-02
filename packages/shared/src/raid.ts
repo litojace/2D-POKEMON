@@ -2320,7 +2320,7 @@ export function raidLookOf(
 
 /**
  * Boss frames grow with you: one star for every 10 clears of that frame's
- * boss, up to 5. At 5 stars the frame turns legendary gold.
+ * boss, up to 5. Frames become Legendary at 3 stars and Mythical at 5.
  */
 export const FRAME_STAR_CLEARS = 10;
 export const FRAME_MAX_STARS = 5;

@@ -833,6 +833,7 @@ export class AccountUI {
       raids.status === "fulfilled" ? (raids.value as RaidProgress) : null;
     if (progress) this.raidLook = raidLookOf(progress);
     if (progress) this.raidClears = bossClears(progress);
+    this.syncAvatar();
     this.wardrobePanel?.dispose();
     this.wardrobePanel = openWardrobe(
       root,

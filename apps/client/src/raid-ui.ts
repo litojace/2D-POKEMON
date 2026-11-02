@@ -1,4 +1,5 @@
 import { cosmeticPicture } from "./cosmetic-picture";
+import { bossClears, frameStars } from "../../../packages/shared/src/raid";
 import { healthTrail } from "./raid-health-trail";
 import { tierChip } from "./tier-chip";
 import { drawBossBattleEffects } from "./boss-spell-art";
@@ -191,7 +192,8 @@ export function raidCosmeticOptions(
             : slot === "victory"
               ? "Your champion's own celebration"
               : `No ${SLOT_NAMES[slot].toLowerCase()}`;
-        return `<button class="secondary raid-cosmetic-option${active ? " is-equipped" : ""}" data-raid-slot="${slot}" data-raid-item="${id ?? ""}" data-raid-cosmetic="${id ?? ""}" ${!owned || active ? "disabled" : ""}>${id ? cosmeticPicture(id, character, `cosmetic-${slot}-${id}`) : `<span class="raid-cosmetic-preview" aria-hidden="true">${slot === "skin" ? fighterAvatar(character, `cosmetic-${slot}-none`) : "—"}</span>`}<span><b>${name}</b>${id ? tierChip(id) : ""}<small>${detail}</small></span><span class="raid-cosmetic-state${active ? " is-equipped-text" : ""}">${active ? "✓ Equipped" : owned ? (id === null ? "Clear" : "Equip") : "Locked"}</span></button>`;
+        const stars = frameStars(id, bossClears(p));
+        return `<button class="secondary raid-cosmetic-option${active ? " is-equipped" : ""}" data-raid-slot="${slot}" data-raid-item="${id ?? ""}" data-raid-cosmetic="${id ?? ""}" ${!owned || active ? "disabled" : ""}>${id ? cosmeticPicture(id, character, `cosmetic-${slot}-${id}`, stars) : `<span class="raid-cosmetic-preview" aria-hidden="true">${slot === "skin" ? fighterAvatar(character, `cosmetic-${slot}-none`) : "—"}</span>`}<span><b>${name}</b>${id ? tierChip(id, stars) : ""}<small>${detail}</small></span><span class="raid-cosmetic-state${active ? " is-equipped-text" : ""}">${active ? "✓ Equipped" : owned ? (id === null ? "Clear" : "Equip") : "Locked"}</span></button>`;
       };
       return `<div class="raid-slot"><h4>${SLOT_NAMES[slot]}</h4>${[null, ...items].map(option).join("")}</div>`;
     })
