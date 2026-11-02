@@ -11631,7 +11631,7 @@ dialog :is(.profile-layout, .friends-layout, .help-layout) {
   display: block;
   width: 100% !important;
   height: 100% !important;
-  object-fit: contain;
+  object-fit: fill;
   visibility: hidden;
 }
 .shop-live-stage.is-ready canvas {
@@ -12239,8 +12239,13 @@ dialog :is(.profile-layout, .friends-layout, .help-layout) {
   border-radius: 12px;
   background:
     radial-gradient(
+      ellipse 85% 85% at 100% 0%,
+      color-mix(in srgb, var(--tone, #ffdc85) 25%, transparent),
+      transparent 75%
+    ),
+    radial-gradient(
       ellipse 60% 70% at 50% 30%,
-      color-mix(in srgb, var(--tone) 22%, transparent),
+      color-mix(in srgb, var(--tone, #ffdc85) 22%, transparent),
       transparent 70%
     ),
     linear-gradient(180deg, #172b4d, #0a1427 85%);

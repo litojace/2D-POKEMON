@@ -4,6 +4,8 @@ import { CHAMPION_SKIN_BY_ID } from "../../packages/shared/src/shop";
 
 const mock = vi.hoisted(() => ({
   scene: undefined as any,
+  resize: vi.fn(),
+  onResize: undefined as undefined | (() => void),
   render: vi.fn(),
   reset: vi.fn(),
   destroy: vi.fn(),
@@ -72,7 +74,12 @@ vi.mock("phaser", () => ({
       canvas = mock.canvas;
       isRunning = true;
       loop = mock.loop;
-      scale = { parent: undefined, refresh: vi.fn() };
+      scale = {
+        parent: undefined,
+        refresh: vi.fn(),
+        width: 400,
+        resize: mock.resize,
+      };
       constructor(config: any) {
         mock.games();
         mock.scene = new config.scene();
@@ -130,6 +137,8 @@ function panel(
       previewStage: String(stage),
       previewAction: action,
     },
+    getBoundingClientRect: vi.fn(() => ({ width: 400, height: 260 })),
+    querySelector: () => null,
     getAttribute: () => "Snowcap animated preview",
     setAttribute: vi.fn(),
     appendChild: vi.fn(),
@@ -204,6 +213,16 @@ beforeEach(() => {
       disconnect() {}
     },
   );
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      constructor(callback: () => void) {
+        mock.onResize = callback;
+      }
+      observe() {}
+      disconnect() {}
+    },
+  );
   vi.stubGlobal("requestAnimationFrame", (fn: () => void) => setTimeout(fn, 0));
   vi.stubGlobal("cancelAnimationFrame", clearTimeout);
 });
@@ -213,6 +232,20 @@ afterEach(() => {
 });
 
 describe("Shop live previews", () => {
+  it("fills a tall preview on resize without moving the fighter or reviving a disposed preview", () => {
+    const { host, dispose } = preview();
+    host.getBoundingClientRect.mockReturnValue({ width: 400, height: 600 });
+    mock.onResize!();
+    draw();
+    expect(mock.resize).toHaveBeenLastCalledWith(400, 600);
+    expect(mock.scene.cameras.main.setZoom).toHaveBeenLastCalledWith(1);
+    expect(mock.render.mock.lastCall!.slice(1, 3)).toEqual([200, 154]);
+    dispose();
+    mock.resize.mockClear();
+    host.getBoundingClientRect.mockReturnValue({ width: 400, height: 300 });
+    mock.onResize!();
+    expect(mock.resize).not.toHaveBeenCalled();
+  });
   it("stops the render loop offscreen, ignores old hosts, and wakes to dispose", () => {
     const { host, dispose } = preview();
     draw();

@@ -9,7 +9,7 @@ export const SHOP_PREVIEW = {
   x: 200,
   y: 154,
   scale: 2.1,
-  cameraY: 130,
+  cameraY: 110,
 } as const;
 
 /** The fighter select keeps its padded SVG frame (-20 -40 240 250), at two pixels per art unit. */
@@ -26,10 +26,18 @@ export function previewZoom(action: string) {
   return action === "entrance" || action === "victory" ? 0.78 : 1;
 }
 
+/** Full-height preview cameras reserve breathing room for ears and crests. */
+export function shopPreviewZoom(action: string, height: number) {
+  return previewZoom(action) * Math.min(1, height / 320);
+}
+
 /** The rig uses half-size art anchored at (100, 130) in source SVG units. */
-export function previewViewBox(action: string) {
-  const { width, height, x, y, scale, cameraY } = SHOP_PREVIEW;
-  const zoom = previewZoom(action);
+export function previewViewBox(
+  action: string,
+  height: number = SHOP_PREVIEW.height,
+) {
+  const { width, x, y, scale, cameraY } = SHOP_PREVIEW;
+  const zoom = shopPreviewZoom(action, height);
   const artScale = scale * 0.5 * zoom;
   const screenY = height / 2 + (y - cameraY) * zoom;
   return [

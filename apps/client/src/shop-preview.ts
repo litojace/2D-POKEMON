@@ -20,6 +20,8 @@ import {
   SELECTION_PREVIEW,
   SHOP_PREVIEW,
   previewZoom,
+  shopPreviewZoom,
+  previewViewBox,
   previewAuraScale,
 } from "./shop-preview-layout";
 
@@ -67,6 +69,36 @@ export function mountShopPreview(
   let rig: FighterRig | undefined;
   let game: Phaser.Game | undefined;
   let scene: PreviewScene | undefined;
+  let viewportHeight: number = framing.height;
+  const cameraZoom = () =>
+    selection ? previewZoom(action) : shopPreviewZoom(action, viewportHeight);
+  const resizeStage = () => {
+    if (
+      disposed ||
+      !game?.isRunning ||
+      !scene ||
+      host.classList.contains("is-frame") ||
+      host.classList.contains("is-item")
+    )
+      return;
+    const { width, height } = host.getBoundingClientRect();
+    if (width <= 0 || height <= 0) return;
+    const nextHeight = selection
+      ? framing.height
+      : Math.max(1, Math.round((framing.width * height) / width));
+    if (viewportHeight !== nextHeight || game.scale.width !== framing.width) {
+      viewportHeight = nextHeight;
+      game.scale.resize(framing.width, viewportHeight);
+    }
+    if (!selection)
+      host
+        .querySelector(".shop-preview-fallback > svg")
+        ?.setAttribute("viewBox", previewViewBox(action, viewportHeight));
+    scene.paintFloor();
+    dirty = true;
+    syncLoop();
+  };
+  const sizeObserver = new ResizeObserver(resizeStage);
   let selectionFrame: number | undefined;
   let selectionTask: ReturnType<typeof setTimeout> | undefined;
   const cancelSelection = () => {
@@ -131,6 +163,7 @@ export function mountShopPreview(
       const entry = entries.find((entry) => entry.target === host);
       if (!entry) return;
       visible = entry.isIntersecting;
+      if (visible) resizeStage();
       dirty = true;
       syncLoop();
     },
@@ -153,12 +186,14 @@ export function mountShopPreview(
     cancelSelection();
     panel = next;
     observer.disconnect();
+    sizeObserver.disconnect();
     host?.classList.remove("is-ready");
     host = panel.querySelector<HTMLElement>(
       selection ? ".fighter-rig-stage" : ".shop-live-stage",
     )!;
     host.classList.remove("is-ready");
     observer.observe(host);
+    sizeObserver.observe(host);
     visible = true;
     champion = host.dataset.previewChampion as CharacterId;
     id = host.dataset.previewItem!;
@@ -213,6 +248,7 @@ export function mountShopPreview(
         // Phaser also keeps its own parent for resize/bounds calculations.
         game.scale.parent = host;
         game.scale.refresh();
+        resizeStage();
       }
       // Let the selected card and matching fallback paint before generating
       // any uncached SVG parts. Rapid taps coalesce into the newest selection.
@@ -247,6 +283,7 @@ export function mountShopPreview(
         .setDepth(4)
         .setScale(previewAuraScale(framing));
       this.game.canvas.setAttribute("aria-hidden", "true");
+      resizeStage();
       // Selection may have changed while Phaser was booting.
       if (
         host.classList.contains("is-frame") ||
@@ -294,31 +331,7 @@ export function mountShopPreview(
           failed();
           return;
         }
-        this.floor.clear();
-        if (!selection) {
-          const feet = framing.y + WORLD_ART.fighterFeet * framing.scale;
-          // Light, contact shadow and fighter share canvas coordinates, even
-          // when a tall phone panel letterboxes the canvas.
-          for (let i = 0; i < 12; i++) {
-            const k = i / 12;
-            this.floor
-              .fillStyle(0xffdc85, 0.012)
-              .fillTriangle(
-                framing.x - 18,
-                -40,
-                framing.x - 84 * (1 - k),
-                feet,
-                framing.x + 84 * (1 - k),
-                feet,
-              );
-            this.floor
-              .fillStyle(0xffdc85, 0.025)
-              .fillEllipse(framing.x, feet, 168 * (1 - k), 36 * (1 - k));
-          }
-          this.floor
-            .fillStyle(0x040d20, 0.4)
-            .fillEllipse(framing.x, feet, 128, 26);
-        }
+        this.paintFloor();
         rig = new FighterRig(this, champion, layers);
         ready = true;
         dirty = true;
@@ -339,6 +352,33 @@ export function mountShopPreview(
         complete();
       });
       this.load.start();
+    }
+    paintFloor() {
+      this.floor.clear();
+      if (selection) return;
+      const feet = framing.y + WORLD_ART.fighterFeet * framing.scale;
+      const zoom = cameraZoom();
+      const worldWidth = framing.width / zoom;
+      const top = framing.cameraY - viewportHeight / (2 * zoom);
+      // The soft beam enters above the full stage's upper-right corner.
+      // Its footprint stays on the same plane as the fighter's shadow.
+      const source = framing.x + worldWidth * 0.55;
+      for (let i = 0; i < 24; i++) {
+        const fade = 1 - i / 24;
+        this.floor.fillStyle(0xffdc85, 0.019).fillPoints(
+          [
+            { x: source - worldWidth * 0.28 * fade, y: top - 40 },
+            { x: source + worldWidth * 0.28 * fade, y: top - 40 },
+            { x: framing.x + 110 * fade, y: feet },
+            { x: framing.x - 110 * fade, y: feet },
+          ],
+          true,
+        );
+        this.floor
+          .fillStyle(0xffdc85, 0.022)
+          .fillEllipse(framing.x, feet, 220 * fade, 42 * fade);
+      }
+      this.floor.fillStyle(0x040d20, 0.4).fillEllipse(framing.x, feet, 128, 26);
     }
     update(_time: number, delta: number) {
       if (
@@ -373,7 +413,7 @@ export function mountShopPreview(
         victory: action === "victory" && t < 3.5,
       };
       this.cameras.main
-        .setZoom(previewZoom(action))
+        .setZoom(cameraZoom())
         .centerOn(framing.x, framing.cameraY);
       this.aura.clear();
       this.auraFront.clear();
@@ -457,6 +497,7 @@ export function mountShopPreview(
       host.classList.remove("is-ready");
       cancelSelection();
       observer.disconnect();
+      sizeObserver.disconnect();
       motion.removeEventListener("change", onMotion);
       portraitCover.removeEventListener("change", syncLoop);
       document.removeEventListener("visibilitychange", syncLoop);
