@@ -281,7 +281,8 @@ it("synchronizes both players movement, skills, health, death, match results and
   await wait();
   for (let i = 0; i < 12; i++) server.step();
   await wait();
-  expect(s1!.players[1].hp).toBeLessThan(125);
+  // The skill landed: below full health, and both clients agree.
+  expect(s1!.players[1].hp).toBeLessThan(CHARACTERS[q.character].health);
   expect(s2!.players[1].hp).toBe(s1!.players[1].hp);
   expect(s2!.players[0].cooldowns[0]).toBeGreaterThan(arena.time);
   expect(receivedEvents.some((e) => e.kind === "cast")).toBe(true);

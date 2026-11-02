@@ -24,7 +24,7 @@ const ROSTER: Record<
     name: "Voltkit",
     element: "Electric",
     role: "Ranged speedster",
-    basic: ["Spark Dart", 280],
+    basic: ["Spark Dart", 265],
     skills: [
       ["Static Lance", 8],
       ["Ball Lightning", 10],
@@ -36,7 +36,7 @@ const ROSTER: Record<
     name: "Cindrake",
     element: "Fire",
     role: "Burst damage fighter",
-    basic: ["Cinder Snap", 450],
+    basic: ["Cinder Snap", 480],
     skills: [
       ["Ember Gust", 8],
       ["Magma Bomb", 12],
@@ -48,7 +48,7 @@ const ROSTER: Record<
     name: "Tidefin",
     element: "Water",
     role: "Agile assassin",
-    basic: ["Tide Needle", 260],
+    basic: ["Tide Needle", 235],
     skills: [
       ["Ripple Stars", 8],
       ["Whirlpool", 12],
@@ -60,7 +60,7 @@ const ROSTER: Record<
     name: "Auralynx",
     element: "Aura",
     role: "Counter specialist",
-    basic: ["Prism Jab", 320],
+    basic: ["Prism Jab", 330],
     skills: [
       ["Prism Shot", 8],
       ["Shatter Palm", 12],
@@ -84,7 +84,7 @@ const ROSTER: Record<
     name: "Mystowl",
     element: "Psychic",
     role: "High-power duelist",
-    basic: ["Mind Dart", 400],
+    basic: ["Mind Dart", 370],
     skills: [
       ["Focus Ray", 8],
       ["Repulse", 12],
@@ -96,7 +96,7 @@ const ROSTER: Record<
     name: "Terradon",
     element: "Earth",
     role: "Defensive tank",
-    basic: ["Boulder Swipe", 600],
+    basic: ["Boulder Swipe", 645],
     skills: [
       ["Shell Slam", 8],
       ["Hibernate", 12],
@@ -108,7 +108,7 @@ const ROSTER: Record<
     name: "Duskveil",
     element: "Shadow",
     role: "Trickster / area control",
-    basic: ["Lantern Wisp", 350],
+    basic: ["Lantern Wisp", 360],
     skills: [
       ["Shade Crawl", 8],
       ["Ghostfire", 12],

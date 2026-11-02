@@ -153,8 +153,9 @@ describe("authoritative simulation", () => {
   it("uses health percentages on timeout and overtime on ties", () => {
     const a = duel();
     a.deadline = 0;
-    a.players[0].hp = 100;
-    a.players[1].hp = 100;
+    // 70% of full health beats 60%, whatever each champion's maximum is.
+    a.players[0].hp = CHARACTERS[a.players[0].character].health * 0.7;
+    a.players[1].hp = CHARACTERS[a.players[1].character].health * 0.6;
     a.tick();
     expect(a.roundWinner).toBe("one");
     const b = duel();
