@@ -410,14 +410,16 @@ export function mountShopPreview(
             x: framing.x + Math.cos((a * Math.PI) / 180) * rx,
             y: feet + Math.sin((a * Math.PI) / 180) * ry,
           });
-        this.floor.fillStyle(0xffdc85, 0.028).fillPoints(
-          [
-            { x: source - worldWidth * 0.28 * fade, y: top - 40 },
-            { x: source + worldWidth * 0.28 * fade, y: top - 40 },
-            ...pool,
-          ],
-          true,
-        );
+        this.floor
+          .fillStyle(0xffdc85, 0.028)
+          .fillPoints(
+            [
+              { x: source - worldWidth * 0.28 * fade, y: top - 40 },
+              { x: source + worldWidth * 0.28 * fade, y: top - 40 },
+              ...pool,
+            ],
+            true,
+          );
       }
       this.floor
         .fillStyle(0x040d20, 0.4)
