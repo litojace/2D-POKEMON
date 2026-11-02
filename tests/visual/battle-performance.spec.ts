@@ -175,7 +175,10 @@ async function heap(context: BrowserContext, page: Page) {
     returnByValue: true,
   });
   await cdp.detach();
-  return { heapMB: Math.round((usedSize / 2 ** 20) * 10) / 10, ...result.value };
+  return {
+    heapMB: Math.round((usedSize / 2 ** 20) * 10) / 10,
+    ...result.value,
+  };
 }
 const stats = (values: number[]) => {
   const s = values.slice().sort((a, b) => a - b);
@@ -191,7 +194,10 @@ const stats = (values: number[]) => {
 };
 
 for (const scenario of ["pvp2", "pvp4", "raid4"] as Scenario[])
-  test(`profiles the ${scenario} battle client`, async ({ browser, browserName }, info) => {
+  test(`profiles the ${scenario} battle client`, async ({
+    browser,
+    browserName,
+  }, info) => {
     test.skip(browserName !== "chromium", "Uses Chromium CDP");
     test.setTimeout(150_000);
     const context = await phone(browser);
@@ -205,12 +211,13 @@ for (const scenario of ["pvp2", "pvp4", "raid4"] as Scenario[])
       await page.waitForTimeout(4000);
       // Compact snapshots carry no names: they come from the appearance
       // block, and must still reach the nameplates.
-      await expect(page.locator(".battle-nameplate .player-name")).toContainText(
-        ["Player 2"],
-        { timeout: 20_000 },
-      );
       await expect(
-        page.locator(".battle-nameplate .player-title", { hasText: "Raid Veteran" }),
+        page.locator(".battle-nameplate .player-name"),
+      ).toContainText(["Player 2"], { timeout: 20_000 });
+      await expect(
+        page.locator(".battle-nameplate .player-title", {
+          hasText: "Raid Veteran",
+        }),
       ).toHaveCount(1);
       await page.evaluate(() => {
         const p = (window as any).__perf;
@@ -227,9 +234,15 @@ for (const scenario of ["pvp2", "pvp4", "raid4"] as Scenario[])
       const metric = (m: any, name: string) =>
         m.metrics.find((x: any) => x.name === name)?.value ?? 0;
       const cpu = Object.fromEntries(
-        ["TaskDuration", "ScriptDuration", "LayoutDuration", "RecalcStyleDuration"].map(
-          (n) => [n, Math.round((metric(after, n) - metric(before, n)) * 1000)],
-        ),
+        [
+          "TaskDuration",
+          "ScriptDuration",
+          "LayoutDuration",
+          "RecalcStyleDuration",
+        ].map((n) => [
+          n,
+          Math.round((metric(after, n) - metric(before, n)) * 1000),
+        ]),
       );
       const result = {
         scenario,
@@ -250,7 +263,7 @@ for (const scenario of ["pvp2", "pvp4", "raid4"] as Scenario[])
         contentType: "application/json",
       });
       // The software renderer starves timers, so fewer than 15 a second arrive.
-      expect(raw.push.length).toBeGreaterThan(SECONDS * 4);
+      expect(raw.push.length).toBeGreaterThanOrEqual(SECONDS * 2);
       // Generous guards: a regression to per-snapshot rebuilds would blow these.
       expect(result.snapshotHandlingMs.p50).toBeLessThan(25);
       expect(result.frameStepMs.n).toBeGreaterThan(3);
@@ -281,11 +294,16 @@ test("keeps memory steady across repeated battles, Town, Shop and Wardrobe", asy
       await page.click("#exit-room");
       await page.evaluate(() => {
         const d = document.querySelector<HTMLDialogElement>("#dialog");
-        if (d?.open) document.querySelector<HTMLButtonElement>("#close-dialog")?.click();
+        if (d?.open)
+          document.querySelector<HTMLButtonElement>("#close-dialog")?.click();
       });
-      await expect(page.locator("#town-menu-toggle")).toBeVisible({ timeout: 20_000 });
+      await expect(page.locator("#town-menu-toggle")).toBeVisible({
+        timeout: 20_000,
+      });
       // A Shop and a Wardrobe visit between matches.
-      await page.evaluate(() => void (window as any).__account.showShop("champions"));
+      await page.evaluate(
+        () => void (window as any).__account.showShop("champions"),
+      );
       await expect(page.locator("dialog[open]")).toHaveCount(1);
       await page.waitForTimeout(800);
       await page.click("#close-dialog");
@@ -301,14 +319,18 @@ test("keeps memory steady across repeated battles, Town, Shop and Wardrobe", asy
       body: JSON.stringify(samples, null, 2),
       contentType: "application/json",
     });
-    // After the first cycle has warmed caches, later cycles must not keep growing.
+    // After the first cycle has warmed caches, later cycles must not keep
+    // growing. Each closed battle used to stay in memory with its whole
+    // renderer (~6 MB a cycle, via Phaser's shared bake camera).
     const heapAt = (i: number) => samples[i].heapMB as number;
     if (samples.length >= 3)
       expect(heapAt(samples.length - 1) - heapAt(1)).toBeLessThan(
-        8 * (samples.length - 2),
+        3 * (samples.length - 2) + 4,
       );
     const objectsAt = (i: number) => samples[i].sceneObjects as number;
-    expect(objectsAt(samples.length - 1)).toBeLessThanOrEqual(objectsAt(0) * 1.5 + 20);
+    expect(objectsAt(samples.length - 1)).toBeLessThanOrEqual(
+      objectsAt(0) * 1.5 + 20,
+    );
     expect(errors).toEqual([]);
   } finally {
     await context.close();

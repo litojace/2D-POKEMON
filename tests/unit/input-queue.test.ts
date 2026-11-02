@@ -79,7 +79,8 @@ it("keeps Basic held while a skill is pressed through the queue", () => {
   expect(me.stats.skills).toBe(1);
   // Basic kept firing before and after the skill.
   const basics = a.events.filter(
-    (e) => e.kind === "cast" && e.owner === "me" && e.abilityId === "spark-dart",
+    (e) =>
+      e.kind === "cast" && e.owner === "me" && e.abilityId === "spark-dart",
   );
   expect(basics.length).toBeGreaterThan(3);
 });

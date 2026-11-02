@@ -157,4 +157,124 @@ limit and pass its name as `CGROUP=<name>`; the load script moves only the
 server child into it. Results depend on the host CPU: Render's cores may be
 faster or slower than the machine used here.
 
-RESULTS_PLACEHOLDER
+### 7. Closed battles no longer stay in memory
+
+The browser soak found that every battle you left stayed in memory with its
+whole Phaser game and WebGL renderer: about 6 MB per battle, so a long
+session kept growing. The cause was Phaser's `Graphics.generateTexture`,
+which draws through one static camera shared by every game
+(`Graphics.TargetCamera`). Each bake (the court floor, town artwork) pushed
+its Graphics onto that camera's render list, which nothing empties, and the
+camera kept the last scene, so every closed battle and town stayed
+reachable. Bakes now go through `generateGraphicsTexture`
+(`apps/client/src/graphics-bake.ts`), which empties the list and detaches
+the scene afterwards. The soak test now fails if memory keeps growing.
+
+## Results
+
+All measurements were taken on one Linux container (Intel Xeon 2.8 GHz). The
+server child ran in a cgroup capped at 0.5 CPU and 512 MB to approximate
+the $7 Render instance, while the simulated players ran outside it.
+"Before" is the untouched `main` commit with the same, sampled diagnostics
+added, so the two differ only in the changes above.
+
+### Movement feel (net-sim, 120 s per link, seeded)
+
+Local correction = how far your own fighter jumps when a snapshot reconciles
+it. "Starved" = frames where a moving opponent is drawn standing still.
+"Behind" = how far behind the server's present the opponent is drawn
+(including the one-way latency).
+
+| Link (one-way latency, jitter)         | Corrections > 4 px | Worst correction | Opponent starved | Opponent behind (p50) |
+| -------------------------------------- | ------------------ | ---------------- | ---------------- | --------------------- |
+| Good Wi-Fi (15 ms, ±4)                 | 32.4% → **0%**     | 28 → **0** px    | 0% → 0.2%        | 100 → **77** ms       |
+| Mobile 4G (45 ms, ±30, spikes)         | 23.2% → **6.8%**   | 36 → 18 px       | 1.7% → **0.2%**  | 133 → 127 ms          |
+| Congested (90 ms, ±70, spikes)         | 42.9% → **17.7%**  | 54 → 36 px       | 13.1% → **1.5%** | 183 → 267 ms          |
+| Wi-Fi stalls (350 ms freeze every 4 s) | 23.1% → **7.2%**   | 209 → 175 px     | 6.6% → **3.5%**  | 117 → 201 ms          |
+
+On bad links the adaptive buffer trades about 80 ms more opponent delay for
+nearly freeze-free movement; the 200 ms ceiling bounds that trade.
+
+### Server (real Socket.IO clients; rooms mix 1v1, 4-player FFA, 4-hero raid)
+
+Two runs each, 20 s after a 5 s warm-up, every fighter fully dressed.
+
+| Rooms (players)                    | CPU, % of one core | Combat ticks (of 600) | Snapshot p50     | Per player, downstream   | Server egress        |
+| ---------------------------------- | ------------------ | --------------------- | ---------------- | ------------------------ | -------------------- |
+| 24 (80)                            | 23–24 → 26         | 601 → 592–599         | 9.1 → **5.2 KB** | 129 → **75 KB/s**        | 10.3 → **6.0 MB/s**  |
+| 48 (160)                           | 41–42 → 41–43      | 555–579 → 556–573     | 9.2 → **5.3 KB** | 120–124 → **70–72 KB/s** | 19.5 → **11.4 MB/s** |
+| 72 (240), single instrumented runs | 50 (capped) both   | 444 → 426             | 9.1 → 5.1 KB     | 94 → 52 KB/s             | 22 → 13 MB/s         |
+
+- Bandwidth fell by about 42%. CPU did not change within run-to-run
+  noise: a profile shows the server's time going to fixed per-message
+  Socket.IO work (30 inputs in and 15 snapshots out per player per second)
+  and the simulation, not to payload size.
+- At 24 rooms (80 players) ticks stayed on time (p95 9–10 ms against a
+  33 ms budget).
+- At 48 rooms (160 players) the 0.5 CPU quota was reached: CFS throttling
+  dropped 4–7% of ticks, snapshots slowed to 14/s and the tick p99 reached
+  60–70 ms.
+- At 72 rooms the simulation fell to about 74% of real time. That is not
+  playable.
+- Memory is not the constraint: RSS stayed at 145–175 MB. Over ten soak
+  cycles of creating, fighting in and leaving 8 rooms, the heap after GC
+  went from 25.4 to 26.4 MB, and rooms and sessions returned to zero after
+  every cycle.
+
+### Browser client (Chromium, phone viewport 844×390 at 2×)
+
+Measurements here are for main-thread JavaScript only. The container renders
+WebGL in software (SwiftShader, 3–5 fps), so these are not phone frame
+rates.
+
+| Scenario                          | Snapshot size p50 | Snapshot handling p50 | Scene update p50 |
+| --------------------------------- | ----------------- | --------------------- | ---------------- |
+| 1v1                               | 3.5 → **1.8 KB**  | 0.9 → 1.0 ms          | 2.2 → 2.8 ms     |
+| 4-player FFA, simultaneous skills | 6.9 → **3.4 KB**  | 1.2 → 1.3 ms          | 5.8 → 5.6 ms     |
+| 4-hero Emberwing raid             | 9.5 → **5.8 KB**  | 3.2 → 3.5 ms          | 4.7 → 5.0 ms     |
+
+Handling and update times are unchanged within noise. Memory across six
+battle → Town → Shop → Wardrobe cycles (heap after GC):
+
+| Cycle  | 0    | 1    | 2    | 3    | 4    | 5       |
+| ------ | ---- | ---- | ---- | ---- | ---- | ------- |
+| Before | 29.5 | 37.3 | 43.6 | 50.3 | 56.0 | 61.0 MB |
+| After  | 31.0 | 31.9 | 30.7 | 31.6 | 31.7 | 31.1 MB |
+
+## Capacity: the $7 instance versus a larger one
+
+This recommendation is measured on this host only. Render's CPUs may be
+faster or slower, Town visitors were not part of the load, and the
+simulated players fight non-stop, which is harsher than real matches with
+menus and intermissions.
+
+- **0.5 CPU / 512 MB is enough for roughly 80–100 people in battles at
+  once** with comfortable headroom. It starts to degrade around 150 and
+  fails around 240. Memory is far from its limit.
+- Start on the $7 instance with `ARENA_DIAGNOSTICS=60`. Move to a larger
+  (1+ CPU) instance when, at peak, `cpuPercent` stays above about 35, the
+  tick p99 exceeds about 33 ms, or the event-loop delay p99 exceeds about
+  20 ms. A full core roughly doubles headroom. More memory alone would not
+  help.
+- Bandwidth is now about 75 KB/s per player in battle (about 270 MB per
+  player-hour, down from about 465). Check this against the plan's included
+  outbound transfer.
+
+## Remaining bottlenecks and limits
+
+- Server CPU per player is dominated by Socket.IO message overhead. Further
+  gains would need fewer messages (for example batching two inputs per
+  packet). That trades latency and prediction timing, so it was not done
+  here.
+- Raid clients redraw arena scenery into Graphics objects every frame.
+  Caching the static parts would mean splitting the per-boss art functions.
+  That should be profiled on a real phone GPU first; it was not changed here.
+- Corrections on poor links come from inputs arriving bunched or late,
+  which no client can predict. The input queue keeps them to one step per
+  event instead of one per snapshot.
+- Not tested on physical devices: iPhone/Android frame rates and thermal
+  behaviour, the Auto quality governor on real GPUs, iOS Safari and the
+  installed PWA's background/resume over a real mobile network. Lifecycle
+  logic is covered by unit tests (governor pauses, interpolation resync,
+  server stale-input stop) and the existing Chromium touch-recovery and
+  iOS-app checks.

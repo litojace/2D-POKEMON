@@ -1,4 +1,5 @@
 import type Phaser from "phaser";
+import { generateGraphicsTexture } from "./graphics-bake";
 import { addCanvasTexture } from "./canvas-texture";
 
 /** A Graphics' local box to paint (x, y, width, height). */
@@ -35,7 +36,7 @@ export function bakeGraphics(
   // The local box's corner at the canvas origin, `res` pixels per unit.
   const commands = g.commandBuffer as number[];
   commands.unshift(SCALE, res, res, TRANSLATE, -bounds.x, -bounds.y);
-  g.generateTexture(canvas, canvas.width, canvas.height);
+  generateGraphicsTexture(g, canvas, canvas.width, canvas.height);
   commands.splice(0, 6);
   if (scene.textures.exists(key)) scene.textures.remove(key);
   addCanvasTexture(scene.textures, key, canvas);

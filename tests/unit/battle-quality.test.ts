@@ -7,9 +7,16 @@ import {
 } from "../../apps/client/src/battle-quality";
 import type { GraphicsSetting } from "../../apps/client/src/graphics-quality";
 
-function governor(setting: GraphicsSetting = "auto", start: BattleQuality | null = null) {
+function governor(
+  setting: GraphicsSetting = "auto",
+  start: BattleQuality | null = null,
+) {
   const saved: BattleQuality[] = [];
-  const g = new BattleQualityGovernor(() => setting, start, (l) => saved.push(l));
+  const g = new BattleQualityGovernor(
+    () => setting,
+    start,
+    (l) => saved.push(l),
+  );
   let now = 0;
   const run = (seconds: number, frameMs: number | ((i: number) => number)) => {
     const changes: BattleQuality[] = [];
@@ -39,7 +46,9 @@ it("steps down one level at a time after sustained slow frames", () => {
   const window = BATTLE_PROBE.window / 1000;
   expect(run(BATTLE_PROBE.warmup / 1000 + window, 33)).toEqual([]);
   expect(run(window + 0.1, 33)).toEqual(["medium"]);
-  expect(run(BATTLE_PROBE.warmup / 2000 + 2 * window + 0.2, 33)).toEqual(["low"]);
+  expect(run(BATTLE_PROBE.warmup / 2000 + 2 * window + 0.2, 33)).toEqual([
+    "low",
+  ]);
   expect(g.current()).toBe("low");
   expect(saved).toEqual(["medium", "low"]);
   expect(run(60, 33)).toEqual([]);
@@ -63,10 +72,13 @@ it("returns to a higher level after a long comfortable stretch, without bouncing
   const { g, run } = governor("auto", "medium");
   expect(g.current()).toBe("medium");
   const seconds =
-    (BATTLE_PROBE.warmup + BATTLE_PROBE.window * BATTLE_PROBE.fastWindows) / 1000 + 1;
+    (BATTLE_PROBE.warmup + BATTLE_PROBE.window * BATTLE_PROBE.fastWindows) /
+      1000 +
+    1;
   expect(run(seconds, 1000 / 60)).toEqual(["high"]);
   // High is too much again: back down, up, down... then it stays down.
-  const slow = (BATTLE_PROBE.window * (BATTLE_PROBE.slowWindows + 1)) / 1000 + 2;
+  const slow =
+    (BATTLE_PROBE.window * (BATTLE_PROBE.slowWindows + 1)) / 1000 + 2;
   expect(run(slow, 33)).toEqual(["medium"]);
   expect(run(seconds, 1000 / 60)).toEqual(["high"]);
   expect(run(slow, 33)).toEqual(["medium"]);

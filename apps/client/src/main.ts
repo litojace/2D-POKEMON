@@ -10,6 +10,7 @@ import { BattleQualityGovernor, resetBattleQuality } from "./battle-quality";
 import { addCanvasTexture } from "./canvas-texture";
 import { setHudText, setHudAttribute, setHudStyle } from "./hud-dom";
 import { battleCurves } from "./battle-curves";
+import { generateGraphicsTexture } from "./graphics-bake";
 import { RoomInvites } from "./room-invites";
 import { PvpSpectator } from "./pvp-spectator";
 import { predictFighter } from "./predict-fighter";
@@ -3166,7 +3167,7 @@ class ArenaScene extends Phaser.Scene {
       } else {
         const g = this.make.graphics({}, false);
         paintArenaFloor(scaledPainter(g, bake), ARENAS[id as ArenaId]);
-        g.generateTexture(key, RULES.width * bake, RULES.height * bake);
+        generateGraphicsTexture(g, key, RULES.width * bake, RULES.height * bake);
         g.destroy();
       }
     }

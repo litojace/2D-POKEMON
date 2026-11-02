@@ -134,6 +134,8 @@ it("tells a client its cache is stale so it can ask for a fresh block", () => {
 
 it("still accepts full (legacy) snapshots without any cache", () => {
   const { a } = room();
-  const s = unpackSnapshot(JSON.parse(JSON.stringify(packSnapshot(a.snapshot()))));
+  const s = unpackSnapshot(
+    JSON.parse(JSON.stringify(packSnapshot(a.snapshot()))),
+  );
   expect(s.players[0]).toMatchObject({ name: "One", title: "Storm Chaser" });
 });

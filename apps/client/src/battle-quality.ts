@@ -42,7 +42,12 @@ export const BATTLE_QUALITY: Record<BattleQuality, BattleQualityKnobs> = {
     mythicAmbient: 1,
     stillBackground: false,
   },
-  low: { particles: 0.35, trails: 2.5, mythicAmbient: 0, stillBackground: true },
+  low: {
+    particles: 0.35,
+    trails: 2.5,
+    mythicAmbient: 0,
+    stillBackground: true,
+  },
 };
 
 export const BATTLE_PROBE = {

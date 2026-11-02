@@ -1,6 +1,9 @@
 import { afterEach, expect, it } from "vitest";
 import { io, type Socket } from "socket.io-client";
-import { createArenaServer, BACKPRESSURE } from "../../apps/server/src/server.js";
+import {
+  createArenaServer,
+  BACKPRESSURE,
+} from "../../apps/server/src/server.js";
 import { fakeAccounts } from "../helpers/accounts";
 import {
   blankInput,
@@ -113,7 +116,9 @@ it("gives a new watcher every fighter's name and look without resending them eac
     "snapshot-meta",
   );
   expect(asked.ok).toBe(true);
-  expect(Object.keys(asked.meta.players)).toEqual(arena.players.map((p) => p.id));
+  expect(Object.keys(asked.meta.players)).toEqual(
+    arena.players.map((p) => p.id),
+  );
   const stranger = await connect();
   expect((await emit(stranger, "snapshot-meta")).ok).toBe(false);
 });
@@ -142,10 +147,12 @@ it("reconnects without replaying a stale cast or stale movement", async () => {
   for (let i = 0; i < 10; i++) server!.step();
   await until(() => view.seen.length > 0);
   // Nothing from before the drop ran: no cast, no dash, no drift.
-  expect(arena.events.some((e) => e.owner === them.id && e.kind === "cast"))
-    .toBe(false);
-  expect(arena.events.some((e) => e.owner === them.id && e.kind === "dash"))
-    .toBe(false);
+  expect(
+    arena.events.some((e) => e.owner === them.id && e.kind === "cast"),
+  ).toBe(false);
+  expect(
+    arena.events.some((e) => e.owner === them.id && e.kind === "dash"),
+  ).toBe(false);
   expect(them.x).toBeCloseTo(x, 5);
   // The resumed client sees names again and its next press casts once.
   expect(view.last()!.state.players.every((p) => p.name)).toBe(true);
@@ -173,7 +180,9 @@ it("holds snapshots back from a congested socket and delivers every missed event
   await until(() => slow.seen.length > 0 && fast.seen.length > 0);
   // Make the guest's WebSocket look backed up (unsent bytes queued).
   const guestSocket = [...server!.io.sockets.sockets.values()].find(
-    (s) => s.handshake.auth.accessToken === (two.auth as { accessToken: string }).accessToken,
+    (s) =>
+      s.handshake.auth.accessToken ===
+      (two.auth as { accessToken: string }).accessToken,
   )!;
   const ws = (guestSocket.conn as unknown as { transport: { socket: object } })
     .transport.socket;
@@ -209,6 +218,7 @@ it("holds snapshots back from a congested socket and delivers every missed event
   server!.step();
   await until(() => slow.seen.length > before);
   const delivered = slow.seen.flatMap((s) => s.wire.events.map((e) => e.id));
-  for (const id of castIds) expect(delivered.filter((d) => d === id)).toHaveLength(1);
+  for (const id of castIds)
+    expect(delivered.filter((d) => d === id)).toHaveLength(1);
   expect(slow.seen.at(-1)!.wire.meta).toBeDefined();
 });
