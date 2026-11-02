@@ -24937,3 +24937,17 @@ body.battle-active:not(.touch-mode) :is(.ability, .basic-hint) > span:has(> .ski
     right: calc(max(10px, var(--safe-right) * 0.4) + 6px);
   }
 }
+
+/* ---- No iOS focus zoom on phones ----
+   iOS Safari zooms into any focused text field under 16px and leaves the page
+   zoomed after the field closes, so logging in on a phone used to land in a
+   magnified game until the phone was rotated. Panels such as the auth form set
+   smaller, more specific font sizes, so this last rule wins over all of them on
+   touch screens. Checked by tests/visual/input-zoom.spec.ts. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  select,
+  textarea {
+    font-size: max(16px, 1em) !important;
+  }
+}
