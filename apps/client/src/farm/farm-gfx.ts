@@ -67,19 +67,31 @@ const GFX = (() => {
     g.drawImage(s.c, -s.ax * k, -s.ay * k, s.w * k, s.h * k);
     g.restore();
   }
+  // Soft ground shadows are drawn many times a frame (every tree, prop and
+  // animal): each size is painted once and then stamped (phase 6, phones).
+  const shadows = new Map();
   function shadow(g, x, y, rx, ry, a = 0.28) {
-    g.save();
-    g.translate(x, y);
-    g.scale(1, ry / rx);
-    const gr = g.createRadialGradient(0, 0, 0, 0, 0, rx);
-    gr.addColorStop(0, `rgba(22,34,28,${a})`);
-    gr.addColorStop(0.55, `rgba(22,34,28,${a * 0.65})`);
-    gr.addColorStop(1, "rgba(22,34,28,0)");
-    g.fillStyle = gr;
-    g.beginPath();
-    g.arc(0, 0, rx, 0, 7);
-    g.fill();
-    g.restore();
+    const RX = Math.max(1, Math.round(rx)),
+      RY = Math.max(1, Math.round(ry)),
+      A = Math.round(a * 100) / 100,
+      key = `${RX}|${RY}|${A}`;
+    let s = shadows.get(key);
+    if (!s) {
+      if (shadows.size > 800) shadows.clear();
+      s = sprite(RX * 2, RY * 2, RX, RY, (c) => {
+        c.scale(1, RY / RX);
+        const gr = c.createRadialGradient(0, 0, 0, 0, 0, RX);
+        gr.addColorStop(0, `rgba(22,34,28,${A})`);
+        gr.addColorStop(0.55, `rgba(22,34,28,${A * 0.65})`);
+        gr.addColorStop(1, "rgba(22,34,28,0)");
+        c.fillStyle = gr;
+        c.beginPath();
+        c.arc(0, 0, RX, 0, 7);
+        c.fill();
+      });
+      shadows.set(key, s);
+    }
+    g.drawImage(s.c, x - RX, y - RY, RX * 2, RY * 2);
   }
   function ball(g, x, y, r, c, hl = 0.42) {
     const gr = g.createRadialGradient(

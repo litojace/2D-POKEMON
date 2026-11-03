@@ -54,6 +54,8 @@ export interface FarmScreenOptions {
     actions: FarmVisitAction[],
   ): Promise<FarmVisitResult>;
   reduced: boolean;
+  /** Low graphics (Settings → Graphics): 30 fps, 1× canvas, no ambient animals. */
+  low?: boolean;
 }
 export interface FarmScreen {
   refresh(): Promise<void>;
