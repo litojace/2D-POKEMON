@@ -69,6 +69,8 @@ Mobile uses the left joystick and right skill/action buttons, with a separate bo
 
 ## Balance notes
 
+**Creature remodel (November 2026).** The original eight kits no longer echo the Pokémon they were first built from: each was rebuilt around its creature's real animal (Static Glide, Shell Up, Tide Double, Eyespot Flash, Haunted Lantern; the rest renamed), and basic attacks now play at their stated speed (ticks used to round every interval up, costing up to 10%). Health and attack speed were re-tuned in a sixteen-champion pool with the eight new champions being designed. Details, the origins of each old skill and the new numbers are in [docs/creature-remodel.md](docs/creature-remodel.md).
+
 **November 2026 pass (health and basic-attack speed).** Bot round robins on the server simulation (every pairing, 40 games each, Hard and Normal bots, sides swapped every game) showed the fighters had drifted apart. Averaged over both bot settings, win rates ran from 24% (Mystowl) to 73% (Terradon). Each fighter's maximum health and basic-attack interval were tuned toward 50% over repeated rounds of matches. Damage, cooldowns, skills and rite texts are unchanged, and changes stay within about a quarter so no fighter changes role.
 
 | Fighter  | Health    | Basic attack (ms) | Win rate before | After |
@@ -84,9 +86,9 @@ Mobile uses the left joystick and right skill/action buttons, with a separate bo
 
 Win rates are the average of Hard and Normal bots, fighting only each other. The two settings still disagree for some fighters: Cindrake wins 32% against Hard bots, which dodge, but 71% against Normal ones; Mystowl (73% / 36%) and Duskveil (36% / 64%) split the other way. One strength number can only centre the average, so those gaps need kit changes and human playtesting. Health and attack speed also apply in raids, so raid difficulty for these fighters shifts slightly.
 
-The earlier durability pass increased every fighter’s maximum HP by 25% (rounded to whole HP) and Hibernate healing from 60 to 75 HP. Damage, cooldowns and sleep duration are unchanged. The earlier win-rate results below predate this pass and need fresh playtesting.
+The earlier durability pass increased every fighter’s maximum HP by 25% (rounded to whole HP) and Hibernate healing from 60 to 75 HP (Hibernate is now Shell Up). Damage, cooldowns and sleep duration are unchanged. The earlier win-rate results below predate this pass and need fresh playtesting.
 
-Hibernate now has a price: while Terradon sleeps it takes 20% more damage (`STATUS_RULES.sleepVulnerability`), and the HUD shows `SLEEP +20% DMG` so the opponent knows to punish. In 168-match simulations per style, a Terradon that sleeps carelessly mid-fight took about 12% more damage and its win rate fell from 24% to 17%. A Hard bot Terradon that only sleeps when safe was unaffected (72%).
+Hibernate (since replaced by Shell Up) then got a price: while Terradon slept it took 20% more damage (`STATUS_RULES.sleepVulnerability`), and the HUD shows `SLEEP +20% DMG` so the opponent knows to punish. In 168-match simulations per style, a Terradon that sleeps carelessly mid-fight took about 12% more damage and its win rate fell from 24% to 17%. A Hard bot Terradon that only sleeps when safe was unaffected (72%).
 
 October 2026 pass, tuned with thousands of simulated matches (simple human-like players and Hard bots, every fighter pairing) until every fighter averaged 44–59% wins (before: 10–96%):
 

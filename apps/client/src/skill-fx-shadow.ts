@@ -1,5 +1,5 @@
 import type Phaser from "phaser";
-import type { Ability, Projectile } from "@arena/shared";
+import type { Ability, Projectile, Zone } from "@arena/shared";
 import { fxFor, type Fx } from "./fx-engine";
 import { TAU, ease, hash, type FxKit, type G, type Shot } from "./fx-kits";
 /**
@@ -126,33 +126,44 @@ function shadeCrawl(g: G, pr: Projectile, now: number) {
   fx.glow(x + cos * 6, y, 14, GHOST, 0.4, true);
   fx.trail(`p${pr.id}`, 0.035, () => wisps(fx, x - cos * r, y - 6, 1, [5, 20]));
 }
-function curseMark(g: G, pr: Projectile, now: number) {
+/**
+ * Haunted Lantern: a crooked post with the lantern hanging from it, its ghost
+ * flame flickering, and a faint pool of light on the floor as far as it
+ * shoots (turret.range). The wisps it fires draw as Lantern Wisps.
+ */
+function hauntedLantern(g: G, z: Zone, progress: number, now: number) {
   const fx = fxFor(g.scene),
-    r = pr.ability.radius,
-    x = pr.x,
-    y = pr.y,
-    spin = now / 200;
-  const tri = (rot: number, rr: number) =>
-    [0, 1, 2].map((i) => ({
-      x: x + Math.cos(rot + (i * TAU) / 3) * rr,
-      y: y + Math.sin(rot + (i * TAU) / 3) * rr,
-    }));
-  fx.solid.fillStyle(SHADE, 0.55).fillCircle(x, y, r * 1.25);
-  fx.glow(x, y, r * 3, pr.color, 0.45);
-  fx.g.lineStyle(2.5, pr.color, 0.95).strokeCircle(x, y, r);
-  fx.g
-    .lineStyle(2, VIOLET, 0.9)
-    .strokePoints(tri(spin, r * 0.95), true)
-    .strokePoints(tri(spin + Math.PI, r * 0.95), true);
-  // Runes orbiting the sigil.
-  for (let i = 0; i < 3; i++) {
-    const a = -spin * 1.6 + (i * TAU) / 3;
-    fx.g
-      .fillStyle(PALE, 0.9)
-      .fillCircle(x + Math.cos(a) * r * 1.6, y + Math.sin(a) * r * 1.6, 2.2);
-  }
-  fx.g.fillStyle(PALE, 1).fillCircle(x, y, r * 0.22);
-  fx.trail(`p${pr.id}`, 0.05, () => wisps(fx, x, y, 1));
+    { x, y } = z,
+    reach = z.ability.turret?.range ?? 330,
+    grow = Math.min(1, progress / 0.08),
+    fade = progress > 0.9 ? (1 - progress) / 0.1 : 1,
+    a = grow * fade,
+    flick = 0.85 + hash(z.id + Math.floor(now / 90)) * 0.3;
+  // The pool of light it watches over.
+  fx.floor
+    .fillStyle(GHOST, 0.05 * a)
+    .fillEllipse(x, y, reach * 2, reach * 2 * 0.62);
+  fx.floor
+    .lineStyle(2, GHOST, 0.28 * a)
+    .strokeEllipse(x, y, reach * 2, reach * 2 * 0.62);
+  fx.glow(x, y, 70 * flick, GHOST, 0.22 * a, true);
+  // Post and crook.
+  const top = y - 58 * grow,
+    lx = x + 14,
+    ly = top + 16;
+  fx.solid.fillStyle(0x000000, 0.25 * a).fillEllipse(x, y + 2, 26, 8);
+  fx.solid.lineStyle(5, SHADE, 0.95 * a).lineBetween(x, y, x, top);
+  fx.solid.lineStyle(4, SHADE, 0.95 * a).lineBetween(x, top, lx, top + 2);
+  fx.solid.lineStyle(1.5, VIOLET, 0.8 * a).lineBetween(lx, top + 2, lx, ly - 8);
+  // The lantern and its ghost flame.
+  fx.solid
+    .fillStyle(0x2a1846, 0.95 * a)
+    .fillRoundedRect(lx - 8, ly - 8, 16, 18, 4);
+  fx.solid
+    .lineStyle(2, VIOLET, 0.9 * a)
+    .strokeRoundedRect(lx - 8, ly - 8, 16, 18, 4);
+  if (a > 0.2) ghostFlame(fx, lx, ly + 1, 5 * flick, -Math.PI / 2, now, z.id);
+  fx.trail(`z${z.id}`, 0.18, () => ghostMotes(fx, lx, ly, 1));
 }
 function voidOrb(g: G, pr: Projectile, now: number) {
   const fx = fxFor(g.scene),
@@ -328,35 +339,10 @@ function shadowCast(
       mx,
       my,
       30 * (1 - k * 0.4),
-      a.id === "curse-mark" ? color : GHOST,
+      a.id === "haunted-lantern" ? color : GHOST,
       0.7 * (1 - k),
     );
     fx.soft(mx, my, 18 * (1 - k), SHADE, 0.5 * (1 - k));
-  });
-}
-function curseImpact(
-  scene: Phaser.Scene,
-  a: Ability,
-  x: number,
-  y: number,
-  color: number,
-  shot: Shot,
-) {
-  const fx = fxFor(scene),
-    r = a.radius * 2.4;
-  fx.decal({ kind: "glyph", x, y: y + 14, r, color, life: 2 });
-  wisps(fx, x, y, 5);
-  shot(fx.reduced ? 160 : 420, (k) => {
-    const tri = (rot: number) =>
-      [0, 1, 2].map((i) => ({
-        x: x + Math.cos(rot + (i * TAU) / 3) * r * (1 + k * 0.3),
-        y: y - 10 + Math.sin(rot + (i * TAU) / 3) * r * (1 + k * 0.3),
-      }));
-    fx.g
-      .lineStyle(3, color, 1 - k)
-      .strokePoints(tri(k * 2), true)
-      .strokePoints(tri(k * 2 + Math.PI), true);
-    fx.glow(x, y - 10, r * 1.4, color, 0.5 * (1 - k));
   });
 }
 function wispImpact(
@@ -394,19 +380,21 @@ export const shadowKit: FxKit = {
     "lantern-wisp": lanternWisp,
     ghostfire,
     "shade-crawl": shadeCrawl,
-    "curse-mark": curseMark,
+    // The lantern's shots are small wisps.
+    "haunted-lantern-shot": lanternWisp,
     "void-orb": voidOrb,
   },
+  zone: { "haunted-lantern": hauntedLantern },
   windup: { "void-orb": voidWindup },
   cast: {
     "lantern-wisp": shadowCast,
     ghostfire: shadowCast,
     "shade-crawl": shadowCast,
-    "curse-mark": shadowCast,
+    "haunted-lantern": shadowCast,
   },
   impact: {
     "void-orb": voidBurst,
-    "curse-mark": curseImpact,
+    "haunted-lantern-shot": wispImpact,
     "lantern-wisp": wispImpact,
     ghostfire: wispImpact,
     "shade-crawl": wispImpact,

@@ -6,6 +6,7 @@ import {
   characterSchema,
   normalizeCharacterId,
   COMBOS,
+  PRACTICE_GRID,
   ULT_SLOT,
   type CharacterId,
 } from "@arena/shared";
@@ -37,16 +38,16 @@ it("has eight fighters, forty unique moves and four special skills per fighter",
     Object.keys(elementShapes).length,
   );
 });
-it("pins roster health (November 2026 balance pass) and movement speeds", () => {
+it("pins roster health (creature remodel balance pass) and movement speeds", () => {
   const baseline: Record<string, [number, number]> = {
-    voltkit: [146, 270],
-    cindrake: [144, 240],
-    tidefin: [154, 285],
-    auralynx: [171, 235],
-    lumoth: [142, 265],
-    mystowl: [148, 255],
-    terradon: [195, 222],
-    duskveil: [138, 260],
+    voltkit: [157, 270],
+    cindrake: [138, 240],
+    tidefin: [152, 285],
+    auralynx: [169, 235],
+    lumoth: [140, 265],
+    mystowl: [143, 255],
+    terradon: [191, 222],
+    duskveil: [145, 260],
   };
   for (const [id, stats] of Object.entries(baseline)) {
     const c = CHARACTERS[id as CharacterId];
@@ -213,13 +214,13 @@ it("applies counter, barrier and grounded area counterplay on the server", () =>
     m = shield.players[0];
   shield.cast(m, CHARACTERS.mystowl.skills[2]);
   shield.damage(m, 20, "two");
-  // Ward lets 40% of the hit through.
+  // Wing Cloak lets 40% of the hit through.
   expect(m.hp).toBe(CHARACTERS.mystowl.health - 20 * 0.4);
   expect(shield.players[1].hp).toBe(CHARACTERS.voltkit.health);
   const field = duel("voltkit"),
     q = field.players[1];
   q.jumpUntil = field.time + 1;
   const hp = q.hp;
-  field.damage(q, 10, "one", CHARACTERS.voltkit.skills[2]);
+  field.damage(q, 10, "one", PRACTICE_GRID);
   expect(q.hp).toBe(hp);
 });

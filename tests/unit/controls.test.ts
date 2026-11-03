@@ -230,6 +230,15 @@ describe("aim preview", () => {
     expect(far.discs[0].x).toBeCloseTo(from.x + zone.range);
     expect(far.rings[0].r).toBe(zone.range);
   });
+  it("shows a lantern's light and a glide's takeoff pop at their real reach", () => {
+    const lantern = CHARACTERS.duskveil.skills[2];
+    const light = previewShape(lantern, from, { x: from.x + 100, y: from.y });
+    expect(light.discs[0].r).toBe(lantern.turret!.range);
+    const glide = CHARACTERS.voltkit.skills[2];
+    expect(previewShape(glide, from, from).discs[0].r).toBe(
+      glide.pop!.radius + RULES.radius,
+    );
+  });
   it("draws novas around the caster at hit reach", () => {
     const nova = Object.values(CHARACTERS)
       .flatMap((c) => c.skills)

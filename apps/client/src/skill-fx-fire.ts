@@ -132,7 +132,7 @@ function cinderSnap(
   });
 }
 
-// ───────────── Ember Gust: a real flamethrower ─────────────
+// ───────────── Crest Flare: the flame crest flares into a cone ─────────────
 function emberGust(
   g: G,
   a: Ability,
@@ -327,7 +327,7 @@ function magmaImpact(
   });
 }
 
-// ───────────── Blaze Whirl: a fire ring that follows Cindrake ─────────────
+// ───────────── Heat Cracks: a ring of heat that follows Cindrake ─────────────
 function blazeWhirl(g: G, z: Zone, progress: number, now: number) {
   const fx = fxFor(g.scene),
     r = z.radius,
@@ -641,9 +641,9 @@ function fireHit(
 
 export const fireKit: FxKit = {
   projectile: { "magma-bomb": magmaBomb },
-  zone: { "blaze-whirl": blazeWhirl, "sunfire-pillar": sunfirePillar },
+  zone: { "heat-cracks": blazeWhirl, "sunfire-pillar": sunfirePillar },
   windup: { "sunfire-pillar": sunfireWindup },
-  channel: { "ember-gust": emberGust },
+  channel: { "crest-flare": emberGust },
   cast: { "cinder-snap": cinderSnap, "magma-bomb": magmaCast },
   impact: { "magma-bomb": magmaImpact },
   hit: { fire: fireHit },

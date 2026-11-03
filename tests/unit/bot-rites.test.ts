@@ -76,8 +76,8 @@ describe("bot rite choice", () => {
     );
     // Wider areas are worth more with several targets around.
     expect(
-      riteValue("mystowl-wide-repulse", me, shooter, true),
-    ).toBeGreaterThan(riteValue("mystowl-wide-repulse", me, shooter));
+      riteValue("mystowl-loud-hoot", me, shooter, true),
+    ).toBeGreaterThan(riteValue("mystowl-loud-hoot", me, shooter));
     // Other fighters' rites are worthless to it.
     expect(riteValue("voltkit-hot-darts", me, shooter)).toBeLessThan(0);
   });

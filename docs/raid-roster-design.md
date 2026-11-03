@@ -2,11 +2,11 @@
 
 Status: **All seven bosses are implemented, including Storm Twins. Apply migration 021_storm_twins.sql after 020_emberwing.sql to enable Storm Twins records and eleven rewards.** The Raid Hub, Raid of the Day, five cosmetic slots, coins, daily missions and Shop are implemented. Balance values still need live play feedback.
 
-Somnara's sequence is generated privately on the server, omitted from public and spectator snapshots, and delivered only to the Dreamer (or through Lucid/Thoughtstrike). Its camera keeps all four pads visible. Tests cover solo/co-op rune entry, backwards dreams, sleep/wake, champion tricks, practice, daily rotation, socket privacy, reward persistence and desktop/mobile controls.
+Somnara's sequence is generated privately on the server, omitted from public and spectator snapshots, and delivered only to the Dreamer (or through Lucid/Silent Swoop). Its camera keeps all four pads visible. Tests cover solo/co-op rune entry, backwards dreams, sleep/wake, champion tricks, practice, daily rotation, socket privacy, reward persistence and desktop/mobile controls.
 
 Prismatail fights in the Sun Atrium. Light passes through raiders and directional mirror posts; ordinary attacks turn a mirror 45°. Solar Crown requires two team paths within three seconds, or a continuous two-second solo path. The mobile camera keeps the complete relay visible, with compact Look away and Turn mirror controls. Six practice drills, champion tricks, traits, Polished, eleven rewards and Sunday daily rotation are implemented. Lightkeeper credits one relay per participating raider when the shield breaks, never per simulation frame. The two-player final phase uses both beams too; a Radiant Flare carrier can relay both during its four-second effect. Tests cover party sizes 1–4 on all Perils, attack geometry, mirror repair by stand-ins, socket state, database permissions and reward equipping. Balance still needs human play feedback.
 
-Emberwing uses the Sky Terrace and three braziers in a triangle. Flying blocks melee and ground-only attacks; ranged damage is halved, except Lumoth’s Starfall Spray. A grounded window lasts six seconds (eight with Updraft); two groundings in Blazing Sky leave the heart permanently exposed. The compact HUD shows flight and brazier progress. Fireproof, all seven practice choices, four champion tricks and eleven rewards are implemented. Stand-ins use separate brazier targets; tests walk slow Terradon parties of 1–4 through the final-phase route on every Peril. Grounding clears dive trails and shrinks growing fire patches. The Flashfire speed title uses the existing four-minute solo Peril 2 target provisionally, pending human clear times.
+Emberwing uses the Sky Terrace and three braziers in a triangle. Flying blocks melee and ground-only attacks; ranged damage is halved, except Lumoth’s Wing Dust. A grounded window lasts six seconds (eight with Updraft); two groundings in Blazing Sky leave the heart permanently exposed. The compact HUD shows flight and brazier progress. Fireproof, all seven practice choices, four champion tricks and eleven rewards are implemented. Stand-ins use separate brazier targets; tests walk slow Terradon parties of 1–4 through the final-phase route on every Peril. Grounding clears dive trails and shrinks growing fire patches. The Flashfire speed title uses the existing four-minute solo Peril 2 target provisionally, pending human clear times.
 
 Storm Twins fight in the Conductor Ring as two independently damageable enemies, Fizz and Crackle. Each has separate health, stagger and exposed windows; the shared health bar retains the two rite thresholds. During Supercell, finishing one starts a 15/12/8-second revival timer (solo adds three seconds; In-sync adds three). The fallen twin revives at 35% unless both fall in time. Opposite Polarity signs cancel within range; a cancelled teammate can help an odd party's remaining raider without repeat credit. Solo (or the last standing co-op raider) gets a reachable opposite-sign floor pad. Six attacks, four champion tricks, three traits, Grounded, six practice drills, Thursday daily rotation, touch target selection and eleven rewards are implemented. Tests cover all party sizes and Perils, revival and simultaneous finishes, stand-ins, multiplayer startup, persistence, permissions and equipping. Flashpoint uses the existing four-minute solo Peril 2 speed target provisionally, pending human clear times. Cross-boss rewards described later remain planned unless separately marked implemented.
 
@@ -363,7 +363,7 @@ redirect the beam.
 |---|---|---|---|
 | **Link Beam** | The ribbon between them brightens, then sweeps as they move | Jump over it; never stand on the line between them | 20 |
 | **Chain Lightning** | One raider is marked; it jumps to anyone within 200 px | Spread out. Each jump does less | 24 → 16 → 10 |
-| **Static Field** | A crackling zone (like Voltkit's Storm Grid) | Jump while crossing or avoid it; it slows | 5/s |
+| **Static Field** | A crackling zone on the floor | Jump while crossing or avoid it; it slows | 5/s |
 | **Twin Rush** | Both dash toward each other along marked lanes, making an X | Leave both lanes | 26 |
 | **Polarity** (ch. 2+) | Every raider gets a + or − badge; it detonates after 4 s | Stand next to someone with the **opposite** sign to cancel. Same signs together take double damage | 28 |
 | **Thunderclap** | A ring around the twin with *less* health | Jump it | 22 |
@@ -554,42 +554,42 @@ special answer, so "who should I bring?" is part of each boss.
 
 **Cindrake** (4)
 - **Tidewyrm:** Magma Bomb pops a Bubble Prison in one hit.
-- **Emberwing:** Blaze Whirl lights a brazier from range.
-- **Somnara:** Ember Gust wakes sleeping allies in its cone at once.
+- **Emberwing:** Heat Cracks lights a brazier from range.
+- **Somnara:** Crest Flare wakes sleeping allies in its cone at once.
 - **Prismatail:** Sunfire Pillar counts as a relay point for 4 s.
 
 **Tidefin** (3)
-- **Tidewyrm:** Mirror Mist's clone can carry the dive ripple.
-- **Emberwing:** Whirlpool puts out burning ground where it lands.
-- **Somnara:** Mirror Mist's clone can step on a rune pad.
+- **Tidewyrm:** Tide Double's double can carry the dive ripple.
+- **Emberwing:** Eddy puts out burning ground where it lands.
+- **Somnara:** Tide Double's double can step on a rune pad.
 
 **Auralynx** (3)
-- **Grumblecrag:** Mirror Guard blocks the volley.
-- **Emberwing:** Mirror Guard reflects a Dive Bomb: +20 stagger.
-- **Storm Twins:** Mirror Guard reflects the Link Beam into a twin: +20
+- **Grumblecrag:** Facet Guard blocks the volley.
+- **Emberwing:** Facet Guard reflects a Dive Bomb: +20 stagger.
+- **Storm Twins:** Facet Guard reflects the Link Beam into a twin: +20
   stagger.
 
 **Lumoth** (4)
 - **Grumblecrag:** Kindle fills half a revive.
 - **Gloomshade:** Radiant Flare relights lanterns nearby and cleanses
   curse.
-- **Emberwing:** Starfall Spray hits an airborne boss at full damage.
+- **Emberwing:** Wing Dust hits an airborne boss at full damage.
 - **Prismatail:** Radiant Flare relays a beam it touches to *every* raider
   in range at once.
 
 **Mystowl** (4)
-- **Grumblecrag:** Ward splits the meteor.
-- **Gloomshade:** Focus Ray passes through decoys and marks the real one.
-- **Somnara:** Thoughtstrike shows the current sequence to the whole team.
-- **Prismatail:** Ward blocks Glare for allies inside it.
+- **Grumblecrag:** Wing Cloak splits the meteor.
+- **Gloomshade:** Third-Eye Ray passes through decoys and marks the real one.
+- **Somnara:** Silent Swoop shows the current sequence to the whole team.
+- **Prismatail:** Wing Cloak blocks Glare for allies inside it.
 
 **Terradon** (3)
 - **Grumblecrag:** its shell stops a charge.
 - **Tidewyrm:** Tremor pops all bubbles nearby and frees a Prison.
-- **Storm Twins:** Hibernate grounds it: immune to Polarity.
+- **Storm Twins:** Shell Up's closed shell is immune to Polarity.
 
 **Duskveil** (4)
-- **Gloomshade:** Curse Mark on the real one reveals it for 6 s.
+- **Gloomshade:** Haunted Lantern hung by the real one reveals it for 6 s.
 - **Storm Twins:** Void Orb pulls one twin toward the other.
 - **Somnara:** Shade Crawl leaves a trail that blocks Dream Bubbles.
 - **Prismatail:** Void Orb swallows a Prism Lance.
@@ -1022,8 +1022,8 @@ belong to **collections** shared across champions:
 | Common | Sandbar | Sand and sea-green |
 | Rare · Garden | **Koi Pond** | Orange-and-white koi spots, a koi-scale sash; dash leaves lily pads |
 | Rare · Festival | **Corsair** | Tricorn hat and striped sash; splashes scatter gold coins |
-| Epic · Winter | **Glacier** | See-through ice-crystal body. Skills become ice, Whirlpool swirls with snow, hits shatter into shards, and its gills frost over and thaw |
-| **Mythical · Celestial** | **Moontide** | **I:** a deep-sea body speckled with glowing dots; skills shimmer moonlit silver; it rises out of a ripple pool; victory is a ring of glowing bubbles. **II:** its gills glow like deep-sea lights, and soft ripples spread wherever it stands. **III:** Mirror Mist's clones become ghostly jellyfish, Riptide Wave carries a moon's reflection, and its name ripples |
+| Epic · Winter | **Glacier** | See-through ice-crystal body. Skills become ice, Eddy swirls with snow, hits shatter into shards, and its gills frost over and thaw |
+| **Mythical · Celestial** | **Moontide** | **I:** a deep-sea body speckled with glowing dots; skills shimmer moonlit silver; it rises out of a ripple pool; victory is a ring of glowing bubbles. **II:** its gills glow like deep-sea lights, and soft ripples spread wherever it stands. **III:** Tide Double's clones become ghostly jellyfish, Riptide Wave carries a moon's reflection, and its name ripples |
 
 #### Auralynx (crystal-fisted lynx monk, Aura)
 
@@ -1034,8 +1034,8 @@ belong to **collections** shared across champions:
 | Common | Twilight | Purple fur, rose fists |
 | Rare · Garden | **Cherry Blossom** | Pink robe; petals drift down on dash |
 | Rare · Festival | **Jade Temple** | Jade fists, red tassels; hits ring like a small bell |
-| Epic · Arcade | **Stained Glass** | Fists and robe made of stained-glass panels. Prism Shot fires coloured glass, hits shatter into sparkles, Mirror Guard looks like a rose window, and light glints across it |
-| **Mythical · Celestial** | **Celestial Sage** | **I:** fur full of slowly drifting stars; galaxy-crystal fists; steps through a star portal; victory: a meditative float with orbiting stars. **II:** a halo of floating stones orbits it. **III:** Mirror Guard becomes a turning mandala shield, Nova Burst blooms into a small supernova, footsteps leave fading stars, and its name twinkles |
+| Epic · Arcade | **Stained Glass** | Fists and robe made of stained-glass panels. Prism Shot fires coloured glass, hits shatter into sparkles, Facet Guard looks like a rose window, and light glints across it |
+| **Mythical · Celestial** | **Celestial Sage** | **I:** fur full of slowly drifting stars; galaxy-crystal fists; steps through a star portal; victory: a meditative float with orbiting stars. **II:** a halo of floating stones orbits it. **III:** Facet Guard becomes a turning mandala shield, Shard Nova blooms into a small supernova, footsteps leave fading stars, and its name twinkles |
 
 #### Lumoth (fluffy moth, Light)
 
@@ -1058,8 +1058,8 @@ belong to **collections** shared across champions:
 | Common | Midnight | Dark blue, silver eyes |
 | Rare · Festival | **Scholar** | A tiny graduation cap and scarf (all three eyes stay visible); pages flutter on dash |
 | Rare · Garden | **Witch's Familiar** | A pointed hat, potion-bubble dash trail |
-| Epic · Arcade | **Clockwork** | Brass gears and rivets, ticking eye. Focus Ray becomes a golden clock-hand beam, Ward shows a clock face, and gears spin on its back |
-| **Mythical · Celestial** | **Oracle** | **I:** its third eye opens onto a galaxy; it materializes from a blink; victory: all three eyes flare. **II:** original rune cards orbit it. **III:** Focus Ray becomes a galaxy beam, Ward shows a turning eye sigil, and its name has a faint third-eye glyph |
+| Epic · Arcade | **Clockwork** | Brass gears and rivets, ticking eye. Third-Eye Ray becomes a golden clock-hand beam, Wing Cloak shows a clock face, and gears spin on its back |
+| **Mythical · Celestial** | **Oracle** | **I:** its third eye opens onto a galaxy; it materializes from a blink; victory: all three eyes flare. **II:** original rune cards orbit it. **III:** Third-Eye Ray becomes a galaxy beam, Wing Cloak shows a turning eye sigil, and its name has a faint third-eye glyph |
 
 #### Terradon (boulder tortoise, Earth)
 
@@ -1071,7 +1071,7 @@ belong to **collections** shared across champions:
 | Rare · Garden | **Bonsai** | A tiny bonsai tree on its shell; leaves fall on dash |
 | Rare · Winter | **Snowball** | Snow-covered shell, knitted scarf; puffs of snow on hits |
 | Epic · Arcade | **Geode** | Shell cracks show glowing amethyst. Tremor bursts with crystal shards, hits sparkle violet, and the crystals pulse while it sleeps |
-| **Mythical · Celestial** | **World-Shell** | **I:** a tiny floating island on its shell, with trees, a waterfall and clouds; it rises from the ground like a mountain; victory: tiny fireworks from the shell's village. **II:** little birds circle and the waterfall flows. **III:** Hibernate lights up a sleeping village, Tremor makes flowers spring up, and its name has a tiny leaf |
+| **Mythical · Celestial** | **World-Shell** | **I:** a tiny floating island on its shell, with trees, a waterfall and clouds; it rises from the ground like a mountain; victory: tiny fireworks from the shell's village. **II:** little birds circle and the waterfall flows. **III:** Shell Up lights up a sleeping village, Tremor makes flowers spring up, and its name has a tiny leaf |
 
 #### Duskveil (hooded lantern wisp, Shadow)
 
@@ -1083,7 +1083,7 @@ belong to **collections** shared across champions:
 | Rare · Festival | **Pumpkin Lantern** | A carved-pumpkin lantern; autumn leaves on dash |
 | Rare · Festival | **Paper Lantern** | A red paper lantern with tassels |
 | Epic · Garden | **Candlelight** | A melting-candle hood with wax drips. Ghostfire becomes candle flames, hits puff smoke, and KO is a blown-out wick |
-| **Mythical · Celestial** | **Eclipse** | **I:** the hood becomes a total eclipse with a dark sun and a bright ring; it fades in like an eclipse; victory: the ring blooms. **II:** the ring flares and shadow wisps drift. **III:** Curse Mark becomes an eclipse sigil, Void Orb a tiny black sun, and its name has a ring |
+| **Mythical · Celestial** | **Eclipse** | **I:** the hood becomes a total eclipse with a dark sun and a bright ring; it fades in like an eclipse; victory: the ring blooms. **II:** the ring flares and shadow wisps drift. **III:** Haunted Lantern becomes an eclipse sigil, Void Orb a tiny black sun, and its name has a ring |
 
 ### 10.7 All-fighter collections
 

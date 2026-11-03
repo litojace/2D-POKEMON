@@ -226,6 +226,7 @@ export class SomnaraArena extends RaidArena {
       r.dream.dreamerId !== id ||
       !p ||
       this.has(p, "sleep") ||
+      this.has(p, "shell") ||
       !DREAM_RUNES.includes(rune) ||
       this.time < (this.runeCallAt.get(id) ?? 0)
     )
@@ -314,7 +315,7 @@ export class SomnaraArena extends RaidArena {
       d.stacks = 0;
       d.sleepUntil = this.time + S.drowsy.sleep;
       p.statuses = p.statuses.filter((s) => s.kind !== "drowsy");
-      // Keep Somnara's imposed sleep separate from Terradon's Hibernate.
+      // Somnara's imposed sleep is its own status (Terradon's Shell Up is a shell, not sleep).
       p.statuses.push({
         kind: "sleep",
         until: d.sleepUntil,
@@ -575,7 +576,7 @@ export class SomnaraArena extends RaidArena {
         p.hp > 0 &&
         p.channel &&
         p.channel.until > this.time &&
-        this.kit(p).skills[p.channel.skill]?.id === "ember-gust",
+        this.kit(p).skills[p.channel.skill]?.id === "crest-flare",
     );
     const inGust = (p: Fighter, x: number, y: number) => {
       const a = this.kit(p).skills[p.channel!.skill];
@@ -679,9 +680,9 @@ export class SomnaraArena extends RaidArena {
         (b) => !affected(b.x, b.y),
       );
     }
-    if (a.id === "thoughtstrike" && this.raid.dream) {
+    if (a.id === "silent-swoop" && this.raid.dream) {
       this.sharedUntil = this.raid.dream.until;
-      this.raid.message = `${p.name}'s Thoughtstrike reveals this dream to the whole team!`;
+      this.raid.message = `${p.name}'s Silent Swoop reveals this dream to the whole team!`;
     }
   }
   protected override botHint(

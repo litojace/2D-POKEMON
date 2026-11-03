@@ -32,7 +32,7 @@ Normal crowd control adds stagger rather than stun-locking the boss. The boss ca
 
 A sleepy sea serpent fought in the **Lagoon Court**: shallow water with four raised islands you can stand on (no walls). Its numbers live in `TIDEWYRM` and its attack order in `tidewyrmPattern` (`packages/shared/src/raid.ts`); the fight is `TidewyrmArena` in `apps/server/src/raid-tidewyrm.ts`, which reuses the raid core (chapters, rites, downs, stagger, practice, stand-ins).
 
-- **Dive & Surface (signature):** it dives (can't be hit under water) and a ripple follows one raider for 1.4 s, then locks for 0.8 s. It surfaces there with a splash ring. Surfacing **on an island strands it**: exposed for 5 s (7 on Peril 1), stagger, and a strand counted for the raider it chased. An island sinks after two strands until the next chapter. Tidefin's Mirror Mist clone carries the ripple.
+- **Dive & Surface (signature):** it dives (can't be hit under water) and a ripple follows one raider for 1.4 s, then locks for 0.8 s. It surfaces there with a splash ring. Surfacing **on an island strands it**: exposed for 5 s (7 on Peril 1), stagger, and a strand counted for the raider it chased. An island sinks after two strands until the next chapter. Tidefin's Tide Double clone carries the ripple.
 - **Tidal Wave:** a band sweeps across from one edge. Chapter 1 waves are low (jump them); from chapter 2 they're high (only an island is safe).
 - **Bubble Barrage:** 7–9 slow bubbles in a fan. A hit roots you for 0.8 s; attacks pop them; Terradon's Tremor clears them.
 - **High Tide** (ch. 2+): the floor floods for 5 s; off the islands you take damage and slow down. Two raiders fit on an island; a third is pushed off (solo: no limit).
@@ -52,7 +52,7 @@ A floppy-eared puff of shadow with a crescent-moon tail, fought in the **Lantern
 - **Lantern Snuff:** a lantern dims and goes out. Two hits relight it (a shot or a swing aimed at it). In chapter 3 it goes out twice as fast.
 - **Creeping Curse** (ch. 2+): a stack on one raider. Anyone within 120 px of a cursed raider for 2 s (3 s with Restless Spirits) gets a stack too. Three stacks = **Haunted**: 5 damage a second for 6 s. Two seconds in lantern light cleanses it. Solo, the curse instead grows if you stand still for 2.5 s.
 - **Nightmare Pulse:** a ring expands from every copy, but only the real one's hurts: jump it. The real ring marks the real one for a moment. In chapter 3 pulses come in pairs.
-- **Champion tricks:** Voltkit's Ball Lightning lights its landing spot for 3 s; Lumoth's Radiant Flare relights lanterns and cleanses curses nearby; Mystowl's Focus Ray, aimed at the real one, marks it for 4 s; Duskveil's Curse Mark on the real one reveals it for 6 s.
+- **Champion tricks:** Voltkit's Ball Lightning lights its landing spot for 3 s; Lumoth's Radiant Flare relights lanterns and cleanses curses nearby; Mystowl's Third-Eye Ray, aimed at the real one, marks it for 4 s; Duskveil's Haunted Lantern on the real one reveals it for 6 s.
 - **Traits:** Moonlit (wider lantern light, one extra copy), Restless Spirits (more Grasping Hands, slower curse spread), Hollow (fewer copies, fainter shadow). **Themed rite:** Lamplighter (one hit relights a lantern; lantern light heals 1% a second). **Signal:** the third key is "That's the real one".
 - **Rewards** (migration 013): Lightbringer (first clear), Dusk colors (5 clears), Moonlit skin (10), Shadowstep entrance (Peril 2), Night's End title + Crescent frame (Peril 3), Nightmote aura (Peril 3, no downs), Crescent Bow victory (feat: nobody hits a copy all run, with at least one split), Moonrunner (Peril 2 solo under 4:00), Lone Lantern (Peril 3 solo), Lamplighter (50 lanterns relit, wins and losses; a run counts at most 20).
 
@@ -62,13 +62,13 @@ A sleepy lavender sky whale carries a cottage on its back above the **Cloud Deck
 
 - **Dream Sequence:** only the Dreamer receives the sequence. Call runes with **1–4** or the touch rune bar, then enter the matching pads in order. Numeric skill aliases temporarily become calls for the Dreamer; Q/E/R/F still cast skills. A wrong pad or timeout causes an 18-damage Nightmare and gives a fresh sequence to another living raider. A correct sequence exposes Somnara for six seconds. Leave a pad before entering it again.
 - **Solo:** always the Dreamer, one fewer rune, fourteen seconds instead of a team's ten. Chapter one teaches short sequences; later chapters scale to Peril. Final Peril 3 dreams can display backwards: read right to left.
-- **Lullaby Rings:** jump the expanding rings. Rings and drifting **Dream Bubbles** add Drowsy; three stacks put you to sleep for two seconds. Attacks pop bubbles. Allies can hit sleeping teammates awake without friendly damage; this does not cancel Terradon's own Hibernate.
+- **Lullaby Rings:** jump the expanding rings. Rings and drifting **Dream Bubbles** add Drowsy; three stacks put you to sleep for two seconds. Attacks pop bubbles. Allies can hit sleeping teammates awake without friendly damage; this does not cancel Terradon's own Shell Up.
 - **Tail Splash:** leave the marked lane. **Falling Stars** (chapter two onward) land on constellation points; stand between them. **Whale Song** channels for four seconds, hurting anyone outside the moving teal Quiet Zone.
 - **Traits:** Deep Slumber adds a rune but extends exposure by two seconds. Restless Dream sends more bubbles but shortens sequences. Starry Night adds stars and enlarges the Quiet Zone. **Lucid** prevents bubble Drowsy and privately shows the first rune even to non-Dreamers.
-- **Champion tricks:** Ember Gust wakes allies throughout its cone; Mirror Mist's clone can enter a rune pad; Thoughtstrike reveals the current sequence to the team; Shade Crawl leaves bubble-blocking trails. Stand-ins follow actual rune calls or their own private view.
+- **Champion tricks:** Crest Flare wakes allies throughout its cone; Tide Double's double can enter a rune pad; Silent Swoop reveals the current sequence to the team; Shade Crawl leaves bubble-blocking trails. Stand-ins follow actual rune calls or their own private view.
 - **Eleven rewards:** Dreamwaker, Twilight colors, Starlit skin, Dreamdrift entrance, Lucid Legend, Moonglass frame, Lullaby aura, Sweet Dreams victory, Daydream Dash, Lone Dreamer and Dream Weaver. Sweet Dreams requires a solved sequence and no wrong runes/timeouts; Dream Weaver counts 60 correct rune entries across wins and losses. The shared feature counter stores rune entries for this boss; it does not stop at the older twenty-pillar limit.
 
-Migration **015_somnara.sql** enables Somnara's stored records, titles and cosmetics. Its sequence stays out of public/spectator snapshots; Lucid's one-rune hint and Thoughtstrike's team reveal are sent to the appropriate authenticated seats only.
+Migration **015_somnara.sql** enables Somnara's stored records, titles and cosmetics. Its sequence stays out of public/spectator snapshots; Lucid's one-rune hint and Silent Swoop's team reveal are sent to the appropriate authenticated seats only.
 
 ## Replay variety
 
@@ -86,8 +86,8 @@ Six raid-only rites offer dash wards, shared ultimate energy, extra exposed-core
 
 Some champions' skills answer Grumblecrag's attacks; the briefing lists the party's:
 
-- **Auralynx · Mirror Guard** blocks the rock volley completely and adds stagger.
-- **Mystowl · Ward** up inside a shared meteor cuts the damage for everyone sharing it by 35%.
+- **Auralynx · Facet Guard** blocks the rock volley completely and adds stagger.
+- **Mystowl · Wing Cloak** up inside a shared meteor cuts the damage for everyone sharing it by 35%.
 - **Terradon** stops a charge head-on with its shell, taking half damage and staggering the boss.
 - **Lumoth · Kindle** cast beside a fallen ally fills half of their revive at once (and earns revive credit).
 

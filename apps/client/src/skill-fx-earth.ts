@@ -156,68 +156,68 @@ function shellSlam(
   });
 }
 
-function hibernate(
+/**
+ * Shell Up: Terradon pulls into its shell (the rig hides everything else).
+ * A hard, mossy shimmer of shell plates closes over it, and green motes rise
+ * on each heal tick.
+ */
+function shellUp(
   scene: Phaser.Scene,
   a: Ability,
   x: number,
   y: number,
   _angle: number,
-  color: number,
+  _color: number,
   shot: Shot,
 ) {
   const fx = fxFor(scene),
-    ms = Math.min(2400, (a.duration ?? 2.5) * 1000);
+    ms = Math.min(2600, (a.duration ?? 2.5) * 1000),
+    cy = y - 22;
+  rocks(fx, x, y, 5, [40, 120], [60, 160], { size: [2, 3] });
   shot(fx.reduced ? 600 : ms, (k) => {
-    const breathe = 0.5 + Math.sin(k * TAU * 2.2) * 0.5,
-      fade = k > 0.85 ? (1 - k) / 0.15 : Math.min(1, k * 6);
-    fx.glow(x, y, 60 + breathe * 14, LEAF, 0.35 * fade, true);
-    fx.glow(x, y - 18, 40, LEAF, 0.25 * fade * breathe);
-    // Sleepy "z"s drifting up and away.
-    for (let i = 0; i < 3; i++) {
-      const t = (k * 2.4 + i / 3) % 1,
-        zx = x + 18 + i * 8 + Math.sin(t * 6 + i) * 6,
-        zy = y - 44 - t * 60,
-        s = 5 + t * 5,
-        al = (t < 0.15 ? t / 0.15 : 1 - t) * fade;
-      fx.solid.lineStyle(4, DARK, 0.35 * al).strokePoints(
-        [
-          { x: zx - s, y: zy - s },
-          { x: zx + s, y: zy - s },
-          { x: zx - s, y: zy + s },
-          { x: zx + s, y: zy + s },
-        ],
-        false,
-      );
-      fx.solid.lineStyle(2.5, 0xffffff, 0.95 * al).strokePoints(
-        [
-          { x: zx - s, y: zy - s },
-          { x: zx + s, y: zy - s },
-          { x: zx - s, y: zy + s },
-          { x: zx + s, y: zy + s },
-        ],
-        false,
-      );
+    const close = Math.min(1, k / 0.12),
+      fade = k > 0.9 ? (1 - k) / 0.1 : 1,
+      r = 46 - 8 * close;
+    // Plates of the shell's guard, slowly turning.
+    for (let i = 0; i < 6; i++) {
+      const ang = (i / 6) * Math.PI * 2 + k * 0.8,
+        hx = x + Math.cos(ang) * r * 0.75,
+        hy = cy + Math.sin(ang) * r * 0.55;
+      const hex = Array.from({ length: 6 }, (_, j) => ({
+        x: hx + Math.cos((j / 6) * Math.PI * 2) * 11,
+        y: hy + Math.sin((j / 6) * Math.PI * 2) * 9,
+      }));
+      fx.solid
+        .lineStyle(2.5, SAND, 0.55 * fade * close)
+        .strokePoints(hex, true);
     }
-    // Healing pollen rising from the ground.
-    fx.trail(`hb${Math.round(x)}`, 0.07, () => {
-      const ang = Math.random() * TAU;
-      fx.burst({
-        x: x + Math.cos(ang) * 34,
-        y: y + Math.sin(ang) * 18,
-        count: 1,
-        kind: "mote",
-        color: [LEAF, 0xe9ffb8],
-        speed: [0, 10],
-        up: [30, 70],
-        life: [0.7, 1.2],
-        size: [1.2, 2],
-        drag: 1,
-      });
-    });
+    fx.solid
+      .lineStyle(4, DARK, 0.3 * fade)
+      .strokeEllipse(x, cy, r * 2, r * 1.6);
+    fx.solid
+      .lineStyle(2, LEAF, 0.7 * fade)
+      .strokeEllipse(x, cy, r * 2, r * 1.6);
+    fx.glow(x, cy, 58, LEAF, 0.22 * fade);
   });
-  void color;
+  // Regrowth: a little green rise on each heal tick (every half second).
+  const ticks = Math.round((a.duration ?? 2.5) / 0.5);
+  for (let i = 0; i < ticks; i++)
+    scene.time.delayedCall(400 + i * 500, () =>
+      fx.burst({
+        x,
+        y: cy,
+        z: 10,
+        count: 4,
+        kind: "mote",
+        color: [LEAF, 0xd8ffb8],
+        speed: [8, 30],
+        up: [50, 100],
+        life: [0.6, 1],
+        size: [1.5, 2.4],
+        drag: 2,
+      }),
+    );
 }
-
 function dustCloud(g: G, z: Zone, progress: number, now: number) {
   const fx = fxFor(g.scene),
     r = z.radius,
@@ -409,12 +409,12 @@ function earthHit(
 export const earthKit: FxKit = {
   cast: {
     "boulder-swipe": boulderSwipe,
-    "shell-slam": shellSlam,
-    hibernate,
+    "shell-bash": shellSlam,
+    "shell-up": shellUp,
     tremor: (scene, a, x, y, _angle, color, shot) =>
       tremor(scene, a, x, y, color, shot),
   },
-  zone: { "dust-cloud": dustCloud },
+  zone: { "mud-mire": dustCloud },
   windup: { tremor: tremorWindup },
   hit: { earth: earthHit },
 };

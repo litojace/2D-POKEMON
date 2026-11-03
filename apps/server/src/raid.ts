@@ -942,7 +942,7 @@ export class RaidArena extends Arena {
         for (const p of this.heroes())
           if (p.hp > 0 && this.inVolley(w, p)) {
             if (this.has(p, "counter") && !r.drill) {
-              // Auralynx's Mirror Guard sends the stones back.
+              // Auralynx's Facet Guard sends the stones back.
               r.stagger = Math.min(100, r.stagger + 12);
               r.message = `${p.name}'s guard reflects the volley!`;
               this.event("hit", boss, 0xc9f4ff, 0, p.id);

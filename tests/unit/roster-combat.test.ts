@@ -49,6 +49,24 @@ describe("basic attacks", () => {
       expect(p.cooldowns.every((c) => c === 0)).toBe(true);
     }
   });
+  it("holding the button keeps the stated attack rate (ticks don't round intervals up)", () => {
+    for (const id of FIGHTER_IDS) {
+      const { arena, p, q } = duel(id);
+      Object.assign(q, { x: 1400, y: 800 });
+      const seconds = 6;
+      for (let i = 0; i < seconds * RULES.tick; i++) {
+        arena.submit(p, input({ basic: true }));
+        arena.tick();
+      }
+      const casts = arena.events.filter(
+        (e) => e.kind === "cast" && e.abilityId === CHARACTERS[id].basic.id,
+      ).length;
+      const interval = basicInterval(CHARACTERS[id]);
+      // The first attack is immediate; then one per interval.
+      expect(casts, id).toBeGreaterThanOrEqual(Math.floor(seconds / interval));
+      expect(casts, id).toBeLessThanOrEqual(Math.floor(seconds / interval) + 1);
+    }
+  });
   it("Kindle shortens the basic interval and boosts damage", () => {
     const { arena, p, q } = duel("lumoth");
     arena.cast(p, CHARACTERS.lumoth.skills[2]);
@@ -86,12 +104,12 @@ describe("special skills", () => {
   });
   it("every damaging skill hits an opponent standing in front", () => {
     const utility = new Set([
-      "mirror-mist",
-      "mirror-guard",
+      "tide-double",
+      "facet-guard",
       "kindle",
-      "ward",
-      "hibernate",
-      "dust-cloud",
+      "wing-cloak",
+      "shell-up",
+      "mud-mire",
     ]);
     for (const id of FIGHTER_IDS)
       for (let i = 0; i < 4; i++) {
@@ -105,33 +123,82 @@ describe("special skills", () => {
         expect(p.stats.dealt, a.name).toBeGreaterThan(0);
       }
   });
-  it("Curse Mark doubles damage against a target with a harmful status", () => {
-    const hex = CHARACTERS.duskveil.skills[2];
-    const clean = duel("duskveil"),
-      cursed = duel("duskveil");
-    cursed.arena.status(cursed.q, "burn", 5);
-    clean.arena.damage(clean.q, hex.damage, "one", hex);
-    cursed.arena.damage(cursed.q, hex.damage, "one", hex);
-    expect(CHARACTERS.terradon.health - clean.q.hp).toBe(16);
-    expect(CHARACTERS.terradon.health - cursed.q.hp).toBe(32);
+  it("Haunted Lantern shoots the nearest enemy in its light, and nothing beyond it", () => {
+    const lantern = CHARACTERS.duskveil.skills[2];
+    expect(lantern.turret).toBeDefined();
+    const { arena, p, q } = duel("duskveil");
+    p.lastInput = input({ aimX: 700, aimY: 150 });
+    arena.cast(p, lantern);
+    expect(arena.zones).toHaveLength(1);
+    // Shots at 0.4s, 1.7s and 3.0s; each wisp lands for turret.damage.
+    for (let k = 0; k < 30 * 4.2; k++) arena.tick();
+    const lost = CHARACTERS.terradon.health - q.hp;
+    expect(lost).toBe(lantern.turret!.damage * 3);
+    // Out of the light: the lantern holds its fire.
+    const far = duel("duskveil");
+    far.p.lastInput = input({ aimX: 700, aimY: 150 });
+    Object.assign(far.q, { x: 700 + lantern.turret!.range + 120, y: 150 });
+    far.arena.cast(far.p, lantern);
+    for (let k = 0; k < 30 * 4.2; k++) far.arena.tick();
+    expect(far.q.hp).toBe(CHARACTERS.terradon.health);
   });
-  it("Hibernate heals 75 over its duration, blocks actions and takes 20% more damage", () => {
+  it("Static Glide lifts Voltkit over ground attacks, hastes it, and its takeoff pop shoves and slows", () => {
+    const glide = CHARACTERS.voltkit.skills[2];
+    const { arena, p, q } = duel("voltkit");
+    arena.cast(p, glide);
+    expect(p.jumpUntil).toBeCloseTo(arena.time + glide.duration);
+    expect(arena.has(p, "haste")).toBe(true);
+    expect(arena.has(p, "empower")).toBe(false);
+    // Terradon (100px away) is inside the pop: hurt, slowed and pushed away.
+    expect(q.hp).toBe(CHARACTERS.terradon.health - glide.pop!.damage);
+    expect(arena.has(q, "slow")).toBe(true);
+    expect(q.x).toBeGreaterThan(700);
+    // A ground attack misses while gliding.
+    const hp = p.hp;
+    arena.damage(p, 30, q.id, CHARACTERS.terradon.skills[3]);
+    expect(p.hp).toBe(hp);
+  });
+  it("Tide Double leaves a decoy, hastes Tidefin and regrows a little health", () => {
+    const double = CHARACTERS.tidefin.skills[2];
+    const { arena, p } = duel("tidefin");
+    p.hp = 100;
+    arena.cast(p, double);
+    expect(p.clone).toBeDefined();
+    expect(arena.has(p, "haste")).toBe(true);
+    expect(p.hp).toBe(100 + double.heal!);
+  });
+  it("Eyespot Flash stuns and pushes enemies in a wide arc in front", () => {
+    const flash = CHARACTERS.lumoth.skills[1];
+    const { arena, p, q } = duel("lumoth");
+    // Off to the side but still in front (the arc is a half circle).
+    Object.assign(q, { x: 640, y: 260 });
+    arena.cast(p, flash);
+    expect(q.hp).toBe(CHARACTERS.terradon.health - flash.damage);
+    expect(arena.has(q, "stun")).toBe(true);
+    // Behind Lumoth: untouched.
+    const back = duel("lumoth");
+    Object.assign(back.q, { x: 520, y: 150 });
+    back.arena.cast(back.p, flash);
+    expect(back.q.hp).toBe(CHARACTERS.terradon.health);
+  });
+  it("Shell Up heals 25 over its duration, blocks actions and takes 45% less damage", () => {
     const { arena, q } = duel("cindrake");
     q.hp = 100;
     arena.submit(q, input({ skill: 1 }));
     arena.tick();
-    expect(q.statuses.some((s) => s.kind === "sleep")).toBe(true);
+    expect(q.statuses.some((s) => s.kind === "shell")).toBe(true);
+    expect(q.statuses.some((s) => s.kind === "sleep")).toBe(false);
     arena.damage(q, 10, "one", CHARACTERS.cindrake.basic);
-    expect(q.hp).toBe(100 - 10 * STATUS_RULES.sleepVulnerability);
-    expect(STATUS_RULES.sleepVulnerability).toBe(1.2);
+    expect(q.hp).toBe(100 - 10 * STATUS_RULES.shellReduction);
+    expect(STATUS_RULES.shellReduction).toBe(0.55);
     q.hp = 90; // keep the healing check below on whole numbers
     const x = q.x;
     arena.submit(q, input({ dx: 1, basic: true }));
     arena.tick();
     expect(q.x).toBe(x);
     for (let k = 0; k < 90; k++) arena.tick();
-    expect(q.hp).toBe(165);
-    expect(q.statuses.some((s) => s.kind === "sleep")).toBe(false);
+    expect(q.hp).toBe(115);
+    expect(q.statuses.some((s) => s.kind === "shell")).toBe(false);
   });
   it("Focus Ray is instant, synchronizes its end point and is blocked by cover", () => {
     const open = duel("mystowl");
@@ -154,7 +221,7 @@ describe("special skills", () => {
     arena.damage(q, 20, p.id, CHARACTERS.duskveil.skills[0]);
     expect(q.hp).toBe(CHARACTERS.voltkit.health);
   });
-  it("Blaze Whirl follows Cindrake", () => {
+  it("Heat Cracks follows Cindrake", () => {
     const { arena, p } = duel("cindrake");
     arena.cast(p, CHARACTERS.cindrake.skills[2]);
     p.x = 300;

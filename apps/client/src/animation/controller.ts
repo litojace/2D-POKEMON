@@ -67,6 +67,8 @@ export interface AnimationPose {
   ultReady?: boolean;
   /** Round intro (countdown): each fighter greets with its own wave. */
   greet?: boolean;
+  /** Shell Up: pulled into the shell, so only the shell shows. */
+  shell?: boolean;
 }
 export function facing(angle: number): Facing {
   return Math.abs(Math.cos(angle)) > Math.abs(Math.sin(angle))

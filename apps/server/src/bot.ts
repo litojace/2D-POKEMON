@@ -110,7 +110,7 @@ function rng(seed: number) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-const DISABLES = ["stun", "freeze", "sleep", "paralysis"] as const;
+const DISABLES = ["stun", "freeze", "sleep", "shell", "paralysis"] as const;
 const OFFENSIVE = new Set([
   "projectile",
   "charged",
@@ -570,7 +570,10 @@ export class BotBrain {
           if (a.follow) {
             if (reach(a.radius * 0.9)) score = a.damage * 5;
           } else if (reach(a.range))
-            score = Math.max(a.damage, 10) * (s.enemyDisabled ? 1.6 : 1);
+            // A lantern (turret) keeps shooting: worth about five wisps.
+            score =
+              Math.max(a.turret ? a.turret.damage * 5 : a.damage, 10) *
+              (s.enemyDisabled ? 1.6 : 1);
           break;
         case "counter":
         case "barrier":
@@ -580,10 +583,18 @@ export class BotBrain {
           if (s.threatened && s.hpRatio < 0.7) score = 16;
           break;
         case "buff":
-          if (s.sight && reach(520)) score = 15;
+          // Static Glide is an escape: take off when something is coming.
+          if (a.glide) {
+            if (s.threatened) score = 18;
+          } else if (s.sight && reach(520)) score = 15;
           break;
         case "rest":
-          if (s.hpRatio < 0.45 && s.dist > 430 && !s.threatened) score = 30;
+          // Shell Up protects, so it is for when you're hurt and under fire
+          // (or safely away). It comes first: nothing else saves the round.
+          if (a.status === "shell") {
+            if (s.hpRatio < 0.6 && (s.threatened || s.dist > 430)) score = 100;
+          } else if (s.hpRatio < 0.45 && s.dist > 430 && !s.threatened)
+            score = 30;
           break;
       }
       if (!score) return;
@@ -669,9 +680,14 @@ const STATUS_WEIGHT: Partial<Record<StatusKind, number>> = {
 const ticking = (a: Ability) => !!a.tickInterval && a.damage > 0;
 /** Damage one use deals if everything lands. */
 const perUse = (a: Ability) =>
-  a.damage *
-  (a.count ?? 1) *
-  (ticking(a) ? Math.max(1, a.duration / a.tickInterval!) : 1);
+  a.turret
+    ? // A lantern: one shot after tickDelay, then one per tickInterval.
+      a.turret.damage *
+      (Math.floor((a.duration - (a.tickDelay ?? 0)) / (a.tickInterval ?? 1)) + 1)
+    : a.damage *
+        (a.count ?? 1) *
+        (ticking(a) ? Math.max(1, a.duration / a.tickInterval!) : 1) +
+      (a.pop?.damage ?? 0);
 const pace = (a: Ability) => a.cooldown || a.interval || 1;
 
 /**

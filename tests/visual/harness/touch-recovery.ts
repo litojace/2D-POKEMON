@@ -18,7 +18,7 @@ export function touchRecovery() {
   );
   controls.update(
     true,
-    ["Static Lance", "Ball Lightning", "Storm Grid", "Overcharge"],
+    ["Static Lance", "Ball Lightning", "Static Glide", "Overcharge"],
     [0, 0, 0, 0],
     0,
     0,

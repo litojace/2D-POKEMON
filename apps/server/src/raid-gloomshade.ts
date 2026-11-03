@@ -532,20 +532,20 @@ export class GloomshadeArena extends RaidArena {
       for (const q of this.heroes()) if (q.hp > 0 && Math.hypot(q.x - p.x, q.y - p.y) < 240) this.cleanse(q);
     }
     if (!boss) return;
-    // Mystowl's Focus Ray passes through copies and marks the real one.
-    if (a.id === "focus-ray") {
+    // Mystowl's Third-Eye Ray passes through copies and marks the real one.
+    if (a.id === "third-eye-ray") {
       const aimAngle = Math.atan2(aim.y - p.y, aim.x - p.x),
         toBoss = Math.atan2(boss.y - p.y, boss.x - p.x);
       const off = Math.abs(Math.atan2(Math.sin(aimAngle - toBoss), Math.cos(aimAngle - toBoss)));
       if (off < 0.25 && Math.hypot(boss.x - p.x, boss.y - p.y) < 900) {
         r.revealUntil = Math.max(r.revealUntil ?? 0, this.time + G.revealRay);
-        r.message = `${p.name}'s Focus Ray marks the real Gloomshade!`;
+        r.message = `${p.name}'s Third-Eye Ray marks the real Gloomshade!`;
       }
     }
-    // Duskveil's Curse Mark on the real one reveals it.
-    if (a.id === "curse-mark" && Math.hypot(aim.x - boss.x, aim.y - boss.y) < 160) {
+    // Duskveil's Haunted Lantern hung by the real one lights it up.
+    if (a.id === "haunted-lantern" && Math.hypot(aim.x - boss.x, aim.y - boss.y) < 160) {
       r.revealUntil = Math.max(r.revealUntil ?? 0, this.time + G.revealMark);
-      r.message = `${p.name}'s Curse Mark reveals the real Gloomshade!`;
+      r.message = `${p.name}'s Haunted Lantern reveals the real Gloomshade!`;
     }
   }
 

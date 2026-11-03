@@ -287,6 +287,8 @@ const abilityColor = new Map(
   ),
 );
 const remoteFrames = new InterpolationBuffer();
+/** Static Glide in progress, per fighter: when it started (server time). */
+const gliding = new Map<string, { until: number; start: number }>();
 /** Adapts optional battle decoration to the device (Settings → Graphics). */
 const battleQuality = new BattleQualityGovernor();
 let battleStill: boolean | undefined;
@@ -2461,6 +2463,8 @@ function renderBattle() {
         .map((s) =>
           s.kind === "sleep"
             ? `SLEEP +${Math.round((STATUS_RULES.sleepVulnerability - 1) * 100)}% DMG`
+            : s.kind === "shell"
+              ? `SHELL −${Math.round((1 - STATUS_RULES.shellReduction) * 100)}% DMG`
             : s.kind === "mark"
               ? comboOf(s.by).toUpperCase()
               : s.kind.toUpperCase(),
@@ -5007,12 +5011,21 @@ class ArenaScene extends Phaser.Scene {
         y = pos.y,
         c = CHARACTERS[p.character];
       if (serverPlayer.raidBoss) continue;
-      const jump =
-        serverPlayer.jumpUntil > state.time
-          ? Math.sin(
-              (1 - (serverPlayer.jumpUntil - state.time) / RULES.jumpDuration) *
-                Math.PI,
-            ) * 45
+      const serverTime = state.time;
+      const airborne = serverPlayer.jumpUntil - serverTime;
+      // Static Glide keeps a fighter airborne longer than a jump: it lifts,
+      // sails at a steady height and settles, instead of following the jump arc.
+      let glide = gliding.get(p.id);
+      if (airborne > RULES.jumpDuration + 0.05 && glide?.until !== serverPlayer.jumpUntil)
+        gliding.set(p.id, (glide = { until: serverPlayer.jumpUntil, start: state.time }));
+      const isGliding = !!glide && glide.until === serverPlayer.jumpUntil && airborne > 0;
+      const jump = isGliding
+        ? 34 *
+          Math.min(1, (state.time - glide!.start) / 0.2) *
+          Math.min(1, airborne / 0.3) +
+          Math.sin(state.time * 9) * 2
+        : airborne > 0
+          ? Math.sin((1 - airborne / RULES.jumpDuration) * Math.PI) * 45
           : 0;
       const pose = {
         hp: p.hp,
@@ -5021,8 +5034,12 @@ class ArenaScene extends Phaser.Scene {
         ambient: ambient.has(p.id),
         speed: Math.hypot(p.vx, p.vy),
         angle: p.angle,
-        dash: serverPlayer.dashUntil > state.time,
-        jump: serverPlayer.jumpUntil > state.time,
+        // A glide spreads the glider membranes (the dash pose).
+        dash: serverPlayer.dashUntil > state.time || isGliding,
+        jump: serverPlayer.jumpUntil > state.time && !isGliding,
+        shell: serverPlayer.statuses.some(
+          (s) => s.kind === "shell" && s.until > serverTime,
+        ),
         charging: !!serverPlayer.charge,
         ultReady:
           (serverPlayer.ult ?? 0) >= RULES.ultMax && serverPlayer.hp > 0,
@@ -5243,7 +5260,7 @@ class ArenaScene extends Phaser.Scene {
               s.by === myId || p.id === myId,
             );
         }
-      // Duskveil's Curse Mark pays off on any harmful status: show it to them.
+      // A combo that pays off on any harmful status (anyDebuff): show it to them.
       if (
         me &&
         p.id !== myId &&
@@ -5270,6 +5287,7 @@ class ArenaScene extends Phaser.Scene {
           paralysis: 0xffd65b,
           sleep: 0x8fa6d8,
           drowsy: 0xc9a3ff,
+          shell: 0xc79a5b,
           shield: 0xc77dff,
           counter: 0x78c7ef,
           empower: 0xffb347,

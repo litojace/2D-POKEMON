@@ -141,7 +141,7 @@ export class PrismatailArena extends RaidArena {
       });
     }
     if (a.id === "radiant-flare") this.flareUntil.set(p.id, this.time + 4);
-    if (a.id === "ward") this.wardUntil.set(p.id, this.time + a.duration);
+    if (a.id === "wing-cloak") this.wardUntil.set(p.id, this.time + a.duration);
     if (
       a.id !== "radiant-flare" &&
       ["melee", "cone", "beam", "nova"].includes(a.kind)

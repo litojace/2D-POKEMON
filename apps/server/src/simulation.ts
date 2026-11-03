@@ -17,6 +17,9 @@ import {
   kitOf,
   riteOffer,
   DEBUFFS,
+  DISABLING_STATUSES,
+  PRACTICE_GRID,
+  turretShot,
   hasMark,
   MODE_SIZE,
   MODE_MIN,
@@ -574,7 +577,7 @@ export class Arena {
       if (input.skill < SKILL_SLOTS && p.hp > 0 &&
           skillReady(p, input.skill, this.time, free) &&
           p.recoveryUntil <= this.time + SKILL_INPUT_BUFFER &&
-          !p.statuses.some(s => s.until > this.time && ["stun", "freeze", "sleep"].includes(s.kind)))
+          !p.statuses.some(s => s.until > this.time && DISABLING_STATUSES.includes(s.kind)))
         this.bufferedSkills.set(p.id, { slot: input.skill, ex: !!input.ex, until: this.time + SKILL_INPUT_BUFFER });
     }
     p.lastInput = {
@@ -706,7 +709,9 @@ export class Arena {
       !!combo &&
       !combo.anyDebuff &&
       ability?.id === combo.payoff &&
-      hasMark(combo.self ? source! : target, source!.id, this.time);
+      // A self combo's projectile payoff carries its mark (spent at cast time).
+      ((combo.self && !!ability.selfPrimed) ||
+        hasMark(combo.self ? source! : target, source!.id, this.time));
     if (primed) {
       comboName = combo!.name;
       dealt *= combo!.damage ?? 1;
@@ -718,6 +723,7 @@ export class Arena {
     if (counter) dealt *= STATUS_RULES.counterReduction;
     if (this.has(target, "shield")) dealt *= STATUS_RULES.shieldReduction;
     if (this.has(target, "sleep")) dealt *= STATUS_RULES.sleepVulnerability;
+    if (this.has(target, "shell")) dealt *= STATUS_RULES.shellReduction;
     if (this.rule("glass")) dealt *= MUTATOR_RULES.glassDamage;
     if (source && source !== target && this.teamedUp(source)) {
       dealt *= TEAMUP.damage;
@@ -783,7 +789,7 @@ export class Arena {
     if (counter && source && source !== target && source.hp > 0)
       this.reflectDamage(source, target, amount);
     // Setup: mark the target for this fighter's payoff (or the guard for
-    // Mirror Guard, which primes the one who absorbed the hit).
+    // Facet Guard, which primes the one who absorbed the hit).
     if (combo && !combo.self && !combo.anyDebuff && ability?.id === combo.setup)
       this.status(target, "mark", combo.window, source!.id);
     if (counter && source && source !== target) {
@@ -863,6 +869,12 @@ export class Arena {
         a.kind === "buff" ? Math.max(combo.window, a.duration) : combo.window,
         p.id,
       );
+    // A primed self-combo payoff that flies (Static Lance after Static Glide)
+    // lands after the cast has spent the mark, so the shot carries it.
+    const shotAbility =
+      selfPrimed && ["projectile", "charged", "barrage"].includes(a.kind)
+        ? { ...a, selfPrimed: true }
+        : a;
     const projectile = (offset: number) => {
       if (this.projectiles.length >= RULES.maxProjectiles) return;
       const muzzle = {
@@ -883,7 +895,7 @@ export class Arena {
         vx: Math.cos(angle + offset) * a.speed,
         vy: Math.sin(angle + offset) * a.speed,
         remaining: a.range,
-        ability: a,
+        ability: shotAbility,
         color,
       };
       if (contact) this.projectileImpact(shot);
@@ -1000,10 +1012,28 @@ export class Arena {
     }
     if (a.kind === "counter") this.status(p, "counter", a.duration);
     if (a.kind === "barrier") this.status(p, "shield", a.duration);
-    if (a.kind === "buff") this.status(p, "empower", a.duration);
+    if (a.kind === "buff") {
+      // Kindle empowers; Static Glide grants haste instead.
+      this.status(p, a.status ?? "empower", a.status ? (a.statusDuration ?? a.duration) : a.duration);
+      if (a.glide) p.jumpUntil = Math.max(p.jumpUntil, this.time + a.duration);
+      if (a.pop) {
+        // Takeoff pop: shoves nearby enemies away (knockback pushes from the caster) and slows them.
+        // (The client draws the pop as part of the glide's own cast effect.)
+        const pop: Ability = { ...a, kind: "nova", damage: a.pop.damage, knockback: a.pop.knockback, status: "slow", statusDuration: a.pop.slow, glide: undefined, pop: undefined };
+        for (const enemy of enemies)
+          if (
+            enemy.hp > 0 &&
+            Math.hypot(enemy.x - p.x, enemy.y - p.y) < a.pop.radius + RULES.radius &&
+            this.lineClear(p, enemy)
+          )
+            this.damage(enemy, pop.damage, p.id, pop);
+      }
+    }
     if (a.kind === "rest") {
-      this.status(p, "sleep", a.duration);
-      const sleep = p.statuses.find((s) => s.kind === "sleep")!;
+      // Asleep by default; Shell Up rests in a shell instead (less damage, not more).
+      const kind = a.status ?? "sleep";
+      this.status(p, kind, a.duration);
+      const sleep = p.statuses.find((s) => s.kind === kind)!;
       sleep.amount = a.heal ?? 0;
       // Ticks land at 0.4s, 0.9s … so a full Rest always heals duration / interval times.
       sleep.nextTick = this.time + STATUS_RULES.restInterval - 0.1;
@@ -1012,6 +1042,12 @@ export class Arena {
     if (a.kind === "clone") {
       p.clone = { x: p.x, y: p.y, until: this.time + a.duration };
       this.status(p, "haste", a.statusDuration ?? 2);
+      // Tide Double: the axolotl regrows a little health as it slips away.
+      if (a.heal) {
+        const before = p.hp;
+        p.hp = Math.min(CHARACTERS[p.character].health, p.hp + a.heal);
+        p.stats.healed = (p.stats.healed ?? 0) + (p.hp - before);
+      }
     }
     // A self combo is spent by casting the payoff, hit or miss.
     if (selfPrimed)
@@ -1080,6 +1116,37 @@ export class Arena {
         }
       }
     }
+  }
+  /** Haunted Lantern: shoot a wisp at the nearest enemy in the lantern's light. */
+  private fireTurret(zone: Zone) {
+    const t = zone.ability.turret!;
+    if (this.projectiles.length >= RULES.maxProjectiles) return;
+    const target = this.enemiesOfOwner(zone.owner)
+      .filter(
+        (e) =>
+          e.hp > 0 &&
+          Math.hypot(e.x - zone.x, e.y - zone.y) < t.range &&
+          this.lineClear(zone, e),
+      )
+      .sort(
+        (a, b) =>
+          Math.hypot(a.x - zone.x, a.y - zone.y) -
+          Math.hypot(b.x - zone.x, b.y - zone.y),
+      )[0];
+    if (!target) return;
+    const angle = Math.atan2(target.y - zone.y, target.x - zone.x);
+    const shot = turretShot(zone.ability);
+    this.projectiles.push({
+      id: ++this.serial,
+      owner: zone.owner,
+      x: zone.x,
+      y: zone.y,
+      vx: Math.cos(angle) * t.speed,
+      vy: Math.sin(angle) * t.speed,
+      remaining: shot.range,
+      ability: shot,
+      color: zone.color,
+    });
   }
   /** A wall contact, range expiry or direct exploding-projectile hit. */
   private projectileImpact(pr: Projectile) {
@@ -1154,7 +1221,7 @@ export class Arena {
       }
       if (this.practice.targetAttacks && this.time >= this.nextPracticeZone) {
         this.nextPracticeZone = this.time + 3;
-        this.cast(target, CHARACTERS.voltkit.skills[2]);
+        this.cast(target, PRACTICE_GRID);
       }
     }
     for (const [id, brain] of this.bots) {
@@ -1170,7 +1237,7 @@ export class Arena {
       p.statuses = p.statuses.filter((s) => s.until > this.time);
       for (const s of p.statuses) {
         if (p.hp <= 0) break;
-        if (s.kind === "sleep" && s.amount && this.time >= s.nextTick) {
+        if ((s.kind === "sleep" || s.kind === "shell") && s.amount && this.time >= s.nextTick) {
           s.nextTick += STATUS_RULES.restInterval;
           const before = p.hp;
           p.hp = Math.min(CHARACTERS[p.character].health, p.hp + s.amount);
@@ -1196,9 +1263,7 @@ export class Arena {
       this.chargeUlt(p, RULES.ultPerSecond * dt);
       if (p.jumpUntil > this.time - dt && p.jumpUntil <= this.time)
         this.event("land", p, CHARACTERS[p.character].color, undefined, p.id);
-      const disabled = p.statuses.some(
-        (s) => s.kind === "stun" || s.kind === "freeze" || s.kind === "sleep",
-      );
+      const disabled = p.statuses.some((s) => DISABLING_STATUSES.includes(s.kind));
       if (disabled) {
         this.clearBufferedSkills(p.id);
         p.charge = undefined;
@@ -1277,10 +1342,16 @@ export class Arena {
             this.event("burst", p, 0xffd166, undefined, p.id, "ex-cast");
             this.events[this.events.length - 1].combo = `EX ${a.name}`;
           }
-        } else if (input.basic && this.time >= p.basicAt) {
+        } else if (input.basic && this.time >= p.basicAt - 1e-9) {
           // The interval is enforced here, so flooding inputs cannot fire faster.
+          // Attacks only happen on ticks, so scheduling the next one from this
+          // tick would round every interval up to a whole tick (335 ms became
+          // 367 ms). When the attack fires on the first tick after it was due
+          // (the button is held), the next one is due an interval after that.
+          const due = p.basicAt;
+          const held = due > 0 && this.time - due <= dt + 1e-6;
           p.basicAt =
-            this.time +
+            (held ? due : this.time) +
             basicInterval(character, this.has(p, "empower")) *
               (this.gift(p, "Electric") ?? 1);
           p.recoveryUntil = this.time + kit.basic.recovery;
@@ -1387,7 +1458,10 @@ export class Arena {
           zone.y = owner.y;
         }
       }
-      if (this.time >= zone.nextTick) {
+      if (this.time >= zone.nextTick && zone.ability.turret) {
+        zone.nextTick += zone.ability.tickInterval ?? 0.5;
+        this.fireTurret(zone);
+      } else if (this.time >= zone.nextTick) {
         zone.nextTick += zone.ability.tickInterval ?? 0.5;
         for (const enemy of this.enemiesOfOwner(zone.owner))
           if (
