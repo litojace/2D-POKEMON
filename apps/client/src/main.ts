@@ -1774,6 +1774,7 @@ function syncLobby(want: boolean) {
 }
 /** The Farm scene (hub redesign phase 4): server state, server time. */
 let farmScreen: FarmScreen | undefined;
+let farmLow = false;
 function syncFarm(want: boolean) {
   if (!want) {
     farmScreen?.close();
@@ -1781,8 +1782,10 @@ function syncFarm(want: boolean) {
     return;
   }
   if (farmScreen) return;
+  farmLow = lowGraphics();
   farmScreen = openFarmScreen({
     reduced: reducedMotion,
+    low: farmLow,
     load: async () => (await accountsUI.api("/api/farm")) as FarmState,
     act: async (actions) =>
       (await accountsUI.api("/api/farm/act", {
@@ -3247,6 +3250,12 @@ function bindGraphicsCard() {
         wantedPlazaClosed = true;
         plaza.close();
         wantedPlazaClosed = false;
+        syncTown();
+      }
+      // So does the Farm.
+      if (farmScreen && farmLow !== lowGraphics()) {
+        farmScreen.close();
+        farmScreen = undefined;
         syncTown();
       }
     };

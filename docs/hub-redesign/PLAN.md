@@ -149,7 +149,29 @@ Phase 5 is complete.
   (the prototype's 14–28 farm units), on a ripe crop, only with no Scarecrow
   and no dog (every dog keeps them away). A crow eats its crop 8 s after
   landing unless shooed; the server allows 2 s more for the network. The
-  dog waits by its doghouse; walking about comes with the art pass (phase 6).
+  dog walks the farm since phase 6 (below).
+
+## Art and feel progress (phase 6)
+
+Already there from the earlier phases: the status orbs with timer rings,
+the side menu that opens to show names, depth-sorted fences, and all six
+weathers' effects. Added in phase 6:
+
+- **The guard dog walks the farm:** it sits a while, then trots to another
+  spot, around the pond, the well, its doghouse, the pasture, the scarecrow
+  and decorations (A* on a 40 px grid, then straightened), into the field
+  only through the gate. With a dog on guard no crow lands (the server's
+  rule), so now and then a crow flies at a ripe crop and the dog barks and
+  chases it off; that crow is drawn only. A "WOOF!" bubble follows the dog,
+  which also barks when it digs up a gift. A friend's dog waits by their
+  doghouse. The routes are in `apps/client/src/farm/farm-path.ts` with unit
+  tests. Hens pick spots clear of the well and the pond.
+- **Phones:** shadows, fence posts, soil and the grass on unowned land are
+  painted once and stamped (per frame on the farm: about 490 gradients to
+  32). The farm now follows Settings → Graphics like the Plaza: Low is
+  30 fps, a 1× canvas, no hens, ducks or butterflies and half the rain;
+  Auto watches the frame rate and switches a slow device to Low; and the
+  farm stops drawing behind a dialog or drawer.
 
 ## Phases
 

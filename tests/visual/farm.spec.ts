@@ -975,3 +975,179 @@ for (const viewport of [
     }
   });
 }
+
+for (const viewport of [
+  { width: 1280, height: 800 },
+  { width: 852, height: 393, inset: 59 },
+]) {
+  test(`the guard dog walks around the farm, into the field through the gate, and chases a crow at ${viewport.width}x${viewport.height}`, async ({
+    browser,
+  }, info) => {
+    const phone = viewport.width < 1000;
+    const context = await browser.newContext({
+      viewport: { width: viewport.width, height: viewport.height },
+      isMobile: phone,
+      hasTouch: phone,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openLobby(page);
+      await fakeFarm(page);
+      await page.evaluate((inset) => {
+        if (inset)
+          for (const k of ["left", "right"])
+            document.documentElement.style.setProperty(
+              `--safe-${k}`,
+              `${inset}px`,
+            );
+        const f = (window as any).__fakeFarm;
+        f.dog = {
+          type: "gold",
+          since: new Date().toISOString(),
+          until: new Date(Date.now() + 86400e3).toISOString(),
+        };
+      }, viewport.inset ?? 0);
+      await page.click('#hub-scenes [data-hub-scene="farm"]');
+      await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
+      // It leaves its doghouse and walks: the route goes round the pond and
+      // the well, and into the field only through the gate.
+      const route = await page.evaluate(() => {
+        const f = (window as any).__farm;
+        Object.assign(f.dog, { x: 250, y: 780, wait: 0, path: [] });
+        f.dogTo(500, 470, true);
+        return { path: f.dog.path, gate: f.gate() };
+      });
+      const atGate = route.path.findIndex(
+        ([x, y]: number[]) => x === route.gate.x && y === route.gate.inn,
+      );
+      expect(atGate).toBeGreaterThan(0);
+      expect(route.path[atGate - 1]).toEqual([route.gate.x, route.gate.out]);
+      expect(route.path.at(-1)).toEqual([500, 470]);
+      const start = await page.evaluate(() => ({
+        ...(window as any).__farm.dog,
+      }));
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            const d = (window as any).__farm.dog;
+            return Math.hypot(d.x - 250, d.y - 780);
+          }),
+        )
+        .toBeGreaterThan(20);
+      expect(start.moving).toBe(true);
+      // A crow comes for the ripe wheat: the dog barks and runs to it.
+      await page.evaluate(() => {
+        const f = (window as any).__farm;
+        Object.assign(f.dog, {
+          x: 1100,
+          y: 850,
+          path: [],
+          wait: 0,
+          chase: null,
+          chasing: false,
+        });
+        f.decoys.push({ i: 0, t: 0.98 });
+        f.look(700, 600);
+      });
+      await expect
+        .poll(() => page.evaluate(() => (window as any).__farm.dog.chasing))
+        .toBe(true);
+      const chase = await page.evaluate(() =>
+        (window as any).__farm.dog.path.at(-1),
+      );
+      expect(chase).toEqual([360 + 48, 380 + 62 + 4]);
+      await page.waitForTimeout(300);
+      await snap(
+        page,
+        info,
+        `farm-dog-chase-${viewport.width}x${viewport.height}`,
+      );
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+test("the farm rests behind Settings and wakes when it closes", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openLobby(page);
+  await fakeFarm(page);
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  const layer = page.locator(".farm-layer");
+  await expect(layer).toHaveAttribute("data-frozen", "false");
+  await page.evaluate(() => document.getElementById("settings")!.click());
+  await expect(page.locator("dialog[open]")).toHaveCount(1);
+  await expect(layer).toHaveAttribute("data-frozen", "true", {
+    timeout: 15_000,
+  });
+  await page.click("#close-dialog");
+  await expect(layer).toHaveAttribute("data-frozen", "false");
+  // Still running: crops keep growing and taps still work.
+  await page.click('#fm-dock [data-sheet="barn"]');
+  await expect(page.locator("#fm-sheet")).toContainText("Barn storage");
+  expect(errors).toEqual([]);
+});
+
+test("Low graphics draws the farm at 1x, and Auto switches a slow device to Low", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    deviceScaleFactor: 2,
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    // Low by hand.
+    await page.addInitScript(() => localStorage.setItem("ea-graphics", "low"));
+    const errors = await openLobby(page);
+    await fakeFarm(page);
+    await page.click('#hub-scenes [data-hub-scene="farm"]');
+    const layer = page.locator(".farm-layer");
+    await expect(layer).toHaveAttribute("data-graphics", "low");
+    const size = () =>
+      page.evaluate(() => {
+        const cv = document.getElementById("fm-cv") as HTMLCanvasElement;
+        return {
+          px: cv.width,
+          css: Math.round(cv.getBoundingClientRect().width),
+        };
+      });
+    let s = await size();
+    expect(s.px).toBe(s.css);
+    expect(errors).toEqual([]);
+    // Auto: this test machine draws far below 50 frames a second, so after
+    // a few seconds of watching the farm switches to Low and remembers it.
+    const auto = await context.newPage();
+    await auto.addInitScript(() => {
+      (window as any).__graphicsAuto = true;
+      localStorage.removeItem("ea-graphics");
+      localStorage.removeItem("ea-graphics-auto");
+    });
+    await openLobby(auto);
+    await fakeFarm(auto);
+    await auto.click('#hub-scenes [data-hub-scene="farm"]');
+    const autoLayer = auto.locator(".farm-layer");
+    await expect(autoLayer).toHaveAttribute("data-graphics", "high");
+    await expect(autoLayer).toHaveAttribute("data-graphics", "low", {
+      timeout: 30_000,
+    });
+    expect(
+      await auto.evaluate(() => localStorage.getItem("ea-graphics-auto")),
+    ).toBe("low");
+    const a = await auto.evaluate(() => {
+      const cv = document.getElementById("fm-cv") as HTMLCanvasElement;
+      return {
+        px: cv.width,
+        css: Math.round(cv.getBoundingClientRect().width),
+      };
+    });
+    expect(a.px).toBe(a.css);
+  } finally {
+    await context.close();
+  }
+});
