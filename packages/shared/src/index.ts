@@ -165,7 +165,22 @@ export type AbilityKind =
   /** Self buff: empower (Kindle), or `status` instead (Static Glide). */
   | "buff"
   /** Heal over time while unable to act: asleep, or in a shell (`status`). */
-  | "rest";
+  | "rest"
+  /**
+   * Charge toward the aim for `range` px at `speed`. The first enemy touched
+   * takes the hit (plus everyone within `explosion` of it) and the charge stops.
+   */
+  | "rush"
+  /**
+   * Teleport toward the aim, up to `range` px, stopping before walls. With
+   * `damage`, a burst of `radius` hits enemies where the caster lands.
+   */
+  | "blink"
+  /**
+   * Stealth for `duration` (casting or taking damage reveals) plus haste for
+   * `statusDuration`.
+   */
+  | "veil";
 export interface Ability {
   id: string;
   name: string;
@@ -187,6 +202,10 @@ export interface Ability {
   arc?: number;
   duration: number;
   ground: boolean;
+  /**
+   * Pushes the target away from the caster. Negative pulls it toward the
+   * caster instead, stopping just in front of them.
+   */
   knockback: number;
   status?: StatusKind;
   statusDuration?: number;
@@ -197,8 +216,25 @@ export interface Ability {
   follow?: boolean;
   /** Damage multiplier against targets with a harmful status. */
   bonusVsStatus?: number;
-  /** Rest: health restored per tick. Decoy: health restored on cast. */
+  /**
+   * Rest: health restored per tick. Decoy: health restored on cast. Zone:
+   * health restored each tick to the caster's team inside it.
+   */
   heal?: number;
+  /** Healing zone: the caster's own share of `heal` (0.5 = half). */
+  selfHeal?: number;
+  /**
+   * Up to this much extra damage the farther the target is: none up close,
+   * the full bonus at the ability's `range` (0.5 = +50%).
+   */
+  farBonus?: number;
+  /**
+   * Rush: if the knockback would drive the target into a wall, the hit deals
+   * this many times the damage and its status lasts twice as long.
+   */
+  wallSlam?: number;
+  /** Veil: the caster's first hit out of stealth deals this many times the damage. */
+  ambush?: number;
   /** Buff: the caster is airborne for `duration` (ground attacks miss). */
   glide?: boolean;
   /** Buff: a burst around the caster on cast that pushes enemies away and slows them. */
@@ -1388,6 +1424,10 @@ export interface GameEvent extends Vec {
   ko?: boolean;
   /** Hit or burst events: a signature combo paid off (the combo's name). */
   combo?: string;
+  /** Hit events: the attacker's first hit out of stealth (`ambush`). */
+  ambush?: boolean;
+  /** Burst events (a rush landing): the target was driven into a wall (`wallSlam`). */
+  slam?: boolean;
 }
 export type Phase =
   | "lobby"
@@ -1658,6 +1698,31 @@ export function blocked(x: number, y: number, r = RULES.radius): boolean {
         ) < r,
     )
   );
+}
+/**
+ * Where a blink from `from` toward `angle` lands: up to `distance` px,
+ * stopping before the first wall (it never passes through one).
+ */
+export function blinkLanding(from: Vec, angle: number, distance: number): Vec {
+  const dx = Math.cos(angle),
+    dy = Math.sin(angle);
+  let x = from.x,
+    y = from.y;
+  for (let d = 8; d < distance + 8; d += 8) {
+    const step = Math.min(d, distance);
+    const nx = from.x + dx * step,
+      ny = from.y + dy * step;
+    if (blocked(nx, ny, RULES.radius)) break;
+    x = nx;
+    y = ny;
+  }
+  return { x, y };
+}
+/** Damage multiplier for `farBonus` against a target `distance` px away. */
+export function farMultiplier(a: Ability, distance: number) {
+  return a.farBonus
+    ? 1 + a.farBonus * Math.min(1, distance / Math.max(1, a.range))
+    : 1;
 }
 export function move(
   body: Vec,
