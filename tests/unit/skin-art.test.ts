@@ -8,7 +8,12 @@ import {
   fighterSkillColor,
   wornArt,
 } from "../../apps/client/src/skins/skin-art";
-import { creatureSvg, paletteFor } from "../../apps/client/src/creature-design";
+import {
+  creaturePalette,
+  creatureSvg,
+  paletteFor,
+} from "../../apps/client/src/creature-design";
+import { PYRANDA_BASE } from "../../apps/client/src/champion-markings";
 import { rigAssets, skinSuffix } from "../../apps/client/src/animation/assets";
 import { SKINS } from "../../apps/client/src/animation/cosmetics";
 import {
@@ -43,7 +48,7 @@ const graphics = (): any =>
   );
 
 describe("champion skin art", () => {
-  it("has art for exactly the 56 skins in the catalog", () => {
+  it("has art for exactly the skins in the catalog", () => {
     expect(Object.keys(SKIN_ART).sort()).toEqual(
       CHAMPION_SKINS.map((s) => s.id).sort(),
     );
@@ -109,6 +114,32 @@ describe("champion skin art", () => {
           for (const [, ref] of svg.matchAll(/url\(#([^)]+)\)/g))
             expect(defined, `${s.id} ${dir}`).toContain(ref);
         }
+  });
+
+  it("recolours Pyranda's markings with a skin and keeps them without one", () => {
+    expect(PYRANDA_BASE).toEqual({
+      mid: creaturePalette.pyranda.mid,
+      dark: creaturePalette.pyranda.dark,
+    });
+    const marks = ["#8a2a14", "#5a2216"];
+    // The belly faces away in the back view, so each marking shows in some facing.
+    const own = DIRS.map((dir) => creatureSvg("pyranda", dir)).join("");
+    for (const m of marks) expect(own).toContain(m);
+    for (const dir of DIRS) {
+      for (const s of CHAMPION_SKINS.filter((s) => s.champion === "pyranda")) {
+        const svg = creatureSvg(
+          "pyranda",
+          dir,
+          undefined,
+          undefined,
+          "normal",
+          {
+            skin: s.id,
+          },
+        );
+        for (const m of marks) expect(svg, `${s.id} ${dir}`).not.toContain(m);
+      }
+    }
   });
 
   it("only applies a skin to the champion it was made for", () => {

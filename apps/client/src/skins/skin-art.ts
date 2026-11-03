@@ -34,7 +34,9 @@ export type PatternKind =
   | "petals"
   | "snow"
   | "drips"
-  | "world";
+  | "world"
+  | "circuit"
+  | "knit";
 export type Accessory =
   | "earmuffs"
   | "ribbon"
@@ -53,7 +55,22 @@ export type Accessory =
   | "island"
   | "halo"
   | "third-eye"
-  | "eclipse-ring";
+  | "eclipse-ring"
+  | "bobble-hat"
+  | "acorn-cap"
+  | "paper-hat"
+  | "lotus"
+  | "feather-cap"
+  | "towel"
+  | "sunflower"
+  | "headband"
+  | "flower-crown"
+  | "antenna"
+  | "mushroom"
+  | "hardhat"
+  | "mask"
+  | "starfish"
+  | "lure";
 /** Particles left behind when dashing. */
 export type Trail =
   | "snow"
@@ -345,6 +362,185 @@ export const SKIN_ART: Record<string, SkinArt> = {
     detail: "glint",
     mythic: "eclipse",
   },
+  // --------------------------------------------------------------- Coilemur
+  "coilemur-sifaka": { palette: { light: "#ffffff", mid: "#f0ece4", dark: "#4a2e22", glow: "#ffd84a", accent: "#c9763a" } },
+  "coilemur-copper-wire": { palette: { light: "#ffe9d6", mid: "#c8733a", dark: "#3e1f12", glow: "#4ff0e0", accent: "#2fb8a8" } },
+  "coilemur-blackout": { palette: { light: "#b8b8c4", mid: "#4a4a56", dark: "#141418", glow: "#b6ff3d", accent: "#7cff5a" } },
+  "coilemur-firecracker": {
+    palette: { light: "#fff0d6", mid: "#e0352b", dark: "#5a0e0c", glow: "#ffd65b", accent: "#ffd65b" },
+    pattern: { kind: "bands", color: "#ffd65b", opacity: 0.75, parts: ["tail"] },
+    trail: { kind: "confetti", colors: [0xe0352b, 0xffd65b, 0xffffff] },
+  },
+  "coilemur-frost-fuse": {
+    palette: { light: "#ffffff", mid: "#cfe6ff", dark: "#2c4a6e", glow: "#9ff3ff", accent: "#6fa8dc" },
+    pattern: { kind: "snow", color: "#ffffff", opacity: 0.8 },
+    accessories: ["bobble-hat"],
+    trail: { kind: "snow", colors: [0xffffff, 0xcfe6ff] },
+  },
+  "coilemur-tesla-coil": {
+    palette: { light: "#d8dee8", mid: "#4a5262", dark: "#10141c", glow: "#4ff8ff", accent: "#d8823a" },
+    pattern: { kind: "circuit", color: "#4ff8ff", opacity: 1 },
+    trail: { kind: "dust", colors: [0x4ff8ff, 0xffffff] },
+    skill: 0x4ff8ff,
+    detail: "pulse",
+  },
+  // ---------------------------------------------------------------- Pyranda
+  "pyranda-snowy": { palette: { light: "#ffffff", mid: "#e8e8ee", dark: "#3a3a46", glow: "#ffcf4d", accent: "#ffffff" } },
+  "pyranda-cinnamon": { palette: { light: "#ffe6cc", mid: "#a8622e", dark: "#3a1e10", glow: "#ffcf4d", accent: "#fff3e0" } },
+  "pyranda-plum": { palette: { light: "#ffe0d0", mid: "#8a3a6e", dark: "#2e0f26", glow: "#ffb3a0", accent: "#ffd8c4" } },
+  "pyranda-chestnut-grove": {
+    palette: { light: "#f2d6b0", mid: "#8a4a22", dark: "#2e1608", glow: "#ffcf4d", accent: "#f6e6cc" },
+    accessories: ["acorn-cap"],
+    trail: { kind: "leaf", colors: [0xc86a2a, 0x8a4a22, 0xe0a040] },
+  },
+  "pyranda-street-vendor": {
+    palette: { light: "#fff0e0", mid: "#e0572b", dark: "#4a1a12", glow: "#ffcf4d", accent: "#ffffff" },
+    pattern: { kind: "stripes", color: "#ffffff", opacity: 0.45, parts: ["body", "armL", "armR"] },
+    accessories: ["paper-hat"],
+    trail: { kind: "spice", colors: [0xff4f2a, 0xffa23a, 0x8a1a0a] },
+  },
+  "pyranda-fireside-knit": {
+    palette: { light: "#ffe6c8", mid: "#c0502a", dark: "#3e1a10", glow: "#ffb44d", accent: "#fff0dc" },
+    pattern: { kind: "knit", color: "#f6e0b8", opacity: 0.7, parts: ["body", "armL", "armR"] },
+    trail: { kind: "ember", colors: [0xffb44d, 0xff7a2a] },
+    skill: 0xffb44d,
+    detail: "flicker",
+  },
+  // --------------------------------------------------------------- Glacelle
+  "glacelle-deep-sea": { palette: { light: "#8fd0f0", mid: "#2a5a9a", dark: "#0a1a3a", glow: "#4ffff0", accent: "#5fa8d8" } },
+  "glacelle-lilac-tide": { palette: { light: "#fff4ff", mid: "#d6b8ff", dark: "#4a2a7a", glow: "#ff8fc8", accent: "#f0e0ff" } },
+  "glacelle-seafoam": { palette: { light: "#f4fffa", mid: "#9ff0d0", dark: "#1d5a4a", glow: "#ffb36b", accent: "#d8fff0" } },
+  "glacelle-water-lily": {
+    palette: { light: "#fff6fa", mid: "#ffc4dc", dark: "#6a2a4a", glow: "#ffe36b", accent: "#ffe6f0" },
+    accessories: ["lotus"],
+    trail: { kind: "petal", colors: [0xffc4dc, 0xffffff, 0x8fd66a] },
+  },
+  "glacelle-snow-globe": {
+    palette: { light: "#e6ecff", mid: "#7f98e8", dark: "#1a2a5a", glow: "#ffd65b", accent: "#c8d8ff" },
+    pattern: { kind: "snow", color: "#ffffff", opacity: 1 },
+    trail: { kind: "snow", colors: [0xffffff, 0xc8d8ff] },
+  },
+  "glacelle-deep-glow": {
+    palette: { light: "#6a6aa8", mid: "#1a1a4a", dark: "#06061a", glow: "#ff5fd8", accent: "#4ffff0" },
+    pattern: { kind: "glowdots", color: "#ff5fd8", opacity: 0.9 },
+    trail: { kind: "bubble", colors: [0xff5fd8, 0x4ffff0] },
+    skill: 0xff5fd8,
+    detail: "shimmer",
+  },
+  // ---------------------------------------------------------------- Halcyra
+  "halcyra-teal-wing": { palette: { light: "#f0fff8", mid: "#2fb8a8", dark: "#0f3a3a", glow: "#c9fff4", accent: "#f0c890" } },
+  "halcyra-pied": { palette: { light: "#ffffff", mid: "#3a3a44", dark: "#101014", glow: "#e0e8ff", accent: "#ffffff" } },
+  "halcyra-sunset": { palette: { light: "#fff0e0", mid: "#ff7a6a", dark: "#5a1e2a", glow: "#ffe08a", accent: "#ffc84a" } },
+  "halcyra-fletcher": {
+    palette: { light: "#f0ffe6", mid: "#3a8a4a", dark: "#12301a", glow: "#ffd65b", accent: "#c8823a" },
+    pattern: { kind: "stripes", color: "#ffd65b", opacity: 0.5, parts: ["wings"] },
+    accessories: ["feather-cap"],
+    trail: { kind: "dust", colors: [0xffd65b, 0xfff3b0] },
+  },
+  "halcyra-winter-plume": {
+    palette: { light: "#ffffff", mid: "#e0ecff", dark: "#2a3a6a", glow: "#9ff3ff", accent: "#7fb0ff" },
+    pattern: { kind: "snow", color: "#ffffff", opacity: 0.85 },
+    accessories: ["earmuffs"],
+    trail: { kind: "snow", colors: [0xffffff, 0xe0ecff] },
+  },
+  "halcyra-paper-crane": {
+    palette: { light: "#ffffff", mid: "#f2ece0", dark: "#3a3440", glow: "#ff4f5a", accent: "#e0262f" },
+    pattern: { kind: "facets", color: "#8a8070", opacity: 0.8 },
+    trail: { kind: "page", colors: [0xffffff, 0xffe0e0] },
+    skill: 0xff4f5a,
+    detail: "glint",
+  },
+  // ---------------------------------------------------------------- Sunbara
+  "sunbara-cocoa": { palette: { light: "#e8c8a8", mid: "#6a3e22", dark: "#24140a", glow: "#ffe066", accent: "#ffb732" } },
+  "sunbara-milk-tea": { palette: { light: "#fffaf0", mid: "#e6c8a0", dark: "#5a4030", glow: "#ffe8a0", accent: "#c8945a" } },
+  "sunbara-rose-quartz": { palette: { light: "#fff0f4", mid: "#f0a8b8", dark: "#6a2a3a", glow: "#fff0a0", accent: "#ff8fa8" } },
+  "sunbara-bathhouse": {
+    palette: { light: "#fff6e6", mid: "#d8a070", dark: "#4a2e18", glow: "#9ff3ff", accent: "#ff8fa8" },
+    pattern: { kind: "bands", color: "#ffffff", opacity: 0.35, parts: ["body"] },
+    accessories: ["towel"],
+    trail: { kind: "bubble", colors: [0xffffff, 0xbff0ff] },
+  },
+  "sunbara-snow-day": {
+    palette: { light: "#ffffff", mid: "#e6d6c4", dark: "#4a3a2e", glow: "#9fd8ff", accent: "#c0262a" },
+    pattern: { kind: "snow", color: "#ffffff", opacity: 0.9 },
+    accessories: ["knit-scarf"],
+    trail: { kind: "snow", colors: [0xffffff, 0xe6d6c4] },
+  },
+  "sunbara-sunflower": {
+    palette: { light: "#fff6c8", mid: "#d8a03a", dark: "#4a2e10", glow: "#ffd84a", accent: "#ffb732" },
+    accessories: ["sunflower"],
+    trail: { kind: "petal", colors: [0xffd84a, 0xffb732] },
+    skill: 0xffd84a,
+    detail: "glint",
+  },
+  // --------------------------------------------------------------- Astrabun
+  "astrabun-nightfall": { palette: { light: "#c8d0ff", mid: "#3a4a8a", dark: "#0e1430", glow: "#ffe9a3", accent: "#ffe9a3" } },
+  "astrabun-sakura-mochi": { palette: { light: "#ffffff", mid: "#ffc8dc", dark: "#6a2a46", glow: "#fff0a0", accent: "#ff6fa0" } },
+  "astrabun-matcha": { palette: { light: "#fffbe6", mid: "#b8d88a", dark: "#2e4a1a", glow: "#fff3b0", accent: "#6a9a3a" } },
+  "astrabun-mochi-maker": {
+    palette: { light: "#ffffff", mid: "#f6ece0", dark: "#4a3a3a", glow: "#ffd65b", accent: "#e0262f" },
+    accessories: ["headband"],
+    trail: { kind: "confetti", colors: [0xffffff, 0xff8fb8, 0x8fd66a] },
+  },
+  "astrabun-clover": {
+    palette: { light: "#f6fff0", mid: "#c8f0b0", dark: "#2e5a2a", glow: "#fff3a0", accent: "#3f9a3f" },
+    pattern: { kind: "spots", color: "#6fbf4a", opacity: 0.45 },
+    accessories: ["flower-crown"],
+    trail: { kind: "leaf", colors: [0x6fbf4a, 0x3f9a3f, 0xa6d66a] },
+  },
+  "astrabun-space-cadet": {
+    palette: { light: "#e6eaff", mid: "#5a5aa8", dark: "#141438", glow: "#6ff0ff", accent: "#ffd65b" },
+    pattern: { kind: "stars", color: "#ffffff", opacity: 0.9 },
+    accessories: ["antenna"],
+    trail: { kind: "star", colors: [0x6ff0ff, 0xffffff] },
+    skill: 0x6ff0ff,
+    detail: "glint",
+  },
+  // -------------------------------------------------------------- Wombolder
+  "wombolder-sandy": { palette: { light: "#fff6e0", mid: "#e0c890", dark: "#5a4a2a", glow: "#9bd36a", accent: "#a89a80" } },
+  "wombolder-coal": { palette: { light: "#b0b0b8", mid: "#55555e", dark: "#18181c", glow: "#7fff8a", accent: "#3a3a44" } },
+  "wombolder-ochre": { palette: { light: "#ffe0b8", mid: "#c8742e", dark: "#4a200c", glow: "#ffd65b", accent: "#8a3a1a" } },
+  "wombolder-mushroom-hollow": {
+    palette: { light: "#f6e6d0", mid: "#8a6a4a", dark: "#2e1e12", glow: "#c8ff8a", accent: "#6a5a4a" },
+    accessories: ["mushroom"],
+    trail: { kind: "leaf", colors: [0x6fbf4a, 0xa67c4a, 0xe0262f] },
+  },
+  "wombolder-snowplough": {
+    palette: { light: "#ffffff", mid: "#dfe6ee", dark: "#3a4a5a", glow: "#9fd8ff", accent: "#8a9aaa" },
+    pattern: { kind: "snow", color: "#ffffff", opacity: 0.9 },
+    accessories: ["bobble-hat"],
+    trail: { kind: "snow", colors: [0xffffff, 0xdfe6ee] },
+  },
+  "wombolder-gold-rush": {
+    palette: { light: "#f0dcc0", mid: "#9a7a5a", dark: "#2e2012", glow: "#ffd65b", accent: "#6a6a74" },
+    pattern: { kind: "veins", color: "#ffc93d", opacity: 0.9 },
+    accessories: ["hardhat"],
+    trail: { kind: "coin", colors: [0xffd65b, 0xffb02e] },
+    skill: 0xffc93d,
+    detail: "glint",
+  },
+  // --------------------------------------------------------------- Shadopus
+  "shadopus-coral-reef": { palette: { light: "#fff0e0", mid: "#ff7a4f", dark: "#5a1a10", glow: "#ffe36b", accent: "#2a0a06" } },
+  "shadopus-deep-blue": { palette: { light: "#d0f0ff", mid: "#2a6ab8", dark: "#081a3a", glow: "#4ffff0", accent: "#04101e" } },
+  "shadopus-mimic": { palette: { light: "#fff3dc", mid: "#c8a06a", dark: "#4a3218", glow: "#ffb36b", accent: "#1e1408" } },
+  "shadopus-masquerade": {
+    palette: { light: "#ffe6f6", mid: "#a8305a", dark: "#2a0a1a", glow: "#ffd65b", accent: "#12040a" },
+    accessories: ["mask"],
+    trail: { kind: "confetti", colors: [0xffd65b, 0xff6fa8, 0x8a5cff] },
+  },
+  "shadopus-tide-pool": {
+    palette: { light: "#fff0e6", mid: "#c86a5a", dark: "#3a1610", glow: "#7ff3ff", accent: "#1a0806" },
+    pattern: { kind: "spots", color: "#ffe0c0", opacity: 0.5 },
+    accessories: ["starfish"],
+    trail: { kind: "bubble", colors: [0x7ff3ff, 0xffffff] },
+  },
+  "shadopus-anglerlight": {
+    palette: { light: "#6a7aa8", mid: "#1e2a5a", dark: "#060a1e", glow: "#5ff8e0", accent: "#02040e" },
+    accessories: ["lure"],
+    trail: { kind: "bubble", colors: [0x5ff8e0, 0xc8fff4] },
+    skill: 0x5ff8e0,
+    detail: "flicker",
+  },
 };
 
 /** Where a champion's head sits, per facing (art units, measured). */
@@ -532,6 +728,29 @@ export function patternSvg(kind: PatternKind, color: string, color2 = color, see
       out.push(`<ellipse cx="100" cy="124" rx="46" ry="14" fill="none" stroke="#ffe9a0" stroke-width="1.2" opacity=".55"/><ellipse cx="100" cy="124" rx="16" ry="44" fill="none" stroke="#ffe9a0" stroke-width="1.2" opacity=".55"/>`);
       break;
     }
+    case "circuit":
+      // Circuit-board traces: right-angled runs ending in solder pads.
+      for (let i = 0; i < 16; i++) {
+        let x = Math.round((10 + r() * 180) / 6) * 6,
+          y = Math.round((-5 + r() * 190) / 6) * 6;
+        let d = `M${x} ${y}`;
+        for (let k = 0; k < 3; k++) {
+          const len = 6 + Math.round(r() * 3) * 6;
+          if (k % 2 === 0) x += r() < 0.5 ? -len : len;
+          else y += r() < 0.5 ? -len : len;
+          d += `L${x} ${y}`;
+        }
+        out.push(`<path d="${d}" stroke="${color}" stroke-width="2.4" fill="none" stroke-linejoin="round"/><circle cx="${x}" cy="${y}" r="3" fill="${color}"/>`);
+      }
+      break;
+    case "knit":
+      // Cable knit: twisted cables between purl ribs.
+      for (let x = 8; x < 200; x += 22) {
+        out.push(`<path d="M${x - 8} -10V200M${x + 8} -10V200" stroke="${color}" stroke-width="1.4" opacity=".55" fill="none"/>`);
+        for (let y = -10; y < 200; y += 12)
+          out.push(`<path d="M${x - 5} ${y}Q${x} ${y + 6} ${x + 5} ${y + 12}M${x + 5} ${y}Q${x} ${y + 6} ${x - 5} ${y + 12}" stroke="${color}" stroke-width="2.2" fill="none" stroke-linecap="round"/>`);
+      }
+      break;
     case "drips":
       // Wax running down from the hood's rim.
       for (let i = 0; i < 9; i++) {
@@ -634,7 +853,230 @@ export function accessorySvg(a: Accessory, id: CharacterId, dir: Facing, p: Pale
       // An eclipsed sun pinned to the hood; the full corona is a Mythical effect.
       if (back) return [];
       return [["flame", `<circle cx="${cx + side * 6}" cy="${top + 30}" r="12" fill="#ffd65b" opacity=".35" stroke="none"/><circle cx="${cx + side * 6}" cy="${top + 30}" r="8" fill="#fff3b0" stroke="none"/><circle cx="${cx + side * 6 + 2}" cy="${top + 29}" r="7" fill="#000" stroke="none"/>`]];
+    default:
+      return newAccessorySvg(a, id, dir, p);
   }
+}
+
+/** Accessories made for the eight newest champions (same anchors and layers). */
+function newAccessorySvg(a: Accessory, id: CharacterId, dir: Facing, p: Palette): [CreaturePart, string][] {
+  const { cx, top } = HEAD[id][dir];
+  const back = dir === "up",
+    side = dir === "left" ? -1 : dir === "right" ? 1 : 0;
+  const ink = p.dark;
+  const flame = (svg: string): [CreaturePart, string][] => [["flame", svg]];
+  switch (a) {
+    case "bobble-hat": {
+      const w = side ? 25 : 29;
+      const rib = Array.from({ length: 9 }, (_, i) => cx - w + 2 + (i * (2 * w - 4)) / 8)
+        .map((x) => `M${n(x)} ${top + 8}v8`)
+        .join("");
+      // A white zigzag knitted round the crown.
+      const zig = Array.from({ length: 9 }, (_, i) => `${i ? "L" : "M"}${n(cx - w + 5 + (i * (2 * w - 10)) / 8)} ${top - 2 - (i % 2) * 5}`).join("");
+      return flame(
+        `<path d="M${cx - w} ${top + 10}Q${cx - w} ${top - 18} ${cx} ${top - 19}Q${cx + w} ${top - 18} ${cx + w} ${top + 10}Z" fill="#c0262a" stroke="${ink}"/>` +
+          `<path d="${zig}" stroke="#ffffff" stroke-width="2.2" fill="none" stroke-linejoin="round"/>` +
+          `<path d="M${cx - w - 3} ${top + 7}Q${cx} ${top + 3} ${cx + w + 3} ${top + 7}L${cx + w + 3} ${top + 17}Q${cx} ${top + 13} ${cx - w - 3} ${top + 17}Z" fill="#fff4f0" stroke="${ink}"/>` +
+          `<path d="${rib}" stroke="#e6c8c8" stroke-width="1.4"/>` +
+          `<circle cx="${cx - side * 3}" cy="${top - 20}" r="7.5" fill="#ffffff" stroke="${ink}"/>`,
+      );
+    }
+    case "acorn-cap": {
+      const w = side ? 26 : 30;
+      const scales = [-2, 4, 10]
+        .map((dy, row) =>
+          Array.from({ length: 6 - row }, (_, i) => {
+            const x = cx - w + 8 + row * 4 + i * ((2 * w - 16 - row * 8) / Math.max(1, 5 - row));
+            return `M${n(x - 4)} ${top + dy}q4 4 8 0`;
+          }).join(""),
+        )
+        .join("");
+      return flame(
+        `<path d="M${cx - w} ${top + 12}Q${cx - w + 2} ${top - 14} ${cx} ${top - 16}Q${cx + w - 2} ${top - 14} ${cx + w} ${top + 12}Q${cx} ${top + 6} ${cx - w} ${top + 12}Z" fill="#8a5a2a" stroke="${ink}"/>` +
+          `<path d="${scales}" stroke="#5e3a18" stroke-width="1.4" fill="none"/>` +
+          `<path d="M${cx - side * 2} ${top - 15}q1 -8 ${side ? -side * 7 : 7} -11" stroke="#5a3a1a" stroke-width="3.4" fill="none" stroke-linecap="round"/>`,
+      );
+    }
+    case "paper-hat": {
+      const w = side ? 24 : 32;
+      const lines = [0, 1, 2].map((i) => `M${cx - 10 + i * 2} ${top - 2 + i * 4}h${16 - i * 4}`).join("");
+      return flame(
+        `<path d="M${cx - w} ${top + 10}L${cx} ${top - 26}L${cx + w} ${top + 10}Z" fill="#fffaf0" stroke="${ink}" stroke-linejoin="round"/>` +
+          `<path d="M${cx} ${top - 26}L${cx - 5} ${top + 6}" stroke="#d8ccb4" stroke-width="1.4"/>` +
+          (back ? "" : `<path d="${lines}" stroke="#a89c86" stroke-width="1.3"/>`) +
+          `<path d="M${cx - w - 4} ${top + 4}H${cx + w + 4}V${top + 13}H${cx - w - 4}Z" fill="#f2e6d0" stroke="${ink}" stroke-linejoin="round"/>` +
+          `<path d="M${cx - w} ${top + 8.5}H${cx + w}" stroke="#e0572b" stroke-width="2"/>`,
+      );
+    }
+    case "lotus": {
+      const x = side ? cx - side * 4 : cx - 20,
+        y = top + 8;
+      const petal = (deg: number, len: number, fill: string) =>
+        `<path d="M${x} ${y}Q${x - 6} ${y - len * 0.5} ${x} ${y - len}Q${x + 6} ${y - len * 0.5} ${x} ${y}Z" fill="${fill}" stroke="${ink}" stroke-width="1.2" transform="rotate(${deg} ${x} ${y})"/>`;
+      return flame(
+        `<g transform="translate(${x} ${y}) scale(1.55) translate(${-x} ${-y})">` +
+          `<ellipse cx="${x}" cy="${y + 2}" rx="15" ry="4" fill="#5fae5a" stroke="${ink}" stroke-width="1"/>` +
+          [-70, 70, -45, 45].map((d) => petal(d, 15, "#ff9cc4")).join("") +
+          [-20, 20, 0].map((d) => petal(d, 18, "#ffd0e2")).join("") +
+          `<circle cx="${x}" cy="${y - 3}" r="3" fill="#ffd65b" stroke="none"/></g>`,
+      );
+    }
+    case "feather-cap": {
+      const f = side ? -side : -1;
+      const brim = side
+        ? `M${cx - 30} ${top + 12}Q${cx - 18} ${top - 14} ${cx + side * 4} ${top - 16}Q${cx + 22} ${top - 12} ${cx + 32} ${top + 10}Q${cx} ${top + 4} ${cx - 30} ${top + 12}Z`
+        : `M${cx - 33} ${top + 12}Q${cx - 22} ${top - 12} ${cx + 4} ${top - 15}Q${cx + 28} ${top - 12} ${cx + 38} ${top + 6}Q${cx} ${top + 2} ${cx - 33} ${top + 12}Z`;
+      return flame(
+        `<path d="M${cx + f * 6} ${top - 6}Q${cx + f * 26} ${top - 34} ${cx + f * 48} ${top - 34}Q${cx + f * 28} ${top - 20} ${cx + f * 10} ${top - 2}Z" fill="#e0262f" stroke="${ink}" stroke-width="1.4" stroke-linejoin="round"/>` +
+          `<path d="M${cx + f * 8} ${top - 4}Q${cx + f * 26} ${top - 26} ${cx + f * 46} ${top - 33}" stroke="#ffd2c8" stroke-width="1.2" fill="none"/>` +
+          `<path d="${brim}" fill="#3f7f3a" stroke="${ink}" stroke-linejoin="round"/>` +
+          `<path d="M${cx - 28} ${top + 8}Q${cx} ${top + 1} ${cx + 30} ${top + 5}" stroke="#c8823a" stroke-width="3" fill="none"/>`,
+      );
+    }
+    case "towel": {
+      const w = side ? 16 : 20;
+      return flame(
+        `<g transform="rotate(${side ? side * 4 : -7} ${cx} ${top})">` +
+          `<path d="M${cx - w} ${top + 4}Q${cx - w - 2} ${top - 8} ${cx - w + 4} ${top - 12}H${cx + w - 4}Q${cx + w + 2} ${top - 8} ${cx + w} ${top + 4}Q${cx} ${top + 8} ${cx - w} ${top + 4}Z" fill="#ffffff" stroke="${ink}" stroke-linejoin="round"/>` +
+          `<path d="M${cx - w + 4} ${top - 8}H${cx + w - 4}M${cx - w + 2} ${top - 4}H${cx + w - 2}" stroke="#ff8fa8" stroke-width="2"/>` +
+          `<path d="M${cx - w + 2} ${top + 1}Q${cx} ${top + 4} ${cx + w - 2} ${top + 1}" stroke="#e0e6ee" stroke-width="1.4" fill="none"/>` +
+          `</g>`,
+      );
+    }
+    case "sunflower": {
+      const x = side ? cx - side * 14 : back ? cx - 26 : cx + 26,
+        y = top + 12;
+      const petals = Array.from({ length: 14 }, (_, i) => {
+        const deg = (i * 360) / 14;
+        return `<ellipse cx="${x}" cy="${y - 14}" rx="4.4" ry="8.6" fill="#ffd84a" stroke="#b07a10" stroke-width="1" transform="rotate(${n(deg)} ${x} ${y})"/>`;
+      }).join("");
+      return flame(
+        `<path d="M${x - 6} ${y + 10}q-14 2 -19 -8q12 -4 19 8z" fill="#5fae3a" stroke="${ink}" stroke-width="1.2"/>` +
+          petals +
+          `<circle cx="${x}" cy="${y}" r="8.6" fill="#6a3a12" stroke="${ink}" stroke-width="1.2"/>` +
+          [[-2, -2], [2, -1], [0, 2], [-3, 2], [3, 3]].map(([dx, dy]) => `<circle cx="${x + dx}" cy="${y + dy}" r="0.9" fill="#ffd84a" stroke="none"/>`).join(""),
+      );
+    }
+    case "headband": {
+      const y = top + 20;
+      if (back)
+        return flame(
+          `<path d="M${cx - 33} ${y}Q${cx} ${y + 6} ${cx + 33} ${y}L${cx + 33} ${y + 7}Q${cx} ${y + 13} ${cx - 33} ${y + 7}Z" fill="#ffffff" stroke="${ink}"/>` +
+            `<path d="M${cx - 2} ${y + 6}q-10 10 -6 22l5 -2q-2 -10 5 -18zM${cx + 2} ${y + 6}q10 10 6 22l-5 -2q2 -10 -5 -18z" fill="#ffffff" stroke="${ink}" stroke-width="1.2"/>` +
+            `<circle cx="${cx}" cy="${y + 5}" r="4.5" fill="#e0262f" stroke="${ink}" stroke-width="1.2"/>`,
+        );
+      const knot = cx + (side ? -side * 26 : 31),
+        out = side ? -side : 1;
+      const twist = Array.from({ length: 8 }, (_, i) => `M${cx - 28 + i * 8} ${y + 1}l4 6`).join("");
+      return flame(
+        `<path d="M${cx - 33} ${y}Q${cx} ${y - 6} ${cx + 33} ${y}L${cx + 33} ${y + 8}Q${cx} ${y + 2} ${cx - 33} ${y + 8}Z" fill="#ffffff" stroke="${ink}"/>` +
+          `<path d="${twist}" stroke="#e0262f" stroke-width="2" stroke-linecap="round"/>` +
+          `<path d="M${knot} ${y + 4}q${out * 12} -2 ${out * 16} -12l${out * 3} 4q${-out * 2} 10 ${-out * 15} 10zM${knot} ${y + 5}q${out * 12} 4 ${out * 13} 16l${out * 4} -2q${-out * 1} -12 ${-out * 15} -15z" fill="#ffffff" stroke="${ink}" stroke-width="1.2"/>` +
+          `<circle cx="${knot}" cy="${y + 4}" r="4.5" fill="#e0262f" stroke="${ink}" stroke-width="1.2"/>`,
+      );
+    }
+    case "flower-crown": {
+      const w = side ? 22 : 30;
+      const flowers = Array.from({ length: 7 }, (_, i) => {
+        const t = i / 6,
+          x = cx - w + t * 2 * w,
+          y = top + 10 - Math.sin(t * Math.PI) * 6;
+        const fill = ["#ff8fb8", "#ffffff", "#ffd65b"][i % 3];
+        const petals = [0, 72, 144, 216, 288]
+          .map((d) => `<circle cx="${n(x + Math.cos((d * Math.PI) / 180) * 3.2)}" cy="${n(y + Math.sin((d * Math.PI) / 180) * 3.2)}" r="2.6" fill="${fill}" stroke="${ink}" stroke-width=".8"/>`)
+          .join("");
+        return petals + `<circle cx="${n(x)}" cy="${n(y)}" r="1.6" fill="#ffb02e" stroke="none"/>`;
+      }).join("");
+      return flame(
+        `<path d="M${cx - w - 2} ${top + 11}Q${cx} ${top - 1} ${cx + w + 2} ${top + 11}" stroke="#3f9a3f" stroke-width="3" fill="none" stroke-linecap="round"/>` +
+          flowers,
+      );
+    }
+    case "antenna": {
+      const w = side ? 0 : 32;
+      const pod = (x: number) => `<circle cx="${x}" cy="${top + 16}" r="6" fill="#c8d0e6" stroke="${ink}" stroke-width="1.4"/><circle cx="${x}" cy="${top + 16}" r="2.4" fill="${p.glow}" stroke="none"/>`;
+      const ax = side ? cx - side * 2 : cx + w;
+      return flame(
+        (side ? "" : `<path d="M${cx - w} ${top + 14}Q${cx} ${top - 14} ${cx + w} ${top + 14}" stroke="#c8d0e6" stroke-width="4" fill="none"/><path d="M${cx - w} ${top + 14}Q${cx} ${top - 14} ${cx + w} ${top + 14}" stroke="${ink}" stroke-width="1" fill="none" opacity=".5"/>`) +
+          `<path d="M${ax} ${top + 12}Q${ax + 4} ${top - 6} ${ax + 10} ${top - 20}" stroke="#c8d0e6" stroke-width="2.4" fill="none" stroke-linecap="round"/>` +
+          `<circle cx="${ax + 10}" cy="${top - 22}" r="6" fill="${p.glow}" opacity=".35" stroke="none"/><circle cx="${ax + 10}" cy="${top - 22}" r="3.4" fill="${p.glow}" stroke="${ink}" stroke-width="1"/>` +
+          (side ? pod(ax) : pod(cx - w) + pod(cx + w)),
+      );
+    }
+    case "mushroom": {
+      const w = side ? 30 : 36;
+      const spots = [[-16, -6, 4], [2, -14, 5], [18, -4, 4.5], [-4, 0, 3], [-26, 4, 2.6], [28, 5, 2.6]]
+        .filter(([dx]) => Math.abs(dx) < w - 4)
+        .map(([dx, dy, r]) => `<circle cx="${cx + dx + side * 3}" cy="${top + dy}" r="${r}" fill="#ffffff" stroke="none"/>`)
+        .join("");
+      return flame(
+        `<path d="M${cx - w + 4} ${top + 12}Q${cx} ${top + 18} ${cx + w - 4} ${top + 12}" fill="#f6e6d0" stroke="${ink}"/>` +
+          `<path d="M${cx - w} ${top + 12}Q${cx - w + 2} ${top - 20} ${cx} ${top - 22}Q${cx + w - 2} ${top - 20} ${cx + w} ${top + 12}Q${cx} ${top + 4} ${cx - w} ${top + 12}Z" fill="#e0262f" stroke="${ink}"/>` +
+          spots,
+      );
+    }
+    case "hardhat": {
+      const w = side ? 30 : 34;
+      return flame(
+        `<path d="M${cx - w} ${top + 12}Q${cx - w + 2} ${top - 16} ${cx} ${top - 18}Q${cx + w - 2} ${top - 16} ${cx + w} ${top + 12}Z" fill="#ffc93d" stroke="${ink}"/>` +
+          `<path d="M${cx + side * 6} ${top - 17}Q${cx + side * 8} ${top - 2} ${cx + side * 7} ${top + 11}" stroke="#e0a020" stroke-width="5" fill="none"/>` +
+          `<path d="M${cx - w - 6} ${top + 11}Q${cx} ${top + 6} ${cx + w + 6} ${top + 11}L${cx + w + 6} ${top + 16}Q${cx} ${top + 11} ${cx - w - 6} ${top + 16}Z" fill="#ffd65b" stroke="${ink}"/>` +
+          (back
+            ? ""
+            : `<circle cx="${cx + side * 22}" cy="${top + 1}" r="7" fill="#fff3b0" opacity=".45" stroke="none"/><circle cx="${cx + side * 22}" cy="${top + 1}" r="5" fill="#fffbe6" stroke="#6a6a74" stroke-width="2"/>`),
+      );
+    }
+    case "mask": {
+      // A jewelled masquerade mask over the ink mask, tied with a ribbon.
+      const y = top + 52;
+      if (back)
+        return flame(
+          `<path d="M${cx - 4} ${y}q-12 -8 -16 2q8 6 16 -2zM${cx + 4} ${y}q12 -8 16 2q-8 6 -16 -2z" fill="#ffd65b" stroke="${ink}" stroke-width="1.2"/><path d="M${cx - 3} ${y + 2}l-6 16M${cx + 3} ${y + 2}l6 16" stroke="#ffd65b" stroke-width="3" stroke-linecap="round"/><circle cx="${cx}" cy="${y}" r="3.4" fill="#ff6fa8" stroke="${ink}" stroke-width="1"/>`,
+        );
+      const lens = (x: number) => `<ellipse cx="${x}" cy="${y}" rx="11" ry="8"/>`;
+      const holes = side ? lens(cx + side * 8) : lens(cx - 18) + lens(cx + 18);
+      const shape = side
+        ? `M${cx - side * 10} ${y - 4}Q${cx + side * 8} ${y - 18} ${cx + side * 26} ${y - 8}Q${cx + side * 28} ${y + 8} ${cx + side * 10} ${y + 12}Q${cx - side * 4} ${y + 10} ${cx - side * 10} ${y - 4}Z`
+        : `M${cx} ${y - 6}Q${cx - 18} ${y - 18} ${cx - 38} ${y - 10}Q${cx - 44} ${y + 8} ${cx - 22} ${y + 13}Q${cx - 8} ${y + 12} ${cx} ${y + 4}Q${cx + 8} ${y + 12} ${cx + 22} ${y + 13}Q${cx + 44} ${y + 8} ${cx + 38} ${y - 10}Q${cx + 18} ${y - 18} ${cx} ${y - 6}Z`;
+      const m = `${id}-${dir}-mask`;
+      return flame(
+        `<mask id="${m}" maskUnits="userSpaceOnUse" x="0" y="-20" width="200" height="200"><rect x="0" y="-20" width="200" height="200" fill="#fff"/><g fill="#000">${holes}</g></mask>` +
+          `<path d="${shape}" fill="#ffd65b" stroke="${ink}" stroke-width="1.6" mask="url(#${m})"/>` +
+          `<g fill="none" stroke="#b8862a" stroke-width="1.2">${holes}</g>` +
+          (side
+            ? `<circle cx="${cx + side * 22}" cy="${y - 10}" r="3" fill="#ff6fa8" stroke="${ink}" stroke-width="1"/>`
+            : `<circle cx="${cx}" cy="${y - 2}" r="3.4" fill="#ff6fa8" stroke="${ink}" stroke-width="1"/><path d="M${cx - 38} ${y - 10}q-6 -10 -2 -18q4 6 6 16zM${cx + 38} ${y - 10}q6 -10 2 -18q-4 6 -6 16z" fill="#8a5cff" stroke="${ink}" stroke-width="1"/>`),
+      );
+    }
+    case "starfish": {
+      const x = side ? cx - side * 20 : back ? cx - 28 : cx + 30,
+        y = top + 20;
+      const pts = Array.from({ length: 10 }, (_, i) => {
+        const a = -Math.PI / 2 + (i * Math.PI) / 5,
+          r = i % 2 ? 5.2 : 13;
+        return `${n(x + Math.cos(a) * r)},${n(y + Math.sin(a) * r)}`;
+      }).join(" ");
+      return flame(
+        `<polygon points="${pts}" fill="#ff8a4f" stroke="${ink}" stroke-width="1.4" stroke-linejoin="round" transform="rotate(14 ${x} ${y})"/>` +
+          [0, 1, 2, 3, 4].map((i) => {
+            const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5 + 0.24;
+            return `<circle cx="${n(x + Math.cos(a) * 6.5)}" cy="${n(y + Math.sin(a) * 6.5)}" r="1.3" fill="#ffe0c0" stroke="none"/>`;
+          }).join(""),
+      );
+    }
+    case "lure": {
+      const f = side || 1;
+      const bx = cx + f * 20,
+        by = top - 12;
+      return flame(
+        `<path d="M${cx} ${top + 8}Q${cx - f * 2} ${top - 18} ${bx} ${by}" stroke="${p.dark}" stroke-width="5" fill="none" stroke-linecap="round"/>` +
+          `<path d="M${cx} ${top + 8}Q${cx - f * 2} ${top - 18} ${bx} ${by}" stroke="${p.mid}" stroke-width="2.6" fill="none" stroke-linecap="round"/>` +
+          `<circle cx="${bx}" cy="${by}" r="10" fill="${p.glow}" opacity=".3" stroke="none"/>` +
+          `<circle cx="${bx}" cy="${by}" r="6" fill="${p.glow}" stroke="${ink}" stroke-width="1.2"/><circle cx="${bx - 2}" cy="${by - 2}" r="2" fill="#ffffff" stroke="none"/>`,
+      );
+    }
+  }
+  return [];
 }
 
 /** The look a skin gives a champion at an Awakening stage. */
