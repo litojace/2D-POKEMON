@@ -287,42 +287,27 @@ const SCREENS = {
       }
     }
   },
+  // The fitting room (step 2): Shop sections, then the Wardrobe's slots.
   async shop(page, shot) {
     await hubMenu(page, "shop");
-    await page.locator(".shop").waitFor({ state: "visible" });
+    await page.locator(".fit-room").waitFor({ state: "visible" });
     await page.waitForTimeout(1500);
     await shot("shop");
-    for (const tab of ["champions", "mythic", "collections"]) {
-      const t = page.locator(`[data-shop-tab=${tab}]`).first();
-      if (await t.isVisible().catch(() => false)) {
-        await t.click();
-        await page.waitForTimeout(1200);
-        await shot(`shop-${tab}`);
-      }
-    }
-    const t = page.locator(`[data-shop-tab=champions]`).first();
-    if (await t.isVisible().catch(() => false)) await t.click();
-    const prev = page.locator("[data-shop-preview]").nth(1);
-    if (await prev.isVisible().catch(() => false)) {
-      await prev.click();
-      await page.waitForTimeout(1500);
-      await shot("shop-preview");
+    for (const section of ["skins", "mythic", "collections"]) {
+      await page.click(`[data-ui-section=${section}]`);
+      await page.waitForTimeout(1200);
+      await shot(`shop-${section}`);
     }
   },
   async wardrobe(page, shot) {
     await hubMenu(page, "wardrobe");
+    await page.locator(".fit-room").waitFor({ state: "visible" });
     await page.waitForTimeout(1800);
     await shot("wardrobe");
-    const tabs = page.locator("[data-wardrobe-slot]");
-    const n = await tabs.count();
-    for (let i = 1; i < Math.min(n, 6); i++) {
-      const el = tabs.nth(i);
-      if (await el.isVisible().catch(() => false)) {
-        const name = (await el.getAttribute("data-wardrobe-slot")) || String(i);
-        await el.click();
-        await page.waitForTimeout(900);
-        await shot(`wardrobe-${name}`);
-      }
+    for (const slot of ["skin", "aura", "entrance", "victory", "frame"]) {
+      await page.click(`[data-fit-slot=${slot}]`);
+      await page.waitForTimeout(900);
+      await shot(`wardrobe-${slot}`);
     }
   },
   async raids(page, shot) {

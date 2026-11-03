@@ -189,9 +189,7 @@ import "./style.css";
 import "./ui/components.css";
 import "./champion-selection.css";
 import "./friends.css";
-import "./wardrobe.css";
 import "./battle-dock.css";
-import "./mobile-store.css";
 import "./cosmetic-review.css";
 import "./collection-frames.css";
 import "./boss-frames.css";
@@ -203,6 +201,7 @@ import { fullscreenLandscape } from "./orientation";
 import { wireRotateGate } from "./rotate-gate";
 import { watchRotation } from "./orientation-settle";
 import { watchCosmeticPreviews } from "./cosmetic-fx-preview";
+import { openHubPanelNow } from "./ui/hub-panel";
 import { showRewardReveal, takeNewRewards } from "./reward-reveal";
 import {
   SKILL_ACTIONS,
@@ -1849,6 +1848,9 @@ function syncFarm(want: boolean) {
 /** Menu, cards and party slots on the Lobby. */
 function lobbyAction(action: LobbyAction) {
   audio.unlock();
+  // A screen opened from the rail replaces the one that is open (the Shop
+  // and the Wardrobe are one screen and switch in place).
+  if (action !== "shop" && action !== "wardrobe") openHubPanelNow()?.close();
   if (action === "fighters") homeNavigation.open("fighters");
   else if (action === "more-play") homeNavigation.open("play");
   else if (action === "wardrobe") void accountsUI.showWardrobe();
@@ -5586,6 +5588,14 @@ function syncBattleLoop() {
 }
 accountsUI = new AccountUI({
   selectedCharacter: () => selected,
+  chooseFighter: (id) => {
+    if (id === selected) return;
+    selected = id;
+    rememberHomeFighter(id);
+    renderMenu();
+    syncHub();
+  },
+  toLobby: () => setHubScene("lobby"),
   openFarm: () => setHubScene("farm"),
   openDialog: dialog,
   startRaid: (boss, options) => void startRaid(boss, options),

@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
 import { openHub, snap } from "./helpers";
 
+// The fitting room's stage (UI remodel step 2) keeps the last posed fighter
+// on screen while the next look decodes, whether you pick another skin or
+// another fighter.
+
 for (const size of [
   { width: 1440, height: 900 },
   { width: 844, height: 390 },
@@ -51,21 +55,21 @@ for (const size of [
       await page.evaluate(() => {
         const w = window as any;
         w.__chooseShop("tidefin");
-        void w.__account.showShop("champions");
+        void w.__account.showShop("skins");
       });
-      await page.click('[data-shop-preview="tidefin-bubblegum"]');
-      const stage = page.locator(".shop-live-stage");
+      await page.click('.fit-room [data-ui-item="tidefin-bubblegum"]');
+      const stage = page.locator(".fit-stage .shop-live-stage");
       await expect(stage).toHaveClass(/is-ready/);
       await expect(stage).not.toHaveAttribute("aria-busy", "true");
       await page.evaluate(() => {
         const w = window as any;
         w.__initialPreviewCanvas = document.querySelector(
-          ".shop-live-stage canvas",
+          ".fit-stage .shop-live-stage canvas",
         );
       });
       for (const target of [
-        '[data-shop-preview="tidefin-abyss"]',
-        '[data-shop-champion="auralynx"]',
+        '.fit-room [data-ui-item="tidefin-abyss"]',
+        '[data-fit-fighter="auralynx"]',
       ]) {
         await page.evaluate(() => {
           const w = window as any;
@@ -85,7 +89,7 @@ for (const size of [
         expect(
           await page.evaluate(() => {
             const canvas = document.querySelector<HTMLCanvasElement>(
-              ".shop-live-stage canvas",
+              ".fit-stage .shop-live-stage canvas",
             )!;
             const pixels = canvas
               .getContext("2d")!

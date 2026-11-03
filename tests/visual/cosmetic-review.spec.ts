@@ -5,9 +5,8 @@ import { openHub, snap, box, inside } from "./helpers";
 test.describe.configure({ mode: "parallel" });
 
 async function fixtures(page: Page) {
-  // The hub is only the backdrop here. Keep software-rendered scenery cheap;
-  // the fitting room still uses its real full-detail rig and live effects.
-  await page.addInitScript(() => localStorage.setItem("ea-graphics", "low"));
+  // The fitting room's live rig needs High graphics (Low shows a still
+  // fighter, UI remodel step 2); openHub pins High.
   await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {
     const response = await route.fetch();
     await route.fulfill({
@@ -123,64 +122,66 @@ for (const size of [
       await expect(header.locator(".tier-rays")).toBeVisible();
       await expect(header.locator(".tier-orbit")).toBeVisible();
       await snap(page, info, `real-frame-halo-${size.width}x${size.height}`);
+      // The fitting room (UI remodel step 2).
       await page.evaluate(() => {
         (window as any).__chooseReview("tidefin");
-        void (window as any).__account.showShop("champions");
+        void (window as any).__account.showShop("skins");
       });
-      await page.click("[data-shop-preview=tidefin-bubblegum]");
-      const stage = page.locator(".shop .shop-live-stage");
+      await page.click(".fit-room [data-ui-item=tidefin-bubblegum]");
+      const stage = page.locator(".fit-stage .shop-live-stage");
       await expect(stage).toHaveClass(/is-ready/);
       await snap(page, info, `normal-preview-${size.width}x${size.height}`);
       await expect(stage).not.toHaveAttribute("aria-busy", "true");
-      const normal = await box(page, ".shop .shop-live-stage");
-      await page.click("[data-shop-tab=mythic]");
-      await page.click("[data-shop-preview=tidefin-moontide]");
+      const normal = await box(page, ".fit-stage .shop-live-stage");
+      await page.click("[data-ui-section=mythic]");
+      await page.click(".fit-room [data-ui-item=tidefin-moontide]");
+      // The stage keeps its size whatever stage of a Mythical it shows.
       for (const n of [1, 2, 3]) {
-        await page.click(`[data-shop-stage="${n}"]`);
+        await page.click(`[data-fit-awaken="${n}"]`);
         await expect(stage).not.toHaveAttribute("aria-busy", "true");
         await expect(stage).toHaveAttribute("data-preview-stage", String(n));
-        const current = await box(page, ".shop .shop-live-stage");
+        const current = await box(page, ".fit-stage .shop-live-stage");
         expect(Math.abs(current.height - normal.height)).toBeLessThan(1);
         expect(Math.abs(current.width - normal.width)).toBeLessThan(1);
       }
-      await expect(page.locator(".shop-stages button")).toHaveText([
+      await expect(page.locator(".fit-awaken button")).toHaveText([
         "I",
         "II",
         "III",
       ]);
-      expect(
-        inside(
-          await box(page, ".shop-preview-purchase"),
-          await box(page, "#dialog"),
-        ),
-      ).toBe(true);
-      if (size.height <= 320) {
-        await expect(page.locator(".shop-preview-description")).toBeHidden();
-      } else if (size.height <= 600) {
+      // Every awakening control is on the stage, and the action in its bar.
+      for (const n of [1, 2, 3])
         expect(
-          await page
-            .locator(".shop-preview-description")
-            .evaluate((el) => getComputedStyle(el).webkitLineClamp),
-        ).toBe("1");
-      }
+          inside(
+            await box(page, `[data-fit-awaken="${n}"]`),
+            await box(page, ".fit-stage"),
+          ),
+        ).toBe(true);
+      // Phones keep only the stage's tools; the note is there on desktop.
+      if (size.height <= 500)
+        await expect(page.locator(".fit-awaken-note")).toBeHidden();
+      else
+        await expect(page.locator(".fit-awaken-note")).toContainText(
+          "All stages unlocked for testing.",
+        );
       await snap(page, info, `compact-mythical-${size.width}x${size.height}`);
-      await page.click(".shop-awakening-details > summary");
-      await expect(page.locator(".shop-awakening-details > p")).toBeVisible();
-      await page.click(".shop-awakening-details > summary");
-      await page.click("[data-shop-preview=cindrake-sunforged]");
+      await page.click(".fit-room [data-ui-item=cindrake-sunforged]");
       await expect(stage).not.toHaveAttribute("aria-busy", "true");
+      // Short of coins: Earn coins beside a disabled Buy, in the action bar.
+      await expect(page.locator("[data-fit-missions]")).toBeVisible();
       await expect(
-        page.locator(".shop-preview-purchase .shop-earn"),
-      ).toBeVisible();
+        page.locator("[data-fit-buy=cindrake-sunforged]"),
+      ).toBeDisabled();
       expect(
         inside(
-          await box(page, ".shop-preview-purchase"),
-          await box(page, ".shop-preview"),
+          await box(page, "[data-fit-missions]"),
+          await box(page, ".ui-panel-foot"),
         ),
       ).toBe(true);
       expect(
         Math.abs(
-          (await box(page, ".shop .shop-live-stage")).height - normal.height,
+          (await box(page, ".fit-stage .shop-live-stage")).height -
+            normal.height,
         ),
       ).toBeLessThan(1);
       await snap(
@@ -188,11 +189,12 @@ for (const size of [
         info,
         `compact-mythical-purchase-${size.width}x${size.height}`,
       );
-      await page.click("[data-shop-preview=tidefin-moontide]");
-      await page.click("[data-shop-tab=collections]");
-      await page.click("[data-shop-collection=galaxy]");
+      // Effects are tried on the worn skin (Tidefin wears Moontide, Stage III).
+      await page.click(".fit-room [data-ui-item=tidefin-moontide]");
+      await page.click("[data-ui-section=collections]");
+      await page.click("[data-fit-collection=galaxy]");
       for (const suffix of ["entrance", "victory", "aura"]) {
-        await page.click(`[data-shop-preview=galaxy-${suffix}]`);
+        await page.click(`.fit-room [data-ui-item=galaxy-${suffix}]`);
         await expect(stage).toHaveClass(/is-ready/);
         await expect(stage).not.toHaveAttribute("aria-busy", "true");
         await expect(stage.locator(":scope > canvas")).toHaveCount(1);
@@ -224,7 +226,7 @@ for (const size of [
           await page.evaluate(() => {
             const w = window as any;
             w.__heldCanvas = document.querySelector(
-              ".shop-live-stage > canvas",
+              ".fit-stage .shop-live-stage > canvas",
             );
             for (let i = 0; i < 75; i++) w.__reviewScene.update(0, 50);
           });
@@ -234,7 +236,7 @@ for (const size of [
               flag,
             ),
           ).toBe(false);
-          await page.click(`[data-shop-preview=galaxy-${suffix}]`);
+          await page.click(`.fit-room [data-ui-item=galaxy-${suffix}]`);
           await expect
             .poll(() =>
               page.evaluate((f) => (window as any).__reviewPose?.pose[f], flag),
@@ -244,7 +246,7 @@ for (const size of [
             await page.evaluate(
               () =>
                 (window as any).__heldCanvas ===
-                document.querySelector(".shop-live-stage > canvas"),
+                document.querySelector(".fit-stage .shop-live-stage > canvas"),
             ),
           ).toBe(true);
         }
@@ -259,16 +261,19 @@ for (const size of [
           ? ["galaxy", "winter", "festival", "garden", "candy"]
           : ["galaxy", "candy"];
       for (const collection of collections) {
-        await page.click(`[data-shop-collection=${collection}]`);
-        await page.click(`[data-shop-preview=${collection}-frame]`);
+        await page.click(`[data-fit-collection=${collection}]`);
+        await page.click(`.fit-room [data-ui-item=${collection}-frame]`);
         await expect(
           stage.locator(".portrait-disc svg[data-fighter=tidefin]"),
         ).toHaveCount(1);
         await expect(stage.locator(":scope > canvas")).toHaveCount(0);
-        const art = page.locator(`[data-shop-preview=${collection}-frame]`);
+        // The tile shows the whole ring, round, with its edge inside.
+        const art = page.locator(
+          `.fit-room [data-ui-item=${collection}-frame] .ui-tile-art`,
+        );
         const outer = await art.boundingBox();
         const ring = await art.locator(".raid-cosmetic-preview").boundingBox();
-        expect(Math.abs(outer!.width - outer!.height)).toBeLessThan(1);
+        expect(Math.abs(ring!.width - ring!.height)).toBeLessThan(1);
         expect(inside(ring!, outer!)).toBe(true);
         const edge = await art.locator(".tier-fx").boundingBox();
         if (edge) expect(inside(edge, outer!)).toBe(true);

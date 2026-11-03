@@ -299,17 +299,19 @@ test("keeps memory steady across repeated battles, Lobby, Shop and Wardrobe", as
       await expect(page.locator("#lobby-play")).toBeVisible({
         timeout: 20_000,
       });
-      // A Shop and a Wardrobe visit between matches.
+      // A Shop and a Wardrobe visit between matches (the fitting room).
       await page.evaluate(
-        () => void (window as any).__account.showShop("champions"),
+        () => void (window as any).__account.showShop("skins"),
       );
-      await expect(page.locator("dialog[open]")).toHaveCount(1);
+      await expect(page.locator(".fit-room")).toHaveCount(1);
       await page.waitForTimeout(800);
-      await page.click("#close-dialog");
       await page.evaluate(() => void (window as any).__account.showWardrobe());
-      await expect(page.locator("dialog[open]")).toHaveCount(1);
+      await expect(
+        page.locator('.fit-room[data-fit-mode="wardrobe"]'),
+      ).toHaveCount(1);
       await page.waitForTimeout(800);
-      await page.click("#close-dialog");
+      await page.locator(".fit-room .ui-close").click();
+      await expect(page.locator(".fit-room")).toHaveCount(0);
       await page.waitForTimeout(500);
       samples.push({ cycle, ...(await heap(context, page)) });
     }

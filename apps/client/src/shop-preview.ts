@@ -241,22 +241,48 @@ export function mountShopPreview(
     failedSelection = false;
     drawn = false;
     dirty = true;
-    if (compare)
-      compare.onclick = () => {
-        original = !original;
-        compare!.setAttribute("aria-pressed", String(original));
+    const showOriginal = (on: boolean, hold: boolean) => {
+      if (on === original) return;
+      original = on;
+      compare!.setAttribute("aria-pressed", String(original));
+      if (!hold)
         compare!.textContent = original
           ? "Show selected look"
           : "Compare original";
-        host.dataset.original = String(original);
-        host.setAttribute(
-          "aria-label",
-          original
-            ? `${CHARACTERS[champion].name} original appearance`
-            : originalLabel,
-        );
-        reset();
+      host.dataset.original = String(original);
+      host.setAttribute(
+        "aria-label",
+        original
+          ? `${CHARACTERS[champion].name} original appearance`
+          : originalLabel,
+      );
+      reset();
+    };
+    if (compare?.dataset?.previewCompare === "hold") {
+      // The fitting room's "Hold to compare": the original look only while
+      // the button is held down (pointer, Space or Enter).
+      const on = () => showOriginal(true, true),
+        off = () => showOriginal(false, true);
+      compare.onclick = null;
+      compare.onpointerdown = (event) => {
+        event.preventDefault();
+        compare!.setPointerCapture?.(event.pointerId);
+        on();
       };
+      compare.onpointerup = compare.onpointercancel = off;
+      compare.onlostpointercapture = off;
+      compare.onblur = off;
+      compare.oncontextmenu = (event) => event.preventDefault();
+      compare.onkeydown = (event) => {
+        if ((event.key === " " || event.key === "Enter") && !event.repeat) {
+          event.preventDefault();
+          on();
+        }
+      };
+      compare.onkeyup = (event) => {
+        if (event.key === " " || event.key === "Enter") off();
+      };
+    } else if (compare) compare.onclick = () => showOriginal(!original, false);
     // Item-only effects use their own canvas; retain the fighter renderer
     // asleep, outside the DOM, for switching back to skins or Colors.
     if (

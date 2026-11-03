@@ -1,0 +1,738 @@
+/* ==========================================================================
+   The fitting room: Shop + Wardrobe (UI remodel step 2, docs/ui-remodel/
+   PLAN.md). Markup: screens/fitting-room-view.ts. This file only lays out the
+   shared components (ui/components.css); it never restyles them.
+   ========================================================================== */
+
+/* -------------------------------------------------------------- stage */
+.fit-stage {
+  --fit-info-h: 150px;
+  isolation: isolate;
+  container-type: size;
+}
+/* The live rig draws its own spotlight; a still fighter (Low graphics, or
+   until the rig is ready) gets this one, without blur on Low. */
+.fit-light {
+  position: absolute;
+  right: -40px;
+  top: -90px;
+  width: 280px;
+  height: 700px;
+  transform-origin: 50% 0;
+  transform: rotate(13deg);
+  background: linear-gradient(180deg, #ffe9a6, #ffe9a600 88%);
+  clip-path: polygon(44% 0, 56% 0, 100% 100%, 0 100%);
+  filter: blur(12px);
+  opacity: 0.35;
+  pointer-events: none;
+  z-index: -1;
+}
+.fit-stage:has(.shop-live-stage.is-ready) .fit-light {
+  display: none;
+}
+.ui-panel[data-graphics="low"] .fit-light {
+  filter: none;
+  opacity: 0.18;
+}
+.fit-stage > .shop-live-stage {
+  /* The rig's camera is framed on the host's width, so a tall, narrow stage
+     would draw a small fighter: the host is as wide as 1.25 × its height
+     (centred, the stage clips it), which shows the fighter at full size. */
+  position: absolute;
+  top: 0;
+  bottom: var(--fit-info-h);
+  left: 50%;
+  /* Capped at 500 px: the preview canvas is 400 px wide, so a wider host
+     would blur it. */
+  width: clamp(100cqw, (100cqh - var(--fit-info-h)) * 1.25, max(100cqw, 500px));
+  height: auto;
+  transform: translateX(-50%);
+  aspect-ratio: auto;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  /* The floor fades out above the name instead of ending in an edge. */
+  mask-image: linear-gradient(180deg, #000 82%, transparent);
+}
+.fit-stage > .shop-live-stage.is-frame {
+  top: 70px;
+  left: 0;
+  width: 100%;
+  transform: none;
+  mask-image: none;
+  background: none;
+  box-shadow: none;
+}
+.fit-frame-avatar {
+  width: min(70%, 260px);
+  aspect-ratio: 1;
+  margin: auto;
+}
+.fit-frame-avatar > * {
+  width: 100%;
+  height: 100%;
+}
+.fit-stage-top {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--sp-2);
+}
+.fit-frame-badge {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ui-dim);
+  font-size: var(--fs-micro);
+  cursor: pointer;
+}
+.fit-frame-badge > :first-child {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+}
+.fit-plays {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: 124px;
+}
+.fit-plays .ui-btn {
+  width: 100%;
+}
+.fit-plays .ui-btn[aria-pressed="true"] {
+  border-color: var(--ui-accent);
+  color: var(--ui-accent);
+}
+.fit-stage-info {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 18px;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.fit-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.fit-stage-name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 40px;
+  line-height: 0.95;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fit-stage-sub,
+.fit-awaken-note,
+.fit-stars-note {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fit-stage-tools {
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+.fit-awaken,
+.fit-stars {
+  display: inline-flex;
+  gap: 4px;
+}
+.fit-stars {
+  margin-top: 4px;
+}
+.fit-awaken .ui-btn.is-s,
+.fit-stars .ui-btn.is-s {
+  min-width: var(--ctl-s);
+  padding: 0 8px;
+}
+:is(.fit-awaken, .fit-stars) .ui-btn[aria-pressed="true"] {
+  border-color: var(--ui-accent);
+  color: var(--ui-accent);
+}
+:is(.fit-awaken, .fit-stars) .ui-btn[data-locked="true"] {
+  color: var(--ui-faint);
+  border-style: dashed;
+}
+
+/* ------------------------------------------------------- item pictures */
+/* Effect pieces (aura, entrance, victory, frame) and Colors are drawn by
+   cosmetic-picture.ts at a small default size: fill the picture box. */
+.fit-room
+  :is(
+    .ui-tile-art,
+    .fit-deal-art,
+    .fit-slot-art,
+    .fit-bundle-art > span,
+    .fit-foot-art
+  )
+  > .raid-cosmetic-preview,
+.ui-modal-art > .raid-cosmetic-preview,
+.fit-confirm-set > .raid-cosmetic-preview {
+  width: 72%;
+  height: auto;
+  aspect-ratio: 1;
+  background: none;
+}
+.fit-room .raid-cosmetic-preview > :is(svg, img),
+.ui-modal-art .raid-cosmetic-preview > :is(svg, img) {
+  width: 100%;
+  height: 100%;
+}
+/* A frame keeps room for its ring, ornaments and sparks. */
+.fit-room .ui-tile[data-slot="frame"] .ui-tile-art > .raid-cosmetic-preview {
+  width: 56%;
+}
+
+/* ------------------------------------------------------- the catalogue */
+.fit-head .ui-seg {
+  flex: none;
+}
+.fit-head .ui-tabs {
+  margin-left: 6px;
+}
+.fit-head .ui-tabs .ui-tag {
+  margin-left: 2px;
+}
+.fit-hint {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fit-room[data-fit-mode="wardrobe"] .fit-head {
+  border-bottom: 1px solid var(--ui-line);
+}
+.fit-section {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 4px;
+}
+.fit-warning {
+  color: var(--ui-warn);
+  font-size: var(--fs-small);
+}
+.fit-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+  flex-wrap: wrap;
+}
+.fit-filters .ui-chips {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.fit-count {
+  margin-left: auto;
+}
+.fit-picks .ui-tile-art {
+  aspect-ratio: 1.75;
+}
+/* Fighters: a row of avatars instead of a dropdown. */
+.fit-fighters {
+  gap: 6px;
+}
+.fit-fighter {
+  flex: none;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  width: 64px;
+  padding: 4px 2px 5px;
+  border-radius: var(--rad-md);
+  border: 1px solid var(--ui-line);
+  background: var(--ui-bg-1);
+}
+.fit-fighter > span:last-child {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ui-dim);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fit-fighter[aria-pressed="true"] {
+  border-color: var(--ui-accent);
+  background: #ffd65b14;
+}
+.fit-fighter[aria-pressed="true"] > span:last-child {
+  color: var(--ui-accent);
+}
+/* Today's featured pick. */
+.fit-deal {
+  position: relative;
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 18px;
+  align-items: center;
+  text-align: left;
+  padding: 10px;
+  border-radius: var(--rad-lg);
+  border: 2px solid var(--ui-accent);
+  background: linear-gradient(110deg, #ffd65b26, var(--ui-bg-1) 55%);
+  box-shadow:
+    0 0 0 2px #ffd65b33,
+    var(--shadow-1);
+}
+.fit-deal[aria-pressed="true"] {
+  box-shadow:
+    0 0 0 2px var(--ui-accent),
+    var(--shadow-1);
+}
+.fit-deal-art {
+  height: 160px;
+  border-radius: var(--rad-md);
+  background: radial-gradient(
+    ellipse at 50% 85%,
+    color-mix(in srgb, var(--r) 34%, var(--ui-bg-2)),
+    var(--ui-bg-0) 75%
+  );
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.fit-deal-art > * {
+  height: 96%;
+  width: auto;
+  max-width: 100%;
+}
+.fit-deal-text {
+  display: grid;
+  gap: 6px;
+  align-content: center;
+  min-width: 0;
+}
+.fit-deal-text .ui-note {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.fit-deal-name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-h1);
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fit-deal-price {
+  font-size: 26px;
+  margin-top: 6px;
+}
+.fit-deal-timer {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+}
+/* A set: its pieces in a strip, the full and the discounted price. */
+.fit-bundle {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px 10px 10px;
+  text-align: left;
+  border-radius: var(--rad-lg);
+  border: 1px solid color-mix(in srgb, var(--r) 50%, transparent);
+  background: linear-gradient(110deg, #b56bff1f, var(--ui-bg-1) 60%);
+}
+.fit-bundle[aria-pressed="true"] {
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 2px var(--ui-accent) inset;
+}
+.fit-bundle-art {
+  display: flex;
+  gap: 6px;
+}
+.fit-bundle-art > span {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--rad-sm);
+  background: var(--ui-bg-0);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.fit-bundle-art > span > * {
+  width: 90%;
+  height: 90%;
+}
+.fit-bundle-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.fit-bundle-price {
+  font-size: 22px;
+}
+.fit-earn {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  align-items: center;
+  padding: 10px 14px;
+  border: 1px dashed var(--ui-line-2);
+  border-radius: var(--rad-md);
+  font-size: var(--fs-small);
+  color: var(--ui-dim);
+}
+.fit-earn b {
+  color: var(--ui-text);
+}
+.fit-earn-left {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.fit-collections .ui-chip .ui-tag {
+  height: 16px;
+}
+/* Wardrobe: what each of the six slots holds, as tabs. */
+.fit-slots {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+.fit-slot {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border-radius: var(--rad-md);
+  border: 1px solid var(--ui-line);
+  background: var(--ui-bg-1);
+  min-width: 0;
+}
+.fit-slot-art {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--rad-sm);
+  background: var(--ui-bg-2);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.fit-slot-art > * {
+  width: 100%;
+  height: 100%;
+}
+.fit-slot-art i,
+.fit-none {
+  font-style: normal;
+  color: var(--ui-faint);
+  font-size: 28px;
+}
+.fit-slot small {
+  font-size: 10px;
+  color: var(--ui-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.fit-slot b {
+  font-size: 12px;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fit-slot b.is-none {
+  color: var(--ui-dim);
+  font-weight: 500;
+}
+.fit-slot[aria-selected="true"] {
+  border-color: var(--ui-accent);
+  background: #ffd65b14;
+}
+/* A slot with a change not yet saved. */
+.fit-slot[data-changed="true"]::after {
+  content: "";
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ui-accent);
+}
+.fit-more .ui-tile-art {
+  color: var(--ui-accent);
+}
+.fit-more .ui-tile-art > svg {
+  width: 40%;
+  height: 40%;
+}
+.fit-more {
+  border-style: dashed;
+}
+.fit-empty-note {
+  text-align: center;
+}
+
+/* -------------------------------------------------------- action bar */
+.fit-foot-art {
+  width: 56px;
+  height: 56px;
+  flex: none;
+  display: grid;
+  place-items: center;
+}
+.fit-foot-art > * {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.fit-foot-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.fit-foot-text .ui-h,
+.fit-foot-text .ui-note {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Read out, not shown: the toast shows the same message. */
+.fit-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.fit-room[aria-busy="true"] {
+  cursor: progress;
+}
+/* The purchase confirmation. */
+.fit-wear {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: var(--fs-small);
+}
+.fit-wear input {
+  accent-color: var(--ui-accent);
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+.fit-confirm-set {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  width: 90%;
+}
+.fit-confirm-set > * {
+  width: 100%;
+  aspect-ratio: 1;
+}
+
+/* ------------------------------------------------- phones, sideways */
+@media (max-width: 1300px) {
+  .fit-deal {
+    grid-template-columns: 190px minmax(0, 1fr);
+  }
+  .fit-deal-art {
+    height: 128px;
+  }
+  .fit-bundle-art > span:nth-child(n + 4) {
+    display: none;
+  }
+}
+@media (max-height: 500px) {
+  .fit-stage {
+    --fit-info-h: 44px;
+  }
+  .fit-stage:has(.fit-stars) {
+    --fit-info-h: 50px;
+  }
+  .fit-stage > .shop-live-stage.is-frame {
+    top: 42px;
+  }
+  .fit-light {
+    width: 150px;
+    height: 360px;
+    right: -30px;
+    top: -60px;
+  }
+  /* Small buttons stacked on a phone keep 16 px between them and 8 px
+     from the stage's edge, so each still catches a 44 px finger. */
+  .fit-stage-top {
+    left: 8px;
+    right: 8px;
+    top: 9px;
+  }
+  .fit-frame-badge::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+  .fit-frame-badge > small {
+    display: none;
+  }
+  .fit-frame-badge > :first-child {
+    width: 38px;
+    height: 38px;
+  }
+  .fit-plays {
+    grid-template-columns: var(--act-s);
+    gap: 16px;
+  }
+  .fit-plays .ui-btn svg {
+    display: none;
+  }
+  .fit-stage-info {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    gap: 2px;
+  }
+  /* On a phone the stage keeps the fighter and its tools; the name is in
+     the action bar. */
+  .fit-stage-info > :not(.fit-stage-tools, .fit-stars) {
+    display: none;
+  }
+  .fit-stage-tools {
+    margin-top: 2px;
+    gap: 16px 4px;
+  }
+  .fit-awaken .ui-btn.is-s,
+  .fit-stars .ui-btn.is-s {
+    min-width: 28px;
+    padding: 0 5px;
+  }
+  /* Awakening stages: a column at the stage's right edge, beside the
+     fighter, so the stage never changes size for a Mythical. */
+  .fit-awaken {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    flex-direction: column-reverse;
+    gap: 16px;
+  }
+  .fit-stars {
+    gap: 3px;
+  }
+  .fit-stars .ui-btn.is-s {
+    padding: 0;
+  }
+  .fit-head .ui-seg.is-display > button {
+    height: 26px;
+    font-size: 12px;
+    padding: 0 9px;
+  }
+  .fit-head .ui-tabs {
+    margin-left: 0;
+  }
+  .fit-head .ui-tabs > button[role="tab"] {
+    font-size: 12px;
+    padding: 6px 6px 5px;
+  }
+  .fit-head .ui-tabs .ui-tag,
+  .fit-hint {
+    display: none;
+  }
+  .fit-section .ui-note,
+  .fit-body > .ui-note {
+    font-size: 10px;
+  }
+  .fit-foot-art {
+    width: 36px;
+    height: 36px;
+  }
+  .fit-foot-text .ui-note {
+    display: none;
+  }
+  .fit-deal {
+    grid-template-columns: 110px minmax(0, 1fr);
+    gap: 10px;
+    padding: 6px;
+  }
+  .fit-deal-art {
+    height: 86px;
+  }
+  .fit-deal-text .ui-note {
+    display: none;
+  }
+  .fit-deal-name {
+    font-size: 22px;
+  }
+  .fit-deal-price {
+    font-size: 18px;
+    margin-top: 0;
+  }
+  .fit-deal-timer {
+    top: 6px;
+    right: 8px;
+  }
+  .fit-bundle {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 6px 10px;
+  }
+  .fit-bundle-art,
+  .fit-earn {
+    display: none;
+  }
+  .fit-bundle-price {
+    font-size: 16px;
+  }
+  .fit-fighter {
+    width: 40px;
+    padding: 2px;
+  }
+  .fit-fighter > span:last-child {
+    display: none;
+  }
+  .fit-slots {
+    gap: 4px;
+  }
+  .fit-slot {
+    padding: 3px 2px;
+    border-radius: 9px;
+  }
+  .fit-slot-art {
+    width: 26px;
+    height: 26px;
+  }
+  .fit-slot small {
+    font-size: 8px;
+  }
+  .fit-slot b {
+    font-size: 9px;
+  }
+  .fit-grid[style*="--cols:5"],
+  .fit-grid[style*="--cols:4"] {
+    --cols: 3 !important;
+  }
+  .fit-filters {
+    gap: 6px;
+  }
+}

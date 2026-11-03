@@ -281,6 +281,41 @@ describe("Shop live previews", () => {
     expect(mock.loop.running).toBe(false);
     dispose();
   });
+  it("shows the original look only while Hold to compare is held (fitting room)", () => {
+    const p = panel();
+    Object.assign(p.compare, {
+      dataset: { previewCompare: "hold" },
+      setPointerCapture: vi.fn(),
+    });
+    const dispose = mountShopPreview(p.element);
+    mock.scene.create();
+    draw();
+    const hold = p.compare as unknown as {
+      onclick: unknown;
+      onpointerdown: (e: object) => void;
+      onpointerup: () => void;
+      onkeydown: (e: object) => void;
+      onkeyup: (e: object) => void;
+    };
+    // Holding is not a toggle: a click does nothing on its own.
+    expect(hold.onclick).toBeNull();
+    hold.onpointerdown({ pointerId: 1, preventDefault: vi.fn() });
+    draw();
+    expect(mock.render.mock.lastCall![0].skin).toBeNull();
+    expect(p.host.dataset).toMatchObject({ original: "true" });
+    hold.onpointerup();
+    draw();
+    expect(mock.render.mock.lastCall![0].skin).not.toBeNull();
+    expect(p.host.dataset).toMatchObject({ original: "false" });
+    // Keyboard: Space held down shows the original, released goes back.
+    hold.onkeydown({ key: " ", repeat: false, preventDefault: vi.fn() });
+    expect(p.host.dataset).toMatchObject({ original: "true" });
+    hold.onkeyup({ key: " " });
+    expect(p.host.dataset).toMatchObject({ original: "false" });
+    // The label stays "Hold to compare" (the old toggle renamed itself).
+    expect(p.compare.textContent).toBe("Compare original");
+    dispose();
+  });
   it("loads only the front-facing textures needed by the Shop", () => {
     const { dispose } = preview();
     for (const [, , directions] of mock.assets.mock.calls)

@@ -1,16 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { openHub, snap } from "./helpers";
-
-async function closePanel(page: Page) {
-  await page.evaluate(
-    () =>
-      new Promise<void>((resolve) => {
-        const d = document.querySelector<HTMLDialogElement>("#dialog")!;
-        d.addEventListener("close", () => resolve(), { once: true });
-        document.querySelector<HTMLButtonElement>("#close-dialog")!.click();
-      }),
-  );
-}
 
 for (const size of [
   { width: 1440, height: 900 },
@@ -60,25 +49,26 @@ window.fetch=async(input,init)=>{
       const errors = await openHub(page);
       await page.evaluate(() => {
         (window as any).__choose("tidefin");
-        void (window as any).__account.showShop("champions");
+        void (window as any).__account.showShop("skins");
       });
-      const stage = page.locator(".shop-live-stage");
+      // The fitting room (UI remodel step 2): one stage for every item.
+      const stage = page.locator(".fit-stage .shop-live-stage");
       await expect(stage).toHaveClass(/is-ready/);
       await expect(stage.locator("canvas")).toHaveCount(1);
       await snap(page, info, `skin-stage-tidefin-${size.width}`);
-      await page.click("[data-shop-tab=mythic]");
-      await page.click("[data-shop-preview=tidefin-moontide]");
-      await page.click('[data-shop-stage="2"]');
+      await page.click("[data-ui-section=mythic]");
+      await page.click(".fit-room [data-ui-item=tidefin-moontide]");
+      await page.click('[data-fit-awaken="2"]');
       await expect(stage).toHaveClass(/is-ready/);
       await snap(page, info, `mythic-depth-tidefin-${size.width}`);
-      await page.click("[data-shop-preview=cindrake-sunforged]");
-      await page.click('[data-shop-stage="2"]');
+      await page.click(".fit-room [data-ui-item=cindrake-sunforged]");
+      await page.click('[data-fit-awaken="2"]');
       await expect(stage).toHaveClass(/is-ready/);
       await snap(page, info, `mythic-depth-cindrake-${size.width}`);
-      await page.click("[data-shop-tab=collections]");
-      await page.click("[data-shop-collection=galaxy]");
+      await page.click("[data-ui-section=collections]");
+      await page.click("[data-fit-collection=galaxy]");
       for (const suffix of ["aura", "entrance", "victory", "frame"]) {
-        await page.click(`[data-shop-preview="galaxy-${suffix}"]`);
+        await page.click(`.fit-room [data-ui-item="galaxy-${suffix}"]`);
         if (suffix === "frame") {
           await expect(stage).toHaveClass(/is-item/);
           await expect(stage.locator(".portrait-disc svg")).toHaveCount(1);
@@ -93,29 +83,32 @@ window.fetch=async(input,init)=>{
           );
         }
       }
-      await page.click("[data-shop-preview=galaxy-aura]");
+      await page.click(".fit-room [data-ui-item=galaxy-aura]");
       await snap(page, info, `item-only-shop-${size.width}`);
-      await page.click("[data-shop-preview=galaxy-colours]");
+      await page.click(".fit-room [data-ui-item=galaxy-colours]");
       await expect(stage).toHaveClass(/is-ready/);
       await expect(stage).not.toHaveClass(/is-item/);
-      await closePanel(page);
-      await page.evaluate(() => void (window as any).__account.showWardrobe());
-      await expect(page.locator(".wardrobe")).toBeVisible();
+      // The Wardrobe: effect pieces show their own effect, Colors a fighter.
+      await page.click('[data-ui-mode="wardrobe"]');
+      await expect(
+        page.locator('.fit-room[data-fit-mode="wardrobe"]'),
+      ).toBeVisible();
       for (const suffix of ["aura", "entrance", "victory", "frame"]) {
+        await page.click(`[data-fit-slot="${suffix}"]`);
         const tile = page.locator(
-          `[data-wardrobe-preview="galaxy-${suffix}"] .wardrobe-item-art`,
+          `.fit-grid [data-ui-item="galaxy-${suffix}"] .ui-tile-art`,
         );
         await expect(tile).toHaveCount(1);
+        await expect(tile.locator(".raid-cosmetic-preview")).toHaveCount(1);
         await expect(tile.locator("svg, img")).toHaveCount(0);
       }
+      await page.click('[data-fit-slot="skin"]');
       await expect(
         page.locator(
-          "[data-wardrobe-preview=galaxy-colours] .wardrobe-item-art img",
+          ".fit-grid [data-ui-item=galaxy-colours] .ui-tile-art img",
         ),
       ).toHaveCount(1);
-      await expect(page.locator(".wardrobe .shop-live-stage")).toHaveClass(
-        /is-ready/,
-      );
+      await expect(stage).toHaveClass(/is-ready/);
       await page.evaluate(
         () =>
           new Promise<void>((resolve) =>
@@ -123,7 +116,7 @@ window.fetch=async(input,init)=>{
           ),
       );
       await snap(page, info, `item-only-wardrobe-${size.width}`);
-      await closePanel(page);
+      await page.locator(".fit-room .ui-close").click();
       await page.evaluate(
         () =>
           void (window as any).__account.showRaidHub("grumblecrag", "rewards"),

@@ -40,7 +40,9 @@ export function setupPWA(
     }
     return peerMatchActive(records, Date.now());
   };
-  const menuOpen = () => !!document.querySelector("dialog[open]");
+  // A dialog, or a hub screen opened inside the Lobby (ui/hub-panel.ts).
+  const menuOpen = () =>
+    !!document.querySelector("dialog[open], .ui-panel-host");
   const idle = () =>
     safeToUpdate(getPhase(), menuOpen()) &&
     !peers() &&
@@ -135,6 +137,7 @@ export function setupPWA(
       attributes: true,
       attributeFilter: ["open"],
     });
+  document.addEventListener("ui-panel-change", heartbeat);
   setInterval(heartbeat, 10000);
   window.addEventListener("storage", paint);
   setInterval(() => void checkForUpdate(), 60000);

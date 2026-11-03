@@ -142,10 +142,14 @@ export async function layoutProblems(
 
       // 5. Phones: a finger 44 px tall lands on the control (its hit area may
       //    be larger than what it draws).
+      //    While a confirmation is open, only its own buttons can be hit (the
+      //    screen under its scrim is covered on purpose).
       if (phone)
         for (const e of Array.from(
           document.querySelectorAll(
-            ".ui-panel .ui-btn, .ui-panel .ui-icon-btn, .ui-modal .ui-btn",
+            document.querySelector(".ui-scrim")
+              ? ".ui-modal .ui-btn"
+              : ".ui-panel .ui-btn, .ui-panel .ui-icon-btn, .ui-modal .ui-btn",
           ),
         ).filter(shown)) {
           const r = R(e);
