@@ -9,7 +9,7 @@ import {
   type CharacterId,
 } from "@arena/shared";
 import { mobileLayout } from "../../apps/client/src/mobile-input";
-// The original roster after the creature remodel: names, elements, roles, basic attacks, intervals and skill cooldowns.
+// The sixteen-champion roster: names, elements, roles, basic attacks, intervals and skill cooldowns.
 const ROSTER: Record<
   CharacterId,
   {
@@ -24,7 +24,7 @@ const ROSTER: Record<
     name: "Voltkit",
     element: "Electric",
     role: "Ranged speedster",
-    basic: ["Spark Dart", 275],
+    basic: ["Spark Dart", 270],
     skills: [
       ["Static Lance", 8],
       ["Ball Lightning", 10],
@@ -36,7 +36,7 @@ const ROSTER: Record<
     name: "Cindrake",
     element: "Fire",
     role: "Burst damage fighter",
-    basic: ["Cinder Snap", 475],
+    basic: ["Cinder Snap", 480],
     skills: [
       ["Crest Flare", 8],
       ["Magma Bomb", 12],
@@ -48,7 +48,7 @@ const ROSTER: Record<
     name: "Tidefin",
     element: "Water",
     role: "Agile assassin",
-    basic: ["Tide Needle", 245],
+    basic: ["Tide Needle", 240],
     skills: [
       ["Gill Spray", 8],
       ["Eddy", 12],
@@ -60,7 +60,7 @@ const ROSTER: Record<
     name: "Auralynx",
     element: "Aura",
     role: "Counter specialist",
-    basic: ["Prism Jab", 320],
+    basic: ["Prism Jab", 330],
     skills: [
       ["Prism Shot", 8],
       ["Shatter Paw", 12],
@@ -96,7 +96,7 @@ const ROSTER: Record<
     name: "Terradon",
     element: "Earth",
     role: "Defensive tank",
-    basic: ["Boulder Swipe", 625],
+    basic: ["Boulder Swipe", 635],
     skills: [
       ["Shell Bash", 8],
       ["Shell Up", 16],
@@ -108,7 +108,7 @@ const ROSTER: Record<
     name: "Duskveil",
     element: "Shadow",
     role: "Trickster / area control",
-    basic: ["Lantern Wisp", 365],
+    basic: ["Lantern Wisp", 355],
     skills: [
       ["Shade Crawl", 8],
       ["Ghostfire", 12],
@@ -116,8 +116,104 @@ const ROSTER: Record<
       ["Void Orb", 20],
     ],
   },
+  coilemur: {
+    name: "Coilemur",
+    element: "Electric",
+    role: "Grappler",
+    basic: ["Coil Swipe", 365],
+    skills: [
+      ["Magnet Lash", 12],
+      ["Static Clamp", 12],
+      ["Spark Tether", 15],
+      ["Electromagnet", 20],
+    ],
+  },
+  pyranda: {
+    name: "Pyranda",
+    element: "Fire",
+    role: "Artillery",
+    basic: ["Ember Lob", 425],
+    skills: [
+      ["Chestnut Mortar", 8],
+      ["Hot Coals", 12],
+      ["Tail Wrap", 15],
+      ["Chestnut Storm", 20],
+    ],
+  },
+  glacelle: {
+    name: "Glacelle",
+    element: "Water",
+    role: "Frost controller",
+    basic: ["Rime Shard", 325],
+    skills: [
+      ["Hailstone", 8],
+      ["Frost Bloom", 12],
+      ["Frost Breath", 15],
+      ["Whiteout", 20],
+    ],
+  },
+  halcyra: {
+    name: "Halcyra",
+    element: "Aura",
+    role: "Marksman",
+    basic: ["Aura Quill", 365],
+    skills: [
+      ["Pinning Quill", 8],
+      ["Focus Shot", 12],
+      ["Mirage Perch", 15],
+      ["Skyline Lance", 20],
+    ],
+  },
+  sunbara: {
+    name: "Sunbara",
+    element: "Light",
+    role: "Support",
+    basic: ["Sunseed", 335],
+    skills: [
+      ["Yuzu Toss", 8],
+      ["Warm Spring", 12],
+      ["Daybreak", 15],
+      ["Sanctuary", 20],
+    ],
+  },
+  astrabun: {
+    name: "Astrabun",
+    element: "Psychic",
+    role: "Blink duelist",
+    basic: ["Mallet Bop", 415],
+    skills: [
+      ["Moon Hop", 8],
+      ["Mochi Pound", 12],
+      ["Moon Gravity", 15],
+      ["Full Moon", 20],
+    ],
+  },
+  wombolder: {
+    name: "Wombolder",
+    element: "Earth",
+    role: "Charger",
+    basic: ["Rump Bump", 535],
+    skills: [
+      ["Burrow Rush", 9],
+      ["Pebble Spray", 12],
+      ["Rump Block", 15],
+      ["Landslide", 20],
+    ],
+  },
+  shadopus: {
+    name: "Shadopus",
+    element: "Shadow",
+    role: "Stealth assassin",
+    basic: ["Tentacle Lash", 305],
+    skills: [
+      ["Ink Jet", 8],
+      ["Ink Strike", 12],
+      ["Ink Cloud", 15],
+      ["Kraken Grasp", 20],
+    ],
+  },
 };
-it("matches the eight-fighter roster, basic attacks and four skills exactly", () => {
+it("matches the sixteen-fighter roster, basic attacks and four skills exactly", () => {
   expect([...FIGHTER_IDS].sort()).toEqual(Object.keys(ROSTER).sort());
   for (const [id, spec] of Object.entries(ROSTER)) {
     const c = CHARACTERS[id as CharacterId];

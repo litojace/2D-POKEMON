@@ -326,14 +326,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A sugar-glider kit that stores static in its antennae. Glides over trouble and stays deadly at range.",
     color: 0xffd65b,
-    health: 153,
+    health: 156,
     speed: 270,
     basic: basic(
       "spark-dart",
       "Spark Dart",
       "projectile",
       6,
-      275,
+      270,
       "A fast electric projectile.",
       { speed: 860, range: 680, radius: 9 },
     ),
@@ -396,14 +396,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A stout magma newt with a living flame crest. Layers burns and hits hardest up close.",
     color: 0xff7a4f,
-    health: 141,
+    health: 137,
     speed: 240,
     basic: basic(
       "cinder-snap",
       "Cinder Snap",
       "melee",
       15,
-      475,
+      480,
       "A short-range burst of fire in front of Cindrake.",
       { range: 170, arc: 0.2, knockback: 10 },
     ),
@@ -486,14 +486,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "An axolotl duelist in a river sash. The quickest fighter; pokes, slips away, regrows, then finishes.",
     color: 0x4fd6e6,
-    health: 146,
+    health: 150,
     speed: 285,
     basic: basic(
       "tide-needle",
       "Tide Needle",
       "projectile",
       5,
-      245,
+      240,
       "A fast water projectile.",
       { speed: 950, radius: 8, range: 640 },
     ),
@@ -551,14 +551,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A crystal-fisted lynx monk. Durable, patient and brutal against careless attacks.",
     color: 0x7f9cff,
-    health: 177,
+    health: 169,
     speed: 235,
     basic: basic(
       "prism-jab",
       "Prism Jab",
       "melee",
       13,
-      320,
+      330,
       "A close-range energy punch.",
       { range: 130, arc: 0.35, knockback: 12 },
     ),
@@ -745,14 +745,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A sleepy boulder tortoise. Huge health pool, crushing swings and a shell to hide in; make them come to you.",
     color: 0xc79a5b,
-    health: 199,
+    health: 192,
     speed: 222,
     basic: basic(
       "boulder-swipe",
       "Boulder Swipe",
       "melee",
       15,
-      625,
+      635,
       "A wide melee swing in front of Terradon.",
       { range: 150, arc: 0, knockback: 25 },
     ),
@@ -816,14 +816,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A hooded lantern wisp. Hangs its haunted lantern to hold ground, and strikes from the shadows at anything its ghostfire lights up.",
     color: 0x9c6bff,
-    health: 139,
+    health: 145,
     speed: 260,
     basic: basic(
       "lantern-wisp",
       "Lantern Wisp",
       "projectile",
       9,
-      365,
+      355,
       "A ghostly projectile.",
       { speed: 720, radius: 11 },
     ),
@@ -883,7 +883,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A ring-tailed lemur whose striped tail is a living electromagnet. Yanks runners in, then won't let go.",
     color: 0xf2c94c,
-    health: 140,
+    health: 139,
     speed: 250,
     basic: basic(
       "coil-swipe",
@@ -973,7 +973,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A shy red panda, the \"fire fox\", with a flame at the tip of its tail. Lobs burning chestnuts from the back line and curls up in its tail when caught.",
     color: 0xff8a3d,
-    health: 149,
+    health: 150,
     speed: 235,
     basic: basic(
       "ember-lob",
@@ -1204,7 +1204,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A capybara who bathes in sunlight with a glowing yuzu on its head. Everyone's friend; heals the whole team.",
     color: 0xffc26b,
-    health: 188,
+    health: 190,
     speed: 240,
     basic: basic(
       "sunseed",
@@ -1283,7 +1283,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A moon rabbit with a mochi mallet. Hops through space to land right on top of you.",
     color: 0xd78bff,
-    health: 133,
+    health: 132,
     speed: 262,
     basic: basic(
       "mallet-bop",
@@ -1355,7 +1355,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A wombat with a rump like a boulder. Bulldozes in, blocks with its back end, and never stops digging.",
     color: 0xb08a62,
-    health: 172,
+    health: 173,
     speed: 232,
     basic: basic(
       "rump-bump",
@@ -1429,7 +1429,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A midnight octopus that vanishes in its own ink. Fragile, fast, and gone before you turn around.",
     color: 0x7b5cff,
-    health: 127,
+    health: 128,
     speed: 278,
     basic: basic(
       "tentacle-lash",
