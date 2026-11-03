@@ -387,9 +387,13 @@ Wardrobe only swaps the catalogue; the stage, try-on and action bar stay.
 ## Pull requests, in order
 
 Each step is one pull request into `main`, with before-and-after screenshots
-in the description. Before every push: `npm run typecheck`, `npm run test`,
-`npm run build`, and the visual tests for the screens it changes (Playwright
-on `/opt/pw-browsers/chromium-1243/chrome-linux64/chrome`).
+in the description. Before every push: `npm run typecheck`, `npm run test`
+and `npm run build`. Still run the visual tests for the screens it changes
+(Playwright on `/opt/pw-browsers/chromium-1243/chrome-linux64/chrome`), but
+don't hold a push for them (owner, 3 Nov): push once the three checks pass,
+let the visual tests (local and the `visual` CI job) finish afterwards, and
+fix any failure in a follow-up push. Say in the report which visual tests
+had passed at push time.
 
 | #   | Pull request                   | Ships                                                                                                                                                                                                                                                                                                                                                                                   | Deletes                                                                                                                                                 |
 | --- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -565,6 +569,56 @@ Before and after: [Shop](images/step2/shop.webp),
   machine renders on the CPU, so only the comparison means anything):
   before High 333 ms / Low 317 ms (the old Shop ran the rig on Low too);
   after High 250 ms / Low 83 ms.
+
+### Step 3: the roster (built 3 Nov 2026)
+
+Before and after: [roster](images/step3/roster.webp),
+[fighter detail](images/step3/fighter.webp); every size in
+[`images/step3/`](images/step3/).
+
+- `apps/client/src/screens/roster-view.ts` (markup and rules) and
+  `screens/roster.ts` (behaviour) + `roster.css`. The rail's Fighters
+  opens it inside the Lobby (`openHubPanel`); the old Fighters drawer is
+  gone from the hub.
+- **Grid:** every fighter (sixteen since the new champions landed on 3
+  Nov) as cards of one size coloured by element, as many to a row as fit,
+  scrolling: element, mastery ring, role, range, owned looks ("1/1" for a
+  champion without skins yet) and "Playing" on yours.
+  Element chips, Any range / Ranged / Close and Sort (Mastery, Name,
+  Element). Bottom right: Details and Select (Select says "Playing" on
+  your fighter). Select makes the fighter your Lobby fighter and returns
+  to the Lobby.
+- **Fighter detail:** the split panel from step 2. The fighter on the
+  stage (the live rig in the "selection" framing; a still fighter on Low
+  graphics), its number, mastery ring, ‹ › and health / speed / basic DPS
+  bars; tabs Overview (description, combo, mastery, basic attack, dash and
+  jump), Skills (the chosen skill large, every skill and the basic attack
+  as rows with key and cooldown, raid tricks from `RAID_BOSS_PERKS`) and
+  Skins (the looks you own and the rest). "‹ Roster" goes back up; Try
+  skins opens the Shop on that fighter's skins.
+- **Keyboard and touch:** arrows move through the cards (focus picks); a
+  second click, tap or Enter on the picked card opens its detail; `[` and `]` step fighters, arrows move
+  through the skills and tabs; Escape leaves.
+- **The rooms keep their picker until step 5** (owner, 3 Nov): the roster
+  is built to be the one picker (`action: "lock"` turns Select into Lock
+  in), and step 5 puts it in the PvP and raid rooms while redrawing them.
+  So `fighter-selection.ts`, `champion-selection.css` and the picker parts
+  of `mobile-panels.css` stay until then; this step deletes only the hub
+  drawer's rules (`.home-roster-drawer`, `#home-fighter-panel`: 13 rules
+  in `champion-selection.css`, 10 in `style.css`).
+- **Found in review and fixed:** stepping fighters on the stage dropped
+  the live rig's canvas (the stage is now swapped whole and the preview
+  re-attached); a second click only opened the detail as a fast
+  double-click; a filter could hide the picked fighter while Details and
+  Select still acted on it (the first fighter shown is picked, and with
+  none shown both are disabled); focus could fall to the page after "Show
+  all" or move with a reordered card.
+- **Tests:** `tests/unit/roster.test.ts` (filters, sort, mastery, looks,
+  stats, raid tricks, tabs, the room's Lock in), `tests/visual/roster.spec.ts`
+  at the four sizes with `ui-measure.ts` (plus Select, Try skins,
+  keyboard, Low graphics, reduced motion). `fighter-select`,
+  `roster-skill-icons`, `roster-smooth` and the Lobby spec's Fighters check
+  moved to the new screen; what they check stays.
 
 ## Decisions (owner, 3 Nov 2026)
 

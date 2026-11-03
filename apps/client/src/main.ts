@@ -203,6 +203,7 @@ import { wireRotateGate } from "./rotate-gate";
 import { watchRotation } from "./orientation-settle";
 import { watchCosmeticPreviews } from "./cosmetic-fx-preview";
 import { openHubPanelNow } from "./ui/hub-panel";
+import { openRoster, type RosterScreen } from "./screens/roster";
 import { showRewardReveal, takeNewRewards } from "./reward-reveal";
 import {
   SKILL_ACTIONS,
@@ -1846,13 +1847,43 @@ function syncFarm(want: boolean) {
       ),
   });
 }
+/** The roster (UI remodel step 3): every fighter, and a fighter's detail. */
+let rosterScreen: RosterScreen | undefined;
+function openRosterScreen() {
+  rosterScreen = openRoster({
+    data: () => {
+      const bindings = controlPrefs().bindings;
+      return {
+        playing: selected,
+        matches: masteryMatches,
+        owned: accountsUI.economy?.owned ?? [],
+        looks: accountsUI.economy?.looks ?? {},
+        keys: {
+          skills: skillLabels(bindings),
+          basic: actionLabel(bindings, "basic"),
+          dash: actionLabel(bindings, "dash"),
+          jump: actionLabel(bindings, "jump"),
+        },
+      };
+    },
+    choose: (id) => {
+      if (id === selected) return;
+      selected = id;
+      rememberHomeFighter(id);
+      renderMenu();
+      syncHub();
+    },
+    skins: (id) => void accountsUI.showShop("skins", id),
+    onClose: () => (rosterScreen = undefined),
+  });
+}
 /** Menu, cards and party slots on the Lobby. */
 function lobbyAction(action: LobbyAction) {
   audio.unlock();
   // A screen opened from the rail replaces the one that is open (the Shop
   // and the Wardrobe are one screen and switch in place).
   if (action !== "shop" && action !== "wardrobe") openHubPanelNow()?.close();
-  if (action === "fighters") homeNavigation.open("fighters");
+  if (action === "fighters") openRosterScreen();
   else if (action === "more-play") homeNavigation.open("play");
   else if (action === "wardrobe") void accountsUI.showWardrobe();
   else if (action === "shop") void accountsUI.showShop();
@@ -2125,7 +2156,7 @@ function renderMenu(revealSelection = false) {
     panelMarkup,
     () =>
       home
-        ? homeShell(panelMarkup, fighterSelection(selected))
+        ? homeShell(panelMarkup)
         : `<header class="desktop-lobby-header"><div class="eyebrow">Elemental Coliseum</div><h1>Choose your fighter</h1><p>Pick your creature. Enter the arena.</p></header><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected)}</div><aside class="room-panel card">${panelMarkup}</aside></div>`,
     keepScroll !== null &&
       !wornChanged &&
@@ -3114,6 +3145,7 @@ function loadMastery(force = false) {
     .api("/api/progress")
     .then((value) => {
       setMastery(progressSchema.parse(value).fighters);
+      rosterScreen?.refresh();
       const me = state?.players.find((p) => p.id === myId);
       if (me && state?.phase === "lobby") syncFlair(me);
       if (!state || state.phase === "lobby") {
@@ -5670,6 +5702,7 @@ accountsUI = new AccountUI({
   },
   onChange: () => {
     loadMastery();
+    rosterScreen?.refresh();
     // Re-render only when something the menu shows actually changed.
     const shown = JSON.stringify([
       accountsUI?.account ?? null,

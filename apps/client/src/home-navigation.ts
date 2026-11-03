@@ -11,13 +11,10 @@ const focusable = (root: ParentNode) =>
 
 /** Presentation-only navigation. The battle controller bindings remain unchanged. */
 export function setupHomeNavigation(menu: HTMLElement, settings: () => void) {
-  let panel: "fighters" | "play" | undefined;
+  let panel: "play" | undefined;
   let returnFocus: HTMLElement | undefined;
   const modes = () => menu.querySelector<HTMLElement>("#home-modes");
-  const drawer = () =>
-    menu.querySelector<HTMLElement>(
-      panel === "fighters" ? "#home-fighter-panel" : "#home-play-panel",
-    );
+  const drawer = () => menu.querySelector<HTMLElement>("#home-play-panel");
   function closeModes() {
     const list = modes();
     if (list) list.hidden = true;
@@ -54,10 +51,7 @@ export function setupHomeNavigation(menu: HTMLElement, settings: () => void) {
       panel = undefined;
       return;
     }
-    for (const [kind, id] of [
-      ["fighters", "home-fighter-panel"],
-      ["play", "home-play-panel"],
-    ] as const) {
+    for (const [kind, id] of [["play", "home-play-panel"]] as const) {
       const el = menu.querySelector<HTMLElement>(`#${id}`);
       if (el) el.hidden = panel !== kind;
     }
@@ -70,16 +64,13 @@ export function setupHomeNavigation(menu: HTMLElement, settings: () => void) {
     for (const b of Array.from(
       menu.querySelectorAll<HTMLElement>(".home-rail-item"),
     )) {
-      const active =
-        panel === "fighters"
-          ? b.dataset.homeOpen === "fighters"
-          : b.dataset.homeNav === "play";
+      const active = !!panel && b.dataset.homeNav === "play";
       b.classList.toggle("is-active", active);
       if (active) b.setAttribute("aria-current", "page");
       else b.removeAttribute("aria-current");
     }
   }
-  function open(kind: "fighters" | "play", source?: HTMLElement) {
+  function open(kind: "play", source?: HTMLElement) {
     returnFocus = source ?? (document.activeElement as HTMLElement);
     closeModes();
     panel = kind;
@@ -89,11 +80,9 @@ export function setupHomeNavigation(menu: HTMLElement, settings: () => void) {
       if (!d) return;
       // Measure the roster only after its drawer is visible.
       window.dispatchEvent(new Event("resize"));
-      (
-        d.querySelector<HTMLElement>(
-          kind === "fighters" ? ".creature-card.selected" : "#code",
-        ) ?? d
-      ).focus({ preventScroll: true });
+      (d.querySelector<HTMLElement>("#code") ?? d).focus({
+        preventScroll: true,
+      });
     });
   }
   function close() {
@@ -116,7 +105,7 @@ export function setupHomeNavigation(menu: HTMLElement, settings: () => void) {
     if (!target) return;
     if (target.hasAttribute("data-home-close")) close();
     else if (target.dataset.homeOpen)
-      open(target.dataset.homeOpen as "fighters" | "play", target);
+      open(target.dataset.homeOpen as "play", target);
     else if (target.dataset.homeNav === "play") {
       close();
       menu

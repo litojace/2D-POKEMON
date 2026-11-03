@@ -227,9 +227,10 @@ test("the mode menu picks and remembers a mode, and the scene switch opens the P
       await page.evaluate(() => localStorage.getItem("arena-lobby-mode")),
     ).toBe("bot-hard");
 
-    // The rail's Fighters opens the roster drawer above the Lobby.
+    // The rail's Fighters opens the roster inside the Lobby (UI remodel
+    // step 3).
     await page.click('[data-lobby-action="fighters"]');
-    const drawer = page.locator("#home-fighter-panel");
+    const drawer = page.locator(".roster-room");
     await expect(drawer).toBeVisible();
     expect(
       await drawer.evaluate((el) => {
@@ -239,8 +240,8 @@ test("the mode menu picks and remembers a mode, and the scene switch opens the P
         );
       }),
     ).toBe(true);
-    await page.locator("#home-fighter-panel [data-home-close]").first().click();
-    await expect(drawer).toBeHidden();
+    await page.locator(".roster-room .ui-close").click();
+    await expect(drawer).toHaveCount(0);
 
     // The arrows change the fighter.
     const first = await page.locator("#lobby-fighter-name").textContent();

@@ -53,9 +53,10 @@ function art(id: CharacterId, large = false, aura = false, scopeName?: string) {
  * framing (SELECTION_PREVIEW) draws in exactly this frame.
  */
 export const RIG_FRAME = "-20 -40 240 250";
-/** The large fighter art with its worn skin and aura, for the Lobby stage. */
-export function fighterStageArt(id: CharacterId) {
-  return art(id, true, true, "lobby")
+/** The large fighter art with its worn skin and aura, for a stage (the
+ * Lobby's, the roster's). Each stage needs its own `scope` for its ids. */
+export function fighterStageArt(id: CharacterId, scope = "lobby") {
+  return art(id, true, true, scope)
     .split(`viewBox="${CREATURE_VIEWBOX}"`)
     .join(`viewBox="${RIG_FRAME}"`);
 }

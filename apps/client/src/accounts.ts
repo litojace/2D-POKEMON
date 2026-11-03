@@ -840,8 +840,8 @@ export class AccountUI {
     return this.showFittingRoom("wardrobe");
   }
   /** The Shop: Today, Skins, the Mythic Hall and Collections. */
-  async showShop(section?: ShopSection) {
-    return this.showFittingRoom("shop", section);
+  async showShop(section?: ShopSection, champion?: CharacterId) {
+    return this.showFittingRoom("shop", section, champion);
   }
   /** Close the fitting room (another screen is opening). */
   closeFittingRoom() {
@@ -851,7 +851,11 @@ export class AccountUI {
    * The fitting room opens inside the Lobby at once with what is known, then
    * shows the server's fresh copy of your coins, items and raid rewards.
    */
-  private async showFittingRoom(mode: FitMode, section?: ShopSection) {
+  private async showFittingRoom(
+    mode: FitMode,
+    section?: ShopSection,
+    champion?: CharacterId,
+  ) {
     if (!this.ensurePlayer()) return;
     // It lives in the Lobby: come back to it, and close any old dialog.
     this.hooks.toLobby?.();
@@ -868,7 +872,7 @@ export class AccountUI {
       this.fitProblem = "";
       this.fittingRoom = openFittingRoom(mode, this.fitHooks(), {
         section,
-        champion: this.hooks.selectedCharacter?.() ?? "voltkit",
+        champion: champion ?? this.hooks.selectedCharacter?.() ?? "voltkit",
       });
     }
     await this.loadFittingRoom();
