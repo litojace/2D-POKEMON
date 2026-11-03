@@ -4,7 +4,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { FIGHTER_IDS } from "../../packages/shared/src/index";
 
-// Migration 051: the new champions can be your portrait and your farmer, and
+// Migration 052: the new champions can be your portrait and your farmer, and
 // SQL's roster matches FIGHTER_IDS.
 let db: PGlite;
 const player = "00000000-0000-4000-8000-000000000511";
