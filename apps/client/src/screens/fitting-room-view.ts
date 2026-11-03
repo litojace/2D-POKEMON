@@ -712,6 +712,16 @@ const noMatch = () =>
     button("Clear filters", { size: "s", attrs: { "data-fit-reset": true } }),
   );
 function skinsBody(view: FitView, d: FitData) {
+  // A fighter with no skins in the Shop yet (the newest champions).
+  if (!CHAMPION_SKINS.some((s) => s.champion === view.champion))
+    return `${fighterRow(view, d, "Fighter")}${emptyState(
+      "No skins yet",
+      `${CHARACTERS[view.champion].name} has no skins in the Shop yet. Colors and effects in Collections fit every fighter.`,
+      button("Collections", {
+        size: "s",
+        attrs: { "data-ui-section": "collections" },
+      }),
+    )}`;
   const skins = CHAMPION_SKINS.filter(
     (s) =>
       s.champion === view.champion &&
@@ -840,7 +850,10 @@ function wardrobeBody(view: FitView, d: FitData) {
       : SLOT_NAME[view.slot] === "Colors"
         ? "Colors"
         : `${SLOT_NAME[view.slot].toLowerCase()}s`;
-  const more = `<button type="button" class="ui-tile fit-more" data-fit-more="${view.slot}"><span class="ui-tile-art">${menuIcon("shop")}</span><span></span><b class="ui-tile-name">More in the Shop</b><small class="ui-tile-sub">${missing ? `${missing} more ${esc(what)}` : "See what's new"}</small><span class="ui-tile-foot is-dim">Open the Shop →</span></button>`;
+  const noSkins =
+    view.slot === "champion" &&
+    !CHAMPION_SKINS.some((s) => s.champion === view.champion);
+  const more = `<button type="button" class="ui-tile fit-more" data-fit-more="${noSkins ? "skin" : view.slot}"><span class="ui-tile-art">${menuIcon("shop")}</span><span></span><b class="ui-tile-name">More in the Shop</b><small class="ui-tile-sub">${noSkins ? `No ${esc(fighter)} skins yet` : missing ? `${missing} more ${esc(what)}` : "See what's new"}</small><span class="ui-tile-foot is-dim">Open the Shop →</span></button>`;
   const heading =
     view.slot === "champion" ? `${fighter} skins` : SLOT_NAME[view.slot];
   return `${fighterRow(view, d, "Fighter")}${slots}${section(heading, `<small class="ui-note">${items.length + (view.slot === "champion" ? 1 : 0)} owned</small>`)}${grid(plain + tiles + more)}${!items.length ? `<p class="ui-note fit-empty-note">${view.slot === "frame" || view.slot === "aura" ? "Buy pieces in the Shop or earn them from raid bosses." : "Buy pieces in the Shop to wear them here."}</p>` : ""}`;

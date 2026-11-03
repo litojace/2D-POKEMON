@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { CHARACTERS, type CharacterId } from "@arena/shared";
 import {
   CHAMPION_SKINS,
   SHOP_BUNDLES,
@@ -543,7 +544,9 @@ describe("the Wardrobe", () => {
     expect(body.match(/data-fit-slot="/g)).toHaveLength(6);
     expect(body).toMatch(/data-fit-slot="champion"[\s\S]*?Stormcrown/);
     expect(body).toMatch(/data-fit-slot="skin"[\s\S]*?Candy colors/);
-    expect(body.match(/data-fit-fighter="/g)).toHaveLength(8);
+    expect(body.match(/data-fit-fighter="/g)).toHaveLength(
+      Object.keys(CHARACTERS).length,
+    );
     expect(body).not.toContain("<select");
   });
   it("collects changes to Equip once, ignores try-ons you don't own, and can Revert", () => {
@@ -593,4 +596,29 @@ describe("the Wardrobe", () => {
     ).body;
     expect(body).toMatch(/data-fit-slot="champion" data-changed="true"/);
   });
+});
+
+describe("a fighter with no skins in the Shop yet", () => {
+  const bare = (Object.keys(CHARACTERS) as CharacterId[]).find(
+    (c) => !CHAMPION_SKINS.some((s) => s.champion === c),
+  );
+  it.runIf(!!bare)(
+    "says so in Skins, and the Wardrobe's More tile leads to Collections",
+    () => {
+      const body = fittingRoomParts(
+        fitView("shop", bare!, { section: "skins" }),
+        data(),
+      ).body;
+      expect(body).toContain("No skins yet");
+      expect(body).toContain('data-ui-section="collections"');
+      expect(body).not.toContain("Nothing matches");
+      const wardrobe = fittingRoomParts(
+        fitView("wardrobe", bare!),
+        data(),
+      ).body;
+      expect(tiles(wardrobe)).toEqual(["original"]);
+      expect(wardrobe).toContain('data-fit-more="skin"');
+      expect(wardrobe).toContain(`No ${CHARACTERS[bare!].name} skins yet`);
+    },
+  );
 });
