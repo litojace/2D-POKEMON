@@ -421,15 +421,554 @@ function auraHit(
   });
 }
 
+// ───────────── Halcyra: a kingfisher marksman with a crystal beak ─────────────
+const KING = 0xff9a4a;
+const SQ = 0.82;
+/** Beams fly at chest height above the ground line the server traces. */
+const LIFT = 14;
+/** A feather of aura: dark outline, coloured vane, glassy shaft. */
+function feather(
+  fx: Fx,
+  x: number,
+  y: number,
+  len: number,
+  w: number,
+  dir: number,
+  color: number,
+  alpha = 1,
+) {
+  const c = Math.cos(dir),
+    s = Math.sin(dir),
+    p = (f: number, side: number) => ({
+      x: x + c * len * f - s * w * side,
+      y: y + s * len * f + c * w * side,
+    });
+  const vane = [
+    p(0.5, 0),
+    p(0.25, 0.85),
+    p(-0.15, 1),
+    p(-0.42, 0.55),
+    p(-0.36, 0),
+    p(-0.42, -0.55),
+    p(-0.15, -1),
+    p(0.25, -0.85),
+  ];
+  fx.solid.fillStyle(INK, 0.45 * alpha).fillPoints(
+    vane.map((q) => ({ x: x + (q.x - x) * 1.15, y: y + (q.y - y) * 1.15 })),
+    true,
+  );
+  fx.solid.fillStyle(color, 0.95 * alpha).fillPoints(vane, true);
+  fx.solid
+    .fillStyle(GLASS, 0.55 * alpha)
+    .fillTriangle(
+      vane[0].x,
+      vane[0].y,
+      vane[1].x,
+      vane[1].y,
+      vane[2].x,
+      vane[2].y,
+    );
+  const tail = p(-0.62, 0),
+    tip = p(0.5, 0);
+  fx.solid
+    .lineStyle(1.5, 0xffffff, 0.9 * alpha)
+    .lineBetween(tail.x, tail.y, tip.x, tip.y);
+  // Barbs.
+  for (const f of [-0.05, 0.15]) {
+    const b = p(f, 0);
+    for (const side of [-1, 1]) {
+      const e = p(f - 0.18, side * 0.8);
+      fx.solid.lineStyle(1, INK, 0.35 * alpha).lineBetween(b.x, b.y, e.x, e.y);
+    }
+  }
+}
+/** How far along its range a shot has flown (0 → 1): its far-range bonus. */
+function flown(pr: Projectile) {
+  const a = pr.ability,
+    left = Number.isFinite(pr.remaining) ? pr.remaining : a.range;
+  return Math.max(0, Math.min(1, 1 - left / Math.max(1, a.range)));
+}
+
+// ───────────── Aura Quill and Pinning Quill ─────────────
+function auraQuill(g: G, pr: Projectile, now: number) {
+  const fx = fxFor(g.scene),
+    a = pr.ability,
+    r = a.radius,
+    c = pr.color,
+    dir = Math.atan2(pr.vy, pr.vx),
+    hover = 14,
+    x = pr.x,
+    y = pr.y - hover,
+    pin = a.id === "pinning-quill",
+    // Shots with a far-range bonus burn brighter the farther they fly.
+    f = a.farBonus ? flown(pr) : 0.5,
+    tail = 60 + f * 90,
+    tx = x - Math.cos(dir) * tail,
+    ty = y - Math.sin(dir) * tail;
+  fx.solid
+    .fillStyle(0x000000, 0.16)
+    .fillEllipse(pr.x, pr.y + 4, r * 2.2, r * 0.6);
+  fx.g
+    .lineStyle(r * (1 + f * 0.8), c, 0.16 + f * 0.2)
+    .lineBetween(tx, ty, x, y);
+  prismLine(
+    fx,
+    x - Math.cos(dir) * tail * 0.7,
+    y - Math.sin(dir) * tail * 0.7,
+    x,
+    y,
+    1.5,
+    0.3 + f * 0.4,
+  );
+  fx.glow(x, y, r * (2.4 + f * 2.4), c, 0.3 + f * 0.35);
+  feather(fx, x, y, r * (pin ? 4.6 : 4), r * (pin ? 1 : 0.95), dir, c);
+  if (pin) {
+    // The crystal point and a band of kingfisher orange.
+    const bx = x - Math.cos(dir) * r * 0.9,
+      by = y - Math.sin(dir) * r * 0.9;
+    fx.solid
+      .lineStyle(3, KING, 0.95)
+      .lineBetween(
+        bx - Math.sin(dir) * r * 0.75,
+        by + Math.cos(dir) * r * 0.75,
+        bx + Math.sin(dir) * r * 0.75,
+        by - Math.cos(dir) * r * 0.75,
+      );
+    gem(
+      fx,
+      x + Math.cos(dir) * r * 2.4,
+      y + Math.sin(dir) * r * 2.4,
+      r * 0.45,
+      GLASS,
+      dir,
+    );
+  }
+  if (f > 0.55) {
+    const s = r * (1 + f * 1.4);
+    fx.g
+      .lineStyle(1.5, 0xffffff, (f - 0.55) * 1.8)
+      .lineBetween(x - s, y, x + s, y)
+      .lineBetween(x, y - s * 0.5, x, y + s * 0.5);
+  }
+  fx.trail(`aq${pr.id}`, 0.04, () =>
+    fx.burst({
+      x,
+      y: pr.y,
+      z: hover,
+      count: 1,
+      kind: "mote",
+      color: [c, CYAN, pin ? KING : PINK],
+      speed: [10, 40],
+      up: [-10, 20],
+      life: [0.25, 0.5],
+      size: [1, 1.6],
+      drag: 2,
+    }),
+  );
+  void now;
+}
+function quillImpact(
+  scene: Phaser.Scene,
+  a: Ability,
+  x: number,
+  y: number,
+  color: number,
+  shot: Shot,
+) {
+  const fx = fxFor(scene),
+    pin = a.id === "pinning-quill",
+    r = a.radius;
+  shards(fx, x, y, pin ? 10 : 5, color, { power: pin ? 0.9 : 0.6 });
+  fx.burst({
+    x,
+    y,
+    z: 18,
+    count: pin ? 5 : 3,
+    kind: "mote",
+    color: [color, KING, GLASS],
+    speed: [20, 70],
+    up: [20, 60],
+    life: [0.6, 1],
+    size: [1.4, 2.2],
+    grav: 60,
+    drag: 2,
+  });
+  const lean = hash(x + y) * 0.6 - 0.3;
+  shot(fx.reduced ? 160 : pin ? 640 : 260, (k) => {
+    fx.glow(x, y - 12, r * 3.4 * (1 - k * 0.4), color, 0.6 * (1 - k));
+    fx.shockwave(x, y, r * 3 * ease(Math.min(1, k * 2)), k, CYAN, 4);
+    if (pin) {
+      // The quill stays pinned in the floor for a moment, rings closing on it.
+      const fade = k > 0.6 ? 1 - (k - 0.6) / 0.4 : 1;
+      feather(
+        fx,
+        x,
+        y - r * 1.6,
+        r * 4.2,
+        r * 0.9,
+        -Math.PI / 2 + lean,
+        color,
+        fade,
+      );
+      for (let i = 0; i < 2; i++) {
+        const rr = r * (3.2 - i * 1.1) * (1 - ease(Math.min(1, k * 2)) * 0.45);
+        fx.floor
+          .lineStyle(2, i ? KING : color, 0.8 * fade)
+          .strokeEllipse(x, y, rr * 2, rr * 2 * SQ);
+      }
+    }
+  });
+}
+
+// ───────────── Focus Shot: the visor locks on, then an instant beam ─────────────
+function focusWindup(
+  g: G,
+  a: Ability,
+  x: number,
+  y: number,
+  angle: number,
+  _ax: number,
+  _ay: number,
+  color: number,
+  k: number,
+  now: number,
+) {
+  const fx = fxFor(g.scene),
+    cos = Math.cos(angle),
+    sin = Math.sin(angle),
+    lance = a.id === "skyline-lance",
+    sy = y - LIFT,
+    len = a.range,
+    ex = x + cos * len,
+    ey = sy + sin * len,
+    nx = -sin * a.radius,
+    ny = cos * a.radius,
+    bx = x + cos * 22,
+    by = sy + sin * 22;
+  // The real lane: as wide as the beam, out to its full range.
+  g.lineStyle(a.radius * 2, color, 0.05 + k * 0.1).lineBetween(x, sy, ex, ey);
+  g.lineStyle(1.5, color, 0.25 + k * 0.45)
+    .lineBetween(x + nx, sy + ny, ex + nx, ey + ny)
+    .lineBetween(x - nx, sy - ny, ex - nx, ey - ny);
+  // The sight line from the crystal beak, steadying as it locks.
+  const jitter = ((1 - k) * 0.4 * a.radius * Math.sin(now / 37)) / len;
+  fx.g
+    .lineStyle(1.2, k > 0.85 ? 0xffffff : CYAN, 0.35 + k * 0.5)
+    .lineBetween(
+      bx,
+      by,
+      x + Math.cos(angle + jitter) * len,
+      sy + Math.sin(angle + jitter) * len,
+    );
+  // Focus brackets sliding out along the lane.
+  for (let i = 0; i < 3; i++) {
+    const t = ((now / (lance ? 700 : 450) + i / 3) % 1) * (0.3 + k * 0.7),
+      px = x + cos * len * t,
+      py = sy + sin * len * t;
+    fx.g
+      .lineStyle(2, GLASS, 0.6 * k * (1 - t))
+      .lineBetween(
+        px + nx * 1.4,
+        py + ny * 1.4,
+        px + nx * 1.4 + cos * 10,
+        py + ny * 1.4 + sin * 10,
+      )
+      .lineBetween(
+        px - nx * 1.4,
+        py - ny * 1.4,
+        px - nx * 1.4 + cos * 10,
+        py - ny * 1.4 + sin * 10,
+      );
+  }
+  // The visor lens: rings closing on the beak.
+  const rr = (lance ? 46 : 30) * (1.4 - k);
+  fx.g.lineStyle(2, color, 0.5 + k * 0.4).strokeEllipse(bx, by, rr * 2, rr * 2);
+  fx.g
+    .lineStyle(1.5, KING, 0.4 + k * 0.4)
+    .strokeEllipse(bx, by, rr * 1.2, rr * 1.2);
+  fx.glow(
+    bx,
+    by,
+    (lance ? 30 : 16) + k * (lance ? 60 : 26),
+    color,
+    0.45 + k * 0.45,
+  );
+  fx.glow(bx, by, 6 + k * (lance ? 16 : 8), 0xffffff, 0.6 + k * 0.4);
+  if (lance) {
+    // Skyline Lance: wings of light open and aura pours into the beak.
+    for (const side of [-1, 1]) {
+      const pts = Array.from({ length: 9 }, (_, j) => {
+        const t = j / 8,
+          aa = angle + Math.PI + side * (0.6 + t * 1.3 * (0.4 + k * 0.6)),
+          d = 30 + t * 50 * (0.5 + k * 0.5);
+        return {
+          x: x + Math.cos(aa) * d,
+          y: sy - 10 + Math.sin(aa) * d * 0.6 - t * 18 * k,
+        };
+      });
+      fx.g.lineStyle(4 + k * 4, color, 0.3 + k * 0.4).strokePoints(pts, false);
+      fx.g.lineStyle(1.5, GLASS, 0.5 + k * 0.4).strokePoints(pts, false);
+    }
+    fx.trail(`sl${Math.round(x)}${Math.round(y)}`, 0.03, () => {
+      for (let i = 0; i < 2; i++) {
+        const aa = Math.random() * TAU,
+          d = 70 + Math.random() * 40;
+        fx.burst({
+          x: bx + Math.cos(aa) * d,
+          y: by + LIFT + Math.sin(aa) * d * 0.6,
+          z: LIFT,
+          count: 1,
+          kind: "spark",
+          color: [color, CYAN, PINK],
+          angle: aa + Math.PI,
+          spread: 0.05,
+          speed: [d * 2.6, d * 3],
+          life: [0.3, 0.34],
+          size: [1, 1.6],
+          drag: 0.4,
+        });
+      }
+    });
+    if (k > 0.8)
+      fx.g
+        .lineStyle(2, 0xffffff, (k - 0.8) * 4)
+        .lineBetween(x + nx, sy + ny, ex + nx, ey + ny)
+        .lineBetween(x - nx, sy - ny, ex - nx, ey - ny);
+  }
+}
+function focusShot(
+  scene: Phaser.Scene,
+  a: Ability,
+  x: number,
+  y: number,
+  tx: number,
+  ty: number,
+  color: number,
+  shot: Shot,
+) {
+  const fx = fxFor(scene),
+    sy = y - LIFT,
+    ey = ty - LIFT,
+    len = Math.hypot(tx - x, ty - y),
+    dir = Math.atan2(ty - y, tx - x),
+    // The beam pays more the farther it reaches: show it at the far end.
+    f = Math.min(1, len / Math.max(1, a.range)),
+    w = a.radius * 2;
+  shards(fx, tx, ty, 6 + Math.round(f * 8), color, {
+    angle: dir,
+    spread: 0.8,
+    power: 0.7 + f * 0.6,
+  });
+  if (f > 0.6) fx.shake(90, 0.0025);
+  shot(fx.reduced ? 160 : 340, (k) => {
+    const fade = 1 - k,
+      ww = w * (1 - k * 0.6);
+    fx.g.lineStyle(ww * 1.8, color, 0.22 * fade).lineBetween(x, sy, tx, ey);
+    fx.g.lineStyle(ww, color, 0.6 * fade).lineBetween(x, sy, tx, ey);
+    prismLine(fx, x, sy, tx, ey, 1.5, 0.7 * fade);
+    fx.g
+      .lineStyle(Math.max(1, ww * 0.25), 0xffffff, fade)
+      .lineBetween(x, sy, tx, ey);
+    // Lens rings along the beam, swelling toward the far end.
+    for (let d = 60; d < len; d += 90) {
+      const t = d / len,
+        px = x + Math.cos(dir) * d,
+        py = sy + Math.sin(dir) * d,
+        s = a.radius * (0.8 + t * f * 0.8) * (1 + k * 0.8);
+      fx.g
+        .lineStyle(1.5, GLASS, 0.6 * fade * t)
+        .strokeEllipse(px, py, s * 0.7, s * 2);
+    }
+    fx.glow(
+      x + Math.cos(dir) * 22,
+      sy + Math.sin(dir) * 22,
+      26 * fade,
+      color,
+      0.8 * fade,
+    );
+    const flare = a.radius * (1.6 + f * 2.4);
+    fx.glow(tx, ey, flare * (1 - k * 0.4), color, (0.5 + f * 0.4) * fade);
+    fx.glow(tx, ey, flare * 0.45, 0xffffff, Math.max(0, 1 - k * 2.2));
+    fx.g
+      .lineStyle(2, 0xffffff, (0.4 + f * 0.6) * fade)
+      .lineBetween(tx - flare, ey, tx + flare, ey)
+      .lineBetween(tx, ey - flare * 0.5, tx, ey + flare * 0.5);
+  });
+}
+
+// ───────────── Mirage Perch: a decoy stays, Halcyra darts away ─────────────
+function miragePerch(
+  scene: Phaser.Scene,
+  _a: Ability,
+  x: number,
+  y: number,
+  angle: number,
+  color: number,
+  shot: Shot,
+) {
+  const fx = fxFor(scene),
+    cy = y - 20;
+  fx.burst({
+    x,
+    y,
+    z: 24,
+    count: 8,
+    kind: "mote",
+    color: [color, KING, GLASS],
+    speed: [30, 90],
+    up: [10, 50],
+    life: [0.7, 1.2],
+    size: [1.5, 2.5],
+    grav: 50,
+    drag: 2,
+  });
+  shot(fx.reduced ? 200 : 560, (k) => {
+    const fade = 1 - k;
+    // Heat-haze ripples where the mirage stays.
+    for (let i = 0; i < 3; i++) {
+      const kk = (k * 1.5 + i * 0.25) % 1;
+      fx.g
+        .lineStyle(1.5, i % 2 ? CYAN : PINK, 0.6 * fade * (1 - kk))
+        .strokeEllipse(
+          x + Math.sin(k * 30 + i) * 2,
+          cy,
+          30 + kk * 30,
+          44 + kk * 30,
+        );
+    }
+    fx.glow(x, cy, 40, color, 0.35 * fade);
+    // Speed streaks ahead: the haste dart.
+    for (let i = -2; i <= 2; i++) {
+      const off = i * 9,
+        s = 30 + ease(Math.min(1, k * 2)) * 90,
+        px = x + Math.cos(angle) * 18 - Math.sin(angle) * off,
+        py = cy + Math.sin(angle) * 18 + Math.cos(angle) * off;
+      fx.g
+        .lineStyle(2, i % 2 ? KING : GLASS, 0.75 * fade)
+        .lineBetween(
+          px + Math.cos(angle) * s * 0.4,
+          py + Math.sin(angle) * s * 0.4,
+          px + Math.cos(angle) * s,
+          py + Math.sin(angle) * s,
+        );
+    }
+    fx.shockwave(x, y, 46 * ease(Math.min(1, k * 2)), k, color, 5);
+  });
+}
+
+// ───────────── Skyline Lance (ultimate): a lance of aura across the court ─────────────
+function skylineLance(
+  scene: Phaser.Scene,
+  a: Ability,
+  x: number,
+  y: number,
+  tx: number,
+  ty: number,
+  color: number,
+  shot: Shot,
+) {
+  const fx = fxFor(scene),
+    sy = y - LIFT,
+    ey = ty - LIFT,
+    len = Math.hypot(tx - x, ty - y),
+    dir = Math.atan2(ty - y, tx - x),
+    cos = Math.cos(dir),
+    sin = Math.sin(dir),
+    w = a.radius * 2;
+  fx.ultimate(color, 900);
+  fx.shake(280, 0.007);
+  shards(fx, tx, ty, 24, color, { angle: dir, spread: 1.2, power: 1.6 });
+  fx.decal({ kind: "scorch", x: tx, y: ty, r: a.radius * 1.6, color, life: 4 });
+  fx.burst({
+    x: x + cos * 24,
+    y: y + sin * 24,
+    z: LIFT,
+    count: 20,
+    kind: "spark",
+    color: [color, GLASS, CYAN],
+    angle: dir + Math.PI,
+    spread: 0.9,
+    speed: [120, 360],
+    up: [20, 160],
+    life: [0.3, 0.6],
+    size: [1, 1.8],
+    grav: 600,
+  });
+  shot(fx.reduced ? 260 : 760, (k) => {
+    const fire = Math.min(1, k / 0.08),
+      fade = k < 0.5 ? 1 : 1 - (k - 0.5) / 0.5,
+      ww = w * (k < 0.5 ? 1 : 1 - (k - 0.5) * 1.6),
+      reach = len * ease(fire);
+    const ex = x + cos * reach,
+      eyy = sy + sin * reach;
+    // Soft light pooled under and around the whole length.
+    for (let d = 0; d <= reach; d += 90) {
+      fx.glow(
+        x + cos * d,
+        y + sin * d,
+        a.radius * 2.2,
+        color,
+        0.3 * fade,
+        true,
+      );
+      fx.glow(x + cos * d, sy + sin * d, a.radius * 1.8, color, 0.28 * fade);
+    }
+    fx.g.lineStyle(ww * 1.7, color, 0.25 * fade).lineBetween(x, sy, ex, eyy);
+    fx.g.lineStyle(ww, color, 0.7 * fade).lineBetween(x, sy, ex, eyy);
+    prismLine(fx, x, sy, ex, eyy, 2.5, 0.8 * fade);
+    fx.g
+      .lineStyle(Math.max(1.5, ww * 0.35), 0xffffff, fade)
+      .lineBetween(x, sy, ex, eyy);
+    // Shock rings racing down the lance.
+    for (let i = 0; i < 6; i++) {
+      const t = (k * 2.2 + i / 6) % 1,
+        px = x + cos * reach * t,
+        py = sy + sin * reach * t,
+        s = w * (0.8 + t * 0.6);
+      fx.g
+        .lineStyle(2, i % 2 ? GLASS : KING, 0.7 * fade)
+        .strokeEllipse(px, py, s * 0.55, s * 1.6);
+    }
+    // Muzzle: a horizon-wide flare from the crystal beak.
+    const mx = x + cos * 22,
+      my = sy + sin * 22;
+    fx.glow(mx, my, w * 2 * fade, color, 0.9 * fade);
+    fx.glow(mx, my, w * 0.8, 0xffffff, fade);
+    fx.g
+      .lineStyle(3, 0xffffff, 0.7 * Math.max(0, 1 - k * 2))
+      .lineBetween(mx - 260, my, mx + 260, my);
+    // Where it stops: a burst the width of the lance.
+    if (fire >= 1) {
+      fx.glow(tx, ey, w * 2.2 * (1 - k * 0.3), color, 0.8 * fade);
+      fx.glow(tx, ey, w * 0.9, 0xffffff, Math.max(0, 1 - k * 2));
+      fx.shockwave(tx, ty, w * 1.6 * ease(Math.min(1, k * 2)), k, CYAN, 10);
+    }
+  });
+}
+
 export const auraKit: FxKit = {
-  projectile: { "prism-shot": prismShot },
-  windup: { "shard-nova": novaWindup },
+  projectile: {
+    "prism-shot": prismShot,
+    "aura-quill": auraQuill,
+    "pinning-quill": auraQuill,
+  },
+  windup: {
+    "shard-nova": novaWindup,
+    "focus-shot": focusWindup,
+    "skyline-lance": focusWindup,
+  },
   cast: {
     "prism-jab": prismJab,
     "shatter-paw": shatterPalm,
     "facet-guard": mirrorGuard,
     "shard-nova": novaBurst,
+    "mirage-perch": miragePerch,
   },
-  impact: { "prism-shot": prismImpact },
+  impact: {
+    "prism-shot": prismImpact,
+    "aura-quill": quillImpact,
+    "pinning-quill": quillImpact,
+  },
+  beam: { "focus-shot": focusShot, "skyline-lance": skylineLance },
   hit: { aura: auraHit },
 };

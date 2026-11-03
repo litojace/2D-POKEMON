@@ -14,6 +14,7 @@ import {
   OBSTACLES,
   RULES,
   blankInput,
+  blocked,
   move,
   normalize,
   useObstacles,
@@ -67,6 +68,15 @@ export type RaidBossNumbers = {
   };
 };
 
+/** Champion tricks on Grumblecrag (docs/raid-roster-design.md §6). */
+const TRICKS = {
+  /** Astrabun's Mochi Pound. */
+  poundStagger: 15,
+  /** Wombolder's charge that would drive Grumblecrag into a pillar. */
+  slamStagger: 25,
+  /** Sunbara's Warm Spring: revive speed for a fallen ally inside it. */
+  springRevive: 2,
+};
 /** Attacks thrown across the arena: aimed at raiders keeping their distance. */
 const FAR_ATTACKS = new Set<string>([
   "charge",
@@ -415,6 +425,8 @@ export class RaidArena extends Arena {
         this.coreAt.set(source.id, this.time + 1);
       }
       this.addBossStagger(target, Math.min(1.3, amount * 0.025));
+      if (source && !r.drill && r.boss === "grumblecrag")
+        this.crackTricks(target, source, ability);
       // Bosses cannot be displaced or stun-locked by normal fighter kits.
       ability = ability ? { ...ability, knockback: 0 } : undefined;
     } else if (
@@ -460,8 +472,85 @@ export class RaidArena extends Arena {
       }
     }
   }
+  /** Astrabun's Mochi Pound, and Wombolder ramming Grumblecrag into a pillar. */
+  private crackTricks(boss: Fighter, source: Fighter, ability?: Ability) {
+    const r = this.raid;
+    if (ability?.id === "mochi-pound") {
+      this.addBossStagger(boss, TRICKS.poundStagger);
+      r.message = `${source.name}'s Mochi Pound rattles Grumblecrag!`;
+    } else if (
+      ability?.kind === "rush" &&
+      ability.wallSlam &&
+      this.slammed(source, boss, ability.knockback)
+    ) {
+      this.addBossStagger(boss, TRICKS.slamStagger);
+      r.message = `${source.name} rams Grumblecrag into a pillar!`;
+    }
+  }
+  /** The engine's wall-slam check: would the knockback drive it into a wall? */
+  protected slammed(from: Fighter, target: Fighter, knockback: number) {
+    this.walls();
+    const dir = normalize(target.x - from.x, target.y - from.y);
+    for (let d = 10; d <= knockback; d += 10)
+      if (blocked(target.x + dir.x * d, target.y + dir.y * d, RULES.radius))
+        return true;
+    return false;
+  }
+  /** Zones of these skills cast by raiders (champion tricks look for them). */
+  protected heroZones(...ids: string[]) {
+    return this.zones.filter(
+      (z) =>
+        ids.includes(z.ability.id) &&
+        this.heroes().some((p) => p.id === z.owner),
+    );
+  }
+  /** Is a raider standing in a Warm Spring (or another of these zones)? */
+  protected inSpring(p: Fighter, ...ids: string[]) {
+    return this.heroZones(...(ids.length ? ids : ["warm-spring"])).some(
+      (z) => Math.hypot(z.x - p.x, z.y - p.y) < z.radius + RULES.radius,
+    );
+  }
+  /**
+   * Coilemur's Magnet Lash drags the first fallen ally along it (before it
+   * reaches the boss) to Coilemur's side.
+   */
+  private lashRescue(p: Fighter, a: Ability) {
+    const dir = { x: Math.cos(p.angle), y: Math.sin(p.angle) };
+    const along = (q: Fighter, size: number) => {
+      const t = (q.x - p.x) * dir.x + (q.y - p.y) * dir.y,
+        off = Math.abs((q.y - p.y) * dir.x - (q.x - p.x) * dir.y);
+      return t > 0 && t <= a.range && off < a.radius + size ? t : Infinity;
+    };
+    const boss = this.boss(),
+      stop = boss ? along(boss, this.hitRadius(boss)) : Infinity;
+    const ally = this.heroes()
+      .filter(
+        (q) =>
+          q !== p &&
+          q.hp <= 0 &&
+          this.raid.downed[q.id] &&
+          along(q, RULES.radius) < stop &&
+          this.lineClear(p, q),
+      )
+      .sort((m, n) => along(m, RULES.radius) - along(n, RULES.radius))[0];
+    if (!ally) return;
+    const d = normalize(p.x - ally.x, p.y - ally.y),
+      room = Math.max(
+        0,
+        Math.hypot(p.x - ally.x, p.y - ally.y) - RULES.radius * 2 - 6,
+      );
+    move(ally, d.x * room, d.y * room);
+    this.raid.message = `${p.name} lashes ${ally.name} to safety!`;
+  }
   override cast(p: Fighter, a: Ability, ex = false) {
     super.cast(p, a, ex);
+    if (
+      a.id === "magnet-lash" &&
+      !p.raidBoss &&
+      p.hp > 0 &&
+      this.raid.boss === "grumblecrag"
+    )
+      this.lashRescue(p, a);
     // Lumoth's Kindle jump-starts the revive of fallen allies nearby.
     if (p.character === "lumoth" && a.kind === "buff" && !p.raidBoss)
       for (const ally of this.heroes()) {
@@ -579,10 +668,16 @@ export class RaidArena extends Arena {
         rescuers.forEach((q) => credit.add(q.id));
         this.rescueCredit.set(p.id, credit);
         const fast = rescuers.some((q) => this.hasRite(q, "rescue"));
+        // Sunbara's Warm Spring: a fallen ally inside it comes back faster.
+        const spring =
+          this.raid.boss === "grumblecrag" && this.inSpring(p)
+            ? TRICKS.springRevive
+            : 1;
         down.progress = Math.min(
           1,
           down.progress +
             (dt / RAID.reviveSeconds) *
+              spring *
               (fast ? 1 + riteValue("rescue", this.raid.phase) : 1),
         );
         if (down.progress >= 1) {
@@ -941,7 +1036,11 @@ export class RaidArena extends Arena {
       if (w.kind === "volley") {
         for (const p of this.heroes())
           if (p.hp > 0 && this.inVolley(w, p)) {
-            if (this.has(p, "counter") && !r.drill) {
+            if (
+              p.character === "auralynx" &&
+              this.has(p, "counter") &&
+              !r.drill
+            ) {
               // Auralynx's Facet Guard sends the stones back.
               r.stagger = Math.min(100, r.stagger + 12);
               r.message = `${p.name}'s guard reflects the volley!`;

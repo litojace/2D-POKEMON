@@ -689,7 +689,9 @@
   display: grid;
   grid-column: auto;
   grid-row: auto;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
+  /* One equal column per champion, however many there are. */
+  grid-template-columns: none;
+  grid-auto-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   grid-auto-flow: column;
   grid-auto-rows: auto;
@@ -750,7 +752,7 @@
 }
 #menu .champion-selector .selection-layout .showcase-card .card-head strong {
   display: block;
-  font: 800 clamp(12px, 1.2vw, 18px)/1 var(--display);
+  font: 800 clamp(10px, 0.85vw, 15px)/1 var(--display);
   text-transform: uppercase;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -856,6 +858,13 @@
   }
   #menu .champion-selector .selection-layout.champion-selection {
     grid-template-rows: minmax(0, 1fr) 94px;
+  }
+}
+/* Below this width sixteen cards are too narrow for their names; the selected
+   champion's name is shown large above, and each card keeps its aria-label. */
+@media (max-width: 1279px) {
+  #menu .champion-selector .selection-layout .showcase-card .card-head {
+    display: none;
   }
 }
 @media (max-width: 1000px) and (orientation: landscape) {

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { FIGHTER_IDS } from "../../packages/shared/src/index";
 import {
   RAID_BOSSES,
   RAID_BOSS_ORDER,
   raidAttacksOf,
+  raidPerksOf,
   nextPacificDayAt,
   pacificDate,
 } from "../../packages/shared/src/raid";
@@ -19,6 +21,18 @@ describe("raid roster and Pacific calendar", () => {
       expect(attacks, id).toHaveLength(6);
       expect(new Set(attacks).size, id).toBe(6);
     }
+  });
+
+  it("gives all sixteen champions a trick on at least three bosses", () => {
+    expect(FIGHTER_IDS).toHaveLength(16);
+    for (const id of FIGHTER_IDS) {
+      const bosses = RAID_BOSS_ORDER.filter((b) => raidPerksOf(b)[id]);
+      expect(bosses.length, id).toBeGreaterThanOrEqual(3);
+    }
+    // Every perk names a champion on the roster.
+    for (const b of RAID_BOSS_ORDER)
+      for (const id of Object.keys(raidPerksOf(b)))
+        expect(FIGHTER_IDS as readonly string[], b).toContain(id);
   });
 
   it("changes day at midnight Pacific, not UTC", () => {

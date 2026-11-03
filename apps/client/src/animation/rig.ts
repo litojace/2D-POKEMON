@@ -294,13 +294,15 @@ export class FighterRig {
     const rigAnchors = rigAnchorsFor(this.character, dir);
     const t = (now - this.controller.started) / 1000;
     const moving = state === "walk" || state === "run";
-    const heavy = this.character === "terradon";
+    const heavy =
+      this.character === "terradon" || this.character === "wombolder";
     // Floating champions keep their feet tucked and glide instead of stepping.
     const floats =
       this.character === "auralynx" ||
       this.character === "lumoth" ||
       this.character === "mystowl" ||
-      this.character === "duskveil";
+      this.character === "duskveil" ||
+      this.character === "glacelle";
     const step = Math.sin(
       t *
         Math.PI *
@@ -612,6 +614,26 @@ export class FighterRig {
       if (this.character === "duskveil")
         // Robe tatters ripple.
         body.setScale(0.5 + Math.sin(now / 180) * 0.012, 0.5);
+      if (this.character === "glacelle") {
+        // Wing-flaps paddle the water; snow crystals drift round.
+        armL.rotation += Math.sin(now / 220) * 0.16;
+        armR.rotation -= Math.sin(now / 220) * 0.16;
+        wings.rotation = Math.sin(now / 900) * 0.08;
+      }
+      if (this.character === "shadopus" && !moving) {
+        // Tentacles never quite keep still.
+        armL.rotation = Math.sin(now / 260) * 0.12;
+        armR.rotation = -Math.sin(now / 290) * 0.12;
+        legL.rotation = Math.sin(now / 330) * 0.06;
+        legR.rotation = -Math.sin(now / 310) * 0.06;
+      }
+      if (this.character === "sunbara")
+        // The yuzu rocks as if floating in a hot spring.
+        flame.rotation = Math.sin(now / 520) * 0.06;
+      if (this.character === "halcyra" || this.character === "astrabun")
+        // A crest that ruffles; long ears that twitch.
+        ears.rotation +=
+          Math.sin(now / (this.character === "astrabun" ? 160 : 210)) * 0.03;
       if (this.character === "voltkit" && state === "dash")
         // Glider membranes spread mid-dash.
         wings.setScale(0.64, 0.56);
@@ -1045,6 +1067,51 @@ export class FighterRig {
         p.armR.rotation = -1.6;
         p.tail.rotation = -0.4 + Math.sin(t * 6) * 0.3;
         break;
+      case "coilemur":
+        // A cheeky wave, tail crackling.
+        p.armR.rotation = hand;
+        p.tail.rotation = Math.sin(t * 12) * 0.2;
+        p.head.rotation = 0.08;
+        break;
+      case "pyranda":
+        // Peeks out from behind its tail, then a tiny wave.
+        p.armL.rotation = hand * 0.5;
+        p.tail.rotation = -0.25;
+        p.head.rotation = -0.12;
+        break;
+      case "glacelle":
+        // A slow bob, both wing-flaps sweeping.
+        p.armL.rotation = Math.sin(t * 6) * 0.5;
+        p.armR.rotation = -Math.sin(t * 6) * 0.5;
+        move(0, -Math.sin(t * 3) * 3);
+        break;
+      case "halcyra":
+        // A crisp salute with one wing.
+        p.armR.rotation = -2.4;
+        p.head.rotation = -0.06;
+        p.ears.rotation = -0.08;
+        break;
+      case "sunbara":
+        // A calm nod.
+        p.head.y += Math.max(0, Math.sin(t * 4)) * 3;
+        p.armR.rotation = -0.6;
+        break;
+      case "astrabun":
+        // Mallet up, ears perked.
+        p.armR.rotation = -0.8;
+        p.ears.rotation = Math.sin(t * 10) * 0.08;
+        move(0, -Math.max(0, Math.sin(t * 8)) * 4);
+        break;
+      case "wombolder":
+        // A gruff paw up.
+        p.armR.rotation = -2;
+        p.head.rotation = -0.05;
+        break;
+      case "shadopus":
+        // A tentacle wave from behind the mask.
+        p.armR.rotation = -1.2 + Math.sin(t * 9) * 0.4;
+        p.armL.rotation = 0.3;
+        break;
     }
   }
 
@@ -1120,6 +1187,62 @@ export class FighterRig {
         p.armR.rotation = -1.8;
         p.tail.rotation = -0.6 + Math.sin(t * 5) * 0.35;
         move(0, -Math.sin(t * 4) * 3);
+        break;
+      case "coilemur":
+        // Both fists up, the magnet tail spinning.
+        p.armL.rotation = 2.3;
+        p.armR.rotation = -2.3;
+        p.tail.rotation = Math.sin(t * 16) * 0.35;
+        move(0, -Math.max(0, Math.sin(t * 8)) * 6);
+        break;
+      case "pyranda":
+        // A bashful hop, tail flame flaring.
+        p.armL.rotation = 0.9;
+        p.armR.rotation = -0.9;
+        p.tail.setScale(0.52, 0.55);
+        move(0, -Math.max(0, Math.sin(t * 6)) * 5);
+        break;
+      case "glacelle":
+        // A twirl in the current.
+        this.root.rotation = t < 0.9 ? (t / 0.9) * Math.PI * 2 : 0;
+        p.armL.rotation = -0.7;
+        p.armR.rotation = 0.7;
+        move(0, -Math.min(1, t / 0.5) * 8);
+        break;
+      case "halcyra":
+        // Wings flung wide, crest up.
+        p.armL.rotation = 1.9;
+        p.armR.rotation = -1.9;
+        p.ears.setScale(0.5, 0.56);
+        move(0, -Math.min(1, t / 0.4) * 5);
+        break;
+      case "sunbara":
+        // Lies back and soaks it up.
+        p.head.rotation = -0.1;
+        p.armL.rotation = 0.5;
+        p.armR.rotation = -0.5;
+        p.body.setScale(0.52, 0.49);
+        break;
+      case "astrabun":
+        // Mallet spun overhead between hops.
+        p.armR.rotation = -2.6 + Math.sin(t * 14) * 0.5;
+        move(0, -Math.max(0, Math.sin(t * 9)) * 9);
+        break;
+      case "wombolder":
+        // Flexes, then thumps the ground.
+        p.armL.rotation = 1.4;
+        p.armR.rotation = -1.4;
+        p.body.setScale(
+          0.5 + Math.sin(t * 4) * 0.03,
+          0.5 - Math.sin(t * 4) * 0.02,
+        );
+        break;
+      case "shadopus":
+        // All tentacles up in a flourish.
+        p.armL.rotation = 1.8 + Math.sin(t * 10) * 0.2;
+        p.armR.rotation = -1.8 - Math.sin(t * 10) * 0.2;
+        p.legL.rotation = -0.3;
+        p.legR.rotation = 0.3;
         break;
     }
   }

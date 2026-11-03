@@ -11,6 +11,7 @@ import {
 } from "../creature-design";
 import { SKIN_ART } from "../skins/skin-art";
 import {
+  frontPartBounds,
   profilePartBounds,
   profilePivot,
   profileArtX,
@@ -76,7 +77,10 @@ function box(id: CharacterId, part: Part, dir: Facing) {
   const x = dir === "left" && part === "armR" ? 200 - sourceX - w : sourceX;
   const [x0, y0] = proportioned(part, x, y),
     [x1, y1] = proportioned(part, x + w, y + h);
-  const extra = dir !== "down" ? profilePartBounds(id, dir, part) : undefined;
+  const extra =
+    dir !== "down"
+      ? profilePartBounds(id, dir, part)
+      : frontPartBounds(id, part);
   const [ex0, ey0] = extra ? proportioned(part, extra[0], extra[1]) : [x0, y0];
   const [ex1, ey1] = extra
     ? proportioned(part, extra[0] + extra[2], extra[1] + extra[3])

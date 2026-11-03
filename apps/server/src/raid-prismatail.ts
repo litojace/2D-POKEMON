@@ -45,6 +45,8 @@ export class PrismatailArena extends RaidArena {
   private flareUntil = new Map<string, number>();
   private wardUntil = new Map<string, number>();
   private lastLanceHit = new Map<string, number>();
+  /** Shadopus's Ink Jet: Glare blinds nobody until then. */
+  private inkUntil = 0;
   protected override def() {
     return P;
   }
@@ -89,6 +91,7 @@ export class PrismatailArena extends RaidArena {
     this.flareUntil.clear();
     this.wardUntil.clear();
     this.lastLanceHit.clear();
+    this.inkUntil = 0;
   }
   protected override onChapter() {
     this.clearAttacks();
@@ -113,6 +116,15 @@ export class PrismatailArena extends RaidArena {
     ability?: Ability,
   ) {
     if (target.raidBoss && this.raid.exposedUntil <= this.time) amount *= 0.12;
+    // Shadopus's Ink Jet blots out its eyes: no Glare for a moment.
+    if (
+      target.raidBoss &&
+      ability?.id === "ink-jet" &&
+      this.heroes().some((p) => p.id === owner)
+    ) {
+      this.inkUntil = this.time + 3;
+      this.raid.message = "Ink in its eyes! Prismatail can't Glare for now.";
+    }
     super.damage(target, amount, owner, ability);
     // Only the light puzzle opens this boss; chip damage cannot bypass it via stagger.
     if (target.raidBoss) this.raid.stagger = 0;
@@ -129,7 +141,8 @@ export class PrismatailArena extends RaidArena {
   override cast(p: Fighter, a: Ability, ex = false) {
     super.cast(p, a, ex);
     if (p.raidBoss || p.hp <= 0) return;
-    if (a.id === "sunfire-pillar") {
+    // Cindrake's Sunfire Pillar and Glacelle's Frost Bloom ice relay light.
+    if (a.id === "sunfire-pillar" || a.id === "frost-bloom") {
       const aim = p.lastInput,
         d = normalize(aim.aimX - p.x, aim.aimY - p.y),
         len = Math.min(a.range, Math.hypot(aim.aimX - p.x, aim.aimY - p.y));
@@ -141,6 +154,7 @@ export class PrismatailArena extends RaidArena {
       });
     }
     if (a.id === "radiant-flare") this.flareUntil.set(p.id, this.time + 4);
+    if (a.id === "skyline-lance") this.cutLanes(p, a);
     if (a.id === "wing-cloak") this.wardUntil.set(p.id, this.time + a.duration);
     if (
       a.id !== "radiant-flare" &&
@@ -162,6 +176,38 @@ export class PrismatailArena extends RaidArena {
                   (a.arc ?? 0.35));
         if (hit) this.turn(i);
       });
+  }
+  /** Halcyra's Skyline Lance cuts every Prism Lance lane it crosses. */
+  private cutLanes(p: Fighter, a: Ability) {
+    const beam = [...this.events]
+      .reverse()
+      .find(
+        (e) => e.kind === "beam" && e.owner === p.id && e.abilityId === a.id,
+      );
+    if (!beam) return;
+    const end = { x: beam.tx ?? p.x, y: beam.ty ?? p.y },
+      steps = Math.ceil(Math.hypot(end.x - p.x, end.y - p.y) / 8);
+    const crosses = (w: RaidWarning) => {
+      for (let i = 0; i <= steps; i++) {
+        const at = {
+          x: p.x + ((end.x - p.x) * i) / Math.max(1, steps),
+          y: p.y + ((end.y - p.y) * i) / Math.max(1, steps),
+        };
+        if (
+          prismDistanceToSegment(at, w, { x: w.tx, y: w.ty }) <
+          a.radius + w.radius
+        )
+          return true;
+      }
+      return false;
+    };
+    const before = this.raid.warnings.length;
+    this.raid.warnings = this.raid.warnings.filter(
+      (w) =>
+        !(w.kind === "prism-lance" || w.kind === "refraction") || !crosses(w),
+    );
+    if (this.raid.warnings.length < before)
+      this.raid.message = `${p.name}'s Skyline Lance cuts through the prism lances!`;
   }
   protected override canStartAttack() {
     return this.raid.exposedUntil <= this.time;
@@ -262,6 +308,12 @@ export class PrismatailArena extends RaidArena {
     if (voidOrb) {
       this.projectiles = this.projectiles.filter((p) => p !== voidOrb);
       this.raid.message = "Void Orb swallowed a prism lance!";
+      this.hitBy = undefined;
+      this.countDodges();
+      return;
+    }
+    if (w.kind === "glare" && this.inkUntil > this.time) {
+      this.raid.message = "Prismatail's Glare fizzles behind the ink!";
       this.hitBy = undefined;
       this.countDodges();
       return;
