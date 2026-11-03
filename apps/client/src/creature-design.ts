@@ -163,6 +163,21 @@ function mirrorPath(d: string) {
     },
   );
 }
+/**
+ * Each champion's eye shape, so faces read apart at a glance (Duskveil keeps its
+ * glowing void eyes). Moods (happy, hurt, dizzy) still use the shared shapes.
+ */
+type EyeStyle =
+  "round" | "sparkle" | "fierce" | "drop" | "gem" | "dewy" | "owl" | "sleepy";
+export const EYE_STYLE: Partial<Record<CharacterId, EyeStyle>> = {
+  voltkit: "sparkle",
+  cindrake: "fierce",
+  tidefin: "drop",
+  auralynx: "gem",
+  lumoth: "dewy",
+  mystowl: "owl",
+  terradon: "sleepy",
+};
 /** Facial expressions the rig swaps in (the eyes layer only). */
 export type Mood = "normal" | "happy" | "hurt" | "dizzy" | "focus";
 export const MOODS: Mood[] = ["happy", "hurt", "dizzy", "focus"];
@@ -239,6 +254,12 @@ export function creatureLayers(
   // ---- Eyes, with the rig's expressions.
   const INK = "#1b1636";
   /**
+   * +1 when the nose is to the right of this eye, -1 when it is to the left.
+   * Side views are drawn facing left (the right view mirrors that drawing),
+   * so their eye always looks toward -x.
+   */
+  const toNose = (x: number) => (profile ? -1 : x < 100 ? 1 : -1);
+  /**
    * Expression shapes drawn in place of an eye: happy arcs, squeezed
    * chevrons, dizzy spirals. `inward` points the chevron towards the nose.
    */
@@ -248,7 +269,7 @@ export function creatureLayers(
     if (mood === "happy")
       return `<path d="M${x - w * 0.95} ${y + 3}Q${x} ${y - h * 1.05} ${x + w * 0.95} ${y + 3}"${s}/>`;
     if (mood === "hurt") {
-      const k = x < 100 ? 1 : -1;
+      const k = toNose(x);
       return `<path d="M${x - k * w * 0.75} ${y - h * 0.6}L${x + k * w * 0.6} ${y}L${x - k * w * 0.75} ${y + h * 0.6}"${s}/>`;
     }
     if (mood === "dizzy") {
@@ -266,28 +287,121 @@ export function creatureLayers(
   };
   /** A determined brow over an eye (the "focus" expression). */
   const brow = (x: number, w: number, h: number, ink = INK) => {
-    const k = x < 100 ? 1 : -1,
+    const k = toNose(x),
       y = 93 - h - 3;
     return `<path d="M${x - k * w} ${y - 5}L${x + k * w * 0.85} ${y + 2}" stroke="${ink}" stroke-width="4.4" stroke-linecap="round" fill="none"/>`;
   };
   // Big glossy chibi eye: dark iris, element-coloured ring, two catchlights.
+  // Each champion draws it in its own shape (EYE_STYLE) so faces read apart.
+  const style = EYE_STYLE[id] ?? "round";
+  const n = (v: number) => +v.toFixed(2);
+  const styledEye = (
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    ring: string,
+  ) => {
+    const k = toNose(x);
+    const glints = `${e(x - w * 0.3, y - h * 0.36, w * 0.44, h * 0.38, "#ffffff")}<circle cx="${n(x + w * 0.38)}" cy="${n(y + h * 0.34)}" r="${n(w * 0.17)}" fill="#fff"/><circle cx="${n(x + w * 0.42)}" cy="${n(y - h * 0.5)}" r="${n(w * 0.09)}" fill="#fff"/>`;
+    const round = `${e(x, y, w, h, INK)}${e(x, y + h * 0.3, w * 0.74, h * 0.52, ring)}${e(x, y + h * 0.22, w * 0.42, h * 0.4, INK)}`;
+    if (style === "sparkle")
+      // Star-shaped catchlights: the hyperactive look.
+      return `${round}${sparkle(n(x - w * 0.26), n(y - h * 0.3), n(w * 0.5))}${sparkle(n(x + w * 0.42), n(y - h * 0.52), n(w * 0.2))}<circle cx="${n(x + w * 0.36)}" cy="${n(y + h * 0.36)}" r="${n(w * 0.15)}" fill="#fff"/>`;
+    if (style === "fierce") {
+      // A slightly flattened upper lid, tipped a little toward the nose: cocky, not cross.
+      const shape = `M${n(x - k * w)} ${y}A${n(w)} ${n(h)} 0 0 ${k === 1 ? 0 : 1} ${n(x + k * w)} ${y}Q${n(x + k * w)} ${n(y - h * 0.62)} ${n(x + k * w * 0.4)} ${n(y - h * 0.76)}Q${x} ${n(y - h * 0.9)} ${n(x - k * w * 0.45)} ${n(y - h * 0.9)}Q${n(x - k * w)} ${n(y - h * 0.84)} ${n(x - k * w)} ${y}Z`;
+      return `<path d="${shape}" fill="${INK}"/>${e(x, y + h * 0.28, w * 0.72, h * 0.5, ring)}${e(x, y + h * 0.2, w * 0.4, h * 0.36, INK)}${e(x - k * w * 0.22, y - h * 0.24, w * 0.4, h * 0.32, "#ffffff")}<circle cx="${n(x + k * w * 0.32)}" cy="${n(y + h * 0.36)}" r="${n(w * 0.15)}" fill="#fff"/>${e(x + k * w * 0.38, y - h * 0.48, w * 0.09, h * 0.08, "#ffd34d")}`;
+    }
+    if (style === "dewy") {
+      // Extra-glossy eyes with lashes and a lower shine: dreamy.
+      // Three lashes on the outer, upper edge, each pointing straight outward.
+      const lashes = [0.35, 0.7, 1.05]
+        .map((t) => {
+          const a = Math.PI + t,
+            dx = k * Math.cos(a),
+            dy = Math.sin(a);
+          return `M${n(x + dx * w)} ${n(y + dy * h)}l${n(dx * 5)} ${n(dy * 5)}`;
+        })
+        .join("");
+      return `${round}${glints}<path d="M${n(x - w * 0.5)} ${n(y + h * 0.55)}Q${x} ${n(y + h * 0.82)} ${n(x + w * 0.5)} ${n(y + h * 0.55)}" stroke="#ffffff" stroke-width="2" opacity=".55" fill="none" stroke-linecap="round"/>${sparkle(n(x + k * w * 0.05), n(y + h * 0.1), n(w * 0.14))}<path d="${lashes}" stroke="${INK}" stroke-width="2.6" stroke-linecap="round" fill="none"/>`;
+    }
+    if (style === "drop") {
+      // A water-drop catchlight.
+      const cx = x - w * 0.27,
+        cy = y - h * 0.26,
+        r = w * 0.27;
+      return `${round}<path d="M${n(cx)} ${n(cy - r * 1.55)}C${n(cx + r * 0.25)} ${n(cy - r * 0.7)} ${n(cx + r)} ${n(cy - r * 0.25)} ${n(cx + r)} ${n(cy + r * 0.25)}A${n(r)} ${n(r)} 0 0 1 ${n(cx - r)} ${n(cy + r * 0.25)}C${n(cx - r)} ${n(cy - r * 0.25)} ${n(cx - r * 0.25)} ${n(cy - r * 0.7)} ${n(cx)} ${n(cy - r * 1.55)}Z" fill="#fff" stroke="none"/><circle cx="${n(x + w * 0.38)}" cy="${n(y + h * 0.36)}" r="${n(w * 0.15)}" fill="#fff"/>${sparkle(n(x + w * 0.4), n(y - h * 0.5), n(w * 0.16))}`;
+    }
+    if (style === "gem")
+      // Diamond-shaped catchlights, like the crystals Auralynx wears.
+      return `${round}<path d="M${n(x - w * 0.28)} ${n(y - h * 0.66)}L${n(x - w * 0.02)} ${n(y - h * 0.3)}L${n(x - w * 0.28)} ${n(y + h * 0.06)}L${n(x - w * 0.54)} ${n(y - h * 0.3)}Z" fill="#fff" stroke="none"/><path d="M${n(x + w * 0.38)} ${n(y + h * 0.2)}L${n(x + w * 0.5)} ${n(y + h * 0.36)}L${n(x + w * 0.38)} ${n(y + h * 0.52)}L${n(x + w * 0.26)} ${n(y + h * 0.36)}Z" fill="#fff" stroke="none"/>`;
+    if (style === "owl")
+      // Concentric rings: a hypnotic owl stare.
+      return `${e(x, y, w, h, INK)}${e(x, y, w * 0.8, h * 0.8, ring)}${e(x, y, w * 0.6, h * 0.6, p.dark)}${e(x, y, w * 0.44, h * 0.44, ring)}${e(x, y, w * 0.27, h * 0.27, INK)}${e(x - w * 0.32, y - h * 0.34, w * 0.36, h * 0.3, "#ffffff")}<circle cx="${n(x + w * 0.34)}" cy="${n(y + h * 0.32)}" r="${n(w * 0.14)}" fill="#fff"/>`;
+    if (style === "sleepy") {
+      // Drowsy half-lowered lids with a soft lid line.
+      const shape = `M${n(x - w)} ${n(y - h * 0.08)}Q${x} ${n(y - h * 0.6)} ${n(x + w)} ${n(y - h * 0.08)}A${n(w)} ${n(h)} 0 0 1 ${n(x - w)} ${n(y - h * 0.08)}Z`;
+      return `<path d="${shape}" fill="${INK}"/>${e(x, y + h * 0.3, w * 0.72, h * 0.48, ring)}${e(x, y + h * 0.26, w * 0.4, h * 0.34, INK)}${e(x - w * 0.3, y - h * 0.02, w * 0.28, h * 0.2, "#ffffff")}<circle cx="${n(x + w * 0.34)}" cy="${n(y + h * 0.38)}" r="${n(w * 0.12)}" fill="#fff"/><path d="M${n(x - w * 0.96)} ${n(y - h * 0.08)}Q${x} ${n(y - h * 0.6)} ${n(x + w * 0.96)} ${n(y - h * 0.08)}" stroke="${p.dark}" stroke-width="1.8" stroke-linecap="round" opacity=".6" fill="none"/>`;
+    }
+    return round + glints;
+  };
   const eye = (x: number, ring = p.glow, w0 = 9, h0 = 11) => {
     const w = w0 * 1.3,
       h = h0 * 1.22,
       y = 93;
     if (mood !== "normal" && mood !== "focus") return moodEye(x, w, h);
-    const open = `${e(x, y, w, h, INK)}${e(x, y + h * 0.3, w * 0.74, h * 0.52, ring)}${e(x, y + h * 0.22, w * 0.42, h * 0.4, INK)}${e(x - w * 0.3, y - h * 0.36, w * 0.44, h * 0.38, "#ffffff")}<circle cx="${x + w * 0.38}" cy="${y + h * 0.34}" r="${w * 0.17}" fill="#fff"/><circle cx="${x + w * 0.42}" cy="${y - h * 0.5}" r="${w * 0.09}" fill="#fff"/>`;
+    const open = styledEye(x, y, w, h, ring);
     return mood === "focus" ? open + brow(x, w, h) : open;
   };
   const frontEyes = (ring = p.glow, w = 9, h = 11) =>
     eye(79, ring, w, h) + eye(121, ring, w, h);
-  const mouth = `<path d="M95.5 109Q97.8 112 100 109.6Q102.2 112 104.5 109" stroke="${p.dark}" stroke-width="1.9" fill="none" stroke-linecap="round"/>`;
+  // Each champion's own mouth (the head layer: it never changes with mood).
+  /** An ellipse with no outline (tongues, little mouths, blush). */
+  const dot = (x: number, y: number, rx: number, ry: number, fill: string) =>
+    `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${fill}" stroke="none"/>`;
+  const stroke = (d: string, color = p.dark, width = 1.9) =>
+    `<path d="${d}" stroke="${color}" stroke-width="${width}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+  const MOUTHS: Partial<Record<CharacterId, string>> = {
+    // Big open grin with a tongue.
+    voltkit: `<path d="M93.5 106.5Q100 104.5 106.5 106.5Q105.5 115 100 115Q94.5 115 93.5 106.5Z" fill="${INK}" stroke="none"/>${dot(100, 112.3, 3.8, 2.4, "#ff7d9c")}`,
+    // Lopsided smirk with one fang.
+    cindrake: `${stroke("M93 108.5Q99 112.5 107 106.5")}<path d="M96.4 109.6L97.8 113.4L99.4 110.4Z" fill="#ffffff" stroke="${p.dark}" stroke-width="1"/>`,
+    // Cat nose over the ω mouth.
+    auralynx: `<path d="M97.2 103.2H102.8L100 106.2Z" fill="#ff9fc0" stroke="${p.dark}" stroke-width="1"/>${stroke("M100 106.2V108.4M95.5 109Q97.8 112 100 108.6Q102.2 112 104.5 109")}`,
+    // A tiny "o" of wonder.
+    lumoth: `${dot(100, 110, 2.8, 3.4, INK)}${dot(100, 111.2, 1.6, 1.3, "#ff8fb0")}`,
+    // Soft, contented smile.
+    terradon: stroke("M92.5 108Q100 114.5 107.5 108", p.dark, 2),
+  };
+  const mouth =
+    MOUTHS[id] ??
+    `<path d="M95.5 109Q97.8 112 100 109.6Q102.2 112 104.5 109" stroke="${p.dark}" stroke-width="1.9" fill="none" stroke-linecap="round"/>`;
   const blushColor = id === "mystowl" ? "#c2268a" : "#ff8fb0";
-  const blush = (
+  const soft = (s: string) =>
+    s.replace(/fill="([^"]+)"/g, 'fill="$1" opacity=".5" stroke="none"');
+  const blush =
     id === "terradon"
-      ? `${e(72, 112, 9, 5.5, blushColor)}${e(128, 112, 9, 5.5, blushColor)}`
-      : `${e(68, 108, 8, 4.5, blushColor)}${e(132, 108, 8, 4.5, blushColor)}`
-  ).replace(/fill="([^"]+)"/g, 'fill="$1" opacity=".5" stroke="none"');
+      ? soft(
+          `${e(72, 112, 9, 5.5, blushColor)}${e(128, 112, 9, 5.5, blushColor)}`,
+        )
+      : id === "cindrake"
+        ? // Anime blush slashes over a soft pink patch.
+          soft(
+            `${e(69, 106, 8, 4.5, blushColor)}${e(131, 106, 8, 4.5, blushColor)}`,
+          ) +
+          stroke(
+            "M63 106l3-4M68 107l3-4M73 108l3-4M127 108l-3-4M132 107l-3-4M137 106l-3-4",
+            "#ff6f6f",
+            2,
+          )
+        : id === "lumoth"
+          ? soft(
+              `${e(66, 109, 10, 5.5, blushColor)}${e(134, 109, 10, 5.5, blushColor)}`,
+            )
+          : soft(
+              `${e(68, 108, 8, 4.5, blushColor)}${e(132, 108, 8, 4.5, blushColor)}`,
+            );
   const layers: Record<CreaturePart, string> = {
     tail: "",
     wings: "",
@@ -346,9 +460,11 @@ export function creatureLayers(
     const frond = (x: number, y: number, dx: number) =>
       `${path(`M${x} ${y - 4}Q${x + dx * 0.5} ${y - 18} ${x + dx} ${y - 8}Q${x + dx * 0.55} ${y + 10} ${x} ${y + 6}Z`, p.glow)}${line(`M${x + dx * 0.15} ${y}Q${x + dx * 0.55} ${y - 4} ${x + dx * 0.85} ${y - 6}`, "#ffd2e4", 1.6, 0.9)}`;
     layers.ears = `${frond(64, 70, -40)}${frond(61, 84, -46)}${frond(65, 98, -36)}${frond(136, 70, 40)}${frond(139, 84, 46)}${frond(135, 98, 36)}`;
-    layers.head = `${e(100, 90, 42, 31, face)}${highlight(70, 78, 22)}${path("M90 108Q100 116 110 108", "none", ` stroke="${p.dark}" stroke-width="2.2" stroke-linecap="round"`)}<circle cx="74" cy="104" r="2" fill="${p.light}" stroke="none"/><circle cx="128" cy="102" r="2.4" fill="${p.light}" stroke="none"/>`;
+    // A wide axolotl smile.
+    layers.head = `${e(100, 90, 42, 31, face)}${highlight(70, 78, 22)}${path("M88 107Q100 117 112 107", "none", ` stroke="${p.dark}" stroke-width="2.2" stroke-linecap="round"`)}`;
     layers.flame = `${path("M60 76Q100 58 140 76L138 85Q100 70 62 85Z", p.accent)}${path("M138 80Q150 84 156 96Q146 94 138 86Z", p.accent)}${path("M138 82Q154 82 162 88Q150 90 138 86Z", p.accent)}${path("M94 66Q100 58 106 66Q104 74 100 75Q96 74 94 66Z", "#ffe7c2")}${line("M97 64L100 70L103 64", p.mid, 1.4, 0.8)}`;
-    layers.eyes = frontEyes("#7cf6ff", 8, 9);
+    // Round eyes with a water-drop catchlight.
+    layers.eyes = eye(78, "#7cf6ff", 8.6, 9.8) + eye(122, "#7cf6ff", 8.6, 9.8);
     layers.body = `${e(100, 138, 26, 28)}${e(100, 142, 15, 19, pearl)}`;
     layers.scarf = `${path("M74 144Q100 152 126 144L127 152Q100 160 73 152Z", p.accent)}${path("M120 150Q138 156 146 170Q132 168 122 157Z", p.accent)}<circle cx="100" cy="153" r="4" fill="#ffe7c2"/>`;
     layers.tail = `${tailPath("M122 150Q164 154 186 126Q168 130 158 126Q170 116 180 94Q150 108 140 128Q132 138 120 140Z", body)}${tailPath("M180 94Q168 114 158 126Q170 130 186 126", "none", ` stroke="${p.light}" stroke-width="2"`)}<circle cx="${tailX(146)}" cy="134" r="3" fill="${p.light}" stroke="none"/><circle cx="${tailX(160)}" cy="140" r="2.2" fill="${p.light}" stroke="none"/>`;
@@ -452,8 +568,9 @@ export function creatureLayers(
       `${[0, 1, 2, 3, 4].map((i) => e(+(x + Math.cos((i * 2 * Math.PI) / 5) * r).toFixed(1), +(y + Math.sin((i * 2 * Math.PI) / 5) * r).toFixed(1), r * 0.85, r * 0.85, c).replace("/>", ' stroke="none"/>')).join("")}<circle cx="${x}" cy="${y}" r="${(r * 0.6).toFixed(1)}" fill="#fff3a0" stroke="none"/>`;
     // The shell, worn upright on its back: round, with moss along the top.
     layers.wings = `${path("M56 150Q48 116 64 98Q82 80 100 80Q118 80 136 98Q152 116 144 150Q136 166 100 166Q64 166 56 150Z", body)}${line("M100 82V164M72 104Q100 112 128 104M62 132Q100 142 138 132", p.dark, 2.2, 0.45)}${path("M64 100Q72 84 88 84Q100 76 112 84Q128 84 136 100Q124 94 112 96Q100 88 88 96Q76 94 64 100Z", p.glow)}${flower(64, 108)}${flower(138, 112, "#ffffff")}${path("M140 98L144 76L151 90L157 72L160 96L148 104Z", "#bfe9ff")}${line("M145 82L147 94M156 78L155 92", "#ffffff", 1.4, 0.8)}`;
-    // Match the other champions' horizontal oval face and simple smile.
-    layers.head = `${e(100, 88, 40, 33, face)}${highlight(72, 70, 26)}${mouth}`;
+    // Match the other champions' horizontal oval face and simple smile, with
+    // the same soft brow arcs as the side view (creature-profile.ts).
+    layers.head = `${e(100, 88, 40, 33, face)}${highlight(72, 70, 26)}${line("M68 75Q79 71.5 90 75.5M132 75Q121 71.5 110 75.5", p.dark, 1.8, 0.48)}${mouth}`;
     layers.eyes = frontEyes(p.glow, 10, 12);
     layers.flame = `${line("M100 60Q98 48 101 36", "#5aa64a", 3.4)}${path("M100 50Q84 38 76 46Q86 58 100 50Z", p.glow)}${path("M100 44Q114 28 126 36Q114 48 100 44Z", p.glow)}${flower(101, 34, "#ffb3d1", 3.8)}`;
     // A slightly broader, lifted torso tucks under the head to avoid a neck gap.

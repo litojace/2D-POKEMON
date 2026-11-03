@@ -25,15 +25,22 @@ test("fighter select shows one fighter, even with a skin on", async ({
     '.showcase-card[data-character="terradon"] .card-art>svg',
   );
   await expect(terradon).toHaveAttribute("viewBox", "30 3 140 140");
-  const eyes = async (id: string) =>
+  // Each card must put the eye line (y = 93 in the 200x190 art) at the same
+  // height. Map that line through the eyes layer's own transform instead of
+  // measuring the eyes' outline: every champion now draws its eyes in its own
+  // shape (Terradon's drowsy lids, Lumoth's lashes), which moves the outline
+  // but not the face.
+  const eyeLine = async (id: string) =>
     page
-      .locator(`.showcase-card[data-character="${id}"] .fighter-eyes`)
-      .evaluate((el) => {
-        const r = el.getBoundingClientRect();
-        return r.y + r.height / 2;
-      });
+      .locator(`.showcase-card[data-character="${id}"] .fighter-eyes > g`)
+      .evaluate(
+        (g) =>
+          new DOMPoint(100, 93).matrixTransform(
+            (g as SVGGraphicsElement).getScreenCTM()!,
+          ).y,
+      );
   expect(
-    Math.abs((await eyes("terradon")) - (await eyes("lumoth"))),
+    Math.abs((await eyeLine("terradon")) - (await eyeLine("lumoth"))),
   ).toBeLessThan(1.5);
   // Switching fighters keeps exactly one visible too.
   await page

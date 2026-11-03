@@ -69,7 +69,22 @@ Mobile uses the left joystick and right skill/action buttons, with a separate bo
 
 ## Balance notes
 
-The current durability pass increases every fighter’s maximum HP by 25% (rounded to whole HP) and Hibernate healing from 60 to 75 HP. Damage, cooldowns and sleep duration are unchanged. The earlier win-rate results below predate this pass and need fresh playtesting.
+**November 2026 pass (health and basic-attack speed).** Bot round robins on the server simulation (every pairing, 40 games each, Hard and Normal bots, sides swapped every game) showed the fighters had drifted apart. Averaged over both bot settings, win rates ran from 24% (Mystowl) to 73% (Terradon). Each fighter's maximum health and basic-attack interval were tuned toward 50% over repeated rounds of matches. Damage, cooldowns, skills and rite texts are unchanged, and changes stay within about a quarter so no fighter changes role.
+
+| Fighter  | Health    | Basic attack (ms) | Win rate before | After |
+| -------- | --------- | ----------------- | --------------- | ----- |
+| Voltkit  | 138 → 146 | 280 → 270         | 40%             | 45%   |
+| Cindrake | 156 → 144 | 450 → 470         | 66%             | 51%   |
+| Tidefin  | 131 → 154 | 260 → 240         | 26%             | 48%   |
+| Auralynx | 175 → 171 | 320 → 325         | 57%             | 50%   |
+| Lumoth   | 144 → 142 | 300               | 52%             | 51%   |
+| Mystowl  | 130 → 148 | 400 → 375         | 24%             | 54%   |
+| Terradon | 219 → 195 | 600 → 635         | 73%             | 51%   |
+| Duskveil | 150 → 138 | 350 → 365         | 63%             | 50%   |
+
+Win rates are the average of Hard and Normal bots, fighting only each other. The two settings still disagree for some fighters: Cindrake wins 32% against Hard bots, which dodge, but 71% against Normal ones; Mystowl (73% / 36%) and Duskveil (36% / 64%) split the other way. One strength number can only centre the average, so those gaps need kit changes and human playtesting. Health and attack speed also apply in raids, so raid difficulty for these fighters shifts slightly.
+
+The earlier durability pass increased every fighter’s maximum HP by 25% (rounded to whole HP) and Hibernate healing from 60 to 75 HP. Damage, cooldowns and sleep duration are unchanged. The earlier win-rate results below predate this pass and need fresh playtesting.
 
 Hibernate now has a price: while Terradon sleeps it takes 20% more damage (`STATUS_RULES.sleepVulnerability`), and the HUD shows `SLEEP +20% DMG` so the opponent knows to punish. In 168-match simulations per style, a Terradon that sleeps carelessly mid-fight took about 12% more damage and its win rate fell from 24% to 17%. A Hard bot Terradon that only sleeps when safe was unaffected (72%).
 
