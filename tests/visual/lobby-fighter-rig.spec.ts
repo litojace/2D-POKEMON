@@ -70,7 +70,7 @@ for (const size of SIZES)
       ).toBe("hidden");
       // No empty band above the fighter: the party row takes the stage's
       // free height, and the fighter grows until the row's height, the room
-      // beside one seat on each side, or the 560 px cap stops it.
+      // beside a seat on each side (36% of the fighter), or the 560 px cap.
       const fit = await page.evaluate(() => {
         const box = (s: string) => {
           const b = document.querySelector(s)!.getBoundingClientRect();
@@ -79,8 +79,15 @@ for (const size of SIZES)
         const row = document.querySelector(".lobby-party")!;
         const css = getComputedStyle(row);
         return {
-          seat: parseFloat(css.getPropertyValue("--lobby-seat")),
           gap: parseFloat(css.columnGap),
+          podiums: [
+            ".lobby-floor",
+            "#lobby-slot-0 .lobby-podium",
+            "#lobby-slot-1 .lobby-podium",
+          ].map((s) => {
+            const b = document.querySelector(s)!.getBoundingClientRect();
+            return b.top + b.height / 2;
+          }),
           stage: box(".lobby-stage"),
           party: box(".lobby-party"),
           fighter: box("#lobby-fighter"),
@@ -100,7 +107,7 @@ for (const size of SIZES)
       const side = fighter.b - fighter.t;
       const room = Math.min(
         party.b - party.t,
-        party.r - party.l - 2 * fit.seat - 2 * fit.gap,
+        (party.r - party.l - 2 * fit.gap) / 1.72,
         560,
       );
       expect(side, "the fighter fills the stage").toBeGreaterThan(room - 1);
@@ -122,6 +129,10 @@ for (const size of SIZES)
       ).toBeLessThanOrEqual(1);
       expect(left.b).toBeCloseTo(right.b, 0);
       expect(fit.third).toBe("none");
+      // One floor: every podium is centred on the fighter's shadow line.
+      const floor = fighter.t + 0.9307 * side;
+      for (const y of fit.podiums)
+        expect(Math.abs(y - floor), "podium on the floor").toBeLessThan(1.5);
       for (const seat of fit.seats) {
         expect(overlaps(seat, fighter)).toBe(false);
         expect(overlaps(seat, party) && seat.l >= party.l - 0.5).toBe(true);
@@ -161,14 +172,117 @@ for (const size of SIZES)
     }
   });
 
-test("Low graphics keeps the Lobby fighter as still artwork", async ({
+// Party members as the server sends them: the skin saved on their champion
+// and their raid look, read from their own accounts.
+const ME = "11111111-1111-4111-8111-111111111111";
+const FRIENDS = [
+  {
+    id: "33333333-3333-4333-8333-333333333333",
+    name: "Pal",
+    character: "tidefin",
+    skin: { skin: "tidefin-abyss", stage: 1 },
+    look: { aura: "mountain-aura" },
+  },
+  {
+    id: "66666666-6666-4666-8666-666666666666",
+    name: "Bo",
+    character: "voltkit",
+    skin: { skin: "voltkit-stormcrown", stage: 3 },
+    look: { aura: "spark-aura" },
+  },
+];
+const joinParty = (page: import("@playwright/test").Page) =>
+  page.evaluate(
+    ([me, friends]) =>
+      (window as any).__sock.fire("party", {
+        code: "PARTY2",
+        leader: me,
+        members: [{ id: me, name: "tester", character: "voltkit" }, ...friends],
+      }),
+    [ME, FRIENDS] as const,
+  );
+
+test("friends stand in their saved skin and look, live, on the same floor", async ({
+  page,
+}, info) => {
+  test.setTimeout(120_000);
+  const errors = await openLobby(page);
+  await joinParty(page);
+  const seat = (i: number) =>
+    page.locator(`#lobby-slot-${i} .lobby-member-art`);
+  for (const [i, friend] of FRIENDS.entries()) {
+    await expect(seat(i)).toHaveAttribute(
+      "data-preview-champion",
+      friend.character,
+    );
+    await expect(seat(i)).toHaveAttribute(
+      "data-preview-item",
+      friend.skin.skin,
+    );
+    await expect(seat(i)).toHaveAttribute(
+      "data-preview-stage",
+      String(friend.skin.stage),
+    );
+    await expect(seat(i)).toHaveAttribute(
+      "data-preview-look",
+      encodeURIComponent(JSON.stringify(friend.look)),
+    );
+    // The same live rig as yours, lying exactly on the still artwork.
+    await expect(seat(i)).toHaveClass(/is-ready/, { timeout: 40_000 });
+    const boxes = await seat(i).evaluate((host) => {
+      const r = (e: Element) => {
+        const b = e.getBoundingClientRect();
+        return [b.x, b.y, b.width, b.height].map((v) => Math.round(v));
+      };
+      return [
+        r(host.querySelector(":scope > svg:not(.ta-front-layer)")!),
+        r(host.querySelector(":scope > canvas")!),
+      ];
+    });
+    expect(boxes[1]).toEqual(boxes[0]);
+  }
+  // The fourth seat is open, further back above the right friend.
+  await expect(
+    page.locator("#lobby-slot-2 [data-lobby-action=invite]"),
+  ).toBeVisible();
+  // Your fighter and both friends stand on one floor line.
+  const lines = await page.evaluate(() => {
+    const f = document.getElementById("lobby-fighter")!.getBoundingClientRect();
+    const mid = (s: string) => {
+      const b = document.querySelector(s)!.getBoundingClientRect();
+      return b.top + b.height / 2;
+    };
+    return {
+      floor: f.top + 0.9307 * f.height,
+      podiums: [
+        ".lobby-floor",
+        "#lobby-slot-0 .lobby-podium",
+        "#lobby-slot-1 .lobby-podium",
+      ].map(mid),
+    };
+  });
+  for (const y of lines.podiums)
+    expect(Math.abs(y - lines.floor)).toBeLessThan(1.5);
+  await snap(page, info, "lobby-party-rigs-1440x900");
+  // A screen over the Lobby puts every rig to sleep.
+  await page.click('.lobby-rail [data-lobby-action="shop"]');
+  for (const i of [0, 1])
+    await expect(seat(i)).toHaveAttribute("data-rendering", "false");
+  expect(errors).toEqual([]);
+});
+
+test("Low graphics keeps the Lobby fighter and friends as still artwork", async ({
   page,
 }) => {
   await page.addInitScript(() => localStorage.setItem("ea-graphics", "low"));
   const errors = await openLobby(page);
+  await joinParty(page);
   await expect(page.locator(`${art} > svg`).first()).toBeVisible();
+  await expect(
+    page.locator("#lobby-slot-0 .lobby-member-art > svg").first(),
+  ).toBeVisible();
   await page.waitForTimeout(2000);
-  expect(await page.locator(`${art} > canvas`).count()).toBe(0);
+  expect(await page.locator(".lobby-party canvas").count()).toBe(0);
   await expect(page.locator(art)).not.toHaveClass(/is-ready/);
   expect(errors).toEqual([]);
 });

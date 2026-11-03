@@ -132,7 +132,6 @@
    under the Lobby toast (#toast in ui/components.css: top 74 px, 38 px tall;
    54 px and 36 px on phones), so a notice never covers the fighter. */
 .lobby-stage {
-  --lobby-seat: 112px;
   --lobby-party-gap: clamp(10px, 1.5vw, 24px);
   left: calc(var(--lobby-gutter) + var(--lobby-rail) + 16px);
   right: calc(var(--lobby-gutter-r) + var(--lobby-cards) + 16px);
@@ -151,10 +150,11 @@
 /* The party row takes all the height the stage has left (under the party
    bar, above the nameplate). The fighter stands in its middle column, on the
    same axis as the nameplate; one seat stands on each side of it, and the
-   third seat (shown once both are taken) above the right one, so both
-   sides keep the same width. The
-   fighter grows into the row: as tall as the row, as wide as the row allows
-   beside one seat on each side (a seat as wide as a friend's card), and no
+   third seat (shown once both are taken) further back, above the right one,
+   so both sides keep the same width. Everyone stands on one floor: a
+   podium under each seat lies on the line of the fighter's own shadow.
+   The fighter grows into the row: as tall as the row, as wide as the row
+   allows beside a seat on each side (a seat is 36% of the fighter), and no
    larger than the rig draws sharply (its canvas is 480 px wide). No empty
    band is left above the fighter. */
 .lobby-party {
@@ -172,6 +172,18 @@
   column-gap: var(--lobby-party-gap);
   row-gap: 8px;
 }
+.lobby-party > * {
+  --fighter-size: max(
+    120px,
+    min(100cqh, calc((100cqw - 2 * var(--lobby-party-gap)) / 1.72), 560px)
+  );
+  /* A seat's width, and the size of what stands in it. */
+  --seat-w: calc(var(--fighter-size) * 0.36);
+  --seat: var(--seat-w);
+  /* The floor: the centre of the fighter's shadow, 6.93% of its size above
+     the row's bottom (y 176 in the rig's -40…210 frame). */
+  --floor: calc(var(--fighter-size) * 0.0693);
+}
 #lobby-slot-0 {
   grid-area: first;
   justify-self: end;
@@ -180,19 +192,14 @@
   grid-area: second;
   justify-self: start;
 }
+/* Further back: smaller, and higher up the stage. */
 #lobby-slot-2 {
+  --seat: calc(var(--seat-w) * 0.8);
+  --floor: calc(var(--seat) * 0.34);
   grid-area: third;
   justify-self: start;
 }
 .lobby-fighter {
-  --fighter-size: max(
-    120px,
-    min(
-      100cqh,
-      calc(100cqw - 2 * var(--lobby-seat) - 2 * var(--lobby-party-gap)),
-      560px
-    )
-  );
   grid-area: fighter;
   position: relative;
   flex: none;
@@ -209,7 +216,8 @@
 .lobby-fighter-art.is-still {
   animation: none;
 }
-.lobby-fighter-art > img {
+.lobby-fighter-art > img,
+.lobby-member-art > img {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -221,7 +229,9 @@
    240/200 = 120% wide from -20/200 = -10%, 250/202 = 123.76% tall from
    -28/202 = -13.86%. */
 .lobby-fighter-art > svg,
-.lobby-fighter-art > canvas {
+.lobby-fighter-art > canvas,
+.lobby-member-art > svg,
+.lobby-member-art > canvas {
   position: absolute;
   left: -10%;
   top: -13.86%;
@@ -232,39 +242,64 @@
    shown once its first pose is drawn. Then it moves on its own, so the CSS
    bob stops, and the aura's front half is drawn again above the canvas, as
    in the Fighters roster. */
-.lobby-fighter-art > canvas {
+.lobby-fighter-art > canvas,
+.lobby-member-art > canvas {
   object-fit: contain;
   pointer-events: none;
   opacity: 0;
 }
-.lobby-fighter-art.is-ready {
+.lobby-fighter-art.is-ready,
+.lobby-member-art.is-ready {
   animation: none;
 }
-.lobby-fighter-art.is-ready > canvas {
+.lobby-fighter-art.is-ready > canvas,
+.lobby-member-art.is-ready > canvas {
   opacity: 1;
   z-index: 1;
 }
-.lobby-fighter-art > svg.ta-front-layer {
+.lobby-fighter-art > svg.ta-front-layer,
+.lobby-member-art > svg.ta-front-layer {
   display: none;
   pointer-events: none;
 }
-.lobby-fighter-art.is-ready > svg.ta-front-layer {
+.lobby-fighter-art.is-ready > svg.ta-front-layer,
+.lobby-member-art.is-ready > svg.ta-front-layer {
   display: block;
   z-index: 2;
 }
-.lobby-floor {
+/* Podiums: a lit disc under your fighter and under every seat, all on the
+   same floor line, tinted by the fighter's element (as in the hub redesign
+   proposal). An open seat's podium is fainter. */
+.lobby-floor,
+.lobby-podium {
   position: absolute;
-  left: 8%;
-  right: 8%;
-  bottom: 2%;
-  height: 16%;
+  left: 50%;
   border-radius: 50%;
   background: radial-gradient(
-    closest-side,
-    color-mix(in srgb, var(--element, #ffd65b) 45%, transparent),
-    transparent
+    ellipse at 50% 40%,
+    color-mix(in srgb, var(--element, #ffd65b) 55%, #1a2547) 0%,
+    #121a33 62%,
+    transparent 72%
   );
-  filter: blur(2px);
+  box-shadow: inset 0 0 0 2px
+    color-mix(in srgb, var(--element, #ffd65b) 50%, transparent);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+/* Centred on the fighter's shadow (93.07% down its box), 5:1 like it. */
+.lobby-floor {
+  top: calc(93.07% - 7.8%);
+  width: 78%;
+  height: 15.6%;
+}
+.lobby-podium {
+  bottom: calc(var(--floor) - var(--seat) * 0.09);
+  width: calc(var(--seat) * 0.9);
+  height: calc(var(--seat) * 0.18);
+}
+.lobby-podium.is-open {
+  --element: #9fb3e6;
+  opacity: 0.5;
 }
 @keyframes lobby-idle {
   0%,
@@ -307,13 +342,15 @@
   }
 }
 .lobby-slot {
+  position: relative;
+  z-index: 1;
   display: grid;
   place-items: center;
   align-content: center;
   flex: none;
-  width: 92px;
-  height: 92px;
-  margin-bottom: 6%;
+  width: calc(var(--seat) * 0.8);
+  height: calc(var(--seat) * 0.8);
+  margin: 0;
   padding: 0;
   border: 2px dashed rgba(220, 230, 255, 0.45);
   border-radius: 50%;
@@ -327,12 +364,12 @@
 }
 .lobby-slot span {
   font:
-    400 30px/1 "DM Sans",
+    400 clamp(18px, calc(var(--seat) * 0.2), 34px) / 1 "DM Sans",
     sans-serif;
 }
 .lobby-slot small {
   font:
-    700 12px/1 "DM Sans",
+    700 clamp(9px, calc(var(--seat) * 0.075), 14px) / 1 "DM Sans",
     sans-serif;
 }
 .lobby-nameplate {
@@ -394,50 +431,56 @@
 }
 
 /* Party: members stand beside you; the bar above says how many. */
-/* Every seat is as wide as a friend's card, its content centred, so an
-   Invite circle and a friend line up with each other and keep the same
-   distance from the fighter. */
+/* A seat: what stands in it is centred and stands on the floor line (the
+   seat's bottom padding), on its podium; a friend's name hangs under it. */
 .lobby-slot-wrap {
+  position: relative;
   display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
   flex: none;
-  width: var(--lobby-seat);
+  width: var(--seat-w);
+  padding-bottom: var(--floor);
 }
 .lobby-slot-wrap[hidden] {
   display: none;
 }
 .lobby-member {
-  display: grid;
-  justify-items: center;
-  gap: 2px;
-  width: 112px;
-  margin: 0 0 3%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
 }
+/* A friend's fighter in the same padded frame as yours, its shadow on the
+   floor line (6.93% of its box above its bottom). */
 .lobby-member-art {
-  display: block;
-  width: 112px;
-  height: 112px;
-  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45));
-}
-.lobby-member-art svg {
-  width: 100%;
-  height: 100%;
+  position: relative;
+  z-index: 1;
+  width: var(--seat);
+  height: var(--seat);
+  margin-bottom: calc(var(--seat) * -0.0693);
+  animation: lobby-idle 3.2s ease-in-out infinite;
 }
 .lobby-member figcaption {
+  position: absolute;
+  left: 50%;
+  top: calc(100% - var(--floor) + var(--seat) * 0.09 + 2px);
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 4px;
-  max-width: 112px;
+  max-width: calc(var(--seat-w) + 16px);
   padding: 2px 8px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--lobby-glass);
   font:
-    700 11px/1.3 "DM Sans",
+    700 clamp(9px, calc(var(--seat) * 0.06), 12px) / 1.3 "DM Sans",
     sans-serif;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transform: translateX(-50%);
 }
 .lobby-crown {
   color: #ffd65b;
@@ -790,27 +833,6 @@
     height: 16px;
     font-size: 9px;
   }
-  .lobby-slot {
-    width: 58px;
-    height: 58px;
-  }
-  .lobby-slot span {
-    font-size: 20px;
-  }
-  .lobby-slot small {
-    font-size: 10px;
-  }
-  .lobby-member,
-  .lobby-member-art {
-    width: 64px;
-  }
-  .lobby-member-art {
-    height: 64px;
-  }
-  .lobby-member figcaption {
-    max-width: 72px;
-    font-size: 9px;
-  }
   .lobby-party-bar {
     font-size: 10px;
   }
@@ -835,7 +857,6 @@
     row-gap: 4px;
   }
   .lobby-stage {
-    --lobby-seat: 64px;
     top: max(calc(var(--lobby-top) + 8px), calc(var(--safe-top, 0px) + 94px));
     gap: 4px;
   }
@@ -915,24 +936,10 @@
   .lobby-layer {
     --lobby-cards: 178px;
   }
-  .lobby-stage {
-    --lobby-seat: 54px;
-  }
-  .lobby-slot {
-    width: 50px;
-    height: 50px;
-  }
-  .lobby-member,
-  .lobby-member-art {
-    width: 54px;
-    height: auto;
-  }
-  .lobby-member-art {
-    height: 54px;
-  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .lobby-fighter-art {
+  .lobby-fighter-art,
+  .lobby-member-art {
     animation: none;
   }
   .lobby-emote-bubble.is-popping {
