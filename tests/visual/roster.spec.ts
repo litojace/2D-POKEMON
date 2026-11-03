@@ -49,9 +49,16 @@ for (const size of SIZES)
       await expect(
         page.locator('.lobby-rail [data-lobby-action="fighters"]'),
       ).toHaveAttribute("aria-current", "page");
-      // All eight fighters, on two rows, every card one size, all in view.
+      // The whole roster (the head says how many), every card one size;
+      // the grid scrolls to the last one.
+      const total = Number(
+        (await page.locator(".roster-head .ui-kicker").textContent())?.match(
+          /(\d+) fighters/,
+        )?.[1] ?? NaN,
+      );
       const cards = page.locator(".roster-card");
-      await expect(cards).toHaveCount(8);
+      await expect(cards).toHaveCount(total);
+      expect(total).toBeGreaterThanOrEqual(16);
       const boxes = await cards.evaluateAll((els) =>
         els.map((e) => e.getBoundingClientRect().toJSON()),
       );
@@ -60,12 +67,16 @@ for (const size of SIZES)
           boxes.map((b) => `${Math.round(b.width)}x${Math.round(b.height)}`),
         ).size,
       ).toBe(1);
-      expect(new Set(boxes.map((b) => Math.round(b.top))).size).toBe(2);
-      const body = await box(page, ".roster-body");
-      for (const b of boxes)
-        expect(
-          inside({ x: b.x, y: b.y, width: b.width, height: b.height }, body),
-        ).toBe(true);
+      await cards.last().scrollIntoViewIfNeeded();
+      expect(
+        inside(
+          await box(page, ".roster-card:last-child"),
+          await box(page, ".roster-body"),
+        ),
+      ).toBe(true);
+      await page
+        .locator(".roster-body")
+        .evaluate((e) => e.scrollTo({ top: 0 }));
       // You play Voltkit: its card is picked and marked, Select says Playing.
       await expect(
         page.locator('[data-roster-card="voltkit"]'),
@@ -84,12 +95,21 @@ for (const size of SIZES)
 
       // An element filter narrows the grid.
       await page.click('[data-roster-element="Fire"]');
-      expect(await cards.count()).toBeLessThan(8);
+      expect(await cards.count()).toBeLessThan(total);
       await measured(page, size, "filtered");
+      // The filter hid Voltkit: the first Fire fighter is picked instead.
+      await expect(
+        page.locator('.roster-card[aria-pressed="true"]'),
+      ).toHaveCount(1);
+      await expect(page.locator('[data-roster-card="voltkit"]')).toHaveCount(0);
       await page.click('[data-roster-element="All"]');
-      await expect(cards).toHaveCount(8);
+      await expect(cards).toHaveCount(total);
 
-      // Pick Cindrake, then Details: the fighter on the stage, the detail beside it.
+      // Pick Cindrake, then Details: the fighter on the stage, the detail
+      // beside it. (The Fire filter picked a Fire fighter, maybe Cindrake;
+      // a second click on the picked card would open it, so pick another
+      // first.)
+      await page.click('[data-roster-card="tidefin"]');
       await page.click('[data-roster-card="cindrake"]');
       await expect(page.locator("[data-roster-select]")).toBeEnabled();
       await page.click("[data-roster-details]");
@@ -116,12 +136,16 @@ for (const size of SIZES)
         await measured(page, size, tab);
         await snap(page, info, `fighter-${tab}-${size.name}`);
       }
-      // › steps to the next fighter on the stage.
+      // › steps to the next fighter: the live fighter follows (the stage is
+      // swapped and the preview re-attached, its canvas drawn again).
       await page.click(".roster-next");
-      await expect(rig).not.toHaveAttribute(
+      const nextRig = page.locator(".roster-stage .fighter-rig-stage");
+      await expect(nextRig).not.toHaveAttribute(
         "data-preview-champion",
         "cindrake",
       );
+      await expect(nextRig).toHaveClass(/is-ready/, { timeout: 60_000 });
+      await expect(nextRig.locator(":scope > canvas")).toHaveCount(1);
       // ‹ Roster goes back up; Escape leaves to the Lobby.
       await page.click("[data-roster-back]");
       await expect(room).toHaveAttribute("data-roster-mode", "grid");
@@ -190,11 +214,15 @@ test("keyboard: arrows move through the grid, Enter opens the detail, [ ] step f
   const second = page.locator(".roster-card").nth(1);
   await expect(second).toBeFocused();
   await expect(second).toHaveAttribute("aria-pressed", "true");
+  // One row down: as many cards on as the grid has columns.
+  const cols = await page
+    .locator(".roster-grid")
+    .evaluate((g) => getComputedStyle(g).gridTemplateColumns.split(" ").length);
   await page.keyboard.press("ArrowDown");
-  await expect(page.locator(".roster-card").nth(5)).toBeFocused();
+  await expect(page.locator(".roster-card").nth(1 + cols)).toBeFocused();
   const picked = await page
     .locator(".roster-card")
-    .nth(5)
+    .nth(1 + cols)
     .getAttribute("data-roster-card");
   await page.keyboard.press("Enter");
   await expect(page.locator(".roster-room")).toHaveAttribute(
@@ -254,5 +282,58 @@ test("reduced motion: the roster doesn't animate its cards", async ({
         ).length,
   );
   expect(moving).toBe(0);
+  expect(errors).toEqual([]);
+});
+
+test("a second click on the picked card opens its detail, however slow", async ({
+  page,
+}) => {
+  const errors = await openLobby(page);
+  await page.click('.lobby-rail [data-lobby-action="fighters"]');
+  await page.click('[data-roster-card="lumoth"]');
+  await page.waitForTimeout(900); // longer than a double-click
+  await page.click('[data-roster-card="lumoth"]');
+  await expect(page.locator(".roster-room")).toHaveAttribute(
+    "data-roster-mode",
+    "detail",
+  );
+  await expect(
+    page.locator(".roster-stage .fighter-rig-stage"),
+  ).toHaveAttribute("data-preview-champion", "lumoth");
+  expect(errors).toEqual([]);
+});
+
+test("Show all keeps keyboard focus in the roster", async ({ page }) => {
+  const errors = await openLobby(page);
+  await page.click('.lobby-rail [data-lobby-action="fighters"]');
+  // An element and range with no fighter, if the roster has one.
+  const elements = await page
+    .locator("[data-roster-element]")
+    .evaluateAll((bs) =>
+      bs
+        .map((b) => (b as HTMLElement).dataset.rosterElement!)
+        .filter((e) => e !== "All"),
+    );
+  let found = false;
+  for (const el of elements) {
+    for (const range of ["long", "close"]) {
+      await page.click(`[data-roster-element="${el}"]`);
+      await page.click(`[data-roster-range="${range}"]`);
+      if (await page.locator("[data-roster-reset]").count()) {
+        found = true;
+        break;
+      }
+    }
+    if (found) break;
+  }
+  test.skip(!found, "every element has fighters of both ranges");
+  await expect(page.locator("[data-roster-select]")).toBeDisabled();
+  await page.locator("[data-roster-reset]").focus();
+  await page.keyboard.press("Enter");
+  expect(
+    await page.evaluate(
+      () => !!document.activeElement?.closest(".roster-room"),
+    ),
+  ).toBe(true);
   expect(errors).toEqual([]);
 });

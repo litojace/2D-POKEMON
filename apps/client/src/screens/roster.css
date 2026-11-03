@@ -38,13 +38,11 @@
   padding: 0 8px;
   font: inherit;
 }
-/* Eight cards fill the panel: two rows on every size. */
-.roster-room[data-roster-mode="grid"] .roster-body {
-  grid-template-rows: minmax(0, 1fr);
-}
-.roster-grid {
-  height: 100%;
-  grid-auto-rows: minmax(0, 1fr);
+/* The whole roster (sixteen fighters and counting): cards of one size, as
+   many to a row as fit, the grid scrolls. */
+.ui-grid.roster-grid {
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  grid-auto-rows: 236px;
 }
 .roster-card {
   position: relative;
@@ -479,6 +477,10 @@
   .roster-elements .ui-chip svg {
     width: 13px;
     height: 13px;
+  }
+  .ui-grid.roster-grid {
+    grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+    grid-auto-rows: 104px;
   }
   .roster-card {
     padding: 5px;

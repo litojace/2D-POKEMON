@@ -44,7 +44,7 @@ test("fighter select shows one fighter, even with a skin on", async ({
   const [a, b] = await page
     .locator(".roster-card")
     .evaluateAll((els) =>
-      els.slice(4, 6).map((e) => (e as HTMLElement).dataset.rosterCard!),
+      els.slice(0, 2).map((e) => (e as HTMLElement).dataset.rosterCard!),
     );
   expect(Math.abs((await row(a)) - (await row(b)))).toBeLessThan(1);
   expect(Math.abs((await eyeLine(a)) - (await eyeLine(b)))).toBeLessThan(1.5);

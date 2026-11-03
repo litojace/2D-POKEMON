@@ -5,6 +5,7 @@ import { openHubPanel, type HubPanel } from "../ui/hub-panel";
 import { parse, patch } from "../ui/patch";
 import {
   rosterMarkup,
+  rosterOrder,
   rosterView,
   stepFighter,
   type RosterData,
@@ -49,6 +50,7 @@ const FOCUS_KEYS = [
   "data-roster-details",
   "data-roster-select",
   "data-roster-back",
+  "data-roster-reset",
 ];
 
 export function openRoster(
@@ -90,16 +92,28 @@ export function openRoster(
       for (const name of Array.from(next.attributes))
         root().setAttribute(name.name, name.value);
       root().replaceChildren(...Array.from(next.cloneNode(true).childNodes));
-    } else patch(root(), template, next);
+    } else
+      // The rig stage holds the preview's canvas: swap it whole when its
+      // fighter changes, so the preview is re-attached (afterRender).
+      patch(
+        root(),
+        template,
+        next,
+        ".shop-live-stage, .raid-cosmetic-preview, .fighter-rig-stage",
+      );
     template = next;
     if (resetScroll)
       q<HTMLElement>("[data-roster-region=body]")?.scrollTo({ top: 0 });
+    // Focus stays on the control it was on (a reorder can move a card), or
+    // goes to the picked card, then the next action, never to the page.
     const active = document.activeElement as HTMLButtonElement | null;
-    if (key && (!root().contains(active) || active?.disabled)) {
+    if (key && (!active?.matches(key) || active.disabled)) {
       const same = q<HTMLButtonElement>(key);
       (same && !same.disabled
         ? same
-        : (q<HTMLElement>(".ui-panel-foot .ui-btn:not([disabled])") ?? root())
+        : (q<HTMLElement>('.roster-card[aria-pressed="true"]') ??
+          q<HTMLElement>(".ui-panel-foot .ui-btn:not([disabled])") ??
+          root())
       ).focus({ preventScroll: true });
     }
     afterRender();
@@ -134,6 +148,11 @@ export function openRoster(
     }
   }
 
+  /** A filter hid the picked fighter: pick the first one shown. */
+  const keepPick = () => {
+    const shown = rosterOrder(view, data());
+    if (shown.length && !shown.includes(view.focus)) view.focus = shown[0];
+  };
   const select = (c: CharacterId) => {
     hooks.choose(c);
     panel.close();
@@ -145,15 +164,19 @@ export function openRoster(
     let scroll = false;
     if (d.rosterCard) {
       const c = d.rosterCard as CharacterId;
-      // A second tap on the picked card opens its detail.
-      if (view.focus === c && event.detail > 1) {
+      // A second click or tap on the picked card opens its detail.
+      if (view.focus === c) {
         view.mode = "detail";
         scroll = true;
       }
       view.focus = c;
-    } else if (d.rosterElement) view.element = d.rosterElement;
-    else if (d.rosterRange) view.range = d.rosterRange as RosterRange;
-    else if (d.rosterReset !== undefined) {
+    } else if (d.rosterElement) {
+      view.element = d.rosterElement;
+      keepPick();
+    } else if (d.rosterRange) {
+      view.range = d.rosterRange as RosterRange;
+      keepPick();
+    } else if (d.rosterReset !== undefined) {
       view.element = "All";
       view.range = "any";
     } else if (d.rosterDetails) {

@@ -227,17 +227,22 @@ function gridMarkup(view: RosterView, d: RosterData) {
   const cards = rosterOrder(view, d);
   const focus = CHARACTERS[view.focus];
   const body = cards.length
-    ? `<div class="ui-grid roster-grid" style="--cols:4" role="group" aria-label="Fighters">${cards.map((c) => card(c, view, d)).join("")}</div>`
+    ? `<div class="ui-grid roster-grid" role="group" aria-label="Fighters">${cards.map((c) => card(c, view, d)).join("")}</div>`
     : `<div class="ui-empty" role="status"><b>No fighters match</b><span>Try another element or range.</span>${button("Show all", { size: "s", attrs: { "data-roster-reset": true } })}</div>`;
   const lock = d.action === "lock";
   const chosen = view.focus === d.playing;
+  // Nothing shown (a filter): nothing to act on either.
+  const none = !cards.length;
   const foot = actionBar(
     `${avatar(fighterAvatar(view.focus, "roster-foot", d.looks[view.focus]), { element: focus.element })}<span class="roster-foot-text"><small class="ui-note">${chosen ? "You play as" : "Picked"}</small><b class="ui-h">${esc(focus.name)}</b></span>`,
     actions(
-      button("Details", { attrs: { "data-roster-details": view.focus } }),
+      button("Details", {
+        disabled: none,
+        attrs: { "data-roster-details": view.focus },
+      }),
       button(lock ? "Lock in" : chosen ? "Playing" : "Select", {
         kind: "primary",
-        disabled: !lock && chosen,
+        disabled: none || (!lock && chosen),
         attrs: { "data-roster-select": view.focus },
       }),
     ),
