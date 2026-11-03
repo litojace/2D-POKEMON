@@ -52,11 +52,13 @@ window.fetch = async (input, init) => {
     if (url.pathname === "/api/health") return Response.json({ ok: true });
     // Tests can set window.__missions (before load, or then refresh the
     // economy) to give the player today's missions, and window.__friends to
-    // give them friends and requests.
+    // give them friends and requests, and window.__raids for their raid
+    // progress (its loadout is the equipped raid look).
     const w = window as unknown as {
       __missions?: unknown[];
       __plazaProgress?: unknown;
       __friends?: unknown;
+      __raids?: unknown;
       __serverTime?: number;
     };
     const missions = w.__missions;
@@ -67,7 +69,9 @@ window.fetch = async (input, init) => {
           ? w.__plazaProgress
           : url.pathname === "/api/friends" && w.__friends
             ? w.__friends
-            : API[url.pathname];
+            : url.pathname === "/api/raids" && w.__raids
+              ? w.__raids
+              : API[url.pathname];
     // window.__serverTime: the server's clock, sent as the real server does
     // (X-Server-Time); otherwise no header, so the device clock is used.
     const headers: Record<string, string> = { "Content-Type": "application/json" };

@@ -10,11 +10,11 @@ import {
   type Journey,
 } from "../../../packages/shared/src/journey";
 import type { Economy } from "../../../packages/shared/src/shop";
+import type { RaidLoadout } from "../../../packages/shared/src/raid";
 import { menuIcon } from "./menu-icons";
 import { fighterStageArt, wornSkin } from "./fighter-selection";
 import { lowGraphics } from "./graphics-quality";
 import type { ShopPreviewHandle } from "./shop-preview";
-import { fighterArt } from "./fighter-art";
 import { elementIcon } from "./element-icons";
 import { picksCountdown } from "./shop-ui";
 import "./lobby.css";
@@ -138,6 +138,10 @@ export interface LobbyPartyMember {
   name: string;
   character: CharacterId;
   leader: boolean;
+  /** The Shop skin saved on that champion (from their account). */
+  skin?: { skin: string; stage: number } | null;
+  /** Their equipped raid look: colours, aura, entrance, frame. */
+  look?: RaidLoadout;
 }
 export interface LobbyView {
   character: CharacterId;
@@ -146,6 +150,8 @@ export interface LobbyView {
   /** Party size including you (0: no party). */
   partySize: number;
   economy?: Economy;
+  /** Your equipped raid look (colours, aura...), shown on your fighter. */
+  look?: RaidLoadout;
   /** Friend requests waiting for an answer. */
   friendRequests: number;
   /** Friends online right now (null: not loaded). */
@@ -178,11 +184,18 @@ function modeButton(mode: LobbyMode) {
   return `<span class="lobby-mode-icon">${menuIcon(m.icon)}</span><span class="lobby-mode-text"><b>${m.label}</b><small>${m.hint}</small></span><span class="lobby-mode-caret" aria-hidden="true">▴</span>`;
 }
 
-/** A party slot: a friend's fighter, or a way to invite one. */
-export function slotMarkup(member: LobbyPartyMember | undefined) {
+const lookData = (look: RaidLoadout | undefined) =>
+  encodeURIComponent(JSON.stringify(look ?? {}));
+/**
+ * A party seat: a friend's fighter in their saved skin and look (the same
+ * live rig as yours, laid over still artwork), or a way to invite one. Both
+ * stand on a podium on the stage's floor, like your fighter.
+ */
+export function slotMarkup(member: LobbyPartyMember | undefined, seat = 0) {
   if (!member)
-    return `<button type="button" class="lobby-slot" data-lobby-action="invite" aria-label="Invite a friend to your party"><span aria-hidden="true">+</span><small>Invite</small></button>`;
-  return `<figure class="lobby-member" style="--element:${hex(CHARACTERS[member.character].color)}" aria-label="${escape(member.name)}${member.leader ? ", party leader" : ""}"><span class="lobby-member-art">${fighterArt(member.character, "20 0 160 160")}</span><figcaption>${member.leader ? '<b class="lobby-crown" aria-hidden="true">♛</b>' : ""}${escape(member.name)}</figcaption></figure>`;
+    return `<button type="button" class="lobby-slot" data-lobby-action="invite" aria-label="Invite a friend to your party"><span aria-hidden="true">+</span><small>Invite</small></button><span class="lobby-podium is-open" aria-hidden="true"></span>`;
+  const skin = member.skin ?? null;
+  return `<figure class="lobby-member" style="--element:${hex(CHARACTERS[member.character].color)}" aria-label="${escape(member.name)}${member.leader ? ", party leader" : ""}"><div class="lobby-member-art fighter-rig-stage" data-preview-champion="${member.character}" data-preview-item="${escape(skin?.skin ?? "")}" data-preview-stage="${skin?.stage ?? 1}" data-preview-look="${lookData(member.look)}" data-preview-action="idle">${fighterStageArt(member.character, `lobby-seat-${seat}`, skin)}</div><span class="lobby-podium" aria-hidden="true"></span><figcaption>${member.leader ? '<b class="lobby-crown" aria-hidden="true">♛</b>' : ""}${escape(member.name)}</figcaption></figure>`;
 }
 /** The Journey card: season tier, the next cosmetic, today's Daily Spark. */
 export function journeyCard(j: Journey | undefined) {
@@ -219,7 +232,9 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   let rig: ShopPreviewHandle | undefined;
   let rigLoading = false;
   let closed = false;
-  let partyKey: string | undefined;
+  /** Each seat's live rig, and what it shows. */
+  const seatRigs: (ShopPreviewHandle | undefined)[] = [];
+  const seatKeys: (string | undefined)[] = [];
   layer.innerHTML = `<div class="lobby-backdrop" aria-hidden="true"></div>
 <nav class="lobby-rail" aria-label="Main menu">${RAIL.map(
     ([id, label, icon]) =>
@@ -343,6 +358,26 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     );
     layer.classList.toggle("is-covered", covered);
     rig?.suspend(covered);
+    for (const seat of seatRigs) seat?.suspend(covered);
+  };
+  /** A friend in a seat moves like your fighter (not on Low graphics). */
+  const mountSeatRig = (seat: number) => {
+    if (closed || lowGraphics()) return;
+    const key = seatKeys[seat];
+    void import("./shop-preview")
+      .then(({ mountShopPreview }) => {
+        const figure = $(`lobby-slot-${seat}`).querySelector<HTMLElement>(
+          ".lobby-member",
+        );
+        // Closed, or the seat changed again while the renderer loaded.
+        if (closed || !figure || seatKeys[seat] !== key || seatRigs[seat])
+          return;
+        seatRigs[seat] = mountShopPreview(figure, "selection");
+        seatRigs[seat]!.suspend(layer.classList.contains("is-covered"));
+      })
+      .catch(() => {
+        // The still artwork stays when the renderer can't load.
+      });
   };
   const mountRig = () => {
     if (rig || rigLoading || closed || lowGraphics()) return;
@@ -370,7 +405,8 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   return {
     update(view) {
       const skin = wornSkin(view.character);
-      const key = `${view.character}|${skin?.skin ?? ""}|${skin?.stage ?? 1}`;
+      const look = lookData(view.look);
+      const key = `${view.character}|${skin?.skin ?? ""}|${skin?.stage ?? 1}|${look}`;
       if (key !== artKey) {
         artKey = key;
         const fighter = CHARACTERS[view.character];
@@ -380,6 +416,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         art.dataset.previewChampion = view.character;
         art.dataset.previewItem = skin?.skin ?? "";
         art.dataset.previewStage = String(skin?.stage ?? 1);
+        art.dataset.previewLook = look;
         $("lobby-fighter-name").textContent = fighter.name;
         $("lobby-fighter-element").innerHTML =
           `${elementIcon(fighter.element)}${fighter.element}`;
@@ -388,18 +425,21 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         if (rig) rig.update($("lobby-fighter"), "selection");
         else mountRig();
       }
-      const slots = view.party
-        .map((m) => JSON.stringify([m.name, m.character, m.leader]))
-        .join("|");
-      if (slots !== partyKey) {
-        partyKey = slots;
-        for (let i = 0; i < 3; i++)
-          $(`lobby-slot-${i}`).innerHTML = slotMarkup(view.party[i]);
-        // One seat on each side keeps the stage even; the third seat (above
-        // the right one) appears once both are taken. The server still
-        // allows four players, and Friends can invite at any time.
-        $("lobby-slot-2").hidden = view.party.length < 2;
+      // Only a seat whose friend (or look) changed is drawn again.
+      for (let i = 0; i < 3; i++) {
+        const member = view.party[i];
+        const seatKey = JSON.stringify(member ?? null);
+        if (seatKey === seatKeys[i]) continue;
+        seatKeys[i] = seatKey;
+        seatRigs[i]?.();
+        seatRigs[i] = undefined;
+        $(`lobby-slot-${i}`).innerHTML = slotMarkup(member, i);
+        if (member) mountSeatRig(i);
       }
+      // One seat on each side keeps the stage even; the third seat (above
+      // the right one) appears once both are taken. The server still allows
+      // four players, and Friends can invite at any time.
+      $("lobby-slot-2").hidden = view.party.length < 2;
       $("lobby-party-bar").hidden = view.partySize < 2;
       $("lobby-party-size").textContent = `Party · ${view.partySize}/4`;
       const leaves = view.economy?.leaves?.balance;
@@ -431,6 +471,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       closed = true;
       rig?.();
       rig = undefined;
+      for (const seat of seatRigs.splice(0)) seat?.();
       clearTimeout(bubbleTimer);
       coverWatch.disconnect();
       layer.removeEventListener("keydown", onKey);

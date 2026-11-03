@@ -1,4 +1,6 @@
 import { randomInt } from "node:crypto";
+import type { RaidLoadout } from "../../../packages/shared/src/raid.js";
+import type { ChampionLook } from "../../../packages/shared/src/shop.js";
 
 /**
  * Parties before a room (hub redesign phase 2b). Friends gather on the Lobby
@@ -12,6 +14,15 @@ export interface PartyMember {
   id: string;
   name: string;
   character: string;
+}
+/**
+ * A member's saved, public appearance: the Shop skin worn on each champion
+ * and the equipped raid look (colours, aura, entrance, frame, victory).
+ * Read from the member's own account, never taken from the client.
+ */
+export interface PartyAppearance {
+  looks: Partial<Record<string, ChampionLook>>;
+  look: RaidLoadout;
 }
 export interface Party {
   /** Six characters, so an invitation looks like a room invitation. */
@@ -34,6 +45,7 @@ export class Parties {
   private byAccount = new Map<string, string>();
   private invites = new Map<string, Invite>();
   private cooldowns = new Map<string, number>();
+  private appearances = new Map<string, PartyAppearance>();
 
   of(accountId: string) {
     const code = this.byAccount.get(accountId);
@@ -140,16 +152,37 @@ export class Parties {
     if (!party) return undefined;
     party.members = party.members.filter((m) => m.id !== accountId);
     this.byAccount.delete(accountId);
+    this.appearances.delete(accountId);
     if (party.leader === accountId && party.members[0])
       party.leader = party.members[0].id;
     if (party.members.length <= 1) {
-      for (const m of party.members) this.byAccount.delete(m.id);
+      for (const m of party.members) {
+        this.byAccount.delete(m.id);
+        this.appearances.delete(m.id);
+      }
       this.parties.delete(party.code);
       for (const [key, invite] of this.invites)
         if (invite.code === party.code) this.invites.delete(key);
       return { party, disbanded: party };
     }
     return { party };
+  }
+  /** A member's saved appearance, as loaded from their account. */
+  appearanceOf(accountId: string) {
+    return this.appearances.get(accountId);
+  }
+  /**
+   * Keep a member's saved appearance while they are in a party. Returns the
+   * party to broadcast when it changed what the others see.
+   */
+  setAppearance(accountId: string, appearance: PartyAppearance) {
+    const party = this.of(accountId);
+    if (!party) return undefined;
+    const before = this.appearances.get(accountId);
+    this.appearances.set(accountId, appearance);
+    return JSON.stringify(before) === JSON.stringify(appearance)
+      ? undefined
+      : party;
   }
   /** The fighter a member stands as on the others' Lobby stage. */
   setCharacter(accountId: string, character: string) {

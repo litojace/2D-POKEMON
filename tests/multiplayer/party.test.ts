@@ -70,6 +70,7 @@ async function setup() {
     return { s, parties, invites, follows };
   };
   return {
+    accounts,
     lead,
     pal,
     third,
@@ -122,6 +123,89 @@ it("forms a party from a friend's invitation and shows everyone's fighter", asyn
   // Strangers get nothing.
   expect(f.x.invites).toEqual([]);
   expect(f.x.parties).toEqual([]);
+});
+
+it("shows each member in the skin and look saved on their own account", async () => {
+  const f = await setup();
+  // What each account has saved: Shop skins by champion, and a raid look.
+  const saved = new Map<string, { looks: unknown; progress: unknown }>([
+    [
+      f.lead.token,
+      {
+        looks: { voltkit: { skin: "voltkit-storm", stage: 2 } },
+        progress: { loadout: { aura: "mountain-aura", frame: "ember-frame" } },
+      },
+    ],
+    [
+      f.pal.token,
+      { looks: { lumoth: { skin: "lumoth-moon", stage: 1 } }, progress: {} },
+    ],
+  ]);
+  const friends = f.accounts.provider.rpc;
+  const reads: string[] = [];
+  f.accounts.provider.rpc = async (token, name, args) => {
+    if (name === "arena_my_looks" || name === "arena_raid_progress") {
+      reads.push(`${name}:${token === f.lead.token ? "lead" : "pal"}`);
+      const own = saved.get(token);
+      return name === "arena_my_looks" ? own?.looks : own?.progress;
+    }
+    return friends(token, name, args);
+  };
+  // A look in the request is refused: only the account's own save counts.
+  expect(
+    (
+      await request(f.a.s, "party-invite", {
+        playerId: f.pal.account.id,
+        character: "voltkit",
+        skin: { skin: "forged", stage: 3 },
+      })
+    ).ok,
+  ).toBe(false);
+  await request(f.a.s, "party-invite", {
+    playerId: f.pal.account.id,
+    character: "voltkit",
+  });
+  await settle();
+  await request(f.b.s, "party-accept", {
+    code: f.b.invites.at(-1)!.code,
+    character: "tidefin",
+  });
+  await settle();
+  const member = (who: typeof f.a, id: string) =>
+    who.parties.at(-1)!.members.find((m) => m.id === id);
+  expect(member(f.b, f.lead.account.id)).toMatchObject({
+    character: "voltkit",
+    skin: { skin: "voltkit-storm", stage: 2 },
+    look: { aura: "mountain-aura", frame: "ember-frame" },
+  });
+  // No skin saved on that champion: the original look.
+  expect(member(f.a, f.pal.account.id)).toMatchObject({
+    character: "tidefin",
+    skin: null,
+    look: {},
+  });
+  // Switching champion shows the skin saved on the new one.
+  f.b.s.emit("party-character", { character: "lumoth" });
+  await settle();
+  expect(member(f.a, f.pal.account.id)?.skin).toEqual({
+    skin: "lumoth-moon",
+    stage: 1,
+  });
+  // After a new save, a ping reads it again from the account.
+  saved.get(f.lead.token)!.looks = {
+    voltkit: { skin: "voltkit-sun", stage: 1 },
+  };
+  f.a.s.emit("party-look", { skin: "ignored" });
+  await settle();
+  expect(member(f.b, f.lead.account.id)?.skin).toEqual({
+    skin: "voltkit-sun",
+    stage: 1,
+  });
+  // Someone outside a party reads nothing.
+  const before = reads.length;
+  f.x.s.emit("party-look", {});
+  await settle();
+  expect(reads.length).toBe(before);
 });
 
 it("refuses strangers, forged codes, unknown fighters and players already in a room", async () => {

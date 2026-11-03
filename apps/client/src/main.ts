@@ -1298,6 +1298,8 @@ const roomInvites = new RoomInvites({
 let party: PartyState = null;
 let partyRoomSent = "";
 let partyCharacterSent = "";
+/** Your saved look as the party last saw it (see syncParty). */
+let partyLookSeen: string | undefined;
 const partyLeader = () =>
   !!party && party.leader === accountsUI?.account?.id;
 async function acceptParty(code: string) {
@@ -1362,11 +1364,24 @@ async function showPartyInvite() {
 }
 /** Keep the party in step: your fighter, and your room when you lead. */
 function syncParty() {
-  if (!party || party.members.length < 2) return;
+  if (!party || party.members.length < 2) {
+    partyLookSeen = undefined;
+    return;
+  }
   if (!myId && partyCharacterSent !== selected) {
     partyCharacterSent = selected;
     socket.emit("party-character", { character: selected });
   }
+  // You saved a new look (Wardrobe, Shop): the server reads it again from
+  // your account, so your friends see it on their Lobby. The server loads it
+  // anyway when you join, so the first look is only remembered.
+  const look = JSON.stringify([
+    accountsUI.economy?.looks ?? null,
+    accountsUI.raidLook ?? null,
+  ]);
+  if (partyLookSeen !== undefined && partyLookSeen !== look)
+    socket.emit("party-look");
+  partyLookSeen = look;
   if (
     myId &&
     partyLeader() &&
@@ -1751,8 +1766,11 @@ function lobbyView() {
           ? m.character
           : "voltkit") as CharacterId,
         leader: m.id === party!.leader,
+        skin: m.skin ?? null,
+        look: m.look ?? {},
       })),
     partySize: party?.members.length ?? 0,
+    look: accountsUI.raidLook ?? {},
     economy: accountsUI.economy ?? undefined,
     friendRequests: lobbyFriends.requests,
     friendsOnline: lobbyFriends.online,

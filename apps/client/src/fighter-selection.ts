@@ -27,16 +27,19 @@ export const wornSkin = (id: CharacterId) => worn[id];
  * visual presence as the other portraits. The sprout remains inside frame. */
 const rosterPortraitFrame = (id?: string) =>
   id === "terradon" ? "30 3 140 140" : "22 -8 156 156";
-function art(id: CharacterId, large = false, aura = false, scopeName?: string) {
+type WornSkin = { skin: string; stage: number } | null | undefined;
+function art(
+  id: CharacterId,
+  large = false,
+  aura = false,
+  scopeName?: string,
+  skin: WornSkin = worn[id],
+) {
   const pack = fighterPack(id);
   if (pack && pack.kind !== "layered")
     return `<img class="creature-portrait" loading="lazy" decoding="async" src="/assets/fighters/${id}/${large ? pack.selection : pack.portrait}" alt="${CHARACTERS[id].name}">`;
   // Card and detail portrait of the same fighter need their own ids.
-  const svg = fighterArt(
-    id,
-    large ? undefined : rosterPortraitFrame(id),
-    worn[id],
-  );
+  const svg = fighterArt(id, large ? undefined : rosterPortraitFrame(id), skin);
   const framed = large ? withSoftGround(svg, id) : svg;
   const scope = scopeName ?? (large ? "detail" : "card");
   const full = aura ? withAura(framed, id, still()) : framed;
@@ -54,9 +57,14 @@ function art(id: CharacterId, large = false, aura = false, scopeName?: string) {
  */
 export const RIG_FRAME = "-20 -40 240 250";
 /** The large fighter art with its worn skin and aura, for a stage (the
- * Lobby's, the roster's). Each stage needs its own `scope` for its ids. */
-export function fighterStageArt(id: CharacterId, scope = "lobby") {
-  return art(id, true, true, scope)
+ * Lobby's, the roster's). Each stage needs its own `scope` for its ids.
+ * `skin`: another player's skin (a party member's); null for none. */
+export function fighterStageArt(
+  id: CharacterId,
+  scope = "lobby",
+  skin: WornSkin = worn[id],
+) {
+  return art(id, true, true, scope, skin)
     .split(`viewBox="${CREATURE_VIEWBOX}"`)
     .join(`viewBox="${RIG_FRAME}"`);
 }
