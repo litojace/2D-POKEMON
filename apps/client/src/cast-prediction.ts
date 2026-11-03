@@ -1,10 +1,14 @@
-import { skillReady, type Fighter } from "../../../packages/shared/src/index";
+import {
+  DISABLING_STATUSES,
+  skillReady,
+  type Fighter,
+} from "../../../packages/shared/src/index";
 
 /**
  * Predicted casts: your own basic attack and skills start on the key press
  * instead of one network round trip later. The client checks the same
  * conditions the server does (cooldown or meter ready, recovered from the
- * last move, not stunned, frozen or asleep, not winding up a charge), plays
+ * last move, not stunned, frozen, asleep or in a shell, not winding up a charge), plays
  * the animation and sound at once, and remembers the prediction. When the
  * server's "cast" event for it arrives, the echo is not played again; if it
  * never arrives (the server refused), the prediction expires and its
@@ -14,7 +18,7 @@ import { skillReady, type Fighter } from "../../../packages/shared/src/index";
 export type CastAction =
   "basic" | "skill0" | "skill1" | "skill2" | "skill3" | "dash" | "charge";
 
-const DISABLING = ["stun", "freeze", "sleep"];
+const DISABLING: string[] = DISABLING_STATUSES;
 
 function canAct(p: Fighter, time: number) {
   return (

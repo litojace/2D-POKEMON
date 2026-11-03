@@ -17,7 +17,10 @@ it("gives every rite its skill's own icon and an effect badge", () => {
   // Majors that change how a move works read as a new move or effect.
   const thunder = RITES.find((r) => r.name === "Thunderhead")!;
   expect(riteEffect(thunder)).toBe("transform");
-  const lockdown = RITES.find((r) => r.name === "Lockdown Grid")!;
-  expect(riteEffect(lockdown)).toBe("status");
+  const mindLock = RITES.find((r) => r.name === "Mind Lock")!;
+  expect(riteEffect(mindLock)).toBe("status");
+  // A lantern that shoots twice as often reads as more shots.
+  const bright = RITES.find((r) => r.name === "Bright Lantern")!;
+  expect(riteEffect(bright)).toBe("count");
   expect(riteEffect(RITES.find((r) => r.name === "Quick Lance")!)).toBe("cooldown");
 });

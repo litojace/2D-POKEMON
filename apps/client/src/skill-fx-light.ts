@@ -95,7 +95,7 @@ function glint(g: G, pr: Projectile, now: number) {
   fx.trail(`gl${pr.id}`, 0.03, () => glitter(fx, x, pr.y, 1, c, 0.3));
 }
 
-// ───────────── Starfall Spray: five falling stars ─────────────
+// ───────────── Wing Dust: five glittering motes ─────────────
 function fallingStar(g: G, pr: Projectile, now: number) {
   const fx = fxFor(g.scene),
     r = pr.ability.radius,
@@ -138,7 +138,7 @@ function starImpact(
   });
 }
 
-// ───────────── Dust Strike: a wingbeat of glittering dust ─────────────
+// ───────────── Eyespot Flash: a wingbeat of glittering dust, then the eyespots ─────────────
 function dustStrike(
   scene: Phaser.Scene,
   a: Ability,
@@ -208,6 +208,41 @@ function dustStrike(
 }
 
 // ───────────── Kindle: a halo lights up ─────────────
+/**
+ * Eyespot Flash: two big eyespots open on the wings in front of Lumoth and
+ * flare, then a startle wave sweeps the arc that stuns (the ability's arc
+ * and range).
+ */
+function eyespotFlash(
+  scene: Phaser.Scene,
+  a: Ability,
+  x: number,
+  y: number,
+  angle: number,
+  color: number,
+  shot: Shot,
+) {
+  dustStrike(scene, a, x, y, angle, color, shot);
+  const fx = fxFor(scene),
+    cy = y - 22;
+  shot(fx.reduced ? 200 : 460, (k) => {
+    const open = Math.min(1, k / 0.25),
+      fade = k > 0.55 ? 1 - (k - 0.55) / 0.45 : 1,
+      r = 20 * open;
+    for (const side of [-1, 1]) {
+      const ex = x + Math.cos(angle + side * 0.8) * 46,
+        ey = cy + Math.sin(angle + side * 0.8) * 30;
+      fx.solid.fillStyle(INK, 0.5 * fade).fillCircle(ex, ey, r * 1.25);
+      fx.solid.fillStyle(CREAM, fade).fillCircle(ex, ey, r);
+      fx.solid.fillStyle(GOLD, fade).fillCircle(ex, ey, r * 0.7);
+      fx.solid.fillStyle(INK, fade).fillCircle(ex, ey, r * 0.4);
+      fx.solid
+        .fillStyle(0xffffff, fade)
+        .fillCircle(ex - r * 0.15, ey - r * 0.18, r * 0.14);
+      fx.glow(ex, ey, r * 3, GOLD, 0.5 * fade);
+    }
+  });
+}
 function kindle(
   scene: Phaser.Scene,
   _a: Ability,
@@ -380,15 +415,15 @@ function lightHit(
 }
 
 export const lightKit: FxKit = {
-  projectile: { glint, "starfall-spray": fallingStar },
+  projectile: { glint, "wing-dust": fallingStar },
   windup: { "radiant-flare": flareWindup },
   cast: {
     glint: lightCast,
-    "starfall-spray": lightCast,
-    "dust-strike": dustStrike,
+    "wing-dust": lightCast,
+    "eyespot-flash": eyespotFlash,
     kindle,
     "radiant-flare": radiantFlare,
   },
-  impact: { glint: starImpact, "starfall-spray": starImpact },
+  impact: { glint: starImpact, "wing-dust": starImpact },
   hit: { light: lightHit },
 };

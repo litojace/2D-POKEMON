@@ -120,7 +120,7 @@ export const RAID_ATTACKS: Record<
   },
   glare: {
     name: "Glare",
-    tip: "Aim away from the boss when the eye warning fills. On touch, hold Look away. Mystowl\u2019s Ward protects allies inside.",
+    tip: "Aim away from the boss when the eye warning fills. On touch, hold Look away. Mystowl\u2019s Wing Cloak shelters allies inside.",
     practice:
       "Turn away before the white crest flashes to avoid 1.5 seconds of blindness.",
   },
@@ -142,7 +142,7 @@ export const RAID_ATTACKS: Record<
   },
   "dive-bomb": {
     name: "Dive Bomb",
-    tip: "Sidestep the locked lane. The dive leaves a burning trail for 4 seconds. Auralynx can reflect it with Mirror Guard.",
+    tip: "Sidestep the locked lane. The dive leaves a burning trail for 4 seconds. Auralynx can reflect it with Facet Guard.",
     practice:
       "A locked lane marks the dive. Step sideways; avoid the burning trail.",
   },
@@ -163,7 +163,7 @@ export const RAID_ATTACKS: Record<
   },
   "scorched-earth": {
     name: "Scorched Earth",
-    tip: "Avoid growing fire patches. Grounding Emberwing shrinks all fire; Tidefin\u2019s Whirlpool extinguishes nearby patches.",
+    tip: "Avoid growing fire patches. Grounding Emberwing shrinks all fire; Tidefin\u2019s Eddy extinguishes nearby patches.",
     practice: "Fire patches grow over time. Ground the boss to shrink them.",
   },
   "heat-mark": {
@@ -180,7 +180,7 @@ export const RAID_ATTACKS: Record<
   },
   "link-beam": {
     name: "Link Beam",
-    tip: "Jump across the bright ribbon or leave its path. From phase 2 copper posts bend it. Mirror Guard reflects it into a twin.",
+    tip: "Jump across the bright ribbon or leave its path. From phase 2 copper posts bend it. Facet Guard reflects it into a twin.",
     practice:
       "The ribbon brightens, then sweeps. Jump across it or stay clear.",
   },
@@ -201,7 +201,7 @@ export const RAID_ATTACKS: Record<
   },
   polarity: {
     name: "Polarity",
-    tip: "Stand within 125px of an opposite sign before the 4-second timer ends. Same signs together take double damage. Solo: enter your opposite-sign floor pad. Terradon\u2019s Hibernate blocks the blast.",
+    tip: "Stand within 125px of an opposite sign before the 4-second timer ends. Same signs together take double damage. Solo: enter your opposite-sign floor pad. Terradon\u2019s Shell Up blocks the blast.",
     practice: "Pair with an opposite sign. Solo: reach the matching floor pad.",
   },
   thunderclap: {
@@ -226,7 +226,7 @@ export const RAID_ATTACKS: Record<
   },
   volley: {
     name: "Rock Volley",
-    tip: "Get out of the cone or put a pillar between you and the boss. Auralynx's Mirror Guard blocks it.",
+    tip: "Get out of the cone or put a pillar between you and the boss. Auralynx's Facet Guard blocks it.",
     practice: "A cone of stones. Leave it or hide behind a pillar.",
   },
   eruption: {
@@ -403,7 +403,7 @@ export const GRUMBLECRAG = {
     radius: 125,
     delay: 3.2,
     soloLock: 1.1,
-    /** Ward (or any shield) inside the stack cuts everyone's share. */
+    /** Wing Cloak (or any shield) inside the stack cuts everyone's share. */
     wardReduction: 0.35,
   },
 } as const;
@@ -528,7 +528,7 @@ export const GLOOMSHADE = {
   exposeSeconds: 5,
   /** Voltkit's Ball Lightning lights its landing spot this long. */
   sparkLight: 3,
-  /** Mystowl's Focus Ray and Duskveil's Curse Mark reveal the real one. */
+  /** Mystowl's Third-Eye Ray and Duskveil's Haunted Lantern reveal the real one. */
   revealRay: 4,
   revealMark: 6,
 } as const;
@@ -659,11 +659,11 @@ export const RAID_PERKS: Partial<
   >
 > = {
   auralynx: {
-    skill: "Mirror Guard",
+    skill: "Facet Guard",
     text: "Blocks Rock Volley completely and staggers the boss.",
   },
   mystowl: {
-    skill: "Ward",
+    skill: "Wing Cloak",
     text: "Up inside a Shared Meteor, it cuts the damage for everyone by 35%.",
   },
   terradon: {
@@ -692,8 +692,8 @@ export const RAID_BOSS_PERKS: Partial<
       text: "For 4 seconds, light reaching you fans out through nearby allies.",
     },
     mystowl: {
-      skill: "Ward",
-      text: "Your ward protects nearby allies from Glare.",
+      skill: "Wing Cloak",
+      text: "Your wing cloak shelters nearby allies from Glare.",
     },
     duskveil: {
       skill: "Void Orb",
@@ -702,20 +702,20 @@ export const RAID_BOSS_PERKS: Partial<
   },
   emberwing: {
     cindrake: {
-      skill: "Blaze Whirl",
-      text: "Your flames light any brazier they touch, including while you move.",
+      skill: "Heat Cracks",
+      text: "Your heat lights any brazier it touches, including while you move.",
     },
     tidefin: {
-      skill: "Whirlpool",
+      skill: "Eddy",
       text: "Your water extinguishes fire patches and dive trails where it lands.",
     },
     auralynx: {
-      skill: "Mirror Guard",
+      skill: "Facet Guard",
       text: "Reflecting a Dive Bomb adds 20 stagger to Emberwing.",
     },
     lumoth: {
-      skill: "Starfall Spray",
-      text: "Your stars deal full damage to an airborne Emberwing.",
+      skill: "Wing Dust",
+      text: "Your wing dust deals full damage to an airborne Emberwing.",
     },
   },
   "storm-twins": {
@@ -724,12 +724,12 @@ export const RAID_BOSS_PERKS: Partial<
       text: "Absorb Chain Lightning: it stops on you and grants 15 ultimate charge.",
     },
     auralynx: {
-      skill: "Mirror Guard",
+      skill: "Facet Guard",
       text: "Reflect Link Beam into a twin for 20 extra stagger.",
     },
     terradon: {
-      skill: "Hibernate",
-      text: "Your sleeping shell blocks Polarity damage.",
+      skill: "Shell Up",
+      text: "Your closed shell blocks Polarity damage.",
     },
     duskveil: {
       skill: "Void Orb",
@@ -747,8 +747,8 @@ export const RAID_BOSS_PERKS: Partial<
       text: "Pops a Bubble Prison in one hit.",
     },
     tidefin: {
-      skill: "Mirror Mist",
-      text: "While your clone is out, the dive ripple follows the clone instead of you.",
+      skill: "Tide Double",
+      text: "While your double is out, the dive ripple follows it instead of you.",
     },
     terradon: {
       skill: "Tremor",
@@ -765,25 +765,25 @@ export const RAID_BOSS_PERKS: Partial<
       text: "Relights lanterns nearby and cleanses curses from allies around you.",
     },
     mystowl: {
-      skill: "Focus Ray",
+      skill: "Third-Eye Ray",
       text: "Passes through copies: aimed at the real Gloomshade, it marks it for everyone.",
     },
     duskveil: {
-      skill: "Curse Mark",
-      text: "Aimed at the real Gloomshade, it reveals it to the team for 6 seconds.",
+      skill: "Haunted Lantern",
+      text: "Hung near the real Gloomshade, its light reveals it to the team for 6 seconds.",
     },
   },
   somnara: {
     cindrake: {
-      skill: "Ember Gust",
+      skill: "Crest Flare",
       text: "Wakes every sleeping ally caught in the cone, without hurting them.",
     },
     tidefin: {
-      skill: "Mirror Mist",
-      text: "Your clone can enter a rune pad and count as a step.",
+      skill: "Tide Double",
+      text: "Your double can enter a rune pad and count as a step.",
     },
     mystowl: {
-      skill: "Thoughtstrike",
+      skill: "Silent Swoop",
       text: "Reveals the current dream sequence to the whole team.",
     },
     duskveil: {
@@ -1853,17 +1853,17 @@ export const RAID_RITES = {
   grounded: {
     name: "Grounded",
     text: "Chain Lightning cannot jump from you. A Polarity mismatch deals normal damage to you.",
-    icon: "Storm Grid",
+    icon: "Livewire Field",
   },
   fireproof: {
     name: "Fireproof",
     text: "Take 50% less damage from burning ground and light braziers twice as fast.",
-    icon: "Blaze Whirl",
+    icon: "Heat Cracks",
   },
   polished: {
     name: "Polished",
     text: "Carry sunlight without burning. Your relay range grows by 60px.",
-    icon: "Mirror Guard",
+    icon: "Facet Guard",
   },
   lucid: {
     name: "Lucid",

@@ -287,12 +287,12 @@ describe("Prismatail attack fairness and champion tricks", () => {
     expect(a.raid.blinded!.p1).toBeUndefined();
     expect(a.heroes()[0].hp).toBe(CHARACTERS.voltkit.health);
   });
-  it("Mystowl’s Ward protects nearby allies from Glare until it expires", () => {
+  it("Mystowl’s Wing Cloak shelters nearby allies from Glare until it expires", () => {
     const a = setup(2, 1, 1, ["mystowl", "voltkit"]),
       p = a.heroes()[0];
     a.cast(
       p,
-      CHARACTERS.mystowl.skills.find((a) => a.id === "ward")!,
+      CHARACTERS.mystowl.skills.find((a) => a.id === "wing-cloak")!,
     );
     a.heroes().forEach((p) => (p.angle = 0));
     attack(a, "glare");

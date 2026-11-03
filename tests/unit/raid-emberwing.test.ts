@@ -158,7 +158,7 @@ describe("Emberwing flight and brazier puzzle", () => {
     expect(a.raid.braziers![0].litUntil).toBeGreaterThan(a.time);
     expect(a.raid.contributions!.p0.pillars).toBe(1);
   });
-  it("blocks airborne melee, halves ranged damage, and gives Lumoth stars full damage", () => {
+  it("blocks airborne melee, halves ranged damage, and gives Lumoth's wing dust full damage", () => {
     const a = setup();
     a.tick();
     const boss = a.boss()!,
@@ -171,7 +171,7 @@ describe("Emberwing flight and brazier puzzle", () => {
     const hp = boss.hp;
     a.damage(boss, 20, p.id, {
       ...CHARACTERS.lumoth.skills[0],
-      id: "starfall-spray",
+      id: "wing-dust",
     });
     expect(hp - boss.hp).toBeCloseTo(half * 2);
     const groundHp = boss.hp;
@@ -248,7 +248,7 @@ describe("Emberwing attacks and champion answers", () => {
     run(b, 0.5);
     expect(b.heroes()[0].hp).toBeLessThan(CHARACTERS.voltkit.health);
   });
-  it("Mirror Guard reflects the dive and contributes twenty stagger", () => {
+  it("Facet Guard reflects the dive and contributes twenty stagger", () => {
     const a = setup(1, 1, 1, ["auralynx"]),
       p = a.heroes()[0];
     a.status(p, "counter", 2);
@@ -360,13 +360,13 @@ describe("Emberwing attacks and champion answers", () => {
     }
     expect(a.raid.emberPatches!.length).toBe(12);
   });
-  it("Cindrake lights a brazier with Blaze Whirl and Tidefin extinguishes burning ground", () => {
+  it("Cindrake lights a brazier with Heat Cracks and Tidefin extinguishes burning ground", () => {
     const a = setup(1, 2, 1, ["cindrake"]);
     a.tick();
     stand(a, 0);
     a.cast(
       a.heroes()[0],
-      CHARACTERS.cindrake.skills.find((a) => a.id === "blaze-whirl")!,
+      CHARACTERS.cindrake.skills.find((a) => a.id === "heat-cracks")!,
     );
     expect(a.raid.braziers![0].litUntil).toBeGreaterThan(a.time);
     const b = setup(1, 2, 1, ["tidefin"]),
@@ -378,7 +378,7 @@ describe("Emberwing attacks and champion answers", () => {
     p.lastInput.aimY = p.y;
     b.cast(
       p,
-      CHARACTERS.tidefin.skills.find((a) => a.id === "whirlpool")!,
+      CHARACTERS.tidefin.skills.find((a) => a.id === "eddy")!,
     );
     expect(b.raid.emberPatches).toEqual([]);
   });

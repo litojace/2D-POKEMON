@@ -198,10 +198,15 @@ describe("authoritative simulation", () => {
         else expect(p.cooldowns[i]).toBeGreaterThan(0);
         if (c.skills[i].kind === "clone") expect(p.clone).toBeDefined();
         const kind = c.skills[i].kind;
+        // A buff or rest can name its own status (Static Glide: haste; Shell Up: shell).
+        const own =
+          (kind === "buff" || kind === "rest") && c.skills[i].status;
         if (kind in selfStatus)
           expect(
             p.statuses.some(
-              (s) => s.kind === selfStatus[kind as keyof typeof selfStatus],
+              (s) =>
+                s.kind ===
+                (own || selfStatus[kind as keyof typeof selfStatus]),
             ),
           ).toBe(true);
       }
@@ -268,7 +273,7 @@ describe("projectile impact events", () => {
     a.phase = "playing";
     a.deadline = 180;
     const [p, q] = a.players;
-    a.status(q, "mark", 3, p.id); // Soaked by Whirlpool
+    a.status(q, "mark", 3, p.id); // Soaked by Eddy
     const events = land(a, "riptide-wave");
     const hit = events.find((e) => e.kind === "hit" && e.abilityId === "riptide-wave");
     expect(hit?.combo).toBe("Soaked");

@@ -1,6 +1,7 @@
 import { it, expect } from "vitest";
 import { Arena } from "../../apps/server/src/simulation.js";
 import {
+  PRACTICE_GRID,
   CHARACTERS,
   blankInput,
   packSnapshot,
@@ -41,7 +42,7 @@ it("zones damage grounded enemies repeatedly but airborne enemies avoid ground t
   p.angle = 0;
   q.x = 400;
   q.y = 450;
-  a.cast(p, CHARACTERS.voltkit.skills[2]);
+  a.cast(p, PRACTICE_GRID);
   q.jumpUntil = 1;
   for (let i = 0; i < 15; i++) a.tick();
   expect(q.hp).toBe(CHARACTERS.voltkit.health);
@@ -91,4 +92,28 @@ it("packs static ability definitions as IDs and restores the renderer snapshot",
   expect(wire.projectiles[0]).not.toHaveProperty("ability");
   expect(wire.projectiles[0].abilityId).toBe("static-lance");
   expect(unpackSnapshot(wire).projectiles[0].ability.damage).toBe(18);
+});
+it("snapshots rebuild lantern shots and the practice grid from their ids", () => {
+  const a = duel(),
+    [p, q] = a.players;
+  p.character = "duskveil";
+  Object.assign(p, { x: 400, y: 450, angle: 0 });
+  Object.assign(q, { x: 700, y: 450 });
+  p.lastInput = { ...blankInput(), aimX: 600, aimY: 450 };
+  const lantern = CHARACTERS.duskveil.skills[2];
+  a.cast(p, lantern);
+  for (let i = 0; i < 15 && a.projectiles.length === 0; i++) a.tick();
+  a.cast(q, PRACTICE_GRID);
+  const wire = unpackSnapshot(packSnapshot(a.snapshot()));
+  const shot = wire.projectiles.find((pr) => pr.owner === p.id)!;
+  // A small wisp, not the lantern itself.
+  expect(shot.ability.id).toBe("haunted-lantern-shot");
+  expect(shot.ability.kind).toBe("projectile");
+  expect(shot.ability.radius).toBe(lantern.turret!.radius);
+  expect(wire.zones.find((z) => z.owner === p.id)!.ability.id).toBe(
+    "haunted-lantern",
+  );
+  expect(wire.zones.find((z) => z.owner === q.id)!.ability).toEqual(
+    PRACTICE_GRID,
+  );
 });

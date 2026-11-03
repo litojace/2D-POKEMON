@@ -177,7 +177,7 @@ describe("Dive & Surface", () => {
     (a as unknown as { onChapter(): void }).onChapter();
     expect(a.raid.islands![0].sunk).toBe(false);
   });
-  it("follows Tidefin's Mirror Mist clone instead of Tidefin", () => {
+  it("follows Tidefin's Tide Double clone instead of Tidefin", () => {
     const a = tide(["tidefin"], 1);
     const p = place(a, "p0", 300, 450);
     p.clone = { x: island.x, y: island.y, until: a.time + 3 };

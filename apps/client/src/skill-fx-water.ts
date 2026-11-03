@@ -121,24 +121,38 @@ function needleImpact(
   shot(360, (k) => fx.shockwave(x, y + 14, 34 * ease(k), k, FOAM, 5));
 }
 
-// ───────────── Ripple Stars ─────────────
-function rippleStar(g: G, pr: Projectile, now: number) {
+// ───────────── Gill Spray: droplets flicked from the gill fronds ─────────────
+function gillDrop(g: G, pr: Projectile, now: number) {
   const fx = fxFor(g.scene),
     r = pr.ability.radius,
     c = pr.color,
     x = pr.x,
     y = pr.y,
-    spin = now / 70 + pr.id;
+    dir = Math.atan2(pr.vy, pr.vx),
+    wobble = 1 + Math.sin(now / 45 + pr.id) * 0.06;
   fx.solid.fillStyle(0x000000, 0.14).fillEllipse(x, y + 18, r * 2, r * 0.7);
-  const star = (rr: number, inner: number) =>
-    Array.from({ length: 8 }, (_, i) => {
-      const a = spin + (i * Math.PI) / 4,
-        d = i % 2 ? rr * inner : rr;
-      return { x: x + Math.cos(a) * d, y: y + Math.sin(a) * d };
+  // A teardrop: round at the front, a tail streaming back along the flight.
+  const drop = (rr: number) =>
+    Array.from({ length: 14 }, (_, i) => {
+      const a = (i / 14) * Math.PI * 2,
+        tail = Math.max(0, -Math.cos(a)),
+        d = rr * (1 + tail * 0.9) * (i % 2 ? wobble : 1);
+      const lx = Math.cos(a) * d,
+        ly = Math.sin(a) * rr * (1 - tail * 0.45);
+      return {
+        x: x + lx * Math.cos(dir) - ly * Math.sin(dir),
+        y: y + lx * Math.sin(dir) + ly * Math.cos(dir),
+      };
     });
-  fx.solid.fillStyle(DEEP, 0.55).fillPoints(star(r * 1.45, 0.4), true);
-  fx.solid.fillStyle(c, 1).fillPoints(star(r * 1.3, 0.38), true);
-  fx.solid.fillStyle(FOAM, 0.95).fillPoints(star(r * 0.6, 0.4), true);
+  fx.solid.fillStyle(DEEP, 0.55).fillPoints(drop(r * 1.2), true);
+  fx.solid.fillStyle(c, 1).fillPoints(drop(r * 1.05), true);
+  fx.solid
+    .fillStyle(FOAM, 0.95)
+    .fillCircle(
+      x + Math.cos(dir) * r * 0.25 - 2,
+      y + Math.sin(dir) * r * 0.25 - 2,
+      r * 0.35,
+    );
   fx.glow(x, y, r * 2.2, c, 0.3);
   fx.trail(`rs${pr.id}`, 0.035, () =>
     fx.burst({
@@ -157,7 +171,7 @@ function rippleStar(g: G, pr: Projectile, now: number) {
   );
 }
 
-// ───────────── Whirlpool ─────────────
+// ───────────── Eddy ─────────────
 function whirlpool(g: G, z: Zone, progress: number, now: number) {
   const fx = fxFor(g.scene),
     r = z.radius,
@@ -230,7 +244,7 @@ function whirlpool(g: G, z: Zone, progress: number, now: number) {
   });
 }
 
-// ───────────── Mirror Mist ─────────────
+// ───────────── Tide Double ─────────────
 function mirrorMist(
   scene: Phaser.Scene,
   _a: Ability,
@@ -665,20 +679,37 @@ function waterHit(
 export const waterKit: FxKit = {
   projectile: {
     "tide-needle": tideNeedle,
-    "ripple-stars": rippleStar,
+    "gill-spray": gillDrop,
     "riptide-wave": riptideWave,
   },
-  zone: { whirlpool },
+  zone: { eddy: whirlpool },
   windup: { "riptide-wave": riptideWindup },
   cast: {
     "tide-needle": waterCast,
-    "ripple-stars": waterCast,
+    "gill-spray": waterCast,
     "riptide-wave": waterCast,
-    "mirror-mist": mirrorMist,
+    "tide-double": (scene, a, x, y, angle, color, shot) => {
+      mirrorMist(scene, a, x, y, angle, color, shot);
+      // Axolotls regrow: a little green rise as Tidefin slips away.
+      if (a.heal)
+        fxFor(scene).burst({
+          x,
+          y: y - 18,
+          z: 10,
+          count: 6,
+          kind: "mote",
+          color: [0x7dffb0, FOAM],
+          speed: [10, 40],
+          up: [60, 110],
+          life: [0.6, 1],
+          size: [1.5, 2.4],
+          drag: 2,
+        });
+    },
   },
   impact: {
     "tide-needle": needleImpact,
-    "ripple-stars": needleImpact,
+    "gill-spray": needleImpact,
     "riptide-wave": riptideImpact,
   },
   hit: { water: waterHit },

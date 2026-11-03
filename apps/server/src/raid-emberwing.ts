@@ -152,7 +152,7 @@ export class EmberwingArena extends RaidArena {
   ) {
     if (target.raidBoss && this.raid.airborne) {
       if (ability?.kind === "melee" || ability?.ground) return;
-      if (ability?.id !== "starfall-spray") amount *= 0.5;
+      if (ability?.id !== "wing-dust") amount *= 0.5;
     }
     super.damage(target, amount, owner, ability);
   }
@@ -179,14 +179,14 @@ export class EmberwingArena extends RaidArena {
   override cast(p: Fighter, a: Ability, ex = false) {
     super.cast(p, a, ex);
     if (p.raidBoss || p.hp <= 0) return;
-    if (a.id === "whirlpool") {
+    if (a.id === "eddy") {
       const aim = p.lastInput,
         d = normalize(aim.aimX - p.x, aim.aimY - p.y),
         length = Math.min(a.range, Math.hypot(aim.aimX - p.x, aim.aimY - p.y));
       this.water(p.x + d.x * length, p.y + d.y * length, a.radius);
     }
     if (
-      a.id === "blaze-whirl" &&
+      a.id === "heat-cracks" &&
       (this.raid.airborne || this.raid.drill === "brazier-lighting")
     )
       this.raid.braziers?.forEach((b, i) => {
@@ -404,7 +404,7 @@ export class EmberwingArena extends RaidArena {
           this.damage(p, E.dive.damage, boss.id);
           if (mirror) {
             r.stagger = Math.min(100, r.stagger + 20);
-            r.message = "Mirror Guard reflects the dive! +20 stagger";
+            r.message = "Facet Guard reflects the dive! +20 stagger";
           }
         }
       this.hitBy = undefined;
@@ -464,7 +464,8 @@ export class EmberwingArena extends RaidArena {
           (p) =>
             p.hp > 0 &&
             Math.hypot(p.x - b.x, p.y - b.y) <= E.brazierRadius &&
-            !this.has(p, "sleep"),
+            !this.has(p, "sleep") &&
+            !this.has(p, "shell"),
         );
         const lighter =
           occupants.find((p) => this.hasRite(p, "fireproof")) ?? occupants[0];
@@ -489,12 +490,12 @@ export class EmberwingArena extends RaidArena {
     for (const z of this.zones) {
       const p = this.heroes().find((p) => p.id === z.owner && p.hp > 0);
       if (!p) continue;
-      if (z.ability.id === "blaze-whirl" && r.airborne)
+      if (z.ability.id === "heat-cracks" && r.airborne)
         r.braziers?.forEach((b, i) => {
           if (Math.hypot(b.x - z.x, b.y - z.y) <= z.radius + E.brazierRadius)
             this.light(i, p);
         });
-      if (z.ability.id === "whirlpool") this.water(z.x, z.y, z.radius);
+      if (z.ability.id === "eddy") this.water(z.x, z.y, z.radius);
     }
     r.emberPatches = (r.emberPatches ?? []).filter((p) => p.until > this.time);
     for (const p of r.emberPatches)

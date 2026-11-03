@@ -163,7 +163,7 @@ function mindDart(g: G, pr: Projectile, now: number) {
   fx.trail(`p${pr.id}`, 0.05, () => floatMotes(fx, x - cos * 10, y, 1, c, 15));
 }
 
-// ───────────── Focus Ray ─────────────
+// ───────────── Third-Eye Ray ─────────────
 function focusRay(
   scene: Phaser.Scene,
   a: Ability,
@@ -234,7 +234,7 @@ function focusRay(
   });
 }
 
-// ───────────── Repulse ─────────────
+// ───────────── Booming Hoot ─────────────
 function repulse(
   scene: Phaser.Scene,
   a: Ability,
@@ -275,7 +275,7 @@ function repulse(
   });
 }
 
-// ───────────── Ward ─────────────
+// ───────────── Wing Cloak ─────────────
 function ward(
   scene: Phaser.Scene,
   a: Ability,
@@ -313,7 +313,7 @@ function ward(
   void a;
 }
 
-// ───────────── Thoughtstrike ─────────────
+// ───────────── Silent Swoop ─────────────
 function thoughtstrike(g: G, z: Zone, progress: number, now: number) {
   const fx = fxFor(g.scene),
     a = z.ability,
@@ -476,15 +476,15 @@ function dartImpact(
 
 export const psychicKit: FxKit = {
   projectile: { "mind-dart": mindDart },
-  beam: { "focus-ray": focusRay },
-  zone: { thoughtstrike },
-  windup: { thoughtstrike: strikeWindup },
+  beam: { "third-eye-ray": focusRay },
+  zone: { "silent-swoop": thoughtstrike },
+  windup: { "silent-swoop": strikeWindup },
   cast: {
     "mind-dart": dartCast,
-    "focus-ray": rayCast,
-    repulse: (scene, a, x, y, _angle, color, shot) =>
+    "third-eye-ray": rayCast,
+    "booming-hoot": (scene, a, x, y, _angle, color, shot) =>
       repulse(scene, a, x, y, color, shot),
-    ward,
+    "wing-cloak": ward,
   },
   impact: { "mind-dart": dartImpact },
   hit: { psychic: psychicHit },

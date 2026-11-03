@@ -110,7 +110,7 @@ describe("rock volley", () => {
     expect(hurt(a, "p1")).toBe(0);
     expect(hurt(a, "p2")).toBe(0);
   });
-  it("Auralynx's Mirror Guard blocks it and staggers the boss", () => {
+  it("Auralynx's Facet Guard blocks it and staggers the boss", () => {
     const a = raid(["auralynx"]);
     const boss = a.boss()!;
     const p = place(a, "p0", 950, 450);
@@ -158,7 +158,7 @@ describe("shared meteor", () => {
     expect(hurt(a, "p1")).toBeCloseTo(GRUMBLECRAG.share.damage / 2, 0);
     expect(hurt(a, "p2")).toBe(0);
   });
-  it("hits a lone target for the full amount, and Mystowl's Ward softens it for all", () => {
+  it("hits a lone target for the full amount, and Mystowl's Wing Cloak softens it for all", () => {
     const alone = raid(["voltkit", "cindrake"]);
     place(alone, "p0", 400, 200);
     place(alone, "p1", 900, 760);

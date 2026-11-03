@@ -309,10 +309,10 @@ describe("Polarity fairness and champion tricks", () => {
     expect(CHARACTERS.cindrake.health - a.heroes()[2].hp).toBeCloseTo(56);
     expect(a.raid.polarities).toEqual([]);
   });
-  it("Terradon’s sleeping shell blocks the expired mark without faking a polarity pair", () => {
+  it("Terradon’s closed shell blocks the expired mark without faking a polarity pair", () => {
     const a = setup(1, 3, 1, ["terradon"]);
     attack(a, "polarity");
-    a.status(a.heroes()[0], "sleep", 5);
+    a.status(a.heroes()[0], "shell", 5);
     run(a, 4.1);
     expect(a.heroes()[0].hp).toBe(CHARACTERS.terradon.health);
     expect(a.raid.contributions!.p0.pillars).toBe(0);
@@ -391,7 +391,7 @@ describe("Storm Twins attacks and presentation", () => {
     expect(a.raid.stormBeam!.points[1]).toEqual(S.posts[w.beamPost!]);
     expect(a.raid.stormBeam!.points).toHaveLength(3);
   });
-  it("Link Beam can be jumped, reflects from Mirror Guard and stops when one twin falls", () => {
+  it("Link Beam can be jumped, reflects from Facet Guard and stops when one twin falls", () => {
     const a = setup(1, 1, 1, ["auralynx"]),
       [f, c] = twins(a);
     Object.assign(a.heroes()[0], { x: (f.x + c.x) / 2, y: (f.y + c.y) / 2 });
