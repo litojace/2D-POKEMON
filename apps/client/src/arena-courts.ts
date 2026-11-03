@@ -8,10 +8,10 @@ import { ARENAS, OBSTACLES, RULES } from "@arena/shared";
  *
  * One camera and one sun for everything:
  *  - K: the camera's squash of the ground (a ground circle of radius r is
- *    drawn r wide and r·K tall), the same as the town's plaza.
+ *    drawn r wide and r·K tall).
  *  - A point at height z is drawn z px above its ground spot.
  *  - SUNV: a point at height z casts its shadow z·SUNV from its foot
- *    (light from the upper left, as in town).
+ *    (light from the upper left).
  * The court's walkable area reaches RULES.radius from every edge, so the back
  * wall stands just beyond it and nothing walkable is painted as solid.
  */
@@ -139,7 +139,7 @@ function grain(
 }
 /**
  * Every shadow is drawn solid into one layer, then blurred and laid on the
- * ground once, so overlaps never stack darker (as in town). Works at any
+ * ground once, so overlaps never stack darker. Works at any
  * bake scale: the shadow offset and blur are in device pixels.
  */
 function shadows(c: Ctx, draw: (s: Ctx) => void) {

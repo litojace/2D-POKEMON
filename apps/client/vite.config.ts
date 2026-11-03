@@ -51,11 +51,7 @@ export default defineConfig({
           "assets/music/*.mp3",
           "assets/fighters/**/*.{svg,png,webp,json}",
         ],
-        globIgnores: [
-          "assets/fighters/**/portrait-showcase-v1.webp",
-          "assets/town/fountain.webp",
-          "assets/town/ground.webp",
-        ],
+        globIgnores: ["assets/fighters/**/portrait-showcase-v1.webp"],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
       },
       manifest: {

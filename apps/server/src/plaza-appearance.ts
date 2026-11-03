@@ -4,28 +4,28 @@ import {
   raidLookOf,
   type RaidProgress,
 } from "../../../packages/shared/src/raid.js";
-import type { TownProfile } from "../../../packages/shared/src/town.js";
+import type { PlazaProfile } from "../../../packages/shared/src/plaza.js";
 import type { AccountProvider } from "./accounts.js";
-import type { TownWorld } from "./town.js";
+import type { PlazaWorld } from "./plaza.js";
 
-/** Load only the authenticated account's saved cosmetics; town input cannot grant looks. */
-export class TownAppearance {
+/** Load only the authenticated account's saved cosmetics; Plaza input cannot grant looks. */
+export class PlazaAppearance {
   private pending = new Map<string, symbol>();
   constructor(
-    /** The town or the Plaza: anything that keeps profiles by socket. */
-    private town: Pick<TownWorld, "profileOf" | "updateProfile">,
+    /** The Plaza, or anything else that keeps profiles by socket. */
+    private plaza: Pick<PlazaWorld, "profileOf" | "updateProfile">,
     private accounts: Pick<AccountProvider, "rpc">,
   ) {}
 
   async refresh(key: string, token: string, includeLevel = false) {
-    const initial = this.town.profileOf(key);
+    const initial = this.plaza.profileOf(key);
     if (!initial) return;
     const request = Symbol();
     this.pending.set(key, request);
     const { id, character } = initial;
-    const apply = (patch: Partial<Omit<TownProfile, "id">>) => {
-      const current = this.town.profileOf(key);
-      // A late result must not overwrite a newer wardrobe save, fighter, or town visit.
+    const apply = (patch: Partial<Omit<PlazaProfile, "id" | "bot">>) => {
+      const current = this.plaza.profileOf(key);
+      // A late result must not overwrite a newer wardrobe save, fighter, or Plaza visit.
       if (
         this.pending.get(key) !== request ||
         current?.id !== id ||
@@ -35,11 +35,11 @@ export class TownAppearance {
       if (
         Object.entries(patch).some(
           ([field, value]) =>
-            JSON.stringify(current[field as keyof TownProfile]) !==
+            JSON.stringify(current[field as keyof PlazaProfile]) !==
             JSON.stringify(value),
         )
       )
-        this.town.updateProfile(key, patch);
+        this.plaza.updateProfile(key, patch);
     };
     const read = (name: string) =>
       Promise.resolve().then(() => this.accounts.rpc(token, name, {}));
@@ -57,10 +57,10 @@ export class TownAppearance {
         read("arena_my_looks"),
         read("arena_raid_progress"),
       ]);
-      const patch: Partial<Omit<TownProfile, "id">> = {};
+      const patch: Partial<Omit<PlazaProfile, "id" | "bot">> = {};
       if (skins.status === "fulfilled") {
         const look = (
-          skins.value as Record<string, TownProfile["skin"]> | null
+          skins.value as Record<string, PlazaProfile["skin"]> | null
         )?.[character];
         patch.skin = look?.skin ? { skin: look.skin, stage: look.stage } : null;
       }
