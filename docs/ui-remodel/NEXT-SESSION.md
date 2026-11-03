@@ -33,6 +33,8 @@ and the mockup:
   pointed at the old screens (shop-*.spec.ts, cosmetic-displays, portrait-frames,
   frame-level-preview, shop-ui.test.ts, shop-preview.test.ts) to the new screen.
 - Low graphics: a still fighter instead of the live rig.
+- Mythical is pink with a foil edge everywhere (owner decision 6): set --r-mythic to #ff8fd8 in
+  ui/tokens.css and replace the red mythic colour in cosmetic-fx.css and TIER_COLORS.
 
 Ground rules (from the owner): all game text in English; the server owns time and money;
 buttons in a row equal and moderate in size; fixed HUD boxes; phone landscape without
