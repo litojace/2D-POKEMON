@@ -90,10 +90,10 @@ open to change.
 
 Done (each with its own migration and tests): weather and mutations (039),
 the order board (040), crop book rewards (041), the wishing well (042),
-crop mastery (043), tools and bugs (044).
+crop mastery (043), tools and bugs (044), guard dogs and crows (045).
 
-Still to come: farmer perks, guard dogs, crows, friends' farms, decorations
-and charm, the pasture, and treats in the Plaza.
+Still to come: farmer perks, friends' farms (with thieves, whom dogs catch),
+decorations and charm, the pasture, and treats in the Plaza.
 
 - **Perks follow your Lobby fighter.** A passive growth perk (Lumoth +20%)
   would apply to the whole time since a plot was last touched if the
@@ -106,8 +106,19 @@ and charm, the pasture, and treats in the Plaza.
   hour for each growing plot (the prototype's rate), half with a Scarecrow,
   at most 2 a plot. A bug slows its crop 20%; catching one pays 1 farm XP.
   Catching a bug on a ripe crop keeps the moment it ripened, so the weather
-  (and mutation) can't be re-rolled that way. Crows and thieves will use the
-  same presence rule.
+  (and mutation) can't be re-rolled that way.
+- **Dogs and crows (045), decided:** dogs are hired by the day (1 or 3 days,
+  the prototype's prices); hiring the dog on guard adds days, another dog
+  takes over and the old one's time is lost; at most 30 days ahead. Goldie
+  digs 1 gift a day and Fluffy 2 (the prototype's text; its code dug 4 a
+  day), counted from the hire even while you are away. Inky: 30% fewer
+  bugs. Fluffy: Gold ×1.5 for crops that ripened while she was on guard,
+  checked against the hire history so a crop's roll never changes later.
+  Crows use the bug presence rule: about one every 84 minutes on the farm
+  (the prototype's 14–28 farm units), on a ripe crop, only with no Scarecrow
+  and no dog (every dog keeps them away). A crow eats its crop 8 s after
+  landing unless shooed; the server allows 2 s more for the network. The
+  dog waits by its doghouse; walking about comes with the art pass (phase 6).
 
 ## Phases
 

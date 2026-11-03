@@ -581,6 +581,49 @@ export function farmArea(plot: number, size: number): number[] {
     }
   return out;
 }
+/** Guard dogs (migration 045), hired by the day. Every dog keeps crows away. */
+export type FarmDogId = "gold" | "black" | "cream";
+export const FARM_DOGS: readonly {
+  id: FarmDogId;
+  name: string;
+  text: string;
+  level: number;
+  /** Gold Leaves for 1 day and for 3 days. */
+  price1: number;
+  price3: number;
+  /** Gifts dug up a day. */
+  gifts: number;
+}[] = [
+  {
+    id: "gold",
+    name: "Goldie",
+    text: "Keeps crows away · digs up 1 gift a day",
+    level: 3,
+    price1: 60,
+    price3: 150,
+    gifts: 1,
+  },
+  {
+    id: "black",
+    name: "Inky",
+    text: "Keeps crows away · 30% fewer bugs",
+    level: 20,
+    price1: 180,
+    price3: 450,
+    gifts: 0,
+  },
+  {
+    id: "cream",
+    name: "Fluffy",
+    text: "Keeps crows away · digs up 2 gifts a day · Gold odds ×1.5",
+    level: 40,
+    price1: 300,
+    price3: 750,
+    gifts: 2,
+  },
+];
+/** A crow eats its crop this many seconds after landing unless shooed. */
+export const CROW_SECONDS = 8;
 /** Farm weather (migration 039): one per 4-hour UTC window, the same for everyone. */
 export type FarmWeatherId =
   "sun" | "rain" | "storm" | "moon" | "frost" | "rainbow";
@@ -743,6 +786,18 @@ export interface FarmState {
   harvests: Record<string, number>;
   /** The order board (migration 040; absent before it). */
   orders?: FarmOrder[];
+  /** The dog on guard (migration 045): since and until are ISO times. */
+  dog?: { type: FarmDogId; since: string; until: string } | null;
+  /** The last gifts dogs dug up, newest first (migration 045). */
+  dogGifts?: {
+    at: string;
+    dog: FarmDogId;
+    kind: "seeds" | "leaves" | "super";
+    crop: string | null;
+    qty: number;
+  }[];
+  /** Crows on plots: plot index → when it landed (migration 045). */
+  crows?: Record<string, string>;
   /** The weather now and the forecast (migration 039; absent before it). */
   weather?: {
     now: FarmWeatherId | "none";
@@ -759,6 +814,8 @@ export type FarmAction =
   | { a: "harvest"; plot: number; tool?: "sickle" }
   | { a: "catch"; plot: number; tool?: "net" }
   | { a: "buy-tool"; tool: FarmToolId }
+  | { a: "hire-dog"; dog: FarmDogId; days: 1 | 3 }
+  | { a: "shoo"; plot: number }
   | { a: "fertilize"; plot: number; kind: FertilizerKind }
   | { a: "buy-seeds"; crop: string; qty: number }
   | { a: "sell"; crop: string; mutation: string; qty: number }

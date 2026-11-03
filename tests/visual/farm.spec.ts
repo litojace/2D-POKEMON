@@ -72,6 +72,9 @@ async function fakeFarm(page: Page) {
       weather: { now: "storm", next: "rainbow", later: "sun", until: at(5000) },
       bookRewards: [5],
       wishReady: true,
+      dog: null as any,
+      dogGifts: [] as any[],
+      crows: {} as Record<string, string>,
       orders: [
         {
           slot: 0,
@@ -131,6 +134,21 @@ async function fakeFarm(page: Page) {
           if (a.a === "catch" && p?.pests) {
             p.pests--;
             return { ok: true, caught: 1, xp: 1 };
+          }
+          if (a.a === "shoo" && farm.crows[a.plot]) {
+            delete farm.crows[a.plot];
+            return { ok: true, shooed: true };
+          }
+          if (a.a === "hire-dog") {
+            const price = { gold: [60, 150], black: [180, 450] } as any;
+            farm.leaves -= price[a.dog][a.days === 3 ? 1 : 0];
+            const extended = farm.dog?.type === a.dog;
+            farm.dog = {
+              type: a.dog,
+              since: extended ? farm.dog.since : now(),
+              until: at((extended ? 86400 : 0) + a.days * 86400),
+            };
+            return { ok: true, dog: a.dog, days: a.days, extended };
           }
           if (a.a === "buy-tool" && a.tool === "net2") {
             farm.tools.bigNet = true;
@@ -466,6 +484,81 @@ test("a tap catches a bug, and the Tools tab sells tools", async ({
     await expect(page.locator('#fm-tools [data-tool="net"]')).toContainText(
       "Big Net",
     );
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test("a tap shoos a crow, and a guard dog can be hired from its orb", async ({
+  browser,
+}, info) => {
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    await fakeFarm(page);
+    await page.evaluate(() => {
+      const f = (window as any).__fakeFarm;
+      f.level = 20;
+      // A crow landed on the ripe wheat 2 s ago; Goldie dug up seeds.
+      f.crows = { "0": new Date(Date.now() - 2000).toISOString() };
+      f.dogGifts = [
+        {
+          at: new Date(Date.now() - 60_000).toISOString(),
+          dog: "gold",
+          kind: "seeds",
+          crop: "mint",
+          qty: 2,
+        },
+      ];
+    });
+    await page.click('#hub-scenes [data-hub-scene="farm"]');
+    await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
+    await expect(page.locator("#toast")).toContainText(
+      "Goldie dug up 2 Spirit Mint seeds!",
+    );
+    await page.waitForTimeout(1200);
+    await snap(page, info, "farm-crow-1280x800");
+    const plot = await page.evaluate(() =>
+      (window as any).__farm.plotClient(0),
+    );
+    await page.mouse.click(plot.x, plot.y);
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          (window as any).__farmRequests.flatMap((r: any) => r.actions),
+        ),
+      )
+      .toEqual([{ a: "shoo", plot: 0 }]);
+    // No dog yet: the orb says so and opens the Guard Dogs tab.
+    await page.click('#fm-chips [data-orb="dog"]');
+    await expect(page.locator("#fm-orbpop")).toContainText("No guard dog");
+    await page.click('#fm-orbpop [data-orbgo="dogs"]');
+    const sheet = page.locator("#fm-sheet");
+    await expect(sheet).toContainText("Hire a guard dog by the day.");
+    await expect(
+      sheet.locator(".dogcard", { hasText: "Fluffy" }),
+    ).toContainText("Unlocks at Lv 40");
+    await sheet.locator('[data-dog="gold"][data-days="3"]').click();
+    await expect(page.locator("#toast")).toContainText(
+      "Goldie is guarding your farm for 3 days!",
+    );
+    await expect(
+      sheet.locator(".dogcard", { hasText: "Goldie" }),
+    ).toContainText(/On guard · (3d|2d 23h) left/);
+    await snap(page, info, "farm-dogs-1280x800");
+    await expect(page.locator('#fm-chips [data-orb="dog"]')).toHaveAttribute(
+      "title",
+      /Goldie: (3d|2d 23h) left/,
+    );
+    // Goldie waits by her doghouse.
+    await page.click("#fm-sheet [data-close]");
+    await page.evaluate(() => (window as any).__farm.look(1500, 800));
+    await page.waitForTimeout(600);
+    await snap(page, info, "farm-dog-on-guard-1280x800");
     expect(errors).toEqual([]);
   } finally {
     await context.close();

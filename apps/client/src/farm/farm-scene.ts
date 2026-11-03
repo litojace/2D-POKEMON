@@ -21,6 +21,8 @@ import {
   LEAF_TRADE,
   barnUpgradePrice,
   FARM_TOOLS,
+  FARM_DOGS,
+  CROW_SECONDS,
   SPRINKLER_LEVELS,
   SPRINKLER_PRICES,
   farmXpToNext,
@@ -61,6 +63,13 @@ const fmtSecs = (s) => {
       ? `${m}m`
       : `${s}s`;
 };
+/** Longer durations, for dogs hired by the day: "2d 5h". */
+const fmtDur = (s) =>
+  s >= 86400
+    ? `${Math.floor(s / 86400)}d${Math.floor((s % 86400) / 3600) ? ` ${Math.floor((s % 86400) / 3600)}h` : ""}`
+    : fmtSecs(s);
+const DOG = Object.fromEntries(FARM_DOGS.map((d) => [d.id, d]));
+const GIFT_KEY = "arena-farm-gift-seen";
 const RAR_NAME = {
   common: "Common",
   uncommon: "Uncommon",
@@ -249,7 +258,7 @@ export function openFarm(options) {
     fert: null,
     pests: 0,
     mut: [],
-    crow: null,
+    crowAt: null,
     locked: false,
     ...o,
   });
@@ -278,6 +287,8 @@ export function openFarm(options) {
     sickle: false,
     scarecrow: false,
     sprinklers: 0,
+    dog: null,
+    gifts: [],
     log: [],
     decorPick: null,
     shovelArm: null,
@@ -288,6 +299,7 @@ export function openFarm(options) {
   let offset = 0; // server clock minus this device's clock, in ms
   const serverNow = () => Date.now() + offset;
   const barnUsed = () => Object.values(F.barn).reduce((a, b) => a + b, 0);
+  const dogOn = () => !!F.dog && F.dog.until > serverNow();
   const owned = (id) =>
     Object.entries(F.barn)
       .filter(([k]) => k.startsWith(id + "|"))
@@ -352,6 +364,15 @@ export function openFarm(options) {
     F.bookRewards = st.bookRewards ?? [];
     F.wishReady = !!st.wishReady;
     F.mast = { ...(st.mastery ?? {}) };
+    // The dog on guard and its gifts (migration 045).
+    F.dog = st.dog
+      ? {
+          type: st.dog.type,
+          since: Date.parse(st.dog.since),
+          until: Date.parse(st.dog.until),
+        }
+      : null;
+    F.gifts = st.dogGifts ?? [];
     // The order board (migration 040; none before it).
     F.orders = (st.orders ?? []).map((o) => ({
       slot: o.slot,
@@ -373,7 +394,11 @@ export function openFarm(options) {
           until: Date.parse(st.weather.until),
         }
       : { cur: null };
-    for (const p of st.plots)
+    const eaten = [];
+    for (const p of st.plots) {
+      const old = F.plots[p.i];
+      // A crow that wasn't shooed took the crop (a harvest here clears the plot first).
+      if (old.crowAt && old.crop && !p.crop) eaten.push(old.crop);
       Object.assign(F.plots[p.i], {
         locked: !p.owned,
         crop: p.crop,
@@ -385,8 +410,19 @@ export function openFarm(options) {
         fert: p.fertilizer,
         mut: p.mutation ? p.mutation.split("+") : [],
         pests: p.pests ?? 0,
-        crow: null,
+        crowAt: st.crows?.[p.i] ? Date.parse(st.crows[p.i]) : null,
       });
+    }
+    for (const c of eaten)
+      log(
+        `A crow ate your <b>${CROP[c]?.n ?? c}</b>! A Scarecrow or a guard dog keeps crows away`,
+        "bad",
+      );
+    if (eaten.length)
+      toast(
+        `A crow ate your ${CROP[eaten[0]]?.n ?? eaten[0]}! Get a Scarecrow or a guard dog`,
+      );
+    announceGifts();
     if (!F.seeds[F.seed]) {
       const first = CROPS.find((c) => F.seeds[c.id]);
       if (first) F.seed = first.id;
@@ -434,6 +470,7 @@ export function openFarm(options) {
           ripeAt: now + lq / 1.35,
         });
       }
+    else if (a.a === "shoo") p.crowAt = null;
     else if (a.a === "catch")
       for (const j of area(a.plot, a.tool === "net" && F.net === 2 ? 3 : 1)) {
         const q = F.plots[j];
@@ -558,6 +595,16 @@ export function openFarm(options) {
             : (FARM_TOOLS.find((t) => t.id === x.tool)?.name ?? x.tool);
         toast(`Bought ${name}`);
         log(`Bought <b>${name}</b>`, "good");
+      }
+      for (const x of r.results) {
+        if (!x.ok || !x.dog) continue;
+        const n = DOG[x.dog]?.name ?? "Your dog",
+          days = `${x.days} day${x.days > 1 ? "s" : ""}`;
+        const msg = x.extended
+          ? `${n} stays ${days} more`
+          : `${n} is guarding your farm for ${days}!`;
+        toast(msg);
+        log(msg, "good");
       }
       if (r.results.some((x) => x.ok && x.barnFull))
         toast("Your barn is full! Sell something or upgrade the barn.");
@@ -1777,6 +1824,41 @@ export function openFarm(options) {
     }
     return true;
   }
+  /** Crows that were shooed, flying off (drawn until they leave the screen). */
+  const crowsLeaving = [];
+  function shooAt(i) {
+    const r = plotRect(i);
+    act({ a: "shoo", plot: i }, true);
+    crowsLeaving.push({ x: r.x + PW / 2, y: r.y + 20, t: 0 });
+    float(r.x + PW / 2, r.y - 10, "Shoo!", "#fff");
+  }
+  /** Gifts the dogs dug up since this device last showed them. */
+  function announceGifts() {
+    let seen = 0;
+    try {
+      seen = Number(localStorage.getItem(GIFT_KEY)) || 0;
+    } catch {}
+    const since = seen || serverNow() - 86400e3,
+      fresh = F.gifts.filter((g) => Date.parse(g.at) > since).reverse();
+    for (const g of fresh) {
+      const what =
+        g.kind === "seeds"
+          ? `${g.qty} ${CROP[g.crop]?.n ?? g.crop} seeds`
+          : g.kind === "leaves"
+            ? `${g.qty} Gold Leaves`
+            : "a Super Fertilizer";
+      log(`<b>${DOG[g.dog]?.name ?? "Your dog"}</b> dug up ${what}!`, "good");
+      if (g === fresh[fresh.length - 1])
+        toast(`${DOG[g.dog]?.name ?? "Your dog"} dug up ${what}!`);
+    }
+    if (F.gifts.length)
+      try {
+        localStorage.setItem(
+          GIFT_KEY,
+          String(Math.max(seen, ...F.gifts.map((g) => Date.parse(g.at)))),
+        );
+      } catch {}
+  }
   /** Catch bugs: one by hand, one on each plot of a 3×3 with the Big Net (+1 XP each). */
   function catchAt(i, net = false) {
     const ids = area(i, net && F.net === 2 ? 3 : 1).filter(
@@ -1820,6 +1902,11 @@ export function openFarm(options) {
     }
     const r = plotRect(i),
       cx = r.x + PW / 2;
+    // A crow on the plot: any tap shoos it first.
+    if (p.crowAt) {
+      shooAt(i);
+      return;
+    }
     switch (F.tool) {
       case "hand":
         if (p.pests) {
@@ -1979,9 +2066,12 @@ export function openFarm(options) {
   }
   function levelUp(from, to) {
     const crops = PCROPS.filter((c) => c.lv > from && c.lv <= to),
-      tools = FARM_UNLOCKS.filter(([l]) => l > from && l <= to).map(
-        ([, n]) => n,
-      );
+      tools = [
+        ...FARM_UNLOCKS.filter(([l]) => l > from && l <= to).map(([, n]) => n),
+        ...FARM_DOGS.filter((d) => d.level > from && d.level <= to).map(
+          (d) => `Guard dog: ${d.name}`,
+        ),
+      ];
     let leaves = 0;
     for (let l = from + 1; l <= to; l++) leaves += farmLevelLeaves(l);
     const packs = [];
@@ -2105,6 +2195,32 @@ export function openFarm(options) {
         d: () => drawPlotCrop(ctx, i, p, time),
       }),
     );
+    // The dog on guard waits by its doghouse (walking about comes with the art pass).
+    if (s.me && dogOn()) {
+      const st =
+        time % 23 < 1.2
+          ? "bark"
+          : Math.floor(time / 7) % 3 === 0
+            ? "idle"
+            : "sit";
+      items.push({
+        y: DOGH.y + 14,
+        d: () =>
+          GFX.dog(
+            ctx,
+            F.dog.type,
+            st,
+            time,
+            DOGH.x - 90,
+            DOGH.y + 14,
+            0.95,
+            1,
+            {
+              pant: st === "idle",
+            },
+          ),
+      });
+    }
     // Tools you own stand on the farm: the Scarecrow left of the field, a
     // sprinkler at the right end of each row that has one.
     if (s.me && F.scarecrow)
@@ -2209,6 +2325,57 @@ export function openFarm(options) {
     );
     fenceItems(items);
     items.sort((a, b) => a.y - b.y).forEach((it) => it.d());
+    // Crows: fly in, then peck with a bar showing the time left to shoo them.
+    if (s.me) {
+      const sn = serverNow();
+      F.plots.forEach((p, i) => {
+        if (!p.crowAt) return;
+        const r = plotRect(i),
+          tx = r.x + PW / 2,
+          ty = r.y + 20,
+          age = (sn - p.crowAt) / 1000;
+        if (age < 1) {
+          const k = Math.max(0, age);
+          GFX.bird(
+            ctx,
+            "crow",
+            "fly",
+            time,
+            tx - 300 * (1 - k),
+            ty - 240 * (1 - k),
+            1.6,
+            -1,
+          );
+          return;
+        }
+        GFX.bird(ctx, "crow", "peck", time, tx, ty + 10, 1.5, -1);
+        ctx.fillStyle = "rgba(0,0,0,.5)";
+        ctx.beginPath();
+        ctx.roundRect(tx - 20, ty - 22, 40, 6, 3);
+        ctx.fill();
+        ctx.fillStyle = "#ef4f61";
+        ctx.beginPath();
+        ctx.roundRect(
+          tx - 20,
+          ty - 22,
+          40 * Math.min(1, age / CROW_SECONDS),
+          6,
+          3,
+        );
+        ctx.fill();
+      });
+      for (const c of crowsLeaving)
+        GFX.bird(
+          ctx,
+          "crow",
+          "fly",
+          time,
+          c.x + 360 * c.t,
+          c.y - 200 * c.t,
+          1.6,
+          1,
+        );
+    }
     if (!reduced)
       BUTTER.forEach((b) =>
         GFX.butterfly(
@@ -2290,6 +2457,7 @@ export function openFarm(options) {
 
   /* ---------- loop: the farm's time is the server's clock ---------- */
   const reduced = !!options.reduced;
+  let crowAsked = 0;
   function step(now) {
     raf = requestAnimationFrame(step);
     // Never negative: the first frame can be stamped before enter() ran.
@@ -2299,6 +2467,20 @@ export function openFarm(options) {
     if (!inited) return;
     const sn = serverNow();
     for (const p of F.plots) if (p.crop) p.prog = growth(p, sn);
+    for (let k = crowsLeaving.length - 1; k >= 0; k--)
+      if ((crowsLeaving[k].t += dt) > 1.2) crowsLeaving.splice(k, 1);
+    // A crow nobody shooed: ask the server once its time (and allowance) is up.
+    if (
+      F.plots.some(
+        (p) => p.crowAt && sn - p.crowAt > (CROW_SECONDS + 2.5) * 1000,
+      ) &&
+      sn - crowAsked > 5000 &&
+      !queue.length &&
+      !sending
+    ) {
+      crowAsked = sn;
+      void refresh();
+    }
     if (keysF.size) {
       const sp = (600 * dt) / Z;
       if (keysF.has("a") || keysF.has("arrowleft")) cam.x -= sp;
@@ -2381,6 +2563,8 @@ export function openFarm(options) {
     $("fm-badge").innerHTML =
       `<div class="fm-ring" style="--p:${p}"><b>${F.lv}</b></div><div><strong>${esc(options.playerName())}'s Farm</strong><small class="row2"><span>${F.lv >= 100 ? "Max level" : `${F.xp}/${need(F.lv)} XP`}</span></small><div class="xpbar"><i style="width:${p}%"></i></div></div>`;
   }
+  const dogLeft = () => Math.max(0, (F.dog.until - serverNow()) / 1000),
+    dogTotal = () => Math.max(1, (F.dog.until - F.dog.since) / 1000);
   const ringCol = (p) =>
     p > 0.5 ? "#7ff0a2" : p > 0.2 ? "#ffd65b" : "#ff6b5a";
   let orbOpen = null;
@@ -2401,6 +2585,16 @@ export function openFarm(options) {
         wn.color,
         `<span class="wx-ic">${I(wn.icon)}</span>`,
         `${wn.name}: ${wn.text}. Changes in ${fmtSecs(weatherLeft())}`,
+      ],
+      [
+        "dog",
+        `o-dog${dogOn() ? "" : " off"}`,
+        dogOn() ? dogLeft() / dogTotal() : 0,
+        dogOn() ? ringCol(dogLeft() / dogTotal()) : "#ff6b5a",
+        I("dog"),
+        dogOn()
+          ? `${DOG[F.dog.type].name}: ${fmtDur(dogLeft())} left`
+          : "No guard dog",
       ],
       [
         "barn",
@@ -2460,6 +2654,13 @@ export function openFarm(options) {
         n = F.weather.next ? FARM_WEATHER_BY_ID[F.weather.next] : null,
         p = Math.max(0, Math.min(1, weatherLeft() / FARM_WEATHER_SECONDS));
       h = `<div class="op-h">${I(w.icon)}<b>${w.name}</b><span class="op-tag">Now</span></div><p>${w.text}.</p><div class="op-big">${fmtSecs(weatherLeft())}<small>until it changes</small></div><div class="op-bar" style="--rc:${w.color}"><i style="width:${p * 100}%"></i></div>${n ? `<div class="op-next"><span>Next</span>${I(n.icon)}<b>${n.name}</b></div><p class="op-note">${n.text}.</p>` : ""}`;
+    } else if (k === "dog") {
+      if (dogOn()) {
+        const d = DOG[F.dog.type],
+          p = Math.min(1, dogLeft() / dogTotal());
+        h = `<div class="op-h">${I("dog")}<b>${d.name}</b><span class="op-tag">On guard</span></div><div class="op-big">${fmtDur(dogLeft())}<small>left of ${fmtDur(dogTotal())}</small></div><div class="op-bar" style="--rc:${ringCol(p)}"><i style="width:${p * 100}%"></i></div><p>${d.text}.</p><button type="button" class="btn-s" data-orbgo="dogs">Extend or change dog</button>`;
+      } else
+        h = `<div class="op-h">${I("dog")}<b>No guard dog</b><span class="op-tag warn">Unguarded</span></div><p>Crows can eat ripe crops while you are on the farm. Every dog keeps them away, and some dig up gifts.</p><button type="button" class="btn-s" data-orbgo="dogs">Hire a dog</button>`;
     } else {
       const u = barnUsed(),
         p = u / F.barnCap;
@@ -2647,6 +2848,7 @@ export function openFarm(options) {
         head("Farm Shop", "Shop", [
           ["seeds", "Seeds"],
           ["tools", "Tools"],
+          ["dogs", "Guard Dogs"],
           ["land", "Land"],
         ]) + `<div class="sh-body">`;
       if (sheetTab === "seeds")
@@ -2673,6 +2875,14 @@ export function openFarm(options) {
             })
             .join("") +
           `<div class="item"><span class="ic">${I("barn")}</span><div><b>Barn +40 (${F.barnCap})</b><small>Store more crops</small></div><div class="acts"><button type="button" class="btn-s" data-barnup ${F.leaves < barnUpgradePrice(F.barnUp) ? "disabled" : ""}>${barnUpgradePrice(F.barnUp).toLocaleString("en-US")} ${L}</button></div></div>`;
+      if (sheetTab === "dogs")
+        html +=
+          `<p class="sh-note">Hire a guard dog by the day. When the time runs out the dog goes home, so remember to renew. Hiring a different dog sends the one on guard home.</p>` +
+          FARM_DOGS.map((d) => {
+            const active = dogOn() && F.dog.type === d.id,
+              lock = d.level > F.lv;
+            return `<div class="dogcard${active ? " active" : ""}${lock ? " locked" : ""}"><canvas data-dogprev="${d.id}" width="120" height="120"></canvas><div><b>${d.name}</b><small>${d.text}${active ? `<br><b style="color:#7ff0a2">On guard · ${fmtDur(dogLeft())} left</b>` : ""}</small><div class="acts">${lock ? `<span class="sh-note">Unlocks at Lv ${d.level}</span>` : `<button type="button" class="btn-s${active ? " green" : ""}" data-dog="${d.id}" data-days="1" ${F.leaves < d.price1 ? "disabled" : ""}>${active ? "+1 day" : "1 day"} · ${d.price1} ${L}</button><button type="button" class="btn-s ghost" data-dog="${d.id}" data-days="3" ${F.leaves < d.price3 ? "disabled" : ""}>${active ? "+3 days" : "3 days"} · ${d.price3} ${L}</button>`}</div></div></div>`;
+          }).join("");
       if (sheetTab === "land") {
         const k = F.land,
           ok = F.lv >= landLv(k),
@@ -2810,6 +3020,11 @@ export function openFarm(options) {
           ).join("")}</div></div>`;
     }
     el.innerHTML = html;
+    el.querySelectorAll("[data-dogprev]").forEach((c) => {
+      const g = c.getContext("2d");
+      g.clearRect(0, 0, 120, 120);
+      GFX.dog(g, c.dataset.dogprev, "sit", 0, 54, 108, 1.7, 1);
+    });
     const b = el.querySelector(".sh-body");
     if (b) b.scrollTop = top;
   }
@@ -2863,6 +3078,10 @@ export function openFarm(options) {
     }
     if (d.buytool) {
       act({ a: "buy-tool", tool: d.buytool }, true);
+      return;
+    }
+    if (d.dog) {
+      act({ a: "hire-dog", dog: d.dog, days: +d.days }, true);
       return;
     }
     if ("barnup" in d) {
@@ -2943,10 +3162,12 @@ export function openFarm(options) {
     if (!orbOpen) $("fm-orbpop").hidden = true;
   });
   $("fm-orbpop").addEventListener("click", (e) => {
-    if (!e.target.closest("[data-orbgo]")) return;
+    const go = e.target.closest("[data-orbgo]");
+    if (!go) return;
     orbOpen = null;
     $("fm-orbpop").hidden = true;
-    openSheet("barn");
+    if (go.dataset.orbgo === "dogs") openSheet("shop", "dogs");
+    else openSheet("barn");
     renderChips();
   });
   const closeOrb = (e) => {
@@ -3434,6 +3655,12 @@ export function openFarm(options) {
         };
       },
       well: WELL,
+      /** Center the camera on a world point (tests). */
+      look: (x, y) => {
+        cam.x = x;
+        cam.y = y;
+        clampCam();
+      },
       plotClient: (i) => {
         const r = cv.getBoundingClientRect(),
           pr = plotRect(i),
