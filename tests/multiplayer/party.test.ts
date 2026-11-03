@@ -1,4 +1,4 @@
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { io, type Socket } from "socket.io-client";
 import { createArenaServer } from "../../apps/server/src/server";
 import { fakeAccounts } from "../helpers/accounts";
@@ -228,14 +228,15 @@ it("passes the lead on, ends a party of one, and drops members who go offline", 
   await settle();
   expect(f.a.parties.at(-1)!.members).toHaveLength(3);
   expect((await request(f.a.s, "party-leave")).ok).toBe(true);
-  await settle();
-  expect(f.a.parties.at(-1)).toBeNull();
-  expect(f.b.parties.at(-1)!.leader).toBe(f.pal.account.id);
-  expect(f.b.parties.at(-1)!.members).toHaveLength(2);
+  // Wait for the updates themselves, not a fixed time (a busy machine is slow).
+  await vi.waitFor(() => {
+    expect(f.a.parties.at(-1)).toBeNull();
+    expect(f.b.parties.at(-1)!.leader).toBe(f.pal.account.id);
+    expect(f.b.parties.at(-1)!.members).toHaveLength(2);
+  });
   f.c.s.disconnect();
-  await settle();
   // Only the new leader is left: the party ends.
-  expect(f.b.parties.at(-1)).toBeNull();
+  await vi.waitFor(() => expect(f.b.parties.at(-1)).toBeNull());
 });
 
 it("caps a party at four and lets an invitation expire", () => {
