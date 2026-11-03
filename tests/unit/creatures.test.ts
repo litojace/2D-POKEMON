@@ -40,14 +40,14 @@ it("has eight fighters, forty unique moves and four special skills per fighter",
 });
 it("pins roster health (creature remodel balance pass) and movement speeds", () => {
   const baseline: Record<string, [number, number]> = {
-    voltkit: [157, 270],
-    cindrake: [138, 240],
-    tidefin: [152, 285],
-    auralynx: [169, 235],
+    voltkit: [153, 270],
+    cindrake: [141, 240],
+    tidefin: [146, 285],
+    auralynx: [177, 235],
     lumoth: [140, 265],
-    mystowl: [143, 255],
-    terradon: [191, 222],
-    duskveil: [145, 260],
+    mystowl: [142, 255],
+    terradon: [199, 222],
+    duskveil: [139, 260],
   };
   for (const [id, stats] of Object.entries(baseline)) {
     const c = CHARACTERS[id as CharacterId];

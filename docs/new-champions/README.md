@@ -44,10 +44,12 @@ Each kit borrows a proven mechanic idea from another game (credited in
 | Wombolder | 166 → 172 | 545 → 535         |
 | Shadopus  | 129 → 127 | 305               |
 
-These were tuned with the original eight's creature remodel and the attack
-speed fix (see [creature-remodel.md](../creature-remodel.md)). In that pool
-all sixteen averaged 48–52% (bot round robin, 40 games per pairing per
-difficulty).
+These were tuned in a sixteen-champion pool with the original eight's
+creature remodel and the attack speed fix (see
+[creature-remodel.md](../creature-remodel.md)), where all sixteen averaged
+48–52% (bot round robin, 40 games per pairing per difficulty). The original
+eight were then re-tuned on their own for release, so when these ship, re-run
+the auto-tune with all sixteen together.
 
 ## Known issues to address while implementing
 

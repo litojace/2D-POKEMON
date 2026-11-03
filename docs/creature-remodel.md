@@ -78,25 +78,35 @@ The full proposal, with sources and the per-skill value test, is the
 
 ## Balance
 
-Tuned with bot round robins on the real server code: first among the eight,
-then in a sixteen-champion pool with the eight new champions (40 games per
-pairing per difficulty), switching each skill off in turn to find the ones
-that barely mattered, then six rounds of the health / attack-speed auto-tune.
+Tuned with bot round robins on the real server code. The kits were first
+tested among the eight, then in a sixteen-champion pool with the eight new
+champions (40 games per pairing per difficulty). That is where the per-skill
+value test (each skill switched off in turn) showed Static Glide, Sunfire
+Pillar and Silent Swoop barely mattered, which led to the pop and the faster
+ultimates. Health and attack speed were then auto-tuned for the eight that
+ship today (six rounds, last three averaged):
 
-| Fighter  | Health    | Basic attack (ms) |
-| -------- | --------- | ----------------- |
-| Voltkit  | 146 → 157 | 270               |
-| Cindrake | 144 → 138 | 470 → 480         |
-| Tidefin  | 154 → 152 | 240               |
-| Auralynx | 171 → 169 | 325               |
-| Lumoth   | 142 → 140 | 300 → 305         |
-| Mystowl  | 148 → 143 | 375 → 380         |
-| Terradon | 195 → 191 | 635 → 640         |
-| Duskveil | 138 → 145 | 365 → 355         |
+| Fighter  | Health    | Basic attack (ms) | Win rate before | After |
+| -------- | --------- | ----------------- | --------------- | ----- |
+| Voltkit  | 146 → 153 | 270 → 275         | 45.5%           | 48.4% |
+| Cindrake | 144 → 141 | 470 → 475         | 49.5%           | 48.1% |
+| Tidefin  | 154 → 146 | 240 → 245         | 46.0%           | 50.8% |
+| Auralynx | 171 → 177 | 325 → 320         | 50.8%           | 48.0% |
+| Lumoth   | 142 → 140 | 300 → 305         | 50.2%           | 49.8% |
+| Mystowl  | 148 → 142 | 375 → 380         | 50.2%           | 51.6% |
+| Terradon | 195 → 199 | 635 → 625         | 54.1%           | 53.8% |
+| Duskveil | 138 → 139 | 365               | 53.8%           | 49.6% |
 
-The intervals now play at their stated speed, so several fighters attack
-noticeably faster than before even where the number barely moved.
+Win rates are the average of Hard and Normal bots, eight fighters only, 2,240
+matches each (before: today's main; after: this change). With the attack
+speed fix, the intervals now play at their stated speed, so several fighters
+attack faster than before even where the number moved up.
+
+When the eight new champions ship, re-run the auto-tune with all sixteen: in
+that pool the brawlers (Terradon, Auralynx, Cindrake) beat the new divers and
+the ranged fighters struggle against them, so the best numbers differ.
 
 Known limits: bots don't dodge turret shots well, and divers keep attacking
 into Facet Guard, so some matchups look more lopsided than they would with
-players. Cindrake still splits hard by bot skill (Hard bots kite it).
+players. Cindrake still splits hard by bot skill (28% against Hard bots, 70%
+against Normal).
