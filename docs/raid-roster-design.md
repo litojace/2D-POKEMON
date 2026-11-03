@@ -1038,7 +1038,7 @@ skins) to earn that collection's frame for free.
   skin applies to your other champions.
 - The Shop and the Rewards tab both explain this in one line.
 
-### 10.6 Champion skin catalog (104 skins; 112 with the newest Mythicals)
+### 10.6 Champion skin catalog (112 skins)
 
 Every champion gets **3 Common, 2 Rare, 1 Epic and 1 Mythical**. Skins also
 belong to **collections** shared across champions:
@@ -1145,14 +1145,18 @@ belong to **collections** shared across champions:
 | Epic · Garden | **Candlelight** | A melting-candle hood with wax drips. Ghostfire becomes candle flames, hits puff smoke, and KO is a blown-out wick |
 | **Mythical · Celestial** | **Eclipse** | **I:** the hood becomes a total eclipse with a dark sun and a bright ring; it fades in like an eclipse; victory: the ring blooms. **II:** the ring flares and shadow wisps drift. **III:** Haunted Lantern becomes an eclipse sigil, Void Orb a tiny black sun, and its name has a ring |
 
-#### The eight newest champions (48 skins so far)
+#### The eight newest champions
 
 Coilemur, Pyranda, Glacelle, Halcyra, Sunbara, Astrabun, Wombolder and
-Shadopus have 3 Common, 2 Rare and 1 Epic each
-([migration 053](../supabase/migrations/053_new_champion_skins.sql)); their
-Mythicals come next. Their Rares and Epics join the Winter, Festival, Garden
-and Arcade collections, so those collections' free frame now needs these
-skins too (a frame someone already earned stays theirs). Skin art recolours
+Shadopus have 3 Common, 2 Rare, 1 Epic and 1 Mythical each
+([migrations 053](../supabase/migrations/053_new_champion_skins.sql) and
+[054](../supabase/migrations/054_new_champion_mythicals.sql)). Their Rares and
+Epics join the Winter, Festival, Garden and Arcade collections and their
+Mythicals join Celestial, so those collections' free frame now needs these
+skins too (a frame someone already earned stays theirs). Their Mythicals' big
+stage III backdrops (moons, a sunrise, a galaxy) peek from beside the
+shoulder in portraits, inside the rig's crop; in battle the full backdrop is
+an effect drawn behind the fighter. Skin art recolours
 markings with the skin (Pyranda's red-panda markings included); things a
 champion carries, like Pyranda's chestnuts or Coilemur's magnet, keep their
 colours.
@@ -1167,6 +1171,7 @@ colours.
 | Rare · Festival | **Firecracker** | Lucky red with a gold-banded tail; dashing pops confetti |
 | Rare · Winter | **Frost Fuse** | Icy fur and a bobble hat; dashing leaves snowflakes |
 | Epic · Arcade | **Tesla Coil** | Gunmetal fur with glowing circuits, teal skills and a crackling pulse. Hit sparks take its colour, KO is a puff in its colours, and a pulsing ring plays on the rig |
+| **Mythical · Celestial** | **Cometcaller** | **I:** starry midnight-blue fur; comets streak past. **II:** a comet pendant, and two comets orbit with their tails. **III:** a crown of three comets, and a crown of comets circles its head while more streak by |
 
 #### Pyranda (red panda, Fire)
 
@@ -1178,6 +1183,7 @@ colours.
 | Rare · Garden | **Chestnut Grove** | Chestnut brown with an acorn cap; dashing drops leaves |
 | Rare · Festival | **Street Vendor** | A folded paper hat and a striped coat; dashing puffs spice |
 | Epic · Winter | **Fireside Knit** | A cable-knit sweater, cocoa-gold skills and a flickering ember. Hit sparks take its colour, KO is a puff in its colours, and a flickering flame plays on the rig |
+| **Mythical · Celestial** | **Harvest Moon** | **I:** night-sky fur with ember spots; ember leaves rise around it. **II:** a lantern-moon pendant, and the ground glows amber. **III:** a harvest moon rises behind it, with a moon glow and orbiting lanterns |
 
 #### Glacelle (sea angel, Water)
 
@@ -1189,6 +1195,7 @@ colours.
 | Rare · Garden | **Water Lily** | Petal pink with a lotus bloom; dashing scatters petals |
 | Rare · Winter | **Snow Globe** | Snow drifting inside a glassy body; dashing leaves snowflakes |
 | Epic · Arcade | **Deep Glow** | An abyssal body with neon spots and magenta skills. Hit sparks take its colour, KO is a puff in its colours, and a shimmer of stars plays on the rig |
+| **Mythical · Celestial** | **Polaris** | **I:** a starry night body; frost falls around it. **II:** a north-star crown whose rays slowly turn. **III:** aurora ribbons on its sides and aurora curtains waving behind |
 
 #### Halcyra (kingfisher, Aura)
 
@@ -1200,6 +1207,7 @@ colours.
 | Rare · Festival | **Fletcher** | A feathered archer's cap and striped wings; dashing leaves gold dust |
 | Rare · Winter | **Winter Plume** | Frost-white feathers and earmuffs; dashing leaves snowflakes |
 | Epic · Festival | **Paper Crane** | Folded-paper feathers, crimson skills and a glinting crest. Hit sparks take its colour, KO is a puff in its colours, and a glint plays on the rig |
+| **Mythical · Celestial** | **Starfletch** | **I:** constellation feathers; shooting-star arrows fly where it faces. **II:** a golden star-bow sigil, and three stars orbit. **III:** a star-tipped crest, the stars link into a constellation, and a ring pulses out |
 
 #### Sunbara (capybara, Light)
 
@@ -1211,6 +1219,7 @@ colours.
 | Rare · Festival | **Bathhouse** | A folded towel and steamy stripes; dashing blows bubbles |
 | Rare · Winter | **Snow Day** | Snow-dusted fur and a knitted scarf; dashing leaves snowflakes |
 | Epic · Garden | **Sunflower** | A sunflower bloom, golden skills and a glint. Hit sparks take its colour, KO is a puff in its colours, and a glint plays on the rig |
+| **Mythical · Celestial** | **Daybreak** | **I:** sunrise-coral fur with dawn bands; warm light rises. **II:** a sun corona round its yuzu, and rings of steam spread out. **III:** a dawn-cloud collar and a sunrise behind it with slowly turning rays |
 
 #### Astrabun (moon rabbit, Psychic)
 
@@ -1222,6 +1231,7 @@ colours.
 | Rare · Festival | **Mochi Maker** | A twisted headband for pounding mochi; dashing throws confetti |
 | Rare · Garden | **Clover** | Clover-green spots and a flower crown; dashing drops leaves |
 | Epic · Arcade | **Space Cadet** | A starry suit with an antenna, cyan skills and a glint. Hit sparks take its colour, KO is a puff in its colours, and a glint plays on the rig |
+| **Mythical · Celestial** | **Full Moon** | **I:** moon-gold fur with craters; stars drift down. **II:** a gold crescent tiara, and two tiny moons orbit. **III:** a full moon rises behind it, ringed by a pulsing moonlight halo |
 
 #### Wombolder (wombat, Earth)
 
@@ -1233,6 +1243,7 @@ colours.
 | Rare · Garden | **Mushroom Hollow** | A spotted toadstool cap; dashing drops leaves |
 | Rare · Winter | **Snowplough** | Frosted fur and a bobble hat; dashing kicks up snow |
 | Epic · Arcade | **Gold Rush** | A miner's lamp helmet, gold-veined fur and gold skills. Hit sparks take its colour, KO is a puff in its colours, and a glint plays on the rig |
+| **Mythical · Celestial** | **Saturnine** | **I:** banded planet fur; dust drifts around it. **II:** an orbit sash with two moonlets, and two moonlets orbit. **III:** a planetary ring, with a ring of tiny rocks turning around it |
 
 #### Shadopus (octopus, Shadow)
 
@@ -1244,6 +1255,7 @@ colours.
 | Rare · Festival | **Masquerade** | A jewelled masquerade mask; dashing throws confetti |
 | Rare · Garden | **Tide Pool** | Rock-pool speckles and a starfish clip; dashing blows bubbles |
 | Epic · Garden | **Anglerlight** | A glowing lure on a stalk, abyss-teal skills and a flicker. Hit sparks take its colour, KO is a puff in its colours, and a flickering flame plays on the rig |
+| **Mythical · Celestial** | **Nebula** | **I:** nebula skin full of stars; stardust trails it. **II:** glowing star suckers on its arms, and sparkles orbit. **III:** a spiral galaxy turns behind it |
 
 ### 10.7 All-fighter collections
 

@@ -312,6 +312,243 @@ export function awakeningSvg(
         );
       }
       break;
+    default:
+      newAwakening(mythic, full, champion, dir, p, add, { path, circle, star, crescent, paired });
   }
   return out;
+}
+
+type Draw = {
+  path: (d: string, fill?: string, stroke?: string, width?: number) => string;
+  circle: (x: number, y: number, r: number, fill: string, stroke?: string, width?: number) => string;
+  star: (x: number, y: number, r: number, fill?: string) => string;
+  crescent: (x: number, y: number, r: number) => string;
+  paired: (draw: (sign: number) => string) => string;
+};
+
+/**
+ * Awakening details for the eight newest champions' Mythicals. Stage II adds
+ * a chest piece (and, for some, a crown); stage III a large backdrop on the
+ * wings layer, which sits behind the body in front and side views and is
+ * drawn as an outline from behind, where that layer covers the back.
+ */
+function newAwakening(
+  mythic: Mythic,
+  full: boolean,
+  champion: CharacterId,
+  dir: Facing,
+  p: Palette,
+  add: (part: CreaturePart, svg: string) => void,
+  { path, circle, star, crescent, paired }: Draw,
+) {
+  const side = dir === "left" ? -1 : dir === "right" ? 1 : 0;
+  const back = dir === "up";
+  const dx = side * 5;
+  const { cx, top } = HEAD[champion][dir];
+  // A pendant on a cord across the chest (from behind, the cord's clasp).
+  const pendant = (jewel: string, cord = "#ffd65b") =>
+    back
+      ? path("M84 120Q100 126 116 120", "none", cord, 2.6)
+      : path(`M${78 + dx} 121Q${100 + dx} 133 ${122 + dx} 121`, "none", cord, 2.4) + jewel;
+  // A big disc behind the fighter; just its rim from behind.
+  const backdrop = (x: number, y: number, r: number, fill: string, rim: string, inner = "") =>
+    back
+      ? `<circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="${rim}" stroke-width="3" opacity=".9"/>`
+      : `<circle cx="${x}" cy="${y}" r="${r}" fill="${fill}" stroke="${rim}" stroke-width="2.5"/>${inner}`;
+  // Backdrops stay inside the rig's wings crop (final art units: x 12 to 188,
+  // y from about 48), so they rise beside the head rather than above it.
+  const peekR = 25,
+    peekX = cx + (side ? -side * 40 : 44),
+    peekY = Math.max(top + 50, 51 + peekR);
+  const comet = (x: number, y: number, r: number, tx: number, ty: number) =>
+    path(`M${x} ${y}L${x + tx} ${y + ty}`, "none", "#9ff3ff", r * 0.9) +
+    path(`M${x} ${y}L${x + tx * 0.7} ${y + ty * 0.7}`, "none", "#ffffff", r * 0.4) +
+    star(x, y, r, "#ffffff");
+  switch (mythic) {
+    case "cometcaller":
+      add("scarf", pendant(comet(100 + dx, 138, 7.5, -16, -10)));
+      if (full)
+        add(
+          "flame",
+          [-1, 0, 1]
+            .map((k) => comet(cx + k * 20, top - 12 - (k ? 0 : 8), k ? 5.5 : 7, -k * 6 - 8, -16))
+            .join(""),
+        );
+      break;
+    case "harvest-moon":
+      add(
+        "scarf",
+        pendant(
+          circle(100 + dx, 139, 9, "#ffd27a", "#8a4a12", 1.8) +
+            `<circle cx="${103 + dx}" cy="137" r="6.6" fill="#e8a040" opacity=".55"/>` +
+            path(`M${100 + dx} 130V126`, "none", "#8a4a12", 1.8),
+          "#ffd27a",
+        ),
+      );
+      if (full)
+        add(
+          "wings",
+          backdrop(
+            peekX,
+            peekY,
+            peekR,
+            "#ffd27a",
+            "#ffb04a",
+            [[-10, -8, 5], [9, -13, 3.6], [12, 7, 4.4], [-13, 11, 3]]
+              .map(([x, y, r]) => `<circle cx="${peekX + x}" cy="${peekY + y}" r="${r}" fill="#f0b860" opacity=".6"/>`)
+              .join(""),
+          ),
+        );
+      break;
+    case "polaris": {
+      const north = (x: number, y: number, r: number) =>
+        path(
+          Array.from({ length: 16 }, (_, i) => {
+            const a = -Math.PI / 2 + (i * Math.PI) / 8,
+              len = i % 4 === 0 ? r : i % 2 === 0 ? r * 0.55 : r * 0.22;
+            return `${i ? "L" : "M"}${+(x + Math.cos(a) * len).toFixed(1)} ${+(y + Math.sin(a) * len).toFixed(1)}`;
+          }).join("") + "Z",
+          "#fff6c8",
+          "#b89a3a",
+          1.2,
+        );
+      add("flame", north(cx, top - 12, 17) + circle(cx, top - 12, 3, "#ffffff", "none", 0));
+      if (full)
+        add(
+          "wings",
+          paired(
+            (s) =>
+              path(`M${100 + s * 24} 112Q${100 + s * 54} 82 ${100 + s * 72} 96Q${100 + s * 60} 116 ${100 + s * 70} 140Q${100 + s * 50} 128 ${100 + s * 28} 138Z`, "#3fd8a8", "#bfffe8", 2) +
+              path(`M${100 + s * 30} 120Q${100 + s * 52} 104 ${100 + s * 64} 106`, "none", "#c8a8ff", 3) +
+              path(`M${100 + s * 32} 130Q${100 + s * 52} 120 ${100 + s * 64} 128`, "none", "#c8a8ff", 2.4),
+          ),
+        );
+      break;
+    }
+    case "starfletch":
+      add(
+        "scarf",
+        back
+          ? path("M84 120Q100 126 116 120", "none", "#ffd65b", 2.6)
+          : path(`M${84 + dx} 124Q${100 + dx} 146 ${116 + dx} 124`, "none", "#ffd65b", 2.6) +
+              path(`M${84 + dx} 124L${116 + dx} 124`, "none", "#fff3b0", 1) +
+              path(`M${100 + dx} 146L${100 + dx} 120`, "none", "#ffd65b", 2) +
+              star(100 + dx, 118, 7, "#fff3b0"),
+      );
+      if (full)
+        add("flame", [-1, 0, 1].map((k) => star(cx + k * 15 + side * 4, top - 8 - (k ? 0 : 9), k ? 6 : 8, "#ffe9a0")).join(""));
+      break;
+    case "daybreak":
+      // A corona round the yuzu (Sunbara's sun), then a dawn-cloud collar and a sunrise.
+      add(
+        "flame",
+        Array.from({ length: 12 }, (_, i) => {
+          const a = (i / 12) * Math.PI * 2,
+            y = top - 4;
+          return path(
+            `M${+(cx + Math.cos(a) * 17).toFixed(1)} ${+(y + Math.sin(a) * 15).toFixed(1)}L${+(cx + Math.cos(a) * 25).toFixed(1)} ${+(y + Math.sin(a) * 22).toFixed(1)}`,
+            "none",
+            "#ffd65b",
+            2.6,
+          );
+        }).join(""),
+      );
+      if (full) {
+        add(
+          "scarf",
+          back
+            ? path("M74 126Q100 136 126 126", "none", "#ffd0a8", 6)
+            : paired((s) => circle(100 + s * 14, 130, 8, "#fff0e0", "#ffb04a", 1.6) + circle(100 + s * 27, 126, 6, "#fff0e0", "#ffb04a", 1.6)) +
+                circle(100 + dx, 133, 8.5, "#fff6ec", "#ffb04a", 1.6),
+        );
+        add(
+          "wings",
+          backdrop(
+            cx,
+            top + 60,
+            back ? 36 : 40,
+            "#ffc86a",
+            "#ff9a3a",
+            Array.from({ length: 8 }, (_, i) => {
+              const a = Math.PI + (i / 7) * Math.PI;
+              return path(
+                `M${+(cx + Math.cos(a) * 44).toFixed(1)} ${+(top + 60 + Math.sin(a) * 44).toFixed(1)}L${+(cx + Math.cos(a) * 54).toFixed(1)} ${+(top + 60 + Math.sin(a) * 54).toFixed(1)}`,
+                "none",
+                "#ffb732",
+                3,
+              );
+            }).join(""),
+          ),
+        );
+      }
+      break;
+    case "full-moon":
+      // A gold crescent tiara between the ears, then a full moon behind.
+      add(
+        "flame",
+        path(
+          `M${cx + side * 3 + 7} ${top - 8}A13 13 0 1 0 ${cx + side * 3 + 7} ${top + 16}Q${cx + side * 3 - 8} ${top + 4} ${cx + side * 3 + 7} ${top - 8}Z`,
+          "#ffe680",
+          "#a8862a",
+          1.6,
+        ),
+      );
+      if (full)
+        add(
+          "wings",
+          backdrop(
+            peekX,
+            peekY,
+            peekR,
+            "#f6f4ff",
+            "#ffe680",
+            [[-10, -8, 5], [9, -13, 3.4], [12, 8, 5.6], [-13, 12, 3.2], [1, 1, 2.6]]
+              .map(([x, y, r]) => `<circle cx="${peekX + x}" cy="${peekY + y}" r="${r}" fill="#d8dcf0"/>`)
+              .join(""),
+          ),
+        );
+      break;
+    case "saturnine":
+      add(
+        "scarf",
+        back
+          ? path("M68 134Q100 146 132 134", "none", "#c8a8ff", 4)
+          : path(`M${64 + dx} 132Q${100 + dx} 152 ${136 + dx} 132`, "none", "#c8a8ff", 4.4) +
+              path(`M${64 + dx} 132Q${100 + dx} 152 ${136 + dx} 132`, "none", "#fff0d8", 1.4) +
+              circle(70 + dx, 136, 3.6, "#e8e0ff", "#6a4a8a", 1.2) +
+              circle(130 + dx, 136, 3, "#ffd27a", "#8a5a2a", 1.2),
+      );
+      if (full)
+        add(
+          "wings",
+          back
+            ? `<ellipse cx="100" cy="132" rx="74" ry="20" fill="none" stroke="#c8a8ff" stroke-width="5" opacity=".9"/>`
+            : `<ellipse cx="100" cy="132" rx="76" ry="22" fill="none" stroke="#c8a8ff" stroke-width="7" opacity=".85"/><ellipse cx="100" cy="132" rx="76" ry="22" fill="none" stroke="#fff0d8" stroke-width="2"/><ellipse cx="100" cy="132" rx="64" ry="17" fill="none" stroke="#ffd27a" stroke-width="2" opacity=".8"/>`,
+        );
+      break;
+    case "nebula":
+      add(
+        "armL",
+        [[56, 140], [66, 150], [50, 152]].map(([x, y]) => star(x, y, 3.6, "#ff9be6")).join(""),
+      );
+      add(
+        "armR",
+        [[144, 140], [134, 150], [150, 152]].map(([x, y]) => star(x, y, 3.6, "#8ad8ff")).join(""),
+      );
+      if (full) {
+        const arms = [0, 1, 2]
+          .map((k) => {
+            const a = (k * 2 * Math.PI) / 3;
+            const pt = (r: number, t: number) =>
+              `${+(peekX + Math.cos(a + t) * r).toFixed(1)} ${+(peekY + Math.sin(a + t) * r * 0.9).toFixed(1)}`;
+            return path(`M${pt(4, 0)}Q${pt(20, 0.9)} ${pt(30, 1.9)}`, "none", k % 2 ? "#8ad8ff" : "#ff9be6", 3);
+          })
+          .join("");
+        add(
+          "wings",
+          backdrop(peekX, peekY, peekR, "#2a0f4a", "#ff6bd6", arms + circle(peekX, peekY, 5, "#fff0ff", "none", 0)),
+        );
+      }
+      break;
+  }
 }
