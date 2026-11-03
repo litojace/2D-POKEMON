@@ -103,8 +103,20 @@ open to change.
   presence value `"town"` stays on the wire (clients show it as "In the
   Plaza"). Tapping a player in the Plaza shows their card with Add friend and
   Invite to party, in place of the town's Nearby players panel.
-- **Not yet:** the photo album (the polaroid can be saved as a picture).
-  Treats came with the farm systems (049).
+- **The photo album (decided 3 Nov 2026): on the device, not the server.**
+  "Save to album" on the polaroid keeps the photo in this browser's
+  IndexedDB (`apps/client/src/plaza/plaza-album.ts`): the newest 30, and a
+  31st pushes out the oldest (the toast says so). The Album button in the
+  Plaza opens a fixed grid of 30 slots; an open photo can be saved as a
+  picture or deleted. Nothing goes to the game server or Supabase. Why: the
+  photos show other players and their names, and keeping them on the server
+  raises storage cost, retention and privacy questions (who may see a photo
+  of you, deleting on request) that are the owner's to answer. What this
+  costs: the album belongs to one browser (an iPhone home-screen app has its
+  own), is not synced or backed up, and is gone if site data is cleared or
+  the browser evicts it for space; the album says "Saved on this device
+  only". Moving it to the server later needs the owner's decision first.
+- Treats came with the farm systems (049).
 
 ## Farm systems progress (phase 5)
 
