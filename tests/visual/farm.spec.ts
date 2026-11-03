@@ -17,6 +17,7 @@ async function fakeFarm(page: Page) {
       wet: false,
       fertilizer: null,
       mutation: null,
+      pests: 0,
     }));
     Object.assign(plots[0], { crop: "wheat", progress: 1, ripeAt: at(-60) });
     Object.assign(plots[1], {
@@ -25,7 +26,12 @@ async function fakeFarm(page: Page) {
       ripeAt: at(2400),
       wet: true,
     });
-    Object.assign(plots[2], { crop: "wheat", progress: 0.8, ripeAt: at(700) });
+    Object.assign(plots[2], {
+      crop: "wheat",
+      progress: 0.8,
+      ripeAt: at(700),
+      pests: 1,
+    });
     Object.assign(plots[4], {
       crop: "carrot",
       progress: 1,
@@ -40,6 +46,14 @@ async function fakeFarm(page: Page) {
       barnCap: 80,
       barnUpgrades: 0,
       fertilizer: { norm: 3, super: 1, gold: 0 },
+      // Every tool bar slot in use (7 tools), a scarecrow and a sprinkler.
+      tools: {
+        can: 2,
+        bigNet: false,
+        sickle: true,
+        scarecrow: true,
+        sprinklers: 1,
+      },
       plots,
       seeds: { wheat: 9, carrot: 6 },
       barn: [{ crop: "wheat", mutation: "", qty: 4 }],
@@ -92,6 +106,7 @@ async function fakeFarm(page: Page) {
       ],
     };
     w.__farmRequests = [];
+    w.__fakeFarm = farm;
     const fetch = window.fetch.bind(window);
     window.fetch = async (input, init) => {
       const url = String(input);
@@ -112,6 +127,15 @@ async function fakeFarm(page: Page) {
           if (a.a === "plant" && p && !p.crop) {
             Object.assign(p, { crop: a.crop, progress: 0, ripeAt: at(3600) });
             return { ok: true };
+          }
+          if (a.a === "catch" && p?.pests) {
+            p.pests--;
+            return { ok: true, caught: 1, xp: 1 };
+          }
+          if (a.a === "buy-tool" && a.tool === "net2") {
+            farm.tools.bigNet = true;
+            farm.leaves -= 700;
+            return { ok: true, tool: "net2", cost: 700 };
           }
           return { ok: false, error: "Not in this test" };
         });
@@ -235,7 +259,7 @@ for (const viewport of [
       await expect(page.locator(".farm-layer #fm-cv")).toBeVisible();
       await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
       await expect(page.locator("#fm-badge")).toContainText("20/");
-      await expect(page.locator("#fm-tools [data-tool]")).toHaveCount(5);
+      await expect(page.locator("#fm-tools [data-tool]")).toHaveCount(7);
       await page.waitForTimeout(600);
       await snap(
         page,
@@ -384,6 +408,64 @@ test("tapping a ripe plot harvests it, and an empty plot opens the seed picker",
     await expect(page.locator("#fm-sheet")).toContainText("Farmers' market");
     await expect(page.locator("#fm-sheet")).toContainText("Wheat ×");
     await snap(page, info, "farm-market-1280x800");
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test("a tap catches a bug, and the Tools tab sells tools", async ({
+  browser,
+}, info) => {
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    await fakeFarm(page);
+    await page.evaluate(() => {
+      (window as any).__fakeFarm.level = 12;
+    });
+    await page.click('#hub-scenes [data-hub-scene="farm"]');
+    await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
+    // Seven tools, the can showing the one you own.
+    await expect(page.locator("#fm-tools [data-tool]")).toHaveCount(7);
+    await expect(page.locator('#fm-tools [data-tool="can"]')).toContainText(
+      "Copper",
+    );
+    await page.waitForTimeout(400);
+    const bug = await page.evaluate(() => (window as any).__farm.plotClient(2));
+    await page.mouse.click(bug.x, bug.y);
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          (window as any).__farmRequests.flatMap((r: any) => r.actions),
+        ),
+      )
+      .toEqual([{ a: "catch", plot: 2 }]);
+    await page.click('#fm-dock [data-sheet="shop"]');
+    await page.click('#fm-sheet [data-tab="tools"]');
+    const sheet = page.locator("#fm-sheet");
+    await expect(sheet).toContainText("Tools are yours forever.");
+    await expect(
+      sheet.locator(".item", { hasText: "Scarecrow" }).locator("button"),
+    ).toHaveText("Owned");
+    await expect(sheet.locator(".item", { hasText: "Gold Can" })).toContainText(
+      "unlocks at Lv 30",
+    );
+    await expect(
+      sheet.locator(".item", { hasText: "Sprinkler (1/5)" }),
+    ).toContainText("unlocks at Lv 26");
+    await snap(page, info, "farm-tools-1280x800");
+    await sheet.locator('[data-buytool="net2"]').click();
+    await expect(page.locator("#toast")).toContainText("Bought Big Net");
+    await expect(
+      sheet.locator(".item", { hasText: "Big Net" }).locator("button"),
+    ).toHaveText("Owned");
+    await expect(page.locator('#fm-tools [data-tool="net"]')).toContainText(
+      "Big Net",
+    );
     expect(errors).toEqual([]);
   } finally {
     await context.close();

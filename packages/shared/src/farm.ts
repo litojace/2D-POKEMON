@@ -507,6 +507,80 @@ export const FERTILIZERS: Record<
     text: "Gold mutation odds ×3 for that crop",
   },
 };
+/** Tools bought once with Gold Leaves (migration 044). */
+export type FarmToolId =
+  "scarecrow" | "can2" | "net2" | "sickle" | "can3" | "sprinkler";
+export const FARM_TOOLS: readonly {
+  id: Exclude<FarmToolId, "sprinkler">;
+  name: string;
+  icon: string;
+  text: string;
+  price: number;
+  level: number;
+}[] = [
+  {
+    id: "scarecrow",
+    name: "Scarecrow",
+    icon: "scarecrow",
+    text: "50% fewer bugs",
+    price: 300,
+    level: 4,
+  },
+  {
+    id: "can2",
+    name: "Copper Can",
+    icon: "can2",
+    text: "Waters 3 plots in a row",
+    price: 600,
+    level: 8,
+  },
+  {
+    id: "net2",
+    name: "Big Net",
+    icon: "net",
+    text: "Catches bugs in a 3×3 area",
+    price: 700,
+    level: 10,
+  },
+  {
+    id: "sickle",
+    name: "Sickle",
+    icon: "sickle",
+    text: "Harvests a 3×3 area at once",
+    price: 1200,
+    level: 14,
+  },
+  {
+    id: "can3",
+    name: "Gold Can",
+    icon: "can3",
+    text: "Waters a 3×3 area",
+    price: 4000,
+    level: 30,
+  },
+];
+/** Sprinklers, one a row from the top: what the 1st…5th costs and needs. */
+export const SPRINKLER_PRICES = [1500, 2200, 3000, 3800, 4500] as const;
+export const SPRINKLER_LEVELS = [18, 26, 34, 42, 50] as const;
+/** Bugs (migration 044): chance a second for each growing plot while you are on the farm. */
+export const BUG_RATE = 0.00005;
+/** Each bug slows its crop by this much; a plot holds at most BUG_MAX from nature. */
+export const BUG_SLOW = 0.2;
+export const BUG_MAX = 2;
+/** The plots a tool reaches: 1 that plot, 2 three in its row, 3 the 3×3 around it. */
+export function farmArea(plot: number, size: number): number[] {
+  const out: number[] = [],
+    r = Math.floor(plot / 10),
+    c = plot % 10;
+  for (let dr = -1; dr <= 1; dr++)
+    for (let dc = -1; dc <= 1; dc++) {
+      if ((size < 3 && dr) || (size < 2 && dc)) continue;
+      const rr = r + dr,
+        cc = c + dc;
+      if (rr >= 0 && rr < 5 && cc >= 0 && cc < 10) out.push(rr * 10 + cc);
+    }
+  return out;
+}
 /** Farm weather (migration 039): one per 4-hour UTC window, the same for everyone. */
 export type FarmWeatherId =
   "sun" | "rain" | "storm" | "moon" | "frost" | "rainbow";
@@ -634,6 +708,18 @@ export interface FarmPlot {
   wet: boolean;
   fertilizer: FertilizerKind | null;
   mutation: string | null;
+  /** Bugs on the plot (migration 044; absent before it). */
+  pests?: number;
+}
+/** Tools a farm owns (migration 044). */
+export interface FarmTools {
+  /** 1 Wood, 2 Copper (3 in a row), 3 Gold (3×3). */
+  can: 1 | 2 | 3;
+  bigNet: boolean;
+  sickle: boolean;
+  scarecrow: boolean;
+  /** Rows with a sprinkler, counted from the top. */
+  sprinklers: number;
 }
 export interface FarmState {
   /** Server time when this was read (ISO). The client counts from it. */
@@ -644,6 +730,8 @@ export interface FarmState {
   landBought: number;
   seeds: Record<string, number>;
   fertilizer: Record<FertilizerKind, number>;
+  /** Migration 044; absent before it. */
+  tools?: FarmTools;
   barn: { crop: string; mutation: string; qty: number }[];
   barnCap: number;
   barnUpgrades: number;
@@ -667,7 +755,10 @@ export interface FarmState {
 /** One action in a farm request (arena_farm_act). */
 export type FarmAction =
   | { a: "plant"; plot: number; crop: string }
-  | { a: "water" | "harvest" | "dig" | "buy-land"; plot: number }
+  | { a: "water" | "dig" | "buy-land"; plot: number }
+  | { a: "harvest"; plot: number; tool?: "sickle" }
+  | { a: "catch"; plot: number; tool?: "net" }
+  | { a: "buy-tool"; tool: FarmToolId }
   | { a: "fertilize"; plot: number; kind: FertilizerKind }
   | { a: "buy-seeds"; crop: string; qty: number }
   | { a: "sell"; crop: string; mutation: string; qty: number }
@@ -676,7 +767,29 @@ export type FarmAction =
 export interface FarmActResult {
   farm: FarmState;
   results: (
-    | { ok: true; crop?: string; qty?: number; xp?: number; leaves?: number }
+    | {
+        ok: true;
+        crop?: string;
+        qty?: number;
+        xp?: number;
+        leaves?: number;
+        mutation?: string;
+        /** Water with a bigger can: the plots it watered. */
+        watered?: number[];
+        /** Bugs caught. */
+        caught?: number;
+        /** The Sickle: each plot it harvested; barnFull when it stopped early. */
+        harvested?: {
+          plot: number;
+          crop: string;
+          qty: number;
+          xp: number;
+          mutation: string;
+        }[];
+        barnFull?: boolean;
+        tool?: FarmToolId;
+        cost?: number;
+      }
     | { ok: false; error: string }
   )[];
   combo?: number;

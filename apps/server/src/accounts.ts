@@ -39,7 +39,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "043_farm_mastery.sql";
+export const LATEST_MIGRATION = "044_farm_tools.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -420,8 +420,21 @@ export function installAccountRoutes(
         "sell",
         "buy-fertilizer",
         "upgrade-barn",
+        "catch",
+        "buy-tool",
       ]),
       plot: z.number().int().min(0).max(49).optional(),
+      tool: z
+        .enum([
+          "net",
+          "sickle",
+          "scarecrow",
+          "can2",
+          "net2",
+          "can3",
+          "sprinkler",
+        ])
+        .optional(),
       crop: z
         .string()
         .max(32)

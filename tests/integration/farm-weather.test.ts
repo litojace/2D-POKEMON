@@ -48,6 +48,8 @@ beforeAll(async () => {
   await db.exec(
     `create role anon;create role authenticated;create role service_role;create schema auth;create table auth.users(id uuid primary key,raw_user_meta_data jsonb);create function auth.uid()returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;grant usage on schema auth,public to anon,authenticated,service_role;grant execute on function auth.uid() to anon,authenticated,service_role;`,
   );
+  // Random bugs (migration 044) would change growth timings.
+  await db.exec("select set_config('arena.farm_bugs', 'off', false)");
   for (const f of (await readdir("supabase/migrations"))
     .filter((f) => f.endsWith(".sql"))
     .sort())
@@ -126,8 +128,9 @@ it("rolls mutations by the weather when a crop ripens", async () => {
       (
         await owner(
           `select m, count(*)::int n from (
-             select public.arena_farm_mutation($1, (p.player_id, p.idx, p.owned, 'wheat',
-               timestamptz '2026-01-01' + make_interval(secs => s), 1, now(), false, $3::text, null)::public.arena_farm_plots, $2) m
+             select public.arena_farm_mutation($1, jsonb_populate_record(p, jsonb_build_object('crop', 'wheat',
+               'planted_at', timestamptz '2026-01-01' + make_interval(secs => s), 'progress', 1, 'progress_at', now(),
+               'wet', false, 'fertilizer', $3::text, 'mutation', null)), $2) m
              from public.arena_farm_plots p, generate_series(1, 8000) s
              where p.player_id = $1 and p.idx = 0) x group by m`,
           [player, weather, fertilizer],
@@ -162,8 +165,9 @@ it("keeps the mutation in the barn and sells it at its multiplier", async () => 
   const [{ at }] = await owner(
     `select planted as at from (
        select timestamptz '2026-01-01' + make_interval(secs => s) planted,
-         public.arena_farm_mutation($1, (p.player_id, p.idx, p.owned, 'wheat',
-           timestamptz '2026-01-01' + make_interval(secs => s), 1, now(), false, null, null)::public.arena_farm_plots, 'storm') m
+         public.arena_farm_mutation($1, jsonb_populate_record(p, jsonb_build_object('crop', 'wheat',
+           'planted_at', timestamptz '2026-01-01' + make_interval(secs => s), 'progress', 1, 'progress_at', now(),
+           'wet', false, 'fertilizer', null, 'mutation', null)), 'storm') m
        from public.arena_farm_plots p, generate_series(1, 400) s where p.player_id = $1 and p.idx = 3) x
      where m = 'shock' limit 1`,
     [player],

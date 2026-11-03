@@ -20,6 +20,9 @@ import {
   FERTILIZERS,
   LEAF_TRADE,
   barnUpgradePrice,
+  FARM_TOOLS,
+  SPRINKLER_LEVELS,
+  SPRINKLER_PRICES,
   farmXpToNext,
   farmLevelLeaves,
   isStartPlot,
@@ -272,6 +275,9 @@ export function openFarm(options) {
     fert: "norm",
     can: 1,
     net: 1,
+    sickle: false,
+    scarecrow: false,
+    sprinklers: 0,
     log: [],
     decorPick: null,
     shovelArm: null,
@@ -316,6 +322,13 @@ export function openFarm(options) {
     F.barnCap = st.barnCap;
     F.barnUp = st.barnUpgrades;
     F.ferts = { ...st.fertilizer };
+    // Tools (migration 044; a wooden can and a hand net before it).
+    F.can = st.tools?.can ?? 1;
+    F.net = st.tools?.bigNet ? 2 : 1;
+    F.sickle = !!st.tools?.sickle;
+    F.scarecrow = !!st.tools?.scarecrow;
+    F.sprinklers = st.tools?.sprinklers ?? 0;
+    if (F.tool === "sickle" && !F.sickle) F.tool = "hand";
     F.seeds = { ...st.seeds };
     F.harv = { ...(st.harvests ?? {}) };
     F.barn = {};
@@ -371,7 +384,7 @@ export function openFarm(options) {
         wet: p.wet,
         fert: p.fertilizer,
         mut: p.mutation ? p.mutation.split("+") : [],
-        pests: 0,
+        pests: p.pests ?? 0,
         crow: null,
       });
     if (!F.seeds[F.seed]) {
@@ -395,19 +408,45 @@ export function openFarm(options) {
     const g = growth(p, now),
       left = p.ripeAt ? Math.max(0, p.ripeAt - now) : 0;
     if (a.a === "plant") {
-      const c = CROP[a.crop];
+      const c = CROP[a.crop],
+        wet = Math.floor(a.plot / COLS) < F.sprinklers;
       Object.assign(
         p,
-        mkPlot({ crop: a.crop, at0: now, ripeAt: now + c.t * 1000 }),
+        mkPlot({
+          crop: a.crop,
+          wet,
+          at0: now,
+          ripeAt: now + (c.t * 1000) / (wet ? 1.35 : 1),
+        }),
       );
       F.seeds[a.crop] = Math.max(0, (F.seeds[a.crop] || 0) - 1);
     } else if (a.a === "water")
-      Object.assign(p, {
-        wet: true,
-        prog0: g,
-        at0: now,
-        ripeAt: now + left / 1.35,
-      });
+      // The can you own waters its area; the server decides which plots.
+      for (const j of area(a.plot, F.can)) {
+        const q = F.plots[j];
+        if (q.locked || !q.crop || q.prog >= 1 || q.wet) continue;
+        const gq = growth(q, now),
+          lq = q.ripeAt ? Math.max(0, q.ripeAt - now) : 0;
+        Object.assign(q, {
+          wet: true,
+          prog0: gq,
+          at0: now,
+          ripeAt: now + lq / 1.35,
+        });
+      }
+    else if (a.a === "catch")
+      for (const j of area(a.plot, a.tool === "net" && F.net === 2 ? 3 : 1)) {
+        const q = F.plots[j];
+        if (q.pests > 0) q.pests--;
+      }
+    else if (a.a === "harvest" && a.tool === "sickle")
+      for (const j of area(a.plot, 3)) {
+        const q = F.plots[j];
+        if (q.locked || !q.crop || q.prog < 1) continue;
+        const key = `${q.crop}|${q.mut.slice().sort().join("+")}`;
+        F.barn[key] = (F.barn[key] || 0) + 2;
+        Object.assign(q, mkPlot());
+      }
     else if (a.a === "fertilize" && a.kind === "super") {
       const rate = left > 0 ? (1 - g) / left : 0,
         ng = Math.min(0.999, g + 0.5);
@@ -511,6 +550,17 @@ export function openFarm(options) {
       applyState(r.farm);
       const errors = r.results.filter((x) => !x.ok).map((x) => x.error);
       if (errors.length) toast(errors[0]);
+      for (const x of r.results) {
+        if (!x.ok || !x.tool) continue;
+        const name =
+          x.tool === "sprinkler"
+            ? `Sprinkler for row ${F.sprinklers}`
+            : (FARM_TOOLS.find((t) => t.id === x.tool)?.name ?? x.tool);
+        toast(`Bought ${name}`);
+        log(`Bought <b>${name}</b>`, "good");
+      }
+      if (r.results.some((x) => x.ok && x.barnFull))
+        toast("Your barn is full! Sell something or upgrade the barn.");
       if (r.combo >= 3)
         log(
           `Harvest combo <b>×${r.combo}</b> · +${r.combo * 3} bonus XP`,
@@ -1727,6 +1777,40 @@ export function openFarm(options) {
     }
     return true;
   }
+  /** Catch bugs: one by hand, one on each plot of a 3×3 with the Big Net (+1 XP each). */
+  function catchAt(i, net = false) {
+    const ids = area(i, net && F.net === 2 ? 3 : 1).filter(
+      (j) => F.plots[j].pests > 0,
+    );
+    if (!ids.length) return false;
+    act(net ? { a: "catch", plot: i, tool: "net" } : { a: "catch", plot: i });
+    for (const j of ids) {
+      const r = plotRect(j);
+      FX.push({ poof: 1, x: r.x + PW / 2, y: r.y + PH / 2, t: 0, life: 0.5 });
+      float(r.x + PW / 2, r.y, "+1 XP", "#7ff0a2");
+    }
+    return true;
+  }
+  /** The Sickle: every ripe plot of the 3×3 in one go. */
+  function sickleAt(i) {
+    const ripe = area(i, 3).filter((j) => {
+      const q = F.plots[j];
+      return !q.locked && q.crop && q.prog >= 1;
+    });
+    if (!ripe.length) return false;
+    if (barnUsed() + 2 > F.barnCap) {
+      toast("Your barn is full! Sell something or upgrade the barn.");
+      return false;
+    }
+    for (const j of ripe) {
+      const c = CROP[F.plots[j].crop],
+        r = plotRect(j);
+      fly(r.x + PW / 2, r.y + 10, icon(c.id), "+2");
+      float(r.x + PW / 2, r.y - 30, `+${c.xp} XP`, "#7ff0a2");
+    }
+    act({ a: "harvest", plot: i, tool: "sickle" });
+    return true;
+  }
   function useTool(i, drag = false) {
     const p = F.plots[i];
     if (!p || !F.loaded) return;
@@ -1738,6 +1822,10 @@ export function openFarm(options) {
       cx = r.x + PW / 2;
     switch (F.tool) {
       case "hand":
+        if (p.pests) {
+          catchAt(i);
+          break;
+        }
         if (p.crop && p.prog >= 1) {
           harvestAt(i);
           break;
@@ -1748,11 +1836,30 @@ export function openFarm(options) {
         if (!p.crop) plantAt(i, F.seed);
         else if (p.prog >= 1) harvestAt(i, true);
         break;
-      case "can":
-        if (p.crop && p.prog < 1 && !p.wet) {
-          act({ a: "water", plot: i });
-          FX.push({ drops: 1, x: cx, y: r.y + PH / 2, t: 0, life: 0.7 });
+      case "can": {
+        const dry = area(i, F.can).filter((j) => {
+          const q = F.plots[j];
+          return !q.locked && q.crop && q.prog < 1 && !q.wet;
+        });
+        if (!dry.length) break;
+        act({ a: "water", plot: i });
+        for (const j of dry) {
+          const rr = plotRect(j);
+          FX.push({
+            drops: 1,
+            x: rr.x + PW / 2,
+            y: rr.y + PH / 2,
+            t: 0,
+            life: 0.7,
+          });
         }
+        break;
+      }
+      case "net":
+        catchAt(i, true);
+        break;
+      case "sickle":
+        sickleAt(i);
         break;
       case "fert": {
         if (!p.crop || p.prog >= 1) break;
@@ -1998,6 +2105,47 @@ export function openFarm(options) {
         d: () => drawPlotCrop(ctx, i, p, time),
       }),
     );
+    // Tools you own stand on the farm: the Scarecrow left of the field, a
+    // sprinkler at the right end of each row that has one.
+    if (s.me && F.scarecrow)
+      items.push({
+        y: 560,
+        d: () => {
+          GFX.shadow(ctx, 292, 562, 26, 6);
+          GFX.blit(ctx, GFX.scarecrow(), 288, 562);
+        },
+      });
+    if (s.me)
+      for (let r = 0; r < Math.min(F.sprinklers, ROWS); r++) {
+        const y = OY + r * (PH + GAP) + PH / 2,
+          sx = OX + FW + 12;
+        items.push({
+          y,
+          d: () => {
+            ctx.fillStyle = "#8a93a6";
+            ctx.beginPath();
+            ctx.roundRect(sx - 4, y - 8, 9, 20, 3);
+            ctx.fill();
+            ctx.fillStyle = "#4fb3ff";
+            ctx.beginPath();
+            ctx.arc(sx, y - 9, 4, 0, 7);
+            ctx.fill();
+            ctx.fillStyle = "rgba(160,220,255,.7)";
+            for (let k = 0; k < 7; k++) {
+              const a = time * 4 + k;
+              ctx.beginPath();
+              ctx.arc(
+                sx - 8 - ((k * 12 + time * 34) % 70),
+                y - 12 - Math.sin(a) * 7,
+                2,
+                0,
+                7,
+              );
+              ctx.fill();
+            }
+          },
+        });
+      }
     items.push({
       y: WELL.y,
       d: () => {
@@ -2352,7 +2500,13 @@ export function openFarm(options) {
   const TOOLS = () => [
     ["hand", "hand", "Hand"],
     ["seed", "seed", "Seeds", F.seeds[F.seed] || 0],
-    ["can", "can", "Can", null, "Wood"],
+    [
+      "can",
+      ["", "can", "can2", "can3"][F.can],
+      "Can",
+      null,
+      ["", "Wood", "Copper", "Gold"][F.can],
+    ],
     [
       "fert",
       F.fert === "gold"
@@ -2363,8 +2517,45 @@ export function openFarm(options) {
       "Fertilizer",
       F.ferts[F.fert],
     ],
+    ["net", "net", F.net === 2 ? "Big Net" : "Net"],
+    ...(F.sickle ? [["sickle", "sickle", "Sickle"]] : []),
     ["shovel", "shovel", "Shovel"],
   ];
+  /** The Tools tab: [id, icon, name, text, price, level, owned, why not yet]. */
+  function toolRows() {
+    const has = {
+        scarecrow: F.scarecrow,
+        can2: F.can >= 2,
+        net2: F.net >= 2,
+        sickle: F.sickle,
+        can3: F.can >= 3,
+      },
+      n = Math.min(F.sprinklers, 4);
+    return [
+      ...FARM_TOOLS.map((t) => [
+        t.id,
+        t.icon,
+        t.name,
+        t.text,
+        t.price,
+        t.level,
+        has[t.id],
+        t.id === "can3" && F.can < 2 ? "buy the Copper Can first" : "",
+      ]),
+      [
+        "sprinkler",
+        "sprinkler",
+        `Sprinkler (${F.sprinklers}/5)`,
+        F.sprinklers >= 5
+          ? "Every row waters what you plant"
+          : `Waters what you plant in row ${F.sprinklers + 1}`,
+        SPRINKLER_PRICES[n],
+        SPRINKLER_LEVELS[n],
+        F.sprinklers >= 5,
+        "",
+      ],
+    ];
+  }
   function renderTools() {
     $("fm-tools").innerHTML = TOOLS()
       .map(
@@ -2387,7 +2578,7 @@ export function openFarm(options) {
       sp = { x: sp0.x - o.x, y: sp0.y - o.y };
     const left = p.prog < 1 && p.ripeAt ? (p.ripeAt - serverNow()) / 1000 : 0;
     tip.hidden = false;
-    tip.innerHTML = `<b>${c.n}</b><div class="bar"><i style="width:${p.prog * 100}%"></i></div><div class="row"><span>${p.prog >= 1 ? "Ready" : "Time left"}</span><span>${p.prog >= 1 ? "Harvest now" : fmtSecs(left)}</span></div><div class="row"><span>Water</span><span>${p.wet ? "watered" : "dry"}</span></div>${p.fert ? `<div class="row"><span>Fertilizer</span><span>${p.fert === "gold" ? "gold" : "regular"}</span></div>` : ""}`;
+    tip.innerHTML = `<b>${c.n}</b><div class="bar"><i style="width:${p.prog * 100}%"></i></div><div class="row"><span>${p.prog >= 1 ? "Ready" : "Time left"}</span><span>${p.prog >= 1 ? "Harvest now" : fmtSecs(left)}</span></div><div class="row"><span>Water</span><span>${p.wet ? "watered" : "dry"}</span></div>${p.pests ? `<div class="row"><span>Bugs</span><span>${p.pests} · ${p.pests * 20}% slower</span></div>` : ""}${p.fert ? `<div class="row"><span>Fertilizer</span><span>${p.fert === "gold" ? "gold" : "regular"}</span></div>` : ""}`;
     tip.style.left = `${Math.min(o.w - 200, sp.x + 8)}px`;
     tip.style.top = `${Math.max(60, sp.y - 10)}px`;
   }
@@ -2468,7 +2659,13 @@ export function openFarm(options) {
           }).join("");
       if (sheetTab === "tools")
         html +=
-          `<p class="sh-note">Fertilizer is used up. More tools arrive with the next farm update.</p>` +
+          `<p class="sh-note">Tools are yours forever. Fertilizer is used up.</p>` +
+          toolRows()
+            .map(([id, ic, n, text, cost, lv, have, blocked]) => {
+              const lock = lv > F.lv && !have;
+              return `<div class="item${lock ? " locked" : ""}"><span class="ic">${I(ic)}</span><div><b>${n}</b><small>${text}${lock ? ` · <b style="color:#ffd65b">unlocks at Lv ${lv}</b>` : blocked ? ` · <b style="color:#ffd65b">${blocked}</b>` : ""}</small></div><div class="acts">${have ? `<button type="button" class="btn-s green" disabled>Owned</button>` : `<button type="button" class="btn-s" data-buytool="${id}" ${lock || blocked || F.leaves < cost ? "disabled" : ""}>${cost.toLocaleString("en-US")} ${L}</button>`}</div></div>`;
+            })
+            .join("") +
           Object.entries(FERTILIZERS)
             .map(([k, f]) => {
               const lock = f.level > F.lv;
@@ -2662,6 +2859,10 @@ export function openFarm(options) {
     }
     if (d.buyfert) {
       act({ a: "buy-fertilizer", kind: d.buyfert }, true);
+      return;
+    }
+    if (d.buytool) {
+      act({ a: "buy-tool", tool: d.buytool }, true);
       return;
     }
     if ("barnup" in d) {

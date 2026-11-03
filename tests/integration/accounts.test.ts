@@ -993,6 +993,9 @@ it("passes farm actions and leaf trades to the database only when the request is
           { a: "plant", plot: 0, crop: "wheat" },
           { a: "sell", crop: "wheat", mutation: "", qty: 3 },
           { a: "upgrade-barn" },
+          { a: "catch", plot: 2, tool: "net" },
+          { a: "harvest", plot: 3, tool: "sickle" },
+          { a: "buy-tool", tool: "sprinkler" },
         ],
       })
     ).status,
@@ -1008,6 +1011,9 @@ it("passes farm actions and leaf trades to the database only when the request is
           { a: "plant", plot: 0, crop: "wheat" },
           { a: "sell", crop: "wheat", mutation: "", qty: 3 },
           { a: "upgrade-barn" },
+          { a: "catch", plot: 2, tool: "net" },
+          { a: "harvest", plot: 3, tool: "sickle" },
+          { a: "buy-tool", tool: "sprinkler" },
         ],
       },
     ],
@@ -1021,6 +1027,8 @@ it("passes farm actions and leaf trades to the database only when the request is
     { request, actions: [{ a: "harvest", plot: 1, now: "2030-01-01" }] },
     { request, actions: [{ a: "sell", crop: "wheat", qty: 1, price: 999 }] },
     { request, actions: [{ a: "teleport" }] },
+    { request, actions: [{ a: "buy-tool", tool: "tractor" }] },
+    { request, actions: [{ a: "catch", plot: 1, area: 9 }] },
     { request, actions: [{ a: "plant", plot: 1, crop: "Wheat;drop" }] },
     { request, actions: [{ a: "harvest", plot: 1 }], leaves: 1e9 },
     {

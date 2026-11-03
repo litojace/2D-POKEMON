@@ -90,19 +90,24 @@ open to change.
 
 Done (each with its own migration and tests): weather and mutations (039),
 the order board (040), crop book rewards (041), the wishing well (042),
-crop mastery (043).
+crop mastery (043), tools and bugs (044).
 
-Still to come: farmer perks, guard dogs, crows and
-bugs, friends' farms, decorations and charm, the pasture, and treats in the
-Plaza. Two things to settle first:
+Still to come: farmer perks, guard dogs, crows, friends' farms, decorations
+and charm, the pasture, and treats in the Plaza.
 
 - **Perks follow your Lobby fighter.** A passive growth perk (Lumoth +20%)
   would apply to the whole time since a plot was last touched if the
   server simply read your current fighter, so switching fighter before
   harvesting would pay. The server needs to re-baseline every plot when the
   farmer changes, or keep perks to one-off effects.
-- **Crows, bugs and thieves** only happen while you are on the farm (README
-  decision); they need a server rule for how often, checked from server time.
+- **Bugs (044), decided:** "on your farm" means the browser asked about the
+  farm less than 150 s ago (the farm screen asks every minute while it is
+  shown). Each request rolls bugs for that time on the server: about 0.18 an
+  hour for each growing plot (the prototype's rate), half with a Scarecrow,
+  at most 2 a plot. A bug slows its crop 20%; catching one pays 1 farm XP.
+  Catching a bug on a ripe crop keeps the moment it ripened, so the weather
+  (and mutation) can't be re-rolled that way. Crows and thieves will use the
+  same presence rule.
 
 ## Phases
 
