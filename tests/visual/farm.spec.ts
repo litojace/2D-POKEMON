@@ -345,6 +345,10 @@ for (const viewport of [
       expect(badge.w, "badge width").toBeCloseTo(card.w, 1);
       expect(badge.h, "badge height").toBeCloseTo(card.h, 1);
       expect(badge.x, "badge left edge").toBeCloseTo(card.x, 1);
+      expect(badge.y - (card.y + card.h), "gap under the card").toBeCloseTo(
+        4,
+        1,
+      );
       const left = viewport.inset?.left ?? 0,
         right = viewport.inset?.right ?? 0,
         bottom = viewport.inset?.bottom ?? 0;
