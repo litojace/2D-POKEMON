@@ -27,11 +27,11 @@ export function rememberHomeFighter(id: CharacterId) {
   }
 }
 /**
- * What #menu holds in the hub: the Fighters and Play panels that slide over
- * the Lobby, Plaza or Farm (each is its own layer).
+ * What #menu holds in the hub: the Play panel that slides over the Lobby,
+ * Plaza or Farm. (Fighters is a hub screen, screens/roster.ts.)
  */
-export function homeShell(controls: string, roster: string) {
-  return `<div class="home-screen"><button type="button" class="home-panel-scrim" data-home-close aria-label="Close panel" tabindex="-1" hidden></button><section id="home-fighter-panel" class="home-drawer home-roster-drawer" role="dialog" aria-modal="true" aria-labelledby="home-fighters-title" tabindex="-1" hidden><header class="home-drawer-head"><div><span class="eyebrow">YOUR ROSTER</span><h2 id="home-fighters-title">Choose your fighter</h2></div><button type="button" class="home-panel-close btn-secondary" data-home-close aria-label="Close fighter selection">×</button></header><div class="home-drawer-scroll"><div class="roster-panel">${roster}</div></div></section><section id="home-play-panel" class="home-drawer home-play-drawer" role="dialog" aria-modal="true" aria-labelledby="home-play-title" tabindex="-1" hidden><header class="home-drawer-head"><div><span class="eyebrow">PLAY YOUR WAY</span><h2 id="home-play-title">Bring a friend. Find a rival.</h2></div><button type="button" class="home-panel-close btn-secondary" data-home-close aria-label="Close play options">×</button></header><div class="home-drawer-scroll"><aside class="room-panel card">${controls}</aside></div></section></div>`;
+export function homeShell(controls: string) {
+  return `<div class="home-screen"><button type="button" class="home-panel-scrim" data-home-close aria-label="Close panel" tabindex="-1" hidden></button><section id="home-play-panel" class="home-drawer home-play-drawer" role="dialog" aria-modal="true" aria-labelledby="home-play-title" tabindex="-1" hidden><header class="home-drawer-head"><div><span class="eyebrow">PLAY YOUR WAY</span><h2 id="home-play-title">Bring a friend. Find a rival.</h2></div><button type="button" class="home-panel-close btn-secondary" data-home-close aria-label="Close play options">×</button></header><div class="home-drawer-scroll"><aside class="room-panel card">${controls}</aside></div></section></div>`;
 }
 
 export type GateStatus =

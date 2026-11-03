@@ -1,20 +1,4 @@
 /* The champion selector shares one stage, one animated rig and one portrait strip. */
-#home-fighter-panel:has(.champion-selector) {
-  inset: calc(20px + var(--safe-top)) calc(20px + var(--safe-right))
-    calc(20px + var(--safe-bottom)) calc(20px + var(--safe-left));
-  width: min(1440px, calc(100vw - var(--safe-left) - var(--safe-right) - 40px));
-  margin-inline: auto;
-}
-#home-fighter-panel:has(.champion-selector) .home-drawer-head {
-  padding: 18px 24px;
-}
-#home-fighter-panel:has(.champion-selector) .home-drawer-head h2 {
-  font-size: 30px;
-}
-#home-fighter-panel:has(.champion-selector) .home-drawer-scroll {
-  padding: 16px 20px 18px;
-  overflow: hidden;
-}
 #menu .roster-panel:has(.champion-selector),
 #menu .lobby-layout > .roster-panel:has(.champion-selector) {
   display: block;
@@ -859,29 +843,6 @@
   }
 }
 @media (max-width: 1000px) and (orientation: landscape) {
-  #home-fighter-panel:has(.champion-selector) {
-    inset: calc(8px + var(--safe-top)) calc(12px + var(--safe-right))
-      calc(8px + var(--safe-bottom)) calc(12px + var(--safe-left));
-    width: auto;
-  }
-  #home-fighter-panel:has(.champion-selector) .home-drawer-head {
-    padding: 8px 14px;
-  }
-  #home-fighter-panel:has(.champion-selector) .home-drawer-head h2 {
-    font-size: 22px;
-    margin-top: 2px;
-  }
-  #home-fighter-panel:has(.champion-selector) .home-drawer-head .eyebrow {
-    font-size: 10px;
-  }
-  #home-fighter-panel:has(.champion-selector) .home-panel-close {
-    width: 36px;
-    height: 36px;
-    min-height: 36px;
-  }
-  #home-fighter-panel:has(.champion-selector) .home-drawer-scroll {
-    padding: 8px 10px;
-  }
   body.lobby-active
     #menu
     .lobby-layout
@@ -1159,15 +1120,6 @@
   }
 }
 @media (max-height: 350px) and (orientation: landscape) {
-  #home-fighter-panel:has(.champion-selector) .home-drawer-head {
-    padding-block: 5px;
-  }
-  #home-fighter-panel:has(.champion-selector) .home-drawer-head h2 {
-    font-size: 20px;
-  }
-  #home-fighter-panel:has(.champion-selector) .home-drawer-head .eyebrow {
-    display: none;
-  }
   #menu .champion-selector .selection-layout.champion-selection {
     grid-template-rows: minmax(0, 1fr) 48px;
     gap: 6px;

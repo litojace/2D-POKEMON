@@ -264,27 +264,19 @@ const SCREENS = {
     await page.waitForTimeout(400);
     await shot("play-panel");
   },
+  // The roster (step 3): the grid, then a fighter's detail and its tabs.
   async fighters(page, shot) {
     await hubMenu(page, "fighters");
+    await page.locator(".roster-room").waitFor({ state: "visible" });
     await page.waitForTimeout(1500);
     await shot("fighters");
-    const skills = page.locator('[data-fighter-preview="skills"]').first();
-    if (await skills.isVisible().catch(() => false)) {
-      await skills.click();
-      await page.waitForTimeout(1200);
-      await shot("fighters-skills");
-    }
-    const filter = page.locator("[data-champion-filter-toggle]").first();
-    if (await filter.isVisible().catch(() => false)) {
-      if (await skills.isVisible().catch(() => false)) {
-      }
-      await page.keyboard.press("Escape").catch(() => {});
-      await page.waitForTimeout(300);
-      if (await filter.isVisible().catch(() => false)) {
-        await filter.click();
-        await page.waitForTimeout(500);
-        await shot("fighters-filters");
-      }
+    await page.click("[data-roster-details]");
+    await page.waitForTimeout(2500);
+    await shot("fighters-skills");
+    for (const tab of ["overview", "skins"]) {
+      await page.click(`[data-ui-rtab=${tab}]`);
+      await page.waitForTimeout(600);
+      await shot(`fighters-${tab}`);
     }
   },
   // The fitting room (step 2): Shop sections, then the Wardrobe's slots.

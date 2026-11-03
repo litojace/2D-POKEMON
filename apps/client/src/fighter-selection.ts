@@ -45,9 +45,10 @@ function art(id: CharacterId, large = false, aura = false, scopeName?: string) {
     (aura && large ? scopeIds(auraFrontLayer(full), `${scope}-front`) : "")
   );
 }
-/** The large fighter art with its worn skin and aura, for the Lobby stage. */
-export function fighterStageArt(id: CharacterId) {
-  return art(id, true, true, "lobby");
+/** The large fighter art with its worn skin and aura, for a stage (the
+ * Lobby's, the roster's). Each stage needs its own `scope` for its ids. */
+export function fighterStageArt(id: CharacterId, scope = "lobby") {
+  return art(id, true, true, scope);
 }
 /** Only the front half of an aura SVG (same frame and defs), to lay on top. */
 function auraFrontLayer(svg: string) {
