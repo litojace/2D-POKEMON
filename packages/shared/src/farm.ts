@@ -746,6 +746,29 @@ export const FARM_DECOR: readonly {
 export const DECOR_SLOTS = 8;
 export const charmBonus = (charm: number) =>
   Math.min(25, Math.floor(charm / 2));
+/** The Cow Pasture (migration 049; the prototype's numbers). */
+export const PASTURE = {
+  level: 9,
+  price: 900,
+  /** Farm XP for opening it, and for each milking. */
+  xp: 30,
+  milkXp: 8,
+  /** Storm Milk per milking, and how long the cow takes (seconds). */
+  milk: 2,
+  milkSeconds: 5 * 3600 + 20 * 60,
+  /** The first milk after the pasture opens. */
+  firstMilkSeconds: 80 * 60,
+} as const;
+/** Storm Milk: a barn good, not a crop. Its price of the day is 0.85–1.35×. */
+export const MILK = {
+  id: "milk",
+  name: "Storm Milk",
+  sell: 60,
+  multMin: 0.85,
+  multMax: 1.35,
+} as const;
+export const milkPrice = (mult: number) =>
+  Math.max(1, Math.round(MILK.sell * mult));
 /** A crow eats its crop this many seconds after landing unless shooed. */
 export const CROW_SECONDS = 8;
 /** Farm weather (migration 039): one per 4-hour UTC window, the same for everyone. */
@@ -926,6 +949,10 @@ export interface FarmState {
   decor?: { slot: number; item: string }[];
   charm?: number;
   decorCredits?: Record<string, number>;
+  /** The Cow Pasture, when its milk is ready and Storm Milk's price today (migration 049). */
+  pasture?: boolean;
+  milkAt?: string | null;
+  milkMult?: number;
   /** Friends who visited lately, newest first (migration 047). */
   visits?: FarmVisitEvent[];
   /** Your farmer, the active perks used today and Warmth's end (migration 046). */
@@ -972,6 +999,8 @@ export interface FarmVisit {
   dog: FarmDogId | null;
   scarecrow: boolean;
   sprinklers: number;
+  /** Migration 049: they have a Cow Pasture. */
+  pasture?: boolean;
   /** What you did on friends' farms today. */
   today: { helpXp: number; sneaks: number; pranks: number };
 }

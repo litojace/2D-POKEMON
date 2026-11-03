@@ -693,6 +693,8 @@
   overflow: auto;
   padding: 0.8em 1em 1.2em;
   display: grid;
+  /* One column, never wider than the sheet (a wide child can't push it). */
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.7em;
   align-content: start;
   grid-auto-rows: max-content;
@@ -752,6 +754,13 @@
 .farm-layer .item b {
   display: block;
   font-size: 0.98em;
+}
+/* Bold words inside a description stay in the sentence (only the title is a block). */
+.farm-layer .item small b {
+  display: inline;
+  font-size: inherit;
+  /* "unlocks at Lv 9" never splits across lines. */
+  white-space: nowrap;
 }
 .farm-layer .item small {
   display: block;
@@ -1967,6 +1976,9 @@
 .farm-layer.phone .fm-sheet .item b {
   font-size: 13px;
 }
+.farm-layer.phone .fm-sheet .item small b {
+  font-size: inherit;
+}
 .farm-layer.phone .fm-sheet .item small {
   font-size: 11px;
   line-height: 1.3;
@@ -2053,7 +2065,8 @@
   display: inline-block;
 }
 .farm-layer .item .acts [data-buytool],
-.farm-layer .item .acts [data-goto] {
+.farm-layer .item .acts [data-goto],
+.farm-layer .item .acts [data-pasture] {
   width: 6.6em;
 }
 .farm-layer .item .acts [data-deco] {
@@ -2533,8 +2546,22 @@
   display: none;
 }
 .farm-layer.phone .fm-hint {
-  bottom: 72px;
+  /* 8px above the tool bar (its top is 72px up). */
+  bottom: 80px;
   font-size: 11px;
+}
+.farm-layer .fm-hint.done {
+  display: none;
+}
+/* On the farm, toasts sit 8px above the tool bar instead of over it (its
+   top is 93px up, 72px on phones). */
+body.hub-farm #toast {
+  bottom: calc(var(--safe-bottom, 0px) + 101px);
+}
+@media (max-height: 500px) {
+  body.hub-farm #toast {
+    bottom: calc(var(--safe-bottom, 0px) + 80px);
+  }
 }
 .farm-layer.phone .fm-tools {
   bottom: 8px;

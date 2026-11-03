@@ -83,17 +83,29 @@ open to change.
   request once the Plaza is live (the server keeps answering old clients'
   town events until then). Tapping a player in the Plaza shows their card with Add friend and
   Invite to party, in place of the town's Nearby players panel.
-- **Not yet:** treats thrown in the Plaza (farm systems, phase 5), and the
-  photo album (the polaroid can be saved as a picture).
+- **Not yet:** the photo album (the polaroid can be saved as a picture).
+  Treats came with the farm systems (049).
 
 ## Farm systems progress (phase 5)
 
 Done (each with its own migration and tests): weather and mutations (039),
 the order board (040), crop book rewards (041), the wishing well (042),
 crop mastery (043), tools and bugs (044), guard dogs and crows (045),
-farmer perks (046), friends' farms (047), decorations and Charm (048).
+farmer perks (046), friends' farms (047), decorations and Charm (048),
+the pasture and treats in the Plaza (049).
 
-Still to come: the pasture and treats in the Plaza.
+Phase 5 is complete.
+
+- **The pasture and treats (049), decided:** the Cow Pasture opens at farm
+  Lv 9 for 900 Gold Leaves (+30 XP); the cow gives 2 Storm Milk every
+  5 h 20 m (the first 1 h 20 m after opening), +8 XP each time. Storm Milk
+  takes barn space and sells for 60 leaves times its own price of the day
+  (0.85–1.35, the same for everyone); it is a barn good, not a crop (no
+  seeds, crop book, orders, mastery or harvest perks). Friends see your cow.
+  Treats are regular crops (no mutation, not milk): a throw takes the one
+  you have most of (the cheapest on a tie), at most one every 1.5 s, and
+  everyone in that Plaza copy sees the burst. As in the prototype a treat
+  pays nothing; the pitch bots don't react (the prototype's townsfolk did).
 
 - **Decorations (048), decided:** the prototype's 11 decorations and 8
   spots; placing replaces what stood there and putting one away doesn't

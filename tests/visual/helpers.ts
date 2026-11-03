@@ -89,7 +89,9 @@ export async function pushUntilBattle(page: Page) {
 }
 
 export async function snap(page: Page, info: TestInfo, name: string) {
-  const body = await page.screenshot();
+  // Finish CSS transitions first: this machine renders on the CPU, a few
+  // frames a second, so a sheet sliding in can still be off-screen.
+  const body = await page.screenshot({ animations: "disabled" });
   await info.attach(name, { body, contentType: "image/png" });
   // Locally, VISUAL_SHOTS=<folder> also saves each screen there to look over.
   const dir = process.env.VISUAL_SHOTS;

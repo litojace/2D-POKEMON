@@ -34,7 +34,17 @@ export const PLAZA = {
   emoteSeconds: 2.6,
   /** Volt Boba: Gold Leaves, speed and how long. */
   boba: { leaves: 10, speed: 1.3, seconds: 30 },
+  /** Treats (migration 049): at most one throw this often (seconds). */
+  treatSeconds: 1.5,
 } as const;
+/** A treat thrown in the Plaza, sent to everyone in that Plaza copy. */
+export interface PlazaTreat {
+  /** The thrower's walker id. */
+  id: number;
+  crop: string;
+  x: number;
+  y: number;
+}
 
 export const PLAZA_SQUARE = { x: 1350, y: 900, rx: 372, ry: 246 } as const;
 export const PLAZA_FOUNTAIN = { x: 1350, y: 892, rx: 118, ry: 74 } as const;
