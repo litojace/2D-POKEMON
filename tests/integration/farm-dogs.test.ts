@@ -195,19 +195,21 @@ it("crows land only while you are on the farm with no Scarecrow and no dog", asy
       await owner("select public.arena_farm_bugs($1)", [player]);
     }
   };
-  // Away: none. On the farm, 150 s at a time, 200 times: about 200 × 2.9% = 6.
+  // Away: none. On the farm, 140 s at a time, 200 times: about 200 × 2.7% = 5.
+  // (140, not 150: the farm counts you away past 150 s, and the time between
+  // setting seen_at and rolling would sometimes cross that and skip a roll.)
   await farmSet("scarecrow = false");
   await roll(200, 50);
   expect(await crows()).toBe(0);
   await owner("select setseed(0.17)");
-  await roll(150, 200);
+  await roll(140, 200);
   const landed = await crows();
   expect(landed).toBeGreaterThan(0);
   expect(landed).toBeLessThan(20);
   // A Scarecrow or a dog keeps them away.
   await plots("crow_at = null", all);
   await farmSet("scarecrow = true");
-  await roll(150, 200);
+  await roll(140, 200);
   expect(await crows()).toBe(0);
   await farmSet("scarecrow = false");
   await owner(
@@ -215,7 +217,7 @@ it("crows land only while you are on the farm with no Scarecrow and no dog", asy
      values ($1, 'black', now(), now() + interval '1 day', now())`,
     [player],
   );
-  await roll(150, 200);
+  await roll(140, 200);
   expect(await crows()).toBe(0);
   await db.exec("select set_config('arena.farm_bugs', 'off', false)");
   await owner("delete from public.arena_farm_dog_hires where player_id = $1", [
