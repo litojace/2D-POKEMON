@@ -1164,25 +1164,42 @@ export function openPlaza(options) {
     start();
     screen.focus({ preventScroll: true });
   };
-  $("pz-jump").onclick = () => {
+  /**
+   * An action button that works while the other thumb holds the joystick: it
+   * acts on the press itself. Phones send a second finger pointer events but
+   * often no click, so Jump and Dash did nothing while moving. Enter or
+   * Space on the focused button still clicks (a click with no pointer
+   * press, detail 0); a pointer press has already acted on its own click.
+   */
+  function onPress(el, act) {
+    el.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      act();
+    });
+    el.addEventListener("click", (e) => {
+      if (e.detail === 0) act();
+    });
+  }
+  onPress($("pz-jump"), () => {
     start();
     jump();
     screen.focus({ preventScroll: true });
-  };
-  $("pz-dash").onclick = () => {
+  });
+  onPress($("pz-dash"), () => {
     start();
     dash();
     screen.focus({ preventScroll: true });
-  };
-  $("pz-interact").onclick = () => {
+  });
+  onPress($("pz-interact"), () => {
     interact();
     screen.focus({ preventScroll: true });
-  };
-  $("pz-treat").onclick = () => {
+  });
+  onPress($("pz-treat"), () => {
     start();
     throwTreat();
     screen.focus({ preventScroll: true });
-  };
+  });
   $("pz-wheel-btn").onclick = () => {
     start();
     toggleWheel();

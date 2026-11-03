@@ -385,3 +385,74 @@ test("townsfolk keep a quiet Plaza lively, marked as bots, with no card", async 
   await snap(page, info, "plaza-townsfolk");
   expect(errors).toEqual([]);
 });
+
+test("Jump and Dash work while the other thumb holds the joystick", async ({
+  browser,
+}) => {
+  test.setTimeout(120_000);
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openPlaza(page);
+    const centre = (s: string) =>
+      page.locator(s).evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      });
+    const joy = await centre("#pz-joy"),
+      jumpAt = await centre("#pz-jump"),
+      dashAt = await centre("#pz-dash");
+    // What the server did, sampled in the page (this machine is too slow to
+    // catch a 0.65 s jump from the test runner).
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__peak = { air: 0, dash: 0 };
+      setInterval(() => {
+        const b = w.__plazaWorld.bodyOf("local");
+        if (b.air > 0) w.__peak.air++;
+        if (b.dash > 0) w.__peak.dash++;
+      }, 10);
+    });
+    const peak = () => page.evaluate(() => ({ ...(window as any).__peak }));
+    const cdp = await context.newCDPSession(page);
+    const touch = (
+      type: "touchStart" | "touchMove" | "touchEnd",
+      points: { x: number; y: number; id: number }[],
+    ) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: points });
+    const thumb = { x: joy.x, y: joy.y, id: 1 };
+    // The left thumb holds the joystick to the right: you walk.
+    await touch("touchStart", [thumb]);
+    await touch("touchMove", [{ ...thumb, x: joy.x + 45 }]);
+    const me = () =>
+      page.evaluate(() => {
+        const b = (window as any).__plazaWorld.bodyOf("local");
+        return { x: b.x };
+      });
+    const before = await me();
+    await expect
+      .poll(async () => (await me()).x, { timeout: 5000 })
+      .toBeGreaterThan(before.x + 20);
+    // The right thumb taps Jump while still walking: you jump.
+    const held = { ...thumb, x: joy.x + 45 };
+    await touch("touchStart", [held, { ...jumpAt, id: 2 }]);
+    await touch("touchEnd", [held]);
+    await expect
+      .poll(async () => (await peak()).air, { timeout: 3000 })
+      .toBeGreaterThan(0);
+    await page.waitForTimeout(900);
+    // …and taps Dash: you dash.
+    await touch("touchStart", [held, { ...dashAt, id: 3 }]);
+    await touch("touchEnd", [held]);
+    await expect
+      .poll(async () => (await peak()).dash, { timeout: 3000 })
+      .toBeGreaterThan(0);
+    await touch("touchEnd", []);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
