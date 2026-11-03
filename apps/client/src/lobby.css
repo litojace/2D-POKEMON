@@ -149,29 +149,50 @@
   pointer-events: auto;
 }
 /* The party row takes all the height the stage has left (under the party
-   bar, above the nameplate), and the fighter grows into it: as tall as the
-   row, as wide as the row allows beside three seats (a seat as wide as a
-   friend's card), and no larger than the rig draws sharply (its canvas is
-   480 px wide). No empty band is left above the fighter. */
+   bar, above the nameplate). The fighter stands in its middle column, on the
+   same axis as the nameplate; one seat stands on each side of it, and the
+   third seat above the right one, so both sides keep the same width. The
+   fighter grows into the row: as tall as the row, as wide as the row allows
+   beside one seat on each side (a seat as wide as a friend's card), and no
+   larger than the rig draws sharply (its canvas is 480 px wide). No empty
+   band is left above the fighter. */
 .lobby-party {
   flex: 1 1 0;
   min-height: 0;
   align-self: stretch;
   container-type: size;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  gap: var(--lobby-party-gap);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  grid-template-rows: 1fr auto;
+  grid-template-areas:
+    ".     fighter third"
+    "first fighter second";
+  align-items: end;
+  column-gap: var(--lobby-party-gap);
+  row-gap: 8px;
+}
+#lobby-slot-0 {
+  grid-area: first;
+  justify-self: end;
+}
+#lobby-slot-1 {
+  grid-area: second;
+  justify-self: start;
+}
+#lobby-slot-2 {
+  grid-area: third;
+  justify-self: start;
 }
 .lobby-fighter {
   --fighter-size: max(
     120px,
     min(
       100cqh,
-      calc(100cqw - 3 * var(--lobby-seat) - 3 * var(--lobby-party-gap)),
+      calc(100cqw - 2 * var(--lobby-seat) - 2 * var(--lobby-party-gap)),
       560px
     )
   );
+  grid-area: fighter;
   position: relative;
   flex: none;
   width: var(--fighter-size);
@@ -800,6 +821,9 @@
   .lobby-name .element-pill {
     height: 18px;
     font-size: 9px;
+  }
+  .lobby-party {
+    row-gap: 4px;
   }
   .lobby-stage {
     --lobby-seat: 64px;

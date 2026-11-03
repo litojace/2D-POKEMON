@@ -70,7 +70,7 @@ for (const size of SIZES)
       ).toBe("hidden");
       // No empty band above the fighter: the party row takes the stage's
       // free height, and the fighter grows until the row's height, the room
-      // beside three seats, or the 560 px cap stops it.
+      // beside one seat on each side, or the 560 px cap stops it.
       const fit = await page.evaluate(() => {
         const box = (s: string) => {
           const b = document.querySelector(s)!.getBoundingClientRect();
@@ -85,6 +85,7 @@ for (const size of SIZES)
           party: box(".lobby-party"),
           fighter: box("#lobby-fighter"),
           plate: box(".lobby-nameplate"),
+          seats: [0, 1, 2].map((i) => box(`#lobby-slot-${i} > *`)),
           rail: box(".lobby-rail"),
           cards: box(".lobby-cards"),
           play: box(".lobby-play"),
@@ -97,7 +98,7 @@ for (const size of SIZES)
       const side = fighter.b - fighter.t;
       const room = Math.min(
         party.b - party.t,
-        party.r - party.l - 3 * fit.seat - 3 * fit.gap,
+        party.r - party.l - 2 * fit.seat - 2 * fit.gap,
         560,
       );
       expect(side, "the fighter fills the stage").toBeGreaterThan(room - 1);
@@ -107,6 +108,23 @@ for (const size of SIZES)
       expect(plate.t).toBeGreaterThanOrEqual(fighter.b);
       const overlaps = (a: typeof stage, b: typeof stage) =>
         a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
+      // Balanced: the fighter and its nameplate share one axis, a seat stands
+      // the same distance from each side of it, and the third seat sits
+      // straight above the right one. No seat covers the fighter.
+      const [left, right, third] = fit.seats;
+      const mid = (b: typeof stage) => (b.l + b.r) / 2;
+      expect(Math.abs(mid(fighter) - mid(plate))).toBeLessThanOrEqual(1);
+      expect(
+        Math.abs(fighter.l - left.r - (right.l - fighter.r)),
+      ).toBeLessThanOrEqual(1);
+      expect(left.b).toBeCloseTo(right.b, 0);
+      expect(third.l).toBeCloseTo(right.l, 0);
+      expect(third.b).toBeLessThanOrEqual(right.t);
+      for (const seat of fit.seats) {
+        expect(overlaps(seat, fighter)).toBe(false);
+        expect(overlaps(seat, party) && seat.l >= party.l - 0.5).toBe(true);
+        expect(seat.r).toBeLessThanOrEqual(party.r + 0.5);
+      }
       for (const other of [fit.rail, fit.cards, fit.play, fit.toast])
         expect(overlaps(stage, other)).toBe(false);
       await page.evaluate(() =>
