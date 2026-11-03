@@ -1077,6 +1077,50 @@ it("passes farm actions and leaf trades to the database only when the request is
     "arena_farm_order",
     { p_request: request, p_slot: 1, p_kind: "skip" },
   ]);
+  // Friends' farms (migration 047): an id, and only help, sneak or prank.
+  const friend = "0b0e4c6a-1d2f-4a3b-9c8d-7e6f5a4b3c2d";
+  expect((await send("/api/farm/friends")).status).toBe(200);
+  expect((await send(`/api/farm/visit/${friend}`)).status).toBe(200);
+  expect((await send("/api/farm/visit/not-an-id")).status).toBe(400);
+  expect(
+    (
+      await send("/api/farm/visit/act", {
+        request,
+        friend,
+        actions: [
+          { a: "sneak", plot: 3 },
+          { a: "prank", plot: 4 },
+        ],
+      })
+    ).status,
+  ).toBe(200);
+  for (const body of [
+    { request, friend: "x", actions: [{ a: "water", plot: 1 }] },
+    { request, friend, actions: [{ a: "harvest", plot: 1 }] },
+    { request, friend, actions: [{ a: "sneak", plot: 50 }] },
+    { request, friend, actions: [{ a: "sneak", plot: 1, qty: 9 }] },
+    {
+      request,
+      friend,
+      actions: Array.from({ length: 31 }, () => ({ a: "water", plot: 1 })),
+    },
+  ])
+    expect((await send("/api/farm/visit/act", body)).status).toBe(400);
+  expect(calls.splice(-3)).toEqual([
+    ["arena_farm_friends", {}],
+    ["arena_farm_friend", { p_friend: friend }],
+    [
+      "arena_farm_friend_act",
+      {
+        p_request: request,
+        p_friend: friend,
+        p_actions: [
+          { a: "sneak", plot: 3 },
+          { a: "prank", plot: 4 },
+        ],
+      },
+    ],
+  ]);
   expect((await send("/api/farm", undefined, "invalid")).status).toBe(401);
   expect(
     (

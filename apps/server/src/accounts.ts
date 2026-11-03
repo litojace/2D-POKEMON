@@ -39,7 +39,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "046_farm_perks.sql";
+export const LATEST_MIGRATION = "047_farm_friends.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -534,6 +534,57 @@ export function installAccountRoutes(
       // Selling and buying change the leaf wallet shown in the top bar.
       if (data.actions.some((x) => x.a !== "water" && x.a !== "harvest"))
         onPlayerChanged(account.id);
+      res.json(result);
+    }),
+  );
+  // Friends' farms (migration 047): the list, a visit, and helping or
+  // sneaking there.
+  app.get(
+    "/api/farm/friends",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await provider.rpc(token, "arena_farm_friends", {}));
+    }),
+  );
+  app.get(
+    "/api/farm/visit/:id",
+    route(false, async (req, res, token) => {
+      const friend = z.string().uuid().parse(req.params.id);
+      res.setHeader("Cache-Control", "no-store");
+      res.json(
+        await provider.rpc(token, "arena_farm_friend", { p_friend: friend }),
+      );
+    }),
+  );
+  app.post(
+    "/api/farm/visit/act",
+    route(false, async (req, res, token, account) => {
+      const data = z
+        .object({
+          request: z.string().uuid(),
+          friend: z.string().uuid(),
+          actions: z
+            .array(
+              z
+                .object({
+                  a: z.enum(["water", "catch", "sneak", "prank"]),
+                  plot: z.number().int().min(0).max(49),
+                })
+                .strict(),
+            )
+            .min(1)
+            .max(30),
+        })
+        .strict()
+        .parse(req.body);
+      const result = await provider.rpc(token, "arena_farm_friend_act", {
+        p_request: data.request,
+        p_friend: data.friend,
+        p_actions: data.actions,
+      });
+      // A dog's fine changes both wallets.
+      onPlayerChanged(account.id);
+      onPlayerChanged(data.friend);
       res.json(result);
     }),
   );
