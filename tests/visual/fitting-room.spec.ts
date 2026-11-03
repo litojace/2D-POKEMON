@@ -262,8 +262,13 @@ test("the Wardrobe: try several things, then Equip once or Revert", async ({
   await page.click('[data-ui-item="candy-colours"]');
   await page.click('[data-fit-slot="champion"]');
   await page.click('[data-ui-item="voltkit-midnight"]');
-  await page.click("[data-fit-save]");
+  await page.locator("[data-fit-save]").focus();
+  await page.keyboard.press("Enter");
   await expect(page.locator("#toast")).toContainText("3 changes saved");
+  // Equip is disabled now (nothing to save): focus stays in the screen.
+  expect(
+    await page.evaluate(() => !!document.activeElement?.closest(".fit-room")),
+  ).toBe(true);
   expect(await calls(page)).toEqual([
     ["equip", { champion: "voltkit", skin: "voltkit-midnight", stage: 1 }],
     ["look", { slot: "skin", item: "candy-colours" }],
@@ -434,5 +439,32 @@ test("a late answer can't reopen a closed Shop over another screen", async ({
   });
   await expect(page.locator(".friends-screen")).toBeVisible();
   await expect(page.locator(".fit-room")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});
+
+test("a slow first load can't undo a purchase that finished before it", async ({
+  page,
+}) => {
+  await shopServer(page, { balance: 2340, cost: 1200 });
+  const errors = await openLobby(page);
+  // The Shop's own load of your coins hangs (it was read before the buy).
+  await page.evaluate(() => ((window as any).__shop.delay = true));
+  await page.click('.lobby-rail [data-lobby-action="shop"]');
+  await page.waitForFunction(() => !!(window as any).__shop.release);
+  await page.click(".fit-deal");
+  await page.click("[data-fit-buy]");
+  await page.locator("[data-ui-confirm] [data-fit-wear]").uncheck();
+  await page.click("[data-ui-confirm-ok]");
+  await expect(page.locator("#account-coins")).toContainText("1,140");
+  await expect(
+    page.locator('[data-fit-equip="cindrake-blue-flame"]'),
+  ).toBeVisible();
+  // Now the old answer arrives: it must not put the coins or Buy back.
+  await page.evaluate(() => (window as any).__shop.release());
+  await page.waitForTimeout(800);
+  await expect(page.locator("#account-coins")).toContainText("1,140");
+  await expect(
+    page.locator('[data-fit-equip="cindrake-blue-flame"]'),
+  ).toBeVisible();
   expect(errors).toEqual([]);
 });

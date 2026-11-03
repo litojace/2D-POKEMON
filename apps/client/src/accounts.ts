@@ -930,6 +930,8 @@ export class AccountUI {
       }),
       buy: async (item: string) => {
         same();
+        // A load still on its way is older than this answer: drop it.
+        this.fitRequest++;
         // The server sets the price and checks the balance: its answer counts.
         const result = (await this.api("/api/shop/buy", { item })) as {
           economy: Economy;
@@ -944,6 +946,7 @@ export class AccountUI {
         stage?: number,
       ) => {
         same();
+        this.fitRequest++;
         const result = (await this.api("/api/shop/equip", {
           champion,
           skin,
@@ -955,6 +958,7 @@ export class AccountUI {
       },
       equipLook: async (slot: RaidSlot, item: string | null) => {
         same();
+        this.fitRequest++;
         const result = (await this.api("/api/raids/equip", { slot, item })) as {
           progress?: RaidProgress;
         };

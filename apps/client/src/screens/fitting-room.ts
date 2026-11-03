@@ -22,6 +22,7 @@ import {
   purchase,
   rarityOf,
   reachedStage,
+  stageOutfit,
   wornIn,
   type FitData,
   type FitMode,
@@ -183,8 +184,20 @@ export function openFittingRoom(
       view.mode === "shop" ? "Shop" : "Wardrobe",
     );
     if (resetScroll) body()?.scrollTo({ top: 0 });
-    if (key && !root().contains(document.activeElement))
-      q<HTMLElement>(key)?.focus({ preventScroll: true });
+    // Lost, or on a control that just became disabled (the browser blurs
+    // it a moment later).
+    const active = document.activeElement as HTMLButtonElement | null;
+    if (key && (!root().contains(active) || active?.disabled)) {
+      // The same control if it is still usable, else the next action, else
+      // the screen itself: focus never falls out to the page.
+      const same = q<HTMLButtonElement>(key);
+      const target =
+        same && !same.disabled
+          ? same
+          : (q<HTMLElement>(".ui-panel-foot .ui-btn:not([disabled])") ??
+            root());
+      target.focus({ preventScroll: true });
+    }
     afterRender();
   }
   /**
@@ -327,10 +340,9 @@ export function openFittingRoom(
     if (!item) return;
     const skin = CHAMPION_SKIN_BY_ID[id];
     if (skin) setChampion(skin.champion);
-    if (view.tryOn[item.slot] !== id || view.selected !== id) {
-      if (item.slot === "champion") view.stage = undefined;
-      view.frameStars = undefined;
-    }
+    if (item.slot === "champion" && view.tryOn.champion !== id)
+      view.stage = undefined;
+    if (view.selected !== id) view.frameStars = undefined;
     view.tryOn[item.slot] = id;
     view.selected = id;
     view.action =
@@ -403,7 +415,13 @@ export function openFittingRoom(
       await hooks.buy(id);
       const name = set?.name ?? item?.name ?? "It";
       if (!set && item && wear) {
-        await equip(id);
+        try {
+          await equip(id);
+        } catch (error) {
+          throw new Error(
+            `${name} is yours, but it couldn't be put on: ${error instanceof Error ? error.message : "try Equip again."}`,
+          );
+        }
         return `${name} is yours, and you're wearing it.`;
       }
       return set ? `${name}: every piece is yours.` : `${name} is yours.`;
@@ -419,7 +437,10 @@ export function openFittingRoom(
           ? Math.min(view.stage, reachedStage(id, data().economy))
           : reachedStage(id, data().economy);
       await hooks.equipSkin(skin.champion, id, stage);
-      if (skin.champion === view.champion) delete view.tryOn.champion;
+      if (skin.champion === view.champion) {
+        delete view.tryOn.champion;
+        view.stage = undefined;
+      }
     } else {
       await hooks.equipLook(item.slot as RaidSlot, id);
       delete view.tryOn[item.slot];
@@ -430,7 +451,10 @@ export function openFittingRoom(
     const skin = CHAMPION_SKIN_BY_ID[id];
     if (skin) {
       await hooks.equipSkin(skin.champion, null);
-      if (skin.champion === view.champion) delete view.tryOn.champion;
+      if (skin.champion === view.champion) {
+        delete view.tryOn.champion;
+        view.stage = undefined;
+      }
     } else {
       await hooks.equipLook(item.slot as RaidSlot, null);
       delete view.tryOn[item.slot];
@@ -445,9 +469,9 @@ export function openFittingRoom(
         await hooks.equipSkin(view.champion, c.to, c.to ? c.stage : undefined);
       else await hooks.equipLook(c.slot, c.to);
       delete view.tryOn[c.slot];
+      if (c.slot === "champion") view.stage = undefined;
       saved++;
     }
-    if (pendingChanges(view, data()).length === 0) view.stage = undefined;
     // A previewed star level is never saved; show the frame as it is.
     view.frameStars = undefined;
     view.selected = view.slot === "frame" ? view.selected : null;
@@ -492,8 +516,13 @@ export function openFittingRoom(
       render();
       if (view.action !== "idle") preview?.replay();
       return;
-    } else if (d.fitAwaken) view.stage = Number(d.fitAwaken);
-    else if (d.fitStars !== undefined) view.frameStars = Number(d.fitStars);
+    } else if (d.fitAwaken) {
+      // Choosing a stage tries the shown Mythical on at that stage, so it
+      // counts as a change (Equip saves it if reached; Revert undoes it).
+      const shown = stageOutfit(view, data()).skin?.skin;
+      if (shown) view.tryOn.champion = shown;
+      view.stage = Number(d.fitAwaken);
+    } else if (d.fitStars !== undefined) view.frameStars = Number(d.fitStars);
     else if (d.fitCollection) {
       view.collection = d.fitCollection as FitView["collection"];
       tryOn(`${view.collection}-colours`);

@@ -242,6 +242,56 @@ describe("Mythic Trials and awakening", () => {
   });
 });
 
+describe("fixes from review", () => {
+  const worn = economy({
+    owned: ["voltkit-stormcrown"],
+    looks: { voltkit: { skin: "voltkit-stormcrown", stage: 3 } },
+    awakening: { "voltkit-stormcrown": { wins: 80, peril3: true, stage: 3 } },
+  });
+  it("saves another reached stage of the worn Mythical on its own", () => {
+    // Choosing a stage tries the worn skin on at that stage (fitting-room.ts).
+    const view = wardrobe({
+      tryOn: { champion: "voltkit-stormcrown" },
+      stage: 2,
+    });
+    expect(pendingChanges(view, data(worn))).toEqual([
+      {
+        slot: "champion",
+        from: "voltkit-stormcrown",
+        to: "voltkit-stormcrown",
+        stage: 2,
+      },
+    ]);
+    expect(fittingRoomParts(view, data(worn)).foot).toContain("Skin: Stage II");
+    // In the Shop the bar offers Equip instead of Take off.
+    const shopFoot = fittingRoomParts(
+      shop({
+        selected: "voltkit-stormcrown",
+        tryOn: { champion: "voltkit-stormcrown" },
+        stage: 2,
+      }),
+      data(worn),
+    ).foot;
+    expect(shopFoot).toContain('data-fit-equip="voltkit-stormcrown"');
+    expect(shopFoot).not.toContain("data-fit-unequip");
+    // The stage already worn is no change.
+    expect(pendingChanges({ ...view, stage: 3 }, data(worn))).toEqual([]);
+  });
+  it("shows a trial, not a price, if today's deal is a locked Mythical", () => {
+    const e = economy({
+      picks: {
+        day: "2026-10-17",
+        items: ["lumoth-starweaver"],
+        deal: "lumoth-starweaver",
+      },
+    });
+    const body = fittingRoomParts(shop(), data(e)).body;
+    expect(body).toMatch(
+      /fit-deal-price"><span class="ui-tile-foot is-trial">Trial 4\/30 wins/,
+    );
+  });
+});
+
 describe("the Shop's catalogue", () => {
   it("leads Today with the deal as a wide card, struck-through price and its own countdown", () => {
     const e = economy({
