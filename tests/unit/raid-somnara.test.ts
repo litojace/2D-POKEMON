@@ -32,6 +32,9 @@ const setup = (chars: CharacterId[] = ["voltkit"], peril = 1) => {
   a.configure(peril, false);
   a.start();
   a.phase = "playing";
+  // start() rolls a gilded boss 1 time in 20, and its health already
+  // includes that; remember the roll before making the boss a plain one.
+  (a as any).rolledGilded = a.raid.gilded;
   a.raid.gilded = false;
   a.raid.trait = "starry-night";
   (a as any).started = true;
@@ -76,7 +79,7 @@ describe("Somnara's encounter", () => {
     expect(a.raid.pillars).toEqual([]);
     const f = RAID.healthScale * RAID.perilHealth[a.raid.peril];
     expect(
-      a.raid.maxHp / f / (a.raid.gilded ? SOMNARA.health.gilded : 1),
+      a.raid.maxHp / f / ((a as any).rolledGilded ? SOMNARA.health.gilded : 1),
     ).toBeCloseTo(2050, 0);
     expect(ritesFor("somnara")).toContain("lucid");
     expect(ritesFor("grumblecrag")).not.toContain("lucid");
