@@ -651,7 +651,7 @@ function focusWindup(
     .lineBetween(x + nx, sy + ny, ex + nx, ey + ny)
     .lineBetween(x - nx, sy - ny, ex - nx, ey - ny);
   // The sight line from the crystal beak, steadying as it locks.
-  const jitter = (1 - k) * 0.04 * Math.sin(now / 37);
+  const jitter = ((1 - k) * 0.4 * a.radius * Math.sin(now / 37)) / len;
   fx.g
     .lineStyle(1.2, k > 0.85 ? 0xffffff : CYAN, 0.35 + k * 0.5)
     .lineBetween(

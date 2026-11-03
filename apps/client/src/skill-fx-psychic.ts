@@ -503,7 +503,62 @@ const moonDust = (
     grav: 40,
     drag: 2,
   });
-/** A crescent: a moon disc with a bite taken out of it. */
+/** Points of a crescent: disc (x, y, r) minus a disc offset toward `rot`. */
+function crescentPoints(
+  x: number,
+  y: number,
+  r: number,
+  rot: number,
+  scale = 1,
+) {
+  const ox = x + Math.cos(rot) * r * 0.5,
+    oy = y + Math.sin(rot) * r * 0.5,
+    r2 = r * 0.85,
+    pts: { x: number; y: number }[] = [];
+  // The lit rim, then back along the inner edge.
+  for (let i = 0; i <= 32; i++) {
+    const t = rot + Math.PI - Math.PI + (i / 32) * Math.PI * 2,
+      px = x + Math.cos(t) * r,
+      py = y + Math.sin(t) * r;
+    if (Math.hypot(px - ox, py - oy) > r2) pts.push({ x: px, y: py });
+  }
+  // Keep the rim's points in one run around the lit side.
+  const lit = rot + Math.PI;
+  pts.sort(
+    (p, q) =>
+      Math.atan2(
+        Math.sin(Math.atan2(p.y - y, p.x - x) - lit),
+        Math.cos(Math.atan2(p.y - y, p.x - x) - lit),
+      ) -
+      Math.atan2(
+        Math.sin(Math.atan2(q.y - y, q.x - x) - lit),
+        Math.cos(Math.atan2(q.y - y, q.x - x) - lit),
+      ),
+  );
+  const inner: { x: number; y: number }[] = [];
+  for (let i = 0; i <= 32; i++) {
+    const t = lit + Math.PI - (i / 32) * Math.PI * 2,
+      px = ox + Math.cos(t) * r2,
+      py = oy + Math.sin(t) * r2;
+    if (Math.hypot(px - x, py - y) < r) inner.push({ x: px, y: py });
+  }
+  inner.sort(
+    (p, q) =>
+      Math.atan2(
+        Math.sin(Math.atan2(q.y - oy, q.x - ox) - lit),
+        Math.cos(Math.atan2(q.y - oy, q.x - ox) - lit),
+      ) -
+      Math.atan2(
+        Math.sin(Math.atan2(p.y - oy, p.x - ox) - lit),
+        Math.cos(Math.atan2(p.y - oy, p.x - ox) - lit),
+      ),
+  );
+  return [...pts, ...inner].map((p) => ({
+    x: x + (p.x - x) * scale,
+    y: y + (p.y - y) * scale,
+  }));
+}
+/** A moon: a crescent lit away from `rot`, or full with craters. */
 function crescent(
   fx: Fx,
   x: number,
@@ -515,10 +570,10 @@ function crescent(
 ) {
   if (r <= 0.5 || alpha <= 0) return;
   fx.glow(x, y, r * 2.6, MOON, 0.45 * alpha);
-  fx.solid.fillStyle(INK, 0.35 * alpha).fillCircle(x, y, r * 1.1);
-  fx.solid.fillStyle(MOON, alpha).fillCircle(x, y, r);
   if (full) {
-    // Craters and the rabbit's mochi shadow.
+    fx.solid.fillStyle(INK, 0.35 * alpha).fillCircle(x, y, r * 1.1);
+    fx.solid.fillStyle(MOON, alpha).fillCircle(x, y, r);
+    // Craters.
     fx.solid
       .fillStyle(0xe6d6a6, alpha)
       .fillCircle(x - r * 0.3, y - r * 0.2, r * 0.22)
@@ -526,14 +581,12 @@ function crescent(
       .fillCircle(x + r * 0.1, y - r * 0.45, r * 0.1);
     return;
   }
-  // The bite: the same disc in the dark, offset.
   fx.solid
-    .fillStyle(INK, alpha)
-    .fillCircle(
-      x + Math.cos(rot) * r * 0.5,
-      y + Math.sin(rot) * r * 0.5,
-      r * 0.85,
-    );
+    .fillStyle(INK, 0.4 * alpha)
+    .fillPoints(crescentPoints(x, y, r, rot, 1.12), true);
+  fx.solid
+    .fillStyle(MOON, alpha)
+    .fillPoints(crescentPoints(x, y, r, rot), true);
 }
 /** The mochi mallet: a wooden handle and a barrel head, drawn at `ang`. */
 function mallet(
@@ -550,8 +603,12 @@ function mallet(
     w = size,
     h = size * 0.62;
   const hand = { x: hx - cos * size * 1.6, y: hy - sin * size * 1.6 };
-  fx.solid.lineStyle(6, WOOD_DARK, alpha).lineBetween(hand.x, hand.y, hx, hy);
-  fx.solid.lineStyle(3.5, WOOD, alpha).lineBetween(hand.x, hand.y, hx, hy);
+  fx.solid
+    .lineStyle(size * 0.26, WOOD_DARK, alpha)
+    .lineBetween(hand.x, hand.y, hx, hy);
+  fx.solid
+    .lineStyle(size * 0.15, WOOD, alpha)
+    .lineBetween(hand.x, hand.y, hx, hy);
   const corner = (u: number, v: number) => ({
     x: hx + cos * u - sin * v,
     y: hy + sin * u + cos * v,
@@ -599,7 +656,7 @@ function malletSwing(
   fx.g.lineStyle(2.5, MOCHI, 0.9 * fade).strokePoints(pts.slice(5), false);
   const hx = x + Math.cos(to) * r,
     hy = y + Math.sin(to) * r * SQ;
-  mallet(fx, hx, hy, to, 22, fade);
+  mallet(fx, hx, hy, to, 30, fade);
 }
 
 // ───────────── Mallet Bop ─────────────
@@ -666,7 +723,7 @@ function mochiPound(
         Math.sin(angle + Math.PI / 2),
         Math.cos(angle + Math.PI / 2),
       );
-      mallet(fx, mx, my, -Math.PI / 2 + turn * ease(kk), 28, 1);
+      mallet(fx, mx, my, -Math.PI / 2 + turn * ease(kk), 36, 1);
       return;
     }
     if (!once.hit) {
@@ -699,7 +756,7 @@ function mochiPound(
     fx.solid
       .fillStyle(PINK, 0.6 * (1 - kk))
       .fillEllipse(hx - 8, hy - 5, 14 / squash, 5 * squash);
-    mallet(fx, hx, hy - 12 - kk * 10, angle, 28, 1 - kk);
+    mallet(fx, hx, hy - 12 - kk * 10, angle, 36, 1 - kk);
     lensRing(
       fx,
       hx,

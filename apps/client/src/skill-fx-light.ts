@@ -514,7 +514,7 @@ function healTicks(
       px = z.x + Math.cos(ang) * d,
       py = z.y + Math.sin(ang) * d * SQ - 14 - phase * 46,
       fade = phase < 0.15 ? phase / 0.15 : 1 - (phase - 0.15) / 0.85;
-    healPlus(fx, px, py, 5 + hash(seed + 5) * 3, i % 2 ? LEAF : color, fade);
+    healPlus(fx, px, py, 6 + hash(seed + 5) * 3, i % 2 ? LEAF : color, fade);
   }
 }
 
@@ -531,18 +531,27 @@ function sunseed(g: G, pr: Projectile, now: number) {
   fx.solid
     .fillStyle(0x000000, 0.16)
     .fillEllipse(pr.x, pr.y + 12, r * 1.8, r * 0.6);
-  // A warm streak behind it.
-  fx.g
-    .lineStyle(r * 1.3, c, 0.22)
-    .lineBetween(x - cos * 54, y - sin * 54, x, y);
-  fx.g.lineStyle(2, ZEST, 0.6).lineBetween(x - cos * 34, y - sin * 34, x, y);
-  fx.glow(x, y, r * 2.8, c, 0.45);
+  // A warm comet tail that tapers to nothing behind it.
+  for (let i = 0; i < 5; i++) {
+    const t0 = i / 5,
+      t1 = (i + 1) / 5,
+      len = 56;
+    fx.g
+      .lineStyle(r * (0.3 + t1 * 0.9), t1 > 0.7 ? ZEST : c, 0.12 + t1 * 0.3)
+      .lineBetween(
+        x - cos * len * (1 - t0),
+        y - sin * len * (1 - t0),
+        x - cos * len * (1 - t1),
+        y - sin * len * (1 - t1),
+      );
+  }
+  fx.glow(x, y, r * 2.6, c, 0.4);
   // The seed: a teardrop pointing along its flight, with a sprout behind.
-  const tip = { x: x + cos * r * 1.2, y: y + sin * r * 1.2 },
-    back = { x: x - cos * r * 0.8, y: y - sin * r * 0.8 },
+  const tip = { x: x + cos * r * 1.5, y: y + sin * r * 1.5 },
+    back = { x: x - cos * r * 0.9, y: y - sin * r * 0.9 },
     side = (s: number) => ({
-      x: x - sin * r * 0.7 * s,
-      y: y + cos * r * 0.7 * s,
+      x: x - sin * r * 0.85 * s,
+      y: y + cos * r * 0.85 * s,
     });
   fx.solid.fillStyle(INK, 0.4).fillPoints(
     [
@@ -567,7 +576,7 @@ function sunseed(g: G, pr: Projectile, now: number) {
       r * 0.45,
     );
   fx.trail(`ss${pr.id}`, 0.04, () =>
-    glitter(fx, x - cos * 8, pr.y, 1, c, 0.25),
+    glitter(fx, x - cos * 8, pr.y, 1, c, 0.15),
   );
 }
 function sunseedImpact(
@@ -668,22 +677,28 @@ function yuzuBurst(
       .fillStyle(YUZU, 0.22 * fade)
       .fillEllipse(x, y, blast * 2 * out, blast * 2 * SQ * out);
     fx.shockwave(x, y, blast * out, k, YUZU, 9);
-    // Citrus wedges flashing outward.
-    for (let i = 0; i < 8; i++) {
-      const aa = (i * TAU) / 8 + 0.3,
-        d = blast * 0.75 * out,
+    // Yuzu wedges flung outward, tumbling.
+    const hold = k < 0.6 ? 1 : (1 - k) / 0.4;
+    for (let i = 0; i < 6; i++) {
+      const aa = (i * TAU) / 6 + 0.3,
+        d = blast * 0.8 * out,
         px = x + Math.cos(aa) * d,
-        py = y - 12 + Math.sin(aa) * d * SQ;
+        py = y - 14 + Math.sin(aa) * d * SQ - Math.sin(out * Math.PI) * 18,
+        rot = aa + k * 6 * (i % 2 ? 1 : -1);
       fx.solid
-        .fillStyle(PEEL, 0.9 * fade)
-        .slice(px, py, 7 * fade + 2, aa - 0.6, aa + 0.6);
-      fx.solid.fillPath();
+        .fillStyle(INK, 0.4 * hold)
+        .slice(px, py, 11, rot - 1, rot + 1)
+        .fillPath();
       fx.solid
-        .fillStyle(ZEST, fade)
-        .slice(px, py, 5 * fade + 1, aa - 0.5, aa + 0.5);
-      fx.solid.fillPath();
+        .fillStyle(PEEL, hold)
+        .slice(px, py, 10, rot - 0.95, rot + 0.95)
+        .fillPath();
+      fx.solid
+        .fillStyle(ZEST, hold)
+        .slice(px, py, 7.5, rot - 0.85, rot + 0.85)
+        .fillPath();
     }
-    fx.glow(x, y - 12, blast * 0.9, color, 0.6 * fade);
+    fx.glow(x, y - 12, blast * 0.8, color, 0.45 * fade);
     if (k < 0.2) fx.glow(x, y - 12, blast * 0.5, 0xffffff, 0.8 * (1 - k / 0.2));
   });
 }

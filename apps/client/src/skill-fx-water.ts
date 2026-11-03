@@ -1006,7 +1006,7 @@ function frostBloom(g: G, z: Zone, progress: number, now: number) {
   // Freeze: ice spikes punch up across the whole area.
   fx.trail(`fbs${z.id}`, 999, () => {
     iceShards(fx, x, y, 22, c, 1.4);
-    fx.decal({ kind: "wet", x, y, r, color: ICE, life: 3 });
+    fx.decal({ kind: "wet", x, y, r: r * 0.8, color: ICE, life: 1.6 });
     fx.shake(140, 0.004);
     const spikes = Array.from({ length: 14 }, (_, i) => {
       const aa = (i * TAU) / 14 + hash(z.id + i) * 0.4,
@@ -1195,7 +1195,7 @@ function whiteout(g: G, z: Zone, progress: number, now: number) {
       fx.ultimate(ICE, 1000);
       fx.shake(260, 0.006);
       iceShards(fx, x, y, 30, c, 1.8);
-      fx.decal({ kind: "wet", x, y, r, color: ICE, life: a.duration + 1 });
+      fx.decal({ kind: "wet", x, y, r: r * 0.9, color: ICE, life: a.duration });
       shotOn(g.scene)(fx.reduced ? 240 : 700, (k) => {
         if (k < 0.2)
           fx.glow(x, y - 30, r * 1.2, 0xffffff, 0.85 * (1 - k / 0.2));
@@ -1289,6 +1289,55 @@ function whiteout(g: G, z: Zone, progress: number, now: number) {
   });
 }
 
+/** Glacelle's shots leave her fins in a puff of frost and ice motes. */
+function frostCast(
+  scene: Phaser.Scene,
+  a: Ability,
+  x: number,
+  y: number,
+  angle: number,
+  color: number,
+  shot: Shot,
+) {
+  const fx = fxFor(scene),
+    mx = x + Math.cos(angle) * 22,
+    my = y + Math.sin(angle) * 22,
+    big = a.id === "hailstone";
+  fx.burst({
+    x: mx,
+    y: my,
+    z: 14,
+    count: big ? 7 : 4,
+    kind: "mote",
+    color: [ICE, color, 0xffffff],
+    angle,
+    spread: 0.7,
+    speed: [60, 180],
+    up: [10, 60],
+    life: [0.25, 0.45],
+    size: [1, 1.8],
+    drag: 3,
+  });
+  fx.burst({
+    x: mx,
+    y: my,
+    z: 14,
+    count: big ? 3 : 1,
+    kind: "smoke",
+    color: ICE,
+    angle,
+    spread: 0.5,
+    speed: [20, 60],
+    up: [0, 20],
+    life: [0.3, 0.5],
+    size: [5, 9],
+    drag: 2,
+  });
+  shot(160, (k) =>
+    fx.glow(mx, my - 14, (big ? 30 : 22) * (1 - k * 0.4), color, 0.6 * (1 - k)),
+  );
+}
+
 export const waterKit: FxKit = {
   projectile: {
     "tide-needle": tideNeedle,
@@ -1308,6 +1357,8 @@ export const waterKit: FxKit = {
     "tide-needle": waterCast,
     "gill-spray": waterCast,
     "riptide-wave": waterCast,
+    "rime-shard": frostCast,
+    hailstone: frostCast,
     "tide-double": (scene, a, x, y, angle, color, shot) => {
       mirrorMist(scene, a, x, y, angle, color, shot);
       // Axolotls regrow: a little green rise as Tidefin slips away.

@@ -1074,9 +1074,9 @@ function tailWrap(
   shot: Shot,
 ) {
   const fx = fxFor(scene),
-    cy = y - 18,
-    rx = 34,
-    ry = 28;
+    cy = y - 20,
+    rx = 40,
+    ry = 32;
   embers(fx, x, y, 8, color, 50);
   shot(Math.min(1000, a.duration * 1000), (k) => {
     const wrap = ease(Math.min(1, k / 0.3)),
