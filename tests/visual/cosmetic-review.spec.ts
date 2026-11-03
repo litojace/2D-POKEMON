@@ -5,7 +5,7 @@ import { openHub, snap, box, inside } from "./helpers";
 test.describe.configure({ mode: "parallel" });
 
 async function fixtures(page: Page) {
-  // Town is only the backdrop here. Keep software-rendered scenery cheap;
+  // The hub is only the backdrop here. Keep software-rendered scenery cheap;
   // the fitting room still uses its real full-detail rig and live effects.
   await page.addInitScript(() => localStorage.setItem("ea-graphics", "low"));
   await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {

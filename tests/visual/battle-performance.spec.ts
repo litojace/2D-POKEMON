@@ -7,7 +7,7 @@ import { openHub, pushUntilBattle, openPlayPanel } from "./helpers";
  * - pvp2: a duel; pvp4: free-for-all with every fighter casting on the same
  *   ticks; raid4: four heroes against a boss whose real attacks (telegraphs,
  *   danger zones, projectiles) keep firing.
- * - soak: battle → Town → Shop → Wardrobe → battle, again and again, with
+ * - soak: battle → Lobby → Shop → Wardrobe → battle, again and again, with
  *   memory and object counts after forced garbage collection.
  *
  * Fighters are fully dressed (skins, frames, titles) and snapshots use the
@@ -272,7 +272,7 @@ for (const scenario of ["pvp2", "pvp4", "raid4"] as Scenario[])
     }
   });
 
-test("keeps memory steady across repeated battles, Town, Shop and Wardrobe", async ({
+test("keeps memory steady across repeated battles, Lobby, Shop and Wardrobe", async ({
   browser,
   browserName,
 }, info) => {

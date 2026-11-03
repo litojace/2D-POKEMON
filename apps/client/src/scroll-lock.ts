@@ -32,7 +32,7 @@ export function setScrollLock(on: boolean) {
   const body = document.body,
     root = document.documentElement;
   if (on) {
-    // A page that cannot scroll (the town, a lobby, a battle: everything is
+    // A page that cannot scroll (the hub, a lobby, a battle: everything is
     // fixed to the screen) needs no pinning. Pinning it anyway made iPadOS
     // home-screen apps shift the whole game up by the status bar's height
     // whenever the menu or a dialog opened, leaving a dark band at the bottom.

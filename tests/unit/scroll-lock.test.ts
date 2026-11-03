@@ -127,7 +127,7 @@ it("fits the new viewport when rotating with a menu open and retires the resize 
   expect(window.removeEventListener).toHaveBeenCalledWith("resize", resize);
 });
 
-it("leaves a page that cannot scroll untouched (iPad home-screen town shifted up)", () => {
+it("leaves a page that cannot scroll untouched (iPad home-screen hub shifted up)", () => {
   const win = window as unknown as { scrollX: number; scrollY: number };
   win.scrollX = 0;
   win.scrollY = 0;

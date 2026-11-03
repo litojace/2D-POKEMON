@@ -118,21 +118,21 @@ it("rejects invalid credentials/suspension and replaces the previous game connec
   expect(server.io.sockets.sockets.size).toBe(1);
   expect(server.rooms.size).toBe(1);
 });
-it("replaces a town visitor even when the new device uses a different token for the account", async () => {
+it("replaces a Plaza visitor even when the new device uses a different token for the account", async () => {
   const user = accounts.add(false);
   accounts.users.set("second-device-token", user.account);
   const old = await connect(user.token);
-  expect((await emit(old, "town-join", { character: "voltkit" })).ok).toBe(
+  expect((await emit(old, "plaza-join", { character: "voltkit" })).ok).toBe(
     true,
   );
-  expect(server.town.size).toBe(1);
+  expect(server.plaza.size).toBe(1);
   const next = await connect("second-device-token");
   await expect.poll(() => old.connected).toBe(false);
-  expect(server.town.size).toBe(0);
-  expect((await emit(next, "town-join", { character: "lumoth" })).ok).toBe(
+  expect(server.plaza.size).toBe(0);
+  expect((await emit(next, "plaza-join", { character: "lumoth" })).ok).toBe(
     true,
   );
-  expect(server.town.size).toBe(1);
+  expect(server.plaza.size).toBe(1);
   // A refreshed token on the winning socket must not disconnect it.
   expect((await emit(next, "token", { token: user.token })).ok).toBe(true);
   expect(next.connected).toBe(true);

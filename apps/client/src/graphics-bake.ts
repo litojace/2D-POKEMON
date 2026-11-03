@@ -4,7 +4,7 @@ import Phaser from "phaser";
  * `Graphics.generateTexture` draws through one static camera shared by every
  * game (`Phaser.GameObjects.Graphics.TargetCamera`). Each bake pushes the
  * Graphics onto that camera's render list, which nothing ever empties, and
- * the camera keeps the last scene. Every battle or town that baked a
+ * the camera keeps the last scene. Every battle or scene that baked a
  * texture therefore stayed in memory with its whole renderer after it closed
  * (about 6 MB per battle, measured). Bake through this helper instead.
  */

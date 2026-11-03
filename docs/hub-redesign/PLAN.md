@@ -78,10 +78,12 @@ open to change.
 - **TOP DASH:** each player's best lap of the (Pacific, Monday) week. Laps are
   timed from server positions; leaving the lane cancels a lap.
 - **Quests** are paid automatically (decision 11), not with Claim buttons.
-- **Old town:** the Plaza tab now opens the new Plaza; the old town is no longer
-  opened from the hub. Its code, art and tests are removed in a follow-up pull
-  request once the Plaza is live (the server keeps answering old clients'
-  town events until then). Tapping a player in the Plaza shows their card with Add friend and
+- **Old town:** removed (3 Nov 2026) now that the Plaza is live: its client
+  code, art, styles, server world and `town-*` socket events, shared layout
+  and tests are gone. What the Plaza reused stays under Plaza names
+  (`PlazaAppearance` on the server, `plazaOutfitKey` on the client). The
+  presence value `"town"` stays on the wire (clients show it as "In the
+  Plaza"). Tapping a player in the Plaza shows their card with Add friend and
   Invite to party, in place of the town's Nearby players panel.
 - **The photo album (decided 3 Nov 2026): on the device, not the server.**
   "Save to album" on the polaroid keeps the photo in this browser's

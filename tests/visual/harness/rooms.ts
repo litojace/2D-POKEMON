@@ -1,7 +1,6 @@
 // Builds real room snapshots with the server's own code.
 import { Arena } from "../../../apps/server/src/simulation";
 export { Arena };
-export { TOWN_SPOTS } from "../../../packages/shared/src/town";
 export {
   CHARACTERS,
   packSnapshot,
@@ -92,7 +91,6 @@ function room(kind: "practice" | "raid" | "pvp", o: RoomOptions) {
 /** Prepare a room; the next create/practice request joins it. */
 w.__room = (kind: "practice" | "raid" | "pvp", o: RoomOptions = {}) => {
   const a = room(kind, o);
-  const inner = w.__reply;
   w.__reply = (ev: string, data: unknown) => {
     if (ev === "select") {
       w.__snap.players.find((p: any) => p.id === "me").character = data;
@@ -108,9 +106,7 @@ w.__room = (kind: "practice" | "raid" | "pvp", o: RoomOptions = {}) => {
     }
     return ev === "create" || ev === "join" || ev === "practice"
       ? { ok: true, id: "me", token: "t", code: a.code }
-      : ev.startsWith("town-")
-        ? inner?.(ev, data)
-        : { ok: true };
+      : { ok: true };
   };
   w.__snap = packSnapshot(a.snapshot());
 };
