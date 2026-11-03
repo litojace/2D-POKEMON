@@ -49,7 +49,29 @@ creature remodel and the attack speed fix (see
 [creature-remodel.md](../creature-remodel.md)), where all sixteen averaged
 48–52% (bot round robin, 40 games per pairing per difficulty). The original
 eight were then re-tuned on their own for release, so when these ship, re-run
-the auto-tune with all sixteen together.
+the auto-tune with all sixteen together (below).
+
+## Balance tools
+
+`scripts/balance/` runs bot round robins on the real server `Arena` (run from
+the repository root):
+
+```sh
+# Win rates for the champions in FIGHTER_IDS, factors left alone
+npx tsx scripts/balance/tune.ts 1 40
+# Auto-tune: 6 rounds, factors averaged over the last 3
+npx tsx scripts/balance/tune.ts 6 40
+# Until the new eight are real: add them from prototype/ (engine patch)
+npx tsx scripts/balance/tune.ts 1 40 --prototype --start docs/new-champions/prototype/tuned-factors.json
+```
+
+A factor f scales health by f and divides the basic interval by √f (rounded
+to 5 ms); skills are not touched. Each round writes `balance-out/round-N.json`
+(gitignored) with the factors, Hard and Normal win rates and the next
+factors, and the run ends with the health and interval the averaged factors
+give. With 4 processes, 16 champions at 40 games take about 8 minutes per
+round. Use 40 games or more: in a 4-game test, win rates moved 10 to 25
+points between rounds while no factor changed by more than 5%.
 
 ## Known issues to address while implementing
 

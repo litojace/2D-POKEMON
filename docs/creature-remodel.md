@@ -102,7 +102,8 @@ matches each (before: today's main; after: this change). With the attack
 speed fix, the intervals now play at their stated speed, so several fighters
 attack faster than before even where the number moved up.
 
-When the eight new champions ship, re-run the auto-tune with all sixteen: in
+When the eight new champions ship, re-run the auto-tune with all sixteen
+(`scripts/balance/`, see [new-champions](new-champions/README.md)): in
 that pool the brawlers (Terradon, Auralynx, Cindrake) beat the new divers and
 the ranged fighters struggle against them, so the best numbers differ.
 
