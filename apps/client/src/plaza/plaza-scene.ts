@@ -51,6 +51,7 @@ import {
   trackPoint,
   trackPolar,
 } from "../../../../packages/shared/src/plaza";
+import { CROP_BY_ID } from "../../../../packages/shared/src/farm";
 import { GFX } from "../farm/farm-gfx";
 import {
   farmIcon as I,
@@ -88,6 +89,7 @@ const PLAZA_HTML = `<div class="pz" id="pz">
     <div class="pz-joy" id="pz-joy"><div class="ring" id="pz-ring"><div class="knob" id="pz-knob"></div></div></div>
     <div class="pz-left">
       <button type="button" class="pz-round" id="pz-wheel-btn" aria-label="Emotes">${I("smile")}<small>Emote</small></button>
+      <button type="button" class="pz-round" id="pz-treat" aria-label="Throw a treat (T)">${I("berry")}<small id="pz-treats">0</small></button>
     </div>
     <div class="pz-wheel" id="pz-wheel" hidden>
       ${EMOTE_KEYS.map((e, i) => `<button type="button" data-emote="${e}" style="--a:${i}" aria-label="Emote ${e}">${e}</button>`).join("")}
@@ -99,7 +101,7 @@ const PLAZA_HTML = `<div class="pz" id="pz">
     </div>
     <div class="pz-photo" id="pz-photo" hidden></div>
     <div class="pz-card glass" id="pz-card" role="dialog" aria-label="Player" hidden></div>
-    <div class="pz-start" id="pz-start" hidden><b>Plaza</b><span>Click to start</span><div class="pz-keys"><span><kbd>WASD</kbd> move</span><span><kbd>Space</kbd> jump</span><span><kbd>Shift</kbd> dash</span><span><kbd>E</kbd> interact</span><span><kbd>Q</kbd> emote</span></div></div>
+    <div class="pz-start" id="pz-start" hidden><b>Plaza</b><span>Click to start</span><div class="pz-keys"><span><kbd>WASD</kbd> move</span><span><kbd>Space</kbd> jump</span><span><kbd>Shift</kbd> dash</span><span><kbd>E</kbd> interact</span><span><kbd>Q</kbd> emote</span><span><kbd>T</kbd> treat</span></div></div>
   </div>
 </div>`;
 
@@ -1121,6 +1123,7 @@ export function openPlaza(options) {
     if (k === "shift" || k === "j") dash();
     if (k === "e") interact();
     if (k === "q") toggleWheel();
+    if (k === "t") throwTreat();
     if ("12345678".includes(k) && k.length === 1) emote(EMOTE_KEYS[+k - 1]);
   }
   screen.addEventListener("keydown", onKey);
@@ -1145,6 +1148,11 @@ export function openPlaza(options) {
   };
   $("pz-interact").onclick = () => {
     interact();
+    screen.focus({ preventScroll: true });
+  };
+  $("pz-treat").onclick = () => {
+    start();
+    throwTreat();
     screen.focus({ preventScroll: true });
   };
   $("pz-wheel-btn").onclick = () => {
@@ -1398,6 +1406,35 @@ export function openPlaza(options) {
   function interact() {
     if (near) near.act();
   }
+  /* treats (migration 049): a regular crop from your barn, tossed for everyone */
+  let treats = 0,
+    treatBusy = false;
+  function setTreats(n) {
+    treats = Math.max(0, n | 0);
+    $("pz-treats").textContent = treats > 99 ? "99+" : String(treats);
+  }
+  function throwTreat() {
+    if (treatBusy) return;
+    if (treats < 1)
+      return pzToast("No crops to throw yet. Harvest some on the Farm.");
+    treatBusy = true;
+    socket.timeout(5000).emit("plaza-treat", {}, (err, r) => {
+      treatBusy = false;
+      if (err) return pzToast("The treat didn't go. Try again.");
+      if (typeof r?.treats === "number") setTreats(r.treats);
+      if (!r?.ok)
+        return pzToast(r?.error ?? "Treats can't be thrown right now.");
+      pzToast(`Tossed ${CROP_BY_ID[r.crop]?.name ?? "a treat"} to everyone!`);
+    });
+  }
+  // Everyone in this Plaza sees a treat burst where it was thrown.
+  const onTreat = (t) => {
+    if (!t || typeof t.x !== "number") return;
+    burst(t.x, t.y, 70, "●", 18, CROP_BY_ID[t.crop]?.color ?? "#ff6fae", 1.2);
+  };
+  const onTreats = (t) => setTreats(t?.n ?? 0);
+  socket.on("plaza-treat", onTreat);
+  socket.on("plaza-treats", onTreats);
   let bobaBusy = false;
   function buyTea() {
     if (P.boost > 0) return pzToast("Your boba boost is still active");
@@ -3582,6 +3619,8 @@ export function openPlaza(options) {
       socket.off("plaza-news", onNews);
       socket.off("plaza-profiles", onProfiles);
       socket.off("plaza-state", onState);
+      socket.off("plaza-treat", onTreat);
+      socket.off("plaza-treats", onTreats);
       removeEventListener("pointermove", joyMove, true);
       removeEventListener("pointerup", joyEnd, true);
       removeEventListener("pointercancel", joyEnd, true);
@@ -3614,6 +3653,8 @@ export function openPlaza(options) {
       get progress() {
         return progress;
       },
+      /** Treat particles flying now (tests). */
+      treatFx: () => FX.filter((f) => f.g === "●").length,
       SPOTS,
     },
   };

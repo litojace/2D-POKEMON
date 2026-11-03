@@ -25,6 +25,7 @@ import {
   type PlazaBody,
   type PlazaEmote,
   type PlazaNews,
+  type PlazaTreat,
   type PlazaOrb,
   type PlazaOrbs,
   type PlazaProfile,
@@ -48,6 +49,8 @@ interface Visitor {
   emote: number;
   emoteUntil: number;
   lastEmote: number;
+  /** When this visitor last threw a treat (ms). */
+  lastTreat: number;
   lap: LapTimer;
   /** Runway: seconds until the next cheer, cheers so far, last runway news. */
   cheerIn: number;
@@ -153,6 +156,7 @@ export class PlazaWorld {
       emote: 0,
       emoteUntil: 0,
       lastEmote: -Infinity,
+      lastTreat: -Infinity,
       lap: new LapTimer(),
       cheerIn: PLAZA_CHEER_SECONDS,
       cheers: 0,
@@ -247,6 +251,24 @@ export class PlazaWorld {
           other.claps++;
         }
     return true;
+  }
+  /** At most one treat every PLAZA.treatSeconds; true claims the slot. */
+  treatReady(key: string, now: number) {
+    const v = this.visitors.get(key);
+    if (!v || now - v.lastTreat < PLAZA.treatSeconds * 1000) return false;
+    v.lastTreat = now;
+    return true;
+  }
+  /** A treat leaves `key`'s hands: where, for everyone in that Plaza copy. */
+  treat(key: string, crop: string): PlazaTreat | undefined {
+    const v = this.visitors.get(key);
+    if (!v) return undefined;
+    return {
+      id: v.profile.id,
+      crop,
+      x: Math.round(v.body.x),
+      y: Math.round(v.body.y),
+    };
   }
   /** The spot `key` stands at, if it is `spot` (a little slack for lag). */
   at(key: string, spot: PlazaSpotId) {

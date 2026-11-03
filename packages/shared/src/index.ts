@@ -1538,6 +1538,9 @@ export interface Reply {
   plaza?: number;
   /** Gold Leaves left after a Plaza purchase. */
   leaves?: number;
+  /** A Plaza treat: the crop thrown, and the treats you have left. */
+  crop?: string;
+  treats?: number;
 }
 export const normalize = (x: number, y: number): Vec => {
   const length = Math.hypot(x, y);
