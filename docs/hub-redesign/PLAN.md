@@ -172,6 +172,15 @@ weathers' effects. Added in phase 6:
   30 fps, a 1× canvas, no hens, ducks or butterflies and half the rain;
   Auto watches the frame rate and switches a slow device to Low; and the
   farm stops drawing behind a dialog or drawer.
+- **The farm menu, redesigned:** the side rail under the status orbs (which
+  looked stuck there, most of all on phones) became one Menu button in the
+  bottom-right corner, a tool-sized button on the tool bar's line (the way
+  mobile farm games like Hay Day, Township and Pocket Camp keep their main
+  menu where the right thumb rests), with the zoom buttons beside it on
+  desktop. It opens a 4 × 2 grid of tiles above it: Shop, Orders, Market,
+  Barn, Almanac, Decor, Friends and the daily Wish. The Menu button shows a
+  dot when a tile has one; M opens it and Escape folds it. Sheets sit 8px
+  from the orbs and the corner.
 
 ## Phases
 

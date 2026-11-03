@@ -146,16 +146,20 @@ const FARM_HTML = `<div class="fm" id="fm">
   <div class="fm-hud">
     <div class="fm-badge glass" id="fm-badge"></div>
     <div class="fm-chips" id="fm-chips"></div>
-    <nav class="fm-dock glass" id="fm-dock" aria-label="Farm">
-      <button type="button" class="dk-t" aria-expanded="false" aria-controls="fm-dock"><span>Menu</span></button>
-      <button type="button" data-sheet="shop">${I("shop")}<span>Shop</span></button>
-      <button type="button" data-sheet="orders">${I("orders")}<span>Orders</span><b class="dot" id="fm-ord-dot" hidden></b></button>
-      <button type="button" data-sheet="market">${I("market")}<span>Market</span></button>
-      <button type="button" data-sheet="barn">${I("barn")}<span>Barn</span></button>
-      <button type="button" data-sheet="book">${I("book")}<span>Almanac</span></button>
-      <button type="button" data-sheet="decor">${I("decor")}<span>Decor</span></button>
-      <button type="button" data-sheet="friends">${I("friends")}<span>Friends</span><b class="dot" id="fm-fr-dot" hidden></b></button>
-    </nav>
+    <div class="fm-corner" id="fm-corner">
+      <nav class="fm-dock glass" id="fm-dock" aria-label="Farm menu" hidden>
+        <button type="button" data-sheet="shop">${I("shop")}<span>Shop</span></button>
+        <button type="button" data-sheet="orders">${I("orders")}<span>Orders</span><b class="dot" id="fm-ord-dot" hidden></b></button>
+        <button type="button" data-sheet="market">${I("market")}<span>Market</span></button>
+        <button type="button" data-sheet="barn">${I("barn")}<span>Barn</span></button>
+        <button type="button" data-sheet="book">${I("book")}<span>Almanac</span></button>
+        <button type="button" data-sheet="decor">${I("decor")}<span>Decor</span></button>
+        <button type="button" data-sheet="friends">${I("friends")}<span>Friends</span><b class="dot" id="fm-fr-dot" hidden></b></button>
+        <button type="button" data-wish>${I("spark")}<span>Wish</span><b class="dot" id="fm-wish-dot" hidden></b></button>
+      </nav>
+      <div class="fm-menu glass"><button type="button" class="fm-tool fm-menu-btn" id="fm-menu-btn" aria-expanded="false" aria-pressed="false" aria-controls="fm-dock" title="Menu (M)"><kbd>M</kbd>${I("menu")}<span>Menu</span></button></div>
+      <div class="fm-zoom glass" id="fm-zoom" role="group" aria-label="Zoom"><button type="button" data-z="in" aria-label="Zoom in" title="Zoom in (+)">+</button><button type="button" data-z="out" aria-label="Zoom out" title="Zoom out (−)">−</button><button type="button" data-z="fit" aria-label="Show the whole farm" title="Show the whole farm">⤢</button></div>
+    </div>
     <div class="fm-visit glass" id="fm-visit" hidden></div>
     <div class="fm-tools glass" id="fm-tools"></div>
     <div class="fm-log" id="fm-log" aria-live="polite"></div>
@@ -163,7 +167,6 @@ const FARM_HTML = `<div class="fm" id="fm">
     <div class="fm-pop glass" id="fm-pop" hidden></div>
     <div class="fm-orbpop glass" id="fm-orbpop" hidden></div>
     <section class="fm-sheet glass" id="fm-sheet" hidden></section>
-    <div class="fm-zoom glass" id="fm-zoom" role="group" aria-label="Zoom"><button type="button" data-z="in" aria-label="Zoom in" title="Zoom in (+)">+</button><button type="button" data-z="out" aria-label="Zoom out" title="Zoom out (−)">−</button><button type="button" data-z="fit" aria-label="Show the whole farm" title="Show the whole farm">⤢</button></div>
     <div class="fm-hint" id="fm-hint">Drag the grass to move · scroll or press +/− to zoom</div>
     <div class="fm-modal" id="fm-modal" hidden></div>
   </div>
@@ -2190,6 +2193,7 @@ export function openFarm(options) {
       friendsList = friendsList ?? [];
     }
     $("fm-fr-dot").hidden = !friendsList.some((f) => f.bugs || f.ripe);
+    syncMenuDot();
     if (sheet === "friends") renderSheet();
   }
   /** What a visit action looks like before the server answers. */
@@ -3534,6 +3538,8 @@ export function openFarm(options) {
     });
     if (orbOpen) renderOrbPop();
     $("fm-ord-dot").hidden = !F.orders.some((o) => o.items && canFill(o));
+    $("fm-wish-dot").hidden = !F.wishReady || !!V;
+    syncMenuDot();
   }
   const canFill = (o) => o.items.every(([id, n]) => owned(id) >= n);
   const FERT_NAME = {
@@ -3602,10 +3608,9 @@ export function openFarm(options) {
     }
     el.hidden = false;
     const hud = el.parentElement.getBoundingClientRect(),
-      r = btn.getBoundingClientRect(),
-      dk = $("fm-dock").getBoundingClientRect();
+      r = btn.getBoundingClientRect();
     el.style.top = `${r.bottom - hud.top + 10}px`;
-    el.style.right = `${Math.max(8, hud.right - r.right - 6, hud.right - dk.left + 8)}px`;
+    el.style.right = `${Math.max(8, hud.right - r.right - 6)}px`;
   }
   const TOOLS = () => (V ? VISIT_TOOLS() : HOME_TOOLS());
   const VISIT_TOOLS = () => [
@@ -4134,13 +4139,18 @@ export function openFarm(options) {
     }
   });
   $("fm-dock").addEventListener("click", (e) => {
+    if (e.target.closest("[data-wish]")) {
+      menuSet(false);
+      void wishWell();
+      return;
+    }
     const b = e.target.closest("[data-sheet]");
     if (!b) return;
+    menuSet(false);
     if (b.dataset.sheet === "friends" && sheet !== "friends")
       void loadFriends();
     if (sheet === b.dataset.sheet) closeSheet();
     else openSheet(b.dataset.sheet);
-    if (NH < 500 && dockEl.classList.contains("open")) dockSet(false);
   });
   $("fm-visit").addEventListener("click", (e) => {
     if (e.target.closest("[data-home]")) void goHome();
@@ -4176,27 +4186,36 @@ export function openFarm(options) {
     }
   };
   layer.addEventListener("pointerdown", closeOrb, true);
-  /* side menu: collapsed shows icons, expanded adds names (remembered on this device) */
+  /* The farm menu (phase 6): one Menu button in the bottom-right corner, the
+     size of a tool, opens a grid of tiles above it; a tile, a tap elsewhere,
+     Escape or M again folds it. */
   const dockEl = $("fm-dock"),
-    dockSet = (open) => {
-      dockEl.classList.toggle("open", open);
-      const t = dockEl.querySelector(".dk-t");
-      t.setAttribute("aria-expanded", String(open));
-      t.innerHTML = `${I(open ? "close" : "menu")}<span>${open ? "Hide names" : "Menu"}</span>`;
-      try {
-        localStorage.setItem("fmDockOpen", open ? "1" : "0");
-      } catch {}
-    };
-  dockEl
-    .querySelector(".dk-t")
-    .addEventListener("click", () =>
-      dockSet(!dockEl.classList.contains("open")),
+    menuBtn = $("fm-menu-btn");
+  function menuSet(open) {
+    dockEl.hidden = !open;
+    menuBtn.setAttribute("aria-expanded", String(open));
+    menuBtn.setAttribute("aria-pressed", String(open));
+    if (open) {
+      orbOpen = null;
+      $("fm-orbpop").hidden = true;
+      $("fm-pop").hidden = true;
+    }
+  }
+  function syncMenuDot() {
+    $("fm-menu-btn").toggleAttribute(
+      "data-dot",
+      ["fm-ord-dot", "fm-fr-dot", "fm-wish-dot"].some((id) => !$(id).hidden),
     );
-  let dock0 = false;
-  try {
-    dock0 = localStorage.getItem("fmDockOpen") === "1";
-  } catch {}
-  dockSet(dock0);
+  }
+  menuBtn.addEventListener("click", () => menuSet(dockEl.hidden));
+  layer.addEventListener(
+    "pointerdown",
+    (e) => {
+      if (!dockEl.hidden && !e.target.closest("#fm-dock, #fm-menu-btn"))
+        menuSet(false);
+    },
+    true,
+  );
   $("fm-tools").addEventListener("click", (e) => {
     const b = e.target.closest("[data-tool]");
     if (!b) return;
@@ -4525,6 +4544,11 @@ export function openFarm(options) {
         F.tool = t[0];
         renderTools();
       }
+    }
+    if (k === "m") menuSet(dockEl.hidden);
+    if (k === "escape" && !dockEl.hidden) {
+      menuSet(false);
+      return;
     }
     if (k === "escape") {
       F.decorPick = null;
