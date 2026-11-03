@@ -12,8 +12,16 @@ import type { SkinLook } from "../../../apps/client/src/creature-design";
 import { profilePivot } from "../../../apps/client/src/creature-profile";
 import type { AnimationState } from "../../../apps/client/src/animation/controller";
 
-export function reviewChampions(canvas = false) {
-  const assets = new Map(FIGHTER_IDS.map((id) => [id, rigAssets(id)]));
+/**
+ * `group` reviews eight champions at a time (0: the first eight, 1: the
+ * next), so each review stays the size it was with an eight-champion roster.
+ */
+export function reviewChampions(canvas = false, group?: number) {
+  const ids =
+    group === undefined
+      ? FIGHTER_IDS
+      : FIGHTER_IDS.slice(group * 8, group * 8 + 8);
+  const assets = new Map(ids.map((id) => [id, rigAssets(id)]));
   const rigs: {
     id: CharacterId;
     angle: number;
@@ -36,7 +44,7 @@ export function reviewChampions(canvas = false) {
     }
     create() {
       scene = this;
-      FIGHTER_IDS.forEach((id, i) => {
+      ids.forEach((id, i) => {
         this.add.text(20, i * 260 + 16, id.toUpperCase(), {
           fontSize: "22px",
           fontStyle: "bold",
@@ -55,7 +63,7 @@ export function reviewChampions(canvas = false) {
   const game = new Phaser.Game({
     type: canvas ? Phaser.CANVAS : Phaser.WEBGL,
     width: 1440,
-    height: FIGHTER_IDS.length * 260,
+    height: ids.length * 260,
     backgroundColor: "#10182b",
     scene: [Review],
     banner: false,
@@ -125,11 +133,12 @@ export function reviewChampions(canvas = false) {
     async appearance(kind: "rare" | "mythical" | "original") {
       looks.clear();
       if (kind !== "original")
-        for (const id of FIGHTER_IDS) {
+        for (const id of ids) {
           const skin = CHAMPION_SKINS.find(
             (s) => s.champion === id && s.rarity === kind,
-          )!;
-          looks.set(id, { skin: skin.id, stage: 3 });
+          );
+          // A champion without a skin of this rarity (yet) keeps its own look.
+          if (skin) looks.set(id, { skin: skin.id, stage: 3 });
         }
       const pending = [...looks]
         .flatMap(([id, look]) => rigAssets(id, look))
@@ -232,15 +241,28 @@ export function reviewChampions(canvas = false) {
           // toes are strokes (like Mystowl's) and its folded wings cover its
           // arms from behind, and the cotton tail and the curled tentacle only
           // show from the side (Astrabun's sits over its back from behind).
-          if (r.id === "glacelle" && part !== "armL" && part !== "armR" && part !== "head")
+          if (
+            r.id === "glacelle" &&
+            part !== "armL" &&
+            part !== "armR" &&
+            part !== "head"
+          )
             continue;
           if ((r.id === "sunbara" || r.id === "wombolder") && part === "tail")
             continue;
           if (r.id === "halcyra" && (part === "legL" || part === "legR"))
             continue;
-          if (r.id === "halcyra" && dir === "up" && (part === "armL" || part === "armR"))
+          if (
+            r.id === "halcyra" &&
+            dir === "up" &&
+            (part === "armL" || part === "armR")
+          )
             continue;
-          if ((r.id === "astrabun" || r.id === "shadopus") && dir === "up" && part === "tail")
+          if (
+            (r.id === "astrabun" || r.id === "shadopus") &&
+            dir === "up" &&
+            part === "tail"
+          )
             continue;
           // Owl toes are line strokes: inspect the neck/tail rather than inventing a hip capsule.
           if (r.id === "mystowl" && (part === "legL" || part === "legR"))
