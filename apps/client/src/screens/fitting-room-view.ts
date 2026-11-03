@@ -41,7 +41,10 @@ import {
   type RaidProgress,
   type RaidSlot,
 } from "../../../../packages/shared/src/raid";
-import { JOURNEY_ITEM_BY_ID } from "../../../../packages/shared/src/journey";
+import {
+  JOURNEY_ITEMS,
+  JOURNEY_ITEM_BY_ID,
+} from "../../../../packages/shared/src/journey";
 import {
   TIER_NAMES,
   cosmeticTier,
@@ -227,6 +230,10 @@ export function ownedFor(
     ...LOOK_ITEMS.filter((i) => i.slot === slot && e.owned.includes(i.id)).map(
       (i) => i.id,
     ),
+    // Journey rewards (levels and seasons) are owned items too.
+    ...JOURNEY_ITEMS.filter(
+      (i) => i.slot === slot && e.owned.includes(i.id),
+    ).map((i) => i.id),
     ...RAID_REWARDS.filter((r) => r.slot === slot && earned.has(r.id)).map(
       (r) => r.id,
     ),

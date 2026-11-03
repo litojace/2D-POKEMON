@@ -64,6 +64,13 @@ import {
   graphicsSetting,
   rememberAutoLow,
 } from "../graphics-quality";
+import {
+  ALBUM_LIMIT,
+  albumImages,
+  openAlbum,
+  photoDay,
+  pictureName,
+} from "./plaza-album";
 import "./plaza.css";
 
 const esc = (s) =>
@@ -90,6 +97,7 @@ const PLAZA_HTML = `<div class="pz" id="pz">
     <div class="pz-left">
       <button type="button" class="pz-round" id="pz-wheel-btn" aria-label="Emotes">${I("smile")}<small>Emote</small></button>
       <button type="button" class="pz-round" id="pz-treat" aria-label="Throw a treat (T)">${I("berry")}<small id="pz-treats">0</small></button>
+      <button type="button" class="pz-round" id="pz-album-btn" aria-label="Photo album">${I("album")}<small>Album</small></button>
     </div>
     <div class="pz-wheel" id="pz-wheel" hidden>
       ${EMOTE_KEYS.map((e, i) => `<button type="button" data-emote="${e}" style="--a:${i}" aria-label="Emote ${e}">${e}</button>`).join("")}
@@ -100,6 +108,14 @@ const PLAZA_HTML = `<div class="pz" id="pz">
       <button type="button" class="pz-act big" id="pz-jump">Jump<small>Space</small></button>
     </div>
     <div class="pz-photo" id="pz-photo" hidden></div>
+    <div class="pz-album" id="pz-album" role="dialog" aria-modal="true" aria-label="Photo album" hidden>
+      <section class="pz-album-panel" id="pz-album-panel">
+        <header><b>${I("album")}<span>Album</span></b><span class="pz-album-count" id="pz-album-count" aria-live="polite">0 / ${ALBUM_LIMIT}</span><button type="button" class="x" data-al="close" aria-label="Close the album">✕</button></header>
+        <div class="pz-album-grid" id="pz-album-grid"></div>
+        <p class="pz-album-note">Saved on this device only · the newest ${ALBUM_LIMIT} are kept</p>
+      </section>
+      <div class="pz-album-view" id="pz-album-view" hidden></div>
+    </div>
     <div class="pz-card glass" id="pz-card" role="dialog" aria-label="Player" hidden></div>
     <div class="pz-start" id="pz-start" hidden><b>Plaza</b><span>Click to start</span><div class="pz-keys"><span><kbd>WASD</kbd> move</span><span><kbd>Space</kbd> jump</span><span><kbd>Shift</kbd> dash</span><span><kbd>E</kbd> interact</span><span><kbd>Q</kbd> emote</span><span><kbd>T</kbd> treat</span></div></div>
   </div>
@@ -1087,7 +1103,13 @@ export function openPlaza(options) {
     if (e.target.closest && e.target.closest("input, textarea, select")) return;
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     const k = e.key.toLowerCase();
+    const albumOpen = !$("pz-album").hidden,
+      photoOpen = !$("pz-photo").hidden;
+    // Over the album or a polaroid, Space and Enter press the focused button.
+    const onButton =
+      (albumOpen || photoOpen) && e.target.closest?.("button, a[href]");
     if (
+      !onButton &&
       [
         "arrowup",
         "arrowdown",
@@ -1098,7 +1120,12 @@ export function openPlaza(options) {
       ].includes(k)
     )
       e.preventDefault();
-    if (!$("pz-photo").hidden) {
+    if (albumOpen) {
+      if (k === "escape") albumBack();
+      else if (k === "tab") keepTabInAlbum(e);
+      return;
+    }
+    if (photoOpen) {
       if (k === "escape" || k === "e") closePhoto();
       return;
     }
@@ -1158,6 +1185,10 @@ export function openPlaza(options) {
   $("pz-wheel-btn").onclick = () => {
     start();
     toggleWheel();
+  };
+  $("pz-album-btn").onclick = () => {
+    start();
+    showAlbum();
   };
   $("pz-wheel").addEventListener("click", (e) => {
     const b = e.target.closest("[data-emote]");
@@ -1452,8 +1483,22 @@ export function openPlaza(options) {
   }
 
   /* photo mode */
+  /** The polaroid on screen: its canvas and words, for Save to album. */
+  let shot = null;
+  /** Stop walking on the server too (the scene pauses behind the polaroid). */
+  function standStill() {
+    keys.clear();
+    target = null;
+    joyReset();
+    if (sent.x || sent.y) {
+      socket.emit("plaza-input", { dx: 0, dy: 0 });
+      sent = { x: 0, y: 0 };
+      sentAt = performance.now();
+    }
+  }
   function takePhoto() {
     socket.emit("plaza-act", { spot: "photo" }, () => {});
+    standStill();
     const fl = document.createElement("div");
     fl.className = "flash";
     $("pz").append(fl);
@@ -1474,21 +1519,206 @@ export function openPlaza(options) {
         (n) => !n.bot && Math.abs(n.x - P.x) < 300 && Math.abs(n.y - P.y) < 200,
       )
       .map((n) => n.name);
-    const t = clockText();
+    const caption = people.length
+      ? `${P.name} with ${people.slice(0, 3).join(", ")}${people.length > 3 ? ` +${people.length - 3}` : ""}`
+      : `${P.name} at the Photo Spot`;
+    const place = `Elemental Plaza · ${clockText()}`;
+    const at = Date.now();
     const url = o.toDataURL("image/jpeg", 0.9);
+    const mine = { canvas: o, caption, place, at };
     setTimeout(() => {
+      shot = mine;
       const box = $("pz-photo");
       box.hidden = false;
-      box.innerHTML = `<div class="polaroid"><img src="${url}" alt="Photo taken in the Plaza"><p>${people.length ? `${esc(P.name)} with ${people.slice(0, 3).map(esc).join(", ")}${people.length > 3 ? ` +${people.length - 3}` : ""}` : `${esc(P.name)} at the Photo Spot`}</p><small>Elemental Plaza · ${t}</small><div class="acts"><a class="btn" data-ph="keep" href="${url}" download="elemental-plaza.jpg">Save photo</a><button type="button" data-ph="close">Close</button></div></div>`;
+      box.innerHTML = `<div class="polaroid"><div class="print"><img src="${url}" alt="Photo taken in the Plaza"><p title="${esc(caption)}">${esc(caption)}</p><small>${esc(place)}</small></div><div class="acts"><button type="button" class="pz-main" data-ph="album">Save to album</button><a data-ph="keep" href="${url}" download="${pictureName(at)}">Save picture</a><button type="button" data-ph="close">Close</button></div></div>`;
+      box.querySelector('[data-ph="album"]').onclick = (e) =>
+        keepInAlbum(mine, e.currentTarget);
       box.querySelector('[data-ph="keep"]').onclick = () =>
         setTimeout(closePhoto, 100);
       box.querySelector('[data-ph="close"]').onclick = closePhoto;
     }, 160);
   }
   function closePhoto() {
+    shot = null;
     $("pz-photo").hidden = true;
     screen.focus({ preventScroll: true });
   }
+
+  /* the photo album: on this device only (plaza-album.ts, PLAN.md) */
+  const album = openAlbum();
+  let albumPhotos = [],
+    albumState = "loading",
+    albumLoad = 0,
+    viewing = null,
+    sureT = 0;
+  /** Object URLs of the grid's thumbnails, by photo id. */
+  const thumbUrls = new Map();
+  async function keepInAlbum(mine, btn) {
+    if (btn.disabled) return;
+    btn.disabled = true;
+    btn.textContent = "Saving…";
+    try {
+      const { image, thumb } = await albumImages(mine.canvas);
+      const r = await album.add({
+        at: mine.at,
+        caption: mine.caption,
+        place: mine.place,
+        image,
+        thumb,
+      });
+      pzToast(
+        r.dropped
+          ? "Saved to your album. The oldest photo made room."
+          : `Saved to your album (${r.count}/${ALBUM_LIMIT})`,
+      );
+      if (shot === mine) closePhoto();
+    } catch {
+      btn.disabled = false;
+      btn.textContent = "Save to album";
+      pzToast("This browser couldn't keep the photo. Use Save picture.");
+    }
+  }
+  async function showAlbum() {
+    toggleWheel(false);
+    hideCard();
+    const box = $("pz-album");
+    box.hidden = false;
+    closeShot();
+    albumState = "loading";
+    renderAlbum();
+    $("pz-album").querySelector('[data-al="close"]').focus();
+    const token = ++albumLoad;
+    try {
+      const list = await album.list();
+      if (token !== albumLoad || box.hidden) return;
+      albumPhotos = list;
+      albumState = "ready";
+    } catch {
+      if (token !== albumLoad || box.hidden) return;
+      albumPhotos = [];
+      albumState = "error";
+    }
+    renderAlbum();
+  }
+  function hideAlbum() {
+    albumLoad++;
+    closeShot();
+    $("pz-album").hidden = true;
+    for (const url of thumbUrls.values()) URL.revokeObjectURL(url);
+    thumbUrls.clear();
+    albumPhotos = [];
+    screen.focus({ preventScroll: true });
+  }
+  /** Tab goes round the album's buttons, not to the HUD behind it. */
+  function keepTabInAlbum(e) {
+    const all = [...$("pz-album").querySelectorAll("button, a[href]")].filter(
+      (el) => el.offsetParent !== null && !el.disabled,
+    );
+    if (!all.length) return;
+    const i = all.indexOf(document.activeElement),
+      last = all.length - 1;
+    if (i === -1 || (e.shiftKey ? i === 0 : i === last)) {
+      e.preventDefault();
+      all[e.shiftKey ? last : 0].focus();
+    }
+  }
+  /** Escape or Back: from a photo to the grid, from the grid out. */
+  function albumBack() {
+    if (viewing) {
+      const id = viewing.photo.id;
+      closeShot();
+      $("pz-album-grid").querySelector(`[data-id="${id}"]`)?.focus();
+    } else hideAlbum();
+  }
+  function renderAlbum() {
+    const n = albumPhotos.length;
+    $("pz-album-count").textContent = `${n} / ${ALBUM_LIMIT}`;
+    // Thumbnails: keep the URLs of photos still here, let go of the rest.
+    const keep = new Set(albumPhotos.map((p) => p.id));
+    for (const [id, url] of thumbUrls)
+      if (!keep.has(id)) {
+        URL.revokeObjectURL(url);
+        thumbUrls.delete(id);
+      }
+    let html = "";
+    for (let i = 0; i < ALBUM_LIMIT; i++) {
+      const p = albumPhotos[i];
+      if (!p) {
+        html += `<span class="slot empty"></span>`;
+        continue;
+      }
+      if (!thumbUrls.has(p.id))
+        thumbUrls.set(p.id, URL.createObjectURL(p.thumb));
+      html += `<button type="button" class="slot" data-id="${p.id}" aria-label="Open photo: ${esc(p.caption)}"><img src="${thumbUrls.get(p.id)}" alt=""></button>`;
+    }
+    if (albumState === "ready" && !n)
+      html += `<div class="pz-album-empty" role="status">${I("camera")}<b>No photos yet</b><span>Take one at the Photo Spot, then press Save to album.</span></div>`;
+    else if (albumState === "error")
+      html += `<div class="pz-album-empty" role="status">${I("camera")}<b>The album can't open here</b><span>This browser won't keep photos. Use Save picture on the polaroid.</span></div>`;
+    $("pz-album-grid").innerHTML = html;
+  }
+  function openShot(id) {
+    const photo = albumPhotos.find((p) => p.id === id);
+    if (!photo) return;
+    closeShot();
+    const url = URL.createObjectURL(photo.image);
+    viewing = { photo, url };
+    const view = $("pz-album-view");
+    view.innerHTML = `<div class="polaroid"><div class="print"><img src="${url}" alt="${esc(photo.caption)}"><p title="${esc(photo.caption)}">${esc(photo.caption)}</p><small>${esc(photo.place)} · ${photoDay(photo.at)}</small></div><div class="acts"><a class="pz-main" data-al="save" href="${url}" download="${pictureName(photo.at)}">Save picture</a><button type="button" class="pz-delete" data-al="delete">Delete</button><button type="button" data-al="back">Back</button></div></div>`;
+    $("pz-album-panel").hidden = true;
+    view.hidden = false;
+    view.querySelector('[data-al="back"]').focus();
+  }
+  function closeShot() {
+    clearTimeout(sureT);
+    if (viewing) URL.revokeObjectURL(viewing.url);
+    viewing = null;
+    const view = $("pz-album-view");
+    view.hidden = true;
+    view.innerHTML = "";
+    $("pz-album-panel").hidden = false;
+  }
+  async function deleteShot(btn) {
+    if (!viewing || btn.disabled) return;
+    // First press asks; a second within 3 s deletes.
+    if (btn.dataset.sure !== "1") {
+      btn.dataset.sure = "1";
+      btn.textContent = "Delete?";
+      clearTimeout(sureT);
+      sureT = setTimeout(() => {
+        btn.dataset.sure = "";
+        btn.textContent = "Delete";
+      }, 3000);
+      return;
+    }
+    clearTimeout(sureT);
+    btn.disabled = true;
+    const id = viewing.photo.id;
+    try {
+      await album.remove(id);
+    } catch {
+      btn.disabled = false;
+      return pzToast("The photo couldn't be deleted. Try again.");
+    }
+    // The grid and the count change in place (the count is read out), so no
+    // toast covers the album.
+    if ($("pz-album").hidden) return;
+    albumPhotos = albumPhotos.filter((p) => p.id !== id);
+    if (viewing?.photo.id === id) {
+      closeShot();
+      $("pz-album").querySelector('[data-al="close"]').focus();
+    }
+    renderAlbum();
+  }
+  $("pz-album").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-al], [data-id]");
+    if (!b) return;
+    if (b.dataset.id) return openShot(Number(b.dataset.id));
+    const act = b.dataset.al;
+    if (act === "close") hideAlbum();
+    else if (act === "back") albumBack();
+    else if (act === "delete") deleteShot(b);
+  });
 
   /* ---------- your movement ---------- */
   function inputDir() {
@@ -3534,13 +3764,14 @@ export function openPlaza(options) {
     attributes: true,
     attributeFilter: ["open", "hidden"],
   });
+  // The album counts too: you stand still, and the Plaza behind it rests.
   const coverNow = () =>
     (cover ??= {
       covered: !!document.querySelector(
-        "dialog[open], .home-drawer:not([hidden]), .header-menu[open]",
+        "dialog[open], .home-drawer:not([hidden]), .header-menu[open], .plaza-layer .pz-album:not([hidden])",
       ),
       hides: !!document.querySelector(
-        "dialog[open], .home-drawer:not([hidden])",
+        "dialog[open], .home-drawer:not([hidden]), .plaza-layer .pz-album:not([hidden])",
       ),
     });
   /** A panel or menu is open over the Plaza: it gets the keys, you stand still. */
@@ -3627,6 +3858,8 @@ export function openPlaza(options) {
       removeEventListener("blur", joyReset);
       removeEventListener("orientationchange", joyReset);
       document.removeEventListener("visibilitychange", onHidden);
+      hideAlbum();
+      album.close();
       layer.remove();
     },
     _dbg: {
@@ -3656,6 +3889,8 @@ export function openPlaza(options) {
       /** Treat particles flying now (tests). */
       treatFx: () => FX.filter((f) => f.g === "●").length,
       SPOTS,
+      /** The photo album's store (tests fill it). */
+      album,
     },
   };
 }

@@ -22,6 +22,13 @@
 .raid-cosmetic-preview > .fx-front {
   z-index: 3;
 }
+/* Once the live rig is ready it draws the effects itself and the static
+   fallback is hidden; keep the fallback's own effect canvases hidden with it
+   (".shop-live-stage.is-ready canvas" would show them again, drawing Colors
+   twice and a stray glow disc behind the fighter). */
+.shop-live-stage.is-ready:not(.is-item) .shop-preview-fallback .fx-live {
+  visibility: hidden;
+}
 
 /* Item-only previews fill the stage without a champion obscuring the effect. */
 .shop-live-stage.is-item .shop-preview-fallback {

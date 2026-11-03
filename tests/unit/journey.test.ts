@@ -77,9 +77,10 @@ describe("player levels", () => {
     expect(levelUpCoins(49, 50)).toBe(100);
   });
   it("provides distinct milestone rewards and a valid cosmetic catalog", () => {
-    expect(LEVEL_MILESTONES.map((m) => m.level)).toEqual([
-      5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 60, 75, 90, 100,
-    ]);
+    // Every five levels; Lv 100 gives a title and a frame together.
+    expect(LEVEL_MILESTONES.map((m) => m.level)).toEqual(
+      Array.from({ length: 20 }, (_, i) => 5 * (i + 1)),
+    );
     expect(new Set(JOURNEY_ITEMS.map((i) => i.id)).size).toBe(
       JOURNEY_ITEMS.length,
     );

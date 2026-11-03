@@ -13527,6 +13527,16 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   svg {
   filter: sepia(0.5) saturate(0.8) hue-rotate(130deg) brightness(1.08);
 }
+.raid-cosmetic-preview[data-cosmetic="starlit-colors"] > svg,
+:is(
+    .raid-party-avatar,
+    .raid-score-avatar,
+    .player-avatar,
+    .roster-panel
+  )[data-raid-cosmetic~="starlit-colors"]
+  svg {
+  filter: sepia(0.5) saturate(1.2) hue-rotate(195deg) brightness(0.8);
+}
 .raid-cosmetic-preview[data-cosmetic="season-aurora-frame"],
 :is(
   .raid-party-avatar,

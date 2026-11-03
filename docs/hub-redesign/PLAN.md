@@ -61,6 +61,24 @@ Defaults accepted with these answers:
 - "Elemental Farmer" is used twice in the prototype (farm Lv 100 and the
   25-crop book reward); one gets a new name in the farm systems phase.
 
+## Level 55–100 cosmetics (decision 10), done (3 Nov 2026)
+
+Migration 051 (after the giant crops' 050). Prism frame (Lv 55), Nova entrance (65), Starlit colors (70),
+Solar aura (80), Eclipse finale (85), Prismatic laurel (95) and, with the
+Element Master title, the Element Master frame (100). NUMBERS.md calls the
+last one "prismatic frame"; it is named after the title so it can't be
+mistaken for the Lv 55 Prism frame. All seven are Mythical (the Lv 10–45
+pieces are Rare to Legendary) and have their own art instead of the shared
+journey ring and falling stars. `arena_add_xp` grants them on the way up and
+also hands back any level cosmetic a player is missing whenever it saves XP;
+the migration backfilled everyone already past those levels (on 3 Nov 2026
+nobody was: the highest level in production was 29).
+
+The same pull request fixed two things that kept every Journey reward from
+being worn: the Journey dialog's Equip button called a route that only takes
+the first two boss rewards, and the server's appearance route didn't know
+Journey items. The Wardrobe now lists owned Journey rewards too.
+
 ## The new Plaza: decisions made while building it (2 Nov 2026)
 
 These numbers are not in NUMBERS.md or the economy model; they are mine and
@@ -85,8 +103,20 @@ open to change.
   presence value `"town"` stays on the wire (clients show it as "In the
   Plaza"). Tapping a player in the Plaza shows their card with Add friend and
   Invite to party, in place of the town's Nearby players panel.
-- **Not yet:** the photo album (the polaroid can be saved as a picture).
-  Treats came with the farm systems (049).
+- **The photo album (decided 3 Nov 2026): on the device, not the server.**
+  "Save to album" on the polaroid keeps the photo in this browser's
+  IndexedDB (`apps/client/src/plaza/plaza-album.ts`): the newest 30, and a
+  31st pushes out the oldest (the toast says so). The Album button in the
+  Plaza opens a fixed grid of 30 slots; an open photo can be saved as a
+  picture or deleted. Nothing goes to the game server or Supabase. Why: the
+  photos show other players and their names, and keeping them on the server
+  raises storage cost, retention and privacy questions (who may see a photo
+  of you, deleting on request) that are the owner's to answer. What this
+  costs: the album belongs to one browser (an iPhone home-screen app has its
+  own), is not synced or backed up, and is gone if site data is cleared or
+  the browser evicts it for space; the album says "Saved on this device
+  only". Moving it to the server later needs the owner's decision first.
+- Treats came with the farm systems (049).
 
 ## Farm systems progress (phase 5)
 

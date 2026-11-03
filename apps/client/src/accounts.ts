@@ -1073,7 +1073,9 @@ export class AccountUI {
           b.disabled = true;
           try {
             const item = JOURNEY_ITEM_BY_ID[b.dataset.journeyEquip!];
-            const result = (await this.api("/api/raids/cosmetic", {
+            // The shared appearance route, as the Wardrobe uses (the old
+            // /api/raids/cosmetic only takes the two first boss rewards).
+            const result = (await this.api("/api/raids/equip", {
               slot: item.slot,
               item: item.id,
             })) as { progress: RaidProgress };

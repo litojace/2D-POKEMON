@@ -24,6 +24,7 @@
     "@electric-sql/pglite": "^0.5.9",
     "@playwright/test": "^1.56.0",
     "concurrently": "^9.2.0",
+    "fake-indexeddb": "6.2.5",
     "prettier": "^3.9.10",
     "typescript": "^5.9.0",
     "vitest": "^4.1.12"
