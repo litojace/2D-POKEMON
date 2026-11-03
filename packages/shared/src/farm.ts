@@ -771,6 +771,44 @@ export const milkPrice = (mult: number) =>
   Math.max(1, Math.round(MILK.sell * mult));
 /** A crow eats its crop this many seconds after landing unless shooed. */
 export const CROW_SECONDS = 8;
+/**
+ * Giant crops (migration 050): when a 3×3 square of one of these crops is
+ * all ripe, the server rolls once (from a secret salt and the 9 plantings)
+ * whether it merges into one giant crop. Each of its 9 crops then gives
+ * twice its harvest, with its own mutation, for twice the XP.
+ */
+export const GIANT = {
+  crops: ["carrot", "duskcap", "pumpkin", "melon"] as readonly string[],
+  /** The chance for each full square. */
+  chance: 0.1,
+  /** A square's side, in plots. */
+  size: 3,
+  /** Each of its crops gives this many times its normal harvest, and XP. */
+  harvestMult: 2,
+  xpMult: 2,
+} as const;
+export const canGrowGiant = (crop: string | null | undefined) =>
+  !!crop && GIANT.crops.includes(crop);
+/** The 9 plots of the square whose top-left plot is `i` (null past the field's edge). */
+export function giantPlots(i: number): number[] | null {
+  const c = i % FARM_COLS,
+    r = Math.floor(i / FARM_COLS);
+  if (c + GIANT.size > FARM_COLS || r + GIANT.size > FARM_ROWS) return null;
+  const out: number[] = [];
+  for (let dr = 0; dr < GIANT.size; dr++)
+    for (let dc = 0; dc < GIANT.size; dc++)
+      out.push((r + dr) * FARM_COLS + c + dc);
+  return out;
+}
+/**
+ * Crops a giant gives: each of its 9 crops twice its harvest (`perHarvest`:
+ * 2, or 3 with Rich Soil), less one for each crop a friend snuck.
+ */
+export const giantYield = (perHarvest: number, snuck = 0) =>
+  GIANT.size * GIANT.size * GIANT.harvestMult * perHarvest - snuck;
+/** Farm XP for a giant (before Charm): twice its 9 crops' XP. */
+export const giantXp = (cropXp: number) =>
+  GIANT.size * GIANT.size * GIANT.xpMult * cropXp;
 /** Farm weather (migration 039): one per 4-hour UTC window, the same for everyone. */
 export type FarmWeatherId =
   "sun" | "rain" | "storm" | "moon" | "frost" | "rainbow";
@@ -955,6 +993,9 @@ export interface FarmState {
   milkMult?: number;
   /** Friends who visited lately, newest first (migration 047). */
   visits?: FarmVisitEvent[];
+  /** Giant crops on the farm, and how many of each crop grew giant (migration 050). */
+  giants?: FarmGiant[];
+  giantsGrown?: Record<string, number>;
   /** Your farmer, the active perks used today and Warmth's end (migration 046). */
   farmer?: string;
   perksUsed?: FarmPerkActive[];
@@ -967,6 +1008,13 @@ export interface FarmState {
     until: string;
   };
   leaves: number;
+}
+/** A giant crop (migration 050): its square's top-left plot, its 9 plots, when it formed. */
+export interface FarmGiant {
+  i: number;
+  crop: string;
+  plots: number[];
+  formedAt: string;
 }
 /** Friends' farms (migration 047). */
 export interface FarmVisitEvent {
@@ -1001,6 +1049,8 @@ export interface FarmVisit {
   sprinklers: number;
   /** Migration 049: they have a Cow Pasture. */
   pasture?: boolean;
+  /** Migration 050: their giant crops. */
+  giants?: FarmGiant[];
   /** What you did on friends' farms today. */
   today: { helpXp: number; sneaks: number; pranks: number };
 }
@@ -1032,6 +1082,8 @@ export type FarmAction =
   | { a: "plant"; plot: number; crop: string }
   | { a: "water" | "dig" | "buy-land"; plot: number }
   | { a: "harvest"; plot: number; tool?: "sickle" }
+  /** Any plot of a giant crop (migration 050). */
+  | { a: "harvest-giant"; plot: number }
   | { a: "catch"; plot: number; tool?: "net" }
   | { a: "buy-tool"; tool: FarmToolId }
   | { a: "hire-dog"; dog: FarmDogId; days: 1 | 3 }
@@ -1068,6 +1120,8 @@ export interface FarmActResult {
           mutation: string;
         }[];
         barnFull?: boolean;
+        /** A giant crop's harvest: its top-left plot (the crops are in `harvested`). */
+        giant?: number;
         tool?: FarmToolId;
         cost?: number;
       }
