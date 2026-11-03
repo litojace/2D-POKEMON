@@ -2,12 +2,10 @@
  * One shard of a bot round robin on the real server Arena: every pair of
  * champions plays `games` matches (sides alternate), one result row per match.
  *
- *   npx tsx scripts/balance/round-robin.ts <factors.json|-> <shard> <shards> <games> <hard|normal|easy> <out.json> [--prototype]
+ *   npx tsx scripts/balance/round-robin.ts <factors.json|-> <shard> <shards> <games> <hard|normal|easy> <out.json>
  *
  * factors.json maps champion id to a strength factor (health × f, basic
- * interval ÷ √f, rounded to 5 ms); "-" means none. --prototype also registers
- * the eight new champions from docs/new-champions/prototype, for use until
- * they ship.
+ * interval ÷ √f, rounded to 5 ms); "-" means none.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { FIGHTER_IDS } from "../../packages/shared/src/index.ts";
@@ -23,15 +21,8 @@ const [file, shard, shards, games, diff, out] = [
   process.argv[6] as BotDifficulty,
   process.argv[7],
 ];
-const prototype = process.argv.includes("--prototype");
 
-let ids: string[] = [...FIGHTER_IDS];
-if (prototype) {
-  await import("../../docs/new-champions/prototype/register.ts");
-  const { NEW_CHARACTERS } =
-    await import("../../docs/new-champions/prototype/new-champions.ts");
-  ids = [...new Set([...ids, ...Object.keys(NEW_CHARACTERS)])];
-}
+const ids: string[] = [...FIGHTER_IDS];
 applyFactors(file === "-" ? {} : JSON.parse(readFileSync(file, "utf8")));
 
 const rows: [string, string, string | null][] = [];

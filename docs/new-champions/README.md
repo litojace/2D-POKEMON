@@ -22,10 +22,6 @@ Each kit borrows a proven mechanic idea from another game (credited in
   game inspirations, in the same shape as `CHARACTERS` / `COMBOS` / `RITES`
   in `packages/shared/src/index.ts`. Health and basic intervals here are the
   demo values; apply `tuned-factors.json` (below) when implementing.
-- `prototype/register.ts`: registers the eight in `CHARACTERS`, `COMBOS` and
-  `RITES` at runtime, for the balance tools until they ship. The mechanics
-  they use are real (see [Engine](#engine) below); this replaced the
-  simulation-only `engine-patch.ts`.
 - `prototype/art.js`: front-view art for all eight in the idiom of
   `apps/client/src/creature-design.ts` (200×190 canvas, palettes, layers).
   Side and back views, the rig and portraits still need to be made.
@@ -60,8 +56,6 @@ the repository root):
 npx tsx scripts/balance/tune.ts 1 40
 # Auto-tune: 6 rounds, factors averaged over the last 3
 npx tsx scripts/balance/tune.ts 6 40
-# Until the new eight ship: register them from prototype/
-npx tsx scripts/balance/tune.ts 1 40 --prototype --start docs/new-champions/prototype/tuned-factors.json
 ```
 
 A factor f scales health by f and divides the basic interval by √f (rounded
@@ -72,11 +66,64 @@ give. With 4 processes, 16 champions at 40 games take about 8 minutes per
 round. Use 40 games or more: in a 4-game test, win rates moved 10 to 25
 points between rounds while no factor changed by more than 5%.
 
-## Known issues to address while implementing
+## Shipped balance (sixteen champions)
 
-- 2v2: Sunbara's ally healing makes its teams win about 60%; Shadopus (35%)
-  and Coilemur (40%) struggle when two enemies cover each other.
-- Some bot matchups are lopsided (Wombolder beats Shadopus about 90%).
+When the eight shipped, the auto-tune ran with all sixteen together (six
+rounds of 40 games per pairing per difficulty, factors averaged over the last
+three) and its factors went to every champion, old and new. Win rates are the
+average of Hard and Normal bots, sixteen champions, 1,200 matches each (before:
+the original eight as on main plus the new eight at the values above; after:
+the tuned numbers, a fresh round robin). Wombolder's Rump Bump knockback went
+from 30 to 25 first, to keep melee basics within the game's limit.
+
+| Champion  | Factor | Health    | Basic attack (ms) | Win rate before | After |
+| --------- | ------ | --------- | ----------------- | --------------- | ----- |
+| Voltkit   | ×1.020 | 153 → 156 | 275 → 270         | 46.3%           | 50.5% |
+| Cindrake  | ×0.971 | 141 → 137 | 475 → 480         | 55.4%           | 51.4% |
+| Tidefin   | ×1.029 | 146 → 150 | 245 → 240         | 44.9%           | 51.4% |
+| Auralynx  | ×0.953 | 177 → 169 | 320 → 330         | 59.8%           | 50.2% |
+| Lumoth    | ×1.001 | 140       | 305               | 49.9%           | 50.4% |
+| Mystowl   | ×1.000 | 142       | 380               | 49.4%           | 49.8% |
+| Terradon  | ×0.964 | 199 → 192 | 625 → 635         | 57.5%           | 49.0% |
+| Duskveil  | ×1.043 | 139 → 145 | 365 → 355         | 42.5%           | 50.2% |
+| Coilemur  | ×0.992 | 140 → 139 | 365               | 51.1%           | 52.4% |
+| Pyranda   | ×1.004 | 149 → 150 | 425               | 49.1%           | 49.0% |
+| Glacelle  | ×1.001 | 153       | 325               | 50.2%           | 51.1% |
+| Halcyra   | ×0.998 | 143       | 365               | 50.6%           | 49.5% |
+| Sunbara   | ×1.012 | 188 → 190 | 335               | 46.9%           | 47.1% |
+| Astrabun  | ×0.996 | 133 → 132 | 415               | 51.5%           | 50.1% |
+| Wombolder | ×1.005 | 172 → 173 | 535               | 48.0%           | 50.4% |
+| Shadopus  | ×1.005 | 127 → 128 | 305               | 46.9%           | 47.2% |
+
+All sixteen now win 47–52% in duels (before: 42–60%).
+
+### 2v2
+
+Random 2v2 teams (1,200 matches per difficulty, about 300 appearances per
+champion each), with the tuned numbers:
+
+| Team win rate | Champions                                                                                                |
+| ------------- | -------------------------------------------------------------------------------------------------------- |
+| 55–63%        | Auralynx 62.8, Astrabun 62.8, Shadopus 60.0, Coilemur 59.1, Cindrake 57.8, Terradon 55.7, Wombolder 55.3 |
+| 47–49%        | Glacelle 49.1, Sunbara 48.9, Pyranda 47.7                                                                |
+| 32–44%        | Tidefin 43.7, Duskveil 42.6, Halcyra 42.0, Mystowl 40.7, Lumoth 38.2, Voltkit 32.5                       |
+
+Sunbara's teams no longer win about 60% (its springs heal only Sunbara at
+half rate, and bots no longer step out of a teammate's spring or an enemy's
+harmless one). Shadopus and Coilemur went from weak to strong. The pattern is
+champions with a melee basic beating ranged ones, and it is older than the new
+eight: the original eight alone show it on main before these changes
+(Auralynx 66%, Cindrake 63%, Terradon 62% down to Voltkit 38%) and after them
+(61–63% down to 38%). Duel numbers are tuned and 2v2 uses the same ones, so
+fixing it means a 2v2-specific change (bot spacing and focus, or the team-up
+rules), not the kits.
+
+## Known issues
+
+- 2v2 favours melee basics (above).
+- Bot win rates still split by difficulty for some champions: Cindrake (30%
+  Hard, 73% Normal), Mystowl (69% / 31%), Duskveil (36% / 64%) and Pyranda
+  (62% / 37%).
 
 ## Engine
 
@@ -104,9 +151,11 @@ often a pure utility skill comes back, so bots take the rites that use them.
 
 ## What implementing them involves
 
-1. Engine: done (above). Adding the champion IDs to `FIGHTER_IDS` /
-   `CharacterId` comes with the champions.
-2. Champions: front, side and back art on the rig, portraits and selection
+1. Engine: done (above).
+2. Champions: done. Kits in `packages/shared/src/index.ts`; art in
+   [fighter-assets.md](../fighter-assets.md); raid tricks in
+   [raid-roster-design.md](../raid-roster-design.md) §6; migration 052 lets
+   them be portraits and farmers (no farm perk yet). The list as planned: front, side and back art on the rig, portraits and selection
    art (`scripts/export-fighters.ts`), effects and illustrated icons for 40
    skills, fighter select, raid champion tricks, docs.
 3. Skins: each original champion has 7 shop skins (`supabase/migrations`,
