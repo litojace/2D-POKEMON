@@ -15,7 +15,7 @@
   border-color: transparent;
   background: transparent;
 }
-body:is(.home-active, .town-active, .lobby-active)
+body:is(.home-active, .lobby-active)
   #account-profile
   .account-avatar:has(> .portrait-frame) {
   overflow: visible;
@@ -26,7 +26,7 @@ body.home-active #account-profile:has(.portrait-frame) {
   gap: 14px;
   padding-left: 8px;
 }
-body:is(.town-active, .lobby-active) #account-profile:has(.portrait-frame) {
+body.lobby-active #account-profile:has(.portrait-frame) {
   column-gap: 14px;
   padding-left: 12px;
 }
@@ -80,8 +80,7 @@ body:is(.town-active, .lobby-active) #account-profile:has(.portrait-frame) {
   .player-avatar,
   .raid-party-avatar,
   .raid-score-avatar,
-  .friend-avatar,
-  .player-card-portrait
+  .friend-avatar
 ) {
   border-radius: 50% !important;
   overflow: visible;
@@ -94,8 +93,7 @@ body:is(.town-active, .lobby-active) #account-profile:has(.portrait-frame) {
   .player-avatar,
   .raid-party-avatar,
   .raid-score-avatar,
-  .friend-avatar,
-  .player-card-portrait
+  .friend-avatar
 ):has(> .portrait-frame) {
   border-color: transparent;
   background: transparent;
@@ -128,14 +126,8 @@ body:is(.town-active, .lobby-active) #account-profile:has(.portrait-frame) {
   font-size: 7px;
   letter-spacing: 0.2px;
 }
-.player-card-portrait .frame-stars {
-  font-size: 9px;
-}
 /* Extra room below the circle keeps badges/stars away from the next row. */
 .raid-party-member:has(.frame-stars),
 .raid-score-row:has(.frame-stars) {
   min-height: 58px;
-}
-.player-card-head:has(.frame-stars) {
-  padding-bottom: 14px;
 }

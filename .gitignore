@@ -7,3 +7,4 @@ coverage/
 *.log
 test-results/
 playwright-report/
+balance-out/

@@ -276,7 +276,7 @@ function attach(el: HTMLElement) {
   // Small identity portraits (headers, nameplates) keep still.
   if (
     el.closest(
-      ".account-avatar, .player-avatar, .friend-avatar, .raid-party-avatar, .raid-score-avatar, .player-card-portrait",
+      ".account-avatar, .player-avatar, .friend-avatar, .raid-party-avatar, .raid-score-avatar",
     )
   )
     return;

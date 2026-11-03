@@ -70,7 +70,7 @@ import {
   type HubScene,
 } from "./hub-scene";
 import { watchSelectionPreview } from "./selection-preview";
-import { townOutfitKey } from "./town-outfit";
+import { plazaOutfitKey } from "./plaza/plaza-outfit";
 import { bossClears, pacificDate } from "../../../packages/shared/src/raid";
 import { resultXp } from "./adventure-ui";
 import { arcadeWeek, ARCADE_EVENTS } from "../../../packages/shared/src/arcade";
@@ -88,7 +88,7 @@ import {
   raidLookList,
   portraitCosmetics,
 } from "./raid-ui";
-import { townGuide, illustratedHelp } from "./illustrated-help";
+import { illustratedHelp } from "./illustrated-help";
 import { buttonIcon, iconLabel, menuIcon } from "./menu-icons";
 import type { RaidBossId } from "../../../packages/shared/src/raid";
 import type { RaidHubTab } from "./raid-hub";
@@ -204,7 +204,6 @@ import { wireRotateGate } from "./rotate-gate";
 import { watchRotation } from "./orientation-settle";
 import { watchCosmeticPreviews } from "./cosmetic-fx-preview";
 import { showRewardReveal, takeNewRewards } from "./reward-reveal";
-import { playerCardMarkup } from "./player-card";
 import {
   SKILL_ACTIONS,
   SkillCaster,
@@ -1537,10 +1536,10 @@ async function startAdventure(mode: string) {
 /**
  * The welcome screen: shown when signed out (with the sign-up / log-in
  * panel in it), while the account loads, and while a signed-in player is
- * (re)connecting to the town.
+ * (re)connecting to the hub.
  */
 function renderGate() {
-  syncTown();
+  syncHub();
   const status: GateStatus = replacedAccount
     ? "session-replaced"
     : !accountsUI?.checked
@@ -1605,7 +1604,7 @@ let wantedPlazaClosed = false;
  * The hub (Lobby, Plaza, Farm): open whenever a signed-in, connected player
  * is not in a room (and not about to resume or join one); closed otherwise.
  */
-function syncTown() {
+function syncHub() {
   const hub =
     !!accountsUI?.account &&
     connected &&
@@ -1634,7 +1633,7 @@ function syncPlaza(want: boolean) {
     return;
   }
   const skin = accountsUI.economy?.looks[selected] ?? null;
-  const look = townOutfitKey(selected, skin, accountsUI.raidLook);
+  const look = plazaOutfitKey(selected, skin, accountsUI.raidLook);
   if (plaza) {
     if (look !== plazaLook) plaza.look(selected, skin);
     plazaLook = look;
@@ -1693,7 +1692,7 @@ function syncPlaza(want: boolean) {
       plazaRetry = setTimeout(
         () => {
           plazaRetry = undefined;
-          syncTown();
+          syncHub();
         },
         failed ? 15000 : 1500,
       );
@@ -1724,7 +1723,7 @@ function setHubScene(scene: HubScene) {
   hubScene = scene;
   saveHubScene(scene);
   homeNavigation.close();
-  syncTown();
+  syncHub();
 }
 async function refreshLobbyFriends() {
   try {
@@ -1899,7 +1898,7 @@ function stepHomeFighter(direction: -1 | 1) {
   selected = next;
   rememberHomeFighter(next);
   renderMenu();
-  syncTown();
+  syncHub();
 }
 /** Start a raid or safe attack practice from the Raid Hub. */
 async function startRaid(
@@ -2045,12 +2044,12 @@ function renderMenu(revealSelection = false) {
   const p = state?.players.find((p) => p.id === myId);
   const isRoom = !!p;
   const watchingRoom = !isRoom && !!watching && state?.code === watching;
-  // Everyone plays from the shared town, so the game needs an account.
-  // No town without an account or a connection: the welcome screen instead.
+  // Everyone plays from the shared hub, so the game needs an account.
+  // No hub without an account or a connection: the welcome screen instead.
   if (!isRoom && !watchingRoom && (!accountsUI?.account || !connected))
     return renderGate();
   document.body.classList.remove("gate-active");
-  syncTown();
+  syncHub();
   const raidChallenge = state?.raid
     ? `${state.raid.boss}/${state.raid.peril}`
     : "";
@@ -2326,7 +2325,7 @@ function renderPvpSpectator() {
 function renderBattle() {
   document.body.classList.remove("home-active", "lobby-active", "gate-active");
   if (!state?.practice) document.body.classList.remove("practice-active");
-  syncTown();
+  syncHub();
   if (state) audio.setTheme(battleMusic(state, myId), state.raid?.phase ?? 1);
   if (!document.body.classList.contains("battle-active")) {
     document.body.classList.add("battle-active");
@@ -2882,7 +2881,7 @@ socket.on("connect", () => {
     screen = "";
     renderMenu();
   }
-  syncTown();
+  syncHub();
   $("connection").textContent = "SERVER CONNECTED";
   $("connection").classList.add("online");
   const token = sessionStorage.getItem("arena-token");
@@ -2965,7 +2964,7 @@ socket.on("party", (data: unknown) => {
   if (!party) partyRoomSent = "";
   if (party && party.members.length > was && was > 0)
     toast(`${party.members.at(-1)!.name} joined your party.`);
-  syncTown();
+  syncHub();
 });
 socket.on("party-room", (data: unknown) => {
   const parsed = partyRoomSchema.safeParse(data);
@@ -3223,7 +3222,7 @@ function leaveButton() {
   }
   return `<button id="exit-room" class="secondary btn-secondary leave-button is-costly"><span>${buttonIcon("leave")}Leave match</span><small>Counts as a forfeit</small></button>`;
 }
-/** Settings → Graphics: Auto, High or Low for the town (graphics-quality.ts). */
+/** Settings → Graphics: Auto, High or Low for the Plaza and the Farm (graphics-quality.ts). */
 function graphicsCard() {
   const setting = graphicsSetting();
   const option = (value: GraphicsSetting, label: string) =>
@@ -3232,12 +3231,12 @@ function graphicsCard() {
 }
 function graphicsNote(setting: GraphicsSetting) {
   if (setting === "high")
-    return "The living town: animals, swaying trees, flickering torches and moving water.";
+    return "The living Plaza and Farm: animals, night glow and full weather, sharp on high-resolution screens.";
   if (setting === "low")
-    return "A still town at 30 fps for older phones: no animals, still trees, lamps and water. Battles keep every attack, telegraph and skill but draw fewer decorative sparks.";
+    return "A lighter Plaza and Farm at 30 fps for older phones: no animals or night glow, lighter rain. Battles keep every attack, telegraph and skill but draw fewer decorative sparks.";
   return autoChoosesLow()
-    ? "Auto picked <b>Low</b> for the town on this device (it ran slowly). Battles adapt on their own. Pick High to try it again."
-    : "Starts on High. The town switches to Low if it runs slowly; battles trim decorative sparks only while frames stay slow.";
+    ? "Auto picked <b>Low</b> for the Plaza and Farm on this device (they ran slowly). Battles adapt on their own. Pick High to try it again."
+    : "Starts on High. The Plaza and Farm switch to Low if they run slowly; battles trim decorative sparks only while frames stay slow.";
 }
 function bindGraphicsCard() {
   for (const b of Array.from(
@@ -3259,13 +3258,13 @@ function bindGraphicsCard() {
         wantedPlazaClosed = true;
         plaza.close();
         wantedPlazaClosed = false;
-        syncTown();
+        syncHub();
       }
       // So does the Farm.
       if (farmScreen && farmLow !== lowGraphics()) {
         farmScreen.close();
         farmScreen = undefined;
-        syncTown();
+        syncHub();
       }
     };
 }
@@ -3351,7 +3350,7 @@ function bindDisplayCard() {
 /** Who and what made the game (opened from Settings, with a way back). */
 function showCredits() {
   dialog(
-    `<div class="credits-screen"><button type="button" class="quiet" id="credits-back">${iconLabel("back", "Settings")}</button><h2>Credits</h2><div class="credits-hero"><span class="credits-crest" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="credits-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#credits-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><div><b>Element Arena</b><small>Real-time creature duels from Elemental Plaza.</small></div></div><div class="credits-grid"><section class="prefs-card"><h3>${menuIcon("user")}Creatures &amp; world</h3><p>Eight original creatures, each an articulated shaded-vector rig with front, back and side views, plus the town and its coliseum.</p></section><section class="prefs-card"><h3>${menuIcon("sound")}Music</h3><p>Original music played on instrument recordings from the <a href="https://github.com/sgossner/VCSL" target="_blank" rel="noopener noreferrer">Versilian Community Sample Library</a> and <a href="https://github.com/sgossner/VSCO-2-CE" target="_blank" rel="noopener noreferrer">VSCO 2 Community Edition</a> (CC0 public domain).</p></section><section class="prefs-card"><h3>${menuIcon("keyboard")}Built with</h3><ul class="credits-tags">${["Phaser", "Socket.IO", "Express", "TypeScript", "Vite", "Supabase"].map((t) => `<li>${t}</li>`).join("")}</ul></section></div></div>`,
+    `<div class="credits-screen"><button type="button" class="quiet" id="credits-back">${iconLabel("back", "Settings")}</button><h2>Credits</h2><div class="credits-hero"><span class="credits-crest" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="credits-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#credits-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><div><b>Element Arena</b><small>Real-time creature duels from Elemental Plaza.</small></div></div><div class="credits-grid"><section class="prefs-card"><h3>${menuIcon("user")}Creatures &amp; world</h3><p>Eight original creatures, each an articulated shaded-vector rig with front, back and side views, plus the Plaza, the Farm and the coliseum.</p></section><section class="prefs-card"><h3>${menuIcon("sound")}Music</h3><p>Original music played on instrument recordings from the <a href="https://github.com/sgossner/VCSL" target="_blank" rel="noopener noreferrer">Versilian Community Sample Library</a> and <a href="https://github.com/sgossner/VSCO-2-CE" target="_blank" rel="noopener noreferrer">VSCO 2 Community Edition</a> (CC0 public domain).</p></section><section class="prefs-card"><h3>${menuIcon("keyboard")}Built with</h3><ul class="credits-tags">${["Phaser", "Socket.IO", "Express", "TypeScript", "Vite", "Supabase"].map((t) => `<li>${t}</li>`).join("")}</ul></section></div></div>`,
   );
   $("credits-back").onclick = showSettings;
 }
@@ -3405,14 +3404,14 @@ function reportContext(): Record<string, string> {
 }
 $("report-problem").onclick = () => accountsUI.showReport(reportContext());
 $("leaderboard").onclick = () => void accountsUI.showLeaderboard();
-// In town the header's log-out button is folded into this menu.
+// In the hub the header's log-out button is folded into this menu.
 $("menu-logout").onclick = () => {
   headerMenu.open = false;
   document.getElementById("account-logout")?.click();
 };
 $("help").onclick = () =>
   dialog(
-    `<div class="help-screen"><div class="eyebrow">How to play</div><h2>Welcome to Elemental Plaza.</h2><p>Everyone online shares this town. Walk to a building to use it, or open <b>Menu</b> (bottom left) and press <b>Play</b> to start a match. In battle, win three rounds to take the match.</p>${townGuide(usingPad)}<div class="eyebrow help-battle-eyebrow">In battle</div><div class="help-layout"><section class="help-controls" aria-label="Game controls">${controlsList(true)}</section>${illustratedHelp()}</div></div>`,
+    `<div class="help-screen"><div class="eyebrow">How to play</div><h2>Welcome to Elemental Plaza.</h2><p>Press <b>PLAY</b> in the Lobby to start a match. Switch between the Lobby, the Plaza and your Farm at the top of the screen. In battle, win three rounds to take the match.</p><div class="eyebrow help-battle-eyebrow">In battle</div><div class="help-layout"><section class="help-controls" aria-label="Game controls">${controlsList(true)}</section>${illustratedHelp()}</div></div>`,
   );
 $<HTMLDialogElement>("dialog").addEventListener("close", () => {
   settingsOpen = false;
@@ -5573,7 +5572,7 @@ function syncBattleLoop() {
   if (!gameInstance) return;
   if ($("battle").hidden) {
     // Sleeping retains every fighter and arena texture. Release them before
-    // opening Town/Shop so iOS does not have to evict the whole web app.
+    // opening the hub or the Shop so iOS does not have to evict the whole web app.
     const previous = gameInstance;
     gameInstance = undefined;
     scene = undefined;

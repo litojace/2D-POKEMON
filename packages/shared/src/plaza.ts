@@ -1,4 +1,5 @@
-import type { TownProfile } from "./town.js";
+import type { RaidLoadout } from "./raid.js";
+import type { RaidBossId } from "./raid-roster.js";
 
 /**
  * The new Plaza (hub redesign phase 3): a 2700 × 1700 painted playground with
@@ -917,10 +918,22 @@ export type PlazaWalker = [
   number,
 ];
 /** Who someone is (sent once when they appear); pitch bots are marked. */
-export type PlazaProfile = TownProfile & {
+export interface PlazaProfile {
+  id: number;
+  accountId?: string;
+  name: string;
+  title: string | null;
+  titleColor: string | null;
+  level: number | null;
+  character: string;
+  skin: { skin: string; stage?: number } | null;
+  /** Verified wardrobe slots, including colours, aura, entrance, victory and portrait frame. */
+  look?: RaidLoadout;
+  /** Saved raid clears per boss (frame stars and the profile card). */
+  raid?: Partial<Record<RaidBossId, number>>;
   /** A pitch bot, not a person. */
   bot?: boolean;
-};
+}
 export interface PlazaState {
   plaza: number;
   population: number;

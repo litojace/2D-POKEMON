@@ -1,15 +1,15 @@
 /**
- * Town graphics quality: Settings → Graphics offers Auto, High and Low.
+ * Plaza and Farm graphics quality: Settings → Graphics offers Auto, High and
+ * Low.
  *
- * High is the living town (animals, swaying trees, flickering lamps and
- * torches, moving water) at up to 2× resolution. Low is the same town
- * standing still: no hens, ducks, birds, butterflies or clouds; trees,
- * lamps, torches, flags and water hold still and are drawn once; the canvas
- * renders at 1× and the town runs at 30 frames a second. Battles are not
- * affected.
+ * High is the living Plaza and Farm (animals, night glow, full weather) at
+ * up to 2× resolution. Low is lighter for older phones: no ambient animals,
+ * butterflies or night glow, lighter rain, a 1× canvas and 30 frames a
+ * second. Battles keep every attack and only trim decorative sparks
+ * (battle-quality.ts).
  *
- * Auto starts High and watches the town's real frame rate for a few
- * seconds, and keeps watching while you play; a device that cannot hold
+ * Auto starts High and watches the Plaza's or the Farm's real frame rate for
+ * a few seconds, and keeps watching while you play; a device that cannot hold
  * about 50 frames a second switches to Low and is remembered, so its next visit starts Low straight away (a
  * device reporting 2 GB of memory or less starts Low too). Choosing High or
  * Low by hand overrides Auto.
@@ -55,18 +55,16 @@ export function autoChoosesLow(
 export function rememberAutoLow() {
   write(AUTO_KEY, "low");
 }
-/** The town should be drawn at Low quality right now. */
+/** The Plaza and the Farm should be drawn at Low quality right now. */
 export function lowGraphics(setting = graphicsSetting()) {
   return setting === "low" || (setting === "auto" && autoChoosesLow());
 }
 
-/** The town's frame cap at Low (frames a second). */
-export const LOW_FPS = 30;
 /** Below this many frames a second, Auto switches to Low. */
 export const AUTO_MIN_FPS = 50;
 
 /**
- * Measures the town's frame rate for Auto. Feed it the time of every frame
+ * Measures the Plaza's or the Farm's frame rate for Auto. Feed it the time of every frame
  * (ms). Loading and the first moments are skipped; gaps over a second (a
  * panel open, the tab in the background) are not counted against the
  * device. After four seconds of counted frames it answers once: "low" or
@@ -82,7 +80,7 @@ export class FrameRateProbe {
     private warmup = 2000,
     private window = 4000,
   ) {}
-  /** A pause (panel open, town asleep): the next frame starts a new interval. */
+  /** A pause (panel open, scene asleep): the next frame starts a new interval. */
   pause() {
     this.last = undefined;
   }

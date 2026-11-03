@@ -51,12 +51,10 @@ import {
   type Reply,
 } from "../../../packages/shared/src/index.js";
 import { Arena } from "./simulation.js";
-import { TownWorld } from "./town.js";
 import { PlazaWorld, type PlazaEvent } from "./plaza.js";
 import { PLAZA, type PlazaRecord } from "../../../packages/shared/src/plaza.js";
 import { Parties, type Party } from "./party.js";
-import { TownAppearance } from "./town-appearance.js";
-import { TOWN } from "../../../packages/shared/src/town.js";
+import { PlazaAppearance } from "./plaza-appearance.js";
 import { MatchLedger, matchSummary } from "./match-summary.js";
 import {
   BotBrain,
@@ -177,7 +175,7 @@ export function createArenaServer(
   // Input packets arrive every simulation tick: avoid scanning all sessions
   // to identify the sending socket on this hot path.
   const socketSessions = new Map<string, Session>();
-  // One live game connection per account, including town/menu/spectator seats.
+  // One live game connection per account, including Plaza/menu/spectator seats.
   const activeAccounts = new Map<string, string>();
   const ownsConnection = (socket: import("socket.io").Socket) =>
     socket.connected &&
@@ -239,12 +237,9 @@ export function createArenaServer(
   /** Which account plays each fighter (kept after a player leaves). */
   const fighterAccounts = new WeakMap<Arena, Map<string, string>>();
   const ledger = new MatchLedger();
-  /** Elemental Plaza: everyone walking around the shared town. */
-  const town = new TownWorld();
-  const townAppearance = new TownAppearance(town, accounts);
-  /** The new Plaza (hub redesign phase 3): movement, the pitch, orbs, laps. */
+  /** The Plaza (hub redesign phase 3): movement, the pitch, orbs, laps. */
   const plaza = new PlazaWorld();
-  const plazaAppearance = new TownAppearance(plaza, accounts);
+  const plazaAppearance = new PlazaAppearance(plaza, accounts);
   const presenceHistory = new PresenceHistory(accounts);
   /** Friends watching a room: socket id → room code and display name. */
   const watchers = new Map<string, { code: string; name: string }>();
@@ -318,26 +313,12 @@ export function createArenaServer(
         );
       if (!ownsConnection(socket)) return;
       if (arena && fighter) broadcast(arena);
-      const visitor = town.profileOf(socket.id);
+      const visitor = plaza.profileOf(socket.id);
       if (visitor) {
         if (
           visitor.name !== account.displayName ||
           visitor.title !== account.title ||
           visitor.titleColor !== account.titleColor
-        )
-          town.updateProfile(socket.id, {
-            name: account.displayName,
-            title: account.title,
-            titleColor: account.titleColor,
-          });
-        void townAppearance.refresh(socket.id, socket.data.accessToken, true);
-      }
-      const visitor2 = plaza.profileOf(socket.id);
-      if (visitor2) {
-        if (
-          visitor2.name !== account.displayName ||
-          visitor2.title !== account.title ||
-          visitor2.titleColor !== account.titleColor
         )
           plaza.updateProfile(socket.id, {
             name: account.displayName,
@@ -398,7 +379,7 @@ export function createArenaServer(
       const fighter = session
         ? rooms.get(session.code)?.players.find((p) => p.id === session.id)
         : undefined;
-      const visitor = socketId ? town.profileOf(socketId) : undefined;
+      const visitor = socketId ? plaza.profileOf(socketId) : undefined;
       const look = fighter?.raidLook ?? visitor?.look;
       return {
         online: true,
@@ -459,9 +440,9 @@ export function createArenaServer(
       const other = others.length
         ? { name: others.map((o) => o.name).join(" & ") }
         : undefined;
+      // "town" is the Plaza's wire name (clients already show "In the Plaza").
       const activity: OnlinePlayer["activity"] = !arena
-        ? town.townOf(socket.id) !== undefined ||
-          plaza.plazaOf(socket.id) !== undefined
+        ? plaza.plazaOf(socket.id) !== undefined
           ? "town"
           : "menu"
         : arena.practice
@@ -1958,23 +1939,14 @@ export function createArenaServer(
       }
       reply(cb, { ok: true });
     });
-    // ───────────── Town ─────────────
-    // Starting or joining a room takes you out of town.
+    // Only the active connection may act. Starting or joining a room takes
+    // you out of the Plaza.
     socket.use((args: unknown[], next: (error?: Error) => void) => {
       if (!ownsConnection(socket)) {
         fail(args.at(-1), "This connection is no longer active.");
         return;
       }
       const [event] = args;
-      if (
-        ["create", "join", "practice", "bot-match", "resume", "watch"].includes(
-          String(event),
-        ) &&
-        town.townOf(socket.id) !== undefined
-      ) {
-        town.leave(socket.id);
-        socket.emit("town-closed");
-      }
       if (
         ["create", "join", "practice", "bot-match", "resume", "watch"].includes(
           String(event),
@@ -1986,82 +1958,6 @@ export function createArenaServer(
       }
       next();
     });
-    socket.on("town-join", (data: unknown, cb: unknown) => {
-      if (!allowed(10) || !requirePlayer(cb)) return;
-      if (getSession(socket.id))
-        return fail(cb, "Leave your room before visiting the town.");
-      const parsed = characterSchema.safeParse(
-        (data as { character?: unknown } | null)?.character,
-      );
-      if (!parsed.success) return fail(cb, "Choose a fighter first.");
-      const me = account()!;
-      plaza.leave(socket.id);
-      const walker = town.join(socket.id, me.id, {
-        name: me.displayName,
-        title: me.title ?? null,
-        titleColor: me.titleColor ?? null,
-        level: null,
-        character: parsed.data,
-        skin: null,
-      });
-      reply(cb, { ok: true, town: walker.town, me: walker.profile.id });
-      lookUpTownProfile(true);
-      if (!me.guest)
-        void portraitChoice.save(me.id, socket.data.accessToken, parsed.data);
-    });
-    /** Saved champion skin and wardrobe slots follow the town join or look change. */
-    const lookUpTownProfile = (level: boolean) => {
-      const token = socket.data.accessToken as string | undefined;
-      if (token) void townAppearance.refresh(socket.id, token, level);
-    };
-    // Switched fighter, or equipped a different skin, while in town.
-    socket.on("town-look", (data: unknown, cb: unknown) => {
-      if (!allowed(10)) return;
-      if (town.townOf(socket.id) === undefined) return fail(cb, "Not in town.");
-      const parsed = characterSchema.safeParse(
-        (data as { character?: unknown } | null)?.character,
-      );
-      if (!parsed.success) return fail(cb, "Choose a fighter first.");
-      if (town.profileOf(socket.id)?.character !== parsed.data) {
-        town.updateProfile(socket.id, { character: parsed.data, skin: null });
-        const owner = account();
-        if (owner && !owner.guest)
-          void portraitChoice.save(
-            owner.id,
-            socket.data.accessToken,
-            parsed.data,
-          );
-      }
-      lookUpTownProfile(false);
-      reply(cb, { ok: true });
-    });
-    socket.on("town-input", (data: unknown) => {
-      if (!allowed(40)) return;
-      const d = data as { dx?: unknown; dy?: unknown } | null;
-      town.input(socket.id, d?.dx, d?.dy);
-    });
-    socket.on("town-jump", () => {
-      if (!allowed(10)) return;
-      town.jump(socket.id, Date.now());
-    });
-    socket.on("town-emote", (data: unknown, cb: unknown) => {
-      if (!allowed(10)) return;
-      const ok = town.emote(
-        socket.id,
-        (data as { emote?: unknown } | null)?.emote,
-        Date.now(),
-      );
-      reply(
-        cb,
-        ok
-          ? { ok: true }
-          : { ok: false, error: "Wait a moment between emotes." },
-      );
-    });
-    socket.on("town-leave", (_data: unknown, cb: unknown) => {
-      town.leave(socket.id);
-      reply(cb, { ok: true });
-    });
     // ───────────── Plaza (hub redesign phase 3) ─────────────
     socket.on("plaza-join", (data: unknown, cb: unknown) => {
       if (!allowed(10) || !requirePlayer(cb)) return;
@@ -2072,7 +1968,6 @@ export function createArenaServer(
       );
       if (!parsed.success) return fail(cb, "Choose a fighter first.");
       const me = account()!;
-      town.leave(socket.id);
       const visitor = plaza.join(socket.id, me.id, {
         name: me.displayName,
         title: me.title ?? null,
@@ -2252,7 +2147,6 @@ export function createArenaServer(
       if (who && !who.guest && !stillOnline)
         void presenceHistory.touch(who.id, socket.data.accessToken, true);
       if (who && !stillOnline) leaveParty(who.id);
-      town.leave(socket.id);
       plaza.leave(socket.id);
       laggingSockets.delete(socket.id);
       stopWatching();
@@ -2285,30 +2179,6 @@ export function createArenaServer(
     options.autoTick === false
       ? undefined
       : setInterval(step, 1000 / RULES.tick);
-  /** Move everyone in town and send each player what is near them. */
-  let townTicks = 0;
-  const townStep = () => {
-    townTicks++;
-    town.step(1 / TOWN.tick, Date.now());
-    if (townTicks % Math.round(TOWN.tick / TOWN.send) !== 0) return;
-    for (const key of town.keys()) {
-      const socket = io.sockets.sockets.get(key);
-      if (!socket) {
-        town.leave(key);
-        continue;
-      }
-      const view = town.view(key);
-      if (!view) continue;
-      if (view.profiles.length) socket.emit("town-profiles", view.profiles);
-      socket.emit("town-state", view.state);
-    }
-  };
-  const townTimer =
-    options.autoTick === false
-      ? undefined
-      : setInterval(() => {
-          if (town.size) townStep();
-        }, 1000 / TOWN.tick);
   /**
    * Plaza events the database must see go one at a time per player, in order,
    * so caps hold and the newest progress reaches the browser last.
@@ -2378,7 +2248,6 @@ export function createArenaServer(
                 diagnostics.report({
                   rooms: rooms.size,
                   sockets: io.engine.clientsCount,
-                  town: town.size,
                   plaza: plaza.size,
                 }),
               ),
@@ -2402,14 +2271,11 @@ export function createArenaServer(
     ledger,
     step,
     broadcast,
-    town,
-    townStep,
     plaza,
     plazaStep,
     diagnostics,
     close: async () => {
       if (timer) clearInterval(timer);
-      if (townTimer) clearInterval(townTimer);
       if (plazaTimer) clearInterval(plazaTimer);
       if (accountTimer) clearInterval(accountTimer);
       if (diagnosticsTimer) clearInterval(diagnosticsTimer);

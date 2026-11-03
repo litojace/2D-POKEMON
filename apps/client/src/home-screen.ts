@@ -27,8 +27,8 @@ export function rememberHomeFighter(id: CharacterId) {
   }
 }
 /**
- * What #menu holds while you're in town: the Fighters and Play panels that
- * slide over the town (the town itself is its own layer, see town.ts).
+ * What #menu holds in the hub: the Fighters and Play panels that slide over
+ * the Lobby, Plaza or Farm (each is its own layer).
  */
 export function homeShell(controls: string, roster: string) {
   return `<div class="home-screen"><button type="button" class="home-panel-scrim" data-home-close aria-label="Close panel" tabindex="-1" hidden></button><section id="home-fighter-panel" class="home-drawer home-roster-drawer" role="dialog" aria-modal="true" aria-labelledby="home-fighters-title" tabindex="-1" hidden><header class="home-drawer-head"><div><span class="eyebrow">YOUR ROSTER</span><h2 id="home-fighters-title">Choose your fighter</h2></div><button type="button" class="home-panel-close btn-secondary" data-home-close aria-label="Close fighter selection">×</button></header><div class="home-drawer-scroll"><div class="roster-panel">${roster}</div></div></section><section id="home-play-panel" class="home-drawer home-play-drawer" role="dialog" aria-modal="true" aria-labelledby="home-play-title" tabindex="-1" hidden><header class="home-drawer-head"><div><span class="eyebrow">PLAY YOUR WAY</span><h2 id="home-play-title">Bring a friend. Find a rival.</h2></div><button type="button" class="home-panel-close btn-secondary" data-home-close aria-label="Close play options">×</button></header><div class="home-drawer-scroll"><aside class="room-panel card">${controls}</aside></div></section></div>`;
@@ -61,10 +61,10 @@ export function welcomeGate(status: GateStatus, invite?: string | null) {
             : status === "unavailable"
               ? `<div class="gate-wait" role="status"><p>Sign-in isn't available right now. Please try again later.</p></div>`
               : "";
-  return `<section class="welcome-gate" aria-labelledby="gate-title"><div class="gate-backdrop" aria-hidden="true"></div><div class="gate-layout"><div class="gate-intro"><div class="gate-heading"><span class="gate-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="currentColor" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><span class="gate-kicker">Real-time creature duels</span><h1 id="gate-title">Element<span>Arena</span></h1>${invite ? `<p class="gate-invite">You've been invited to room <b>${invite}</b>. Log in or create an account to join.</p>` : `<p class="gate-lead">Eight elemental fighters. One living town. Your next rival is already here.</p>`}</div></div><div class="gate-card" id="gate-auth">${panel}</div></div></section>`;
+  return `<section class="welcome-gate" aria-labelledby="gate-title"><div class="gate-backdrop" aria-hidden="true"></div><div class="gate-layout"><div class="gate-intro"><div class="gate-heading"><span class="gate-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><path fill="currentColor" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span><span class="gate-kicker">Real-time creature duels</span><h1 id="gate-title">Element<span>Arena</span></h1>${invite ? `<p class="gate-invite">You've been invited to room <b>${invite}</b>. Log in or create an account to join.</p>` : `<p class="gate-lead">Eight elemental fighters. One living Plaza. Your next rival is already here.</p>`}</div></div><div class="gate-card" id="gate-auth">${panel}</div></div></section>`;
 }
 
-/** Start a room: the mode choice and Create button, for the town's Play panel. */
+/** Start a room: the mode choice and Create button, for the hub's Play panel. */
 export function startRoomSection(mode: HomeMode) {
   const icons = {
     duel: "battle",

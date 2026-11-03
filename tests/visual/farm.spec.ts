@@ -86,6 +86,14 @@ async function fakeFarm(page: Page) {
       dog: null as any,
       dogGifts: [] as any[],
       crows: {} as Record<string, string>,
+      // Giant crops (migration 050).
+      giants: [] as {
+        i: number;
+        crop: string;
+        plots: number[];
+        formedAt: string;
+      }[],
+      giantsGrown: {} as Record<string, number>,
       orders: [
         {
           slot: 0,
@@ -128,7 +136,14 @@ async function fakeFarm(page: Page) {
         new Response(JSON.stringify(v), {
           headers: { "Content-Type": "application/json" },
         });
-      if (url.endsWith("/api/farm")) return json({ ...farm, now: now() });
+      if (url.endsWith("/api/farm")) {
+        // Tests can change the farm as it is read, and slow the answer down.
+        w.__farmGets = (w.__farmGets ?? 0) + 1;
+        w.__onFarmGet?.();
+        if (w.__farmDelay)
+          await new Promise((r) => setTimeout(r, w.__farmDelay));
+        return json({ ...farm, now: now() });
+      }
       // Friends' farms (migration 047).
       if (url.endsWith("/api/farm/friends")) return json(w.__friends ?? []);
       if (url.endsWith("/api/farm/visit/act")) {
@@ -156,6 +171,25 @@ async function fakeFarm(page: Page) {
         w.__farmRequests.push(body);
         const results = body.actions.map((a: any) => {
           const p = plots[a.plot];
+          if (a.a === "harvest-giant") {
+            const g = farm.giants.find((x) => x.plots.includes(a.plot));
+            if (!g) return { ok: false, error: "No giant crop here" };
+            for (const j of g.plots)
+              Object.assign(plots[j], {
+                crop: null,
+                progress: 0,
+                ripeAt: null,
+                mutation: null,
+                pests: 0,
+              });
+            farm.giants = farm.giants.filter((x) => x !== g);
+            farm.giantsGrown[g.crop] = (farm.giantsGrown[g.crop] ?? 0) + 1;
+            // A giant counts as 9 harvests in the crop book.
+            (farm.harvests as Record<string, number>)[g.crop] =
+              ((farm.harvests as Record<string, number>)[g.crop] ?? 0) + 9;
+            farm.barn = [...farm.barn, { crop: g.crop, mutation: "", qty: 36 }];
+            return { ok: true, giant: g.i, crop: g.crop, qty: 36, xp: 72 };
+          }
           if (a.a === "harvest" && p?.crop && p.progress >= 1) {
             Object.assign(p, { crop: null, progress: 0, ripeAt: null });
             return { ok: true, crop: "wheat", qty: 2, xp: 3 };
@@ -1271,3 +1305,454 @@ for (const viewport of [
     }
   });
 }
+
+// Giant crops (migration 050). A ripe square of Earth Carrots at plot 10
+// (rows 1–3, columns 0–2) that grew giant, with a Gold one among them and a
+// bug left on plot 30; ripe wheat stands above it (plots 0 and 1) and below
+// it (plot 41).
+const GIANT_SQUARE = [10, 11, 12, 20, 21, 22, 30, 31, 32];
+async function giantFarm(page: Page) {
+  await page.evaluate((sq) => {
+    const f = (window as any).__fakeFarm,
+      at = (s: number) => new Date(Date.now() + s * 1000).toISOString();
+    for (const j of [...sq, 41]) f.plots[j].owned = true;
+    for (const j of sq)
+      Object.assign(f.plots[j], {
+        crop: "carrot",
+        progress: 1,
+        ripeAt: at(-120),
+        wet: false,
+        mutation: null,
+        pests: 0,
+      });
+    f.plots[21].mutation = "gold";
+    f.plots[30].pests = 1;
+    Object.assign(f.plots[1], {
+      crop: "wheat",
+      progress: 1,
+      ripeAt: at(-60),
+      wet: false,
+      pests: 0,
+    });
+    Object.assign(f.plots[41], {
+      crop: "wheat",
+      progress: 1,
+      ripeAt: at(-60),
+    });
+    f.giants = [{ i: 10, crop: "carrot", plots: sq, formedAt: at(-120) }];
+  }, GIANT_SQUARE);
+}
+/**
+ * The crop pictures of one whole frame, in the order they were drawn: which
+ * is the giant, and where each is on the page (from the canvas's own draw
+ * calls, so this is what was painted).
+ */
+async function cropDraws(page: Page) {
+  return page.evaluate(async () => {
+    const proto = CanvasRenderingContext2D.prototype as any,
+      orig = proto.drawImage,
+      cv = document.querySelector(".farm-layer #fm-cv") as HTMLCanvasElement,
+      frames: any[][] = [];
+    proto.drawImage = function (img: any, ...a: number[]) {
+      // Each frame starts with the background at the world's corner.
+      if (a.length === 2 && a[0] === -360 && a[1] === -180) frames.push([]);
+      else if (
+        frames.length &&
+        a.length === 4 &&
+        img instanceof HTMLImageElement &&
+        (img.naturalWidth === 660 || img.naturalWidth === 240)
+      ) {
+        const m = this.getTransform(),
+          r = cv.getBoundingClientRect(),
+          k = r.width / cv.width;
+        frames.at(-1)!.push({
+          giant: img.naturalWidth === 660,
+          w: m.a * a[2] * k,
+          x: r.left + (m.e + m.a * (a[0] + a[2] / 2)) * k,
+          ground: r.top + m.f * k,
+        });
+      }
+      return orig.call(this, img, ...a);
+    };
+    await new Promise((r) => setTimeout(r, 2500));
+    proto.drawImage = orig;
+    // A whole frame: not the first or last (they may be cut).
+    return frames.slice(1, -1).find((f) => f.length) ?? [];
+  });
+}
+const plotAt = (page: Page, i: number) =>
+  page.evaluate((i) => (window as any).__farm.plotClient(i), i);
+
+for (const viewport of [
+  { width: 1440, height: 900, inset: null },
+  { width: 844, height: 390, inset: null },
+  {
+    width: 852,
+    height: 393,
+    inset: { left: 59, right: 59, bottom: 21, top: 0 },
+  },
+]) {
+  const tag = `${viewport.width}x${viewport.height}${viewport.inset ? "-island" : ""}`;
+  test(`a giant crop stands across its square, depth-sorted, and a tap harvests it whole at ${tag}`, async ({
+    browser,
+  }, info) => {
+    const phone = viewport.width < 1000;
+    const context = await browser.newContext({
+      viewport: { width: viewport.width, height: viewport.height },
+      isMobile: phone,
+      hasTouch: phone,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openLobby(page);
+      await fakeFarm(page);
+      await giantFarm(page);
+      if (viewport.inset)
+        await page.evaluate((inset) => {
+          for (const [key, value] of Object.entries(inset))
+            document.documentElement.style.setProperty(
+              `--safe-${key}`,
+              `${value}px`,
+            );
+        }, viewport.inset);
+      await page.click('#hub-scenes [data-hub-scene="farm"]');
+      await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
+      // First time this device sees it: a toast says so.
+      await expect(page.locator("#toast")).toContainText(
+        "A giant Earth Carrot grew! Tap it to harvest",
+      );
+      await page.waitForTimeout(900); // its pop-up animation
+      await snap(page, info, `farm-giant-${tag}`);
+
+      // One picture for the square, none for its 9 crops: the crops beside
+      // it are plots 0, 1, 2 and 41 (plot 4's Gold carrot is a tinted copy).
+      const draws = await cropDraws(page);
+      expect(draws.filter((d) => d.giant)).toHaveLength(1);
+      expect(draws.filter((d) => !d.giant)).toHaveLength(4);
+      // Depth-sorted with them: each picture after those standing behind it,
+      // so the wheat above comes before the giant and the wheat below after.
+      const grounds = draws.map((d) => d.ground);
+      expect(grounds).toEqual([...grounds].sort((a, b) => a - b));
+      const at = draws.findIndex((d) => d.giant);
+      expect(at).toBeGreaterThan(0);
+      expect(at).toBeLessThan(draws.length - 1);
+      // Across the square's 3 columns, standing on its bottom row.
+      const [p10, p11, p20, p21, p31] = await Promise.all(
+        [10, 11, 20, 21, 31].map((i) => plotAt(page, i)),
+      );
+      const colPitch = p11.x - p10.x,
+        rowPitch = p20.y - p10.y,
+        g = draws[at];
+      expect(g.w / ((colPitch * 330) / 106)).toBeGreaterThan(0.97);
+      expect(g.w / ((colPitch * 330) / 106)).toBeLessThan(1.03);
+      expect(Math.abs(g.x - p21.x)).toBeLessThan(2);
+      // The bottom row's ground: 19.6 world px under its plots' middle.
+      expect(
+        Math.abs(g.ground - (p31.y + (19.6 * rowPitch) / 72)),
+      ).toBeLessThan(3);
+
+      // The HUD still fits: inside the safe area, nothing overlapping.
+      const all = await hudBoxes(page);
+      const left = viewport.inset?.left ?? 0,
+        right = viewport.inset?.right ?? 0,
+        bottom = viewport.inset?.bottom ?? 0;
+      for (const b of all) {
+        expect(b.x, `${b.name} left`).toBeGreaterThanOrEqual(left - 1);
+        expect(b.x + b.w, `${b.name} right`).toBeLessThanOrEqual(
+          viewport.width - right + 1,
+        );
+        expect(b.y + b.h, `${b.name} bottom`).toBeLessThanOrEqual(
+          viewport.height - bottom + 1,
+        );
+      }
+      const clashes = all.flatMap((a, i) =>
+        all
+          .slice(i + 1)
+          .filter((b) => overlap(a, b))
+          .map((b) => `${a.name} × ${b.name}`),
+      );
+      expect(clashes).toEqual([]);
+
+      const tap = async (pt: { x: number; y: number }) =>
+        phone ? page.touchscreen.tap(pt.x, pt.y) : page.mouse.click(pt.x, pt.y);
+      const sent = () =>
+        page.evaluate(() =>
+          (window as any).__farmRequests.flatMap((r: any) => r.actions ?? []),
+        );
+      if (!phone) {
+        // Desktop: hovering it shows what it gives, inside the window.
+        await page.mouse.move(p21.x, p21.y);
+        const tip = page.locator("#fm-tip");
+        await expect(tip).toBeVisible();
+        await expect(tip).toContainText("Giant Earth Carrot");
+        await expect(tip).toContainText("36 crops");
+        await expect(tip).toContainText("+72");
+        await expect(tip).toContainText("1 Gold");
+        const tb = (await tip.boundingBox())!;
+        expect(tb.x).toBeGreaterThanOrEqual(0);
+        expect(tb.y).toBeGreaterThanOrEqual(0);
+        expect(tb.x + tb.width).toBeLessThanOrEqual(viewport.width);
+        expect(tb.y + tb.height).toBeLessThanOrEqual(viewport.height);
+        await snap(page, info, `farm-giant-tip-${tag}`);
+      }
+      // A tap on the plot with the bug catches the bug first…
+      await tap(await plotAt(page, 30));
+      await expect.poll(sent).toEqual([{ a: "catch", plot: 30 }]);
+      // …and a tap anywhere on it harvests all of it.
+      await tap(p21);
+      await expect.poll(sent).toEqual([
+        { a: "catch", plot: 30 },
+        { a: "harvest-giant", plot: 10 },
+      ]);
+      await expect(page.locator("#toast")).toContainText(
+        "Giant Earth Carrot harvested: +36 crops",
+      );
+      const after = await cropDraws(page);
+      expect(after.filter((d) => d.giant)).toHaveLength(0);
+
+      // The crop book marks the crops that can grow giant, and lights the
+      // one that did; the marks stay inside their fixed-size boxes.
+      await openFromMenu(page, "book");
+      const sheet = page.locator("#fm-sheet");
+      await expect(sheet).toContainText("Crops marked GIANT can grow");
+      await expect(sheet.locator(".bk .gt")).toHaveCount(4);
+      await expect(sheet.locator(".bk .gt.on")).toHaveText("GIANT ×1");
+      // The sheet slides in (slowly on this CPU-drawn machine): measure at rest.
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () =>
+              getComputedStyle(document.querySelector("#fm-sheet")!).transform,
+          ),
+        )
+        .toBe("none");
+      const book = await page.evaluate(() =>
+        [...document.querySelectorAll("#fm-sheet .bk")].map((bk) => {
+          const r = bk.getBoundingClientRect(),
+            t = bk.querySelector(".gt")?.getBoundingClientRect(),
+            im = bk.querySelector("img")!.getBoundingClientRect();
+          return {
+            w: Math.round(r.width),
+            inside:
+              !t ||
+              (t.left >= r.left - 0.5 &&
+                t.right <= r.right + 0.5 &&
+                t.top >= r.top - 0.5 &&
+                t.bottom <= r.bottom + 0.5),
+            // The mark sits in the corner, clear of most of the picture.
+            covers: t
+              ? (Math.max(
+                  0,
+                  Math.min(t.right, im.right) - Math.max(t.left, im.left),
+                ) *
+                  Math.max(
+                    0,
+                    Math.min(t.bottom, im.bottom) - Math.max(t.top, im.top),
+                  )) /
+                (im.width * im.height)
+              : 0,
+          };
+        }),
+      );
+      expect(book).toHaveLength(25);
+      expect(book.every((b) => b.inside)).toBe(true);
+      expect(new Set(book.map((b) => b.w)).size).toBe(1);
+      expect(Math.max(...book.map((b) => b.covers))).toBeLessThan(0.2);
+      const sb = (await sheet.boundingBox())!;
+      expect(sb.x).toBeGreaterThanOrEqual(left - 1);
+      expect(sb.x + sb.width).toBeLessThanOrEqual(viewport.width - right + 1);
+      expect(sb.y + sb.height).toBeLessThanOrEqual(
+        viewport.height - bottom + 1,
+      );
+      await snap(page, info, `farm-giant-book-${tag}`);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+test("the Sickle takes a giant whole, and a ripe square waits for the server's answer", async ({
+  browser,
+}, info) => {
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    await fakeFarm(page);
+    await giantFarm(page);
+    // Ripe wheat right of the square (plots 3 and 13); and a second square
+    // of carrots (plot 15: rows 1–3, columns 5–7) that ripens in 6 s.
+    const ripeIn = 6;
+    await page.evaluate((ripeIn) => {
+      const f = (window as any).__fakeFarm,
+        at = (s: number) => new Date(Date.now() + s * 1000).toISOString();
+      for (const j of [3, 13])
+        Object.assign(f.plots[j], {
+          owned: true,
+          crop: "wheat",
+          progress: 1,
+          ripeAt: at(-60),
+        });
+      for (const j of [15, 16, 17, 25, 26, 27, 35, 36, 37])
+        Object.assign(f.plots[j], {
+          owned: true,
+          crop: "carrot",
+          progress: 0.999,
+          ripeAt: at(ripeIn),
+          mutation: null,
+          pests: 0,
+        });
+    }, ripeIn);
+    await page.click('#hub-scenes [data-hub-scene="farm"]');
+    await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
+    const sent = () =>
+      page.evaluate(() =>
+        (window as any).__farmRequests.flatMap((r: any) => r.actions ?? []),
+      );
+    // The Sickle at plot 13: its 3×3 touches the giant, which goes first and
+    // whole; then the other ripe plots in reach, one by one.
+    await page.click('#fm-tools [data-tool="sickle"]');
+    const p13 = await plotAt(page, 13);
+    await page.mouse.click(p13.x, p13.y);
+    await expect.poll(sent).toEqual([
+      { a: "harvest-giant", plot: 10 },
+      { a: "harvest", plot: 3 },
+      { a: "harvest", plot: 4 },
+      { a: "harvest", plot: 13 },
+    ]);
+    // The second square ripens on the screen: the farm asks the server at
+    // once, and holds its harvest until the answer (slowed down here) comes.
+    await page.click('#fm-tools [data-tool="hand"]');
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__farmGets = 0;
+      w.__farmDelay = 2500;
+      w.__onFarmGet = () => {
+        const f = w.__fakeFarm,
+          sq = [15, 16, 17, 25, 26, 27, 35, 36, 37];
+        if (Date.parse(f.plots[15].ripeAt) > Date.now()) return;
+        for (const j of sq) f.plots[j].progress = 1;
+        f.giants = [
+          { i: 15, crop: "carrot", plots: sq, formedAt: f.plots[15].ripeAt },
+        ];
+      };
+    });
+    await expect
+      .poll(() => page.evaluate(() => (window as any).__farmGets), {
+        timeout: (ripeIn + 6) * 1000,
+      })
+      .toBeGreaterThan(0);
+    const p26 = await plotAt(page, 26);
+    await page.mouse.click(p26.x, p26.y);
+    await expect(page.locator("#toast")).toContainText(
+      "Something big is growing here",
+    );
+    await snap(page, info, "farm-giant-pending-1280x800");
+    expect((await sent()).length).toBe(4);
+    await expect(page.locator("#toast")).toContainText(
+      "A giant Earth Carrot grew!",
+    );
+    await page.evaluate(() => ((window as any).__farmDelay = 0));
+    await page.mouse.click(p26.x, p26.y);
+    await expect
+      .poll(async () => (await sent()).at(-1))
+      .toEqual({ a: "harvest-giant", plot: 15 });
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test("a friend's giant crop: each tap sneaks one of its crops", async ({
+  browser,
+}, info) => {
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    await fakeFarm(page);
+    await page.evaluate((sq) => {
+      const w = window as any,
+        at = (s: number) => new Date(Date.now() + s * 1000).toISOString();
+      w.__friends = [
+        {
+          id: "f1",
+          name: "Rae",
+          fighter: "tidefin",
+          level: 20,
+          dog: null,
+          bugs: 0,
+          ripe: 9,
+        },
+      ];
+      const plots = Array.from({ length: 50 }, (_, i) => ({
+        i,
+        owned: Math.floor(i / 10) < 4,
+        crop: null as string | null,
+        progress: 0,
+        ripeAt: null as string | null,
+        wet: false,
+        pests: 0,
+        mutation: null,
+        sneak: false,
+      }));
+      for (const j of sq)
+        Object.assign(plots[j], {
+          crop: "pumpkin",
+          progress: 1,
+          ripeAt: at(-60),
+          sneak: true,
+        });
+      w.__visit = {
+        id: "f1",
+        name: "Rae",
+        fighter: "tidefin",
+        level: 20,
+        farmer: "tidefin",
+        plots,
+        dog: null,
+        scarecrow: false,
+        sprinklers: 0,
+        giants: [{ i: 10, crop: "pumpkin", plots: sq, formedAt: at(-60) }],
+        today: { helpXp: 0, sneaks: 0, pranks: 0 },
+      };
+    }, GIANT_SQUARE);
+    await page.click('#hub-scenes [data-hub-scene="farm"]');
+    await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
+    await openFromMenu(page, "friends");
+    await page
+      .locator("#fm-sheet .fr", { hasText: "Rae" })
+      .locator("[data-visit]")
+      .click();
+    await expect(page.locator("#fm-visit")).toContainText("Rae's Farm");
+    await page.waitForTimeout(500);
+    const draws = await cropDraws(page);
+    expect(draws.filter((d) => d.giant)).toHaveLength(1);
+    await snap(page, info, "farm-giant-friend-1280x800");
+    const sneaks = () =>
+      page.evaluate(() =>
+        (window as any).__farmRequests
+          .filter((r: any) => r.friend)
+          .flatMap((r: any) => r.actions),
+      );
+    // The crop under the tap first, then the next one not tried yet.
+    const p21 = await plotAt(page, 21);
+    await page.mouse.click(p21.x, p21.y);
+    await expect.poll(sneaks).toEqual([{ a: "sneak", plot: 21 }]);
+    await page.mouse.click(p21.x, p21.y);
+    await expect.poll(sneaks).toEqual([
+      { a: "sneak", plot: 21 },
+      { a: "sneak", plot: 10 },
+    ]);
+    // Still a giant: one crop smaller.
+    expect((await cropDraws(page)).filter((d) => d.giant)).toHaveLength(1);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});

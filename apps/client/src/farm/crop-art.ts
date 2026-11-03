@@ -1754,7 +1754,157 @@ const CROPART = (() => {
       X = Ctx();
     return wrap(X, d ? d.item(X) : "");
   }
-  return { field, item, has: (id) => !!D[id] };
+
+  /* ---------- giant crops (migration 050): one crop across a 3×3 square ----------
+     330×250, ground at y=232, drawn across the square's 3 columns and standing
+     on its bottom row (Stardew Valley's giant crops: the produce itself, huge). */
+  const GY = 232;
+  const gwrap = (X, body) =>
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 330 250" width="660" height="500"><defs>${X.defs.join("")}</defs>${body}</svg>`;
+  const gshadow = `<ellipse cx="165" cy="${GY}" rx="152" ry="12" fill="#2a1406" opacity=".24"/>`;
+  // The ripe crop's element flair, spread around the giant's top.
+  const gflair = (X, c) =>
+    // (Dusk Cap's wide cap reaches the top corners: its flair goes higher.)
+    `<g transform="translate(${c.id === "duskcap" ? "-30 -74" : "0 -46"}) scale(2.75 1.9)">${FX[c.el] ? FX[c.el](X) : ""}</g>` +
+    star4(296, 30, 9) +
+    star4(40, 58, 6, "#fff6c2");
+  const gvine = (y) =>
+    `<path d="M8 ${y + 14} Q70 ${y - 12} 165 ${y + 4} Q260 ${y + 18} 322 ${y - 8}" stroke="${ink("#4f9a36")}" stroke-width="9" fill="none" stroke-linecap="round"/><path d="M8 ${y + 14} Q70 ${y - 12} 165 ${y + 4} Q260 ${y + 18} 322 ${y - 8}" stroke="#4f9a36" stroke-width="6" fill="none" stroke-linecap="round"/>`;
+  const gshroom = (X, x, y, r, h, col, mood, spots) => {
+    const sw = r * 0.62;
+    let s = P(
+      `M${f(x - sw / 2)} ${f(y)} Q${f(x - sw * 0.62)} ${GY - 1} ${f(x - sw * 0.2)} ${GY} L${f(x + sw * 0.2)} ${GY} Q${f(x + sw * 0.62)} ${GY - 1} ${f(x + sw / 2)} ${f(y)}Z`,
+      X.lg("#fffaf0", "#e2cfb4"),
+      ink("#e2cfb4"),
+      2.8,
+    );
+    s += P(
+      `M${f(x - r)} ${f(y)} Q${f(x - r)} ${f(y - h)} ${f(x)} ${f(y - h)} Q${f(x + r)} ${f(y - h)} ${f(x + r)} ${f(y)} Q${f(x)} ${f(y + r * 0.12)} ${f(x - r)} ${f(y)}Z`,
+      X.rg(col),
+      ink(col),
+      3,
+    );
+    s += [
+      [-0.5, 0.45, 0.15],
+      [0.08, 0.74, 0.19],
+      [0.56, 0.4, 0.12],
+      [-0.12, 0.3, 0.09],
+      [0.34, 0.18, 0.07],
+      [-0.72, 0.16, 0.06],
+    ]
+      .map(
+        ([dx, dy, rr]) =>
+          `<circle cx="${f(x + dx * r)}" cy="${f(y - dy * h)}" r="${f(rr * r)}" fill="${spots}" opacity=".9"/>`,
+      )
+      .join("");
+    s += gloss(x - r * 0.25, y - h * 0.55, r * 0.55);
+    if (mood) s += face(x, y + (GY - y) * 0.42, (r / 22) * 0.62, mood);
+    return s;
+  };
+  const GIANTS = {
+    carrot: (X) =>
+      gshadow +
+      [-160, -144, -128, -112, -97, -82, -66, -50, -34, -20]
+        .map((a, k) => leaf(X, 165, 100, 70 + (k % 3) * 16, a, 16, k % 2))
+        .join("") +
+      P(
+        "M50 233 Q46 96 165 90 Q284 96 280 233Z",
+        X.rg("#ff8a3d"),
+        ink("#e0601a"),
+        3,
+      ) +
+      `<path d="M78 160 h22 M226 176 h24 M96 204 h20 M214 130 h18 M236 214 h16 M88 124 h16" stroke="#d0601f" stroke-width="3.6" stroke-linecap="round"/>` +
+      gloss(128, 140, 56) +
+      face(165, 160, 3.5, "happy") +
+      P(
+        `M20 ${GY + 1} Q64 206 116 210 Q165 220 214 210 Q266 206 310 ${GY + 1}Z`,
+        "#8a5a32",
+        ink("#8a5a32"),
+        2.6,
+      ) +
+      `<path d="M60 222 q14 -7 28 -3 M236 220 q14 -6 26 -1" stroke="#b07a48" stroke-width="3" fill="none" stroke-linecap="round"/>`,
+    duskcap: (X) =>
+      gshadow +
+      leaf(X, 112, GY, 34, -122, 7) +
+      leaf(X, 222, GY, 34, -58, 7, 1) +
+      leaf(X, 84, GY, 26, -146, 6, 1) +
+      leaf(X, 248, GY, 26, -34, 6) +
+      gshroom(X, 165, 126, 128, 108, "#8a6bff", "sleepy", "#d8ccff") +
+      gshroom(X, 42, 210, 26, 30, "#a58aff", null, "#e8e0ff") +
+      gshroom(X, 292, 202, 32, 38, "#8a6bff", null, "#d8ccff"),
+    pumpkin: (X) => {
+      const col = "#ff8a1a",
+        y = 150,
+        w = 290,
+        h = 166;
+      const lobe = (cx, rx, ry) =>
+        `<ellipse cx="${f(cx)}" cy="${y}" rx="${f(rx)}" ry="${f(ry)}" fill="${X.rg(col)}" stroke="${ink(col)}" stroke-width="3"/>`;
+      const crack = (cx, k) =>
+        `<path d="M${f(cx)} ${f(y - h * 0.36)} l${f(k * 7)} ${f(h * 0.18)} l${f(-k * 9)} ${f(h * 0.14)} l${f(k * 7)} ${f(h * 0.2)}" stroke="#ffe36a" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+      return (
+        gshadow +
+        gvine(214) +
+        lobedLeaf(X, 30, 210, 30) +
+        lobedLeaf(X, 300, 206, 30, 1) +
+        lobe(165 - w * 0.34, w * 0.18, h * 0.44) +
+        lobe(165 + w * 0.34, w * 0.18, h * 0.44) +
+        lobe(165 - w * 0.17, w * 0.21, h * 0.49) +
+        lobe(165 + w * 0.17, w * 0.21, h * 0.49) +
+        lobe(165, w * 0.23, h * 0.52) +
+        crack(165 - w * 0.34, -1) +
+        crack(165 + w * 0.34, 1) +
+        crack(165 - w * 0.17, 1) +
+        crack(165 + w * 0.2, -1) +
+        gloss(124, 136, 64) +
+        line(`M165 ${f(y - h * 0.5)} q4 -26 26 -32`, "#6a8a2a", 9) +
+        tendril(196, 26, 2.2) +
+        face(165, 146, 3.5, "wink") +
+        lobedLeaf(X, 64, 228, 22, 1) +
+        lobedLeaf(X, 270, 228, 22)
+      );
+    },
+    melon: (X) => {
+      const x = 165,
+        y = 152,
+        rx = 146,
+        ry = 82,
+        base = "#3f9a3a",
+        stripe = "#e8ff7a";
+      let s =
+        gshadow +
+        gvine(214) +
+        lobedLeaf(X, 26, 208, 30, 1) +
+        lobedLeaf(X, 304, 204, 30) +
+        `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${X.rg(base)}" stroke="${ink(base)}" stroke-width="3"/>`;
+      for (let k = -3; k <= 3; k++) {
+        let p = "";
+        const n = 11;
+        for (let i = 0; i <= n; i++) {
+          const t = -0.94 + (1.88 * i) / n,
+            yy = y + t * ry,
+            wf = Math.sqrt(Math.max(0, 1 - t * t)),
+            xx = x + (k / 4) * rx * wf + (i % 2 ? 4 : -4) * wf;
+          p += `${i ? "L" : "M"}${f(xx)} ${f(yy)}`;
+        }
+        s += `<path d="${p}" stroke="${stripe}" stroke-width="5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>`;
+      }
+      return (
+        s +
+        gloss(x - 20, y - 6, 72) +
+        line(`M${x} ${y - ry} q3 -18 20 -24`, "#6a8a2a", 8) +
+        facePatch(x, y, 3.4, "#8fd65f") +
+        face(x, y, 3.4, "open") +
+        lobedLeaf(X, 62, 228, 22) +
+        lobedLeaf(X, 272, 228, 22, 1)
+      );
+    },
+  };
+  function giant(c) {
+    const d = GIANTS[c.id],
+      X = Ctx();
+    return gwrap(X, d ? d(X) + gflair(X, c) : "");
+  }
+  return { field, item, giant, has: (id) => !!D[id] };
 })();
 
 import type { Crop } from "../../../../packages/shared/src/farm";
@@ -1770,3 +1920,10 @@ export const cropFieldSvg = (c: Crop, stage: number): string =>
   CROPART.field(view(c), stage);
 /** The harvested produce, for menus, the barn and orders. */
 export const cropItemSvg = (c: Crop): string => CROPART.item(view(c));
+/**
+ * A giant crop (migration 050): a 330×250 SVG drawn across a 3×3 square,
+ * its ground line at y=232 on the square's bottom row.
+ */
+export const cropGiantSvg = (c: Crop): string => CROPART.giant(view(c));
+/** The giant art's size and ground line, in its own units. */
+export const GIANT_ART = { w: 330, h: 250, ground: 232 } as const;
