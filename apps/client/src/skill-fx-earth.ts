@@ -553,14 +553,33 @@ function burrowCharge(
     // The furrow: dark soil with ploughed ridges either side.
     const nx = -sin * w * 0.5,
       ny = cos * w * 0.5 * SQ;
-    fx.floorSolid
-      .lineStyle(w * 1.5, DARK, 0.22 * fade)
-      .lineBetween(x, y, hx, hy);
-    fx.floorSolid.lineStyle(w, SOIL, 0.55 * fade).lineBetween(x, y, hx, hy);
-    fx.floorSolid
-      .lineStyle(4, SAND, 0.6 * fade)
-      .lineBetween(x + nx, y + ny, hx + nx, hy + ny)
-      .lineBetween(x - nx, y - ny, hx - nx, hy - ny);
+    // Narrow where it dug in, full width at the front, rounded ends.
+    const furrow = (scale: number) => {
+      const left: { x: number; y: number }[] = [],
+        right: { x: number; y: number }[] = [];
+      for (let i = 0; i <= 8; i++) {
+        const t = i / 8,
+          d = head * t,
+          ww = scale * (0.45 + 0.55 * t);
+        left.push({ x: x + cos * d + nx * ww, y: y + sin * d + ny * ww });
+        right.push({ x: x + cos * d - nx * ww, y: y + sin * d - ny * ww });
+      }
+      const cap = Array.from({ length: 7 }, (_, i) => {
+        const t = angle + Math.PI / 2 - (i / 6) * Math.PI;
+        return {
+          x: hx + Math.cos(t) * w * 0.5 * scale,
+          y: hy + Math.sin(t) * w * 0.5 * scale * SQ,
+        };
+      });
+      return [...left, ...cap, ...right.reverse()];
+    };
+    if (head > 2) {
+      fx.floorSolid.fillStyle(DARK, 0.22 * fade).fillPoints(furrow(1.5), true);
+      fx.floorSolid.fillStyle(SOIL, 0.55 * fade).fillPoints(furrow(1), true);
+      fx.floorSolid
+        .lineStyle(3, SAND, 0.6 * fade)
+        .strokePoints(furrow(1.15), true);
+    }
     // Clods of the ridge along the way.
     for (let d = 16; d < head; d += 26) {
       const j = hash(d + a.id.length),
@@ -573,9 +592,12 @@ function burrowCharge(
     }
     for (const s of spikes) {
       if (s.d > head) continue;
-      const age = (head - s.d) / 120 + after,
+      // Each spike heaves up as the front passes, then sinks back.
+      const age = (t - (s.d / range) * travel) / 1000,
         up =
-          age < 0.25 ? ease(age / 0.25) : Math.max(0, 1 - (age - 0.25) / 1.2),
+          age < 0.08
+            ? ease(age / 0.08)
+            : Math.max(0, Math.min(1, 1 - (age - 0.3) / 0.5)),
         h = s.h * up;
       if (h <= 1) continue;
       const px = x + cos * s.d + nx * s.side * 1.6,
@@ -713,6 +735,21 @@ function landslideWindup(
       size: [1.5, 3],
     });
   });
+  // Chevrons running down the lane: the way the charge will go.
+  for (let i = 0; i < 5; i++) {
+    const d = (((now / 900 + i / 5) % 1) * 0.9 + 0.08) * a.range,
+      cx = x + cos * d,
+      cy = y + sin * d,
+      s = 14,
+      al = 0.25 + 0.45 * k;
+    fx.floorSolid
+      .lineStyle(5, DARK, al)
+      .beginPath()
+      .moveTo(cx - cos * s - sin * s, cy - sin * s + cos * s * SQ)
+      .lineTo(cx, cy)
+      .lineTo(cx - cos * s + sin * s, cy - sin * s - cos * s * SQ)
+      .strokePath();
+  }
   // Dirt kicked back by the pawing feet.
   fx.trail(`lk${Math.round(x)}`, 0.09, () =>
     dust(fx, x - cos * 14, y - sin * 14, 1, [40, 110], {
@@ -895,7 +932,7 @@ function rumpBlock(
   const fx = fxFor(scene),
     ms = Math.min(2400, (a.duration || 1.6) * 1000),
     cy = y - 22,
-    R = 48;
+    R = 56;
   rocks(fx, x, y, 6, [40, 140], [80, 180], { size: [2, 3.5] });
   dust(fx, x, y, 8, [60, 140], { size: [10, 16] });
   fx.shake(90, 0.003);
@@ -916,10 +953,12 @@ function rumpBlock(
         if (front !== (pass === 1)) continue;
         const px = x + Math.cos(ang) * r * 0.85,
           py = cy + Math.sin(ang) * r * 0.55,
-          pw = 15,
-          ph = 22;
+          pw = 19,
+          ph = 26,
+          // The back row stays see-through so the fighter shows.
+          see = front ? 1 : 0.4;
         fx.solid
-          .fillStyle(DARK, 0.55 * fade * close)
+          .fillStyle(DARK, 0.55 * fade * close * see)
           .fillRoundedRect(
             px - pw / 2 - 1.5,
             py - ph / 2 - 1.5,
@@ -928,10 +967,10 @@ function rumpBlock(
             5,
           );
         fx.solid
-          .fillStyle(front ? PLATE : 0x6e665c, 0.85 * fade * close)
+          .fillStyle(front ? PLATE : 0x6e665c, 0.85 * fade * close * see)
           .fillRoundedRect(px - pw / 2, py - ph / 2, pw, ph, 4);
         fx.solid
-          .fillStyle(PLATE_LIGHT, 0.8 * fade * close)
+          .fillStyle(PLATE_LIGHT, 0.8 * fade * close * see)
           .fillRect(px - pw / 2 + 3, py - ph / 2 + 3, pw - 6, 3)
           .fillCircle(px, py + 4, 1.8);
       }

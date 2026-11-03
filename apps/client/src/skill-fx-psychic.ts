@@ -517,7 +517,7 @@ function crescentPoints(
     pts: { x: number; y: number }[] = [];
   // The lit rim, then back along the inner edge.
   for (let i = 0; i <= 32; i++) {
-    const t = rot + Math.PI - Math.PI + (i / 32) * Math.PI * 2,
+    const t = rot + (i / 32) * Math.PI * 2,
       px = x + Math.cos(t) * r,
       py = y + Math.sin(t) * r;
     if (Math.hypot(px - ox, py - oy) > r2) pts.push({ x: px, y: py });
@@ -569,7 +569,7 @@ function crescent(
   full = false,
 ) {
   if (r <= 0.5 || alpha <= 0) return;
-  fx.glow(x, y, r * 2.6, MOON, 0.45 * alpha);
+  fx.glow(x, y, r * 2.4, MOON, 0.28 * alpha);
   if (full) {
     fx.solid.fillStyle(INK, 0.35 * alpha).fillCircle(x, y, r * 1.1);
     fx.solid.fillStyle(MOON, alpha).fillCircle(x, y, r);
@@ -891,7 +891,7 @@ function moonGravity(g: G, z: Zone, progress: number, now: number) {
   }
   glyph(fx, x, y, rr * 0.55, MOON, 0.7 * fade, -now / 900);
   // A full moon looming low over the patch.
-  const my = y - 110 - Math.sin(now / 700) * 4;
+  const my = y - rr * SQ - 60 - Math.sin(now / 700) * 4;
   crescent(fx, x, my, 18 * grow, 0, 0.75 * fade, true);
   fx.glow(x, (y + my) / 2, rr * 0.4, MOON, 0.12 * fade, false, 2.6);
   // Moon dust slammed straight down.
@@ -1014,9 +1014,9 @@ function fullMoonCrash(
       const kk = k / 0.16,
         my = y - 240 * (1 - kk * kk) - 20,
         mr = 30 + kk * 16;
-      fx.glow(x, my, mr * 3, MOON, 0.7);
+      // A streak of moonlight behind it as it drops.
+      fx.glow(x, my - mr * 2.2, mr * 1.1, MOON, 0.35, false, 3.2);
       crescent(fx, x, my, mr, 0, 1, true);
-      fx.g.lineStyle(mr * 1.4, MOON, 0.18).lineBetween(x, my - 120, x, my);
       fx.floorSolid
         .fillStyle(0x000000, 0.15 + kk * 0.2)
         .fillEllipse(x, y, r * 0.8 * kk + 20, (r * 0.8 * kk + 20) * SQ);

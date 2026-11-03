@@ -421,22 +421,20 @@ function tentacle(
   curl: number,
   width: number,
   alpha: number,
+  phase = 0,
 ) {
   if (len <= 2 || alpha <= 0) return;
+  // Walk a gently turning, slightly sinuous path out from the base.
   const n = 10,
-    pts = Array.from({ length: n + 1 }, (_, i) => {
-      const t = i / n,
-        a = ang + curl * t * t;
-      // Integrate a gently turning path.
-      return { t, a };
-    });
+    step = len / n,
+    path = [{ x: x0, y: y0 }];
   let px = x0,
     py = y0;
-  const path = [{ x: px, y: py }];
   for (let i = 1; i <= n; i++) {
-    const step = len / n;
-    px += Math.cos(pts[i].a) * step;
-    py += Math.sin(pts[i].a) * step * SQ;
+    const t = i / n,
+      a = ang + curl * t * t + Math.sin(t * 6 + phase) * 0.28 * t;
+    px += Math.cos(a) * step;
+    py += Math.sin(a) * step * SQ;
     path.push({ x: px, y: py });
   }
   for (let pass = 0; pass < 3; pass++)
@@ -497,7 +495,7 @@ function lash(
         off = strike ? (t - 0.5) * 2 * spread * 0.9 : (t - 0.5) * spread * 1.2,
         lag = strike ? hash(i * 3) * 0.12 : i * 0.15,
         rr = Math.max(0, Math.min(1, reach - lag)) * back,
-        curl = (strike ? (i % 2 ? 0.5 : -0.5) : i ? 1.2 : -1.2) * (1 - rr);
+        curl = (strike ? (i % 2 ? 0.5 : -0.5) : i ? 1.2 : -1.2) * (1.25 - rr);
       const tip = tentacle(
         fx,
         x + Math.cos(angle + off) * 12,
@@ -507,6 +505,7 @@ function lash(
         curl,
         strike ? 9 : 11,
         fade,
+        k * 8 + i * 1.7,
       );
       if (tip && rr > 0.85) fx.glow(tip.x, tip.y, 16, color, 0.45 * fade);
     }
@@ -714,7 +713,7 @@ function graspWindup(
   fx.glow(x, y, range * 0.7, color, 0.12 + k * 0.2, true);
   for (const arm of graspArms(a, angle)) {
     const px = x + Math.cos(arm.ang) * arm.d,
-      py = y + Math.sin(arm.ang) * arm.d * SQ,
+      py = y + Math.sin(arm.ang) * arm.d,
       rise = Math.max(0, Math.min(1, k * 1.6 - hash(arm.i) * 0.5)),
       wave = Math.sin(now / 120 + arm.i) * 0.5;
     fx.floorSolid
@@ -747,10 +746,10 @@ function krakenGrasp(
     arms = graspArms(a, angle);
   fx.ultimate(color, 800, true);
   fx.shake(260, 0.008);
-  fx.decal({ kind: "wet", x, y, r: range * 0.8, color: INK_BLACK, life: 3.5 });
+  fx.decal({ kind: "wet", x, y, r: 46, color: INK_BLACK, life: 3.5 });
   for (const arm of arms) {
     const px = x + Math.cos(arm.ang) * arm.d,
-      py = y + Math.sin(arm.ang) * arm.d * SQ;
+      py = y + Math.sin(arm.ang) * arm.d;
     inkDrops(fx, px, py, 4, [40, 140], { z: 4 });
     fx.burst({
       x: px,
@@ -792,10 +791,10 @@ function krakenGrasp(
       (p, q) => Math.sin(p.ang) - Math.sin(q.ang),
     )) {
       const px = x + Math.cos(arm.ang) * arm.d,
-        py = y + Math.sin(arm.ang) * arm.d * SQ,
+        py = y + Math.sin(arm.ang) * arm.d,
         up = ease(Math.min(1, k / 0.25)),
         grab = Math.max(0, Math.min(1, (k - 0.25) / 0.3)),
-        len = (36 + 40 * up) * (1 - grab * 0.2);
+        len = (46 + 60 * up) * (1 - grab * 0.2);
       fx.floorSolid
         .fillStyle(INK_BLACK, 0.7 * fade)
         .fillEllipse(px, py, 30, 12);
@@ -812,7 +811,7 @@ function krakenGrasp(
         -Math.PI / 2 + turn * grab * 0.7,
         len,
         (turn >= 0 ? 1 : -1) * (0.6 + grab * 1.2),
-        13,
+        16,
         fade,
       );
     }

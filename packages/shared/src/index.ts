@@ -1474,7 +1474,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
         "melee",
         34,
         20,
-        "After a short wind-up, every tentacle grabs at once: a huge strike all around that stuns.",
+        "After a short wind-up, every tentacle grabs at once: a huge strike across the whole half circle in front that stuns.",
         {
           range: 200,
           arc: 0,
