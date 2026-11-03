@@ -32,6 +32,7 @@ const API: Record<string, unknown> = {
     rerolled: false,
     streak: 1,
     today: { raidClears: 0, pvpMatches: 0 },
+    leaves: { balance: 1234, tradedToday: 0, tradeCap: 40, tradeLeaves: 100, tradeCoins: 5 },
   },
   "/api/progress": {
     matches: 31,
@@ -55,7 +56,9 @@ window.fetch = async (input, init) => {
     const body =
       url.pathname === "/api/economy" && missions
         ? { ...(API[url.pathname] as object), missions }
-        : API[url.pathname];
+        : url.pathname === "/api/plaza"
+          ? (window as unknown as { __plazaProgress?: unknown }).__plazaProgress
+          : API[url.pathname];
     return new Response(JSON.stringify(body ?? { error: "Not in the offline harness." }), {
       status: body === undefined ? 404 : 200,
       headers: { "Content-Type": "application/json" },

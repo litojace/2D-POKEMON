@@ -1,0 +1,223 @@
+import { describe, expect, it } from "vitest";
+import { PlazaWorld } from "../../apps/server/src/plaza";
+import {
+  ORB_SHOWER,
+  PLAZA,
+  PLAZA_FLAG,
+  PLAZA_PITCH,
+  PLAZA_STAGE,
+  PLAZA_SPOTS,
+  trackPoint,
+} from "../../packages/shared/src/plaza";
+
+const profile = (name: string) => ({
+  name,
+  title: null,
+  titleColor: null,
+  level: null,
+  character: "voltkit",
+  skin: null,
+});
+const DT = 1 / PLAZA.tick;
+/** 21:16 UTC: between showers. */
+const QUIET = Date.parse("2026-11-02T21:16:00.000Z");
+const SHOWER = Date.parse("2026-11-02T21:30:00.000Z");
+const run = (world: PlazaWorld, seconds: number, from: number) => {
+  const events = [];
+  let now = from;
+  for (let t = 0; t < seconds - 1e-9; t += DT) {
+    now += DT * 1000;
+    events.push(...world.step(DT, now));
+  }
+  return { events, now };
+};
+const place = (world: PlazaWorld, key: string, x: number, y: number) => {
+  const b = world.bodyOf(key)!;
+  b.x = x;
+  b.y = y;
+};
+
+describe("the Plaza world", () => {
+  it("spawns players by the fountain, one body per account, with four pitch bots per copy", () => {
+    const world = new PlazaWorld(() => 0.5);
+    const a = world.join("s1", "acc-1", profile("Ann"), QUIET);
+    expect(a.plaza).toBe(1);
+    expect(Math.abs(a.body.x - 1350)).toBeLessThan(80);
+    world.join("s2", "acc-1", profile("Ann again"), QUIET);
+    expect(world.size).toBe(1);
+    expect(world.plazaOf("s1")).toBeUndefined();
+    place(world, "s2", 300, 1300);
+    const view = world.view("s2")!;
+    expect(view.state.walkers).toHaveLength(1); // the pitch bots are out of view
+    expect(view.state.ball).toBeUndefined();
+    place(world, "s2", PLAZA_PITCH.x0 - 60, 900);
+    const near = world.view("s2")!;
+    const bots = near.state.walkers.filter((w) => w[5] & PLAZA_FLAG.bot);
+    expect(bots).toHaveLength(4);
+    expect(near.profiles.filter((p) => p.bot)).toHaveLength(4);
+    expect(near.state.ball).toBeDefined();
+    // Profiles are sent once.
+    expect(world.view("s2")!.profiles).toEqual([]);
+    world.leave("s2");
+    expect(world.size).toBe(0);
+  });
+
+  it("opens a second copy when one is full", () => {
+    const world = new PlazaWorld();
+    for (let i = 0; i < PLAZA.capacity; i++)
+      world.join(`s${i}`, `acc-${i}`, profile(`P${i}`), QUIET);
+    expect(world.join("late", "acc-late", profile("Late"), QUIET).plaza).toBe(
+      2,
+    );
+  });
+
+  it("moves at the server's speed and ignores junk input", () => {
+    const world = new PlazaWorld();
+    world.join("s1", "acc-1", profile("Ann"), QUIET);
+    place(world, "s1", 600, 1300);
+    world.input("s1", 50, 0);
+    run(world, 1, QUIET);
+    expect(world.bodyOf("s1")!.x).toBeCloseTo(840, 0);
+    world.input("s1", "fast", NaN);
+    run(world, 0.5, QUIET);
+    expect(world.bodyOf("s1")!.x).toBeCloseTo(840, 0);
+    expect(world.dash("s1")).toBe(true);
+    expect(world.dash("s1")).toBe(false);
+  });
+
+  it("drops orbs during the shower and reports each catch, paying at most 10 a shower", () => {
+    const world = new PlazaWorld();
+    world.join("s1", "acc-1", profile("Ann"), SHOWER);
+    world.join("s2", "acc-2", profile("Ben"), SHOWER);
+    place(world, "s2", 300, 1300); // far from the square: catches nothing
+    let now = SHOWER,
+      caught = 0;
+    const orbEvents: string[] = [];
+    // Stand on each orb as soon as it can be caught.
+    for (let t = 0; t < 59; t += DT) {
+      now += DT * 1000;
+      for (const e of world.step(DT, now)) {
+        if (e.type === "orb") {
+          expect(e.key).toBe("s1");
+          orbEvents.push(e.ref);
+        }
+        if (e.type === "orbs") {
+          for (const [id, , , at] of e.orbs.add)
+            pending.set(id, { at, ...pos(e.orbs.add, id) });
+          for (const [, who] of e.orbs.gone) if (who) caught++;
+        }
+      }
+      // Stop catching 20 s before the end, so some orbs are left lying.
+      if (t < 39)
+        for (const [id, o] of pending)
+          if (now - o.at > 1100) {
+            place(world, "s1", o.x, o.y);
+            pending.delete(id);
+            break;
+          }
+    }
+    expect(caught).toBeGreaterThan(ORB_SHOWER.perShower);
+    expect(orbEvents).toHaveLength(ORB_SHOWER.perShower);
+    expect(new Set(orbEvents).size).toBe(ORB_SHOWER.perShower);
+    expect(orbEvents[0]).toMatch(
+      new RegExp(`^${Date.parse("2026-11-02T21:30:00.000Z") / 60000}-\\d+$`),
+    );
+    // After the minute, the leftover orbs are cleared for everyone.
+    const after = run(world, 1, now).events;
+    expect(after.some((e) => e.type === "orbs" && e.orbs.gone.length > 0)).toBe(
+      true,
+    );
+    expect(world.orbsFor("s1")).toBeUndefined();
+  });
+
+  it("counts runway cheers and reports them every 15", () => {
+    const world = new PlazaWorld();
+    world.join("s1", "acc-1", profile("Ann"), QUIET);
+    world.join("s2", "acc-2", profile("Ben"), QUIET);
+    place(
+      world,
+      "s1",
+      (PLAZA_STAGE.x0 + PLAZA_STAGE.x1) / 2,
+      PLAZA_STAGE.y0 + 50,
+    );
+    const { events } = run(world, 0.65, QUIET);
+    expect(events).toContainEqual({
+      type: "news",
+      plaza: 1,
+      news: { kind: "runway", id: 1, name: "Ann" },
+    });
+    // A friend's cheer emote counts too.
+    place(world, "s2", 1350, 700);
+    expect(world.emote("s2", "👏", QUIET)).toBe(true);
+    expect(world.emote("s2", "👏", QUIET + 10)).toBe(false);
+    expect(world.emote("s2", "🦖", QUIET + 2000)).toBe(false);
+    const more = run(world, 8, QUIET).events;
+    expect(more.filter((e) => e.type === "cheers")).toEqual([
+      { type: "cheers", key: "s1", n: 15 },
+    ]);
+    expect(world.view("s1")!.state.claps).toBeGreaterThanOrEqual(15);
+  });
+
+  it("times a lap run clockwise round the track", () => {
+    const world = new PlazaWorld();
+    world.join("s1", "acc-1", profile("Ann"), QUIET);
+    const b = world.bodyOf("s1")!;
+    let now = QUIET,
+      lap: number | undefined;
+    // Walk the middle of the lane with jumps over the hurdles.
+    for (let a = -Math.PI / 2 - 0.15; a < Math.PI * 1.5 + 0.2; a += 0.02) {
+      const p = trackPoint(a);
+      b.x = p.x;
+      b.y = p.y;
+      b.z = 30; // in the air over every hurdle
+      now += 25;
+      for (const e of world.step(0.025, now)) if (e.type === "lap") lap = e.ms;
+      b.stun = 0;
+    }
+    expect(lap).toBeDefined();
+    expect(lap!).toBeGreaterThan(5000);
+  });
+
+  it("lets a player score with a dash into the ball and names them", () => {
+    const world = new PlazaWorld(() => 0.99); // bots never dash
+    world.join("s1", "acc-1", profile("Ann"), QUIET);
+    // Send the bots off the pitch so only Ann touches the ball.
+    for (const bot of (world as any).copies.get(1).bots) {
+      bot.body.x = 100;
+      bot.body.y = 1500;
+    }
+    const cx = (PLAZA_PITCH.x0 + PLAZA_PITCH.x1) / 2,
+      cy = (PLAZA_PITCH.y0 + PLAZA_PITCH.y1) / 2;
+    place(world, "s1", cx - 38, cy);
+    world.input("s1", 1, 0);
+    world.dash("s1");
+    const { events } = run(world, 1.5, QUIET);
+    expect(events.filter((e) => e.type === "goal")).toEqual([
+      { type: "goal", key: "s1" },
+    ]);
+    expect(events).toContainEqual({
+      type: "news",
+      plaza: 1,
+      news: { kind: "goal", id: 1, name: "Ann", side: 0 },
+    });
+    expect(world.view("s1")!.state.score).toEqual([1, 0]);
+  });
+
+  it("checks spots by server position", () => {
+    const world = new PlazaWorld();
+    world.join("s1", "acc-1", profile("Ann"), QUIET);
+    expect(world.at("s1", "photo")).toBe(false);
+    const photo = PLAZA_SPOTS.find((s) => s.id === "photo")!;
+    place(world, "s1", photo.x, photo.y);
+    expect(world.at("s1", "photo")).toBe(true);
+    expect(world.at("s1", "cafe")).toBe(false);
+    expect(world.boost("s1")).toBe(true);
+    expect(world.boosted("s1")).toBe(true);
+  });
+});
+
+const pending = new Map<number, { at: number; x: number; y: number }>();
+const pos = (add: [number, number, number, number][], id: number) => {
+  const o = add.find((a) => a[0] === id)!;
+  return { x: o[1], y: o[2] };
+};

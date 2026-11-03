@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openTown, openTownMenu, snap } from "./helpers";
+import { openHub, snap, hubMenu } from "./helpers";
 
 // The illustrated skill icons sit inside their tiles and kit rows at every
 // size (they once spilled out of the shorter phone tiles).
@@ -13,9 +13,8 @@ for (const size of [
     const context = await browser.newContext({ viewport: size, isMobile: mobile, hasTouch: mobile });
     try {
       const page = await context.newPage();
-      await openTown(page);
-      await openTownMenu(page);
-      await page.click("[data-action=fighters]");
+      await openHub(page);
+      await hubMenu(page, "fighters");
       await expect(page.locator(".fighter-rig-stage").first()).toHaveClass(/is-ready/);
       const tiles = page.locator(".champion-skill-buttons > button[data-skill-inspect]");
       await expect(tiles).toHaveCount(4);

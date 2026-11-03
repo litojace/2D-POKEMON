@@ -1,12 +1,5 @@
 import { expect, test } from "@playwright/test";
-import {
-  box,
-  inside,
-  openTown,
-  openTownMenu,
-  pushUntilBattle,
-  snap,
-} from "./helpers";
+import { box, inside, openHub, pushUntilBattle, snap, openPlayPanel, hubMenu } from "./helpers";
 const pal = "22222222-2222-4222-8222-222222222222";
 test("raid room invites open Friends instead of displaying a room code", async ({
   browser,
@@ -18,15 +11,14 @@ test("raid room invites open Friends instead of displaying a room code", async (
   });
   try {
     const page = await context.newPage();
-    const errors = await openTown(page);
+    const errors = await openHub(page);
     await page.evaluate(() => {
       const w = window as any;
       w.__room("raid", { boss: "grumblecrag" });
       w.__snap.phase = "lobby";
       w.__snap.players = w.__snap.players.filter((p: any) => !p.raidBoss);
     });
-    await openTownMenu(page);
-    await page.click(".town-play");
+    await openPlayPanel(page);
     await page.click("#play-create");
     await expect
       .poll(async () => {
@@ -86,7 +78,7 @@ for (const size of [
           });
         },
       );
-      const errors = await openTown(page);
+      const errors = await openHub(page);
       await page.evaluate((pal) => {
         const w = window as any,
           fetch = window.fetch.bind(window);
@@ -132,8 +124,7 @@ for (const size of [
           if (w.__events.length > 300) w.__events.shift();
         };
       }, pal);
-      await openTownMenu(page);
-      await page.click('#town-menu-items [data-action="friends"]');
+      await hubMenu(page, "friends");
       await expect(page.locator(".friends-hub")).toBeVisible();
       await page.evaluate(
         (pal) =>

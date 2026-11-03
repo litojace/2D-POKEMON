@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openTown, snap } from "./helpers";
+import { openHub, snap } from "./helpers";
 
 async function closePanel(page: Page) {
   await page.evaluate(
@@ -57,7 +57,7 @@ window.fetch=async(input,init)=>{
 };`,
         });
       });
-      const errors = await openTown(page);
+      const errors = await openHub(page);
       await page.evaluate(() => {
         (window as any).__choose("tidefin");
         void (window as any).__account.showShop("champions");

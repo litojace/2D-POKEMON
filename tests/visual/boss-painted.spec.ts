@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openTown, openTownMenu, pushUntilBattle, snap } from "./helpers";
+import { openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
 
 async function review(page: Page, preload = true) {
   const errors: string[] = [];
@@ -302,15 +302,14 @@ for (const mobile of [false, true])
           });
         },
       );
-      const errors = await openTown(page);
+      const errors = await openHub(page);
       await page.evaluate(() =>
         (window as any).__room("raid", {
           boss: "emberwing",
           pos: [500, 450, 700, 600],
         }),
       );
-      await openTownMenu(page);
-      await page.click(".town-play");
+      await openPlayPanel(page);
       await page.click("#play-create");
       await pushUntilBattle(page);
       await expect

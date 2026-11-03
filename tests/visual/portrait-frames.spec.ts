@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { box, inside, openTown, openTownMenu, snap } from "./helpers";
+import { box, inside, openHub, snap, openPlayPanel } from "./helpers";
 
 async function frameFixtures(page: Page) {
   await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {
@@ -65,7 +65,7 @@ for (const size of [
     try {
       const page = await context.newPage();
       await frameFixtures(page);
-      const errors = await openTown(page);
+      const errors = await openHub(page);
       const headerFrame = page.locator(
         "#account-profile [data-portrait-frame]",
       );
@@ -201,7 +201,7 @@ for (const size of [
     try {
       const page = await context.newPage();
       await frameFixtures(page);
-      const errors = await openTown(page);
+      const errors = await openHub(page);
       for (const kind of ["pvp", "raid"] as const) {
         await page.evaluate((kind) => {
           const w = window as any;
@@ -216,8 +216,7 @@ for (const size of [
           pal.raidLook = { frame: "conqueror", skin: "candy-colours" };
           pal.raidClears = { grumblecrag: 50 };
         }, kind);
-        await openTownMenu(page);
-        await page.click(".town-play");
+        await openPlayPanel(page);
         await page.click('[data-mode="duel"]');
         await page.click("#play-create");
         await expect
@@ -291,7 +290,7 @@ for (const size of [
         await page.click("#leave");
         // Raid exits return to the hub; close it to inspect the next room.
         if (await page.locator("dialog[open]").count()) await closePanel(page);
-        await expect(page.locator("#town-menu-toggle")).toBeVisible();
+        await expect(page.locator("#lobby-play")).toBeVisible();
         await page.evaluate(() => {
           const a = (window as any).__account;
           a.economy.looks = {

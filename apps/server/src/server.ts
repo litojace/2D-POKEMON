@@ -52,6 +52,9 @@ import {
 } from "../../../packages/shared/src/index.js";
 import { Arena } from "./simulation.js";
 import { TownWorld } from "./town.js";
+import { PlazaWorld, type PlazaEvent } from "./plaza.js";
+import { PLAZA, type PlazaRecord } from "../../../packages/shared/src/plaza.js";
+import { Parties, type Party } from "./party.js";
 import { TownAppearance } from "./town-appearance.js";
 import { TOWN } from "../../../packages/shared/src/town.js";
 import { MatchLedger, matchSummary } from "./match-summary.js";
@@ -110,6 +113,8 @@ import {
   friendCode,
   friendsSchema,
   roomInviteRequestSchema,
+  partyInviteRequestSchema,
+  partyAcceptSchema,
   MASTERY_TIERS,
   progressSchema,
   type Account,
@@ -236,12 +241,33 @@ export function createArenaServer(
   /** Elemental Plaza: everyone walking around the shared town. */
   const town = new TownWorld();
   const townAppearance = new TownAppearance(town, accounts);
+  /** The new Plaza (hub redesign phase 3): movement, the pitch, orbs, laps. */
+  const plaza = new PlazaWorld();
+  const plazaAppearance = new TownAppearance(plaza, accounts);
   const presenceHistory = new PresenceHistory(accounts);
   /** Friends watching a room: socket id → room code and display name. */
   const watchers = new Map<string, { code: string; name: string }>();
   const MAX_WATCHERS = 6;
   const roomInviteCooldowns = new Map<string, number>();
   const roomInvitesPending = new Set<string>();
+  const parties = new Parties();
+  /** The connected sockets of an account (a replaced tab has no account). */
+  const accountSockets = (accountId: string) =>
+    [...io.sockets.sockets.values()].filter(
+      (s) => s.data.account?.id === accountId && !s.data.account?.suspended,
+    );
+  const partyView = (party: Party) => ({
+    code: party.code,
+    leader: party.leader,
+    members: party.members.map((m) => ({ ...m })),
+  });
+  const emitParty = (party: Party, ended = false) => {
+    for (const member of party.members)
+      for (const s of accountSockets(member.id))
+        s.emit("party", ended ? null : partyView(party));
+  };
+  const inRoom = (accountId: string) =>
+    [...sessions.values()].some((s) => s.accountId === accountId);
   const watchersOf = (code: string) =>
     [...watchers.values()].filter((w) => w.code === code).map((w) => w.name);
   io.use(async (socket, next) => {
@@ -304,6 +330,20 @@ export function createArenaServer(
             titleColor: account.titleColor,
           });
         void townAppearance.refresh(socket.id, socket.data.accessToken, true);
+      }
+      const visitor2 = plaza.profileOf(socket.id);
+      if (visitor2) {
+        if (
+          visitor2.name !== account.displayName ||
+          visitor2.title !== account.title ||
+          visitor2.titleColor !== account.titleColor
+        )
+          plaza.updateProfile(socket.id, {
+            name: account.displayName,
+            title: account.title,
+            titleColor: account.titleColor,
+          });
+        void plazaAppearance.refresh(socket.id, socket.data.accessToken, true);
       }
       socket.emit("account-changed");
     } catch (error) {
@@ -419,7 +459,8 @@ export function createArenaServer(
         ? { name: others.map((o) => o.name).join(" & ") }
         : undefined;
       const activity: OnlinePlayer["activity"] = !arena
-        ? town.townOf(socket.id) !== undefined
+        ? town.townOf(socket.id) !== undefined ||
+          plaza.plazaOf(socket.id) !== undefined
           ? "town"
           : "menu"
         : arena.practice
@@ -833,7 +874,10 @@ export function createArenaServer(
           )
         : [];
     for (const session of seats) held.add(session.socketId!);
-    if (held.size) io.to(arena.code).except([...held]).emit("state", wire);
+    if (held.size)
+      io.to(arena.code)
+        .except([...held])
+        .emit("state", wire);
     else io.to(arena.code).emit("state", wire);
     for (const session of seats) {
       const id = session.socketId!;
@@ -1128,6 +1172,138 @@ export function createArenaServer(
       } finally {
         roomInvitesPending.delete(key);
       }
+    });
+    // Parties before a room: friends gather on the Lobby, then follow the
+    // leader into the room their PLAY opens.
+    const knownCharacter = (id: string) =>
+      (FIGHTER_IDS as readonly string[]).includes(id);
+    const memberOf = (character: string) => ({
+      id: account()!.id,
+      name: account()!.displayName,
+      character,
+    });
+    socket.on("party-invite", async (data: unknown, cb: unknown) => {
+      if (!requirePlayer(cb)) return;
+      if (!allowed(10)) return fail(cb, "Too many requests.");
+      const parsed = partyInviteRequestSchema.safeParse(data);
+      if (!parsed.success || !knownCharacter(parsed.data.character))
+        return fail(cb, "Choose a friend to invite.");
+      const sender = account()!,
+        targetId = parsed.data.playerId;
+      if (getSession(socket.id) || inRoom(sender.id))
+        return fail(cb, "Leave your room to start a party.");
+      const key = `party:${sender.id}:${targetId}`;
+      if (roomInvitesPending.has(key))
+        return fail(cb, "Invite already sent. Give your friend a moment.");
+      roomInvitesPending.add(key);
+      try {
+        const list = friendsSchema.parse(
+          await accounts.rpc(socket.data.accessToken, "arena_friends", {}),
+        );
+        if (
+          targetId === sender.id ||
+          !list.friends.some((f) => f.id === targetId)
+        )
+          return fail(cb, "You can only invite someone on your friends list.");
+        const targets = accountSockets(targetId);
+        if (!targets.length) return fail(cb, "Your friend is offline.");
+        if (inRoom(targetId))
+          return fail(cb, "Your friend is already in a room.");
+        if (targets.some((s) => watchers.has(s.id)))
+          return fail(cb, "Your friend is watching a match.");
+        if (!socket.connected || getSession(socket.id))
+          return fail(cb, "Try again.");
+        const result = parties.invite(
+          memberOf(parsed.data.character),
+          targetId,
+          Date.now(),
+        );
+        if (!result.ok) return fail(cb, result.error);
+        const invite = {
+          id: randomUUID(),
+          fromId: sender.id,
+          name: sender.displayName,
+          code: result.party.code,
+          mode: "party" as const,
+          expiresAt: result.expiresAt,
+        };
+        for (const target of targets) target.emit("room-invite", invite);
+        emitParty(result.party);
+        reply(cb, { ok: true });
+      } catch {
+        fail(cb, "Couldn't check your friends. Try again.");
+      } finally {
+        roomInvitesPending.delete(key);
+      }
+    });
+    socket.on("party-accept", (data: unknown, cb: unknown) => {
+      if (!requirePlayer(cb)) return;
+      if (!allowed(10)) return fail(cb, "Too many requests.");
+      const parsed = partyAcceptSchema.safeParse(data);
+      if (!parsed.success || !knownCharacter(parsed.data.character))
+        return fail(cb, "This invitation has expired.");
+      if (getSession(socket.id) || inRoom(account()!.id))
+        return fail(cb, "Leave your current room before joining a party.");
+      const result = parties.accept(
+        memberOf(parsed.data.character),
+        parsed.data.code,
+        Date.now(),
+      );
+      if (!result.ok) return fail(cb, result.error);
+      if (result.disbanded) emitParty(result.disbanded, true);
+      else if (result.left) emitParty(result.left);
+      emitParty(result.party);
+      reply(cb, { ok: true });
+    });
+    socket.on("party-decline", (data: unknown, cb: unknown) => {
+      if (!account()) return fail(cb, "Please log in to play.");
+      const code = partyAcceptSchema.shape.code.safeParse(
+        (data as { code?: unknown } | null)?.code,
+      );
+      if (code.success) parties.decline(account()!.id, code.data);
+      reply(cb, { ok: true });
+    });
+    const leaveParty = (accountId: string) => {
+      const result = parties.leave(accountId);
+      for (const s of accountSockets(accountId)) s.emit("party", null);
+      if (!result) return;
+      if (result.disbanded) emitParty(result.disbanded, true);
+      else emitParty(result.party);
+    };
+    socket.on("party-leave", (_data: unknown, cb: unknown) => {
+      if (!account()) return fail(cb, "Please log in to play.");
+      leaveParty(account()!.id);
+      reply(cb, { ok: true });
+    });
+    socket.on("party-character", (data: unknown) => {
+      const character = (data as { character?: unknown } | null)?.character;
+      if (!account() || !allowed(20) || typeof character !== "string") return;
+      if (!knownCharacter(character)) return;
+      const party = parties.setCharacter(account()!.id, character);
+      if (party) emitParty(party);
+    });
+    // The leader opened a room: the others follow it in with an ordinary join.
+    socket.on("party-room", (_data: unknown, cb: unknown) => {
+      if (!requirePlayer(cb)) return;
+      if (!allowed(10)) return fail(cb, "Too many requests.");
+      const me = account()!,
+        party = parties.of(me.id);
+      if (!party || party.leader !== me.id)
+        return fail(cb, "Only the party leader starts the game.");
+      const seat = getSession(socket.id),
+        arena = seat && rooms.get(seat.code);
+      if (
+        !arena ||
+        arena.phase !== "lobby" ||
+        arena.practice ||
+        arena.bots.size
+      )
+        return fail(cb, "Open a room first.");
+      for (const member of party.members)
+        if (member.id !== me.id)
+          for (const s of accountSockets(member.id))
+            s.emit("party-room", { code: arena.code, mode: arena.mode });
+      reply(cb, { ok: true });
     });
     // The client hands over each refreshed login token (they expire hourly).
     socket.on("token", async (data: unknown, cb: unknown) => {
@@ -1798,6 +1974,15 @@ export function createArenaServer(
         town.leave(socket.id);
         socket.emit("town-closed");
       }
+      if (
+        ["create", "join", "practice", "bot-match", "resume", "watch"].includes(
+          String(event),
+        ) &&
+        plaza.plazaOf(socket.id) !== undefined
+      ) {
+        plaza.leave(socket.id);
+        socket.emit("plaza-closed");
+      }
       next();
     });
     socket.on("town-join", (data: unknown, cb: unknown) => {
@@ -1809,6 +1994,7 @@ export function createArenaServer(
       );
       if (!parsed.success) return fail(cb, "Choose a fighter first.");
       const me = account()!;
+      plaza.leave(socket.id);
       const walker = town.join(socket.id, me.id, {
         name: me.displayName,
         title: me.title ?? null,
@@ -1875,6 +2061,130 @@ export function createArenaServer(
       town.leave(socket.id);
       reply(cb, { ok: true });
     });
+    // ───────────── Plaza (hub redesign phase 3) ─────────────
+    socket.on("plaza-join", (data: unknown, cb: unknown) => {
+      if (!allowed(10) || !requirePlayer(cb)) return;
+      if (getSession(socket.id))
+        return fail(cb, "Leave your room before visiting the Plaza.");
+      const parsed = characterSchema.safeParse(
+        (data as { character?: unknown } | null)?.character,
+      );
+      if (!parsed.success) return fail(cb, "Choose a fighter first.");
+      const me = account()!;
+      town.leave(socket.id);
+      const visitor = plaza.join(socket.id, me.id, {
+        name: me.displayName,
+        title: me.title ?? null,
+        titleColor: me.titleColor ?? null,
+        level: null,
+        character: parsed.data,
+        skin: null,
+      });
+      reply(cb, { ok: true, plaza: visitor.plaza, me: visitor.profile.id });
+      const orbs = plaza.orbsFor(socket.id);
+      if (orbs) socket.emit("plaza-orbs", orbs);
+      const token = socket.data.accessToken as string | undefined;
+      if (token) void plazaAppearance.refresh(socket.id, token, true);
+      if (!me.guest)
+        void portraitChoice.save(me.id, socket.data.accessToken, parsed.data);
+    });
+    socket.on("plaza-look", (data: unknown, cb: unknown) => {
+      if (!allowed(10)) return;
+      if (plaza.plazaOf(socket.id) === undefined)
+        return fail(cb, "Not in the Plaza.");
+      const parsed = characterSchema.safeParse(
+        (data as { character?: unknown } | null)?.character,
+      );
+      if (!parsed.success) return fail(cb, "Choose a fighter first.");
+      if (plaza.profileOf(socket.id)?.character !== parsed.data) {
+        plaza.updateProfile(socket.id, { character: parsed.data, skin: null });
+        const owner = account();
+        if (owner && !owner.guest)
+          void portraitChoice.save(
+            owner.id,
+            socket.data.accessToken,
+            parsed.data,
+          );
+      }
+      const token = socket.data.accessToken as string | undefined;
+      if (token) void plazaAppearance.refresh(socket.id, token, false);
+      reply(cb, { ok: true });
+    });
+    socket.on("plaza-input", (data: unknown) => {
+      if (!allowed(40)) return;
+      const d = data as { dx?: unknown; dy?: unknown } | null;
+      plaza.input(socket.id, d?.dx, d?.dy);
+    });
+    socket.on("plaza-jump", () => {
+      if (!allowed(10)) return;
+      plaza.jump(socket.id);
+    });
+    socket.on("plaza-dash", () => {
+      if (!allowed(10)) return;
+      plaza.dash(socket.id);
+    });
+    socket.on("plaza-emote", (data: unknown, cb: unknown) => {
+      if (!allowed(10)) return;
+      const ok = plaza.emote(
+        socket.id,
+        (data as { emote?: unknown } | null)?.emote,
+        Date.now(),
+      );
+      reply(
+        cb,
+        ok
+          ? { ok: true }
+          : { ok: false, error: "Wait a moment between emotes." },
+      );
+    });
+    let bobaPending = false;
+    socket.on("plaza-act", async (data: unknown, cb: unknown) => {
+      if (!allowed(10)) return;
+      const spot = (data as { spot?: unknown } | null)?.spot;
+      if (plaza.plazaOf(socket.id) === undefined)
+        return fail(cb, "Not in the Plaza.");
+      if (spot === "photo") {
+        if (!plaza.at(socket.id, "photo"))
+          return fail(cb, "Stand on the Photo Spot first.");
+        recordPlaza(socket.id, { kind: "photo" });
+        return reply(cb, { ok: true });
+      }
+      if (spot !== "cafe") return fail(cb, "Nothing to do here.");
+      if (!plaza.at(socket.id, "cafe"))
+        return fail(cb, "Walk up to the Volt Boba truck first.");
+      if (plaza.boosted(socket.id))
+        return fail(cb, "Your boba boost is still active.");
+      const token = socket.data.accessToken as string | undefined;
+      if (!token || bobaPending) return fail(cb, "One moment…");
+      bobaPending = true;
+      try {
+        // A fresh id per purchase: a retry of this request can't charge twice.
+        const paid = (await accounts.rpc(token, "arena_plaza_boba", {
+          p_ref: randomUUID(),
+        })) as { ok?: boolean; leaves?: number } | null;
+        if (!paid?.ok)
+          return reply(cb, {
+            ok: false,
+            error: "Not enough Gold Leaves.",
+            leaves: paid?.leaves,
+          });
+        plaza.boost(socket.id);
+        reply(cb, { ok: true, leaves: paid.leaves });
+      } catch (error) {
+        fail(
+          cb,
+          error instanceof AccountError
+            ? error.message
+            : "Volt Boba is closed right now.",
+        );
+      } finally {
+        bobaPending = false;
+      }
+    });
+    socket.on("plaza-leave", (_data: unknown, cb: unknown) => {
+      plaza.leave(socket.id);
+      reply(cb, { ok: true });
+    });
     socket.on("disconnect", () => {
       const who = account();
       if (who && activeAccounts.get(who.id) === socket.id)
@@ -1889,7 +2199,9 @@ export function createArenaServer(
         );
       if (who && !who.guest && !stillOnline)
         void presenceHistory.touch(who.id, socket.data.accessToken, true);
+      if (who && !stillOnline) leaveParty(who.id);
       town.leave(socket.id);
+      plaza.leave(socket.id);
       laggingSockets.delete(socket.id);
       stopWatching();
       const s = getSession(socket.id);
@@ -1945,6 +2257,65 @@ export function createArenaServer(
       : setInterval(() => {
           if (town.size) townStep();
         }, 1000 / TOWN.tick);
+  /**
+   * Plaza events the database must see go one at a time per player, in order,
+   * so caps hold and the newest progress reaches the browser last.
+   */
+  const plazaQueue = new Map<string, Promise<void>>();
+  const recordPlaza = (key: string, event: Omit<PlazaRecord, "player">) => {
+    const player = plaza.accountOf(key);
+    if (!player || !accounts.recordPlaza) return;
+    const run = (plazaQueue.get(player) ?? Promise.resolve())
+      .then(() => accounts.recordPlaza!({ player, ...event }))
+      .then((progress) => {
+        const socket = io.sockets.sockets.get(key);
+        if (progress && socket?.connected)
+          socket.emit("plaza-progress", progress);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (plazaQueue.get(player) === run) plazaQueue.delete(player);
+      });
+    plazaQueue.set(player, run);
+  };
+  const toPlaza = (copy: number, event: string, data: unknown) => {
+    for (const key of plaza.keys())
+      if (plaza.plazaOf(key) === copy)
+        io.sockets.sockets.get(key)?.emit(event, data);
+  };
+  const plazaEvent = (e: PlazaEvent) => {
+    if (e.type === "orb") recordPlaza(e.key, { kind: "orb", ref: e.ref });
+    else if (e.type === "goal") recordPlaza(e.key, { kind: "goal" });
+    else if (e.type === "lap") recordPlaza(e.key, { kind: "lap", ms: e.ms });
+    else if (e.type === "cheers")
+      recordPlaza(e.key, { kind: "cheers", n: e.n });
+    else if (e.type === "news") toPlaza(e.plaza, "plaza-news", e.news);
+    else toPlaza(e.plaza, "plaza-orbs", e.orbs);
+  };
+  /** Move everyone in the Plaza, run the pitch and the orbs, send each player what is near. */
+  let plazaTicks = 0;
+  const plazaStep = (now = Date.now()) => {
+    plazaTicks++;
+    for (const e of plaza.step(1 / PLAZA.tick, now)) plazaEvent(e);
+    if (plazaTicks % Math.round(PLAZA.tick / PLAZA.send) !== 0) return;
+    for (const key of plaza.keys()) {
+      const socket = io.sockets.sockets.get(key);
+      if (!socket) {
+        plaza.leave(key);
+        continue;
+      }
+      const view = plaza.view(key);
+      if (!view) continue;
+      if (view.profiles.length) socket.emit("plaza-profiles", view.profiles);
+      socket.emit("plaza-state", view.state);
+    }
+  };
+  const plazaTimer =
+    options.autoTick === false
+      ? undefined
+      : setInterval(() => {
+          if (plaza.size) plazaStep();
+        }, 1000 / PLAZA.tick);
   const diagnosticsTimer =
     diagnosticsEvery > 0 && options.autoTick !== false
       ? setInterval(
@@ -1956,6 +2327,7 @@ export function createArenaServer(
                   rooms: rooms.size,
                   sockets: io.engine.clientsCount,
                   town: town.size,
+                  plaza: plaza.size,
                 }),
               ),
             ),
@@ -1980,10 +2352,13 @@ export function createArenaServer(
     broadcast,
     town,
     townStep,
+    plaza,
+    plazaStep,
     diagnostics,
     close: async () => {
       if (timer) clearInterval(timer);
       if (townTimer) clearInterval(townTimer);
+      if (plazaTimer) clearInterval(plazaTimer);
       if (accountTimer) clearInterval(accountTimer);
       if (diagnosticsTimer) clearInterval(diagnosticsTimer);
       diagnostics.close();

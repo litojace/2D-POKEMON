@@ -264,14 +264,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A sugar-glider kit that stores static in its antennae. Fast, slippery and deadly at range.",
     color: 0xffd65b,
-    health: 138,
+    health: 146,
     speed: 270,
     basic: basic(
       "spark-dart",
       "Spark Dart",
       "projectile",
       6,
-      280,
+      270,
       "A fast electric projectile.",
       { speed: 860, range: 680, radius: 9 },
     ),
@@ -335,14 +335,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A stout magma newt with a living flame crest. Layers burns and hits hardest up close.",
     color: 0xff7a4f,
-    health: 156,
+    health: 144,
     speed: 240,
     basic: basic(
       "cinder-snap",
       "Cinder Snap",
       "melee",
       15,
-      450,
+      470,
       "A short-range burst of fire in front of Cindrake.",
       { range: 170, arc: 0.2, knockback: 10 },
     ),
@@ -425,14 +425,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "An axolotl duelist in a river sash. The quickest fighter; pokes, misdirects, then finishes.",
     color: 0x4fd6e6,
-    health: 131,
+    health: 154,
     speed: 285,
     basic: basic(
       "tide-needle",
       "Tide Needle",
       "projectile",
       5,
-      260,
+      240,
       "A fast water projectile.",
       { speed: 950, radius: 8, range: 640 },
     ),
@@ -490,14 +490,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A crystal-fisted lynx monk. Durable, patient and brutal against careless attacks.",
     color: 0x7f9cff,
-    health: 175,
+    health: 171,
     speed: 235,
     basic: basic(
       "prism-jab",
       "Prism Jab",
       "melee",
       13,
-      320,
+      325,
       "A close-range energy punch.",
       { range: 130, arc: 0.35, knockback: 12 },
     ),
@@ -554,7 +554,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A fluffy moth that sheds glowing dust. Balanced at every range; Kindle turns pressure into a race.",
     color: 0x86f0c0,
-    health: 144,
+    health: 142,
     speed: 265,
     basic: basic(
       "glint",
@@ -616,14 +616,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A floating three-eyed owl. Slow, heavy attacks; controls space with rays, pushes and wards.",
     color: 0xff79d2,
-    health: 130,
+    health: 148,
     speed: 255,
     basic: basic(
       "mind-dart",
       "Mind Dart",
       "projectile",
       8,
-      400,
+      375,
       "A psychic energy projectile.",
       { speed: 760, radius: 11 },
     ),
@@ -682,14 +682,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A sleepy boulder tortoise. Huge health pool and crushing swings; make them come to you.",
     color: 0xc79a5b,
-    health: 219,
+    health: 195,
     speed: 222,
     basic: basic(
       "boulder-swipe",
       "Boulder Swipe",
       "melee",
       15,
-      600,
+      635,
       "A wide melee swing in front of Terradon.",
       { range: 150, arc: 0, knockback: 25 },
     ),
@@ -753,14 +753,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A hooded lantern wisp. Sets burns, then cashes them in with Curse Mark.",
     color: 0x9c6bff,
-    health: 150,
+    health: 138,
     speed: 260,
     basic: basic(
       "lantern-wisp",
       "Lantern Wisp",
       "projectile",
       9,
-      350,
+      365,
       "A ghostly projectile.",
       { speed: 720, radius: 11 },
     ),
@@ -1534,6 +1534,10 @@ export interface Reply {
   /** Town joins: which town copy, and your walker id in it. */
   town?: number;
   me?: number;
+  /** Plaza joins: which Plaza copy (with `me`). */
+  plaza?: number;
+  /** Gold Leaves left after a Plaza purchase. */
+  leaves?: number;
 }
 export const normalize = (x: number, y: number): Vec => {
   const length = Math.hypot(x, y);

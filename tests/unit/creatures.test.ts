@@ -37,16 +37,16 @@ it("has eight fighters, forty unique moves and four special skills per fighter",
     Object.keys(elementShapes).length,
   );
 });
-it("increases roster health by 25% while preserving movement speeds", () => {
+it("pins roster health (November 2026 balance pass) and movement speeds", () => {
   const baseline: Record<string, [number, number]> = {
-    voltkit: [138, 270],
-    cindrake: [156, 240],
-    tidefin: [131, 285],
-    auralynx: [175, 235],
-    lumoth: [144, 265],
-    mystowl: [130, 255],
-    terradon: [219, 222],
-    duskveil: [150, 260],
+    voltkit: [146, 270],
+    cindrake: [144, 240],
+    tidefin: [154, 285],
+    auralynx: [171, 235],
+    lumoth: [142, 265],
+    mystowl: [148, 255],
+    terradon: [195, 222],
+    duskveil: [138, 260],
   };
   for (const [id, stats] of Object.entries(baseline)) {
     const c = CHARACTERS[id as CharacterId];
@@ -112,7 +112,9 @@ it("loads original art and valid public metadata for every fighter and direction
     expect(detail).toContain(i === ULT_SLOT ? "ULT" : `${a.cooldown}s`);
   });
   expect(detail).toContain(COMBOS.terradon.text);
-  expect(detail).toContain("600 ms between attacks");
+  expect(detail).toContain(
+    `${Math.round((CHARACTERS.terradon.basic.interval ?? 0) * 1000)} ms between attacks`,
+  );
   expect(detail).not.toContain("PLACEHOLDER");
   expect(fighterSelection("voltkit")).toContain("Overcharge");
 });

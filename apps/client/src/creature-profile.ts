@@ -214,7 +214,22 @@ export function creatureProfile(
     );
   const eyes = (x = 80, ring = p.glow, w = 8.3, h = 10.2) =>
     `<g class="profile-near-eye">${eye(x, ring, w, h)}</g>`;
-  const grin = (x = 66, y = 108) => line(`M${x} ${y}q2.5 2 5 -.5`, p.dark, 1.6);
+  // The side view of each champion's own mouth (see MOUTHS in creature-design.ts).
+  const grin = (x = 66, y = 108) => {
+    if (id === "voltkit")
+      return `${path(`M${x - 1} ${y - 1.5}q3.5 -1 7 0q-1 6 -3.8 6q-2.6 0 -3.2 -6Z`, "#1b1636", ' stroke="none"')}${e(x + 2.6, y + 2.6, 2, 1.4, "#ff7d9c", ' stroke="none"')}`;
+    if (id === "cindrake")
+      return `${line(`M${x - 1} ${y + 0.5}q3.5 2.5 7.5 -2`, p.dark, 1.6)}${path(`M${x + 1} ${y + 1.4}l1 3l1.2 -2.6Z`, "#ffffff", ` stroke="${p.dark}" stroke-width=".8"`)}`;
+    if (id === "tidefin")
+      return line(`M${x - 3} ${y - 1.5}q5 5 10 -1`, p.dark, 1.8);
+    if (id === "auralynx")
+      return `${path(`M${x - 0.5} ${y - 4}h4l-2 2.4Z`, "#ff9fc0", ` stroke="${p.dark}" stroke-width=".8"`)}${line(`M${x} ${y}q1.5 2 3 0q1.5 2 3 0`, p.dark, 1.5)}`;
+    if (id === "lumoth")
+      return e(x + 2.5, y + 0.5, 2, 2.6, "#1b1636", ' stroke="none"');
+    if (id === "terradon")
+      return line(`M${x - 1} ${y}q3.5 3.5 7 0`, p.dark, 1.7);
+    return line(`M${x} ${y}q2.5 2 5 -.5`, p.dark, 1.6);
+  };
   const profiles: Record<CreaturePart, string> = {
     tail: "",
     wings: "",
@@ -853,9 +868,34 @@ export function creatureProfile(
         e(84, 95, 20, 24, p.accent) +
         shine(74, 65, 18) +
         star(119, 58, 4);
+    // The same glowing eye as the front view (glowEye in creature-design.ts):
+    // a halo, the eye and its highlight; on focus it squints under a glowing
+    // brow that slopes toward the snout.
+    const duskEye = (x: number) => {
+      const halo = (r: number, o: number) =>
+        `<circle cx="${x}" cy="93" r="${r}" fill="url(#${prefix}-shine)" stroke="none" opacity="${o}"/>`;
+      if (mood !== "normal" && mood !== "focus")
+        return halo(12, 0.55) + expression(x, 8, 9, p.glow);
+      const squint = mood === "focus";
+      return (
+        halo(14, 0.7) +
+        e(x, squint ? 95 : 93, 7.5, squint ? 6 : 9.5, p.glow) +
+        e(
+          x - 2.5,
+          squint ? 93 : 89.5,
+          3,
+          squint ? 2 : 3.4,
+          "#ffffff",
+          ' stroke="none"',
+        ) +
+        (squint
+          ? `<path d="M${x + 7.5} 75.5L${x - 6.4} 82.5" stroke="${p.glow}" stroke-width="4.4" stroke-linecap="round" fill="none"/>`
+          : "")
+      );
+    };
     profiles.eyes = back
       ? ""
-      : `<g class="profile-near-eye" transform="translate(9 0)">${mood !== "normal" && mood !== "focus" ? expression(75, 8, 9, p.glow) : e(75, 93, 7.5, mood === "focus" ? 6 : 9.5, p.glow) + e(72, 89, 3, 3, "#ffffff", ' stroke="none"')}${mood === "normal" ? line("M63 107q4 3 8-1", p.glow, 1.6) : ""}</g>`;
+      : `<g class="profile-near-eye" transform="translate(9 0)">${duskEye(75)}${mood === "normal" ? line("M63 107q4 3 8-1", p.glow, 1.6) : ""}</g>`;
     profiles.ears = profiles.flame = "";
     profiles.body =
       path(

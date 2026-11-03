@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { box, openTown, openTownMenu, pushUntilBattle } from "./helpers";
+import { box, openHub, pushUntilBattle, openPlayPanel } from "./helpers";
 
 test("one corner gear opens Settings and the separate Practice panel on a short phone", async ({
   browser,
@@ -11,10 +11,9 @@ test("one corner gear opens Settings and the separate Practice panel on a short 
   });
   try {
     const page = await context.newPage();
-    const errors = await openTown(page);
+    const errors = await openHub(page);
     await page.evaluate(() => (window as any).__room("practice"));
-    await openTownMenu(page);
-    await page.click(".town-play");
+    await openPlayPanel(page);
     await page.click("#practice");
     await pushUntilBattle(page);
     await expect(page.locator("#mobile-fullscreen")).toBeHidden();
@@ -34,7 +33,7 @@ test("one corner gear opens Settings and the separate Practice panel on a short 
     await page.click("#battle-menu");
     await page.click("#settings-practice");
     await page.click("#practice-exit");
-    await expect(page.locator("#town-menu-toggle")).toBeVisible();
+    await expect(page.locator("#lobby-play")).toBeVisible();
     expect(errors).toEqual([]);
   } finally {
     await context.close();
@@ -51,12 +50,11 @@ test("desktop uses one round corner gear with the clock directly below it", asyn
   });
   try {
     const page = await context.newPage();
-    const errors = await openTown(page);
+    const errors = await openHub(page);
     await page.evaluate(() =>
       (window as any).__room("raid", { boss: "prismatail" }),
     );
-    await openTownMenu(page);
-    await page.click(".town-play");
+    await openPlayPanel(page);
     await page.click("#play-create");
     await pushUntilBattle(page);
     const gear = await box(page, "#battle-menu"),

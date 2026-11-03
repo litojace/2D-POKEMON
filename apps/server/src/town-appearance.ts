@@ -12,7 +12,8 @@ import type { TownWorld } from "./town.js";
 export class TownAppearance {
   private pending = new Map<string, symbol>();
   constructor(
-    private town: TownWorld,
+    /** The town or the Plaza: anything that keeps profiles by socket. */
+    private town: Pick<TownWorld, "profileOf" | "updateProfile">,
     private accounts: Pick<AccountProvider, "rpc">,
   ) {}
 

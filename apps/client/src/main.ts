@@ -43,6 +43,32 @@ import {
   type GateStatus,
 } from "./home-screen";
 import { setupHomeNavigation } from "./home-navigation";
+import {
+  openLobby,
+  type LobbyAction,
+  type LobbyHandle,
+  type LobbyMode,
+} from "./lobby-screen";
+import {
+  openFarmScreen,
+  type FarmScreen,
+  type FarmScreenOptions,
+} from "./farm/farm-screen";
+import type {
+  FarmActResult,
+  FarmFriend,
+  FarmOrderResult,
+  FarmState,
+  FarmVisit,
+  FarmVisitResult,
+} from "../../../packages/shared/src/farm";
+import {
+  saveHubScene,
+  savedHubScene,
+  sceneAvailable,
+  sceneSwitchMarkup,
+  type HubScene,
+} from "./hub-scene";
 import { watchSelectionPreview } from "./selection-preview";
 import { townOutfitKey } from "./town-outfit";
 import { bossClears, pacificDate } from "../../../packages/shared/src/raid";
@@ -87,7 +113,7 @@ import {
   fillLiveSeconds,
   fillLiveCountdown,
 } from "./overlay";
-import { fighterArt, scopeIds } from "./fighter-art";
+import { fighterArt, fighterAvatar, scopeIds } from "./fighter-art";
 import { fighterSkillColor, wornArt } from "./skins/skin-art";
 import { drawCollectionAura } from "./skins/collection-fx";
 import { withAura } from "./trait-effects";
@@ -210,10 +236,17 @@ import {
   standingsMarkup,
   type RecordState,
 } from "./match-recap";
-import { matchReportReplySchema } from "../../../packages/shared/src/accounts";
+import {
+  matchReportReplySchema,
+  partyRoomSchema,
+  partyStateSchema,
+  type PartyState,
+} from "../../../packages/shared/src/accounts";
 import { masteryMatches, setMastery, setWornSkins } from "./fighter-selection";
 import { shareResult } from "./share-card";
-import { openTown } from "./town";
+import { openPlazaScreen, type PlazaScreen } from "./plaza/plaza-screen";
+import type { PlazaProgress } from "../../../packages/shared/src/plaza";
+import { CHAMPION_SKIN_BY_ID } from "../../../packages/shared/src/shop";
 import { prepareSurfaceTextures, surfaceBurst } from "./court-surface-fx";
 import { fxFor } from "./fx-engine";
 import { isRaidFloor, paintRaidFloor } from "./raid-floors";
@@ -330,7 +363,7 @@ const escape = (s: string) =>
       ]!,
   );
 document.querySelector("#app")!.innerHTML =
-  `<header class="topbar"><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><div id="account-nav" class="account-nav"></div><button type="button" class="quiet home-settings" id="home-settings" aria-label="Settings" title="Settings">${menuIcon("settings")}</button><details class="header-menu" id="header-menu"><summary><i class="menu-burger" aria-hidden="true">☰</i><i class="menu-gear" aria-hidden="true">${menuIcon("settings")}</i> <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">${menuIcon("help")}<span>How to play</span></button><button class="quiet" id="settings">${menuIcon("settings")}<span>Settings</span></button><button class="quiet" id="leaderboard">${menuIcon("leaderboard")}<span>Leaderboard</span></button><button class="quiet" id="install-app">${menuIcon("fullscreen")}<span>Want fullscreen?</span></button><button class="quiet" id="report-problem">${menuIcon("report")}<span>Report a problem</span></button><button class="quiet" id="menu-logout">${menuIcon("leave")}<span>Log out</span></button><span class="connection" id="connection">Connecting</span></div></details></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-stage"><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span id="control-hints"></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu" aria-label="Battle settings" title="Battle settings (Esc / controller Menu)">${menuIcon("settings")}</button></div></section></main><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
+  `<header class="topbar"><nav class="hub-scenes" id="hub-scenes" role="group" aria-label="Scene" hidden></nav><a class="brand" href="#"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 64 64"><defs><linearGradient id="element-crest" x2="0" y2="1"><stop stop-color="#fff1a3"/><stop offset="1" stop-color="#d9a340"/></linearGradient></defs><path fill="url(#element-crest)" fill-rule="evenodd" d="M32 2 42 21 62 32 43 43 32 62 21 43 2 32 21 21Zm0 14L16 32l16 16 16-16Z"/></svg></span> ELEMENT<span>ARENA</span></a><div class="top-links"><div id="account-nav" class="account-nav"></div><button type="button" class="quiet home-settings" id="home-settings" aria-label="Settings" title="Settings">${menuIcon("settings")}</button><details class="header-menu" id="header-menu"><summary><i class="menu-burger" aria-hidden="true">☰</i><i class="menu-gear" aria-hidden="true">${menuIcon("settings")}</i> <span>Menu</span></summary><div class="header-menu-panel"><button class="quiet" id="help">${menuIcon("help")}<span>How to play</span></button><button class="quiet" id="settings">${menuIcon("settings")}<span>Settings</span></button><button class="quiet" id="leaderboard">${menuIcon("leaderboard")}<span>Leaderboard</span></button><button class="quiet" id="install-app">${menuIcon("fullscreen")}<span>Want fullscreen?</span></button><button class="quiet" id="report-problem">${menuIcon("report")}<span>Report a problem</span></button><button class="quiet" id="menu-logout">${menuIcon("leave")}<span>Log out</span></button><span class="connection" id="connection">Connecting</span></div></details></div></header><main><section id="menu"></section><section id="battle" hidden>${stadiumCrowd()}<div id="practice-controls" class="practice-controls" hidden></div><div id="hud" class="hud"></div><div class="arena-stage"><div class="arena-frame"><div id="game"></div><div id="arena-overlay"></div><div id="spectate" class="spectate-banner" role="status" hidden></div><span class="map-label">ELEMENTAL COLISEUM <span>01 / CHAMPIONS COURT</span></span></div></div><div id="mobile-controls"></div><div id="abilities" class="ability-bar"></div><div class="battle-footer"><span id="control-hints"></span><span id="network">AUTHORITATIVE ONLINE MATCH</span><button class="quiet" id="battle-menu" aria-label="Battle settings" title="Battle settings (Esc / controller Menu)">${menuIcon("settings")}</button></div></section></main><div id="toast" role="status"></div><dialog id="dialog"></dialog>`;
 // Measure wrapped HUDs for phone spacing and desktop boss-specific controls.
 let measuredRaidHud: HTMLElement | null = null;
 let battleLayoutFrame = 0;
@@ -365,6 +398,12 @@ battleHudSize.observe($("abilities"));
 watchBattleZoom();
 const homeNavigation = setupHomeNavigation($("menu"), () => showSettings());
 $("home-settings").onclick = () => showSettings();
+$("hub-scenes").onclick = (event) => {
+  const button = (event.target as Element).closest<HTMLElement>(
+    "[data-hub-scene]",
+  );
+  if (button) setHubScene(button.dataset.hubScene as HubScene);
+};
 const headerMenu = $("header-menu") as HTMLDetailsElement;
 // A dropdown-to-dialog transition keeps the same page position throughout.
 lockScrollWhileOpen($<HTMLDialogElement>("dialog"), headerMenu);
@@ -1248,8 +1287,94 @@ const pvpSpectator = new PvpSpectator();
 const roomInvites = new RoomInvites({
   accountId: () => accountsUI?.account?.id,
   canJoin: () => connected && !!accountsUI?.account && !myId,
-  join: joinByCode,
+  join: (code, mode) => (mode === "party" ? acceptParty(code) : joinByCode(code)),
+  decline: (code) => void request("party-decline", { code }),
 });
+/** Your party on the Lobby (hub redesign phase 2b), or null. */
+let party: PartyState = null;
+let partyRoomSent = "";
+let partyCharacterSent = "";
+const partyLeader = () =>
+  !!party && party.leader === accountsUI?.account?.id;
+async function acceptParty(code: string) {
+  if (!accountsUI.ensurePlayer()) return false;
+  if (myId) {
+    toast("Leave your current room first.");
+    return false;
+  }
+  const reply = await request("party-accept", { code, character: selected });
+  if (!reply.ok) {
+    toast(reply.error ?? "That party is no longer open.");
+    return false;
+  }
+  partyCharacterSent = selected;
+  setHubScene("lobby");
+  return true;
+}
+/** Invite a friend into your party: online friends, one tap each. */
+async function showPartyInvite() {
+  if (!accountsUI.ensurePlayer()) return;
+  dialog(
+    `<div class="party-invite"><span class="eyebrow">Party</span><h2>Invite a friend</h2><p class="muted">Friends join you on the Lobby stage. When you press PLAY, they follow you into the room.</p><div id="party-invite-list"><p class="muted">Loading your friends…</p></div></div>`,
+  );
+  try {
+    const list = await accountsUI.nearbyFriends();
+    const online = list.friends.filter((f) => f.online);
+    const box = document.getElementById("party-invite-list");
+    if (!box) return;
+    box.innerHTML = online.length
+      ? `<ul class="party-invite-list">${online
+          .map(
+            (f) =>
+              `<li><span><b>${escape(f.name)}</b><small>Online</small></span><button type="button" class="secondary" data-party-invite="${f.id}">${iconLabel("add-friend", "Invite")}</button></li>`,
+          )
+          .join("")}</ul>`
+      : `<p class="muted">None of your friends are online right now.</p><p><button type="button" class="secondary" id="party-open-friends">${iconLabel("friends", "Open Friends")}</button></p>`;
+    document.getElementById("party-open-friends")?.addEventListener("click", () =>
+      void accountsUI.showFriends(),
+    );
+    box.querySelectorAll<HTMLButtonElement>("[data-party-invite]").forEach(
+      (button) =>
+        (button.onclick = async () => {
+          button.disabled = true;
+          const reply = await request("party-invite", {
+            playerId: button.dataset.partyInvite,
+            character: selected,
+          });
+          if (reply.ok) {
+            partyCharacterSent = selected;
+            button.innerHTML = iconLabel("check", "Invited");
+          } else {
+            button.disabled = false;
+            toast(reply.error ?? "Couldn't send this invitation.");
+          }
+        }),
+    );
+  } catch {
+    const box = document.getElementById("party-invite-list");
+    if (box)
+      box.innerHTML = `<p class="muted">Couldn't load your friends. Try again.</p>`;
+  }
+}
+/** Keep the party in step: your fighter, and your room when you lead. */
+function syncParty() {
+  if (!party || party.members.length < 2) return;
+  if (!myId && partyCharacterSent !== selected) {
+    partyCharacterSent = selected;
+    socket.emit("party-character", { character: selected });
+  }
+  if (
+    myId &&
+    partyLeader() &&
+    state?.phase === "lobby" &&
+    !state.practice &&
+    state.code &&
+    state.code !== partyRoomSent
+  ) {
+    partyRoomSent = state.code;
+    void request("party-room");
+  }
+}
 async function watchRoom(raw: string) {
   if (!accountsUI.ensurePlayer()) return;
   const code = raw.trim().toUpperCase();
@@ -1467,17 +1592,17 @@ function renderGate() {
   }
 }
 
-let town: ReturnType<typeof openTown> | undefined;
-let townLook = "";
-let townInvitePending = false;
-let townRetry: ReturnType<typeof setTimeout> | undefined;
-let wantedTownClosed = false;
+let plaza: PlazaScreen | undefined;
+let plazaLook = "";
+let plazaLow = false;
+let plazaRetry: ReturnType<typeof setTimeout> | undefined;
+let wantedPlazaClosed = false;
 /**
- * The town is the hub: open whenever a signed-in, connected player is not in
- * a room (and not about to resume or join one); closed otherwise.
+ * The hub (Lobby, Plaza, Farm): open whenever a signed-in, connected player
+ * is not in a room (and not about to resume or join one); closed otherwise.
  */
 function syncTown() {
-  const want =
+  const hub =
     !!accountsUI?.account &&
     connected &&
     !myId &&
@@ -1485,91 +1610,82 @@ function syncTown() {
     !state &&
     !sessionStorage.getItem("arena-token") &&
     !pendingInvite();
+  syncHubScenes(hub);
+  syncParty();
+  syncLobby(hub && hubScene === "lobby");
+  syncFarm(hub && hubScene === "farm");
+  syncPlaza(hub && hubScene === "plaza");
+}
+/** The new Plaza (hub redesign phase 3): the server moves everyone in it. */
+function syncPlaza(want: boolean) {
   if (!want) {
-    if (town) {
-      wantedTownClosed = true;
-      town.close();
-      wantedTownClosed = false;
+    if (plaza) {
+      wantedPlazaClosed = true;
+      plaza.close();
+      wantedPlazaClosed = false;
     }
     return;
   }
-  const look = townOutfitKey(
-    selected,
-    accountsUI.economy?.looks[selected],
-    accountsUI.raidLook,
-  );
-  if (town) {
-    if (look !== townLook) town.look(selected);
-    townLook = look;
+  const skin = accountsUI.economy?.looks[selected] ?? null;
+  const look = townOutfitKey(selected, skin, accountsUI.raidLook);
+  if (plaza) {
+    if (look !== plazaLook) plaza.look(selected, skin);
+    plazaLook = look;
     return;
   }
-  if (townRetry) return;
-  townLook = look;
-  town = openTown({
+  if (plazaRetry) return;
+  plazaLook = look;
+  plazaLow = lowGraphics();
+  plaza = openPlazaScreen({
     socket,
     character: selected,
-    request,
+    skin,
     reduced: reducedMotion,
-    onPortal: (spot) => {
-      if (spot.id === "raids")
-        void accountsUI.showRaidHub(spot.boss ?? state?.raid?.boss);
-      else if (spot.id === "shop") void accountsUI.showShop(spot.tab);
-      else if (spot.id === "wardrobe") void accountsUI.showWardrobe();
-      else if (spot.id === "missions") void accountsUI.showMissions();
-      else if (spot.id === "leaderboard") $("leaderboard").click();
-      else homeNavigation.open("play");
-    },
-    loadNearbyFriends: () => accountsUI.nearbyFriends(),
-    onInspect: (profile) => dialog(playerCardMarkup(profile)),
-    onAddFriend: (playerId) => accountsUI.friendRequest({ playerId }),
-    onInviteFriend: async (playerId) => {
-      if (townInvitePending) return false;
-      if (!connected) {
-        toast("Waiting for the server connection.");
-        return false;
+    low: plazaLow,
+    art: (character, worn) =>
+      "data:image/svg+xml;charset=utf-8," +
+      encodeURIComponent(
+        fighterArt(
+          (Object.hasOwn(CHARACTERS, character)
+            ? character
+            : "voltkit") as CharacterId,
+          undefined,
+          worn,
+        ),
+      ),
+    skinName: (id) => CHAMPION_SKIN_BY_ID[id]?.name ?? null,
+    fighterName: (id) =>
+      CHARACTERS[id as CharacterId]?.name ?? "Fighter",
+    playerName: () => accountsUI.account?.displayName ?? "You",
+    loadProgress: async () =>
+      (await accountsUI.api("/api/plaza")) as PlazaProgress,
+    goFarm: () => setHubScene("farm"),
+    onPlayer: async (action, playerId) => {
+      if (action === "friend") {
+        await accountsUI.friendRequest({ playerId });
+        return;
       }
-      townInvitePending = true;
-      try {
-        // Town has no room yet. Create a private duel lobby before sending the
-        // same authenticated invitation used by the Friends list.
-        if (!myId) {
-          roomMode = "duel";
-          const reply = await request("create", {
-            name: accountsUI.account?.displayName ?? "Player",
-            mode: roomMode,
-          });
-          identity(reply);
-          if (!reply.ok) return false;
-          await request("select", selected);
-        }
-        const reply = await request("room-invite", { playerId });
-        toast(
-          reply.ok
-            ? "Room invite sent. Your friend can join from the invitation."
-            : (reply.error ??
-                "Couldn't send this invitation. Try again from Friends."),
-        );
-        return reply.ok;
-      } finally {
-        townInvitePending = false;
-      }
+      const reply = await request("party-invite", {
+        playerId,
+        character: selected,
+      });
+      if (reply.ok) partyCharacterSent = selected;
+      toast(
+        reply.ok
+          ? "Party invitation sent."
+          : (reply.error ?? "Couldn't send this invitation."),
+      );
     },
-    onAction: (action) => {
-      if (action === "play") homeNavigation.open("play");
-      else if (action === "fighters") homeNavigation.open("fighters");
-      else if (action === "wardrobe") void accountsUI.showWardrobe();
-      else if (action === "friends") void accountsUI.showFriends();
-      else if (action === "adventure") void accountsUI.showAdventure();
-      else if (action === "raids") void showRaidBestiary();
-    },
+    toast,
+    onLeaves: (balance) => accountsUI.setLeaves(balance),
     onClose: (failed) => {
-      town = undefined;
-      if (wantedTownClosed) return;
-      // Closed by the server or a dropped connection: back in when possible
-      // (and not in a tight loop if the server keeps refusing).
-      townRetry = setTimeout(
+      plaza = undefined;
+      if (wantedPlazaClosed) return;
+      // Closed by the server or refused: back in when possible (and not in a
+      // tight loop if the server keeps refusing).
+      plazaRetry = setTimeout(
         () => {
-          townRetry = undefined;
+          plazaRetry = undefined;
           syncTown();
         },
         failed ? 15000 : 1500,
@@ -1579,6 +1695,201 @@ function syncTown() {
 }
 async function showRaidBestiary() {
   await accountsUI.showRaidHub(state?.raid?.boss);
+}
+/** The hub's scenes (Lobby, Plaza, later Farm), switched from the top bar. */
+let hubScene: HubScene = savedHubScene();
+let lobby: LobbyHandle | undefined;
+let lobbyFriends: { requests: number; online: number | null } = {
+  requests: 0,
+  online: null,
+};
+let lobbyFriendsTimer: ReturnType<typeof setInterval> | undefined;
+function syncHubScenes(hub: boolean) {
+  const nav = $("hub-scenes");
+  nav.hidden = !hub;
+  document.body.classList.toggle("hub-active", hub);
+  if (!hub) return;
+  const markup = sceneSwitchMarkup(hubScene);
+  if (nav.innerHTML !== markup) nav.innerHTML = markup;
+}
+function setHubScene(scene: HubScene) {
+  if (!sceneAvailable(scene) || scene === hubScene) return;
+  hubScene = scene;
+  saveHubScene(scene);
+  homeNavigation.close();
+  syncTown();
+}
+async function refreshLobbyFriends() {
+  try {
+    const list = await accountsUI.nearbyFriends();
+    lobbyFriends = {
+      requests: list.incoming.length,
+      online: list.friends.filter((f) => f.online).length,
+    };
+  } catch {
+    /* Friends are optional on the Lobby. */
+  }
+  syncLobby(!!lobby);
+}
+function lobbyView() {
+  const me = accountsUI.account?.id;
+  return {
+    character: selected,
+    party: (party?.members ?? [])
+      .filter((m) => m.id !== me)
+      .slice(0, 3)
+      .map((m) => ({
+        name: m.name,
+        character: (Object.hasOwn(CHARACTERS, m.character)
+          ? m.character
+          : "voltkit") as CharacterId,
+        leader: m.id === party!.leader,
+      })),
+    partySize: party?.members.length ?? 0,
+    economy: accountsUI.economy ?? undefined,
+    friendRequests: lobbyFriends.requests,
+    friendsOnline: lobbyFriends.online,
+  };
+}
+function syncLobby(want: boolean) {
+  if (!want) {
+    if (lobby) {
+      lobby.close();
+      lobby = undefined;
+      clearInterval(lobbyFriendsTimer);
+    }
+    return;
+  }
+  if (!lobby) {
+    lobby = openLobby({
+      reduced: reducedMotion,
+      onAction: lobbyAction,
+      onPlay: (mode) => void lobbyPlay(mode),
+      onStep: stepHomeFighter,
+    });
+    void refreshLobbyFriends();
+    lobbyFriendsTimer = setInterval(() => void refreshLobbyFriends(), 60000);
+  }
+  lobby.update(lobbyView());
+}
+/** The Farm scene (hub redesign phase 4): server state, server time. */
+let farmScreen: FarmScreen | undefined;
+function syncFarm(want: boolean) {
+  if (!want) {
+    farmScreen?.close();
+    farmScreen = undefined;
+    return;
+  }
+  if (farmScreen) return;
+  farmScreen = openFarmScreen({
+    reduced: reducedMotion,
+    load: async () => (await accountsUI.api("/api/farm")) as FarmState,
+    act: async (actions) =>
+      (await accountsUI.api("/api/farm/act", {
+        request: crypto.randomUUID(),
+        actions,
+      })) as FarmActResult,
+    trade: async (lots) => {
+      await accountsUI.api("/api/leaves/trade", { lots });
+      await accountsUI.loadEconomy();
+    },
+    toast,
+    playerName: () => accountsUI.account?.displayName ?? "Your",
+    character: () => selected,
+    economy: () => accountsUI.economy ?? undefined,
+    onLeaves: (balance) => accountsUI.setLeaves(balance),
+    master: async (crop) =>
+      (await accountsUI.api("/api/farm/master", {
+        request: crypto.randomUUID(),
+        crop,
+      })) as Awaited<ReturnType<FarmScreenOptions["master"]>>,
+    wish: async () =>
+      (await accountsUI.api("/api/farm/wish", {})) as Awaited<
+        ReturnType<FarmScreenOptions["wish"]>
+      >,
+    order: async (slot, kind) =>
+      (await accountsUI.api("/api/farm/order", {
+        request: crypto.randomUUID(),
+        slot,
+        kind,
+      })) as FarmOrderResult,
+    friends: async () =>
+      (await accountsUI.api("/api/farm/friends")) as FarmFriend[],
+    visit: async (id) =>
+      (await accountsUI.api(
+        `/api/farm/visit/${encodeURIComponent(id)}`,
+      )) as FarmVisit,
+    visitAct: async (friend, actions) =>
+      (await accountsUI.api("/api/farm/visit/act", {
+        request: crypto.randomUUID(),
+        friend,
+        actions,
+      })) as FarmVisitResult,
+    art: (character) =>
+      "data:image/svg+xml;charset=utf-8," +
+      encodeURIComponent(
+        fighterAvatar(
+          (Object.hasOwn(CHARACTERS, character)
+            ? character
+            : "voltkit") as CharacterId,
+          `order-${character}`,
+        ),
+      ),
+  });
+}
+/** Menu, cards and party slots on the Lobby. */
+function lobbyAction(action: LobbyAction) {
+  audio.unlock();
+  if (action === "fighters") homeNavigation.open("fighters");
+  else if (action === "more-play") homeNavigation.open("play");
+  else if (action === "wardrobe") void accountsUI.showWardrobe();
+  else if (action === "shop") void accountsUI.showShop();
+  else if (action === "raids") void showRaidBestiary();
+  else if (action === "journey") void accountsUI.showAdventure();
+  else if (action === "missions") void accountsUI.showMissions();
+  else if (action === "ranks") $("leaderboard").click();
+  else if (action === "invite") void showPartyInvite();
+  else if (action === "leave-party") void request("party-leave");
+  else if (action === "farm") setHubScene("farm");
+  else void accountsUI.showFriends();
+}
+/** PLAY: the remembered mode, through the same controls as the Play panel. */
+async function lobbyPlay(mode: LobbyMode) {
+  audio.unlock();
+  if (!accountsUI.ensurePlayer()) return;
+  if (!connected) return toast("Waiting for the server connection.");
+  const size = party?.members.length ?? 0;
+  if (size > 1) {
+    if (!partyLeader())
+      return toast("Your party leader starts the game. Leave the party to play on your own.");
+    if (mode.startsWith("bot-") || mode === "practice")
+      return toast("With a party, choose a room: 1v1, 2v2, Free-for-all or Boss Raid.");
+    if ((mode === "duel" && size > 2) || (mode === "teams" && size > 4))
+      return toast(`Your party has ${size} players: choose 2v2 Teams, Free-for-all or Boss Raid.`);
+  }
+  if (mode === "raid") return void accountsUI.showRaidHub();
+  if (mode === "practice") return document.getElementById("practice")?.click();
+  if (mode.startsWith("bot-")) {
+    document
+      .querySelector<HTMLButtonElement>(`#menu [data-bot="${mode.slice(4)}"]`)
+      ?.click();
+    return document.getElementById("bot-match")?.click();
+  }
+  document
+    .querySelector<HTMLButtonElement>(`#menu [data-mode="${mode}"]`)
+    ?.click();
+  document.getElementById("play-create")?.click();
+}
+/** The Lobby's ‹ › arrows: the previous or next fighter on the roster. */
+function stepHomeFighter(direction: -1 | 1) {
+  audio.unlock();
+  const ids = Object.keys(CHARACTERS) as CharacterId[];
+  const next =
+    ids[(ids.indexOf(selected) + direction + ids.length) % ids.length];
+  selected = next;
+  rememberHomeFighter(next);
+  renderMenu();
+  syncTown();
 }
 /** Start a raid or safe attack practice from the Raid Hub. */
 async function startRaid(
@@ -2634,6 +2945,22 @@ socket.on("account-changed", () => void accountsUI.refresh());
 // Coins, missions or Awakening changed after a match or raid.
 socket.on("economy-changed", () => void accountsUI.loadEconomy());
 socket.on("room-invite", (data: unknown) => roomInvites.receive(data));
+socket.on("party", (data: unknown) => {
+  const parsed = partyStateSchema.safeParse(data);
+  if (!parsed.success) return;
+  const was = party?.members.length ?? 0;
+  party = parsed.data;
+  if (!party) partyRoomSent = "";
+  if (party && party.members.length > was && was > 0)
+    toast(`${party.members.at(-1)!.name} joined your party.`);
+  syncTown();
+});
+socket.on("party-room", (data: unknown) => {
+  const parsed = partyRoomSchema.safeParse(data);
+  if (!parsed.success || myId || !party) return;
+  toast("Following your party leader into the room…");
+  void joinByCode(parsed.data.code);
+});
 socket.on("friends-changed", () => {
   if (accountsUI.friendsOpen) void accountsUI.loadFriends();
   else
@@ -2915,11 +3242,11 @@ function bindGraphicsCard() {
         other.setAttribute("aria-checked", String(other === b));
       const note = document.querySelector(".prefs-graphics-note");
       if (note) note.innerHTML = graphicsNote(value);
-      // The town behind the dialog reloads at the new quality.
-      if (town && town.graphics() !== (lowGraphics() ? "low" : "high")) {
-        wantedTownClosed = true;
-        town.close();
-        wantedTownClosed = false;
+      // The Plaza behind the dialog reloads at the new quality.
+      if (plaza && plazaLow !== lowGraphics()) {
+        wantedPlazaClosed = true;
+        plaza.close();
+        wantedPlazaClosed = false;
         syncTown();
       }
     };
@@ -2949,7 +3276,7 @@ function showSettings() {
   settingsOpen = true;
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   dialog(
-    `<div class="settings-screen"><h2>Settings</h2>${state?.practice && touch.enabled ? `<div class="settings-quick-actions"><button id="settings-practice" class="secondary btn-secondary">${iconLabel("target", "Practice")}</button></div>` : ""}<p class="prefs-note">Online matches keep running while this is open.</p><div class="prefs-grid"><section class="prefs-card" aria-labelledby="prefs-sound"><h3 id="prefs-sound">${menuIcon("sound")}Sound</h3>${prefSlider("music", "Music", audio.music, { min: 0, max: 1, step: 0.01 })}${prefSlider("effects", "Sound effects", audio.effects, { min: 0, max: 1, step: 0.01 })}</section><section class="prefs-card" aria-labelledby="prefs-motion"><h3 id="prefs-motion">${menuIcon("motion")}Motion</h3><p class="prefs-status"><b class="${reduced ? "is-on" : ""}">Reduced motion ${reduced ? "on" : "off"}</b><span>Follows your device's accessibility setting.</span></p></section>${state ? "" : graphicsCard()}</div><div class="settings-actions"><button id="open-controls" class="secondary btn-secondary">${iconLabel("keyboard", "Controls &amp; key bindings")}</button>${myId ? leaveButton() : watching ? `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>` : ""}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button><button id="settings-credits" class="quiet">${iconLabel("star", "Credits")}</button></div></div>`,
+    `<div class="settings-screen"><h2>Settings</h2>${state?.practice && touch.enabled ? `<div class="settings-quick-actions"><button id="settings-practice" class="secondary btn-secondary">${iconLabel("target", "Practice")}</button></div>` : ""}<p class="prefs-note">Online matches keep running while this is open.</p><div class="prefs-grid"><section class="prefs-card" aria-labelledby="prefs-sound"><h3 id="prefs-sound">${menuIcon("sound")}Sound</h3>${prefSlider("music", "Music", audio.music, { min: 0, max: 1, step: 0.01 })}${prefSlider("effects", "Sound effects", audio.effects, { min: 0, max: 1, step: 0.01 })}</section><section class="prefs-card" aria-labelledby="prefs-motion"><h3 id="prefs-motion">${menuIcon("motion")}Motion</h3><p class="prefs-status"><b class="${reduced ? "is-on" : ""}">Reduced motion ${reduced ? "on" : "off"}</b><span>Follows your device's accessibility setting.</span></p></section>${state ? "" : displayCard() + graphicsCard()}</div><div class="settings-actions"><button id="open-controls" class="secondary btn-secondary">${iconLabel("keyboard", "Controls &amp; key bindings")}</button>${myId ? leaveButton() : watching ? `<button id="exit-room" class="secondary btn-secondary leave-button">${iconLabel("stop-watching", "Stop watching")}</button>` : ""}<button id="settings-report" class="quiet">${iconLabel("report", "Report a problem")}</button><button id="settings-credits" class="quiet">${iconLabel("star", "Credits")}</button></div></div>`,
   );
   bindGraphicsCard();
   for (const kind of ["music", "effects"] as const)
@@ -2967,11 +3294,41 @@ function showSettings() {
       settingsOpen = false;
       ($("practice-settings") as HTMLDetailsElement).open = true;
     };
+  bindDisplayCard();
   $("open-controls").onclick = showControls;
   $("settings-report").onclick = () => accountsUI.showReport(reportContext());
   $("settings-credits").onclick = showCredits;
   const exitRoom = $("exit-room");
   if (exitRoom) exitRoom.onclick = () => void leave();
+}
+/** Settings → Display: full screen on and off (where the browser allows it). */
+const fullscreenSupported = () =>
+  !!document.documentElement.requestFullscreen &&
+  document.fullscreenEnabled !== false;
+function displayCard() {
+  const on = !!document.fullscreenElement;
+  return `<section class="prefs-card prefs-display" aria-labelledby="prefs-display"><h3 id="prefs-display">${menuIcon("fullscreen")}Display</h3><div class="prefs-toggle-row"><span><b>Full screen</b><small>${fullscreenSupported() ? "Hide the browser's bars while you play." : "On iPhone, add the game to your Home Screen to play full screen."}</small></span><button type="button" class="prefs-switch" id="settings-fullscreen" role="switch" aria-checked="${on}" ${fullscreenSupported() ? "" : "disabled"}><span>${on ? "On" : "Off"}</span></button></div></section>`;
+}
+function syncDisplayCard() {
+  const button = document.getElementById("settings-fullscreen");
+  if (!button) return;
+  const on = !!document.fullscreenElement;
+  button.setAttribute("aria-checked", String(on));
+  button.querySelector("span")!.textContent = on ? "On" : "Off";
+}
+document.addEventListener("fullscreenchange", syncDisplayCard);
+function bindDisplayCard() {
+  const button = document.getElementById("settings-fullscreen");
+  if (!button) return;
+  button.onclick = async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen();
+    } catch {
+      toast("Full screen isn't available in this browser.");
+    }
+    syncDisplayCard();
+  };
 }
 /** Who and what made the game (opened from Settings, with a way back). */
 function showCredits() {
@@ -3168,7 +3525,12 @@ class ArenaScene extends Phaser.Scene {
       } else {
         const g = this.make.graphics({}, false);
         paintArenaFloor(scaledPainter(g, bake), ARENAS[id as ArenaId]);
-        generateGraphicsTexture(g, key, RULES.width * bake, RULES.height * bake);
+        generateGraphicsTexture(
+          g,
+          key,
+          RULES.width * bake,
+          RULES.height * bake,
+        );
         g.destroy();
       }
     }
@@ -5193,6 +5555,7 @@ function syncBattleLoop() {
 }
 accountsUI = new AccountUI({
   selectedCharacter: () => selected,
+  openFarm: () => setHubScene("farm"),
   openDialog: dialog,
   startRaid: (boss, options) => void startRaid(boss, options),
   startAdventure: (mode) => void startAdventure(mode),

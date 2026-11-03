@@ -45,7 +45,7 @@ it("keeps live activity authoritative over historical timestamps", () => {
       },
       now,
     ),
-  ).toBe("In town");
+  ).toBe("In the Plaza");
   expect(
     friendStatus(
       {

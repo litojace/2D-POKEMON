@@ -172,7 +172,7 @@ describe("friends hub", () => {
     );
     expect(
       friendStatus({ id: "x", name: "X", online: true, activity: "town" }),
-    ).toBe("In town");
+    ).toBe("In the Plaza");
     expect(
       friendStatus({
         id: "x",

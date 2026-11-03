@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openTown, openTownMenu, snap } from "./helpers";
+import { openHub, snap, hubMenu } from "./helpers";
 
 for (const viewport of [
   { width: 1440, height: 900 },
@@ -15,7 +15,7 @@ for (const viewport of [
     });
     try {
       const page = await context.newPage();
-      const errors = await openTown(page);
+      const errors = await openHub(page);
       await page.evaluate(() => {
         const fetch = window.fetch.bind(window);
         window.fetch = async (input, init) => {
@@ -38,8 +38,7 @@ for (const viewport of [
           return fetch(input, init);
         };
       });
-      await openTownMenu(page);
-      await page.click('#town-menu-items [data-action="raids"]');
+      await hubMenu(page, "raids");
       await expect(page.locator(".raid-roster-card")).toHaveCount(7);
       await expect(
         page.locator(".raid-week, .raid-today, #raid-daily"),
@@ -60,8 +59,7 @@ for (const viewport of [
         "Today's board",
       );
       await page.click("#close-dialog");
-      await openTownMenu(page);
-      await page.click('#town-menu-items [data-action="adventure"]');
+      await hubMenu(page, "journey");
       await expect(page.locator("[data-adventure-tab]")).toHaveCount(3);
       await expect(page.locator(".adventure")).not.toContainText("Boss Rush");
       expect(

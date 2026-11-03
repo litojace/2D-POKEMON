@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openTown, openTownMenu, pushUntilBattle, snap } from "./helpers";
+import { openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
 
 for (const viewport of [
   { width: 1440, height: 900 },
@@ -33,7 +33,7 @@ for (const viewport of [
           });
         },
       );
-      const errors = await openTown(page);
+      const errors = await openHub(page);
       await page.evaluate(() => {
         const w = window as any;
         w.__room("pvp", { mode: "ffa", phase: "playing" });
@@ -49,8 +49,7 @@ for (const viewport of [
           p.titleColor = "#ffd65b";
         });
       });
-      await openTownMenu(page);
-      await page.click(".town-play");
+      await openPlayPanel(page);
       await page.click("#play-create");
       await pushUntilBattle(page);
       await expect(

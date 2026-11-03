@@ -1,3 +1,7 @@
+import type {
+  PlazaProgress,
+  PlazaRecord,
+} from "../../../packages/shared/src/plaza.js";
 import {
   RAID_COSMETICS,
   RAID_SLOTS,
@@ -35,13 +39,15 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "035_level_100_daily_spark.sql";
+export const LATEST_MIGRATION = "048_farm_decor.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
   recordRaid?(receipt: RaidReceipt): Promise<void>;
   /** Coins, missions and Mythic progress after a real match or raid. */
   recordActivity?(receipt: ActivityReceipt): Promise<void>;
+  /** Something the game server saw in the Plaza (quests, orbs, laps); returns the player's progress. */
+  recordPlaza?(event: PlazaRecord): Promise<PlazaProgress | null>;
   authenticate(token: string): Promise<Account | null>;
   rpc(
     token: string,
@@ -88,6 +94,21 @@ export function createAccountProvider(): AccountProvider {
       });
       if (result.error)
         throw new AccountError(503, "Raid rewards could not be stored.");
+    },
+    async recordPlaza(event) {
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!url || !serviceKey)
+        throw new AccountError(
+          503,
+          "Plaza rewards require server storage configuration.",
+        );
+      const admin = createClient(url, serviceKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      const result = await admin.rpc("arena_plaza_record", { p: event });
+      if (result.error)
+        throw new AccountError(503, "Plaza rewards could not be stored.");
+      return (result.data as PlazaProgress | null) ?? null;
     },
     async recordActivity(receipt) {
       const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -353,6 +374,226 @@ export function installAccountRoutes(
       });
       onPlayerChanged(account.id);
       res.json({ ok: true, economy });
+    }),
+  );
+  // Gold Leaves: 100 leaves → 5 coins, up to 40 coins a day (migration 036).
+  app.post(
+    "/api/leaves/trade",
+    route(false, async (req, res, token, account) => {
+      const data = z
+        .object({ lots: z.number().int().min(1).max(8) })
+        .strict()
+        .parse(req.body);
+      const economy = await provider.rpc(token, "arena_trade_leaves", {
+        p_lots: data.lots,
+      });
+      onPlayerChanged(account.id);
+      res.json({ ok: true, economy });
+    }),
+  );
+  // The Plaza (migration 038): today's quests and the TOP DASH board.
+  app.get(
+    "/api/plaza",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await provider.rpc(token, "arena_plaza", {}));
+    }),
+  );
+  // The farm (migration 037): its state at the server's time, and actions.
+  app.get(
+    "/api/farm",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await provider.rpc(token, "arena_farm", {}));
+    }),
+  );
+  const farmAction = z
+    .object({
+      a: z.enum([
+        "plant",
+        "water",
+        "fertilize",
+        "harvest",
+        "dig",
+        "buy-seeds",
+        "buy-land",
+        "sell",
+        "buy-fertilizer",
+        "upgrade-barn",
+        "catch",
+        "buy-tool",
+        "hire-dog",
+        "shoo",
+        "farmer",
+        "perk",
+        "decor",
+        "decor-remove",
+      ]),
+      plot: z.number().int().min(0).max(49).optional(),
+      slot: z.number().int().min(0).max(7).optional(),
+      item: z
+        .string()
+        .max(32)
+        .regex(/^[a-z0-9]+$/)
+        .optional(),
+      tool: z
+        .enum([
+          "net",
+          "sickle",
+          "scarecrow",
+          "can2",
+          "net2",
+          "can3",
+          "sprinkler",
+        ])
+        .optional(),
+      dog: z.enum(["gold", "black", "cream"]).optional(),
+      id: z
+        .enum([
+          "voltkit",
+          "cindrake",
+          "tidefin",
+          "auralynx",
+          "lumoth",
+          "mystowl",
+          "terradon",
+          "duskveil",
+        ])
+        .optional(),
+      days: z.union([z.literal(1), z.literal(3)]).optional(),
+      crop: z
+        .string()
+        .max(32)
+        .regex(/^[a-z]+$/)
+        .optional(),
+      kind: z.enum(["norm", "super", "gold"]).optional(),
+      mutation: z
+        .string()
+        .max(64)
+        .regex(/^[a-z+]*$/)
+        .optional(),
+      qty: z.number().int().min(1).max(10000).optional(),
+    })
+    .strict();
+  // Crop mastery: buy a crop's next star (migration 043).
+  app.post(
+    "/api/farm/master",
+    route(false, async (req, res, token, account) => {
+      const data = z
+        .object({
+          request: z.string().uuid(),
+          crop: z
+            .string()
+            .max(32)
+            .regex(/^[a-z]+$/),
+        })
+        .strict()
+        .parse(req.body);
+      const result = await provider.rpc(token, "arena_farm_master", {
+        p_request: data.request,
+        p_crop: data.crop,
+      });
+      onPlayerChanged(account.id);
+      res.json(result);
+    }),
+  );
+  // The wishing well: 3 seeds once a Pacific day (migration 042).
+  app.post(
+    "/api/farm/wish",
+    route(false, async (_req, res, token) => {
+      res.json(await provider.rpc(token, "arena_farm_wish", {}));
+    }),
+  );
+  // Deliver or skip an order on the farm's board (migration 040).
+  app.post(
+    "/api/farm/order",
+    route(false, async (req, res, token, account) => {
+      const data = z
+        .object({
+          request: z.string().uuid(),
+          slot: z.number().int().min(0).max(2),
+          kind: z.enum(["deliver", "skip"]),
+        })
+        .strict()
+        .parse(req.body);
+      const result = await provider.rpc(token, "arena_farm_order", {
+        p_request: data.request,
+        p_slot: data.slot,
+        p_kind: data.kind,
+      });
+      onPlayerChanged(account.id);
+      res.json(result);
+    }),
+  );
+  app.post(
+    "/api/farm/act",
+    route(false, async (req, res, token, account) => {
+      const data = z
+        .object({
+          request: z.string().uuid(),
+          actions: z.array(farmAction).min(1).max(60),
+        })
+        .strict()
+        .parse(req.body);
+      const result = await provider.rpc(token, "arena_farm_act", {
+        p_request: data.request,
+        p_actions: data.actions,
+      });
+      // Selling and buying change the leaf wallet shown in the top bar.
+      if (data.actions.some((x) => x.a !== "water" && x.a !== "harvest"))
+        onPlayerChanged(account.id);
+      res.json(result);
+    }),
+  );
+  // Friends' farms (migration 047): the list, a visit, and helping or
+  // sneaking there.
+  app.get(
+    "/api/farm/friends",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await provider.rpc(token, "arena_farm_friends", {}));
+    }),
+  );
+  app.get(
+    "/api/farm/visit/:id",
+    route(false, async (req, res, token) => {
+      const friend = z.string().uuid().parse(req.params.id);
+      res.setHeader("Cache-Control", "no-store");
+      res.json(
+        await provider.rpc(token, "arena_farm_friend", { p_friend: friend }),
+      );
+    }),
+  );
+  app.post(
+    "/api/farm/visit/act",
+    route(false, async (req, res, token, account) => {
+      const data = z
+        .object({
+          request: z.string().uuid(),
+          friend: z.string().uuid(),
+          actions: z
+            .array(
+              z
+                .object({
+                  a: z.enum(["water", "catch", "sneak", "prank"]),
+                  plot: z.number().int().min(0).max(49),
+                })
+                .strict(),
+            )
+            .min(1)
+            .max(30),
+        })
+        .strict()
+        .parse(req.body);
+      const result = await provider.rpc(token, "arena_farm_friend_act", {
+        p_request: data.request,
+        p_friend: data.friend,
+        p_actions: data.actions,
+      });
+      // A dog's fine changes both wallets.
+      onPlayerChanged(account.id);
+      onPlayerChanged(data.friend);
+      res.json(result);
     }),
   );
   app.post(

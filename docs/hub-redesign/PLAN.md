@@ -45,8 +45,9 @@ Defaults accepted with these answers:
   1 Dec 2026, Pacific). The month in progress keeps 20 × 400.
 - The Daily Spark applies to every XP source, and the doubled XP also counts
   for the season (as in the prototype).
-- Migrations are run by the owner in the Supabase SQL Editor. Nothing is
-  written to production unless the owner asks.
+- Migrations: the owner asked (2 Nov 2026) for them to be applied to the
+  production Supabase project as part of the work. Each migration is applied
+  after its pull request merges, then checked with read-only queries.
 - All randomness with economic effect (mutations, market, seed stock, orders,
   dog catches) runs on the server. What must match for everyone (market
   prices, the seed list) is seeded by day or time slot. Seed stock: the same
@@ -59,6 +60,84 @@ Defaults accepted with these answers:
   prototype source and live in shared constants in `packages/shared`.
 - "Elemental Farmer" is used twice in the prototype (farm Lv 100 and the
   25-crop book reward); one gets a new name in the farm systems phase.
+
+## The new Plaza: decisions made while building it (2 Nov 2026)
+
+These numbers are not in NUMBERS.md or the economy model; they are mine and
+open to change.
+
+- **Orb Shower pay:** +2 Gold Leaves an orb (the prototype), at most 10 paying
+  orbs a shower and 50 a Pacific day (100 leaves), so an always-on player
+  can't farm leaves from it. Orbs are spawned and caught by server positions.
+- **Runway cheers:** the prototype's fans were bots. Here the server counts a
+  cheer every 0.6 s you stand on the runway, plus each ❤️ 🔥 👏 emote from
+  another player within 750 px. "15 cheers" takes about 9 s alone.
+- **Ball pitch:** four server bots per Plaza copy (two a side) play Orb Ball
+  with the prototype's brain while anyone is in that copy; a goal counts for
+  your quest when you touched the ball last.
+- **TOP DASH:** each player's best lap of the (Pacific, Monday) week. Laps are
+  timed from server positions; leaving the lane cancels a lap.
+- **Quests** are paid automatically (decision 11), not with Claim buttons.
+- **Old town:** the Plaza tab now opens the new Plaza; the old town is no longer
+  opened from the hub. Its code, art and tests are removed in a follow-up pull
+  request once the Plaza is live (the server keeps answering old clients'
+  town events until then). Tapping a player in the Plaza shows their card with Add friend and
+  Invite to party, in place of the town's Nearby players panel.
+- **Not yet:** treats thrown in the Plaza (farm systems, phase 5), and the
+  photo album (the polaroid can be saved as a picture).
+
+## Farm systems progress (phase 5)
+
+Done (each with its own migration and tests): weather and mutations (039),
+the order board (040), crop book rewards (041), the wishing well (042),
+crop mastery (043), tools and bugs (044), guard dogs and crows (045),
+farmer perks (046), friends' farms (047), decorations and Charm (048).
+
+Still to come: the pasture and treats in the Plaza.
+
+- **Decorations (048), decided:** the prototype's 11 decorations and 8
+  spots; placing replaces what stood there and putting one away doesn't
+  refund it (both as in the prototype). Charm gives +1% farm XP per 2, up
+  to 25%, on every farm XP source. The crop book's 15-crop reward is the
+  Golden Voltkit Statue, free and placeable before its level 75 (farms
+  already past 15 crops get it too).
+
+- **Friends' farms (047), decided:** anyone on your Friends list. Helping
+  (water +2 XP, a bug +3 XP) pays at most 60 XP a Pacific day; sneaking is
+  at most 10 a day, each ripe planting loses at most one crop (its harvest
+  gives one less) and each friend can try it once; a guard dog catches a
+  sneak at its rate (Goldie 25%, Inky 80%, Fluffy 40%) for a 20 leaf fine
+  paid to the owner; 3 pranks a day, blocked by Auralynx's Shield. The
+  prototype's daily seed gift is not in yet. The owner's farm lists who
+  visited.
+
+- **Perks (046), decided:** your farmer is the Lobby fighter you had when
+  you last opened the farm; the farm screen sends it as a `farmer` action.
+  A new farmer first re-baselines every crop at the old speed, so Lumoth's
+  +20% only speeds up time Lumoth was farming and switching fighter never
+  pays retroactively. Terradon (+1 crop) and Duskveil (+1 crop a bug) apply
+  at the moment of the harvest or catch. Mystowl's third forecast is only
+  sent to Mystowl's farm. Zap, Downpour and Warmth are used with a tap,
+  each once a Pacific day (switching fighters can use all three).
+- **Bugs (044), decided:** "on your farm" means the browser asked about the
+  farm less than 150 s ago (the farm screen asks every minute while it is
+  shown). Each request rolls bugs for that time on the server: about 0.18 an
+  hour for each growing plot (the prototype's rate), half with a Scarecrow,
+  at most 2 a plot. A bug slows its crop 20%; catching one pays 1 farm XP.
+  Catching a bug on a ripe crop keeps the moment it ripened, so the weather
+  (and mutation) can't be re-rolled that way.
+- **Dogs and crows (045), decided:** dogs are hired by the day (1 or 3 days,
+  the prototype's prices); hiring the dog on guard adds days, another dog
+  takes over and the old one's time is lost; at most 30 days ahead. Goldie
+  digs 1 gift a day and Fluffy 2 (the prototype's text; its code dug 4 a
+  day), counted from the hire even while you are away. Inky: 30% fewer
+  bugs. Fluffy: Gold ×1.5 for crops that ripened while she was on guard,
+  checked against the hire history so a crop's roll never changes later.
+  Crows use the bug presence rule: about one every 84 minutes on the farm
+  (the prototype's 14–28 farm units), on a ripe crop, only with no Scarecrow
+  and no dog (every dog keeps them away). A crow eats its crop 8 s after
+  landing unless shooed; the server allows 2 s more for the network. The
+  dog waits by its doghouse; walking about comes with the art pass (phase 6).
 
 ## Phases
 
@@ -74,6 +153,10 @@ Each phase: branch from `main`, pull request into `main`. Before every push:
    boxes with tabular numbers; the Lobby / Plaza / Farm switcher (Farm
    hidden); Full screen in Settings; Missions and Journey as Lobby drawers; an
    alignment pass on Shop and Wardrobe. Then party before a room (server).
+   Order change (2 Nov 2026): the Gold Leaves wallet (migration 036) ships with
+   the minimum farm (phase 4), since the farm is where most leaves are earned and
+   spent. The new Plaza (phase 3) follows the farm.
+
 3. **Gold Leaves and the new Plaza.** The leaves wallet; the prototype's Plaza
    map (shared layout, server movement with dash and bounce pads, client art
    from `art.js`); then the leaf features: Orb Shower scheduled and checked on

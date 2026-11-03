@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { box, inside, openTown, openTownMenu, snap } from "./helpers";
+import { box, inside, openHub, snap, hubMenu } from "./helpers";
 for (const viewport of [
   { width: 1440, height: 900 },
   { width: 844, height: 390 },
@@ -18,7 +18,7 @@ for (const viewport of [
     });
     try {
       const page = await context.newPage();
-      const errors = await openTown(page);
+      const errors = await openHub(page);
       await page.evaluate(() => {
         const fetch = window.fetch.bind(window);
         window.fetch = async (input, init) =>
@@ -53,8 +53,7 @@ for (const viewport of [
               )
             : fetch(input, init);
       });
-      await openTownMenu(page);
-      await page.click('[data-action="raids"]');
+      await hubMenu(page, "raids");
       // The Hub may open directly on the last selected boss.
       if (await page.locator(".raid-boss-card").count()) {
         await expect(page.locator(".raid-card-art img")).toHaveCount(7);
@@ -191,7 +190,7 @@ test("locked bosses keep their navigation and unlock instruction visible", async
   });
   try {
     const page = await context.newPage();
-    const errors = await openTown(page);
+    const errors = await openHub(page);
     await page.evaluate(() => {
       const fetch = window.fetch.bind(window);
       window.fetch = async (input, init) =>
@@ -210,8 +209,7 @@ test("locked bosses keep their navigation and unlock instruction visible", async
             )
           : fetch(input, init);
     });
-    await openTownMenu(page);
-    await page.click('[data-action="raids"]');
+    await hubMenu(page, "raids");
     await page.click('.raid-roster-card[data-raid-boss="emberwing"]');
     await expect(page.locator(".raid-showcase-name h2")).toHaveText(
       "Emberwing",

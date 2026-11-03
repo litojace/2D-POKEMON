@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { mkdir, readFile } from "node:fs/promises";
-import { openTown, snap, box, inside } from "./helpers";
+import { openHub, snap, box, inside } from "./helpers";
 
 test.describe.configure({ mode: "parallel" });
 
@@ -115,7 +115,7 @@ for (const size of [
     try {
       const page = await context.newPage();
       await fixtures(page);
-      const errors = await openTown(page);
+      const errors = await openHub(page);
       const header = page.locator(
         "#account-profile [data-portrait-frame=conqueror]",
       );

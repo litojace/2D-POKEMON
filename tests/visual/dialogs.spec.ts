@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { box, inside, openTown, snap } from "./helpers";
+import { box, inside, openHub, snap } from "./helpers";
 
 const SCREENS = [
   { name: "desktop", viewport: { width: 1440, height: 900 }, touch: false },
@@ -13,7 +13,7 @@ for (const s of SCREENS)
     test("Settings fits the screen with every action reachable", async ({
       page,
     }, info) => {
-      const errors = await openTown(page);
+      const errors = await openHub(page);
       await page.evaluate(() => document.getElementById("settings")!.click());
       const dialog = page.locator("#dialog");
       await expect(dialog.locator(".settings-screen")).toBeVisible();
@@ -27,9 +27,10 @@ for (const s of SCREENS)
         await expect(dialog.locator(id)).toBeVisible();
         expect(inside(await box(page, id), screen)).toBe(true);
       }
-      await expect(
-        dialog.locator("#settings-fullscreen, .settings-quick-actions"),
-      ).toHaveCount(0);
+      // In the hub, Settings → Display offers full screen (hub redesign);
+      // battle Settings never shows it (see battle-settings.spec.ts).
+      await expect(dialog.locator("#settings-fullscreen")).toHaveCount(1);
+      await expect(dialog.locator(".settings-quick-actions")).toHaveCount(0);
       // Everything shows at once: the dialog's content doesn't need scrolling.
       const scroll = await dialog
         .locator(".dialog-content")

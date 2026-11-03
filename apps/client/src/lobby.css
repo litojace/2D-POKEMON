@@ -1,0 +1,1121 @@
+/* ── The Lobby (hub redesign phase 2) ──────────────────────────────────────
+   One screen over a blurred painting of the plaza: the menu rail on the left,
+   your fighter and party slots in the middle, cards on the right, the mode
+   and PLAY in the bottom right. Boxes keep fixed sizes so nothing shifts when
+   numbers change; numbers use tabular figures. */
+.lobby-layer {
+  --lobby-top: 92px;
+  --lobby-gutter: max(14px, calc(var(--safe-left, 0px) + 8px));
+  --lobby-gutter-r: max(14px, calc(var(--safe-right, 0px) + 8px));
+  --lobby-bottom: max(18px, calc(var(--safe-bottom, 0px) + 6px));
+  --lobby-rail: 60px;
+  --lobby-cards: 272px;
+  --lobby-glass: rgba(14, 26, 49, 0.84);
+  --lobby-line: rgba(139, 174, 229, 0.25);
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow: hidden;
+  color: #eef2ff;
+  font-family: "DM Sans", system-ui, sans-serif;
+  background: #0b1020;
+}
+.lobby-layer button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.lobby-backdrop {
+  position: absolute;
+  inset: -28px;
+  background: #0b1020 url("/assets/backgrounds/elemental-plaza-small.webp")
+    center 42% / cover no-repeat;
+  filter: blur(5px) saturate(1.05) brightness(0.6);
+  transform: scale(1.04);
+}
+.lobby-layer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      42% 46% at 50% 62%,
+      rgba(255, 214, 91, 0.14),
+      transparent 70%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(11, 16, 32, 0.6),
+      rgba(11, 16, 32, 0) 24%,
+      rgba(11, 16, 32, 0) 68%,
+      rgba(11, 16, 32, 0.7)
+    );
+}
+.lobby-layer > :not(.lobby-backdrop) {
+  position: absolute;
+  z-index: 1;
+}
+
+/* Menu rail. */
+.lobby-rail {
+  left: var(--lobby-gutter);
+  top: var(--lobby-top);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.lobby-rail button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 2px;
+  width: var(--lobby-rail);
+  height: 56px;
+  padding: 0;
+  border: 1px solid var(--lobby-line);
+  border-radius: 14px;
+  background: var(--lobby-glass);
+  backdrop-filter: blur(6px);
+  transition:
+    transform 0.15s ease,
+    border-color 0.15s ease;
+}
+.lobby-rail button:hover,
+.lobby-rail button:focus-visible {
+  border-color: #ffd65b;
+  transform: translateX(2px);
+}
+.lobby-rail svg {
+  width: 22px;
+  height: 22px;
+  color: #ffe58f;
+}
+.lobby-rail span {
+  font:
+    700 10px/1 "DM Sans",
+    sans-serif;
+  letter-spacing: 0.02em;
+  color: #c9d6ee;
+}
+.lobby-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ef4f61;
+  color: #fff;
+  font:
+    800 11px/1 "DM Sans",
+    sans-serif;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 2px #0b1020;
+}
+.lobby-badge.is-count {
+  background: #3f6fd0;
+}
+.lobby-badge[hidden] {
+  display: none;
+}
+
+/* Stage: your fighter between two party slots, the name and arrows below.
+   It is centred in the space between the rail and the cards. */
+.lobby-stage {
+  left: calc(var(--lobby-gutter) + var(--lobby-rail) + 16px);
+  right: calc(var(--lobby-gutter-r) + var(--lobby-cards) + 16px);
+  top: calc(var(--lobby-top) + 8px);
+  bottom: calc(var(--lobby-bottom) + 6px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  pointer-events: none;
+}
+.lobby-stage button {
+  pointer-events: auto;
+}
+.lobby-party {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: clamp(10px, 3vw, 44px);
+  max-width: 100%;
+}
+.lobby-fighter {
+  --fighter-size: clamp(150px, 46vh, 400px);
+  position: relative;
+  width: var(--fighter-size);
+  height: var(--fighter-size);
+  margin: 0;
+}
+.lobby-fighter-art {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  animation: lobby-idle 3.2s ease-in-out infinite;
+}
+.lobby-fighter-art.is-still {
+  animation: none;
+}
+.lobby-fighter-art > svg,
+.lobby-fighter-art > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.lobby-floor {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: 2%;
+  height: 16%;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--element, #ffd65b) 45%, transparent),
+    transparent
+  );
+  filter: blur(2px);
+}
+@keyframes lobby-idle {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-1.6%);
+  }
+}
+.lobby-emote-bubble {
+  position: absolute;
+  left: 50%;
+  top: 2%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  min-width: 52px;
+  height: 52px;
+  padding: 0 10px;
+  border-radius: 18px;
+  background: #fff;
+  color: #1a2547;
+  font:
+    800 26px/1 "Barlow Condensed",
+    sans-serif;
+  transform: translateX(-50%);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+.lobby-emote-bubble[hidden] {
+  display: none;
+}
+.lobby-emote-bubble.is-popping {
+  animation: lobby-pop 0.35s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+@keyframes lobby-pop {
+  from {
+    transform: translateX(-50%) scale(0.4);
+    opacity: 0;
+  }
+}
+.lobby-slot {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  flex: none;
+  width: 92px;
+  height: 92px;
+  margin-bottom: 6%;
+  padding: 0;
+  border: 2px dashed rgba(220, 230, 255, 0.45);
+  border-radius: 50%;
+  background: rgba(14, 26, 49, 0.45);
+  color: #dfe7ff;
+}
+.lobby-slot:hover,
+.lobby-slot:focus-visible {
+  border-color: #ffd65b;
+  color: #ffd65b;
+}
+.lobby-slot span {
+  font:
+    400 30px/1 "DM Sans",
+    sans-serif;
+}
+.lobby-slot small {
+  font:
+    700 12px/1 "DM Sans",
+    sans-serif;
+}
+.lobby-nameplate {
+  display: grid;
+  grid-template-columns: 44px 220px 44px;
+  align-items: center;
+  gap: 10px;
+}
+.lobby-step {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--lobby-line);
+  border-radius: 50%;
+  background: var(--lobby-glass);
+  font:
+    700 24px/1 "DM Sans",
+    sans-serif;
+}
+.lobby-name {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  text-align: center;
+}
+.lobby-name h2 {
+  margin: 0;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font:
+    800 34px/1 "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+.lobby-name .element-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--lobby-glass);
+  color: var(--element, #ffd65b);
+  font:
+    800 11px/1 "DM Sans",
+    sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.lobby-name .element-pill svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* Party: members stand beside you; the bar above says how many. */
+.lobby-slot-wrap {
+  display: flex;
+  align-items: flex-end;
+  flex: none;
+}
+.lobby-member {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  width: 112px;
+  margin: 0 0 3%;
+}
+.lobby-member-art {
+  display: block;
+  width: 112px;
+  height: 112px;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45));
+}
+.lobby-member-art svg {
+  width: 100%;
+  height: 100%;
+}
+.lobby-member figcaption {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 112px;
+  padding: 2px 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--lobby-glass);
+  font:
+    700 11px/1.3 "DM Sans",
+    sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lobby-crown {
+  color: #ffd65b;
+}
+.lobby-party-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px 4px 12px;
+  border: 1px solid var(--lobby-line);
+  border-radius: 999px;
+  background: var(--lobby-glass);
+  font:
+    700 12px/1 "DM Sans",
+    sans-serif;
+  pointer-events: auto;
+}
+.lobby-party-bar[hidden] {
+  display: none;
+}
+.lobby-party-bar button {
+  height: 26px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(239, 79, 97, 0.2);
+  color: #ffb3bb;
+  font:
+    700 11px/1 "DM Sans",
+    sans-serif;
+}
+
+/* Cards on the right. */
+.lobby-cards {
+  right: var(--lobby-gutter-r);
+  top: var(--lobby-top);
+  width: var(--lobby-cards);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.lobby-card {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  min-height: 0;
+  padding: 11px 14px;
+  border: 1px solid var(--lobby-line);
+  border-radius: 14px;
+  background: var(--lobby-glass);
+  backdrop-filter: blur(6px);
+  text-align: left;
+}
+.lobby-card:hover,
+.lobby-card:focus-visible {
+  border-color: #ffd65b;
+}
+.lobby-card-kicker {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #ffd65b;
+  font:
+    800 11px/1.1 "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.lobby-card b {
+  font:
+    800 19px/1.1 "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.02em;
+}
+.lobby-card small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #a0afc8;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.lobby-card-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+.lobby-card progress {
+  display: block;
+  width: 100%;
+  height: 6px;
+  accent-color: #9ff3d8;
+}
+.lobby-farm-card {
+  background: linear-gradient(
+    120deg,
+    rgba(63, 122, 51, 0.6),
+    var(--lobby-glass) 72%
+  );
+}
+.lobby-raid-card {
+  background: linear-gradient(
+    120deg,
+    rgba(122, 82, 214, 0.55),
+    var(--lobby-glass) 72%
+  );
+}
+.lobby-spark {
+  color: #ffe39d !important;
+}
+.lobby-spark.is-spent {
+  color: #a0afc8 !important;
+}
+
+/* Emotes (bottom left, next to the rail). */
+.lobby-emotes {
+  left: calc(var(--lobby-gutter) + var(--lobby-rail) + 12px);
+  bottom: var(--lobby-bottom);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.lobby-emotes button {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 1px solid var(--lobby-line);
+  border-radius: 50%;
+  background: var(--lobby-glass);
+  font:
+    800 20px/1 "Barlow Condensed",
+    sans-serif;
+}
+.lobby-emote-list {
+  display: none;
+  gap: 6px;
+}
+.lobby-emotes[data-open="true"] .lobby-emote-list {
+  display: flex;
+}
+
+/* Mode and PLAY (bottom right). */
+.lobby-play {
+  right: var(--lobby-gutter-r);
+  bottom: var(--lobby-bottom);
+  display: grid;
+  gap: 8px;
+  width: var(--lobby-cards);
+}
+.lobby-mode {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 10px;
+  height: 56px;
+  padding: 0 14px;
+  border: 1px solid var(--lobby-line);
+  border-radius: 14px;
+  background: var(--lobby-glass);
+  backdrop-filter: blur(6px);
+  text-align: left;
+}
+.lobby-mode-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(255, 214, 91, 0.14);
+  color: #ffd65b;
+}
+.lobby-mode-icon svg {
+  width: 20px;
+  height: 20px;
+}
+.lobby-mode-text {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.lobby-mode-text b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font:
+    800 18px/1 "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.lobby-mode-text small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #a0afc8;
+  font-size: 11px;
+}
+.lobby-mode-caret {
+  color: #a0afc8;
+  text-align: center;
+}
+.lobby-mode[aria-expanded="true"] .lobby-mode-caret {
+  transform: rotate(180deg);
+}
+.lobby-play-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  height: 76px;
+  padding: 0;
+  border: 0;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffe58f, #ffcc3d 55%, #f2a91f);
+  box-shadow:
+    0 6px 0 #b8781a,
+    0 14px 26px rgba(0, 0, 0, 0.4);
+  color: #2a1a00 !important;
+  font:
+    800 40px/1 "Barlow Condensed",
+    sans-serif !important;
+  letter-spacing: 0.1em;
+}
+.lobby-play-button span {
+  font-size: 0.6em;
+}
+.lobby-play-button:hover,
+.lobby-play-button:focus-visible {
+  filter: brightness(1.06);
+}
+.lobby-play-button:active {
+  transform: translateY(3px);
+  box-shadow:
+    0 3px 0 #b8781a,
+    0 8px 18px rgba(0, 0, 0, 0.4);
+}
+.lobby-mode-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  display: grid;
+  gap: 4px;
+  width: 300px;
+  max-height: calc(100vh - var(--lobby-top) - 170px);
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--lobby-line);
+  border-radius: 16px;
+  background: rgba(14, 22, 42, 0.97);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+}
+.lobby-mode-menu[hidden] {
+  display: none;
+}
+.lobby-mode-menu button {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 46px;
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: none;
+  text-align: left;
+}
+.lobby-mode-menu button svg {
+  width: 20px;
+  height: 20px;
+  color: #ffd65b;
+}
+.lobby-mode-menu button span {
+  display: grid;
+  gap: 2px;
+}
+.lobby-mode-menu b {
+  font:
+    800 15px/1 "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.lobby-mode-menu small {
+  color: #a0afc8;
+  font-size: 11px;
+}
+.lobby-mode-menu button:hover,
+.lobby-mode-menu button:focus-visible {
+  border-color: var(--lobby-line);
+  background: rgba(255, 255, 255, 0.05);
+}
+.lobby-mode-menu [aria-checked="true"] {
+  border-color: #ffd65b;
+  background: rgba(255, 214, 91, 0.1);
+}
+.lobby-mode-more {
+  margin-top: 4px;
+  border-top: 1px solid var(--lobby-line) !important;
+  border-radius: 0 0 10px 10px !important;
+}
+
+/* Medium heights (small laptops, tablets): tighter rail, fewer cards. */
+@media (max-height: 760px) {
+  .lobby-rail button {
+    height: 48px;
+  }
+  .lobby-rail {
+    gap: 6px;
+  }
+  .lobby-friends-card {
+    display: none !important;
+  }
+}
+@media (max-height: 640px) {
+  .lobby-missions-card {
+    display: none !important;
+  }
+}
+
+/* Phones in landscape (and short windows): compact everything. */
+@media (max-height: 500px) {
+  .lobby-layer {
+    --lobby-top: 58px;
+    --lobby-rail: 36px;
+    --lobby-cards: 196px;
+    --lobby-bottom: max(8px, calc(var(--safe-bottom, 0px) + 4px));
+  }
+  .lobby-rail {
+    gap: 4px;
+  }
+  .lobby-rail button {
+    height: 34px;
+    border-radius: 10px;
+  }
+  .lobby-rail svg {
+    width: 18px;
+    height: 18px;
+  }
+  .lobby-rail span {
+    display: none;
+  }
+  .lobby-badge {
+    top: -5px;
+    right: -5px;
+    min-width: 16px;
+    height: 16px;
+    font-size: 9px;
+  }
+  .lobby-fighter {
+    --fighter-size: clamp(120px, 42vh, 190px);
+  }
+  .lobby-slot {
+    width: 58px;
+    height: 58px;
+  }
+  .lobby-slot span {
+    font-size: 20px;
+  }
+  .lobby-slot small {
+    font-size: 10px;
+  }
+  .lobby-member,
+  .lobby-member-art {
+    width: 64px;
+  }
+  .lobby-member-art {
+    height: 64px;
+  }
+  .lobby-member figcaption {
+    max-width: 72px;
+    font-size: 9px;
+  }
+  .lobby-party-bar {
+    font-size: 10px;
+  }
+  .lobby-nameplate {
+    grid-template-columns: 32px 150px 32px;
+    gap: 6px;
+  }
+  .lobby-step {
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+  }
+  .lobby-name h2 {
+    max-width: 150px;
+    font-size: 22px;
+  }
+  .lobby-name .element-pill {
+    height: 18px;
+    font-size: 9px;
+  }
+  .lobby-stage {
+    gap: 4px;
+  }
+  .lobby-card {
+    gap: 2px;
+    padding: 7px 10px;
+    border-radius: 12px;
+  }
+  .lobby-card b {
+    font-size: 15px;
+  }
+  .lobby-card small {
+    font-size: 10px;
+  }
+  .lobby-card-kicker {
+    font-size: 9px;
+  }
+  .lobby-spark {
+    display: none;
+  }
+  .lobby-emotes button {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+  }
+  .lobby-mode {
+    grid-template-columns: 26px minmax(0, 1fr) 14px;
+    gap: 8px;
+    height: 42px;
+    padding: 0 10px;
+    border-radius: 12px;
+  }
+  .lobby-mode-icon {
+    width: 26px;
+    height: 26px;
+  }
+  .lobby-mode-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+  .lobby-mode-text b {
+    font-size: 14px;
+  }
+  .lobby-mode-text small {
+    font-size: 9px;
+  }
+  .lobby-play {
+    gap: 6px;
+  }
+  .lobby-play-button {
+    height: 50px;
+    border-radius: 14px;
+    font-size: 28px !important;
+  }
+  .lobby-mode-menu {
+    width: 260px;
+    max-height: calc(100vh - 120px);
+  }
+  .lobby-mode-menu button {
+    min-height: 38px;
+  }
+}
+@media (max-height: 420px) {
+  .lobby-farm-card {
+    background: linear-gradient(
+      120deg,
+      rgba(63, 122, 51, 0.6),
+      var(--lobby-glass) 72%
+    );
+  }
+  .lobby-raid-card {
+    display: none !important;
+  }
+}
+/* Narrow phones: the stage needs the room the side cards take. */
+@media (max-width: 760px) {
+  .lobby-layer {
+    --lobby-cards: 178px;
+  }
+  .lobby-slot {
+    width: 50px;
+    height: 50px;
+  }
+  .lobby-member,
+  .lobby-member-art {
+    width: 54px;
+    height: auto;
+  }
+  .lobby-member-art {
+    height: 54px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lobby-fighter-art {
+    animation: none;
+  }
+  .lobby-emote-bubble.is-popping {
+    animation: none;
+  }
+}
+
+/* ── Hub top bar: the scene switch and fixed-size boxes ─────────────────── */
+.hub-scenes {
+  position: fixed;
+  top: max(10px, calc(var(--safe-top, 0px) + 6px));
+  left: 50%;
+  z-index: 71;
+  display: inline-flex;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid rgba(139, 174, 229, 0.25);
+  border-radius: 999px;
+  background: rgba(14, 26, 49, 0.84);
+  backdrop-filter: blur(6px);
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+.hub-scenes[hidden] {
+  display: none;
+}
+.hub-scenes button {
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: #a0afc8;
+  font:
+    800 16px/1 "Barlow Condensed",
+    sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.hub-scenes button:hover,
+.hub-scenes button:focus-visible {
+  color: #eef2ff;
+}
+.hub-scenes button[aria-pressed="true"] {
+  background: #ffd65b;
+  color: #2a1a00;
+}
+/* The player card's box. The farm's badge (farm/farm.css) uses the same
+   numbers, so the two cards are always the same size. */
+:root {
+  --hub-card-w: 236px;
+  --hub-card-h: 60px;
+  --hub-card-pad: 6px 14px 6px 6px;
+  --hub-card-art: 46px;
+}
+body.hub-active #account-profile {
+  box-sizing: border-box;
+  width: var(--hub-card-w);
+  height: var(--hub-card-h);
+  padding: var(--hub-card-pad);
+  grid-template-columns: var(--hub-card-art) minmax(0, 1fr) 46px;
+}
+body.hub-active #account-profile .account-avatar {
+  width: var(--hub-card-art);
+  height: var(--hub-card-art);
+}
+body.hub-active #account-profile .account-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body.hub-active #account-profile .nav-level {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 22px;
+  border-radius: 8px;
+  background: rgba(255, 214, 91, 0.14);
+  color: #ffd65b;
+  font:
+    800 13px/1 "Barlow Condensed",
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+body.hub-active .nav-xp {
+  width: 100% !important;
+}
+body.hub-active .nav-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body.hub-active #account-coins > *,
+body.hub-active #account-leaves > * {
+  justify-content: center;
+  width: 132px;
+  font-variant-numeric: tabular-nums;
+}
+/* The Gold Leaves pill sits beside the coins, the same size, green-rimmed. */
+#account-leaves {
+  order: 1;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+#account-leaves .coin-chip {
+  gap: 5px;
+}
+#account-leaves .coin-chip b {
+  font-size: 16px;
+  line-height: 1.2;
+}
+#account-leaves .coin-chip .button-icon {
+  width: 15px;
+  height: 15px;
+}
+#account-leaves > * {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid rgba(127, 214, 90, 0.5);
+  border-radius: 999px;
+  background: rgba(14, 26, 49, 0.82);
+  backdrop-filter: blur(6px);
+}
+body:not(.hub-active) #account-leaves {
+  display: none;
+}
+@media (max-height: 500px) {
+  .hub-scenes {
+    top: max(8px, calc(var(--safe-top, 0px) + 4px));
+    padding: 3px;
+  }
+  .hub-scenes button {
+    width: 64px;
+    height: 32px;
+    font-size: 13px;
+  }
+  :root {
+    --hub-card-w: 184px;
+    --hub-card-h: 46px;
+    --hub-card-pad: 4px 10px 4px 4px;
+    --hub-card-art: 36px;
+  }
+  body.hub-active #account-profile {
+    grid-template-columns: var(--hub-card-art) minmax(0, 1fr) 40px;
+  }
+  body.hub-active #account-profile .nav-level {
+    width: 40px;
+    height: 18px;
+    font-size: 11px;
+  }
+  body.hub-active #account-coins > *,
+  body.hub-active #account-leaves > * {
+    width: 96px;
+  }
+  #account-leaves > * {
+    min-height: 34px;
+  }
+}
+@media (max-width: 760px) {
+  .hub-scenes button {
+    width: 60px;
+  }
+  :root {
+    --hub-card-w: 160px;
+  }
+  body.hub-active #account-coins > *,
+  body.hub-active #account-leaves > * {
+    width: 88px;
+  }
+  #account-coins .coin-chip b,
+  #account-leaves .coin-chip b {
+    font-size: 14px;
+  }
+}
+
+/* Settings → Display. */
+.prefs-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.prefs-toggle-row span {
+  display: grid;
+  gap: 3px;
+}
+.prefs-toggle-row small {
+  color: #a0afc8;
+}
+.prefs-switch {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 64px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid rgba(139, 174, 229, 0.35);
+  border-radius: 999px;
+  background: rgba(14, 26, 49, 0.9);
+  color: #a0afc8;
+  font-weight: 700;
+}
+.prefs-switch[aria-checked="true"] {
+  border-color: #ffd65b;
+  background: #ffd65b;
+  color: #2a1a00;
+}
+.prefs-switch:disabled {
+  opacity: 0.5;
+}
+
+/* Short landscape screens: Settings shows everything without scrolling, so
+   Display is one line like Motion and Graphics, and Sound spans the column. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .prefs-grid:has(> .prefs-display) > :first-child {
+    grid-row: span 3;
+  }
+  .prefs-card.prefs-display {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .framed-dialog .prefs-card.prefs-display > h3 {
+    margin: 0;
+  }
+  .prefs-display .prefs-toggle-row small {
+    display: none;
+  }
+  .prefs-display .prefs-switch {
+    height: 28px;
+  }
+}
+
+/* Party invitation picker (Lobby → Invite). */
+.party-invite-list {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.party-invite-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px 8px 14px;
+  border: 1px solid rgba(139, 174, 229, 0.25);
+  border-radius: 12px;
+  background: rgba(14, 26, 49, 0.6);
+}
+.party-invite-list li > span {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.party-invite-list b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.party-invite-list small {
+  color: #43d971;
+}
+
+/* Behind a dialog or a full-screen drawer the Lobby holds still. */
+.lobby-layer.is-covered,
+.lobby-layer.is-covered * {
+  animation-play-state: paused !important;
+}

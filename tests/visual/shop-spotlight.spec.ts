@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openTown, snap } from "./helpers";
+import { openHub, snap } from "./helpers";
 for (const size of [
   { width: 1440, height: 900 },
   { width: 844, height: 390 },
@@ -40,7 +40,7 @@ for (const size of [
           });
         },
       );
-      const errors = await openTown(page);
+      const errors = await openHub(page);
       await page.evaluate(() => {
         (window as any).__choose("auralynx");
         void (window as any).__account.showShop("champions");

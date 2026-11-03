@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { openTown, openTownMenu, pushUntilBattle, snap } from "./helpers";
+import { openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
 const floors = {
   grumblecrag: "raid-coliseum",
   tidewyrm: "lagoon",
@@ -46,12 +46,11 @@ for (const viewport of [
         if (r.resourceType() === "image" && r.url().includes("/raid-arenas/"))
           requests.push(r.url());
       });
-      const errors = await openTown(page);
+      const errors = await openHub(page);
       await page.evaluate(() =>
         (window as any).__room("raid", { boss: "grumblecrag", broken: [0, 4] }),
       );
-      await openTownMenu(page);
-      await page.click(".town-play");
+      await openPlayPanel(page);
       await page.click("#play-create");
       await pushUntilBattle(page);
       for (const [boss, floor] of Object.entries(floors)) {

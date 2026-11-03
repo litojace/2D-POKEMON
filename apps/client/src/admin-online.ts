@@ -37,7 +37,7 @@ export function describeActivity(
     case "menu":
       return "Browsing menus";
     case "town":
-      return "Walking around town";
+      return "In the Plaza";
     case "practice":
       return `Solo practice${as}`;
     case "lobby":

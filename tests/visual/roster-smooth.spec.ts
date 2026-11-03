@@ -1,23 +1,19 @@
 import { expect, test } from "@playwright/test";
-import { openTown, openTownMenu, snap } from "./helpers";
+import { openHub, snap, hubMenu } from "./helpers";
 
-// The roster fills the screen: the town behind it stops drawing so the
-// animated fighter gets the whole device, and it comes back on closing.
-test("the town rests behind the roster, and the fighter keeps animating", async ({ page }) => {
-  await openTown(page);
-  const town = page.locator("#town-canvas");
-  await openTownMenu(page);
-  await page.click("[data-action=fighters]");
+// The roster fills the screen and its fighter keeps animating at the
+// display's pace. (The Plaza resting behind panels is in plaza.spec.ts.)
+test("the roster's fighter keeps animating", async ({ page }) => {
+  await openHub(page);
+  await hubMenu(page, "fighters");
   const stage = page.locator(".fighter-rig-stage").first();
   await expect(stage).toHaveClass(/is-ready/);
-  await expect(town).toHaveAttribute("data-frozen", "true", { timeout: 15_000 });
   // The preview is paced by the display, not a 30 fps timer.
   const time = async () => Number(await stage.getAttribute("data-animation-time"));
   const before = await time();
   await expect.poll(time, { timeout: 15_000 }).toBeGreaterThan(before + 200);
-
   await page.locator("#home-fighter-panel [data-home-close]").first().click();
-  await expect(town).toHaveAttribute("data-frozen", "false");
+  await expect(page.locator("#lobby-play")).toBeVisible();
 });
 
 // The animated fighter is a canvas over the still artwork. The aura's front
@@ -28,9 +24,8 @@ for (const [name, size] of [
 ] as const)
 test(`the roster fighter's aura passes in front of the animated fighter (${name})`, async ({ page }, info) => {
   await page.setViewportSize(size);
-  await openTown(page);
-  await openTownMenu(page);
-  await page.click("[data-action=fighters]");
+  await openHub(page);
+  await hubMenu(page, "fighters");
   const stage = page.locator(".fighter-rig-stage").first();
   await expect(stage).toHaveClass(/is-ready/);
   const layer = stage.locator("> svg.ta-front-layer");

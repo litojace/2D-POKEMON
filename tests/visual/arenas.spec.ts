@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { box, inside, openTown, openTownMenu, pushUntilBattle, snap } from "./helpers";
+import { box, inside, openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
 
 const COURTS = ["classic", "tide-pools", "ember-forge", "shifting-ruins"] as const;
 const SIZES = [
@@ -11,10 +11,9 @@ for (const size of SIZES)
   for (const arena of COURTS)
     test(`${arena} court fits its frame at ${size.width}×${size.height}`, async ({ page }, info) => {
       await page.setViewportSize(size);
-      const errors = await openTown(page);
+      const errors = await openHub(page);
       await page.evaluate((arena) => (window as any).__room("practice", { arena, pos: [535, 226, 1065, 676] }), arena);
-      await openTownMenu(page);
-      await page.click(".town-play");
+      await openPlayPanel(page);
       await page.click("#practice");
       await pushUntilBattle(page);
       const settings = await box(page, "#battle-menu"), stage = await box(page, "#game");
@@ -38,10 +37,9 @@ for (const size of SIZES)
 // Every other raid on its own painted arena, with its scenery and boss.
 for (const boss of ["tidewyrm", "gloomshade", "storm-twins", "emberwing", "prismatail", "somnara"] as const)
   test(`${boss} raid arena loads and fits its frame`, async ({ page }, info) => {
-    const errors = await openTown(page);
+    const errors = await openHub(page);
     await page.evaluate((boss) => (window as any).__room("raid", { boss, pos: [500, 450, 700, 600] }), boss);
-    await openTownMenu(page);
-    await page.click(".town-play");
+    await openPlayPanel(page);
     await page.click("#play-create");
     await pushUntilBattle(page);
     await expect(page.locator("body")).toHaveClass(/battle-raid/);
@@ -54,10 +52,9 @@ for (const boss of ["tidewyrm", "gloomshade", "storm-twins", "emberwing", "prism
   });
 
 test("Grumblecrag raid plays on the court with broken pillars", async ({ page }, info) => {
-  const errors = await openTown(page);
+  const errors = await openHub(page);
   await page.evaluate(() => (window as any).__room("raid", { boss: "grumblecrag", broken: [0, 4], pos: [535, 226, 700, 700] }));
-  await openTownMenu(page);
-  await page.click(".town-play");
+  await openPlayPanel(page);
   await page.click("#play-create");
   await pushUntilBattle(page);
   await expect(page.locator("body")).toHaveClass(/battle-raid/);
@@ -72,7 +69,7 @@ test("Grumblecrag raid plays on the court with broken pillars", async ({ page },
 // block shows on the open sand there and leaves the stone untouched (it used
 // to be drawn over the stone's raised top, looking like it passed through).
 test("a block's picture is exactly its solid area", async ({ page }, info) => {
-  const errors = await openTown(page);
+  const errors = await openHub(page);
   // The top-left block's footprint is 490–580 × 240–370; the shot is just behind it.
   const shot: [number, number] = [535, 212];
   const enter = async (shots: [number, number][]) => {
@@ -82,8 +79,7 @@ test("a block's picture is exactly its solid area", async ({ page }, info) => {
     );
   };
   await enter([shot]);
-  await openTownMenu(page);
-  await page.click(".town-play");
+  await openPlayPanel(page);
   await page.click("#practice");
   await pushUntilBattle(page);
   await page.waitForTimeout(1500);

@@ -1,12 +1,5 @@
 import { expect, test } from "@playwright/test";
-import {
-  box,
-  inside,
-  openTown,
-  openTownMenu,
-  pushUntilBattle,
-  snap,
-} from "./helpers";
+import { box, inside, openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
 
 const buffValues: Record<string, string[]> = {
   shelter: ["−25%"],
@@ -51,12 +44,11 @@ for (const size of [
         )
           drawingErrors.push(message.text());
       });
-      const errors = await openTown(page);
+      const errors = await openHub(page);
       await page.evaluate(() =>
         (window as any).__room("raid", { boss: "grumblecrag" }),
       );
-      await openTownMenu(page);
-      await page.click(".town-play");
+      await openPlayPanel(page);
       await page.click("#play-create");
       await pushUntilBattle(page);
       await page.evaluate(() => {

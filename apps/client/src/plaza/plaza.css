@@ -1,0 +1,1122 @@
+/* The Plaza's HUD (hub redesign phase 3), from the approved prototype
+   (docs/hub-redesign/prototype/app/plaza.css, and the Plaza lines of hud.css
+   and mobile.css). Every selector is scoped to .plaza-layer; the prototype's
+   phone frame (.screen.phone) is .plaza-layer.phone here, and its keyframes
+   are prefixed pz-. Generated once, then edited by hand below the line. */
+/* ---------- plaza ---------- */
+.plaza-layer .pz {
+  z-index: 3;
+  background: #24452a;
+}
+.plaza-layer .pz canvas#pz-cv {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+.plaza-layer .pz-hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-size: 14px;
+}
+.plaza-layer .pz-hud > * {
+  pointer-events: auto;
+}
+.plaza-layer.phone .pz-hud {
+  font-size: 10px;
+}
+.plaza-layer .pz-banner {
+  position: absolute;
+  left: 50%;
+  top: 22%;
+  transform: translateX(-50%);
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    opacity 0.5s,
+    transform 0.5s var(--ease-out);
+}
+.plaza-layer .pz-banner.on {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-6px);
+}
+.plaza-layer .pz-banner b {
+  display: block;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 4em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 0.9;
+  color: #fff;
+  text-shadow:
+    0 4px 0 #0007,
+    0 0 30px var(--zc, #ffd65b);
+}
+.plaza-layer .pz-banner span {
+  display: inline-block;
+  margin-top: 0.5em;
+  font-weight: 700;
+  font-size: 1.05em;
+  color: var(--zc, #ffd65b);
+  background: #0b1020b3;
+  border-radius: 999px;
+  padding: 0.2em 0.9em;
+}
+.plaza-layer .pz-banner i {
+  display: block;
+  width: 50%;
+  height: 3px;
+  margin: 0.5em auto 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--zc, #ffd65b),
+    transparent
+  );
+}
+.plaza-layer .pz-event {
+  position: absolute;
+  left: 50%;
+  top: 72px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.7em;
+  align-items: center;
+  padding: 0.45em 1.1em 0.45em 0.6em;
+  border-radius: 999px;
+  font-weight: 700;
+  white-space: nowrap;
+  background: linear-gradient(90deg, #6b3cff, #c047ff);
+  box-shadow:
+    0 6px 20px #6b3cff66,
+    inset 0 1px 0 #fff6;
+}
+.plaza-layer .pz-event .ic {
+  width: 1.9em;
+  height: 1.9em;
+  border-radius: 50%;
+  background: #fff3;
+  display: grid;
+  place-items: center;
+  font-size: 1.1em;
+}
+.plaza-layer .pz-event small {
+  opacity: 0.85;
+  font-weight: 500;
+}
+.plaza-layer .pz-event.soon {
+  background: #0b1020c7;
+  box-shadow: none;
+  border: 1px solid #ffffff26;
+}
+.plaza-layer.phone .pz-event {
+  top: 54px;
+}
+.plaza-layer .pz-timer {
+  position: absolute;
+  left: 50%;
+  top: 120px;
+  transform: translateX(-50%);
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 2.2em;
+  letter-spacing: 0.04em;
+  padding: 0.05em 0.8em;
+  border-radius: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.plaza-layer .pz-timer small {
+  font-family: var(--body);
+  font-size: 0.4em;
+  color: var(--dim);
+  font-weight: 700;
+  margin-left: 0.5em;
+  letter-spacing: 0;
+}
+.plaza-layer.phone .pz-timer {
+  top: 88px;
+}
+.plaza-layer .pz-mini {
+  position: absolute;
+  right: 16px;
+  top: 72px;
+  width: 220px;
+  aspect-ratio: 2700 / 1700;
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+}
+.plaza-layer .pz-mini canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.plaza-layer .pz-clock {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  border: 0;
+  border-radius: 999px;
+  background: #0b1020d0;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.78em;
+  padding: 0.15em 0.6em;
+  cursor: pointer;
+}
+.plaza-layer.phone .pz-mini {
+  right: 10px;
+  top: 54px;
+  width: 128px;
+  border-radius: 10px;
+}
+.plaza-layer .pz-quests {
+  position: absolute;
+  right: 16px;
+  top: 222px;
+  width: 220px;
+  border-radius: 16px;
+  padding: 0.7em 0.8em;
+}
+.plaza-layer .pz-quests h5 {
+  margin: 0 0 0.5em;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--display);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.9em;
+  color: var(--dim);
+  font-weight: 700;
+}
+.plaza-layer .pz-quests h5 button {
+  border: 0;
+  background: none;
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 1em;
+  padding: 0 0.2em;
+}
+.plaza-layer .pz-q {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.15em 0.5em;
+  align-items: center;
+  padding: 0.38em 0;
+  border-top: 1px solid #ffffff14;
+  font-size: 0.86em;
+}
+.plaza-layer .pz-q:first-of-type {
+  border-top: 0;
+}
+.plaza-layer .pz-q .bar {
+  grid-column: 1 / -1;
+  height: 4px;
+  border-radius: 2px;
+  background: #ffffff1a;
+  overflow: hidden;
+}
+.plaza-layer .pz-q .bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #43d971, #b6f36b);
+}
+.plaza-layer .pz-q .rw {
+  font-weight: 800;
+  color: #ffd65b;
+  white-space: nowrap;
+  font-size: 0.92em;
+}
+.plaza-layer .pz-q.done span:first-child {
+  color: var(--dim);
+  text-decoration: line-through;
+}
+.plaza-layer .pz-q .claim {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.15em 0.7em;
+  font-weight: 800;
+  background: linear-gradient(180deg, #ffe58f, #ffd65b);
+  color: #2a1a00;
+  cursor: pointer;
+  font-size: 0.9em;
+  animation: pz-glowp 1.4s ease-in-out infinite;
+}
+@keyframes pz-glowp {
+  50% {
+    box-shadow: 0 0 14px #ffd65b;
+  }
+}
+.plaza-layer .pz-quests.min .pz-q {
+  display: none;
+}
+.plaza-layer.phone .pz-quests {
+  right: 10px;
+  top: 140px;
+  width: 150px;
+  padding: 0.5em 0.6em;
+  border-radius: 10px;
+}
+.plaza-layer .pz-feed {
+  position: absolute;
+  left: 16px;
+  top: 80px;
+  width: 280px;
+  display: grid;
+  gap: 6px;
+  pointer-events: none;
+}
+.plaza-layer .pz-feed div {
+  display: flex;
+  gap: 0.5em;
+  align-items: center;
+  padding: 0.35em 0.7em 0.35em 0.35em;
+  border-radius: 12px;
+  font-size: 0.84em;
+  background: #0b1020b0;
+  border: 1px solid #ffffff1c;
+  animation: pz-feedin 0.35s var(--ease-out);
+  transition: opacity 0.6s;
+}
+.plaza-layer .pz-feed div img {
+  width: 1.9em;
+  height: 1.9em;
+  border-radius: 50%;
+  background: #1a2547;
+  object-fit: cover;
+  object-position: 50% 15%;
+  flex: none;
+}
+.plaza-layer .pz-feed div b {
+  color: #ffd65b;
+}
+.plaza-layer .pz-feed div.out {
+  opacity: 0;
+}
+@keyframes pz-feedin {
+  from {
+    transform: translateX(-16px);
+    opacity: 0;
+  }
+}
+.plaza-layer.phone .pz-feed {
+  left: 10px;
+  top: 58px;
+  width: 200px;
+  gap: 3px;
+}
+.plaza-layer .pz-runcard {
+  position: absolute;
+  left: 50%;
+  bottom: 120px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.9em;
+  align-items: center;
+  padding: 0.6em 1.1em 0.6em 0.7em;
+  border-radius: 18px;
+  border-color: #ff9bd2aa;
+  animation: pz-popc 0.35s var(--ease-pop);
+}
+.plaza-layer .pz-runcard img {
+  width: 3.8em;
+  height: 3.8em;
+}
+.plaza-layer .pz-runcard small {
+  display: block;
+  color: #ff9bd2;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  font-size: 0.72em;
+}
+.plaza-layer .pz-runcard b {
+  display: block;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 1.7em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+.plaza-layer .pz-runcard em {
+  display: block;
+  font-style: normal;
+  color: var(--dim);
+  font-size: 0.82em;
+}
+.plaza-layer .pz-runcard .claps {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 2em;
+  color: #ff9bd2;
+  margin-left: 0.3em;
+  text-shadow: 0 0 16px #ff6fae;
+}
+@keyframes pz-popc {
+  from {
+    transform: translateX(-50%) scale(0.6);
+    opacity: 0;
+  }
+}
+.plaza-layer.phone .pz-runcard {
+  bottom: 70px;
+}
+.plaza-layer .pz-left {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  display: flex;
+  gap: 8px;
+}
+.plaza-layer .pz-round {
+  width: 4.4em;
+  height: 4.4em;
+  border-radius: 50%;
+  border: 1px solid #ffffff2e;
+  background: #0b1020c2;
+  backdrop-filter: blur(8px);
+  font-size: 1em;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 2px;
+  color: #fff;
+}
+.plaza-layer .pz-round {
+  font-size: 1.15em;
+}
+.plaza-layer .pz-round small {
+  font-size: 0.52em;
+  font-weight: 700;
+  color: var(--dim);
+}
+.plaza-layer .pz-wheel {
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  margin: -110px 0 0 -110px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    #0b1020e6 30%,
+    #0b1020b3 31%,
+    #0b1020b3 70%,
+    transparent 71%
+  );
+  animation: pz-wheel 0.2s var(--ease-pop);
+}
+.plaza-layer .pz-wheel button {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 52px;
+  height: 52px;
+  margin: -26px;
+  border-radius: 50%;
+  border: 1px solid #ffffff2e;
+  background: #1a2547;
+  font-size: 22px;
+  cursor: pointer;
+  transform: rotate(calc(var(--a) * 45deg - 90deg)) translate(76px)
+    rotate(calc(var(--a) * -45deg + 90deg));
+  font-family: var(--display);
+  font-weight: 800;
+  color: #fff;
+  transition: background 0.15s;
+}
+.plaza-layer .pz-wheel button:hover {
+  background: #ffd65b;
+  color: #2a1a00;
+}
+@keyframes pz-wheel {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+.plaza-layer .pz-actions {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+.plaza-layer .pz-act {
+  width: 4.8em;
+  height: 4.8em;
+  border-radius: 50%;
+  border: 2px solid #ffffff38;
+  background: #0b1020c2;
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  line-height: 1.05;
+}
+.plaza-layer .pz-act small {
+  display: block;
+  font-size: 0.6em;
+  font-weight: 700;
+  color: var(--dim);
+}
+.plaza-layer .pz-act.big {
+  width: 6em;
+  height: 6em;
+  font-size: 1.05em;
+  background: linear-gradient(180deg, #ffe58f, #ffd65b 50%, #e9b52c);
+  color: #2a1a00;
+  border-color: #fff8;
+  box-shadow:
+    0 6px 0 #a87a12,
+    0 12px 24px #0008;
+}
+.plaza-layer .pz-act.big small {
+  color: #2a1a00aa;
+}
+.plaza-layer .pz-act:active {
+  transform: scale(0.92);
+}
+.plaza-layer .pz-act[disabled] {
+  opacity: 0.45;
+}
+.plaza-layer .pz-act.cd {
+  background: conic-gradient(#ffffff40 calc(var(--cd) * 1%), #0b1020c2 0);
+}
+.plaza-layer .pz-interact {
+  width: auto;
+  height: 3.4em;
+  border-radius: 999px;
+  padding: 0 1.2em;
+  font-size: 1em;
+  background: linear-gradient(180deg, #7ff0a2, #2fb45c);
+  color: #062b12;
+  border-color: #fff8;
+  box-shadow: 0 5px 0 #1d7a3c;
+  align-self: center;
+  white-space: nowrap;
+  display: flex;
+  gap: 0.5em;
+  align-items: center;
+}
+.plaza-layer .pz-interact kbd {
+  font-family: var(--body);
+  font-size: 0.8em;
+  background: #062b1222;
+  border-radius: 5px;
+  padding: 0 0.4em;
+}
+.plaza-layer .pz-joy {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 40%;
+  height: 60%;
+  display: none;
+}
+.plaza-layer.coarse .pz-joy {
+  display: block;
+}
+.plaza-layer.coarse .pz-left {
+  bottom: auto;
+  top: 46%;
+  flex-direction: column;
+}
+.plaza-layer .pz-joy .ring {
+  position: absolute;
+  width: 110px;
+  height: 110px;
+  margin: -55px;
+  border-radius: 50%;
+  border: 2px solid #ffffff55;
+  background: #0b102055;
+  display: none;
+}
+.plaza-layer .pz-joy .knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 46px;
+  height: 46px;
+  margin: -23px;
+  border-radius: 50%;
+  background: #ffffffbb;
+}
+.plaza-layer .pz-start {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  padding: 1.4em 2em;
+  border-radius: 22px;
+  cursor: pointer;
+  background: #0b1020d9;
+  border: 1px solid #ffffff2e;
+  backdrop-filter: blur(10px);
+}
+.plaza-layer .pz-start b {
+  display: block;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 3em;
+  text-transform: uppercase;
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+.plaza-layer .pz-start > span {
+  display: inline-block;
+  margin: 0.4em 0 0.8em;
+  background: #ffd65b;
+  color: #2a1a00;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: 0.3em 1.2em;
+}
+.plaza-layer .pz-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em 0.9em;
+  justify-content: center;
+  color: var(--dim);
+  font-size: 0.85em;
+  max-width: 26em;
+}
+.plaza-layer .pz-keys kbd {
+  font-family: var(--body);
+  font-weight: 700;
+  font-size: 0.9em;
+  color: #fff;
+  background: #1a2547;
+  border: 1px solid #ffffff33;
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  padding: 0 0.4em;
+}
+.plaza-layer .pz-photo {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #0b1020b3;
+  animation: pz-fadein 0.25s;
+  z-index: 5;
+}
+@keyframes pz-fadein {
+  from {
+    opacity: 0;
+  }
+}
+.plaza-layer .polaroid {
+  background: #fbf7ee;
+  padding: 14px 14px 18px;
+  border-radius: 6px;
+  box-shadow: 0 20px 60px #000c;
+  transform: rotate(-2deg);
+  animation: pz-snap 0.45s var(--ease-pop);
+  width: min(520px, 70%);
+  color: #2a2a2a;
+}
+.plaza-layer .polaroid img {
+  width: 100%;
+  display: block;
+  border-radius: 2px;
+}
+.plaza-layer .polaroid p {
+  margin: 10px 2px 0;
+  font-family: "Caveat", "Comic Sans MS", cursive;
+  font-size: 22px;
+  line-height: 1.1;
+}
+.plaza-layer .polaroid small {
+  display: block;
+  color: #777;
+  font-size: 12px;
+  margin: 4px 2px 0;
+}
+.plaza-layer .polaroid .acts {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.plaza-layer .polaroid .acts button {
+  flex: 1;
+  border: 0;
+  border-radius: 10px;
+  padding: 9px;
+  font-weight: 800;
+  cursor: pointer;
+  background: #1a2547;
+  color: #fff;
+}
+.plaza-layer .polaroid .acts button:first-child {
+  background: #ffd65b;
+  color: #2a1a00;
+}
+@keyframes pz-snap {
+  from {
+    transform: rotate(-8deg) scale(0.6);
+    opacity: 0;
+  }
+}
+.plaza-layer .flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  animation: pz-flash 0.5s ease-out forwards;
+  pointer-events: none;
+  z-index: 6;
+}
+@keyframes pz-flash {
+  to {
+    opacity: 0;
+  }
+}
+.plaza-layer.phone .pz-act {
+  width: 4.6em;
+  height: 4.6em;
+}
+.plaza-layer.phone .pz-act.big {
+  width: 5.6em;
+  height: 5.6em;
+}
+.plaza-layer.phone .pz-left,
+.plaza-layer.phone .pz-actions {
+  bottom: 10px;
+}
+.plaza-layer.phone .pz-left {
+  left: 10px;
+}
+.plaza-layer.phone .pz-actions {
+  right: 10px;
+}
+.plaza-layer.phone .polaroid {
+  width: 46%;
+  padding: 8px 8px 10px;
+}
+.plaza-layer.phone .polaroid p {
+  font-size: 15px;
+}
+.plaza-layer.phone .pz-wheel {
+  scale: 0.7;
+}
+
+.plaza-layer .pz-round {
+  gap: 4px;
+}
+.plaza-layer .pz-round .ico {
+  width: 1.55em;
+  height: 1.55em;
+  vertical-align: 0;
+}
+.plaza-layer .pz-round small {
+  line-height: 1;
+}
+.plaza-layer .pz-interact {
+  gap: 0.45em;
+}
+.plaza-layer .pz-interact .ico {
+  width: 1.35em;
+  height: 1.35em;
+  vertical-align: 0;
+}
+.plaza-layer .pz-interact .ico.leaf {
+  width: 1.05em;
+  height: 1.05em;
+  margin-left: -0.25em;
+}
+.plaza-layer .pz-interact span {
+  line-height: 1;
+}
+.plaza-layer .pz-clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  line-height: 1;
+}
+.plaza-layer .pz-clock .ico {
+  width: 1.15em;
+  height: 1.15em;
+  vertical-align: 0;
+}
+.plaza-layer .pz-event .ic .ico {
+  width: 1.25em;
+  height: 1.25em;
+  vertical-align: 0;
+}
+.plaza-layer .pz-event small {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2em;
+}
+.plaza-layer .pz-runcard .claps {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2em;
+}
+.plaza-layer .pz-runcard .claps .ico {
+  width: 0.9em;
+  height: 0.9em;
+  vertical-align: 0;
+}
+.plaza-layer .pz-q .rw,
+.plaza-layer .pz-q .claim {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15em;
+  line-height: 1;
+}
+.plaza-layer .pz-feed div span {
+  line-height: 1.3;
+}
+
+/* From the prototype's hud.css */
+.plaza-layer .pz-event {
+  box-sizing: border-box;
+  width: 24em;
+}
+.plaza-layer .pz-event > span:nth-child(2) {
+  flex: none;
+}
+.plaza-layer .pz-event b {
+  display: inline-block;
+  min-width: 3ch;
+  text-align: left;
+}
+.plaza-layer .pz-event small {
+  margin-left: auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.plaza-layer .pz-clock {
+  box-sizing: border-box;
+  width: 4.9em;
+  justify-content: center;
+  padding: 0.15em 0;
+}
+.plaza-layer .pz-timer {
+  box-sizing: border-box;
+  width: 6.6em;
+  padding: 0.05em 0;
+  text-align: center;
+  white-space: nowrap;
+}
+.plaza-layer .pz-banner span {
+  box-sizing: border-box;
+  width: 22em;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.plaza-layer .pz-interact {
+  box-sizing: border-box;
+  width: 14em;
+  padding: 0 0.5em 0 1em;
+  justify-content: flex-start;
+}
+.plaza-layer .pz-interact > span {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+.plaza-layer .pz-interact > span .ico.leaf {
+  margin-left: 0.15em;
+  vertical-align: -0.17em;
+}
+.plaza-layer .pz-interact kbd {
+  flex: none;
+}
+.plaza-layer .pz-runcard {
+  box-sizing: border-box;
+  width: 25em;
+}
+.plaza-layer .pz-runcard > div {
+  flex: 1;
+  min-width: 0;
+}
+.plaza-layer .pz-runcard > div b,
+.plaza-layer .pz-runcard > div em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plaza-layer .pz-runcard .claps {
+  flex: none;
+  min-width: 2.9em;
+  justify-content: flex-end;
+}
+.plaza-layer.phone .pz-interact {
+  width: 13em;
+  height: 3.2em;
+  border-radius: 999px;
+  padding: 0 0.45em 0 0.9em;
+}
+.plaza-layer .pz-clock span {
+  line-height: 1;
+  text-box: trim-both cap alphabetic;
+}
+.plaza-layer .pz-q > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* From the prototype's mobile.css */
+.plaza-layer.phone .pz-hud {
+  font-size: 12px;
+}
+.plaza-layer.phone .pz-feed {
+  display: none;
+}
+.plaza-layer.phone .pz-event {
+  top: 56px;
+  width: 16em;
+}
+.plaza-layer.phone .pz-event small {
+  display: none;
+}
+.plaza-layer.phone .pz-mini {
+  top: 56px;
+  width: 150px;
+}
+.plaza-layer.phone .pz-clock {
+  font-size: 11px;
+  width: 5.2em;
+}
+.plaza-layer.phone .pz-quests {
+  left: 12px;
+  right: auto;
+  top: 56px;
+  width: 200px;
+  font-size: 11px;
+}
+.plaza-layer.phone .pz-quests h5 button {
+  min-width: 32px;
+  min-height: 28px;
+  font-size: 13px;
+}
+.plaza-layer.phone .pz-actions {
+  right: 12px;
+  bottom: 12px;
+  gap: 8px;
+  align-items: flex-end;
+}
+.plaza-layer.phone .pz-act {
+  width: 54px;
+  height: 54px;
+  font-size: 13px;
+}
+.plaza-layer.phone .pz-act.big {
+  width: 68px;
+  height: 68px;
+  font-size: 14px;
+}
+.plaza-layer.phone .pz-act small {
+  font-size: 10px;
+}
+.plaza-layer.phone .pz-interact {
+  width: 13em;
+  height: 42px;
+  font-size: 12px;
+  align-self: center;
+}
+.plaza-layer.phone .pz-left,
+.plaza-layer.coarse.screen.phone .pz-left {
+  left: auto;
+  right: 12px;
+  top: auto;
+  bottom: 92px;
+  flex-direction: row;
+  gap: 8px;
+}
+.plaza-layer.phone .pz-round {
+  width: 46px;
+  height: 46px;
+  font-size: 13px;
+}
+.plaza-layer.phone .pz-round small {
+  font-size: 10px;
+}
+.plaza-layer.phone .pz-runcard {
+  bottom: 90px;
+  font-size: 11px;
+}
+.plaza-layer.phone .pz-wheel {
+  scale: 0.85;
+}
+.plaza-layer.coarse.screen.phone .pz-joy {
+  width: 45%;
+  height: 70%;
+}
+.plaza-layer.phone .pz-clock {
+  height: 24px;
+}
+.plaza-layer.phone .pz-interact kbd,
+.plaza-layer.phone .pz-quests h5 span {
+  font-size: 11px;
+}
+
+/* ---------- below the line: the Plaza inside the game ---------- */
+.plaza-layer {
+  /* The prototype's colour tokens the Plaza uses that the game doesn't define. */
+  --dim: #a0afc8;
+  --line-2: #ffffff33;
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow: hidden;
+  background: #24452a;
+  color: #eef2ff;
+  font-family: "DM Sans", system-ui, sans-serif;
+  outline: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+.plaza-layer .pz {
+  position: absolute;
+  inset: 0;
+}
+/* Phones with a notch or Dynamic Island: the HUD keeps inside the safe area
+   (the game's --safe-* insets); the playground itself fills the screen. */
+.plaza-layer .pz-hud {
+  inset: var(--safe-top, 0px) var(--safe-right, 0px) var(--safe-bottom, 0px)
+    var(--safe-left, 0px);
+}
+.plaza-layer .glass {
+  background: #0b1020b8;
+  border: 1px solid #ffffff26;
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  box-shadow: 0 8px 24px #0006;
+}
+.plaza-layer .ico {
+  width: 1.2em;
+  height: 1.2em;
+  display: inline-block;
+  vertical-align: -0.24em;
+  flex: none;
+  overflow: visible;
+}
+.plaza-layer .ico.leaf {
+  width: 1.05em;
+  height: 1.05em;
+  vertical-align: -0.17em;
+  margin-left: 0.12em;
+}
+.plaza-layer [hidden] {
+  display: none !important;
+}
+.plaza-layer button {
+  font: inherit;
+  color: inherit;
+}
+.plaza-layer .pz-act {
+  font-family: var(--display);
+  letter-spacing: 0.03em;
+}
+.plaza-layer .polaroid .acts .btn {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  padding: 9px;
+  font-weight: 800;
+  text-decoration: none;
+  background: #ffd65b;
+  color: #2a1a00;
+}
+
+/* Tap a player: who they are, and add them or invite them to your party. */
+.plaza-layer .pz-card {
+  position: absolute;
+  left: 50%;
+  top: 120px;
+  transform: translateX(-50%);
+  width: 19em;
+  max-width: calc(100% - 24px);
+  border-radius: 16px;
+  padding: 0.7em 0.8em;
+  display: grid;
+  gap: 0.6em;
+  z-index: 4;
+}
+.plaza-layer.phone .pz-card {
+  top: 56px;
+}
+.plaza-layer .pz-card .pc-h {
+  display: flex;
+  gap: 0.6em;
+  align-items: center;
+}
+.plaza-layer .pz-card .pc-h > div {
+  flex: 1;
+  min-width: 0;
+}
+.plaza-layer .pz-card .pc-h img {
+  width: 2.6em;
+  height: 2.6em;
+  border-radius: 50%;
+  background: #1a2547;
+  object-fit: cover;
+  object-position: 50% 15%;
+}
+.plaza-layer .pz-card b,
+.plaza-layer .pz-card small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plaza-layer .pz-card small {
+  color: var(--dim);
+  font-size: 0.8em;
+}
+.plaza-layer .pz-card .x {
+  border: 0;
+  background: none;
+  color: var(--dim);
+  cursor: pointer;
+  font-size: 1em;
+  min-width: 32px;
+  min-height: 32px;
+}
+.plaza-layer .pz-card .pc-acts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.plaza-layer .pz-card .pc-acts button {
+  border: 0;
+  border-radius: 10px;
+  padding: 0.55em 0.4em;
+  font-weight: 800;
+  cursor: pointer;
+  background: #1a2547;
+  color: #fff;
+  min-height: 40px;
+}
+.plaza-layer .pz-card .pc-acts button[data-pc="party"] {
+  background: linear-gradient(180deg, #ffe58f, #ffd65b);
+  color: #2a1a00;
+}
+.plaza-layer .pz-card .pc-acts button:disabled {
+  opacity: 0.5;
+}
