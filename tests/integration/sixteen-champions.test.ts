@@ -3,9 +3,10 @@ import { randomUUID } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { FIGHTER_IDS } from "../../packages/shared/src/index";
+import { CHAMPION_SKINS, skinPrice } from "../../packages/shared/src/shop";
 
 // Migration 052: the new champions can be your portrait and your farmer, and
-// SQL's roster matches FIGHTER_IDS.
+// SQL's roster matches FIGHTER_IDS. Migrations 053 and 054: their Shop skins.
 let db: PGlite;
 const player = "00000000-0000-4000-8000-000000000511";
 const login = () =>
@@ -102,4 +103,135 @@ it("draws order faces from all sixteen", async () => {
     faces.add(o.face);
   }
   expect([...faces].sort()).toEqual([...FIGHTER_IDS].sort());
+});
+
+it("sells exactly the catalog's skins, the newest champions' included (053, 054)", async () => {
+  const rows = await owner(
+    "select id, champion, rarity, collection, price from public.arena_shop_items where kind = 'champion' and active order by id",
+  );
+  expect(rows).toEqual(
+    CHAMPION_SKINS.map((s) => ({
+      id: s.id,
+      champion: s.champion,
+      rarity: s.rarity,
+      collection: s.collection ?? null,
+      price: skinPrice(s),
+    })).sort((a, b) => (a.id < b.id ? -1 : 1)),
+  );
+});
+
+it("lets a player buy and wear a new champion's skin, and only on that champion", async () => {
+  await owner(
+    "insert into public.arena_wallets(player_id, balance) values ($1, 5000) on conflict (player_id) do update set balance = 5000",
+    [player],
+  );
+  await login();
+  await db.query("select public.arena_buy_item('shadopus-masquerade')");
+  await db.query(
+    "select public.arena_equip_champion_skin('shadopus', 'shadopus-masquerade', 1)",
+  );
+  const [look] = await owner(
+    "select skin, stage from public.arena_champion_looks where player_id = $1 and champion = 'shadopus'",
+    [player],
+  );
+  expect(look).toEqual({ skin: "shadopus-masquerade", stage: 1 });
+  const [{ balance }] = await owner(
+    "select balance from public.arena_wallets where player_id = $1",
+    [player],
+  );
+  expect(balance).toBe(5000 - 1500);
+  await login();
+  await expect(
+    db.query(
+      "select public.arena_equip_champion_skin('voltkit', 'shadopus-masquerade', 1)",
+    ),
+  ).rejects.toThrow(/another champion/);
+});
+
+it("keeps a collection frame someone already earned when new skins join it", async () => {
+  // Owning the original five Winter skins earned the frame before 053; it stays.
+  const winter = CHAMPION_SKINS.filter((s) => s.collection === "winter");
+  const original = winter.filter((s) =>
+    FIGHTER_IDS.slice(0, 8).includes(s.champion),
+  );
+  expect(original).toHaveLength(5);
+  await owner("delete from public.arena_owned_items where player_id = $1", [
+    player,
+  ]);
+  for (const s of original)
+    await owner(
+      "insert into public.arena_owned_items(player_id, item_id) values ($1, $2)",
+      [player, s.id],
+    );
+  await owner(
+    "insert into public.arena_owned_items(player_id, item_id) values ($1, 'winter-frame')",
+    [player],
+  );
+  await owner("select public.arena_collection_bonus($1)", [player]);
+  const frame = async () =>
+    (
+      await owner(
+        "select 1 from public.arena_owned_items where player_id = $1 and item_id = 'winter-frame'",
+        [player],
+      )
+    ).length;
+  expect(await frame()).toBe(1);
+  // Someone new needs every Winter skin, old and new, for the free frame.
+  await owner("delete from public.arena_owned_items where player_id = $1", [
+    player,
+  ]);
+  for (const s of original)
+    await owner(
+      "insert into public.arena_owned_items(player_id, item_id) values ($1, $2)",
+      [player, s.id],
+    );
+  await owner("select public.arena_collection_bonus($1)", [player]);
+  expect(await frame()).toBe(0);
+  for (const s of winter.filter((s) => !original.includes(s)))
+    await owner(
+      "insert into public.arena_owned_items(player_id, item_id) values ($1, $2)",
+      [player, s.id],
+    );
+  await owner("select public.arena_collection_bonus($1)", [player]);
+  expect(await frame()).toBe(1);
+});
+
+it("gates a new champion's Mythical behind its 30-win Mythic Trial", async () => {
+  await owner(
+    "insert into public.arena_wallets(player_id, balance) values ($1, 20000) on conflict (player_id) do update set balance = 20000",
+    [player],
+  );
+  await login();
+  await expect(
+    db.query("select public.arena_buy_item('shadopus-nebula')"),
+  ).rejects.toThrow();
+  await owner(
+    "insert into public.arena_champion_wins(player_id, champion, wins) values ($1, 'shadopus', 30) on conflict (player_id, champion) do update set wins = 30",
+    [player],
+  );
+  await login();
+  await db.query("select public.arena_buy_item('shadopus-nebula')");
+  await db.query(
+    "select public.arena_equip_champion_skin('shadopus', 'shadopus-nebula', 1)",
+  );
+  // Stage II needs 25 wins in the skin itself.
+  await login();
+  await expect(
+    db.query(
+      "select public.arena_equip_champion_skin('shadopus', 'shadopus-nebula', 2)",
+    ),
+  ).rejects.toThrow(/not unlocked/);
+  await owner(
+    "insert into public.arena_skin_progress(player_id, skin_id, wins) values ($1, 'shadopus-nebula', 25)",
+    [player],
+  );
+  await login();
+  await db.query(
+    "select public.arena_equip_champion_skin('shadopus', 'shadopus-nebula', 2)",
+  );
+  const [look] = await owner(
+    "select skin, stage from public.arena_champion_looks where player_id = $1 and champion = 'shadopus'",
+    [player],
+  );
+  expect(look).toEqual({ skin: "shadopus-nebula", stage: 2 });
 });

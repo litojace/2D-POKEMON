@@ -7,6 +7,7 @@ import {
   PROFILE_FACE_PARTS,
 } from "./creature-profile";
 import { championMaterials } from "./champion-materials";
+import { pyrandaMarks } from "./champion-markings";
 import type { CharacterId } from "@arena/shared";
 import type { Facing } from "./animation/controller";
 import { awakeningSvg } from "./skins/mythic-art";
@@ -837,26 +838,27 @@ export function creatureLayers(
     layers.legR = paw(120, 160, 14);
   }
   if (id === "pyranda") {
+    const marks = pyrandaMarks(p);
     // Red panda, the "fire fox": white-rimmed ears, white brow spots, tear
     // marks, dark legs and belly, a fluffy tail with a flame tip, and a
     // bandolier of glowing chestnuts it lobs as mortars.
     const ear = (dir: number) => {
       const x = (v: number) => 100 + dir * v;
-      return `${path(`M${x(20)} 68Q${x(22)} 36 ${x(42)} 32Q${x(56)} 44 ${x(44)} 72Z`, p.accent)}${path(`M${x(26)} 66Q${x(28)} 44 ${x(41)} 41Q${x(49)} 50 ${x(41)} 68Z`, "#8a2a14", ' stroke="none"')}`;
+      return `${path(`M${x(20)} 68Q${x(22)} 36 ${x(42)} 32Q${x(56)} 44 ${x(44)} 72Z`, p.accent)}${path(`M${x(26)} 66Q${x(28)} 44 ${x(41)} 41Q${x(49)} 50 ${x(41)} 68Z`, marks.mark, ' stroke="none"')}`;
     };
     layers.ears = ear(-1) + ear(1);
     const shyMouth = stroke(
       "M93.5 111Q96 108.5 98.5 111Q101 113.5 103.5 111Q105.5 109 107 110.5",
     );
-    layers.head = `${e(100, 88, 41, 33, face)}${path("M78 101Q80 92 91 94Q100 97 109 94Q120 92 122 101Q120 116 100 118Q80 116 78 101Z", p.accent, ' stroke="none"')}${e(77, 74, 7.5, 4.2, p.accent, ' stroke="none" transform="rotate(16 77 74)"')}${e(123, 74, 7.5, 4.2, p.accent, ' stroke="none" transform="rotate(-16 123 74)"')}${line("M69 100Q71 111 78 116M131 100Q129 111 122 116", "#8a2a14", 4, 0.5)}${path("M96 102H104L100 106Z", INK, ' stroke="none"')}${highlight(68, 72, 22)}${shyMouth}`;
+    layers.head = `${e(100, 88, 41, 33, face)}${path("M78 101Q80 92 91 94Q100 97 109 94Q120 92 122 101Q120 116 100 118Q80 116 78 101Z", p.accent, ' stroke="none"')}${e(77, 74, 7.5, 4.2, p.accent, ' stroke="none" transform="rotate(16 77 74)"')}${e(123, 74, 7.5, 4.2, p.accent, ' stroke="none" transform="rotate(-16 123 74)"')}${line("M69 100Q71 111 78 116M131 100Q129 111 122 116", marks.mark, 4, 0.5)}${path("M96 102H104L100 106Z", INK, ' stroke="none"')}${highlight(68, 72, 22)}${shyMouth}`;
     layers.eyes = frontEyes("#ffb84d", 9, 11);
-    const dark = "#4a1a12";
-    layers.body = `${e(100, 138, 30, 28)}${e(100, 144, 17, 18, "#5a2216")}${highlight(80, 124, 16)}`;
+    const dark = marks.limb;
+    layers.body = `${e(100, 138, 30, 28)}${e(100, 144, 17, 18, marks.belly)}${highlight(80, 124, 16)}`;
     layers.armL = hand(67, dark);
     layers.armR = `${path("M134 132Q134 120 143 118Q152 120 152 130Q150 138 143 138Q136 138 134 132Z", "#8a4a22")}${e(143, 121, 7, 3, "#c98a52")}${flameTip(143, 110, 6)}${hand(133, dark)}`;
     layers.legL = paw(80, 160, 14, dark);
     layers.legR = paw(120, 160, 14, dark);
-    layers.tail = `${path("M122 152Q160 160 172 132Q180 108 164 92Q156 86 150 94Q162 104 158 120Q152 140 120 140Z", body)}${line("M150 140Q160 136 168 128M158 118Q166 114 174 114", "#8a2a14", 6, 0.35)}${flameTip(157, 88, 10)}`;
+    layers.tail = `${path("M122 152Q160 160 172 132Q180 108 164 92Q156 86 150 94Q162 104 158 120Q152 140 120 140Z", body)}${line("M150 140Q160 136 168 128M158 118Q166 114 174 114", marks.mark, 6, 0.35)}${flameTip(157, 88, 10)}`;
     layers.scarf = `${line("M72 120L128 158", "#6b3a1e", 6)}${[0.3, 0.55, 0.8]
       .map((t) => {
         const x = 72 + 56 * t,

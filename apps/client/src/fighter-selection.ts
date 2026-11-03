@@ -4,7 +4,7 @@ import { CHARACTERS, COMBOS, ULT_SLOT, type CharacterId } from "@arena/shared";
 import { actionLabel, controlPrefs, skillLabels } from "./controls";
 import { fighterArt, scopeIds, withSoftGround } from "./fighter-art";
 import { abilityIcon } from "./ability-icons";
-import { PLACEHOLDER_FIGHTERS } from "./creature-design";
+import { CREATURE_VIEWBOX, PLACEHOLDER_FIGHTERS } from "./creature-design";
 import { elementIcon } from "./element-icons";
 import { withAura } from "./trait-effects";
 import {
@@ -21,6 +21,8 @@ let worn: Partial<Record<CharacterId, { skin: string; stage: number }>> = {};
 export function setWornSkins(value: typeof worn | undefined) {
   worn = value ?? {};
 }
+/** The Shop skin a fighter wears (and its awakening stage), if any. */
+export const wornSkin = (id: CharacterId) => worn[id];
 /** Keep Terradon's eye line aligned while giving its earless head the same
  * visual presence as the other portraits. The sprout remains inside frame. */
 const rosterPortraitFrame = (id?: string) =>
@@ -45,10 +47,18 @@ function art(id: CharacterId, large = false, aura = false, scopeName?: string) {
     (aura && large ? scopeIds(auraFrontLayer(full), `${scope}-front`) : "")
   );
 }
+/**
+ * The padded frame the large fighter art is shown in wherever the live rig
+ * lies over it (the roster's detail, the Lobby stage): the rig's selection
+ * framing (SELECTION_PREVIEW) draws in exactly this frame.
+ */
+export const RIG_FRAME = "-20 -40 240 250";
 /** The large fighter art with its worn skin and aura, for a stage (the
  * Lobby's, the roster's). Each stage needs its own `scope` for its ids. */
 export function fighterStageArt(id: CharacterId, scope = "lobby") {
-  return art(id, true, true, scope);
+  return art(id, true, true, scope)
+    .split(`viewBox="${CREATURE_VIEWBOX}"`)
+    .join(`viewBox="${RIG_FRAME}"`);
 }
 /** Only the front half of an aura SVG (same frame and defs), to lay on top. */
 function auraFrontLayer(svg: string) {
@@ -358,7 +368,7 @@ export function placeFighterDetail(root: ParentNode) {
       ? rosterPortraitFrame(
           portrait.closest<HTMLElement>("[data-character]")?.dataset.character,
         )
-      : "-20 -40 240 250";
+      : RIG_FRAME;
     if (portrait.getAttribute("viewBox") !== frame)
       portrait.setAttribute("viewBox", frame);
   }

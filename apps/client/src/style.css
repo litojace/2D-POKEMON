@@ -8012,7 +8012,7 @@ html::before {
   /* Elemental Plaza, dimmed, behind lobbies and other screens. */
   background:
     linear-gradient(180deg, #0b1424d9 0%, #0b1424e6 50%, #0b1424f2 100%),
-    url("/assets/backgrounds/elemental-plaza-small.webp") center/cover no-repeat;
+    url("/assets/backgrounds/plaza-lobby.webp") center/cover no-repeat;
 }
 html:has(body.battle-active)::before {
   display: none;

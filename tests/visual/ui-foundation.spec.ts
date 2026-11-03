@@ -115,6 +115,11 @@ for (const size of SIZES)
       await expect(toast).toHaveText(
         "Pip wants to be friends. Open Friends to answer.",
       );
+      // Measure where it rests, not mid-slide (the harness can hold a
+      // transition at its first frame).
+      await toast.evaluate((el) =>
+        el.getAnimations().forEach((a) => a.finish()),
+      );
       const t = await box(page, "#toast");
       const tb = { x: t.x, y: t.y, w: t.width, h: t.height };
       for (const b of await lobbyBoxes(page))

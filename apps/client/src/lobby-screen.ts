@@ -11,7 +11,9 @@ import {
 } from "../../../packages/shared/src/journey";
 import type { Economy } from "../../../packages/shared/src/shop";
 import { menuIcon } from "./menu-icons";
-import { fighterStageArt } from "./fighter-selection";
+import { fighterStageArt, wornSkin } from "./fighter-selection";
+import { lowGraphics } from "./graphics-quality";
+import type { ShopPreviewHandle } from "./shop-preview";
 import { fighterArt } from "./fighter-art";
 import { elementIcon } from "./element-icons";
 import { picksCountdown } from "./shop-ui";
@@ -209,7 +211,14 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   const layer = document.createElement("div");
   layer.className = "lobby-layer";
   let mode = savedLobbyMode();
-  let character: CharacterId | undefined;
+  /** Fighter + worn skin + stage now drawn on the stage. */
+  let artKey: string | undefined;
+  // The selected fighter moves with the same live rig as the Fighters roster
+  // (shop-preview.ts, "selection" framing) over its still artwork. Low
+  // graphics keeps the still artwork, as in the Plaza and the Farm.
+  let rig: ShopPreviewHandle | undefined;
+  let rigLoading = false;
+  let closed = false;
   let partyKey: string | undefined;
   layer.innerHTML = `<div class="lobby-backdrop" aria-hidden="true"></div>
 <nav class="lobby-rail" aria-label="Main menu">${RAIL.map(
@@ -220,7 +229,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   <div class="lobby-party-bar" id="lobby-party-bar" hidden><span id="lobby-party-size"></span><button type="button" data-lobby-action="leave-party">Leave party</button></div>
   <div class="lobby-party">
     <div class="lobby-slot-wrap" id="lobby-slot-0"></div>
-    <figure class="lobby-fighter" id="lobby-fighter"><div class="lobby-fighter-art" id="lobby-fighter-art"></div><span class="lobby-floor" aria-hidden="true"></span><output class="lobby-emote-bubble" id="lobby-emote-bubble" hidden></output></figure>
+    <figure class="lobby-fighter" id="lobby-fighter"><div class="lobby-fighter-art fighter-rig-stage" id="lobby-fighter-art" data-preview-look="%7B%7D" data-preview-action="idle"></div><span class="lobby-floor" aria-hidden="true"></span><output class="lobby-emote-bubble" id="lobby-emote-bubble" hidden></output></figure>
     <div class="lobby-slot-wrap" id="lobby-slot-1"></div>
     <div class="lobby-slot-wrap lobby-slot-third" id="lobby-slot-2"></div>
   </div>
@@ -328,13 +337,28 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   // A dialog, a full-screen drawer or a full hub panel covers the Lobby: its
   // animations pause (the fighter's idle and aura) so the screen on top gets
   // the device, and resume when it closes. A sheet leaves the Lobby showing.
-  const syncCovered = () =>
-    layer.classList.toggle(
-      "is-covered",
-      !!document.querySelector(
-        "dialog[open], .home-drawer:not([hidden]), .ui-panel:not(.ui-sheet)",
-      ),
+  const syncCovered = () => {
+    const covered = !!document.querySelector(
+      "dialog[open], .home-drawer:not([hidden]), .ui-panel:not(.ui-sheet)",
     );
+    layer.classList.toggle("is-covered", covered);
+    rig?.suspend(covered);
+  };
+  const mountRig = () => {
+    if (rig || rigLoading || closed || lowGraphics()) return;
+    rigLoading = true;
+    void import("./shop-preview")
+      .then(({ mountShopPreview }) => {
+        rigLoading = false;
+        if (closed || rig) return;
+        rig = mountShopPreview($("lobby-fighter"), "selection");
+        rig.suspend(layer.classList.contains("is-covered"));
+      })
+      .catch(() => {
+        // The still artwork stays when the renderer can't load.
+        rigLoading = false;
+      });
+  };
   const coverWatch = new MutationObserver(syncCovered);
   coverWatch.observe(document.body, {
     subtree: true,
@@ -345,15 +369,24 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   syncCovered();
   return {
     update(view) {
-      if (view.character !== character) {
-        character = view.character;
+      const skin = wornSkin(view.character);
+      const key = `${view.character}|${skin?.skin ?? ""}|${skin?.stage ?? 1}`;
+      if (key !== artKey) {
+        artKey = key;
         const fighter = CHARACTERS[view.character];
+        const art = $("lobby-fighter-art");
         $("lobby-fighter").style.setProperty("--element", hex(fighter.color));
-        $("lobby-fighter-art").innerHTML = fighterStageArt(view.character);
+        art.innerHTML = fighterStageArt(view.character);
+        art.dataset.previewChampion = view.character;
+        art.dataset.previewItem = skin?.skin ?? "";
+        art.dataset.previewStage = String(skin?.stage ?? 1);
         $("lobby-fighter-name").textContent = fighter.name;
         $("lobby-fighter-element").innerHTML =
           `${elementIcon(fighter.element)}${fighter.element}`;
-        $("lobby-fighter-art").classList.toggle("is-still", options.reduced);
+        art.classList.toggle("is-still", options.reduced);
+        // New artwork: the rig re-attaches its canvas and poses the new look.
+        if (rig) rig.update($("lobby-fighter"), "selection");
+        else mountRig();
       }
       const slots = view.party
         .map((m) => JSON.stringify([m.name, m.character, m.leader]))
@@ -391,6 +424,9 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       missionBadge.classList.add("is-count");
     },
     close() {
+      closed = true;
+      rig?.();
+      rig = undefined;
       clearTimeout(bubbleTimer);
       coverWatch.disconnect();
       layer.removeEventListener("keydown", onKey);
