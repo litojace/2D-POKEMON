@@ -231,7 +231,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     <div class="lobby-slot-wrap" id="lobby-slot-0"></div>
     <figure class="lobby-fighter" id="lobby-fighter"><div class="lobby-fighter-art fighter-rig-stage" id="lobby-fighter-art" data-preview-look="%7B%7D" data-preview-action="idle"></div><span class="lobby-floor" aria-hidden="true"></span><output class="lobby-emote-bubble" id="lobby-emote-bubble" hidden></output></figure>
     <div class="lobby-slot-wrap" id="lobby-slot-1"></div>
-    <div class="lobby-slot-wrap lobby-slot-third" id="lobby-slot-2"></div>
+    <div class="lobby-slot-wrap lobby-slot-third" id="lobby-slot-2" hidden></div>
   </div>
   <div class="lobby-nameplate">
     <button type="button" class="lobby-step" data-lobby-step="-1" aria-label="Previous fighter">‹</button>
@@ -395,6 +395,10 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         partyKey = slots;
         for (let i = 0; i < 3; i++)
           $(`lobby-slot-${i}`).innerHTML = slotMarkup(view.party[i]);
+        // One seat on each side keeps the stage even; the third seat (above
+        // the right one) appears once both are taken. The server still
+        // allows four players, and Friends can invite at any time.
+        $("lobby-slot-2").hidden = view.party.length < 2;
       }
       $("lobby-party-bar").hidden = view.partySize < 2;
       $("lobby-party-size").textContent = `Party · ${view.partySize}/4`;
