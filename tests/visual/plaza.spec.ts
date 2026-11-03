@@ -331,3 +331,57 @@ test("a treat from your barn bursts for everyone, and T throws one too", async (
   ).toBe(2);
   expect(errors).toEqual([]);
 });
+
+test("townsfolk keep a quiet Plaza lively, marked as bots, with no card", async ({
+  page,
+}, info) => {
+  test.setTimeout(120_000);
+  const errors = await openPlaza(page);
+  // Stand at the top of the square: the runway, the dance spot and the café.
+  await page.evaluate(() => (window as any).__plazaPosition(1350, 760));
+  const folk = () =>
+    page.evaluate(() =>
+      [...(window as any).__plaza.others.values()]
+        .filter((b: any) => b.bot)
+        .map((b: any) => b.name),
+    );
+  await expect
+    .poll(folk, { timeout: 20_000 })
+    .toEqual(
+      expect.arrayContaining(["Dancer", "Runway Model", "Café Regular"]),
+    );
+  // They are bots to the client too, and the Plaza counts only you.
+  const world = await page.evaluate(() => {
+    const w = (window as any).__plazaWorld;
+    return {
+      population: w.population(1),
+      folk: w.copies.get(1).folk.map((f: any) => f.profile.bot),
+    };
+  });
+  expect(world.population).toBe(1);
+  expect(world.folk.length).toBeGreaterThanOrEqual(8);
+  expect(world.folk.every(Boolean)).toBe(true);
+  // Tapping one opens no player card (no Add friend for an NPC). Stand
+  // below the dancer, so they're mid-screen and not under the top bar.
+  await page.evaluate(() => (window as any).__plazaPosition(1480, 840));
+  await page.waitForTimeout(4000);
+  const spot = await page.evaluate(() => {
+    const p = (window as any).__plaza,
+      dancer = [...p.others.values()].find((b: any) => b.name === "Dancer");
+    return p.worldClient(dancer.x, dancer.y - 30);
+  });
+  expect(spot.y).toBeGreaterThan(150);
+  expect(spot.y).toBeLessThan(700);
+  expect(
+    await page.evaluate(
+      ([x, y]) => document.elementFromPoint(x, y)?.id,
+      [spot.x, spot.y],
+    ),
+  ).toBe("pz-cv");
+  await page.mouse.click(spot.x, spot.y);
+  await page.waitForTimeout(300);
+  await expect(page.locator("#pz-card")).toBeHidden();
+  await expect(page.locator(".plaza-layer #pz-cv")).toBeVisible();
+  await snap(page, info, "plaza-townsfolk");
+  expect(errors).toEqual([]);
+});

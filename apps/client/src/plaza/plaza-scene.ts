@@ -3,7 +3,8 @@
  * The Plaza scene (hub redesign phase 3). The painting, the props, the
  * animals, the HUD and the touch model are ported from the approved
  * prototype (docs/hub-redesign/prototype/app/plaza.js). What changed: the
- * people are real players (and four pitch bots) that the game server moves;
+ * people are real players (plus four pitch bots and the townsfolk, NPCs who
+ * fill a quiet Plaza) that the game server moves;
  * the ball, the Orb Shower, lap times, runway cheers, quests and Volt Boba
  * all come from the server. The browser predicts only your own movement with
  * the same shared step. Ported drawing code is not type-checked line by
@@ -2568,11 +2569,15 @@ export function openPlaza(options) {
     }
     if (b.stun > 0) rot = Math.sin(time * 30) * 0.12;
     drawSprite(g, im, b.x, b.y - b.z - bob, s, b.face, rot, sq);
-    g.font = "700 13px 'DM Sans', sans-serif";
+    // Bots (the pitch bots and the townsfolk) wear a quieter, italic name
+    // tag, so nobody mistakes them for players.
+    g.font = b.bot
+      ? "italic 600 12px 'DM Sans', sans-serif"
+      : "700 13px 'DM Sans', sans-serif";
     g.textAlign = "center";
     g.lineWidth = 3.5;
     g.strokeStyle = "rgba(11,16,32,.85)";
-    g.fillStyle = b.me ? "#ffd65b" : "#fff";
+    g.fillStyle = b.me ? "#ffd65b" : b.bot ? "#aebbe0" : "#fff";
     const ny = b.y - b.z - s * 0.92 - 6;
     g.strokeText(b.name, b.x, ny);
     g.fillText(b.name, b.x, ny);

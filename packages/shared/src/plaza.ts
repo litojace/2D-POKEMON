@@ -931,7 +931,7 @@ export interface PlazaProfile {
   look?: RaidLoadout;
   /** Saved raid clears per boss (frame stars and the profile card). */
   raid?: Partial<Record<RaidBossId, number>>;
-  /** A pitch bot, not a person. */
+  /** A bot, not a person: a pitch bot or one of the townsfolk (NPCs). */
   bot?: boolean;
 }
 export interface PlazaState {
