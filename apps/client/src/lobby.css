@@ -30,7 +30,7 @@
 .lobby-backdrop {
   position: absolute;
   inset: -28px;
-  background: #0b1020 url("/assets/backgrounds/elemental-plaza-small.webp")
+  background: #0b1020 url("/assets/backgrounds/plaza-lobby.webp")
     center 42% / cover no-repeat;
   filter: blur(5px) saturate(1.05) brightness(0.6);
   transform: scale(1.04);
