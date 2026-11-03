@@ -5,6 +5,7 @@ import { fakeAccounts } from "../helpers/accounts";
 import type { Reply } from "@arena/shared";
 import { playerLevel } from "../../packages/shared/src/journey";
 import {
+  PLAZA_SPAWN,
   PLAZA_SPOTS,
   type PlazaNews,
   type PlazaProfile,
@@ -113,6 +114,9 @@ it("lets signed-in players walk the Plaza together and see each other", async ()
   expect(
     (await emit(ann.socket, "plaza-join", { character: "missingno" })).ok,
   ).toBe(false); // an unknown fighter is refused
+  // Spawns are spread up to 70px around the spawn point: start Ann on it,
+  // so walking right for 0.2 s (about 48px) always ends past it.
+  teleport(ann.socket, PLAZA_SPAWN.x, PLAZA_SPAWN.y);
   ann.socket.emit("plaza-input", { dx: 1, dy: 0 });
   await settle();
   await ticks(4);
@@ -120,7 +124,7 @@ it("lets signed-in players walk the Plaza together and see each other", async ()
   expect(state.me).toBe(joined.me);
   expect(state.walkers.length).toBeGreaterThanOrEqual(2);
   const mine = state.walkers.find((w) => w[0] === joined.me)!;
-  expect(mine[1]).toBeGreaterThan(1350);
+  expect(mine[1]).toBeGreaterThan(PLAZA_SPAWN.x + 30);
   // The skin and level come from the account, not the browser.
   const me = ann.seen.profiles.get(joined.me!)!;
   expect(me).toMatchObject({
