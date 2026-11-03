@@ -45,7 +45,9 @@ import {
   basicInterval,
   advanceMovement,
   blankInput,
+  blinkLanding,
   emptyStats,
+  farMultiplier,
   blocked,
   currentObstacles,
   move,
@@ -77,6 +79,12 @@ const FFA_SPAWNS = [
 const DRAIN_INTERVAL = 0.5;
 /** Preserve a discrete skill tap through a short attack recovery, never a long cast. */
 const SKILL_INPUT_BUFFER = 0.18;
+/** Seconds after a cast out of stealth in which its first hit gets the ambush bonus. */
+const AMBUSH_WINDOW = 0.8;
+/** A rush hits whoever it touches within this gap (px) between the two bodies. */
+const RUSH_CONTACT = 10;
+/** A pull leaves this gap (px) between the two bodies. */
+const PULL_GAP = 6;
 /**
  * Network input queue (Arena.enqueue/drainInputs). One input per tick keeps
  * the server's steps in lockstep with client prediction; `depth` bounds the
@@ -104,6 +112,10 @@ export class Arena {
   /** AI opponents in this room, by fighter id (solo vs bot). */
   bots = new Map<string, BotBrain>();
   private bufferedSkills = new Map<string, { slot: number; ex: boolean; until: number }>();
+  /** Charges in progress (rush skills), by fighter id, until they touch someone or run out. */
+  private rushes = new Map<string, { until: number; ability: Ability }>();
+  /** Armed ambush bonuses (cast out of stealth), by fighter id. */
+  private ambushes = new Map<string, { mult: number; until: number }>();
   protected clearBufferedSkills(id?: string) {
     if (id === undefined) this.bufferedSkills.clear();
     else this.bufferedSkills.delete(id);
@@ -399,6 +411,8 @@ export class Arena {
   resetRound() {
     this.clearBufferedSkills();
     this.clearInputQueue();
+    this.rushes.clear();
+    this.ambushes.clear();
     // Fighter roulette: a fresh random fighter for everyone each round.
     if (this.rule("random") && !this.practice)
       for (const p of this.players) {
@@ -470,6 +484,8 @@ export class Arena {
   /** Cancel all ongoing and buffered actions as soon as a fighter is down. */
   private stopKnockedOut(p: Fighter) {
     this.clearBufferedSkills(p.id);
+    this.rushes.delete(p.id);
+    this.ambushes.delete(p.id);
     p.vx = p.vy = 0;
     p.dashUntil = p.jumpUntil = 0;
     p.charge = undefined;
@@ -683,6 +699,23 @@ export class Arena {
     if (target.hp <= 0 || this.phase !== "playing") return;
     if (ability?.ground && target.jumpUntil > this.time) return;
     const source = this.players.find((p) => p.id === owner);
+    let ambushed = false;
+    if (amount > 0 && ability && source && source !== target) {
+      // Marksman shots hit harder the farther away the target is.
+      amount *= farMultiplier(
+        ability,
+        Math.hypot(target.x - source.x, target.y - source.y),
+      );
+      // The first hit out of stealth is an ambush.
+      const ambush = this.ambushes.get(source.id);
+      if (ambush) {
+        this.ambushes.delete(source.id);
+        if (this.time <= ambush.until) {
+          amount *= ambush.mult;
+          ambushed = true;
+        }
+      }
+    }
     const counter = this.has(target, "counter");
     if (amount > 0)
       target.statuses = target.statuses.filter((s) => s.kind !== "stealth");
@@ -785,6 +818,7 @@ export class Arena {
       source: owner,
       ko: target.hp <= 0,
       ...(comboName ? { combo: comboName } : {}),
+      ...(ambushed ? { ambush: true } : {}),
     });
     if (counter && source && source !== target && source.hp > 0)
       this.reflectDamage(source, target, amount);
@@ -807,10 +841,20 @@ export class Arena {
         owner,
       );
     if (ability && source && ability.knockback) {
-      const push =
-        ability.knockback *
-        (primed ? (combo!.knockback ?? 1) : 1) *
-        (this.gift(target, "Earth") ?? 1);
+      // A pull (negative knockback) stops just in front of the caster.
+      const room = Math.max(
+        0,
+        Math.hypot(target.x - source.x, target.y - source.y) -
+          this.hitRadius(target) -
+          this.hitRadius(source) -
+          PULL_GAP,
+      );
+      const clamp = (push: number) => (push < 0 ? Math.max(push, -room) : push);
+      const push = clamp(
+        clamp(ability.knockback) *
+          (primed ? (combo!.knockback ?? 1) : 1) *
+          (this.gift(target, "Earth") ?? 1),
+      );
       const dir = normalize(target.x - source.x, target.y - source.y);
       move(target, dir.x * push, dir.y * push);
     }
@@ -853,6 +897,18 @@ export class Arena {
   cast(p: Fighter, a: Ability, ex = false) {
     if (p.hp <= 0 || p.out) return;
     this.walls();
+    // Acting reveals a stealthed fighter; a veil with `ambush` makes the hit
+    // this cast produces count extra.
+    if (this.has(p, "stealth")) {
+      const veil = this.kit(p).skills.find(
+        (k) => k.kind === "veil" && k.ambush,
+      );
+      if (veil)
+        this.ambushes.set(p.id, {
+          mult: veil.ambush!,
+          until: this.time + AMBUSH_WINDOW,
+        });
+    }
     p.statuses = p.statuses.filter((s) => s.kind !== "stealth");
     const color = CHARACTERS[p.character].color;
     const angle = p.angle;
@@ -1010,6 +1066,46 @@ export class Arena {
         ...(ex ? { ex: true } : {}),
       };
     }
+    if (a.kind === "blink") {
+      const aim = p.lastInput;
+      const from = { x: p.x, y: p.y };
+      const landing = blinkLanding(
+        p,
+        angle,
+        Math.min(a.range, Math.hypot(aim.aimX - p.x, aim.aimY - p.y)),
+      );
+      p.x = landing.x;
+      p.y = landing.y;
+      p.vx = p.vy = 0;
+      // The landing: where the client draws the arrival (tx, ty: where it left).
+      this.event("burst", p, color, undefined, p.id, a.id);
+      Object.assign(this.events[this.events.length - 1], {
+        tx: from.x,
+        ty: from.y,
+      });
+      if (a.damage > 0)
+        for (const enemy of enemies)
+          if (
+            enemy.hp > 0 &&
+            Math.hypot(enemy.x - p.x, enemy.y - p.y) <
+              a.radius + this.hitRadius(enemy) &&
+            this.lineClear(p, enemy)
+          )
+            this.damage(enemy, a.damage, p.id, a);
+    }
+    if (a.kind === "rush") {
+      // A dash at the rush's own speed; stepRushes() lands the hit on contact.
+      const seconds = a.range / Math.max(1, a.speed);
+      p.dashX = Math.cos(angle) * a.speed;
+      p.dashY = Math.sin(angle) * a.speed;
+      p.dashUntil = this.time + seconds;
+      p.recoveryUntil = Math.max(p.recoveryUntil, this.time + seconds);
+      this.rushes.set(p.id, { until: this.time + seconds, ability: a });
+    }
+    if (a.kind === "veil") {
+      this.status(p, "stealth", a.duration);
+      this.status(p, "haste", a.statusDuration ?? 1.5);
+    }
     if (a.kind === "counter") this.status(p, "counter", a.duration);
     if (a.kind === "barrier") this.status(p, "shield", a.duration);
     if (a.kind === "buff") {
@@ -1148,6 +1244,93 @@ export class Arena {
       color: zone.color,
     });
   }
+  /**
+   * A healing zone's tick: the owner's team inside it (owner included, at
+   * `selfHeal` of the amount) regains health.
+   */
+  private healZone(zone: Zone) {
+    const owner = this.players.find((p) => p.id === zone.owner);
+    if (!owner || this.phase !== "playing") return;
+    const a = zone.ability;
+    for (const ally of this.players) {
+      if (
+        ally.hp <= 0 ||
+        ally.out ||
+        ally.raidBoss ||
+        this.teamOf(ally) !== this.teamOf(owner) ||
+        Math.hypot(ally.x - zone.x, ally.y - zone.y) >=
+          zone.radius + RULES.radius
+      )
+        continue;
+      const amount = a.heal! * (ally === owner ? (a.selfHeal ?? 1) : 1);
+      const before = ally.hp;
+      ally.hp = Math.min(CHARACTERS[ally.character].health, ally.hp + amount);
+      const healed = ally.hp - before;
+      if (healed <= 0) continue;
+      ally.stats.healed = (ally.stats.healed ?? 0) + healed;
+      this.event("heal", ally, 0x7dffb0, healed, ally.id, a.id);
+    }
+  }
+  /**
+   * Rushes in progress: the first enemy the charger touches takes the hit
+   * (everyone near it too, with `explosion`) and the charge stops there.
+   */
+  private stepRushes() {
+    if (!this.rushes.size) return;
+    this.walls();
+    for (const [id, rush] of this.rushes) {
+      const p = this.players.find((q) => q.id === id);
+      if (!p || p.hp <= 0 || p.out || this.time > rush.until) {
+        this.rushes.delete(id);
+        continue;
+      }
+      const hit = this.enemiesOf(p).find(
+        (e) =>
+          e.hp > 0 &&
+          Math.hypot(e.x - p.x, e.y - p.y) <
+            this.hitRadius(e) + this.hitRadius(p) + RUSH_CONTACT,
+      );
+      if (!hit) continue;
+      this.rushes.delete(id);
+      p.dashUntil = this.time;
+      p.vx = p.vy = 0;
+      const a = rush.ability;
+      // Wall slam: would the knockback drive the target into a wall?
+      let slam = false;
+      if (a.wallSlam) {
+        const dir = normalize(hit.x - p.x, hit.y - p.y);
+        for (let d = 10; d <= a.knockback && !slam; d += 10)
+          slam = blocked(hit.x + dir.x * d, hit.y + dir.y * d, RULES.radius);
+      }
+      const main: Ability = slam
+        ? {
+            ...a,
+            damage: a.damage * a.wallSlam!,
+            statusDuration: (a.statusDuration ?? 0.35) * 2,
+          }
+        : a;
+      this.event(
+        "burst",
+        hit,
+        CHARACTERS[p.character].color,
+        undefined,
+        p.id,
+        a.id,
+      );
+      if (slam) this.events[this.events.length - 1].slam = true;
+      const victims = a.explosion
+        ? this.enemiesOf(p).filter(
+            (e) =>
+              e.hp > 0 &&
+              Math.hypot(e.x - hit.x, e.y - hit.y) <
+                a.explosion! + this.hitRadius(e),
+          )
+        : [hit];
+      for (const v of victims)
+        if (v === hit) this.damage(v, main.damage, p.id, main);
+        else this.damage(v, a.damage, p.id, a);
+    }
+  }
   /** A wall contact, range expiry or direct exploding-projectile hit. */
   private projectileImpact(pr: Projectile) {
     this.event("impact", pr, pr.color, undefined, pr.owner, pr.ability.id);
@@ -1268,8 +1451,13 @@ export class Arena {
         this.clearBufferedSkills(p.id);
         p.charge = undefined;
         p.channel = undefined;
+        // A stun or freeze stops a charge in its tracks.
+        if (this.rushes.delete(p.id))
+          p.dashUntil = Math.min(p.dashUntil, this.time);
       }
       if (input.dash && !disabled && this.time >= p.dashAt) {
+        // Dashing out of a charge gives the charge up.
+        this.rushes.delete(p.id);
         const d = normalize(input.dx, input.dy);
         p.dashX = (d.x || d.y ? d.x : Math.cos(p.angle)) * RULES.dashSpeed;
         p.dashY = (d.x || d.y ? d.y : Math.sin(p.angle)) * RULES.dashSpeed;
@@ -1380,6 +1568,7 @@ export class Arena {
         if (!a || this.time >= p.channel.until) p.channel = undefined;
       }
     }
+    this.stepRushes();
     // Swept substeps prevent fast projectiles from tunneling through a fighter or wall.
     this.projectiles = this.projectiles.filter((pr) => {
       const steps = Math.max(
@@ -1463,14 +1652,18 @@ export class Arena {
         this.fireTurret(zone);
       } else if (this.time >= zone.nextTick) {
         zone.nextTick += zone.ability.tickInterval ?? 0.5;
-        for (const enemy of this.enemiesOfOwner(zone.owner))
-          if (
-            enemy.hp > 0 &&
-            Math.hypot(enemy.x - zone.x, enemy.y - zone.y) <
-              zone.radius + this.hitRadius(enemy) &&
-            this.lineClear(zone, enemy)
-          )
-            this.damage(enemy, zone.ability.damage, zone.owner, zone.ability);
+        const a = zone.ability;
+        // A pure healing spring does nothing to enemies.
+        if (!a.heal || a.damage > 0 || a.status || a.knockback)
+          for (const enemy of this.enemiesOfOwner(zone.owner))
+            if (
+              enemy.hp > 0 &&
+              Math.hypot(enemy.x - zone.x, enemy.y - zone.y) <
+                zone.radius + this.hitRadius(enemy) &&
+              this.lineClear(zone, enemy)
+            )
+              this.damage(enemy, a.damage, zone.owner, a);
+        if (a.heal) this.healZone(zone);
       }
     }
     this.zones = this.zones.filter((z) => z.until > this.time);
