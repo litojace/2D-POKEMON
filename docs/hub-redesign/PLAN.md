@@ -61,6 +61,24 @@ Defaults accepted with these answers:
 - "Elemental Farmer" is used twice in the prototype (farm Lv 100 and the
   25-crop book reward); one gets a new name in the farm systems phase.
 
+## Level 55–100 cosmetics (decision 10), done (3 Nov 2026)
+
+Migration 051 (after the giant crops' 050). Prism frame (Lv 55), Nova entrance (65), Starlit colors (70),
+Solar aura (80), Eclipse finale (85), Prismatic laurel (95) and, with the
+Element Master title, the Element Master frame (100). NUMBERS.md calls the
+last one "prismatic frame"; it is named after the title so it can't be
+mistaken for the Lv 55 Prism frame. All seven are Mythical (the Lv 10–45
+pieces are Rare to Legendary) and have their own art instead of the shared
+journey ring and falling stars. `arena_add_xp` grants them on the way up and
+also hands back any level cosmetic a player is missing whenever it saves XP;
+the migration backfilled everyone already past those levels (on 3 Nov 2026
+nobody was: the highest level in production was 29).
+
+The same pull request fixed two things that kept every Journey reward from
+being worn: the Journey dialog's Equip button called a route that only takes
+the first two boss rewards, and the server's appearance route didn't know
+Journey items. The Wardrobe now lists owned Journey rewards too.
+
 ## The new Plaza: decisions made while building it (2 Nov 2026)
 
 These numbers are not in NUMBERS.md or the economy model; they are mine and

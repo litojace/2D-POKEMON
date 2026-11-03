@@ -265,8 +265,13 @@ it("does not let admins mint earned levels, and preserves progress when the migr
       [admin],
     ),
   ).rejects.toThrow("permission");
-  // Reapplying 022 restores its older functions; 035 then brings back levels 1–100.
-  for (const f of ["022_player_journey.sql", "035_level_100_daily_spark.sql"])
+  // Reapplying 022 restores its older functions; 035 then brings back levels
+  // 1–100 and 051 the Lv 55–100 cosmetics.
+  for (const f of [
+    "022_player_journey.sql",
+    "035_level_100_daily_spark.sql",
+    "051_level_cosmetics.sql",
+  ])
     await db.exec(
       "reset role;" + (await readFile("supabase/migrations/" + f, "utf8")),
     );

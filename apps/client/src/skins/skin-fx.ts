@@ -25,7 +25,9 @@ export type FxShape =
   /** A column of light rising from the feet (tiered entrances). */
   | "beam"
   /** A flat ring sweeping out across the ground. */
-  | "shock";
+  | "shock"
+  /** A streak of light trailing behind the particle as it flies. */
+  | "ray";
 export interface FxParticle {
   x: number;
   y: number;
@@ -501,6 +503,13 @@ export function drawFxParticle(
       g.lineStyle(6, p.color, 0.25 * fade).strokeEllipse(p.x, p.y, r * 2.1, r * 0.8);
       return true;
     }
+    case "ray": {
+      // The tail points back along the flight; it shortens as it fades.
+      const k = 0.11 * fade;
+      g.lineStyle(s * 0.55, p.color, 0.35 * fade).lineBetween(p.x, p.y, p.x - p.vx * k, p.y - p.vy * k);
+      g.lineStyle(s * 0.22, 0xffffff, 0.9 * fade).lineBetween(p.x, p.y, p.x - p.vx * k * 0.7, p.y - p.vy * k * 0.7);
+      return true;
+    }
     case "flake":
       g.lineStyle(1.1, p.color, fade)
         .lineBetween(p.x - s, p.y, p.x + s, p.y)
@@ -521,7 +530,7 @@ export function drawAnyParticle(
   p: FxParticle & { age: number },
   fade: number,
 ) {
-  if (p.glow && p.shape !== "ring" && p.shape !== "beam" && p.shape !== "shock")
+  if (p.glow && p.shape !== "ring" && p.shape !== "beam" && p.shape !== "shock" && p.shape !== "ray")
     g.fillStyle(p.color, 0.16 * fade).fillCircle(p.x, p.y, p.size * 2.6);
   if (drawFxParticle(g, p, fade)) return;
   const s = p.size;
