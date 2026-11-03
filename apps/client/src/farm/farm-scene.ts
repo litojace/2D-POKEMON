@@ -22,6 +22,7 @@ import {
   barnUpgradePrice,
   FARM_TOOLS,
   FARM_DOGS,
+  FARM_PERKS,
   CROW_SECONDS,
   SPRINKLER_LEVELS,
   SPRINKLER_PRICES,
@@ -289,6 +290,9 @@ export function openFarm(options) {
     sprinklers: 0,
     dog: null,
     gifts: [],
+    farmer: null,
+    perksUsed: [],
+    warmUntil: 0,
     log: [],
     decorPick: null,
     shovelArm: null,
@@ -300,6 +304,11 @@ export function openFarm(options) {
   const serverNow = () => Date.now() + offset;
   const barnUsed = () => Object.values(F.barn).reduce((a, b) => a + b, 0);
   const dogOn = () => !!F.dog && F.dog.until > serverNow();
+  /** Crops a harvest gives: 3 while Terradon farms (Rich Soil). */
+  const yieldN = () => (F.farmer === "terradon" ? 3 : 2);
+  const perk = () => (F.farmer ? FARM_PERKS[F.farmer] : null);
+  const warmLeft = () => Math.max(0, (F.warmUntil - serverNow()) / 1000);
+  let farmerSent = false;
   const owned = (id) =>
     Object.entries(F.barn)
       .filter(([k]) => k.startsWith(id + "|"))
@@ -373,6 +382,16 @@ export function openFarm(options) {
         }
       : null;
     F.gifts = st.dogGifts ?? [];
+    // The farmer and perks (migration 046). The farm follows your Lobby
+    // fighter: tell the server once if it changed since the last visit.
+    F.farmer = st.farmer ?? null;
+    F.perksUsed = st.perksUsed ?? [];
+    F.warmUntil = st.warmUntil ? Date.parse(st.warmUntil) : 0;
+    const me = options.character?.();
+    if (F.farmer && me && F.farmer !== me && !farmerSent) {
+      farmerSent = true;
+      queueMicrotask(() => act({ a: "farmer", id: me }, true));
+    }
     // The order board (migration 040; none before it).
     F.orders = (st.orders ?? []).map((o) => ({
       slot: o.slot,
@@ -440,6 +459,14 @@ export function openFarm(options) {
       F.seeds[a.crop] = (F.seeds[a.crop] || 0) + a.qty;
       return;
     }
+    if (a.a === "perk") {
+      if (F.farmer === "voltkit") F.plots.forEach((q) => (q.pests = 0));
+      if (F.farmer === "tidefin")
+        F.plots.forEach((q) => {
+          if (!q.locked && q.crop && q.prog < 1) q.wet = true;
+        });
+      return;
+    }
     if (!p) return;
     const g = growth(p, now),
       left = p.ripeAt ? Math.max(0, p.ripeAt - now) : 0;
@@ -481,7 +508,7 @@ export function openFarm(options) {
         const q = F.plots[j];
         if (q.locked || !q.crop || q.prog < 1) continue;
         const key = `${q.crop}|${q.mut.slice().sort().join("+")}`;
-        F.barn[key] = (F.barn[key] || 0) + 2;
+        F.barn[key] = (F.barn[key] || 0) + yieldN();
         Object.assign(q, mkPlot());
       }
     else if (a.a === "fertilize" && a.kind === "super") {
@@ -503,7 +530,7 @@ export function openFarm(options) {
       F.ferts[a.kind] = Math.max(0, F.ferts[a.kind] - 1);
     } else if (a.a === "harvest") {
       const key = `${p.crop}|${p.mut.slice().sort().join("+")}`;
-      F.barn[key] = (F.barn[key] || 0) + 2;
+      F.barn[key] = (F.barn[key] || 0) + yieldN();
       Object.assign(p, mkPlot());
     } else if (a.a === "dig") Object.assign(p, mkPlot());
   }
@@ -595,6 +622,27 @@ export function openFarm(options) {
             : (FARM_TOOLS.find((t) => t.id === x.tool)?.name ?? x.tool);
         toast(`Bought ${name}`);
         log(`Bought <b>${name}</b>`, "good");
+      }
+      for (const x of r.results) {
+        if (!x.ok || !x.perk) continue;
+        const msg =
+          x.perk === "zap"
+            ? `Zap! Cleared ${x.cleared} bug${x.cleared === 1 ? "" : "s"}`
+            : x.perk === "downpour"
+              ? "Downpour! The whole farm is watered"
+              : "Warmth: no bugs for 4 hours";
+        toast(msg);
+        log(msg, "good");
+        for (const j of x.watered ?? []) {
+          const rr = plotRect(j);
+          FX.push({
+            drops: 1,
+            x: rr.x + PW / 2,
+            y: rr.y + PH / 2,
+            t: 0,
+            life: 0.7,
+          });
+        }
       }
       for (const x of r.results) {
         if (!x.ok || !x.dog) continue;
@@ -1807,14 +1855,14 @@ export function openFarm(options) {
   function harvestAt(i, silent) {
     const p = F.plots[i];
     if (!p.crop || p.prog < 1) return false;
-    if (barnUsed() + 2 > F.barnCap) {
+    if (barnUsed() + yieldN() > F.barnCap) {
       if (!silent)
         toast("Your barn is full! Sell something or upgrade the barn.");
       return false;
     }
     const c = CROP[p.crop],
       r = plotRect(i);
-    fly(r.x + PW / 2, r.y + 10, icon(c.id), "+2");
+    fly(r.x + PW / 2, r.y + 10, icon(c.id), `+${yieldN()}`);
     float(r.x + PW / 2, r.y - 30, `+${c.xp} XP`, "#7ff0a2");
     act({ a: "harvest", plot: i });
     if (dragging) {
@@ -1880,14 +1928,14 @@ export function openFarm(options) {
       return !q.locked && q.crop && q.prog >= 1;
     });
     if (!ripe.length) return false;
-    if (barnUsed() + 2 > F.barnCap) {
+    if (barnUsed() + yieldN() > F.barnCap) {
       toast("Your barn is full! Sell something or upgrade the barn.");
       return false;
     }
     for (const j of ripe) {
       const c = CROP[F.plots[j].crop],
         r = plotRect(j);
-      fly(r.x + PW / 2, r.y + 10, icon(c.id), "+2");
+      fly(r.x + PW / 2, r.y + 10, icon(c.id), `+${yieldN()}`);
       float(r.x + PW / 2, r.y - 30, `+${c.xp} XP`, "#7ff0a2");
     }
     act({ a: "harvest", plot: i, tool: "sickle" });
@@ -2586,6 +2634,18 @@ export function openFarm(options) {
         `<span class="wx-ic">${I(wn.icon)}</span>`,
         `${wn.name}: ${wn.text}. Changes in ${fmtSecs(weatherLeft())}`,
       ],
+      perk() && [
+        "perk",
+        `o-perk ${!perk().active ? "passive" : warmLeft() > 0 ? "on" : F.perksUsed.includes(perk().active) ? "used" : "ready"}`,
+        warmLeft() > 0
+          ? warmLeft() / 14400
+          : perk().active && F.perksUsed.includes(perk().active)
+            ? 0
+            : 1,
+        perk().active ? "#ffd65b" : "#8fa3d0",
+        `<img src="${options.art(F.farmer)}" alt="">`,
+        `${perk().name}: ${perk().text}`,
+      ],
       [
         "dog",
         `o-dog${dogOn() ? "" : " off"}`,
@@ -2608,7 +2668,15 @@ export function openFarm(options) {
     // Built once, then updated in place, so a tap never lands on a button that was just replaced.
     const box = $("fm-chips"),
       sig = want
-        .map((w) => w[0] + (w[0] === "weather" ? F.weather.cur : ""))
+        .map(
+          (w) =>
+            w[0] +
+            (w[0] === "weather"
+              ? F.weather.cur
+              : w[0] === "perk"
+                ? F.farmer
+                : ""),
+        )
         .join();
     if (box.dataset.sig !== sig) {
       box.dataset.sig = sig;
@@ -2652,8 +2720,15 @@ export function openFarm(options) {
     if (k === "weather") {
       const w = FARM_WEATHER_BY_ID[F.weather.cur],
         n = F.weather.next ? FARM_WEATHER_BY_ID[F.weather.next] : null,
+        // The third forecast comes only with Mystowl's Foresight (migration 046).
+        n2 = F.weather.next2 ? FARM_WEATHER_BY_ID[F.weather.next2] : null,
         p = Math.max(0, Math.min(1, weatherLeft() / FARM_WEATHER_SECONDS));
-      h = `<div class="op-h">${I(w.icon)}<b>${w.name}</b><span class="op-tag">Now</span></div><p>${w.text}.</p><div class="op-big">${fmtSecs(weatherLeft())}<small>until it changes</small></div><div class="op-bar" style="--rc:${w.color}"><i style="width:${p * 100}%"></i></div>${n ? `<div class="op-next"><span>Next</span>${I(n.icon)}<b>${n.name}</b></div><p class="op-note">${n.text}.</p>` : ""}`;
+      h = `<div class="op-h">${I(w.icon)}<b>${w.name}</b><span class="op-tag">Now</span></div><p>${w.text}.</p><div class="op-big">${fmtSecs(weatherLeft())}<small>until it changes</small></div><div class="op-bar" style="--rc:${w.color}"><i style="width:${p * 100}%"></i></div>${n ? `<div class="op-next"><span>Next</span>${I(n.icon)}<b>${n.name}</b></div><p class="op-note">${n.text}.</p>` : ""}${n2 ? `<div class="op-next"><span>Then</span>${I(n2.icon)}<b>${n2.name}</b></div><p class="op-note">Foresight: ${n2.text}.</p>` : ""}`;
+    } else if (k === "perk") {
+      const pk = perk(),
+        used = pk.active && F.perksUsed.includes(pk.active),
+        warm = warmLeft() > 0;
+      h = `<div class="op-h"><img src="${options.art(F.farmer)}" alt=""><b>${pk.name}</b><span class="op-tag">${!pk.active ? "Passive" : warm ? "Active" : used ? "Used today" : "Ready"}</span></div><p>${pk.text}.${pk.active ? " Once a day." : " Always on."}</p>${pk.active ? (warm ? `<div class="op-big">${fmtSecs(warmLeft())}<small>left</small></div>` : used ? `<p class="op-note">Back tomorrow.</p>` : `<button type="button" class="btn-s" data-perk>Use ${pk.name}</button>`) : ""}<p class="op-note">Your farmer is your Lobby fighter. Pick another fighter there for another perk.</p>`;
     } else if (k === "dog") {
       if (dogOn()) {
         const d = DOG[F.dog.type],
@@ -3162,6 +3237,13 @@ export function openFarm(options) {
     if (!orbOpen) $("fm-orbpop").hidden = true;
   });
   $("fm-orbpop").addEventListener("click", (e) => {
+    if (e.target.closest("[data-perk]")) {
+      orbOpen = null;
+      $("fm-orbpop").hidden = true;
+      act({ a: "perk" }, true);
+      renderChips();
+      return;
+    }
     const go = e.target.closest("[data-orbgo]");
     if (!go) return;
     orbOpen = null;

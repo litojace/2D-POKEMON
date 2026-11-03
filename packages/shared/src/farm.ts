@@ -622,6 +622,29 @@ export const FARM_DOGS: readonly {
     gifts: 2,
   },
 ];
+/**
+ * Farmer perks (migration 046): your farmer is the Lobby fighter you had
+ * when you last opened the farm. Active perks are used with a tap, each
+ * once a Pacific day.
+ */
+export type FarmPerkActive = "zap" | "downpour" | "warmth";
+export const FARM_PERKS: Record<
+  string,
+  { name: string; text: string; active?: FarmPerkActive }
+> = {
+  voltkit: { name: "Zap", text: "Clears every bug on the farm", active: "zap" },
+  tidefin: {
+    name: "Downpour",
+    text: "Waters the whole farm",
+    active: "downpour",
+  },
+  cindrake: { name: "Warmth", text: "No bugs for 4 hours", active: "warmth" },
+  lumoth: { name: "Early Sun", text: "Crops grow 20% faster" },
+  terradon: { name: "Rich Soil", text: "+1 crop per harvest" },
+  auralynx: { name: "Shield", text: "Friends can't drop bugs on you" },
+  mystowl: { name: "Foresight", text: "See one more weather forecast" },
+  duskveil: { name: "Night Stalker", text: "+1 crop for every bug you catch" },
+};
 /** A crow eats its crop this many seconds after landing unless shooed. */
 export const CROW_SECONDS = 8;
 /** Farm weather (migration 039): one per 4-hour UTC window, the same for everyone. */
@@ -798,6 +821,10 @@ export interface FarmState {
   }[];
   /** Crows on plots: plot index → when it landed (migration 045). */
   crows?: Record<string, string>;
+  /** Your farmer, the active perks used today and Warmth's end (migration 046). */
+  farmer?: string;
+  perksUsed?: FarmPerkActive[];
+  warmUntil?: string | null;
   /** The weather now and the forecast (migration 039; absent before it). */
   weather?: {
     now: FarmWeatherId | "none";
@@ -816,6 +843,8 @@ export type FarmAction =
   | { a: "buy-tool"; tool: FarmToolId }
   | { a: "hire-dog"; dog: FarmDogId; days: 1 | 3 }
   | { a: "shoo"; plot: number }
+  | { a: "farmer"; id: string }
+  | { a: "perk" }
   | { a: "fertilize"; plot: number; kind: FertilizerKind }
   | { a: "buy-seeds"; crop: string; qty: number }
   | { a: "sell"; crop: string; mutation: string; qty: number }

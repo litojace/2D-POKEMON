@@ -90,16 +90,21 @@ open to change.
 
 Done (each with its own migration and tests): weather and mutations (039),
 the order board (040), crop book rewards (041), the wishing well (042),
-crop mastery (043), tools and bugs (044), guard dogs and crows (045).
+crop mastery (043), tools and bugs (044), guard dogs and crows (045),
+farmer perks (046).
 
-Still to come: farmer perks, friends' farms (with thieves, whom dogs catch),
-decorations and charm, the pasture, and treats in the Plaza.
+Still to come: friends' farms (with thieves, whom dogs catch, and pranks,
+which Auralynx's Shield blocks), decorations and charm, the pasture, and
+treats in the Plaza.
 
-- **Perks follow your Lobby fighter.** A passive growth perk (Lumoth +20%)
-  would apply to the whole time since a plot was last touched if the
-  server simply read your current fighter, so switching fighter before
-  harvesting would pay. The server needs to re-baseline every plot when the
-  farmer changes, or keep perks to one-off effects.
+- **Perks (046), decided:** your farmer is the Lobby fighter you had when
+  you last opened the farm; the farm screen sends it as a `farmer` action.
+  A new farmer first re-baselines every crop at the old speed, so Lumoth's
+  +20% only speeds up time Lumoth was farming and switching fighter never
+  pays retroactively. Terradon (+1 crop) and Duskveil (+1 crop a bug) apply
+  at the moment of the harvest or catch. Mystowl's third forecast is only
+  sent to Mystowl's farm. Zap, Downpour and Warmth are used with a tap,
+  each once a Pacific day (switching fighters can use all three).
 - **Bugs (044), decided:** "on your farm" means the browser asked about the
   farm less than 150 s ago (the farm screen asks every minute while it is
   shown). Each request rolls bugs for that time on the server: about 0.18 an

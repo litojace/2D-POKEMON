@@ -19,6 +19,8 @@ export interface FarmScreenOptions {
   trade(lots: number): Promise<void>;
   toast(message: string): void;
   playerName(): string;
+  /** The Lobby fighter: the farmer, whose perk the farm uses (migration 046). */
+  character(): string;
   economy(): Economy | undefined;
   /** The leaf balance changed (top bar pill). */
   onLeaves(balance: number): void;

@@ -72,6 +72,12 @@ it("picks the weather by its weights, the same for everyone, with a forecast", a
   expect(total).toBe(100);
   for (const w of FARM_WEATHERS)
     expect(share[w.id], w.id).toBeCloseTo(w.weight / total, 1);
+  // The third forecast is Mystowl's (Foresight, migration 046).
+  await farm();
+  await owner(
+    "update public.arena_farms set farmer = 'mystowl' where player_id = $1",
+    [player],
+  );
   const f = await farm();
   const slot = Math.floor(Date.parse(f.now) / 1000 / 14400);
   const expected = await owner(

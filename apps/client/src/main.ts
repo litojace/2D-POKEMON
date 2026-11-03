@@ -1792,6 +1792,7 @@ function syncFarm(want: boolean) {
     },
     toast,
     playerName: () => accountsUI.account?.displayName ?? "Your",
+    character: () => selected,
     economy: () => accountsUI.economy ?? undefined,
     onLeaves: (balance) => accountsUI.setLeaves(balance),
     master: async (crop) =>

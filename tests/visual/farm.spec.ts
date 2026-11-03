@@ -69,9 +69,13 @@ async function fakeFarm(page: Page) {
         stock: { wheat: 24, carrot: 22, voltberry: 21, mint: 25 },
       },
       leaves: 1234,
-      weather: { now: "storm", next: "rainbow", later: "sun", until: at(5000) },
+      // The third forecast ("later") is only Mystowl's (migration 046).
+      weather: { now: "storm", next: "rainbow", until: at(5000) },
       bookRewards: [5],
       wishReady: true,
+      // No farmer before migration 046: set by the perk test.
+      farmer: undefined as string | undefined,
+      perksUsed: [] as string[],
       dog: null as any,
       dogGifts: [] as any[],
       crows: {} as Record<string, string>,
@@ -134,6 +138,19 @@ async function fakeFarm(page: Page) {
           if (a.a === "catch" && p?.pests) {
             p.pests--;
             return { ok: true, caught: 1, xp: 1 };
+          }
+          if (a.a === "farmer") {
+            farm.farmer = a.id;
+            return { ok: true, farmer: a.id };
+          }
+          if (a.a === "perk" && farm.farmer === "voltkit") {
+            farm.perksUsed = ["zap"];
+            let cleared = 0;
+            for (const q of plots) {
+              cleared += q.pests;
+              q.pests = 0;
+            }
+            return { ok: true, perk: "zap", cleared };
           }
           if (a.a === "shoo" && farm.crows[a.plot]) {
             delete farm.crows[a.plot];
@@ -273,8 +290,13 @@ for (const viewport of [
         }, viewport.inset);
       await expect(page.locator("#account-leaves")).toContainText("1,234");
       await expect(page.locator("#account-leaves")).toContainText("1,234");
+      // A farmer (migration 046) adds the perk orb: all four orbs show.
+      await page.evaluate(() => {
+        (window as any).__fakeFarm.farmer = "voltkit";
+      });
       await page.click('#hub-scenes [data-hub-scene="farm"]');
       await expect(page.locator(".farm-layer #fm-cv")).toBeVisible();
+      await expect(page.locator("#fm-chips [data-orb]")).toHaveCount(4);
       await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
       await expect(page.locator("#fm-badge")).toContainText("20/");
       await expect(page.locator("#fm-tools [data-tool]")).toHaveCount(7);
@@ -559,6 +581,54 @@ test("a tap shoos a crow, and a guard dog can be hired from its orb", async ({
     await page.evaluate(() => (window as any).__farm.look(1500, 800));
     await page.waitForTimeout(600);
     await snap(page, info, "farm-dog-on-guard-1280x800");
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test("the farm follows your Lobby fighter, and Zap clears the bugs", async ({
+  browser,
+}, info) => {
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+  });
+  // Voltkit is the fighter on the Lobby.
+  await context.addInitScript(() => {
+    try {
+      localStorage.setItem("arena-featured-fighter", "voltkit");
+    } catch {}
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    await fakeFarm(page);
+    await page.evaluate(() => {
+      (window as any).__fakeFarm.farmer = "lumoth";
+    });
+    await page.click('#hub-scenes [data-hub-scene="farm"]');
+    await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
+    // Last time Lumoth farmed: the farm is told the farmer is now Voltkit.
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          (window as any).__farmRequests.flatMap((r: any) => r.actions),
+        ),
+      )
+      .toEqual([{ a: "farmer", id: "voltkit" }]);
+    const orb = page.locator('#fm-chips [data-orb="perk"]');
+    await expect(orb).toHaveAttribute(
+      "title",
+      "Zap: Clears every bug on the farm",
+    );
+    await orb.click();
+    await expect(page.locator("#fm-orbpop")).toContainText("Ready");
+    await page.waitForTimeout(600); // the card fades in
+    await snap(page, info, "farm-perk-1280x800");
+    await page.click("#fm-orbpop [data-perk]");
+    await expect(page.locator("#toast")).toContainText("Zap! Cleared 1 bug");
+    await orb.click();
+    await expect(page.locator("#fm-orbpop")).toContainText("Used today");
     expect(errors).toEqual([]);
   } finally {
     await context.close();
