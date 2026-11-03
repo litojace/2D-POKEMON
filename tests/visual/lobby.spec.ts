@@ -251,13 +251,13 @@ test("the mode menu picks and remembers a mode, and the scene switch opens the P
 
     // Plaza opens the walkable world; Lobby comes back.
     await page.click('#hub-scenes [data-hub-scene="plaza"]');
-    await expect(page.locator("#town-menu-toggle")).toBeVisible({
+    await expect(page.locator(".plaza-layer #pz-cv")).toBeVisible({
       timeout: 20_000,
     });
     await expect(page.locator(".lobby-layer")).toHaveCount(0);
     await page.click('#hub-scenes [data-hub-scene="lobby"]');
     await expect(page.locator("#lobby-play")).toBeVisible();
-    await expect(page.locator(".town-layer")).toHaveCount(0);
+    await expect(page.locator(".plaza-layer")).toHaveCount(0);
     expect(errors).toEqual([]);
   } finally {
     await context.close();

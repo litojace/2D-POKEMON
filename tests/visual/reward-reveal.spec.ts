@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openTown, snap } from "./helpers";
+import { openHub, snap } from "./helpers";
 
 // A raid clear that earns new rewards turns each one over as a card.
 for (const size of [
@@ -10,7 +10,7 @@ for (const size of [
     page,
   }, info) => {
     await page.setViewportSize(size);
-    await openTown(page);
+    await openHub(page);
     const path = new URL(
       "../../apps/client/src/reward-reveal.ts",
       import.meta.url,

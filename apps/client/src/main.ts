@@ -236,7 +236,9 @@ import {
 } from "../../../packages/shared/src/accounts";
 import { masteryMatches, setMastery, setWornSkins } from "./fighter-selection";
 import { shareResult } from "./share-card";
-import { openTown } from "./town";
+import { openPlazaScreen, type PlazaScreen } from "./plaza/plaza-screen";
+import type { PlazaProgress } from "../../../packages/shared/src/plaza";
+import { CHAMPION_SKIN_BY_ID } from "../../../packages/shared/src/shop";
 import { prepareSurfaceTextures, surfaceBurst } from "./court-surface-fx";
 import { fxFor } from "./fx-engine";
 import { isRaidFloor, paintRaidFloor } from "./raid-floors";
@@ -1582,14 +1584,14 @@ function renderGate() {
   }
 }
 
-let town: ReturnType<typeof openTown> | undefined;
-let townLook = "";
-let townInvitePending = false;
-let townRetry: ReturnType<typeof setTimeout> | undefined;
-let wantedTownClosed = false;
+let plaza: PlazaScreen | undefined;
+let plazaLook = "";
+let plazaLow = false;
+let plazaRetry: ReturnType<typeof setTimeout> | undefined;
+let wantedPlazaClosed = false;
 /**
- * The town is the hub: open whenever a signed-in, connected player is not in
- * a room (and not about to resume or join one); closed otherwise.
+ * The hub (Lobby, Plaza, Farm): open whenever a signed-in, connected player
+ * is not in a room (and not about to resume or join one); closed otherwise.
  */
 function syncTown() {
   const hub =
@@ -1604,92 +1606,78 @@ function syncTown() {
   syncParty();
   syncLobby(hub && hubScene === "lobby");
   syncFarm(hub && hubScene === "farm");
-  const want = hub && hubScene === "plaza";
+  syncPlaza(hub && hubScene === "plaza");
+}
+/** The new Plaza (hub redesign phase 3): the server moves everyone in it. */
+function syncPlaza(want: boolean) {
   if (!want) {
-    if (town) {
-      wantedTownClosed = true;
-      town.close();
-      wantedTownClosed = false;
+    if (plaza) {
+      wantedPlazaClosed = true;
+      plaza.close();
+      wantedPlazaClosed = false;
     }
     return;
   }
-  const look = townOutfitKey(
-    selected,
-    accountsUI.economy?.looks[selected],
-    accountsUI.raidLook,
-  );
-  if (town) {
-    if (look !== townLook) town.look(selected);
-    townLook = look;
+  const skin = accountsUI.economy?.looks[selected] ?? null;
+  const look = townOutfitKey(selected, skin, accountsUI.raidLook);
+  if (plaza) {
+    if (look !== plazaLook) plaza.look(selected, skin);
+    plazaLook = look;
     return;
   }
-  if (townRetry) return;
-  townLook = look;
-  town = openTown({
+  if (plazaRetry) return;
+  plazaLook = look;
+  plazaLow = lowGraphics();
+  plaza = openPlazaScreen({
     socket,
     character: selected,
-    request,
+    skin,
     reduced: reducedMotion,
-    onPortal: (spot) => {
-      if (spot.id === "raids")
-        void accountsUI.showRaidHub(spot.boss ?? state?.raid?.boss);
-      else if (spot.id === "shop") void accountsUI.showShop(spot.tab);
-      else if (spot.id === "wardrobe") void accountsUI.showWardrobe();
-      else if (spot.id === "missions") void accountsUI.showMissions();
-      else if (spot.id === "leaderboard") $("leaderboard").click();
-      else homeNavigation.open("play");
-    },
-    loadNearbyFriends: () => accountsUI.nearbyFriends(),
-    onInspect: (profile) => dialog(playerCardMarkup(profile)),
-    onAddFriend: (playerId) => accountsUI.friendRequest({ playerId }),
-    onInviteFriend: async (playerId) => {
-      if (townInvitePending) return false;
-      if (!connected) {
-        toast("Waiting for the server connection.");
-        return false;
+    low: plazaLow,
+    art: (character, worn) =>
+      "data:image/svg+xml;charset=utf-8," +
+      encodeURIComponent(
+        fighterArt(
+          (Object.hasOwn(CHARACTERS, character)
+            ? character
+            : "voltkit") as CharacterId,
+          undefined,
+          worn,
+        ),
+      ),
+    skinName: (id) => CHAMPION_SKIN_BY_ID[id]?.name ?? null,
+    fighterName: (id) =>
+      CHARACTERS[id as CharacterId]?.name ?? "Fighter",
+    playerName: () => accountsUI.account?.displayName ?? "You",
+    loadProgress: async () =>
+      (await accountsUI.api("/api/plaza")) as PlazaProgress,
+    goFarm: () => setHubScene("farm"),
+    onPlayer: async (action, playerId) => {
+      if (action === "friend") {
+        await accountsUI.friendRequest({ playerId });
+        return;
       }
-      townInvitePending = true;
-      try {
-        // Town has no room yet. Create a private duel lobby before sending the
-        // same authenticated invitation used by the Friends list.
-        if (!myId) {
-          roomMode = "duel";
-          const reply = await request("create", {
-            name: accountsUI.account?.displayName ?? "Player",
-            mode: roomMode,
-          });
-          identity(reply);
-          if (!reply.ok) return false;
-          await request("select", selected);
-        }
-        const reply = await request("room-invite", { playerId });
-        toast(
-          reply.ok
-            ? "Room invite sent. Your friend can join from the invitation."
-            : (reply.error ??
-                "Couldn't send this invitation. Try again from Friends."),
-        );
-        return reply.ok;
-      } finally {
-        townInvitePending = false;
-      }
+      const reply = await request("party-invite", {
+        playerId,
+        character: selected,
+      });
+      if (reply.ok) partyCharacterSent = selected;
+      toast(
+        reply.ok
+          ? "Party invitation sent."
+          : (reply.error ?? "Couldn't send this invitation."),
+      );
     },
-    onAction: (action) => {
-      if (action === "play") homeNavigation.open("play");
-      else if (action === "fighters") homeNavigation.open("fighters");
-      else if (action === "wardrobe") void accountsUI.showWardrobe();
-      else if (action === "friends") void accountsUI.showFriends();
-      else if (action === "adventure") void accountsUI.showAdventure();
-      else if (action === "raids") void showRaidBestiary();
-    },
+    toast,
+    onLeaves: (balance) => accountsUI.setLeaves(balance),
     onClose: (failed) => {
-      town = undefined;
-      if (wantedTownClosed) return;
-      // Closed by the server or a dropped connection: back in when possible
-      // (and not in a tight loop if the server keeps refusing).
-      townRetry = setTimeout(
+      plaza = undefined;
+      if (wantedPlazaClosed) return;
+      // Closed by the server or refused: back in when possible (and not in a
+      // tight loop if the server keeps refusing).
+      plazaRetry = setTimeout(
         () => {
-          townRetry = undefined;
+          plazaRetry = undefined;
           syncTown();
         },
         failed ? 15000 : 1500,
@@ -3208,11 +3196,11 @@ function bindGraphicsCard() {
         other.setAttribute("aria-checked", String(other === b));
       const note = document.querySelector(".prefs-graphics-note");
       if (note) note.innerHTML = graphicsNote(value);
-      // The town behind the dialog reloads at the new quality.
-      if (town && town.graphics() !== (lowGraphics() ? "low" : "high")) {
-        wantedTownClosed = true;
-        town.close();
-        wantedTownClosed = false;
+      // The Plaza behind the dialog reloads at the new quality.
+      if (plaza && plazaLow !== lowGraphics()) {
+        wantedPlazaClosed = true;
+        plaza.close();
+        wantedPlazaClosed = false;
         syncTown();
       }
     };

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { box, inside, openTown, snap } from "./helpers";
+import { box, inside, openHub, snap } from "./helpers";
 
 const SCREENS = [
   { name: "desktop", viewport: { width: 1440, height: 900 }, touch: false },
@@ -13,7 +13,7 @@ for (const s of SCREENS)
     test("Settings fits the screen with every action reachable", async ({
       page,
     }, info) => {
-      const errors = await openTown(page);
+      const errors = await openHub(page);
       await page.evaluate(() => document.getElementById("settings")!.click());
       const dialog = page.locator("#dialog");
       await expect(dialog.locator(".settings-screen")).toBeVisible();

@@ -1,3 +1,7 @@
+import type {
+  PlazaProgress,
+  PlazaRecord,
+} from "../../../packages/shared/src/plaza.js";
 import {
   RAID_COSMETICS,
   RAID_SLOTS,
@@ -35,13 +39,15 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "037_farm.sql";
+export const LATEST_MIGRATION = "038_plaza.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
   recordRaid?(receipt: RaidReceipt): Promise<void>;
   /** Coins, missions and Mythic progress after a real match or raid. */
   recordActivity?(receipt: ActivityReceipt): Promise<void>;
+  /** Something the game server saw in the Plaza (quests, orbs, laps); returns the player's progress. */
+  recordPlaza?(event: PlazaRecord): Promise<PlazaProgress | null>;
   authenticate(token: string): Promise<Account | null>;
   rpc(
     token: string,
@@ -88,6 +94,21 @@ export function createAccountProvider(): AccountProvider {
       });
       if (result.error)
         throw new AccountError(503, "Raid rewards could not be stored.");
+    },
+    async recordPlaza(event) {
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!url || !serviceKey)
+        throw new AccountError(
+          503,
+          "Plaza rewards require server storage configuration.",
+        );
+      const admin = createClient(url, serviceKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      const result = await admin.rpc("arena_plaza_record", { p: event });
+      if (result.error)
+        throw new AccountError(503, "Plaza rewards could not be stored.");
+      return (result.data as PlazaProgress | null) ?? null;
     },
     async recordActivity(receipt) {
       const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -368,6 +389,14 @@ export function installAccountRoutes(
       });
       onPlayerChanged(account.id);
       res.json({ ok: true, economy });
+    }),
+  );
+  // The Plaza (migration 038): today's quests and the TOP DASH board.
+  app.get(
+    "/api/plaza",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await provider.rpc(token, "arena_plaza", {}));
     }),
   );
   // The farm (migration 037): its state at the server's time, and actions.

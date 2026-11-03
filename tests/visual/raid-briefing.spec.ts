@@ -2,10 +2,10 @@ import { expect, test } from "@playwright/test";
 import {
   box,
   inside,
-  openTown,
-  openTownMenu,
+  openHub,
   pushUntilBattle,
   snap,
+  openPlayPanel,
 } from "./helpers";
 for (const size of [
   { width: 1440, height: 900 },
@@ -23,12 +23,11 @@ for (const size of [
       });
     try {
       const page = await context.newPage(),
-        errors = await openTown(page);
+        errors = await openHub(page);
       await page.evaluate(() =>
         (window as any).__room("raid", { boss: "prismatail" }),
       );
-      await openTownMenu(page);
-      await page.click(".town-play");
+      await openPlayPanel(page);
       await page.click("#play-create");
       await pushUntilBattle(page);
       for (const boss of [

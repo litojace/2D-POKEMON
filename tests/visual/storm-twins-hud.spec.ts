@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openTown, openTownMenu, pushUntilBattle, snap } from "./helpers";
+import { openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
 
 for (const viewport of [{width:844,height:390},{width:1280,height:589},{width:844,height:280},{width:1440,height:900}]) {
   test(`both Storm Twins health bars stay inside the HUD at ${viewport.width}x${viewport.height}`,async({browser},info)=>{
@@ -7,13 +7,13 @@ for (const viewport of [{width:844,height:390},{width:1280,height:589},{width:84
     const context=await browser.newContext({viewport,isMobile:mobile,hasTouch:mobile});
     try {
       const page=await context.newPage();
-      const errors=await openTown(page);
+      const errors=await openHub(page);
       await page.evaluate(()=>{
         const w=window as any;w.__room("raid",{boss:"storm-twins"});
         w.__snap.players=w.__snap.players.filter((p:any)=>p.raidBoss || p.id==="me");
         w.__snap.raid.partySize=1;
       });
-      await openTownMenu(page);await page.click('.town-play');await page.click('#play-create');await pushUntilBattle(page);
+      await openPlayPanel(page);await page.click('#play-create');await pushUntilBattle(page);
       const geometry=await page.locator('#raid-hud').evaluate((hud)=>{
         const measure=(el:Element)=>{
           const r=el.getBoundingClientRect(),s=getComputedStyle(el);

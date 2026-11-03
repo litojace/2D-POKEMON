@@ -1,5 +1,5 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
-import { openTown, openTownMenu, pushUntilBattle } from "./helpers";
+import { openHub, pushUntilBattle, openPlayPanel } from "./helpers";
 
 /**
  * Repeatable client performance scenarios (Chromium + CDP):
@@ -58,8 +58,7 @@ async function enterBattle(page: Page, scenario: Scenario) {
           }),
     scenario,
   );
-  await openTownMenu(page);
-  await page.click(".town-play");
+  await openPlayPanel(page);
   await page.click("#play-create");
   await pushUntilBattle(page);
 }
@@ -204,7 +203,7 @@ for (const scenario of ["pvp2", "pvp4", "raid4"] as Scenario[])
     try {
       const page = await context.newPage();
       await instrument(page);
-      const errors = await openTown(page);
+      const errors = await openHub(page);
       await enterBattle(page, scenario);
       await startFight(page, scenario);
       // Warm up past layout settling and the first effects.
@@ -283,7 +282,7 @@ test("keeps memory steady across repeated battles, Town, Shop and Wardrobe", asy
   try {
     const page = await context.newPage();
     await instrument(page);
-    const errors = await openTown(page);
+    const errors = await openHub(page);
     const samples: Record<string, unknown>[] = [];
     for (let cycle = 0; cycle < CYCLES; cycle++) {
       await enterBattle(page, cycle % 2 ? "raid4" : "pvp4");
@@ -297,7 +296,7 @@ test("keeps memory steady across repeated battles, Town, Shop and Wardrobe", asy
         if (d?.open)
           document.querySelector<HTMLButtonElement>("#close-dialog")?.click();
       });
-      await expect(page.locator("#town-menu-toggle")).toBeVisible({
+      await expect(page.locator("#lobby-play")).toBeVisible({
         timeout: 20_000,
       });
       // A Shop and a Wardrobe visit between matches.

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openTown, openTownMenu, snap } from "./helpers";
+import { openHub, snap, hubMenu } from "./helpers";
 
 for (const viewport of [{width:844,height:390},{width:844,height:280},{width:1440,height:900},{width:414,height:896}]) {
   test(`lower boss selections preserve avatar rail and scroll ${viewport.width}x${viewport.height}`,async({browser},info)=>{
@@ -7,12 +7,12 @@ for (const viewport of [{width:844,height:390},{width:844,height:280},{width:144
     const context=await browser.newContext({viewport,isMobile:mobile,hasTouch:mobile});
     try {
       const page=await context.newPage();
-      const errors=await openTown(page);
+      const errors=await openHub(page);
       await page.evaluate(()=>{
         const fetch=window.fetch.bind(window);
         window.fetch=async(input,init)=>String(input).includes("/api/raids") ? new Response(JSON.stringify({clears:10,highestPeril:3,totalClears:35,bestSeconds:60,bosses:Object.fromEntries(["grumblecrag","tidewyrm","gloomshade","somnara","prismatail","emberwing","storm-twins"].map(id=>[id,{clears:5,highestPeril:2,bestSeconds:90}])),titles:[],cosmetics:[],weekly:[],earned:[],loadout:{}}),{headers:{"Content-Type":"application/json"}}) : fetch(input,init);
       });
-      await openTownMenu(page);await page.click('[data-action="raids"]');
+      await hubMenu(page, "raids");
       await expect(page.locator(".raid-roster-card")).toHaveCount(7);
       await page.locator("#dialog").evaluate(async(el)=>{
         await document.fonts.ready;

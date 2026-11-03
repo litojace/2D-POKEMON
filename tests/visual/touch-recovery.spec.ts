@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openTown, openTownMenu, pushUntilBattle } from "./helpers";
+import { openHub, pushUntilBattle, openPlayPanel } from "./helpers";
 async function mount(page: Page) {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -152,10 +152,9 @@ test("trusted iOS-style touch recovers visible standalone play even if document 
         body: body.replace(marker, "window.__touch=touch;" + marker),
       });
     });
-    const errors = await openTown(page);
+    const errors = await openHub(page);
     await page.evaluate(() => (window as any).__room("practice"));
-    await openTownMenu(page);
-    await page.click(".town-play");
+    await openPlayPanel(page);
     await page.click("#practice");
     await pushUntilBattle(page);
     await page.evaluate(() => {

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { openTown, openTownMenu, snap } from "./helpers";
+import { openHub, snap, hubMenu } from "./helpers";
 
 // Levels 1–100, the Daily Spark and the 30-tier season (migration 035) in the
 // Adventure dialog, on a desktop and on phones in landscape.
@@ -36,7 +36,7 @@ for (const viewport of [
     });
     try {
       const page = await context.newPage();
-      const errors = await openTown(page);
+      const errors = await openHub(page);
       await page.evaluate((j) => {
         const fetch = window.fetch.bind(window);
         window.fetch = async (input, init) => {
@@ -48,8 +48,7 @@ for (const viewport of [
           });
         };
       }, journey);
-      await openTownMenu(page);
-      await page.click('#town-menu-items [data-action="adventure"]');
+      await hubMenu(page, "journey");
       const dialog = page.locator("#dialog");
       await expect(dialog.locator(".journey-level-badge b")).toHaveText("60");
       await expect(dialog.locator(".journey-spark")).toContainText(

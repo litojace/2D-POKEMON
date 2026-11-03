@@ -61,6 +61,31 @@ Defaults accepted with these answers:
 - "Elemental Farmer" is used twice in the prototype (farm Lv 100 and the
   25-crop book reward); one gets a new name in the farm systems phase.
 
+## The new Plaza: decisions made while building it (2 Nov 2026)
+
+These numbers are not in NUMBERS.md or the economy model; they are mine and
+open to change.
+
+- **Orb Shower pay:** +2 Gold Leaves an orb (the prototype), at most 10 paying
+  orbs a shower and 50 a Pacific day (100 leaves), so an always-on player
+  can't farm leaves from it. Orbs are spawned and caught by server positions.
+- **Runway cheers:** the prototype's fans were bots. Here the server counts a
+  cheer every 0.6 s you stand on the runway, plus each ❤️ 🔥 👏 emote from
+  another player within 750 px. "15 cheers" takes about 9 s alone.
+- **Ball pitch:** four server bots per Plaza copy (two a side) play Orb Ball
+  with the prototype's brain while anyone is in that copy; a goal counts for
+  your quest when you touched the ball last.
+- **TOP DASH:** each player's best lap of the (Pacific, Monday) week. Laps are
+  timed from server positions; leaving the lane cancels a lap.
+- **Quests** are paid automatically (decision 11), not with Claim buttons.
+- **Old town:** the Plaza tab now opens the new Plaza; the old town is no longer
+  opened from the hub. Its code, art and tests are removed in a follow-up pull
+  request once the Plaza is live (the server keeps answering old clients'
+  town events until then). Tapping a player in the Plaza shows their card with Add friend and
+  Invite to party, in place of the town's Nearby players panel.
+- **Not yet:** treats thrown in the Plaza (farm systems, phase 5), and the
+  photo album (the polaroid can be saved as a picture).
+
 ## Phases
 
 Each phase: branch from `main`, pull request into `main`. Before every push:

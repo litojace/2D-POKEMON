@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { openTown } from "./helpers";
+import { openHub } from "./helpers";
 async function closePanel(page: Page) {
   await page.evaluate(
     () =>
@@ -68,7 +68,7 @@ window.fetch=async(input,init)=>{
           });
         },
       );
-      const errors = await openTown(page);
+      const errors = await openHub(page);
       await page.evaluate(() => {
         (window as any).__choose("tidefin");
         void (window as any).__account.showShop("champions");
@@ -226,7 +226,7 @@ test("downloaded updates wait until the Shop closes", async ({ page }) => {
       ),
     });
   });
-  const errors = await openTown(page);
+  const errors = await openHub(page);
   await page.click("#account-coins");
   await expect(page.locator(".shop")).toBeVisible();
   await page.evaluate(() => (window as any).__pwaOptions.onNeedRefresh());

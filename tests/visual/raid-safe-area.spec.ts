@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { raidAttacksOf, type RaidBossId } from "../../packages/shared/src/raid";
-import { openTown, openTownMenu, pushUntilBattle, snap } from "./helpers";
+import { openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
 const bosses=["grumblecrag","tidewyrm","gloomshade","somnara","prismatail","emberwing","storm-twins"];
 for(const viewport of [{width:844,height:390},{width:1280,height:589},{width:844,height:280},{width:1440,height:900}]) {
  test(`raid HUD, revival and scenery fit safe areas at ${viewport.width}x${viewport.height}`,async({browser},info)=>{
@@ -8,12 +8,12 @@ for(const viewport of [{width:844,height:390},{width:1280,height:589},{width:844
   const mobile=viewport.width<1400;
   const context=await browser.newContext({viewport,isMobile:mobile,hasTouch:mobile});
   try {
-   const page=await context.newPage(),errors=await openTown(page);
+   const page=await context.newPage(),errors=await openHub(page);
    if(mobile)await page.evaluate(()=>{
     for(const [key,value] of Object.entries({left:44,right:44,bottom:21,top:0}))document.documentElement.style.setProperty(`--safe-${key}`,`${value}px`);
    });
    await page.evaluate(()=>(window as any).__room("raid",{boss:"tidewyrm"}));
-   await openTownMenu(page);await page.click('.town-play');await page.click('#play-create');await pushUntilBattle(page);
+   await openPlayPanel(page);await page.click('#play-create');await pushUntilBattle(page);
    const inspect=()=>page.locator('#battle').evaluate((battle)=>{
     const rect=(el:Element)=>{const r=el.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height}};
     const hud=battle.querySelector('#raid-hud')!,gear=battle.querySelector('#battle-menu')!,frame=battle.querySelector('.arena-frame')!,game=battle.querySelector('#game')!;

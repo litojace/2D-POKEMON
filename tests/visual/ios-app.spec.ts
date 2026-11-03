@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { openTown, openTownMenu, pushUntilBattle, snap } from "./helpers";
+import {
+  openHub,
+  openPlayPanel,
+  openPlaza,
+  pushUntilBattle,
+  snap,
+} from "./helpers";
 
 const iphone = {
   viewport: { width: 844, height: 390 },
@@ -17,26 +23,26 @@ async function installed(page: import("@playwright/test").Page) {
     }),
   );
 }
-test("iOS Home Screen resumes Town and releases the old battle canvas on return", async ({
+test("iOS Home Screen resumes the hub and releases the old battle canvas on return", async ({
   browser,
 }, info) => {
   const context = await browser.newContext(iphone),
     page = await context.newPage();
   try {
     await installed(page);
-    const errors = await openTown(page);
-    await expect(page.locator(".town-canvas canvas")).toBeVisible();
-    expect(
-      await page
-        .locator(".town-canvas canvas")
-        .evaluate((c: HTMLCanvasElement) => c.width),
-    ).toBe(1266); // 844 × 1.5: phones draw the town at battle density
-    // Crossing the adaptive pixel budget must keep CSS sizing and pointer
-    // coordinates aligned with the host, including an iPad-sized window.
+    const errors = await openPlaza(page);
+    const canvas = page.locator(".plaza-layer #pz-cv");
+    await expect(canvas).toBeVisible();
+    // Phones draw the Plaza at up to 2x (here 844 × 2).
+    await expect
+      .poll(() => canvas.evaluate((c: HTMLCanvasElement) => c.width))
+      .toBe(1688);
+    // An iPad-sized window keeps the canvas the size of its host and within
+    // the pixel budget.
     await page.setViewportSize({ width: 1194, height: 834 });
     await expect
       .poll(() =>
-        page.locator(".town-canvas canvas").evaluate((c) => {
+        canvas.evaluate((c) => {
           const host = c.parentElement!.getBoundingClientRect(),
             r = c.getBoundingClientRect();
           return (
@@ -46,27 +52,23 @@ test("iOS Home Screen resumes Town and releases the old battle canvas on return"
       )
       .toBeLessThan(2);
     expect(
-      await page
-        .locator(".town-canvas canvas")
-        .evaluate((c: HTMLCanvasElement) => c.width * c.height),
+      await canvas.evaluate((c: HTMLCanvasElement) => c.width * c.height),
     ).toBeLessThanOrEqual(2_002_000);
     await page.setViewportSize(iphone.viewport);
     await expect
-      .poll(() =>
-        page
-          .locator(".town-canvas canvas")
-          .evaluate((c: HTMLCanvasElement) => c.width),
-      )
-      .toBe(1266); // 844 × 1.5: phones draw the town at battle density
+      .poll(() => canvas.evaluate((c: HTMLCanvasElement) => c.width))
+      .toBe(1688);
     await page.evaluate(() => {
       (window as any).__keepApp = true;
       dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true }));
       dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
     });
-    await openTownMenu(page);
-    await expect(page.locator(".town-play")).toBeVisible();
+    await expect(canvas).toBeVisible();
+    // Back to the Lobby for a practice match.
+    await page.click('#hub-scenes [data-hub-scene="lobby"]');
+    await expect(page.locator("#lobby-play")).toBeVisible();
     await page.evaluate(() => (window as any).__room("practice"));
-    await page.click(".town-play");
+    await openPlayPanel(page);
     await page.click("#practice");
     await pushUntilBattle(page);
     await expect(page.locator("#game canvas")).toHaveCount(1);
@@ -79,15 +81,14 @@ test("iOS Home Screen resumes Town and releases the old battle canvas on return"
       w.__push();
     });
     await page.locator("#return").tap();
-    await expect(page.locator("#town-menu-toggle")).toBeVisible();
+    await expect(page.locator("#lobby-play")).toBeVisible();
     await expect(page.locator("#game canvas")).toHaveCount(0);
     await expect(
       page.locator("#battle .player-nameplate,#battle .enemy-bearing"),
     ).toHaveCount(0);
-    await expect(page.locator(".town-canvas canvas")).toBeVisible();
     await expect(page.locator("#app-boot,#renderer-recovery")).toHaveCount(0);
     expect(await page.evaluate(() => (window as any).__keepApp)).toBe(true);
-    await snap(page, info, "ios-home-screen-town");
+    await snap(page, info, "ios-home-screen-hub");
     expect(errors).toEqual([]);
   } finally {
     await context.close();
@@ -106,12 +107,13 @@ test("a lost drawing context shows recovery and restores without navigation", as
     page = await context.newPage();
   try {
     await installed(page);
-    const errors = await openTown(page);
-    await page.waitForTimeout(1500);
+    const errors = await openHub(page);
+    await page.evaluate(() => (window as any).__room("practice"));
+    await openPlayPanel(page);
+    await page.click("#practice");
+    await pushUntilBattle(page);
     const supported = await page.evaluate(() => {
-      const canvas = document.querySelector<HTMLCanvasElement>(
-        ".town-canvas canvas",
-      )!;
+      const canvas = document.querySelector<HTMLCanvasElement>("#game canvas")!;
       const gl = canvas.getContext("webgl") ?? canvas.getContext("webgl2");
       const ext = gl?.getExtension("WEBGL_lose_context");
       (window as any).__lostGL = ext;
@@ -122,8 +124,7 @@ test("a lost drawing context shows recovery and restores without navigation", as
     await expect(page.locator("#renderer-recovery")).toBeVisible();
     await page.evaluate(() => (window as any).__lostGL.restoreContext());
     await expect(page.locator("#renderer-recovery")).toHaveCount(0);
-    await openTownMenu(page);
-    await expect(page.locator(".town-play")).toBeVisible();
+    await expect(page.locator("#game canvas")).toBeVisible();
     await snap(page, info, "ios-drawing-context-restored");
     expect(errors).toEqual([]);
   } finally {

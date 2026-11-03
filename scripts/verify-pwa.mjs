@@ -33,32 +33,6 @@ for (const art of [
   "startup-starfield",
   "startup-sigil",
   "raid-spell-flipbook",
-  "town-fountain",
-  "town-ground",
-  "town-nature",
-  "town-props",
-  "town-animals",
-  "town-animal-motion",
-  ...[
-    "red",
-    "teal",
-    "plum",
-    "market",
-    "tower",
-    "windmill",
-    "coliseum",
-    "raidHall",
-    "obelisk",
-  ].map((name) => `town-hd-${name}`),
-  ...[
-    "grumblecrag",
-    "tidewyrm",
-    "gloomshade",
-    "somnara",
-    "prismatail",
-    "emberwing",
-    "storm-twins",
-  ].map((name) => `town-statue-${name}`),
   ...[
     "grumblecrag",
     "tidewyrm",
@@ -84,6 +58,11 @@ for (const art of [
   );
 assert(!urls.includes("assets/town/fountain.webp"));
 assert(!urls.includes("assets/town/ground.webp"));
+// The hub's Plaza replaced the old town: its art is no longer downloaded.
+assert(
+  !urls.some((url) => /^assets\/town-/.test(url)),
+  "The old town's art must not be precached",
+);
 const music = JSON.parse(
   readFileSync("apps/client/public/assets/music/sources.json", "utf8"),
 );

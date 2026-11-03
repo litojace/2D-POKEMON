@@ -1,12 +1,5 @@
 import { expect, test } from "@playwright/test";
-import {
-  box,
-  inside,
-  openTown,
-  openTownMenu,
-  pushUntilBattle,
-  snap,
-} from "./helpers";
+import { box, inside, openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
 
 // A short visible viewport includes Safari's expanded address/tab bars.
 for (const size of [
@@ -24,10 +17,9 @@ for (const size of [
     });
     const page = await context.newPage();
     try {
-      const errors = await openTown(page);
+      const errors = await openHub(page);
       await page.evaluate(() => (window as any).__room("practice"));
-      await openTownMenu(page);
-      await page.click(".town-play");
+      await openPlayPanel(page);
       await page.click("#practice");
       await pushUntilBattle(page);
       await page.evaluate(() => {
@@ -110,7 +102,7 @@ for (const size of [
       ).toBe(true);
       await snap(page, info, `mobile-victory-${size.width}x${size.height}`);
       await page.locator("#return").tap();
-      await expect(page.locator("#town-menu-toggle")).toBeVisible();
+      await expect(page.locator("#lobby-play")).toBeVisible();
       expect(errors).toEqual([]);
     } finally {
       await context.close();

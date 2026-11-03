@@ -1,15 +1,14 @@
 import { expect, test } from "@playwright/test";
-import { openTown, openTownMenu, pushUntilBattle, snap } from "./helpers";
+import { openHub, pushUntilBattle, snap, openPlayPanel } from "./helpers";
 
 for (const size of [{width:844,height:390},{width:932,height:430},{width:844,height:280}]) {
   test(`approved mobile combat arc fits ${size.width}x${size.height}`, async ({browser},info) => {
     const context = await browser.newContext({viewport:size,isMobile:true,hasTouch:true,deviceScaleFactor:2});
     try {
       const page = await context.newPage();
-      const errors = await openTown(page);
+      const errors = await openHub(page);
       await page.evaluate(() => (window as any).__room("pvp",{mode:"ffa",phase:"playing"}));
-      await openTownMenu(page);
-      await page.click(".town-play");
+      await openPlayPanel(page);
       await page.click("#play-create");
       await pushUntilBattle(page);
       await page.evaluate(() => {

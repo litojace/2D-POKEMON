@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { box, inside, openTown, snap } from "./helpers";
+import { box, inside, openHub, snap } from "./helpers";
 
 async function exposeAccount(page: Page) {
   await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {
@@ -32,7 +32,7 @@ for (const size of [
     try {
       const page = await context.newPage();
       await exposeAccount(page);
-      const errors = await openTown(page);
+      const errors = await openHub(page);
       await page.evaluate(() => {
         const w = window as any,
           s = w.__sock;
@@ -57,7 +57,7 @@ for (const size of [
       await expect(page.locator("#gate-auth")).toContainText(
         "Playing on another device",
       );
-      await expect(page.locator("#town-menu-toggle")).toHaveCount(0);
+      await expect(page.locator("#lobby-play")).toHaveCount(0);
       await page.evaluate(async () => {
         const w = window as any;
         await w.__account.setSession({
@@ -80,7 +80,7 @@ for (const size of [
       );
       await page.click("#gate-retry");
       await page.evaluate(() => (window as any).__sock.fire("connect"));
-      await expect(page.locator("#town-menu-toggle")).toBeVisible();
+      await expect(page.locator("#lobby-play")).toBeVisible();
       expect(
         await page.evaluate(() =>
           sessionStorage.getItem("arena-session-replaced"),
@@ -98,7 +98,7 @@ for (const mode of ["login", "signup"] as const) {
     page,
   }) => {
     await exposeAccount(page);
-    const errors = await openTown(page);
+    const errors = await openHub(page);
     await page.evaluate(async (mode) => {
       const w = window as any,
         account = w.__account,
@@ -176,7 +176,7 @@ for (const mode of ["login", "signup"] as const) {
     expect(await page.evaluate(() => (window as any).__profileLoads)).toBe(1);
     expect(await page.evaluate(() => (window as any).__authConnects)).toBe(1);
     await page.evaluate(() => (window as any).__releaseProfile());
-    await expect(page.locator("#town-menu-toggle")).toBeVisible();
+    await expect(page.locator("#lobby-play")).toBeVisible();
     await page.evaluate(() => {
       const s = (window as any).__sock;
       s.fire("connect_error", new Error("xhr poll error"));
@@ -201,7 +201,7 @@ test("shows a profile error only after a failed response, then shows loading whi
   page,
 }) => {
   await exposeAccount(page);
-  const errors = await openTown(page);
+  const errors = await openHub(page);
   await page.evaluate(async () => {
     const w = window as any,
       account = w.__account,
@@ -246,6 +246,6 @@ test("shows a profile error only after a failed response, then shows loading whi
     w.__profileFails = false;
     w.__finishProfile();
   });
-  await expect(page.locator("#town-menu-toggle")).toBeVisible();
+  await expect(page.locator("#lobby-play")).toBeVisible();
   expect(errors).toEqual([]);
 });
