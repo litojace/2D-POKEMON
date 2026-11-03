@@ -1,12 +1,12 @@
 import {
   RAID_SLOTS,
   type RaidLoadout,
-} from "../../../packages/shared/src/raid";
+} from "../../../../packages/shared/src/raid";
 import type { CharacterId } from "@arena/shared";
-import type { SkinLook } from "./creature-design";
+import type { SkinLook } from "../creature-design";
 
 /** Compare every worn slot without resending unchanged outfits or object-key order. */
-export function townOutfitKey(
+export function plazaOutfitKey(
   character: CharacterId,
   skin?: SkinLook | null,
   look?: RaidLoadout,

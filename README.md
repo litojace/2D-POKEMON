@@ -111,7 +111,7 @@ node scripts/verify-pwa.mjs
 npx tsx scripts/export-fighters.ts
 ```
 
-Visual checks run the real client in Chromium with no server (`tests/visual/harness` stands in for the network, account API, town and Plaza). They check what you'd notice by eye (one fighter on the select screen even with a skin on, each court filling its frame, Settings fitting a phone) and attach a screenshot of every screen to the report:
+Visual checks run the real client in Chromium with no server (`tests/visual/harness` stands in for the network, account API and Plaza). They check what you'd notice by eye (one fighter on the select screen even with a skin on, each court filling its frame, Settings fitting a phone) and attach a screenshot of every screen to the report:
 
 ```
 npx playwright install chromium   # once

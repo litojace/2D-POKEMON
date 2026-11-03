@@ -54,7 +54,7 @@ const LABELS: Record<OnlinePlayer["activity"], string> = {
   match: "In match",
   practice: "Practice",
   lobby: "Lobby",
-  town: "In town",
+  town: "Plaza",
   menu: "Menu",
 };
 /** Body of the admin "Online" tab. */

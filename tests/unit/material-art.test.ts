@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  surfaceMaterial,
-  townMaterialFamily,
-} from "../../apps/client/src/world-materials";
-import {
   bossSurface,
   type BossMaterial,
 } from "../../apps/client/src/boss-materials";
@@ -11,19 +7,6 @@ import { FIGHTER_IDS } from "@arena/shared";
 import { creatureLayers } from "../../apps/client/src/creature-design";
 
 describe("painted world materials", () => {
-  it("distinguishes stone, timber, foliage and woven awnings while preserving translucent effects", () => {
-    expect(surfaceMaterial("#b9ad95", "ground")).toBe("stone");
-    expect(surfaceMaterial("#7a5638", "architecture")).toBe("wood");
-    expect(surfaceMaterial("#6f8a3a", "foliage")).toBe("leaves");
-    expect(surfaceMaterial("#80d8ed", "market")).toBe("cloth");
-    expect(surfaceMaterial("#5f8243", "ground")).toBeNull();
-    expect(
-      surfaceMaterial("rgba(255,255,255,0.25)", "architecture"),
-    ).toBeNull();
-    expect(townMaterialFamily("town-fountain-painted-base")).toBeNull();
-    expect(townMaterialFamily("town-hen-white-walk-1")).toBeNull();
-  });
-
   it.each<BossMaterial>(["scales", "feathers", "cloud", "velvet", "pearl"])(
     "%s lighting stays inside the original boss ellipse",
     (material) => {

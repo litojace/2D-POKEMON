@@ -1607,8 +1607,7 @@ export interface Reply {
   token?: string;
   id?: string;
   code?: string;
-  /** Town joins: which town copy, and your walker id in it. */
-  town?: number;
+  /** Plaza joins: your walker id in it. */
   me?: number;
   /** Plaza joins: which Plaza copy (with `me`). */
   plaza?: number;
