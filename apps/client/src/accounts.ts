@@ -28,7 +28,6 @@ import {
   type ShopView,
 } from "./shop-ui";
 import { missionsMarkup } from "./missions-ui";
-import { syncQuestTracker } from "./quest-tracker";
 import {
   CHAMPION_SKIN_BY_ID,
   LOOK_ITEM_BY_ID,
@@ -383,11 +382,6 @@ export class AccountUI {
       ? `<button class="quiet coin-button" id="account-coins" aria-label="Shop: ${this.economy?.unlimitedCoins ? "unlimited" : this.economy ? coins(this.economy.balance) : "your"} coins">${coinChip(this.economy?.balance, "", this.economy?.unlimitedCoins, true)}</button>${this.economy?.leaves ? `<button class="quiet coin-button" id="account-leaves" aria-label="Farm: ${coins(this.economy.leaves.balance)} Gold Leaves" title="Gold Leaves: earned on the Farm">${leafChip(this.economy.leaves.balance)}</button>` : ""}<button class="quiet" id="account-profile"><span class="account-avatar" data-champion="${this.hooks.selectedCharacter?.() ?? "voltkit"}" aria-hidden="true"></span><span class="account-name">${escape(this.account.displayName)}</span>${this.economy?.journey ? `<small class="nav-level">Lv ${playerLevel(this.economy.journey.xp).level}</small><span class="nav-xp" aria-hidden="true"><i style="width:${Math.round(playerLevel(this.economy.journey.xp).percent)}%"></i></span>` : ""}${this.account.title ? `<small class="nav-title" style="color:${escape(this.account.titleColor ?? "#ffe58f")}">${escape(this.account.title)}</small>` : ""}</button>${this.account.isAdmin ? `<button class="quiet" id="account-admin" aria-label="Admin" title="Admin">${iconLabel("admin", "Admin")}</button>` : ""}<button class="quiet" id="account-logout" aria-label="Log out" title="Log out">${iconLabel("leave", "Log out")}</button>`
       : `<button class="quiet" id="account-login">${iconLabel("enter", "Log in")}</button><button class="secondary" id="account-signup">${iconLabel("add-friend", "Sign up")}</button>`;
     this.syncAvatar();
-    // Measure the new player card before positioning its missions button.
-    syncQuestTracker(
-      this.account ? this.economy : undefined,
-      () => void this.showMissions(),
-    );
     if (this.account) {
       element("account-profile").onclick = () => void this.showProfile();
       element("account-coins").onclick = () => void this.showShop();

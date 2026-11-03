@@ -62,12 +62,6 @@ for (const viewport of [
       await hubMenu(page, "journey");
       await expect(page.locator("[data-adventure-tab]")).toHaveCount(3);
       await expect(page.locator(".adventure")).not.toContainText("Boss Rush");
-      expect(
-        await page.evaluate(async () => {
-          const { TOWN_SPOTS } = await import("/rooms.ts");
-          return TOWN_SPOTS.some((s: any) => s.id === "boss-rush");
-        }),
-      ).toBe(false);
       expect(errors).toEqual([]);
     } finally {
       await context.close();

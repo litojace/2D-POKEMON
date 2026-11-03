@@ -5,7 +5,7 @@ import { lockedViewport } from "./zoom-guard";
  *
  * iPhone and iPad (Safari and home-screen apps) report the new size late
  * after a rotation: the last resize event can still carry the old, portrait
- * numbers, and nothing fires once the real size settles. The town canvas,
+ * numbers, and nothing fires once the real size settles. The hub canvas,
  * touch controls and HUD then kept a mixed-up layout until the phone was
  * turned again. A portrait detour can also leave the page zoomed or scrolled.
  *
@@ -28,7 +28,7 @@ let dispatching = false;
 
 function nudge() {
   const root = document.documentElement;
-  // A page that cannot scroll (town, lobby, battle) belongs at the top.
+  // A page that cannot scroll (hub, lobby, battle) belongs at the top.
   if (
     root.scrollHeight <= root.clientHeight + 1 &&
     root.scrollWidth <= root.clientWidth + 1 &&

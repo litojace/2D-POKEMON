@@ -15,11 +15,13 @@ import {
   kitOf,
   RITE_BY_ID,
   DEBUFFS,
+  farMultiplier,
   type Ability,
   type CharacterId,
   type StatusKind,
   type Fighter,
   type Input,
+  type Zone,
 } from "../../../packages/shared/src/index.js";
 import type { Arena } from "./simulation.js";
 /**
@@ -120,10 +122,23 @@ const OFFENSIVE = new Set([
   "cone",
   "zone",
   "nova",
+  "rush",
+  "blink",
 ]);
 const clamp = (v: number, lo: number, hi: number) =>
   Math.max(lo, Math.min(hi, v));
 type Point = { x: number; y: number };
+/**
+ * Zones worth keeping out of: an opponent's, unless it only heals its own
+ * side. A teammate's zone (2v2) never hurts, and a healing spring helps.
+ */
+export function hostileZone(arena: Arena, me: Fighter, z: Zone) {
+  if (z.owner === me.id) return false;
+  const owner = arena.players.find((p) => p.id === z.owner);
+  if (owner && arena.teamOf(owner) === arena.teamOf(me)) return false;
+  const a = z.ability;
+  return !a.heal || a.damage > 0 || !!a.status || !!a.knockback || !!a.turret;
+}
 /** Corners just outside every pillar: the waypoints for walking around cover. */
 const CORNERS: Point[] = OBSTACLES.flatMap((o) => {
   const m = RULES.radius + 14;
@@ -380,7 +395,7 @@ export class BotBrain {
     // Get out of enemy zones (jump the ground ones if it can).
     for (const z of arena.zones)
       if (
-        z.owner !== me.id &&
+        hostileZone(arena, me, z) &&
         Math.hypot(z.x - me.x, z.y - me.y) < z.radius + RULES.radius
       ) {
         const away = Math.hypot(me.x - z.x, me.y - z.y) || 1;
@@ -499,7 +514,7 @@ export class BotBrain {
       if (edge < 90) score -= (90 - edge) / 30;
       for (const z of arena.zones)
         if (
-          z.owner !== me.id &&
+          hostileZone(arena, me, z) &&
           Math.hypot(z.x - x, z.y - y) < z.radius + RULES.radius
         )
           score -= 4;
@@ -554,7 +569,20 @@ export class BotBrain {
         case "charged":
         case "barrage":
         case "beam":
-          if (s.sight && reach(a.range * 0.85)) score = a.damage;
+          // A marksman's shot (farBonus) is worth more the farther away they are.
+          if (s.sight && reach(a.range * 0.85))
+            score = a.damage * farMultiplier(a, s.dist);
+          break;
+        case "rush":
+        case "blink":
+          // Gap closers that land their hit on arrival: used like a long melee
+          // strike, once the target is within (most of) the reach.
+          if (s.sight && reach(a.range * 0.9 + RULES.radius))
+            score = Math.max(a.damage, 12) * 1.2;
+          break;
+        case "veil":
+          // Slip into stealth on the way in, so the first hit is an ambush.
+          if (s.sight && reach(520)) score = 15;
           break;
         case "melee":
           if (s.sight && reach(a.range + RULES.radius)) score = a.damage * 1.2;
@@ -567,7 +595,14 @@ export class BotBrain {
             score = a.damage * 1.1;
           break;
         case "zone":
-          if (a.follow) {
+          if (a.heal) {
+            // A spring that follows (Sanctuary) is worth a big hit in the
+            // thick of a fight; one left behind (Warm Spring) is a breather
+            // for when hurt and under pressure.
+            if (a.follow) {
+              if (s.sight && reach(a.radius + RULES.radius * 0.5)) score = 33;
+            } else if (s.hpRatio < 0.8 && s.threatened) score = 18;
+          } else if (a.follow) {
             if (reach(a.radius * 0.9)) score = a.damage * 5;
           } else if (reach(a.range))
             // A lantern (turret) keeps shooting: worth about five wisps.
@@ -677,17 +712,33 @@ const STATUS_WEIGHT: Partial<Record<StatusKind, number>> = {
   slow: 0.3,
   haste: 0.3,
 };
-const ticking = (a: Ability) => !!a.tickInterval && a.damage > 0;
-/** Damage one use deals if everything lands. */
-const perUse = (a: Ability) =>
+/** The hit an ambush multiplies, for valuing a veil. */
+const VEIL_OPENER = 25;
+/** A zone that heals its owner's side each tick (a healing spring). */
+const healing = (a: Ability) => a.kind === "zone" && !!a.heal;
+const ticking = (a: Ability) =>
+  !!a.tickInterval && (a.damage > 0 || healing(a));
+const ticks = (a: Ability) =>
+  ticking(a) ? Math.max(1, a.duration / a.tickInterval!) : 1;
+/**
+ * What one use is worth if everything lands: its damage, the healing of a
+ * spring (in a duel only the owner's own share), and for a veil the ambush
+ * it sets up (counted against a typical opening strike).
+ */
+const perUse = (a: Ability, crowd = false) =>
   a.turret
     ? // A lantern: one shot after tickDelay, then one per tickInterval.
       a.turret.damage *
       (Math.floor((a.duration - (a.tickDelay ?? 0)) / (a.tickInterval ?? 1)) + 1)
     : a.damage *
         (a.count ?? 1) *
-        (ticking(a) ? Math.max(1, a.duration / a.tickInterval!) : 1) +
-      (a.pop?.damage ?? 0);
+        ticks(a) *
+        // Marksman shots average half their far bonus; a charge finds a wall about a third of the time.
+        (1 + (a.farBonus ?? 0) / 2) *
+        (a.wallSlam ? 1 + (a.wallSlam - 1) / 3 : 1) +
+      (a.pop?.damage ?? 0) +
+      (healing(a) ? a.heal! * ticks(a) * (crowd ? 1 : (a.selfHeal ?? 1)) : 0) +
+      (a.kind === "veil" ? 10 + ((a.ambush ?? 1) - 1) * VEIL_OPENER : 0);
 const pace = (a: Ability) => a.cooldown || a.interval || 1;
 
 /**
@@ -717,10 +768,15 @@ export function riteValue(
   const ratio = (x: number | undefined, y: number | undefined) =>
     x && y ? y / x - 1 : 0;
   let value = 0;
-  // Damage over time: per use, divided by how often it can be used.
-  const p0 = perUse(a0) / pace(a0),
-    p1 = perUse(a1) / pace(a1);
+  // Damage (and healing) over time: per use, divided by how often it can be used.
+  const p0 = perUse(a0, crowd) / pace(a0),
+    p1 = perUse(a1, crowd) / pace(a1);
   value += p0 > 0 ? p1 / p0 - 1 : p1 > 0 ? 0.5 : 0;
+  // A pure utility skill (a guard, a decoy) is worth more the more often it's up.
+  if (!p0 && !p1) value += 0.6 * ratio(pace(a1), pace(a0));
+  // A pull (negative knockback) drags its target in: stronger is more control.
+  if (a0.knockback < 0 && a1.knockback < 0)
+    value += 0.3 * ratio(-a0.knockback, -a1.knockback) * controlW;
   value += 0.5 * ratio(a0.range, a1.range) * reachW;
   value += 0.6 * ratio(a0.radius, a1.radius) * areaW;
   value += a0.explosion
@@ -737,7 +793,8 @@ export function riteValue(
     s1 !== s0
       ? (s1 - s0) * controlW
       : 0.3 * ratio(a0.statusDuration, a1.statusDuration);
-  value += 0.8 * ratio(a0.heal, a1.heal);
+  // A healing spring's heal is already in perUse.
+  if (!healing(a1)) value += 0.8 * ratio(a0.heal, a1.heal);
   if ((a1.bonusVsStatus ?? 0) > (a0.bonusVsStatus ?? 0)) {
     // Worth more the more ways this kit has to inflict a harmful status.
     const kit = kitOf(me.character, owned);

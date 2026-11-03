@@ -1,7 +1,7 @@
 -- Hub redesign: the Journey's Lv 55–100 cosmetics (docs/hub-redesign/PLAN.md,
--- decision 10). Run after 049_farm_pasture.sql; it doesn't depend on 050 (the
--- giant crops). Safe to run again: no coins, XP or titles change, and nothing
--- is granted twice.
+-- decision 10). Run after 050_farm_giants.sql (it doesn't depend on it).
+-- Safe to run again: no coins, XP or titles change, and nothing is granted
+-- twice.
 --  * Seven reward-only cosmetics (never sold, never in Today's Picks):
 --    Prism frame (Lv 55), Nova entrance (65), Starlit colors (70), Solar aura
 --    (80), Eclipse finale (85), Prismatic laurel (95) and the Element Master

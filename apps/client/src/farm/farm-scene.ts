@@ -35,12 +35,17 @@ import {
   farmLevelLeaves,
   isStartPlot,
   touchesOwned,
+  GIANT,
+  canGrowGiant,
+  giantPlots,
+  giantXp,
+  giantYield,
 } from "../../../../packages/shared/src/farm";
 import {
   FARM_WEATHER_BY_ID,
   FARM_WEATHER_SECONDS,
 } from "../../../../packages/shared/src/farm";
-import { cropFieldSvg, cropItemSvg } from "./crop-art";
+import { GIANT_ART, cropFieldSvg, cropGiantSvg, cropItemSvg } from "./crop-art";
 import { GFX } from "./farm-gfx";
 import {
   FrameRateProbe,
@@ -99,6 +104,8 @@ const DECO_SLOTS = [
   [390, 890],
 ];
 const GIFT_KEY = "arena-farm-gift-seen";
+/** Giant crops this device has already announced (migration 050). */
+const GIANT_KEY = "arena-farm-giants-seen";
 const RAR_NAME = {
   common: "Common",
   uncommon: "Uncommon",
@@ -278,6 +285,13 @@ export function openFarm(options) {
   }
   ITEM.milk = new Image();
   ITEM.milk.src = svgUrl(MILK_SVG);
+  // Giant crops (migration 050): one picture across a 3×3 square.
+  const GIMG = {};
+  for (const id of GIANT.crops) {
+    const im = new Image();
+    im.src = svgUrl(cropGiantSvg(CROP_BY_ID[id]));
+    GIMG[id] = im;
+  }
   const icon = (id) => (ITEM[id] || CIMG[id]?.[4])?.src ?? "";
   const MUTS = {
     gold: { n: "Gold", x: 5, cls: "gold", tint: "#ffcf3a", a: 0.5 },
@@ -359,6 +373,14 @@ export function openFarm(options) {
     weather: { cur: null },
     visiting: null,
     loaded: false,
+    // Giant crops (migration 050): the giants, plot → its giant, giants grown
+    // per crop, squares the server has already answered for, and squares of
+    // ripe giant crops waiting for that answer (see updatePending).
+    giants: [],
+    giantAt: {},
+    giantsGrown: {},
+    sqChecked: new Set(),
+    pending: new Set(),
   };
   let offset = 0; // server clock minus this device's clock, in ms
   const serverNow = () => Date.now() + offset;
@@ -393,6 +415,95 @@ export function openFarm(options) {
       1,
       p.prog0 + (1 - p.prog0) * Math.max(0, (now - p.at0) / (p.ripeAt - p.at0)),
     );
+  }
+  /* ---------- giant crops (migration 050) ---------- */
+  /** Index a farm's giants: plot → giant, and the mutations its crops carry. */
+  function indexGiants(o) {
+    o.giantAt = {};
+    for (const gi of o.giants) {
+      const muts = gi.plots.map((j) => o.plots[j].mut);
+      gi.muts = [...new Set(muts.flat())];
+      // Tinted only when all nine share a mutation (the most valuable first).
+      gi.tint =
+        ["rainbow", "gold", "shock", "moon", "frost", "wet"].find((m) =>
+          muts.every((x) => x.includes(m)),
+        ) ?? null;
+      for (const j of gi.plots) o.giantAt[j] = gi;
+    }
+  }
+  const readGiants = (list) =>
+    (list ?? [])
+      .filter((g) => GIMG[g.crop] && g.plots?.length === 9)
+      .map((g) => ({
+        i: g.i,
+        crop: g.crop,
+        plots: g.plots,
+        key: `${g.i}|${g.formedAt}`,
+      }));
+  /** Squares of one giant crop whose 9 plots all pass `ripe`. */
+  function squares(plots, ripe) {
+    const out = [];
+    for (let k = 0; k < FARM_PLOTS; k++) {
+      const ps = giantPlots(k);
+      if (!ps) continue;
+      const crop = plots[ps[0]].crop;
+      if (
+        !canGrowGiant(crop) ||
+        !ps.every((j) => {
+          const q = plots[j];
+          return !q.locked && q.crop === crop && ripe(q);
+        })
+      )
+        continue;
+      out.push({
+        k,
+        crop,
+        plots: ps,
+        key: `${k}|${crop}|${Math.max(...ps.map((j) => plots[j].ripeAt || 0))}`,
+      });
+    }
+    return out;
+  }
+  /**
+   * A giant is only known once the server is asked after its square ripens,
+   * and a plain harvest of one of its plots would break it. So a square of
+   * ripe giant crops the server hasn't answered for yet holds its harvest
+   * until it has (the step loop asks).
+   */
+  function updatePending() {
+    F.pending.clear();
+    if (!F.loaded) return;
+    for (const q of squares(F.plots, (p) => p.prog >= 1))
+      if (!F.sqChecked.has(q.key) && !q.plots.some((j) => F.giantAt[j]))
+        for (const j of q.plots) F.pending.add(j);
+  }
+  /** Giants this device hasn't shown yet: a toast, a log line and a pop. */
+  const giantBorn = new Map();
+  function announceGiants() {
+    let seen = [];
+    try {
+      seen = JSON.parse(localStorage.getItem(GIANT_KEY) || "[]");
+    } catch {}
+    if (!Array.isArray(seen)) seen = [];
+    const fresh = F.giants.filter((g) => !seen.includes(g.key));
+    for (const g of fresh) {
+      giantBorn.set(g.key, T);
+      log(
+        `A giant <b>${CROP[g.crop]?.n ?? g.crop}</b> grew on your farm!`,
+        "good",
+      );
+    }
+    if (fresh.length)
+      toast(
+        `A giant ${CROP[fresh[0].crop]?.n ?? fresh[0].crop} grew! Tap it to harvest`,
+      );
+    if (fresh.length)
+      try {
+        localStorage.setItem(
+          GIANT_KEY,
+          JSON.stringify([...seen, ...fresh.map((g) => g.key)].slice(-30)),
+        );
+      } catch {}
   }
   function applyState(st) {
     const now = Date.parse(st.now);
@@ -505,6 +616,13 @@ export function openFarm(options) {
         crowAt: st.crows?.[p.i] ? Date.parse(st.crows[p.i]) : null,
       });
     }
+    // Giant crops (migration 050). A square the server saw ripe is answered:
+    // it is a giant now or it won't be.
+    F.giants = readGiants(st.giants);
+    F.giantsGrown = { ...(st.giantsGrown ?? {}) };
+    indexGiants(F);
+    for (const q of squares(F.plots, (p) => p.prog0 >= 1))
+      F.sqChecked.add(q.key);
     for (const c of eaten)
       log(
         `A crow ate your <b>${CROP[c]?.n ?? c}</b>! A Scarecrow or a guard dog keeps crows away`,
@@ -522,6 +640,8 @@ export function openFarm(options) {
     }
     F.loaded = true;
     for (const a of queue) applyLocal(a);
+    announceGiants();
+    updatePending();
     renderAll();
     if (sheet) renderSheet();
   }
@@ -531,6 +651,19 @@ export function openFarm(options) {
       now = serverNow();
     if (a.a === "buy-seeds") {
       F.seeds[a.crop] = (F.seeds[a.crop] || 0) + a.qty;
+      return;
+    }
+    if (a.a === "harvest-giant") {
+      const gi = F.giantAt[a.plot];
+      if (!gi) return;
+      for (const j of gi.plots) {
+        const q = F.plots[j],
+          key = `${q.crop}|${q.mut.slice().sort().join("+")}`;
+        F.barn[key] = (F.barn[key] || 0) + GIANT.harvestMult * yieldN();
+        Object.assign(q, mkPlot());
+      }
+      F.giants = F.giants.filter((x) => x !== gi);
+      indexGiants(F);
       return;
     }
     if (a.a === "perk") {
@@ -770,6 +903,15 @@ export function openFarm(options) {
           float(COW.x, COW.y - 100, `+${PASTURE.milkXp} XP`, "#7ff0a2");
           log(`Collected ${x.milk} <b>${MILK.name}</b>`, "good");
         }
+      }
+      for (const x of r.results) {
+        if (!x.ok || x.giant == null) continue;
+        const n = CROP[x.crop]?.n ?? x.crop;
+        toast(`Giant ${n} harvested: +${x.qty} crops`);
+        log(
+          `Harvested a giant <b>${n}</b> · +${x.qty} crops · +${x.xp} XP`,
+          "good",
+        );
       }
       if (r.results.some((x) => x.ok && x.barnFull))
         toast("Your barn is full! Sell something or upgrade the barn.");
@@ -1295,6 +1437,16 @@ export function openFarm(options) {
     };
   };
   function plotAt(wx, wy) {
+    // A giant crop's picture covers its square, gaps included: the plot of
+    // the square under the pointer (migration 050).
+    for (const gi of cur().giants ?? []) {
+      const b = giantBox(gi);
+      if (wx < b.x0 - 6 || wx > b.x1 + 6 || wy < b.y0 - 18 || wy > b.y1)
+        continue;
+      const c = Math.max(0, Math.min(2, Math.floor((wx - b.x0) / (PW + GAP)))),
+        r = Math.max(0, Math.min(2, Math.floor((wy - b.y0) / (PH + GAP))));
+      return gi.i + r * COLS + c;
+    }
     for (let i = F.plots.length - 1; i >= 0; i--) {
       const p = plotRect(i);
       if (wx >= p.x && wx <= p.x + p.w && wy >= p.y - 18 && wy <= p.y + p.h)
@@ -1565,6 +1717,40 @@ export function openFarm(options) {
     soilArts.set(key, a);
     return a;
   }
+  /** The one bed a giant crop stands on, across its square (migration 050). */
+  let giantBed = null;
+  function giantSoil() {
+    if (giantBed) return giantBed;
+    const W = 3 * PW + 2 * GAP,
+      H = 3 * PH + 2 * GAP;
+    giantBed = GFX.sprite(W + 4, H + 7, 0, 0, (g) => {
+      const sg = g.createLinearGradient(0, 0, 0, H);
+      sg.addColorStop(0, "#7a5230");
+      sg.addColorStop(1, "#5a3a20");
+      g.fillStyle = "rgba(0,0,0,.25)";
+      g.beginPath();
+      g.roundRect(2, 5, W, H, 18);
+      g.fill();
+      g.fillStyle = sg;
+      g.beginPath();
+      g.roundRect(0, 0, W, H, 18);
+      g.fill();
+      g.strokeStyle = "rgba(255,214,91,.45)";
+      g.lineWidth = 3;
+      g.beginPath();
+      g.roundRect(1.5, 1.5, W - 3, H - 3, 17);
+      g.stroke();
+      g.strokeStyle = "rgba(255,220,170,.18)";
+      g.lineWidth = 2;
+      for (let k = 1; k < 12; k++) {
+        g.beginPath();
+        g.moveTo(14, (k * H) / 12);
+        g.lineTo(W - 14, (k * H) / 12);
+        g.stroke();
+      }
+    });
+    return giantBed;
+  }
   function drawPlot(g, i, p, time, s) {
     const r = plotRect(i),
       cx = r.x + r.w / 2;
@@ -1572,7 +1758,29 @@ export function openFarm(options) {
       drawLockedPlot(g, i, s);
       return;
     }
+    const gi = s.giantAt?.[i];
+    if (gi) {
+      if (i !== gi.i) return;
+      GFX.blit(g, giantSoil(), r.x, r.y);
+      if (s.me && hoverI >= 0 && s.giantAt[hoverI] === gi) {
+        const b = giantBox(gi);
+        g.strokeStyle = "#ffd65b";
+        g.lineWidth = 3;
+        g.beginPath();
+        g.roundRect(b.x0 - 2, b.y0 - 2, b.x1 - b.x0 + 4, b.y1 - b.y0 + 4, 20);
+        g.stroke();
+      }
+      return;
+    }
     GFX.blit(g, soilArt(p.wet, p.fert), r.x, r.y);
+    // A ripe square of a giant crop waiting for the server's answer glows.
+    if (s.me && F.pending.has(i)) {
+      g.strokeStyle = `rgba(255,214,91,${0.45 + 0.4 * Math.sin(time * 8)})`;
+      g.lineWidth = 3;
+      g.beginPath();
+      g.roundRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4, 14);
+      g.stroke();
+    }
     if (s.me && hoverI === i) {
       g.strokeStyle = "#ffd65b";
       g.lineWidth = 3;
@@ -1669,6 +1877,23 @@ export function openFarm(options) {
             g.drawImage(sn, cx - 36 + k * 20, base - 72 + (k % 2) * 14, 12, 12);
       }
     }
+    drawBugs(g, i, p, time);
+    if (p.prog < 1 && p.prog > 0) {
+      g.fillStyle = "rgba(0,0,0,.4)";
+      g.beginPath();
+      g.roundRect(r.x + 14, r.y + r.h - 8, r.w - 28, 5, 3);
+      g.fill();
+      g.fillStyle = p.wet ? "#7fd4ff" : "#7ff0a2";
+      g.beginPath();
+      g.roundRect(r.x + 14, r.y + r.h - 8, (r.w - 28) * p.prog, 5, 3);
+      g.fill();
+    }
+  }
+  /** Bugs on a plot (also drawn over a giant crop, whose plots can keep them). */
+  function drawBugs(g, i, p, time) {
+    const r = plotRect(i),
+      cx = r.x + r.w / 2,
+      base = r.y + r.h * 0.72;
     for (let k = 0; k < p.pests; k++) {
       const px = cx - 26 + k * 34,
         py = base - 10 + Math.sin(time * 6 + k + i) * 3;
@@ -1699,16 +1924,120 @@ export function openFarm(options) {
       g.lineTo(px + 7, py - 14);
       g.stroke();
     }
-    if (p.prog < 1 && p.prog > 0) {
-      g.fillStyle = "rgba(0,0,0,.4)";
+  }
+  /** A giant crop's square in the world, and the ground its picture stands on. */
+  const giantBox = (gi) => {
+    const a = plotRect(gi.i),
+      b = plotRect(gi.i + 2 * COLS + 2);
+    return {
+      x0: a.x,
+      y0: a.y,
+      x1: b.x + b.w,
+      y1: b.y + b.h,
+      cx: (a.x + b.x + b.w) / 2,
+      ground: b.y + PH * 0.72 + 6,
+    };
+  };
+  const gmcache = new Map();
+  function giantImage(gi, time) {
+    const base = GIMG[gi.crop],
+      mut = gi.tint;
+    if (!mut || !base.complete) return base;
+    let key = `${gi.crop}|${mut}`;
+    if (mut === "rainbow") {
+      const h = Math.floor((time * 3) % 6);
+      key += h;
+      if (!gmcache.has(key))
+        gmcache.set(
+          key,
+          tintCanvas(base, null, `hsl(${h * 60} 95% 60%)`, 0.42),
+        );
+      return gmcache.get(key);
+    }
+    if (!MUTS[mut]) return base;
+    if (!gmcache.has(key))
+      gmcache.set(key, tintCanvas(base, null, MUTS[mut].tint, MUTS[mut].a));
+    return gmcache.get(key);
+  }
+  /** A giant crop: one picture across its square, with every mutation its crops carry. */
+  function drawGiant(g, gi, s, time) {
+    const b = giantBox(gi),
+      im = giantImage(gi, time),
+      k = (b.x1 - b.x0 + 22) / GIANT_ART.w,
+      w = GIANT_ART.w * k,
+      h = GIANT_ART.h * k;
+    // Just grown: it pops up out of its bed.
+    const age = giantBorn.has(gi.key) ? T - giantBorn.get(gi.key) : 9,
+      u = Math.min(1, Math.max(0, age / 0.7)),
+      pop = reduced
+        ? 1
+        : 0.55 + 0.45 * (1 - (1 - u) ** 3) + Math.sin(u * Math.PI) * 0.08,
+      br = reduced ? 1 : 1 + Math.sin(time * 1.4 + gi.i) * 0.012;
+    GFX.shadow(g, b.cx, b.ground - 2, 150 * k * pop, 16 * k, 0.22);
+    if (im && (im.complete ?? true)) {
+      g.save();
+      g.translate(b.cx, b.ground);
+      g.scale(pop * br, pop * (2 - br));
+      g.drawImage(im, -w / 2, -GIANT_ART.ground * k, w, h);
+      g.restore();
+    }
+    const cy = b.ground - 110 * k;
+    if (gi.muts.includes("gold") || gi.muts.includes("rainbow"))
+      for (let n = 0; n < 7; n++) {
+        const a = time * 1.3 + n * 0.9 + gi.i;
+        g.fillStyle = gi.muts.includes("rainbow")
+          ? `hsl(${(n * 52 + time * 90) % 360} 95% 75%)`
+          : "#fff6c2";
+        g.globalAlpha = 0.5 + 0.5 * Math.sin(a * 2);
+        g.beginPath();
+        g.arc(
+          b.cx + Math.cos(a) * 140 * k,
+          cy + Math.sin(a) * 80 * k,
+          3.4,
+          0,
+          7,
+        );
+        g.fill();
+        g.globalAlpha = 1;
+      }
+    if (gi.muts.includes("shock"))
+      for (const side of [-1, 1]) {
+        g.strokeStyle = `rgba(200,230,255,${0.5 + 0.5 * Math.sin(time * 20 + side)})`;
+        g.lineWidth = 3;
+        g.beginPath();
+        let x = b.cx + side * 70 * k - 30,
+          y = cy - 70 * k;
+        g.moveTo(x, y);
+        for (let n = 0; n < 6; n++) {
+          x += 12;
+          y += n % 2 ? -10 : 10;
+          g.lineTo(x, y);
+        }
+        g.stroke();
+      }
+    if (gi.muts.includes("moon")) {
+      const gr = g.createRadialGradient(b.cx, cy, 10, b.cx, cy, 170 * k);
+      gr.addColorStop(0, "rgba(200,170,255,.32)");
+      gr.addColorStop(1, "rgba(200,170,255,0)");
+      g.fillStyle = gr;
       g.beginPath();
-      g.roundRect(r.x + 14, r.y + r.h - 8, r.w - 28, 5, 3);
-      g.fill();
-      g.fillStyle = p.wet ? "#7fd4ff" : "#7ff0a2";
-      g.beginPath();
-      g.roundRect(r.x + 14, r.y + r.h - 8, (r.w - 28) * p.prog, 5, 3);
+      g.arc(b.cx, cy, 170 * k, 0, 7);
       g.fill();
     }
+    if (gi.muts.includes("frost")) {
+      const sn = ICON_IMG("snow");
+      if (sn.complete)
+        for (let n = 0; n < 6; n++)
+          g.drawImage(
+            sn,
+            b.cx - 120 * k + n * 46 * k,
+            cy - 80 * k + (n % 2) * 30 * k,
+            16,
+            16,
+          );
+    }
+    for (const j of gi.plots)
+      if (s.plots[j].pests) drawBugs(g, j, s.plots[j], time);
   }
   // Weather you can see at a glance: layered rain with splashes, real lightning flashes,
   // drifting snow, a starry night with fireflies, a bright rainbow, warm sun rays.
@@ -2074,10 +2403,17 @@ export function openFarm(options) {
     if (!CUR.on || hoverI < 0 || F.decorPick) return;
     const s = cur();
     if (!s.me && !["can", "net", "hand", "prank"].includes(F.tool)) return;
-    const ids =
+    let ids =
       s.me && ["can", "net", "sickle"].includes(F.tool)
         ? area(hoverI, AREA(F.tool))
         : [hoverI];
+    // A giant crop the tool takes whole lights up whole (migration 050).
+    if (s.me && ["hand", "seed", "sickle"].includes(F.tool))
+      ids = [
+        ...new Set(
+          ids.flatMap((j) => (s.giantAt?.[j] ? s.giantAt[j].plots : [j])),
+        ),
+      ];
     const col =
       {
         can: "120,200,255",
@@ -2119,8 +2455,16 @@ export function openFarm(options) {
           stolen: V.stolen,
           dog: V.dog,
           pasture: V.pasture,
+          giants: V.giants,
+          giantAt: V.giantAt,
         }
-      : { plots: F.plots, me: true, pasture: F.pasture };
+      : {
+          plots: F.plots,
+          me: true,
+          pasture: F.pasture,
+          giants: F.giants,
+          giantAt: F.giantAt,
+        };
   function applyVisit(v) {
     const now = Date.parse(v.now);
     offset = now - Date.now();
@@ -2151,6 +2495,9 @@ export function openFarm(options) {
     // Ripe plots you can no longer sneak from are shaded.
     for (const p of v.plots)
       if (p.crop && Number(p.progress) >= 1 && !p.sneak) V.stolen.add(p.i);
+    // Their giant crops (migration 050).
+    V.giants = readGiants(v.giants);
+    indexGiants(V);
     for (const a of visitQueue) applyVisitLocal(a);
     renderVisit();
     renderAll();
@@ -2212,6 +2559,17 @@ export function openFarm(options) {
     const r = plotRect(i),
       cx = r.x + PW / 2;
     let a = null;
+    // A friend's giant crop (migration 050): its 9 crops are 9 plantings. A
+    // tap sneaks from the one under it, or the next you haven't tried.
+    const gi = V.giantAt?.[i];
+    if (F.tool === "hand" && gi && !p.pests) {
+      const j = [i, ...gi.plots].find((x) => !V.stolen.has(x));
+      if (j == null) {
+        if (!drag) toast("You already tried every crop of this giant");
+        return;
+      }
+      i = j;
+    }
     if (F.tool === "hand") {
       if (p.pests) a = "catch";
       else if (p.crop && p.prog >= 1) {
@@ -2363,6 +2721,10 @@ export function openFarm(options) {
   function harvestAt(i, silent) {
     const p = F.plots[i];
     if (!p.crop || p.prog < 1) return false;
+    if (F.pending.has(i)) {
+      if (!silent) toast("Something big is growing here…");
+      return false;
+    }
     if (barnUsed() + yieldN() > F.barnCap) {
       if (!silent)
         toast("Your barn is full! Sell something or upgrade the barn.");
@@ -2457,24 +2819,64 @@ export function openFarm(options) {
     }
     return true;
   }
-  /** The Sickle: every ripe plot of the 3×3 in one go. */
-  function sickleAt(i) {
-    const ripe = area(i, 3).filter((j) => {
-      const q = F.plots[j];
-      return !q.locked && q.crop && q.prog >= 1;
-    });
-    if (!ripe.length) return false;
-    if (barnUsed() + yieldN() > F.barnCap) {
-      toast("Your barn is full! Sell something or upgrade the barn.");
+  /** A giant crop (migration 050): the whole of it, into the barn at once. */
+  function harvestGiant(gi, silent, checked = false) {
+    const c = CROP[gi.crop],
+      n = giantYield(yieldN());
+    if (!checked && barnUsed() + n > F.barnCap) {
+      if (!silent)
+        toast(`Your barn is full! This giant needs room for ${n} crops.`);
       return false;
     }
+    const b = giantBox(gi);
+    fly(b.cx, b.y0 + 60, icon(c.id), `+${n}`);
+    float(b.cx, b.y0 - 6, `+${giantXp(c.xp)} XP`, "#7ff0a2");
+    FX.push({ puff: 1, x: b.cx, y: b.y0 + 120, t: 0, life: 0.8 });
+    act({ a: "harvest-giant", plot: gi.i });
+    return true;
+  }
+  /**
+   * The Sickle: every ripe plot of the 3×3 in one go. A giant it touches is
+   * harvested whole, first; then the other ripe plots one by one, so a giant
+   * that can't be harvested (a full barn) is never cut up plot by plot.
+   */
+  function sickleAt(i) {
+    const reach = area(i, 3),
+      giants = [...new Set(reach.map((j) => F.giantAt[j]).filter(Boolean))],
+      ripe = reach.filter((j) => {
+        const q = F.plots[j];
+        return (
+          !F.giantAt[j] &&
+          !F.pending.has(j) &&
+          !q.locked &&
+          q.crop &&
+          q.prog >= 1
+        );
+      });
+    if (!ripe.length && !giants.length) {
+      if (!dragging && reach.some((j) => F.pending.has(j)))
+        toast("Something big is growing here…");
+      return false;
+    }
+    const need =
+      giants.length * giantYield(yieldN()) + (ripe.length ? yieldN() : 0);
+    if (barnUsed() + need > F.barnCap) {
+      toast(
+        giants.length
+          ? `Your barn is full! This giant needs room for ${giantYield(yieldN())} crops.`
+          : "Your barn is full! Sell something or upgrade the barn.",
+      );
+      return false;
+    }
+    for (const gi of giants) harvestGiant(gi, true, true);
     for (const j of ripe) {
       const c = CROP[F.plots[j].crop],
         r = plotRect(j);
       fly(r.x + PW / 2, r.y + 10, icon(c.id), `+${yieldN()}`);
       float(r.x + PW / 2, r.y - 30, `+${c.xp} XP`, "#7ff0a2");
     }
-    act({ a: "harvest", plot: i, tool: "sickle" });
+    if (!giants.length) act({ a: "harvest", plot: i, tool: "sickle" });
+    else for (const j of ripe) act({ a: "harvest", plot: j });
     return true;
   }
   function useTool(i, drag = false) {
@@ -2490,6 +2892,18 @@ export function openFarm(options) {
     // A crow on the plot: any tap shoos it first.
     if (p.crowAt) {
       shooAt(i);
+      return;
+    }
+    // A giant crop (migration 050): the hand and the seed bag harvest all of
+    // it (a bug on its plot is caught first); the shovel leaves it.
+    const gi = F.giantAt[i];
+    if (gi && ["hand", "seed", "shovel"].includes(F.tool)) {
+      if (F.tool === "hand" && p.pests) catchAt(i);
+      else if (F.tool === "shovel") {
+        if (!drag) toast("Harvest the giant crop first");
+      } else harvestGiant(gi, F.tool === "seed" && drag);
+      renderChips();
+      renderTools();
       return;
     }
     switch (F.tool) {
@@ -2777,12 +3191,20 @@ export function openFarm(options) {
       y: -40,
       d: () => GFX.blit(ctx, GFX.sign("← PLAZA", "#2a6fd0"), HOUSE.x + 70, -40),
     });
-    s.plots.forEach((p, i) =>
+    s.plots.forEach((p, i) => {
+      if (s.giantAt?.[i]) return;
       items.push({
         y: plotRect(i).y + PH * 0.72,
         d: () => drawPlotCrop(ctx, i, p, time),
-      }),
-    );
+      });
+    });
+    // Giant crops (migration 050): one picture each, at the depth of their
+    // square's bottom row, just after the crops beside it.
+    for (const gi of s.giants ?? [])
+      items.push({
+        y: plotRect(gi.i + 2 * COLS).y + PH * 0.72 + 0.5,
+        d: () => drawGiant(ctx, gi, s, time),
+      });
     // The dog on guard waits by its doghouse (walking about comes with the art pass).
     if (!s.me && V?.dog)
       items.push({
@@ -3230,6 +3652,8 @@ export function openFarm(options) {
   }, 1000);
   let crowAsked = 0,
     lastDraw = 0;
+  let pendingT = 0,
+    pendingAsked = 0;
   function step(now) {
     raf = requestAnimationFrame(step);
     if (low && now - lastDraw < 30) return;
@@ -3265,6 +3689,21 @@ export function openFarm(options) {
     if (V) for (const p of V.plots) if (p.crop) p.prog = growth(p, sn);
     for (let k = crowsLeaving.length - 1; k >= 0; k--)
       if ((crowsLeaving[k].t += dt) > 1.2) crowsLeaving.splice(k, 1);
+    // A square of ripe giant crops: ask the server whether it grew giant
+    // before any of it can be harvested (migration 050).
+    if (!V && T - pendingT > 0.25) {
+      pendingT = T;
+      updatePending();
+      if (
+        F.pending.size &&
+        sn - pendingAsked > 1500 &&
+        !queue.length &&
+        !sending
+      ) {
+        pendingAsked = sn;
+        void refresh();
+      }
+    }
     // A crow nobody shooed: ask the server once its time (and allowance) is up.
     if (
       F.plots.some(
@@ -3293,7 +3732,7 @@ export function openFarm(options) {
         decoyIn = 120 + Math.random() * 180;
         const ripe = [];
         F.plots.forEach((p, i) => {
-          if (p.crop && p.prog >= 1 && !p.crowAt) ripe.push(i);
+          if (p.crop && p.prog >= 1 && !p.crowAt && !F.giantAt[i]) ripe.push(i);
         });
         if (ripe.length && dog.chase == null && !decoys.length)
           decoys.push({
@@ -3693,6 +4132,27 @@ export function openFarm(options) {
       tip.hidden = true;
       return;
     }
+    const gi = cur().giantAt?.[i];
+    if (gi) {
+      // A giant crop (migration 050): what it gives and the mutations it holds.
+      const c = CROP[gi.crop],
+        b = giantBox(gi),
+        o = hudOff(),
+        sp0 = toScreen(b.x1, b.y0),
+        sp = { x: sp0.x - o.x, y: sp0.y - o.y },
+        count = {};
+      for (const j of gi.plots)
+        for (const m of cur().plots[j].mut) count[m] = (count[m] || 0) + 1;
+      const muts = Object.entries(count)
+        .map(([m, n]) => `${n} ${MUTS[m]?.n ?? m}`)
+        .join(" · ");
+      const left = V ? gi.plots.filter((j) => !V.stolen.has(j)).length : 0;
+      tip.hidden = false;
+      tip.innerHTML = `<b>Giant ${c.n}</b><div class="row"><span>Ready</span><span>${V ? "Sneak a crop" : "Harvest it all"}</span></div>${V ? `<div class="row"><span>Crops to try</span><span>${left} of 9</span></div>` : `<div class="row"><span>Harvest</span><span>${giantYield(yieldN())} crops</span></div><div class="row"><span>XP</span><span>+${giantXp(c.xp)}</span></div>`}${muts ? `<div class="row"><span>Mutations</span><span>${muts}</span></div>` : ""}`;
+      tip.style.left = `${Math.min(o.w - 200, sp.x + 8)}px`;
+      tip.style.top = `${Math.max(60, sp.y - 10)}px`;
+      return;
+    }
     const c = CROP[p.crop],
       r = plotRect(i),
       o = hudOff(),
@@ -3700,7 +4160,7 @@ export function openFarm(options) {
       sp = { x: sp0.x - o.x, y: sp0.y - o.y };
     const left = p.prog < 1 && p.ripeAt ? (p.ripeAt - serverNow()) / 1000 : 0;
     tip.hidden = false;
-    tip.innerHTML = `<b>${c.n}</b><div class="bar"><i style="width:${p.prog * 100}%"></i></div><div class="row"><span>${p.prog >= 1 ? "Ready" : "Time left"}</span><span>${p.prog >= 1 ? "Harvest now" : fmtSecs(left)}</span></div><div class="row"><span>Water</span><span>${p.wet ? "watered" : "dry"}</span></div>${p.pests ? `<div class="row"><span>Bugs</span><span>${p.pests} · ${p.pests * 20}% slower</span></div>` : ""}${p.fert ? `<div class="row"><span>Fertilizer</span><span>${p.fert === "gold" ? "gold" : "regular"}</span></div>` : ""}`;
+    tip.innerHTML = `<b>${c.n}</b><div class="bar"><i style="width:${p.prog * 100}%"></i></div><div class="row"><span>${p.prog >= 1 ? "Ready" : "Time left"}</span><span>${p.prog >= 1 ? (!V && F.pending.has(i) ? "Just a moment…" : "Harvest now") : fmtSecs(left)}</span></div><div class="row"><span>Water</span><span>${p.wet ? "watered" : "dry"}</span></div>${p.pests ? `<div class="row"><span>Bugs</span><span>${p.pests} · ${p.pests * 20}% slower</span></div>` : ""}${p.fert ? `<div class="row"><span>Fertilizer</span><span>${p.fert === "gold" ? "gold" : "regular"}</span></div>` : ""}`;
     tip.style.left = `${Math.min(o.w - 200, sp.x + 8)}px`;
     tip.style.top = `${Math.max(60, sp.y - 10)}px`;
   }
@@ -3941,10 +4401,14 @@ export function openFarm(options) {
             `Crop book ${found}/${PCROPS.length}`,
             tabs,
           ) +
-          `<div class="sh-body"><p class="sh-note">Harvest a crop to log it in your book.</p><div class="book">${PCROPS.map(
+          `<div class="sh-body"><p class="sh-note">Harvest a crop to log it in your book. Crops marked GIANT can grow into one giant crop: plant 9 in a 3×3 square.</p><div class="book">${PCROPS.map(
             (c) => {
-              const n = F.harv[c.id] || 0;
-              return `<div class="bk${n ? "" : " unk"}" title="${n ? `${c.n} · harvested ${n}×` : `Unlocks at Lv ${c.lv}`}"><img src="${icon(c.id)}" alt=""><span>${n ? c.n : `??? · Lv ${c.lv}`}</span><span class="muts"><small>${n ? `${n}×` : ""}</small></span></div>`;
+              const n = F.harv[c.id] || 0,
+                gn = F.giantsGrown[c.id] || 0,
+                giant = canGrowGiant(c.id)
+                  ? `<em class="gt${gn ? " on" : ""}">GIANT${gn ? ` ×${gn}` : ""}</em>`
+                  : "";
+              return `<div class="bk${n ? "" : " unk"}" title="${n ? `${c.n} · harvested ${n}×` : `Unlocks at Lv ${c.lv}`}${giant ? ` · ${gn ? `grew giant ${gn}×` : "can grow giant"}` : ""}">${giant}<img src="${icon(c.id)}" alt=""><span>${n ? c.n : `??? · Lv ${c.lv}`}</span><span class="muts"><small>${n ? `${n}×` : ""}</small></span></div>`;
             },
           ).join(
             "",
@@ -4716,6 +5180,17 @@ export function openFarm(options) {
         cam.x = x;
         cam.y = y;
         clampCam();
+      },
+      /** Where a giant crop's square is on the page (tests). */
+      giantClient: (i) => {
+        const r = cv.getBoundingClientRect(),
+          a = plotRect(i),
+          b = plotRect(i + 2 * COLS + 2),
+          sp = toScreen((a.x + b.x + b.w) / 2, (a.y + b.y + b.h) / 2);
+        return {
+          x: r.left + (sp.x * r.width) / NW,
+          y: r.top + (sp.y * r.height) / NH,
+        };
       },
       plotClient: (i) => {
         const r = cv.getBoundingClientRect(),

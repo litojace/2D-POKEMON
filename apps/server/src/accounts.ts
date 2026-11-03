@@ -432,6 +432,7 @@ export function installAccountRoutes(
         "buy-pasture",
         "milk",
         "sell-milk",
+        "harvest-giant",
       ]),
       plot: z.number().int().min(0).max(49).optional(),
       slot: z.number().int().min(0).max(7).optional(),
@@ -544,7 +545,11 @@ export function installAccountRoutes(
         p_actions: data.actions,
       });
       // Selling and buying change the leaf wallet shown in the top bar.
-      if (data.actions.some((x) => x.a !== "water" && x.a !== "harvest"))
+      if (
+        data.actions.some(
+          (x) => !["water", "harvest", "harvest-giant"].includes(x.a),
+        )
+      )
         onPlayerChanged(account.id);
       res.json(result);
     }),
