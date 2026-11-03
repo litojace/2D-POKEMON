@@ -89,9 +89,10 @@ open to change.
 ## Farm systems progress (phase 5)
 
 Done (each with its own migration and tests): weather and mutations (039),
-the order board (040), crop book rewards (041), the wishing well (042).
+the order board (040), crop book rewards (041), the wishing well (042),
+crop mastery (043).
 
-Still to come: crop mastery (Lv 40), farmer perks, guard dogs, crows and
+Still to come: farmer perks, guard dogs, crows and
 bugs, friends' farms, decorations and charm, the pasture, and treats in the
 Plaza. Two things to settle first:
 

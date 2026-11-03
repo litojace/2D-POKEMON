@@ -295,6 +295,12 @@ test("the weather orb shows the weather now and the forecast", async ({
   await expect(page.locator("#fm-sheet")).toContainText("Collection rewards");
   await expect(page.locator("#fm-sheet .mile.done")).toHaveCount(1);
   await expect(page.locator("#fm-sheet .mile")).toHaveCount(4);
+  // Mastery is the almanac's second tab; it opens at farm level 40.
+  await page.click('#fm-sheet [data-tab="mastery"]');
+  await expect(page.locator("#fm-sheet")).toContainText(
+    "Unlocks at farm Lv 40",
+  );
+  await expect(page.locator('#fm-sheet [data-mast="wheat"]')).toBeDisabled();
   expect(errors).toEqual([]);
 });
 

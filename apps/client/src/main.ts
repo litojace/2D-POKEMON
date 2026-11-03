@@ -1794,6 +1794,11 @@ function syncFarm(want: boolean) {
     playerName: () => accountsUI.account?.displayName ?? "Your",
     economy: () => accountsUI.economy ?? undefined,
     onLeaves: (balance) => accountsUI.setLeaves(balance),
+    master: async (crop) =>
+      (await accountsUI.api("/api/farm/master", {
+        request: crypto.randomUUID(),
+        crop,
+      })) as Awaited<ReturnType<FarmScreenOptions["master"]>>,
     wish: async () =>
       (await accountsUI.api("/api/farm/wish", {})) as Awaited<
         ReturnType<FarmScreenOptions["wish"]>

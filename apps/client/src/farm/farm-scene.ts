@@ -338,6 +338,7 @@ export function openFarm(options) {
     options.onLeaves?.(st.leaves);
     F.bookRewards = st.bookRewards ?? [];
     F.wishReady = !!st.wishReady;
+    F.mast = { ...(st.mastery ?? {}) };
     // The order board (migration 040; none before it).
     F.orders = (st.orders ?? []).map((o) => ({
       slot: o.slot,
@@ -439,6 +440,26 @@ export function openFarm(options) {
     applyLocal(a);
     clearTimeout(flushTimer);
     flushTimer = setTimeout(flush, now ? 0 : dragging ? 450 : 90);
+  }
+  /* ---------- crop mastery: the long-term goal (and leaves sink) after the crop book (migration 043) ---------- */
+  const MAST_HARV = [25, 75, 200, 500, 1000],
+    MAST_LV = 40,
+    mastCost = (c, st) => c.cost * 30 * st * st;
+  function masteryHTML() {
+    const lock = F.lv < MAST_LV;
+    return (
+      `<div class="sh-body"><p class="sh-note">${lock ? `<b>Unlocks at farm Lv ${MAST_LV}.</b> ` : ""}Every star needs harvests of that crop and some leaves, and raises its sell price by 4%. Five stars turn it golden.</p>` +
+      PCROPS.filter((c) => c.lv <= F.lv)
+        .map((c) => {
+          const st = F.mast?.[c.id] || 0,
+            h = F.harv[c.id] || 0,
+            nx = MAST_HARV[st],
+            cost = st < 5 ? mastCost(c, st + 1) : 0;
+          return `<div class="item mast"><span class="ic"><img src="${icon(c.id)}" alt=""></span><div><b>${c.n} <span class="stars">${"★".repeat(st)}<i>${"★".repeat(5 - st)}</i></span></b><small>${st < 5 ? `${Math.min(h, nx)}/${nx} harvests for ★${st + 1} · sells +${st * 4}%` : "Golden · sells +20%"}</small><div class="cap"><i style="width:${st < 5 ? Math.min(100, (h / nx) * 100) : 100}%"></i></div></div><div class="acts">${st < 5 ? `<button type="button" class="btn-s" data-mast="${c.id}" ${lock || h < nx || F.leaves < cost ? "disabled" : ""}>★ ${cost.toLocaleString("en-US")} ${L}</button>` : `<span class="tag legendary">MAX</span>`}</div></div>`;
+        })
+        .join("") +
+      `</div>`
+    );
   }
   /** The wishing well: 3 seeds once a Pacific day (migration 042). */
   let wishing = false;
@@ -2564,21 +2585,32 @@ export function openFarm(options) {
     }
     if (sheet === "book") {
       const found = PCROPS.filter((c) => F.harv[c.id]).length;
-      html =
-        head("Farmer's almanac", `Crop book ${found}/${PCROPS.length}`) +
-        `<div class="sh-body"><p class="sh-note">Harvest a crop to log it in your book.</p><div class="book">${PCROPS.map(
-          (c) => {
-            const n = F.harv[c.id] || 0;
-            return `<div class="bk${n ? "" : " unk"}" title="${n ? `${c.n} · harvested ${n}×` : `Unlocks at Lv ${c.lv}`}"><img src="${icon(c.id)}" alt=""><span>${n ? c.n : `??? · Lv ${c.lv}`}</span><span class="muts"><small>${n ? `${n}×` : ""}</small></span></div>`;
-          },
-        ).join(
-          "",
-        )}</div><h4 style="margin:.4em 0 0;font-family:var(--display);text-transform:uppercase">Collection rewards</h4><div class="miles">${BOOK_REWARDS.map(
-          ([n, r]) => {
-            const got = (F.bookRewards ?? []).includes(n);
-            return `<div class="mile${got ? " done" : ""}"><span>${got ? "✓" : "○"} ${n} crops</span><span>${r}</span></div>`;
-          },
-        ).join("")}</div></div>`;
+      const tabs = [
+        ["book", "Crop book"],
+        ["mastery", "Mastery"],
+      ];
+      if (sheetTab === "mastery")
+        html = head("Farmer's almanac", "Crop mastery", tabs) + masteryHTML();
+      else
+        html =
+          head(
+            "Farmer's almanac",
+            `Crop book ${found}/${PCROPS.length}`,
+            tabs,
+          ) +
+          `<div class="sh-body"><p class="sh-note">Harvest a crop to log it in your book.</p><div class="book">${PCROPS.map(
+            (c) => {
+              const n = F.harv[c.id] || 0;
+              return `<div class="bk${n ? "" : " unk"}" title="${n ? `${c.n} · harvested ${n}×` : `Unlocks at Lv ${c.lv}`}"><img src="${icon(c.id)}" alt=""><span>${n ? c.n : `??? · Lv ${c.lv}`}</span><span class="muts"><small>${n ? `${n}×` : ""}</small></span></div>`;
+            },
+          ).join(
+            "",
+          )}</div><h4 style="margin:.4em 0 0;font-family:var(--display);text-transform:uppercase">Collection rewards</h4><div class="miles">${BOOK_REWARDS.map(
+            ([n, r]) => {
+              const got = (F.bookRewards ?? []).includes(n);
+              return `<div class="mile${got ? " done" : ""}"><span>${got ? "✓" : "○"} ${n} crops</span><span>${r}</span></div>`;
+            },
+          ).join("")}</div></div>`;
     }
     el.innerHTML = html;
     const b = el.querySelector(".sh-body");
@@ -2637,6 +2669,21 @@ export function openFarm(options) {
       return;
     }
     if (d.landbuy) return landClick(+d.landbuy);
+    if (d.mast) {
+      t.disabled = true;
+      try {
+        await flush();
+        const r = await options.master(d.mast);
+        if (r?.farm) applyState(r.farm);
+        if (r?.ok) {
+          toast(`${CROP[d.mast].n} ★${r.stars}: sells +${r.stars * 4}%`);
+          log(`Mastered <b>${CROP[d.mast].n}</b> ★${r.stars}`, "good");
+        } else if (r?.error) toast(r.error);
+      } catch (err) {
+        toast(err?.message || "Couldn't reach your farm.");
+      }
+      return renderSheet();
+    }
     if (d.ord !== undefined || d.ordskip !== undefined) {
       const slot = +(d.ord ?? d.ordskip),
         kind = d.ord !== undefined ? "deliver" : "skip";

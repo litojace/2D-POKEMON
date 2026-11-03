@@ -1048,6 +1048,12 @@ it("passes farm actions and leaf trades to the database only when the request is
     { request: "x", slot: 1, kind: "skip" },
   ])
     expect((await send("/api/farm/order", body)).status).toBe(400);
+  for (const body of [
+    { request, crop: "Wheat" },
+    { request, crop: "wheat", stars: 5 },
+    { request: "x", crop: "wheat" },
+  ])
+    expect((await send("/api/farm/master", body)).status).toBe(400);
   expect(calls.pop()).toEqual([
     "arena_farm_order",
     { p_request: request, p_slot: 1, p_kind: "skip" },

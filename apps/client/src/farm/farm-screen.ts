@@ -26,6 +26,13 @@ export interface FarmScreenOptions {
   order(slot: number, kind: "deliver" | "skip"): Promise<FarmOrderResult>;
   /** A fighter's picture (who placed an order). */
   art(character: string): string;
+  /** Buy a crop's next mastery star (migration 043). */
+  master(crop: string): Promise<{
+    farm: FarmState;
+    ok: boolean;
+    error?: string | null;
+    stars?: number;
+  }>;
   /** Today's wish at the well (migration 042). */
   wish(): Promise<{
     farm: FarmState;

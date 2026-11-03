@@ -39,7 +39,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "042_farm_wish.sql";
+export const LATEST_MIGRATION = "043_farm_mastery.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -436,6 +436,28 @@ export function installAccountRoutes(
       qty: z.number().int().min(1).max(10000).optional(),
     })
     .strict();
+  // Crop mastery: buy a crop's next star (migration 043).
+  app.post(
+    "/api/farm/master",
+    route(false, async (req, res, token, account) => {
+      const data = z
+        .object({
+          request: z.string().uuid(),
+          crop: z
+            .string()
+            .max(32)
+            .regex(/^[a-z]+$/),
+        })
+        .strict()
+        .parse(req.body);
+      const result = await provider.rpc(token, "arena_farm_master", {
+        p_request: data.request,
+        p_crop: data.crop,
+      });
+      onPlayerChanged(account.id);
+      res.json(result);
+    }),
+  );
   // The wishing well: 3 seeds once a Pacific day (migration 042).
   app.post(
     "/api/farm/wish",
