@@ -337,7 +337,47 @@ test("a party shows friends beside you, and a party invitation joins it", async 
     await expect(
       page.locator("#lobby-slot-1 [data-lobby-action=invite]"),
     ).toBeVisible();
+    // With one friend, one seat on each side: the third waits.
+    await expect(page.locator("#lobby-slot-2")).toBeHidden();
     await snap(page, info, "lobby-party-844x390");
+    // A third player fills the right seat, and the fourth seat appears
+    // straight above it, clear of the fighter.
+    await page.evaluate(
+      ([me, pal]) =>
+        (window as any).__sock.fire("party", {
+          code: "PARTY2",
+          leader: me,
+          members: [
+            { id: me, name: "tester", character: "voltkit" },
+            { id: pal, name: "Pal", character: "tidefin" },
+            {
+              id: "66666666-6666-4666-8666-666666666666",
+              name: "Bo",
+              character: "voltkit",
+            },
+          ],
+        }),
+      [me, pal],
+    );
+    await expect(page.locator("#lobby-party-bar")).toContainText("Party · 3/4");
+    await expect(page.locator("#lobby-slot-1 .lobby-member")).toContainText(
+      "Bo",
+    );
+    const third = page.locator("#lobby-slot-2 [data-lobby-action=invite]");
+    await expect(third).toBeVisible();
+    const seats = await page.evaluate(() =>
+      ["#lobby-slot-1 > *", "#lobby-slot-2 > *", "#lobby-fighter"].map((s) => {
+        const b = document.querySelector(s)!.getBoundingClientRect();
+        return { l: b.left, t: b.top, r: b.right, b: b.bottom };
+      }),
+    );
+    const [right, above, fighter] = seats;
+    expect(
+      Math.abs((above.l + above.r) / 2 - (right.l + right.r) / 2),
+    ).toBeLessThanOrEqual(1);
+    expect(above.b).toBeLessThanOrEqual(right.t);
+    expect(above.l).toBeGreaterThanOrEqual(fighter.r);
+    await snap(page, info, "lobby-party-full-844x390");
     // A party invitation from someone else.
     await page.evaluate(
       (lead) =>
