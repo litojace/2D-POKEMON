@@ -22,6 +22,7 @@ async function boxes(page: Page) {
     add("profile", document.querySelector("#account-profile"));
     add("scenes", document.querySelector("#hub-scenes"));
     add("coins", document.querySelector("#account-coins > *"));
+    add("leaves", document.querySelector("#account-leaves > *"));
     add("menu", document.querySelector(".header-menu > summary"));
     add("rail", document.querySelector(".lobby-rail"));
     add("party", document.querySelector(".lobby-party"));

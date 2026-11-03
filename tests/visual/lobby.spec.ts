@@ -32,6 +32,7 @@ async function boxes(page: Page) {
     add("profile", document.querySelector("#account-profile"));
     add("scenes", document.querySelector("#hub-scenes"));
     add("coins", document.querySelector("#account-coins > *"));
+    add("leaves", document.querySelector("#account-leaves > *"));
     add("menu", document.querySelector(".header-menu > summary"));
     add("rail", document.querySelector(".lobby-rail"));
     add("party", document.querySelector(".lobby-party"));
@@ -83,7 +84,7 @@ for (const viewport of VIEWPORTS) {
       ).toHaveAttribute("aria-pressed", "true");
       await expect(
         page.locator('#hub-scenes [data-hub-scene="farm"]'),
-      ).toHaveCount(0);
+      ).toHaveCount(1);
       await snap(page, info, `lobby-${viewport.width}x${viewport.height}`);
 
       // Nothing overlaps and everything stays on screen.
@@ -168,6 +169,7 @@ for (const viewport of VIEWPORTS) {
             JSON.stringify({
               ...body,
               balance: 9999999,
+              leaves: { ...body.leaves, balance: 9999999 },
               journey: { ...body.journey, xp: 431625 },
             }),
             { headers: { "Content-Type": "application/json" } },
@@ -175,7 +177,12 @@ for (const viewport of VIEWPORTS) {
         };
       });
       await page.click('[data-lobby-action="missions"]');
-      await expect(page.locator("#account-coins")).toContainText("9,999,999");
+      await expect(page.locator("#account-coins")).toContainText("10M");
+      await expect(page.locator("#account-coins")).toHaveAttribute(
+        "aria-label",
+        /9,999,999/,
+      );
+      await expect(page.locator("#account-leaves")).toContainText("10M");
       await expect(page.locator("#account-profile .nav-level")).toHaveText(
         "Lv 100",
       );

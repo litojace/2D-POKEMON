@@ -117,6 +117,7 @@ export type LobbyAction =
   | "friends"
   | "invite"
   | "leave-party"
+  | "farm"
   | "more-play";
 const RAIL: [LobbyAction, string, Parameters<typeof menuIcon>[0]][] = [
   ["fighters", "Fighters", "user"],
@@ -231,6 +232,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
 </section>
 <aside class="lobby-cards" aria-label="Today">
   <button type="button" class="lobby-card lobby-raid-card" data-lobby-action="raids"><span class="lobby-card-kicker">Raid Hall</span><b>Seven bosses</b><small>Solo or co-op · 1–4 players</small></button>
+  <button type="button" class="lobby-card lobby-farm-card" data-lobby-action="farm" id="lobby-farm-card"><span class="lobby-card-kicker">Elemental Farm</span><span class="lobby-card-row"><b>Grow crops</b><small>Enter →</small></span><small id="lobby-farm-leaves">Earn Gold Leaves</small></button>
   <button type="button" class="lobby-card" data-lobby-action="journey" id="lobby-journey-card"></button>
   <button type="button" class="lobby-card lobby-missions-card" data-lobby-action="missions" id="lobby-missions-card"></button>
   <button type="button" class="lobby-card lobby-friends-card" data-lobby-action="friends" id="lobby-friends-card"><span class="lobby-card-kicker">Friends</span><b id="lobby-friends-online">Friends online</b><small>Invite, join or watch</small></button>
@@ -250,7 +252,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   <button type="button" class="lobby-play-button" id="lobby-play"><span aria-hidden="true">▶</span>PLAY</button>
 </div>`;
   document.body.append(layer);
-  document.body.classList.add("hub-lobby");
+  document.body.classList.add("hub-screen");
   const $ = <T extends HTMLElement>(id: string) =>
     layer.querySelector<T>(`#${id}`)!;
   const menu = $("lobby-mode-menu"),
@@ -343,6 +345,11 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       }
       $("lobby-party-bar").hidden = view.partySize < 2;
       $("lobby-party-size").textContent = `Party · ${view.partySize}/4`;
+      const leaves = view.economy?.leaves?.balance;
+      $("lobby-farm-leaves").textContent =
+        leaves === undefined
+          ? "Earn Gold Leaves"
+          : `${leaves.toLocaleString("en-US")} Gold Leaves`;
       $("lobby-journey-card").innerHTML = journeyCard(view.economy?.journey);
       $("lobby-missions-card").innerHTML = missionsCard(view.economy);
       $("lobby-friends-online").textContent =
@@ -367,7 +374,8 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       clearTimeout(bubbleTimer);
       layer.removeEventListener("keydown", onKey);
       layer.remove();
-      document.body.classList.remove("hub-lobby");
+      if (!document.querySelector(".farm-layer"))
+        document.body.classList.remove("hub-screen");
     },
   };
 }

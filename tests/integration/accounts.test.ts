@@ -964,3 +964,88 @@ it("accepts all six daily mission slots and rejects invalid reroll requests befo
   expect((await post({ slot: 5 }, "invalid")).status).toBe(401);
   expect(slots).toHaveLength(6);
 });
+
+it("passes farm actions and leaf trades to the database only when the request is well formed", async () => {
+  const player = accounts.add(false);
+  const calls: [string, Record<string, unknown>][] = [];
+  accounts.provider.rpc = async (_token, name, args) => {
+    calls.push([name, args]);
+    return name === "arena_farm_act"
+      ? { farm: {}, results: [{ ok: true }] }
+      : { coins: 0 };
+  };
+  const send = (path: string, body?: unknown, token = player.token) =>
+    fetch(`${url}${path}`, {
+      method: body === undefined ? "GET" : "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  const request = "6f1c2b9e-3a4d-4c5e-8f60-718293a4b5c6";
+  expect((await send("/api/farm")).status).toBe(200);
+  expect(
+    (
+      await send("/api/farm/act", {
+        request,
+        actions: [
+          { a: "plant", plot: 0, crop: "wheat" },
+          { a: "sell", crop: "wheat", mutation: "", qty: 3 },
+          { a: "upgrade-barn" },
+        ],
+      })
+    ).status,
+  ).toBe(200);
+  expect((await send("/api/leaves/trade", { lots: 2 })).status).toBe(200);
+  expect(calls).toEqual([
+    ["arena_farm", {}],
+    [
+      "arena_farm_act",
+      {
+        p_request: request,
+        p_actions: [
+          { a: "plant", plot: 0, crop: "wheat" },
+          { a: "sell", crop: "wheat", mutation: "", qty: 3 },
+          { a: "upgrade-barn" },
+        ],
+      },
+    ],
+    ["arena_trade_leaves", { p_lots: 2 }],
+  ]);
+  // The client can't pick a time, a price or a balance, or send junk.
+  for (const body of [
+    { request: "not-a-uuid", actions: [{ a: "harvest", plot: 1 }] },
+    { request, actions: [] },
+    { request, actions: [{ a: "harvest", plot: 50 }] },
+    { request, actions: [{ a: "harvest", plot: 1, now: "2030-01-01" }] },
+    { request, actions: [{ a: "sell", crop: "wheat", qty: 1, price: 999 }] },
+    { request, actions: [{ a: "teleport" }] },
+    { request, actions: [{ a: "plant", plot: 1, crop: "Wheat;drop" }] },
+    { request, actions: [{ a: "harvest", plot: 1 }], leaves: 1e9 },
+    {
+      request,
+      actions: Array.from({ length: 61 }, () => ({ a: "water", plot: 1 })),
+    },
+  ])
+    expect((await send("/api/farm/act", body)).status).toBe(400);
+  for (const body of [
+    { lots: 0 },
+    { lots: 9 },
+    { lots: 1.5 },
+    {},
+    { lots: 1, coins: 5 },
+  ])
+    expect((await send("/api/leaves/trade", body)).status).toBe(400);
+  expect((await send("/api/farm", undefined, "invalid")).status).toBe(401);
+  expect(
+    (
+      await send(
+        "/api/farm/act",
+        { request, actions: [{ a: "upgrade-barn" }] },
+        "invalid",
+      )
+    ).status,
+  ).toBe(401);
+  expect(calls).toHaveLength(3);
+});

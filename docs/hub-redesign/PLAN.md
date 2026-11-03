@@ -45,8 +45,9 @@ Defaults accepted with these answers:
   1 Dec 2026, Pacific). The month in progress keeps 20 × 400.
 - The Daily Spark applies to every XP source, and the doubled XP also counts
   for the season (as in the prototype).
-- Migrations are run by the owner in the Supabase SQL Editor. Nothing is
-  written to production unless the owner asks.
+- Migrations: the owner asked (2 Nov 2026) for them to be applied to the
+  production Supabase project as part of the work. Each migration is applied
+  after its pull request merges, then checked with read-only queries.
 - All randomness with economic effect (mutations, market, seed stock, orders,
   dog catches) runs on the server. What must match for everyone (market
   prices, the seed list) is seeded by day or time slot. Seed stock: the same
@@ -74,6 +75,10 @@ Each phase: branch from `main`, pull request into `main`. Before every push:
    boxes with tabular numbers; the Lobby / Plaza / Farm switcher (Farm
    hidden); Full screen in Settings; Missions and Journey as Lobby drawers; an
    alignment pass on Shop and Wardrobe. Then party before a room (server).
+   Order change (2 Nov 2026): the Gold Leaves wallet (migration 036) ships with
+   the minimum farm (phase 4), since the farm is where most leaves are earned and
+   spent. The new Plaza (phase 3) follows the farm.
+
 3. **Gold Leaves and the new Plaza.** The leaves wallet; the prototype's Plaza
    map (shared layout, server movement with dash and bounce pads, client art
    from `art.js`); then the leaf features: Orb Shower scheduled and checked on
