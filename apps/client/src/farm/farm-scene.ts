@@ -43,6 +43,17 @@ import {
 import { cropFieldSvg, cropItemSvg } from "./crop-art";
 import { GFX } from "./farm-gfx";
 import {
+  FrameRateProbe,
+  graphicsSetting,
+  rememberAutoLow,
+} from "../graphics-quality";
+import {
+  DOG_SPOTS,
+  blocked as pathBlocked,
+  clearLine as pathClear,
+  dogRoute,
+} from "./farm-path";
+import {
   farmIcon as I,
   LEAF_ICON as L,
   farmIconImage as ICON_IMG,
@@ -731,6 +742,17 @@ export function openFarm(options) {
           : `${n} is guarding your farm for ${days}!`;
         toast(msg);
         log(msg, "good");
+        if (!x.extended)
+          Object.assign(dog, {
+            x: DOGH.x - 70,
+            y: DOGH.y + 30,
+            path: [],
+            wait: 1,
+            chase: null,
+            chasing: false,
+            moving: false,
+          });
+        dogBark();
       }
       for (const x of r.results) {
         if (!x.ok) continue;
@@ -841,6 +863,61 @@ export function openFarm(options) {
     { k: "drake", a: 0, s: 0.25 },
     { k: "hen", a: 2.5, s: 0.2 },
   ];
+  /* The guard dog walks the farm (phase 6): it sits a while, then trots to
+     another spot, around the pond, the well, the pasture and decorations,
+     into the field only through the gate; a crow coming for a ripe crop gets
+     chased off (with a dog on guard no crow lands: the server's rule). */
+  const dog = {
+    x: DOGH.x - 90,
+    y: DOGH.y + 14,
+    path: [],
+    wait: 3,
+    face: 1,
+    barkT: 0,
+    chase: null,
+    chasing: false,
+    moving: false,
+  };
+  const pathWorld = () => ({
+    field: FR,
+    pasture: PAST,
+    pond: POND,
+    well: WELL,
+    doghouse: DOGH,
+    scarecrow: F.scarecrow ? [288, 562] : null,
+    decor: F.decor.flatMap((d, k) => (d ? [DECO_SLOTS[k]] : [])),
+    gateX: FCX,
+    width: WW,
+    height: WH,
+  });
+  function dogTo(x, y, inside) {
+    dog.path = dogRoute(pathWorld(), [dog.x, dog.y], [x, y], inside);
+    dog.moving = true;
+  }
+  function dogIdleSpot() {
+    const w = pathWorld();
+    for (let t = 0; t < 12; t++) {
+      const [x, y] = DOG_SPOTS[Math.floor(Math.random() * DOG_SPOTS.length)];
+      if (!pathBlocked(w, x, y, false)) return [x, y];
+    }
+    return [DOGH.x - 80, DOGH.y + 34];
+  }
+  /** A "Woof!" bubble that follows the dog. */
+  function dogBark(text = "WOOF!") {
+    dog.barkT = 1.2;
+    FX.push({
+      bark: 1,
+      follow: 1,
+      x: dog.x,
+      y: dog.y - 40,
+      t: 0,
+      life: 1.4,
+      text,
+    });
+  }
+  /** Crows the dog chases off before they can land (drawn only). */
+  const decoys = [];
+  let decoyIn = 60 + Math.random() * 120;
   // The pasture's cow (migration 049): it walks slowly from side to side.
   const COW = { x: 1600, y: 610, face: -1, t: 0 };
   const milkReady = () => F.pasture && F.milkAt <= serverNow();
@@ -1119,18 +1196,23 @@ export function openFarm(options) {
       g.stroke();
     }
   }
+  // A fence post, painted once and stamped (~100 a frame).
+  let postArt = null;
   const post = (g, x, y) => {
-    const gg = g.createLinearGradient(x - 4, 0, x + 4, 0);
-    gg.addColorStop(0, "#c48a4a");
-    gg.addColorStop(1, "#7a5230");
-    g.fillStyle = gg;
-    g.beginPath();
-    g.roundRect(x - 4, y - 28, 8, 30, 3);
-    g.fill();
-    g.fillStyle = "#e0a868";
-    g.beginPath();
-    g.ellipse(x, y - 28, 4, 2, 0, 0, 7);
-    g.fill();
+    postArt ??= GFX.sprite(10, 34, 5, 30, (c) => {
+      const gg = c.createLinearGradient(-4, 0, 4, 0);
+      gg.addColorStop(0, "#c48a4a");
+      gg.addColorStop(1, "#7a5230");
+      c.fillStyle = gg;
+      c.beginPath();
+      c.roundRect(-4, -28, 8, 30, 3);
+      c.fill();
+      c.fillStyle = "#e0a868";
+      c.beginPath();
+      c.ellipse(0, -28, 4, 2, 0, 0, 7);
+      c.fill();
+    });
+    g.drawImage(postArt.c, x - 5, y - 30, 10, 34);
   };
   const rail = (g, xa, ya, xb, yb) => {
     g.strokeStyle = "#7a5230";
@@ -1353,38 +1435,50 @@ export function openFarm(options) {
       }
     }
   }
+  // Grass on land you don't own yet: painted once per plot, then stamped.
+  // Land not for sale yet is faded: each stroke at 55%, as drawn before, so
+  // the picture matches (fading the finished picture would look darker).
+  const lockedArts = new Map();
+  function lockedArt(i, can) {
+    const key = `${i}|${can ? 1 : 0}`;
+    let a = lockedArts.get(key);
+    if (a) return a;
+    a = GFX.sprite(PW + 12, PH + 30, 4, 12, (g) => {
+      g.globalAlpha = can ? 1 : 0.55;
+      g.fillStyle = "rgba(20,50,20,.3)";
+      g.beginPath();
+      g.roundRect(2, 5, PW, PH, 12);
+      g.fill();
+      g.fillStyle = "#7cc45e";
+      g.beginPath();
+      g.roundRect(0, 0, PW, PH, 12);
+      g.fill();
+      GFX.srand(i * 13 + 5);
+      for (let k = 0; k < 9; k++) {
+        const x = 8 + GFX.rnd() * (PW - 16),
+          y = 10 + GFX.rnd() * (PH - 14);
+        g.strokeStyle = k % 2 ? "#4f9a3c" : "#a6e07e";
+        g.lineWidth = 2;
+        g.beginPath();
+        g.moveTo(x - 3, y);
+        g.lineTo(x - 5, y - 9);
+        g.moveTo(x, y);
+        g.lineTo(x, y - 12);
+        g.moveTo(x + 3, y);
+        g.lineTo(x + 6, y - 8);
+        g.stroke();
+      }
+      if (i % 3 === 0) GFX.blit(g, GFX.rock(i + 40, 22), PW * 0.3, PH * 0.8);
+    });
+    lockedArts.set(key, a);
+    return a;
+  }
   function drawLockedPlot(g, i, s) {
     const r = plotRect(i),
       cx = r.x + r.w / 2,
       me = s.me,
       can = me && touching(s.plots, i);
-    g.globalAlpha = can ? 1 : 0.55;
-    g.fillStyle = "rgba(20,50,20,.3)";
-    g.beginPath();
-    g.roundRect(r.x + 2, r.y + 5, r.w, r.h, 12);
-    g.fill();
-    g.fillStyle = "#7cc45e";
-    g.beginPath();
-    g.roundRect(r.x, r.y, r.w, r.h, 12);
-    g.fill();
-    GFX.srand(i * 13 + 5);
-    for (let k = 0; k < 9; k++) {
-      const x = r.x + 8 + GFX.rnd() * (r.w - 16),
-        y = r.y + 10 + GFX.rnd() * (r.h - 14);
-      g.strokeStyle = k % 2 ? "#4f9a3c" : "#a6e07e";
-      g.lineWidth = 2;
-      g.beginPath();
-      g.moveTo(x - 3, y);
-      g.lineTo(x - 5, y - 9);
-      g.moveTo(x, y);
-      g.lineTo(x, y - 12);
-      g.moveTo(x + 3, y);
-      g.lineTo(x + 6, y - 8);
-      g.stroke();
-    }
-    if (i % 3 === 0)
-      GFX.blit(g, GFX.rock(i + 40, 22), r.x + r.w * 0.3, r.y + r.h * 0.8);
-    g.globalAlpha = 1;
+    GFX.blit(g, lockedArt(i, can), r.x, r.y);
     if (me && hoverI === i && can) {
       g.strokeStyle = "#ffd65b";
       g.lineWidth = 3;
@@ -1423,6 +1517,51 @@ export function openFarm(options) {
       g.restore();
     }
   }
+  // Soil: one picture per wet / fertilizer mix, stamped on every plot.
+  const soilArts = new Map();
+  function soilArt(wet, fert) {
+    const key = `${wet ? 1 : 0}|${fert ?? ""}`;
+    let a = soilArts.get(key);
+    if (a) return a;
+    a = GFX.sprite(PW + 4, PH + 7, 0, 0, (g) => {
+      const sg = g.createLinearGradient(0, 0, 0, PH);
+      sg.addColorStop(0, wet ? "#4a301c" : "#8a5e36");
+      sg.addColorStop(1, wet ? "#3a2412" : "#6b4527");
+      g.fillStyle = "rgba(0,0,0,.25)";
+      g.beginPath();
+      g.roundRect(2, 5, PW, PH, 12);
+      g.fill();
+      g.fillStyle = sg;
+      g.beginPath();
+      g.roundRect(0, 0, PW, PH, 12);
+      g.fill();
+      g.strokeStyle = wet ? "rgba(140,200,255,.25)" : "rgba(255,220,170,.22)";
+      g.lineWidth = 2;
+      for (let k = 1; k < 4; k++) {
+        g.beginPath();
+        g.moveTo(10, (k * PH) / 4);
+        g.lineTo(PW - 10, (k * PH) / 4);
+        g.stroke();
+      }
+      if (wet) {
+        g.fillStyle = "rgba(160,215,255,.18)";
+        g.beginPath();
+        g.ellipse(PW / 2 - 18, 18, 22, 7, -0.2, 0, 7);
+        g.fill();
+      }
+      if (fert) {
+        g.fillStyle =
+          fert === "gold" ? "rgba(255,210,80,.6)" : "rgba(200,255,140,.5)";
+        for (let k = 0; k < 6; k++) {
+          g.beginPath();
+          g.arc(16 + k * 14, PH - 10 - (k % 2) * 6, 2.2, 0, 7);
+          g.fill();
+        }
+      }
+    });
+    soilArts.set(key, a);
+    return a;
+  }
   function drawPlot(g, i, p, time, s) {
     const r = plotRect(i),
       cx = r.x + r.w / 2;
@@ -1430,40 +1569,7 @@ export function openFarm(options) {
       drawLockedPlot(g, i, s);
       return;
     }
-    const sg = g.createLinearGradient(0, r.y, 0, r.y + r.h);
-    sg.addColorStop(0, p.wet ? "#4a301c" : "#8a5e36");
-    sg.addColorStop(1, p.wet ? "#3a2412" : "#6b4527");
-    g.fillStyle = "rgba(0,0,0,.25)";
-    g.beginPath();
-    g.roundRect(r.x + 2, r.y + 5, r.w, r.h, 12);
-    g.fill();
-    g.fillStyle = sg;
-    g.beginPath();
-    g.roundRect(r.x, r.y, r.w, r.h, 12);
-    g.fill();
-    g.strokeStyle = p.wet ? "rgba(140,200,255,.25)" : "rgba(255,220,170,.22)";
-    g.lineWidth = 2;
-    for (let k = 1; k < 4; k++) {
-      g.beginPath();
-      g.moveTo(r.x + 10, r.y + (k * r.h) / 4);
-      g.lineTo(r.x + r.w - 10, r.y + (k * r.h) / 4);
-      g.stroke();
-    }
-    if (p.wet) {
-      g.fillStyle = "rgba(160,215,255,.18)";
-      g.beginPath();
-      g.ellipse(cx - 18, r.y + 18, 22, 7, -0.2, 0, 7);
-      g.fill();
-    }
-    if (p.fert) {
-      g.fillStyle =
-        p.fert === "gold" ? "rgba(255,210,80,.6)" : "rgba(200,255,140,.5)";
-      for (let k = 0; k < 6; k++) {
-        g.beginPath();
-        g.arc(r.x + 16 + k * 14, r.y + r.h - 10 - (k % 2) * 6, 2.2, 0, 7);
-        g.fill();
-      }
-    }
+    GFX.blit(g, soilArt(p.wet, p.fert), r.x, r.y);
     if (s.me && hoverI === i) {
       g.strokeStyle = "#ffd65b";
       g.lineWidth = 3;
@@ -1611,9 +1717,11 @@ export function openFarm(options) {
       g.fillStyle = heavy ? "rgba(14,22,50,.36)" : "rgba(26,46,96,.24)";
       g.fillRect(0, 0, VW, VH);
       g.lineCap = "round";
+      // Low graphics: half the drops and splashes.
+      const share = low ? 0.5 : 1;
       for (const [n, len, sp, lw, a] of [
-        [heavy ? 240 : 170, 15, 760, 1.3, 0.38],
-        [heavy ? 160 : 110, 28, 1180, 2.3, 0.72],
+        [(heavy ? 240 : 170) * share, 15, 760, 1.3, 0.38],
+        [(heavy ? 160 : 110) * share, 28, 1180, 2.3, 0.72],
       ]) {
         g.strokeStyle = `rgba(205,228,255,${a})`;
         g.lineWidth = lw;
@@ -1628,7 +1736,7 @@ export function openFarm(options) {
       }
       g.strokeStyle = "rgba(215,238,255,.75)";
       g.lineWidth = 1.4;
-      for (let k = 0; k < (heavy ? 54 : 40); k++) {
+      for (let k = 0; k < (heavy ? 54 : 40) * share; k++) {
         const c = time * 2.4 + k * 0.37,
           ph = c % 1,
           cyc = Math.floor(c),
@@ -2318,8 +2426,10 @@ export function openFarm(options) {
             ? `${g.qty} Gold Leaves`
             : "a Super Fertilizer";
       log(`<b>${DOG[g.dog]?.name ?? "Your dog"}</b> dug up ${what}!`, "good");
-      if (g === fresh[fresh.length - 1])
+      if (g === fresh[fresh.length - 1]) {
         toast(`${DOG[g.dog]?.name ?? "Your dog"} dug up ${what}!`);
+        if (dogOn()) dogBark("Woof!");
+      }
     }
     if (F.gifts.length)
       try {
@@ -2677,28 +2787,29 @@ export function openFarm(options) {
           GFX.dog(ctx, V.dog, "sit", time, DOGH.x - 90, DOGH.y + 14, 0.95, 1),
       });
     if (s.me && dogOn()) {
-      const st =
-        time % 23 < 1.2
-          ? "bark"
-          : Math.floor(time / 7) % 3 === 0
-            ? "idle"
-            : "sit";
+      // With reduced motion the dog stays by its doghouse.
+      const still = reduced,
+        st = still
+          ? time % 23 < 1.2
+            ? "bark"
+            : "sit"
+          : dog.barkT > 0
+            ? "bark"
+            : dog.wait <= 0 && dog.moving
+              ? dog.chasing
+                ? "run"
+                : "walk"
+              : dog.wait > 2
+                ? "sit"
+                : "idle",
+        x = still ? DOGH.x - 90 : dog.x,
+        y = still ? DOGH.y + 14 : dog.y;
       items.push({
-        y: DOGH.y + 14,
+        y,
         d: () =>
-          GFX.dog(
-            ctx,
-            F.dog.type,
-            st,
-            time,
-            DOGH.x - 90,
-            DOGH.y + 14,
-            0.95,
-            1,
-            {
-              pant: st === "idle",
-            },
-          ),
+          GFX.dog(ctx, F.dog.type, st, time, x, y, 0.95, still ? 1 : dog.face, {
+            pant: st === "idle",
+          }),
       });
     }
     // Decorations in their spots; in placing mode the spots glow.
@@ -2913,6 +3024,24 @@ export function openFarm(options) {
         );
         ctx.fill();
       });
+      // A crow the dog is about to chase off: flies in, lands, no time bar.
+      for (const c of decoys) {
+        const r = plotRect(c.i),
+          tx = r.x + PW / 2,
+          ty = r.y + 20;
+        if (c.t < 1)
+          GFX.bird(
+            ctx,
+            "crow",
+            "fly",
+            time,
+            tx - 300 * (1 - c.t),
+            ty - 240 * (1 - c.t),
+            1.6,
+            -1,
+          );
+        else GFX.bird(ctx, "crow", "peck", time, tx, ty + 10, 1.5, -1);
+      }
       for (const c of crowsLeaving)
         GFX.bird(
           ctx,
@@ -2938,7 +3067,28 @@ export function openFarm(options) {
       );
     for (const f of FX) {
       const k = f.t / f.life;
-      if (f.text) {
+      if (f.bark) {
+        // A speech bubble; one that follows the dog moves with it.
+        if (f.follow && dogOn() && !V && !reduced) {
+          f.x = dog.x;
+          f.y = dog.y - 40;
+        }
+        ctx.globalAlpha = 1 - Math.max(0, k - 0.7) / 0.3;
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.roundRect(f.x - 40, f.y - 50, 80, 30, 12);
+        ctx.moveTo(f.x - 7, f.y - 21);
+        ctx.lineTo(f.x + 1, f.y - 9);
+        ctx.lineTo(f.x + 8, f.y - 21);
+        ctx.fill();
+        ctx.fillStyle = "#2a1a00";
+        ctx.font = "800 18px 'Barlow Condensed', sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(f.text || "WOOF!", f.x, f.y - 35);
+        ctx.textBaseline = "alphabetic";
+        ctx.globalAlpha = 1;
+      } else if (f.text) {
         ctx.globalAlpha = 1 - Math.max(0, k - 0.6) / 0.4;
         ctx.font = "800 20px 'Barlow Condensed', sans-serif";
         ctx.textAlign = "center";
@@ -3006,9 +3156,101 @@ export function openFarm(options) {
 
   /* ---------- loop: the farm's time is the server's clock ---------- */
   const reduced = !!options.reduced;
-  let crowAsked = 0;
+  /** Low graphics (slow phones, as in the Plaza): 30 fps, a 1× canvas, no
+   *  hens, ducks or butterflies, lighter rain. Auto measures the frame rate
+   *  for a few seconds and switches to Low (remembered) when it's too slow. */
+  let low = !!options.low;
+  layer.dataset.graphics = low ? "low" : "high";
+  layer.dataset.frozen = "false";
+  let probe =
+    graphicsSetting() === "auto" && !low ? new FrameRateProbe() : undefined;
+  function goLow() {
+    low = true;
+    layer.dataset.graphics = "low";
+    for (const list of [hens, FDUCKS, BUTTER]) list.length = 0;
+    onResize();
+  }
+  // Opening at Low: no ambient animals (the canvas is sized 1× when it opens).
+  if (low) for (const list of [hens, FDUCKS, BUTTER]) list.length = 0;
+  /* A dialog or drawer (Settings, the Shop, Missions) fills the screen: stop
+     drawing behind it and wake when it closes. Looked up once per DOM change. */
+  let cover;
+  const COVERS = "dialog, .home-drawer";
+  const covered = () =>
+    (cover ??= !!document.querySelector(
+      "dialog[open], .home-drawer:not([hidden])",
+    ));
+  let frozen = false,
+    coveredAt;
+  function freeze() {
+    frozen = true;
+    layer.dataset.frozen = "true";
+    cancelAnimationFrame(raf);
+    probe?.pause();
+  }
+  function wake() {
+    if (!frozen || !running || covered() || document.hidden) return;
+    frozen = false;
+    layer.dataset.frozen = "false";
+    last = performance.now();
+    raf = requestAnimationFrame(step);
+  }
+  const coverWatch = new MutationObserver((records) => {
+    for (const r of records) {
+      const hit =
+        r.type === "attributes"
+          ? r.target instanceof Element && r.target.matches(COVERS)
+          : [...r.addedNodes, ...r.removedNodes].some(
+              (n) =>
+                n instanceof Element &&
+                (n.matches(COVERS) || n.querySelector(COVERS)),
+            );
+      if (hit) {
+        cover = undefined;
+        if (frozen) wake();
+        return;
+      }
+    }
+  });
+  coverWatch.observe(document.body, {
+    subtree: true,
+    childList: true,
+    attributes: true,
+    attributeFilter: ["open", "hidden"],
+  });
+  // Safety net: while asleep, look again each second without the cache.
+  const thawCheck = setInterval(() => {
+    if (!frozen) return;
+    cover = undefined;
+    wake();
+  }, 1000);
+  let crowAsked = 0,
+    lastDraw = 0;
   function step(now) {
     raf = requestAnimationFrame(step);
+    if (low && now - lastDraw < 30) return;
+    lastDraw = now;
+    if (probe) {
+      if (document.hidden || covered()) probe.pause();
+      else {
+        const verdict = probe.frame(performance.now());
+        if (verdict === "low") {
+          probe = undefined;
+          rememberAutoLow();
+          goLow();
+        } else if (verdict === "ok")
+          // Keep watching: a busier farm later can still be too much.
+          probe = new FrameRateProbe(0);
+      }
+    }
+    if (covered()) {
+      coveredAt ??= now;
+      if (now - coveredAt > 300 && !dragging) {
+        coveredAt = undefined;
+        freeze();
+        return;
+      }
+    } else coveredAt = undefined;
     // Never negative: the first frame can be stamped before enter() ran.
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
     last = now;
@@ -3039,6 +3281,72 @@ export function openFarm(options) {
       if (keysF.has("s") || keysF.has("arrowdown")) cam.y += sp;
       clampCam();
     }
+    // The guard dog (your farm only; a friend's dog waits by its doghouse).
+    if (dogOn() && !V && !reduced) {
+      // Now and then a crow comes for a ripe crop; the dog chases it off.
+      decoyIn -= dt;
+      if (decoyIn <= 0) {
+        decoyIn = 120 + Math.random() * 180;
+        const ripe = [];
+        F.plots.forEach((p, i) => {
+          if (p.crop && p.prog >= 1 && !p.crowAt) ripe.push(i);
+        });
+        if (ripe.length && dog.chase == null && !decoys.length)
+          decoys.push({
+            i: ripe[Math.floor(Math.random() * ripe.length)],
+            t: 0,
+          });
+      }
+      for (let k = decoys.length - 1; k >= 0; k--) {
+        const c = decoys[k];
+        c.t += dt;
+        if (c.t >= 1 && !c.barked) {
+          c.barked = true;
+          dog.chase = c.i;
+          dogBark();
+        }
+        if (c.t >= 1.7) {
+          const r = plotRect(c.i);
+          crowsLeaving.push({ x: r.x + PW / 2, y: r.y + 20, t: 0 });
+          decoys.splice(k, 1);
+        }
+      }
+      if (dog.chase != null && !dog.chasing) {
+        const r = plotRect(dog.chase);
+        dog.chasing = true;
+        dogTo(r.x + PW / 2, r.y + PH + 4, true);
+      }
+      if (dog.barkT > 0) dog.barkT -= dt;
+      if (dog.wait > 0) {
+        dog.wait -= dt;
+        if (Math.random() < dt * 0.04) dog.barkT = 0.8;
+      } else {
+        if (!dog.path.length) {
+          if (dog.chasing) {
+            dog.chasing = false;
+            dog.chase = null;
+          }
+          const [x, y] = dogIdleSpot();
+          dogTo(x, y, false);
+        }
+        const [wx, wy] = dog.path[0],
+          dx = wx - dog.x,
+          dy = wy - dog.y,
+          d = Math.hypot(dx, dy);
+        if (d < 6) {
+          dog.path.shift();
+          if (!dog.path.length) {
+            dog.wait = dog.chasing ? 0.8 : 2 + Math.random() * 5;
+            dog.moving = false;
+          }
+        } else {
+          const sp = dog.chasing ? 270 : 85;
+          dog.x += (dx / d) * Math.min(d, sp * dt);
+          dog.y += (dy / d) * Math.min(d, sp * dt);
+          dog.face = dx > 0 ? 1 : -1;
+        }
+      }
+    }
     if (cur().pasture && !reduced) {
       COW.t += dt;
       if (COW.t > 12) {
@@ -3063,8 +3371,20 @@ export function openFarm(options) {
             h.wait = 1.4 + Math.random() * 2;
             return;
           }
-          h.tx = 30 + Math.random() * 540;
-          h.ty = 790 + Math.random() * 120;
+          // A free spot they can walk to in a straight line (not the well or the pond).
+          const w = pathWorld();
+          let ok = false;
+          for (let t = 0; t < 10 && !ok; t++) {
+            h.tx = 30 + Math.random() * 540;
+            h.ty = 790 + Math.random() * 120;
+            ok =
+              !pathBlocked(w, h.tx, h.ty) &&
+              pathClear(w, [h.x, h.y], [h.tx, h.ty]);
+          }
+          if (!ok) {
+            h.tx = h.x;
+            h.ty = h.y;
+          }
           h.st = "walk";
         }
         const dx = h.tx - h.x,
@@ -4294,6 +4614,8 @@ export function openFarm(options) {
     renderAll();
     if (!running) {
       running = true;
+      frozen = false;
+      layer.dataset.frozen = "false";
       last = performance.now();
       raf = requestAnimationFrame(step);
     }
@@ -4310,7 +4632,7 @@ export function openFarm(options) {
     resize(
       layer.clientWidth || innerWidth,
       layer.clientHeight || innerHeight,
-      Math.min(2, devicePixelRatio || 1),
+      low ? 1 : Math.min(2, devicePixelRatio || 1),
     );
   };
   addEventListener("resize", onResize);
@@ -4341,12 +4663,20 @@ export function openFarm(options) {
       void flush();
       leave();
       clearInterval(poll);
+      clearInterval(thawCheck);
+      coverWatch.disconnect();
       removeEventListener("resize", onResize);
       layer.remove();
     },
     /** Debug handle for tests. */
     _dbg: {
       F,
+      /** The guard dog (tests): where it is, its route, and a bark. */
+      dog,
+      dogTo,
+      dogBark,
+      decoys,
+      gate: () => ({ x: FCX, out: FR.y1 + 30, inn: FR.y1 - 16 }),
       /** Where a world point is on the page (tests). */
       worldClient: (x, y) => {
         const r = cv.getBoundingClientRect(),

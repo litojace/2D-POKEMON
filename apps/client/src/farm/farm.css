@@ -1832,8 +1832,12 @@
     ),
     #0b1020d4;
 }
-.farm-layer #fm-dock.open button:hover {
-  transform: translateX(-2px);
+/* The hover nudge only with a mouse: a tap leaves :hover stuck on phones,
+   which would leave the button out of line with the others. */
+@media (hover: hover) and (pointer: fine) {
+  .farm-layer #fm-dock.open button:hover {
+    transform: translateX(-2px);
+  }
 }
 .farm-layer #fm-dock.open button > span {
   display: inline;
