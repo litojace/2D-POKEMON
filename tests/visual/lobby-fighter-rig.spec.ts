@@ -271,6 +271,30 @@ test("friends stand in their saved skin and look, live, on the same floor", asyn
   expect(errors).toEqual([]);
 });
 
+test("your fighter wears your equipped raid look, as in the roster", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  await page.addInitScript(() => {
+    (window as any).__raids = {
+      loadout: { aura: "spark-aura" },
+      clears: 0,
+      highestPeril: 0,
+      bestSeconds: null,
+      titles: [],
+      cosmetics: ["spark-aura"],
+      weekly: [],
+    };
+  });
+  const errors = await openLobby(page);
+  await expect(page.locator(art)).toHaveAttribute(
+    "data-preview-look",
+    encodeURIComponent(JSON.stringify({ aura: "spark-aura" })),
+  );
+  await expect(page.locator(art)).toHaveClass(/is-ready/, { timeout: 30_000 });
+  expect(errors).toEqual([]);
+});
+
 test("Low graphics keeps the Lobby fighter and friends as still artwork", async ({
   page,
 }) => {
