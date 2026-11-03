@@ -31,7 +31,7 @@ started, and the order of work. Update it when a decision changes.
 | 2   | Free mission changes            | Keep 5 (already live).                                                                                                                                                                                                                                                    |
 | 3   | Farm release                    | Later than Journey, Lobby and Plaza. Each phase is its own pull request; the Farm tab stays hidden until the minimum farm is done.                                                                                                                                        |
 | 4   | Gold Leaves                     | A separate wallet. 100 leaves → 5 coins, at most 40 coins a Pacific day, enforced on the server.                                                                                                                                                                          |
-| 5   | Giant crops (3×3)               | Later, after the farm systems.                                                                                                                                                                                                                                            |
+| 5   | Giant crops (3×3)               | Later, after the farm systems. Built in migration 050 (see "Giant crops" below).                                                                                                                                                                                          |
 | 6   | Lobby                           | Build the one-screen Lobby from the prototype as the screen after login. The walkable world becomes the Plaza tab.                                                                                                                                                        |
 | 7   | Party and fitting room          | Party before a room: its own pull request right after the Lobby. The merged Shop + Wardrobe fitting room: not now.                                                                                                                                                        |
 | 8   | Plaza                           | **A new Plaza map from the prototype** (2700×1700: stage and LED wall, ball pitch, dash track, photo spot, Volt boba, bounce pads), not additions to the current town. (The first answer was "add to the current town"; the owner changed it.)                            |
@@ -92,7 +92,8 @@ Done (each with its own migration and tests): weather and mutations (039),
 the order board (040), crop book rewards (041), the wishing well (042),
 crop mastery (043), tools and bugs (044), guard dogs and crows (045),
 farmer perks (046), friends' farms (047), decorations and Charm (048),
-the pasture and treats in the Plaza (049).
+the pasture and treats in the Plaza (049). Giant crops followed in 050
+(below, after phase 6).
 
 Phase 5 is complete.
 
@@ -181,6 +182,79 @@ weathers' effects. Added in phase 6:
   Barn, Almanac, Decor, Friends and the daily Wish. The Menu button shows a
   dot when a tile has one; M opens it and Escape folds it. Sheets sit 8px
   from the orbs and the corner.
+
+## Giant crops (migration 050, decided 3 Nov 2026)
+
+Decision 5 said "after the farm systems"; they are done, so giant crops
+come now. The idea is Stardew Valley's: a 3×3 square of one crop, all ripe,
+can merge into one giant crop with a bigger harvest. These rules are mine
+and open to change; the numbers live in `GIANT` in
+`packages/shared/src/farm.ts` and the database checks them.
+
+- **Which crops:** Earth Carrot (Lv 1), Dusk Cap (Lv 10), Lava Pumpkin
+  (Lv 17) and Storm Melon (Lv 35): big round produce that reads well as
+  one giant (Stardew's are cauliflower, melon and pumpkin), from a starter
+  crop to a rare one. Legendaries are left out: 1 seed a restock at most,
+  so 9 of them at once is weeks of luck.
+- **When it is rolled:** once, for the moment the square's last crop
+  ripens. The 9 plots must be yours, hold the same crop and all be ripe.
+  The roll is a number from the farm's secret salt (039), the player, the
+  square's top-left plot and the 9 plantings' times, the way 039 rolls
+  mutations: reading the farm again (refreshing, reopening) gives the same
+  answer, and only a new planting is a new roll, which costs the seed and
+  the whole growing time. It runs on the server, never in the browser.
+- **The chance:** 10% for each full square. Where squares overlap (a field
+  wider than 3×3), each has its own roll; the one that formed first wins
+  (on a tie, the lower plot number), so a giant never moves or flips. A
+  simulation of the rule, with the harvest below: an exact 3×3 gives a giant
+  1 harvest in 10 (+10% crops); the starting 5×3 field all of one crop 27%
+  of harvests (+16%); a full 10×5 field of one crop 1.5 giants a harvest on
+  average (+26%). Weather does not change the chance.
+- **The harvest:** each of the 9 crops gives twice its normal harvest:
+  36 crops (54 with Terradon's Rich Soil). XP is twice the 9 crops' XP
+  (18 × the crop's XP, plus Charm), which is more than a Sickle swing
+  over the 9 crops with its combo bonus. It goes into the barn whole: it
+  needs room for all of its crops, or it waits ("Your barn is full").
+- **Mutations:** a giant has no roll of its own. Each of its 9 crops keeps
+  the mutation it rolled when it ripened (039, with Fluffy's Gold ×1.5),
+  and its share of the giant carries it; so a giant can carry up to nine
+  mutations. The art shows the effects of every mutation it holds, and
+  tints the giant only when all nine share one.
+- **Never worse than one by one:** the server's plain `harvest` and `dig`
+  (in `arena_farm_act_core`) still work on a giant's plots, since the giant
+  is worked out from the plots rather than replacing them: an old app that
+  harvests one of them gets that plot's normal harvest and the giant breaks
+  (the other 8 become ordinary ripe crops). Because a giant always gives at
+  least twice what its plots give one by one, breaking one never pays. The
+  farm screen sends `harvest-giant` for a giant and won't dig one up.
+- **The Sickle:** a swing whose 3×3 touches a giant harvests the whole
+  giant first (one `harvest-giant` for each giant it touches, sent before
+  the Sickle's own `harvest`), then the other ripe plots in reach. A hand
+  drag that crosses a giant harvests it once. A giant is not part of the
+  drag's combo bonus (its XP is already doubled).
+- **Seeing it in time:** a giant is only known once the server is asked
+  after the square ripens. So when a square of a giant crop ripens on the
+  screen, the farm asks the server at once and holds back harvesting those
+  9 plots until it answers ("Something is growing…"), so a quick tap can't
+  break a giant the player hasn't seen yet.
+- **Crows:** never land on a giant (a crow that picks one flies off), so it
+  can't be eaten. A crow already sitting on one of its crops when it forms
+  still has to be shooed, as before.
+- **Bugs:** they only come to growing crops, so a giant gets none. A bug
+  that was on a crop before it ripened stays and can be caught as usual;
+  harvesting the giant clears it.
+- **Friends:** friends see your giant crops. To a friend the 9 crops are
+  still 9 plantings: they can sneak one crop from each (047's limits: once
+  a plot for each friend, 10 sneaks a day, the guard dog's catch), and each
+  crop taken makes the giant one smaller. Pranks only go on growing crops.
+- **Weather:** sets when each crop ripens and its mutation, as always; it
+  doesn't change the chance. A giant shows in every weather.
+- **Crop book and mastery:** a giant counts as 9 harvests of its crop (as
+  harvesting them one by one would), for the book, its rewards and mastery.
+  The book also counts giants grown and marks those crops GIANT. Giant
+  crops are ordinary crops in the barn: they sell, fill orders and make
+  treats like any other.
+- **Not in:** no giant chance boosters and no giant-only rewards or titles.
 
 ## Phases
 

@@ -39,7 +39,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "049_farm_pasture.sql";
+export const LATEST_MIGRATION = "050_farm_giants.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -431,6 +431,7 @@ export function installAccountRoutes(
         "buy-pasture",
         "milk",
         "sell-milk",
+        "harvest-giant",
       ]),
       plot: z.number().int().min(0).max(49).optional(),
       slot: z.number().int().min(0).max(7).optional(),
@@ -543,7 +544,11 @@ export function installAccountRoutes(
         p_actions: data.actions,
       });
       // Selling and buying change the leaf wallet shown in the top bar.
-      if (data.actions.some((x) => x.a !== "water" && x.a !== "harvest"))
+      if (
+        data.actions.some(
+          (x) => !["water", "harvest", "harvest-giant"].includes(x.a),
+        )
+      )
         onPlayerChanged(account.id);
       res.json(result);
     }),
