@@ -110,7 +110,7 @@ describe("rock volley", () => {
     expect(hurt(a, "p1")).toBe(0);
     expect(hurt(a, "p2")).toBe(0);
   });
-  it("Auralynx's Mirror Guard blocks it and staggers the boss", () => {
+  it("Auralynx's Facet Guard blocks it and staggers the boss", () => {
     const a = raid(["auralynx"]);
     const boss = a.boss()!;
     const p = place(a, "p0", 950, 450);

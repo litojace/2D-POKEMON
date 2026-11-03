@@ -273,7 +273,7 @@ describe("projectile impact events", () => {
     a.phase = "playing";
     a.deadline = 180;
     const [p, q] = a.players;
-    a.status(q, "mark", 3, p.id); // Soaked by Whirlpool
+    a.status(q, "mark", 3, p.id); // Soaked by Eddy
     const events = land(a, "riptide-wave");
     const hit = events.find((e) => e.kind === "hit" && e.abilityId === "riptide-wave");
     expect(hit?.combo).toBe("Soaked");

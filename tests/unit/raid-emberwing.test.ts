@@ -248,7 +248,7 @@ describe("Emberwing attacks and champion answers", () => {
     run(b, 0.5);
     expect(b.heroes()[0].hp).toBeLessThan(CHARACTERS.voltkit.health);
   });
-  it("Mirror Guard reflects the dive and contributes twenty stagger", () => {
+  it("Facet Guard reflects the dive and contributes twenty stagger", () => {
     const a = setup(1, 1, 1, ["auralynx"]),
       p = a.heroes()[0];
     a.status(p, "counter", 2);

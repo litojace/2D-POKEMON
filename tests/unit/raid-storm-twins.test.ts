@@ -391,7 +391,7 @@ describe("Storm Twins attacks and presentation", () => {
     expect(a.raid.stormBeam!.points[1]).toEqual(S.posts[w.beamPost!]);
     expect(a.raid.stormBeam!.points).toHaveLength(3);
   });
-  it("Link Beam can be jumped, reflects from Mirror Guard and stops when one twin falls", () => {
+  it("Link Beam can be jumped, reflects from Facet Guard and stops when one twin falls", () => {
     const a = setup(1, 1, 1, ["auralynx"]),
       [f, c] = twins(a);
     Object.assign(a.heroes()[0], { x: (f.x + c.x) / 2, y: (f.y + c.y) / 2 });
