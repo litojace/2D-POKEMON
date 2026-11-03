@@ -83,20 +83,21 @@ it("pays the 5-crop reward with the harvest that finds the fifth crop", async ()
   expect(again.farm.leaves).toBe(r.farm.leaves);
 });
 
-it("pays 10, 20 and 25 once each, and the title at 25", async () => {
+it("pays 10, 15, 20 and 25 once each, and the title at 25", async () => {
   const before = await farm();
   // (In play only a harvest finds a crop; here they are marked found after planting.)
   await ripeWheat(1);
   await found(CROPS.slice(0, 24).map((c) => c.id));
   const r = await act([{ a: "harvest", plot: 1 }]);
-  expect(r.book).toEqual([10, 20]);
+  // 15 is the Golden Voltkit Statue (migration 048).
+  expect(r.book).toEqual([10, 15, 20]);
   expect(r.farm.fertilizer.gold - before.fertilizer.gold).toBe(2);
   expect(r.farm.leaves - before.leaves).toBe(1000);
   await ripeWheat(1);
   await found(CROPS.map((c) => c.id));
   const last = await act([{ a: "harvest", plot: 1 }]);
   expect(last.book).toEqual([25]);
-  expect(last.farm.bookRewards).toEqual([5, 10, 20, 25]);
+  expect(last.farm.bookRewards).toEqual([5, 10, 15, 20, 25]);
   const titles = await owner(
     `select t.name from public.arena_player_titles p join public.arena_titles t on t.id = p.title_id
      where p.player_id = $1 and t.name = 'Elemental Botanist'`,

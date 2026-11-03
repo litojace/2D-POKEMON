@@ -76,6 +76,9 @@ async function fakeFarm(page: Page) {
       // No farmer before migration 046: set by the perk test.
       farmer: undefined as string | undefined,
       perksUsed: [] as string[],
+      decor: [] as { slot: number; item: string }[],
+      charm: 0,
+      decorCredits: {} as Record<string, number>,
       dog: null as any,
       dogGifts: [] as any[],
       crows: {} as Record<string, string>,
@@ -160,6 +163,13 @@ async function fakeFarm(page: Page) {
           if (a.a === "catch" && p?.pests) {
             p.pests--;
             return { ok: true, caught: 1, xp: 1 };
+          }
+          if (a.a === "decor") {
+            farm.decor = farm.decor.filter((d: any) => d.slot !== a.slot);
+            farm.decor.push({ slot: a.slot, item: a.item });
+            farm.charm += 1;
+            farm.leaves -= 300;
+            return { ok: true, decor: a.item, slot: a.slot, cost: 300 };
           }
           if (a.a === "farmer") {
             farm.farmer = a.id;
@@ -380,7 +390,7 @@ test("the weather orb shows the weather now and the forecast", async ({
   await page.click('#fm-dock [data-sheet="book"]');
   await expect(page.locator("#fm-sheet")).toContainText("Collection rewards");
   await expect(page.locator("#fm-sheet .mile.done")).toHaveCount(1);
-  await expect(page.locator("#fm-sheet .mile")).toHaveCount(4);
+  await expect(page.locator("#fm-sheet .mile")).toHaveCount(5);
   // Mastery is the almanac's second tab; it opens at farm level 40.
   await page.click('#fm-sheet [data-tab="mastery"]');
   await expect(page.locator("#fm-sheet")).toContainText(
@@ -768,6 +778,55 @@ test("visiting a friend's farm: sneak a ripe crop, catch a bug, go home", async 
     await banner.locator("[data-home]").click();
     await expect(banner).toBeHidden();
     await expect(page.locator("#fm-tools [data-tool]")).toHaveCount(7);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test("decorating: buy a decoration and place it in a glowing spot", async ({
+  browser,
+}, info) => {
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    await fakeFarm(page);
+    await page.evaluate(() => {
+      const f = (window as any).__fakeFarm;
+      f.decor = [{ slot: 0, item: "lamp" }];
+      f.charm = 2;
+    });
+    await page.click('#hub-scenes [data-hub-scene="farm"]');
+    await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
+    await page.click('#fm-dock [data-sheet="decor"]');
+    const sheet = page.locator("#fm-sheet");
+    await expect(sheet).toContainText("Charm 2 · +1% XP");
+    await expect(
+      sheet.locator(".item", { hasText: "Street Lamp" }),
+    ).toContainText("unlocks at Lv 12");
+    await sheet.locator('[data-deco="rock"]').click();
+    await expect(sheet).toContainText("Placing Mossy Rock");
+    await page.waitForTimeout(500);
+    await snap(page, info, "farm-decor-1280x800");
+    // The second spot (230, 870 on the farm).
+    const spot = await page.evaluate(() =>
+      (window as any).__farm.worldClient(230, 870),
+    );
+    await page.mouse.click(spot.x, spot.y);
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          (window as any).__farmRequests.flatMap((r: any) => r.actions),
+        ),
+      )
+      .toEqual([{ a: "decor", slot: 1, item: "rock" }]);
+    await expect(page.locator("#fm-log")).toContainText(
+      "Placed Mossy Rock · +1 Charm",
+    );
+    await expect(sheet).toContainText("Charm 3 · +1% XP");
     expect(errors).toEqual([]);
   } finally {
     await context.close();

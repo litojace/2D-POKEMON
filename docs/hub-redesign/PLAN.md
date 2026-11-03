@@ -91,9 +91,16 @@ open to change.
 Done (each with its own migration and tests): weather and mutations (039),
 the order board (040), crop book rewards (041), the wishing well (042),
 crop mastery (043), tools and bugs (044), guard dogs and crows (045),
-farmer perks (046), friends' farms (047).
+farmer perks (046), friends' farms (047), decorations and Charm (048).
 
-Still to come: decorations and charm, the pasture, and treats in the Plaza.
+Still to come: the pasture and treats in the Plaza.
+
+- **Decorations (048), decided:** the prototype's 11 decorations and 8
+  spots; placing replaces what stood there and putting one away doesn't
+  refund it (both as in the prototype). Charm gives +1% farm XP per 2, up
+  to 25%, on every farm XP source. The crop book's 15-crop reward is the
+  Golden Voltkit Statue, free and placeable before its level 75 (farms
+  already past 15 crops get it too).
 
 - **Friends' farms (047), decided:** anyone on your Friends list. Helping
   (water +2 XP, a bug +3 XP) pays at most 60 XP a Pacific day; sneaking is

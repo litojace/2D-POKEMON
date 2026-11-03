@@ -23,6 +23,8 @@ import {
   FARM_TOOLS,
   FARM_DOGS,
   FARM_PERKS,
+  FARM_DECOR,
+  charmBonus,
   CROW_SECONDS,
   SPRINKLER_LEVELS,
   SPRINKLER_PRICES,
@@ -70,6 +72,18 @@ const fmtDur = (s) =>
     ? `${Math.floor(s / 86400)}d${Math.floor((s % 86400) / 3600) ? ` ${Math.floor((s % 86400) / 3600)}h` : ""}`
     : fmtSecs(s);
 const DOG = Object.fromEntries(FARM_DOGS.map((d) => [d.id, d]));
+const DECO = Object.fromEntries(FARM_DECOR.map((d) => [d.id, d]));
+/** The 8 decoration spots around the farm (the prototype's). */
+const DECO_SLOTS = [
+  [80, 830],
+  [230, 870],
+  [530, 870],
+  [1240, 870],
+  [70, 540],
+  [1700, 880],
+  [1390, 890],
+  [390, 890],
+];
 const GIFT_KEY = "arena-farm-gift-seen";
 const RAR_NAME = {
   common: "Common",
@@ -109,6 +123,7 @@ const FARM_HTML = `<div class="fm" id="fm">
       <button type="button" data-sheet="market">${I("market")}<span>Market</span></button>
       <button type="button" data-sheet="barn">${I("barn")}<span>Barn</span></button>
       <button type="button" data-sheet="book">${I("book")}<span>Almanac</span></button>
+      <button type="button" data-sheet="decor">${I("decor")}<span>Decor</span></button>
       <button type="button" data-sheet="friends">${I("friends")}<span>Friends</span><b class="dot" id="fm-fr-dot" hidden></b></button>
     </nav>
     <div class="fm-visit glass" id="fm-visit" hidden></div>
@@ -294,6 +309,9 @@ export function openFarm(options) {
     gifts: [],
     farmer: null,
     perksUsed: [],
+    decor: Array(8).fill(null),
+    charm: 0,
+    decorCredits: {},
     warmUntil: 0,
     log: [],
     decorPick: null,
@@ -386,6 +404,11 @@ export function openFarm(options) {
     F.gifts = st.dogGifts ?? [];
     // The farmer and perks (migration 046). The farm follows your Lobby
     // fighter: tell the server once if it changed since the last visit.
+    // Decorations and Charm (migration 048).
+    F.decor = Array(8).fill(null);
+    for (const d of st.decor ?? []) F.decor[d.slot] = d.item;
+    F.charm = st.charm ?? 0;
+    F.decorCredits = { ...(st.decorCredits ?? {}) };
     F.farmer = st.farmer ?? null;
     F.perksUsed = st.perksUsed ?? [];
     F.warmUntil = st.warmUntil ? Date.parse(st.warmUntil) : 0;
@@ -602,6 +625,7 @@ export function openFarm(options) {
   const BOOK_REWARDS = [
     [5, `+100 ${L}`],
     [10, "Gold Fertilizer ×2"],
+    [15, "Golden Voltkit Statue"],
     [20, `+1,000 ${L}`],
     [25, "Title: Elemental Botanist"],
   ];
@@ -625,6 +649,14 @@ export function openFarm(options) {
             : (FARM_TOOLS.find((t) => t.id === x.tool)?.name ?? x.tool);
         toast(`Bought ${name}`);
         log(`Bought <b>${name}</b>`, "good");
+      }
+      for (const x of r.results) {
+        if (!x.ok || !x.decor) continue;
+        const d = DECO[x.decor];
+        log(
+          `Placed <b>${d?.name ?? x.decor}</b> · +${d?.charm ?? 0} Charm${x.cost ? "" : " · free"}`,
+          "good",
+        );
       }
       for (const x of r.results) {
         if (!x.ok || !x.perk) continue;
@@ -1195,6 +1227,71 @@ export function openFarm(options) {
     while (box.children.length > 3) box.lastChild.remove();
     setTimeout(() => d.classList.add("out"), 6000);
     setTimeout(() => d.remove(), 6800);
+  }
+  /** A decoration in its spot (the prototype's drawings). */
+  let statueImg = null,
+    statueGold = null;
+  function drawDecor(g, id, x, y, time) {
+    const sh = (rx) => GFX.shadow(g, x + 6, y + 2, rx, rx * 0.25);
+    if (id === "planter") {
+      sh(54);
+      GFX.blit(g, GFX.flowerbed(96, 21), x, y + 6);
+    } else if (id === "lamp") {
+      sh(16);
+      GFX.blit(g, GFX.lamp(), x, y + 4);
+    } else if (id === "bush6") {
+      sh(36);
+      GFX.blit(g, GFX.bush("rose", 22), x, y + 4);
+    } else if (id === "bush7") {
+      sh(36);
+      GFX.blit(g, GFX.bush("green", 23), x, y + 4);
+    } else if (id === "rock") {
+      sh(24);
+      GFX.blit(g, GFX.rock(24, 44), x, y + 4);
+    } else if (id === "crates") {
+      sh(46);
+      GFX.blit(g, GFX.crates(), x, y + 4);
+    } else if (id === "pine")
+      GFX.drawTree(g, GFX.tree("pine", 25, 0.8), x, y, time, x * 0.01, 0.7);
+    else if (id === "apple")
+      GFX.drawTree(g, GFX.tree("apple", 26, 0.7), x, y, time, x * 0.01, 0.7);
+    else if (id === "tower") {
+      sh(60);
+      GFX.blit(g, GFX.gazebo(), x, y + 4);
+    } else if (id === "plum") {
+      sh(70);
+      GFX.blit(
+        g,
+        GFX.house({
+          wall: "#f0e4ff",
+          roof: "#8a4ad0",
+          w: 100,
+          hgt: 70,
+          roofH: 50,
+          windows: 1,
+          chimney: false,
+          flowers: true,
+          shutters: "#ffffff",
+          sd: 31,
+          depth: 20,
+        }),
+        x,
+        y + 4,
+        0.85,
+      );
+    } else if (id === "statue") {
+      sh(40);
+      GFX.blit(g, GFX.plinth(), x, y + 4);
+      if (!statueImg) {
+        statueImg = new Image();
+        statueImg.src = options.art("voltkit");
+      }
+      if (statueImg.complete && statueImg.naturalWidth) {
+        if (!statueGold)
+          statueGold = tintCanvas(statueImg, null, "#ffc93a", 0.62);
+        g.drawImage(statueGold, x - 34, y - 122, 68, 69);
+      }
+    }
   }
   function drawLockedPlot(g, i, s) {
     const r = plotRect(i),
@@ -2112,6 +2209,32 @@ export function openFarm(options) {
     crowsLeaving.push({ x: r.x + PW / 2, y: r.y + 20, t: 0 });
     float(r.x + PW / 2, r.y - 10, "Shoo!", "#fff");
   }
+  /** Decorating (migration 048): place the picked decoration, or put one away. */
+  function placeDecor(k) {
+    const pick = F.decorPick;
+    if (pick === "__remove") {
+      if (!F.decor[k]) return toast("Nothing to put away there");
+      act({ a: "decor-remove", slot: k }, true);
+      log(`Put away <b>${DECO[F.decor[k]]?.name ?? "decor"}</b>`);
+      F.decor[k] = null;
+    } else {
+      const d = DECO[pick];
+      if (!d) return;
+      if (F.decor[k] === pick) return toast("That is already there");
+      act({ a: "decor", slot: k, item: pick }, true);
+      FX.push({
+        puff: 1,
+        x: DECO_SLOTS[k][0],
+        y: DECO_SLOTS[k][1],
+        t: 0,
+        life: 0.6,
+      });
+      F.decor[k] = pick;
+      // One free (reward) decoration places once.
+      if (!F.decorCredits[pick] && F.leaves < d.price * 2) F.decorPick = null;
+    }
+    if (sheet === "decor") renderSheet();
+  }
   /** Gifts the dogs dug up since this device last showed them. */
   function announceGifts() {
     let seen = 0;
@@ -2352,6 +2475,9 @@ export function openFarm(options) {
         ...FARM_DOGS.filter((d) => d.level > from && d.level <= to).map(
           (d) => `Guard dog: ${d.name}`,
         ),
+        ...FARM_DECOR.filter((d) => d.level > from && d.level <= to).map(
+          (d) => `Decor: ${d.name}`,
+        ),
       ];
     let leaves = 0;
     for (let l = from + 1; l <= to; l++) leaves += farmLevelLeaves(l);
@@ -2507,6 +2633,32 @@ export function openFarm(options) {
             },
           ),
       });
+    }
+    // Decorations in their spots; in placing mode the spots glow.
+    if (s.me) {
+      F.decor.forEach((d, k) => {
+        if (d)
+          items.push({
+            y: DECO_SLOTS[k][1],
+            d: () =>
+              drawDecor(ctx, d, DECO_SLOTS[k][0], DECO_SLOTS[k][1], time),
+          });
+      });
+      if (F.decorPick)
+        DECO_SLOTS.forEach(([x, y], k) =>
+          items.push({
+            y: y - 1,
+            d: () => {
+              ctx.strokeStyle = F.decor[k] ? "rgba(255,214,91,.6)" : "#ffd65b";
+              ctx.setLineDash([6, 5]);
+              ctx.lineWidth = 2.5;
+              ctx.beginPath();
+              ctx.ellipse(x, y, 40, 16, 0, 0, 7);
+              ctx.stroke();
+              ctx.setLineDash([]);
+            },
+          }),
+        );
     }
     // Tools you own stand on the farm: the Scarecrow left of the field, a
     // sprinkler at the right end of each row that has one.
@@ -3130,6 +3282,9 @@ export function openFarm(options) {
   function closeSheet() {
     sheet = null;
     $("fm-sheet").hidden = true;
+    // Closing the Decorate sheet stops placing, except on phones, where it
+    // closes so the spots can be tapped (Escape stops it there).
+    if (!layer.classList.contains("phone")) F.decorPick = null;
     $("fm-dock")
       .querySelectorAll("[data-sheet]")
       .forEach((b) => b.setAttribute("aria-expanded", "false"));
@@ -3342,6 +3497,23 @@ export function openFarm(options) {
             },
           ).join("")}</div></div>`;
     }
+    if (sheet === "decor")
+      html =
+        head("Decorate", `Charm ${F.charm} · +${charmBonus(F.charm)}% XP`) +
+        `<div class="sh-body"><p class="sh-note">${
+          F.decorPick === "__remove"
+            ? "<b>Putting away:</b> tap a decoration on the farm. It is not refunded."
+            : F.decorPick
+              ? `<b>Placing ${DECO[F.decorPick]?.name}:</b> tap a glowing spot on the farm. A spot that already has decor is replaced.`
+              : "Buy decor and place it in the 8 spots around the farm. Every 2 Charm gives +1% farm XP (up to 25%)."
+        }</p>` +
+        FARM_DECOR.map((d) => {
+          const free = F.decorCredits[d.id] > 0,
+            lock = d.level > F.lv && !free,
+            picking = F.decorPick === d.id;
+          return `<div class="item${lock ? " locked" : ""}"><span class="ic">${I(d.icon)}</span><div><b>${d.name}</b><small>+${d.charm} Charm${free ? ` · <b style="color:#7ff0a2">1 free</b>` : ""}${lock ? ` · <b style="color:#ffd65b">unlocks at Lv ${d.level}</b>` : ""}</small></div><div class="acts"><button type="button" class="btn-s${picking ? " green" : ""}" data-deco="${d.id}" ${lock || (!free && F.leaves < d.price) ? "disabled" : ""}>${picking ? "Placing…" : free ? "Free" : `${d.price.toLocaleString("en-US")} ${L}`}</button></div></div>`;
+        }).join("") +
+        `<div class="item"><span class="ic">${I("broom")}</span><div><b>Put decor away</b><small>Tap "Remove", then a decoration on the farm</small></div><div class="acts"><button type="button" class="btn-s ghost" data-deco="__remove">${F.decorPick === "__remove" ? "Removing…" : "Remove"}</button></div></div></div>`;
     if (sheet === "friends")
       html =
         head("Neighbors", "Friends") +
@@ -3425,6 +3597,19 @@ export function openFarm(options) {
     if ("barnup" in d) {
       act({ a: "upgrade-barn" }, true);
       return;
+    }
+    if (d.deco) {
+      F.decorPick = F.decorPick === d.deco ? null : d.deco;
+      // On a phone the sheet covers the spots: close it while placing.
+      if (F.decorPick && layer.classList.contains("phone")) {
+        closeSheet();
+        return toast(
+          F.decorPick === "__remove"
+            ? "Tap a decoration to put it away"
+            : "Tap a glowing spot on the farm",
+        );
+      }
+      return renderSheet();
     }
     if (d.visit) return visitFriend(d.visit);
     if (d.landbuy) return landClick(+d.landbuy);
@@ -3704,6 +3889,12 @@ export function openFarm(options) {
     screen.focus({ preventScroll: true });
     $("fm-pop").hidden = true;
     const w = toWorld(e.clientX, e.clientY);
+    if (F.decorPick && !V) {
+      const k = DECO_SLOTS.findIndex(
+        ([x, y]) => Math.hypot(w.x - x, (w.y - y) * 2) < 50,
+      );
+      if (k >= 0) return placeDecor(k);
+    }
     if (
       w.x > STALL.x - 95 &&
       w.x < STALL.x + 95 &&
@@ -3866,6 +4057,7 @@ export function openFarm(options) {
       }
     }
     if (k === "escape") {
+      F.decorPick = null;
       $("fm-pop").hidden = true;
       $("fm-modal").hidden = true;
       closeSheet();
