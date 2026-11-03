@@ -12,6 +12,7 @@ import {
 import type { Economy } from "../../../packages/shared/src/shop";
 import { menuIcon } from "./menu-icons";
 import { fighterStageArt } from "./fighter-selection";
+import { fighterArt } from "./fighter-art";
 import { elementIcon } from "./element-icons";
 import { picksCountdown } from "./shop-ui";
 import "./lobby.css";
@@ -115,6 +116,7 @@ export type LobbyAction =
   | "ranks"
   | "friends"
   | "invite"
+  | "leave-party"
   | "more-play";
 const RAIL: [LobbyAction, string, Parameters<typeof menuIcon>[0]][] = [
   ["fighters", "Fighters", "user"],
@@ -128,8 +130,18 @@ const RAIL: [LobbyAction, string, Parameters<typeof menuIcon>[0]][] = [
 ];
 const EMOTES = ["👋", "❤️", "😂", "GG", "🔥"] as const;
 
+/** Another party member, as they stand on your Lobby stage. */
+export interface LobbyPartyMember {
+  name: string;
+  character: CharacterId;
+  leader: boolean;
+}
 export interface LobbyView {
   character: CharacterId;
+  /** The other members of your party (up to three), or none. */
+  party: LobbyPartyMember[];
+  /** Party size including you (0: no party). */
+  partySize: number;
   economy?: Economy;
   /** Friend requests waiting for an answer. */
   friendRequests: number;
@@ -163,6 +175,12 @@ function modeButton(mode: LobbyMode) {
   return `<span class="lobby-mode-icon">${menuIcon(m.icon)}</span><span class="lobby-mode-text"><b>${m.label}</b><small>${m.hint}</small></span><span class="lobby-mode-caret" aria-hidden="true">▴</span>`;
 }
 
+/** A party slot: a friend's fighter, or a way to invite one. */
+export function slotMarkup(member: LobbyPartyMember | undefined) {
+  if (!member)
+    return `<button type="button" class="lobby-slot" data-lobby-action="invite" aria-label="Invite a friend to your party"><span aria-hidden="true">+</span><small>Invite</small></button>`;
+  return `<figure class="lobby-member" style="--element:${hex(CHARACTERS[member.character].color)}" aria-label="${escape(member.name)}${member.leader ? ", party leader" : ""}"><span class="lobby-member-art">${fighterArt(member.character, "20 0 160 160")}</span><figcaption>${member.leader ? '<b class="lobby-crown" aria-hidden="true">♛</b>' : ""}${escape(member.name)}</figcaption></figure>`;
+}
 /** The Journey card: season tier, the next cosmetic, today's Daily Spark. */
 export function journeyCard(j: Journey | undefined) {
   if (!j)
@@ -191,16 +209,19 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   layer.className = "lobby-layer";
   let mode = savedLobbyMode();
   let character: CharacterId | undefined;
+  let partyKey: string | undefined;
   layer.innerHTML = `<div class="lobby-backdrop" aria-hidden="true"></div>
 <nav class="lobby-rail" aria-label="Main menu">${RAIL.map(
     ([id, label, icon]) =>
       `<button type="button" data-lobby-action="${id}" title="${label}" aria-label="${label}">${menuIcon(icon)}<span>${label}</span><i class="lobby-badge" data-badge-for="${id}" hidden></i></button>`,
   ).join("")}</nav>
 <section class="lobby-stage" aria-label="Your fighter">
+  <div class="lobby-party-bar" id="lobby-party-bar" hidden><span id="lobby-party-size"></span><button type="button" data-lobby-action="leave-party">Leave party</button></div>
   <div class="lobby-party">
-    <button type="button" class="lobby-slot" data-lobby-action="invite" aria-label="Invite a friend to play"><span aria-hidden="true">+</span><small>Invite</small></button>
+    <div class="lobby-slot-wrap" id="lobby-slot-0"></div>
     <figure class="lobby-fighter" id="lobby-fighter"><div class="lobby-fighter-art" id="lobby-fighter-art"></div><span class="lobby-floor" aria-hidden="true"></span><output class="lobby-emote-bubble" id="lobby-emote-bubble" hidden></output></figure>
-    <button type="button" class="lobby-slot" data-lobby-action="invite" aria-label="Invite a friend to play"><span aria-hidden="true">+</span><small>Invite</small></button>
+    <div class="lobby-slot-wrap" id="lobby-slot-1"></div>
+    <div class="lobby-slot-wrap lobby-slot-third" id="lobby-slot-2"></div>
   </div>
   <div class="lobby-nameplate">
     <button type="button" class="lobby-step" data-lobby-step="-1" aria-label="Previous fighter">‹</button>
@@ -312,6 +333,16 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
           `${elementIcon(fighter.element)}${fighter.element}`;
         $("lobby-fighter-art").classList.toggle("is-still", options.reduced);
       }
+      const slots = view.party
+        .map((m) => JSON.stringify([m.name, m.character, m.leader]))
+        .join("|");
+      if (slots !== partyKey) {
+        partyKey = slots;
+        for (let i = 0; i < 3; i++)
+          $(`lobby-slot-${i}`).innerHTML = slotMarkup(view.party[i]);
+      }
+      $("lobby-party-bar").hidden = view.partySize < 2;
+      $("lobby-party-size").textContent = `Party · ${view.partySize}/4`;
       $("lobby-journey-card").innerHTML = journeyCard(view.economy?.journey);
       $("lobby-missions-card").innerHTML = missionsCard(view.economy);
       $("lobby-friends-online").textContent =

@@ -223,7 +223,12 @@ import {
   standingsMarkup,
   type RecordState,
 } from "./match-recap";
-import { matchReportReplySchema } from "../../../packages/shared/src/accounts";
+import {
+  matchReportReplySchema,
+  partyRoomSchema,
+  partyStateSchema,
+  type PartyState,
+} from "../../../packages/shared/src/accounts";
 import { masteryMatches, setMastery, setWornSkins } from "./fighter-selection";
 import { shareResult } from "./share-card";
 import { openTown } from "./town";
@@ -1267,8 +1272,94 @@ const pvpSpectator = new PvpSpectator();
 const roomInvites = new RoomInvites({
   accountId: () => accountsUI?.account?.id,
   canJoin: () => connected && !!accountsUI?.account && !myId,
-  join: joinByCode,
+  join: (code, mode) => (mode === "party" ? acceptParty(code) : joinByCode(code)),
+  decline: (code) => void request("party-decline", { code }),
 });
+/** Your party on the Lobby (hub redesign phase 2b), or null. */
+let party: PartyState = null;
+let partyRoomSent = "";
+let partyCharacterSent = "";
+const partyLeader = () =>
+  !!party && party.leader === accountsUI?.account?.id;
+async function acceptParty(code: string) {
+  if (!accountsUI.ensurePlayer()) return false;
+  if (myId) {
+    toast("Leave your current room first.");
+    return false;
+  }
+  const reply = await request("party-accept", { code, character: selected });
+  if (!reply.ok) {
+    toast(reply.error ?? "That party is no longer open.");
+    return false;
+  }
+  partyCharacterSent = selected;
+  setHubScene("lobby");
+  return true;
+}
+/** Invite a friend into your party: online friends, one tap each. */
+async function showPartyInvite() {
+  if (!accountsUI.ensurePlayer()) return;
+  dialog(
+    `<div class="party-invite"><span class="eyebrow">Party</span><h2>Invite a friend</h2><p class="muted">Friends join you on the Lobby stage. When you press PLAY, they follow you into the room.</p><div id="party-invite-list"><p class="muted">Loading your friends…</p></div></div>`,
+  );
+  try {
+    const list = await accountsUI.nearbyFriends();
+    const online = list.friends.filter((f) => f.online);
+    const box = document.getElementById("party-invite-list");
+    if (!box) return;
+    box.innerHTML = online.length
+      ? `<ul class="party-invite-list">${online
+          .map(
+            (f) =>
+              `<li><span><b>${escape(f.name)}</b><small>Online</small></span><button type="button" class="secondary" data-party-invite="${f.id}">${iconLabel("add-friend", "Invite")}</button></li>`,
+          )
+          .join("")}</ul>`
+      : `<p class="muted">None of your friends are online right now.</p><p><button type="button" class="secondary" id="party-open-friends">${iconLabel("friends", "Open Friends")}</button></p>`;
+    document.getElementById("party-open-friends")?.addEventListener("click", () =>
+      void accountsUI.showFriends(),
+    );
+    box.querySelectorAll<HTMLButtonElement>("[data-party-invite]").forEach(
+      (button) =>
+        (button.onclick = async () => {
+          button.disabled = true;
+          const reply = await request("party-invite", {
+            playerId: button.dataset.partyInvite,
+            character: selected,
+          });
+          if (reply.ok) {
+            partyCharacterSent = selected;
+            button.innerHTML = iconLabel("check", "Invited");
+          } else {
+            button.disabled = false;
+            toast(reply.error ?? "Couldn't send this invitation.");
+          }
+        }),
+    );
+  } catch {
+    const box = document.getElementById("party-invite-list");
+    if (box)
+      box.innerHTML = `<p class="muted">Couldn't load your friends. Try again.</p>`;
+  }
+}
+/** Keep the party in step: your fighter, and your room when you lead. */
+function syncParty() {
+  if (!party || party.members.length < 2) return;
+  if (!myId && partyCharacterSent !== selected) {
+    partyCharacterSent = selected;
+    socket.emit("party-character", { character: selected });
+  }
+  if (
+    myId &&
+    partyLeader() &&
+    state?.phase === "lobby" &&
+    !state.practice &&
+    state.code &&
+    state.code !== partyRoomSent
+  ) {
+    partyRoomSent = state.code;
+    void request("party-room");
+  }
+}
 async function watchRoom(raw: string) {
   if (!accountsUI.ensurePlayer()) return;
   const code = raw.trim().toUpperCase();
@@ -1505,6 +1596,7 @@ function syncTown() {
     !sessionStorage.getItem("arena-token") &&
     !pendingInvite();
   syncHubScenes(hub);
+  syncParty();
   syncLobby(hub && hubScene === "lobby");
   const want = hub && hubScene === "plaza";
   if (!want) {
@@ -1638,8 +1730,20 @@ async function refreshLobbyFriends() {
   syncLobby(!!lobby);
 }
 function lobbyView() {
+  const me = accountsUI.account?.id;
   return {
     character: selected,
+    party: (party?.members ?? [])
+      .filter((m) => m.id !== me)
+      .slice(0, 3)
+      .map((m) => ({
+        name: m.name,
+        character: (Object.hasOwn(CHARACTERS, m.character)
+          ? m.character
+          : "voltkit") as CharacterId,
+        leader: m.id === party!.leader,
+      })),
+    partySize: party?.members.length ?? 0,
     economy: accountsUI.economy ?? undefined,
     friendRequests: lobbyFriends.requests,
     friendsOnline: lobbyFriends.online,
@@ -1677,6 +1781,8 @@ function lobbyAction(action: LobbyAction) {
   else if (action === "journey") void accountsUI.showAdventure();
   else if (action === "missions") void accountsUI.showMissions();
   else if (action === "ranks") $("leaderboard").click();
+  else if (action === "invite") void showPartyInvite();
+  else if (action === "leave-party") void request("party-leave");
   else void accountsUI.showFriends();
 }
 /** PLAY: the remembered mode, through the same controls as the Play panel. */
@@ -1684,6 +1790,15 @@ async function lobbyPlay(mode: LobbyMode) {
   audio.unlock();
   if (!accountsUI.ensurePlayer()) return;
   if (!connected) return toast("Waiting for the server connection.");
+  const size = party?.members.length ?? 0;
+  if (size > 1) {
+    if (!partyLeader())
+      return toast("Your party leader starts the game. Leave the party to play on your own.");
+    if (mode.startsWith("bot-") || mode === "practice")
+      return toast("With a party, choose a room: 1v1, 2v2, Free-for-all or Boss Raid.");
+    if ((mode === "duel" && size > 2) || (mode === "teams" && size > 4))
+      return toast(`Your party has ${size} players: choose 2v2 Teams, Free-for-all or Boss Raid.`);
+  }
   if (mode === "raid") return void accountsUI.showRaidHub();
   if (mode === "practice") return document.getElementById("practice")?.click();
   if (mode.startsWith("bot-")) {
@@ -2762,6 +2877,22 @@ socket.on("account-changed", () => void accountsUI.refresh());
 // Coins, missions or Awakening changed after a match or raid.
 socket.on("economy-changed", () => void accountsUI.loadEconomy());
 socket.on("room-invite", (data: unknown) => roomInvites.receive(data));
+socket.on("party", (data: unknown) => {
+  const parsed = partyStateSchema.safeParse(data);
+  if (!parsed.success) return;
+  const was = party?.members.length ?? 0;
+  party = parsed.data;
+  if (!party) partyRoomSent = "";
+  if (party && party.members.length > was && was > 0)
+    toast(`${party.members.at(-1)!.name} joined your party.`);
+  syncTown();
+});
+socket.on("party-room", (data: unknown) => {
+  const parsed = partyRoomSchema.safeParse(data);
+  if (!parsed.success || myId || !party) return;
+  toast("Following your party leader into the room…");
+  void joinByCode(parsed.data.code);
+});
 socket.on("friends-changed", () => {
   if (accountsUI.friendsOpen) void accountsUI.loadFriends();
   else

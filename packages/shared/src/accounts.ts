@@ -301,11 +301,45 @@ export const roomInviteSchema = z
     fromId: z.string().uuid(),
     name: z.string().min(1).max(20),
     code: z.string().regex(/^[A-Z0-9]{6}$/),
-    mode: z.enum(["duel", "teams", "ffa", "raid"]),
+    /** "party": an invitation to a party on the Lobby; `code` is the party's. */
+    mode: z.enum(["duel", "teams", "ffa", "raid", "party"]),
     expiresAt: z.number().finite(),
   })
   .strict();
 export type RoomInvite = z.infer<typeof roomInviteSchema>;
+/** Party before a room (hub redesign phase 2b). */
+export const partyInviteRequestSchema = z
+  .object({ playerId: z.string().uuid(), character: z.string().min(1).max(20) })
+  .strict();
+export const partyAcceptSchema = z
+  .object({
+    code: z.string().regex(/^[A-Z0-9]{6}$/),
+    character: z.string().min(1).max(20),
+  })
+  .strict();
+export const partyStateSchema = z
+  .object({
+    code: z.string().regex(/^[A-Z0-9]{6}$/),
+    leader: z.string().uuid(),
+    members: z
+      .array(
+        z.object({
+          id: z.string().uuid(),
+          name: z.string().min(1).max(20),
+          character: z.string().min(1).max(20),
+        }),
+      )
+      .min(1)
+      .max(4),
+  })
+  .nullable();
+export type PartyState = z.infer<typeof partyStateSchema>;
+export const partyRoomSchema = z
+  .object({
+    code: z.string().regex(/^[A-Z0-9]{6}$/),
+    mode: z.enum(["duel", "teams", "ffa", "raid"]),
+  })
+  .strict();
 export const friendRequestSchema = z
   .object({
     code: z
