@@ -20,7 +20,9 @@
   font-family: "DM Sans", system-ui, sans-serif;
   background: #0b1020;
 }
-.lobby-layer button {
+/* Not inside a hub screen (ui/hub-panel.ts): shared components keep their
+   own font and colour. :where() keeps this rule's specificity as it was. */
+.lobby-layer button:where(:not(.ui-panel-host *)) {
   font: inherit;
   color: inherit;
   cursor: pointer;
@@ -1138,8 +1140,10 @@ body:not(.hub-active) #account-leaves {
   color: #43d971;
 }
 
-/* Behind a dialog or a full-screen drawer the Lobby holds still. */
+/* Behind a dialog, a full-screen drawer or a hub panel the Lobby holds
+   still; the screen open on top (ui/hub-panel.ts) keeps moving. */
 .lobby-layer.is-covered,
-.lobby-layer.is-covered * {
+.lobby-layer.is-covered > :not(.ui-panel-host),
+.lobby-layer.is-covered > :not(.ui-panel-host) * {
   animation-play-state: paused !important;
 }

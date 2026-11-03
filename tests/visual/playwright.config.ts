@@ -20,7 +20,12 @@ export default defineConfig({
     baseURL: "http://localhost:4179",
     ...devices["Desktop Chrome"],
     viewport: { width: 1440, height: 900 },
-    launchOptions: { args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"] },
+    launchOptions: {
+      args: ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"],
+      // PW_CHROMIUM: a Chromium already on the machine, when Playwright's own
+      // download isn't installed (e.g. /opt/pw-browsers/.../chrome).
+      ...(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {}),
+    },
   },
   webServer: {
     command: "npx vite --config tests/visual/vite.config.ts",

@@ -268,8 +268,9 @@ Wardrobe only swaps the catalogue; the stage, try-on and action bar stay.
   Lobby fighter), **Collections**.
 - **Wardrobe:** a row of fighter avatars instead of the dropdown; six slot
   tabs (skin, colors, aura, entrance, victory, frame) showing what is worn;
-  the grid shows owned _and_ unowned items, unowned ones dimmed with a Shop
-  tag. Try several things, then Equip once or Revert.
+  the grid shows the items you own (owner's decision, 3 Nov), with a "More
+  in the Shop" tile at the end that switches to the Shop on the same slot.
+  Try several things, then Equip once or Revert.
 - **Try-on:** tapping any tile puts it on the stage at once; "Hold to
   compare" shows the original; Entrance and Victory replay on the stage.
 - **Buy:** the action bar names the item and the price; Buy opens a
@@ -390,15 +391,15 @@ in the description. Before every push: `npm run typecheck`, `npm run test`,
 `npm run build`, and the visual tests for the screens it changes (Playwright
 on `/opt/pw-browsers/chromium-1243/chrome-linux64/chrome`).
 
-| #   | Pull request                   | Ships                                                                                                                                                                                                                                                                                                                                                                                                          | Deletes                                                                                                                                                 |
-| --- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Design foundation              | `ui/tokens.css`, `ui/components.css`, the component functions, the panel/sheet shell that keeps the HUD and rail visible, and a server clock offset: `/api/economy` (and the other hub reads) add the server's `now`, and one `serverNow()` feeds every hub timer. The measuring helper for the visual tests (below). Fixes the "Open Menu → Friends" toast. No screen changes look yet, apart from the shell. | The old dialog sizing and Close rules once every screen uses the shell (the rest go with their screens).                                                |
-| 2   | Fitting room (Shop + Wardrobe) | `screens/fitting-room.ts` + `.css`: stage, Shop                                                                                                                                                                                                                                                                                                                                                                | Wardrobe, all four Shop tabs, six Wardrobe slots, unowned items in the Wardrobe, the purchase confirmation, Low graphics path. Existing endpoints only. | Shop, Shop preview, rarity and Missions-card rules in `style.css`; `mobile-store.css`; `wardrobe.css`; `shop-preview-layout.ts` if unused. |
-| 3   | Roster                         | `screens/roster.ts` + `.css`: grid, filters, sort, fighter detail, shared with the room's fighter picker.                                                                                                                                                                                                                                                                                                      | Roster and champion-selection rules in `style.css`; `champion-selection.css`; `mobile-panels.css` parts for the picker.                                 |
-| 4   | Missions and Journey           | `screens/missions.ts`, `screens/journey.ts` (+ `.css`): the sheet, the season road, weekly goals, levels; server-time timers.                                                                                                                                                                                                                                                                                  | Mission, streak and Adventure rules in `style.css`.                                                                                                     |
-| 5   | Raids                          | `screens/raid-hall.ts`, boss page, room, briefing and results styles.                                                                                                                                                                                                                                                                                                                                          | Raid Hub, raid lobby, briefing and result rules in `style.css` (match HUD rules stay).                                                                  |
-| 6   | Ranks, Leaderboard and Friends | `screens/ranks.ts`, `screens/friends.ts` (+ `.css`); the pinned row; Friends as a sheet; Recent if approved.                                                                                                                                                                                                                                                                                                   | Ratings, leaderboard and friends rules in `style.css`; `friends.css`.                                                                                   |
-| 7   | Player card and profile        | `screens/profile.ts` + `.css`; titles equip on tap (the existing equip call).                                                                                                                                                                                                                                                                                                                                  | Profile, title picker and progress rules in `style.css`; `player-card.css` if unused.                                                                   |
+| #   | Pull request                   | Ships                                                                                                                                                                                                                                                                                                                                                                                   | Deletes                                                                                                                                                 |
+| --- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Design foundation              | `ui/tokens.css`, `ui/components.css`, the component functions, the panel/sheet shell that keeps the HUD and rail visible, and the server's clock: every `/api` answer carries `X-Server-Time`, and one `serverNow()` feeds every hub timer. The measuring helper for the visual tests (below). Fixes the "Open Menu → Friends" toast. No screen changes look yet, apart from the shell. | The old dialog sizing and Close rules once every screen uses the shell (the rest go with their screens).                                                |
+| 2   | Fitting room (Shop + Wardrobe) | `screens/fitting-room.ts` + `.css`: stage, Shop                                                                                                                                                                                                                                                                                                                                         | Wardrobe, all four Shop tabs, six Wardrobe slots, unowned items in the Wardrobe, the purchase confirmation, Low graphics path. Existing endpoints only. | Shop, Shop preview, rarity and Missions-card rules in `style.css`; `mobile-store.css`; `wardrobe.css`; `shop-preview-layout.ts` if unused. |
+| 3   | Roster                         | `screens/roster.ts` + `.css`: grid, filters, sort, fighter detail, shared with the room's fighter picker.                                                                                                                                                                                                                                                                               | Roster and champion-selection rules in `style.css`; `champion-selection.css`; `mobile-panels.css` parts for the picker.                                 |
+| 4   | Missions and Journey           | `screens/missions.ts`, `screens/journey.ts` (+ `.css`): the sheet, the season road, weekly goals, levels; server-time timers.                                                                                                                                                                                                                                                           | Mission, streak and Adventure rules in `style.css`.                                                                                                     |
+| 5   | Raids                          | `screens/raid-hall.ts`, boss page, room, briefing and results styles.                                                                                                                                                                                                                                                                                                                   | Raid Hub, raid lobby, briefing and result rules in `style.css` (match HUD rules stay).                                                                  |
+| 6   | Ranks, Leaderboard and Friends | `screens/ranks.ts`, `screens/friends.ts` (+ `.css`); the pinned row; Friends as a sheet; Recent if approved.                                                                                                                                                                                                                                                                            | Ratings, leaderboard and friends rules in `style.css`; `friends.css`.                                                                                   |
+| 7   | Player card and profile        | `screens/profile.ts` + `.css`; titles equip on tap (the existing equip call).                                                                                                                                                                                                                                                                                                           | Profile, title picker and progress rules in `style.css`; `player-card.css` if unused.                                                                   |
 
 Matches are untouched in every step. Where a selector is shared with the
 match screens (buttons, rarity badges in results), the match keeps its rule
@@ -437,20 +438,61 @@ unequal button groups, 0 overlaps between HUD, rail, stage, panel and PLAY,
 from the corner and 44 px on every desktop panel, 7 px and 32 px on every
 phone panel.
 
-## Open questions for the owner
+## Progress
 
-1. **Screens inside the Lobby.** The plan keeps the HUD and rail visible
-   under every screen (rule 1) instead of today's full dialogs. OK?
-2. **Purchase confirmation.** A confirmation dialog instead of the double
-   tap. OK, or keep the double tap for cheap items (under 500 coins)?
-3. **Wardrobe shows unowned items** (dimmed, with a Shop tag), as the
-   proposal said. OK?
+### Step 1: design foundation (built 3 Nov 2026)
+
+- `apps/client/src/ui/tokens.css`: every token. The three `:root` blocks in
+  `style.css` moved here unchanged (the old names now point at the new
+  `--ui-*` ones), so nothing changed colour.
+- `apps/client/src/ui/components.ts` + `components.css`: buttons (two
+  heights; `actions()` makes equal groups), panel and sheet, tabs, segmented,
+  chips, item tile, price, tags, rarity and element tags, bars, rings,
+  timers, avatars, rows, empty state, confirmation. Base rules have zero
+  specificity, so a component class always wins over them.
+- `apps/client/src/ui/hub-panel.ts`: `openHubPanel()` mounts a screen inside
+  the Lobby (HUD and rail stay usable, the rail marks it, Escape and Close
+  leave, Lobby parts under a full panel stop drawing and leave the tab
+  order); `askConfirm()` asks before spending.
+- **Server time:** every `/api` answer carries `X-Server-Time` (exposed to
+  the static site through CORS). The client keeps the offset
+  (`server-clock.ts`) and the daily countdown (Shop, Missions, Lobby,
+  Daily Spark) and friends' "online 2 h ago" use it.
+- **Toast:** one definition (five stacked rules left `style.css`); in the
+  Lobby it sits under the HUD, and above the action bar when a screen is
+  open. The friend-request toast says "Open Friends to answer." instead of
+  pointing at a Menu the Lobby doesn't have.
+- **Found while measuring:** the Lobby's `.lobby-layer button` rule out-ranked
+  component buttons (now zero specificity); the Lobby's "pause animations
+  when covered" rule froze anything inside it (now skips the screen layer);
+  a 1 px border shrank 36 px buttons' hit area to 42 px (now a centred 44 px
+  box); icon + label buttons were 1.5 px right of centre (icon side bearing
+  and trailing letter-spacing, now cancelled).
+- **Not yet:** no real screen uses the shell; each moves in its own step. A
+  sheet keeps PLAY and the mode usable, but on desktop the Lobby's party row
+  (about 800 px) is half under a 460 px sheet; the stage is re-centred beside
+  a sheet in step 4, with the first real sheet (Missions).
+- Tests: `tests/visual/ui-foundation.spec.ts` (all four sizes, using
+  `tests/visual/ui-measure.ts`), `tests/unit/ui-components.test.ts`,
+  `tests/unit/server-clock.test.ts`, and a CORS integration test for the
+  clock header.
+
+## Decisions (owner, 3 Nov 2026)
+
+| #   | Question                                        | Decision                                                                                  |
+| --- | ----------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| 1   | Screens inside the Lobby (HUD, rail stay)       | Yes                                                                                       |
+| 2   | Purchase confirmation instead of the double tap | Yes, for every purchase                                                                   |
+| 3   | Wardrobe shows unowned items                    | **No.** The Wardrobe shows owned items only; a "More in the Shop" tile leads to the Shop. |
+| 5   | Server time for timers                          | Yes: the game server sends its clock; no database change                                  |
+
+Still open:
+
 4. **Two read-only server endpoints for step 6:** _Recent players_ in
    Friends (who you played in the last 7 days, from `arena_match_players`)
    and a _Friends_ leaderboard (your friends' ratings; the board today sends
    only the top 20). Build them, or leave both tabs out?
-5. **Server time for timers** (step 1): the game server adds `now` to the
-   economy, journey and raid responses. No database change. OK?
+5. (Decided above.)
 6. **Rarity colours.** Mythical becomes pink with a foil (`#ff8fd8`)
    everywhere; today it is pink in the Shop and red in cosmetic chips. OK?
 7. **Share card** on the player card (a picture of your card): add it in

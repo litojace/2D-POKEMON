@@ -51,17 +51,30 @@ window.fetch = async (input, init) => {
   if (url.pathname.startsWith("/api/")) {
     if (url.pathname === "/api/health") return Response.json({ ok: true });
     // Tests can set window.__missions (before load, or then refresh the
-    // economy) to give the player today's missions.
-    const missions = (window as unknown as { __missions?: unknown[] }).__missions;
+    // economy) to give the player today's missions, and window.__friends to
+    // give them friends and requests.
+    const w = window as unknown as {
+      __missions?: unknown[];
+      __plazaProgress?: unknown;
+      __friends?: unknown;
+      __serverTime?: number;
+    };
+    const missions = w.__missions;
     const body =
       url.pathname === "/api/economy" && missions
         ? { ...(API[url.pathname] as object), missions }
         : url.pathname === "/api/plaza"
-          ? (window as unknown as { __plazaProgress?: unknown }).__plazaProgress
-          : API[url.pathname];
+          ? w.__plazaProgress
+          : url.pathname === "/api/friends" && w.__friends
+            ? w.__friends
+            : API[url.pathname];
+    // window.__serverTime: the server's clock, sent as the real server does
+    // (X-Server-Time); otherwise no header, so the device clock is used.
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (w.__serverTime) headers["X-Server-Time"] = String(w.__serverTime);
     return new Response(JSON.stringify(body ?? { error: "Not in the offline harness." }), {
       status: body === undefined ? 404 : 200,
-      headers: { "Content-Type": "application/json" },
+      headers,
     });
   }
   return realFetch(input, init);

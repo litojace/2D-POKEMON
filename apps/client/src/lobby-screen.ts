@@ -318,18 +318,22 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   });
   const onKey = (event: KeyboardEvent) => {
     if (event.key === "Escape" && !menu.hidden) {
+      // Handled: an open hub panel (ui/hub-panel.ts) stays open.
+      event.preventDefault();
       setMenu(false);
       modeToggle.focus({ preventScroll: true });
     }
   };
   layer.addEventListener("keydown", onKey);
-  // A dialog or a full-screen drawer covers the Lobby: its animations pause
-  // (the fighter's idle and aura) so the panel gets the device, and resume
-  // when it closes.
+  // A dialog, a full-screen drawer or a full hub panel covers the Lobby: its
+  // animations pause (the fighter's idle and aura) so the screen on top gets
+  // the device, and resume when it closes. A sheet leaves the Lobby showing.
   const syncCovered = () =>
     layer.classList.toggle(
       "is-covered",
-      !!document.querySelector("dialog[open], .home-drawer:not([hidden])"),
+      !!document.querySelector(
+        "dialog[open], .home-drawer:not([hidden]), .ui-panel:not(.ui-sheet)",
+      ),
     );
   const coverWatch = new MutationObserver(syncCovered);
   coverWatch.observe(document.body, {

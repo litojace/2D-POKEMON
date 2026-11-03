@@ -1,7 +1,7 @@
 import { FighterAppearance, PortraitChoice } from "./fighter-appearance.js";
 import { ServerDiagnostics } from "./diagnostics.js";
 import { PresenceHistory } from "./presence-history.js";
-import { apiCors } from "./api-cors.js";
+import { apiClock, apiCors } from "./api-cors.js";
 import { ArcadeArena } from "./arcade.js";
 import {
   arcadeWeek,
@@ -156,6 +156,7 @@ export function createArenaServer(
   const fighterAppearance = new FighterAppearance(accounts);
   const portraitChoice = new PortraitChoice(accounts);
   app.use("/api", apiCors(process.env.CLIENT_ORIGIN));
+  app.use("/api", apiClock());
   app.use(express.json({ limit: "4kb" }));
   const http = createServer(app);
   const io = new Server(http, {

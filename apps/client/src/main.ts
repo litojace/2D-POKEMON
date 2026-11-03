@@ -184,7 +184,9 @@ import { InterpolationBuffer } from "./networking/interpolation";
 import { AccountUI } from "./accounts";
 import { framedAvatar } from "./portraits";
 import { waitForServer, onServerStartupRetry } from "./server-connection";
+import "./ui/tokens.css";
 import "./style.css";
+import "./ui/components.css";
 import "./champion-selection.css";
 import "./friends.css";
 import "./wardrobe.css";
@@ -1613,6 +1615,9 @@ function syncTown() {
     !sessionStorage.getItem("arena-token") &&
     !pendingInvite();
   syncHubScenes(hub);
+  // Which hub scene is showing (styles such as the toast's place follow it).
+  if (hub) document.body.dataset.hubScene = hubScene;
+  else delete document.body.dataset.hubScene;
   syncParty();
   syncLobby(hub && hubScene === "lobby");
   syncFarm(hub && hubScene === "farm");

@@ -1,0 +1,171 @@
+/* ==========================================================================
+   Design tokens: the one place the game's colours, type, sizes and motion
+   are defined (UI remodel step 1, docs/ui-remodel/PLAN.md).
+
+   New screens use the --ui-* names. The older names below them are the
+   tokens style.css used to define; they keep their exact values so every
+   screen not yet remodelled looks the same.
+   ========================================================================== */
+:root {
+  /* Surfaces: the navy the game already uses, one step per layer. */
+  --ui-bg-0: #0b1020;
+  --ui-bg-1: #121a33;
+  --ui-bg-2: #1a2547;
+  --ui-bg-3: #243161;
+  --ui-glass: #0b1020e0;
+  --ui-line: #ffffff1f;
+  --ui-line-2: #ffffff33;
+  --ui-text: #eef2ff;
+  --ui-dim: #a0afc8;
+  --ui-faint: #6f7d99;
+  /* Gold: the main action, prices and "you". */
+  --ui-accent: #ffd65b;
+  --ui-accent-hi: #ffe58f;
+  --ui-accent-lo: #e9b52c;
+  --ui-accent-deep: #a87a12;
+  --ui-accent-ink: #2a1a00;
+  /* Green means owned, equipped or online; red is for alerts and badges. */
+  --ui-ok: #43d971;
+  --ui-ok-deep: #1d7a3c;
+  --ui-ok-ink: #062b12;
+  --ui-danger: #ef4f61;
+  --ui-warn: #ffbf3c;
+  /* Rarity, one colour each. Mythical keeps the Shop's pink until the owner
+     decides (PLAN.md, open question 6). */
+  --r-common: #a7b3c6;
+  --r-rare: #4fa8ff;
+  --r-epic: #b56bff;
+  --r-legendary: #ffbf3c;
+  --r-mythic: #ff9be0;
+  --r-foil: linear-gradient(
+    100deg,
+    #ffd65b,
+    #ff8fd8 30%,
+    #7ff3ff 60%,
+    #b56bff 85%,
+    #ffd65b
+  );
+  /* Presence. */
+  --st-online: #43d971;
+  --st-busy: #ffbf3c;
+  --st-plaza: #b56bff;
+  --st-away: #6f7d99;
+  /* Space: a 4 px grid. */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  /* Radii. */
+  --rad-xs: 6px;
+  --rad-sm: 10px;
+  --rad-md: 14px;
+  --rad-lg: 18px;
+  --rad-xl: 22px;
+  --rad-pill: 999px;
+  /* Type: Barlow Condensed for names, numbers and buttons; DM Sans to read. */
+  --font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-body: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --fs-micro: 11px;
+  --fs-small: 12px;
+  --fs-body: 14px;
+  --fs-lead: 16px;
+  --fs-h4: 18px;
+  --fs-h3: 22px;
+  --fs-h2: 28px;
+  --fs-h1: 36px;
+  /* Controls: two heights. Buttons in an action group share one width, so a
+     row of buttons is always equal (owner's note, 3 Nov 2026). */
+  --ctl-m: 44px;
+  --ctl-s: 32px;
+  --act-w: 152px;
+  --act-s: 92px;
+  /* Every panel head is one height, so Close sits at one spot everywhere. */
+  --head-h: 64px;
+  --close: 44px;
+  --sheet-w: 460px;
+  /* Depth and motion. */
+  --shadow-1: 0 4px 12px #0007;
+  --shadow-2: 0 14px 34px #000a;
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+  --dur-3: 320ms;
+
+  /* ---- The tokens style.css defined, unchanged ---- */
+  --bg-0: var(--ui-bg-0);
+  --bg-1: var(--ui-bg-1);
+  --bg-2: var(--ui-bg-2);
+  --line: var(--ui-line);
+  --text: var(--ui-text);
+  --text-dim: var(--ui-dim);
+  --accent: var(--ui-accent);
+  --accent-ink: var(--ui-accent-ink);
+  --danger: var(--ui-danger);
+  --radius-sm: 8px;
+  --radius-lg: 16px;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-pop: cubic-bezier(0.3, 1.5, 0.5, 1);
+  --element: #ff7a45;
+  --el-electric: #ffd84a;
+  --el-fire: #ff7a45;
+  --el-water: #4fb3ff;
+  --el-aura: #7fe7ff;
+  --el-light: #fff1a8;
+  --el-psychic: #c47dff;
+  --el-earth: #c8955a;
+  --el-shadow: #8a6bff;
+  --muted: var(--text-dim);
+  --lime: var(--accent);
+  --stadium-red: var(--danger);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  /* Top bar and status-bar strip share this, so their edge is seamless. */
+  --topbar-bg: linear-gradient(90deg, #12213e, #1b2e50);
+  /* The platform look (buttons, panels, scrollbars). */
+  --gold-top: #ffe58f;
+  --gold-bottom: #f2b93b;
+  --gold-edge: #c4841f;
+  --gold-ink: var(--accent-ink);
+  --glass: #ffffff0a;
+  --glass-line: #8baee540;
+  --panel-top: #18294a;
+  --panel-bottom: #0e1a31;
+  --panel-line: #8baee52b;
+  --display: "Barlow Condensed", Impact, sans-serif;
+  --body: "DM Sans", sans-serif;
+  --scroll-track: #081427;
+  --scroll-thumb: #b99858;
+  --scroll-thumb-light: #e3c47e;
+  /* Anything you have equipped reads in one green, everywhere. */
+  --equipped: #5fe39a;
+}
+/* Phones held sideways: the same layout, one step smaller. */
+@media (max-height: 500px) {
+  :root {
+    --fs-micro: 10px;
+    --fs-small: 11px;
+    --fs-body: 12px;
+    --fs-lead: 14px;
+    --fs-h4: 15px;
+    --fs-h3: 18px;
+    --fs-h2: 22px;
+    --fs-h1: 26px;
+    --ctl-m: 36px;
+    --ctl-s: 28px;
+    --act-w: 104px;
+    --act-s: 76px;
+    --head-h: 44px;
+    --close: 32px;
+    --sheet-w: 380px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-1: 0ms;
+    --dur-2: 0ms;
+    --dur-3: 0ms;
+  }
+}
