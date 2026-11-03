@@ -50,7 +50,8 @@ import "./ui-kit.css";
 import "./mockup.css";
 
 const q = new URLSearchParams(location.search);
-const screen = q.get("s") ?? "shop";
+const fromHash = () => location.hash.replace(/^#/, "").replace(/-island$/, "");
+let screen = q.get("s") ?? (fromHash() || "lobby");
 const ids = Object.keys(CHARACTERS) as CharacterId[];
 const hex = (n: number) => `#${n.toString(16).padStart(6, "0")}`;
 const el = (c: CharacterId) =>
@@ -171,7 +172,7 @@ function hud() {
 function rail(active: string) {
   return `<nav class="m-rail">${RAIL.map(
     ([id, label, icon, badge]) =>
-      `<button type="button" ${id === active ? 'aria-current="page"' : ""}>${menuIcon(icon)}<span>${label}</span>${badge ? `<i class="ui-badge">${badge}</i>` : ""}</button>`,
+      `<button type="button" data-rail="${id}" ${id === active ? 'aria-current="page"' : ""}>${menuIcon(icon)}<span>${label}</span>${badge ? `<i class="ui-badge">${badge}</i>` : ""}</button>`,
   ).join("")}</nav>`;
 }
 function head(kicker: string, title: string, extra = "", close = true) {
@@ -273,7 +274,7 @@ function fittingRoom(mode: "shop" | "wardrobe") {
   const tabRow =
     mode === "shop"
       ? `<div class="ui-tabs m-head-tabs" role="tablist">${tabs.map(([t, on, n]) => `<button role="tab" aria-selected="${!!on}">${t}${n ? `<span class="ui-tag is-new">${n}</span>` : ""}</button>`).join("")}</div>`
-      : `<span class="ui-note m-hint">Your items · ones you don't own are dimmed</span>`;
+      : `<span class="ui-note m-hint">Your items · try them on, then Equip</span>`;
   const switcher = `<div class="ui-seg is-display"><button aria-pressed="${mode === "shop"}">Shop</button><button aria-pressed="${mode === "wardrobe"}">Wardrobe</button></div>`;
   let body: string, foot: string, stageHtml: string;
   if (mode === "shop") {
@@ -290,10 +291,16 @@ function fittingRoom(mode: "shop" | "wardrobe") {
     );
   } else {
     const c = ME.fighter;
+    // Owned items only (owner's decision 3); the Shop has the rest.
     const skins = [
       `${c}-original`,
-      ...CHAMPION_SKINS.filter((s) => s.champion === c).map((s) => s.id),
+      ...CHAMPION_SKINS.filter((s) => s.champion === c && owns(s.id)).map(
+        (s) => s.id,
+      ),
     ];
+    const more = CHAMPION_SKINS.filter(
+      (s) => s.champion === c && !owns(s.id),
+    ).length;
     const slots: [string, string, string][] = [
       ["Skin", "Stormcrown", "voltkit-stormcrown"],
       ["Colors", "Candy colors", "candy-colours"],
@@ -304,17 +311,18 @@ function fittingRoom(mode: "shop" | "wardrobe") {
     ];
     body = `<div class="ui-chips m-fighters">${ids.map((id) => `<button class="m-fchip" aria-pressed="${id === c}" style="--el:${el(id)}">${avatar(id, undefined, 34)}<span>${CHARACTERS[id].name}</span></button>`).join("")}</div>
     <div class="m-slots" role="tablist" aria-label="Slots">${slots.map(([s, v, id], i) => `<button class="m-slot" role="tab" aria-selected="${i === 0}"><span class="m-slot-art">${id ? picture(id, c) : `<i>—</i>`}</span><small>${s}</small><b class="${id ? "" : "is-none"}">${v}</b></button>`).join("")}</div>
-    <div class="m-section"><h3 class="ui-h">Voltkit skins</h3><small class="ui-note">3 owned · 5 in the Shop</small></div>
+    <div class="m-section"><h3 class="ui-h">Voltkit skins</h3><small class="ui-note">${skins.length} owned</small></div>
     <div class="ui-grid" style="--cols:4">${skins
       .map((id, i) =>
         i === 0
           ? `<button type="button" class="ui-tile" data-rarity="common"><span class="ui-tile-art">${art(c)}</span><span class="ui-rarity" data-rarity="common">Original</span><b class="ui-tile-name">Original look</b><small class="ui-tile-sub">Always yours</small><span class="ui-tile-foot is-ok">Owned</span></button>`
           : itemTile(id, {
-              wardrobe: true,
               pressed: id === "voltkit-midnight",
             }),
       )
-      .join("")}</div>`;
+      .join(
+        "",
+      )}<button type="button" class="ui-tile m-more-tile" data-go="shop"><span class="ui-tile-art">${menuIcon("shop")}</span><span></span><b class="ui-tile-name">More in the Shop</b><small class="ui-tile-sub">${more} more Voltkit skins</small><span class="ui-tile-foot is-dim">Open the Shop →</span></button></div>`;
     foot = `<div class="ui-panel-foot"><div class="ui-foot-info"><span class="m-foot-art">${art(c, "voltkit-midnight")}</span><span class="m-foot-text"><b class="ui-h">Voltkit · 1 change</b><small class="ui-note">Skin: Stormcrown → Midnight</small></span></div><div class="ui-actions"><button class="ui-btn">Revert</button><button class="ui-btn is-ok">${menuIcon("check")}Equip</button></div></div>`;
     stageHtml = stage(
       c,
@@ -694,22 +702,91 @@ const SCREENS: Record<string, [string, () => string]> = {
   friends: ["friends", friends],
   profile: ["", profile],
 };
-const [active, render] = SCREENS[screen] ?? SCREENS.shop;
-const lobbyBehind = screen === "missions" || screen === "friends";
-document.getElementById("app")!.innerHTML =
-  `<div class="ui m-game${lobbyBehind ? " has-lobby" : ""}" data-screen="${screen}">
+SCREENS.lobby = ["", () => ""];
+function draw() {
+  const [active, render] = SCREENS[screen] ?? SCREENS.lobby;
+  const lobbyBehind = ["lobby", "missions", "friends"].includes(screen);
+  document.getElementById("app")!.innerHTML =
+    `<div class="ui m-game${lobbyBehind ? " has-lobby" : ""}" data-screen="${screen}">
   <div class="m-backdrop"></div>
   ${lobbyBehind ? `<div class="m-lobby-hint"><div class="m-lobby-fighter">${art(ME.fighter, ME.equipped.voltkit, 2)}</div><div class="m-play"><span class="m-mode"><b>1v1 Duel</b><small>Private room · best of five</small></span><button class="ui-btn is-primary m-playbtn">▶ Play</button></div></div>` : ""}
   ${hud()}${rail(active)}${render()}
 </div>`;
-if (q.has("island")) {
-  const s = document.documentElement.style;
-  s.setProperty("--safe-left", "59px");
-  s.setProperty("--safe-right", "59px");
-  s.setProperty("--safe-bottom", "21px");
-  document.body.insertAdjacentHTML(
-    "beforeend",
-    `<div style="position:fixed;left:11px;top:50%;width:37px;height:126px;margin-top:-63px;border-radius:19px;background:#000;z-index:99"></div><div style="position:fixed;left:50%;bottom:8px;width:140px;height:5px;margin-left:-70px;border-radius:3px;background:#ffffffc0;z-index:99"></div>`,
-  );
+  // Tell a demo frame around this page which screen is showing.
+  parent?.postMessage({ mockupScreen: screen }, "*");
 }
+function go(next: string) {
+  screen = next;
+  draw();
+}
+/** Clicks that move between screens, as they would in the game. */
+const RAIL_TO: Record<string, string> = {
+  fighters: "roster",
+  wardrobe: "wardrobe",
+  shop: "shop",
+  raids: "raids",
+  journey: "journey",
+  missions: "missions",
+  ranks: "ranks",
+  friends: "friends",
+};
+document.addEventListener("click", (event) => {
+  const t = event.target as Element;
+  const hit = (sel: string) => t.closest(sel);
+  const go1 = hit("[data-go]") as HTMLElement | null;
+  if (go1) return go(go1.dataset.go!);
+  const railButton = hit(".m-rail button") as HTMLElement | null;
+  if (railButton) return go(RAIL_TO[railButton.dataset.rail!] ?? "lobby");
+  if (hit(".m-profile")) return go("profile");
+  if (hit(".ui-close")) return go("lobby");
+  if (hit(".ui-scrim .ui-btn")) return go("shop");
+  if (hit(".m-fit .ui-seg button")) {
+    const label = (t.closest("button") as HTMLElement).textContent!.trim();
+    return go(label === "Wardrobe" ? "wardrobe" : "shop");
+  }
+  if (hit(".m-fit.is-shop .ui-actions .is-primary")) return go("confirm");
+  if (hit(".m-card") || hit(".m-roster .ui-actions button"))
+    return go("fighter");
+  if (hit(".m-detail .ui-panel-head .ui-btn")) return go("roster");
+  if (hit(".m-detail .ui-actions button:first-child")) return go("wardrobe");
+  if (hit(".m-boss:not(.m-practice)")) return go("boss");
+  if (hit(".m-boss-panel .ui-panel-head .ui-btn")) return go("raids");
+  if (hit(".m-links button")) {
+    const label = (t.closest("button") as HTMLElement)
+      .textContent!.trim()
+      .toLowerCase();
+    return go(
+      label.includes("ranks")
+        ? "ranks"
+        : label.includes("journey")
+          ? "journey"
+          : "raids",
+    );
+  }
+});
+window.addEventListener("hashchange", () => {
+  if (fromHash()) go(fromHash());
+});
+draw();
+/** The phone's Dynamic Island and home bar, simulated (?island or #…-island). */
+function applyIsland(on: boolean) {
+  const s = document.documentElement.style;
+  for (const [side, px] of [
+    ["left", 59],
+    ["right", 59],
+    ["bottom", 21],
+  ] as const)
+    if (on) s.setProperty(`--safe-${side}`, `${px}px`);
+    else s.removeProperty(`--safe-${side}`);
+  document.getElementById("island-sim")?.remove();
+  if (on)
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      `<div id="island-sim"><div style="position:fixed;left:11px;top:50%;width:37px;height:126px;margin-top:-63px;border-radius:19px;background:#000;z-index:99"></div><div style="position:fixed;left:50%;bottom:8px;width:140px;height:5px;margin-left:-70px;border-radius:3px;background:#ffffffc0;z-index:99"></div></div>`,
+    );
+}
+applyIsland(q.has("island") || location.hash.endsWith("-island"));
+window.addEventListener("hashchange", () =>
+  applyIsland(q.has("island") || location.hash.endsWith("-island")),
+);
 (window as unknown as { __ready: boolean }).__ready = true;

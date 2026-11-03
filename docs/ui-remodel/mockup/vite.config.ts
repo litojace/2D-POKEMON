@@ -9,7 +9,15 @@ import { defineConfig } from "vite";
 const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 export default defineConfig({
   root: here("."),
-  publicDir: here("../../../apps/client/public"),
+  // Fonts and the backdrop are imported by the CSS, so the demo build is
+  // self-contained (npx vite build --config docs/ui-remodel/mockup/vite.config.ts).
+  publicDir: false,
+  base: "./",
+  build: {
+    outDir: process.env.MOCKUP_OUT ?? here("dist"),
+    emptyOutDir: true,
+    assetsInlineLimit: 0,
+  },
   server: { port: 4180, strictPort: true, fs: { allow: [here("../../..")] } },
   logLevel: "warn",
 });

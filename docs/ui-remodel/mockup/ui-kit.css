@@ -6,35 +6,38 @@
 @font-face {
   font-family: "Barlow Condensed";
   font-weight: 600;
-  src: url("/assets/fonts/barlow-condensed-latin-600-normal.woff2")
+  src: url("../../../apps/client/public/assets/fonts/barlow-condensed-latin-600-normal.woff2")
     format("woff2");
 }
 @font-face {
   font-family: "Barlow Condensed";
   font-weight: 700;
-  src: url("/assets/fonts/barlow-condensed-latin-700-normal.woff2")
+  src: url("../../../apps/client/public/assets/fonts/barlow-condensed-latin-700-normal.woff2")
     format("woff2");
 }
 @font-face {
   font-family: "Barlow Condensed";
   font-weight: 800;
-  src: url("/assets/fonts/barlow-condensed-latin-800-normal.woff2")
+  src: url("../../../apps/client/public/assets/fonts/barlow-condensed-latin-800-normal.woff2")
     format("woff2");
 }
 @font-face {
   font-family: "DM Sans";
   font-weight: 400;
-  src: url("/assets/fonts/dm-sans-latin-400-normal.woff2") format("woff2");
+  src: url("../../../apps/client/public/assets/fonts/dm-sans-latin-400-normal.woff2")
+    format("woff2");
 }
 @font-face {
   font-family: "DM Sans";
   font-weight: 500;
-  src: url("/assets/fonts/dm-sans-latin-500-normal.woff2") format("woff2");
+  src: url("../../../apps/client/public/assets/fonts/dm-sans-latin-500-normal.woff2")
+    format("woff2");
 }
 @font-face {
   font-family: "DM Sans";
   font-weight: 700;
-  src: url("/assets/fonts/dm-sans-latin-700-normal.woff2") format("woff2");
+  src: url("../../../apps/client/public/assets/fonts/dm-sans-latin-700-normal.woff2")
+    format("woff2");
 }
 
 :root {
@@ -909,6 +912,11 @@
   gap: 6px;
   min-height: 20px;
   font-weight: 700;
+}
+.ui-tile-foot svg {
+  width: 1em;
+  height: 1em;
+  flex: none;
 }
 .ui-tile-foot.is-ok {
   color: var(--ui-ok);

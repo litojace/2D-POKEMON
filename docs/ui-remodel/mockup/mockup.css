@@ -30,8 +30,8 @@ body {
 .m-backdrop {
   position: absolute;
   inset: -30px;
-  background: url("/assets/backgrounds/plaza-night-voltkit.webp") center 40% /
-    cover;
+  background: url("../../../apps/client/public/assets/backgrounds/plaza-night-voltkit.webp")
+    center 40% / cover;
   filter: blur(6px) brightness(0.4) saturate(1.15);
 }
 .m-row {
@@ -2504,4 +2504,19 @@ body {
   .m-trophy b {
     font-size: 13px;
   }
+}
+
+/* The Wardrobe's last tile: the Shop has the items you don't own. */
+.m-more-tile {
+  border-style: dashed;
+  border-color: var(--ui-line-2);
+  background: transparent;
+}
+.m-more-tile .ui-tile-art {
+  background: var(--ui-bg-1);
+  color: var(--ui-accent);
+}
+.m-more-tile .ui-tile-art svg {
+  width: 38%;
+  height: 38%;
 }

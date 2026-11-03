@@ -875,6 +875,11 @@
   min-height: 20px;
   font-weight: 700;
 }
+.ui-tile-foot svg {
+  width: 1em;
+  height: 1em;
+  flex: none;
+}
 .ui-tile-foot.is-ok {
   color: var(--ui-ok);
 }
