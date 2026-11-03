@@ -17,6 +17,7 @@ import {
   RAID_PINGS,
   RAID_COSMETICS,
   raidAttacksOf,
+  raidLookOf,
   type RaidAttack,
   pacificDate,
   raidWeek,
@@ -53,7 +54,7 @@ import {
 import { Arena } from "./simulation.js";
 import { PlazaWorld, type PlazaEvent } from "./plaza.js";
 import { PLAZA, type PlazaRecord } from "../../../packages/shared/src/plaza.js";
-import { Parties, type Party } from "./party.js";
+import { Parties, type Party, type PartyAppearance } from "./party.js";
 import { PlazaAppearance } from "./plaza-appearance.js";
 import { MatchLedger, matchSummary } from "./match-summary.js";
 import {
@@ -252,15 +253,61 @@ export function createArenaServer(
     [...io.sockets.sockets.values()].filter(
       (s) => s.data.account?.id === accountId && !s.data.account?.suspended,
     );
+  // Each member stands on the others' Lobby stage in their saved look: the
+  // skin worn on the champion they picked, and their raid look (aura...).
   const partyView = (party: Party) => ({
     code: party.code,
     leader: party.leader,
-    members: party.members.map((m) => ({ ...m })),
+    members: party.members.map((m) => {
+      const saved = parties.appearanceOf(m.id);
+      return saved
+        ? { ...m, skin: saved.looks[m.character] ?? null, look: saved.look }
+        : { ...m };
+    }),
   });
   const emitParty = (party: Party, ended = false) => {
     for (const member of party.members)
       for (const s of accountSockets(member.id))
         s.emit("party", ended ? null : partyView(party));
+  };
+  /** Only the latest load per account may land (a newer save wins). */
+  const partyAppearanceLoads = new Map<string, symbol>();
+  /** Read a party member's saved appearance from their own account. */
+  const loadPartyAppearance = async (accountId: string, token: string) => {
+    const request = Symbol();
+    partyAppearanceLoads.set(accountId, request);
+    const read = (name: string) =>
+      Promise.resolve().then(() => accounts.rpc(token, name, {}));
+    const [skins, progress] = await Promise.allSettled([
+      read("arena_my_looks"),
+      read("arena_raid_progress"),
+    ]);
+    if (partyAppearanceLoads.get(accountId) !== request) return;
+    partyAppearanceLoads.delete(accountId);
+    const before = parties.appearanceOf(accountId);
+    const looks: PartyAppearance["looks"] = {};
+    if (skins.status === "fulfilled") {
+      for (const [champion, look] of Object.entries(
+        (skins.value ?? {}) as Record<string, unknown>,
+      )) {
+        const { skin, stage } = (look ?? {}) as Record<string, unknown>;
+        if (typeof skin === "string" && skin && skin.length <= 80)
+          looks[champion] = {
+            skin,
+            stage: Number.isInteger(stage)
+              ? Math.min(3, Math.max(1, Number(stage)))
+              : 1,
+          };
+      }
+    }
+    const party = parties.setAppearance(accountId, {
+      looks: skins.status === "fulfilled" ? looks : (before?.looks ?? {}),
+      look:
+        progress.status === "fulfilled"
+          ? raidLookOf(progress.value as RaidProgress | null)
+          : (before?.look ?? {}),
+    });
+    if (party) emitParty(party);
   };
   const inRoom = (accountId: string) =>
     [...sessions.values()].some((s) => s.accountId === accountId);
@@ -1211,6 +1258,8 @@ export function createArenaServer(
         };
         for (const target of targets) target.emit("room-invite", invite);
         emitParty(result.party);
+        if (!parties.appearanceOf(sender.id))
+          void loadPartyAppearance(sender.id, socket.data.accessToken);
         reply(cb, { ok: true });
       } catch {
         fail(cb, "Couldn't check your friends. Try again.");
@@ -1235,6 +1284,7 @@ export function createArenaServer(
       if (result.disbanded) emitParty(result.disbanded, true);
       else if (result.left) emitParty(result.left);
       emitParty(result.party);
+      void loadPartyAppearance(account()!.id, socket.data.accessToken);
       reply(cb, { ok: true });
     });
     socket.on("party-decline", (data: unknown, cb: unknown) => {
@@ -1263,6 +1313,12 @@ export function createArenaServer(
       if (!knownCharacter(character)) return;
       const party = parties.setCharacter(account()!.id, character);
       if (party) emitParty(party);
+    });
+    // A member saved a new look (Wardrobe, Shop): read it again from their
+    // account, so the others see it. The message carries nothing to trust.
+    socket.on("party-look", () => {
+      if (!account() || !allowed(20) || !parties.of(account()!.id)) return;
+      void loadPartyAppearance(account()!.id, socket.data.accessToken);
     });
     // The leader opened a room: the others follow it in with an ordinary join.
     socket.on("party-room", (_data: unknown, cb: unknown) => {

@@ -251,6 +251,19 @@ export function nextMastery(matches: number) {
 }
 
 /** A friend, with what the game server knows about them right now. */
+/** A public equipped raid look (colours, aura, entrance, frame, victory). */
+export const publicLookSchema = z.object({
+  skin: z.string().max(80).nullable().optional(),
+  aura: z.string().max(80).nullable().optional(),
+  entrance: z.string().max(80).nullable().optional(),
+  frame: z.string().max(80).nullable().optional(),
+  victory: z.string().max(80).nullable().optional(),
+});
+/** The Shop skin worn on one champion, and its Awakening stage. */
+export const championLookSchema = z.object({
+  skin: z.string().max(80),
+  stage: z.number().int().min(1).max(3),
+});
 export const friendSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -266,24 +279,8 @@ export const friendSchema = z.object({
   joinable: z.boolean().optional(),
   fighter: z.string().nullable().optional(),
   /** Public equipped appearance, never owned inventory. */
-  look: z
-    .object({
-      skin: z.string().max(80).nullable().optional(),
-      aura: z.string().max(80).nullable().optional(),
-      entrance: z.string().max(80).nullable().optional(),
-      frame: z.string().max(80).nullable().optional(),
-      victory: z.string().max(80).nullable().optional(),
-    })
-    .optional(),
-  championLooks: z
-    .record(
-      z.string(),
-      z.object({
-        skin: z.string().max(80),
-        stage: z.number().int().min(1).max(3),
-      }),
-    )
-    .optional(),
+  look: publicLookSchema.optional(),
+  championLooks: z.record(z.string(), championLookSchema).optional(),
   raidClears: z.record(z.string(), z.number().int().nonnegative()).optional(),
   /** Verified equipped portrait frame, when appearance is available. */
   frame: z.string().max(80).nullable().optional(),
@@ -333,6 +330,10 @@ export const partyStateSchema = z
           id: z.string().uuid(),
           name: z.string().min(1).max(20),
           character: z.string().min(1).max(20),
+          /** The skin worn on that champion (saved on their account). */
+          skin: championLookSchema.nullable().optional(),
+          /** Their equipped raid look: colours, aura, entrance, frame. */
+          look: publicLookSchema.optional(),
         }),
       )
       .min(1)
