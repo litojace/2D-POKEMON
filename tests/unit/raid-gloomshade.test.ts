@@ -361,21 +361,21 @@ describe("Mirror Split", () => {
     expect(a.raid.streak).toBe(0);
     expect(a.raid.exposedUntil).toBeLessThanOrEqual(a.time);
   });
-  it("is revealed by Mystowl's Focus Ray and Duskveil's Curse Mark", () => {
+  it("is revealed by Mystowl's Third-Eye Ray and Duskveil's Haunted Lantern", () => {
     const a = gloom(["mystowl", "duskveil"]);
     const boss = park(a, 800, 430);
     const owl = place(a, "p0", 400, 430);
     owl.lastInput = { ...blankInput(), aimX: 1200, aimY: 430 };
     a.cast(
       owl,
-      CHARACTERS.mystowl.skills.find((s) => s.id === "focus-ray")!,
+      CHARACTERS.mystowl.skills.find((s) => s.id === "third-eye-ray")!,
     );
     expect(a.raid.revealUntil).toBeCloseTo(a.time + GLOOMSHADE.revealRay);
     const dusk = place(a, "p1", 800, 800);
     dusk.lastInput = { ...blankInput(), aimX: boss.x, aimY: boss.y };
     a.cast(
       dusk,
-      CHARACTERS.duskveil.skills.find((s) => s.id === "curse-mark")!,
+      CHARACTERS.duskveil.skills.find((s) => s.id === "haunted-lantern")!,
     );
     expect(a.raid.revealUntil).toBeCloseTo(a.time + GLOOMSHADE.revealMark);
   });

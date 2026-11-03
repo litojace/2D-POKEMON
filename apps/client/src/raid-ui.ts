@@ -32,12 +32,7 @@ import {
   drawSomnara,
 } from "./raid-somnara-art";
 import { buttonIcon, iconLabel, menuIcon } from "./menu-icons";
-import {
-  raidCue,
-  raidContributions,
-  raidGoals,
-  raidRewardProgress,
-} from "./raid-presentation";
+import { raidCue, raidContributions, raidGoals } from "./raid-presentation";
 import type Phaser from "phaser";
 import type { LayerAt } from "./raid-layers";
 import {
@@ -207,10 +202,8 @@ export function raidAppearance(
 ) {
   return `<h3>Fighter appearance</h3><p class="raid-appearance-note">Pick a skin, aura, entrance, frame and victory separately. They show on all your fighters in PvP and raids (a champion skin from the Shop wins over the Skin slot). Shop collection pieces you own appear here too. Appearance only, no stat changes. Previewing ${CHARACTERS[character].name}.</p>${p.loadout && "victory" in p.loadout ? "" : '<p class="raid-appearance-note raid-update-needed">Saving every slot needs the latest database update: run migration 018_collection_equipping.sql in Supabase.</p>'}<div class="raid-equip">${raidCosmeticOptions(p, character, shopOwned)}</div><p class="raid-appearance-status" role="status"></p>`;
 }
-const resultProgress = new WeakMap<
-  HTMLElement,
-  { id: string; progress?: RaidProgress | null }
->();
+/** The result whose saved progress was already fetched, per overlay. */
+const resultProgress = new WeakMap<HTMLElement, string>();
 export function renderRaidUI(
   state: Snapshot,
   me: Fighter,
@@ -251,29 +244,19 @@ export function renderRaidUI(
   );
   hud.innerHTML = `<div class="raid-boss-heading"><b>${r.gilded ? "✦ GILDED " : ""}${RAID_BOSSES[r.boss].name.toUpperCase()}${r.boss !== "storm-twins" && (r.exposedUntil > state.time || r.staggerUntil > state.time || r.permanentGround) ? " · EXPOSED" : ""}</b><span class="raid-boss-phase" aria-label="Phase ${r.phase} of 3">Phase ${r.phase}/3</span></div>${r.boss === "storm-twins" ? stormTwinHealth(state) : ""}<div class="raid-boss-health" role="progressbar" aria-label="Boss health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(healthPercent)}" aria-valuetext="${Math.round(healthPercent)}% health. Rite choices open at 67% and 33% health."><i class="raid-boss-trail" style="width:${healthTrail(`raid:${r.boss}`, healthPercent)}%"></i><i class="raid-boss-fill" style="width:${healthPercent}%"></i>${[67, 33].map((mark, index) => `<span class="raid-health-mark${r.phase > index + 1 ? " is-passed" : ""}" style="left:${mark}%" aria-hidden="true"></span>`).join("")}<span class="raid-boss-pct" aria-hidden="true">${Math.ceil(healthPercent)}%</span></div><div class="raid-stagger" ${r.boss === "storm-twins" ? "hidden" : ""}><i style="width:${r.boss === "emberwing" ? (r.permanentGround || r.exposedUntil > state.time ? 100 : r.airborne ? ((r.braziers ?? []).filter((b) => b.litUntil > state.time).length / 3) * 100 : r.stagger) : r.boss === "prismatail" ? (r.exposedUntil > state.time ? 100 : Math.min(100, ((r.lightHold ?? 0) / (r.phase === 3 && r.partySize === 1 ? 2 : 0.65)) * 100)) : r.staggerUntil > state.time ? 100 : r.stagger}%"></i><span>${r.boss === "emberwing" ? (r.permanentGround ? "WINGS BROKEN · HEART OPEN" : r.airborne ? `AIRBORNE · ${(r.braziers ?? []).filter((b) => b.litUntil > state.time).length}/3 BRAZIERS` : r.exposedUntil > state.time ? "GROUNDED · HEART EXPOSED" : "STAGGER") : r.boss === "prismatail" ? (r.exposedUntil > state.time ? "HEART EXPOSED" : "LIGHT RELAY · SHIELDED") : r.staggerUntil > state.time ? "STAGGER · CORE EXPOSED" : "STAGGER"}</span></div><div class="raid-status-row"><p class="raid-callout" role="status" title="${escape(raidCue(state, me.id))}">${escape(raidCue(state, me.id))}</p><div class="raid-elapsed" role="timer" aria-label="Raid elapsed time"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><b>${time(r.elapsed)}</b></div></div>`;
   const overlay = document.getElementById("arena-overlay")!;
-  let progress = resultProgress.get(overlay);
+  // Fetch saved progress once per result: the caller refreshes frame stars
+  // and turns over newly earned reward cards from it.
   if (
     state.phase === "finished" &&
     r.rewardStatus === "saved" &&
     loadProgress
   ) {
     const id = `${me.id}:${r.resultId ?? r.seed}`;
-    if (progress?.id !== id) {
-      progress = { id };
-      resultProgress.set(overlay, progress);
-      const pending = progress;
-      void loadProgress()
-        .then((value) => {
-          pending.progress = value;
-        })
-        .catch(() => {
-          pending.progress = null;
-        });
+    if (resultProgress.get(overlay) !== id) {
+      resultProgress.set(overlay, id);
+      void loadProgress().catch(() => {});
     }
-  } else {
-    resultProgress.delete(overlay);
-    progress = undefined;
-  }
+  } else resultProgress.delete(overlay);
   // Reveal results after the collapse, without restarting when reward status updates.
   if (r.result === "victory" && state.phase === "finished") {
     const id = r.resultId ?? String(r.seed);
@@ -337,11 +320,19 @@ export function renderRaidUI(
     const heroes = state.players.filter((p) => !p.raidBoss && !p.out);
     const readyCount = heroes.filter((p) => p.ready).length;
     actions = `<div class="result-actions raid-result-actions"><button class="primary" id="raid-retry" ${me.ready || !heroes.every((p) => p.connected) ? "disabled" : ""}>${me.ready ? "Waiting for the team…" : iconLabel("again", "Run again")}</button><button class="secondary" id="raid-lobby" aria-label="Change champion or challenge" title="Change champion or challenge">${iconLabel("swap", "Change setup")}</button><button class="secondary raid-icon-button" id="raid-rewards">${menuIcon("bestiary")}<span>Raid Hub & rewards</span></button><button class="quiet" id="raid-exit">${iconLabel("home", "Return to menu")}</button></div>`;
-    body = `<div class="raid-result-summary"><div class="raid-result-art" aria-hidden="true"><svg viewBox="-65 -65 130 115">${raidGuideBossFor(r.boss)}</svg></div><div class="raid-result-stats"><span><b>${time(r.elapsed)}</b>${r.result === "victory" ? "Clear time" : "Time survived"}</span><span><b>${r.revives}</b>Revives</span><span><b>${r.downs}</b>Downs</span></div></div><div class="raid-result-body">${raidContributions(state)}<div class="raid-result-next">${
+    // Saved state and the retry count share one bar under the scoreboard;
+    // the next milestone lives in the Raid Hub (the reward reveal still runs).
+    const saved =
       r.result === "victory"
-        ? `<p class="raid-save-state" role="status">${r.rewardStatus === "saved" ? "✓ Rewards saved to your account." : r.rewardStatus === "unavailable" ? "This clear could not be saved. Your reward progress has not been updated." : "Saving your rewards…"}</p>${r.rewardStatus === "saved" ? raidRewardProgress(loadProgress ? progress?.progress : null, r.boss) : ""}<p class="raid-next-challenge">Next challenge: a no-downs clear, a faster time or a different boss.</p>`
-        : `${r.rewardStatus === "saved" ? `<p class="raid-save-state" role="status">✓ Progress saved: your ${r.boss === "tidewyrm" ? "strands" : r.boss === "gloomshade" ? "relights" : r.boss === "storm-twins" ? "polarity pairs" : r.boss === "emberwing" ? "braziers lit" : r.boss === "prismatail" ? "light relays" : r.boss === "somnara" ? "correct runes" : "pillars"} and revives count towards titles.</p>` : ""}<p class="raid-retry-tip">${defeatTip(state)}</p>`
-    }<div class="raid-retry-status">${heroes.length === 1 ? "Same champion and challenge · choose fresh rites" : `${readyCount}/${heroes.length} ready · everyone confirms to run again`}</div>${!heroes.every((p) => p.connected) ? '<p class="raid-retry-tip">A teammate is disconnected. Return to the lobby to refill the party.</p>' : ""}</div></div>`;
+        ? r.rewardStatus === "saved"
+          ? "✓ Rewards saved to your account."
+          : r.rewardStatus === "unavailable"
+            ? "This clear could not be saved. Your reward progress has not been updated."
+            : "Saving your rewards…"
+        : r.rewardStatus === "saved"
+          ? `✓ Progress saved: your ${r.boss === "tidewyrm" ? "strands" : r.boss === "gloomshade" ? "relights" : r.boss === "storm-twins" ? "polarity pairs" : r.boss === "emberwing" ? "braziers lit" : r.boss === "prismatail" ? "light relays" : r.boss === "somnara" ? "correct runes" : "pillars"} and revives count towards titles.`
+          : "";
+    body = `<div class="raid-result-summary"><div class="raid-result-art" aria-hidden="true"><svg viewBox="-65 -65 130 115">${raidGuideBossFor(r.boss)}</svg></div><div class="raid-result-stats"><span><b>${time(r.elapsed)}</b>${r.result === "victory" ? "Clear time" : "Time survived"}</span><span><b>${r.revives}</b>Revives</span><span><b>${r.downs}</b>Downs</span></div></div><div class="raid-result-body">${raidContributions(state, me.id)}<div class="raid-result-status">${saved ? `<p class="raid-save-state${r.rewardStatus === "saved" ? " is-saved" : r.rewardStatus === "unavailable" ? " is-error" : ""}" role="status">${saved}</p>` : ""}<p class="raid-retry-status">${heroes.length === 1 ? "Same champion and challenge · choose fresh rites" : `${readyCount}/${heroes.length} ready · everyone confirms to run again`}</p></div>${r.result === "victory" ? "" : `<p class="raid-retry-tip">${defeatTip(state)}</p>`}${!heroes.every((p) => p.connected) ? '<p class="raid-retry-tip">A teammate is disconnected. Return to the lobby to refill the party.</p>' : ""}</div>`;
   }
   if (state.phase === "finished")
     body += resultXp(

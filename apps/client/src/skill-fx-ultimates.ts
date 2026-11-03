@@ -164,7 +164,7 @@ const sunfire: ZoneFn = (g, z, progress, now) => {
   }
 };
 
-// ───────────── Auralynx · Nova Burst: crystal spires that shatter ─────────────
+// ───────────── Auralynx · Shard Nova: crystal spires that shatter ─────────────
 const nova: CastFn = (scene, a, x, y, _angle, color, shot) => {
   const fx = fxFor(scene),
     r = a.radius,
@@ -304,7 +304,7 @@ const radiant: CastFn = (scene, a, x, y, _angle, color, shot) => {
   });
 };
 
-// ───────────── Mystowl · Thoughtstrike: the great eye, weightless debris ─────────────
+// ───────────── Mystowl · Silent Swoop: the great eye, weightless debris ─────────────
 const thought: ZoneFn = (g, z, progress, now) => {
   const fx = fxFor(g.scene),
     a = z.ability,
@@ -576,11 +576,11 @@ export function withUltimates(kit: Required<FxKit>): Required<FxKit> {
     windup = { ...kit.windup },
     impact = { ...kit.impact };
   cast.overcharge = then(kit.cast.overcharge, overcharge);
-  cast["nova-burst"] = then(kit.cast["nova-burst"], nova);
+  cast["shard-nova"] = then(kit.cast["shard-nova"], nova);
   cast["radiant-flare"] = then(kit.cast["radiant-flare"], radiant);
   cast.tremor = then(kit.cast.tremor, tremor);
   zone["sunfire-pillar"] = then(kit.zone["sunfire-pillar"], sunfire);
-  zone.thoughtstrike = then(kit.zone.thoughtstrike, thought);
+  zone["silent-swoop"] = then(kit.zone["silent-swoop"], thought);
   windup["radiant-flare"] = then(kit.windup["radiant-flare"], flareWindup);
   impact["void-orb"] = then(kit.impact["void-orb"], voidOrb);
   return { ...kit, cast, zone, windup, impact };

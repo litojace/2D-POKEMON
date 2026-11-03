@@ -26,16 +26,30 @@ import {
   featureLabel,
   raidContributions,
 } from "../../apps/client/src/raid-presentation";
-const setup = (chars: CharacterId[] = ["voltkit"], peril = 1) => {
+const setup = (
+  chars: CharacterId[] = ["voltkit"],
+  peril = 1,
+  gilded = false,
+) => {
   const a = createRaidArena("DREAM", "somnara") as SomnaraArena;
   chars.forEach((c, i) => a.add(`p${i}`, `Player ${i}`, c));
   a.configure(peril, false);
-  a.start();
+  // start() rolls the seed and a 1-in-20 Gilded chance, and bakes Gilded
+  // into maxHp. Clearing raid.gilded afterwards would leave a Gilded health
+  // pool behind, so pin both rolls instead (20 % 20 === 0 is Gilded).
+  const roll = vi
+    .spyOn(crypto, "getRandomValues")
+    .mockImplementation((buffer: any) => {
+      buffer.fill(gilded ? 20 : 1);
+      return buffer;
+    });
+  try {
+    a.start();
+  } finally {
+    roll.mockRestore();
+  }
+  expect(a.raid.gilded, "setup pins the Gilded roll").toBe(gilded);
   a.phase = "playing";
-  // start() rolls a gilded boss 1 time in 20, and its health already
-  // includes that; remember the roll before making the boss a plain one.
-  (a as any).rolledGilded = a.raid.gilded;
-  a.raid.gilded = false;
   a.raid.trait = "starry-night";
   (a as any).started = true;
   (a as any).nextAttack = Infinity;
@@ -78,9 +92,10 @@ describe("Somnara's encounter", () => {
     expect(a.walls()).toEqual([]);
     expect(a.raid.pillars).toEqual([]);
     const f = RAID.healthScale * RAID.perilHealth[a.raid.peril];
-    expect(
-      a.raid.maxHp / f / ((a as any).rolledGilded ? SOMNARA.health.gilded : 1),
-    ).toBeCloseTo(2050, 0);
+    expect(a.raid.maxHp / f).toBeCloseTo(2050, 0);
+    // A Gilded Somnara is a little tougher.
+    const gilded = setup(["voltkit", "terradon"], 1, true);
+    expect(gilded.raid.maxHp / f / SOMNARA.health.gilded).toBeCloseTo(2050, 0);
     expect(ritesFor("somnara")).toContain("lucid");
     expect(ritesFor("grumblecrag")).not.toContain("lucid");
     for (const phase of [1, 2, 3]) {
@@ -235,27 +250,28 @@ describe("Drowsy, sleep, bubbles and champion tricks", () => {
     run(a, 1.7);
     expect(a.has(p, "sleep")).toBe(false);
   });
-  it("wakes from an ally's melee hit without taking friendly damage or losing Hibernate", () => {
+  it("wakes from an ally's melee hit without taking friendly damage or losing Shell Up", () => {
     const a = setup(["cindrake", "terradon"]);
     const [p, ally] = a.heroes();
     ally.x = p.x + 100;
     ally.y = p.y;
     p.angle = 0;
     addStacks(a, ally.id);
-    a.status(ally, "sleep", 5); // Adds/refreshes the boss's sleep; add a separate Hibernate below.
+    // The boss's sleep is already on (addStacks); Terradon is also in its shell.
     ally.statuses.push({
-      kind: "sleep",
+      kind: "shell",
       until: a.time + 5,
       nextTick: a.time + 5,
       amount: 1,
     });
+    expect(a.has(ally, "sleep")).toBe(true);
     const hp = ally.hp;
     a.cast(p, CHARACTERS.cindrake.basic);
     expect(ally.hp).toBe(hp);
-    expect(ally.statuses.filter((s) => s.kind === "sleep")).toHaveLength(1);
-    expect(ally.statuses.find((s) => s.kind === "sleep")!.amount).toBe(1);
+    expect(a.has(ally, "sleep")).toBe(false);
+    expect(ally.statuses.find((s) => s.kind === "shell")!.amount).toBe(1);
   });
-  it("wakes from a friendly projectile and Ember Gust; enemy damage wakes it at normal damage", () => {
+  it("wakes from a friendly projectile and Crest Flare; enemy damage wakes it at normal damage", () => {
     const a = setup(["voltkit", "cindrake"]);
     const [p, ally] = a.heroes();
     addStacks(a, ally.id);
@@ -317,12 +333,12 @@ describe("Drowsy, sleep, bubbles and champion tricks", () => {
     expect(a.raid.dreamBubbles).toHaveLength(0);
     expect(a.raid.dreamTrails!.length).toBeGreaterThan(0);
   });
-  it("Thoughtstrike reveals only the current sequence to the team; a new dream restores privacy", () => {
+  it("Silent Swoop reveals only the current sequence to the team; a new dream restores privacy", () => {
     const a = setup(["mystowl", "lumoth"]);
     attack(a, "dream-sequence");
     a.cast(
       a.heroes()[0],
-      CHARACTERS.mystowl.skills.find((s) => s.id === "thoughtstrike")!,
+      CHARACTERS.mystowl.skills.find((s) => s.id === "silent-swoop")!,
     );
     expect(a.heroes().every((p) => a.dreamFor(p.id)?.full)).toBe(true);
     (a as any).beginDream();

@@ -45,14 +45,20 @@ describe("signature combos", () => {
   });
   it("the setup marks the target, for the attacker only", () => {
     const { arena, p, q } = duel("tidefin");
-    arena.damage(q, 4, p.id, skill("tidefin", "whirlpool"));
+    arena.damage(q, 4, p.id, skill("tidefin", "eddy"));
     expect(hasMark(q, p.id, arena.time)).toBe(true);
     expect(hasMark(q, q.id, arena.time)).toBe(false);
     arena.time += COMBOS.tidefin.window + 0.1;
     expect(hasMark(q, p.id, arena.time)).toBe(false);
   });
   it("a payoff on a marked target hits harder and spends the mark", () => {
-    for (const id of ["tidefin", "cindrake", "mystowl", "terradon"] as const) {
+    for (const id of [
+      "tidefin",
+      "cindrake",
+      "mystowl",
+      "terradon",
+      "duskveil",
+    ] as const) {
       const plain = payoffDamage(id, false);
       const boosted = payoffDamage(id, true);
       expect(boosted).toBeCloseTo(
@@ -73,12 +79,30 @@ describe("signature combos", () => {
     expect(before - q.hp).toBe(20);
     expect(arena.events[arena.events.length - 1]?.combo).toBeUndefined();
   });
-  it("Voltkit's charged Static Lance stuns instead of paralysing", () => {
-    const { arena, p, q } = duel("voltkit");
-    arena.damage(q, 5, p.id, skill("voltkit", "storm-grid"));
-    arena.damage(q, 18, p.id, skill("voltkit", "static-lance"));
-    expect(q.statuses.some((s) => s.kind === "stun")).toBe(true);
-    expect(q.statuses.some((s) => s.kind === "paralysis")).toBe(false);
+  it("Voltkit's Static Lance stuns instead of paralysing after Static Glide, even though it lands later", () => {
+    const lance = skill("voltkit", "static-lance");
+    const throwLance = (glideFirst: boolean) => {
+      const { arena, p, q } = duel("voltkit");
+      // Out of the takeoff pop's reach, so only the lance lands.
+      Object.assign(q, { x: 1000, y: 150 });
+      if (glideFirst) {
+        arena.cast(p, skill("voltkit", "static-glide"));
+        expect(hasMark(p, p.id, arena.time)).toBe(true);
+      }
+      const before = q.hp;
+      arena.cast(p, lance);
+      // A self mark is spent by casting the payoff; the shot carries it.
+      expect(hasMark(p, p.id, arena.time)).toBe(false);
+      for (let k = 0; k < 30 && q.hp === before; k++) arena.tick();
+      return { arena, q, dealt: before - q.hp };
+    };
+    const plain = throwLance(false);
+    expect(plain.q.statuses.some((s) => s.kind === "paralysis")).toBe(true);
+    const charged = throwLance(true);
+    expect(charged.q.statuses.some((s) => s.kind === "stun")).toBe(true);
+    expect(charged.q.statuses.some((s) => s.kind === "paralysis")).toBe(false);
+    expect(charged.dealt).toBeCloseTo(plain.dealt * COMBOS.voltkit.damage!);
+    expect(charged.arena.events.some((e) => e.combo === "Charged")).toBe(true);
   });
   it("Lumoth's Radiant Flare is wider while Kindled, then the mark is spent", () => {
     const flare = skill("lumoth", "radiant-flare");
@@ -96,21 +120,25 @@ describe("signature combos", () => {
     expect(kindled.dealt).toBeGreaterThan(0);
     expect(kindled.marked).toBe(false);
   });
-  it("Auralynx is primed by absorbing a hit with Mirror Guard", () => {
+  it("Auralynx is primed by absorbing a hit with Facet Guard", () => {
     const { arena, p, q } = duel("auralynx", "voltkit");
-    arena.cast(p, skill("auralynx", "mirror-guard"));
+    arena.cast(p, skill("auralynx", "facet-guard"));
     expect(hasMark(p, p.id, arena.time)).toBe(false);
     arena.damage(p, 10, q.id, CHARACTERS.voltkit.basic);
     expect(hasMark(p, p.id, arena.time)).toBe(true);
     const before = q.hp;
-    arena.cast(p, skill("auralynx", "shatter-palm"));
+    arena.cast(p, skill("auralynx", "shatter-paw"));
     expect(before - q.hp).toBeCloseTo(28 * COMBOS.auralynx.damage!);
     expect(hasMark(p, p.id, arena.time)).toBe(false);
   });
-  it("Duskveil's Curse Mark is reported as a combo on a harmful status", () => {
+  it("Duskveil's Ghostfire lights the target up for Shade Crawl", () => {
     const { arena, p, q } = duel("duskveil");
-    arena.status(q, "burn", 2, p.id);
-    arena.damage(q, 16, p.id, skill("duskveil", "curse-mark"));
-    expect(arena.events[arena.events.length - 1]?.combo).toBe("Hexed");
+    arena.damage(q, 6, p.id, skill("duskveil", "ghostfire"));
+    expect(hasMark(q, p.id, arena.time)).toBe(true);
+    const before = q.hp;
+    arena.damage(q, 20, p.id, skill("duskveil", "shade-crawl"));
+    expect(before - q.hp).toBeCloseTo(20 * COMBOS.duskveil.damage!);
+    expect(arena.events[arena.events.length - 1]?.combo).toBe("Lit");
+    expect(hasMark(q, p.id, arena.time)).toBe(false);
   });
 });

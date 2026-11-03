@@ -246,18 +246,17 @@ export function drawProjectile(
         );
       return;
     }
-    case "ripple-stars":
     case "glint":
-    case "starfall-spray": {
-      const points = a.id === "ripple-stars" ? 4 : 5;
-      const spin = a.id === "ripple-stars" ? t * 14 : t * 3;
+    case "wing-dust": {
+      const points = 5;
+      const spin = t * 3;
       trail(g, pr, c, 0.05, r * 1.4, 0.2);
       g.fillStyle(c, 0.25).fillCircle(pr.x, pr.y, r * 1.6);
       g.fillStyle(c);
-      star(g, pr.x, pr.y, r * 1.25, points, spin, points === 4 ? 0.35 : 0.45);
+      star(g, pr.x, pr.y, r * 1.25, points, spin, 0.45);
       g.fillStyle(WHITE, 0.9);
       star(g, pr.x, pr.y, r * 0.55, points, spin, 0.4);
-      if (a.id !== "ripple-stars" && !reduced && hash(seed) > 0.6)
+      if (!reduced && hash(seed) > 0.6)
         g.fillStyle(WHITE, 0.8).fillCircle(
           pr.x - Math.cos(angle) * r * 2,
           pr.y - Math.sin(angle) * r * 2,
@@ -350,18 +349,6 @@ export function drawProjectile(
         .fillCircle(pr.x + 4, pr.y + 4, 2.5);
       return;
     }
-    case "curse-mark": {
-      trail(g, pr, c, 0.05, r, 0.18);
-      const spin = t * 5;
-      g.lineStyle(2.5, c, 0.95).strokeCircle(pr.x, pr.y, r);
-      g.lineStyle(2, c, 0.8).strokePoints(
-        polygon(g, pr.x, pr.y, r * 0.95, 3, spin),
-        true,
-      );
-      g.strokePoints(polygon(g, pr.x, pr.y, r * 0.95, 3, spin + Math.PI), true);
-      g.fillStyle(WHITE, 0.9).fillCircle(pr.x, pr.y, r * 0.25);
-      return;
-    }
     case "void-orb": {
       g.fillStyle(c, 0.18).fillCircle(pr.x, pr.y, r * 1.7);
       g.lineStyle(3, c, 0.9);
@@ -396,7 +383,7 @@ export function drawZone(
     t = reduced ? 0 : now / 1000,
     fade = progress > 0.85 ? (1 - progress) / 0.15 : 1;
   switch (a.id) {
-    case "storm-grid": {
+    case "practice-grid": {
       g.fillStyle(c, 0.1 * fade).fillCircle(z.x, z.y, r);
       g.lineStyle(1.5, c, 0.45 * fade);
       for (let o = -r; o <= r; o += r / 3) {
@@ -423,7 +410,7 @@ export function drawZone(
       }
       return;
     }
-    case "blaze-whirl": {
+    case "heat-cracks": {
       g.fillStyle(c, 0.1 * fade).fillCircle(z.x, z.y, r);
       for (let i = 0; i < 6; i++) {
         const aa = t * 7 + (i * TAU) / 6;
@@ -468,7 +455,7 @@ export function drawZone(
       }
       return;
     }
-    case "whirlpool": {
+    case "eddy": {
       g.fillStyle(c, 0.16 * fade).fillCircle(z.x, z.y, r);
       g.lineStyle(3, WHITE, 0.55 * fade);
       for (let arm = 0; arm < 3; arm++) {
@@ -486,7 +473,7 @@ export function drawZone(
       g.lineStyle(3, c, 0.8 * fade).strokeCircle(z.x, z.y, r);
       return;
     }
-    case "thoughtstrike": {
+    case "silent-swoop": {
       const strikeAt = (a.tickDelay ?? 0.35) / a.duration;
       if (progress < strikeAt) {
         // Reticle closes in on the target, then the strike lands.
@@ -515,7 +502,7 @@ export function drawZone(
       );
       return;
     }
-    case "dust-cloud": {
+    case "mud-mire": {
       for (let i = 0; i < 9; i++) {
         const aa = (i * TAU) / 9 + t * 0.4,
           d = r * (0.35 + hash(z.id + i) * 0.45);
@@ -581,7 +568,7 @@ export function drawWindup(
     a.radius * (0.4 + k * 0.6),
   );
 }
-/** Continuous cone (Ember Gust) drawn with the real range and arc. */
+/** Continuous cone (Crest Flare) drawn with the real range and arc. */
 export function drawChannel(
   g: G,
   a: Ability,
@@ -692,8 +679,8 @@ export function playCast(
         }
       });
     case "prism-jab":
-    case "shatter-palm":
-      return oneShot(scene, a.id === "shatter-palm" ? 380 : 200, (g, k) => {
+    case "shatter-paw":
+      return oneShot(scene, a.id === "shatter-paw" ? 380 : 200, (g, k) => {
         const reach = a.range * (0.4 + k * 0.6);
         const hx = x + Math.cos(angle) * reach,
           hy = cy + Math.sin(angle) * reach;
@@ -702,7 +689,7 @@ export function playCast(
           polygon(g, hx, hy, 9 + k * 6, 4, k * 3),
           true,
         );
-        if (a.id === "shatter-palm") {
+        if (a.id === "shatter-paw") {
           g.lineStyle(4, color, 1 - k).strokeCircle(hx, hy, 20 + k * 60);
           for (let i = 0; i < 7; i++) {
             const aa = angle + (i / 6 - 0.5) * 2;
@@ -721,8 +708,8 @@ export function playCast(
         }
       });
     case "boulder-swipe":
-    case "shell-slam":
-      return oneShot(scene, a.id === "shell-slam" ? 420 : 300, (g, k) => {
+    case "shell-bash":
+      return oneShot(scene, a.id === "shell-bash" ? 420 : 300, (g, k) => {
         swipe(g, x, cy, a, angle, color, k);
         for (let i = 0; i < 8; i++) {
           const off = (hash(i) - 0.5) * 2 * Math.acos(a.arc ?? 0),
@@ -739,30 +726,12 @@ export function playCast(
             true,
           );
         }
-        if (a.id === "shell-slam") {
+        if (a.id === "shell-bash") {
           g.lineStyle(5, 0xe2c79c, 0.8 * (1 - k)).strokeEllipse(
             x,
             y + 6,
             60 + k * 120,
             24 + k * 50,
-          );
-        }
-      });
-    case "dust-strike":
-      return oneShot(scene, 260, (g, k) => {
-        swipe(g, x, cy, a, angle, color, k);
-        for (let i = 0; i < 9; i++) {
-          const off = (hash(i) - 0.5) * 1.6,
-            dd = a.range * (0.4 + hash(i * 3) * 0.6 + k * 0.3);
-          g.fillStyle(i % 3 ? color : 0xfff1a0, 1 - k);
-          star(
-            g,
-            x + Math.cos(angle + off) * dd,
-            cy + Math.sin(angle + off) * dd,
-            4 + hash(i) * 3,
-            4,
-            k * 4,
-            0.35,
           );
         }
       });
@@ -794,7 +763,7 @@ export function playCast(
         },
         1,
       );
-    case "nova-burst":
+    case "shard-nova":
       return oneShot(
         scene,
         460,
@@ -849,7 +818,7 @@ export function playCast(
         },
         1,
       );
-    case "repulse":
+    case "booming-hoot":
       return oneShot(
         scene,
         520,
@@ -918,13 +887,13 @@ export function playCast(
           );
         }
       });
-    case "ward":
+    case "wing-cloak":
       return oneShot(scene, 450, (g, k) => {
         const pts = polygon(g, x, cy, 30 + k * 18, 6, Math.PI / 6);
         g.fillStyle(color, 0.3 * (1 - k)).fillPoints(pts, true);
         g.lineStyle(4, WHITE, 1 - k).strokePoints(pts, true);
       });
-    case "mirror-guard":
+    case "facet-guard":
       return oneShot(scene, 380, (g, k) => {
         g.lineStyle(5, WHITE, 1 - k);
         g.beginPath()
@@ -935,26 +904,7 @@ export function playCast(
           .arc(x, cy, 44 + k * 14, angle - 1, angle + 1)
           .strokePath();
       });
-    case "hibernate":
-      return oneShot(scene, 1400, (g, k) => {
-        for (let i = 0; i < 3; i++) {
-          const kk = Math.max(0, Math.min(1, k * 1.5 - i * 0.2)),
-            s = 6 + i * 3,
-            zx = x + 18 + i * 10 + Math.sin(kk * 6) * 4,
-            zy = cy - 30 - kk * 50 - i * 8;
-          g.lineStyle(3, WHITE, 1 - kk);
-          g.strokePoints(
-            [
-              { x: zx - s, y: zy - s },
-              { x: zx + s, y: zy - s },
-              { x: zx - s, y: zy + s },
-              { x: zx + s, y: zy + s },
-            ],
-            false,
-          );
-        }
-      });
-    case "mirror-mist":
+    case "tide-double":
       return oneShot(scene, 500, (g, k) => {
         for (let i = 0; i < 7; i++) {
           const aa = (i * TAU) / 7;
@@ -965,7 +915,7 @@ export function playCast(
           );
         }
       });
-    case "focus-ray":
+    case "third-eye-ray":
       return; // drawn by playBeam with the server's end point
     default:
       if (a.kind === "melee")

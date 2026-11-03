@@ -472,7 +472,7 @@ export class StormTwinsArena extends RaidArena {
       if (m.until > this.time || m.cancelled) continue;
       const p = alive.find((p) => p.id === m.playerId);
       if (!p) continue;
-      if (p.character === "terradon" && this.has(p, "sleep")) continue;
+      if (p.character === "terradon" && this.has(p, "shell")) continue;
       const mismatch = marks.some(
         (n) =>
           n !== m &&

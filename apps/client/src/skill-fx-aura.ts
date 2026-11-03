@@ -215,7 +215,7 @@ function prismImpact(
   });
 }
 
-// ───────────── Shatter Palm: the air itself cracks ─────────────
+// ───────────── Shatter Paw: the air itself cracks ─────────────
 function shatterPalm(
   scene: Phaser.Scene,
   a: Ability,
@@ -277,7 +277,7 @@ function shatterPalm(
   });
 }
 
-// ───────────── Mirror Guard: hex mirrors snap together ─────────────
+// ───────────── Facet Guard: crystal facets snap together ─────────────
 function mirrorGuard(
   scene: Phaser.Scene,
   a: Ability,
@@ -315,7 +315,7 @@ function mirrorGuard(
   shards(fx, x, y, 6, color, { power: 0.5 });
 }
 
-// ───────────── Nova Burst: crystal spikes erupt ─────────────
+// ───────────── Shard Nova: crystal spikes erupt ─────────────
 function novaWindup(
   g: G,
   a: Ability,
@@ -423,12 +423,12 @@ function auraHit(
 
 export const auraKit: FxKit = {
   projectile: { "prism-shot": prismShot },
-  windup: { "nova-burst": novaWindup },
+  windup: { "shard-nova": novaWindup },
   cast: {
     "prism-jab": prismJab,
-    "shatter-palm": shatterPalm,
-    "mirror-guard": mirrorGuard,
-    "nova-burst": novaBurst,
+    "shatter-paw": shatterPalm,
+    "facet-guard": mirrorGuard,
+    "shard-nova": novaBurst,
   },
   impact: { "prism-shot": prismImpact },
   hit: { aura: auraHit },

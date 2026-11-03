@@ -116,7 +116,7 @@ describe("rites", () => {
     const wire = unpackSnapshot(packSnapshot(arena.snapshot()));
     expect(wire.projectiles[0].ability.explosion).toBeCloseTo(110 * 1.3);
     const tide = duel();
-    tide.q.rites = ["tidefin-rapid-stars"];
+    tide.q.rites = ["tidefin-rapid-spray"];
     tide.arena.submit(tide.q, {
       ...tide.q.lastInput,
       seq: 99,

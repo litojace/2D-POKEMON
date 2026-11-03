@@ -186,7 +186,7 @@ export function electricProjectile(g: G, pr: Projectile, now: number): boolean {
   return false;
 }
 
-// ───────────── Storm Grid ─────────────
+// ───────────── Practice Grid (free practice's jump drill) ─────────────
 export function stormGrid(g: G, z: Zone, progress: number, now: number) {
   const fx = fxFor(g.scene),
     c = z.color,
@@ -479,6 +479,50 @@ export function ballLightningImpact(
   });
 }
 
+/**
+ * Static Glide: the takeoff pop (a crackling ring out to pop.radius, which is
+ * how far it shoves) and sparks shaken off the glider membranes.
+ */
+function staticGlide(
+  scene: Phaser.Scene,
+  a: Ability,
+  x: number,
+  y: number,
+  angle: number,
+  color: number,
+  shot: Shot,
+) {
+  const fx = fxFor(scene),
+    r = a.pop?.radius ?? 150;
+  fx.burst({
+    x,
+    y,
+    z: 18,
+    count: 16,
+    kind: "spark",
+    color: [color, PALE, BLUE],
+    speed: [120, 320],
+    up: [40, 160],
+    life: [0.25, 0.5],
+    size: [1, 2],
+    drag: 3,
+  });
+  shot(fx.reduced ? 160 : 340, (k) => {
+    const rr = r * (0.25 + 0.75 * Math.min(1, k / 0.6));
+    fx.shockwave(x, y, rr, k, color, 8);
+    fx.glow(x, y - 20, 50 * (1 - k * 0.5), color, 0.55 * (1 - k));
+    // Streaks lifting off behind the glide.
+    for (let i = 0; i < 4; i++) {
+      const off = (i - 1.5) * 0.35,
+        bx = x - Math.cos(angle + off) * 30 * k,
+        by = y - 24 - 26 * k - Math.sin(angle + off) * 10 * k;
+      fx.g
+        .lineStyle(2, i % 2 ? PALE : color, 0.8 * (1 - k))
+        .lineBetween(bx, by, bx - Math.cos(angle + off) * 18, by + 6);
+    }
+  });
+}
+
 /** Muzzle flash when a bolt leaves Voltkit's antennae. */
 export function electricCast(
   scene: Phaser.Scene,
@@ -574,7 +618,7 @@ export const electricKit: FxKit = {
     "static-lance": (g, pr, now) => void electricProjectile(g, pr, now),
     "ball-lightning": (g, pr, now) => void electricProjectile(g, pr, now),
   },
-  zone: { "storm-grid": stormGrid },
+  zone: { "practice-grid": stormGrid },
   windup: {
     overcharge: (g, a, x, y, _angle, _ax, _ay, color, k, now) =>
       overchargeWindup(g, a, x, y, color, k, now),
@@ -585,6 +629,7 @@ export const electricKit: FxKit = {
     "ball-lightning": electricCast,
     overcharge: (scene, a, x, y, _angle, color, shot) =>
       overchargeBurst(scene, a, x, y, color, shot),
+    "static-glide": staticGlide,
   },
   impact: {
     "ball-lightning": ballLightningImpact,
