@@ -30,8 +30,8 @@
 .lobby-backdrop {
   position: absolute;
   inset: -28px;
-  background: #0b1020 url("/assets/backgrounds/plaza-lobby.webp")
-    center 42% / cover no-repeat;
+  background: #0b1020 url("/assets/backgrounds/plaza-lobby.webp") center 42% /
+    cover no-repeat;
   filter: blur(5px) saturate(1.05) brightness(0.6);
   transform: scale(1.04);
 }
@@ -167,12 +167,48 @@
 .lobby-fighter-art.is-still {
   animation: none;
 }
-.lobby-fighter-art > svg,
 .lobby-fighter-art > img {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+}
+/* The art (and the live rig over it) uses the rig's padded frame
+   (RIG_FRAME, -20 -40 240 250) instead of the tight 0 -12 200 202. The box
+   grows by the padding, so the fighter keeps its size and place:
+   240/200 = 120% wide from -20/200 = -10%, 250/202 = 123.76% tall from
+   -28/202 = -13.86%. */
+.lobby-fighter-art > svg,
+.lobby-fighter-art > canvas {
+  position: absolute;
+  left: -10%;
+  top: -13.86%;
+  width: 120% !important;
+  height: 123.76% !important;
+}
+/* The live rig (lobby-screen.ts): a canvas over the artwork, in the same box,
+   shown once its first pose is drawn. Then it moves on its own, so the CSS
+   bob stops, and the aura's front half is drawn again above the canvas, as
+   in the Fighters roster. */
+.lobby-fighter-art > canvas {
+  object-fit: contain;
+  pointer-events: none;
+  opacity: 0;
+}
+.lobby-fighter-art.is-ready {
+  animation: none;
+}
+.lobby-fighter-art.is-ready > canvas {
+  opacity: 1;
+  z-index: 1;
+}
+.lobby-fighter-art > svg.ta-front-layer {
+  display: none;
+  pointer-events: none;
+}
+.lobby-fighter-art.is-ready > svg.ta-front-layer {
+  display: block;
+  z-index: 2;
 }
 .lobby-floor {
   position: absolute;
