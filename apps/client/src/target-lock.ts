@@ -11,8 +11,14 @@ export interface Targetable {
   x: number;
   y: number;
 }
-/** How close a tap must land to an enemy's feet (court units). */
+/** How close a tap must land to an enemy (court units). */
 export const TAP_RADIUS = 90;
+/**
+ * How far above its feet an enemy can be tapped: its body, health bar and
+ * name (the nameplate sits 68–90 above the feet). Taps on the name used to
+ * miss, because only the feet counted.
+ */
+export const TAP_HEIGHT = 110;
 
 export class TargetLock {
   id: string | undefined;
@@ -26,7 +32,10 @@ export class TargetLock {
   toggle(id: string) {
     this.id = this.id === id ? undefined : id;
   }
-  /** A tap on the court: the enemy under it (nearest within reach), if any. */
+  /**
+   * A tap on the court: the enemy under it (nearest within reach), if any.
+   * An enemy is the column from its feet up to its name, not just its feet.
+   */
   pickAt<T extends Targetable>(
     x: number,
     y: number,
@@ -36,7 +45,8 @@ export class TargetLock {
     let best: T | undefined,
       bestDistance = radius;
     for (const e of enemies) {
-      const d = Math.hypot(e.x - x, e.y - y);
+      const nearestY = Math.min(e.y, Math.max(e.y - TAP_HEIGHT, y));
+      const d = Math.hypot(e.x - x, nearestY - y);
       if (d <= bestDistance) {
         best = e;
         bestDistance = d;
