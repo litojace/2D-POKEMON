@@ -1364,7 +1364,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       16,
       535,
       "A wide shove with the rump.",
-      { range: 140, arc: 0.15, knockback: 30 },
+      { range: 140, arc: 0.15, knockback: 25 },
     ),
     skills: [
       ability(

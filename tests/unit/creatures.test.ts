@@ -19,13 +19,13 @@ import { fighterPackSchema } from "../../apps/client/src/animation/asset-schema"
 import { fighterSelection } from "../../apps/client/src/fighter-selection";
 import { elementShapes } from "../../apps/client/src/element-effects";
 import { readFileSync, existsSync } from "node:fs";
-it("has eight fighters, forty unique moves and four special skills per fighter", () => {
+it("has sixteen fighters, eighty unique moves and four special skills per fighter", () => {
   expect(Object.keys(CHARACTERS)).toEqual([...FIGHTER_IDS]);
   const abilities = Object.values(CHARACTERS).flatMap((c) => [
     c.basic,
     ...c.skills,
   ]);
-  expect(new Set(abilities.map((a) => a.id)).size).toBe(40);
+  expect(new Set(abilities.map((a) => a.id)).size).toBe(80);
   for (const c of Object.values(CHARACTERS)) {
     expect(c.skills).toHaveLength(4);
     expect(c.health).toBeGreaterThan(0);
@@ -101,11 +101,11 @@ it("loads original art and valid public metadata for every fighter and direction
     }
     art.add(creatureSvg(id));
   }
-  expect(art.size).toBe(8);
-  expect(fighterSelection("voltkit").match(/data-character=/g)).toHaveLength(8);
+  expect(art.size).toBe(16);
+  expect(fighterSelection("voltkit").match(/data-character=/g)).toHaveLength(16);
   expect(
     fighterSelection("voltkit", "Earth").match(/data-character=/g),
-  ).toHaveLength(1);
+  ).toHaveLength(2);
   const detail = fighterSelection("terradon");
   CHARACTERS.terradon.skills.forEach((a, i) => {
     expect(detail).toContain(a.name);

@@ -110,6 +110,13 @@ describe("special skills", () => {
       "wing-cloak",
       "shell-up",
       "mud-mire",
+      // Guards, decoys, stealth and healing springs deal no damage.
+      "tail-wrap",
+      "mirage-perch",
+      "rump-block",
+      "ink-cloud",
+      "warm-spring",
+      "sanctuary",
     ]);
     for (const id of FIGHTER_IDS)
       for (let i = 0; i < 4; i++) {

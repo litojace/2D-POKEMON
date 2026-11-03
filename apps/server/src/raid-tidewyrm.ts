@@ -22,6 +22,8 @@ const W = RULES.width,
   H = RULES.height;
 /** Hits on a sealed ally count once per raider this often (seconds). */
 const POP_GAP = 0.35;
+/** Glacelle's Frost Bloom keeps a stranded Tidewyrm there this much longer (s). */
+const FROST_HOLD = 2;
 
 /**
  * Tidewyrm, "The Rising Tide" (docs/raid-roster-design.md §5.1). It shares
@@ -422,13 +424,24 @@ export class TidewyrmArena extends RaidArena {
   private stepBubbles(dt: number, boss: Fighter) {
     const r = this.raid;
     const shots = this.projectiles.filter((pr) => pr.owner !== boss.id);
+    // Pyranda's Chestnut Storm pops every bubble where it lands.
+    const storms = this.heroZones("chestnut-storm");
     const left: NonNullable<typeof r.bubbles> = [];
     for (const b of r.bubbles ?? []) {
       b.x += b.vx * dt;
       b.y += b.vy * dt;
       if (b.until <= this.time || b.x < -40 || b.x > W + 40 || b.y < -40 || b.y > H + 40) continue;
       // Popped by an attack.
-      if (shots.some((pr) => Math.hypot(pr.x - b.x, pr.y - b.y) < T.bubbles.radius + (pr.ability.radius ?? 10))) {
+      if (
+        shots.some(
+          (pr) =>
+            Math.hypot(pr.x - b.x, pr.y - b.y) <
+            T.bubbles.radius + (pr.ability.radius ?? 10),
+        ) ||
+        storms.some(
+          (z) => Math.hypot(z.x - b.x, z.y - b.y) < z.radius + T.bubbles.radius,
+        )
+      ) {
         this.event("hit", b, 0xbff6ff, 0);
         continue;
       }
@@ -450,6 +463,7 @@ export class TidewyrmArena extends RaidArena {
   private stepPrisons(dt: number, boss: Fighter) {
     const r = this.raid;
     if (!r.prisons?.length) return;
+    const storms = this.heroZones("chestnut-storm");
     for (const prison of [...r.prisons]) {
       const p = this.heroes().find((q) => q.id === prison.playerId);
       if (!p || p.hp <= 0) {
@@ -467,6 +481,7 @@ export class TidewyrmArena extends RaidArena {
       p.y = prison.y;
 
       // Teammates pop it: shots that reach it, or swings from beside it.
+      let yank: Fighter | undefined;
       for (const pr of this.projectiles) {
         if (pr.owner === boss.id || pr.owner === p.id || this.countedShots.has(pr.id)) continue;
         if (Math.hypot(pr.x - prison.x, pr.y - prison.y) > T.prison.radius + (pr.ability.radius ?? 10) + RULES.radius)
@@ -474,6 +489,25 @@ export class TidewyrmArena extends RaidArena {
         this.countedShots.add(pr.id);
         // Cindrake's Magma Bomb pops it in one hit.
         prison.hits += pr.ability.id === "magma-bomb" ? T.prison.hits : 1;
+        // Coilemur's Magnet Lash yanks the prisoner out.
+        if (pr.ability.id === "magnet-lash")
+          yank = this.heroes().find((q) => q.id === pr.owner && q.hp > 0);
+      }
+      if (
+        storms.some(
+          (z) =>
+            Math.hypot(z.x - prison.x, z.y - prison.y) <
+            z.radius + T.prison.radius,
+        )
+      )
+        prison.hits = T.prison.hits;
+      if (yank) {
+        this.freeFromPrison(p.id, true);
+        const d = normalize(p.x - yank.x || 1, p.y - yank.y);
+        p.x = yank.x + d.x * (RULES.radius * 2 + 6);
+        p.y = yank.y + d.y * (RULES.radius * 2 + 6);
+        r.message = `${yank.name} yanks ${p.name} out of the bubble!`;
+        continue;
       }
       for (const q of this.heroes()) {
         if (q === p || q.hp <= 0 || !q.lastInput.basic) continue;
@@ -595,6 +629,17 @@ export class TidewyrmArena extends RaidArena {
       // Voltkit's Static Lance on a stranded Tidewyrm: water conducts.
       if (ability?.id === "static-lance" && this.strandedOn >= 0 && r.exposedUntil > this.time && !r.drill)
         r.stagger = Math.min(100, r.stagger + T.lanceStagger);
+      // Glacelle's Frost Bloom freezes a stranded Tidewyrm there for longer.
+      if (
+        ability?.id === "frost-bloom" &&
+        this.strandedOn >= 0 &&
+        r.exposedUntil > this.time &&
+        !r.drill
+      ) {
+        r.exposedUntil += FROST_HOLD;
+        this.nextAttack = Math.max(this.nextAttack, r.exposedUntil + 1);
+        r.message = "Frozen fast! Tidewyrm stays stranded a little longer.";
+      }
     }
     super.damage(target, amount, owner, ability);
   }

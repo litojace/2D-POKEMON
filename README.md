@@ -2,7 +2,7 @@
 
 A real-time, server-authoritative 1v1 elemental creature fighting game. Built with Phaser, TypeScript, Vite, Socket.IO, Express, and Supabase.
 
-Eight original creatures — **Voltkit** (Electric), **Cindrake** (Fire), **Tidefin** (Water), **Auralynx** (Aura), **Lumoth** (Light), **Mystowl** (Psychic), **Terradon** (Earth) and **Duskveil** (Shadow). Each has one signature basic attack (no cooldown, server-enforced attack interval), four special skills on cooldowns, plus the universal dash and jump. Mobile controls put the basic attack on the large button with the four skills curving around it.
+Sixteen original creatures, two per element — **Voltkit** and **Coilemur** (Electric), **Cindrake** and **Pyranda** (Fire), **Tidefin** and **Glacelle** (Water), **Auralynx** and **Halcyra** (Aura), **Lumoth** and **Sunbara** (Light), **Mystowl** and **Astrabun** (Psychic), **Terradon** and **Wombolder** (Earth), **Duskveil** and **Shadopus** (Shadow). Each has one signature basic attack (no cooldown, server-enforced attack interval), four special skills on cooldowns, plus the universal dash and jump. Mobile controls put the basic attack on the large button with the four skills curving around it.
 
 Every creature is an original articulated shaded-vector rig with authored front, back and side views, animated limb by limb. Rendered sprite sheets or atlases can replace any creature without code changes; see [fighter assets](docs/fighter-assets.md).
 
@@ -122,7 +122,7 @@ The asset export regenerates the original SVG prototypes and creates metadata fo
 
 Development-only previews:
 
-- `/animation-preview.html`: all eight fighters, states, directions, timing, interruption, reduced motion.
+- `/animation-preview.html`: all sixteen fighters, states, directions, timing, interruption, reduced motion.
 - `/touch-preview.html`: joystick/buttons/menu and popup behavior without a live match.
 - `/mobile-layout-preview.html`: portrait/landscape and compact mobile roster viewports.
 

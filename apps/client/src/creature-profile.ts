@@ -1171,9 +1171,11 @@ export function creatureProfile(
         1.3,
         0.9,
       );
+    // The body rises under the head as one shape: the neck joint stays
+    // covered without a separate underpainting disc showing through.
     const teardrop = back
-      ? "M72 120Q100 110 128 120Q134 146 116 166Q106 178 100 186Q94 178 84 166Q66 146 72 120Z"
-      : "M78 120Q100 110 122 120Q128 146 112 166Q104 176 98 186Q92 176 84 164Q70 144 78 120Z";
+      ? "M72 120Q78 100 100 98Q122 100 128 120Q134 146 116 166Q106 178 100 186Q94 178 84 166Q66 146 72 120Z"
+      : "M78 120Q82 100 100 98Q118 100 122 120Q128 146 112 166Q104 176 98 186Q92 176 84 164Q70 144 78 120Z";
     profiles.body =
       path(teardrop, body, ' fill-opacity=".9"') +
       (back
@@ -1192,13 +1194,13 @@ export function creatureProfile(
     if (back) {
       profiles.ears = horn(76, 34, -6) + horn(124, 34, 6);
       profiles.head =
-        e(100, 88, 39, 34, face, ' fill-opacity=".93"') + shine(76, 71, 22);
+        e(100, 88, 39, 34, face) + shine(76, 71, 22);
       profiles.armL = flap(
-        "M74 126Q48 104 36 118Q30 132 46 146Q60 150 74 140Z",
+        "M82 124Q48 104 36 118Q30 132 46 146Q60 150 82 140Z",
         "M70 132Q54 124 42 124",
       );
       profiles.armR = flap(
-        "M126 126Q152 104 164 118Q170 132 154 146Q140 150 126 140Z",
+        "M118 124Q152 104 164 118Q170 132 154 146Q140 150 118 140Z",
         "M130 132Q146 124 158 124",
       );
       profiles.wings =
@@ -1207,7 +1209,7 @@ export function creatureProfile(
       profiles.ears = horn(104, 30, 8);
       profiles.earFar = horn(84, 32, -6);
       profiles.head =
-        e(94, 88, 34, 34, face, ' fill-opacity=".93"') +
+        e(94, 88, 34, 34, face) +
         shine(76, 69, 20) +
         frost(66, 104) +
         frost(72, 110) +
@@ -1310,6 +1312,7 @@ export function creatureProfile(
         e(102, 141, 27, 27) +
         e(92, 145, 16, 19, `url(#${prefix}-chest)`);
       profiles.armL =
+        e(86, 125, 8, 9) +
         path("M90 122Q74 128 74 150Q76 160 84 162Q86 152 92 150Z") +
         path(
           "M86 128Q78 132 78 142Q84 138 88 134Z",
@@ -1578,8 +1581,8 @@ export function creatureProfile(
         // The ink mask is tied at the back.
         path("M58 88Q100 98 142 88L142 102Q100 110 58 102Z", p.accent) +
         path("M100 96L88 112L96 114ZM100 96L112 114L104 112Z", p.accent);
-      profiles.armL = tentacle(84, 132, 48, 130, 54, 156);
-      profiles.armR = tentacle(116, 132, 152, 130, 146, 156);
+      profiles.armL = tentacle(72, 122, 46, 130, 52, 156);
+      profiles.armR = tentacle(128, 122, 154, 130, 148, 156);
       profiles.legL =
         tentacle(90, 150, 70, 176, 72, 160) +
         tentacle(96, 154, 92, 182, 100, 170);
@@ -1606,8 +1609,8 @@ export function creatureProfile(
         line("M60 108q6 5 14 -1", p.light, 2);
       profiles.eyes = `<g class="profile-near-eye">${inkEye(80)}</g>`;
       profiles.body = e(102, 136, 22, 20);
-      profiles.armL = tentacle(94, 130, 60, 126, 64, 152);
-      profiles.armR = tentacle(110, 132, 142, 128, 138, 156);
+      profiles.armL = tentacle(85, 124, 60, 126, 62, 152);
+      profiles.armR = tentacle(111, 124, 142, 128, 138, 156);
       profiles.legL =
         tentacle(94, 150, 74, 176, 76, 160) +
         tentacle(98, 154, 92, 182, 100, 170);

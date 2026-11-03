@@ -1,14 +1,14 @@
 import { expect, test } from "@playwright/test";
 for (const canvas of [false, true])
-  test(`all eight articulated champions stay joined in ${canvas ? "Canvas fallback" : "WebGL"}`, async ({
+  test(`all sixteen articulated champions stay joined in ${canvas ? "Canvas fallback" : "WebGL"}`, async ({
     page,
   }, info) => {
-    // 70 poses × 24 articulated views plus skin loads can exceed 150 seconds
+    // 70 poses × 48 articulated views plus skin loads can exceed 300 seconds
     // on CI software rendering. Keep all geometry checks and allow that work.
-    test.setTimeout(process.env.CI ? 300_000 : 150_000);
+    test.setTimeout(process.env.CI ? 600_000 : 300_000);
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));
-    await page.setViewportSize({ width: 1440, height: 2080 });
+    await page.setViewportSize({ width: 1440, height: 4160 });
     await page.route("**/champion-review", (r) =>
       r.fulfill({
         contentType: "text/html",
@@ -24,7 +24,7 @@ for (const canvas of [false, true])
     }, canvas);
     const audit = () => page.evaluate(() => (window as any).review.audit());
     const rest = await audit();
-    expect(rest).toHaveLength(24);
+    expect(rest).toHaveLength(48);
     const coverage = await page.evaluate(() =>
       (window as any).review.coverage(),
     );
@@ -100,7 +100,7 @@ for (const canvas of [false, true])
             expect(shell.scaleX).toBe(0.5);
           }
           if (
-            ["auralynx", "lumoth", "mystowl", "duskveil"].includes(r.id) &&
+            ["auralynx", "lumoth", "mystowl", "duskveil", "glacelle"].includes(r.id) &&
             (state === "walk" || state === "run")
           )
             expect(

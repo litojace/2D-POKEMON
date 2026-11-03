@@ -20,6 +20,13 @@ import {
   type RaidAttack,
   type RaidWarning,
 } from "../../../packages/shared/src/raid.js";
+/** Champion tricks on the Storm Twins (docs/raid-roster-design.md §6). */
+const TRICKS = {
+  /** How far each Electromagnet tick drags a twin toward Coilemur (px). */
+  magnetPull: 45,
+  /** Wombolder's Rump Block stopping a Twin Rush. */
+  blockStagger: 15,
+};
 export class StormTwinsArena extends RaidArena {
   private beamHits = new Set<string>();
   private rushHits = new Set<string>();
@@ -110,8 +117,38 @@ export class StormTwinsArena extends RaidArena {
     owner: string,
     ability?: Ability,
   ) {
+    // Wombolder's Rump Block stops a Twin Rush dead and staggers that twin.
+    if (
+      this.hitBy === "twin-rush" &&
+      p.character === "wombolder" &&
+      this.has(p, "counter")
+    ) {
+      const twin = this.twins().find((t) => t.id === owner);
+      if (twin && !this.raid.drill) {
+        this.addBossStagger(twin, TRICKS.blockStagger);
+        this.raid.message = `${p.name}'s Rump Block stops ${twin.name}'s rush!`;
+      }
+      this.event("hit", p, 0xc9f4ff, 0, p.id);
+      return;
+    }
     const before = p.hp;
     super.damage(p, amount, owner, ability);
+    // Coilemur's Electromagnet drags a twin toward it (and its partner).
+    const magnet =
+      p.raidBoss && p.hp > 0 && ability?.id === "electromagnet"
+        ? this.heroes().find((q) => q.id === owner && q.hp > 0)
+        : undefined;
+    if (magnet) {
+      const room =
+          Math.hypot(magnet.x - p.x, magnet.y - p.y) -
+          S.radius -
+          RULES.radius -
+          10,
+        d = normalize(magnet.x - p.x, magnet.y - p.y),
+        pull = Math.min(TRICKS.magnetPull, Math.max(0, room));
+      p.x += d.x * pull;
+      p.y += d.y * pull;
+    }
     if (!p.raidBoss || p.hp >= before) return;
     if (ability?.id === "void-orb" && p.hp > 0) {
       const other = this.twins().find((t) => t !== p && t.hp > 0);
@@ -158,6 +195,29 @@ export class StormTwinsArena extends RaidArena {
   }
   protected override pattern() {
     return stormTwinsPattern(this.raid.phase, this.raid.trait);
+  }
+  /** Halcyra's Focus Shot pierces the first twin and hits the one behind it. */
+  override cast(p: Fighter, a: Ability, ex = false) {
+    const behind =
+      a.id === "focus-shot" && !p.raidBoss && p.hp > 0
+        ? this.onLine(p, a)[1]
+        : undefined;
+    super.cast(p, a, ex);
+    if (behind && behind.hp > 0) this.damage(behind, a.damage, p.id, a);
+  }
+  /** Living twins along a beam's aim, nearest first. */
+  private onLine(p: Fighter, a: Ability) {
+    const dir = { x: Math.cos(p.angle), y: Math.sin(p.angle) };
+    const along = (t: Fighter) => {
+      const s = (t.x - p.x) * dir.x + (t.y - p.y) * dir.y,
+        off = Math.abs((t.y - p.y) * dir.x - (t.x - p.x) * dir.y);
+      return s > 0 && s <= a.range && off < a.radius + this.hitRadius(t)
+        ? s
+        : Infinity;
+    };
+    return this.twins()
+      .filter((t) => t.hp > 0 && along(t) < Infinity)
+      .sort((m, n) => along(m) - along(n));
   }
   protected override finishMessage(won: boolean) {
     return won

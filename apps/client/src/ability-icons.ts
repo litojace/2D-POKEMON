@@ -205,6 +205,40 @@ const rosterIconSources: Record<string, string> = {
   Ghostfire: "Hollow Echo",
   "Haunted Lantern": "Night Wisp",
   "Void Orb": "Eclipse",
+  "Coil Swipe": "Cloak Rend",
+  "Static Clamp": "Charge Orb",
+  "Spark Tether": "Livewire Field",
+  "Ember Lob": "Cinder",
+  "Hot Coals": "Ember Ring",
+  "Tail Wrap": "Prism Guard",
+  "Chestnut Storm": "Solar Bloom",
+  "Rime Shard": "Ice Lance",
+  Hailstone: "Frost Flake",
+  "Frost Bloom": "Cold Front",
+  "Frost Breath": "Snow Drift",
+  Whiteout: "Crystal Blizzard",
+  "Aura Quill": "Prism Shot",
+  "Pinning Quill": "Tidal Blade",
+  "Mirage Perch": "Mirror Current",
+  "Skyline Lance": "Nova Ray",
+  Sunseed: "Bramble Seed",
+  "Yuzu Toss": "Wild Bloom",
+  "Warm Spring": "Root Garden",
+  Daybreak: "Solar Bloom",
+  Sanctuary: "Verdant Guard",
+  "Mallet Bop": "Bough Bash",
+  "Mochi Pound": "Stone Knuckle",
+  "Moon Gravity": "Seismic Crown",
+  "Full Moon": "Eclipse",
+  "Rump Bump": "Boulder Charge",
+  "Burrow Rush": "Dash",
+  "Pebble Spray": "Riptide Volley",
+  "Rump Block": "Mineral Guard",
+  Landslide: "Faultline",
+  "Ink Jet": "Droplet",
+  "Ink Strike": "Shard Combination",
+  "Ink Cloud": "Shadow Veil",
+  "Kraken Grasp": "Hollow Echo",
 };
 const elementColors: Record<string, string> = {
   Electric: electric,
@@ -232,6 +266,34 @@ abilityArtwork["Kindle"] = {
   color: elementColors.Light,
   art: '<path d="M14 42V22q0-4 4-4t4 4v-9q0-4 4-4t4 4v4q0-4 4-4t4 4v14q0 10-10 11Z"/><path d="M8 6v8M4 10h8m28-6v6m-3-3h6"/>',
 };
+// Line glyphs for moves no generic icon fits.
+const magnetGlyph =
+  '<path d="M10 8v16a12 12 0 0 0 24 0V8h-7v16a5 5 0 0 1-10 0V8Z"/><path d="M10 14h7m10 0h7"/>';
+const ownGlyphs: Record<string, [string, string]> = {
+  "Magnet Lash": ["Electric", magnetGlyph + '<path d="m44 4-7 8h6l-6 9"/>'],
+  Electromagnet: [
+    "Electric",
+    magnetGlyph + '<path d="M4 28q-2 12 8 16m32-16q2 12-8 16"/>',
+  ],
+  "Chestnut Mortar": [
+    "Fire",
+    '<path d="M24 12q13 7 13 20 0 9-13 9t-13-9q0-13 13-20Z"/><path d="M12 32q12 5 24 0M24 12V7m-12-3q8-4 18 0"/>',
+  ],
+  "Focus Shot": [
+    "Aura",
+    '<circle cx="24" cy="24" r="13"/><path d="M24 4v10m0 20v10M4 24h10m20 0h10"/><circle cx="24" cy="24" r="2" fill="currentColor"/>',
+  ],
+  "Moon Hop": [
+    "Psychic",
+    '<path d="M32 6a18 18 0 1 0 12 30A14 14 0 0 1 32 6Z"/><path d="m4 42 5-3m-1 7 5-4"/>',
+  ],
+  "Tentacle Lash": [
+    "Shadow",
+    '<path d="M8 44q2-26 22-30 12-2 12 8 0 8-8 8-6 0-6-6"/><circle cx="16" cy="32" r="1.5"/><circle cx="22" cy="22" r="1.5"/>',
+  ],
+};
+for (const [name, [element, art]] of Object.entries(ownGlyphs))
+  abilityArtwork[name] = { color: elementColors[element], art };
 export function abilityIcon(name: string) {
   // Champion moves have an illustrated scene (skill-art.ts); generic glyphs
   // (Jump, Attack, …) keep the line icons below.

@@ -1,5 +1,13 @@
 # Original creature overhaul and asset guide
 
+> **November 2026:** the roster is now sixteen. The eight below were joined
+> by Coilemur (Electric lemur), Pyranda (Fire red panda), Glacelle (Water sea
+> angel), Halcyra (Aura kingfisher), Sunbara (Light capybara), Astrabun
+> (Psychic moon rabbit), Wombolder (Earth wombat) and Shadopus (Shadow
+> octopus): kits and design in [new-champions](new-champions/README.md), art
+> in [fighter-assets.md](fighter-assets.md). This page describes the original
+> eight's overhaul and is kept as written.
+
 ## Result and scope
 
 Element Arena now has eight original playable identities and a new elemental emblem, replacing the previous roster artwork, names and playable branding. Selection uses eight compact themed cards, element filtering, larger previews, health/speed/basic statistics and all four skills with descriptions, icons and cooldowns.

@@ -55,7 +55,7 @@ export function reviewChampions(canvas = false) {
   const game = new Phaser.Game({
     type: canvas ? Phaser.CANVAS : Phaser.WEBGL,
     width: 1440,
-    height: 2080,
+    height: FIGHTER_IDS.length * 260,
     backgroundColor: "#10182b",
     scene: [Review],
     banner: false,
@@ -227,6 +227,21 @@ export function reviewChampions(canvas = false) {
           if (r.id === "duskveil" && (part === "legL" || part === "legR"))
             continue;
           if (r.id === "lumoth" && part === "tail") continue;
+          // Parts the newer champions don't have: Glacelle floats with no legs
+          // or tail, Sunbara and Wombolder have no tail to speak of, Halcyra's
+          // toes are strokes (like Mystowl's) and its folded wings cover its
+          // arms from behind, and the cotton tail and the curled tentacle only
+          // show from the side (Astrabun's sits over its back from behind).
+          if (r.id === "glacelle" && part !== "armL" && part !== "armR" && part !== "head")
+            continue;
+          if ((r.id === "sunbara" || r.id === "wombolder") && part === "tail")
+            continue;
+          if (r.id === "halcyra" && (part === "legL" || part === "legR"))
+            continue;
+          if (r.id === "halcyra" && dir === "up" && (part === "armL" || part === "armR"))
+            continue;
+          if ((r.id === "astrabun" || r.id === "shadopus") && dir === "up" && part === "tail")
+            continue;
           // Owl toes are line strokes: inspect the neck/tail rather than inventing a hip capsule.
           if (r.id === "mystowl" && (part === "legL" || part === "legR"))
             continue;
