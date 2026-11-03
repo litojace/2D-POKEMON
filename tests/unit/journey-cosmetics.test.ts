@@ -21,7 +21,13 @@ import {
   levelBar,
   resultXp,
 } from "../../apps/client/src/adventure-ui";
-import { wardrobeOwned } from "../../apps/client/src/wardrobe-ui";
+import {
+  FIT_SLOTS,
+  ownedFor,
+} from "../../apps/client/src/screens/fitting-room-view";
+// Everything the Wardrobe (the fitting room) lists for a fighter, all slots.
+const wardrobeOwned = (e: any, p: null, champion: any) =>
+  FIT_SLOTS.flatMap(([slot]) => ownedFor(slot, champion, e, p));
 import {
   SKINS,
   TONES,

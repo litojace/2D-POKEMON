@@ -91,11 +91,15 @@ for (const size of [
         `portrait-frame-header-${size.width}x${size.height}`,
       );
 
+      // The Wardrobe (the fitting room, UI remodel step 2): try a frame on,
+      // then Equip.
       await page.evaluate(() => (window as any).__account.showWardrobe());
-      await expect(page.locator(".wardrobe")).toBeVisible();
-      await page.click('.wardrobe-filters [data-wardrobe-slot="frame"]');
-      await page.click('[data-wardrobe-preview="galaxy-frame"]');
-      await page.click('[data-wardrobe-save="galaxy-frame"]');
+      await expect(
+        page.locator('.fit-room[data-fit-mode="wardrobe"]'),
+      ).toBeVisible();
+      await page.click('[data-fit-slot="frame"]');
+      await page.click('.fit-grid [data-ui-item="galaxy-frame"]');
+      await page.click("[data-fit-save]");
       await expect(headerFrame).toHaveAttribute(
         "data-portrait-frame",
         "galaxy-frame",
@@ -104,22 +108,22 @@ for (const size of [
       // second equip in the same Wardrobe must still save, not say the
       // session changed.
       await page.evaluate(() => (window as any).__account.generation++);
-      await page.click('[data-wardrobe-preview="conqueror"]');
-      await page.click('[data-wardrobe-save="conqueror"]');
+      await page.click('.fit-grid [data-ui-item="conqueror"]');
+      await page.click("[data-fit-save]");
       await expect(headerFrame).toHaveAttribute(
         "data-portrait-frame",
         "conqueror",
       );
-      await expect(page.locator(".wardrobe-status")).not.toContainText(
+      await expect(page.locator(".fit-status")).not.toContainText(
         "session changed",
       );
-      await page.click('[data-wardrobe-preview="galaxy-frame"]');
-      await page.click('[data-wardrobe-save="galaxy-frame"]');
+      await page.click('.fit-grid [data-ui-item="galaxy-frame"]');
+      await page.click("[data-fit-save]");
       await expect(headerFrame).toHaveAttribute(
         "data-portrait-frame",
         "galaxy-frame",
       );
-      await closePanel(page);
+      await page.locator(".fit-room .ui-close").click();
       await page.evaluate(() => (window as any).__choosePortrait("auralynx"));
       await expect(page.locator(".account-avatar")).toHaveAttribute(
         "data-champion",
@@ -172,11 +176,16 @@ for (const size of [
       );
       await closePanel(page);
 
+      // Take the frame off: the None tile, then Equip.
       await page.evaluate(() => (window as any).__account.showWardrobe());
-      await expect(page.locator(".wardrobe")).toBeVisible();
-      await page.click('[data-wardrobe-clear="frame"]');
+      await expect(
+        page.locator('.fit-room[data-fit-mode="wardrobe"]'),
+      ).toBeVisible();
+      await page.click('[data-fit-slot="frame"]');
+      await page.click('.fit-grid [data-ui-item="none"]');
+      await page.click("[data-fit-save]");
       await expect(headerFrame).toHaveCount(0);
-      await closePanel(page);
+      await page.locator(".fit-room .ui-close").click();
       await expect(page.locator("#account-profile .nav-level")).toBeVisible();
       expect(errors).toEqual([]);
     } finally {

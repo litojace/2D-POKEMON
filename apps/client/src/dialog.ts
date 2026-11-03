@@ -25,7 +25,7 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
   if (back) toolbar.append(back);
   toolbar.append(close);
   const tabs = content.querySelector<HTMLElement>(
-    ".raid-hub-tabs, .shop-tabs, .admin-tabs, .adventure-tabs",
+    ".raid-hub-tabs, .admin-tabs, .adventure-tabs",
   );
   const raidRoster = content.querySelector<HTMLElement>(".raid-boss-roster");
   dialog.classList.toggle("has-raid-roster", !!raidRoster);

@@ -195,6 +195,53 @@
   }
 }
 
+/* A split panel: a stage on the left (the fighter, large) beside the
+   panel's own head, body and action bar. Same outer box as a panel, so Close
+   still sits in its top-right corner; the two halves draw the surfaces. */
+.ui-panel.is-split {
+  display: grid;
+  grid-template-columns: var(--stage-w) minmax(0, 1fr);
+  gap: var(--sp-3);
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  overflow: visible;
+}
+.ui-split-stage,
+.ui-split-main {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--ui-line-2);
+  border-radius: var(--rad-xl);
+  box-shadow: var(--shadow-2);
+  overflow: hidden;
+}
+.ui-split-stage {
+  background: radial-gradient(
+    ellipse 90% 55% at 50% 100%,
+    color-mix(in srgb, var(--el, var(--ui-accent)) 22%, var(--ui-bg-2)),
+    var(--ui-bg-0) 72%
+  );
+}
+.ui-split-main {
+  display: flex;
+  flex-direction: column;
+  background: var(--ui-glass);
+  backdrop-filter: blur(10px);
+}
+@media (max-height: 500px) {
+  .ui-panel.is-split {
+    gap: var(--sp-2);
+  }
+  .ui-split-stage,
+  .ui-split-main {
+    border-radius: var(--rad-lg);
+  }
+}
+
 /* Low graphics (Settings → Graphics, as in the Plaza and Farm): no blur
    behind panels and no motion inside them. ui/hub-panel.ts sets the
    attribute. Screens appear at once in every setting: nothing waits on an
@@ -259,6 +306,12 @@
   align-content: start;
   gap: 6px;
   padding: 18px 20px 12px;
+}
+.ui-modal-sub {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
 }
 .ui-ledger {
   display: grid;

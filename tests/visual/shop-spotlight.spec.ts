@@ -43,9 +43,10 @@ for (const size of [
       const errors = await openHub(page);
       await page.evaluate(() => {
         (window as any).__choose("auralynx");
-        void (window as any).__account.showShop("champions");
+        void (window as any).__account.showShop("skins");
       });
-      const stage = page.locator(".shop-live-stage");
+      // The fitting room's stage (UI remodel step 2): the rig's own light.
+      const stage = page.locator(".fit-stage .shop-live-stage");
       await expect(stage).toHaveClass(/is-ready/);
       const audit = () =>
         stage.evaluate((el) => {
@@ -121,8 +122,8 @@ for (const size of [
           .toBeLessThan(0.01);
       }
       // The same renderer must still yield to item-only frame previews.
-      await page.click("[data-shop-tab=collections]");
-      await page.click("[data-shop-preview=candy-frame]");
+      await page.click("[data-ui-section=collections]");
+      await page.click(".fit-room [data-ui-item=candy-frame]");
       await expect(stage).toHaveClass(/is-frame/);
       await expect(stage.locator(":scope > canvas")).toHaveCount(0);
       expect(errors).toEqual([]);

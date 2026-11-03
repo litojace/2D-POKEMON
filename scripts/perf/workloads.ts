@@ -2,7 +2,7 @@
  * Repeatable combat workloads for the performance scripts.
  *
  * Every fighter wears a fully equipped, realistic appearance (a Shop skin for
- * every champion, all five raid slots, earned boss clears, a title and
+ * every champion that has one, all five raid slots, earned boss clears, a title and
  * mastery flair), because that is what a long-time player's snapshot carries
  * and what the network has to move.
  */
@@ -27,11 +27,13 @@ export function dressUp(p: Fighter, seat: number) {
   ];
   p.titleColor = ["#7dd3fc", "#fbbf24", "#c084fc", "#f472b6"][seat % 4];
   p.flair = (["Bronze", "Silver", "Gold", "Crystal"] as const)[seat % 4];
+  // Champions without Shop skins yet (the newest ones) wear their own look.
   p.championLooks = Object.fromEntries(
-    ROSTER.map((c, i) => {
+    ROSTER.flatMap((c, i) => {
       const skins = CHAMPION_SKINS.filter((s) => s.champion === c);
+      if (!skins.length) return [];
       const s = skins[(seat + i) % skins.length];
-      return [c, { skin: s.id, stage: s.rarity === "mythical" ? 2 : 1 }];
+      return [[c, { skin: s.id, stage: s.rarity === "mythical" ? 2 : 1 }]];
     }),
   );
   const bySlot = (slot: string) =>

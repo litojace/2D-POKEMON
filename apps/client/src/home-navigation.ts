@@ -211,7 +211,7 @@ export function setupHomeNavigation(menu: HTMLElement, settings: () => void) {
       const scroller = (
         document.activeElement as HTMLElement | null
       )?.closest<HTMLElement>(
-        ".wardrobe-inventory, .wardrobe-showcase, #friends-body, .friends-invite, .skill-preview, .selected-info, .fighter-preview-slot, .lobby-room-content, .showcase-roster",
+        ".ui-panel-body, #friends-body, .friends-invite, .skill-preview, .selected-info, .fighter-preview-slot, .lobby-room-content, .showcase-roster",
       );
       if (scroller && Math.abs(pad.axes[3] ?? 0) > 0.25)
         scroller.scrollBy({ top: pad.axes[3] * 10, behavior: "instant" });

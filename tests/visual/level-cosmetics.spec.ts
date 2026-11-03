@@ -155,17 +155,19 @@ for (const size of SIZES) {
       const page = await context.newPage();
       await fixtures(page);
       const errors = await openHub(page);
+      // The Wardrobe (the fitting room, UI remodel step 2).
       await page.evaluate(() => (window as any).__account.showWardrobe());
-      const wardrobe = page.locator(".wardrobe");
+      const wardrobe = page.locator('.fit-room[data-fit-mode="wardrobe"]');
       await expect(wardrobe).toBeVisible();
       for (const item of ITEMS) {
-        const tile = page.locator(`[data-wardrobe-preview="${item.id}"]`);
+        await page.click(`[data-fit-slot="${item.slot}"]`);
+        const tile = page.locator(`.fit-grid [data-ui-item="${item.id}"]`);
         await tile.scrollIntoViewIfNeeded();
         await expect(tile).toContainText(item.name);
         await expect(tile).toContainText("Journey reward");
-        await expect(tile.locator(".tier-chip")).toHaveText("Mythical");
+        await expect(tile.locator(".ui-rarity")).toHaveText("Mythical");
         // The tile shows the item itself.
-        const art = tile.locator(".wardrobe-item-art");
+        const art = tile.locator(".ui-tile-art");
         expect(
           inside(
             (await art.boundingBox()) as Box,
@@ -174,7 +176,7 @@ for (const size of SIZES) {
         ).toBe(true);
         await tile.click();
         await expect(tile).toHaveAttribute("aria-pressed", "true");
-        const stage = page.locator(".wardrobe .shop-live-stage");
+        const stage = page.locator(".fit-stage .shop-live-stage");
         if (item.slot === "frame") {
           const frame = stage.locator(`[data-portrait-frame="${item.id}"]`);
           await expect(frame).toHaveAttribute("data-tier", "mythic");
@@ -189,7 +191,7 @@ for (const size of SIZES) {
             ).toContain("data:image/svg+xml");
           // The whole artwork shows: nothing is clipped by the stage.
           const art = frameArt(item.id, (await frame.boundingBox()) as Box);
-          const room = (await stage.boundingBox()) as Box;
+          const room = await box(page, ".fit-stage");
           expect(
             inside(art, room),
             `${item.id} ${JSON.stringify({ art, room })}`,
@@ -209,24 +211,23 @@ for (const size of SIZES) {
               : "idle",
           );
         }
-        await expect(page.locator(".wardrobe-selection b")).toHaveText(
-          item.name,
-        );
+        await expect(page.locator(".fit-stage-name")).toHaveText(item.name);
         await page.waitForTimeout(item.slot === "victory" ? 1400 : 500);
         await snap(page, info, `level-cosmetic-wardrobe-${item.id}-${tag}`);
         // Equip it through the shared appearance route.
-        const save = page.locator(`[data-wardrobe-save="${item.id}"]`);
+        const save = page.locator("[data-fit-save]");
         expect(
-          inside((await save.boundingBox()) as Box, await box(page, "#dialog")),
+          inside(
+            (await save.boundingBox()) as Box,
+            await box(page, ".ui-panel-foot"),
+          ),
         ).toBe(true);
         await save.click();
         await expect
           .poll(() => page.evaluate(() => (window as any).__equips.at(-1)))
           .toEqual({ slot: item.slot, item: item.id });
         await expect(
-          page.locator(
-            `.wardrobe-worn-row [data-wardrobe-slot="${item.slot}"] b`,
-          ),
+          page.locator(`[data-fit-slot="${item.slot}"] b`),
         ).toHaveText(item.name);
       }
       // The last frame equipped is the one in the header.
@@ -234,9 +235,9 @@ for (const size of SIZES) {
         page.locator("#account-profile [data-portrait-frame]"),
       ).toHaveAttribute("data-portrait-frame", "element-master-frame");
       expect(await pageFits(page)).toBe(true);
-      expect(inside(await box(page, "#dialog"), { x: 0, y: 0, ...size })).toBe(
-        true,
-      );
+      expect(
+        inside(await box(page, ".fit-room"), { x: 0, y: 0, ...size }),
+      ).toBe(true);
       expect(errors).toEqual([]);
     } finally {
       await context.close();

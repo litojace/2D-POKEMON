@@ -85,6 +85,8 @@
   --head-h: 64px;
   --close: 44px;
   --sheet-w: 460px;
+  /* The stage a split panel shows its fighter on (fitting room, roster). */
+  --stage-w: 440px;
   /* Depth and motion. */
   --shadow-1: 0 4px 12px #0007;
   --shadow-2: 0 14px 34px #000a;
@@ -160,6 +162,12 @@
     --head-h: 44px;
     --close: 32px;
     --sheet-w: 380px;
+    --stage-w: 210px;
+  }
+}
+@media (max-width: 1300px) and (min-height: 501px) {
+  :root {
+    --stage-w: 390px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

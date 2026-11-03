@@ -39,6 +39,8 @@ const uncover = (el: HTMLElement) => {
 };
 
 export const openHubPanelNow = () => current?.panel;
+/** Fired on document when a hub screen opens or closes (the PWA updater waits for none). */
+export const PANEL_EVENT = "ui-panel-change";
 
 export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
   current?.close();
@@ -93,17 +95,29 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
   function close() {
     if (closed) return;
     closed = true;
+    gone?.disconnect();
     document.removeEventListener("keydown", onKey);
     for (const el of covered) uncover(el);
     railButton?.removeAttribute("aria-current");
     wrap.remove();
     if (current?.panel === panel) current = undefined;
     if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
+    document.dispatchEvent(new Event(PANEL_EVENT));
     o.onClose?.();
   }
 
   let root = mount(html);
   host.append(wrap);
+  // The Lobby leaves the page (Plaza, Farm, a match): its screen closes too,
+  // so nothing keeps listening or drawing out of sight.
+  const gone =
+    host !== document.body && host.parentNode
+      ? new MutationObserver(() => {
+          if (!host.isConnected) close();
+        })
+      : undefined;
+  if (gone && host.parentNode)
+    gone.observe(host.parentNode, { childList: true });
   railButton?.setAttribute("aria-current", "page");
   wrap.addEventListener("click", onClick);
   // Bubble phase: menus inside the Lobby close first and mark it handled.
@@ -136,6 +150,7 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
     close,
   };
   current = { panel, close };
+  document.dispatchEvent(new Event(PANEL_EVENT));
   return panel;
 }
 

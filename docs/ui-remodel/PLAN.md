@@ -477,6 +477,95 @@ phone panel.
   `tests/unit/server-clock.test.ts`, and a CORS integration test for the
   clock header.
 
+### Step 2: the fitting room (built 3 Nov 2026)
+
+Before and after: [Shop](images/step2/shop.webp),
+[Wardrobe](images/step2/wardrobe.webp); every size in
+[`images/step2/`](images/step2/).
+
+- `apps/client/src/screens/fitting-room-view.ts` (markup and rules, no DOM)
+  and `screens/fitting-room.ts` (behaviour) + `fitting-room.css` (layout
+  only). The Shop and the Wardrobe are one screen opened inside the Lobby
+  with `openHubPanel` (rail, HUD coin pill and Missions → Shop all lead
+  there). Shop | Wardrobe only swaps the catalogue; the stage, what you
+  are trying on and the action bar stay.
+- **Stage:** the live rig (`mountShopPreview`) on the left, the portrait
+  frame you'd wear top left (it opens the Frame slot), Entrance and
+  Victory top right, Hold to compare (pointer, Space or Enter held down)
+  and a Mythical's I / II / III at the bottom. A frame is shown large on
+  its portrait, with the boss frame's 0–5★ preview. **Low graphics:** a
+  still fighter, no rig, no blur; Hold to compare swaps two stills.
+- **Shop:** Today (the 20%-off pick as a wide card with its own countdown,
+  the other picks, the three sets nearest to complete, the Earn coins
+  line from `COINS`/`MISSION_COINS` with the mission coins left today),
+  Skins (fighter avatars, All / Owned / Not owned, rarity chips), Mythic
+  Hall (trial or awakening progress; a locked Mythical offers "Play as
+  …", which sets your Lobby fighter), Collections. It opens on today's
+  deal, already on the stage.
+- **Buying:** Buy opens `askConfirm()` (item, price and full price, your
+  coins, coins after, "Wear it now"); then `/api/shop/buy`, and the
+  screen shows the server's answer, or its reason when it refuses. Short
+  of coins, "Earn coins" (Missions) sits beside a disabled Buy, the same
+  size. Testers with unlimited coins see "Unlimited" and never "short";
+  testers with Mythic access skip trials and see every stage.
+- **Wardrobe:** the fighter row, six slot tabs showing what each slot
+  holds (a dot marks an unsaved change), owned items only plus "Original
+  look" / "No aura"… first and **More in the Shop** last (it opens the
+  Shop on that slot: Skins, Not owned; or Collections). Try several
+  things, then **Equip** once (one `/api/shop/equip` or `/api/raids/equip`
+  per changed slot; a Mythical saves the highest stage reached) or
+  **Revert**. Try-ons of things you don't own are never saved.
+- **Refreshes keep what the browser built:** `ui/patch.ts` (from the old
+  `shop-content.ts`) patches the screen from new markup, so a fresh copy
+  of your coins keeps the canvas, pictures, focus and scroll; a new star
+  level updates the frame in place (no flicker).
+- **Foundation additions:** a split panel (`.ui-panel.is-split`, stage +
+  catalogue, Close still in the corner) and `--stage-w` (440 / 390 /
+  210 px); a `sub` line in `confirmModal`; `hub-panel.ts` closes a screen
+  whose Lobby leaves the page (Plaza, Farm, a match) and fires
+  `ui-panel-change`, so a downloaded update waits until the screen
+  closes (`pwa.ts`); another rail item closes the open screen
+  (`main.ts`); `ui-measure.ts` checks only the confirmation's buttons
+  for finger size while it covers the screen; the gamepad's right stick
+  scrolls `.ui-panel-body`.
+- **Deleted:** `wardrobe-ui.ts`, `wardrobe.ts`, `shop-content.ts`, the
+  Shop markup in `shop-ui.ts` (475 → 74 lines: coin pills, countdown and
+  item pictures stay, Missions and Journey use them), `mobile-store.css`
+  (687 lines), `wardrobe.css` (836), the Shop/Wardrobe rules of
+  `cosmetic-review.css` (268 → 27) and 1,483 lines of Shop, Wardrobe and
+  rarity rules in `style.css`. A script removed only selectors built on
+  classes no source produces any more (keeping live alternatives inside
+  `:is()`), and Journey, Missions and Raids were compared pixel by pixel
+  before and after (identical apart from the moving countdown).
+- **Kept for later steps:** `.shop-preview`, `.shop-live-stage` and
+  `.shop-preview-fallback` rules (Journey's reward preview uses them, and
+  the live rig needs the last two; step 4) and `.shop-intro`,
+  `.shop-note`, `.shop-status` (Missions, step 4). `shop-preview-layout.ts`
+  is still used by the rig.
+- **Choices made while building:** on phones the stage shows only the
+  fighter and its tools (the name is in the action bar), and a
+  Mythical's I / II / III stand in a column at the stage's right edge, so
+  the stage never changes size. The rig's canvas is 400 px wide and not
+  pixel-ratio aware (as before), so the stage host is capped at 500 px:
+  the fighter is a little smaller than in the mockup on desktop but
+  stays sharp. Opening the Wardrobe from the Shop keeps the fighter on
+  the stage.
+- **Tests:** `tests/unit/fitting-room.test.ts` (prices and the
+  confirmation's numbers, trials, testers, filters, owned-only Wardrobe,
+  pending changes, try-on outfit, Low graphics), the frame-level and
+  hold-to-compare unit tests, and `tests/visual/fitting-room.spec.ts` at
+  the four sizes with `ui-measure.ts` (plus buying and a refusal,
+  Equip/Revert, keyboard, Low graphics, reduced motion, rail switching,
+  a late answer). `shop-stability`, `shop-preview-switching`,
+  `shop-spotlight`, `cosmetic-displays`, `cosmetic-review`,
+  `portrait-frames`, `frame-level-preview` and the soak test in
+  `battle-performance` moved to the new screen; what they check stays.
+  `tests/visual/shop-server.ts` stands in for the Shop's server calls.
+- **Frame times** (852×393, CPU throttled 4×, idle on the Shop; this
+  machine renders on the CPU, so only the comparison means anything):
+  before High 333 ms / Low 317 ms (the old Shop ran the rig on Low too);
+  after High 250 ms / Low 83 ms.
+
 ## Decisions (owner, 3 Nov 2026)
 
 | #   | Question                                        | Decision                                                                                                                                                         |
