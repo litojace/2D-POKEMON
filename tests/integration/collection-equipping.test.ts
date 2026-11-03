@@ -199,6 +199,11 @@ it("still equips earned raid rewards alongside collection pieces", async () => {
 });
 
 it("keeps every champion skin equippable through its separate champion slot", async () => {
+  // The catalog includes the newest champions' skins, which 053 seeds.
+  await db.exec("reset role");
+  await db.exec(
+    await readFile("supabase/migrations/053_new_champion_skins.sql", "utf8"),
+  );
   await login(admin);
   for (const skin of CHAMPION_SKINS) {
     await db.query("select public.arena_buy_item($1)", [skin.id]);

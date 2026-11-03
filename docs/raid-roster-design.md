@@ -1038,7 +1038,7 @@ skins) to earn that collection's frame for free.
   skin applies to your other champions.
 - The Shop and the Rewards tab both explain this in one line.
 
-### 10.6 Champion skin catalog (56 skins)
+### 10.6 Champion skin catalog (104 skins; 112 with the newest Mythicals)
 
 Every champion gets **3 Common, 2 Rare, 1 Epic and 1 Mythical**. Skins also
 belong to **collections** shared across champions:
@@ -1144,6 +1144,106 @@ belong to **collections** shared across champions:
 | Rare · Festival | **Paper Lantern** | A red paper lantern with tassels |
 | Epic · Garden | **Candlelight** | A melting-candle hood with wax drips. Ghostfire becomes candle flames, hits puff smoke, and KO is a blown-out wick |
 | **Mythical · Celestial** | **Eclipse** | **I:** the hood becomes a total eclipse with a dark sun and a bright ring; it fades in like an eclipse; victory: the ring blooms. **II:** the ring flares and shadow wisps drift. **III:** Haunted Lantern becomes an eclipse sigil, Void Orb a tiny black sun, and its name has a ring |
+
+#### The eight newest champions (48 skins so far)
+
+Coilemur, Pyranda, Glacelle, Halcyra, Sunbara, Astrabun, Wombolder and
+Shadopus have 3 Common, 2 Rare and 1 Epic each
+([migration 053](../supabase/migrations/053_new_champion_skins.sql)); their
+Mythicals come next. Their Rares and Epics join the Winter, Festival, Garden
+and Arcade collections, so those collections' free frame now needs these
+skins too (a frame someone already earned stays theirs). Skin art recolours
+markings with the skin (Pyranda's red-panda markings included); things a
+champion carries, like Pyranda's chestnuts or Coilemur's magnet, keep their
+colours.
+
+#### Coilemur (ring-tailed lemur, Electric)
+
+| Rarity | Skin | Look and effects |
+|---|---|---|
+| Common | Sifaka | Snow-white fur, chocolate mask |
+| Common | Copper Wire | Copper fur, teal sparks |
+| Common | Blackout | Charcoal fur, lime sparks |
+| Rare · Festival | **Firecracker** | Lucky red with a gold-banded tail; dashing pops confetti |
+| Rare · Winter | **Frost Fuse** | Icy fur and a bobble hat; dashing leaves snowflakes |
+| Epic · Arcade | **Tesla Coil** | Gunmetal fur with glowing circuits, teal skills and a crackling pulse. Hit sparks take its colour, KO is a puff in its colours, and a pulsing ring plays on the rig |
+
+#### Pyranda (red panda, Fire)
+
+| Rarity | Skin | Look and effects |
+|---|---|---|
+| Common | Snowy | White fur, smoky markings |
+| Common | Cinnamon | Cinnamon brown and cream |
+| Common | Plum | Plum fur, peach face |
+| Rare · Garden | **Chestnut Grove** | Chestnut brown with an acorn cap; dashing drops leaves |
+| Rare · Festival | **Street Vendor** | A folded paper hat and a striped coat; dashing puffs spice |
+| Epic · Winter | **Fireside Knit** | A cable-knit sweater, cocoa-gold skills and a flickering ember. Hit sparks take its colour, KO is a puff in its colours, and a flickering flame plays on the rig |
+
+#### Glacelle (sea angel, Water)
+
+| Rarity | Skin | Look and effects |
+|---|---|---|
+| Common | Deep Sea | Navy body, cyan glow |
+| Common | Lilac Tide | Lilac and pink |
+| Common | Seafoam | Mint and white |
+| Rare · Garden | **Water Lily** | Petal pink with a lotus bloom; dashing scatters petals |
+| Rare · Winter | **Snow Globe** | Snow drifting inside a glassy body; dashing leaves snowflakes |
+| Epic · Arcade | **Deep Glow** | An abyssal body with neon spots and magenta skills. Hit sparks take its colour, KO is a puff in its colours, and a shimmer of stars plays on the rig |
+
+#### Halcyra (kingfisher, Aura)
+
+| Rarity | Skin | Look and effects |
+|---|---|---|
+| Common | Teal Wing | Teal feathers, buff chest |
+| Common | Pied | Black and white feathers |
+| Common | Sunset | Coral and gold |
+| Rare · Festival | **Fletcher** | A feathered archer's cap and striped wings; dashing leaves gold dust |
+| Rare · Winter | **Winter Plume** | Frost-white feathers and earmuffs; dashing leaves snowflakes |
+| Epic · Festival | **Paper Crane** | Folded-paper feathers, crimson skills and a glinting crest. Hit sparks take its colour, KO is a puff in its colours, and a glint plays on the rig |
+
+#### Sunbara (capybara, Light)
+
+| Rarity | Skin | Look and effects |
+|---|---|---|
+| Common | Cocoa | Dark cocoa fur |
+| Common | Milk Tea | Milky beige and caramel |
+| Common | Rose Quartz | Soft rose pink |
+| Rare · Festival | **Bathhouse** | A folded towel and steamy stripes; dashing blows bubbles |
+| Rare · Winter | **Snow Day** | Snow-dusted fur and a knitted scarf; dashing leaves snowflakes |
+| Epic · Garden | **Sunflower** | A sunflower bloom, golden skills and a glint. Hit sparks take its colour, KO is a puff in its colours, and a glint plays on the rig |
+
+#### Astrabun (moon rabbit, Psychic)
+
+| Rarity | Skin | Look and effects |
+|---|---|---|
+| Common | Nightfall | Navy fur, pale gold glow |
+| Common | Sakura Mochi | Cherry pink and white |
+| Common | Matcha | Matcha green and cream |
+| Rare · Festival | **Mochi Maker** | A twisted headband for pounding mochi; dashing throws confetti |
+| Rare · Garden | **Clover** | Clover-green spots and a flower crown; dashing drops leaves |
+| Epic · Arcade | **Space Cadet** | A starry suit with an antenna, cyan skills and a glint. Hit sparks take its colour, KO is a puff in its colours, and a glint plays on the rig |
+
+#### Wombolder (wombat, Earth)
+
+| Rarity | Skin | Look and effects |
+|---|---|---|
+| Common | Sandy | Pale sand fur |
+| Common | Coal | Coal-grey fur, green glow |
+| Common | Ochre | Ochre and rust |
+| Rare · Garden | **Mushroom Hollow** | A spotted toadstool cap; dashing drops leaves |
+| Rare · Winter | **Snowplough** | Frosted fur and a bobble hat; dashing kicks up snow |
+| Epic · Arcade | **Gold Rush** | A miner's lamp helmet, gold-veined fur and gold skills. Hit sparks take its colour, KO is a puff in its colours, and a glint plays on the rig |
+
+#### Shadopus (octopus, Shadow)
+
+| Rarity | Skin | Look and effects |
+|---|---|---|
+| Common | Coral Reef | Coral orange and cream |
+| Common | Deep Blue | Deep blue and teal |
+| Common | Mimic | Sand and brown |
+| Rare · Festival | **Masquerade** | A jewelled masquerade mask; dashing throws confetti |
+| Rare · Garden | **Tide Pool** | Rock-pool speckles and a starfish clip; dashing blows bubbles |
+| Epic · Garden | **Anglerlight** | A glowing lure on a stalk, abyss-teal skills and a flicker. Hit sparks take its colour, KO is a puff in its colours, and a flickering flame plays on the rig |
 
 ### 10.7 All-fighter collections
 

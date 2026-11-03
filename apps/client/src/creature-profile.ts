@@ -1,6 +1,7 @@
 import type { CharacterId } from "@arena/shared";
 import type { CreaturePart, Mood } from "./creature-design";
 import type { Palette } from "./skins/skin-art";
+import { pyrandaMarks } from "./champion-markings";
 export type ArticulatedFacing = "left" | "right" | "up";
 export const PROFILE_HEAD_WIDTH = 1.08;
 export const PROFILE_FACE_PARTS: CreaturePart[] = [
@@ -1071,7 +1072,8 @@ export function creatureProfile(
       star(back ? 166 : 176, 52, 6, "#ffffff");
   }
   if (id === "pyranda") {
-    const dark = "#4a1a12";
+    const marks = pyrandaMarks(p);
+    const dark = marks.limb;
     const ear = (x: number, lean: number) =>
       path(
         `M${x - 13} 70Q${x - 12} 40 ${x + lean} 30Q${x + 16} 44 ${x + 10} 72Z`,
@@ -1079,7 +1081,7 @@ export function creatureProfile(
       ) +
       path(
         `M${x - 7} 66Q${x - 6} 46 ${x + lean * 0.8} 40Q${x + 9} 50 ${x + 5} 68Z`,
-        "#8a2a14",
+        marks.mark,
         ' stroke="none"',
       );
     const tail = (flip: boolean) => {
@@ -1090,7 +1092,7 @@ export function creatureProfile(
         ) +
         line(
           `M${x(146)} 142Q${x(158)} 138 ${x(166)} 128M${x(158)} 118Q${x(166)} 114 ${x(174)} 114`,
-          "#8a2a14",
+          marks.mark,
           6,
           0.35,
         ) +
@@ -1106,7 +1108,7 @@ export function creatureProfile(
       profiles.head = e(100, 88, 40, 33, face) + shine(76, 71, 22);
       profiles.tail = tail(false);
       profiles.body =
-        e(100, 139, 29, 29) + line("M82 132q18 8 36 0", "#8a2a14", 5, 0.3);
+        e(100, 139, 29, 29) + line("M82 132q18 8 36 0", marks.mark, 5, 0.3);
       profiles.scarf = line("M74 122L126 156", "#6b3a1e", 6);
     } else {
       profiles.ears = ear(114, 4);
@@ -1129,7 +1131,7 @@ export function creatureProfile(
           p.accent,
           ' stroke="none" transform="rotate(10 84 75)"',
         ) +
-        line("M90 102Q92 112 98 117", "#8a2a14", 4, 0.5) +
+        line("M90 102Q92 112 98 117", marks.mark, 4, 0.5) +
         path("M53 96Q57 94 59 97Q57 100 54 99Z", INK, ' stroke="none"') +
         line("M60 108q2 -2 4 0q2 2 4 0", p.dark, 1.6) +
         shine(76, 66, 20) +
@@ -1139,7 +1141,7 @@ export function creatureProfile(
       profiles.body =
         e(100, 121, 20, 17) +
         e(102, 141, 27, 27) +
-        e(94, 144, 15, 19, "#5a2216");
+        e(94, 144, 15, 19, marks.belly);
       // The chestnut bandolier, crossing the chest.
       profiles.scarf =
         line("M86 120L110 156", "#6b3a1e", 6) +

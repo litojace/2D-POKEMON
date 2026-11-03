@@ -12,7 +12,10 @@ import {
   awakeningStage,
 } from "../../packages/shared/src/shop";
 
-const migration = readFileSync("supabase/migrations/010_shop.sql", "utf8");
+/** 010 seeds the first catalog; 053 adds the eight newest champions' skins. */
+const migration =
+  readFileSync("supabase/migrations/010_shop.sql", "utf8") +
+  readFileSync("supabase/migrations/053_new_champion_skins.sql", "utf8");
 /** Missions are re-seeded (with the solo flag) by 014. */
 const missionMigration = readFileSync(
   "supabase/migrations/014_missions.sql",
@@ -54,7 +57,8 @@ describe("shop catalog", () => {
           )
         : line;
       if (!change) {
-        expect(migration).toContain(seedLine);
+        // The last row of a migration's insert has no trailing comma.
+        expect(migration).toContain(seedLine.replace(/,$/, ""));
         continue;
       }
       expect(line).toContain(`'${change.rarity}'`);
@@ -111,11 +115,17 @@ describe("shop catalog", () => {
   });
 
   it("has 7 skins for every champion: 3 Common, 2 Rare, 1 Epic, 1 Mythical", () => {
-    // The eight newest champions get their skins in the next catalog update;
-    // until then they have none.
+    // The eight newest champions' Mythicals come in the next catalog update;
+    // until then they have the other six.
+    for (const id of Object.keys(CHARACTERS).slice(8)) {
+      const mine = CHAMPION_SKINS.filter((s) => s.champion === id);
+      const count = (r: string) => mine.filter((s) => s.rarity === r).length;
+      expect(
+        [count("common"), count("rare"), count("epic"), count("mythical")],
+        id,
+      ).toEqual([3, 2, 1, 0]);
+    }
     const withSkins = Object.keys(CHARACTERS).slice(0, 8);
-    for (const id of Object.keys(CHARACTERS).slice(8))
-      expect(CHAMPION_SKINS.filter((s) => s.champion === id), id).toEqual([]);
     for (const id of withSkins) {
       const mine = CHAMPION_SKINS.filter((s) => s.champion === id);
       const count = (r: string) => mine.filter((s) => s.rarity === r).length;
@@ -130,7 +140,7 @@ describe("shop catalog", () => {
         id,
       ).toEqual([7, 3, 2, 1, 1]);
     }
-    expect(CHAMPION_SKINS).toHaveLength(56);
+    expect(CHAMPION_SKINS).toHaveLength(56 + 48);
   });
 
   it("uses unique ids across skins, collection pieces and bundles", () => {
