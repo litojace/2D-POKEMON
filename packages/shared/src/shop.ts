@@ -390,7 +390,7 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
     "celestial",
   ),
 
-  // The eight newest champions (their Mythicals come in a later update).
+  // The eight newest champions.
   skin(
     "coilemur",
     "sifaka",
@@ -436,6 +436,14 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
     "Gunmetal fur with glowing circuits, teal skills and a crackling pulse",
     "arcade",
   ),
+  skin(
+    "coilemur",
+    "cometcaller",
+    "Cometcaller",
+    "mythical",
+    "Starry midnight fur, a comet pendant and a crown of comets",
+    "celestial",
+  ),
 
   skin("pyranda", "snowy", "Snowy", "common", "White fur, smoky markings"),
   skin("pyranda", "cinnamon", "Cinnamon", "common", "Cinnamon brown and cream"),
@@ -464,6 +472,14 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
     "A cable-knit sweater, cocoa-gold skills and a flickering ember",
     "winter",
   ),
+  skin(
+    "pyranda",
+    "harvest-moon",
+    "Harvest Moon",
+    "mythical",
+    "Night-sky fur with ember spots, a lantern moon and a harvest moon",
+    "celestial",
+  ),
 
   skin("glacelle", "deep-sea", "Deep Sea", "common", "Navy body, cyan glow"),
   skin("glacelle", "lilac-tide", "Lilac Tide", "common", "Lilac and pink"),
@@ -491,6 +507,14 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
     "epic",
     "An abyssal body with neon spots and magenta skills",
     "arcade",
+  ),
+  skin(
+    "glacelle",
+    "polaris",
+    "Polaris",
+    "mythical",
+    "A starry night body, a north-star crown and aurora ribbons",
+    "celestial",
   ),
 
   skin(
@@ -526,6 +550,14 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
     "Folded-paper feathers, crimson skills and a glinting crest",
     "festival",
   ),
+  skin(
+    "halcyra",
+    "starfletch",
+    "Starfletch",
+    "mythical",
+    "Constellation feathers, a star-bow sigil and shooting-star arrows",
+    "celestial",
+  ),
 
   skin("sunbara", "cocoa", "Cocoa", "common", "Dark cocoa fur"),
   skin("sunbara", "milk-tea", "Milk Tea", "common", "Milky beige and caramel"),
@@ -553,6 +585,14 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
     "epic",
     "A sunflower bloom, golden skills and a glint",
     "garden",
+  ),
+  skin(
+    "sunbara",
+    "daybreak",
+    "Daybreak",
+    "mythical",
+    "Sunrise fur with dawn bands, a sun corona and a sunrise behind it",
+    "celestial",
   ),
 
   skin(
@@ -594,6 +634,14 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
     "A starry suit with an antenna, cyan skills and a glint",
     "arcade",
   ),
+  skin(
+    "astrabun",
+    "full-moon",
+    "Full Moon",
+    "mythical",
+    "Moon-gold fur with craters, a crescent tiara and a full moon",
+    "celestial",
+  ),
 
   skin("wombolder", "sandy", "Sandy", "common", "Pale sand fur"),
   skin("wombolder", "coal", "Coal", "common", "Coal-grey fur, green glow"),
@@ -621,6 +669,14 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
     "epic",
     "A miner's lamp helmet, gold-veined fur and gold skills",
     "arcade",
+  ),
+  skin(
+    "wombolder",
+    "saturnine",
+    "Saturnine",
+    "mythical",
+    "Banded planet fur, orbiting moonlets and a planetary ring",
+    "celestial",
   ),
 
   skin(
@@ -655,6 +711,14 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
     "epic",
     "A glowing lure on a stalk, abyss-teal skills and a flicker",
     "garden",
+  ),
+  skin(
+    "shadopus",
+    "nebula",
+    "Nebula",
+    "mythical",
+    "Nebula skin, star suckers and a spiral galaxy",
+    "celestial",
   ),
 ];
 

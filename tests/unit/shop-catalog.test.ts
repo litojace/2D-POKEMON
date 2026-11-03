@@ -12,10 +12,11 @@ import {
   awakeningStage,
 } from "../../packages/shared/src/shop";
 
-/** 010 seeds the first catalog; 053 adds the eight newest champions' skins. */
+/** 010 seeds the first catalog; 053 and 054 add the eight newest champions' skins. */
 const migration =
   readFileSync("supabase/migrations/010_shop.sql", "utf8") +
-  readFileSync("supabase/migrations/053_new_champion_skins.sql", "utf8");
+  readFileSync("supabase/migrations/053_new_champion_skins.sql", "utf8") +
+  readFileSync("supabase/migrations/054_new_champion_mythicals.sql", "utf8");
 /** Missions are re-seeded (with the solo flag) by 014. */
 const missionMigration = readFileSync(
   "supabase/migrations/014_missions.sql",
@@ -115,18 +116,7 @@ describe("shop catalog", () => {
   });
 
   it("has 7 skins for every champion: 3 Common, 2 Rare, 1 Epic, 1 Mythical", () => {
-    // The eight newest champions' Mythicals come in the next catalog update;
-    // until then they have the other six.
-    for (const id of Object.keys(CHARACTERS).slice(8)) {
-      const mine = CHAMPION_SKINS.filter((s) => s.champion === id);
-      const count = (r: string) => mine.filter((s) => s.rarity === r).length;
-      expect(
-        [count("common"), count("rare"), count("epic"), count("mythical")],
-        id,
-      ).toEqual([3, 2, 1, 0]);
-    }
-    const withSkins = Object.keys(CHARACTERS).slice(0, 8);
-    for (const id of withSkins) {
+    for (const id of Object.keys(CHARACTERS)) {
       const mine = CHAMPION_SKINS.filter((s) => s.champion === id);
       const count = (r: string) => mine.filter((s) => s.rarity === r).length;
       expect(
@@ -140,7 +130,10 @@ describe("shop catalog", () => {
         id,
       ).toEqual([7, 3, 2, 1, 1]);
     }
-    expect(CHAMPION_SKINS).toHaveLength(56 + 48);
+    expect(CHAMPION_SKINS).toHaveLength(7 * 16);
+    // Every Mythical belongs to the Celestial collection.
+    for (const s of CHAMPION_SKINS.filter((s) => s.rarity === "mythical"))
+      expect(s.collection, s.id).toBe("celestial");
   });
 
   it("uses unique ids across skins, collection pieces and bundles", () => {

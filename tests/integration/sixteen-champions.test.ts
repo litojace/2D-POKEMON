@@ -6,7 +6,7 @@ import { FIGHTER_IDS } from "../../packages/shared/src/index";
 import { CHAMPION_SKINS, skinPrice } from "../../packages/shared/src/shop";
 
 // Migration 052: the new champions can be your portrait and your farmer, and
-// SQL's roster matches FIGHTER_IDS. Migration 053: their Shop skins.
+// SQL's roster matches FIGHTER_IDS. Migrations 053 and 054: their Shop skins.
 let db: PGlite;
 const player = "00000000-0000-4000-8000-000000000511";
 const login = () =>
@@ -105,7 +105,7 @@ it("draws order faces from all sixteen", async () => {
   expect([...faces].sort()).toEqual([...FIGHTER_IDS].sort());
 });
 
-it("sells exactly the catalog's skins, the newest champions' included (053)", async () => {
+it("sells exactly the catalog's skins, the newest champions' included (053, 054)", async () => {
   const rows = await owner(
     "select id, champion, rarity, collection, price from public.arena_shop_items where kind = 'champion' and active order by id",
   );
@@ -194,4 +194,44 @@ it("keeps a collection frame someone already earned when new skins join it", asy
     );
   await owner("select public.arena_collection_bonus($1)", [player]);
   expect(await frame()).toBe(1);
+});
+
+it("gates a new champion's Mythical behind its 30-win Mythic Trial", async () => {
+  await owner(
+    "insert into public.arena_wallets(player_id, balance) values ($1, 20000) on conflict (player_id) do update set balance = 20000",
+    [player],
+  );
+  await login();
+  await expect(
+    db.query("select public.arena_buy_item('shadopus-nebula')"),
+  ).rejects.toThrow();
+  await owner(
+    "insert into public.arena_champion_wins(player_id, champion, wins) values ($1, 'shadopus', 30) on conflict (player_id, champion) do update set wins = 30",
+    [player],
+  );
+  await login();
+  await db.query("select public.arena_buy_item('shadopus-nebula')");
+  await db.query(
+    "select public.arena_equip_champion_skin('shadopus', 'shadopus-nebula', 1)",
+  );
+  // Stage II needs 25 wins in the skin itself.
+  await login();
+  await expect(
+    db.query(
+      "select public.arena_equip_champion_skin('shadopus', 'shadopus-nebula', 2)",
+    ),
+  ).rejects.toThrow(/not unlocked/);
+  await owner(
+    "insert into public.arena_skin_progress(player_id, skin_id, wins) values ($1, 'shadopus-nebula', 25)",
+    [player],
+  );
+  await login();
+  await db.query(
+    "select public.arena_equip_champion_skin('shadopus', 'shadopus-nebula', 2)",
+  );
+  const [look] = await owner(
+    "select skin, stage from public.arena_champion_looks where player_id = $1 and champion = 'shadopus'",
+    [player],
+  );
+  expect(look).toEqual({ skin: "shadopus-nebula", stage: 2 });
 });

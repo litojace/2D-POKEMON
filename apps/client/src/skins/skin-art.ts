@@ -94,7 +94,15 @@ export type Mythic =
   | "starweaver"
   | "oracle"
   | "world-shell"
-  | "eclipse";
+  | "eclipse"
+  | "cometcaller"
+  | "harvest-moon"
+  | "polaris"
+  | "starfletch"
+  | "daybreak"
+  | "full-moon"
+  | "saturnine"
+  | "nebula";
 export interface SkinArt {
   palette: Partial<Palette>;
   pattern?: { kind: PatternKind; color: string; color2?: string; opacity?: number; parts?: CreaturePart[] };
@@ -384,6 +392,14 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0x4ff8ff,
     detail: "pulse",
   },
+  "coilemur-cometcaller": {
+    palette: { light: "#e8f6ff", mid: "#3a5aa8", dark: "#0c1636", glow: "#9ff3ff", accent: "#ffd65b" },
+    pattern: { kind: "stars", color: "#e8f6ff", opacity: 0.85 },
+    trail: { kind: "star", colors: [0x9ff3ff, 0xffffff, 0xffd65b] },
+    skill: 0x9ff3ff,
+    detail: "shimmer",
+    mythic: "cometcaller",
+  },
   // ---------------------------------------------------------------- Pyranda
   "pyranda-snowy": { palette: { light: "#ffffff", mid: "#e8e8ee", dark: "#3a3a46", glow: "#ffcf4d", accent: "#ffffff" } },
   "pyranda-cinnamon": { palette: { light: "#ffe6cc", mid: "#a8622e", dark: "#3a1e10", glow: "#ffcf4d", accent: "#fff3e0" } },
@@ -406,6 +422,14 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0xffb44d,
     detail: "flicker",
   },
+  "pyranda-harvest-moon": {
+    palette: { light: "#ffe6c0", mid: "#3e2c66", dark: "#140a24", glow: "#ffd27a", accent: "#ffe6c0" },
+    pattern: { kind: "glowdots", color: "#ffb04a", opacity: 0.85 },
+    trail: { kind: "leaf", colors: [0xff8a3a, 0xffd27a, 0xc8501e] },
+    skill: 0xffd27a,
+    detail: "glint",
+    mythic: "harvest-moon",
+  },
   // --------------------------------------------------------------- Glacelle
   "glacelle-deep-sea": { palette: { light: "#8fd0f0", mid: "#2a5a9a", dark: "#0a1a3a", glow: "#4ffff0", accent: "#5fa8d8" } },
   "glacelle-lilac-tide": { palette: { light: "#fff4ff", mid: "#d6b8ff", dark: "#4a2a7a", glow: "#ff8fc8", accent: "#f0e0ff" } },
@@ -426,6 +450,14 @@ export const SKIN_ART: Record<string, SkinArt> = {
     trail: { kind: "bubble", colors: [0xff5fd8, 0x4ffff0] },
     skill: 0xff5fd8,
     detail: "shimmer",
+  },
+  "glacelle-polaris": {
+    palette: { light: "#e8f0ff", mid: "#3a4aa0", dark: "#0a0f30", glow: "#fff6c8", accent: "#9fe8ff" },
+    pattern: { kind: "stars", color: "#fff6c8", opacity: 1 },
+    trail: { kind: "snow", colors: [0xfff6c8, 0x9fe8ff] },
+    skill: 0xfff6c8,
+    detail: "frost",
+    mythic: "polaris",
   },
   // ---------------------------------------------------------------- Halcyra
   "halcyra-teal-wing": { palette: { light: "#f0fff8", mid: "#2fb8a8", dark: "#0f3a3a", glow: "#c9fff4", accent: "#f0c890" } },
@@ -450,6 +482,14 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0xff4f5a,
     detail: "glint",
   },
+  "halcyra-starfletch": {
+    palette: { light: "#dfe8ff", mid: "#2a3a8a", dark: "#0a0e2a", glow: "#ffe9a0", accent: "#ffb04a" },
+    pattern: { kind: "constellation", color: "#ffe9a0", opacity: 1 },
+    trail: { kind: "star", colors: [0xffe9a0, 0xffffff] },
+    skill: 0xffe9a0,
+    detail: "glint",
+    mythic: "starfletch",
+  },
   // ---------------------------------------------------------------- Sunbara
   "sunbara-cocoa": { palette: { light: "#e8c8a8", mid: "#6a3e22", dark: "#24140a", glow: "#ffe066", accent: "#ffb732" } },
   "sunbara-milk-tea": { palette: { light: "#fffaf0", mid: "#e6c8a0", dark: "#5a4030", glow: "#ffe8a0", accent: "#c8945a" } },
@@ -472,6 +512,14 @@ export const SKIN_ART: Record<string, SkinArt> = {
     trail: { kind: "petal", colors: [0xffd84a, 0xffb732] },
     skill: 0xffd84a,
     detail: "glint",
+  },
+  "sunbara-daybreak": {
+    palette: { light: "#fff0e0", mid: "#ff9a6a", dark: "#5a1e1a", glow: "#ffe066", accent: "#ffb732" },
+    pattern: { kind: "bands", color: "#ffe066", opacity: 0.45, parts: ["body", "head"] },
+    trail: { kind: "dust", colors: [0xffe066, 0xffb732, 0xff9a6a] },
+    skill: 0xffe066,
+    detail: "pulse",
+    mythic: "daybreak",
   },
   // --------------------------------------------------------------- Astrabun
   "astrabun-nightfall": { palette: { light: "#c8d0ff", mid: "#3a4a8a", dark: "#0e1430", glow: "#ffe9a3", accent: "#ffe9a3" } },
@@ -496,6 +544,14 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0x6ff0ff,
     detail: "glint",
   },
+  "astrabun-full-moon": {
+    palette: { light: "#fffbe8", mid: "#f0dc98", dark: "#4a3a1a", glow: "#fff3b0", accent: "#c8a040" },
+    pattern: { kind: "spots", color: "#c8b070", opacity: 0.55 },
+    trail: { kind: "star", colors: [0xfff3b0, 0xffffff] },
+    skill: 0xfff3b0,
+    detail: "shimmer",
+    mythic: "full-moon",
+  },
   // -------------------------------------------------------------- Wombolder
   "wombolder-sandy": { palette: { light: "#fff6e0", mid: "#e0c890", dark: "#5a4a2a", glow: "#9bd36a", accent: "#a89a80" } },
   "wombolder-coal": { palette: { light: "#b0b0b8", mid: "#55555e", dark: "#18181c", glow: "#7fff8a", accent: "#3a3a44" } },
@@ -519,6 +575,14 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0xffc93d,
     detail: "glint",
   },
+  "wombolder-saturnine": {
+    palette: { light: "#ffe8c8", mid: "#c88a5a", dark: "#3a2010", glow: "#ffd27a", accent: "#8a6a9a" },
+    pattern: { kind: "bands", color: "#ffe0b0", opacity: 0.55 },
+    trail: { kind: "dust", colors: [0xffd27a, 0xc8a8ff] },
+    skill: 0xffd27a,
+    detail: "glint",
+    mythic: "saturnine",
+  },
   // --------------------------------------------------------------- Shadopus
   "shadopus-coral-reef": { palette: { light: "#fff0e0", mid: "#ff7a4f", dark: "#5a1a10", glow: "#ffe36b", accent: "#2a0a06" } },
   "shadopus-deep-blue": { palette: { light: "#d0f0ff", mid: "#2a6ab8", dark: "#081a3a", glow: "#4ffff0", accent: "#04101e" } },
@@ -540,6 +604,14 @@ export const SKIN_ART: Record<string, SkinArt> = {
     trail: { kind: "bubble", colors: [0x5ff8e0, 0xc8fff4] },
     skill: 0x5ff8e0,
     detail: "flicker",
+  },
+  "shadopus-nebula": {
+    palette: { light: "#c8a8ff", mid: "#3a1a6a", dark: "#0a0420", glow: "#ff6bd6", accent: "#050210" },
+    pattern: { kind: "stars", color: "#ffffff", opacity: 0.9 },
+    trail: { kind: "star", colors: [0xff6bd6, 0x8ad8ff, 0xffffff] },
+    skill: 0xff6bd6,
+    detail: "shimmer",
+    mythic: "nebula",
   },
 };
 

@@ -158,8 +158,8 @@ often a pure utility skill comes back, so bots take the rites that use them.
    them be portraits and farmers (no farm perk yet). The list as planned: front, side and back art on the rig, portraits and selection
    art (`scripts/export-fighters.ts`), effects and illustrated icons for 40
    skills, fighter select, raid champion tricks, docs.
-3. Skins: 48 of 56 done. Each has 3 Common, 2 Rare and 1 Epic
-   (`packages/shared/src/shop.ts`, art in `apps/client/src/skins/skin-art.ts`,
-   shop rows in migration 053; the catalog is in
-   [raid-roster-design.md](../raid-roster-design.md) §10.6). Still to do: one
-   Mythical each, with three Awakening stages.
+3. Skins: done. Each has 3 Common, 2 Rare, 1 Epic and 1 Mythical with three
+   Awakening stages (`packages/shared/src/shop.ts`; art in
+   `apps/client/src/skins/skin-art.ts`, `mythic-art.ts` and `skin-fx.ts`; shop
+   rows in migrations 053 and 054; the catalog is in
+   [raid-roster-design.md](../raid-roster-design.md) §10.6).

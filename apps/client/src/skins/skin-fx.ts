@@ -405,6 +405,188 @@ function mythic(ctx: FxContext, art: SkinArt, stage: number) {
         }
       break;
     }
+    default:
+      newMythic(ctx, art, stage);
+  }
+}
+
+/** A short streak behind a moving point (comets, shooting stars). */
+function streak(g: Phaser.GameObjects.Graphics, x: number, y: number, dx: number, dy: number, color: number, sc: number) {
+  g.lineStyle(2.4 * sc, color, 0.35).lineBetween(x, y, x - dx, y - dy);
+  g.lineStyle(1 * sc, 0xffffff, 0.8).lineBetween(x, y, x - dx * 0.6, y - dy * 0.6);
+}
+
+/** Awakening effects for the eight newest champions' Mythicals. */
+function newMythic(ctx: FxContext, art: SkinArt, stage: number) {
+  const { g, under, x, y, sc, now } = ctx;
+  const color = art.skill ?? 0xffffff;
+  const mid = y - 10 * sc;
+  switch (art.mythic) {
+    case "cometcaller": {
+      // Comets streak past; at II two orbit, at III a crown of comets circles the head.
+      if (ctx.ambient && ctx.chance(stage >= 3 ? 4 : 1.6, ctx.dt))
+        ctx.emit({ x: x + (Math.random() - 0.7) * 50 * sc, y: mid - (22 + Math.random() * 16) * sc, vx: 110, vy: 55, life: 0.45, size: 2.6 * sc, color, shape: "ray" });
+      if (stage >= 2)
+        for (let i = 0; i < 2; i++) {
+          const o = orbit(ctx, i, 2, 760, 28, 10, -12);
+          const a = now / 760 + (i / 2) * Math.PI * 2;
+          const tgt = o.front ? g : under;
+          streak(tgt, o.x, o.y, -Math.sin(a) * 9 * sc, Math.cos(a) * 3 * sc, color, sc);
+          sparkle(tgt, o.x, o.y, 2.6 * sc, 0xffffff, 0.95);
+        }
+      if (stage >= 3)
+        for (let i = 0; i < 3; i++) {
+          const a = now / 900 + (i / 3) * Math.PI * 2;
+          const cx = ctx.headX + Math.cos(a) * 15 * sc,
+            cy = ctx.headY - 14 * sc + Math.sin(a) * 4 * sc;
+          streak(g, cx, cy, -Math.sin(a) * 7 * sc, Math.cos(a) * 2 * sc, color, sc);
+          sparkle(g, cx, cy, 2.2 * sc, 0xffd65b, 0.95);
+        }
+      break;
+    }
+    case "harvest-moon": {
+      // Ember leaves rise; II warms the ground; III hangs a moon glow and lanterns.
+      if (ctx.ambient && ctx.chance(stage >= 2 ? 8 : 5, ctx.dt))
+        ctx.emit({ x: x + (Math.random() - 0.5) * 34 * sc, y: mid + (Math.random() - 0.2) * 16 * sc, vx: (Math.random() - 0.5) * 14, vy: -34 - Math.random() * 20, life: 0.9, size: 2.2 * sc, color: Math.random() < 0.5 ? 0xff8a3a : 0xffd27a, shape: "leaf", spin: (Math.random() - 0.5) * 8, behind: true });
+      if (stage >= 2) groundRing(ctx, 54 * sc, 0xffb04a, 0.3 + Math.sin(now / 420) * 0.15, 2 * sc);
+      if (stage >= 3) {
+        under.fillStyle(0xffd27a, 0.14).fillCircle(ctx.headX, ctx.headY + 16 * sc, 40 * sc);
+        for (let i = 0; i < 3; i++) {
+          const o = orbit(ctx, i, 3, 1500, 32, 10, -16);
+          (o.front ? g : under).fillStyle(0xffd27a, 0.95).fillCircle(o.x, o.y, 2.6 * sc).fillStyle(0xffb04a, 0.3).fillCircle(o.x, o.y, 5 * sc);
+        }
+      }
+      break;
+    }
+    case "polaris": {
+      if (ctx.ambient && ctx.chance(4, ctx.dt))
+        ctx.emit({ x: x + (Math.random() - 0.5) * 36 * sc, y: mid - 20 * sc, vx: 0, vy: 14, life: 0.9, size: 2 * sc, color: 0xfff6c8, shape: "flake" });
+      if (stage >= 2) {
+        // The north star's rays turn slowly over the crown.
+        const sx = ctx.headX,
+          sy = ctx.headY - 10 * sc;
+        for (let i = 0; i < 8; i++) {
+          const a = now / 2600 + (i / 8) * Math.PI * 2,
+            len = (i % 2 ? 9 : 16) * sc;
+          g.lineStyle(1.2 * sc, 0xfff6c8, 0.5).lineBetween(sx + Math.cos(a) * 6 * sc, sy + Math.sin(a) * 6 * sc, sx + Math.cos(a) * len, sy + Math.sin(a) * len);
+        }
+      }
+      if (stage >= 3)
+        // Aurora curtains waving behind.
+        for (const [k, col] of [[0, 0x3fd8a8], [1, 0xc8a8ff]] as const) {
+          under.lineStyle(3 * sc, col, 0.35).beginPath();
+          for (let i = 0; i <= 20; i++) {
+            const t = i / 20,
+              px = x + (t - 0.5) * 80 * sc,
+              py = mid - (24 + k * 8) * sc + Math.sin(now / 380 + t * 6 + k) * 4 * sc;
+            if (i === 0) under.moveTo(px, py);
+            else under.lineTo(px, py);
+          }
+          under.strokePath();
+        }
+      break;
+    }
+    case "starfletch": {
+      // Shooting-star arrows fly where it faces; II and III add orbiting, then linked, stars.
+      if (ctx.ambient && ctx.chance(stage >= 3 ? 3 : 1.4, ctx.dt))
+        ctx.emit({ x, y: mid, vx: Math.cos(ctx.angle) * 170, vy: Math.sin(ctx.angle) * 170 - 10, life: 0.4, size: 2.6 * sc, color, shape: "ray" });
+      if (stage >= 2) {
+        const pts = Array.from({ length: 3 }, (_, i) => orbit(ctx, i, 3, 1000, 30, 11, -14));
+        if (stage >= 3) {
+          g.lineStyle(1 * sc, color, 0.4);
+          for (let i = 0; i < 3; i++) {
+            const a = pts[i],
+              b = pts[(i + 1) % 3];
+            if (a.front && b.front) g.lineBetween(a.x, a.y, b.x, b.y);
+          }
+          const k = (now / 1700) % 1;
+          g.lineStyle(1.4 * sc, color, 0.45 * (1 - k)).strokeCircle(x, mid, (14 + k * 24) * sc);
+        }
+        for (const o of pts) sparkle(o.front ? g : under, o.x, o.y, 2.6 * sc, color, 0.95);
+      }
+      break;
+    }
+    case "daybreak": {
+      if (ctx.ambient && ctx.chance(6, ctx.dt))
+        ctx.emit({ x: x + (Math.random() - 0.5) * 30 * sc, y: mid + 6 * sc, vx: 0, vy: -26 - Math.random() * 14, life: 0.8, size: 1.6 * sc, color: Math.random() < 0.5 ? 0xffe066 : 0xffb732, shape: "dot", behind: true });
+      if (stage >= 2)
+        for (let i = 0; i < 2; i++) {
+          const k = (now / 1600 + i / 2) % 1;
+          groundRing(ctx, (40 + k * 36) * sc, 0xffe0c0, 0.45 * (1 - k), 1.6 * sc);
+        }
+      if (stage >= 3) {
+        // A sunrise on the horizon behind it, rays slowly turning.
+        const sx = x,
+          sy = groundY(ctx) - 4 * sc;
+        under.fillStyle(0xffc86a, 0.16).fillCircle(sx, sy, 42 * sc);
+        for (let i = 0; i < 9; i++) {
+          const a = Math.PI + 0.15 + (i / 8) * (Math.PI - 0.3) + Math.sin(now / 1800) * 0.05;
+          under.lineStyle(2.4 * sc, 0xffb732, 0.4).lineBetween(sx + Math.cos(a) * 46 * sc, sy + Math.sin(a) * 46 * sc, sx + Math.cos(a) * 58 * sc, sy + Math.sin(a) * 58 * sc);
+        }
+      }
+      break;
+    }
+    case "full-moon": {
+      if (ctx.ambient && ctx.chance(4, ctx.dt))
+        ctx.emit({ x: x + (Math.random() - 0.5) * 44 * sc, y: mid - 18 * sc, vx: 0, vy: 10, life: 0.9, size: 1.8 * sc, color: 0xfff3b0, shape: "star" });
+      if (stage >= 2)
+        for (let i = 0; i < 2; i++) {
+          const o = orbit(ctx, i, 2, 1200, 28, 10, -14);
+          const tgt = o.front ? g : under;
+          tgt.fillStyle(0xf6f4ff, 0.95).fillCircle(o.x, o.y, 3.4 * sc);
+          tgt.fillStyle(0xc8c8f0, 0.9).fillCircle(o.x + 1 * sc, o.y + 0.6 * sc, 1.2 * sc);
+        }
+      if (stage >= 3) {
+        const k = 0.5 + Math.sin(now / 700) * 0.5;
+        under.fillStyle(0xfff3b0, 0.08 + k * 0.08).fillCircle(ctx.headX, ctx.headY + 12 * sc, (34 + k * 4) * sc);
+      }
+      break;
+    }
+    case "saturnine": {
+      if (ctx.ambient && ctx.chance(3, ctx.dt))
+        ctx.emit({ x: x + (Math.random() - 0.5) * 40 * sc, y: mid + (Math.random() - 0.5) * 20 * sc, vx: (Math.random() - 0.5) * 8, vy: -6, life: 1, size: 1.3 * sc, color: 0xffd27a, shape: "dot" });
+      if (stage >= 2)
+        for (const [i, col] of [[0, 0xe8e0ff], [1, 0xffd27a]] as const) {
+          const o = orbit(ctx, i, 2, 1400, 34, 12, -8);
+          (o.front ? g : under).fillStyle(col, 1).fillCircle(o.x, o.y, (i ? 2.6 : 3.4) * sc);
+        }
+      if (stage >= 3)
+        // A ring of tiny rocks turning around the body (behind on its far side).
+        for (let i = 0; i < 24; i++) {
+          const o = orbit(ctx, i, 24, 3200, 40, 9, -6);
+          (o.front ? g : under).fillStyle(i % 3 ? 0xc8a8ff : 0xfff0d8, 0.9).fillCircle(o.x, o.y, 1.4 * sc);
+        }
+      break;
+    }
+    case "nebula": {
+      if (ctx.ambient && ctx.chance(stage >= 2 ? 10 : 6, ctx.dt))
+        ctx.emit({ x: x + (Math.random() - 0.5) * 36 * sc, y: y + (Math.random() - 0.3) * 10 * sc, vx: (Math.random() - 0.5) * 10, vy: -10 - Math.random() * 10, life: 0.9, size: 1.5 * sc, color: Math.random() < 0.5 ? 0xff6bd6 : 0x8ad8ff, shape: "dot", behind: true });
+      if (stage >= 2)
+        for (let i = 0; i < 4; i++) {
+          const o = orbit(ctx, i, 4, 900, 30, 10, -14);
+          sparkle(o.front ? g : under, o.x, o.y, 2.4 * sc, i % 2 ? 0x8ad8ff : 0xff9be6, 0.9);
+        }
+      if (stage >= 3) {
+        // A galaxy swirl turning behind it.
+        const cx = ctx.headX,
+          cy = ctx.headY + 14 * sc;
+        under.fillStyle(0x2a0f4a, 0.35).fillCircle(cx, cy, 30 * sc);
+        for (let k = 0; k < 3; k++) {
+          under.lineStyle(2 * sc, k % 2 ? 0x8ad8ff : 0xff6bd6, 0.55).beginPath();
+          for (let i = 0; i <= 16; i++) {
+            const t = i / 16,
+              a = now / 1400 + (k * 2 * Math.PI) / 3 + t * 2.4,
+              r = (4 + t * 28) * sc;
+            const px = cx + Math.cos(a) * r,
+              py = cy + Math.sin(a) * r * 0.85;
+            if (i === 0) under.moveTo(px, py);
+            else under.lineTo(px, py);
+          }
+          under.strokePath();
+        }
+      }
+      break;
+    }
   }
 }
 
