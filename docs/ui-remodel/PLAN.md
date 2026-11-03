@@ -387,9 +387,13 @@ Wardrobe only swaps the catalogue; the stage, try-on and action bar stay.
 ## Pull requests, in order
 
 Each step is one pull request into `main`, with before-and-after screenshots
-in the description. Before every push: `npm run typecheck`, `npm run test`,
-`npm run build`, and the visual tests for the screens it changes (Playwright
-on `/opt/pw-browsers/chromium-1243/chrome-linux64/chrome`).
+in the description. Before every push: `npm run typecheck`, `npm run test`
+and `npm run build`. Still run the visual tests for the screens it changes
+(Playwright on `/opt/pw-browsers/chromium-1243/chrome-linux64/chrome`), but
+don't hold a push for them (owner, 3 Nov): push once the three checks pass,
+let the visual tests (local and the `visual` CI job) finish afterwards, and
+fix any failure in a follow-up push. Say in the report which visual tests
+had passed at push time.
 
 | #   | Pull request                   | Ships                                                                                                                                                                                                                                                                                                                                                                                   | Deletes                                                                                                                                                 |
 | --- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
