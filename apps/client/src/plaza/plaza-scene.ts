@@ -28,6 +28,7 @@ import {
   PLAZA_LEADER,
   PLAZA_LED,
   PLAZA_PADS,
+  PLAZA_PATHS,
   PLAZA_PHOTO,
   PLAZA_PITCH,
   PLAZA_POND,
@@ -321,85 +322,8 @@ export function openPlaza(options) {
           }
       }
     };
-    path(
-      [
-        [SQ.x, SQ.y + 200],
-        [SQ.x, GATE.y + 30],
-      ],
-      116,
-    );
-    path(
-      [
-        [SQ.x + 330, SQ.y],
-        [PITCH.x0 + 10, SQ.y],
-      ],
-      104,
-    );
-    path(
-      [
-        [SQ.x - 350, SQ.y],
-        [TRACK.cx + TRACK.ro[0] - 30, TRACK.cy],
-      ],
-      104,
-    );
-    path(
-      [
-        [SQ.x, SQ.y - 200],
-        [SQ.x, WALK.y1 - 10],
-      ],
-      116,
-    );
-    path(
-      [
-        [SQ.x + 220, SQ.y - 180],
-        [CAFE.x - 40, CAFE.y + 50],
-      ],
-      80,
-    );
-    path(
-      [
-        [SQ.x - 220, SQ.y - 180],
-        [PHOTO.x + 20, PHOTO.y + 50],
-      ],
-      80,
-    );
-    path(
-      [
-        [SQ.x - 240, SQ.y + 200],
-        [BOARD.x + 30, BOARD.y - 10],
-      ],
-      72,
-    );
-    path(
-      [
-        [SQ.x + 120, GATE.y - 200],
-        [POND.x - 170, POND.y - 40],
-      ],
-      72,
-    );
-    path(
-      [
-        [TRACK.cx - 40, TRACK.cy - TRACK.ro[1] - 10],
-        [LEADER.x + 20, LEADER.y + 30],
-      ],
-      64,
-    );
-    path(
-      [
-        [410, 330],
-        [410, 470],
-        [900, 520],
-      ],
-      64,
-    );
-    path(
-      [
-        [2300, 330],
-        [2300, 460],
-        [1900, 500],
-      ],
-      64,
-    );
+    // The paths are shared (PLAZA_PATHS), so scenery keeps off them.
+    for (const p of PLAZA_PATHS) path(p.pts, p.w);
     // plaza square: concentric pavers + elemental mosaic
     g.save();
     g.translate(SQ.x, SQ.y);

@@ -220,12 +220,16 @@ export function openFarm(options) {
   const FW = COLS * PW + (COLS - 1) * GAP,
     FH = ROWS * PH + (ROWS - 1) * GAP,
     FCX = OX + FW / 2;
+  // The back row (home, mill, orders board, market, barn) stands 50 px
+  // behind the field's fence, so a lane runs in front of it: the barn's door
+  // and the market's counter no longer open onto the fence, and the lane
+  // from home to the barn shows instead of running under it.
   const PAST = { x0: 1480, x1: 1720, y0: 420, y1: 664 },
-    HOUSE = { x: 190, y: 342 },
-    MILL = { x: 470, y: 328 },
-    BOARDP = { x: 700, y: 332 },
-    STALL = { x: 930, y: 328 },
-    BARN = { x: 1250, y: 346 },
+    HOUSE = { x: 190, y: 292 },
+    MILL = { x: 470, y: 278 },
+    BOARDP = { x: 700, y: 282 },
+    STALL = { x: 930, y: 278 },
+    BARN = { x: 1250, y: 296 },
     WELL = { x: 150, y: 700 },
     DOGH = { x: 1600, y: 810 },
     POND = { x: 250, y: 990, rx: 150, ry: 56 };
@@ -3116,8 +3120,8 @@ export function openFarm(options) {
     ctx.translate(-cam.x, -cam.y);
     ctx.drawImage(bg, WX0, WY0);
     [
-      [338, 280, "apple", 0.62],
-      [812, 240, "cherry", 0.6],
+      [338, 230, "apple", 0.62],
+      [812, 190, "cherry", 0.6],
       [44, 400, "pine", 0.85],
       [1480, 340, "round", 0.7],
       [1700, 330, "pine", 0.8],

@@ -239,11 +239,11 @@ export const PLAZA_TREES: readonly { x: number; y: number; kind: string }[] = (
     [1800, 210, "cherry"],
     [2660, 600, "pine"],
     [2660, 1280, "mint"],
-    [2520, 1610, "autumn"],
+    [2520, 1520, "autumn"],
     [1880, 1530, "round"],
     [930, 1180, "apple"],
     [1810, 1240, "orange"],
-    [2680, 920, "pine"],
+    [2655, 920, "pine"],
     [60, 330, "lime"],
   ] as const
 ).map(([x, y, kind]) => ({ x, y, kind }));
@@ -337,9 +337,153 @@ function scatter() {
   }
   return { bushes, rocks };
 }
-const SCATTER = scatter();
-export const PLAZA_BUSHES = SCATTER.bushes;
-export const PLAZA_ROCKS = SCATTER.rocks;
+/**
+ * The stone paths (points and width), drawn in the browser. Shared so
+ * scenery can keep off them.
+ */
+export const PLAZA_PATHS: readonly {
+  pts: readonly (readonly [number, number])[];
+  w: number;
+}[] = [
+  {
+    pts: [
+      [PLAZA_SQUARE.x, PLAZA_SQUARE.y + 200],
+      [PLAZA_SQUARE.x, PLAZA_GATE.y + 30],
+    ],
+    w: 116,
+  },
+  {
+    pts: [
+      [PLAZA_SQUARE.x + 330, PLAZA_SQUARE.y],
+      [PLAZA_PITCH.x0 + 10, PLAZA_SQUARE.y],
+    ],
+    w: 104,
+  },
+  {
+    pts: [
+      [PLAZA_SQUARE.x - 350, PLAZA_SQUARE.y],
+      [PLAZA_TRACK.cx + PLAZA_TRACK.ro[0] - 30, PLAZA_TRACK.cy],
+    ],
+    w: 104,
+  },
+  {
+    pts: [
+      [PLAZA_SQUARE.x, PLAZA_SQUARE.y - 200],
+      [PLAZA_SQUARE.x, PLAZA_WALK.y1 - 10],
+    ],
+    w: 116,
+  },
+  {
+    pts: [
+      [PLAZA_SQUARE.x + 220, PLAZA_SQUARE.y - 180],
+      [PLAZA_CAFE.x - 40, PLAZA_CAFE.y + 50],
+    ],
+    w: 80,
+  },
+  {
+    pts: [
+      [PLAZA_SQUARE.x - 220, PLAZA_SQUARE.y - 180],
+      [PLAZA_PHOTO.x + 20, PLAZA_PHOTO.y + 50],
+    ],
+    w: 80,
+  },
+  {
+    pts: [
+      [PLAZA_SQUARE.x - 240, PLAZA_SQUARE.y + 200],
+      [PLAZA_BOARD.x + 30, PLAZA_BOARD.y - 10],
+    ],
+    w: 72,
+  },
+  {
+    pts: [
+      [PLAZA_SQUARE.x + 120, PLAZA_GATE.y - 200],
+      [PLAZA_POND.x - 170, PLAZA_POND.y - 40],
+    ],
+    w: 72,
+  },
+  {
+    pts: [
+      [PLAZA_TRACK.cx - 40, PLAZA_TRACK.cy - PLAZA_TRACK.ro[1] - 10],
+      [PLAZA_LEADER.x + 20, PLAZA_LEADER.y + 30],
+    ],
+    w: 64,
+  },
+  {
+    pts: [
+      [410, 330],
+      [410, 470],
+      [900, 520],
+    ],
+    w: 64,
+  },
+  {
+    pts: [
+      [2300, 330],
+      [2300, 460],
+      [1900, 500],
+    ],
+    w: 64,
+  },
+];
+/** How far a point is from the nearest path's edge (negative: on it), and
+ * which way is off it. */
+export function plazaPathGap(x: number, y: number) {
+  let gap = Infinity,
+    away = { x: 0, y: 0 };
+  for (const p of PLAZA_PATHS)
+    for (let i = 0; i < p.pts.length - 1; i++) {
+      const a = { x: p.pts[i][0], y: p.pts[i][1] },
+        b = { x: p.pts[i + 1][0], y: p.pts[i + 1][1] },
+        d = segmentDistance(x, y, a, b),
+        g = d - p.w / 2 - 9;
+      if (g < gap) {
+        gap = g;
+        // Straight off the path, at a right angle to it.
+        const vx = b.x - a.x,
+          vy = b.y - a.y,
+          L = Math.hypot(vx, vy) || 1,
+          side = Math.sign((x - a.x) * -vy + (y - a.y) * vx) || 1;
+        away = { x: (-vy / L) * side, y: (vx / L) * side };
+      }
+    }
+  return { gap, away };
+}
+/**
+ * Keep scattered scenery where the prototype put it, but off the paths,
+ * clear of the fence along the bottom and of benches, lamps, trees and each
+ * other: anything in the way moves to the nearest free spot around it.
+ */
+function settle<T extends { x: number; y: number; size: number }>(
+  items: T[],
+  others: readonly { x: number; y: number; size?: number }[] = [],
+) {
+  const out: T[] = [];
+  for (const item of items) {
+    const r = item.size / 2,
+      free = (x: number, y: number) =>
+        plazaClear(x, y) &&
+        plazaPathGap(x, y).gap >= r &&
+        y <= PLAZA_GATE.y - r - 20 &&
+        PLAZA_TREES.every((t) => Math.hypot(t.x - x, t.y - y) > r + 60) &&
+        [...others, ...out].every(
+          (o) => Math.hypot(o.x - x, o.y - y) >= r + (o.size ?? 60) / 2,
+        );
+    let spot = { x: item.x, y: Math.min(item.y, PLAZA_GATE.y - r - 20) };
+    // Nearest first: the spot itself, then rings around it.
+    search: for (let ring = 0; ring <= 12; ring++)
+      for (let k = 0; k < Math.max(1, ring * 8); k++) {
+        const a = (k / Math.max(1, ring * 8)) * Math.PI * 2,
+          x = spot.x + Math.cos(a) * ring * 20,
+          y = spot.y + Math.sin(a) * ring * 20;
+        if (free(x, y)) {
+          spot = { x, y };
+          break search;
+        }
+      }
+    out.push({ ...item, ...spot });
+  }
+  return out;
+}
 export const PLAZA_LAMPS: readonly { x: number; y: number }[] = [
   ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => {
     const a = ((i + 0.5) / 8) * Math.PI * 2;
@@ -352,22 +496,29 @@ export const PLAZA_LAMPS: readonly { x: number; y: number }[] = [
   { x: 1420, y: 1300 },
   { x: 1280, y: 1460 },
   { x: 1420, y: 1460 },
-  { x: 1830, y: 850 },
-  { x: 1830, y: 950 },
-  { x: 870, y: 850 },
-  { x: 870, y: 950 },
+  // Along the east path, just off its stones. (The west path is too short
+  // for a pair: they stood on the dash track's lane.)
+  { x: 1830, y: 828 },
+  { x: 1830, y: 972 },
 ];
-export const PLAZA_BENCHES: readonly { x: number; y: number }[] = (
-  [
-    [-0.62, 1],
-    [0.62, 1],
-    [-0.58, -1],
-    [0.58, -1],
-  ] as const
-).map(([k, sgn]) => ({
-  x: PLAZA_SQUARE.x + k * PLAZA_SQUARE.rx * 1.24,
-  y: PLAZA_SQUARE.y + sgn * PLAZA_SQUARE.ry * 0.95 + (sgn > 0 ? 60 : -40),
-}));
+/** Benches round the square, each beside a path rather than on it. */
+export const PLAZA_BENCHES: readonly { x: number; y: number }[] = [
+  { x: 1180, y: 1210 },
+  { x: 1520, y: 1210 },
+  { x: 990, y: 680 },
+  { x: 1710, y: 680 },
+];
+const SCATTER = scatter();
+/** Benches and lamps, as round footprints scattered scenery keeps clear of. */
+const FIXTURES = [
+  ...PLAZA_BENCHES.map((b) => ({ x: b.x, y: b.y, size: 100 })),
+  ...PLAZA_LAMPS.map((l) => ({ x: l.x, y: l.y, size: 24 })),
+];
+export const PLAZA_BUSHES = settle(SCATTER.bushes, FIXTURES);
+export const PLAZA_ROCKS = settle(SCATTER.rocks, [
+  ...FIXTURES,
+  ...PLAZA_BUSHES,
+]);
 export const PLAZA_FLOODLIGHTS: readonly { x: number; y: number }[] = [
   { x: PLAZA_PITCH.x0 - 30, y: PLAZA_PITCH.y0 - 20 },
   { x: PLAZA_PITCH.x1 + 30, y: PLAZA_PITCH.y0 - 20 },
