@@ -303,17 +303,23 @@ function somnaraCue(state: Snapshot, myId: string) {
   if (r.dreamBubbles?.length) return "Pop the Dream Bubbles or outrun them.";
   return "";
 }
+type RaidStat = "damage" | "revives" | "pillars";
+/** A fun award for the raider who led one stat (top damage, revives …). */
+export interface RaidRole {
+  stat: RaidStat;
+  label: string;
+}
 /** One fun role per raider who stood out (top damage, revives, pillars). */
 export function raidRoles(
   contributions: Record<string, RaidContribution>,
   boss: RaidBossId = "grumblecrag",
 ) {
-  const roles: Record<string, string[]> = {};
-  const best = (stat: "damage" | "revives" | "pillars", label: string) => {
+  const roles: Record<string, RaidRole[]> = {};
+  const best = (stat: RaidStat, label: string) => {
     const top = Object.entries(contributions).sort(
       (a, b) => b[1][stat] - a[1][stat],
     )[0];
-    if (top && top[1][stat] > 0) (roles[top[0]] ??= []).push(label);
+    if (top && top[1][stat] > 0) (roles[top[0]] ??= []).push({ stat, label });
   };
   best("damage", "Heavy Hitter");
   best("revives", "Medic");
@@ -350,22 +356,112 @@ export const featureLabel = (boss: RaidBossId) =>
             : boss === "somnara"
               ? "Runes"
               : "Pillars";
-export function raidContributions(state: Snapshot) {
+/** The boss-feature column's full name, for its header tooltip. */
+const featureTitle = (boss: RaidBossId) =>
+  boss === "tidewyrm"
+    ? "Strands"
+    : boss === "gloomshade"
+      ? "Lanterns relit"
+      : boss === "storm-twins"
+        ? "Polarity pairs"
+        : boss === "emberwing"
+          ? "Braziers lit"
+          : boss === "prismatail"
+            ? "Light relays"
+            : boss === "somnara"
+              ? "Correct runes"
+              : "Pillars broken";
+const featureNote = (boss: RaidBossId) =>
+  boss === "storm-twins"
+    ? "Pairs credit every raider who cancels an opposite sign (including the solo pad)."
+    : boss === "emberwing"
+      ? "Braziers credit the raider who finishes lighting them."
+      : boss === "prismatail"
+        ? "Relays credit every raider in a completed light path."
+        : boss === "somnara"
+          ? "Runes credit the raider whose fighter or clone entered the correct pad."
+          : boss === "tidewyrm"
+            ? "Strands credit the raider who baited the dive."
+            : boss === "gloomshade"
+              ? "Relights credit the raider who lit the lantern."
+              : "Pillars credit the raider who baited the charge.";
+/** Small stroke icons for each stat's award chip. */
+const STAT_ICONS: Record<RaidStat, string> = {
+  damage:
+    '<path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2"/>',
+  revives: '<path d="M12 5v14M5 12h14"/>',
+  pillars:
+    '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9Z"/>',
+};
+const statIcon = (stat: RaidStat) =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${STAT_ICONS[stat]}</svg>`;
+const number = (n: number) => Math.round(n).toLocaleString("en-US");
+/**
+ * The post-raid scoreboard: you first, then the party in join order. With a
+ * team, each column's leader is lit gold and damage shows its share of the
+ * team's total; solo runs skip both (they would always be "best").
+ */
+export function raidContributions(state: Snapshot, myId?: string) {
   const r = state.raid!;
   const roles = raidRoles(r.contributions ?? {}, r.boss);
-  return `<section class="raid-contributions" aria-label="Team contributions"><h3>Team contributions</h3><div class="raid-score-head" aria-hidden="true"><span>Raider</span><span>Damage</span><span>Revives</span><span>${featureLabel(r.boss)}</span></div>${state.players
+  const raiders = state.players
     .filter((p) => !p.raidBoss)
-    .map((p) => {
-      const stats = r.contributions?.[p.id] ?? {
-        damage: 0,
-        revives: 0,
-        pillars: 0,
-      };
-      return `<div class="raid-score-row"><div class="raid-score-player"><span class="raid-score-avatar" aria-hidden="true">${framedAvatar(p, "raid-result-" + p.id)}</span><span><b>${escape(p.name)}</b><small>${CHARACTERS[p.character].name}${p.out ? " · Left" : ""}${r.standIns?.includes(p.id) ? " · AI stand-in" : ""}</small>${(roles[p.id] ?? []).map((role) => `<em class="raid-role">${role}</em>`).join("")}</span></div><span aria-label="Damage">${Math.round(stats.damage).toLocaleString("en-US")}</span><span aria-label="Revives">${stats.revives}</span><span aria-label="${r.boss === "tidewyrm" ? "Strands" : r.boss === "gloomshade" ? "Lanterns relit" : r.boss === "storm-twins" ? "Polarity pairs" : r.boss === "emberwing" ? "Braziers lit" : r.boss === "prismatail" ? "Light relays" : r.boss === "somnara" ? "Correct runes" : "Pillars broken"}">${stats.pillars}</span></div>`;
+    .map((p, i) => ({
+      p,
+      i,
+      stats: r.contributions?.[p.id] ?? { damage: 0, revives: 0, pillars: 0 },
+    }))
+    .sort(
+      (a, b) => Number(b.p.id === myId) - Number(a.p.id === myId) || a.i - b.i,
+    );
+  const team = raiders.length > 1;
+  // Compare what is shown (damage is fractional), so ties light together.
+  const top = (stat: RaidStat) =>
+    Math.max(0, ...raiders.map((x) => Math.round(x.stats[stat])));
+  const lead = {
+    damage: top("damage"),
+    revives: top("revives"),
+    pillars: top("pillars"),
+  };
+  const total = raiders.reduce((sum, x) => sum + x.stats.damage, 0);
+  const cell = (stat: RaidStat, raw: number, extra = "") => {
+    const value = Math.round(raw);
+    const best = team && value > 0 && value === lead[stat];
+    const cls = [best ? "is-best" : "", value > 0 ? "" : "is-zero"]
+      .filter(Boolean)
+      .join(" ");
+    return `<td${cls ? ` class="${cls}"` : ""} data-stat="${stat}">${number(value)}${best ? '<span class="sr-only"> (team best)</span>' : ""}${extra}</td>`;
+  };
+  const rows = raiders
+    .map(({ p, stats }) => {
+      const share =
+        team && total > 0 ? Math.round((stats.damage / total) * 100) : -1;
+      const notes = [
+        CHARACTERS[p.character].name,
+        p.out ? "Left" : "",
+        r.standIns?.includes(p.id) ? "AI stand-in" : "",
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      const chips = (roles[p.id] ?? [])
+        .map(
+          (role) =>
+            `<em class="raid-role" data-stat="${role.stat}">${statIcon(role.stat)}${role.label}</em>`,
+        )
+        .join("");
+      return `<tr class="raid-score-row${p.id === myId ? " is-me" : ""}${p.out ? " is-out" : ""}"><th scope="row"><div class="raid-score-player"><span class="raid-score-portrait"><span class="raid-score-avatar" aria-hidden="true">${framedAvatar(p, "raid-result-" + p.id)}</span></span><span class="raid-score-id"><span class="raid-score-name" title="${escape(p.name)}"><b>${escape(p.name)}</b>${p.id === myId ? '<small class="raid-score-you">You</small>' : ""}</span><span class="raid-score-sub"><small class="raid-score-champ" title="${notes}">${notes}</small>${chips ? `<span class="raid-roles">${chips}</span>` : ""}</span></span></div></th>${cell(
+        "damage",
+        stats.damage,
+        share >= 0
+          ? `<span class="raid-score-share" title="${share}% of the team's damage"><span class="raid-score-bar" aria-hidden="true"><i style="width:${share}%"></i></span><small>${share}%</small></span>`
+          : "",
+      )}${cell("revives", stats.revives)}${cell("pillars", stats.pillars)}</tr>`;
     })
-    .join(
-      "",
-    )}<p class="raid-score-note">Revives credit everyone who helped. ${r.boss === "storm-twins" ? "Pairs credit every raider who cancels an opposite sign (including the solo pad)." : r.boss === "emberwing" ? "Braziers credit the raider who finishes lighting them." : r.boss === "prismatail" ? "Relays credit every raider in a completed light path." : r.boss === "somnara" ? "Runes credit the raider whose fighter or clone entered the correct pad." : r.boss === "tidewyrm" ? "Strands credit the raider who baited the dive." : r.boss === "gloomshade" ? "Relights credit the raider who lit the lantern." : "Pillars credit the raider who baited the charge."}</p></section>`;
+    .join("");
+  const meta = team
+    ? `${raiders.length} raiders · ${number(total)} damage`
+    : `Solo · ${number(total)} damage`;
+  return `<section class="raid-contributions" aria-label="Team contributions"><div class="raid-score-top"><h3>Team contributions</h3><span class="raid-score-meta">${meta}</span></div><table class="raid-score"><thead><tr><th scope="col">Raider</th><th scope="col" title="Damage dealt">Damage</th><th scope="col">Revives</th><th scope="col" title="${featureTitle(r.boss)}">${featureLabel(r.boss)}</th></tr></thead><tbody>${rows}</tbody></table><p class="raid-score-note">Revives credit everyone who helped. ${featureNote(r.boss)}</p></section>`;
 }
 
 export interface RaidGoal {
