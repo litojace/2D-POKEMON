@@ -4,6 +4,7 @@ import {
   levelUpCoins,
   LEVEL_MILESTONES,
   MAX_PLAYER_LEVEL,
+  milestoneNames,
   DAILY_SPARK_XP,
   JOURNEY_ITEM_BY_ID,
   SEASON_THEMES,
@@ -40,7 +41,7 @@ const escape = (s: string) =>
 export function levelBar(j: Journey, compact = false) {
   const p = playerLevel(j.xp),
     next = LEVEL_MILESTONES.find((m) => m.level > p.level);
-  return `<div class="journey-level${compact ? " is-compact" : ""}"><span class="journey-level-badge"><small>LEVEL</small><b>${p.level}</b></span><div><div class="journey-level-line"><b>${p.level === MAX_PLAYER_LEVEL ? "Element Master" : "Your next adventure"}</b><small>${p.needed ? `${p.into.toLocaleString()} / ${p.needed.toLocaleString()} XP` : "MAX LEVEL"}</small></div><progress max="100" value="${p.percent}" aria-label="Player level ${p.level} progress"></progress>${compact ? "" : `<small>${next ? `Next milestone · Level ${next.level} · ${next.title ?? JOURNEY_ITEM_BY_ID[next.item!]?.name}` : "Every milestone earned. Seasonal journeys keep bringing new rewards."}</small>`}</div></div>`;
+  return `<div class="journey-level${compact ? " is-compact" : ""}"><span class="journey-level-badge"><small>LEVEL</small><b>${p.level}</b></span><div><div class="journey-level-line"><b>${p.level === MAX_PLAYER_LEVEL ? "Element Master" : "Your next adventure"}</b><small>${p.needed ? `${p.into.toLocaleString()} / ${p.needed.toLocaleString()} XP` : "MAX LEVEL"}</small></div><progress max="100" value="${p.percent}" aria-label="Player level ${p.level} progress"></progress>${compact ? "" : `<small>${next ? `Next milestone · Level ${next.level} · ${milestoneNames(next).map(escape).join(" + ")}` : "Every milestone earned. Seasonal journeys keep bringing new rewards."}</small>`}</div></div>`;
 }
 export function resultXp(
   j: Journey | undefined,
@@ -74,7 +75,7 @@ export function resultXp(
   const after = playerLevel(Math.max(0, j.xp - later)).level;
   const milestones = LEVEL_MILESTONES.filter(
     (m) => m.level > before && m.level <= after,
-  ).map((m) => m.title ?? JOURNEY_ITEM_BY_ID[m.item!].name);
+  ).flatMap(milestoneNames);
   const parts = [
     missions || bonus ? `${award.amount} from this run` : "",
     missions ? `${missions} from daily missions` : "",
@@ -142,7 +143,7 @@ function levels(
   look: RaidLoadout,
 ) {
   const level = e?.journey ? playerLevel(e.journey.xp).level : 0;
-  return `${e?.journey ? levelBar(e.journey) + sparkBar(e.journey) : ""}<p class="adventure-intro">Every level earns 30 coins, and 100 coins from level 50 to ${MAX_PLAYER_LEVEL}. Milestones bring cosmetics and titles. Your level never changes combat stats.</p><div class="journey-layout">${preview(view, e, champion, look)}<div class="journey-rewards">${LEVEL_MILESTONES.map((m) => rewardCard(m.item, m.title ?? "", `LEVEL ${m.level}`, level >= m.level, view.preview, !m.item)).join("")}</div></div><details class="journey-help"><summary>How to earn XP</summary><p>Finish a PvP match: 50 XP, plus 25 for a win. AI matches: 25 XP. Raid clears: 100 / 150 / 200 XP by Peril. Raid attempts earn 20 XP per phase reached. Daily missions add 50 XP. Daily Spark: the first ${DAILY_SPARK_XP} XP you earn each day count double.</p><p>Results need at least 20 seconds of play and participation. Practice and abandoned matches do not award XP. Rewards are added automatically.</p></details>`;
+  return `${e?.journey ? levelBar(e.journey) + sparkBar(e.journey) : ""}<p class="adventure-intro">Every level earns 30 coins, and 100 coins from level 50 to ${MAX_PLAYER_LEVEL}. Milestones bring cosmetics and titles. Your level never changes combat stats.</p><div class="journey-layout">${preview(view, e, champion, look)}<div class="journey-rewards">${LEVEL_MILESTONES.flatMap((m) => [...(m.title ? [rewardCard(null, m.title, `LEVEL ${m.level}`, level >= m.level, view.preview, true)] : []), ...(m.item ? [rewardCard(m.item, "", `LEVEL ${m.level}`, level >= m.level, view.preview)] : [])]).join("")}</div></div><details class="journey-help"><summary>How to earn XP</summary><p>Finish a PvP match: 50 XP, plus 25 for a win. AI matches: 25 XP. Raid clears: 100 / 150 / 200 XP by Peril. Raid attempts earn 20 XP per phase reached. Daily missions add 50 XP. Daily Spark: the first ${DAILY_SPARK_XP} XP you earn each day count double.</p><p>Results need at least 20 seconds of play and participation. Practice and abandoned matches do not award XP. Rewards are added automatically.</p></details>`;
 }
 function season(
   view: AdventureView,

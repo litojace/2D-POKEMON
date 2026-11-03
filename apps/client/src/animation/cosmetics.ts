@@ -25,6 +25,7 @@ export type Skin =
   | "static-colors"
   | "thundercell"
   | "aurora-colors"
+  | "starlit-colors"
   | "season-aurora-colors"
   | "season-ember-colors"
   | "season-tide-colors"
@@ -51,6 +52,7 @@ export const SKINS: Skin[] = [
   "static-colors",
   "thundercell",
   "aurora-colors",
+  "starlit-colors",
   "season-aurora-colors",
   "season-ember-colors",
   "season-tide-colors",
@@ -63,6 +65,8 @@ const hexRgb = (c: number) => [(c >> 16) & 255, (c >> 8) & 255, c & 255];
  */
 export const TONES: Partial<Record<Skin, { tones: [number, number, number]; keep: number }>> = {
   "aurora-colors": { tones: [0x25364d,0x9ff3d8,0xe9f7d6], keep: .22 },
+  // Lv 70: midnight blue shading up into warm starlight.
+  "starlit-colors": { tones: [0x0c1232, 0x2f45a0, 0x93abf5], keep: 0.12 },
   "season-aurora-colors": { tones: [0x25364d,0x9ff3d8,0xe2d5ff], keep: .22 },
   "season-ember-colors": { tones: [0x422a38,0xffb980,0xfff0c1], keep: .22 },
   "season-tide-colors": { tones: [0x20354d,0x86deff,0xe2fff5], keep: .22 },
@@ -272,6 +276,33 @@ export function cosmeticLayer(
         context.fillRect(x - r, y - r / 4, r * 2, r / 2);
         context.fillRect(x - r / 4, y - r, r / 2, r * 2);
       }
+      context.globalCompositeOperation = "source-over";
+    }
+    if (skin === "starlit-colors" && !/-eyes([-~]|$)/.test(original)) {
+      // Constellations: golden and mint stars, a few joined by faint lines.
+      context.globalCompositeOperation = "source-atop";
+      const random = seeded(original + ":starlit");
+      const stars: [number, number][] = [];
+      for (let n = 0; n < (canvas.width * canvas.height) / 1300; n++) {
+        const x = random() * canvas.width,
+          y = random() * canvas.height,
+          r = 1.8 + random() * 2.6;
+        stars.push([x, y]);
+        context.fillStyle = random() < 0.75 ? "rgba(255, 226, 140, 1)" : "rgba(159, 243, 216, .95)";
+        context.fillRect(x - r, y - r / 4, r * 2, r / 2);
+        context.fillRect(x - r / 4, y - r, r / 2, r * 2);
+      }
+      context.strokeStyle = "rgba(255, 233, 168, .45)";
+      context.lineWidth = 1;
+      context.beginPath();
+      for (let i = 1; i < stars.length; i += 2) {
+        const [ax, ay] = stars[i - 1],
+          [bx, by] = stars[i];
+        if (Math.hypot(bx - ax, by - ay) > Math.min(canvas.width, canvas.height) / 2) continue;
+        context.moveTo(ax, ay);
+        context.lineTo(bx, by);
+      }
+      context.stroke();
       context.globalCompositeOperation = "source-over";
     }
     if (skin === "pearlscale" && !/-eyes([-~]|$)/.test(original)) {

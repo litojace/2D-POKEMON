@@ -192,6 +192,7 @@ import "./battle-dock.css";
 import "./mobile-store.css";
 import "./cosmetic-review.css";
 import "./collection-frames.css";
+import "./journey-frames.css";
 import "./boss-frames.css";
 import "./mobile-panels.css";
 import { FollowCamera, screenToWorld, outsideView } from "./follow-camera";

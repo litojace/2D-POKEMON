@@ -31,10 +31,21 @@ it("boss rewards follow how hard they are, and boss frames climb with stars", ()
   expect(cosmeticTier("conqueror", 5)).toBe("mythic");
 });
 
-it("journey rewards follow their level; season pieces are Epic", () => {
+it("journey rewards follow their level (Lv 55–100 Mythical); season pieces are Epic", () => {
   expect(cosmeticTier("wayfarer-frame")).toBe("rare"); // level 10
   expect(cosmeticTier("aurora-colors")).toBe("epic"); // level 25
   expect(cosmeticTier("astral-aura")).toBe("legendary"); // level 45
+  // Lv 55–100: the endgame set is Mythical.
+  for (const id of [
+    "prism-frame",
+    "nova-entrance",
+    "starlit-colors",
+    "solar-aura",
+    "eclipse-finale",
+    "prismatic-laurel",
+    "element-master-frame",
+  ])
+    expect(cosmeticTier(id), id).toBe("mythic");
   expect(cosmeticTier("season-ember-frame")).toBe("epic");
   expect(cosmeticTier("unknown")).toBe("common");
 });

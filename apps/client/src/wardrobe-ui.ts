@@ -25,7 +25,10 @@ import {
   type RaidLoadout,
   type RaidSlot,
 } from "../../../packages/shared/src/raid";
-import { JOURNEY_ITEM_BY_ID } from "../../../packages/shared/src/journey";
+import {
+  JOURNEY_ITEMS,
+  JOURNEY_ITEM_BY_ID,
+} from "../../../packages/shared/src/journey";
 import { fighterArt, fighterAvatar, scopeIds } from "./fighter-art";
 import { colourPreview, hasColourPalette } from "./colour-preview";
 import { itemPicture } from "./shop-ui";
@@ -95,6 +98,8 @@ export function wardrobeOwned(
       (i) => i.champion === champion && e.owned.includes(i.id),
     ).map((i) => i.id),
     ...LOOK_ITEMS.filter((i) => e.owned.includes(i.id)).map((i) => i.id),
+    // Journey rewards (levels and seasons) are owned items too.
+    ...JOURNEY_ITEMS.filter((i) => e.owned.includes(i.id)).map((i) => i.id),
     ...RAID_REWARDS.filter((i) => i.slot !== "title" && earned.has(i.id)).map(
       (i) => i.id,
     ),

@@ -4,6 +4,7 @@ import { createArenaServer } from "../../apps/server/src/server";
 import { fakeAccounts } from "../helpers/accounts";
 import { AccountError } from "../../apps/server/src/accounts";
 import { LOOK_ITEMS } from "../../packages/shared/src/shop";
+import { JOURNEY_ITEMS } from "../../packages/shared/src/journey";
 import type { Reply } from "../../packages/shared/src/index";
 let server: ReturnType<typeof createArenaServer>,
   accounts: ReturnType<typeof fakeAccounts>,
@@ -896,6 +897,45 @@ it("equips every collection item through the shared appearance route and reads a
     expect(response.status, item.id).toBe(200);
     expect((await response.json()).progress.loadout[item.slot]).toBe(item.id);
   }
+});
+
+it("equips every Journey reward through the shared appearance route, in its own slot only", async () => {
+  // The Journey dialog and the Wardrobe both save here. Ownership is the
+  // database's check (arena_equip_raid_slot); the route only knows the slot.
+  const player = accounts.add(false);
+  const loadout: Record<string, string | null> = {};
+  accounts.provider.rpc = async (_token, name, args) => {
+    if (name === "arena_equip_raid_slot") {
+      loadout[args.p_slot as string] = args.p_item as string | null;
+      return null;
+    }
+    if (name === "arena_raid_progress") return { loadout: { ...loadout } };
+    throw Error(`Unexpected RPC ${name}`);
+  };
+  const post = (slot: string, item: string) =>
+    fetch(`${url}/api/raids/equip`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${player.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ slot, item }),
+    });
+  expect(JOURNEY_ITEMS.map((i) => i.id)).toEqual(
+    expect.arrayContaining([
+      "prism-frame",
+      "solar-aura",
+      "element-master-frame",
+    ]),
+  );
+  for (const item of JOURNEY_ITEMS) {
+    const response = await post(item.slot, item.id);
+    expect(response.status, item.id).toBe(200);
+    expect((await response.json()).progress.loadout[item.slot]).toBe(item.id);
+  }
+  const wrong = await post("aura", "prism-frame");
+  expect(wrong.status).toBe(400);
+  expect((await wrong.json()).error).toBe("That item belongs in another slot.");
 });
 
 it("explains stale collection functions and never reports an unsaved appearance as success", async () => {

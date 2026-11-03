@@ -54,6 +54,39 @@ export function drawCollectionAuraBase(g: G, id: string, x: number, y: number, n
       );
     }
   };
+  if (id === "solar-aura") {
+    // Lv 80: a sun on the ground. A blazing ring, corona rays turning round
+    // it (long gold and short orange in turn) and three small suns in orbit.
+    const turn = t / 2600;
+    const pulse = reduced ? 0.5 : 0.5 + 0.5 * Math.sin(now / 420);
+    g.fillStyle(0xffb347, 0.2 + 0.08 * pulse).fillEllipse(x, y, 96, groundHeight(96));
+    // The long rays reach past the Mythical prismatic rings (radius 52–60).
+    for (const long of [true, false]) {
+      g.fillStyle(long ? 0xffd36b : 0xff8a4c, long ? 0.85 : 0.75);
+      for (let i = long ? 0 : 1; i < 12; i += 2) {
+        const a = turn + (i / 12) * TAU,
+          w = long ? 0.12 : 0.1,
+          r0 = 44,
+          r1 = long ? 66 + 4 * pulse : 56;
+        g.fillTriangle(
+          x + Math.cos(a - w) * r0,
+          y + Math.sin(a - w) * r0 * flat,
+          x + Math.cos(a + w) * r0,
+          y + Math.sin(a + w) * r0 * flat,
+          x + Math.cos(a) * r1,
+          y + Math.sin(a) * r1 * flat,
+        );
+      }
+    }
+    g.lineStyle(3, 0xffc85a, 0.9).strokeEllipse(x, y, 92, groundHeight(92));
+    g.lineStyle(1.2, 0xfff1c4, 0.75).strokeEllipse(x, y, 84, groundHeight(84));
+    ring(3, 49, 20, 5200, (gg, px, py, i, _a, d, f) => {
+      const flare = (reduced ? 1 : 0.8 + 0.2 * Math.sin(now / 260 + i * 2)) * d;
+      gg.fillStyle(0xff8a4c, 0.3 * f).fillCircle(px, py - 4 * d, 7.5 * flare);
+      gg.fillStyle(0xfff1c4, 0.95 * f).fillCircle(px, py - 4 * d, 3 * flare);
+    });
+    return true;
+  }
   const journey=JOURNEY_ITEM_BY_ID[id];
   if (journey?.slot === 'aura') {
     const color=parseInt(journey.color.slice(1),16), accent=parseInt(journey.accent.slice(1),16);
@@ -179,6 +212,8 @@ export function drawCollectionAuraBase(g: G, id: string, x: number, y: number, n
 }
 
 type Emit = (p: FxParticle) => void;
+/** Eclipse finale: when the moon covers the sun (seconds into the finale). */
+export const ECLIPSE_TOTALITY = 1.3;
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 
 /** A one-off burst when the round greeting starts. Returns false if unknown. */
@@ -189,6 +224,30 @@ function baseEntrance(emit: Emit, id: string, x: number, y: number, sc: number) 
       emit({ x: x, y: y, ...p } as FxParticle);
     }
   };
+  if (id === "nova-entrance") {
+    // Lv 65: starlight rushes into a point and bursts into a nova: stars
+    // fall inward from a wide ring as a white flash, three rings of light
+    // and streaks of starlight burst out of the centre.
+    const cy = y - 40 * sc;
+    burst(16, (i) => {
+      const a = (i / 16) * TAU;
+      return { x: x + Math.cos(a) * 78 * sc, y: cy + Math.sin(a) * 52 * sc, vx: -Math.cos(a) * 210, vy: -Math.sin(a) * 140, life: 0.36, size: (i % 2 ? 3 : 4.6) * sc, color: i % 2 ? 0xb6a0ff : 0xffe7a3, shape: "star" };
+    });
+    emit({ x, y: cy, vx: 0, vy: 0, life: 0.5, size: 13 * sc, color: 0xffffff, shape: "star" });
+    emit({ x, y: cy, vx: 0, vy: 0, life: 0.6, size: 8 * sc, color: 0xffffff, shape: "ring" });
+    emit({ x, y: cy, vx: 0, vy: 0, life: 0.85, size: 13 * sc, color: 0xffe7a3, shape: "ring" });
+    emit({ x, y: cy, vx: 0, vy: 0, life: 1.1, size: 18 * sc, color: 0xb6a0ff, shape: "ring" });
+    burst(18, (i) => {
+      const a = (i / 18) * TAU + 0.17;
+      const speed = i % 2 ? 230 : 330;
+      return { x, y: cy, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed * 0.8, life: 0.5, size: (i % 2 ? 5 : 7) * sc, color: [0xffe7a3, 0xb6a0ff, 0x9ff3d8][i % 3], shape: "ray" };
+    });
+    burst(14, (i) => {
+      const a = (i / 14) * TAU;
+      return { x, y: cy, vx: Math.cos(a) * rnd(70, 130), vy: Math.sin(a) * rnd(60, 110) - 30, life: rnd(0.9, 1.3), size: (i % 3 ? 2.8 : 4.4) * sc, color: [0xffe7a3, 0xb6a0ff, 0x9ff3d8][i % 3], shape: "star", spin: i % 2 ? 3 : -3 };
+    });
+    return true;
+  }
   if (id==='comet-arrival') {
     burst(18,i=>({x:x+(i-9)*3*sc,y:y-60*sc,vx:(i-9)*9,vy:-40+Math.abs(i-9)*10,life:.7+(i%3)*.15,size:(i%4===0?5:2)*sc,color:i%2?0xffd991:0x9ff3d8,shape:'star',spin:i%2?2:-2}));
     return true;
@@ -308,6 +367,64 @@ function baseVictory(
 ) {
   if (t > 3) return false;
   const fade = t > 2.4 ? Math.max(0, 1 - (t - 2.4) / 0.6) : 1;
+  if (id === "eclipse-finale") {
+    // Lv 85: a sun rises behind you, a dark moon slides across it, and at
+    // totality its corona flares round you with a diamond-ring flash.
+    const R = 38 * sc,
+      rise = Math.min(1, t / 0.5),
+      cx = x,
+      cy = y - (20 + 36 * rise) * sc;
+    const cover = Math.max(0, Math.min(1, (t - 0.45) / 0.85)),
+      ease = 1 - (1 - cover) ** 3,
+      total = t >= ECLIPSE_TOTALITY;
+    under.fillStyle(0xffc85a, (total ? 0.12 : 0.28) * fade).fillCircle(cx, cy, R * 1.55);
+    under.fillStyle(0xffe9a8, fade).fillCircle(cx, cy, R);
+    under.fillStyle(0x161a30, fade).fillCircle(cx + (1 - ease) * R * 2.3, cy, R * 0.98);
+    if (total) {
+      const k = Math.min(1, (t - ECLIPSE_TOTALITY) / 0.3) * fade,
+        turn = t * 0.35;
+      for (const gold of [true, false]) {
+        under.fillStyle(gold ? 0xffd27a : 0xb6a0ff, (gold ? 0.75 : 0.6) * k);
+        for (let i = gold ? 0 : 1; i < 16; i += 2) {
+          const a = turn + (i / 16) * TAU,
+            w = 0.07,
+            r1 = R * (gold ? 1.9 : 1.5);
+          under.fillTriangle(
+            cx + Math.cos(a - w) * R,
+            cy + Math.sin(a - w) * R,
+            cx + Math.cos(a + w) * R,
+            cy + Math.sin(a + w) * R,
+            cx + Math.cos(a) * r1,
+            cy + Math.sin(a) * r1,
+          );
+        }
+      }
+      under.lineStyle(2.4 * sc, 0xfff1c4, 0.9 * k).strokeCircle(cx, cy, R * 1.02);
+      // Stars come out in the darkened sky.
+      under.fillStyle(0xfff1c4, 0.85 * k);
+      for (let i = 0; i < 7; i++) {
+        const a = -2.9 + i * 0.97;
+        under.fillCircle(cx + Math.cos(a) * R * 2.25, cy + Math.sin(a) * R * 1.6, (1.2 + (i % 3) * 0.5) * sc);
+      }
+    }
+    // The diamond ring: one bead of sunlight on the rim, just at totality.
+    const flash = t > ECLIPSE_TOTALITY - 0.08 && t < ECLIPSE_TOTALITY + 0.5 ? Math.sin(((t - ECLIPSE_TOTALITY + 0.08) / 0.58) * Math.PI) : 0;
+    if (flash > 0) {
+      const fx = cx + Math.cos(-2.3) * R,
+        fy = cy + Math.sin(-2.3) * R;
+      g.fillStyle(0xfff1c4, 0.35 * flash * fade).fillCircle(fx, fy, 9 * sc * flash);
+      sparkle(g, fx, fy, 11 * sc * flash, 0xffffff, flash * fade);
+    }
+    if (first)
+      for (let i = 0; i < 12; i++)
+        emit({ x, y: y - 40 * sc, vx: (i - 5.5) * 16, vy: -60 - Math.random() * 40, life: 1, size: 2.4 * sc, color: i % 2 ? 0xffd27a : 0xb6a0ff, shape: "star" });
+    if (t >= ECLIPSE_TOTALITY && t - dt < ECLIPSE_TOTALITY)
+      for (let i = 0; i < 16; i++) {
+        const a = (i / 16) * TAU;
+        emit({ x: cx + Math.cos(a) * R, y: cy + Math.sin(a) * R, vx: Math.cos(a) * 120, vy: Math.sin(a) * 120, life: 0.8, size: (i % 2 ? 2.4 : 3.4) * sc, color: i % 2 ? 0xb6a0ff : 0xfff1c4, shape: "star" });
+      }
+    return true;
+  }
   const journey=JOURNEY_ITEM_BY_ID[id];
   if (journey?.slot==='victory') {
     const color=parseInt(journey.color.slice(1),16), accent=parseInt(journey.accent.slice(1),16);

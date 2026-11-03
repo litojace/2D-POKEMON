@@ -201,6 +201,64 @@ export const LEVEL_ITEMS: JourneyItem[] = [
     "#d2b0ff",
     "#ffb5da",
   ),
+  // Lv 55–100: the endgame rewards. Mythical tier (cosmetic-tier.ts), each
+  // with its own art rather than the shared journey ring and falling stars.
+  rewardItem(
+    "prism-frame",
+    "Prism frame",
+    "frame",
+    "A faceted crystal ring that splits starlight into a rainbow",
+    "#b9f6ff",
+    "#ffd991",
+  ),
+  rewardItem(
+    "nova-entrance",
+    "Nova entrance",
+    "entrance",
+    "A star gathers into a point of light, then bursts into a nova",
+    "#ffe7a3",
+    "#b6a0ff",
+  ),
+  rewardItem(
+    "starlit-colors",
+    "Starlit colors",
+    "skin",
+    "Midnight blue scattered with golden stars",
+    "#8fb4ff",
+    "#ffe7a3",
+  ),
+  rewardItem(
+    "solar-aura",
+    "Solar aura",
+    "aura",
+    "A blazing sun ring with turning corona rays and orbiting flares",
+    "#ffc85a",
+    "#ff8a4c",
+  ),
+  rewardItem(
+    "eclipse-finale",
+    "Eclipse finale",
+    "victory",
+    "A dark moon crosses the sun and its corona flares into a diamond ring",
+    "#ffd27a",
+    "#b6a0ff",
+  ),
+  rewardItem(
+    "prismatic-laurel",
+    "Prismatic laurel",
+    "frame",
+    "Crystal laurels in every color around a golden crest",
+    "#ffd991",
+    "#b9f6ff",
+  ),
+  rewardItem(
+    "element-master-frame",
+    "Element Master frame",
+    "frame",
+    "A prismatic crown set with all eight element gems",
+    "#fff1c4",
+    "#b6a0ff",
+  ),
 ];
 export const SEASON_ITEMS: JourneyItem[] = (
   Object.entries(SEASON_THEMES) as [
@@ -255,12 +313,30 @@ export const LEVEL_MILESTONES = [
   { level: 40, title: null, item: "champion-laurel" },
   { level: 45, title: null, item: "astral-aura" },
   { level: 50, title: "Elemental Legend", item: null },
-  // Lv 55–100 cosmetics (Prism frame, Nova entrance…) arrive with their art.
+  { level: 55, title: null, item: "prism-frame" },
   { level: 60, title: "Arena Veteran", item: null },
+  { level: 65, title: null, item: "nova-entrance" },
+  { level: 70, title: null, item: "starlit-colors" },
   { level: 75, title: "Mythic Champion", item: null },
+  { level: 80, title: null, item: "solar-aura" },
+  { level: 85, title: null, item: "eclipse-finale" },
   { level: 90, title: "Ascendant", item: null },
-  { level: 100, title: "Element Master", item: null },
+  { level: 95, title: null, item: "prismatic-laurel" },
+  // The top level gives both a title and a frame.
+  { level: 100, title: "Element Master", item: "element-master-frame" },
 ] as const;
+export type LevelMilestone = (typeof LEVEL_MILESTONES)[number];
+/** What a milestone gives, by name: its title, its cosmetic, or both. */
+export function milestoneNames(m: LevelMilestone): string[] {
+  const names: string[] = [];
+  if (m.title) names.push(m.title);
+  if (m.item) names.push(JOURNEY_ITEM_BY_ID[m.item]?.name ?? m.item);
+  return names;
+}
+/** The level a journey cosmetic unlocks at (undefined for season pieces). */
+export function itemLevel(id: string): number | undefined {
+  return LEVEL_MILESTONES.find((m) => m.item === id)?.level;
+}
 export const WEEKLY_GOALS = [
   { id: "play", text: "Finish 5 matches or raid attempts", target: 5 },
   { id: "skills", text: "Use 50 skills", target: 50 },

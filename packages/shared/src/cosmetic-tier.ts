@@ -1,4 +1,4 @@
-import { JOURNEY_ITEM_BY_ID, LEVEL_MILESTONES } from "./journey.js";
+import { JOURNEY_ITEM_BY_ID, itemLevel } from "./journey.js";
 import { RAID_REWARDS } from "./raid.js";
 import { LOOK_ITEM_BY_ID, type Rarity } from "./shop.js";
 
@@ -11,7 +11,8 @@ import { LOOK_ITEM_BY_ID, type Rarity } from "./shop.js";
  *  - Boss rewards follow how hard they are: first clear Rare, 3 or 5 clears
  *    Epic, 10 clears, a no-downs clear or the boss feat Legendary. A boss
  *    frame climbs with its stars: Legendary at 3 stars, Mythic at 5.
- *  - Journey rewards follow the level they unlock at; season pieces are Epic.
+ *  - Journey rewards follow the level they unlock at (Lv 55–100 are Mythic);
+ *    season pieces are Epic.
  */
 export type CosmeticTier = "common" | "rare" | "epic" | "legendary" | "mythic";
 export const COSMETIC_TIERS: CosmeticTier[] = [
@@ -70,9 +71,16 @@ export function cosmeticTier(id: string | null | undefined, stars = 0): Cosmetic
   }
   const journey = JOURNEY_ITEM_BY_ID[id];
   if (journey) {
-    const level = LEVEL_MILESTONES.find((l) => l.item === id)?.level;
+    const level = itemLevel(id);
     if (level === undefined) return "epic"; // seasonal journey piece
-    return level >= 40 ? "legendary" : level >= 25 ? "epic" : "rare";
+    // Lv 55–100 are the endgame rewards: the top tier.
+    return level >= 55
+      ? "mythic"
+      : level >= 40
+        ? "legendary"
+        : level >= 25
+          ? "epic"
+          : "rare";
   }
   return "common";
 }

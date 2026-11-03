@@ -16,6 +16,7 @@ import {
   LOOK_ITEM_BY_ID,
   type ActivityReceipt,
 } from "../../../packages/shared/src/shop.js";
+import { JOURNEY_ITEM_BY_ID } from "../../../packages/shared/src/journey.js";
 import { createClient } from "@supabase/supabase-js";
 import type { Express, Request, Response, NextFunction } from "express";
 import {
@@ -39,7 +40,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "049_farm_pasture.sql";
+export const LATEST_MIGRATION = "051_level_cosmetics.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -670,9 +671,12 @@ export function installAccountRoutes(
   app.post(
     "/api/raids/equip",
     route(false, async (req, res, token, account) => {
-      // Raid rewards and Shop collection pieces share the appearance slots.
+      // Raid rewards, Shop collection pieces and Journey rewards share the
+      // appearance slots. The database checks the player owns the item.
       const slotOf = (id: string) =>
-        RAID_COSMETICS[id as RaidCosmetic]?.slot ?? LOOK_ITEM_BY_ID[id]?.slot;
+        RAID_COSMETICS[id as RaidCosmetic]?.slot ??
+        LOOK_ITEM_BY_ID[id]?.slot ??
+        JOURNEY_ITEM_BY_ID[id]?.slot;
       const data: { slot: (typeof RAID_SLOTS)[number]; item: string | null } = z
         .object({
           slot: z.enum(

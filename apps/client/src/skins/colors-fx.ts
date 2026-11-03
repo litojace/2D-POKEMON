@@ -40,6 +40,7 @@ const MOTIF: Record<string, { shape: FxShape; rise: number; spread: number }> =
     "twilight-colors": { shape: "star", rise: -16, spread: 26 },
     "moonlit-skin": { shape: "star", rise: -12, spread: 26 },
     "starlit-skin": { shape: "star", rise: -12, spread: 28 },
+    "starlit-colors": { shape: "star", rise: -12, spread: 30 },
     "dawn-colors": { shape: "star", rise: -22, spread: 24 },
     "prismatic-skin": { shape: "star", rise: -18, spread: 28 },
     "ember-colors": { shape: "dot", rise: -46, spread: 20 },
