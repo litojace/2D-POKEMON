@@ -462,7 +462,9 @@ export function creatureLayers(
     layers.ears = `${frond(64, 70, -40)}${frond(61, 84, -46)}${frond(65, 98, -36)}${frond(136, 70, 40)}${frond(139, 84, 46)}${frond(135, 98, 36)}`;
     // A wide axolotl smile.
     layers.head = `${e(100, 90, 42, 31, face)}${highlight(70, 78, 22)}${path("M88 107Q100 117 112 107", "none", ` stroke="${p.dark}" stroke-width="2.2" stroke-linecap="round"`)}`;
-    layers.flame = `${path("M60 76Q100 58 140 76L138 85Q100 70 62 85Z", p.accent)}${path("M138 80Q150 84 156 96Q146 94 138 86Z", p.accent)}${path("M138 82Q154 82 162 88Q150 90 138 86Z", p.accent)}${path("M94 66Q100 58 106 66Q104 74 100 75Q96 74 94 66Z", "#ffe7c2")}${line("M97 64L100 70L103 64", p.mid, 1.4, 0.8)}`;
+    // The bandana is tied at the back, so its tails show in the side and back
+    // views only; one-sided tails here made the head look tilted.
+    layers.flame = `${path("M60 76Q100 58 140 76L138 85Q100 70 62 85Z", p.accent)}${path("M94 66Q100 58 106 66Q104 74 100 75Q96 74 94 66Z", "#ffe7c2")}${line("M97 64L100 70L103 64", p.mid, 1.4, 0.8)}`;
     // Round eyes with a water-drop catchlight.
     layers.eyes = eye(78, "#7cf6ff", 8.6, 9.8) + eye(122, "#7cf6ff", 8.6, 9.8);
     layers.body = `${e(100, 138, 26, 28)}${e(100, 142, 15, 19, pearl)}`;
