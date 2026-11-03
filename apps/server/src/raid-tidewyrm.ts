@@ -217,7 +217,7 @@ export class TidewyrmArena extends RaidArena {
         continue;
       const target = this.heroes().find((p) => p.id === w.targetId && p.hp > 0);
       if (!target) continue;
-      // Tidefin's Mirror Mist: the ripple follows the clone instead.
+      // Tidefin's Tide Double: the ripple follows the double instead.
       const lure = w.kind === "dive" && target.clone && target.clone.until > this.time ? target.clone : target;
       w.x = w.tx = lure.x;
       w.y = w.ty = lure.y;

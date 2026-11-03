@@ -83,7 +83,7 @@ Animation keys are `<state>-<direction>`. `idle-up`, `idle-down`, `idle-left` an
 | `walk`    | yes  | 8                | Visible leg movement                      |
 | `run`     | yes  | 6–8              |                                           |
 | `basic`   | no   | 4–6              | ~220 ms; must read at the attack interval |
-| `skill0`  | no   | 6                | ~360 ms (Ember Gust: 1.2 s channel)       |
+| `skill0`  | no   | 6                | ~360 ms (Crest Flare: 1.2 s channel)      |
 | `skill1`  | no   | 6                | ~360 ms                                   |
 | `skill2`  | no   | 6                | ~360 ms                                   |
 | `skill3`  | no   | 8                | ~650 ms; also used for wind-ups           |

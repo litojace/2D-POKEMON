@@ -346,7 +346,7 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         E.accent[2],
       ),
   },
-  "Storm Grid": {
+  "Practice Grid": {
     el: "electric",
     draw: () =>
       `<path d="M8 40 Q22 22 42 30 Q56 14 76 24 Q96 12 120 32 Q110 44 90 40 Q70 48 54 40 Q30 50 8 40Z" fill="#2e2876"/>` +
@@ -420,6 +420,55 @@ const art: Record<string, { el: Element; draw: () => string }> = {
           [30, 82, 1.5],
           [100, 98, 1.6],
           [64, 68, 1.3],
+        ],
+        E.accent[2],
+      ),
+  },
+  "Static Glide": {
+    el: "electric",
+    draw: () =>
+      // A sugar glider sailing on spread membranes over its takeoff pop.
+      floorGlow("electric", 64, 100, 50, 14) +
+      `<ellipse cx="64" cy="100" rx="44" ry="11" fill="none" stroke="${E.accent[2]}" stroke-width="2.2" opacity=".85"/>` +
+      `<ellipse cx="64" cy="100" rx="30" ry="7" fill="none" stroke="${E.accent[1]}" stroke-width="1.4" opacity=".6"/>` +
+      halo("electric", 64, 50, 40) +
+      `<path d="M22 46 Q40 30 58 38 L64 34 L70 38 Q88 30 106 46 Q92 52 82 64 L70 58 L64 62 L58 58 L46 64 Q36 52 22 46Z" fill="url(#sa-orb-electric)"/>` +
+      `<path d="M22 46 Q40 30 58 38 M106 46 Q88 30 70 38" fill="none" stroke="${E.hot}" stroke-width="1.6" opacity=".8"/>` +
+      `<ellipse cx="64" cy="44" rx="9" ry="12" fill="${E.accent[1]}"/>` +
+      `<circle cx="64" cy="34" r="7" fill="${E.accent[2]}"/><circle cx="61.5" cy="33" r="1.6" fill="${E.bg[2]}"/><circle cx="66.5" cy="33" r="1.6" fill="${E.bg[2]}"/>` +
+      `<path d="M64 56 Q66 70 60 80" fill="none" stroke="${E.accent[1]}" stroke-width="4" stroke-linecap="round"/>` +
+      glow(
+        bolt(
+          [
+            [30, 74],
+            [26, 86],
+          ],
+          3,
+          7,
+        ),
+        E.hot,
+        1.6,
+        E.accent[1],
+      ) +
+      glow(
+        bolt(
+          [
+            [98, 74],
+            [102, 86],
+          ],
+          3,
+          9,
+        ),
+        E.hot,
+        1.6,
+        E.accent[1],
+      ) +
+      sparks(
+        [
+          [16, 30, 1.4],
+          [112, 28, 1.4],
+          [44, 18, 1.2],
+          [86, 16, 1.2],
         ],
         E.accent[2],
       ),
@@ -501,7 +550,7 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         F.accent[2],
       ),
   },
-  "Ember Gust": {
+  "Crest Flare": {
     el: "fire",
     draw: () =>
       // A widening cone of flame from the lower left.
@@ -549,7 +598,7 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         F.accent[2],
       ),
   },
-  "Blaze Whirl": {
+  "Heat Cracks": {
     el: "fire",
     draw: () =>
       floorGlow("fire", 64, 96, 54, 16) +
@@ -642,11 +691,12 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         W.accent[2],
       ),
   },
-  "Ripple Stars": {
+  "Gill Spray": {
     el: "water",
     draw: () => {
-      const star = (x: number, y: number, s: number, rot: number) =>
-        `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})"><path d="M0 -14 Q3 -3 14 0 Q3 3 0 14 Q-3 3 -14 0 Q-3 -3 0 -14Z" fill="url(#sa-orb-water)"/><circle r="3" fill="#fff"/></g>`;
+      // Three water droplets flicked from the gill fronds in a narrow fan.
+      const drop = (x: number, y: number, s: number, rot: number) =>
+        `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})"><path d="M0 -15 Q11 0 8 7 Q4 14 0 14 Q-4 14 -8 7 Q-11 0 0 -15Z" fill="url(#sa-orb-water)"/><ellipse cx="-3" cy="2" rx="2.4" ry="4" fill="#fff" opacity=".85"/></g>`;
       return (
         [
           [64, 30],
@@ -661,10 +711,10 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         halo("water", 64, 34, 22) +
         halo("water", 98, 54, 20) +
         halo("water", 30, 58, 20) +
-        star(64, 32, 1.15, 10) +
-        star(98, 54, 0.95, 35) +
-        star(30, 58, 0.95, -20) +
-        `<ellipse cx="64" cy="108" rx="26" ry="6" fill="none" stroke="${W.accent[2]}" stroke-width="1.6" opacity=".6"/>` +
+        drop(64, 32, 1.1, 0) +
+        drop(98, 54, 0.95, 50) +
+        drop(30, 58, 0.95, -50) +
+        `<path d="M40 110 Q52 96 64 104 Q76 96 88 110" fill="none" stroke="#ff9fc4" stroke-width="5" stroke-linecap="round" opacity=".8"/>` +
         sparks(
           [
             [80, 20, 1.4],
@@ -677,7 +727,7 @@ const art: Record<string, { el: Element; draw: () => string }> = {
       );
     },
   },
-  Whirlpool: {
+  Eddy: {
     el: "water",
     draw: () =>
       floorGlow("water", 64, 70, 58, 36, 0.8) +
@@ -708,7 +758,7 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         W.accent[2],
       ),
   },
-  "Mirror Mist": {
+  "Tide Double": {
     el: "water",
     draw: () =>
       // A misty decoy silhouette beside the real dash streaks.
@@ -807,10 +857,10 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         A.accent[2],
       ),
   },
-  "Shatter Palm": {
+  "Shatter Paw": {
     el: "aura",
     draw: () =>
-      // An open palm, a shockwave cracking outward.
+      // A crystal-gauntleted lynx paw, a shockwave cracking outward.
       [0, 1, 2]
         .map(
           (k) =>
@@ -818,8 +868,19 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         )
         .join("") +
       halo("aura", 54, 64, 40) +
-      `<path d="M34 84 L34 52 Q34 46 40 46 Q46 46 46 52 L46 40 Q46 34 52 34 Q58 34 58 40 L58 38 Q58 32 64 32 Q70 32 70 38 L70 46 Q70 40 76 42 Q80 44 80 50 L80 76 Q80 94 62 98 L48 98 Q36 96 34 84Z" fill="url(#sa-orb-aura)"/>` +
-      `<path d="M46 52 V70 M58 40 V68 M70 46 V68" stroke="${A.accent[0]}" stroke-width="1.6" opacity=".6"/>` +
+      `<ellipse cx="54" cy="72" rx="22" ry="20" fill="url(#sa-orb-aura)"/>` +
+      [
+        [36, 46, 8],
+        [50, 40, 8.5],
+        [64, 42, 8],
+        [74, 52, 7],
+      ]
+        .map(
+          ([x, y, r]) =>
+            `<ellipse cx="${x}" cy="${y}" rx="${r}" ry="${r + 1.5}" fill="url(#sa-orb-aura)"/>`,
+        )
+        .join("") +
+      `<path d="M44 84 L54 64 L64 84 L54 96Z" fill="${A.hot}" opacity=".85"/><path d="M54 64 V96" stroke="${A.accent[0]}" stroke-width="1.2" opacity=".6"/>` +
       glow(
         `M96 40 L106 52 L100 60 L112 70 M100 86 L110 94`,
         "#fff",
@@ -835,7 +896,7 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         A.accent[2],
       ),
   },
-  "Mirror Guard": {
+  "Facet Guard": {
     el: "aura",
     draw: () =>
       halo("aura", 64, 62, 50) +
@@ -855,7 +916,7 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         A.accent[2],
       ),
   },
-  "Nova Burst": {
+  "Shard Nova": {
     el: "aura",
     draw: () =>
       floorGlow("aura", 64, 98, 54, 16) +
@@ -909,7 +970,7 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         L.accent[2],
       ),
   },
-  "Starfall Spray": {
+  "Wing Dust": {
     el: "light",
     draw: () =>
       [
@@ -940,28 +1001,40 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         L.accent[2],
       ),
   },
-  "Dust Strike": {
+  "Eyespot Flash": {
     el: "light",
-    draw: () =>
-      halo("light", 64, 62, 46) +
-      // Glowing fangs biting through a cloud of shining dust.
-      `<path d="M30 40 Q64 22 98 40 L88 50 Q64 38 40 50Z" fill="url(#sa-orb-light)"/>` +
-      `<path d="M30 88 Q64 106 98 88 L88 78 Q64 90 40 78Z" fill="url(#sa-orb-light)"/>` +
-      `<path d="M46 47 L52 66 L58 49 M70 49 L76 66 L82 47" fill="${L.hot}" stroke="${L.hot}" stroke-width="1.5" stroke-linejoin="round"/>` +
-      `<path d="M46 81 L52 62 L58 79 M70 79 L76 62 L82 81" fill="${L.hot}" stroke="${L.hot}" stroke-width="1.5" stroke-linejoin="round"/>` +
-      sparks(
-        [
-          [22, 62, 2],
-          [106, 62, 2],
-          [30, 74, 1.4],
-          [98, 52, 1.4],
-          [16, 48, 1.2],
-          [112, 80, 1.2],
-          [64, 16, 1.3],
-          [64, 110, 1.3],
-        ],
-        L.accent[2],
-      ),
+    draw: () => {
+      // Two wings snap open, their big eyespots flaring.
+      const spot = (x: number, y: number) =>
+        `<circle cx="${x}" cy="${y}" r="15" fill="${L.hot}"/><circle cx="${x}" cy="${y}" r="11" fill="${L.accent[1]}"/><circle cx="${x}" cy="${y}" r="6.5" fill="${L.bg[2]}"/><circle cx="${x - 2.4}" cy="${y - 2.6}" r="2.2" fill="#fff"/>`;
+      return (
+        halo("light", 64, 60, 50) +
+        [0, 1, 2, 3, 4, 5, 6, 7]
+          .map((k) => {
+            const a = (k / 8) * Math.PI * 2,
+              x0 = 64 + Math.cos(a) * 46,
+              y0 = 60 + Math.sin(a) * 46,
+              x1 = 64 + Math.cos(a) * 58,
+              y1 = 60 + Math.sin(a) * 58;
+            return `<path d="M${n(x0)} ${n(y0)} L${n(x1)} ${n(y1)}" stroke="${L.accent[2]}" stroke-width="2.4" stroke-linecap="round" opacity=".8"/>`;
+          })
+          .join("") +
+        `<path d="M62 58 Q34 20 14 40 Q8 70 34 82 Q50 86 62 70Z" fill="url(#sa-up-light)"/>` +
+        `<path d="M66 58 Q94 20 114 40 Q120 70 94 82 Q78 86 66 70Z" fill="url(#sa-up-light)"/>` +
+        `<ellipse cx="64" cy="66" rx="5" ry="16" fill="${L.accent[0]}"/>` +
+        spot(38, 56) +
+        spot(90, 56) +
+        sparks(
+          [
+            [22, 100, 1.4],
+            [106, 100, 1.4],
+            [64, 108, 1.3],
+            [64, 14, 1.3],
+          ],
+          L.accent[2],
+        )
+      );
+    },
   },
   Kindle: {
     el: "light",
@@ -1025,7 +1098,7 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         P.accent[2],
       ),
   },
-  "Focus Ray": {
+  "Third-Eye Ray": {
     el: "psychic",
     draw: () =>
       // A third-eye firing a straight beam.
@@ -1050,7 +1123,7 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         P.accent[2],
       ),
   },
-  Repulse: {
+  "Booming Hoot": {
     el: "psychic",
     draw: () =>
       halo("psychic", 64, 64, 30) +
@@ -1073,7 +1146,7 @@ const art: Record<string, { el: Element; draw: () => string }> = {
       `<circle cx="64" cy="64" r="14" fill="url(#sa-core-psychic)"/>` +
       `<path d="M52 64 Q64 54 76 64 Q64 74 52 64Z" fill="#fff"/><circle cx="64" cy="64" r="3.5" fill="${P.accent[0]}"/>`,
   },
-  Ward: {
+  "Wing Cloak": {
     el: "psychic",
     draw: () =>
       halo("psychic", 64, 62, 50) +
@@ -1092,7 +1165,7 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         P.accent[2],
       ),
   },
-  Thoughtstrike: {
+  "Silent Swoop": {
     el: "psychic",
     draw: () =>
       floorGlow("psychic", 64, 92, 50, 18) +
@@ -1142,7 +1215,7 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         R.accent[2],
       ),
   },
-  "Shell Slam": {
+  "Shell Bash": {
     el: "earth",
     draw: () =>
       floorGlow("earth", 64, 100, 52, 14) +
@@ -1161,51 +1234,44 @@ const art: Record<string, { el: Element; draw: () => string }> = {
       glint(64, 14, 7, "#fff3c0") +
       glint(84, 22, 6, "#fff3c0"),
   },
-  Hibernate: {
+  "Shell Up": {
     el: "earth",
     draw: () =>
       halo("earth", 64, 70, 46, 0.8) +
-      // A curled, sleeping boulder with a healing glow and Zs.
-      `<path d="M24 92 Q22 52 60 46 Q100 44 104 84 Q104 98 88 100 L36 100 Q24 100 24 92Z" fill="url(#sa-up-earth)"/>` +
-      `<path d="M24 92 Q22 52 60 46 Q100 44 104 84" fill="none" stroke="${R.accent[2]}" stroke-width="2.4"/>` +
-      `<path d="M44 76 Q50 80 56 76 M68 76 Q74 80 80 76" fill="none" stroke="${R.bg[2]}" stroke-width="2.4" stroke-linecap="round"/>` +
-      `<path d="M90 30 h12 l-12 12 h12 M76 18 h8 l-8 8 h8 M104 12 h6 l-6 6 h6" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>` +
-      `<g fill="#7dffb0"><path d="M22 40 h4 v-4 h4 v4 h4 v4 h-4 v4 h-4 v-4 h-4Z"/><path d="M34 22 h3 v-3 h3 v3 h3 v3 h-3 v3 h-3 v-3 h-3Z" opacity=".7"/></g>`,
+      // A tortoise shell pulled shut, plates glowing, moss on top, regrowing.
+      `<ellipse cx="64" cy="70" rx="48" ry="40" fill="none" stroke="#9be07a" stroke-width="2" opacity=".55" stroke-dasharray="4 5"/>` +
+      `<path d="M22 92 Q20 50 64 44 Q108 50 106 92 Q100 100 64 100 Q28 100 22 92Z" fill="url(#sa-up-earth)"/>` +
+      `<path d="M22 92 Q20 50 64 44 Q108 50 106 92" fill="none" stroke="${R.accent[2]}" stroke-width="2.4"/>` +
+      `<path d="M52 58 L64 52 L76 58 L76 72 L64 78 L52 72Z M30 74 L40 64 L52 72 L50 88 L36 92 Z M98 74 L88 64 L76 72 L78 88 L92 92 Z" fill="none" stroke="${R.bg[2]}" stroke-width="2.2" stroke-linejoin="round" opacity=".7"/>` +
+      `<path d="M36 52 Q48 40 64 42 Q80 40 92 52 Q80 48 64 50 Q48 48 36 52Z" fill="#6fae4f"/>` +
+      `<g fill="#7dffb0"><path d="M14 40 h4 v-4 h4 v4 h4 v4 h-4 v4 h-4 v-4 h-4Z"/><path d="M104 28 h3 v-3 h3 v3 h3 v3 h-3 v3 h-3 v-3 h-3Z" opacity=".75"/></g>`,
   },
-  "Dust Cloud": {
+  "Mud Mire": {
     el: "earth",
     draw: () =>
-      // A heavy drowsy dust cloud with swirling eyes.
+      // A patch of sticky mud with a footprint sinking into it.
+      floorGlow("earth", 64, 80, 54, 26, 0.7) +
+      `<ellipse cx="64" cy="80" rx="50" ry="24" fill="${R.bg[1]}"/>` +
+      `<ellipse cx="64" cy="78" rx="44" ry="19" fill="${R.accent[0]}"/>` +
       [
-        [40, 70, 24],
-        [66, 58, 28],
-        [92, 70, 22],
-        [54, 84, 22],
-        [80, 86, 20],
+        [40, 76, 9, 5],
+        [70, 70, 11, 6],
+        [86, 86, 8, 4],
+        [52, 90, 7, 3.5],
       ]
         .map(
-          ([x, y, r], i) =>
-            `<circle cx="${x}" cy="${y}" r="${r}" fill="${i % 2 ? R.accent[0] : R.accent[1]}" opacity=".85"/>`,
+          ([x, y, rx, ry]) =>
+            `<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${R.accent[1]}" opacity=".55"/>`,
         )
         .join("") +
-      [
-        [40, 66, 16],
-        [66, 52, 18],
-        [92, 66, 14],
-      ]
-        .map(
-          ([x, y, r]) =>
-            `<circle cx="${x}" cy="${y}" r="${r}" fill="${R.accent[2]}" opacity=".35"/>`,
-        )
-        .join("") +
-      `<g fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><path d="M50 72 a5 5 0 1 1 6 0"/><path d="M74 72 a5 5 0 1 1 6 0"/></g>` +
-      `<path d="M18 104 Q40 96 64 104 T110 104" fill="none" stroke="${R.accent[2]}" stroke-width="2" opacity=".6"/>` +
-      `<path d="M98 32 h9 l-9 9 h9" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>` +
+      `<circle cx="60" cy="66" r="4" fill="none" stroke="${R.accent[2]}" stroke-width="1.6" opacity=".8"/><circle cx="82" cy="78" r="3" fill="none" stroke="${R.accent[2]}" stroke-width="1.4" opacity=".7"/>` +
+      `<path d="M48 54 Q46 42 52 36 Q58 42 56 54Z M62 50 Q62 38 68 34 Q72 42 68 52Z" fill="${R.accent[1]}" opacity=".9"/>` +
+      `<path d="M30 50 L40 58 M98 50 L88 58" stroke="${R.accent[2]}" stroke-width="2" stroke-linecap="round" opacity=".7"/>` +
       sparks(
         [
           [22, 44, 1.4],
           [112, 92, 1.3],
-          [30, 98, 1.2],
+          [30, 104, 1.2],
         ],
         R.accent[2],
       ),
@@ -1318,31 +1384,26 @@ const art: Record<string, { el: Element; draw: () => string }> = {
       );
     },
   },
-  "Curse Mark": {
+  "Haunted Lantern": {
     el: "shadow",
     draw: () =>
-      halo("shadow", 64, 58, 48) +
-      // A rune ring closing on a cursed eye; the mark doubles the damage.
-      `<circle cx="64" cy="58" r="36" fill="none" stroke="${S.accent[2]}" stroke-width="2.4"/>` +
-      `<circle cx="64" cy="58" r="28" fill="none" stroke="${S.accent[1]}" stroke-width="1.4" stroke-dasharray="3 3"/>` +
-      [0, 1, 2, 3, 4, 5]
-        .map((k) => {
-          const a = (k / 6) * Math.PI * 2 - Math.PI / 2,
-            x = 64 + Math.cos(a) * 36,
-            y = 58 + Math.sin(a) * 36,
-            ix = 64 + Math.cos(a) * 24,
-            iy = 58 + Math.sin(a) * 24;
-          return `<path d="M${n(x)} ${n(y)} L${n(ix)} ${n(iy)}" stroke="${S.hot}" stroke-width="2.4" stroke-linecap="round"/><circle cx="${n(x)}" cy="${n(y)}" r="3" fill="${S.accent[2]}"/>`;
-        })
-        .join("") +
-      `<path d="M44 58 Q64 38 84 58 Q64 78 44 58Z" fill="url(#sa-orb-shadow)"/>` +
-      `<circle cx="64" cy="58" r="8" fill="${S.bg[2]}"/><path d="M64 51 L66 58 L64 65 L62 58Z" fill="${S.hot}"/>` +
-      `<text x="64" y="112" text-anchor="middle" font-family="DM Sans, sans-serif" font-weight="800" font-size="17" fill="${S.accent[2]}">×2</text>` +
+      // A lantern hung on a crooked post, its ghost flame lighting the ground.
+      floorGlow("shadow", 64, 104, 54, 14) +
+      `<ellipse cx="64" cy="104" rx="50" ry="12" fill="none" stroke="${S.accent[2]}" stroke-width="1.6" opacity=".55" stroke-dasharray="4 4"/>` +
+      `<path d="M44 106 V30 Q44 22 52 22 H74" fill="none" stroke="${S.bg[2]}" stroke-width="6" stroke-linecap="round"/>` +
+      `<path d="M44 106 V30 Q44 22 52 22 H74" fill="none" stroke="${S.accent[0]}" stroke-width="2" stroke-linecap="round" opacity=".8"/>` +
+      `<path d="M74 22 V32" stroke="${S.accent[2]}" stroke-width="1.6"/>` +
+      halo("shadow", 76, 52, 30) +
+      `<rect x="62" y="32" width="28" height="34" rx="7" fill="${S.bg[1]}" stroke="${S.accent[2]}" stroke-width="2.4"/>` +
+      `<path d="M76 38 Q86 48 84 56 Q82 62 76 62 Q70 62 68 56 Q66 48 76 38Z" fill="#7dffe1"/>` +
+      `<path d="M76 46 Q80 52 79 56 Q78 59 76 59 Q74 59 73 56 Q72 52 76 46Z" fill="#e6fff8"/>` +
+      `<path d="M96 70 Q104 74 108 84" fill="none" stroke="#7dffe1" stroke-width="3" stroke-linecap="round" opacity=".8"/><circle cx="109" cy="87" r="4" fill="#7dffe1"/>` +
       sparks(
         [
           [22, 26, 1.3],
           [106, 22, 1.4],
           [20, 96, 1.2],
+          [100, 50, 1.2],
         ],
         S.accent[2],
       ),

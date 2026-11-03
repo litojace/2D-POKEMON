@@ -309,10 +309,10 @@ describe("Polarity fairness and champion tricks", () => {
     expect(CHARACTERS.cindrake.health - a.heroes()[2].hp).toBeCloseTo(56);
     expect(a.raid.polarities).toEqual([]);
   });
-  it("Terradon’s sleeping shell blocks the expired mark without faking a polarity pair", () => {
+  it("Terradon’s closed shell blocks the expired mark without faking a polarity pair", () => {
     const a = setup(1, 3, 1, ["terradon"]);
     attack(a, "polarity");
-    a.status(a.heroes()[0], "sleep", 5);
+    a.status(a.heroes()[0], "shell", 5);
     run(a, 4.1);
     expect(a.heroes()[0].hp).toBe(CHARACTERS.terradon.health);
     expect(a.raid.contributions!.p0.pillars).toBe(0);

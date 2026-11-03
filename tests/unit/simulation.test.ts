@@ -198,10 +198,15 @@ describe("authoritative simulation", () => {
         else expect(p.cooldowns[i]).toBeGreaterThan(0);
         if (c.skills[i].kind === "clone") expect(p.clone).toBeDefined();
         const kind = c.skills[i].kind;
+        // A buff or rest can name its own status (Static Glide: haste; Shell Up: shell).
+        const own =
+          (kind === "buff" || kind === "rest") && c.skills[i].status;
         if (kind in selfStatus)
           expect(
             p.statuses.some(
-              (s) => s.kind === selfStatus[kind as keyof typeof selfStatus],
+              (s) =>
+                s.kind ===
+                (own || selfStatus[kind as keyof typeof selfStatus]),
             ),
           ).toBe(true);
       }

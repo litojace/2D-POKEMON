@@ -864,6 +864,10 @@ export class FighterRig {
     }
     this.carriedRotation = dir === "down" ? 0 : body.rotation;
     for (const image of this.images.values()) image.setVisible(true);
+    // Shell Up: head, limbs and sprout tuck away; only the mossy shell shows.
+    if (pose.shell)
+      for (const [part, image] of this.images)
+        if (part !== "wings") image.setVisible(false);
     this.effects.clear();
     this.under.clear();
     if (!this.suffix && pose.look?.skin === "starlit-skin") {

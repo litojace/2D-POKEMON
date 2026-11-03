@@ -102,7 +102,8 @@ export function riteEffect(rite: Rite): RiteEffect {
   const has = (...k: string[]) => k.some((x) => keys.includes(x));
   if (has("kind")) return "transform";
   if (has("status")) return "status";
-  if (has("count")) return "count";
+  // More projectiles, or a turret that shoots more often: more shots.
+  if (has("count", "tickInterval")) return "count";
   if (has("heal")) return "heal";
   if (has("bonusVsStatus")) return "combo";
   if (has("damage")) return "damage";

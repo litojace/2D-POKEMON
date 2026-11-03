@@ -100,7 +100,8 @@ export function previewShape(
       shape.discs.push({
         x: from.x + Math.cos(angle) * distance,
         y: from.y + Math.sin(angle) * distance,
-        r: ability.radius,
+        // A turret (Haunted Lantern) covers as far as it shoots.
+        r: ability.turret?.range ?? ability.radius,
       });
       if (!ability.follow)
         shape.rings.push({ x: from.x, y: from.y, r: ability.range });
@@ -114,8 +115,13 @@ export function previewShape(
       });
       break;
     default:
-      // Clone, counter, barrier, buff, rest: they act on yourself.
-      shape.discs.push({ x: from.x, y: from.y, r: SELF_RING });
+      // Clone, counter, barrier, buff, rest: they act on yourself. A buff
+      // with a takeoff pop (Static Glide) shows how far the pop shoves.
+      shape.discs.push({
+        x: from.x,
+        y: from.y,
+        r: ability.pop ? ability.pop.radius + RULES.radius : SELF_RING,
+      });
   }
   return shape;
 }

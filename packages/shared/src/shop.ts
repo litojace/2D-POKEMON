@@ -288,7 +288,7 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
     "clockwork",
     "Clockwork",
     "epic",
-    "Brass gears and a golden clock-hand Focus Ray",
+    "Brass gears and a golden clock-hand Third-Eye Ray",
     "arcade",
   ),
   skin(
