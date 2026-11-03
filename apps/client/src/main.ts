@@ -4299,8 +4299,15 @@ class ArenaScene extends Phaser.Scene {
         event.color,
         reducedMotion,
       );
+    // A blink's landing and a rush's contact play the move's impact effect.
+    if (
+      ability &&
+      event.kind === "burst" &&
+      (ability.kind === "blink" || ability.kind === "rush")
+    )
+      playImpact(this, ability, event.x, event.y, event.color, reducedMotion);
     // Novas play on their burst event; every other move plays on cast.
-    if (ability && event.kind === "burst") {
+    else if (ability && event.kind === "burst") {
       const combo = owner && COMBOS[owner.character];
       const shown =
         event.combo && combo?.radius
@@ -4311,6 +4318,12 @@ class ArenaScene extends Phaser.Scene {
     if (event.kind === "hazard") this.hazardBurst(event);
     if (event.combo && (event.kind === "burst" || event.kind === "hit"))
       this.comboText(event);
+    // The first hit out of stealth, and a charge that drives into a wall.
+    if (event.kind === "hit" && event.ambush) this.comboText(event, "AMBUSH!");
+    if (event.kind === "burst" && event.slam) {
+      this.comboText(event, "WALL SLAM!");
+      if (!reducedMotion) this.cameras.main.shake(140, 0.004);
+    }
     if (ability && event.kind === "cast" && ability.kind !== "nova")
       playCast(
         this,
@@ -4426,8 +4439,8 @@ class ArenaScene extends Phaser.Scene {
       this.cameras.main.shake(140, 0.004, false);
   }
   /** "SOAKED!" over a combo payoff, at most once per fighter per moment. */
-  comboText(event: Snapshot["events"][number]) {
-    const key = `${event.source ?? event.owner}:${event.combo}`;
+  comboText(event: Snapshot["events"][number], text?: string) {
+    const key = `${event.source ?? event.owner}:${text ?? event.combo}`;
     const now = performance.now();
     if ((this.comboShown.get(key) ?? 0) > now) return;
     this.comboShown.set(key, now + 600);
@@ -4435,9 +4448,10 @@ class ArenaScene extends Phaser.Scene {
       .text(
         event.x,
         event.y - 75,
-        event.abilityId === "ex-cast"
-          ? `${event.combo!.toUpperCase()}!`
-          : `${event.combo!.toUpperCase()} COMBO!`,
+        text ??
+          (event.abilityId === "ex-cast"
+            ? `${event.combo!.toUpperCase()}!`
+            : `${event.combo!.toUpperCase()} COMBO!`),
         {
           fontFamily: "system-ui, sans-serif",
           fontStyle: "900",

@@ -609,24 +609,17 @@ Before and after: [roster](images/step3/roster.webp),
 
 ## Decisions (owner, 3 Nov 2026)
 
-| #   | Question                                        | Decision                                                                                  |
-| --- | ----------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| 1   | Screens inside the Lobby (HUD, rail stay)       | Yes                                                                                       |
-| 2   | Purchase confirmation instead of the double tap | Yes, for every purchase                                                                   |
-| 3   | Wardrobe shows unowned items                    | **No.** The Wardrobe shows owned items only; a "More in the Shop" tile leads to the Shop. |
-| 5   | Server time for timers                          | Yes: the game server sends its clock; no database change                                  |
+| #   | Question                                        | Decision                                                                                                                                                         |
+| --- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Screens inside the Lobby (HUD, rail stay)       | Yes                                                                                                                                                              |
+| 2   | Purchase confirmation instead of the double tap | Yes, for every purchase                                                                                                                                          |
+| 3   | Wardrobe shows unowned items                    | **No.** The Wardrobe shows owned items only; a "More in the Shop" tile leads to the Shop.                                                                        |
+| 4   | Recent players and a Friends leaderboard        | **Yes, build both in step 6:** two read-only server endpoints (recent opponents from `arena_match_players`; your friends' ratings), no economy or schema change. |
+| 5   | Server time for timers                          | Yes: the game server sends its clock; no database change                                                                                                         |
+| 6   | Mythical rarity colour                          | **Pink with a foil edge everywhere** (`--r-mythic: #ff8fd8` plus `--r-foil`), replacing the red in cosmetic chips (`cosmetic-fx.css`, `TIER_COLORS`).            |
+| 7   | Share card on the player card                   | **Yes, in step 7:** saves your card as a picture, drawn on the device like `share-card.ts` draws match results.                                                  |
 
-Still open:
-
-4. **Two read-only server endpoints for step 6:** _Recent players_ in
-   Friends (who you played in the last 7 days, from `arena_match_players`)
-   and a _Friends_ leaderboard (your friends' ratings; the board today sends
-   only the top 20). Build them, or leave both tabs out?
-5. (Decided above.)
-6. **Rarity colours.** Mythical becomes pink with a foil (`#ff8fd8`)
-   everywhere; today it is pink in the Shop and red in cosmetic chips. OK?
-7. **Share card** on the player card (a picture of your card): add it in
-   step 7, or not now?
+No questions are open.
 
 ## What was verified and what was not
 

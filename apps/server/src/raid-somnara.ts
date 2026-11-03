@@ -277,33 +277,44 @@ export class SomnaraArena extends RaidArena {
       this.occupied.set(p.id, rune);
       return rune !== undefined && rune !== before && !p.sleeping;
     });
-    for (const p of entered) {
-      if (this.time < this.nextStepAt || r.dream !== d) break;
-      const rune = this.padAt(p.x, p.y)!;
-      if (rune !== this.sequence[d.step]) {
-        this.nightmare();
-        break;
-      }
-      d.step++;
-      this.nextStepAt = this.time + S.sequence.stepGap;
-      if (!r.drill && r.contributions?.[p.owner])
-        r.contributions[p.owner].pillars++;
-      this.event("heal", p, 0x99efdd, 0, p.owner);
-      if (d.step === d.length) {
-        r.dreamsSolved = (r.dreamsSolved ?? 0) + 1;
-        r.dream = undefined;
-        this.sequence = [];
-        this.sharedUntil = 0;
-        r.exposedUntil =
-          this.time + S.sequence.expose + (r.trait === "deep-slumber" ? 2 : 0);
-        r.message = "Dream solved! Somnara wakes — strike the shining heart!";
-        this.nextAttack = Math.max(this.nextAttack, r.exposedUntil + 0.8);
-        this.countDodges();
-      }
+    for (const p of entered)
+      if (!this.enterPad(p.owner, p, this.padAt(p.x, p.y)!)) break;
+  }
+  /** A raider (or their double) enters a pad; false once no more count now. */
+  private enterPad(
+    owner: string,
+    at: { x: number; y: number },
+    rune: DreamRune,
+  ) {
+    const r = this.raid,
+      d = r.dream;
+    if (!d || this.time < this.nextStepAt) return false;
+    if (rune !== this.sequence[d.step]) {
+      this.nightmare();
+      return false;
     }
+    d.step++;
+    this.nextStepAt = this.time + S.sequence.stepGap;
+    if (!r.drill && r.contributions?.[owner]) r.contributions[owner].pillars++;
+    this.event("heal", at, 0x99efdd, 0, owner);
+    if (d.step === d.length) {
+      r.dreamsSolved = (r.dreamsSolved ?? 0) + 1;
+      r.dream = undefined;
+      this.sequence = [];
+      this.sharedUntil = 0;
+      r.exposedUntil =
+        this.time + S.sequence.expose + (r.trait === "deep-slumber" ? 2 : 0);
+      r.message = "Dream solved! Somnara wakes — strike the shining heart!";
+      this.nextAttack = Math.max(this.nextAttack, r.exposedUntil + 0.8);
+      this.countDodges();
+      return false;
+    }
+    return true;
   }
   private addDrowsy(p: Fighter, bubble = false) {
     if (p.hp <= 0 || (bubble && this.hasRite(p, "lucid"))) return;
+    // Shadopus hidden in its Ink Cloud, and anyone in a Warm Spring, stay awake.
+    if (this.inked(p) || this.inSpring(p)) return;
     const d = ((this.raid.drowsy ??= {})[p.id] ??= {
       stacks: 0,
       sleepUntil: 0,
@@ -324,6 +335,9 @@ export class SomnaraArena extends RaidArena {
       });
       this.raid.message = `${p.name} is asleep! Tap them awake with an attack.`;
     }
+  }
+  private inked(p: Fighter) {
+    return p.character === "shadopus" && this.has(p, "stealth");
   }
   private wake(p: Fighter) {
     const d = this.raid.drowsy?.[p.id];
@@ -560,10 +574,12 @@ export class SomnaraArena extends RaidArena {
           continue;
         hit.add(p.id);
         if (p.jumpUntil > this.time) continue;
+        // (The ring's sting reveals a hidden Shadopus, but not before it counts.)
+        const hidden = this.inked(p);
         this.hitBy = "lullaby";
         this.damage(p, S.lullaby.damage, boss.id);
         this.hitBy = undefined;
-        this.addDrowsy(p);
+        if (!hidden) this.addDrowsy(p);
       }
     }
     r.dreamRings = (r.dreamRings ?? []).filter(
@@ -679,6 +695,16 @@ export class SomnaraArena extends RaidArena {
       this.raid.dreamBubbles = (this.raid.dreamBubbles ?? []).filter(
         (b) => !affected(b.x, b.y),
       );
+    }
+    // Astrabun's Moon Hop: landing on (or beside) a rune pad steps on it.
+    if (a.id === "moon-hop" && this.raid.dream) {
+      const pad = S.pads.find(
+        (q) => Math.hypot(q.x - p.x, q.y - p.y) <= S.padRadius + a.radius,
+      );
+      if (pad && this.occupied.get(p.id) !== pad.rune) {
+        this.occupied.set(p.id, pad.rune);
+        this.enterPad(p.id, p, pad.rune);
+      }
     }
     if (a.id === "silent-swoop" && this.raid.dream) {
       this.sharedUntil = this.raid.dream.until;

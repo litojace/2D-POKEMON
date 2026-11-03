@@ -37,12 +37,13 @@ describe("cute proportions", () => {
             );
       }
   });
-  it("keeps front blush on every champion except the void-faced wisp", () => {
-    // Duskveil keeps its void face; Terradon has a pink blush on both cheeks.
+  it("keeps front blush on every champion except the void-faced wisp and the masked octopus", () => {
+    // Duskveil keeps its void face and Shadopus its ink mask; Terradon has a
+    // pink blush on both cheeks.
     for (const id of FIGHTER_IDS) {
       const front = creatureLayers(id, "down").layers.head;
       expect(front.includes('opacity=".5" stroke="none"'), id).toBe(
-        id !== "duskveil",
+        id !== "duskveil" && id !== "shadopus",
       );
     }
   });

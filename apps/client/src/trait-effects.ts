@@ -287,6 +287,152 @@ const AURAS: Record<CharacterId, (k: Kit, id: CharacterId) => TraitAura> = {
         `<circle r="12" fill="#7dffe1" opacity=".35" ${k.soft}/><path d="M0 -13Q8 -2 5.5 4Q2.5 9.5 0 9.5Q-2.5 9.5 -5.5 4Q-8 -2 0 -13Z" fill="#7dffe1"/><path d="M0 -3Q3 2 2 5Q0 7 -2 5Q-3 2 0 -3Z" fill="#ffffff"/>`,
     ),
   }),
+  coilemur: (k) => ({
+    defs: k.defs("#ffd84a"),
+    // Magnetic field lines around the lemur, crackling.
+    back: `${k.pool()}${k
+      .range(3)
+      .map(
+        (i) =>
+          `<ellipse class="ta-c" cx="100" cy="112" rx="${70 + i * 16}" ry="${34 + i * 9}" fill="none" stroke="${i % 2 ? "#d9823b" : "#ffd84a"}" stroke-width="2" stroke-dasharray="14 9" opacity="${0.7 - i * 0.15}"${k.anim("dash", 1.6 + i * 0.4)}/>`,
+      )
+      .join("")}${k
+      .range(3)
+      .map((i) => {
+        const flick = k.anim("flicker", 1 + i * 0.2, i * 0.4, "steps(1)");
+        return `<g${flick} ${k.soft}>${k.bolt([20, 178, 40][i], [56, 70, 130][i], "#ffd84a", 2.4)}</g>`;
+      })
+      .join("")}`,
+    front: k.orbit(
+      96,
+      30,
+      126,
+      3.6,
+      5,
+      (i) =>
+        `<rect x="-4" y="-1.5" width="8" height="3" rx="1.5" fill="${i % 2 ? "#d9823b" : "#a9a6bd"}" transform="rotate(${i * 36})"/><circle r="5" fill="#ffd84a" opacity=".35" ${k.soft}/>`,
+    ),
+  }),
+  pyranda: (k, id) => ({
+    defs: k.defs("#ff8a3d"),
+    back: `${k.pool(70, 14)}<ellipse cx="100" cy="150" rx="64" ry="34" fill="#ff7a3d" opacity=".2" ${k.blur}/>`,
+    front: `${k.orbit(
+      94,
+      32,
+      128,
+      5,
+      4,
+      () =>
+        `<circle r="8" fill="#ffcf4d" opacity=".35" ${k.soft}/><path d="M-5 2Q-6 -4 0 -6Q6 -4 5 2Q3 6 0 6Q-3 6 -5 2Z" fill="#8a4a22" stroke="#4a1a12" stroke-width="1"/><circle cx="0" cy="-1" r="1.6" fill="#ffcf4d"/>`,
+    )}${k.rising(
+      12,
+      (x, y, i) =>
+        `<circle cx="${x}" cy="${y}" r="${(i % 3) + 1.4}" fill="${i % 2 ? "#ffcf4d" : "#ff8a3d"}"/><circle cx="${x}" cy="${y}" r="${(i % 3) + 3.5}" fill="#ff8a3d" opacity=".3" filter="url(#ta-${id}-soft)"/>`,
+      34,
+      166,
+      [2, 3.6],
+    )}`,
+  }),
+  glacelle: (k) => ({
+    defs: k.defs("#9fe8ff"),
+    back: `${k.pool()}<g transform="translate(100 104)"><g class="ta-c"${k.anim("spin", 18)}>${k
+      .range(6)
+      .map((i) => {
+        const a = (i / 6) * Math.PI * 2,
+          x = k.n1(Math.cos(a) * 88),
+          y = k.n1(Math.sin(a) * 88);
+        return `<path d="M${x - 7} ${y}H${x + 7}M${k.n1(x - 3.5)} ${k.n1(y - 6)}L${k.n1(x + 3.5)} ${k.n1(y + 6)}M${k.n1(x - 3.5)} ${k.n1(y + 6)}L${k.n1(x + 3.5)} ${k.n1(y - 6)}" stroke="#e8fbff" stroke-width="2" stroke-linecap="round" opacity=".75"/>`;
+      })
+      .join("")}</g><circle r="66" fill="#d9f6ff" opacity=".2" ${k.blur}/></g>`,
+    front: k.rising(
+      12,
+      (x, y, i) =>
+        `<path d="M${x - 3} ${y}H${x + 3}M${x} ${y - 3}V${y + 3}" stroke="#ffffff" stroke-width="${i % 2 ? 1.2 : 1.8}" stroke-linecap="round" opacity=".9"/>`,
+      24,
+      176,
+      [4, 6.5],
+    ),
+  }),
+  halcyra: (k) => ({
+    defs: k.defs("#6f8dff"),
+    // A marksman's reticle turning slowly behind it.
+    back: `${k.pool()}<g transform="translate(100 104)"><g class="ta-c"${k.anim("spin", 16)}><circle r="88" fill="none" stroke="#c9f4ff" stroke-width="2" stroke-dasharray="40 18" opacity=".6"/><circle r="70" fill="none" stroke="#6f8dff" stroke-width="1.4" opacity=".5"/><path d="M0 -100V-78M0 78V100M-100 0H-78M78 0H100" stroke="#c9f4ff" stroke-width="2.4" stroke-linecap="round" opacity=".8"/></g></g>`,
+    front: k.orbit(
+      100,
+      32,
+      116,
+      5,
+      4,
+      (i) =>
+        `<path d="M-9 2Q-2 -6 9 -3Q2 4 -9 2Z" fill="${i % 2 ? "#ff9a4a" : "#6f8dff"}" stroke="#1c2456" stroke-width="1"/><path d="M-7 1L8 -2" stroke="#e8eeff" stroke-width=".9"/>`,
+    ),
+  }),
+  sunbara: (k, id) => ({
+    defs: k.defs("#ffe066"),
+    back: `${k.pool(76, 15)}<g transform="translate(100 96)"><g class="ta-c"${k.anim("spin", 30)}>${k
+      .range(12)
+      .map((i) => {
+        const a = (i / 12) * Math.PI * 2;
+        return `<line x1="${k.n1(Math.cos(a) * 80)}" y1="${k.n1(Math.sin(a) * 80)}" x2="${k.n1(Math.cos(a) * (i % 2 ? 94 : 104))}" y2="${k.n1(Math.sin(a) * (i % 2 ? 94 : 104))}" stroke="#ffe066" stroke-width="${i % 2 ? 2.5 : 4}" stroke-linecap="round" opacity=".55"/>`;
+      })
+      .join("")}</g><circle r="66" fill="#fff1d6" opacity=".3" ${k.blur}/></g>`,
+    // Steam rising from a warm spring.
+    front: k.rising(
+      8,
+      (x, y) =>
+        `<path d="M${x} ${y}q-5 -7 0 -14q5 -7 0 -14" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity=".55" filter="url(#ta-${id}-soft)"/>`,
+      36,
+      164,
+      [3.5, 5.5],
+    ),
+  }),
+  astrabun: (k) => ({
+    defs: k.defs("#d78bff"),
+    back: `${k.pool()}<g transform="translate(100 100)"><circle r="78" fill="#ffe9a3" opacity=".22" ${k.blur}/><path d="M30 -84Q-10 -70 -8 -34Q-4 -4 34 6Q4 -14 6 -40Q8 -70 30 -84Z" fill="#fffbe6" opacity=".55"${k.anim("pulse", 3, 0, "ease-in-out")}/></g>`,
+    front: `${k
+      .range(8)
+      .map(
+        (i) =>
+          `<g class="ta-c"${k.anim("twinkle", 1.4 + (i % 4) * 0.4, i * 0.3, "ease-in-out")}>${k.star4(k.n1(k.r(-10, 210)), k.n1(k.r(-20, 160)), k.n1(k.r(4, 8)), i % 3 ? "#ffe9a3" : "#ffffff")}</g>`,
+      )
+      .join(
+        "",
+      )}${k.orbit(96, 30, 130, 4.5, 3, () => k.star4(0, 0, 6, "#ffe27a"))}`,
+  }),
+  wombolder: (k) => ({
+    defs: k.defs("#b08a62"),
+    back: `${k.pool(82, 15)}<path class="ta-c" d="M30 178L48 170L58 178L76 172M124 174L142 168L152 178L170 170" fill="none" stroke="#3e2a1a" stroke-width="2.2" stroke-linecap="round" opacity=".6"${k.anim("pulse", 2.4, 0, "ease-in-out")}/>${k
+      .range(4)
+      .map(
+        (i) =>
+          `<ellipse class="ta-c" cx="${46 + i * 36}" cy="174" rx="20" ry="6" fill="#b08a62" opacity=".35"${k.anim("ripple", 2.6, i * 0.6, "ease-out")}/>`,
+      )
+      .join("")}`,
+    front: k.orbit(108, 32, 140, 7, 6, (i) => {
+      const s = 4 + (i % 3) * 2;
+      return `<path d="M${-s} 1L${k.n1(-s * 0.3)} ${-s}L${s} ${k.n1(-s * 0.4)}L${k.n1(s * 0.6)} ${k.n1(s * 0.8)}Z" fill="${i % 2 ? "#8b8f99" : "#b08a62"}" stroke="#3e2a1a" stroke-width="1"/>`;
+    }),
+  }),
+  shadopus: (k) => ({
+    defs: k.defs("#7b5cff"),
+    back: `<ellipse cx="100" cy="176" rx="74" ry="14" fill="#120b26" opacity=".85"/>${k.pool(64, 12)}<g ${k.blur}>${k.rising(
+      8,
+      (x, y, i) =>
+        `<circle cx="${x}" cy="${y}" r="${12 + (i % 3) * 6}" fill="${i % 2 ? "#2a1a5c" : "#120b26"}" opacity=".9"/>`,
+      30,
+      170,
+      [3, 5],
+    )}</g>`,
+    front: k.orbit(
+      98,
+      34,
+      118,
+      4.5,
+      4,
+      () =>
+        `<circle r="10" fill="#ff6bd6" opacity=".3" ${k.soft}/><path d="M0 -8Q6 0 4 4Q2 7 0 7Q-2 7 -4 4Q-6 0 0 -8Z" fill="#120b26" stroke="#ff6bd6" stroke-width="1.2"/>`,
+    ),
+  }),
 };
 export function traitAura(id: CharacterId, still = false): TraitAura {
   const k = kit(id, still);

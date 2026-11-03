@@ -99,6 +99,22 @@ export class GloomshadeArena extends RaidArena {
   protected override alwaysExposed() {
     return false;
   }
+  /** Shadopus hidden in its Ink Cloud: Gloomshade has lost track of it. */
+  private inked(p: Fighter) {
+    return p.character === "shadopus" && this.has(p, "stealth");
+  }
+  /** Attacks never pick a hidden Shadopus (and wait while nobody is seen). */
+  protected override chooseTarget(kind: RaidAttack, alive: Fighter[]) {
+    const seen = alive.filter((p) => !this.inked(p));
+    return super.chooseTarget(kind, seen.length ? seen : alive);
+  }
+  protected override canStartAttack() {
+    return (
+      super.canStartAttack() &&
+      (!!this.raid.drill ||
+        this.heroes().some((p) => p.hp > 0 && !this.inked(p)))
+    );
+  }
   override feat() {
     return this.raid.result === "victory" && this.splits > 0 && this.decoyHits === 0;
   }
@@ -369,6 +385,18 @@ export class GloomshadeArena extends RaidArena {
     this.stepHits(boss);
     this.stepCurses(dt, boss);
     r.lights = (r.lights ?? []).filter((l) => l.until > this.time);
+    // Pyranda's Chestnut Mortar relights a dark lantern it lands on.
+    for (const z of this.heroZones("chestnut-mortar"))
+      for (const l of r.lanterns ?? [])
+        if (!l.lit && Math.hypot(l.x - z.x, l.y - z.y) < z.radius + 36)
+          this.relight(
+            l,
+            this.heroes().find((p) => p.id === z.owner),
+          );
+    // Sunbara's springs wash curses off the allies inside them.
+    for (const p of this.heroes())
+      if (p.hp > 0 && this.inSpring(p, "warm-spring", "sanctuary"))
+        this.cleanse(p);
     // Lamplighter: lantern light heals 1% a second (more in later chapters).
     for (const p of this.heroes())
       if (p.hp > 0 && this.hasRite(p, "lamplighter") && this.lit(p.x, p.y)) {
@@ -498,6 +526,17 @@ export class GloomshadeArena extends RaidArena {
     const r = this.raid;
     const before = target.hp;
     super.damage(target, amount, owner, ability);
+    // Wombolder's Landslide shakes off every copy.
+    if (
+      target.raidBoss &&
+      ability?.id === "landslide" &&
+      r.decoys?.length &&
+      !r.drill
+    ) {
+      r.decoys = [];
+      r.streak = 0;
+      r.message = "The ground erupts! Every copy is shaken off.";
+    }
     // Six hits in a row on the real one expose it, and the copies vanish.
     // Only while there are copies to tell it apart from: that's the puzzle.
     if (!target.raidBoss || target.hp >= before || r.drill || !r.decoys?.length) return;

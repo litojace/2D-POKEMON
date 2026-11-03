@@ -357,6 +357,14 @@ export const HEAD: Record<CharacterId, Record<Facing, { cx: number; top: number 
   mystowl: { down: { cx: 100, top: 43 }, up: { cx: 100, top: 44 }, left: { cx: 96, top: 43 }, right: { cx: 104, top: 43 } },
   terradon: { down: { cx: 100, top: 45 }, up: { cx: 100, top: 47 }, left: { cx: 88, top: 44 }, right: { cx: 112, top: 44 } },
   duskveil: { down: { cx: 101, top: -5 }, up: { cx: 101, top: -5 }, left: { cx: 96, top: -5 }, right: { cx: 106, top: -5 } },
+  coilemur: { down: { cx: 100, top: 44 }, up: { cx: 100, top: 44 }, left: { cx: 93, top: 41 }, right: { cx: 107, top: 41 } },
+  pyranda: { down: { cx: 100, top: 44 }, up: { cx: 100, top: 44 }, left: { cx: 93, top: 41 }, right: { cx: 107, top: 41 } },
+  glacelle: { down: { cx: 100, top: 43 }, up: { cx: 100, top: 43 }, left: { cx: 94, top: 43 }, right: { cx: 106, top: 43 } },
+  halcyra: { down: { cx: 100, top: 44 }, up: { cx: 100, top: 44 }, left: { cx: 94, top: 44 }, right: { cx: 106, top: 44 } },
+  sunbara: { down: { cx: 100, top: 45 }, up: { cx: 100, top: 45 }, left: { cx: 95, top: 45 }, right: { cx: 105, top: 45 } },
+  astrabun: { down: { cx: 100, top: 44 }, up: { cx: 100, top: 44 }, left: { cx: 94, top: 44 }, right: { cx: 106, top: 44 } },
+  wombolder: { down: { cx: 100, top: 48 }, up: { cx: 100, top: 48 }, left: { cx: 94, top: 47 }, right: { cx: 106, top: 47 } },
+  shadopus: { down: { cx: 100, top: 27 }, up: { cx: 100, top: 27 }, left: { cx: 99, top: 30 }, right: { cx: 101, top: 30 } },
 };
 
 /** Default parts a pattern covers (the eyes are a separate layer and stay clear). */
