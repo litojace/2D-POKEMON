@@ -2,7 +2,7 @@
 
 A real-time, server-authoritative 1v1 elemental creature fighting game. Built with Phaser, TypeScript, Vite, Socket.IO, Express, and Supabase.
 
-Eight original creatures — **Voltkit** (Electric), **Cindrake** (Fire), **Tidefin** (Water), **Auralynx** (Aura), **Lumoth** (Light), **Mystowl** (Psychic), **Terradon** (Earth) and **Duskveil** (Shadow). Each has one signature basic attack (no cooldown, server-enforced attack interval), four special skills on cooldowns, plus the universal dash and jump. Mobile controls put the basic attack on the large button with the four skills curving around it.
+Sixteen original creatures, two per element — **Voltkit** and **Coilemur** (Electric), **Cindrake** and **Pyranda** (Fire), **Tidefin** and **Glacelle** (Water), **Auralynx** and **Halcyra** (Aura), **Lumoth** and **Sunbara** (Light), **Mystowl** and **Astrabun** (Psychic), **Terradon** and **Wombolder** (Earth), **Duskveil** and **Shadopus** (Shadow). Each has one signature basic attack (no cooldown, server-enforced attack interval), four special skills on cooldowns, plus the universal dash and jump. Mobile controls put the basic attack on the large button with the four skills curving around it.
 
 Every creature is an original articulated shaded-vector rig with authored front, back and side views, animated limb by limb. Rendered sprite sheets or atlases can replace any creature without code changes; see [fighter assets](docs/fighter-assets.md).
 
@@ -69,6 +69,8 @@ Mobile uses the left joystick and right skill/action buttons, with a separate bo
 
 ## Balance notes
 
+**Eight new champions (November 2026).** Coilemur (Electric lemur, grappler), Pyranda (Fire red panda, artillery), Glacelle (Water sea angel, frost controller), Halcyra (Aura kingfisher, marksman), Sunbara (Light capybara, support), Astrabun (Psychic moon rabbit, blink duelist), Wombolder (Earth wombat, charger) and Shadopus (Shadow octopus, stealth assassin) join the roster, each with a basic attack, four skills, a signature combo, six rites and three raid champion tricks. They bring new mechanics: pulls, blinks, charges that slam into walls, stealth with an ambush bonus, healing springs and marksman shots that hit harder at range. Health and attack speed were then re-tuned for all sixteen together: bot win rates now run 47–52% (before: 42–60%). Kits, design and numbers are in [docs/new-champions](docs/new-champions/README.md). Apply [migration 052](supabase/migrations/052_sixteen_champions.sql) after 051, or choosing one of them as your portrait, or playing one (your Lobby fighter is your farmer), is refused. The new champions have no farm perk yet, and their Shop skins come in a later update.
+
 **Creature remodel (November 2026).** The original eight kits no longer echo the Pokémon they were first built from: each was rebuilt around its creature's real animal (Static Glide, Shell Up, Tide Double, Eyespot Flash, Haunted Lantern; the rest renamed), and basic attacks now play at their stated speed (ticks used to round every interval up, costing up to 10%). The kits were tested against the eight new champions being designed, then health and attack speed were re-tuned for the eight that ship: bot win rates now run 48–54% (before: 45–54%). Details, the origins of each old skill and the new numbers are in [docs/creature-remodel.md](docs/creature-remodel.md).
 
 **November 2026 pass (health and basic-attack speed).** Bot round robins on the server simulation (every pairing, 40 games each, Hard and Normal bots, sides swapped every game) showed the fighters had drifted apart. Averaged over both bot settings, win rates ran from 24% (Mystowl) to 73% (Terradon). Each fighter's maximum health and basic-attack interval were tuned toward 50% over repeated rounds of matches. Damage, cooldowns, skills and rite texts are unchanged, and changes stay within about a quarter so no fighter changes role.
@@ -122,7 +124,7 @@ The asset export regenerates the original SVG prototypes and creates metadata fo
 
 Development-only previews:
 
-- `/animation-preview.html`: all eight fighters, states, directions, timing, interruption, reduced motion.
+- `/animation-preview.html`: all sixteen fighters, states, directions, timing, interruption, reduced motion.
 - `/touch-preview.html`: joystick/buttons/menu and popup behavior without a live match.
 - `/mobile-layout-preview.html`: portrait/landscape and compact mobile roster viewports.
 

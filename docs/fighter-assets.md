@@ -2,18 +2,26 @@
 
 ## Current roster art
 
-| Fighter  | Element  | Design                                                                  |
-| -------- | -------- | ----------------------------------------------------------------------- |
-| Voltkit  | Electric | Sugar-glider kit; spark-tipped antennae, glider membranes, striped tail |
-| Cindrake | Fire     | Magma newt; living flame crest, horn nubs, glowing cracks, ember tail   |
-| Tidefin  | Water    | Axolotl duelist; gill fronds, headband, river sash, finned tail         |
-| Auralynx | Aura     | Lynx monk; tufted ears, cheek ruff, crystal gauntlets, orbiting shards  |
-| Lumoth   | Light    | Fluffy moth; fern antennae, star-dusted wings, white ruff               |
-| Mystowl  | Psychic  | Floating owl; feather tufts, facial disc, third-eye gem, wing cloak     |
-| Terradon | Earth    | Boulder tortoise; mossy rock shell, sleepy lids, sprout                 |
-| Duskveil | Shadow   | Hooded lantern wisp; void face, ragged robe, lantern tail               |
+| Fighter   | Element  | Design                                                                                   |
+| --------- | -------- | ---------------------------------------------------------------------------------------- |
+| Voltkit   | Electric | Sugar-glider kit; spark-tipped antennae, glider membranes, striped tail                  |
+| Cindrake  | Fire     | Magma newt; living flame crest, horn nubs, glowing cracks, ember tail                    |
+| Tidefin   | Water    | Axolotl duelist; gill fronds, headband, river sash, finned tail                          |
+| Auralynx  | Aura     | Lynx monk; tufted ears, cheek ruff, crystal gauntlets, orbiting shards                   |
+| Lumoth    | Light    | Fluffy moth; fern antennae, star-dusted wings, white ruff                                |
+| Mystowl   | Psychic  | Floating owl; feather tufts, facial disc, third-eye gem, wing cloak                      |
+| Terradon  | Earth    | Boulder tortoise; mossy rock shell, sleepy lids, sprout                                  |
+| Duskveil  | Shadow   | Hooded lantern wisp; void face, ragged robe, lantern tail                                |
+| Coilemur  | Electric | Ring-tailed lemur; white face mask, copper-banded magnet tail, coil bracers, magnet clip |
+| Pyranda   | Fire     | Red panda; white-rimmed ears, flame-tipped fluffy tail, chestnut bandolier               |
+| Glacelle  | Water    | Sea angel; translucent floating body, glowing heart, frosted wing-flaps, ice horns       |
+| Halcyra   | Aura     | Kingfisher; swept crest, long crystal beak, orange chest, focusing visor                 |
+| Sunbara   | Light    | Capybara; boxy muzzle, glowing yuzu on its head, striped bath towel                      |
+| Astrabun  | Psychic  | Moon rabbit; tall ears (one folded), crescent mark, mochi mallet, cotton tail            |
+| Wombolder | Earth    | Wombat; broad nose, boulder-hard rump plate with moss, digging claws, pebble pouch       |
+| Shadopus  | Shadow   | Midnight octopus; glowing-spotted mantle, ink bandit mask, tentacles                     |
 
-All eight are original designs drawn in `apps/client/src/creature-design.ts` as
+All sixteen are original designs drawn in `apps/client/src/creature-design.ts` as
 separately animated layers (head, ears, eyes, crest, arms, legs, body, tail,
 wings, accessory) with front, back and side views. The shared rig
 (`apps/client/src/animation/rig.ts`) animates them: walking legs, blinking,
@@ -37,16 +45,24 @@ colour. `EYE_STYLE` in `creature-design.ts` picks the eye shape and the `MOUTHS`
 table the mouth; cheeks vary too. The side views reuse the same eye and a
 matching mouth (`grin()` in `creature-profile.ts`).
 
-| Fighter  | Personality | Face                                                                |
-| -------- | ----------- | ------------------------------------------------------------------- |
-| Voltkit  | Hyper       | Star-shaped catchlights, open grin with a tongue                    |
-| Cindrake | Cocky       | Lids tipped toward the nose, ember glint, fang smirk, blush slashes |
-| Tidefin  | Chill       | Round eyes with a water-drop catchlight, wide smile, pink blush     |
-| Auralynx | Calm        | Diamond-shaped crystal catchlights, cat nose and `ω` mouth          |
-| Lumoth   | Dreamy      | Dewy eyes with lashes and a lower shine, tiny `o` mouth             |
-| Mystowl  | Mystic      | Concentric ring eyes over its beak                                  |
-| Terradon | Sleepy      | Drowsy half-lowered lids, soft smile, two pink cheeks               |
-| Duskveil | Spooky      | Void face with round glowing eyes                                   |
+| Fighter   | Personality | Face                                                                |
+| --------- | ----------- | ------------------------------------------------------------------- |
+| Voltkit   | Hyper       | Star-shaped catchlights, open grin with a tongue                    |
+| Cindrake  | Cocky       | Lids tipped toward the nose, ember glint, fang smirk, blush slashes |
+| Tidefin   | Chill       | Round eyes with a water-drop catchlight, wide smile, pink blush     |
+| Auralynx  | Calm        | Diamond-shaped crystal catchlights, cat nose and `ω` mouth          |
+| Lumoth    | Dreamy      | Dewy eyes with lashes and a lower shine, tiny `o` mouth             |
+| Mystowl   | Mystic      | Concentric ring eyes over its beak                                  |
+| Terradon  | Sleepy      | Drowsy half-lowered lids, soft smile, two pink cheeks               |
+| Duskveil  | Spooky      | Void face with round glowing eyes                                   |
+| Coilemur  | Cheeky      | A sideways glance (`glance`), dark eye patches, tongue out          |
+| Pyranda   | Shy         | Eyes cast down (`shy`), wavy mouth, flushed cheeks and a sweat drop |
+| Glacelle  | Serene      | Frosted lashes and an ice-diamond glint (`frost`), tiny smile       |
+| Halcyra   | Focused     | A level brow over round eyes (`keen`); its beak is its mouth        |
+| Sunbara   | Blissful    | Closed, contented eyes curved like 😌 (`content`), capybara muzzle  |
+| Astrabun  | Starry      | Star-shaped pupils (`star`), rabbit nose and buck teeth             |
+| Wombolder | Stubborn    | Small beady eyes under a heavy brow (`bead`), big wombat nose       |
+| Shadopus  | Sly         | Half-lidded glowing eyes behind an ink mask (no blush)              |
 
 The happy, hurt and dizzy moods still use the shared expression shapes, the
 focus mood adds a brow over each champion's own eye (in side views it slopes
@@ -98,3 +114,17 @@ Animation keys are `<state>-<direction>`. `idle-up`, `idle-down`, `idle-left` an
 Recommended source size: 256×256 per frame, transparent background, feet at
 roughly 75% of the height (sprite origin `0.5, 0.75`). Pack one atlas per fighter
 to keep texture memory low on phones.
+
+## The newer eight (side and back views, rig)
+
+Coilemur, Pyranda, Glacelle, Halcyra, Sunbara, Astrabun, Wombolder and
+Shadopus started from the front-view prototypes in
+`docs/new-champions/prototype/art.js`. Their side and rear anatomy is in
+`creature-profile.ts` like the originals'. A few parts reach past the usual
+crop boxes (`frontPartBounds` / `profilePartBounds`): Halcyra's beak hangs over
+its chest and Astrabun's mallet rises past its paw. Glacelle's translucent body
+skips the hidden neck and shoulder underpainting, which would show through.
+In the rig, Glacelle floats (like Mystowl), Wombolder steps heavily (like
+Terradon, its rump plate following the torso), Shadopus's tentacles sway, and
+each has its own greeting and victory pose. Menu trait auras are in
+`trait-effects.ts`.

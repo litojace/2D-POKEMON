@@ -653,10 +653,7 @@ export function raidPingLabel(
 }
 /** What some champions' skills do against Grumblecrag (see RAID_BOSS_PERKS). */
 export const RAID_PERKS: Partial<
-  Record<
-    "auralynx" | "mystowl" | "terradon" | "lumoth",
-    { skill: string; text: string }
-  >
+  Record<CharacterId, { skill: string; text: string }>
 > = {
   auralynx: {
     skill: "Facet Guard",
@@ -673,6 +670,22 @@ export const RAID_PERKS: Partial<
   lumoth: {
     skill: "Kindle",
     text: "Cast beside a fallen ally to fill half of their revive at once.",
+  },
+  coilemur: {
+    skill: "Magnet Lash",
+    text: "Lash a fallen ally to drag them to your side, out of harm's way.",
+  },
+  sunbara: {
+    skill: "Warm Spring",
+    text: "A fallen ally inside your spring is revived twice as fast.",
+  },
+  astrabun: {
+    skill: "Mochi Pound",
+    text: "A pound on Grumblecrag adds 15 stagger.",
+  },
+  wombolder: {
+    skill: "Burrow Rush and Landslide",
+    text: "Charge Grumblecrag into a pillar for 25 extra stagger.",
   },
 };
 /** Champion tricks per boss (docs/raid-roster-design.md §6). */
@@ -699,6 +712,18 @@ export const RAID_BOSS_PERKS: Partial<
       skill: "Void Orb",
       text: "A Void Orb on a lance lane swallows that segment.",
     },
+    glacelle: {
+      skill: "Frost Bloom",
+      text: "Its ice relays the sunbeam for 4 seconds.",
+    },
+    halcyra: {
+      skill: "Skyline Lance",
+      text: "Cuts every Prism Lance lane it crosses.",
+    },
+    shadopus: {
+      skill: "Ink Jet",
+      text: "A hit on Prismatail blots out any Glare in the next 3 seconds.",
+    },
   },
   emberwing: {
     cindrake: {
@@ -717,6 +742,22 @@ export const RAID_BOSS_PERKS: Partial<
       skill: "Wing Dust",
       text: "Your wing dust deals full damage to an airborne Emberwing.",
     },
+    pyranda: {
+      skill: "Chestnut Mortar",
+      text: "Lights a brazier it lands on, from range and over anything.",
+    },
+    glacelle: {
+      skill: "Frost Bloom",
+      text: "Puts out fire patches and dive trails where it blooms.",
+    },
+    halcyra: {
+      skill: "Aura Quill and Focus Shot",
+      text: "Your shots deal full damage to an airborne Emberwing.",
+    },
+    astrabun: {
+      skill: "Full Moon",
+      text: "Your crash reaches an airborne Emberwing at full damage and adds 20 stagger.",
+    },
   },
   "storm-twins": {
     voltkit: {
@@ -734,6 +775,18 @@ export const RAID_BOSS_PERKS: Partial<
     duskveil: {
       skill: "Void Orb",
       text: "A hit pulls that twin toward its partner, shortening the Link Beam.",
+    },
+    coilemur: {
+      skill: "Electromagnet",
+      text: "Twins in its pull drift toward you, shortening the Link Beam.",
+    },
+    halcyra: {
+      skill: "Focus Shot",
+      text: "Pierces the first twin and also hits the other if it is on the line.",
+    },
+    wombolder: {
+      skill: "Rump Block",
+      text: "Blocks Twin Rush completely and adds 15 stagger to that twin.",
     },
   },
   grumblecrag: RAID_PERKS,
@@ -754,6 +807,18 @@ export const RAID_BOSS_PERKS: Partial<
       skill: "Tremor",
       text: "Pops every bubble nearby and frees a raider from a Bubble Prison.",
     },
+    coilemur: {
+      skill: "Magnet Lash",
+      text: "Lash a Bubble Prison to yank your ally out, right to your side.",
+    },
+    pyranda: {
+      skill: "Chestnut Storm",
+      text: "Pops every bubble where it lands, Bubble Prisons included.",
+    },
+    glacelle: {
+      skill: "Frost Bloom",
+      text: "Blooming on a stranded Tidewyrm freezes it there 2 seconds longer.",
+    },
   },
   gloomshade: {
     voltkit: {
@@ -772,6 +837,22 @@ export const RAID_BOSS_PERKS: Partial<
       skill: "Haunted Lantern",
       text: "Hung near the real Gloomshade, its light reveals it to the team for 6 seconds.",
     },
+    pyranda: {
+      skill: "Chestnut Mortar",
+      text: "A mortar landing on a dark lantern relights it.",
+    },
+    sunbara: {
+      skill: "Warm Spring and Sanctuary",
+      text: "Allies inside your spring or glade are cleansed of curses.",
+    },
+    wombolder: {
+      skill: "Landslide",
+      text: "Its eruption shakes off every copy: only the real Gloomshade remains until it splits again.",
+    },
+    shadopus: {
+      skill: "Ink Cloud",
+      text: "While you are hidden, Gloomshade's attacks never pick you as their target.",
+    },
   },
   somnara: {
     cindrake: {
@@ -789,6 +870,18 @@ export const RAID_BOSS_PERKS: Partial<
     duskveil: {
       skill: "Shade Crawl",
       text: "Leaves a shadow trail that pops Dream Bubbles.",
+    },
+    sunbara: {
+      skill: "Warm Spring",
+      text: "Wakes sleeping allies inside it and keeps them from going Drowsy.",
+    },
+    astrabun: {
+      skill: "Moon Hop",
+      text: "Landing on (or right beside) a rune pad counts as stepping on it.",
+    },
+    shadopus: {
+      skill: "Ink Cloud",
+      text: "While you are hidden, Drowsy and sleep can't touch you.",
     },
   },
 };

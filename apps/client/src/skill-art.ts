@@ -161,7 +161,7 @@ const floorGlow = (
 const backdrop = (el: Element) =>
   `<rect width="128" height="128" fill="url(#sa-bg-${el})"/>`;
 
-// ── The forty moves ──────────────────────────────────────────────────────
+// ── The eighty moves ─────────────────────────────────────────────────────
 const E = THEMES.electric,
   F = THEMES.fire,
   W = THEMES.water,
@@ -170,6 +170,166 @@ const E = THEMES.electric,
   P = THEMES.psychic,
   R = THEMES.earth,
   S = THEMES.shadow;
+
+// ── Props for the second eight champions ─────────────────────────────────
+/** A faceted rock (or coal) around (x, y). */
+const rock = (
+  x: number,
+  y: number,
+  r: number,
+  fill: string,
+  stroke: string,
+  sw = 1.4,
+) =>
+  `<path d="M${n(x - r)} ${y} L${n(x - r * 0.4)} ${n(y - r)} L${n(x + r * 0.7)} ${n(y - r * 0.8)} L${n(x + r)} ${n(y + r * 0.2)} L${n(x + r * 0.3)} ${n(y + r)} L${n(x - r * 0.7)} ${n(y + r * 0.7)}Z" fill="${fill}" stroke="${stroke}" stroke-width="${sw}" stroke-linejoin="round"/>`;
+/** A six-armed snowflake. */
+function flake(x: number, y: number, r: number, color: string, w = 1.6) {
+  let d = "";
+  for (let k = 0; k < 6; k++) {
+    const a = (k * Math.PI) / 3 - Math.PI / 2,
+      bx = x + Math.cos(a) * r * 0.55,
+      by = y + Math.sin(a) * r * 0.55;
+    d += `M${x} ${y} L${n(x + Math.cos(a) * r)} ${n(y + Math.sin(a) * r)}`;
+    for (const s of [-0.8, 0.8])
+      d += ` M${n(bx)} ${n(by)} L${n(bx + Math.cos(a + s) * r * 0.32)} ${n(by + Math.sin(a + s) * r * 0.32)}`;
+  }
+  return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round"/>`;
+}
+/** A five-point stun star. */
+function star(x: number, y: number, r: number, color: string) {
+  let d = "";
+  for (let k = 0; k < 10; k++) {
+    const a = (k * Math.PI) / 5 - Math.PI / 2,
+      rr = k % 2 ? r * 0.45 : r;
+    d += `${k ? "L" : "M"}${n(x + Math.cos(a) * rr)} ${n(y + Math.sin(a) * rr)}`;
+  }
+  return `<path d="${d}Z" fill="${color}"/>`;
+}
+/** A healing plus. */
+const plus = (x: number, y: number, s: number, color: string, o = 1) =>
+  `<path d="M${n(x - s * 0.34)} ${n(y - s)} h${n(s * 0.68)} v${n(s * 0.66)} h${n(s * 0.66)} v${n(s * 0.68)} h${n(-s * 0.66)} v${n(s * 0.66)} h${n(-s * 0.68)} v${n(-s * 0.66)} h${n(-s * 0.66)} v${n(-s * 0.68)} h${n(s * 0.66)}Z" fill="${color}" opacity="${o}"/>`;
+/** A chevron pointing along angle `deg` (0 = right). */
+const chevron = (
+  x: number,
+  y: number,
+  s: number,
+  deg: number,
+  color: string,
+  w = 3,
+  o = 1,
+) =>
+  `<path d="M${-s} ${-s} L0 0 L${-s} ${s}" transform="translate(${x} ${y}) rotate(${deg})" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" opacity="${o}"/>`;
+/** Coilemur's horseshoe magnet: opens toward +x before `rot`. */
+const magnet = (x: number, y: number, s: number, rot: number) =>
+  `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})">` +
+  `<path d="M15 -12 H0 A12 12 0 0 0 0 12 H15" fill="none" stroke="#e2463a" stroke-width="16" stroke-opacity=".25"/>` +
+  `<path d="M15 -12 H0 A12 12 0 0 0 0 12 H15" fill="none" stroke="#8e1d16" stroke-width="10"/>` +
+  `<path d="M15 -12 H0 A12 12 0 0 0 0 12 H15" fill="none" stroke="#ef4c3c" stroke-width="7"/>` +
+  `<path d="M3 -14.5 H0 A14.5 14.5 0 0 0 -11 -9.5" fill="none" stroke="#ffb0a2" stroke-width="1.6" stroke-linecap="round"/>` +
+  `<path d="M9 -12 H16 M9 12 H16" stroke="#d8dcef" stroke-width="10"/>` +
+  `<path d="M9 -15 H16 M9 9 H16" stroke="#fff" stroke-width="2"/></g>`;
+/** Pyranda's burning chestnut: point leads (−y before `rot`), flames trail. */
+const chestnut = (x: number, y: number, s: number, rot = 0) =>
+  `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})">` +
+  `<path d="M-12 4 Q-14 22 -4 40 Q-2 30 2 34 Q2 24 8 30 Q14 18 12 4Z" fill="url(#sa-up-fire)"/>` +
+  `<path d="M-6 8 Q-6 20 0 28 Q4 20 6 8Z" fill="${F.accent[2]}"/>` +
+  `<path d="M0 -13 Q5 -10 10 -6 Q15 0 12 7 Q8 13 0 13 Q-8 13 -12 7 Q-15 0 -10 -6 Q-5 -10 0 -13Z" fill="#7a3416" stroke="${F.accent[1]}" stroke-width="1.6"/>` +
+  `<path d="M-13 5 Q0 10 13 5 Q9 13 0 13 Q-9 13 -13 5Z" fill="#ecc690"/>` +
+  `<path d="M-1.5 -13 L0 -17 L1.5 -13Z" fill="#ecc690"/>` +
+  `<path d="M-7 -4 Q-6 -9 -1 -10" fill="none" stroke="#d9804a" stroke-width="2.4" stroke-linecap="round"/></g>`;
+/** Sunbara's yuzu, with its leaf. */
+const yuzu = (x: number, y: number, r: number) =>
+  `<circle cx="${x}" cy="${y}" r="${r}" fill="#ffc83a"/>` +
+  `<path d="M${n(x - r)} ${y} A${r} ${r} 0 0 0 ${n(x + r)} ${y} A${r} ${n(r * 0.7)} 0 0 1 ${n(x - r)} ${y}Z" fill="#e88a14" opacity=".75"/>` +
+  `<g fill="#d98a10" opacity=".55"><circle cx="${n(x + r * 0.3)}" cy="${n(y + r * 0.1)}" r="${n(r * 0.07)}"/><circle cx="${n(x - r * 0.1)}" cy="${n(y + r * 0.35)}" r="${n(r * 0.07)}"/><circle cx="${n(x + r * 0.5)}" cy="${n(y - r * 0.25)}" r="${n(r * 0.07)}"/></g>` +
+  `<ellipse cx="${n(x - r * 0.38)}" cy="${n(y - r * 0.4)}" rx="${n(r * 0.28)}" ry="${n(r * 0.17)}" fill="#fff8d0" transform="rotate(-35 ${n(x - r * 0.38)} ${n(y - r * 0.4)})"/>` +
+  `<path d="M${x} ${n(y - r * 0.9)} q${n(r * 0.1)} ${n(-r * 0.3)} ${n(r * 0.3)} ${n(-r * 0.4)}" fill="none" stroke="#6b4a24" stroke-width="${n(r * 0.12)}" stroke-linecap="round"/>` +
+  `<path d="M${n(x + r * 0.2)} ${n(y - r * 1.15)} q${n(r * 0.5)} ${n(-r * 0.5)} ${n(r * 1)} ${n(-r * 0.2)} q${n(-r * 0.4)} ${n(r * 0.55)} ${n(-r * 1)} ${n(r * 0.2)}Z" fill="#6fc36a" stroke="#3f8e44" stroke-width="1"/>`;
+/** Halcyra's quill: tip toward −y before `rot`. */
+const quill = (x: number, y: number, s: number, rot: number) =>
+  `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})">` +
+  `<path d="M0 -26 Q10 -12 8 8 Q5 18 0 22 Q-5 18 -8 8 Q-10 -12 0 -26Z" fill="url(#sa-orb-aura)"/>` +
+  `<path d="M0 -26 Q5 -20 6 -14 L0 -10 L-6 -14 Q-5 -20 0 -26Z" fill="#ff9a4a"/>` +
+  `<path d="M0 -22 V34" stroke="#fff" stroke-width="2" stroke-linecap="round"/>` +
+  `<path d="M0 -4 L-7 -9 M0 4 L-7 -1 M0 12 L-6 7 M0 -4 L7 -9 M0 4 L7 -1 M0 12 L6 7" stroke="${A.accent[0]}" stroke-width="1.2" opacity=".8"/></g>`;
+/** Halcyra the kingfisher, facing +x: solid, or a dashed mirage. */
+function kingfisher(x: number, y: number, s: number, ghost = false) {
+  const body =
+    "M-16 6 Q-14 -8 0 -10 Q4 -18 12 -16 Q18 -14 18 -8 L36 -6 L17 -1 Q16 10 2 13 L-10 14 L-26 24 L-18 10Z";
+  return (
+    `<g transform="translate(${x} ${y}) scale(${s})">` +
+    (ghost
+      ? `<path d="${body}" fill="${A.accent[2]}" opacity=".4"/><path d="${body}" fill="none" stroke="#fff" stroke-width="2" stroke-dasharray="3 3"/>`
+      : `<path d="${body}" fill="${A.accent[1]}" stroke="${A.accent[2]}" stroke-width="1.4"/>` +
+        `<path d="M-6 0 Q2 12 15 0 Q16 10 2 13 L-8 13Z" fill="#ff9a4a"/>` +
+        `<path d="M-14 4 Q-6 -6 6 -4" fill="none" stroke="${A.accent[0]}" stroke-width="2.4" stroke-linecap="round"/>` +
+        `<circle cx="10" cy="-10" r="2.4" fill="${A.bg[2]}"/><circle cx="10.8" cy="-10.8" r=".8" fill="#fff"/>`) +
+    `</g>`
+  );
+}
+/** Astrabun's mochi mallet: head at the origin, handle toward +y before `rot`. */
+const mallet = (x: number, y: number, s: number, rot: number) =>
+  `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})">` +
+  `<path d="M0 10 V46" stroke="#5e3a1c" stroke-width="7" stroke-linecap="round"/><path d="M0 10 V46" stroke="#b98250" stroke-width="4" stroke-linecap="round"/>` +
+  `<rect x="-20" y="-11" width="40" height="22" rx="5" fill="#d9a46a" stroke="#6b4222" stroke-width="1.6"/>` +
+  `<rect x="-22" y="-13" width="7" height="26" rx="3" fill="#a8703e" stroke="#6b4222" stroke-width="1.4"/><rect x="15" y="-13" width="7" height="26" rx="3" fill="#a8703e" stroke="#6b4222" stroke-width="1.4"/>` +
+  `<path d="M-13 -6 H13" stroke="#fff1d8" stroke-width="2.4" stroke-linecap="round" opacity=".8"/></g>`;
+/** A crescent moon opening to the right. */
+const crescent = (x: number, y: number, r: number, fill: string) =>
+  `<path d="M${x} ${n(y - r)} A${r} ${r} 0 1 0 ${x} ${n(y + r)} A${n(r * 1.25)} ${n(r * 1.25)} 0 0 1 ${x} ${n(y - r)}Z" fill="${fill}"/>`;
+/** A moon rabbit silhouette sitting at (x, y), facing right. */
+const bunny = (x: number, y: number, s: number, fill: string, o = 1) =>
+  `<g transform="translate(${x} ${y}) scale(${s})" fill="${fill}" opacity="${o}"><ellipse cx="0" cy="4" rx="9" ry="7"/><circle cx="7" cy="-3" r="5"/><ellipse cx="4" cy="-13" rx="2.2" ry="7" transform="rotate(-14 4 -13)"/><ellipse cx="9" cy="-12" rx="2.2" ry="7" transform="rotate(12 9 -12)"/><circle cx="-9" cy="3" r="2.4"/></g>`;
+/** A tapered tentacle along a cubic Bézier, suckers on one side. */
+function tentacle(
+  p: [number, number][],
+  w0: number,
+  w1: number,
+  fill: string,
+  rim: string,
+  sucker = "",
+) {
+  const N = 20,
+    left: string[] = [],
+    right: string[] = [],
+    cups: string[] = [];
+  for (let i = 0; i <= N; i++) {
+    const t = i / N,
+      u = 1 - t;
+    const at = (k: 0 | 1) =>
+      u * u * u * p[0][k] +
+      3 * u * u * t * p[1][k] +
+      3 * u * t * t * p[2][k] +
+      t * t * t * p[3][k];
+    const slope = (k: 0 | 1) =>
+      3 * u * u * (p[1][k] - p[0][k]) +
+      6 * u * t * (p[2][k] - p[1][k]) +
+      3 * t * t * (p[3][k] - p[2][k]);
+    const x = at(0),
+      y = at(1),
+      dx = slope(0),
+      dy = slope(1),
+      len = Math.hypot(dx, dy) || 1,
+      nx = -dy / len,
+      ny = dx / len,
+      w = (w0 + (w1 - w0) * t) / 2;
+    left.push(`${n(x + nx * w)} ${n(y + ny * w)}`);
+    right.push(`${n(x - nx * w)} ${n(y - ny * w)}`);
+    if (sucker && i > 1 && i < N - 2 && i % 2 === 0)
+      cups.push(
+        `<circle cx="${n(x - nx * w * 0.42)}" cy="${n(y - ny * w * 0.42)}" r="${n(Math.max(0.9, w * 0.4))}" fill="${sucker}"/>`,
+      );
+  }
+  const d = `M${left.join(" L")} L${right.reverse().join(" L")}Z`;
+  return (
+    `<path d="${d}" fill="none" stroke="${rim}" stroke-width="6" stroke-opacity=".22" stroke-linejoin="round"/>` +
+    `<path d="${d}" fill="${fill}" stroke="${rim}" stroke-width="1.6" stroke-linejoin="round"/>` +
+    cups.join("")
+  );
+}
+/** Shadopus's ink: near-black violet, lit by a magenta rim. */
+const INK = "#1a1036",
+  INK_RIM = "#ff6bd6";
 const art: Record<string, { el: Element; draw: () => string }> = {
   // Voltkit · Electric
   "Spark Dart": {
@@ -1432,6 +1592,1323 @@ const art: Record<string, { el: Element; draw: () => string }> = {
         ],
         S.accent[2],
       ),
+  },
+  // Coilemur · Electric
+  "Coil Swipe": {
+    el: "electric",
+    draw: () =>
+      halo("electric", 70, 60, 46) +
+      // A crackling three-claw swipe with the ringed tail's arc behind it.
+      `<path d="M22 100 Q18 40 74 22 Q102 14 116 30 Q90 24 72 36 Q42 56 40 102Z" fill="url(#sa-up-electric)" opacity=".45"/>` +
+      `<path d="M28 98 Q26 46 74 28 Q98 20 110 28" fill="none" stroke="#2c2840" stroke-width="8" stroke-linecap="round" opacity=".8"/>` +
+      `<path d="M28 98 Q26 46 74 28 Q98 20 110 28" fill="none" stroke="#f7f3ea" stroke-width="8" stroke-dasharray="7 7" opacity=".7"/>` +
+      [
+        [40, 86, 56, 52, 92, 36],
+        [52, 96, 68, 62, 102, 48],
+        [64, 106, 80, 74, 110, 62],
+      ]
+        .map(([x0, y0, cx, cy, x1, y1], i) =>
+          glow(
+            `M${x0} ${y0} Q${cx} ${cy} ${x1} ${y1}`,
+            i === 1 ? "#fff" : E.hot,
+            i === 1 ? 4 : 3,
+            E.accent[1],
+          ),
+        )
+        .join("") +
+      glow(
+        bolt(
+          [
+            [92, 36],
+            [100, 24],
+          ],
+          3,
+          4,
+        ),
+        E.accent[2],
+        1.6,
+        E.accent[1],
+      ) +
+      glow(
+        bolt(
+          [
+            [110, 62],
+            [118, 72],
+          ],
+          3,
+          6,
+        ),
+        E.accent[2],
+        1.6,
+        E.accent[1],
+      ) +
+      sparks(
+        [
+          [24, 40, 1.5],
+          [116, 46, 1.4],
+          [86, 104, 1.3],
+          [52, 20, 1.2],
+        ],
+        E.accent[2],
+      ),
+  },
+  "Magnet Lash": {
+    el: "electric",
+    draw: () =>
+      // A horseshoe magnet cracking a lash of lightning that hooks its target back.
+      halo("electric", 98, 38, 26) +
+      glow(
+        bolt(
+          [
+            [48, 76],
+            [62, 52],
+            [82, 38],
+            [98, 38],
+          ],
+          4,
+          5,
+        ),
+        E.hot,
+        2.8,
+        E.accent[1],
+      ) +
+      `<circle cx="100" cy="38" r="9" fill="url(#sa-orb-electric)"/>` +
+      `<circle cx="100" cy="38" r="15" fill="none" stroke="${E.accent[2]}" stroke-width="2" stroke-dasharray="4 4"/>` +
+      chevron(86, 64, 6, 135, E.accent[2], 3) +
+      chevron(74, 76, 6, 135, E.accent[1], 3, 0.7) +
+      halo("electric", 38, 88, 30, 0.8) +
+      magnet(36, 88, 1.35, -50) +
+      sparks(
+        [
+          [22, 34, 1.5],
+          [114, 66, 1.5],
+          [62, 22, 1.3],
+          [106, 98, 1.2],
+        ],
+        E.accent[2],
+      ),
+  },
+  "Static Clamp": {
+    el: "electric",
+    draw: () =>
+      halo("electric", 84, 64, 40) +
+      // Two charged jaws snapping shut on a target; stun stars above.
+      `<path d="M16 48 Q36 20 68 28 Q86 32 92 50 Q76 42 62 44 Q40 48 28 62Z" fill="url(#sa-orb-electric)" stroke="${E.accent[2]}" stroke-width="2"/>` +
+      `<path d="M16 80 Q36 108 68 100 Q86 96 92 78 Q76 86 62 84 Q40 80 28 66Z" fill="url(#sa-orb-electric)" stroke="${E.accent[2]}" stroke-width="2"/>` +
+      `<path d="M24 50 Q40 32 66 34" fill="none" stroke="#fff" stroke-width="1.6" opacity=".7" stroke-linecap="round"/>` +
+      halo("electric", 94, 64, 20) +
+      `<circle cx="94" cy="64" r="9" fill="url(#sa-orb-electric)"/>` +
+      glow(
+        bolt(
+          [
+            [90, 50],
+            [94, 64],
+            [90, 78],
+          ],
+          4,
+          3,
+        ),
+        "#fff",
+        2.4,
+        E.accent[1],
+      ) +
+      glow(
+        bolt(
+          [
+            [104, 58],
+            [118, 52],
+          ],
+          3,
+          8,
+        ),
+        E.accent[2],
+        1.6,
+        E.accent[1],
+      ) +
+      glow(
+        bolt(
+          [
+            [104, 70],
+            [118, 78],
+          ],
+          3,
+          9,
+        ),
+        E.accent[2],
+        1.6,
+        E.accent[1],
+      ) +
+      star(82, 20, 5.5, E.accent[2]) +
+      star(98, 14, 6.5, E.hot) +
+      star(112, 24, 5, E.accent[2]) +
+      sparks(
+        [
+          [20, 100, 1.4],
+          [44, 112, 1.2],
+        ],
+        E.accent[2],
+      ),
+  },
+  "Spark Tether": {
+    el: "electric",
+    draw: () => {
+      // A coiled, ringed tail at the centre of a crackling ring, tethered to two foes.
+      const ring = Array.from({ length: 13 }, (_, k) => {
+        const a = (k / 12) * Math.PI * 2;
+        return [n(64 + Math.cos(a) * 46), n(88 + Math.sin(a) * 16)] as [
+          number,
+          number,
+        ];
+      });
+      return (
+        floorGlow("electric", 64, 88, 56, 22) +
+        glow(bolt(ring, 2.2, 4), E.accent[2], 2.2, E.accent[1]) +
+        [0, 1, 2, 3, 4]
+          .map((k) => {
+            const y = 82 - k * 11,
+              rx = 14 - k;
+            return `<path d="M${64 + rx} ${y} A${rx} 4.5 0 0 0 ${64 - rx} ${y}" fill="none" stroke="${E.bg[0]}" stroke-width="4"/><path d="M${64 - rx} ${y} A${rx} 4.5 0 0 0 ${64 + rx} ${y}" fill="none" stroke="${k % 2 ? "#2c2840" : "#f7f3ea"}" stroke-width="5" stroke-linecap="round"/>`;
+          })
+          .join("") +
+        halo("electric", 64, 32, 22) +
+        `<circle cx="64" cy="32" r="7" fill="url(#sa-orb-electric)"/>` +
+        glow(
+          bolt(
+            [
+              [58, 34],
+              [36, 46],
+              [18, 54],
+            ],
+            3,
+            6,
+          ),
+          E.hot,
+          2,
+          E.accent[1],
+        ) +
+        glow(
+          bolt(
+            [
+              [70, 34],
+              [92, 44],
+              [110, 52],
+            ],
+            3,
+            7,
+          ),
+          E.hot,
+          2,
+          E.accent[1],
+        ) +
+        `<circle cx="16" cy="56" r="6" fill="${E.bg[2]}" stroke="${E.accent[2]}" stroke-width="2"/><circle cx="112" cy="54" r="6" fill="${E.bg[2]}" stroke="${E.accent[2]}" stroke-width="2"/>` +
+        sparks(
+          [
+            [30, 20, 1.3],
+            [100, 18, 1.4],
+            [64, 112, 1.3],
+          ],
+          E.accent[2],
+        )
+      );
+    },
+  },
+  Electromagnet: {
+    el: "electric",
+    draw: () =>
+      floorGlow("electric", 64, 100, 54, 14) +
+      // A great magnet whose field drags everything nearby inward.
+      `<g fill="none" stroke="${E.accent[1]}" stroke-width="2" stroke-dasharray="3 5" opacity=".75"><path d="M40 92 Q4 64 34 26"/><path d="M88 92 Q124 64 94 26"/><path d="M42 94 Q16 108 8 84"/><path d="M86 94 Q112 108 120 84"/></g>` +
+      halo("electric", 64, 58, 46) +
+      magnet(64, 54, 2, 90) +
+      glow(
+        bolt(
+          [
+            [42, 90],
+            [64, 92],
+            [86, 90],
+          ],
+          3,
+          5,
+        ),
+        "#fff",
+        2.2,
+        E.accent[1],
+      ) +
+      chevron(24, 104, 6, 0, E.accent[2], 3) +
+      chevron(14, 104, 6, 0, E.accent[1], 3, 0.6) +
+      chevron(104, 104, 6, 180, E.accent[2], 3) +
+      chevron(114, 104, 6, 180, E.accent[1], 3, 0.6) +
+      sparks(
+        [
+          [20, 22, 1.5],
+          [108, 20, 1.5],
+          [10, 64, 1.2],
+          [118, 62, 1.2],
+        ],
+        E.accent[2],
+      ),
+  },
+
+  // Pyranda · Fire
+  "Ember Lob": {
+    el: "fire",
+    draw: () =>
+      // A tail-tip ember lobbed in a long arc.
+      `<path d="M16 104 Q40 20 96 44" fill="none" stroke="${F.accent[1]}" stroke-width="2.4" stroke-dasharray="3 6" stroke-linecap="round" opacity=".8"/>` +
+      halo("fire", 92, 46, 32) +
+      `<g transform="translate(92 46) rotate(22)"><path d="M0 -11 Q-22 -8 -40 0 Q-22 8 0 11Z" fill="url(#sa-up-fire)" opacity=".9"/><path d="M0 -6 Q-14 -4 -26 0 Q-14 4 0 6Z" fill="${F.accent[2]}"/></g>` +
+      `<circle cx="92" cy="46" r="11" fill="url(#sa-orb-fire)"/><circle cx="89" cy="43" r="4" fill="#fff" opacity=".8"/>` +
+      `<path d="M14 108 q-6 -10 2 -18 q2 8 8 8 q-2 -8 4 -12 q4 10 -2 22Z" fill="url(#sa-up-fire)"/>` +
+      sparks(
+        [
+          [110, 30, 1.6],
+          [106, 66, 1.4],
+          [64, 24, 1.2],
+          [40, 54, 1.2],
+        ],
+        F.accent[2],
+      ),
+  },
+  "Chestnut Mortar": {
+    el: "fire",
+    draw: () =>
+      // A burning chestnut lobbed over a wall onto a target.
+      `<path d="M14 104 Q50 -8 98 94" fill="none" stroke="${F.accent[1]}" stroke-width="2.2" stroke-dasharray="3 6" stroke-linecap="round" opacity=".7"/>` +
+      floorGlow("fire", 98, 98, 26, 9) +
+      `<ellipse cx="98" cy="98" rx="20" ry="7" fill="none" stroke="${F.accent[2]}" stroke-width="2.2"/>` +
+      `<path d="M98 88 V94 M98 102 V108 M74 98 H82 M114 98 H122" stroke="${F.accent[2]}" stroke-width="2" stroke-linecap="round"/>` +
+      `<path d="M62 108 V82 H80 V108Z" fill="#3a1a10" stroke="${F.accent[0]}" stroke-width="1.6"/><path d="M62 90 H80 M62 99 H80 M71 82 V90 M67 90 V99 M75 99 V108" stroke="${F.accent[0]}" stroke-width="1.4"/>` +
+      `<path d="M28 58 Q38 40 50 38" fill="none" stroke="url(#sa-diag-fire)" stroke-width="8" stroke-linecap="round" opacity=".7"/>` +
+      halo("fire", 58, 38, 28) +
+      chestnut(60, 42, 1.3, 100) +
+      sparks(
+        [
+          [86, 20, 1.5],
+          [24, 30, 1.3],
+          [110, 72, 1.3],
+        ],
+        F.accent[2],
+      ),
+  },
+  "Hot Coals": {
+    el: "fire",
+    draw: () =>
+      // A scatter of glowing coals, heat shimmering off them.
+      floorGlow("fire", 64, 86, 58, 24) +
+      `<ellipse cx="64" cy="86" rx="50" ry="18" fill="#260b05"/>` +
+      `<ellipse cx="64" cy="86" rx="50" ry="18" fill="none" stroke="${F.accent[0]}" stroke-width="2" stroke-dasharray="5 4"/>` +
+      [
+        [36, 84, 9],
+        [58, 92, 10],
+        [82, 84, 9],
+        [100, 92, 7],
+        [48, 76, 6],
+        [72, 74, 7],
+        [28, 94, 6],
+      ]
+        .map(
+          ([x, y, r]) =>
+            `<ellipse cx="${x}" cy="${y}" rx="${r}" ry="${n(r * 0.72)}" fill="#3a1408" stroke="${F.accent[1]}" stroke-width="1.6"/>` +
+            `<ellipse cx="${x}" cy="${n(y + r * 0.28)}" rx="${n(r * 0.75)}" ry="${n(r * 0.32)}" fill="${F.accent[0]}" opacity=".85"/>` +
+            `<path d="M${n(x - r * 0.6)} ${y} L${n(x - r * 0.15)} ${n(y - r * 0.3)} L${n(x + r * 0.2)} ${n(y + r * 0.05)} L${n(x + r * 0.6)} ${n(y - r * 0.2)}" fill="none" stroke="${F.accent[2]}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`,
+        )
+        .join("") +
+      `<g fill="none" stroke="${F.accent[2]}" stroke-width="2" stroke-linecap="round" opacity=".55"><path d="M40 64 q-6 -8 0 -16 q6 -8 0 -16"/><path d="M64 60 q-6 -8 0 -16 q6 -8 0 -16 q-6 -8 0 -14"/><path d="M88 64 q-6 -8 0 -16 q6 -8 0 -16"/></g>` +
+      `<path d="M58 84 q-4 -10 2 -16 q1 7 5 7 q0 -6 4 -9 q4 10 -2 18Z" fill="url(#sa-up-fire)"/>` +
+      sparks(
+        [
+          [22, 50, 1.5],
+          [106, 46, 1.4],
+          [64, 20, 1.3],
+          [110, 72, 1.2],
+        ],
+        F.accent[2],
+      ),
+  },
+  "Tail Wrap": {
+    el: "fire",
+    draw: () => {
+      // Curled up in the ringed tail, its flame tip glowing at the heart.
+      const tail =
+        "M98 100 Q118 72 104 44 Q88 16 58 20 Q26 26 22 58 Q20 90 50 100 Q76 106 86 82 Q92 62 72 56";
+      return (
+        halo("fire", 64, 62, 54) +
+        `<circle cx="64" cy="62" r="54" fill="none" stroke="${F.accent[2]}" stroke-width="2" stroke-dasharray="6 6" opacity=".55"/>` +
+        `<path d="${tail}" fill="none" stroke="${F.accent[1]}" stroke-width="30" stroke-opacity=".22" stroke-linecap="round"/>` +
+        `<path d="${tail}" fill="none" stroke="#7a2a12" stroke-width="22" stroke-linecap="round"/>` +
+        `<path d="${tail}" fill="none" stroke="#e0702f" stroke-width="18" stroke-linecap="round"/>` +
+        `<path d="${tail}" fill="none" stroke="#7a2412" stroke-width="18" stroke-dasharray="7 13" opacity=".9"/>` +
+        `<path d="M102 52 Q90 28 60 28 Q34 32 30 56" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".45"/>` +
+        halo("fire", 66, 54, 18) +
+        `<path d="M66 64 Q54 58 58 46 Q62 52 64 50 Q62 40 70 34 Q72 44 78 48 Q80 62 66 64Z" fill="url(#sa-up-fire)"/>` +
+        `<path d="M66 60 Q61 56 63 50 Q66 54 68 52 Q72 58 66 60Z" fill="${F.hot}"/>` +
+        glow(`M122 18 L108 32`, "#ffb0a0", 2.2, "#ff6a4a") +
+        glow(`M108 32 L122 44`, F.accent[2], 2.2, F.accent[1]) +
+        sparks(
+          [
+            [14, 22, 1.4],
+            [16, 108, 1.3],
+            [114, 112, 1.3],
+          ],
+          F.accent[2],
+        )
+      );
+    },
+  },
+  "Chestnut Storm": {
+    el: "fire",
+    draw: () =>
+      // Burning chestnuts raining onto a wide, glowing target.
+      floorGlow("fire", 64, 98, 58, 18) +
+      `<ellipse cx="64" cy="98" rx="52" ry="15" fill="none" stroke="${F.accent[2]}" stroke-width="2.2"/>` +
+      `<ellipse cx="64" cy="98" rx="34" ry="9" fill="none" stroke="${F.accent[1]}" stroke-width="1.6" stroke-dasharray="4 4"/>` +
+      [
+        [34, 34, 0.85],
+        [74, 22, 0.95],
+        [98, 52, 0.8],
+        [54, 66, 1],
+      ]
+        .map(
+          ([x, y, s]) =>
+            `<path d="M${x} ${y} L${x + 30 * s} ${y - 34 * s}" stroke="url(#sa-diag-fire)" stroke-width="${n(9 * s)}" stroke-linecap="round" opacity=".6"/>` +
+            halo("fire", x, y, 18 * s) +
+            chestnut(x, y, s, 220),
+        )
+        .join("") +
+      [
+        [30, 96],
+        [96, 100],
+      ]
+        .map(
+          ([x, y]) =>
+            `<path d="M${x} ${y} q-5 -9 1 -15 q2 6 6 6 q0 -6 4 -9 q4 10 -2 18Z" fill="url(#sa-up-fire)"/>`,
+        )
+        .join("") +
+      sparks(
+        [
+          [112, 24, 1.5],
+          [16, 64, 1.3],
+          [112, 80, 1.3],
+        ],
+        F.accent[2],
+      ),
+  },
+
+  // Glacelle · Water (frost)
+  "Rime Shard": {
+    el: "water",
+    draw: () =>
+      `<path d="M16 104 L80 50" stroke="url(#sa-diag-water)" stroke-width="10" stroke-linecap="round" opacity=".45"/>` +
+      halo("water", 88, 42, 28) +
+      // A slim ice shard, frost glittering in its wake.
+      `<path d="M66 64 L80 40 L106 24 L92 50Z" fill="url(#sa-orb-water)"/>` +
+      `<path d="M66 64 L106 24 M80 40 L92 50" stroke="#fff" stroke-width="1.6" fill="none" opacity=".85"/>` +
+      `<path d="M66 64 L80 40 L106 24 L92 50Z" fill="none" stroke="${W.accent[2]}" stroke-width="1.6"/>` +
+      flake(42, 82, 6, W.accent[2], 1.4) +
+      flake(28, 96, 4, W.accent[2], 1.2) +
+      flake(58, 74, 3.5, "#fff", 1.1) +
+      glint(104, 26, 7, "#fff") +
+      sparks(
+        [
+          [112, 60, 1.4],
+          [70, 22, 1.2],
+          [24, 58, 1.2],
+        ],
+        W.accent[2],
+      ),
+  },
+  Hailstone: {
+    el: "water",
+    draw: () =>
+      // A heavy, faceted hailstone dropping in, frost spreading where it lands.
+      floorGlow("water", 72, 104, 44, 12) +
+      `<ellipse cx="72" cy="104" rx="34" ry="8" fill="none" stroke="${W.accent[2]}" stroke-width="2" stroke-dasharray="4 4"/>` +
+      [
+        [20, 10, 52, 40],
+        [36, 6, 62, 32],
+        [8, 30, 44, 54],
+      ]
+        .map(([x0, y0, x1, y1], i) =>
+          glow(
+            `M${x0} ${y0} L${x1} ${y1}`,
+            i ? W.accent[2] : "#fff",
+            i ? 2 : 2.6,
+            W.accent[1],
+          ),
+        )
+        .join("") +
+      halo("water", 72, 64, 40) +
+      `<circle cx="72" cy="64" r="26" fill="url(#sa-orb-water)"/>` +
+      `<path d="M72 38 L60 52 L66 70 L84 72 L90 54Z M60 52 L48 60 M66 70 L58 86 M84 72 L92 84 M90 54 L98 60 M72 38 L84 40" fill="none" stroke="#fff" stroke-width="1.4" stroke-linejoin="round" opacity=".6"/>` +
+      `<circle cx="72" cy="64" r="26" fill="none" stroke="${W.accent[2]}" stroke-width="2"/>` +
+      `<ellipse cx="62" cy="52" rx="7" ry="4" fill="#fff" opacity=".6" transform="rotate(-35 62 52)"/>` +
+      flake(26, 92, 6, W.accent[2], 1.4) +
+      flake(112, 96, 5, W.accent[2], 1.3) +
+      sparks(
+        [
+          [112, 30, 1.4],
+          [104, 52, 1.2],
+        ],
+        W.accent[2],
+      ),
+  },
+  "Frost Bloom": {
+    el: "water",
+    draw: () =>
+      // An ice flower blooming on the ground, crystals shooting up to freeze.
+      floorGlow("water", 64, 90, 58, 22) +
+      `<g transform="translate(64 90) scale(1 .4)">` +
+      [0, 1, 2, 3, 4, 5]
+        .map(
+          (k) =>
+            `<path d="M0 0 Q14 -22 0 -48 Q-14 -22 0 0Z" fill="${k % 2 ? W.accent[1] : W.accent[2]}" opacity=".85" transform="rotate(${k * 60 + 30})"/>`,
+        )
+        .join("") +
+      `<circle r="50" fill="none" stroke="#fff" stroke-width="3" stroke-dasharray="6 6" opacity=".7"/></g>` +
+      halo("water", 64, 64, 40) +
+      [
+        [64, 24, 9, 92],
+        [46, 46, 7, 92],
+        [82, 42, 7, 92],
+      ]
+        .map(
+          ([x, top, w, base]) =>
+            `<path d="M${x - w} ${base} L${x - w} ${top + w * 1.6} L${x} ${top} L${x + w} ${top + w * 1.6} L${x + w} ${base}Z" fill="url(#sa-orb-water)" stroke="${W.accent[2]}" stroke-width="1.6" stroke-linejoin="round"/>` +
+            `<path d="M${x} ${top} V${base}" stroke="#fff" stroke-width="1.4" opacity=".7"/>`,
+        )
+        .join("") +
+      glint(64, 24, 8, "#fff") +
+      flake(22, 54, 6, W.accent[2], 1.4) +
+      flake(106, 50, 6, W.accent[2], 1.4) +
+      sparks(
+        [
+          [30, 24, 1.3],
+          [100, 22, 1.3],
+        ],
+        W.accent[2],
+      ),
+  },
+  "Frost Breath": {
+    el: "water",
+    draw: () =>
+      // A freezing cone of breath, snowflakes swirling in it.
+      `<path d="M16 64 L120 22 Q132 64 120 106Z" fill="url(#sa-glow-water)"/>` +
+      `<path d="M18 64 L116 32 Q124 64 116 96Z" fill="${W.accent[1]}" opacity=".25"/>` +
+      `<g fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".55"><path d="M26 62 Q50 50 70 54 T112 44"/><path d="M28 68 Q54 78 76 72 T114 84"/></g>` +
+      halo("water", 20, 64, 22) +
+      `<circle cx="20" cy="64" r="8" fill="url(#sa-core-water)"/>` +
+      flake(62, 62, 9, "#fff", 2) +
+      flake(94, 44, 8, W.accent[2], 1.8) +
+      flake(98, 84, 7, W.accent[2], 1.6) +
+      flake(80, 66, 4.5, W.accent[2], 1.3) +
+      flake(44, 76, 4, W.accent[2], 1.2) +
+      sparks(
+        [
+          [112, 62, 1.5],
+          [70, 34, 1.2],
+          [66, 96, 1.2],
+        ],
+        W.accent[2],
+      ),
+  },
+  Whiteout: {
+    el: "water",
+    draw: () =>
+      // A blizzard cloud pouring snow onto frozen ground.
+      floorGlow("water", 64, 100, 56, 16) +
+      `<ellipse cx="64" cy="100" rx="46" ry="12" fill="none" stroke="#fff" stroke-width="2" opacity=".7"/>` +
+      glow(
+        `M30 100 L44 96 L52 104 M76 98 L88 104 L100 98`,
+        W.accent[2],
+        1.6,
+        W.accent[1],
+      ) +
+      `<g stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".6"><path d="M30 52 L18 82"/><path d="M50 54 L36 92"/><path d="M72 54 L58 94"/><path d="M94 52 L82 86"/><path d="M110 52 L102 72"/></g>` +
+      `<path d="M20 46 Q14 30 30 28 Q34 14 50 18 Q60 6 76 14 Q92 8 98 22 Q114 22 112 38 Q118 50 104 52 H28 Q18 52 20 46Z" fill="#e8f8ff"/>` +
+      `<path d="M20 46 Q30 42 40 46 Q52 40 64 46 Q78 40 90 46 Q102 42 110 46 Q114 52 104 52 H28 Q18 52 20 46Z" fill="${W.accent[1]}" opacity=".5"/>` +
+      flake(44, 74, 7, "#fff", 1.8) +
+      flake(80, 70, 6, W.accent[2], 1.6) +
+      flake(66, 86, 5, "#fff", 1.4) +
+      flake(26, 92, 4.5, W.accent[2], 1.3) +
+      flake(104, 84, 4.5, W.accent[2], 1.3) +
+      sparks(
+        [
+          [12, 64, 1.3],
+          [118, 64, 1.3],
+        ],
+        W.accent[2],
+      ),
+  },
+
+  // Halcyra · Aura
+  "Aura Quill": {
+    el: "aura",
+    draw: () =>
+      `<path d="M14 106 L76 52" stroke="url(#sa-diag-aura)" stroke-width="12" stroke-linecap="round" opacity=".5"/>` +
+      glow(`M20 82 L46 60 M40 104 L64 84`, A.accent[2], 1.6, A.accent[1]) +
+      halo("aura", 84, 46, 34) +
+      // A feather of aura loosed like an arrow.
+      quill(80, 50, 1.25, 45) +
+      glint(100, 28, 8, "#fff") +
+      sparks(
+        [
+          [112, 62, 1.5],
+          [62, 22, 1.3],
+          [22, 50, 1.2],
+        ],
+        A.accent[2],
+      ),
+  },
+  "Pinning Quill": {
+    el: "aura",
+    draw: () =>
+      // A heavy quill driven into the ground, pinning the spot in place.
+      floorGlow("aura", 64, 96, 54, 16) +
+      `<ellipse cx="64" cy="96" rx="40" ry="11" fill="none" stroke="${A.accent[2]}" stroke-width="2.2"/>` +
+      `<ellipse cx="64" cy="96" rx="24" ry="6" fill="none" stroke="${A.accent[1]}" stroke-width="1.6" stroke-dasharray="4 4"/>` +
+      glow(
+        `M64 96 L44 92 L30 96 M64 96 L80 104 M64 96 L86 90 L100 92`,
+        A.accent[2],
+        1.8,
+        A.accent[1],
+      ) +
+      halo("aura", 56, 56, 40) +
+      quill(52, 50, 1.55, 145) +
+      chevron(24, 64, 6, 90, A.accent[2], 3) +
+      chevron(24, 52, 6, 90, A.accent[1], 3, 0.6) +
+      chevron(104, 64, 6, 90, A.accent[2], 3) +
+      chevron(104, 52, 6, 90, A.accent[1], 3, 0.6) +
+      sparks(
+        [
+          [96, 24, 1.4],
+          [20, 30, 1.3],
+          [112, 108, 1.2],
+        ],
+        A.accent[2],
+      ),
+  },
+  "Focus Shot": {
+    el: "aura",
+    draw: () =>
+      // Crosshairs locked on, a beam punching straight through them.
+      `<path d="M8 104 L120 24" stroke="${A.accent[1]}" stroke-width="16" stroke-linecap="round" opacity=".25"/>` +
+      glow(`M10 102 L118 26`, "#fff", 4, A.accent[1]) +
+      halo("aura", 64, 64, 30) +
+      `<circle cx="64" cy="64" r="32" fill="none" stroke="${A.accent[2]}" stroke-width="3"/>` +
+      `<circle cx="64" cy="64" r="18" fill="none" stroke="${A.accent[1]}" stroke-width="2" stroke-dasharray="4 4"/>` +
+      `<path d="M64 20 V40 M64 88 V108 M20 64 H40 M88 64 H108" stroke="${A.hot}" stroke-width="3.4" stroke-linecap="round"/>` +
+      `<circle cx="64" cy="64" r="4.5" fill="#fff"/>` +
+      halo("aura", 14, 100, 16) +
+      `<circle cx="14" cy="100" r="6" fill="url(#sa-core-aura)"/>` +
+      sparks(
+        [
+          [108, 92, 1.5],
+          [24, 26, 1.3],
+          [100, 16, 1.2],
+        ],
+        A.accent[2],
+      ),
+  },
+  "Mirage Perch": {
+    el: "aura",
+    draw: () =>
+      // A mirage left on the perch while the real kingfisher darts away.
+      `<path d="M6 92 Q34 84 62 92" fill="none" stroke="#5a3f2a" stroke-width="5" stroke-linecap="round"/><path d="M40 88 l-6 10" stroke="#5a3f2a" stroke-width="3" stroke-linecap="round"/>` +
+      `<ellipse cx="36" cy="70" rx="26" ry="22" fill="url(#sa-glow-aura)" opacity=".7"/>` +
+      kingfisher(34, 72, 1.05, true) +
+      [
+        [46, 56, 78, 46],
+        [44, 66, 74, 60],
+        [50, 46, 80, 32],
+      ]
+        .map(([x0, y0, x1, y1], i) =>
+          glow(
+            `M${x0} ${y0} L${x1} ${y1}`,
+            i ? A.accent[2] : A.hot,
+            i ? 1.8 : 2.4,
+            A.accent[1],
+          ),
+        )
+        .join("") +
+      halo("aura", 96, 42, 26) +
+      kingfisher(94, 42, 0.95) +
+      chevron(104, 76, 6, 0, A.accent[2], 3) +
+      chevron(114, 76, 6, 0, A.accent[1], 3, 0.6) +
+      sparks(
+        [
+          [112, 18, 1.4],
+          [70, 18, 1.2],
+          [96, 104, 1.3],
+        ],
+        A.accent[2],
+      ),
+  },
+  "Skyline Lance": {
+    el: "aura",
+    draw: () =>
+      // A court-wide lance of aura over the horizon.
+      `<path d="M0 98 L22 88 L34 94 L52 84 L70 92 L88 82 L104 90 L128 84 V128 H0Z" fill="${A.bg[2]}"/>` +
+      `<path d="M0 98 L22 88 L34 94 L52 84 L70 92 L88 82 L104 90 L128 84" fill="none" stroke="${A.accent[1]}" stroke-width="1.6" opacity=".7"/>` +
+      `<path d="M0 34 H128 V78 H0Z" fill="url(#sa-glow-aura)"/>` +
+      `<path d="M10 44 H104 L124 56 L104 68 H10Z" fill="${A.accent[1]}"/>` +
+      `<path d="M10 50 H104 L116 56 L104 62 H10Z" fill="${A.accent[2]}"/>` +
+      `<path d="M10 54.5 H108 L112 56 L108 57.5 H10Z" fill="#fff"/>` +
+      [40, 66, 92]
+        .map(
+          (x, i) =>
+            `<ellipse cx="${x}" cy="56" rx="${4 + i}" ry="${18 + i * 2}" fill="none" stroke="${A.accent[2]}" stroke-width="1.6" opacity="${0.5 + i * 0.15}"/>`,
+        )
+        .join("") +
+      halo("aura", 14, 56, 26) +
+      `<circle cx="14" cy="56" r="12" fill="url(#sa-core-aura)"/>` +
+      `<path d="M0 108 H128" stroke="${A.accent[1]}" stroke-width="1.4" opacity=".35"/>` +
+      sparks(
+        [
+          [30, 22, 1.4],
+          [86, 18, 1.4],
+          [112, 30, 1.2],
+          [60, 112, 1.2],
+        ],
+        A.accent[2],
+      ),
+  },
+
+  // Sunbara · Light
+  Sunseed: {
+    el: "light",
+    draw: () =>
+      `<path d="M16 104 Q48 88 76 56" stroke="url(#sa-diag-light)" stroke-width="9" fill="none" stroke-linecap="round" opacity=".5"/>` +
+      halo("light", 84, 46, 36) +
+      // A warm seed of sunlight with a fresh sprout.
+      [0, 1, 2, 3, 4, 5, 6, 7]
+        .map((k) => {
+          const a = (k / 8) * Math.PI * 2;
+          return `<path d="M${n(84 + Math.cos(a) * 20)} ${n(48 + Math.sin(a) * 20)} L${n(84 + Math.cos(a) * 28)} ${n(48 + Math.sin(a) * 28)}" stroke="#ffe066" stroke-width="2.4" stroke-linecap="round" opacity=".85"/>`;
+        })
+        .join("") +
+      `<g transform="rotate(40 84 48)"><path d="M84 34 Q96 46 92 58 Q88 64 84 64 Q80 64 76 58 Q72 46 84 34Z" fill="#ffd36b" stroke="#fff6c2" stroke-width="1.6"/><path d="M84 40 Q88 50 86 60" fill="none" stroke="#e8a030" stroke-width="1.6" stroke-linecap="round"/></g>` +
+      `<path d="M78 38 Q72 26 62 26 Q66 36 78 38Z" fill="${L.accent[1]}" stroke="${L.accent[2]}" stroke-width="1"/>` +
+      sparks(
+        [
+          [36, 88, 1.8],
+          [50, 78, 1.5],
+          [108, 76, 1.4],
+          [104, 20, 1.3],
+        ],
+        L.accent[2],
+      ),
+  },
+  "Yuzu Toss": {
+    el: "light",
+    draw: () =>
+      // A glowing yuzu bursting in a spray of juice.
+      `<path d="M14 106 Q24 70 56 58" fill="none" stroke="url(#sa-diag-light)" stroke-width="7" stroke-linecap="round" opacity=".5"/>` +
+      halo("light", 74, 54, 50) +
+      [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        .map((k) => {
+          const a = (k / 10) * Math.PI * 2 + 0.2,
+            r = k % 2 ? 40 : 48;
+          return (
+            `<path d="M${n(74 + Math.cos(a) * 26)} ${n(54 + Math.sin(a) * 26)} L${n(74 + Math.cos(a) * r)} ${n(54 + Math.sin(a) * r)}" stroke="${k % 2 ? "#ffe066" : L.accent[2]}" stroke-width="3" stroke-linecap="round"/>` +
+            `<circle cx="${n(74 + Math.cos(a) * (r + 5))}" cy="${n(54 + Math.sin(a) * (r + 5))}" r="${k % 2 ? 2 : 2.8}" fill="#ffd34a"/>`
+          );
+        })
+        .join("") +
+      yuzu(74, 56, 19) +
+      sparks(
+        [
+          [20, 30, 1.3],
+          [24, 64, 1.2],
+        ],
+        L.accent[2],
+      ),
+  },
+  "Warm Spring": {
+    el: "light",
+    draw: () =>
+      // A steaming spring with a yuzu bobbing in it; healing rises.
+      floorGlow("light", 64, 88, 58, 24) +
+      `<ellipse cx="64" cy="88" rx="48" ry="19" fill="#4a3a2a"/>` +
+      `<ellipse cx="64" cy="86" rx="42" ry="15" fill="#2fbfa6"/>` +
+      `<ellipse cx="64" cy="84" rx="34" ry="10" fill="#7fe8d0" opacity=".55"/>` +
+      [
+        [22, 90, 6],
+        [32, 102, 6],
+        [52, 106, 6],
+        [76, 106, 6],
+        [96, 102, 6],
+        [106, 90, 6],
+        [24, 76, 5],
+        [104, 76, 5],
+      ]
+        .map(
+          ([x, y, r]) =>
+            `<ellipse cx="${x}" cy="${y}" rx="${r + 2}" ry="${r - 1}" fill="#8f7a64" stroke="#c9b293" stroke-width="1.2"/>`,
+        )
+        .join("") +
+      `<g fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".6"><path d="M44 74 q-6 -8 0 -16 q6 -8 0 -16"/><path d="M64 70 q-6 -8 0 -16 q6 -8 0 -16 q-6 -8 0 -14"/><path d="M86 74 q-6 -8 0 -16 q6 -8 0 -16"/></g>` +
+      yuzu(78, 82, 9) +
+      `<path d="M66 88 Q78 94 90 88" fill="none" stroke="#bff6ec" stroke-width="1.6" stroke-linecap="round"/>` +
+      plus(24, 38, 7, "#7dffb0") +
+      plus(104, 30, 6, "#7dffb0", 0.85) +
+      plus(100, 56, 4, "#7dffb0", 0.7),
+  },
+  Daybreak: {
+    el: "light",
+    draw: () =>
+      // The sun breaking over the horizon in a stunning flash.
+      halo("light", 64, 80, 58) +
+      [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        .map((k) => {
+          const a = Math.PI + (k / 10) * Math.PI,
+            r = k % 2 ? 44 : 56;
+          return `<path d="M${n(64 + Math.cos(a - 0.06) * 30)} ${n(80 + Math.sin(a - 0.06) * 30)} L${n(64 + Math.cos(a) * r)} ${n(80 + Math.sin(a) * r)} L${n(64 + Math.cos(a + 0.06) * 30)} ${n(80 + Math.sin(a + 0.06) * 30)}Z" fill="${k % 2 ? L.accent[1] : "#ffe066"}"/>`;
+        })
+        .join("") +
+      `<path d="M36 80 A28 28 0 0 1 92 80Z" fill="url(#sa-core-light)"/>` +
+      `<path d="M40 80 A24 24 0 0 1 88 80Z" fill="#fff6c2"/>` +
+      `<path d="M6 80 H122" stroke="#fff" stroke-width="3" stroke-linecap="round"/>` +
+      `<path d="M0 82 H128 V128 H0Z" fill="${L.bg[2]}" opacity=".7"/>` +
+      `<g stroke="#ffe066" stroke-width="2" stroke-linecap="round" opacity=".6"><path d="M44 90 H84"/><path d="M52 98 H76"/><path d="M58 106 H70"/></g>` +
+      star(24, 42, 6, "#fff6c2") +
+      star(104, 42, 6, "#fff6c2") +
+      star(64, 16, 5, "#fff6c2"),
+  },
+  Sanctuary: {
+    el: "light",
+    draw: () =>
+      // A sunny glade under a dome of light, healing drifting up.
+      floorGlow("light", 64, 94, 58, 20) +
+      `<ellipse cx="64" cy="94" rx="50" ry="15" fill="#1f5a3c"/>` +
+      `<ellipse cx="64" cy="94" rx="50" ry="15" fill="none" stroke="${L.accent[2]}" stroke-width="2.2"/>` +
+      `<path d="M14 94 A50 64 0 0 1 114 94" fill="url(#sa-glow-light)" opacity=".7"/>` +
+      `<path d="M14 94 A50 64 0 0 1 114 94" fill="none" stroke="${L.accent[2]}" stroke-width="2" stroke-dasharray="5 5" opacity=".8"/>` +
+      [
+        [30, 96],
+        [48, 104],
+        [80, 104],
+        [98, 96],
+        [64, 86],
+      ]
+        .map(
+          ([x, y]) =>
+            `<path d="M${x - 2} ${y} Q${x - 4} ${y - 6} ${x - 8} ${y - 10} M${x} ${y} Q${x} ${y - 8} ${x + 1} ${y - 14} M${x + 2} ${y} Q${x + 4} ${y - 6} ${x + 8} ${y - 9}" fill="none" stroke="${L.accent[1]}" stroke-width="2.4" stroke-linecap="round"/>`,
+        )
+        .join("") +
+      `<circle cx="40" cy="84" r="3" fill="#ffe066"/><circle cx="90" cy="86" r="3" fill="#fff6c2"/>` +
+      halo("light", 64, 30, 22) +
+      `<circle cx="64" cy="30" r="9" fill="#ffe066"/><circle cx="64" cy="30" r="6" fill="#fff6c2"/>` +
+      plus(40, 60, 7, "#7dffb0") +
+      plus(88, 54, 8, "#7dffb0") +
+      plus(64, 70, 5, "#7dffb0", 0.8),
+  },
+
+  // Astrabun · Psychic
+  "Mallet Bop": {
+    el: "psychic",
+    draw: () =>
+      // A mochi mallet swung down in a bonk.
+      `<g fill="none" stroke="${P.accent[2]}" stroke-width="2.4" stroke-linecap="round" opacity=".55"><path d="M30 34 Q54 14 84 22"/><path d="M24 50 Q44 30 70 30"/></g>` +
+      halo("psychic", 100, 84, 26) +
+      [0, 1, 2, 3, 4, 5, 6]
+        .map((k) => {
+          const a = (k / 7) * Math.PI * 2 + 0.3;
+          return `<path d="M${n(100 + Math.cos(a) * 10)} ${n(86 + Math.sin(a) * 10)} L${n(100 + Math.cos(a) * 22)} ${n(86 + Math.sin(a) * 22)}" stroke="${P.hot}" stroke-width="2.6" stroke-linecap="round"/>`;
+        })
+        .join("") +
+      mallet(76, 62, 1.15, 45) +
+      glint(100, 86, 8, "#fff") +
+      sparks(
+        [
+          [112, 40, 1.4],
+          [22, 84, 1.3],
+          [58, 110, 1.2],
+        ],
+        P.accent[2],
+      ),
+  },
+  "Moon Hop": {
+    el: "psychic",
+    draw: () =>
+      // A blink trail from a fading ring to the moon rabbit landing.
+      `<ellipse cx="28" cy="98" rx="16" ry="5" fill="none" stroke="${P.accent[2]}" stroke-width="2" stroke-dasharray="3 4" opacity=".7"/>` +
+      bunny(28, 88, 0.95, P.accent[1], 0.35) +
+      [
+        [36, 78, 2],
+        [44, 66, 2.6],
+        [54, 56, 3.2],
+        [64, 50, 3.8],
+      ]
+        .map(([x, y, r]) => glint(x, y, r * 1.6, P.accent[2]))
+        .join("") +
+      halo("psychic", 88, 48, 40) +
+      crescent(86, 46, 28, "#ffe9a3") +
+      bunny(96, 50, 1.25, "#fffbe6") +
+      `<ellipse cx="94" cy="94" rx="26" ry="7" fill="url(#sa-glow-psychic)"/>` +
+      `<ellipse cx="94" cy="94" rx="20" ry="5" fill="none" stroke="${P.accent[2]}" stroke-width="2"/>` +
+      sparks(
+        [
+          [112, 18, 1.4],
+          [20, 30, 1.3],
+          [118, 70, 1.2],
+        ],
+        P.accent[2],
+      ),
+  },
+  "Mochi Pound": {
+    el: "psychic",
+    draw: () =>
+      // An overhead pound flattening a mochi; stars spin.
+      floorGlow("psychic", 64, 98, 50, 14) +
+      `<g fill="none" stroke="${P.accent[2]}" stroke-width="2.4" stroke-linecap="round" opacity=".55"><path d="M30 20 Q40 6 56 4"/><path d="M98 20 Q88 6 72 4"/></g>` +
+      `<path d="M30 96 Q28 80 46 78 Q64 74 82 78 Q100 80 98 96 Q98 102 64 102 Q30 102 30 96Z" fill="#fff6f0" stroke="${P.accent[2]}" stroke-width="1.6"/>` +
+      `<ellipse cx="50" cy="90" rx="5" ry="2.4" fill="#ffb3d6" opacity=".8"/><ellipse cx="78" cy="90" rx="5" ry="2.4" fill="#ffb3d6" opacity=".8"/>` +
+      `<path d="M58 88 Q64 92 70 88" fill="none" stroke="${P.accent[0]}" stroke-width="1.6" stroke-linecap="round"/>` +
+      `<g stroke="${P.hot}" stroke-width="2.4" stroke-linecap="round"><path d="M22 80 L12 74"/><path d="M106 80 L116 74"/><path d="M24 92 L12 92"/><path d="M104 92 L116 92"/></g>` +
+      mallet(64, 56, 1.2, 180) +
+      star(32, 60, 5.5, "#ffe9a3") +
+      star(96, 60, 5.5, "#ffe9a3") +
+      star(108, 44, 4, "#ffe9a3"),
+  },
+  "Moon Gravity": {
+    el: "psychic",
+    draw: () =>
+      // A little moon bearing down on a patch of heavy gravity.
+      floorGlow("psychic", 64, 92, 58, 22) +
+      [0, 1, 2]
+        .map(
+          (k) =>
+            `<ellipse cx="64" cy="92" rx="${48 - k * 14}" ry="${16 - k * 4.6}" fill="none" stroke="${k ? P.accent[1] : P.accent[2]}" stroke-width="${2.6 - k * 0.5}" ${k ? 'stroke-dasharray="4 4"' : ""}/>`,
+        )
+        .join("") +
+      [36, 64, 92]
+        .map(
+          (x, i) =>
+            chevron(x, i === 1 ? 72 : 76, 7, 90, P.accent[2], 3.4) +
+            chevron(x, i === 1 ? 60 : 64, 7, 90, P.accent[1], 3, 0.6),
+        )
+        .join("") +
+      halo("psychic", 64, 30, 28) +
+      `<circle cx="64" cy="30" r="15" fill="#ffe9a3"/>` +
+      `<circle cx="58" cy="26" r="3.6" fill="#e6c870"/><circle cx="70" cy="34" r="2.6" fill="#e6c870"/><circle cx="66" cy="22" r="1.8" fill="#e6c870"/>` +
+      `<circle cx="64" cy="30" r="15" fill="none" stroke="#fffbe6" stroke-width="1.6"/>` +
+      sparks(
+        [
+          [20, 26, 1.4],
+          [108, 24, 1.4],
+          [16, 64, 1.2],
+          [112, 64, 1.2],
+        ],
+        P.accent[2],
+      ),
+  },
+  "Full Moon": {
+    el: "psychic",
+    draw: () =>
+      // The full moon, its rabbit on its face, crashing down in a shockwave.
+      floorGlow("psychic", 64, 102, 60, 18) +
+      [0, 1, 2]
+        .map(
+          (k) =>
+            `<ellipse cx="64" cy="102" rx="${30 + k * 14}" ry="${8 + k * 3.5}" fill="none" stroke="${k ? P.accent[1] : P.hot}" stroke-width="${3 - k * 0.7}" opacity="${1 - k * 0.25}"/>`,
+        )
+        .join("") +
+      `<g stroke="${P.accent[2]}" stroke-width="2.4" stroke-linecap="round" opacity=".6"><path d="M36 8 V22"/><path d="M50 2 V14"/><path d="M78 2 V14"/><path d="M92 8 V22"/></g>` +
+      halo("psychic", 64, 54, 50) +
+      `<circle cx="64" cy="54" r="32" fill="#ffe9a3"/>` +
+      `<circle cx="64" cy="54" r="32" fill="url(#sa-glow-psychic)" opacity=".35"/>` +
+      bunny(64, 60, 1.8, "#e0c26e") +
+      `<circle cx="46" cy="38" r="4" fill="#ecd08a"/><circle cx="84" cy="70" r="3" fill="#ecd08a"/><circle cx="82" cy="36" r="2.4" fill="#ecd08a"/>` +
+      `<circle cx="64" cy="54" r="32" fill="none" stroke="#fffbe6" stroke-width="2"/>` +
+      rock(20, 90, 5, P.accent[0], P.accent[2], 1.2) +
+      rock(110, 88, 6, P.accent[0], P.accent[2], 1.2),
+  },
+
+  // Wombolder · Earth
+  "Rump Bump": {
+    el: "earth",
+    draw: () =>
+      // A wombat shoving sideways with its boulder-hard rump.
+      floorGlow("earth", 56, 100, 50, 12) +
+      `<path d="M28 96 v8 h8 v-8 M56 96 v8 h8 v-8" fill="#6b4a2c" stroke="#3e2a1a" stroke-width="1.4"/>` +
+      `<ellipse cx="46" cy="72" rx="34" ry="26" fill="#b08a62" stroke="#3e2a1a" stroke-width="1.8"/>` +
+      `<path d="M20 80 Q46 98 74 84" fill="none" stroke="#efdcc0" stroke-width="3" stroke-linecap="round" opacity=".5"/>` +
+      `<path d="M24 52 Q20 40 28 40 Q32 46 30 54Z" fill="#8a6440" stroke="#3e2a1a" stroke-width="1.4"/>` +
+      `<circle cx="20" cy="64" r="2.6" fill="#1a120a"/><ellipse cx="10" cy="74" rx="5" ry="4" fill="#3e2a1a"/>` +
+      `<ellipse cx="76" cy="70" rx="13" ry="25" fill="#8b8f99" stroke="#c9ccd4" stroke-width="2"/>` +
+      `<path d="M72 50 Q80 60 76 70 Q72 80 78 90" fill="none" stroke="#4b4e57" stroke-width="1.8" stroke-linecap="round"/><ellipse cx="72" cy="58" rx="3" ry="7" fill="#fff" opacity=".35"/>` +
+      halo("earth", 98, 70, 24) +
+      [-50, -25, 0, 25, 50]
+        .map((deg) => {
+          const a = (deg * Math.PI) / 180;
+          return `<path d="M${n(94 + Math.cos(a) * 8)} ${n(70 + Math.sin(a) * 8)} L${n(94 + Math.cos(a) * 26)} ${n(70 + Math.sin(a) * 26)}" stroke="${R.hot}" stroke-width="3" stroke-linecap="round"/>`;
+        })
+        .join("") +
+      `<g fill="none" stroke="${R.accent[2]}" stroke-width="2.4" stroke-linecap="round" opacity=".7"><path d="M108 40 Q124 70 108 100"/></g>` +
+      sparks(
+        [
+          [104, 24, 1.4],
+          [30, 24, 1.2],
+          [118, 112, 1.3],
+        ],
+        R.accent[2],
+      ),
+  },
+  "Burrow Rush": {
+    el: "earth",
+    draw: () =>
+      // The wombat charging up out of its tunnel, dirt flying.
+      `<g stroke="${R.accent[2]}" stroke-width="2.4" stroke-linecap="round" opacity=".55"><path d="M6 44 H34"/><path d="M14 56 H40"/><path d="M4 32 H26"/></g>` +
+      `<path d="M0 100 H128 V128 H0Z" fill="${R.bg[2]}"/><path d="M0 100 H128" stroke="${R.accent[0]}" stroke-width="2"/>` +
+      `<path d="M2 102 Q12 72 40 72 Q60 74 66 102Z" fill="#5a3a1e" stroke="${R.accent[1]}" stroke-width="2"/>` +
+      `<ellipse cx="36" cy="92" rx="14" ry="7" fill="#1a1008"/>` +
+      `<ellipse cx="54" cy="80" rx="22" ry="16" fill="#9a7650" stroke="#3e2a1a" stroke-width="1.6"/>` +
+      `<ellipse cx="78" cy="66" rx="26" ry="20" fill="#b08a62" stroke="#3e2a1a" stroke-width="1.8"/>` +
+      `<path d="M62 50 Q60 36 70 38 Q72 46 70 52Z" fill="#8a6440" stroke="#3e2a1a" stroke-width="1.4"/>` +
+      `<ellipse cx="100" cy="72" rx="12" ry="10" fill="#c9a27a" stroke="#3e2a1a" stroke-width="1.4"/>` +
+      `<ellipse cx="106" cy="68" rx="7" ry="5.4" fill="#3e2a1a"/><ellipse cx="104" cy="66" rx="2.4" ry="1.4" fill="#fff" opacity=".5"/>` +
+      `<circle cx="86" cy="58" r="3" fill="#1a120a"/><circle cx="87" cy="57" r="1" fill="#fff"/>` +
+      `<path d="M84 84 Q92 92 98 90 M88 84 l2 8 M93 85 l2 7" fill="none" stroke="#efdcc0" stroke-width="2" stroke-linecap="round"/>` +
+      rock(30, 58, 5, R.accent[0], R.accent[2], 1.2) +
+      rock(48, 46, 4, R.accent[1], R.accent[2], 1.2) +
+      rock(14, 74, 4, R.accent[0], R.accent[2], 1.2) +
+      `<g fill="${R.accent[2]}" opacity=".45"><circle cx="70" cy="104" r="6"/><circle cx="84" cy="108" r="4"/><circle cx="58" cy="110" r="4"/></g>` +
+      sparks(
+        [
+          [116, 40, 1.5],
+          [118, 92, 1.3],
+          [96, 22, 1.2],
+        ],
+        R.accent[2],
+      ),
+  },
+  "Pebble Spray": {
+    el: "earth",
+    draw: () =>
+      // Five pebbles kicked up in a short fan.
+      `<g fill="${R.accent[2]}" opacity=".4"><circle cx="22" cy="102" r="10"/><circle cx="36" cy="108" r="6"/><circle cx="12" cy="110" r="5"/></g>` +
+      [-78, -60, -42, -24, -6]
+        .map((deg, i) => {
+          const a = (deg * Math.PI) / 180,
+            d = i % 2 ? 66 : 80,
+            x = n(22 + Math.cos(a) * d),
+            y = n(100 + Math.sin(a) * d);
+          return (
+            `<path d="M${n(22 + Math.cos(a) * 18)} ${n(100 + Math.sin(a) * 18)} L${n(22 + Math.cos(a) * (d - 15))} ${n(100 + Math.sin(a) * (d - 15))}" stroke="url(#sa-diag-earth)" stroke-width="3" stroke-linecap="round" opacity=".6"/>` +
+            halo("earth", x, y, 12) +
+            `<ellipse cx="${x}" cy="${y}" rx="7.5" ry="5.6" fill="${i % 2 ? R.accent[0] : R.accent[1]}" stroke="${R.accent[2]}" stroke-width="1.6" transform="rotate(${deg} ${x} ${y})"/>` +
+            `<ellipse cx="${n(x - 2)}" cy="${n(y - 2)}" rx="2.6" ry="1.6" fill="#fff" opacity=".55" transform="rotate(${deg} ${n(x - 2)} ${n(y - 2)})"/>`
+          );
+        })
+        .join("") +
+      sparks(
+        [
+          [112, 30, 1.4],
+          [70, 16, 1.2],
+          [116, 100, 1.3],
+        ],
+        R.accent[2],
+      ),
+  },
+  "Rump Block": {
+    el: "earth",
+    draw: () =>
+      // The armoured rump turned to block, a shot bouncing off.
+      halo("earth", 58, 64, 50) +
+      `<circle cx="58" cy="64" r="42" fill="#b08a62" stroke="#3e2a1a" stroke-width="2"/>` +
+      `<circle cx="58" cy="64" r="42" fill="none" stroke="#efdcc0" stroke-width="2" stroke-dasharray="2 5" opacity=".7"/>` +
+      `<circle cx="58" cy="66" r="32" fill="#8b8f99" stroke="#c9ccd4" stroke-width="2.4"/>` +
+      `<path d="M38 48 Q48 40 60 40" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".5"/>` +
+      `<path d="M58 66 L44 58 L34 64 M58 66 L52 84 L44 92 M58 66 L76 74 L84 88 M58 66 L74 52" fill="none" stroke="#4b4e57" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>` +
+      `<ellipse cx="58" cy="30" rx="5" ry="3.6" fill="#8a6440" stroke="#3e2a1a" stroke-width="1.2"/>` +
+      glow(`M124 26 L98 50`, "#ffb0a0", 2.4, "#ff6a4a") +
+      glow(`M98 50 L122 80`, R.hot, 2.4, R.accent[1]) +
+      `<path d="M122 80 l-9 -1 l5 -7Z" fill="#fff"/>` +
+      glint(98, 50, 8, "#fff") +
+      sparks(
+        [
+          [16, 20, 1.4],
+          [12, 104, 1.3],
+          [108, 108, 1.2],
+        ],
+        R.accent[2],
+      ),
+  },
+  Landslide: {
+    el: "earth",
+    draw: () =>
+      // An unstoppable boulder charge; the ground erupts on impact.
+      floorGlow("earth", 84, 98, 46, 14) +
+      `<ellipse cx="88" cy="98" rx="34" ry="10" fill="${R.bg[1]}"/>` +
+      glow(
+        `M88 98 L70 102 L58 98 M88 98 L106 104 M88 98 L104 92`,
+        R.accent[2],
+        2,
+        R.accent[1],
+      ) +
+      [
+        [70, 100, 7, 70],
+        [82, 96, 9, 52],
+        [98, 98, 8, 60],
+        [110, 102, 6, 76],
+      ]
+        .map(
+          ([x, y, w, top]) =>
+            `<path d="M${x - w} ${y} L${x - 2} ${top} L${x + w} ${y}Z" fill="${R.accent[0]}" stroke="${R.accent[2]}" stroke-width="1.6" stroke-linejoin="round"/><path d="M${x - 2} ${top} L${x + 2} ${y}" stroke="${R.accent[1]}" stroke-width="1.6"/>`,
+        )
+        .join("") +
+      rock(94, 40, 5, R.accent[1], R.accent[2], 1.2) +
+      rock(112, 52, 4, R.accent[0], R.accent[2], 1.2) +
+      rock(76, 36, 3.5, R.accent[0], R.accent[2], 1.2) +
+      `<g stroke="${R.accent[2]}" stroke-width="2.4" stroke-linecap="round" opacity=".55"><path d="M2 50 H18"/><path d="M4 66 H14"/><path d="M2 82 H18"/></g>` +
+      halo("earth", 40, 68, 32) +
+      `<circle cx="40" cy="68" r="22" fill="#8b8f99" stroke="#c9ccd4" stroke-width="2"/>` +
+      `<path d="M26 56 Q40 48 52 54 M30 80 L42 70 L56 74 M40 48 L42 70" fill="none" stroke="#4b4e57" stroke-width="2" stroke-linecap="round"/>` +
+      `<path d="M28 60 Q34 50 44 50" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".5"/>` +
+      `<path d="M16 84 A28 28 0 0 1 20 50" fill="none" stroke="${R.accent[2]}" stroke-width="2.4" stroke-linecap="round" opacity=".7"/>` +
+      sparks(
+        [
+          [64, 20, 1.3],
+          [116, 26, 1.4],
+        ],
+        R.accent[2],
+      ),
+  },
+
+  // Shadopus · Shadow
+  "Tentacle Lash": {
+    el: "shadow",
+    draw: () =>
+      // A tentacle whipping across in a bright slash.
+      glow(`M20 74 Q44 20 104 26`, S.hot, 2.4, S.accent[1]) +
+      halo("shadow", 70, 52, 44) +
+      tentacle(
+        [
+          [8, 132],
+          [20, 46],
+          [110, 6],
+          [100, 58],
+        ],
+        18,
+        2,
+        "#7b5cff",
+        S.accent[2],
+        "#e9e0ff",
+      ) +
+      sparks(
+        [
+          [112, 76, 1.5],
+          [40, 22, 1.2],
+          [94, 104, 1.3],
+        ],
+        S.accent[2],
+      ),
+  },
+  "Ink Jet": {
+    el: "shadow",
+    draw: () =>
+      // A squirt of midnight ink splattering ahead.
+      tentacle(
+        [
+          [10, 104],
+          [34, 84],
+          [58, 64],
+          [86, 46],
+        ],
+        5,
+        22,
+        INK,
+        INK_RIM,
+      ) +
+      halo("shadow", 92, 42, 30) +
+      `<circle cx="92" cy="42" r="15" fill="none" stroke="${INK_RIM}" stroke-width="7" stroke-opacity=".22"/>` +
+      `<circle cx="92" cy="42" r="15" fill="${INK}" stroke="${INK_RIM}" stroke-width="1.8"/>` +
+      [
+        [110, 30, 4],
+        [112, 50, 3],
+        [100, 22, 2.6],
+        [118, 40, 2],
+        [104, 60, 2.4],
+      ]
+        .map(
+          ([x, y, r]) =>
+            `<circle cx="${x}" cy="${y}" r="${r}" fill="${INK}" stroke="${INK_RIM}" stroke-width="1.4"/>`,
+        )
+        .join("") +
+      `<path d="M84 36 Q88 30 96 32" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".6"/>` +
+      `<path d="M30 84 Q50 66 74 54" fill="none" stroke="${INK_RIM}" stroke-width="1.6" stroke-linecap="round" opacity=".6"/>` +
+      sparks(
+        [
+          [24, 40, 1.3],
+          [60, 100, 1.2],
+          [116, 92, 1.3],
+        ],
+        S.accent[2],
+      ),
+  },
+  "Ink Strike": {
+    el: "shadow",
+    draw: () =>
+      // A flurry of arms striking one point at once.
+      halo("shadow", 98, 62, 30) +
+      [
+        [
+          [-8, 18],
+          [36, 14],
+          [70, 34],
+          [92, 56],
+        ],
+        [
+          [-8, 50],
+          [36, 44],
+          [64, 56],
+          [90, 60],
+        ],
+        [
+          [-8, 84],
+          [34, 86],
+          [64, 72],
+          [90, 64],
+        ],
+        [
+          [-8, 116],
+          [40, 112],
+          [70, 88],
+          [92, 68],
+        ],
+      ]
+        .map((p) =>
+          tentacle(
+            p as [number, number][],
+            14,
+            2,
+            "#7b5cff",
+            S.accent[2],
+            "#e9e0ff",
+          ),
+        )
+        .join("") +
+      [0, 1, 2, 3, 4, 5, 6, 7]
+        .map((k) => {
+          const a = (k / 8) * Math.PI * 2;
+          return `<path d="M${n(98 + Math.cos(a) * 9)} ${n(62 + Math.sin(a) * 9)} L${n(98 + Math.cos(a) * (k % 2 ? 18 : 26))} ${n(62 + Math.sin(a) * (k % 2 ? 18 : 26))}" stroke="${S.hot}" stroke-width="2.6" stroke-linecap="round"/>`;
+        })
+        .join("") +
+      glint(98, 62, 10, "#fff") +
+      sparks(
+        [
+          [116, 24, 1.4],
+          [114, 104, 1.3],
+        ],
+        S.accent[2],
+      ),
+  },
+  "Ink Cloud": {
+    el: "shadow",
+    draw: () => {
+      // Vanishing into a billow of ink, only the eyes still showing.
+      const puffs: [number, number, number][] = [
+        [42, 70, 22],
+        [68, 54, 26],
+        [92, 72, 21],
+        [62, 84, 22],
+        [28, 88, 14],
+        [100, 48, 14],
+        [96, 92, 12],
+      ];
+      return (
+        halo("shadow", 64, 68, 56) +
+        puffs
+          .map(
+            ([x, y, r]) =>
+              `<circle cx="${x}" cy="${y}" r="${r}" fill="none" stroke="${S.accent[1]}" stroke-width="5"/>`,
+          )
+          .join("") +
+        puffs
+          .map(
+            ([x, y, r]) =>
+              `<circle cx="${x}" cy="${y}" r="${r}" fill="${INK}"/>`,
+          )
+          .join("") +
+        `<g fill="none" stroke="${S.accent[0]}" stroke-width="2" stroke-linecap="round"><path d="M40 60 Q48 52 56 58"/><path d="M80 82 Q90 80 92 70"/><path d="M88 46 Q96 44 100 52"/></g>` +
+        `<ellipse cx="60" cy="68" rx="5" ry="6.5" fill="${INK_RIM}"/><ellipse cx="78" cy="68" rx="5" ry="6.5" fill="${INK_RIM}"/>` +
+        `<ellipse cx="61" cy="69" rx="2" ry="3.6" fill="#fff"/><ellipse cx="79" cy="69" rx="2" ry="3.6" fill="#fff"/>` +
+        [
+          [18, 40, 3],
+          [112, 26, 3.4],
+          [116, 108, 2.4],
+          [14, 112, 2.6],
+        ]
+          .map(
+            ([x, y, r]) =>
+              `<circle cx="${x}" cy="${y}" r="${r}" fill="${INK}" stroke="${S.accent[1]}" stroke-width="1.4"/>`,
+          )
+          .join("") +
+        sparks(
+          [
+            [40, 24, 1.3],
+            [86, 18, 1.2],
+          ],
+          S.accent[2],
+        )
+      );
+    },
+  },
+  "Kraken Grasp": {
+    el: "shadow",
+    draw: () => {
+      // Every arm rising at once to seize the middle; stars spin.
+      const side = (p: number[][]) => [
+        p as [number, number][],
+        p.map(([x, y]) => [128 - x, y]) as [number, number][],
+      ];
+      const arms = (ps: [number, number][][], w: number) =>
+        ps
+          .map((p) => tentacle(p, w, 2, "#7b5cff", S.accent[2], "#e9e0ff"))
+          .join("");
+      return (
+        floorGlow("shadow", 64, 98, 58, 18) +
+        `<ellipse cx="64" cy="98" rx="50" ry="14" fill="${S.accent[0]}" fill-opacity=".25" stroke="${S.accent[1]}" stroke-width="2"/>` +
+        arms(
+          side([
+            [44, 92],
+            [36, 64],
+            [50, 40],
+            [58, 52],
+          ]),
+          10,
+        ) +
+        arms(
+          side([
+            [22, 100],
+            [8, 60],
+            [34, 22],
+            [54, 38],
+          ]),
+          14,
+        ) +
+        star(64, 62, 7, "#ffe9a3") +
+        star(50, 72, 5, "#ffe9a3") +
+        star(78, 72, 5, "#ffe9a3") +
+        arms(
+          side([
+            [36, 112],
+            [24, 84],
+            [44, 70],
+            [56, 82],
+          ]),
+          14,
+        ) +
+        sparks(
+          [
+            [64, 18, 1.4],
+            [16, 30, 1.2],
+            [112, 30, 1.2],
+          ],
+          S.accent[2],
+        )
+      );
+    },
   },
 };
 

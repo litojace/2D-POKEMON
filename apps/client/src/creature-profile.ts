@@ -134,8 +134,17 @@ export function profilePartBounds(
   part: CreaturePart,
 ) {
   if (part === "body") return [44, 88, 112, 91];
+  // Astrabun carries its mallet in the near paw (over the shoulder in profile).
+  if (id === "astrabun" && part === "armR") return [32, 60, 150, 119];
   if (part === "armL" || part === "armR") return [32, 104, 136, 75];
   if (part === "flame") return [10, -4, 180, 132];
+  return undefined;
+}
+/** Front-view parts that reach past their usual crop box (Halcyra's beak hangs over its chest). */
+export function frontPartBounds(id: CharacterId, part: CreaturePart) {
+  if (id === "halcyra" && part === "flame") return [30, -2, 140, 142];
+  // Astrabun's mochi mallet rises past the paw.
+  if (id === "astrabun" && part === "armR") return [60, 64, 126, 106];
   return undefined;
 }
 export function profileViewBox(_id: CharacterId, _dir: ArticulatedFacing) {
@@ -922,10 +931,705 @@ export function creatureProfile(
     );
     profiles.tail = crook(back);
   }
+  // ---- Shared pieces for the newer champions.
+  const INK = "#1b1636";
+  const halo = `url(#${prefix}-shine)`;
+  /** The same part with another fill where it used the body gradient. */
+  const tint = (svg: string, fill: string) => svg.split(body).join(fill);
+  const flameTip = (x: number, y: number, r = 9) =>
+    e(x, y, r * 1.6, r * 1.6, halo, ' stroke="none" opacity=".8"') +
+    path(
+      `M${x - r * 0.7} ${y + r * 0.5}Q${x - r} ${y - r * 0.6} ${x} ${y - r * 1.6}Q${x + r * 0.2} ${y - r * 0.6} ${x + r * 0.7} ${y - r * 0.9}Q${x + r} ${y} ${x + r * 0.7} ${y + r * 0.5}Q${x} ${y + r} ${x - r * 0.7} ${y + r * 0.5}Z`,
+      jewel,
+    ) +
+    path(
+      `M${x - r * 0.3} ${y + r * 0.4}Q${x - r * 0.4} ${y - r * 0.3} ${x} ${y - r * 0.8}Q${x + r * 0.4} ${y - r * 0.2} ${x + r * 0.3} ${y + r * 0.4}Z`,
+      "#fff3b8",
+      ' stroke="none"',
+    );
+  const snowflake = (x: number, y: number, r: number) =>
+    line(
+      `M${x - r} ${y}H${x + r}M${x - r * 0.5} ${y - r * 0.86}L${x + r * 0.5} ${y + r * 0.86}M${x - r * 0.5} ${y + r * 0.86}L${x + r * 0.5} ${y - r * 0.86}`,
+      "#e8fbff",
+      1.6,
+      0.9,
+    );
+  const tentacle = (
+    x0: number,
+    y0: number,
+    x1: number,
+    y1: number,
+    cx: number,
+    cy: number,
+  ) => {
+    const d = `M${x0} ${y0}Q${cx} ${cy} ${x1} ${y1}`;
+    return (
+      line(d, p.dark, 15) +
+      line(d, body, 11.5) +
+      e(x1, y1, 5.6, 5.6) +
+      [0.35, 0.6, 0.82]
+        .map((t) =>
+          e(
+            +((1 - t) ** 2 * x0 + 2 * (1 - t) * t * cx + t * t * x1).toFixed(1),
+            +(
+              (1 - t) ** 2 * y0 +
+              2 * (1 - t) * t * cy +
+              t * t * y1 +
+              3
+            ).toFixed(1),
+            2,
+            2,
+            p.light,
+            ' stroke="none" opacity=".85"',
+          ),
+        )
+        .join("")
+    );
+  };
+  /** A banded tail drawn as thick strokes (Coilemur's electromagnet). */
+  const bandedTail = (d: string) =>
+    line(d, p.dark, 22) +
+    line(d, p.mid, 17.5) +
+    path(
+      d,
+      "none",
+      ` stroke="${p.accent}" stroke-width="17.5" stroke-dasharray="9 9" stroke-linecap="butt"`,
+    ) +
+    line(d, "#ffffff", 3, 0.35);
+
+  if (id === "coilemur") {
+    const ear = (x: number, tip: number, lean: number) =>
+      path(
+        `M${x - 12} 68Q${x - 8 + lean * 0.3} 40 ${x + lean} ${tip}Q${x + 14} 48 ${x + 10} 72Z`,
+      ) +
+      path(
+        `M${x - 6} 64Q${x - 3 + lean * 0.3} 44 ${x + lean * 0.85} ${tip + 9}Q${x + 8} 50 ${x + 6} 66Z`,
+        p.light,
+        ' stroke="none"',
+      );
+    const magnet = (x: number, y: number) =>
+      path(
+        `M${x - 10} ${y + 12}Q${x - 10} ${y} ${x} ${y}Q${x + 10} ${y} ${x + 10} ${y + 12}L${x + 5} ${y + 12}Q${x + 5} ${y + 5} ${x} ${y + 5}Q${x - 5} ${y + 5} ${x - 5} ${y + 12}Z`,
+        "#e8473f",
+      ) +
+      path(
+        `M${x - 10} ${y + 12}H${x - 5}V${y + 16}H${x - 10}ZM${x + 5} ${y + 12}H${x + 10}V${y + 16}H${x + 5}Z`,
+        "#e6ecf5",
+      ) +
+      star(x + 14, y, 4);
+    const coil = (x: number) =>
+      [138, 144, 150]
+        .map((y) =>
+          e(x, y, 10, 2.5, p.accent, ` stroke="${p.dark}" stroke-width="1.2"`),
+        )
+        .join("");
+    if (back) {
+      profiles.ears = ear(70, 26, -14) + ear(130, 26, 14);
+      profiles.flame = magnet(124, 36);
+      profiles.head = e(100, 88, 40, 33, face) + shine(76, 71, 22);
+      profiles.tail = bandedTail(
+        "M104 150Q146 158 154 128Q158 104 142 92Q130 80 142 62Q150 50 166 52",
+      );
+      profiles.armL += coil(72);
+      profiles.armR += coil(128);
+    } else {
+      profiles.ears = ear(112, 24, 6);
+      profiles.earFar = ear(90, 28, -2);
+      profiles.flame = magnet(114, 30);
+      profiles.head =
+        path(
+          "M128 88Q127 60 102 56Q80 52 68 66Q62 74 62 84Q56 90 52 94Q49 98 53 100Q59 104 66 104Q72 116 90 120Q118 122 126 102Z",
+          face,
+        ) +
+        path(
+          "M53 99Q56 90 64 84Q70 72 86 70Q100 72 102 88Q100 106 86 116Q70 117 62 107Z",
+          p.light,
+          ' stroke="none"',
+        ) +
+        e(
+          80,
+          94,
+          15,
+          14,
+          p.dark,
+          ' opacity=".85" stroke="none" transform="rotate(-12 80 94)"',
+        ) +
+        path("M50 94Q54 92 57 95Q55 99 51 98Z", INK, ' stroke="none"') +
+        line("M57 104q4 3 9 -0.5", p.dark, 1.6) +
+        e(63.5, 105.6, 2, 1.4, "#ff7d9c", ' stroke="none"') +
+        shine(80, 64, 18) +
+        cheek(94, 109);
+      profiles.eyes = eyes(80, "#ffb02e", 8.8, 10.4);
+      profiles.tail = bandedTail(
+        "M118 150Q156 158 164 128Q168 104 152 92Q140 80 152 62Q160 50 176 52",
+      );
+      profiles.armL += coil(76);
+      profiles.armR += coil(111);
+    }
+    profiles.tail +=
+      e(back ? 166 : 176, 52, 14, 14, halo, ' stroke="none"') +
+      star(back ? 166 : 176, 52, 6, "#ffffff");
+  }
+  if (id === "pyranda") {
+    const dark = "#4a1a12";
+    const ear = (x: number, lean: number) =>
+      path(
+        `M${x - 13} 70Q${x - 12} 40 ${x + lean} 30Q${x + 16} 44 ${x + 10} 72Z`,
+        p.accent,
+      ) +
+      path(
+        `M${x - 7} 66Q${x - 6} 46 ${x + lean * 0.8} 40Q${x + 9} 50 ${x + 5} 68Z`,
+        "#8a2a14",
+        ' stroke="none"',
+      );
+    const tail = (flip: boolean) => {
+      const x = (v: number) => (flip ? 200 - v : v);
+      return (
+        path(
+          `M${x(118)} 150Q${x(158)} 160 ${x(172)} 130Q${x(180)} 106 ${x(164)} 90Q${x(156)} 84 ${x(150)} 92Q${x(162)} 104 ${x(158)} 120Q${x(152)} 140 ${x(118)} 140Z`,
+        ) +
+        line(
+          `M${x(146)} 142Q${x(158)} 138 ${x(166)} 128M${x(158)} 118Q${x(166)} 114 ${x(174)} 114`,
+          "#8a2a14",
+          6,
+          0.35,
+        ) +
+        flameTip(x(157), 86, 10)
+      );
+    };
+    profiles.legL = tint(profiles.legL, dark);
+    profiles.legR = tint(profiles.legR, dark);
+    profiles.armL = tint(profiles.armL, dark);
+    profiles.armR = tint(profiles.armR, dark);
+    if (back) {
+      profiles.ears = ear(68, -8) + ear(132, 8);
+      profiles.head = e(100, 88, 40, 33, face) + shine(76, 71, 22);
+      profiles.tail = tail(false);
+      profiles.body =
+        e(100, 139, 29, 29) + line("M82 132q18 8 36 0", "#8a2a14", 5, 0.3);
+      profiles.scarf = line("M74 122L126 156", "#6b3a1e", 6);
+    } else {
+      profiles.ears = ear(114, 4);
+      profiles.earFar = ear(92, -4);
+      profiles.head =
+        path(
+          "M127 86Q126 60 102 56Q80 52 68 66Q62 74 62 86Q56 92 54 96Q52 100 56 102Q60 112 72 117Q93 128 114 115Q130 105 127 86Z",
+          face,
+        ) +
+        path(
+          "M55 99Q58 90 68 92Q80 94 84 104Q80 116 68 116Q58 112 55 104Z",
+          p.accent,
+          ' stroke="none"',
+        ) +
+        e(
+          84,
+          75,
+          7,
+          4,
+          p.accent,
+          ' stroke="none" transform="rotate(10 84 75)"',
+        ) +
+        line("M90 102Q92 112 98 117", "#8a2a14", 4, 0.5) +
+        path("M53 96Q57 94 59 97Q57 100 54 99Z", INK, ' stroke="none"') +
+        line("M60 108q2 -2 4 0q2 2 4 0", p.dark, 1.6) +
+        shine(76, 66, 20) +
+        cheek(94, 109);
+      profiles.eyes = eyes(80, "#ffb84d", 9.2, 11);
+      profiles.tail = tail(false);
+      profiles.body =
+        e(100, 121, 20, 17) +
+        e(102, 141, 27, 27) +
+        e(94, 144, 15, 19, "#5a2216");
+      // The chestnut bandolier, crossing the chest.
+      profiles.scarf =
+        line("M86 120L110 156", "#6b3a1e", 6) +
+        [0.3, 0.6]
+          .map((t) => {
+            const x = 86 + 24 * t,
+              y = 120 + 36 * t;
+            return (
+              e(x, y, 4.5, 4.5, "#8a4a22") +
+              e(x, y - 1, 1.8, 1.8, p.glow, ' stroke="none"')
+            );
+          })
+          .join("");
+    }
+  }
+  if (id === "glacelle") {
+    const horn = (x: number, tip: number, lean: number) =>
+      path(`M${x - 7} 60L${x + lean} ${tip}L${x + 8} 56Z`, jewel) +
+      line(
+        `M${x + lean * 0.7 - 1} ${tip + 6}L${x + 1} 52`,
+        "#ffffff",
+        1.4,
+        0.8,
+      );
+    const frost = (x: number, y: number) =>
+      line(
+        `M${x - 2.4} ${y}H${x + 2.4}M${x} ${y - 2.4}V${y + 2.4}`,
+        "#ffffff",
+        1.3,
+        0.9,
+      );
+    // The body rises under the head as one shape: the neck joint stays
+    // covered without a separate underpainting disc showing through.
+    const teardrop = back
+      ? "M72 120Q78 100 100 98Q122 100 128 120Q134 146 116 166Q106 178 100 186Q94 178 84 166Q66 146 72 120Z"
+      : "M78 120Q82 100 100 98Q118 100 122 120Q128 146 112 166Q104 176 98 186Q92 176 84 164Q70 144 78 120Z";
+    profiles.body =
+      path(teardrop, body, ' fill-opacity=".9"') +
+      (back
+        ? line(
+            "M86 128Q84 146 92 162M114 128Q116 146 108 162",
+            "#ffffff",
+            1.6,
+            0.45,
+          )
+        : e(98, 140, 8, 10, `url(#${prefix}-heart)`, ' stroke="none"') +
+          e(98, 140, 16, 16, `url(#${prefix}-heartglow)`, ' stroke="none"') +
+          line("M86 128Q84 146 92 162", "#ffffff", 1.6, 0.45));
+    const flap = (d: string, vein: string) =>
+      path(d, jewel, ' fill-opacity=".85"') + line(vein, "#ffffff", 1.5, 0.75);
+    profiles.legL = profiles.legR = "";
+    if (back) {
+      profiles.ears = horn(76, 34, -6) + horn(124, 34, 6);
+      profiles.head =
+        e(100, 88, 39, 34, face) + shine(76, 71, 22);
+      profiles.armL = flap(
+        "M82 124Q48 104 36 118Q30 132 46 146Q60 150 82 140Z",
+        "M70 132Q54 124 42 124",
+      );
+      profiles.armR = flap(
+        "M118 124Q152 104 164 118Q170 132 154 146Q140 150 118 140Z",
+        "M130 132Q146 124 158 124",
+      );
+      profiles.wings =
+        snowflake(40, 96, 6) + snowflake(164, 80, 5) + snowflake(156, 150, 4);
+    } else {
+      profiles.ears = horn(104, 30, 8);
+      profiles.earFar = horn(84, 32, -6);
+      profiles.head =
+        e(94, 88, 34, 34, face) +
+        shine(76, 69, 20) +
+        frost(66, 104) +
+        frost(72, 110) +
+        cheek(92) +
+        grin(65, 108);
+      profiles.eyes = eyes(80, "#43c6ff", 9.6, 11.6);
+      profiles.flame = path(
+        "M84 58Q96 46 110 56Q102 52 96 54Q90 53 84 58Z",
+        "#ffffff",
+        ' opacity=".9" stroke="none"',
+      );
+      profiles.armL = flap(
+        "M92 128Q72 112 60 120Q54 132 68 142Q82 146 92 138Z",
+        "M88 132Q76 124 64 124",
+      );
+      profiles.armR = flap(
+        "M106 128Q128 108 146 118Q152 134 134 146Q118 150 106 140Z",
+        "M110 132Q126 122 142 122",
+      );
+      profiles.wings =
+        snowflake(48, 92, 6) + snowflake(160, 84, 5) + snowflake(152, 152, 4);
+    }
+  }
+  if (id === "halcyra") {
+    const crest = back
+      ? path(
+          "M66 66Q58 44 70 32Q78 46 86 50Q84 32 98 22Q102 42 106 48Q114 32 128 30Q122 50 134 64Q100 54 66 66Z",
+        ) +
+        line(
+          "M76 56Q78 46 76 40M98 44Q100 36 98 30M120 50Q124 42 126 36",
+          p.light,
+          1.6,
+          0.6,
+        )
+      : path(
+          "M84 60Q90 40 108 30Q104 44 112 46Q116 30 132 26Q124 44 136 52Q130 62 116 64Z",
+        ) +
+        line("M104 46Q108 38 108 34M122 44Q126 36 130 32", p.light, 1.6, 0.6);
+    const foot = (x: number) =>
+      line(
+        `M${x} 162V172M${x} 172L${x - 8} 175M${x} 172L${x - 4} 177M${x} 172L${x + 4} 175`,
+        p.accent,
+        3.2,
+      );
+    const backFoot = (x: number) =>
+      line(
+        `M${x} 162V172M${x} 172L${x - 6} 176M${x} 172L${x + 6} 176M${x} 172V178`,
+        p.accent,
+        3.2,
+      );
+    profiles.ears = crest;
+    profiles.legL = back ? backFoot(88) : foot(90);
+    profiles.legR = back ? backFoot(112) : foot(110);
+    if (back) {
+      profiles.head =
+        e(100, 88, 40, 33, face) +
+        shine(76, 71, 22) +
+        line("M100 60v52", p.dark, 3, 0.25);
+      // Folded wings over the back.
+      profiles.armL = profiles.armR = "";
+      profiles.wings = [-1, 1]
+        .map(
+          (s) =>
+            path(
+              `M${100 + s * 6} 118Q${100 + s * 40} 118 ${100 + s * 40} 148Q${100 + s * 38} 164 ${100 + s * 26} 170Q${100 + s * 26} 160 ${100 + s * 18} 162Q${100 + s * 16} 152 ${100 + s * 8} 152Q${100 + s * 2} 134 ${100 + s * 6} 118Z`,
+            ) +
+            line(
+              `M${100 + s * 14} 128Q${100 + s * 28} 140 ${100 + s * 26} 158`,
+              p.light,
+              1.5,
+              0.6,
+            ),
+        )
+        .join("");
+      profiles.tail = path(
+        "M88 152Q100 176 112 152Q106 174 100 180Q94 174 88 152Z",
+      );
+    } else {
+      profiles.head =
+        e(94, 88, 34, 33, face) +
+        path(
+          "M62 98Q66 112 82 116Q76 106 80 98Z",
+          "#ffffff",
+          ' stroke="none"',
+        ) +
+        shine(76, 69, 20) +
+        cheek(94, 109);
+      profiles.eyes = eyes(80, p.glow, 8.6, 10.6);
+      // The long crystal beak, the forehead gem and the visor over the near eye.
+      profiles.flame =
+        path("M66 89Q48 95 34 101Q48 105 66 105Z", jewel) +
+        line("M62 97L40 101", "#ffffff", 1.4, 0.8) +
+        line("M66 89Q60 97 66 105", p.dark, 2, 0.4) +
+        path("M84 60L89 67L84 74L79 67Z", jewel) +
+        e(84, 67, 8, 8, halo, ' stroke="none" opacity=".6"') +
+        e(80, 93, 17, 17, "none", ` stroke="${p.glow}" stroke-width="2.6"`) +
+        line("M96 98Q103 104 99 111", p.glow, 1.6);
+      profiles.body =
+        e(100, 121, 20, 17) +
+        e(102, 141, 27, 27) +
+        e(92, 145, 16, 19, `url(#${prefix}-chest)`);
+      profiles.armL =
+        e(86, 125, 8, 9) +
+        path("M90 122Q74 128 74 150Q76 160 84 162Q86 152 92 150Z") +
+        path(
+          "M86 128Q78 132 78 142Q84 138 88 134Z",
+          p.glow,
+          ' stroke="none" opacity=".55"',
+        );
+      profiles.armR =
+        path(
+          "M104 120Q132 124 132 152Q130 164 120 168Q120 158 114 160Q114 150 108 150Q100 136 104 120Z",
+        ) +
+        line("M110 130Q120 142 118 158", p.light, 1.5, 0.6) +
+        path(
+          "M106 126Q118 128 118 138Q110 136 106 132Z",
+          p.glow,
+          ' stroke="none" opacity=".55"',
+        );
+      profiles.tail = path(
+        "M118 150Q142 152 158 166Q144 168 138 162Q136 170 126 168Q128 160 116 156Z",
+      );
+    }
+  }
+  if (id === "sunbara") {
+    const yuzu = (x: number) =>
+      e(x, 40, 24, 24, halo, ' stroke="none" opacity=".75"') +
+      [0, 1, 2, 3, 4, 5, 6, 7]
+        .map((i) => {
+          const a = (i * Math.PI) / 4;
+          return line(
+            `M${+(x + Math.cos(a) * 17).toFixed(1)} ${+(40 + Math.sin(a) * 17).toFixed(1)}L${+(x + Math.cos(a) * 23).toFixed(1)} ${+(40 + Math.sin(a) * 23).toFixed(1)}`,
+            p.glow,
+            2.4,
+            0.9,
+          );
+        })
+        .join("") +
+      e(x, 41, 13, 12, `url(#${prefix}-yuzu)`) +
+      path(
+        `M${x} 30Q${x + 6} 20 ${x + 16} 24Q${x + 10} 32 ${x} 30Z`,
+        "#7cc46a",
+      ) +
+      e(x - 4, 37, 4, 2.5, "#ffffff", ' opacity=".6" stroke="none"');
+    const ear = (x: number, y = 64) =>
+      e(x, y, 9, 8) +
+      e(x, y + 1, 4.5, 4, p.dark, ' opacity=".55" stroke="none"');
+    profiles.flame = yuzu(back ? 100 : 98);
+    if (back) {
+      profiles.ears = ear(66) + ear(134);
+      profiles.head =
+        path(
+          "M58 92Q58 56 100 56Q142 56 142 92Q142 120 100 122Q58 120 58 92Z",
+          face,
+        ) + shine(74, 70, 24);
+      profiles.body = e(100, 141, 33, 28);
+      profiles.scarf =
+        path("M66 122Q100 134 134 122L134 132Q100 146 66 132Z", "#ffffff") +
+        line("M68 127Q100 139 132 127", "#ff8f6b", 2, 0.85);
+    } else {
+      profiles.ears = ear(114, 62);
+      profiles.earFar = ear(96, 58);
+      // A long, blunt capybara head with a boxy muzzle.
+      profiles.head =
+        path(
+          "M128 86Q128 58 100 56Q74 54 62 68Q54 78 50 90Q46 102 52 110Q62 120 86 120Q118 122 126 102Z",
+          face,
+        ) +
+        path(
+          "M50 94Q52 84 64 84Q80 86 82 100Q80 116 64 117Q52 114 50 104Z",
+          `url(#${prefix}-muzzle)`,
+        ) +
+        e(54, 96, 2.6, 1.9, p.dark, ' stroke="none"') +
+        line("M55 108q4 2.5 9 0", p.dark, 1.7) +
+        shine(82, 64, 22) +
+        cheek(96, 108);
+      profiles.eyes = eyes(84, p.glow, 9, 11);
+      profiles.body =
+        e(100, 121, 20, 17) + e(102, 141, 30, 27) + e(94, 145, 18, 19, pearl);
+      profiles.scarf =
+        path("M72 120Q96 132 124 120L126 130Q96 144 74 130Z", "#ffffff") +
+        line("M74 125Q96 137 124 125", "#ff8f6b", 2, 0.85) +
+        path("M118 126L130 152L120 152L112 130Z", "#ffffff");
+    }
+  }
+  if (id === "astrabun") {
+    const inner = "#ffc6e3";
+    const mallet = (x: number) =>
+      path(`M${x - 3} 154L${x + 3} 96L${x + 9} 97L${x + 3} 155Z`, "#b37a45") +
+      path(
+        `M${x - 12} 80Q${x - 12} 72 ${x + 8} 74Q${x + 26} 76 ${x + 26} 86L${x + 24} 100Q${x + 24} 108 ${x + 6} 106Q${x - 12} 104 ${x - 12} 96Z`,
+        "#d29a5c",
+      ) +
+      path(`M${x} 76L${x - 2} 104L${x + 4} 105L${x + 6} 76Z`, p.glow) +
+      line(`M${x - 8} 82Q${x + 6} 82 ${x + 22} 86`, "#ffffff", 1.6, 0.5);
+    if (back) {
+      profiles.ears =
+        path("M78 64Q64 30 72 8Q84 4 88 30Q90 50 90 62Z") +
+        path(
+          "M110 62Q110 40 118 22Q124 12 134 14Q132 24 126 22Q124 34 124 64Z",
+        ) +
+        path("M118 22Q128 6 146 8Q140 18 128 22Z");
+      profiles.head = e(100, 88, 39, 33, face) + shine(76, 71, 22);
+      profiles.armR = mallet(140) + profiles.armR;
+      // The cotton tail sits over the back.
+      profiles.wings =
+        e(100, 152, 13, 12, "#ffffff") +
+        e(96, 148, 5, 4, "#ffffff", ' stroke="none" opacity=".9"');
+    } else {
+      profiles.ears =
+        path("M102 62Q98 30 110 8Q122 6 120 32Q118 50 112 64Z") +
+        path(
+          "M106 56Q104 34 112 16Q117 18 115 34Q113 48 110 58Z",
+          inner,
+          ' stroke="none"',
+        ) +
+        path("M114 12Q126 2 142 6Q136 16 120 18Z");
+      profiles.earFar =
+        path("M86 60Q78 30 84 10Q94 6 96 30Q98 46 96 62Z") +
+        path(
+          "M88 54Q83 34 87 16Q92 18 92 32Q93 44 92 54Z",
+          inner,
+          ' stroke="none"',
+        );
+      profiles.head =
+        e(94, 88, 34, 33, face) +
+        path("M58 98Q61 95 64 98Q61 101 58 98Z", "#ff8fb8", ' stroke="none"') +
+        line("M61 100v3M61 103q-2 3 -4 2M61 103q2 3 5 2", p.dark, 1.5) +
+        path(
+          "M60 104h3v3h-3Z",
+          "#ffffff",
+          ` stroke="${p.dark}" stroke-width=".9"`,
+        ) +
+        shine(76, 69, 20) +
+        cheek(92);
+      profiles.eyes = eyes(80, p.accent, 9.2, 11.2);
+      profiles.flame =
+        path(
+          "M78 58Q68 62 69 72Q70 80 80 82Q72 76 73 70Q74 62 78 58Z",
+          `url(#${prefix}-moon)`,
+        ) + star(86, 62, 3);
+      // Carried over the near shoulder.
+      profiles.armR =
+        `<g transform="rotate(35 112 154)">${mallet(112)}</g>` + profiles.armR;
+      profiles.tail =
+        e(128, 150, 13, 12, "#ffffff") +
+        e(124, 146, 5, 4, "#ffffff", ' stroke="none" opacity=".9"');
+    }
+  }
+  if (id === "wombolder") {
+    const stone = `url(#${prefix}-stone)`;
+    const ear = (x: number, y = 62) =>
+      e(x, y, 10, 10) +
+      e(x, y + 1, 5, 5, p.dark, ' opacity=".45" stroke="none"');
+    const claws = (x: number) =>
+      line(`M${x - 6} 156l-1 5M${x} 157v5M${x + 6} 156l1 5`, "#f4ead8", 2.6);
+    profiles.flame =
+      e(back ? 112 : 106, 60, 9, 6, stone) +
+      path(
+        back
+          ? "M104 58Q108 50 116 54Q112 58 104 58Z"
+          : "M98 58Q102 50 110 54Q106 58 98 58Z",
+        p.glow,
+        ' stroke="none"',
+      );
+    profiles.legL = leg(back ? 82 : 88, 14);
+    profiles.legR = leg(back ? 118 : 112, 15);
+    if (back) {
+      profiles.ears = ear(64) + ear(136);
+      profiles.head = e(100, 90, 44, 32, face) + shine(72, 72, 26);
+      // The boulder-hard rump plate covers its whole back.
+      profiles.wings =
+        path(
+          "M50 156Q40 120 58 102Q76 88 100 88Q124 88 142 102Q160 120 150 156Q130 172 100 172Q70 172 50 156Z",
+          stone,
+        ) +
+        line(
+          "M70 108L82 122L76 136M134 106L122 120L128 134M64 150L76 156M100 92V104",
+          p.dark,
+          1.8,
+          0.45,
+        ) +
+        path("M58 108Q72 94 88 98Q80 106 62 112Z", p.glow, ' opacity=".9"') +
+        path(
+          "M126 98Q140 98 146 112Q136 108 124 104Z",
+          p.glow,
+          ' opacity=".9"',
+        );
+      profiles.armL += claws(72);
+      profiles.armR += claws(128);
+    } else {
+      profiles.ears = ear(112, 62);
+      profiles.earFar = ear(94, 58);
+      profiles.head =
+        path(
+          "M128 90Q128 62 100 58Q74 56 62 72Q54 84 54 96Q54 108 66 114Q86 124 110 120Q128 112 128 90Z",
+          face,
+        ) +
+        e(57, 96, 10, 8.5, "#3a2a22") +
+        e(54, 93, 3, 2, "#ffffff", ' opacity=".5" stroke="none"') +
+        line("M60 110q5 1.5 10 0", p.dark, 2) +
+        shine(78, 68, 24) +
+        cheek(96, 110);
+      profiles.eyes = eyes(82, p.glow, 6, 8.4);
+      // The rump plate: a stone dome over its back end.
+      profiles.wings =
+        path(
+          "M104 102Q120 80 144 86Q166 96 166 128Q166 158 148 170Q128 178 112 166Q104 150 106 128Z",
+          stone,
+        ) +
+        line(
+          "M128 92L136 108L130 120M150 132L158 146M120 150l8 6",
+          p.dark,
+          1.8,
+          0.45,
+        ) +
+        path("M112 98Q124 82 140 86Q128 94 116 104Z", p.glow, ' opacity=".9"');
+      profiles.body =
+        e(100, 121, 20, 17) + e(102, 142, 31, 26) + e(92, 146, 18, 17, pearl);
+      profiles.armL += claws(76);
+      profiles.armR += claws(111);
+      profiles.scarf =
+        path("M74 134Q98 146 128 134L128 140Q98 152 74 140Z", "#6b4a2c") +
+        e(84, 146, 8, 7, "#8a6440") +
+        line("M78 142Q84 138 90 142", "#3e2a1a", 1.4, 0.8);
+    }
+  }
+  if (id === "shadopus") {
+    const inkEye = (x: number) => {
+      const glow = (r: number, o: number) =>
+        e(x, 94, r, r, halo, ` stroke="none" opacity="${o}"`);
+      if (mood !== "normal" && mood !== "focus")
+        return glow(12, 0.55) + expression(x, 8, 9, p.glow);
+      return (
+        glow(13, 0.75) +
+        e(x, 94, 7.5, 8.5, p.glow) +
+        e(x - 2.5, 93, 3, 2.6, "#ffffff") +
+        path(
+          `M${x - 9} 94Q${x} 85 ${x + 9} 94L${x + 9} 84H${x - 9}Z`,
+          p.accent,
+          ' stroke="none"',
+        ) +
+        line(`M${x - 8.5} 93.5Q${x} 86 ${x + 8.5} 93.5`, p.glow, 1.4) +
+        (mood === "focus"
+          ? `<path d="M${x + 7.5} 75.5L${x - 6.4} 82.5" stroke="${p.glow}" stroke-width="4.4" stroke-linecap="round" fill="none"/>`
+          : "")
+      );
+    };
+    const spots = (pts: [number, number, number][]) =>
+      pts
+        .map(([x, y, r]) =>
+          e(x, y, r, r * 0.8, p.glow, ' opacity=".8" stroke="none"'),
+        )
+        .join("");
+    profiles.ears = profiles.earFar = "";
+    if (back) {
+      profiles.head =
+        path(
+          "M58 98Q54 48 100 40Q146 48 142 98Q138 120 100 122Q62 120 58 98Z",
+          face,
+        ) +
+        spots([
+          [84, 58, 4],
+          [118, 54, 3],
+          [128, 74, 2.5],
+          [76, 80, 2.5],
+        ]) +
+        shine(74, 66, 22) +
+        // The ink mask is tied at the back.
+        path("M58 88Q100 98 142 88L142 102Q100 110 58 102Z", p.accent) +
+        path("M100 96L88 112L96 114ZM100 96L112 114L104 112Z", p.accent);
+      profiles.armL = tentacle(72, 122, 46, 130, 52, 156);
+      profiles.armR = tentacle(128, 122, 154, 130, 148, 156);
+      profiles.legL =
+        tentacle(90, 150, 70, 176, 72, 160) +
+        tentacle(96, 154, 92, 182, 100, 170);
+      profiles.legR =
+        tentacle(110, 150, 130, 176, 128, 160) +
+        tentacle(104, 154, 108, 182, 100, 170);
+      profiles.body = e(100, 136, 26, 22);
+      profiles.tail = "";
+    } else {
+      // The mantle swells up and back from the face.
+      profiles.head =
+        path(
+          "M62 106Q50 72 72 50Q96 32 126 46Q148 62 140 94Q134 118 104 122Q76 124 62 106Z",
+          face,
+        ) +
+        spots([
+          [98, 52, 3.5],
+          [124, 62, 3],
+          [132, 84, 2.5],
+        ]) +
+        shine(78, 60, 20) +
+        path("M56 88Q84 80 112 88L112 102Q84 94 58 102Z", p.accent) +
+        path("M112 88L128 82L124 96L112 100Z", p.accent) +
+        line("M60 108q6 5 14 -1", p.light, 2);
+      profiles.eyes = `<g class="profile-near-eye">${inkEye(80)}</g>`;
+      profiles.body = e(102, 136, 22, 20);
+      profiles.armL = tentacle(85, 124, 60, 126, 62, 152);
+      profiles.armR = tentacle(111, 124, 142, 128, 138, 156);
+      profiles.legL =
+        tentacle(94, 150, 74, 176, 76, 160) +
+        tentacle(98, 154, 92, 182, 100, 170);
+      profiles.legR =
+        tentacle(108, 150, 128, 176, 126, 160) +
+        tentacle(104, 154, 110, 182, 102, 170);
+      const curl = "M116 140Q158 150 166 116Q170 96 154 92";
+      profiles.tail =
+        line(curl, p.dark, 15) + line(curl, body, 11.5) + e(154, 92, 5.6, 5.6);
+    }
+    profiles.scarf = "";
+  }
   // Paint the hidden clavicles as well as the visible torso. The circular
   // shoulder roots stay covered even at the largest casting rotations.
-  profiles.body = e(100, id === "terradon" ? 120 : 111, 17, 20) + profiles.body;
-  if (id !== "mystowl") {
+  // (Glacelle's body is translucent: there's nothing to hide, and the discs would show.)
+  if (id !== "glacelle")
+    profiles.body =
+      e(100, id === "terradon" ? 120 : 111, 17, 20) + profiles.body;
+  if (id !== "mystowl" && id !== "glacelle") {
     for (const part of ["armL", "armR"] as const) {
       const [px, py] = profilePivot(id, direction, part)!;
       profiles.body =

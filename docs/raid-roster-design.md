@@ -6,9 +6,9 @@ Somnara's sequence is generated privately on the server, omitted from public and
 
 Prismatail fights in the Sun Atrium. Light passes through raiders and directional mirror posts; ordinary attacks turn a mirror 45°. Solar Crown requires two team paths within three seconds, or a continuous two-second solo path. The mobile camera keeps the complete relay visible, with compact Look away and Turn mirror controls. Six practice drills, champion tricks, traits, Polished, eleven rewards and Sunday daily rotation are implemented. Lightkeeper credits one relay per participating raider when the shield breaks, never per simulation frame. The two-player final phase uses both beams too; a Radiant Flare carrier can relay both during its four-second effect. Tests cover party sizes 1–4 on all Perils, attack geometry, mirror repair by stand-ins, socket state, database permissions and reward equipping. Balance still needs human play feedback.
 
-Emberwing uses the Sky Terrace and three braziers in a triangle. Flying blocks melee and ground-only attacks; ranged damage is halved, except Lumoth’s Wing Dust. A grounded window lasts six seconds (eight with Updraft); two groundings in Blazing Sky leave the heart permanently exposed. The compact HUD shows flight and brazier progress. Fireproof, all seven practice choices, four champion tricks and eleven rewards are implemented. Stand-ins use separate brazier targets; tests walk slow Terradon parties of 1–4 through the final-phase route on every Peril. Grounding clears dive trails and shrinks growing fire patches. The Flashfire speed title uses the existing four-minute solo Peril 2 target provisionally, pending human clear times.
+Emberwing uses the Sky Terrace and three braziers in a triangle. Flying blocks melee and ground-only attacks; ranged damage is halved, except Lumoth’s Wing Dust, Halcyra’s Aura Quill and Focus Shot, and Astrabun’s Full Moon. A grounded window lasts six seconds (eight with Updraft); two groundings in Blazing Sky leave the heart permanently exposed. The compact HUD shows flight and brazier progress. Fireproof, all seven practice choices, eight champion tricks and eleven rewards are implemented. Stand-ins use separate brazier targets; tests walk slow Terradon parties of 1–4 through the final-phase route on every Peril. Grounding clears dive trails and shrinks growing fire patches. The Flashfire speed title uses the existing four-minute solo Peril 2 target provisionally, pending human clear times.
 
-Storm Twins fight in the Conductor Ring as two independently damageable enemies, Fizz and Crackle. Each has separate health, stagger and exposed windows; the shared health bar retains the two rite thresholds. During Supercell, finishing one starts a 15/12/8-second revival timer (solo adds three seconds; In-sync adds three). The fallen twin revives at 35% unless both fall in time. Opposite Polarity signs cancel within range; a cancelled teammate can help an odd party's remaining raider without repeat credit. Solo (or the last standing co-op raider) gets a reachable opposite-sign floor pad. Six attacks, four champion tricks, three traits, Grounded, six practice drills, Thursday daily rotation, touch target selection and eleven rewards are implemented. Tests cover all party sizes and Perils, revival and simultaneous finishes, stand-ins, multiplayer startup, persistence, permissions and equipping. Flashpoint uses the existing four-minute solo Peril 2 speed target provisionally, pending human clear times. Cross-boss rewards described later remain planned unless separately marked implemented.
+Storm Twins fight in the Conductor Ring as two independently damageable enemies, Fizz and Crackle. Each has separate health, stagger and exposed windows; the shared health bar retains the two rite thresholds. During Supercell, finishing one starts a 15/12/8-second revival timer (solo adds three seconds; In-sync adds three). The fallen twin revives at 35% unless both fall in time. Opposite Polarity signs cancel within range; a cancelled teammate can help an odd party's remaining raider without repeat credit. Solo (or the last standing co-op raider) gets a reachable opposite-sign floor pad. Six attacks, seven champion tricks, three traits, Grounded, six practice drills, Thursday daily rotation, touch target selection and eleven rewards are implemented. Tests cover all party sizes and Perils, revival and simultaneous finishes, stand-ins, multiplayer startup, persistence, permissions and equipping. Flashpoint uses the existing four-minute solo Peril 2 speed target provisionally, pending human clear times. Cross-boss rewards described later remain planned unless separately marked implemented.
 
 Decisions so far (Oct 17):
 
@@ -543,7 +543,10 @@ Relay.
 ## 6. Champion tricks across the roster
 
 Every champion has **at least three bosses** where one of its skills is a
-special answer, so "who should I bring?" is part of each boss.
+special answer, so "who should I bring?" is part of each boss. All sixteen
+champions qualify (`tests/unit/raid-roster.test.ts` checks it); the tricks
+are listed per boss in `RAID_BOSS_PERKS` (`packages/shared/src/raid.ts`), and
+the Raid Hub's guide and the raid briefing read them from there.
 
 **Voltkit** (3)
 - **Tidewyrm:** Static Lance on a Stranded boss adds +15 stagger (water
@@ -594,7 +597,64 @@ special answer, so "who should I bring?" is part of each boss.
 - **Somnara:** Shade Crawl leaves a trail that blocks Dream Bubbles.
 - **Prismatail:** Void Orb swallows a Prism Lance.
 
-Every boss has four champion tricks.
+**Coilemur** (3)
+- **Grumblecrag:** Magnet Lash drags a fallen ally it passes over (before it
+  reaches the boss) to Coilemur's side.
+- **Tidewyrm:** Magnet Lash yanks a raider out of a Bubble Prison.
+- **Storm Twins:** each Electromagnet pulse drags a twin in its pull 45 px
+  toward Coilemur, shortening the Link Beam.
+
+**Pyranda** (3)
+- **Tidewyrm:** Chestnut Storm pops every bubble where it lands, a Bubble
+  Prison included.
+- **Gloomshade:** Chestnut Mortar landing on a dark lantern relights it.
+- **Emberwing:** Chestnut Mortar lights a brazier it lands on, from range.
+
+**Glacelle** (3)
+- **Tidewyrm:** Frost Bloom on a stranded boss keeps it there 2 s longer.
+- **Emberwing:** Frost Bloom puts out fire patches and dive trails in its
+  area.
+- **Prismatail:** Frost Bloom's ice relays the sunbeam for 4 s (like Sunfire
+  Pillar).
+
+**Halcyra** (3)
+- **Emberwing:** Aura Quill and Focus Shot hit an airborne boss at full
+  damage.
+- **Storm Twins:** Focus Shot pierces the first twin and hits the other if
+  it is on the line.
+- **Prismatail:** Skyline Lance cuts every Prism Lance lane it crosses.
+
+**Sunbara** (3)
+- **Grumblecrag:** a fallen ally inside Warm Spring is revived twice as fast.
+- **Gloomshade:** Warm Spring and Sanctuary cleanse curses from allies inside.
+- **Somnara:** Warm Spring wakes sleepers inside it (as any ally's zone does)
+  and keeps them from going Drowsy.
+
+**Astrabun** (3)
+- **Grumblecrag:** Mochi Pound adds +15 stagger.
+- **Emberwing:** Full Moon's crash hits an airborne boss at full damage, +20
+  stagger.
+- **Somnara:** Moon Hop landing on a rune pad, or within its 90 px landing
+  burst of one, counts as stepping on it (once).
+
+**Wombolder** (3)
+- **Grumblecrag:** Burrow Rush or Landslide driving the boss into a pillar
+  (the engine's wall-slam check) adds +25 stagger.
+- **Gloomshade:** Landslide on the real one shakes off every copy until it
+  splits again.
+- **Storm Twins:** Rump Block stops Twin Rush completely: +15 stagger to that
+  twin.
+
+**Shadopus** (3)
+- **Gloomshade:** while stealthed in Ink Cloud, attacks never pick it as their
+  target (alone and hidden, Gloomshade waits).
+- **Somnara:** immune to Drowsy and sleep while stealthed.
+- **Prismatail:** an Ink Jet hit blots out Glare for 3 s.
+
+Grumblecrag, Gloomshade and Emberwing have eight champion tricks; Tidewyrm,
+Storm Twins, Somnara and Prismatail have seven. Only Auralynx's Facet
+Guard blocks Rock Volley (Wombolder's Rump Block is also a counter, but has
+its own trick on the Storm Twins).
 
 ## 7. Rewards
 

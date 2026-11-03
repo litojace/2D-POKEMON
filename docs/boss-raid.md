@@ -37,7 +37,8 @@ A sleepy sea serpent fought in the **Lagoon Court**: shallow water with four rai
 - **Bubble Barrage:** 7–9 slow bubbles in a fan. A hit roots you for 0.8 s; attacks pop them; Terradon's Tremor clears them.
 - **High Tide** (ch. 2+): the floor floods for 5 s; off the islands you take damage and slow down. Two raiders fit on an island; a third is pushed off (solo: no limit).
 - **Undertow** (ch. 2+): a whirlpool at the centre pulls everyone in for 3 s; its centre hurts. Dash outward.
-- **Bubble Prison** (ch. 2+): one raider is sealed and drifts to the boss's mouth over 6 s. Teammates pop it with three hits (Cindrake's Magma Bomb in one, Terradon's Tremor frees it); the trapped raider can mash attack (8 presses) to break out. Reaching the mouth downs you.
+- **Bubble Prison** (ch. 2+): one raider is sealed and drifts to the boss's mouth over 6 s. Teammates pop it with three hits (Cindrake's Magma Bomb in one, Terradon's Tremor frees it, Pyranda's Chestnut Storm pops it with every bubble where it lands, and Coilemur's Magnet Lash yanks the raider out to Coilemur's side); the trapped raider can mash attack (8 presses) to break out. Reaching the mouth downs you.
+- **Champion tricks:** Voltkit's Static Lance on a stranded Tidewyrm adds stagger; Tidefin's Tide Double carries the ripple; Glacelle's Frost Bloom on a stranded Tidewyrm keeps it there 2 s longer; the prison breakers above.
 - **Storm Surge** (ch. 3): faster rhythm; High Tide leads straight into a dive and the Undertow into a wave. On Peril 3 an island sinks for good every 45 s (35 s solo), down to two.
 - **Traits:** Murky (fainter ripples, strands last 1 s longer), Rip Current (stronger Undertow, slower waves), Spring Tide (longer High Tide, bigger islands). **Themed rite:** Sure Footing (no bubble roots, 15% faster in water). **Signal:** the third key is "Island here".
 - **Rewards** (migration 012): Tidebreaker (first clear), Seafoam colors (5 clears), Pearlscale skin (10), Riptide entrance (Peril 2), Leviathan's Bane title + Reef frame (Peril 3), Tidal aura (Peril 3, no downs), Splashdown victory (feat: strand it 4 times in one run), Flash Flood (Peril 2 solo under 4:00), Lone Current (Peril 3 solo), Shipwright (30 strands, wins and losses).
@@ -52,7 +53,7 @@ A floppy-eared puff of shadow with a crescent-moon tail, fought in the **Lantern
 - **Lantern Snuff:** a lantern dims and goes out. Two hits relight it (a shot or a swing aimed at it). In chapter 3 it goes out twice as fast.
 - **Creeping Curse** (ch. 2+): a stack on one raider. Anyone within 120 px of a cursed raider for 2 s (3 s with Restless Spirits) gets a stack too. Three stacks = **Haunted**: 5 damage a second for 6 s. Two seconds in lantern light cleanses it. Solo, the curse instead grows if you stand still for 2.5 s.
 - **Nightmare Pulse:** a ring expands from every copy, but only the real one's hurts: jump it. The real ring marks the real one for a moment. In chapter 3 pulses come in pairs.
-- **Champion tricks:** Voltkit's Ball Lightning lights its landing spot for 3 s; Lumoth's Radiant Flare relights lanterns and cleanses curses nearby; Mystowl's Third-Eye Ray, aimed at the real one, marks it for 4 s; Duskveil's Haunted Lantern on the real one reveals it for 6 s.
+- **Champion tricks:** Voltkit's Ball Lightning lights its landing spot for 3 s; Lumoth's Radiant Flare relights lanterns and cleanses curses nearby; Mystowl's Third-Eye Ray, aimed at the real one, marks it for 4 s; Duskveil's Haunted Lantern on the real one reveals it for 6 s; Pyranda's Chestnut Mortar relights a dark lantern it lands on; Sunbara's Warm Spring and Sanctuary cleanse curses from allies inside; Wombolder's Landslide on the real one shakes off every copy until it splits again; Shadopus hidden in Ink Cloud is never picked as a target (alone and hidden, Gloomshade waits).
 - **Traits:** Moonlit (wider lantern light, one extra copy), Restless Spirits (more Grasping Hands, slower curse spread), Hollow (fewer copies, fainter shadow). **Themed rite:** Lamplighter (one hit relights a lantern; lantern light heals 1% a second). **Signal:** the third key is "That's the real one".
 - **Rewards** (migration 013): Lightbringer (first clear), Dusk colors (5 clears), Moonlit skin (10), Shadowstep entrance (Peril 2), Night's End title + Crescent frame (Peril 3), Nightmote aura (Peril 3, no downs), Crescent Bow victory (feat: nobody hits a copy all run, with at least one split), Moonrunner (Peril 2 solo under 4:00), Lone Lantern (Peril 3 solo), Lamplighter (50 lanterns relit, wins and losses; a run counts at most 20).
 
@@ -65,7 +66,7 @@ A sleepy lavender sky whale carries a cottage on its back above the **Cloud Deck
 - **Lullaby Rings:** jump the expanding rings. Rings and drifting **Dream Bubbles** add Drowsy; three stacks put you to sleep for two seconds. Attacks pop bubbles. Allies can hit sleeping teammates awake without friendly damage; this does not cancel Terradon's own Shell Up.
 - **Tail Splash:** leave the marked lane. **Falling Stars** (chapter two onward) land on constellation points; stand between them. **Whale Song** channels for four seconds, hurting anyone outside the moving teal Quiet Zone.
 - **Traits:** Deep Slumber adds a rune but extends exposure by two seconds. Restless Dream sends more bubbles but shortens sequences. Starry Night adds stars and enlarges the Quiet Zone. **Lucid** prevents bubble Drowsy and privately shows the first rune even to non-Dreamers.
-- **Champion tricks:** Crest Flare wakes allies throughout its cone; Tide Double's double can enter a rune pad; Silent Swoop reveals the current sequence to the team; Shade Crawl leaves bubble-blocking trails. Stand-ins follow actual rune calls or their own private view.
+- **Champion tricks:** Crest Flare wakes allies throughout its cone; Tide Double's double can enter a rune pad; Silent Swoop reveals the current sequence to the team; Shade Crawl leaves bubble-blocking trails; Sunbara's Warm Spring wakes sleepers and keeps allies inside from going Drowsy; Astrabun's Moon Hop landing on (or within 90 px of) a rune pad counts as stepping on it; Shadopus can't go Drowsy or fall asleep while hidden in Ink Cloud. Stand-ins follow actual rune calls or their own private view.
 - **Eleven rewards:** Dreamwaker, Twilight colors, Starlit skin, Dreamdrift entrance, Lucid Legend, Moonglass frame, Lullaby aura, Sweet Dreams victory, Daydream Dash, Lone Dreamer and Dream Weaver. Sweet Dreams requires a solved sequence and no wrong runes/timeouts; Dream Weaver counts 60 correct rune entries across wins and losses. The shared feature counter stores rune entries for this boss; it does not stop at the older twenty-pillar limit.
 
 Migration **015_somnara.sql** enables Somnara's stored records, titles and cosmetics. Its sequence stays out of public/spectator snapshots; Lucid's one-rune hint and Silent Swoop's team reveal are sent to the appropriate authenticated seats only.
@@ -90,6 +91,12 @@ Some champions' skills answer Grumblecrag's attacks; the briefing lists the part
 - **Mystowl · Wing Cloak** up inside a shared meteor cuts the damage for everyone sharing it by 35%.
 - **Terradon** stops a charge head-on with its shell, taking half damage and staggering the boss.
 - **Lumoth · Kindle** cast beside a fallen ally fills half of their revive at once (and earns revive credit).
+- **Coilemur · Magnet Lash** drags the first fallen ally it passes over (before it reaches the boss) to Coilemur's side.
+- **Sunbara · Warm Spring** revives a fallen ally inside it twice as fast.
+- **Astrabun · Mochi Pound** adds 15 stagger.
+- **Wombolder · Burrow Rush and Landslide** add 25 stagger when the charge would drive Grumblecrag into a pillar (the engine's wall slam).
+
+The other bosses' tricks are listed in their sections above and in [raid-roster-design.md §6](raid-roster-design.md#6-champion-tricks-across-the-roster); every champion has tricks on at least three bosses.
 
 ## Teamwork tools
 

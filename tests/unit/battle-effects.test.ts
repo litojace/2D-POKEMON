@@ -70,7 +70,9 @@ describe("battle effects", () => {
         : a.kind === "zone" ? a.id in effectKit.zone
         : a.kind === "cone" ? a.id in effectKit.channel
         : a.kind === "beam" ? a.id in effectKit.beam
-        : ["nova", "melee", ...SELF].includes(a.kind) ? a.id in effectKit.cast
+        : ["nova", "melee", "veil", ...SELF].includes(a.kind) ? a.id in effectKit.cast
+        // A blink or rush plays its cast at takeoff and its impact where it lands.
+        : ["blink", "rush"].includes(a.kind) ? a.id in effectKit.cast && a.id in effectKit.impact
         : false;
       if (!has) missing.push(`${a.id} (${a.kind})`);
       if ((a.cast ?? 0) > 0 && !(a.id in effectKit.windup)) missing.push(`${a.id} wind-up`);

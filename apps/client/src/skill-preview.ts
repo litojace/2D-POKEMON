@@ -1,4 +1,4 @@
-import { RULES, type Ability } from "@arena/shared";
+import { RULES, blinkLanding, type Ability } from "@arena/shared";
 
 /**
  * Aim preview: the area a skill will cover if released now, drawn on the
@@ -107,6 +107,37 @@ export function previewShape(
         shape.rings.push({ x: from.x, y: from.y, r: ability.range });
       break;
     }
+    case "blink": {
+      // Where you'd land now (walls stop it, as on the server), the hop's
+      // path, and the burst there; the ring is the farthest it can reach.
+      const land = blinkLanding(
+        from,
+        angle,
+        Math.min(ability.range, Math.hypot(aim.x - from.x, aim.y - from.y)),
+      );
+      const length = Math.hypot(land.x - from.x, land.y - from.y);
+      if (length > 1) shape.polygons.push(lane(from, angle, length, 10));
+      shape.discs.push({
+        ...land,
+        r: ability.damage > 0 ? ability.radius + RULES.radius : SELF_RING,
+      });
+      shape.rings.push({ x: from.x, y: from.y, r: ability.range });
+      break;
+    }
+    case "rush": {
+      // The charge's lane: anyone whose body it brushes is hit (the server's
+      // contact gap is 10 px), plus the eruption around them if it has one.
+      shape.polygons.push(
+        lane(from, angle, ability.range, (RULES.radius + 10) * 2),
+      );
+      if (ability.explosion)
+        shape.rings.push({
+          x: from.x + Math.cos(angle) * ability.range,
+          y: from.y + Math.sin(angle) * ability.range,
+          r: ability.explosion + RULES.radius,
+        });
+      break;
+    }
     case "nova":
       shape.discs.push({
         x: from.x,
@@ -115,7 +146,7 @@ export function previewShape(
       });
       break;
     default:
-      // Clone, counter, barrier, buff, rest: they act on yourself. A buff
+      // Clone, counter, barrier, buff, rest, veil: they act on yourself. A buff
       // with a takeoff pop (Static Glide) shows how far the pop shoves.
       shape.discs.push({
         x: from.x,

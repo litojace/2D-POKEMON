@@ -7,7 +7,6 @@
  *   --out <dir>        where round files go (default balance-out/, gitignored)
  *   --start <file>     starting factors JSON (default: all 1)
  *   --shards <n>       parallel processes per difficulty (default 4)
- *   --prototype        include the eight prototype champions (docs/new-champions)
  *
  * Each round writes <out>/round-N.json ({ factors, rates, next }) and prints
  * the win-rate spread. At the end it prints the factors averaged over the
@@ -31,11 +30,10 @@ const opt = (name: string) => {
 const [rounds, games] = [+args[0], +args[1]];
 if (!(rounds > 0 && games > 0)) {
   console.error(
-    "usage: tune.ts <rounds> <gamesPerPair> [--out dir] [--start factors.json] [--shards n] [--prototype]",
+    "usage: tune.ts <rounds> <gamesPerPair> [--out dir] [--start factors.json] [--shards n]",
   );
   process.exit(1);
 }
-const prototype = args.includes("--prototype");
 const out = opt("--out") ?? "balance-out";
 const shards = +(opt("--shards") ?? 4);
 const start = opt("--start");
@@ -76,7 +74,6 @@ for (let r = 0; r < rounds; r++) {
           `${games}`,
           diff,
           part,
-          ...(prototype ? ["--prototype"] : []),
         ]),
       ),
     );
@@ -127,11 +124,6 @@ for (let r = 0; r < rounds; r++) {
 // Average the factors used in the last three rounds: single rounds are noisy.
 const last = used.slice(-3);
 if (rounds > 1 || start) {
-  if (prototype) {
-    const { NEW_CHARACTERS } =
-      await import("../../docs/new-champions/prototype/new-champions.ts");
-    Object.assign(CHARACTERS, NEW_CHARACTERS);
-  }
   const final: Record<string, number> = {};
   console.log(`\nfactors averaged over the last ${last.length} rounds:`);
   for (const id of ids) {

@@ -32,6 +32,10 @@ const segmentDistance = (
     );
   return Math.hypot(p.x - a.x - dx * t, p.y - a.y - dy * t);
 };
+/** Skills that reach an airborne Emberwing at full damage (champion tricks). */
+const SKYWARD = new Set(["wing-dust", "aura-quill", "focus-shot", "full-moon"]);
+/** Astrabun's Full Moon crashing into an airborne Emberwing. */
+const MOON_STAGGER = 20;
 export class EmberwingArena extends RaidArena {
   private floorAt = new Map<string, number>();
   private brazierTargets = new Map<string, number>();
@@ -150,11 +154,18 @@ export class EmberwingArena extends RaidArena {
     owner: string,
     ability?: Ability,
   ) {
-    if (target.raidBoss && this.raid.airborne) {
+    const r = this.raid;
+    if (target.raidBoss && r.airborne) {
       if (ability?.kind === "melee" || ability?.ground) return;
-      if (ability?.id !== "wing-dust") amount *= 0.5;
+      if (!SKYWARD.has(ability?.id ?? "")) amount *= 0.5;
     }
+    const crash =
+      target.raidBoss && r.airborne && ability?.id === "full-moon" && !r.drill;
     super.damage(target, amount, owner, ability);
+    if (crash) {
+      r.stagger = Math.min(100, r.stagger + MOON_STAGGER);
+      r.message = "Full Moon crashes into Emberwing! +20 stagger";
+    }
   }
   private light(index: number, by: Fighter) {
     const b = this.raid.braziers?.[index];
@@ -495,7 +506,15 @@ export class EmberwingArena extends RaidArena {
           if (Math.hypot(b.x - z.x, b.y - z.y) <= z.radius + E.brazierRadius)
             this.light(i, p);
         });
-      if (z.ability.id === "eddy") this.water(z.x, z.y, z.radius);
+      // Pyranda's Chestnut Mortar lights a brazier it lands on.
+      if (z.ability.id === "chestnut-mortar" && r.airborne)
+        r.braziers?.forEach((b, i) => {
+          if (Math.hypot(b.x - z.x, b.y - z.y) <= z.radius + E.brazierRadius)
+            this.light(i, p);
+        });
+      // Tidefin's Eddy and Glacelle's Frost Bloom put the fire out.
+      if (z.ability.id === "eddy" || z.ability.id === "frost-bloom")
+        this.water(z.x, z.y, z.radius);
     }
     r.emberPatches = (r.emberPatches ?? []).filter((p) => p.until > this.time);
     for (const p of r.emberPatches)
