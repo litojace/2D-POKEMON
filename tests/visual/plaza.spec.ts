@@ -303,3 +303,31 @@ test("tapping a player shows their card, to add them or invite them", async ({
   await expect(card).toBeHidden();
   expect(errors).toEqual([]);
 });
+
+test("a treat from your barn bursts for everyone, and T throws one too", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openPlaza(page);
+  // The server sends your count (regular crops in the barn) after joining.
+  await expect(page.locator("#pz-treats")).toHaveText("3");
+  await page.click("#pz-treat");
+  await expect(page.locator("#toast")).toContainText(
+    "Tossed Breeze Wheat to everyone!",
+  );
+  await expect(page.locator("#pz-treats")).toHaveText("2");
+  // The burst is drawn where the server has you.
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__plaza.treatFx()))
+    .toBeGreaterThan(0);
+  await snap(page, info, "plaza-treat");
+  // T throws one too, once the server's cooldown has passed.
+  await page.waitForTimeout(1600);
+  await page.locator(".plaza-layer").focus();
+  await page.keyboard.press("t");
+  await expect(page.locator("#pz-treats")).toHaveText("1");
+  expect(
+    await page.evaluate(() => (window as any).__plazaTreatsThrown.length),
+  ).toBe(2);
+  expect(errors).toEqual([]);
+});

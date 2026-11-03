@@ -891,9 +891,35 @@
   background: #ffd65b;
   color: #2a1a00;
 }
-body.hub-active #account-profile {
-  width: 236px;
-  grid-template-columns: 46px minmax(0, 1fr) 46px;
+/* The player card's box and rows. The farm's badge (farm/farm.css) uses
+   the same numbers, so the two cards match: same size, and their bars and
+   text rows at the same heights. */
+:root {
+  --hub-card-w: 236px;
+  --hub-card-h: 60px;
+  --hub-card-pad: 6px 14px 6px 6px;
+  --hub-card-art: 46px;
+  /* The name row: as tall as the level pill. */
+  --hub-card-row: 22px;
+  --hub-card-gap: 3px;
+}
+/* :root makes these outrank style.css's card rules, which load later. */
+:root body.hub-active #account-profile {
+  box-sizing: border-box;
+  width: var(--hub-card-w);
+  height: var(--hub-card-h);
+  padding: var(--hub-card-pad);
+  grid-template-columns: var(--hub-card-art) minmax(0, 1fr) 46px;
+  row-gap: var(--hub-card-gap);
+}
+:root body.hub-active #account-profile .account-avatar {
+  width: var(--hub-card-art);
+  height: var(--hub-card-art);
+}
+/* A boss frame's star row: on the card's bottom edge, under the frame's
+   bottom ornament, and clear of the farm badge 4px below the card. */
+body.hub-active #account-profile .portrait-frame .frame-stars {
+  bottom: -20%;
 }
 body.hub-active #account-profile .account-name {
   min-width: 0;
@@ -901,11 +927,15 @@ body.hub-active #account-profile .account-name {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* No padding: the box is fixed, and style.css's .nav-level padding pushed
+   the text below the middle. */
 body.hub-active #account-profile .nav-level {
   display: grid;
   place-items: center;
+  box-sizing: border-box;
   width: 46px;
-  height: 22px;
+  height: var(--hub-card-row);
+  padding: 0;
   border-radius: 8px;
   background: rgba(255, 214, 91, 0.14);
   color: #ffd65b;
@@ -969,14 +999,28 @@ body:not(.hub-active) #account-leaves {
     height: 32px;
     font-size: 13px;
   }
-  body.hub-active #account-profile {
-    width: 184px;
-    grid-template-columns: 36px minmax(0, 1fr) 40px;
+  /* Phones: a little smaller, so the farm badge fits under the card with
+     a gap and still keeps clear of the plots. */
+  :root {
+    --hub-card-w: 172px;
+    --hub-card-h: 42px;
+    --hub-card-pad: 4px 10px 4px 4px;
+    --hub-card-art: 32px;
+    --hub-card-row: 17px;
+    --hub-card-gap: 2px;
   }
+  :root body.hub-active #account-profile {
+    grid-template-columns: var(--hub-card-art) minmax(0, 1fr) 36px;
+  }
+  :root body.hub-active #account-profile .account-name {
+    font-size: 15px;
+  }
+  /* 17px tall with 1px under the text: the 10px digits sit exactly in the
+     middle (4px above, 4px below). */
   body.hub-active #account-profile .nav-level {
-    width: 40px;
-    height: 18px;
-    font-size: 11px;
+    width: 36px;
+    padding-bottom: 1px;
+    font-size: 10px;
   }
   body.hub-active #account-coins > *,
   body.hub-active #account-leaves > * {
@@ -990,8 +1034,8 @@ body:not(.hub-active) #account-leaves {
   .hub-scenes button {
     width: 60px;
   }
-  body.hub-active #account-profile {
-    width: 160px;
+  :root {
+    --hub-card-w: 152px;
   }
   body.hub-active #account-coins > *,
   body.hub-active #account-leaves > * {

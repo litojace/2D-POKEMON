@@ -645,6 +645,130 @@ export const FARM_PERKS: Record<
   mystowl: { name: "Foresight", text: "See one more weather forecast" },
   duskveil: { name: "Night Stalker", text: "+1 crop for every bug you catch" },
 };
+/** Decorations (migration 048): 8 spots; every 2 Charm is +1% farm XP, up to 25%. */
+export const FARM_DECOR: readonly {
+  id: string;
+  name: string;
+  price: number;
+  charm: number;
+  level: number;
+  icon: string;
+}[] = [
+  {
+    id: "rock",
+    name: "Mossy Rock",
+    price: 300,
+    charm: 1,
+    level: 1,
+    icon: "rock",
+  },
+  {
+    id: "bush6",
+    name: "Rose Bush",
+    price: 450,
+    charm: 1,
+    level: 3,
+    icon: "rose",
+  },
+  {
+    id: "bush7",
+    name: "Fern Bush",
+    price: 550,
+    charm: 1,
+    level: 5,
+    icon: "fern",
+  },
+  {
+    id: "crates",
+    name: "Crates",
+    price: 950,
+    charm: 1,
+    level: 8,
+    icon: "crate",
+  },
+  {
+    id: "lamp",
+    name: "Street Lamp",
+    price: 1350,
+    charm: 2,
+    level: 12,
+    icon: "lamp",
+  },
+  {
+    id: "planter",
+    name: "Flower Planter",
+    price: 2250,
+    charm: 3,
+    level: 16,
+    icon: "flower",
+  },
+  {
+    id: "pine",
+    name: "Pine Tree",
+    price: 3200,
+    charm: 2,
+    level: 22,
+    icon: "pine",
+  },
+  {
+    id: "apple",
+    name: "Apple Tree",
+    price: 4200,
+    charm: 4,
+    level: 30,
+    icon: "apple",
+  },
+  {
+    id: "tower",
+    name: "Gazebo",
+    price: 6050,
+    charm: 10,
+    level: 45,
+    icon: "gazebo",
+  },
+  {
+    id: "plum",
+    name: "Guest Cottage",
+    price: 8550,
+    charm: 12,
+    level: 60,
+    icon: "house",
+  },
+  {
+    id: "statue",
+    name: "Golden Voltkit Statue",
+    price: 30000,
+    charm: 15,
+    level: 75,
+    icon: "statue",
+  },
+];
+export const DECOR_SLOTS = 8;
+export const charmBonus = (charm: number) =>
+  Math.min(25, Math.floor(charm / 2));
+/** The Cow Pasture (migration 049; the prototype's numbers). */
+export const PASTURE = {
+  level: 9,
+  price: 900,
+  /** Farm XP for opening it, and for each milking. */
+  xp: 30,
+  milkXp: 8,
+  /** Storm Milk per milking, and how long the cow takes (seconds). */
+  milk: 2,
+  milkSeconds: 5 * 3600 + 20 * 60,
+  /** The first milk after the pasture opens. */
+  firstMilkSeconds: 80 * 60,
+} as const;
+/** Storm Milk: a barn good, not a crop. Its price of the day is 0.85–1.35×. */
+export const MILK = {
+  id: "milk",
+  name: "Storm Milk",
+  sell: 60,
+  multMin: 0.85,
+  multMax: 1.35,
+} as const;
+export const milkPrice = (mult: number) =>
+  Math.max(1, Math.round(MILK.sell * mult));
 /** A crow eats its crop this many seconds after landing unless shooed. */
 export const CROW_SECONDS = 8;
 /** Farm weather (migration 039): one per 4-hour UTC window, the same for everyone. */
@@ -821,6 +945,14 @@ export interface FarmState {
   }[];
   /** Crows on plots: plot index → when it landed (migration 045). */
   crows?: Record<string, string>;
+  /** Decorations in the 8 spots, Charm and free decorations (migration 048). */
+  decor?: { slot: number; item: string }[];
+  charm?: number;
+  decorCredits?: Record<string, number>;
+  /** The Cow Pasture, when its milk is ready and Storm Milk's price today (migration 049). */
+  pasture?: boolean;
+  milkAt?: string | null;
+  milkMult?: number;
   /** Friends who visited lately, newest first (migration 047). */
   visits?: FarmVisitEvent[];
   /** Your farmer, the active perks used today and Warmth's end (migration 046). */
@@ -867,6 +999,8 @@ export interface FarmVisit {
   dog: FarmDogId | null;
   scarecrow: boolean;
   sprinklers: number;
+  /** Migration 049: they have a Cow Pasture. */
+  pasture?: boolean;
   /** What you did on friends' farms today. */
   today: { helpXp: number; sneaks: number; pranks: number };
 }
@@ -904,6 +1038,8 @@ export type FarmAction =
   | { a: "shoo"; plot: number }
   | { a: "farmer"; id: string }
   | { a: "perk" }
+  | { a: "decor"; slot: number; item: string }
+  | { a: "decor-remove"; slot: number }
   | { a: "fertilize"; plot: number; kind: FertilizerKind }
   | { a: "buy-seeds"; crop: string; qty: number }
   | { a: "sell"; crop: string; mutation: string; qty: number }

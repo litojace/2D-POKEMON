@@ -2085,6 +2085,7 @@ export function createArenaServer(
       if (orbs) socket.emit("plaza-orbs", orbs);
       const token = socket.data.accessToken as string | undefined;
       if (token) void plazaAppearance.refresh(socket.id, token, true);
+      if (token) void sendTreats(token);
       if (!me.guest)
         void portraitChoice.save(me.id, socket.data.accessToken, parsed.data);
     });
@@ -2136,6 +2137,56 @@ export function createArenaServer(
           ? { ok: true }
           : { ok: false, error: "Wait a moment between emotes." },
       );
+    });
+    // Treats (migration 049): regular crops from your barn, thrown for everyone.
+    const sendTreats = async (token: string) => {
+      try {
+        const n = await accounts.rpc(token, "arena_plaza_treats", {});
+        if (plaza.plazaOf(socket.id) !== undefined && typeof n === "number")
+          socket.emit("plaza-treats", { n });
+      } catch {
+        // Older databases have no treats; the button stays at 0.
+      }
+    };
+    let treatPending = false;
+    socket.on("plaza-treat", async (_data: unknown, cb: unknown) => {
+      if (!allowed(10)) return;
+      const copy = plaza.plazaOf(socket.id);
+      if (copy === undefined) return fail(cb, "Not in the Plaza.");
+      const token = socket.data.accessToken as string | undefined;
+      if (!token || treatPending) return fail(cb, "One moment…");
+      if (!plaza.treatReady(socket.id, Date.now()))
+        return fail(cb, "Wait a moment between treats.");
+      treatPending = true;
+      try {
+        // A fresh id per throw: a retry of this request can't take two crops.
+        const r = (await accounts.rpc(token, "arena_plaza_treat", {
+          p_ref: randomUUID(),
+        })) as {
+          ok?: boolean;
+          crop?: string;
+          left?: number;
+          error?: string;
+        } | null;
+        if (!r?.ok || !r.crop)
+          return reply(cb, {
+            ok: false,
+            error: r?.error ?? "No crops to throw yet.",
+            treats: r?.left ?? 0,
+          });
+        const thrown = plaza.treat(socket.id, r.crop);
+        if (thrown) toPlaza(copy, "plaza-treat", thrown);
+        reply(cb, { ok: true, crop: r.crop, treats: r.left ?? 0 });
+      } catch (error) {
+        fail(
+          cb,
+          error instanceof AccountError
+            ? error.message
+            : "Treats can't be thrown right now.",
+        );
+      } finally {
+        treatPending = false;
+      }
     });
     let bobaPending = false;
     socket.on("plaza-act", async (data: unknown, cb: unknown) => {

@@ -25,6 +25,9 @@ w.__plazaProgress = {
   ],
   leaves: 1234,
 };
+/** Regular crops in the barn: treats to throw (migration 049). */
+w.__plazaTreats = 3;
+w.__plazaTreatsThrown = [] as string[];
 const handle = (ev: string, data: any) => {
   if (ev === "plaza-join") {
     const me = world.join(ME, "acct-me", {
@@ -35,7 +38,24 @@ const handle = (ev: string, data: any) => {
       character: data.character,
       skin: null,
     });
+    // The server sends your treat count after the join.
+    setTimeout(() => w.__sock?.fire("plaza-treats", { n: w.__plazaTreats }), 0);
     return { ok: true, plaza: me.plaza, me: me.profile.id };
+  }
+  if (ev === "plaza-treat") {
+    if (!world.treatReady(ME, Date.now()))
+      return { ok: false, error: "Wait a moment between treats." };
+    if (w.__plazaTreats < 1)
+      return {
+        ok: false,
+        error: "No crops to throw yet. Harvest some on the Farm.",
+        treats: 0,
+      };
+    w.__plazaTreats--;
+    w.__plazaTreatsThrown.push("wheat");
+    const thrown = world.treat(ME, "wheat");
+    setTimeout(() => w.__sock?.fire("plaza-treat", thrown), 0);
+    return { ok: true, crop: "wheat", treats: w.__plazaTreats };
   }
   if (ev === "plaza-look") {
     world.updateProfile(ME, { character: data.character });

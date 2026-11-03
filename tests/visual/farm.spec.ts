@@ -76,6 +76,13 @@ async function fakeFarm(page: Page) {
       // No farmer before migration 046: set by the perk test.
       farmer: undefined as string | undefined,
       perksUsed: [] as string[],
+      decor: [] as { slot: number; item: string }[],
+      charm: 0,
+      decorCredits: {} as Record<string, number>,
+      // The Cow Pasture (migration 049).
+      pasture: false,
+      milkAt: null as string | null,
+      milkMult: 1.12,
       dog: null as any,
       dogGifts: [] as any[],
       crows: {} as Record<string, string>,
@@ -161,6 +168,13 @@ async function fakeFarm(page: Page) {
             p.pests--;
             return { ok: true, caught: 1, xp: 1 };
           }
+          if (a.a === "decor") {
+            farm.decor = farm.decor.filter((d: any) => d.slot !== a.slot);
+            farm.decor.push({ slot: a.slot, item: a.item });
+            farm.charm += 1;
+            farm.leaves -= 300;
+            return { ok: true, decor: a.item, slot: a.slot, cost: 300 };
+          }
           if (a.a === "farmer") {
             farm.farmer = a.id;
             return { ok: true, farmer: a.id };
@@ -188,6 +202,26 @@ async function fakeFarm(page: Page) {
               until: at((extended ? 86400 : 0) + a.days * 86400),
             };
             return { ok: true, dog: a.dog, days: a.days, extended };
+          }
+          if (a.a === "buy-pasture" && !farm.pasture && farm.level >= 9) {
+            farm.pasture = true;
+            farm.milkAt = at(4800);
+            farm.leaves -= 900;
+            return { ok: true, pasture: true, milkAt: farm.milkAt };
+          }
+          if (a.a === "milk" && farm.pasture) {
+            farm.milkAt = at(19200);
+            farm.barn = [...farm.barn, { crop: "milk", mutation: "", qty: 2 }];
+            return { ok: true, milk: 2, milkAt: farm.milkAt };
+          }
+          if (a.a === "sell-milk") {
+            const m = farm.barn.find((b: any) => b.crop === "milk");
+            if (!m || m.qty < a.qty)
+              return { ok: false, error: "You don't have that many" };
+            m.qty -= a.qty;
+            const leaves = Math.round(60 * farm.milkMult) * a.qty;
+            farm.leaves += leaves;
+            return { ok: true, leaves };
           }
           if (a.a === "buy-tool" && a.tool === "net2") {
             farm.tools.bigNet = true;
@@ -329,6 +363,16 @@ for (const viewport of [
         `farm-${viewport.width}x${viewport.height}${viewport.inset ? "-island" : ""}`,
       );
       const all = await hudBoxes(page);
+      // The farm badge is the player card's twin: same width, height and left edge.
+      const card = all.find((b) => b.name === "profile")!,
+        badge = all.find((b) => b.name === "badge")!;
+      expect(badge.w, "badge width").toBeCloseTo(card.w, 1);
+      expect(badge.h, "badge height").toBeCloseTo(card.h, 1);
+      expect(badge.x, "badge left edge").toBeCloseTo(card.x, 1);
+      expect(badge.y - (card.y + card.h), "gap under the card").toBeCloseTo(
+        4,
+        1,
+      );
       const left = viewport.inset?.left ?? 0,
         right = viewport.inset?.right ?? 0,
         bottom = viewport.inset?.bottom ?? 0;
@@ -380,7 +424,7 @@ test("the weather orb shows the weather now and the forecast", async ({
   await page.click('#fm-dock [data-sheet="book"]');
   await expect(page.locator("#fm-sheet")).toContainText("Collection rewards");
   await expect(page.locator("#fm-sheet .mile.done")).toHaveCount(1);
-  await expect(page.locator("#fm-sheet .mile")).toHaveCount(4);
+  await expect(page.locator("#fm-sheet .mile")).toHaveCount(5);
   // Mastery is the almanac's second tab; it opens at farm level 40.
   await page.click('#fm-sheet [data-tab="mastery"]');
   await expect(page.locator("#fm-sheet")).toContainText(
@@ -773,3 +817,161 @@ test("visiting a friend's farm: sneak a ripe crop, catch a bug, go home", async 
     await context.close();
   }
 });
+
+test("decorating: buy a decoration and place it in a glowing spot", async ({
+  browser,
+}, info) => {
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    await fakeFarm(page);
+    await page.evaluate(() => {
+      const f = (window as any).__fakeFarm;
+      f.decor = [{ slot: 0, item: "lamp" }];
+      f.charm = 2;
+    });
+    await page.click('#hub-scenes [data-hub-scene="farm"]');
+    await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
+    await page.click('#fm-dock [data-sheet="decor"]');
+    const sheet = page.locator("#fm-sheet");
+    await expect(sheet).toContainText("Charm 2 · +1% XP");
+    await expect(
+      sheet.locator(".item", { hasText: "Street Lamp" }),
+    ).toContainText("unlocks at Lv 12");
+    await sheet.locator('[data-deco="rock"]').click();
+    await expect(sheet).toContainText("Placing Mossy Rock");
+    await page.waitForTimeout(500);
+    await snap(page, info, "farm-decor-1280x800");
+    // The second spot (230, 870 on the farm).
+    const spot = await page.evaluate(() =>
+      (window as any).__farm.worldClient(230, 870),
+    );
+    await page.mouse.click(spot.x, spot.y);
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          (window as any).__farmRequests.flatMap((r: any) => r.actions),
+        ),
+      )
+      .toEqual([{ a: "decor", slot: 1, item: "rock" }]);
+    await expect(page.locator("#fm-log")).toContainText(
+      "Placed Mossy Rock · +1 Charm",
+    );
+    await expect(sheet).toContainText("Charm 3 · +1% XP");
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+for (const viewport of [
+  { width: 1280, height: 800 },
+  { width: 844, height: 390 },
+]) {
+  test(`the pasture opens in the shop and the cow gives Storm Milk at ${viewport.width}x${viewport.height}`, async ({
+    browser,
+  }, info) => {
+    const phone = viewport.width < 1000;
+    const context = await browser.newContext({
+      viewport,
+      isMobile: phone,
+      hasTouch: phone,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openLobby(page);
+      await fakeFarm(page);
+      await page.evaluate(() => {
+        (window as any).__fakeFarm.level = 9;
+      });
+      await page.click('#hub-scenes [data-hub-scene="farm"]');
+      await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
+      const tapPasture = async () => {
+        const p = await page.evaluate(() => {
+          const f = (window as any).__farm;
+          f.look(1600, 560);
+          return f.worldClient(1600, 590);
+        });
+        await page.waitForTimeout(200);
+        if (phone) await page.touchscreen.tap(p.x, p.y);
+        else await page.mouse.click(p.x, p.y);
+      };
+      // Locked: a FOR SALE sign; tapping it opens the shop's Land tab.
+      await tapPasture();
+      const sheet = page.locator("#fm-sheet");
+      const item = sheet.locator(".item", { hasText: "Cow Pasture" });
+      await expect(item).toContainText("2 Storm Milk every 5h 20m");
+      await page.waitForTimeout(800);
+      await snap(
+        page,
+        info,
+        `farm-pasture-shop-${viewport.width}x${viewport.height}`,
+      );
+      await item.locator("[data-pasture]").click();
+      await expect(page.locator("#toast")).toContainText(
+        "Your pasture is open. A cow moved in!",
+      );
+      await expect(item.locator("button")).toHaveText("Owned");
+      await sheet.locator("[data-close]").click();
+      await expect(sheet).toBeHidden();
+      // Grazing: the server set the first milk 1 h 20 m out.
+      await tapPasture();
+      await expect(page.locator("#toast")).toContainText(
+        "The cow is grazing. Milk in 1h 19m",
+      );
+      // Ready: a milk bubble over the cow; a tap collects 2 Storm Milk.
+      await page.evaluate(() => {
+        (window as any).__farm.F.milkAt = 0;
+      });
+      await page.waitForTimeout(300);
+      await snap(
+        page,
+        info,
+        `farm-pasture-milk-${viewport.width}x${viewport.height}`,
+      );
+      await tapPasture();
+      await expect(page.locator("#fm-log")).toContainText(
+        "Collected 2 Storm Milk",
+      );
+      // Sold at the market like a crop, through its own action. (On phones
+      // the side menu opens first.)
+      const market = page.locator('#fm-dock [data-sheet="market"]');
+      if (!(await market.isVisible())) await page.click("#fm-dock .dk-t");
+      await market.click();
+      const milk = sheet.locator(".item", { hasText: "Storm Milk" });
+      await expect(milk).toContainText("67");
+      await snap(
+        page,
+        info,
+        `farm-pasture-sell-${viewport.width}x${viewport.height}`,
+      );
+      await milk.locator("[data-sell]").first().click();
+      await expect
+        .poll(() =>
+          page.evaluate(() =>
+            (window as any).__farmRequests.flatMap((r: any) => r.actions),
+          ),
+        )
+        .toEqual([
+          { a: "buy-pasture" },
+          { a: "milk" },
+          { a: "sell-milk", qty: 1 },
+        ]);
+      await sheet.locator('[data-tab="prices"]').click();
+      await expect(
+        sheet.locator(".item", { hasText: "Storm Milk" }),
+      ).toContainText("today 67");
+      await snap(
+        page,
+        info,
+        `farm-pasture-prices-${viewport.width}x${viewport.height}`,
+      );
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+}

@@ -5,7 +5,10 @@ import { fakeAccounts } from "../helpers/accounts";
 import type { Reply } from "@arena/shared";
 import { playerLevel } from "../../packages/shared/src/journey";
 import {
+  PLAZA,
+  PLAZA_SPAWN,
   PLAZA_SPOTS,
+  type PlazaTreat,
   type PlazaNews,
   type PlazaProfile,
   type PlazaProgress,
@@ -35,8 +38,10 @@ const QUIET = Date.parse("2026-11-02T21:16:00.000Z");
 const setup = async () => {
   const accounts = fakeAccounts(),
     records: PlazaRecord[] = [],
-    bobaRefs: string[] = [];
-  let leaves = 25;
+    bobaRefs: string[] = [],
+    treatRefs: string[] = [];
+  let leaves = 25,
+    treats = 3;
   accounts.provider.rpc = async (_token, name, args) => {
     if (name === "arena_journey") return { xp: 900 };
     if (name === "arena_my_looks")
@@ -46,6 +51,19 @@ const setup = async () => {
       if (leaves < 10) return { ok: false, leaves };
       leaves -= 10;
       return { ok: true, leaves };
+    }
+    // Treats (migration 049): the database takes a regular crop from the barn.
+    if (name === "arena_plaza_treats") return treats;
+    if (name === "arena_plaza_treat") {
+      treatRefs.push(String(args.p_ref));
+      if (treats < 1)
+        return {
+          ok: false,
+          error: "No crops to throw yet. Harvest some on the Farm.",
+          left: 0,
+        };
+      treats--;
+      return { ok: true, crop: "wheat", left: treats };
     }
     return {};
   };
@@ -73,6 +91,8 @@ const setup = async () => {
       profiles: new Map<number, PlazaProfile>(),
       news: [] as PlazaNews[],
       progress: [] as PlazaProgress[],
+      treats: [] as PlazaTreat[],
+      treatCounts: [] as number[],
       closed: 0,
     };
     socket.on("plaza-state", (s: PlazaState) => seen.states.push(s));
@@ -82,6 +102,8 @@ const setup = async () => {
     socket.on("plaza-news", (n: PlazaNews) => seen.news.push(n));
     socket.on("plaza-progress", (p: PlazaProgress) => seen.progress.push(p));
     socket.on("plaza-closed", () => seen.closed++);
+    socket.on("plaza-treat", (t: PlazaTreat) => seen.treats.push(t));
+    socket.on("plaza-treats", (t: { n: number }) => seen.treatCounts.push(t.n));
     return { socket, seen, account: user?.account };
   };
   let now = QUIET;
@@ -89,7 +111,7 @@ const setup = async () => {
     for (let i = 0; i < n; i++) server!.plazaStep((now += 50));
     await settle();
   };
-  return { connect, ticks, records, bobaRefs };
+  return { connect, ticks, records, bobaRefs, treatRefs };
 };
 const teleport = (socket: Socket, x: number, y: number) => {
   const b = server!.plaza.bodyOf(socket.id!)!;
@@ -113,6 +135,9 @@ it("lets signed-in players walk the Plaza together and see each other", async ()
   expect(
     (await emit(ann.socket, "plaza-join", { character: "missingno" })).ok,
   ).toBe(false); // an unknown fighter is refused
+  // Spawns are spread up to 70px around the spawn point: start Ann on it,
+  // so walking right for 0.2 s (about 48px) always ends past it.
+  teleport(ann.socket, PLAZA_SPAWN.x, PLAZA_SPAWN.y);
   ann.socket.emit("plaza-input", { dx: 1, dy: 0 });
   await settle();
   await ticks(4);
@@ -120,7 +145,7 @@ it("lets signed-in players walk the Plaza together and see each other", async ()
   expect(state.me).toBe(joined.me);
   expect(state.walkers.length).toBeGreaterThanOrEqual(2);
   const mine = state.walkers.find((w) => w[0] === joined.me)!;
-  expect(mine[1]).toBeGreaterThan(1350);
+  expect(mine[1]).toBeGreaterThan(PLAZA_SPAWN.x + 30);
   // The skin and level come from the account, not the browser.
   const me = ann.seen.profiles.get(joined.me!)!;
   expect(me).toMatchObject({
@@ -193,3 +218,53 @@ it("takes you out of the Plaza when you open a room", async () => {
     (await emit(ann.socket, "plaza-join", { character: "voltkit" })).ok,
   ).toBe(false);
 });
+
+it("throws a treat from your barn for everyone in your Plaza, one at a time", async () => {
+  const { connect, treatRefs } = await setup();
+  const ann = await connect(),
+    ben = await connect();
+  // Not in the Plaza yet: nothing to throw at.
+  expect(await emit(ann.socket, "plaza-treat")).toEqual({
+    ok: false,
+    error: "Not in the Plaza.",
+  });
+  const joined = await emit(ann.socket, "plaza-join", { character: "voltkit" });
+  await emit(ben.socket, "plaza-join", { character: "tidefin" });
+  await settle();
+  // Your treat count arrives after joining.
+  expect(ann.seen.treatCounts.at(-1)).toBe(3);
+  teleport(ann.socket, PLAZA_SPAWN.x, PLAZA_SPAWN.y);
+  expect(await emit(ann.socket, "plaza-treat")).toEqual({
+    ok: true,
+    crop: "wheat",
+    treats: 2,
+  });
+  await settle();
+  // Everyone in that Plaza sees it, where the server has the thrower.
+  const thrown = { id: joined.me, crop: "wheat", ...PLAZA_SPAWN };
+  expect(ann.seen.treats).toEqual([thrown]);
+  expect(ben.seen.treats).toEqual([thrown]);
+  // Too soon: refused before the database is asked.
+  expect(await emit(ann.socket, "plaza-treat")).toEqual({
+    ok: false,
+    error: "Wait a moment between treats.",
+  });
+  expect(treatRefs).toHaveLength(1);
+  const pause = () =>
+    new Promise((r) => setTimeout(r, PLAZA.treatSeconds * 1000 + 100));
+  await pause();
+  expect((await emit(ann.socket, "plaza-treat")).treats).toBe(1);
+  await pause();
+  expect((await emit(ann.socket, "plaza-treat")).treats).toBe(0);
+  await pause();
+  // Out of crops: the database says so, and nobody sees a throw.
+  expect(await emit(ann.socket, "plaza-treat")).toEqual({
+    ok: false,
+    error: "No crops to throw yet. Harvest some on the Farm.",
+    treats: 0,
+  });
+  await settle();
+  expect(ben.seen.treats).toHaveLength(3);
+  // A fresh id per throw: a retried request can't take two crops.
+  expect(new Set(treatRefs).size).toBe(4);
+}, 15000);

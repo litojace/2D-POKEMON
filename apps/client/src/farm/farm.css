@@ -28,15 +28,33 @@
 .farm-layer.phone .fm-hud {
   font-size: 9.5px;
 }
+/* The badge is the player card's twin: the same box and the same grid
+   (--hub-card-* in lobby.css), so the name row, the bar and the small text
+   row sit at the same heights in both; the same left edge too,
+   max(14px, safe-left) on screen. */
 .farm-layer .fm-badge {
   position: absolute;
-  left: 16px;
+  left: max(0px, calc(14px - var(--safe-left, 0px)));
   top: 74px;
-  display: flex;
-  gap: 0.7em;
+  display: grid;
+  grid-template-columns: var(--hub-card-art, 46px) minmax(0, 1fr);
+  grid-template-areas: "art name" "art xp" "art sub";
   align-items: center;
-  padding: 0.45em 1em 0.45em 0.45em;
-  border-radius: 18px;
+  column-gap: 8px;
+  row-gap: var(--hub-card-gap, 3px);
+  box-sizing: border-box;
+  width: var(--hub-card-w, 236px);
+  height: var(--hub-card-h, 60px);
+  padding: var(--hub-card-pad, 6px 14px 6px 6px);
+  border-radius: 16px;
+}
+.farm-layer .fm-badge > div:last-child {
+  display: contents;
+}
+.farm-layer .fm-badge .fm-ring {
+  grid-area: art;
+  width: var(--hub-card-art, 46px);
+  height: var(--hub-card-art, 46px);
 }
 .farm-layer .fm-ring {
   --p: 0;
@@ -58,42 +76,51 @@
 }
 .farm-layer .fm-ring b {
   position: relative;
+  /* The digits sit a pixel low in their line; this centres them. */
+  top: -1px;
   font-family: var(--display);
   font-weight: 800;
   font-size: 1.45em;
   line-height: 1;
 }
+/* Name row: the card's name row height; the capitals centred in it. */
 .farm-layer .fm-badge strong {
+  grid-area: name;
   display: block;
+  min-width: 0;
   font-family: var(--display);
-  font-size: 1.25em;
+  /* Capitals: a little under the card's 17px lowercase name, so the two
+     read the same size (on phones 13px under 15px). */
+  font-size: 15px;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  line-height: 1.05;
+  line-height: var(--hub-card-row, 22px);
 }
+/* The small row under the bar, like the card's title. */
 .farm-layer .fm-badge small {
+  grid-area: sub;
   display: block;
+  min-width: 0;
   color: #cfe8c8;
-  font-size: 0.78em;
+  font:
+    700 11px/1 "DM Sans",
+    sans-serif;
 }
+/* The bar: the card's XP bar size and shape. */
 .farm-layer .fm-badge .xpbar {
-  width: 10em;
-  height: 0.45em;
-  border-radius: 99px;
+  grid-area: xp;
+  width: 100%;
+  height: 5px;
+  border-radius: 3px;
   background: #ffffff1f;
-  margin-top: 0.3em;
   overflow: hidden;
 }
 .farm-layer .fm-badge .xpbar i {
   display: block;
   height: 100%;
+  border-radius: 3px;
   background: linear-gradient(90deg, #7ff0a2, #d8ff8a);
   transition: width 0.5s var(--ease-out);
-}
-.farm-layer.phone .fm-badge {
-  left: 8px;
-  top: 52px;
-  border-radius: 12px;
 }
 .farm-layer .fm-weather {
   position: absolute;
@@ -666,6 +693,8 @@
   overflow: auto;
   padding: 0.8em 1em 1.2em;
   display: grid;
+  /* One column, never wider than the sheet (a wide child can't push it). */
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.7em;
   align-content: start;
   grid-auto-rows: max-content;
@@ -725,6 +754,13 @@
 .farm-layer .item b {
   display: block;
   font-size: 0.98em;
+}
+/* Bold words inside a description stay in the sentence (only the title is a block). */
+.farm-layer .item small b {
+  display: inline;
+  font-size: inherit;
+  /* "unlocks at Lv 9" never splits across lines. */
+  white-space: nowrap;
 }
 .farm-layer .item small {
   display: block;
@@ -1940,6 +1976,9 @@
 .farm-layer.phone .fm-sheet .item b {
   font-size: 13px;
 }
+.farm-layer.phone .fm-sheet .item small b {
+  font-size: inherit;
+}
 .farm-layer.phone .fm-sheet .item small {
   font-size: 11px;
   line-height: 1.3;
@@ -2026,7 +2065,8 @@
   display: inline-block;
 }
 .farm-layer .item .acts [data-buytool],
-.farm-layer .item .acts [data-goto] {
+.farm-layer .item .acts [data-goto],
+.farm-layer .item .acts [data-pasture] {
   width: 6.6em;
 }
 .farm-layer .item .acts [data-deco] {
@@ -2098,35 +2138,11 @@
   -webkit-backdrop-filter: blur(10px) saturate(1.2);
   box-shadow: 0 8px 24px #0006;
 }
-.farm-layer .fm-badge {
-  box-sizing: border-box;
-  width: 240px;
-}
-.farm-layer.phone .fm-badge {
-  width: 164px;
-}
-.farm-layer .fm-badge small.row2 {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.6em;
-}
-.farm-layer .fm-badge small.row2 span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.farm-layer .fm-badge > div:last-child {
-  flex: 1;
-  min-width: 0;
-}
 .farm-layer .fm-badge strong,
 .farm-layer .fm-badge small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.farm-layer .fm-badge .xpbar {
-  width: 100%;
 }
 .farm-layer .fm-weather {
   box-sizing: border-box;
@@ -2433,22 +2449,19 @@
 .farm-layer.phone .fm-hud {
   font-size: 12px;
 }
+/* 4px under the phone player card (top 10px, 42px tall). */
 .farm-layer.phone .fm-badge {
-  left: 12px;
   top: 56px;
-  width: 150px;
-  padding: 3px 10px 3px 3px;
-  gap: 8px;
-}
-.farm-layer.phone .fm-ring {
-  width: 32px;
-  height: 32px;
 }
 .farm-layer.phone .fm-ring b {
-  font-size: 16px;
+  top: 0;
+  font-size: 14px;
+}
+.farm-layer.phone .fm-badge {
+  grid-template-areas: "art name" "art xp";
 }
 .farm-layer.phone .fm-badge strong {
-  font-size: 14px;
+  font-size: 13px;
 }
 .farm-layer.phone .fm-badge small.row2 {
   display: none;
@@ -2533,8 +2546,22 @@
   display: none;
 }
 .farm-layer.phone .fm-hint {
-  bottom: 72px;
+  /* 8px above the tool bar (its top is 72px up). */
+  bottom: 80px;
   font-size: 11px;
+}
+.farm-layer .fm-hint.done {
+  display: none;
+}
+/* On the farm, toasts sit 8px above the tool bar instead of over it (its
+   top is 93px up, 72px on phones). */
+body.hub-farm #toast {
+  bottom: calc(var(--safe-bottom, 0px) + 101px);
+}
+@media (max-height: 500px) {
+  body.hub-farm #toast {
+    bottom: calc(var(--safe-bottom, 0px) + 80px);
+  }
 }
 .farm-layer.phone .fm-tools {
   bottom: 8px;
@@ -2635,9 +2662,6 @@
 .farm-layer.phone .fm-pop.seedpick {
   top: 56px !important;
 }
-.farm-layer.phone.narrow .fm-badge {
-  width: 150px;
-}
 .farm-layer.phone.narrow .fm-weather {
   left: 170px;
   width: 200px;
@@ -2647,9 +2671,6 @@
 }
 .farm-layer.phone .fm-chip i.w {
   display: none;
-}
-.farm-layer.phone.narrow .fm-badge {
-  width: 160px;
 }
 .farm-layer.phone.narrow .fm-weather {
   left: 180px;
