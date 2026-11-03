@@ -127,12 +127,16 @@
   display: none;
 }
 
-/* Stage: your fighter between two party slots, the name and arrows below.
-   It is centred in the space between the rail and the cards. */
+/* Stage: your fighter between the party seats, the name and arrows below.
+   It is centred in the space between the rail and the cards, and starts
+   under the Lobby toast (#toast in ui/components.css: top 74 px, 38 px tall;
+   54 px and 36 px on phones), so a notice never covers the fighter. */
 .lobby-stage {
+  --lobby-seat: 112px;
+  --lobby-party-gap: clamp(10px, 1.5vw, 24px);
   left: calc(var(--lobby-gutter) + var(--lobby-rail) + 16px);
   right: calc(var(--lobby-gutter-r) + var(--lobby-cards) + 16px);
-  top: calc(var(--lobby-top) + 8px);
+  top: max(calc(var(--lobby-top) + 8px), calc(var(--safe-top, 0px) + 118px));
   bottom: calc(var(--lobby-bottom) + 6px);
   display: flex;
   flex-direction: column;
@@ -144,16 +148,32 @@
 .lobby-stage button {
   pointer-events: auto;
 }
+/* The party row takes all the height the stage has left (under the party
+   bar, above the nameplate), and the fighter grows into it: as tall as the
+   row, as wide as the row allows beside three seats (a seat as wide as a
+   friend's card), and no larger than the rig draws sharply (its canvas is
+   480 px wide). No empty band is left above the fighter. */
 .lobby-party {
+  flex: 1 1 0;
+  min-height: 0;
+  align-self: stretch;
+  container-type: size;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  gap: clamp(10px, 3vw, 44px);
-  max-width: 100%;
+  gap: var(--lobby-party-gap);
 }
 .lobby-fighter {
-  --fighter-size: clamp(150px, 46vh, 400px);
+  --fighter-size: max(
+    120px,
+    min(
+      100cqh,
+      calc(100cqw - 3 * var(--lobby-seat) - 3 * var(--lobby-party-gap)),
+      560px
+    )
+  );
   position: relative;
+  flex: none;
   width: var(--fighter-size);
   height: var(--fighter-size);
   margin: 0;
@@ -740,9 +760,6 @@
     height: 16px;
     font-size: 9px;
   }
-  .lobby-fighter {
-    --fighter-size: clamp(120px, 42vh, 190px);
-  }
   .lobby-slot {
     width: 58px;
     height: 58px;
@@ -785,6 +802,8 @@
     font-size: 9px;
   }
   .lobby-stage {
+    --lobby-seat: 64px;
+    top: max(calc(var(--lobby-top) + 8px), calc(var(--safe-top, 0px) + 94px));
     gap: 4px;
   }
   .lobby-card {
@@ -862,6 +881,9 @@
 @media (max-width: 760px) {
   .lobby-layer {
     --lobby-cards: 178px;
+  }
+  .lobby-stage {
+    --lobby-seat: 54px;
   }
   .lobby-slot {
     width: 50px;

@@ -68,6 +68,50 @@ for (const size of SIZES)
           art,
         ),
       ).toBe("hidden");
+      // No empty band above the fighter: the party row takes the stage's
+      // free height, and the fighter grows until the row's height, the room
+      // beside three seats, or the 560 px cap stops it.
+      const fit = await page.evaluate(() => {
+        const box = (s: string) => {
+          const b = document.querySelector(s)!.getBoundingClientRect();
+          return { l: b.left, t: b.top, r: b.right, b: b.bottom };
+        };
+        const row = document.querySelector(".lobby-party")!;
+        const css = getComputedStyle(row);
+        return {
+          seat: parseFloat(css.getPropertyValue("--lobby-seat")),
+          gap: parseFloat(css.columnGap),
+          stage: box(".lobby-stage"),
+          party: box(".lobby-party"),
+          fighter: box("#lobby-fighter"),
+          plate: box(".lobby-nameplate"),
+          rail: box(".lobby-rail"),
+          cards: box(".lobby-cards"),
+          play: box(".lobby-play"),
+          toast:
+            (document.getElementById("toast")!.classList.add("show"),
+            box("#toast")),
+        };
+      });
+      const { stage, party, fighter, plate } = fit;
+      const side = fighter.b - fighter.t;
+      const room = Math.min(
+        party.b - party.t,
+        party.r - party.l - 3 * fit.seat - 3 * fit.gap,
+        560,
+      );
+      expect(side, "the fighter fills the stage").toBeGreaterThan(room - 1);
+      expect(side).toBeGreaterThan(size.phone ? 200 : 500);
+      expect(fighter.t).toBeGreaterThanOrEqual(stage.t - 0.5);
+      expect(fighter.b).toBeLessThanOrEqual(party.b + 0.5);
+      expect(plate.t).toBeGreaterThanOrEqual(fighter.b);
+      const overlaps = (a: typeof stage, b: typeof stage) =>
+        a.l < b.r && b.l < a.r && a.t < b.b && b.t < a.b;
+      for (const other of [fit.rail, fit.cards, fit.play, fit.toast])
+        expect(overlaps(stage, other)).toBe(false);
+      await page.evaluate(() =>
+        document.getElementById("toast")!.classList.remove("show"),
+      );
       await snap(page, info, `lobby-fighter-rig-${size.name}`);
 
       // A screen over the Lobby puts the rig to sleep.
