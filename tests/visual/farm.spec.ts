@@ -339,6 +339,12 @@ for (const viewport of [
         `farm-${viewport.width}x${viewport.height}${viewport.inset ? "-island" : ""}`,
       );
       const all = await hudBoxes(page);
+      // The farm badge is the player card's twin: same width, height and left edge.
+      const card = all.find((b) => b.name === "profile")!,
+        badge = all.find((b) => b.name === "badge")!;
+      expect(badge.w, "badge width").toBeCloseTo(card.w, 1);
+      expect(badge.h, "badge height").toBeCloseTo(card.h, 1);
+      expect(badge.x, "badge left edge").toBeCloseTo(card.x, 1);
       const left = viewport.inset?.left ?? 0,
         right = viewport.inset?.right ?? 0,
         bottom = viewport.inset?.bottom ?? 0;

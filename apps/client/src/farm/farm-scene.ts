@@ -156,7 +156,8 @@ export function openFarm(options) {
     return { x: a.left - b.left, y: a.top - b.top, w: a.width, h: a.height };
   };
   const syncPhone = () => {
-    layer.classList.toggle("phone", innerHeight < 500);
+    // The same switch as the hub's max-height: 500px rules (the player card).
+    layer.classList.toggle("phone", matchMedia("(max-height: 500px)").matches);
     layer.classList.toggle("coarse", matchMedia("(pointer: coarse)").matches);
   };
   syncPhone();
@@ -4122,7 +4123,7 @@ export function openFarm(options) {
     K = Math.min(nw / VW, nh / VH);
     OFX = (nw - VW * K) / 2;
     OFY = (nh - VH * K) / 2 + (nw < 1000 ? 0 : 6);
-    const phone = nh < 500;
+    const phone = nh <= 500;
     if (phone !== wasPhone) {
       wasPhone = phone;
       ZMAX = phone ? 2.4 : 1.35;

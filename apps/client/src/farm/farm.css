@@ -28,15 +28,24 @@
 .farm-layer.phone .fm-hud {
   font-size: 9.5px;
 }
+/* The badge is the player card's twin: the same box (--hub-card-* in
+   lobby.css) and the same left edge, max(14px, safe-left) on screen. */
 .farm-layer .fm-badge {
   position: absolute;
-  left: 16px;
+  left: max(0px, calc(14px - var(--safe-left, 0px)));
   top: 74px;
   display: flex;
-  gap: 0.7em;
+  gap: 8px;
   align-items: center;
-  padding: 0.45em 1em 0.45em 0.45em;
-  border-radius: 18px;
+  box-sizing: border-box;
+  width: var(--hub-card-w, 236px);
+  height: var(--hub-card-h, 60px);
+  padding: var(--hub-card-pad, 6px 14px 6px 6px);
+  border-radius: 16px;
+}
+.farm-layer .fm-badge .fm-ring {
+  width: var(--hub-card-art, 46px);
+  height: var(--hub-card-art, 46px);
 }
 .farm-layer .fm-ring {
   --p: 0;
@@ -89,11 +98,6 @@
   height: 100%;
   background: linear-gradient(90deg, #7ff0a2, #d8ff8a);
   transition: width 0.5s var(--ease-out);
-}
-.farm-layer.phone .fm-badge {
-  left: 8px;
-  top: 52px;
-  border-radius: 12px;
 }
 .farm-layer .fm-weather {
   position: absolute;
@@ -2098,13 +2102,6 @@
   -webkit-backdrop-filter: blur(10px) saturate(1.2);
   box-shadow: 0 8px 24px #0006;
 }
-.farm-layer .fm-badge {
-  box-sizing: border-box;
-  width: 240px;
-}
-.farm-layer.phone .fm-badge {
-  width: 164px;
-}
 .farm-layer .fm-badge small.row2 {
   display: flex;
   justify-content: space-between;
@@ -2434,15 +2431,7 @@
   font-size: 12px;
 }
 .farm-layer.phone .fm-badge {
-  left: 12px;
   top: 56px;
-  width: 150px;
-  padding: 3px 10px 3px 3px;
-  gap: 8px;
-}
-.farm-layer.phone .fm-ring {
-  width: 32px;
-  height: 32px;
 }
 .farm-layer.phone .fm-ring b {
   font-size: 16px;
@@ -2635,9 +2624,6 @@
 .farm-layer.phone .fm-pop.seedpick {
   top: 56px !important;
 }
-.farm-layer.phone.narrow .fm-badge {
-  width: 150px;
-}
 .farm-layer.phone.narrow .fm-weather {
   left: 170px;
   width: 200px;
@@ -2647,9 +2633,6 @@
 }
 .farm-layer.phone .fm-chip i.w {
   display: none;
-}
-.farm-layer.phone.narrow .fm-badge {
-  width: 160px;
 }
 .farm-layer.phone.narrow .fm-weather {
   left: 180px;

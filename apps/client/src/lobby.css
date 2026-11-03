@@ -891,9 +891,24 @@
   background: #ffd65b;
   color: #2a1a00;
 }
+/* The player card's box. The farm's badge (farm/farm.css) uses the same
+   numbers, so the two cards are always the same size. */
+:root {
+  --hub-card-w: 236px;
+  --hub-card-h: 60px;
+  --hub-card-pad: 6px 14px 6px 6px;
+  --hub-card-art: 46px;
+}
 body.hub-active #account-profile {
-  width: 236px;
-  grid-template-columns: 46px minmax(0, 1fr) 46px;
+  box-sizing: border-box;
+  width: var(--hub-card-w);
+  height: var(--hub-card-h);
+  padding: var(--hub-card-pad);
+  grid-template-columns: var(--hub-card-art) minmax(0, 1fr) 46px;
+}
+body.hub-active #account-profile .account-avatar {
+  width: var(--hub-card-art);
+  height: var(--hub-card-art);
 }
 body.hub-active #account-profile .account-name {
   min-width: 0;
@@ -969,9 +984,14 @@ body:not(.hub-active) #account-leaves {
     height: 32px;
     font-size: 13px;
   }
+  :root {
+    --hub-card-w: 184px;
+    --hub-card-h: 46px;
+    --hub-card-pad: 4px 10px 4px 4px;
+    --hub-card-art: 36px;
+  }
   body.hub-active #account-profile {
-    width: 184px;
-    grid-template-columns: 36px minmax(0, 1fr) 40px;
+    grid-template-columns: var(--hub-card-art) minmax(0, 1fr) 40px;
   }
   body.hub-active #account-profile .nav-level {
     width: 40px;
@@ -990,8 +1010,8 @@ body:not(.hub-active) #account-leaves {
   .hub-scenes button {
     width: 60px;
   }
-  body.hub-active #account-profile {
-    width: 160px;
+  :root {
+    --hub-card-w: 160px;
   }
   body.hub-active #account-coins > *,
   body.hub-active #account-leaves > * {
