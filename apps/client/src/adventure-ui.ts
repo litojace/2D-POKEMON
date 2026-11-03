@@ -1,15 +1,18 @@
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import {
   playerLevel,
+  levelUpCoins,
   LEVEL_MILESTONES,
-  LEVEL_COINS,
+  MAX_PLAYER_LEVEL,
+  DAILY_SPARK_XP,
   JOURNEY_ITEM_BY_ID,
   SEASON_THEMES,
-  SEASON_TIERS,
-  SEASON_TIER_XP,
+  SEASON_TIER_COINS,
   WEEKLY_GOALS,
+  seasonRules,
   seasonTheme,
   seasonReward,
+  sparkLeft,
   type Journey,
 } from "../../../packages/shared/src/journey";
 import { ARCADE_EVENTS, arcadeWeek } from "../../../packages/shared/src/arcade";
@@ -19,7 +22,7 @@ import {
 } from "../../../packages/shared/src/raid";
 import type { Economy } from "../../../packages/shared/src/shop";
 import { fighterAvatar } from "./fighter-art";
-import { coinChip } from "./shop-ui";
+import { coinChip, picksCountdown } from "./shop-ui";
 import { iconLabel } from "./menu-icons";
 export type AdventureTab = "levels" | "season" | "arcade";
 export interface AdventureView {
@@ -37,7 +40,7 @@ const escape = (s: string) =>
 export function levelBar(j: Journey, compact = false) {
   const p = playerLevel(j.xp),
     next = LEVEL_MILESTONES.find((m) => m.level > p.level);
-  return `<div class="journey-level${compact ? " is-compact" : ""}"><span class="journey-level-badge"><small>LEVEL</small><b>${p.level}</b></span><div><div class="journey-level-line"><b>${p.level === 50 ? "Elemental Legend" : "Your next adventure"}</b><small>${p.needed ? `${p.into.toLocaleString()} / ${p.needed.toLocaleString()} XP` : "MAX LEVEL"}</small></div><progress max="100" value="${p.percent}" aria-label="Player level ${p.level} progress"></progress>${compact ? "" : `<small>${next ? `Next milestone · Level ${next.level} · ${next.title ?? JOURNEY_ITEM_BY_ID[next.item!]?.name}` : "Every milestone earned. Seasonal journeys keep bringing new rewards."}</small>`}</div></div>`;
+  return `<div class="journey-level${compact ? " is-compact" : ""}"><span class="journey-level-badge"><small>LEVEL</small><b>${p.level}</b></span><div><div class="journey-level-line"><b>${p.level === MAX_PLAYER_LEVEL ? "Element Master" : "Your next adventure"}</b><small>${p.needed ? `${p.into.toLocaleString()} / ${p.needed.toLocaleString()} XP` : "MAX LEVEL"}</small></div><progress max="100" value="${p.percent}" aria-label="Player level ${p.level} progress"></progress>${compact ? "" : `<small>${next ? `Next milestone · Level ${next.level} · ${next.title ?? JOURNEY_ITEM_BY_ID[next.item!]?.name}` : "Every milestone earned. Seasonal journeys keep bringing new rewards."}</small>`}</div></div>`;
 }
 export function resultXp(
   j: Journey | undefined,
@@ -52,7 +55,18 @@ export function resultXp(
   const batch = j.recent.filter(
     (r) => r.at === award.at && (r.ref === ref || r.source === "mission"),
   );
-  const gained = batch.reduce((n, r) => n + r.amount, 0);
+  // Daily Spark bonuses are their own rows, saved as "<source>:<ref>".
+  const spark = j.recent.filter(
+    (r) =>
+      r.source === "spark" &&
+      batch.some((b) => r.ref === `${b.source}:${b.ref}`),
+  );
+  const missions = batch.reduce(
+      (n, r) => n + (r.ref === ref ? 0 : r.amount),
+      0,
+    ),
+    bonus = spark.reduce((n, r) => n + r.amount, 0),
+    gained = award.amount + missions + bonus;
   const later = j.recent
     .filter((r) => Date.parse(r.at) > Date.parse(award.at))
     .reduce((n, r) => n + r.amount, 0);
@@ -61,7 +75,19 @@ export function resultXp(
   const milestones = LEVEL_MILESTONES.filter(
     (m) => m.level > before && m.level <= after,
   ).map((m) => m.title ?? JOURNEY_ITEM_BY_ID[m.item!].name);
-  return `<section class="journey-result-xp" aria-label="Experience earned"><strong>+${gained} XP</strong>${gained > award.amount ? `<small class="journey-xp-breakdown">${award.amount} from this run · ${gained - award.amount} from daily missions</small>` : ""}${after > before ? `<p class="journey-level-up">LEVEL UP · ${before} → ${after}<small>+${(after - before) * LEVEL_COINS} coins${milestones.length ? ` · ${milestones.map(escape).join(" · ")}` : ""}</small></p>` : ""}${levelBar(j, true)}</section>`;
+  const parts = [
+    missions || bonus ? `${award.amount} from this run` : "",
+    missions ? `${missions} from daily missions` : "",
+    bonus ? `${bonus} Daily Spark bonus` : "",
+  ].filter(Boolean);
+  return `<section class="journey-result-xp" aria-label="Experience earned"><strong>+${gained} XP</strong>${parts.length ? `<small class="journey-xp-breakdown">${parts.join(" · ")}</small>` : ""}${after > before ? `<p class="journey-level-up">LEVEL UP · ${before} → ${after}<small>+${levelUpCoins(before, after)} coins${milestones.length ? ` · ${milestones.map(escape).join(" · ")}` : ""}</small></p>` : ""}${levelBar(j, true)}</section>`;
+}
+/** Daily Spark: how much of today's double XP is left, and when it renews. */
+export function sparkBar(j: Journey | undefined) {
+  if (!j?.spark) return "";
+  const left = sparkLeft(j),
+    used = j.spark.limit - left;
+  return `<div class="journey-spark${left ? "" : " is-spent"}"><div class="journey-spark-line"><b>Daily Spark</b><small>${left ? `The next ${left.toLocaleString("en-US")} XP today count double` : "Used up for today"} · renews in ${picksCountdown()}</small></div><progress max="${j.spark.limit}" value="${used}" aria-label="Daily Spark used ${used} of ${j.spark.limit} XP"></progress></div>`;
 }
 function glyph(slot: string, color = "#9ff3d8") {
   const shape =
@@ -116,7 +142,7 @@ function levels(
   look: RaidLoadout,
 ) {
   const level = e?.journey ? playerLevel(e.journey.xp).level : 0;
-  return `${e?.journey ? levelBar(e.journey) : ""}<p class="adventure-intro">Every level earns ${LEVEL_COINS} coins. Every five levels brings a milestone. Your level never changes combat stats.</p><div class="journey-layout">${preview(view, e, champion, look)}<div class="journey-rewards">${LEVEL_MILESTONES.map((m) => rewardCard(m.item, m.title ?? "", `LEVEL ${m.level}`, level >= m.level, view.preview, !m.item)).join("")}</div></div><details class="journey-help"><summary>How to earn XP</summary><p>Finish a PvP match: 50 XP, plus 25 for a win. AI matches: 25 XP. Raid clears: 100 / 150 / 200 XP by Peril. Raid attempts earn 20 XP per phase reached. Daily missions add 50 XP.</p><p>Results need at least 20 seconds of play and participation. Practice and abandoned matches do not award XP. Rewards are added automatically.</p></details>`;
+  return `${e?.journey ? levelBar(e.journey) + sparkBar(e.journey) : ""}<p class="adventure-intro">Every level earns 30 coins, and 100 coins from level 50 to ${MAX_PLAYER_LEVEL}. Milestones bring cosmetics and titles. Your level never changes combat stats.</p><div class="journey-layout">${preview(view, e, champion, look)}<div class="journey-rewards">${LEVEL_MILESTONES.map((m) => rewardCard(m.item, m.title ?? "", `LEVEL ${m.level}`, level >= m.level, view.preview, !m.item)).join("")}</div></div><details class="journey-help"><summary>How to earn XP</summary><p>Finish a PvP match: 50 XP, plus 25 for a win. AI matches: 25 XP. Raid clears: 100 / 150 / 200 XP by Peril. Raid attempts earn 20 XP per phase reached. Daily missions add 50 XP. Daily Spark: the first ${DAILY_SPARK_XP} XP you earn each day count double.</p><p>Results need at least 20 seconds of play and participation. Practice and abandoned matches do not award XP. Rewards are added automatically.</p></details>`;
 }
 function season(
   view: AdventureView,
@@ -128,7 +154,8 @@ function season(
     sid = s?.id ?? pacificDate().slice(0, 7),
     theme = SEASON_THEMES[seasonTheme(sid)],
     xp = s?.xp ?? 0,
-    tier = Math.min(SEASON_TIERS, Math.floor(xp / SEASON_TIER_XP));
+    rules = seasonRules(s),
+    tier = Math.min(rules.tiers, Math.floor(xp / rules.tierXp));
   const day = pacificDate(),
     end = new Date(`${sid}-01T12:00:00Z`);
   end.setUTCMonth(end.getUTCMonth() + 1);
@@ -136,12 +163,12 @@ function season(
     0,
     Math.ceil((end.getTime() - Date.parse(day + "T12:00:00Z")) / 86400000),
   );
-  const cards = Array.from({ length: SEASON_TIERS }, (_, i) => {
+  const cards = Array.from({ length: rules.tiers }, (_, i) => {
     const n = i + 1,
-      r = seasonReward(n, sid);
-    return `<div class="season-tier${tier >= n ? " is-earned" : ""}"><small>TIER ${n}</small>${r.item ? `<button data-journey-preview="${r.item}" aria-label="Preview ${escape(JOURNEY_ITEM_BY_ID[r.item].name)}">${glyph(JOURNEY_ITEM_BY_ID[r.item].slot, theme.color)}</button>` : glyph("coins", "#ffd991")}<b>${r.item ? escape(JOURNEY_ITEM_BY_ID[r.item].name) : "+50 coins"}</b>${r.item ? "<small>+50 coins</small>" : ""}<span>${tier >= n ? "✓ Earned" : `${n * SEASON_TIER_XP} XP`}</span></div>`;
+      r = seasonReward(n, sid, rules);
+    return `<div class="season-tier${tier >= n ? " is-earned" : ""}"><small>TIER ${n}</small>${r.item ? `<button data-journey-preview="${r.item}" aria-label="Preview ${escape(JOURNEY_ITEM_BY_ID[r.item].name)}">${glyph(JOURNEY_ITEM_BY_ID[r.item].slot, theme.color)}</button>` : glyph("coins", "#ffd991")}<b>${r.item ? escape(JOURNEY_ITEM_BY_ID[r.item].name) : `+${SEASON_TIER_COINS} coins`}</b>${r.item ? `<small>+${SEASON_TIER_COINS} coins</small>` : ""}<span>${tier >= n ? "✓ Earned" : `${(n * rules.tierXp).toLocaleString("en-US")} XP`}</span></div>`;
   }).join("");
-  return `<header class="season-banner" style="--journey-color:${theme.color}"><div><span class="eyebrow">FREE MONTHLY JOURNEY · ${sid}</span><h2>${theme.name}</h2><p>${days} days left · all rewards are free · earned cosmetics stay yours</p></div><strong>${tier}<small> / ${SEASON_TIERS} tiers</small></strong><progress aria-label="Season progress" max="${SEASON_TIERS * SEASON_TIER_XP}" value="${Math.min(xp, SEASON_TIERS * SEASON_TIER_XP)}"></progress></header><div class="season-layout"><div><h3>Weekly goals <small>Reset Monday · +250 season XP each</small></h3><div class="season-goals">${WEEKLY_GOALS.map(
+  return `<header class="season-banner" style="--journey-color:${theme.color}"><div><span class="eyebrow">FREE MONTHLY JOURNEY · ${sid}</span><h2>${theme.name}</h2><p>${days} days left · all rewards are free · earned cosmetics stay yours</p></div><strong>${tier}<small> / ${rules.tiers} tiers</small></strong><progress aria-label="Season progress" max="${rules.tiers * rules.tierXp}" value="${Math.min(xp, rules.tiers * rules.tierXp)}"></progress></header>${sparkBar(e?.journey)}<div class="season-layout"><div><h3>Weekly goals <small>Reset Monday · +250 season XP each</small></h3><div class="season-goals">${WEEKLY_GOALS.map(
     (g) => {
       const done = s?.completed.includes(g.id),
         n = Math.min(g.target, s?.goals[g.id] ?? 0);

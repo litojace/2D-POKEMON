@@ -27,9 +27,10 @@ for (const s of SCREENS)
         await expect(dialog.locator(id)).toBeVisible();
         expect(inside(await box(page, id), screen)).toBe(true);
       }
-      await expect(
-        dialog.locator("#settings-fullscreen, .settings-quick-actions"),
-      ).toHaveCount(0);
+      // In the hub, Settings → Display offers full screen (hub redesign);
+      // battle Settings never shows it (see battle-settings.spec.ts).
+      await expect(dialog.locator("#settings-fullscreen")).toHaveCount(1);
+      await expect(dialog.locator(".settings-quick-actions")).toHaveCount(0);
       // Everything shows at once: the dialog's content doesn't need scrolling.
       const scroll = await dialog
         .locator(".dialog-content")

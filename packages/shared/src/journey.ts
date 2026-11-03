@@ -1,13 +1,87 @@
 import type { RaidSlot } from "./raid.js";
 
-export const MAX_PLAYER_LEVEL = 50;
-export const LEVEL_COINS = 30;
-export const SEASON_TIERS = 20;
-export const SEASON_TIER_XP = 400;
+export const MAX_PLAYER_LEVEL = 100;
+/**
+ * XP needed to go from `level` to the next one (0 at the cap).
+ * Lv 1–49 keep the original curve, 100 + 25·(L−1). Lv 50–69 climb to about
+ * 9,000 XP a level; from Lv 70 each level adds 75 more, so the top levels take
+ * a regular player about a week each. Migration 035 stores the same steps.
+ */
+export function xpToNextLevel(level: number) {
+  const l = Math.floor(level);
+  if (!(l >= 1) || l >= MAX_PLAYER_LEVEL) return 0;
+  if (l < 50) return 100 + 25 * (l - 1);
+  if (l < 70)
+    return Math.round((1300 + 7700 * ((l - 49) / 21) ** 1.3) / 50) * 50;
+  return 9000 + 75 * (l - 69);
+}
+/** LEVEL_THRESHOLDS[L] is the total XP needed to enter level L (index 0 unused). */
+const LEVEL_THRESHOLDS = Array.from({ length: MAX_PLAYER_LEVEL }).reduce<
+  number[]
+>(
+  (all, _, i) => {
+    if (i > 0) all.push(all[i] + xpToNextLevel(i));
+    return all;
+  },
+  [0, 0],
+);
 /** Total XP needed to enter a level. XP never changes combat stats. */
 export function levelThreshold(level: number) {
-  const n = Math.max(0, Math.min(MAX_PLAYER_LEVEL, Math.floor(level)) - 1);
-  return n * 100 + (n * (n - 1) * 25) / 2;
+  const l = Number.isNaN(level) ? 1 : Math.floor(level);
+  return LEVEL_THRESHOLDS[Math.max(1, Math.min(MAX_PLAYER_LEVEL, l))];
+}
+/** Coins for reaching a level: 30 up to Lv 49, then 100 for every level from Lv 50. */
+export function levelCoins(level: number) {
+  return level < 50 ? 30 : 100;
+}
+/** Coins for every level-up from `from` (exclusive) to `to` (inclusive). */
+export function levelUpCoins(from: number, to: number) {
+  let coins = 0;
+  for (let l = Math.max(1, from) + 1; l <= Math.min(MAX_PLAYER_LEVEL, to); l++)
+    coins += levelCoins(l);
+  return coins;
+}
+/** Daily Spark: the first 500 XP each Pacific day count double. */
+export const DAILY_SPARK_XP = 500;
+export interface SeasonRules {
+  tiers: number;
+  tierXp: number;
+  /** The tiers that give the season's frame, aura, colors and finale, in that order. */
+  itemTiers: readonly [number, number, number, number];
+}
+/** Seasons up to November 2026: 20 tiers of 400 XP. */
+export const LEGACY_SEASON_RULES: SeasonRules = {
+  tiers: 20,
+  tierXp: 400,
+  itemTiers: [5, 10, 15, 20],
+};
+/** Seasons from the month after migration 035 runs: 30 tiers of 1,200 XP. */
+export const SEASON_RULES: SeasonRules = {
+  tiers: 30,
+  tierXp: 1200,
+  itemTiers: [5, 12, 20, 30],
+};
+export const SEASON_TIER_COINS = 50;
+/**
+ * The rules of the season the server reported. A database without migration
+ * 035 sends none, and still runs the 20 × 400 season.
+ */
+export function seasonRules(season?: Partial<Journey["season"]>): SeasonRules {
+  const tiers = season?.tiers,
+    tierXp = season?.tierXp,
+    items = season?.itemTiers;
+  if (
+    !Number.isInteger(tiers) ||
+    !Number.isInteger(tierXp) ||
+    !Array.isArray(items) ||
+    items.length !== 4
+  )
+    return LEGACY_SEASON_RULES;
+  return {
+    tiers: tiers!,
+    tierXp: tierXp!,
+    itemTiers: items as unknown as SeasonRules["itemTiers"],
+  };
 }
 export function playerLevel(xp: number) {
   const total = Number.isFinite(xp) ? Math.max(0, Math.floor(xp)) : 0;
@@ -181,6 +255,11 @@ export const LEVEL_MILESTONES = [
   { level: 40, title: null, item: "champion-laurel" },
   { level: 45, title: null, item: "astral-aura" },
   { level: 50, title: "Elemental Legend", item: null },
+  // Lv 55–100 cosmetics (Prism frame, Nova entrance…) arrive with their art.
+  { level: 60, title: "Arena Veteran", item: null },
+  { level: 75, title: "Mythic Champion", item: null },
+  { level: 90, title: "Ascendant", item: null },
+  { level: 100, title: "Element Master", item: null },
 ] as const;
 export const WEEKLY_GOALS = [
   { id: "play", text: "Finish 5 matches or raid attempts", target: 5 },
@@ -198,19 +277,30 @@ export interface Journey {
     week: string;
     goals: Record<string, number>;
     completed: string[];
+    /** This season's rules (migration 035); absent means 20 × 400. */
+    tiers?: number;
+    tierXp?: number;
+    itemTiers?: number[];
   };
+  /** Daily Spark use on the current Pacific day (migration 035). */
+  spark?: { day: string; used: number; limit: number };
   /** Cosmetics unlocked through account levels or any previous season. */
   unlocked: string[];
 }
-export function seasonReward(tier: number, season: string) {
-  const suffix = (
-    { 5: "frame", 10: "aura", 15: "colors", 20: "victory" } as Record<
-      number,
-      string
-    >
-  )[tier];
+const SEASON_ITEM_SLOTS = ["frame", "aura", "colors", "victory"] as const;
+export function seasonReward(
+  tier: number,
+  season: string,
+  rules: SeasonRules = LEGACY_SEASON_RULES,
+) {
+  const suffix = SEASON_ITEM_SLOTS[rules.itemTiers.indexOf(tier)];
   return {
-    coins: 50,
+    coins: SEASON_TIER_COINS,
     item: suffix ? `season-${seasonTheme(season)}-${suffix}` : null,
   };
+}
+/** XP still doubled today by the Daily Spark. */
+export function sparkLeft(j?: Pick<Journey, "spark">) {
+  if (!j?.spark) return 0;
+  return Math.max(0, Math.min(j.spark.limit, j.spark.limit - j.spark.used));
 }
