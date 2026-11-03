@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { createArenaServer } from "../../apps/server/src/server";
 import { fakeAccounts } from "../helpers/accounts";
+import { SERVER_TIME_HEADER } from "../../packages/shared/src/accounts";
 
 const origin = "https://twod-pokemon.onrender.com";
 let server: ReturnType<typeof createArenaServer>;
@@ -95,4 +96,27 @@ it("rejects other origins and continues to accept same-origin and CLI requests",
   ]) {
     expect((await fetch(`${url}/api/account`, { headers })).status).toBe(200);
   }
+});
+
+it("stamps every API answer with the server's clock, readable from the static site", async () => {
+  const before = Date.now();
+  const user = accounts.add(false);
+  for (const headers of [
+    { Origin: origin },
+    { Origin: origin, Authorization: `Bearer ${user.token}` },
+  ]) {
+    const response = await fetch(`${url}/api/account`, { headers });
+    const stamp = Number(response.headers.get(SERVER_TIME_HEADER));
+    expect(stamp).toBeGreaterThanOrEqual(before);
+    expect(stamp).toBeLessThanOrEqual(Date.now());
+    // Cross-origin scripts only see headers the server exposes.
+    expect(response.headers.get("Access-Control-Expose-Headers")).toBe(
+      SERVER_TIME_HEADER,
+    );
+  }
+  // Other sites get the stamp but no permission to read it.
+  const other = await fetch(`${url}/api/health`, {
+    headers: { Origin: "https://untrusted.example" },
+  });
+  expect(other.headers.get("Access-Control-Expose-Headers")).toBeNull();
 });

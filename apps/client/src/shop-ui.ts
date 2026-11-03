@@ -18,6 +18,7 @@ import {
 import type { RaidLoadout } from "../../../packages/shared/src/raid";
 import { colourPreview, hasColourPalette } from "./colour-preview";
 import { nextPacificDayAt } from "../../../packages/shared/src/raid-roster";
+import { serverNow } from "./server-clock";
 import { fighterArt, fighterAvatar, scopeIds } from "./fighter-art";
 import { buttonIcon, iconLabel } from "./menu-icons";
 import { creatureSvg, type SkinLook } from "./creature-design";
@@ -87,8 +88,11 @@ const rarityBadge = (r: Rarity | null) =>
   r
     ? `<span class="rarity-badge rarity-${r}"><i class="rarity-gem" aria-hidden="true"></i>${RARITY_NAMES[r]}</span>`
     : "";
-/** "7 h 24 min" until the next Pacific midnight, when Today's Picks change. */
-export function picksCountdown(now = Date.now()) {
+/**
+ * "7 h 24 min" until the next Pacific midnight, when Today's Picks (and
+ * missions and the Daily Spark) change. Counted on the server's clock.
+ */
+export function picksCountdown(now = serverNow()) {
   const minutes = Math.max(
     1,
     Math.round((nextPacificDayAt(new Date(now)) - now) / 60_000),

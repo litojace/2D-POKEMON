@@ -7,6 +7,7 @@ import {
 } from "../../../packages/shared/src/index";
 import type { RaidLoadout } from "../../../packages/shared/src/raid";
 import type { Friend, FriendList } from "../../../packages/shared/src/accounts";
+import { serverNow } from "./server-clock";
 
 const escape = (s: string) =>
   s.replace(
@@ -41,8 +42,11 @@ function seenDate(value: Friend["lastOnline"]) {
   const date = value ? new Date(value) : null;
   return date && Number.isFinite(date.getTime()) ? date : null;
 }
-/** Live activity wins over saved history. Unknown history stays "Offline". */
-export function friendStatus(f: Friend, now = Date.now()) {
+/**
+ * Live activity wins over saved history. Unknown history stays "Offline".
+ * "Online 2 h ago" is measured on the server's clock, like the saved time.
+ */
+export function friendStatus(f: Friend, now = serverNow()) {
   if (!f.online) {
     const date = seenDate(f.lastOnline);
     if (!date) return "Offline";

@@ -67,12 +67,14 @@ import {
   progressSchema,
   friendsSchema,
   friendCode,
+  SERVER_TIME_HEADER,
 } from "../../../packages/shared/src/accounts";
 import { CHARACTERS, type CharacterId } from "@arena/shared";
 import { renderOnline } from "./admin-online";
 import { leaderboardMarkup, progressMarkup, seasonName } from "./progress-view";
 import { friendsScreenMarkup, type FriendsRoom } from "./friends-view";
 import { FriendsHub } from "./friends-hub";
+import { noteServerTime } from "./server-clock";
 import {
   authRedirectUrl,
   authErrorMessage,
@@ -330,6 +332,7 @@ export class AccountUI {
   }
   async api(path: string, body?: unknown): Promise<unknown> {
     const origin = import.meta.env.VITE_SERVER_URL || location.origin;
+    const sentAt = Date.now();
     const response = await fetch(new URL(path, origin), {
       method: body === undefined ? "GET" : "POST",
       headers: {
@@ -338,6 +341,11 @@ export class AccountUI {
       },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
+    noteServerTime(
+      response.headers.get(SERVER_TIME_HEADER),
+      sentAt,
+      Date.now(),
+    );
     const value = await response.json();
     if (!response.ok) throw new Error(value.error ?? "Request failed.");
     return value;
@@ -1685,7 +1693,7 @@ export class AccountUI {
       const list = friendsSchema.parse(await this.api("/api/friends"));
       if (list.incoming.length)
         this.hooks.notify(
-          `${list.incoming.length === 1 ? `${list.incoming[0].name} wants` : `${list.incoming.length} players want`} to be friends. Open Menu → Friends.`,
+          `${list.incoming.length === 1 ? `${list.incoming[0].name} wants` : `${list.incoming.length} players want`} to be friends. Open Friends to answer.`,
         );
       return list;
     } catch {

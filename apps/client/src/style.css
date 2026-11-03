@@ -57,38 +57,6 @@
   color: var(--text);
   background: var(--bg-0);
   font-synthesis: none;
-  --bg-0: #0b1020;
-  --bg-1: #121a33;
-  --bg-2: #1a2547;
-  --line: #ffffff1f;
-  --text: #eef2ff;
-  --text-dim: #a0afc8;
-  --accent: #ffd65b;
-  --accent-ink: #2a1a00;
-  --danger: #ef4f61;
-  --radius-sm: 8px;
-  --radius-lg: 16px;
-  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --ease-pop: cubic-bezier(0.3, 1.5, 0.5, 1);
-  --element: #ff7a45;
-  --el-electric: #ffd84a;
-  --el-fire: #ff7a45;
-  --el-water: #4fb3ff;
-  --el-aura: #7fe7ff;
-  --el-light: #fff1a8;
-  --el-psychic: #c47dff;
-  --el-earth: #c8955a;
-  --el-shadow: #8a6bff;
-  /* Compatibility aliases: battle UI and older screens keep their selectors. */
-  --muted: var(--text-dim);
-  --lime: var(--accent);
-  --stadium-red: var(--danger);
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-right: env(safe-area-inset-right, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-left: env(safe-area-inset-left, 0px);
-  /* Top bar and status-bar strip share this, so their edge is seamless. */
-  --topbar-bg: linear-gradient(90deg, #12213e, #1b2e50);
 }
 .practice-controls {
   border: 1px solid #ffd65b30;
@@ -1212,28 +1180,6 @@ input::placeholder {
   color: #e5efda;
   margin-bottom: 8px;
 }
-#toast {
-  position: fixed;
-  bottom: 30px;
-  left: 50%;
-  transform: translate(-50%, 20px);
-  opacity: 0;
-  background: var(--accent);
-  color: #fff8f1;
-  padding: 14px 24px;
-  border-radius: 8px;
-  box-shadow: 0 6px 40px #0005;
-  font-size: 12px;
-  pointer-events: none;
-  transition: 0.2s;
-  /* Above the hub scenes (60) and their panels (81). */
-  z-index: 95;
-  max-width: 90vw;
-}
-#toast.show {
-  opacity: 1;
-  transform: translate(-50%, 0);
-}
 dialog {
   background: #1b2e4d;
   color: var(--text);
@@ -2086,10 +2032,6 @@ dialog {
   margin: auto;
   border-color: #8baee544;
 }
-#toast {
-  bottom: calc(24px + var(--safe-bottom));
-  max-width: calc(100vw - var(--safe-left) - var(--safe-right) - 32px);
-}
 @media (max-width: 700px) {
   .topbar {
     min-height: calc(72px + var(--safe-top));
@@ -2144,10 +2086,6 @@ dialog {
 }
 .creature-card .card-bottom span {
   color: #be354e;
-}
-
-#toast {
-  color: #172642;
 }
 
 .battle-active.touch-mode .overlay-card {
@@ -5056,12 +4994,6 @@ html.zoom-locked dialog input {
   /* Room list rows and the header menu panel. */
   .header-menu[open] .header-menu-panel {
     animation: ea-pop 0.18s ease-out;
-  }
-  .toast,
-  #toast {
-    transition:
-      opacity 0.25s ease,
-      transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 }
 /* Dialogs scroll on their own; reaching their end never scrolls the page. */
@@ -13103,23 +13035,8 @@ dialog.mission-instructions::backdrop {
    labels; DM Sans for reading. Gold pill buttons for the main action, glass
    pills for the rest, sentence-case labels with a small gem, rounded
    gradient panels, and gold-filled segments for the chosen option.
-   This layer comes last on purpose; the battle HUD is left as it is. */
-:root {
-  --gold-top: #ffe58f;
-  --gold-bottom: #f2b93b;
-  --gold-edge: #c4841f;
-  --gold-ink: var(--accent-ink);
-  --glass: #ffffff0a;
-  --glass-line: #8baee540;
-  --panel-top: #18294a;
-  --panel-bottom: #0e1a31;
-  --panel-line: #8baee52b;
-  --display: "Barlow Condensed", Impact, sans-serif;
-  --body: "DM Sans", sans-serif;
-  --scroll-track: #081427;
-  --scroll-thumb: #b99858;
-  --scroll-thumb-light: #e3c47e;
-}
+   This layer comes last on purpose; the battle HUD is left as it is.
+   Its tokens are in ui/tokens.css. */
 
 /* Native scrolling, finished like the panels: an inset navy rail and gold grip. */
 :root,
@@ -13722,18 +13639,6 @@ button.raid-boss-card:hover:not(:disabled) {
   font-size: 11px;
 }
 
-/* Toasts: a dark pill with a gold edge, not a solid yellow block. */
-#toast {
-  border-radius: 999px;
-  padding: 10px 18px;
-  color: #fff1c4;
-  background:
-    linear-gradient(#1a1630, #120f24) padding-box,
-    linear-gradient(135deg, #ffe48a, #b8791a 60%, #ffe48a) border-box;
-  border: 1.5px solid transparent;
-  box-shadow: 0 12px 30px -10px #000c;
-  font-weight: 600;
-}
 
 /* Password field's show/hide button: round, inside the round field. */
 .password-toggle,
@@ -20389,10 +20294,7 @@ dialog .auth-panel {
 
 /* Anything you have equipped reads in one green, everywhere (Wardrobe,
    Shop, raid looks, journey rewards, titles), so it stands out from
-   "Owned" and slot labels at a glance. */
-:root {
-  --equipped: #5fe39a;
-}
+   "Owned" and slot labels at a glance (--equipped, ui/tokens.css). */
 .is-equipped-text,
 button.is-equipped-text,
 button.is-equipped-text:disabled,

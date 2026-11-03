@@ -126,6 +126,12 @@ export const equipTitleSchema = z
   .object({ titleId: z.string().uuid().nullable() })
   .strict();
 
+/**
+ * Every API answer carries the server's clock in this header (milliseconds
+ * since 1970), so the hub's countdowns never trust the device clock.
+ */
+export const SERVER_TIME_HEADER = "X-Server-Time";
+
 /** Your skill rating and rank (migration 006). */
 export const ratingSchema = z.object({
   rating: z.number(),
