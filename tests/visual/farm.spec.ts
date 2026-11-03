@@ -122,6 +122,28 @@ async function fakeFarm(page: Page) {
           headers: { "Content-Type": "application/json" },
         });
       if (url.endsWith("/api/farm")) return json({ ...farm, now: now() });
+      // Friends' farms (migration 047).
+      if (url.endsWith("/api/farm/friends")) return json(w.__friends ?? []);
+      if (url.endsWith("/api/farm/visit/act")) {
+        const body = JSON.parse(String(init?.body));
+        w.__farmRequests.push(body);
+        const v = w.__visit;
+        const results = body.actions.map((a: any) => {
+          const p = v.plots[a.plot];
+          if (a.a === "sneak" && p.sneak) {
+            p.sneak = false;
+            return { ok: true, crop: p.crop, qty: 1, mutation: "" };
+          }
+          if (a.a === "catch" && p.pests) {
+            p.pests--;
+            return { ok: true, xp: 3 };
+          }
+          return { ok: false, error: "Not in this test" };
+        });
+        return json({ farm: { ...v, now: now() }, results, leaves: 1234 });
+      }
+      if (url.includes("/api/farm/visit/"))
+        return json({ ...w.__visit, now: now() });
       if (url.endsWith("/api/farm/act")) {
         const body = JSON.parse(String(init?.body));
         w.__farmRequests.push(body);
@@ -629,6 +651,123 @@ test("the farm follows your Lobby fighter, and Zap clears the bugs", async ({
     await expect(page.locator("#toast")).toContainText("Zap! Cleared 1 bug");
     await orb.click();
     await expect(page.locator("#fm-orbpop")).toContainText("Used today");
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test("visiting a friend's farm: sneak a ripe crop, catch a bug, go home", async ({
+  browser,
+}, info) => {
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    await fakeFarm(page);
+    await page.evaluate(() => {
+      const w = window as any,
+        at = (s: number) => new Date(Date.now() + s * 1000).toISOString();
+      w.__friends = [
+        {
+          id: "f1",
+          name: "Rae",
+          fighter: "tidefin",
+          level: 7,
+          dog: "gold",
+          bugs: 1,
+          ripe: 1,
+        },
+      ];
+      const plots = Array.from({ length: 50 }, (_, i) => ({
+        i,
+        owned: i % 10 < 6 && Math.floor(i / 10) < 3,
+        crop: null as string | null,
+        progress: 0,
+        ripeAt: null as string | null,
+        wet: false,
+        pests: 0,
+        mutation: null,
+        sneak: false,
+      }));
+      Object.assign(plots[0], {
+        crop: "wheat",
+        progress: 1,
+        ripeAt: at(-60),
+        sneak: true,
+      });
+      Object.assign(plots[1], {
+        crop: "carrot",
+        progress: 0.5,
+        ripeAt: at(1800),
+        pests: 1,
+      });
+      w.__visit = {
+        id: "f1",
+        name: "Rae",
+        fighter: "tidefin",
+        level: 7,
+        farmer: "tidefin",
+        plots,
+        dog: "gold",
+        scarecrow: false,
+        sprinklers: 0,
+        today: { helpXp: 0, sneaks: 0, pranks: 0 },
+      };
+    });
+    await page.click('#hub-scenes [data-hub-scene="farm"]');
+    await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
+    // A friend's farm has something to do: the Friends button shows a dot.
+    await expect(page.locator("#fm-fr-dot")).toBeVisible();
+    await page.click('#fm-dock [data-sheet="friends"]');
+    const sheet = page.locator("#fm-sheet");
+    const row = sheet.locator(".fr", { hasText: "Rae · Lv 7" });
+    await expect(row).toContainText("1 bug");
+    await expect(row).toContainText("1 ripe");
+    await expect(row).toContainText("Goldie");
+    await page.waitForTimeout(500); // the sheet slides in
+    await snap(page, info, "farm-friends-1280x800");
+    await row.locator("[data-visit]").click();
+    const banner = page.locator("#fm-visit");
+    await expect(banner).toContainText("Rae's Farm");
+    await expect(banner).toContainText("Goldie is on guard");
+    await expect(page.locator("#fm-tools [data-tool]")).toHaveCount(4);
+    await expect(page.locator('#fm-tools [data-tool="prank"]')).toContainText(
+      "3",
+    );
+    await page.waitForTimeout(400);
+    const plot = (i: number) =>
+      page.evaluate((i) => (window as any).__farm.plotClient(i), i);
+    const ripe = await plot(0);
+    await page.mouse.click(ripe.x, ripe.y);
+    await expect(page.locator("#fm-log")).toContainText(
+      "Snuck 1 Breeze Wheat from Rae's farm",
+    );
+    const bug = await plot(1);
+    await page.mouse.click(bug.x, bug.y);
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          (window as any).__farmRequests
+            .filter((r: any) => r.friend)
+            .flatMap((r: any) => r.actions),
+        ),
+      )
+      .toEqual([
+        { a: "sneak", plot: 0 },
+        { a: "catch", plot: 1 },
+      ]);
+    await snap(page, info, "farm-visit-1280x800");
+    // Tapping the snuck plot again: you already tried it.
+    await page.mouse.click(ripe.x, ripe.y);
+    await expect(page.locator("#toast")).toContainText(
+      "You already snuck a crop from this plot",
+    );
+    await banner.locator("[data-home]").click();
+    await expect(banner).toBeHidden();
+    await expect(page.locator("#fm-tools [data-tool]")).toHaveCount(7);
     expect(errors).toEqual([]);
   } finally {
     await context.close();

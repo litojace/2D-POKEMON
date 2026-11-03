@@ -109,7 +109,9 @@ const FARM_HTML = `<div class="fm" id="fm">
       <button type="button" data-sheet="market">${I("market")}<span>Market</span></button>
       <button type="button" data-sheet="barn">${I("barn")}<span>Barn</span></button>
       <button type="button" data-sheet="book">${I("book")}<span>Almanac</span></button>
+      <button type="button" data-sheet="friends">${I("friends")}<span>Friends</span><b class="dot" id="fm-fr-dot" hidden></b></button>
     </nav>
+    <div class="fm-visit glass" id="fm-visit" hidden></div>
     <div class="fm-tools glass" id="fm-tools"></div>
     <div class="fm-log" id="fm-log" aria-live="polite"></div>
     <div class="fm-tip glass" id="fm-tip" hidden></div>
@@ -442,6 +444,7 @@ export function openFarm(options) {
         `A crow ate your ${CROP[eaten[0]]?.n ?? eaten[0]}! Get a Scarecrow or a guard dog`,
       );
     announceGifts();
+    announceVisits(st.visits);
     if (!F.seeds[F.seed]) {
       const first = CROPS.find((c) => F.seeds[c.id]);
       if (first) F.seed = first.id;
@@ -1802,7 +1805,7 @@ export function openFarm(options) {
   function drawArea(g) {
     if (!CUR.on || hoverI < 0 || F.decorPick) return;
     const s = cur();
-    if (!s.me && !["can", "net", "hand"].includes(F.tool)) return;
+    if (!s.me && !["can", "net", "hand", "prank"].includes(F.tool)) return;
     const ids =
       s.me && ["can", "net", "sickle"].includes(F.tool)
         ? area(hoverI, AREA(F.tool))
@@ -1832,7 +1835,236 @@ export function openFarm(options) {
     });
   }
 
-  const cur = () => ({ plots: F.plots, me: true });
+  /* ---------- friends' farms (migration 047): visit mode ---------- */
+  // V is the friend's farm being visited (null at home). Their plots use the
+  // same shape as yours, so the drawing code shows either.
+  let V = null,
+    friendsList = null,
+    visitQueue = [],
+    visitSending = false,
+    visitTimer = 0;
+  const cur = () =>
+    V
+      ? { plots: V.plots, me: false, stolen: V.stolen, dog: V.dog }
+      : { plots: F.plots, me: true };
+  function applyVisit(v) {
+    const now = Date.parse(v.now);
+    offset = now - Date.now();
+    V = {
+      id: v.id,
+      name: v.name,
+      fighter: v.fighter,
+      level: v.level,
+      farmer: v.farmer,
+      dog: v.dog,
+      today: v.today ?? { helpXp: 0, sneaks: 0, pranks: 0 },
+      stolen: new Set(),
+      plots: v.plots.map((p) =>
+        mkPlot({
+          locked: !p.owned,
+          crop: p.crop,
+          prog0: Number(p.progress),
+          prog: Number(p.progress),
+          at0: now,
+          ripeAt: p.ripeAt ? Date.parse(p.ripeAt) : null,
+          wet: p.wet,
+          pests: p.pests ?? 0,
+          mut: p.mutation ? p.mutation.split("+") : [],
+        }),
+      ),
+    };
+    // Ripe plots you can no longer sneak from are shaded.
+    for (const p of v.plots)
+      if (p.crop && Number(p.progress) >= 1 && !p.sneak) V.stolen.add(p.i);
+    for (const a of visitQueue) applyVisitLocal(a);
+    renderVisit();
+    renderAll();
+  }
+  function renderVisit() {
+    const el = $("fm-visit");
+    if (!V) {
+      el.hidden = true;
+      return;
+    }
+    el.hidden = false;
+    el.innerHTML = `<img src="${options.art(V.fighter)}" alt=""><div><b>${esc(V.name)}'s Farm</b><small>${V.dog ? `${I("dog")} ${DOG[V.dog]?.name ?? "A dog"} is on guard. Sneaking may get you caught` : "No guard dog"}</small></div><button type="button" data-home>← My farm</button>`;
+  }
+  async function visitFriend(id) {
+    try {
+      await flush();
+      const v = await options.visit(id);
+      closeSheet();
+      F.tool = "hand";
+      visitQueue = [];
+      applyVisit(v);
+      log(`Visiting <b>${esc(v.name)}</b>'s farm`);
+    } catch (e) {
+      toast(e?.message || "Couldn't visit that farm.");
+    }
+  }
+  async function goHome() {
+    await visitFlush();
+    V = null;
+    F.tool = "hand";
+    renderVisit();
+    renderAll();
+    // Helping friends gave you farm XP.
+    await refresh();
+  }
+  async function loadFriends() {
+    try {
+      friendsList = await options.friends();
+    } catch {
+      friendsList = friendsList ?? [];
+    }
+    $("fm-fr-dot").hidden = !friendsList.some((f) => f.bugs || f.ripe);
+    if (sheet === "friends") renderSheet();
+  }
+  /** What a visit action looks like before the server answers. */
+  function applyVisitLocal(a) {
+    const p = V?.plots[a.plot];
+    if (!p) return;
+    if (a.a === "catch") p.pests = Math.max(0, p.pests - 1);
+    else if (a.a === "water") p.wet = true;
+    else if (a.a === "sneak") V.stolen.add(a.plot);
+    else if (a.a === "prank") p.pests += 1;
+  }
+  /** A tap on a friend's plot: catch, water, sneak or prank, by tool. */
+  function visitTool(i, drag) {
+    const p = V.plots[i];
+    if (!p || p.locked) return;
+    const r = plotRect(i),
+      cx = r.x + PW / 2;
+    let a = null;
+    if (F.tool === "hand") {
+      if (p.pests) a = "catch";
+      else if (p.crop && p.prog >= 1) {
+        if (V.stolen.has(i)) {
+          if (!drag) toast("You already snuck a crop from this plot");
+          return;
+        }
+        a = "sneak";
+      }
+    } else if (F.tool === "can") {
+      if (p.crop && p.prog < 1 && !p.wet) a = "water";
+    } else if (F.tool === "net") {
+      if (p.pests) a = "catch";
+    } else if (F.tool === "prank") {
+      if (V.today.pranks >= 3) return toast("No pranks left today (3/3)");
+      if (V.farmer === "auralynx")
+        return toast(`${V.name}'s Shield blocks pranks`);
+      if (!p.crop || p.prog >= 1) {
+        if (!drag) toast("Bugs only go on growing crops");
+        return;
+      }
+      V.today.pranks++;
+      a = "prank";
+    }
+    if (!a) return;
+    if (a === "catch" || a === "prank")
+      FX.push({ poof: 1, x: cx, y: r.y + PH / 2, t: 0, life: 0.5 });
+    if (a === "water")
+      FX.push({ drops: 1, x: cx, y: r.y + PH / 2, t: 0, life: 0.7 });
+    const action = { a, plot: i };
+    visitQueue.push(action);
+    applyVisitLocal(action);
+    renderTools();
+    clearTimeout(visitTimer);
+    visitTimer = setTimeout(visitFlush, dragging ? 450 : 90);
+  }
+  async function visitFlush() {
+    clearTimeout(visitTimer);
+    if (visitSending || !visitQueue.length || !V) return;
+    const actions = visitQueue.slice(0, 30),
+      friend = V;
+    visitSending = true;
+    try {
+      const r = await options.visitAct(friend.id, actions);
+      visitQueue = visitQueue.slice(actions.length);
+      if (typeof r.leaves === "number") options.onLeaves?.(r.leaves);
+      if (V && V.id === friend.id) applyVisit(r.farm);
+      const errors = r.results.filter((x) => !x.ok).map((x) => x.error);
+      if (errors.length) toast(errors[0]);
+      let xp = 0;
+      r.results.forEach((x, k) => {
+        if (!x.ok) return;
+        const a = actions[k],
+          rr = plotRect(a.plot),
+          cx = rr.x + PW / 2;
+        if (x.xp) {
+          xp += x.xp;
+          float(cx, rr.y, `+${x.xp} XP`, "#7ff0a2");
+        }
+        if (x.crop) {
+          fly(cx, rr.y + 10, icon(x.crop), "+1");
+          log(
+            `Snuck 1 <b>${CROP[x.crop]?.n ?? x.crop}</b> from ${esc(friend.name)}'s farm`,
+          );
+        }
+        if (x.caught) {
+          const dog = DOG[x.caught]?.name ?? "Their dog";
+          FX.push({ bark: 1, x: cx, y: rr.y, t: 0, life: 1.2 });
+          const msg = x.fine
+            ? `Woof! ${dog} caught you. You lost ${x.fine} Gold Leaves`
+            : `Woof! ${dog} chased you off`;
+          toast(msg);
+          log(msg, "bad");
+        }
+        if (a.a === "prank")
+          log(
+            `Dropped a bug on <b>${esc(friend.name)}</b>'s farm (${x.pranksLeft ?? 0}/3 left)`,
+          );
+      });
+      if (
+        !xp &&
+        r.results.some((x, k) => x.ok && "xp" in x && actions[k].a !== "sneak")
+      )
+        toast("You've earned today's 60 XP for helping friends");
+    } catch (e) {
+      visitQueue = visitQueue.slice(actions.length);
+      toast(e?.message || "Couldn't reach your friend's farm.");
+    } finally {
+      visitSending = false;
+      if (visitQueue.length) visitTimer = setTimeout(visitFlush, 60);
+    }
+  }
+  /** Who visited your farm since this device last showed it (migration 047). */
+  const VISIT_KEY = "arena-farm-visit-seen";
+  function announceVisits(list) {
+    if (!list?.length) return;
+    let seen = 0;
+    try {
+      seen = Number(localStorage.getItem(VISIT_KEY)) || 0;
+    } catch {}
+    const day = serverNow() - 86400e3,
+      fresh = list
+        .filter((v) => (seen ? v.id > seen : Date.parse(v.at) > day))
+        .reverse();
+    let notable = null;
+    for (const v of fresh) {
+      const crop = CROP[v.crop]?.n ?? "crop",
+        who = `<b>${esc(v.name)}</b>`;
+      const text =
+        v.kind === "water"
+          ? `${who} watered your ${crop}`
+          : v.kind === "catch"
+            ? `${who} caught a bug on your ${crop}`
+            : v.kind === "sneak"
+              ? `${who} snuck 1 ${crop} from you`
+              : v.kind === "caught"
+                ? `Your dog caught ${who} sneaking${v.n ? `: +${v.n} ${L} fine` : ""}`
+                : `${who} dropped a bug on your ${crop}`;
+      log(text, v.kind === "sneak" || v.kind === "prank" ? "bad" : "good");
+      if (v.kind !== "water" && v.kind !== "catch") notable = text;
+    }
+    if (notable) toast(notable.replace(/<[^>]+>/g, ""));
+    try {
+      localStorage.setItem(
+        VISIT_KEY,
+        String(Math.max(seen, ...list.map((v) => v.id))),
+      );
+    } catch {}
+  }
 
   /* ---------- core actions (sent to the server) ---------- */
   function plantAt(i, id) {
@@ -1942,6 +2174,7 @@ export function openFarm(options) {
     return true;
   }
   function useTool(i, drag = false) {
+    if (V) return visitTool(i, drag);
     const p = F.plots[i];
     if (!p || !F.loaded) return;
     if (p.locked) {
@@ -2244,6 +2477,12 @@ export function openFarm(options) {
       }),
     );
     // The dog on guard waits by its doghouse (walking about comes with the art pass).
+    if (!s.me && V?.dog)
+      items.push({
+        y: DOGH.y + 14,
+        d: () =>
+          GFX.dog(ctx, V.dog, "sit", time, DOGH.x - 90, DOGH.y + 14, 0.95, 1),
+      });
     if (s.me && dogOn()) {
       const st =
         time % 23 < 1.2
@@ -2515,6 +2754,7 @@ export function openFarm(options) {
     if (!inited) return;
     const sn = serverNow();
     for (const p of F.plots) if (p.crop) p.prog = growth(p, sn);
+    if (V) for (const p of V.plots) if (p.crop) p.prog = growth(p, sn);
     for (let k = crowsLeaving.length - 1; k >= 0; k--)
       if ((crowsLeaving[k].t += dt) > 1.2) crowsLeaving.splice(k, 1);
     // A crow nobody shooed: ask the server once its time (and allowance) is up.
@@ -2634,19 +2874,20 @@ export function openFarm(options) {
         `<span class="wx-ic">${I(wn.icon)}</span>`,
         `${wn.name}: ${wn.text}. Changes in ${fmtSecs(weatherLeft())}`,
       ],
-      perk() && [
-        "perk",
-        `o-perk ${!perk().active ? "passive" : warmLeft() > 0 ? "on" : F.perksUsed.includes(perk().active) ? "used" : "ready"}`,
-        warmLeft() > 0
-          ? warmLeft() / 14400
-          : perk().active && F.perksUsed.includes(perk().active)
-            ? 0
-            : 1,
-        perk().active ? "#ffd65b" : "#8fa3d0",
-        `<img src="${options.art(F.farmer)}" alt="">`,
-        `${perk().name}: ${perk().text}`,
-      ],
-      [
+      !V &&
+        perk() && [
+          "perk",
+          `o-perk ${!perk().active ? "passive" : warmLeft() > 0 ? "on" : F.perksUsed.includes(perk().active) ? "used" : "ready"}`,
+          warmLeft() > 0
+            ? warmLeft() / 14400
+            : perk().active && F.perksUsed.includes(perk().active)
+              ? 0
+              : 1,
+          perk().active ? "#ffd65b" : "#8fa3d0",
+          `<img src="${options.art(F.farmer)}" alt="">`,
+          `${perk().name}: ${perk().text}`,
+        ],
+      !V && [
         "dog",
         `o-dog${dogOn() ? "" : " off"}`,
         dogOn() ? dogLeft() / dogTotal() : 0,
@@ -2773,7 +3014,14 @@ export function openFarm(options) {
     el.style.top = `${r.bottom - hud.top + 10}px`;
     el.style.right = `${Math.max(8, hud.right - r.right - 6, hud.right - dk.left + 8)}px`;
   }
-  const TOOLS = () => [
+  const TOOLS = () => (V ? VISIT_TOOLS() : HOME_TOOLS());
+  const VISIT_TOOLS = () => [
+    ["hand", "hand", "Sneak"],
+    ["can", "can", "Water"],
+    ["net", "net", "Catch"],
+    ["prank", "bug", "Prank", Math.max(0, 3 - V.today.pranks)],
+  ];
+  const HOME_TOOLS = () => [
     ["hand", "hand", "Hand"],
     ["seed", "seed", "Seeds", F.seeds[F.seed] || 0],
     [
@@ -2841,7 +3089,7 @@ export function openFarm(options) {
       .join("");
   }
   function showTip(i) {
-    const p = F.plots[i],
+    const p = cur().plots[i],
       tip = $("fm-tip");
     if (!p || p.locked || !p.crop) {
       tip.hidden = true;
@@ -3094,6 +3342,21 @@ export function openFarm(options) {
             },
           ).join("")}</div></div>`;
     }
+    if (sheet === "friends")
+      html =
+        head("Neighbors", "Friends") +
+        `<div class="sh-body"><p class="sh-note">Visit a friend to <b>catch bugs and water</b> (+XP, up to 60 a day) or <b>sneak</b> 1 crop from a ripe plot. Watch out for guard dogs! You get 3 pranks a day.</p>` +
+        (friendsList === null
+          ? `<p class="sh-note">Loading your friends…</p>`
+          : friendsList.length
+            ? friendsList
+                .map(
+                  (f) =>
+                    `<div class="fr"><img src="${options.art(f.fighter)}" alt=""><div><b>${esc(f.name)} · Lv ${f.level}</b><small>${f.bugs ? `<span class="bd">${I("bug")} ${f.bugs} bug${f.bugs === 1 ? "" : "s"}</span> · ` : ""}${f.ripe ? `<span class="bd">${I("wheat")} ${f.ripe} ripe</span> · ` : ""}${f.dog ? `${I("dog")} ${DOG[f.dog]?.name ?? "Guard dog"}` : "No guard dog"}</small></div><button type="button" class="btn-s" data-visit="${esc(f.id)}"${V?.id === f.id ? " disabled" : ""}>${V?.id === f.id ? "Here" : "Visit"}</button></div>`,
+                )
+                .join("")
+            : `<p class="sh-note">None of your friends has a farm yet. Add friends from the Lobby, then visit their farms here.</p>`) +
+        `</div>`;
     el.innerHTML = html;
     el.querySelectorAll("[data-dogprev]").forEach((c) => {
       const g = c.getContext("2d");
@@ -3163,6 +3426,7 @@ export function openFarm(options) {
       act({ a: "upgrade-barn" }, true);
       return;
     }
+    if (d.visit) return visitFriend(d.visit);
     if (d.landbuy) return landClick(+d.landbuy);
     if (d.mast) {
       t.disabled = true;
@@ -3225,9 +3489,14 @@ export function openFarm(options) {
   $("fm-dock").addEventListener("click", (e) => {
     const b = e.target.closest("[data-sheet]");
     if (!b) return;
+    if (b.dataset.sheet === "friends" && sheet !== "friends")
+      void loadFriends();
     if (sheet === b.dataset.sheet) closeSheet();
     else openSheet(b.dataset.sheet);
     if (NH < 500 && dockEl.classList.contains("open")) dockSet(false);
+  });
+  $("fm-visit").addEventListener("click", (e) => {
+    if (e.target.closest("[data-home]")) void goHome();
   });
   $("fm-chips").addEventListener("click", (e) => {
     const b = e.target.closest("[data-orb]");
@@ -3706,7 +3975,14 @@ export function openFarm(options) {
   // While the farm is open, come back to the server now and then: ripe
   // crops, the restock and the market day are all decided there.
   const poll = setInterval(() => {
-    if (!document.hidden && !queue.length && !sending) void refresh();
+    if (document.hidden) return;
+    if (V) {
+      if (!visitQueue.length && !visitSending)
+        options
+          .visit(V.id)
+          .then((v) => V && V.id === v.id && applyVisit(v))
+          .catch(() => {});
+    } else if (!queue.length && !sending) void refresh();
   }, 60_000);
   onResize();
   if (matchMedia("(pointer: coarse)").matches)
@@ -3714,6 +3990,8 @@ export function openFarm(options) {
       "Drag to move · pinch to zoom · hold a plot to plant many";
   enter();
   void refresh();
+  // The Friends button shows a dot when a friend's farm has bugs or ripe crops.
+  void loadFriends();
   layer.focus({ preventScroll: true });
   return {
     refresh,

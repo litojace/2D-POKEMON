@@ -821,6 +821,8 @@ export interface FarmState {
   }[];
   /** Crows on plots: plot index → when it landed (migration 045). */
   crows?: Record<string, string>;
+  /** Friends who visited lately, newest first (migration 047). */
+  visits?: FarmVisitEvent[];
   /** Your farmer, the active perks used today and Warmth's end (migration 046). */
   farmer?: string;
   perksUsed?: FarmPerkActive[];
@@ -833,6 +835,63 @@ export interface FarmState {
     until: string;
   };
   leaves: number;
+}
+/** Friends' farms (migration 047). */
+export interface FarmVisitEvent {
+  id: number;
+  at: string;
+  name: string;
+  kind: "water" | "catch" | "sneak" | "caught" | "prank";
+  crop: string | null;
+  /** For "caught": the fine paid to you. */
+  n: number;
+}
+export interface FarmFriend {
+  id: string;
+  name: string;
+  fighter: string;
+  level: number;
+  dog: FarmDogId | null;
+  /** Bugs on their farm, and ripe plots you can still try to sneak from. */
+  bugs: number;
+  ripe: number;
+}
+export interface FarmVisit {
+  id: string;
+  name: string;
+  fighter: string;
+  level: number;
+  farmer: string;
+  now: string;
+  plots: (Omit<FarmPlot, "fertilizer"> & { sneak: boolean })[];
+  dog: FarmDogId | null;
+  scarecrow: boolean;
+  sprinklers: number;
+  /** What you did on friends' farms today. */
+  today: { helpXp: number; sneaks: number; pranks: number };
+}
+export type FarmVisitAction = {
+  a: "water" | "catch" | "sneak" | "prank";
+  plot: number;
+};
+export interface FarmVisitResult {
+  farm: FarmVisit;
+  results: (
+    | {
+        ok: true;
+        xp?: number;
+        crop?: string;
+        qty?: number;
+        mutation?: string;
+        caught?: FarmDogId;
+        fine?: number;
+        pranksLeft?: number;
+      }
+    | { ok: false; error: string }
+  )[];
+  xp?: number;
+  leaves?: number;
+  repeated?: boolean;
 }
 /** One action in a farm request (arena_farm_act). */
 export type FarmAction =

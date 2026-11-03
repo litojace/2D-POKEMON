@@ -91,11 +91,18 @@ open to change.
 Done (each with its own migration and tests): weather and mutations (039),
 the order board (040), crop book rewards (041), the wishing well (042),
 crop mastery (043), tools and bugs (044), guard dogs and crows (045),
-farmer perks (046).
+farmer perks (046), friends' farms (047).
 
-Still to come: friends' farms (with thieves, whom dogs catch, and pranks,
-which Auralynx's Shield blocks), decorations and charm, the pasture, and
-treats in the Plaza.
+Still to come: decorations and charm, the pasture, and treats in the Plaza.
+
+- **Friends' farms (047), decided:** anyone on your Friends list. Helping
+  (water +2 XP, a bug +3 XP) pays at most 60 XP a Pacific day; sneaking is
+  at most 10 a day, each ripe planting loses at most one crop (its harvest
+  gives one less) and each friend can try it once; a guard dog catches a
+  sneak at its rate (Goldie 25%, Inky 80%, Fluffy 40%) for a 20 leaf fine
+  paid to the owner; 3 pranks a day, blocked by Auralynx's Shield. The
+  prototype's daily seed gift is not in yet. The owner's farm lists who
+  visited.
 
 - **Perks (046), decided:** your farmer is the Lobby fighter you had when
   you last opened the farm; the farm screen sends it as a `farmer` action.

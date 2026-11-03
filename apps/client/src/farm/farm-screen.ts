@@ -2,8 +2,12 @@ import type { Economy } from "../../../../packages/shared/src/shop";
 import type {
   FarmAction,
   FarmActResult,
+  FarmFriend,
   FarmOrderResult,
   FarmState,
+  FarmVisit,
+  FarmVisitAction,
+  FarmVisitResult,
 } from "../../../../packages/shared/src/farm";
 import { openFarm } from "./farm-scene";
 
@@ -42,6 +46,13 @@ export interface FarmScreenOptions {
     error?: string;
     seeds?: string[];
   }>;
+  /** Friends' farms (migration 047): the list, a visit, and acting there. */
+  friends(): Promise<FarmFriend[]>;
+  visit(id: string): Promise<FarmVisit>;
+  visitAct(
+    friend: string,
+    actions: FarmVisitAction[],
+  ): Promise<FarmVisitResult>;
   reduced: boolean;
 }
 export interface FarmScreen {

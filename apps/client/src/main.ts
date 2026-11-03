@@ -56,8 +56,11 @@ import {
 } from "./farm/farm-screen";
 import type {
   FarmActResult,
+  FarmFriend,
   FarmOrderResult,
   FarmState,
+  FarmVisit,
+  FarmVisitResult,
 } from "../../../packages/shared/src/farm";
 import {
   saveHubScene,
@@ -1810,6 +1813,18 @@ function syncFarm(want: boolean) {
         slot,
         kind,
       })) as FarmOrderResult,
+    friends: async () =>
+      (await accountsUI.api("/api/farm/friends")) as FarmFriend[],
+    visit: async (id) =>
+      (await accountsUI.api(
+        `/api/farm/visit/${encodeURIComponent(id)}`,
+      )) as FarmVisit,
+    visitAct: async (friend, actions) =>
+      (await accountsUI.api("/api/farm/visit/act", {
+        request: crypto.randomUUID(),
+        friend,
+        actions,
+      })) as FarmVisitResult,
     art: (character) =>
       "data:image/svg+xml;charset=utf-8," +
       encodeURIComponent(
