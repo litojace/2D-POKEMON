@@ -1699,22 +1699,22 @@ for (const character of Object.values(CHARACTERS))
  * scripts/balance/tune-teams.ts.
  */
 export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
-  voltkit: 1.13,
-  cindrake: 0.899,
-  tidefin: 1.025,
-  auralynx: 0.889,
-  lumoth: 1.119,
-  mystowl: 1.148,
-  terradon: 0.881,
-  duskveil: 1.093,
-  coilemur: 0.904,
-  pyranda: 1.018,
-  glacelle: 1.01,
-  halcyra: 1.145,
-  sunbara: 1.037,
-  astrabun: 0.853,
-  wombolder: 0.949,
-  shadopus: 0.915,
+  voltkit: 1.134,
+  cindrake: 0.91,
+  tidefin: 1.028,
+  auralynx: 0.883,
+  lumoth: 1.127,
+  mystowl: 1.142,
+  terradon: 0.882,
+  duskveil: 1.092,
+  coilemur: 0.902,
+  pyranda: 1,
+  glacelle: 1.017,
+  halcyra: 1.126,
+  sunbara: 1.048,
+  astrabun: 0.855,
+  wombolder: 0.944,
+  shadopus: 0.921,
 };
 /** A champion's strength factor in this mode (1 outside 2v2). */
 export function modeFactor(id: CharacterId, mode?: MatchMode) {
