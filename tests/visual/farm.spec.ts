@@ -1756,3 +1756,73 @@ test("a friend's giant crop: each tap sneaks one of its crops", async ({
     await context.close();
   }
 });
+
+// Phones: an open sheet keeps 10px under the player card (it touched it)
+// and the farm badge steps aside with the orbs and tools; a toast never
+// lands on the first-visit hint (they shared a spot 8px over the tool bar).
+for (const view of [
+  { width: 844, height: 390, inset: null },
+  { width: 932, height: 430, inset: { left: 59, right: 59, bottom: 21 } },
+]) {
+  test(`a phone sheet clears the card, and toasts clear the hint at ${view.width}x${view.height}`, async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      viewport: { width: view.width, height: view.height },
+      isMobile: true,
+      hasTouch: true,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openLobby(page);
+      await fakeFarm(page);
+      if (view.inset)
+        await page.evaluate((inset) => {
+          for (const [key, value] of Object.entries(inset))
+            document.documentElement.style.setProperty(
+              `--safe-${key}`,
+              `${value}px`,
+            );
+        }, view.inset);
+      await page.click('#hub-scenes [data-hub-scene="farm"]');
+      await expect(page.locator(".farm-layer #fm-cv")).toBeVisible();
+      const rect = (s: string) =>
+        page.evaluate((s) => {
+          const r = document.querySelector(s)!.getBoundingClientRect();
+          return { l: r.left, t: r.top, r: r.right, b: r.bottom };
+        }, s);
+      // The toast, shown while the hint is up, sits clear of it.
+      await expect(page.locator("#fm-hint")).toBeVisible();
+      await page.evaluate(() => {
+        const t = document.getElementById("toast")!;
+        t.textContent = "Harvested 3 Breeze Wheat";
+        t.classList.add("show");
+      });
+      await page.waitForTimeout(600);
+      const hint = await rect("#fm-hint"),
+        toast = await rect("#toast");
+      expect(toast.b, "toast over the hint").toBeLessThanOrEqual(hint.t);
+      await page.evaluate(() =>
+        document.getElementById("toast")!.classList.remove("show"),
+      );
+      // A sheet: 10px under the card, the badge stepped aside.
+      await openFromMenu(page, "shop");
+      // Measure once its slide-in has finished.
+      await page
+        .locator("#fm-sheet")
+        .evaluate((el) =>
+          Promise.all(el.getAnimations().map((a) => a.finished)),
+        );
+      const card = await rect("#account-profile"),
+        sheet = await rect("#fm-sheet");
+      expect(sheet.t - card.b, "sheet under the card").toBeGreaterThanOrEqual(
+        8,
+      );
+      expect(sheet.l, "sheet on the card's left edge").toBeCloseTo(card.l, 0);
+      await expect(page.locator("#fm-badge")).toBeHidden();
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+}
