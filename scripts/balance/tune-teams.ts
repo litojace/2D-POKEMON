@@ -9,6 +9,8 @@
  *   --out <dir>        where round files go (default balance-out/teams)
  *   --start <file>     starting factors JSON (default: TEAM_TUNING as shipped)
  *   --shards <n>       parallel processes per difficulty (default 4)
+ *   --gain <g>         how hard a round pushes toward 50% (default 1)
+ *   --fresh            new line-ups every round instead of the same ones
  *
  * Every round plays the same line-ups (fixed seeds), so only the factors
  * change. One champion is one of four players, so its factor moves its own
@@ -36,21 +38,32 @@ const out = opt("--out") ?? "balance-out/teams";
 const shards = +(opt("--shards") ?? 4);
 mkdirSync(out, { recursive: true });
 // A factor moves at most 12% a round, toward 50% at GAIN per point.
-const [LO, HI, GAIN, STEP] = [0.6, 1.6, 1, 0.12];
+const [LO, HI, STEP] = [0.6, 1.6, 0.12];
+const GAIN = +(opt("--gain") ?? 1);
+// --fresh: new line-ups every round (TEAMS_SEED = 5000 + round), so the
+// factors fit 2v2 in general rather than one fixed set of matches.
+const fresh = args.includes("--fresh");
 let factors: Record<string, number> = opt("--start")
   ? JSON.parse(readFileSync(opt("--start")!, "utf8"))
   : Object.fromEntries(FIGHTER_IDS.map((id) => [id, TEAM_TUNING[id] ?? 1]));
 
 const run = (cmd: string[]) =>
   new Promise<void>((resolve, reject) => {
-    const child = spawn("npx", ["tsx", ...cmd], { stdio: "inherit" });
+    const child = spawn("npx", ["tsx", ...cmd], {
+      stdio: "inherit",
+      env: fresh
+        ? { ...process.env, TEAMS_SEED: String(seedFor) }
+        : process.env,
+    });
     child.on("exit", (code) =>
       code === 0 ? resolve() : reject(new Error(`${cmd.join(" ")}: ${code}`)),
     );
   });
 
 const used: Record<string, number>[] = [];
+let seedFor = 0;
 for (let r = 1; r <= rounds; r++) {
+  seedFor = 5000 + r;
   const file = join(out, `factors-${r}.json`);
   writeFileSync(file, JSON.stringify(factors));
   used.push(factors);
