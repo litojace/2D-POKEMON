@@ -121,12 +121,15 @@ test("you walk where the server says, and Volt Boba costs 10 leaves", async ({
     });
   const start = await server();
   await page.locator(".plaza-layer").focus();
+  // Hold D until the server has you 100 px east, then let go. A fixed 1.2 s
+  // hold was flaky: the CPU-rendered test browser can stall for seconds as
+  // the Plaza opens (a few frames a second after that), and the player then
+  // moved only 12–24 px before the key came up.
   await page.keyboard.down("d");
-  await page.waitForTimeout(1200);
-  await page.keyboard.up("d");
   await expect
-    .poll(async () => (await server()).x)
+    .poll(async () => (await server()).x, { timeout: 30_000 })
     .toBeGreaterThan(start.x + 100);
+  await page.keyboard.up("d");
   // The drawn player follows the server's position.
   await expect
     .poll(async () => {
