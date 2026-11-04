@@ -276,6 +276,8 @@ import {
   type CourtId,
 } from "./arena-courts";
 import { RITE_EFFECTS, riteEffect, riteIcon } from "./rite-icons";
+// Last: the hub's aero glass overrides the panels' own fills.
+import "./ui/aero.css";
 const audio = new AudioManager();
 audio.start();
 const allAbilities = new Map(

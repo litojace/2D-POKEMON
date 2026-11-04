@@ -13,6 +13,8 @@
   --lobby-bottom: max(14px, var(--safe-bottom, 0px));
   --lobby-rail: 60px;
   --lobby-cards: 272px;
+  /* The mode button (56px), the gap (8px) and PLAY (76px). */
+  --lobby-play-h: 140px;
   --lobby-glass: rgba(14, 26, 49, 0.84);
   --lobby-line: rgba(139, 174, 229, 0.25);
   position: fixed;
@@ -724,15 +726,24 @@
     0 3px 0 #b8781a,
     0 8px 18px rgba(0, 0, 0, 0.4);
 }
+/* The mode menu opens over the cards' column, exactly as wide, from 8px
+   above the mode button up to the row under the header at most
+   (--lobby-top); a longer list scrolls inside it. --lobby-play-h is the
+   mode button, the gap and PLAY. The cards step aside while it is open,
+   so they never show through the glass. */
 .lobby-mode-menu {
   position: absolute;
   right: 0;
   bottom: calc(100% + 8px);
   display: grid;
   gap: 4px;
-  width: 300px;
-  max-height: calc(100vh - var(--lobby-top) - 170px);
+  box-sizing: border-box;
+  width: 100%;
+  max-height: calc(
+    100dvh - var(--lobby-top) - var(--lobby-bottom) - var(--lobby-play-h) - 8px
+  );
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 6px;
   border: 1px solid var(--lobby-line);
   border-radius: 16px;
@@ -741,6 +752,9 @@
 }
 .lobby-mode-menu[hidden] {
   display: none;
+}
+.lobby-layer:has(.lobby-mode-menu:not([hidden])) .lobby-cards {
+  visibility: hidden;
 }
 .lobby-mode-menu button {
   display: grid;
@@ -791,6 +805,10 @@
 
 /* Medium heights (small laptops, tablets): tighter rail, fewer cards. */
 @media (max-height: 760px) {
+  .lobby-layer {
+    /* Mode 42px, gap 6px, PLAY 50px. */
+    --lobby-play-h: 98px;
+  }
   .lobby-rail button {
     height: 48px;
   }
@@ -913,10 +931,7 @@
     border-radius: 14px;
     font-size: 28px !important;
   }
-  .lobby-mode-menu {
-    width: 260px;
-    max-height: calc(100vh - 120px);
-  }
+
   .lobby-mode-menu button {
     min-height: 38px;
   }

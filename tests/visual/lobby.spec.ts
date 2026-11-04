@@ -195,6 +195,75 @@ for (const viewport of VIEWPORTS) {
   });
 }
 
+// The mode menu opens over the cards' column: as wide as it, under the
+// header (it used to run up behind the coins and the gear, and the cards
+// showed through it), and a long list scrolls inside it. 932x430 with a
+// Dynamic Island is the phone it was reported on.
+for (const view of [
+  { width: 932, height: 430, inset: { left: 59, right: 59, bottom: 21 } },
+  { width: 1280, height: 720, inset: null },
+]) {
+  test(`the mode menu stays under the header and inside its column at ${view.width}x${view.height}`, async ({
+    browser,
+  }) => {
+    const phone = view.width < 1000;
+    const context = await browser.newContext({
+      viewport: { width: view.width, height: view.height },
+      isMobile: phone,
+      hasTouch: phone,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openLobby(page);
+      if (view.inset)
+        await page.evaluate((inset) => {
+          for (const [key, value] of Object.entries(inset))
+            document.documentElement.style.setProperty(
+              `--safe-${key}`,
+              `${value}px`,
+            );
+        }, view.inset);
+      await page.click("#lobby-mode");
+      const menu = page.locator("#lobby-mode-menu");
+      await expect(menu).toBeVisible();
+      const m = await page.evaluate(() => {
+        const r = (s: string) =>
+          document.querySelector(s)!.getBoundingClientRect();
+        const menu = r("#lobby-mode-menu"),
+          mode = r("#lobby-mode");
+        const header = Math.max(
+          r("#account-profile").bottom,
+          r("#account-coins > *").bottom,
+          r(".header-menu > summary").bottom,
+          r("#hub-scenes").bottom,
+        );
+        return {
+          belowHeader: Math.round(menu.top - header),
+          left: Math.round(menu.left - mode.left),
+          right: Math.round(menu.right - mode.right),
+          gap: Math.round(mode.top - menu.bottom),
+          cards: getComputedStyle(document.querySelector(".lobby-cards")!)
+            .visibility,
+        };
+      });
+      expect(m.belowHeader, "menu top under the header").toBeGreaterThanOrEqual(
+        4,
+      );
+      expect([m.left, m.right], "menu edges = the column's").toEqual([0, 0]);
+      expect(m.gap, "8px above the mode button").toBe(8);
+      expect(m.cards, "the cards step aside").toBe("hidden");
+      // The last mode is reachable (the list scrolls inside the menu).
+      await page.click('[data-lobby-mode="bot-hard"]');
+      await expect(menu).toBeHidden();
+      await expect(page.locator("#lobby-mode")).toContainText("Vs AI · Hard");
+      await expect(page.locator(".lobby-cards")).toBeVisible();
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+}
+
 test("the mode menu picks and remembers a mode, and the scene switch opens the Plaza", async ({
   browser,
 }, info) => {
@@ -209,16 +278,6 @@ test("the mode menu picks and remembers a mode, and the scene switch opens the P
     await page.click("#lobby-mode");
     const menu = page.locator("#lobby-mode-menu");
     await expect(menu).toBeVisible();
-    const fits = await menu.evaluate((el) => {
-      const r = el.getBoundingClientRect();
-      return (
-        r.top >= 0 &&
-        r.bottom <= innerHeight &&
-        r.left >= 0 &&
-        r.right <= innerWidth
-      );
-    });
-    expect(fits).toBe(true);
     await snap(page, info, "lobby-mode-menu-844x390");
     await page.click('[data-lobby-mode="bot-hard"]');
     await expect(menu).toBeHidden();

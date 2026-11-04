@@ -1,0 +1,100 @@
+/* ── Aero glass for the hub (Lobby, Plaza, Farm and their shared header) ──
+   Panels and buttons are frosted, see-through glass: a light tint, the
+   scene blurred behind it, a hairline rim and a bright top edge.
+
+   Blur over the Lobby is cheap: its backdrop is a still painting. The
+   Plaza and the Farm draw a canvas that changes every frame, so every
+   blurred panel over them is blurred again every frame. They keep the
+   glass at High graphics and drop the blur at Low (chosen in Settings, or
+   picked automatically when the frame rate can't keep up): a deeper tint
+   then keeps the text readable.
+
+   Loaded after every other stylesheet (main.ts imports it last). */
+:root {
+  --aero-tint: rgba(22, 36, 68, 0.52);
+  /* Without blur the scene shows through sharp: a deeper tint. */
+  --aero-tint-solid: rgba(14, 26, 49, 0.86);
+  --aero-line: rgba(190, 215, 255, 0.3);
+  --aero-blur: blur(16px) saturate(1.5);
+  --aero-sheen: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.12),
+    rgba(255, 255, 255, 0.03) 48%,
+    rgba(255, 255, 255, 0) 52%
+  );
+  --aero-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 8px 22px rgba(0, 0, 0, 0.3);
+}
+
+/* The Lobby's own colour tokens become glass (its cards mix --lobby-glass
+   into their gradients, so it stays a colour). */
+.lobby-layer {
+  --lobby-glass: var(--aero-tint);
+  --lobby-line: var(--aero-line);
+}
+
+/* Glass pieces. */
+:root
+  body.hub-active
+  :is(#account-profile, #account-admin, .header-menu > summary),
+:root body.hub-active :is(#account-coins, #account-leaves) > *,
+:root .hub-scenes,
+.lobby-layer
+  :is(
+    .lobby-rail button,
+    .lobby-card,
+    .lobby-mode,
+    .lobby-emotes button,
+    .lobby-party-bar,
+    .lobby-mode-menu
+  ),
+.plaza-layer :is(.glass, .pz-round, .pz-act:not(.big, .pz-interact, .cd)),
+.farm-layer .glass {
+  background-color: var(--aero-tint);
+  -webkit-backdrop-filter: var(--aero-blur);
+  backdrop-filter: var(--aero-blur);
+  box-shadow: var(--aero-shadow);
+}
+/* The sheen on pieces with a plain fill (the cards keep their own art). */
+:root
+  body.hub-active
+  :is(#account-profile, #account-admin, .header-menu > summary),
+:root body.hub-active :is(#account-coins, #account-leaves) > *,
+:root .hub-scenes,
+.lobby-layer
+  :is(.lobby-rail button, .lobby-mode, .lobby-emotes button, .lobby-mode-menu),
+.plaza-layer :is(.glass, .pz-round, .pz-act:not(.big, .pz-interact, .cd)),
+.farm-layer .glass {
+  background-image: var(--aero-sheen);
+}
+/* Rims: the header pills keep their gold and green. */
+:root
+  body.hub-active
+  :is(#account-profile, #account-admin, .header-menu > summary),
+:root .hub-scenes,
+.lobby-layer :is(.lobby-rail button, .lobby-mode, .lobby-emotes button),
+.plaza-layer :is(.glass, .pz-round),
+.farm-layer .glass {
+  border-color: var(--aero-line);
+}
+/* The open mode menu is the one thing over the scene there: a touch
+   deeper, so its rows read at a glance. */
+.lobby-layer .lobby-mode-menu {
+  background-color: rgba(18, 30, 58, 0.72);
+}
+
+/* Low graphics on the Plaza or the Farm: no blur over the moving canvas. */
+.plaza-layer[data-graphics="low"]
+  :is(.glass, .pz-round, .pz-act:not(.big, .pz-interact, .cd)),
+.farm-layer[data-graphics="low"] .glass,
+:root
+  body:has(:is(.plaza-layer, .farm-layer)[data-graphics="low"])
+  :is(#account-profile, #account-admin, .header-menu > summary, .hub-scenes),
+:root
+  body:has(:is(.plaza-layer, .farm-layer)[data-graphics="low"])
+  :is(#account-coins, #account-leaves)
+  > * {
+  background-color: var(--aero-tint-solid);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
