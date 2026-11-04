@@ -645,8 +645,9 @@ Before and after: [Missions](images/step4/missions.webp),
   `ui/components.css` moves the stage and the emotes into the room right
   of the sheet. On phones the side cards make way (the sheet says what
   they say) and the stage takes the room above PLAY, so the fighter stays
-  whole: about 220 px wide at 1280×720, 330 px at 1440×900 and 150 px on
-  phones. The live rig keeps running behind a sheet (the spec compares
+  whole, if smaller: measured 310 px wide at 1440×900 (560 without the
+  sheet), 220 px at 1280×720 (494), 134 px at 844×390 (234) and 120 px
+  on the island phone (220), its smallest size. The live rig keeps running behind a sheet (the spec compares
   two pictures of it a few seconds apart) and PLAY stays usable. This
   keeps `lobby.css` untouched for the Lobby work going on in parallel.
 - **Journey is a panel** with Season · Levels · Weekly arcade as tabs in
@@ -702,6 +703,13 @@ Before and after: [Missions](images/step4/missions.webp),
   and the Missions parts of `shop-ui.test.ts` became `missions.test.ts`;
   `level-cosmetics`, `regular-raids`, `fitting-room` and `landscape-only`
   moved to the new screens. What they check stays.
+- **Verified:** typecheck, the unit tests and the build on the merged
+  commit; locally the visual specs of every screen this step touches
+  (missions, journey, lobby, lobby-fighter-rig, ui-foundation,
+  lobby-safe-area, fitting-room, level-cosmetics, regular-raids, roster,
+  dialogs: 68 tests) passed. Not verified: real phones, the live server.
+- **Process (owner, 4 Nov):** from step 4 on, work goes straight to `main`
+  once typecheck, tests and build pass; no pull request.
 
 ## Decisions (owner, 3 Nov 2026)
 
