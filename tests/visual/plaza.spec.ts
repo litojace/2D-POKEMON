@@ -19,7 +19,7 @@ async function hudBoxes(page: Page) {
       ["leaves", "#account-leaves > *"],
       ["menu", ".header-menu > summary"],
       ["event", "#pz-event"],
-      ["minimap", "#pz-mini"],
+      ["clock", "#pz-clock"],
       ["quests", "#pz-quests"],
       ["emote", ".pz-left"],
       ["actions", ".pz-actions"],
@@ -44,6 +44,8 @@ for (const viewport of [
     height: 393,
     inset: { left: 59, right: 59, bottom: 21, top: 0 },
   },
+  // The narrowest phone: the scene switch used to run into the coins.
+  { width: 667, height: 375, inset: null },
 ]) {
   test(`the Plaza HUD fits at ${viewport.width}x${viewport.height}${viewport.inset ? " with a Dynamic Island" : ""}`, async ({
     browser,
@@ -80,8 +82,10 @@ for (const viewport of [
       );
       const all = await hudBoxes(page);
       expect(all.map((b) => b.name)).toEqual(
-        expect.arrayContaining(["event", "minimap", "quests", "actions"]),
+        expect.arrayContaining(["event", "clock", "quests", "actions"]),
       );
+      // The minimap is gone (it cost a second canvas every other frame).
+      await expect(page.locator("#pz-mini")).toHaveCount(0);
       const left = viewport.inset?.left ?? 0,
         right = viewport.inset?.right ?? 0,
         bottom = viewport.inset?.bottom ?? 0;
@@ -93,6 +97,22 @@ for (const viewport of [
         expect(b.y + b.h, `${b.name} bottom`).toBeLessThanOrEqual(
           viewport.height - bottom + 1,
         );
+      }
+      // One frame: whatever sits by an edge keeps the header's margin from
+      // it (14 px, or the safe area where that is wider), so the header,
+      // the panels and the buttons line up down each side.
+      const ml = Math.max(14, left),
+        mr = Math.max(14, right),
+        mb = Math.max(14, bottom);
+      for (const b of all) {
+        if (b.x < ml + 30)
+          expect(b.x, `${b.name} left margin`).toBeCloseTo(ml, 0);
+        const gapR = viewport.width - (b.x + b.w);
+        if (gapR < mr + 30)
+          expect(gapR, `${b.name} right margin`).toBeCloseTo(mr, 0);
+        const gapB = viewport.height - (b.y + b.h);
+        if (gapB < mb + 30)
+          expect(gapB, `${b.name} bottom margin`).toBeCloseTo(mb, 0);
       }
       const clashes = all.flatMap((a, i) =>
         all

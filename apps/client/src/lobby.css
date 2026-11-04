@@ -5,9 +5,12 @@
    numbers change; numbers use tabular figures. */
 .lobby-layer {
   --lobby-top: 92px;
-  --lobby-gutter: max(14px, calc(var(--safe-left, 0px) + 8px));
-  --lobby-gutter-r: max(14px, calc(var(--safe-right, 0px) + 8px));
-  --lobby-bottom: max(18px, calc(var(--safe-bottom, 0px) + 6px));
+  /* The header's frame (style.css: max(14px, safe area) at the sides), so
+     the rail and the cards line up under the player card and the gear;
+     the bottom keeps the same margin. The Plaza and the Farm use it too. */
+  --lobby-gutter: max(14px, var(--safe-left, 0px));
+  --lobby-gutter-r: max(14px, var(--safe-right, 0px));
+  --lobby-bottom: max(14px, var(--safe-bottom, 0px));
   --lobby-rail: 60px;
   --lobby-cards: 272px;
   --lobby-glass: rgba(14, 26, 49, 0.84);
@@ -810,7 +813,6 @@
     --lobby-top: 58px;
     --lobby-rail: 36px;
     --lobby-cards: 196px;
-    --lobby-bottom: max(8px, calc(var(--safe-bottom, 0px) + 4px));
   }
   .lobby-rail {
     gap: 4px;
@@ -1144,6 +1146,23 @@ body:not(.hub-active) #account-leaves {
   #account-coins .coin-chip b,
   #account-leaves .coin-chip b {
     font-size: 14px;
+  }
+}
+/* The narrowest phones (iPhone SE, 640–700 px Android): the scene switch
+   and the two pills ran into each other (5 px over the coins at 667 px).
+   Slimmer tabs and pills leave at least 12 px between them down to 640. */
+@media (max-width: 700px) {
+  .hub-scenes button {
+    width: 56px;
+  }
+  body.hub-active #account-coins > *,
+  body.hub-active #account-leaves > * {
+    width: 76px;
+    padding: 0 8px;
+  }
+  #account-coins .coin-chip b,
+  #account-leaves .coin-chip b {
+    font-size: 13px;
   }
 }
 

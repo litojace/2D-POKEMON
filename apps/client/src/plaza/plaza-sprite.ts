@@ -63,15 +63,29 @@ function load(url: string): Promise<HTMLImageElement> {
     im.src = url;
   });
 }
+/**
+ * willReadFrequently keeps these small canvases in CPU memory: the check
+ * reads their pixels back, and reading a GPU canvas stalls the frame (it
+ * cost the Plaza seconds of frames while the townsfolk's sprites baked).
+ * Drawing them into the Plaza's canvas is a single upload each.
+ */
 function paint(im: CanvasImageSource): HTMLCanvasElement {
   const c = document.createElement("canvas");
   c.width = SPRITE_W;
   c.height = SPRITE_H;
-  c.getContext("2d")!.drawImage(im, 0, 0, SPRITE_W, SPRITE_H);
+  c.getContext("2d", { willReadFrequently: true })!.drawImage(
+    im,
+    0,
+    0,
+    SPRITE_W,
+    SPRITE_H,
+  );
   return c;
 }
 const pixels = (c: HTMLCanvasElement) =>
-  c.getContext("2d")!.getImageData(0, 0, SPRITE_W, SPRITE_H).data;
+  c
+    .getContext("2d", { willReadFrequently: true })!
+    .getImageData(0, 0, SPRITE_W, SPRITE_H).data;
 
 /**
  * A fighter's sprite for the canvas: the full drawing when this browser
