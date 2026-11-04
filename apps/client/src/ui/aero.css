@@ -1,30 +1,46 @@
-/* ── Aero glass for the hub (Lobby, Plaza, Farm and their shared header) ──
-   Panels and buttons are frosted glass: a tint deep enough to read on
-   (72%; 52% was too faint over the busy scenes), the
-   scene blurred behind it, a hairline rim and a bright top edge.
+/* ── Iridescent glass for the hub (Lobby, Plaza, Farm and their header) ──
+   Flat and modern: no glossy sheen, no bevel, no drop shadows. Panels and
+   buttons are see-through glass (a 64% tint, the scene blurred behind
+   it) with a faint mother-of-pearl wash and a hairline rainbow rim.
+
+   Each piece is three background layers, so the rim follows its rounded
+   corners: the wash and --glass-fill inside the border (padding-box), the
+   rim gradient under the transparent border (border-box). A card with its
+   own colour sets --glass-fill to its gradient; hover and focus set
+   --glass-rim to gold.
 
    Blur over the Lobby is cheap: its backdrop is a still painting. The
    Plaza and the Farm draw a canvas that changes every frame, so every
    blurred panel over them is blurred again every frame. They keep the
-   glass at High graphics and drop the blur at Low (chosen in Settings, or
-   picked automatically when the frame rate can't keep up): a deeper tint
-   then keeps the text readable.
+   blur at High graphics and drop it at Low (chosen in Settings, or picked
+   automatically when the frame rate can't keep up), with a deeper tint.
 
    Loaded after every other stylesheet (main.ts imports it last). */
 :root {
-  --aero-tint: rgba(20, 33, 62, 0.72);
+  --aero-tint: rgba(20, 33, 62, 0.64);
   /* Without blur the scene shows through sharp: a deeper tint. */
   --aero-tint-solid: rgba(14, 26, 49, 0.9);
   --aero-line: rgba(190, 215, 255, 0.3);
   --aero-blur: blur(16px) saturate(1.5);
-  --aero-sheen: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.12),
-    rgba(255, 255, 255, 0.03) 48%,
-    rgba(255, 255, 255, 0) 52%
+  --iris-wash: linear-gradient(
+    125deg,
+    rgba(255, 140, 210, 0.13),
+    rgba(160, 150, 255, 0.1) 28%,
+    rgba(120, 220, 255, 0.08) 52%,
+    rgba(150, 255, 210, 0.08) 74%,
+    rgba(255, 225, 150, 0.12)
   );
-  --aero-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 8px 22px rgba(0, 0, 0, 0.3);
+  --iris-rim: linear-gradient(
+    120deg,
+    rgba(255, 154, 213, 0.75),
+    rgba(183, 163, 255, 0.7) 25%,
+    rgba(143, 216, 255, 0.7) 50%,
+    rgba(159, 243, 208, 0.7) 75%,
+    rgba(255, 231, 163, 0.75)
+  );
+  --gold-rim: linear-gradient(#ffd65b, #ffd65b);
+  --glass-fill: linear-gradient(var(--aero-tint), var(--aero-tint));
+  --glass-rim: var(--iris-rim);
 }
 
 /* The Lobby's own colour tokens become glass (its cards mix --lobby-glass
@@ -34,7 +50,7 @@
   --lobby-line: var(--aero-line);
 }
 
-/* Glass pieces. */
+/* The glass pieces. */
 :root
   body.hub-active
   :is(#account-profile, #account-admin, .header-menu > summary),
@@ -51,37 +67,69 @@
   ),
 .plaza-layer :is(.glass, .pz-round, .pz-act:not(.big, .pz-interact, .cd)),
 .farm-layer .glass {
-  background-color: var(--aero-tint);
+  border-color: transparent;
+  background:
+    var(--iris-wash) padding-box,
+    var(--glass-fill) padding-box,
+    var(--glass-rim) border-box;
   -webkit-backdrop-filter: var(--aero-blur);
   backdrop-filter: var(--aero-blur);
-  box-shadow: var(--aero-shadow);
+  box-shadow: none;
 }
-/* The sheen on pieces with a plain fill (the cards keep their own art). */
-:root
-  body.hub-active
-  :is(#account-profile, #account-admin, .header-menu > summary),
-:root body.hub-active :is(#account-coins, #account-leaves) > *,
-:root .hub-scenes,
-.lobby-layer
-  :is(.lobby-rail button, .lobby-mode, .lobby-emotes button, .lobby-mode-menu),
-.plaza-layer :is(.glass, .pz-round, .pz-act:not(.big, .pz-interact, .cd)),
-.farm-layer .glass {
-  background-image: var(--aero-sheen);
+
+/* Cards with their own colour keep it under the wash. */
+.lobby-layer .lobby-farm-card {
+  --glass-fill: linear-gradient(
+    120deg,
+    rgba(63, 122, 51, 0.6),
+    var(--aero-tint) 72%
+  );
 }
-/* Rims: the header pills keep their gold and green. */
-:root
-  body.hub-active
-  :is(#account-profile, #account-admin, .header-menu > summary),
-:root .hub-scenes,
-.lobby-layer :is(.lobby-rail button, .lobby-mode, .lobby-emotes button),
-.plaza-layer :is(.glass, .pz-round),
-.farm-layer .glass {
-  border-color: var(--aero-line);
+.lobby-layer .lobby-raid-card {
+  --glass-fill: linear-gradient(
+    120deg,
+    rgba(122, 82, 214, 0.55),
+    var(--aero-tint) 72%
+  );
 }
 /* The open mode menu is the one thing over the scene there: a touch
    deeper, so its rows read at a glance. */
 .lobby-layer .lobby-mode-menu {
-  background-color: rgba(16, 28, 54, 0.84);
+  --glass-fill: linear-gradient(rgba(16, 28, 54, 0.8), rgba(16, 28, 54, 0.8));
+}
+
+/* Hover and keyboard focus: a gold rim, as before. */
+:root body.hub-active .header-menu > summary:is(:hover, :focus-visible),
+.lobby-layer
+  :is(.lobby-rail button, .lobby-card, .lobby-mode, .lobby-emotes button):is(
+    :hover,
+    :focus-visible
+  ),
+.plaza-layer
+  :is(.pz-round, .pz-act:not(.big, .pz-interact, .cd)):is(
+    :hover,
+    :focus-visible
+  ) {
+  --glass-rim: var(--gold-rim);
+}
+
+/* Flat call-to-action buttons: one solid colour, no bevel or shadow; a
+   press shrinks them a touch instead of sinking them. */
+.lobby-layer .lobby-play-button,
+.plaza-layer .pz-act.big {
+  background: #ffd04a;
+  box-shadow: none;
+}
+.plaza-layer .pz-act.big {
+  border-color: transparent;
+}
+.plaza-layer .pz-interact {
+  background: #4fd27a;
+  box-shadow: none;
+}
+.lobby-layer .lobby-play-button:active {
+  transform: scale(0.97);
+  box-shadow: none;
 }
 
 /* Low graphics on the Plaza or the Farm: no blur over the moving canvas. */
@@ -95,7 +143,7 @@
   body:has(:is(.plaza-layer, .farm-layer)[data-graphics="low"])
   :is(#account-coins, #account-leaves)
   > * {
-  background-color: var(--aero-tint-solid);
+  --glass-fill: linear-gradient(var(--aero-tint-solid), var(--aero-tint-solid));
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
