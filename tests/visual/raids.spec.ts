@@ -113,7 +113,18 @@ async function centred(
   label: string,
   o: { across?: boolean } = {},
 ) {
-  const ink = await inkOffset(page, page.locator(selector).first());
+  const target = page.locator(selector).first();
+  const ink = await inkOffset(page, target);
+  // Measured within the borders: a tab's 3 px underline (its bottom border)
+  // is not part of the space its label is centred in. Its label sits midway
+  // between the top and the underline, and against the whole box it read
+  // 1-1.5 px high (1.5 with CI's fonts). Even borders change nothing.
+  ink.dy += await target.evaluate((e) => {
+    const cs = getComputedStyle(e);
+    return (
+      (parseFloat(cs.borderBottomWidth) - parseFloat(cs.borderTopWidth)) / 2
+    );
+  });
   expect(
     Math.abs(ink.dx),
     `${label}: ink ${ink.dx},${ink.dy} px off centre`,
