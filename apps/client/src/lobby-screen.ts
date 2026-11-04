@@ -18,6 +18,7 @@ import type { ShopPreviewHandle } from "./shop-preview";
 import { elementIcon } from "./element-icons";
 import { picksCountdown } from "./shop-ui";
 import "./lobby.css";
+import { fadeIn } from "./ui/motion";
 
 /**
  * The Lobby: the one-screen hub after login (hub redesign phase 2). Your
@@ -276,6 +277,8 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   <button type="button" class="lobby-play-button" id="lobby-play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.6v12.8a1.1 1.1 0 0 0 1.7.93l10-6.4a1.1 1.1 0 0 0 0-1.86l-10-6.4A1.1 1.1 0 0 0 8 5.6z"/></svg><span>PLAY</span></button>
 </div>`;
   document.body.append(layer);
+  // Each hub scene (Lobby, Plaza, Farm) fades in as you switch to it.
+  fadeIn([layer], 260);
   document.body.classList.add("hub-screen");
   const $ = <T extends HTMLElement>(id: string) =>
     layer.querySelector<T>(`#${id}`)!;

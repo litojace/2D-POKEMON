@@ -1,5 +1,6 @@
 import { lowGraphics } from "../graphics-quality";
 import { confirmModal, type ConfirmOptions } from "./components";
+import { enter, fadeIn, glide, leave, stagger } from "./motion";
 
 /**
  * The hub's screen shell (UI remodel rule 1): a screen opens *inside* the
@@ -32,7 +33,24 @@ const COVERED = [
   ".lobby-emotes",
   ".lobby-play",
 ];
-let current: { panel: HubPanel; close: () => void } | undefined;
+let current:
+  { panel: HubPanel; close: (replaced?: boolean) => void } | undefined;
+/** Lobby parts a screen that was replaced still covers, for the next one. */
+let handoff: HTMLElement[] = [];
+/** What a screen's contents are: they arrive one after another. */
+const ITEMS =
+  ".ui-tabs, .ui-panel-body [data-ui-item], .ui-panel-body .ui-row, .ui-panel-body .ui-tile, .ui-panel-foot";
+const items = (root: HTMLElement) => {
+  const found = Array.from(root.querySelectorAll(ITEMS));
+  return found.length > 1
+    ? found
+    : Array.from(root.querySelectorAll(".ui-panel-body > *, .ui-panel-foot"));
+};
+/** The selected tab(s), to tell a tab switch from a refresh. */
+const selectedTabs = (root: HTMLElement) =>
+  Array.from(root.querySelectorAll('[role="tab"][aria-selected="true"]'))
+    .map((t) => t.outerHTML.match(/data-ui-[\w-]+="[^"]*"/)?.[0] ?? "")
+    .join("|");
 const uncover = (el: HTMLElement) => {
   el.inert = false;
   delete el.dataset.uiCovered;
@@ -43,7 +61,7 @@ export const openHubPanelNow = () => current?.panel;
 export const PANEL_EVENT = "ui-panel-change";
 
 export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
-  current?.close();
+  current?.close(true);
   const host =
     o.host ??
     document.querySelector<HTMLElement>(".lobby-layer") ??
@@ -51,8 +69,20 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
   const returnFocus = document.activeElement as HTMLElement | null;
   const wrap = document.createElement("div");
   wrap.className = "ui-panel-host";
-  let covered: HTMLElement[] = [];
+  let covered: HTMLElement[] = handoff;
+  handoff = [];
   let closed = false;
+  // The Lobby's stage (fighter, party, nameplate) and the emotes under it
+  // glide to their new place when a sheet opens or closes.
+  const gliders = () =>
+    [
+      {
+        el: host.querySelector<HTMLElement>(":scope > .lobby-stage")!,
+        anchor: host.querySelector<HTMLElement>("#lobby-fighter"),
+        scale: true,
+      },
+      { el: host.querySelector<HTMLElement>(":scope > .lobby-emotes")! },
+    ].filter((t) => t.el);
 
   const mount = (markup: string) => {
     wrap.innerHTML = markup;
@@ -62,19 +92,26 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
     root.dataset.graphics = lowGraphics() ? "low" : "high";
     // A sheet leaves the Lobby usable; a panel covers it: the parts behind
     // leave the tab order and stop drawing (nothing peeks out at the edges).
-    for (const el of covered) uncover(el);
-    const sheet = root.classList.contains("ui-sheet");
-    // The Lobby re-centres its stage beside a sheet (ui/components.css).
-    host.toggleAttribute("data-ui-sheet", sheet);
-    covered = sheet
-      ? []
-      : COVERED.flatMap((s) =>
-          Array.from(host.querySelectorAll<HTMLElement>(`:scope ${s}`)),
-        );
-    for (const el of covered) {
-      el.inert = true;
-      el.dataset.uiCovered = "";
-    }
+    const sheet = root.classList.contains("ui-sheet"),
+      before = covered;
+    const apply = () => {
+      for (const el of before) uncover(el);
+      // The Lobby re-centres its stage beside a sheet (ui/components.css).
+      host.toggleAttribute("data-ui-sheet", sheet);
+      covered = sheet
+        ? []
+        : COVERED.flatMap((s) =>
+            Array.from(host.querySelectorAll<HTMLElement>(`:scope ${s}`)),
+          );
+      for (const el of covered) {
+        el.inert = true;
+        el.dataset.uiCovered = "";
+      }
+    };
+    if (host.hasAttribute("data-ui-sheet") !== sheet) glide(gliders(), apply);
+    else apply();
+    // Lobby parts that come back into view (a panel gave way to a sheet).
+    fadeIn(before.filter((el) => !covered.includes(el)));
     return root;
   };
   const railButton = o.rail
@@ -95,15 +132,34 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
   const onClick = (event: MouseEvent) => {
     if ((event.target as Element).closest("[data-ui-close]")) close();
   };
-  function close() {
+  /** `replaced`: another screen opens in its place, so the Lobby stays as
+   * it is and the next screen takes it from there. */
+  function close(replaced = false) {
     if (closed) return;
     closed = true;
     gone?.disconnect();
     document.removeEventListener("keydown", onKey);
-    for (const el of covered) uncover(el);
-    host.removeAttribute("data-ui-sheet");
+    if (replaced) handoff = covered;
+    else {
+      const back = covered;
+      for (const el of back) uncover(el);
+      if (host.hasAttribute("data-ui-sheet"))
+        glide(gliders(), () => host.removeAttribute("data-ui-sheet"));
+      fadeIn(back);
+    }
     railButton?.removeAttribute("aria-current");
-    wrap.remove();
+    // The screen slides away and fades; it's already out of reach.
+    wrap.inert = true;
+    wrap.style.pointerEvents = "none";
+    wrap.querySelectorAll<HTMLElement>(".ui-panel").forEach((el) => {
+      el.style.pointerEvents = "none";
+    });
+    void leave(root, {
+      opacity: 0,
+      transform: root.classList.contains("ui-sheet")
+        ? "translateX(-28px)"
+        : "translateX(-16px) scale(.99)",
+    }).then(() => wrap.remove());
     if (current?.panel === panel) current = undefined;
     if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
     document.dispatchEvent(new Event(PANEL_EVENT));
@@ -130,6 +186,15 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
   // Tab then reaches its tabs and buttons.
   root.tabIndex = -1;
   root.focus({ preventScroll: true });
+  // In from the rail: a sheet slides further, a panel also grows a touch;
+  // then its contents arrive one after another.
+  enter(root, {
+    opacity: 0,
+    transform: root.classList.contains("ui-sheet")
+      ? "translateX(-36px)"
+      : "translateX(-24px) scale(.985)",
+  });
+  stagger(items(root));
 
   const panel: HubPanel = {
     get root() {
@@ -146,8 +211,12 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
             .map((a) => `[${a.name}="${CSS.escape(a.value)}"]`)
             .join("")
         : "";
+      const tabs = selectedTabs(root);
       root = mount(markup);
       root.tabIndex = -1;
+      // Another tab: its contents arrive like the screen's did.
+      if (tabs && selectedTabs(root) !== tabs)
+        stagger(items(root), { delay: 0, rise: 8 });
       if (key)
         root.querySelector<HTMLElement>(key)?.focus({ preventScroll: true });
     },
@@ -171,7 +240,18 @@ export function askConfirm(o: ConfirmOptions): Promise<boolean> {
     const scrim = wrap.firstElementChild as HTMLElement;
     const done = (answer: boolean) => {
       document.removeEventListener("keydown", onKey, true);
-      scrim.remove();
+      // The answer counts at once; the dialog then fades and sinks away.
+      scrim.removeAttribute("data-ui-confirm");
+      scrim.style.pointerEvents = "none";
+      const modal = scrim.querySelector(".ui-modal");
+      void Promise.all([
+        leave(scrim, { opacity: 0 }),
+        modal &&
+          leave(modal, {
+            opacity: 0,
+            transform: "translateY(10px) scale(.97)",
+          }),
+      ]).then(() => scrim.remove());
       if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
       resolve(answer);
     };
@@ -198,6 +278,11 @@ export function askConfirm(o: ConfirmOptions): Promise<boolean> {
     });
     document.addEventListener("keydown", onKey, true);
     document.body.append(scrim);
+    // The backdrop fades in and the dialog pops up from just below.
+    fadeIn([scrim]);
+    const modal = scrim.querySelector(".ui-modal");
+    if (modal)
+      enter(modal, { opacity: 0, transform: "translateY(14px) scale(.95)" });
     scrim.querySelector<HTMLElement>("[data-ui-confirm-ok]")?.focus();
   });
 }
