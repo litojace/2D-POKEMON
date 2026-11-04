@@ -13,8 +13,13 @@ export interface PlazaScreenOptions {
   socket: Socket;
   character: CharacterId;
   skin: { skin: string; stage?: number } | null;
-  /** An image URL for a fighter in a skin (canvas sprite). */
-  art(character: string, skin: { skin: string; stage?: number } | null): string;
+  /** An image URL for a fighter in a skin (canvas sprite); `flat` leaves
+   * out the masked overlays some browsers draw wrong (plaza-sprite.ts). */
+  art(
+    character: string,
+    skin: { skin: string; stage?: number } | null,
+    flat?: boolean,
+  ): string;
   skinName(skin: string): string | null;
   fighterName(character: string): string;
   playerName(): string;

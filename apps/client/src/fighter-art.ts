@@ -70,8 +70,18 @@ export function fighterArt(
   id: CharacterId,
   viewBox?: string,
   look?: SkinLook | null,
+  /** Without masked overlays (see creatureLayers). */
+  flat = false,
 ) {
-  return creatureSvg(id, "down", undefined, viewBox, "normal", look).replace(
+  return creatureSvg(
+    id,
+    "down",
+    undefined,
+    viewBox,
+    "normal",
+    look,
+    flat,
+  ).replace(
     "<svg ",
     `<svg role="img" data-fighter="${id}" aria-label="${CHARACTERS[id].name}" `,
   );
