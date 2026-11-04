@@ -18,10 +18,7 @@
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import {
-  FIGHTER_IDS,
-  TEAM_TUNING,
-} from "../../packages/shared/src/index.ts";
+import { FIGHTER_IDS, TEAM_TUNING } from "../../packages/shared/src/index.ts";
 
 const args = process.argv.slice(2);
 const opt = (name: string) => {
@@ -98,7 +95,10 @@ for (let r = 1; r <= rounds; r++) {
   const next: Record<string, number> = {};
   for (const id of FIGHTER_IDS) {
     const step = Math.max(-STEP, Math.min(STEP, (GAIN * (50 - avg(id))) / 100));
-    next[id] = +Math.max(LO, Math.min(HI, (factors[id] ?? 1) * (1 + step))).toFixed(4);
+    next[id] = +Math.max(
+      LO,
+      Math.min(HI, (factors[id] ?? 1) * (1 + step)),
+    ).toFixed(4);
   }
   writeFileSync(
     join(out, `round-${r}.json`),

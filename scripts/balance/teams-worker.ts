@@ -22,7 +22,9 @@ const factors: Record<string, number> =
   factorsFile === "-" ? {} : JSON.parse(readFileSync(factorsFile, "utf8"));
 for (const id of FIGHTER_IDS) TEAM_TUNING[id] = factors[id] ?? 1;
 
-let seed = 2024 + (difficulty === "hard" ? 0 : 1_000_003);
+// TEAMS_SEED picks another set of line-ups (to check tuned factors on fresh matches).
+let seed =
+  +(process.env.TEAMS_SEED ?? 2024) + (difficulty === "hard" ? 0 : 1_000_003);
 const random = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
 const rows: [string[], string[], number | null][] = [];
 for (let m = 0; m < +matches; m++) {

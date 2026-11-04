@@ -1698,7 +1698,24 @@ for (const character of Object.values(CHARACTERS))
  * and raids use the champions' own numbers. Tuned with
  * scripts/balance/tune-teams.ts.
  */
-export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {};
+export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
+  voltkit: 1.13,
+  cindrake: 0.899,
+  tidefin: 1.025,
+  auralynx: 0.889,
+  lumoth: 1.119,
+  mystowl: 1.148,
+  terradon: 0.881,
+  duskveil: 1.093,
+  coilemur: 0.904,
+  pyranda: 1.018,
+  glacelle: 1.01,
+  halcyra: 1.145,
+  sunbara: 1.037,
+  astrabun: 0.853,
+  wombolder: 0.949,
+  shadopus: 0.915,
+};
 /** A champion's strength factor in this mode (1 outside 2v2). */
 export function modeFactor(id: CharacterId, mode?: MatchMode) {
   return mode === "teams" ? (TEAM_TUNING[id] ?? 1) : 1;
