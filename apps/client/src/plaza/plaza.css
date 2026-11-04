@@ -240,14 +240,24 @@
   padding: 0.5em 0.6em;
   border-radius: 10px;
 }
+/* Plaza news (goals, laps, quests): bottom left, like the big games' kill
+   feeds and chat, right above the Emote, treat and Album buttons (4.4em at
+   1.15em); the newest line sits at the bottom and older ones rise. On touch
+   tablets those buttons stand up the left edge, so the feed takes the
+   corner itself; phones show no feed. */
 .plaza-layer .pz-feed {
   position: absolute;
   left: var(--hud-x-l);
-  top: var(--hud-row2);
+  bottom: calc(var(--hud-y-b) + 4.4em * 1.15 + var(--hud-gap));
   width: 280px;
-  display: grid;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-start;
   gap: 6px;
   pointer-events: none;
+}
+.plaza-layer.coarse .pz-feed {
+  bottom: var(--hud-y-b);
 }
 .plaza-layer .pz-feed div {
   display: flex;
@@ -901,10 +911,10 @@
   --hud-x-r: max(0px, 14px - var(--safe-right, 0px));
   --hud-y-b: max(0px, 14px - var(--safe-bottom, 0px));
   --hud-gap: 12px;
-  /* The row under the header: the player card is 60 px tall (phones 42). */
+  /* The row under the header: under the player card (--hub-card-h). */
   --hud-row2: calc(
-    max(10px, var(--safe-top, 0px)) - var(--safe-top, 0px) + 60px +
-      var(--hud-gap)
+    max(10px, var(--safe-top, 0px)) - var(--safe-top, 0px) +
+      var(--hub-card-h, 52px) + var(--hud-gap)
   );
   --hud-clock-h: 32px;
   position: fixed;
@@ -921,10 +931,6 @@
 }
 .plaza-layer.phone {
   --hud-gap: 10px;
-  --hud-row2: calc(
-    max(10px, var(--safe-top, 0px)) - var(--safe-top, 0px) + 42px +
-      var(--hud-gap)
-  );
   --hud-clock-h: 28px;
 }
 .plaza-layer .pz {

@@ -4,7 +4,8 @@
    and PLAY in the bottom right. Boxes keep fixed sizes so nothing shifts when
    numbers change; numbers use tabular figures. */
 .lobby-layer {
-  --lobby-top: 92px;
+  /* 22px under the player card (10px from the top, --hub-card-h tall). */
+  --lobby-top: calc(var(--hub-card-h) + 32px);
   /* The header's frame (style.css: max(14px, safe area) at the sides), so
      the rail and the cards line up under the player card and the gear;
      the bottom keeps the same margin. The Plaza and the Farm use it too. */
@@ -950,7 +951,7 @@
   .lobby-layer {
     /* 12px under the player card (42px from max(10px, safe area)), clear
        of a frame's star row hanging below it. */
-    --lobby-top: 64px;
+    --lobby-top: calc(var(--hub-card-h) + 22px);
     --lobby-rail: 36px;
     --lobby-rail-btn: 34px;
     --lobby-cards: 196px;
@@ -1156,12 +1157,15 @@
 }
 /* The player card's box and rows. The farm's badge (farm/farm.css) uses
    the same numbers, so the two cards match: same size, and their bars and
-   text rows at the same heights. */
+   text rows at the same heights. Two rows (name and level, then the XP
+   bar): the hub shows no title under the bar. The rows under the header
+   (Lobby, Plaza, Farm) are placed from --hub-card-h. */
 :root {
   --hub-card-w: 236px;
-  --hub-card-h: 60px;
+  --hub-card-h: 52px;
   --hub-card-pad: 6px 14px 6px 6px;
-  --hub-card-art: 46px;
+  /* The card's height less its padding and border, as on phones. */
+  --hub-card-art: 38px;
   /* The name row: as tall as the level pill. */
   --hub-card-row: 22px;
   --hub-card-gap: 3px;
@@ -1173,7 +1177,12 @@
   height: var(--hub-card-h);
   padding: var(--hub-card-pad);
   grid-template-columns: var(--hub-card-art) minmax(0, 1fr) 46px;
+  grid-template-areas: "art name level" "art xp xp";
+  align-content: center;
   row-gap: var(--hub-card-gap);
+}
+:root body.hub-active #account-profile .nav-title {
+  display: none;
 }
 :root body.hub-active #account-profile .account-avatar {
   width: var(--hub-card-art);

@@ -546,3 +546,15 @@ test("the dash track's lane is whole (no wedge cut out of it)", async ({
   expect(wedge.filter((c) => !isLane(c))).toEqual([]);
   expect(errors).toEqual([]);
 });
+
+// Arriving during an Orb Shower (the first minute of every quarter hour on
+// the UTC clock), the event pill shows its countdown: it used to stay
+// hidden until the next shower, since only the "starts in" state unhid it.
+test("the event pill shows when you arrive mid-shower", async ({ page }) => {
+  await page.clock.install({ time: new Date("2026-11-04T05:15:20Z") });
+  const errors = await openPlaza(page);
+  await page.clock.runFor(1500);
+  await expect(page.locator("#pz-event")).toBeVisible();
+  await expect(page.locator("#pz-event")).toContainText("left");
+  expect(errors).toEqual([]);
+});
