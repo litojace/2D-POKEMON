@@ -756,8 +756,87 @@
     sans-serif !important;
   letter-spacing: 0.1em;
 }
+/* PLAY stands out: a soft golden glow breathes behind it and a band of
+   light sweeps across it every few seconds. Both move only transform and
+   opacity; they rest under a screen (.is-covered), with reduced motion and
+   on Low graphics. The icon is drawn (an SVG): the ▶ character showed as a
+   blue emoji tile on iPhones. */
+.lobby-play-button {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.lobby-play-button svg {
+  width: 0.68em;
+  height: 0.68em;
+  flex: none;
+  fill: currentColor;
+}
 .lobby-play-button span {
-  font-size: 0.6em;
+  position: relative;
+  z-index: 1;
+}
+.lobby-play-button::after {
+  content: "";
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: 0;
+  width: 34%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.6) 45%,
+    rgba(255, 255, 255, 0.85) 50%,
+    rgba(255, 255, 255, 0.6) 55%,
+    transparent 100%
+  );
+  transform: translateX(-150%) skewX(-18deg);
+  pointer-events: none;
+  animation: lobby-play-sweep 4.2s ease-in-out 1.2s infinite;
+}
+@keyframes lobby-play-sweep {
+  0% {
+    transform: translateX(-150%) skewX(-18deg);
+  }
+  38%,
+  100% {
+    transform: translateX(400%) skewX(-18deg);
+  }
+}
+.lobby-play::before {
+  content: "";
+  position: absolute;
+  left: -14px;
+  right: -14px;
+  bottom: -16px;
+  height: calc(var(--lobby-play-button-h, 76px) + 32px);
+  border-radius: 34px;
+  background: radial-gradient(
+    closest-side,
+    rgba(255, 220, 110, 0.95),
+    rgba(255, 196, 50, 0.55) 62%,
+    transparent
+  );
+  filter: blur(12px);
+  opacity: 0.45;
+  transform: scale(1);
+  pointer-events: none;
+  z-index: -1;
+  animation: lobby-play-glow 2.6s ease-in-out infinite;
+}
+@keyframes lobby-play-glow {
+  50% {
+    opacity: 1;
+    transform: scale(1.08, 1.18);
+  }
+}
+.lobby-layer[data-graphics="low"] .lobby-play-button::after {
+  animation: none;
+  opacity: 0;
+}
+.lobby-layer[data-graphics="low"] .lobby-play::before {
+  animation: none;
 }
 .lobby-play-button:hover,
 .lobby-play-button:focus-visible {
@@ -988,6 +1067,9 @@
     border-radius: 14px;
     font-size: 28px !important;
   }
+  .lobby-play {
+    --lobby-play-button-h: 50px;
+  }
 
   .lobby-mode-menu button {
     min-height: 38px;
@@ -1012,6 +1094,13 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .lobby-play-button::after {
+    animation: none;
+    opacity: 0;
+  }
+  .lobby-play::before {
+    animation: none;
+  }
   .lobby-fighter-art,
   .lobby-member-art {
     animation: none;

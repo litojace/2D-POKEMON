@@ -75,6 +75,7 @@ import {
 } from "./plaza-album";
 import { bakeSprite } from "./plaza-sprite";
 import "./plaza.css";
+import { fadeIn } from "../ui/motion";
 
 const esc = (s) =>
   String(s).replace(
@@ -130,6 +131,8 @@ export function openPlaza(options) {
   layer.tabIndex = -1;
   layer.innerHTML = PLAZA_HTML;
   document.body.append(layer);
+  // Each hub scene (Lobby, Plaza, Farm) fades in as you switch to it.
+  fadeIn([layer], 260);
   const screen = layer;
   const $ = (id) => layer.querySelector(`#${id}`);
   const socket = options.socket;

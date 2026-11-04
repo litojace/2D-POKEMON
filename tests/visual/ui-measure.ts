@@ -1,4 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
+import { settle } from "./helpers";
 
 /**
  * The UI remodel's layout rules, measured (docs/ui-remodel/PLAN.md, "Tests").
@@ -37,6 +38,7 @@ export async function layoutProblems(
   page: Page,
   o: { inset?: Insets; phone?: boolean } = {},
 ) {
+  await settle(page);
   return page.evaluate(
     ({ inset, phone }) => {
       const out: string[] = [];
@@ -192,6 +194,7 @@ export async function layoutProblems(
 
 /** Close's distance from its panel's top-right corner, and its size. */
 export async function closeSpot(page: Page) {
+  await settle(page);
   return page.evaluate(() =>
     Array.from(document.querySelectorAll(".ui-panel")).map((p) => {
       const c = p.querySelector(".ui-close")!.getBoundingClientRect();
