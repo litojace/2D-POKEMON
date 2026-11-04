@@ -262,7 +262,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   <button type="button" class="lobby-card lobby-friends-card" data-lobby-action="friends" id="lobby-friends-card"><span class="lobby-card-kicker">Friends</span><b id="lobby-friends-online">Friends online</b><small>Invite, join or watch</small></button>
 </aside>
 <div class="lobby-emotes" role="group" aria-label="Emotes" data-open="false">
-  <button type="button" class="lobby-emote-toggle" aria-expanded="false" aria-label="Emotes" title="Emotes">😊</button>
+  <button type="button" class="lobby-emote-toggle" aria-expanded="false" aria-label="Emotes" title="Emotes">😊<span aria-hidden="true">Emotes</span></button>
   <div class="lobby-emote-list">${EMOTES.map((e) => `<button type="button" data-lobby-emote="${e}" aria-label="Emote ${e}">${e}</button>`).join("")}</div>
 </div>
 <div class="lobby-play">

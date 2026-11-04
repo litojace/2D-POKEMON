@@ -264,6 +264,77 @@ for (const view of [
   });
 }
 
+// The rail keeps 12px under the player card (its frame's star row hangs
+// below the card), the emote tile is the rail's last tile in the bottom-left
+// corner, and the emotes open up that column instead of over the fighter's
+// arrows.
+for (const view of [
+  { width: 932, height: 430, inset: { left: 59, right: 59, bottom: 21 } },
+  { width: 667, height: 375, inset: null },
+  { width: 1024, height: 768, inset: null },
+]) {
+  test(`the rail and the emote tile share a column at ${view.width}x${view.height}`, async ({
+    browser,
+  }) => {
+    const touch = view.width < 1100;
+    const context = await browser.newContext({
+      viewport: { width: view.width, height: view.height },
+      isMobile: touch,
+      hasTouch: touch,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openLobby(page);
+      if (view.inset)
+        await page.evaluate((inset) => {
+          for (const [key, value] of Object.entries(inset))
+            document.documentElement.style.setProperty(
+              `--safe-${key}`,
+              `${value}px`,
+            );
+        }, view.inset);
+      const rect = (s: string) =>
+        page.evaluate((s) => {
+          const r = document.querySelector(s)!.getBoundingClientRect();
+          return { l: r.left, t: r.top, r: r.right, b: r.bottom, w: r.width };
+        }, s);
+      const card = await rect("#account-profile"),
+        first = await rect(".lobby-rail button"),
+        last = await rect(".lobby-rail button:last-child"),
+        tile = await rect(".lobby-emote-toggle"),
+        play = await rect("#lobby-play");
+      expect(first.t - card.b, "rail under the card").toBeGreaterThanOrEqual(
+        12,
+      );
+      expect([tile.l, tile.w], "tile in the rail's column").toEqual([
+        first.l,
+        first.w,
+      ]);
+      expect(tile.t - last.b, "tile under the rail").toBeGreaterThanOrEqual(10);
+      expect(
+        Math.abs(tile.b - play.b),
+        "tile on PLAY's bottom line",
+      ).toBeLessThan(1);
+      await page.click(".lobby-emote-toggle");
+      const list = await rect(".lobby-emote-list");
+      expect(list.t, "emotes under the card").toBeGreaterThanOrEqual(card.b);
+      for (const arrow of ['[data-lobby-step="-1"]', '[data-lobby-step="1"]']) {
+        const a = await rect(arrow);
+        expect(
+          list.r <= a.l || a.r <= list.l || list.b <= a.t || a.b <= list.t,
+          `emotes clear of ${arrow}`,
+        ).toBe(true);
+      }
+      await expect(page.locator(".lobby-rail")).toBeHidden();
+      await page.click('[data-lobby-emote="👋"]');
+      await expect(page.locator("#lobby-emote-bubble")).toHaveText("👋");
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+}
+
 test("the mode menu picks and remembers a mode, and the scene switch opens the Plaza", async ({
   browser,
 }, info) => {

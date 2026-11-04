@@ -12,6 +12,8 @@
   --lobby-gutter-r: max(14px, var(--safe-right, 0px));
   --lobby-bottom: max(14px, var(--safe-bottom, 0px));
   --lobby-rail: 60px;
+  /* A rail button's height, and the emote tile's under the rail. */
+  --lobby-rail-btn: 56px;
   --lobby-cards: 272px;
   /* The mode button (56px), the gap (8px) and PLAY (76px). */
   --lobby-play-h: 140px;
@@ -64,10 +66,13 @@
   z-index: 1;
 }
 
-/* Menu rail. */
+/* Menu rail: one column from under the player card down to the emote
+   tile in the bottom-left corner (12px above it). Its buttons shrink to
+   fit when the screen is short (phones), never below 28px. */
 .lobby-rail {
   left: var(--lobby-gutter);
   top: var(--lobby-top);
+  bottom: calc(var(--lobby-bottom) + var(--lobby-rail-btn) + 12px);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -78,8 +83,9 @@
   place-items: center;
   align-content: center;
   gap: 2px;
+  flex: 0 1 var(--lobby-rail-btn);
   width: var(--lobby-rail);
-  height: 56px;
+  min-height: 28px;
   padding: 0;
   border: 1px solid var(--lobby-line);
   border-radius: 14px;
@@ -602,9 +608,12 @@
   color: #a0afc8 !important;
 }
 
-/* Emotes (bottom left, next to the rail). */
+/* Emotes: a tile in the rail's column, in the bottom-left corner (on
+   PLAY's bottom line). The emotes open up that column in the rail's place
+   (a row to the right ran into the fighter's arrows on phones and
+   tablets), the way the mode menu takes the cards' place. */
 .lobby-emotes {
-  left: calc(var(--lobby-gutter) + var(--lobby-rail) + 12px);
+  left: var(--lobby-gutter);
   bottom: var(--lobby-bottom);
   display: flex;
   align-items: center;
@@ -623,12 +632,46 @@
     800 20px/1 "Barlow Condensed",
     sans-serif;
 }
+.lobby-emotes .lobby-emote-toggle {
+  align-content: center;
+  gap: 2px;
+  width: var(--lobby-rail);
+  height: var(--lobby-rail-btn);
+  border-radius: 14px;
+  font-size: 22px;
+}
+.lobby-emotes .lobby-emote-toggle span {
+  font:
+    700 10px/1 "DM Sans",
+    sans-serif;
+  letter-spacing: 0.02em;
+  color: #c9d6ee;
+}
 .lobby-emote-list {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 12px);
   display: none;
-  gap: 6px;
+  flex-direction: column;
+  gap: 8px;
+  height: calc(
+    100dvh - var(--lobby-top) - var(--lobby-bottom) - var(--lobby-rail-btn) -
+      12px
+  );
 }
 .lobby-emotes[data-open="true"] .lobby-emote-list {
   display: flex;
+}
+.lobby-emotes .lobby-emote-list button {
+  flex: 0 1 var(--lobby-rail-btn);
+  width: var(--lobby-rail);
+  height: auto;
+  min-height: 28px;
+  border-radius: 14px;
+  font-size: 22px;
+}
+.lobby-layer:has(.lobby-emotes[data-open="true"]) .lobby-rail {
+  visibility: hidden;
 }
 
 /* Mode and PLAY (bottom right). */
@@ -808,9 +851,7 @@
   .lobby-layer {
     /* Mode 42px, gap 6px, PLAY 50px. */
     --lobby-play-h: 98px;
-  }
-  .lobby-rail button {
-    height: 48px;
+    --lobby-rail-btn: 48px;
   }
   .lobby-rail {
     gap: 6px;
@@ -828,16 +869,32 @@
 /* Phones in landscape (and short windows): compact everything. */
 @media (max-height: 500px) {
   .lobby-layer {
-    --lobby-top: 58px;
+    /* 12px under the player card (42px from max(10px, safe area)), clear
+       of a frame's star row hanging below it. */
+    --lobby-top: 64px;
     --lobby-rail: 36px;
+    --lobby-rail-btn: 34px;
     --lobby-cards: 196px;
   }
   .lobby-rail {
     gap: 4px;
   }
-  .lobby-rail button {
-    height: 34px;
+  .lobby-rail button,
+  .lobby-emotes .lobby-emote-toggle {
     border-radius: 10px;
+  }
+  .lobby-emotes .lobby-emote-toggle,
+  .lobby-emotes .lobby-emote-list button {
+    font-size: 17px;
+  }
+  .lobby-emote-list {
+    gap: 4px;
+  }
+  .lobby-emotes .lobby-emote-list button {
+    border-radius: 10px;
+  }
+  .lobby-emotes .lobby-emote-toggle span {
+    display: none;
   }
   .lobby-rail svg {
     width: 18px;

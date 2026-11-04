@@ -1,5 +1,6 @@
 /* ── Aero glass for the hub (Lobby, Plaza, Farm and their shared header) ──
-   Panels and buttons are frosted, see-through glass: a light tint, the
+   Panels and buttons are frosted glass: a tint deep enough to read on
+   (72%; 52% was too faint over the busy scenes), the
    scene blurred behind it, a hairline rim and a bright top edge.
 
    Blur over the Lobby is cheap: its backdrop is a still painting. The
@@ -11,9 +12,9 @@
 
    Loaded after every other stylesheet (main.ts imports it last). */
 :root {
-  --aero-tint: rgba(22, 36, 68, 0.52);
+  --aero-tint: rgba(20, 33, 62, 0.72);
   /* Without blur the scene shows through sharp: a deeper tint. */
-  --aero-tint-solid: rgba(14, 26, 49, 0.86);
+  --aero-tint-solid: rgba(14, 26, 49, 0.9);
   --aero-line: rgba(190, 215, 255, 0.3);
   --aero-blur: blur(16px) saturate(1.5);
   --aero-sheen: linear-gradient(
@@ -80,7 +81,7 @@
 /* The open mode menu is the one thing over the scene there: a touch
    deeper, so its rows read at a glance. */
 .lobby-layer .lobby-mode-menu {
-  background-color: rgba(18, 30, 58, 0.72);
+  background-color: rgba(16, 28, 54, 0.84);
 }
 
 /* Low graphics on the Plaza or the Farm: no blur over the moving canvas. */
