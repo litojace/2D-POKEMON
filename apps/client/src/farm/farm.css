@@ -1874,7 +1874,7 @@
 /* phone: an open sheet is a focused mode, so the HUD it would half-cover steps aside */
 .farm-layer.phone
   .fm-hud:has(.fm-sheet:not([hidden]))
-  :is(.fm-weather, .fm-chips, .fm-tools, .fm-hint, .fm-orbpop) {
+  :is(.fm-badge, .fm-weather, .fm-chips, .fm-tools, .fm-hint, .fm-orbpop) {
   visibility: hidden;
 }
 /* item pictures: lighter disc in the rarity colour and a bigger crop, so every row reads at a glance */
@@ -2311,6 +2311,16 @@ body.hub-farm #toast {
     bottom: calc(max(14px, var(--safe-bottom, 0px)) + 72px);
   }
 }
+/* While the first-visit hint shows (it sits where the toast goes: 112px up
+   on desktop, 8px over the tool bar on phones), the toast rises over it. */
+body.hub-farm:has(.fm-hint:not(.done)) #toast {
+  bottom: calc(var(--safe-bottom, 0px) + 144px);
+}
+@media (max-height: 500px) {
+  body.hub-farm:has(.fm-hint:not(.done)) #toast {
+    bottom: calc(max(14px, var(--safe-bottom, 0px)) + 102px);
+  }
+}
 .farm-layer.phone .fm-tools {
   bottom: var(--hud-y-b);
   gap: 4px;
@@ -2365,7 +2375,9 @@ body.hub-farm #toast {
 .farm-layer.phone .fm-sheet {
   left: var(--hud-x-l);
   right: 112px;
-  top: 52px;
+  /* 10px under the player card (10px from the top, --hub-card-h tall), the
+     Plaza's second row; it touched the card. */
+  top: calc(var(--hub-card-h, 42px) + 20px);
   bottom: var(--hud-y-b);
   width: auto;
   font-size: 12px;
