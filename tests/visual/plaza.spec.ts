@@ -331,3 +331,128 @@ test("a treat from your barn bursts for everyone, and T throws one too", async (
   ).toBe(2);
   expect(errors).toEqual([]);
 });
+
+test("townsfolk keep a quiet Plaza lively, marked as bots, with no card", async ({
+  page,
+}, info) => {
+  test.setTimeout(120_000);
+  const errors = await openPlaza(page);
+  // Stand at the top of the square: the runway, the dance spot and the café.
+  await page.evaluate(() => (window as any).__plazaPosition(1350, 760));
+  const folk = () =>
+    page.evaluate(() =>
+      [...(window as any).__plaza.others.values()]
+        .filter((b: any) => b.bot)
+        .map((b: any) => b.name),
+    );
+  await expect
+    .poll(folk, { timeout: 20_000 })
+    .toEqual(
+      expect.arrayContaining(["Dancer", "Runway Model", "Café Regular"]),
+    );
+  // They are bots to the client too, and the Plaza counts only you.
+  const world = await page.evaluate(() => {
+    const w = (window as any).__plazaWorld;
+    return {
+      population: w.population(1),
+      folk: w.copies.get(1).folk.map((f: any) => f.profile.bot),
+    };
+  });
+  expect(world.population).toBe(1);
+  expect(world.folk.length).toBeGreaterThanOrEqual(8);
+  expect(world.folk.every(Boolean)).toBe(true);
+  // Tapping one opens no player card (no Add friend for an NPC). Stand
+  // below the dancer, so they're mid-screen and not under the top bar.
+  await page.evaluate(() => (window as any).__plazaPosition(1480, 840));
+  await page.waitForTimeout(4000);
+  const spot = await page.evaluate(() => {
+    const p = (window as any).__plaza,
+      dancer = [...p.others.values()].find((b: any) => b.name === "Dancer");
+    return p.worldClient(dancer.x, dancer.y - 30);
+  });
+  expect(spot.y).toBeGreaterThan(150);
+  expect(spot.y).toBeLessThan(700);
+  expect(
+    await page.evaluate(
+      ([x, y]) => document.elementFromPoint(x, y)?.id,
+      [spot.x, spot.y],
+    ),
+  ).toBe("pz-cv");
+  await page.mouse.click(spot.x, spot.y);
+  await page.waitForTimeout(300);
+  await expect(page.locator("#pz-card")).toBeHidden();
+  await expect(page.locator(".plaza-layer #pz-cv")).toBeVisible();
+  await snap(page, info, "plaza-townsfolk");
+  expect(errors).toEqual([]);
+});
+
+test("Jump and Dash work while the other thumb holds the joystick", async ({
+  browser,
+}) => {
+  test.setTimeout(120_000);
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openPlaza(page);
+    const centre = (s: string) =>
+      page.locator(s).evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      });
+    const joy = await centre("#pz-joy"),
+      jumpAt = await centre("#pz-jump"),
+      dashAt = await centre("#pz-dash");
+    // What the server did, sampled in the page (this machine is too slow to
+    // catch a 0.65 s jump from the test runner).
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__peak = { air: 0, dash: 0 };
+      setInterval(() => {
+        const b = w.__plazaWorld.bodyOf("local");
+        if (b.air > 0) w.__peak.air++;
+        if (b.dash > 0) w.__peak.dash++;
+      }, 10);
+    });
+    const peak = () => page.evaluate(() => ({ ...(window as any).__peak }));
+    const cdp = await context.newCDPSession(page);
+    const touch = (
+      type: "touchStart" | "touchMove" | "touchEnd",
+      points: { x: number; y: number; id: number }[],
+    ) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: points });
+    const thumb = { x: joy.x, y: joy.y, id: 1 };
+    // The left thumb holds the joystick to the right: you walk.
+    await touch("touchStart", [thumb]);
+    await touch("touchMove", [{ ...thumb, x: joy.x + 45 }]);
+    const me = () =>
+      page.evaluate(() => {
+        const b = (window as any).__plazaWorld.bodyOf("local");
+        return { x: b.x };
+      });
+    const before = await me();
+    await expect
+      .poll(async () => (await me()).x, { timeout: 5000 })
+      .toBeGreaterThan(before.x + 20);
+    // The right thumb taps Jump while still walking: you jump.
+    const held = { ...thumb, x: joy.x + 45 };
+    await touch("touchStart", [held, { ...jumpAt, id: 2 }]);
+    await touch("touchEnd", [held]);
+    await expect
+      .poll(async () => (await peak()).air, { timeout: 3000 })
+      .toBeGreaterThan(0);
+    await page.waitForTimeout(900);
+    // …and taps Dash: you dash.
+    await touch("touchStart", [held, { ...dashAt, id: 3 }]);
+    await touch("touchEnd", [held]);
+    await expect
+      .poll(async () => (await peak()).dash, { timeout: 3000 })
+      .toBeGreaterThan(0);
+    await touch("touchEnd", []);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});

@@ -2,9 +2,13 @@ import {
   LapTimer,
   ORB_SHOWER,
   PLAZA,
+  PLAZA_CAFE,
   PLAZA_CHEER_SECONDS,
   PLAZA_EMOTES,
   PLAZA_FLAG,
+  PLAZA_GATE,
+  PLAZA_HURDLES,
+  PLAZA_PHOTO,
   PLAZA_PITCH,
   PLAZA_SPAWN,
   PLAZA_SQUARE,
@@ -21,6 +25,9 @@ import {
   plazaSpotAt,
   plazaStep,
   plazaStick,
+  onTrack,
+  trackPoint,
+  trackPolar,
   type PlazaBall,
   type PlazaBody,
   type PlazaEmote,
@@ -70,12 +77,35 @@ interface Bot {
   body: PlazaBody;
   profile: PlazaProfile;
 }
+/** What a townsperson does all day (the prototype's NPC brains). */
+type FolkAi = "wander" | "runway" | "track" | "dance" | "cafe" | "photo";
+interface Folk {
+  /** Which of TOWNSFOLK this is. */
+  index: number;
+  ai: FolkAi;
+  body: PlazaBody;
+  profile: PlazaProfile;
+  /** Where they're walking to, and seconds to stand still first. */
+  tx: number | null;
+  ty: number;
+  wait: number;
+  /** Runway step, or angle round the track. */
+  step: number;
+  angle: number;
+  emote: number;
+  emoteUntil: number;
+  /** Walking out of the gate to make room for players. */
+  leaving: boolean;
+  /** Seconds spent pushing against something without getting anywhere. */
+  stuck: number;
+}
 interface Copy {
   id: number;
   ball: PlazaBall;
   last: { key?: string };
   score: [number, number];
   bots: Bot[];
+  folk: Folk[];
   shower: string | null;
   orbs: Map<number, { id: number; x: number; y: number; at: number }>;
   nextOrbAt: number;
@@ -95,6 +125,102 @@ const BOT_LOOKS = [
   ["Red Bot", "cindrake"],
   ["Red Bot", "duskveil"],
 ] as const;
+
+/**
+ * Townsfolk: NPCs who keep a quiet Plaza lively, as in the approved
+ * prototype (docs/hub-redesign/prototype/app/plaza.js). They are marked as
+ * bots (role names, not player names; no card, no Add friend), wear Shop
+ * skins, and step aside as players arrive. They never count for anything:
+ * no population, laps, cheers, orbs, goals, treats or news.
+ */
+export const TOWNSFOLK: readonly {
+  name: string;
+  character: string;
+  skin: { skin: string; stage: number } | null;
+  ai: FolkAi;
+  /** Runway: which side of the catwalk they come and go (-1 left, 1 right). */
+  side?: -1 | 1;
+  /** Track: their lane (0 inner, 1 outer) and pace (radians a second). */
+  lane?: number;
+  pace?: number;
+}[] = [
+  {
+    name: "Stroller",
+    character: "mystowl",
+    skin: { skin: "mystowl-oracle", stage: 2 },
+    ai: "wander",
+  },
+  {
+    name: "Runway Model",
+    character: "lumoth",
+    skin: { skin: "lumoth-aurora", stage: 1 },
+    ai: "runway",
+    side: -1,
+  },
+  {
+    name: "Jogger",
+    character: "terradon",
+    skin: { skin: "terradon-world-shell", stage: 1 },
+    ai: "track",
+    lane: 0.3,
+    pace: 0.62,
+  },
+  {
+    name: "Dancer",
+    character: "voltkit",
+    skin: { skin: "voltkit-stormcrown", stage: 2 },
+    ai: "dance",
+  },
+  {
+    name: "Café Regular",
+    character: "lumoth",
+    skin: { skin: "lumoth-starweaver", stage: 1 },
+    ai: "cafe",
+  },
+  {
+    name: "Photographer",
+    character: "halcyra",
+    skin: { skin: "halcyra-paper-crane", stage: 1 },
+    ai: "photo",
+  },
+  {
+    name: "Sightseer",
+    character: "pyranda",
+    skin: { skin: "pyranda-harvest-moon", stage: 1 },
+    ai: "wander",
+  },
+  {
+    name: "Runway Model",
+    character: "tidefin",
+    skin: { skin: "tidefin-moontide", stage: 2 },
+    ai: "runway",
+    side: 1,
+  },
+  {
+    name: "Sprinter",
+    character: "auralynx",
+    skin: { skin: "auralynx-stained-glass", stage: 1 },
+    ai: "track",
+    lane: 0.72,
+    pace: 0.52,
+  },
+];
+/** Townsfolk in a copy: all of them for one player, one fewer for each more. */
+export const townsfolkFor = (players: number) =>
+  Math.max(0, Math.min(TOWNSFOLK.length, TOWNSFOLK.length - (players - 1)));
+/** The runway walk: up the catwalk, pose on the stage, back down. */
+const RUNWAY_STEPS = (side: number) =>
+  [
+    [1350 + side * 170, 680],
+    [1350, 640],
+    [1350, 590],
+    [1350, 470],
+    [1350, 395],
+    [1350, 470],
+    [1350 + side * 170, 690],
+  ] as const;
+const emoteIndex = (e: (typeof PLAZA_EMOTES)[number]) =>
+  PLAZA_EMOTES.indexOf(e) + 1;
 
 export class PlazaWorld {
   private visitors = new Map<string, Visitor>();
@@ -208,12 +334,82 @@ export class PlazaWorld {
           },
         };
       }),
+      folk: [],
       shower: null,
       orbs: new Map(),
       nextOrbAt: now,
     };
     this.copies.set(id, c);
+    // The first player finds the townsfolk already about their day.
+    this.syncFolk(c, 1, true);
     return c;
+  }
+  /** Keep the right number of townsfolk: newcomers walk in at the gate,
+   * and the last to arrive walk out first to make room for players. */
+  private syncFolk(c: Copy, players: number, settled = false) {
+    const want = townsfolkFor(players),
+      staying = c.folk
+        .filter((f) => !f.leaving)
+        .sort((a, b) => a.index - b.index);
+    for (let i = staying.length; i > want; i--) staying[i - 1].leaving = true;
+    // Someone on the way out turns back if the room is needed again.
+    for (const f of c.folk)
+      if (f.leaving && staying.length < want && f.index < want) {
+        f.leaving = false;
+        f.tx = null;
+        staying.push(f);
+      }
+    const taken = new Set(c.folk.map((f) => f.index));
+    for (let index = 0; index < want; index++) {
+      if (taken.has(index)) continue;
+      const def = TOWNSFOLK[index],
+        home = settled ? this.folkHome(def.ai, index) : PLAZA_GATE;
+      c.folk.push({
+        index,
+        ai: def.ai,
+        body: plazaBody(home.x, home.y),
+        profile: {
+          id: this.nextId++,
+          name: def.name,
+          title: null,
+          titleColor: null,
+          level: null,
+          character: def.character,
+          skin: def.skin ? { ...def.skin } : null,
+          bot: true,
+        },
+        tx: null,
+        ty: 0,
+        wait: this.random() * 2,
+        step: 0,
+        angle: -Math.PI / 2 - index * 0.9,
+        emote: 0,
+        emoteUntil: 0,
+        leaving: false,
+        stuck: 0,
+      });
+    }
+  }
+  /** Where a townsperson starts when the Plaza opens. */
+  private folkHome(ai: FolkAi, index: number) {
+    const a = index * 1.7;
+    switch (ai) {
+      case "runway":
+        return { x: 1350 + (TOWNSFOLK[index].side ?? 1) * 170, y: 685 };
+      case "track":
+        return trackPoint(-Math.PI / 2 - index * 0.9, TOWNSFOLK[index].lane);
+      case "dance":
+        return { x: 1480, y: 650 };
+      case "cafe":
+        return { x: PLAZA_CAFE.x - 70, y: PLAZA_CAFE.y + 70 };
+      case "photo":
+        return { x: PLAZA_PHOTO.x, y: PLAZA_PHOTO.y + 30 };
+      default:
+        return plazaCollide({
+          x: PLAZA_SQUARE.x + Math.cos(a) * PLAZA_SQUARE.rx * 0.7,
+          y: PLAZA_SQUARE.y + Math.sin(a) * PLAZA_SQUARE.ry * 0.7,
+        });
+    }
   }
   /** The stick: clamped to length 1; non-numbers count as standing still. */
   input(key: string, dx: unknown, dy: unknown) {
@@ -344,6 +540,32 @@ export class PlazaWorld {
   private stepCopy(c: Copy, dt: number, now: number, events: PlazaEvent[]) {
     const players = [...this.visitors.values()].filter((v) => v.plaza === c.id);
     for (const bot of c.bots) plazaStep(bot.body, this.botStick(c, bot), dt);
+    this.syncFolk(c, players.length);
+    for (const f of c.folk) {
+      if (f.emote && now >= f.emoteUntil) f.emote = 0;
+      const stick = this.folkStick(f, dt, now);
+      plazaStep(f.body, stick, dt);
+      // Walking into a wall, a house or the fountain: try somewhere else.
+      if (
+        Math.hypot(stick.x, stick.y) > 0.5 &&
+        f.body.speed < 40 &&
+        !f.body.stun
+      )
+        f.stuck += dt;
+      else f.stuck = 0;
+      if (f.stuck > 2.5 && !f.leaving) {
+        f.stuck = 0;
+        f.tx = null;
+        f.step++;
+      }
+    }
+    // Gone through the gate (or slipped away where the way out was blocked).
+    c.folk = c.folk.filter(
+      (f) =>
+        !f.leaving ||
+        (f.stuck <= 2.5 &&
+          Math.hypot(f.body.x - PLAZA_GATE.x, f.body.y - PLAZA_GATE.y) > 30),
+    );
     const touch = [
       ...players.map((v) => ({ key: v.key, body: v.body })),
       ...c.bots.map((b) => ({ key: b.key, body: b.body })),
@@ -369,6 +591,120 @@ export class PlazaWorld {
         });
     }
     this.stepOrbs(c, players, now, events);
+  }
+  /** A townsperson's emote, seen by everyone in the copy. */
+  private folkEmote(f: Folk, e: (typeof PLAZA_EMOTES)[number], now: number) {
+    f.emote = emoteIndex(e);
+    f.emoteUntil = now + PLAZA.emoteSeconds * 1000;
+  }
+  /** Townsfolk brains, after the prototype's (no orb chasing: they can't
+   * catch orbs, and no news: they never post as players do). */
+  private folkStick(f: Folk, dt: number, now: number) {
+    const b = f.body,
+      toward = (x: number, y: number) => {
+        const dx = x - b.x,
+          dy = y - b.y,
+          d = Math.hypot(dx, dy);
+        return d < 8 ? { x: 0, y: 0, d } : { x: dx / d, y: dy / d, d };
+      };
+    if (f.leaving) return toward(PLAZA_GATE.x, PLAZA_GATE.y);
+    if (f.wait > 0) {
+      f.wait -= dt;
+      return { x: 0, y: 0 };
+    }
+    switch (f.ai) {
+      case "wander": {
+        if (f.tx === null) {
+          const a = this.random() * Math.PI * 2,
+            r = 0.45 + this.random() * 0.5,
+            p = plazaCollide({
+              x: PLAZA_SQUARE.x + Math.cos(a) * PLAZA_SQUARE.rx * r,
+              y: PLAZA_SQUARE.y + Math.sin(a) * PLAZA_SQUARE.ry * r,
+            });
+          f.tx = p.x;
+          f.ty = p.y;
+        }
+        const d = toward(f.tx, f.ty);
+        if (d.d < 10) {
+          f.tx = null;
+          f.wait = 1 + this.random() * 3;
+          if (this.random() < 0.35)
+            this.folkEmote(
+              f,
+              (["👋", "😂", "GG", "🔥", "❤️", "😎"] as const)[
+                Math.floor(this.random() * 6)
+              ],
+              now,
+            );
+          if (this.random() < 0.2) plazaJump(b);
+        }
+        return d;
+      }
+      case "runway": {
+        const steps = RUNWAY_STEPS(TOWNSFOLK[f.index].side ?? 1),
+          at = f.step % steps.length,
+          [x, y] = steps[at],
+          d = toward(x, y);
+        if (d.d < 10) {
+          if (at === 4) {
+            f.wait = 3.2;
+            this.folkEmote(f, this.random() < 0.5 ? "😎" : "💃", now);
+          } else if (at === 6) f.wait = 6 + this.random() * 6;
+          f.step++;
+        }
+        return d;
+      }
+      case "track": {
+        const def = TOWNSFOLK[f.index];
+        f.angle += dt * (def.pace ?? 0.55);
+        const p = trackPoint(f.angle, def.lane),
+          q = trackPolar(b.x, b.y);
+        // Jump the hurdle just ahead.
+        if (
+          onTrack(b.x, b.y) &&
+          PLAZA_HURDLES.some((h) => {
+            const ahead = ((h - q.a + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+            return ahead > 0 && ahead < 0.17;
+          })
+        )
+          plazaJump(b);
+        return toward(p.x, p.y);
+      }
+      case "dance": {
+        const d = toward(1480, 650);
+        if (d.d < 12) {
+          if (!f.emote && this.random() < 0.02) this.folkEmote(f, "💃", now);
+          return { x: 0, y: 0 };
+        }
+        return d;
+      }
+      case "cafe": {
+        const d = toward(PLAZA_CAFE.x - 70, PLAZA_CAFE.y + 70);
+        if (d.d < 10) {
+          if (!f.emote && this.random() < 0.004) this.folkEmote(f, "😎", now);
+          return { x: 0, y: 0 };
+        }
+        return d;
+      }
+      case "photo": {
+        if (f.tx === null) {
+          f.tx = PLAZA_PHOTO.x + (this.random() - 0.5) * 60;
+          f.ty = PLAZA_PHOTO.y + 30 + (this.random() - 0.5) * 30;
+        }
+        const d = toward(f.tx, f.ty);
+        if (d.d < 10) {
+          f.wait = 4;
+          this.folkEmote(f, "👏", now);
+          // Now and then a stroll to the square and back.
+          if (this.random() < 0.5) f.tx = null;
+          else {
+            f.tx = PLAZA_SQUARE.x - 120;
+            f.ty = PLAZA_SQUARE.y - 60;
+          }
+        }
+        return d;
+      }
+    }
   }
   /** Pitch bots: get behind the ball and push it at the other goal (the prototype's brain). */
   private botStick(c: Copy, bot: Bot) {
@@ -538,6 +874,8 @@ export class PlazaWorld {
       if (v.plaza === me.plaza && (v === me || see(v.body)))
         add(v.body, v.profile, v.version, v.emote, false);
     for (const b of c.bots) if (see(b.body)) add(b.body, b.profile, 1, 0, true);
+    for (const f of c.folk)
+      if (see(f.body)) add(f.body, f.profile, 1, f.emote, true);
     const pitchInView =
       Math.abs((PLAZA_PITCH.x0 + PLAZA_PITCH.x1) / 2 - me.body.x) <
         PLAZA.view.w / 2 + 400 &&

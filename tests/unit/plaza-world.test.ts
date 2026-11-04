@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { PlazaWorld } from "../../apps/server/src/plaza";
+import {
+  PlazaWorld,
+  TOWNSFOLK,
+  townsfolkFor,
+} from "../../apps/server/src/plaza";
+import { CHAMPION_SKIN_BY_ID } from "../../packages/shared/src/shop";
+import { FIGHTER_IDS } from "../../packages/shared/src/index";
 import {
   ORB_SHOWER,
   PLAZA,
@@ -48,18 +54,100 @@ describe("the Plaza world", () => {
     expect(world.plazaOf("s1")).toBeUndefined();
     place(world, "s2", 300, 1300);
     const view = world.view("s2")!;
-    expect(view.state.walkers).toHaveLength(1); // the pitch bots are out of view
+    // Nobody else but bots (the townsfolk jog the track nearby); the pitch
+    // bots are out of view.
+    expect(
+      view.state.walkers.filter((w) => !(w[5] & PLAZA_FLAG.bot)),
+    ).toHaveLength(1);
+    const pitchBot = (p: { name: string }) => / Bot$/.test(p.name);
+    expect(view.profiles.filter(pitchBot)).toHaveLength(0);
     expect(view.state.ball).toBeUndefined();
     place(world, "s2", PLAZA_PITCH.x0 - 60, 900);
     const near = world.view("s2")!;
-    const bots = near.state.walkers.filter((w) => w[5] & PLAZA_FLAG.bot);
-    expect(bots).toHaveLength(4);
-    expect(near.profiles.filter((p) => p.bot)).toHaveLength(4);
+    expect(near.profiles.filter((p) => p.bot && pitchBot(p))).toHaveLength(4);
     expect(near.state.ball).toBeDefined();
     // Profiles are sent once.
     expect(world.view("s2")!.profiles).toEqual([]);
     world.leave("s2");
     expect(world.size).toBe(0);
+  });
+
+  it("fills a quiet Plaza with townsfolk who never count for anything", () => {
+    // A seeded random, so the townsfolk's day is the same every run.
+    let seed = 7;
+    const world = new PlazaWorld(() => {
+      seed = (seed * 16807) % 2147483647;
+      return seed / 2147483647;
+    });
+    world.join("s1", "acc-1", profile("Ann"), QUIET);
+    const folk = () =>
+      (world as any).copies.get(1).folk as {
+        leaving: boolean;
+        profile: { id: number; name: string; bot?: boolean };
+        body: { x: number; y: number };
+      }[];
+    // Alone, all of them are about; each is a marked bot in a real Shop skin.
+    expect(folk()).toHaveLength(TOWNSFOLK.length);
+    for (const t of TOWNSFOLK) {
+      expect(FIGHTER_IDS).toContain(t.character);
+      if (t.skin) {
+        expect(CHAMPION_SKIN_BY_ID[t.skin.skin]?.champion).toBe(t.character);
+      }
+      expect(t.name).not.toMatch(/\d/);
+    }
+    expect(folk().every((f) => f.profile.bot)).toBe(true);
+    // Each runway model and runner keeps to their own side or lane.
+    const runway = TOWNSFOLK.filter((t) => t.ai === "runway").map(
+      (t) => t.side,
+    );
+    const lanes = TOWNSFOLK.filter((t) => t.ai === "track").map((t) => t.lane);
+    expect(new Set(runway).size).toBe(runway.length);
+    expect(new Set(lanes).size).toBe(lanes.length);
+    // They move about, and nothing they do pays or makes news.
+    // They walk about (all but the dancer and the café regular, who stay
+    // put), and runners jump every hurdle: nobody trips.
+    const walked = folk().map(() => 0);
+    let trips = 0,
+      now = QUIET,
+      last = folk().map((f) => ({ ...f.body }));
+    const events = [];
+    for (let t = 0; t < 60; t += DT) {
+      now += DT * 1000;
+      events.push(...world.step(DT, now));
+      folk().forEach((f, i) => {
+        walked[i] += Math.hypot(f.body.x - last[i].x, f.body.y - last[i].y);
+        trips += (f.body as { stun?: number }).stun ? 1 : 0;
+      });
+      last = folk().map((f) => ({ ...f.body }));
+    }
+    expect(trips).toBe(0);
+    expect(walked.filter((d) => d > 500).length).toBe(
+      TOWNSFOLK.filter((t) => t.ai !== "dance" && t.ai !== "cafe").length,
+    );
+    const folkIds = new Set(folk().map((f) => f.profile.id));
+    expect(
+      events.filter(
+        (e) =>
+          e.type === "lap" ||
+          e.type === "cheers" ||
+          e.type === "orb" ||
+          e.type === "goal" ||
+          (e.type === "news" && folkIds.has((e.news as { id: number }).id)),
+      ),
+    ).toEqual([]);
+    // Only players count as the Plaza's population.
+    expect(world.view("s1")!.state.population).toBe(1);
+    // Players arrive: townsfolk walk out to make room, and come back later.
+    for (let i = 2; i <= 6; i++)
+      world.join(`s${i}`, `acc-${i}`, profile(`P${i}`), now);
+    const later = run(world, 90, now);
+    expect(folk()).toHaveLength(townsfolkFor(6));
+    for (let i = 2; i <= 6; i++) world.leave(`s${i}`);
+    run(world, 1, later.now);
+    expect(folk()).toHaveLength(TOWNSFOLK.length);
+    // Nobody is left once the last player goes (the copy stops).
+    world.leave("s1");
+    expect((world as any).copies.size).toBe(0);
   });
 
   it("opens a second copy when one is full", () => {

@@ -450,6 +450,12 @@
   gap: 10px;
   align-items: flex-end;
 }
+/* Two thumbs at once (joystick + Jump): no browser gesture on these
+   either (see .pz-joy). */
+.plaza-layer .pz-act,
+.plaza-layer .pz-round {
+  touch-action: none;
+}
 .plaza-layer .pz-act {
   width: 4.8em;
   height: 4.8em;
@@ -517,6 +523,9 @@
   border-radius: 5px;
   padding: 0 0.4em;
 }
+/* No browser gesture starts on the joystick: with a thumb on it, a second
+   finger on Jump or Dash read as a two-finger zoom, and the browser then
+   sent that finger no pointer events, so the button never pressed. */
 .plaza-layer .pz-joy {
   position: absolute;
   left: 0;
@@ -524,6 +533,7 @@
   width: 40%;
   height: 60%;
   display: none;
+  touch-action: none;
 }
 .plaza-layer.coarse .pz-joy {
   display: block;

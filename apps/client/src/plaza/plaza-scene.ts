@@ -3,7 +3,8 @@
  * The Plaza scene (hub redesign phase 3). The painting, the props, the
  * animals, the HUD and the touch model are ported from the approved
  * prototype (docs/hub-redesign/prototype/app/plaza.js). What changed: the
- * people are real players (and four pitch bots) that the game server moves;
+ * people are real players (plus four pitch bots and the townsfolk, NPCs who
+ * fill a quiet Plaza) that the game server moves;
  * the ball, the Orb Shower, lap times, runway cheers, quests and Volt Boba
  * all come from the server. The browser predicts only your own movement with
  * the same shared step. Ported drawing code is not type-checked line by
@@ -27,6 +28,7 @@ import {
   PLAZA_LEADER,
   PLAZA_LED,
   PLAZA_PADS,
+  PLAZA_PATHS,
   PLAZA_PHOTO,
   PLAZA_PITCH,
   PLAZA_POND,
@@ -320,85 +322,8 @@ export function openPlaza(options) {
           }
       }
     };
-    path(
-      [
-        [SQ.x, SQ.y + 200],
-        [SQ.x, GATE.y + 30],
-      ],
-      116,
-    );
-    path(
-      [
-        [SQ.x + 330, SQ.y],
-        [PITCH.x0 + 10, SQ.y],
-      ],
-      104,
-    );
-    path(
-      [
-        [SQ.x - 350, SQ.y],
-        [TRACK.cx + TRACK.ro[0] - 30, TRACK.cy],
-      ],
-      104,
-    );
-    path(
-      [
-        [SQ.x, SQ.y - 200],
-        [SQ.x, WALK.y1 - 10],
-      ],
-      116,
-    );
-    path(
-      [
-        [SQ.x + 220, SQ.y - 180],
-        [CAFE.x - 40, CAFE.y + 50],
-      ],
-      80,
-    );
-    path(
-      [
-        [SQ.x - 220, SQ.y - 180],
-        [PHOTO.x + 20, PHOTO.y + 50],
-      ],
-      80,
-    );
-    path(
-      [
-        [SQ.x - 240, SQ.y + 200],
-        [BOARD.x + 30, BOARD.y - 10],
-      ],
-      72,
-    );
-    path(
-      [
-        [SQ.x + 120, GATE.y - 200],
-        [POND.x - 170, POND.y - 40],
-      ],
-      72,
-    );
-    path(
-      [
-        [TRACK.cx - 40, TRACK.cy - TRACK.ro[1] - 10],
-        [LEADER.x + 20, LEADER.y + 30],
-      ],
-      64,
-    );
-    path(
-      [
-        [410, 330],
-        [410, 470],
-        [900, 520],
-      ],
-      64,
-    );
-    path(
-      [
-        [2300, 330],
-        [2300, 460],
-        [1900, 500],
-      ],
-      64,
-    );
+    // The paths are shared (PLAZA_PATHS), so scenery keeps off them.
+    for (const p of PLAZA_PATHS) path(p.pts, p.w);
     // plaza square: concentric pavers + elemental mosaic
     g.save();
     g.translate(SQ.x, SQ.y);
@@ -1163,25 +1088,42 @@ export function openPlaza(options) {
     start();
     screen.focus({ preventScroll: true });
   };
-  $("pz-jump").onclick = () => {
+  /**
+   * An action button that works while the other thumb holds the joystick: it
+   * acts on the press itself. Phones send a second finger pointer events but
+   * often no click, so Jump and Dash did nothing while moving. Enter or
+   * Space on the focused button still clicks (a click with no pointer
+   * press, detail 0); a pointer press has already acted on its own click.
+   */
+  function onPress(el, act) {
+    el.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      act();
+    });
+    el.addEventListener("click", (e) => {
+      if (e.detail === 0) act();
+    });
+  }
+  onPress($("pz-jump"), () => {
     start();
     jump();
     screen.focus({ preventScroll: true });
-  };
-  $("pz-dash").onclick = () => {
+  });
+  onPress($("pz-dash"), () => {
     start();
     dash();
     screen.focus({ preventScroll: true });
-  };
-  $("pz-interact").onclick = () => {
+  });
+  onPress($("pz-interact"), () => {
     interact();
     screen.focus({ preventScroll: true });
-  };
-  $("pz-treat").onclick = () => {
+  });
+  onPress($("pz-treat"), () => {
     start();
     throwTreat();
     screen.focus({ preventScroll: true });
-  };
+  });
   $("pz-wheel-btn").onclick = () => {
     start();
     toggleWheel();
@@ -2568,11 +2510,15 @@ export function openPlaza(options) {
     }
     if (b.stun > 0) rot = Math.sin(time * 30) * 0.12;
     drawSprite(g, im, b.x, b.y - b.z - bob, s, b.face, rot, sq);
-    g.font = "700 13px 'DM Sans', sans-serif";
+    // Bots (the pitch bots and the townsfolk) wear a quieter, italic name
+    // tag, so nobody mistakes them for players.
+    g.font = b.bot
+      ? "italic 600 12px 'DM Sans', sans-serif"
+      : "700 13px 'DM Sans', sans-serif";
     g.textAlign = "center";
     g.lineWidth = 3.5;
     g.strokeStyle = "rgba(11,16,32,.85)";
-    g.fillStyle = b.me ? "#ffd65b" : "#fff";
+    g.fillStyle = b.me ? "#ffd65b" : b.bot ? "#aebbe0" : "#fff";
     const ny = b.y - b.z - s * 0.92 - 6;
     g.strokeText(b.name, b.x, ny);
     g.fillText(b.name, b.x, ny);
