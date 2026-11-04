@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   CHARACTERS,
+  maxHealth,
   MUTATOR_RULES,
   RULES,
   roundsNeeded,
@@ -188,14 +189,14 @@ describe("element team-ups", () => {
     const shield = await pair("voltkit", "auralynx"),
       plain = await pair("voltkit", "voltkit");
     for (const t of [shield, plain]) t.damage(t.players[0], 20, "b", CHARACTERS.voltkit.basic);
-    const lost = (t: Arena) => CHARACTERS.voltkit.health - t.players[0].hp;
+    const lost = (t: Arena) => maxHealth("voltkit", "teams") - t.players[0].hp;
     expect(lost(shield)).toBeCloseTo(lost(plain) * 0.92, 5);
     const fire = await pair("voltkit", "cindrake");
     const victim = fire.players[1];
     fire.damage(victim, 20, "a", CHARACTERS.voltkit.basic);
     const plain2 = await pair("voltkit", "voltkit");
     plain2.damage(plain2.players[1], 20, "a", CHARACTERS.voltkit.basic);
-    const dealt = (t: Arena) => CHARACTERS.voltkit.health - t.players[1].hp;
+    const dealt = (t: Arena) => maxHealth("voltkit", "teams") - t.players[1].hp;
     expect(dealt(fire)).toBeCloseTo(dealt(plain2) * 1.06, 5);
   });
   it("gifts only work side by side", async () => {

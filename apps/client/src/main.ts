@@ -179,6 +179,8 @@ import {
   type Reply,
   type Snapshot,
   type Zone,
+  maxHealth,
+  basicInterval,
 } from "../../../packages/shared/src/index";
 import { AudioManager } from "./audio";
 import { InterpolationBuffer } from "./networking/interpolation";
@@ -2475,20 +2477,21 @@ function renderBattle() {
     battleHudSize.observe($("phase-label"));
     const c = CHARACTERS[me.character];
     $("abilities").innerHTML =
-      `<div class="basic-hint" title="${c.basic.name}: ${c.basic.description} No cooldown · ${Math.round((c.basic.interval ?? 0.3) * 1000)} ms between attacks."><kbd data-action="basic">${keyText("basic")}</kbd><span>${abilityIcon(c.basic.name)}<small>${c.basic.name.toUpperCase()}</small></span></div>${c.skills.map((a, i) => `<div class="ability" id="ability-${i}" style="--element:#${c.color.toString(16)}"><kbd data-action="${SKILL_ACTIONS[i]}">${keyText(SKILL_ACTIONS[i])}</kbd><span>${abilityIcon(a.name)}<small id="cooldown-${i}">READY</small></span><i class="cooldown-fill" id="fill-${i}"></i><i class="skill-cooldown-ring" aria-hidden="true"></i></div>`).join("")}<div class="movement-ability"><kbd data-action="dash">${keyText("dash")}</kbd><span>Dash<small id="dash-cd"></small></span></div><div class="movement-ability"><kbd data-action="jump">${keyText("jump")}</kbd><span>Jump<small id="jump-cd"></small></span></div>`;
+      `<div class="basic-hint" title="${c.basic.name}: ${c.basic.description} No cooldown · ${Math.round(basicInterval(c, false, state?.mode) * 1000)} ms between attacks."><kbd data-action="basic">${keyText("basic")}</kbd><span>${abilityIcon(c.basic.name)}<small>${c.basic.name.toUpperCase()}</small></span></div>${c.skills.map((a, i) => `<div class="ability" id="ability-${i}" style="--element:#${c.color.toString(16)}"><kbd data-action="${SKILL_ACTIONS[i]}">${keyText(SKILL_ACTIONS[i])}</kbd><span>${abilityIcon(a.name)}<small id="cooldown-${i}">READY</small></span><i class="cooldown-fill" id="fill-${i}"></i><i class="skill-cooldown-ring" aria-hidden="true"></i></div>`).join("")}<div class="movement-ability"><kbd data-action="dash">${keyText("dash")}</kbd><span>Dash<small id="dash-cd"></small></span></div><div class="movement-ability"><kbd data-action="jump">${keyText("jump")}</kbd><span>Jump<small id="jump-cd"></small></span></div>`;
   }
   hudOrder.forEach((p, i) => {
-    const c = CHARACTERS[p.character];
+    // 2v2 has its own health per champion (TEAM_TUNING).
+    const full = maxHealth(p.character, state!.mode);
     setHudStyle(
       $(`health-${i}`),
       "width",
-      `${(100 * Math.max(0, p.hp)) / c.health}%`,
+      `${(100 * Math.max(0, p.hp)) / full}%`,
     );
     setHudText(
       $(`health-text-${i}`),
       p.out
         ? "LEFT THE MATCH"
-        : `${Math.ceil(Math.max(0, p.hp))} / ${c.health} HP`,
+        : `${Math.ceil(Math.max(0, p.hp))} / ${full} HP`,
     );
     setHudText(
       $(`score-${i}`),
@@ -5402,7 +5405,7 @@ class ArenaScene extends Phaser.Scene {
       updateNameplateHealth(
         label,
         serverPlayer.hp,
-        c.health,
+        maxHealth(p.character, state.mode),
         p.id === myId
           ? "self"
           : state.raid || (isTeams() && teamOf(p) === myTeam)

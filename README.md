@@ -42,6 +42,8 @@ Create a private room, share its six-character code, select a fighter, and confi
 
 **2v2 team-ups:** partners within 260 px both deal 10% more damage, and each gives the other a gift from their element: faster basics (Electric), +6% damage (Fire), 2 health a second (Water), 8% less damage taken (Aura), faster skill recharge (Light), faster ultimate (Psychic), 40% less knockback (Earth), or +10% against slowed, burning or stunned foes (Shadow).
 
+**2v2 tuning:** 2v2 has its own health and basic-attack speed per champion (`TEAM_TUNING`; duels, free-for-all and raids keep the champions' own numbers), because melee champions are in reach far more often with two enemies on the field. With it, every champion's 2v2 team win rate is 47–55% in bot matches (it was 36–63%); tuned with `npx tsx scripts/balance/tune-teams.ts`, details in [docs/new-champions/README.md](docs/new-champions/README.md#2v2).
+
 **Mastery flair:** reaching a mastery tier with a fighter (Bronze 5, Silver 15, Gold 30, Crystal 60 matches) puts a ring in that tier's colour under them in matches; the server checks it against your records.
 
 **Every round:** in the last minute a ring closes from the whole court to the centre; outside it you lose 14 health a second. Orbs alternate between healing (green, +25% health) and energy (gold, +35% ultimate charge). In 2v2, partners close together get a team-up bonus (below).

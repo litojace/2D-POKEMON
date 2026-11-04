@@ -1690,11 +1690,54 @@ for (const character of Object.values(CHARACTERS))
   for (const skill of [character.basic, ...character.skills])
     skill.element = character.element;
 /** Seconds between basic attacks, including Kindle. */
-export function basicInterval(character: Character, empowered = false) {
-  return (
-    (character.basic.interval ?? 0.3) *
-    (empowered ? STATUS_RULES.empowerInterval : 1)
-  );
+/**
+ * 2v2 tuning, for the team mode only. With two enemies on the field melee
+ * champions are in reach far more often than in a duel, so 2v2 has its own
+ * strength factor per champion, in the same form as the duel tuning: health
+ * × f and basic-attack interval ÷ √f (rounded to 5 ms). Duels, free-for-all
+ * and raids use the champions' own numbers. Tuned with
+ * scripts/balance/tune-teams.ts.
+ */
+export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
+  voltkit: 1.134,
+  cindrake: 0.91,
+  tidefin: 1.028,
+  auralynx: 0.883,
+  lumoth: 1.127,
+  mystowl: 1.142,
+  terradon: 0.882,
+  duskveil: 1.092,
+  coilemur: 0.902,
+  pyranda: 1,
+  glacelle: 1.017,
+  halcyra: 1.126,
+  sunbara: 1.048,
+  astrabun: 0.855,
+  wombolder: 0.944,
+  shadopus: 0.921,
+};
+/** A champion's strength factor in this mode (1 outside 2v2). */
+export function modeFactor(id: CharacterId, mode?: MatchMode) {
+  return mode === "teams" ? (TEAM_TUNING[id] ?? 1) : 1;
+}
+/** A champion's full health in this mode. */
+export function maxHealth(id: CharacterId, mode?: MatchMode) {
+  const f = modeFactor(id, mode);
+  return f === 1
+    ? CHARACTERS[id].health
+    : Math.round(CHARACTERS[id].health * f);
+}
+/** Seconds between basic attacks, including Kindle, in this mode. */
+export function basicInterval(
+  character: Character,
+  empowered = false,
+  mode?: MatchMode,
+) {
+  const base = character.basic.interval ?? 0.3,
+    f = modeFactor(character.id, mode);
+  const interval =
+    f === 1 ? base : Math.round((base * 1000) / Math.sqrt(f) / 5) * 5 / 1000;
+  return interval * (empowered ? STATUS_RULES.empowerInterval : 1);
 }
 export interface Vec {
   x: number;
