@@ -1906,7 +1906,7 @@ function lobbyAction(action: LobbyAction) {
   else if (action === "wardrobe") void accountsUI.showWardrobe();
   else if (action === "shop") void accountsUI.showShop();
   else if (action === "raids") void showRaidBestiary();
-  else if (action === "journey") void accountsUI.showAdventure();
+  else if (action === "journey") void accountsUI.showJourney();
   else if (action === "missions") void accountsUI.showMissions();
   else if (action === "ranks") $("leaderboard").click();
   else if (action === "invite") void showPartyInvite();

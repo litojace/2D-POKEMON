@@ -10,7 +10,8 @@ import type { Locator, Page } from "@playwright/test";
  * - the HUD, the rail, an open panel and (beside a sheet) PLAY never overlap,
  *   and all stay inside the safe area;
  * - no button label is cut off;
- * - on phones every control can be hit across at least 44 px.
+ * - on phones every control in sight can be hit across at least 44 px
+ *   (one scrolled out of its list is checked once it is scrolled to).
  *
  * Each returns a list of problems (empty when the screen is right), so a
  * failure says exactly what is wrong.
@@ -62,6 +63,18 @@ export async function layoutProblems(
           .trim()
           .slice(0, 30);
       const near = (a: number, b: number) => Math.abs(a - b) <= 0.5;
+      /** Wholly in sight: not scrolled out of (or cut by) a scrolling box. */
+      const inView = (e: Element) => {
+        const r = R(e);
+        if (r.top < 0 || r.bottom > innerHeight) return false;
+        for (let p = e.parentElement; p; p = p.parentElement) {
+          if (!/(auto|scroll|hidden)/.test(getComputedStyle(p).overflowY))
+            continue;
+          const b = R(p);
+          if (r.top < b.top - 0.5 || r.bottom > b.bottom + 0.5) return false;
+        }
+        return true;
+      };
 
       // 1. Action groups: equal buttons on one line.
       for (const g of Array.from(document.querySelectorAll(".ui-actions"))) {
@@ -153,7 +166,7 @@ export async function layoutProblems(
           ),
         ).filter(shown)) {
           const r = R(e);
-          if (r.height >= 44) continue;
+          if (r.height >= 44 || !inView(e)) continue;
           const reach = (44 - r.height) / 2 - 1;
           for (const y of [r.top - reach, r.bottom + reach]) {
             const hit = document.elementFromPoint(r.left + r.width / 2, y);

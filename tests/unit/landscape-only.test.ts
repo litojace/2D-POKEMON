@@ -49,8 +49,9 @@ describe("shop grid", () => {
 describe("main screens", () => {
   it("share one fixed size, so switching tabs never resizes the window", () => {
     const css = readFileSync("apps/client/src/style.css", "utf8");
-    const rule = css.match(/dialog:is\(:has\(\.raid-hub\), :has\(\.missions-screen\)[^{]*\{[^}]*\}/)?.[0] ?? "";
-    for (const screen of [".missions-screen", ".profile-screen", ".friends-screen", "#leaderboard-body", ".admin-tabs"]) expect(rule).toContain(screen);
+    // Missions left for a sheet inside the Lobby (UI remodel step 4).
+    const rule = css.match(/dialog:is\(:has\(\.raid-hub\), :has\(\.profile-screen\)[^{]*\{[^}]*\}/)?.[0] ?? "";
+    for (const screen of [".profile-screen", ".friends-screen", "#leaderboard-body", ".admin-tabs"]) expect(rule).toContain(screen);
     // A fixed height, not just a cap.
     expect(rule).toMatch(/\n\s*height: var\(--hub-height\);/);
   });

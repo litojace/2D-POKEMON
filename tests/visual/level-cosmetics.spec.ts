@@ -10,7 +10,7 @@ import {
 } from "./helpers";
 
 // The Journey's Lv 55–100 cosmetics (migration 051): each one in the
-// Wardrobe, in the Journey dialog and worn in a real match, on a desktop and
+// Wardrobe, in the Journey and worn in a real match, on a desktop and
 // on a phone in landscape.
 const ITEMS = [
   { id: "prism-frame", slot: "frame", name: "Prism frame" },
@@ -244,7 +244,7 @@ for (const size of SIZES) {
     }
   });
 
-  test(`the Journey dialog lists and equips the Lv 55–100 rewards at ${tag}`, async ({
+  test(`the Journey lists and equips the Lv 55–100 rewards at ${tag}`, async ({
     browser,
   }, info) => {
     test.setTimeout(180_000);
@@ -258,50 +258,52 @@ for (const size of SIZES) {
       await fixtures(page);
       const errors = await openHub(page);
       await page.click('.lobby-rail [data-lobby-action="journey"]');
-      const dialog = page.locator("#dialog");
-      await expect(dialog.locator(".journey-level-badge b")).toHaveText("100");
+      const room = page.locator(".journey-room");
+      await page.click('[data-ui-jtab="levels"]');
+      await expect(room.locator(".journey-ring-text b")).toHaveText("100");
       for (const item of ITEMS) {
-        const card = dialog.locator(
-          `.journey-reward[data-journey-preview="${item.id}"]`,
+        const card = room.locator(
+          `.journey-prize[data-journey-item="${item.id}"]`,
         );
         await expect(card).toContainText(item.name);
         await expect(card).toContainText("✓ Earned");
       }
       await expect(
-        dialog.locator(".journey-reward").filter({ hasText: "LEVEL 100" }),
+        room.locator(".journey-prize").filter({ hasText: "Level 100" }),
       ).toHaveCount(2);
-      const prism = dialog.locator('[data-journey-preview="prism-frame"]');
+      const prism = room.locator('[data-journey-item="prism-frame"]');
       await prism.scrollIntoViewIfNeeded();
       await prism.click();
-      await expect(dialog.locator(".journey-preview h3")).toHaveText(
+      // Picked: the action bar names it and pictures it.
+      await expect(room.locator(".journey-foot-text b")).toHaveText(
         "Prism frame",
       );
       await expect(
-        dialog.locator('.journey-preview [data-cosmetic="prism-frame"]'),
+        room.locator('.journey-foot-art [data-cosmetic="prism-frame"]'),
       ).toHaveCount(1);
       await snap(page, info, `level-cosmetic-journey-${tag}`);
-      // Equip from the dialog: the shared appearance route, not the old
+      // Equip from the Journey: the shared appearance route, not the old
       // two-item one.
-      await dialog.locator('[data-journey-equip="prism-frame"]').click();
+      await room.locator('[data-journey-equip="prism-frame"]').click();
       await expect
         .poll(() => page.evaluate(() => (window as any).__equips.at(-1)))
         .toEqual({ slot: "frame", item: "prism-frame" });
       await expect(
-        dialog.locator('[data-journey-equip="prism-frame"]'),
+        room.locator('[data-journey-equip="prism-frame"]'),
       ).toContainText("Equipped");
-      await expect(dialog.locator(".adventure-status")).toHaveText("");
+      await expect(room.locator(".journey-status")).toHaveText("");
       await expect(
         page.locator("#account-profile [data-portrait-frame]"),
       ).toHaveAttribute("data-portrait-frame", "prism-frame");
-      // The last card is reachable and nothing is wider than the dialog.
-      const last = dialog.locator(
-        '[data-journey-preview="element-master-frame"]',
-      );
+      // The last card is reachable and nothing is wider than the panel.
+      const last = room.locator('[data-journey-item="element-master-frame"]');
       await last.scrollIntoViewIfNeeded();
       await expect(last).toBeInViewport();
       const fit = await page.evaluate(() => {
-        const d = document.querySelector("#dialog")!.getBoundingClientRect();
-        return [...document.querySelectorAll(".journey-reward")].every((el) => {
+        const d = document
+          .querySelector(".journey-body")!
+          .getBoundingClientRect();
+        return [...document.querySelectorAll(".journey-prize")].every((el) => {
           const r = el.getBoundingClientRect();
           return r.left >= d.left - 0.5 && r.right <= d.right + 0.5;
         });

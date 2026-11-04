@@ -10233,7 +10233,7 @@ button.raid-boss-card:hover:not(:disabled) {
     0 0 / 6px 9px;
 }
 
-/* ---- Shop, coins and daily missions (design §10) ---- */
+/* ---- Coins (design §10) ---- */
 .coin-chip {
   display: inline-flex;
   align-items: center;
@@ -10265,212 +10265,11 @@ button.raid-boss-card:hover:not(:disabled) {
   margin-left: auto;
 }
 
-.home-mission {
-  display: grid;
-  grid-template-rows: 1fr auto;
-  align-items: start;
-  gap: 4px;
-  min-width: 0;
-  padding: 6px 7px;
-  border-radius: 8px;
-  background: #0f1d36;
-  border: 1px solid #8baee526;
-  text-align: left;
-}
-.home-mission small {
-  overflow: hidden;
-  font-size: 10px;
-  line-height: 1.25;
-  color: #c1cfe4;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-.home-mission progress {
-  width: 100%;
-  height: 5px;
-  accent-color: var(--accent);
-}
-.home-mission.is-done {
-  border-color: #6ae2a355;
-}
-.home-mission.is-done small {
-  color: #a5edc1;
-}
-.shop-preview,
-.shop-preview-text {
-  min-width: 0;
-}
-.shop-intro,
-.shop-note {
-  margin: 0 0 10px;
-  font-size: 12px;
-  line-height: 1.5;
-  color: #c1cfe4;
-}
-.shop-note {
-  font-size: 11px;
-  color: #91a6c1;
-}
-.shop-status {
-  min-height: 1.2em;
-  margin: 0;
-  font-size: 12px;
-  color: #a5edc1;
-}
-
-/* The big preview: front-facing fighter, or a collection piece worn. */
-.shop-preview {
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-  gap: 16px;
-  align-items: center;
-  padding: 14px;
-  border-radius: 14px;
-  background: radial-gradient(ellipse at 30% 0%, #2c4370, #10203b 70%);
-  border: 1px solid #8baee533;
-}
-.shop-preview-text h3 {
-  margin: 6px 0 4px;
-  font-size: 20px;
-}
-.shop-preview-text p {
-  margin: 0 0 8px;
-  font-size: 12px;
-  line-height: 1.5;
-  color: #c1cfe4;
-}
-
 /* Rarity badges and card borders. */
 @keyframes mythic-shift {
   to {
     background-position: 300% 0;
   }
-}
-
-/* Daily missions. */
-.mission-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.mission {
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-  gap: 8px;
-  min-width: 0;
-  padding: 12px;
-  border-radius: 12px;
-  background: #10203b;
-  border: 1px solid #8baee533;
-}
-.mission-title {
-  align-self: start;
-  font-size: 13px;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-}
-.mission-footer {
-  display: grid;
-  gap: 8px;
-  min-width: 0;
-}
-.mission progress {
-  display: block;
-  width: 100%;
-  height: 7px;
-  accent-color: var(--accent);
-}
-.mission-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px 8px;
-  font-size: 11px;
-  line-height: 1.4;
-  color: #c1cfe4;
-}
-.mission-reward,
-.mission-complete {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.mission-reward {
-  white-space: nowrap;
-  color: #ffe39a;
-}
-.mission-reward .button-icon {
-  width: 13px;
-  height: 13px;
-}
-.mission-actions {
-  display: flex;
-  align-items: center;
-  min-height: 28px;
-  font-size: 11px;
-}
-.mission-complete {
-  color: #a5edc1;
-}
-.mission-actions button {
-  padding: 4px 8px;
-  font-size: 11px;
-}
-.mission-tier {
-  justify-self: start;
-  align-self: start;
-  padding: 4px 8px;
-  border-radius: 999px;
-  font-size: 9px;
-  line-height: 1;
-  font-weight: 800;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  background: #6ae2a3;
-  color: #0b2a1c;
-}
-.mission.tier-medium .mission-tier {
-  background: #4f9cff;
-  color: #071225;
-}
-.mission.tier-hard .mission-tier {
-  background: #ff8a5b;
-  color: #2a0d05;
-}
-.mission.is-done {
-  border-color: #6ae2a366;
-  background: #16403933;
-}
-.mission.is-done b {
-  color: #a5edc1;
-}
-.mission-streak {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  margin: 10px 0 4px;
-  font-size: 12px;
-  line-height: 1.5;
-  color: #ffe39a;
-}
-.mission-streak .button-icon {
-  width: 16px;
-  height: 16px;
-}
-.mission-streak > .button-icon {
-  margin-top: 1px;
-}
-
-@media (max-width: 640px) {
-  .shop-preview {
-    grid-template-columns: 1fr;
-  }
-
 }
 
 /* Use landscape width for related controls rather than stacking long columns. */
@@ -10515,16 +10314,6 @@ button.raid-boss-card:hover:not(:disabled) {
 }
 
 @media (orientation: landscape) and (min-width: 760px) {
-  .shop-status {
-    grid-column: 1 / -1;
-  }
-  .shop-preview {
-    grid-column: 1;
-    grid-row: 2;
-    grid-template-columns: 1fr;
-    position: sticky;
-    top: 0;
-  }
   .raid-rewards {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -10687,19 +10476,6 @@ button.raid-boss-card:hover:not(:disabled) {
     max-height: calc(var(--raid-dialog-height) - 46px);
     padding: 10px 16px 16px;
   }
-  .shop-preview {
-    padding: 10px;
-    gap: 8px;
-  }
-  .shop-preview-text h3 {
-    font-size: 16px;
-    margin: 4px 0;
-  }
-  .shop-preview-text p,
-  .shop-note {
-    font-size: 11px;
-    line-height: 1.4;
-  }
   .guide-section-heading {
     margin: 14px 0 10px;
   }
@@ -10714,9 +10490,6 @@ button.raid-boss-card:hover:not(:disabled) {
   }
 }
 @media (orientation: landscape) and (max-width: 759px) and (max-height: 600px) {
-  .shop-preview {
-    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
-  }
   #menu .selected-fighter {
     grid-template-columns: 1fr;
   }
@@ -11060,12 +10833,6 @@ button.raid-boss-card:hover:not(:disabled) {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
-@media (orientation: landscape) and (max-height: 600px) and (min-width: 760px) {
-  /* A preview taller than the viewport must scroll away with the item list. */
-  .shop-preview {
-    position: static;
-  }
-}
 @media (orientation: landscape) and (min-width: 560px) and (max-width: 759px) {
   .header-menu-panel {
     max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 70px);
@@ -11103,26 +10870,6 @@ dialog
   overflow-wrap: anywhere;
 }
 dialog :is(.profile-layout, .friends-layout, .help-layout) {
-  line-height: 1.5;
-}
-.shop-preview {
-  align-items: start;
-  border-color: #91b6eb47;
-  box-shadow: inset 0 1px 0 #ffffff09;
-}
-.shop-preview-visual,
-.shop-preview-text {
-  min-width: 0;
-}
-.shop-preview-visual {
-  display: grid;
-  gap: 8px;
-}
-.shop-preview-text h3 {
-  line-height: 1.2;
-  overflow-wrap: anywhere;
-}
-.shop-preview-text p {
   line-height: 1.5;
 }
 .shop-live-stage {
@@ -11185,66 +10932,20 @@ dialog :is(.profile-layout, .friends-layout, .help-layout) {
 .shop-live-stage.is-ready .shop-preview-fallback {
   visibility: hidden;
 }
-.shop-status:empty {
-  display: none;
-}
-@media (min-width: 760px) and (orientation: landscape) {
-  .shop-preview {
-    grid-template-columns: 1fr;
-  }
-}
 @media (orientation: landscape) and (max-height: 600px) {
   .shop-live-stage {
     height: 130px;
     aspect-ratio: auto;
   }
-  .shop-preview {
-    position: static;
-  }
-  .shop-preview-visual {
-    gap: 5px;
-  }
-  .shop-preview-text h3 {
-    font-size: 17px;
-  }
 }
 @media (orientation: landscape) and (max-height: 600px) and (min-width: 560px) {
-  .shop-preview {
-    grid-column: 1;
-    grid-row: 2;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.1fr);
-    gap: 8px 12px;
-  }
-  .shop-preview-visual {
-    display: contents;
-  }
   .shop-live-stage {
     grid-column: 1;
     grid-row: 1;
   }
-  .shop-preview-text {
-    grid-column: 3;
-    grid-row: 1;
-    align-self: center;
-  }
-  .shop-preview:has(.is-frame) {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
-  }
-  .shop-preview:has(.is-frame) .shop-preview-text {
-    grid-column: 2;
-    grid-row: 1 / span 2;
-  }
 }
 
 /* The fitting room: a spotlit pedestal tinted by the item's rarity. */
-.shop-preview {
-  border-color: color-mix(in srgb, var(--tone) 30%, #8baee533);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--tone) 10%, #15264a),
-    #0d182e 70%
-  );
-}
 .shop-live-stage {
   border: 0;
   border-radius: 12px;
@@ -11263,532 +10964,6 @@ dialog :is(.profile-layout, .friends-layout, .help-layout) {
   box-shadow:
     inset 0 0 0 1px #ffffff12,
     inset 0 -30px 40px -20px #000a;
-}
-.shop-preview-text h3 {
-  font:
-    800 30px/1.05 "Barlow Condensed",
-    sans-serif;
-  letter-spacing: 0.3px;
-}
-
-/* Missions: ticket stubs with a tier stripe and chunky progress bars. */
-.mission {
-  position: relative;
-  padding: 12px 14px 12px 18px;
-  border: 0;
-  border-radius: 12px;
-  background:
-    linear-gradient(90deg, var(--tier) 0 5px, transparent 5px),
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--tier) 10%, #14233f),
-      #0e1a31
-    );
-  box-shadow: inset 0 0 0 1px #8baee526;
-  --tier: #6ae2a3;
-}
-.mission.tier-medium {
-  --tier: #5aa9ff;
-}
-.mission.tier-hard {
-  --tier: #ff8a5b;
-}
-.mission-tier,
-.mission.tier-medium .mission-tier,
-.mission.tier-hard .mission-tier {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 0;
-  background: none;
-  color: var(--tier);
-  font:
-    700 12px/1.2 "DM Sans",
-    sans-serif;
-  letter-spacing: 0;
-  text-transform: none;
-}
-.mission-tier > i {
-  width: 7px;
-  height: 7px;
-  margin-right: 1px;
-  transform: rotate(45deg);
-  border-radius: 1.5px;
-  background: var(--tier);
-}
-.mission-tier > i:last-of-type {
-  margin-right: 5px;
-}
-.mission-title {
-  font:
-    700 19px/1.15 "Barlow Condensed",
-    sans-serif;
-  letter-spacing: 0.2px;
-}
-.mission progress,
-.home-mission progress {
-  -webkit-appearance: none;
-  appearance: none;
-  height: 10px;
-  border: 0;
-  border-radius: 999px;
-  overflow: hidden;
-  background: #08122499;
-  box-shadow: inset 0 0 0 1px #8baee526;
-}
-.mission progress::-webkit-progress-bar,
-.home-mission progress::-webkit-progress-bar {
-  background: transparent;
-}
-.mission progress::-webkit-progress-value,
-.home-mission progress::-webkit-progress-value {
-  border-radius: 999px;
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--tier, var(--accent)) 70%, #fff),
-    var(--tier, var(--accent))
-  );
-}
-.mission progress::-moz-progress-bar,
-.home-mission progress::-moz-progress-bar {
-  border-radius: 999px;
-  background: var(--tier, var(--accent));
-}
-.home-mission progress {
-  height: 6px;
-}
-.mission-reward {
-  padding: 3px 9px 3px 5px;
-  border-radius: 999px;
-  background: #ffd65b1c;
-  font:
-    800 16px/1 "Barlow Condensed",
-    sans-serif;
-}
-.mission-reward .button-icon {
-  width: 15px;
-  height: 15px;
-}
-.mission.is-done {
-  background:
-    linear-gradient(90deg, #6ae2a3 0 5px, transparent 5px),
-    linear-gradient(180deg, #16403966, #0e1a31);
-  box-shadow: inset 0 0 0 1px #6ae2a355;
-}
-.mission.is-done .mission-title {
-  color: #a5edc1;
-}
-.mission-streak {
-  align-items: center;
-  padding: 8px 12px;
-  border-radius: 10px;
-  background: #ffd65b0f;
-}
-@media (orientation: landscape) and (max-height: 600px) {
-  .shop-preview-text h3 {
-    font-size: 22px;
-  }
-}
-
-/* ==== Daily missions: their own screen and home card ==== */
-dialog:has(.missions-screen) {
-  width: min(980px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
-}
-.missions-screen {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 14px;
-  min-width: 0;
-}
-.missions-head {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px 12px;
-  padding-right: 44px;
-}
-.missions-head h2 {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0;
-  font:
-    800 clamp(30px, 3.2vw, 40px)/1 "Barlow Condensed",
-    sans-serif;
-  letter-spacing: 0.4px;
-}
-.missions-head h2 > .button-icon {
-  width: 30px;
-  height: 30px;
-  padding: 6px;
-  border-radius: 10px;
-  color: #0b2a1c;
-  background: linear-gradient(160deg, #a5f3c9, #4fcf8e);
-  box-shadow: inset 0 -2px 0 #2c9a63;
-}
-.missions-head .coin-chip {
-  gap: 8px;
-  padding: 5px 16px 5px 6px;
-  font:
-    800 20px/1 "Barlow Condensed",
-    sans-serif;
-  color: #fff1c4;
-  background:
-    linear-gradient(#1a1630, #120f24) padding-box,
-    linear-gradient(135deg, #ffe48a, #b8791a 60%, #ffe48a) border-box;
-  border: 2px solid transparent;
-}
-.missions-head .coin-chip .button-icon {
-  width: 24px;
-  height: 24px;
-  padding: 4px;
-  border-radius: 50%;
-  color: var(--accent-ink);
-  background: radial-gradient(
-    circle at 35% 30%,
-    #fff3bf,
-    var(--accent) 45%,
-    #c98a1b
-  );
-}
-.missions-sub {
-  margin: -6px 0 0;
-  font-size: 13px;
-  color: #9fb2cf;
-}
-.missions-screen .mission-list {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-.missions-screen .mission {
-  gap: 10px;
-  padding: 16px 16px 14px 20px;
-  min-height: 170px;
-}
-.missions-screen .mission-title {
-  font-size: 24px;
-}
-.mission-title-row {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  min-width: 0;
-}
-.mission-title-row .mission-title {
-  flex: 1;
-  min-width: 0;
-  padding-top: 6px;
-}
-button.mission-help-icon {
-  display: grid;
-  place-items: center;
-  flex: 0 0 40px;
-  width: 40px;
-  height: 40px;
-  margin: 0;
-  padding: 8px;
-  border: 0;
-  border-radius: 50%;
-  color: #b8cce8;
-  background: #ffffff08;
-}
-.mission-help-icon .button-icon {
-  width: 22px;
-  height: 22px;
-}
-button.mission-help-icon:hover {
-  color: #ffe39a;
-  background: #ffd65b14;
-}
-button.mission-help-icon[aria-expanded="true"] {
-  color: var(--accent-ink);
-  background: linear-gradient(180deg, var(--gold-top), var(--gold-bottom));
-}
-dialog.mission-instructions {
-  position: fixed;
-  inset: 0;
-  width: min(560px, calc(100vw - var(--safe-left) - var(--safe-right) - 32px));
-  height: fit-content;
-  max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 32px);
-  margin: auto;
-  padding: 0;
-  overflow: hidden;
-  overscroll-behavior: contain;
-  border: 1px solid #ffd65b55;
-  border-radius: 18px;
-  background: linear-gradient(180deg, #1a2c4f, #0f1b33);
-  box-shadow:
-    inset 0 1px 0 #ffffff14,
-    0 24px 80px #0009;
-  color: #dbe6f6;
-  font:
-    400 14px/1.6 "DM Sans",
-    sans-serif;
-  text-align: left;
-  overflow-wrap: anywhere;
-}
-dialog.mission-instructions[open] {
-  display: flex;
-  flex-direction: column;
-}
-dialog.mission-instructions::backdrop {
-  background: #040c1bb3;
-  backdrop-filter: blur(3px);
-}
-.mission-popup-head {
-  display: flex;
-  flex: none;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 16px 8px 20px;
-}
-.mission-popup-body {
-  min-height: 0;
-  padding: 0 20px 20px;
-  overflow: auto;
-  overscroll-behavior: contain;
-}
-.mission-popup-head > span {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: #ffe39a;
-  font-size: 12px;
-  font-weight: 700;
-}
-.mission-popup-head .button-icon {
-  width: 20px;
-  height: 20px;
-}
-.mission-popup-head .mission-help-close {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 40px;
-  height: 40px;
-  min-height: 40px;
-  margin: 0;
-  padding: 8px;
-  border-radius: 50%;
-  background: #ffffff0a;
-  box-shadow: inset 0 0 0 1px #8baee540;
-}
-.mission-instructions h3 {
-  margin: 0 0 14px;
-  font: 800 28px/1.15 var(--display);
-  color: var(--text);
-}
-.mission-instructions p {
-  margin: 0;
-}
-.mission-instructions ul {
-  margin: 12px 0 0;
-  padding-left: 20px;
-}
-.mission-instructions li + li {
-  margin-top: 8px;
-}
-.mission-instructions .mission-save-note {
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px solid #8baee526;
-  color: #a8bbd5;
-  font-size: 12px;
-}
-@media (pointer: coarse) {
-  button.mission-help-icon {
-    flex-basis: 44px;
-    width: 44px;
-    height: 44px;
-  }
-}
-.missions-screen .mission progress {
-  height: 12px;
-}
-.mission-together {
-  margin-left: 8px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: #ffffff12;
-  color: #dbe6f6;
-  font-size: 11px;
-  font-weight: 600;
-}
-.missions-note {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.5;
-  color: #c1cfe4;
-}
-.missions-note b {
-  color: var(--text);
-}
-
-/* Bonuses: all daily missions, and the 7-day streak track. */
-.missions-bonuses {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
-  gap: 12px;
-}
-.missions-bonus {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 8px 12px;
-  padding: 14px 16px;
-  border-radius: 12px;
-  background: linear-gradient(180deg, #ffd65b12, #0e1a31);
-  box-shadow: inset 0 0 0 1px #ffd65b2e;
-}
-.missions-bonus > b {
-  font:
-    700 20px/1.1 "Barlow Condensed",
-    sans-serif;
-  letter-spacing: 0.2px;
-}
-.missions-bonus > small {
-  grid-column: 1 / -1;
-  font-size: 12px;
-  color: #9fb2cf;
-}
-.missions-bonus.is-earned {
-  background: linear-gradient(180deg, #6ae2a31f, #0e1a31);
-  box-shadow: inset 0 0 0 1px #6ae2a366;
-}
-.missions-bonus.is-earned > small {
-  color: #a5edc1;
-}
-.missions-streak {
-  grid-template-columns: auto minmax(0, 1fr);
-}
-.streak-track {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.streak-track li {
-  position: relative;
-  display: grid;
-  place-items: center;
-  height: 28px;
-  border-radius: 8px;
-  background: #08122499;
-  box-shadow: inset 0 0 0 1px #8baee526;
-}
-.streak-track li.is-lit {
-  background: linear-gradient(180deg, #ffe58f, #f2b93b);
-  box-shadow: inset 0 -2px 0 #c4841f;
-}
-.streak-track li.is-payday {
-  box-shadow: inset 0 0 0 1.5px var(--accent);
-}
-.streak-track li.is-payday.is-lit {
-  box-shadow:
-    inset 0 -2px 0 #c4841f,
-    0 0 14px #ffd65b88;
-}
-.streak-track li b {
-  font:
-    800 13px/1 "Barlow Condensed",
-    sans-serif;
-  color: #ffe39a;
-}
-.streak-track li.is-lit b {
-  color: var(--accent-ink);
-}
-.missions-shop {
-  margin: 0;
-}
-.missions-shop button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border-radius: 999px;
-  padding: 10px 18px;
-  font:
-    700 17px/1 "Barlow Condensed",
-    sans-serif;
-  letter-spacing: 0.3px;
-}
-.missions-screen .shop-status:empty {
-  display: none;
-}
-
-/* Home: missions as their own card under the Shop button. */
-
-.home-missions-head {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #dbe6f6;
-  text-align: left;
-}
-.home-missions-head .menu-option-icon {
-  width: 16px;
-  height: 16px;
-  color: #6ae2a3;
-}
-.home-missions-head b {
-  font:
-    700 16px/1 "Barlow Condensed",
-    sans-serif;
-  letter-spacing: 0.3px;
-}
-.home-missions-head small {
-  margin-left: auto;
-  font-size: 11px;
-  color: #9fb2cf;
-}
-.home-mission {
-  --tier: #6ae2a3;
-  box-shadow: inset 3px 0 0 var(--tier);
-}
-.home-mission.tier-medium {
-  --tier: #5aa9ff;
-}
-.home-mission.tier-hard {
-  --tier: #ff8a5b;
-}
-
-@media (max-width: 760px) {
-  .missions-screen .mission-list {
-    grid-template-columns: 1fr;
-  }
-  .missions-screen .mission {
-    min-height: 0;
-  }
-  .missions-bonuses {
-    grid-template-columns: 1fr;
-  }
-  .missions-streak {
-    grid-template-columns: 1fr;
-  }
-}
-@media (orientation: landscape) and (max-width: 760px) {
-  .missions-screen .mission-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-@media (orientation: landscape) and (max-height: 600px) {
-  .missions-screen {
-    gap: 10px;
-  }
-  .missions-screen .mission {
-    min-height: 0;
-    padding: 10px 12px 10px 16px;
-  }
-  .missions-screen .mission-title {
-    font-size: 19px;
-  }
-  .missions-head h2 {
-    font-size: 28px;
-  }
 }
 
 /* Native scrolling, finished like the panels: an inset navy rail and gold grip. */
@@ -12449,20 +11624,6 @@ button.secondary.raid-cosmetic-option[aria-pressed="true"] {
   border-radius: 14px;
 }
 
-/* Shop browsing: quick inventory filters and an actionable fitting room. */
-@media (orientation: landscape) and (max-height: 600px) and (min-width: 560px) {
-  .shop-preview {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
-  }
-  .shop-preview-text {
-    grid-column: 2;
-    grid-row: 1 / span 2;
-  }
-  .shop-preview:has(.is-frame) .shop-preview-text {
-    grid-column: 2;
-    grid-row: 1 / span 2;
-  }
-}
 /* Two-column cards must accommodate a discounted price on narrow phones. */
 @media (max-width: 480px) {
   .raid-hub-tabs button {
@@ -12570,7 +11731,7 @@ button.secondary.raid-cosmetic-option[aria-pressed="true"] {
   }
 }
 /* prettier-ignore */
-dialog:is(:has(.raid-hub), :has(.missions-screen), :has(.profile-screen), :has(.friends-screen), :has(#leaderboard-body), :has(.admin-tabs)) {
+dialog:is(:has(.raid-hub), :has(.profile-screen), :has(.friends-screen), :has(#leaderboard-body), :has(.admin-tabs)) {
   --hub-height: min(
     900px,
     calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px)
@@ -12905,7 +12066,6 @@ dialog.framed-dialog > .dialog-content {
     .fullscreen-actions,
     .settings-actions,
     .auth-links,
-    .missions-shop,
     .raid-hub-actions
   ) {
   display: contents;
@@ -12958,15 +12118,6 @@ dialog.framed-dialog > .dialog-toolbar > .dialog-tabs {
   font-size: 22px;
   line-height: 1.15;
   margin: 0;
-}
-.dialog-toolbar .missions-head.dialog-heading {
-  flex-wrap: nowrap;
-  gap: 8px;
-}
-.dialog-toolbar .missions-head .coin-chip {
-  flex: none;
-  font-size: 16px;
-  padding: 3px 8px 3px 4px;
 }
 @media (min-width: 760px), (orientation: landscape) and (min-width: 560px) {
   .framed-dialog .profile-customize,
@@ -13183,10 +12334,6 @@ dialog.framed-dialog > .dialog-content:focus-visible {
     transform-origin: 100px 122.98px;
     animation: fighter-aura-ring 8.8s linear infinite;
   }
-}
-
-.shop-status.is-error {
-  color: #ffb4bf;
 }
 
 /* Prismatail: compact controls leave the relay lanes clear on short screens. */
@@ -13666,8 +12813,6 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   filter: sepia(0.5) saturate(0.8) hue-rotate(245deg) brightness(1.08);
 }
 
-/* Adventure: compact horizontal panels, automatic rewards and one live preview. */
-
 .nav-level {
   display: inline-flex;
   align-items: center;
@@ -13678,58 +12823,6 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   color: #b2f4df;
   font-size: 10px;
   white-space: nowrap;
-}
-.adventure {
-  --journey-color: #9ff3d8;
-  min-width: 0;
-  color: #c9d5e7;
-}
-.adventure :is(h2, h3, p) {
-  overflow-wrap: anywhere;
-}
-.adventure-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-.adventure-head h2 {
-  margin: 0;
-}
-.adventure-tabs {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  min-width: 0;
-}
-.adventure-tabs button {
-  position: relative;
-  flex: 0 1 auto;
-  min-height: 44px;
-  padding: 10px 16px;
-  white-space: nowrap;
-  background: none;
-  border: 0;
-  border-radius: 0;
-  color: #a7b8d2;
-  font:
-    700 18px/1.1 "Barlow Condensed",
-    sans-serif;
-}
-.adventure-tabs button.active {
-  color: #ffdf8a;
-  background: #ffd9910c;
-}
-.adventure-tabs button.active::after {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  left: 12px;
-  right: 12px;
-  height: 3px;
-  border-radius: 4px;
-  background: #ffdf8a;
 }
 .journey-level {
   display: grid;
@@ -13808,408 +12901,9 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   font-size: 12px;
 }
 /* Daily Spark: the first 500 XP each day count double. */
-.journey-spark {
-  margin-top: 10px;
-  border: 1px solid #ffd99155;
-  border-radius: 14px;
-  padding: 10px 14px;
-  background: linear-gradient(115deg, #4a3a1a55, #1d2740);
-}
-.journey-spark-line {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  min-width: 0;
-}
-.journey-spark-line b {
-  color: #ffe39d;
-  white-space: nowrap;
-}
-.journey-spark-line small {
-  min-width: 0;
-  color: #d8c9a5;
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-}
-.journey-spark progress {
-  display: block;
-  width: 100%;
-  height: 6px;
-  margin-top: 7px;
-  accent-color: #ffd991;
-}
-.journey-spark.is-spent {
-  opacity: 0.72;
-}
 .journey-level-line small,
 .journey-xp-breakdown {
   font-variant-numeric: tabular-nums;
-}
-.adventure-intro {
-  font-size: 12px;
-  line-height: 1.6;
-  color: #aebfd4;
-  margin: 12px 0 18px;
-}
-.journey-layout {
-  display: grid;
-  grid-template-columns: minmax(230px, 0.8fr) minmax(0, 1.6fr);
-  gap: 18px;
-  align-items: start;
-}
-.adventure .journey-preview {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  position: sticky;
-  top: 0;
-  padding: 14px;
-  border: 1px solid color-mix(in srgb, var(--journey-color) 40%, transparent);
-  border-radius: 20px;
-  background: linear-gradient(145deg, #223953, #0f1d33);
-  min-width: 0;
-}
-.journey-preview .shop-preview-visual,
-.journey-preview .shop-preview-text {
-  width: 100%;
-  min-width: 0;
-}
-.journey-preview .shop-live-stage {
-  width: 100%;
-  height: 180px;
-  min-height: 120px;
-}
-.journey-preview .shop-preview-text h3 {
-  margin: 6px 0;
-  font:
-    700 24px/1.15 "Barlow Condensed",
-    sans-serif;
-}
-.journey-preview .shop-preview-text p {
-  font-size: 12px;
-  line-height: 1.6;
-  margin: 5px 0 10px;
-}
-.journey-preview .shop-preview-text > small {
-  display: block;
-  font-size: 10px;
-  color: #a4b7d2;
-}
-.journey-preview .shop-preview-text > button {
-  width: 100%;
-  margin-top: 12px;
-}
-.journey-preview .shop-preview-fallback {
-  display: grid;
-  place-items: center;
-}
-.journey-preview .raid-cosmetic-preview {
-  width: 100px;
-  height: 100px;
-  display: grid;
-  place-items: center;
-}
-.journey-preview .raid-cosmetic-preview > svg {
-  width: 100%;
-  height: 100%;
-}
-.journey-lock {
-  color: #b0bfd4;
-  font-size: 11px !important;
-}
-.journey-rewards {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-.journey-reward {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-  min-height: 100px;
-  padding: 14px;
-  text-align: left;
-  color: #c9d8eb;
-  border: 1px solid #6d85ac44;
-  border-radius: 15px;
-  background: linear-gradient(135deg, #243650, #142039);
-}
-.journey-reward span {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  min-width: 0;
-}
-.journey-reward small {
-  font-size: 9px;
-  letter-spacing: 0.12em;
-  color: #a8b9d1;
-}
-.journey-reward b {
-  font-size: 13px;
-  line-height: 1.3;
-}
-.journey-reward em {
-  font-style: normal;
-  font-size: 10px;
-  color: #9caec9;
-}
-.journey-reward.is-earned {
-  border-color: #9ff3d855;
-}
-.journey-reward.is-earned em {
-  color: #a6e7ce;
-}
-.journey-reward.is-selected {
-  border-color: #ffe29a;
-  box-shadow: inset 0 0 0 1px #ffe29a66;
-}
-.journey-reward-glyph {
-  width: 40px;
-  height: 40px;
-  flex-shrink: 0;
-}
-.journey-help {
-  margin-top: 18px;
-  border-top: 1px solid #96b0db33;
-  padding: 14px 0;
-  font-size: 12px;
-  line-height: 1.7;
-}
-.journey-help summary {
-  cursor: pointer;
-  color: #e7cf95;
-}
-.season-banner {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 12px;
-  align-items: center;
-  padding: 22px;
-  border: 1px solid color-mix(in srgb, var(--journey-color) 45%, transparent);
-  border-radius: 20px;
-  background:
-    radial-gradient(
-      ellipse at 90% 0,
-      color-mix(in srgb, var(--journey-color) 18%, transparent),
-      transparent 65%
-    ),
-    #172b45;
-}
-.season-banner h2 {
-  font-size: 32px;
-  margin: 6px 0;
-}
-.season-banner p {
-  font-size: 12px;
-  margin: 0;
-  color: #aec3d6;
-}
-.season-banner > strong {
-  font:
-    700 42px/1 "Barlow Condensed",
-    sans-serif;
-  color: var(--journey-color);
-}
-.season-banner strong small {
-  font:
-    400 12px/1.4 "DM Sans",
-    sans-serif;
-}
-.season-banner > progress {
-  grid-column: 1/-1;
-  width: 100%;
-  height: 8px;
-  accent-color: var(--journey-color);
-}
-.season-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(210px, 0.37fr);
-  align-items: start;
-  gap: 18px;
-  margin-top: 18px;
-}
-.season-layout h3 {
-  font-size: 17px;
-  margin: 0 0 12px;
-}
-.season-layout h3 small {
-  font:
-    400 10px "DM Sans",
-    sans-serif;
-  color: #a4b7d0;
-}
-.season-goals {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin-bottom: 18px;
-}
-.season-goal {
-  display: grid;
-  gap: 9px;
-  padding: 12px;
-  border: 1px solid #6982ad44;
-  border-radius: 13px;
-  background: #0f1d32;
-}
-.season-goal b {
-  font-size: 11px;
-  line-height: 1.4;
-}
-.season-goal progress {
-  width: 100%;
-  height: 5px;
-  accent-color: #a5e5d0;
-}
-.season-goal span {
-  font-size: 10px;
-  color: #a4b8cd;
-}
-.season-goal.is-earned {
-  border-color: #91d5bb66;
-}
-.season-tiers {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
-}
-.season-tier {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-width: 0;
-  min-height: 142px;
-  padding: 12px 7px;
-  border: 1px solid #6e88b744;
-  border-radius: 13px;
-  background: linear-gradient(145deg, #233853, #14243d);
-  text-align: center;
-}
-.season-tier > small {
-  font-size: 9px;
-  letter-spacing: 0.08em;
-  color: #a9bbd5;
-}
-.season-tier b {
-  font-size: 11px;
-  line-height: 1.3;
-}
-.season-tier span {
-  margin-top: auto;
-  font-size: 9px;
-  color: #9eafc8;
-}
-.season-tier.is-earned {
-  border-color: #a8e4ca88;
-  background: linear-gradient(145deg, #27414b, #152e3d);
-}
-.season-tier.is-earned span {
-  color: #a8e4ca;
-}
-.season-tier button {
-  display: grid;
-  place-items: center;
-  padding: 0;
-  width: 44px;
-  height: 44px;
-  min-height: 44px;
-  border: 0;
-  background: none;
-}
-.adventure-mode-hero {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1.3fr 1fr;
-  column-gap: 20px;
-  align-items: center;
-  padding: 28px;
-  border: 1px solid color-mix(in srgb, var(--journey-color) 40%, transparent);
-  border-radius: 22px;
-  background:
-    radial-gradient(
-      ellipse at 85% 25%,
-      color-mix(in srgb, var(--journey-color) 15%, transparent),
-      transparent 70%
-    ),
-    #172b45;
-}
-.adventure-mode-hero > :is(.eyebrow, h2, p) {
-  grid-column: 1;
-}
-.adventure-mode-hero h2 {
-  margin: 8px 0;
-  font:
-    700 38px/1.1 "Barlow Condensed",
-    sans-serif;
-}
-.adventure-mode-hero p {
-  margin: 5px 0;
-  font-size: 13px;
-  line-height: 1.7;
-}
-.arcade-illustration {
-  grid-column: 2;
-  grid-row: 1/4;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  min-height: 120px;
-  color: var(--journey-color);
-}
-.arcade-illustration span {
-  display: grid;
-  place-items: center;
-  font-size: 54px;
-  width: 110px;
-  height: 80px;
-  border: 1px solid currentColor;
-  border-radius: 50%;
-  background: #ffffff05;
-  transform: rotate(-10deg);
-  box-shadow: 0 0 25px color-mix(in srgb, var(--journey-color) 15%, transparent);
-}
-.arcade-illustration b {
-  font-size: 9px;
-  letter-spacing: 0.15em;
-  text-align: center;
-}
-.adventure-mode-details {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin: 16px 0;
-}
-.adventure-mode-details article {
-  padding: 18px;
-  border: 1px solid #6e88b744;
-  border-radius: 16px;
-  background: #12223a;
-}
-.adventure-mode-details h3 {
-  margin: 0 0 8px;
-  font-size: 18px;
-}
-.adventure-mode-details p {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.7;
-}
-.adventure-actions {
-  display: flex;
-  gap: 10px;
-  width: 100%;
-}
-.adventure-actions button {
-  flex: 1;
-  white-space: nowrap;
 }
 .journey-result-xp {
   margin: 16px 0;
@@ -14233,13 +12927,6 @@ dialog.framed-dialog > .dialog-content:focus-visible {
 .journey-xp-pending {
   font-size: 11px;
   color: #a8bbd3;
-}
-.journey-update {
-  padding: 12px;
-  border: 1px solid #ffd99155;
-  border-radius: 12px;
-  font-size: 12px;
-  color: #e6d19d;
 }
 .arcade-brief {
   padding: 12px;
@@ -14268,65 +12955,7 @@ dialog.framed-dialog > .dialog-content:focus-visible {
     transform: translateY(0);
   }
 }
-@media (max-width: 1100px) {
-  .journey-layout {
-    grid-template-columns: minmax(210px, 0.8fr) minmax(0, 1.4fr);
-  }
-  .season-layout {
-    grid-template-columns: minmax(0, 1fr) 220px;
-  }
-  .season-tiers {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-  .journey-reward {
-    padding: 12px;
-    gap: 8px;
-  }
-  .journey-reward-glyph {
-    width: 32px;
-    height: 32px;
-  }
-  .adventure-tabs button {
-    padding: 9px 12px;
-    font-size: 16px;
-  }
-}
 @media (orientation: landscape) and (max-height: 500px) {
-  .adventure-head {
-    margin-bottom: 10px;
-  }
-  .adventure-head h2 {
-    font-size: 23px;
-  }
-  .journey-layout {
-    grid-template-columns: minmax(190px, 0.72fr) minmax(0, 1.55fr);
-    gap: 12px;
-  }
-  .adventure .journey-preview {
-    gap: 8px;
-    padding: 10px;
-  }
-  .journey-preview .shop-live-stage {
-    height: 128px;
-    min-height: 100px;
-  }
-  .journey-preview .shop-preview-text h3 {
-    font-size: 19px;
-  }
-  .journey-preview .shop-preview-text p {
-    font-size: 10px;
-    margin: 4px 0;
-  }
-  .journey-preview .shop-preview-text small {
-    font-size: 9px;
-  }
-  .journey-reward {
-    min-height: 78px;
-    padding: 10px;
-  }
-  .journey-reward b {
-    font-size: 11px;
-  }
   .journey-level {
     padding: 10px;
     gap: 10px;
@@ -14338,131 +12967,12 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   .journey-level-badge b {
     font-size: 24px;
   }
-  .adventure-intro {
-    font-size: 11px;
-    margin: 10px 0;
-  }
-  .season-banner {
-    padding: 14px;
-    gap: 8px;
-  }
-  .season-banner h2 {
-    font-size: 25px;
-  }
-  .season-banner p {
-    font-size: 10px;
-  }
-  .season-banner > strong {
-    font-size: 32px;
-  }
-  .season-layout {
-    grid-template-columns: minmax(0, 1fr) 190px;
-    gap: 12px;
-  }
-  .season-tier {
-    min-height: 120px;
-    padding: 8px 5px;
-  }
-  .season-tier b {
-    font-size: 10px;
-  }
-  .season-goal {
-    padding: 9px;
-  }
-  .season-goal b {
-    font-size: 10px;
-  }
-  .adventure-mode-hero {
-    padding: 18px;
-  }
-  .adventure-mode-hero h2 {
-    font-size: 29px;
-  }
-  .adventure-mode-hero p {
-    font-size: 11px;
-  }
-  .adventure-mode-details {
-    gap: 10px;
-    margin: 12px 0;
-  }
-  .adventure-mode-details article {
-    padding: 12px;
-  }
-  .adventure-mode-details p {
-    font-size: 11px;
-  }
   .journey-result-xp {
     padding: 10px;
     margin: 10px 0;
   }
 }
-@media (max-width: 650px) {
-  .adventure-tabs button {
-    font-size: 13px;
-    padding: 10px 8px;
-  }
-  .journey-reward-glyph {
-    width: 25px;
-    height: 25px;
-  }
-  .journey-rewards {
-    gap: 7px;
-  }
-  .season-layout {
-    grid-template-columns: minmax(0, 1fr) 170px;
-  }
-  .season-tiers {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .season-goals {
-    grid-template-columns: 1fr;
-  }
-  .adventure-actions {
-    gap: 6px;
-  }
-  .adventure-actions button {
-    font-size: 12px;
-    padding-left: 9px;
-    padding-right: 9px;
-  }
-  .adventure-mode-details {
-    grid-template-columns: 1fr;
-  }
-  .journey-layout {
-    grid-template-columns: 180px minmax(0, 1fr);
-  }
-}
 @media (orientation: portrait) and (max-width: 650px) {
-  .journey-layout,
-  .season-layout {
-    grid-template-columns: 1fr;
-  }
-  .adventure .journey-preview {
-    position: static;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
-  .journey-preview .shop-live-stage {
-    height: 160px;
-  }
-  .season-goals {
-    grid-template-columns: 1fr 1fr;
-  }
-  .season-tiers {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-  .adventure-mode-hero {
-    grid-template-columns: 1fr;
-  }
-  .arcade-illustration {
-    display: none;
-  }
-  .adventure-tabs button {
-    font-size: 13px;
-    padding-left: 7px;
-    padding-right: 7px;
-  }
   .journey-level-line {
     align-items: flex-start;
     flex-direction: column;
@@ -14470,9 +12980,6 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   }
   .journey-level.is-compact .journey-level-line {
     flex-direction: row;
-  }
-  .journey-preview .journey-lock {
-    font-size: 10px !important;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -14483,27 +12990,8 @@ dialog.framed-dialog > .dialog-content:focus-visible {
     transition: none;
   }
 }
-/* Adventure uses the wide menu shell and its own preview grid placement. */
-dialog:has(.adventure) {
-  width: min(1240px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
-  max-width: calc(100vw - var(--safe-left) - var(--safe-right) - 24px);
-}
-.adventure .journey-preview {
-  grid-column: auto;
-  grid-row: auto;
-}
-.adventure .journey-preview .shop-preview-visual {
-  display: grid;
-  grid-column: auto;
-  grid-row: auto;
-}
-.adventure .journey-preview .shop-preview-text {
-  grid-column: auto;
-  grid-row: auto;
-}
-.journey-level progress,
-.season-banner progress,
-.season-goal progress {
+/* The player level bar (match results and the profile). */
+.journey-level progress {
   appearance: none;
   -webkit-appearance: none;
   overflow: hidden;
@@ -14511,100 +12999,17 @@ dialog:has(.adventure) {
   border-radius: 8px;
   background: #354963;
 }
-.journey-level progress::-webkit-progress-bar,
-.season-banner progress::-webkit-progress-bar,
-.season-goal progress::-webkit-progress-bar {
+.journey-level progress::-webkit-progress-bar {
   background: #354963;
   border-radius: 8px;
 }
-.journey-level progress::-webkit-progress-value,
-.season-banner progress::-webkit-progress-value,
-.season-goal progress::-webkit-progress-value {
+.journey-level progress::-webkit-progress-value {
   background: linear-gradient(90deg, #79cdb8, var(--journey-color, #b5f1d8));
   border-radius: 8px;
 }
-.journey-level progress::-moz-progress-bar,
-.season-banner progress::-moz-progress-bar,
-.season-goal progress::-moz-progress-bar {
+.journey-level progress::-moz-progress-bar {
   background: #9fe5cd;
   border-radius: 8px;
-}
-@media (orientation: landscape) and (max-height: 500px) {
-  .season-banner {
-    padding: 10px 14px;
-  }
-  .season-banner h2 {
-    font-size: 23px;
-    margin: 4px 0;
-  }
-  .season-banner .eyebrow {
-    font-size: 9px;
-  }
-  .season-layout {
-    margin-top: 12px;
-  }
-  .season-layout h3 {
-    margin-bottom: 9px;
-  }
-  .season-goals {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 7px;
-  }
-  .adventure .journey-preview .shop-preview-text {
-    font-size: 11px;
-  }
-}
-@media (orientation: landscape) and (min-width: 700px) and (max-height: 500px) {
-  .season-goals {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-  .season-goal {
-    gap: 6px;
-  }
-  .season-goal b {
-    font-size: 9px;
-  }
-  .season-goal span {
-    font-size: 9px;
-  }
-}
-@media (orientation: landscape) and (max-height: 350px) {
-  .adventure .journey-preview {
-    padding: 8px;
-    gap: 6px;
-  }
-  .adventure .journey-preview .shop-live-stage {
-    height: 80px;
-    min-height: 80px;
-  }
-  .adventure .journey-preview .shop-preview-text h3 {
-    font-size: 16px;
-    margin: 4px 0;
-  }
-  .adventure .journey-preview .shop-preview-text p {
-    line-height: 1.4;
-    margin: 3px 0;
-  }
-  .adventure .journey-preview .shop-preview-text > button {
-    margin-top: 8px;
-  }
-  .adventure .journey-preview .eyebrow {
-    font-size: 9px;
-  }
-}
-.adventure-head h2 {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.adventure-head h2 > svg {
-  flex: 0 0 30px;
-  width: 30px;
-  height: 30px;
-  padding: 6px;
-  border-radius: 9px;
-  color: #173044;
-  background: linear-gradient(#ffe49b, #e7b85e);
 }
 .journey-level-up {
   padding: 10px 12px;
@@ -15023,9 +13428,9 @@ body.home-active .header-menu summary > span {
     height: 18px;
   }
 
-  
-  
-  
+
+
+
   .home-drawer {
     inset: calc(10px + var(--safe-top)) calc(10px + var(--safe-right))
       calc(10px + var(--safe-bottom)) auto;
@@ -15068,7 +13473,7 @@ body.home-active .header-menu summary > span {
     --home-top: calc(44px + var(--safe-top));
   }
 
-  
+
 }
 @media (prefers-reduced-motion: reduce) {
   .home-screen *,
@@ -15661,7 +14066,7 @@ body.lobby-active .roster-panel > .section-title {
     border-radius: var(--radius-sm);
     padding: 8px;
   }
-  
+
 }
 @media (orientation: landscape) and (max-height: 600px) {
   body.lobby-active main {

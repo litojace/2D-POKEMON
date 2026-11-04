@@ -15,7 +15,24 @@ import {
   SEASON_THEMES,
 } from "../../packages/shared/src/journey";
 import { arcadeWeek, ARCADE_IDS } from "../../packages/shared/src/arcade";
-import { adventureMarkup, resultXp } from "../../apps/client/src/adventure-ui";
+import { resultXp } from "../../apps/client/src/adventure-ui";
+import {
+  arcadeNow,
+  defaultPick,
+  itemSource,
+  itemState,
+  journeyMarkup,
+  journeyView,
+  nextMilestones,
+  seasonRoad,
+  type JourneyTab,
+} from "../../apps/client/src/screens/journey-view";
+// The Journey panel (UI remodel step 4): one tab's markup.
+const journeyHtml = (tab: JourneyTab, e: any, selected: string | null = null) =>
+  journeyMarkup(
+    { ...journeyView(tab), selected },
+    { economy: e ?? null, look: {}, champion: "voltkit" },
+  );
 describe("player levels", () => {
   for (let level = 2; level <= MAX_PLAYER_LEVEL; level++)
     it(`enters level ${level} at its exact threshold`, () => {
@@ -144,12 +161,15 @@ describe("calendar rotations", () => {
 });
 it("renders unavailable storage honestly and offers every new mode", () => {
   for (const tab of ["levels", "season", "arcade"] as const) {
-    const html = adventureMarkup({ tab }, undefined, "voltkit");
+    const html = journeyHtml(tab, undefined);
     expect(html).not.toMatch(/NaN|undefined/);
-    expect(html).toContain('data-adventure-tab="season"');
+    expect(html).toContain('data-ui-jtab="season"');
+    expect(html.match(/data-ui-jtab=/g)).toHaveLength(3);
   }
-  expect(adventureMarkup({ tab: "arcade" }, undefined, "voltkit")).toContain(
-    "arcade-bot",
+  expect(journeyHtml("arcade", undefined)).toContain("arcade-bot");
+  // A database without migration 022 says so; the arcade still plays.
+  expect(journeyHtml("season", { balance: 0, owned: [] })).toContain(
+    "022_player_journey.sql",
   );
   expect(resultXp(undefined, "x")).toBe("");
 });
@@ -171,13 +191,21 @@ it("shows the Daily Spark and a 30-tier season when the server sends them", () =
     unlocked: [],
   };
   const e = { journey, balance: 0, owned: [] } as any;
-  const season = adventureMarkup({ tab: "season" }, e, "voltkit");
-  expect(season).toContain("5<small> / 30 tiers</small>");
-  expect(season).toContain("TIER 30");
-  expect(season).not.toContain("TIER 31");
-  expect(season).toContain("36,000 XP");
-  expect(season).toContain("The next 380 XP today count double");
-  const levels = adventureMarkup({ tab: "levels" }, e, "voltkit");
+  const season = journeyHtml("season", e);
+  expect(season).toContain("Tier 5 / 30");
+  expect(season).toContain('aria-label="Tier 30:');
+  expect(season).not.toContain('aria-label="Tier 31:');
+  expect(season.match(/class="journey-tier[ "]/g)).toHaveLength(30);
+  // Cosmetic tiers are the large ones: the season's four.
+  expect(season.match(/journey-tier is-big/g)).toHaveLength(4);
+  // Tier 6 is the next to earn; 36,000 XP completes the road.
+  expect(season).toContain("journey-tier is-next");
+  expect(season).toContain("100 / 1,200 XP to tier 6");
+  expect(season).toContain("380 XP");
+  expect(season).toContain("left today at ×2");
+  expect(season).toMatch(/Ends in \d+ d \d+ h/);
+  expect(season).toMatch(/Resets in (\d+ d \d+ h|\d+ h \d+ min|\d+ min)/);
+  const levels = journeyHtml("levels", e);
   expect(levels).toContain("100 coins from level 50 to 100");
   expect(levels).not.toMatch(/NaN|undefined/);
 });
@@ -244,4 +272,90 @@ it("shows mission XP, level-ups and the actual coin reward together on the resul
   expect(resultXp(j, "unknown", "saved")).toContain("Updating your XP");
   expect(resultXp(j, "unknown", "saved", false)).toContain("No XP earned");
   expect(resultXp(j, "unknown", "unavailable")).toContain("could not be saved");
+});
+describe("the Journey panel's rewards", () => {
+  const season = (xp: number) => ({
+    id: "2026-12",
+    xp,
+    week: "2026-11-30",
+    goals: { play: 3, skills: 50 },
+    completed: ["skills"],
+    tiers: 30,
+    tierXp: 1200,
+    itemTiers: [5, 12, 20, 30],
+  });
+  const econ = (xp: number, seasonXp: number, owned: string[] = []) =>
+    ({
+      balance: 0,
+      owned,
+      journey: { xp, recent: [], season: season(seasonXp), unlocked: [] },
+    }) as any;
+  it("picks the next reward to earn on each tab", () => {
+    // Tier 6 of 30: the season's next cosmetic is tier 12's aura.
+    expect(defaultPick("season", econ(0, 7200))).toBe("season-astral-aura");
+    // Level 60: the next level cosmetic is Lv 65's Nova entrance.
+    expect(defaultPick("levels", econ(levelThreshold(60), 0))).toBe(
+      "nova-entrance",
+    );
+    // Everything earned: the last one stays picked.
+    expect(defaultPick("levels", econ(levelThreshold(100), 0))).toBe(
+      "element-master-frame",
+    );
+    expect(defaultPick("season", econ(0, 36000))).toBe("season-astral-victory");
+  });
+  it("lights the next tier and ticks the earned ones", () => {
+    const road = seasonRoad(econ(0, 7200).journey);
+    expect(road.filter((t) => t.state === "got")).toHaveLength(6);
+    expect(road.find((t) => t.state === "next")?.tier).toBe(7);
+    expect(road.filter((t) => t.item).map((t) => t.tier)).toEqual([
+      5, 12, 20, 30,
+    ]);
+    expect(nextMilestones(60).map((m) => m.level)).toEqual([65, 70, 75, 80]);
+  });
+  it("names where a reward comes from", () => {
+    const j = econ(0, 0).journey;
+    expect(itemSource("prism-frame", j).label).toBe("Level 55");
+    expect(itemSource("season-astral-aura", j).label).toBe("Season tier 12");
+  });
+  it("equips only what you own, and says when you wear it", () => {
+    const e = econ(levelThreshold(60), 0, ["prism-frame"]);
+    const foot = (selected: string, look = {}) =>
+      journeyMarkup(
+        { ...journeyView("levels"), selected },
+        { economy: e, look, champion: "voltkit" },
+      );
+    expect(foot("prism-frame")).toMatch(
+      /data-journey-equip="prism-frame"(?![^>]*disabled)/,
+    );
+    expect(foot("prism-frame")).toContain("Level 55 · In your collection");
+    expect(foot("prism-frame", { frame: "prism-frame" })).toContain(
+      "Wearing it",
+    );
+    expect(foot("prism-frame", { frame: "prism-frame" })).toMatch(
+      /disabled[^>]*data-journey-equip="prism-frame"/,
+    );
+    // Not owned: Locked, and how to earn it.
+    expect(foot("solar-aura")).toContain("Locked");
+    expect(foot("solar-aura")).toContain("Level 80 · Keep levelling up");
+    expect(
+      itemState("prism-frame", { economy: e, look: {}, champion: "voltkit" }),
+    ).toMatchObject({ owned: true, worn: false });
+    // Two equal buttons in the action bar, the main one last.
+    expect(foot("prism-frame")).toMatch(
+      /<div class="ui-actions"><button[^>]*data-journey-wardrobe[\s\S]*data-journey-equip/,
+    );
+  });
+  it("starts this week's arcade from the action bar", () => {
+    const html = journeyMarkup(journeyView("arcade"), {
+      economy: null,
+      look: {},
+      champion: "voltkit",
+    });
+    for (const mode of ["arcade-duel", "arcade-teams", "arcade-bot"])
+      expect(html).toContain(`data-journey-play="${mode}"`);
+    expect(html).toContain("This week's arcade");
+    expect(arcadeNow(Date.parse("2026-11-04T20:00:00Z")).id).toBe(
+      arcadeWeek("2026-11-04").id,
+    );
+  });
 });

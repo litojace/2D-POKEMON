@@ -413,7 +413,7 @@ test("opening another screen from the rail replaces the fitting room", async ({
   await expect(page.locator(".fit-room")).toHaveCount(1);
   await page.click('.lobby-rail [data-lobby-action="missions"]');
   await expect(page.locator(".fit-room")).toHaveCount(0);
-  await expect(page.locator("#dialog .missions-screen")).toBeVisible();
+  await expect(page.locator(".missions-sheet")).toBeVisible();
   expect(errors).toEqual([]);
 });
 

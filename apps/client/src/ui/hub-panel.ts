@@ -63,7 +63,10 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
     // A sheet leaves the Lobby usable; a panel covers it: the parts behind
     // leave the tab order and stop drawing (nothing peeks out at the edges).
     for (const el of covered) uncover(el);
-    covered = root.classList.contains("ui-sheet")
+    const sheet = root.classList.contains("ui-sheet");
+    // The Lobby re-centres its stage beside a sheet (ui/components.css).
+    host.toggleAttribute("data-ui-sheet", sheet);
+    covered = sheet
       ? []
       : COVERED.flatMap((s) =>
           Array.from(host.querySelectorAll<HTMLElement>(`:scope ${s}`)),
@@ -98,6 +101,7 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
     gone?.disconnect();
     document.removeEventListener("keydown", onKey);
     for (const el of covered) uncover(el);
+    host.removeAttribute("data-ui-sheet");
     railButton?.removeAttribute("aria-current");
     wrap.remove();
     if (current?.panel === panel) current = undefined;

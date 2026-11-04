@@ -25,7 +25,7 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
   if (back) toolbar.append(back);
   toolbar.append(close);
   const tabs = content.querySelector<HTMLElement>(
-    ".raid-hub-tabs, .admin-tabs, .adventure-tabs",
+    ".raid-hub-tabs, .admin-tabs",
   );
   const raidRoster = content.querySelector<HTMLElement>(".raid-boss-roster");
   dialog.classList.toggle("has-raid-roster", !!raidRoster);
@@ -35,7 +35,7 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
   dialog.classList.toggle("has-inline-tabs", inlineTabs);
   if (inlineTabs) toolbar.prepend(tabs!);
   else if (!tabs && !back) {
-    const heading = content.querySelector<HTMLElement>(".missions-head, h2");
+    const heading = content.querySelector<HTMLElement>("h2");
     if (heading) {
       heading.classList.add("dialog-heading");
       toolbar.prepend(heading);
@@ -50,10 +50,8 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
   const actions = content.querySelectorAll<HTMLElement>(
     [
       ".dialog-actions",
-      ".adventure-actions",
       ".fullscreen-actions",
       ".settings-actions",
-      ".missions-shop",
       ".raid-hub-actions",
       "#controls-reset",
       "#open-controls",

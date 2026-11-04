@@ -93,26 +93,6 @@
     [data-portrait-frame="prism-frame"],
     [data-portrait-frame="element-master-frame"]
   )
-),
-.journey-preview
-  .raid-cosmetic-preview:is(
-    [data-cosmetic="prism-frame"],
-    [data-cosmetic="element-master-frame"]
-  ) {
+) {
   transform: translateY(5%);
-}
-/* The Journey dialog's preview box is 80–180px tall: size the portrait
-   from it so the ring and crest (about 1.5 portraits tall) always fit. */
-.journey-preview .shop-live-stage.is-frame {
-  container-type: size;
-}
-.journey-preview
-  .shop-live-stage.is-frame
-  .raid-cosmetic-preview:is(
-    [data-cosmetic="prism-frame"],
-    [data-cosmetic="prismatic-laurel"],
-    [data-cosmetic="element-master-frame"]
-  ) {
-  width: min(100px, 64cqh);
-  height: min(100px, 64cqh);
 }
