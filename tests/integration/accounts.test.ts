@@ -1184,4 +1184,24 @@ it("passes farm actions and leaf trades to the database only when the request is
     ).status,
   ).toBe(401);
   expect(calls).toHaveLength(3);
+  // Every champion in the roster can be your farmer, the newest eight too.
+  for (const id of [
+    "coilemur",
+    "pyranda",
+    "glacelle",
+    "halcyra",
+    "sunbara",
+    "astrabun",
+    "wombolder",
+    "shadopus",
+  ])
+    expect(
+      (
+        await send("/api/farm/act", {
+          request: crypto.randomUUID(),
+          actions: [{ a: "farmer", id }],
+        })
+      ).status,
+      id,
+    ).toBe(200);
 });

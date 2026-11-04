@@ -10,7 +10,10 @@ import {
   type RaidReceipt,
 } from "../../../packages/shared/src/raid.js";
 import { z } from "zod";
-import { characterSchema } from "../../../packages/shared/src/index.js";
+import {
+  characterSchema,
+  FIGHTER_IDS,
+} from "../../../packages/shared/src/index.js";
 import {
   DAILY_MISSION_COUNT,
   LOOK_ITEM_BY_ID,
@@ -453,18 +456,9 @@ export function installAccountRoutes(
         ])
         .optional(),
       dog: z.enum(["gold", "black", "cream"]).optional(),
-      id: z
-        .enum([
-          "voltkit",
-          "cindrake",
-          "tidefin",
-          "auralynx",
-          "lumoth",
-          "mystowl",
-          "terradon",
-          "duskveil",
-        ])
-        .optional(),
+      // A farmer: any champion in the roster, by its exact id (it was the
+      // first eight only).
+      id: z.enum(FIGHTER_IDS).optional(),
       days: z.union([z.literal(1), z.literal(3)]).optional(),
       crop: z
         .string()

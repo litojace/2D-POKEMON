@@ -22,7 +22,8 @@ import {
   barnUpgradePrice,
   FARM_TOOLS,
   FARM_DOGS,
-  FARM_PERKS,
+  farmPerk,
+  farmPerkOf,
   FARM_DECOR,
   charmBonus,
   CROW_SECONDS,
@@ -391,8 +392,8 @@ export function openFarm(options) {
   const barnUsed = () => Object.values(F.barn).reduce((a, b) => a + b, 0);
   const dogOn = () => !!F.dog && F.dog.until > serverNow();
   /** Crops a harvest gives: 3 while Terradon farms (Rich Soil). */
-  const yieldN = () => (F.farmer === "terradon" ? 3 : 2);
-  const perk = () => (F.farmer ? FARM_PERKS[F.farmer] : null);
+  const yieldN = () => (farmPerkOf(F.farmer ?? "") === "terradon" ? 3 : 2);
+  const perk = () => farmPerk(F.farmer);
   const warmLeft = () => Math.max(0, (F.warmUntil - serverNow()) / 1000);
   let farmerSent = false;
   const owned = (id) =>
@@ -671,8 +672,9 @@ export function openFarm(options) {
       return;
     }
     if (a.a === "perk") {
-      if (F.farmer === "voltkit") F.plots.forEach((q) => (q.pests = 0));
-      if (F.farmer === "tidefin")
+      if (farmPerkOf(F.farmer ?? "") === "voltkit")
+        F.plots.forEach((q) => (q.pests = 0));
+      if (farmPerkOf(F.farmer ?? "") === "tidefin")
         F.plots.forEach((q) => {
           if (!q.locked && q.crop && q.prog < 1) q.wet = true;
         });
@@ -2589,7 +2591,7 @@ export function openFarm(options) {
       if (p.pests) a = "catch";
     } else if (F.tool === "prank") {
       if (V.today.pranks >= 3) return toast("No pranks left today (3/3)");
-      if (V.farmer === "auralynx")
+      if (farmPerkOf(V.farmer ?? "") === "auralynx")
         return toast(`${V.name}'s Shield blocks pranks`);
       if (!p.crop || p.prog >= 1) {
         if (!drag) toast("Bugs only go on growing crops");

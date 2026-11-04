@@ -645,6 +645,26 @@ export const FARM_PERKS: Record<
   mystowl: { name: "Foresight", text: "See one more weather forecast" },
   duskveil: { name: "Night Stalker", text: "+1 crop for every bug you catch" },
 };
+/**
+ * The champion whose perk a farmer has: the eight newest champions farm with
+ * the perk of the original of their element (migration 055,
+ * arena_farm_perk_of). The originals have their own.
+ */
+export const FARM_PERK_OF: Record<string, string> = {
+  coilemur: "voltkit",
+  pyranda: "cindrake",
+  glacelle: "tidefin",
+  halcyra: "auralynx",
+  sunbara: "lumoth",
+  astrabun: "mystowl",
+  wombolder: "terradon",
+  shadopus: "duskveil",
+};
+/** Whose perk this farmer farms with (itself for the original eight). */
+export const farmPerkOf = (farmer: string) => FARM_PERK_OF[farmer] ?? farmer;
+/** A farmer's perk, or null when it has none. */
+export const farmPerk = (farmer: string | null | undefined) =>
+  farmer ? (FARM_PERKS[farmPerkOf(farmer)] ?? null) : null;
 /** Decorations (migration 048): 8 spots; every 2 Charm is +1% farm XP, up to 25%. */
 export const FARM_DECOR: readonly {
   id: string;
