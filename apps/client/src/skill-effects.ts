@@ -655,9 +655,10 @@ export function playCast(
   angle: number,
   color: number,
   reduced: boolean,
+  at?: () => { x: number; y: number } | undefined,
 ) {
   const kit = KIT.cast[a.id];
-  if (kit) return kit(scene, a, x, y, angle, color, shotIn(scene));
+  if (kit) return kit(scene, a, x, y, angle, color, shotIn(scene), at);
   const cy = y - 10;
   const d = reduced ? 160 : 1;
   switch (a.id) {

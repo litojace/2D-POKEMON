@@ -465,24 +465,29 @@ function tentacle(
 // ───────────── Tentacle Lash, Ink Strike ─────────────
 /**
  * Tentacles lash across the real arc and range. Ink Strike sends all eight
- * at once, fanned across its arc; the basic lash is a quick pair.
+ * at once, fanned across its arc; the basic lash is a quick pair. The
+ * tentacles are Shadopus's own, so they stay on its body while it moves
+ * (`at`: where it is drawn now), instead of hanging where the lash began.
  */
 function lash(
   scene: Phaser.Scene,
   a: Ability,
-  x: number,
-  y: number,
+  x0: number,
+  y0: number,
   angle: number,
   color: number,
   shot: Shot,
+  at?: () => { x: number; y: number } | undefined,
 ) {
+  const start = at?.() ?? { x: x0, y: y0 };
   const fx = fxFor(scene),
-    cy = y - 14,
     spread = Math.min(Math.PI * 0.95, Math.acos(a.arc ?? 0.3)),
     strike = a.id === "ink-strike",
     arms = strike ? 8 : 2,
     range = a.range;
   shot(fx.reduced ? 180 : strike ? 420 : 280, (k) => {
+    const { x, y } = at?.() ?? start,
+      cy = y - 14;
     const reach = ease(Math.min(1, k * (strike ? 2.6 : 3))),
       back = k > 0.5 ? 1 - (k - 0.5) / 0.5 : 1,
       fade = 1 - Math.max(0, (k - 0.55) / 0.45);
@@ -524,8 +529,8 @@ function lash(
       fx.g.lineStyle(1.5, SUCKER, 0.9 * s).strokePoints(pts, false);
     }
   });
-  const tx = x + Math.cos(angle) * range * 0.8,
-    ty = y + Math.sin(angle) * range * 0.8;
+  const tx = start.x + Math.cos(angle) * range * 0.8,
+    ty = start.y + Math.sin(angle) * range * 0.8;
   inkDrops(fx, tx, ty, strike ? 12 : 5, [60, 200], { angle, spread: spread });
   if (strike) {
     wisps(fx, tx, ty, 5, [40, 140]);

@@ -49,6 +49,8 @@ export interface FxKit {
       angle: number,
       color: number,
       shot: Shot,
+      /** Where the caster is drawn now, for strikes that stay attached to it. */
+      at?: () => { x: number; y: number } | undefined,
     ) => void
   >;
   impact?: Record<
