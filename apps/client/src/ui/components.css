@@ -258,6 +258,17 @@
   background: var(--ui-glass);
   backdrop-filter: blur(10px);
 }
+/* Desktop: the main column (tabs, lists, catalogue) reads best at a set
+   width; the stage grows with the screen instead (never below --stage-w).
+   Phones keep the fixed narrow stage, the main column needs the room. */
+@media (min-height: 501px) {
+  .ui-panel.is-split {
+    grid-template-columns: minmax(var(--stage-w), 1fr) minmax(
+        0,
+        var(--split-main)
+      );
+  }
+}
 @media (max-height: 500px) {
   .ui-panel.is-split {
     gap: var(--sp-2);

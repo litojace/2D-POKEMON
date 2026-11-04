@@ -85,8 +85,14 @@
   --head-h: 64px;
   --close: 44px;
   --sheet-w: 460px;
-  /* The stage a split panel shows its fighter on (fitting room, roster). */
+  /* The stage a split panel shows its fighter on (fitting room, roster,
+     raid boss): its narrowest width. On desktop the stage takes whatever the
+     main column leaves, and the main column stops at --split-main, so a big
+     screen shows a bigger stage instead of stretching the text column (the
+     hero-left, details-right split of current hero-shooter and MOBA hero
+     pages). */
   --stage-w: 440px;
+  --split-main: clamp(720px, 48vw, 920px);
   /* Depth and motion. */
   --shadow-1: 0 4px 12px #0007;
   --shadow-2: 0 14px 34px #000a;
@@ -168,6 +174,14 @@
 @media (max-width: 1300px) and (min-height: 501px) {
   :root {
     --stage-w: 390px;
+  }
+}
+/* A short desktop screen: the fighter is as big as the stage's height
+   allows, so extra width would only be empty stage. The main column keeps
+   it. */
+@media (max-height: 820px) and (min-height: 501px) {
+  :root {
+    --split-main: clamp(760px, 58vw, 920px);
   }
 }
 @media (prefers-reduced-motion: reduce) {

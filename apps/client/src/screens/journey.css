@@ -227,14 +227,18 @@ button.journey-tier {
 }
 
 /* ------------------------------------------ weekly goals and level road */
+/* On a wide panel a single column of goals stretched each bar across
+   1,200 px beside a narrow level road: the goals become cards two to a row
+   (quest boards in current battle passes) and the road grows a little. */
 .journey-two {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
+  grid-template-columns: minmax(0, 1fr) clamp(320px, 30%, 420px);
   gap: var(--sp-4);
   align-items: start;
 }
 .journey-goals {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr));
   gap: var(--sp-2);
   margin-top: var(--sp-2);
 }
