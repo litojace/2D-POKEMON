@@ -200,17 +200,27 @@ it("keeps the mutation in the barn and sells it at its multiplier", async () => 
   expect(f.leaves - before).toBe(
     2 * Math.max(1, Math.round(5 * mult * mutationMultiplier("shock"))),
   );
-  // The database's multipliers are the shared ones.
+  // The database's multipliers are the shared ones, exactly (migration 056).
   for (const m of MUTATIONS) {
     const [{ x }] = await owner(
       "select public.arena_farm_mutation_mult($1) x",
       [m.id],
     );
-    expect(x).toBeCloseTo(m.mult, 6);
+    expect(Number(x)).toBe(m.mult);
   }
   const [{ x }] = await owner(
     "select public.arena_farm_mutation_mult('gold+shock') x",
   );
-  expect(x).toBeCloseTo(15, 6);
+  expect(Number(x)).toBe(15);
+  // The sell action's price (arena_farm_sell_price) rounds as the Market
+  // does (Math.round), whatever the day's prices. Wheat (5) Shocked on a
+  // ×1.50 day lands on 22.5 and pays 23 (it paid 22 before migration 056).
+  // Wet on ×1.10 is 8.25 → 8, Moonlit+Wet on ×1.70 is 31.875 → 32, and a
+  // tiny price still pays 1.
+  const prices = await owner(
+    `select public.arena_farm_sell_price(sell, mult, mut) p
+       from (values (5, 1.50, 'shock'), (5, 1.10, 'wet'), (5, 1.70, 'moon+wet'), (1, 0.30, '')) v(sell, mult, mut)`,
+  );
+  expect(prices.map((r: any) => r.p)).toEqual([23, 8, 32, 1]);
   await pin(null);
 });
