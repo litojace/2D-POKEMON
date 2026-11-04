@@ -357,7 +357,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
   // the device, and resume when it closes. A sheet leaves the Lobby showing.
   const syncCovered = () => {
     const covered = !!document.querySelector(
-      "dialog[open], .home-drawer:not([hidden]), .ui-panel:not(.ui-sheet)",
+      "dialog[open], .home-drawer:not([hidden]), .ui-panel:not(.ui-sheet, [data-ui-leaving])",
     );
     layer.classList.toggle("is-covered", covered);
     rig?.suspend(covered);
@@ -402,7 +402,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     subtree: true,
     childList: true,
     attributes: true,
-    attributeFilter: ["open", "hidden"],
+    attributeFilter: ["open", "hidden", "data-ui-leaving"],
   });
   syncCovered();
   return {

@@ -153,6 +153,8 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
     wrap.style.pointerEvents = "none";
     wrap.querySelectorAll<HTMLElement>(".ui-panel").forEach((el) => {
       el.style.pointerEvents = "none";
+      // Leaving: what looks for open screens passes over it.
+      el.dataset.uiLeaving = "";
     });
     void leave(root, {
       opacity: 0,

@@ -12,9 +12,13 @@ export async function openHub(page: Page) {
   // or picked a quality itself.
   await page.addInitScript(() => {
     try {
-      if (!(window as any).__graphicsAuto && localStorage.getItem("ea-graphics") === null)
+      if (
+        !(window as any).__graphicsAuto &&
+        localStorage.getItem("ea-graphics") === null
+      )
         localStorage.setItem("ea-graphics", "high");
-      if (localStorage.getItem("ea-hub-scene") === null) localStorage.setItem("ea-hub-scene", "lobby");
+      if (localStorage.getItem("ea-hub-scene") === null)
+        localStorage.setItem("ea-hub-scene", "lobby");
     } catch {
       /* No storage: Auto. */
     }
@@ -52,7 +56,9 @@ export async function openPlaza(page: Page) {
   await page.evaluate(() => localStorage.setItem("ea-plaza-help", "1"));
   await page.click('#hub-scenes [data-hub-scene="plaza"]');
   await expect(page.locator(".plaza-layer #pz-cv")).toBeVisible();
-  await expect.poll(() => page.evaluate(() => (window as any).__plazaWorld.size)).toBe(1);
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__plazaWorld.size))
+    .toBe(1);
   // Midday, whatever the clock says (night lighting is slow on a CPU renderer).
   await page.evaluate(() => (window as any).__plaza.setTod(0.42));
   return errors;
@@ -113,12 +119,35 @@ export async function snap(page: Page, info: TestInfo, name: string) {
   }
 }
 
-export type Box = { x: number; y: number; width: number; height: number };
-export const box = (page: Page, selector: string) =>
-  page.locator(selector).first().evaluate((el) => {
-    const r = el.getBoundingClientRect();
-    return { x: r.x, y: r.y, width: r.width, height: r.height };
+/**
+ * Let the UI motion end (ui/motion.ts): every finite animation jumps to its
+ * end, so a screen sliding in or a stage gliding aside is measured where it
+ * settles, and a screen fading out is gone. Looping animations (an idle bob,
+ * PLAY's sweep) keep running.
+ */
+export const settle = (page: Page) =>
+  page.evaluate(async () => {
+    for (const a of document.getAnimations())
+      if (
+        a.effect?.getTiming().iterations !== Infinity &&
+        a.playState !== "finished"
+      )
+        a.finish();
+    // Let what waits on them (removing a closed screen) run.
+    await new Promise((r) => setTimeout(r, 0));
   });
+
+export type Box = { x: number; y: number; width: number; height: number };
+export const box = async (page: Page, selector: string) => {
+  await settle(page);
+  return page
+    .locator(selector)
+    .first()
+    .evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      return { x: r.x, y: r.y, width: r.width, height: r.height };
+    });
+};
 /** Is `inner` inside `outer`, give or take a pixel? */
 export const inside = (inner: Box, outer: Box) =>
   inner.x >= outer.x - 1 &&
