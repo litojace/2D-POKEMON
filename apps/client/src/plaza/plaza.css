@@ -152,17 +152,19 @@
   font-size: 13px;
   cursor: pointer;
 }
+/* Today's quests: a compact list (desktop 208px wide, rows 0.26em apart,
+   3px bars); on phones, folded, the player card's twin right under it. */
 .plaza-layer .pz-quests {
   position: absolute;
   right: var(--hud-x-r);
   top: calc(var(--hud-row2) + var(--hud-clock-h) + var(--hud-gap));
   box-sizing: border-box;
-  width: 220px;
-  border-radius: 16px;
-  padding: 0.7em 0.8em;
+  width: 208px;
+  border-radius: 14px;
+  padding: 0.55em 0.75em;
 }
 .plaza-layer .pz-quests h5 {
-  margin: 0 0 0.5em;
+  margin: 0 0 0.3em;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -184,18 +186,18 @@
 .plaza-layer .pz-q {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 0.15em 0.5em;
+  gap: 0.12em 0.5em;
   align-items: center;
-  padding: 0.38em 0;
+  padding: 0.26em 0;
   border-top: 1px solid #ffffff14;
-  font-size: 0.86em;
+  font-size: 0.82em;
 }
 .plaza-layer .pz-q:first-of-type {
   border-top: 0;
 }
 .plaza-layer .pz-q .bar {
   grid-column: 1 / -1;
-  height: 4px;
+  height: 3px;
   border-radius: 2px;
   background: #ffffff1a;
   overflow: hidden;
@@ -798,14 +800,34 @@
   font-size: 11px;
   width: 5.2em;
 }
-/* Phones: the quests go left, under the player card; the clock stays
-   alone at the top of the right column. */
+/* Phones: the quests go left, under the player card and exactly as wide
+   (--hub-card-w, lobby.css); folded, as tall too (--hub-card-h). The clock
+   stays alone at the top of the right column. */
 .plaza-layer.phone .pz-quests {
   left: var(--hud-x-l);
   right: auto;
   top: var(--hud-row2);
-  width: 200px;
+  width: var(--hub-card-w);
   font-size: 11px;
+}
+.plaza-layer.phone .pz-quests.min {
+  display: flex;
+  align-items: center;
+  height: var(--hub-card-h);
+  padding-block: 0;
+}
+.plaza-layer.phone .pz-quests.min h5 {
+  flex: 1;
+  margin: 0;
+}
+.plaza-layer.phone .pz-q {
+  font-size: 10px;
+}
+/* At the card's width a long quest wraps instead of losing its end. */
+.plaza-layer.phone .pz-q > span:first-child {
+  white-space: normal;
+  line-height: 1.2;
+  text-wrap: pretty;
 }
 .plaza-layer.phone .pz-quests h5 button {
   min-width: 32px;
