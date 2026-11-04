@@ -2508,18 +2508,7 @@ export function openPlaza(options) {
       drawSprite(g, sp, tr.x, tr.y - tr.z, s, b.face, 0, 0);
     }
     g.globalAlpha = 1;
-    let bob =
-        b.sp > 10 && !b.air
-          ? Math.abs(Math.sin(time * 12 + b.x * 0.01)) * 4
-          : Math.sin(time * 2.4 + b.x) * 1.2,
-      rot = 0,
-      sq = 0;
-    if (b.dance > 0) {
-      bob = Math.abs(Math.sin(time * 9)) * 10;
-      rot = Math.sin(time * 9) * 0.14;
-      sq = Math.sin(time * 18) * 0.06;
-    }
-    if (b.stun > 0) rot = Math.sin(time * 30) * 0.12;
+    const { bob, rot, sq } = bodyPose(b, time);
     drawSprite(g, sp, b.x, b.y - b.z - bob, s, b.face, rot, sq);
     // Bots (the pitch bots and the townsfolk) wear a quieter, italic name
     // tag, so nobody mistakes them for players.
@@ -2557,6 +2546,22 @@ export function openPlaza(options) {
       g.fillText(b.emote, b.x, by + 4);
       g.globalAlpha = 1;
     }
+  }
+  /** How a body bobs, sways and squashes this frame (walk, dance, stun). */
+  function bodyPose(b, time) {
+    let bob =
+        b.sp > 10 && !b.air
+          ? Math.abs(Math.sin(time * 12 + b.x * 0.01)) * 4
+          : Math.sin(time * 2.4 + b.x) * 1.2,
+      rot = 0,
+      sq = 0;
+    if (b.dance > 0) {
+      bob = Math.abs(Math.sin(time * 9)) * 10;
+      rot = Math.sin(time * 9) * 0.14;
+      sq = Math.sin(time * 18) * 0.06;
+    }
+    if (b.stun > 0) rot = Math.sin(time * 30) * 0.12;
+    return { bob, rot, sq };
   }
   function drawSprite(g, im, x, y, s, face, rot, sq) {
     g.save();
@@ -2914,7 +2919,9 @@ export function openPlaza(options) {
     for (let i = SMOKE.length - 1; i >= 0; i--)
       if (SMOKE[i].t > SMOKE[i].life) SMOKE.splice(i, 1);
   }
-  function drawSpotlights(g, time) {
+  /** Where the runway's spotlights hang and what they follow: whoever is
+   *  on the runway, or two slow idle sweeps of the stage. */
+  function spotRig(time) {
     const stars = BODIES().filter((b) => inRunway(b));
     const heads = [LED.x0 + 40, (LED.x0 + LED.x1) / 2, LED.x1 - 40],
       hy = LED.y0 - 14;
@@ -2926,6 +2933,61 @@ export function openPlaza(options) {
           z: 0,
           on: 0.55,
         }));
+    const headOf = (k) =>
+      heads[stars.length ? (k === 0 ? 1 : k % 2 ? 0 : 2) : k ? 2 : 0];
+    return { stars, heads, hy, targets, headOf };
+  }
+  /** A cone of light from (hx, hy) to a pool around t. */
+  function spotCone(g, hx, hy, t, w, a0, a1) {
+    const gr = g.createLinearGradient(hx, hy, t.x, t.y);
+    gr.addColorStop(0, `rgba(255,246,210,${a0})`);
+    gr.addColorStop(1, `rgba(255,246,210,${a1})`);
+    g.fillStyle = gr;
+    g.beginPath();
+    g.moveTo(hx - 8, hy);
+    g.lineTo(hx + 8, hy);
+    g.lineTo(t.x + w, t.y);
+    g.ellipse(t.x, t.y, w, w * 0.38, 0, 0, Math.PI);
+    g.lineTo(t.x - w, t.y);
+    g.closePath();
+    g.fill();
+  }
+  /** After the night grading: the spotlights shine (they were drawn with
+   *  everything else and darkened with it), and whoever stands in one is
+   *  lit — their sprite again over the darkened one, part way to daylight,
+   *  so they read clearly without glaring. */
+  function drawSpotlightsNight(g, time, n) {
+    const { stars, hy, targets, headOf } = spotRig(time);
+    g.save();
+    g.globalCompositeOperation = "lighter";
+    targets.forEach((t, k) => {
+      const hx = headOf(k),
+        w = 58;
+      spotCone(g, hx, hy, t, w, 0.16 * n * t.on, 0.05 * n * t.on);
+      const pool = g.createRadialGradient(t.x, t.y, 4, t.x, t.y, w * 1.25);
+      pool.addColorStop(0, `rgba(255,244,205,${0.3 * n * t.on})`);
+      pool.addColorStop(1, "rgba(255,244,205,0)");
+      g.fillStyle = pool;
+      g.beginPath();
+      g.ellipse(t.x, t.y, w * 1.25, w * 0.52, 0, 0, 7);
+      g.fill();
+      g.fillStyle = `rgba(255,250,225,${0.75 * n * t.on})`;
+      g.beginPath();
+      g.arc(hx, hy + 2, 6, 0, 7);
+      g.fill();
+    });
+    g.globalCompositeOperation = "source-over";
+    for (const b of [...stars].sort((a, c) => a.y - c.y)) {
+      const sp = b.img?.sprite;
+      if (!sp) continue;
+      const { bob, rot, sq } = bodyPose(b, time);
+      g.globalAlpha = 0.6 * n;
+      drawSprite(g, sp, b.x, b.y - b.z - bob, 84, b.face, rot, sq);
+    }
+    g.restore();
+  }
+  function drawSpotlights(g, time) {
+    const { heads, hy, targets, headOf } = spotRig(time);
     // The moving heads hang under the truss bar, in front of the screen.
     heads.forEach((hx) => {
       g.fillStyle = "#1a1a24";
@@ -2938,21 +3000,9 @@ export function openPlaza(options) {
     g.save();
     g.globalCompositeOperation = "lighter";
     targets.forEach((t, k) => {
-      const hx =
-          heads[stars.length ? (k === 0 ? 1 : k % 2 ? 0 : 2) : k ? 2 : 0],
+      const hx = headOf(k),
         w = 58;
-      const gr = g.createLinearGradient(hx, hy, t.x, t.y);
-      gr.addColorStop(0, `rgba(255,246,210,${0.28 * t.on})`);
-      gr.addColorStop(1, `rgba(255,246,210,${0.06 * t.on})`);
-      g.fillStyle = gr;
-      g.beginPath();
-      g.moveTo(hx - 8, hy);
-      g.lineTo(hx + 8, hy);
-      g.lineTo(t.x + w, t.y);
-      g.ellipse(t.x, t.y, w, w * 0.38, 0, 0, Math.PI);
-      g.lineTo(t.x - w, t.y);
-      g.closePath();
-      g.fill();
+      spotCone(g, hx, hy, t, w, 0.28 * t.on, 0.06 * t.on);
       const pool = g.createRadialGradient(t.x, t.y, 4, t.x, t.y, w * 1.2);
       pool.addColorStop(0, `rgba(255,248,215,${0.32 * t.on})`);
       pool.addColorStop(1, "rgba(255,248,215,0)");
@@ -3481,6 +3531,7 @@ export function openPlaza(options) {
       g.fillStyle = `rgba(${Math.round(255 - 150 * n)},${Math.round(255 - 132 * n)},${Math.round(255 - 62 * n)},1)`;
       g.fillRect(0, 0, g.canvas.width, g.canvas.height);
       g.restore();
+      drawSpotlightsNight(g, time, n);
       g.save();
       g.globalCompositeOperation = "lighter";
       const glow = (x, y, r, c, a) => {
