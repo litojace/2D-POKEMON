@@ -99,28 +99,52 @@ All sixteen now win 47–52% in duels (before: 42–60%).
 
 ### 2v2
 
-Random 2v2 teams (1,200 matches per difficulty, about 300 appearances per
-champion each), with the tuned numbers:
+2v2 has its own per-champion tuning (`TEAM_TUNING` in
+`packages/shared/src/index.ts`, team mode only): health × f and basic-attack
+interval ÷ √f, the same form as the duel tuning. Duels, free-for-all and
+raids keep the champions' own numbers.
 
-| Team win rate | Champions                                                                                                |
-| ------------- | -------------------------------------------------------------------------------------------------------- |
-| 55–63%        | Auralynx 62.8, Astrabun 62.8, Shadopus 60.0, Coilemur 59.1, Cindrake 57.8, Terradon 55.7, Wombolder 55.3 |
-| 47–49%        | Glacelle 49.1, Sunbara 48.9, Pyranda 47.7                                                                |
-| 32–44%        | Tidefin 43.7, Duskveil 42.6, Halcyra 42.0, Mystowl 40.7, Lumoth 38.2, Voltkit 32.5                       |
+Why: with the duel numbers, champions with a melee basic won 55–63% of 2v2
+matches and ranged ones 36–49% (this was older than the new eight). Measured
+in bot matches, ranged champions play 2v2 as well as duels (enemies in range
+about 95% of the time, the same ~30% basic accuracy, 86–103% of their duel
+damage per second), but melee champions deal 7–31% more damage per second
+than in a duel: with two enemies on the field one is nearly always in reach.
+Cleave (one swing hitting both enemies) is only 4–10% of their damage, so
+cutting it alone would not have closed the gap.
 
-Sunbara's teams no longer win about 60% (its springs heal only Sunbara at
-half rate, and bots no longer step out of a teammate's spring or an enemy's
-harmless one). Shadopus and Coilemur went from weak to strong. The pattern is
-champions with a melee basic beating ranged ones, and it is older than the new
-eight: the original eight alone show it on main before these changes
-(Auralynx 66%, Cindrake 63%, Terradon 62% down to Voltkit 38%) and after them
-(61–63% down to 38%). Duel numbers are tuned and 2v2 uses the same ones, so
-fixing it means a 2v2-specific change (bot spacing and focus, or the team-up
-rules), not the kits.
+Tuned with `npx tsx scripts/balance/tune-teams.ts` (six rounds of 2,000
+random-team matches per difficulty on fixed line-ups, then three rounds on
+fresh line-ups each round, factors averaged over the last three). Checked on
+3,000 matches per difficulty of line-ups the tuner never saw (Hard and
+Normal averaged):
+
+| Champion  | 2v2 factor | Before | After |
+| --------- | ---------- | ------ | ----- |
+| Astrabun  | ×0.855     | 63.0%  | 50.3% |
+| Auralynx  | ×0.883     | 61.2%  | 49.1% |
+| Terradon  | ×0.882     | 59.5%  | 48.8% |
+| Coilemur  | ×0.902     | 59.3%  | 50.8% |
+| Cindrake  | ×0.910     | 58.8%  | 49.5% |
+| Wombolder | ×0.944     | 55.5%  | 51.1% |
+| Shadopus  | ×0.921     | 55.0%  | 51.0% |
+| Pyranda   | ×1.000     | 51.2%  | 52.0% |
+| Glacelle  | ×1.017     | 48.4%  | 49.9% |
+| Tidefin   | ×1.028     | 43.5%  | 47.5% |
+| Sunbara   | ×1.048     | 43.5%  | 49.3% |
+| Mystowl   | ×1.142     | 42.8%  | 54.8% |
+| Duskveil  | ×1.092     | 42.8%  | 51.0% |
+| Halcyra   | ×1.126     | 41.3%  | 50.2% |
+| Lumoth    | ×1.127     | 38.2%  | 48.1% |
+| Voltkit   | ×1.134     | 35.8%  | 46.8% |
+
+Spread 35.8–63.0% (standard deviation 8.7) before, 46.8–54.8% (1.9) after.
+Round-to-round noise on fresh line-ups is about ±4 points per champion, so
+the remaining differences are mostly noise. Mystowl's 54.8% is its known
+Hard/Normal split (64% / 46%), not a 2v2 effect.
 
 ## Known issues
 
-- 2v2 favours melee basics (above).
 - Bot win rates still split by difficulty for some champions: Cindrake (30%
   Hard, 73% Normal), Mystowl (69% / 31%), Duskveil (36% / 64%) and Pyranda
   (62% / 37%).
