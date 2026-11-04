@@ -117,6 +117,20 @@ open to change.
   the browser evicts it for space; the album says "Saved on this device
   only". Moving it to the server later needs the owner's decision first.
 - Treats came with the farm systems (049).
+- **Night lights (4 Nov 2026):** the runway's spotlights hang from the
+  truss in front of the LED screen, so their beams are drawn over it (the
+  screen used to cut them off). More LED strings: a garland on the truss and
+  lights round its legs, festoons from the square down the south path and
+  out along the east path, and bulbs on the Photo Spot and Farm gate arches
+  and the stage's edge. At night every bulb glows and twinkles (Low graphics
+  drops the glow, reduced motion the twinkle), and the night is a little
+  lighter than before.
+- **Any screen shape (4 Nov 2026):** the Plaza and the Farm fill the screen
+  on ultrawide monitors, tall windows and phones alike. The Plaza zooms in
+  when the screen is wider or taller than its 2700 × 1700 map, and its camera
+  stops at the map's edge (it used to show a 40 px strip below the map). The
+  farm's virtual view now grows with the screen's taller side as well as its
+  wider one, so it no longer leaves bands above and below.
 
 ## Farm systems progress (phase 5)
 

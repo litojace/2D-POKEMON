@@ -176,6 +176,22 @@ test("you walk where the server says, and Volt Boba costs 10 leaves", async ({
       return Math.abs(mine - srv.x);
     })
     .toBeLessThan(40);
+  // Wait until the server has stopped you too. The key-up reaches it with
+  // the next frame, which the CPU-drawn browser can hold back for a second
+  // under load; teleporting before that left the server walking you east,
+  // away from the truck, and the Volt Boba button never came.
+  let was = NaN;
+  await expect
+    .poll(
+      async () => {
+        const x = (await server()).x,
+          still = x === was;
+        was = x;
+        return still;
+      },
+      { timeout: 15_000, intervals: [500] },
+    )
+    .toBe(true);
   // Volt Boba: walk up to the truck, pay, run faster.
   await teleport(page, 1745, 520);
   await expect(page.locator("#pz-interact")).toContainText("Volt Boba", {
