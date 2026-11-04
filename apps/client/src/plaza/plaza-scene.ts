@@ -449,9 +449,25 @@ export function openPlaza(options) {
       7,
     );
     g.fill();
+    // The ring: two closed ellipses of exactly one turn each. (Drawn to
+    // 7 radians, more than a turn, the overlap and the join between the two
+    // cut a wedge out of the lane with "evenodd".)
     g.beginPath();
-    g.ellipse(TRACK.cx, TRACK.cy, TRACK.ro[0], TRACK.ro[1], 0, 0, 7);
-    g.ellipse(TRACK.cx, TRACK.cy, TRACK.ri[0], TRACK.ri[1], 0, 0, 7, true);
+    g.moveTo(TRACK.cx + TRACK.ro[0], TRACK.cy);
+    g.ellipse(TRACK.cx, TRACK.cy, TRACK.ro[0], TRACK.ro[1], 0, 0, Math.PI * 2);
+    g.closePath();
+    g.moveTo(TRACK.cx + TRACK.ri[0], TRACK.cy);
+    g.ellipse(
+      TRACK.cx,
+      TRACK.cy,
+      TRACK.ri[0],
+      TRACK.ri[1],
+      0,
+      0,
+      Math.PI * 2,
+      true,
+    );
+    g.closePath();
     const tg = g.createLinearGradient(
       0,
       TRACK.cy - TRACK.ro[1],
@@ -3809,6 +3825,14 @@ export function openPlaza(options) {
       layer.remove();
     },
     _dbg: {
+      /** The painted ground's colour at a world point (tests). */
+      groundAt(x, y) {
+        return [
+          ...bg
+            .getContext("2d")
+            .getImageData(Math.round(x), Math.round(y), 1, 1).data,
+        ];
+      },
       /** Where a world point is on the page (tests). */
       worldClient(x, y) {
         const r = cv.getBoundingClientRect();
