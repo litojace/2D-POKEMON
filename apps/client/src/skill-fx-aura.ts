@@ -1,7 +1,15 @@
 import type Phaser from "phaser";
 import type { Ability, Projectile } from "@arena/shared";
 import { fxFor, type Fx } from "./fx-engine";
-import { TAU, ease, hash, type FxKit, type G, type Shot } from "./fx-kits";
+import {
+  TAU,
+  ease,
+  hash,
+  type FxKit,
+  type G,
+  type Shot,
+  type Follow,
+} from "./fx-kits";
 /**
  * Auralynx's kit: crystal aura. Faceted prisms, rainbow refraction, glass
  * shards that tumble and bounce, hex mirrors. Sizes come from the abilities.
@@ -111,18 +119,25 @@ function prismLine(
 function prismJab(
   scene: Phaser.Scene,
   a: Ability,
-  x: number,
-  y: number,
+  x0: number,
+  y0: number,
   angle: number,
   color: number,
   shot: Shot,
+  at?: Follow,
 ) {
+  // Start where the caster is drawn (not the server position it was cast from).
+  const origin = at?.() ?? { x: x0, y: y0 },
+    { x, y } = origin;
   const fx = fxFor(scene),
     cy = y - 12,
     tipX = x + Math.cos(angle) * a.range,
     tipY = cy + Math.sin(angle) * a.range;
   shards(fx, tipX, tipY + 12, 6, color, { angle, spread: 0.7, power: 0.7 });
   shot(fx.reduced ? 140 : 240, (k) => {
+    // The strike stays on the caster while it moves.
+    const { x, y } = at?.() ?? origin,
+      cy = y - 12;
     const reach = ease(Math.min(1, k * 3)),
       fade = 1 - Math.max(0, (k - 0.3) / 0.7),
       hx = x + Math.cos(angle) * a.range * reach,
@@ -219,12 +234,16 @@ function prismImpact(
 function shatterPalm(
   scene: Phaser.Scene,
   a: Ability,
-  x: number,
-  y: number,
+  x0: number,
+  y0: number,
   angle: number,
   color: number,
   shot: Shot,
+  at?: Follow,
 ) {
+  // Start where the caster is drawn (not the server position it was cast from).
+  const origin = at?.() ?? { x: x0, y: y0 },
+    { x, y } = origin;
   const fx = fxFor(scene),
     cy = y - 14,
     hx = x + Math.cos(angle) * a.range * 0.85,

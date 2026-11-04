@@ -106,4 +106,21 @@ describe("battle effects", () => {
     }
     expect(calls()).toBeGreaterThan(1000);
   });
+
+  it("keeps every melee strike on its caster while the caster moves", () => {
+    const { scene } = fakeScene();
+    // Shatter Palm's cracks and shockwave stay where the palm struck.
+    const IMPACT_ONLY = ["shatter-paw"];
+    const melee = moves.filter(({ a }) => a.kind === "melee");
+    expect(melee.length).toBeGreaterThanOrEqual(14);
+    for (const { c, a } of melee) {
+      let asked = 0;
+      // The caster runs to the right while its strike plays.
+      const at = () => ({ x: 300 + 40 * asked++, y: 300 });
+      playCast(scene, a as Ability, 300, 300, 0.3, c.color, false, at);
+      if (IMPACT_ONLY.includes(a.id)) expect(asked, a.id).toBeGreaterThanOrEqual(1);
+      // Asked once to start, then again on every frame of the strike.
+      else expect(asked, a.id).toBeGreaterThan(3);
+    }
+  });
 });

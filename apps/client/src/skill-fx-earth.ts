@@ -1,7 +1,15 @@
 import type Phaser from "phaser";
 import type { Ability, Projectile, Zone } from "@arena/shared";
 import { fxFor, type Fx } from "./fx-engine";
-import { TAU, ease, hash, type FxKit, type G, type Shot } from "./fx-kits";
+import {
+  TAU,
+  ease,
+  hash,
+  type FxKit,
+  type G,
+  type Shot,
+  type Follow,
+} from "./fx-kits";
 /**
  * Terradon's kit: weight. Rock chips with shadows that bounce and settle,
  * rolling dust, cracked floor, rock spikes. Sizes come from the shared
@@ -108,12 +116,16 @@ function sweep(
 function boulderSwipe(
   scene: Phaser.Scene,
   a: Ability,
-  x: number,
-  y: number,
+  x0: number,
+  y0: number,
   angle: number,
   color: number,
   shot: Shot,
+  at?: Follow,
 ) {
+  // Start where the caster is drawn (not the server position it was cast from).
+  const origin = at?.() ?? { x: x0, y: y0 },
+    { x, y } = origin;
   const fx = fxFor(scene),
     cy = y - 8;
   const hx = x + Math.cos(angle) * a.range * 0.7,
@@ -124,18 +136,27 @@ function boulderSwipe(
     size: [3.5, 6],
   });
   dust(fx, hx, hy, 6, [40, 140], { angle, spread: 1, size: [12, 20] });
-  shot(fx.reduced ? 160 : 300, (k) => sweep(fx, x, cy, a, angle, k, color, 12));
+  shot(fx.reduced ? 160 : 300, (k) => {
+    // The strike stays on the caster while it moves.
+    const { x, y } = at?.() ?? origin,
+      cy = y - 8;
+    sweep(fx, x, cy, a, angle, k, color, 12);
+  });
 }
 
 function shellSlam(
   scene: Phaser.Scene,
   a: Ability,
-  x: number,
-  y: number,
+  x0: number,
+  y0: number,
   angle: number,
   color: number,
   shot: Shot,
+  at?: Follow,
 ) {
+  // Start where the caster is drawn (not the server position it was cast from).
+  const origin = at?.() ?? { x: x0, y: y0 },
+    { x, y } = origin;
   const fx = fxFor(scene),
     hx = x + Math.cos(angle) * a.range * 0.55,
     hy = y + Math.sin(angle) * a.range * 0.45;
@@ -144,6 +165,8 @@ function shellSlam(
   fx.decal({ kind: "crack", x: hx, y: hy, r: 60, color, life: 3 });
   fx.shake(200, 0.006);
   shot(fx.reduced ? 200 : 480, (k) => {
+    // The strike stays on the caster while it moves.
+    const { x, y } = at?.() ?? origin;
     sweep(fx, x, y - 8, a, angle, Math.min(1, k * 1.6), color, 16);
     // Ground ring kicked up by the impact.
     const rr = 30 + ease(k) * 90;
@@ -416,12 +439,16 @@ const SQ = 0.82;
 function rumpBump(
   scene: Phaser.Scene,
   a: Ability,
-  x: number,
-  y: number,
+  x0: number,
+  y0: number,
   angle: number,
   color: number,
   shot: Shot,
+  at?: Follow,
 ) {
+  // Start where the caster is drawn (not the server position it was cast from).
+  const origin = at?.() ?? { x: x0, y: y0 },
+    { x, y } = origin;
   const fx = fxFor(scene),
     cy = y - 10,
     spread = Math.min(Math.PI * 0.95, Math.acos(a.arc ?? 0.15)),
@@ -434,6 +461,9 @@ function rumpBump(
   });
   rocks(fx, hx, hy, 5, [100, 240], [60, 180], { angle, spread: spread * 0.7 });
   shot(fx.reduced ? 160 : 340, (k) => {
+    // The strike stays on the caster while it moves.
+    const { x, y } = at?.() ?? origin,
+      cy = y - 10;
     sweep(fx, x, cy, a, angle, Math.min(1, k * 1.4), color, 10);
     // Shove waves rolling out across the arc to its range.
     for (let i = 0; i < 3; i++) {

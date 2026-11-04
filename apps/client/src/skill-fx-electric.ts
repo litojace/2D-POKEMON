@@ -1,7 +1,7 @@
 import type Phaser from "phaser";
 import type { Ability, Projectile, Zone } from "@arena/shared";
 import { fxFor, type Fx } from "./fx-engine";
-import type { FxKit, Shot } from "./fx-kits";
+import type { FxKit, Follow, Shot } from "./fx-kits";
 /**
  * Voltkit's kit: plasma, branching arcs and real light. Every size still comes
  * from the shared ability (radius, range, explosion), so what players see
@@ -693,12 +693,16 @@ function horseshoe(
 function coilSwipe(
   scene: Phaser.Scene,
   a: Ability,
-  x: number,
-  y: number,
+  x0: number,
+  y0: number,
   angle: number,
   color: number,
   shot: Shot,
+  at?: Follow,
 ) {
+  // Start where the caster is drawn (not the server position it was cast from).
+  const origin = at?.() ?? { x: x0, y: y0 },
+    { x, y } = origin;
   const fx = fxFor(scene),
     cy = y - 10,
     spread = Math.min(Math.PI * 0.95, Math.acos(a.arc ?? 0.35)),
@@ -719,6 +723,9 @@ function coilSwipe(
     grav: 900,
   });
   shot(fx.reduced ? 140 : 260, (k) => {
+    // The strike stays on the caster while it moves.
+    const { x, y } = at?.() ?? origin,
+      cy = y - 10;
     const sweep = ease(Math.min(1, k / 0.55)),
       fade = 1 - Math.max(0, (k - 0.35) / 0.65),
       head = angle - spread + 2 * spread * sweep,
@@ -758,12 +765,16 @@ function coilSwipe(
 function staticClamp(
   scene: Phaser.Scene,
   a: Ability,
-  x: number,
-  y: number,
+  x0: number,
+  y0: number,
   angle: number,
   color: number,
   shot: Shot,
+  at?: Follow,
 ) {
+  // Start where the caster is drawn (not the server position it was cast from).
+  const origin = at?.() ?? { x: x0, y: y0 },
+    { x, y } = origin;
   const fx = fxFor(scene),
     cy = y - 12,
     spread = Math.min(Math.PI * 0.95, Math.acos(a.arc ?? 0.35)),
@@ -787,6 +798,9 @@ function staticClamp(
   });
   fx.shake(110, 0.003);
   shot(fx.reduced ? 200 : 460, (k) => {
+    // The strike stays on the caster while it moves.
+    const { x, y } = at?.() ?? origin,
+      cy = y - 12;
     const close = ease(Math.min(1, k / 0.28)),
       fade = 1 - Math.max(0, (k - 0.3) / 0.7),
       shut = k > 0.26;
