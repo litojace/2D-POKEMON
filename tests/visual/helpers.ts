@@ -64,6 +64,20 @@ export async function openPlaza(page: Page) {
   return errors;
 }
 
+/**
+ * Leaving a raid room returns to the Raid Hall (that boss's page, opened
+ * after the Lobby is back), not to the Lobby: close it with Back to the
+ * Lobby and wait until it has gone.
+ */
+export async function closeRaidHall(page: Page) {
+  const hall = page.locator(".ui-panel.rh-room:not([data-ui-leaving])");
+  await expect(hall).toBeVisible({ timeout: 20_000 });
+  await hall.locator("[data-ui-close]").first().click();
+  await expect(page.locator(".ui-panel.rh-room")).toHaveCount(0, {
+    timeout: 10_000,
+  });
+}
+
 /** The Play panel (private rooms, bots, solo test), from the Lobby's mode menu. */
 export async function openPlayPanel(page: Page) {
   await page.click("#lobby-mode");

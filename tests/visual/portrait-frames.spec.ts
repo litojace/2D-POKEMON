@@ -1,5 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
-import { box, inside, openHub, snap, openPlayPanel } from "./helpers";
+import {
+  box,
+  closeRaidHall,
+  inside,
+  openHub,
+  snap,
+  openPlayPanel,
+} from "./helpers";
 
 async function frameFixtures(page: Page) {
   await page.route(/\/apps\/client\/src\/main\.ts(?:\?|$)/, async (route) => {
@@ -297,7 +304,8 @@ for (const size of [
         )
           await updatedDrawer.locator(":scope > summary").click();
         await page.click("#leave");
-        // Raid exits return to the hub; close it to inspect the next room.
+        // A raid exit returns to the Raid Hall; close it to see the Lobby.
+        if (kind === "raid") await closeRaidHall(page);
         if (await page.locator("dialog[open]").count()) await closePanel(page);
         await expect(page.locator("#lobby-play")).toBeVisible();
         await page.evaluate(() => {
