@@ -92,7 +92,7 @@ const PLAZA_HTML = `<div class="pz" id="pz">
     <div class="pz-banner" id="pz-banner" aria-live="polite"></div>
     <div class="pz-event" id="pz-event" hidden></div>
     <div class="pz-timer glass" id="pz-timer" hidden></div>
-    <div class="pz-mini glass" id="pz-mini" title="Click to walk there"><canvas id="pz-mcv"></canvas><button type="button" class="pz-clock" id="pz-clock" title="Preview day or night">--:--</button></div>
+    <button type="button" class="pz-clock glass" id="pz-clock" title="Preview day or night">--:--</button>
     <aside class="pz-quests glass" id="pz-quests"></aside>
     <div class="pz-feed" id="pz-feed" aria-live="polite"></div>
     <div class="pz-runcard glass" id="pz-runcard" hidden></div>
@@ -173,9 +173,7 @@ export function openPlaza(options) {
   const inRunway = (p) => onRunway(p.x, p.y);
 
   const cv = $("pz-cv"),
-    ctx = cv.getContext("2d"),
-    mcv = $("pz-mcv"),
-    mctx = mcv.getContext("2d");
+    ctx = cv.getContext("2d");
   let NW = 1280,
     NH = 800,
     PS = 1,
@@ -1285,17 +1283,6 @@ export function openPlaza(options) {
   addEventListener("blur", joyReset);
   addEventListener("orientationchange", joyReset);
   document.addEventListener("visibilitychange", onHidden);
-  $("pz-mini").addEventListener("pointerdown", (e) => {
-    if (e.target.closest("#pz-clock")) return;
-    e.stopPropagation();
-    start();
-    const r = $("pz-mini").getBoundingClientRect();
-    target = {
-      x: ((e.clientX - r.left) / r.width) * W,
-      y: ((e.clientY - r.top) / r.height) * H,
-    };
-    screen.focus({ preventScroll: true });
-  });
 
   /* ---------- actions: predicted here, decided by the server ---------- */
   function jump() {
@@ -3388,48 +3375,6 @@ export function openPlaza(options) {
       }
     }
   }
-  function drawMini() {
-    const w = mcv.width,
-      h = mcv.height,
-      s = w / W;
-    mctx.setTransform(1, 0, 0, 1, 0, 0);
-    mctx.drawImage(bg, 0, 0, w, h);
-    mctx.fillStyle = "rgba(11,16,32,.25)";
-    mctx.fillRect(0, 0, w, h);
-    mctx.setTransform(s, 0, 0, s, 0, 0);
-    const icon = (x, y, t) => {
-      const im = ICON_IMG(t);
-      if (im?.complete) mctx.drawImage(im, x - 70, y - 70, 140, 140);
-    };
-    icon(SQ.x, SQ.y - 30, "fountain");
-    icon((LED.x0 + LED.x1) / 2, LED.y1 + 30, "star");
-    icon((PITCH.x0 + PITCH.x1) / 2, SQ.y, "ball");
-    icon(TRACK.cx, TRACK.cy, "flag");
-    icon(GATE.x, GATE.y - 30, "wheat");
-    icon(PHOTO.x, PHOTO.y - 60, "camera");
-    icon(CAFE.x, CAFE.y - 60, "boba");
-    others.forEach((n) => {
-      mctx.fillStyle = "#fff";
-      mctx.beginPath();
-      mctx.arc(n.x, n.y, 20, 0, 7);
-      mctx.fill();
-    });
-    mctx.fillStyle = "#c8a3ff";
-    mctx.beginPath();
-    mctx.arc(ball.x, ball.y, 18, 0, 7);
-    mctx.fill();
-    mctx.fillStyle = "#ffd65b";
-    mctx.strokeStyle = "#0b1020";
-    mctx.lineWidth = 12;
-    mctx.beginPath();
-    mctx.arc(P.x, P.y, 38, 0, 7);
-    mctx.fill();
-    mctx.stroke();
-    mctx.strokeStyle = "rgba(255,255,255,.85)";
-    mctx.lineWidth = 8;
-    mctx.strokeRect(cam.x - NW / 2 / Z, cam.y - NH / 2 / Z, NW / Z, NH / Z);
-  }
-
   function starSkin(b) {
     return b.skin?.skin ? (options.skinName(b.skin.skin) ?? "") : "";
   }
@@ -3674,7 +3619,6 @@ export function openPlaza(options) {
     vg.addColorStop(1, "rgba(5,10,25,.35)");
     ctx.fillStyle = vg;
     ctx.fillRect(0, 0, NW, NH);
-    if (Math.floor(T * 10) % 2 === 0) drawMini();
   }
 
   /* ---------- size, enter, leave ---------- */
@@ -3690,9 +3634,6 @@ export function openPlaza(options) {
     Z = nw < 1000 ? 0.66 : 1;
     cv.width = Math.round(nw * ps);
     cv.height = Math.round(nh * ps);
-    const r = $("pz-mini");
-    mcv.width = Math.round(r.offsetWidth * ps);
-    mcv.height = Math.round(r.offsetHeight * ps);
     renderQuests();
     sized = true;
   }

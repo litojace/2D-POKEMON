@@ -165,7 +165,7 @@
 }
 .farm-layer .fm-chips {
   position: absolute;
-  right: 16px;
+  right: var(--hud-x-r);
   top: 74px;
   display: flex;
   gap: 6px;
@@ -226,7 +226,7 @@
 .farm-layer .fm-tools {
   position: absolute;
   left: 50%;
-  bottom: 14px;
+  bottom: var(--hud-y-b);
   transform: translateX(-50%);
   display: flex;
   gap: 6px;
@@ -326,8 +326,8 @@
 }
 .farm-layer .fm-log {
   position: absolute;
-  left: 16px;
-  bottom: 16px;
+  left: var(--hud-x-l);
+  bottom: var(--hud-y-b);
   width: 290px;
   display: grid;
   gap: 5px;
@@ -1629,7 +1629,7 @@
   }
 }
 .farm-layer.phone .fm-chips {
-  right: 12px;
+  right: var(--hud-x-r);
   top: 56px;
   gap: 6px;
 }
@@ -2245,7 +2245,7 @@
   width: 5em;
 }
 .farm-layer.phone .fm-chips {
-  right: 12px;
+  right: var(--hud-x-r);
   top: 56px;
   gap: 4px;
 }
@@ -2284,25 +2284,25 @@
   display: none;
 }
 .farm-layer.phone .fm-hint {
-  /* 8px above the tool bar (its top is 72px up). */
-  bottom: 80px;
+  /* 8px above the tool bar (64px tall, from the frame's bottom margin). */
+  bottom: calc(var(--hud-y-b) + 72px);
   font-size: 11px;
 }
 .farm-layer .fm-hint.done {
   display: none;
 }
 /* On the farm, toasts sit 8px above the tool bar instead of over it (its
-   top is 93px up, 72px on phones). */
+   top is 93px up, 78px on phones, from max(14px, safe area)). */
 body.hub-farm #toast {
-  bottom: calc(var(--safe-bottom, 0px) + 101px);
+  bottom: calc(max(14px, var(--safe-bottom, 0px)) + 87px);
 }
 @media (max-height: 500px) {
   body.hub-farm #toast {
-    bottom: calc(var(--safe-bottom, 0px) + 80px);
+    bottom: calc(max(14px, var(--safe-bottom, 0px)) + 72px);
   }
 }
 .farm-layer.phone .fm-tools {
-  bottom: 8px;
+  bottom: var(--hud-y-b);
   gap: 4px;
   padding: 5px;
 }
@@ -2353,10 +2353,10 @@ body.hub-farm #toast {
   font-size: 11px;
 }
 .farm-layer.phone .fm-sheet {
-  left: 12px;
+  left: var(--hud-x-l);
   right: 112px;
   top: 52px;
-  bottom: 8px;
+  bottom: var(--hud-y-b);
   width: auto;
   font-size: 12px;
 }
@@ -2421,6 +2421,14 @@ body.hub-farm #toast {
   inset: var(--safe-top, 0px) var(--safe-right, 0px) var(--safe-bottom, 0px)
     var(--safe-left, 0px);
 }
+/* One frame for the HUD, the header's own (style.css: max(14px, safe area)
+   at the sides), measured inside .fm-hud, which sits inside the safe area;
+   the bottom keeps the same margin. The Plaza uses the same three. */
+.farm-layer {
+  --hud-x-l: max(0px, 14px - var(--safe-left, 0px));
+  --hud-x-r: max(0px, 14px - var(--safe-right, 0px));
+  --hud-y-b: max(0px, 14px - var(--safe-bottom, 0px));
+}
 .farm-layer {
   /* The prototype's colour tokens the farm uses that the game doesn't define. */
   --dim: #a0afc8;
@@ -2446,18 +2454,15 @@ body.hub-farm #toast {
    beside it on desktop. It opens a 4 × 2 grid of tiles just above it. */
 .farm-layer .fm-corner {
   position: absolute;
-  right: 16px;
-  bottom: 14px;
+  right: var(--hud-x-r);
+  bottom: var(--hud-y-b);
   display: flex;
   align-items: flex-end;
   gap: 8px;
   /* Above an open sheet: the menu grid opens over it. */
   z-index: 7;
 }
-.farm-layer.phone .fm-corner {
-  right: 12px;
-  bottom: 8px;
-}
+
 .farm-layer .fm-corner .fm-zoom {
   position: static;
 }
@@ -2604,10 +2609,11 @@ body.hub-farm #toast {
    is a focused mode (the orbs and tools step aside) and ends 8px left of the
    Menu button, which stays in reach. */
 .farm-layer .fm-sheet {
-  right: 16px;
+  right: var(--hud-x-r);
   top: 128px;
   bottom: 162px;
 }
 .farm-layer.phone .fm-sheet {
-  right: 84px;
+  /* The Menu button (64px) and 8px. */
+  right: calc(var(--hud-x-r) + 72px);
 }

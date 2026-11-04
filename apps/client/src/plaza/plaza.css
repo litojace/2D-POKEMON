@@ -82,7 +82,7 @@
 .plaza-layer .pz-event {
   position: absolute;
   left: 50%;
-  top: 72px;
+  top: var(--hud-row2);
   transform: translateX(-50%);
   display: flex;
   gap: 0.7em;
@@ -114,13 +114,11 @@
   box-shadow: none;
   border: 1px solid #ffffff26;
 }
-.plaza-layer.phone .pz-event {
-  top: 54px;
-}
 .plaza-layer .pz-timer {
   position: absolute;
   left: 50%;
-  top: 120px;
+  /* Under the event pill (44 px; phones 38 px) and a gap. */
+  top: calc(var(--hud-row2) + 44px + var(--hud-gap));
   transform: translateX(-50%);
   font-family: var(--display);
   font-weight: 800;
@@ -139,47 +137,26 @@
   letter-spacing: 0;
 }
 .plaza-layer.phone .pz-timer {
-  top: 88px;
+  top: calc(var(--hud-row2) + 38px + var(--hud-gap));
 }
-.plaza-layer .pz-mini {
-  position: absolute;
-  right: 16px;
-  top: 72px;
-  width: 220px;
-  aspect-ratio: 2700 / 1700;
-  border-radius: 16px;
-  overflow: hidden;
-  cursor: pointer;
-}
-.plaza-layer .pz-mini canvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
+/* The clock (tap: preview day or night) heads the right column; the
+   quests sit under it. */
 .plaza-layer .pz-clock {
   position: absolute;
-  left: 6px;
-  bottom: 6px;
-  border: 0;
+  right: var(--hud-x-r);
+  top: var(--hud-row2);
+  height: var(--hud-clock-h);
   border-radius: 999px;
-  background: #0b1020d0;
   color: #fff;
   font-weight: 700;
-  font-size: 0.78em;
-  padding: 0.15em 0.6em;
+  font-size: 13px;
   cursor: pointer;
-}
-.plaza-layer.phone .pz-mini {
-  right: 10px;
-  top: 54px;
-  width: 128px;
-  border-radius: 10px;
 }
 .plaza-layer .pz-quests {
   position: absolute;
-  right: 16px;
-  top: 222px;
+  right: var(--hud-x-r);
+  top: calc(var(--hud-row2) + var(--hud-clock-h) + var(--hud-gap));
+  box-sizing: border-box;
   width: 220px;
   border-radius: 16px;
   padding: 0.7em 0.8em;
@@ -258,16 +235,13 @@
   display: none;
 }
 .plaza-layer.phone .pz-quests {
-  right: 10px;
-  top: 140px;
-  width: 150px;
   padding: 0.5em 0.6em;
   border-radius: 10px;
 }
 .plaza-layer .pz-feed {
   position: absolute;
-  left: 16px;
-  top: 80px;
+  left: var(--hud-x-l);
+  top: var(--hud-row2);
   width: 280px;
   display: grid;
   gap: 6px;
@@ -305,12 +279,6 @@
     transform: translateX(-16px);
     opacity: 0;
   }
-}
-.plaza-layer.phone .pz-feed {
-  left: 10px;
-  top: 58px;
-  width: 200px;
-  gap: 3px;
 }
 .plaza-layer .pz-runcard {
   position: absolute;
@@ -369,18 +337,17 @@
 }
 .plaza-layer .pz-left {
   position: absolute;
-  left: 16px;
-  bottom: 16px;
+  left: var(--hud-x-l);
+  bottom: var(--hud-y-b);
   display: flex;
-  gap: 8px;
+  gap: var(--hud-gap);
 }
 .plaza-layer .pz-round {
   width: 4.4em;
   height: 4.4em;
   border-radius: 50%;
   border: 1px solid #ffffff2e;
-  background: #0b1020c2;
-  backdrop-filter: blur(8px);
+  background: #0b1020d9;
   font-size: 1em;
   line-height: 1;
   cursor: pointer;
@@ -444,10 +411,10 @@
 }
 .plaza-layer .pz-actions {
   position: absolute;
-  right: 16px;
-  bottom: 16px;
+  right: var(--hud-x-r);
+  bottom: var(--hud-y-b);
   display: flex;
-  gap: 10px;
+  gap: var(--hud-gap);
   align-items: flex-end;
 }
 /* Two thumbs at once (joystick + Jump): no browser gesture on these
@@ -461,8 +428,7 @@
   height: 4.8em;
   border-radius: 50%;
   border: 2px solid #ffffff38;
-  background: #0b1020c2;
-  backdrop-filter: blur(8px);
+  background: #0b1020d9;
   color: #fff;
   font-weight: 800;
   cursor: pointer;
@@ -498,7 +464,7 @@
   opacity: 0.45;
 }
 .plaza-layer .pz-act.cd {
-  background: conic-gradient(#ffffff40 calc(var(--cd) * 1%), #0b1020c2 0);
+  background: conic-gradient(#ffffff40 calc(var(--cd) * 1%), #0b1020d9 0);
 }
 .plaza-layer .pz-interact {
   width: auto;
@@ -572,9 +538,8 @@
   padding: 1.4em 2em;
   border-radius: 22px;
   cursor: pointer;
-  background: #0b1020d9;
+  background: #0b1020e6;
   border: 1px solid #ffffff2e;
-  backdrop-filter: blur(10px);
 }
 .plaza-layer .pz-start b {
   display: block;
@@ -645,16 +610,6 @@
 .plaza-layer.phone .pz-act.big {
   width: 5.6em;
   height: 5.6em;
-}
-.plaza-layer.phone .pz-left,
-.plaza-layer.phone .pz-actions {
-  bottom: 10px;
-}
-.plaza-layer.phone .pz-left {
-  left: 10px;
-}
-.plaza-layer.phone .pz-actions {
-  right: 10px;
 }
 .plaza-layer.phone .pz-wheel {
   scale: 0.7;
@@ -834,24 +789,21 @@
   display: none;
 }
 .plaza-layer.phone .pz-event {
-  top: 56px;
   width: 16em;
 }
 .plaza-layer.phone .pz-event small {
   display: none;
 }
-.plaza-layer.phone .pz-mini {
-  top: 56px;
-  width: 150px;
-}
 .plaza-layer.phone .pz-clock {
   font-size: 11px;
   width: 5.2em;
 }
+/* Phones: the quests go left, under the player card; the clock stays
+   alone at the top of the right column. */
 .plaza-layer.phone .pz-quests {
-  left: 12px;
+  left: var(--hud-x-l);
   right: auto;
-  top: 56px;
+  top: var(--hud-row2);
   width: 200px;
   font-size: 11px;
 }
@@ -861,9 +813,6 @@
   font-size: 13px;
 }
 .plaza-layer.phone .pz-actions {
-  right: 12px;
-  bottom: 12px;
-  gap: 8px;
   align-items: flex-end;
 }
 .plaza-layer.phone .pz-act {
@@ -885,14 +834,14 @@
   font-size: 12px;
   align-self: center;
 }
+/* Phones: the round buttons in a row over Dash and Jump (Jump is 68 px). */
 .plaza-layer.phone .pz-left,
 .plaza-layer.coarse.screen.phone .pz-left {
   left: auto;
-  right: 12px;
+  right: var(--hud-x-r);
   top: auto;
-  bottom: 92px;
+  bottom: calc(var(--hud-y-b) + 68px + var(--hud-gap));
   flex-direction: row;
-  gap: 8px;
 }
 .plaza-layer.phone .pz-round {
   width: 46px;
@@ -913,9 +862,6 @@
   width: 45%;
   height: 70%;
 }
-.plaza-layer.phone .pz-clock {
-  height: 24px;
-}
 .plaza-layer.phone .pz-interact kbd,
 .plaza-layer.phone .pz-quests h5 span {
   font-size: 11px;
@@ -926,6 +872,19 @@
   /* The prototype's colour tokens the Plaza uses that the game doesn't define. */
   --dim: #a0afc8;
   --line-2: #ffffff33;
+  /* One frame for the whole HUD, the header's own (style.css: its sides
+     are max(14px, safe area), its top max(10px, safe area)). These are
+     measured inside .pz-hud, which already sits inside the safe area. */
+  --hud-x-l: max(0px, 14px - var(--safe-left, 0px));
+  --hud-x-r: max(0px, 14px - var(--safe-right, 0px));
+  --hud-y-b: max(0px, 14px - var(--safe-bottom, 0px));
+  --hud-gap: 12px;
+  /* The row under the header: the player card is 60 px tall (phones 42). */
+  --hud-row2: calc(
+    max(10px, var(--safe-top, 0px)) - var(--safe-top, 0px) + 60px +
+      var(--hud-gap)
+  );
+  --hud-clock-h: 32px;
   position: fixed;
   inset: 0;
   z-index: 60;
@@ -938,6 +897,14 @@
   user-select: none;
   -webkit-touch-callout: none;
 }
+.plaza-layer.phone {
+  --hud-gap: 10px;
+  --hud-row2: calc(
+    max(10px, var(--safe-top, 0px)) - var(--safe-top, 0px) + 42px +
+      var(--hud-gap)
+  );
+  --hud-clock-h: 28px;
+}
 .plaza-layer .pz {
   position: absolute;
   inset: 0;
@@ -948,12 +915,25 @@
   inset: var(--safe-top, 0px) var(--safe-right, 0px) var(--safe-bottom, 0px)
     var(--safe-left, 0px);
 }
+/* No backdrop blur anywhere over the Plaza: the canvas under the HUD
+   changes every frame, so every blurred panel was blurred again every
+   frame (a known heavy cost in Safari and on phones). A deeper tint keeps
+   the text as readable. */
 .plaza-layer .glass {
-  background: #0b1020b8;
+  background: #0b1020d9;
   border: 1px solid #ffffff26;
-  backdrop-filter: blur(10px) saturate(1.2);
-  -webkit-backdrop-filter: blur(10px) saturate(1.2);
   box-shadow: 0 8px 24px #0006;
+}
+/* :root outranks style.css's header rules, which load later. */
+:root body.hub-plaza #account-profile,
+:root body.hub-plaza #account-coins > *,
+:root body.hub-plaza #account-leaves > *,
+:root body.hub-plaza #account-admin,
+:root body.hub-plaza .header-menu > summary,
+:root body.hub-plaza .hub-scenes {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: rgba(14, 26, 49, 0.92);
 }
 .plaza-layer .ico {
   width: 1.2em;
@@ -984,7 +964,8 @@
 .plaza-layer .pz-card {
   position: absolute;
   left: 50%;
-  top: 120px;
+  /* Under the event pill, like the Orb Shower timer. */
+  top: calc(var(--hud-row2) + 44px + var(--hud-gap));
   transform: translateX(-50%);
   width: 19em;
   max-width: calc(100% - 24px);
@@ -995,7 +976,7 @@
   z-index: 4;
 }
 .plaza-layer.phone .pz-card {
-  top: 56px;
+  top: calc(var(--hud-row2) + 38px + var(--hud-gap));
 }
 .plaza-layer .pz-card .pc-h {
   display: flex;
@@ -1059,7 +1040,8 @@
 
 /* ---------- the polaroid and the photo album ----------
    Both dim the whole screen (the safe areas too) and keep their cards below
-   the header (72px; phones 56px) and inside the safe area. The free space
+   the header and inside the HUD's frame (--hud-row2 and the --hud-x/y
+   margins). The free space
    is a size container, so the photo and the album's cells shrink to fit it
    and never run under the header or off a phone. Boxes have fixed heights
    and one line of text each. The photo is 640 × 420; --pw is its width. */
@@ -1069,19 +1051,16 @@
   inset: calc(-1 * var(--safe-top, 0px)) calc(-1 * var(--safe-right, 0px))
     calc(-1 * var(--safe-bottom, 0px)) calc(-1 * var(--safe-left, 0px));
   box-sizing: border-box;
-  padding: calc(var(--safe-top, 0px) + 72px) calc(var(--safe-right, 0px) + 16px)
-    calc(var(--safe-bottom, 0px) + 16px) calc(var(--safe-left, 0px) + 16px);
+  padding: calc(var(--safe-top, 0px) + var(--hud-row2))
+    calc(var(--safe-right, 0px) + var(--hud-x-r))
+    calc(var(--safe-bottom, 0px) + var(--hud-y-b))
+    calc(var(--safe-left, 0px) + var(--hud-x-l));
   container-type: size;
   display: grid;
   place-items: center;
   background: #0b1020b3;
   animation: pz-fadein 0.25s;
   z-index: 5;
-}
-.plaza-layer.phone .pz-photo,
-.plaza-layer.phone .pz-album {
-  padding: calc(var(--safe-top, 0px) + 56px) calc(var(--safe-right, 0px) + 12px)
-    calc(var(--safe-bottom, 0px) + 8px) calc(var(--safe-left, 0px) + 12px);
 }
 .plaza-layer .polaroid {
   --pw: min(492px, 100cqw - 60px, (100cqh - 172px) * 640 / 420);
