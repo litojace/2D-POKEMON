@@ -14,6 +14,7 @@ import { FighterRig } from "./animation/rig";
 import { SKINS } from "./animation/cosmetics";
 import { drawCollectionAura } from "./skins/collection-fx";
 import { menuShadow } from "./fighter-art";
+import { lowGraphics } from "./graphics-quality";
 import type { AnimationPose } from "./animation/controller";
 import type { SkinLook } from "./creature-design";
 import {
@@ -73,6 +74,25 @@ export function mountShopPreview(
   let game: Phaser.Game | undefined;
   let scene: PreviewScene | undefined;
   let viewportHeight: number = framing.height;
+  /**
+   * Canvas pixels per framing pixel. The framing is small (400 or 480 px
+   * wide) and the canvas is shown much larger on a big stage or a sharp
+   * screen, which blurred the fighter. The canvas now draws at the size it
+   * is shown times the screen's density, in steps of a quarter, up to
+   * 2.5× and about a million pixels; Low graphics stays at 1×. World
+   * coordinates don't change: only the camera zooms by this much.
+   */
+  let resolution = 1;
+  const resolutionFor = (height: number) => {
+    if (lowGraphics() || typeof window === "undefined") return 1;
+    const shown =
+      game?.canvas?.getBoundingClientRect().width ||
+      host.getBoundingClientRect().width;
+    const density = Math.min(window.devicePixelRatio || 1, 3);
+    const wanted = (shown * density) / framing.width,
+      budget = Math.sqrt(1_000_000 / (framing.width * height));
+    return Math.max(1, Math.floor(Math.min(wanted, budget, 2.5) * 4) / 4);
+  };
   const cameraZoom = () =>
     selection ? previewZoom(action) : shopPreviewZoom(action, viewportHeight);
   const resizeStage = () => {
@@ -89,9 +109,18 @@ export function mountShopPreview(
     const nextHeight = selection
       ? framing.height
       : Math.max(1, Math.round((framing.width * height) / width));
-    if (viewportHeight !== nextHeight || game.scale.width !== framing.width) {
+    const nextResolution = resolutionFor(nextHeight);
+    if (
+      viewportHeight !== nextHeight ||
+      resolution !== nextResolution ||
+      game.scale.width !== Math.round(framing.width * nextResolution)
+    ) {
       viewportHeight = nextHeight;
-      game.scale.resize(framing.width, viewportHeight);
+      resolution = nextResolution;
+      game.scale.resize(
+        Math.round(framing.width * resolution),
+        Math.round(viewportHeight * resolution),
+      );
     }
     if (!selection)
       host
@@ -486,7 +515,7 @@ export function mountShopPreview(
         victory: action === "victory" && t < 3.5,
       };
       this.cameras.main
-        .setZoom(cameraZoom())
+        .setZoom(cameraZoom() * resolution)
         .centerOn(framing.x, framing.cameraY);
       this.aura.clear();
       this.auraFront.clear();
