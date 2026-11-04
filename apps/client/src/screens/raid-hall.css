@@ -149,35 +149,139 @@
 }
 
 /* -------------------------------------------------------- boss page */
+/* The stage: a boss card. The picture keeps its own 3:2 shape at every
+   size (a replaced element with width and height auto and both maxima
+   scales down without cropping); --info is the room the text under it
+   needs, smaller as container queries drop parts of it. */
 .rh-stage {
-  background: var(--ui-bg-0);
+  container-type: size;
+  --info: 400px;
 }
-.rh-hero,
-.rh-hero img {
+.rh-stage-card {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+  gap: 16px;
+  padding: 20px;
 }
-.rh-hero img {
-  object-fit: cover;
-  object-position: 38% 50%;
+.rh-art {
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  flex: none;
 }
-.rh-stage::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, transparent 50%, #0b1020ee 92%);
-  pointer-events: none;
+.rh-art img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: calc(100cqh - var(--info) - 40px);
+  border-radius: var(--rad-lg);
+  border: 1px solid color-mix(in srgb, var(--el) 45%, transparent);
+  box-shadow:
+    0 18px 40px #0009,
+    0 0 0 4px color-mix(in srgb, var(--el) 10%, transparent);
 }
 .rh-stage-info {
-  position: absolute;
-  left: 20px;
-  right: 20px;
-  bottom: 18px;
-  z-index: 1;
   display: grid;
-  gap: 4px;
+  gap: 6px;
+  flex: none;
+}
+.rh-win {
+  display: grid;
+  gap: 2px;
+  margin-top: 4px !important;
+  padding: 10px 12px;
+  border-radius: var(--rad-md);
+  border: 1px solid color-mix(in srgb, var(--el) 35%, transparent);
+  background: color-mix(in srgb, var(--el) 8%, var(--ui-bg-1));
+}
+.rh-win b {
+  font-size: var(--fs-lead);
+}
+.rh-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.rh-fact {
+  display: grid;
+  justify-items: center;
+  padding: 8px 4px;
+  border-radius: var(--rad-md);
+  border: 1px solid var(--ui-line);
+  background: var(--ui-bg-1);
+}
+.rh-fact b {
+  font-size: 22px;
+  line-height: 1;
+  color: var(--ui-accent);
+}
+.rh-fact small {
+  color: var(--ui-dim);
+  font-size: var(--fs-micro);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.rh-stage-chapters {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: stage-chapter;
+}
+.rh-stage-chapters li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: var(--rad-md);
+  background: var(--ui-bg-1);
+  border: 1px solid var(--ui-line);
+  font-weight: 600;
+  counter-increment: stage-chapter;
+}
+.rh-stage-chapters li::before {
+  content: counter(stage-chapter);
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--el) 25%, var(--ui-bg-0));
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 13px;
+}
+/* Shorter stages: drop the chapters, then the numbers, then the tip. */
+@container (max-height: 820px) {
+  .rh-stage {
+    --info: 290px;
+  }
+  .rh-stage-chapters {
+    display: none;
+  }
+}
+@container (max-height: 560px) {
+  .rh-stage {
+    --info: 210px;
+  }
+  .rh-facts {
+    display: none;
+  }
+}
+@container (max-height: 440px) {
+  .rh-stage {
+    --info: 120px;
+  }
+  .rh-win {
+    display: none;
+  }
 }
 .rh-row {
   display: flex;
@@ -289,11 +393,8 @@
 }
 .rh-picks {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 8px;
-}
-.rh-picks.is-all {
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
 }
 .rh-pick {
   display: grid;
@@ -322,11 +423,8 @@
 /* Rewards: a picture, the goal and its progress. */
 .rh-rewards {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-.rh-rewards.is-all {
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
 }
 .rh-reward {
   position: relative;
@@ -397,6 +495,28 @@
 .rh-check svg {
   width: 16px;
   height: 16px;
+}
+/* The Party tab's strip of attacks (each opens the Attacks tab). */
+.rh-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+.rh-attack.is-mini {
+  padding: 8px 10px;
+}
+.rh-attack.is-mini .rh-attack-icon {
+  width: 32px;
+  height: 32px;
+}
+.rh-attack.is-mini .rh-attack-text b {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rh-attack.is-mini:hover,
+.rh-attack.is-mini:focus-visible {
+  border-color: var(--ui-accent);
 }
 /* Attacks: one row each; the picked one is what Practice drills. */
 .rh-attacks {
@@ -500,17 +620,6 @@
   .rh-head .ui-kicker {
     display: none;
   }
-  .rh-picks,
-  .rh-rewards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .rh-picks > :nth-child(n + 3),
-  .rh-rewards:not(.is-all) > :nth-child(n + 3) {
-    display: none;
-  }
-  .rh-picks.is-all > :nth-child(n + 3) {
-    display: grid;
-  }
   .rh-attacks {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -563,10 +672,18 @@
   .rh-practice > .ui-btn {
     display: none;
   }
+  /* The phone's stage is a narrow strip: the picture, then the name. */
+  .rh-stage {
+    --info: 56px;
+  }
+  .rh-stage-card {
+    gap: 8px;
+    padding: 8px;
+  }
+  .rh-art img {
+    border-radius: var(--rad-md);
+  }
   .rh-stage-info {
-    left: 8px;
-    right: 8px;
-    bottom: 8px;
     gap: 2px;
   }
   .rh-stage-name {
@@ -613,10 +730,6 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
   }
-  .rh-picks > :nth-child(n + 3),
-  .rh-rewards:not(.is-all) > :nth-child(n + 3) {
-    display: grid;
-  }
   .rh-picks.is-all,
   .rh-rewards.is-all {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -658,6 +771,12 @@
   }
   .rh-chapters li {
     padding: 6px 8px;
+  }
+  /* Phones: the Attacks tab is one tap away; the strip would only add
+     scrolling. */
+  .rh-strip,
+  .rh-strip-head {
+    display: none;
   }
   .rh-foot-note:not(.is-reason) {
     display: none;

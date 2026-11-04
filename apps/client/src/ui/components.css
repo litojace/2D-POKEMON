@@ -559,6 +559,13 @@
 .ui-btn > span {
   margin-right: -0.05em;
 }
+/* A button's icon is drawn in its label's colour. (style.css paints every
+   menu icon gold, which vanished on a gold button and left its label
+   looking pushed to the right.) */
+.ui-btn > svg {
+  color: currentColor;
+  opacity: 1;
+}
 .ui-btn.is-s {
   --h: var(--ctl-s);
   min-width: var(--act-s);

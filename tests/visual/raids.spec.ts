@@ -13,6 +13,9 @@ import {
 // shared layout rules (ui-measure.ts); labels are checked for centring on
 // the pixels.
 const SIZES = [
+  // A tall desktop window (the owner's, 4 Nov): the whole boss picture and
+  // a filled Party tab.
+  { name: "1720x1392", width: 1720, height: 1392, phone: false },
   { name: "1440x900", width: 1440, height: 900, phone: false },
   { name: "1280x720", width: 1280, height: 720, phone: false },
   { name: "844x390", width: 844, height: 390, phone: true },
@@ -103,12 +106,18 @@ async function settle(page: Page) {
   });
   await page.waitForTimeout(400);
 }
-async function centred(page: Page, selector: string, label: string) {
+async function centred(
+  page: Page,
+  selector: string,
+  label: string,
+  o: { across?: boolean } = {},
+) {
   const ink = await inkOffset(page, page.locator(selector).first());
   expect(
     Math.abs(ink.dx),
     `${label}: ink ${ink.dx},${ink.dy} px off centre`,
   ).toBeLessThanOrEqual(1);
+  if (o.across) return;
   expect(
     Math.abs(ink.dy),
     `${label}: ink ${ink.dx},${ink.dy} px off centre`,
@@ -186,12 +195,34 @@ for (const size of SIZES)
       await expect(room.locator('[aria-label="Invite Kai"]')).toBeEnabled();
       await expect(room.locator('[aria-label="Invite Mina"]')).toBeDisabled();
       await expect(room.locator(".rh-friend")).toHaveCount(3);
-      await expect(room.locator(".rh-pick")).toHaveCount(3);
+      // Every fighter with a trick against Grumblecrag.
+      await expect(room.locator(".rh-pick")).toHaveCount(8);
       await settle(page);
-      const art = room.locator(".rh-hero img");
+      const art = room.locator(".rh-art img");
       expect(
         await art.evaluate((i: HTMLImageElement) => i.naturalWidth),
       ).toBeGreaterThanOrEqual(1200);
+      {
+        // The whole picture at its own shape, inside the stage, at every
+        // size (owner's note, 4 Nov: no crop, no blur).
+        const shown = await art.evaluate((i: HTMLImageElement) => {
+          const r = i.getBoundingClientRect();
+          return { ratio: r.width / r.height };
+        });
+        expect(Math.abs(shown.ratio - 1536 / 1024)).toBeLessThan(0.02);
+        expect(
+          inside(await box(page, ".rh-art img"), await box(page, ".rh-stage")),
+        ).toBe(true);
+      }
+      if (size.height > 1000) {
+        // A tall window: the Party tab fills most of its column.
+        const fill = await room.locator(".rh-body").evaluate((b) => {
+          const top = b.getBoundingClientRect().top;
+          const last = b.lastElementChild!.getBoundingClientRect().bottom;
+          return (last - top) / b.clientHeight;
+        });
+        expect(fill).toBeGreaterThan(0.75);
+      }
       expect(await closeSpot(page)).toEqual([
         size.phone
           ? { right: 7, top: 7, size: 32 }
@@ -207,6 +238,15 @@ for (const size of SIZES)
           label,
         );
       await centred(page, '.rh-room [data-ui-raid-play="solo"]', "Solo");
+      // A gold button's icon is drawn in its label's colour, so icon and
+      // label sit centred together (owner's note, 4 Nov).
+      // On a phone's 28 px gold button the measure counts the gradient's
+      // light top band as ink (its 3 px rim is too thin to skip it), so
+      // only left-right is measured there; at 8x zoom label and icon sit
+      // within 0.3 px of the middle both ways.
+      await centred(page, '.rh-room [aria-label="Invite Kai"]', "Invite", {
+        across: size.phone,
+      });
       await centred(page, '.rh-room [data-ui-raid-tab="party"]', "Party tab");
       await snap(page, info, `raid-boss-${size.name}`);
       await room
@@ -295,6 +335,16 @@ test("Start raid, Practice and Invite go to the game's own calls", async ({
   // An open seat leads to the invite list.
   await room.locator("[data-raid-open-seat]").first().click();
   await expect(room.locator('[aria-label="Invite Rae"]')).toBeFocused();
+  // The Party tab's attack strip opens the Attacks tab on that attack.
+  await room.locator('[data-ui-raid-tab="party"]').click();
+  const strip = room.locator("[data-raid-attack-go]").nth(2);
+  const picked = await strip.getAttribute("data-raid-attack-go");
+  await strip.click();
+  await expect(room.locator(`[data-raid-attack="${picked}"]`)).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await room.locator('[data-ui-raid-tab="party"]').click();
   // Practice: a room, then the picked attack on its own.
   await room.locator('[data-ui-raid-tab="attacks"]').click();
   await room.locator("[data-raid-attack]").nth(1).click();

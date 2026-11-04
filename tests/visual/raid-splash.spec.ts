@@ -71,7 +71,7 @@ for (const viewport of [
         await room.locator('[data-ui-raid-tab="attacks"]').click();
         await expect(room.locator("[data-raid-attack]")).toHaveCount(6);
         const narrow = viewport.width <= 700;
-        const art = room.locator(".rh-hero > img");
+        const art = room.locator(".rh-art img");
         if (!narrow) {
           await expect(art).toBeVisible();
           await art.evaluate(async (img: HTMLImageElement) => {
@@ -113,7 +113,8 @@ for (const viewport of [
                 r.height / (img.naturalHeight * scale),
               );
             }),
-          ).toBeGreaterThanOrEqual(0.25);
+            // The whole picture on every device (owner's note, 4 Nov).
+          ).toBeGreaterThanOrEqual(0.98);
         }
         expect(
           await room.evaluate((el) => el.scrollWidth - el.clientWidth),
