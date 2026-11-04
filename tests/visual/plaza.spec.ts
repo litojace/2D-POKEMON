@@ -456,3 +456,38 @@ test("Jump and Dash work while the other thumb holds the joystick", async ({
     await context.close();
   }
 });
+
+test("the dash track's lane is whole (no wedge cut out of it)", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  const errors = await openPlaza(page);
+  // The painted ground where a wedge of the lane used to be missing: just
+  // below the track's east end, near its inner edge. The rest of the lane
+  // (above the east end) for comparison.
+  const lane = (angles: number[], k: number) =>
+    page.evaluate(
+      ([angles, k]) => {
+        const p = (window as any).__plaza,
+          T = { cx: 540, cy: 930, ro: [400, 290], ri: [262, 168] };
+        return (angles as number[]).map((a) =>
+          p.groundAt(
+            T.cx +
+              Math.cos(a) * (T.ri[0] + (T.ro[0] - T.ri[0]) * (k as number)),
+            T.cy +
+              Math.sin(a) * (T.ri[1] + (T.ro[1] - T.ri[1]) * (k as number)),
+          ),
+        );
+      },
+      [angles, k] as const,
+    );
+  const isLane = ([r, g, b]: number[]) => r > 150 && r > g + 50 && r > b + 50;
+  const wedge = [
+    ...(await lane([0.02, 0.1, 0.18, 0.26, 0.34, 0.42], 0.1)),
+    ...(await lane([0.02, 0.1, 0.18], 0.2)),
+  ];
+  const elsewhere = await lane([-0.1, -0.2, -0.3], 0.1);
+  expect(elsewhere.every(isLane)).toBe(true);
+  expect(wedge.filter((c) => !isLane(c))).toEqual([]);
+  expect(errors).toEqual([]);
+});
