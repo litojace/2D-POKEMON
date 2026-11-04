@@ -129,6 +129,32 @@ describe("the Raid Hall", () => {
   });
 });
 
+describe("fresh records patch the screen in place", () => {
+  // ui/patch.ts rebuilds a box whose children change in number: loading
+  // and loaded must have the same shape, or the cards (their pictures and
+  // focus) are thrown away when the server answers.
+  const shape = (html: string) =>
+    [
+      ...html.matchAll(
+        /<(section|div|p|button|header|footer)\b[^>]*class="([^"]*)"/g,
+      ),
+    ]
+      .map((m) => m[2].split(" ")[0])
+      .filter((c) => /^(rh-body|rh-notes|ui-grid|rh-next|rh-status)$/.test(c))
+      .join(",");
+  it("in the hall and on a boss page", () => {
+    const loading = data({ progress: null, loading: true, friends: null });
+    const loaded = data({ progress: progress({ clears: 2 }) });
+    expect(shape(raidMarkup(raidView(), loading))).toBe(
+      shape(raidMarkup(raidView(), loaded)),
+    );
+    const boss = raidView("grumblecrag", { mode: "boss" });
+    expect(shape(raidMarkup(boss, loading))).toBe(
+      shape(raidMarkup({ ...boss, status: "Refused." }, loaded)),
+    );
+  });
+});
+
 describe("a boss page", () => {
   it("has the four tabs, and Practice drills the picked attack", () => {
     const view = raidView("grumblecrag", { mode: "boss" });

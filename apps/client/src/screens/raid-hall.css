@@ -10,6 +10,11 @@
   margin-left: auto;
   flex-wrap: nowrap;
 }
+/* Always there (empty when nothing to say), so fresh records patch the
+   cards in place instead of rebuilding them. */
+.rh-notes:empty {
+  display: none;
+}
 .rh-note.is-problem {
   color: #ffb4bc;
 }
@@ -273,6 +278,14 @@
 }
 .rh-status {
   color: #ffb4bc;
+}
+.rh-status:empty,
+.rh-next:empty {
+  display: none;
+}
+.rh-next {
+  display: grid;
+  gap: var(--sp-3);
 }
 .rh-picks {
   display: grid;

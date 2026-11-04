@@ -290,7 +290,7 @@ function hallMarkup(view: RaidView, d: RaidData) {
         "Try another filter, or run a favourite again.",
         button("Show all", { size: "s", attrs: { "data-raid-filter": "all" } }),
       );
-  return `<section class="ui-panel rh-room" role="dialog" aria-label="Raids" data-raid-mode="hall"><header class="ui-panel-head rh-head"><div class="ui-heading"><span class="ui-kicker">Raid Hall · ${RAID_BOSS_ORDER.length} bosses · solo or up to ${RAID_SEATS}${totals ? ` · ${totals}` : ""}</span><h2 class="ui-title">Raids</h2></div>${filters}${iconButton("cancel", "Back to the Lobby", { class: "ui-close", "data-ui-close": true })}</header><div class="ui-panel-body rh-body" data-raid-region="body">${notes}${grid}</div></section>`;
+  return `<section class="ui-panel rh-room" role="dialog" aria-label="Raids" data-raid-mode="hall"><header class="ui-panel-head rh-head"><div class="ui-heading"><span class="ui-kicker">Raid Hall · ${RAID_BOSS_ORDER.length} bosses · solo or up to ${RAID_SEATS}${totals ? ` · ${totals}` : ""}</span><h2 class="ui-title">Raids</h2></div>${filters}${iconButton("cancel", "Back to the Lobby", { class: "ui-close", "data-ui-close": true })}</header><div class="ui-panel-body rh-body" data-raid-region="body"><div class="rh-notes">${notes}</div>${grid}</div></section>`;
 }
 function rewardTotal(p: RaidProgress) {
   const earned = RAID_BOSS_ORDER.reduce(
@@ -365,14 +365,14 @@ function partyTab(view: RaidView, d: RaidData) {
   const clears = bossClearCount(d.progress, view.boss);
   return `<div class="rh-seats" role="group" aria-label="Raid party">${seats.map(seat).join("")}${open}</div>
 <div class="rh-invites" data-raid-invites><span class="ui-kicker">Invite</span><div class="rh-friends">${friends}</div></div>
-${view.status ? `<p class="ui-note rh-status" role="status">${esc(view.status)}</p>` : ""}
+<p class="ui-note rh-status" role="status">${esc(view.status)}</p>
 <div class="rh-section"><h3 class="ui-h">Good picks here</h3><small class="ui-note">Fighters with a trick against ${esc(b.name)}</small></div>
 <div class="rh-picks">${tricks.map((t) => `<div class="rh-pick">${fighterChip(t.character, `rh-pick-${t.character}`, 40)}<span><b>${esc(CHARACTERS[t.character].name)}</b><small class="ui-note">${esc(t.skill)}: ${esc(t.text)}</small></span></div>`).join("")}</div>
-${
-  d.progress
-    ? `<div class="rh-section"><h3 class="ui-h">Next rewards</h3><small class="ui-note">${clears} ${clears === 1 ? "clear" : "clears"} so far</small></div>${next.length ? `<div class="rh-rewards">${next.map((g) => rewardCard(g, d, "rh-next")).join("")}</div>` : `<p class="ui-note">Every milestone here is earned. Try a new fighter or a faster clear.</p>`}`
-    : ""
-}`;
+<div class="rh-next">${
+    d.progress
+      ? `<div class="rh-section"><h3 class="ui-h">Next rewards</h3><small class="ui-note">${clears} ${clears === 1 ? "clear" : "clears"} so far</small></div>${next.length ? `<div class="rh-rewards">${next.map((g) => rewardCard(g, d, "rh-next")).join("")}</div>` : `<p class="ui-note">Every milestone here is earned. Try a new fighter or a faster clear.</p>`}`
+      : ""
+  }</div>`;
 }
 function attacksTab(view: RaidView, d: RaidData) {
   const b = RAID_BOSSES[view.boss];
