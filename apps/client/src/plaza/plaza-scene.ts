@@ -1882,6 +1882,8 @@ export function openPlaza(options) {
       wasOn = true;
       banner("Orb Shower!", "grab orbs around the fountain", "#c047ff");
     }
+    // Shown here too: arriving mid-shower, the pill had never been unhidden.
+    el.hidden = false;
     setClass(el, "pz-event");
     setHtml(
       el,
