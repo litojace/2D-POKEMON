@@ -832,22 +832,24 @@ same problem as a list (bars 1,250 px long beside a 320 px level road).
 
 Owner's note (a 1720×1392 window): the boss art was cropped and the right
 side had too much empty space; then, the blurred fill didn't look right and
-the gold Invite button's label sat off-centre. Before and after:
-[boss page, tall window](images/step5/boss-tall.webp).
+the gold Invite button's label sat off-centre; then, a vertical design for
+the boss pictures, with the face on phones. Before and after:
+[boss page, tall window](images/step5/boss-tall.webp); every boss, tall
+stage and phone: [posters](images/step5/boss-posters.webp).
 
-- **The stage is a boss card** (owner's second note: the blurred fill
-  didn't look right; design the boss art to fit every device). The
-  picture keeps its own 3:2 shape at every size, never cropped or blurred:
-  it is an image with width and height `auto` and both maxima, so it
-  scales down whole to whatever stage it gets. Under it: element and stars,
-  the name and epithet, "How to win" (the signature mechanic), three
-  numbers (clears, rewards, attacks) and the three chapters. Container
-  queries on the stage's height drop the chapters (under 821 px), then the
-  numbers (under 561 px), then the tip (under 441 px), so the picture
-  always fits whole: 750 px wide on a 1720×1392 window, a 194 px card on
-  a phone. The stage itself grows with the screen and the main column
-  stops at `--split-main` (the split-panel change above), which took care
-  of most of the empty width.
+- **Vertical boss pictures** (owner's third note: showing the whole wide
+  picture wasn't to his liking; redesign the boss pictures vertically, and
+  show the boss's face on a phone's small stage). No new painting could be
+  made in this session, so each boss's painting is framed vertically by
+  hand: `BOSS_FRAMES` in `raid-hall-view.ts` gives, per boss, the point
+  kept in the middle of a tall stage (head and body together, like a
+  poster) and the face a phone zooms in on (1.2× to 2×). The painting
+  always fills the stage at its own shape, moved so that point sits in the
+  middle without leaving a gap at any edge (`raid-hall.css`, container
+  units). The name, epithet and "How to win" sit over its foot. Checked
+  for all seven bosses at 1720×1392, 1440×900 and on the island phone. New
+  vertical paintings, if they are made later, need only replace the files
+  and these points.
 - **Icons on gold buttons:** style.css paints every menu icon gold, so the
   icon on a gold button (Invite) vanished and its label looked pushed to
   the right. A button's icon now takes its label's colour (as in the
@@ -858,11 +860,12 @@ the gold Invite button's label sat off-centre. Before and after:
   attack. A short screen scrolls; phones leave out the strip (the Attacks
   tab is one tap away).
 - **Tests:** `raids.spec.ts` adds 1720×1392, where it checks the picture is
-  whole (its own 3:2 shape, inside the stage, at every size), that the
+  framed (it fills the stage at its own shape, the framing point inside
+  the stage's middle; phones zoom in more than 1.5×), that the
   Party tab fills more than 75% of its column, and that the gold Invite
   button's icon and label are centred (measured on the pixels); the strip
-  opens the Attacks tab on its attack. `raid-splash.spec.ts` expects the
-  whole picture on every device.
+  opens the Attacks tab on its attack. `raid-splash.spec.ts` checks every
+  boss's framing at five sizes (`tests/visual/raid-frames.ts`).
 - **Room decisions (owner, 4 Nov):** the raid room mockup is approved as
   drawn: the corner button leaves the room, a room has no rail (nor the
   Lobby / Plaza / Farm switch), and the 2v2 and free-for-all rooms move to

@@ -304,31 +304,32 @@ function rewardTotal(p: RaidProgress) {
 /* -------------------------------------------------------- boss page */
 
 /**
- * The stage: the boss's picture at its own shape (never cropped, never
- * blurred; it scales to the stage it gets), then who it is and how to win.
- * A shorter stage drops the chapters, then the numbers, then the tip
- * (raid-hall.css, container queries), so the picture always fits whole.
+ * Each boss's vertical framing of its (wide) painting, in fractions of the
+ * picture: `body` is the point kept in the middle of a tall stage (head and
+ * body together, like a poster), `face` the point a phone's small stage
+ * zooms in on, by `zoom` (raid-hall.css does the arithmetic).
  */
-function stage(id: RaidBossId, d: RaidData) {
+export const BOSS_FRAMES: Record<
+  RaidBossId,
+  { body: [number, number]; face: [number, number]; zoom: number }
+> = {
+  grumblecrag: { body: [0.55, 0.4], face: [0.56, 0.26], zoom: 1.8 },
+  tidewyrm: { body: [0.64, 0.4], face: [0.71, 0.33], zoom: 1.9 },
+  gloomshade: { body: [0.58, 0.5], face: [0.53, 0.5], zoom: 1.7 },
+  somnara: { body: [0.38, 0.4], face: [0.31, 0.33], zoom: 1.6 },
+  prismatail: { body: [0.57, 0.45], face: [0.63, 0.2], zoom: 2 },
+  emberwing: { body: [0.52, 0.5], face: [0.52, 0.47], zoom: 1.8 },
+  "storm-twins": { body: [0.52, 0.4], face: [0.5, 0.35], zoom: 1.2 },
+};
+/**
+ * The stage: the boss's painting framed vertically on the boss (a poster),
+ * its name and how to win over the foot of it. Phones zoom in on the face.
+ */
+function stage(id: RaidBossId) {
   const b = RAID_BOSSES[id];
-  const clears = bossClearCount(d.progress, id);
-  const { earned, total } = rewardCounts(d.progress, id);
-  const facts = [
-    [String(clears), clears === 1 ? "Clear" : "Clears"],
-    [d.progress ? `${earned}/${total}` : String(total), "Rewards"],
-    [String(raidAttacksOf(id).length), "Attacks"],
-  ]
-    .map(
-      ([n, label]) =>
-        `<span class="rh-fact"><b class="ui-num">${esc(n)}</b><small>${esc(label)}</small></span>`,
-    )
-    .join("");
-  const chapters = b.playable
-    ? `<ol class="rh-stage-chapters" aria-label="Chapters">${raidChapters(id)
-        .map((c) => `<li>${esc(c.name)}</li>`)
-        .join("")}</ol>`
-    : "";
-  return `<section class="ui-split-stage rh-stage" style="--el:${b.color}" aria-label="${esc(b.name)}"><div class="rh-stage-card"><figure class="rh-art">${raidSplashImage(id, true)}</figure><div class="rh-stage-info"><span class="rh-row">${elementTag(b.element)}${stars(b.stars)}</span><b class="rh-stage-name">${esc(b.name)}</b><small class="ui-note rh-stage-line">${esc(b.epithet)}</small><p class="rh-win"><span class="ui-kicker">How to win</span><b>${esc(b.signature)}</b></p><div class="rh-facts">${facts}</div>${chapters}</div></div></section>`;
+  const f = BOSS_FRAMES[id];
+  const vars = `--el:${b.color};--cx:${f.body[0]};--cy:${f.body[1]};--fx:${f.face[0]};--fy:${f.face[1]};--fz:${f.zoom}`;
+  return `<section class="ui-split-stage rh-stage" style="${vars}" aria-label="${esc(b.name)}"><span class="rh-poster">${raidSplashImage(id, true)}</span><div class="rh-stage-info"><span class="rh-row">${elementTag(b.element)}${stars(b.stars)}</span><b class="rh-stage-name">${esc(b.name)}</b><small class="ui-note rh-stage-line">${esc(b.epithet)}</small><p class="rh-win"><span class="ui-kicker">How to win</span><b>${esc(b.signature)}</b></p></div></section>`;
 }
 function seat(s: RaidSeat, i: number) {
   const sub = s.me
@@ -509,7 +510,7 @@ function bossMarkup(view: RaidView, d: RaidData) {
       }),
     ),
   );
-  return `<section class="ui-panel is-split rh-room" role="dialog" aria-label="${esc(b.name)}" data-raid-mode="boss" data-raid-boss="${view.boss}" style="--boss:${b.color}">${stage(view.boss, d)}<div class="ui-split-main"><header class="ui-panel-head rh-head">${button("Raid Hall", { size: "s", icon: "back", attrs: { "data-raid-back": true } })}${view.tab === "guide" ? "" : `<span class="ui-note rh-hint">${esc(b.blurb)}</span>`}${iconButton("cancel", "Back to the Lobby", { class: "ui-close", "data-ui-close": true })}</header>${tabRow}<div class="ui-panel-body rh-body" data-raid-region="body" data-tab="${view.tab}">${body}</div>${foot}</div></section>`;
+  return `<section class="ui-panel is-split rh-room" role="dialog" aria-label="${esc(b.name)}" data-raid-mode="boss" data-raid-boss="${view.boss}" style="--boss:${b.color}">${stage(view.boss)}<div class="ui-split-main"><header class="ui-panel-head rh-head">${button("Raid Hall", { size: "s", icon: "back", attrs: { "data-raid-back": true } })}${view.tab === "guide" ? "" : `<span class="ui-note rh-hint">${esc(b.blurb)}</span>`}${iconButton("cancel", "Back to the Lobby", { class: "ui-close", "data-ui-close": true })}</header>${tabRow}<div class="ui-panel-body rh-body" data-raid-region="body" data-tab="${view.tab}">${body}</div>${foot}</div></section>`;
 }
 
 /** The whole screen: the hall, or one boss's page. */

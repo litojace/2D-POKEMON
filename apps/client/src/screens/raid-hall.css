@@ -149,136 +149,70 @@
 }
 
 /* -------------------------------------------------------- boss page */
-/* The stage: a boss card. The picture keeps its own 3:2 shape at every
-   size (a replaced element with width and height auto and both maxima
-   scales down without cropping); --info is the room the text under it
-   needs, smaller as container queries drop parts of it. */
+/* The stage: the boss's painting framed vertically on the boss, like a
+   poster (BOSS_FRAMES in raid-hall-view.ts). The picture covers the stage
+   at --z times its height, and is moved so the framing point (--px, --py)
+   sits in the middle, never leaving a gap at an edge. Phones zoom in on
+   the face. */
 .rh-stage {
   container-type: size;
-  --info: 400px;
+  background: var(--ui-bg-0);
+  --z: 1.04;
+  --px: var(--cx);
+  --py: var(--cy);
+  --at-y: 45cqh;
 }
-.rh-stage-card {
+.rh-poster {
   position: absolute;
   inset: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: stretch;
-  gap: 16px;
-  padding: 20px;
+  overflow: hidden;
 }
-.rh-art {
-  margin: 0;
-  display: flex;
-  justify-content: center;
-  flex: none;
+.rh-poster img {
+  --h: max(calc(100cqh * var(--z)), calc(100cqw / 1.5));
+  position: absolute;
+  max-width: none;
+  height: var(--h);
+  width: calc(var(--h) * 1.5);
+  left: clamp(
+    calc(100cqw - var(--h) * 1.5),
+    calc(50cqw - var(--px) * var(--h) * 1.5),
+    0px
+  );
+  top: clamp(
+    calc(100cqh - var(--h)),
+    calc(var(--at-y) - var(--py) * var(--h)),
+    0px
+  );
 }
-.rh-art img {
-  display: block;
-  width: auto;
-  height: auto;
-  max-width: 100%;
-  max-height: calc(100cqh - var(--info) - 40px);
-  border-radius: var(--rad-lg);
-  border: 1px solid color-mix(in srgb, var(--el) 45%, transparent);
-  box-shadow:
-    0 18px 40px #0009,
-    0 0 0 4px color-mix(in srgb, var(--el) 10%, transparent);
+.rh-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 52%, #0b1020f2 94%);
+  pointer-events: none;
 }
 .rh-stage-info {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 18px;
+  z-index: 1;
   display: grid;
-  gap: 6px;
-  flex: none;
+  gap: 4px;
 }
 .rh-win {
   display: grid;
   gap: 2px;
-  margin-top: 4px !important;
+  margin-top: 8px !important;
   padding: 10px 12px;
   border-radius: var(--rad-md);
-  border: 1px solid color-mix(in srgb, var(--el) 35%, transparent);
-  background: color-mix(in srgb, var(--el) 8%, var(--ui-bg-1));
+  border: 1px solid color-mix(in srgb, var(--el) 40%, transparent);
+  background: color-mix(in srgb, var(--el) 12%, #0b1020d9);
 }
 .rh-win b {
   font-size: var(--fs-lead);
 }
-.rh-facts {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-.rh-fact {
-  display: grid;
-  justify-items: center;
-  padding: 8px 4px;
-  border-radius: var(--rad-md);
-  border: 1px solid var(--ui-line);
-  background: var(--ui-bg-1);
-}
-.rh-fact b {
-  font-size: 22px;
-  line-height: 1;
-  color: var(--ui-accent);
-}
-.rh-fact small {
-  color: var(--ui-dim);
-  font-size: var(--fs-micro);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-.rh-stage-chapters {
-  display: grid;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  counter-reset: stage-chapter;
-}
-.rh-stage-chapters li {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 10px;
-  border-radius: var(--rad-md);
-  background: var(--ui-bg-1);
-  border: 1px solid var(--ui-line);
-  font-weight: 600;
-  counter-increment: stage-chapter;
-}
-.rh-stage-chapters li::before {
-  content: counter(stage-chapter);
-  flex: none;
-  width: 22px;
-  height: 22px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--el) 25%, var(--ui-bg-0));
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 13px;
-}
-/* Shorter stages: drop the chapters, then the numbers, then the tip. */
-@container (max-height: 820px) {
-  .rh-stage {
-    --info: 290px;
-  }
-  .rh-stage-chapters {
-    display: none;
-  }
-}
-@container (max-height: 560px) {
-  .rh-stage {
-    --info: 210px;
-  }
-  .rh-facts {
-    display: none;
-  }
-}
-@container (max-height: 440px) {
-  .rh-stage {
-    --info: 120px;
-  }
+@container (max-height: 520px) {
   .rh-win {
     display: none;
   }
@@ -672,18 +606,17 @@
   .rh-practice > .ui-btn {
     display: none;
   }
-  /* The phone's stage is a narrow strip: the picture, then the name. */
+  /* The phone's stage is a narrow strip: it zooms in on the boss's face. */
   .rh-stage {
-    --info: 56px;
-  }
-  .rh-stage-card {
-    gap: 8px;
-    padding: 8px;
-  }
-  .rh-art img {
-    border-radius: var(--rad-md);
+    --z: var(--fz);
+    --px: var(--fx);
+    --py: var(--fy);
+    --at-y: 40cqh;
   }
   .rh-stage-info {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
     gap: 2px;
   }
   .rh-stage-name {

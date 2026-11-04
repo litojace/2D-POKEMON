@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { box, inside, openLobby, snap } from "./helpers";
+import { bossFraming } from "./raid-frames";
 import {
   ISLAND,
   closeSpot,
@@ -198,21 +199,22 @@ for (const size of SIZES)
       // Every fighter with a trick against Grumblecrag.
       await expect(room.locator(".rh-pick")).toHaveCount(8);
       await settle(page);
-      const art = room.locator(".rh-art img");
+      const art = room.locator(".rh-poster img");
       expect(
         await art.evaluate((i: HTMLImageElement) => i.naturalWidth),
       ).toBeGreaterThanOrEqual(1200);
       {
-        // The whole picture at its own shape, inside the stage, at every
-        // size (owner's note, 4 Nov: no crop, no blur).
-        const shown = await art.evaluate((i: HTMLImageElement) => {
-          const r = i.getBoundingClientRect();
-          return { ratio: r.width / r.height };
-        });
-        expect(Math.abs(shown.ratio - 1536 / 1024)).toBeLessThan(0.02);
-        expect(
-          inside(await box(page, ".rh-art img"), await box(page, ".rh-stage")),
-        ).toBe(true);
+        // The painting is framed vertically on the boss (owner's note,
+        // 4 Nov): it fills the stage at its own shape, the boss's body in
+        // the middle; a phone zooms in on its face.
+        const f = await bossFraming(page);
+        expect(f.covers).toBe(true);
+        expect(Math.abs(f.ratio - 1536 / 1024)).toBeLessThan(0.02);
+        expect(f.x).toBeGreaterThan(0.25);
+        expect(f.x).toBeLessThan(0.75);
+        expect(f.y).toBeGreaterThan(0.2);
+        expect(f.y).toBeLessThan(0.7);
+        if (size.phone) expect(f.zoom).toBeGreaterThan(1.5);
       }
       if (size.height > 1000) {
         // A tall window: the Party tab fills most of its column.

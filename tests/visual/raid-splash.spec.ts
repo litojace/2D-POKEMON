@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { box, inside, openHub, snap, hubMenu } from "./helpers";
+import { bossFraming } from "./raid-frames";
 for (const viewport of [
   { width: 1440, height: 900 },
   { width: 844, height: 390 },
@@ -71,7 +72,7 @@ for (const viewport of [
         await room.locator('[data-ui-raid-tab="attacks"]').click();
         await expect(room.locator("[data-raid-attack]")).toHaveCount(6);
         const narrow = viewport.width <= 700;
-        const art = room.locator(".rh-art img");
+        const art = room.locator(".rh-poster img");
         if (!narrow) {
           await expect(art).toBeVisible();
           await art.evaluate(async (img: HTMLImageElement) => {
@@ -100,21 +101,15 @@ for (const viewport of [
           expect(inside(stage, { x: 0, y: 0, ...viewport })).toBe(true);
           // The stage and the action bar sit side by side, never on top.
           expect(stage.x + stage.width).toBeLessThanOrEqual(foot.x + 1);
-          expect(
-            await art.evaluate((img: HTMLImageElement) => {
-              const r = img.getBoundingClientRect(),
-                scale = Math.max(
-                  r.width / img.naturalWidth,
-                  r.height / img.naturalHeight,
-                );
-              // The share of the picture shown along its tighter side.
-              return Math.min(
-                r.width / (img.naturalWidth * scale),
-                r.height / (img.naturalHeight * scale),
-              );
-            }),
-            // The whole picture on every device (owner's note, 4 Nov).
-          ).toBeGreaterThanOrEqual(0.98);
+          // Each boss's vertical framing (owner's note, 4 Nov): the
+          // painting fills the stage and the boss's framing point (its
+          // body, or its face on a phone) stays well inside it.
+          const f = await bossFraming(page);
+          expect(f.covers, `${boss} fills its stage`).toBe(true);
+          expect(f.x, `${boss} framed across`).toBeGreaterThan(0.25);
+          expect(f.x, `${boss} framed across`).toBeLessThan(0.75);
+          expect(f.y, `${boss} framed down`).toBeGreaterThan(0.2);
+          expect(f.y, `${boss} framed down`).toBeLessThan(0.7);
         }
         expect(
           await room.evaluate((el) => el.scrollWidth - el.clientWidth),
