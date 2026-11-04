@@ -1888,7 +1888,9 @@
   filter: drop-shadow(0 2px 2px #0008);
 }
 
-/* every kind of action button has one width, so buttons line up in columns from row to row */
+/* every kind of action button has one minimum width, so buttons line up in
+   columns from row to row; a longer price widens its button instead of
+   spilling out of it (5 · 25 and its leaf overflowed a 3.3em box). */
 .farm-layer .item .acts {
   flex: none;
 }
@@ -1898,43 +1900,42 @@
   box-sizing: border-box;
 }
 .farm-layer .item .acts [data-buyseed][data-n="1"] {
-  width: 4.8em;
+  min-width: 5.2em;
 }
 .farm-layer .item .acts [data-buyseed][data-n="5"],
 .farm-layer .item .acts .btn-ph {
-  width: 3.3em;
+  min-width: 6.2em;
   flex: none;
-  display: inline-block;
 }
 .farm-layer .item .acts [data-buytool],
 .farm-layer .item .acts [data-goto],
 .farm-layer .item .acts [data-pasture] {
-  width: 6.6em;
+  min-width: 6.6em;
 }
 .farm-layer .item .acts [data-deco] {
-  width: 7em;
+  min-width: 7em;
 }
 .farm-layer .item .acts [data-mast] {
-  width: 8.2em;
+  min-width: 8.2em;
 }
 .farm-layer .item .acts .b-sell1 {
-  width: 4.4em;
+  min-width: 4.4em;
 }
 .farm-layer .item .acts .b-sellall {
-  width: 8.4em;
+  min-width: 8.4em;
 }
 .farm-layer .item .acts [data-ord],
 .farm-layer .item .acts [data-ordwait] {
-  width: 5.6em;
+  min-width: 5.6em;
 }
 .farm-layer .item .acts [data-ordskip] {
-  width: 3.8em;
+  min-width: 3.8em;
 }
 .farm-layer .dogcard .acts .btn-s {
-  width: 11.2em;
+  min-width: 11.2em;
 }
 .farm-layer .drawer .frow .mini-btn {
-  width: 64px;
+  min-width: 64px;
 }
 .farm-layer .item .acts .btn-ph {
   visibility: hidden;

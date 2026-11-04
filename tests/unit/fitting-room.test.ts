@@ -8,6 +8,7 @@ import {
 import type { RaidProgress } from "../../packages/shared/src/raid";
 import {
   SHOP_SECTIONS,
+  dropUnownedTryOns,
   fitView,
   fittingRoomMarkup,
   fittingRoomParts,
@@ -595,6 +596,41 @@ describe("the Wardrobe", () => {
       data(e),
     ).body;
     expect(body).toMatch(/data-fit-slot="champion" data-changed="true"/);
+  });
+});
+
+describe("Shop to Wardrobe", () => {
+  it("drops Shop try-ons you don't own, so the stage matches the slots", () => {
+    const e = economy({
+      owned: ["voltkit-midnight", "galaxy-aura"],
+      looks: {},
+    });
+    const d = data(e);
+    const view = shop({
+      tryOn: {
+        champion: "voltkit-snowcap",
+        aura: "galaxy-aura",
+        entrance: "candy-entrance",
+      },
+      selected: "voltkit-snowcap",
+      stage: 2,
+      action: "entrance",
+    });
+    dropUnownedTryOns(view, d);
+    // Only the owned aura stays on (a change Equip can save).
+    expect(view.tryOn).toEqual({ aura: "galaxy-aura" });
+    expect(view.selected).toBeNull();
+    expect(view.stage).toBeUndefined();
+    expect(view.action).toBe("idle");
+    expect(stageOutfit(view, d).skin).toBeNull();
+    // Owned try-ons are left alone.
+    const kept = shop({
+      tryOn: { champion: "voltkit-midnight" },
+      selected: "voltkit-midnight",
+    });
+    dropUnownedTryOns(kept, d);
+    expect(kept.tryOn).toEqual({ champion: "voltkit-midnight" });
+    expect(kept.selected).toBe("voltkit-midnight");
   });
 });
 

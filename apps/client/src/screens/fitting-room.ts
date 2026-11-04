@@ -14,6 +14,7 @@ import { askConfirm, openHubPanel, type HubPanel } from "../ui/hub-panel";
 import { price, rarityTag } from "../ui/components";
 import { parse, patch } from "../ui/patch";
 import {
+  dropUnownedTryOns,
   fitItem,
   fitView,
   fittingRoomMarkup,
@@ -372,7 +373,9 @@ export function openFittingRoom(
   const setMode = (mode: FitMode) => {
     if (mode === view.mode) return;
     view.mode = mode;
-    if (mode === "wardrobe" && view.slot === "frame") pickFrame();
+    if (mode !== "wardrobe") return;
+    dropUnownedTryOns(view, data());
+    if (view.slot === "frame") pickFrame();
   };
 
   /* -------------------------------------------------------- spending */
@@ -499,7 +502,7 @@ export function openFittingRoom(
     } else if (d.fitFighter) setChampion(d.fitFighter as CharacterId);
     else if (d.fitSlot) {
       if (view.mode !== "wardrobe") {
-        view.mode = "wardrobe";
+        setMode("wardrobe");
         scroll = true;
       }
       setSlot(d.fitSlot as FitSlot);

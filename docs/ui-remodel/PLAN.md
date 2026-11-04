@@ -828,6 +828,37 @@ same problem as a list (bars 1,250 px long beside a 320 px level road).
 - **Journey**: weekly goals are cards two to a row when the column has
   800 px; the level road is `clamp(320px, 30%, 420px)`.
 
+### Display fixes from the owner's phone (4 Nov 2026)
+
+- **Shop → Wardrobe kept a Shop try-on:** the Wardrobe shows only what you
+  own, so a skin tried on in the Shop stayed on the stage while the Skin
+  slot read "Original". Going to the Wardrobe now drops try-ons of things
+  you don't own (`dropUnownedTryOns`); owned try-ons stay as changes to
+  Equip.
+- **A stray line across the phone stage:** the old Shop preview's inset
+  1 px outline (`.shop-live-stage` box-shadow) showed once the host moved
+  down 34 px; the fitting room's host has no outline now. Entrance and
+  Victory are 34 px tall with 10 px between them (they needed 16 px at
+  28 px to keep 44 px finger targets).
+- **The Farm lifted off the bottom when the Menu opened (iOS):** the scroll
+  lock pinned the body because iOS measured the page taller than the screen
+  (`body { min-height: 100vh }` is the toolbar-less height). Hub scenes and
+  battles are never pinned now, and the body uses `100dvh`. Not reproducible
+  in desktop Chromium; covered by `tests/unit/scroll-lock.test.ts`.
+- **Farm Shop buy buttons:** fixed widths in em (3.3em for "5 · 25") and an
+  `inline-block` that undid the button's flex row let the price and leaf
+  spill out; the action buttons have minimum widths now and grow with
+  their price.
+- **Audit:** every hub screen (each tab), every Farm sheet and tab, the
+  Plaza's panels, the raid lobby, briefing and results, profile, settings
+  and invite, at 932×430 (island), 844×390 and 1440×900, checked for text
+  or icons spilling out of buttons, pills and chips (a DOM check that found
+  the Farm button on the old CSS), and every rail screen, dialog, menu and
+  scene switch opened and closed, comparing the Lobby before and after.
+  Nothing else spilled or was left behind. In this CPU-rendered harness
+  the Lobby's return animation waits on a 0.8 s frame after a full screen
+  closes; it lands in the right place.
+
 ## Decisions (owner, 3 Nov 2026)
 
 | #   | Question                                        | Decision                                                                                                                                                         |

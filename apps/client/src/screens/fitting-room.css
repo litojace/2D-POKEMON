@@ -58,6 +58,9 @@
   border: 0;
   border-radius: 0;
   background: none;
+  /* The old Shop preview's inset outline: on a host narrower than the
+     stage (desktop) or moved down (phones) it drew a stray line. */
+  box-shadow: none;
   /* The floor fades out above the name instead of ending in an edge. */
   mask-image: linear-gradient(180deg, #000 82%, transparent);
 }
@@ -645,8 +648,8 @@
     right: -30px;
     top: -60px;
   }
-  /* Small buttons stacked on a phone keep 16 px between them and 8 px
-     from the stage's edge, so each still catches a 44 px finger. */
+  /* Small buttons on a phone stay 8 px from the stage's edge, so each
+     still catches a 44 px finger. */
   .fit-stage-top {
     left: 8px;
     right: 8px;
@@ -668,9 +671,16 @@
     width: 38px;
     height: 38px;
   }
+  /* Entrance and Victory: a little taller than other small buttons, so
+     each still catches a 44 px finger (5 px past each edge) with only
+     10 px between them (at the usual height they needed 16 px, and read
+     as two unrelated buttons). */
   .fit-plays {
     grid-template-columns: var(--act-s);
-    gap: 16px;
+    gap: 10px;
+  }
+  .fit-plays .ui-btn.is-s {
+    height: 34px;
   }
   .fit-plays .ui-btn svg {
     display: none;
