@@ -273,7 +273,7 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     "",
   )}<button type="button" role="menuitem" class="lobby-mode-more" data-lobby-action="more-play">${menuIcon("enter")}<span><b>Join or watch</b><small>Room code, name and more</small></span></button></div>
   <button type="button" class="lobby-mode" id="lobby-mode" aria-haspopup="menu" aria-expanded="false" aria-controls="lobby-mode-menu">${modeButton(mode)}</button>
-  <button type="button" class="lobby-play-button" id="lobby-play"><span aria-hidden="true">▶</span>PLAY</button>
+  <button type="button" class="lobby-play-button" id="lobby-play"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.6v12.8a1.1 1.1 0 0 0 1.7.93l10-6.4a1.1 1.1 0 0 0 0-1.86l-10-6.4A1.1 1.1 0 0 0 8 5.6z"/></svg><span>PLAY</span></button>
 </div>`;
   document.body.append(layer);
   document.body.classList.add("hub-screen");
@@ -440,6 +440,8 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
       // the right one) appears once both are taken. The server still allows
       // four players, and Friends can invite at any time.
       $("lobby-slot-2").hidden = view.party.length < 2;
+      // Low graphics: PLAY keeps its glow but stops its light sweep.
+      layer.dataset.graphics = lowGraphics() ? "low" : "auto";
       $("lobby-party-bar").hidden = view.partySize < 2;
       $("lobby-party-size").textContent = `Party · ${view.partySize}/4`;
       const leaves = view.economy?.leaves?.balance;
