@@ -35,16 +35,20 @@
 .farm-layer .fm-badge {
   position: absolute;
   left: max(0px, calc(14px - var(--safe-left, 0px)));
-  top: 74px;
+  /* 4px under the player card (10px from the top, --hub-card-h tall). */
+  top: calc(var(--hub-card-h, 52px) + 14px);
   display: grid;
-  grid-template-columns: var(--hub-card-art, 46px) minmax(0, 1fr);
-  grid-template-areas: "art name" "art xp" "art sub";
+  /* Two rows, the card's: the name with the XP count where the card has
+     its level, then the bar. */
+  grid-template-columns: var(--hub-card-art, 38px) minmax(0, 1fr) auto;
+  grid-template-areas: "art name sub" "art xp xp";
+  align-content: center;
   align-items: center;
   column-gap: 8px;
   row-gap: var(--hub-card-gap, 3px);
   box-sizing: border-box;
   width: var(--hub-card-w, 236px);
-  height: var(--hub-card-h, 60px);
+  height: var(--hub-card-h, 52px);
   padding: var(--hub-card-pad, 6px 14px 6px 6px);
   border-radius: 16px;
 }
@@ -53,8 +57,8 @@
 }
 .farm-layer .fm-badge .fm-ring {
   grid-area: art;
-  width: var(--hub-card-art, 46px);
-  height: var(--hub-card-art, 46px);
+  width: var(--hub-card-art, 38px);
+  height: var(--hub-card-art, 38px);
 }
 .farm-layer .fm-ring {
   --p: 0;
@@ -95,12 +99,16 @@
   text-transform: uppercase;
   letter-spacing: 0.03em;
   line-height: var(--hub-card-row, 22px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-/* The small row under the bar, like the card's title. */
+/* The XP count, at the end of the name row (the card's level). */
 .farm-layer .fm-badge small {
   grid-area: sub;
   display: block;
   min-width: 0;
+  white-space: nowrap;
   color: #cfe8c8;
   font:
     700 11px/1 "DM Sans",
@@ -125,7 +133,8 @@
 .farm-layer .fm-weather {
   position: absolute;
   left: 50%;
-  top: 74px;
+  /* On the farm badge's line. */
+  top: calc(var(--hub-card-h, 52px) + 14px);
   transform: translateX(-50%);
   display: flex;
   align-items: center;
@@ -166,7 +175,7 @@
 .farm-layer .fm-chips {
   position: absolute;
   right: var(--hud-x-r);
-  top: 74px;
+  top: calc(var(--hub-card-h, 52px) + 14px);
   display: flex;
   gap: 6px;
 }
@@ -2213,7 +2222,7 @@
   font-size: 14px;
 }
 .farm-layer.phone .fm-badge {
-  grid-template-areas: "art name" "art xp";
+  grid-template-areas: "art name name" "art xp xp";
 }
 .farm-layer.phone .fm-badge strong {
   font-size: 13px;
@@ -2610,7 +2619,8 @@ body.hub-farm #toast {
    Menu button, which stays in reach. */
 .farm-layer .fm-sheet {
   right: var(--hud-x-r);
-  top: 128px;
+  /* 8px under the orbs (46px tall, on the badge's line). */
+  top: calc(var(--hub-card-h, 52px) + 68px);
   bottom: 162px;
 }
 .farm-layer.phone .fm-sheet {
