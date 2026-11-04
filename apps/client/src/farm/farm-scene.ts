@@ -66,6 +66,7 @@ import {
   textWithIcon,
 } from "./farm-icons";
 import "./farm.css";
+import { fadeIn } from "../ui/motion";
 
 const svgUrl = (s) =>
   "data:image/svg+xml;charset=utf-8," + encodeURIComponent(s);
@@ -186,6 +187,8 @@ export function openFarm(options) {
   layer.tabIndex = -1;
   layer.innerHTML = FARM_HTML;
   document.body.append(layer);
+  // Each hub scene (Lobby, Plaza, Farm) fades in as you switch to it.
+  fadeIn([layer], 260);
   const screen = layer;
   const $ = (id) => layer.querySelector(`#${id}`);
   // A toast replaces the one-time hint above the tool bar (they share the spot).

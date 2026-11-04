@@ -649,7 +649,7 @@ function todayBody(view: FitView, d: FitData) {
       ? `<span class="ui-tile-foot is-trial">Trial ${trialWins(e, CHAMPION_SKIN_BY_ID[deal].champion)}/${MYTHIC_TRIAL_WINS} wins</span>`
       : price(p.price, p.was);
     const skin = CHAMPION_SKIN_BY_ID[deal];
-    featured = `<button type="button" class="fit-deal" data-ui-item="${esc(deal)}" data-rarity="${rarityOf(deal)}" aria-pressed="${view.selected === deal}"><span class="fit-deal-art">${pictureOf(deal, view, d, `fit-deal-${deal}`)}</span><span class="fit-deal-text"><span class="fit-row">${rarityTag(rarityOf(deal))}${tag("20% off today", "sale")}</span><b class="fit-deal-name">${esc(item.name)}</b><small class="ui-note">${esc(`${skin ? `${CHARACTERS[skin.champion].name} skin` : item.source} · ${item.description}`)}</small><span class="fit-deal-price">${cost}</span></span><span class="fit-deal-timer">${timer(`Ends in ${countdown}`)}</span></button>`;
+    featured = `<button type="button" class="fit-deal" data-ui-item="${esc(deal)}" data-slot="${esc(item.slot)}" data-rarity="${rarityOf(deal)}" aria-pressed="${view.selected === deal}"><span class="fit-deal-art">${pictureOf(deal, view, d, `fit-deal-${deal}`)}</span><span class="fit-deal-text"><span class="fit-row">${rarityTag(rarityOf(deal))}${tag("20% off today", "sale")}</span><b class="fit-deal-name">${esc(item.name)}</b><small class="ui-note">${esc(`${skin ? `${CHARACTERS[skin.champion].name} skin` : item.source} · ${item.description}`)}</small><span class="fit-deal-price">${cost}</span></span><span class="fit-deal-timer">${timer(`Ends in ${countdown}`)}</span></button>`;
   }
   const picks = e.picks.items.filter((id) => id !== deal);
   const bundles = SHOP_BUNDLES.filter(
