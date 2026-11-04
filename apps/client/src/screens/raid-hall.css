@@ -149,19 +149,45 @@
 }
 
 /* -------------------------------------------------------- boss page */
+/* The boss's whole picture (it is wide, the stage is tall) over a blurred,
+   darkened copy of itself that fills the rest of the stage. Phones, where
+   the stage is a narrow strip, crop it to fill instead. */
 .rh-stage {
   background: var(--ui-bg-0);
 }
-.rh-hero,
-.rh-hero img {
+.rh-hero-fill,
+.rh-hero-fill img {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
 }
-.rh-hero img {
+.rh-hero-fill img {
   object-fit: cover;
-  object-position: 38% 50%;
+  transform: scale(1.15);
+  filter: blur(28px) brightness(0.55) saturate(1.25);
+}
+.rh-hero {
+  position: absolute;
+  inset: 16px 16px 150px;
+  display: grid;
+  place-items: center;
+}
+.rh-hero img {
+  width: 100%;
+  height: auto;
+  max-height: 100%;
+  aspect-ratio: 1536 / 1024;
+  object-fit: contain;
+  /* The picture's edges melt into its blurred copy. */
+  mask-image:
+    linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent),
+    linear-gradient(180deg, transparent, #000 10%, #000 90%, transparent);
+  mask-composite: intersect;
+}
+/* Low graphics: no blur, a plain dark stage around the picture. */
+[data-graphics="low"] .rh-hero-fill {
+  display: none;
 }
 .rh-stage::after {
   content: "";
@@ -289,11 +315,8 @@
 }
 .rh-picks {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 8px;
-}
-.rh-picks.is-all {
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
 }
 .rh-pick {
   display: grid;
@@ -322,11 +345,8 @@
 /* Rewards: a picture, the goal and its progress. */
 .rh-rewards {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-.rh-rewards.is-all {
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
 }
 .rh-reward {
   position: relative;
@@ -397,6 +417,28 @@
 .rh-check svg {
   width: 16px;
   height: 16px;
+}
+/* The Party tab's strip of attacks (each opens the Attacks tab). */
+.rh-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+.rh-attack.is-mini {
+  padding: 8px 10px;
+}
+.rh-attack.is-mini .rh-attack-icon {
+  width: 32px;
+  height: 32px;
+}
+.rh-attack.is-mini .rh-attack-text b {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rh-attack.is-mini:hover,
+.rh-attack.is-mini:focus-visible {
+  border-color: var(--ui-accent);
 }
 /* Attacks: one row each; the picked one is what Practice drills. */
 .rh-attacks {
@@ -500,17 +542,6 @@
   .rh-head .ui-kicker {
     display: none;
   }
-  .rh-picks,
-  .rh-rewards {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .rh-picks > :nth-child(n + 3),
-  .rh-rewards:not(.is-all) > :nth-child(n + 3) {
-    display: none;
-  }
-  .rh-picks.is-all > :nth-child(n + 3) {
-    display: grid;
-  }
   .rh-attacks {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -563,6 +594,20 @@
   .rh-practice > .ui-btn {
     display: none;
   }
+  /* A narrow strip: the picture fills it (cropped), no blurred copy. */
+  .rh-hero-fill {
+    display: none;
+  }
+  .rh-hero {
+    inset: 0;
+  }
+  .rh-hero img {
+    height: 100%;
+    aspect-ratio: auto;
+    object-fit: cover;
+    object-position: 38% 50%;
+    mask-image: none;
+  }
   .rh-stage-info {
     left: 8px;
     right: 8px;
@@ -613,10 +658,6 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 6px;
   }
-  .rh-picks > :nth-child(n + 3),
-  .rh-rewards:not(.is-all) > :nth-child(n + 3) {
-    display: grid;
-  }
   .rh-picks.is-all,
   .rh-rewards.is-all {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -658,6 +699,12 @@
   }
   .rh-chapters li {
     padding: 6px 8px;
+  }
+  /* Phones: the Attacks tab is one tap away; the strip would only add
+     scrolling. */
+  .rh-strip,
+  .rh-strip-head {
+    display: none;
   }
   .rh-foot-note:not(.is-reason) {
     display: none;

@@ -828,6 +828,34 @@ same problem as a list (bars 1,250 px long beside a 320 px level road).
 - **Journey**: weekly goals are cards two to a row when the column has
   800 px; the level road is `clamp(320px, 30%, 420px)`.
 
+### Step 5: the boss page on a big window (4 Nov 2026)
+
+Owner's note (a 1720×1392 window): the boss art was cropped and the right
+side had too much empty space. Before and after:
+[boss page, tall window](images/step5/boss-tall.webp).
+
+- **The whole picture:** on desktop the boss's art is shown whole (it is a
+  wide 3:2 picture, the stage is tall) over a blurred, darkened copy of
+  itself that fills the stage, its edges fading into that copy. Low
+  graphics leaves out the blurred copy. Phones, where the stage is a
+  210 px strip, still crop it to fill. The stage itself now grows with the
+  screen and the main column stops at `--split-main` (the split-panel
+  change above), which took care of most of the empty width.
+- **The Party tab uses the height:** every fighter with a trick here (seven
+  or eight, two to a row) instead of three, up to six next rewards, and a
+  strip of the boss's six attacks, each opening the Attacks tab on that
+  attack. A short screen scrolls; phones leave out the strip (the Attacks
+  tab is one tap away).
+- **Tests:** `raids.spec.ts` adds 1720×1392, where it checks the picture is
+  whole (`object-fit: contain`, its own 3:2 shape, inside the stage) and
+  that the Party tab fills more than 75% of its column; the strip opens the
+  Attacks tab on its attack. `raid-splash.spec.ts` expects the whole
+  picture on desktop.
+- **Room decisions (owner, 4 Nov):** the raid room mockup is approved as
+  drawn: the corner button leaves the room, a room has no rail (nor the
+  Lobby / Plaza / Farm switch), and the 2v2 and free-for-all rooms move to
+  the same frame in this step.
+
 ## Decisions (owner, 3 Nov 2026)
 
 | #   | Question                                        | Decision                                                                                                                                                         |

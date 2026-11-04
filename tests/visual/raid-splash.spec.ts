@@ -113,7 +113,9 @@ for (const viewport of [
                 r.height / (img.naturalHeight * scale),
               );
             }),
-          ).toBeGreaterThanOrEqual(0.25);
+            // Desktop shows the whole picture (owner's note, 4 Nov); a
+            // phone's narrow strip crops it to fill.
+          ).toBeGreaterThanOrEqual(viewport.height > 500 ? 0.98 : 0.25);
         }
         expect(
           await room.evaluate((el) => el.scrollWidth - el.clientWidth),

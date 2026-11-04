@@ -13,6 +13,9 @@ import {
 // shared layout rules (ui-measure.ts); labels are checked for centring on
 // the pixels.
 const SIZES = [
+  // A tall desktop window (the owner's, 4 Nov): the whole boss picture and
+  // a filled Party tab.
+  { name: "1720x1392", width: 1720, height: 1392, phone: false },
   { name: "1440x900", width: 1440, height: 900, phone: false },
   { name: "1280x720", width: 1280, height: 720, phone: false },
   { name: "844x390", width: 844, height: 390, phone: true },
@@ -186,12 +189,37 @@ for (const size of SIZES)
       await expect(room.locator('[aria-label="Invite Kai"]')).toBeEnabled();
       await expect(room.locator('[aria-label="Invite Mina"]')).toBeDisabled();
       await expect(room.locator(".rh-friend")).toHaveCount(3);
-      await expect(room.locator(".rh-pick")).toHaveCount(3);
+      // Every fighter with a trick against Grumblecrag.
+      await expect(room.locator(".rh-pick")).toHaveCount(8);
       await settle(page);
       const art = room.locator(".rh-hero img");
       expect(
         await art.evaluate((i: HTMLImageElement) => i.naturalWidth),
       ).toBeGreaterThanOrEqual(1200);
+      if (!size.phone) {
+        // The whole picture, uncropped, inside the stage.
+        const shown = await art.evaluate((i: HTMLImageElement) => {
+          const r = i.getBoundingClientRect();
+          return {
+            ratio: r.width / r.height,
+            fit: getComputedStyle(i).objectFit,
+          };
+        });
+        expect(shown.fit).toBe("contain");
+        expect(Math.abs(shown.ratio - 1536 / 1024)).toBeLessThan(0.02);
+        expect(
+          inside(await box(page, ".rh-hero img"), await box(page, ".rh-stage")),
+        ).toBe(true);
+      }
+      if (size.height > 1000) {
+        // A tall window: the Party tab fills most of its column.
+        const fill = await room.locator(".rh-body").evaluate((b) => {
+          const top = b.getBoundingClientRect().top;
+          const last = b.lastElementChild!.getBoundingClientRect().bottom;
+          return (last - top) / b.clientHeight;
+        });
+        expect(fill).toBeGreaterThan(0.75);
+      }
       expect(await closeSpot(page)).toEqual([
         size.phone
           ? { right: 7, top: 7, size: 32 }
@@ -295,6 +323,16 @@ test("Start raid, Practice and Invite go to the game's own calls", async ({
   // An open seat leads to the invite list.
   await room.locator("[data-raid-open-seat]").first().click();
   await expect(room.locator('[aria-label="Invite Rae"]')).toBeFocused();
+  // The Party tab's attack strip opens the Attacks tab on that attack.
+  await room.locator('[data-ui-raid-tab="party"]').click();
+  const strip = room.locator("[data-raid-attack-go]").nth(2);
+  const picked = await strip.getAttribute("data-raid-attack-go");
+  await strip.click();
+  await expect(room.locator(`[data-raid-attack="${picked}"]`)).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  await room.locator('[data-ui-raid-tab="party"]').click();
   // Practice: a room, then the picked attack on its own.
   await room.locator('[data-ui-raid-tab="attacks"]').click();
   await room.locator("[data-raid-attack]").nth(1).click();

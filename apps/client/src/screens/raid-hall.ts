@@ -170,6 +170,14 @@ export function openRaids(
     } else if (d.uiRaidPlay) {
       view.play = d.uiRaidPlay as RaidView["play"];
       render();
+    } else if (d.raidAttackGo) {
+      // The Party tab's attack strip: to the Attacks tab, that attack picked.
+      view.tab = "attacks";
+      view.attack = d.raidAttackGo as RaidAttack;
+      render(true);
+      q<HTMLElement>(`[data-raid-attack="${view.attack}"]`)?.focus({
+        preventScroll: true,
+      });
     } else if (d.raidAttack) {
       view.attack = d.raidAttack as RaidAttack;
       render();
@@ -210,7 +218,7 @@ export function openRaids(
     )[event.key];
     if (!step) return;
     const group = t.closest<HTMLElement>(
-      ".ui-tabs, .ui-seg, .ui-chips, .rh-grid, .rh-attacks",
+      ".ui-tabs, .ui-seg, .ui-chips, .rh-grid, .rh-attacks, .rh-strip",
     );
     if (!group || !root().contains(group)) return;
     const items = Array.from(
@@ -221,7 +229,10 @@ export function openRaids(
     let cols = items.length;
     if (group.classList.contains("rh-grid"))
       cols = getComputedStyle(group).gridTemplateColumns.split(" ").length;
-    else if (group.classList.contains("rh-attacks"))
+    else if (
+      group.classList.contains("rh-attacks") ||
+      group.classList.contains("rh-strip")
+    )
       cols = getComputedStyle(group).gridTemplateColumns.split(" ").length;
     else if (step[1]) return;
     const next = items[i + step[0] + step[1] * cols];

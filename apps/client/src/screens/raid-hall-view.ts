@@ -305,7 +305,7 @@ function rewardTotal(p: RaidProgress) {
 
 function stage(id: RaidBossId) {
   const b = RAID_BOSSES[id];
-  return `<section class="ui-split-stage rh-stage" style="--el:${b.color}" aria-label="${esc(b.name)}"><span class="rh-hero">${raidSplashImage(id, true)}</span><div class="rh-stage-info"><span class="rh-row">${elementTag(b.element)}${stars(b.stars)}</span><b class="rh-stage-name">${esc(b.name)}</b><small class="ui-note rh-stage-line">${esc(b.epithet)} · ${esc(b.signature)}</small></div></section>`;
+  return `<section class="ui-split-stage rh-stage" style="--el:${b.color}" aria-label="${esc(b.name)}"><span class="rh-hero-fill" aria-hidden="true">${raidSplashImage(id, true)}</span><span class="rh-hero">${raidSplashImage(id, true)}</span><div class="rh-stage-info"><span class="rh-row">${elementTag(b.element)}${stars(b.stars)}</span><b class="rh-stage-name">${esc(b.name)}</b><small class="ui-note rh-stage-line">${esc(b.epithet)} · ${esc(b.signature)}</small></div></section>`;
 }
 function seat(s: RaidSeat, i: number) {
   const sub = s.me
@@ -360,8 +360,10 @@ function partyTab(view: RaidView, d: RaidData) {
             })
             .join("");
         })();
-  const tricks = bossTricks(view.boss).slice(0, 3);
-  const next = nextRewards(d.progress, view.boss);
+  // Every fighter with a trick here, and the next six rewards: a tall
+  // screen shows them all; a short one scrolls.
+  const tricks = bossTricks(view.boss);
+  const next = nextRewards(d.progress, view.boss, 6);
   const clears = bossClearCount(d.progress, view.boss);
   return `<div class="rh-seats" role="group" aria-label="Raid party">${seats.map(seat).join("")}${open}</div>
 <div class="rh-invites" data-raid-invites><span class="ui-kicker">Invite</span><div class="rh-friends">${friends}</div></div>
@@ -372,7 +374,16 @@ function partyTab(view: RaidView, d: RaidData) {
     d.progress
       ? `<div class="rh-section"><h3 class="ui-h">Next rewards</h3><small class="ui-note">${clears} ${clears === 1 ? "clear" : "clears"} so far</small></div>${next.length ? `<div class="rh-rewards">${next.map((g) => rewardCard(g, d, "rh-next")).join("")}</div>` : `<p class="ui-note">Every milestone here is earned. Try a new fighter or a faster clear.</p>`}`
       : ""
-  }</div>`;
+  }</div>
+<div class="rh-section rh-strip-head"><h3 class="ui-h">Its attacks</h3><small class="ui-note">Pick one to practise it</small></div>
+<div class="rh-strip" role="group" aria-label="${esc(b.name)} attacks">${raidAttacksOf(
+    view.boss,
+  )
+    .map(
+      (a) =>
+        `<button type="button" class="rh-attack is-mini" data-raid-attack-go="${a}" aria-label="Practise ${esc(RAID_ATTACKS[a].name)}: ${esc(RAID_ATTACKS[a].practice)}" title="${esc(RAID_ATTACKS[a].practice)}"><span class="rh-attack-icon" aria-hidden="true">${menuIcon(ATTACK_ICONS[a] ?? "target")}</span><span class="rh-attack-text"><b>${esc(RAID_ATTACKS[a].name)}</b></span></button>`,
+    )
+    .join("")}</div>`;
 }
 function attacksTab(view: RaidView, d: RaidData) {
   const b = RAID_BOSSES[view.boss];
