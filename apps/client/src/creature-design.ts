@@ -256,6 +256,17 @@ export const EYE_STYLE: Partial<Record<CharacterId, EyeStyle>> = {
   astrabun: "star",
   wombolder: "bead",
 };
+/**
+ * Champions that float instead of standing: the rig glides them above the
+ * ground, and menus give them a soft floor shadow instead of paw contact.
+ */
+export const HOVERING: readonly CharacterId[] = [
+  "auralynx",
+  "lumoth",
+  "mystowl",
+  "duskveil",
+  "glacelle",
+];
 /** Facial expressions the rig swaps in (the eyes layer only). */
 export type Mood = "normal" | "happy" | "hurt" | "dizzy" | "focus";
 export const MOODS: Mood[] = ["happy", "hurt", "dizzy", "focus"];
