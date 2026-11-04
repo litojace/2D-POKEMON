@@ -12,7 +12,11 @@
   --lobby-gutter-r: max(14px, var(--safe-right, 0px));
   --lobby-bottom: max(14px, var(--safe-bottom, 0px));
   --lobby-rail: 60px;
+  /* A rail button's height, and the emote tile's under the rail. */
+  --lobby-rail-btn: 56px;
   --lobby-cards: 272px;
+  /* The mode button (56px), the gap (8px) and PLAY (76px). */
+  --lobby-play-h: 140px;
   --lobby-glass: rgba(14, 26, 49, 0.84);
   --lobby-line: rgba(139, 174, 229, 0.25);
   position: fixed;
@@ -62,10 +66,13 @@
   z-index: 1;
 }
 
-/* Menu rail. */
+/* Menu rail: one column from under the player card down to the emote
+   tile in the bottom-left corner (12px above it). Its buttons shrink to
+   fit when the screen is short (phones), never below 28px. */
 .lobby-rail {
   left: var(--lobby-gutter);
   top: var(--lobby-top);
+  bottom: calc(var(--lobby-bottom) + var(--lobby-rail-btn) + 12px);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -76,8 +83,9 @@
   place-items: center;
   align-content: center;
   gap: 2px;
+  flex: 0 1 var(--lobby-rail-btn);
   width: var(--lobby-rail);
-  height: 56px;
+  min-height: 28px;
   padding: 0;
   border: 1px solid var(--lobby-line);
   border-radius: 14px;
@@ -600,9 +608,12 @@
   color: #a0afc8 !important;
 }
 
-/* Emotes (bottom left, next to the rail). */
+/* Emotes: a tile in the rail's column, in the bottom-left corner (on
+   PLAY's bottom line). The emotes open up that column in the rail's place
+   (a row to the right ran into the fighter's arrows on phones and
+   tablets), the way the mode menu takes the cards' place. */
 .lobby-emotes {
-  left: calc(var(--lobby-gutter) + var(--lobby-rail) + 12px);
+  left: var(--lobby-gutter);
   bottom: var(--lobby-bottom);
   display: flex;
   align-items: center;
@@ -621,12 +632,46 @@
     800 20px/1 "Barlow Condensed",
     sans-serif;
 }
+.lobby-emotes .lobby-emote-toggle {
+  align-content: center;
+  gap: 2px;
+  width: var(--lobby-rail);
+  height: var(--lobby-rail-btn);
+  border-radius: 14px;
+  font-size: 22px;
+}
+.lobby-emotes .lobby-emote-toggle span {
+  font:
+    700 10px/1 "DM Sans",
+    sans-serif;
+  letter-spacing: 0.02em;
+  color: #c9d6ee;
+}
 .lobby-emote-list {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 12px);
   display: none;
-  gap: 6px;
+  flex-direction: column;
+  gap: 8px;
+  height: calc(
+    100dvh - var(--lobby-top) - var(--lobby-bottom) - var(--lobby-rail-btn) -
+      12px
+  );
 }
 .lobby-emotes[data-open="true"] .lobby-emote-list {
   display: flex;
+}
+.lobby-emotes .lobby-emote-list button {
+  flex: 0 1 var(--lobby-rail-btn);
+  width: var(--lobby-rail);
+  height: auto;
+  min-height: 28px;
+  border-radius: 14px;
+  font-size: 22px;
+}
+.lobby-layer:has(.lobby-emotes[data-open="true"]) .lobby-rail {
+  visibility: hidden;
 }
 
 /* Mode and PLAY (bottom right). */
@@ -724,15 +769,24 @@
     0 3px 0 #b8781a,
     0 8px 18px rgba(0, 0, 0, 0.4);
 }
+/* The mode menu opens over the cards' column, exactly as wide, from 8px
+   above the mode button up to the row under the header at most
+   (--lobby-top); a longer list scrolls inside it. --lobby-play-h is the
+   mode button, the gap and PLAY. The cards step aside while it is open,
+   so they never show through the glass. */
 .lobby-mode-menu {
   position: absolute;
   right: 0;
   bottom: calc(100% + 8px);
   display: grid;
   gap: 4px;
-  width: 300px;
-  max-height: calc(100vh - var(--lobby-top) - 170px);
+  box-sizing: border-box;
+  width: 100%;
+  max-height: calc(
+    100dvh - var(--lobby-top) - var(--lobby-bottom) - var(--lobby-play-h) - 8px
+  );
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 6px;
   border: 1px solid var(--lobby-line);
   border-radius: 16px;
@@ -741,6 +795,9 @@
 }
 .lobby-mode-menu[hidden] {
   display: none;
+}
+.lobby-layer:has(.lobby-mode-menu:not([hidden])) .lobby-cards {
+  visibility: hidden;
 }
 .lobby-mode-menu button {
   display: grid;
@@ -791,8 +848,10 @@
 
 /* Medium heights (small laptops, tablets): tighter rail, fewer cards. */
 @media (max-height: 760px) {
-  .lobby-rail button {
-    height: 48px;
+  .lobby-layer {
+    /* Mode 42px, gap 6px, PLAY 50px. */
+    --lobby-play-h: 98px;
+    --lobby-rail-btn: 48px;
   }
   .lobby-rail {
     gap: 6px;
@@ -810,16 +869,32 @@
 /* Phones in landscape (and short windows): compact everything. */
 @media (max-height: 500px) {
   .lobby-layer {
-    --lobby-top: 58px;
+    /* 12px under the player card (42px from max(10px, safe area)), clear
+       of a frame's star row hanging below it. */
+    --lobby-top: 64px;
     --lobby-rail: 36px;
+    --lobby-rail-btn: 34px;
     --lobby-cards: 196px;
   }
   .lobby-rail {
     gap: 4px;
   }
-  .lobby-rail button {
-    height: 34px;
+  .lobby-rail button,
+  .lobby-emotes .lobby-emote-toggle {
     border-radius: 10px;
+  }
+  .lobby-emotes .lobby-emote-toggle,
+  .lobby-emotes .lobby-emote-list button {
+    font-size: 17px;
+  }
+  .lobby-emote-list {
+    gap: 4px;
+  }
+  .lobby-emotes .lobby-emote-list button {
+    border-radius: 10px;
+  }
+  .lobby-emotes .lobby-emote-toggle span {
+    display: none;
   }
   .lobby-rail svg {
     width: 18px;
@@ -913,10 +988,7 @@
     border-radius: 14px;
     font-size: 28px !important;
   }
-  .lobby-mode-menu {
-    width: 260px;
-    max-height: calc(100vh - 120px);
-  }
+
   .lobby-mode-menu button {
     min-height: 38px;
   }

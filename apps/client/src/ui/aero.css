@@ -1,0 +1,127 @@
+/* ── Glass for the hub (Lobby, Plaza, Farm and their shared header) ──
+   Flat, quiet and a little see-through, in the spirit of the gacha RPGs'
+   menus (dark ink panels with a fine champagne-gold hairline) and of
+   Valorant's lobby rework (nothing decorative that doesn't help you read):
+   a deep ink tint with the scene blurred behind it, one 1px warm-gold rim,
+   no gloss, bevel, glow or drop shadow. Hover and focus brighten the rim to
+   the game's gold. The coin and leaf pills keep their gold and green rims;
+   the Raid and Farm cards keep their colour.
+
+   Blur over the Lobby is cheap: its backdrop is a still painting. The
+   Plaza and the Farm draw a canvas that changes every frame, so every
+   blurred panel over them is blurred again every frame. They keep the
+   blur at High graphics and drop it at Low (chosen in Settings, or picked
+   automatically when the frame rate can't keep up), with a deeper tint.
+
+   Loaded after every other stylesheet (main.ts imports it last). */
+:root {
+  --aero-tint: rgba(13, 20, 38, 0.62);
+  /* Without blur the scene shows through sharp: a deeper tint. */
+  --aero-tint-solid: rgba(12, 18, 34, 0.9);
+  --aero-rim: rgba(226, 200, 140, 0.42);
+  --aero-rim-on: #ffd65b;
+  --aero-blur: blur(16px) saturate(1.3);
+}
+
+/* The Lobby's own colour tokens become glass (its cards mix --lobby-glass
+   into their gradients, so it stays a colour). */
+.lobby-layer {
+  --lobby-glass: var(--aero-tint);
+  --lobby-line: var(--aero-rim);
+}
+
+/* The glass pieces: tint and blur (background-color only, so a card's
+   own gradient stays on top of it). */
+:root
+  body.hub-active
+  :is(#account-profile, #account-admin, .header-menu > summary),
+:root body.hub-active :is(#account-coins, #account-leaves) > *,
+:root .hub-scenes,
+.lobby-layer
+  :is(
+    .lobby-rail button,
+    .lobby-card,
+    .lobby-mode,
+    .lobby-emotes button,
+    .lobby-party-bar,
+    .lobby-mode-menu
+  ),
+.plaza-layer :is(.glass, .pz-round, .pz-act:not(.big, .pz-interact, .cd)),
+.farm-layer .glass {
+  background-color: var(--aero-tint);
+  -webkit-backdrop-filter: var(--aero-blur);
+  backdrop-filter: var(--aero-blur);
+  box-shadow: none;
+}
+/* The warm-gold hairline (not on the coin and leaf pills). */
+:root
+  body.hub-active
+  :is(#account-profile, #account-admin, .header-menu > summary),
+:root .hub-scenes,
+.lobby-layer
+  :is(
+    .lobby-rail button,
+    .lobby-card,
+    .lobby-mode,
+    .lobby-emotes button,
+    .lobby-party-bar,
+    .lobby-mode-menu
+  ),
+.plaza-layer :is(.glass, .pz-round, .pz-act:not(.big, .pz-interact, .cd)),
+.farm-layer .glass {
+  border-color: var(--aero-rim);
+}
+/* Hover and keyboard focus: the rim lights up gold. */
+:root body.hub-active .header-menu > summary:is(:hover, :focus-visible),
+.lobby-layer
+  :is(.lobby-rail button, .lobby-card, .lobby-mode, .lobby-emotes button):is(
+    :hover,
+    :focus-visible
+  ),
+.plaza-layer
+  :is(.pz-round, .pz-act:not(.big, .pz-interact, .cd)):is(
+    :hover,
+    :focus-visible
+  ) {
+  border-color: var(--aero-rim-on);
+}
+/* The open mode menu is the one thing over the scene there: a touch
+   deeper, so its rows read at a glance. */
+.lobby-layer .lobby-mode-menu {
+  background-color: rgba(13, 20, 38, 0.82);
+}
+
+/* Flat call-to-action buttons: one solid colour, no bevel or shadow; a
+   press shrinks them a touch instead of sinking them. */
+.lobby-layer .lobby-play-button,
+.plaza-layer .pz-act.big {
+  background: #ffd04a;
+  box-shadow: none;
+}
+.plaza-layer .pz-act.big {
+  border-color: transparent;
+}
+.plaza-layer .pz-interact {
+  background: #4fd27a;
+  box-shadow: none;
+}
+.lobby-layer .lobby-play-button:active {
+  transform: scale(0.97);
+  box-shadow: none;
+}
+
+/* Low graphics on the Plaza or the Farm: no blur over the moving canvas. */
+.plaza-layer[data-graphics="low"]
+  :is(.glass, .pz-round, .pz-act:not(.big, .pz-interact, .cd)),
+.farm-layer[data-graphics="low"] .glass,
+:root
+  body:has(:is(.plaza-layer, .farm-layer)[data-graphics="low"])
+  :is(#account-profile, #account-admin, .header-menu > summary, .hub-scenes),
+:root
+  body:has(:is(.plaza-layer, .farm-layer)[data-graphics="low"])
+  :is(#account-coins, #account-leaves)
+  > * {
+  background-color: var(--aero-tint-solid);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}

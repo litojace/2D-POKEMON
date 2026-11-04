@@ -870,7 +870,6 @@ export function openPlaza(options) {
   if (low) goLow();
   let claps = 0,
     runwayOn = false,
-    zoneName = "",
     bannerT = 0;
   // Time of day follows the device clock; the clock button previews day or night for 2 minutes.
   const realTod = () => {
@@ -3380,51 +3379,10 @@ export function openPlaza(options) {
   }
 
   /* ---------- loop ---------- */
-  const ZONES = [
-    {
-      n: "Runway",
-      s: "step up to show off your skin",
-      c: "#ff9bd2",
-      t: (p) => inRunway(p),
-    },
-    {
-      n: "Orb Ball Pitch",
-      s: "bump to dribble · dash to shoot",
-      c: "#5ab0ff",
-      t: (p) => inPitch(p.x, p.y, 30),
-    },
-    {
-      n: "Dash Track",
-      s: "cross the start line to start the clock",
-      c: "#ff9b6a",
-      t: (p) => ell(p.x, p.y).r <= 1.08,
-    },
-    {
-      n: "Photo Spot",
-      s: "press E to take a photo",
-      c: "#ffffff",
-      t: (p) => Math.hypot(p.x - PHOTO.x, (p.y - PHOTO.y) * 1.4) < 150,
-    },
-    {
-      n: "Volt Boba",
-      s: "a drink that makes you faster",
-      c: "#ffd84a",
-      t: (p) => Math.hypot(p.x - CAFE.x, (p.y - CAFE.y - 30) * 1.3) < 170,
-    },
-    {
-      n: "Farm Gate",
-      s: "press E to enter",
-      c: "#7cc95a",
-      t: (p) => p.y > GATE.y - 200 && Math.abs(p.x - GATE.x) < 240,
-    },
-    {
-      n: "Fountain Square",
-      s: "hop on a bounce pad",
-      c: "#ffd65b",
-      t: (p) => inSquare(p.x, p.y, 1.05),
-    },
-    { n: "Elemental Plaza", s: "take a stroll", c: "#a0afc8", t: () => true },
-  ];
+  // No title card for each area you walk into (Fountain Square, Dash
+  // Track…): the places are signposted in the painting, and the cards
+  // repeated them every time you crossed a border. The banner is kept for
+  // events (the Orb Shower).
   const DASH_EVERY = PLAZA.dashEvery;
   let lastDraw = 0;
   function step(now) {
@@ -3561,12 +3519,6 @@ export function openPlaza(options) {
       } else {
         ib.hidden = true;
         ib.dataset.id = "";
-      }
-      const zn = ZONES.find((z) => z.t(P));
-      if (zn.n !== zoneName) {
-        const first = !zoneName;
-        zoneName = zn.n;
-        if (!first && zn.n !== "Elemental Plaza") banner(zn.n, zn.s, zn.c);
       }
       const dcd = $("pz-dash");
       dcd.classList.toggle("cd", P.dashCd > 0);
@@ -3727,10 +3679,6 @@ export function openPlaza(options) {
   last = performance.now();
   raf = requestAnimationFrame(step);
   screen.focus({ preventScroll: true });
-  setTimeout(
-    () => banner("Elemental Plaza", "Everyone's playground", "#ffd65b"),
-    50,
-  );
   options
     .loadProgress()
     .then(setProgress)
