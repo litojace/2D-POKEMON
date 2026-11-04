@@ -2926,6 +2926,15 @@ export function openPlaza(options) {
           z: 0,
           on: 0.55,
         }));
+    // The moving heads hang under the truss bar, in front of the screen.
+    heads.forEach((hx) => {
+      g.fillStyle = "#1a1a24";
+      g.fillRect(hx - 2, hy - 10, 4, 6);
+      g.fillStyle = "#2b2b38";
+      g.beginPath();
+      g.roundRect(hx - 9, hy - 6, 18, 13, 4);
+      g.fill();
+    });
     g.save();
     g.globalCompositeOperation = "lighter";
     targets.forEach((t, k) => {
@@ -2967,6 +2976,210 @@ export function openPlaza(options) {
     });
     g.restore();
   }
+  /* ---------- string lights ----------
+     LED strings on wires: the square's ring between its lamps (as before),
+     a garland on the stage truss and lights wound round its legs, festoons
+     from the square out along the south and east paths, and bulbs on the
+     Photo Spot and Farm gate arches and along the stage's edge. At night
+     each bulb glows with a pre-painted halo (one image draw a bulb) and
+     twinkles; Low graphics keeps the bulbs and drops the halos, and
+     reduced motion holds them steady. */
+  const BULB = [
+    "#ffd65b",
+    "#ff8fb8",
+    "#7fe7ff",
+    "#b6f36b",
+    "#c9a3ff",
+    "#fff3c4",
+  ];
+  const HALO = BULB.map((c) => {
+    const s = document.createElement("canvas");
+    s.width = s.height = 64;
+    const hg = s.getContext("2d"),
+      gr = hg.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, c + "ff");
+    gr.addColorStop(0.22, c + "8c");
+    gr.addColorStop(1, c + "00");
+    hg.fillStyle = gr;
+    hg.fillRect(0, 0, 64, 64);
+    return s;
+  });
+  /** Wired strings: a curve (a → b through control c) or a chain of points. */
+  const STRINGS = [];
+  /** Bulbs on props (arches, the stage's edge): lit at night only. */
+  const SPARKS = [];
+  const bez = (a, c, b, t) => [
+    (1 - t) ** 2 * a[0] + 2 * (1 - t) * t * c[0] + t * t * b[0],
+    (1 - t) ** 2 * a[1] + 2 * (1 - t) * t * c[1] + t * t * b[1],
+  ];
+  const boxOf = (pts) => [
+    Math.min(...pts.map((p) => p[0])) - 24,
+    Math.min(...pts.map((p) => p[1])) - 24,
+    Math.max(...pts.map((p) => p[0])) + 24,
+    Math.max(...pts.map((p) => p[1])) + 24,
+  ];
+  function swag(a, b, { sag = 22, n, cols = [0, 1, 2, 3], c } = {}) {
+    c ??= [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + sag * 2];
+    n ??= Math.max(3, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]) / 24));
+    const i = STRINGS.length,
+      bulbs = [];
+    for (let k = 1; k <= n; k++) {
+      const [x, y] = bez(a, c, b, k / (n + 1));
+      bulbs.push({
+        x,
+        y,
+        c: cols[(k + i) % cols.length],
+        ph: k * 1.7 + i * 2.3,
+      });
+    }
+    STRINGS.push({ a, c, b, bulbs, box: boxOf([a, b, c]) });
+  }
+  function chain(pts, cols) {
+    const i = STRINGS.length;
+    STRINGS.push({
+      pts,
+      bulbs: pts.map(([x, y], k) => ({
+        x,
+        y,
+        c: cols[k % cols.length],
+        ph: k * 1.3 + i * 2.3,
+      })),
+      box: boxOf(pts),
+    });
+  }
+  {
+    const top = (l) => [l.x, l.y - 74];
+    // The square's ring, exactly as before (8 spans of 7 bulbs).
+    for (let i = 0; i < 8; i++) {
+      const a = LAMPS[i],
+        b = LAMPS[(i + 1) % 8];
+      swag(top(a), top(b), {
+        n: 7,
+        c: [(a.x + b.x) / 2, (a.y + b.y) / 2 - 30],
+      });
+    }
+    // The stage: a warm garland along the truss, lights round both legs.
+    const tx0 = LED.x0 - 24,
+      tx1 = LED.x1 + 24,
+      ty = LED.y0 - 33;
+    for (let k = 0; k < 6; k++)
+      swag(
+        [tx0 + ((tx1 - tx0) * k) / 6, ty],
+        [tx0 + ((tx1 - tx0) * (k + 1)) / 6, ty],
+        { sag: 8, n: 3, cols: [5, 0, 5, 1] },
+      );
+    for (const cx of [LED.x0 - 17, LED.x1 + 17]) {
+      const pts = [];
+      for (let y = LED.y0 - 8, k = 0; y < STAGE.y0 - 4; y += 16, k++)
+        pts.push([cx + (k % 2 ? 6 : -6), y]);
+      chain(pts, [5, 1, 4]);
+    }
+    // Festoons from the square down the south path and across it twice.
+    const [S1, S2, S3, S4] = LAMPS.slice(8, 12);
+    swag(top(LAMPS[2]), top(S1), { sag: 26 });
+    swag(top(LAMPS[1]), top(S2), { sag: 26 });
+    swag(top(S1), top(S2), { sag: 20, cols: [0, 4, 2, 1] });
+    swag(top(S3), top(S4), { sag: 20, cols: [1, 2, 4, 0] });
+    // …and out along the east path.
+    const [E1, E2] = LAMPS.slice(12, 14);
+    swag(top(LAMPS[7]), top(E1), { sag: 16 });
+    swag(top(LAMPS[0]), top(E2), { sag: 16 });
+    // Arches: between the Photo Spot's flowers and the Farm gate's balls.
+    for (let i = 0; i < 14; i++) {
+      const a = Math.PI + ((i + 0.5) / 14) * Math.PI;
+      SPARKS.push({
+        x: PHOTO.x + Math.cos(a) * 80,
+        y: PHOTO.y - 150 + Math.sin(a) * 80,
+        c: [5, 1, 0][i % 3],
+        ph: i * 0.9,
+        r: 12,
+      });
+    }
+    for (let i = 0; i < 11; i++) {
+      const a = Math.PI + ((i + 0.5) / 11) * Math.PI;
+      SPARKS.push({
+        x: GATE.x + Math.cos(a) * 70,
+        y: GATE.y - 112 + Math.sin(a) * 70,
+        c: [0, 5, 1][i % 3],
+        ph: i * 1.1,
+        r: 12,
+      });
+    }
+    // The stage's edge and the catwalk's sides (painted bulbs) light up and
+    // chase toward the front.
+    for (let x = STAGE.x0 + 14, k = 0; x < STAGE.x1; x += 26, k++)
+      SPARKS.push({ x, y: STAGE.y1 + 9, c: 5, chase: k, r: 9 });
+    for (let y = WALK.y0 + 14, k = 0; y < WALK.y1; y += 24, k++)
+      for (const x of [WALK.x0 + 8, WALK.x1 - 8])
+        SPARKS.push({ x, y, c: 1, chase: k + 4, r: 9 });
+  }
+  /** The strings, wires and bulbs; at night (n > 0) lit, with halos. */
+  function drawStringLights(g, time, n, vx0, vy0, vx1, vy1) {
+    const seen = (b) => b[2] > vx0 && b[0] < vx1 && b[3] > vy0 && b[1] < vy1;
+    const strings = STRINGS.filter((st) => seen(st.box));
+    g.save();
+    g.strokeStyle = n > 0 ? "rgba(40,30,20,.6)" : "rgba(40,30,20,.45)";
+    g.lineWidth = 1.2;
+    g.beginPath();
+    for (const st of strings) {
+      if (st.pts) {
+        g.moveTo(st.pts[0][0], st.pts[0][1]);
+        for (const p of st.pts.slice(1)) g.lineTo(p[0], p[1]);
+      } else {
+        g.moveTo(st.a[0], st.a[1]);
+        g.quadraticCurveTo(st.c[0], st.c[1], st.b[0], st.b[1]);
+      }
+    }
+    g.stroke();
+    const tw = (ph) => (reduced ? 1 : 0.72 + 0.28 * Math.sin(time * 2.4 + ph));
+    const lit = [];
+    for (const st of strings)
+      for (const b of st.bulbs) lit.push({ ...b, k: tw(b.ph), r: 13 });
+    if (n > 0)
+      for (const s of SPARKS) {
+        if (
+          s.x < vx0 - 20 ||
+          s.x > vx1 + 20 ||
+          s.y < vy0 - 20 ||
+          s.y > vy1 + 20
+        )
+          continue;
+        const k =
+          s.chase == null
+            ? tw(s.ph)
+            : reduced
+              ? 0.85
+              : 0.45 + 0.55 * Math.max(0, Math.sin(time * 4 - s.chase * 0.7));
+        lit.push({ ...s, k });
+      }
+    if (n > 0 && !low) {
+      g.globalCompositeOperation = "lighter";
+      for (const b of lit) {
+        g.globalAlpha = Math.min(1, 0.62 * n * b.k);
+        g.drawImage(HALO[b.c], b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
+      }
+      g.globalCompositeOperation = "source-over";
+    }
+    for (const b of lit) {
+      if (n <= 0 && b.chase != null) continue;
+      g.fillStyle = BULB[b.c];
+      g.globalAlpha = n > 0 ? (0.4 + 0.6 * n) * (0.75 + 0.25 * b.k) : 0.45;
+      g.beginPath();
+      g.arc(b.x, b.y, b.chase != null ? 2.8 : 3.2, 0, 7);
+      g.fill();
+    }
+    if (n > 0) {
+      // A white-hot centre makes them read as lit LEDs.
+      g.fillStyle = "#fff";
+      for (const b of lit) {
+        g.globalAlpha = 0.85 * n * b.k;
+        g.beginPath();
+        g.arc(b.x, b.y, 1.3, 0, 7);
+        g.fill();
+      }
+    }
+    g.restore();
+  }
   function drawWorld(g, time, photo = false) {
     // What this canvas shows of the world, so only that much is drawn.
     const inv = g.getTransform().inverse(),
@@ -2997,7 +3210,6 @@ export function openPlaza(options) {
     });
 
     HSEG.forEach((s) => drawHurdle(g, s));
-    drawSpotlights(g, time);
     drawPond(g, time);
     FX.filter((f) => f.ring || f.dust).forEach((f) => {
       const k = f.t / f.life;
@@ -3147,6 +3359,10 @@ export function openPlaza(options) {
       })),
       { y: FOUNT.y, d: () => drawFountain(g, time) },
       { y: LED.y1, d: () => drawLED(g, time) },
+      // The spotlights hang from the truss in front of the screen and shine
+      // down on the stage: drawn after the screen, before anyone standing
+      // on the stage. Always drawn: the camera may see only the beams' end.
+      { y: LED.y1 + 0.5, always: true, d: () => drawSpotlights(g, time) },
       { y: PITCH.y0 - 40, d: () => drawScoreboard(g) },
       {
         y: (PITCH.gy0 + PITCH.gy1) / 2,
@@ -3198,9 +3414,10 @@ export function openPlaza(options) {
     items
       .filter(
         (i) =>
-          i.y > vy0 - 40 &&
-          i.y < vy1 + 340 &&
-          (i.x == null || (i.x > vx0 - 260 && i.x < vx1 + 260)),
+          i.always ||
+          (i.y > vy0 - 40 &&
+            i.y < vy1 + 340 &&
+            (i.x == null || (i.x > vx0 - 260 && i.x < vx1 + 260))),
       )
       .sort((a, b) => a.y - b.y)
       .forEach((i) => i.d());
@@ -3260,7 +3477,8 @@ export function openPlaza(options) {
       g.save();
       g.setTransform(1, 0, 0, 1, 0, 0);
       g.globalCompositeOperation = "multiply";
-      g.fillStyle = `rgba(${Math.round(255 - 170 * n)},${Math.round(255 - 150 * n)},${Math.round(255 - 70 * n)},1)`;
+      // A little lighter than it was, so the night reads as lit, not dark.
+      g.fillStyle = `rgba(${Math.round(255 - 150 * n)},${Math.round(255 - 132 * n)},${Math.round(255 - 62 * n)},1)`;
       g.fillRect(0, 0, g.canvas.width, g.canvas.height);
       g.restore();
       g.save();
@@ -3308,59 +3526,10 @@ export function openPlaza(options) {
           glow(o.x, o.y - 18 - o.z, 40, "220,170,255", 0.5 * n),
         );
       g.restore();
-      // string lights between square lamps
-      g.save();
-      for (let i = 0; i < 8; i++) {
-        const a = LAMPS[i],
-          b = LAMPS[(i + 1) % 8];
-        g.strokeStyle = "rgba(40,30,20,.6)";
-        g.lineWidth = 1.2;
-        g.beginPath();
-        g.moveTo(a.x, a.y - 74);
-        g.quadraticCurveTo(
-          (a.x + b.x) / 2,
-          (a.y + b.y) / 2 - 30,
-          b.x,
-          b.y - 74,
-        );
-        g.stroke();
-        for (let k = 1; k < 8; k++) {
-          const t = k / 8,
-            x =
-              (1 - t) ** 2 * a.x +
-              (2 * (1 - t) * t * (a.x + b.x)) / 2 +
-              t * t * b.x,
-            y =
-              (1 - t) ** 2 * (a.y - 74) +
-              2 * (1 - t) * t * ((a.y + b.y) / 2 - 30) +
-              t * t * (b.y - 74);
-          g.fillStyle = ["#ffd65b", "#ff8fb8", "#7fe7ff", "#b6f36b"][
-            (k + i) % 4
-          ];
-          g.globalAlpha = 0.4 + 0.6 * n;
-          g.beginPath();
-          g.arc(x, y, 3.2, 0, 7);
-          g.fill();
-        }
-      }
-      g.restore();
+      drawStringLights(g, time, n, vx0, vy0, vx1, vy1);
     } else {
       // daytime: string lights unlit, butterflies
-      for (let i = 0; i < 8; i++) {
-        const a = LAMPS[i],
-          b = LAMPS[(i + 1) % 8];
-        g.strokeStyle = "rgba(40,30,20,.45)";
-        g.lineWidth = 1.2;
-        g.beginPath();
-        g.moveTo(a.x, a.y - 74);
-        g.quadraticCurveTo(
-          (a.x + b.x) / 2,
-          (a.y + b.y) / 2 - 30,
-          b.x,
-          b.y - 74,
-        );
-        g.stroke();
-      }
+      drawStringLights(g, time, 0, vx0, vy0, vx1, vy1);
       for (let i = 0; i < 10; i++) {
         const t = TREES[(i * 5) % TREES.length],
           x = t.x + Math.sin(time * 0.8 + i) * 60,
@@ -3536,7 +3705,8 @@ export function openPlaza(options) {
       cam.y +=
         (Math.max(
           NH / 2 / Z,
-          Math.min(H - NH / 2 / Z + 40, P.y - 40 + lead.y),
+          // Stops at the map's bottom edge: no empty strip below it.
+          Math.min(H - NH / 2 / Z, P.y - 40 + lead.y),
         ) -
           cam.y) *
         Math.min(1, dt * 5);
@@ -3583,7 +3753,13 @@ export function openPlaza(options) {
     NW = nw;
     NH = nh;
     PS = ps;
-    Z = nw < 1000 ? 0.66 : 1;
+    // Never show more than the map: on a screen wider or taller than the
+    // Plaza (an ultrawide monitor, a big window) zoom in until it fills it.
+    Z = Math.max(nw < 1000 ? 0.66 : 1, nw / W, nh / H);
+    // Inside the map at once (the camera eases after this): a resize or the
+    // first frame never shows a strip past the edge.
+    cam.x = Math.max(nw / 2 / Z, Math.min(W - nw / 2 / Z, cam.x));
+    cam.y = Math.max(nh / 2 / Z, Math.min(H - nh / 2 / Z, cam.y));
     cv.width = Math.round(nw * ps);
     cv.height = Math.round(nh * ps);
     renderQuests();

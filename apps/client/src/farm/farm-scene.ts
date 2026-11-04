@@ -207,8 +207,10 @@ export function openFarm(options) {
   };
   syncPhone();
 
-  let VW = 1280;
-  const VH = 800;
+  // The view in virtual pixels: at least 1280 × 800, and grown along the
+  // screen's longer side so it always fills the screen (no bands).
+  let VW = 1280,
+    VH = 800;
   const COLS = 10,
     ROWS = 5,
     PW = 96,
@@ -5079,13 +5081,23 @@ export function openFarm(options) {
     NW = nw;
     NH = nh;
     PS = ps;
-    VW = Math.max(1280, Math.round((VH * nw) / nh));
+    // Wider than 16:10 grows the view's width, taller grows its height, so
+    // the farm fills the screen on any shape (it used to leave bands above
+    // and below on tall windows). ZMIN then zooms in far enough that the
+    // view never shows past the farm's edges.
+    if (nw * 800 >= nh * 1280) {
+      VH = 800;
+      VW = Math.round((800 * nw) / nh);
+    } else {
+      VW = 1280;
+      VH = Math.round((1280 * nh) / nw);
+    }
     ZMIN = Math.max(VW / BW, VH / BH);
     Z = Math.max(Z, ZMIN);
     clampCam();
     K = Math.min(nw / VW, nh / VH);
     OFX = (nw - VW * K) / 2;
-    OFY = (nh - VH * K) / 2 + (nw < 1000 ? 0 : 6);
+    OFY = (nh - VH * K) / 2;
     const phone = nh <= 500;
     if (phone !== wasPhone) {
       wasPhone = phone;
