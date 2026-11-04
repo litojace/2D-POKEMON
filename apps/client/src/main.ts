@@ -178,6 +178,7 @@ import {
   type Input,
   type Reply,
   type Snapshot,
+  type Zone,
 } from "../../../packages/shared/src/index";
 import { AudioManager } from "./audio";
 import { InterpolationBuffer } from "./networking/interpolation";
@@ -4343,7 +4344,8 @@ class ArenaScene extends Phaser.Scene {
       this.comboText(event, "WALL SLAM!");
       if (!reducedMotion) this.cameras.main.shake(140, 0.004);
     }
-    if (ability && event.kind === "cast" && ability.kind !== "nova")
+    if (ability && event.kind === "cast" && ability.kind !== "nova") {
+      const caster = event.owner;
       playCast(
         this,
         ability,
@@ -4352,7 +4354,10 @@ class ArenaScene extends Phaser.Scene {
         owner?.angle ?? 0,
         event.color,
         reducedMotion,
+        // Where the caster is drawn now (smoothed, and predicted for you).
+        caster ? () => this.positions.get(caster) : undefined,
       );
+    }
     if (ability && event.kind === "impact")
       playImpact(this, ability, event.x, event.y, event.color, reducedMotion);
     if (event.kind === "hit" && event.target) this.feelHit(event);
@@ -4861,10 +4866,17 @@ class ArenaScene extends Phaser.Scene {
       const color = tints.get(o.owner);
       return color === undefined ? o : { ...o, color };
     };
+    // A zone that follows its caster is drawn where the caster is drawn (its
+    // smoothed, and for you predicted, position), not at the last snapshot,
+    // so it moves with the fighter instead of trailing in steps.
+    const followed = (z: Zone) => {
+      const at = z.ability.follow ? this.positions.get(z.owner) : undefined;
+      return at ? { ...z, x: at.x, y: at.y } : z;
+    };
     for (const z of state.zones)
       drawZone(
         g,
-        tinted(z),
+        followed(tinted(z)),
         1 -
           Math.max(0, z.until - state.time) /
             Math.max(0.01, z.ability.duration),
