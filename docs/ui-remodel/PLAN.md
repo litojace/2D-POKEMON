@@ -620,6 +620,89 @@ Before and after: [roster](images/step3/roster.webp),
   `roster-skill-icons`, `roster-smooth` and the Lobby spec's Fighters check
   moved to the new screen; what they check stays.
 
+### Step 4: Missions and Journey (built 4 Nov 2026)
+
+Before and after: [Missions](images/step4/missions.webp),
+[Journey](images/step4/journey.webp); every size in
+[`images/step4/`](images/step4/).
+
+- `apps/client/src/screens/missions-view.ts` and `journey-view.ts` (markup
+  and rules, no DOM), `missions.ts` and `journey.ts` (behaviour), and
+  `missions.css` / `journey.css` (layout only). The rail, the Lobby's
+  cards and the fitting room's "Earn coins" open them inside the Lobby
+  (`openHubPanel`).
+- **Missions is the first sheet.** A top line with done / six, the all-six
+  bonus and the changes left; six rows with the difficulty colour,
+  progress, coins and XP, and Paid (✓) or a change button (↻, "Swap for a
+  solo mission" on a mission that needs others). Payouts stay automatic:
+  Paid is a state. The 7-day streak as dots with the +300 day. A row's
+  text is one button that opens how to complete the mission under it (the
+  old per-mission "?" popups, same text). A change asks the server
+  (`/api/missions/reroll`) and shows its answer or its reason; every
+  change button waits while one is on its way.
+- **The Lobby beside a sheet** (step 1's note): `hub-panel.ts` marks the
+  Lobby (`data-ui-sheet`) while a sheet is open, and one block in
+  `ui/components.css` moves the stage and the emotes into the room right
+  of the sheet. On phones the side cards make way (the sheet says what
+  they say) and the stage takes the room above PLAY, so the fighter stays
+  whole: about 220 px wide at 1280×720, 330 px at 1440×900 and 150 px on
+  phones. The live rig keeps running behind a sheet (the spec compares
+  two pictures of it a few seconds apart) and PLAY stays usable. This
+  keeps `lobby.css` untouched for the Lobby work going on in parallel.
+- **Journey is a panel** with Season · Levels · Weekly arcade as tabs in
+  its head. Season: one banner (level ring, the season and its tier, XP to
+  the next tier, "Ends in …", the Daily Spark), the season road scrolling
+  sideways (wheel, swipe, or arrows once focused) with the four cosmetic
+  tiers larger than the coin tiers, earned tiers ticked and the next tier
+  lit and scrolled into view; the weekly goals with "Resets in …"; a short
+  level road with the next four milestones. Levels: every milestone to
+  level 100 (titles and cosmetics, earned or not) and how XP is earned.
+  Weekly arcade: this week's event, its countdown, and Private 1v1 /
+  Private 2v2 / Play vs AI as three equal buttons in the action bar.
+- **Equip:** picking a reward shows it in the action bar (picture, where it
+  comes from, whether you own or wear it) with Wardrobe and Equip (Locked
+  until it is yours). Equip goes through `/api/raids/equip`, as the
+  Wardrobe does. The old reward preview with its own live rig is gone; the
+  fitting room is where things are tried on.
+- **Server time:** the daily countdown (`picksCountdown`), and the new
+  `ui/countdown.ts` for the weekly reset (next Monday, Pacific) and the
+  season's end (the first Pacific day of the next month), all on
+  `serverNow()`. The arcade week and a missing season id use the server's
+  Pacific date too. The sheet and the panel redraw their countdowns every
+  30 s while open (patched in place). The old screen said "0 days left"
+  when the device's month and the season disagreed.
+- **Deleted:** `missions-ui.ts`, the Adventure markup in `adventure-ui.ts`
+  (210 → 67 lines: the level bar and result-card XP stay for the results
+  and the profile), the Missions and Adventure hooks in `dialog.ts`, and
+  1,600 lines of `style.css`: the Mission, streak, Adventure, season,
+  Journey reward-preview and old home-mission rules, `.shop-intro`,
+  `.shop-note`, `.shop-status`, `.shop-preview`, `.shop-preview-visual` and
+  `.shop-preview-text` (`.shop-live-stage` and `.shop-preview-fallback`
+  stay for the live rig), and the Journey preview's frame sizing in
+  `journey-frames.css`. As in step 2 a script removed only selectors built
+  on classes no source emits (keeping live alternatives inside `:is()`),
+  and the Lobby, Shop, Wardrobe, roster, fighter detail, Raids, Ranks,
+  Friends and profile were compared pixel by pixel before and after at
+  1440×900 and 844×390: identical apart from the Lobby's random sparkles
+  and the Shop's moving countdown.
+- **Choices made while building:** the new classes avoid every old name so
+  the prune could tell them apart. On phones the season road's tiers are
+  64 / 84 px wide and the Daily Spark stays in the banner (the mockup hid
+  it; the old spec required it on phones). `ui-measure.ts` now checks a
+  phone control's 44 px reach only while the control is wholly in sight
+  (a row scrolled out of its list is checked once scrolled to; the specs
+  do that).
+- **Tests:** `tests/unit/missions.test.ts`, `countdown.test.ts` (weekly
+  reset, season end, daylight saving) and the Journey checks in
+  `journey.test.ts` / `journey-cosmetics.test.ts`;
+  `tests/visual/missions.spec.ts` and `journey.spec.ts` at the four sizes
+  with `ui-measure.ts` (plus changing a mission and a refusal, equipping,
+  keyboard, reduced motion, Low graphics). `journey-levels.spec.ts` became
+  `journey.spec.ts` (its 700×390 size too); `mission-changes-ui.test.ts`
+  and the Missions parts of `shop-ui.test.ts` became `missions.test.ts`;
+  `level-cosmetics`, `regular-raids`, `fitting-room` and `landscape-only`
+  moved to the new screens. What they check stays.
+
 ## Decisions (owner, 3 Nov 2026)
 
 | #   | Question                                        | Decision                                                                                                                                                         |

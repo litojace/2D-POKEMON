@@ -118,6 +118,32 @@
       var(--lobby-rail, 60px) - var(--sp-3)
   );
 }
+/* The Lobby beside a sheet (step 4): its stage, and the emotes under it,
+   re-centre in the room right of the sheet, so the fighter stays whole and
+   in view while it keeps moving. On phones the side cards make way (the
+   sheet shows what they say) and the stage takes the room above PLAY.
+   ui/hub-panel.ts sets data-ui-sheet on the Lobby while a sheet is open. */
+.lobby-layer[data-ui-sheet] {
+  --ui-sheet-end: calc(
+    var(--lobby-gutter) + var(--lobby-rail) + var(--sp-3) + var(--sheet-w)
+  );
+}
+.lobby-layer[data-ui-sheet] > .lobby-stage {
+  left: calc(var(--ui-sheet-end) + var(--sp-4));
+}
+.lobby-layer[data-ui-sheet] > .lobby-emotes {
+  left: calc(var(--ui-sheet-end) + var(--sp-3));
+}
+@media (max-height: 500px) {
+  .lobby-layer[data-ui-sheet] > .lobby-cards {
+    display: none;
+  }
+  .lobby-layer[data-ui-sheet] > .lobby-stage {
+    right: var(--lobby-gutter-r);
+    /* PLAY and the mode (98 px on phones) and a gap. */
+    bottom: calc(var(--lobby-bottom) + 106px);
+  }
+}
 .ui-panel-head {
   --close-gap: calc((var(--head-h) - var(--close)) / 2);
   position: relative;

@@ -16,11 +16,11 @@ import {
 } from "../../packages/shared/src/cosmetic-tier";
 import { isColors } from "../../apps/client/src/skins/colors-fx";
 import { framePortrait } from "../../apps/client/src/portraits";
+import { levelBar, resultXp } from "../../apps/client/src/adventure-ui";
 import {
-  adventureMarkup,
-  levelBar,
-  resultXp,
-} from "../../apps/client/src/adventure-ui";
+  journeyMarkup,
+  journeyView,
+} from "../../apps/client/src/screens/journey-view";
 import {
   FIT_SLOTS,
   ownedFor,
@@ -333,26 +333,30 @@ it("frames the portrait with each new frame's own artwork", () => {
   }
 });
 
-it("lists every Lv 55–100 reward in the Journey dialog and names them on level-ups", () => {
+it("lists every Lv 55–100 reward in the Journey's Levels tab and names them on level-ups", () => {
   const e = {
     journey: journeyAt(levelThreshold(100)),
     balance: 0,
     owned: [],
   } as any;
-  const html = adventureMarkup({ tab: "levels" }, e, "voltkit");
+  const html = journeyMarkup(journeyView("levels"), {
+    economy: e,
+    look: {},
+    champion: "voltkit",
+  });
   for (const [level, , name] of ENDGAME)
     expect(html).toContain(
-      `<small>LEVEL ${level}</small><b>${name}</b><em>✓ Earned</em>`,
+      `<small>Level ${level}</small><b>${name}</b><em>✓ Earned</em>`,
     );
   expect(html).toContain(
-    "<small>LEVEL 100</small><b>Element Master</b><em>✓ Earned</em>",
+    "<small>Level 100</small><b>Element Master</b><em>✓ Earned</em>",
   );
   // One card per title and per cosmetic.
   const cards = LEVEL_MILESTONES.reduce(
     (n, m) => n + (m.title ? 1 : 0) + (m.item ? 1 : 0),
     0,
   );
-  expect(html.match(/class="journey-reward[ "]/g)).toHaveLength(cards);
+  expect(html.match(/class="journey-prize[ "]/g)).toHaveLength(cards);
   expect(html.match(/✓ Earned/g)).toHaveLength(cards);
   expect(levelBar(journeyAt(levelThreshold(96)))).toContain(
     "Next milestone · Level 100 · Element Master + Element Master frame",

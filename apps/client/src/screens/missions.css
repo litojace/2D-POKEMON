@@ -1,0 +1,229 @@
+/* ==========================================================================
+   The Missions sheet (UI remodel step 4, docs/ui-remodel/PLAN.md). Markup:
+   screens/missions-view.ts. Layout only on top of the shared components
+   (ui/components.css). The difficulty colours are the ones missions always
+   had.
+   ========================================================================== */
+.missions-body {
+  gap: var(--sp-2);
+}
+.missions-sum {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  font-size: var(--fs-small);
+}
+.missions-sum .ui-price {
+  font-size: 15px;
+}
+.missions-list {
+  display: grid;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.missions-row {
+  --tier: #6ae2a3;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px;
+  align-items: center;
+  border-radius: var(--rad-md);
+  background: var(--ui-bg-1);
+  border: 1px solid var(--ui-line);
+  border-left: 3px solid var(--tier);
+}
+.missions-row[data-tier="medium"] {
+  --tier: #5aa9ff;
+}
+.missions-row[data-tier="hard"] {
+  --tier: #ff8a5b;
+}
+/* The row's text is one button: it opens how to complete the mission. */
+.missions-main {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px 0 10px 12px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--rad-md) 0 0 var(--rad-md);
+}
+.missions-main:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: -2px;
+}
+.missions-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.missions-top b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+}
+.missions-top .ui-num {
+  flex: none;
+  color: var(--ui-dim);
+  font-size: 16px;
+}
+.missions-pay {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+  color: var(--ui-dim);
+  font-size: var(--fs-small);
+  white-space: nowrap;
+}
+.missions-pay .ui-price {
+  color: var(--ui-text);
+  font-size: 15px;
+}
+.missions-diff {
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--tier) 16%, transparent);
+  color: var(--tier);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.missions-row.is-done .missions-main {
+  opacity: 0.72;
+}
+.missions-paid {
+  justify-self: center;
+  display: grid;
+  justify-items: center;
+  color: var(--ui-ok);
+  font-size: 11px;
+  font-weight: 700;
+}
+.missions-paid svg {
+  width: 20px;
+  height: 20px;
+}
+.missions-change {
+  justify-self: center;
+}
+.missions-change[aria-busy="true"] svg {
+  animation: missions-spin 0.9s linear infinite;
+}
+@keyframes missions-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.missions-guide {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 6px;
+  margin: 0 12px 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ui-line);
+  font-size: var(--fs-small);
+  color: var(--ui-text);
+}
+.missions-guide[hidden] {
+  display: none;
+}
+.missions-guide ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.missions-streak-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: 10px 12px;
+  border-radius: var(--rad-md);
+  background: var(--ui-bg-1);
+  font-size: var(--fs-small);
+}
+.missions-streak-days {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.missions-streak-days i {
+  width: 22px;
+  height: 10px;
+  border-radius: 5px;
+  background: #ffffff1a;
+}
+.missions-streak-days i.is-on {
+  background: var(--ui-accent);
+}
+.missions-streak-days i.is-pay {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 18px;
+  border: 1px solid var(--ui-accent);
+  background: transparent;
+  color: var(--ui-accent);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+.missions-streak-days i.is-pay.is-on {
+  background: var(--ui-accent);
+  color: var(--ui-accent-ink);
+}
+.missions-status:empty {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .missions-change[aria-busy="true"] svg {
+    animation: none;
+  }
+}
+
+/* Phones in landscape: one size smaller. */
+@media (max-height: 500px) {
+  .missions-row {
+    grid-template-columns: minmax(0, 1fr) 48px;
+  }
+  .missions-main {
+    gap: 3px;
+    padding: 5px 0 5px 8px;
+  }
+  .missions-top b {
+    font-size: 13px;
+  }
+  .missions-top .ui-num {
+    font-size: 14px;
+  }
+  .missions-pay {
+    gap: 6px;
+    font-size: 10px;
+  }
+  .missions-pay .ui-price {
+    font-size: 13px;
+  }
+  .missions-guide {
+    margin: 0 8px 6px;
+  }
+  .missions-streak-row {
+    padding: 6px 8px;
+  }
+  .missions-streak-days i {
+    width: 16px;
+  }
+  .missions-streak-days i.is-pay {
+    width: 40px;
+  }
+}

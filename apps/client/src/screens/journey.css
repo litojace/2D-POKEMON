@@ -1,0 +1,593 @@
+/* ==========================================================================
+   The Journey (UI remodel step 4, docs/ui-remodel/PLAN.md). Markup:
+   screens/journey-view.ts. Layout only on top of the shared components
+   (ui/components.css). --season and --season-2 are the season's theme
+   colours (set on the panel).
+   ========================================================================== */
+.journey-room .ui-panel-head .ui-tabs {
+  flex: 0 1 auto;
+  margin-left: auto;
+}
+.journey-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.journey-section {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 4px;
+}
+.journey-notice {
+  padding: 8px 12px;
+  border-radius: var(--rad-md);
+  border: 1px solid #ffbf3c66;
+  background: #ffbf3c14;
+  font-size: var(--fs-small);
+}
+
+/* Pictures of rewards (cosmetic-picture.ts draws them small): fill their box. */
+.journey-room
+  :is(
+    .journey-tier-art,
+    .journey-lvl-art,
+    .journey-prize-art,
+    .journey-foot-art
+  )
+  > :is(.raid-cosmetic-preview, img) {
+  width: 84%;
+  height: auto;
+  aspect-ratio: 1;
+  background: none;
+}
+.journey-room .raid-cosmetic-preview > :is(svg, img) {
+  width: 100%;
+  height: 100%;
+}
+.journey-crown {
+  width: 80%;
+  height: 80%;
+}
+
+/* -------------------------------------------------------------- banner */
+.journey-banner {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 16px;
+  border-radius: var(--rad-lg);
+  border: 1px solid color-mix(in srgb, var(--season) 40%, transparent);
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--season) 18%, transparent),
+    var(--ui-bg-1) 65%
+  );
+}
+.journey-banner > .ui-ring {
+  --size: 74px;
+}
+.journey-banner > .ui-ring::before {
+  inset: 5px;
+}
+.journey-ring-text {
+  display: grid;
+  justify-items: center;
+  line-height: 1;
+}
+.journey-ring-text b {
+  font-size: 30px;
+}
+.journey-ring-text small {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ui-dim);
+}
+.journey-banner-main {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.journey-banner-main .ui-h {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.journey-banner-main .ui-note {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.journey-tier-count {
+  flex: none;
+  font-size: 20px;
+}
+.journey-banner-spark {
+  display: grid;
+  justify-items: end;
+  gap: 1px;
+  padding-left: 18px;
+  border-left: 1px solid var(--ui-line);
+  text-align: right;
+}
+.journey-banner-spark b {
+  font-size: 26px;
+  line-height: 1;
+  color: var(--ui-accent);
+}
+.journey-banner-spark.is-spent b {
+  color: var(--ui-dim);
+}
+
+/* ---------------------------------------------------------- season road */
+/* Scrolls sideways (swipe, wheel or arrows); cosmetic tiers are larger. */
+.journey-road {
+  display: flex;
+  align-items: stretch;
+  gap: var(--sp-2);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding: 4px 2px 10px;
+  scrollbar-width: thin;
+}
+.journey-road:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+  border-radius: var(--rad-md);
+}
+.journey-tier-slot {
+  flex: none;
+  display: flex;
+}
+.journey-tier {
+  position: relative;
+  flex: none;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  justify-items: center;
+  gap: 4px;
+  width: 100px;
+  height: 150px;
+  padding: 6px 4px;
+  border-radius: var(--rad-md);
+  border: 1px solid var(--ui-line);
+  background: var(--ui-bg-1);
+  color: inherit;
+  font: inherit;
+  text-align: center;
+}
+button.journey-tier {
+  cursor: pointer;
+}
+.journey-tier small {
+  font-size: 13px;
+  color: var(--ui-dim);
+}
+.journey-tier-art {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  overflow: hidden;
+}
+.journey-tier-art .ui-coin {
+  width: 30px;
+  height: 30px;
+}
+.journey-tier em {
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.15;
+  color: var(--ui-dim);
+}
+.journey-tier.is-big {
+  width: 136px;
+  border-color: color-mix(in srgb, var(--season) 55%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--season) 16%, transparent),
+    var(--ui-bg-1)
+  );
+}
+.journey-tier.is-big em {
+  font-weight: 700;
+  color: var(--ui-text);
+}
+.journey-tier.is-next {
+  border-color: var(--ui-accent);
+  box-shadow: 0 0 0 2px var(--ui-accent) inset;
+}
+.journey-tier.is-got {
+  opacity: 0.6;
+}
+.journey-tier.is-lock .journey-tier-art {
+  filter: grayscale(0.4) brightness(0.8);
+}
+.journey-tier[aria-pressed="true"] {
+  outline: 2px solid var(--season);
+  outline-offset: 2px;
+  opacity: 1;
+}
+.journey-tick {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  color: var(--ui-ok);
+}
+.journey-tick svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ------------------------------------------ weekly goals and level road */
+.journey-two {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: var(--sp-4);
+  align-items: start;
+}
+.journey-goals {
+  display: grid;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+.journey-goal {
+  display: grid;
+  gap: 5px;
+  padding: 10px 12px;
+  border-radius: var(--rad-md);
+  background: var(--ui-bg-1);
+  border: 1px solid var(--ui-line);
+}
+.journey-goal .journey-row {
+  font-size: var(--fs-small);
+}
+.journey-goal.is-done small {
+  color: var(--ui-ok);
+}
+.journey-levelroad {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  padding: 12px 14px;
+  border-radius: var(--rad-lg);
+  background: var(--ui-bg-1);
+  border: 1px solid var(--ui-line);
+}
+.journey-levelroad .journey-section {
+  margin-top: 0;
+}
+.journey-lvl-now {
+  display: grid;
+  gap: 5px;
+  padding: 4px 0 6px;
+  font-size: var(--fs-small);
+}
+.journey-lvl {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: var(--rad-sm);
+  border: 1px solid var(--ui-line);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+button.journey-lvl {
+  cursor: pointer;
+}
+.journey-lvl.is-next {
+  border-color: #ffd65b88;
+  background: #ffd65b10;
+}
+.journey-lvl[aria-pressed="true"] {
+  border-color: var(--season);
+}
+.journey-lvl-text {
+  display: grid;
+  min-width: 0;
+}
+.journey-lvl-text b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.journey-lvl-art {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+}
+
+/* --------------------------------------------------------------- levels */
+.journey-prizes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-auto-rows: 150px;
+  gap: var(--sp-2);
+}
+.journey-prize {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto auto;
+  justify-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px;
+  border-radius: var(--rad-md);
+  border: 1px solid var(--ui-line);
+  background: var(--ui-bg-1);
+  color: inherit;
+  font: inherit;
+  text-align: center;
+}
+button.journey-prize {
+  cursor: pointer;
+}
+.journey-prize-art {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  min-height: 0;
+  overflow: hidden;
+}
+.journey-prize small {
+  font-size: var(--fs-micro);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ui-dim);
+}
+.journey-prize b {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-small);
+}
+.journey-prize em {
+  font-size: var(--fs-micro);
+  font-style: normal;
+  color: var(--ui-dim);
+}
+.journey-prize.is-earned em {
+  color: var(--ui-ok);
+}
+.journey-prize:not(.is-earned) .journey-prize-art {
+  filter: grayscale(0.4) brightness(0.8);
+}
+.journey-prize[aria-pressed="true"] {
+  border-color: var(--season);
+  box-shadow: 0 0 0 1px var(--season) inset;
+}
+.journey-earn {
+  font-size: var(--fs-small);
+  color: var(--ui-dim);
+}
+.journey-earn summary {
+  cursor: pointer;
+  color: var(--ui-text);
+  font-weight: 700;
+}
+.journey-earn p {
+  margin-top: 6px;
+}
+
+/* --------------------------------------------------------------- arcade */
+.journey-arcade {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  gap: var(--sp-4);
+  align-items: center;
+  padding: 18px;
+  border-radius: var(--rad-lg);
+  border: 1px solid color-mix(in srgb, var(--arcade) 45%, transparent);
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--arcade) 20%, transparent),
+    var(--ui-bg-1) 70%
+  );
+}
+.journey-arcade-text {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+.journey-arcade-art {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  height: 140px;
+  border-radius: var(--rad-md);
+  background: radial-gradient(
+    circle at 50% 45%,
+    color-mix(in srgb, var(--arcade) 45%, transparent),
+    transparent 70%
+  );
+  color: var(--arcade);
+  text-align: center;
+}
+.journey-arcade-art span {
+  font-size: 56px;
+  line-height: 1;
+}
+.journey-arcade-art b {
+  font-family: var(--font-display);
+  font-size: 20px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.journey-arcade-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-3);
+}
+.journey-arcade-cards article {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  padding: 12px 14px;
+  border-radius: var(--rad-md);
+  background: var(--ui-bg-1);
+  border: 1px solid var(--ui-line);
+  font-size: var(--fs-small);
+}
+
+/* ----------------------------------------------------------- action bar */
+.journey-foot-art {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  border-radius: var(--rad-sm);
+  background: var(--ui-bg-1);
+}
+.journey-foot-text {
+  display: grid;
+  min-width: 0;
+}
+.journey-foot-text > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.journey-status {
+  color: var(--ui-danger);
+  font-size: var(--fs-small);
+}
+.journey-status:empty {
+  display: none;
+}
+
+/* Laptops: the level road goes under the goals when the panel is narrow. */
+@media (max-width: 1100px) and (min-height: 501px) {
+  .journey-two {
+    grid-template-columns: minmax(0, 1fr) 280px;
+  }
+}
+
+/* Phones in landscape: one size smaller. */
+@media (max-height: 500px) {
+  .journey-room .ui-panel-head .ui-kicker {
+    display: none;
+  }
+  .journey-room .ui-panel-head .ui-tabs > button {
+    font-size: 13px;
+  }
+  .journey-banner {
+    gap: 10px;
+    padding: 6px 10px;
+  }
+  .journey-banner > .ui-ring {
+    --size: 46px;
+  }
+  .journey-banner > .ui-ring::before {
+    inset: 3px;
+  }
+  .journey-ring-text b {
+    font-size: 19px;
+  }
+  .journey-ring-text small {
+    font-size: 7px;
+  }
+  .journey-banner-main {
+    gap: 3px;
+  }
+  .journey-banner-main .ui-h {
+    font-size: 15px;
+  }
+  .journey-tier-count {
+    font-size: 14px;
+  }
+  .journey-banner-spark {
+    padding-left: 10px;
+  }
+  .journey-banner-spark .ui-kicker {
+    font-size: 9px;
+  }
+  .journey-banner-spark b {
+    font-size: 16px;
+  }
+  .journey-banner-spark small {
+    font-size: 9px;
+  }
+  .journey-tier {
+    width: 64px;
+    height: 92px;
+    padding: 4px 2px;
+  }
+  .journey-tier.is-big {
+    width: 84px;
+  }
+  .journey-tier small {
+    font-size: 11px;
+  }
+  .journey-tier-art {
+    width: 40px;
+    height: 40px;
+  }
+  .journey-tier-art .ui-coin {
+    width: 22px;
+    height: 22px;
+  }
+  .journey-tier em {
+    font-size: 9px;
+  }
+  .journey-tick {
+    top: 3px;
+    right: 3px;
+  }
+  .journey-two {
+    grid-template-columns: 1fr;
+    gap: var(--sp-2);
+  }
+  .journey-goal {
+    padding: 6px 8px;
+  }
+  .journey-levelroad {
+    padding: 8px 10px;
+  }
+  .journey-prizes {
+    grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+    grid-auto-rows: 112px;
+  }
+  .journey-prize-art {
+    width: 44px;
+    height: 44px;
+  }
+  .journey-arcade {
+    grid-template-columns: minmax(0, 1fr) 150px;
+    padding: 10px 12px;
+  }
+  .journey-arcade-art {
+    height: 96px;
+  }
+  .journey-arcade-art span {
+    font-size: 36px;
+  }
+  .journey-arcade-art b {
+    font-size: 14px;
+  }
+  .journey-arcade-cards {
+    gap: var(--sp-2);
+  }
+  .journey-arcade-cards article {
+    padding: 8px 10px;
+  }
+  .journey-foot-art {
+    width: 34px;
+    height: 34px;
+  }
+}

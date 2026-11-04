@@ -60,8 +60,10 @@ for (const viewport of [
       );
       await page.click("#close-dialog");
       await hubMenu(page, "journey");
-      await expect(page.locator("[data-adventure-tab]")).toHaveCount(3);
-      await expect(page.locator(".adventure")).not.toContainText("Boss Rush");
+      await expect(page.locator("[data-ui-jtab]")).toHaveCount(3);
+      await expect(page.locator(".journey-room")).not.toContainText(
+        "Boss Rush",
+      );
       expect(errors).toEqual([]);
     } finally {
       await context.close();

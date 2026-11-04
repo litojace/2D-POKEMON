@@ -1,22 +1,18 @@
 import { framedAvatar } from "./portraits";
 import { openFittingRoom, type FittingRoom } from "./screens/fitting-room";
 import type { FitMode, ShopSection } from "./screens/fitting-room-view";
-import {
-  adventureMarkup,
-  type AdventureTab,
-  type AdventureView,
-} from "./adventure-ui";
+import { openJourney, type JourneyScreen } from "./screens/journey";
+import type { JourneyTab } from "./screens/journey-view";
 import {
   playerLevel,
   JOURNEY_ITEM_BY_ID,
-  seasonTheme,
 } from "../../../packages/shared/src/journey";
 import { formSubmitButton } from "./dialog";
 import { raidAppearance, raidCosmeticOptions } from "./raid-ui";
 import { raidBossPageMarkup, raidHubMarkup, type RaidHubTab } from "./raid-hub";
 import { iconLabel } from "./menu-icons";
 import { coinChip, compactCoins, leafChip, coins } from "./shop-ui";
-import { missionsMarkup } from "./missions-ui";
+import { openMissions, type MissionsScreen } from "./screens/missions";
 import {
   LOOK_ITEM_BY_ID,
   type Economy,
@@ -283,8 +279,8 @@ export class AccountUI {
         }
         // An open Shop or Missions screen shows the fresh copy.
         this.fittingRoom?.refresh();
-        this.missionsRefresh?.();
-        this.adventureRefresh?.();
+        this.missionsScreen?.refresh();
+        this.journeyScreen?.refresh();
       } catch (error) {
         if (version !== this.generation) return;
         this.hooks.notify(
@@ -823,7 +819,7 @@ export class AccountUI {
       this.renderNav();
       this.hooks.onChange();
       this.fittingRoom?.refresh();
-      this.missionsRefresh?.();
+      this.missionsScreen?.refresh();
     } catch {
       /* Shop storage needs migration 010. */
     }
@@ -858,14 +854,7 @@ export class AccountUI {
   ) {
     if (!this.ensurePlayer()) return;
     // It lives in the Lobby: come back to it, and close any old dialog.
-    this.hooks.toLobby?.();
-    const dialog = document.getElementById(
-      "dialog",
-    ) as HTMLDialogElement | null;
-    // The close button also resets the game's "menu open" input guard.
-    if (dialog?.open)
-      dialog.querySelector<HTMLButtonElement>("#close-dialog")?.click();
-    if (dialog?.open) dialog.close();
+    this.toLobbyScreen();
     if (this.fittingRoom?.isOpen) this.fittingRoom.show(mode, section);
     else {
       this.fitLoading = !this.economy;
@@ -987,230 +976,133 @@ export class AccountUI {
       notify: (message: string) => this.hooks.notify(message),
     };
   }
-  private adventureRefresh?: () => void;
-  private adventureCleanup?: () => void;
-  async showAdventure(tab: AdventureTab = "levels") {
+  /** The open Journey panel, if any (UI remodel step 4). */
+  private journeyScreen?: JourneyScreen;
+  private journeyProblem = "";
+  private journeyLoading = false;
+  /**
+   * The Journey: a panel inside the Lobby (Season · Levels · Weekly arcade).
+   * It opens at once with what is known, then shows the server's fresh copy.
+   */
+  async showJourney(tab: JourneyTab = "season") {
     if (!this.ensurePlayer()) return;
-    const generation = this.generation;
-    try {
-      this.economy = (await this.api("/api/economy")) as Economy;
-    } catch {
-      /* The mode cards also work before progression storage is installed. */
-    }
-    if (generation !== this.generation) return;
-    this.adventureCleanup?.();
-    const view: AdventureView = {
-      tab,
-      preview:
-        tab === "season"
-          ? `season-${seasonTheme(this.economy?.journey?.season.id ?? new Date().toISOString().slice(0, 7))}-frame`
-          : "wayfarer-frame",
-    };
-    const root = document.getElementById("dialog") as HTMLDialogElement;
-    let preview: import("./shop-preview").ShopPreviewHandle | undefined;
-    let importing = false,
-      disposed = false;
-    const cleanup = () => {
-      if (disposed) return;
-      disposed = true;
-      preview?.();
-      observer.disconnect();
-      root.removeEventListener("close", cleanup);
-      this.adventureRefresh = undefined;
-    };
-    const observer = new MutationObserver(() => {
-      if (!root.querySelector(".adventure")) cleanup();
-    });
-    observer.observe(root, { childList: true });
-    root.addEventListener("close", cleanup);
-    this.adventureCleanup = cleanup;
-    const render = () => {
-      if (disposed) return;
-      const top = root.querySelector(".dialog-content")?.scrollTop ?? 0;
-      this.hooks.openDialog(
-        adventureMarkup(
-          view,
-          this.economy,
-          this.hooks.selectedCharacter?.() ?? "voltkit",
-          this.raidLook,
-        ),
-      );
-      const scroll = root.querySelector(".dialog-content");
-      if (scroll) scroll.scrollTop = top;
-      const panel = root.querySelector<HTMLElement>(".journey-preview");
-      if (panel && preview) preview.update(panel);
-      else if (panel && !importing) {
-        importing = true;
-        void import("./shop-preview").then(({ mountShopPreview }) => {
-          importing = false;
-          const current = root.querySelector<HTMLElement>(".journey-preview");
-          if (!disposed && current) preview = mountShopPreview(current);
-        });
-      } else if (!panel && preview) {
-        preview();
-        preview = undefined;
-      }
-      for (const b of Array.from(
-        root.querySelectorAll<HTMLButtonElement>("[data-adventure-tab]"),
-      ))
-        b.onclick = () => {
-          view.tab = b.dataset.adventureTab as AdventureTab;
-          if (view.tab === "season")
-            view.preview = `season-${seasonTheme(this.economy?.journey?.season.id ?? new Date().toISOString().slice(0, 7))}-frame`;
-          render();
-        };
-      for (const b of Array.from(
-        root.querySelectorAll<HTMLButtonElement>("[data-journey-preview]"),
-      ))
-        b.onclick = () => {
-          view.preview = b.dataset.journeyPreview;
-          render();
-        };
-      for (const b of Array.from(
-        root.querySelectorAll<HTMLButtonElement>("[data-adventure-play]"),
-      ))
-        b.onclick = () => this.hooks.startAdventure?.(b.dataset.adventurePlay!);
-      for (const b of Array.from(
-        root.querySelectorAll<HTMLButtonElement>("[data-journey-equip]"),
-      ))
-        b.onclick = async () => {
-          b.disabled = true;
-          try {
-            const item = JOURNEY_ITEM_BY_ID[b.dataset.journeyEquip!];
-            // The shared appearance route, as the Wardrobe uses (the old
-            // /api/raids/cosmetic only takes the two first boss rewards).
+    this.toLobbyScreen();
+    const accountId = this.account?.id;
+    if (!this.journeyScreen?.isOpen) {
+      this.journeyLoading = !this.economy;
+      this.journeyProblem = "";
+      this.journeyScreen = openJourney(
+        {
+          data: () => ({
+            economy: this.economy ?? null,
+            look: this.raidLook ?? {},
+            champion: this.hooks.selectedCharacter?.() ?? "voltkit",
+            loading: this.journeyLoading,
+            problem: this.journeyProblem,
+          }),
+          equip: async (id) => {
+            if (this.account?.id !== accountId)
+              throw new Error("Your session changed. Reopen the Journey.");
+            const item = JOURNEY_ITEM_BY_ID[id];
+            // The shared appearance route, as the Wardrobe uses.
             const result = (await this.api("/api/raids/equip", {
               slot: item.slot,
               item: item.id,
             })) as { progress: RaidProgress };
             this.raidLook = raidLookOf(result.progress);
             this.raidClears = bossClears(result.progress);
+            this.syncAvatar();
             this.hooks.onChange();
-            render();
-          } catch (error) {
-            b.disabled = false;
-            const status = root.querySelector(".adventure-status");
-            if (status)
-              status.textContent =
-                error instanceof Error
-                  ? error.message
-                  : "Could not equip that reward.";
-          }
-        };
-    };
-    this.adventureRefresh = render;
-    render();
-  }
-  /** Re-render the open Missions screen (set while it's open). */
-  private missionsRefresh?: () => void;
-  /** Daily missions: their own screen, opened from the home card. */
-  async showMissions() {
-    if (!this.ensurePlayer()) return;
-    let problem = "";
+          },
+          wardrobe: () => void this.showWardrobe(),
+          play: (mode) => this.hooks.startAdventure?.(mode),
+          onClose: () => (this.journeyScreen = undefined),
+        },
+        { tab },
+      );
+    }
+    const screen = this.journeyScreen;
     try {
-      this.economy = (await this.api("/api/economy")) as Economy;
+      const economy = (await this.api("/api/economy")) as Economy;
+      if (this.account?.id !== accountId || !screen.isOpen) return;
+      this.economy = economy;
+      this.journeyProblem = "";
       this.renderNav();
     } catch (error) {
-      problem =
+      if (this.account?.id !== accountId || !screen.isOpen) return;
+      // The arcade still works before progression storage is installed.
+      if (!this.economy)
+        this.journeyProblem =
+          error instanceof Error
+            ? `${error.message} Levels and seasons need the latest database update.`
+            : "Levels and seasons are not available yet.";
+    }
+    this.journeyLoading = false;
+    screen.refresh();
+  }
+  /** The open Missions sheet, if any (UI remodel step 4). */
+  private missionsScreen?: MissionsScreen;
+  private missionsProblem = "";
+  private missionsLoading = false;
+  /** Leave for the Lobby (a hub screen lives there) and close any old dialog. */
+  private toLobbyScreen() {
+    this.hooks.toLobby?.();
+    const dialog = document.getElementById(
+      "dialog",
+    ) as HTMLDialogElement | null;
+    // The close button also resets the game's "menu open" input guard.
+    if (dialog?.open)
+      dialog.querySelector<HTMLButtonElement>("#close-dialog")?.click();
+    if (dialog?.open) dialog.close();
+  }
+  /**
+   * Daily missions: a sheet inside the Lobby. It opens at once with what is
+   * known, then shows the server's fresh copy.
+   */
+  async showMissions() {
+    if (!this.ensurePlayer()) return;
+    this.toLobbyScreen();
+    const accountId = this.account?.id;
+    if (!this.missionsScreen?.isOpen) {
+      this.missionsLoading = !this.economy;
+      this.missionsProblem = "";
+      this.missionsScreen = openMissions({
+        data: () => ({
+          economy: this.economy ?? null,
+          problem: this.missionsProblem,
+          loading: this.missionsLoading,
+        }),
+        change: async (slot) => {
+          if (this.account?.id !== accountId)
+            throw new Error("Your session changed. Reopen Missions.");
+          // The server picks the new mission and counts the change.
+          this.economy = (
+            (await this.api("/api/missions/reroll", { slot })) as {
+              economy: Economy;
+            }
+          ).economy;
+          this.renderNav();
+          this.hooks.onChange();
+        },
+        onClose: () => (this.missionsScreen = undefined),
+      });
+    }
+    const screen = this.missionsScreen;
+    try {
+      const economy = (await this.api("/api/economy")) as Economy;
+      if (this.account?.id !== accountId || !screen.isOpen) return;
+      this.economy = economy;
+      this.missionsProblem = "";
+      this.renderNav();
+    } catch (error) {
+      if (this.account?.id !== accountId || !screen.isOpen) return;
+      this.missionsProblem =
         error instanceof Error
           ? `${error.message} Missions need the latest database update.`
           : "Missions are not available yet.";
     }
-    const dialogEl = () =>
-      document.getElementById("dialog") as HTMLDialogElement | null;
-    const render = (message = "") => {
-      const previous = dialogEl();
-      const openGuide = previous?.querySelector<HTMLDialogElement>(
-        ".mission-instructions[open]",
-      );
-      const openMission = openGuide?.dataset.missionGuide;
-      const guideScroll =
-        openGuide?.querySelector<HTMLElement>(".mission-popup-body")
-          ?.scrollTop ?? 0;
-      const focusedHelp = previous?.querySelector<HTMLButtonElement>(
-        "[data-mission-help]:focus",
-      )?.dataset.missionHelp;
-      const scrollTop = previous?.querySelector(".missions-screen")
-        ? (previous.querySelector<HTMLElement>(".dialog-content")?.scrollTop ??
-          0)
-        : 0;
-      this.hooks.openDialog(missionsMarkup(this.economy ?? null, problem));
-      const root = dialogEl();
-      if (!root) return;
-      for (const guide of Array.from(
-        root.querySelectorAll<HTMLDialogElement>(".mission-instructions"),
-      )) {
-        const trigger = root.querySelector<HTMLButtonElement>(
-          `[aria-controls="${guide.id}"]`,
-        )!;
-        const show = () => {
-          guide.showModal();
-          trigger.setAttribute("aria-expanded", "true");
-        };
-        trigger.onclick = show;
-        guide.querySelector<HTMLButtonElement>(".mission-help-close")!.onclick =
-          () => guide.close();
-        guide.onclose = () => {
-          trigger.setAttribute("aria-expanded", "false");
-          trigger.focus({ preventScroll: true });
-        };
-        guide.onclick = (event) => {
-          const rect = guide.getBoundingClientRect();
-          if (
-            event.target === guide &&
-            (event.clientX < rect.left ||
-              event.clientX > rect.right ||
-              event.clientY < rect.top ||
-              event.clientY > rect.bottom)
-          )
-            guide.close();
-        };
-        if (guide.dataset.missionGuide === openMission) {
-          show();
-          guide.querySelector<HTMLElement>(".mission-popup-body")!.scrollTop =
-            guideScroll;
-        } else if (!openMission && trigger.dataset.missionHelp === focusedHelp)
-          trigger.focus({ preventScroll: true });
-      }
-      root.querySelector<HTMLElement>(".dialog-content")!.scrollTop = scrollTop;
-      const status = root.querySelector<HTMLElement>(
-        ".missions-screen .shop-status",
-      );
-      if (status) status.textContent = message;
-      const shop = root.querySelector<HTMLButtonElement>("#missions-shop");
-      if (shop) shop.onclick = () => void this.showShop();
-      for (const b of Array.from(
-        root.querySelectorAll<HTMLButtonElement>("[data-mission-reroll]"),
-      ))
-        b.onclick = async () => {
-          root
-            .querySelectorAll<HTMLButtonElement>(".missions-screen button")
-            .forEach((x) => (x.disabled = true));
-          b.setAttribute("aria-busy", "true");
-          try {
-            this.economy = (
-              (await this.api("/api/missions/reroll", {
-                slot: Number(b.dataset.missionReroll),
-              })) as { economy: Economy }
-            ).economy;
-            this.renderNav();
-            this.hooks.onChange();
-            render("New mission ready.");
-          } catch (error) {
-            render(
-              error instanceof Error
-                ? error.message
-                : "That didn't work. Try again.",
-            );
-          }
-        };
-    };
-    this.missionsRefresh = () => {
-      if (dialogEl()?.open && dialogEl()?.querySelector(".missions-screen"))
-        render();
-      else this.missionsRefresh = undefined;
-    };
-    render();
+    this.missionsLoading = false;
+    screen.refresh();
   }
   /** Equip a collection piece (or clear a slot) through the raid appearance route. */
   async showProfile() {
@@ -1255,7 +1147,8 @@ export class AccountUI {
           );
           const adventure =
             box.querySelector<HTMLButtonElement>("#profile-adventure");
-          if (adventure) adventure.onclick = () => void this.showAdventure();
+          if (adventure)
+            adventure.onclick = () => void this.showJourney("levels");
         }
       })
       .catch((error) => {
