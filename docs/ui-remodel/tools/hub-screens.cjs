@@ -302,29 +302,32 @@ const SCREENS = {
       await shot(`wardrobe-${slot}`);
     }
   },
+  // Raids (step 5): the Raid Hall, then a boss's page and its tabs.
   async raids(page, shot) {
     await hubMenu(page, "raids");
-    await page.locator(".raid-hub").waitFor({ state: "visible" });
+    await page.locator(".rh-room").waitFor({ state: "visible" });
     await page.waitForTimeout(1500);
     await shot("raid-hall");
-    await page.click('.raid-roster-card[data-raid-boss="grumblecrag"]');
-    await page.waitForTimeout(1200);
+    await page.click('[data-raid-card="grumblecrag"]');
+    await page.waitForTimeout(1500);
     await shot("raid-boss");
-    await page.click("#raid-tab-rewards");
-    await page.waitForTimeout(800);
-    await shot("raid-rewards");
+    for (const tab of ["attacks", "rewards", "guide"]) {
+      await page.click(`[data-ui-raid-tab="${tab}"]`);
+      await page.waitForTimeout(1500);
+      await shot(`raid-${tab}`);
+    }
   },
   async "raid-lobby"(page, shot) {
-    await hubMenu(page, "raids");
-    await page.locator(".raid-hub").waitFor({ state: "visible" });
-    await page.click('.raid-roster-card[data-raid-boss="prismatail"]');
     await page.evaluate(() => {
       const w = window;
       w.__room("raid", { boss: "prismatail" });
       w.__snap.phase = "lobby";
       w.__snap.players = w.__snap.players.filter((p) => !p.raidBoss);
     });
-    await page.click('[data-raid-start="room"]');
+    await hubMenu(page, "raids");
+    await page.click('[data-raid-card="prismatail"]');
+    await page.click('[data-ui-raid-play="party"]');
+    await page.click('[data-raid-start="party"]');
     for (let i = 0; i < 30; i++) {
       await page.evaluate(() => window.__push());
       if (

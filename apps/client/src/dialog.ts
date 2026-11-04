@@ -1,34 +1,25 @@
 /** Keep navigation and actions outside long, touch-scrollable menu content. */
 export function setDialogContent(dialog: HTMLDialogElement, html: string) {
-  const previousRoster = dialog.querySelector<HTMLElement>(
-    ":scope > .raid-boss-roster",
-  );
-  // Build off-screen: clearing the live dialog first would detach the rail,
-  // reset its scroll position and discard its decoded avatar images.
+  // Build off-screen first, then swap the dialog's insides in one go.
   const staging = document.createElement("div");
   staging.innerHTML = `<button type="button" id="close-dialog" class="close" aria-label="Close dialog">×</button>${html}`;
   dialog.classList.add("framed-dialog", "card");
-  const raid = !!staging.querySelector(".raid-hub");
   const close = staging.querySelector<HTMLButtonElement>("#close-dialog")!;
   const content = document.createElement("div");
-  content.className = `dialog-content${raid ? " raid-dialog-content" : ""}`;
+  content.className = "dialog-content";
   content.tabIndex = 0;
   content.setAttribute("role", "region");
   content.setAttribute("aria-label", "Menu content");
   for (const node of Array.from(staging.childNodes))
     if (node !== close) content.append(node);
   const toolbar = document.createElement("div");
-  toolbar.className = `dialog-toolbar${raid ? " raid-dialog-toolbar" : ""}`;
+  toolbar.className = "dialog-toolbar";
   const back = content.querySelector<HTMLButtonElement>(
     "#controls-back, #leaderboard-back, #credits-back",
   );
   if (back) toolbar.append(back);
   toolbar.append(close);
-  const tabs = content.querySelector<HTMLElement>(
-    ".raid-hub-tabs, .admin-tabs",
-  );
-  const raidRoster = content.querySelector<HTMLElement>(".raid-boss-roster");
-  dialog.classList.toggle("has-raid-roster", !!raidRoster);
+  const tabs = content.querySelector<HTMLElement>(".admin-tabs");
   if (tabs) tabs.classList.add("dialog-tabs");
   dialog.classList.toggle("has-dialog-tabs", !!tabs);
   const inlineTabs = !!tabs && !back;
@@ -52,7 +43,6 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
       ".dialog-actions",
       ".fullscreen-actions",
       ".settings-actions",
-      ".raid-hub-actions",
       "#controls-reset",
       "#open-controls",
       "#profile-save > button",
@@ -72,49 +62,12 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
     footer.append(action);
   }
   dialog.classList.toggle("has-dialog-footer", footer.childElementCount > 0);
-  const oldCards =
-    previousRoster?.querySelectorAll<HTMLButtonElement>("[data-raid-boss]");
-  const newCards =
-    raidRoster?.querySelectorAll<HTMLButtonElement>("[data-raid-boss]");
-  const keepRoster =
-    !!previousRoster &&
-    !!raidRoster &&
-    !!oldCards &&
-    !!newCards &&
-    oldCards.length === newCards.length &&
-    Array.from(oldCards).every(
-      (card, i) => card.dataset.raidBoss === newCards[i].dataset.raidBoss,
-    );
-  if (keepRoster) {
-    // Keep the rail and each keyed button connected, so touch scrolling and
-    // focus survive switching bosses/tabs. Only changed state is patched.
-    oldCards!.forEach((card, i) => {
-      const next = newCards![i];
-      for (const attr of Array.from(card.attributes))
-        if (!next.hasAttribute(attr.name)) card.removeAttribute(attr.name);
-      for (const attr of Array.from(next.attributes))
-        if (card.getAttribute(attr.name) !== attr.value)
-          card.setAttribute(attr.name, attr.value);
-      if (card.innerHTML !== next.innerHTML)
-        card.replaceChildren(...Array.from(next.childNodes));
-    });
-    raidRoster!.remove();
-    for (const child of Array.from(dialog.childNodes))
-      if (child !== previousRoster) child.remove();
-    dialog.prepend(toolbar, ...(tabs && !inlineTabs ? [tabs] : []));
-    previousRoster!.after(
-      content,
-      ...(footer.childElementCount ? [footer] : []),
-    );
-  } else {
-    dialog.replaceChildren(
-      toolbar,
-      ...(tabs && !inlineTabs ? [tabs] : []),
-      ...(raidRoster ? [raidRoster] : []),
-      content,
-      ...(footer.childElementCount ? [footer] : []),
-    );
-  }
+  dialog.replaceChildren(
+    toolbar,
+    ...(tabs && !inlineTabs ? [tabs] : []),
+    content,
+    ...(footer.childElementCount ? [footer] : []),
+  );
 }
 
 /** Includes form-associated buttons in the fixed action area. */

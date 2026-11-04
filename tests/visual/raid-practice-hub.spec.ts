@@ -33,13 +33,16 @@ for (const viewport of [
       });
       await hubMenu(page, "raids");
       await expect(page.locator("#raid-join-code")).toHaveCount(0);
-      if (await page.locator(".raid-boss-card").count())
-        await page.click('[data-raid-boss="grumblecrag"]');
-      const attack = page.locator("[data-hub-practice]").first();
-      await expect(attack).toBeVisible();
+      // Attack practice (UI remodel step 5): the boss page's Attacks tab,
+      // where Practice drills the picked attack.
+      await page.click("[data-raid-practice-card]");
       await expect(
-        page.locator(".raid-showcase-skill-icon svg").first(),
-      ).toBeVisible();
+        page.locator('[data-ui-raid-tab="attacks"]'),
+      ).toHaveAttribute("aria-selected", "true");
+      await page.locator("[data-raid-attack]").first().click();
+      const attack = page.locator("[data-raid-practice]");
+      await expect(attack).toBeVisible();
+      await expect(page.locator(".rh-attack-icon svg").first()).toBeVisible();
       await snap(
         page,
         info,

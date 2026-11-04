@@ -2520,3 +2520,227 @@ body {
   width: 38%;
   height: 38%;
 }
+
+/* ---------------------------------------------------- rooms (step 5) */
+/* No rail in a room (you are in a server room, not the Lobby): the seats
+   take the stage's column, the roster picker the rest. */
+.m-game.is-room {
+  --panel-left: calc(var(--safe-left) + var(--gutter));
+  --room-w: 340px;
+}
+@media (max-width: 1300px) {
+  .m-game.is-room {
+    --room-w: 300px;
+  }
+}
+@media (max-height: 500px) {
+  .m-game.is-room {
+    --room-w: 216px;
+  }
+}
+.m-game.is-room .m-scenes {
+  display: none;
+}
+.m-room {
+  position: absolute;
+  left: var(--panel-left);
+  top: var(--panel-top);
+  bottom: var(--panel-bottom);
+  width: var(--room-w);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border-radius: var(--rad-xl);
+  border: 1px solid var(--ui-line-2);
+  background: var(--ui-glass);
+  box-shadow: var(--shadow-2);
+  overflow: hidden;
+}
+.m-room-pick {
+  left: calc(var(--panel-left) + var(--room-w) + var(--sp-3));
+}
+.m-room-pick .m-tools {
+  margin-right: 8px;
+}
+.m-room-banner {
+  position: relative;
+  flex: none;
+  height: 168px;
+  border-radius: var(--rad-lg);
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--boss, #ffd65b) 45%, transparent);
+}
+.m-room-banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.m-room-banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 30%, #0b1020f0 95%);
+}
+.m-room-banner.is-mode {
+  height: 112px;
+  background:
+    radial-gradient(ellipse 80% 90% at 0% 0%, #4fa8ff55, transparent 70%),
+    radial-gradient(ellipse 80% 90% at 100% 100%, #ef4f6155, transparent 70%),
+    var(--ui-bg-1);
+}
+.m-room-banner.is-mode::after {
+  display: none;
+}
+.m-room-banner-text {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 10px;
+  z-index: 1;
+  display: grid;
+  gap: 3px;
+}
+.m-room-banner .m-stage-name {
+  font-size: 30px;
+}
+.m-room-head {
+  margin: 0;
+}
+.m-team.is-blue {
+  color: #7cc4ff;
+}
+.m-team.is-red {
+  color: #ff8a96;
+}
+.m-rseats {
+  display: grid;
+  gap: 6px;
+}
+.m-rseat {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 6px 10px 6px 7px;
+  border-radius: var(--rad-md);
+  background: var(--ui-bg-1);
+  border: 1px solid var(--ui-line);
+  text-align: left;
+}
+.m-rseat.is-me {
+  border-color: color-mix(in srgb, var(--ui-accent) 55%, transparent);
+}
+.m-rseat.is-open {
+  border-style: dashed;
+  border-color: var(--ui-line-2);
+  background: transparent;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+.m-rseat .m-plus {
+  width: 44px;
+  height: 44px;
+  font-size: 20px;
+}
+.m-rseat-text {
+  display: grid;
+  min-width: 0;
+}
+.m-rseat-text b,
+.m-rseat-text small {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.m-rseat .ui-tag svg {
+  width: 11px;
+  height: 11px;
+}
+.m-room-notes {
+  margin-top: auto;
+  display: grid;
+  gap: 6px;
+  color: var(--ui-dim);
+  font-size: 13px;
+}
+.m-room-notes span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.m-room-notes svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+@media (max-height: 500px) {
+  .m-room {
+    gap: 6px;
+    padding: 6px;
+    border-radius: var(--rad-lg);
+  }
+  .m-room-banner {
+    height: 58px;
+  }
+  .m-room-banner.is-mode {
+    height: 44px;
+  }
+  .m-room-banner .ui-note,
+  .m-room-banner .m-row,
+  .m-room-banner .ui-kicker {
+    display: none;
+  }
+  .m-room-banner-text {
+    left: 8px;
+    bottom: 5px;
+  }
+  .m-room-banner .m-stage-name {
+    font-size: 18px;
+  }
+  .m-room-head .ui-h {
+    font-size: 13px;
+  }
+  .m-room-head .ui-note {
+    font-size: 10px;
+  }
+  .m-room-head .ui-btn {
+    display: none;
+  }
+  .m-rseats {
+    gap: 4px;
+  }
+  .m-rseat {
+    min-height: 40px;
+    gap: 6px;
+    padding: 3px 6px 3px 4px;
+  }
+  .m-rseat .ui-avatar,
+  .m-rseat .m-plus {
+    --size: 30px !important;
+    width: 30px;
+    height: 30px;
+    font-size: 15px;
+  }
+  .m-rseat-text b {
+    font-size: 12px;
+  }
+  .m-rseat-text small {
+    font-size: 10px;
+  }
+  .m-rseat .ui-tag {
+    font-size: 9px;
+    padding: 0 5px;
+  }
+  .m-room-notes {
+    display: none;
+  }
+  .m-room-pick .m-tools,
+  .m-room-pick .ui-kicker {
+    display: none;
+  }
+  .m-room-pick .ui-foot-info .ui-note {
+    display: none;
+  }
+}

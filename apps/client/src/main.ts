@@ -91,7 +91,7 @@ import {
 import { illustratedHelp } from "./illustrated-help";
 import { buttonIcon, iconLabel, menuIcon } from "./menu-icons";
 import type { RaidBossId } from "../../../packages/shared/src/raid";
-import type { RaidHubTab } from "./raid-hub";
+import type { RaidTab } from "./screens/raid-hall-view";
 import {
   fighterSelection,
   syncRosterMastery,
@@ -342,9 +342,9 @@ let state: Snapshot | undefined,
   pending: Input[] = [],
   scene: ArenaScene | undefined;
 let raidPracticeReturn:
-  { boss: RaidBossId; tab: RaidHubTab; leaveRoom: boolean } | undefined;
+  { boss: RaidBossId; tab: RaidTab; leaveRoom: boolean } | undefined;
 let raidRoomReturn:
-  { code: string; boss: RaidBossId; tab: RaidHubTab } | undefined;
+  { code: string; boss: RaidBossId; tab: RaidTab } | undefined;
 let accountShown = "";
 /** Last known "ultimate ready" state, for the ready sound. */
 let ultWasReady = false;
@@ -1720,7 +1720,7 @@ function syncPlaza(want: boolean) {
   });
 }
 async function showRaidBestiary() {
-  await accountsUI.showRaidHub(state?.raid?.boss);
+  await accountsUI.showRaids(state?.raid?.boss);
 }
 /** The hub's scenes (Lobby, Plaza, later Farm), switched from the top bar. */
 let hubScene: HubScene = savedHubScene();
@@ -1932,7 +1932,7 @@ async function lobbyPlay(mode: LobbyMode) {
     if ((mode === "duel" && size > 2) || (mode === "teams" && size > 4))
       return toast(`Your party has ${size} players: choose 2v2 Teams, Free-for-all or Boss Raid.`);
   }
-  if (mode === "raid") return void accountsUI.showRaidHub();
+  if (mode === "raid") return void accountsUI.showRaids();
   if (mode === "practice") return document.getElementById("practice")?.click();
   if (mode.startsWith("bot-")) {
     document
@@ -1959,13 +1959,13 @@ function stepHomeFighter(direction: -1 | 1) {
 /** Start a raid or safe attack practice from the Raid Hub. */
 async function startRaid(
   boss: RaidBossId,
-  options: { solo?: boolean; drill?: string; returnTab?: RaidHubTab },
+  options: { solo?: boolean; drill?: string; returnTab?: RaidTab },
 ) {
   if (!accountsUI.ensurePlayer()) return;
   if (myId && options.drill && state?.raid?.boss === boss) {
     raidPracticeReturn = {
       boss,
-      tab: options.returnTab ?? "overview",
+      tab: options.returnTab ?? "party",
       leaveRoom: false,
     };
     const reply = await request("raid-drill", { kind: options.drill });
@@ -1982,7 +1982,7 @@ async function startRaid(
   if (!connected) return toast("Waiting for the server connection.");
   if (watching) await stopWatching();
   raidPracticeReturn = options.drill
-    ? { boss, tab: options.returnTab ?? "overview", leaveRoom: true }
+    ? { boss, tab: options.returnTab ?? "party", leaveRoom: true }
     : undefined;
   audio.unlock();
   $<HTMLDialogElement>("dialog").close();
@@ -2005,7 +2005,7 @@ async function startRaid(
   raidRoomReturn = {
     code: reply.code!,
     boss,
-    tab: options.returnTab ?? "overview",
+    tab: options.returnTab ?? "party",
   };
   await request("select", selected);
   if (options.drill) {
@@ -2029,7 +2029,7 @@ function requestRaidHud(event: string, data?: unknown): Promise<unknown> {
         await leave();
       } else {
         raidPracticeReturn = undefined;
-        await accountsUI.showRaidHub(destination.boss, destination.tab);
+        await accountsUI.showRaids(destination.boss, destination.tab);
       }
     }
     return reply;
@@ -2232,7 +2232,7 @@ function renderMenu(revealSelection = false) {
     // Boss Raid goes through the Raid Hub, where the boss is chosen.
     $("play-create").onclick = () => {
       homeNavigation.close();
-      if (roomMode === "raid") void accountsUI.showRaidHub();
+      if (roomMode === "raid") void accountsUI.showRaids();
       else void play("create");
     };
     $("join").onclick = () => void play("join");
@@ -2328,7 +2328,7 @@ async function leave(returnToHub = true) {
       (state?.raid
         ? raidRoomReturn?.code === state.code
           ? raidRoomReturn
-          : { boss: state.raid.boss, tab: "overview" as const }
+          : { boss: state.raid.boss, tab: "party" as const }
         : undefined))
     : undefined;
   const reply = await request("leave", {
@@ -2353,7 +2353,7 @@ async function leave(returnToHub = true) {
   $<HTMLDialogElement>("dialog").close();
   menuOpen = false;
   if (returnToRaidHub)
-    await accountsUI.showRaidHub(returnToRaidHub.boss, returnToRaidHub.tab);
+    await accountsUI.showRaids(returnToRaidHub.boss, returnToRaidHub.tab);
 }
 function renderPvpSpectator() {
   const banner = $("spectate");
@@ -2732,10 +2732,6 @@ function renderBattle() {
         .forEach((b) => (b.disabled = true));
     const exit = document.getElementById("raid-exit");
     if (exit) exit.onclick = () => void leave();
-    const rewards = document.getElementById("raid-rewards");
-    if (rewards)
-      rewards.onclick = () =>
-        void accountsUI.showRaidHub(state?.raid?.boss, "rewards");
     return;
   }
   const overlay = $("arena-overlay");
@@ -3021,6 +3017,7 @@ socket.on("party", (data: unknown) => {
   if (party && party.members.length > was && was > 0)
     toast(`${party.members.at(-1)!.name} joined your party.`);
   syncHub();
+  accountsUI.refreshRaids();
 });
 socket.on("party-room", (data: unknown) => {
   const parsed = partyRoomSchema.safeParse(data);
@@ -5679,6 +5676,33 @@ accountsUI = new AccountUI({
   openFarm: () => setHubScene("farm"),
   openDialog: dialog,
   startRaid: (boss, options) => void startRaid(boss, options),
+  raidParty: () => {
+    const me = accountsUI.account?.id;
+    return {
+      party:
+        party && party.members.length > 1
+          ? party.members.map((m) => ({
+              id: m.id,
+              name: m.name,
+              character: (Object.hasOwn(CHARACTERS, m.character)
+                ? m.character
+                : "voltkit") as CharacterId,
+              leader: m.id === party!.leader,
+              me: m.id === me,
+            }))
+          : [],
+      leader: !party || party.members.length < 2 || partyLeader(),
+      inRoom: !!myId,
+    };
+  },
+  inviteToParty: async (playerId) => {
+    const reply = await request("party-invite", {
+      playerId,
+      character: selected,
+    });
+    if (reply.ok) partyCharacterSent = selected;
+    return { ok: !!reply.ok, error: reply.error };
+  },
   startAdventure: (mode) => void startAdventure(mode),
   joinRoom: (code) => void joinByCode(code),
   friendsRoom: () => ({

@@ -562,6 +562,66 @@ function raidBoss() {
   <div class="ui-panel-foot"><div class="ui-foot-info"><div class="ui-seg"><button aria-pressed="false">Solo</button><button aria-pressed="true">With party</button></div><small class="ui-note">2 of 4 seats · rewards for everyone who clears</small></div><div class="ui-actions"><button class="ui-btn">${menuIcon("target")}Practice</button><button class="ui-btn is-primary">Start raid</button></div></div></section>`;
 }
 
+/* ------------------------------------------------------------- rooms */
+/* Step 5: the raid room (and the PvP rooms in the same frame). The seats
+   sit where the stage stands on other screens; the roster is the picker. */
+type Seat = [string, CharacterId, "ready" | "choosing" | "offline", string?];
+function seatRow([n, c, st, note]: Seat, me = false) {
+  const stateTag =
+    st === "ready"
+      ? `<span class="ui-tag is-ok">${menuIcon("check")}Ready</span>`
+      : st === "offline"
+        ? `<span class="ui-tag">Offline</span>`
+        : `<span class="ui-tag">Choosing</span>`;
+  return `<div class="m-rseat${me ? " is-me" : ""}">${avatar(c, st === "offline" ? "away" : "online", 44)}<span class="m-rseat-text"><b>${n}${me ? ' <small class="ui-note">(you)</small>' : ""}</b><small class="ui-note">${CHARACTERS[c].name}${note ? ` · ${note}` : ""}</small></span>${stateTag}</div>`;
+}
+const openSeat = (label = "Open seat") =>
+  `<button type="button" class="m-rseat is-open"><span class="m-plus">+</span><span class="m-rseat-text"><b>Invite</b><small class="ui-note">${label}</small></span></button>`;
+function roomPicker(kicker: string, picked: CharacterId, locked: boolean) {
+  const elements = [...new Set(ids.map((c) => CHARACTERS[c].element))];
+  const cards = ids
+    .map((c) => {
+      const owned = CHAMPION_SKINS.filter(
+        (s) => s.champion === c && owns(s.id),
+      ).length;
+      const total = CHAMPION_SKINS.filter((s) => s.champion === c).length;
+      return `<button type="button" class="m-card" style="--el:${el(c)}" aria-pressed="${c === picked}">
+      <span class="m-card-top">${elementPill(c)}${masteryRing(c)}</span>
+      <span class="m-card-art">${art(c, ME.equipped[c])}</span>
+      <span class="m-card-text"><b class="m-card-name">${CHARACTERS[c].name}</b><small>${CHARACTERS[c].role}</small></span>
+      <span class="m-card-foot"><span class="ui-tag">${range(c)}</span><span class="ui-note">${owned + 1}/${total + 1} looks</span>${c === picked && locked ? `<span class="ui-tag is-ok">${menuIcon("check")}Locked in</span>` : ""}</span>
+    </button>`;
+    })
+    .join("");
+  return `<section class="ui-panel m-room-pick"><div class="ui-panel-head"><div class="ui-heading"><span class="ui-kicker">${kicker}</span><h2 class="ui-title">Choose your fighter</h2></div><div class="m-tools"><div class="ui-chips"><button class="ui-chip" aria-pressed="true">All</button>${elements.map((e) => `<button class="ui-chip" aria-label="${e}" style="color:var(--el-${e.toLowerCase()})">${elementIcon(e)}</button>`).join("")}</div></div><button class="ui-icon-btn ui-close" aria-label="Leave the room" title="Leave the room">${menuIcon("leave")}</button></div>
+  <div class="ui-panel-body"><div class="ui-grid m-cards" style="--cols:4">${cards}</div></div>
+  <div class="ui-panel-foot"><div class="ui-foot-info">${avatar(picked, undefined, 44)}<span class="m-foot-text"><small class="ui-note">${locked ? "Locked in · ready when you are" : "Picked · lock in to play it"}</small><b class="ui-h">${CHARACTERS[picked].name}</b></span></div><div class="ui-actions"><button class="ui-btn">Details</button><button class="ui-btn"${locked ? " disabled" : ""}>${locked ? `${menuIcon("check")}Locked in` : "Lock in"}</button><button class="ui-btn is-primary">${menuIcon("battle")}Ready</button></div></div></section>`;
+}
+function raidRoom() {
+  const b: RaidBossId = "prismatail";
+  const info = RAID_BOSSES[b];
+  const seats: Seat[] = [
+    ["tester", "voltkit", "choosing", "Host"],
+    ["Kai", "cindrake", "ready"],
+  ];
+  return `<section class="m-room" style="--boss:${info.color}" aria-label="Raid room">
+  <div class="m-room-banner"><img src="${RAID_SPLASH[b].thumb}" alt=""><span class="m-room-banner-text"><span class="m-row"><span class="ui-element" style="--el:var(--el-light)">${elementIcon("light")}Light</span>${stars(info.stars)}</span><b class="m-stage-name">${info.name}</b><small class="ui-note">${info.signature}</small></span></div>
+  <div class="m-section m-room-head"><h3 class="ui-h">Raid party</h3><small class="ui-note">1/2 ready · room AB12CD</small></div>
+  <div class="m-rseats">${seatRow(seats[0], true)}${seatRow(seats[1])}${openSeat()}${openSeat()}</div>
+  <div class="m-room-notes"><span>${menuIcon("add-friend")}Stand near allies to revive</span><span>${menuIcon("leaderboard")}Separate from PvP rating</span></div>
+</section>${roomPicker(`Raid room · ${info.name}`, "voltkit", false)}`;
+}
+function teamsRoom() {
+  return `<section class="m-room is-pvp" aria-label="Private 2v2 room">
+  <div class="m-room-banner is-mode"><span class="m-room-banner-text"><span class="ui-kicker">Private room · first to two</span><b class="m-stage-name">2v2 Teams</b><small class="ui-note">Starts when all four are ready</small></span></div>
+  <div class="m-section m-room-head"><h3 class="ui-h m-team is-blue">Blue team</h3><small class="ui-note">room AB12CD</small></div>
+  <div class="m-rseats">${seatRow(["tester", "voltkit", "ready", "Host"], true)}${seatRow(["Rae", "tidefin", "choosing"])}</div>
+  <div class="m-section m-room-head"><h3 class="ui-h m-team is-red">Red team</h3><button class="ui-btn is-s">Shuffle</button></div>
+  <div class="m-rseats">${seatRow(["Kai", "cindrake", "ready"])}${openSeat("Join Red")}</div>
+  <div class="m-room-notes"><span>${menuIcon("settings")}Party rules · Turbo</span></div>
+</section>${roomPicker("Private 2v2 · first to two", "voltkit", true)}`;
+}
+
 /* -------------------------------------------------- ranks and leaderboard */
 function ranks() {
   const names = [
@@ -698,6 +758,8 @@ const SCREENS: Record<string, [string, () => string]> = {
   journey: ["journey", journey],
   raids: ["raids", raidHall],
   boss: ["raids", raidBoss],
+  room: ["", raidRoom],
+  "room-teams": ["", teamsRoom],
   ranks: ["ranks", ranks],
   friends: ["friends", friends],
   profile: ["", profile],
@@ -707,10 +769,10 @@ function draw() {
   const [active, render] = SCREENS[screen] ?? SCREENS.lobby;
   const lobbyBehind = ["lobby", "missions", "friends"].includes(screen);
   document.getElementById("app")!.innerHTML =
-    `<div class="ui m-game${lobbyBehind ? " has-lobby" : ""}" data-screen="${screen}">
+    `<div class="ui m-game${lobbyBehind ? " has-lobby" : ""}${screen.startsWith("room") ? " is-room" : ""}" data-screen="${screen}">
   <div class="m-backdrop"></div>
   ${lobbyBehind ? `<div class="m-lobby-hint"><div class="m-lobby-fighter">${art(ME.fighter, ME.equipped.voltkit, 2)}</div><div class="m-play"><span class="m-mode"><b>1v1 Duel</b><small>Private room · best of five</small></span><button class="ui-btn is-primary m-playbtn">▶ Play</button></div></div>` : ""}
-  ${hud()}${rail(active)}${render()}
+  ${hud()}${screen.startsWith("room") ? "" : rail(active)}${render()}
 </div>`;
   // Tell a demo frame around this page which screen is showing.
   parent?.postMessage({ mockupScreen: screen }, "*");

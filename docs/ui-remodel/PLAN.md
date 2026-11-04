@@ -330,8 +330,12 @@ Wardrobe only swaps the catalogue; the stage, try-on and action bar stay.
   here, and the next rewards with progress. Bottom right: Solo / With party,
   Practice, Start raid.
 - **Raid room:** the same seats and the shared fighter picker, with Ready
-  bottom right and no drawer on phones (not in the mockups yet; drawn in
-  step 5 first).
+  bottom right and no drawer on phones. Drawn in step 5 for the owner's
+  review: [raid room](images/mockups/room-desktop.webp)
+  ([phone](images/mockups/room-phone.webp)), and the PvP rooms in the same
+  frame ([2v2](images/mockups/room-teams-desktop.webp),
+  [phone](images/mockups/room-teams-phone.webp)); `?s=room` and
+  `?s=room-teams` in the mockup page.
 - **Briefing and results:** restyled with the shared panel, tags and
   buttons; their content and timing stay (they are part of the match
   screen's flow, and the match HUD is out of scope).
@@ -710,6 +714,83 @@ Before and after: [Missions](images/step4/missions.webp),
   dialogs: 68 tests) passed. Not verified: real phones, the live server.
 - **Process (owner, 4 Nov):** from step 4 on, work goes straight to `main`
   once typecheck, tests and build pass; no pull request.
+
+### Step 5: Raids, part 1 (built 4 Nov 2026)
+
+Before and after: [Raid Hall](images/step5/raids.webp),
+[boss page](images/step5/boss.webp), [briefing](images/step5/briefing.webp),
+[results](images/step5/results.webp); every size in
+[`images/step5/`](images/step5/). Part 1 is everything but the raid room,
+which waits for the owner's look at its mockup (above).
+
+- `apps/client/src/screens/raid-hall-view.ts` (markup and rules, no DOM),
+  `raid-hall.ts` (behaviour) and `raid-hall.css` (layout only). The rail's
+  Raids, PLAY on Boss Raid, the Play panel and the profile's Raids link
+  open it inside the Lobby (`openHubPanel`), and leaving a raid room comes
+  back to the boss page on the tab you left from.
+- **Raid Hall:** the seven bosses as cards of one size (splash art, name,
+  stars, element, the signature mechanic, clears or New, rewards earned,
+  three fighters with a trick there) and an Attack practice card. Locked
+  bosses say "Clear Grumblecrag first". Filters All · Not cleared · ★ ·
+  ★★ · ★★★, with an empty state and "Show all" when nothing is left.
+- **Boss page:** the split panel from steps 2 and 3, with the boss's art
+  on the stage; "‹ Raid Hall" goes back to the card you came from. Tabs:
+  **Party** (four seats: you, your Lobby party, open seats; your online
+  friends with Invite, which is the Lobby's party invite and shows the
+  server's answer; the three good picks; the next three rewards with their
+  progress), **Attacks · practice** (every attack; the one picked is what
+  Practice drills), **Rewards** (every reward with its picture, rarity and
+  progress; Wardrobe to wear them) and **Guide** (the blurb, the three
+  chapters, every fighter trick, the solo and team rules). Bottom right:
+  Practice and Start raid; bottom left Solo / With party and what it
+  means. A leader with a party raids with it (Solo is off); a member sees
+  "Your party leader starts the raid."; a locked boss says why.
+- **Briefing and results** use the shared panel, kicker, title, tags and
+  equal buttons (`screens/raid-cards.css`). Their content and timing are
+  the match's own: the three steps with their diagrams, the details, the
+  stats, the scoreboard, the save state, the retry count, the XP. The
+  rites, countdown and pause keep the match card (match HUD: out of
+  scope). Every timer in these cards already comes from the server's
+  snapshot (`remaining`, `elapsed`); the hall and boss page have none.
+- **Deleted:** `raid-hub.ts`, the Raid Hub's appearance picker
+  (`raidAppearance`, `raidCosmeticOptions`: the Wardrobe equips the same
+  slots since step 2), the Raid Hub branch of `dialog.ts`, the broken
+  `raid-lobby-preview.html` (it imported two modules that no longer
+  exist), and 2,045 lines of `style.css` (434 rules, 13 selectors trimmed):
+  the Raid Hub, its boss rail and showcase, the old rewards tab, and the
+  briefing and result rules. As in steps 2 and 4 a script removed only
+  selectors built on classes the sources emitted before this step and no
+  longer emit (kept live alternatives inside `:is()`; classes built at
+  run time were never touched), and the Lobby, mode menu, Play panel,
+  roster, Shop, Wardrobe, Journey, Missions, Ranks, Friends, party invite,
+  profile, Settings and the raid room were compared pixel by pixel before
+  and after at 1440×900 and 844×390: the only differences were the live
+  rigs, the Lobby's sparkles, the toast's timing and the countdown.
+- **Choices made while building:** the results' "Raid Hub & rewards"
+  button and the room's "Raid Hub & rewards" button are gone: Raids is a
+  Lobby screen now, and "Return to menu" lands on the boss page (one tap
+  from Rewards). The boss art fills the stage (cover, as in the mockup),
+  so a tall stage shows part of the wide picture. On narrow phones (an
+  iPhone SE sideways, 568 px) the boss page drops the stage so its
+  actions fit. The scoreboard keeps the `.raid-score-avatar` portrait so
+  frames and colours still show on it.
+- **`ui-measure.ts`:** a phone control's 44 px reach is checked only while
+  that reach is in sight inside a scrolling list (a button resting on the
+  list's edge is checked once scrolled, which the specs do).
+- **Tests:** `tests/unit/raid-hall.test.ts` (unlocks, filters, tricks,
+  next rewards, seats, invites, what Start raid can do, the reward checks
+  from the old Raid Hub tests), `tests/visual/raids.spec.ts` at the four
+  sizes with `ui-measure.ts` and label centring measured on the pixels
+  (plus Invite and a refusal, Practice, a party leader and member,
+  keyboard, reduced motion, Low graphics, an iPhone SE).
+  `regular-raids`, `raid-practice-hub`, `raid-room-return`,
+  `raid-roster-scroll` (now the hall's cards), `raid-splash`,
+  `raid-briefing`, `hub-after-raid`, `cosmetic-displays`,
+  `frame-level-preview`, `raid-overlay`, `raid-presentation`,
+  `raid-lobby` and `landscape-only` moved to the new screens; what they
+  check stays. `raid-splash` no longer runs at 414×896 (a portrait
+  desktop window; phones are landscape only) and accepts the stage's
+  cover crop.
 
 ## Decisions (owner, 3 Nov 2026)
 

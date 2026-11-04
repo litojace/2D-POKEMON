@@ -117,11 +117,13 @@ window.fetch=async(input,init)=>{
       );
       await snap(page, info, `item-only-wardrobe-${size.width}`);
       await page.locator(".fit-room .ui-close").click();
+      // A boss's Rewards tab (UI remodel step 5): every reward as a card
+      // with the game's own picture.
       await page.evaluate(
         () =>
-          void (window as any).__account.showRaidHub("grumblecrag", "rewards"),
+          void (window as any).__account.showRaids("grumblecrag", "rewards"),
       );
-      await expect(page.locator(".raid-equip")).toBeVisible();
+      await expect(page.locator(".rh-rewards.is-all")).toBeVisible();
       for (const id of [
         "conqueror",
         "mountain-aura",
@@ -129,7 +131,7 @@ window.fetch=async(input,init)=>{
         "rockslide-flex",
       ]) {
         const tile = page.locator(
-          `[data-raid-item="${id}"] .raid-cosmetic-preview`,
+          `[data-raid-reward="${id}"] .raid-cosmetic-preview`,
         );
         await expect(tile).toHaveCount(1);
         await expect(tile.locator("svg, img")).toHaveCount(0);
@@ -137,7 +139,7 @@ window.fetch=async(input,init)=>{
           await expect(tile.locator(".fx-live")).toHaveCount(2);
       }
       await page
-        .locator("[data-raid-item=mountain-aura]")
+        .locator("[data-raid-reward=mountain-aura]")
         .scrollIntoViewIfNeeded();
       await snap(page, info, `item-only-rewards-${size.width}`);
       expect(errors).toEqual([]);

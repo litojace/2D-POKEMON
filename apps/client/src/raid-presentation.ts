@@ -446,14 +446,14 @@ export function raidContributions(state: Snapshot, myId?: string) {
       const chips = (roles[p.id] ?? [])
         .map(
           (role) =>
-            `<em class="raid-role" data-stat="${role.stat}">${statIcon(role.stat)}${role.label}</em>`,
+            `<em class="ui-tag rc-role" data-stat="${role.stat}">${statIcon(role.stat)}${role.label}</em>`,
         )
         .join("");
-      return `<tr class="raid-score-row${p.id === myId ? " is-me" : ""}${p.out ? " is-out" : ""}"><th scope="row"><div class="raid-score-player"><span class="raid-score-portrait"><span class="raid-score-avatar" aria-hidden="true">${framedAvatar(p, "raid-result-" + p.id)}</span></span><span class="raid-score-id"><span class="raid-score-name" title="${escape(p.name)}"><b>${escape(p.name)}</b>${p.id === myId ? '<small class="raid-score-you">You</small>' : ""}</span><span class="raid-score-sub"><small class="raid-score-champ" title="${notes}">${notes}</small>${chips ? `<span class="raid-roles">${chips}</span>` : ""}</span></span></div></th>${cell(
+      return `<tr class="rc-score-row${p.id === myId ? " is-me" : ""}${p.out ? " is-out" : ""}"><th scope="row"><div class="rc-player"><span class="rc-portrait"><span class="raid-score-avatar" aria-hidden="true">${framedAvatar(p, "raid-result-" + p.id)}</span></span><span class="rc-id"><span class="rc-name" title="${escape(p.name)}"><b>${escape(p.name)}</b>${p.id === myId ? '<small class="ui-tag is-new rc-you">You</small>' : ""}</span><span class="rc-sub"><small class="rc-champ" title="${notes}">${notes}</small>${chips ? `<span class="rc-roles">${chips}</span>` : ""}</span></span></div></th>${cell(
         "damage",
         stats.damage,
         share >= 0
-          ? `<span class="raid-score-share" title="${share}% of the team's damage"><span class="raid-score-bar" aria-hidden="true"><i style="width:${share}%"></i></span><small>${share}%</small></span>`
+          ? `<span class="rc-share" title="${share}% of the team's damage"><span class="rc-share-bar" aria-hidden="true"><i style="width:${share}%"></i></span><small>${share}%</small></span>`
           : "",
       )}${cell("revives", stats.revives)}${cell("pillars", stats.pillars)}</tr>`;
     })
@@ -461,7 +461,7 @@ export function raidContributions(state: Snapshot, myId?: string) {
   const meta = team
     ? `${raiders.length} raiders · ${number(total)} damage`
     : `Solo · ${number(total)} damage`;
-  return `<section class="raid-contributions" aria-label="Team contributions"><div class="raid-score-top"><h3>Team contributions</h3><span class="raid-score-meta">${meta}</span></div><table class="raid-score"><thead><tr><th scope="col">Raider</th><th scope="col" title="Damage dealt">Damage</th><th scope="col">Revives</th><th scope="col" title="${featureTitle(r.boss)}">${featureLabel(r.boss)}</th></tr></thead><tbody>${rows}</tbody></table><p class="raid-score-note">Revives credit everyone who helped. ${featureNote(r.boss)}</p></section>`;
+  return `<section class="rc-contrib" aria-label="Team contributions"><div class="rc-contrib-top"><h3 class="ui-h">Team contributions</h3><span class="ui-note">${meta}</span></div><table class="rc-score"><thead><tr><th scope="col">Raider</th><th scope="col" title="Damage dealt">Damage</th><th scope="col">Revives</th><th scope="col" title="${featureTitle(r.boss)}">${featureLabel(r.boss)}</th></tr></thead><tbody>${rows}</tbody></table><p class="ui-note rc-score-note">Revives credit everyone who helped. ${featureNote(r.boss)}</p></section>`;
 }
 
 export interface RaidGoal {

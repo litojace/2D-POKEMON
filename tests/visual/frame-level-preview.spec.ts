@@ -233,10 +233,11 @@ window.fetch=async(input,init)=>{
       await page.locator(".fit-room .ui-close").click();
       await page.evaluate(
         () =>
-          void (window as any).__account.showRaidHub("grumblecrag", "rewards"),
+          void (window as any).__account.showRaids("grumblecrag", "rewards"),
       );
-      const raidTile = page.locator("[data-raid-item=conqueror]");
-      await expect(raidTile.locator(".tier-chip")).toHaveText("Mythical");
+      // The boss page's reward card (UI remodel step 5) names the tier.
+      const raidTile = page.locator("[data-raid-reward=conqueror]");
+      await expect(raidTile.locator(".ui-rarity")).toHaveText("Mythical");
       await expect(raidTile.locator(".raid-cosmetic-preview")).toHaveAttribute(
         "data-frame-stars",
         "5",

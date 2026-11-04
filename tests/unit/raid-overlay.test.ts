@@ -82,11 +82,13 @@ it.each(["finished", "briefing", "intermission"])(
       querySelector: (selector: string) =>
         !html
           ? null
-          : selector === ".raid-overlay"
+          : selector === ".raid-overlay, .rc-card"
             ? card
-            : selector === ".raid-briefing-body" && phase === "briefing"
+            : // The briefing and results scroll their shared panel body
+              // (.rc-body); the rites keep the match card's .panel-scroll.
+              selector === ".rc-body" && phase !== "intermission"
               ? scroller
-              : selector === ".panel-scroll" && phase !== "briefing"
+              : selector === ".panel-scroll" && phase === "intermission"
                 ? scroller
                 : null,
       querySelectorAll: () => [],

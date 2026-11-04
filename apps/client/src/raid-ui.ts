@@ -1,13 +1,7 @@
-import { cosmeticPicture } from "./cosmetic-picture";
-import { bossClears, frameStars } from "../../../packages/shared/src/raid";
 import { healthTrail } from "./raid-health-trail";
-import { tierChip } from "./tier-chip";
 import { drawBossBattleEffects } from "./boss-spell-art";
 import { resultXp } from "./adventure-ui";
-import {
-  JOURNEY_ITEMS,
-  type Journey,
-} from "../../../packages/shared/src/journey";
+import type { Journey } from "../../../packages/shared/src/journey";
 import {
   drawConductorRing,
   drawStormWarning,
@@ -32,6 +26,8 @@ import {
   drawSomnara,
 } from "./raid-somnara-art";
 import { buttonIcon, iconLabel, menuIcon } from "./menu-icons";
+import { actions as uiActions, button as uiButton } from "./ui/components";
+import "./screens/raid-cards.css";
 import { raidCue, raidContributions, raidGoals } from "./raid-presentation";
 import type Phaser from "phaser";
 import type { LayerAt } from "./raid-layers";
@@ -50,18 +46,14 @@ import {
   raidPerksOf,
   raidPingLabel,
   type RaidBossId,
-  RAID_COSMETICS,
   RAID_PINGS,
   RAID_RITES,
   RAID_TRAITS,
   RAID_BOSSES,
-  raidLookOf,
   type RaidAttack,
-  type RaidCosmetic,
   type RaidLoadout,
   type RaidPingKind,
   type RaidProgress,
-  type RaidSlot,
 } from "../../../packages/shared/src/raid";
 import { raidGuideBossFor } from "./raid-guide-art";
 import { raidBriefingGuide } from "./raid-briefing";
@@ -82,9 +74,7 @@ import {
   drawGloomshadeWarning,
   drawLanternYard,
 } from "./raid-gloomshade-art";
-import { fighterAvatar } from "./fighter-art";
 import { framedAvatar } from "./portraits";
-import { LOOK_ITEMS } from "../../../packages/shared/src/shop";
 import {
   setOverlayMarkup,
   LIVE_SECONDS,
@@ -132,75 +122,8 @@ export function raidLobby(
 
     <div class="raid-lobby-rules"><span><svg class="raid-rule-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v10m-5-5h10"/></svg><span>${party.length === 1 ? "One solo self-revive" : "Stand near allies to revive"}</span></span><span><svg class="raid-rule-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 3 8 4v6c0 5-8 8-8 8s-8-3-8-8V7Z"/><path d="m8 12 3 3 5-6"/></svg><span>Separate from PvP rating</span></span></div>
 
-    <div class="raid-lobby-actions"><button class="primary" id="ready"><span class="ready-label">${buttonIcon(me.ready ? "cancel" : "battle")}${me.ready ? "Cancel ready" : "Ready for the raid"}</span><span aria-hidden="true">${me.ready ? "" : "→"}</span></button><div><button class="secondary raid-icon-button" id="raid-bestiary">${menuIcon("bestiary")}<span>Raid Hub & rewards</span></button><button class="quiet leave-button" id="leave">${iconLabel("leave", "Leave room")}</button></div></div>
+    <div class="raid-lobby-actions"><button class="primary" id="ready"><span class="ready-label">${buttonIcon(me.ready ? "cancel" : "battle")}${me.ready ? "Cancel ready" : "Ready for the raid"}</span><span aria-hidden="true">${me.ready ? "" : "→"}</span></button><div><button class="quiet leave-button" id="leave">${iconLabel("leave", "Leave room")}</button></div></div>
   </div>`;
-}
-const SLOT_NAMES: Record<RaidSlot, string> = {
-  skin: "Skin",
-  aura: "Aura",
-  entrance: "Entrance",
-  frame: "Portrait frame",
-  victory: "Victory",
-};
-/** Appearance choices, one row of options per slot. Cosmetic only. */
-export function raidCosmeticOptions(
-  p: RaidProgress,
-  character: CharacterId,
-  shopOwned: string[] = [],
-) {
-  const look = raidLookOf(p);
-  return (Object.keys(SLOT_NAMES) as RaidSlot[])
-    .map((slot) => {
-      const items: string[] = [
-        ...(Object.keys(RAID_COSMETICS) as RaidCosmetic[]).filter(
-          (id) => RAID_COSMETICS[id].slot === slot,
-        ),
-        // Shop collection pieces you own for this slot.
-        ...[...LOOK_ITEMS, ...JOURNEY_ITEMS]
-          .filter((i) => i.slot === slot && shopOwned.includes(i.id))
-          .map((i) => i.id),
-      ];
-      const option = (id: string | null) => {
-        const shop = id
-          ? [...LOOK_ITEMS, ...JOURNEY_ITEMS].find((i) => i.id === id)
-          : undefined;
-        const owned = id === null || !!shop || p.cosmetics.includes(id);
-        const active = (look[slot] ?? null) === id;
-        const info = shop
-          ? { name: shop.name, description: shop.description, goal: "" }
-          : id
-            ? RAID_COSMETICS[id as RaidCosmetic]
-            : null;
-        const name =
-          info?.name ??
-          (slot === "skin"
-            ? "Original look"
-            : slot === "victory"
-              ? "Champion's own"
-              : "None");
-        const detail = info
-          ? owned
-            ? info.description
-            : `Unlock: ${info.goal}`
-          : slot === "skin"
-            ? "Your champion's original colors"
-            : slot === "victory"
-              ? "Your champion's own celebration"
-              : `No ${SLOT_NAMES[slot].toLowerCase()}`;
-        const stars = frameStars(id, bossClears(p));
-        return `<button class="secondary raid-cosmetic-option${active ? " is-equipped" : ""}" data-raid-slot="${slot}" data-raid-item="${id ?? ""}" data-raid-cosmetic="${id ?? ""}" ${!owned || active ? "disabled" : ""}>${id ? cosmeticPicture(id, character, `cosmetic-${slot}-${id}`, stars) : `<span class="raid-cosmetic-preview" aria-hidden="true">${slot === "skin" ? fighterAvatar(character, `cosmetic-${slot}-none`) : "—"}</span>`}<span><b>${name}</b>${id ? tierChip(id, stars) : ""}<small>${detail}</small></span><span class="raid-cosmetic-state${active ? " is-equipped-text" : ""}">${active ? "✓ Equipped" : owned ? (id === null ? "Clear" : "Equip") : "Locked"}</span></button>`;
-      };
-      return `<div class="raid-slot"><h4>${SLOT_NAMES[slot]}</h4>${[null, ...items].map(option).join("")}</div>`;
-    })
-    .join("");
-}
-/** The appearance picker shown on a boss's Rewards tab. */
-export function raidAppearance(
-  p: RaidProgress,
-  character: CharacterId = "voltkit",
-  shopOwned: string[] = [],
-) {
-  return `<h3>Fighter appearance</h3><p class="raid-appearance-note">Pick a skin, aura, entrance, frame and victory separately. They show on all your fighters in PvP and raids (a champion skin from the Shop wins over the Skin slot). Shop collection pieces you own appear here too. Appearance only, no stat changes. Previewing ${CHARACTERS[character].name}.</p>${p.loadout && "victory" in p.loadout ? "" : '<p class="raid-appearance-note raid-update-needed">Saving every slot needs the latest database update: run migration 018_collection_equipping.sql in Supabase.</p>'}<div class="raid-equip">${raidCosmeticOptions(p, character, shopOwned)}</div><p class="raid-appearance-status" role="status"></p>`;
 }
 /** The result whose saved progress was already fetched, per overlay. */
 const resultProgress = new WeakMap<HTMLElement, string>();
@@ -286,7 +209,9 @@ export function renderRaidUI(
     actions = "";
   if (state.phase === "briefing") {
     title = `${RAID_TRAITS[r.trait].name} ${RAID_BOSSES[r.boss].name}`;
-    body = `<div class="raid-briefing-body" tabindex="0" role="region" aria-label="Raid instructions">${raidBriefingGuide(r.boss, me.character, r.partySize === 1)}<details class="raid-briefing-extra" id="raid-briefing-extra"><summary>Your fighter, team &amp; modifiers</summary><p><b>${escape(RAID_TRAITS[r.trait].name)}</b> · ${escape(RAID_TRAITS[r.trait].text)}</p>${perkLines(state, me.id)}${r.partySize > 1 ? `<p class="raid-signals">Team signals: ${(Object.keys(RAID_PINGS) as RaidPingKind[]).map((k) => `<b>${RAID_PINGS[k].key}</b> ${raidPingLabel(k, r.boss)}`).join(" · ")} (or use the on-screen buttons)</p>` : ""}</details><p class="raid-briefing-meta">Three phases · one shared fight · ${r.partySize === 1 ? "Solo · one self-revive" : "Team · stand beside fallen allies to revive"}</p></div><div class="raid-briefing-actions"><button class="primary" id="raid-instructions" ${state.instructionsReady.includes(me.id) ? "disabled" : ""}>${state.instructionsReady.includes(me.id) ? "Waiting for the team…" : iconLabel("battle", "I’m ready — start raid")}</button></div>`;
+    const waiting = state.instructionsReady.includes(me.id);
+    body = `<div class="rc-body" tabindex="0" role="region" aria-label="Raid instructions">${raidBriefingGuide(r.boss, me.character, r.partySize === 1)}<details class="rc-extra" id="raid-briefing-extra"><summary>Your fighter, team &amp; modifiers</summary><p><b>${escape(RAID_TRAITS[r.trait].name)}</b> · ${escape(RAID_TRAITS[r.trait].text)}</p>${perkLines(state, me.id)}${r.partySize > 1 ? `<p class="raid-signals">Team signals: ${(Object.keys(RAID_PINGS) as RaidPingKind[]).map((k) => `<b>${RAID_PINGS[k].key}</b> ${raidPingLabel(k, r.boss)}`).join(" · ")} (or use the on-screen buttons)</p>` : ""}</details></div>`;
+    actions = `<p class="ui-note rc-meta">Three phases · one shared fight · ${r.partySize === 1 ? "Solo · one self-revive" : "Team · stand beside fallen allies to revive"}</p>${uiActions(uiButton(waiting ? "Waiting for the team…" : "I’m ready", { kind: "primary", icon: waiting ? undefined : "battle", disabled: waiting, attrs: { id: "raid-instructions", "aria-label": waiting ? "Waiting for the team" : "I’m ready — start raid" } }))}`;
   } else if (state.phase === "intermission") {
     // Rites are chosen once, before the fight (RAID_RITE_PICKS each).
     const picked = Math.min(RAID_RITE_PICKS, (r.rites[me.id] ?? []).length);
@@ -319,7 +244,27 @@ export function renderRaidUI(
                     : "The mountain still stands";
     const heroes = state.players.filter((p) => !p.raidBoss && !p.out);
     const readyCount = heroes.filter((p) => p.ready).length;
-    actions = `<div class="result-actions raid-result-actions"><button class="primary" id="raid-retry" ${me.ready || !heroes.every((p) => p.connected) ? "disabled" : ""}>${me.ready ? "Waiting for the team…" : iconLabel("again", "Run again")}</button><button class="secondary" id="raid-lobby" aria-label="Change champion or challenge" title="Change champion or challenge">${iconLabel("swap", "Change setup")}</button><button class="secondary raid-icon-button" id="raid-rewards">${menuIcon("bestiary")}<span>Raid Hub & rewards</span></button><button class="quiet" id="raid-exit">${iconLabel("home", "Return to menu")}</button></div>`;
+    const retryWait = me.ready || !heroes.every((p) => p.connected);
+    actions = `<p class="ui-note rc-meta">${heroes.length === 1 ? "Same champion and challenge · choose fresh rites" : `${readyCount}/${heroes.length} ready · everyone confirms to run again`}</p>${uiActions(
+      uiButton("Return to menu", { icon: "home", attrs: { id: "raid-exit" } }),
+      uiButton("Change setup", {
+        icon: "swap",
+        attrs: {
+          id: "raid-lobby",
+          "aria-label": "Change champion or challenge",
+          title: "Change champion or challenge",
+        },
+      }),
+      uiButton(me.ready ? "Waiting…" : "Run again", {
+        kind: "primary",
+        icon: me.ready ? undefined : "again",
+        disabled: retryWait,
+        attrs: {
+          id: "raid-retry",
+          "aria-label": me.ready ? "Waiting for the team" : "Run again",
+        },
+      }),
+    )}`;
     // Saved state and the retry count share one bar under the scoreboard;
     // the next milestone lives in the Raid Hub (the reward reveal still runs).
     const saved =
@@ -332,7 +277,7 @@ export function renderRaidUI(
         : r.rewardStatus === "saved"
           ? `✓ Progress saved: your ${r.boss === "tidewyrm" ? "strands" : r.boss === "gloomshade" ? "relights" : r.boss === "storm-twins" ? "polarity pairs" : r.boss === "emberwing" ? "braziers lit" : r.boss === "prismatail" ? "light relays" : r.boss === "somnara" ? "correct runes" : "pillars"} and revives count towards titles.`
           : "";
-    body = `<div class="raid-result-summary"><div class="raid-result-art" aria-hidden="true"><svg viewBox="-65 -65 130 115">${raidGuideBossFor(r.boss)}</svg></div><div class="raid-result-stats"><span><b>${time(r.elapsed)}</b>${r.result === "victory" ? "Clear time" : "Time survived"}</span><span><b>${r.revives}</b>Revives</span><span><b>${r.downs}</b>Downs</span></div></div><div class="raid-result-body">${raidContributions(state, me.id)}<div class="raid-result-status">${saved ? `<p class="raid-save-state${r.rewardStatus === "saved" ? " is-saved" : r.rewardStatus === "unavailable" ? " is-error" : ""}" role="status">${saved}</p>` : ""}<p class="raid-retry-status">${heroes.length === 1 ? "Same champion and challenge · choose fresh rites" : `${readyCount}/${heroes.length} ready · everyone confirms to run again`}</p></div>${r.result === "victory" ? "" : `<p class="raid-retry-tip">${defeatTip(state)}</p>`}${!heroes.every((p) => p.connected) ? '<p class="raid-retry-tip">A teammate is disconnected. Return to the lobby to refill the party.</p>' : ""}</div>`;
+    body = `<div class="rc-summary"><span class="rc-art" aria-hidden="true"><svg viewBox="-65 -65 130 115">${raidGuideBossFor(r.boss)}</svg></span><div class="rc-stats"><span class="rc-stat"><b class="ui-num">${time(r.elapsed)}</b><small>${r.result === "victory" ? "Clear time" : "Time survived"}</small></span><span class="rc-stat"><b class="ui-num">${r.revives}</b><small>Revives</small></span><span class="rc-stat"><b class="ui-num">${r.downs}</b><small>Downs</small></span></div></div>${raidContributions(state, me.id)}${saved ? `<p class="rc-save${r.rewardStatus === "saved" ? " is-saved" : r.rewardStatus === "unavailable" ? " is-error" : ""}" role="status">${saved}</p>` : ""}${r.result === "victory" ? "" : `<p class="rc-tip">${defeatTip(state)}</p>`}${!heroes.every((p) => p.connected) ? '<p class="rc-tip">A teammate is disconnected. Return to the lobby to refill the party.</p>' : ""}`;
   }
   if (state.phase === "finished")
     body += resultXp(
@@ -341,12 +286,14 @@ export function renderRaidUI(
       state.activityStatus,
       state.activityEligible?.includes(me.id) ?? true,
     );
-  const previousCard = overlay.querySelector<HTMLElement>(".raid-overlay");
+  const previousCard = overlay.querySelector<HTMLElement>(
+    ".raid-overlay, .rc-card",
+  );
   const guideExpanded =
     overlay.querySelector<HTMLDetailsElement>("#raid-briefing-extra")?.open ??
     false;
   const previousScroller =
-    overlay.querySelector<HTMLElement>(".raid-briefing-body") ??
+    overlay.querySelector<HTMLElement>(".rc-body") ??
     overlay.querySelector<HTMLElement>(".panel-scroll") ??
     previousCard;
   const scrollTop =
@@ -355,15 +302,21 @@ export function renderRaidUI(
       : 0;
   const active = document.activeElement;
   const focusId = active && previousCard?.contains(active) ? active.id : "";
+  // The briefing and the results use the hub's shared panel, tags and
+  // buttons (UI remodel step 5); the rites, countdown and pause keep the
+  // match's own card.
+  const shared = state.phase === "briefing" || state.phase === "finished";
   const replaced = setOverlayMarkup(
     overlay,
-    `<div class="overlay-card raid-overlay${state.phase === "finished" ? " raid-results action-overlay" : state.phase === "intermission" ? " raid-draft action-overlay" : state.phase === "briefing" ? " raid-briefing" : ""}"><span class="eyebrow">Boss raid · co-op</span><h2>${title}</h2>${actions ? `<div class="panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div><div class="panel-actions">${actions}</div>` : body}</div>`,
+    shared
+      ? `<div class="ui rc-card ${state.phase === "finished" ? "is-results" : "is-briefing"}" role="dialog" aria-label="${escape(title)}"><header class="rc-head"><span class="ui-kicker">Boss raid · co-op</span><h2 class="ui-title">${title}</h2></header>${state.phase === "finished" ? `<div class="rc-body panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div>` : body}<footer class="rc-foot">${actions}</footer></div>`
+      : `<div class="overlay-card raid-overlay${state.phase === "intermission" ? " raid-draft action-overlay" : ""}"><span class="eyebrow">Boss raid · co-op</span><h2>${title}</h2>${actions ? `<div class="panel-scroll" tabindex="0" role="region" aria-label="Raid details">${body}</div><div class="panel-actions">${actions}</div>` : body}</div>`,
   );
   overlay.dataset.raidPhase = state.phase;
-  const card = overlay.querySelector<HTMLElement>(".raid-overlay");
+  const card = overlay.querySelector<HTMLElement>(".raid-overlay, .rc-card");
   // Leave native touch scrolling alone while snapshots keep the same DOM.
   const scroller =
-    overlay.querySelector<HTMLElement>(".raid-briefing-body") ??
+    overlay.querySelector<HTMLElement>(".rc-body") ??
     overlay.querySelector<HTMLElement>(".panel-scroll") ??
     card;
   if (replaced && guideExpanded) {
