@@ -27,7 +27,7 @@ import {
   type Part,
   type RigAsset,
 } from "./assets";
-import { paletteFor, type SkinLook } from "../creature-design";
+import { HOVERING, paletteFor, type SkinLook } from "../creature-design";
 import { hexToNumber, wornArt } from "../skins/skin-art";
 import { drawColorsFx } from "../skins/colors-fx";
 import {
@@ -297,12 +297,7 @@ export class FighterRig {
     const heavy =
       this.character === "terradon" || this.character === "wombolder";
     // Floating champions keep their feet tucked and glide instead of stepping.
-    const floats =
-      this.character === "auralynx" ||
-      this.character === "lumoth" ||
-      this.character === "mystowl" ||
-      this.character === "duskveil" ||
-      this.character === "glacelle";
+    const floats = HOVERING.includes(this.character);
     const step = Math.sin(
       t *
         Math.PI *
