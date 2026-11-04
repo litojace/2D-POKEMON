@@ -1,7 +1,15 @@
 import type Phaser from "phaser";
 import type { Ability, Projectile, Zone } from "@arena/shared";
 import { fxFor, type Fx } from "./fx-engine";
-import { TAU, ease, hash, type FxKit, type G, type Shot } from "./fx-kits";
+import {
+  TAU,
+  ease,
+  hash,
+  type FxKit,
+  type G,
+  type Shot,
+  type Follow,
+} from "./fx-kits";
 /**
  * Cindrake's kit: real flame (white-hot cores cooling to orange), embers that
  * float up on the heat, smoke, molten debris and scorched floor. Sizes come
@@ -62,12 +70,16 @@ function smoke(
 function cinderSnap(
   scene: Phaser.Scene,
   a: Ability,
-  x: number,
-  y: number,
+  x0: number,
+  y0: number,
   angle: number,
   color: number,
   shot: Shot,
+  at?: Follow,
 ) {
+  // Start where the caster is drawn (not the server position it was cast from).
+  const origin = at?.() ?? { x: x0, y: y0 },
+    { x, y } = origin;
   const fx = fxFor(scene),
     cy = y - 10,
     spread = Math.min(Math.PI * 0.95, Math.acos(a.arc ?? 0.35)),
@@ -99,6 +111,9 @@ function cinderSnap(
     90,
   );
   shot(fx.reduced ? 160 : 300, (k) => {
+    // The strike stays on the caster while it moves.
+    const { x, y } = at?.() ?? origin,
+      cy = y - 10;
     const sweep = Math.min(1, k / 0.45),
       fade = 1 - Math.max(0, (k - 0.35) / 0.65);
     // True hit area, faint.

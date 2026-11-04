@@ -1,7 +1,15 @@
 import type Phaser from "phaser";
 import type { Ability, Projectile, Zone } from "@arena/shared";
 import { fxFor, type Fx } from "./fx-engine";
-import { TAU, ease, hash, type FxKit, type G, type Shot } from "./fx-kits";
+import {
+  TAU,
+  ease,
+  hash,
+  type FxKit,
+  type G,
+  type Shot,
+  type Follow,
+} from "./fx-kits";
 /**
  * Lumoth's kit: starlight. Solid twinkling stars, lens flares, glitter that
  * drifts down, god rays. Light is given solid cores and soft dark edges so it
@@ -142,12 +150,16 @@ function starImpact(
 function dustStrike(
   scene: Phaser.Scene,
   a: Ability,
-  x: number,
-  y: number,
+  x0: number,
+  y0: number,
   angle: number,
   color: number,
   shot: Shot,
+  at?: Follow,
 ) {
+  // Start where the caster is drawn (not the server position it was cast from).
+  const origin = at?.() ?? { x: x0, y: y0 },
+    { x, y } = origin;
   const fx = fxFor(scene),
     cy = y - 12,
     spread = Math.min(Math.PI * 0.95, Math.acos(a.arc ?? 0.35)),
@@ -173,6 +185,9 @@ function dustStrike(
     });
   }
   shot(fx.reduced ? 160 : 420, (k) => {
+    // The strike stays on the caster while it moves.
+    const { x, y } = at?.() ?? origin,
+      cy = y - 12;
     const sweep = Math.min(1, k / 0.4),
       fade = 1 - Math.max(0, (k - 0.3) / 0.7);
     fx.floor
@@ -216,16 +231,23 @@ function dustStrike(
 function eyespotFlash(
   scene: Phaser.Scene,
   a: Ability,
-  x: number,
-  y: number,
+  x0: number,
+  y0: number,
   angle: number,
   color: number,
   shot: Shot,
+  at?: Follow,
 ) {
-  dustStrike(scene, a, x, y, angle, color, shot);
+  // Start where the caster is drawn (not the server position it was cast from).
+  const origin = at?.() ?? { x: x0, y: y0 },
+    { x, y } = origin;
+  dustStrike(scene, a, x, y, angle, color, shot, at);
   const fx = fxFor(scene),
     cy = y - 22;
   shot(fx.reduced ? 200 : 460, (k) => {
+    // The strike stays on the caster while it moves.
+    const { x, y } = at?.() ?? origin,
+      cy = y - 22;
     const open = Math.min(1, k / 0.25),
       fade = k > 0.55 ? 1 - (k - 0.55) / 0.45 : 1,
       r = 20 * open;

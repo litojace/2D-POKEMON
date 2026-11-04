@@ -1,7 +1,15 @@
 import type Phaser from "phaser";
 import type { Ability, Projectile, Zone } from "@arena/shared";
 import { fxFor, type Fx } from "./fx-engine";
-import { TAU, ease, hash, type FxKit, type G, type Shot } from "./fx-kits";
+import {
+  TAU,
+  ease,
+  hash,
+  type FxKit,
+  type G,
+  type Shot,
+  type Follow,
+} from "./fx-kits";
 /**
  * Mystowl's kit: telekinesis. Space bends: rings split into cyan and pink
  * edges like light through a lens, motes hang weightless, glyphs burn into
@@ -663,17 +671,24 @@ function malletSwing(
 function malletBop(
   scene: Phaser.Scene,
   a: Ability,
-  x: number,
-  y: number,
+  x0: number,
+  y0: number,
   angle: number,
   color: number,
   shot: Shot,
+  at?: Follow,
 ) {
+  // Start where the caster is drawn (not the server position it was cast from).
+  const origin = at?.() ?? { x: x0, y: y0 },
+    { x, y } = origin;
   const fx = fxFor(scene),
     cy = y - 14,
     hx = x + Math.cos(angle) * a.range * 0.85,
     hy = cy + Math.sin(angle) * a.range * 0.85 * SQ;
   shot(fx.reduced ? 160 : 300, (k) => {
+    // The strike stays on the caster while it moves.
+    const { x, y } = at?.() ?? origin,
+      cy = y - 14;
     malletSwing(fx, x, cy, a, angle, k, color);
     if (k > 0.45) {
       const kk = (k - 0.45) / 0.55;
@@ -693,12 +708,16 @@ function malletBop(
 function mochiPound(
   scene: Phaser.Scene,
   a: Ability,
-  x: number,
-  y: number,
+  x0: number,
+  y0: number,
   angle: number,
   color: number,
   shot: Shot,
+  at?: Follow,
 ) {
+  // Start where the caster is drawn (not the server position it was cast from).
+  const origin = at?.() ?? { x: x0, y: y0 },
+    { x, y } = origin;
   const fx = fxFor(scene),
     spread = Math.min(Math.PI * 0.95, Math.acos(a.arc ?? 0.3)),
     reach = a.range * 0.7,
@@ -706,6 +725,8 @@ function mochiPound(
     hy = y + Math.sin(angle) * reach * SQ,
     once = { hit: false };
   shot(fx.reduced ? 260 : 620, (k) => {
+    // The strike stays on the caster while it moves.
+    const { x, y } = at?.() ?? origin;
     // The swept wedge: what the pound can reach.
     const fade = 1 - Math.max(0, (k - 0.35) / 0.65);
     fx.floor

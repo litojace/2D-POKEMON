@@ -9,6 +9,8 @@ import type { Ability, Projectile, Zone } from "@arena/shared";
 export type G = Phaser.GameObjects.Graphics;
 /** Run `draw(k)` every frame for `ms`, with k going 0 → 1. */
 export type Shot = (ms: number, draw: (k: number) => void) => void;
+/** Where a caster is drawn right now (smoothed, and predicted for your own fighter). */
+export type Follow = () => { x: number; y: number } | undefined;
 export interface FxKit {
   projectile?: Record<string, (g: G, pr: Projectile, now: number) => void>;
   zone?: Record<string, (g: G, z: Zone, progress: number, now: number) => void>;
@@ -50,7 +52,7 @@ export interface FxKit {
       color: number,
       shot: Shot,
       /** Where the caster is drawn now, for strikes that stay attached to it. */
-      at?: () => { x: number; y: number } | undefined,
+      at?: Follow,
     ) => void
   >;
   impact?: Record<

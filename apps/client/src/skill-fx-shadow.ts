@@ -1,7 +1,15 @@
 import type Phaser from "phaser";
 import type { Ability, Projectile, Zone } from "@arena/shared";
 import { fxFor, type Fx } from "./fx-engine";
-import { TAU, ease, hash, type FxKit, type G, type Shot } from "./fx-kits";
+import {
+  TAU,
+  ease,
+  hash,
+  type FxKit,
+  type G,
+  type Shot,
+  type Follow,
+} from "./fx-kits";
 /**
  * Duskveil's kit: darkness and ghost-light. Shade is drawn as real dark
  * (normal blend), ghostfire as cold teal flame, and the void pulls things in
@@ -477,7 +485,7 @@ function lash(
   angle: number,
   color: number,
   shot: Shot,
-  at?: () => { x: number; y: number } | undefined,
+  at?: Follow,
 ) {
   const start = at?.() ?? { x: x0, y: y0 };
   const fx = fxFor(scene),
@@ -739,12 +747,16 @@ function graspWindup(
 function krakenGrasp(
   scene: Phaser.Scene,
   a: Ability,
-  x: number,
-  y: number,
+  x0: number,
+  y0: number,
   angle: number,
   color: number,
   shot: Shot,
+  at?: Follow,
 ) {
+  // Start where the caster is drawn (not the server position it was cast from).
+  const origin = at?.() ?? { x: x0, y: y0 },
+    { x, y } = origin;
   const fx = fxFor(scene),
     spread = Math.min(Math.PI, Math.acos(a.arc ?? 0)),
     range = a.range,
@@ -770,6 +782,8 @@ function krakenGrasp(
     });
   }
   shot(fx.reduced ? 300 : 900, (k) => {
+    // The strike stays on the caster while it moves.
+    const { x, y } = at?.() ?? origin;
     const fade = k > 0.6 ? 1 - (k - 0.6) / 0.4 : 1;
     fx.floorSolid
       .fillStyle(INK_BLACK, 0.35 * fade)
