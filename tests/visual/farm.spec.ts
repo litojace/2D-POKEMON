@@ -967,10 +967,12 @@ for (const viewport of [
       await expect(item.locator("button")).toHaveText("Owned");
       await sheet.locator("[data-close]").click();
       await expect(sheet).toBeHidden();
-      // Grazing: the server set the first milk 1 h 20 m out.
+      // Grazing: the server set the first milk 1 h 20 m out. The toast rounds
+      // to the second, so a tap within half a second of opening still reads
+      // 1h 20m (seen on CI); later, 1h 19m.
       await tapPasture();
       await expect(page.locator("#toast")).toContainText(
-        "The cow is grazing. Milk in 1h 19m",
+        /The cow is grazing\. Milk in 1h (19|20)m/,
       );
       // Ready: a milk bubble over the cow; a tap collects 2 Storm Milk.
       await page.evaluate(() => {
