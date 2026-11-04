@@ -65,15 +65,23 @@ export async function layoutProblems(
           .trim()
           .slice(0, 30);
       const near = (a: number, b: number) => Math.abs(a - b) <= 0.5;
-      /** Wholly in sight: not scrolled out of (or cut by) a scrolling box. */
-      const inView = (e: Element) => {
+      /**
+       * Wholly in sight: not scrolled out of (or cut by) a scrolling box,
+       * with `reach` px to spare above and below (a finger's 44 px around a
+       * small control: one resting on a list's edge is reached once
+       * scrolled, and the specs scroll and measure again).
+       */
+      const inView = (e: Element, reach = 0) => {
         const r = R(e);
         if (r.top < 0 || r.bottom > innerHeight) return false;
         for (let p = e.parentElement; p; p = p.parentElement) {
           if (!/(auto|scroll|hidden)/.test(getComputedStyle(p).overflowY))
             continue;
           const b = R(p);
-          if (r.top < b.top - 0.5 || r.bottom > b.bottom + 0.5) return false;
+          const scrolls = p.scrollHeight > p.clientHeight + 1;
+          const m = scrolls ? reach : 0;
+          if (r.top - m < b.top - 0.5 || r.bottom + m > b.bottom + 0.5)
+            return false;
         }
         return true;
       };
@@ -168,8 +176,8 @@ export async function layoutProblems(
           ),
         ).filter(shown)) {
           const r = R(e);
-          if (r.height >= 44 || !inView(e)) continue;
           const reach = (44 - r.height) / 2 - 1;
+          if (r.height >= 44 || !inView(e, reach)) continue;
           for (const y of [r.top - reach, r.bottom + reach]) {
             const hit = document.elementFromPoint(r.left + r.width / 2, y);
             if (!hit || !(e === hit || e.contains(hit)))

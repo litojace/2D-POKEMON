@@ -44,7 +44,7 @@ it("escapes names and includes support contributions alongside damage", () => {
   expect(html).toContain('<th scope="col" title="Pillars broken">Pillars</th>');
   // Solo: no "team best" highlight or damage share (it would always be 100%).
   expect(html).not.toContain("is-best");
-  expect(html).not.toContain("raid-score-share");
+  expect(html).not.toContain("rc-share");
 });
 it("lists you first, lights each column's leader and shows damage share", () => {
   const a = setup();
@@ -52,11 +52,11 @@ it("lists you first, lights each column's leader and shows damage share", () => 
   a.raid.contributions!.hero = { damage: 300, revives: 0, pillars: 2 };
   a.raid.contributions!.ally = { damage: 900, revives: 1, pillars: 2 };
   const html = raidContributions(a.snapshot(), "ally");
-  const rows = html.split('<tr class="raid-score-row').slice(1);
+  const rows = html.split('<tr class="rc-score-row').slice(1);
   expect(rows).toHaveLength(2);
   expect(rows[0]).toContain(" is-me");
   expect(rows[0]).toContain("<b>Ally</b>");
-  expect(rows[0]).toContain('raid-score-you">You');
+  expect(rows[0]).toContain('rc-you">You');
   expect(rows[1]).not.toContain("is-me");
   // Damage and revives lead belongs to Ally; a tied pillar lead lights both.
   expect(rows[0]).toContain('class="is-best" data-stat="damage">900');

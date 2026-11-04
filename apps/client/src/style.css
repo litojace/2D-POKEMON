@@ -1458,18 +1458,6 @@ dialog input[type="range"] {
     transform: rotate(-3deg);
   }
 }
-@keyframes fighter-hop {
-  0%,
-  100% {
-    transform: translateY(0) scale(1.03, 0.97);
-  }
-  45% {
-    transform: translateY(-13px) scale(0.97, 1.03) rotate(-3deg);
-  }
-  65% {
-    transform: translateY(-10px) rotate(3deg);
-  }
-}
 @keyframes fighter-shadow {
   0%,
   100% {
@@ -3907,89 +3895,6 @@ dialog:has(.admin-tabs) {
 .trait-aura .ta-base {
   transform-box: fill-box;
   transform-origin: 50% 100%;
-}
-@keyframes ta-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-@keyframes ta-rise {
-  0% {
-    transform: translateY(0);
-    opacity: 0;
-  }
-  15% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(-120px);
-    opacity: 0;
-  }
-}
-@keyframes ta-flicker {
-  0% {
-    opacity: 1;
-  }
-  35% {
-    opacity: 0;
-  }
-  55% {
-    opacity: 0.8;
-  }
-  70% {
-    opacity: 0;
-  }
-}
-@keyframes ta-dash {
-  to {
-    stroke-dashoffset: -54;
-  }
-}
-@keyframes ta-pulse {
-  50% {
-    opacity: 0.45;
-    transform: scale(1.06);
-  }
-}
-@keyframes ta-flame {
-  0%,
-  100% {
-    transform: scale(1, 1);
-  }
-  50% {
-    transform: scale(0.92, 1.14);
-  }
-}
-@keyframes ta-ripple {
-  0% {
-    transform: scale(0.4);
-    opacity: 0.9;
-  }
-  100% {
-    transform: scale(2.4);
-    opacity: 0;
-  }
-}
-@keyframes ta-wave {
-  0% {
-    transform: scale(0.6);
-    opacity: 0.9;
-  }
-  100% {
-    transform: scale(1.9);
-    opacity: 0;
-  }
-}
-@keyframes ta-twinkle {
-  0%,
-  100% {
-    opacity: 0.15;
-    transform: scale(0.5);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.1);
-  }
 }
 .trait-aura .ta-leaf {
   transform-origin: 0 0;
@@ -6968,22 +6873,6 @@ dialog:has(.illustrated-guide) {
 .raid-instructions small {
   margin: 0;
 }
-.raid-result-stats {
-  display: flex;
-  justify-content: center;
-  gap: 30px;
-  margin: 18px;
-}
-.raid-result-stats span {
-  display: grid;
-  gap: 6px;
-  font-size: 10px;
-  color: #a4b9d3;
-}
-.raid-result-stats b {
-  font-size: 25px;
-  color: #ffe198;
-}
 .raid-bestiary-art {
   display: flex;
   flex-direction: column;
@@ -7003,20 +6892,9 @@ dialog:has(.illustrated-guide) {
   letter-spacing: 3px;
   color: #ffdf9d;
 }
-.raid-rewards {
-  background: #152743;
-  border-radius: 12px;
-  padding: 10px 16px;
-}
-.raid-rewards p,
 .raid-board p {
   font-size: 12px;
   line-height: 1.6;
-}
-.raid-equip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
 }
 .raid-board {
   padding: 12px;
@@ -7760,21 +7638,6 @@ body.battle-raid:not(.touch-mode) #battle {
 .raid-rite-copy small {
   min-height: 3em;
 }
-.raid-result-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-}
-.raid-result-stats > span {
-  text-align: center;
-  justify-items: center;
-  grid-template-rows: 32px auto;
-  align-items: baseline;
-}
-.raid-result-stats b {
-  font-variant-numeric: tabular-nums;
-  line-height: 1.2;
-}
 @media (orientation: landscape) and (max-height: 600px) {
   .raid-choice-timer {
     min-height: 32px;
@@ -7853,65 +7716,12 @@ body.battle-raid:not(.touch-mode) #battle {
   width: 42px;
   height: 42px;
 }
-
-.raid-rewards .raid-reward {
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: center;
-  margin: 5px 0;
-  padding: 10px 8px;
-  border-radius: 8px;
-}
-.raid-reward-check {
-  font-size: 15px;
-  line-height: 1;
-  text-align: center;
-}
 .raid-reward > small {
   font-size: 9px;
   line-height: 1.4;
   color: #91a6c1;
 }
-.raid-rewards .raid-reward.is-complete {
-  color: #a5edc1;
-  background: #59d49712;
-  border: 1px solid #6ae2a33b;
-}
-.raid-reward.is-complete :is(b, small, .raid-reward-check) {
-  color: #a5edc1;
-}
 /* Let shorter appearance groups fill columns instead of waiting below the longest skin list. */
-.raid-equip {
-  display: block;
-  columns: 320px 3;
-  column-gap: 16px;
-}
-.raid-equip > .raid-slot {
-  break-inside: avoid-column;
-  margin-bottom: 16px;
-}
-.raid-appearance-note {
-  font-size: 12px;
-  line-height: 1.6;
-}
-.raid-appearance-status:empty {
-  display: none;
-}
-.raid-appearance-status {
-  font-size: 12px;
-  color: #a5edc1;
-}
-.raid-equip .raid-cosmetic-option {
-  display: grid;
-  grid-template-columns: 48px minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: center;
-  width: 100%;
-  margin: 0;
-  padding: 10px 12px;
-  text-align: left;
-}
 .raid-cosmetic-preview {
   position: relative;
   display: grid;
@@ -7924,32 +7734,6 @@ body.battle-raid:not(.touch-mode) #battle {
 .raid-cosmetic-preview > svg {
   width: 44px;
   height: 44px;
-}
-.raid-cosmetic-option > span:nth-child(2) {
-  display: grid;
-  gap: 5px;
-}
-.raid-cosmetic-option b {
-  font-size: 12px;
-  line-height: 1.4;
-}
-.raid-cosmetic-option small {
-  font-size: 10px;
-  font-weight: 400;
-  line-height: 1.4;
-  color: #adbed3;
-}
-.raid-cosmetic-state {
-  font-size: 10px;
-  line-height: 1.4;
-}
-.raid-cosmetic-option.is-equipped {
-  opacity: 1;
-  border-color: #7be3ac77;
-  background: #16403944;
-}
-.raid-cosmetic-option.is-equipped :is(b, small) {
-  color: #a5edc1;
 }
 .raid-cosmetic-preview[data-cosmetic="cragbound"] > svg,
 .roster-panel[data-raid-cosmetic~="cragbound"]
@@ -7978,21 +7762,12 @@ body.battle-raid:not(.touch-mode) #battle {
     0 0 14px #ffcd6244;
 }
 @media (max-width: 420px) {
-  .raid-rewards .raid-reward {
-    grid-template-columns: 16px minmax(0, 1fr);
-  }
   .raid-reward > small {
     grid-column: 2;
   }
 }
 
 /* Locked/equipped cosmetics are idle; reserve the wait cursor for a save. */
-.raid-equip .raid-cosmetic-option:disabled {
-  cursor: default;
-}
-.raid-equip .raid-cosmetic-option[aria-busy="true"] {
-  cursor: wait;
-}
 
 /* The picture belongs to the viewport, outside the body pinned by menu locks.
    The large viewport height stays stable when mobile browser bars expand. */
@@ -8220,247 +7995,17 @@ body.lobby-active::before {
   color: #9cf0c9;
   font-weight: 700;
 }
-.raid-results .raid-result-art {
-  display: grid;
-  place-items: center;
-  margin: 8px auto 0;
-  height: 76px;
-}
-.raid-result-art > svg {
-  display: block;
-  width: 90px;
-  height: 76px;
-}
-.raid-results .raid-result-stats {
-  margin: 12px 0 18px;
-  gap: 8px;
-}
 /* Post-raid scoreboard: one card per raider, you first and lit gold, each
    column's leader in gold, damage with its share of the team's total. */
-.raid-results .raid-contributions {
-  text-align: left;
-  border: 1px solid #829fc03d;
-  border-radius: 14px;
-  padding: 14px 14px 12px;
-  background: linear-gradient(180deg, #14294a, #0e1c35);
-  box-shadow: inset 0 1px 0 #ffffff0f;
-}
-.raid-score-top {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 0 0 8px;
-}
-.raid-contributions h3 {
-  margin: 0;
-  font-family: var(--display);
-  font-size: 16px;
-  font-weight: 800;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  color: #e9f0fc;
-}
-.raid-score-meta {
-  font-size: 10px;
-  color: #9eb4cd;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-.raid-score {
-  width: 100%;
-  table-layout: fixed;
-  border-collapse: separate;
-  border-spacing: 0 5px;
-  margin: -5px 0 0;
-  font-variant-numeric: tabular-nums;
-}
-.raid-score thead th {
-  padding: 6px 10px 0;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  text-align: right;
-  color: #8ea6c4;
-  white-space: nowrap;
-}
-.raid-score thead th:first-child {
-  text-align: left;
-  padding-left: 14px;
-}
-.raid-score thead th:nth-child(2) {
-  width: 96px;
-}
-.raid-score thead th:nth-child(n + 3) {
-  width: 64px;
-}
-.raid-score thead th[title] {
-  cursor: help;
-}
-.raid-score tbody :is(th, td) {
-  padding: 8px 10px;
-  vertical-align: middle;
-  background: #ffffff08;
-  border-block: 1px solid #8fb0d61a;
-}
-.raid-score tbody th {
-  text-align: left;
-  font-weight: 400;
-  border-left: 1px solid #8fb0d61a;
-  border-radius: 10px 0 0 10px;
-}
-.raid-score tbody td:last-child {
-  border-right: 1px solid #8fb0d61a;
-  border-radius: 0 10px 10px 0;
-}
 /* You: a warm card with a gold edge, like a "this is you" row. */
-.raid-score tbody .is-me :is(th, td) {
-  background: #ffd65b12;
-  border-color: #ffd65b47;
-}
-.raid-score tbody .is-me th {
-  box-shadow: inset 3px 0 0 var(--accent);
-}
-.raid-score tbody .is-out :is(.raid-score-portrait, .raid-score-name) {
-  opacity: 0.6;
-}
-.raid-score td {
-  text-align: right;
-  font-family: var(--display);
-  font-size: 19px;
-  font-weight: 700;
-  line-height: 1.1;
-  letter-spacing: 0.3px;
-  color: #ecf3fc;
-}
-.raid-score td.is-zero {
-  color: #6f86a3;
-}
-.raid-score td.is-best {
-  color: #ffe08f;
-  text-shadow: 0 0 12px #ffcf4a55;
-}
-.raid-score-share {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-  margin-top: 5px;
-  font-family: var(--body);
-}
-.raid-score-share small {
-  min-width: 28px;
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0;
-  color: #9eb4cd;
-  text-shadow: none;
-}
-.raid-score-bar {
-  display: block;
-  flex: 1 1 auto;
-  max-width: 52px;
-  height: 4px;
-  border-radius: 4px;
-  overflow: hidden;
-  background: #ffffff17;
-}
-.raid-score-bar > i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, #ff9b6b, #ffd65b);
-}
-.raid-score-player {
-  display: grid;
-  grid-template-columns: 54px minmax(0, 1fr);
-  gap: 10px;
-  align-items: center;
-  min-width: 0;
-}
 /* Room for boss-frame rings (inset -20%) and their star row below. */
-.raid-score-portrait {
-  display: grid;
-  place-items: center;
-  width: 54px;
-  height: 48px;
-}
 .raid-score-avatar,
 .raid-score-avatar > svg {
   display: block;
   width: 38px;
   height: 38px;
 }
-.raid-score-id {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-}
-.raid-score-name {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-.raid-score-name b {
-  min-width: 0;
-  font-size: 13px;
-  color: #f1f6fd;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.raid-score-you {
-  flex: none;
-  padding: 1px 6px;
-  border-radius: 4px;
-  font-size: 8.5px;
-  font-weight: 800;
-  letter-spacing: 0.8px;
-  line-height: 1.5;
-  text-transform: uppercase;
-  color: #1b1636;
-  background: var(--accent);
-}
 /* Champion, then award chips beside it; chips wrap below when narrow. */
-.raid-score-sub {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
-  min-width: 0;
-}
-.raid-score-champ {
-  min-width: 0;
-  font-size: 10.5px;
-  line-height: 1.3;
-  color: #9eb4cd;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.raid-roles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-.raid-contributions .raid-score-note {
-  font-size: 10px;
-  line-height: 1.5;
-  color: #8ea6c4;
-  margin: 8px 2px 0;
-}
-.raid-results .raid-next-reward {
-  display: grid;
-  gap: 8px;
-  text-align: left;
-  padding: 14px;
-  border: 1px solid #dbb57355;
-  border-radius: 12px;
-  background: #d7a83e0a;
-  margin: 12px 0;
-}
 .raid-next-reward > span {
   font-size: 9px;
   letter-spacing: 1px;
@@ -8496,116 +8041,12 @@ body.lobby-active::before {
   margin: 0;
 }
 /* One quiet bar under the scoreboard: saved state left, retry count right. */
-.raid-results .raid-result-status {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 4px 16px;
-  padding: 9px 14px;
-  border: 1px solid #829fc02e;
-  border-radius: 10px;
-  background: #0c1830b3;
-}
-.raid-results .raid-result-status > p {
-  margin: 0;
-  font-size: 11px;
-  line-height: 1.5;
-}
-.raid-results .raid-save-state.is-saved {
-  color: #9ff0c6;
-}
-.raid-results .raid-save-state.is-error {
-  color: #ffb59c;
-}
-.raid-results .raid-retry-status {
-  margin-left: auto;
-  color: #a9bfd9;
-}
 /* Defeat tips and the disconnected-teammate note. */
-.raid-results .raid-retry-tip {
-  margin: 0;
-  padding: 9px 14px;
-  border: 1px solid #ffd65b33;
-  border-radius: 10px;
-  font-size: 11px;
-  line-height: 1.6;
-  color: #f3e6c4;
-  background: #ffd65b0f;
-}
-.raid-results .raid-result-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin: 10px 0 0;
-}
-.raid-results .raid-result-actions > button {
-  width: 100%;
-  margin: 0;
-  min-height: 44px;
-  padding: 10px 12px;
-  font-size: 12px;
-  line-height: 1.4;
-}
-.raid-result-actions > button:focus-visible {
-  outline: 2px solid #ffe099;
-  outline-offset: 2px;
-}
-.raid-result-actions > button:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
 @media (max-width: 600px) {
-  .raid-score thead th {
-    padding: 4px 6px 0;
-    font-size: 8.5px;
-    letter-spacing: 0.6px;
-  }
-  .raid-score thead th:first-child {
-    padding-left: 10px;
-  }
-  .raid-score thead th:nth-child(2) {
-    width: 76px;
-  }
-  .raid-score thead th:nth-child(n + 3) {
-    width: 52px;
-  }
-  .raid-score tbody :is(th, td) {
-    padding: 8px 6px;
-  }
-  .raid-score tbody th {
-    padding-left: 8px;
-  }
-  .raid-score td {
-    font-size: 16px;
-  }
-  .raid-score-share small {
-    display: none;
-  }
-  .raid-score-player {
-    grid-template-columns: 42px minmax(0, 1fr);
-    gap: 6px;
-  }
-  .raid-score-portrait {
-    width: 42px;
-    height: 40px;
-  }
   .raid-score-avatar,
   .raid-score-avatar > svg {
     width: 30px;
     height: 30px;
-  }
-  .raid-score-name b {
-    font-size: 12px;
-  }
-  .raid-score-champ {
-    font-size: 9.5px;
-  }
-  .raid-results .raid-contributions {
-    padding: 10px;
-  }
-  .raid-results .raid-result-actions > button {
-    font-size: 11px;
   }
 }
 @media (orientation: landscape) and (max-height: 600px) {
@@ -8613,92 +8054,9 @@ body.lobby-active::before {
     font-size: 11px;
     margin: 8px 0;
   }
-  .raid-results .raid-result-art {
-    height: 52px;
-  }
-  .raid-result-art > svg {
-    width: 62px;
-    height: 52px;
-  }
-  .raid-results .raid-result-stats {
-    margin: 8px 0;
-  }
 }
 /* Put the outcome beside its next action on wide screens; stack on phones. */
-.raid-results .raid-result-summary {
-  display: grid;
-  grid-template-columns: 76px minmax(0, 1fr);
-  align-items: center;
-  gap: 16px;
-  margin: 8px 0 16px;
-}
-.raid-result-summary .raid-result-art {
-  margin: 0;
-  height: 64px;
-}
-.raid-result-summary .raid-result-art > svg {
-  width: 76px;
-  height: 64px;
-}
-.raid-result-summary .raid-result-stats {
-  margin: 0;
-  gap: 0;
-  padding: 10px 0;
-  border: 1px solid #829fc03d;
-  border-radius: 14px;
-  background: #0c1830b3;
-  box-shadow: inset 0 1px 0 #ffffff0d;
-}
 /* One stat strip: big numbers over small caps labels, split by hairlines. */
-.raid-result-summary .raid-result-stats > span {
-  gap: 4px;
-  grid-template-rows: auto auto;
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: #8ea6c4;
-}
-.raid-result-summary .raid-result-stats > span + span {
-  border-left: 1px solid #8fb0d621;
-}
-.raid-results .raid-result-body {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 10px;
-  text-align: left;
-}
-@media (min-width: 1000px) {
-  #arena-overlay .raid-results {
-    width: min(940px, 100%);
-  }
-  .raid-score thead th:nth-child(2) {
-    width: 136px;
-  }
-  .raid-score thead th:nth-child(n + 3) {
-    width: 92px;
-  }
-  .raid-score-bar {
-    max-width: 72px;
-  }
-  .raid-results h2 {
-    font-size: 36px;
-  }
-}
-@media (max-width: 600px) {
-  .raid-results .raid-result-summary {
-    grid-template-columns: 48px minmax(0, 1fr);
-    gap: 8px;
-  }
-  .raid-result-summary .raid-result-art,
-  .raid-result-summary .raid-result-art > svg {
-    width: 48px;
-    height: 48px;
-  }
-  .raid-result-summary .raid-result-stats b {
-    font-size: 22px;
-  }
-}
 
 /* Mobile raid HUD: narrow, shallow, and clear of the touch control corners. */
 .battle-active.touch-mode #raid-hud {
@@ -9009,83 +8367,7 @@ body.lobby-active::before {
   box-shadow: inset 0 -10px 12px -6px #a99782;
 }
 /* Appearance slots and reward goals in the bestiary. */
-.raid-slot {
-  display: grid;
-  gap: 8px;
-}
-.raid-slot h4 {
-  margin: 8px 0 0;
-  font-size: 10px;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: #d7b16f;
-}
-.raid-goal {
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) 70px;
-  gap: 8px;
-  align-items: center;
-  margin: 5px 0;
-  padding: 9px 8px;
-  border-radius: 8px;
-}
-.raid-goal > span:nth-child(2) {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-}
-.raid-goal b {
-  font-size: 12px;
-}
-.raid-goal small {
-  font-size: 10px;
-  color: #91a6c1;
-}
-.raid-goal progress {
-  width: 100%;
-  height: 6px;
-  accent-color: var(--accent);
-}
-.raid-goal.is-complete {
-  color: #a5edc1;
-  background: #59d49712;
-  border: 1px solid #6ae2a33b;
-}
-.raid-goal.is-complete :is(b, small, .raid-reward-check) {
-  color: #a5edc1;
-}
 /* Team awards on the results table: compact chips, one colour per stat. */
-.raid-role {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px 2px 6px;
-  border: 1px solid #ffd65b66;
-  border-radius: 999px;
-  font-size: 9.5px;
-  font-style: normal;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  line-height: 1.35;
-  white-space: nowrap;
-  color: #ffe08f;
-  background: #ffd65b1a;
-}
-.raid-role > svg {
-  flex: none;
-  width: 10px;
-  height: 10px;
-}
-.raid-role[data-stat="damage"] {
-  color: #ffb59c;
-  border-color: #ff8f6b66;
-  background: #ff8f6b1a;
-}
-.raid-role[data-stat="revives"] {
-  color: #9ff0c6;
-  border-color: #59d49766;
-  background: #59d4971a;
-}
 /* Champion tricks in the briefing. */
 .raid-perks {
   margin: 10px 0;
@@ -9243,18 +8525,6 @@ body.lobby-active::before {
 }
 
 /* Bestiary & rewards buttons carry the book icon. */
-.raid-icon-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-.raid-icon-button .menu-option-icon {
-  width: 20px;
-  height: 20px;
-  flex: 0 0 20px;
-  color: var(--accent);
-}
 
 /* Settings: one column of actions under the controls button. */
 .settings-actions {
@@ -9467,19 +8737,6 @@ label.title-option {
 
 /* ---------------------------------------------------------------------------
    Raid Hub: a page of bosses, today's featured raid and each boss's page. */
-dialog:is(:has(.raid-hub)) {
-  --raid-dialog-height: calc(
-    100dvh - var(--safe-top) - var(--safe-bottom) - 24px
-  );
-  width: min(960px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
-  max-height: var(--raid-dialog-height);
-  padding: 0;
-  overflow: hidden;
-}
-dialog[open]:is(:has(.raid-hub)) {
-  display: grid;
-  grid-template-rows: 52px minmax(0, 1fr);
-}
 .dialog-toolbar {
   display: flex;
   align-items: center;
@@ -9515,57 +8772,16 @@ dialog[open]:is(:has(.raid-hub)) {
   scrollbar-gutter: stable;
   padding: 16px 28px 28px;
 }
-.raid-hub > *,
-.raid-hub-panel > *,
 .raid-boss-head > div {
   min-width: 0;
 }
-.raid-hub-panel {
-  overflow-wrap: anywhere;
-}
 .raid-boss-head h2 {
   overflow-wrap: anywhere;
-}
-.raid-hub {
-  display: grid;
-  gap: 18px;
-}
-.raid-hub h2 {
-  margin: 4px 0 0;
 }
 .raid-crest {
   width: 100%;
   height: 100%;
   display: block;
-}
-.raid-hub-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding-right: 0;
-}
-.raid-hub-totals {
-  display: flex;
-  gap: 10px;
-}
-.raid-hub-totals span {
-  display: grid;
-  justify-items: center;
-  padding: 8px 14px;
-  border-radius: 10px;
-  background: #142540;
-  border: 1px solid #ffd65b2e;
-  font-size: 10px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: #a9bbd5;
-}
-.raid-hub-totals b {
-  font-size: 18px;
-  color: var(--accent);
-  letter-spacing: 0;
 }
 
 /* This week: seven day tiles. */
@@ -9575,126 +8791,12 @@ dialog[open]:is(:has(.raid-hub)) {
   gap: 8px;
   cursor: pointer;
 }
-.raid-hub-panel .raid-board {
-  margin: 0;
-  padding: 7px 10px;
-}
 .raid-board summary span {
   color: #93a8c6;
   font-variant-numeric: tabular-nums;
 }
 
 /* Boss cards. */
-.raid-boss-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 10px;
-}
-button.raid-boss-card {
-  display: grid;
-  grid-template-columns: 76px minmax(0, 1fr);
-  gap: 12px;
-  align-items: center;
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid #8baee52e;
-  background: #15243f;
-  color: inherit;
-  text-align: left;
-}
-button.raid-boss-card:hover:not(:disabled) {
-  border-color: var(--boss);
-}
-.raid-boss-card.is-featured {
-  border-color: color-mix(in srgb, var(--boss) 70%, transparent);
-}
-.raid-card-art {
-  width: 76px;
-  height: 76px;
-  border-radius: 12px;
-  background: radial-gradient(
-    circle at 50% 40%,
-    color-mix(in srgb, var(--boss) 30%, transparent),
-    #0f1a30 72%
-  );
-}
-.raid-boss-card.is-soon .raid-card-art {
-  filter: saturate(0.55) brightness(0.85);
-}
-.raid-card-body {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-}
-.raid-card-top {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  align-items: baseline;
-}
-.raid-card-top b {
-  font-size: 15px;
-}
-.raid-card-body > small {
-  font-size: 10px;
-  color: #93a8c6;
-  letter-spacing: 0.5px;
-}
-.raid-card-signature {
-  font-size: 12px;
-  color: #dbe6f8;
-}
-.raid-stars {
-  color: var(--accent);
-  font-size: 11px;
-  letter-spacing: 1px;
-  white-space: nowrap;
-}
-.raid-stars > span {
-  color: #ffffff26;
-}
-.raid-card-ribbon,
-.raid-card-peril {
-  justify-self: start;
-  margin-top: 3px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-  background: #ffffff12;
-  color: #a9bbd5;
-}
-.raid-card-ribbon.is-new {
-  background: var(--accent);
-  color: #18233c;
-}
-.raid-card-ribbon.is-locked {
-  background: #ff4d6022;
-  color: #ffb3bb;
-}
-.raid-card-peril {
-  background: #7dffb01f;
-  color: #9bffc4;
-}
-.raid-card-progress {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 4px;
-  min-width: 0;
-}
-.raid-card-progress progress {
-  flex: 1 1 auto;
-  width: 100%;
-  min-width: 0;
-  height: 6px;
-}
-.raid-card-progress small {
-  font-size: 10px;
-  color: #93a8c6;
-  white-space: nowrap;
-}
 .raid-hub-join label {
   margin: 0 0 8px;
 }
@@ -9721,99 +8823,6 @@ button.raid-boss-card:hover:not(:disabled) {
   color: #c1cfe4;
   font-size: 13px;
 }
-.raid-hub-tabs {
-  display: flex;
-  gap: 4px;
-  border-bottom: 1px solid #8baee52e;
-  overflow-x: auto;
-}
-.raid-hub-tabs button {
-  padding: 10px 14px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: none;
-  color: #a9bbd5;
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.raid-hub-tabs button.is-active {
-  color: #fff;
-  border-bottom-color: var(--boss);
-}
-.raid-hub-panel {
-  display: grid;
-  gap: 10px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: #dbe6f8;
-}
-.raid-hub-panel h4 {
-  margin: 8px 0 0;
-  font-size: 11px;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: #d7b16f;
-}
-.raid-hub-panel p {
-  margin: 0;
-}
-.raid-hub-chapters,
-.raid-hub-perks {
-  display: grid;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.raid-hub-chapters {
-  counter-reset: chapter;
-}
-.raid-hub-chapters li,
-.raid-hub-perks li {
-  display: grid;
-  gap: 2px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  background: #13213b;
-}
-.raid-hub-chapters li::before {
-  counter-increment: chapter;
-  content: "Chapter " counter(chapter);
-  font-size: 10px;
-  color: #93a8c6;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
-.raid-hub-panel li small {
-  color: #a9bbd5;
-  font-size: 12px;
-}
-.raid-hub-rules {
-  font-size: 12px;
-  color: #93a8c6 !important;
-}
-.raid-hub-soon {
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: #ffd65b14;
-}
-.raid-hub-actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.raid-hub-actions button {
-  margin: 0;
-  flex: 1 1 200px;
-}
-.raid-hub-locked {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #ffb3bb;
-  font-size: 12px;
-}
 .raid-cosmetic-preview[data-cosmetic="rockslide-flex"] {
   align-items: start;
   box-shadow:
@@ -9825,12 +8834,6 @@ button.raid-boss-card:hover:not(:disabled) {
 }
 
 @media (max-width: 720px) {
-  .raid-dialog-content {
-    padding: 12px 14px 20px;
-  }
-  .raid-boss-grid {
-    grid-template-columns: 1fr;
-  }
   .raid-boss-art {
     flex-basis: 72px;
     width: 72px;
@@ -9840,12 +8843,6 @@ button.raid-boss-card:hover:not(:disabled) {
 
 /* Short landscape screens need room for the selected tab's actual content. */
 @media (orientation: landscape) and (max-height: 500px) {
-  .raid-dialog-content {
-    padding: 10px 16px 16px;
-  }
-  .raid-hub {
-    gap: 10px;
-  }
   .raid-boss-head {
     gap: 12px;
   }
@@ -9867,23 +8864,6 @@ button.raid-boss-card:hover:not(:disabled) {
     font-size: 11px;
     margin: 2px 0 0;
   }
-  .raid-hub-head h2 {
-    font-size: 24px;
-  }
-}
-@media (max-width: 720px), (orientation: landscape) and (max-height: 500px) {
-  .raid-hub-tabs {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0;
-  }
-  .raid-hub-tabs button {
-    min-width: 0;
-    min-height: 44px;
-    margin: 0;
-    padding: 8px 4px;
-    font-size: 11px;
-  }
 }
 @media (max-width: 380px) {
   .raid-boss-head {
@@ -9899,12 +8879,6 @@ button.raid-boss-card:hover:not(:disabled) {
   }
   .raid-boss-head p {
     font-size: 11px;
-  }
-  .raid-goal {
-    grid-template-columns: 18px minmax(0, 1fr);
-  }
-  .raid-goal progress {
-    grid-column: 2;
   }
 }
 
@@ -10266,11 +9240,6 @@ button.raid-boss-card:hover:not(:disabled) {
 }
 
 /* Rarity badges and card borders. */
-@keyframes mythic-shift {
-  to {
-    background-position: 300% 0;
-  }
-}
 
 /* Use landscape width for related controls rather than stacking long columns. */
 .controls-preferences,
@@ -10310,17 +9279,6 @@ button.raid-boss-card:hover:not(:disabled) {
   }
   .settings-actions {
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  }
-}
-
-@media (orientation: landscape) and (min-width: 760px) {
-  .raid-rewards {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 4px 12px;
-  }
-  .raid-slot {
-    min-width: 0;
   }
 }
 
@@ -10465,10 +9423,6 @@ button.raid-boss-card:hover:not(:disabled) {
   .controls-layout .binding-note {
     min-height: 0;
   }
-  dialog[open]:is(:has(.raid-hub)) {
-    grid-template-rows: 44px minmax(0, 1fr);
-    padding: 0;
-  }
   .dialog-toolbar {
     padding: 0 4px;
   }
@@ -10481,12 +9435,6 @@ button.raid-boss-card:hover:not(:disabled) {
   }
   .guide-caption {
     padding: 10px;
-  }
-  .raid-hub {
-    gap: 10px;
-  }
-  .raid-hub-head h2 {
-    font-size: 24px;
   }
 }
 @media (orientation: landscape) and (max-width: 759px) and (max-height: 600px) {
@@ -10663,12 +9611,6 @@ button.raid-boss-card:hover:not(:disabled) {
       calc(100vw - var(--safe-left) - var(--safe-right) - 24px)
     );
   }
-  dialog:is(:has(.raid-hub)) {
-    width: min(
-      1440px,
-      calc(100vw - var(--safe-left) - var(--safe-right) - 24px)
-    );
-  }
   .header-menu {
     position: static;
   }
@@ -10777,23 +9719,6 @@ button.raid-boss-card:hover:not(:disabled) {
   #report-form > p {
     grid-column: 1 / -1;
   }
-  .raid-boss-grid {
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  }
-  .raid-hub-chapters {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .raid-hub-perks {
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  }
-  .raid-rewards {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 4px 12px;
-  }
-  .raid-slot {
-    min-width: 0;
-  }
 }
 @media (min-width: 1100px) {
   .profile-layout {
@@ -10827,9 +9752,6 @@ button.raid-boss-card:hover:not(:disabled) {
     grid-template-columns: 240px minmax(0, 1fr);
   }
   .help-layout .guide-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .raid-rewards {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
@@ -11123,11 +10045,6 @@ dialog label {
   font-size: 10px;
   font-weight: 700;
 }
-.raid-hub-panel h4 {
-  font-family: var(--display);
-  font-size: 17px;
-  letter-spacing: 0.3px;
-}
 
 /* Buttons. The main action is a gold pill; the rest are glass pills. */
 .primary,
@@ -11391,19 +10308,16 @@ dialog::backdrop {
 }
 
 /* Tab shelves (Raid Hub boss pages, admin): like the Shop's tabs. */
-.raid-hub-tabs,
 .admin-tabs {
   gap: 2px;
   border-bottom: 1px solid #8baee526;
 }
-.raid-hub-tabs,
 .admin-tabs {
   min-width: 0;
   max-width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
 }
-.raid-hub-tabs button,
 .admin-tab {
   position: relative;
   flex: none;
@@ -11415,19 +10329,16 @@ dialog::backdrop {
   font: 700 18px/1 var(--display);
   letter-spacing: 0.3px;
 }
-.raid-hub-tabs button:hover:not(.is-active),
 .admin-tab:hover:not(.active) {
   color: #e2ebf8;
   background: #ffffff08;
   filter: none;
 }
-.raid-hub-tabs button.is-active,
 .admin-tab.active {
   color: #ffe39a;
   background: linear-gradient(#ffd65b00, #ffd65b14);
   border-bottom-color: transparent;
 }
-.raid-hub-tabs button.is-active::after,
 .admin-tab.active::after {
   content: "";
   position: absolute;
@@ -11453,42 +10364,6 @@ dialog::backdrop {
 }
 
 /* Raid Hub tiles and cards: lit panels; today's tile is lit in the boss's colour. */
-button.raid-boss-card {
-  border: 0;
-  border-radius: 16px;
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--boss) 9%, #16274a),
-    #0e1a31 75%
-  );
-  box-shadow:
-    inset 0 0 0 1px #8baee526,
-    inset 0 3px 0 -1px color-mix(in srgb, var(--boss) 70%, transparent);
-}
-button.raid-boss-card:hover:not(:disabled) {
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--boss) 70%, transparent),
-    inset 0 3px 0 -1px var(--boss);
-  filter: none;
-}
-.raid-boss-card.is-featured {
-  box-shadow:
-    inset 0 0 0 1.5px color-mix(in srgb, var(--boss) 80%, transparent),
-    inset 0 3px 0 -1px var(--boss);
-}
-.raid-card-top > b {
-  font-family: var(--display);
-  font-size: 19px;
-  letter-spacing: 0.2px;
-  line-height: 1.05;
-}
-.raid-hub-totals > * {
-  border-radius: 12px;
-}
-.raid-hub-totals b {
-  font-family: var(--display);
-  font-size: 22px;
-}
 .guide-card {
   border: 0;
   border-radius: 16px;
@@ -11510,30 +10385,6 @@ button.raid-boss-card:hover:not(:disabled) {
 :is(.skills-panel, .skill-list) h2 {
   font-family: var(--display);
 }
-.raid-hub-chapters li::before {
-  text-transform: none;
-  letter-spacing: 0.2px;
-  font-size: 12px;
-  font-weight: 600;
-}
-.raid-hub-chapters li b {
-  font-family: var(--display);
-  font-size: 18px;
-  letter-spacing: 0.2px;
-}
-.raid-card-top {
-  gap: 6px;
-  min-width: 0;
-}
-.raid-card-top > b {
-  min-width: 0;
-}
-.raid-card-top > :not(b) {
-  flex: none;
-}
-.raid-card-progress {
-  min-width: 0;
-}
 
 /* Stats: big numbers in the display face, labels in sentence case. */
 .progress-totals {
@@ -11547,7 +10398,7 @@ button.raid-boss-card:hover:not(:disabled) {
   letter-spacing: 0.3px;
   margin-bottom: 2px;
 }
-:is(.fighter-stats, .raid-result-stats) b {
+:is(.fighter-stats) b {
   font-family: var(--display);
   font-weight: 800;
   letter-spacing: 0.3px;
@@ -11570,8 +10421,7 @@ button.raid-boss-card:hover:not(:disabled) {
 }
 
 /* Card-shaped choices that reuse .secondary keep card corners, not pills. */
-.raid-rite-options > button.secondary,
-button.secondary.raid-cosmetic-option {
+.raid-rite-options > button.secondary {
   border-radius: 16px;
   min-height: 0;
   padding: 12px;
@@ -11581,20 +10431,13 @@ button.secondary.raid-cosmetic-option {
   border: 0;
   box-shadow: inset 0 0 0 1px #8baee533;
 }
-.raid-rite-options > button.secondary:hover:not(:disabled),
-button.secondary.raid-cosmetic-option:hover:not(:disabled) {
+.raid-rite-options > button.secondary:hover:not(:disabled) {
   box-shadow: inset 0 0 0 1.5px #ffd65b99;
 }
 .raid-rite-options > button.secondary b {
   font-family: var(--display);
   font-size: 19px;
   letter-spacing: 0.2px;
-}
-button.secondary.raid-cosmetic-option.active,
-button.secondary.raid-cosmetic-option[aria-pressed="true"] {
-  box-shadow:
-    inset 0 0 0 2px var(--accent),
-    0 0 16px -4px #ffd65b88;
 }
 .leave-button.is-costly {
   border-radius: 16px;
@@ -11625,14 +10468,6 @@ button.secondary.raid-cosmetic-option[aria-pressed="true"] {
 }
 
 /* Two-column cards must accommodate a discounted price on narrow phones. */
-@media (max-width: 480px) {
-  .raid-hub-tabs button {
-    min-height: 44px;
-    padding: 8px 3px;
-    font-size: 12px;
-    letter-spacing: 0;
-  }
-}
 
 /* ==== Landscape only (touch devices) ====
    Held upright, a phone or tablet sees only this cover, on every screen.
@@ -11731,7 +10566,7 @@ button.secondary.raid-cosmetic-option[aria-pressed="true"] {
   }
 }
 /* prettier-ignore */
-dialog:is(:has(.raid-hub), :has(.profile-screen), :has(.friends-screen), :has(#leaderboard-body), :has(.admin-tabs)) {
+dialog:is(:has(.profile-screen), :has(.friends-screen), :has(#leaderboard-body), :has(.admin-tabs)) {
   --hub-height: min(
     900px,
     calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px)
@@ -11745,13 +10580,6 @@ dialog:is(:has(.raid-hub), :has(.profile-screen), :has(.friends-screen), :has(#l
   scrollbar-gutter: stable;
 }
 /* Shop and Raid Hub: toolbar on top, the rest scrolls. */
-dialog[open]:is(:has(.raid-hub)) {
-  overflow: hidden;
-}
-dialog:is(:has(.raid-hub)) .dialog-content {
-  height: 100%;
-  max-height: none;
-}
 
 /* Somnara: a compact private dream and four calls, clear of movement controls. */
 #raid-dream-panel {
@@ -11923,9 +10751,6 @@ dialog:is(:has(.raid-hub)) .dialog-content {
 }
 
 /* Keep raid navigation and the start action clear of clipped scroll edges. */
-.raid-dialog-toolbar {
-  box-shadow: inset 0 -1px 0 #8baee51a;
-}
 #arena-overlay .raid-briefing {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
@@ -11935,29 +10760,6 @@ dialog:is(:has(.raid-hub)) .dialog-content {
   overflow: hidden;
   scrollbar-gutter: auto;
   padding: 20px 24px;
-}
-.raid-briefing-body {
-  min-width: 0;
-  min-height: 0;
-  overflow: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable;
-  padding: 0 8px;
-}
-.raid-briefing-body:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-  border-radius: 8px;
-}
-.raid-briefing-body > p {
-  margin: 10px 0;
-  line-height: 1.5;
-}
-.raid-briefing-actions {
-  display: flex;
-  justify-content: center;
-  padding-top: 12px;
-  border-top: 1px solid #8baee526;
 }
 #arena-overlay .raid-briefing #raid-instructions {
   min-height: 44px;
@@ -11979,12 +10781,6 @@ dialog:is(:has(.raid-hub)) .dialog-content {
   }
   .raid-briefing .raid-instructions {
     margin: 6px 0;
-  }
-  .raid-briefing-body > p {
-    margin: 6px 0;
-  }
-  .raid-briefing-actions {
-    padding-top: 8px;
   }
   #arena-overlay .raid-briefing #raid-instructions {
     padding: 10px 20px;
@@ -12061,13 +10857,7 @@ dialog.framed-dialog > .dialog-content {
   background: #101e36;
 }
 .dialog-footer
-  > :is(
-    .dialog-actions,
-    .fullscreen-actions,
-    .settings-actions,
-    .auth-links,
-    .raid-hub-actions
-  ) {
+  > :is(.dialog-actions, .fullscreen-actions, .settings-actions, .auth-links) {
   display: contents;
 }
 .framed-dialog .dialog-footer button {
@@ -12193,18 +10983,6 @@ dialog.framed-dialog > .dialog-toolbar > .dialog-tabs {
   margin: 0;
   padding: 10px 16px;
 }
-#arena-overlay .panel-actions .raid-result-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-#arena-overlay .panel-actions .raid-result-actions button {
-  width: 100%;
-}
-@media (min-width: 1000px) {
-  #arena-overlay .panel-actions .raid-result-actions {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
 @media (orientation: landscape) and (max-height: 600px) {
   #arena-overlay .action-overlay {
     padding: 10px 18px;
@@ -12220,9 +10998,6 @@ dialog.framed-dialog > .dialog-toolbar > .dialog-tabs {
   #arena-overlay .panel-actions button {
     padding: 8px 12px;
     font-size: 13px;
-  }
-  #arena-overlay .panel-actions .raid-result-actions {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 /* Rites remain selectable while phase objectives and collected rites scroll. */
@@ -14042,11 +12817,6 @@ body.lobby-active .roster-panel > .section-title {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 8px;
 }
-.lobby-actions .raid-icon-button {
-  padding: 8px;
-  font-size: 13px;
-  border-radius: var(--radius-sm);
-}
 
 body.lobby-active .roster-panel > .section-title {
   display: none;
@@ -14057,9 +12827,6 @@ body.lobby-active .roster-panel > .section-title {
   }
   .lobby-actions #ready .ready-label {
     flex-wrap: nowrap;
-  }
-  .lobby-actions .raid-icon-button {
-    font-size: 12px;
   }
   .lobby-actions #leave {
     font-size: 12px;
@@ -17195,16 +15962,6 @@ dialog .auth-panel {
 /* Anything you have equipped reads in one green, everywhere (Wardrobe,
    Shop, raid looks, journey rewards, titles), so it stands out from
    "Owned" and slot labels at a glance (--equipped, ui/tokens.css). */
-.is-equipped-text,
-button.is-equipped-text,
-button.is-equipped-text:disabled {
-  color: var(--equipped) !important;
-  font-weight: 700;
-}
-button.is-equipped-text:disabled {
-  opacity: 1;
-  border-color: color-mix(in srgb, var(--equipped) 45%, transparent);
-}
 
 /* A room's lobby: the same glass top bar, kept in the page flow at the
    height the lobby layout reserves for it (--lobby-top), with no site footer. */
@@ -17516,116 +16273,6 @@ body.battle-active.court-view #game canvas {
 #arena-overlay .raid-briefing {
   background: #14213bf5;
 }
-.raid-briefing-body {
-  touch-action: pan-y;
-}
-.raid-guide-goal {
-  padding: 12px 14px;
-  border: 1px solid #ffdc7740;
-  border-radius: 12px;
-  background: #ffdc770a;
-}
-.raid-guide-goal > span {
-  display: block;
-  color: #ffdc77;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-.raid-guide-goal > p {
-  margin: 5px 0 0;
-  color: #f0f4ff;
-  font-size: 17px;
-  font-weight: 600;
-  line-height: 1.4;
-}
-.raid-guide-steps {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  list-style: none;
-  margin: 14px 0;
-  padding: 0;
-}
-.raid-guide-steps > li {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  padding: 14px;
-  border: 1px solid #8baee52b;
-  border-radius: 12px;
-  background: #14223b;
-}
-.raid-guide-step-heading {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  min-height: 46px;
-}
-.raid-guide-step-number {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  flex: 0 0 28px;
-  color: #ffdc77;
-  background: #ffdc7712;
-  border: 1px solid #ffdc7750;
-  border-radius: 9px;
-  font-weight: 800;
-  font-size: 17px;
-}
-.raid-guide-step-heading h3 {
-  color: #f0f4ff;
-  margin: 0;
-  font-size: 18px;
-  line-height: 1.2;
-  letter-spacing: 0;
-  text-transform: none;
-}
-.raid-briefing .raid-guide-steps .raid-guide-scene {
-  display: block;
-  flex: 0 0 auto;
-  height: 110px;
-  margin: 8px 0;
-  border: 1px solid #8baee51c;
-  border-radius: 9px;
-  background: #0b172a;
-}
-.raid-guide-action {
-  margin: 6px 0;
-  color: #d6e0f2;
-  font-size: 14px;
-  line-height: 1.5;
-}
-.raid-guide-cue {
-  margin: auto 0 0;
-  padding-top: 10px;
-  color: #8ee0cb;
-  font-size: 12px;
-  line-height: 1.4;
-}
-.raid-guide-safety {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  padding: 10px 13px;
-  border: 1px solid #ffa97930;
-  border-radius: 10px;
-  background: #ffa97909;
-}
-.raid-guide-safety > b {
-  flex-shrink: 0;
-  color: #ffcf9d;
-  font-size: 13px;
-}
-.raid-guide-safety > p {
-  margin: 0;
-  color: #c7d2e7;
-  font-size: 13px;
-  line-height: 1.45;
-}
 .raid-briefing-extra {
   margin-top: 12px;
   padding: 10px 0;
@@ -17641,63 +16288,6 @@ body.battle-active.court-view #game canvas {
 }
 .raid-briefing-extra > p {
   line-height: 1.5;
-}
-.raid-briefing-body > .raid-briefing-meta {
-  color: #a6b7d1;
-  font-size: 12px;
-  line-height: 1.4;
-  margin-bottom: 0;
-}
-@media (orientation: landscape) and (max-height: 600px) {
-  .raid-guide-goal {
-    padding: 8px 11px;
-  }
-  .raid-guide-goal > p {
-    font-size: 14px;
-    margin-top: 3px;
-  }
-  .raid-guide-steps {
-    gap: 9px;
-    margin-block: 10px;
-  }
-  .raid-guide-steps > li {
-    padding: 10px;
-  }
-  .raid-guide-step-heading {
-    min-height: 36px;
-    gap: 8px;
-  }
-  .raid-guide-step-heading h3 {
-    font-size: 16px;
-  }
-  .raid-briefing .raid-guide-steps .raid-guide-scene {
-    height: 84px;
-    margin-block: 6px;
-  }
-  .raid-guide-action {
-    font-size: 13px;
-    line-height: 1.4;
-  }
-  .raid-guide-cue {
-    font-size: 11px;
-    padding-top: 6px;
-  }
-}
-@media (orientation: landscape) and (max-height: 340px) {
-  .raid-briefing .raid-guide-steps .raid-guide-scene {
-    height: 64px;
-  }
-}
-@media (max-width: 580px) and (orientation: portrait) {
-  .raid-guide-steps {
-    grid-template-columns: 1fr;
-  }
-  .raid-guide-safety {
-    display: block;
-  }
-  .raid-guide-safety > p {
-    margin-top: 5px;
-  }
 }
 
 /* Centre the complete rite choice, including naturally wrapped descriptions. */
@@ -19027,44 +17617,6 @@ body.battle-active:not(.touch-mode).battle-raid :is(#raid-prism-controls, #raid-
   left: auto;
   transform: none;
 }
-
-.raid-hub-perks {
-  gap: 8px;
-}
-.raid-hub-perks > li {
-  display: grid;
-  grid-template-columns: 54px minmax(0, 1fr);
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  min-height: 76px;
-  padding: 9px 11px;
-  border: 1px solid #8ea7c82b;
-  border-radius: 11px;
-  background: #13213b;
-}
-.raid-hub-perk-art {
-  display: grid;
-  width: 54px;
-  height: 54px;
-  overflow: hidden;
-  place-items: center;
-  border: 1px solid #8ea7c844;
-  border-radius: 12px;
-  background: radial-gradient(ellipse at 50% 70%, #39516c, #101b30 76%);
-}
-.raid-hub-perk-art > svg {
-  width: 100%;
-  height: 100%;
-}
-.raid-hub-perk-copy {
-  display: grid;
-  min-width: 0;
-  gap: 3px;
-}
-.raid-hub-perk-copy > b {
-  line-height: 1.3;
-}
 body.battle-active.battle-raid #raid-drill:not([hidden]) {
   max-height: 50dvh;
   overflow: auto;
@@ -19272,134 +17824,6 @@ body.battle-active.touch-mode.battle-raid #raid-drill p {
 }
 
 /* Raid boss roster showcase: a still boss portrait over a themed scene. */
-.raid-boss-page {
-  gap: 14px;
-}
-.raid-boss-showcase {
-  display: grid;
-  grid-template-columns: minmax(230px, 0.82fr) minmax(0, 1.18fr);
-  gap: 18px;
-  min-width: 0;
-  padding: 16px;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--boss) 32%, #8baee526);
-  border-radius: 18px;
-  background:
-    radial-gradient(ellipse at 18% 48%, color-mix(in srgb, var(--boss) 18%, transparent), transparent 60%),
-    linear-gradient(135deg, #172744, #101a30 72%);
-}
-.raid-showcase-stage {
-  position: relative;
-  display: grid;
-  min-width: 0;
-  min-height: 280px;
-  place-items: center;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--boss) 28%, #8baee51e);
-  border-radius: 14px;
-  isolation: isolate;
-  background:
-    radial-gradient(ellipse at 50% 68%, color-mix(in srgb, var(--boss) 24%, #263853), transparent 62%),
-    linear-gradient(180deg, #263751, #111c32 78%);
-}
-.raid-showcase-stage::before {
-  position: absolute;
-  z-index: -1;
-  inset: 0;
-  content: "";
-  opacity: .82;
-  pointer-events: none;
-}
-.raid-showcase-stage[data-boss="grumblecrag"] {
-  background:
-    radial-gradient(ellipse at 50% 90%, #ff9a3b78, transparent 36%),
-    radial-gradient(ellipse at 50% 70%, #a3633a48, transparent 58%),
-    linear-gradient(180deg, #344157 0%, #1c2639 62%, #171b29 100%);
-}
-.raid-showcase-stage[data-boss="grumblecrag"]::before {
-  background:
-    linear-gradient(145deg, transparent 34%, #59616b55 34.5% 37%, transparent 37.5%) left bottom / 48% 60% no-repeat,
-    linear-gradient(215deg, transparent 34%, #59616b44 34.5% 37%, transparent 37.5%) right bottom / 46% 66% no-repeat,
-    radial-gradient(ellipse at 10% 5%, #c3d5ff22, transparent 45%);
-}
-.raid-showcase-stage[data-boss="tidewyrm"] {
-  background:
-    radial-gradient(ellipse at 50% 58%, #42eee455, transparent 38%),
-    radial-gradient(ellipse at 82% 18%, #4acbd833, transparent 32%),
-    linear-gradient(180deg, #17445b, #0b283f 70%, #101c32);
-}
-.raid-showcase-stage[data-boss="tidewyrm"]::before {
-  background:
-    repeating-linear-gradient(108deg, transparent 0 34px, #8df8ef14 36px, transparent 39px 72px),
-    radial-gradient(circle at 14% 28%, #b6fff044 0 2px, transparent 4px),
-    radial-gradient(circle at 83% 43%, #b6fff044 0 3px, transparent 5px),
-    radial-gradient(circle at 25% 72%, #b6fff033 0 2px, transparent 4px);
-}
-.raid-showcase-stage[data-boss="gloomshade"] {
-  background:
-    radial-gradient(ellipse at 50% 60%, #a176ff68, transparent 40%),
-    radial-gradient(ellipse at 8% 14%, #674bb055, transparent 40%),
-    linear-gradient(180deg, #282444, #17192f 76%, #111a2d);
-}
-.raid-showcase-stage[data-boss="gloomshade"]::before {
-  background:
-    radial-gradient(circle at 17% 19%, #fff0bdcc 0 1px, transparent 2px),
-    radial-gradient(circle at 79% 14%, #fff0bd99 0 1px, transparent 2px),
-    radial-gradient(circle at 88% 65%, #d9c8ffbb 0 1px, transparent 2px),
-    radial-gradient(ellipse at 50% 110%, #7964c855, transparent 55%);
-}
-.raid-showcase-stage[data-boss="somnara"] {
-  background:
-    radial-gradient(circle at 77% 22%, #fff0c566 0 5%, #d2b9ff22 5.5% 12%, transparent 12.5%),
-    radial-gradient(ellipse at 50% 64%, #b297ff52, transparent 44%),
-    linear-gradient(180deg, #302955, #20203d 66%, #111a31);
-}
-.raid-showcase-stage[data-boss="somnara"]::before {
-  background:
-    radial-gradient(circle at 18% 22%, #fff3ce 0 1px, transparent 2px),
-    radial-gradient(circle at 38% 12%, #e9dcff 0 1px, transparent 2px),
-    radial-gradient(circle at 89% 42%, #fff3ce 0 1px, transparent 2px),
-    linear-gradient(180deg, transparent 64%, #ac9bd21c);
-}
-.raid-showcase-stage[data-boss="prismatail"] {
-  background:
-    radial-gradient(ellipse at 50% 60%, #fff4bf88, transparent 36%),
-    conic-gradient(from 220deg at 50% 58%, #ff8f7b32, #ffe87a45, #87ecd932, #8fa8ff32, #d791ff32, #ff8f7b32),
-    linear-gradient(180deg, #354265, #1c2740 74%, #131c31);
-}
-.raid-showcase-stage[data-boss="prismatail"]::before {
-  background:
-    linear-gradient(118deg, transparent 28%, #fff7d622 28.3% 29%, transparent 29.3%),
-    linear-gradient(242deg, transparent 24%, #e8edff20 24.3% 25%, transparent 25.3%),
-    radial-gradient(circle at 20% 24%, #fff5cecc 0 1px, transparent 2px),
-    radial-gradient(circle at 84% 34%, #fff5cecc 0 1px, transparent 2px);
-}
-.raid-showcase-stage[data-boss="emberwing"] {
-  background:
-    radial-gradient(ellipse at 50% 88%, #ffb3429c, transparent 38%),
-    radial-gradient(ellipse at 50% 20%, #ff8d4b45, transparent 45%),
-    linear-gradient(180deg, #563b55, #382b42 58%, #211c30);
-}
-.raid-showcase-stage[data-boss="emberwing"]::before {
-  background:
-    repeating-linear-gradient(105deg, transparent 0 42px, #ffb34b1a 44px, transparent 47px 88px),
-    radial-gradient(circle at 15% 60%, #ffd17e 0 1px, transparent 3px),
-    radial-gradient(circle at 80% 48%, #ffab61 0 2px, transparent 4px),
-    radial-gradient(circle at 34% 33%, #ffe4a4 0 1px, transparent 3px);
-}
-.raid-showcase-stage[data-boss="storm-twins"] {
-  background:
-    radial-gradient(ellipse at 50% 60%, #80d8ff50, transparent 38%),
-    radial-gradient(ellipse at 18% 25%, #8699ff32, transparent 36%),
-    radial-gradient(ellipse at 86% 30%, #ffd36b2d, transparent 34%),
-    linear-gradient(180deg, #263454, #18243c 68%, #111a2e);
-}
-.raid-showcase-stage[data-boss="storm-twins"]::before {
-  background:
-    linear-gradient(128deg, transparent 40%, #c7ecff44 40.3% 40.8%, transparent 41.1%) 16% 0 / 42% 72% no-repeat,
-    linear-gradient(232deg, transparent 47%, #ffd87855 47.3% 47.8%, transparent 48.1%) 65% 5% / 35% 64% no-repeat,
-    repeating-linear-gradient(105deg, transparent 0 38px, #a9c9ff0b 39px, transparent 41px 72px);
-}
 .raid-showcase-aura {
   position: absolute;
   inset: 14% 12% 8%;
@@ -19427,257 +17851,8 @@ body.battle-active.touch-mode.battle-raid #raid-drill p {
   background: color-mix(in srgb, var(--boss) 36%, transparent);
   filter: blur(12px);
 }
-.raid-showcase-content {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 10px;
-}
-.raid-showcase-identity > .eyebrow {
-  color: color-mix(in srgb, var(--boss) 78%, white);
-}
-.raid-showcase-name {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 2px;
-}
-.raid-showcase-name h2 {
-  margin: 0;
-  font: 700 clamp(24px, 3vw, 36px)/1.1 var(--display);
-  letter-spacing: 0;
-}
-.raid-showcase-name .raid-stars {
-  font-size: 14px;
-}
-.raid-showcase-identity > p {
-  margin: 7px 0 0;
-  color: #c4d1e5;
-  font-size: 13px;
-  line-height: 1.45;
-}
-.raid-showcase-skills-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 2px;
-}
-.raid-showcase-skills-head h3 {
-  margin: 0;
-  color: #f1d78c;
-  font: 700 16px/1.2 var(--display);
-}
-.raid-showcase-skills-head > span {
-  color: #94a8c5;
-  font-size: 10px;
-}
-.raid-showcase-skills {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-}
-button.raid-showcase-skill {
-  display: grid;
-  grid-template-columns: 30px minmax(0, 1fr);
-  gap: 8px;
-  align-items: center;
-  min-width: 0;
-  min-height: 56px;
-  margin: 0;
-  padding: 7px 8px;
-  border: 1px solid #8baee52b;
-  border-radius: 10px;
-  background: #0d192dcc;
-  color: #e5edfc;
-  text-align: left;
-}
-button.raid-showcase-skill:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--boss) 65%, transparent);
-  filter: none;
-}
-button.raid-showcase-skill:disabled {
-  cursor: not-allowed;
-  opacity: .6;
-}
-.raid-showcase-skill-icon {
-  display: grid;
-  width: 30px;
-  height: 30px;
-  place-items: center;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--boss) 18%, #12203a);
-  color: color-mix(in srgb, var(--boss) 70%, white);
-}
-.raid-showcase-skill-icon .menu-option-icon {
-  width: 17px;
-  height: 17px;
-}
-.raid-showcase-skill > span:last-child {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-}
-.raid-showcase-skill b {
-  overflow: hidden;
-  color: #edf3ff;
-  font-size: 11px;
-  line-height: 1.2;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.raid-showcase-skill small {
-  display: -webkit-box;
-  overflow: hidden;
-  color: #9fb1cc;
-  font-size: 10px;
-  line-height: 1.25;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-.raid-boss-roster {
-  display: flex;
-  gap: 8px;
-  min-width: 0;
-  padding: 2px 1px 6px;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scrollbar-width: thin;
-  scrollbar-color: #506582 transparent;
-}
-button.raid-roster-card {
-  display: grid;
-  flex: 1 0 104px;
-  min-width: 0;
-  min-height: 102px;
-  justify-items: center;
-  align-content: center;
-  gap: 4px;
-  margin: 0;
-  padding: 7px 6px;
-  border: 1px solid #8297b82b;
-  border-radius: 12px;
-  background: linear-gradient(160deg, color-mix(in srgb, var(--boss) 9%, #162541), #111c31);
-  color: #dce7f8;
-  scroll-snap-align: start;
-}
-button.raid-roster-card:hover {
-  border-color: color-mix(in srgb, var(--boss) 60%, transparent);
-  filter: none;
-}
-button.raid-roster-card.is-selected {
-  border-color: color-mix(in srgb, var(--boss) 85%, white 15%);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--boss) 45%, transparent), 0 0 14px color-mix(in srgb, var(--boss) 15%, transparent);
-}
-.raid-roster-art {
-  display: block;
-  width: 48px;
-  height: 48px;
-  padding: 3px;
-  border-radius: 10px;
-  background: radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--boss) 32%, transparent), #0d192d 78%);
-}
-.raid-roster-name {
-  max-width: 100%;
-  overflow: hidden;
-  font: 700 12px/1.1 var(--display);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.raid-roster-meta {
-  color: #9eb0ca;
-  font-size: 9px;
-  line-height: 1.1;
-}
-.raid-roster-card.is-locked .raid-roster-meta {
-  color: #ffb3bb;
-}
-@media (max-width: 720px) {
-  .raid-boss-showcase {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 12px;
-    padding: 12px;
-  }
-  .raid-showcase-stage { min-height: 220px; }
-  button.raid-roster-card { flex-basis: 94px; }
-}
-@media (orientation: landscape) and (max-height: 500px) {
-  .raid-boss-page { gap: 8px; }
-  .raid-boss-showcase { grid-template-columns: minmax(190px, .65fr) minmax(0, 1.35fr); gap: 10px; padding: 10px; }
-  .raid-showcase-stage { min-height: 190px; }
-  button.raid-roster-card { min-height: 82px; }
-  .raid-roster-art { width: 38px; height: 38px; }
-}
 
 /* Raise small Raid Hub labels so descriptions stay readable at normal zoom. */
-.raid-hub .raid-card-body > small,
-.raid-hub .raid-card-progress small,
-.raid-hub .raid-card-ribbon,
-.raid-hub .raid-card-peril,
-.raid-boss-page .raid-roster-meta,
-.raid-boss-page .raid-showcase-skills-head > span {
-  font-size: 12px;
-}
-.raid-hub .raid-card-signature,
-.raid-boss-page .raid-showcase-identity > p,
-.raid-boss-page .raid-hub-panel {
-  font-size: 14px;
-}
-.raid-hub .raid-card-top > b {
-  font-size: 20px;
-}
-.raid-hub .raid-card-peril {
-  font-size: 14px;
-}
-.raid-boss-page .raid-showcase-name h2 {
-  font-size: clamp(26px, 3.2vw, 38px);
-}
-.raid-boss-page .raid-showcase-identity > .eyebrow {
-  font-size: 12px;
-}
-.raid-boss-page .raid-showcase-skills-head h3 {
-  font-size: 18px;
-}
-.raid-boss-page button.raid-showcase-skill {
-  grid-template-columns: 32px minmax(0, 1fr);
-  min-height: 64px;
-}
-.raid-boss-page .raid-showcase-skill-icon {
-  width: 32px;
-  height: 32px;
-}
-.raid-boss-page .raid-showcase-skill b {
-  font-size: 13px;
-}
-.raid-boss-page .raid-showcase-skill small {
-  font-size: 12px;
-  line-height: 1.3;
-}
-.raid-boss-page .raid-roster-name {
-  font-size: 15px;
-}
-.raid-boss-page .raid-roster-meta {
-  font-size: 14px;
-}
-.raid-boss-page .raid-hub-panel li small,
-.raid-boss-page .raid-hub-rules,
-.raid-boss-page .raid-hub-locked {
-  font-size: 13px;
-}
-.raid-boss-page .raid-goal b {
-  font-size: 13px;
-}
-.raid-boss-page .raid-goal small {
-  font-size: 12px;
-}
-.raid-boss-page .raid-hub-tabs button {
-  font-size: 16px;
-}
-@media (max-width: 720px), (orientation: landscape) and (max-height: 500px) {
-  .raid-boss-page .raid-hub-tabs button {
-    font-size: 14px;
-  }
-}
 
 /* Keep the name, status and Peril in distinct cells on the same baseline. */
 body.battle-active.battle-raid #raid-hud .raid-callout,
@@ -19734,71 +17909,10 @@ body.battle-active:not(.touch-mode).battle-raid #battle #raid-hud .raid-party-ba
 }
 
 /* Static illustrated boss introductions: the approved artwork stays text-free. */
-.raid-showcase-stage.raid-showcase-splash {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  padding: 0;
-  min-height: 0;
-  aspect-ratio: 3 / 2;
-  align-self: start;
-  background: #131a23;
-  box-shadow: inset 0 0 0 1px #eec17550;
-}
-.raid-showcase-stage.raid-showcase-splash::before { display: none; }
-.raid-showcase-splash > .raid-splash-image {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: 50% 45%;
-}
-.raid-roster-art:has(.raid-splash-image),
-.raid-card-art:has(.raid-splash-image) {
-  position: relative;
-  padding: 0;
-  overflow: hidden;
-}
-.raid-roster-art > .raid-splash-image,
-.raid-card-art > .raid-splash-image {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: 50% 35%;
-  border-radius: inherit;
-}
-@media (orientation: landscape) and (max-height: 500px) {
-  .raid-boss-showcase:has(.raid-showcase-splash) {
-    grid-template-columns: minmax(210px, .85fr) minmax(0, 1.15fr);
-  }
-  .raid-showcase-stage.raid-showcase-splash {
-    min-height: 0;
-    height: clamp(170px, 58dvh, 240px);
-    aspect-ratio: auto;
-    align-self: start;
-  }
-  .raid-showcase-splash > .raid-splash-image { object-position: center; }
-}
-@media (orientation: portrait) and (max-width: 720px) {
-  .raid-showcase-stage.raid-showcase-splash {
-    min-height: 0;
-    aspect-ratio: 3 / 2;
-    align-self: start;
-  }
-}
-
-@media (orientation: landscape) and (max-height: 350px) {
-  .raid-showcase-splash > .raid-splash-image { object-fit: contain; }
-}
 button[data-raid-boss="tidewyrm"] .raid-splash-image { object-position: 75% 45%; }
 button[data-raid-boss="gloomshade"] .raid-splash-image { object-position: 60% 50%; }
 button[data-raid-boss="somnara"] .raid-splash-image { object-position: 35% 45%; }
 button[data-raid-boss="prismatail"] .raid-splash-image { object-position: 60% 40%; }
-@media (orientation: landscape) and (max-height: 350px) {
-  .raid-showcase-stage.raid-showcase-splash { height: clamp(110px, 44dvh, 150px); }
-}
 
 /* Keep practice controls readable, with the exit outside the scrolling list. */
 body.battle-active.battle-raid #raid-drill .raid-drill-body {
@@ -19913,165 +18027,6 @@ body.battle-active:not(.touch-mode).battle-raid .arena-frame {
 }
 
 /* Raid Hub: independent boss navigation, scrollable details, persistent actions. */
-#dialog[open].framed-dialog.has-raid-roster.has-inline-tabs {
-  width: min(1180px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
-  height: min(600px, var(--raid-dialog-height));
-  grid-template-columns: 156px minmax(0, 1fr);
-  grid-template-rows: 48px minmax(0, 1fr) auto;
-  grid-template-areas: "toolbar toolbar" "bosses content" "bosses actions";
-}
-.has-raid-roster > .dialog-toolbar { grid-area: toolbar; }
-.has-raid-roster > .dialog-content { grid-area: content; padding: 18px; }
-.has-raid-roster > .dialog-footer { grid-area: actions; justify-content: flex-end; padding: 12px 18px; }
-.has-raid-roster > .dialog-footer button { flex: 0 1 220px; border-radius: 12px; }
-.has-raid-roster > .dialog-footer .raid-hub-locked { margin: 0; }
-.has-raid-roster > .raid-boss-roster {
-  grid-area: bosses;
-  display: grid;
-  align-content: start;
-  gap: 6px;
-  min-height: 0;
-  padding: 10px;
-  overflow-x: hidden;
-  overflow-y: auto;
-  border-right: 1px solid #8baee526;
-  background: #0d172a;
-  scroll-snap-type: none;
-  overscroll-behavior: contain;
-  scroll-padding: 10px;
-}
-.has-raid-roster .raid-roster-card {
-  scroll-snap-align: none;
-  grid-template-columns: 40px minmax(0, 1fr);
-  grid-template-rows: auto auto;
-  justify-items: start;
-  align-content: center;
-  align-items: center;
-  gap: 2px 8px;
-  min-height: 64px;
-  padding: 6px;
-  border-radius: 10px;
-}
-.has-raid-roster .raid-roster-art { grid-row: span 2; width: 40px; height: 40px; }
-.has-raid-roster .raid-roster-name { font-size: 14px; }
-.has-raid-roster .raid-roster-meta { font-size: 11px; }
-.has-raid-roster .raid-roster-card:focus-visible { outline: 2px solid var(--boss); outline-offset: -2px; }
-.has-raid-roster .raid-hub-tabs { display: flex; align-items: center; gap: 6px; }
-.has-raid-roster .raid-hub-tabs > button { flex: 0 1 128px; padding-inline: 16px; }
-.raid-hub-nav-title { align-self: center; margin: 0 auto 0 10px; color: #a9bdd9; font-size: 13px; font-weight: 700; letter-spacing: .06em; }
-.has-raid-roster .raid-boss-page { gap: 16px; }
-.has-raid-roster .raid-boss-showcase {
-  grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr);
-  align-items: center;
-  gap: 22px;
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: none;
-}
-.has-raid-roster .raid-showcase-stage.raid-showcase-splash {
-  height: auto;
-  min-height: 0;
-  aspect-ratio: 3 / 2;
-  align-self: center;
-  border-radius: 14px;
-}
-.has-raid-roster .raid-showcase-splash > .raid-splash-image { object-fit: contain; }
-.has-raid-roster .raid-showcase-content { gap: 12px; }
-.has-raid-roster .raid-showcase-name h2 { font-size: clamp(28px, 3vw, 38px); }
-.has-raid-roster .raid-showcase-skills-head { margin: 0; }
-.has-raid-roster .raid-showcase-skills-head > span { font-size: 11px; white-space: nowrap; }
-.has-raid-roster .raid-showcase-skills { gap: 8px; grid-auto-rows: 1fr; }
-.has-raid-roster button.raid-showcase-skill { min-height: 76px; padding: 8px; }
-.has-raid-roster .raid-showcase-skill b { white-space: normal; overflow: visible; overflow-wrap: anywhere; line-height: 1.25; }
-.has-raid-roster .raid-showcase-skill small { font-size: 12px; line-height: 1.35; }
-.raid-field-guide { border: 1px solid #8baee52b; border-radius: 12px; background: #101c30; }
-.raid-field-guide > summary { display: flex; align-items: center; gap: 10px; min-height: 50px; padding: 10px 14px; cursor: pointer; color: #f2d790; }
-.raid-field-guide > summary::-webkit-details-marker { display: none; }
-.raid-field-guide > summary::after { content: "+"; margin-left: auto; font-size: 20px; }
-.raid-field-guide[open] > summary::after { content: "−"; }
-.raid-field-guide > summary > svg { width: 22px; height: 22px; flex: none; }
-.raid-field-guide > summary > span { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; font-size: 14px; font-weight: 700; }
-.raid-field-guide > summary small { color: #9fb1cc; font-size: 12px; font-weight: 400; }
-.raid-field-guide-body { display: grid; gap: 10px; padding: 0 14px 14px; }
-.raid-field-guide-body > p { margin: 0; }
-.raid-reward-identity { display: flex; align-items: center; gap: 14px; padding-bottom: 14px; border-bottom: 1px solid #8baee52b; }
-.raid-reward-identity h2 { margin: 2px 0 0; font-size: 30px; }
-.raid-reward-portrait { width: 72px; height: 60px; overflow: hidden; border: 1px solid #8baee544; border-radius: 12px; }
-.raid-reward-portrait img { width: 100%; height: 100%; object-fit: cover; }
-@media (orientation: landscape) and (max-height: 600px) {
-  #dialog[open].framed-dialog.has-raid-roster.has-inline-tabs {
-    height: var(--raid-dialog-height);
-    grid-template-columns: 100px minmax(0, 1fr);
-    grid-template-rows: 44px minmax(0, 1fr) auto;
-  }
-  .has-raid-roster > .dialog-content { padding: 10px 12px; }
-  .has-raid-roster > .dialog-footer { padding: 6px 12px; gap: 8px; }
-  .has-raid-roster > .dialog-footer button { flex: 1 1 0; max-width: 210px; font-size: 13px; }
-  .has-raid-roster > .raid-boss-roster { padding: 6px; gap: 5px; scroll-padding: 6px; }
-  .has-raid-roster .raid-roster-card { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto; justify-items: center; gap: 3px; min-height: 64px; padding: 5px 3px; }
-  .has-raid-roster .raid-roster-art { grid-row: auto; width: 36px; height: 36px; }
-  .has-raid-roster .raid-roster-name { font-size: 13px; }
-  .has-raid-roster .raid-roster-meta { display: none; }
-  .has-raid-roster .raid-boss-page { gap: 10px; }
-  .has-raid-roster .raid-boss-showcase { grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: 14px; }
-  .has-raid-roster .raid-showcase-content { gap: 7px; }
-  .has-raid-roster .raid-showcase-identity > .eyebrow { font-size: 10px; }
-  .has-raid-roster .raid-showcase-name h2 { font-size: 26px; }
-  .has-raid-roster .raid-showcase-skills-head h3 { font-size: 16px; }
-  .has-raid-roster .raid-showcase-skills-head > span { font-size: 10px; }
-  .has-raid-roster .raid-showcase-skills { gap: 4px; }
-  .has-raid-roster button.raid-showcase-skill { min-height: 48px; grid-template-columns: 24px minmax(0, 1fr); padding: 5px 6px; gap: 6px; }
-  .has-raid-roster .raid-showcase-skill-icon { width: 24px; height: 28px; }
-  .has-raid-roster .raid-showcase-skill b { font-size: 12px; }
-  .has-raid-roster .raid-showcase-skill small { font-size: 11px; -webkit-line-clamp: 1; }
-  .raid-field-guide > summary { min-height: 44px; padding: 8px 12px; }
-}
-@media (orientation: landscape) and (max-height: 350px) {
-  #dialog[open].framed-dialog.has-raid-roster.has-inline-tabs { grid-template-columns: 88px minmax(0, 1fr); }
-  .has-raid-roster > .dialog-content { padding: 6px 10px; }
-  .has-raid-roster > .dialog-footer { padding: 4px 10px; }
-  .has-raid-roster .raid-roster-card { min-height: 54px; }
-  .has-raid-roster .raid-roster-art { width: 28px; height: 28px; }
-  .has-raid-roster .raid-roster-name { font-size: 12px; }
-  .has-raid-roster .raid-boss-showcase { grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr); gap: 12px; }
-  .has-raid-roster .raid-showcase-identity > .eyebrow { display: none; }
-  .has-raid-roster .raid-showcase-content { gap: 4px; }
-  .has-raid-roster .raid-showcase-name { margin-top: 0; }
-  .has-raid-roster .raid-showcase-skills-head h3 { font-size: 14px; }
-  .has-raid-roster .raid-showcase-name h2 { font-size: 24px; }
-  .has-raid-roster .raid-showcase-stage.raid-showcase-splash { max-height: calc(var(--raid-dialog-height) - 108px); }
-  .has-raid-roster .raid-showcase-skills { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .has-raid-roster button.raid-showcase-skill { min-height: 44px; grid-template-columns: 20px minmax(0, 1fr); gap: 4px; padding: 4px; }
-  .has-raid-roster .raid-showcase-skill-icon { width: 20px; height: 24px; }
-  .has-raid-roster .raid-showcase-skill small { display: none; }
-  .has-raid-roster .raid-showcase-skill b { font: 700 14px/1.15 var(--display); }
-}
-@media (orientation: portrait) and (max-width: 720px) {
-  #dialog[open].framed-dialog.has-raid-roster.has-inline-tabs {
-    height: var(--raid-dialog-height);
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: 48px auto minmax(0, 1fr) auto;
-    grid-template-areas: "toolbar" "bosses" "content" "actions";
-  }
-  .has-raid-roster > .raid-boss-roster { display: flex; gap: 6px; padding: 8px; overflow-x: auto; overflow-y: hidden; border-right: 0; border-bottom: 1px solid #8baee526; scroll-snap-type: none; }
-  .has-raid-roster .raid-roster-card { flex: 0 0 92px; grid-template-columns: minmax(0, 1fr); justify-items: center; min-height: 72px; gap: 3px; padding: 5px; }
-  .has-raid-roster .raid-roster-art { grid-row: auto; width: 36px; height: 36px; }
-  .has-raid-roster .raid-roster-name { font-size: 13px; }
-  .has-raid-roster .raid-roster-meta { display: none; }
-  .has-raid-roster > .dialog-content { padding: 12px; }
-  .has-raid-roster .raid-boss-showcase { grid-template-columns: minmax(0, 1fr); gap: 14px; }
-  .has-raid-roster .raid-showcase-stage.raid-showcase-splash { max-height: 220px; }
-  .has-raid-roster .raid-showcase-content { gap: 10px; }
-  .has-raid-roster button.raid-showcase-skill { min-height: 68px; }
-  .has-raid-roster > .dialog-footer { padding: 8px 12px; }
-  .has-raid-roster > .dialog-footer button { flex: 1 1 140px; font-size: 13px; }
-  .raid-hub-nav-title { margin-left: 2px; font-size: 12px; }
-  .has-raid-roster .raid-hub-tabs > button { padding-inline: 10px; }
-}
-
-.raid-roster-lock { position: absolute; right: 0; bottom: 0; display: grid; place-items: center; width: 17px; height: 17px; border: 1px solid #f2c4cb66; border-radius: 5px; background: #111b2ff0; color: #f1b6c1; }
-.raid-roster-lock svg { width: 12px; height: 12px; }
 
 /* Mobile thumb arc: larger circles retain their original icon scale. */
 .touch-buttons button:is(.touch-skill, .touch-attack, .touch-ultimate, [data-action]) .skill-icon {

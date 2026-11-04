@@ -45,12 +45,10 @@ for (const size of [
           w.__snap.phase = "briefing";
           w.__push();
         }, boss);
-        await expect(page.locator(".raid-guide-steps > li")).toHaveCount(3);
-        await expect(page.locator(".raid-guide-goal")).toBeVisible();
+        await expect(page.locator(".rc-steps > li")).toHaveCount(3);
+        await expect(page.locator(".rc-goal")).toBeVisible();
         await expect(page.locator("#raid-instructions")).toBeEnabled();
-        const diagrams = page.locator(
-          ".raid-guide-steps > li > .raid-guide-scene",
-        );
+        const diagrams = page.locator(".rc-steps > li > .raid-guide-scene");
         await expect(diagrams).toHaveCount(3);
         for (const diagram of await diagrams.all()) {
           await expect(diagram).toBeVisible();
@@ -74,16 +72,16 @@ for (const size of [
             ),
           );
         });
-        const card = await box(page, ".raid-briefing"),
+        const card = await box(page, ".rc-card.is-briefing"),
           start = await box(page, "#raid-instructions");
         expect(inside(start, card)).toBe(true);
         expect(start.y + start.height).toBeLessThanOrEqual(size.height + 1);
         for (const title of await page
-          .locator(".raid-guide-step-heading h3")
+          .locator(".rc-step-head h3")
           .allTextContents())
           expect(title.length).toBeGreaterThan(5);
         if (size.height === 900 || ["prismatail", "emberwing"].includes(boss)) {
-          await page.locator(".raid-briefing").evaluate(async (el) => {
+          await page.locator(".rc-card.is-briefing").evaluate(async (el) => {
             await Promise.all(
               el.getAnimations().map((a) => a.finished.catch(() => {})),
             );
@@ -97,7 +95,7 @@ for (const size of [
       }
       await page.locator("#raid-briefing-extra summary").click();
       await page
-        .locator(".raid-briefing-body")
+        .locator(".rc-card.is-briefing .rc-body")
         .evaluate((e) => (e.scrollTop = e.scrollHeight));
       await page.evaluate(() => {
         const w = window as any;
@@ -112,7 +110,7 @@ for (const size of [
       expect(
         inside(
           await box(page, "#raid-instructions"),
-          await box(page, ".raid-briefing"),
+          await box(page, ".rc-card.is-briefing"),
         ),
       ).toBe(true);
       expect(errors).toEqual([]);

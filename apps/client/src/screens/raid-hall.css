@@ -1,0 +1,676 @@
+/* ==========================================================================
+   Raids: the Raid Hall and a boss's page (UI remodel step 5, docs/ui-remodel/
+   PLAN.md). Markup: screens/raid-hall-view.ts. Layout only on top of the
+   shared components (ui/components.css). Class names start with rh- so
+   nothing here meets the old Raid Hub rules.
+   ========================================================================== */
+
+/* ------------------------------------------------------------- hall */
+.rh-head > .ui-chips {
+  margin-left: auto;
+  flex-wrap: nowrap;
+}
+/* Always there (empty when nothing to say), so fresh records patch the
+   cards in place instead of rebuilding them. */
+.rh-notes:empty {
+  display: none;
+}
+.rh-note.is-problem {
+  color: #ffb4bc;
+}
+.ui-grid.rh-grid {
+  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
+  grid-auto-rows: auto;
+}
+.rh-card {
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px;
+  border-radius: var(--rad-lg);
+  border: 1px solid color-mix(in srgb, var(--boss) 40%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--boss) 12%, var(--ui-bg-1)),
+    var(--ui-bg-1)
+  );
+  text-align: left;
+  transition: border-color var(--dur-1);
+}
+.rh-card:hover,
+.rh-card:focus-visible {
+  border-color: var(--ui-accent);
+}
+.rh-card-art {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  border-radius: var(--rad-md);
+  overflow: hidden;
+  background: var(--ui-bg-0);
+}
+.rh-card-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.rh-card-art .ui-tag {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+}
+.rh-card-art .ui-tag:not(.is-new):not(.is-lock) {
+  background: #0b1020d9;
+}
+.rh-card-art .ui-tag svg {
+  width: 11px;
+  height: 11px;
+}
+.rh-card.is-locked .rh-card-art img,
+.rh-card.is-soon .rh-card-art img {
+  filter: grayscale(0.6) brightness(0.55);
+}
+.rh-card-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 0 2px;
+}
+.rh-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.rh-card-row .ui-h {
+  font-size: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rh-card-text .ui-note {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rh-stars {
+  flex: none;
+  color: var(--ui-accent);
+  letter-spacing: 1px;
+  font-size: 14px;
+}
+.rh-stars i {
+  font-style: normal;
+  color: #ffffff2a;
+}
+.rh-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  align-self: end;
+  padding: 0 2px;
+}
+.rh-tricks {
+  display: flex;
+}
+.rh-tricks .ui-avatar {
+  margin-right: -6px;
+  border-width: 2px;
+}
+.rh-practice {
+  place-items: center;
+  align-content: center;
+  text-align: center;
+  border-style: dashed;
+  border-color: var(--ui-line-2);
+  background: transparent;
+}
+.rh-practice .rh-card-text {
+  justify-items: center;
+}
+.rh-practice .rh-card-text .ui-note {
+  white-space: normal;
+}
+.rh-practice-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--ui-bg-2);
+  color: var(--ui-accent);
+}
+.rh-practice-icon svg {
+  width: 30px;
+  height: 30px;
+}
+
+/* -------------------------------------------------------- boss page */
+.rh-stage {
+  background: var(--ui-bg-0);
+}
+.rh-hero,
+.rh-hero img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.rh-hero img {
+  object-fit: cover;
+  object-position: 38% 50%;
+}
+.rh-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 50%, #0b1020ee 92%);
+  pointer-events: none;
+}
+.rh-stage-info {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 18px;
+  z-index: 1;
+  display: grid;
+  gap: 4px;
+}
+.rh-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.rh-stage-name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 40px;
+  line-height: 0.95;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.rh-head > .ui-btn {
+  flex: none;
+}
+.rh-hint {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rh-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 4px;
+}
+/* Party: four seats, then online friends to invite. */
+.rh-seats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.rh-seat {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 2px;
+  min-width: 0;
+  padding: 12px 6px 10px;
+  border-radius: var(--rad-md);
+  background: var(--ui-bg-1);
+  border: 1px solid var(--ui-line);
+  text-align: center;
+}
+.rh-seat.is-me {
+  border-color: color-mix(in srgb, var(--ui-accent) 55%, transparent);
+}
+.rh-seat b {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rh-seat .ui-avatar {
+  margin-bottom: 4px;
+}
+.rh-seat.is-open {
+  border-style: dashed;
+  border-color: var(--ui-line-2);
+  background: transparent;
+}
+.rh-plus {
+  width: 52px;
+  height: 52px;
+  margin-bottom: 4px;
+  border-radius: 50%;
+  border: 2px dashed var(--ui-line-2);
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  color: var(--ui-dim);
+}
+.rh-invites {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+.rh-invites > .ui-kicker {
+  padding-top: 18px;
+}
+.rh-friends {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+}
+.rh-nofriends {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  min-height: 52px;
+}
+.rh-status {
+  color: #ffb4bc;
+}
+.rh-status:empty,
+.rh-next:empty {
+  display: none;
+}
+.rh-next {
+  display: grid;
+  gap: var(--sp-3);
+}
+.rh-picks {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.rh-picks.is-all {
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+.rh-pick {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: var(--rad-md);
+  background: var(--ui-bg-1);
+  border: 1px solid var(--ui-line);
+  min-width: 0;
+}
+.rh-pick > span {
+  display: grid;
+  min-width: 0;
+}
+.rh-pick small {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.rh-picks.is-all .rh-pick small {
+  -webkit-line-clamp: 4;
+}
+/* Rewards: a picture, the goal and its progress. */
+.rh-rewards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.rh-rewards.is-all {
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+.rh-reward {
+  position: relative;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 8px 10px;
+  border-radius: var(--rad-md);
+  background: var(--ui-bg-1);
+  border: 1px solid color-mix(in srgb, var(--boss) 40%, transparent);
+}
+.rh-reward.is-done {
+  border-color: color-mix(in srgb, var(--ui-ok) 45%, transparent);
+}
+.rh-reward-art {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--rad-sm);
+  background: color-mix(in srgb, var(--boss) 18%, var(--ui-bg-0));
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.rh-reward-art > :is(svg, img, span) {
+  width: 100%;
+  height: 100%;
+}
+.rh-title-art {
+  display: grid;
+  place-items: center;
+  color: var(--ui-accent);
+}
+.rh-title-art svg {
+  width: 26px;
+  height: 26px;
+}
+.rh-reward-text {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.rh-reward-text b,
+.rh-reward-text small {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rh-reward-text b {
+  padding-right: 18px;
+}
+.rh-reward-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.rh-reward-line .ui-rarity {
+  flex: none;
+}
+.rh-check {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  color: var(--ui-ok);
+}
+.rh-check svg {
+  width: 16px;
+  height: 16px;
+}
+/* Attacks: one row each; the picked one is what Practice drills. */
+.rh-attacks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.rh-attack {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: var(--rad-md);
+  border: 1px solid var(--ui-line);
+  background: var(--ui-bg-1);
+  text-align: left;
+}
+.rh-attack[aria-pressed="true"] {
+  border-color: var(--ui-accent);
+  background: #ffd65b14;
+}
+.rh-attack:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.rh-attack-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--boss) 22%, var(--ui-bg-0));
+  color: var(--ui-text);
+}
+.rh-attack-icon svg {
+  width: 20px;
+  height: 20px;
+}
+.rh-attack-text {
+  display: grid;
+  min-width: 0;
+}
+.rh-attack-text b {
+  font-size: 15px;
+}
+.rh-attack-text small {
+  color: var(--ui-dim);
+  font-size: var(--fs-small);
+}
+/* Guide. */
+.rh-blurb {
+  font-size: var(--fs-lead);
+}
+.rh-chapters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: chapter;
+}
+.rh-chapters li {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: var(--rad-md);
+  background: var(--ui-bg-1);
+  border: 1px solid var(--ui-line);
+  counter-increment: chapter;
+}
+.rh-chapters li::before {
+  content: counter(chapter);
+  font-family: var(--font-display);
+  font-weight: 800;
+  color: var(--ui-accent);
+}
+/* The action bar: Solo / With party and what it means. */
+.rh-room .ui-foot-info {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+.rh-room .ui-foot-info .ui-seg {
+  flex: none;
+}
+.rh-foot-note {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* ------------------------------------------------- narrower screens */
+@media (max-width: 1300px) {
+  .rh-head .ui-kicker {
+    display: none;
+  }
+  .rh-picks,
+  .rh-rewards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .rh-picks > :nth-child(n + 3),
+  .rh-rewards:not(.is-all) > :nth-child(n + 3) {
+    display: none;
+  }
+  .rh-picks.is-all > :nth-child(n + 3) {
+    display: grid;
+  }
+  .rh-attacks {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ------------------------------------------------- phones, sideways */
+@media (max-height: 500px) {
+  .rh-head > .ui-chips .ui-chip {
+    padding: 0 8px;
+  }
+  .ui-grid.rh-grid {
+    grid-template-columns: repeat(auto-fill, minmax(136px, 1fr));
+    gap: 6px;
+  }
+  .rh-card {
+    gap: 3px;
+    padding: 4px;
+    border-radius: var(--rad-sm);
+  }
+  .rh-card-art {
+    aspect-ratio: 2 / 1;
+    border-radius: 7px;
+  }
+  .rh-card-art .ui-tag {
+    left: 4px;
+    top: 4px;
+  }
+  .rh-card-row .ui-h {
+    font-size: 14px;
+  }
+  .rh-stars {
+    font-size: 10px;
+  }
+  .rh-card-text .ui-note,
+  .rh-card-foot {
+    display: none;
+  }
+  .rh-practice {
+    min-height: 120px;
+  }
+  .rh-practice-icon {
+    width: 34px;
+    height: 34px;
+  }
+  .rh-practice-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+  .rh-practice .rh-card-text .ui-note,
+  .rh-practice > .ui-btn {
+    display: none;
+  }
+  .rh-stage-info {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    gap: 2px;
+  }
+  .rh-stage-name {
+    font-size: 20px;
+  }
+  .rh-stage-line,
+  .rh-hint {
+    display: none;
+  }
+  .rh-seats {
+    gap: 6px;
+  }
+  .rh-seat {
+    padding: 4px;
+  }
+  .rh-seat .ui-avatar,
+  .rh-plus {
+    --size: 34px !important;
+    width: 34px;
+    height: 34px;
+    margin-bottom: 0;
+    font-size: 18px;
+  }
+  .rh-seat small {
+    display: none;
+  }
+  .rh-invites {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+  .rh-invites > .ui-kicker {
+    padding-top: 0;
+  }
+  .rh-friends {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+  .rh-friend.ui-row {
+    min-height: 40px;
+    padding-block: 2px;
+  }
+  .rh-picks,
+  .rh-rewards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .rh-picks > :nth-child(n + 3),
+  .rh-rewards:not(.is-all) > :nth-child(n + 3) {
+    display: grid;
+  }
+  .rh-picks.is-all,
+  .rh-rewards.is-all {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .rh-pick {
+    padding: 4px 6px;
+    gap: 6px;
+  }
+  .rh-pick .ui-avatar {
+    --size: 28px !important;
+  }
+  .rh-picks:not(.is-all) .rh-pick small {
+    display: none;
+  }
+  .rh-reward {
+    grid-template-columns: 36px minmax(0, 1fr);
+    gap: 6px;
+    padding: 4px 6px;
+  }
+  .rh-reward-art {
+    width: 36px;
+    height: 36px;
+  }
+  .rh-attack {
+    min-height: 44px;
+    padding: 6px 8px;
+    gap: 8px;
+  }
+  .rh-attack-icon {
+    width: 30px;
+    height: 30px;
+  }
+  .rh-attack-text b {
+    font-size: 13px;
+  }
+  .rh-chapters {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+  }
+  .rh-chapters li {
+    padding: 6px 8px;
+  }
+  .rh-foot-note:not(.is-reason) {
+    display: none;
+  }
+}
+
+/* Narrow phones (an iPhone SE sideways): the page's controls need the
+   stage's room; the boss's name stays in the hall card you came from. */
+@media (max-width: 700px) {
+  .ui-panel.is-split.rh-room {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rh-stage {
+    display: none;
+  }
+}

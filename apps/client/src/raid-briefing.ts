@@ -227,5 +227,5 @@ export function raidBriefingGuide(
   solo: boolean,
 ) {
   const guide = bossBriefing(boss, solo);
-  return `<section class="raid-guide-goal" aria-label="Your goal"><span>Your goal</span><p>${guide.goal}</p></section><ol class="raid-guide-steps" role="list">${guide.steps.map((s, i) => `<li><div class="raid-guide-step-heading"><span class="raid-guide-step-number" aria-hidden="true">${i + 1}</span><h3>${s.title}</h3></div>${raidGuideScene(s.scene, character, boss)}<p class="raid-guide-action">${s.action}</p><p class="raid-guide-cue">${s.cue}</p></li>`).join("")}</ol><aside class="raid-guide-safety"><b>Stay alive</b><p>${guide.avoid}</p></aside>`;
+  return `<section class="rc-goal" aria-label="Your goal"><span class="ui-kicker">Your goal</span><p>${guide.goal}</p></section><ol class="rc-steps" role="list">${guide.steps.map((s, i) => `<li><div class="rc-step-head"><span class="rc-step-n" aria-hidden="true">${i + 1}</span><h3>${s.title}</h3></div>${raidGuideScene(s.scene, character, boss)}<p class="rc-step-action">${s.action}</p><p class="rc-step-cue">${s.cue}</p></li>`).join("")}</ol><aside class="rc-safety"><b>Stay alive</b><p>${guide.avoid}</p></aside>`;
 }

@@ -36,16 +36,18 @@ async function waitForLobby(page: Page) {
   const drawer = page.locator(".lobby-room-drawer > summary");
   if (await drawer.isVisible()) await drawer.click();
 }
-async function expectHub(page: Page, tab: "overview" | "rewards") {
-  await expect(page.locator("dialog[open] .raid-boss-page")).toBeVisible();
-  await expect(
-    page.locator('.raid-roster-card[data-raid-boss="prismatail"]'),
-  ).toHaveAttribute("aria-pressed", "true");
-  await expect(page.locator(`#raid-tab-${tab}`)).toHaveAttribute(
+async function expectHub(page: Page, tab: "party" | "attacks" | "rewards") {
+  // The boss's page inside the Lobby (UI remodel step 5), on the tab you
+  // left from.
+  const room = page.locator(
+    '.rh-room[data-raid-mode="boss"][data-raid-boss="prismatail"]',
+  );
+  await expect(room).toBeVisible();
+  await expect(room.locator(`[data-ui-raid-tab="${tab}"]`)).toHaveAttribute(
     "aria-selected",
     "true",
   );
-  await expect(page.locator(".raid-roster-card.is-selected")).toBeInViewport();
+  await expect(room.locator(".rh-stage-name")).toBeInViewport();
   expect(
     await page.evaluate(() => sessionStorage.getItem("arena-token")),
   ).toBeNull();
@@ -55,7 +57,7 @@ for (const viewport of [
   { width: 1440, height: 900 },
   { width: 844, height: 390 },
 ]) {
-  test(`leaving boss rooms restores their Raid Hub page at ${viewport.width}x${viewport.height}`, async ({
+  test(`leaving boss rooms restores their boss page at ${viewport.width}x${viewport.height}`, async ({
     browser,
   }, info) => {
     test.setTimeout(180_000);
@@ -86,20 +88,20 @@ for (const viewport of [
             : fetch(input, init);
       });
       await hubMenu(page, "raids");
-      await page.click('.raid-roster-card[data-raid-boss="prismatail"]');
-      await page.click("#raid-tab-rewards");
+      await page.click('[data-raid-card="prismatail"]');
+      await page.click('[data-ui-raid-tab="rewards"]');
       await prepareRaid(page, true);
-      await page.click('[data-raid-start="room"]');
+      await page.click('[data-ui-raid-play="party"]');
+      await page.click('[data-raid-start="party"]');
       await waitForLobby(page);
       await page.click("#leave");
       await expectHub(page, "rewards");
-      await expect(page.locator(".raid-reward-identity h2")).toHaveText(
-        "Prismatail",
-      );
+      await expect(page.locator(".rh-stage-name")).toHaveText("Prismatail");
 
       // The battle Settings exit follows the same origin. A failed leave keeps
       // the current room and its return destination intact for the next try.
       await prepareRaid(page);
+      await page.click('[data-ui-raid-play="solo"]');
       await page.click('[data-raid-start="solo"]');
       await pushUntilBattle(page);
       await page.click("#battle-menu");
@@ -120,7 +122,7 @@ for (const viewport of [
         "Could not leave the room yet",
       );
       await expect(page.locator("dialog[open] .settings-screen")).toBeVisible();
-      await expect(page.locator(".raid-boss-page")).toHaveCount(0);
+      await expect(page.locator(".rh-room")).toHaveCount(0);
       await page.click("#exit-room");
       await expectHub(page, "rewards");
       await snap(
@@ -129,19 +131,19 @@ for (const viewport of [
         `raid-room-return-${viewport.width}x${viewport.height}`,
       );
 
-      // Ending Hub practice must still return to its Overview tab.
-      await page.click("#raid-tab-overview");
-      const attack = page.locator("[data-hub-practice]").first();
-      const kind = (await attack.getAttribute("data-hub-practice"))!;
+      // Ending practice from the boss page returns to its Attacks tab.
+      await page.click('[data-ui-raid-tab="attacks"]');
+      const attack = page.locator("[data-raid-practice]");
+      const kind = (await attack.getAttribute("data-raid-practice"))!;
       await prepareRaid(page, false, kind);
       await attack.click();
       await pushUntilBattle(page);
       await page.click(".raid-drill-picker > summary");
       await page.click("#raid-drill-leave");
-      await expectHub(page, "overview");
+      await expectHub(page, "attacks");
 
       // A later PvP room must not inherit the previous raid's destination.
-      await page.click("#close-dialog");
+      await page.click(".rh-room .ui-close");
       await page.evaluate(() =>
         (window as any).__room("pvp", { mode: "duel", phase: "lobby" }),
       );
@@ -152,6 +154,7 @@ for (const viewport of [
       await page.click("#leave");
       await expect(page.locator("#lobby-play")).toBeVisible();
       await expect(page.locator("dialog[open]")).toHaveCount(0);
+      await expect(page.locator(".rh-room")).toHaveCount(0);
       expect(errors).toEqual([]);
     } finally {
       await context.close();

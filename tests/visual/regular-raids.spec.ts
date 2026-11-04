@@ -39,11 +39,12 @@ for (const viewport of [
         };
       });
       await hubMenu(page, "raids");
-      await expect(page.locator(".raid-roster-card")).toHaveCount(7);
+      // The Raid Hall (UI remodel step 5): every boss, nothing retired.
+      await expect(page.locator(".rh-room [data-raid-card]")).toHaveCount(7);
       await expect(
         page.locator(".raid-week, .raid-today, #raid-daily"),
       ).toHaveCount(0);
-      await expect(page.locator(".raid-hub")).not.toContainText(
+      await expect(page.locator(".rh-room")).not.toContainText(
         "Raid of the Day",
       );
       await snap(
@@ -51,14 +52,14 @@ for (const viewport of [
         info,
         `regular-raid-hub-${viewport.width}x${viewport.height}`,
       );
-      await page.click('[data-raid-boss="grumblecrag"]');
-      await expect(page.locator('[data-raid-start="room"]')).toBeVisible();
+      await page.click('[data-raid-card="grumblecrag"]');
       await expect(page.locator('[data-raid-start="solo"]')).toBeVisible();
-      await page.click("#raid-tab-rewards");
-      await expect(page.locator(".raid-hub")).not.toContainText(
-        "Today's board",
-      );
-      await page.click("#close-dialog");
+      await expect(page.locator('[data-ui-raid-play="party"]')).toBeVisible();
+      await page.click('[data-ui-raid-play="party"]');
+      await expect(page.locator('[data-raid-start="party"]')).toBeVisible();
+      await page.click('[data-ui-raid-tab="rewards"]');
+      await expect(page.locator(".rh-room")).not.toContainText("Today's board");
+      await page.click(".rh-room .ui-close");
       await hubMenu(page, "journey");
       await expect(page.locator("[data-ui-jtab]")).toHaveCount(3);
       await expect(page.locator(".journey-room")).not.toContainText(

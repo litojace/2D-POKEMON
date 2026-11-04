@@ -1,0 +1,471 @@
+/* ==========================================================================
+   The raid briefing and results (UI remodel step 5, docs/ui-remodel/
+   PLAN.md): the hub's shared panel, tags and buttons over the arena.
+   Markup: raid-ui.ts (renderRaidUI), raid-briefing.ts (the three steps)
+   and raid-presentation.ts (the scoreboard). Their content and timing are
+   the match's own; only the frame and its pieces changed. The rites,
+   countdown and pause keep the match's card (the match HUD is out of scope).
+   ========================================================================== */
+
+#arena-overlay > .rc-card {
+  display: flex;
+  flex-direction: column;
+  width: min(1040px, 100%);
+  max-width: 100%;
+  max-height: 100%;
+  min-height: 0;
+  background: var(--ui-glass);
+  border: 1px solid var(--ui-line-2);
+  border-radius: var(--rad-xl);
+  box-shadow: var(--shadow-2);
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+  text-align: left;
+}
+#arena-overlay > .rc-card.is-results {
+  width: min(880px, 100%);
+}
+.rc-head {
+  flex: none;
+  display: grid;
+  gap: 2px;
+  padding: var(--sp-4) var(--sp-4) var(--sp-3);
+}
+.rc-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  display: grid;
+  align-content: start;
+  gap: var(--sp-3);
+  padding: 0 var(--sp-4) var(--sp-4);
+}
+/* The action bar: what happens next (left), the buttons bottom right. */
+.rc-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 72px;
+  padding: var(--sp-3) var(--sp-4);
+  border-top: 1px solid var(--ui-line);
+  background: #0b1020f2;
+}
+.rc-meta {
+  flex: 1;
+  min-width: 0;
+}
+.rc-foot > .ui-actions {
+  flex: none;
+}
+
+/* ------------------------------------------------------- briefing */
+.rc-goal {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: var(--rad-md);
+  border: 1px solid color-mix(in srgb, var(--ui-accent) 30%, transparent);
+  background: color-mix(in srgb, var(--ui-accent) 5%, var(--ui-bg-1));
+}
+.rc-goal > p {
+  font-size: var(--fs-lead);
+  font-weight: 600;
+}
+.rc-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rc-steps > li {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 12px;
+  border-radius: var(--rad-md);
+  border: 1px solid var(--ui-line);
+  background: var(--ui-bg-1);
+}
+.rc-step-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+}
+.rc-step-n {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--rad-sm);
+  border: 1px solid color-mix(in srgb, var(--ui-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--ui-accent) 10%, transparent);
+  color: var(--ui-accent);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 17px;
+}
+.rc-step-head h3 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-h4);
+  line-height: 1.1;
+}
+.rc-steps .raid-guide-scene {
+  flex: none;
+  height: 110px;
+  margin: 8px 0;
+  border-radius: var(--rad-sm);
+  border: 1px solid var(--ui-line);
+  background: var(--ui-bg-0);
+}
+.rc-step-action {
+  color: var(--ui-text);
+}
+.rc-steps .rc-step-cue {
+  margin-top: auto !important;
+  padding-top: 8px;
+  color: var(--ui-ok);
+  font-size: var(--fs-small);
+}
+.rc-safety {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--rad-md);
+  border: 1px solid #ffa97930;
+  background: #ffa97909;
+}
+.rc-safety > b {
+  flex: none;
+  color: #ffcf9d;
+}
+.rc-safety > p {
+  color: var(--ui-dim);
+}
+.rc-extra {
+  padding: 8px 0;
+  border-block: 1px solid var(--ui-line);
+  color: var(--ui-dim);
+  font-size: var(--fs-small);
+}
+.rc-extra > summary {
+  min-height: 28px;
+  align-content: center;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--ui-text);
+}
+.rc-extra > p {
+  margin: 6px 0 0;
+}
+
+/* -------------------------------------------------------- results */
+.rc-summary {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: var(--sp-3);
+  align-items: center;
+}
+.rc-art svg {
+  display: block;
+  width: 96px;
+  height: 80px;
+}
+.rc-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-2);
+}
+.rc-stat {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 10px 8px;
+  border-radius: var(--rad-md);
+  border: 1px solid var(--ui-line);
+  background: var(--ui-bg-1);
+}
+.rc-stat b {
+  font-size: 28px;
+  line-height: 1;
+  color: var(--ui-accent);
+}
+.rc-stat small {
+  color: var(--ui-dim);
+  font-size: var(--fs-micro);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+/* The scoreboard: you first with a gold edge, each column's best in gold. */
+.rc-contrib {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border-radius: var(--rad-lg);
+  border: 1px solid var(--ui-line);
+  background: var(--ui-bg-1);
+}
+.rc-contrib-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.rc-score {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0 5px;
+  margin: -5px 0 0;
+}
+.rc-score thead th {
+  padding: 4px 10px 0;
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: right;
+  color: var(--ui-faint);
+  white-space: nowrap;
+}
+.rc-score thead th:first-child {
+  text-align: left;
+}
+.rc-score thead th:nth-child(2) {
+  width: 104px;
+}
+.rc-score thead th:nth-child(n + 3) {
+  width: 72px;
+}
+.rc-score tbody :is(th, td) {
+  padding: 8px 10px;
+  vertical-align: middle;
+  background: var(--ui-bg-2);
+  border-block: 1px solid var(--ui-line);
+}
+.rc-score tbody th {
+  text-align: left;
+  font-weight: 400;
+  border-left: 1px solid var(--ui-line);
+  border-radius: var(--rad-md) 0 0 var(--rad-md);
+}
+.rc-score tbody td:last-child {
+  border-right: 1px solid var(--ui-line);
+  border-radius: 0 var(--rad-md) var(--rad-md) 0;
+}
+.rc-score tbody .is-me :is(th, td) {
+  background: color-mix(in srgb, var(--ui-accent) 8%, var(--ui-bg-2));
+  border-color: color-mix(in srgb, var(--ui-accent) 35%, transparent);
+}
+.rc-score tbody .is-me th {
+  box-shadow: inset 3px 0 0 var(--ui-accent);
+}
+.rc-score tbody .is-out :is(.rc-portrait, .rc-name) {
+  opacity: 0.6;
+}
+.rc-score td {
+  text-align: right;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 20px;
+  color: var(--ui-text);
+}
+.rc-score td.is-zero {
+  color: var(--ui-faint);
+}
+.rc-score td.is-best {
+  color: var(--ui-accent);
+}
+.rc-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+/* Room for boss-frame rings and their star row (the avatar itself is the
+   shared .raid-score-avatar portrait, which wears frames and colours). */
+.rc-portrait {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 48px;
+}
+.rc-id {
+  display: grid;
+  min-width: 0;
+}
+.rc-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.rc-name b {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rc-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.rc-champ {
+  color: var(--ui-dim);
+  font-size: var(--fs-small);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rc-roles {
+  display: flex;
+  gap: 4px;
+}
+.rc-role {
+  font-style: normal;
+}
+.rc-role svg {
+  width: 11px;
+  height: 11px;
+}
+.rc-share {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 2px;
+}
+.rc-share small {
+  font-size: var(--fs-micro);
+  color: var(--ui-dim);
+}
+.rc-share-bar {
+  width: 48px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ui-bg-0);
+  overflow: hidden;
+}
+.rc-share-bar i {
+  display: block;
+  height: 100%;
+  background: var(--ui-accent);
+}
+.rc-save {
+  padding: 8px 12px;
+  border-radius: var(--rad-md);
+  border: 1px solid var(--ui-line);
+  background: var(--ui-bg-1);
+  color: var(--ui-dim);
+  font-size: var(--fs-small);
+}
+.rc-save.is-saved {
+  color: var(--ui-ok);
+  border-color: color-mix(in srgb, var(--ui-ok) 35%, transparent);
+}
+.rc-save.is-error {
+  color: #ffb4bc;
+  border-color: #ef4f6155;
+}
+.rc-tip {
+  color: var(--ui-dim);
+  font-size: var(--fs-small);
+}
+
+/* ------------------------------------------------- phones, sideways */
+@media (max-height: 500px) {
+  .rc-head {
+    padding: var(--sp-2) var(--sp-3) 6px;
+  }
+  .rc-head .ui-kicker {
+    display: none;
+  }
+  .rc-body {
+    gap: var(--sp-2);
+    padding: 0 var(--sp-3) var(--sp-3);
+  }
+  .rc-foot {
+    min-height: 0;
+    padding: 6px var(--sp-3);
+  }
+  .rc-goal {
+    padding: 6px 10px;
+  }
+  .rc-steps {
+    gap: 6px;
+  }
+  .rc-steps > li {
+    padding: 8px;
+  }
+  .rc-step-head {
+    min-height: 0;
+    gap: 6px;
+  }
+  .rc-step-n {
+    width: 22px;
+    height: 22px;
+    font-size: 13px;
+  }
+  .rc-steps .raid-guide-scene {
+    height: 64px;
+    margin: 4px 0;
+  }
+  .rc-steps .rc-step-cue {
+    padding-top: 4px;
+  }
+  .rc-summary {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: var(--sp-2);
+  }
+  .rc-art svg {
+    width: 64px;
+    height: 54px;
+  }
+  .rc-stat {
+    padding: 4px;
+  }
+  .rc-stat b {
+    font-size: 20px;
+  }
+  .rc-contrib {
+    padding: 8px;
+  }
+  .rc-score thead th:nth-child(2) {
+    width: 84px;
+  }
+  .rc-score thead th:nth-child(n + 3) {
+    width: 58px;
+  }
+  .rc-score tbody :is(th, td) {
+    padding: 4px 8px;
+  }
+  .rc-score td {
+    font-size: 16px;
+  }
+  .rc-portrait {
+    width: 42px;
+    height: 40px;
+  }
+  .rc-roles {
+    display: none;
+  }
+  /* Three 104 px buttons: the labels need the room their icons took. */
+  .rc-foot .ui-btn > svg {
+    display: none;
+  }
+}
+@media (max-width: 700px) {
+  .rc-meta {
+    display: none;
+  }
+}

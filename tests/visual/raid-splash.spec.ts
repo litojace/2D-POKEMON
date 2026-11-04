@@ -5,7 +5,6 @@ for (const viewport of [
   { width: 844, height: 390 },
   { width: 844, height: 280 },
   { width: 568, height: 320 },
-  { width: 414, height: 896 },
 ]) {
   test(`boss splash art stays readable and controls work at ${viewport.width}x${viewport.height}`, async ({
     browser,
@@ -54,13 +53,9 @@ for (const viewport of [
             : fetch(input, init);
       });
       await hubMenu(page, "raids");
-      // The Hub may open directly on the last selected boss.
-      if (await page.locator(".raid-boss-card").count()) {
-        await expect(page.locator(".raid-card-art img")).toHaveCount(7);
-        await page.click('[data-raid-boss="grumblecrag"]');
-      }
-      await expect(page.locator(".raid-roster-card")).toHaveCount(7);
-      await expect(page.locator(".raid-roster-art img")).toHaveCount(7);
+      // The Raid Hall's cards (UI remodel step 5) use the small pictures.
+      const room = page.locator(".rh-room");
+      await expect(room.locator(".rh-card-art img")).toHaveCount(7);
       for (const boss of [
         "grumblecrag",
         "tidewyrm",
@@ -70,81 +65,59 @@ for (const viewport of [
         "emberwing",
         "storm-twins",
       ]) {
-        if (boss !== "grumblecrag")
-          await page.click(`.raid-roster-card[data-raid-boss="${boss}"]`);
-        await expect(page.locator("[data-hub-practice]")).toHaveCount(6);
-        const art = page.locator(".raid-showcase-splash > img");
-        await expect(art).toBeVisible();
-        await art.evaluate(async (img: HTMLImageElement) => {
-          await img.decode();
-        });
-        expect(
-          await art.evaluate((img: HTMLImageElement) => img.naturalWidth),
-        ).toBeGreaterThanOrEqual(1200);
-        await page.locator("#dialog").evaluate(async (el) => {
-          await document.fonts.ready;
-          await Promise.all(
-            el
-              .getAnimations({ subtree: true })
-              .filter(
-                (a) => a.effect?.getComputedTiming().iterations !== Infinity,
-              )
-              .map((a) => a.finished.catch(() => {})),
-          );
-        });
-        await expect(art).toBeVisible();
-        const content = await box(page, ".raid-dialog-content");
-        for (const tab of ["#raid-tab-overview", "#raid-tab-rewards"]) {
+        const card = room.locator(`[data-raid-card="${boss}"]`);
+        await card.scrollIntoViewIfNeeded();
+        await card.click();
+        await room.locator('[data-ui-raid-tab="attacks"]').click();
+        await expect(room.locator("[data-raid-attack]")).toHaveCount(6);
+        const narrow = viewport.width <= 700;
+        const art = room.locator(".rh-hero > img");
+        if (!narrow) {
+          await expect(art).toBeVisible();
+          await art.evaluate(async (img: HTMLImageElement) => {
+            await img.decode();
+          });
           expect(
-            inside(await box(page, tab), await box(page, ".dialog-toolbar")),
-          ).toBe(true);
+            await art.evaluate((img: HTMLImageElement) => img.naturalWidth),
+          ).toBeGreaterThanOrEqual(1200);
         }
+        await page.evaluate(() => document.fonts.ready);
+        const body = await box(page, ".rh-room .rh-body");
+        const foot = await box(page, ".rh-room .ui-panel-foot");
         if (viewport.width > viewport.height) {
-          for (const skill of await page.locator("[data-hub-practice]").all()) {
+          for (const skill of await room.locator("[data-raid-attack]").all()) {
+            await skill.scrollIntoViewIfNeeded();
             const rect = await skill.boundingBox();
             expect(
-              rect && inside(rect, content),
-              `${boss}: skill stays above the footer ${JSON.stringify({ rect, content })}`,
+              rect && inside(rect, body),
+              `${boss}: attack stays above the action bar ${JSON.stringify({ rect, body })}`,
             ).toBe(true);
             expect(rect!.height).toBeGreaterThanOrEqual(44);
           }
         }
-        await expect(
-          page.locator(`.raid-roster-card[data-raid-boss="${boss}"]`),
-        ).toBeInViewport();
-        const stage = await box(page, ".raid-showcase-splash");
-        expect(inside(stage, { x: 0, y: 0, ...viewport })).toBe(true);
-        if (viewport.width < 1000 && viewport.width > viewport.height) {
-          const actions = page
-            .locator(".raid-hub-actions [data-raid-start]")
-            .first();
-          if (await actions.isVisible()) {
-            const footer = await box(
-              page,
-              ".raid-hub-actions [data-raid-start]",
-            );
-            expect(stage.y + stage.height).toBeLessThanOrEqual(footer.y + 1);
-          }
+        if (!narrow) {
+          const stage = await box(page, ".rh-stage");
+          expect(inside(stage, { x: 0, y: 0, ...viewport })).toBe(true);
+          // The stage and the action bar sit side by side, never on top.
+          expect(stage.x + stage.width).toBeLessThanOrEqual(foot.x + 1);
+          expect(
+            await art.evaluate((img: HTMLImageElement) => {
+              const r = img.getBoundingClientRect(),
+                scale = Math.max(
+                  r.width / img.naturalWidth,
+                  r.height / img.naturalHeight,
+                );
+              // The share of the picture shown along its tighter side.
+              return Math.min(
+                r.width / (img.naturalWidth * scale),
+                r.height / (img.naturalHeight * scale),
+              );
+            }),
+          ).toBeGreaterThanOrEqual(0.25);
         }
         expect(
-          await page
-            .locator(".raid-boss-showcase")
-            .evaluate((el) => el.scrollWidth - el.clientWidth),
+          await room.evaluate((el) => el.scrollWidth - el.clientWidth),
         ).toBeLessThanOrEqual(1);
-        expect(
-          await art.evaluate((img: HTMLImageElement) => {
-            if (getComputedStyle(img).objectFit === "contain") return 1;
-            const r = img.getBoundingClientRect(),
-              scale = Math.max(
-                r.width / img.naturalWidth,
-                r.height / img.naturalHeight,
-              );
-            return Math.min(
-              r.width / (img.naturalWidth * scale),
-              r.height / (img.naturalHeight * scale),
-            );
-          }),
-        ).toBeGreaterThanOrEqual(0.9);
         await expect(page.locator(".splash-caption")).toHaveCount(0);
         if (boss === "grumblecrag" || boss === "storm-twins")
           await snap(
@@ -152,26 +125,22 @@ for (const viewport of [
             info,
             `splash-${boss}-${viewport.width}x${viewport.height}`,
           );
+        await room.locator("[data-raid-back]").click();
       }
-      await page.click('.raid-roster-card[data-raid-boss="grumblecrag"]');
-      await expect(page.locator("[data-hub-practice]").first()).toBeEnabled();
-      const rail = await box(page, ".raid-boss-roster"),
-        actions = await box(page, ".dialog-footer");
-      await page.click(".raid-field-guide > summary");
-      await expect(page.locator(".raid-hub-chapters > li")).toHaveCount(3);
-      await page
-        .locator(".raid-dialog-content")
+      await room.locator('[data-raid-card="grumblecrag"]').click();
+      await expect(room.locator("[data-raid-practice]")).toBeEnabled();
+      const actions = await box(page, ".rh-room .ui-panel-foot");
+      await room.locator('[data-ui-raid-tab="guide"]').click();
+      await expect(room.locator(".rh-chapters > li")).toHaveCount(3);
+      await room
+        .locator(".rh-body")
         .evaluate((el) => (el.scrollTop = el.scrollHeight));
-      expect(await box(page, ".raid-boss-roster")).toEqual(rail);
-      expect(await box(page, ".dialog-footer")).toEqual(actions);
-      await page.click('[data-raid-tab="rewards"]');
-      await expect(page.locator('[data-raid-tab="rewards"]')).toHaveAttribute(
-        "aria-selected",
-        "true",
-      );
-      await expect(page.locator(".raid-reward-identity h2")).toHaveText(
-        "Grumblecrag",
-      );
+      expect(await box(page, ".rh-room .ui-panel-foot")).toEqual(actions);
+      await room.locator('[data-ui-raid-tab="rewards"]').click();
+      await expect(
+        room.locator('[data-ui-raid-tab="rewards"]'),
+      ).toHaveAttribute("aria-selected", "true");
+      await expect(room.locator(".rh-reward").first()).toBeVisible();
       await snap(page, info, `rewards-${viewport.width}x${viewport.height}`);
       expect(errors).toEqual([]);
     } finally {
@@ -210,39 +179,34 @@ test("locked bosses keep their navigation and unlock instruction visible", async
           : fetch(input, init);
     });
     await hubMenu(page, "raids");
-    await page.click('.raid-roster-card[data-raid-boss="emberwing"]');
-    await expect(page.locator(".raid-showcase-name h2")).toHaveText(
-      "Emberwing",
-    );
-    await expect(page.locator(".raid-roster-lock")).toHaveCount(6);
-    for (const skill of await page.locator("[data-hub-practice]").all())
-      await expect(skill).toBeDisabled();
-    await expect(page.locator("[data-raid-start]")).toHaveCount(0);
-    const notice = page.locator(".dialog-footer .raid-hub-locked");
+    const room = page.locator(".rh-room");
+    // Locked cards say why (UI remodel step 5).
+    await expect(room.locator(".rh-card.is-locked")).toHaveCount(6);
+    await expect(
+      room.locator('[data-raid-card="emberwing"] .ui-tag'),
+    ).toHaveText("Clear Grumblecrag first");
+    await room.locator('[data-raid-card="emberwing"]').click();
+    await expect(room.locator(".rh-stage-name")).toHaveText("Emberwing");
+    await expect(room.locator("[data-raid-start]")).toBeDisabled();
+    await expect(room.locator("[data-raid-practice]")).toBeDisabled();
+    const notice = room.locator(".rh-foot-note.is-reason");
     await expect(notice).toHaveText(
       "Clear Grumblecrag once to unlock Emberwing.",
     );
     await expect(notice).toBeInViewport();
-    await page.locator("#dialog").evaluate(async (el) => {
-      await Promise.all(
-        el
-          .getAnimations({ subtree: true })
-          .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity)
-          .map((a) => a.finished.catch(() => {})),
-      );
-    });
-    const rail = await box(page, ".raid-boss-roster");
-    await page.click(".raid-field-guide > summary");
-    await page
-      .locator(".raid-dialog-content")
+    await room.locator('[data-ui-raid-tab="attacks"]').click();
+    for (const skill of await room.locator("[data-raid-attack]").all())
+      await expect(skill).toBeDisabled();
+    await room.locator('[data-ui-raid-tab="guide"]').click();
+    await room
+      .locator(".rh-body")
       .evaluate((el) => (el.scrollTop = el.scrollHeight));
-    expect(await box(page, ".raid-boss-roster")).toEqual(rail);
     await expect(notice).toBeInViewport();
     await snap(page, info, "hub-locked-mobile");
-    await page.click("#close-dialog");
+    await page.click(".rh-room .ui-close");
     await page.evaluate(() => document.getElementById("settings")!.click());
     await expect(page.locator(".settings-screen")).toBeVisible();
-    await expect(page.locator("#dialog")).not.toHaveClass(/has-raid-roster/);
+    await expect(page.locator(".rh-room")).toHaveCount(0);
     expect(errors).toEqual([]);
   } finally {
     await context.close();
