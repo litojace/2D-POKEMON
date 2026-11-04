@@ -114,6 +114,22 @@ for (const viewport of [
         if (gapB < mb + 30)
           expect(gapB, `${b.name} bottom margin`).toBeCloseTo(mb, 0);
       }
+      // Today's quests, sized against their neighbours: on phones the
+      // folded list is the player card's twin right under it; on desktop
+      // a compact column (it was 220 x 203).
+      const card = all.find((b) => b.name === "profile")!,
+        quests = all.find((b) => b.name === "quests")!;
+      if (phone) {
+        expect(quests.w, "quests as wide as the card").toBeCloseTo(card.w, 0);
+        expect(quests.h, "folded quests as tall as the card").toBeCloseTo(
+          card.h,
+          0,
+        );
+        expect(quests.x, "quests under the card").toBeCloseTo(card.x, 0);
+      } else {
+        expect(quests.w, "quests width").toBeLessThanOrEqual(208);
+        expect(quests.h, "quests height").toBeLessThanOrEqual(175);
+      }
       const clashes = all.flatMap((a, i) =>
         all
           .slice(i + 1)
