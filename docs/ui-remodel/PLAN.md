@@ -810,22 +810,23 @@ same problem as a list (bars 1,250 px long beside a 320 px level road).
   1440×900: 608 / 720 (was 440 / about 885).
 - **Roster stage** (`roster.css`): three grid rows (number and mastery, the
   fighter, the nameplate), so the fighter is centred in the room it has at
-  any height; ‹ › sit level with it. The rig box grows to 600 px wide (the
-  canvas is 480 px; more would blur it). A wide stage (container query,
-  640 px) puts the stats beside the name, aims the light at the fighter and
-  shows the name huge and faint behind it on tall screens; a coloured pool
-  sits at the fighter's feet.
-- **Fitting room**: the live host stays capped at 500 px (the 400 px canvas)
-  and centred on a wider stage; before, a stage over 500 px would have
-  stretched it. On phones the fighter is drawn 34 px lower (the host
-  moves down whole, so it keeps its size): Entrance and Victory no longer
-  cover its ears and crest (owner's note).
+  any height; ‹ › sit level with it. The rig box grows to 620 px wide (the
+  preview canvas draws at the shown size times the density, within about a
+  million pixels: 620 px keeps 1.5 pixels per CSS pixel on a 2× screen). A
+  wide stage (container query, 640 px) puts the stats beside the name and
+  makes the spotlight longer and steeper, still from the top-right corner
+  (owner's note), so it reaches the fighter; tall screens show the name huge
+  and faint behind it; a coloured pool sits at the fighter's feet.
+- **Fitting room**: the live host is up to 500 px on a narrow stage (as
+  before) and at most 560 px, centred, on a wider one: the preview draws at
+  the shown size times the screen's density within about a million pixels,
+  and a wider full-height host fell below 1.5 pixels per CSS pixel on a 2×
+  screen (`fitting-room-pictures.spec.ts`). On phones the
+  fighter is drawn 34 px lower (the host moves down whole, so it keeps its
+  size): Entrance and Victory no longer cover its ears and crest (owner's
+  note).
 - **Journey**: weekly goals are cards two to a row when the column has
   800 px; the level road is `clamp(320px, 30%, 420px)`.
-- **Not changed:** the rig canvases are not pixel-ratio aware, so on a very
-  big screen the fitting room's fighter stays its old size on the larger
-  stage; drawing it bigger and sharp needs the preview to render at a higher
-  resolution (`shop-preview.ts`), a separate change.
 
 ## Decisions (owner, 3 Nov 2026)
 

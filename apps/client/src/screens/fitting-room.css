@@ -42,12 +42,16 @@
   top: 0;
   bottom: var(--fit-info-h);
   left: 50%;
-  /* Capped at 500 px: the preview canvas is 400 px wide, so a wider host
-     would blur it (and, framed on its width, draw a bigger, blurrier
-     fighter). A stage wider than that (desktop split panels grow with the
-     screen) shows the host centred; the canvas is transparent, so it has
-     no edges to see. */
-  width: clamp(min(100cqw, 500px), (100cqh - var(--fit-info-h)) * 1.25, 500px);
+  /* Up to 500 px on a narrow stage, at most 560 px on a wide one (centred;
+     the canvas is transparent, so it has no edges to see). The preview
+     draws at the size it is shown times the screen's density, within about
+     a million pixels (shop-preview.ts): a wider, full-height host would be
+     drawn below 1.5 pixels per CSS pixel on a 2× screen. */
+  width: clamp(
+    min(100cqw, 560px),
+    (100cqh - var(--fit-info-h)) * 1.25,
+    clamp(500px, 100cqw, 560px)
+  );
   height: auto;
   transform: translateX(-50%);
   aspect-ratio: auto;
