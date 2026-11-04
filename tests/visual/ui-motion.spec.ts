@@ -24,6 +24,26 @@ const finishAll = (page: Page) =>
       if (a.effect?.getTiming().iterations !== Infinity) a.finish();
     }),
   );
+const today = new Date().toISOString().slice(0, 10);
+/** Today's missions, so the Missions sheet has rows to bring in. */
+const MISSIONS = [
+  ["play-2", "easy", "Play 2 matches", 1, 2, 40, false],
+  ["skills-30", "easy", "Use 30 skills", 30, 30, 40, true],
+  ["bot-wins-3", "medium", "Win 3 matches against bots", 1, 3, 70, false],
+  ["raids-2", "medium", "Clear 2 raids", 0, 2, 70, false],
+  ["raid-solo-1", "hard", "Clear a raid on your own", 0, 1, 120, false],
+  ["hard-bot", "hard", "Beat a Hard bot", 0, 1, 120, false],
+].map(([id, tier, text, progress, target, coins, done], slot) => ({
+  day: today,
+  slot,
+  id,
+  tier,
+  text,
+  progress,
+  target,
+  coins,
+  done,
+}));
 const fighter = (page: Page) =>
   page.evaluate(() => {
     const b = document.getElementById("lobby-fighter")!.getBoundingClientRect();
@@ -34,6 +54,7 @@ test("a sheet slides in, its contents arrive, and the Lobby glides aside and bac
   page,
 }) => {
   test.setTimeout(120_000);
+  await page.addInitScript((m) => ((window as any).__missions = m), MISSIONS);
   const errors = await openLobby(page);
   await finishAll(page);
   const home = await fighter(page);
@@ -44,7 +65,7 @@ test("a sheet slides in, its contents arrive, and the Lobby glides aside and bac
       .click();
     const panel = document.querySelector(".ui-panel")!,
       stage = document.querySelector(".lobby-stage")!,
-      items = panel.querySelectorAll(".ui-panel-body .ui-row, [data-ui-item]");
+      items = panel.querySelectorAll("*");
     const finite = (el: Element) =>
       el
         .getAnimations()
@@ -63,8 +84,33 @@ test("a sheet slides in, its contents arrive, and the Lobby glides aside and bac
   expect(opened.sheet).toBe(true);
   expect(opened.panel).toBeGreaterThan(0);
   expect(opened.stage).toBeGreaterThan(0);
-  expect(opened.items).toBeGreaterThan(2);
   expect(opened.covered).toBe(true);
+  // Its contents arrive one after another, whenever they come (Missions
+  // shows "Loading" first): the most items moving at once in the first second.
+  const arriving = await page.evaluate(
+    () =>
+      new Promise<number>((resolve) => {
+        let most = 0;
+        const t0 = performance.now();
+        const look = () => {
+          const panel = document.querySelector(
+            ".ui-panel:not([data-ui-leaving])",
+          );
+          const moving = panel
+            ? Array.from(panel.querySelectorAll("*")).filter((el) =>
+                el
+                  .getAnimations()
+                  .some((a) => a.effect?.getTiming().iterations !== Infinity),
+              ).length
+            : 0;
+          most = Math.max(most, moving);
+          if (performance.now() - t0 < 1000) requestAnimationFrame(look);
+          else resolve(most);
+        };
+        look();
+      }),
+  );
+  expect(Math.max(arriving, opened.items)).toBeGreaterThan(2);
   // Settled: the fighter stands right of the sheet, smaller, with nothing left
   // over (no transform stays on the stage).
   await finishAll(page);

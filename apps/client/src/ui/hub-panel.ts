@@ -37,14 +37,19 @@ let current:
   { panel: HubPanel; close: (replaced?: boolean) => void } | undefined;
 /** Lobby parts a screen that was replaced still covers, for the next one. */
 let handoff: HTMLElement[] = [];
-/** What a screen's contents are: they arrive one after another. */
+/** What a screen's contents are: they arrive one after another. The
+ * shared pieces (tabs, rows, tiles, the foot) when a screen uses them,
+ * otherwise its body's parts, with a list counted item by item. */
 const ITEMS =
   ".ui-tabs, .ui-panel-body [data-ui-item], .ui-panel-body .ui-row, .ui-panel-body .ui-tile, .ui-panel-foot";
 const items = (root: HTMLElement) => {
   const found = Array.from(root.querySelectorAll(ITEMS));
-  return found.length > 1
-    ? found
-    : Array.from(root.querySelectorAll(".ui-panel-body > *, .ui-panel-foot"));
+  if (found.length > 1) return found;
+  const body = root.querySelector(".ui-panel-body");
+  const parts = Array.from(body?.children ?? []).flatMap((el) =>
+    el.matches("ul, ol") ? Array.from(el.children) : [el],
+  );
+  return [...parts, ...Array.from(root.querySelectorAll(".ui-panel-foot"))];
 };
 /** The selected tab(s), to tell a tab switch from a refresh. */
 const selectedTabs = (root: HTMLElement) =>
@@ -151,6 +156,8 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
     // The screen slides away and fades; it's already out of reach.
     wrap.inert = true;
     wrap.style.pointerEvents = "none";
+    wrap.dataset.uiLeaving = "";
+    wrap.style.zIndex = "41";
     wrap.querySelectorAll<HTMLElement>(".ui-panel").forEach((el) => {
       el.style.pointerEvents = "none";
       // Leaving: what looks for open screens passes over it.
@@ -169,7 +176,13 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
   }
 
   let root = mount(html);
-  host.append(wrap);
+  // Before any screen still fading out, so a lookup finds this one first;
+  // the one leaving stays drawn on top until it has faded.
+  const leavingHost = host.querySelector(
+    ":scope > .ui-panel-host[data-ui-leaving]",
+  );
+  if (leavingHost) host.insertBefore(wrap, leavingHost);
+  else host.append(wrap);
   // The Lobby leaves the page (Plaza, Farm, a match): its screen closes too,
   // so nothing keeps listening or drawing out of sight.
   const gone =
@@ -197,6 +210,7 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
       : "translateX(-24px) scale(.985)",
   });
   stagger(items(root));
+  const openedAt = performance.now();
 
   const panel: HubPanel = {
     get root() {
@@ -213,12 +227,21 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
             .map((a) => `[${a.name}="${CSS.escape(a.value)}"]`)
             .join("")
         : "";
-      const tabs = selectedTabs(root);
+      const tabs = selectedTabs(root),
+        had = items(root).length;
       root = mount(markup);
       root.tabIndex = -1;
-      // Another tab: its contents arrive like the screen's did.
-      if (tabs && selectedTabs(root) !== tabs)
-        stagger(items(root), { delay: 0, rise: 8 });
+      // Another tab, or the contents arriving after "Loading": they come in
+      // like the screen's did.
+      const now = items(root);
+      // Screens often fill themselves in right after opening: the fresh
+      // contents keep arriving as the first ones were.
+      if (performance.now() - openedAt < 400) stagger(now);
+      else if (
+        (tabs && selectedTabs(root) !== tabs) ||
+        (had <= 1 && now.length > 2)
+      )
+        stagger(now, { delay: 0, rise: 8 });
       if (key)
         root.querySelector<HTMLElement>(key)?.focus({ preventScroll: true });
     },
@@ -244,7 +267,14 @@ export function askConfirm(o: ConfirmOptions): Promise<boolean> {
       document.removeEventListener("keydown", onKey, true);
       // The answer counts at once; the dialog then fades and sinks away.
       scrim.removeAttribute("data-ui-confirm");
+      scrim.dataset.uiLeaving = "";
       scrim.style.pointerEvents = "none";
+      scrim
+        .querySelectorAll("[data-ui-confirm-ok], [data-ui-cancel]")
+        .forEach((el) => {
+          el.removeAttribute("data-ui-confirm-ok");
+          el.removeAttribute("data-ui-cancel");
+        });
       const modal = scrim.querySelector(".ui-modal");
       void Promise.all([
         leave(scrim, { opacity: 0 }),
