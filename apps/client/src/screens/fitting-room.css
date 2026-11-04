@@ -174,8 +174,40 @@
 }
 
 /* ------------------------------------------------------- item pictures */
+/* Every picture box is a size container, so what's in it fits both ways
+   (cqw and cqh): never cut at the top or bottom of a wide box, never
+   stretched. A skin's thumbnail keeps its shape (object-fit) inside a box
+   of its own. */
+.fit-room
+  :is(
+    .ui-tile-art,
+    .fit-deal-art,
+    .fit-slot-art,
+    .fit-bundle-art > span,
+    .fit-foot-art
+  ),
+.ui-modal-art {
+  container-type: size;
+}
+.fit-room
+  :is(
+    .ui-tile-art,
+    .fit-deal-art,
+    .fit-slot-art,
+    .fit-bundle-art > span,
+    .fit-foot-art
+  )
+  > img,
+.ui-modal-art > img {
+  width: 92cqw;
+  height: 92cqh;
+  max-width: none;
+  object-fit: contain;
+}
 /* Effect pieces (aura, entrance, victory, frame) and Colors are drawn by
-   cosmetic-picture.ts at a small default size: fill the picture box. */
+   cosmetic-picture.ts at a small default size: fill the picture box, as a
+   square that fits its height too. The picture box is already their stage,
+   so the effects' own card (cosmetic-fx.css) isn't drawn inside it. */
 .fit-room
   :is(
     .ui-tile-art,
@@ -187,19 +219,38 @@
   > .raid-cosmetic-preview,
 .ui-modal-art > .raid-cosmetic-preview,
 .fit-confirm-set > .raid-cosmetic-preview {
-  width: 72%;
+  width: min(72cqw, 80cqh);
   height: auto;
   aspect-ratio: 1;
   background: none;
+}
+.fit-confirm-set > .raid-cosmetic-preview {
+  width: 72%;
+}
+.fit-room
+  :is(
+    .ui-tile-art,
+    .fit-deal-art,
+    .fit-slot-art,
+    .fit-bundle-art > span,
+    .fit-foot-art
+  )
+  > .raid-cosmetic-preview:has(> .fx-live),
+.ui-modal-art > .raid-cosmetic-preview:has(> .fx-live) {
+  background: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
 }
 .fit-room .raid-cosmetic-preview > :is(svg, img),
 .ui-modal-art .raid-cosmetic-preview > :is(svg, img) {
   width: 100%;
   height: 100%;
 }
-/* A frame keeps room for its ring, ornaments and sparks. */
-.fit-room .ui-tile[data-slot="frame"] .ui-tile-art > .raid-cosmetic-preview {
-  width: 56%;
+/* A frame keeps room for its ring, ornaments and sparks (a tassel, a
+   sweet, a planet hang outside the ring), on every side. */
+.fit-room .ui-tile[data-slot="frame"] .ui-tile-art > .raid-cosmetic-preview,
+.fit-room .fit-deal[data-slot="frame"] .fit-deal-art > .raid-cosmetic-preview {
+  width: min(52cqw, 58cqh);
 }
 
 /* ------------------------------------------------------- the catalogue */
@@ -246,8 +297,9 @@
 .fit-count {
   margin-left: auto;
 }
+/* Wide enough to keep the row short, tall enough for a whole fighter. */
 .fit-picks .ui-tile-art {
-  aspect-ratio: 1.75;
+  aspect-ratio: 1.35;
 }
 /* Fighters: a row of avatars instead of a dropdown. */
 .fit-fighters {

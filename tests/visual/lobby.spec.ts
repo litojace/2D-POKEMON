@@ -562,3 +562,54 @@ test("a party shows friends beside you, and a party invitation joins it", async 
     await context.close();
   }
 });
+
+test("PLAY has a drawn icon (no emoji), a glow, and a light sweep that rests when asked", async ({
+  browser,
+}) => {
+  test.setTimeout(120_000);
+  const state = (page: import("@playwright/test").Page) =>
+    page.evaluate(() => {
+      const play = document.getElementById("lobby-play")!;
+      const sweep = getComputedStyle(play, "::after"),
+        glow = getComputedStyle(play.parentElement!, "::before");
+      return {
+        text: play.textContent!.trim(),
+        icon: !!play.querySelector("svg path"),
+        sweep: sweep.animationName,
+        glow: glow.animationName,
+        glowShown: glow.content !== "none" && glow.display !== "none",
+        scrollX: document.documentElement.scrollWidth - innerWidth,
+      };
+    });
+  for (const [name, options, sweep, glow] of [
+    ["normal", {}, "lobby-play-sweep", "lobby-play-glow"],
+    ["reduced motion", { reducedMotion: "reduce" as const }, "none", "none"],
+  ] as const) {
+    const context = await browser.newContext({
+      viewport: { width: 844, height: 390 },
+      ...options,
+    });
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    const s = await state(page);
+    expect(s.text, name).toBe("PLAY");
+    expect(s.icon, name).toBe(true);
+    expect(s.sweep, name).toBe(sweep);
+    expect(s.glow, name).toBe(glow);
+    expect(s.glowShown, name).toBe(true);
+    expect(s.scrollX, name).toBeLessThanOrEqual(0);
+    expect(errors).toEqual([]);
+    await context.close();
+  }
+  // Low graphics: the glow stays still, the sweep stops.
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+  });
+  const page = await context.newPage();
+  await page.addInitScript(() => localStorage.setItem("ea-graphics", "low"));
+  await openLobby(page);
+  const low = await state(page);
+  expect(low.sweep).toBe("none");
+  expect(low.glow).toBe("none");
+  await context.close();
+});

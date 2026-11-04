@@ -48,16 +48,23 @@ export function picksCountdown(now = serverNow()) {
 // Isolated images let browsers cache/rasterize skin artwork once instead of
 // keeping thousands of SVG mask/filter nodes live in the scrolling catalog.
 const skinThumbnails = new Map<string, string>();
+/**
+ * The frame a skin's thumbnail is drawn in: every skin and Awakening stage
+ * whole, with a little room. Measured: all their ink lies within x -1…200,
+ * y -19…186; the fighter's usual frame (0 -12 200 202) cut the crests and
+ * crowns of 27 of them.
+ */
+const THUMB_FRAME = "-6 -26 212 216";
 function skinThumbnail(id: string, champion: CharacterId, stage: number) {
   const key = `${id}:${stage}`;
   let url = skinThumbnails.get(key);
   if (!url) {
-    url = `data:image/svg+xml,${encodeURIComponent(fighterArt(champion, undefined, { skin: id, stage }))}`;
+    url = `data:image/svg+xml,${encodeURIComponent(fighterArt(champion, THUMB_FRAME, { skin: id, stage }))}`;
     if (skinThumbnails.size >= 64)
       skinThumbnails.delete(skinThumbnails.keys().next().value!);
     skinThumbnails.set(key, url);
   }
-  return `<img src="${url}" alt="" aria-hidden="true" width="200" height="202" loading="lazy" decoding="async">`;
+  return `<img src="${url}" alt="" aria-hidden="true" width="212" height="216" loading="lazy" decoding="async">`;
 }
 
 /** A small picture of the actual item; only skins and Colors use a fighter. */
