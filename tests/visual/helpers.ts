@@ -70,15 +70,26 @@ export async function hubMenu(page: Page, action: string) {
   await page.click(`.lobby-rail [data-lobby-action="${action}"]`);
 }
 
-/** Push the prepared room's snapshot until the battle screen is up. */
+/**
+ * Push the prepared room's snapshot until the battle screen is up.
+ *
+ * The first battle of a page boots Phaser's WebGL renderer. This machine does
+ * GL on the CPU (SwiftShader), so for 10–25 s after that boot starts the page
+ * barely runs a task, and every evaluate here waits behind it: a spec that
+ * pushed "playing" itself before calling this used to burn its whole 20 s
+ * budget on a single round trip, though the battle was already up. So push and
+ * check in one round trip, and give the boot room. A flow that never reaches
+ * the battle still fails here.
+ */
 export async function pushUntilBattle(page: Page) {
   await expect
     .poll(
-      async () => {
-        await page.evaluate(() => (window as any).__push());
-        return page.evaluate(() => document.body.classList.contains("battle-active"));
-      },
-      { timeout: 20_000, intervals: [400] },
+      () =>
+        page.evaluate(() => {
+          (window as any).__push();
+          return document.body.classList.contains("battle-active");
+        }),
+      { timeout: 60_000, intervals: [400] },
     )
     .toBe(true);
   // A few more frames so the floor and fighters settle.
