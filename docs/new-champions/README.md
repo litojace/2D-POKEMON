@@ -155,7 +155,8 @@ often a pure utility skill comes back, so bots take the rites that use them.
 2. Champions: done. Kits in `packages/shared/src/index.ts`; art in
    [fighter-assets.md](../fighter-assets.md); raid tricks in
    [raid-roster-design.md](../raid-roster-design.md) §6; migration 052 lets
-   them be portraits and farmers (no farm perk yet). The list as planned: front, side and back art on the rig, portraits and selection
+   them be portraits and farmers; migration 055 gives each the farm perk of
+   the original of its element (`FARM_PERK_OF` in `packages/shared/src/farm.ts`). The list as planned: front, side and back art on the rig, portraits and selection
    art (`scripts/export-fighters.ts`), effects and illustrated icons for 40
    skills, fighter select, raid champion tricks, docs.
 3. Skins: done. Each has 3 Common, 2 Rare, 1 Epic and 1 Mythical with three
