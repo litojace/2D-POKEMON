@@ -36,11 +36,20 @@ export function setScrollLock(on: boolean) {
     // fixed to the screen) needs no pinning. Pinning it anyway made iPadOS
     // home-screen apps shift the whole game up by the status bar's height
     // whenever the menu or a dialog opened, leaving a dark band at the bottom.
+    // The hub scenes (Lobby, Plaza, Farm) and a battle are fixed to the
+    // screen too, whatever the document measures: on iOS Safari the body's
+    // 100vh is the toolbar-less height, so the page looked a little taller
+    // than the screen and opening the Menu in the Farm pinned it, lifting
+    // the scene off the bottom of the screen.
+    const fixedScreen = ["hub-active", "battle-active"].some((name) =>
+      body.classList?.contains(name),
+    );
     pinned =
       window.scrollY !== 0 ||
       window.scrollX !== 0 ||
-      root.scrollHeight > root.clientHeight + 1 ||
-      root.scrollWidth > root.clientWidth + 1;
+      (!fixedScreen &&
+        (root.scrollHeight > root.clientHeight + 1 ||
+          root.scrollWidth > root.clientWidth + 1));
     if (!pinned) return;
     savedY = window.scrollY;
     savedX = window.scrollX;

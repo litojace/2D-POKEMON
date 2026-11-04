@@ -146,3 +146,23 @@ it("leaves a page that cannot scroll untouched (iPad home-screen hub shifted up)
   expect(isScrollLocked()).toBe(false);
   expect(scrollTo).not.toHaveBeenCalled();
 });
+
+it("leaves the hub untouched even when iOS measures it taller than the screen (Farm lifted)", () => {
+  const win = window as unknown as { scrollX: number; scrollY: number };
+  win.scrollX = 0;
+  win.scrollY = 0;
+  Object.assign(document.documentElement, {
+    clientHeight: 430,
+    scrollHeight: 490,
+    scrollWidth: 1000,
+  });
+  Object.assign(document.body, {
+    classList: { contains: (name: string) => name === "hub-active" },
+  });
+  setScrollLock(true);
+  expect(isScrollLocked()).toBe(true);
+  expect(style.position).toBe("relative");
+  expect(document.documentElement.classList.add).not.toHaveBeenCalled();
+  setScrollLock(false);
+  expect(scrollTo).not.toHaveBeenCalled();
+});

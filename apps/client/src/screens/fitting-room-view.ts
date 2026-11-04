@@ -331,6 +331,32 @@ export function pendingChanges(view: FitView, d: FitData): FitChange[] {
 }
 export const notOwnedTryOns = (view: FitView, d: FitData) =>
   Object.values(view.tryOn).filter((id): id is string => !!id && !owns(id, d));
+/**
+ * Going to the Wardrobe: it shows only what you own, so a Shop try-on of
+ * something you don't own leaves the stage (it stayed on, while the slot
+ * under it read "Original"). Try-ons of things you own stay, as changes
+ * Equip can save; so does a frame picked to look at.
+ */
+export function dropUnownedTryOns(view: FitView, d: FitData) {
+  if (!d.economy) return;
+  let dropped = false;
+  for (const [slot] of FIT_SLOTS) {
+    const id = view.tryOn[slot];
+    if (!id || owns(id, d)) continue;
+    delete view.tryOn[slot];
+    dropped = true;
+    if (slot === "champion") view.stage = undefined;
+  }
+  if (
+    view.selected &&
+    !owns(view.selected, d) &&
+    fitItem(view.selected)?.slot !== "frame"
+  ) {
+    view.selected = null;
+    dropped = true;
+  }
+  if (dropped) view.action = "idle";
+}
 
 /* ------------------------------------------------------------ prices */
 
