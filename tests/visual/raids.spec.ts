@@ -192,23 +192,20 @@ for (const size of SIZES)
       // Every fighter with a trick against Grumblecrag.
       await expect(room.locator(".rh-pick")).toHaveCount(8);
       await settle(page);
-      const art = room.locator(".rh-hero img");
+      const art = room.locator(".rh-art img");
       expect(
         await art.evaluate((i: HTMLImageElement) => i.naturalWidth),
       ).toBeGreaterThanOrEqual(1200);
-      if (!size.phone) {
-        // The whole picture, uncropped, inside the stage.
+      {
+        // The whole picture at its own shape, inside the stage, at every
+        // size (owner's note, 4 Nov: no crop, no blur).
         const shown = await art.evaluate((i: HTMLImageElement) => {
           const r = i.getBoundingClientRect();
-          return {
-            ratio: r.width / r.height,
-            fit: getComputedStyle(i).objectFit,
-          };
+          return { ratio: r.width / r.height };
         });
-        expect(shown.fit).toBe("contain");
         expect(Math.abs(shown.ratio - 1536 / 1024)).toBeLessThan(0.02);
         expect(
-          inside(await box(page, ".rh-hero img"), await box(page, ".rh-stage")),
+          inside(await box(page, ".rh-art img"), await box(page, ".rh-stage")),
         ).toBe(true);
       }
       if (size.height > 1000) {
@@ -235,6 +232,9 @@ for (const size of SIZES)
           label,
         );
       await centred(page, '.rh-room [data-ui-raid-play="solo"]', "Solo");
+      // A gold button's icon is drawn in its label's colour, so icon and
+      // label sit centred together (owner's note, 4 Nov).
+      await centred(page, '.rh-room [aria-label="Invite Kai"]', "Invite");
       await centred(page, '.rh-room [data-ui-raid-tab="party"]', "Party tab");
       await snap(page, info, `raid-boss-${size.name}`);
       await room

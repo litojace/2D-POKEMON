@@ -303,9 +303,32 @@ function rewardTotal(p: RaidProgress) {
 
 /* -------------------------------------------------------- boss page */
 
-function stage(id: RaidBossId) {
+/**
+ * The stage: the boss's picture at its own shape (never cropped, never
+ * blurred; it scales to the stage it gets), then who it is and how to win.
+ * A shorter stage drops the chapters, then the numbers, then the tip
+ * (raid-hall.css, container queries), so the picture always fits whole.
+ */
+function stage(id: RaidBossId, d: RaidData) {
   const b = RAID_BOSSES[id];
-  return `<section class="ui-split-stage rh-stage" style="--el:${b.color}" aria-label="${esc(b.name)}"><span class="rh-hero-fill" aria-hidden="true">${raidSplashImage(id, true)}</span><span class="rh-hero">${raidSplashImage(id, true)}</span><div class="rh-stage-info"><span class="rh-row">${elementTag(b.element)}${stars(b.stars)}</span><b class="rh-stage-name">${esc(b.name)}</b><small class="ui-note rh-stage-line">${esc(b.epithet)} · ${esc(b.signature)}</small></div></section>`;
+  const clears = bossClearCount(d.progress, id);
+  const { earned, total } = rewardCounts(d.progress, id);
+  const facts = [
+    [String(clears), clears === 1 ? "Clear" : "Clears"],
+    [d.progress ? `${earned}/${total}` : String(total), "Rewards"],
+    [String(raidAttacksOf(id).length), "Attacks"],
+  ]
+    .map(
+      ([n, label]) =>
+        `<span class="rh-fact"><b class="ui-num">${esc(n)}</b><small>${esc(label)}</small></span>`,
+    )
+    .join("");
+  const chapters = b.playable
+    ? `<ol class="rh-stage-chapters" aria-label="Chapters">${raidChapters(id)
+        .map((c) => `<li>${esc(c.name)}</li>`)
+        .join("")}</ol>`
+    : "";
+  return `<section class="ui-split-stage rh-stage" style="--el:${b.color}" aria-label="${esc(b.name)}"><div class="rh-stage-card"><figure class="rh-art">${raidSplashImage(id, true)}</figure><div class="rh-stage-info"><span class="rh-row">${elementTag(b.element)}${stars(b.stars)}</span><b class="rh-stage-name">${esc(b.name)}</b><small class="ui-note rh-stage-line">${esc(b.epithet)}</small><p class="rh-win"><span class="ui-kicker">How to win</span><b>${esc(b.signature)}</b></p><div class="rh-facts">${facts}</div>${chapters}</div></div></section>`;
 }
 function seat(s: RaidSeat, i: number) {
   const sub = s.me
@@ -486,7 +509,7 @@ function bossMarkup(view: RaidView, d: RaidData) {
       }),
     ),
   );
-  return `<section class="ui-panel is-split rh-room" role="dialog" aria-label="${esc(b.name)}" data-raid-mode="boss" data-raid-boss="${view.boss}" style="--boss:${b.color}">${stage(view.boss)}<div class="ui-split-main"><header class="ui-panel-head rh-head">${button("Raid Hall", { size: "s", icon: "back", attrs: { "data-raid-back": true } })}${view.tab === "guide" ? "" : `<span class="ui-note rh-hint">${esc(b.blurb)}</span>`}${iconButton("cancel", "Back to the Lobby", { class: "ui-close", "data-ui-close": true })}</header>${tabRow}<div class="ui-panel-body rh-body" data-raid-region="body" data-tab="${view.tab}">${body}</div>${foot}</div></section>`;
+  return `<section class="ui-panel is-split rh-room" role="dialog" aria-label="${esc(b.name)}" data-raid-mode="boss" data-raid-boss="${view.boss}" style="--boss:${b.color}">${stage(view.boss, d)}<div class="ui-split-main"><header class="ui-panel-head rh-head">${button("Raid Hall", { size: "s", icon: "back", attrs: { "data-raid-back": true } })}${view.tab === "guide" ? "" : `<span class="ui-note rh-hint">${esc(b.blurb)}</span>`}${iconButton("cancel", "Back to the Lobby", { class: "ui-close", "data-ui-close": true })}</header>${tabRow}<div class="ui-panel-body rh-body" data-raid-region="body" data-tab="${view.tab}">${body}</div>${foot}</div></section>`;
 }
 
 /** The whole screen: the hall, or one boss's page. */

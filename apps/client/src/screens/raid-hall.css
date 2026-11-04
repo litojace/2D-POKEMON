@@ -149,61 +149,139 @@
 }
 
 /* -------------------------------------------------------- boss page */
-/* The boss's whole picture (it is wide, the stage is tall) over a blurred,
-   darkened copy of itself that fills the rest of the stage. Phones, where
-   the stage is a narrow strip, crop it to fill instead. */
+/* The stage: a boss card. The picture keeps its own 3:2 shape at every
+   size (a replaced element with width and height auto and both maxima
+   scales down without cropping); --info is the room the text under it
+   needs, smaller as container queries drop parts of it. */
 .rh-stage {
-  background: var(--ui-bg-0);
+  container-type: size;
+  --info: 400px;
 }
-.rh-hero-fill,
-.rh-hero-fill img {
+.rh-stage-card {
   position: absolute;
   inset: 0;
-  width: 100%;
-  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+  gap: 16px;
+  padding: 20px;
 }
-.rh-hero-fill img {
-  object-fit: cover;
-  transform: scale(1.15);
-  filter: blur(28px) brightness(0.55) saturate(1.25);
+.rh-art {
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  flex: none;
 }
-.rh-hero {
-  position: absolute;
-  inset: 16px 16px 150px;
-  display: grid;
-  place-items: center;
-}
-.rh-hero img {
-  width: 100%;
+.rh-art img {
+  display: block;
+  width: auto;
   height: auto;
-  max-height: 100%;
-  aspect-ratio: 1536 / 1024;
-  object-fit: contain;
-  /* The picture's edges melt into its blurred copy. */
-  mask-image:
-    linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent),
-    linear-gradient(180deg, transparent, #000 10%, #000 90%, transparent);
-  mask-composite: intersect;
-}
-/* Low graphics: no blur, a plain dark stage around the picture. */
-[data-graphics="low"] .rh-hero-fill {
-  display: none;
-}
-.rh-stage::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, transparent 50%, #0b1020ee 92%);
-  pointer-events: none;
+  max-width: 100%;
+  max-height: calc(100cqh - var(--info) - 40px);
+  border-radius: var(--rad-lg);
+  border: 1px solid color-mix(in srgb, var(--el) 45%, transparent);
+  box-shadow:
+    0 18px 40px #0009,
+    0 0 0 4px color-mix(in srgb, var(--el) 10%, transparent);
 }
 .rh-stage-info {
-  position: absolute;
-  left: 20px;
-  right: 20px;
-  bottom: 18px;
-  z-index: 1;
   display: grid;
-  gap: 4px;
+  gap: 6px;
+  flex: none;
+}
+.rh-win {
+  display: grid;
+  gap: 2px;
+  margin-top: 4px !important;
+  padding: 10px 12px;
+  border-radius: var(--rad-md);
+  border: 1px solid color-mix(in srgb, var(--el) 35%, transparent);
+  background: color-mix(in srgb, var(--el) 8%, var(--ui-bg-1));
+}
+.rh-win b {
+  font-size: var(--fs-lead);
+}
+.rh-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.rh-fact {
+  display: grid;
+  justify-items: center;
+  padding: 8px 4px;
+  border-radius: var(--rad-md);
+  border: 1px solid var(--ui-line);
+  background: var(--ui-bg-1);
+}
+.rh-fact b {
+  font-size: 22px;
+  line-height: 1;
+  color: var(--ui-accent);
+}
+.rh-fact small {
+  color: var(--ui-dim);
+  font-size: var(--fs-micro);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.rh-stage-chapters {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: stage-chapter;
+}
+.rh-stage-chapters li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: var(--rad-md);
+  background: var(--ui-bg-1);
+  border: 1px solid var(--ui-line);
+  font-weight: 600;
+  counter-increment: stage-chapter;
+}
+.rh-stage-chapters li::before {
+  content: counter(stage-chapter);
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--el) 25%, var(--ui-bg-0));
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 13px;
+}
+/* Shorter stages: drop the chapters, then the numbers, then the tip. */
+@container (max-height: 820px) {
+  .rh-stage {
+    --info: 290px;
+  }
+  .rh-stage-chapters {
+    display: none;
+  }
+}
+@container (max-height: 560px) {
+  .rh-stage {
+    --info: 210px;
+  }
+  .rh-facts {
+    display: none;
+  }
+}
+@container (max-height: 440px) {
+  .rh-stage {
+    --info: 120px;
+  }
+  .rh-win {
+    display: none;
+  }
 }
 .rh-row {
   display: flex;
@@ -594,24 +672,18 @@
   .rh-practice > .ui-btn {
     display: none;
   }
-  /* A narrow strip: the picture fills it (cropped), no blurred copy. */
-  .rh-hero-fill {
-    display: none;
+  /* The phone's stage is a narrow strip: the picture, then the name. */
+  .rh-stage {
+    --info: 56px;
   }
-  .rh-hero {
-    inset: 0;
+  .rh-stage-card {
+    gap: 8px;
+    padding: 8px;
   }
-  .rh-hero img {
-    height: 100%;
-    aspect-ratio: auto;
-    object-fit: cover;
-    object-position: 38% 50%;
-    mask-image: none;
+  .rh-art img {
+    border-radius: var(--rad-md);
   }
   .rh-stage-info {
-    left: 8px;
-    right: 8px;
-    bottom: 8px;
     gap: 2px;
   }
   .rh-stage-name {
