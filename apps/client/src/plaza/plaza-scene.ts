@@ -73,6 +73,7 @@ import {
   photoDay,
   pictureName,
 } from "./plaza-album";
+import { bakeSprite } from "./plaza-sprite";
 import "./plaza.css";
 
 const esc = (s) =>
@@ -705,6 +706,8 @@ export function openPlaza(options) {
 
   /* ---------- people: you (predicted) and everyone the server shows ---------- */
   const art = new Map();
+  // The <img> (its src shows in cards and the feed) carries `sprite`, the
+  // bitmap the canvas draws once it is painted (see plaza-sprite.ts).
   const imageFor = (character, skin) => {
     const key = `${character}:${skin?.skin ?? ""}:${skin?.stage ?? 1}`;
     let im = art.get(key);
@@ -712,6 +715,11 @@ export function openPlaza(options) {
       im = new Image();
       im.decoding = "async";
       im.src = options.art(character, skin);
+      im.sprite = null;
+      bakeSprite(im, options.art(character, skin, true)).then(
+        (sprite) => (im.sprite = sprite),
+        () => {},
+      );
       art.set(key, im);
     }
     return im;
@@ -2131,8 +2139,8 @@ export function openPlaza(options) {
     g.rect(x0, y0, w, h);
     g.clip();
     const star = runwayOn ? P : [...others.values()].find((n) => inRunway(n));
-    if (star && star.img?.complete) {
-      g.drawImage(star.img, x0 + 20, y0 + 6, h * 0.99, h * 1.0);
+    if (star && star.img?.sprite) {
+      g.drawImage(star.img.sprite, x0 + 20, y0 + 6, h * 0.99, h * 1.0);
       g.textAlign = "left";
       g.fillStyle = "#ff9bd2";
       g.font = "800 16px 'DM Sans', sans-serif";
@@ -2507,10 +2515,11 @@ export function openPlaza(options) {
         g.stroke();
       }
     }
-    if (!im || !im.complete) return;
+    const sp = im?.sprite;
+    if (!sp) return;
     for (const tr of b.trail) {
       g.globalAlpha = 0.32 * (1 - tr.t / 0.3);
-      drawSprite(g, im, tr.x, tr.y - tr.z, s, b.face, 0, 0);
+      drawSprite(g, sp, tr.x, tr.y - tr.z, s, b.face, 0, 0);
     }
     g.globalAlpha = 1;
     let bob =
@@ -2525,7 +2534,7 @@ export function openPlaza(options) {
       sq = Math.sin(time * 18) * 0.06;
     }
     if (b.stun > 0) rot = Math.sin(time * 30) * 0.12;
-    drawSprite(g, im, b.x, b.y - b.z - bob, s, b.face, rot, sq);
+    drawSprite(g, sp, b.x, b.y - b.z - bob, s, b.face, rot, sq);
     // Bots (the pitch bots and the townsfolk) wear a quieter, italic name
     // tag, so nobody mistakes them for players.
     g.font = b.bot

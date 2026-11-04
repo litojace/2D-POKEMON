@@ -275,11 +275,21 @@ export function lookFor(id: CharacterId, look?: SkinLook | null) {
     ? look
     : null;
 }
+/**
+ * `flat` draws the creature without its masked overlays: the champion
+ * material brush marks and a skin's pattern. Each of those is a wallpaper
+ * the size of the canvas, masked to one part's shape, so a renderer that
+ * gets SVG masks wrong paints whole rectangles over the creature. Desktop
+ * Safari did exactly that for fighters drawn into the Plaza's canvas (dark
+ * boxes over every part); the Plaza falls back to this drawing when it
+ * detects it (see plaza/plaza-sprite.ts).
+ */
 export function creatureLayers(
   id: CharacterId,
   dir: Facing,
   mood: Mood = "normal",
   worn?: SkinLook | null,
+  flat = false,
 ) {
   const look = lookFor(id, worn);
   const art = look ? SKIN_ART[look.skin] : undefined;
@@ -1015,7 +1025,8 @@ export function creatureLayers(
     defs += painted.defs;
   }
   // All views now use complete articulated anatomy and the same front-art materials.
-  defs += championMaterials(id, prefix, p, layers);
+  // A flat drawing leaves out every masked overlay (see FLAT_ART below).
+  if (!flat) defs += championMaterials(id, prefix, p, layers);
   // Cragstone skin (menus): glowing cracks, hidden unless the skin is worn.
   // The rig paints its own cracks, and display="none" keeps them out of it.
   const crack = (d: string) =>
@@ -1034,7 +1045,7 @@ export function creatureLayers(
       layers[part] =
         `<g transform="matrix(${s} 0 0 ${s} ${+(cx - s * cx).toFixed(3)} ${+(cy - s * cy).toFixed(3)})">${layers[part]}</g>`;
     }
-  if (art && look) dressLayers(id, dir, look, art, p, prefix, layers);
+  if (art && look) dressLayers(id, dir, look, art, p, prefix, layers, flat);
   if (profile)
     for (const part of PROFILE_FACE_PARTS)
       if (layers[part])
@@ -1054,8 +1065,9 @@ function dressLayers(
   p: Palette,
   prefix: string,
   layers: Record<CreaturePart, string>,
+  flat: boolean,
 ) {
-  if (art.pattern) {
+  if (art.pattern && !flat) {
     const { kind, color, color2, opacity = 0.6, parts } = art.pattern;
     const wallpaper = patternSvg(kind, color, color2, look.skin);
     const covered =
@@ -1091,8 +1103,9 @@ export function creatureSvg(
   viewBox = CREATURE_VIEWBOX,
   mood: Mood = "normal",
   look?: SkinLook | null,
+  flat = false,
 ) {
-  return creatureSvgRenderer(id, dir, mood, look)(part, viewBox);
+  return creatureSvgRenderer(id, dir, mood, look, flat)(part, viewBox);
 }
 /** Prepare a look once when several cropped textures share the same drawing. */
 export function creatureSvgRenderer(
@@ -1100,8 +1113,9 @@ export function creatureSvgRenderer(
   dir: Facing,
   mood: Mood = "normal",
   look?: SkinLook | null,
+  flat = false,
 ) {
-  const { defs, layers } = creatureLayers(id, dir, mood, look);
+  const { defs, layers } = creatureLayers(id, dir, mood, look, flat);
   const stroke = paletteFor(id, lookFor(id, look)).dark;
   const FACE_PARTS: CreaturePart[] = [
     "head",

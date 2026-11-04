@@ -1664,7 +1664,7 @@ function syncPlaza(want: boolean) {
     skin,
     reduced: reducedMotion,
     low: plazaLow,
-    art: (character, worn) =>
+    art: (character, worn, flat) =>
       "data:image/svg+xml;charset=utf-8," +
       encodeURIComponent(
         fighterArt(
@@ -1673,6 +1673,7 @@ function syncPlaza(want: boolean) {
             : "voltkit") as CharacterId,
           undefined,
           worn,
+          flat,
         ),
       ),
     skinName: (id) => CHAMPION_SKIN_BY_ID[id]?.name ?? null,
