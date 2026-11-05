@@ -7,10 +7,24 @@ notes in the demo are in Vietnamese.
 
 The farm is drawn with the game's own art (`apps/client/src/farm/farm-gfx.ts`,
 `crop-art.ts` and the fighters from `creature-design.ts`), bundled into
-`art.js`. On top of it the demo adds warm light from the top left, drifting
-cloud shadows, wind that ripples across the crops, falling petals, birds,
-ducks, chickens and a cow, and harvest feedback (sparkles, produce flying to
-the barn, the barn bumping). Rebuild `art.js` after the art changes with:
+`art.js`. On top of it the demo adds a "feel" layer that only needs client
+work:
+
+- Everything reacts to a tap: chickens hop and scatter, the cow moos, the dog
+  barks and runs over, the sleeping cat wakes, trees shake and drop fruit,
+  the pond ripples and the ducks hurry off, the windmill spins up.
+- Swipe across ripe crops to harvest a row; the pitch rises with the combo and
+  six in a row is a Super Swipe. Produce flies to the barn.
+- Sound is synthesized with Web Audio (no files), with a mute button.
+- Day, golden hour and night (lamps, lit windows, fireflies, crickets); rain
+  waters every crop and ends with a rainbow.
+- Gold (×5) and Rainbow (×15) crops glow; level-ups, balloon launches and Cup
+  tasks end in confetti. Friends walk over and carry crates, water your crops
+  and dance.
+- A slow device (under about 38 fps for 2 seconds) drops cloud shadows and
+  light shafts; reduced motion drops shake, most confetti and drifting clouds.
+
+Rebuild `art.js` after the art changes with:
 
 ```
 npx esbuild@0.24.0 docs/farm-social/art-entry.ts --bundle --format=iife --minify --target=es2020 --alias:@arena/shared=./packages/shared/src/index.ts --outfile=docs/farm-social/art.js
