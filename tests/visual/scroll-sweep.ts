@@ -61,87 +61,101 @@ export async function fingerWorks(page: Page) {
   return moved > 10;
 }
 
-interface Spot {
-  x: number;
-  y: number;
-}
-interface Scroller {
-  id: string;
-  name: string;
-  axis: "y" | "x";
-  overflow: number;
-  spots: Spot[];
-}
-
-/** Scrollers inside `root` with content past their edge, and where a finger
- * can land on each (a spot whose nearest scroller is that one). */
+/**
+ * Mark the scrollers inside `root` that have content past their edge (big
+ * enough to touch). Spots are found later, one scroller at a time, since
+ * sweeping one moves the others (a chip row inside a panel that scrolls).
+ */
 async function findScrollers(page: Page, root: string) {
   return page.evaluate((root) => {
     const name = (e: Element) =>
       `${e.tagName.toLowerCase()}${e.id ? `#${e.id}` : ""}.${[...e.classList].slice(0, 3).join(".")}`;
-    const scrollsY = (e: Element) => {
-      const o = getComputedStyle(e).overflowY;
-      return (
-        (o === "auto" || o === "scroll") && e.scrollHeight > e.clientHeight + 4
-      );
-    };
-    const scrollsX = (e: Element) => {
-      const o = getComputedStyle(e).overflowX;
-      return (
-        (o === "auto" || o === "scroll") && e.scrollWidth > e.clientWidth + 4
-      );
-    };
-    const out: {
-      id: string;
-      name: string;
-      axis: "y" | "x";
-      overflow: number;
-      spots: { x: number; y: number }[];
-    }[] = [];
+    const out: { id: string; name: string; axis: "y" | "x" }[] = [];
     let n = 0;
     for (const base of document.querySelectorAll(root))
       for (const el of [base, ...base.querySelectorAll("*")]) {
         if (!(el instanceof HTMLElement)) continue;
         if (!el.checkVisibility({ visibilityProperty: true })) continue;
+        const cs = getComputedStyle(el);
         for (const axis of ["y", "x"] as const) {
-          if (axis === "y" ? !scrollsY(el) : !scrollsX(el)) continue;
+          const o = axis === "y" ? cs.overflowY : cs.overflowX;
+          const more =
+            axis === "y"
+              ? el.scrollHeight - el.clientHeight
+              : el.scrollWidth - el.clientWidth;
+          if ((o !== "auto" && o !== "scroll") || more <= 4) continue;
           const r = el.getBoundingClientRect();
-          const left = Math.max(r.left, 0),
-            right = Math.min(r.right, innerWidth),
-            top = Math.max(r.top, 0),
-            bottom = Math.min(r.bottom, innerHeight);
-          if (right - left < 24 || bottom - top < 24) continue;
-          if (axis === "y") el.scrollTop = 0;
-          else el.scrollLeft = 0;
+          if (r.width < 24 || r.height < 24) continue;
           const id = `s${n++}`;
-          el.dataset.sweep = id;
-          const spots: { x: number; y: number }[] = [];
-          const fx = [0.15, 0.5, 0.85, 0.3, 0.7];
-          const fy = [0.8, 0.5, 0.2];
-          for (const b of fy)
-            for (const a of fx) {
-              const x = Math.round(left + (right - left) * a);
-              const y = Math.round(top + (bottom - top) * b);
-              const hit = document.elementFromPoint(x, y);
-              let s: Element | null = hit;
-              while (s && !(axis === "y" ? scrollsY(s) : scrollsX(s)))
-                s = s.parentElement;
-              if (s === el) spots.push({ x, y });
-            }
-          out.push({
-            id,
-            name: name(el),
-            axis,
-            overflow:
-              axis === "y"
-                ? el.scrollHeight - el.clientHeight
-                : el.scrollWidth - el.clientWidth,
-            spots,
-          });
+          el.dataset[`sweep${axis}`] = id;
+          out.push({ id, name: name(el), axis });
         }
       }
     return out;
   }, root);
+}
+
+/**
+ * Put one scroller at its start and in sight (its scrolling ancestors moved
+ * so it shows), and find where a finger can land on it: a spot whose
+ * nearest scroller on that axis is this one.
+ */
+async function prepare(page: Page, id: string, axis: "y" | "x") {
+  return page.evaluate(
+    ([id, axis]) => {
+      const el = document.querySelector<HTMLElement>(
+        `[data-sweep${axis}="${id}"]`,
+      )!;
+      const scrolls = (e: Element, ax: "y" | "x") => {
+        const cs = getComputedStyle(e);
+        const o = ax === "y" ? cs.overflowY : cs.overflowX;
+        return (
+          (o === "auto" || o === "scroll") &&
+          (ax === "y"
+            ? e.scrollHeight > e.clientHeight + 4
+            : e.scrollWidth > e.clientWidth + 4)
+        );
+      };
+      if (axis === "y") el.scrollTop = 0;
+      else el.scrollLeft = 0;
+      // Scrolling ancestors: bring the scroller into their view.
+      for (let a = el.parentElement; a; a = a.parentElement) {
+        if (!scrolls(a, "y")) continue;
+        const r = el.getBoundingClientRect(),
+          b = a.getBoundingClientRect();
+        if (r.top < b.top || r.bottom > b.bottom)
+          a.scrollTop += r.top - b.top - Math.max(0, (b.height - r.height) / 2);
+      }
+      const r = el.getBoundingClientRect();
+      const left = Math.max(r.left, 0),
+        right = Math.min(r.right, innerWidth),
+        top = Math.max(r.top, 0),
+        bottom = Math.min(r.bottom, innerHeight);
+      const spots: { x: number; y: number }[] = [];
+      if (right - left < 16 || bottom - top < 16)
+        return { overflow: 0, spots, size: 0, offscreen: true };
+      const fx = [0.15, 0.5, 0.85, 0.3, 0.7];
+      const fy = axis === "y" ? [0.8, 0.5, 0.2] : [0.5, 0.25, 0.75];
+      for (const b of fy)
+        for (const a of fx) {
+          const x = Math.round(left + (right - left) * a);
+          const y = Math.round(top + (bottom - top) * b);
+          let s: Element | null = document.elementFromPoint(x, y);
+          while (s && !scrolls(s, axis)) s = s.parentElement;
+          if (s === el) spots.push({ x, y });
+        }
+      return {
+        overflow:
+          axis === "y"
+            ? el.scrollHeight - el.clientHeight
+            : el.scrollWidth - el.clientWidth,
+        spots,
+        size: axis === "y" ? bottom - top : right - left,
+        offscreen: false,
+      };
+    },
+    [id, axis] as const,
+  );
 }
 
 /** Text and controls cut off by a box that doesn't scroll. */
@@ -165,29 +179,45 @@ export async function cutOff(page: Page, root: string) {
           })
         )
           continue;
+        // An ancestor clips only boxes whose containing block is it or
+        // inside it: a fixed box escapes them all, an absolute one escapes
+        // those below its positioned ancestor.
+        const pos = (e: Element) => getComputedStyle(e).position;
+        let skipTo: Element | null =
+          pos(el) === "fixed"
+            ? document.documentElement
+            : pos(el) === "absolute"
+              ? el.offsetParent
+              : null;
         for (
           let a = el.parentElement;
           a && a !== document.documentElement;
           a = a.parentElement
         ) {
+          if (skipTo && a !== skipTo) continue;
+          skipTo = null;
           const cs = getComputedStyle(a);
-          if (cs.overflowY === "visible") continue;
-          const b = a.getBoundingClientRect();
-          const scrolls =
-            (cs.overflowY === "auto" || cs.overflowY === "scroll") &&
-            a.scrollHeight > a.clientHeight + 1;
-          if (scrolls) {
-            // Reachable inside it; the scroller itself must be in sight.
-            r = b;
-            continue;
+          if (cs.overflowY !== "visible") {
+            const b = a.getBoundingClientRect();
+            const scrolls =
+              (cs.overflowY === "auto" || cs.overflowY === "scroll") &&
+              a.scrollHeight > a.clientHeight + 1;
+            if (scrolls) {
+              // Reachable inside it; the scroller itself must be in sight.
+              r = b;
+            } else {
+              const cut = Math.max(r.bottom - b.bottom, b.top - r.top);
+              if (cut > 2) {
+                out.push(
+                  `${name(el)} "${(el.textContent ?? "").trim().slice(0, 28)}" cut ${Math.round(cut)}px by ${name(a)}`,
+                );
+                break;
+              }
+            }
           }
-          const cut = Math.max(r.bottom - b.bottom, b.top - r.top);
-          if (cut > 2) {
-            out.push(
-              `${name(el)} "${(el.textContent ?? "").trim().slice(0, 28)}" cut ${Math.round(cut)}px by ${name(a)}`,
-            );
-            break;
-          }
+          if (cs.position === "fixed") skipTo = document.documentElement;
+          else if (cs.position === "absolute")
+            skipTo = (a as HTMLElement).offsetParent;
         }
         // The window itself (the page doesn't scroll in the hub).
         if (r.bottom > innerHeight + 2 || r.top < -2)
@@ -204,42 +234,47 @@ export async function scrollSweep(page: Page, root: string) {
   const problems: string[] = [];
   const seen: string[] = [];
   for (const s of await findScrollers(page, root)) {
-    seen.push(`${s.name} ${s.axis} +${s.overflow}`);
-    if (!s.spots.length) {
+    const prep = await prepare(page, s.id, s.axis);
+    seen.push(`${s.name} ${s.axis} +${prep.overflow}`);
+    if (prep.offscreen) {
+      problems.push(`${s.name}: out of sight, can't be brought into view`);
+      continue;
+    }
+    if (!prep.spots.length) {
       problems.push(`${s.name}: covered, no spot a finger can scroll it from`);
       continue;
     }
-    const el = page.locator(`[data-sweep="${s.id}"]`);
+    const el = page.locator(`[data-sweep${s.axis}="${s.id}"]`);
     const at = () =>
       el.evaluate(
         (n, axis) => (axis === "y" ? n.scrollTop : n.scrollLeft),
         s.axis,
       );
+    const dist = Math.round(Math.max(30, Math.min(220, prep.size * 0.55)));
     const stuck = new Set<string>();
-    for (let i = 0; i < 12; i++) {
+    // Until the end, or three swipes in a row that move nothing.
+    for (let i = 0, still = 0; i < 60 && still < 3; i++) {
       const before = await at();
-      if (before >= s.overflow - 2) break;
-      const spot = s.spots[i % s.spots.length];
-      // Find where the spot is now (the scroller may have moved).
-      const dist = await el.evaluate((n, axis) => {
-        const r = n.getBoundingClientRect();
-        const size =
-          axis === "y"
-            ? Math.min(r.bottom, innerHeight) - Math.max(r.top, 0)
-            : Math.min(r.right, innerWidth) - Math.max(r.left, 0);
-        return Math.round(Math.max(30, Math.min(220, size * 0.55)));
-      }, s.axis);
-      // Start far enough from the edge the finger moves towards.
+      if (before >= prep.overflow - 2) break;
+      const spot = prep.spots[i % prep.spots.length];
       if (s.axis === "y") await finger(page, spot.x, spot.y, 0, -dist);
       else await finger(page, spot.x, spot.y, -dist, 0);
-      if ((await at()) - before < 3) stuck.add(`${spot.x},${spot.y}`);
+      if ((await at()) - before < 3) {
+        still++;
+        stuck.add(`${spot.x},${spot.y}`);
+      } else still = 0;
     }
     const end = await at();
-    if (end < s.overflow - 2)
+    if (end < prep.overflow - 2)
       problems.push(
-        `${s.name}: a swipe gets ${end} of ${s.overflow} px${stuck.size ? ` (stuck at ${[...stuck].slice(0, 3).join(" ")})` : ""}`,
+        `${s.name}: a swipe gets ${end} of ${prep.overflow} px${stuck.size ? ` (stuck at ${[...stuck].slice(0, 3).join(" ")})` : ""}`,
       );
-    await el.evaluate((n) => n.removeAttribute("data-sweep"));
   }
+  await page.evaluate(() =>
+    document.querySelectorAll("[data-sweepy], [data-sweepx]").forEach((n) => {
+      n.removeAttribute("data-sweepy");
+      n.removeAttribute("data-sweepx");
+    }),
+  );
   return { problems, seen, cuts: await cutOff(page, root) };
 }

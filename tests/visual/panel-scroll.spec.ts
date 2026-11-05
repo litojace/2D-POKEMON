@@ -186,22 +186,36 @@ type Report = Record<
   { problems: string[]; cuts: string[]; seen: string[] }
 >;
 
+/** Close whatever is open (a dialog, a hub panel, a Farm sheet, a menu)
+ * and stand on the Lobby. */
+async function closeAll(page: Page) {
+  const open = () =>
+    page.evaluate(
+      () =>
+        !!document.querySelector(
+          "dialog[open], .ui-panel-host .ui-panel, #fm-sheet:not([hidden]), #lobby-mode-menu:not([hidden])",
+        ),
+    );
+  for (let i = 0; i < 5 && (await open()); i++) {
+    await page.keyboard.press("Escape");
+    await settle(page, 300);
+  }
+  await page.evaluate(() =>
+    document
+      .querySelectorAll<HTMLDialogElement>("dialog[open]")
+      .forEach((d) => d.close()),
+  );
+  if (!(await page.locator("#lobby-play").isVisible()))
+    await page
+      .click('#hub-scenes [data-hub-scene="lobby"]', { timeout: 3000 })
+      .catch(() => {});
+  await expect(page.locator("#lobby-play")).toBeVisible();
+}
+
 async function sweepScreens(page: Page, screens: Screen[], report: Report) {
   for (const screen of screens) {
     try {
-      // A fresh Lobby: close whatever is open.
-      for (
-        let i = 0;
-        i < 3 && !(await page.locator("#lobby-play").isVisible());
-        i++
-      ) {
-        await page.keyboard.press("Escape");
-        await settle(page, 300);
-      }
-      if (!(await page.locator("#lobby-play").isVisible()))
-        await page
-          .click('#hub-scenes [data-hub-scene="lobby"]', { timeout: 3000 })
-          .catch(() => {});
+      await closeAll(page);
       await screen.open(page);
       await settle(page);
       report[screen.name] = await scrollSweep(page, screen.root);

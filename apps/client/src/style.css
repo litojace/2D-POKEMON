@@ -3912,6 +3912,7 @@ html.zoom-locked .rc-card,
 html.zoom-locked .rc-card *,
 html.zoom-locked #practice-controls,
 html.zoom-locked .practice-panel,
+html.zoom-locked .practice-panel *,
 html.zoom-locked dialog,
 html.zoom-locked dialog * {
   touch-action: pan-x pan-y !important;
