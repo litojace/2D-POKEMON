@@ -823,6 +823,12 @@ function controlsList(full = false) {
       : "";
   return `<div class="controls-list"><span><kbd>${escape(moveText())}</kbd>Move · ${aimHow}</span><span><kbd>${escape(keyText("basic"))}</kbd>Basic attack${full ? " · hold to keep attacking" : ""}</span><span><kbd>${escape(skillsText())}</kbd>Four skills · the last is your ultimate${casting}</span>${full ? "<span><kbd>ULT</kbd>The ultimate charges as you fight · basic hits shorten cooldowns</span><span><kbd>COMBO</kbd>Each fighter has a setup → payoff combo (see the fighter panel)</span>" : ""}<span><kbd>${escape(keyText("dash"))}</kbd>Dash${full ? " · 3 second cooldown" : ""}</span><span><kbd>${escape(keyText("jump"))}</kbd>Jump over ground attacks</span>${full ? "<span><kbd>ESC</kbd>Settings · change keys under Controls</span>" : ""}</div>`;
 }
+/** The briefing's keys: one compact row (the help screen has the full list). */
+function briefKeys() {
+  const key = (k: string, what: string) =>
+    `<span><kbd>${escape(k)}</kbd>${what}</span>`;
+  return `<div class="brief-keys">${key(moveText(), "Move")}${key(keyText("basic"), "Attack")}${key(skillsText(), "Skills")}${key(keyText("dash"), "Dash")}${key(keyText("jump"), "Jump")}</div>`;
+}
 let labelState = "";
 /** Keep HUD key labels in step with bindings and the device in use. */
 function refreshControlLabels() {
@@ -1265,10 +1271,8 @@ function teamUpNote(me: Fighter) {
     (p) => p.id !== me.id && teamOf(p) === teamOf(me),
   );
   if (!partner) return "";
-  const mine = giftFrom(partner.character),
-    theirs = giftFrom(me.character);
-  const myName = me.id === myId ? "You" : escape(me.name);
-  return `<p class="teamup-note"><b>Team-up</b> Side by side, you both deal ${Math.round((TEAMUP.damage - 1) * 100)}% more damage. ${myName} get <i>${escape(mine.name)}</i> (${escape(mine.text)}) from ${escape(CHARACTERS[partner.character].name)}; ${escape(partner.name)} gets <i>${escape(theirs.name)}</i> (${escape(theirs.text)}).</p>`;
+  const gift = giftFrom(partner.character);
+  return `<p class="teamup-note"><b>Team-up</b> ${me.id === myId ? "You get" : `${escape(me.name)} gets`} <i title="${escape(gift.text)}">${escape(gift.name)}</i> from ${escape(CHARACTERS[partner.character].name)}</p>`;
 }
 /** Join a friend's room from the friends list. */
 async function joinByCode(code: string) {
@@ -1303,7 +1307,8 @@ const pvpSpectator = new PvpSpectator();
 const roomInvites = new RoomInvites({
   accountId: () => accountsUI?.account?.id,
   canJoin: () => connected && !!accountsUI?.account && !myId,
-  join: (code, mode) => (mode === "party" ? acceptParty(code) : joinByCode(code)),
+  join: (code, mode) =>
+    mode === "party" ? acceptParty(code) : joinByCode(code),
   decline: (code) => void request("party-decline", { code }),
 });
 /** Your party on the Lobby (hub redesign phase 2b), or null. */
@@ -1312,8 +1317,7 @@ let partyRoomSent = "";
 let partyCharacterSent = "";
 /** Your saved look as the party last saw it (see syncParty). */
 let partyLookSeen: string | undefined;
-const partyLeader = () =>
-  !!party && party.leader === accountsUI?.account?.id;
+const partyLeader = () => !!party && party.leader === accountsUI?.account?.id;
 async function acceptParty(code: string) {
   if (!accountsUI.ensurePlayer()) return false;
   if (myId) {
@@ -1348,9 +1352,9 @@ async function showPartyInvite() {
           )
           .join("")}</ul>`
       : `<p class="muted">None of your friends are online right now.</p><p><button type="button" class="secondary" id="party-open-friends">${iconLabel("friends", "Open Friends")}</button></p>`;
-    document.getElementById("party-open-friends")?.addEventListener("click", () =>
-      void accountsUI.showFriends(),
-    );
+    document
+      .getElementById("party-open-friends")
+      ?.addEventListener("click", () => void accountsUI.showFriends());
     box.querySelectorAll<HTMLButtonElement>("[data-party-invite]").forEach(
       (button) =>
         (button.onclick = async () => {
@@ -1624,8 +1628,7 @@ function syncPlaza(want: boolean) {
         ),
       ),
     skinName: (id) => CHAMPION_SKIN_BY_ID[id]?.name ?? null,
-    fighterName: (id) =>
-      CHARACTERS[id as CharacterId]?.name ?? "Fighter",
+    fighterName: (id) => CHARACTERS[id as CharacterId]?.name ?? "Fighter",
     playerName: () => accountsUI.account?.displayName ?? "You",
     loadProgress: async () =>
       (await accountsUI.api("/api/plaza")) as PlazaProgress,
@@ -1759,6 +1762,8 @@ function syncFarm(want: boolean) {
   farmScreen = openFarmScreen({
     reduced: reducedMotion,
     low: farmLow,
+    sound: (cue, step) => audio.farm(cue, step),
+    rainSound: (level) => audio.farmRainSound(level),
     load: async () => (await accountsUI.api("/api/farm")) as FarmState,
     act: async (actions) =>
       (await accountsUI.api("/api/farm/act", {
@@ -1871,11 +1876,17 @@ async function lobbyPlay(mode: LobbyMode) {
   const size = party?.members.length ?? 0;
   if (size > 1) {
     if (!partyLeader())
-      return toast("Your party leader starts the game. Leave the party to play on your own.");
+      return toast(
+        "Your party leader starts the game. Leave the party to play on your own.",
+      );
     if (mode.startsWith("bot-") || mode === "practice")
-      return toast("With a party, choose a room: 1v1, 2v2, Free-for-all or Boss Raid.");
+      return toast(
+        "With a party, choose a room: 1v1, 2v2, Free-for-all or Boss Raid.",
+      );
     if ((mode === "duel" && size > 2) || (mode === "teams" && size > 4))
-      return toast(`Your party has ${size} players: choose 2v2 Teams, Free-for-all or Boss Raid.`);
+      return toast(
+        `Your party has ${size} players: choose 2v2 Teams, Free-for-all or Boss Raid.`,
+      );
   }
   if (mode === "raid") return void accountsUI.showRaids();
   if (mode === "practice") return document.getElementById("practice")?.click();
@@ -2362,9 +2373,7 @@ function renderBattle() {
     );
     setHudText(
       $(`health-text-${i}`),
-      p.out
-        ? "LEFT THE MATCH"
-        : `${Math.ceil(Math.max(0, p.hp))} / ${full} HP`,
+      p.out ? "LEFT THE MATCH" : `${Math.ceil(Math.max(0, p.hp))} / ${full} HP`,
     );
     setHudText(
       $(`score-${i}`),
@@ -2401,9 +2410,9 @@ function renderBattle() {
             ? `SLEEP +${Math.round((STATUS_RULES.sleepVulnerability - 1) * 100)}% DMG`
             : s.kind === "shell"
               ? `SHELL −${Math.round((1 - STATUS_RULES.shellReduction) * 100)}% DMG`
-            : s.kind === "mark"
-              ? comboOf(s.by).toUpperCase()
-              : s.kind.toUpperCase(),
+              : s.kind === "mark"
+                ? comboOf(s.by).toUpperCase()
+                : s.kind.toUpperCase(),
         )
         .join(" · "),
     );
@@ -2653,24 +2662,30 @@ function renderBattle() {
           ])
             .map(card)
             .join('<span class="vs-mark">VS</span>')}</div>`;
+      // Short on purpose (owner, 5 Nov 2026): who, the goal, the arena if
+      // it has something to dodge, the keys. The HUD and the fighters'
+      // panels hold the rest.
       const arena = ARENAS[state.arena ?? "classic"];
+      const event = state.arcade ? ARCADE_EVENTS[state.arcade.id] : undefined;
+      const rounds = roundsNeeded(state.mutators);
+      const goal = isTeams()
+        ? `Stay side by side: +${Math.round((TEAMUP.damage - 1) * 100)}% damage · First team to ${rounds} rounds`
+        : isFfa()
+          ? `Last one standing takes the round · First to ${rounds}`
+          : `First to win ${rounds} rounds`;
+      const place = event
+        ? `<p class="brief-arena"><b>${escape(event.name)}</b>${escape(event.tip)} · No rating change</p>`
+        : arena.hazards.length
+          ? `<p class="brief-arena"><b>${escape(arena.name)}</b>${escape(arena.tip)}</p>`
+          : `<p class="brief-arena"><b>${escape(arena.name)}</b></p>`;
       details =
-        (state.arcade
-          ? `<p class="arcade-brief"><b>${ARCADE_EVENTS[state.arcade.id].name}</b>${ARCADE_EVENTS[state.arcade.id].tip} · Arcade does not change your PvP rating.</p>`
-          : "") +
         versus +
+        `<p class="brief-goal">${menuIcon("leaderboard")}<span>${goal}</span></p>` +
         teamUpNote(me) +
-        `<p class="arena-brief"><b>Arena · ${escape(arena.name)}</b>${escape(state.arcade ? ARCADE_EVENTS[state.arcade.id].tip : arena.tip)}</p>` +
-        '<p class="mobile-howto">Touch mode: left joystick to move; big button for basic attacks, the four curved buttons for skills, DASH and JUMP below. Aim follows your nearest opponent.</p>' +
-        controlsList() +
-        "<p>" +
-        (isTeams()
-          ? `Stick with your partner and focus the same target: side by side, you both hit ${Math.round((TEAMUP.damage - 1) * 100)}% harder (a link shows between you). Your attacks pass through your teammate. First team to win ${roundWord()} rounds takes the match.`
-          : isFfa()
-            ? `Everyone is your enemy: the last fighter standing takes the round. First to win ${roundWord()} rounds takes the match.`
-            : `Use cover. First to win ${roundWord()} rounds takes the match.`) +
-        partyRulesNote() +
-        " The countdown begins when everyone confirms.</p>";
+        place +
+        briefKeys() +
+        '<p class="mobile-howto">Joystick to move · aim follows your nearest foe</p>' +
+        partyRulesNote();
       actions = `<button class="primary btn-primary" id="instructions-ready" ${confirmed ? "disabled" : ""}>${confirmed ? "Waiting for the others…" : "I’m ready"}</button>`;
     }
     if (state.phase === "countdown") {
@@ -4983,13 +4998,20 @@ class ArenaScene extends Phaser.Scene {
       // Static Glide keeps a fighter airborne longer than a jump: it lifts,
       // sails at a steady height and settles, instead of following the jump arc.
       let glide = gliding.get(p.id);
-      if (airborne > RULES.jumpDuration + 0.05 && glide?.until !== serverPlayer.jumpUntil)
-        gliding.set(p.id, (glide = { until: serverPlayer.jumpUntil, start: state.time }));
-      const isGliding = !!glide && glide.until === serverPlayer.jumpUntil && airborne > 0;
+      if (
+        airborne > RULES.jumpDuration + 0.05 &&
+        glide?.until !== serverPlayer.jumpUntil
+      )
+        gliding.set(
+          p.id,
+          (glide = { until: serverPlayer.jumpUntil, start: state.time }),
+        );
+      const isGliding =
+        !!glide && glide.until === serverPlayer.jumpUntil && airborne > 0;
       const jump = isGliding
         ? 34 *
-          Math.min(1, (state.time - glide!.start) / 0.2) *
-          Math.min(1, airborne / 0.3) +
+            Math.min(1, (state.time - glide!.start) / 0.2) *
+            Math.min(1, airborne / 0.3) +
           Math.sin(state.time * 9) * 2
         : airborne > 0
           ? Math.sin((1 - airborne / RULES.jumpDuration) * Math.PI) * 45

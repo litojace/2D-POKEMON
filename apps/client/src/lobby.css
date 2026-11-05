@@ -269,16 +269,6 @@
   opacity: 1;
   z-index: 1;
 }
-.lobby-fighter-art > svg.ta-front-layer,
-.lobby-member-art > svg.ta-front-layer {
-  display: none;
-  pointer-events: none;
-}
-.lobby-fighter-art.is-ready > svg.ta-front-layer,
-.lobby-member-art.is-ready > svg.ta-front-layer {
-  display: block;
-  z-index: 2;
-}
 /* Podiums: a lit disc under your fighter and under every seat, all on the
    same floor line, tinted by the fighter's element (as in the hub redesign
    proposal). An open seat's podium is fainter. */
@@ -1157,9 +1147,11 @@
 }
 /* The player card's box and rows. The farm's badge (farm/farm.css) uses
    the same numbers, so the two cards match: same size, and their bars and
-   text rows at the same heights. Two rows (name and level, then the XP
-   bar): the hub shows no title under the bar. The rows under the header
-   (Lobby, Plaza, Farm) are placed from --hub-card-h. */
+   text rows at the same heights. Three rows in the same box: the name and
+   level, the title you wear in small letters, then the XP bar (desktop
+   18 + 2 + 10 + 2 + 5 = 37px of the 38px inside; phones 15 + 1 + 9 + 2 + 5
+   = 32px of 32px). The rows under the header (Lobby, Plaza, Farm) are
+   placed from --hub-card-h. */
 :root {
   --hub-card-w: 236px;
   --hub-card-h: 52px;
@@ -1167,8 +1159,9 @@
   /* The card's height less its padding and border, as on phones. */
   --hub-card-art: 38px;
   /* The name row: as tall as the level pill. */
-  --hub-card-row: 22px;
-  --hub-card-gap: 3px;
+  --hub-card-row: 18px;
+  --hub-card-gap: 2px;
+  --hub-card-title: 10px;
 }
 /* :root makes these outrank style.css's card rules, which load later. */
 :root body.hub-active #account-profile {
@@ -1177,12 +1170,20 @@
   height: var(--hub-card-h);
   padding: var(--hub-card-pad);
   grid-template-columns: var(--hub-card-art) minmax(0, 1fr) 46px;
-  grid-template-areas: "art name level" "art xp xp";
+  grid-template-areas: "art name level" "art title title" "art xp xp";
   align-content: center;
   row-gap: var(--hub-card-gap);
 }
+/* The title: one small line between the name and the bar (its own colour
+   comes from the title), cut short rather than wrapped. */
 :root body.hub-active #account-profile .nav-title {
-  display: none;
+  display: block;
+  grid-area: title;
+  height: var(--hub-card-title);
+  font:
+    700 var(--hub-card-title) / 1 "DM Sans",
+    sans-serif;
+  letter-spacing: 0.02em;
 }
 :root body.hub-active #account-profile .account-avatar {
   width: var(--hub-card-art);
@@ -1278,8 +1279,9 @@ body:not(.hub-active) #account-leaves {
     --hub-card-h: 42px;
     --hub-card-pad: 4px 10px 4px 4px;
     --hub-card-art: 32px;
-    --hub-card-row: 17px;
-    --hub-card-gap: 2px;
+    --hub-card-row: 15px;
+    --hub-card-gap: 1px;
+    --hub-card-title: 9px;
   }
   :root body.hub-active #account-profile {
     grid-template-columns: var(--hub-card-art) minmax(0, 1fr) 36px;
@@ -1287,8 +1289,8 @@ body:not(.hub-active) #account-leaves {
   :root body.hub-active #account-profile .account-name {
     font-size: 15px;
   }
-  /* 17px tall with 1px under the text: the 10px digits sit exactly in the
-     middle (4px above, 4px below). */
+  /* 15px tall with 1px under the text: the 10px digits sit exactly in the
+     middle (3px above, 3px below the cap height). */
   body.hub-active #account-profile .nav-level {
     width: 36px;
     padding-bottom: 1px;

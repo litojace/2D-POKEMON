@@ -10,6 +10,7 @@ import { MusicSynth } from "./music-synth";
 import { MusicSampleBank } from "./music-samples";
 import { CourtAmbience } from "./court-ambience";
 import type { CourtId } from "./arena-courts";
+import { FarmRain, playFarmCue, type FarmCue } from "./farm/farm-sound";
 export { noteHz } from "./music-synth";
 // Original adaptive lobby, PvP and raid scores plus synthesized combat effects.
 const MIX = 0.5;
@@ -73,6 +74,7 @@ export class AudioManager {
   }
   private updateMusicGain() {
     this.ambience?.setLevel(this.ambienceLevel());
+    if (this.farmRain) this.farmRainSound(this.farmRainLevel);
     if (!this.context || !this.musicBus) return;
     this.musicBus.gain.setTargetAtTime(
       document.hidden ? 0 : this.music * MIX,
@@ -315,10 +317,30 @@ export class AudioManager {
       };
     }
   }
+  private farmRain?: FarmRain;
+  private farmRainLevel = 0;
+  /** A farm sound (farm/farm-sound.ts) at the Effects volume. */
+  farm(cue: FarmCue, step = 0) {
+    const ctx = this.context;
+    if (!ctx || ctx.state !== "running" || this.effects <= 0 || document.hidden)
+      return;
+    playFarmCue(ctx, ctx.destination, this.effects, this.noise, cue, step);
+  }
+  /** Rain on the farm: 0 off, 1 rain, 1.6 a storm (follows the Effects volume). */
+  farmRainSound(level: number) {
+    this.farmRainLevel = level;
+    const ctx = this.context;
+    if (!ctx || !this.noise) return;
+    this.farmRain ??= new FarmRain(ctx, ctx.destination, this.noise);
+    this.farmRain.set(document.hidden ? 0 : level, this.effects);
+  }
   set(kind: "music" | "effects", value: number) {
     this[kind] = value;
     localStorage.setItem(`arena-${kind}`, String(value));
     if (kind === "music") this.updateMusicGain();
-    else this.ambience?.setLevel(this.ambienceLevel());
+    else {
+      this.ambience?.setLevel(this.ambienceLevel());
+      if (this.farmRain) this.farmRainSound(this.farmRainLevel);
+    }
   }
 }

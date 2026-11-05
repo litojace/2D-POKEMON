@@ -4,6 +4,7 @@ import { CHAMPION_SKIN_BY_ID } from "../../packages/shared/src/shop";
 
 const mock = vi.hoisted(() => ({
   scene: undefined as any,
+  game: undefined as any,
   resize: vi.fn(),
   onResize: undefined as undefined | (() => void),
   render: vi.fn(),
@@ -81,6 +82,7 @@ vi.mock("phaser", () => ({
         resize: mock.resize,
       };
       constructor(config: any) {
+        mock.game = this;
         mock.games();
         mock.scene = new config.scene();
       }
@@ -233,6 +235,22 @@ afterEach(() => {
 });
 
 describe("Shop live previews", () => {
+  it("sizes the first scene even when the game has not started its loop", () => {
+    const p = panel();
+    p.host.getBoundingClientRect.mockReturnValue({ width: 400, height: 600 });
+    const dispose = mountShopPreview(p.element);
+    mock.game.isRunning = false;
+    // WebKit delivers the initial observation before Phaser finishes booting.
+    mock.onResize!();
+    expect(mock.resize).not.toHaveBeenCalled();
+    mock.scene.create();
+    expect(mock.resize).toHaveBeenLastCalledWith(400, 600);
+    mock.game.isRunning = true;
+    draw();
+    expect(mock.scene.cameras.main.setZoom).toHaveBeenLastCalledWith(1);
+    dispose();
+  });
+
   it("fills a tall preview on resize without moving the fighter or reviving a disposed preview", () => {
     const { host, dispose } = preview();
     host.getBoundingClientRect.mockReturnValue({ width: 400, height: 600 });

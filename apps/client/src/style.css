@@ -850,6 +850,76 @@ input::placeholder {
 .overlay-card button {
   margin: 20px 5px 0;
 }
+/* The match briefing, kept short: the goal, the arena (and what to dodge
+   in it), the keys as one row of chips. */
+.brief-goal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px auto 2px;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 14px;
+}
+.brief-goal svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+.brief-arena {
+  margin: 4px auto;
+  max-width: 480px;
+  color: #b9c8de;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.brief-arena b {
+  margin-right: 6px;
+  color: #d9e6f5;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.brief-keys {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  max-width: 540px;
+  margin: 12px auto 0;
+}
+.brief-keys > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 3px;
+  border: 1px solid #ffffff1f;
+  border-radius: 999px;
+  background: #ffffff0d;
+  color: #d9e6f5;
+  font-size: 12px;
+}
+.brief-keys kbd {
+  min-width: 26px;
+  padding: 2px 6px;
+  border: 1px solid #ffffff2e;
+  border-radius: 999px;
+  background: #0b1430;
+  color: #fff;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+.battle-active.touch-mode .overlay-card .brief-keys {
+  display: none;
+}
+.mobile-howto {
+  font-size: 12px;
+  color: #b9c8de;
+}
 .arena-brief {
   margin: 14px auto 4px;
   max-width: 520px;
@@ -1301,6 +1371,13 @@ dialog input[type="range"] {
   user-select: none;
   flex-shrink: 0;
   pointer-events: auto;
+  /* A floating stick (touch-controls.ts) eases back to its place... */
+  transition: transform 0.16s ease-out;
+}
+/* ...and jumps under the finger at once. */
+.joystick-area.is-floating {
+  transition: none;
+  z-index: 5;
 }
 .joystick {
   position: relative;
@@ -2781,9 +2858,6 @@ body.battle-still .spectator {
   height: 22px;
 }
 /* Eight fighters as two rows of four when the roster has room, else four rows of two. */
-.roster-panel {
-  container-type: inline-size;
-}
 /* Admin panel: compact player rows, title dropdown, reports inbox. */
 dialog:has(.admin-tabs) {
   width: min(760px, 94vw);
@@ -3176,39 +3250,6 @@ dialog:has(.admin-tabs) {
 .online-note {
   color: var(--muted);
   font-size: 11px;
-}
-/* Trait auras around menu art (see trait-effects.ts). */
-.trait-aura {
-  overflow: visible;
-}
-.trait-aura .ta-c {
-  transform-box: fill-box;
-  transform-origin: center;
-}
-.trait-aura .ta-base {
-  transform-box: fill-box;
-  transform-origin: 50% 100%;
-}
-.trait-aura .ta-leaf {
-  transform-origin: 0 0;
-}
-@keyframes ta-leaf {
-  0% {
-    transform: translate(0, 0) rotate(0);
-    opacity: 0;
-  }
-  20% {
-    opacity: 1;
-  }
-  100% {
-    transform: translate(12px, 90px) rotate(220deg);
-    opacity: 0;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .trait-aura * {
-    animation: none !important;
-  }
 }
 .briefing-versus {
   display: flex;
@@ -3918,12 +3959,8 @@ html.zoom-locked dialog input {
   #battle:not([hidden]) {
     animation: ea-fade 0.28s ease-out;
   }
-  #menu.screen-enter .roster-panel,
   #menu.screen-enter .room-panel {
     animation: ea-rise 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  }
-  #menu.screen-enter .roster-panel {
-    animation-delay: 0.05s;
   }
   #menu.screen-enter .room-panel {
     animation-delay: 0.1s;
@@ -6440,11 +6477,6 @@ body.battle-raid:not(.touch-mode) #battle {
   height: 44px;
 }
 .raid-cosmetic-preview[data-cosmetic="cragbound"] > svg,
-.roster-panel[data-raid-cosmetic~="cragbound"]
-  .selected
-  .card-art
-  > :is(svg, img),
-.roster-panel[data-raid-cosmetic~="cragbound"] .selected-art > :is(svg, img),
 :is(
     .raid-party-avatar,
     .raid-score-avatar,
@@ -6454,7 +6486,6 @@ body.battle-raid:not(.touch-mode) #battle {
   filter: sepia(1) saturate(0.8) brightness(0.96);
 }
 .raid-cosmetic-preview[data-cosmetic="mountain-aura"],
-.roster-panel[data-raid-cosmetic~="mountain-aura"] .selected .card-art,
 :is(
   .raid-party-avatar,
   .raid-score-avatar,
@@ -7040,9 +7071,6 @@ body.lobby-active::before {
   display: none;
 }
 .raid-cosmetic-preview[data-cosmetic="cragstone"] .crag-cracks,
-.roster-panel[data-raid-cosmetic~="cragstone"]
-  :is(.selected .card-art, .selected-art)
-  .crag-cracks,
 :is(
     .raid-party-avatar,
     .raid-score-avatar,
@@ -7052,11 +7080,6 @@ body.lobby-active::before {
   display: inline;
 }
 .raid-cosmetic-preview[data-cosmetic="cragstone"] > svg,
-.roster-panel[data-raid-cosmetic~="cragstone"]
-  .selected
-  .card-art
-  > :is(svg, img),
-.roster-panel[data-raid-cosmetic~="cragstone"] .selected-art > :is(svg, img),
 :is(
     .raid-party-avatar,
     .raid-score-avatar,
@@ -8094,11 +8117,6 @@ label.title-option {
 
 /* ---- Gloomshade raid rewards ---- */
 .raid-cosmetic-preview[data-cosmetic="dusk-colors"] > svg,
-.roster-panel[data-raid-cosmetic~="dusk-colors"]
-  .selected
-  .card-art
-  > :is(svg, img),
-.roster-panel[data-raid-cosmetic~="dusk-colors"] .selected-art > :is(svg, img),
 :is(
     .raid-party-avatar,
     .raid-score-avatar,
@@ -8108,11 +8126,6 @@ label.title-option {
   filter: sepia(0.45) hue-rotate(220deg) saturate(1.4) brightness(1.02);
 }
 .raid-cosmetic-preview[data-cosmetic="moonlit-skin"] > svg,
-.roster-panel[data-raid-cosmetic~="moonlit-skin"]
-  .selected
-  .card-art
-  > :is(svg, img),
-.roster-panel[data-raid-cosmetic~="moonlit-skin"] .selected-art > :is(svg, img),
 :is(
     .raid-party-avatar,
     .raid-score-avatar,
@@ -8149,11 +8162,6 @@ label.title-option {
 
 /* ---- Tidewyrm raid rewards ---- */
 .raid-cosmetic-preview[data-cosmetic="seafoam"] > svg,
-.roster-panel[data-raid-cosmetic~="seafoam"]
-  .selected
-  .card-art
-  > :is(svg, img),
-.roster-panel[data-raid-cosmetic~="seafoam"] .selected-art > :is(svg, img),
 :is(
     .raid-party-avatar,
     .raid-score-avatar,
@@ -8163,11 +8171,6 @@ label.title-option {
   filter: sepia(0.5) hue-rotate(130deg) saturate(1.6) brightness(1.05);
 }
 .raid-cosmetic-preview[data-cosmetic="pearlscale"] > svg,
-.roster-panel[data-raid-cosmetic~="pearlscale"]
-  .selected
-  .card-art
-  > :is(svg, img),
-.roster-panel[data-raid-cosmetic~="pearlscale"] .selected-art > :is(svg, img),
 :is(
     .raid-party-avatar,
     .raid-score-avatar,
@@ -9286,22 +9289,12 @@ dialog:is(:has(.profile-screen), :has(.friends-screen), :has(#leaderboard-body),
 }
 /* Somnara's earned cosmetics, also represented in combat's layered rig. */
 .raid-cosmetic-preview[data-cosmetic="twilight-colors"] > svg,
-:is(
-    .raid-party-avatar,
-    .raid-score-avatar,
-    .player-avatar,
-    .roster-panel
-  )[data-raid-cosmetic~="twilight-colors"]
+:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="twilight-colors"]
   svg {
   filter: hue-rotate(225deg) saturate(0.55) brightness(1.08);
 }
 .raid-cosmetic-preview[data-cosmetic="starlit-skin"] > svg,
-:is(
-    .raid-party-avatar,
-    .raid-score-avatar,
-    .player-avatar,
-    .roster-panel
-  )[data-raid-cosmetic~="starlit-skin"]
+:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="starlit-skin"]
   svg {
   filter: hue-rotate(240deg) saturate(0.4) drop-shadow(0 0 4px #e6ddff88);
 }
@@ -9713,7 +9706,7 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   }
 }
 @media (prefers-reduced-motion: no-preference) {
-  :is(.roster-panel, .player-avatar, .vs-fighter)
+  :is(.player-avatar, .vs-fighter)
     svg[data-fighter="auralynx"]
     .fighter-wings {
     transform-origin: 100px 122.98px;
@@ -9774,22 +9767,12 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   backdrop-filter: blur(6px);
 }
 .raid-cosmetic-preview[data-cosmetic="dawn-colors"] > svg,
-:is(
-    .raid-party-avatar,
-    .raid-score-avatar,
-    .player-avatar,
-    .roster-panel
-  )[data-raid-cosmetic~="dawn-colors"]
+:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="dawn-colors"]
   svg {
   filter: sepia(0.5) saturate(0.85) hue-rotate(325deg) brightness(1.15);
 }
 .raid-cosmetic-preview[data-cosmetic="prismatic-skin"] > svg,
-:is(
-    .raid-party-avatar,
-    .raid-score-avatar,
-    .player-avatar,
-    .roster-panel
-  )[data-raid-cosmetic~="prismatic-skin"]
+:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="prismatic-skin"]
   svg {
   filter: saturate(0.45) brightness(1.3) drop-shadow(-2px 0 2px #ff899e88)
     drop-shadow(2px 0 2px #80e1ff99);
@@ -9832,22 +9815,12 @@ dialog.framed-dialog > .dialog-content:focus-visible {
 
 /* Emberwing rewards keep portraits stable; moving effects render in the combat rig. */
 .raid-cosmetic-preview[data-cosmetic="ember-colors"] > svg,
-:is(
-    .raid-party-avatar,
-    .raid-score-avatar,
-    .player-avatar,
-    .roster-panel
-  )[data-raid-cosmetic~="ember-colors"]
+:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="ember-colors"]
   svg {
   filter: sepia(0.5) saturate(1.1) hue-rotate(335deg);
 }
 .raid-cosmetic-preview[data-cosmetic="cinderplume"] > svg,
-:is(
-    .raid-party-avatar,
-    .raid-score-avatar,
-    .player-avatar,
-    .roster-panel
-  )[data-raid-cosmetic~="cinderplume"]
+:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="cinderplume"]
   svg {
   filter: sepia(0.25) saturate(0.6) brightness(0.7)
     drop-shadow(0 0 3px #ff985a77);
@@ -9970,22 +9943,12 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   }
 }
 .raid-cosmetic-preview[data-cosmetic="static-colors"] > svg,
-:is(
-    .raid-party-avatar,
-    .raid-score-avatar,
-    .player-avatar,
-    .roster-panel
-  )[data-raid-cosmetic~="static-colors"]
+:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="static-colors"]
   svg {
   filter: sepia(0.25) saturate(0.6) hue-rotate(145deg) brightness(1.1);
 }
 .raid-cosmetic-preview[data-cosmetic="thundercell"] > svg,
-:is(
-    .raid-party-avatar,
-    .raid-score-avatar,
-    .player-avatar,
-    .roster-panel
-  )[data-raid-cosmetic~="thundercell"]
+:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="thundercell"]
   svg {
   filter: saturate(0.35) brightness(1.25) drop-shadow(0 0 3px #8edfff88);
 }
@@ -10050,22 +10013,12 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   box-shadow: 0 0 14px #ffb5da44;
 }
 .raid-cosmetic-preview[data-cosmetic="aurora-colors"] > svg,
-:is(
-    .raid-party-avatar,
-    .raid-score-avatar,
-    .player-avatar,
-    .roster-panel
-  )[data-raid-cosmetic~="aurora-colors"]
+:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="aurora-colors"]
   svg {
   filter: sepia(0.5) saturate(0.8) hue-rotate(130deg) brightness(1.08);
 }
 .raid-cosmetic-preview[data-cosmetic="starlit-colors"] > svg,
-:is(
-    .raid-party-avatar,
-    .raid-score-avatar,
-    .player-avatar,
-    .roster-panel
-  )[data-raid-cosmetic~="starlit-colors"]
+:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="starlit-colors"]
   svg {
   filter: sepia(0.5) saturate(1.2) hue-rotate(195deg) brightness(0.8);
 }
@@ -10092,12 +10045,7 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   box-shadow: 0 0 14px #b6a0ff44;
 }
 .raid-cosmetic-preview[data-cosmetic="season-aurora-colors"] > svg,
-:is(
-    .raid-party-avatar,
-    .raid-score-avatar,
-    .player-avatar,
-    .roster-panel
-  )[data-raid-cosmetic~="season-aurora-colors"]
+:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="season-aurora-colors"]
   svg {
   filter: sepia(0.5) saturate(0.8) hue-rotate(140deg) brightness(1.08);
 }
@@ -10124,12 +10072,7 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   box-shadow: 0 0 14px #ffe39d44;
 }
 .raid-cosmetic-preview[data-cosmetic="season-ember-colors"] > svg,
-:is(
-    .raid-party-avatar,
-    .raid-score-avatar,
-    .player-avatar,
-    .roster-panel
-  )[data-raid-cosmetic~="season-ember-colors"]
+:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="season-ember-colors"]
   svg {
   filter: sepia(0.5) saturate(0.8) hue-rotate(335deg) brightness(1.08);
 }
@@ -10156,12 +10099,7 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   box-shadow: 0 0 14px #b9f5e944;
 }
 .raid-cosmetic-preview[data-cosmetic="season-tide-colors"] > svg,
-:is(
-    .raid-party-avatar,
-    .raid-score-avatar,
-    .player-avatar,
-    .roster-panel
-  )[data-raid-cosmetic~="season-tide-colors"]
+:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="season-tide-colors"]
   svg {
   filter: sepia(0.5) saturate(0.8) hue-rotate(165deg) brightness(1.08);
 }
@@ -10188,12 +10126,7 @@ dialog.framed-dialog > .dialog-content:focus-visible {
   box-shadow: 0 0 14px #ffb5da44;
 }
 .raid-cosmetic-preview[data-cosmetic="season-astral-colors"] > svg,
-:is(
-    .raid-party-avatar,
-    .raid-score-avatar,
-    .player-avatar,
-    .roster-panel
-  )[data-raid-cosmetic~="season-astral-colors"]
+:is(.raid-party-avatar, .raid-score-avatar, .player-avatar)[data-raid-cosmetic~="season-astral-colors"]
   svg {
   filter: sepia(0.5) saturate(0.8) hue-rotate(245deg) brightness(1.08);
 }
@@ -10312,17 +10245,6 @@ dialog.framed-dialog > .dialog-content:focus-visible {
 .journey-xp-pending {
   font-size: 11px;
   color: #a8bbd3;
-}
-.arcade-brief {
-  padding: 12px;
-  border: 1px solid #d2b0ff55;
-  border-radius: 12px;
-  font-size: 12px;
-}
-.arcade-brief b {
-  display: block;
-  color: #e2c6ff;
-  margin-bottom: 6px;
 }
 .arcade-rating-note {
   font-size: 12px;
@@ -10705,9 +10627,6 @@ body.home-active .header-menu summary > span {
   min-height: 0;
   padding: 20px 24px;
 }
-.home-drawer .roster-panel {
-  min-width: 0;
-}
 .home-play-drawer {
   width: min(740px, calc(100vw - var(--safe-left) - var(--safe-right) - 40px));
 }
@@ -10894,13 +10813,6 @@ body.lobby-active #menu {
   grid-template-rows: auto minmax(0, 1fr);
   gap: 16px;
 }
-
-body.lobby-active .roster-panel {
-  display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
-  min-height: 0;
-  gap: 10px;
-}
 /* Once the animated fighter is drawn, the still artwork under it steps aside
    (otherwise a skinned fighter shows twice, slightly out of line). */
 .fighter-rig-stage.is-ready :is(.fighter-character, .fighter-scarf) {
@@ -10921,9 +10833,6 @@ body.lobby-active .roster-panel {
   body.lobby-active #menu {
     gap: 6px;
   }
-  body.lobby-active .roster-panel {
-    gap: 6px;
-  }
 }
 body.lobby-active main,
 body.lobby-active #menu {
@@ -10936,19 +10845,6 @@ body.lobby-active #menu {
 }
 
 /* Desktop lobby review: compact portraits and immediately reachable kit details. */
-body.lobby-active .roster-panel {
-  grid-template-rows: auto minmax(0, 1fr) auto;
-}
-@media (min-width: 741px) {
-  body.lobby-active .roster-panel {
-    grid-template-columns: minmax(0, 1.15fr) minmax(220px, 1fr);
-    column-gap: 16px;
-  }
-  body.lobby-active .roster-panel > .universal {
-    grid-column: 1 / -1;
-    grid-row: 3;
-  }
-}
 
 /* Phase 4: compact corner HUD and shared circular skill cooldowns. */
 body.battle-active:not(.battle-raid) .hud {
@@ -11704,9 +11600,6 @@ body.battle-active .ability.ult-ready,
 }
 
 /* All fighters stay visible; only the selected fighter animates in the detail pane. */
-body.lobby-active #menu .roster-panel {
-  grid-template-columns: clamp(300px, 36%, 460px) minmax(0, 1fr);
-}
 @media (max-width: 1000px) and (orientation: landscape) {
   body.lobby-active #menu .room-code span {
     display: inline-flex;
@@ -11743,12 +11636,6 @@ body.lobby-active #menu .roster-panel {
 /* Only genuinely narrow tiles need small type; roomy phone drawers scale up. */
 
 /* Phone room controls leave the main width for fighter information. */
-@media (max-width: 1000px) and (orientation: landscape) {
-  body.lobby-active #menu .roster-panel {
-    grid-template-columns: clamp(188px, 36%, 320px) minmax(0, 1fr);
-    column-gap: 10px;
-  }
-}
 
 /* Raid drafting: the choices own the centre; the live countdown sits below. */
 #arena-overlay:has(.raid-draft) {
@@ -15428,14 +15315,7 @@ body.battle-active.battle-raid #spectate:not(.pvp-spectator) {
 .battle-raid .spectate-banner .raid-revive-cause { margin-top: 4px; color: #a9bad2; font-size: 11px; line-height: 14px; }
 body.battle-raid.raid-downed #mobile-controls .touch-buttons { visibility: hidden; pointer-events: none; }
 
-/* The selected fighter's aura in the roster: the animated fighter (a canvas)
-   lies over the artwork, so the aura's front half is drawn again above it,
-   and the artwork's own front half steps aside. Before the canvas is ready
-   the artwork shows its aura whole. */
-/* Placed by the same rules as the artwork (a grid cell or absolute). */
-.fighter-rig-stage.is-ready > svg:not(.ta-front-layer) .ta-front {
-  visibility: hidden;
-}
+/* The animated fighter (a canvas) lies over the artwork. */
 
 /* ── Raid boss bar ──
    A centred boss frame like action RPGs: the name between Peril and Phase

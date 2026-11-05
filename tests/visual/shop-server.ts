@@ -12,6 +12,8 @@ import type { Page } from "@playwright/test";
 export interface ShopServer {
   balance?: number;
   owned?: string[];
+  /** Remove these champions' skins from the default harness equipment. */
+  cleared?: string[];
   /** Coins a purchase takes (the real server prices it; tests pick a number). */
   cost?: number;
   /** Raid progress: earned cosmetics and boss clears. */

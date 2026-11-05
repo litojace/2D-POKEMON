@@ -10,6 +10,7 @@ import type {
   FarmVisitResult,
 } from "../../../../packages/shared/src/farm";
 import { openFarm } from "./farm-scene";
+import type { FarmCue } from "./farm-sound";
 
 /**
  * The Farm scene of the hub (hub redesign phase 4): the typed entry point
@@ -53,6 +54,10 @@ export interface FarmScreenOptions {
     friend: string,
     actions: FarmVisitAction[],
   ): Promise<FarmVisitResult>;
+  /** A farm sound effect (farm-sound.ts); `step` raises a harvest pop's pitch. */
+  sound?(cue: FarmCue, step?: number): void;
+  /** Rain on the farm: 0 off, 1 rain, 1.6 a storm. */
+  rainSound?(level: number): void;
   reduced: boolean;
   /** Low graphics (Settings → Graphics): 30 fps, 1× canvas, no ambient animals. */
   low?: boolean;
