@@ -215,27 +215,67 @@ async function sweepScreens(page: Page, screens: Screen[], report: Report) {
   }
 }
 
-for (const size of SIZES)
-  test(`every panel scrolls to its end at ${size.name}`, async ({
+const print = (size: string, name: string, r: Report[string]) =>
+  console.log(
+    `SWEEP ${size} | ${name}: ${r.seen.length} scroller(s)${r.seen.length ? ` [${r.seen.join("; ")}]` : ""}${r.problems.length ? `\n    PROBLEM ${r.problems.join("\n    PROBLEM ")}` : ""}${r.cuts.length ? `\n    CUT ${r.cuts.slice(0, 8).join("\n    CUT ")}` : ""}`,
+  );
+
+const GROUPS: Record<string, Screen[]> = {
+  "hub panels": HUB_SCREENS.filter((s) => s.root === HUB),
+  "dialogs and menus": HUB_SCREENS.filter((s) => s.root !== HUB),
+  "farm sheets": FARM_SHEETS,
+};
+
+async function start(
+  size: (typeof SIZES)[number],
+  browser: import("@playwright/test").Browser,
+) {
+  const context = await browser.newContext({
+    viewport: { width: size.width, height: size.height },
+    isMobile: size.phone,
+    hasTouch: true,
+  });
+  const page = await context.newPage();
+  page.setDefaultTimeout(10_000);
+  const errors = await openHub(page);
+  if (size.island) await setInsets(page, ISLAND);
+  expect(await fingerWorks(page), "the swipe itself").toBe(true);
+  return { context, page, errors };
+}
+const failing = (report: Report) =>
+  Object.entries(report)
+    .filter(([, r]) => r.problems.length || r.cuts.length)
+    .map(([n]) => n);
+
+for (const size of SIZES) {
+  for (const [group, screens] of Object.entries(GROUPS))
+    test(`${group} scroll to their end at ${size.name}`, async ({
+      browser,
+    }) => {
+      test.setTimeout(900_000);
+      const { context, page, errors } = await start(size, browser);
+      const report: Report = {};
+      try {
+        for (const screen of screens) {
+          await sweepScreens(page, [screen], report);
+          print(size.name, screen.name, report[screen.name]);
+        }
+        expect(
+          failing(report),
+          "panels that can't be scrolled to the end",
+        ).toEqual([]);
+        expect(errors).toEqual([]);
+      } finally {
+        await context.close();
+      }
+    });
+  test(`the match's panels scroll to their end at ${size.name}`, async ({
     browser,
   }) => {
-    test.setTimeout(900_000);
-    const context = await browser.newContext({
-      viewport: { width: size.width, height: size.height },
-      isMobile: size.phone,
-      hasTouch: true,
-    });
+    test.setTimeout(600_000);
+    const { context, page, errors } = await start(size, browser);
     const report: Report = {};
     try {
-      const page = await context.newPage();
-      const errors = await openHub(page);
-      if (size.island) await setInsets(page, ISLAND);
-      expect(await fingerWorks(page), "the swipe itself").toBe(true);
-      await sweepScreens(page, HUB_SCREENS, report);
-      await sweepScreens(page, FARM_SHEETS, report);
-      // A practice match: the in-match menu, the practice panel, the results.
-      await page.keyboard.press("Escape");
-      await page.click('#hub-scenes [data-hub-scene="lobby"]').catch(() => {});
       await page.evaluate(() => (window as any).__room("practice"));
       await openPlayPanel(page);
       await page.click("#practice");
@@ -243,10 +283,12 @@ for (const size of SIZES)
       await page.click("#battle-menu");
       await settle(page);
       report["match menu"] = await scrollSweep(page, "#dialog");
+      print(size.name, "match menu", report["match menu"]);
       await page.click("#settings-practice");
       await expect(page.locator(".practice-panel")).toBeVisible();
       await settle(page);
       report["practice panel"] = await scrollSweep(page, ".practice-panel");
+      print(size.name, "practice panel", report["practice panel"]);
       await page.click("#practice-close");
       await page.evaluate(() => {
         const w = window as any;
@@ -263,17 +305,9 @@ for (const size of SIZES)
       await expect(page.locator(".action-overlay h2")).toBeVisible();
       await settle(page);
       report["match results"] = await scrollSweep(page, "#arena-overlay");
-      const lines: string[] = [];
-      for (const [name, r] of Object.entries(report))
-        lines.push(
-          `${name}: ${r.seen.length} scroller(s)${r.seen.length ? ` [${r.seen.join("; ")}]` : ""}${r.problems.length ? `\n    PROBLEMS ${r.problems.join("\n    PROBLEMS ")}` : ""}${r.cuts.length ? `\n    CUT ${r.cuts.slice(0, 6).join("\n    CUT ")}` : ""}`,
-        );
-      console.log(`SWEEP ${size.name}\n${lines.join("\n")}`);
-      const bad = Object.entries(report).filter(
-        ([, r]) => r.problems.length || r.cuts.length,
-      );
+      print(size.name, "match results", report["match results"]);
       expect(
-        bad.map(([n]) => n),
+        failing(report),
         "panels that can't be scrolled to the end",
       ).toEqual([]);
       expect(errors).toEqual([]);
@@ -281,3 +315,4 @@ for (const size of SIZES)
       await context.close();
     }
   });
+}
