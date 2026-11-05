@@ -561,7 +561,8 @@ for (const size of [SIZES[0], SIZES[2]])
               return {
                 dx: s.left + s.width / 2 - (r.left + r.width / 2),
                 dy: s.top + s.height / 2 - (r.top + r.height / 2),
-                w: s.width,
+                // Its CSS size: the panel still grows in (scale .985).
+                w: getComputedStyle(b.querySelector("svg")!).width,
               };
             }),
           );
@@ -569,7 +570,7 @@ for (const size of [SIZES[0], SIZES[2]])
         for (const c of centres) {
           expect(Math.abs(c.dx), "icon centred across").toBeLessThan(0.5);
           expect(Math.abs(c.dy), "icon centred down").toBeLessThan(0.5);
-          expect(c.w, "icon size").toBe(18);
+          expect(c.w, "icon size").toBe("18px");
         }
       }
       if (!size.phone) {
