@@ -72,6 +72,18 @@ interface Profile {
    * the ones it decided to dodge.
    */
   seeShots?: boolean;
+  /** Brawlers: how much to weave while still closing in from afar (default 0.35). */
+  weave?: number;
+  /** Brawlers: hold at the edge of their reach instead of 70 px away. */
+  meleeSpacing?: boolean;
+  /**
+   * Chance each second to lose focus for that second: no moving, attacking
+   * or skills (it still sees what is coming). Unlike `rest`, which only holds
+   * the basic attack, this slows every kind of champion down alike.
+   */
+  daze?: number;
+  /** Per-champion daze (overrides `daze` for that champion). */
+  dazeBy?: Partial<Record<CharacterId, number>>;
 }
 export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
   easy: {
@@ -211,6 +223,8 @@ export class BotBrain {
   private hesitateUntil = 0;
   private nextRest = 0;
   private resting = false;
+  private nextDaze = 0;
+  private dazed = false;
   private wantSkill = -1;
   /** Projectile ids already judged (dodge or not) so it decides once per shot. */
   private judged = new Map<number, boolean>();
@@ -386,6 +400,15 @@ export class BotBrain {
     if (windup && !this.judged.has(-enemy.charge!.at))
       this.judged.set(-enemy.charge!.at, this.random() < this.profile.dodge);
     const fleeWindup = windup && this.judged.get(-enemy.charge!.at);
+    // A dazed second: it stands still and holds everything.
+    const daze = this.profile.dazeBy?.[me.character] ?? this.profile.daze;
+    if (daze) {
+      if (t >= this.nextDaze) {
+        this.nextDaze = t + 1;
+        this.dazed = this.random() < daze;
+      }
+      if (this.dazed) return input;
+    }
     // ---- Tactical decisions on a timer (slower bots decide less often).
     if (t >= this.nextThink) {
       this.nextThink = t + this.profile.think * (0.8 + this.random() * 0.4);
@@ -545,7 +568,9 @@ export class BotBrain {
   ) {
     const basic = arena.kit(me).basic;
     const preferred = melee
-      ? 70
+      ? this.profile.meleeSpacing
+        ? Math.max(70, basic.range - 10)
+        : 70
       : clamp(basic.range * 0.5, 240, 400) + (hpRatio < 0.35 ? 90 : 0);
     const via = waypoint((a, b) => arena.lineClear(a, b), me, target);
     let best = { dx: 0, dy: 0 },
@@ -579,7 +604,7 @@ export class BotBrain {
       score +=
         (dx * -ty + dy * tx) *
         this.strafe *
-        (via ? 0.15 : melee && now > 180 ? 0.35 : 0.9);
+        (via ? 0.15 : melee && now > 180 ? (this.profile.weave ?? 0.35) : 0.9);
       // Stay off the walls and out of hazards.
       const edge = Math.min(x, y, RULES.width - x, RULES.height - y);
       if (edge < 90) score -= (90 - edge) / 30;
