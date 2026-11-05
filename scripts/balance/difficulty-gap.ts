@@ -2,7 +2,8 @@
  * How much stronger is one bot difficulty than another? Every pair of
  * champions plays `games` duels with one side at <strong> and the other at
  * <weak> (champions and sides swap), and it prints the stronger side's win
- * rate overall and per champion it played.
+ * rate and the share of rounds the weaker side still took (the more sensitive
+ * number once the stronger side wins nearly every match).
  *
  *   npx tsx scripts/balance/difficulty-gap.ts <games> [strong=hard] [weak=normal] [shard shards out.json]
  *
@@ -24,7 +25,8 @@ for (const [d, o] of Object.entries(
   JSON.parse(process.env.BOT_OVERRIDE ?? "{}") as Record<string, object>,
 ))
   Object.assign(BOT_PROFILES[d as BotDifficulty], o);
-const rows: [string, string, boolean][] = [];
+// [strong champion, weak champion, strong won, rounds strong, rounds weak]
+const rows: [string, string, boolean, number, number][] = [];
 let k = 0;
 for (let i = 0; i < FIGHTER_IDS.length; i++)
   for (let j = i + 1; j < FIGHTER_IDS.length; j++, k++) {
@@ -59,17 +61,22 @@ for (let i = 0; i < FIGHTER_IDS.length; i++)
       if (arena.phase !== "finished") continue;
       const strongChamp = strongFirst ? a : b;
       const weakChamp = strongFirst ? b : a;
+      const [sid, wid] = strongFirst ? ["A", "B"] : ["B", "A"];
       rows.push([
         strongChamp,
         weakChamp,
-        arena.winner === (strongFirst ? "A" : "B"),
+        arena.winner === sid,
+        arena.scores[sid],
+        arena.scores[wid],
       ]);
     }
   }
 if (out) writeFileSync(out, JSON.stringify(rows));
 else {
   const won = rows.filter((r) => r[2]).length;
+  const rs = rows.reduce((s, r) => s + r[3], 0),
+    rw = rows.reduce((s, r) => s + r[4], 0);
   console.log(
-    `${strong} beats ${weak} in ${((100 * won) / rows.length).toFixed(1)}% of ${rows.length} duels`,
+    `${strong} beats ${weak} in ${((100 * won) / rows.length).toFixed(1)}% of ${rows.length} duels; ${weak} takes ${((100 * rw) / (rs + rw)).toFixed(1)}% of rounds`,
   );
 }

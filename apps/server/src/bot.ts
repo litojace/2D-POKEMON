@@ -55,6 +55,23 @@ interface Profile {
   engage: number;
   /** Chance each second to hold fire for that second, like a person catching their breath. */
   rest: number;
+  /**
+   * If set, aimError is the spread at this distance (px) and the shot misses
+   * by the same distance at any range, instead of by the same angle (which
+   * made long-range shooters miss far more than short-range ones).
+   */
+  aimAt?: number;
+  /**
+   * Melee timing slack (px): swings and melee strikes start when the
+   * opponent looks up to this much beyond reach, so a careless brawler
+   * whiffs the way a careless shooter misses.
+   */
+  swingMargin?: number;
+  /**
+   * Counts any shot about to hit as a threat for defensive skills, not only
+   * the ones it decided to dodge.
+   */
+  seeShots?: boolean;
 }
 export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
   easy: {
@@ -316,6 +333,10 @@ export class BotBrain {
       big: boolean;
       eta: number;
     } | null = null;
+    // A shot on its way to hit it, whether or not it decides to dodge: what
+    // defensive skills (barriers, counters, clones) answer. Seeing it coming
+    // is not the hard part; dodging in time is, and that is what `dodge` sets.
+    let incoming = false;
     for (const pr of arena.projectiles) {
       if (pr.owner === me.id) continue;
       const rx = me.x - pr.x,
@@ -327,6 +348,7 @@ export class BotBrain {
       const mx = pr.x + pr.vx * eta - me.x,
         my = pr.y + pr.vy * eta - me.y;
       if (Math.hypot(mx, my) > pr.ability.radius + RULES.radius + 8) continue;
+      if (this.profile.seeShots) incoming = true;
       if (!this.judged.has(pr.id))
         this.judged.set(pr.id, this.random() < this.profile.dodge);
       if (!this.judged.get(pr.id)) continue;
@@ -407,7 +429,7 @@ export class BotBrain {
         hpRatio,
         enemyRatio,
         enemyDisabled,
-        threatened: !!threat || dist < 170,
+        threatened: !!threat || incoming || dist < 170,
       });
     }
     // ---- Movement.
@@ -479,7 +501,12 @@ export class BotBrain {
       : 0;
     let ax = target.x + target.vx * leadTime,
       ay = target.y + target.vy * leadTime;
-    const error = (this.random() * 2 - 1) * this.profile.aimError;
+    let error = (this.random() * 2 - 1) * this.profile.aimError;
+    if (this.profile.aimAt)
+      error = Math.atan(
+        (Math.tan(error) * this.profile.aimAt) /
+          Math.max(60, Math.hypot(ax - me.x, ay - me.y)),
+      );
     const angle = Math.atan2(ay - me.y, ax - me.x) + error;
     const reach = Math.max(60, Math.hypot(ax - me.x, ay - me.y));
     ax = me.x + Math.cos(angle) * reach;
@@ -493,7 +520,9 @@ export class BotBrain {
     } else if (
       sight &&
       !this.restingAt(t) &&
-      dist <= basic.range * 0.95 + (melee ? RULES.radius : 0)
+      dist <=
+        basic.range * 0.95 +
+          (melee ? RULES.radius + (this.profile.swingMargin ?? 0) : 0)
     )
       input.basic = true;
     return input;
