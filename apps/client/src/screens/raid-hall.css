@@ -368,13 +368,8 @@
 .rh-status {
   color: #ffb4bc;
 }
-.rh-status:empty,
-.rh-next:empty {
+.rh-status:empty {
   display: none;
-}
-.rh-next {
-  display: grid;
-  gap: var(--sp-3);
 }
 .rh-picks {
   display: grid;
