@@ -812,10 +812,13 @@ same problem as a list (bars 1,250 px long beside a 320 px level road).
   fighter, the nameplate), so the fighter is centred in the room it has at
   any height; ‹ › sit level with it. The rig box grows to 760 px wide
   (sharp: see "Sharp preview rigs" below). A
-  wide stage (container query, 640 px) puts the stats beside the name and
-  makes the spotlight longer and steeper, still from the top-right corner
-  (owner's note), so it reaches the fighter; tall screens show the name huge
-  and faint behind it; a coloured pool sits at the fighter's feet.
+  wide stage (container query, 640 px) puts the stats beside the name; a
+  coloured pool sits at the fighter's feet. The spotlight comes from the
+  top-right corner (owner's note) and hangs from the fighter's feet, leaning
+  up to the right (`.roster-rig::after`, a soft-edged conic cone), so it
+  lands on the fighter at any stage size; pinned to the corner at a fixed
+  angle it missed the fighter on a tall stage. The huge outlined name behind
+  the fighter was dropped (owner: redundant with the nameplate).
 - **Fitting room**: the live host is up to 500 px on a narrow stage (as
   before) and as wide as the stage on a wider one, so a big stage shows a
   big fighter (sharp: see "Sharp preview rigs" below). On phones the
@@ -871,9 +874,11 @@ canvas. Measured on the roster stage: a 156 × 148 head texture drawn about
   Equip.
 - **A stray line across the phone stage:** the old Shop preview's inset
   1 px outline (`.shop-live-stage` box-shadow) showed once the host moved
-  down 34 px; the fitting room's host has no outline now. Entrance and
-  Victory are 34 px tall with 10 px between them (they needed 16 px at
-  28 px to keep 44 px finger targets).
+  down 34 px; the fitting room's host has no outline now. On phones
+  Entrance and Victory are round 40 px icon buttons in a column at the
+  stage's right edge (labels kept for screen readers): as 76 px text
+  buttons they covered a tall fighter's crest even with the fighter drawn
+  lower (owner's note, Blue Flame).
 - **The Farm lifted off the bottom when the Menu opened (iOS):** the scroll
   lock pinned the body because iOS measured the page taller than the screen
   (`body { min-height: 100vh }` is the toolbar-less height). Hub scenes and

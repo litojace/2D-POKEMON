@@ -517,7 +517,7 @@ function stageMarkup(view: FitView, d: FitData) {
   const frameBadge = `<button type="button" class="fit-frame-badge" data-fit-slot="frame" aria-label="Portrait frame: ${esc(outfit.look.frame ? nameOf(outfit.look.frame) : "none")}. Choose a frame">${framedAvatar({ character: view.champion, raidLook: outfit.look, championLooks: outfit.skin ? { [view.champion]: outfit.skin } : {} }, "fit-badge", earnedStars)}<small>${outfit.look.frame ? "Portrait frame" : "No frame"}</small></button>`;
   const plays =
     !frameView && !d.low
-      ? `<span class="fit-plays">${button("Entrance", { size: "s", icon: "enter", attrs: { "data-fit-play": "entrance", "aria-pressed": view.action === "entrance" } })}${button("Victory", { size: "s", icon: "sparkle", attrs: { "data-fit-play": "victory", "aria-pressed": view.action === "victory" } })}</span>`
+      ? `<span class="fit-plays">${button("Entrance", { size: "s", icon: "enter", attrs: { "data-fit-play": "entrance", "aria-pressed": view.action === "entrance", title: "Entrance" } })}${button("Victory", { size: "s", icon: "sparkle", attrs: { "data-fit-play": "victory", "aria-pressed": view.action === "victory", title: "Victory" } })}</span>`
       : "";
   // Bottom: what is on the stage, Hold to compare, awakening stages.
   const focus = view.selected ?? outfit.skin?.skin ?? null;
