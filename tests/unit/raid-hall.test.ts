@@ -10,7 +10,6 @@ import {
   bossTricks,
   canInvite,
   hallBosses,
-  nextRewards,
   practiceAttack,
   raidMarkup,
   raidSeats,
@@ -140,7 +139,7 @@ describe("fresh records patch the screen in place", () => {
       ),
     ]
       .map((m) => m[2].split(" ")[0])
-      .filter((c) => /^(rh-body|rh-notes|ui-grid|rh-next|rh-status)$/.test(c))
+      .filter((c) => /^(rh-body|rh-notes|ui-grid|rh-status)$/.test(c))
       .join(",");
   it("in the hall and on a boss page", () => {
     const loading = data({ progress: null, loading: true, friends: null });
@@ -296,13 +295,6 @@ describe("a boss's rewards", () => {
     expect(html).toContain("1/5 clears");
     // Before migration 008 the lifetime titles say when they start counting.
     expect(html).toContain("Counts from the next raid update");
-    const next = nextRewards(
-      progress({ clears: 1, highestPeril: 1 }),
-      "grumblecrag",
-    );
-    expect(next).toHaveLength(3);
-    expect(next.every((g) => !g.done)).toBe(true);
-    expect(nextRewards(null, "grumblecrag")).toEqual([]);
   });
   it("shows exact title progress", () => {
     const html = rewards(
