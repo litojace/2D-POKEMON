@@ -1029,10 +1029,7 @@ const GFX = (() => {
           g.lineTo(-10 + i * 3.4, top - 6);
           g.fill();
         }
-        g.fillStyle = "#fff4d6";
-        g.font = "800 19px 'Barlow Condensed', sans-serif";
-        g.textAlign = "center";
-        g.fillText("BARN", 0, top + 18);
+        // The farm names the barn with a tag above it (farm-scene nameTag).
       }),
     );
   const windmillBody = () =>
@@ -1203,15 +1200,7 @@ const GFX = (() => {
         g.lineTo(80, top);
         g.lineTo(96, bot);
         g.stroke();
-        g.fillStyle = "#fff4d6";
-        rr(g, -26, -168, 52, 20, 6);
-        g.fill();
-        g.strokeStyle = "#5e3417";
-        g.stroke();
-        g.fillStyle = "#5e3417";
-        g.font = "800 14px 'Barlow Condensed', sans-serif";
-        g.textAlign = "center";
-        g.fillText("MARKET", 0, -153);
+        // The farm names the market with a tag above it (farm-scene nameTag).
       }),
     );
   }

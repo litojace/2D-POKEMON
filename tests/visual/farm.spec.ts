@@ -146,7 +146,7 @@ async function fakeFarm(page: Page) {
       }
       // Friends' farms (migration 047).
       if (url.endsWith("/api/farm/friends")) return json(w.__friends ?? []);
-      // The Farm Stall (059), the Valley Cup (060), live visits and likes (061).
+      // The Farm Stall (059), live visits and likes (061).
       if (url.endsWith("/api/farm/stall") && !init?.body)
         return json(
           w.__stall ?? {
@@ -183,42 +183,6 @@ async function fakeFarm(page: Page) {
           gained:
             body.kind === "buy" ? { crop: "melon", qty: 2, price: 50 } : null,
         });
-      }
-      if (url.endsWith("/api/farm/cup") && !init?.body)
-        return json(
-          w.__cup ?? {
-            week: "2026-11-02",
-            endsAt: at(86400),
-            coop: null,
-            pts: 0,
-            tiers: [],
-            tasks: [],
-            active: null,
-            done: 0,
-            taken: 0,
-            rank: null,
-            coops: 0,
-            ranking: [],
-          },
-        );
-      if (url.endsWith("/api/farm/cup")) {
-        const body = JSON.parse(String(init?.body));
-        w.__farmRequests.push({ cup: body.kind, arg: body.arg });
-        const c = w.__cup;
-        if (body.kind === "create")
-          c.coop = {
-            id: "c1",
-            name: body.arg,
-            code: "ABC234",
-            members: [{ id: "me", name: "tester", fighter: "voltkit", pts: 0 }],
-          };
-        if (body.kind === "take") {
-          const t = c.tasks.find((x: any) => x.id === body.arg);
-          c.active = { task: t.id, goal: t.goal, pts: t.pts, progress: 0 };
-          c.taken++;
-        }
-        if (body.kind === "claim") c.tiers[+body.arg - 1].claimed = true;
-        return json({ cup: c, ok: true });
       }
       if (url.endsWith("/api/farm/here"))
         return json(
@@ -495,11 +459,26 @@ async function fakeFarm(page: Page) {
   });
 }
 type Box = { name: string; x: number; y: number; w: number; h: number };
-/** Open a farm sheet from the Menu button in the bottom-right corner. */
-async function openFromMenu(page: Page, sheet: string) {
-  const tile = page.locator(`#fm-dock [data-sheet="${sheet}"]`);
-  if (!(await tile.isVisible())) await page.click("#fm-menu-btn");
-  await tile.click();
+/** Open Shop, Friends, Decor or the Almanac from the right rail. */
+async function openFromRail(page: Page, sheet: string) {
+  await page.click(`#fm-rail [data-sheet="${sheet}"]`);
+}
+/** Tap a place on the farm (orders board, market, barn, balloon, well). */
+async function tapPlace(page: Page, place: string) {
+  const p = await page.evaluate((k) => {
+    const f = (window as any).__farm,
+      w = f.place(k);
+    f.look(w.x, w.y);
+    return f.worldClient(w.x, w.y);
+  }, place);
+  await page.waitForTimeout(150);
+  await page.mouse.click(p.x, p.y);
+}
+/** Open a farm sheet the way a player does: a place on the farm or the rail. */
+async function openSheet(page: Page, sheet: string) {
+  if (["orders", "market", "barn", "balloon"].includes(sheet))
+    await tapPlace(page, sheet);
+  else await openFromRail(page, sheet);
 }
 const overlap = (a: Box, b: Box) =>
   a.x < b.x + b.w - 1 &&
@@ -517,8 +496,7 @@ async function hudBoxes(page: Page) {
       ["menu", ".header-menu > summary"],
       ["badge", "#fm-badge"],
       ["chips", "#fm-chips"],
-      ["farmMenu", "#fm-corner .fm-menu"],
-      ["dock", "#fm-dock"],
+      ["rail", "#fm-rail"],
       ["tools", "#fm-tools"],
       ["zoom", "#fm-zoom"],
     ]) {
@@ -603,11 +581,17 @@ for (const viewport of [
           viewport.height - bottom + 1,
         );
       }
-      // The Menu box is on the tool bar's line: the same bottom and height.
+      // The right rail (with the zoom buttons under it on desktop) ends on
+      // the tool bar's line, and its four buttons are all there.
       const tools = all.find((b) => b.name === "tools")!,
-        menu = all.find((b) => b.name === "farmMenu")!;
-      expect(menu.y + menu.h, "menu bottom").toBeCloseTo(tools.y + tools.h, 0);
-      expect(menu.h, "menu height").toBeCloseTo(tools.h, 0);
+        corner = all
+          .filter((b) => b.name === "rail" || b.name === "zoom")
+          .reduce((a, b) => (b.y + b.h > a.y + a.h ? b : a));
+      expect(corner.y + corner.h, "corner bottom").toBeCloseTo(
+        tools.y + tools.h,
+        0,
+      );
+      await expect(page.locator("#fm-rail [data-sheet]")).toHaveCount(4);
       const clashes = all.flatMap((a, i) =>
         all
           .slice(i + 1)
@@ -644,7 +628,7 @@ test("the weather orb shows the weather now and the forecast", async ({
   await expect(pop).toBeHidden();
   await expect(page.locator('#fm-chips [data-orb="barn"]')).toBeVisible();
   // The almanac lists the crop book rewards, with the one already paid.
-  await openFromMenu(page, "book");
+  await openSheet(page, "book");
   await expect(page.locator("#fm-sheet")).toContainText("Collection rewards");
   await expect(page.locator("#fm-sheet .mile.done")).toHaveCount(1);
   await expect(page.locator("#fm-sheet .mile")).toHaveCount(5);
@@ -662,12 +646,9 @@ test("the order board delivers what the barn holds", async ({ page }, info) => {
   const errors = await openLobby(page);
   await fakeFarm(page);
   await page.click('#hub-scenes [data-hub-scene="farm"]');
-  // One order can be filled from the barn (4 wheat): the folded Menu shows a
-  // dot, and inside it the Orders tile does.
-  await expect(page.locator("#fm-menu-btn")).toHaveAttribute("data-dot", "");
-  await page.click("#fm-menu-btn");
-  await expect(page.locator("#fm-ord-dot")).toBeVisible();
-  await openFromMenu(page, "orders");
+  // One order can be filled from the barn (4 wheat). Tapping the board opens it.
+  await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+  await openSheet(page, "orders");
   const sheet = page.locator("#fm-sheet");
   await expect(sheet).toContainText("Order board");
   await expect(sheet.locator(".order")).toHaveCount(3);
@@ -685,7 +666,6 @@ test("the order board delivers what the barn holds", async ({ page }, info) => {
     ),
   ).toMatchObject({ slot: 0, kind: "deliver", request: expect.any(String) });
   await expect(sheet.locator(".order.wait")).toHaveCount(2);
-  await expect(page.locator("#fm-ord-dot")).toBeHidden();
   // The wishing well grants seeds once a day.
   await page.locator("#fm-sheet [data-close]").click();
   const well = await page.evaluate(() => {
@@ -736,7 +716,7 @@ test("tapping a ripe plot harvests it, and an empty plot opens the seed picker",
       )
       .toContainEqual({ a: "plant", plot: 3, crop: "carrot" });
     // The market sheet opens from the menu.
-    await openFromMenu(page, "market");
+    await openSheet(page, "market");
     await expect(page.locator("#fm-sheet")).toContainText("Farmers' market");
     await expect(page.locator("#fm-sheet")).toContainText("Wheat ×");
     await snap(page, info, "farm-market-1280x800");
@@ -776,7 +756,7 @@ test("a tap catches a bug, and the Tools tab sells tools", async ({
         ),
       )
       .toEqual([{ a: "catch", plot: 2 }]);
-    await openFromMenu(page, "shop");
+    await openSheet(page, "shop");
     await page.click('#fm-sheet [data-tab="tools"]');
     const sheet = page.locator("#fm-sheet");
     await expect(sheet).toContainText("Tools are yours forever.");
@@ -989,10 +969,9 @@ test("visiting a friend's farm: sneak a ripe crop, catch a bug, go home", async 
     });
     await page.click('#hub-scenes [data-hub-scene="farm"]');
     await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
-    // A friend's farm has something to do: the Friends tile shows a dot.
-    await page.click("#fm-menu-btn");
+    // A friend's farm has something to do: the Friends button shows a dot.
     await expect(page.locator("#fm-fr-dot")).toBeVisible();
-    await openFromMenu(page, "friends");
+    await openSheet(page, "friends");
     const sheet = page.locator("#fm-sheet");
     const row = sheet.locator(".fr", { hasText: "Rae · Lv 7" });
     await expect(row).toContainText("1 bug");
@@ -1062,7 +1041,7 @@ test("decorating: buy a decoration and place it in a glowing spot", async ({
     });
     await page.click('#hub-scenes [data-hub-scene="farm"]');
     await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
-    await openFromMenu(page, "decor");
+    await openSheet(page, "decor");
     const sheet = page.locator("#fm-sheet");
     await expect(sheet).toContainText("Charm 2 · +1% XP");
     await expect(
@@ -1166,7 +1145,7 @@ for (const viewport of [
         "Collected 2 Storm Milk",
       );
       // Sold at the market like a crop, through its own action.
-      await openFromMenu(page, "market");
+      await openSheet(page, "market");
       const milk = sheet.locator(".item", { hasText: "Storm Milk" });
       await expect(milk).toContainText("67");
       await snap(
@@ -1312,7 +1291,7 @@ test("the farm rests behind Settings and wakes when it closes", async ({
   await page.click("#close-dialog");
   await expect(layer).toHaveAttribute("data-frozen", "false");
   // Still running: crops keep growing and taps still work.
-  await openFromMenu(page, "barn");
+  await openSheet(page, "barn");
   await expect(page.locator("#fm-sheet")).toContainText("Barn storage");
   expect(errors).toEqual([]);
 });
@@ -1383,7 +1362,7 @@ for (const viewport of [
   { width: 844, height: 390 },
   { width: 852, height: 393, inset: 59 },
 ]) {
-  test(`the farm menu opens from the bottom-right corner at ${viewport.width}x${viewport.height}${viewport.inset ? " with a Dynamic Island" : ""}`, async ({
+  test(`the right rail and the places on the farm open every sheet at ${viewport.width}x${viewport.height}${viewport.inset ? " with a Dynamic Island" : ""}`, async ({
     browser,
   }, info) => {
     const phone = viewport.width < 1000;
@@ -1406,41 +1385,38 @@ for (const viewport of [
         }, viewport.inset);
       await page.click('#hub-scenes [data-hub-scene="farm"]');
       await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
-      const dock = page.locator("#fm-dock");
-      await expect(dock).toBeHidden();
-      // Orders can be filled and the wish is ready: the Menu button shows a dot.
-      await expect(page.locator("#fm-menu-btn")).toHaveAttribute(
-        "data-dot",
-        "",
-      );
-      await page.click("#fm-menu-btn");
-      await expect(dock).toBeVisible();
-      await expect(dock.locator("button")).toHaveCount(10);
+      await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+      // No Menu: Shop, Friends, Decor and the Almanac are always on the rail.
+      await expect(page.locator("#fm-menu-btn")).toHaveCount(0);
+      const rail = page.locator("#fm-rail");
+      await expect(rail).toBeVisible();
+      await expect(rail.locator("button")).toHaveText([
+        "Shop",
+        "Friends",
+        "Decor",
+        "Almanac",
+      ]);
       await page.waitForTimeout(300);
       await snap(
         page,
         info,
-        `farm-menu-${viewport.width}x${viewport.height}${viewport.inset ? "-island" : ""}`,
+        `farm-rail-${viewport.width}x${viewport.height}${viewport.inset ? "-island" : ""}`,
       );
       const box = (sel: string) =>
         page.evaluate((s) => {
           const r = document.querySelector(s)!.getBoundingClientRect();
           return { l: r.left, t: r.top, r: r.right, b: r.bottom };
         }, sel);
-      const [grid, menu, tools, chips] = await Promise.all(
-        ["#fm-dock", ".fm-menu", "#fm-tools", "#fm-chips"].map(box),
+      const [col, tools, chips] = await Promise.all(
+        ["#fm-rail", "#fm-tools", "#fm-chips"].map(box),
       );
-      // Above the Menu box, right-aligned with the corner, clear of the tool
-      // bar and the status orbs, and inside the safe area.
-      expect(grid.b).toBeLessThanOrEqual(menu.t);
-      expect(grid.t).toBeGreaterThan(chips.b);
-      expect(grid.b).toBeLessThanOrEqual(tools.t);
-      expect(grid.r).toBeLessThanOrEqual(
-        viewport.width - (viewport.inset ?? 0),
-      );
-      expect(tools.r).toBeLessThan(menu.l);
-      // Tiles line up in a 5 × 2 grid.
-      const tiles = await dock.locator("button").evaluateAll((els) =>
+      // On the right edge, below the status orbs, right of the tool bar and
+      // inside the safe area.
+      expect(col.t).toBeGreaterThan(chips.b);
+      expect(tools.r).toBeLessThan(col.l);
+      expect(col.r).toBeLessThanOrEqual(viewport.width - (viewport.inset ?? 0));
+      // One column of same-size buttons.
+      const tiles = await rail.locator("button").evaluateAll((els) =>
         els.map((e) => {
           const r = e.getBoundingClientRect();
           return [
@@ -1451,25 +1427,31 @@ for (const viewport of [
           ];
         }),
       );
-      expect(new Set(tiles.map((t) => t[0])).size).toBe(5);
-      expect(new Set(tiles.map((t) => t[1])).size).toBe(2);
+      expect(new Set(tiles.map((t) => t[0])).size).toBe(1);
+      expect(new Set(tiles.map((t) => t[1])).size).toBe(4);
       expect(new Set(tiles.map((t) => `${t[2]}x${t[3]}`)).size).toBe(1);
-      // A tile opens its sheet and folds the menu.
-      await dock.locator('[data-sheet="barn"]').click();
-      await expect(page.locator("#fm-sheet")).toContainText("Barn storage");
-      await expect(dock).toBeHidden();
+      // A rail button opens its sheet beside the rail, and again closes it.
+      await rail.locator('[data-sheet="shop"]').click();
+      const sheet = page.locator("#fm-sheet");
+      await expect(sheet).toBeVisible();
+      await expect(rail.locator('[data-sheet="shop"]')).toHaveAttribute(
+        "aria-expanded",
+        "true",
+      );
+      // The sheet slides in from 30px to the right: measure where it stops.
+      await sheet.evaluate((el) =>
+        Promise.all(el.getAnimations().map((a) => a.finished)),
+      );
+      const sh = await box("#fm-sheet");
+      expect(sh.r).toBeLessThanOrEqual(col.l);
+      await rail.locator('[data-sheet="shop"]').click();
+      await expect(sheet).toBeHidden();
+      // The barn on the farm opens the barn.
+      await tapPlace(page, "barn");
+      await expect(sheet).toContainText("Barn storage");
       await page.click("#fm-sheet [data-close]");
-      // M opens it, Escape folds it (desktop keys).
-      if (!phone) {
-        await page.locator(".farm-layer").focus();
-        await page.keyboard.press("m");
-        await expect(dock).toBeVisible();
-        await page.keyboard.press("Escape");
-        await expect(dock).toBeHidden();
-      }
-      // The Wish tile makes today's wish.
-      await page.click("#fm-menu-btn");
-      await dock.locator("[data-wish]").click();
+      // The wishing well makes today's wish.
+      await tapPlace(page, "well");
       await expect
         .poll(() =>
           page.evaluate(() =>
@@ -1477,7 +1459,6 @@ for (const viewport of [
           ),
         )
         .toBe(true);
-      await expect(dock).toBeHidden();
       expect(errors).toEqual([]);
     } finally {
       await context.close();
@@ -1691,7 +1672,7 @@ for (const viewport of [
 
       // The crop book marks the crops that can grow giant, and lights the
       // one that did; the marks stay inside their fixed-size boxes.
-      await openFromMenu(page, "book");
+      await openSheet(page, "book");
       const sheet = page.locator("#fm-sheet");
       await expect(sheet).toContainText("Crops marked GIANT can grow");
       await expect(sheet.locator(".bk .gt")).toHaveCount(4);
@@ -1903,7 +1884,7 @@ test("a friend's giant crop: each tap sneaks one of its crops", async ({
     }, GIANT_SQUARE);
     await page.click('#hub-scenes [data-hub-scene="farm"]');
     await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
-    await openFromMenu(page, "friends");
+    await openSheet(page, "friends");
     await page
       .locator("#fm-sheet .fr", { hasText: "Rae" })
       .locator("[data-visit]")
@@ -1985,7 +1966,7 @@ for (const view of [
         document.getElementById("toast")!.classList.remove("show"),
       );
       // A sheet: 10px under the card, the badge stepped aside.
-      await openFromMenu(page, "shop");
+      await openSheet(page, "shop");
       // Measure once its slide-in has finished.
       await page
         .locator("#fm-sheet")
@@ -2106,10 +2087,9 @@ test("friends trade seed gifts and grow friendship days; the invite tab shares a
   });
   await page.click('#hub-scenes [data-hub-scene="farm"]');
   await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
-  // A waiting gift puts a dot on Friends (and so on the folded Menu).
-  await expect(page.locator("#fm-fr-dot")).not.toHaveAttribute("hidden", "");
-  await expect(page.locator("#fm-menu-btn")).toHaveAttribute("data-dot", "");
-  await openFromMenu(page, "friends");
+  // A waiting gift puts a dot on the Friends button.
+  await expect(page.locator("#fm-fr-dot")).toBeVisible();
+  await openSheet(page, "friends");
   await page.click('#fm-sheet [data-tab="gifts"]');
   const sheet = page.locator("#fm-sheet");
   await expect(sheet).toContainText("Mai · Lv 44");
@@ -2220,10 +2200,9 @@ test("the Supply Balloon: fill a crate, ask friends, launch it; help a friend's 
     (window as any).__balloon.crates.forEach((c: any) => (c.state = "done")),
   );
   await page.evaluate(() => (window as any).__farm.F && null);
-  await page.click("#fm-menu-btn");
-  await page.click('#fm-dock [data-sheet="balloon"]');
-  await page.click("#fm-menu-btn");
-  await page.click('#fm-dock [data-sheet="balloon"]');
+  // Close the sheet and tap the balloon again: it loads the filled crates.
+  await page.click("#fm-sheet [data-close]");
+  await tapPlace(page, "balloon");
   await expect(sheet.locator("[data-blaunch]")).toBeEnabled();
   await sheet.locator("[data-blaunch]").click();
   await expect(sheet).toBeHidden();
@@ -2235,7 +2214,7 @@ test("the Supply Balloon: fill a crate, ask friends, launch it; help a friend's 
     ),
   ).toEqual(["fill", "ask", "launch"]);
   // Helping a friend from Friends → Help.
-  await openFromMenu(page, "friends");
+  await openSheet(page, "friends");
   await page.click('#fm-sheet [data-tab="help"]');
   await expect(sheet).toContainText("Mai needs 2 Breeze Wheat");
   await sheet.locator("[data-hfill]").click();
@@ -2284,7 +2263,7 @@ test("the Farm Stall: put crops on a shelf, and buy from a friend in the Valley 
   });
   await page.click('#hub-scenes [data-hub-scene="farm"]');
   await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
-  await openFromMenu(page, "market");
+  await openSheet(page, "market");
   await page.click('#fm-sheet [data-tab="stall"]');
   const sheet = page.locator("#fm-sheet");
   await expect(sheet).toContainText("Sold to Mai");
@@ -2315,81 +2294,6 @@ test("the Farm Stall: put crops on a shelf, and buy from a friend in the Valley 
   await expect(sheet).toContainText("you grow it at Lv 35");
   await sheet.locator("[data-sbuy]").click();
   await expect(sheet).toContainText("shelves are empty");
-  expect(errors).toEqual([]);
-});
-
-test("the Valley Cup: make a co-op, take a task, claim a tier", async ({
-  page,
-}, info) => {
-  await page.setViewportSize({ width: 1280, height: 800 });
-  const errors = await openLobby(page);
-  await fakeFarm(page);
-  await page.evaluate(() => {
-    (window as any).__cup = {
-      week: "2026-11-02",
-      endsAt: new Date(Date.now() + 3 * 86400_000).toISOString(),
-      coop: null,
-      pts: 2400,
-      tiers: [
-        {
-          tier: 1,
-          pts: 2000,
-          reward: "3 Super Fertilizer",
-          reached: true,
-          claimed: false,
-        },
-        {
-          tier: 2,
-          pts: 4000,
-          reward: "Rare seeds",
-          reached: false,
-          claimed: false,
-        },
-        {
-          tier: 3,
-          pts: 6000,
-          reward: "500 Gold Leaves",
-          reached: false,
-          claimed: false,
-        },
-      ],
-      tasks: [
-        { id: "harvest", goal: 30, pts: 320 },
-        { id: "orders", goal: 2, pts: 300 },
-      ],
-      active: null,
-      done: 1,
-      taken: 1,
-      rank: 2,
-      coops: 5,
-      ranking: [
-        { rank: 1, name: "Moon Diggers", pts: 3410, me: false },
-        { rank: 2, name: "Thunder Sprouts", pts: 2400, me: true },
-      ],
-    };
-  });
-  await page.click('#hub-scenes [data-hub-scene="farm"]');
-  await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
-  await openFromMenu(page, "cup");
-  const sheet = page.locator("#fm-sheet");
-  await expect(sheet).toContainText("Make a co-op");
-  await page.fill("#fm-cup-name", "Thunder Sprouts");
-  await sheet.locator("[data-cupcreate]").click();
-  await expect(sheet).toContainText("Code ABC234");
-  await expect(sheet).toContainText("#2 of 5");
-  await sheet.locator('[data-cuptake="harvest"]').click();
-  await expect(sheet).toContainText("Harvest 30 crops");
-  await expect(sheet).toContainText("0/30");
-  await sheet.locator('[data-cupclaim="1"]').click();
-  await expect(sheet).toContainText("Claimed");
-  await snap(page, info, "farm-cup");
-  expect(
-    await page.evaluate(() =>
-      (window as any).__farmRequests
-        .filter((r: any) => r.cup)
-        .map((r: any) => r.cup),
-    ),
-  ).toEqual(["create", "take", "claim"]);
   expect(errors).toEqual([]);
 });
 

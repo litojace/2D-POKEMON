@@ -2,7 +2,9 @@ import { PGlite } from "@electric-sql/pglite";
 import { randomUUID } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import { afterAll, beforeAll, expect, it } from "vitest";
-import { FARM_PERKS } from "../../packages/shared/src/farm";
+import { CROP_BY_ID, FARM_PERKS } from "../../packages/shared/src/farm";
+/** Breeze Wheat's grow time (seconds). */
+const W = CROP_BY_ID.wheat.growSeconds;
 
 // Migration 046: farmer perks, following the Lobby fighter.
 let db: PGlite;
@@ -76,19 +78,19 @@ it("Early Sun speeds up only the time Lumoth farms", async () => {
     error: "Choose a valid champion",
   });
   let r = await act([{ a: "plant", plot: 0, crop: "wheat" }]);
-  expect(ripeIn(r.farm, 0)).toBeCloseTo(3600, -1);
+  expect(ripeIn(r.farm, 0)).toBeCloseTo(W, -1);
   f = await farmer("lumoth");
   expect(f.farmer).toBe("lumoth");
-  expect(ripeIn(f, 0)).toBeCloseTo(3600 / 1.2, -1);
+  expect(ripeIn(f, 0)).toBeCloseTo(W / 1.2, -1);
   // Half an hour of Lumoth (from a 0.1 baseline): 0.6 grown; then back to
   // Voltkit for the rest at normal speed.
   await plots(
-    "progress = 0.1, progress_at = now() - interval '1800 seconds'",
+    `progress = 0.1, progress_at = now() - interval '${W / 2} seconds'`,
     [0],
   );
   f = await farmer("voltkit");
-  expect(Number(f.plots[0].progress)).toBeCloseTo(0.1 + (1800 * 1.2) / 3600, 2);
-  expect(ripeIn(f, 0)).toBeCloseTo(3600 * (1 - 0.7), -1);
+  expect(Number(f.plots[0].progress)).toBeCloseTo(0.1 + ((W / 2) * 1.2) / W, 2);
+  expect(ripeIn(f, 0)).toBeCloseTo(W * (1 - 0.7), -1);
   // Switching again counts nothing twice.
   const again = await farmer("voltkit");
   expect(Number(again.plots[0].progress)).toBeCloseTo(0.7, 2);

@@ -732,34 +732,6 @@ export function installAccountRoutes(
       res.json(result);
     }),
   );
-  // Co-ops and the weekly Valley Cup (migration 060).
-  app.get(
-    "/api/farm/cup",
-    route(false, async (_req, res, token) => {
-      res.setHeader("Cache-Control", "no-store");
-      res.json(await provider.rpc(token, "arena_farm_cup", {}));
-    }),
-  );
-  app.post(
-    "/api/farm/cup",
-    route(false, async (req, res, token, account) => {
-      const data = z
-        .object({
-          request: z.string().uuid(),
-          kind: z.enum(["create", "join", "leave", "take", "drop", "claim"]),
-          arg: z.string().max(40).optional(),
-        })
-        .strict()
-        .parse(req.body);
-      const result = await provider.rpc(token, "arena_farm_cup_act", {
-        p_request: data.request,
-        p_kind: data.kind,
-        p_arg: data.arg ?? null,
-      });
-      if (data.kind === "claim") onPlayerChanged(account.id);
-      res.json(result);
-    }),
-  );
   // Live visits, Harvest Parties and farm likes (migration 061).
   app.post(
     "/api/farm/here",

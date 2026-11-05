@@ -3,10 +3,13 @@ import { randomUUID } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import {
+  CROP_BY_ID,
   FARM_WEATHERS,
   MUTATIONS,
   mutationMultiplier,
 } from "../../packages/shared/src/farm";
+/** Breeze Wheat's grow time (seconds). */
+const W = CROP_BY_ID.wheat.growSeconds;
 
 // Migration 039: farm weather by 4-hour UTC window, growth window by window,
 // and mutations rolled when a crop ripens.
@@ -96,10 +99,10 @@ it("picks the weather by its weights, the same for everyone, with a forecast", a
 it("grows faster in sun, slower in frost, and counts rain as watering", async () => {
   await pin("sun");
   let r = await act([{ a: "plant", plot: 0, crop: "wheat" }]);
-  expect(ripeIn(r.farm, 0)).toBeCloseTo(3600 / 1.1, -1);
+  expect(ripeIn(r.farm, 0)).toBeCloseTo(W / 1.1, -1);
   await pin("frost");
   r = await act([{ a: "plant", plot: 1, crop: "wheat" }]);
-  expect(ripeIn(r.farm, 1)).toBeCloseTo(3600 / 0.85, -1);
+  expect(ripeIn(r.farm, 1)).toBeCloseTo(W / 0.85, -1);
   await pin("rain");
   r = await act([
     { a: "plant", plot: 2, crop: "wheat" },
@@ -107,7 +110,7 @@ it("grows faster in sun, slower in frost, and counts rain as watering", async ()
   ]);
   expect(r.results[1]).toEqual({ ok: false, error: "Already watered" });
   expect(r.farm.plots[2].wet).toBe(true);
-  expect(ripeIn(r.farm, 2)).toBeCloseTo(3600 / 1.35, -1);
+  expect(ripeIn(r.farm, 2)).toBeCloseTo(W / 1.35, -1);
   // Rain that fell after planting keeps the crop watered when the sky
   // clears: plant in a real past rain window, look at it in the next one.
   await pin(null);
