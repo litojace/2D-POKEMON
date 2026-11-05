@@ -1171,6 +1171,22 @@ export function openPlaza(options) {
     if (show) {
       const r = $("pz-wheel-btn").getBoundingClientRect(),
         sr = $("pz").querySelector(".pz-hud").getBoundingClientRect();
+      if (layer.classList.contains("phone")) {
+        // Phones: the Emote button sits in the row over Jump, right of
+        // the stage, and above it a 360-430px screen has no room for the
+        // wheel (it ran up over the coins, the gear and the clock). It
+        // opens left of that row instead, by the thumb, kept under the
+        // header's row and above the screen's bottom edge.
+        const row = layer.querySelector(".pz-left").getBoundingClientRect(),
+          rad = (220 * 0.85) / 2,
+          top =
+            document.getElementById("account-profile")?.getBoundingClientRect()
+              .bottom ?? sr.top + 52,
+          cy = row.top + row.height / 2 - sr.top;
+        w.style.left = `${row.left - sr.left - 10 - rad}px`;
+        w.style.top = `${Math.min(sr.height - 8 - rad, Math.max(top - sr.top + 10 + rad, cy))}px`;
+        return;
+      }
       w.style.left = `${Math.min(sr.width - 120, r.left + r.width / 2 - sr.left + 100)}px`;
       w.style.top = `${Math.max(120, r.top - sr.top - 90)}px`;
     }
@@ -2568,11 +2584,14 @@ export function openPlaza(options) {
     if (b.stun > 0) rot = Math.sin(time * 30) * 0.12;
     return { bob, rot, sq };
   }
+  // The front art carries its tail, lantern or staff on its right side, so
+  // as drawn it reads as walking left: mirror it to walk right (it was
+  // mirrored to walk left, and everyone seemed to walk backwards).
   function drawSprite(g, im, x, y, s, face, rot, sq) {
     g.save();
     g.translate(x, y);
     if (rot) g.rotate(rot);
-    g.scale((face < 0 ? -1 : 1) * (1 + sq), 1 - sq);
+    g.scale((face > 0 ? -1 : 1) * (1 + sq), 1 - sq);
     g.drawImage(im, -s / 2, -s * 0.9, s, s * 1.01);
     g.restore();
   }
