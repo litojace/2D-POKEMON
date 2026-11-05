@@ -179,6 +179,43 @@ Round-to-round noise on fresh line-ups is about ±4 points per champion, so
 the remaining differences are mostly noise. Mystowl's 54.8% is its known
 Hard/Normal split (64% / 46%), not a 2v2 effect.
 
+#### Re-tuned for the fixed bots
+
+The numbers above were measured with the old bots, which all fought the
+first opponent to join and whose Normal difficulty flipped champions' win
+rates. With the fixed bots and the re-tuned duel numbers (see "Bots: Hard
+and Normal" and "Duels re-tuned for the fixed bots"), the old factors gave
+ranged champions 50–65% and melee ones 31–43%, the opposite of the old
+problem, so the factors were tuned again from 1 (six rounds of 1,200
+matches per difficulty on fixed line-ups, then four on fresh line-ups each
+round, factors averaged over the last three). Checked on 2,000 matches per
+difficulty of line-ups the tuner never saw (`TEAMS_SEED=31337`, Hard and
+Normal averaged):
+
+| Champion  | 2v2 factor          | Before | After |
+| --------- | ------------------- | ------ | ----- |
+| Mystowl   | ×1.006 (was ×1.142) | 64.5%  | 51.0% |
+| Halcyra   | ×1.008 (was ×1.126) | 63.1%  | 49.1% |
+| Lumoth    | ×0.997 (was ×1.127) | 63.1%  | 49.9% |
+| Pyranda   | ×0.915 (was ×1.000) | 61.5%  | 49.4% |
+| Sunbara   | ×0.966 (was ×1.048) | 60.5%  | 49.6% |
+| Voltkit   | ×1.045 (was ×1.134) | 59.0%  | 49.9% |
+| Duskveil  | ×1.025 (was ×1.092) | 58.0%  | 47.9% |
+| Glacelle  | ×0.963 (was ×1.017) | 54.3%  | 48.1% |
+| Tidefin   | ×1.000 (was ×1.028) | 49.8%  | 47.9% |
+| Wombolder | ×1.006 (was ×0.944) | 42.6%  | 49.8% |
+| Coilemur  | ×1.006 (was ×0.902) | 42.2%  | 52.9% |
+| Terradon  | ×0.993 (was ×0.882) | 41.9%  | 54.5% |
+| Auralynx  | ×0.970 (was ×0.883) | 39.9%  | 49.1% |
+| Cindrake  | ×0.993 (was ×0.910) | 36.8%  | 49.3% |
+| Shadopus  | ×1.047 (was ×0.921) | 33.7%  | 49.6% |
+| Astrabun  | ×1.008 (was ×0.855) | 30.9%  | 50.9% |
+
+Spread 30.9–64.5% (standard deviation 11.3) before, 47.9–54.5% (1.7) after.
+Every factor is now within 10% of 1: with the fixed bots 2v2 needs little
+tuning of its own. The melee/ranged explanation above describes the old
+bots.
+
 ### Free-for-all
 
 Free-for-all has its own per-champion tuning too (`FFA_TUNING` in
@@ -311,13 +348,10 @@ bosses (one opponent) are unaffected.
 
 ## Known issues
 
-- Bot-measured balance has moved with the bot fixes above (duels are
-  re-tuned, see above). 2v2 with
-  `TEAM_TUNING`: 30–76% (47–52% with the old bots on the same line-ups;
-  bot targeting alone moves it to 31–64%). Four-player free-for-all with
-  `FFA_TUNING`: 9–50% against a fair 25% (both measured before the duel
-  re-tune). `TEAM_TUNING` and `FFA_TUNING` were tuned with the old bots and
-  are re-tuned next.
+- Bot-measured balance has moved with the bot fixes above (duels and 2v2
+  are re-tuned, see above). Four-player free-for-all with
+  `FFA_TUNING`: 9–50% against a fair 25% (measured before the duel
+  re-tune). `FFA_TUNING` was tuned with the old bots and is re-tuned next.
 - Shadopus wins 27% of three-player free-for-alls (fair 33%) with the
   scaled four-player factor; it is within noise of fair with four players
   (measured with the old bots).

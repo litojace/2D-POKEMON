@@ -1691,30 +1691,30 @@ for (const character of Object.values(CHARACTERS))
     skill.element = character.element;
 /** Seconds between basic attacks, including Kindle. */
 /**
- * 2v2 tuning, for the team mode only. With two enemies on the field melee
- * champions are in reach far more often than in a duel, so 2v2 has its own
- * strength factor per champion, in the same form as the duel tuning: health
- * × f and basic-attack interval ÷ √f (rounded to 5 ms). Duels and raids use
- * the champions' own numbers; free-for-all has FFA_TUNING. Tuned with
- * scripts/balance/tune-teams.ts.
+ * 2v2 tuning, for the team mode only: a strength factor per champion in the
+ * same form as the duel tuning, health × f and basic-attack interval ÷ √f
+ * (rounded to 5 ms). Duels and raids use the champions' own numbers;
+ * free-for-all has FFA_TUNING. Tuned with scripts/balance/tune-teams.ts; since
+ * the bot fixes (bots pick their own target, Normal no longer flips
+ * champions) every factor is within 10% of 1.
  */
 export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
-  voltkit: 1.134,
-  cindrake: 0.91,
-  tidefin: 1.028,
-  auralynx: 0.883,
-  lumoth: 1.127,
-  mystowl: 1.142,
-  terradon: 0.882,
-  duskveil: 1.092,
-  coilemur: 0.902,
-  pyranda: 1,
-  glacelle: 1.017,
-  halcyra: 1.126,
-  sunbara: 1.048,
-  astrabun: 0.855,
-  wombolder: 0.944,
-  shadopus: 0.921,
+  voltkit: 1.045,
+  cindrake: 0.993,
+  tidefin: 1,
+  auralynx: 0.97,
+  lumoth: 0.997,
+  mystowl: 1.006,
+  terradon: 0.993,
+  duskveil: 1.025,
+  coilemur: 1.006,
+  pyranda: 0.915,
+  glacelle: 0.963,
+  halcyra: 1.008,
+  sunbara: 0.966,
+  astrabun: 1.008,
+  wombolder: 1.006,
+  shadopus: 1.047,
 };
 /**
  * Free-for-all tuning, for mode "ffa" only, in the same form as TEAM_TUNING
