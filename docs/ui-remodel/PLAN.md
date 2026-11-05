@@ -982,8 +982,11 @@ bubbles), which the Shop and Wardrobe never drew.
   `{}`), so Colors and an aura are worn there too; its cards take your
   Colors. The Lobby's stills take the same looks it already gave its rigs
   (yours and each party seat's).
-- Kept: the match's VS intro still shows each fighter's trait aura (a
-  battle screen, not a dressing room).
+- The match's VS intro (the briefing's fighters) follows too (owner):
+  each player's fighter skin, else their Colors, no trait aura and no
+  element-coloured glow (a plain drop shadow, as on the roster's cards).
+  Nothing in the app uses `trait-effects.ts` any more; its tests still
+  cover it.
 - Tests: `roster.test.ts` (the look handed to the rig, Colors and skins on
   stage and cards, no aura), `cute-art.test.ts`, `roster-smooth.spec.ts`.
 

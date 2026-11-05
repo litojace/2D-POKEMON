@@ -116,7 +116,7 @@ import {
 import { fighterArt, fighterAvatar, scopeIds } from "./fighter-art";
 import { fighterSkillColor, wornArt } from "./skins/skin-art";
 import { drawCollectionAura } from "./skins/collection-fx";
-import { withAura } from "./trait-effects";
+import { colourPreview } from "./colour-preview";
 import { drawBattleAura } from "./battle-aura";
 import { stadiumCrowd } from "./stadium";
 import { paintArenaFloor, scaledPainter } from "./arena-floor";
@@ -2766,9 +2766,17 @@ function renderBattle() {
     if (state.phase === "briefing") {
       heading = "How to play";
       const confirmed = state.instructionsReady.includes(myId);
-      // Who's fighting whom, each wearing their trait aura (you first).
+      // Who's fighting whom (you first), each dressed as their Wardrobe
+      // shows: the fighter skin, else their Colors; no element aura, as in
+      // the roster and the Lobby.
+      const vsArt = (p: Fighter) => {
+        const skin = skinOf(p, p.character);
+        const palette = skin ? "" : (identityOf(p).raidLook?.skin ?? "");
+        const art = fighterArt(p.character, undefined, skin);
+        return palette ? colourPreview(art, palette) : art;
+      };
       const card = (p: Fighter) =>
-        `<div class="vs-fighter${p.id === myId ? " me" : ""}" style="--element:#${CHARACTERS[p.character].color.toString(16).padStart(6, "0")}">${scopeIds(withAura(fighterArt(p.character, undefined, skinOf(p, p.character)), p.character, reducedMotion), `vs${state!.players.indexOf(p)}`)}<b>${escape(p.name)}${p.id === myId ? " <small>(you)</small>" : ""}</b><span>${CHARACTERS[p.character].name} · ${CHARACTERS[p.character].element}</span></div>`;
+        `<div class="vs-fighter${p.id === myId ? " me" : ""}" style="--element:#${CHARACTERS[p.character].color.toString(16).padStart(6, "0")}">${scopeIds(vsArt(p), `vs${state!.players.indexOf(p)}`)}<b>${escape(p.name)}${p.id === myId ? " <small>(you)</small>" : ""}</b><span>${CHARACTERS[p.character].name} · ${CHARACTERS[p.character].element}</span></div>`;
       const mine = (p: Fighter) => teamOf(p) === teamOf(me);
       const side = (list: Fighter[]) =>
         list.sort((a, b) => Number(b.id === myId) - Number(a.id === myId));

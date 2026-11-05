@@ -3937,9 +3937,9 @@ dialog:has(.admin-tabs) {
 .vs-fighter svg {
   width: 120px;
   height: 121px;
-  filter: drop-shadow(
-    0 0 10px color-mix(in srgb, var(--element) 45%, transparent)
-  );
+  /* A plain shadow, as on the roster's cards: no element glow (the
+     fighters are shown as their Wardrobe dresses them). */
+  filter: drop-shadow(0 8px 8px #0008);
 }
 .vs-fighter b {
   font-size: 14px;
