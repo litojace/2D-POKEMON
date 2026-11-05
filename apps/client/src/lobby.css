@@ -1174,6 +1174,13 @@
   align-content: center;
   row-gap: var(--hub-card-gap);
 }
+/* A portrait frame keeps its wider column gap and left padding (room for
+   the ornaments, portrait-frames.css) but not its 14px row gap: that one
+   is for the old card, and stacked the three rows 61px tall in the 38px
+   inside this one (the name above the card, the bar below it). */
+:root body.hub-active #account-profile:has(.portrait-frame) {
+  row-gap: var(--hub-card-gap);
+}
 /* The title: one small line between the name and the bar (its own colour
    comes from the title), cut short rather than wrapped. */
 :root body.hub-active #account-profile .nav-title {
