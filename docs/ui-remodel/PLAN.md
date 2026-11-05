@@ -812,10 +812,13 @@ same problem as a list (bars 1,250 px long beside a 320 px level road).
   fighter, the nameplate), so the fighter is centred in the room it has at
   any height; ‹ › sit level with it. The rig box grows to 760 px wide
   (sharp: see "Sharp preview rigs" below). A
-  wide stage (container query, 640 px) puts the stats beside the name and
-  makes the spotlight longer and steeper, still from the top-right corner
-  (owner's note), so it reaches the fighter; tall screens show the name huge
-  and faint behind it; a coloured pool sits at the fighter's feet.
+  wide stage (container query, 640 px) puts the stats beside the name; a
+  coloured pool sits at the fighter's feet. The spotlight comes from the
+  top-right corner (owner's note) and hangs from the fighter's feet, leaning
+  up to the right (`.roster-rig::after`, a soft-edged conic cone), so it
+  lands on the fighter at any stage size; pinned to the corner at a fixed
+  angle it missed the fighter on a tall stage. The huge outlined name behind
+  the fighter was dropped (owner: redundant with the nameplate).
 - **Fitting room**: the live host is up to 500 px on a narrow stage (as
   before) and as wide as the stage on a wider one, so a big stage shows a
   big fighter (sharp: see "Sharp preview rigs" below). On phones the
@@ -871,9 +874,11 @@ canvas. Measured on the roster stage: a 156 × 148 head texture drawn about
   Equip.
 - **A stray line across the phone stage:** the old Shop preview's inset
   1 px outline (`.shop-live-stage` box-shadow) showed once the host moved
-  down 34 px; the fitting room's host has no outline now. Entrance and
-  Victory are 34 px tall with 10 px between them (they needed 16 px at
-  28 px to keep 44 px finger targets).
+  down 34 px; the fitting room's host has no outline now. On phones
+  Entrance and Victory are round 40 px icon buttons in a column at the
+  stage's right edge (labels kept for screen readers): as 76 px text
+  buttons they covered a tall fighter's crest even with the fighter drawn
+  lower (owner's note, Blue Flame).
 - **The Farm lifted off the bottom when the Menu opened (iOS):** the scroll
   lock pinned the body because iOS measured the page taller than the screen
   (`body { min-height: 100vh }` is the toolbar-less height). Hub scenes and
@@ -915,6 +920,18 @@ stage and phone: [posters](images/step5/boss-posters.webp).
   for all seven bosses at 1720×1392, 1440×900 and on the island phone. New
   vertical paintings, if they are made later, need only replace the files
   and these points.
+- **Vertical Raid Hall cards** (owner's note, 5 Nov: make the boss cards
+  vertical too, bigger, and the layout even). Each boss has a 600×900
+  portrait picture cut from its painting on its framing point
+  (`docs/ui-remodel/tools/boss-portraits.sh`, about 90 KB each; the hall
+  no longer loads the wide thumbnails). The seven bosses and Attack
+  practice are four to a row in two even rows; a row is half the hall's
+  height but never squatter than 1 : 1.15, so on a tall screen both rows
+  fit whole and the cards are large posters (370×590 px at 1720×1392),
+  while a short screen (1280×720, phones) scrolls to the second row. The
+  name, element, signature mechanic, tricks and rewards sit over the
+  picture's dark foot; clears or New and the stars on top. Before and
+  after: [Raid Hall](images/step5/raids-vertical.webp).
 - **Icons on gold buttons:** style.css paints every menu icon gold, so the
   icon on a gold button (Invite) vanished and its label looked pushed to
   the right. A button's icon now takes its label's colour (as in the
@@ -935,6 +952,140 @@ stage and phone: [posters](images/step5/boss-posters.webp).
   drawn: the corner button leaves the room, a room has no rail (nor the
   Lobby / Plaza / Farm switch), and the 2v2 and free-for-all rooms move to
   the same frame in this step.
+
+### Shop opens on your look; Your look; chip rows with a mouse (5 Nov 2026)
+
+Owner's notes from a phone and a narrow desktop window.
+
+- **The Shop opens on what you wear:** it used to try today's deal on as
+  it opened (the deal is often another fighter's skin), and on the owner's
+  phone that first look came out squashed until another skin was picked.
+  The squash did not reproduce in Chromium (3× density, 844×390: same
+  proportions as a skin picked later). The WebKit boot-size cause is now
+  reproduced and fixed; see "First preview canvas on WebKit" below. The
+  open no longer switches fighter or skin at all, and the deal goes on with
+  a tap.
+- **Your look** (`data-fit-revert` on the stage, Shop and Wardrobe): shown
+  only while something you don't wear is on (`trying`); it takes every
+  try-on off. In the Shop it also brings back your own fighter (a skin of
+  another fighter brings that fighter on); so does going to the Wardrobe
+  when the skin it drops was that fighter's. Desktop: a text button under
+  Entrance and Victory; phones: a third round icon in that column. On Low
+  graphics it shows alone.
+- **Chip rows with a mouse** (`ui/scroll-rows.ts`, every hub screen): rows
+  of chips (`.ui-chips`) hide their scrollbar, so a mouse could not reach
+  what they hid. The wheel scrolls them sideways, a press and drag pans
+  them (the click ending a drag is swallowed), and an edge fades where more
+  is hidden (`has-more-left`/`-right`, refreshed after each re-render). On
+  desktop the fitting room's fighters wrap onto two rows instead, so all
+  sixteen show.
+
+### Every menu fighter dressed as the Wardrobe shows (5 Nov 2026)
+
+Owner's note: the roster and the Lobby's fighter should wear exactly what
+the Wardrobe shows, and lose the element aura orbiting them (bolts, embers,
+bubbles), which the Shop and Wardrobe never drew.
+
+- `fighter-selection.ts`: the large and card art (roster, Lobby, the room
+  picker) no longer wraps the fighter in its trait aura (`withAura`), and so
+  no aura front layer is laid over the live rig. The art takes your shared
+  looks (`setWornLook`, from `accountsUI.raidLook`): with no fighter skin,
+  your Colors tint the still art, as in the Wardrobe; a fighter skin wins.
+- The roster hands the stage's rig your looks (`data-preview-look`; it was
+  `{}`), so Colors and an aura are worn there too; its cards take your
+  Colors. The Lobby's stills take the same looks it already gave its rigs
+  (yours and each party seat's).
+- The match's VS intro (the briefing's fighters) follows too (owner):
+  each player's fighter skin, else their Colors, no trait aura and no
+  element-coloured glow (a plain drop shadow, as on the roster's cards).
+  `trait-effects.ts` (the menu trait auras), its CSS (`.trait-aura`,
+  `.ta-*`, the aura front layers over the rigs) and its tests are deleted
+  (owner). The in-battle ground aura (`battle-aura.ts`) stays.
+- Tests: `roster.test.ts` (the look handed to the rig, Colors and skins on
+  stage and cards, no aura), `cute-art.test.ts`, `roster-smooth.spec.ts`.
+
+### A shorter match briefing (5 Nov 2026)
+
+Owner: the "How to play" card before a match should be short and keep only
+what is needed. It now holds the VS row; one goal line with a trophy
+("First to win 3 rounds"; free-for-all: last one standing takes the round;
+teams: stay side by side for the damage bonus); a team-up gift in one line;
+the arena's name, with its tip only when it has hazards to dodge (an
+Arcade event's tip once, not twice as before); the keys as one row of chips
+(touch: one line, the buttons are on screen); party rules if any. Gone: the
+arena flavour text, the long touch paragraph, the controls table and "the
+countdown begins when everyone confirms" (the button says it). The Menu's
+How to play screen keeps the full controls list.
+
+### A floating joystick on phones (5 Nov 2026)
+
+Owner: let the movement stick start anywhere on the left half of the screen,
+for quick moves in a fight. A touch anywhere free on the left half of a
+touch battle starts the joystick right under the finger (the stick is drawn
+there, `is-floating`), drags move the fighter, and lifting the finger eases
+it back to its place (`touch-controls.ts`). A touch on the stick itself
+still starts it centred on its own place (a push off-centre moves at once,
+as before). Buttons, links, the briefing card, practice and Menu panels,
+dialogs and the right half answer their own touches; a tap on an enemy in
+the left half still locks the target (Phaser's own handler) and, without a
+drag, does not move. Test: `touch-recovery.spec.ts`.
+
+### Step 5, part 2: the rooms (built 5 Nov 2026)
+
+As approved on 4 Nov (`images/mockups/room-*.webp`): the raid room and the
+private 1v1, 2v2 and free-for-all rooms share one frame. Pictures:
+[`images/step5/`](images/step5/) (`room-*.webp`).
+
+- `apps/client/src/screens/room-view.ts` (the seats column: markup and
+  rules) and `room.css`; `main.ts` (`renderRoom`) gathers the room's data,
+  patches the seats in place and keeps the picker open.
+- **Seats on the left**, where the rail and the stage stand elsewhere: a
+  raid room's banner is the boss's portrait (element, stars, how to win);
+  a PvP room's banner names the mode, its text centred in the box (owner's
+  note, 5 Nov). Then the seats: you, the others (fighter, Host, Ready /
+  Choosing / Offline), open seats that invite friends (Friends), the 2v2
+  teams with "Join Red/Blue" and Shuffle for the host, the team-up line,
+  the party rules (the host toggles them as chips; the others see what is
+  on), the arcade's fixed rules, and the room's notes.
+- **The roster is the picker** (`screens/roster.ts` in its "lock" mode,
+  mounted in the room): every fighter, filters, Details; bottom right
+  Details · Lock in · Ready. Lock in asks the server and says "Confirming…"
+  until it answers (a refusal puts its pick back); Ready with another
+  fighter picked locks that one in first. The picked fighter's card says
+  Locked. Escape goes back from a fighter's detail to the grid; the corner
+  button (where Close is on every screen) leaves the room.
+- **No rail and no drawer**: a room is a server room, not the Lobby, so the
+  rail and the Lobby / Plaza / Farm switch are not there (owner, 4 Nov). On
+  phones the seats are a 216 px column beside the picker; everything is in
+  sight, no "Room & ready" drawer.
+- **Watching a room**: the same seats, and a panel with "Ringside seat"
+  and Stop watching instead of the picker.
+- **Deleted:** the old picker in `fighter-selection.ts` (716 → 84 lines:
+  the fighter art and mastery records the Lobby and the roster use stay),
+  `champion-selection.css` (1,293 lines), `lobby-layout.ts` (the phone
+  drawer), `selection-preview.ts` (the old picker's live rig), the raid
+  lobby markup (`raidLobby`), the room panels and their wiring in `main.ts`
+  (`roomPanel`, `watchPanel`, `wireRoom`, `wireRoster`, `showSelection`,
+  `partyRules`), the old picker's Escape handling in `home-navigation.ts`,
+  and 2,700 lines of `style.css` (503 rules: the rooms' layout, the old
+  picker, the drawer), pruned as before (only classes the sources emitted
+  before and no longer emit). The Lobby, Play panel, Fighters, Shop,
+  Journey, Missions, Ranks, Friends, profile and Settings were compared
+  pixel by pixel before and after at 1440×900 and 844×390: only the live
+  fighter, a toast and the countdown differ. `mobile-panels.css` had no
+  picker rules left (it styles the profile and the header menu) and stays.
+- **Choices made while building:** the picker's title is "Fighters" (the
+  kicker names the room); beside the seats its range and sort tools leave
+  below 1500 px (Details shows a fighter's range); on phones the action
+  bar's buttons drop their icons so the labels sit centred in 104 px.
+  `ui/hub-panel.ts` gained an `escape` option (a room's picker stays open).
+- **Tests:** `tests/visual/rooms.spec.ts` (the raid and 2v2 rooms at five
+  sizes with `ui-measure.ts`; Lock in, Ready, Escape, party rules and Leave;
+  an open seat inviting; Low graphics and reduced motion).
+  `pvp-party-flow`, `portrait-frames`, `level-cosmetics`, `raid-room-return`,
+  `fighter-cards`, `creatures`, `cute-art`, `svg-ids`, `raid-lobby` and
+  `menu-shell` moved to the new room and the roster (the one picker); what
+  they check stays.
 
 ## Decisions (owner, 3 Nov 2026)
 
@@ -964,3 +1115,26 @@ No questions are open.
 - Research: web search only (fetching pages was blocked in this session), so
   the notes on other games are from search summaries and the proposal's own
   research; they inform patterns, not details.
+
+### First preview canvas on WebKit (5 Nov 2026)
+
+The first Shop/Wardrobe fighter could be blurry and vertically stretched on
+Safari's engine. Reproduced in Playwright WebKit: a 400×260 backing buffer was
+stretched into a 606×650 CSS host, while its SVG part textures were already
+high resolution. Counting texture pixels or checking only Chromium missed the
+actual problem.
+
+`shop-preview.ts` rejected `resizeStage` while `Game.isRunning` was false.
+Phaser can create the scene before starting its loop, and WebKit can deliver
+its initial ResizeObserver notification before that scene exists. Both initial
+resize attempts were skipped; changing a look later happened to repair it.
+The resize now requires a game and initialized scene, so `Scene.create` can
+size the buffer before the first render. The animation loop still waits for
+`isRunning`, and disposal still prevents late callbacks from resizing it.
+The same host now receives a 1200×1287 buffer and the correct camera framing.
+
+A unit regression exercises that boot order. `preview-canvas.spec.ts` measures
+both axes on the first Shop/Wardrobe render, with original/equipped Mythical art,
+at desktop DPR 2 and landscape-phone DPR 3. Run it with the normal visual config
+for Chromium and `tests/visual/webkit.config.ts` for WebKit. These are browser
+engine checks, not a physical iOS device test.

@@ -303,9 +303,18 @@
 .fit-picks .ui-tile-art {
   aspect-ratio: 1.35;
 }
-/* Fighters: a row of avatars instead of a dropdown. */
+/* Fighters: a row of avatars instead of a dropdown. On desktop they wrap
+   onto a second row, so every fighter shows (a row cut off at the column's
+   edge had no way to reach the rest with a mouse); phones keep one row
+   that scrolls (ui/scroll-rows.ts). */
 .fit-fighters {
   gap: 6px;
+}
+@media (min-height: 501px) {
+  .fit-fighters {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
 }
 .fit-fighter {
   flex: none;
@@ -666,19 +675,32 @@
     width: 38px;
     height: 38px;
   }
-  /* Entrance and Victory: a little taller than other small buttons, so
-     each still catches a 44 px finger (5 px past each edge) with only
-     10 px between them (at the usual height they needed 16 px, and read
-     as two unrelated buttons). */
+  /* Entrance and Victory: round icon buttons in a column at the stage's
+     right edge (as mobile games put their side actions), 40 px each. As
+     76 px text buttons they took the stage's top-right half and covered a
+     tall fighter's ears or crest. The label stays for screen readers. */
   .fit-plays {
-    grid-template-columns: var(--act-s);
-    gap: 10px;
+    grid-template-columns: 40px;
+    gap: 8px;
   }
   .fit-plays .ui-btn.is-s {
-    height: 34px;
+    width: 40px;
+    height: 40px;
+    min-width: 0;
+    padding: 0;
+    border-radius: 50%;
   }
-  .fit-plays .ui-btn svg {
-    display: none;
+  .fit-plays .ui-btn > svg {
+    width: 18px;
+    height: 18px;
+  }
+  .fit-plays .ui-btn > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
   .fit-stage-info {
     left: 8px;

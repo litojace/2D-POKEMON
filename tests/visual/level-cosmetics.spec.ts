@@ -345,10 +345,8 @@ for (const size of SIZES) {
           return page.locator("body").getAttribute("class");
         })
         .toContain("lobby-active");
-      const drawer = page.locator(".lobby-room-drawer > summary");
-      if (await drawer.isVisible()) await drawer.click();
-      // Each frame on the player's portrait in the match room.
-      const own = page.locator("[data-me] .player-avatar");
+      // Each frame on the player's portrait in the room's seats.
+      const own = page.locator(".room-seats [data-me] .player-avatar");
       for (const frame of FRAMES) {
         await page.evaluate((frame) => {
           const a = (window as any).__account;
@@ -358,7 +356,7 @@ for (const size of SIZES) {
         const framed = own.locator(`[data-portrait-frame="${frame}"]`);
         await expect(framed).toHaveAttribute("data-tier", "mythic");
         const avatar = await own.boundingBox();
-        const row = await page.locator("[data-me]").boundingBox();
+        const row = await page.locator(".room-seats [data-me]").boundingBox();
         expect(avatar!.height).toBeGreaterThan(20);
         expect(inside(avatar as Box, row as Box)).toBe(true);
         await snap(page, info, `level-cosmetic-match-room-${frame}-${tag}`);

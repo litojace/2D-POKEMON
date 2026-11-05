@@ -1828,3 +1828,59 @@ for (const view of [
     }
   });
 }
+
+test("tapping the farm's animals, trees and buildings reacts and sends nothing; night lights the farm", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const errors = await openLobby(page);
+  await fakeFarm(page);
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  await expect(page.locator(".farm-layer")).toHaveAttribute(
+    "data-frozen",
+    "false",
+  );
+  await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+  const sent = () =>
+    page.evaluate(() =>
+      (window as any).__farmRequests.flatMap((r: any) => r.actions ?? [r]),
+    );
+  const before = await sent();
+  const hen = await page.evaluate(() => {
+    const h = (window as any).__farm.hens[0];
+    return h ? [h.x, h.y - 12] : null;
+  });
+  // A hen, the cat by the house, the pond, the apple tree, the house, the mill.
+  const spots = [
+    ...(hen ? [hen] : []),
+    [150, 294],
+    [250, 990],
+    [338, 180],
+    [205, 215],
+    [470, 170],
+  ];
+  for (const [x, y] of spots) {
+    await page.evaluate(([x, y]) => (window as any).__farm.look(x, y), [x, y]);
+    const pt = await page.evaluate(
+      ([x, y]) => (window as any).__farm.worldClient(x, y),
+      [x, y],
+    );
+    await page.mouse.click(pt.x, pt.y);
+  }
+  // Leaves, feathers, ripples… are on the farm; nothing went to the server.
+  expect(
+    await page.evaluate(() => (window as any).__farm.feel.parts.length),
+  ).toBeGreaterThan(0);
+  expect(await sent()).toEqual(before);
+  await expect(page.locator("#fm-sheet")).toBeHidden();
+  await snap(page, info, "farm-pokes");
+  // Golden hour, then night: the grade and the lit windows draw without errors.
+  await page.evaluate(() => (window as any).__farm.look(600, 520));
+  await page.evaluate(() => (window as any).__farm.tod(0.73));
+  await page.waitForTimeout(400);
+  await snap(page, info, "farm-golden-hour");
+  await page.evaluate(() => (window as any).__farm.tod(0.95));
+  await page.waitForTimeout(400);
+  await snap(page, info, "farm-night");
+  expect(errors).toEqual([]);
+});

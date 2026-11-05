@@ -1,3 +1,4 @@
+import { scrollRows } from "./scroll-rows";
 import { lowGraphics } from "../graphics-quality";
 import { confirmModal, type ConfirmOptions } from "./components";
 import { enter, fadeIn, glide, leave, stagger } from "./motion";
@@ -18,6 +19,11 @@ export interface HubPanelOptions {
   rail?: string;
   /** Where to mount; defaults to the Lobby layer. */
   host?: HTMLElement;
+  /**
+   * Escape does this instead of closing (a room's picker: it stays open
+   * while you are in the room; Escape goes back up a level there).
+   */
+  escape?: () => void;
 }
 export interface HubPanel {
   root: HTMLElement;
@@ -132,7 +138,8 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
     if (document.querySelector("[data-ui-confirm], dialog[open]")) return;
     event.preventDefault();
     event.stopPropagation();
-    close();
+    if (o.escape) o.escape();
+    else close();
   };
   const onClick = (event: MouseEvent) => {
     if ((event.target as Element).closest("[data-ui-close]")) close();
@@ -143,6 +150,7 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
     if (closed) return;
     closed = true;
     gone?.disconnect();
+    rows();
     document.removeEventListener("keydown", onKey);
     if (replaced) handoff = covered;
     else {
@@ -195,6 +203,8 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
     gone.observe(host.parentNode, { childList: true });
   railButton?.setAttribute("aria-current", "page");
   wrap.addEventListener("click", onClick);
+  // Chip rows scroll sideways with a mouse too (wheel and drag).
+  const rows = scrollRows(wrap);
   // Bubble phase: menus inside the Lobby close first and mark it handled.
   document.addEventListener("keydown", onKey);
   // Focus moves into the screen (keyboard and screen readers start there);

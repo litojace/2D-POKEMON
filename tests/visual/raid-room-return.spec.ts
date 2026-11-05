@@ -33,8 +33,8 @@ async function waitForLobby(page: Page) {
       );
     })
     .toBe(true);
-  const drawer = page.locator(".lobby-room-drawer > summary");
-  if (await drawer.isVisible()) await drawer.click();
+  // The room's seats and its picker (UI remodel step 5): no drawer.
+  await expect(page.locator(".room-screen #leave")).toBeVisible();
 }
 async function expectHub(page: Page, tab: "party" | "attacks" | "rewards") {
   // The boss's page inside the Lobby (UI remodel step 5), on the tab you

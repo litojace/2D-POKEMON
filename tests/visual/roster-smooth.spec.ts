@@ -19,13 +19,14 @@ test("the roster's fighter keeps animating", async ({ page }) => {
   await expect(page.locator("#lobby-play")).toBeVisible();
 });
 
-// The animated fighter is a canvas over the still artwork. The aura's front
-// half is drawn again above that canvas, so orbiting pieces pass in front.
+// The roster's fighter is dressed as the Wardrobe dresses it (owner, 5 Nov
+// 2026): its skin and your shared looks, and no element aura orbiting it
+// (the Shop, Wardrobe and battle rigs never had one).
 for (const [name, size] of [
   ["desktop", { width: 1440, height: 900 }],
   ["phone", { width: 844, height: 390 }],
 ] as const)
-  test(`the roster fighter's aura passes in front of the animated fighter (${name})`, async ({
+  test(`the roster fighter wears what the Wardrobe shows, no element aura (${name})`, async ({
     page,
   }, info) => {
     await page.setViewportSize(size);
@@ -34,29 +35,6 @@ for (const [name, size] of [
     await page.click("[data-roster-details]");
     const stage = page.locator(".roster-stage .fighter-rig-stage");
     await expect(stage).toHaveClass(/is-ready/);
-    const layer = stage.locator("> svg.ta-front-layer");
-    await expect(layer).toBeVisible();
-    const art = await stage.locator("> svg:not(.ta-front-layer)").boundingBox();
-    const front = await layer.boundingBox();
-    expect(
-      Math.abs(art!.x - front!.x) + Math.abs(art!.y - front!.y),
-    ).toBeLessThan(1);
-    expect(
-      Math.abs(art!.width - front!.width) +
-        Math.abs(art!.height - front!.height),
-    ).toBeLessThan(1);
-    const order = await stage.evaluate((el) => {
-      const z = (sel: string) =>
-        Number(getComputedStyle(el.querySelector(sel)!).zIndex);
-      return {
-        canvas: z(":scope > canvas"),
-        front: z(":scope > svg.ta-front-layer"),
-      };
-    });
-    expect(order.front).toBeGreaterThan(order.canvas);
-    // The artwork's own front half steps aside (no doubled pieces).
-    await expect(
-      stage.locator("> svg:not(.ta-front-layer) .ta-front"),
-    ).toHaveCSS("visibility", "hidden");
-    await snap(page, info, `roster-aura-front-${name}`);
+    await expect(stage.locator(".trait-aura, .ta-front-layer")).toHaveCount(0);
+    await snap(page, info, `roster-no-aura-${name}`);
   });

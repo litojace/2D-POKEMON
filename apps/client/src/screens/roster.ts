@@ -30,6 +30,10 @@ export interface RosterHooks {
   choose(c: CharacterId): void;
   /** The fitting room on this fighter's skins. */
   skins(c: CharacterId): void;
+  /** In a room: Ready (or Cancel ready) with the fighter shown. */
+  ready?(c: CharacterId): void;
+  /** In a room: the corner button leaves the room. */
+  leave?(): void;
   onClose?(): void;
 }
 export interface RosterScreen {
@@ -49,13 +53,20 @@ const FOCUS_KEYS = [
   "data-roster-step",
   "data-roster-details",
   "data-roster-select",
+  "data-roster-ready",
   "data-roster-back",
   "data-roster-reset",
 ];
 
 export function openRoster(
   hooks: RosterHooks,
-  o: { focus?: CharacterId; mode?: "grid" | "detail" } = {},
+  o: {
+    focus?: CharacterId;
+    mode?: "grid" | "detail";
+    /** A room's picker (UI remodel step 5): mounted in the room, it stays
+     * open there; Lock in and Ready act without closing it. */
+    room?: { host: HTMLElement };
+  } = {},
 ): RosterScreen {
   const low = lowGraphics();
   const data = (): RosterData => ({ ...hooks.data(), low });
@@ -155,7 +166,8 @@ export function openRoster(
   };
   const select = (c: CharacterId) => {
     hooks.choose(c);
-    panel.close();
+    if (o.room) render();
+    else panel.close();
   };
   const onClick = (event: MouseEvent) => {
     const t = (event.target as Element).closest<HTMLElement>("button");
@@ -196,6 +208,8 @@ export function openRoster(
     } else if (d.rosterSkill)
       view.skill = d.rosterSkill === "basic" ? "basic" : Number(d.rosterSkill);
     else if (d.rosterSelect) return select(d.rosterSelect as CharacterId);
+    else if (d.rosterReady) return hooks.ready?.(d.rosterReady as CharacterId);
+    else if (d.rosterLeave !== undefined) return hooks.leave?.();
     else if (d.rosterSkins) {
       const c = d.rosterSkins as CharacterId;
       panel.close();
@@ -270,7 +284,20 @@ export function openRoster(
   const html = rosterMarkup(view, data());
   template = parse(html);
   panel = openHubPanel(html, {
-    rail: "fighters",
+    rail: o.room ? undefined : "fighters",
+    host: o.room?.host,
+    // In a room, Escape goes back from a fighter's detail to the grid; the
+    // picker itself stays (leaving the room is the corner button).
+    escape: o.room
+      ? () => {
+          if (view.mode !== "detail") return;
+          view.mode = "grid";
+          render(true);
+          q<HTMLElement>(`[data-roster-card="${view.focus}"]`)?.focus({
+            preventScroll: true,
+          });
+        }
+      : undefined,
     onClose: () => {
       closed = true;
       preview?.();

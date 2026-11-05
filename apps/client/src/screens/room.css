@@ -1,0 +1,394 @@
+/* ==========================================================================
+   Rooms (UI remodel step 5, docs/ui-remodel/PLAN.md): the seats column and
+   the picker beside it. Markup: screens/room-view.ts (the seats) and
+   screens/roster-view.ts (the picker, in its room mode). No rail in a room:
+   the seats take the column the rail and the stage take on other screens.
+   No drawer on phones: the seats are a narrow column, the picker beside it.
+   ========================================================================== */
+
+.room-screen {
+  --room-w: 340px;
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: calc(var(--lobby-top, 64px) + 8px);
+  bottom: 0;
+  z-index: 5;
+}
+@media (max-width: 1300px) {
+  .room-screen {
+    --room-w: 300px;
+  }
+}
+/* The picker (a hub panel mounted in the room) sits right of the seats. */
+.room-screen > .ui-panel-host {
+  --lobby-top: 0px;
+  --lobby-gutter: max(14px, var(--safe-left, 0px));
+  --lobby-gutter-r: max(14px, var(--safe-right, 0px));
+  --lobby-bottom: max(14px, var(--safe-bottom, 0px));
+  --lobby-rail: var(--room-w);
+}
+.room-screen > .ui-panel.room-watch {
+  top: 0;
+  bottom: max(14px, var(--safe-bottom, 0px));
+  left: calc(max(14px, var(--safe-left, 0px)) + var(--room-w) + var(--sp-3));
+  right: max(14px, var(--safe-right, 0px));
+}
+
+/* The picker's head is narrower beside the seats: the element chips stay,
+   range and sort leave below 1500 px (Details shows a fighter's range). */
+@media (max-width: 1500px) {
+  .roster-room.is-room :is(.roster-ranges, .roster-sort) {
+    display: none;
+  }
+}
+
+/* ------------------------------------------------------------- seats */
+.room-seats {
+  position: absolute;
+  left: max(14px, var(--safe-left, 0px));
+  top: 0;
+  bottom: max(14px, var(--safe-bottom, 0px));
+  width: var(--room-w);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border-radius: var(--rad-xl);
+  border: 1px solid var(--ui-line-2);
+  background: var(--ui-glass);
+  box-shadow: var(--shadow-2);
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+  font-family: var(--font-body);
+  color: var(--ui-text);
+}
+.room-seats :where(h3, p, ul) {
+  margin: 0;
+}
+.room-seats-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  display: grid;
+  align-content: start;
+  gap: var(--sp-3);
+}
+.room-banner {
+  position: relative;
+  flex: none;
+  height: 176px;
+  border-radius: var(--rad-lg);
+  overflow: hidden;
+  border: 1px solid
+    color-mix(in srgb, var(--el, var(--ui-accent)) 45%, transparent);
+  background: var(--ui-bg-1);
+}
+.room-banner > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 30%;
+}
+.room-banner.is-boss::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 25%, #0b1020f0 95%);
+}
+.room-banner.is-mode {
+  height: 116px;
+  background:
+    radial-gradient(ellipse 80% 90% at 0% 0%, #4fa8ff40, transparent 70%),
+    radial-gradient(ellipse 80% 90% at 100% 100%, #ffd65b30, transparent 70%),
+    var(--ui-bg-1);
+}
+.room-banner.is-teams {
+  background:
+    radial-gradient(ellipse 80% 90% at 0% 0%, #4fa8ff55, transparent 70%),
+    radial-gradient(ellipse 80% 90% at 100% 100%, #ef4f6155, transparent 70%),
+    var(--ui-bg-1);
+}
+.room-banner-text {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 10px;
+  z-index: 1;
+  display: grid;
+  gap: 3px;
+}
+/* A banner with no picture (the PvP rooms): its text sits in the middle of
+   the box, not pinned to the bottom-left corner (owner's note, 5 Nov). */
+.room-banner.is-mode .room-banner-text {
+  inset: 0;
+  align-content: center;
+  justify-items: center;
+  padding: 8px 12px;
+  text-align: center;
+}
+.room-banner.is-mode .room-banner-line {
+  max-width: 100%;
+}
+.room-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.room-stars {
+  color: var(--ui-accent);
+  letter-spacing: 1px;
+}
+.room-stars i {
+  font-style: normal;
+  color: #ffffff3a;
+}
+.room-banner-name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 30px;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.room-banner-line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.room-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 28px;
+}
+.room-team.is-team-0 .ui-h {
+  color: #7cc4ff;
+}
+.room-team.is-team-1 .ui-h {
+  color: #ff8a96;
+}
+.room-team {
+  display: grid;
+  gap: 6px;
+}
+.room-seat-list {
+  display: grid;
+  gap: 6px;
+}
+.room-seat {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 6px 10px 6px 7px;
+  border-radius: var(--rad-md);
+  border: 1px solid var(--ui-line);
+  background: var(--ui-bg-1);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.room-seat.is-me {
+  border-color: color-mix(in srgb, var(--ui-accent) 55%, transparent);
+}
+.room-seat.is-away {
+  opacity: 0.62;
+}
+.room-seat.is-open {
+  grid-template-columns: auto minmax(0, 1fr);
+  border-style: dashed;
+  border-color: var(--ui-line-2);
+  background: transparent;
+}
+button.room-seat.is-open {
+  cursor: pointer;
+}
+button.room-seat.is-open:hover,
+button.room-seat.is-open:focus-visible {
+  border-color: var(--ui-accent);
+}
+.room-avatar,
+.room-avatar > :is(svg, span, img) {
+  display: block;
+  width: 44px;
+  height: 44px;
+}
+.room-avatar {
+  flex: none;
+  border-radius: 50%;
+}
+.room-plus {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px dashed var(--ui-line-2);
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  color: var(--ui-dim);
+}
+.room-seat-text {
+  display: grid;
+  min-width: 0;
+}
+.room-seat-text b,
+.room-seat-text small {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.room-seat .ui-tag svg {
+  width: 11px;
+  height: 11px;
+}
+.teamup-note {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--rad-md);
+  background: var(--ui-bg-1);
+  border: 1px solid var(--ui-line);
+  color: var(--ui-dim);
+  font-size: var(--fs-small);
+}
+.room-rules {
+  padding: 8px 10px;
+  border-radius: var(--rad-md);
+  border: 1px solid var(--ui-line);
+  background: var(--ui-bg-1);
+  font-size: var(--fs-small);
+}
+.room-rules > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.room-rules > summary svg {
+  width: 16px;
+  height: 16px;
+}
+.room-rule-chips {
+  flex-wrap: wrap;
+  margin: 6px 0;
+}
+.room-rule-list {
+  display: grid;
+  gap: 4px;
+  margin-top: 6px;
+  padding-left: 16px;
+  color: var(--ui-dim);
+}
+.room-arcade {
+  padding: 8px 10px;
+  border-radius: var(--rad-md);
+  border: 1px solid var(--ui-line);
+  background: var(--ui-bg-1);
+}
+.room-notes {
+  flex: none;
+  display: grid;
+  gap: 4px;
+  color: var(--ui-dim);
+  font-size: var(--fs-small);
+}
+.room-notes span::before {
+  content: "· ";
+}
+.room-watch-text {
+  font-size: var(--fs-lead);
+}
+[data-graphics="low"] .room-seats,
+.room-screen[data-graphics="low"] .room-seats {
+  backdrop-filter: none;
+}
+
+/* ------------------------------------------------- phones, sideways */
+@media (max-height: 500px) {
+  .room-screen {
+    --room-w: 216px;
+    top: calc(var(--lobby-top, 50px) + 4px);
+  }
+  .room-screen > .ui-panel-host {
+    --lobby-bottom: max(8px, var(--safe-bottom, 0px));
+  }
+  .room-screen > .ui-panel.room-watch,
+  .room-seats {
+    bottom: max(8px, var(--safe-bottom, 0px));
+  }
+  .room-seats {
+    gap: 6px;
+    padding: 6px;
+    border-radius: var(--rad-lg);
+  }
+  .room-seats-body {
+    gap: 6px;
+  }
+  .room-banner {
+    height: 58px;
+  }
+  .room-banner.is-mode {
+    height: 44px;
+  }
+  .room-banner .room-row,
+  .room-banner-line,
+  .room-banner .ui-kicker {
+    display: none;
+  }
+  .room-banner.is-boss .room-banner-text {
+    left: 8px;
+    bottom: 5px;
+  }
+  .room-banner.is-mode .room-banner-text {
+    padding: 4px 8px;
+  }
+  .room-banner-name {
+    font-size: 18px;
+  }
+  .room-head {
+    min-height: 0;
+  }
+  .room-head .ui-h {
+    font-size: 13px;
+  }
+  .room-head .ui-note {
+    font-size: 10px;
+  }
+  .room-seat {
+    min-height: 40px;
+    gap: 6px;
+    padding: 3px 6px 3px 4px;
+  }
+  .room-avatar,
+  .room-avatar > :is(svg, span, img),
+  .room-plus {
+    width: 30px;
+    height: 30px;
+    font-size: 15px;
+  }
+  .room-seat-text b {
+    font-size: 12px;
+  }
+  .room-seat-text small {
+    font-size: 10px;
+  }
+  .room-seat .ui-tag {
+    font-size: 9px;
+    padding: 0 5px;
+  }
+  .room-notes,
+  .teamup-note {
+    display: none;
+  }
+  /* A 104 px button: the label alone, centred. */
+  .roster-room.is-room .ui-panel-foot .ui-btn > svg {
+    display: none;
+  }
+}

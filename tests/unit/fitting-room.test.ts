@@ -616,7 +616,8 @@ describe("Shop to Wardrobe", () => {
       stage: 2,
       action: "entrance",
     });
-    dropUnownedTryOns(view, d);
+    // True: a fighter skin left (the screen brings your fighter back).
+    expect(dropUnownedTryOns(view, d)).toBe(true);
     // Only the owned aura stays on (a change Equip can save).
     expect(view.tryOn).toEqual({ aura: "galaxy-aura" });
     expect(view.selected).toBeNull();
@@ -628,9 +629,33 @@ describe("Shop to Wardrobe", () => {
       tryOn: { champion: "voltkit-midnight" },
       selected: "voltkit-midnight",
     });
-    dropUnownedTryOns(kept, d);
+    expect(dropUnownedTryOns(kept, d)).toBe(false);
     expect(kept.tryOn).toEqual({ champion: "voltkit-midnight" });
     expect(kept.selected).toBe("voltkit-midnight");
+  });
+});
+
+describe("Your look", () => {
+  it("shows on the stage only while something you don't wear is on", () => {
+    const d = data(economy());
+    const stage = (v: FitView) => fittingRoomParts(v, d).stage;
+    expect(stage(shop())).not.toContain("data-fit-revert");
+    expect(stage(shop({ tryOn: { champion: "voltkit-snowcap" } }))).toContain(
+      "data-fit-revert",
+    );
+    expect(stage(wardrobe({ tryOn: { aura: null } }))).toContain(
+      "data-fit-revert",
+    );
+    // Low graphics has no Entrance or Victory, but still Your look.
+    expect(stage(shop({ tryOn: { champion: "voltkit-snowcap" } }))).toContain(
+      "data-fit-play",
+    );
+    const low = fittingRoomParts(
+      shop({ tryOn: { champion: "voltkit-snowcap" } }),
+      { ...d, low: true },
+    ).stage;
+    expect(low).not.toContain("data-fit-play");
+    expect(low).toContain("data-fit-revert");
   });
 });
 

@@ -157,23 +157,8 @@ export function openFittingRoom(
       else b.removeAttribute("aria-current");
     }
   };
-  /** The Shop opens on today's deal (or first pick), already on the stage. */
-  let picked = false;
-  const autoPick = () => {
-    const e = data().economy;
-    if (picked || !e) return;
-    picked = true;
-    if (view.mode !== "shop" || view.section !== "today") return;
-    if (view.selected || Object.keys(view.tryOn).length) return;
-    const first =
-      e.picks.items.find(
-        (id) => id === e.picks.deal && !e.owned.includes(id),
-      ) ?? e.picks.items.find((id) => !e.owned.includes(id));
-    if (first) tryOn(first);
-  };
   function render(resetScroll = false) {
     if (closed) return;
-    autoPick();
     const key = focusKey();
     const html = fittingRoomMarkup(view, data());
     const next = parse(html);
@@ -374,7 +359,9 @@ export function openFittingRoom(
     if (mode === view.mode) return;
     view.mode = mode;
     if (mode !== "wardrobe") return;
-    dropUnownedTryOns(view, data());
+    // A Shop skin of another fighter brought that fighter on: your own
+    // fighter comes back with your look.
+    if (dropUnownedTryOns(view, data())) setChampion(options.champion);
     if (view.slot === "frame") pickFrame();
   };
 
@@ -535,6 +522,9 @@ export function openFittingRoom(
       view.ownership = "all";
       view.rarity = "all";
     } else if (d.fitRevert !== undefined) {
+      // Back to what you wear. In the Shop a skin of another fighter took
+      // the stage with it: back to your own fighter too.
+      if (view.mode === "shop") setChampion(options.champion);
       view.tryOn = {};
       view.stage = undefined;
       view.frameStars = undefined;
@@ -636,7 +626,6 @@ export function openFittingRoom(
 
   /* ------------------------------------------------------------ open */
   if (view.mode === "wardrobe") setSlot(view.slot);
-  autoPick();
   const html = fittingRoomMarkup(view, data());
   template = parse(html);
   panel = openHubPanel(html, {

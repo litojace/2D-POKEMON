@@ -118,10 +118,12 @@
       var(--lobby-rail, 60px) - var(--sp-3)
   );
 }
-/* The Lobby beside a sheet (step 4): its stage, and the emotes under it,
-   re-centre in the room right of the sheet, so the fighter stays whole and
-   in view while it keeps moving. On phones the side cards make way (the
-   sheet shows what they say) and the stage takes the room above PLAY.
+/* The Lobby beside a sheet (step 4): its stage re-centres in the room right
+   of the sheet, so the fighter stays whole and in view while it keeps
+   moving. The emote tile stays in the rail's column, which the sheet leaves
+   free (moved beside the sheet it landed on PLAY on narrow phones). On
+   phones the side cards make way (the sheet shows what they say) and the
+   stage takes the room above PLAY.
    ui/hub-panel.ts sets data-ui-sheet on the Lobby while a sheet is open. */
 .lobby-layer[data-ui-sheet] {
   --ui-sheet-end: calc(
@@ -131,9 +133,6 @@
 .lobby-layer[data-ui-sheet] > .lobby-stage {
   left: calc(var(--ui-sheet-end) + var(--sp-4));
 }
-.lobby-layer[data-ui-sheet] > .lobby-emotes {
-  left: calc(var(--ui-sheet-end) + var(--sp-3));
-}
 @media (max-height: 500px) {
   .lobby-layer[data-ui-sheet] > .lobby-cards {
     display: none;
@@ -142,6 +141,16 @@
     right: var(--lobby-gutter-r);
     /* PLAY and the mode (98 px on phones) and a gap. */
     bottom: calc(var(--lobby-bottom) + 106px);
+  }
+  /* That room is ~200 px wide on a 667 px phone: the fighter alone with its
+     name. The party seats (with their podiums) and the ‹ › arrows (226 px
+     with the name) ran off the screen and over each other; they come back
+     when the sheet closes. */
+  .lobby-layer[data-ui-sheet] :is(.lobby-slot-wrap, .lobby-step) {
+    display: none;
+  }
+  .lobby-layer[data-ui-sheet] .lobby-nameplate {
+    grid-template-columns: minmax(0, 150px);
   }
 }
 .ui-panel-head {
@@ -489,6 +498,23 @@
   overflow-x: auto;
   scrollbar-width: none;
   align-items: center;
+}
+/* An edge fades where more of the row is hidden past it (ui/scroll-rows.ts:
+   the wheel and a mouse drag scroll it too). */
+.ui-chips.has-more-right {
+  mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent);
+}
+.ui-chips.has-more-left {
+  mask-image: linear-gradient(90deg, transparent, #000 32px);
+}
+.ui-chips.has-more-left.has-more-right {
+  mask-image: linear-gradient(
+    90deg,
+    transparent,
+    #000 32px,
+    #000 calc(100% - 32px),
+    transparent
+  );
 }
 .ui-chip {
   flex: none;

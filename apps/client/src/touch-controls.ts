@@ -15,6 +15,9 @@ import {
 } from "./mobile-input";
 export { joystickVector } from "./mobile-input";
 type Actions = { basic: boolean; skill: number; dash: boolean; jump: boolean };
+/** What a touch on the left half may land on without starting the stick. */
+const FLOAT_BLOCKERS =
+  "button, a, input, select, textarea, label, summary, [role=button], dialog, .overlay-card, .practice-panel, #practice-controls, .mobile-tools, .touch-buttons, .header-menu, .ui-panel, .ui-modal";
 export class TouchControls {
   readonly input = new TouchInputState();
   enabled: boolean;
@@ -154,7 +157,9 @@ export class TouchControls {
       },
       true,
     );
-    this.stick.onpointerdown = (event) => {
+    /** Start the joystick: centred on the stick, or (`at`, floating) on
+     * the touch, the stick drawn there until the finger lifts. */
+    const startStick = (event: PointerEvent, at?: { x: number; y: number }) => {
       const previous = this.input.joystickPointer;
       if (previous !== null && !this.hasCapture(previous))
         this.release(previous);
@@ -166,17 +171,39 @@ export class TouchControls {
         return;
       event.preventDefault();
       const rect = this.stick.getBoundingClientRect();
-      this.geometry = {
+      const home = {
         x: rect.left + rect.width / 2,
         y: rect.top + rect.height / 2,
+      };
+      this.geometry = {
+        ...(at ?? home),
         radius: this.preferences.joystickSize
           ? Number.parseFloat(root.style.getPropertyValue("--joystick-size")) *
             0.32
           : 40,
       };
+      if (at) this.float(at.x - home.x, at.y - home.y);
       this.capture(this.stick, event.pointerId);
       this.move(event);
     };
+    this.stick.onpointerdown = (event) => startStick(event);
+    // A floating stick: a touch anywhere free on the left half of the screen
+    // starts it right under the finger (owner, 5 Nov 2026), so moving never
+    // waits for a thumb to find the stick. Buttons, menus, panels and the
+    // stick itself answer their own touches.
+    window.addEventListener("pointerdown", (event) => {
+      if (event.pointerType === "mouse" || !this.enabled) return;
+      if (event.clientX >= window.innerWidth / 2) return;
+      const target = event.target as Element | null;
+      if (
+        !target ||
+        this.stick.contains(target) ||
+        target.closest(FLOAT_BLOCKERS) ||
+        !document.body.classList.contains("battle-active")
+      )
+        return;
+      startStick(event, { x: event.clientX, y: event.clientY });
+    });
     window.addEventListener(
       "pointermove",
       (event) => {
@@ -267,6 +294,12 @@ export class TouchControls {
     );
     this.knob.style.transform = `translate(${this.input.knobX}px,${this.input.knobY}px)`;
   }
+  /** Draw the stick `dx`,`dy` from its resting place (0, 0: back home). */
+  private float(dx: number, dy: number) {
+    const on = !!(dx || dy);
+    this.stick.classList.toggle("is-floating", on);
+    this.stick.style.transform = on ? `translate(${dx}px, ${dy}px)` : "";
+  }
   private paint() {
     this.knob.style.transform = `translate(${this.input.knobX}px,${this.input.knobY}px)`;
     for (const button of this.buttons) {
@@ -301,6 +334,7 @@ export class TouchControls {
     )
       return;
     this.captures.delete(id);
+    if (id === this.input.joystickPointer) this.float(0, 0);
     this.input.release(id);
     try {
       if (owner?.hasPointerCapture(id)) owner.releasePointerCapture(id);
@@ -320,6 +354,7 @@ export class TouchControls {
     ) {
       const owners = [...this.captures];
       this.captures.clear();
+      this.float(0, 0);
       this.input.reset();
       this.resetActions();
       this.paint();

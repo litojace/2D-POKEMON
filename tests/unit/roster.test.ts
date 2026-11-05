@@ -238,3 +238,32 @@ describe("the fighter detail", () => {
         }
   });
 });
+
+describe("the roster dresses fighters as the Wardrobe does", () => {
+  const look = { skin: "candy-colours", aura: "galaxy-aura" } as const;
+  it("hands the stage's rig your shared looks, with no element aura", () => {
+    const html = rosterMarkup(
+      rosterView("tidefin", { mode: "detail" }),
+      data({ look }),
+    );
+    const handed = html.match(/data-preview-look="([^"]*)"/)![1];
+    expect(JSON.parse(decodeURIComponent(handed))).toEqual(look);
+    expect(html).not.toContain("trait-aura");
+    // No fighter skin on Tidefin: your Colors tint its still art.
+    expect(html).toContain("preview-palette-candy-colours");
+  });
+  it("lets a fighter skin win over Colors, on the stage and the cards", () => {
+    const detail = rosterMarkup(
+      rosterView("voltkit", { mode: "detail" }),
+      data({ look }),
+    );
+    expect(detail).not.toMatch(
+      /data-roster-region="stage"[\s\S]*preview-palette/,
+    );
+    const grid = rosterMarkup(rosterView("voltkit"), data({ look }));
+    const card = (c: string) =>
+      grid.match(new RegExp(`data-roster-card="${c}"[\\s\\S]*?</button>`))![0];
+    expect(card("voltkit")).not.toContain("preview-palette");
+    expect(card("tidefin")).toContain("preview-palette-candy-colours");
+  });
+});

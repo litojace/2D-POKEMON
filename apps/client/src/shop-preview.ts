@@ -126,9 +126,13 @@ export function mountShopPreview(
   const cameraZoom = () =>
     selection ? previewZoom(action) : shopPreviewZoom(action, viewportHeight);
   const resizeStage = () => {
+    // Scene.create has a ready scale manager/renderer, but Game.start has
+    // not set isRunning yet. WebKit can deliver its only initial resize
+    // observation before that point: skipping create's resize then leaves
+    // a 400×260 buffer stretched into the stage until another look is chosen.
     if (
       disposed ||
-      !game?.isRunning ||
+      !game ||
       !scene ||
       host.classList.contains("is-frame") ||
       host.classList.contains("is-item")

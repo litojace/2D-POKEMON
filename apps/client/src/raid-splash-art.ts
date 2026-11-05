@@ -14,6 +14,14 @@ import thumb5 from "./art/raid-splash/emberwing-thumb.webp";
 import hero6 from "./art/raid-splash/storm-twins.webp";
 import thumb6 from "./art/raid-splash/storm-twins-thumb.webp";
 
+import card0 from "./art/raid-splash/grumblecrag-portrait.webp";
+import card1 from "./art/raid-splash/tidewyrm-portrait.webp";
+import card2 from "./art/raid-splash/gloomshade-portrait.webp";
+import card3 from "./art/raid-splash/somnara-portrait.webp";
+import card4 from "./art/raid-splash/prismatail-portrait.webp";
+import card5 from "./art/raid-splash/emberwing-portrait.webp";
+import card6 from "./art/raid-splash/storm-twins-portrait.webp";
+
 export const RAID_SPLASH: Record<RaidBossId, { hero: string; thumb: string }> =
   {
     grumblecrag: { hero: hero0, thumb: thumb0 },
@@ -29,4 +37,21 @@ export const RAID_SPLASH: Record<RaidBossId, { hero: string; thumb: string }> =
 export function raidSplashImage(id: RaidBossId, hero = false) {
   const art = RAID_SPLASH[id];
   return `<img class="raid-splash-image" src="${hero ? art.hero : art.thumb}" alt="" width="${hero ? 1536 : 320}" height="${hero ? 1024 : 213}" decoding="async" ${hero ? 'fetchpriority="high"' : 'loading="lazy"'}>`;
+}
+
+/**
+ * Each boss's vertical card picture (600 x 900), cut from its painting on
+ * the boss (docs/ui-remodel/tools/boss-portraits.sh): the Raid Hall's cards.
+ */
+export const RAID_PORTRAIT: Record<RaidBossId, string> = {
+  grumblecrag: card0,
+  tidewyrm: card1,
+  gloomshade: card2,
+  somnara: card3,
+  prismatail: card4,
+  emberwing: card5,
+  "storm-twins": card6,
+};
+export function raidPortraitImage(id: RaidBossId) {
+  return `<img class="raid-splash-image" src="${RAID_PORTRAIT[id]}" alt="" width="600" height="900" decoding="async" loading="lazy">`;
 }
