@@ -166,30 +166,19 @@ const HUB_SCREENS: Screen[] = [
   },
 ];
 
-/** The Farm's sheets, from its menu. */
-const FARM_SHEETS = [
-  "shop",
-  "orders",
-  "market",
-  "barn",
-  "book",
-  "decor",
-  "cup",
-  "balloon",
-  "friends",
-].map((sheet): Screen => ({
-  name: `farm ${sheet}`,
-  root: "#fm-sheet",
-  open: async (page) => {
-    await page.click('#hub-scenes [data-hub-scene="farm"]');
-    await expect(page.locator("#fm-menu-btn")).toBeVisible({
-      timeout: 30_000,
-    });
-    await page.click("#fm-menu-btn");
-    await page.locator(`#fm-dock [data-sheet="${sheet}"]`).click();
-    await expect(page.locator("#fm-sheet")).toBeVisible();
-  },
-}));
+/** The Farm's sheets, from its right rail. */
+const FARM_SHEETS = ["shop", "friends", "decor", "book"].map(
+  (sheet): Screen => ({
+    name: `farm ${sheet}`,
+    root: "#fm-sheet",
+    open: async (page) => {
+      await page.click('#hub-scenes [data-hub-scene="farm"]');
+      await expect(page.locator("#fm-rail")).toBeVisible({ timeout: 30_000 });
+      await page.locator(`#fm-rail [data-sheet="${sheet}"]`).click();
+      await expect(page.locator("#fm-sheet")).toBeVisible();
+    },
+  }),
+);
 
 type Report = Record<
   string,

@@ -1128,13 +1128,13 @@ it into sight, swipes it with real touch input until it reaches its end,
 and fails on a box a finger cannot reach (covered, or blocked by
 `touch-action` or a touch listener). It also fails on text or a control
 cut off by a box that does not scroll (a fixed or absolute box counts only
-against its own containing block). `panel-scroll.spec.ts` runs it on 41
+against its own containing block). `panel-scroll.spec.ts` runs it on 36
 screens at 844×390, 852×393 with the island, 667×375 and 1280×720 (touch):
 the Lobby's panels (Fighters and a fighter's detail, the four Shop
 sections, the Wardrobe and three of its slots, Missions, the three Journey
 tabs, the Raid Hall and the four boss tabs), the dialogs (Ranks, Friends,
 Profile, Invite a friend, Settings, Controls, Credits, Report a player),
-the mode menu and the play drawer, the nine Farm sheets, and in a practice
+the mode menu and the play drawer, the Farm rail's four sheets, and in a practice
 match the menu, the practice panel and the results.
 
 Found and fixed: the practice panel in a touch match did not pan for the
