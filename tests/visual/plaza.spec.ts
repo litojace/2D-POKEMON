@@ -609,7 +609,12 @@ test("on a short phone the emote wheel and a toast keep clear of the HUD", async
       t.textContent = "Volt Boba: 30% faster for 30 seconds";
       t.classList.add("show");
     });
-    await page.waitForTimeout(600);
+    // Where it rests once it has slid in. A fixed 600 ms wasn't always
+    // enough: the CPU-drawn test browser can hold frames back for longer,
+    // and the toast was measured before its slide had started.
+    await page
+      .locator("#toast")
+      .evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
     const toast = await rect("#toast");
     expect(clear(toast, await rect(".pz-actions")), "toast clear").toBe(true);
     expect(errors).toEqual([]);
