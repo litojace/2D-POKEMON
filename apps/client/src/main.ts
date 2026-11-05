@@ -112,7 +112,6 @@ import { fighterArt, fighterAvatar, scopeIds } from "./fighter-art";
 import { fighterSkillColor, wornArt } from "./skins/skin-art";
 import { drawCollectionAura } from "./skins/collection-fx";
 import { colourPreview } from "./colour-preview";
-import { drawBattleAura } from "./battle-aura";
 import { stadiumCrowd } from "./stadium";
 import { paintArenaFloor, scaledPainter } from "./arena-floor";
 import {
@@ -5079,27 +5078,6 @@ class ArenaScene extends Phaser.Scene {
         48 - jump * 0.2,
         18 - jump * 0.1,
       );
-      // Trait aura at the feet; a stealthed opponent shows none.
-      const stealthed = serverPlayer.statuses.some((s) => s.kind === "stealth");
-      if (!reducedMotion && !(stealthed && p.id !== myId)) {
-        drawBattleAura(
-          g,
-          c.element,
-          x,
-          feetY,
-          this.feelClock / 1000,
-          stealthed ? 0.5 : 0.9,
-        );
-        if (serverPlayer.clone)
-          drawBattleAura(
-            g,
-            c.element,
-            serverPlayer.clone.x,
-            serverPlayer.clone.y + WORLD_ART.fighterFeet * view.fighterY * 0.7,
-            this.feelClock / 1000,
-            0.3,
-          );
-      }
       g.lineStyle(
         2,
         p.id === myId

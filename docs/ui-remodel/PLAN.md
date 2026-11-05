@@ -1000,7 +1000,9 @@ bubbles), which the Shop and Wardrobe never drew.
   element-coloured glow (a plain drop shadow, as on the roster's cards).
   `trait-effects.ts` (the menu trait auras), its CSS (`.trait-aura`,
   `.ta-*`, the aura front layers over the rigs) and its tests are deleted
-  (owner). The in-battle ground aura (`battle-aura.ts`) stays.
+  (owner). So is the in-battle element aura at each fighter's feet
+  (`battle-aura.ts`, owner, 5 Nov 2026); the shadow, the team or you ring,
+  the target reticle, the mastery flair and a worn Wardrobe aura stay.
 - Tests: `roster.test.ts` (the look handed to the rig, Colors and skins on
   stage and cards, no aura), `cute-art.test.ts`, `roster-smooth.spec.ts`.
 

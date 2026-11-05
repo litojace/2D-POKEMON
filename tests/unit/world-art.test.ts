@@ -5,7 +5,6 @@ import { LOOK_ITEMS } from "../../packages/shared/src/shop";
 import { RAID_REWARDS } from "../../packages/shared/src/raid";
 import { JOURNEY_ITEMS } from "../../packages/shared/src/journey";
 import { drawCollectionAura } from "../../apps/client/src/skins/collection-fx";
-import { drawBattleAura } from "../../apps/client/src/battle-aura";
 import {
   SHOP_PREVIEW,
   SELECTION_PREVIEW,
@@ -56,35 +55,6 @@ describe("shared world art perspective", () => {
     expect(96 * previewAuraScale(SHOP_PREVIEW)).toBeGreaterThan(
       SHOP_SHADOW.width,
     );
-  });
-
-  it.each([
-    "electric",
-    "fire",
-    "water",
-    "aura",
-    "light",
-    "psychic",
-    "earth",
-    "shadow",
-  ])("projects %s battle aura rings onto the same ground plane", (element) => {
-    const ellipses: number[][] = [];
-    const g: any = new Proxy(
-      {},
-      {
-        get:
-          (_target, method) =>
-          (...args: number[]) => {
-            if (method === "fillEllipse" || method === "strokeEllipse")
-              ellipses.push(args);
-            return g;
-          },
-      },
-    );
-    drawBattleAura(g, element, 100, 100, 2);
-    for (const [, , width, height] of ellipses.filter((e) => e[2] > 20)) {
-      expect(height).toBeCloseTo(groundHeight(width));
-    }
   });
 
   const auras = [...LOOK_ITEMS, ...RAID_REWARDS, ...JOURNEY_ITEMS].filter(
