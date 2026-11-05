@@ -1694,8 +1694,8 @@ for (const character of Object.values(CHARACTERS))
  * 2v2 tuning, for the team mode only. With two enemies on the field melee
  * champions are in reach far more often than in a duel, so 2v2 has its own
  * strength factor per champion, in the same form as the duel tuning: health
- * × f and basic-attack interval ÷ √f (rounded to 5 ms). Duels, free-for-all
- * and raids use the champions' own numbers. Tuned with
+ * × f and basic-attack interval ÷ √f (rounded to 5 ms). Duels and raids use
+ * the champions' own numbers; free-for-all has FFA_TUNING. Tuned with
  * scripts/balance/tune-teams.ts.
  */
 export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
@@ -1717,11 +1717,31 @@ export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
   shadopus: 0.921,
 };
 /**
- * Free-for-all tuning, in the same form as TEAM_TUNING (health × f, basic
- * interval ÷ √f), for mode "ffa" only. Tuned with
- * scripts/balance/tune-teams.ts --mode ffa.
+ * Free-for-all tuning, for mode "ffa" only, in the same form as TEAM_TUNING
+ * (health × f, basic interval ÷ √f). A free-for-all is won by the last
+ * fighter standing, so it rewards lasting rather than damage: melee champions
+ * take about twice the damage per second of ranged ones (as in a duel), which
+ * a duel repays with their higher damage but a free-for-all does not. Tuned
+ * with scripts/balance/tune-teams.ts --mode ffa.
  */
-export const FFA_TUNING: Partial<Record<CharacterId, number>> = {};
+export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
+  voltkit: 0.792,
+  cindrake: 1.205,
+  tidefin: 0.833,
+  auralynx: 1.076,
+  lumoth: 0.786,
+  mystowl: 0.821,
+  terradon: 0.989,
+  duskveil: 0.757,
+  coilemur: 1.284,
+  pyranda: 0.769,
+  glacelle: 0.829,
+  halcyra: 0.769,
+  sunbara: 0.836,
+  astrabun: 1.314,
+  wombolder: 1.143,
+  shadopus: 1.246,
+};
 /** A champion's strength factor in this mode (1 outside 2v2 and free-for-all). */
 export function modeFactor(id: CharacterId, mode?: MatchMode) {
   if (mode === "teams") return TEAM_TUNING[id] ?? 1;

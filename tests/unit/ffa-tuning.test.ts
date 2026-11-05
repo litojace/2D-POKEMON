@@ -55,9 +55,10 @@ describe("free-for-all tuning", () => {
     expect(basicInterval(c, false, "ffa")).toBeCloseTo(ms / 1000, 9);
   });
 
-  it("keeps every shipped factor in a sane range", () => {
+  it("ships a factor for every champion, in a sane range", () => {
     for (const id of FIGHTER_IDS) {
-      const f = FFA_TUNING[id] ?? 1;
+      const f = FFA_TUNING[id]!;
+      expect(f, id).toBeDefined();
       expect(f, id).toBeGreaterThanOrEqual(0.6);
       expect(f, id).toBeLessThanOrEqual(1.6);
     }
