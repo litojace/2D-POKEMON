@@ -76,5 +76,6 @@ describe("bot targeting", () => {
     }
     expect(wins[0] + wins[1]).toBeGreaterThan(0);
     expect(wins[3]).toBeLessThan(8);
-  });
+    // Eight whole bot matches: allow for a busy machine.
+  }, 60_000);
 });

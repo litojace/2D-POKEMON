@@ -5,12 +5,17 @@
  *   npx tsx scripts/balance/round-robin.ts <factors.json|-> <shard> <shards> <games> <hard|normal|easy> <out.json>
  *
  * factors.json maps champion id to a strength factor (health × f, basic
- * interval ÷ √f, rounded to 5 ms); "-" means none.
+ * interval ÷ √f, rounded to 5 ms); "-" means none. BOT_OVERRIDE (JSON, e.g.
+ * {"hard":{"rest":0.34}}) overrides bot profile settings for the run.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { FIGHTER_IDS } from "../../packages/shared/src/index.ts";
 import { Arena } from "../../apps/server/src/simulation.ts";
-import { BotBrain, type BotDifficulty } from "../../apps/server/src/bot.ts";
+import {
+  BOT_PROFILES,
+  BotBrain,
+  type BotDifficulty,
+} from "../../apps/server/src/bot.ts";
 import { applyFactors } from "./factors.ts";
 
 const [file, shard, shards, games, diff, out] = [
@@ -21,6 +26,13 @@ const [file, shard, shards, games, diff, out] = [
   process.argv[6] as BotDifficulty,
   process.argv[7],
 ];
+
+// BOT_OVERRIDE='{"hard":{"rest":0.34}}' changes bot profiles for this run
+// (to find out which profile setting moves which champion).
+for (const [d, o] of Object.entries(
+  JSON.parse(process.env.BOT_OVERRIDE ?? "{}") as Record<string, object>,
+))
+  Object.assign(BOT_PROFILES[d as BotDifficulty], o);
 
 const ids: string[] = [...FIGHTER_IDS];
 applyFactors(file === "-" ? {} : JSON.parse(readFileSync(file, "utf8")));
