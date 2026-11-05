@@ -1716,9 +1716,17 @@ export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
   wombolder: 0.944,
   shadopus: 0.921,
 };
-/** A champion's strength factor in this mode (1 outside 2v2). */
+/**
+ * Free-for-all tuning, in the same form as TEAM_TUNING (health × f, basic
+ * interval ÷ √f), for mode "ffa" only. Tuned with
+ * scripts/balance/tune-teams.ts --mode ffa.
+ */
+export const FFA_TUNING: Partial<Record<CharacterId, number>> = {};
+/** A champion's strength factor in this mode (1 outside 2v2 and free-for-all). */
 export function modeFactor(id: CharacterId, mode?: MatchMode) {
-  return mode === "teams" ? (TEAM_TUNING[id] ?? 1) : 1;
+  if (mode === "teams") return TEAM_TUNING[id] ?? 1;
+  if (mode === "ffa") return FFA_TUNING[id] ?? 1;
+  return 1;
 }
 /** A champion's full health in this mode. */
 export function maxHealth(id: CharacterId, mode?: MatchMode) {
