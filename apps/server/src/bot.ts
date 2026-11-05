@@ -56,26 +56,12 @@ interface Profile {
   /** Chance each second to hold fire for that second, like a person catching their breath. */
   rest: number;
   /**
-   * If set, aimError is the spread at this distance (px) and the shot misses
-   * by the same distance at any range, instead of by the same angle (which
-   * made long-range shooters miss far more than short-range ones).
-   */
-  aimAt?: number;
-  /**
-   * Melee timing slack (px): swings and melee strikes start when the
-   * opponent looks up to this much beyond reach, so a careless brawler
-   * whiffs the way a careless shooter misses.
-   */
-  swingMargin?: number;
-  /**
-   * Counts any shot about to hit as a threat for defensive skills, not only
-   * the ones it decided to dodge.
+   * Counts any shot about to hit as a threat for defensive skills (barriers,
+   * counters, clones), not only the ones it decided to dodge. Without it a
+   * bot that rarely dodges also rarely shields, which made champions with a
+   * barrier far weaker at Normal than at Hard.
    */
   seeShots?: boolean;
-  /** Brawlers: how much to weave while still closing in from afar (default 0.35). */
-  weave?: number;
-  /** Brawlers: hold at the edge of their reach instead of 70 px away. */
-  meleeSpacing?: boolean;
   /**
    * Chance each second to lose focus for that second: no moving, attacking
    * or skills (it still sees what is coming). Unlike `rest`, which only holds
@@ -99,18 +85,44 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
     engage: 0.01,
     rest: 0.42,
   },
+  // Normal is Hard with slower reactions, more pauses and looser aim, and a
+  // per-champion share of "dazed" seconds (dazeBy). Every weakness a bot can
+  // have helps melee champions more than ranged ones (a weak opponent kites
+  // badly), so with one setting for everyone a champion's win rate flipped
+  // between Hard and Normal (Cindrake 30% / 73%, Mystowl 69% / 31%). dazeBy
+  // is calibrated in bot duels so each champion does about as well against
+  // Normal bots as against Hard ones; see docs/new-champions/README.md.
   normal: {
-    reaction: 0.48,
-    aimError: 0.27,
+    reaction: 0.36,
+    aimError: 0.215,
     lead: 0.2,
-    dodge: 0.12,
-    think: 0.25,
+    dodge: 0.43,
+    think: 0.19,
     skillUse: 0.42,
     hesitate: 0.18,
     smartUltimate: false,
     fooledByClone: 0.5,
     engage: 0.02,
-    rest: 0.34,
+    rest: 0.12,
+    seeShots: true,
+    dazeBy: {
+      voltkit: 0.13,
+      cindrake: 0.34,
+      tidefin: 0.1,
+      auralynx: 0.2,
+      lumoth: 0.1,
+      mystowl: 0.11,
+      terradon: 0.25,
+      duskveil: 0.22,
+      coilemur: 0.21,
+      pyranda: 0.26,
+      glacelle: 0.19,
+      halcyra: 0.11,
+      sunbara: 0.16,
+      astrabun: 0.29,
+      wombolder: 0.28,
+      shadopus: 0.24,
+    },
   },
   hard: {
     reaction: 0.25,
@@ -124,6 +136,7 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
     fooledByClone: 0.2,
     engage: 0.2,
     rest: 0.05,
+    seeShots: true,
   },
 };
 export const BOT_LABELS: Record<BotDifficulty, string> = {
@@ -524,12 +537,7 @@ export class BotBrain {
       : 0;
     let ax = target.x + target.vx * leadTime,
       ay = target.y + target.vy * leadTime;
-    let error = (this.random() * 2 - 1) * this.profile.aimError;
-    if (this.profile.aimAt)
-      error = Math.atan(
-        (Math.tan(error) * this.profile.aimAt) /
-          Math.max(60, Math.hypot(ax - me.x, ay - me.y)),
-      );
+    const error = (this.random() * 2 - 1) * this.profile.aimError;
     const angle = Math.atan2(ay - me.y, ax - me.x) + error;
     const reach = Math.max(60, Math.hypot(ax - me.x, ay - me.y));
     ax = me.x + Math.cos(angle) * reach;
@@ -543,9 +551,7 @@ export class BotBrain {
     } else if (
       sight &&
       !this.restingAt(t) &&
-      dist <=
-        basic.range * 0.95 +
-          (melee ? RULES.radius + (this.profile.swingMargin ?? 0) : 0)
+      dist <= basic.range * 0.95 + (melee ? RULES.radius : 0)
     )
       input.basic = true;
     return input;
@@ -568,9 +574,7 @@ export class BotBrain {
   ) {
     const basic = arena.kit(me).basic;
     const preferred = melee
-      ? this.profile.meleeSpacing
-        ? Math.max(70, basic.range - 10)
-        : 70
+      ? 70
       : clamp(basic.range * 0.5, 240, 400) + (hpRatio < 0.35 ? 90 : 0);
     const via = waypoint((a, b) => arena.lineClear(a, b), me, target);
     let best = { dx: 0, dy: 0 },
@@ -604,7 +608,7 @@ export class BotBrain {
       score +=
         (dx * -ty + dy * tx) *
         this.strafe *
-        (via ? 0.15 : melee && now > 180 ? (this.profile.weave ?? 0.35) : 0.9);
+        (via ? 0.15 : melee && now > 180 ? 0.35 : 0.9);
       // Stay off the walls and out of hazards.
       const edge = Math.min(x, y, RULES.width - x, RULES.height - y);
       if (edge < 90) score -= (90 - edge) / 30;
