@@ -549,6 +549,29 @@ for (const size of [SIZES[0], SIZES[2]])
           : Math.abs(b.x - a.x) - a.w;
         expect(gap, "between two stages").toBeLessThanOrEqual(8);
       }
+      if (size.phone) {
+        // Round icon buttons: each icon in the middle of its circle (the
+        // -3px nudge for an icon beside a label pulled them 1.5px left).
+        const centres = await page
+          .locator(".fit-plays .ui-btn")
+          .evaluateAll((els) =>
+            els.map((b) => {
+              const r = b.getBoundingClientRect(),
+                s = b.querySelector("svg")!.getBoundingClientRect();
+              return {
+                dx: s.left + s.width / 2 - (r.left + r.width / 2),
+                dy: s.top + s.height / 2 - (r.top + r.height / 2),
+                w: s.width,
+              };
+            }),
+          );
+        expect(centres.length).toBeGreaterThanOrEqual(2);
+        for (const c of centres) {
+          expect(Math.abs(c.dx), "icon centred across").toBeLessThan(0.5);
+          expect(Math.abs(c.dy), "icon centred down").toBeLessThan(0.5);
+          expect(c.w, "icon size").toBe(18);
+        }
+      }
       if (!size.phone) {
         // Try something on, so Your look joins the column.
         await page

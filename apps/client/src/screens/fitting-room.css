@@ -694,9 +694,14 @@
     border-radius: 50%;
     justify-content: center;
   }
-  .fit-plays .ui-btn > svg {
+  /* Icon only: centred in the circle, 18px. The -3px optical nudge
+     (components.css) balances an icon against a label beside it; alone it
+     pulled the icon 1.5px left (most visible on Victory's sparkle), and
+     .ui-btn.is-s svg kept it at 15px. */
+  .fit-plays .ui-btn.is-s > svg {
     width: 18px;
     height: 18px;
+    margin-left: 0;
   }
   .fit-plays .ui-btn > span {
     position: absolute;
