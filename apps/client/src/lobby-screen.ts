@@ -19,6 +19,7 @@ import { elementIcon } from "./element-icons";
 import { picksCountdown } from "./shop-ui";
 import "./lobby.css";
 import { fadeIn } from "./ui/motion";
+import { openHubPanelNow } from "./ui/hub-panel";
 
 /**
  * The Lobby: the one-screen hub after login (hub redesign phase 2). Your
@@ -341,6 +342,14 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     }
     if (step) return options.onStep(step === "-1" ? -1 : 1);
     if (target.closest("#lobby-play")) return options.onPlay(mode);
+    // The rail button of the screen that is open (lit, aria-current) closes
+    // it: a second tap on the same icon. Only the rail: a card that opens a
+    // screen never closes one.
+    const open = openHubPanelNow();
+    if (open && target.closest('.lobby-rail [aria-current="page"]')) {
+      open.close();
+      return;
+    }
     if (action) options.onAction(action);
   });
   const onKey = (event: KeyboardEvent) => {

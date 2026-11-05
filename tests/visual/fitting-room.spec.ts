@@ -480,3 +480,123 @@ test("a slow first load can't undo a purchase that finished before it", async ({
   ).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+// The rail icon of the open screen lights up (aria-current: a gold rim),
+// and a second tap on it closes the screen; it used to reopen it.
+test("the open screen's rail icon lights up, and a second tap on it closes the screen", async ({
+  page,
+}) => {
+  await shopServer(page);
+  const errors = await openLobby(page);
+  const rim = (action: string) =>
+    page
+      .locator(`.lobby-rail [data-lobby-action="${action}"]`)
+      .evaluate((b) => getComputedStyle(b).borderTopColor);
+  const wardrobe = page.locator('.lobby-rail [data-lobby-action="wardrobe"]');
+  await wardrobe.click();
+  await expect(page.locator(".fit-room")).toBeVisible();
+  await expect(wardrobe).toHaveAttribute("aria-current", "page");
+  // Off the button, so its hover rim (gold too) can't stand in for it.
+  await page.mouse.move(700, 450);
+  // Once its 0.15 s border transition has run.
+  await expect.poll(() => rim("wardrobe")).toBe("rgb(255, 214, 91)");
+  expect(await rim("shop")).not.toBe("rgb(255, 214, 91)");
+  await wardrobe.click();
+  await expect(page.locator(".fit-room")).toHaveCount(0);
+  await expect(wardrobe).not.toHaveAttribute("aria-current", "page");
+  // A sheet too.
+  const missions = page.locator('.lobby-rail [data-lobby-action="missions"]');
+  await missions.click();
+  await expect(page.locator(".missions-sheet")).toBeVisible();
+  await expect(missions).toHaveAttribute("aria-current", "page");
+  await missions.click();
+  await expect(page.locator(".missions-sheet")).toHaveCount(0);
+  // And it opens again on the next tap.
+  await missions.click();
+  await expect(page.locator(".missions-sheet")).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+// The stage's buttons: a Mythical's three Awakening stages sit together on
+// a phone (they were 16px apart down half the stage), and on desktop the
+// stacked Entrance / Victory / Your look buttons start their icons and
+// labels on one line (each was centred by its own label's length).
+for (const size of [SIZES[0], SIZES[2]])
+  test(`the stage's buttons line up at ${size.name}`, async ({ browser }) => {
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      isMobile: size.phone,
+      hasTouch: size.phone,
+    });
+    try {
+      const page = await context.newPage();
+      const errors = await openLobby(page);
+      await page.click('.lobby-rail [data-lobby-action="wardrobe"]');
+      await expect(page.locator(".fit-awaken .ui-btn")).toHaveCount(3);
+      const stages = await page
+        .locator(".fit-awaken .ui-btn")
+        .evaluateAll((els) =>
+          els.map((e) => {
+            const r = e.getBoundingClientRect();
+            return { x: r.left, y: r.top, w: r.width, h: r.height };
+          }),
+        );
+      for (let i = 1; i < stages.length; i++) {
+        const a = stages[i - 1],
+          b = stages[i];
+        const gap = size.phone
+          ? Math.abs(b.y - a.y) - a.h
+          : Math.abs(b.x - a.x) - a.w;
+        expect(gap, "between two stages").toBeLessThanOrEqual(8);
+      }
+      if (size.phone) {
+        // Round icon buttons: each icon in the middle of its circle (the
+        // -3px nudge for an icon beside a label pulled them 1.5px left).
+        const centres = await page
+          .locator(".fit-plays .ui-btn")
+          .evaluateAll((els) =>
+            els.map((b) => {
+              const r = b.getBoundingClientRect(),
+                s = b.querySelector("svg")!.getBoundingClientRect();
+              return {
+                dx: s.left + s.width / 2 - (r.left + r.width / 2),
+                dy: s.top + s.height / 2 - (r.top + r.height / 2),
+                // Its CSS size: the panel still grows in (scale .985).
+                w: getComputedStyle(b.querySelector("svg")!).width,
+              };
+            }),
+          );
+        expect(centres.length).toBeGreaterThanOrEqual(2);
+        for (const c of centres) {
+          expect(Math.abs(c.dx), "icon centred across").toBeLessThan(0.5);
+          expect(Math.abs(c.dy), "icon centred down").toBeLessThan(0.5);
+          expect(c.w, "icon size").toBe("18px");
+        }
+      }
+      if (!size.phone) {
+        // Try something on, so Your look joins the column.
+        await page
+          .locator(".fit-room .ui-tile")
+          .filter({ hasText: "Midnight" })
+          .first()
+          .click();
+        await expect(
+          page.locator(".fit-plays [data-fit-revert]"),
+        ).toBeVisible();
+        const lines = await page
+          .locator(".fit-plays .ui-btn")
+          .evaluateAll((els) =>
+            els.map((e) => [
+              Math.round(e.querySelector("svg")!.getBoundingClientRect().left),
+              Math.round(e.querySelector("span")!.getBoundingClientRect().left),
+            ]),
+          );
+        expect(lines.length).toBe(3);
+        expect(new Set(lines.map((l) => l[0])).size, "icons").toBe(1);
+        expect(new Set(lines.map((l) => l[1])).size, "labels").toBe(1);
+      }
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
