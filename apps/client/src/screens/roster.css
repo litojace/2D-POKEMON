@@ -245,15 +245,6 @@
 .roster-rig.is-ready > canvas {
   opacity: 1;
 }
-/* The aura's front half, drawn again above the canvas once it is ready. */
-.roster-rig > svg.ta-front-layer {
-  display: none;
-  pointer-events: none;
-}
-.roster-rig.is-ready > svg.ta-front-layer {
-  display: block;
-  z-index: 2;
-}
 .roster-stage-top {
   grid-area: 1 / 1;
   display: flex;

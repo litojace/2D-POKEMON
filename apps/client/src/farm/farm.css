@@ -1078,6 +1078,35 @@
   position: relative;
   overflow: hidden;
 }
+/* Confetti falling through the level-up card (farm-scene.ts levelUp). */
+.farm-layer .lvcard .lv-confetti {
+  position: absolute;
+  top: -12px;
+  width: 9px;
+  height: 5px;
+  border-radius: 1px;
+  pointer-events: none;
+  opacity: 0;
+  animation: lv-confetti 2.2s ease-in forwards;
+}
+@keyframes lv-confetti {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--drift, 0), 460px) rotate(var(--spin, 540deg));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .farm-layer .lvcard .lv-confetti {
+    display: none;
+  }
+}
 .farm-layer .lvcard .big {
   font-family: var(--display);
   font-weight: 800;

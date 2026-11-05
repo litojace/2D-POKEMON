@@ -49,6 +49,15 @@ import {
 import { GIANT_ART, cropFieldSvg, cropGiantSvg, cropItemSvg } from "./crop-art";
 import { GFX } from "./farm-gfx";
 import {
+  FarmFeel,
+  deviceTimeOfDay,
+  glow,
+  goldenLevel,
+  gradeView,
+  isSuperSwipe,
+  nightLevel,
+} from "./farm-feel";
+import {
   FrameRateProbe,
   graphicsSetting,
   rememberAutoLow,
@@ -790,6 +799,7 @@ export function openFarm(options) {
     if (barnUsed() + PASTURE.milk > F.barnCap)
       return toast("Your barn is full! Sell something or upgrade the barn.");
     act({ a: "milk" }, true);
+    sfx("coin");
   }
   /** The wishing well: 3 seeds once a Pacific day (migration 042). */
   let wishing = false;
@@ -991,7 +1001,9 @@ export function openFarm(options) {
             200 + i,
             0.75 + r() * 0.35,
           ),
+          kind: kinds[MARGIN.length % kinds.length],
           ph: r() * 6,
+          shake: 0,
         });
     }
     for (let i = 0; i < 1600 && MARGIN.filter((m) => m.b).length < 34; i++) {
@@ -1521,6 +1533,88 @@ export function openFarm(options) {
 
   /* ---------- floating fx ---------- */
   const FX = [];
+  /* ---------- the feel layer (farm-feel.ts): particles, light, taps, sound ---------- */
+  const feel = new FarmFeel({
+    reduced: !!options.reduced,
+    low: () => low,
+    width: WW,
+    height: 800,
+  });
+  const sfx = (cue, step = 0) => {
+    try {
+      options.sound?.(cue, step);
+    } catch {}
+  };
+  // Time of day follows the device clock, as in the Plaza (tests can set it).
+  let todOverride = null,
+    TOD = deviceTimeOfDay();
+  const TREES = [
+    [338, 230, "apple", 0.62],
+    [812, 190, "cherry", 0.6],
+    [44, 400, "pine", 0.85],
+    [1480, 340, "round", 0.7],
+    [1700, 330, "pine", 0.8],
+    [70, 210, "round", 0.7],
+    [640, 1050, "autumn", 0.7],
+    [1120, 1060, "round", 0.75],
+    [1450, 1040, "cherry", 0.65],
+    [1720, 1000, "pine", 0.8],
+    [40, 1060, "mint", 0.7],
+  ].map(([x, y, kind, sz], i) => ({
+    x,
+    y,
+    kind,
+    t: GFX.tree(kind, 50 + i, sz),
+    ph: i,
+    shake: 0,
+  }));
+  /** Squash-and-stretch after a tap (house, mill, barn…): 1 → 0. */
+  const bounce = {};
+  const squash = (k) => {
+    const b = (typeof k === "string" ? bounce[k] : k.bump) || 0;
+    return b > 0 ? Math.sin((1 - b) * Math.PI * 3) * b * 0.08 : 0;
+  };
+  function blitB(key, spr, x, y) {
+    const k = squash(key);
+    if (!k) return GFX.blit(ctx, spr, x, y);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(1 + k, 1 - k);
+    GFX.blit(ctx, spr, 0, 0);
+    ctx.restore();
+  }
+  function drawTreeS(tr, time, shadowK) {
+    if (!(tr.shake > 0))
+      return GFX.drawTree(ctx, tr.t, tr.x, tr.y, time, tr.ph, shadowK);
+    ctx.save();
+    ctx.translate(tr.x, tr.y);
+    ctx.rotate(Math.sin(time * 42) * 0.07 * tr.shake);
+    GFX.drawTree(ctx, tr.t, 0, 0, time, tr.ph, shadowK);
+    ctx.restore();
+  }
+  let millA = 0,
+    millBoost = 0,
+    catAwake = 0,
+    scareSpin = 0,
+    duckRush = 0,
+    chirpT = 3,
+    rainLevel = -1;
+  /** Birds startled out of a tree: they fly off the top of the farm. */
+  const flyAway = [];
+  const FIREFLIES = Array.from({ length: 34 }, (_, k) => ({
+    x:
+      [OX - 40, OX + FW + 40, POND.x, WELL.x, 900, 1500][k % 6] +
+      Math.sin(k * 7.1) * 140,
+    y:
+      [OY + 120, OY + 160, POND.y - 30, WELL.y - 30, 820, 760][k % 6] +
+      Math.cos(k * 3.3) * 90,
+    ph: k * 1.37,
+    sp: 0.4 + (k % 5) * 0.15,
+  }));
+  const windAt = (x) =>
+    Math.sin(T * 1.25 - x * 0.007) * 0.6 +
+    Math.sin(T * 0.43 + 1.3) * 0.4 +
+    (F.weather.cur === "storm" ? Math.sin(T * 3.1 - x * 0.01) * 0.8 : 0);
   const fly = (wx, wy, img, label) =>
     FX.push({ fly: 1, x: wx, y: wy, img, label, t: 0, life: 0.9 });
   const float = (wx, wy, text, color = "#ffd65b") =>
@@ -1832,11 +1926,28 @@ export function openFarm(options) {
     const im = cropImage(p.crop, st, mut, time),
       w = 90,
       h = 105,
-      sway = st >= 2 ? Math.sin(time * 1.6 + i) * 0.03 : 0;
+      sway =
+        st >= 2
+          ? Math.sin(time * 1.6 + i) * 0.025 +
+            (reduced ? 0 : windAt(cx) * 0.035)
+          : 0;
+    if (st === 4 && (mut === "gold" || mut === "rainbow") && !low) {
+      const pulse = 0.55 + 0.25 * Math.sin(time * 3 + i),
+        col =
+          mut === "gold"
+            ? "255,200,60"
+            : `${Math.round(160 + 90 * Math.sin(time * 2))},${Math.round(160 + 90 * Math.sin(time * 2 + 2))},${Math.round(160 + 90 * Math.sin(time * 2 + 4))}`;
+      g.save();
+      g.globalCompositeOperation = "lighter";
+      glow(g, cx, base - 30, 64, col, 0.45 * pulse);
+      g.restore();
+    }
     if (im && (im.complete ?? true)) {
       g.save();
       g.translate(cx, base + 6);
-      g.rotate(sway);
+      g.rotate(
+        sway + (p.wob > 0 ? Math.sin((1 - p.wob) * 22) * 0.16 * p.wob : 0),
+      );
       if (st === 4) {
         const ph = (time * 0.55 + i * 0.37) % 3.2,
           hop = ph < 0.5 ? Math.sin((ph / 0.5) * Math.PI) : 0,
@@ -2725,9 +2836,210 @@ export function openFarm(options) {
       return false;
     }
     act({ a: "plant", plot: i, crop: id });
+    sfx("plant");
+    p_wob(i);
     const r = plotRect(i);
     FX.push({ puff: 1, x: r.x + PW / 2, y: r.y + PH / 2, t: 0, life: 0.5 });
     return true;
+  }
+  /** Tapping the farm's life and buildings: purely for fun, nothing is sent. */
+  function treeHit(tr, w) {
+    const t = tr.t,
+      half = (t.pine ? t.pine.w : t.canopy.w) * 0.5,
+      top = t.pine ? t.pine.h : t.h + t.canopy.h;
+    return Math.abs(w.x - tr.x) < half && w.y < tr.y + 10 && w.y > tr.y - top;
+  }
+  function shakeTree(tr) {
+    tr.shake = 1;
+    sfx("rustle");
+    const t = tr.t,
+      top = tr.y - (t.pine ? t.pine.h : t.h + t.canopy.h) * 0.75,
+      leaves =
+        tr.kind === "cherry"
+          ? ["#ffc4dc", "#ffe1ec"]
+          : tr.kind === "autumn"
+            ? ["#ffa13d", "#e8673c", "#ffd65b"]
+            : ["#4fae46", "#86cf66"];
+    feel.burst(
+      tr.x,
+      top,
+      tr.kind === "pine" ? 6 : 12,
+      tr.kind === "cherry" ? "petal" : "leaf",
+      {
+        v: 110,
+        life: 2.4,
+        c: leaves,
+        floor: tr.y + 14,
+      },
+    );
+    const fruit = { apple: "#e8453c", cherry: "#ff4f7a", autumn: "#ffa13d" }[
+      tr.kind
+    ];
+    if (fruit && !reduced)
+      for (let k = 0; k < 3; k++)
+        feel.fruit(
+          tr.x + (Math.random() - 0.5) * 70,
+          top + Math.random() * 30,
+          tr.y + 8 + Math.random() * 30,
+          fruit,
+        );
+    if (!reduced && Math.random() < 0.5)
+      for (let k = 0; k < 2; k++)
+        flyAway.push({
+          x: tr.x + (k - 0.5) * 30,
+          y: top,
+          vx: (Math.random() < 0.5 ? -1 : 1) * (120 + Math.random() * 80),
+          vy: -160 - Math.random() * 60,
+          ph: k,
+        });
+  }
+  function poke(w) {
+    for (const h of hens)
+      if (Math.hypot(w.x - h.x, w.y - (h.y - 12)) < 32) {
+        sfx("cluck");
+        feel.burst(h.x, h.y - 20, 7, "feather", {
+          v: 80,
+          up: 60,
+          g: 80,
+          life: 1.5,
+          c: h.k === "white" ? "#ffffff" : "#d99a5a",
+        });
+        for (const o of hens) {
+          if (o !== h && Math.hypot(o.x - h.x, o.y - h.y) > 160) continue;
+          o.hop = o === h ? 1 : 0.7;
+          if (reduced) continue;
+          o.fast = 0.9;
+          o.wait = 0;
+          o.st = "walk";
+          o.tx = Math.max(
+            30,
+            Math.min(570, o.x + (o.x - w.x) * 3 + (Math.random() - 0.5) * 80),
+          );
+          o.ty = Math.max(790, Math.min(910, o.y + (Math.random() - 0.5) * 70));
+        }
+        return;
+      }
+    if (!V && dogOn() && Math.hypot(w.x - dog.x, w.y - (dog.y - 18)) < 42) {
+      dogBark();
+      sfx("bark");
+      feel.burst(dog.x, dog.y - 50, 5, "heart", {
+        v: 50,
+        up: 50,
+        life: 1,
+        s: 15,
+        c: "#ff7aa8",
+      });
+      return;
+    }
+    if (Math.hypot(w.x - (HOUSE.x - 40), w.y - HOUSE.y) < 30) {
+      catAwake = 3;
+      sfx("meow");
+      FX.push({
+        bark: 1,
+        x: HOUSE.x - 40,
+        y: HOUSE.y - 16,
+        t: 0,
+        life: 1.4,
+        text: "MRRP?",
+      });
+      feel.burst(HOUSE.x - 40, HOUSE.y - 30, 4, "heart", {
+        v: 40,
+        up: 50,
+        life: 0.9,
+        s: 13,
+        c: "#ff9bd2",
+      });
+      return;
+    }
+    const { x: px, y: py, rx, ry } = POND;
+    if (((w.x - px) / rx) ** 2 + ((w.y - py) / ry) ** 2 < 1) {
+      feel.ring(w.x, w.y, 36);
+      feel.ring(w.x, w.y, 18);
+      feel.burst(w.x, w.y, 10, "drop", { v: 110, up: 220, g: 1200, life: 0.6 });
+      sfx("splash");
+      setTimeout(() => sfx("quack"), 200);
+      duckRush = 1.2;
+      return;
+    }
+    for (const tr of [...TREES, ...MARGIN.filter((m) => m.t)])
+      if (treeHit(tr, w)) return shakeTree(tr);
+    if (
+      Math.abs(w.x - MILL.x) < 60 &&
+      w.y < MILL.y + 10 &&
+      w.y > MILL.y - 230
+    ) {
+      millBoost = 1;
+      bounce.mill = 1;
+      sfx("whoosh");
+      return;
+    }
+    if (
+      Math.abs(w.x - (HOUSE.x + 10)) < 95 &&
+      w.y < HOUSE.y + 10 &&
+      w.y > HOUSE.y - 200
+    ) {
+      bounce.house = 1;
+      sfx("knock");
+      const hs = GFX.house({
+        wall: "#fff3dd",
+        roof: "#d9473f",
+        shutters: "#4fae46",
+        w: 150,
+        sd: 9,
+        sign: { t: "HOME", bg: "#7a3a1a" },
+      });
+      if (hs.chimney)
+        for (let k = 0; k < 4; k++)
+          FSMOKE.push({
+            x: HOUSE.x + hs.chimney[0],
+            y: HOUSE.y + hs.chimney[1] - k * 8,
+            t: k * 0.1,
+            life: 2.4,
+            vx: 4 + Math.random() * 8,
+          });
+      return;
+    }
+    if (
+      Math.abs(w.x - DOGH.x) < 70 &&
+      w.y < DOGH.y + 10 &&
+      w.y > DOGH.y - 110
+    ) {
+      bounce.dogh = 1;
+      if (!V && dogOn()) {
+        dogBark();
+        sfx("bark");
+      } else sfx("knock");
+      return;
+    }
+    if (
+      !V &&
+      F.scarecrow &&
+      Math.abs(w.x - 288) < 40 &&
+      w.y < 572 &&
+      w.y > 440
+    ) {
+      scareSpin = 1;
+      sfx("whoosh");
+      feel.burst(288, 470, 8, "leaf", {
+        v: 90,
+        life: 1.8,
+        c: "#e8c27a",
+        floor: 572,
+      });
+      return;
+    }
+    for (const m of MARGIN)
+      if (m.b && Math.abs(w.x - m.x) < 34 && w.y < m.y + 10 && w.y > m.y - 50) {
+        m.bump = 1;
+        sfx("rustle");
+        feel.burst(m.x, m.y - 30, 8, "leaf", {
+          v: 90,
+          life: 1.5,
+          c: ["#4fae46", "#86cf66", "#ffc4dc"],
+          floor: m.y + 10,
+        });
+        return;
+      }
   }
   function harvestAt(i, silent) {
     const p = F.plots[i];
@@ -2751,13 +3063,59 @@ export function openFarm(options) {
       if (combo.n >= 3)
         float(r.x + PW / 2, r.y - 26, `Combo ×${combo.n}!`, "#ff9bd2");
     }
+    harvestFeel(i, p.mut ?? [], dragging ? combo.n : 1);
     return true;
+  }
+  /** Sparkles, a pop that climbs with the swipe, and cheers for big moments. */
+  function harvestFeel(i, muts, n) {
+    const r = plotRect(i),
+      cx = r.x + PW / 2;
+    p_wob(i);
+    sfx("pop", n - 1);
+    feel.burst(cx, r.y + 14, 10, "spark", { v: 170, life: 0.7, s: 6 });
+    feel.burst(cx, r.y + PH - 6, 5, "dust", {
+      v: 50,
+      life: 0.6,
+      s: 4,
+      c: "#b38a5a",
+    });
+    const vx = (cx - cam.x) * Z + VW / 2,
+      vy = (r.y - cam.y) * Z + VH / 2;
+    const big = muts.includes("rainbow")
+      ? "rainbow"
+      : muts.includes("gold")
+        ? "gold"
+        : null;
+    if (big) {
+      const m = MUTS[big];
+      feel.text(
+        cx,
+        r.y - 60,
+        `${m.n.toUpperCase()} ×${m.x}!`,
+        big === "gold" ? "#ffd65b" : "#ff9bd2",
+        38,
+      );
+      feel.burst(cx, r.y + 10, 18, "spark", { v: 240, life: 0.9, s: 8 });
+      sfx("chime");
+      setTimeout(() => sfx("coin"), 250);
+      feel.pop(vx, vy, big === "rainbow" ? 70 : 40);
+    }
+    if (isSuperSwipe(n)) {
+      feel.text(cx, r.y - 96, "SUPER SWIPE!", "#7ff0a2", 42);
+      sfx("fanfare");
+      feel.pop(vx, vy, 60);
+    }
+  }
+  function p_wob(i) {
+    const p = cur().plots?.[i];
+    if (p) p.wob = 1;
   }
   /** Crows that were shooed, flying off (drawn until they leave the screen). */
   const crowsLeaving = [];
   function shooAt(i) {
     const r = plotRect(i);
     act({ a: "shoo", plot: i }, true);
+    sfx("whoosh");
     crowsLeaving.push({ x: r.x + PW / 2, y: r.y + 20, t: 0 });
     float(r.x + PW / 2, r.y - 10, "Shoo!", "#fff");
   }
@@ -2823,6 +3181,7 @@ export function openFarm(options) {
     );
     if (!ids.length) return false;
     act(net ? { a: "catch", plot: i, tool: "net" } : { a: "catch", plot: i });
+    sfx("whoosh");
     for (const j of ids) {
       const r = plotRect(j);
       FX.push({ poof: 1, x: r.x + PW / 2, y: r.y + PH / 2, t: 0, life: 0.5 });
@@ -2844,6 +3203,10 @@ export function openFarm(options) {
     float(b.cx, b.y0 - 6, `+${giantXp(c.xp)} XP`, "#7ff0a2");
     FX.push({ puff: 1, x: b.cx, y: b.y0 + 120, t: 0, life: 0.8 });
     act({ a: "harvest-giant", plot: gi.i });
+    sfx("fanfare");
+    feel.text(b.cx, b.y0 - 40, "GIANT!", "#ffd65b", 46);
+    feel.burst(b.cx, b.y0 + 80, 24, "spark", { v: 260, life: 1, s: 8 });
+    feel.pop((b.cx - cam.x) * Z + VW / 2, (b.y0 + 60 - cam.y) * Z + VH / 2, 80);
     return true;
   }
   /**
@@ -2940,6 +3303,8 @@ export function openFarm(options) {
         });
         if (!dry.length) break;
         act({ a: "water", plot: i });
+        sfx("water");
+        dry.forEach(p_wob);
         for (const j of dry) {
           const rr = plotRect(j);
           FX.push({
@@ -2978,6 +3343,14 @@ export function openFarm(options) {
           break;
         }
         act({ a: "fertilize", plot: i, kind: f });
+        sfx("chime");
+        feel.burst(cx, r.y + PH / 2, 10, "spark", {
+          v: 90,
+          up: 60,
+          life: 0.8,
+          s: 5,
+          c: f === "gold" ? "#ffd65b" : "#d8ff8a",
+        });
         float(
           cx,
           r.y,
@@ -2994,6 +3367,7 @@ export function openFarm(options) {
         if (!p.crop || drag) break;
         if (F.shovelArm === i) {
           act({ a: "dig", plot: i });
+          sfx("plant");
           F.shovelArm = null;
           float(cx, r.y, "Dug up", "#ff9b9b");
         } else {
@@ -3103,6 +3477,24 @@ export function openFarm(options) {
     m.querySelector("[data-lvok]").onclick = () => {
       m.hidden = true;
     };
+    sfx("levelup");
+    if (!reduced) {
+      const card = m.querySelector(".lvcard"),
+        cols = [
+          "#ffd65b",
+          "#ff7a59",
+          "#7ff0a2",
+          "#5ec2ff",
+          "#ff9bd2",
+          "#c77dff",
+        ];
+      for (let k = 0; k < (low ? 18 : 40); k++) {
+        const c = document.createElement("i");
+        c.className = "lv-confetti";
+        c.style.cssText = `left:${Math.random() * 100}%;background:${cols[k % cols.length]};animation-delay:${(Math.random() * 0.6).toFixed(2)}s;--drift:${Math.round((Math.random() - 0.5) * 120)}px;--spin:${Math.round(360 + Math.random() * 540)}deg`;
+        card?.append(c);
+      }
+    }
     log(
       `Level <b>${to}</b>! ${crops.length ? `Unlocked ${crops.map((c) => c.n).join(", ")}` : "New rewards"}`,
       "good",
@@ -3126,21 +3518,7 @@ export function openFarm(options) {
     ctx.scale(Z, Z);
     ctx.translate(-cam.x, -cam.y);
     ctx.drawImage(bg, WX0, WY0);
-    [
-      [338, 230, "apple", 0.62],
-      [812, 190, "cherry", 0.6],
-      [44, 400, "pine", 0.85],
-      [1480, 340, "round", 0.7],
-      [1700, 330, "pine", 0.8],
-      [70, 210, "round", 0.7],
-      [640, 1050, "autumn", 0.7],
-      [1120, 1060, "round", 0.75],
-      [1450, 1040, "cherry", 0.65],
-      [1720, 1000, "pine", 0.8],
-      [40, 1060, "mint", 0.7],
-    ].forEach(([x, y, k, sz], i) =>
-      GFX.drawTree(ctx, GFX.tree(k, 50 + i, sz), x, y, time, i, 0.7),
-    );
+    TREES.forEach((tr) => drawTreeS(tr, time, 0.7));
     GFX.shadow(ctx, HOUSE.x + 30, HOUSE.y + 4, 110, 20);
     const hs = GFX.house({
       wall: "#fff3dd",
@@ -3150,23 +3528,23 @@ export function openFarm(options) {
       sd: 9,
       sign: { t: "HOME", bg: "#7a3a1a" },
     });
-    GFX.blit(ctx, hs, HOUSE.x, HOUSE.y);
+    blitB("house", hs, HOUSE.x, HOUSE.y);
     const wm = GFX.windmillBody();
     GFX.shadow(ctx, MILL.x + 20, MILL.y + 4, 60, 14);
-    GFX.blit(ctx, wm, MILL.x, MILL.y);
+    blitB("mill", wm, MILL.x, MILL.y);
     GFX.windmillSails(
       ctx,
       MILL.x + wm.hub[0],
       MILL.y + wm.hub[1],
-      reduced ? 0 : time * 0.7,
+      reduced ? 0 : millA,
       0.82,
     );
     GFX.shadow(ctx, BOARDP.x + 8, BOARDP.y + 3, 70, 14);
-    GFX.blit(ctx, GFX.board(), BOARDP.x, BOARDP.y);
+    blitB("board", GFX.board(), BOARDP.x, BOARDP.y);
     GFX.shadow(ctx, STALL.x + 10, STALL.y + 4, 96, 16);
-    GFX.blit(ctx, GFX.stall(), STALL.x, STALL.y);
+    blitB("stall", GFX.stall(), STALL.x, STALL.y);
     GFX.shadow(ctx, BARN.x + 20, BARN.y + 4, 130, 22);
-    GFX.blit(ctx, GFX.barn(), BARN.x, BARN.y);
+    blitB("barn", GFX.barn(), BARN.x, BARN.y);
     FSMOKE.forEach((m) => {
       ctx.fillStyle = `rgba(240,240,245,${0.5 * (1 - m.t / m.life)})`;
       ctx.beginPath();
@@ -3190,10 +3568,10 @@ export function openFarm(options) {
       items.push({
         y: m.y,
         d: () => {
-          if (m.t) GFX.drawTree(ctx, m.t, m.x, m.y, time, m.ph, 0.8);
+          if (m.t) drawTreeS(m, time, 0.8);
           else {
             GFX.shadow(ctx, m.x + 6, m.y + 2, 30, 8);
-            GFX.blit(ctx, m.b, m.x, m.y + 4);
+            blitB(m, m.b, m.x, m.y + 4);
           }
         },
       }),
@@ -3282,7 +3660,12 @@ export function openFarm(options) {
         y: 560,
         d: () => {
           GFX.shadow(ctx, 292, 562, 26, 6);
-          GFX.blit(ctx, GFX.scarecrow(), 288, 562);
+          ctx.save();
+          ctx.translate(288, 562);
+          if (scareSpin > 0)
+            ctx.scale(Math.cos((1 - scareSpin) * Math.PI * 4), 1);
+          GFX.blit(ctx, GFX.scarecrow(), 0, 0);
+          ctx.restore();
         },
       });
     if (s.me)
@@ -3320,12 +3703,21 @@ export function openFarm(options) {
       y: WELL.y,
       d: () => {
         GFX.shadow(ctx, WELL.x + 8, WELL.y + 2, 56, 12);
-        GFX.blit(ctx, GFX.well(), WELL.x, WELL.y);
+        blitB("well", GFX.well(), WELL.x, WELL.y);
       },
     });
     items.push({
       y: HOUSE.y + 8,
-      d: () => GFX.cat(ctx, "sleep", time, HOUSE.x - 40, HOUSE.y + 8, 1.1, 1),
+      d: () =>
+        GFX.cat(
+          ctx,
+          catAwake > 0 ? "awake" : "sleep",
+          time,
+          HOUSE.x - 40,
+          HOUSE.y + 8,
+          1.1,
+          1,
+        ),
     });
     items.push({
       y: POND.y - POND.ry,
@@ -3353,6 +3745,21 @@ export function openFarm(options) {
           );
           ctx.stroke();
         }
+        // The ducks paddle round the pond (they hurry after a splash).
+        FDUCKS.forEach((d, k) => {
+          const r = 0.55 - k * 0.15;
+          GFX.duck(
+            ctx,
+            d.k,
+            "swim",
+            time + d.a,
+            x + Math.cos(d.a) * rx * r,
+            y + Math.sin(d.a) * ry * r,
+            1.05,
+            Math.sin(d.a) * Math.sign(d.s) < 0 ? 1 : -1,
+            true,
+          );
+        });
       },
     });
     if (s.pasture)
@@ -3365,7 +3772,7 @@ export function openFarm(options) {
             ready ? "idle" : "graze",
             time,
             COW.x,
-            COW.y,
+            COW.y - Math.sin((COW.hop || 0) * Math.PI) * 16,
             0.95,
             COW.face,
           );
@@ -3410,17 +3817,27 @@ export function openFarm(options) {
       y: DOGH.y,
       d: () => {
         GFX.shadow(ctx, DOGH.x + 10, DOGH.y + 2, 76, 14);
-        GFX.blit(ctx, GFX.doghouse(), DOGH.x, DOGH.y);
+        blitB("dogh", GFX.doghouse(), DOGH.x, DOGH.y);
       },
     });
     hens.forEach((h) =>
       items.push({
         y: h.y,
         d: () =>
-          GFX.chicken(ctx, h.k, h.st, time + h.x * 0.01, h.x, h.y, 1.1, h.face),
+          GFX.chicken(
+            ctx,
+            h.k,
+            h.hop > 0 ? "flap" : h.st,
+            time + h.x * 0.01,
+            h.x,
+            h.y - Math.sin((h.hop || 0) * Math.PI) * 24,
+            1.1,
+            h.face,
+          ),
       }),
     );
     fenceItems(items);
+    items.push(...feel.groundItems(ctx));
     items.sort((a, b) => a.y - b.y).forEach((it) => it.d());
     // Crows: fly in, then peck with a bar showing the time left to shoo them.
     if (s.me) {
@@ -3584,10 +4001,85 @@ export function openFarm(options) {
         }
       }
     }
+    for (const b of flyAway)
+      GFX.bird(
+        ctx,
+        "pigeon",
+        "fly",
+        time + b.ph,
+        b.x,
+        b.y,
+        1.3,
+        b.vx > 0 ? 1 : -1,
+      );
+    feel.drawWorld(ctx);
+    const wcur = F.weather.cur;
+    if (!low && !reduced && !["rain", "storm", "moon"].includes(wcur))
+      feel.drawClouds(ctx, 0.14 * (1 - nightLevel(TOD) * 0.7));
     ctx.restore();
+    lightPass(time);
     drawWeather(ctx, time);
     drawToolCursor(ctx, time);
     drawHoldRing(ctx);
+    feel.drawConfetti(ctx);
+    ctx.restore();
+  }
+  /** The time of day over the farm, then the lights that glow through it. */
+  function lightPass(time) {
+    const w = F.weather.cur,
+      wet = w === "rain" || w === "storm",
+      n = nightLevel(TOD),
+      golden = wet || w === "moon" ? 0 : goldenLevel(TOD) * (1 - n * 0.6),
+      warm = wet || w === "moon" || w === "frost" ? 0 : (1 - n) * (1 - golden);
+    // The Moonlit weather already paints a night: no second darkening.
+    gradeView(ctx, VW, VH, { night: w === "moon" ? 0 : n, golden, warm, low });
+    const lit = Math.max(
+      n,
+      w === "moon" ? 0.85 : 0,
+      golden * 0.55,
+      w === "storm" ? 0.5 : w === "rain" ? 0.3 : 0,
+    );
+    if (low || lit < 0.02) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, VW, VH);
+    ctx.clip();
+    ctx.translate(VW / 2, VH / 2);
+    ctx.scale(Z, Z);
+    ctx.translate(-cam.x, -cam.y);
+    ctx.globalCompositeOperation = "lighter";
+    const fl = 0.92 + Math.sin(time * 9) * 0.04 + Math.sin(time * 5.3) * 0.04;
+    const hs = GFX.house({
+      wall: "#fff3dd",
+      roof: "#d9473f",
+      shutters: "#4fae46",
+      w: 150,
+      sd: 9,
+      sign: { t: "HOME", bg: "#7a3a1a" },
+    });
+    for (const [wx, wy, ww, wh] of hs.win ?? []) {
+      ctx.fillStyle = `rgba(255,200,90,${0.6 * lit})`;
+      ctx.fillRect(HOUSE.x + wx + 3, HOUSE.y + wy + 3, ww - 6, wh - 6);
+      glow(
+        ctx,
+        HOUSE.x + wx + ww / 2,
+        HOUSE.y + wy + wh / 2,
+        70,
+        "255,190,90",
+        0.45 * lit * fl,
+      );
+    }
+    glow(ctx, BARN.x, BARN.y - 128, 70, "255,200,90", 0.4 * lit * fl);
+    glow(ctx, STALL.x, STALL.y - 100, 110, "255,190,110", 0.35 * lit * fl);
+    glow(ctx, WELL.x, WELL.y - 60, 70, "190,230,255", 0.2 * lit);
+    // Fireflies by night (the Moonlit weather brings its own).
+    if (n > 0.35 && w !== "moon" && !reduced)
+      for (const f of FIREFLIES) {
+        const x = f.x + Math.sin(time * 0.3 * f.sp + f.ph) * 50,
+          y = f.y + Math.sin(time * 0.5 * f.sp + f.ph * 2) * 30,
+          b = Math.max(0, Math.sin(time * 2 * f.sp + f.ph));
+        glow(ctx, x, y, 16, "210,255,120", 0.75 * n * b);
+      }
     ctx.restore();
   }
 
@@ -3621,6 +4113,10 @@ export function openFarm(options) {
     coveredAt;
   function freeze() {
     frozen = true;
+    rainLevel = -1;
+    try {
+      options.rainSound?.(0);
+    } catch {}
     layer.dataset.frozen = "true";
     cancelAnimationFrame(raf);
     probe?.pause();
@@ -3661,6 +4157,66 @@ export function openFarm(options) {
     cover = undefined;
     wake();
   }, 1000);
+  let todAt = 0;
+  function feelStep(dt) {
+    if (T - todAt > 1) {
+      todAt = T;
+      TOD = todOverride ?? deviceTimeOfDay();
+    }
+    for (const k in bounce) bounce[k] = Math.max(0, bounce[k] - dt / 0.6);
+    for (const tr of TREES)
+      if (tr.shake > 0) tr.shake = Math.max(0, tr.shake - dt / 0.9);
+    for (const m of MARGIN) {
+      if (m.shake > 0) m.shake = Math.max(0, m.shake - dt / 0.9);
+      if (m.bump > 0) m.bump = Math.max(0, m.bump - dt / 0.6);
+    }
+    for (const p of cur().plots ?? [])
+      if (p.wob > 0) p.wob = Math.max(0, p.wob - dt / 0.7);
+    millBoost = Math.max(0, millBoost - dt / 2.5);
+    const w = F.weather.cur;
+    millA += dt * (0.7 + millBoost * 6 + (w === "storm" ? 1.4 : 0));
+    catAwake = Math.max(0, catAwake - dt);
+    scareSpin = Math.max(0, scareSpin - dt / 0.9);
+    duckRush = Math.max(0, duckRush - dt);
+    if (COW.hop > 0) COW.hop = Math.max(0, COW.hop - dt / 0.5);
+    if (!reduced)
+      for (const d of FDUCKS) d.a += d.s * dt * (duckRush > 0 ? 5 : 1);
+    for (let k = flyAway.length - 1; k >= 0; k--) {
+      const b = flyAway[k];
+      b.x += b.vx * dt;
+      b.y += b.vy * dt;
+      if (b.y < WY0 - 100) flyAway.splice(k, 1);
+    }
+    // Cherry petals drift from the cherry trees on the breeze.
+    if (!low && !reduced && w !== "storm" && w !== "frost")
+      for (const tr of TREES)
+        if (tr.kind === "cherry" && Math.random() < dt * 1.1)
+          feel.burst(tr.x - 40 + Math.random() * 80, tr.y - 110, 1, "petal", {
+            v: 15,
+            life: 7,
+            c: ["#ffc4dc", "#ffe1ec"],
+            floor: tr.y + 60 + Math.random() * 120,
+          });
+    feel.step(dt, windAt);
+    // Birdsong by day, crickets at night, rain on the roof.
+    chirpT -= dt;
+    if (chirpT <= 0) {
+      if (nightLevel(TOD) > 0.6) {
+        sfx("cricket");
+        chirpT = 0.8 + Math.random() * 1.6;
+      } else if (w !== "rain" && w !== "storm") {
+        sfx("chirp");
+        chirpT = 3 + Math.random() * 6;
+      } else chirpT = 2;
+    }
+    const rl = w === "storm" ? 1.6 : w === "rain" ? 1 : 0;
+    if (rl !== rainLevel) {
+      rainLevel = rl;
+      try {
+        options.rainSound?.(rl);
+      } catch {}
+    }
+  }
   let crowAsked = 0,
     lastDraw = 0;
   let pendingT = 0,
@@ -3798,6 +4354,13 @@ export function openFarm(options) {
           dog.x += (dx / d) * Math.min(d, sp * dt);
           dog.y += (dy / d) * Math.min(d, sp * dt);
           dog.face = dx > 0 ? 1 : -1;
+          if (Math.random() < dt * (dog.chasing ? 9 : 2.5))
+            feel.burst(dog.x - dog.face * 10, dog.y + 2, 1, "dust", {
+              v: 20,
+              life: 0.5,
+              s: 4,
+              c: "#c9a877",
+            });
         }
       }
     }
@@ -3850,10 +4413,15 @@ export function openFarm(options) {
           h.wait = 1 + Math.random() * 3;
           return;
         }
-        h.x += (dx / d) * Math.min(d, 40 * dt);
-        h.y += (dy / d) * Math.min(d, 40 * dt);
+        const hv = h.fast > 0 ? 150 : 40;
+        h.x += (dx / d) * Math.min(d, hv * dt);
+        h.y += (dy / d) * Math.min(d, hv * dt);
         h.face = dx > 0 ? 1 : -1;
       });
+    hens.forEach((h) => {
+      if (h.hop > 0) h.hop = Math.max(0, h.hop - dt / 0.45);
+      if (h.fast > 0) h.fast -= dt;
+    });
     if (!reduced && Math.random() < dt * 2.5) {
       const hs = GFX.house({
         wall: "#fff3dd",
@@ -3881,8 +4449,18 @@ export function openFarm(options) {
       if (FSMOKE[i].t > FSMOKE[i].life) FSMOKE.splice(i, 1);
     if (CUR.use > 0) CUR.use = Math.max(0, CUR.use - dt * 3.2);
     FX.forEach((f) => (f.t += dt));
+    let landed = false;
     for (let i = FX.length - 1; i >= 0; i--)
-      if (FX[i].t > FX[i].life) FX.splice(i, 1);
+      if (FX[i].t > FX[i].life) {
+        // Produce reaching the barn: the barn gives a little bump.
+        if (FX[i].fly) landed = true;
+        FX.splice(i, 1);
+      }
+    if (landed) {
+      bounce.barn = 1;
+      sfx("tick");
+    }
+    feelStep(dt);
     draw(T);
     if (Math.floor(T * 4) !== Math.floor((T - dt) * 4)) {
       renderChips();
@@ -4856,24 +5434,72 @@ export function openFarm(options) {
       w.x < STALL.x + 95 &&
       w.y > STALL.y - 170 &&
       w.y < STALL.y
-    )
+    ) {
+      bounce.stall = 1;
+      sfx("tick");
       return openSheet("market");
+    }
     if (
       w.x > BARN.x - 110 &&
       w.x < BARN.x + 140 &&
       w.y > BARN.y - 200 &&
       w.y < BARN.y
-    )
+    ) {
+      bounce.barn = 1;
+      sfx("boing");
       return openSheet("barn");
-    if (Math.hypot(w.x - WELL.x, w.y - (WELL.y - 50)) < 60) return wishWell();
+    }
+    // The orders board opens the orders, like the market and the barn.
+    if (
+      !V &&
+      w.x > BOARDP.x - 75 &&
+      w.x < BOARDP.x + 75 &&
+      w.y > BOARDP.y - 140 &&
+      w.y < BOARDP.y
+    ) {
+      bounce.board = 1;
+      sfx("tick");
+      return openSheet("orders");
+    }
+    if (Math.hypot(w.x - WELL.x, w.y - (WELL.y - 50)) < 60) {
+      bounce.well = 1;
+      sfx("splash");
+      feel.burst(WELL.x, WELL.y - 70, 10, "drop", {
+        v: 100,
+        up: 220,
+        g: 1200,
+        life: 0.7,
+      });
+      return wishWell();
+    }
     if (
       !V &&
       w.x > PAST.x0 &&
       w.x < PAST.x1 &&
       w.y > PAST.y0 - 60 &&
       w.y < PAST.y1
-    )
+    ) {
+      if (F.pasture && Math.hypot(w.x - COW.x, w.y - (COW.y - 30)) < 60) {
+        COW.hop = 1;
+        sfx("moo");
+        FX.push({
+          bark: 1,
+          x: COW.x,
+          y: COW.y - 50,
+          t: 0,
+          life: 1.4,
+          text: "MOO!",
+        });
+        feel.burst(COW.x, COW.y - 60, 5, "heart", {
+          v: 50,
+          up: 50,
+          life: 1,
+          s: 15,
+          c: "#ff7aa8",
+        });
+      }
       return pastureClick();
+    }
     const i = plotAt(w.x, w.y);
     if (i < 0) {
       panning = {
@@ -4882,6 +5508,8 @@ export function openFarm(options) {
         cx: cam.x,
         cy: cam.y,
         k: NW / cv.getBoundingClientRect().width,
+        w: { x: w.x, y: w.y },
+        moved: false,
       };
       try {
         cv.setPointerCapture(e.pointerId);
@@ -4921,10 +5549,13 @@ export function openFarm(options) {
         cx: cam.x,
         cy: cam.y,
         k: NW / cv.getBoundingClientRect().width,
+        moved: true,
       };
       CUR.grab = true;
     }
     if (panning) {
+      if (Math.hypot(e.clientX - panning.x, e.clientY - panning.y) >= MOVE_PX)
+        panning.moved = true;
       const w0 = toWorld(e.clientX, e.clientY);
       CUR.vx = w0.vx;
       CUR.vy = w0.vy;
@@ -5037,6 +5668,9 @@ export function openFarm(options) {
     if (k === "-") zoomAt(1 / 1.2);
   });
   layer.addEventListener("keyup", (e) => keysF.delete(e.key.toLowerCase()));
+  // A tap on the grass that didn't drag: whatever is there reacts (cosmetic).
+  const pokeAt = () =>
+    panning && !panning.moved && panning.w ? panning.w : null;
   cv.addEventListener("pointerup", (e) => {
     if (tapG && tapG.id === e.pointerId) {
       clearTimeout(tapG.timer);
@@ -5045,11 +5679,15 @@ export function openFarm(options) {
       tapG = null;
       if (m === "pending") {
         press(ev);
+        const pw = pokeAt();
         endDrag();
+        if (pw) poke(pw);
         return;
       }
     }
+    const pw = pokeAt();
     endDrag();
+    if (pw) poke(pw);
   });
   cv.addEventListener("pointercancel", (e) => {
     if (tapG && tapG.id === e.pointerId) {
@@ -5131,6 +5769,10 @@ export function openFarm(options) {
   }
   function leave() {
     running = false;
+    rainLevel = -1;
+    try {
+      options.rainSound?.(0);
+    } catch {}
     keysF.clear();
     cancelAnimationFrame(raf);
     $("fm-tip").hidden = true;
@@ -5180,6 +5822,13 @@ export function openFarm(options) {
     /** Debug handle for tests. */
     _dbg: {
       F,
+      /** Preview a time of day (0..1), or null for the device clock (tests). */
+      tod: (v) => {
+        todOverride = v;
+        TOD = v ?? deviceTimeOfDay();
+      },
+      feel,
+      hens,
       /** The guard dog (tests): where it is, its route, and a bark. */
       dog,
       dogTo,

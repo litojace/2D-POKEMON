@@ -32,7 +32,6 @@ import {
   groundHeight,
   WORLD_ART,
 } from "../../../packages/shared/src/world-art";
-import { frameLobbyPanel } from "./lobby-layout";
 import { fitDesktopBattleHud } from "./desktop-battle-layout";
 import {
   homeShell,
@@ -69,7 +68,6 @@ import {
   sceneSwitchMarkup,
   type HubScene,
 } from "./hub-scene";
-import { watchSelectionPreview } from "./selection-preview";
 import { plazaOutfitKey } from "./plaza/plaza-outfit";
 import { bossClears, pacificDate } from "../../../packages/shared/src/raid";
 import { resultXp } from "./adventure-ui";
@@ -81,23 +79,20 @@ import { dreamRuneKey } from "./somnara-controls";
 import { battleMusic } from "./battle-music";
 import { setDialogContent } from "./dialog";
 import { updateMenuShell } from "./menu-shell";
+import { parse, patch } from "./ui/patch";
 import {
-  raidLobby,
-  renderRaidUI,
-  drawRaidArena,
-  raidLookList,
-  portraitCosmetics,
-} from "./raid-ui";
+  roomKicker,
+  roomSeatsMarkup,
+  roomWatchMarkup,
+  type RoomData,
+  type RoomMode as RoomKind,
+} from "./screens/room-view";
+import "./screens/room.css";
+import { renderRaidUI, drawRaidArena, raidLookList } from "./raid-ui";
 import { illustratedHelp } from "./illustrated-help";
 import { buttonIcon, iconLabel, menuIcon } from "./menu-icons";
 import type { RaidBossId } from "../../../packages/shared/src/raid";
 import type { RaidTab } from "./screens/raid-hall-view";
-import {
-  fighterSelection,
-  syncRosterMastery,
-  updateRosterSelection,
-  watchFighterDetail,
-} from "./fighter-selection";
 import { LobbySelection } from "./lobby-selection";
 import { setupBattleDock } from "./battle-dock";
 import {
@@ -190,7 +185,6 @@ import { waitForServer, onServerStartupRetry } from "./server-connection";
 import "./ui/tokens.css";
 import "./style.css";
 import "./ui/components.css";
-import "./champion-selection.css";
 import "./friends.css";
 import "./battle-dock.css";
 import "./cosmetic-review.css";
@@ -422,7 +416,6 @@ const headerMenu = $("header-menu") as HTMLDetailsElement;
 // A dropdown-to-dialog transition keeps the same page position throughout.
 lockScrollWhileOpen($<HTMLDialogElement>("dialog"), headerMenu);
 watchMenuMotion($("menu"), $<HTMLDialogElement>("dialog"), headerMenu);
-watchSelectionPreview($("menu"), $<HTMLDialogElement>("dialog"), headerMenu);
 headerMenu.addEventListener("click", (event) => {
   if ((event.target as Element).closest("button")) headerMenu.open = false;
 });
@@ -895,130 +888,212 @@ watchRotation();
 watchCosmeticPreviews();
 // Remember a room from an invite link (?room=ABC123) before the first render.
 if (captureInvite()) inviteHinted = false;
-let lockedRoomPick = "";
 let savingRoomPick = "";
 let lockAttempt = 0;
-function syncRosterLock() {
-  const me = state?.players.find((p) => p.id === myId);
-  const lock = document.querySelector<HTMLButtonElement>(
-    "#menu [data-fighter-lock]",
-  );
-  const inRoom = !!me && state?.phase === "lobby";
-  const pick =
-    inRoom && lock ? `${state!.code}:${lock.dataset.fighterLock}` : "";
-  const locked = !!pick && lockedRoomPick === pick;
-  const saving = !!pick && savingRoomPick === pick;
-  if (lock) {
-    lock.disabled = locked || saving;
-    lock.classList.toggle("is-locked", locked);
-    lock.setAttribute("aria-busy", String(saving));
-    lock.innerHTML = locked
-      ? iconLabel("check", "Locked in")
-      : saving
-        ? "Confirming…"
-        : "Lock in";
-    lock.setAttribute(
-      "aria-label",
-      `${locked ? "Locked in" : saving ? "Confirming" : "Lock in"} ${CHARACTERS[lock.dataset.fighterLock as CharacterId].name}`,
-    );
-  }
-  const needsReady = inRoom && !me.ready && locked && !saving;
-  const drawer = document.querySelector<HTMLElement>(".lobby-room-drawer");
-  drawer?.classList.toggle("needs-ready", needsReady);
-  const summary = drawer?.querySelector<HTMLElement>("summary");
-  const label = needsReady ? "Room · Ready up" : "Room & ready";
-  if (summary && summary.querySelector("span")?.textContent !== label)
-    summary.innerHTML = iconLabel("friends", label);
-  document.getElementById("ready")?.classList.toggle("needs-ready", needsReady);
+/**
+ * The room screen (UI remodel step 5): the seats column beside the roster,
+ * which is the room's fighter picker (Lock in, Ready, the corner leaves).
+ */
+let roomPicker: RosterScreen | undefined;
+let roomSeatsTemplate: HTMLElement | undefined;
+/** The roster's data, shared by the hub's Fighters screen and the rooms. */
+function rosterData() {
+  const bindings = controlPrefs().bindings;
+  return {
+    playing: selected,
+    matches: masteryMatches,
+    owned: accountsUI.economy?.owned ?? [],
+    looks: accountsUI.economy?.looks ?? {},
+    look: accountsUI.raidLook ?? {},
+    keys: {
+      skills: skillLabels(bindings),
+      basic: actionLabel(bindings, "basic"),
+      dash: actionLabel(bindings, "dash"),
+      jump: actionLabel(bindings, "jump"),
+    },
+  };
 }
-
-function wireRoster(isRoom: boolean) {
-  const panel = document.querySelector<HTMLElement>("#menu .roster-panel");
-  if (!panel) return;
-  const confirm = () => {
-    for (const card of Array.from(
-      panel.querySelectorAll<HTMLElement>("[data-character]"),
-    )) {
-      card.classList.toggle("is-equipped", card.dataset.character === selected);
-      card.title = `${CHARACTERS[card.dataset.character as CharacterId].name}${card.dataset.character === selected ? " · Your current fighter" : ""}`;
-    }
+/** What the room's seats column shows. */
+function roomData(watch: boolean): RoomData {
+  const s = state!;
+  const mode: RoomKind = s.raid
+    ? "raid"
+    : isFfa()
+      ? "ffa"
+      : isTeams()
+        ? "teams"
+        : "duel";
+  const players = s.players.filter((p) => !p.raidBoss);
+  const hostId = players[0]?.id;
+  const me = players.find((p) => p.id === myId);
+  const on = new Set(s.mutators ?? []);
+  return {
+    mode,
+    watch,
+    code: s.code,
+    boss: s.raid?.boss,
+    rounds: roundsNeeded(s.mutators),
+    seats: players.map((p, i) => {
+      const character = p.id === myId ? selected : p.character;
+      return {
+        id: p.id,
+        name: p.name,
+        character,
+        avatar: framedAvatar(
+          identityOf(p, character),
+          `room-${watch ? "watch" : "seat"}-${i}`,
+        ),
+        ready: p.ready,
+        connected: p.connected,
+        host: p.id === hostId,
+        me: p.id === myId,
+        team: mode === "teams" ? (teamOf(p) === 1 ? 1 : 0) : undefined,
+        flair: p.flair ? `★ ${p.flair}` : undefined,
+      };
+    }),
+    host: !watch && hostId === myId,
+    rules: MUTATOR_IDS.map((m) => ({
+      id: m,
+      name: MUTATORS[m].name,
+      text: MUTATORS[m].description,
+      on: on.has(m),
+    })),
+    arcade: s.arcade
+      ? {
+          name: ARCADE_EVENTS[s.arcade.id].name,
+          text: ARCADE_EVENTS[s.arcade.id].text,
+        }
+      : undefined,
+    teamUp:
+      mode === "teams" && me ? teamUpNote({ ...me, character: selected }) : "",
+    watchers: s.watchers ?? [],
   };
-  confirm();
-  document.querySelectorAll<HTMLButtonElement>("[data-character]").forEach(
-    (button) =>
-      (button.onclick = () => {
-        audio.unlock();
-        const choice = button.dataset.character as CharacterId;
-        if (
-          panel.querySelector<HTMLElement>(".fighter-detail")?.dataset
-            .detailFor === choice
-        )
-          return;
-        updateRosterSelection(panel, choice, reducedMotion, true);
-        syncRosterMastery(panel);
-        syncMenuCosmetic();
-      }),
-  );
-  panel.onclick = async (event) => {
-    const lock = (event.target as Element).closest<HTMLButtonElement>(
-      "[data-fighter-lock]",
+}
+/** Draw the room (or a watched room): seats patched in place, the picker
+ * opened once and refreshed after. */
+function renderRoom(watch: boolean) {
+  const menu = $("menu");
+  const d = roomData(watch);
+  const seats = roomSeatsMarkup(d);
+  let room = menu.querySelector<HTMLElement>(":scope > .room-screen");
+  if (!room || room.dataset.roomWatch !== String(watch)) {
+    roomPicker?.close();
+    roomPicker = undefined;
+    menu.innerHTML = `<div class="room-screen ui" data-room-watch="${watch}" data-graphics="${lowGraphics() ? "low" : "high"}">${seats}${watch ? roomWatchMarkup(d) : ""}</div>`;
+    room = menu.querySelector<HTMLElement>(":scope > .room-screen")!;
+    room.addEventListener("click", onRoomClick);
+    roomSeatsTemplate = parse(seats);
+  } else {
+    const next = parse(seats);
+    patch(room.querySelector(".room-seats")!, roomSeatsTemplate!, next);
+    roomSeatsTemplate = next;
+    const panel = room.querySelector<HTMLElement>(":scope > .room-watch");
+    if (watch && panel) panel.outerHTML = roomWatchMarkup(d);
+  }
+  if (watch) return;
+  if (roomPicker?.isOpen) roomPicker.refresh();
+  else
+    roomPicker = openRoster(
+      {
+        data: () => {
+          const me = state?.players.find((p) => p.id === myId);
+          return {
+            ...rosterData(),
+            action: "lock" as const,
+            room: {
+              kicker: state ? roomKicker(roomData(false)) : "Room",
+              saving: !!savingRoomPick,
+              ready: !!me?.ready,
+              canReady: state?.phase === "lobby" && !savingRoomPick,
+            },
+          };
+        },
+        choose: (c) => void lockIn(c),
+        skins: () => {},
+        ready: (c) => void roomReady(c),
+        leave: () => void leave(),
+        onClose: () => (roomPicker = undefined),
+      },
+      { focus: selected, room: { host: room } },
     );
-    if (!lock || lock.disabled) return;
-    audio.unlock();
-    const choice = lock.dataset.fighterLock as CharacterId;
-    if (!isRoom) homeNavigation.close();
+}
+/** Clicks on the seats column: invite, teams, shuffle, party rules. */
+function onRoomClick(event: MouseEvent) {
+  const t = (event.target as Element).closest<HTMLElement>("button");
+  if (!t || t.closest(".ui-panel-host") || (t as HTMLButtonElement).disabled)
+    return;
+  audio.unlock();
+  const d = t.dataset;
+  if (d.roomInvite !== undefined) void accountsUI.showFriends();
+  else if (d.team !== undefined) void request("team", { team: Number(d.team) });
+  else if (d.roomShuffle !== undefined) void request("shuffle");
+  else if (d.mutator) {
+    const on = new Set(state?.mutators ?? []);
+    const id = d.mutator as MutatorId;
+    if (on.has(id)) on.delete(id);
+    else on.add(id);
+    void request("mutators", { ids: [...on] });
+  } else if (t.id === "stop-watching") void stopWatching();
+}
+/** Redraw the room's seats and picker in place. */
+function refreshRoom() {
+  if ($("menu").querySelector(":scope > .room-screen")) {
+    const watch = !myId;
+    renderRoom(watch);
+  }
+}
+/** Lock in a fighter for this room; the server's answer counts (a refusal
+ * puts its pick back). */
+async function lockIn(choice: CharacterId) {
+  const me = state?.players.find((p) => p.id === myId);
+  if (!state || !me) return false;
+  audio.unlock();
+  const roomCode = state.code;
+  if (choice === selected && me.character === choice) {
+    refreshRoom();
+    return true;
+  }
+  const attempt = ++lockAttempt;
+  savingRoomPick = `${roomCode}:${choice}`;
+  selected = choice;
+  rememberHomeFighter(choice);
+  const revision = lobbySelection.choose(choice);
+  renderMenu(true);
+  const reply = await request("select", choice);
+  const mine = state?.players.find((p) => p.id === myId);
+  let ok = false;
+  if (attempt === lockAttempt) {
+    savingRoomPick = "";
     if (
-      isRoom &&
-      choice === selected &&
-      state?.players.some((p) => p.id === myId && p.character === choice)
+      reply.ok &&
+      state &&
+      state.code === roomCode &&
+      state.phase === "lobby"
     ) {
-      lockedRoomPick = `${state.code}:${choice}`;
-      syncRosterLock();
-      toast(
-        `${CHARACTERS[choice].name} locked in. Open Room & ready to ready up.`,
-      );
-      return;
+      ok = true;
+      toast(`${CHARACTERS[choice].name} locked in.`);
     }
-    if (choice === selected && !isRoom) return;
-    const roomCode = state?.code;
-    const attempt = ++lockAttempt;
-    savingRoomPick = isRoom ? `${roomCode}:${choice}` : "";
-    lockedRoomPick = "";
-    selected = choice;
-    confirm();
-    rememberHomeFighter(choice);
-    const revision = isRoom ? lobbySelection.choose(choice) : undefined;
-    renderMenu(true);
-    if (!isRoom) return;
-    const reply = await request("select", choice);
-    const mine = state?.players.find((p) => p.id === myId);
-    if (attempt === lockAttempt) {
-      savingRoomPick = "";
-      if (
-        reply.ok &&
-        state &&
-        state.code === roomCode &&
-        state.phase === "lobby"
-      ) {
-        lockedRoomPick = `${roomCode}:${choice}`;
-        toast(
-          `${CHARACTERS[choice].name} locked in. Open Room & ready to ready up.`,
-        );
-      }
-      syncRosterLock();
-    }
-    // The server said no (e.g. the match is starting): show its pick again.
-    if (
-      !reply.ok &&
-      revision !== undefined &&
-      lobbySelection.reject(revision) &&
-      mine
-    ) {
-      selected = mine.character;
-      confirm();
-      renderMenu();
-    }
-  };
+    refreshRoom();
+  }
+  // The server said no (e.g. the match is starting): show its pick again.
+  if (
+    !reply.ok &&
+    revision !== undefined &&
+    lobbySelection.reject(revision) &&
+    mine
+  ) {
+    selected = mine.character;
+    renderMenu();
+  }
+  return ok;
+}
+/** Ready (or Cancel ready) with the fighter shown: locking it in first. */
+async function roomReady(choice: CharacterId) {
+  audio.unlock();
+  const me = state?.players.find((p) => p.id === myId);
+  if (!me) return;
+  if (!me.ready && choice !== selected && !(await lockIn(choice))) return;
+  void request("ready");
 }
 
 /** A player's equipped champion skins (yours update as soon as you equip). */
@@ -1049,86 +1124,13 @@ function identityOf(p: Fighter, character = p.character): Fighter {
       }
     : { ...p, character };
 }
-function syncRoomAvatar(avatar: HTMLElement | null | undefined, scope: string) {
-  const me = state?.players.find((p) => p.id === myId);
-  if (!avatar || !me) return;
-  const portrait = identityOf(me, selected);
-  const key = JSON.stringify([
-    portrait.character,
-    portrait.raidLook,
-    portrait.championLooks,
-    portrait.raidClears,
-  ]);
-  if (avatar.dataset.avatarLook === key) return;
-  avatar.innerHTML = framedAvatar(portrait, scope);
-  avatar.dataset.avatarLook = key;
-}
 let lastWornKey = "{}";
+/** Your fighter's colour on the page (the room, the hub). */
 function syncMenuCosmetic() {
-  const panel = document.querySelector<HTMLElement>("#menu .roster-panel");
-  const fighter = state?.players.find((p) => p.id === myId);
-  const look =
-    accountsUI?.account && accountsUI.raidLook !== undefined
-      ? accountsUI.raidLook
-      : fighter?.raidLook;
-  if (panel)
-    panel.dataset.raidCosmetic = portraitCosmetics({
-      character:
-        (panel.querySelector<HTMLElement>(".fighter-detail")?.dataset
-          .detailFor as CharacterId) ?? selected,
-      raidLook: look,
-      championLooks: accountsUI?.economy?.looks ?? fighter?.championLooks,
-    });
-  const preview = panel?.querySelector<HTMLElement>(".fighter-rig-stage");
-  const previewLook = encodeURIComponent(JSON.stringify(look ?? {}));
-  if (preview && preview.dataset.previewLook !== previewLook)
-    preview.dataset.previewLook = previewLook;
   document.body.style.setProperty(
     "--element",
     `#${CHARACTERS[selected].color.toString(16).padStart(6, "0")}`,
   );
-  const avatar = Array.from(
-    document.querySelectorAll<HTMLElement>("#menu [data-raid-player]"),
-  )
-    .find((row) => row.dataset.raidPlayer === myId)
-    ?.querySelector<HTMLElement>(".raid-party-avatar");
-  syncRoomAvatar(avatar, "raid-lobby-" + myId);
-  syncRoomAvatar(
-    document.querySelector<HTMLElement>("#menu [data-me] .player-avatar"),
-    "lobby-self",
-  );
-  syncRosterLock();
-}
-/** Move the selection highlight and swap the detail panel without re-rendering. */
-function showSelection(revealSelection = false) {
-  const panel = document.querySelector<HTMLElement>("#menu .roster-panel");
-  if (!panel) return false;
-  if (!updateRosterSelection(panel, selected, reducedMotion, revealSelection))
-    return false;
-  const me = document.querySelector<HTMLElement>("#menu [data-me]");
-  if (me) {
-    const fighter = CHARACTERS[selected];
-    me.querySelector(".player-fighter")!.textContent = fighter.name;
-    const avatar = me.querySelector<HTMLElement>(".player-avatar")!;
-    avatar.style.setProperty(
-      "--element",
-      `#${fighter.color.toString(16).padStart(6, "0")}`,
-    );
-    avatar.title = fighter.name;
-    syncRoomAvatar(avatar, "lobby-self");
-  }
-  const raidMe = Array.from(
-    document.querySelectorAll<HTMLElement>("#menu [data-raid-player]"),
-  ).find((row) => row.dataset.raidPlayer === myId);
-  if (raidMe) {
-    const avatar = raidMe.querySelector<HTMLElement>(".raid-party-avatar");
-    const name = raidMe.querySelector<HTMLElement>(".raid-player-character");
-    syncRoomAvatar(avatar, "raid-lobby-" + myId);
-    if (name) name.textContent = CHARACTERS[selected].name;
-  }
-  syncMenuCosmetic();
-  syncHomePresentation();
-  return true;
 }
 function syncHomePresentation() {
   accountsUI?.syncAvatar();
@@ -1305,7 +1307,8 @@ const pvpSpectator = new PvpSpectator();
 const roomInvites = new RoomInvites({
   accountId: () => accountsUI?.account?.id,
   canJoin: () => connected && !!accountsUI?.account && !myId,
-  join: (code, mode) => (mode === "party" ? acceptParty(code) : joinByCode(code)),
+  join: (code, mode) =>
+    mode === "party" ? acceptParty(code) : joinByCode(code),
   decline: (code) => void request("party-decline", { code }),
 });
 /** Your party on the Lobby (hub redesign phase 2b), or null. */
@@ -1314,8 +1317,7 @@ let partyRoomSent = "";
 let partyCharacterSent = "";
 /** Your saved look as the party last saw it (see syncParty). */
 let partyLookSeen: string | undefined;
-const partyLeader = () =>
-  !!party && party.leader === accountsUI?.account?.id;
+const partyLeader = () => !!party && party.leader === accountsUI?.account?.id;
 async function acceptParty(code: string) {
   if (!accountsUI.ensurePlayer()) return false;
   if (myId) {
@@ -1350,9 +1352,9 @@ async function showPartyInvite() {
           )
           .join("")}</ul>`
       : `<p class="muted">None of your friends are online right now.</p><p><button type="button" class="secondary" id="party-open-friends">${iconLabel("friends", "Open Friends")}</button></p>`;
-    document.getElementById("party-open-friends")?.addEventListener("click", () =>
-      void accountsUI.showFriends(),
-    );
+    document
+      .getElementById("party-open-friends")
+      ?.addEventListener("click", () => void accountsUI.showFriends());
     box.querySelectorAll<HTMLButtonElement>("[data-party-invite]").forEach(
       (button) =>
         (button.onclick = async () => {
@@ -1434,15 +1436,6 @@ async function stopWatching(notice?: string) {
   if (notice) toast(notice);
 }
 /** The side panel while watching a room's lobby. */
-function watchPanel() {
-  const rows = state!.players
-    .map((p) => {
-      const c = CHARACTERS[p.character];
-      return `<div><span class="player-avatar" style="--element:#${c.color.toString(16).padStart(6, "0")}" title="${c.name}">${framedAvatar(identityOf(p, c.id), `watch${state!.players.indexOf(p)}`)}</span><span><strong>${escape(p.name)}</strong><small class="player-fighter">${c.name}</small></span><b class="status-pill ${!p.connected ? "offline" : p.ready ? "ready" : "choosing"}">${!p.connected ? "Offline" : p.ready ? "Ready" : "Choosing"}</b></div>`;
-    })
-    .join("");
-  return `<div class="eyebrow">Watching room ${escape(state!.code)}</div><h2>Ringside seat.</h2><p>You'll see the match live as soon as everyone's ready. Watching: ${escape((state!.watchers ?? []).join(", ") || "just you")}.</p><div class="players">${rows}</div>${partyRulesNote()}<button class="secondary btn-secondary full leave-button" id="stop-watching">${iconLabel("stop-watching", "Stop watching")}</button>`;
-}
 /** Turbo party rule: skills recharge faster (for the cooldown displays). */
 function cooldownScale() {
   return state?.mutators?.includes("turbo") ? MUTATOR_RULES.turboCooldown : 1;
@@ -1458,62 +1451,6 @@ function partyRulesNote() {
   return on.length
     ? `<p class="party-note"><b>Party rules:</b> ${on.map((m) => escape(MUTATORS[m].name)).join(" · ")}</p>`
     : "";
-}
-/** Lobby party rules: the host toggles them, everyone else sees them. */
-function partyRules(host: boolean) {
-  if (state?.arcade)
-    return `<p class="arcade-lobby-note"><b>${ARCADE_EVENTS[state.arcade.id].name}</b> · ${ARCADE_EVENTS[state.arcade.id].text} Weekly rules are fixed. PvP rating stays separate.</p>`;
-  const on = new Set(state!.mutators ?? []);
-  if (!host && !on.size) return "";
-  const chips = MUTATOR_IDS.filter((m) => host || on.has(m))
-    .map((m) =>
-      host
-        ? `<button type="button" class="rule-chip${on.has(m) ? " on" : ""}" data-mutator="${m}" aria-pressed="${on.has(m)}"><b>${escape(MUTATORS[m].name)}</b><small>${escape(MUTATORS[m].description)}</small></button>`
-        : `<span class="rule-chip on"><b>${escape(MUTATORS[m].name)}</b><small>${escape(MUTATORS[m].description)}</small></span>`,
-    )
-    .join("");
-  return `<details class="party-rules"${on.size ? " open" : ""}><summary>Party rules${on.size ? ` · ${on.size} on` : host ? " · optional" : ""}</summary><div class="rule-chips">${chips}</div>${host ? "<small>Only you (the host) can change these. Everyone readies up again after a change.</small>" : ""}</details>`;
-}
-function roomPanel(me: Fighter) {
-  if (state?.raid)
-    return raidLobby(
-      { ...state, players: state.players.map((p) => identityOf(p)) },
-      myId,
-      selected,
-    );
-  const row = (p: Fighter) => {
-    const fighter = CHARACTERS[p.id === myId ? selected : p.character];
-    return `<div${p.id === myId ? " data-me" : ""}><span class="player-avatar" style="--element:#${fighter.color.toString(16).padStart(6, "0")}" title="${fighter.name}">${framedAvatar(identityOf(p, fighter.id), `lobby${state!.players.indexOf(p)}`)}</span><span><strong>${escape(p.name)} ${p.id === myId ? "<small>(you)</small>" : ""}</strong><small class="player-fighter">${fighter.name}${p.flair ? ` · <b class="flair flair-${p.flair.toLowerCase()}">★ ${p.flair}</b>` : ""}</small></span><b class="status-pill ${!p.connected ? "offline" : p.ready ? "ready" : "choosing"}">${!p.connected ? "Offline" : p.ready ? "Ready" : "Choosing"}</b></div>`;
-  };
-  const ready = `<button class="primary btn-primary" id="ready">${me.ready ? iconLabel("cancel", "Cancel ready") : iconLabel("battle", "Ready to battle")}</button><button class="quiet full leave-button" id="leave">${iconLabel("leave", "Leave room")}</button>`;
-  const invite = `<button type="button" class="secondary btn-secondary full" id="invite-friends">${iconLabel("add-friend", "Invite friends")}</button>`;
-  if (isFfa()) {
-    const open = Math.max(0, 4 - state!.players.length);
-    const slots = Array.from(
-      { length: open },
-      (_, k) =>
-        `<div class="open-slot"><span class="slot-mark">＋</span><span>Open slot<small>${state!.players.length + k < 3 ? "Needed to start" : "Optional fourth fighter"}</small></span></div>`,
-    ).join("");
-    return `<div class="eyebrow">Private free-for-all</div><h2>Last one standing.</h2><p>Invite two or three friends from your Friends list. Everyone fights everyone; the last fighter standing takes the round.</p>${invite}<div class="players">${state!.players.map(row).join("")}${slots}</div>${partyRules(state!.players[0]?.id === myId)}${ready}<small class="room-note">First to ${roundsNeeded(state!.mutators)} round wins. Starts when everyone here is ready (3 or 4 players).</small>`;
-  }
-  if (!isTeams())
-    return `<div class="eyebrow">Private lobby</div><h2>Your duel starts here.</h2><p>Invite a friend from your Friends list.</p>${invite}<div class="players">${state!.players.map(row).join("")}${state!.players.length < 2 ? '<div class="waiting"><span>＋</span> Waiting for your opponent…</div>' : ""}</div>${partyRules(state!.players[0]?.id === myId)}${ready}<small class="room-note">The match begins when both players are ready.</small>`;
-  const mine = teamOf(me),
-    host = state!.players[0]?.id === myId;
-  const columns = ([0, 1] as const)
-    .map((t) => {
-      const members = state!.players.filter((p) => teamOf(p) === t);
-      const open = Math.max(0, 2 - members.length);
-      // One way to join the other team; further free seats are just shown open.
-      const slots = Array.from({ length: open }, (_, k) =>
-        t !== mine && k === 0
-          ? `<button type="button" class="open-slot join" data-team="${t}"><span class="slot-mark">＋</span><span>Join ${TEAM_LABELS[t]}<small>Switch to this team</small></span></button>`
-          : `<div class="open-slot"><span class="slot-mark">＋</span><span>Open slot<small>Waiting for a player</small></span></div>`,
-      ).join("");
-      return `<div class="team-column team-${t}${t === mine ? " mine" : ""}"><div class="team-head">${TEAM_LABELS[t]} team</div><div class="players">${members.map(row).join("")}${slots}</div></div>`;
-    })
-    .join("");
-  return `<div class="eyebrow">Private 2v2 lobby</div><h2>Two on two.</h2><p>Invite three friends from your Friends list, then pick a side.</p>${invite}<div class="team-columns">${columns}</div>${host ? `<button class="quiet full" id="shuffle">${iconLabel("shuffle", "Shuffle teams")}</button>` : ""}${teamUpNote({ ...me, character: selected })}${partyRules(host)}${ready}<small class="room-note">First team to ${roundsNeeded(state!.mutators)} round wins. Starts when all four players are ready.</small>`;
 }
 type BotLevel = "easy" | "normal" | "hard";
 const BOT_LEVELS: [BotLevel, string, string][] = [
@@ -1691,8 +1628,7 @@ function syncPlaza(want: boolean) {
         ),
       ),
     skinName: (id) => CHAMPION_SKIN_BY_ID[id]?.name ?? null,
-    fighterName: (id) =>
-      CHARACTERS[id as CharacterId]?.name ?? "Fighter",
+    fighterName: (id) => CHARACTERS[id as CharacterId]?.name ?? "Fighter",
     playerName: () => accountsUI.account?.displayName ?? "You",
     loadProgress: async () =>
       (await accountsUI.api("/api/plaza")) as PlazaProgress,
@@ -1826,6 +1762,8 @@ function syncFarm(want: boolean) {
   farmScreen = openFarmScreen({
     reduced: reducedMotion,
     low: farmLow,
+    sound: (cue, step) => audio.farm(cue, step),
+    rainSound: (level) => audio.farmRainSound(level),
     load: async () => (await accountsUI.api("/api/farm")) as FarmState,
     act: async (actions) =>
       (await accountsUI.api("/api/farm/act", {
@@ -1938,11 +1876,17 @@ async function lobbyPlay(mode: LobbyMode) {
   const size = party?.members.length ?? 0;
   if (size > 1) {
     if (!partyLeader())
-      return toast("Your party leader starts the game. Leave the party to play on your own.");
+      return toast(
+        "Your party leader starts the game. Leave the party to play on your own.",
+      );
     if (mode.startsWith("bot-") || mode === "practice")
-      return toast("With a party, choose a room: 1v1, 2v2, Free-for-all or Boss Raid.");
+      return toast(
+        "With a party, choose a room: 1v1, 2v2, Free-for-all or Boss Raid.",
+      );
     if ((mode === "duel" && size > 2) || (mode === "teams" && size > 4))
-      return toast(`Your party has ${size} players: choose 2v2 Teams, Free-for-all or Boss Raid.`);
+      return toast(
+        `Your party has ${size} players: choose 2v2 Teams, Free-for-all or Boss Raid.`,
+      );
   }
   if (mode === "raid") return void accountsUI.showRaids();
   if (mode === "practice") return document.getElementById("practice")?.click();
@@ -2047,64 +1991,6 @@ function requestRaidHud(event: string, data?: unknown): Promise<unknown> {
     return reply;
   });
 }
-function wireRaidLobby() {
-  // Practice: the host picks one boss attack to repeat.
-  document
-    .querySelectorAll<HTMLButtonElement>("#menu [data-raid-drill]")
-    .forEach((b) => {
-      b.onclick = () =>
-        void request("raid-drill", { kind: b.dataset.raidDrill }).then(
-          (reply) => {
-            const r = reply as { ok?: boolean; error?: string };
-            if (!r.ok && r.error) toast(r.error);
-          },
-        );
-    });
-}
-function wireRoom() {
-  wireRaidLobby();
-  const inviteFriends = document.getElementById("invite-friends");
-  if (inviteFriends)
-    inviteFriends.onclick = () => void accountsUI.showFriends();
-  $("ready").onclick = () => {
-    audio.unlock();
-    const preview =
-      $("menu").querySelector<HTMLElement>(".fighter-detail")?.dataset
-        .detailFor;
-    const alreadyReady = state?.players.find((p) => p.id === myId)?.ready;
-    if (!alreadyReady && preview && preview !== selected) {
-      toast(
-        `Lock in ${CHARACTERS[preview as CharacterId].name} or return to your current fighter before readying up.`,
-      );
-      $("menu")
-        .querySelector<HTMLButtonElement>("[data-fighter-lock]")
-        ?.focus({ preventScroll: true });
-      return;
-    }
-    void request("ready");
-  };
-  $("leave").onclick = () => void leave();
-  document
-    .querySelectorAll<HTMLButtonElement>("[data-team]")
-    .forEach(
-      (b) =>
-        (b.onclick = () =>
-          void request("team", { team: Number(b.dataset.team) })),
-    );
-  if (document.getElementById("shuffle"))
-    $("shuffle").onclick = () => void request("shuffle");
-  document
-    .querySelectorAll<HTMLButtonElement>("[data-mutator]")
-    .forEach((b) => {
-      b.onclick = () => {
-        const on = new Set(state?.mutators ?? []);
-        const id = b.dataset.mutator as MutatorId;
-        if (on.has(id)) on.delete(id);
-        else on.add(id);
-        void request("mutators", { ids: [...on] });
-      };
-    });
-}
 function renderMenu(revealSelection = false) {
   document.body.classList.remove("practice-active");
   audio.setTheme("lobby");
@@ -2149,9 +2035,13 @@ function renderMenu(revealSelection = false) {
     !$("menu").hidden &&
     previous.slice(0, previous.lastIndexOf(":")) ===
       key.slice(0, key.lastIndexOf(":")) &&
-    showSelection(revealSelection)
-  )
+    $("menu").querySelector(":scope > .room-screen")
+  ) {
+    refreshRoom();
+    syncMenuCosmetic();
+    syncHomePresentation();
     return;
+  }
   // Keep the reader's place when the menu re-renders while already visible.
   const keepScroll = !$("menu").hidden ? scrollY : null;
   touch.reset();
@@ -2175,12 +2065,6 @@ function renderMenu(revealSelection = false) {
     void $("menu").offsetWidth;
     $("menu").classList.add("screen-enter");
   }
-  const panelMarkup = isRoom
-    ? roomPanel(p!)
-    : watchingRoom
-      ? watchPanel()
-      : `${startRoomSection(roomMode)}<label for="name">Your display name</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><div class="home-play-options"><section><h3>Join your crew</h3><label for="code">Room code</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary btn-secondary">${iconLabel("enter", "Join")}</button></div><button id="watch" class="quiet full">${iconLabel("watch", "Watch this room instead")}</button></section><section><h3>Sharpen your skills</h3><div class="bot-picker" role="radiogroup" aria-label="Bot difficulty">${BOT_LEVELS.map(([id, label, hint]) => `<button type="button" role="radio" class="bot-level${botLevel === id ? " active" : ""}" data-bot="${id}" aria-checked="${botLevel === id}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button class="secondary btn-secondary full" id="bot-match">${iconLabel("bot", "Battle an AI bot")}</button>${accountsUI?.account ? '<button class="quiet full" id="practice">' + iconLabel("target", "Solo test mode") + "</button>" : ""}</section></div><small class="room-note">Free to play · Login required<br>Keyboard + mouse · Controller · Touch</small>`;
-  // A newly equipped Shop skin redraws the roster cards.
   const wornKey = JSON.stringify([
     accountsUI?.economy?.looks ?? {},
     accountsUI?.raidLook ?? {},
@@ -2189,41 +2073,28 @@ function renderMenu(revealSelection = false) {
   lastWornKey = wornKey;
   setWornSkins(accountsUI?.economy?.looks);
   setWornLook(accountsUI?.raidLook);
-  const retainedShell = updateMenuShell(
-    $("menu"),
-    panelMarkup,
-    () =>
-      home
-        ? homeShell(panelMarkup)
-        : `<header class="desktop-lobby-header"><div class="eyebrow">Elemental Coliseum</div><h1>Choose your fighter</h1><p>Pick your creature. Enter the arena.</p></header><div class="lobby-layout"><div class="roster-panel">${fighterSelection(selected)}</div><aside class="room-panel card">${panelMarkup}</aside></div>`,
-    keepScroll !== null &&
-      !wornChanged &&
-      !!$("menu").querySelector(".home-screen") === home,
-  );
-  if (!home)
-    frameLobbyPanel($("menu").querySelector<HTMLElement>(".room-panel")!);
-  wireRoster(isRoom);
-  syncRosterMastery($("menu"));
-  syncMenuCosmetic();
-  syncHomePresentation();
-  // Fighter panel slot: between the rows on PC, under the swipeable row on phones.
-  if (!retainedShell) watchFighterDetail($("menu"));
-  else if (
-    previous &&
-    previous.slice(previous.lastIndexOf(":") + 1) !== selected
-  )
-    showSelection(revealSelection);
-  if (keepScroll !== null && Math.abs(scrollY - keepScroll) > 1)
-    scrollTo(0, keepScroll);
-  if (watchingRoom) {
-    $("stop-watching").onclick = () => void stopWatching();
+  // A room (or a room you watch): the seats beside the roster picker.
+  if (!home) {
+    renderRoom(watchingRoom);
+    syncMenuCosmetic();
+    syncHomePresentation();
     return;
   }
-  if (!isRoom && accountsUI?.account)
-    $<HTMLInputElement>("name").readOnly = true;
-  if (isRoom) {
-    wireRoom();
-  } else {
+  const panelMarkup = `${startRoomSection(roomMode)}<label for="name">Your display name</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><div class="home-play-options"><section><h3>Join your crew</h3><label for="code">Room code</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary btn-secondary">${iconLabel("enter", "Join")}</button></div><button id="watch" class="quiet full">${iconLabel("watch", "Watch this room instead")}</button></section><section><h3>Sharpen your skills</h3><div class="bot-picker" role="radiogroup" aria-label="Bot difficulty">${BOT_LEVELS.map(([id, label, hint]) => `<button type="button" role="radio" class="bot-level${botLevel === id ? " active" : ""}" data-bot="${id}" aria-checked="${botLevel === id}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button class="secondary btn-secondary full" id="bot-match">${iconLabel("bot", "Battle an AI bot")}</button>${accountsUI?.account ? '<button class="quiet full" id="practice">' + iconLabel("target", "Solo test mode") + "</button>" : ""}</section></div><small class="room-note">Free to play · Login required<br>Keyboard + mouse · Controller · Touch</small>`;
+  updateMenuShell(
+    $("menu"),
+    panelMarkup,
+    () => homeShell(panelMarkup),
+    keepScroll !== null &&
+      !wornChanged &&
+      !!$("menu").querySelector(".home-screen"),
+  );
+  syncMenuCosmetic();
+  syncHomePresentation();
+  if (keepScroll !== null && Math.abs(scrollY - keepScroll) > 1)
+    scrollTo(0, keepScroll);
+  if (accountsUI?.account) $<HTMLInputElement>("name").readOnly = true;
+  {
     const play = async (event: "create" | "join") => {
       if (!accountsUI.ensurePlayer()) return;
       if (!connected) return toast("Waiting for the server connection.");
@@ -2305,7 +2176,6 @@ function renderMenu(revealSelection = false) {
             });
         }),
     );
-    wireRaidLobby();
     $("bot-match").onclick = async () => {
       if (!accountsUI.ensurePlayer()) return;
       if (!connected) return toast("Waiting for the server connection.");
@@ -2358,7 +2228,7 @@ async function leave(returnToHub = true) {
   raidRoomReturn = undefined;
   sessionStorage.removeItem("arena-token");
   lobbySelection.reset();
-  lockedRoomPick = savingRoomPick = "";
+  savingRoomPick = "";
   lockAttempt++;
   state = undefined;
   myId = "";
@@ -2503,9 +2373,7 @@ function renderBattle() {
     );
     setHudText(
       $(`health-text-${i}`),
-      p.out
-        ? "LEFT THE MATCH"
-        : `${Math.ceil(Math.max(0, p.hp))} / ${full} HP`,
+      p.out ? "LEFT THE MATCH" : `${Math.ceil(Math.max(0, p.hp))} / ${full} HP`,
     );
     setHudText(
       $(`score-${i}`),
@@ -2542,9 +2410,9 @@ function renderBattle() {
             ? `SLEEP +${Math.round((STATUS_RULES.sleepVulnerability - 1) * 100)}% DMG`
             : s.kind === "shell"
               ? `SHELL −${Math.round((1 - STATUS_RULES.shellReduction) * 100)}% DMG`
-            : s.kind === "mark"
-              ? comboOf(s.by).toUpperCase()
-              : s.kind.toUpperCase(),
+              : s.kind === "mark"
+                ? comboOf(s.by).toUpperCase()
+                : s.kind.toUpperCase(),
         )
         .join(" · "),
     );
@@ -3005,7 +2873,7 @@ socket.on("session-replaced", () => {
   sessionStorage.removeItem("arena-token");
   roomInvites.clear();
   lobbySelection.reset();
-  lockedRoomPick = savingRoomPick = "";
+  savingRoomPick = "";
   lockAttempt++;
   state = undefined;
   myId = watching = "";
@@ -3078,7 +2946,7 @@ socket.on("token-expired", () => {
 socket.on("access-revoked", ({ error }: { error: string }) => {
   sessionStorage.removeItem("arena-token");
   lobbySelection.reset();
-  lockedRoomPick = savingRoomPick = "";
+  savingRoomPick = "";
   lockAttempt++;
   state = undefined;
   myId = "";
@@ -3111,7 +2979,7 @@ socket.on("state", (snapshot: WireSnapshot) => {
     snapshot.phase === "lobby" &&
     (previous?.phase !== "lobby" || previous.code !== snapshot.code)
   ) {
-    lockedRoomPick = savingRoomPick = "";
+    savingRoomPick = "";
     lockAttempt++;
   }
   state = unpackSnapshot(snapshot, snapshotMeta);
@@ -5130,13 +4998,20 @@ class ArenaScene extends Phaser.Scene {
       // Static Glide keeps a fighter airborne longer than a jump: it lifts,
       // sails at a steady height and settles, instead of following the jump arc.
       let glide = gliding.get(p.id);
-      if (airborne > RULES.jumpDuration + 0.05 && glide?.until !== serverPlayer.jumpUntil)
-        gliding.set(p.id, (glide = { until: serverPlayer.jumpUntil, start: state.time }));
-      const isGliding = !!glide && glide.until === serverPlayer.jumpUntil && airborne > 0;
+      if (
+        airborne > RULES.jumpDuration + 0.05 &&
+        glide?.until !== serverPlayer.jumpUntil
+      )
+        gliding.set(
+          p.id,
+          (glide = { until: serverPlayer.jumpUntil, start: state.time }),
+        );
+      const isGliding =
+        !!glide && glide.until === serverPlayer.jumpUntil && airborne > 0;
       const jump = isGliding
         ? 34 *
-          Math.min(1, (state.time - glide!.start) / 0.2) *
-          Math.min(1, airborne / 0.3) +
+            Math.min(1, (state.time - glide!.start) / 0.2) *
+            Math.min(1, airborne / 0.3) +
           Math.sin(state.time * 9) * 2
         : airborne > 0
           ? Math.sin((1 - airborne / RULES.jumpDuration) * Math.PI) * 45

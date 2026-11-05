@@ -76,6 +76,18 @@ export interface RosterData {
   low?: boolean;
   /** What the main button does: Select here, Lock in a room (step 5). */
   action?: "select" | "lock";
+  /**
+   * In a room (action "lock"): the room's name, and where your pick stands.
+   * `playing` is then the fighter locked in for you.
+   */
+  room?: {
+    kicker: string;
+    /** The pick is being saved on the server. */
+    saving: boolean;
+    ready: boolean;
+    /** Ready can be pressed (the room is waiting, nothing is being saved). */
+    canReady: boolean;
+  };
 }
 export const rosterView = (
   focus: CharacterId,
@@ -202,7 +214,7 @@ function card(c: CharacterId, view: RosterView, d: RosterData) {
   const f = CHARACTERS[c];
   const looks = looksOwned(c, d.owned);
   const playing = c === d.playing;
-  return `<button type="button" class="roster-card" data-roster-card="${c}" aria-pressed="${c === view.focus}" aria-label="${esc(`${f.name}, ${f.element}, ${rangeName(c)}, ${f.role}${playing ? ", playing" : ""}`)}" style="--el:${elVar(c)}"><span class="roster-card-top">${elementTag(f.element)}${masteryRing(c, d, 34)}</span><span class="roster-card-art">${cardArt(c, d)}</span><span class="roster-card-text"><b class="roster-card-name">${esc(f.name)}</b><small>${esc(f.role)}</small></span><span class="roster-card-foot">${rangeTag(c)}<span class="ui-note">${looks.have}/${looks.all} looks</span>${playing ? tag("Playing", "ok") : ""}</span></button>`;
+  return `<button type="button" class="roster-card" data-roster-card="${c}" aria-pressed="${c === view.focus}" aria-label="${esc(`${f.name}, ${f.element}, ${rangeName(c)}, ${f.role}${playing ? ", playing" : ""}`)}" style="--el:${elVar(c)}"><span class="roster-card-top">${elementTag(f.element)}${masteryRing(c, d, 34)}</span><span class="roster-card-art">${cardArt(c, d)}</span><span class="roster-card-text"><b class="roster-card-name">${esc(f.name)}</b><small>${esc(f.role)}</small></span><span class="roster-card-foot">${rangeTag(c)}<span class="ui-note">${looks.have}/${looks.all} looks</span>${playing ? tag(d.room ? "Locked" : "Playing", "ok") : ""}</span></button>`;
 }
 
 function filters(view: RosterView) {
@@ -238,6 +250,40 @@ function filters(view: RosterView) {
 
 /* ------------------------------------------------------------ grid */
 
+/** A room's two buttons for the fighter shown: Lock in, then Ready. */
+function roomButtons(c: CharacterId, d: RosterData) {
+  const r = d.room!;
+  const locked = c === d.playing && !r.saving;
+  return [
+    button(r.saving ? "Confirming…" : locked ? "Locked in" : "Lock in", {
+      icon: locked ? "check" : undefined,
+      disabled: locked || r.saving || r.ready,
+      attrs: {
+        "data-roster-select": c,
+        "aria-label": `${r.saving ? "Confirming" : locked ? "Locked in" : "Lock in"} ${CHARACTERS[c].name}`,
+      },
+    }),
+    button(r.ready ? "Cancel ready" : "Ready", {
+      kind: "primary",
+      icon: r.ready ? undefined : "battle",
+      disabled: !r.canReady,
+      attrs: { id: "ready", "data-roster-ready": c },
+    }),
+  ];
+}
+/** The corner button: back to the Lobby, or (in a room) leave the room. */
+const cornerButton = (d: RosterData) =>
+  d.room
+    ? iconButton("leave", "Leave the room", {
+        class: "ui-close",
+        id: "leave",
+        "data-roster-leave": true,
+      })
+    : iconButton("cancel", "Back to the Lobby", {
+        class: "ui-close",
+        "data-ui-close": true,
+      });
+
 function gridMarkup(view: RosterView, d: RosterData) {
   const cards = rosterOrder(view, d);
   const focus = CHARACTERS[view.focus];
@@ -248,21 +294,39 @@ function gridMarkup(view: RosterView, d: RosterData) {
   const chosen = view.focus === d.playing;
   // Nothing shown (a filter): nothing to act on either.
   const none = !cards.length;
+  const status = d.room
+    ? d.room.ready
+      ? "Ready · waiting for the others"
+      : d.room.saving && chosen
+        ? "Locking in…"
+        : chosen
+          ? "Locked in · ready when you are"
+          : "Picked · lock in to play it"
+    : chosen
+      ? "You play as"
+      : "Picked";
   const foot = actionBar(
-    `${avatar(fighterAvatar(view.focus, "roster-foot", d.looks[view.focus]), { element: focus.element })}<span class="roster-foot-text"><small class="ui-note">${chosen ? "You play as" : "Picked"}</small><b class="ui-h">${esc(focus.name)}</b></span>`,
+    `${avatar(fighterAvatar(view.focus, "roster-foot", d.looks[view.focus]), { element: focus.element })}<span class="roster-foot-text"><small class="ui-note">${esc(status)}</small><b class="ui-h">${esc(focus.name)}</b></span>`,
     actions(
       button("Details", {
         disabled: none,
         attrs: { "data-roster-details": view.focus },
       }),
-      button(lock ? "Lock in" : chosen ? "Playing" : "Select", {
-        kind: "primary",
-        disabled: none || (!lock && chosen),
-        attrs: { "data-roster-select": view.focus },
-      }),
+      ...(d.room
+        ? roomButtons(view.focus, d)
+        : [
+            button(lock ? "Lock in" : chosen ? "Playing" : "Select", {
+              kind: "primary",
+              disabled: none || (!lock && chosen),
+              attrs: { "data-roster-select": view.focus },
+            }),
+          ]),
     ),
   );
-  return `<section class="ui-panel roster-room" role="dialog" aria-label="Fighters" data-roster-mode="grid"><header class="ui-panel-head roster-head"><div class="ui-heading"><span class="ui-kicker">Your roster · ${FIGHTERS.length} fighters</span><h2 class="ui-title">Fighters</h2></div>${filters(view)}${iconButton("cancel", "Back to the Lobby", { class: "ui-close", "data-ui-close": true })}</header><div class="ui-panel-body roster-body" data-roster-region="body">${body}</div>${foot}</section>`;
+  const heading = d.room
+    ? `<span class="ui-kicker">${esc(d.room.kicker)}</span><h2 class="ui-title">Fighters</h2>`
+    : `<span class="ui-kicker">Your roster · ${FIGHTERS.length} fighters</span><h2 class="ui-title">Fighters</h2>`;
+  return `<section class="ui-panel roster-room${d.room ? " is-room" : ""}" role="dialog" aria-label="${d.room ? "Choose your fighter" : "Fighters"}" data-roster-mode="grid"><header class="ui-panel-head roster-head"><div class="ui-heading">${heading}</div>${filters(view)}${cornerButton(d)}</header><div class="ui-panel-body roster-body" data-roster-region="body">${body}</div>${foot}</section>`;
 }
 
 /* ---------------------------------------------------------- detail */
@@ -359,16 +423,18 @@ function detailMarkup(view: RosterView, d: RosterData) {
   ](view, d);
   const foot = actionBar(
     `<span class="roster-foot-text"><small class="ui-note">Mastery · ${esc(m.label)}</small>${bar(m.progress, 100, { label: "Mastery progress", color: m.tier?.color })}</span>`,
-    actions(
-      button("Try skins", { attrs: { "data-roster-skins": c } }),
-      button(lock ? "Lock in" : chosen ? "Playing" : "Select", {
-        kind: "primary",
-        disabled: !lock && chosen,
-        attrs: { "data-roster-select": c },
-      }),
-    ),
+    d.room
+      ? actions(...roomButtons(c, d))
+      : actions(
+          button("Try skins", { attrs: { "data-roster-skins": c } }),
+          button(lock ? "Lock in" : chosen ? "Playing" : "Select", {
+            kind: "primary",
+            disabled: !lock && chosen,
+            attrs: { "data-roster-select": c },
+          }),
+        ),
   );
-  return `<section class="ui-panel is-split roster-room" role="dialog" aria-label="${esc(f.name)}" data-roster-mode="detail">${stage(view, d)}<div class="ui-split-main"><header class="ui-panel-head roster-head">${button("Roster", { size: "s", icon: "back", attrs: { "data-roster-back": true } })}${view.tab === "overview" ? "" : `<span class="ui-note roster-hint">${esc(f.description)}</span>`}${iconButton("cancel", "Back to the Lobby", { class: "ui-close", "data-ui-close": true })}</header>${tabRow}<div class="ui-panel-body roster-body" data-roster-region="body"${attrs({ "data-tab": view.tab })}>${body}</div>${foot}</div></section>`;
+  return `<section class="ui-panel is-split roster-room${d.room ? " is-room" : ""}" role="dialog" aria-label="${esc(f.name)}" data-roster-mode="detail">${stage(view, d)}<div class="ui-split-main"><header class="ui-panel-head roster-head">${button("Roster", { size: "s", icon: "back", attrs: { "data-roster-back": true } })}${view.tab === "overview" ? "" : `<span class="ui-note roster-hint">${esc(f.description)}</span>`}${cornerButton(d)}</header>${tabRow}<div class="ui-panel-body roster-body" data-roster-region="body"${attrs({ "data-tab": view.tab })}>${body}</div>${foot}</div></section>`;
 }
 
 /** The whole screen: the grid, or one fighter on the stage. */

@@ -9,13 +9,12 @@ import {
   proportioned,
 } from "../../apps/client/src/creature-design";
 import { rigAnchors, rigAssets } from "../../apps/client/src/animation/assets";
-import { traitAura, withAura } from "../../apps/client/src/trait-effects";
 import {
   AURA_SCALE,
   drawBattleAura,
   type AuraPainter,
 } from "../../apps/client/src/battle-aura";
-import { fighterSelection } from "../../apps/client/src/fighter-selection";
+import { rosterDetail, rosterGrid } from "./roster-markup";
 describe("cute proportions", () => {
   it("grows the face and shrinks the body while keeping the feet planted", () => {
     expect(PROPORTIONS.head.s).toBeGreaterThan(1);
@@ -89,36 +88,11 @@ describe("cute proportions", () => {
     expect(creatureSvg("voltkit")).toContain('viewBox="0 -12 200 202"');
   });
 });
-describe("trait auras", () => {
-  it("is deterministic and well formed for every fighter", () => {
-    for (const id of FIGHTER_IDS) {
-      expect(traitAura(id)).toEqual(traitAura(id));
-      const svg = withAura(creatureSvg(id), id);
-      expect(svg.match(/<svg /g)).toHaveLength(1);
-      expect(svg).toContain('class="ta-back"');
-      expect(svg).toContain('class="ta-front"');
-      expect(svgMarkup(svg)).not.toMatch(/NaN|undefined/);
-      // No tag may carry the same attribute twice (e.g. two style attributes).
-      for (const tag of svg.match(/<[a-zA-Z][^>]*>/g)!) {
-        const names = [...tag.matchAll(/\s([a-zA-Z-]+)="/g)].map((m) => m[1]);
-        expect(new Set(names).size, `${id}: ${tag.slice(0, 80)}`).toBe(
-          names.length,
-        );
-      }
-    }
-  });
-  it("stands still for reduced motion", () => {
-    for (const id of FIGHTER_IDS) {
-      const still = withAura(creatureSvg(id), id, true);
-      expect(still).not.toContain("animation:");
-      expect(still).not.toContain("<animateMotion");
-    }
-    expect(withAura(creatureSvg("duskveil"), "duskveil")).toContain(
-      "<animateMotion",
-    );
-  });
+describe("menu art", () => {
   it("no menu portrait wears an element aura (the Wardrobe's look only)", () => {
-    expect(fighterSelection("tidefin")).not.toContain("trait-aura");
+    expect(rosterGrid("tidefin") + rosterDetail("tidefin")).not.toContain(
+      "trait-aura",
+    );
   });
 });
 describe("battle auras", () => {

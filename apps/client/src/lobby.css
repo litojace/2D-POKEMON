@@ -269,16 +269,6 @@
   opacity: 1;
   z-index: 1;
 }
-.lobby-fighter-art > svg.ta-front-layer,
-.lobby-member-art > svg.ta-front-layer {
-  display: none;
-  pointer-events: none;
-}
-.lobby-fighter-art.is-ready > svg.ta-front-layer,
-.lobby-member-art.is-ready > svg.ta-front-layer {
-  display: block;
-  z-index: 2;
-}
 /* Podiums: a lit disc under your fighter and under every seat, all on the
    same floor line, tinted by the fighter's element (as in the hub redesign
    proposal). An open seat's podium is fainter. */

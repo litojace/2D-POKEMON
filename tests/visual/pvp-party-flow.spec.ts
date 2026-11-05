@@ -1,5 +1,13 @@
 import { expect, test } from "@playwright/test";
-import { box, inside, openHub, pushUntilBattle, snap, openPlayPanel, hubMenu } from "./helpers";
+import {
+  box,
+  inside,
+  openHub,
+  pushUntilBattle,
+  snap,
+  openPlayPanel,
+  hubMenu,
+} from "./helpers";
 const pal = "22222222-2222-4222-8222-222222222222";
 test("raid room invites open Friends instead of displaying a room code", async ({
   browser,
@@ -28,12 +36,15 @@ test("raid room invites open Friends instead of displaying a room code", async (
         );
       })
       .toBe(true);
-    await page.locator(".lobby-room-drawer > summary").click();
+    // The room (UI remodel step 5): no drawer on phones, the open seats
+    // invite friends.
+    await expect(page.locator(".room-seats")).toBeVisible();
+    await expect(page.locator(".lobby-room-drawer")).toHaveCount(0);
     await expect(page.locator("#copy, #invite, #raid-copy-code")).toHaveCount(
       0,
     );
     await expect(page.locator("#invite-friends")).toHaveCount(1);
-    await expect(page.locator(".raid-lobby")).not.toContainText(
+    await expect(page.locator(".room-seats")).not.toContainText(
       "Invite your party",
     );
     await snap(page, info, "raid-friends-invite-844x390");
@@ -156,7 +167,7 @@ for (const size of [
         })
         .toBe(true);
       await expect(notice).toBeHidden();
-      await page.locator('[data-character="cindrake"]').click();
+      await page.locator('.room-screen [data-roster-card="cindrake"]').click();
       // Delay the actual acknowledgement: never claim a selection is saved early.
       await page.evaluate(() => {
         const w = window as any,
@@ -178,39 +189,28 @@ for (const size of [
           return timed;
         };
       });
-      await page.locator('[data-fighter-lock="cindrake"]').click();
-      await expect(page.locator("[data-fighter-lock]")).toHaveText(
-        "Confirming…",
-      );
-      await expect(page.locator(".lobby-room-drawer")).not.toHaveClass(
-        /needs-ready/,
-      );
+      const lock = page.locator('.room-screen [data-roster-select="cindrake"]');
+      await lock.click();
+      await expect(lock).toHaveText("Confirming…");
+      // Ready waits while the pick is being saved.
+      await expect(page.locator("#ready")).toBeDisabled();
       await page.evaluate(() => (window as any).__confirmPick());
-      await expect(page.locator("[data-fighter-lock]")).toContainText(
+      await expect(lock).toContainText("Locked in");
+      await expect(lock).toBeDisabled();
+      await expect(page.locator("#ready")).toBeEnabled();
+      await expect(page.locator(".roster-foot-text")).toContainText(
         "Locked in",
       );
-      await expect(page.locator("[data-fighter-lock]")).toBeDisabled();
-      await expect(page.locator("#ready")).toHaveClass(/needs-ready/);
-      if (mobile) {
-        await expect(
-          page.locator(".lobby-room-drawer > summary"),
-        ).toContainText("Ready up");
-        await expect(page.locator(".lobby-room-drawer")).toHaveClass(
-          /needs-ready/,
-        );
-        const roomButton = await box(page, ".lobby-room-drawer > summary");
-        expect(roomButton.height).toBeGreaterThanOrEqual(44);
-        expect(roomButton.y + roomButton.height).toBeLessThanOrEqual(
-          (await box(page, ".desktop-lobby-header")).y,
-        );
-      }
-      await page.locator(".fighter-detail").evaluate(async (e) => {
+      // No drawer on phones: Ready is in sight, bottom right, beside Lock in.
+      await expect(page.locator("#ready")).toBeInViewport();
+      const ready = await box(page, "#ready");
+      expect(ready.x).toBeGreaterThan((await box(page, ".room-seats")).x);
+      await page.locator(".room-screen").evaluate(async (e) => {
         await Promise.all(
           e.getAnimations().map((a) => a.finished.catch(() => {})),
         );
       });
       await snap(page, info, `locked-in-${size.width}x${size.height}`);
-      if (mobile) await page.locator(".lobby-room-drawer > summary").click();
       await expect(page.locator("#copy, #invite, #raid-copy-code")).toHaveCount(
         0,
       );
@@ -236,17 +236,8 @@ for (const size of [
       ).toEqual([{ event: "room-invite", data: { playerId: pal } }]);
       await snap(page, info, `invite-friends-${size.width}x${size.height}`);
       await page.locator("#close-dialog").click();
-      if (
-        mobile &&
-        (await page.locator(".lobby-room-drawer").getAttribute("open")) === null
-      )
-        await page.locator(".lobby-room-drawer > summary").click();
       await page.locator("#ready").click();
       await expect(page.locator("#ready")).toContainText("Cancel ready");
-      await expect(page.locator("#ready")).not.toHaveClass(/needs-ready/);
-      await expect(page.locator(".lobby-room-drawer")).not.toHaveClass(
-        /needs-ready/,
-      );
       await page.evaluate(() => {
         const w = window as any;
         w.__snap.phase = "playing";
@@ -290,15 +281,12 @@ for (const size of [
           await page.keyboard.up(code);
           await expect
             .poll(() =>
-              page.evaluate(
-                (axis) => {
-                  const inputs = (window as any).__events.filter(
-                    (e: any) => e.event === "input",
-                  );
-                  return inputs.at(-1)?.data[axis] ?? null;
-                },
-                axis,
-              ),
+              page.evaluate((axis) => {
+                const inputs = (window as any).__events.filter(
+                  (e: any) => e.event === "input",
+                );
+                return inputs.at(-1)?.data[axis] ?? null;
+              }, axis),
             )
             .toBe(0);
         }
@@ -344,7 +332,11 @@ for (const size of [
         expect(gear.y).toBeLessThanOrEqual(8);
         expect(gear.x).toBeGreaterThan(size.width - 54);
         await page.locator("#battle-menu").click();
-        await expect(page.locator("#dialog").getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
+        await expect(
+          page
+            .locator("#dialog")
+            .getByRole("heading", { name: "Settings", exact: true }),
+        ).toBeVisible();
         await expect(page.locator("#settings-fullscreen")).toHaveCount(0);
         await page.click("#close-dialog");
         await expect(page.locator(".joystick-area")).toBeHidden();
