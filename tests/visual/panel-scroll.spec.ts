@@ -172,7 +172,9 @@ const FARM_SHEETS = ["shop", "friends", "decor", "book"].map(
     name: `farm ${sheet}`,
     root: "#fm-sheet",
     open: async (page) => {
-      await page.click('#hub-scenes [data-hub-scene="farm"]');
+      // Stay on the Farm between its sheets (closeAll closes the sheet).
+      if (!(await page.locator("#fm-rail").isVisible()))
+        await page.click('#hub-scenes [data-hub-scene="farm"]');
       await expect(page.locator("#fm-rail")).toBeVisible({ timeout: 30_000 });
       await page.locator(`#fm-rail [data-sheet="${sheet}"]`).click();
       await expect(page.locator("#fm-sheet")).toBeVisible();
@@ -211,6 +213,8 @@ async function closeAll(page: Page) {
   if (await close.count()) await close.first().click();
   if (await page.locator("#lobby-mode-menu:not([hidden])").count())
     await page.click("#lobby-mode");
+  // On the Farm with its sheet closed: stay (its sheets open from its rail).
+  if (await page.locator("#fm-rail").isVisible()) return;
   if (!(await page.locator("#lobby-play").isVisible()))
     await page
       .click('#hub-scenes [data-hub-scene="lobby"]', { timeout: 3000 })
