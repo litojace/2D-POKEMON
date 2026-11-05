@@ -11,7 +11,7 @@
  * round plays the same line-ups and only the FFA factors change. Writes one
  * row per match: { picks, winner (index into picks) | null, stats } where
  * stats[i] = [damage dealt, seconds alive while the round was being played,
- * seconds alive with an enemy inside basic-attack reach].
+ * seconds alive with an enemy inside basic-attack reach, damage taken].
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import {
@@ -41,7 +41,7 @@ const random = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
 type Row = {
   picks: CharacterId[];
   winner: number | null;
-  stats: [number, number, number][];
+  stats: [number, number, number, number][];
 };
 const rows: Row[] = [];
 const dt = 1 / RULES.tick;
@@ -88,6 +88,7 @@ for (let m = 0; m < +matches; m++) {
       Math.round(p.stats.dealt ?? 0),
       +alive[i].toFixed(1),
       +reach[i].toFixed(1),
+      Math.round(p.stats.received ?? 0),
     ]),
   });
 }

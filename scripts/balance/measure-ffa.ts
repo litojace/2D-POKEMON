@@ -1,7 +1,8 @@
 /**
  * Measure free-for-all balance with bots: each champion's win rate (with its
- * standard error), damage per second while alive and share of alive time with
- * an enemy in basic-attack reach, at Hard and Normal.
+ * standard error), damage dealt and taken per second while alive and share of
+ * alive time with an enemy in basic-attack reach, at Hard and Normal, and how
+ * long a full-health champion lasts (health ÷ damage taken per second alive).
  *
  *   npx tsx scripts/balance/measure-ffa.ts <matchesPerDifficulty> [options]
  *
@@ -17,7 +18,12 @@
 import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { FFA_TUNING, FIGHTER_IDS } from "../../packages/shared/src/index.ts";
+import {
+  CHARACTERS,
+  FFA_TUNING,
+  FIGHTER_IDS,
+  type CharacterId,
+} from "../../packages/shared/src/index.ts";
 
 const args = process.argv.slice(2);
 const opt = (name: string) => {
@@ -46,6 +52,9 @@ if (!factorsFile) {
     ),
   );
 }
+const factors: Record<string, number> = JSON.parse(
+  readFileSync(factorsFile, "utf8"),
+);
 const env = opt("--seed")
   ? { ...process.env, FFA_SEED: opt("--seed") }
   : process.env;
@@ -60,12 +69,13 @@ const run = (cmd: string[]) =>
 type Row = {
   picks: string[];
   winner: number | null;
-  stats: [number, number, number][];
+  stats: [number, number, number, number][];
 };
 type Tally = {
   games: number;
   wins: number;
   dealt: number;
+  taken: number;
   alive: number;
   reach: number;
 };
@@ -104,6 +114,7 @@ for (const difficulty of difficulties)
           games: 0,
           wins: 0,
           dealt: 0,
+          taken: 0,
           alive: 0,
           reach: 0,
         });
@@ -112,6 +123,7 @@ for (const difficulty of difficulties)
         t.dealt += row.stats[i][0];
         t.alive += row.stats[i][1];
         t.reach += row.stats[i][2];
+        t.taken += row.stats[i][3] ?? 0;
       });
     }
 const rate = (t: Tally) => (100 * t.wins) / Math.max(1, t.games);
@@ -131,18 +143,26 @@ const summary = FIGHTER_IDS.map((id) => {
     se: +(Math.sqrt(se(h) ** 2 + se(n) ** 2) / 2).toFixed(1),
     games: sum("games"),
     dps: +(sum("dealt") / sum("alive")).toFixed(2),
+    taken: +(sum("taken") / sum("alive")).toFixed(2),
     reach: +((100 * sum("reach")) / sum("alive")).toFixed(1),
+    // Seconds of fighting a full-health champion lasts: its health (with
+    // its factor in a free-for-all) over damage taken per second alive.
+    lasts: +(
+      (CHARACTERS[id as CharacterId].health *
+        (mode === "ffa" ? (factors[id] ?? 1) : 1)) /
+      (sum("taken") / sum("alive"))
+    ).toFixed(1),
   };
 }).sort((a, b) => b.avg - a.avg);
 console.log(
   `${mode} with ${players} players, ${matches} matches per difficulty (${draws} unfinished), fair win rate ${fair.toFixed(1)}%`,
 );
 console.log(
-  "champion    win%   ±SE  (hard / normal)  games  dmg/s alive  reach%",
+  "champion    win%   ±SE  (hard / normal)  games  dealt/s  taken/s  lasts(s)  reach%",
 );
 for (const r of summary)
   console.log(
-    `${r.id.padEnd(10)} ${r.avg.toFixed(1).padStart(5)} ±${r.se.toFixed(1)}  (${r.hard.toFixed(1).padStart(4)} / ${r.normal.toFixed(1).padStart(4)})  ${String(r.games).padStart(5)}  ${r.dps.toFixed(2).padStart(6)}  ${r.reach.toFixed(1).padStart(6)}`,
+    `${r.id.padEnd(10)} ${r.avg.toFixed(1).padStart(5)} ±${r.se.toFixed(1)}  (${r.hard.toFixed(1).padStart(4)} / ${r.normal.toFixed(1).padStart(4)})  ${String(r.games).padStart(5)}  ${r.dps.toFixed(2).padStart(7)}  ${r.taken.toFixed(2).padStart(7)}  ${r.lasts.toFixed(1).padStart(8)}  ${r.reach.toFixed(1).padStart(6)}`,
   );
 writeFileSync(
   join(out, "summary.json"),
