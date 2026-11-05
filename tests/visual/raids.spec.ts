@@ -183,6 +183,35 @@ for (const size of SIZES)
       );
       await centred(page, '.rh-head .ui-chip[aria-pressed="true"]', "All chip");
       await snap(page, info, `raid-hall-${size.name}`);
+      // Vertical cards in an even grid (owner's note, 5 Nov): four to a
+      // row, every card the same size, taller than wide; a tall screen
+      // shows both rows whole.
+      const cards = await room
+        .locator(".rh-grid > .rh-card")
+        .evaluateAll((els) =>
+          els.map((e) => {
+            const r = e.getBoundingClientRect();
+            return {
+              x: Math.round(r.left),
+              w: r.width,
+              h: r.height,
+              b: r.bottom,
+            };
+          }),
+        );
+      expect(cards).toHaveLength(8);
+      expect(new Set(cards.map((c) => c.x)).size).toBe(4);
+      for (const c of cards) {
+        expect(Math.abs(c.w - cards[0].w)).toBeLessThan(1);
+        expect(Math.abs(c.h - cards[0].h)).toBeLessThan(1);
+        expect(c.h).toBeGreaterThan(c.w * 1.1);
+      }
+      if (size.height > 1000) {
+        const body = await box(page, ".rh-hall-body");
+        expect(Math.max(...cards.map((c) => c.b))).toBeLessThanOrEqual(
+          body.y + body.height + 1,
+        );
+      }
       // The lower cards, in sight, pass too.
       await room
         .locator(".rh-body")

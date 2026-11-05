@@ -920,6 +920,18 @@ stage and phone: [posters](images/step5/boss-posters.webp).
   for all seven bosses at 1720×1392, 1440×900 and on the island phone. New
   vertical paintings, if they are made later, need only replace the files
   and these points.
+- **Vertical Raid Hall cards** (owner's note, 5 Nov: make the boss cards
+  vertical too, bigger, and the layout even). Each boss has a 600×900
+  portrait picture cut from its painting on its framing point
+  (`docs/ui-remodel/tools/boss-portraits.sh`, about 90 KB each; the hall
+  no longer loads the wide thumbnails). The seven bosses and Attack
+  practice are four to a row in two even rows; a row is half the hall's
+  height but never squatter than 1 : 1.15, so on a tall screen both rows
+  fit whole and the cards are large posters (370×590 px at 1720×1392),
+  while a short screen (1280×720, phones) scrolls to the second row. The
+  name, element, signature mechanic, tricks and rewards sit over the
+  picture's dark foot; clears or New and the stars on top. Before and
+  after: [Raid Hall](images/step5/raids-vertical.webp).
 - **Icons on gold buttons:** style.css paints every menu icon gold, so the
   icon on a gold button (Invite) vanished and its label looked pushed to
   the right. A button's icon now takes its label's colour (as in the

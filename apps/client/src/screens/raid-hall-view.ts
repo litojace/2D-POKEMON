@@ -25,7 +25,7 @@ import {
   type RaidProgress,
 } from "../../../../packages/shared/src/raid";
 import { raidGoals, type RaidGoal } from "../raid-presentation";
-import { raidSplashImage } from "../raid-splash-art";
+import { raidPortraitImage, raidSplashImage } from "../raid-splash-art";
 import { fighterAvatar } from "../fighter-art";
 import { friendStatus } from "../friends-view";
 import { itemPicture } from "../shop-ui";
@@ -248,7 +248,9 @@ function bossCard(id: RaidBossId, d: RaidData) {
         : tag("New", "new");
   const tricks = bossTricks(id).slice(0, 3);
   const label = `${b.name}, ${b.stars} ${b.stars === 1 ? "star" : "stars"}, ${b.element}${locked ? ", locked: clear Grumblecrag first" : !b.playable ? ", coming soon" : clears ? `, ${clears} ${clears === 1 ? "clear" : "clears"}` : ", new"}`;
-  return `<button type="button" class="rh-card${locked ? " is-locked" : ""}${b.playable ? "" : " is-soon"}" style="--boss:${b.color}" data-raid-card="${id}" aria-label="${esc(label)}"><span class="rh-card-art">${raidSplashImage(id)}${corner}</span><span class="rh-card-text"><span class="rh-card-row"><b class="ui-h">${esc(b.name)}</b>${stars(b.stars)}</span><small class="ui-note">${esc(b.element)} · ${esc(b.signature)}</small></span><span class="rh-card-foot"><span class="rh-tricks" title="Fighters with a trick here">${tricks.map((t) => fighterChip(t.character, `rh-${id}-${t.character}`)).join("")}</span><span class="ui-note">${p ? `${earned} / ${total} rewards` : `${total} rewards`}</span></span></button>`;
+  // A vertical card: the boss's portrait fills it, its name and details
+  // over the foot of the picture.
+  return `<button type="button" class="rh-card${locked ? " is-locked" : ""}${b.playable ? "" : " is-soon"}" style="--boss:${b.color}" data-raid-card="${id}" aria-label="${esc(label)}"><span class="rh-card-art">${raidPortraitImage(id)}</span><span class="rh-card-top">${corner}${stars(b.stars)}</span><span class="rh-card-text"><b class="rh-card-name">${esc(b.name)}</b><small class="ui-note rh-card-line">${esc(b.element)} · ${esc(b.signature)}</small><span class="rh-card-foot"><span class="rh-tricks" title="Fighters with a trick here">${tricks.map((t) => fighterChip(t.character, `rh-${id}-${t.character}`)).join("")}</span><span class="ui-note">${p ? `${earned} / ${total} rewards` : `${total} rewards`}</span></span></span></button>`;
 }
 function practiceCard() {
   return `<button type="button" class="rh-card rh-practice" data-raid-practice-card aria-label="Attack practice: drill any boss attack on its own"><span class="rh-practice-icon" aria-hidden="true">${menuIcon("target")}</span><span class="rh-card-text"><b class="ui-h">Attack practice</b><small class="ui-note">Drill any boss attack on its own. Nothing to lose.</small></span><span class="ui-btn is-s" aria-hidden="true">Choose an attack</span></button>`;
@@ -290,7 +292,7 @@ function hallMarkup(view: RaidView, d: RaidData) {
         "Try another filter, or run a favourite again.",
         button("Show all", { size: "s", attrs: { "data-raid-filter": "all" } }),
       );
-  return `<section class="ui-panel rh-room" role="dialog" aria-label="Raids" data-raid-mode="hall"><header class="ui-panel-head rh-head"><div class="ui-heading"><span class="ui-kicker">Raid Hall · ${RAID_BOSS_ORDER.length} bosses · solo or up to ${RAID_SEATS}${totals ? ` · ${totals}` : ""}</span><h2 class="ui-title">Raids</h2></div>${filters}${iconButton("cancel", "Back to the Lobby", { class: "ui-close", "data-ui-close": true })}</header><div class="ui-panel-body rh-body" data-raid-region="body"><div class="rh-notes">${notes}</div>${grid}</div></section>`;
+  return `<section class="ui-panel rh-room" role="dialog" aria-label="Raids" data-raid-mode="hall"><header class="ui-panel-head rh-head"><div class="ui-heading"><span class="ui-kicker">Raid Hall · ${RAID_BOSS_ORDER.length} bosses · solo or up to ${RAID_SEATS}${totals ? ` · ${totals}` : ""}</span><h2 class="ui-title">Raids</h2></div>${filters}${iconButton("cancel", "Back to the Lobby", { class: "ui-close", "data-ui-close": true })}</header><div class="ui-panel-body rh-body rh-hall-body" data-raid-region="body"><div class="rh-notes">${notes}</div>${grid}</div></section>`;
 }
 function rewardTotal(p: RaidProgress) {
   const earned = RAID_BOSS_ORDER.reduce(
