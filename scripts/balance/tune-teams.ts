@@ -15,6 +15,7 @@
  *   --shards <n>       parallel processes per difficulty (default 4)
  *   --gain <g>         how hard a round pushes toward the fair rate (default 1)
  *   --fresh            new line-ups every round instead of the same ones
+ *                      (FRESH_BASE, default 5000, + round picks them)
  *
  * Every round plays the same line-ups (fixed seeds), so only the factors
  * change. One champion is one of four players, so its factor moves its own
@@ -85,7 +86,7 @@ const run = (cmd: string[]) =>
 const used: Record<string, number>[] = [];
 let seedFor = 0;
 for (let r = 1; r <= rounds; r++) {
-  seedFor = 5000 + r;
+  seedFor = +(process.env.FRESH_BASE ?? 5000) + r;
   const file = join(out, `factors-${r}.json`);
   writeFileSync(file, JSON.stringify(factors));
   used.push(factors);
