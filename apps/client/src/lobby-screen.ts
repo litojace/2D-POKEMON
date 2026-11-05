@@ -196,7 +196,7 @@ export function slotMarkup(member: LobbyPartyMember | undefined, seat = 0) {
   if (!member)
     return `<button type="button" class="lobby-slot" data-lobby-action="invite" aria-label="Invite a friend to your party"><span aria-hidden="true">+</span><small>Invite</small></button><span class="lobby-podium is-open" aria-hidden="true"></span>`;
   const skin = member.skin ?? null;
-  return `<figure class="lobby-member" style="--element:${hex(CHARACTERS[member.character].color)}" aria-label="${escape(member.name)}${member.leader ? ", party leader" : ""}"><div class="lobby-member-art fighter-rig-stage" data-preview-champion="${member.character}" data-preview-item="${escape(skin?.skin ?? "")}" data-preview-stage="${skin?.stage ?? 1}" data-preview-look="${lookData(member.look)}" data-preview-action="idle">${fighterStageArt(member.character, `lobby-seat-${seat}`, skin)}</div><span class="lobby-podium" aria-hidden="true"></span><figcaption>${member.leader ? '<b class="lobby-crown" aria-hidden="true">♛</b>' : ""}${escape(member.name)}</figcaption></figure>`;
+  return `<figure class="lobby-member" style="--element:${hex(CHARACTERS[member.character].color)}" aria-label="${escape(member.name)}${member.leader ? ", party leader" : ""}"><div class="lobby-member-art fighter-rig-stage" data-preview-champion="${member.character}" data-preview-item="${escape(skin?.skin ?? "")}" data-preview-stage="${skin?.stage ?? 1}" data-preview-look="${lookData(member.look)}" data-preview-action="idle">${fighterStageArt(member.character, `lobby-seat-${seat}`, skin, member.look ?? {})}</div><span class="lobby-podium" aria-hidden="true"></span><figcaption>${member.leader ? '<b class="lobby-crown" aria-hidden="true">♛</b>' : ""}${escape(member.name)}</figcaption></figure>`;
 }
 /** The Journey card: season tier, the next cosmetic, today's Daily Spark. */
 export function journeyCard(j: Journey | undefined) {
@@ -415,7 +415,12 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
         const fighter = CHARACTERS[view.character];
         const art = $("lobby-fighter-art");
         $("lobby-fighter").style.setProperty("--element", hex(fighter.color));
-        art.innerHTML = fighterStageArt(view.character);
+        art.innerHTML = fighterStageArt(
+          view.character,
+          "lobby",
+          undefined,
+          view.look ?? {},
+        );
         art.dataset.previewChampion = view.character;
         art.dataset.previewItem = skin?.skin ?? "";
         art.dataset.previewStage = String(skin?.stage ?? 1);

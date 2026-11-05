@@ -117,10 +117,8 @@ describe("trait auras", () => {
       "<animateMotion",
     );
   });
-  it("only the selected card and the detail portrait wear an aura", () => {
-    expect(
-      fighterSelection("tidefin").match(/class="trait-aura"/g),
-    ).toHaveLength(2);
+  it("no menu portrait wears an element aura (the Wardrobe's look only)", () => {
+    expect(fighterSelection("tidefin")).not.toContain("trait-aura");
   });
 });
 describe("battle auras", () => {

@@ -6,7 +6,8 @@ import { fighterArt, scopeIds, withSoftGround } from "./fighter-art";
 import { abilityIcon } from "./ability-icons";
 import { CREATURE_VIEWBOX, PLACEHOLDER_FIGHTERS } from "./creature-design";
 import { elementIcon } from "./element-icons";
-import { withAura } from "./trait-effects";
+import { colourPreview } from "./colour-preview";
+import type { RaidLoadout } from "../../../packages/shared/src/raid";
 import {
   masteryTier,
   nextMastery,
@@ -23,6 +24,11 @@ export function setWornSkins(value: typeof worn | undefined) {
 }
 /** The Shop skin a fighter wears (and its awakening stage), if any. */
 export const wornSkin = (id: CharacterId) => worn[id];
+/** Your equipped shared looks (Colors, aura...), worn by every fighter. */
+let wornLook: RaidLoadout = {};
+export function setWornLook(value: RaidLoadout | undefined) {
+  wornLook = value ?? {};
+}
 /** Keep Terradon's eye line aligned while giving its earless head the same
  * visual presence as the other portraits. The sprout remains inside frame. */
 const rosterPortraitFrame = (id?: string) =>
@@ -31,9 +37,9 @@ type WornSkin = { skin: string; stage: number } | null | undefined;
 function art(
   id: CharacterId,
   large = false,
-  aura = false,
   scopeName?: string,
   skin: WornSkin = worn[id],
+  look: RaidLoadout = wornLook,
 ) {
   const pack = fighterPack(id);
   if (pack && pack.kind !== "layered")
@@ -42,13 +48,10 @@ function art(
   const svg = fighterArt(id, large ? undefined : rosterPortraitFrame(id), skin);
   const framed = large ? withSoftGround(svg, id) : svg;
   const scope = scopeName ?? (large ? "detail" : "card");
-  const full = aura ? withAura(framed, id, still()) : framed;
-  return (
-    scopeIds(full, scope) +
-    // The animated fighter is a canvas laid over this artwork, which hid the
-    // aura's front half. The same front half again, drawn above the canvas.
-    (aura && large ? scopeIds(auraFrontLayer(full), `${scope}-front`) : "")
-  );
+  // As the Wardrobe shows it: the fighter skin, else the shared Colors. No
+  // element aura: the Shop, Wardrobe and battle rigs don't wear one either.
+  const palette = !skin && look.skin ? look.skin : "";
+  return scopeIds(palette ? colourPreview(framed, palette) : framed, scope);
 }
 /**
  * The padded frame the large fighter art is shown in wherever the live rig
@@ -56,26 +59,22 @@ function art(
  * framing (SELECTION_PREVIEW) draws in exactly this frame.
  */
 export const RIG_FRAME = "-20 -40 240 250";
-/** The large fighter art with its worn skin and aura, for a stage (the
+/** The large fighter art with its worn skin and Colors, for a stage (the
  * Lobby's, the roster's). Each stage needs its own `scope` for its ids.
- * `skin`: another player's skin (a party member's); null for none. */
+ * `skin` and `look`: another player's (a party member's); null for none. */
 export function fighterStageArt(
   id: CharacterId,
   scope = "lobby",
   skin: WornSkin = worn[id],
+  look: RaidLoadout = wornLook,
 ) {
-  return art(id, true, true, scope, skin)
+  return art(id, true, scope, skin, look)
     .split(`viewBox="${CREATURE_VIEWBOX}"`)
     .join(`viewBox="${RIG_FRAME}"`);
 }
-/** Only the front half of an aura SVG (same frame and defs), to lay on top. */
-function auraFrontLayer(svg: string) {
-  const open = svg.match(/^<svg[^>]*>/)?.[0],
-    defs = svg.match(/<defs>[\s\S]*?<\/defs>/)?.[0] ?? "",
-    front = svg.lastIndexOf('<g class="ta-front">');
-  if (!open || front < 0) return "";
-  return `${open.replace('class="trait-aura"', 'class="trait-aura ta-front-layer" aria-hidden="true"')}${defs}${svg.slice(front)}`;
-}
+/** The live rig's `data-preview-look`: the equipped shared looks. */
+export const previewLook = (look: RaidLoadout = wornLook) =>
+  encodeURIComponent(JSON.stringify(look ?? {}));
 /** Long range when the basic attack reaches across the arena, else close range. */
 export function attackRange(id: CharacterId): "long" | "close" {
   return CHARACTERS[id].basic.range >= 400 ? "long" : "close";
@@ -174,7 +173,7 @@ export function fighterSelection(selected: CharacterId, element = "All") {
     .filter((c) => element === "All" || c.element === element)
     .map(
       (c) =>
-        `<button type="button" class="creature-card showcase-card ${selected === c.id ? "selected" : ""}" style="--element:${hex(c.color)}" data-character="${c.id}" data-element="${c.element}" aria-label="Preview ${c.name}" aria-pressed="${selected === c.id}"><span class="card-head"><strong>${c.name}</strong><span class="element-pill">${elementIcon(c.element)}${c.element}</span></span><small class="card-role">${rangeTag(c.id)}<span>${c.role}</span></small><span class="card-art">${masteryRing(c.id)}${art(c.id, false, selected === c.id)}${placeholderBadge(c.id)}</span><span class="card-skills">${c.skills.map((a, i) => `<span title="${a.name}: ${a.description}">${abilityIcon(a.name)}<i>${i === ULT_SLOT ? "ULT" : `${a.cooldown}s`}</i></span>`).join("")}</span><span class="card-bottom"><span class="card-health">${c.health} HP</span>${masteryBadge(c.id)}<span class="card-selection-label">${selected === c.id ? "✓ Selected" : "Select"}</span></span></button>`,
+        `<button type="button" class="creature-card showcase-card ${selected === c.id ? "selected" : ""}" style="--element:${hex(c.color)}" data-character="${c.id}" data-element="${c.element}" aria-label="Preview ${c.name}" aria-pressed="${selected === c.id}"><span class="card-head"><strong>${c.name}</strong><span class="element-pill">${elementIcon(c.element)}${c.element}</span></span><small class="card-role">${rangeTag(c.id)}<span>${c.role}</span></small><span class="card-art">${masteryRing(c.id)}${art(c.id)}${placeholderBadge(c.id)}</span><span class="card-skills">${c.skills.map((a, i) => `<span title="${a.name}: ${a.description}">${abilityIcon(a.name)}<i>${i === ULT_SLOT ? "ULT" : `${a.cooldown}s`}</i></span>`).join("")}</span><span class="card-bottom"><span class="card-health">${c.health} HP</span>${masteryBadge(c.id)}<span class="card-selection-label">${selected === c.id ? "✓ Selected" : "Select"}</span></span></button>`,
     );
   const skills = fighter.skills
     .map(
@@ -210,7 +209,7 @@ export function fighterSelection(selected: CharacterId, element = "All") {
   const detail = `<div class="fighter-detail" data-detail-for="${selected}" data-preview="overview" style="--element:${color}">
     <nav class="fighter-preview-tabs" aria-label="Fighter preview sections" hidden><button type="button" data-fighter-preview="overview" aria-pressed="true">‹ Overview</button><button type="button" data-fighter-preview="skills" aria-pressed="false">Full kit</button></nav>
     <div class="selected-fighter" style="--element:${color}">
-      <div class="selected-art fighter-rig-stage" data-preview-champion="${selected}" data-preview-item="${worn[selected]?.skin ?? ""}" data-preview-stage="${worn[selected]?.stage ?? 1}" data-preview-look="%7B%7D" data-preview-action="idle" aria-label="${fighter.name} animated preview"><span class="champion-index"><b>${String(fighters.findIndex((c) => c.id === selected) + 1).padStart(2, "0")}</b> / ${String(fighters.length).padStart(2, "0")}</span>${art(selected, true, true)}${placeholderBadge(selected, "PLACEHOLDER ART")}</div>
+      <div class="selected-art fighter-rig-stage" data-preview-champion="${selected}" data-preview-item="${worn[selected]?.skin ?? ""}" data-preview-stage="${worn[selected]?.stage ?? 1}" data-preview-look="${previewLook()}" data-preview-action="idle" aria-label="${fighter.name} animated preview"><span class="champion-index"><b>${String(fighters.findIndex((c) => c.id === selected) + 1).padStart(2, "0")}</b> / ${String(fighters.length).padStart(2, "0")}</span>${art(selected, true)}${placeholderBadge(selected, "PLACEHOLDER ART")}</div>
       <div class="selected-info"><div class="champion-tags"><span class="element-pill">${elementIcon(fighter.element)}${fighter.element}</span><span>${attackRange(selected) === "long" ? "Ranged" : "Melee"}</span><span class="fighter-role-label">${fighter.role}</span></div><div class="champion-name-row"><h3>${fighter.name}</h3><button type="button" class="champion-bio-button" data-skill-inspect="bio" aria-label="About ${fighter.name}" aria-expanded="false">${menuIcon("help")}</button></div><p class="champion-bio">${fighter.description}</p><div class="fighter-stats">${stats}</div>
       <div class="champion-skill-buttons" aria-label="Inspect skills">${fighter.skills.map((a, i) => `<button type="button" data-skill-inspect="${i}" aria-label="${a.name}, ${i === ULT_SLOT ? "ultimate" : `${a.cooldown} second cooldown`}" aria-expanded="false" title="${a.name}"><kbd>${skillKeys[i]}</kbd>${abilityIcon(a.name)}<small>${i === ULT_SLOT ? "ULT" : `${a.cooldown}s`}</small></button>`).join("")}<button type="button" class="champion-full-kit" data-fighter-preview="skills">${menuIcon("missions")}<small>Full kit</small></button></div>
       <div class="champion-skill-tooltip" role="region" aria-label="Skill details" hidden><button type="button" data-skill-close aria-label="Close skill details">×</button><b data-skill-title></b><p data-skill-description></p></div>

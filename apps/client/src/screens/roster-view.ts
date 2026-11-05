@@ -14,6 +14,7 @@ import {
   RAID_BOSSES,
   RAID_BOSS_PERKS,
   type RaidBossId,
+  type RaidLoadout,
 } from "../../../../packages/shared/src/raid";
 import {
   masteryTier,
@@ -21,8 +22,13 @@ import {
 } from "../../../../packages/shared/src/accounts";
 import { abilityIcon } from "../ability-icons";
 import { elementIcon } from "../element-icons";
-import { fighterArt, fighterAvatar } from "../fighter-art";
-import { attackRange, fighterStageArt } from "../fighter-selection";
+import { colourPreview } from "../colour-preview";
+import { fighterArt, fighterAvatar, scopeIds } from "../fighter-art";
+import {
+  attackRange,
+  fighterStageArt,
+  previewLook,
+} from "../fighter-selection";
 import { itemPicture } from "../shop-ui";
 import {
   actionBar,
@@ -62,6 +68,8 @@ export interface RosterData {
   /** Skins you own, and the one each fighter wears. */
   owned: readonly string[];
   looks: Partial<Record<CharacterId, { skin: string; stage: number }>>;
+  /** Your equipped shared looks (Colors, aura...), as the Wardrobe shows. */
+  look?: RaidLoadout;
   /** Key labels for the four skills, the basic attack, dash and jump. */
   keys: { skills: string[]; basic: string; dash: string; jump: string };
   /** Low graphics: no live fighter on the stage. */
@@ -183,11 +191,18 @@ function masteryRing(c: CharacterId, d: RosterData, size?: number) {
 const rangeTag = (c: CharacterId) =>
   `<span class="ui-tag roster-range">${rangeName(c)}</span>`;
 
+/** A card's fighter as the Wardrobe dresses it: its skin, else your Colors. */
+function cardArt(c: CharacterId, d: RosterData) {
+  const skin = d.looks[c];
+  const palette = !skin && d.look?.skin ? d.look.skin : "";
+  const svg = fighterArt(c, undefined, skin);
+  return palette ? scopeIds(colourPreview(svg, palette), `card-${c}`) : svg;
+}
 function card(c: CharacterId, view: RosterView, d: RosterData) {
   const f = CHARACTERS[c];
   const looks = looksOwned(c, d.owned);
   const playing = c === d.playing;
-  return `<button type="button" class="roster-card" data-roster-card="${c}" aria-pressed="${c === view.focus}" aria-label="${esc(`${f.name}, ${f.element}, ${rangeName(c)}, ${f.role}${playing ? ", playing" : ""}`)}" style="--el:${elVar(c)}"><span class="roster-card-top">${elementTag(f.element)}${masteryRing(c, d, 34)}</span><span class="roster-card-art">${fighterArt(c, undefined, d.looks[c])}</span><span class="roster-card-text"><b class="roster-card-name">${esc(f.name)}</b><small>${esc(f.role)}</small></span><span class="roster-card-foot">${rangeTag(c)}<span class="ui-note">${looks.have}/${looks.all} looks</span>${playing ? tag("Playing", "ok") : ""}</span></button>`;
+  return `<button type="button" class="roster-card" data-roster-card="${c}" aria-pressed="${c === view.focus}" aria-label="${esc(`${f.name}, ${f.element}, ${rangeName(c)}, ${f.role}${playing ? ", playing" : ""}`)}" style="--el:${elVar(c)}"><span class="roster-card-top">${elementTag(f.element)}${masteryRing(c, d, 34)}</span><span class="roster-card-art">${cardArt(c, d)}</span><span class="roster-card-text"><b class="roster-card-name">${esc(f.name)}</b><small>${esc(f.role)}</small></span><span class="roster-card-foot">${rangeTag(c)}<span class="ui-note">${looks.have}/${looks.all} looks</span>${playing ? tag("Playing", "ok") : ""}</span></button>`;
 }
 
 function filters(view: RosterView) {
@@ -263,7 +278,7 @@ function stage(view: RosterView, d: RosterData) {
         `<div class="roster-stat"><span>${label}</span>${bar(value, max, { label, color: elVar(c), thick: true })}<b class="ui-num">${value}</b></div>`,
     )
     .join("");
-  return `<section class="ui-split-stage roster-stage" style="--el:${elVar(c)}" aria-label="${esc(f.name)}" data-roster-region="stage"><div class="fighter-rig-stage roster-rig${d.low ? " is-still" : ""}" data-preview-champion="${c}" data-preview-item="${esc(worn?.skin ?? "")}" data-preview-stage="${worn?.stage ?? 1}" data-preview-look="%7B%7D" data-preview-action="idle" role="img" aria-label="${esc(f.name)}">${fighterStageArt(c, "roster")}</div><div class="roster-stage-top"><span class="roster-counter ui-num">${String(index).padStart(2, "0")}<small>/${String(FIGHTERS.length).padStart(2, "0")}</small></span>${masteryRing(c, d, 40)}</div><button type="button" class="ui-icon-btn roster-step roster-prev" data-roster-step="-1" aria-label="Previous fighter">‹</button><button type="button" class="ui-icon-btn roster-step roster-next" data-roster-step="1" aria-label="Next fighter">›</button><div class="roster-stage-info"><div class="roster-plate"><span class="roster-row">${elementTag(f.element)}${rangeTag(c)}</span><b class="roster-stage-name">${esc(f.name)}</b><small class="ui-note roster-stage-role">${esc(f.role)}</small></div><div class="roster-stats">${stats}</div></div></section>`;
+  return `<section class="ui-split-stage roster-stage" style="--el:${elVar(c)}" aria-label="${esc(f.name)}" data-roster-region="stage"><div class="fighter-rig-stage roster-rig${d.low ? " is-still" : ""}" data-preview-champion="${c}" data-preview-item="${esc(worn?.skin ?? "")}" data-preview-stage="${worn?.stage ?? 1}" data-preview-look="${previewLook(d.look ?? {})}" data-preview-action="idle" role="img" aria-label="${esc(f.name)}">${fighterStageArt(c, "roster", worn, d.look ?? {})}</div><div class="roster-stage-top"><span class="roster-counter ui-num">${String(index).padStart(2, "0")}<small>/${String(FIGHTERS.length).padStart(2, "0")}</small></span>${masteryRing(c, d, 40)}</div><button type="button" class="ui-icon-btn roster-step roster-prev" data-roster-step="-1" aria-label="Previous fighter">‹</button><button type="button" class="ui-icon-btn roster-step roster-next" data-roster-step="1" aria-label="Next fighter">›</button><div class="roster-stage-info"><div class="roster-plate"><span class="roster-row">${elementTag(f.element)}${rangeTag(c)}</span><b class="roster-stage-name">${esc(f.name)}</b><small class="ui-note roster-stage-role">${esc(f.role)}</small></div><div class="roster-stats">${stats}</div></div></section>`;
 }
 
 /** One skill (or the basic attack) as a row: key, icon, name, text, cooldown. */
