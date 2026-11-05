@@ -1,0 +1,2848 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Elemental Farm Social</title>
+    <meta name="claude:viewport-fit-sides" content="cover" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap"
+    />
+    <style>
+      /* Layout: game stage (the farm, HUD and bottom sheets, as in the real game) beside a design-notes column; notes drop under the stage on phones.
+   One deliberate look, the game's own night-HUD: deep forest ground, navy glass panels, the Farm tab's gold. */
+      :root {
+        --ground: #0f1d17;
+        --panel: #182a33;
+        --panel-2: #20374250;
+        --glass: rgba(16, 30, 38, 0.86);
+        --line: rgba(190, 230, 210, 0.16);
+        --ink: #eef6ef;
+        --ink-2: #a9c2b6;
+        --gold: #ffd34d;
+        --gold-ink: #3a2a00;
+        --leaf: #7ff0a2;
+        --leaf-deep: #2f8f4e;
+        --rose: #ff7aa8;
+        --sky: #78c8ff;
+        --warn: #ffb35c;
+        --display:
+          "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+        --body: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      body {
+        background: var(--ground);
+        color: var(--ink);
+        font-family: var(--body);
+        font-size: 15px;
+        line-height: 1.5;
+        padding-left: max(16px, env(safe-area-inset-left, 0px));
+        padding-right: max(16px, env(safe-area-inset-right, 0px));
+        padding-block: 20px 48px;
+      }
+      .wrap {
+        max-width: 1280px;
+        margin: 0 auto;
+        display: grid;
+        gap: 22px;
+      }
+      header.top {
+        display: grid;
+        gap: 6px;
+      }
+      .eyebrow {
+        font-family: var(--display);
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--leaf);
+        font-size: 14px;
+      }
+      h1 {
+        font-family: var(--display);
+        font-weight: 800;
+        font-size: clamp(30px, 5vw, 46px);
+        line-height: 1;
+        margin: 0;
+        text-wrap: balance;
+        letter-spacing: 0.01em;
+      }
+      .lede {
+        margin: 0;
+        color: var(--ink-2);
+        max-width: 70ch;
+      }
+      .lede b {
+        color: var(--ink);
+      }
+
+      .main {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 380px;
+        gap: 22px;
+        align-items: start;
+      }
+      @media (max-width: 980px) {
+        .main {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+
+      /* ---------- stage ---------- */
+      .stage {
+        position: relative;
+        height: clamp(560px, 74vh, 760px);
+        border-radius: 22px;
+        overflow: hidden;
+        background: #4f9b3f;
+        border: 1px solid var(--line);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      .stage canvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+        touch-action: manipulation;
+        cursor: pointer;
+      }
+      .hud {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+      .hud > * {
+        pointer-events: auto;
+      }
+      .pill {
+        background: var(--glass);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+      }
+      .hud-top {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        right: 10px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        pointer-events: none;
+      }
+      .hud-top > * {
+        pointer-events: auto;
+      }
+      .badge-farm {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 12px 5px 5px;
+      }
+      .lvl {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: conic-gradient(var(--leaf) 62%, #ffffff22 0);
+        font-family: var(--display);
+        font-weight: 800;
+        font-size: 16px;
+        position: relative;
+      }
+      .lvl span {
+        position: relative;
+        z-index: 1;
+      }
+      .lvl::before {
+        content: "";
+        position: absolute;
+        inset: 3px;
+        border-radius: 50%;
+        background: #1d4a1d;
+      }
+      .badge-farm b {
+        font-family: var(--display);
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        font-size: 15px;
+        text-transform: uppercase;
+      }
+      .wallet {
+        display: flex;
+        gap: 6px;
+      }
+      .wallet .pill {
+        padding: 5px 12px;
+        font-family: var(--display);
+        font-weight: 700;
+        font-size: 17px;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        font-variant-numeric: tabular-nums;
+      }
+      .dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        flex: none;
+      }
+      .dot.coin {
+        background: radial-gradient(
+          circle at 35% 35%,
+          #fff2a8,
+          #f2b62a 60%,
+          #b8800f
+        );
+      }
+      .dot.leaf {
+        background: var(--leaf);
+        border-radius: 0 70% 0 70%;
+        transform: rotate(-10deg);
+      }
+      .online {
+        position: absolute;
+        top: 56px;
+        right: 10px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px 4px 6px;
+        font-size: 12px;
+        color: var(--ink-2);
+      }
+      .online .faces {
+        display: flex;
+      }
+      .online .face {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 2px solid #10202a;
+        margin-left: -6px;
+        display: grid;
+        place-items: center;
+        font-size: 10px;
+        font-weight: 700;
+        color: #10202a;
+      }
+      .online .face:first-child {
+        margin-left: 0;
+      }
+
+      .visit-banner {
+        position: absolute;
+        top: 56px;
+        left: 10px;
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        padding: 5px 6px 5px 14px;
+        font-size: 13px;
+        flex-wrap: wrap;
+        max-width: calc(100% - 20px);
+        border-radius: 18px;
+      }
+      .visit-banner b {
+        font-family: var(--display);
+        font-size: 16px;
+        letter-spacing: 0.03em;
+      }
+
+      .ticker {
+        position: absolute;
+        left: 10px;
+        bottom: 92px;
+        display: grid;
+        gap: 6px;
+        max-width: min(360px, calc(100% - 20px));
+        pointer-events: none;
+      }
+      .toast {
+        background: var(--glass);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 7px 11px;
+        font-size: 13px;
+        line-height: 1.35;
+        animation: pop 0.25s ease-out;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .toast .who {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        flex: none;
+        display: grid;
+        place-items: center;
+        font-size: 10px;
+        font-weight: 700;
+        color: #10202a;
+      }
+      @keyframes pop {
+        from {
+          transform: translateY(8px);
+          opacity: 0.2;
+        }
+        to {
+          transform: none;
+          opacity: 1;
+        }
+      }
+
+      .dock {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        bottom: 10px;
+        display: flex;
+        gap: 6px;
+        padding: 6px;
+        border-radius: 20px;
+        max-width: calc(100% - 16px);
+      }
+      .dock button {
+        position: relative;
+        border: 0;
+        cursor: pointer;
+        border-radius: 14px;
+        width: 68px;
+        height: 66px;
+        display: grid;
+        justify-items: center;
+        align-content: center;
+        gap: 2px;
+        background: linear-gradient(180deg, #2a4656, #1b2f3a);
+        color: var(--ink);
+        font-family: var(--display);
+        font-weight: 700;
+        font-size: 14px;
+        letter-spacing: 0.03em;
+      }
+      .dock button svg {
+        width: 26px;
+        height: 26px;
+      }
+      .dock button[aria-pressed="true"] {
+        background: linear-gradient(180deg, #ffe17a, #f2b62a);
+        color: var(--gold-ink);
+        box-shadow: 0 0 0 2px #fff6 inset;
+      }
+      .dock button:focus-visible,
+      .btn:focus-visible,
+      .chip:focus-visible,
+      select:focus-visible,
+      input:focus-visible {
+        outline: 3px solid var(--sky);
+        outline-offset: 2px;
+      }
+      .dock .n {
+        position: absolute;
+        top: -6px;
+        right: -4px;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 5px;
+        border-radius: 10px;
+        background: var(--rose);
+        color: #2a0614;
+        font-size: 12px;
+        display: grid;
+        place-items: center;
+        font-family: var(--body);
+        font-weight: 700;
+      }
+      .dock .n[hidden] {
+        display: none !important;
+      }
+      @media (max-width: 520px) {
+        .dock button {
+          width: 56px;
+          height: 58px;
+          font-size: 12.5px;
+        }
+        .dock button svg {
+          width: 22px;
+          height: 22px;
+        }
+        .ticker {
+          bottom: 80px;
+        }
+        .wallet .pill {
+          font-size: 15px;
+          padding: 4px 9px;
+        }
+      }
+
+      .sheet {
+        position: absolute;
+        left: 8px;
+        right: 8px;
+        bottom: 84px;
+        max-height: calc(100% - 150px);
+        background: linear-gradient(180deg, #1c3340f2, #13242ef7);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.4);
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr);
+        animation: rise 0.22s ease-out;
+      }
+      @media (min-width: 760px) {
+        .sheet {
+          left: auto;
+          right: 12px;
+          width: 440px;
+          top: 100px;
+          bottom: 92px;
+          max-height: none;
+        }
+      }
+      @media (max-width: 520px) {
+        .sheet {
+          bottom: 76px;
+        }
+      }
+      @keyframes rise {
+        from {
+          transform: translateY(14px);
+          opacity: 0.3;
+        }
+        to {
+          transform: none;
+          opacity: 1;
+        }
+      }
+      .sheet-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 12px 8px 16px;
+        border-bottom: 1px solid var(--line);
+      }
+      .sheet-head h2 {
+        margin: 0;
+        font-family: var(--display);
+        font-weight: 800;
+        font-size: 22px;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        flex: 1;
+      }
+      .sheet-head .sub {
+        font-size: 12px;
+        color: var(--ink-2);
+      }
+      .x {
+        border: 0;
+        background: #ffffff14;
+        color: var(--ink);
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        cursor: pointer;
+        font-size: 18px;
+      }
+      .sheet-body {
+        overflow: auto;
+        padding: 12px 14px 16px;
+        display: grid;
+        gap: 12px;
+        align-content: start;
+      }
+      .sec-t {
+        font-family: var(--display);
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        font-size: 13px;
+        color: var(--ink-2);
+        margin: 4px 0 -4px;
+      }
+
+      .btn {
+        border: 0;
+        cursor: pointer;
+        border-radius: 12px;
+        padding: 8px 12px;
+        font-family: var(--display);
+        font-weight: 700;
+        font-size: 15px;
+        letter-spacing: 0.03em;
+        background: #ffffff18;
+        color: var(--ink);
+        white-space: nowrap;
+      }
+      .btn.gold {
+        background: linear-gradient(180deg, #ffe17a, #f2b62a);
+        color: var(--gold-ink);
+      }
+      .btn.green {
+        background: linear-gradient(180deg, #8ff5ae, #3cbf68);
+        color: #082814;
+      }
+      .btn.rose {
+        background: linear-gradient(180deg, #ffa0c2, #f0588e);
+        color: #2a0614;
+      }
+      .btn:disabled {
+        opacity: 0.42;
+        cursor: not-allowed;
+      }
+      .btn.sm {
+        padding: 5px 10px;
+        font-size: 14px;
+        border-radius: 10px;
+      }
+
+      .slots {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .slot {
+        border-radius: 14px;
+        background: #0c1a21;
+        border: 1px dashed #ffffff2a;
+        min-height: 104px;
+        padding: 8px;
+        display: grid;
+        justify-items: center;
+        align-content: center;
+        gap: 4px;
+        text-align: center;
+        font-size: 12px;
+        cursor: pointer;
+        color: var(--ink-2);
+      }
+      .slot.filled {
+        border-style: solid;
+        border-color: #ffffff22;
+        background: #183039;
+        color: var(--ink);
+        cursor: default;
+      }
+      .slot.sold {
+        border-color: var(--leaf);
+        background: #173a2a;
+        cursor: pointer;
+      }
+      .slot.picked {
+        outline: 2px solid var(--gold);
+      }
+      .slot .q {
+        font-family: var(--display);
+        font-weight: 800;
+        font-size: 16px;
+      }
+      .slot .p {
+        font-variant-numeric: tabular-nums;
+        color: var(--gold);
+        font-weight: 700;
+      }
+      .cropdot {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        position: relative;
+        box-shadow: inset -4px -5px 0 rgba(0, 0, 0, 0.22);
+        flex: none;
+      }
+      .cropdot::after {
+        content: "";
+        position: absolute;
+        width: 11px;
+        height: 8px;
+        top: -4px;
+        left: 9px;
+        background: #3cbf68;
+        border-radius: 0 80% 0 80%;
+      }
+
+      .form {
+        display: grid;
+        gap: 10px;
+        background: #0c1a21;
+        border-radius: 14px;
+        padding: 12px;
+        border: 1px solid var(--line);
+      }
+      .form .row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .form label {
+        font-size: 12px;
+        color: var(--ink-2);
+        display: grid;
+        gap: 4px;
+        flex: 1;
+        min-width: 120px;
+      }
+      select,
+      input[type="range"] {
+        width: 100%;
+      }
+      select {
+        background: #183039;
+        color: var(--ink);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 7px 8px;
+        font: inherit;
+      }
+      input[type="range"] {
+        accent-color: var(--gold);
+      }
+      .price-read {
+        font-variant-numeric: tabular-nums;
+        font-size: 13px;
+      }
+      .price-read b {
+        color: var(--gold);
+        font-size: 16px;
+      }
+
+      .list {
+        display: grid;
+        gap: 8px;
+      }
+      .item {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 9px 10px;
+        border-radius: 14px;
+        background: #0c1a21;
+        border: 1px solid var(--line);
+      }
+      .item .grow {
+        flex: 1;
+        min-width: 0;
+      }
+      .item .t {
+        font-weight: 700;
+        font-size: 14px;
+      }
+      .item .s {
+        font-size: 12px;
+        color: var(--ink-2);
+      }
+      .av {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font-family: var(--display);
+        font-weight: 800;
+        color: #10202a;
+        flex: none;
+        font-size: 16px;
+      }
+      .lock {
+        font-size: 11px;
+        color: var(--warn);
+      }
+
+      .crates {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .crate {
+        border-radius: 12px;
+        padding: 8px;
+        background: #3a2a18;
+        border: 2px solid #6b4a24;
+        display: grid;
+        justify-items: center;
+        gap: 4px;
+        text-align: center;
+        font-size: 12px;
+        min-height: 118px;
+        align-content: center;
+      }
+      .crate.done {
+        background: #1d3b22;
+        border-color: var(--leaf-deep);
+      }
+      .crate.asked {
+        border-color: var(--sky);
+        border-style: dashed;
+      }
+      .crate .need {
+        font-family: var(--display);
+        font-weight: 800;
+        font-size: 15px;
+      }
+      .crate .have {
+        font-size: 11px;
+        color: var(--ink-2);
+      }
+      .bar {
+        height: 10px;
+        border-radius: 6px;
+        background: #ffffff18;
+        overflow: hidden;
+      }
+      .bar i {
+        display: block;
+        height: 100%;
+        background: linear-gradient(90deg, var(--leaf-deep), var(--leaf));
+        border-radius: 6px;
+        transition: width 0.4s;
+      }
+      .bar.gold i {
+        background: linear-gradient(90deg, #f2b62a, var(--gold));
+      }
+      .reward {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        font-size: 12px;
+      }
+      .reward span {
+        background: #ffffff12;
+        padding: 3px 8px;
+        border-radius: 8px;
+      }
+
+      .tiers {
+        position: relative;
+        height: 34px;
+      }
+      .tiers .bar {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 12px;
+      }
+      .tier {
+        position: absolute;
+        top: 0;
+        transform: translateX(-50%);
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        display: grid;
+        place-items: center;
+        font-size: 11px;
+        font-weight: 700;
+        background: #2a4656;
+        border: 2px solid #ffffff30;
+      }
+      .tier.got {
+        background: var(--gold);
+        color: var(--gold-ink);
+        border-color: #fff8;
+      }
+      .league {
+        display: grid;
+        gap: 4px;
+      }
+      .lrow {
+        display: grid;
+        grid-template-columns: 22px minmax(0, 1fr) auto;
+        gap: 8px;
+        align-items: center;
+        padding: 6px 10px;
+        border-radius: 10px;
+        background: #0c1a21;
+        font-size: 13px;
+        font-variant-numeric: tabular-nums;
+      }
+      .lrow.me {
+        background: #3a3210;
+        outline: 1px solid var(--gold);
+      }
+      .lrow .rk {
+        font-family: var(--display);
+        font-weight: 800;
+        font-size: 16px;
+        color: var(--ink-2);
+      }
+      .task {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 4px 10px;
+        align-items: center;
+        padding: 10px;
+        border-radius: 14px;
+        background: #0c1a21;
+        border: 1px solid var(--line);
+      }
+      .task.mine {
+        border-color: var(--gold);
+      }
+      .task .pts {
+        font-family: var(--display);
+        font-weight: 800;
+        color: var(--gold);
+        font-size: 16px;
+      }
+      .task .bar {
+        grid-column: 1 / -1;
+      }
+
+      .hearts {
+        display: flex;
+        gap: 2px;
+      }
+      .hearts i {
+        width: 11px;
+        height: 11px;
+        background: #ffffff22;
+        transform: rotate(45deg);
+        border-radius: 2px 0 2px 0;
+        display: block;
+        margin: 3px 3px 0;
+        position: relative;
+      }
+      .hearts i.on {
+        background: var(--rose);
+      }
+      .invite {
+        display: grid;
+        gap: 10px;
+        padding: 12px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #24324f, #2b1f3f);
+        border: 1px solid #ffffff22;
+      }
+      .code {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .code output {
+        font-family: var(--display);
+        font-weight: 800;
+        font-size: 22px;
+        letter-spacing: 0.14em;
+        padding: 4px 12px;
+        border-radius: 10px;
+        background: #0007;
+        user-select: all;
+        -webkit-user-select: all;
+      }
+      .track {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+      }
+      .track div {
+        border-radius: 10px;
+        background: #0005;
+        padding: 7px;
+        font-size: 12px;
+        text-align: center;
+      }
+      .track b {
+        display: block;
+        font-family: var(--display);
+        font-size: 15px;
+      }
+
+      /* ---------- notes ---------- */
+      .notes {
+        display: grid;
+        gap: 14px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 18px;
+        min-width: 0;
+      }
+      .notes h2 {
+        font-family: var(--display);
+        font-weight: 800;
+        font-size: 26px;
+        margin: 0;
+        line-height: 1.05;
+        text-wrap: balance;
+      }
+      .notes h3 {
+        font-family: var(--display);
+        font-weight: 700;
+        font-size: 13px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--leaf);
+        margin: 0 0 4px;
+      }
+      .notes p,
+      .notes ul {
+        margin: 0;
+        color: var(--ink-2);
+        font-size: 14px;
+      }
+      .notes ul {
+        padding-left: 18px;
+        display: grid;
+        gap: 4px;
+      }
+      .notes b,
+      .notes strong {
+        color: var(--ink);
+      }
+      .notes code {
+        font-size: 12px;
+        background: #0006;
+        padding: 1px 5px;
+        border-radius: 5px;
+        color: var(--ink);
+      }
+      .from {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .chip {
+        font-size: 12px;
+        font-weight: 700;
+        padding: 3px 9px;
+        border-radius: 999px;
+        background: #ffffff12;
+        border: 1px solid var(--line);
+        color: var(--ink);
+      }
+
+      /* ---------- roadmap ---------- */
+      .below {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 22px;
+      }
+      @media (max-width: 980px) {
+        .below {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 18px;
+        min-width: 0;
+        display: grid;
+        gap: 10px;
+        align-content: start;
+      }
+      .card h2 {
+        font-family: var(--display);
+        font-weight: 800;
+        font-size: 24px;
+        margin: 0;
+      }
+      .card p {
+        margin: 0;
+        color: var(--ink-2);
+        font-size: 14px;
+      }
+      .tbl {
+        overflow-x: auto;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 13.5px;
+      }
+      th,
+      td {
+        text-align: left;
+        padding: 8px 8px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+      }
+      th {
+        font-family: var(--display);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-size: 12.5px;
+        color: var(--ink-2);
+        font-weight: 700;
+      }
+      td.size {
+        font-family: var(--display);
+        font-weight: 800;
+        font-size: 16px;
+      }
+      td.size.s {
+        color: var(--leaf);
+      }
+      td.size.m {
+        color: var(--gold);
+      }
+      td.size.l {
+        color: var(--warn);
+      }
+      .sample {
+        font-size: 12px;
+        color: var(--ink-2);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .toast,
+        .sheet {
+          animation: none;
+        }
+        .bar i {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header class="top">
+        <div class="eyebrow">Elemental Farm · bản demo thiết kế lại</div>
+        <h1>Farm chơi cùng bạn bè</h1>
+        <p class="lede">
+          Farm hiện tại đã có rất nhiều thứ để <b>chơi một mình</b>. Bản demo
+          này thêm 5 vòng lặp khiến <b>bạn bè cần nhau</b>: buôn bán, nhờ giúp,
+          đua đội theo tuần, quà và mời bạn, thăm farm trực tiếp. Bấm 5 nút ở
+          dưới farm (hoặc bấm vào quầy, khinh khí cầu, bảng cờ, bạn bè trên
+          farm) để thử. Mọi người, số liệu và mã mời đều là <b>dữ liệu mẫu</b>,
+          chạy trong trình duyệt.
+        </p>
+      </header>
+
+      <div class="main">
+        <section class="stage" id="stage" aria-label="Farm demo">
+          <canvas id="cv"></canvas>
+          <div class="hud">
+            <div class="hud-top">
+              <div class="pill badge-farm">
+                <div class="lvl"><span id="lvl">18</span></div>
+                <b id="farmName">Your farm</b>
+              </div>
+              <div class="wallet">
+                <div class="pill" title="Coins">
+                  <span class="dot coin"></span><span id="coins">2,340</span>
+                </div>
+                <div class="pill" title="Gold Leaves">
+                  <span class="dot leaf"></span><span id="leaves">1,240</span>
+                </div>
+              </div>
+            </div>
+            <div class="pill online" id="onlinePill">
+              <div class="faces" id="faces"></div>
+              <span id="onlineTxt"></span>
+            </div>
+            <div class="pill visit-banner" id="visitBanner" hidden></div>
+            <div class="ticker" id="ticker" aria-live="polite"></div>
+            <nav class="pill dock" id="dock" aria-label="Farm social features">
+              <button type="button" data-tab="stall" aria-pressed="false">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linejoin="round"
+                >
+                  <path d="M3 9l2-5h14l2 5" />
+                  <path
+                    d="M3 9c0 1.7 1.3 3 3 3s3-1.3 3-3c0 1.7 1.3 3 3 3s3-1.3 3-3c0 1.7 1.3 3 3 3s3-1.3 3-3"
+                  />
+                  <path d="M5 12v8h14v-8" />
+                  <path d="M10 20v-5h4v5" /></svg
+                >Stall<span class="n" id="nStall" hidden></span>
+              </button>
+              <button type="button" data-tab="help" aria-pressed="false">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="12" cy="8" r="6" />
+                  <path d="M8 13l2 4M16 13l-2 4" />
+                  <rect x="8.5" y="17" width="7" height="4.5" rx="1" /></svg
+                >Help<span class="n" id="nHelp" hidden></span>
+              </button>
+              <button type="button" data-tab="cup" aria-pressed="false">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linejoin="round"
+                >
+                  <path d="M7 4h10v5a5 5 0 01-10 0z" />
+                  <path d="M7 6H4a3 3 0 003 4M17 6h3a3 3 0 01-3 4" />
+                  <path d="M12 14v4M8 21h8M9 18h6" /></svg
+                >Cup<span class="n" id="nCup" hidden></span>
+              </button>
+              <button type="button" data-tab="friends" aria-pressed="false">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linejoin="round"
+                >
+                  <rect x="3" y="9" width="18" height="12" rx="2" />
+                  <path d="M12 9v12M3 13h18" />
+                  <path
+                    d="M12 9c-2-4-6-4-6-1.5S10 9 12 9c2 0 6 1 6-1.5S14 5 12 9z"
+                  /></svg
+                >Friends<span class="n" id="nFriends" hidden></span>
+              </button>
+              <button type="button" data-tab="visit" aria-pressed="false">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linejoin="round"
+                >
+                  <path d="M3 11l9-7 9 7" />
+                  <path d="M5 10v10h14V10" />
+                  <path
+                    d="M12 17.5s-3-1.8-3-3.6a1.6 1.6 0 013-.8 1.6 1.6 0 013 .8c0 1.8-3 3.6-3 3.6z"
+                  /></svg
+                >Visit<span class="n" id="nVisit" hidden></span>
+              </button>
+            </nav>
+            <section class="sheet" id="sheet" hidden aria-live="polite">
+              <div class="sheet-head">
+                <div style="flex: 1; min-width: 0">
+                  <h2 id="sheetTitle"></h2>
+                  <div class="sub" id="sheetSub"></div>
+                </div>
+                <button
+                  class="x"
+                  id="closeSheet"
+                  type="button"
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+              </div>
+              <div class="sheet-body" id="sheetBody"></div>
+            </section>
+          </div>
+        </section>
+
+        <aside class="notes" id="notes" aria-live="polite"></aside>
+      </div>
+
+      <div class="below">
+        <section class="card">
+          <h2>Farm hiện tại đã lấy gì từ game lớn</h2>
+          <p>
+            Phần “chơi một mình” đã khá đủ, nên thiết kế lại
+            <b>không cần đập đi làm lại</b> ô ruộng, cây trồng hay giao diện.
+            Chỗ còn trống là các lý do để bạn bè quay lại farm của nhau mỗi
+            ngày.
+          </p>
+          <div class="tbl">
+            <table>
+              <thead>
+                <tr>
+                  <th>Đã có trong game</th>
+                  <th>Giống cơ chế của</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>
+                    Thời tiết 4 giờ, đột biến Gold/Rainbow, cây khổng lồ 3×3
+                  </td>
+                  <td>Grow a Garden (Roblox)</td>
+                </tr>
+                <tr>
+                  <td>Bảng đơn hàng, giếng ước, sách cây trồng, đồng cỏ bò</td>
+                  <td>Hay Day, Stardew Valley</td>
+                </tr>
+                <tr>
+                  <td>
+                    Thăm farm bạn: tưới, bắt sâu, lén hái, chơi khăm; chó canh
+                  </td>
+                  <td>Happy Farm / QQ Farm, FarmVille</td>
+                </tr>
+                <tr>
+                  <td>Trang trí và Charm, công cụ, tinh thông cây</td>
+                  <td>Animal Crossing, Stardew Valley</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            Thiếu: trao đổi giữa người chơi, mục tiêu chung của nhóm, phần
+            thưởng cho việc mời bạn, và chơi cùng lúc trên farm.
+          </p>
+        </section>
+        <section class="card">
+          <h2>Nên làm theo thứ tự nào</h2>
+          <p>
+            Cỡ việc là ước lượng tương đối (S nhỏ, M vừa, L lớn), dựa trên những
+            gì đã có trong code; mình chưa viết dòng server nào cho các tính
+            năng này.
+          </p>
+          <div class="tbl">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Tính năng</th>
+                  <th>Cỡ</th>
+                  <th>Vì sao ở vị trí này</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1</td>
+                  <td>Quà hằng ngày, cấp tình bạn, mời bạn</td>
+                  <td class="size s">S</td>
+                  <td>
+                    Dựa thẳng trên Friends (005) và thăm farm (047). Mời bạn là
+                    thứ kéo người mới vào nhanh nhất.
+                  </td>
+                </tr>
+                <tr>
+                  <td>2</td>
+                  <td>Khinh khí cầu nhờ giúp</td>
+                  <td class="size m">M</td>
+                  <td>
+                    Mở rộng bảng đơn hàng (040). Tạo lý do nhắn bạn ngay từ tuần
+                    đầu.
+                  </td>
+                </tr>
+                <tr>
+                  <td>3</td>
+                  <td>Quầy bán + tờ báo</td>
+                  <td class="size m">M</td>
+                  <td>
+                    Chạm vào kinh tế Gold Leaves, phải khoá giá và giới hạn ngày
+                    trên server trước khi mở.
+                  </td>
+                </tr>
+                <tr>
+                  <td>4</td>
+                  <td>Valley Cup theo đội</td>
+                  <td class="size l">L</td>
+                  <td>
+                    Cần hội, ghép bảng, nhiệm vụ tuần. Đáng làm khi đã có đủ
+                    người chơi để ghép.
+                  </td>
+                </tr>
+                <tr>
+                  <td>5</td>
+                  <td>Thăm farm trực tiếp</td>
+                  <td class="size l">L</td>
+                  <td>
+                    Dùng lại mạng realtime của Plaza (Socket.IO), nhưng farm
+                    phải chuyển từ “gọi API” sang “phòng”.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <script>
+      (() => {
+        "use strict";
+        // ---------- catalog (names, colours and base prices from packages/shared/src/farm.ts) ----------
+        const CROPS = {
+          wheat: {
+            n: "Breeze Wheat",
+            c: "#f2d27a",
+            a: "#c9952f",
+            sell: 5,
+            lv: 1,
+          },
+          carrot: {
+            n: "Earth Carrot",
+            c: "#ff8a3d",
+            a: "#c4520f",
+            sell: 5,
+            lv: 1,
+          },
+          lotus: {
+            n: "Tide Lotus",
+            c: "#ff9bd2",
+            a: "#e0559a",
+            sell: 6,
+            lv: 6,
+          },
+          duskcap: {
+            n: "Dusk Cap",
+            c: "#8a6bff",
+            a: "#3f2aa8",
+            sell: 9,
+            lv: 10,
+          },
+          grape: {
+            n: "Thunder Grape",
+            c: "#7a8cff",
+            a: "#3340c8",
+            sell: 13,
+            lv: 15,
+          },
+          pumpkin: {
+            n: "Lava Pumpkin",
+            c: "#ff8a1a",
+            a: "#c0400a",
+            sell: 13,
+            lv: 17,
+          },
+          melon: {
+            n: "Storm Melon",
+            c: "#57c04e",
+            a: "#1f6b25",
+            sell: 22,
+            lv: 35,
+          },
+          orange: {
+            n: "Phoenix Orange",
+            c: "#ffad1f",
+            a: "#e0480f",
+            sell: 23,
+            lv: 42,
+          },
+          starfruit: {
+            n: "Rainbow Starfruit",
+            c: "#ffe27a",
+            a: "#ff7ab8",
+            sell: 41,
+            lv: 66,
+          },
+        };
+        const MY_LEVEL = 18;
+        const fmt = (n) => Math.round(n).toLocaleString("en-US");
+        const rnd = (a) => a[Math.floor(Math.random() * a.length)];
+        const esc = (s) =>
+          String(s).replace(
+            /[&<>"]/g,
+            (ch) =>
+              ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch],
+          );
+
+        // ---------- sample friends ----------
+        const FRIENDS = [
+          {
+            id: "mai",
+            name: "Mai",
+            color: "#ffd84a",
+            lv: 44,
+            days: 34,
+            likes: 212,
+            online: true,
+            giftIn: true,
+          },
+          {
+            id: "khoa",
+            name: "Khoa",
+            color: "#7fe7ff",
+            lv: 38,
+            days: 9,
+            likes: 148,
+            online: true,
+            giftIn: true,
+          },
+          {
+            id: "linh",
+            name: "Linh",
+            color: "#ff9bd2",
+            lv: 70,
+            days: 96,
+            likes: 305,
+            online: false,
+            giftIn: false,
+          },
+          {
+            id: "bao",
+            name: "Bảo",
+            color: "#c3adff",
+            lv: 21,
+            days: 2,
+            likes: 61,
+            online: false,
+            giftIn: true,
+          },
+          {
+            id: "an",
+            name: "An",
+            color: "#ffad1f",
+            lv: 12,
+            days: 0,
+            likes: 18,
+            online: false,
+            giftIn: false,
+          },
+        ];
+        const F = Object.fromEntries(FRIENDS.map((f) => [f.id, f]));
+        const BONDS = [
+          { name: "Sprout", d: 0, perk: "Send and open daily seed gifts" },
+          { name: "Bud", d: 3, perk: "+10% XP when you help each other" },
+          { name: "Bloom", d: 7, perk: "Their guard dog lets you in: no fine" },
+          { name: "Grove", d: 30, perk: "1 extra balloon crate request a day" },
+          {
+            name: "Evergreen",
+            d: 90,
+            perk: "Harvest Party bonus rises to ×1.3",
+          },
+        ];
+        const bondOf = (days) => {
+          let b = 0;
+          BONDS.forEach((x, i) => {
+            if (days >= x.d) b = i;
+          });
+          return b;
+        };
+
+        // ---------- state ----------
+        const S = {
+          coins: 2340,
+          leaves: 1240,
+          xp: 0,
+          barn: {
+            wheat: 30,
+            carrot: 42,
+            lotus: 16,
+            duskcap: 11,
+            grape: 6,
+            pumpkin: 9,
+            melon: 0,
+            orange: 0,
+            starfruit: 0,
+          },
+          stall: [
+            { crop: "carrot", qty: 10, factor: 1.2, sold: null },
+            { crop: "duskcap", qty: 5, factor: 1.0, sold: null },
+            null,
+            null,
+            null,
+            null,
+          ],
+          picked: 2,
+          paper: [
+            { id: 1, by: "mai", crop: "orange", qty: 4, factor: 1.2 },
+            { id: 2, by: "khoa", crop: "melon", qty: 6, factor: 1.1 },
+            { id: 3, by: "linh", crop: "starfruit", qty: 2, factor: 1.4 },
+            { id: 4, by: "bao", crop: "pumpkin", qty: 10, factor: 0.8 },
+          ],
+          balloon: null,
+          launches: 0,
+          helperStars: 0,
+          cup: {
+            pts: 2860,
+            mine: null,
+            done: 0,
+            tasks: [
+              {
+                id: "harvest",
+                t: "Harvest 12 crops on your farm",
+                goal: 12,
+                pts: 320,
+              },
+              { id: "crate", t: "Fill 3 balloon crates", goal: 3, pts: 260 },
+              {
+                id: "sell",
+                t: "Sell 2 stall listings to friends",
+                goal: 2,
+                pts: 280,
+              },
+              { id: "like", t: "Like 3 friends' farms", goal: 3, pts: 150 },
+            ],
+            prog: 0,
+            league: [
+              { n: "Thunder Sprouts", pts: 2860, me: true },
+              { n: "Moon Diggers", pts: 3410 },
+              { n: "Lava Lettuce", pts: 2490 },
+              { n: "Tidal Tulips", pts: 1980 },
+              { n: "Quiet Acres", pts: 1220 },
+            ],
+          },
+          gifts: { sent: {}, opened: {} },
+          invited: 1,
+          myLikes: 37,
+          liked: {},
+          visiting: null,
+          waterLeft: 3,
+          tab: null,
+        };
+        function newBalloon() {
+          const pool = [
+            "carrot",
+            "lotus",
+            "duskcap",
+            "pumpkin",
+            "grape",
+            "melon",
+            "orange",
+            "wheat",
+          ];
+          const picks = [];
+          while (picks.length < 6) {
+            const c = rnd(pool);
+            if (!picks.includes(c)) picks.push(c);
+          }
+          if (!picks.includes("melon")) picks[5] = "melon";
+          return {
+            crates: picks.map((c) => ({
+              crop: c,
+              qty: CROPS[c].lv > 30 ? 2 : CROPS[c].lv > 12 ? 4 : 8,
+              state: "open",
+              by: null,
+            })),
+          };
+        }
+        S.balloon = newBalloon();
+
+        // ---------- the farm (plots) ----------
+        const plantable = Object.keys(CROPS).filter(
+          (k) => CROPS[k].lv <= MY_LEVEL,
+        );
+        const GROW_MS = 22000;
+        function makePlots(n, seed) {
+          const out = [];
+          for (let i = 0; i < n; i++) {
+            const r = Math.abs(Math.sin((i + 1) * 12.9898 + seed * 78.233)) % 1;
+            const crop = seed
+              ? Object.keys(CROPS)[Math.floor(r * 9)]
+              : plantable[Math.floor(r * plantable.length)];
+            out.push({ crop, planted: performance.now() - r * GROW_MS * 1.6 });
+          }
+          return out;
+        }
+        let plots = makePlots(32, 0);
+        let homePlots = null;
+        const ripe = (p) => p.crop && performance.now() - p.planted >= GROW_MS;
+
+        // ---------- canvas & layout ----------
+        const cv = document.getElementById("cv");
+        const ctx = cv.getContext("2d");
+        const stage = document.getElementById("stage");
+        let L = null,
+          view = { s: 1, ox: 0, oy: 0, w: 0, h: 0 };
+        function layout() {
+          const r = stage.getBoundingClientRect();
+          const dpr = Math.min(2, window.devicePixelRatio || 1);
+          cv.width = Math.round(r.width * dpr);
+          cv.height = Math.round(r.height * dpr);
+          view.w = r.width;
+          view.h = r.height;
+          const portrait = r.width / r.height < 0.95;
+          if (portrait) {
+            L = {
+              W: 600,
+              H: 980,
+              cols: 5,
+              rows: 6,
+              field: { x: 120, y: 330, w: 400, h: 430 },
+              stall: { x: 20, y: 150, w: 150, h: 110 },
+              balloon: { x: 480, y: 175 },
+              board: { x: 250, y: 165 },
+              barn: { x: 20, y: 790, w: 150, h: 120 },
+              pond: { x: 470, y: 860 },
+              path: "p",
+            };
+          } else {
+            L = {
+              W: 1100,
+              H: 680,
+              cols: 8,
+              rows: 4,
+              field: { x: 330, y: 250, w: 520, h: 300 },
+              stall: { x: 60, y: 300, w: 170, h: 120 },
+              balloon: { x: 930, y: 150 },
+              board: { x: 150, y: 140 },
+              barn: { x: 905, y: 330, w: 150, h: 130 },
+              pond: { x: 110, y: 610 },
+              path: "l",
+            };
+          }
+          const n = L.cols * L.rows;
+          const fit = (arr) => {
+            while (arr.length < n) arr.push(...makePlots(1, 0));
+            arr.length = n;
+            return arr;
+          };
+          if (S.visiting) {
+            if (plots.length !== n)
+              plots = makePlots(n, FRIENDS.indexOf(F[S.visiting]) + 1);
+            if (homePlots) fit(homePlots);
+          } else if (plots.length !== n) fit(plots);
+          view.s = Math.min(r.width / L.W, (r.height - 70) / L.H);
+          view.ox = (r.width - L.W * view.s) / 2;
+          view.oy = Math.max(48, (r.height - 70 - L.H * view.s) / 2 + 24);
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+          placeAvatars(true);
+        }
+        function toWorld(cx, cy) {
+          return { x: (cx - view.ox) / view.s, y: (cy - view.oy) / view.s };
+        }
+        function plotRect(i) {
+          const f = L.field,
+            c = i % L.cols,
+            r = Math.floor(i / L.cols);
+          const cw = f.w / L.cols,
+            ch = f.h / L.rows;
+          return {
+            x: f.x + c * cw + 4,
+            y: f.y + r * ch + 4,
+            w: cw - 8,
+            h: ch - 8,
+          };
+        }
+
+        // ---------- avatars ----------
+        const avatars = [];
+        function placeAvatars(reset) {
+          if (!L) return;
+          const host = S.visiting;
+          const present = host
+            ? [
+                { id: host, f: F[host] },
+                { id: "you", f: { name: "You", color: "#9df0b8" } },
+              ]
+            : [
+                { id: "you", f: { name: "You", color: "#9df0b8" } },
+                ...FRIENDS.filter((f) => f.online).map((f) => ({
+                  id: f.id,
+                  f,
+                })),
+              ];
+          if (
+            reset ||
+            avatars.length !== present.length ||
+            avatars.some((a, i) => a.id !== present[i].id)
+          ) {
+            avatars.length = 0;
+            present.forEach((p, i) => {
+              const x = L.field.x + L.field.w * (0.2 + 0.3 * i),
+                y = L.field.y + L.field.h + 40;
+              avatars.push({
+                id: p.id,
+                name: p.f.name,
+                color: p.f.color,
+                x,
+                y,
+                tx: x,
+                ty: y,
+                emote: null,
+                et: 0,
+                idle: 2000 + Math.random() * 3000,
+              });
+            });
+          }
+        }
+        function walkTo(id, x, y) {
+          const a = avatars.find((v) => v.id === id);
+          if (a) {
+            a.tx = x;
+            a.ty = y;
+            a.idle = 6000;
+          }
+        }
+        function emote(id, e) {
+          const a = avatars.find((v) => v.id === id);
+          if (a) {
+            a.emote = e;
+            a.et = performance.now();
+          }
+        }
+
+        // ---------- drawing ----------
+        function rr(x, y, w, h, r) {
+          ctx.beginPath();
+          ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h);
+        }
+        const grassDots = Array.from({ length: 220 }, () => [
+          Math.random(),
+          Math.random(),
+          Math.random(),
+        ]);
+        function drawGround() {
+          ctx.fillStyle = S.visiting ? "#5aa24a" : "#4f9b3f";
+          ctx.fillRect(0, 0, view.w, view.h);
+          grassDots.forEach(([u, v, k]) => {
+            ctx.fillStyle = k > 0.5 ? "#62b04f" : "#447f36";
+            ctx.fillRect(u * view.w, v * view.h, 3, 6);
+          });
+        }
+        function W(fn) {
+          ctx.save();
+          ctx.translate(view.ox, view.oy);
+          ctx.scale(view.s, view.s);
+          fn();
+          ctx.restore();
+        }
+        function label(text, x, y, bg, fg) {
+          ctx.font = "700 15px 'Barlow Condensed', 'Arial Narrow', sans-serif";
+          const w = ctx.measureText(text).width + 16;
+          ctx.fillStyle = bg;
+          rr(x - w / 2, y - 12, w, 22, 11);
+          ctx.fill();
+          ctx.fillStyle = fg;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(text, x, y);
+        }
+        function drawPath() {
+          ctx.fillStyle = "#d9c08a";
+          if (L.path === "l") {
+            rr(-200, L.field.y + L.field.h + 22, L.W + 400, 46, 22);
+            ctx.fill();
+            rr(
+              L.stall.x + L.stall.w / 2 - 22,
+              L.stall.y + L.stall.h - 10,
+              44,
+              200,
+              20,
+            );
+            ctx.fill();
+          } else {
+            rr(-200, L.field.y + L.field.h + 18, L.W + 400, 44, 22);
+            ctx.fill();
+            rr(L.field.x - 70, L.stall.y + 60, 44, L.field.h + 260, 20);
+            ctx.fill();
+          }
+        }
+        function drawField() {
+          const f = L.field;
+          ctx.fillStyle = "#6b4527";
+          rr(f.x - 14, f.y - 14, f.w + 28, f.h + 28, 18);
+          ctx.fill();
+          const now = performance.now();
+          plots.forEach((p, i) => {
+            const r = plotRect(i);
+            ctx.fillStyle = "#8a5a33";
+            rr(r.x, r.y, r.w, r.h, 9);
+            ctx.fill();
+            ctx.strokeStyle = "#7a4d2a";
+            ctx.lineWidth = 2;
+            for (let k = 1; k < 3; k++) {
+              ctx.beginPath();
+              ctx.moveTo(r.x + 8, r.y + (r.h * k) / 3);
+              ctx.lineTo(r.x + r.w - 8, r.y + (r.h * k) / 3);
+              ctx.stroke();
+            }
+            if (!p.crop) return;
+            const c = CROPS[p.crop],
+              g = Math.min(1, (now - p.planted) / GROW_MS);
+            const cx = r.x + r.w / 2,
+              cy = r.y + r.h / 2 + 4,
+              rad = Math.min(r.w, r.h) * (0.12 + 0.24 * g);
+            ctx.fillStyle = "#3cbf68";
+            ctx.beginPath();
+            ctx.ellipse(
+              cx - rad * 0.55,
+              cy - rad * 0.9,
+              rad * 0.45,
+              rad * 0.22,
+              -0.6,
+              0,
+              7,
+            );
+            ctx.fill();
+            ctx.beginPath();
+            ctx.ellipse(
+              cx + rad * 0.55,
+              cy - rad * 0.9,
+              rad * 0.45,
+              rad * 0.22,
+              0.6,
+              0,
+              7,
+            );
+            ctx.fill();
+            if (g >= 1) {
+              ctx.fillStyle = c.a;
+              ctx.beginPath();
+              ctx.arc(cx + 2, cy + 3, rad, 0, 7);
+              ctx.fill();
+              ctx.fillStyle = c.c;
+              ctx.beginPath();
+              ctx.arc(cx, cy, rad, 0, 7);
+              ctx.fill();
+              ctx.fillStyle = "rgba(255,255,255,0.55)";
+              ctx.beginPath();
+              ctx.arc(cx - rad * 0.35, cy - rad * 0.35, rad * 0.22, 0, 7);
+              ctx.fill();
+              const tw = (Math.sin(now / 300 + i) + 1) / 2;
+              ctx.fillStyle = `rgba(255,255,220,${0.35 + 0.5 * tw})`;
+              ctx.beginPath();
+              ctx.arc(cx + rad * 0.9, cy - rad * 0.9, 2.5 + tw * 1.5, 0, 7);
+              ctx.fill();
+            } else {
+              ctx.fillStyle = "#2f8f4e";
+              ctx.fillRect(cx - 1.5, cy - rad, 3, rad * 1.2);
+              ctx.fillStyle = "#0006";
+              rr(r.x + 8, r.y + r.h - 9, r.w - 16, 5, 3);
+              ctx.fill();
+              ctx.fillStyle = "#7ff0a2";
+              rr(r.x + 8, r.y + r.h - 9, (r.w - 16) * g, 5, 3);
+              ctx.fill();
+            }
+          });
+        }
+        function drawStall() {
+          const s = L.stall,
+            listed = S.stall.filter(Boolean),
+            sold = S.stall.filter((x) => x && x.sold).length;
+          ctx.fillStyle = "#00000030";
+          rr(s.x + 6, s.y + s.h - 8, s.w, 16, 8);
+          ctx.fill();
+          ctx.fillStyle = "#b07a45";
+          rr(s.x, s.y + 40, s.w, s.h - 40, 8);
+          ctx.fill();
+          ctx.fillStyle = "#8a5a33";
+          ctx.fillRect(s.x + 8, s.y + 30, 8, 50);
+          ctx.fillRect(s.x + s.w - 16, s.y + 30, 8, 50);
+          const n = 6,
+            sw = s.w / n;
+          for (let i = 0; i < n; i++) {
+            ctx.fillStyle = i % 2 ? "#fff6ea" : "#e8455a";
+            ctx.beginPath();
+            ctx.moveTo(s.x + i * sw, s.y + 8);
+            ctx.lineTo(s.x + (i + 1) * sw, s.y + 8);
+            ctx.lineTo(s.x + (i + 1) * sw, s.y + 34);
+            ctx.quadraticCurveTo(
+              s.x + (i + 0.5) * sw,
+              s.y + 46,
+              s.x + i * sw,
+              s.y + 34,
+            );
+            ctx.fill();
+          }
+          listed.slice(0, 4).forEach((l, i) => {
+            const c = CROPS[l.crop];
+            ctx.fillStyle = l.sold ? "#ffffff55" : c.c;
+            ctx.beginPath();
+            ctx.arc(s.x + 26 + i * 40, s.y + 66, 13, 0, 7);
+            ctx.fill();
+          });
+          label("FARM STALL", s.x + s.w / 2, s.y - 6, "#1b2f3a", "#fff");
+          if (sold)
+            label(
+              `${sold} sold`,
+              s.x + s.w - 6,
+              s.y + 34,
+              "#ff7aa8",
+              "#2a0614",
+            );
+        }
+        function drawBalloon() {
+          const b = L.balloon,
+            t = performance.now() / 900,
+            y = b.y + Math.sin(t) * 5;
+          const done = S.balloon.crates.filter(
+            (c) => c.state === "done",
+          ).length;
+          ctx.strokeStyle = "#5a3a1f";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(b.x - 30, y + 20);
+          ctx.lineTo(b.x - 18, y + 80);
+          ctx.moveTo(b.x + 30, y + 20);
+          ctx.lineTo(b.x + 18, y + 80);
+          ctx.stroke();
+          const g = ctx.createLinearGradient(b.x - 60, 0, b.x + 60, 0);
+          g.addColorStop(0, "#5a74ff");
+          g.addColorStop(0.5, "#ffd65b");
+          g.addColorStop(1, "#ff7ab8");
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.ellipse(b.x, y - 20, 58, 66, 0, 0, 7);
+          ctx.fill();
+          ctx.strokeStyle = "#ffffff55";
+          ctx.beginPath();
+          ctx.ellipse(b.x, y - 20, 22, 66, 0, 0, 7);
+          ctx.stroke();
+          ctx.fillStyle = "#8a5a33";
+          rr(b.x - 26, y + 78, 52, 30, 6);
+          ctx.fill();
+          for (let i = 0; i < 6; i++) {
+            ctx.fillStyle = i < done ? "#7ff0a2" : "#ffffff30";
+            rr(b.x - 24 + i * 8.4, y + 84, 6, 18, 2);
+            ctx.fill();
+          }
+          label(`SUPPLY BALLOON ${done}/6`, b.x, y + 124, "#1b2f3a", "#fff");
+        }
+        function drawBoard() {
+          const b = L.board;
+          ctx.fillStyle = "#6b4527";
+          ctx.fillRect(b.x - 4, b.y - 10, 8, 90);
+          ctx.fillStyle = "#ffd34d";
+          ctx.beginPath();
+          ctx.moveTo(b.x + 4, b.y - 10);
+          ctx.lineTo(b.x + 70, b.y + 8);
+          ctx.lineTo(b.x + 4, b.y + 28);
+          ctx.fill();
+          ctx.fillStyle = "#3a2a00";
+          ctx.font = "800 15px 'Barlow Condensed', sans-serif";
+          ctx.textAlign = "left";
+          ctx.textBaseline = "middle";
+          ctx.fillText("CUP", b.x + 12, b.y + 9);
+          const rank = cupRank();
+          label(`#${rank} in league`, b.x + 6, b.y + 98, "#1b2f3a", "#ffd34d");
+        }
+        function drawBarn() {
+          const b = L.barn;
+          ctx.fillStyle = "#c63b32";
+          rr(b.x, b.y + 30, b.w, b.h - 30, 6);
+          ctx.fill();
+          ctx.fillStyle = "#8f241e";
+          ctx.beginPath();
+          ctx.moveTo(b.x - 10, b.y + 36);
+          ctx.lineTo(b.x + b.w / 2, b.y - 6);
+          ctx.lineTo(b.x + b.w + 10, b.y + 36);
+          ctx.fill();
+          ctx.fillStyle = "#fff";
+          rr(b.x + b.w / 2 - 26, b.y + b.h - 56, 52, 56, 4);
+          ctx.fill();
+          ctx.strokeStyle = "#c63b32";
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.moveTo(b.x + b.w / 2 - 22, b.y + b.h - 52);
+          ctx.lineTo(b.x + b.w / 2 + 22, b.y + b.h - 4);
+          ctx.moveTo(b.x + b.w / 2 + 22, b.y + b.h - 52);
+          ctx.lineTo(b.x + b.w / 2 - 22, b.y + b.h - 4);
+          ctx.stroke();
+          label("BARN", b.x + b.w / 2, b.y + 50, "#1b2f3a", "#fff");
+        }
+        function drawPond() {
+          const p = L.pond;
+          ctx.fillStyle = "#3f8fd0";
+          ctx.beginPath();
+          ctx.ellipse(p.x, p.y, 90, 46, 0, 0, 7);
+          ctx.fill();
+          ctx.fillStyle = "#78c8ff55";
+          ctx.beginPath();
+          ctx.ellipse(p.x - 20, p.y - 10, 40, 14, 0, 0, 7);
+          ctx.fill();
+        }
+        function drawAvatar(a, now) {
+          const bob =
+            Math.sin(now / 160 + a.x) *
+            (Math.hypot(a.tx - a.x, a.ty - a.y) > 2 ? 3 : 1);
+          ctx.fillStyle = "#0003";
+          ctx.beginPath();
+          ctx.ellipse(a.x, a.y + 16, 15, 5, 0, 0, 7);
+          ctx.fill();
+          ctx.fillStyle = a.color;
+          ctx.beginPath();
+          ctx.moveTo(a.x - 13, a.y - 6 + bob);
+          ctx.lineTo(a.x - 9, a.y - 24 + bob);
+          ctx.lineTo(a.x - 2, a.y - 12 + bob);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(a.x + 13, a.y - 6 + bob);
+          ctx.lineTo(a.x + 9, a.y - 24 + bob);
+          ctx.lineTo(a.x + 2, a.y - 12 + bob);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(a.x, a.y + bob, 16, 0, 7);
+          ctx.fill();
+          ctx.fillStyle = "#10202a";
+          ctx.beginPath();
+          ctx.arc(a.x - 5, a.y - 2 + bob, 2.4, 0, 7);
+          ctx.arc(a.x + 5, a.y - 2 + bob, 2.4, 0, 7);
+          ctx.fill();
+          ctx.fillStyle = "#ff7aa877";
+          ctx.beginPath();
+          ctx.arc(a.x - 9, a.y + 4 + bob, 3, 0, 7);
+          ctx.arc(a.x + 9, a.y + 4 + bob, 3, 0, 7);
+          ctx.fill();
+          label(
+            a.name,
+            a.x,
+            a.y - 38 + bob,
+            a.id === "you" ? "#ffd34d" : "#1b2f3aee",
+            a.id === "you" ? "#3a2a00" : "#fff",
+          );
+          if (a.emote && now - a.et < 2600) {
+            ctx.font =
+              "26px system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = "#fff";
+            rr(a.x + 12, a.y - 74 + bob, 40, 34, 12);
+            ctx.fill();
+            ctx.fillText(a.emote, a.x + 32, a.y - 56 + bob);
+          }
+        }
+        let last = performance.now();
+        function frame(now) {
+          const dt = Math.min(50, now - last);
+          last = now;
+          avatars.forEach((a) => {
+            const dx = a.tx - a.x,
+              dy = a.ty - a.y,
+              d = Math.hypot(dx, dy);
+            if (d > 1) {
+              const sp = 0.12 * dt;
+              a.x += (dx / d) * Math.min(sp, d);
+              a.y += (dy / d) * Math.min(sp, d);
+            } else if (a.id !== "you" && (a.idle -= dt) < 0) {
+              a.idle = 2500 + Math.random() * 4000;
+              a.tx = L.field.x - 40 + Math.random() * (L.field.w + 80);
+              a.ty = L.field.y + L.field.h + 30 + Math.random() * 30;
+            }
+          });
+          drawGround();
+          W(() => {
+            drawPath();
+            drawPond();
+            drawField();
+            if (!S.visiting) {
+              drawStall();
+              drawBalloon();
+              drawBoard();
+            }
+            drawBarn();
+            avatars
+              .slice()
+              .sort((p, q) => p.y - q.y)
+              .forEach((a) => drawAvatar(a, now));
+          });
+          requestAnimationFrame(frame);
+        }
+
+        // ---------- hit testing ----------
+        cv.addEventListener("click", (e) => {
+          const r = cv.getBoundingClientRect(),
+            p = toWorld(e.clientX - r.left, e.clientY - r.top);
+          for (const a of avatars)
+            if (a.id !== "you" && Math.hypot(p.x - a.x, p.y - a.y) < 26) {
+              onAvatar(a);
+              return;
+            }
+          if (!S.visiting) {
+            const s = L.stall;
+            if (
+              p.x > s.x &&
+              p.x < s.x + s.w &&
+              p.y > s.y - 20 &&
+              p.y < s.y + s.h
+            ) {
+              open("stall");
+              return;
+            }
+            const b = L.balloon;
+            if (Math.hypot(p.x - b.x, p.y - b.y + 10) < 80) {
+              open("help");
+              return;
+            }
+            const g = L.board;
+            if (
+              p.x > g.x - 20 &&
+              p.x < g.x + 90 &&
+              p.y > g.y - 20 &&
+              p.y < g.y + 110
+            ) {
+              open("cup");
+              return;
+            }
+          }
+          for (let i = 0; i < plots.length; i++) {
+            const q = plotRect(i);
+            if (p.x > q.x && p.x < q.x + q.w && p.y > q.y && p.y < q.y + q.h) {
+              onPlot(i);
+              return;
+            }
+          }
+          walkTo("you", p.x, p.y);
+        });
+        function onPlot(i) {
+          const p = plots[i],
+            q = plotRect(i);
+          walkTo("you", q.x + q.w / 2, q.y + q.h + 14);
+          if (S.visiting) {
+            if (S.waterLeft > 0 && !ripe(p)) {
+              S.waterLeft--;
+              p.planted -= 4000;
+              S.xp += 2;
+              toast(
+                `You watered ${F[S.visiting].name}'s ${CROPS[p.crop].n}: +2 XP, it grows faster`,
+                null,
+              );
+              renderVisitBanner();
+            } else if (ripe(p))
+              toast(
+                "Ripe crops are theirs to pick. Like the farm or water a growing crop.",
+                null,
+              );
+            else toast("No water left for this farm today", null);
+            return;
+          }
+          if (ripe(p)) {
+            const near = avatars.filter(
+              (a) =>
+                a.id !== "you" &&
+                Math.hypot(a.x - (q.x + q.w / 2), a.y - (q.y + q.h)) < 260,
+            );
+            const n = near.length ? 3 : 2;
+            S.barn[p.crop] += n;
+            S.xp += 4;
+            if (near.length) {
+              emote(near[0].id, "🎉");
+              toast(
+                `Harvest Party with ${near[0].name}: ${n} ${CROPS[p.crop].n} instead of 2`,
+                near[0].id,
+              );
+            } else toast(`+2 ${CROPS[p.crop].n} to the barn`, null);
+            p.crop = rnd(plantable);
+            p.planted = performance.now();
+            cupTick("harvest");
+          } else toast(`${CROPS[p.crop].n} is still growing`, null);
+        }
+        function onAvatar(a) {
+          emote("you", "👋");
+          setTimeout(() => emote(a.id, rnd(["👋", "❤️", "😄", "🌱"])), 500);
+          toast(
+            `You waved at ${a.name}. Harvest near a friend for a Harvest Party bonus.`,
+            a.id,
+          );
+        }
+
+        // ---------- toasts ----------
+        const ticker = document.getElementById("ticker");
+        function toast(text, who) {
+          const el = document.createElement("div");
+          el.className = "toast";
+          if (who && F[who]) {
+            const d = document.createElement("span");
+            d.className = "who";
+            d.style.background = F[who].color;
+            d.textContent = F[who].name[0];
+            el.appendChild(d);
+          }
+          const t = document.createElement("span");
+          t.textContent = text;
+          el.appendChild(t);
+          ticker.appendChild(el);
+          while (ticker.children.length > (view.w < 520 ? 2 : 3))
+            ticker.firstChild.remove();
+          setTimeout(() => el.remove(), 6500);
+          hud();
+        }
+
+        // ---------- HUD ----------
+        function hud() {
+          document.getElementById("coins").textContent = fmt(S.coins);
+          document.getElementById("leaves").textContent = fmt(S.leaves);
+          const on = S.visiting
+            ? [F[S.visiting]]
+            : FRIENDS.filter((f) => f.online);
+          document.getElementById("faces").innerHTML = on
+            .map(
+              (f) =>
+                `<span class="face" style="background:${f.color}">${esc(f.name[0])}</span>`,
+            )
+            .join("");
+          document.getElementById("onlineTxt").textContent = S.visiting
+            ? "on this farm"
+            : `${on.length} friends here now`;
+          document.getElementById("farmName").textContent = S.visiting
+            ? `${F[S.visiting].name}'s farm`
+            : "Your farm";
+          document.getElementById("lvl").textContent = S.visiting
+            ? F[S.visiting].lv
+            : MY_LEVEL;
+          const sold = S.stall.filter((x) => x && x.sold).length;
+          badge("nStall", sold);
+          badge(
+            "nHelp",
+            S.balloon.crates.every((c) => c.state === "done") ? "!" : 0,
+          );
+          badge("nCup", S.cup.mine ? 0 : "!");
+          badge(
+            "nFriends",
+            FRIENDS.filter((f) => f.giftIn && !S.gifts.opened[f.id]).length,
+          );
+          badge("nVisit", 0);
+          document.getElementById("onlinePill").hidden = !!S.visiting;
+        }
+        function badge(id, v) {
+          const el = document.getElementById(id);
+          el.hidden = !v;
+          el.textContent = v;
+        }
+
+        // ---------- sheet ----------
+        const sheet = document.getElementById("sheet"),
+          body = document.getElementById("sheetBody");
+        document.getElementById("closeSheet").onclick = () => open(null);
+        document.getElementById("dock").addEventListener("click", (e) => {
+          const b = e.target.closest("button[data-tab]");
+          if (b) open(S.tab === b.dataset.tab ? null : b.dataset.tab);
+        });
+        function open(tab) {
+          if (S.visiting && tab && tab !== "visit") goHome(true);
+          S.tab = tab;
+          document
+            .querySelectorAll("#dock button")
+            .forEach((b) =>
+              b.setAttribute("aria-pressed", String(b.dataset.tab === tab)),
+            );
+          sheet.hidden = !tab;
+          render();
+          notes(tab || "stall");
+        }
+        function render() {
+          hud();
+          if (!S.tab) return;
+          const R = {
+            stall: renderStall,
+            help: renderHelp,
+            cup: renderCup,
+            friends: renderFriends,
+            visit: renderVisit,
+          }[S.tab];
+          R();
+        }
+        function head(t, s) {
+          document.getElementById("sheetTitle").textContent = t;
+          document.getElementById("sheetSub").textContent = s;
+        }
+        const dotFor = (k) =>
+          `<span class="cropdot" style="background:${CROPS[k].c}"></span>`;
+        const priceOf = (l) =>
+          Math.round(l.qty * CROPS[l.crop].sell * l.factor);
+
+        // Stall
+        function renderStall() {
+          head(
+            "Farm Stall",
+            "Friends see your stall in the Valley Paper and buy while you're away",
+          );
+          const slots = S.stall
+            .map((l, i) => {
+              if (!l)
+                return `<button type="button" class="slot ${S.picked === i ? "picked" : ""}" data-slot="${i}"><span style="font-size:22px">+</span>Empty shelf</button>`;
+              if (l.sold)
+                return `<button type="button" class="slot sold" data-collect="${i}">${dotFor(l.crop)}<span>Sold to <b>${esc(F[l.sold].name)}</b></span><span class="p">Collect ${fmt(priceOf(l) * 0.9)}</span></button>`;
+              return `<div class="slot filled">${dotFor(l.crop)}<span class="q">×${l.qty}</span><span>${esc(CROPS[l.crop].n)}</span><span class="p">${fmt(priceOf(l))} leaves</span></div>`;
+            })
+            .join("");
+          const have = Object.keys(S.barn).filter((k) => S.barn[k] > 0);
+          const empty = S.stall.some((x) => !x);
+          const form = empty
+            ? `<div class="form">
+    <div class="row"><label for="stCrop">Crop from your barn<select id="stCrop">${have.map((k) => `<option value="${k}">${esc(CROPS[k].n)} (have ${S.barn[k]})</option>`).join("")}</select></label>
+    <label for="stQty">How many<select id="stQty"></select></label></div>
+    <label for="stPrice"><span>Price: <span id="stFactor"></span> of the market</span><input id="stPrice" type="range" min="0.5" max="1.5" step="0.1" value="1.1"></label>
+    <div class="row" style="justify-content:space-between"><div class="price-read" id="stRead"></div><button type="button" class="btn gold" id="stPut">Put on shelf</button></div>
+    <div class="sample">Prices stay between 0.5× and 1.5× the day's market. A 10% stall fee comes off each sale.</div></div>`
+            : `<div class="sample">All six shelves are full. Collect sold shelves to free them.</div>`;
+          const paper =
+            S.paper
+              .map((p) => {
+                const c = CROPS[p.crop],
+                  f = F[p.by],
+                  cost = priceOf(p),
+                  locked = c.lv > MY_LEVEL;
+                return `<div class="item"><span class="av" style="background:${f.color}">${esc(f.name[0])}</span>${dotFor(p.crop)}
+      <div class="grow"><div class="t">${p.qty} ${esc(c.n)}</div><div class="s">${esc(f.name)}'s stall · ${p.factor}× market${locked ? ` · <span class="lock">you grow it at Lv ${c.lv}</span>` : ""}</div></div>
+      <button type="button" class="btn sm gold" data-buy="${p.id}" ${S.leaves < cost ? "disabled" : ""}>${fmt(cost)}</button></div>`;
+              })
+              .join("") ||
+            `<div class="sample">Your friends' shelves are empty right now. New listings appear here.</div>`;
+          body.innerHTML = `<div class="sec-t">Your shelves</div><div class="slots">${slots}</div>${form}
+    <div class="sec-t">Valley Paper · friends' stalls</div><div class="list">${paper}</div>`;
+          body.querySelectorAll("[data-slot]").forEach(
+            (b) =>
+              (b.onclick = () => {
+                S.picked = +b.dataset.slot;
+                renderStall();
+              }),
+          );
+          body.querySelectorAll("[data-collect]").forEach(
+            (b) =>
+              (b.onclick = () => {
+                const i = +b.dataset.collect,
+                  l = S.stall[i],
+                  got = Math.round(priceOf(l) * 0.9);
+                S.leaves += got;
+                S.stall[i] = null;
+                toast(
+                  `Collected ${fmt(got)} Gold Leaves from your stall`,
+                  null,
+                );
+                cupTick("sell");
+                renderStall();
+              }),
+          );
+          body.querySelectorAll("[data-buy]").forEach(
+            (b) =>
+              (b.onclick = () => {
+                const p = S.paper.find((x) => x.id === +b.dataset.buy);
+                const cost = priceOf(p);
+                S.leaves -= cost;
+                S.barn[p.crop] += p.qty;
+                S.paper = S.paper.filter((x) => x !== p);
+                toast(
+                  `Bought ${p.qty} ${CROPS[p.crop].n} from ${F[p.by].name}. They're in your barn.`,
+                  p.by,
+                );
+                emote(p.by, "❤️");
+                renderStall();
+              }),
+          );
+          if (empty) {
+            const sc = body.querySelector("#stCrop"),
+              sq = body.querySelector("#stQty"),
+              sp = body.querySelector("#stPrice");
+            const fillQty = () => {
+              const m = Math.min(10, S.barn[sc.value]);
+              sq.innerHTML = Array.from(
+                { length: m },
+                (_, i) =>
+                  `<option ${i + 1 === m ? "selected" : ""}>${i + 1}</option>`,
+              ).join("");
+            };
+            const read = () => {
+              const l = { crop: sc.value, qty: +sq.value, factor: +sp.value };
+              body.querySelector("#stFactor").textContent =
+                `${(+sp.value).toFixed(1)}×`;
+              body.querySelector("#stRead").innerHTML =
+                `Asking <b>${fmt(priceOf(l))}</b> leaves · market ${fmt(l.qty * CROPS[l.crop].sell)}`;
+            };
+            sc.onchange = () => {
+              fillQty();
+              read();
+            };
+            sq.onchange = read;
+            sp.oninput = read;
+            fillQty();
+            read();
+            body.querySelector("#stPut").onclick = () => {
+              let i = S.stall[S.picked]
+                ? S.stall.findIndex((x) => !x)
+                : S.picked;
+              const l = {
+                crop: sc.value,
+                qty: +sq.value,
+                factor: +sp.value,
+                sold: null,
+              };
+              S.barn[l.crop] -= l.qty;
+              S.stall[i] = l;
+              S.picked = S.stall.findIndex((x) => !x);
+              toast(
+                `${l.qty} ${CROPS[l.crop].n} on your stall. Friends who log in will see it.`,
+                null,
+              );
+              renderStall();
+            };
+          }
+        }
+
+        // Help (Supply Balloon)
+        function renderHelp() {
+          const B = S.balloon,
+            done = B.crates.filter((c) => c.state === "done").length,
+            all = done === 6;
+          head(
+            "Supply Balloon",
+            "Fill six crates for a big reward. Ask friends for the ones you can't grow yet.",
+          );
+          const crates = B.crates
+            .map((c, i) => {
+              const k = CROPS[c.crop],
+                have = S.barn[c.crop];
+              if (c.state === "done")
+                return `<div class="crate done">${dotFor(c.crop)}<span class="need">✓ ${c.qty} ${esc(k.n)}</span><span class="have">${c.by ? `Filled by <b>${esc(F[c.by].name)}</b>` : "Filled by you"}</span></div>`;
+              return `<div class="crate ${c.state === "asked" ? "asked" : ""}">${dotFor(c.crop)}<span class="need">${c.qty} ${esc(k.n)}</span><span class="have">You have ${have}</span>
+      ${have >= c.qty ? `<button type="button" class="btn sm green" data-fill="${i}">Fill</button>` : c.state === "asked" ? `<span class="have" style="color:var(--sky)">Waiting for a friend…</span>` : `<button type="button" class="btn sm" data-ask="${i}">Ask friends</button>`}</div>`;
+            })
+            .join("");
+          body.innerHTML = `<div class="bar"><i style="width:${(done / 6) * 100}%"></i></div>
+    <div class="crates">${crates}</div>
+    <div class="reward"><span>Reward: 420 Gold Leaves</span><span>+60 farm XP</span><span>1 Gold Fertilizer</span></div>
+    <button type="button" class="btn gold" id="launch" ${all ? "" : "disabled"}>${all ? "Launch the balloon" : `${6 - done} crates to go`}</button>
+    <div class="sec-t">Helper Stars</div>
+    <div class="item"><div class="grow"><div class="t">${S.helperStars} Helper Stars</div><div class="s">Friends earn a Helper Star and 1.2× the crate's market value when they fill one of your crates. You earn them the same way. Stars buy helper-only decorations.</div></div></div>
+    <div class="sample">Balloons launched today: ${S.launches}. The next balloon arrives as soon as this one leaves (in the real game: after 1 hour).</div>`;
+          body.querySelectorAll("[data-fill]").forEach(
+            (b) =>
+              (b.onclick = () => {
+                const c = B.crates[+b.dataset.fill];
+                S.barn[c.crop] -= c.qty;
+                c.state = "done";
+                c.by = null;
+                cupTick("crate");
+                renderHelp();
+              }),
+          );
+          body.querySelectorAll("[data-ask]").forEach(
+            (b) =>
+              (b.onclick = () => {
+                const c = B.crates[+b.dataset.ask];
+                c.state = "asked";
+                toast(
+                  `Asked friends for ${c.qty} ${CROPS[c.crop].n}. It's on their Help list now.`,
+                  null,
+                );
+                renderHelp();
+                setTimeout(() => helperFills(c), 3500 + Math.random() * 3000);
+              }),
+          );
+          const L2 = body.querySelector("#launch");
+          if (all)
+            L2.onclick = () => {
+              S.leaves += 420;
+              S.xp += 60;
+              S.launches++;
+              const helpers = [
+                ...new Set(
+                  B.crates.filter((c) => c.by).map((c) => F[c.by].name),
+                ),
+              ];
+              toast(
+                `Balloon launched: +420 Gold Leaves, +60 XP${helpers.length ? `. ${helpers.join(" and ")} got Helper Stars.` : ""}`,
+                null,
+              );
+              S.balloon = newBalloon();
+              renderHelp();
+            };
+        }
+        function helperFills(c) {
+          if (c.state !== "asked") return;
+          const who =
+            rnd(FRIENDS.filter((f) => f.lv >= CROPS[c.crop].lv && f.online)) ||
+            F.mai;
+          c.state = "done";
+          c.by = who.id;
+          walkTo(who.id, L.balloon.x - 20, L.balloon.y + 150);
+          setTimeout(() => emote(who.id, "📦"), 1200);
+          toast(
+            `${who.name} filled your crate of ${c.qty} ${CROPS[c.crop].n}`,
+            who.id,
+          );
+          if (S.tab === "help") renderHelp();
+        }
+
+        // Cup
+        function cupRank() {
+          const l = S.cup.league.slice().sort((a, b) => b.pts - a.pts);
+          return l.findIndex((x) => x.me) + 1;
+        }
+        function cupTick(kind) {
+          const C = S.cup;
+          if (!C.mine || C.mine.id !== kind) return;
+          C.prog++;
+          if (C.prog >= C.mine.goal) {
+            C.pts += C.mine.pts;
+            C.league.find((x) => x.me).pts = C.pts;
+            C.done++;
+            toast(
+              `Cup task done: +${C.mine.pts} points for Thunder Sprouts`,
+              null,
+            );
+            C.mine = null;
+            C.prog = 0;
+          }
+          if (S.tab === "cup") renderCup();
+          else hud();
+        }
+        function renderCup() {
+          const C = S.cup,
+            tiers = [2000, 4000, 6000],
+            max = 6000;
+          head(
+            "Valley Cup",
+            "Week 45 · ends Monday 00:00 Pacific · your co-op: Thunder Sprouts (8/10)",
+          );
+          const tasks = C.tasks
+            .map((t) => {
+              const mine = C.mine && C.mine.id === t.id;
+              return `<div class="task ${mine ? "mine" : ""}"><div><div style="font-weight:700;font-size:14px">${esc(t.t)}</div><div class="sample">${mine ? `${C.prog}/${t.goal} · do it on your farm, the stall or the balloon` : "Any member can take it"}</div></div>
+      <div style="display:grid;justify-items:end;gap:4px"><span class="pts">+${t.pts}</span>${mine ? `<button type="button" class="btn sm" data-drop="1">Drop</button>` : `<button type="button" class="btn sm gold" data-take="${t.id}" ${C.mine ? "disabled" : ""}>Take</button>`}</div>
+      ${mine ? `<div class="bar gold"><i style="width:${(C.prog / t.goal) * 100}%"></i></div>` : ""}</div>`;
+            })
+            .join("");
+          const league = C.league
+            .slice()
+            .sort((a, b) => b.pts - a.pts)
+            .map(
+              (r, i) =>
+                `<div class="lrow ${r.me ? "me" : ""}"><span class="rk">${i + 1}</span><span>${esc(r.n)}</span><b>${fmt(r.pts)}</b></div>`,
+            )
+            .join("");
+          body.innerHTML = `<div class="sec-t">Co-op points · ${fmt(C.pts)}</div>
+    <div class="tiers"><div class="bar gold"><i style="width:${Math.min(100, (C.pts / max) * 100)}%"></i></div>
+      ${tiers.map((t) => `<span class="tier ${C.pts >= t ? "got" : ""}" style="left:${(t / max) * 100}%;${t === max ? "left:calc(100% - 17px)" : ""}">${t / 1000}k</span>`).join("")}</div>
+    <div class="reward"><span>2k: 3 Super Fertilizer</span><span>4k: rare seeds</span><span>6k: Cup trophy decoration</span></div>
+    <div class="sec-t">Tasks · one at a time, ${9 - C.done} left this week</div><div class="list">${tasks}</div>
+    <div class="sec-t">League · top 2 move up</div><div class="league">${league}</div>`;
+          body.querySelectorAll("[data-take]").forEach(
+            (b) =>
+              (b.onclick = () => {
+                C.mine = C.tasks.find((t) => t.id === b.dataset.take);
+                C.prog = 0;
+                toast(`Task taken: ${C.mine.t}`, null);
+                renderCup();
+              }),
+          );
+          body.querySelectorAll("[data-drop]").forEach(
+            (b) =>
+              (b.onclick = () => {
+                C.mine = null;
+                C.prog = 0;
+                renderCup();
+              }),
+          );
+        }
+
+        // Friends
+        function renderFriends() {
+          head("Friends", "Daily seed gifts, friendship levels and invites");
+          const rows = FRIENDS.map((f) => {
+            const b = bondOf(f.days),
+              next = BONDS[b + 1];
+            const sent = S.gifts.sent[f.id],
+              opened = S.gifts.opened[f.id];
+            return `<div class="item"><span class="av" style="background:${f.color}">${esc(f.name[0])}</span>
+      <div class="grow"><div class="t">${esc(f.name)} <span class="s">· Farm Lv ${f.lv}${f.online ? " · online" : ""}</span></div>
+      <div class="hearts" aria-label="${BONDS[b].name}">${BONDS.map((_, i) => `<i class="${i <= b ? "on" : ""}"></i>`).join("")}</div>
+      <div class="s"><b>${BONDS[b].name}</b>: ${esc(BONDS[b].perk)}${next ? ` · ${next.d - f.days} days of gifts to ${next.name}` : ""}</div></div>
+      <div style="display:grid;gap:4px">
+        ${f.giftIn && !opened ? `<button type="button" class="btn sm rose" data-open="${f.id}">Open gift</button>` : ""}
+        <button type="button" class="btn sm" data-send="${f.id}" ${sent ? "disabled" : ""}>${sent ? "Sent" : "Send seeds"}</button>
+      </div></div>`;
+          }).join("");
+          const inv = S.invited,
+            stepsT = [
+              [1, "Chick pet for both"],
+              [3, "Rainbow fence"],
+              [5, "Farmer hat skin"],
+            ];
+          body.innerHTML = `<div class="invite">
+      <div style="font-family:var(--display);font-weight:800;font-size:20px">Invite a friend to the farm</div>
+      <div class="code"><output id="inviteCode">EF7K-2QMX</output><button type="button" class="btn sm gold" id="copyCode">Copy</button><span class="sample">sample code</span></div>
+      <div class="track">${stepsT.map(([n, r]) => `<div style="${inv >= n ? "outline:2px solid var(--gold)" : ""}"><b>${inv >= n ? "✓ " : ""}${n} friend${n > 1 ? "s" : ""}</b>${r}</div>`).join("")}</div>
+      <div class="sample">An invite counts when the new player reaches farm level 10, so alt accounts earn nothing. Invited: ${inv}.</div>
+    </div>
+    <div class="sec-t">Your friends · gifts reset each Pacific day</div><div class="list">${rows}</div>`;
+          body.querySelector("#copyCode").onclick = async (e) => {
+            const t = body.querySelector("#inviteCode").textContent;
+            try {
+              await navigator.clipboard.writeText(t);
+              e.target.textContent = "Copied";
+            } catch {
+              const r = document.createRange();
+              r.selectNodeContents(body.querySelector("#inviteCode"));
+              const s = getSelection();
+              s.removeAllRanges();
+              s.addRange(r);
+              e.target.textContent = "Selected";
+            }
+          };
+          body.querySelectorAll("[data-send]").forEach(
+            (b) =>
+              (b.onclick = () => {
+                const f = F[b.dataset.send];
+                S.gifts.sent[f.id] = true;
+                toast(`Sent a seed parcel to ${f.name}`, f.id);
+                if (f.online) setTimeout(() => emote(f.id, "❤️"), 900);
+                renderFriends();
+              }),
+          );
+          body.querySelectorAll("[data-open]").forEach(
+            (b) =>
+              (b.onclick = () => {
+                const f = F[b.dataset.open];
+                S.gifts.opened[f.id] = true;
+                const got = rnd([
+                  "3 Lava Pumpkin seeds",
+                  "2 Thunder Grape seeds",
+                  "4 Tide Lotus seeds",
+                  "1 Super Fertilizer",
+                ]);
+                f.days++;
+                toast(`${f.name}'s gift: ${got}. Friendship +1 day.`, f.id);
+                renderFriends();
+              }),
+          );
+        }
+
+        // Visit
+        function renderVisit() {
+          head(
+            "Farm Tour",
+            "Top farms among your friends this week, ranked by likes",
+          );
+          const all = [
+            ...FRIENDS.map((f) => ({
+              id: f.id,
+              name: `${f.name}'s farm`,
+              likes: f.likes + (S.liked[f.id] ? 1 : 0),
+              color: f.color,
+              lv: f.lv,
+              online: f.online,
+            })),
+            {
+              id: "you",
+              name: "Your farm",
+              likes: S.myLikes,
+              color: "#9df0b8",
+              lv: MY_LEVEL,
+            },
+          ];
+          all.sort((a, b) => b.likes - a.likes);
+          body.innerHTML = `<div class="list">${all
+            .map(
+              (
+                r,
+                i,
+              ) => `<div class="item"><span class="av" style="background:${r.color}">${i + 1}</span>
+      <div class="grow"><div class="t">${esc(r.name)}</div><div class="s">${fmt(r.likes)} likes · Lv ${r.lv}${r.online ? " · owner is there now" : ""}</div></div>
+      ${r.id === "you" ? `<span class="s">you</span>` : `<button type="button" class="btn sm gold" data-visit="${r.id}">Visit</button>`}</div>`,
+            )
+            .join("")}</div>
+    <div class="sample">On a visit you can like the farm once a week and water 3 growing crops. When the owner is online you see each other move and can wave. Harvest next to a friend for a Harvest Party: 3 crops instead of 2.</div>`;
+          body
+            .querySelectorAll("[data-visit]")
+            .forEach((b) => (b.onclick = () => visit(b.dataset.visit)));
+        }
+        function visit(id) {
+          if (!homePlots) homePlots = plots;
+          S.visiting = id;
+          S.waterLeft = 3;
+          plots = makePlots(L.cols * L.rows, FRIENDS.indexOf(F[id]) + 1);
+          S.tab = null;
+          sheet.hidden = true;
+          document
+            .querySelectorAll("#dock button")
+            .forEach((b) => b.setAttribute("aria-pressed", "false"));
+          placeAvatars(true);
+          renderVisitBanner();
+          hud();
+          notes("visit");
+          toast(`Welcome to ${F[id].name}'s farm`, id);
+          if (F[id].online) setTimeout(() => emote(id, "👋"), 700);
+        }
+        function goHome(silent) {
+          if (!S.visiting) return;
+          S.visiting = null;
+          plots = homePlots;
+          homePlots = null;
+          placeAvatars(true);
+          renderVisitBanner();
+          hud();
+          if (!silent) toast("Back on your farm", null);
+        }
+        function renderVisitBanner() {
+          const v = document.getElementById("visitBanner");
+          v.hidden = !S.visiting;
+          if (!S.visiting) return;
+          const f = F[S.visiting],
+            liked = S.liked[f.id];
+          v.innerHTML = `<span>Visiting <b>${esc(f.name)}</b> · ${S.waterLeft} water left</span>
+    <button type="button" class="btn sm rose" id="likeBtn" ${liked ? "disabled" : ""}>${liked ? "Liked" : "Like"}</button>
+    <button type="button" class="btn sm" id="homeBtn">Go home</button>`;
+          v.querySelector("#homeBtn").onclick = () => goHome(false);
+          v.querySelector("#likeBtn").onclick = () => {
+            S.liked[f.id] = true;
+            f.likes++;
+            emote("you", "❤️");
+            toast(`You liked ${f.name}'s farm`, f.id);
+            cupTick("like");
+            renderVisitBanner();
+          };
+        }
+
+        // ---------- friends act on their own (sample simulation) ----------
+        setInterval(() => {
+          if (document.hidden) return;
+          const roll = Math.random();
+          const unsold = S.stall
+            .map((l, i) => [l, i])
+            .filter(([l]) => l && !l.sold);
+          if (!S.visiting && roll < 0.35 && unsold.length) {
+            const [l] = unsold.sort((a, b) => a[0].factor - b[0].factor)[0];
+            if (Math.random() < 1.6 - l.factor) {
+              const who = rnd(FRIENDS.filter((f) => f.online));
+              l.sold = who.id;
+              walkTo(
+                who.id,
+                L.stall.x + L.stall.w / 2,
+                L.stall.y + L.stall.h + 20,
+              );
+              setTimeout(() => emote(who.id, "🛒"), 1400);
+              toast(
+                `${who.name} bought ${l.qty} ${CROPS[l.crop].n} from your stall`,
+                who.id,
+              );
+              if (S.tab === "stall") renderStall();
+              else hud();
+              return;
+            }
+          }
+          if (roll < 0.6) {
+            const others = S.cup.league.filter((x) => !x.me);
+            const team = rnd(others);
+            team.pts += 40 + Math.floor(Math.random() * 120);
+            const me = S.cup.league.find((x) => x.me);
+            if (Math.random() < 0.6) {
+              const add = 80 + Math.floor(Math.random() * 120);
+              me.pts += add;
+              S.cup.pts = me.pts;
+              toast(
+                `${rnd(["Mai", "Khoa", "Linh"])} finished a Cup task: +${add} for Thunder Sprouts`,
+                null,
+              );
+            }
+            if (S.tab === "cup") renderCup();
+            return;
+          }
+          if (roll < 0.8 && !S.visiting) {
+            S.myLikes++;
+            const f = rnd(FRIENDS);
+            toast(`${f.name} liked your farm`, f.id);
+            if (S.tab === "visit") renderVisit();
+            return;
+          }
+          if (S.paper.length < 4) {
+            const f = rnd(FRIENDS.filter((x) => x.lv > 30)),
+              crop = rnd(["melon", "orange", "pumpkin", "grape"]);
+            S.paper.push({
+              id: Date.now(),
+              by: f.id,
+              crop,
+              qty: 2 + Math.floor(Math.random() * 6),
+              factor: rnd([0.9, 1, 1.1, 1.2]),
+            });
+            toast(`${f.name} put ${CROPS[crop].n} on their stall`, f.id);
+            if (S.tab === "stall") renderStall();
+          }
+        }, 5200);
+
+        // ---------- design notes (Vietnamese) ----------
+        const NOTES = {
+          stall: {
+            t: "Quầy bán và tờ báo làng",
+            from: [
+              "Hay Day: quầy ven đường, tờ báo",
+              "Animal Crossing: bán cho nhau",
+            ],
+            why: "Người mới cần crop cao cấp (Storm Melon cần Lv 35) để làm đơn hàng; người chơi lâu có chỗ bán hàng dư. Cả hai có lý do mở game của nhau mỗi ngày. Thử: đặt hàng lên kệ, chờ bạn mua; hoặc mua Phoenix Orange của Mai.",
+            rules: [
+              "Giá chỉ từ 0,5× đến 1,5× giá chợ trong ngày, để không chuyển lá qua lại giữa acc phụ.",
+              "Phí quầy 10% mỗi lần bán, và trần lá nhận qua quầy mỗi ngày Pacific.",
+              "Chỉ người trong danh sách bạn bè thấy quầy của nhau (giai đoạn đầu).",
+            ],
+            base: "Kho (barn) và ví Gold Leaves (migration 036), giá chợ theo ngày, Friends (005). Mỗi lệnh mua là một RPC khoá dòng hàng (<code>for update</code>) và có request id như farm hiện tại, để hai người không mua trùng một kệ.",
+          },
+          help: {
+            t: "Khinh khí cầu nhờ giúp",
+            from: [
+              "Hay Day: tàu chở hàng, nhờ giúp",
+              "Clash of Clans: xin quân từ clan",
+            ],
+            why: "Nhờ giúp là cái cớ tự nhiên để nhắn bạn. Người giúp được thưởng riêng (Helper Stars), nên giúp nhau có lợi cho cả hai. Thử: bấm “Ask friends” ở thùng Storm Melon, vài giây sau Mai hoặc Khoa sẽ điền.",
+            rules: [
+              "Mỗi thùng chỉ một người điền; người điền phải có đủ hàng trong kho.",
+              "Thưởng cho người giúp tính theo giá chợ, có trần mỗi ngày.",
+              "Khinh khí cầu mới tới sau 1 giờ.",
+            ],
+            base: "Bảng đơn hàng (040) đã sinh đơn và trả 1,45× giá chợ trên server. Cần bảng mới cho thùng và người điền, cộng danh sách “Help” hiển thị ở farm bạn bè (047).",
+          },
+          cup: {
+            t: "Valley Cup theo đội mỗi tuần",
+            from: [
+              "Hay Day: Derby",
+              "Township: Regatta",
+              "Clash of Clans: Clan Games",
+            ],
+            why: "Một mục tiêu chung cả tuần, đội càng đủ người càng dễ lên bậc, nên người chơi tự rủ bạn vào hội. Thử: nhận nhiệm vụ “Harvest 12 crops”, rồi bấm các ô cây chín trên farm.",
+            rules: [
+              "Hội tối đa 10 người; mỗi người 9 nhiệm vụ một tuần, mỗi lúc một nhiệm vụ.",
+              "Ghép bảng 5 hội cùng cấp; top 2 lên hạng.",
+              "Điểm chỉ tính khi server ghi nhận hành động thật (thu hoạch, điền thùng, bán quầy).",
+            ],
+            base: "Tuần thứ Hai đã có (weekly goals), mục tiêu nhiệm vụ đã có (missions). Cần thêm: hội và thành viên, nhiệm vụ tuần của hội, ghép bảng. Đây là phần lớn nhất.",
+          },
+          friends: {
+            t: "Quà hằng ngày, cấp tình bạn, mời bạn",
+            from: [
+              "Pokémon GO: quà và cấp bạn bè",
+              "Animal Crossing: tặng quà",
+              "Mời bạn nhận thưởng: phổ biến ở game mobile",
+            ],
+            why: "Một vòng lặp 10 giây mỗi ngày: mở quà, gửi lại. Cấp tình bạn mở thêm quyền lợi (ví dụ chó canh không phạt bạn thân), nên càng chơi lâu càng không muốn bỏ bạn. Mời bạn có thưởng cho cả hai người.",
+            rules: [
+              "Gửi 1 quà cho mỗi bạn mỗi ngày; mở tối đa 20 quà một ngày.",
+              "Lời mời chỉ tính khi người mới đạt farm Lv 10, để acc phụ không ăn thưởng.",
+              "Ngày tình bạn chỉ tăng khi cả hai cùng gửi/mở quà.",
+            ],
+            base: "Friends (005) đã có mã 8 ký tự, lời mời kết bạn, trạng thái online. Chó canh và phạt lén hái (045, 047) là chỗ gắn quyền lợi cấp Bloom.",
+          },
+          visit: {
+            t: "Thăm farm trực tiếp",
+            from: [
+              "Grow a Garden (Roblox): thấy vườn người khác",
+              "Stardew Valley: farm co-op",
+              "Animal Crossing: sang đảo bạn",
+            ],
+            why: "Chơi cùng lúc vui hơn hẳn thăm lúc vắng chủ. Thấy bạn đi lại, vẫy tay, thu hoạch cạnh nhau được Harvest Party (3 crop thay vì 2). Bảng xếp hạng like trong nhóm bạn tạo lý do trang trí farm. Thử: bấm một ô chín gần Mai hoặc Khoa, rồi Visit một farm.",
+            rules: [
+              "Like một farm mỗi tuần; tưới 3 cây mỗi lần thăm (giữ trần XP 60/ngày như hiện tại).",
+              "Harvest Party chỉ khi cả hai đứng gần nhau trên server, không tính ở client.",
+              "Chủ farm có thể khoá farm khi đang offline.",
+            ],
+            base: "Plaza đã có phòng realtime qua Socket.IO, server tự di chuyển người chơi. Farm hiện gọi API từng lệnh, nên phải mở “phòng farm” dùng lại cách của Plaza.",
+          },
+        };
+        function notes(tab) {
+          const n = NOTES[tab];
+          document.getElementById("notes").innerHTML =
+            `<div class="eyebrow">Ghi chú thiết kế</div><h2>${n.t}</h2>
+    <div><h3>Lấy ý tưởng từ</h3><div class="from">${n.from.map((x) => `<span class="chip">${esc(x)}</span>`).join("")}</div></div>
+    <div><h3>Vì sao kéo được bạn bè</h3><p>${n.why}</p></div>
+    <div><h3>Luật chống lạm dụng</h3><ul>${n.rules.map((r) => `<li>${r}</li>`).join("")}</ul></div>
+    <div><h3>Dựng trên phần đã có</h3><p>${n.base}</p></div>
+    <p class="sample">Chỉ lấy cơ chế. Tên, hình và nội dung đều là của Elemental Farm.</p>`;
+        }
+
+        // ---------- boot ----------
+        new ResizeObserver(() => layout()).observe(stage);
+        layout();
+        hud();
+        notes("stall");
+        requestAnimationFrame(frame);
+        setTimeout(
+          () =>
+            toast("Mai and Khoa are on your farm. Tap them to wave.", "mai"),
+          600,
+        );
+      })();
+    </script>
+  </body>
+</html>
