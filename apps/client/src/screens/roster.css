@@ -215,17 +215,16 @@
   }
 }
 /* The fighter: the still art and, over it, the live rig in the same box
-   (the "selection" framing is 480 × 500). It fills its row up to 620 px
-   wide: the canvas draws at the size it is shown times the screen's
-   density, within about a million pixels (shop-preview.ts), so 620 px
-   still gets 1.5 canvas pixels per CSS pixel on a 2× screen. */
+   (the "selection" framing is 480 × 500). It fills its row up to 760 px
+   wide; the canvas and its textures draw at the size it is shown times the
+   screen's density (shop-preview.ts), so it stays sharp. */
 .roster-rig {
   grid-area: 2 / 1;
   align-self: center;
   justify-self: center;
   position: relative;
-  height: min(100%, 646px);
-  max-width: min(100%, 620px);
+  height: min(100%, 792px);
+  max-width: min(100%, 760px);
   aspect-ratio: 480 / 500;
   min-height: 0;
   display: grid;

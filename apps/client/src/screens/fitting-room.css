@@ -42,16 +42,11 @@
   top: 0;
   bottom: var(--fit-info-h);
   left: 50%;
-  /* Up to 500 px on a narrow stage, at most 560 px on a wide one (centred;
-     the canvas is transparent, so it has no edges to see). The preview
-     draws at the size it is shown times the screen's density, within about
-     a million pixels (shop-preview.ts): a wider, full-height host would be
-     drawn below 1.5 pixels per CSS pixel on a 2× screen. */
-  width: clamp(
-    min(100cqw, 560px),
-    (100cqh - var(--fit-info-h)) * 1.25,
-    clamp(500px, 100cqw, 560px)
-  );
+  /* Up to 500 px on a narrow stage; a wider stage gets a host as wide as
+     itself. The preview draws at the size it is shown times the screen's
+     density, with textures to match (shop-preview.ts), so a big stage
+     shows a big, sharp fighter. */
+  width: clamp(100cqw, (100cqh - var(--fit-info-h)) * 1.25, max(100cqw, 500px));
   height: auto;
   transform: translateX(-50%);
   aspect-ratio: auto;

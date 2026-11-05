@@ -126,6 +126,12 @@ export function rigAnchorsFor(id: CharacterId, dir: Facing) {
   };
 }
 
+/**
+ * Each rig texture's width in art units, by key. A texture rasterized bigger
+ * than that (the menu previews' sharper rigs) is drawn at this size: see
+ * FighterRig's images and `cosmeticLayer`.
+ */
+export const artWidths = new Map<string, number>();
 function asset(
   id: CharacterId,
   dir: Facing,
@@ -142,11 +148,13 @@ function asset(
       ? defaultPivot
       : (profilePivot(id, dir, part) ?? defaultPivot);
   const q = pivot(part, joint[0], joint[1]);
+  const key =
+    part === "eyes"
+      ? moodKey(id, dir, mood, suffix)
+      : rigKey(id, dir, part, suffix);
+  artWidths.set(key, b[2]);
   return {
-    key:
-      part === "eyes"
-        ? moodKey(id, dir, mood, suffix)
-        : rigKey(id, dir, part, suffix),
+    key,
     url: "data:image/svg+xml;base64," + btoa(render(part, b.join(" "))),
     width: b[2],
     height: b[3],

@@ -1,5 +1,6 @@
 import type Phaser from "phaser";
 import { addCanvasTexture } from "../canvas-texture";
+import { artWidths } from "./assets";
 
 export type Skin =
   | "cragbound"
@@ -217,15 +218,22 @@ export function cosmeticLayer(
     else if (skin === "retro-colours") retroPixels(pixels.data);
     else tonePixels(pixels.data, skin);
     context.putImageData(pixels, 0, 0);
+    // A preview rig's texture can be rasterized bigger than its art (see
+    // rig.ts): the stars, sparks and cracks below are drawn in art units,
+    // so they look the same at any raster size.
+    const art = artWidths.get(original);
+    const k = art && source.width / art >= 1.1 ? source.width / art : 1;
+    const area = { width: canvas.width / k, height: canvas.height / k };
+    context.setTransform(k, 0, 0, k, 0, 0);
     if (skin === "galaxy-colours" && !/-eyes([-~]|$)/.test(original)) {
       // A sprinkle of stars, only where the layer is opaque.
       context.globalCompositeOperation = "source-atop";
       const random = seeded(original);
-      for (let n = 0; n < (canvas.width * canvas.height) / 900; n++) {
+      for (let n = 0; n < (area.width * area.height) / 900; n++) {
         context.fillStyle = random() < 0.7 ? "#ffffff" : "#9fd8ff";
         context.globalAlpha = 0.5 + random() * 0.5;
-        const x = random() * canvas.width,
-          y = random() * canvas.height,
+        const x = random() * area.width,
+          y = random() * area.height,
           r = 0.6 + random() * 1.2;
         context.fillRect(x - r / 2, y - r / 2, r, r);
       }
@@ -235,8 +243,8 @@ export function cosmeticLayer(
       context.globalCompositeOperation="source-atop";
       const random=seeded(original+":thunder");
       context.strokeStyle="#80cfff";context.lineWidth=1.5;
-      for(let n=0;n<canvas.width*canvas.height/3200;n++){
-        const x=random()*canvas.width,y=random()*canvas.height;
+      for(let n=0;n<area.width*area.height/3200;n++){
+        const x=random()*area.width,y=random()*area.height;
         context.beginPath();context.moveTo(x,y);context.lineTo(x-3,y+5);context.lineTo(x+1,y+5);context.lineTo(x-2,y+11);context.stroke();
       }
       context.globalCompositeOperation="source-over";
@@ -244,8 +252,8 @@ export function cosmeticLayer(
     if (skin === "cinderplume" && !/-eyes([-~]|$)/.test(original)) {
       context.globalCompositeOperation="source-atop";
       const random=seeded(original+":cinder");
-      for(let n=0;n<canvas.width*canvas.height/2000;n++){
-        const x=random()*canvas.width,y=random()*canvas.height,r=1+random()*1.4;
+      for(let n=0;n<area.width*area.height/2000;n++){
+        const x=random()*area.width,y=random()*area.height,r=1+random()*1.4;
         context.fillStyle=random()<.5?"#ffb86b":"#e26a55";
         context.fillRect(x,y,r,r*2.5);
       }
@@ -253,24 +261,24 @@ export function cosmeticLayer(
     }
     if (skin === "prismatic-skin" && !/-eyes([-~]|$)/.test(original)) {
       context.globalCompositeOperation = "source-atop";
-      const prism = context.createLinearGradient(0,0,canvas.width,canvas.height);
+      const prism = context.createLinearGradient(0,0,area.width,area.height);
       ["#ff899e77","#ffd77866","#9aefb577","#80e1ff88","#a5adff88","#e5a0ff88"].forEach((color,i)=>prism.addColorStop(i/5,color));
       context.fillStyle=prism;
-      context.fillRect(0,0,canvas.width,canvas.height);
+      context.fillRect(0,0,area.width,area.height);
       context.globalCompositeOperation="source-over";
     }
     if ((skin === "moonlit-skin" || skin === "starlit-skin") && !/-eyes([-~]|$)/.test(original)) {
       // A soft silver glow from the top, and a few drifting stars.
       context.globalCompositeOperation = "source-atop";
-      const glow = context.createLinearGradient(0, 0, 0, canvas.height);
+      const glow = context.createLinearGradient(0, 0, 0, area.height);
       glow.addColorStop(0, "rgba(244, 246, 255, .28)");
       glow.addColorStop(0.6, "rgba(244, 246, 255, 0)");
       context.fillStyle = glow;
-      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillRect(0, 0, area.width, area.height);
       const random = seeded(original + ":moon");
-      for (let n = 0; n < (canvas.width * canvas.height) / 2200; n++) {
-        const x = random() * canvas.width,
-          y = random() * canvas.height,
+      for (let n = 0; n < (area.width * area.height) / 2200; n++) {
+        const x = random() * area.width,
+          y = random() * area.height,
           r = 1 + random() * 1.4;
         context.fillStyle = random() < 0.75 ? "rgba(255, 255, 255, .85)" : "rgba(255, 214, 91, .8)";
         context.fillRect(x - r, y - r / 4, r * 2, r / 2);
@@ -283,9 +291,9 @@ export function cosmeticLayer(
       context.globalCompositeOperation = "source-atop";
       const random = seeded(original + ":starlit");
       const stars: [number, number][] = [];
-      for (let n = 0; n < (canvas.width * canvas.height) / 1300; n++) {
-        const x = random() * canvas.width,
-          y = random() * canvas.height,
+      for (let n = 0; n < (area.width * area.height) / 1300; n++) {
+        const x = random() * area.width,
+          y = random() * area.height,
           r = 1.8 + random() * 2.6;
         stars.push([x, y]);
         context.fillStyle = random() < 0.75 ? "rgba(255, 226, 140, 1)" : "rgba(159, 243, 216, .95)";
@@ -298,7 +306,7 @@ export function cosmeticLayer(
       for (let i = 1; i < stars.length; i += 2) {
         const [ax, ay] = stars[i - 1],
           [bx, by] = stars[i];
-        if (Math.hypot(bx - ax, by - ay) > Math.min(canvas.width, canvas.height) / 2) continue;
+        if (Math.hypot(bx - ax, by - ay) > Math.min(area.width, area.height) / 2) continue;
         context.moveTo(ax, ay);
         context.lineTo(bx, by);
       }
@@ -308,19 +316,19 @@ export function cosmeticLayer(
     if (skin === "pearlscale" && !/-eyes([-~]|$)/.test(original)) {
       // Overlapping scale arcs with pearl freckles, only where the layer is opaque.
       context.globalCompositeOperation = "source-atop";
-      const step = Math.max(8, Math.round(Math.min(canvas.width, canvas.height) / 9));
+      const step = Math.max(8, Math.round(Math.min(area.width, area.height) / 9));
       context.lineWidth = Math.max(1, step / 9);
-      for (let row = 0, y = step / 2; y < canvas.height + step; row++, y += step * 0.6)
-        for (let x = (row % 2) * (step / 2); x < canvas.width + step; x += step) {
+      for (let row = 0, y = step / 2; y < area.height + step; row++, y += step * 0.6)
+        for (let x = (row % 2) * (step / 2); x < area.width + step; x += step) {
           context.strokeStyle = "rgba(255, 243, 248, .45)";
           context.beginPath();
           context.arc(x, y, step / 2, 0.15 * Math.PI, 0.85 * Math.PI);
           context.stroke();
         }
       const random = seeded(original + ":pearls");
-      for (let n = 0; n < (canvas.width * canvas.height) / 1400; n++) {
-        const x = random() * canvas.width,
-          y = random() * canvas.height,
+      for (let n = 0; n < (area.width * area.height) / 1400; n++) {
+        const x = random() * area.width,
+          y = random() * area.height,
           r = 1.2 + random() * 1.6;
         context.fillStyle = "rgba(255, 255, 255, .9)";
         context.beginPath();
@@ -333,7 +341,7 @@ export function cosmeticLayer(
       context.globalCompositeOperation = "source-atop";
       context.lineCap = "round";
       context.lineJoin = "round";
-      for (const line of crackLines(original, canvas.width, canvas.height))
+      for (const line of crackLines(original, area.width, area.height))
         for (const [width, color, blur] of [
           [4, "rgba(255,170,60,.35)", 6],
           [1.6, "#ffcf7a", 0],
@@ -341,7 +349,7 @@ export function cosmeticLayer(
           context.strokeStyle = color;
           context.lineWidth = width;
           context.shadowColor = "#ff9a2e";
-          context.shadowBlur = blur;
+          context.shadowBlur = blur * k;
           context.beginPath();
           line.forEach((p, i) =>
             i ? context.lineTo(p.x, p.y) : context.moveTo(p.x, p.y),
@@ -350,6 +358,7 @@ export function cosmeticLayer(
         }
     }
     addCanvasTexture(scene.textures, styled, canvas);
+    if (art) artWidths.set(styled, art);
   }
   return styled;
 }

@@ -11,6 +11,7 @@ import {
 } from "../../../packages/shared/src/shop";
 import { rigAssets, skinSuffix, type RigAsset } from "./animation/assets";
 import { FighterRig } from "./animation/rig";
+import { loadRigTextures, setRigTextureScale } from "./animation/rig-textures";
 import { SKINS } from "./animation/cosmetics";
 import { drawCollectionAura } from "./skins/collection-fx";
 import { menuShadow } from "./fighter-art";
@@ -37,6 +38,9 @@ export interface ShopPreviewHandle {
 }
 
 /** Shared idle rig for Shop and Home. Keep decoded textures when browsing. */
+/** The most canvas pixels a preview draws: 1600 × 2500, a big 2× stage. */
+const PIXEL_BUDGET = 4_000_000;
+
 export function mountShopPreview(
   initialPanel: HTMLElement,
   placement: PreviewPlacement = "shop",
@@ -77,12 +81,15 @@ export function mountShopPreview(
   /**
    * Canvas pixels per framing pixel. The framing is small (400 or 480 px
    * wide) and the canvas is shown much larger on a big stage or a sharp
-   * screen, which blurred the fighter. The canvas now draws at the size it
-   * is shown times the screen's density, in steps of a quarter, up to
-   * 2.5× and about a million pixels; Low graphics stays at 1×. World
-   * coordinates don't change: only the camera zooms by this much.
+   * screen, which blurred the fighter. The canvas draws at the size it is
+   * shown times the screen's density (up to 3×), in quarter steps,
+   * within a generous pixel budget (a 4K screen's worth would be a waste);
+   * Low graphics stays at 1×. World coordinates don't change: only the
+   * camera zooms by this much.
    */
   let resolution = 1;
+  /** The texture scale the last looks were loaded at. */
+  let loadedScale = 1;
   const resolutionFor = (height: number) => {
     if (lowGraphics() || typeof window === "undefined") return 1;
     const shown =
@@ -90,8 +97,31 @@ export function mountShopPreview(
       host.getBoundingClientRect().width;
     const density = Math.min(window.devicePixelRatio || 1, 3);
     const wanted = (shown * density) / framing.width,
-      budget = Math.sqrt(1_000_000 / (framing.width * height));
-    return Math.max(1, Math.floor(Math.min(wanted, budget, 2.5) * 4) / 4);
+      budget = Math.sqrt(PIXEL_BUDGET / (framing.width * height));
+    // Rounded up to a quarter (never fewer canvas pixels than shown), and
+    // down to fit the budget.
+    const quarters = (n: number, round: (x: number) => number) =>
+      round(n * 4) / 4;
+    return Math.max(
+      1,
+      Math.min(quarters(wanted, Math.ceil), quarters(budget, Math.floor), 3),
+    );
+  };
+  /**
+   * How much bigger than its art each rig texture is rasterized, so the
+   * canvas's extra pixels show detail rather than a stretched bitmap. A part
+   * is drawn at half its art size times the framing's scale (2 canvas pixels
+   * per art unit in the 480 px framing at 1×), times the canvas resolution.
+   * Up to 4×; Low graphics stays at 1×.
+   */
+  const textureScaleFor = () => {
+    if (lowGraphics()) return 1;
+    // Measured now: the first look can load before the canvas has been
+    // resized to its stage.
+    const r = Math.max(resolution, resolutionFor(viewportHeight));
+    const wanted = framing.scale * 0.5 * r;
+    // A little stretch (the Shop's 1.05 at 1×) isn't worth more memory.
+    return wanted <= 1.25 ? 1 : Math.min(4, Math.ceil(wanted * 2) / 2);
   };
   const cameraZoom = () =>
     selection ? previewZoom(action) : shopPreviewZoom(action, viewportHeight);
@@ -139,8 +169,10 @@ export function mountShopPreview(
     selectionFrame = undefined;
     selectionTask = undefined;
   };
-  // Bounded to eight complete looks, including originals. No catalog-sized
-  // texture cache, and all of it is released when the preview is disposed.
+  // Bounded to eight complete looks, including originals (three once the
+  // textures are rasterized 3× or more: a look is then 8–14 MB, not 1–2).
+  // No catalog-sized texture cache, and all of it is released when the
+  // preview is disposed.
   const cached = new Map<string, RigAsset[]>();
   const assets = (skin: SkinLook | null) => {
     const key = champion + skinSuffix(champion, skin);
@@ -417,11 +449,9 @@ export function mountShopPreview(
         return;
       }
       this.loading = true;
-      for (const asset of missing)
-        this.load.svg(asset.key, asset.url, {
-          width: asset.width,
-          height: asset.height,
-        });
+      loadedScale = textureScaleFor();
+      setRigTextureScale(this, loadedScale);
+      loadRigTextures(this, missing);
       this.load.once("complete", () => {
         this.loading = false;
         complete();
@@ -430,7 +460,7 @@ export function mountShopPreview(
     }
     /** A discarded rig no longer pins textures, even if image decoding failed. */
     trimCache() {
-      while (cached.size > 8) {
+      while (cached.size > (loadedScale >= 3 ? 3 : 8)) {
         const key = cached.keys().next().value!;
         for (const asset of cached.get(key)!) {
           for (const texture of [

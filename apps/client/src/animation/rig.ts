@@ -16,6 +16,7 @@ import {
   type AnimationState,
   type Facing,
 } from "./controller";
+import { loadRigTextures, textureResolution } from "./rig-textures";
 import {
   moodKey,
   parts,
@@ -43,6 +44,24 @@ import {
 
 /** Skinned texture sets already requested, per scene (loaded on first sight). */
 const requested = new WeakMap<Phaser.Scene, Map<string, string[]>>();
+
+/** A rig image is its art's size (and so is its origin), whatever its raster. */
+function sizeByResolution(image: Phaser.GameObjects.Image) {
+  image.setSizeToFrame = function (frame?: Phaser.Textures.Frame | boolean) {
+    const f = (
+      frame && typeof frame === "object" ? frame : this.frame
+    ) as Phaser.Textures.Frame;
+    const r = textureResolution(f.texture.key, f.source.width);
+    f.source.resolution = r;
+    this.width = f.realWidth / r;
+    this.height = f.realHeight / r;
+    return this;
+  };
+  // (Test doubles of Phaser have no frames to size.)
+  return typeof image.setFrame === "function"
+    ? image.setFrame(image.frame)
+    : image;
+}
 
 /**
  * Follow-through: these parts hang on damped springs, so they trail behind
@@ -139,8 +158,9 @@ export class FighterRig {
       const asset = assets.find(
         (a) => a.key === rigKey(character, "down", part),
       )!;
-      const image = scene.add
-        .image(asset.x, asset.y, asset.key)
+      const image = sizeByResolution(
+        scene.add.image(asset.x, asset.y, asset.key),
+      )
         .setOrigin(asset.originX, asset.originY)
         .setScale(0.5);
       this.images.set(part, image);
@@ -219,12 +239,7 @@ export class FighterRig {
           suffix,
           assets.map((a) => a.key),
         );
-        for (const a of assets)
-          if (!this.scene.textures.exists(a.key))
-            this.scene.load.svg(a.key, a.url, {
-              width: a.width,
-              height: a.height,
-            });
+        loadRigTextures(this.scene, assets);
         if (!this.scene.load.isLoading()) this.scene.load.start();
       }
       return;

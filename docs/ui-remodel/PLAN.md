@@ -810,23 +810,57 @@ same problem as a list (bars 1,250 px long beside a 320 px level road).
   1440×900: 608 / 720 (was 440 / about 885).
 - **Roster stage** (`roster.css`): three grid rows (number and mastery, the
   fighter, the nameplate), so the fighter is centred in the room it has at
-  any height; ‹ › sit level with it. The rig box grows to 620 px wide (the
-  preview canvas draws at the shown size times the density, within about a
-  million pixels: 620 px keeps 1.5 pixels per CSS pixel on a 2× screen). A
+  any height; ‹ › sit level with it. The rig box grows to 760 px wide
+  (sharp: see "Sharp preview rigs" below). A
   wide stage (container query, 640 px) puts the stats beside the name and
   makes the spotlight longer and steeper, still from the top-right corner
   (owner's note), so it reaches the fighter; tall screens show the name huge
   and faint behind it; a coloured pool sits at the fighter's feet.
 - **Fitting room**: the live host is up to 500 px on a narrow stage (as
-  before) and at most 560 px, centred, on a wider one: the preview draws at
-  the shown size times the screen's density within about a million pixels,
-  and a wider full-height host fell below 1.5 pixels per CSS pixel on a 2×
-  screen (`fitting-room-pictures.spec.ts`). On phones the
+  before) and as wide as the stage on a wider one, so a big stage shows a
+  big fighter (sharp: see "Sharp preview rigs" below). On phones the
   fighter is drawn 34 px lower (the host moves down whole, so it keeps its
   size): Entrance and Victory no longer cover its ears and crest (owner's
   note).
 - **Journey**: weekly goals are cards two to a row when the column has
   800 px; the level road is `clamp(320px, 30%, 420px)`.
+
+### Sharp preview rigs (4 Nov 2026)
+
+The fitting room, roster and Lobby draw their fighter with the live rig on
+a Phaser canvas. The canvas already drew at the screen's density, but only
+within about a million pixels, and the fighter's parts were bitmaps
+rasterized from their SVG at one pixel per art unit, then drawn at 2 canvas
+pixels per unit in the 480 px framing, times the canvas resolution: on a 2×
+screen every texture pixel covered about 4 screen pixels, however big the
+canvas. Measured on the roster stage: a 156 × 148 head texture drawn about
+620 px tall.
+
+- **Textures to match the canvas** (`animation/rig-textures.ts`): a preview
+  rasterizes its rig's parts `k` times bigger (`setRigTextureScale`,
+  `loadRigTextures`), with k = half the framing's scale × the canvas
+  resolution, rounded up to a half, at most 4; 1 on Low graphics and when
+  the stretch is 1.25 or less. The texture's `resolution` says so, which
+  Phaser's canvas renderer divides a frame by when it draws, and rig images
+  size themselves (and so their origins) by it (`sizeByResolution` in
+  `rig.ts`, from each part's art width in `artWidths`), so the fighter keeps
+  its size and position and gains detail. Battles keep 1 and draw exactly
+  as before (the WebGL renderer ignores `resolution`).
+- **Colors** (`cosmeticLayer`): a recoloured part copies its source raster;
+  its stars, sparks, cracks and glow are drawn in art units (a canvas
+  transform), so they look the same at any k.
+- **Canvas**: up to 3× density and 4 million pixels, rounded up to a
+  quarter so it never has fewer pixels than it is shown at.
+- **Memory**: a look at k = 3.5 is about 11 MB of textures (was about 1 MB);
+  the preview keeps three looks instead of eight once k ≥ 3.
+- **Stages**: the fitting room's host is as wide as its stage again and the
+  roster's rig grows to 760 px, both sharp.
+- **Not handled:** a window made bigger after a fighter has loaded keeps
+  that look's textures until the next fighter or look (the canvas itself
+  follows at once).
+- Tests: `tests/unit/rig-textures.test.ts`; on the roster at 1720×1360 the
+  head is a 546 × 518 texture at resolution 3.5 for an 840 px canvas, and
+  matches the still SVG fighter at the same size.
 
 ### Display fixes from the owner's phone (4 Nov 2026)
 
