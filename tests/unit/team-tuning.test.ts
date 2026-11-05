@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   CHARACTERS,
+  FFA_TUNING,
   FIGHTER_IDS,
   TEAM_TUNING,
   basicInterval,
@@ -20,11 +21,13 @@ describe("2v2 tuning", () => {
   it("only changes champions in the team mode", () => {
     TEAM_TUNING.voltkit = 1.21;
     const c = CHARACTERS.voltkit;
-    for (const mode of [undefined, "duel", "ffa", "raid"] as const) {
+    for (const mode of [undefined, "duel", "raid"] as const) {
       expect(modeFactor("voltkit", mode)).toBe(1);
       expect(maxHealth("voltkit", mode)).toBe(c.health);
       expect(basicInterval(c, false, mode)).toBe(c.basic.interval);
     }
+    // A free-for-all reads its own table, never the 2v2 one.
+    expect(modeFactor("voltkit", "ffa")).toBe(FFA_TUNING.voltkit ?? 1);
     expect(modeFactor("voltkit", "teams")).toBe(1.21);
     expect(maxHealth("voltkit", "teams")).toBe(Math.round(c.health * 1.21));
     // Interval ÷ √1.21 = ÷ 1.1, rounded to 5 ms.
