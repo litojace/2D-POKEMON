@@ -236,8 +236,8 @@
         display: flex;
       }
       .online .face {
-        width: 22px;
-        height: 22px;
+        width: 24px;
+        height: 24px;
         border-radius: 50%;
         border: 2px solid #10202a;
         margin-left: -6px;
@@ -292,8 +292,8 @@
         align-items: center;
       }
       .toast .who {
-        width: 20px;
-        height: 20px;
+        width: 24px;
+        height: 24px;
         border-radius: 50%;
         flex: none;
         display: grid;
@@ -1017,20 +1017,58 @@
           transition: none;
         }
       }
+      .ci {
+        width: 32px;
+        height: 38px;
+        object-fit: contain;
+        flex: none;
+        filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.3));
+      }
+      .av,
+      .online .face,
+      .toast .who {
+        overflow: hidden;
+        position: relative;
+      }
+      .av img,
+      .online .face img,
+      .toast .who img {
+        position: absolute;
+        width: 150%;
+        height: auto;
+        left: -25%;
+        top: -4%;
+      }
+      .rk-n {
+        font-family: var(--display);
+        font-weight: 800;
+        font-size: 18px;
+        color: var(--ink-2);
+        width: 16px;
+        text-align: center;
+        flex: none;
+      }
+      .stage canvas {
+        cursor: grab;
+      }
+      .stage canvas:active {
+        cursor: grabbing;
+      }
     </style>
   </head>
   <body>
     <div class="wrap">
       <header class="top">
-        <div class="eyebrow">Elemental Farm · bản demo thiết kế lại</div>
+        <div class="eyebrow">Elemental Farm · bản demo thiết kế lại · v2</div>
         <h1>Farm chơi cùng bạn bè</h1>
         <p class="lede">
           Farm hiện tại đã có rất nhiều thứ để <b>chơi một mình</b>. Bản demo
           này thêm 5 vòng lặp khiến <b>bạn bè cần nhau</b>: buôn bán, nhờ giúp,
-          đua đội theo tuần, quà và mời bạn, thăm farm trực tiếp. Bấm 5 nút ở
-          dưới farm (hoặc bấm vào quầy, khinh khí cầu, bảng cờ, bạn bè trên
-          farm) để thử. Mọi người, số liệu và mã mời đều là <b>dữ liệu mẫu</b>,
-          chạy trong trình duyệt.
+          đua đội theo tuần, quà và mời bạn, thăm farm trực tiếp. Hình vẽ là
+          <b>bộ art thật của game</b> (nhà, kho, cây, thú, crop, nhân vật), thêm
+          ánh nắng, bóng mây, gió lùa qua ruộng và hiệu ứng thu hoạch. Bấm cây
+          chín, tưới cây đang lớn, kéo để nhìn quanh, hoặc bấm 5 nút dưới farm.
+          Mọi người, số liệu và mã mời đều là <b>dữ liệu mẫu</b>.
         </p>
       </header>
 
@@ -1271,75 +1309,42 @@
       </div>
     </div>
 
+    <script src="art.js"></script>
     <script>
       (() => {
         "use strict";
-        // ---------- catalog (names, colours and base prices from packages/shared/src/farm.ts) ----------
-        const CROPS = {
-          wheat: {
-            n: "Breeze Wheat",
-            c: "#f2d27a",
-            a: "#c9952f",
-            sell: 5,
-            lv: 1,
-          },
-          carrot: {
-            n: "Earth Carrot",
-            c: "#ff8a3d",
-            a: "#c4520f",
-            sell: 5,
-            lv: 1,
-          },
-          lotus: {
-            n: "Tide Lotus",
-            c: "#ff9bd2",
-            a: "#e0559a",
-            sell: 6,
-            lv: 6,
-          },
-          duskcap: {
-            n: "Dusk Cap",
-            c: "#8a6bff",
-            a: "#3f2aa8",
-            sell: 9,
-            lv: 10,
-          },
-          grape: {
-            n: "Thunder Grape",
-            c: "#7a8cff",
-            a: "#3340c8",
-            sell: 13,
-            lv: 15,
-          },
-          pumpkin: {
-            n: "Lava Pumpkin",
-            c: "#ff8a1a",
-            a: "#c0400a",
-            sell: 13,
-            lv: 17,
-          },
-          melon: {
-            n: "Storm Melon",
-            c: "#57c04e",
-            a: "#1f6b25",
-            sell: 22,
-            lv: 35,
-          },
-          orange: {
-            n: "Phoenix Orange",
-            c: "#ffad1f",
-            a: "#e0480f",
-            sell: 23,
-            lv: 42,
-          },
-          starfruit: {
-            n: "Rainbow Starfruit",
-            c: "#ffe27a",
-            a: "#ff7ab8",
-            sell: 41,
-            lv: 66,
-          },
-        };
+        // ---------- the game's own art (bundled from apps/client/src/farm and creature-design) ----------
+        const {
+          GFX,
+          cropFieldSvg,
+          cropItemSvg,
+          CROPS: ALL,
+          creatureSvg,
+        } = window.ART;
+        const BY = Object.fromEntries(ALL.map((c) => [c.id, c]));
+        const IDS = [
+          "wheat",
+          "carrot",
+          "lotus",
+          "duskcap",
+          "grape",
+          "pumpkin",
+          "melon",
+          "orange",
+          "starfruit",
+        ];
+        const CROPS = Object.fromEntries(
+          IDS.map((id) => [
+            id,
+            {
+              n: BY[id].name,
+              c: BY[id].color,
+              a: BY[id].accent,
+              sell: BY[id].sell,
+              lv: BY[id].level,
+            },
+          ]),
+        );
         const MY_LEVEL = 18;
         const fmt = (n) => Math.round(n).toLocaleString("en-US");
         const rnd = (a) => a[Math.floor(Math.random() * a.length)];
@@ -1349,12 +1354,69 @@
             (ch) =>
               ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch],
           );
+        const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+        const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-        // ---------- sample friends ----------
+        const svgUrl = (s) =>
+          "data:image/svg+xml;charset=utf-8," + encodeURIComponent(s);
+        const sized = (s, w, h) =>
+          s.replace("<svg ", `<svg width="${w}" height="${h}" `);
+        const BAKED = new Map();
+        /** An SVG painted once into a 2x bitmap; null until it has loaded. */
+        function baked(key, svg, w, h) {
+          let e = BAKED.get(key);
+          if (!e) {
+            e = { c: null };
+            BAKED.set(key, e);
+            const im = new Image();
+            im.onload = () => {
+              const c = document.createElement("canvas");
+              c.width = w * 2;
+              c.height = h * 2;
+              c.getContext("2d").drawImage(im, 0, 0, w * 2, h * 2);
+              e.c = c;
+            };
+            im.src = svgUrl(svg);
+          }
+          return e.c;
+        }
+        const cropArt = (id, st) =>
+          baked(`f${id}${st}`, cropFieldSvg(BY[id], st), 120, 140);
+        const itemArt = (id) => baked(`i${id}`, cropItemSvg(BY[id]), 120, 140);
+        const fighterArt = (id) =>
+          baked(
+            `c${id}`,
+            sized(
+              creatureSvg(
+                id,
+                "down",
+                undefined,
+                undefined,
+                "normal",
+                null,
+                true,
+              ),
+              200,
+              202,
+            ),
+            200,
+            202,
+          );
+        const URLS = new Map();
+        const urlOf = (k, make) => {
+          if (!URLS.has(k)) URLS.set(k, svgUrl(make()));
+          return URLS.get(k);
+        };
+        const itemUrl = (id) => urlOf("i" + id, () => cropItemSvg(BY[id]));
+        const faceUrl = (fid) =>
+          urlOf("c" + fid, () => sized(creatureSvg(fid), 200, 202));
+
+        // ---------- sample friends, each farming as their Lobby fighter ----------
         const FRIENDS = [
           {
             id: "mai",
             name: "Mai",
+            fighter: "voltkit",
             color: "#ffd84a",
             lv: 44,
             days: 34,
@@ -1365,6 +1427,7 @@
           {
             id: "khoa",
             name: "Khoa",
+            fighter: "tidefin",
             color: "#7fe7ff",
             lv: 38,
             days: 9,
@@ -1375,6 +1438,7 @@
           {
             id: "linh",
             name: "Linh",
+            fighter: "auralynx",
             color: "#ff9bd2",
             lv: 70,
             days: 96,
@@ -1385,6 +1449,7 @@
           {
             id: "bao",
             name: "Bảo",
+            fighter: "terradon",
             color: "#c3adff",
             lv: 21,
             days: 2,
@@ -1395,6 +1460,7 @@
           {
             id: "an",
             name: "An",
+            fighter: "cindrake",
             color: "#ffad1f",
             lv: 12,
             days: 0,
@@ -1403,7 +1469,14 @@
             giftIn: false,
           },
         ];
+        const ME = {
+          id: "you",
+          name: "You",
+          fighter: "astrabun",
+          color: "#9df0b8",
+        };
         const F = Object.fromEntries(FRIENDS.map((f) => [f.id, f]));
+        const face = (p) => `<img src="${faceUrl(p.fighter)}" alt="">`;
         const BONDS = [
           { name: "Sprout", d: 0, perk: "Send and open daily seed gifts" },
           { name: "Bud", d: 3, perk: "+10% XP when you help each other" },
@@ -1461,6 +1534,7 @@
             pts: 2860,
             mine: null,
             done: 0,
+            prog: 0,
             tasks: [
               {
                 id: "harvest",
@@ -1477,7 +1551,6 @@
               },
               { id: "like", t: "Like 3 friends' farms", goal: 3, pts: 150 },
             ],
-            prog: 0,
             league: [
               { n: "Thunder Sprouts", pts: 2860, me: true },
               { n: "Moon Diggers", pts: 3410 },
@@ -1522,604 +1595,1605 @@
         }
         S.balloon = newBalloon();
 
-        // ---------- the farm (plots) ----------
-        const plantable = Object.keys(CROPS).filter(
-          (k) => CROPS[k].lv <= MY_LEVEL,
-        );
-        const GROW_MS = 22000;
-        function makePlots(n, seed) {
-          const out = [];
-          for (let i = 0; i < n; i++) {
-            const r = Math.abs(Math.sin((i + 1) * 12.9898 + seed * 78.233)) % 1;
+        // ---------- world ----------
+        const W = 1600,
+          H = 1060;
+        const COLS = 6,
+          ROWS = 4,
+          PW = 104,
+          PH = 88,
+          GAP = 12;
+        const FW = COLS * PW + (COLS - 1) * GAP,
+          FH = ROWS * PH + (ROWS - 1) * GAP;
+        const OX = 470,
+          OY = 380,
+          FCX = OX + FW / 2;
+        const HOUSE = { x: 200, y: 330 },
+          MILL = { x: 372, y: 300 },
+          BARN = { x: 1350, y: 420 };
+        const STALL = { x: 250, y: 640 },
+          BOARD = { x: 690, y: 330 },
+          FLAG = { x: 790, y: 330 };
+        const BAL = { x: 1060, y: 150 },
+          PEG = { x: 1090, y: 345 };
+        const WELL = { x: 110, y: 820 },
+          DOGH = { x: 1500, y: 680 },
+          POND = { x: 360, y: 930, rx: 140, ry: 62 };
+        const PAST = { x: 1230, y: 820, w: 340, h: 200 };
+        const PATH_Y = OY + FH + 66;
+        const plotRect = (i) => ({
+          x: OX + (i % COLS) * (PW + GAP),
+          y: OY + Math.floor(i / COLS) * (PH + GAP),
+          w: PW,
+          h: PH,
+        });
+        const GROW_MS = 30000;
+        const plantable = IDS.filter((k) => CROPS[k].lv <= MY_LEVEL);
+        function makePlots(seed) {
+          return Array.from({ length: COLS * ROWS }, (_, i) => {
+            const r =
+              Math.abs(
+                Math.sin((i + 1) * 12.9898 + seed * 78.233) * 43758.5453,
+              ) % 1;
             const crop = seed
-              ? Object.keys(CROPS)[Math.floor(r * 9)]
+              ? IDS[Math.floor(r * IDS.length)]
               : plantable[Math.floor(r * plantable.length)];
-            out.push({ crop, planted: performance.now() - r * GROW_MS * 1.6 });
-          }
-          return out;
+            return {
+              crop,
+              planted: performance.now() - r * GROW_MS * 2.2,
+              wetUntil: 0,
+              pop: 0,
+            };
+          });
         }
-        let plots = makePlots(32, 0);
-        let homePlots = null;
-        const ripe = (p) => p.crop && performance.now() - p.planted >= GROW_MS;
+        let plots = makePlots(0),
+          homePlots = null;
+        const progOf = (p, now) => Math.min(1, (now - p.planted) / GROW_MS);
+        const stageOf = (g) =>
+          g >= 1 ? 4 : g > 0.66 ? 3 : g > 0.33 ? 2 : g > 0.05 ? 1 : 0;
+        const ripe = (p) => progOf(p, performance.now()) >= 1;
 
-        // ---------- canvas & layout ----------
+        // ---------- canvas, camera ----------
         const cv = document.getElementById("cv");
         const ctx = cv.getContext("2d");
         const stage = document.getElementById("stage");
-        let L = null,
-          view = { s: 1, ox: 0, oy: 0, w: 0, h: 0 };
+        const view = { w: 0, h: 0, s: 1, dpr: 1 };
+        const cam = { x: FCX + 20, y: OY + FH / 2 - 30 };
         function layout() {
           const r = stage.getBoundingClientRect();
-          const dpr = Math.min(2, window.devicePixelRatio || 1);
-          cv.width = Math.round(r.width * dpr);
-          cv.height = Math.round(r.height * dpr);
+          view.dpr = Math.min(2, window.devicePixelRatio || 1);
           view.w = r.width;
           view.h = r.height;
-          const portrait = r.width / r.height < 0.95;
-          if (portrait) {
-            L = {
-              W: 600,
-              H: 980,
-              cols: 5,
-              rows: 6,
-              field: { x: 120, y: 330, w: 400, h: 430 },
-              stall: { x: 20, y: 150, w: 150, h: 110 },
-              balloon: { x: 480, y: 175 },
-              board: { x: 250, y: 165 },
-              barn: { x: 20, y: 790, w: 150, h: 120 },
-              pond: { x: 470, y: 860 },
-              path: "p",
-            };
-          } else {
-            L = {
-              W: 1100,
-              H: 680,
-              cols: 8,
-              rows: 4,
-              field: { x: 330, y: 250, w: 520, h: 300 },
-              stall: { x: 60, y: 300, w: 170, h: 120 },
-              balloon: { x: 930, y: 150 },
-              board: { x: 150, y: 140 },
-              barn: { x: 905, y: 330, w: 150, h: 130 },
-              pond: { x: 110, y: 610 },
-              path: "l",
-            };
+          cv.width = Math.round(r.width * view.dpr);
+          cv.height = Math.round(r.height * view.dpr);
+          view.s = Math.max(
+            0.5,
+            Math.min(r.width / 1420, (r.height - 60) / 800),
+          );
+          clampCam();
+        }
+        function clampCam() {
+          const hw = view.w / 2 / view.s,
+            hh = view.h / 2 / view.s;
+          cam.x = hw * 2 >= W ? W / 2 : clamp(cam.x, hw, W - hw);
+          cam.y = hh * 2 >= H ? H / 2 : clamp(cam.y, hh - 40, H - hh + 60);
+        }
+        const toWorld = (px, py) => ({
+          x: (px - view.w / 2) / view.s + cam.x,
+          y: (py - view.h / 2) / view.s + cam.y,
+        });
+
+        // ---------- the painted ground, baked once ----------
+        const BGK = 1.5;
+        const bg = document.createElement("canvas");
+        bg.width = W * BGK;
+        bg.height = H * BGK;
+        function paintBg() {
+          const g = bg.getContext("2d");
+          g.scale(BGK, BGK);
+          GFX.srand(77);
+          const r = GFX.rnd;
+          g.fillStyle = "#7cc45e";
+          g.fillRect(0, 0, W, H);
+          for (let i = 0; i < 40; i++) {
+            const x = r() * W,
+              y = r() * H,
+              rad = 100 + r() * 220,
+              gr = g.createRadialGradient(x, y, 0, x, y, rad),
+              c = r() < 0.5 ? "160,225,120" : "70,150,70";
+            gr.addColorStop(0, `rgba(${c},.28)`);
+            gr.addColorStop(1, `rgba(${c},0)`);
+            g.fillStyle = gr;
+            g.fillRect(x - rad, y - rad, rad * 2, rad * 2);
           }
-          const n = L.cols * L.rows;
-          const fit = (arr) => {
-            while (arr.length < n) arr.push(...makePlots(1, 0));
-            arr.length = n;
-            return arr;
+          const greens = [
+            "#6fbb53",
+            "#86cf66",
+            "#62b04c",
+            "#93d672",
+            "#76bf57",
+          ];
+          for (let i = 0; i < 16000; i++) {
+            g.fillStyle = greens[i % 5];
+            g.beginPath();
+            g.ellipse(
+              r() * W,
+              r() * H,
+              2.4 + r() * 2.6,
+              1.3 + r(),
+              r() * 3,
+              0,
+              7,
+            );
+            g.fill();
+          }
+          for (let i = 0; i < 1300; i++) {
+            const x = r() * W,
+              y = r() * H;
+            g.strokeStyle = r() < 0.5 ? "#4f9a3c" : "#a6e07e";
+            g.lineWidth = 1.6;
+            g.beginPath();
+            g.moveTo(x - 3, y);
+            g.lineTo(x - 4, y - 7);
+            g.moveTo(x, y);
+            g.lineTo(x, y - 9);
+            g.moveTo(x + 3, y);
+            g.lineTo(x + 5, y - 7);
+            g.stroke();
+          }
+          for (let i = 0; i < 340; i++) {
+            const x = r() * W,
+              y = r() * H,
+              c = ["#ffffff", "#fff3a6", "#ffc4dc", "#cfe2ff"][i % 4];
+            for (let k = 0; k < 5; k++) {
+              g.fillStyle = c;
+              g.beginPath();
+              g.arc(
+                x + Math.cos(k * 1.256) * 2.2,
+                y + Math.sin(k * 1.256) * 2.2,
+                1.8,
+                0,
+                7,
+              );
+              g.fill();
+            }
+            g.fillStyle = "#ffcf3a";
+            g.beginPath();
+            g.arc(x, y, 1.2, 0, 7);
+            g.fill();
+          }
+          const dirt = (pts, w) => {
+            g.lineCap = "round";
+            g.lineJoin = "round";
+            g.strokeStyle = "rgba(90,70,40,.35)";
+            g.lineWidth = w + 12;
+            g.beginPath();
+            pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+            g.stroke();
+            g.strokeStyle = "#d8b98a";
+            g.lineWidth = w;
+            g.stroke();
+            g.strokeStyle = "#e6cba0";
+            g.lineWidth = w * 0.45;
+            g.stroke();
+            for (let i = 0; i < pts.length - 1; i++) {
+              const [ax, ay] = pts[i],
+                [bx, by] = pts[i + 1],
+                n = Math.hypot(bx - ax, by - ay) / 14;
+              for (let k = 0; k < n; k++) {
+                const t = r();
+                g.fillStyle = r() < 0.5 ? "#c4a272" : "#efdcb8";
+                g.beginPath();
+                g.ellipse(
+                  ax + (bx - ax) * t + (r() - 0.5) * w * 0.7,
+                  ay + (by - ay) * t + (r() - 0.5) * w * 0.7,
+                  2 + r() * 2,
+                  1.4 + r(),
+                  0,
+                  0,
+                  7,
+                );
+                g.fill();
+              }
+            }
           };
-          if (S.visiting) {
-            if (plots.length !== n)
-              plots = makePlots(n, FRIENDS.indexOf(F[S.visiting]) + 1);
-            if (homePlots) fit(homePlots);
-          } else if (plots.length !== n) fit(plots);
-          view.s = Math.min(r.width / L.W, (r.height - 70) / L.H);
-          view.ox = (r.width - L.W * view.s) / 2;
-          view.oy = Math.max(48, (r.height - 70 - L.H * view.s) / 2 + 24);
-          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-          placeAvatars(true);
-        }
-        function toWorld(cx, cy) {
-          return { x: (cx - view.ox) / view.s, y: (cy - view.oy) / view.s };
-        }
-        function plotRect(i) {
-          const f = L.field,
-            c = i % L.cols,
-            r = Math.floor(i / L.cols);
-          const cw = f.w / L.cols,
-            ch = f.h / L.rows;
-          return {
-            x: f.x + c * cw + 4,
-            y: f.y + r * ch + 4,
-            w: cw - 8,
-            h: ch - 8,
-          };
+          dirt(
+            [
+              [-30, PATH_Y],
+              [W + 30, PATH_Y],
+            ],
+            64,
+          );
+          dirt(
+            [
+              [FCX, OY + FH + 20],
+              [FCX, PATH_Y],
+            ],
+            54,
+          );
+          dirt(
+            [
+              [HOUSE.x, HOUSE.y + 6],
+              [HOUSE.x, PATH_Y],
+            ],
+            46,
+          );
+          dirt(
+            [
+              [STALL.x + 40, STALL.y + 10],
+              [STALL.x + 40, PATH_Y],
+            ],
+            44,
+          );
+          dirt(
+            [
+              [BARN.x - 30, BARN.y + 10],
+              [BARN.x - 30, PATH_Y],
+            ],
+            46,
+          );
+          dirt(
+            [
+              [HOUSE.x + 60, HOUSE.y + 30],
+              [OX - 40, HOUSE.y + 30],
+              [OX - 40, OY + 40],
+            ],
+            40,
+          );
+          dirt(
+            [
+              [POND.x + 120, PATH_Y],
+              [POND.x + 60, POND.y - 50],
+            ],
+            36,
+          );
+          // field bed
+          const x0 = OX - 22,
+            y0 = OY - 18,
+            w = FW + 44,
+            h = FH + 38;
+          g.fillStyle = "rgba(40,25,10,.35)";
+          g.beginPath();
+          g.roundRect(x0 + 6, y0 + 12, w, h, 24);
+          g.fill();
+          const fg = g.createLinearGradient(0, y0, 0, y0 + h);
+          fg.addColorStop(0, "#8a6038");
+          fg.addColorStop(1, "#5e3f22");
+          g.fillStyle = fg;
+          g.beginPath();
+          g.roundRect(x0, y0, w, h, 24);
+          g.fill();
+          g.strokeStyle = "#b0864f";
+          g.lineWidth = 3;
+          g.stroke();
+          // pond basin and stones
+          g.fillStyle = "rgba(40,60,40,.35)";
+          g.beginPath();
+          g.ellipse(POND.x, POND.y + 8, POND.rx + 22, POND.ry + 16, 0, 0, 7);
+          g.fill();
+          for (let i = 0; i < 42; i++) {
+            const a = (i / 42) * Math.PI * 2,
+              x = POND.x + Math.cos(a) * (POND.rx + 8),
+              y = POND.y + Math.sin(a) * (POND.ry + 6);
+            g.fillStyle = "#7f8594";
+            g.beginPath();
+            g.ellipse(x, y + 3, 15, 9, a, 0, 7);
+            g.fill();
+            g.fillStyle = ["#c9cdd6", "#b4b9c4", "#d9dce3"][i % 3];
+            g.beginPath();
+            g.ellipse(x, y, 14, 8, a, 0, 7);
+            g.fill();
+          }
+          // pasture
+          g.fillStyle = "rgba(40,80,30,.22)";
+          g.beginPath();
+          g.roundRect(PAST.x, PAST.y, PAST.w, PAST.h, 26);
+          g.fill();
+          for (let i = 0; i < 900; i++) {
+            g.fillStyle = i % 2 ? "#9ad874" : "#69b24f";
+            g.beginPath();
+            g.ellipse(
+              PAST.x + 10 + r() * (PAST.w - 20),
+              PAST.y + 10 + r() * (PAST.h - 20),
+              3,
+              1.5,
+              r() * 3,
+              0,
+              7,
+            );
+            g.fill();
+          }
         }
 
-        // ---------- avatars ----------
-        const avatars = [];
-        function placeAvatars(reset) {
-          if (!L) return;
-          const host = S.visiting;
-          const present = host
-            ? [
-                { id: host, f: F[host] },
-                { id: "you", f: { name: "You", color: "#9df0b8" } },
-              ]
-            : [
-                { id: "you", f: { name: "You", color: "#9df0b8" } },
-                ...FRIENDS.filter((f) => f.online).map((f) => ({
-                  id: f.id,
-                  f,
-                })),
-              ];
-          if (
-            reset ||
-            avatars.length !== present.length ||
-            avatars.some((a, i) => a.id !== present[i].id)
-          ) {
-            avatars.length = 0;
-            present.forEach((p, i) => {
-              const x = L.field.x + L.field.w * (0.2 + 0.3 * i),
-                y = L.field.y + L.field.h + 40;
-              avatars.push({
-                id: p.id,
-                name: p.f.name,
-                color: p.f.color,
-                x,
-                y,
-                tx: x,
-                ty: y,
-                emote: null,
-                et: 0,
-                idle: 2000 + Math.random() * 3000,
-              });
+        // ---------- props baked from GFX ----------
+        const SPR = {};
+        function sprites() {
+          SPR.house = GFX.house({
+            wall: "#fff3dd",
+            roof: "#d9473f",
+            shutters: "#4fae46",
+            w: 150,
+            sd: 9,
+            sign: { t: "HOME", bg: "#7a3a1a" },
+          });
+          SPR.mill = GFX.windmillBody();
+          SPR.barn = GFX.barn();
+          SPR.stall = GFX.stall();
+          SPR.board = GFX.board();
+          SPR.well = GFX.well();
+          SPR.dogh = GFX.doghouse();
+          SPR.scare = GFX.scarecrow();
+          SPR.hay = GFX.hay();
+          SPR.crates = GFX.crates();
+          SPR.trees = [
+            [70, 250, "pine", 0.85],
+            [520, 250, "cherry", 0.62],
+            [960, 220, "apple", 0.6],
+            [1180, 250, "round", 0.66],
+            [1560, 330, "pine", 0.8],
+            [40, 560, "round", 0.7],
+            [1570, 560, "apple", 0.62],
+            [640, 1060, "autumn", 0.7],
+            [1000, 1070, "cherry", 0.62],
+            [60, 1040, "mint", 0.7],
+            [1180, 640, "round", 0.5],
+            [810, 150, "pine", 0.7],
+            [300, 160, "round", 0.6],
+          ].map(([x, y, k, sz], i) => ({
+            x,
+            y,
+            t: GFX.tree(k, 50 + i, sz),
+            ph: i,
+            kind: k,
+          }));
+          SPR.bushes = [
+            [420, 560, "rose", 26],
+            [430, 750, "green", 30],
+            [1190, 360, "green", 26],
+            [880, 1000, "rose", 24],
+            [140, 680, "green", 26],
+          ].map(([x, y, k, w]) => ({ x, y, b: GFX.bush(k, w) }));
+          SPR.rocks = [
+            [1210, 760, 40],
+            [560, 1010, 30],
+            [30, 760, 34],
+          ].map(([x, y, w], i) => ({ x, y, b: GFX.rock(60 + i, w) }));
+          SPR.flowers = [
+            [180, 420],
+            [1010, 340],
+          ].map(([x, y]) => ({ x, y, b: GFX.flowerbed(96, 21) }));
+          const soil = (wet) =>
+            GFX.sprite(PW + 4, PH + 7, 0, 0, (g) => {
+              const sg = g.createLinearGradient(0, 0, 0, PH);
+              sg.addColorStop(0, wet ? "#4a301c" : "#8a5e36");
+              sg.addColorStop(1, wet ? "#3a2412" : "#6b4527");
+              g.fillStyle = "rgba(0,0,0,.25)";
+              g.beginPath();
+              g.roundRect(2, 5, PW, PH, 12);
+              g.fill();
+              g.fillStyle = sg;
+              g.beginPath();
+              g.roundRect(0, 0, PW, PH, 12);
+              g.fill();
+              g.strokeStyle = wet
+                ? "rgba(140,200,255,.25)"
+                : "rgba(255,220,170,.22)";
+              g.lineWidth = 2;
+              for (let k = 1; k < 4; k++) {
+                g.beginPath();
+                g.moveTo(10, (k * PH) / 4);
+                g.lineTo(PW - 10, (k * PH) / 4);
+                g.stroke();
+              }
+              if (wet) {
+                g.fillStyle = "rgba(160,215,255,.18)";
+                g.beginPath();
+                g.ellipse(PW / 2 - 18, 18, 22, 7, -0.2, 0, 7);
+                g.fill();
+              }
             });
+          SPR.soil = soil(false);
+          SPR.wet = soil(true);
+        }
+
+        // ---------- living things ----------
+        const avatars = [];
+        function walker(p, x, y) {
+          return {
+            id: p.id,
+            name: p.name,
+            fighter: p.fighter,
+            x,
+            y,
+            tx: x,
+            ty: y,
+            face: 1,
+            emote: null,
+            et: 0,
+            idle: 1500 + Math.random() * 3000,
+            sp: 0,
+          };
+        }
+        function placeAvatars() {
+          avatars.length = 0;
+          if (S.visiting) {
+            const h = F[S.visiting];
+            avatars.push(
+              walker(ME, FCX - 60, PATH_Y + 10),
+              walker(h, FCX + 80, PATH_Y - 6),
+            );
+          } else {
+            avatars.push(walker(ME, FCX - 140, PATH_Y + 6));
+            FRIENDS.filter((f) => f.online).forEach((f, i) =>
+              avatars.push(
+                walker(f, FCX + 60 + i * 150, PATH_Y + (i ? -10 : 12)),
+              ),
+            );
           }
         }
+        const avatar = (id) => avatars.find((a) => a.id === id);
         function walkTo(id, x, y) {
-          const a = avatars.find((v) => v.id === id);
+          const a = avatar(id);
           if (a) {
             a.tx = x;
             a.ty = y;
-            a.idle = 6000;
+            a.idle = 7000;
           }
         }
         function emote(id, e) {
-          const a = avatars.find((v) => v.id === id);
+          const a = avatar(id);
           if (a) {
             a.emote = e;
             a.et = performance.now();
           }
         }
 
+        const chickens = [
+          { k: "white", x: 1230, y: 520 },
+          { k: "brown", x: 1300, y: 560 },
+          { k: "white", x: 1420, y: 540 },
+          { k: "brown", x: 160, y: 470 },
+        ].map((c) => ({
+          ...c,
+          tx: c.x,
+          ty: c.y,
+          st: "peck",
+          face: 1,
+          t: Math.random() * 3,
+          home: { x: c.x, y: c.y },
+        }));
+        const cow = {
+          x: PAST.x + 120,
+          y: PAST.y + 130,
+          tx: PAST.x + 120,
+          ty: PAST.y + 130,
+          face: 1,
+          t: 0,
+        };
+        const dog = {
+          x: DOGH.x - 80,
+          y: DOGH.y + 20,
+          tx: DOGH.x - 80,
+          ty: DOGH.y + 20,
+          face: -1,
+          t: 0,
+          st: "sit",
+        };
+        const ducks = [
+          { a: 0, r: 0.55, sp: 0.18, k: "drake" },
+          { a: 2.4, r: 0.4, sp: -0.22, k: "duck" },
+          { a: 4.1, r: 0.62, sp: 0.15, k: "duck" },
+        ];
+        const butterflies = [
+          ["#ffb3d1", 520, 520],
+          ["#fff3a6", 900, 470],
+          ["#cfe2ff", 1100, 700],
+          ["#ffb3d1", 260, 520],
+          ["#ffd8a8", 760, 760],
+        ].map(([c, x, y], i) => ({ c, x, y, ph: i * 1.7 }));
+        let flock = null,
+          nextFlock = performance.now() + 4000,
+          fishJump = null;
+        const clouds = [
+          { x: 200, y: 300, r: 340 },
+          { x: 900, y: 760, r: 300 },
+          { x: 1500, y: 260, r: 380 },
+        ];
+        const parts = [];
+        const flyers = [];
+        let barnBump = 0;
+
         // ---------- drawing ----------
-        function rr(x, y, w, h, r) {
-          ctx.beginPath();
-          ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h);
+        function nameTag(g, text, x, y, me) {
+          g.font = "700 19px 'DM Sans', sans-serif";
+          g.textAlign = "center";
+          g.textBaseline = "alphabetic";
+          g.lineWidth = 4;
+          g.strokeStyle = "rgba(11,16,32,.85)";
+          g.fillStyle = me ? "#ffd65b" : "#fff";
+          g.strokeText(text, x, y);
+          g.fillText(text, x, y);
         }
-        const grassDots = Array.from({ length: 220 }, () => [
-          Math.random(),
-          Math.random(),
-          Math.random(),
-        ]);
-        function drawGround() {
-          ctx.fillStyle = S.visiting ? "#5aa24a" : "#4f9b3f";
-          ctx.fillRect(0, 0, view.w, view.h);
-          grassDots.forEach(([u, v, k]) => {
-            ctx.fillStyle = k > 0.5 ? "#62b04f" : "#447f36";
-            ctx.fillRect(u * view.w, v * view.h, 3, 6);
+        function pill(g, text, x, y, bg, fg, size = 20) {
+          g.font = `800 ${size}px 'Barlow Condensed', 'Arial Narrow', sans-serif`;
+          const w = g.measureText(text).width + 22,
+            h = size + 12;
+          g.fillStyle = "rgba(0,0,0,.25)";
+          g.beginPath();
+          g.roundRect(x - w / 2, y - h / 2 + 2, w, h, h / 2);
+          g.fill();
+          g.fillStyle = bg;
+          g.beginPath();
+          g.roundRect(x - w / 2, y - h / 2, w, h, h / 2);
+          g.fill();
+          g.fillStyle = fg;
+          g.textAlign = "center";
+          g.textBaseline = "middle";
+          g.fillText(text, x, y + 0.5);
+        }
+        const wind = (x, t) =>
+          Math.sin(t * 1.25 - x * 0.007) * 0.6 + Math.sin(t * 0.43 + 1.3) * 0.4;
+        function drawPost(g, x, y) {
+          g.fillStyle = "rgba(0,0,0,.2)";
+          g.beginPath();
+          g.ellipse(x + 3, y + 2, 8, 3, 0, 0, 7);
+          g.fill();
+          g.fillStyle = "#9a6a3a";
+          g.beginPath();
+          g.roundRect(x - 5, y - 30, 10, 32, 3);
+          g.fill();
+          g.fillStyle = "#c4925a";
+          g.beginPath();
+          g.roundRect(x - 5, y - 30, 5, 32, 3);
+          g.fill();
+          g.fillStyle = "#d9ad74";
+          g.beginPath();
+          g.ellipse(x, y - 30, 5, 2.4, 0, 0, 7);
+          g.fill();
+        }
+        function drawRail(g, xa, xb, y, gapA, gapB) {
+          [[y - 22], [y - 10]].forEach(([yy]) => {
+            const seg = (a, b) => {
+              if (b <= a) return;
+              g.fillStyle = "#8a5a2f";
+              g.fillRect(a, yy + 2, b - a, 5);
+              g.fillStyle = "#c99a5e";
+              g.fillRect(a, yy, b - a, 4);
+            };
+            if (gapA != null) {
+              seg(xa, gapA);
+              seg(gapB, xb);
+            } else seg(xa, xb);
           });
         }
-        function W(fn) {
-          ctx.save();
-          ctx.translate(view.ox, view.oy);
-          ctx.scale(view.s, view.s);
-          fn();
-          ctx.restore();
-        }
-        function label(text, x, y, bg, fg) {
-          ctx.font = "700 15px 'Barlow Condensed', 'Arial Narrow', sans-serif";
-          const w = ctx.measureText(text).width + 16;
-          ctx.fillStyle = bg;
-          rr(x - w / 2, y - 12, w, 22, 11);
-          ctx.fill();
-          ctx.fillStyle = fg;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText(text, x, y);
-        }
-        function drawPath() {
-          ctx.fillStyle = "#d9c08a";
-          if (L.path === "l") {
-            rr(-200, L.field.y + L.field.h + 22, L.W + 400, 46, 22);
-            ctx.fill();
-            rr(
-              L.stall.x + L.stall.w / 2 - 22,
-              L.stall.y + L.stall.h - 10,
-              44,
-              200,
-              20,
-            );
-            ctx.fill();
-          } else {
-            rr(-200, L.field.y + L.field.h + 18, L.W + 400, 44, 22);
-            ctx.fill();
-            rr(L.field.x - 70, L.stall.y + 60, 44, L.field.h + 260, 20);
-            ctx.fill();
+        function drawFence(g, y, gap) {
+          const xa = OX - 30,
+            xb = OX + FW + 30;
+          drawRail(g, xa, xb, y, gap ? FCX - 40 : null, gap ? FCX + 40 : null);
+          for (let x = xa; x <= xb + 1; x += (xb - xa) / 12) {
+            if (gap && Math.abs(x - FCX) < 40) continue;
+            drawPost(g, x, y);
           }
         }
-        function drawField() {
-          const f = L.field;
-          ctx.fillStyle = "#6b4527";
-          rr(f.x - 14, f.y - 14, f.w + 28, f.h + 28, 18);
-          ctx.fill();
-          const now = performance.now();
-          plots.forEach((p, i) => {
-            const r = plotRect(i);
-            ctx.fillStyle = "#8a5a33";
-            rr(r.x, r.y, r.w, r.h, 9);
-            ctx.fill();
-            ctx.strokeStyle = "#7a4d2a";
-            ctx.lineWidth = 2;
-            for (let k = 1; k < 3; k++) {
-              ctx.beginPath();
-              ctx.moveTo(r.x + 8, r.y + (r.h * k) / 3);
-              ctx.lineTo(r.x + r.w - 8, r.y + (r.h * k) / 3);
-              ctx.stroke();
-            }
-            if (!p.crop) return;
-            const c = CROPS[p.crop],
-              g = Math.min(1, (now - p.planted) / GROW_MS);
-            const cx = r.x + r.w / 2,
-              cy = r.y + r.h / 2 + 4,
-              rad = Math.min(r.w, r.h) * (0.12 + 0.24 * g);
-            ctx.fillStyle = "#3cbf68";
-            ctx.beginPath();
-            ctx.ellipse(
-              cx - rad * 0.55,
-              cy - rad * 0.9,
-              rad * 0.45,
-              rad * 0.22,
-              -0.6,
-              0,
-              7,
-            );
-            ctx.fill();
-            ctx.beginPath();
-            ctx.ellipse(
-              cx + rad * 0.55,
-              cy - rad * 0.9,
-              rad * 0.45,
-              rad * 0.22,
-              0.6,
-              0,
-              7,
-            );
-            ctx.fill();
-            if (g >= 1) {
-              ctx.fillStyle = c.a;
-              ctx.beginPath();
-              ctx.arc(cx + 2, cy + 3, rad, 0, 7);
-              ctx.fill();
-              ctx.fillStyle = c.c;
-              ctx.beginPath();
-              ctx.arc(cx, cy, rad, 0, 7);
-              ctx.fill();
-              ctx.fillStyle = "rgba(255,255,255,0.55)";
-              ctx.beginPath();
-              ctx.arc(cx - rad * 0.35, cy - rad * 0.35, rad * 0.22, 0, 7);
-              ctx.fill();
-              const tw = (Math.sin(now / 300 + i) + 1) / 2;
-              ctx.fillStyle = `rgba(255,255,220,${0.35 + 0.5 * tw})`;
-              ctx.beginPath();
-              ctx.arc(cx + rad * 0.9, cy - rad * 0.9, 2.5 + tw * 1.5, 0, 7);
-              ctx.fill();
-            } else {
-              ctx.fillStyle = "#2f8f4e";
-              ctx.fillRect(cx - 1.5, cy - rad, 3, rad * 1.2);
-              ctx.fillStyle = "#0006";
-              rr(r.x + 8, r.y + r.h - 9, r.w - 16, 5, 3);
-              ctx.fill();
-              ctx.fillStyle = "#7ff0a2";
-              rr(r.x + 8, r.y + r.h - 9, (r.w - 16) * g, 5, 3);
-              ctx.fill();
-            }
-          });
-        }
-        function drawStall() {
-          const s = L.stall,
-            listed = S.stall.filter(Boolean),
-            sold = S.stall.filter((x) => x && x.sold).length;
-          ctx.fillStyle = "#00000030";
-          rr(s.x + 6, s.y + s.h - 8, s.w, 16, 8);
-          ctx.fill();
-          ctx.fillStyle = "#b07a45";
-          rr(s.x, s.y + 40, s.w, s.h - 40, 8);
-          ctx.fill();
-          ctx.fillStyle = "#8a5a33";
-          ctx.fillRect(s.x + 8, s.y + 30, 8, 50);
-          ctx.fillRect(s.x + s.w - 16, s.y + 30, 8, 50);
-          const n = 6,
-            sw = s.w / n;
-          for (let i = 0; i < n; i++) {
-            ctx.fillStyle = i % 2 ? "#fff6ea" : "#e8455a";
-            ctx.beginPath();
-            ctx.moveTo(s.x + i * sw, s.y + 8);
-            ctx.lineTo(s.x + (i + 1) * sw, s.y + 8);
-            ctx.lineTo(s.x + (i + 1) * sw, s.y + 34);
-            ctx.quadraticCurveTo(
-              s.x + (i + 0.5) * sw,
-              s.y + 46,
-              s.x + i * sw,
-              s.y + 34,
-            );
-            ctx.fill();
+        function drawCrop(g, i, p, t, now) {
+          const r = plotRect(i),
+            cx = r.x + r.w / 2,
+            base = r.y + r.h * 0.72;
+          const gp = progOf(p, now),
+            st = stageOf(gp),
+            im = cropArt(p.crop, st);
+          if (!im) return;
+          const w = 90,
+            h = 105;
+          const sway =
+            st >= 2
+              ? Math.sin(t * 1.6 + i) * 0.025 + wind(cx, t) * 0.045
+              : wind(cx, t) * 0.015;
+          g.save();
+          g.translate(cx, base + 6);
+          g.rotate(sway);
+          let sx = 1,
+            sy = 1;
+          if (p.pop > 0) {
+            const k = p.pop;
+            sx = 1 + Math.sin(k * Math.PI) * 0.18;
+            sy = 1 - Math.sin(k * Math.PI) * 0.12;
           }
-          listed.slice(0, 4).forEach((l, i) => {
-            const c = CROPS[l.crop];
-            ctx.fillStyle = l.sold ? "#ffffff55" : c.c;
-            ctx.beginPath();
-            ctx.arc(s.x + 26 + i * 40, s.y + 66, 13, 0, 7);
-            ctx.fill();
-          });
-          label("FARM STALL", s.x + s.w / 2, s.y - 6, "#1b2f3a", "#fff");
-          if (sold)
-            label(
-              `${sold} sold`,
-              s.x + s.w - 6,
-              s.y + 34,
-              "#ff7aa8",
-              "#2a0614",
-            );
+          if (st === 4) {
+            const ph = (t * 0.55 + i * 0.37) % 3.2,
+              hop = ph < 0.5 ? Math.sin((ph / 0.5) * Math.PI) : 0,
+              b = 1 + Math.sin(t * 3 + i) * 0.015;
+            sx *= b * (1 + hop * 0.05);
+            sy *= b * (1 - hop * 0.06);
+          }
+          g.scale(sx, sy);
+          g.drawImage(im, -w / 2, -h * 0.943, w, h);
+          g.restore();
+          if (st === 4 && !reduced) {
+            const tw = (Math.sin(t * 3.4 + i * 1.7) + 1) / 2;
+            if (tw > 0.7) {
+              g.fillStyle = `rgba(255,250,210,${(tw - 0.7) * 3})`;
+              star(g, cx + 26, base - 62, 3 + tw * 3);
+            }
+          } else if (st < 4) {
+            g.fillStyle = "rgba(0,0,0,.35)";
+            g.beginPath();
+            g.roundRect(r.x + 14, r.y + r.h - 12, r.w - 28, 6, 3);
+            g.fill();
+            g.fillStyle = "#7ff0a2";
+            g.beginPath();
+            g.roundRect(r.x + 14, r.y + r.h - 12, (r.w - 28) * gp, 6, 3);
+            g.fill();
+          }
         }
-        function drawBalloon() {
-          const b = L.balloon,
-            t = performance.now() / 900,
-            y = b.y + Math.sin(t) * 5;
+        function star(g, x, y, s) {
+          g.beginPath();
+          for (let k = 0; k < 8; k++) {
+            const a = (k * Math.PI) / 4,
+              rr = k % 2 ? s * 0.35 : s;
+            g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+          }
+          g.closePath();
+          g.fill();
+        }
+        function drawFighter(g, a, t) {
+          const moving = Math.hypot(a.tx - a.x, a.ty - a.y) > 2;
+          const bob = moving
+            ? Math.abs(Math.sin(t * 12 + a.x * 0.01)) * 5
+            : Math.sin(t * 2.4 + a.x) * 1.2;
+          g.fillStyle = "rgba(0,0,0,.26)";
+          g.beginPath();
+          g.ellipse(a.x, a.y, 25, 9, 0, 0, 7);
+          g.fill();
+          if (a.id === "you") {
+            g.strokeStyle = "#ffd65b";
+            g.lineWidth = 2.5;
+            g.beginPath();
+            g.ellipse(a.x, a.y, 30, 11, 0, 0, 7);
+            g.stroke();
+          }
+          const im = fighterArt(a.fighter),
+            s = 86;
+          if (im) {
+            g.save();
+            g.translate(a.x, a.y - bob);
+            const sq = moving
+              ? Math.sin(t * 24) * 0.025
+              : Math.sin(t * 2.4 + a.x) * 0.012;
+            g.rotate(moving ? Math.sin(t * 12) * 0.04 : 0);
+            g.scale(a.face * (1 + sq), 1 - sq);
+            g.drawImage(im, -s / 2, -s * 0.9, s, s * 1.01);
+            g.restore();
+          }
+        }
+        function drawBalloon(g, t, now) {
           const done = S.balloon.crates.filter(
             (c) => c.state === "done",
           ).length;
-          ctx.strokeStyle = "#5a3a1f";
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.moveTo(b.x - 30, y + 20);
-          ctx.lineTo(b.x - 18, y + 80);
-          ctx.moveTo(b.x + 30, y + 20);
-          ctx.lineTo(b.x + 18, y + 80);
-          ctx.stroke();
-          const g = ctx.createLinearGradient(b.x - 60, 0, b.x + 60, 0);
-          g.addColorStop(0, "#5a74ff");
-          g.addColorStop(0.5, "#ffd65b");
-          g.addColorStop(1, "#ff7ab8");
-          ctx.fillStyle = g;
-          ctx.beginPath();
-          ctx.ellipse(b.x, y - 20, 58, 66, 0, 0, 7);
-          ctx.fill();
-          ctx.strokeStyle = "#ffffff55";
-          ctx.beginPath();
-          ctx.ellipse(b.x, y - 20, 22, 66, 0, 0, 7);
-          ctx.stroke();
-          ctx.fillStyle = "#8a5a33";
-          rr(b.x - 26, y + 78, 52, 30, 6);
-          ctx.fill();
-          for (let i = 0; i < 6; i++) {
-            ctx.fillStyle = i < done ? "#7ff0a2" : "#ffffff30";
-            rr(b.x - 24 + i * 8.4, y + 84, 6, 18, 2);
-            ctx.fill();
-          }
-          label(`SUPPLY BALLOON ${done}/6`, b.x, y + 124, "#1b2f3a", "#fff");
-        }
-        function drawBoard() {
-          const b = L.board;
-          ctx.fillStyle = "#6b4527";
-          ctx.fillRect(b.x - 4, b.y - 10, 8, 90);
-          ctx.fillStyle = "#ffd34d";
-          ctx.beginPath();
-          ctx.moveTo(b.x + 4, b.y - 10);
-          ctx.lineTo(b.x + 70, b.y + 8);
-          ctx.lineTo(b.x + 4, b.y + 28);
-          ctx.fill();
-          ctx.fillStyle = "#3a2a00";
-          ctx.font = "800 15px 'Barlow Condensed', sans-serif";
-          ctx.textAlign = "left";
-          ctx.textBaseline = "middle";
-          ctx.fillText("CUP", b.x + 12, b.y + 9);
-          const rank = cupRank();
-          label(`#${rank} in league`, b.x + 6, b.y + 98, "#1b2f3a", "#ffd34d");
-        }
-        function drawBarn() {
-          const b = L.barn;
-          ctx.fillStyle = "#c63b32";
-          rr(b.x, b.y + 30, b.w, b.h - 30, 6);
-          ctx.fill();
-          ctx.fillStyle = "#8f241e";
-          ctx.beginPath();
-          ctx.moveTo(b.x - 10, b.y + 36);
-          ctx.lineTo(b.x + b.w / 2, b.y - 6);
-          ctx.lineTo(b.x + b.w + 10, b.y + 36);
-          ctx.fill();
-          ctx.fillStyle = "#fff";
-          rr(b.x + b.w / 2 - 26, b.y + b.h - 56, 52, 56, 4);
-          ctx.fill();
-          ctx.strokeStyle = "#c63b32";
-          ctx.lineWidth = 4;
-          ctx.beginPath();
-          ctx.moveTo(b.x + b.w / 2 - 22, b.y + b.h - 52);
-          ctx.lineTo(b.x + b.w / 2 + 22, b.y + b.h - 4);
-          ctx.moveTo(b.x + b.w / 2 + 22, b.y + b.h - 52);
-          ctx.lineTo(b.x + b.w / 2 - 22, b.y + b.h - 4);
-          ctx.stroke();
-          label("BARN", b.x + b.w / 2, b.y + 50, "#1b2f3a", "#fff");
-        }
-        function drawPond() {
-          const p = L.pond;
-          ctx.fillStyle = "#3f8fd0";
-          ctx.beginPath();
-          ctx.ellipse(p.x, p.y, 90, 46, 0, 0, 7);
-          ctx.fill();
-          ctx.fillStyle = "#78c8ff55";
-          ctx.beginPath();
-          ctx.ellipse(p.x - 20, p.y - 10, 40, 14, 0, 0, 7);
-          ctx.fill();
-        }
-        function drawAvatar(a, now) {
-          const bob =
-            Math.sin(now / 160 + a.x) *
-            (Math.hypot(a.tx - a.x, a.ty - a.y) > 2 ? 3 : 1);
-          ctx.fillStyle = "#0003";
-          ctx.beginPath();
-          ctx.ellipse(a.x, a.y + 16, 15, 5, 0, 0, 7);
-          ctx.fill();
-          ctx.fillStyle = a.color;
-          ctx.beginPath();
-          ctx.moveTo(a.x - 13, a.y - 6 + bob);
-          ctx.lineTo(a.x - 9, a.y - 24 + bob);
-          ctx.lineTo(a.x - 2, a.y - 12 + bob);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.moveTo(a.x + 13, a.y - 6 + bob);
-          ctx.lineTo(a.x + 9, a.y - 24 + bob);
-          ctx.lineTo(a.x + 2, a.y - 12 + bob);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.arc(a.x, a.y + bob, 16, 0, 7);
-          ctx.fill();
-          ctx.fillStyle = "#10202a";
-          ctx.beginPath();
-          ctx.arc(a.x - 5, a.y - 2 + bob, 2.4, 0, 7);
-          ctx.arc(a.x + 5, a.y - 2 + bob, 2.4, 0, 7);
-          ctx.fill();
-          ctx.fillStyle = "#ff7aa877";
-          ctx.beginPath();
-          ctx.arc(a.x - 9, a.y + 4 + bob, 3, 0, 7);
-          ctx.arc(a.x + 9, a.y + 4 + bob, 3, 0, 7);
-          ctx.fill();
-          label(
-            a.name,
-            a.x,
-            a.y - 38 + bob,
-            a.id === "you" ? "#ffd34d" : "#1b2f3aee",
-            a.id === "you" ? "#3a2a00" : "#fff",
+          const y = BAL.y + Math.sin(t * 0.9) * 7,
+            x = BAL.x + Math.sin(t * 0.45) * 5,
+            rot = Math.sin(t * 0.7) * 0.03;
+          // tether rope to its peg
+          g.strokeStyle = "rgba(90,60,30,.8)";
+          g.lineWidth = 2;
+          g.beginPath();
+          g.moveTo(PEG.x, PEG.y - 8);
+          g.quadraticCurveTo(
+            (PEG.x + x) / 2 + 20,
+            (PEG.y + y + 110) / 2 + 30,
+            x + 18,
+            y + 118,
           );
-          if (a.emote && now - a.et < 2600) {
-            ctx.font =
-              "26px system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillStyle = "#fff";
-            rr(a.x + 12, a.y - 74 + bob, 40, 34, 12);
-            ctx.fill();
-            ctx.fillText(a.emote, a.x + 32, a.y - 56 + bob);
+          g.stroke();
+          g.save();
+          g.translate(x, y);
+          g.rotate(rot);
+          // ropes
+          g.strokeStyle = "#6b4a24";
+          g.lineWidth = 2;
+          [
+            [-44, 30, -26, 92],
+            [44, 30, 26, 92],
+            [-16, 44, -10, 92],
+            [16, 44, 10, 92],
+          ].forEach(([a, b, c, d]) => {
+            g.beginPath();
+            g.moveTo(a, b);
+            g.lineTo(c, d);
+            g.stroke();
+          });
+          // envelope: eight gores, lit from the top left
+          g.save();
+          g.beginPath();
+          g.moveTo(0, 52);
+          g.bezierCurveTo(-30, 40, -76, 4, -74, -44);
+          g.bezierCurveTo(-72, -96, -36, -118, 0, -118);
+          g.bezierCurveTo(36, -118, 72, -96, 74, -44);
+          g.bezierCurveTo(76, 4, 30, 40, 0, 52);
+          g.closePath();
+          g.clip();
+          const cols = [
+            "#ffd65b",
+            "#ff7a59",
+            "#ffd65b",
+            "#5ec2ff",
+            "#ffd65b",
+            "#ff7a59",
+            "#ffd65b",
+            "#5ec2ff",
+          ];
+          for (let k = 0; k < 8; k++) {
+            const a0 = -74 + (k * 148) / 8,
+              a1 = -74 + ((k + 1) * 148) / 8;
+            g.fillStyle = cols[k];
+            g.beginPath();
+            g.moveTo(0, 60);
+            g.bezierCurveTo(a0 * 0.4, 30, a0 * 1.25, -20, a0 * 0.9, -70);
+            g.lineTo(0, -130);
+            g.lineTo(a1 * 0.9, -70);
+            g.bezierCurveTo(a1 * 1.25, -20, a1 * 0.4, 30, 0, 60);
+            g.fill();
           }
+          const sh = g.createRadialGradient(-30, -70, 10, 0, -30, 110);
+          sh.addColorStop(0, "rgba(255,255,255,.5)");
+          sh.addColorStop(0.35, "rgba(255,255,255,0)");
+          sh.addColorStop(1, "rgba(40,20,60,.45)");
+          g.fillStyle = sh;
+          g.fillRect(-80, -130, 160, 190);
+          g.restore();
+          g.strokeStyle = "rgba(90,40,30,.55)";
+          g.lineWidth = 2;
+          g.beginPath();
+          g.moveTo(0, 52);
+          g.bezierCurveTo(-30, 40, -76, 4, -74, -44);
+          g.bezierCurveTo(-72, -96, -36, -118, 0, -118);
+          g.bezierCurveTo(36, -118, 72, -96, 74, -44);
+          g.bezierCurveTo(76, 4, 30, 40, 0, 52);
+          g.stroke();
+          g.fillStyle = "#c4502f";
+          g.beginPath();
+          g.roundRect(-18, 44, 36, 10, 4);
+          g.fill();
+          // flame glow
+          const fl = 0.6 + Math.sin(t * 13) * 0.2 + Math.sin(t * 7.3) * 0.2;
+          g.fillStyle = `rgba(255,190,80,${0.35 * fl})`;
+          g.beginPath();
+          g.ellipse(0, 62, 10 * fl, 14 * fl, 0, 0, 7);
+          g.fill();
+          // basket
+          g.fillStyle = "#8a5a2f";
+          g.beginPath();
+          g.roundRect(-30, 88, 60, 36, 7);
+          g.fill();
+          g.strokeStyle = "#b07a45";
+          g.lineWidth = 2;
+          for (let k = 0; k < 4; k++) {
+            g.beginPath();
+            g.moveTo(-28, 94 + k * 8);
+            g.lineTo(28, 94 + k * 8);
+            g.stroke();
+          }
+          g.fillStyle = "#6b4527";
+          g.beginPath();
+          g.roundRect(-33, 84, 66, 8, 4);
+          g.fill();
+          // crates peeking out
+          S.balloon.crates.forEach((c, k) => {
+            const cx = -26 + (k % 3) * 18 + (k > 2 ? 9 : 0),
+              cy = k > 2 ? 72 : 78;
+            if (k > 2) return;
+            g.fillStyle = c.state === "done" ? "#c99a5e" : "#7a5230";
+            g.beginPath();
+            g.roundRect(cx, cy, 16, 10, 2);
+            g.fill();
+            const im = c.state === "done" ? itemArt(c.crop) : null;
+            if (im) g.drawImage(im, cx - 2, cy - 14, 20, 23);
+          });
+          g.restore();
+          pill(
+            g,
+            `SUPPLY BALLOON ${done}/6`,
+            x,
+            y + 146,
+            done === 6 ? "#ffd65b" : "#1b2f3a",
+            done === 6 ? "#3a2a00" : "#fff",
+          );
         }
-        let last = performance.now();
-        function frame(now) {
-          const dt = Math.min(50, now - last);
-          last = now;
+        function drawFlag(g, t) {
+          const x = FLAG.x,
+            y = FLAG.y;
+          g.fillStyle = "rgba(0,0,0,.2)";
+          g.beginPath();
+          g.ellipse(x + 4, y + 2, 12, 4, 0, 0, 7);
+          g.fill();
+          g.fillStyle = "#7a5230";
+          g.fillRect(x - 3, y - 120, 6, 122);
+          g.fillStyle = "#ffd65b";
+          g.beginPath();
+          g.arc(x, y - 122, 6, 0, 7);
+          g.fill();
+          g.save();
+          g.translate(x + 3, y - 114);
+          g.beginPath();
+          g.moveTo(0, 0);
+          for (let k = 0; k <= 10; k++)
+            g.lineTo(k * 8, Math.sin(t * 4 - k * 0.6) * (k * 0.5) + k * 0.6);
+          for (let k = 10; k >= 0; k--)
+            g.lineTo(
+              k * 8,
+              40 + Math.sin(t * 4 - k * 0.6) * (k * 0.5) - k * 1.2,
+            );
+          g.closePath();
+          const fgr = g.createLinearGradient(0, 0, 80, 40);
+          fgr.addColorStop(0, "#ffd65b");
+          fgr.addColorStop(1, "#f2a52a");
+          g.fillStyle = fgr;
+          g.fill();
+          g.strokeStyle = "#b8800f";
+          g.lineWidth = 1.5;
+          g.stroke();
+          g.fillStyle = "#5a3a00";
+          g.font = "800 17px 'Barlow Condensed', sans-serif";
+          g.textAlign = "left";
+          g.textBaseline = "middle";
+          g.fillText("CUP", 18, 20 + Math.sin(t * 4 - 2) * 2);
+          g.restore();
+        }
+        function drawPondWater(g, t) {
+          const gr = g.createRadialGradient(
+            POND.x - 40,
+            POND.y - 20,
+            10,
+            POND.x,
+            POND.y,
+            POND.rx,
+          );
+          gr.addColorStop(0, "#7fd3ff");
+          gr.addColorStop(1, "#2f86c4");
+          g.fillStyle = gr;
+          g.beginPath();
+          g.ellipse(POND.x, POND.y, POND.rx, POND.ry, 0, 0, 7);
+          g.fill();
+          g.save();
+          g.beginPath();
+          g.ellipse(POND.x, POND.y, POND.rx, POND.ry, 0, 0, 7);
+          g.clip();
+          g.strokeStyle = "rgba(255,255,255,.35)";
+          g.lineWidth = 2;
+          for (let k = 0; k < 5; k++) {
+            const y = POND.y - 40 + k * 20,
+              off = Math.sin(t * 0.8 + k) * 20;
+            g.beginPath();
+            g.moveTo(POND.x - 90 + off, y);
+            g.quadraticCurveTo(POND.x - 60 + off, y - 4, POND.x - 30 + off, y);
+            g.stroke();
+          }
+          [
+            [POND.x + 60, POND.y + 18, 18],
+            [POND.x + 88, POND.y - 6, 13],
+            [POND.x - 92, POND.y + 14, 15],
+          ].forEach(([x, y, r], k) => {
+            g.fillStyle = "#4fae46";
+            g.beginPath();
+            g.moveTo(x, y);
+            g.arc(x, y, r, 0.3 + k, Math.PI * 2 - 0.3 + k);
+            g.closePath();
+            g.fill();
+            if (k === 0) {
+              g.fillStyle = "#ff9bd2";
+              g.beginPath();
+              g.arc(x - 4, y - 3, 5, 0, 7);
+              g.fill();
+            }
+          });
+          g.restore();
+          ducks.forEach((d) => {
+            d.a += d.sp * 0.016;
+            const x = POND.x + Math.cos(d.a) * POND.rx * d.r,
+              y = POND.y + Math.sin(d.a) * POND.ry * d.r;
+            GFX.duck(
+              g,
+              d.k,
+              "swim",
+              t + d.a,
+              x,
+              y,
+              1.15,
+              Math.cos(d.a + Math.PI / 2) * Math.sign(d.sp) > 0 ? 1 : -1,
+              true,
+            );
+          });
+          if (fishJump) {
+            const k = (performance.now() - fishJump.t0) / 900;
+            if (k > 1) fishJump = null;
+            else
+              GFX.fish(
+                g,
+                t,
+                fishJump.x + k * 40,
+                fishJump.y,
+                -0.6 + k * 1.2,
+                "#ff8a3d",
+                Math.sin(k * Math.PI) * 34,
+              );
+          } else if (Math.random() < 0.003)
+            fishJump = {
+              t0: performance.now(),
+              x: POND.x - 30 + Math.random() * 40,
+              y: POND.y + 6,
+            };
+        }
+
+        let last = performance.now(),
+          T0 = performance.now();
+        function step(dt, now) {
+          const sp = 0.11 * dt;
           avatars.forEach((a) => {
             const dx = a.tx - a.x,
               dy = a.ty - a.y,
               d = Math.hypot(dx, dy);
             if (d > 1) {
-              const sp = 0.12 * dt;
               a.x += (dx / d) * Math.min(sp, d);
               a.y += (dy / d) * Math.min(sp, d);
+              if (Math.abs(dx) > 2) a.face = dx > 0 ? 1 : -1;
             } else if (a.id !== "you" && (a.idle -= dt) < 0) {
-              a.idle = 2500 + Math.random() * 4000;
-              a.tx = L.field.x - 40 + Math.random() * (L.field.w + 80);
-              a.ty = L.field.y + L.field.h + 30 + Math.random() * 30;
+              a.idle = 2500 + Math.random() * 4500;
+              const spots = [
+                [OX - 50, OY + Math.random() * FH],
+                [OX + FW + 50, OY + Math.random() * FH],
+                [OX + Math.random() * FW, PATH_Y + (Math.random() - 0.5) * 30],
+              ];
+              [a.tx, a.ty] = rnd(spots);
             }
           });
-          drawGround();
-          W(() => {
-            drawPath();
-            drawPond();
-            drawField();
-            if (!S.visiting) {
-              drawStall();
-              drawBalloon();
-              drawBoard();
-            }
-            drawBarn();
-            avatars
-              .slice()
-              .sort((p, q) => p.y - q.y)
-              .forEach((a) => drawAvatar(a, now));
+          chickens.forEach((c) => {
+            c.t += dt / 1000;
+            const dx = c.tx - c.x,
+              dy = c.ty - c.y,
+              d = Math.hypot(dx, dy);
+            if (d > 1) {
+              c.st = "walk";
+              c.x += (dx / d) * Math.min(0.05 * dt, d);
+              c.y += (dy / d) * Math.min(0.05 * dt, d);
+              c.face = dx > 0 ? 1 : -1;
+            } else if (Math.random() < 0.004) {
+              c.tx = c.home.x + (Math.random() - 0.5) * 160;
+              c.ty = c.home.y + (Math.random() - 0.5) * 60;
+            } else
+              c.st =
+                c.st === "flap"
+                  ? Math.random() < 0.03
+                    ? "peck"
+                    : "flap"
+                  : Math.random() < 0.002
+                    ? "flap"
+                    : "peck";
           });
+          {
+            const dx = cow.tx - cow.x,
+              d = Math.abs(dx);
+            if (d > 1) {
+              cow.x += Math.sign(dx) * Math.min(0.02 * dt, d);
+              cow.face = dx > 0 ? 1 : -1;
+            } else if (Math.random() < 0.002)
+              cow.tx = PAST.x + 80 + Math.random() * (PAST.w - 160);
+          }
+          {
+            const dx = dog.tx - dog.x,
+              dy = dog.ty - dog.y,
+              d = Math.hypot(dx, dy);
+            if (d > 1) {
+              dog.st = "walk";
+              dog.x += (dx / d) * Math.min(0.08 * dt, d);
+              dog.y += (dy / d) * Math.min(0.08 * dt, d);
+              dog.face = dx > 0 ? 1 : -1;
+            } else {
+              dog.st = "sit";
+              if (Math.random() < 0.002) {
+                dog.tx = DOGH.x - 160 + Math.random() * 140;
+                dog.ty = DOGH.y + Math.random() * 70;
+              }
+            }
+          }
+          clouds.forEach((c) => {
+            c.x += 0.012 * dt;
+            if (c.x - c.r > W + 200) c.x = -c.r - 200;
+          });
+          if (!flock && now > nextFlock && !reduced)
+            flock = { x: -80, y: 140 + Math.random() * 300, t0: now };
+          if (flock) {
+            flock.x += 0.16 * dt;
+            flock.y -= 0.01 * dt;
+            if (flock.x > W + 120) {
+              flock = null;
+              nextFlock = now + 14000 + Math.random() * 10000;
+            }
+          }
+          if (!reduced && Math.random() < dt / 700)
+            parts.push({
+              k: "petal",
+              x: 470 + Math.random() * 120,
+              y: 170 + Math.random() * 40,
+              vx: 0.03,
+              vy: 0.012,
+              life: 9000,
+              age: 0,
+              r: Math.random() * 6,
+              c: Math.random() < 0.5 ? "#ffc4dc" : "#ffe1ec",
+            });
+          plots.forEach((p) => {
+            if (p.pop > 0) p.pop = Math.max(0, p.pop - dt / 380);
+          });
+          barnBump = Math.max(0, barnBump - dt / 420);
+          for (let i = parts.length - 1; i >= 0; i--) {
+            const q = parts[i];
+            q.age += dt;
+            if (q.age > q.life) {
+              parts.splice(i, 1);
+              continue;
+            }
+            if (q.k === "petal") {
+              const w = wind(q.x, (now - T0) / 1000);
+              q.x += (q.vx + w * 0.03) * dt;
+              q.y += q.vy * dt + Math.sin(q.age / 300 + q.r) * 0.2;
+              q.r += 0.003 * dt;
+            } else {
+              q.x += q.vx * dt;
+              q.y += q.vy * dt;
+              q.vy += (q.g || 0) * dt;
+            }
+          }
+          for (let i = flyers.length - 1; i >= 0; i--) {
+            const f = flyers[i];
+            f.k += dt / f.dur;
+            if (f.k >= 1) {
+              flyers.splice(i, 1);
+              f.done && f.done();
+            }
+          }
+        }
+        function frame(now) {
+          const dt = Math.min(50, now - last);
+          last = now;
+          const t = (now - T0) / 1000;
+          step(dt, now);
+          const g = ctx,
+            s = view.s;
+          g.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
+          g.fillStyle = "#5fa548";
+          g.fillRect(0, 0, view.w, view.h);
+          g.save();
+          g.translate(view.w / 2, view.h / 2);
+          g.scale(s, s);
+          g.translate(-cam.x, -cam.y);
+          g.drawImage(bg, 0, 0, W, H);
+          drawPondWater(g, t);
+          plots.forEach((p, i) => {
+            const r = plotRect(i);
+            GFX.blit(g, p.wetUntil > now ? SPR.wet : SPR.soil, r.x, r.y);
+          });
+          // ground shadows of things in the air
+          if (!S.visiting) {
+            const by = BAL.y + Math.sin(t * 0.9) * 7;
+            g.fillStyle = "rgba(20,40,20,.18)";
+            g.beginPath();
+            g.ellipse(BAL.x + 30, PEG.y + 2, 60 - (by - BAL.y), 15, 0, 0, 7);
+            g.fill();
+          }
+          if (flock)
+            for (let k = 0; k < 3; k++) {
+              g.fillStyle = "rgba(20,40,20,.14)";
+              g.beginPath();
+              g.ellipse(
+                flock.x - k * 40 + 60,
+                flock.y + 260 + k * 18,
+                12,
+                4,
+                0,
+                0,
+                7,
+              );
+              g.fill();
+            }
+          // everything that stands on the ground, back to front
+          const D = [];
+          const add = (y, fn) => D.push([y, fn]);
+          SPR.trees.forEach((tr) =>
+            add(tr.y, () => GFX.drawTree(g, tr.t, tr.x, tr.y, t, tr.ph, 0.7)),
+          );
+          SPR.bushes.forEach((b) => add(b.y, () => GFX.blit(g, b.b, b.x, b.y)));
+          SPR.rocks.forEach((b) => add(b.y, () => GFX.blit(g, b.b, b.x, b.y)));
+          SPR.flowers.forEach((b) =>
+            add(b.y, () => GFX.blit(g, b.b, b.x, b.y)),
+          );
+          add(HOUSE.y, () => {
+            GFX.shadow(g, HOUSE.x + 30, HOUSE.y + 4, 110, 20);
+            GFX.blit(g, SPR.house, HOUSE.x, HOUSE.y);
+          });
+          add(MILL.y, () => {
+            GFX.shadow(g, MILL.x + 20, MILL.y + 4, 60, 14);
+            GFX.blit(g, SPR.mill, MILL.x, MILL.y);
+            GFX.windmillSails(
+              g,
+              MILL.x + SPR.mill.hub[0],
+              MILL.y + SPR.mill.hub[1],
+              t,
+              1,
+            );
+          });
+          add(BARN.y, () => {
+            GFX.shadow(g, BARN.x + 20, BARN.y + 4, 130, 22);
+            const k = 1 + Math.sin(barnBump * Math.PI) * 0.035;
+            g.save();
+            g.translate(BARN.x, BARN.y);
+            g.scale(2 - k, k);
+            GFX.blit(g, SPR.barn, 0, 0);
+            g.restore();
+          });
+          add(WELL.y, () => GFX.blit(g, SPR.well, WELL.x, WELL.y));
+          add(DOGH.y, () => {
+            GFX.shadow(g, DOGH.x + 10, DOGH.y + 2, 76, 14);
+            GFX.blit(g, SPR.dogh, DOGH.x, DOGH.y);
+          });
+          add(OY + 40, () => GFX.blit(g, SPR.scare, OX - 70, OY + 40));
+          add(STALL.y + 120, () =>
+            GFX.blit(g, SPR.hay, STALL.x - 120, STALL.y + 120),
+          );
+          add(BARN.y + 40, () =>
+            GFX.blit(g, SPR.crates, BARN.x - 150, BARN.y + 40),
+          );
+          add(OY - 26, () => drawFence(g, OY - 26, false));
+          add(OY + FH + 34, () => drawFence(g, OY + FH + 34, true));
+          if (!S.visiting) {
+            add(STALL.y, () => {
+              GFX.shadow(g, STALL.x + 10, STALL.y + 4, 96, 16);
+              GFX.blit(g, SPR.stall, STALL.x, STALL.y);
+            });
+            add(BOARD.y, () => {
+              GFX.shadow(g, BOARD.x + 8, BOARD.y + 3, 70, 14);
+              GFX.blit(g, SPR.board, BOARD.x, BOARD.y);
+            });
+            add(FLAG.y, () => drawFlag(g, t));
+          }
+          // fence-line along the pasture
+          add(PAST.y + PAST.h, () => {
+            for (let x = PAST.x + 10; x <= PAST.x + PAST.w; x += 42)
+              drawPost(g, x, PAST.y + PAST.h);
+            drawRail(g, PAST.x + 10, PAST.x + PAST.w, PAST.y + PAST.h);
+          });
+          add(PAST.y + 4, () => {
+            drawRail(g, PAST.x + 10, PAST.x + PAST.w, PAST.y + 4);
+            for (let x = PAST.x + 10; x <= PAST.x + PAST.w; x += 42)
+              drawPost(g, x, PAST.y + 4);
+          });
+          plots.forEach((p, i) => {
+            const r = plotRect(i);
+            add(r.y + r.h * 0.72 + 6, () => drawCrop(g, i, p, t, now));
+          });
+          chickens.forEach((c) =>
+            add(c.y, () =>
+              GFX.chicken(g, c.k, c.st, c.t, c.x, c.y, 1.35, c.face),
+            ),
+          );
+          add(cow.y, () =>
+            GFX.cow(
+              g,
+              Math.abs(cow.tx - cow.x) > 1 ? "walk" : "graze",
+              t,
+              cow.x,
+              cow.y,
+              1.1,
+              cow.face,
+            ),
+          );
+          add(dog.y, () =>
+            GFX.dog(g, "gold", dog.st, t, dog.x, dog.y, 1, dog.face),
+          );
+          add(HOUSE.y + 14, () =>
+            GFX.cat(g, "sleep", t, HOUSE.x - 60, HOUSE.y + 14, 1.15, 1),
+          );
+          avatars.forEach((a) => add(a.y, () => drawFighter(g, a, t)));
+          D.sort((p, q) => p[0] - q[0]).forEach(([, fn]) => fn());
+          // in the air
+          butterflies.forEach((b) =>
+            GFX.butterfly(
+              g,
+              t + b.ph,
+              b.x + Math.sin(t * 0.6 + b.ph) * 70,
+              b.y + Math.sin(t * 1.1 + b.ph * 2) * 30 - 30,
+              b.c,
+              1.2,
+            ),
+          );
+          if (!S.visiting) drawBalloon(g, t, now);
+          if (flock)
+            for (let k = 0; k < 3; k++)
+              GFX.bird(
+                g,
+                "pigeon",
+                "fly",
+                t + k,
+                flock.x - k * 40,
+                flock.y + k * 18,
+                1.3,
+                1,
+              );
+          parts.forEach((q) => {
+            const a = Math.min(1, (q.life - q.age) / 600);
+            g.globalAlpha = a;
+            if (q.k === "petal") {
+              g.fillStyle = q.c;
+              g.save();
+              g.translate(q.x, q.y);
+              g.rotate(q.r);
+              g.beginPath();
+              g.ellipse(0, 0, 5, 2.6, 0, 0, 7);
+              g.fill();
+              g.restore();
+            } else if (q.k === "spark") {
+              g.fillStyle = q.c;
+              star(g, q.x, q.y, q.s * (1 - (q.age / q.life) * 0.5));
+            } else if (q.k === "drop") {
+              g.fillStyle = "#8fd4ff";
+              g.beginPath();
+              g.ellipse(q.x, q.y, 2.5, 5, 0, 0, 7);
+              g.fill();
+            } else if (q.k === "dust") {
+              g.fillStyle = "#b38a5a";
+              g.beginPath();
+              g.arc(q.x, q.y, q.s * (0.6 + q.age / q.life), 0, 7);
+              g.fill();
+            } else if (q.k === "text") {
+              g.font = "800 26px 'Barlow Condensed', sans-serif";
+              g.textAlign = "center";
+              g.lineWidth = 5;
+              g.strokeStyle = "#2a1a00";
+              g.strokeText(q.text, q.x, q.y);
+              g.fillStyle = q.c;
+              g.fillText(q.text, q.x, q.y);
+            }
+            g.globalAlpha = 1;
+          });
+          flyers.forEach((f) => {
+            if (f.k < 0) return;
+            const k = f.k,
+              e = 1 - Math.pow(1 - k, 2);
+            const x = f.x0 + (f.x1 - f.x0) * e,
+              y = f.y0 + (f.y1 - f.y0) * e - Math.sin(k * Math.PI) * f.arc;
+            const im = itemArt(f.crop),
+              sc = k < 0.15 ? 0.6 + (k / 0.15) * 0.6 : 1.2 - k * 0.5;
+            if (im) g.drawImage(im, x - 24 * sc, y - 28 * sc, 48 * sc, 56 * sc);
+          });
+          // cloud shadows drift over everything on the ground
+          if (!reduced)
+            clouds.forEach((c) => {
+              const gr = g.createRadialGradient(c.x, c.y, 0, c.x, c.y, c.r);
+              gr.addColorStop(0, "rgba(20,40,60,.16)");
+              gr.addColorStop(0.6, "rgba(20,40,60,.09)");
+              gr.addColorStop(1, "rgba(20,40,60,0)");
+              g.fillStyle = gr;
+              g.beginPath();
+              g.ellipse(c.x, c.y, c.r * 1.4, c.r * 0.8, 0.2, 0, 7);
+              g.fill();
+            });
+          // labels and name tags stay readable above the light
+          if (!S.visiting) {
+            const sold = S.stall.filter((x) => x && x.sold).length,
+              listed = S.stall.filter((x) => x && !x.sold).length;
+            pill(
+              g,
+              `FARM STALL · ${listed} for sale`,
+              STALL.x,
+              STALL.y + 26,
+              "#1b2f3a",
+              "#fff",
+            );
+            if (sold) {
+              const b = Math.abs(Math.sin(t * 4)) * 6;
+              pill(
+                g,
+                `${sold} SOLD!`,
+                STALL.x + 70,
+                STALL.y - 150 - b,
+                "#ff7aa8",
+                "#2a0614",
+                22,
+              );
+            }
+            pill(
+              g,
+              `#${cupRank()} in league`,
+              FLAG.x + 30,
+              FLAG.y + 24,
+              "#1b2f3a",
+              "#ffd65b",
+            );
+          }
+          avatars.forEach((a) => {
+            nameTag(g, a.name, a.x, a.y - 90, a.id === "you");
+            if (a.emote && now - a.et < 2600) {
+              const k = Math.min(1, (now - a.et) / 180),
+                by = a.y - 124;
+              g.save();
+              g.translate(a.x, by);
+              g.scale(k, k);
+              g.fillStyle = "#fff";
+              g.beginPath();
+              g.roundRect(-24, -20, 48, 34, 12);
+              g.fill();
+              g.beginPath();
+              g.moveTo(-5, 14);
+              g.lineTo(5, 14);
+              g.lineTo(0, 21);
+              g.fill();
+              g.font =
+                "21px system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif";
+              g.textAlign = "center";
+              g.textBaseline = "middle";
+              g.fillText(a.emote, 0, -2);
+              g.restore();
+            }
+          });
+          g.restore();
+          // warm late-afternoon light from the top left, and a soft vignette
+          g.save();
+          g.globalCompositeOperation = "soft-light";
+          const lg = g.createLinearGradient(0, 0, view.w, view.h);
+          lg.addColorStop(0, "rgba(255,230,160,.75)");
+          lg.addColorStop(0.55, "rgba(255,210,150,.1)");
+          lg.addColorStop(1, "rgba(40,50,110,.45)");
+          g.fillStyle = lg;
+          g.fillRect(0, 0, view.w, view.h);
+          g.globalCompositeOperation = "screen";
+          if (!reduced)
+            for (let k = 0; k < 3; k++) {
+              const a = 0.07 + 0.03 * Math.sin(t * 0.5 + k * 2),
+                off = k * view.w * 0.24 + Math.sin(t * 0.2 + k) * 30,
+                bw = 70 + k * 30;
+              g.save();
+              g.translate(off, 0);
+              g.transform(1, 0, 0.9, 1, 0, 0);
+              const rg = g.createLinearGradient(-bw, 0, bw, 0);
+              rg.addColorStop(0, "rgba(255,240,190,0)");
+              rg.addColorStop(0.5, `rgba(255,240,190,${a})`);
+              rg.addColorStop(1, "rgba(255,240,190,0)");
+              g.fillStyle = rg;
+              g.globalAlpha = 1;
+              g.fillRect(-bw, 0, bw * 2, view.h * 0.75);
+              g.restore();
+            }
+          g.globalCompositeOperation = "source-over";
+          const vg = g.createRadialGradient(
+            view.w / 2,
+            view.h / 2,
+            Math.min(view.w, view.h) * 0.35,
+            view.w / 2,
+            view.h / 2,
+            Math.max(view.w, view.h) * 0.75,
+          );
+          vg.addColorStop(0, "rgba(0,0,0,0)");
+          vg.addColorStop(1, "rgba(10,25,15,.32)");
+          g.fillStyle = vg;
+          g.fillRect(0, 0, view.w, view.h);
+          g.restore();
           requestAnimationFrame(frame);
         }
 
-        // ---------- hit testing ----------
-        cv.addEventListener("click", (e) => {
+        // ---------- juice ----------
+        function burst(x, y, n, kind, opts = {}) {
+          for (let k = 0; k < n; k++) {
+            const a = Math.random() * Math.PI * 2,
+              v = (opts.v || 0.12) * (0.5 + Math.random());
+            parts.push({
+              k: kind,
+              x,
+              y,
+              vx: Math.cos(a) * v,
+              vy: Math.sin(a) * v - (opts.up || 0),
+              g: opts.g || 0,
+              life: opts.life || 700,
+              age: 0,
+              s: opts.s || 5,
+              c: opts.c || rnd(["#fff6b0", "#ffd65b", "#ffffff"]),
+            });
+          }
+        }
+        function floatText(text, x, y, c = "#ffd65b") {
+          parts.push({
+            k: "text",
+            text,
+            x,
+            y,
+            vx: 0,
+            vy: -0.05,
+            life: 1300,
+            age: 0,
+            c,
+          });
+        }
+
+        // ---------- input: drag to look around, tap to act ----------
+        let drag = null;
+        cv.addEventListener("pointerdown", (e) => {
+          drag = {
+            x: e.clientX,
+            y: e.clientY,
+            cx: cam.x,
+            cy: cam.y,
+            moved: false,
+          };
+          cv.setPointerCapture(e.pointerId);
+        });
+        cv.addEventListener("pointermove", (e) => {
+          if (!drag) return;
+          const dx = e.clientX - drag.x,
+            dy = e.clientY - drag.y;
+          if (Math.hypot(dx, dy) > 8) drag.moved = true;
+          if (drag.moved) {
+            cam.x = drag.cx - dx / view.s;
+            cam.y = drag.cy - dy / view.s;
+            clampCam();
+          }
+        });
+        cv.addEventListener("pointerup", (e) => {
+          const d = drag;
+          drag = null;
+          if (!d || d.moved) return;
           const r = cv.getBoundingClientRect(),
             p = toWorld(e.clientX - r.left, e.clientY - r.top);
+          tap(p);
+        });
+        cv.addEventListener("pointercancel", () => (drag = null));
+        function tap(p) {
           for (const a of avatars)
-            if (a.id !== "you" && Math.hypot(p.x - a.x, p.y - a.y) < 26) {
+            if (
+              a.id !== "you" &&
+              Math.abs(p.x - a.x) < 34 &&
+              p.y < a.y + 10 &&
+              p.y > a.y - 90
+            ) {
               onAvatar(a);
               return;
             }
           if (!S.visiting) {
-            const s = L.stall;
             if (
-              p.x > s.x &&
-              p.x < s.x + s.w &&
-              p.y > s.y - 20 &&
-              p.y < s.y + s.h
+              p.x > STALL.x - 100 &&
+              p.x < STALL.x + 100 &&
+              p.y > STALL.y - 170 &&
+              p.y < STALL.y + 30
             ) {
               open("stall");
               return;
             }
-            const b = L.balloon;
-            if (Math.hypot(p.x - b.x, p.y - b.y + 10) < 80) {
+            if (
+              Math.hypot(p.x - BAL.x, p.y - (BAL.y - 10)) < 110 ||
+              (Math.abs(p.x - BAL.x) < 40 && p.y > BAL.y && p.y < BAL.y + 160)
+            ) {
               open("help");
               return;
             }
-            const g = L.board;
             if (
-              p.x > g.x - 20 &&
-              p.x < g.x + 90 &&
-              p.y > g.y - 20 &&
-              p.y < g.y + 110
+              p.x > BOARD.x - 80 &&
+              p.x < FLAG.x + 90 &&
+              p.y > BOARD.y - 150 &&
+              p.y < BOARD.y + 36
             ) {
               open("cup");
               return;
             }
           }
-          for (let i = 0; i < plots.length; i++) {
+          for (let i = plots.length - 1; i >= 0; i--) {
             const q = plotRect(i);
-            if (p.x > q.x && p.x < q.x + q.w && p.y > q.y && p.y < q.y + q.h) {
+            if (
+              p.x > q.x &&
+              p.x < q.x + q.w &&
+              p.y > q.y - 50 &&
+              p.y < q.y + q.h
+            ) {
               onPlot(i);
               return;
             }
           }
           walkTo("you", p.x, p.y);
-        });
+        }
         function onPlot(i) {
           const p = plots[i],
-            q = plotRect(i);
-          walkTo("you", q.x + q.w / 2, q.y + q.h + 14);
-          if (S.visiting) {
-            if (S.waterLeft > 0 && !ripe(p)) {
+            q = plotRect(i),
+            cx = q.x + q.w / 2,
+            now = performance.now();
+          walkTo(
+            "you",
+            cx + (Math.random() < 0.5 ? -1 : 1) * 30,
+            q.y + q.h + 30,
+          );
+          if (!ripe(p)) {
+            const own = !S.visiting;
+            if (!own && S.waterLeft <= 0) {
+              toast("No water left for this farm today", null);
+              return;
+            }
+            if (p.wetUntil > now) {
+              toast(`${CROPS[p.crop].n} is watered and growing`, null);
+              return;
+            }
+            p.wetUntil = now + 12000;
+            p.planted -= 5000;
+            p.pop = 1;
+            for (let k = 0; k < 16; k++)
+              parts.push({
+                k: "drop",
+                x: cx - 30 + Math.random() * 60,
+                y: q.y - 60 - Math.random() * 30,
+                vx: 0,
+                vy: 0.25,
+                life: 420,
+                age: Math.random() * 120,
+              });
+            if (own) toast(`Watered ${CROPS[p.crop].n}: it grows faster`, null);
+            else {
               S.waterLeft--;
-              p.planted -= 4000;
               S.xp += 2;
+              floatText("+2 XP", cx, q.y - 20, "#7ff0a2");
               toast(
-                `You watered ${F[S.visiting].name}'s ${CROPS[p.crop].n}: +2 XP, it grows faster`,
+                `You watered ${F[S.visiting].name}'s ${CROPS[p.crop].n}: +2 XP`,
                 null,
               );
               renderVisitBanner();
-            } else if (ripe(p))
-              toast(
-                "Ripe crops are theirs to pick. Like the farm or water a growing crop.",
-                null,
-              );
-            else toast("No water left for this farm today", null);
+            }
             return;
           }
-          if (ripe(p)) {
-            const near = avatars.filter(
-              (a) =>
-                a.id !== "you" &&
-                Math.hypot(a.x - (q.x + q.w / 2), a.y - (q.y + q.h)) < 260,
+          if (S.visiting) {
+            toast(
+              "Ripe crops are theirs to pick. Like the farm or water a growing crop.",
+              null,
             );
-            const n = near.length ? 3 : 2;
-            S.barn[p.crop] += n;
-            S.xp += 4;
-            if (near.length) {
-              emote(near[0].id, "🎉");
-              toast(
-                `Harvest Party with ${near[0].name}: ${n} ${CROPS[p.crop].n} instead of 2`,
-                near[0].id,
-              );
-            } else toast(`+2 ${CROPS[p.crop].n} to the barn`, null);
-            p.crop = rnd(plantable);
-            p.planted = performance.now();
-            cupTick("harvest");
-          } else toast(`${CROPS[p.crop].n} is still growing`, null);
+            return;
+          }
+          const near = avatars.filter(
+            (a) =>
+              a.id !== "you" && Math.hypot(a.x - cx, a.y - (q.y + q.h)) < 300,
+          );
+          const n = near.length ? 3 : 2,
+            crop = p.crop;
+          S.xp += 4;
+          p.pop = 1;
+          burst(cx, q.y + 20, 12, "spark", { v: 0.18, life: 700, s: 6 });
+          burst(cx, q.y + q.h - 10, 8, "dust", {
+            v: 0.06,
+            life: 600,
+            s: 4,
+            c: "#b38a5a",
+          });
+          for (let k = 0; k < n; k++) {
+            flyers.push({
+              crop,
+              x0: cx + (k - 1) * 14,
+              y0: q.y + 10,
+              x1: BARN.x,
+              y1: BARN.y - 70,
+              arc: 140 + k * 30,
+              k: -k * 0.12,
+              dur: 900,
+              done: () => {
+                barnBump = 1;
+                S.barn[crop]++;
+                if (S.tab === "stall") renderStall();
+              },
+            });
+          }
+          floatText(`+${n}`, cx, q.y - 10);
+          if (near.length) {
+            emote(near[0].id, "🎉");
+            floatText("PARTY ×1.5", cx, q.y - 44, "#ff9bd2");
+            toast(
+              `Harvest Party with ${near[0].name}: ${n} ${CROPS[crop].n} instead of 2`,
+              near[0].id,
+            );
+          } else toast(`+2 ${CROPS[crop].n} on the way to the barn`, null);
+          p.crop = rnd(plantable);
+          p.planted = performance.now();
+          p.wetUntil = 0;
+          cupTick("harvest");
         }
         function onAvatar(a) {
           emote("you", "👋");
@@ -2130,7 +3204,7 @@
           );
         }
 
-        // ---------- toasts ----------
+        // ---------- toasts & HUD ----------
         const ticker = document.getElementById("ticker");
         function toast(text, who) {
           const el = document.createElement("div");
@@ -2139,20 +3213,18 @@
             const d = document.createElement("span");
             d.className = "who";
             d.style.background = F[who].color;
-            d.textContent = F[who].name[0];
+            d.innerHTML = face(F[who]);
             el.appendChild(d);
           }
-          const t = document.createElement("span");
-          t.textContent = text;
-          el.appendChild(t);
+          const tx = document.createElement("span");
+          tx.textContent = text;
+          el.appendChild(tx);
           ticker.appendChild(el);
           while (ticker.children.length > (view.w < 520 ? 2 : 3))
             ticker.firstChild.remove();
           setTimeout(() => el.remove(), 6500);
           hud();
         }
-
-        // ---------- HUD ----------
         function hud() {
           document.getElementById("coins").textContent = fmt(S.coins);
           document.getElementById("leaves").textContent = fmt(S.leaves);
@@ -2162,7 +3234,7 @@
           document.getElementById("faces").innerHTML = on
             .map(
               (f) =>
-                `<span class="face" style="background:${f.color}">${esc(f.name[0])}</span>`,
+                `<span class="face" style="background:${f.color}">${face(f)}</span>`,
             )
             .join("");
           document.getElementById("onlineTxt").textContent = S.visiting
@@ -2174,8 +3246,7 @@
           document.getElementById("lvl").textContent = S.visiting
             ? F[S.visiting].lv
             : MY_LEVEL;
-          const sold = S.stall.filter((x) => x && x.sold).length;
-          badge("nStall", sold);
+          badge("nStall", S.stall.filter((x) => x && x.sold).length);
           badge(
             "nHelp",
             S.balloon.crates.every((c) => c.state === "done") ? "!" : 0,
@@ -2194,7 +3265,7 @@
           el.textContent = v;
         }
 
-        // ---------- sheet ----------
+        // ---------- sheets ----------
         const sheet = document.getElementById("sheet"),
           body = document.getElementById("sheetBody");
         document.getElementById("closeSheet").onclick = () => open(null);
@@ -2217,25 +3288,24 @@
         function render() {
           hud();
           if (!S.tab) return;
-          const R = {
+          ({
             stall: renderStall,
             help: renderHelp,
             cup: renderCup,
             friends: renderFriends,
             visit: renderVisit,
-          }[S.tab];
-          R();
+          })[S.tab]();
         }
         function head(t, s) {
           document.getElementById("sheetTitle").textContent = t;
           document.getElementById("sheetSub").textContent = s;
         }
-        const dotFor = (k) =>
-          `<span class="cropdot" style="background:${CROPS[k].c}"></span>`;
+        const dotFor = (k) => `<img class="ci" src="${itemUrl(k)}" alt="">`;
+        const avFor = (f) =>
+          `<span class="av" style="background:${f.color}">${face(f)}</span>`;
         const priceOf = (l) =>
           Math.round(l.qty * CROPS[l.crop].sell * l.factor);
 
-        // Stall
         function renderStall() {
           head(
             "Farm Stall",
@@ -2267,7 +3337,7 @@
                   f = F[p.by],
                   cost = priceOf(p),
                   locked = c.lv > MY_LEVEL;
-                return `<div class="item"><span class="av" style="background:${f.color}">${esc(f.name[0])}</span>${dotFor(p.crop)}
+                return `<div class="item">${avFor(f)}${dotFor(p.crop)}
       <div class="grow"><div class="t">${p.qty} ${esc(c.n)}</div><div class="s">${esc(f.name)}'s stall · ${p.factor}× market${locked ? ` · <span class="lock">you grow it at Lv ${c.lv}</span>` : ""}</div></div>
       <button type="button" class="btn sm gold" data-buy="${p.id}" ${S.leaves < cost ? "disabled" : ""}>${fmt(cost)}</button></div>`;
               })
@@ -2294,6 +3364,12 @@
                   `Collected ${fmt(got)} Gold Leaves from your stall`,
                   null,
                 );
+                burst(STALL.x, STALL.y - 120, 14, "spark", {
+                  v: 0.2,
+                  life: 800,
+                  s: 7,
+                });
+                floatText(`+${fmt(got)}`, STALL.x, STALL.y - 140);
                 cupTick("sell");
                 renderStall();
               }),
@@ -2301,8 +3377,8 @@
           body.querySelectorAll("[data-buy]").forEach(
             (b) =>
               (b.onclick = () => {
-                const p = S.paper.find((x) => x.id === +b.dataset.buy);
-                const cost = priceOf(p);
+                const p = S.paper.find((x) => x.id === +b.dataset.buy),
+                  cost = priceOf(p);
                 S.leaves -= cost;
                 S.barn[p.crop] += p.qty;
                 S.paper = S.paper.filter((x) => x !== p);
@@ -2311,6 +3387,7 @@
                   p.by,
                 );
                 emote(p.by, "❤️");
+                barnBump = 1;
                 renderStall();
               }),
           );
@@ -2342,7 +3419,7 @@
             fillQty();
             read();
             body.querySelector("#stPut").onclick = () => {
-              let i = S.stall[S.picked]
+              const i = S.stall[S.picked]
                 ? S.stall.findIndex((x) => !x)
                 : S.picked;
               const l = {
@@ -2362,8 +3439,6 @@
             };
           }
         }
-
-        // Help (Supply Balloon)
         function renderHelp() {
           const B = S.balloon,
             done = B.crates.filter((c) => c.state === "done").length,
@@ -2396,6 +3471,18 @@
                 S.barn[c.crop] -= c.qty;
                 c.state = "done";
                 c.by = null;
+                flyers.push({
+                  crop: c.crop,
+                  x0: BARN.x,
+                  y0: BARN.y - 80,
+                  x1: BAL.x,
+                  y1: BAL.y + 90,
+                  arc: 120,
+                  k: 0,
+                  dur: 900,
+                  done: () =>
+                    burst(BAL.x, BAL.y + 90, 10, "spark", { v: 0.15 }),
+                });
                 cupTick("crate");
                 renderHelp();
               }),
@@ -2428,6 +3515,8 @@
                 `Balloon launched: +420 Gold Leaves, +60 XP${helpers.length ? `. ${helpers.join(" and ")} got Helper Stars.` : ""}`,
                 null,
               );
+              burst(BAL.x, BAL.y, 30, "spark", { v: 0.3, life: 1100, s: 8 });
+              floatText("+420", BAL.x, BAL.y - 40);
               S.balloon = newBalloon();
               renderHelp();
             };
@@ -2439,16 +3528,33 @@
             F.mai;
           c.state = "done";
           c.by = who.id;
-          walkTo(who.id, L.balloon.x - 20, L.balloon.y + 150);
-          setTimeout(() => emote(who.id, "📦"), 1200);
+          if (!S.visiting) {
+            walkTo(who.id, PEG.x - 40, PEG.y + 30);
+            setTimeout(() => {
+              emote(who.id, "📦");
+              const a = avatar(who.id);
+              if (a)
+                flyers.push({
+                  crop: c.crop,
+                  x0: a.x,
+                  y0: a.y - 60,
+                  x1: BAL.x,
+                  y1: BAL.y + 90,
+                  arc: 90,
+                  k: 0,
+                  dur: 800,
+                  done: () =>
+                    burst(BAL.x, BAL.y + 90, 10, "spark", { v: 0.15 }),
+                });
+            }, 1600);
+          }
           toast(
             `${who.name} filled your crate of ${c.qty} ${CROPS[c.crop].n}`,
             who.id,
           );
           if (S.tab === "help") renderHelp();
+          else hud();
         }
-
-        // Cup
         function cupRank() {
           const l = S.cup.league.slice().sort((a, b) => b.pts - a.pts);
           return l.findIndex((x) => x.me) + 1;
@@ -2465,6 +3571,11 @@
               `Cup task done: +${C.mine.pts} points for Thunder Sprouts`,
               null,
             );
+            burst(FLAG.x + 40, FLAG.y - 100, 20, "spark", {
+              v: 0.22,
+              life: 900,
+              s: 7,
+            });
             C.mine = null;
             C.prog = 0;
           }
@@ -2497,7 +3608,7 @@
             .join("");
           body.innerHTML = `<div class="sec-t">Co-op points · ${fmt(C.pts)}</div>
     <div class="tiers"><div class="bar gold"><i style="width:${Math.min(100, (C.pts / max) * 100)}%"></i></div>
-      ${tiers.map((t) => `<span class="tier ${C.pts >= t ? "got" : ""}" style="left:${(t / max) * 100}%;${t === max ? "left:calc(100% - 17px)" : ""}">${t / 1000}k</span>`).join("")}</div>
+      ${tiers.map((t) => `<span class="tier ${C.pts >= t ? "got" : ""}" style="left:${t === max ? "calc(100% - 17px)" : (t / max) * 100 + "%"}">${t / 1000}k</span>`).join("")}</div>
     <div class="reward"><span>2k: 3 Super Fertilizer</span><span>4k: rare seeds</span><span>6k: Cup trophy decoration</span></div>
     <div class="sec-t">Tasks · one at a time, ${9 - C.done} left this week</div><div class="list">${tasks}</div>
     <div class="sec-t">League · top 2 move up</div><div class="league">${league}</div>`;
@@ -2519,16 +3630,14 @@
               }),
           );
         }
-
-        // Friends
         function renderFriends() {
           head("Friends", "Daily seed gifts, friendship levels and invites");
           const rows = FRIENDS.map((f) => {
             const b = bondOf(f.days),
-              next = BONDS[b + 1];
-            const sent = S.gifts.sent[f.id],
+              next = BONDS[b + 1],
+              sent = S.gifts.sent[f.id],
               opened = S.gifts.opened[f.id];
-            return `<div class="item"><span class="av" style="background:${f.color}">${esc(f.name[0])}</span>
+            return `<div class="item">${avFor(f)}
       <div class="grow"><div class="t">${esc(f.name)} <span class="s">· Farm Lv ${f.lv}${f.online ? " · online" : ""}</span></div>
       <div class="hearts" aria-label="${BONDS[b].name}">${BONDS.map((_, i) => `<i class="${i <= b ? "on" : ""}"></i>`).join("")}</div>
       <div class="s"><b>${BONDS[b].name}</b>: ${esc(BONDS[b].perk)}${next ? ` · ${next.d - f.days} days of gifts to ${next.name}` : ""}</div></div>
@@ -2551,9 +3660,9 @@
     </div>
     <div class="sec-t">Your friends · gifts reset each Pacific day</div><div class="list">${rows}</div>`;
           body.querySelector("#copyCode").onclick = async (e) => {
-            const t = body.querySelector("#inviteCode").textContent;
+            const tx = body.querySelector("#inviteCode").textContent;
             try {
-              await navigator.clipboard.writeText(t);
+              await navigator.clipboard.writeText(tx);
               e.target.textContent = "Copied";
             } catch {
               const r = document.createRange();
@@ -2591,8 +3700,6 @@
               }),
           );
         }
-
-        // Visit
         function renderVisit() {
           head(
             "Farm Tour",
@@ -2601,17 +3708,17 @@
           const all = [
             ...FRIENDS.map((f) => ({
               id: f.id,
+              p: f,
               name: `${f.name}'s farm`,
-              likes: f.likes + (S.liked[f.id] ? 1 : 0),
-              color: f.color,
+              likes: f.likes,
               lv: f.lv,
               online: f.online,
             })),
             {
               id: "you",
+              p: ME,
               name: "Your farm",
               likes: S.myLikes,
-              color: "#9df0b8",
               lv: MY_LEVEL,
             },
           ];
@@ -2621,7 +3728,7 @@
               (
                 r,
                 i,
-              ) => `<div class="item"><span class="av" style="background:${r.color}">${i + 1}</span>
+              ) => `<div class="item"><span class="rk-n">${i + 1}</span>${avFor(r.p)}
       <div class="grow"><div class="t">${esc(r.name)}</div><div class="s">${fmt(r.likes)} likes · Lv ${r.lv}${r.online ? " · owner is there now" : ""}</div></div>
       ${r.id === "you" ? `<span class="s">you</span>` : `<button type="button" class="btn sm gold" data-visit="${r.id}">Visit</button>`}</div>`,
             )
@@ -2635,25 +3742,25 @@
           if (!homePlots) homePlots = plots;
           S.visiting = id;
           S.waterLeft = 3;
-          plots = makePlots(L.cols * L.rows, FRIENDS.indexOf(F[id]) + 1);
+          plots = makePlots(FRIENDS.indexOf(F[id]) + 1);
           S.tab = null;
           sheet.hidden = true;
           document
             .querySelectorAll("#dock button")
             .forEach((b) => b.setAttribute("aria-pressed", "false"));
-          placeAvatars(true);
+          placeAvatars();
           renderVisitBanner();
           hud();
           notes("visit");
           toast(`Welcome to ${F[id].name}'s farm`, id);
-          if (F[id].online) setTimeout(() => emote(id, "👋"), 700);
+          setTimeout(() => emote(id, "👋"), 700);
         }
         function goHome(silent) {
           if (!S.visiting) return;
           S.visiting = null;
           plots = homePlots;
           homePlots = null;
-          placeAvatars(true);
+          placeAvatars();
           renderVisitBanner();
           hud();
           if (!silent) toast("Back on your farm", null);
@@ -2672,6 +3779,9 @@
             S.liked[f.id] = true;
             f.likes++;
             emote("you", "❤️");
+            const a = avatar("you");
+            if (a)
+              burst(a.x, a.y - 100, 10, "spark", { v: 0.15, c: "#ff9bd2" });
             toast(`You liked ${f.name}'s farm`, f.id);
             cupTick("like");
             renderVisitBanner();
@@ -2682,20 +3792,17 @@
         setInterval(() => {
           if (document.hidden) return;
           const roll = Math.random();
-          const unsold = S.stall
-            .map((l, i) => [l, i])
-            .filter(([l]) => l && !l.sold);
+          const unsold = S.stall.filter((l) => l && !l.sold);
           if (!S.visiting && roll < 0.35 && unsold.length) {
-            const [l] = unsold.sort((a, b) => a[0].factor - b[0].factor)[0];
+            const l = unsold.sort((a, b) => a.factor - b.factor)[0];
             if (Math.random() < 1.6 - l.factor) {
               const who = rnd(FRIENDS.filter((f) => f.online));
               l.sold = who.id;
-              walkTo(
-                who.id,
-                L.stall.x + L.stall.w / 2,
-                L.stall.y + L.stall.h + 20,
-              );
-              setTimeout(() => emote(who.id, "🛒"), 1400);
+              walkTo(who.id, STALL.x + 60, STALL.y + 40);
+              setTimeout(() => {
+                emote(who.id, "🛒");
+                burst(STALL.x, STALL.y - 120, 10, "spark", { v: 0.15 });
+              }, 1800);
               toast(
                 `${who.name} bought ${l.qty} ${CROPS[l.crop].n} from your stall`,
                 who.id,
@@ -2706,8 +3813,7 @@
             }
           }
           if (roll < 0.6) {
-            const others = S.cup.league.filter((x) => !x.me);
-            const team = rnd(others);
+            const team = rnd(S.cup.league.filter((x) => !x.me));
             team.pts += 40 + Math.floor(Math.random() * 120);
             const me = S.cup.league.find((x) => x.me);
             if (Math.random() < 0.6) {
@@ -2832,6 +3938,14 @@
         }
 
         // ---------- boot ----------
+        paintBg();
+        sprites();
+        placeAvatars();
+        IDS.forEach((id) => {
+          [0, 1, 2, 3, 4].forEach((st) => cropArt(id, st));
+          itemArt(id);
+        });
+        [ME, ...FRIENDS].forEach((p) => fighterArt(p.fighter));
         new ResizeObserver(() => layout()).observe(stage);
         layout();
         hud();
@@ -2839,8 +3953,11 @@
         requestAnimationFrame(frame);
         setTimeout(
           () =>
-            toast("Mai and Khoa are on your farm. Tap them to wave.", "mai"),
-          600,
+            toast(
+              "Mai and Khoa are on your farm. Tap them to wave, or tap a ripe crop near them.",
+              "mai",
+            ),
+          700,
         );
       })();
     </script>

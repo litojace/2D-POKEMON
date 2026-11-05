@@ -5,6 +5,17 @@ Open [demo.html](demo.html) in a browser (no build, no server). Everything in it
 is sample data: friends, prices, co-op points and the invite code. The design
 notes in the demo are in Vietnamese.
 
+The farm is drawn with the game's own art (`apps/client/src/farm/farm-gfx.ts`,
+`crop-art.ts` and the fighters from `creature-design.ts`), bundled into
+`art.js`. On top of it the demo adds warm light from the top left, drifting
+cloud shadows, wind that ripples across the crops, falling petals, birds,
+ducks, chickens and a cow, and harvest feedback (sparkles, produce flying to
+the barn, the barn bumping). Rebuild `art.js` after the art changes with:
+
+```
+npx esbuild@0.24.0 docs/farm-social/art-entry.ts --bundle --format=iife --minify --target=es2020 --alias:@arena/shared=./packages/shared/src/index.ts --outfile=docs/farm-social/art.js
+```
+
 The current farm already covers solo play (weather and mutations, orders,
 giant crops, tools, dogs, decor, async friend visits). The demo adds reasons
 for friends to need each other. Only the mechanics are borrowed; names and art
