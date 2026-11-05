@@ -85,21 +85,23 @@ neatly placed, evenly spaced and never overlapping, at every size.
   cramped or cropped.
 
 DOUBLE CHECK BEFORE YOU PUSH (required)
-When the step is done, and before you push it to main, do a final review
-pass:
+When the step is done, and before you push it to main, review it yourself.
+This is your own careful look and judgement, not waiting for a test run:
 1. Open every changed screen and state (Ranks: Everyone and Friends, your
    row in and out of the top 20, placement; Friends: each tab, with
    requests, empty, long names) at 1720×1392, 1440×900, 1280×720, 844×390
-   and 852×393 with the island insets. Take screenshots and look at each
-   one, zoomed in. Compare them with the mockups.
-2. Run layoutProblems, closeSpot and the centring checks above on all of
-   them. Run the step's own visual spec(s) and make sure they pass.
-3. Fix anything off, then repeat 1–2 on what you changed.
+   and 852×393 with the island insets. Take screenshots locally and look at
+   each one yourself, zoomed in, as the owner would: is every text centred
+   in its box, is anything misaligned, cramped, cut off or overlapping, is
+   the space used evenly? Compare them with the mockups.
+2. Measure what you see: layoutProblems, closeSpot and the centring checks
+   above.
+3. Fix anything off, then look again at what you changed.
 4. Only then push. In the report, say what you checked and at which sizes,
    and attach or link the pictures.
-This review covers the screens you built. The other visual suites (Lobby,
-Missions and the rest) still run in the background after the push and
-don't block it.
+Don't wait for the GitHub CI visual job or the full local visual suites
+before pushing: they still run in the background after the push, and any
+failure is fixed in a follow-up push.
 
 Ground rules (owner): all game text in English; the server owns time and
 money; buttons in a row are equal and moderate in size; HUD boxes stay
