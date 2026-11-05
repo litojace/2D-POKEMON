@@ -1090,6 +1090,14 @@ private 1v1, 2v2 and free-for-all rooms share one frame. Before and after:
   `menu-shell` moved to the new room and the roster (the one picker); what
   they check stays.
 
+### The boss page's Party tab: no Next rewards (5 Nov 2026)
+
+The Party tab listed the next six rewards under the good picks, which the
+Rewards tab beside it already shows with every milestone. At the owner's
+request the section is gone (and `nextRewards`, which only it used): the
+Party tab is the seats, the online friends, the good picks and the boss's
+attacks. A boss's clear count stays on its Raid Hall card.
+
 ### Raid windows scroll under a finger (5 Nov 2026)
 
 The owner reported that long raid panels might not scroll on a phone.

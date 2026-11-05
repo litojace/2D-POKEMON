@@ -155,19 +155,6 @@ export function bossTricks(boss: RaidBossId) {
     text: perk!.text,
   }));
 }
-/**
- * The rewards to work towards next: unfinished milestones, nearest to done
- * first. A Gilded encounter is never "next" (it can't be worked towards).
- */
-export function nextRewards(p: RaidProgress | null, boss: RaidBossId, n = 3) {
-  if (!p) return [];
-  return raidGoals(p, boss)
-    .filter((g) => !g.done && g.reward.rule.kind !== "gilded")
-    .map((g, i) => ({ g, i }))
-    .sort((a, b) => b.g.value / b.g.max - a.g.value / a.g.max || a.i - b.i)
-    .slice(0, n)
-    .map(({ g }) => g);
-}
 /** Who sits in the four seats: you first, then your party. */
 export function raidSeats(d: RaidData): RaidSeat[] {
   const me = d.party.find((s) => s.me) ?? {
@@ -386,21 +373,14 @@ function partyTab(view: RaidView, d: RaidData) {
             })
             .join("");
         })();
-  // Every fighter with a trick here, and the next six rewards: a tall
-  // screen shows them all; a short one scrolls.
+  // Every fighter with a trick here: a tall screen shows them all; a short
+  // one scrolls. The rewards have their own tab (owner, 5 Nov).
   const tricks = bossTricks(view.boss);
-  const next = nextRewards(d.progress, view.boss, 6);
-  const clears = bossClearCount(d.progress, view.boss);
   return `<div class="rh-seats" role="group" aria-label="Raid party">${seats.map(seat).join("")}${open}</div>
 <div class="rh-invites" data-raid-invites><span class="ui-kicker">Invite</span><div class="rh-friends">${friends}</div></div>
 <p class="ui-note rh-status" role="status">${esc(view.status)}</p>
 <div class="rh-section"><h3 class="ui-h">Good picks here</h3><small class="ui-note">Fighters with a trick against ${esc(b.name)}</small></div>
 <div class="rh-picks">${tricks.map((t) => `<div class="rh-pick">${fighterChip(t.character, `rh-pick-${t.character}`, 40)}<span><b>${esc(CHARACTERS[t.character].name)}</b><small class="ui-note">${esc(t.skill)}: ${esc(t.text)}</small></span></div>`).join("")}</div>
-<div class="rh-next">${
-    d.progress
-      ? `<div class="rh-section"><h3 class="ui-h">Next rewards</h3><small class="ui-note">${clears} ${clears === 1 ? "clear" : "clears"} so far</small></div>${next.length ? `<div class="rh-rewards">${next.map((g) => rewardCard(g, d, "rh-next")).join("")}</div>` : `<p class="ui-note">Every milestone here is earned. Try a new fighter or a faster clear.</p>`}`
-      : ""
-  }</div>
 <div class="rh-section rh-strip-head"><h3 class="ui-h">Its attacks</h3><small class="ui-note">Pick one to practise it</small></div>
 <div class="rh-strip" role="group" aria-label="${esc(b.name)} attacks">${raidAttacksOf(
     view.boss,
