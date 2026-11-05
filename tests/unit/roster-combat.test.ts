@@ -75,7 +75,7 @@ describe("basic attacks", () => {
     expect(CHARACTERS.terradon.health - q.hp).toBe(
       8 * STATUS_RULES.empowerDamage,
     );
-    expect(basicInterval(CHARACTERS.lumoth, true)).toBeCloseTo(0.21);
+    expect(basicInterval(CHARACTERS.lumoth, true)).toBeCloseTo(0.217, 3);
   });
 });
 describe("special skills", () => {
