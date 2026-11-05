@@ -198,6 +198,8 @@ export class BotBrain {
   /** Projectile ids already judged (dodge or not) so it decides once per shot. */
   private judged = new Map<number, boolean>();
   private cloneDecision?: { until: number; fooled: boolean };
+  /** The enemy it is fighting (2v2 and free-for-all have several). */
+  private targetId?: string;
   constructor(
     readonly id: string,
     readonly difficulty: BotDifficulty,
@@ -213,18 +215,57 @@ export class BotBrain {
     this.judged.clear();
     this.cloneDecision = undefined;
     this.wantSkill = -1;
+    this.targetId = undefined;
+  }
+  /**
+   * Who to fight. With one opponent (a duel, a raid boss) that is them. With
+   * several, it weighs each by distance, health left and whether it can see
+   * them, prefers to stay on its current target, and only reconsiders when it
+   * makes a tactical decision. (It used to take the first opponent in join
+   * order, so in a free-for-all every bot went for the same fighter.)
+   */
+  private pickTarget(arena: Arena, me: Fighter) {
+    const foes = arena.players.filter(
+      (p) =>
+        p.id !== me.id &&
+        !p.out &&
+        p.hp > 0 &&
+        arena.teamOf(p) !== arena.teamOf(me),
+    );
+    let pick = foes[0];
+    const current = foes.find((p) => p.id === this.targetId);
+    if (foes.length > 1) {
+      if (current && arena.time < this.nextThink) pick = current;
+      else {
+        let best = Infinity;
+        for (const p of foes) {
+          const share =
+            p.hp / maxHealth(p.character, arena.mode, arena.players.length);
+          const cost =
+            Math.hypot(p.x - me.x, p.y - me.y) * (0.5 + 0.5 * share) +
+            (arena.lineClear(me, p) ? 0 : 200) +
+            (arena.has(p, "stealth") ? 300 : 0) -
+            (p === current ? 150 : 0);
+          if (cost < best) {
+            best = cost;
+            pick = p;
+          }
+        }
+      }
+    }
+    if (!pick) return arena.players.find((p) => p.id !== me.id);
+    // A new target: forget what it saw of the last one.
+    if (this.targetId !== undefined && this.targetId !== pick.id) {
+      this.seen = [];
+      this.cloneDecision = undefined;
+    }
+    this.targetId = pick.id;
+    return pick;
   }
   think(arena: Arena, me: Fighter): Input {
     const input = blankInput();
     // An opponent (in a raid, the boss; never a teammate).
-    const enemy =
-      arena.players.find(
-        (p) =>
-          p.id !== me.id &&
-          !p.out &&
-          p.hp > 0 &&
-          arena.teamOf(p) !== arena.teamOf(me),
-      ) ?? arena.players.find((p) => p.id !== me.id);
+    const enemy = this.pickTarget(arena, me);
     const t = arena.time;
     input.aimX = enemy?.x ?? RULES.width / 2;
     input.aimY = enemy?.y ?? RULES.height / 2;
