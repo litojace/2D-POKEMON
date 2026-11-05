@@ -264,8 +264,8 @@ export class BotBrain {
     const melee = basic.kind === "melee" || basic.kind === "cone";
     const dist = Math.hypot(target.x - me.x, target.y - me.y);
     const sight = arena.lineClear(me, target);
-    const hpRatio = me.hp / maxHealth(me.character, arena.mode),
-      enemyRatio = enemy.hp / maxHealth(enemy.character, arena.mode);
+    const hpRatio = me.hp / maxHealth(me.character, arena.mode, arena.players.length),
+      enemyRatio = enemy.hp / maxHealth(enemy.character, arena.mode, arena.players.length);
     const enemyDisabled = DISABLES.some((k) => arena.has(enemy, k));
     // ---- Threats: shots that will hit soon, and big wind-ups nearby.
     let threat: {

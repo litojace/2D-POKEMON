@@ -1694,8 +1694,8 @@ for (const character of Object.values(CHARACTERS))
  * 2v2 tuning, for the team mode only. With two enemies on the field melee
  * champions are in reach far more often than in a duel, so 2v2 has its own
  * strength factor per champion, in the same form as the duel tuning: health
- * × f and basic-attack interval ÷ √f (rounded to 5 ms). Duels, free-for-all
- * and raids use the champions' own numbers. Tuned with
+ * × f and basic-attack interval ÷ √f (rounded to 5 ms). Duels and raids use
+ * the champions' own numbers; free-for-all has FFA_TUNING. Tuned with
  * scripts/balance/tune-teams.ts.
  */
 export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
@@ -1716,13 +1716,58 @@ export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
   wombolder: 0.944,
   shadopus: 0.921,
 };
-/** A champion's strength factor in this mode (1 outside 2v2). */
-export function modeFactor(id: CharacterId, mode?: MatchMode) {
-  return mode === "teams" ? (TEAM_TUNING[id] ?? 1) : 1;
+/**
+ * Free-for-all tuning, for mode "ffa" only, in the same form as TEAM_TUNING
+ * (health × f, basic interval ÷ √f). A free-for-all is won by the last
+ * fighter standing, so it rewards lasting rather than damage: melee champions
+ * take about twice the damage per second of ranged ones (as in a duel), which
+ * a duel repays with their higher damage but a free-for-all does not. Tuned
+ * with scripts/balance/tune-teams.ts --mode ffa on four-player matches; a
+ * three-player free-for-all applies them at FFA_THREE_SCALE.
+ */
+export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
+  voltkit: 0.792,
+  cindrake: 1.205,
+  tidefin: 0.833,
+  auralynx: 1.076,
+  lumoth: 0.786,
+  mystowl: 0.821,
+  terradon: 0.989,
+  duskveil: 0.757,
+  coilemur: 1.284,
+  pyranda: 0.769,
+  glacelle: 0.829,
+  halcyra: 0.769,
+  sunbara: 0.836,
+  astrabun: 1.314,
+  wombolder: 1.143,
+  shadopus: 1.246,
+};
+/**
+ * How much of each FFA_TUNING factor a three-player free-for-all applies
+ * (f becomes 1 + (f - 1) × this). With one enemy fewer the gap between
+ * melee and ranged champions is about 60% of the four-player one, measured
+ * in bot matches.
+ */
+export const FFA_THREE_SCALE = 0.6;
+/**
+ * A champion's strength factor in this mode (1 outside 2v2 and free-for-all).
+ * `players` is how many fighters the match started with; only a
+ * free-for-all reads it (default: a full room).
+ */
+export function modeFactor(
+  id: CharacterId,
+  mode?: MatchMode,
+  players = MODE_SIZE.ffa,
+) {
+  if (mode === "teams") return TEAM_TUNING[id] ?? 1;
+  if (mode !== "ffa") return 1;
+  const f = FFA_TUNING[id] ?? 1;
+  return players < MODE_SIZE.ffa ? 1 + (f - 1) * FFA_THREE_SCALE : f;
 }
-/** A champion's full health in this mode. */
-export function maxHealth(id: CharacterId, mode?: MatchMode) {
-  const f = modeFactor(id, mode);
+/** A champion's full health in this mode (and free-for-all size). */
+export function maxHealth(id: CharacterId, mode?: MatchMode, players?: number) {
+  const f = modeFactor(id, mode, players);
   return f === 1
     ? CHARACTERS[id].health
     : Math.round(CHARACTERS[id].health * f);
@@ -1732,9 +1777,10 @@ export function basicInterval(
   character: Character,
   empowered = false,
   mode?: MatchMode,
+  players?: number,
 ) {
   const base = character.basic.interval ?? 0.3,
-    f = modeFactor(character.id, mode);
+    f = modeFactor(character.id, mode, players);
   const interval =
     f === 1 ? base : Math.round((base * 1000) / Math.sqrt(f) / 5) * 5 / 1000;
   return interval * (empowered ? STATUS_RULES.empowerInterval : 1);

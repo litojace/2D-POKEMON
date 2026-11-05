@@ -101,8 +101,8 @@ All sixteen now win 47–52% in duels (before: 42–60%).
 
 2v2 has its own per-champion tuning (`TEAM_TUNING` in
 `packages/shared/src/index.ts`, team mode only): health × f and basic-attack
-interval ÷ √f, the same form as the duel tuning. Duels, free-for-all and
-raids keep the champions' own numbers.
+interval ÷ √f, the same form as the duel tuning. Duels and raids keep the
+champions' own numbers; free-for-all has its own table (below).
 
 Why: with the duel numbers, champions with a melee basic won 55–63% of 2v2
 matches and ranged ones 36–49% (this was older than the new eight). Measured
@@ -143,8 +143,71 @@ Round-to-round noise on fresh line-ups is about ±4 points per champion, so
 the remaining differences are mostly noise. Mystowl's 54.8% is its known
 Hard/Normal split (64% / 46%), not a 2v2 effect.
 
+### Free-for-all
+
+Free-for-all has its own per-champion tuning too (`FFA_TUNING` in
+`packages/shared/src/index.ts`, free-for-all only), in the same form: health
+× f and basic-attack interval ÷ √f. A three-player free-for-all applies 60%
+of each factor (`FFA_THREE_SCALE`: f becomes 1 + (f − 1) × 0.6).
+
+Why: with the duel numbers, ranged champions won 32–40% of four-player
+free-for-alls and melee ones 5–22%, against a fair 25% (three players: 36–45%
+and 12–33%, against a fair 33%). Measured in bot matches
+(`scripts/balance/measure-ffa.ts`), each champion deals 94–120% and takes
+92–126% of its duel damage per second while alive, with no split between
+melee and ranged, and spends a similar share of its time with an enemy in
+basic-attack reach (ranged ~100%, melee 33–49%; duels: ~96% and 24–41%). What
+changes is what wins: a free-for-all goes to the last fighter standing. Melee
+champions take about twice the damage per second of ranged ones (12–13
+against 5.7–7.4), so a full-health melee champion lasts 10–16 seconds of
+fighting against 23–26 for a ranged one. In a duel their higher damage (8–15
+a second against 4.8–7.7) makes up for it. The likely reason it does not in a
+free-for-all (a reading of these numbers, not measured on its own): there,
+killing one enemy does not stop the others hitting you, so lasting matters
+more than damage.
+
+Tuned with `npx tsx scripts/balance/tune-teams.ts --mode ffa` (six rounds of
+600 four-player matches per difficulty on fixed line-ups at gain 2, then six
+rounds of 800 on fresh line-ups each round at gain 1, factors averaged over
+the last three). Checked on 3,200 four-player matches per difficulty of
+line-ups the tuner never saw (`FFA_SEED=9090`, Hard and Normal averaged,
+standard error ±1.1 points per champion):
+
+| Champion  | FFA factor | Before | After |
+| --------- | ---------- | ------ | ----- |
+| Halcyra   | ×0.769     | 40.1%  | 27.8% |
+| Duskveil  | ×0.757     | 39.7%  | 25.4% |
+| Pyranda   | ×0.769     | 38.1%  | 25.0% |
+| Mystowl   | ×0.821     | 36.7%  | 26.7% |
+| Lumoth    | ×0.786     | 35.9%  | 24.3% |
+| Sunbara   | ×0.836     | 35.3%  | 24.5% |
+| Glacelle  | ×0.829     | 32.7%  | 24.3% |
+| Voltkit   | ×0.792     | 32.2%  | 24.2% |
+| Tidefin   | ×0.833     | 31.9%  | 23.7% |
+| Terradon  | ×0.989     | 22.3%  | 25.8% |
+| Auralynx  | ×1.076     | 14.4%  | 23.2% |
+| Wombolder | ×1.143     | 11.9%  | 27.4% |
+| Cindrake  | ×1.205     | 10.7%  | 24.4% |
+| Coilemur  | ×1.284     | 6.4%   | 25.4% |
+| Shadopus  | ×1.246     | 6.2%   | 23.4% |
+| Astrabun  | ×1.314     | 5.6%   | 24.6% |
+
+Spread 5.6–40.1% (standard deviation 13.0) before, 23.2–27.8% (1.3) after;
+the remaining spread is about the size of the noise. A second fresh set
+(`FFA_SEED=31337`, 1,200 matches per difficulty) gives 19.3–28.5%; pooled
+over both sets every champion is at 22.2–27.6%.
+
+Three players: the four-player factors at full strength overshoot (melee
+35–47%, ranged 24–31% against a fair 33%), because with one enemy fewer the
+melee/ranged gap is about 60% of the four-player one (the same 0.59–0.62 for
+melee and ranged champions). With `FFA_THREE_SCALE` = 0.6, pooled over two
+fresh sets of 1,200 matches per difficulty, every champion wins 27.0–36.9%
+(±1.6), against 12–45% before. Shadopus (27.0%) is the one clear outlier.
+
 ## Known issues
 
+- Shadopus wins 27% of three-player free-for-alls (fair 33%) with the
+  scaled four-player factor; it is within noise of fair with four players.
 - Bot win rates still split by difficulty for some champions: Cindrake (30%
   Hard, 73% Normal), Mystowl (69% / 31%), Duskveil (36% / 64%) and Pyranda
   (62% / 37%).

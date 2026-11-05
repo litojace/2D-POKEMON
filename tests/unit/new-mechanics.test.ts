@@ -3,6 +3,7 @@ import { Arena } from "../../apps/server/src/simulation.js";
 import { BotBrain, hostileZone, riteValue } from "../../apps/server/src/bot.js";
 import {
   CHARACTERS,
+  maxHealth,
   PRACTICE_GRID,
   RITES,
   RITE_BY_ID,
@@ -60,6 +61,8 @@ const ticks = (a: Arena, n: number) => {
   for (let i = 0; i < n; i++) a.tick();
 };
 const full = CHARACTERS.voltkit.health;
+/** Voltkit's full health in a three-player free-for-all (FFA_TUNING applies). */
+const ffaFull = maxHealth("voltkit", "ffa", 3);
 
 /** Swap the test fighter's (Voltkit's) skills for a test kit, restored after each test. */
 const original = CHARACTERS.voltkit.skills;
@@ -168,8 +171,8 @@ describe("blink", () => {
     place(near, 560, 150);
     place(far, 900, 150);
     a.cast(p, hop);
-    expect(near.hp).toBe(full - 10);
-    expect(far.hp).toBe(full);
+    expect(near.hp).toBe(ffaFull - 10);
+    expect(far.hp).toBe(ffaFull);
     const burst = a.events.find(
       (e) => e.kind === "burst" && e.abilityId === hop.id,
     )!;
@@ -239,8 +242,8 @@ describe("rush", () => {
     place(r, 470, 230);
     a.cast(p, { ...charge, explosion: 130, wallSlam: undefined });
     ticks(a, 12);
-    expect(q.hp).toBe(full - 16);
-    expect(r.hp).toBe(full - 16);
+    expect(q.hp).toBe(ffaFull - 16);
+    expect(r.hp).toBe(ffaFull - 16);
   });
   it("ends when the charger is stunned, or dashes out of it", () => {
     for (const interrupt of ["stun", "dash"] as const) {
