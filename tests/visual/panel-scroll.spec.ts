@@ -150,8 +150,18 @@ const HUB_SCREENS: Screen[] = [
     },
   },
   {
+    // The mode menu by itself: on a phone it shows three modes and scrolls.
+    name: "mode menu",
+    root: "#lobby-mode-menu",
+    open: async (page) => {
+      await page.click("#lobby-mode");
+      await expect(page.locator("#lobby-mode-menu")).toBeVisible();
+    },
+  },
+  {
+    // More ways to play: the drawer (the mode menu stays under it, covered).
     name: "play modes",
-    root: "body",
+    root: "#home-play-panel",
     open: openPlayPanel,
   },
 ];
@@ -193,7 +203,7 @@ async function closeAll(page: Page) {
     page.evaluate(
       () =>
         !!document.querySelector(
-          "dialog[open], .ui-panel-host .ui-panel, #fm-sheet:not([hidden]), #lobby-mode-menu:not([hidden])",
+          "dialog[open], .ui-panel-host .ui-panel, #fm-sheet:not([hidden]), #lobby-mode-menu:not([hidden]), #home-play-panel:not([hidden])",
         ),
     );
   for (let i = 0; i < 5 && (await open()); i++) {
@@ -205,6 +215,13 @@ async function closeAll(page: Page) {
       .querySelectorAll<HTMLDialogElement>("dialog[open]")
       .forEach((d) => d.close()),
   );
+  // The play drawer and the mode menu close from their own buttons.
+  const close = page.locator(
+    "#home-play-panel:not([hidden]) [data-home-close]",
+  );
+  if (await close.count()) await close.first().click();
+  if (await page.locator("#lobby-mode-menu:not([hidden])").count())
+    await page.click("#lobby-mode");
   if (!(await page.locator("#lobby-play").isVisible()))
     await page
       .click('#hub-scenes [data-hub-scene="lobby"]', { timeout: 3000 })
