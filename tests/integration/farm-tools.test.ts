@@ -3,11 +3,14 @@ import { randomUUID } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import {
+  CROP_BY_ID,
   FARM_TOOLS,
   SPRINKLER_LEVELS,
   SPRINKLER_PRICES,
   farmArea,
 } from "../../packages/shared/src/farm";
+/** Breeze Wheat's grow time (seconds). */
+const W = CROP_BY_ID.wheat.growSeconds;
 
 // Migration 044: tools bought once, and bugs while you are on the farm.
 let db: PGlite;
@@ -140,7 +143,7 @@ it("waters the can's area, plants watered under a sprinkler, and harvests 3×3 w
   );
   expect(r.results.every((x: any) => x.ok)).toBe(true);
   expect(r.farm.plots.every((p: any) => p.wet)).toBe(true);
-  expect(ripeIn(r.farm, 0)).toBeCloseTo(3600 / 1.35, -1);
+  expect(ripeIn(r.farm, 0)).toBeCloseTo(W / 1.35, -1);
   await act([...Array(50).keys()].map((plot) => ({ a: "dig", plot })));
   // Two sprinklers: rows 1 and 2 only.
   await tools("sprinklers = 2, can_level = 1");
@@ -275,28 +278,28 @@ it("slows a crop 20% a bug; catching one pays 1 XP and keeps a ripe crop's momen
     { a: "plant", plot: 30, crop: "wheat" },
     { a: "plant", plot: 31, crop: "wheat" },
   ]);
-  // The fourth row has no sprinkler (two bought): wheat ripens in an hour.
-  expect(ripeIn(r.farm, 30)).toBeCloseTo(3600, -1);
+  // The fourth row has no sprinkler (two bought): wheat ripens in W seconds.
+  expect(ripeIn(r.farm, 30)).toBeCloseTo(W, -1);
   await owner("select public.arena_farm_set_pests($1, 30, 1, now())", [player]);
   await owner("select public.arena_farm_set_pests($1, 31, 2, now())", [player]);
   let f = await farm();
   expect(f.plots[30].pests).toBe(1);
-  expect(ripeIn(f, 30)).toBeCloseTo(3600 / 0.8, -1);
-  expect(ripeIn(f, 31)).toBeCloseTo(3600 / 0.6, -1);
+  expect(ripeIn(f, 30)).toBeCloseTo(W / 0.8, -1);
+  expect(ripeIn(f, 31)).toBeCloseTo(W / 0.6, -1);
   // By hand: one bug from one plot, +1 XP.
   await tools("big_net = false");
   r = await act([{ a: "catch", plot: 31 }]);
   expect(r.results[0]).toEqual({ ok: true, caught: 1, xp: 1 });
   expect(r.xp).toBe(1);
   expect(r.farm.plots[31].pests).toBe(1);
-  expect(ripeIn(r.farm, 31)).toBeCloseTo(3600 / 0.8, -1);
+  expect(ripeIn(r.farm, 31)).toBeCloseTo(W / 0.8, -1);
   // The Big Net: one from each plot of the 3×3.
   await tools("big_net = true");
   r = await act([{ a: "catch", plot: 30, tool: "net" }]);
   expect(r.results[0]).toEqual({ ok: true, caught: 2, xp: 2 });
   expect(r.farm.plots[30].pests).toBe(0);
   expect(r.farm.plots[31].pests).toBe(0);
-  expect(ripeIn(r.farm, 30)).toBeCloseTo(3600, -1);
+  expect(ripeIn(r.farm, 30)).toBeCloseTo(W, -1);
   expect((await act([{ a: "catch", plot: 30 }])).results[0]).toEqual({
     ok: false,
     error: "No bugs here",
@@ -307,7 +310,7 @@ it("slows a crop 20% a bug; catching one pays 1 XP and keeps a ripe crop's momen
     [30],
   );
   await plots(
-    "progress = 0.99, progress_at = now() - interval '1 hour', pests = 1",
+    `progress = ${1 - 36 / W}, progress_at = now() - interval '1 hour', pests = 1`,
     [31],
   );
   r = await act([{ a: "catch", plot: 30, tool: "net" }]);
@@ -320,7 +323,7 @@ it("slows a crop 20% a bug; catching one pays 1 XP and keeps a ripe crop's momen
   expect(new Date(rows[0].progress_at).toISOString()).toBe(
     "2026-01-01T10:00:00.000Z",
   );
-  // 1% of an hour at 80% speed: 45 s after the old baseline.
+  // The last 36 s of growth at 80% speed: 45 s after the old baseline.
   expect(rows[1].progress).toBe(1);
   expect(
     (Date.parse(rows[1].progress_at) - (Date.parse(r.farm.now) - 3600_000)) /

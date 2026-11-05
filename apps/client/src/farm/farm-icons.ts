@@ -132,11 +132,14 @@ const ICON_SRC = (() => {
       p("M6 16l4-4 3 2 5-6", "none") +
       l("M6 16l4-4 3 2 5-6", 2, "#43a86a") +
       c(18, 8, 1.4, "#43a86a"),
+    // Lifted 1.5 so the walls, where its weight is, sit on the centre.
     barn:
+      '<g transform="translate(0 -1.5)">' +
       p("M3 11l9-7 9 7v10H3z", "#ef5a48") +
       l("M2 11l10-8 10 8", 1.6, "#b8382c") +
       r(8.5, 13, 7, 8, 0.5, "#fff6ea") +
-      l("M8.5 13l7 8M15.5 13l-7 8", 1.2, "#c0483a"),
+      l("M8.5 13l7 8M15.5 13l-7 8", 1.2, "#c0483a") +
+      "</g>",
     book:
       p("M4 5c3-1.5 6-1.5 8 0v15c-2-1.5-5-1.5-8 0z", "#7fb8ff") +
       p("M20 5c-3-1.5-6-1.5-8 0v15c2-1.5 5-1.5 8 0z", "#a8d0ff") +

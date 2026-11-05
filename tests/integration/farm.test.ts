@@ -4,12 +4,17 @@ import { randomUUID } from "node:crypto";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import {
   CROPS,
+  CROP_BY_ID,
   FARM_STARTER,
   LAND_LEVEL,
   LAND_PRICE,
   farmXpToNext,
   isStartPlot,
 } from "../../packages/shared/src/farm";
+/** Breeze Wheat's grow time (seconds). */
+const W = CROP_BY_ID.wheat.growSeconds;
+/** Earth Carrot's grow time (seconds). */
+const C = CROP_BY_ID.carrot.growSeconds;
 
 // Migration 037: the farm's rules run in the database and read the server's
 // clock. Tests move stored timestamps back to make time pass.
@@ -127,14 +132,14 @@ it("grows a crop on the server's clock: no early harvest, then two crops and XP"
   const plot = r.farm.plots[0];
   expect(plot.crop).toBe("wheat");
   expect(Date.parse(plot.ripeAt) - Date.parse(r.farm.now)).toBeGreaterThan(
-    3590_000,
+    (W - 10) * 1000,
   );
   expect(r.farm.seeds.wheat).toBe(9);
   r = await act([{ a: "harvest", plot: 0 }]);
   expect(r.results).toEqual([{ ok: false, error: "Not ripe yet" }]);
-  await pass(1800);
+  await pass(W / 2);
   expect((await farm()).plots[0].progress).toBeCloseTo(0.5, 2);
-  await pass(1801);
+  await pass(W / 2 + 1);
   r = await act([{ a: "harvest", plot: 0 }]);
   expect(r.results[0]).toEqual({
     ok: true,
@@ -161,8 +166,8 @@ it("waters and fertilizes from the moment of the action", async () => {
   ]);
   const ripeIn =
     (Date.parse(r.farm.plots[1].ripeAt) - Date.parse(r.farm.now)) / 1000;
-  expect(ripeIn).toBeGreaterThan(4800 / 1.35 - 5);
-  expect(ripeIn).toBeLessThan(4800 / 1.35 + 5);
+  expect(ripeIn).toBeGreaterThan(C / 1.35 - 5);
+  expect(ripeIn).toBeLessThan(C / 1.35 + 5);
   r = await act([
     { a: "fertilize", plot: 1, kind: "norm" },
     { a: "fertilize", plot: 1, kind: "norm" },
@@ -176,7 +181,7 @@ it("waters and fertilizes from the moment of the action", async () => {
   expect(r.farm.fertilizer.norm).toBe(2);
   const left =
     (Date.parse(r.farm.plots[1].ripeAt) - Date.parse(r.farm.now)) / 1000;
-  expect(left).toBeCloseTo(4800 / 1.35 / 1.4, -1);
+  expect(left).toBeCloseTo(C / 1.35 / 1.4, -1);
 });
 
 it("refuses locked plots, locked crops, missing seeds and occupied plots", async () => {
@@ -300,7 +305,7 @@ it("gives a combo bonus for three harvests in one go, and stops at a full barn",
     [0, 1, 2].map((plot) => ({ a: "plant", plot, crop: "wheat" })),
     other,
   );
-  await pass(3600, other);
+  await pass(W, other);
   const before = await farm(other);
   const r = await act(
     [0, 1, 2].map((plot) => ({ a: "harvest", plot })),
@@ -314,7 +319,7 @@ it("gives a combo bonus for three harvests in one go, and stops at a full barn",
     [other],
   );
   await act([{ a: "plant", plot: 3, crop: "wheat" }], other);
-  await pass(3600, other);
+  await pass(W, other);
   const full = await act([{ a: "harvest", plot: 3 }], other);
   expect(full.results).toEqual([{ ok: false, error: "Your barn is full" }]);
 });

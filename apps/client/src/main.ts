@@ -58,8 +58,6 @@ import type {
   FarmHere,
   FarmLikeResult,
   FarmTourEntry,
-  FarmCup,
-  FarmCupResult,
   FarmStall,
   FarmStallResult,
   FarmBalloon,
@@ -1825,13 +1823,6 @@ function syncFarm(want: boolean) {
       (await accountsUI.api("/api/farm/tour")) as FarmTourEntry[],
     like: async (owner) =>
       (await accountsUI.api("/api/farm/like", { owner })) as FarmLikeResult,
-    cup: async () => (await accountsUI.api("/api/farm/cup")) as FarmCup,
-    cupAct: async (kind, arg) =>
-      (await accountsUI.api("/api/farm/cup", {
-        request: crypto.randomUUID(),
-        kind,
-        ...(arg === undefined ? {} : { arg }),
-      })) as FarmCupResult,
     stall: async () => (await accountsUI.api("/api/farm/stall")) as FarmStall,
     stallAct: async (action) =>
       (await accountsUI.api("/api/farm/stall", {

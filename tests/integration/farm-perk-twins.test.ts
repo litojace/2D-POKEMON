@@ -4,11 +4,14 @@ import { readFile, readdir } from "node:fs/promises";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { FIGHTER_IDS } from "../../packages/shared/src/index";
 import {
+  CROP_BY_ID,
   FARM_PERK_OF,
   FARM_PERKS,
   farmPerk,
   farmPerkOf,
 } from "../../packages/shared/src/farm";
+/** Breeze Wheat's grow time (seconds). */
+const W = CROP_BY_ID.wheat.growSeconds;
 
 // Migration 055: the eight newest champions farm with the perk of the
 // original champion of their element.
@@ -114,8 +117,8 @@ it("maps every champion to a perk, the same in SQL and in the client", async () 
 it("Sunbara has Early Sun (Lumoth's)", async () => {
   await farmer("voltkit");
   const r = await act([{ a: "plant", plot: 0, crop: "wheat" }]);
-  expect(ripeIn(r.farm, 0)).toBeCloseTo(3600, -1);
-  expect(ripeIn(await farmer("sunbara"), 0)).toBeCloseTo(3600 / 1.2, -1);
+  expect(ripeIn(r.farm, 0)).toBeCloseTo(W, -1);
+  expect(ripeIn(await farmer("sunbara"), 0)).toBeCloseTo(W / 1.2, -1);
 });
 
 it("Wombolder has Rich Soil and Shadopus Night Stalker", async () => {

@@ -558,3 +558,62 @@ test("the event pill shows when you arrive mid-shower", async ({ page }) => {
   await expect(page.locator("#pz-event")).toContainText("left");
   expect(errors).toEqual([]);
 });
+
+// Phones: the emote wheel ran up over the coins, the gear and the clock on
+// a 360px-tall screen, and the toast sat on the action button that grows
+// left of Dash and Jump by the Volt Boba. The wheel opens left of the
+// Emote row, under the header; the toast rises over the Dash and Jump row.
+test("on a short phone the emote wheel and a toast keep clear of the HUD", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 740, height: 360 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openPlaza(page);
+    const rect = (s: string) =>
+      page.evaluate((s) => {
+        const r = document.querySelector(s)!.getBoundingClientRect();
+        return { l: r.left, t: r.top, r: r.right, b: r.bottom };
+      }, s);
+    const clear = (
+      a: { l: number; t: number; r: number; b: number },
+      b: typeof a,
+    ) => a.r <= b.l + 1 || b.r <= a.l + 1 || a.b <= b.t + 1 || b.b <= a.t + 1;
+    await page.click("#pz-wheel-btn");
+    await expect(page.locator("#pz-wheel")).toBeVisible();
+    // Full size: once its pop-in (from 0.6) has finished.
+    await page
+      .locator("#pz-wheel")
+      .evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)));
+    const wheel = await rect("#pz-wheel");
+    for (const s of [
+      "#account-coins > *",
+      ".header-menu > summary",
+      "#pz-clock",
+      ".pz-left",
+      ".pz-actions",
+    ])
+      expect(clear(wheel, await rect(s)), `wheel clear of ${s}`).toBe(true);
+    expect(wheel.t, "wheel under the header").toBeGreaterThanOrEqual(
+      (await rect("#account-profile")).b,
+    );
+    await page.click("#pz-wheel-btn");
+    await page.evaluate(() => (window as any).__plazaPosition(1745, 520));
+    await expect(page.locator("#pz-interact")).toBeVisible({ timeout: 10_000 });
+    await page.evaluate(() => {
+      const t = document.getElementById("toast")!;
+      t.textContent = "Volt Boba: 30% faster for 30 seconds";
+      t.classList.add("show");
+    });
+    await page.waitForTimeout(600);
+    const toast = await rect("#toast");
+    expect(clear(toast, await rect(".pz-actions")), "toast clear").toBe(true);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
