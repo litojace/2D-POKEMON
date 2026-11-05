@@ -900,6 +900,14 @@
 }
 
 /* ---------- below the line: the Plaza inside the game ---------- */
+/* Phones: the game's toast rises over the Dash and Jump row (Jump is 68px):
+   at the bottom it ran into the action button that grows left of them by
+   the Volt Boba, the Photo Spot or the gate. */
+@media (max-height: 500px) {
+  body.hub-plaza #toast {
+    bottom: calc(max(14px, var(--safe-bottom, 0px)) + 68px + 10px);
+  }
+}
 .plaza-layer {
   /* The prototype's colour tokens the Plaza uses that the game doesn't define. */
   --dim: #a0afc8;

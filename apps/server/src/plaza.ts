@@ -119,11 +119,13 @@ export type PlazaEvent =
   | { type: "news"; plaza: number; news: PlazaNews }
   | { type: "orbs"; plaza: number; orbs: PlazaOrbs };
 
-const BOT_LOOKS = [
-  ["Blue Bot", "voltkit"],
-  ["Blue Bot", "tidefin"],
-  ["Red Bot", "cindrake"],
-  ["Red Bot", "duskveil"],
+/** The pitch bots, blue side then red, named as the townsfolk are: a role,
+ * not "Blue Bot" or "Red Bot" ("Red Bot scored a goal" read as a test). */
+export const PITCH_BOTS = [
+  ["Striker", "voltkit"],
+  ["Winger", "tidefin"],
+  ["Captain", "cindrake"],
+  ["Playmaker", "duskveil"],
 ] as const;
 
 /**
@@ -314,7 +316,7 @@ export class PlazaWorld {
       ball: plazaBallStart(),
       last: {},
       score: [0, 0],
-      bots: BOT_LOOKS.map(([name, character], i) => {
+      bots: PITCH_BOTS.map(([name, character], i) => {
         const team = (i < 2 ? 0 : 1) as 0 | 1,
           x = team === 0 ? PLAZA_PITCH.x0 + 150 : PLAZA_PITCH.x1 - 150,
           y = PLAZA_PITCH.y0 + 160 + (i % 2) * 180;
