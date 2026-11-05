@@ -19,6 +19,11 @@ export interface HubPanelOptions {
   rail?: string;
   /** Where to mount; defaults to the Lobby layer. */
   host?: HTMLElement;
+  /**
+   * Escape does this instead of closing (a room's picker: it stays open
+   * while you are in the room; Escape goes back up a level there).
+   */
+  escape?: () => void;
 }
 export interface HubPanel {
   root: HTMLElement;
@@ -133,7 +138,8 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
     if (document.querySelector("[data-ui-confirm], dialog[open]")) return;
     event.preventDefault();
     event.stopPropagation();
-    close();
+    if (o.escape) o.escape();
+    else close();
   };
   const onClick = (event: MouseEvent) => {
     if ((event.target as Element).closest("[data-ui-close]")) close();

@@ -25,18 +25,13 @@ import {
   drawSomnaraWarning,
   drawSomnara,
 } from "./raid-somnara-art";
-import { buttonIcon, iconLabel, menuIcon } from "./menu-icons";
+import { iconLabel, menuIcon } from "./menu-icons";
 import { actions as uiActions, button as uiButton } from "./ui/components";
 import "./screens/raid-cards.css";
 import { raidCue, raidContributions, raidGoals } from "./raid-presentation";
 import type Phaser from "phaser";
 import type { LayerAt } from "./raid-layers";
-import {
-  CHARACTERS,
-  type Fighter,
-  type Snapshot,
-  type CharacterId,
-} from "@arena/shared";
+import { CHARACTERS, type Fighter, type Snapshot } from "@arena/shared";
 import {
   RAID_RITE_PICKS,
   RAID,
@@ -74,7 +69,6 @@ import {
   drawGloomshadeWarning,
   drawLanternYard,
 } from "./raid-gloomshade-art";
-import { framedAvatar } from "./portraits";
 import {
   setOverlayMarkup,
   LIVE_SECONDS,
@@ -101,30 +95,6 @@ export function raidLookList(look: RaidLoadout | null | undefined) {
     .join(" ");
 }
 export { portraitAvatar, portraitCosmetics } from "./portraits";
-export function raidLobby(
-  state: Snapshot,
-  myId: string,
-  selected?: CharacterId,
-) {
-  const r = state.raid!,
-    host = state.players[0]?.id === myId;
-  const me = state.players.find((p) => p.id === myId)!;
-  const party = state.players
-    .filter((p) => !p.raidBoss)
-    .map((p) =>
-      p.id === myId && selected ? { ...p, character: selected } : p,
-    );
-  const ready = party.filter((p) => p.ready).length;
-  return `<div class="raid-lobby">
-    <div class="raid-lobby-banner"><div><span class="eyebrow">Co-op raid · 1–4 players</span><h2>${RAID_BOSSES[r.boss].name}</h2><p>${RAID_BOSSES[r.boss].epithet}</p></div><svg viewBox="-65 -65 130 115" aria-hidden="true">${raidGuideBossFor(r.boss)}</svg></div>
-    <button type="button" class="secondary full" id="invite-friends">${iconLabel("add-friend", "Invite friends")}</button>
-    <section class="raid-party-section" aria-label="Raid party"><div class="raid-section-heading"><h3>Your party</h3><span>${ready}/${party.length} ready</span></div><div class="raid-party-list">${party.map((p) => `<div class="raid-party-member" data-raid-player="${escape(p.id)}"><span class="raid-party-avatar">${framedAvatar(p, "raid-lobby-" + p.id)}</span><div class="raid-party-identity"><b>${escape(p.name)}</b><span><span class="raid-player-character">${CHARACTERS[p.character].name}</span>${p.id === state.players[0]?.id ? " · Host" : ""}</span></div><span class="raid-ready-badge ${p.ready ? "is-ready" : ""}">${p.ready ? "Ready" : "Choosing"}</span></div>`).join("")}<div class="raid-open-slots">${Array.from({ length: Math.max(0, 4 - party.length) }, () => '<div class="raid-party-empty"><span aria-hidden="true">+</span>Open slot</div>').join("")}</div></div></section>
-
-    <div class="raid-lobby-rules"><span><svg class="raid-rule-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v10m-5-5h10"/></svg><span>${party.length === 1 ? "One solo self-revive" : "Stand near allies to revive"}</span></span><span><svg class="raid-rule-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m12 3 8 4v6c0 5-8 8-8 8s-8-3-8-8V7Z"/><path d="m8 12 3 3 5-6"/></svg><span>Separate from PvP rating</span></span></div>
-
-    <div class="raid-lobby-actions"><button class="primary" id="ready"><span class="ready-label">${buttonIcon(me.ready ? "cancel" : "battle")}${me.ready ? "Cancel ready" : "Ready for the raid"}</span><span aria-hidden="true">${me.ready ? "" : "→"}</span></button><div><button class="quiet leave-button" id="leave">${iconLabel("leave", "Leave room")}</button></div></div>
-  </div>`;
-}
 /** The result whose saved progress was already fetched, per overlay. */
 const resultProgress = new WeakMap<HTMLElement, string>();
 export function renderRaidUI(

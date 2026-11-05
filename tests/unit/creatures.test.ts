@@ -16,7 +16,7 @@ import {
   creatureSvg,
 } from "../../apps/client/src/creature-design";
 import { fighterPackSchema } from "../../apps/client/src/animation/asset-schema";
-import { fighterSelection } from "../../apps/client/src/fighter-selection";
+import { rosterDetail, rosterGrid } from "./roster-markup";
 import { elementShapes } from "../../apps/client/src/element-effects";
 import { readFileSync, existsSync } from "node:fs";
 it("has sixteen fighters, eighty unique moves and four special skills per fighter", () => {
@@ -110,22 +110,25 @@ it("loads original art and valid public metadata for every fighter and direction
     art.add(creatureSvg(id));
   }
   expect(art.size).toBe(16);
-  expect(fighterSelection("voltkit").match(/data-character=/g)).toHaveLength(16);
+  // The roster (the one fighter picker since UI remodel step 5).
+  expect(rosterGrid("voltkit").match(/data-roster-card=/g)).toHaveLength(16);
   expect(
-    fighterSelection("voltkit", "Earth").match(/data-character=/g),
+    rosterGrid("voltkit", "Earth").match(/data-roster-card=/g),
   ).toHaveLength(2);
-  const detail = fighterSelection("terradon");
+  const detail = rosterDetail("terradon", { tab: "skills" });
   CHARACTERS.terradon.skills.forEach((a, i) => {
     expect(detail).toContain(a.name);
     // The ultimate charges from a meter instead of a cooldown.
-    expect(detail).toContain(i === ULT_SLOT ? "ULT" : `${a.cooldown}s`);
+    expect(detail).toContain(i === ULT_SLOT ? "Ultimate" : `${a.cooldown}s`);
   });
-  expect(detail).toContain(COMBOS.terradon.text);
-  expect(detail).toContain(
+  expect(rosterDetail("terradon", { tab: "overview" })).toContain(
+    COMBOS.terradon.text,
+  );
+  expect(rosterDetail("terradon", { tab: "skills", skill: "basic" })).toContain(
     `${Math.round((CHARACTERS.terradon.basic.interval ?? 0) * 1000)} ms between attacks`,
   );
   expect(detail).not.toContain("PLACEHOLDER");
-  expect(fighterSelection("voltkit")).toContain("Overcharge");
+  expect(rosterDetail("voltkit", { tab: "skills" })).toContain("Overcharge");
 });
 it("validates frame, sheet and atlas imports, frame keys, rates and local paths", () => {
   const animations = Object.fromEntries(

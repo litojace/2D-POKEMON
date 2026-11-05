@@ -22,30 +22,6 @@ export function setupHomeNavigation(menu: HTMLElement, settings: () => void) {
       .querySelector("#home-mode-toggle")
       ?.setAttribute("aria-expanded", "false");
   }
-  function backFromFighterDetails() {
-    const filters = menu.querySelector<HTMLElement>(
-      ".roster-panel.is-filter-open",
-    );
-    if (filters && !filters.closest("[hidden], [inert]")) {
-      filters
-        .querySelector<HTMLButtonElement>("[data-champion-filter-toggle]")
-        ?.click();
-      return true;
-    }
-    const detail = menu.querySelector<HTMLElement>(".fighter-detail");
-    if (!detail || detail.closest("[hidden], [inert]")) return false;
-    if (detail?.dataset.preview === "skills") {
-      detail
-        .querySelector<HTMLButtonElement>('[data-fighter-preview="overview"]')
-        ?.click();
-      return true;
-    }
-    if (detail?.dataset.inspection) {
-      detail.querySelector<HTMLButtonElement>("[data-skill-close]")?.click();
-      return true;
-    }
-    return false;
-  }
   function refresh() {
     if (!menu.querySelector(".home-screen")) {
       panel = undefined;
@@ -139,11 +115,6 @@ export function setupHomeNavigation(menu: HTMLElement, settings: () => void) {
         document.querySelector<HTMLDialogElement>("#dialog")?.open
       )
         return;
-      if (event.key === "Escape" && backFromFighterDetails()) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        return;
-      }
       if (event.key === "Escape" && (panel || modes()?.hidden === false)) {
         event.preventDefault();
         event.stopImmediatePropagation();
@@ -200,7 +171,7 @@ export function setupHomeNavigation(menu: HTMLElement, settings: () => void) {
       const scroller = (
         document.activeElement as HTMLElement | null
       )?.closest<HTMLElement>(
-        ".ui-panel-body, #friends-body, .friends-invite, .skill-preview, .selected-info, .fighter-preview-slot, .lobby-room-content, .showcase-roster",
+        ".ui-panel-body, #friends-body, .friends-invite",
       );
       if (scroller && Math.abs(pad.axes[3] ?? 0) > 0.25)
         scroller.scrollBy({ top: pad.axes[3] * 10, behavior: "instant" });
@@ -245,7 +216,7 @@ export function setupHomeNavigation(menu: HTMLElement, settings: () => void) {
           else
             dialog.querySelector<HTMLButtonElement>("#close-dialog")?.click();
         } else if (header?.open) header.open = false;
-        else if (!backFromFighterDetails()) close();
+        else close();
       }
       if (pressed.has(9) && !previous.has(9)) {
         if (dialog?.open)

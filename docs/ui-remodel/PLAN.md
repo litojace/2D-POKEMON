@@ -1002,6 +1002,63 @@ bubbles), which the Shop and Wardrobe never drew.
 - Tests: `roster.test.ts` (the look handed to the rig, Colors and skins on
   stage and cards, no aura), `cute-art.test.ts`, `roster-smooth.spec.ts`.
 
+### Step 5, part 2: the rooms (built 5 Nov 2026)
+
+As approved on 4 Nov (`images/mockups/room-*.webp`): the raid room and the
+private 1v1, 2v2 and free-for-all rooms share one frame. Pictures:
+[`images/step5/`](images/step5/) (`room-*.webp`).
+
+- `apps/client/src/screens/room-view.ts` (the seats column: markup and
+  rules) and `room.css`; `main.ts` (`renderRoom`) gathers the room's data,
+  patches the seats in place and keeps the picker open.
+- **Seats on the left**, where the rail and the stage stand elsewhere: a
+  raid room's banner is the boss's portrait (element, stars, how to win);
+  a PvP room's banner names the mode, its text centred in the box (owner's
+  note, 5 Nov). Then the seats: you, the others (fighter, Host, Ready /
+  Choosing / Offline), open seats that invite friends (Friends), the 2v2
+  teams with "Join Red/Blue" and Shuffle for the host, the team-up line,
+  the party rules (the host toggles them as chips; the others see what is
+  on), the arcade's fixed rules, and the room's notes.
+- **The roster is the picker** (`screens/roster.ts` in its "lock" mode,
+  mounted in the room): every fighter, filters, Details; bottom right
+  Details · Lock in · Ready. Lock in asks the server and says "Confirming…"
+  until it answers (a refusal puts its pick back); Ready with another
+  fighter picked locks that one in first. The picked fighter's card says
+  Locked. Escape goes back from a fighter's detail to the grid; the corner
+  button (where Close is on every screen) leaves the room.
+- **No rail and no drawer**: a room is a server room, not the Lobby, so the
+  rail and the Lobby / Plaza / Farm switch are not there (owner, 4 Nov). On
+  phones the seats are a 216 px column beside the picker; everything is in
+  sight, no "Room & ready" drawer.
+- **Watching a room**: the same seats, and a panel with "Ringside seat"
+  and Stop watching instead of the picker.
+- **Deleted:** the old picker in `fighter-selection.ts` (716 → 84 lines:
+  the fighter art and mastery records the Lobby and the roster use stay),
+  `champion-selection.css` (1,293 lines), `lobby-layout.ts` (the phone
+  drawer), `selection-preview.ts` (the old picker's live rig), the raid
+  lobby markup (`raidLobby`), the room panels and their wiring in `main.ts`
+  (`roomPanel`, `watchPanel`, `wireRoom`, `wireRoster`, `showSelection`,
+  `partyRules`), the old picker's Escape handling in `home-navigation.ts`,
+  and 2,700 lines of `style.css` (503 rules: the rooms' layout, the old
+  picker, the drawer), pruned as before (only classes the sources emitted
+  before and no longer emit). The Lobby, Play panel, Fighters, Shop,
+  Journey, Missions, Ranks, Friends, profile and Settings were compared
+  pixel by pixel before and after at 1440×900 and 844×390: only the live
+  fighter, a toast and the countdown differ. `mobile-panels.css` had no
+  picker rules left (it styles the profile and the header menu) and stays.
+- **Choices made while building:** the picker's title is "Fighters" (the
+  kicker names the room); beside the seats its range and sort tools leave
+  below 1500 px (Details shows a fighter's range); on phones the action
+  bar's buttons drop their icons so the labels sit centred in 104 px.
+  `ui/hub-panel.ts` gained an `escape` option (a room's picker stays open).
+- **Tests:** `tests/visual/rooms.spec.ts` (the raid and 2v2 rooms at five
+  sizes with `ui-measure.ts`; Lock in, Ready, Escape, party rules and Leave;
+  an open seat inviting; Low graphics and reduced motion).
+  `pvp-party-flow`, `portrait-frames`, `level-cosmetics`, `raid-room-return`,
+  `fighter-cards`, `creatures`, `cute-art`, `svg-ids`, `raid-lobby` and
+  `menu-shell` moved to the new room and the roster (the one picker); what
+  they check stays.
+
 ## Decisions (owner, 3 Nov 2026)
 
 | #   | Question                                        | Decision                                                                                                                                                         |

@@ -1,22 +1,22 @@
 import { expect, it, vi } from "vitest";
 import { updateMenuShell } from "../../apps/client/src/menu-shell";
 
-it("keeps the same roster mounted across create, lobby updates and leave", () => {
-  const roster = { scrollLeft: 370, selected: "tidefin" };
+it("keeps the home screen mounted while its Play panel changes", () => {
+  const home = { scrollLeft: 370 };
   const panel = { innerHTML: "home" };
   const menu = {
     hidden: false,
     innerHTML: "original shell",
     querySelector: (selector: string) =>
-      selector === ".room-panel" ? panel : roster,
+      selector === ".room-panel" ? panel : home,
   } as unknown as HTMLElement;
   const build = vi.fn(() => "rebuilt shell");
-  for (const content of ["new room", "teammate joined", "home"]) {
+  for (const content of ["play", "a mode picked", "home"]) {
     expect(updateMenuShell(menu, content, build)).toBe(true);
     expect(panel.innerHTML).toBe(content);
     expect(menu.innerHTML).toBe("original shell");
-    expect(menu.querySelector(".roster-panel")).toBe(roster);
-    expect(roster.scrollLeft).toBe(370);
+    expect(menu.querySelector(".home-screen")).toBe(home);
+    expect(home.scrollLeft).toBe(370);
   }
   expect(build).not.toHaveBeenCalled();
 });

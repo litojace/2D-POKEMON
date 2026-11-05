@@ -241,16 +241,9 @@ for (const size of [
             return page.locator("body").getAttribute("class");
           })
           .toContain("lobby-active");
-        const drawer = page.locator(".lobby-room-drawer > summary");
-        if (await drawer.isVisible()) await drawer.click();
-        const own = page.locator(
-          kind === "pvp"
-            ? "[data-me] .player-avatar"
-            : '[data-raid-player="me"] .raid-party-avatar',
-        );
-        const others = page.locator(
-          kind === "pvp" ? ".player-avatar" : ".raid-party-avatar",
-        );
+        // The room's seats (UI remodel step 5), the same in both rooms.
+        const own = page.locator(".room-seats [data-me] .player-avatar");
+        const others = page.locator(".room-seats .player-avatar");
         await expect(
           own.locator('[data-portrait-frame="conqueror"]'),
         ).toHaveAttribute("data-frame-stars", "4");
@@ -297,12 +290,6 @@ for (const size of [
             '.account-avatar filter[id*="preview-palette-candy-colours"]',
           ),
         ).toHaveCount(1);
-        const updatedDrawer = page.locator(".lobby-room-drawer");
-        if (
-          (await updatedDrawer.locator(":scope > summary").isVisible()) &&
-          (await updatedDrawer.getAttribute("open")) === null
-        )
-          await updatedDrawer.locator(":scope > summary").click();
         await page.click("#leave");
         // A raid exit returns to the Raid Hall; close it to see the Lobby.
         if (kind === "raid") await closeRaidHall(page);

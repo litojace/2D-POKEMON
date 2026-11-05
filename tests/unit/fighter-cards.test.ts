@@ -1,9 +1,7 @@
 import { expect, it } from "vitest";
 import { CHARACTERS, FIGHTER_IDS } from "@arena/shared";
-import {
-  attackRange,
-  fighterSelection,
-} from "../../apps/client/src/fighter-selection";
+import { attackRange } from "../../apps/client/src/fighter-selection";
+import { rosterDetail, rosterGrid } from "./roster-markup";
 it("labels every card by attack range instead of the basic attack", () => {
   const close = FIGHTER_IDS.filter((id) => attackRange(id) === "close");
   expect(close.sort()).toEqual([
@@ -15,13 +13,16 @@ it("labels every card by attack range instead of the basic attack", () => {
     "terradon",
     "wombolder",
   ]);
-  const html = fighterSelection("voltkit");
-  expect(html.match(/class="range-tag /g)).toHaveLength(16);
-  expect(html.match(/Long range/g)).toHaveLength(9);
-  expect(html.match(/Close range/g)).toHaveLength(7);
+  // The roster's cards (the one fighter picker since UI remodel step 5).
+  const html = rosterGrid("voltkit");
+  expect(html.match(/class="ui-tag roster-range"/g)).toHaveLength(16);
+  expect(html.match(/roster-range">Ranged</g)).toHaveLength(9);
+  expect(html.match(/roster-range">Close</g)).toHaveLength(7);
   expect(html).not.toContain("card-basic");
-  // The basic attack is still described in the detail panel.
-  expect(html).toContain(CHARACTERS.voltkit.basic.description);
+  // The basic attack is still described in the fighter's detail.
+  expect(rosterDetail("voltkit", { tab: "overview" })).toContain(
+    CHARACTERS.voltkit.basic.description,
+  );
 });
 it("keeps basic-attack knockback light so brawlers can close in and chain hits", () => {
   for (const id of FIGHTER_IDS) {
@@ -29,16 +30,18 @@ it("keeps basic-attack knockback light so brawlers can close in and chain hits",
     expect(b.knockback, id).toBeLessThanOrEqual(b.kind === "melee" ? 25 : 20);
   }
 });
-it("opens the stats and skills panel right after the selected card", () => {
+it("opens every fighter's stats and skills from its card", () => {
   for (const id of FIGHTER_IDS) {
-    const html = fighterSelection(id);
-    const order = [
-      ...html.matchAll(/data-character="(\w+)"|class="fighter-detail"/g),
-    ].map((m) => m[1] ?? "detail");
-    // Every card is still there, in roster order, with the panel after the pick.
-    expect(order.filter((x) => x !== "detail")).toEqual(FIGHTER_IDS);
-    expect(order.filter((x) => x === "detail")).toHaveLength(1);
-    expect(order[order.indexOf("detail") - 1]).toBe(id);
-    expect(html).toContain(`data-detail-for="${id}"`);
+    // The picked card opens its detail (second tap, Enter or Details).
+    const grid = rosterGrid(id);
+    expect(grid).toContain(`data-roster-details="${id}"`);
+    expect(grid).toMatch(
+      new RegExp(`data-roster-card="${id}" aria-pressed="true"`),
+    );
+    const detail = rosterDetail(id, { tab: "skills" });
+    expect(detail).toContain('data-roster-mode="detail"');
+    expect(detail).toContain(`data-preview-champion="${id}"`);
+    for (const skill of CHARACTERS[id].skills)
+      expect(detail).toContain(skill.name);
   }
 });

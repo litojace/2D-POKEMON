@@ -15,7 +15,7 @@ import {
   drawBattleAura,
   type AuraPainter,
 } from "../../apps/client/src/battle-aura";
-import { fighterSelection } from "../../apps/client/src/fighter-selection";
+import { rosterDetail, rosterGrid } from "./roster-markup";
 describe("cute proportions", () => {
   it("grows the face and shrinks the body while keeping the feet planted", () => {
     expect(PROPORTIONS.head.s).toBeGreaterThan(1);
@@ -118,7 +118,9 @@ describe("trait auras", () => {
     );
   });
   it("no menu portrait wears an element aura (the Wardrobe's look only)", () => {
-    expect(fighterSelection("tidefin")).not.toContain("trait-aura");
+    expect(rosterGrid("tidefin") + rosterDetail("tidefin")).not.toContain(
+      "trait-aura",
+    );
   });
 });
 describe("battle auras", () => {
