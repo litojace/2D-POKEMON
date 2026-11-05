@@ -1090,6 +1090,27 @@ private 1v1, 2v2 and free-for-all rooms share one frame. Before and after:
   `menu-shell` moved to the new room and the roster (the one picker); what
   they check stays.
 
+### Raid windows scroll under a finger (5 Nov 2026)
+
+The owner reported that long raid panels might not scroll on a phone.
+Swiped with real touch input (CDP touch events, which obey `touch-action`
+the way a phone does; Chrome's synthetic scroll gesture does nothing in
+this headless browser, and the wheel or `scrollTop` would prove nothing),
+the Raid Hall, the four boss tabs, the room's picker and seats all scrolled
+to their end. The briefing did not: a touch battle locks zoom
+(`zoom-guard.ts` adds `html.zoom-locked`, which sets `touch-action: none`
+on everything), and its exceptions listed the old `.overlay-card` but not
+the new `.rc-card` of step 5, so the briefing (and long results) could not
+be panned. `.rc-card` and its parts are now in that list.
+
+`tests/visual/raid-touch-scroll.spec.ts` swipes every raid window to its end
+(finger on cards, art, tags and text), with the briefing's extra section
+closed and open, then again after a raid (room, Raid Hall), at 844×390,
+852×393 with the island, 667×375, 1280×720 and 1440×900 (touch). It also
+fails on text or a control cut off by a box that does not scroll. A plain
+scroll box first proves the swipe works. Not verified: a real iPhone or
+Android phone, and Safari's engine (WebKit is not installed here).
+
 ## Decisions (owner, 3 Nov 2026)
 
 | #   | Question                                        | Decision                                                                                                                                                         |
