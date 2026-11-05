@@ -261,13 +261,6 @@ export function updateRosterSelection(
     card.setAttribute("aria-pressed", String(on));
     const label = card.querySelector(".card-selection-label");
     if (label) label.textContent = on ? "✓ Selected" : "Select";
-    // Only the selected card wears its trait aura.
-    const artwork = card.querySelector(".card-art"),
-      fresh = next.content.querySelector(
-        `[data-character="${card.dataset.character}"] .card-art`,
-      );
-    if (artwork && fresh && (on || artwork.querySelector(".trait-aura")))
-      artwork.replaceWith(fresh);
   }
   showFighterSection(
     freshDetail,

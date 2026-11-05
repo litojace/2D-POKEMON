@@ -997,8 +997,9 @@ bubbles), which the Shop and Wardrobe never drew.
 - The match's VS intro (the briefing's fighters) follows too (owner):
   each player's fighter skin, else their Colors, no trait aura and no
   element-coloured glow (a plain drop shadow, as on the roster's cards).
-  Nothing in the app uses `trait-effects.ts` any more; its tests still
-  cover it.
+  `trait-effects.ts` (the menu trait auras), its CSS (`.trait-aura`,
+  `.ta-*`, the aura front layers over the rigs) and its tests are deleted
+  (owner). The in-battle ground aura (`battle-aura.ts`) stays.
 - Tests: `roster.test.ts` (the look handed to the rig, Colors and skins on
   stage and cards, no aura), `cute-art.test.ts`, `roster-smooth.spec.ts`.
 
@@ -1014,6 +1015,19 @@ Arcade event's tip once, not twice as before); the keys as one row of chips
 arena flavour text, the long touch paragraph, the controls table and "the
 countdown begins when everyone confirms" (the button says it). The Menu's
 How to play screen keeps the full controls list.
+
+### A floating joystick on phones (5 Nov 2026)
+
+Owner: let the movement stick start anywhere on the left half of the screen,
+for quick moves in a fight. A touch anywhere free on the left half of a
+touch battle starts the joystick right under the finger (the stick is drawn
+there, `is-floating`), drags move the fighter, and lifting the finger eases
+it back to its place (`touch-controls.ts`). A touch on the stick itself
+still starts it centred on its own place (a push off-centre moves at once,
+as before). Buttons, links, the briefing card, practice and Menu panels,
+dialogs and the right half answer their own touches; a tap on an enemy in
+the left half still locks the target (Phaser's own handler) and, without a
+drag, does not move. Test: `touch-recovery.spec.ts`.
 
 ## Decisions (owner, 3 Nov 2026)
 

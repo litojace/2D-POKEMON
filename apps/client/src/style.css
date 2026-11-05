@@ -1605,6 +1605,13 @@ dialog input[type="range"] {
   user-select: none;
   flex-shrink: 0;
   pointer-events: auto;
+  /* A floating stick (touch-controls.ts) eases back to its place... */
+  transition: transform 0.16s ease-out;
+}
+/* ...and jumps under the finger at once. */
+.joystick-area.is-floating {
+  transition: none;
+  z-index: 5;
 }
 .joystick {
   position: relative;
@@ -3957,39 +3964,6 @@ dialog:has(.admin-tabs) {
 .online-note {
   color: var(--muted);
   font-size: 11px;
-}
-/* Trait auras around menu art (see trait-effects.ts). */
-.trait-aura {
-  overflow: visible;
-}
-.trait-aura .ta-c {
-  transform-box: fill-box;
-  transform-origin: center;
-}
-.trait-aura .ta-base {
-  transform-box: fill-box;
-  transform-origin: 50% 100%;
-}
-.trait-aura .ta-leaf {
-  transform-origin: 0 0;
-}
-@keyframes ta-leaf {
-  0% {
-    transform: translate(0, 0) rotate(0);
-    opacity: 0;
-  }
-  20% {
-    opacity: 1;
-  }
-  100% {
-    transform: translate(12px, 90px) rotate(220deg);
-    opacity: 0;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .trait-aura * {
-    animation: none !important;
-  }
 }
 .briefing-versus {
   display: flex;
@@ -14122,9 +14096,6 @@ body.lobby-active #menu .roster-panel {
   animation: none !important;
   transition: none !important;
 }
-#menu .selection-layout .showcase-card .card-art :is(.ta-back, .ta-front) {
-  display: none;
-}
 #menu .fighter-preview-slot .universal {
   padding: 12px;
   margin: 0;
@@ -18186,24 +18157,9 @@ body.battle-active.battle-raid #spectate:not(.pvp-spectator) {
 .battle-raid .spectate-banner .raid-revive-cause { margin-top: 4px; color: #a9bad2; font-size: 11px; line-height: 14px; }
 body.battle-raid.raid-downed #mobile-controls .touch-buttons { visibility: hidden; pointer-events: none; }
 
-/* The selected fighter's aura in the roster: the animated fighter (a canvas)
-   lies over the artwork, so the aura's front half is drawn again above it,
-   and the artwork's own front half steps aside. Before the canvas is ready
-   the artwork shows its aura whole. */
-#menu .fighter-preview-slot .fighter-rig-stage > svg.ta-front-layer {
-  display: none;
-  pointer-events: none;
-}
+/* The animated fighter (a canvas) lies over the artwork. */
 #menu .fighter-preview-slot .fighter-rig-stage.is-ready > canvas {
   z-index: 1;
-}
-/* Placed by the same rules as the artwork (a grid cell or absolute). */
-#menu .fighter-preview-slot .fighter-rig-stage.is-ready > svg.ta-front-layer {
-  display: block;
-  z-index: 2;
-}
-.fighter-rig-stage.is-ready > svg:not(.ta-front-layer) .ta-front {
-  visibility: hidden;
 }
 
 /* ── Raid boss bar ──

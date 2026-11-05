@@ -18,7 +18,9 @@ async function mount(page: Page) {
     touchRecovery();
     // Let the initial ResizeObserver reset finish before a simulated finger
     // begins. WebKit can deliver that first layout after evaluate returns.
-    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    await new Promise<void>((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+    );
   });
   return errors;
 }
@@ -241,24 +243,108 @@ test("Look away releases outside the button and cannot steal or strand movement"
   expect(errors).toEqual([]);
 });
 
-
-test("held Basic and movement survive repeated skill, Dash and Jump taps",async({page})=>{
-  const errors=await mount(page);
-  await down(page,".joystick-area",61,true);
-  await down(page,'[data-action="attack"]',62);
-  const movement=(await state(page)).dx;
-  let pointer=63;
-  for(const selector of ['[data-skill="0"]','[data-skill="1"]','[data-skill="2"]','[data-action="dash"]','[data-action="jump"]']) {
-    await down(page,selector,pointer);
-    await page.dispatchEvent('body','pointerup',{pointerId:pointer++,pointerType:'touch'});
-    expect(await state(page)).toMatchObject({id:61,basic:true,held:1,dx:movement});
+test("held Basic and movement survive repeated skill, Dash and Jump taps", async ({
+  page,
+}) => {
+  const errors = await mount(page);
+  await down(page, ".joystick-area", 61, true);
+  await down(page, '[data-action="attack"]', 62);
+  const movement = (await state(page)).dx;
+  let pointer = 63;
+  for (const selector of [
+    '[data-skill="0"]',
+    '[data-skill="1"]',
+    '[data-skill="2"]',
+    '[data-action="dash"]',
+    '[data-action="jump"]',
+  ]) {
+    await down(page, selector, pointer);
+    await page.dispatchEvent("body", "pointerup", {
+      pointerId: pointer++,
+      pointerType: "touch",
+    });
+    expect(await state(page)).toMatchObject({
+      id: 61,
+      basic: true,
+      held: 1,
+      dx: movement,
+    });
   }
-  expect(await page.evaluate(()=>(window as any).__fired)).toEqual([
-    {basic:true},{skill:0},{skill:1},{skill:2},{dash:true},{jump:true},
+  expect(await page.evaluate(() => (window as any).__fired)).toEqual([
+    { basic: true },
+    { skill: 0 },
+    { skill: 1 },
+    { skill: 2 },
+    { dash: true },
+    { jump: true },
   ]);
-  await page.dispatchEvent('body','pointerup',{pointerId:62,pointerType:'touch'});
-  expect(await state(page)).toMatchObject({id:61,basic:false,held:0});
-  await page.dispatchEvent('body','pointerup',{pointerId:61,pointerType:'touch'});
-  expect(await state(page)).toMatchObject({id:null,dx:0,dy:0,basic:false});
+  await page.dispatchEvent("body", "pointerup", {
+    pointerId: 62,
+    pointerType: "touch",
+  });
+  expect(await state(page)).toMatchObject({ id: 61, basic: false, held: 0 });
+  await page.dispatchEvent("body", "pointerup", {
+    pointerId: 61,
+    pointerType: "touch",
+  });
+  expect(await state(page)).toMatchObject({
+    id: null,
+    dx: 0,
+    dy: 0,
+    basic: false,
+  });
+  expect(errors).toEqual([]);
+});
+
+// A floating stick (owner, 5 Nov 2026): a touch anywhere free on the left
+// half starts the joystick under the finger; it goes back to its place when
+// the finger lifts. The right half, buttons and the stick itself answer as
+// before.
+test("a touch anywhere free on the left half starts the joystick there", async ({
+  page,
+}) => {
+  const errors = await mount(page);
+  await page.evaluate(() => document.body.classList.add("battle-active"));
+  const width = page.viewportSize()!.width;
+  const touch = (type: string, id: number, x: number, y: number) =>
+    page.dispatchEvent("body", type, {
+      pointerId: id,
+      pointerType: "touch",
+      isPrimary: true,
+      buttons: type === "pointerup" ? 0 : 1,
+      clientX: x,
+      clientY: y,
+    });
+  const area = page.locator(".joystick-area");
+  // The right half: nothing.
+  await touch("pointerdown", 21, width * 0.75, 420);
+  expect((await state(page)).id).toBeNull();
+  await touch("pointerup", 21, width * 0.75, 420);
+  // The left half, away from the stick: it starts right there, at rest.
+  const x = width * 0.4,
+    y = 420;
+  await touch("pointerdown", 22, x, y);
+  expect(await state(page)).toMatchObject({ id: 22, dx: 0, dy: 0 });
+  await expect(area).toHaveClass(/is-floating/);
+  const box = await area.boundingBox();
+  expect(Math.abs(box!.x + box!.width / 2 - x)).toBeLessThan(2);
+  expect(Math.abs(box!.y + box!.height / 2 - y)).toBeLessThan(2);
+  // Dragging moves the fighter that way.
+  await touch("pointermove", 22, x + 60, y);
+  expect((await state(page)).dx).toBeGreaterThan(0.5);
+  // Lifting the finger stops it and sends the stick home.
+  await touch("pointerup", 22, x + 60, y);
+  expect(await state(page)).toMatchObject({ id: null, dx: 0, dy: 0 });
+  await expect(area).not.toHaveClass(/is-floating/);
+  // A button on the left half is still a button.
+  const attack = await page.locator('[data-action="attack"]').boundingBox();
+  if (attack!.x + attack!.width / 2 < width / 2) {
+    await down(page, '[data-action="attack"]', 23, true);
+    expect(await state(page)).toMatchObject({ id: null, basic: true });
+  }
+  // The stick itself still starts centred on its own place.
+  await down(page, ".joystick-area", 24, true);
+  expect((await state(page)).dx).toBeGreaterThan(0.5);
+  await expect(area).not.toHaveClass(/is-floating/);
   expect(errors).toEqual([]);
 });
