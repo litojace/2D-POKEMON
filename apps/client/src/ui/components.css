@@ -490,6 +490,23 @@
   scrollbar-width: none;
   align-items: center;
 }
+/* An edge fades where more of the row is hidden past it (ui/scroll-rows.ts:
+   the wheel and a mouse drag scroll it too). */
+.ui-chips.has-more-right {
+  mask-image: linear-gradient(90deg, #000 calc(100% - 32px), transparent);
+}
+.ui-chips.has-more-left {
+  mask-image: linear-gradient(90deg, transparent, #000 32px);
+}
+.ui-chips.has-more-left.has-more-right {
+  mask-image: linear-gradient(
+    90deg,
+    transparent,
+    #000 32px,
+    #000 calc(100% - 32px),
+    transparent
+  );
+}
 .ui-chip {
   flex: none;
   height: var(--ctl-s);

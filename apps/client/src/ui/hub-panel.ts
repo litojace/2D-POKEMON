@@ -1,3 +1,4 @@
+import { scrollRows } from "./scroll-rows";
 import { lowGraphics } from "../graphics-quality";
 import { confirmModal, type ConfirmOptions } from "./components";
 import { enter, fadeIn, glide, leave, stagger } from "./motion";
@@ -143,6 +144,7 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
     if (closed) return;
     closed = true;
     gone?.disconnect();
+    rows();
     document.removeEventListener("keydown", onKey);
     if (replaced) handoff = covered;
     else {
@@ -195,6 +197,8 @@ export function openHubPanel(html: string, o: HubPanelOptions = {}): HubPanel {
     gone.observe(host.parentNode, { childList: true });
   railButton?.setAttribute("aria-current", "page");
   wrap.addEventListener("click", onClick);
+  // Chip rows scroll sideways with a mouse too (wheel and drag).
+  const rows = scrollRows(wrap);
   // Bubble phase: menus inside the Lobby close first and mark it handled.
   document.addEventListener("keydown", onKey);
   // Focus moves into the screen (keyboard and screen readers start there);

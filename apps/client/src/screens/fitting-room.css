@@ -303,9 +303,18 @@
 .fit-picks .ui-tile-art {
   aspect-ratio: 1.35;
 }
-/* Fighters: a row of avatars instead of a dropdown. */
+/* Fighters: a row of avatars instead of a dropdown. On desktop they wrap
+   onto a second row, so every fighter shows (a row cut off at the column's
+   edge had no way to reach the rest with a mouse); phones keep one row
+   that scrolls (ui/scroll-rows.ts). */
 .fit-fighters {
   gap: 6px;
+}
+@media (min-height: 501px) {
+  .fit-fighters {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
 }
 .fit-fighter {
   flex: none;

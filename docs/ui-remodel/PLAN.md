@@ -941,6 +941,32 @@ stage and phone: [posters](images/step5/boss-posters.webp).
   Lobby / Plaza / Farm switch), and the 2v2 and free-for-all rooms move to
   the same frame in this step.
 
+### Shop opens on your look; Your look; chip rows with a mouse (5 Nov 2026)
+
+Owner's notes from a phone and a narrow desktop window.
+
+- **The Shop opens on what you wear:** it used to try today's deal on as
+  it opened (the deal is often another fighter's skin), and on the owner's
+  phone that first look came out squashed until another skin was picked.
+  The squash did not reproduce in Chromium (3× density, 844×390: same
+  proportions as a skin picked later), so its cause is unconfirmed; the
+  open no longer switches fighter or skin at all, and the deal goes on with
+  a tap.
+- **Your look** (`data-fit-revert` on the stage, Shop and Wardrobe): shown
+  only while something you don't wear is on (`trying`); it takes every
+  try-on off. In the Shop it also brings back your own fighter (a skin of
+  another fighter brings that fighter on); so does going to the Wardrobe
+  when the skin it drops was that fighter's. Desktop: a text button under
+  Entrance and Victory; phones: a third round icon in that column. On Low
+  graphics it shows alone.
+- **Chip rows with a mouse** (`ui/scroll-rows.ts`, every hub screen): rows
+  of chips (`.ui-chips`) hide their scrollbar, so a mouse could not reach
+  what they hid. The wheel scrolls them sideways, a press and drag pans
+  them (the click ending a drag is swallowed), and an edge fades where more
+  is hidden (`has-more-left`/`-right`, refreshed after each re-render). On
+  desktop the fitting room's fighters wrap onto two rows instead, so all
+  sixteen show.
+
 ## Decisions (owner, 3 Nov 2026)
 
 | #   | Question                                        | Decision                                                                                                                                                         |

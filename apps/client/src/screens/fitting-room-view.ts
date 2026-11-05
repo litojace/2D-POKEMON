@@ -329,17 +329,23 @@ export function pendingChanges(view: FitView, d: FitData): FitChange[] {
   }
   return out;
 }
+/** Is anything on the stage that you don't wear (a try-on, another stage)? */
+export const trying = (view: FitView) =>
+  Object.keys(view.tryOn).length > 0 || view.stage !== undefined;
 export const notOwnedTryOns = (view: FitView, d: FitData) =>
   Object.values(view.tryOn).filter((id): id is string => !!id && !owns(id, d));
 /**
  * Going to the Wardrobe: it shows only what you own, so a Shop try-on of
  * something you don't own leaves the stage (it stayed on, while the slot
  * under it read "Original"). Try-ons of things you own stay, as changes
- * Equip can save; so does a frame picked to look at.
+ * Equip can save; so does a frame picked to look at. True when a fighter
+ * skin left, so the caller can bring your own fighter back.
  */
 export function dropUnownedTryOns(view: FitView, d: FitData) {
-  if (!d.economy) return;
+  if (!d.economy) return false;
   let dropped = false;
+  const skin = view.tryOn.champion;
+  const skinDropped = !!skin && !owns(skin, d);
   for (const [slot] of FIT_SLOTS) {
     const id = view.tryOn[slot];
     if (!id || owns(id, d)) continue;
@@ -356,6 +362,8 @@ export function dropUnownedTryOns(view: FitView, d: FitData) {
     dropped = true;
   }
   if (dropped) view.action = "idle";
+  /** A skin you don't own left the stage (it may have brought its fighter). */
+  return skinDropped;
 }
 
 /* ------------------------------------------------------------ prices */
@@ -515,9 +523,21 @@ function stageMarkup(view: FitView, d: FitData) {
   // Top: the portrait frame you'd wear (opens the Frame slot), and the
   // animations that only play on the stage.
   const frameBadge = `<button type="button" class="fit-frame-badge" data-fit-slot="frame" aria-label="Portrait frame: ${esc(outfit.look.frame ? nameOf(outfit.look.frame) : "none")}. Choose a frame">${framedAvatar({ character: view.champion, raidLook: outfit.look, championLooks: outfit.skin ? { [view.champion]: outfit.skin } : {} }, "fit-badge", earnedStars)}<small>${outfit.look.frame ? "Portrait frame" : "No frame"}</small></button>`;
-  const plays =
+  const animations =
     !frameView && !d.low
-      ? `<span class="fit-plays">${button("Entrance", { size: "s", icon: "enter", attrs: { "data-fit-play": "entrance", "aria-pressed": view.action === "entrance", title: "Entrance" } })}${button("Victory", { size: "s", icon: "sparkle", attrs: { "data-fit-play": "victory", "aria-pressed": view.action === "victory", title: "Victory" } })}</span>`
+      ? `${button("Entrance", { size: "s", icon: "enter", attrs: { "data-fit-play": "entrance", "aria-pressed": view.action === "entrance", title: "Entrance" } })}${button("Victory", { size: "s", icon: "sparkle", attrs: { "data-fit-play": "victory", "aria-pressed": view.action === "victory", title: "Victory" } })}`
+      : "";
+  // Back to what you wear, while something you haven't equipped is on.
+  const back = trying(view)
+    ? button("Your look", {
+        size: "s",
+        icon: "again",
+        attrs: { "data-fit-revert": true, title: "Back to the look you wear" },
+      })
+    : "";
+  const plays =
+    animations || back
+      ? `<span class="fit-plays">${animations}${back}</span>`
       : "";
   // Bottom: what is on the stage, Hold to compare, awakening stages.
   const focus = view.selected ?? outfit.skin?.skin ?? null;

@@ -67,14 +67,21 @@ for (const size of SIZES)
       await expect(
         page.locator('.lobby-rail [data-lobby-action="shop"]'),
       ).toHaveAttribute("aria-current", "page");
-      // Opens on today's deal, already on the stage, Buy bottom right.
-      await expect(
-        page.locator('.fit-deal[aria-pressed="true"]'),
-      ).toBeVisible();
-      await expect(page.locator(".fit-stage .shop-live-stage")).toHaveAttribute(
+      // Opens on your fighter in the look you wear: nothing tried on, so no
+      // "Your look" (owner, 5 Nov 2026: the Shop put today's deal on).
+      const live = page.locator(".fit-stage .shop-live-stage");
+      await expect(live).toHaveAttribute("data-preview-champion", "voltkit");
+      await expect(page.locator('.fit-deal[aria-pressed="true"]')).toHaveCount(
+        0,
+      );
+      await expect(page.locator(".fit-stage [data-fit-revert]")).toHaveCount(0);
+      // A tap puts today's deal on the stage, Buy bottom right.
+      await page.click(".fit-deal");
+      await expect(live).toHaveAttribute(
         "data-preview-skin",
         "cindrake-blue-flame",
       );
+      await expect(page.locator(".fit-stage [data-fit-revert]")).toBeVisible();
       await expect(page.locator(".fit-stage .shop-live-stage")).toHaveClass(
         /is-ready/,
         { timeout: 60_000 },
@@ -96,6 +103,11 @@ for (const size of SIZES)
       expect(Math.abs(stage.y - main.y)).toBeLessThan(1);
       await measured(page, size, "Today");
       await snap(page, info, `fitting-room-shop-today-${size.name}`);
+      // "Your look" takes it off: your own fighter, as you wear it.
+      await page.click(".fit-stage [data-fit-revert]");
+      await expect(live).toHaveAttribute("data-preview-champion", "voltkit");
+      await expect(page.locator(".fit-stage [data-fit-revert]")).toHaveCount(0);
+      await page.click(".fit-deal");
 
       for (const section of ["skins", "mythic", "collections"]) {
         await page.click(`[data-ui-section="${section}"]`);
