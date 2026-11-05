@@ -204,13 +204,90 @@ melee and ranged champions). With `FFA_THREE_SCALE` = 0.6, pooled over two
 fresh sets of 1,200 matches per difficulty, every champion wins 27.0–36.9%
 (±1.6), against 12–45% before. Shadopus (27.0%) is the one clear outlier.
 
+### Bots: Hard and Normal
+
+Bots used to play some champions very differently at Hard and Normal, so a
+champion's bot win rate flipped with difficulty: Cindrake won 27% of duels
+between Hard bots and 74% between Normal bots, Mystowl 67% / 33%, Pyranda
+63% / 39%, Duskveil 40% / 62%, Halcyra 58% / 42%. Measured
+(`scripts/balance/duel-diag.ts`, and round robins with one profile setting
+changed at a time through `BOT_OVERRIDE`), not guessed:
+
+- Every weakness a bot can have helps melee champions more than ranged ones.
+  A Normal opponent reacts late (0.48 s), pauses its basic attack a third of
+  the time, aims loosely and decides slowly; each of these mostly costs a
+  ranged champion hits and lets a brawler walk in. With Normal opponents
+  given Hard's reaction alone, Normal Cindrake drops from 73% to 29%; with
+  Hard's `rest` alone, to 39%. Played by a Normal bot against Hard
+  opponents, Cindrake wins 0%: Hard plays it well, Normal opponents just
+  played badly against it.
+- A bot only noticed a shot coming if it had decided to dodge it, and its
+  barriers and counters wait for a threat. Normal bots dodge 12% of shots,
+  so they almost never shielded: Mystowl's Wing Cloak 1.7 casts a minute at
+  Normal against 4.8 at Hard, Pyranda's Tail Wrap 1.9 / 4.6, Halcyra's
+  Mirage Perch 1.0 / 3.8.
+
+No single weakness affects every champion alike (a uniform "dazed" share of
+seconds favours brawlers too), so the fix (`apps/server/src/bot.ts`):
+
+- `seeShots` (Hard and Normal): any shot about to hit counts as a threat for
+  defensive skills, whether or not the bot dodges it.
+- Normal is closer to Hard on the settings that favoured brawlers (reaction
+  0.36 s, aim error 0.215, decisions every 0.19 s, dodge 43%, rest 12%) and
+  is held back instead by a per-champion share of dazed seconds (`dazeBy`,
+  15–42%: no moving, attacking or skills for that second), calibrated in
+  bot duels so each champion does as well against Normal as against Hard.
+  Hard has no daze.
+
+Checked on 600 duels per champion and difficulty the calibration never saw
+(`RR_SEED=60000`):
+
+| Champion  | Hard before | Normal before | Gap   | Hard after | Normal after | Gap  |
+| --------- | ----------- | ------------- | ----- | ---------- | ------------ | ---- |
+| Cindrake  | 27.2%       | 73.5%         | −46.3 | 27.0%      | 28.5%        | −1.5 |
+| Mystowl   | 66.5%       | 32.7%         | +33.8 | 66.5%      | 66.2%        | +0.3 |
+| Pyranda   | 62.7%       | 39.0%         | +23.7 | 61.2%      | 60.8%        | +0.4 |
+| Duskveil  | 39.5%       | 62.3%         | −22.8 | 39.7%      | 40.3%        | −0.6 |
+| Halcyra   | 58.2%       | 41.5%         | +16.7 | 58.7%      | 61.8%        | −3.1 |
+| Sunbara   | 57.8%       | 46.0%         | +11.8 | 55.3%      | 56.5%        | −1.2 |
+| Wombolder | 43.8%       | 54.7%         | −10.9 | 46.7%      | 50.7%        | −4.0 |
+| Terradon  | 40.8%       | 51.5%         | −10.7 | 42.8%      | 36.0%        | +6.8 |
+| Astrabun  | 46.0%       | 53.7%         | −7.7  | 46.0%      | 45.7%        | +0.3 |
+| Lumoth    | 51.5%       | 44.7%         | +6.8  | 52.0%      | 53.2%        | −1.2 |
+| Voltkit   | 52.0%       | 47.0%         | +5.0  | 49.0%      | 49.3%        | −0.3 |
+| Auralynx  | 54.7%       | 50.7%         | +4.0  | 58.5%      | 56.0%        | +2.5 |
+| Coilemur  | 46.5%       | 50.5%         | −4.0  | 47.3%      | 41.8%        | +5.5 |
+| Shadopus  | 50.3%       | 54.2%         | −3.9  | 50.0%      | 48.5%        | +1.5 |
+| Tidefin   | 50.5%       | 48.3%         | +2.2  | 52.5%      | 54.2%        | −1.7 |
+| Glacelle  | 52.0%       | 49.8%         | +2.2  | 46.8%      | 50.5%        | −3.7 |
+
+Average gap 13.3 points before, 2.2 after; the largest is now 6.8
+(Terradon). Overall difficulty is about where it was (Hard against Normal
+and Normal against Easy, `scripts/balance/difficulty-gap.ts`, 960 duels
+each): Normal takes 3.4% of rounds from Hard (2.0% before) and Easy takes
+31.3% of rounds from Normal (27.3% before).
+
+Separately, with several opponents (2v2, free-for-all) every bot used to
+fight the first opponent to join, so in bot free-for-alls seat 0 won 0% and
+the last seat 61–78%. Bots now weigh opponents by distance, health and line
+of sight and stay on their target; each seat now wins 24–26%. Duels and raid
+bosses (one opponent) are unaffected.
+
 ## Known issues
 
+- Bot-measured balance has moved with the bot fixes above. Duels (Hard and
+  Normal averaged, `RR_SEED=60000`): Cindrake 28%, Terradon 39%, Duskveil
+  40%, Coilemur 45%, Mystowl 66%, Pyranda 61%, Halcyra 60%, Auralynx 57%,
+  Sunbara 56%, each within about 3 points of its Hard number before (the
+  old ~50% averages came from Hard and Normal flipping). 2v2 with
+  `TEAM_TUNING`: 30–76% (47–52% with the old bots on the same line-ups;
+  bot targeting alone moves it to 31–64%). Four-player free-for-all with
+  `FFA_TUNING`: 9–50% against a fair 25%. The duel numbers, `TEAM_TUNING`
+  and `FFA_TUNING` were all tuned with the old bots; re-tuning them is a
+  separate decision.
 - Shadopus wins 27% of three-player free-for-alls (fair 33%) with the
-  scaled four-player factor; it is within noise of fair with four players.
-- Bot win rates still split by difficulty for some champions: Cindrake (30%
-  Hard, 73% Normal), Mystowl (69% / 31%), Duskveil (36% / 64%) and Pyranda
-  (62% / 37%).
+  scaled four-player factor; it is within noise of fair with four players
+  (measured with the old bots).
 
 ## Engine
 

@@ -55,6 +55,21 @@ interface Profile {
   engage: number;
   /** Chance each second to hold fire for that second, like a person catching their breath. */
   rest: number;
+  /**
+   * Counts any shot about to hit as a threat for defensive skills (barriers,
+   * counters, clones), not only the ones it decided to dodge. Without it a
+   * bot that rarely dodges also rarely shields, which made champions with a
+   * barrier far weaker at Normal than at Hard.
+   */
+  seeShots?: boolean;
+  /**
+   * Chance each second to lose focus for that second: no moving, attacking
+   * or skills (it still sees what is coming). Unlike `rest`, which only holds
+   * the basic attack, this slows every kind of champion down alike.
+   */
+  daze?: number;
+  /** Per-champion daze (overrides `daze` for that champion). */
+  dazeBy?: Partial<Record<CharacterId, number>>;
 }
 export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
   easy: {
@@ -70,18 +85,44 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
     engage: 0.01,
     rest: 0.42,
   },
+  // Normal is Hard with slower reactions, more pauses and looser aim, and a
+  // per-champion share of "dazed" seconds (dazeBy). Every weakness a bot can
+  // have helps melee champions more than ranged ones (a weak opponent kites
+  // badly), so with one setting for everyone a champion's win rate flipped
+  // between Hard and Normal (Cindrake 30% / 73%, Mystowl 69% / 31%). dazeBy
+  // is calibrated in bot duels so each champion does about as well against
+  // Normal bots as against Hard ones; see docs/new-champions/README.md.
   normal: {
-    reaction: 0.48,
-    aimError: 0.27,
+    reaction: 0.36,
+    aimError: 0.215,
     lead: 0.2,
-    dodge: 0.12,
-    think: 0.25,
+    dodge: 0.43,
+    think: 0.19,
     skillUse: 0.42,
     hesitate: 0.18,
     smartUltimate: false,
     fooledByClone: 0.5,
     engage: 0.02,
-    rest: 0.34,
+    rest: 0.12,
+    seeShots: true,
+    dazeBy: {
+      voltkit: 0.18,
+      cindrake: 0.42,
+      tidefin: 0.16,
+      auralynx: 0.28,
+      lumoth: 0.16,
+      mystowl: 0.15,
+      terradon: 0.34,
+      duskveil: 0.28,
+      coilemur: 0.32,
+      pyranda: 0.35,
+      glacelle: 0.26,
+      halcyra: 0.17,
+      sunbara: 0.22,
+      astrabun: 0.37,
+      wombolder: 0.36,
+      shadopus: 0.29,
+    },
   },
   hard: {
     reaction: 0.25,
@@ -95,6 +136,7 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
     fooledByClone: 0.2,
     engage: 0.2,
     rest: 0.05,
+    seeShots: true,
   },
 };
 export const BOT_LABELS: Record<BotDifficulty, string> = {
@@ -194,10 +236,14 @@ export class BotBrain {
   private hesitateUntil = 0;
   private nextRest = 0;
   private resting = false;
+  private nextDaze = 0;
+  private dazed = false;
   private wantSkill = -1;
   /** Projectile ids already judged (dodge or not) so it decides once per shot. */
   private judged = new Map<number, boolean>();
   private cloneDecision?: { until: number; fooled: boolean };
+  /** The enemy it is fighting (2v2 and free-for-all have several). */
+  private targetId?: string;
   constructor(
     readonly id: string,
     readonly difficulty: BotDifficulty,
@@ -213,18 +259,57 @@ export class BotBrain {
     this.judged.clear();
     this.cloneDecision = undefined;
     this.wantSkill = -1;
+    this.targetId = undefined;
+  }
+  /**
+   * Who to fight. With one opponent (a duel, a raid boss) that is them. With
+   * several, it weighs each by distance, health left and whether it can see
+   * them, prefers to stay on its current target, and only reconsiders when it
+   * makes a tactical decision. (It used to take the first opponent in join
+   * order, so in a free-for-all every bot went for the same fighter.)
+   */
+  private pickTarget(arena: Arena, me: Fighter) {
+    const foes = arena.players.filter(
+      (p) =>
+        p.id !== me.id &&
+        !p.out &&
+        p.hp > 0 &&
+        arena.teamOf(p) !== arena.teamOf(me),
+    );
+    let pick = foes[0];
+    const current = foes.find((p) => p.id === this.targetId);
+    if (foes.length > 1) {
+      if (current && arena.time < this.nextThink) pick = current;
+      else {
+        let best = Infinity;
+        for (const p of foes) {
+          const share =
+            p.hp / maxHealth(p.character, arena.mode, arena.players.length);
+          const cost =
+            Math.hypot(p.x - me.x, p.y - me.y) * (0.5 + 0.5 * share) +
+            (arena.lineClear(me, p) ? 0 : 200) +
+            (arena.has(p, "stealth") ? 300 : 0) -
+            (p === current ? 150 : 0);
+          if (cost < best) {
+            best = cost;
+            pick = p;
+          }
+        }
+      }
+    }
+    if (!pick) return arena.players.find((p) => p.id !== me.id);
+    // A new target: forget what it saw of the last one.
+    if (this.targetId !== undefined && this.targetId !== pick.id) {
+      this.seen = [];
+      this.cloneDecision = undefined;
+    }
+    this.targetId = pick.id;
+    return pick;
   }
   think(arena: Arena, me: Fighter): Input {
     const input = blankInput();
     // An opponent (in a raid, the boss; never a teammate).
-    const enemy =
-      arena.players.find(
-        (p) =>
-          p.id !== me.id &&
-          !p.out &&
-          p.hp > 0 &&
-          arena.teamOf(p) !== arena.teamOf(me),
-      ) ?? arena.players.find((p) => p.id !== me.id);
+    const enemy = this.pickTarget(arena, me);
     const t = arena.time;
     input.aimX = enemy?.x ?? RULES.width / 2;
     input.aimY = enemy?.y ?? RULES.height / 2;
@@ -275,6 +360,10 @@ export class BotBrain {
       big: boolean;
       eta: number;
     } | null = null;
+    // A shot on its way to hit it, whether or not it decides to dodge: what
+    // defensive skills (barriers, counters, clones) answer. Seeing it coming
+    // is not the hard part; dodging in time is, and that is what `dodge` sets.
+    let incoming = false;
     for (const pr of arena.projectiles) {
       if (pr.owner === me.id) continue;
       const rx = me.x - pr.x,
@@ -286,6 +375,7 @@ export class BotBrain {
       const mx = pr.x + pr.vx * eta - me.x,
         my = pr.y + pr.vy * eta - me.y;
       if (Math.hypot(mx, my) > pr.ability.radius + RULES.radius + 8) continue;
+      if (this.profile.seeShots) incoming = true;
       if (!this.judged.has(pr.id))
         this.judged.set(pr.id, this.random() < this.profile.dodge);
       if (!this.judged.get(pr.id)) continue;
@@ -323,6 +413,15 @@ export class BotBrain {
     if (windup && !this.judged.has(-enemy.charge!.at))
       this.judged.set(-enemy.charge!.at, this.random() < this.profile.dodge);
     const fleeWindup = windup && this.judged.get(-enemy.charge!.at);
+    // A dazed second: it stands still and holds everything.
+    const daze = this.profile.dazeBy?.[me.character] ?? this.profile.daze;
+    if (daze) {
+      if (t >= this.nextDaze) {
+        this.nextDaze = t + 1;
+        this.dazed = this.random() < daze;
+      }
+      if (this.dazed) return input;
+    }
     // ---- Tactical decisions on a timer (slower bots decide less often).
     if (t >= this.nextThink) {
       this.nextThink = t + this.profile.think * (0.8 + this.random() * 0.4);
@@ -366,7 +465,7 @@ export class BotBrain {
         hpRatio,
         enemyRatio,
         enemyDisabled,
-        threatened: !!threat || dist < 170,
+        threatened: !!threat || incoming || dist < 170,
       });
     }
     // ---- Movement.
