@@ -961,7 +961,8 @@ Owner's notes from a phone and a narrow desktop window.
   it opened (the deal is often another fighter's skin), and on the owner's
   phone that first look came out squashed until another skin was picked.
   The squash did not reproduce in Chromium (3× density, 844×390: same
-  proportions as a skin picked later), so its cause is unconfirmed; the
+  proportions as a skin picked later). The WebKit boot-size cause is now
+  reproduced and fixed; see "First preview canvas on WebKit" below. The
   open no longer switches fighter or skin at all, and the deal goes on with
   a tap.
 - **Your look** (`data-fit-revert` on the stage, Shop and Wardrobe): shown
@@ -1043,3 +1044,26 @@ No questions are open.
 - Research: web search only (fetching pages was blocked in this session), so
   the notes on other games are from search summaries and the proposal's own
   research; they inform patterns, not details.
+
+### First preview canvas on WebKit (5 Nov 2026)
+
+The first Shop/Wardrobe fighter could be blurry and vertically stretched on
+Safari's engine. Reproduced in Playwright WebKit: a 400×260 backing buffer was
+stretched into a 606×650 CSS host, while its SVG part textures were already
+high resolution. Counting texture pixels or checking only Chromium missed the
+actual problem.
+
+`shop-preview.ts` rejected `resizeStage` while `Game.isRunning` was false.
+Phaser can create the scene before starting its loop, and WebKit can deliver
+its initial ResizeObserver notification before that scene exists. Both initial
+resize attempts were skipped; changing a look later happened to repair it.
+The resize now requires a game and initialized scene, so `Scene.create` can
+size the buffer before the first render. The animation loop still waits for
+`isRunning`, and disposal still prevents late callbacks from resizing it.
+The same host now receives a 1200×1287 buffer and the correct camera framing.
+
+A unit regression exercises that boot order. `preview-canvas.spec.ts` measures
+both axes on the first Shop/Wardrobe render, with original/equipped Mythical art,
+at desktop DPR 2 and landscape-phone DPR 3. Run it with the normal visual config
+for Chromium and `tests/visual/webkit.config.ts` for WebKit. These are browser
+engine checks, not a physical iOS device test.
