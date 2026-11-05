@@ -979,6 +979,26 @@ Owner's notes from a phone and a narrow desktop window.
   desktop the fitting room's fighters wrap onto two rows instead, so all
   sixteen show.
 
+### Every menu fighter dressed as the Wardrobe shows (5 Nov 2026)
+
+Owner's note: the roster and the Lobby's fighter should wear exactly what
+the Wardrobe shows, and lose the element aura orbiting them (bolts, embers,
+bubbles), which the Shop and Wardrobe never drew.
+
+- `fighter-selection.ts`: the large and card art (roster, Lobby, the room
+  picker) no longer wraps the fighter in its trait aura (`withAura`), and so
+  no aura front layer is laid over the live rig. The art takes your shared
+  looks (`setWornLook`, from `accountsUI.raidLook`): with no fighter skin,
+  your Colors tint the still art, as in the Wardrobe; a fighter skin wins.
+- The roster hands the stage's rig your looks (`data-preview-look`; it was
+  `{}`), so Colors and an aura are worn there too; its cards take your
+  Colors. The Lobby's stills take the same looks it already gave its rigs
+  (yours and each party seat's).
+- Kept: the match's VS intro still shows each fighter's trait aura (a
+  battle screen, not a dressing room).
+- Tests: `roster.test.ts` (the look handed to the rig, Colors and skins on
+  stage and cards, no aura), `cute-art.test.ts`, `roster-smooth.spec.ts`.
+
 ## Decisions (owner, 3 Nov 2026)
 
 | #   | Question                                        | Decision                                                                                                                                                         |

@@ -247,7 +247,12 @@ import {
   partyStateSchema,
   type PartyState,
 } from "../../../packages/shared/src/accounts";
-import { masteryMatches, setMastery, setWornSkins } from "./fighter-selection";
+import {
+  masteryMatches,
+  setMastery,
+  setWornLook,
+  setWornSkins,
+} from "./fighter-selection";
 import { shareResult } from "./share-card";
 import { openPlazaScreen, type PlazaScreen } from "./plaza/plaza-screen";
 import type { PlazaProgress } from "../../../packages/shared/src/plaza";
@@ -1882,6 +1887,7 @@ function openRosterScreen() {
         matches: masteryMatches,
         owned: accountsUI.economy?.owned ?? [],
         looks: accountsUI.economy?.looks ?? {},
+        look: accountsUI.raidLook ?? {},
         keys: {
           skills: skillLabels(bindings),
           basic: actionLabel(bindings, "basic"),
@@ -2171,10 +2177,14 @@ function renderMenu(revealSelection = false) {
       ? watchPanel()
       : `${startRoomSection(roomMode)}<label for="name">Your display name</label><input id="name" maxlength="20" placeholder="Enter your name" value="${escape(accountsUI?.account?.displayName ?? localStorage.getItem("arena-name") ?? "")}" autocomplete="nickname"><div class="home-play-options"><section><h3>Join your crew</h3><label for="code">Room code</label><div class="join-row"><input id="code" maxlength="6" placeholder="ABC123" aria-label="Room code"><button id="join" class="secondary btn-secondary">${iconLabel("enter", "Join")}</button></div><button id="watch" class="quiet full">${iconLabel("watch", "Watch this room instead")}</button></section><section><h3>Sharpen your skills</h3><div class="bot-picker" role="radiogroup" aria-label="Bot difficulty">${BOT_LEVELS.map(([id, label, hint]) => `<button type="button" role="radio" class="bot-level${botLevel === id ? " active" : ""}" data-bot="${id}" aria-checked="${botLevel === id}"><b>${label}</b><small>${hint}</small></button>`).join("")}</div><button class="secondary btn-secondary full" id="bot-match">${iconLabel("bot", "Battle an AI bot")}</button>${accountsUI?.account ? '<button class="quiet full" id="practice">' + iconLabel("target", "Solo test mode") + "</button>" : ""}</section></div><small class="room-note">Free to play · Login required<br>Keyboard + mouse · Controller · Touch</small>`;
   // A newly equipped Shop skin redraws the roster cards.
-  const wornKey = JSON.stringify(accountsUI?.economy?.looks ?? {});
+  const wornKey = JSON.stringify([
+    accountsUI?.economy?.looks ?? {},
+    accountsUI?.raidLook ?? {},
+  ]);
   const wornChanged = wornKey !== lastWornKey;
   lastWornKey = wornKey;
   setWornSkins(accountsUI?.economy?.looks);
+  setWornLook(accountsUI?.raidLook);
   const retainedShell = updateMenuShell(
     $("menu"),
     panelMarkup,
