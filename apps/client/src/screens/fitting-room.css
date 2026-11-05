@@ -109,8 +109,11 @@
   gap: 6px;
   grid-template-columns: 124px;
 }
+/* Stacked, one width: their icons in one column and their labels from one
+   line (centred, each sat by its own label's length). */
 .fit-plays .ui-btn {
   width: 100%;
+  justify-content: flex-start;
 }
 .fit-plays .ui-btn[aria-pressed="true"] {
   border-color: var(--ui-accent);
@@ -689,6 +692,7 @@
     min-width: 0;
     padding: 0;
     border-radius: 50%;
+    justify-content: center;
   }
   .fit-plays .ui-btn > svg {
     width: 18px;
@@ -723,13 +727,14 @@
     padding: 0 5px;
   }
   /* Awakening stages: a column at the stage's right edge, beside the
-     fighter, so the stage never changes size for a Mythical. */
+     fighter, so the stage never changes size for a Mythical. One group of
+     three, 6px apart (16px spread them over half the stage). */
   .fit-awaken {
     position: absolute;
     right: 0;
     bottom: 0;
     flex-direction: column-reverse;
-    gap: 16px;
+    gap: 6px;
   }
   .fit-stars {
     gap: 3px;
