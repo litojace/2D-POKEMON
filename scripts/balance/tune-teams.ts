@@ -2,7 +2,8 @@
  * 2v2 / free-for-all auto-tune: random line-up bot matches (Hard and Normal),
  * each champion's win rate averaged over both, its mode factor nudged toward
  * the fair rate (50% in 2v2, 1 / players in a free-for-all), repeat. The
- * factors are for that mode only (TEAM_TUNING or FFA_TUNING in
+ * factors are for that mode only (TEAM_TUNING, FFA_TUNING or, with
+ * --players 3, FFA_THREE_TUNING in
  * packages/shared/src/index.ts): health × f and basic interval ÷ √f, duels
  * untouched.
  *
@@ -26,6 +27,7 @@ import { spawn } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  FFA_THREE_TUNING,
   FFA_TUNING,
   FIGHTER_IDS,
   TEAM_TUNING,
@@ -53,7 +55,7 @@ const players = ffa ? +(opt("--players") ?? 4) : 4;
 // The fair win rate: 50% for a team, one in `players` in a free-for-all.
 const TARGET = ffa ? 100 / players : 50;
 const label = ffa ? `FFA (${players} players)` : "2v2";
-const table = ffa ? FFA_TUNING : TEAM_TUNING;
+const table = ffa ? (players < 4 ? FFA_THREE_TUNING : FFA_TUNING) : TEAM_TUNING;
 const out = opt("--out") ?? `balance-out/${mode}`;
 const shards = +(opt("--shards") ?? 4);
 mkdirSync(out, { recursive: true });
