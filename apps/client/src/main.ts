@@ -2477,11 +2477,11 @@ function renderBattle() {
     battleHudSize.observe($("phase-label"));
     const c = CHARACTERS[me.character];
     $("abilities").innerHTML =
-      `<div class="basic-hint" title="${c.basic.name}: ${c.basic.description} No cooldown · ${Math.round(basicInterval(c, false, state?.mode) * 1000)} ms between attacks."><kbd data-action="basic">${keyText("basic")}</kbd><span>${abilityIcon(c.basic.name)}<small>${c.basic.name.toUpperCase()}</small></span></div>${c.skills.map((a, i) => `<div class="ability" id="ability-${i}" style="--element:#${c.color.toString(16)}"><kbd data-action="${SKILL_ACTIONS[i]}">${keyText(SKILL_ACTIONS[i])}</kbd><span>${abilityIcon(a.name)}<small id="cooldown-${i}">READY</small></span><i class="cooldown-fill" id="fill-${i}"></i><i class="skill-cooldown-ring" aria-hidden="true"></i></div>`).join("")}<div class="movement-ability"><kbd data-action="dash">${keyText("dash")}</kbd><span>Dash<small id="dash-cd"></small></span></div><div class="movement-ability"><kbd data-action="jump">${keyText("jump")}</kbd><span>Jump<small id="jump-cd"></small></span></div>`;
+      `<div class="basic-hint" title="${c.basic.name}: ${c.basic.description} No cooldown · ${Math.round(basicInterval(c, false, state?.mode, state?.players.length) * 1000)} ms between attacks."><kbd data-action="basic">${keyText("basic")}</kbd><span>${abilityIcon(c.basic.name)}<small>${c.basic.name.toUpperCase()}</small></span></div>${c.skills.map((a, i) => `<div class="ability" id="ability-${i}" style="--element:#${c.color.toString(16)}"><kbd data-action="${SKILL_ACTIONS[i]}">${keyText(SKILL_ACTIONS[i])}</kbd><span>${abilityIcon(a.name)}<small id="cooldown-${i}">READY</small></span><i class="cooldown-fill" id="fill-${i}"></i><i class="skill-cooldown-ring" aria-hidden="true"></i></div>`).join("")}<div class="movement-ability"><kbd data-action="dash">${keyText("dash")}</kbd><span>Dash<small id="dash-cd"></small></span></div><div class="movement-ability"><kbd data-action="jump">${keyText("jump")}</kbd><span>Jump<small id="jump-cd"></small></span></div>`;
   }
   hudOrder.forEach((p, i) => {
     // 2v2 has its own health per champion (TEAM_TUNING).
-    const full = maxHealth(p.character, state!.mode);
+    const full = maxHealth(p.character, state!.mode, state!.players.length);
     setHudStyle(
       $(`health-${i}`),
       "width",
@@ -5405,7 +5405,7 @@ class ArenaScene extends Phaser.Scene {
       updateNameplateHealth(
         label,
         serverPlayer.hp,
-        maxHealth(p.character, state.mode),
+        maxHealth(p.character, state.mode, state.players.length),
         p.id === myId
           ? "self"
           : state.raid || (isTeams() && teamOf(p) === myTeam)

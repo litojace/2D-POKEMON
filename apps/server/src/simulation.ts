@@ -289,7 +289,7 @@ export class Arena {
       character,
       connected: true,
       ready: false,
-      hp: maxHealth(character, this.mode),
+      hp: maxHealth(character, this.mode, this.players.length),
       x: 260,
       y: 450,
       vx: 0,
@@ -444,7 +444,7 @@ export class Arena {
               y: this.mode === "teams" ? (index === 0 ? 330 : 570) : 450,
             };
       Object.assign(p, {
-        hp: p.out ? 0 : maxHealth(p.character, this.mode),
+        hp: p.out ? 0 : maxHealth(p.character, this.mode, this.players.length),
         x: spot.x,
         y: spot.y,
         vx: 0,
@@ -1142,7 +1142,7 @@ export class Arena {
       // Tide Double: the axolotl regrows a little health as it slips away.
       if (a.heal) {
         const before = p.hp;
-        p.hp = Math.min(maxHealth(p.character, this.mode), p.hp + a.heal);
+        p.hp = Math.min(maxHealth(p.character, this.mode, this.players.length), p.hp + a.heal);
         p.stats.healed = (p.stats.healed ?? 0) + (p.hp - before);
       }
     }
@@ -1265,7 +1265,7 @@ export class Arena {
         continue;
       const amount = a.heal! * (ally === owner ? (a.selfHeal ?? 1) : 1);
       const before = ally.hp;
-      ally.hp = Math.min(maxHealth(ally.character, this.mode), ally.hp + amount);
+      ally.hp = Math.min(maxHealth(ally.character, this.mode, this.players.length), ally.hp + amount);
       const healed = ally.hp - before;
       if (healed <= 0) continue;
       ally.stats.healed = (ally.stats.healed ?? 0) + healed;
@@ -1424,7 +1424,7 @@ export class Arena {
         if ((s.kind === "sleep" || s.kind === "shell") && s.amount && this.time >= s.nextTick) {
           s.nextTick += STATUS_RULES.restInterval;
           const before = p.hp;
-          p.hp = Math.min(maxHealth(p.character, this.mode), p.hp + s.amount);
+          p.hp = Math.min(maxHealth(p.character, this.mode, this.players.length), p.hp + s.amount);
           p.stats.healed = (p.stats.healed ?? 0) + (p.hp - before);
         }
         if (s.kind === "burn" && this.time >= s.nextTick) {
@@ -1541,7 +1541,12 @@ export class Arena {
           const held = due > 0 && this.time - due <= dt + 1e-6;
           p.basicAt =
             (held ? due : this.time) +
-            basicInterval(character, this.has(p, "empower"), this.mode) *
+            basicInterval(
+              character,
+              this.has(p, "empower"),
+              this.mode,
+              this.players.length,
+            ) *
               (this.gift(p, "Electric") ?? 1);
           p.recoveryUntil = this.time + kit.basic.recovery;
           this.cast(p, kit.basic);
@@ -1678,14 +1683,14 @@ export class Arena {
           const heal = this.gift(p, "Water");
           if (!heal) continue;
           const before = p.hp;
-          p.hp = Math.min(maxHealth(p.character, this.mode), p.hp + heal * dt);
+          p.hp = Math.min(maxHealth(p.character, this.mode, this.players.length), p.hp + heal * dt);
           p.stats.healed = (p.stats.healed ?? 0) + (p.hp - before);
         }
     }
     if (this.practice) {
       for (const [i, p] of this.players.entries())
         if (p.hp <= 0) {
-          p.hp = maxHealth(p.character, this.mode);
+          p.hp = maxHealth(p.character, this.mode, this.players.length);
           p.x = i === 0 ? 650 : 950;
           p.y = 180;
           p.vx = p.vy = 0;
@@ -1752,7 +1757,7 @@ export class Arena {
         return (
           members.reduce(
             (sum, p) =>
-              sum + Math.max(0, p.hp) / maxHealth(p.character, this.mode),
+              sum + Math.max(0, p.hp) / maxHealth(p.character, this.mode, this.players.length),
             0,
           ) / Math.max(1, members.length)
         );
@@ -1858,7 +1863,7 @@ export class Arena {
             // Full health (or a full meter) walks straight through it.
             (orb.kind === "energy"
               ? (p.ult ?? 0) < RULES.ultMax
-              : p.hp < maxHealth(p.character, this.mode)) &&
+              : p.hp < maxHealth(p.character, this.mode, this.players.length)) &&
             Math.hypot(p.x - orb.x, p.y - orb.y) <
               RULES.radius + RULES.orbRadius,
         )
@@ -1881,7 +1886,7 @@ export class Arena {
         );
         return false;
       }
-      const full = maxHealth(taker.character, this.mode);
+      const full = maxHealth(taker.character, this.mode, this.players.length);
       const healed = Math.min(
         full - taker.hp,
         Math.round(full * RULES.orbHeal),

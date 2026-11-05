@@ -61,8 +61,8 @@ const ticks = (a: Arena, n: number) => {
   for (let i = 0; i < n; i++) a.tick();
 };
 const full = CHARACTERS.voltkit.health;
-/** Voltkit's full health in a free-for-all (FFA_TUNING applies). */
-const ffaFull = maxHealth("voltkit", "ffa");
+/** Voltkit's full health in a three-player free-for-all (FFA_TUNING applies). */
+const ffaFull = maxHealth("voltkit", "ffa", 3);
 
 /** Swap the test fighter's (Voltkit's) skills for a test kit, restored after each test. */
 const original = CHARACTERS.voltkit.skills;

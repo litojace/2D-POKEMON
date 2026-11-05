@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   CHARACTERS,
+  FFA_THREE_SCALE,
   FFA_TUNING,
   FIGHTER_IDS,
   RULES,
@@ -66,6 +67,19 @@ describe("free-for-all tuning", () => {
       expect(FIGHTER_IDS, id).toContain(id as CharacterId);
   });
 
+  it("applies part of each factor in a three-player free-for-all", () => {
+    FFA_TUNING.cindrake = 1.5;
+    expect(modeFactor("cindrake", "ffa", 4)).toBe(1.5);
+    expect(modeFactor("cindrake", "ffa")).toBe(1.5);
+    expect(modeFactor("cindrake", "ffa", 3)).toBeCloseTo(
+      1 + 0.5 * FFA_THREE_SCALE,
+      9,
+    );
+    // Player count means nothing outside a free-for-all.
+    expect(modeFactor("cindrake", "duel", 3)).toBe(1);
+    expect(modeFactor("cindrake", "teams", 3)).toBe(TEAM_TUNING.cindrake ?? 1);
+  });
+
   it("gives fighters their free-for-all health in a free-for-all", () => {
     FFA_TUNING.voltkit = 0.8;
     FFA_TUNING.astrabun = 1.3;
@@ -74,9 +88,25 @@ describe("free-for-all tuning", () => {
     a.add("b", "B", "astrabun");
     a.add("c", "C", "tidefin");
     a.start();
-    const hp = (id: string) => a.players.find((p) => p.id === id)!.hp;
-    expect(hp("a")).toBe(Math.round(CHARACTERS.voltkit.health * 0.8));
-    expect(hp("b")).toBe(Math.round(CHARACTERS.astrabun.health * 1.3));
+    const hp = (arena: Arena, id: string) =>
+      arena.players.find((p) => p.id === id)!.hp;
+    // Three players: 1 + (f - 1) × FFA_THREE_SCALE.
+    const three = (f: number) => 1 + (f - 1) * FFA_THREE_SCALE;
+    expect(hp(a, "a")).toBe(Math.round(CHARACTERS.voltkit.health * three(0.8)));
+    expect(hp(a, "b")).toBe(
+      Math.round(CHARACTERS.astrabun.health * three(1.3)),
+    );
+    const four = new Arena("f4", "ffa");
+    for (const [id, c] of [
+      ["a", "voltkit"],
+      ["b", "astrabun"],
+      ["c", "tidefin"],
+      ["d", "lumoth"],
+    ] as const)
+      four.add(id, id.toUpperCase(), c);
+    four.start();
+    expect(hp(four, "a")).toBe(Math.round(CHARACTERS.voltkit.health * 0.8));
+    expect(hp(four, "b")).toBe(Math.round(CHARACTERS.astrabun.health * 1.3));
   });
 
   it("leaves seeded duels and 2v2 matches exactly as they were", () => {
