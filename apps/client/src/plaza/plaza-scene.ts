@@ -1168,6 +1168,8 @@ export function openPlaza(options) {
     const w = $("pz-wheel"),
       show = on ?? w.hidden;
     w.hidden = !show;
+    // The Emote button lights up while its wheel is open (plaza.css).
+    $("pz-wheel-btn").setAttribute("aria-expanded", String(show));
     if (show) {
       const r = $("pz-wheel-btn").getBoundingClientRect(),
         sr = $("pz").querySelector(".pz-hud").getBoundingClientRect();
@@ -1191,6 +1193,24 @@ export function openPlaza(options) {
       w.style.top = `${Math.max(120, r.top - sr.top - 90)}px`;
     }
   }
+  // A press anywhere outside the emote wheel or a player's card closes it
+  // (the Emote button toggles its own wheel). On the Plaza itself that press
+  // only closes it: it doesn't also walk you there or open another card.
+  layer.addEventListener(
+    "pointerdown",
+    (e) => {
+      const t = e.target,
+        wheel = !$("pz-wheel").hidden && !t.closest("#pz-wheel, #pz-wheel-btn"),
+        card = !$("pz-card").hidden && !t.closest("#pz-card");
+      if (wheel) toggleWheel(false);
+      if (card) hideCard();
+      if ((wheel || card) && t === cv) {
+        e.stopPropagation();
+        screen.focus({ preventScroll: true });
+      }
+    },
+    true,
+  );
   $("pz-clock").onclick = (e) => {
     e.stopPropagation();
     tod = tod > 0.3 && tod < 0.7 ? 0.86 : 0.42;
@@ -1205,7 +1225,6 @@ export function openPlaza(options) {
   cv.addEventListener("pointerdown", (e) => {
     start();
     screen.focus({ preventScroll: true });
-    toggleWheel(false);
     // Tap someone to see who they are (and befriend or invite them).
     const w = toWorld(e.clientX, e.clientY),
       who = [...others.values()].find(
@@ -1509,11 +1528,24 @@ export function openPlaza(options) {
       box.querySelector('[data-ph="close"]').onclick = closePhoto;
     }, 160);
   }
+  /** A tap on an overlay's dimmed background (pressed and let go there, not
+   * a drag out of its card) calls `back`. */
+  function onBackdrop(el, isBackdrop, back) {
+    let pressed = false;
+    el.addEventListener("pointerdown", (e) => (pressed = isBackdrop(e.target)));
+    el.addEventListener("click", (e) => {
+      const was = pressed;
+      pressed = false;
+      if (was && isBackdrop(e.target)) back();
+    });
+  }
   function closePhoto() {
     shot = null;
     $("pz-photo").hidden = true;
     screen.focus({ preventScroll: true });
   }
+  // A tap on the dimmed background around the polaroid puts it away.
+  onBackdrop($("pz-photo"), (t) => t.id === "pz-photo", closePhoto);
 
   /* the photo album: on this device only (plaza-album.ts, PLAN.md) */
   const album = openAlbum();
@@ -1681,6 +1713,13 @@ export function openPlaza(options) {
     }
     renderAlbum();
   }
+  // A tap on the dimmed background, outside the album or the photo, goes
+  // back: from a photo to the grid, from the grid out of the album.
+  onBackdrop(
+    $("pz-album"),
+    (t) => t.id === "pz-album" || t.id === "pz-album-view",
+    albumBack,
+  );
   $("pz-album").addEventListener("click", (e) => {
     const b = e.target.closest("[data-al], [data-id]");
     if (!b) return;

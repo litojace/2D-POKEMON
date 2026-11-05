@@ -6090,14 +6090,39 @@ export function openFarm(options) {
     else openSheet("barn");
     renderChips();
   });
-  const closeOrb = (e) => {
-    if (orbOpen && !e.target.closest("#fm-orbpop, #fm-chips")) {
+  // A press outside a status orb's card closes it, and a press on the farm
+  // itself closes the open sheet too (the rail's lit button also does).
+  // On the farm that press only closes: it doesn't also plant, harvest or
+  // open a building. Placing decor on desktop keeps the Decorate sheet
+  // open: those taps place.
+  const closeOutside = (e) => {
+    const t = e.target,
+      orb = orbOpen && !t.closest("#fm-orbpop, #fm-chips"),
+      field = t === cv && sheet && !(sheet === "decor" && F.decorPick);
+    if (orb) {
       orbOpen = null;
       $("fm-orbpop").hidden = true;
       renderChips();
     }
+    if (field) closeSheet();
+    if ((orb || field) && t === cv) {
+      e.stopPropagation();
+      screen.focus({ preventScroll: true });
+    }
   };
-  layer.addEventListener("pointerdown", closeOrb, true);
+  layer.addEventListener("pointerdown", closeOutside, true);
+  // The deed and the level-up card: a tap on the dimmed background around
+  // them (pressed and let go there, not a drag out of the card) puts them
+  // away, like "Not now" and "Awesome!".
+  {
+    const m = $("fm-modal");
+    let pressed = false;
+    m.addEventListener("pointerdown", (e) => (pressed = e.target === m));
+    m.addEventListener("click", (e) => {
+      if (pressed && e.target === m) m.hidden = true;
+      pressed = false;
+    });
+  }
   $("fm-tools").addEventListener("click", (e) => {
     const b = e.target.closest("[data-tool]");
     if (!b) return;

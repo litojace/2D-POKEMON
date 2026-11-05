@@ -2345,3 +2345,92 @@ test("a friend on your farm: they stand by the gate, emotes show, and a Harvest 
   await snap(page, info, "farm-party");
   expect(errors).toEqual([]);
 });
+
+// A tap on the farm with a sheet or a status orb's card open only closes
+// it (it doesn't also harvest), as the lit rail button does; the land
+// deed closes on a tap on its dim background. Placing decor on desktop is
+// the exception: those taps place (the decorating test).
+test("a tap on the farm closes the open sheet or orb card and does nothing else", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 1280, height: 800 },
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    await fakeFarm(page);
+    await page.click('#hub-scenes [data-hub-scene="farm"]');
+    await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
+    await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+    await page.waitForTimeout(400);
+    const actions = () =>
+      page.evaluate(() =>
+        (window as any).__farmRequests.flatMap((r: any) => r.actions ?? []),
+      );
+    const shop = page.locator('#fm-rail [data-sheet="shop"]'),
+      sheet = page.locator("#fm-sheet");
+    await shop.click();
+    await expect(sheet).toBeVisible();
+    await expect(shop).toHaveAttribute("aria-expanded", "true");
+    expect(
+      await shop.evaluate((el) => getComputedStyle(el).boxShadow),
+    ).toContain("rgba(255, 214, 91, 0.35)");
+    // The lit button closes it again.
+    await shop.click();
+    await expect(sheet).toBeHidden();
+    await expect(shop).toHaveAttribute("aria-expanded", "false");
+    expect(
+      await shop.evaluate((el) => getComputedStyle(el).boxShadow),
+    ).not.toContain("rgba(255, 214, 91");
+
+    // A ripe plot under an open sheet: the tap only closes the sheet.
+    const ripe = await page.evaluate(() =>
+      (window as any).__farm.plotClient(0),
+    );
+    await shop.click();
+    await expect(sheet).toBeVisible();
+    await page.mouse.click(ripe.x, ripe.y);
+    await expect(sheet).toBeHidden();
+    await expect(shop).toHaveAttribute("aria-expanded", "false");
+    await page.waitForTimeout(1200);
+    expect(await actions(), "the closing tap harvested").toEqual([]);
+
+    // An orb's card: the same.
+    await page.click('#fm-chips [data-orb="weather"]');
+    await expect(page.locator("#fm-orbpop")).toBeVisible();
+    await page.mouse.click(ripe.x, ripe.y);
+    await expect(page.locator("#fm-orbpop")).toBeHidden();
+    await page.waitForTimeout(1200);
+    expect(await actions(), "the closing tap harvested").toEqual([]);
+
+    // With nothing open, the tap harvests as always.
+    await page.mouse.click(ripe.x, ripe.y);
+    await expect.poll(actions).toEqual([{ a: "harvest", plot: 0 }]);
+
+    // The land deed: a tap beside it, on its dim background, closes it
+    // (and leaves the shop open behind it).
+    await shop.click();
+    await page.click('#fm-sheet [data-tab="land"]');
+    await page.locator("#fm-sheet [data-landbuy]").first().click();
+    const deed = page.locator("#fm-modal");
+    await expect(deed.locator(".deed")).toBeVisible();
+    const out = await page.evaluate(() => {
+      const r = document
+          .querySelector("#fm-modal .deed")!
+          .getBoundingClientRect(),
+        x = r.left - 40,
+        y = r.top + r.height / 2;
+      return { x, y, hit: document.elementFromPoint(x, y)?.id };
+    });
+    expect(out.hit).toBe("fm-modal");
+    await deed.locator(".deed h5").click();
+    await expect(deed).toBeVisible();
+    await page.mouse.click(out.x, out.y);
+    await expect(deed).toBeHidden();
+    await expect(sheet).toBeVisible();
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
