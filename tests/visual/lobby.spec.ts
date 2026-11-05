@@ -613,3 +613,125 @@ test("PLAY has a drawn icon (no emoji), a glow, and a light sweep that rests whe
   expect(low.glow).toBe("none");
   await context.close();
 });
+
+// A portrait frame on the player card: portrait-frames.css gives a framed
+// card a 14px gap for the old layout, which stacked the three rows (name,
+// title, XP bar) 61px tall in the 38px inside the card, the name above it
+// and the bar below. The rows stay inside, as without a frame.
+for (const view of [
+  { width: 1440, height: 900, phone: false },
+  { width: 844, height: 390, phone: true },
+]) {
+  test(`the player card's rows stay inside it with a portrait frame at ${view.width}x${view.height}`, async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      viewport: { width: view.width, height: view.height },
+      isMobile: view.phone,
+      hasTouch: view.phone,
+    });
+    try {
+      const page = await context.newPage();
+      await page.addInitScript(() => {
+        (window as any).__raids = {
+          loadout: { frame: "conductor-frame" },
+          bosses: { "storm-twins": { clears: 99 } },
+          clears: 99,
+          highestPeril: 3,
+          bestSeconds: null,
+          titles: [],
+          cosmetics: ["conductor-frame"],
+          weekly: [],
+        };
+      });
+      const errors = await openLobby(page);
+      await expect(
+        page.locator("#account-profile .portrait-frame"),
+      ).toBeVisible();
+      const rows = await page.evaluate(() => {
+        const r = (s: string) =>
+          document.querySelector(s)!.getBoundingClientRect();
+        const card = r("#account-profile"),
+          name = r("#account-profile .account-name"),
+          title = r("#account-profile .nav-title"),
+          xp = r("#account-profile .nav-xp");
+        return {
+          top: name.top - card.top,
+          order: name.bottom <= title.top && title.bottom <= xp.top,
+          bottom: card.bottom - xp.bottom,
+        };
+      });
+      expect(rows.top, "name inside the card's top").toBeGreaterThanOrEqual(2);
+      expect(rows.order, "name, title, bar in order, apart").toBe(true);
+      expect(
+        rows.bottom,
+        "bar inside the card's bottom",
+      ).toBeGreaterThanOrEqual(2);
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+// A sheet on the narrowest phone leaves ~200 px beside it: the fighter
+// stands there with its name (the seats and arrows ran off the screen), and
+// the emote tile stays in the rail's column (moved beside the sheet it
+// landed on PLAY).
+test("a sheet on a 667x375 phone keeps the fighter on screen and the emote tile in the rail", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 667, height: 375 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    const page = await context.newPage();
+    const errors = await openLobby(page);
+    await page.click('.lobby-rail [data-lobby-action="missions"]');
+    await expect(page.locator(".lobby-layer")).toHaveAttribute(
+      "data-ui-sheet",
+      "",
+    );
+    // Measure once the stage has glided beside the sheet (looping
+    // animations, such as the fighter's idle, never finish).
+    await page.waitForFunction(() =>
+      document
+        .getAnimations()
+        .every(
+          (a) =>
+            a.playState !== "running" ||
+            a.effect?.getTiming().iterations === Infinity,
+        ),
+    );
+    const m = await page.evaluate(() => {
+      const r = (s: string) =>
+        document.querySelector(s)!.getBoundingClientRect();
+      return {
+        nameplate: r(".lobby-nameplate"),
+        fighter: r(".lobby-fighter"),
+        play: r(".lobby-play"),
+        tile: r(".lobby-emote-toggle"),
+        rail: r(".lobby-rail button"),
+      };
+    });
+    console.log("SHEETM", JSON.stringify(m));
+    for (const k of ["nameplate", "fighter"] as const) {
+      expect(m[k].right, `${k} on screen`).toBeLessThanOrEqual(667);
+      expect(m[k].bottom, `${k} above PLAY`).toBeLessThanOrEqual(m.play.top);
+    }
+    expect(m.tile.left, "emote tile in the rail's column").toBeCloseTo(
+      m.rail.left,
+      0,
+    );
+    await expect(page.locator(".lobby-slot-wrap").first()).toBeHidden();
+    await expect(page.locator('[data-lobby-step="1"]')).toBeHidden();
+    // Closing the sheet brings the seats and arrows back.
+    await page.keyboard.press("Escape");
+    await expect(page.locator('[data-lobby-step="1"]')).toBeVisible();
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});

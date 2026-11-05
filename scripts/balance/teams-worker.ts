@@ -14,13 +14,22 @@ import {
   type CharacterId,
 } from "../../packages/shared/src/index.ts";
 import { Arena } from "../../apps/server/src/simulation.ts";
-import { BotBrain, type BotDifficulty } from "../../apps/server/src/bot.ts";
+import {
+  BOT_PROFILES,
+  BotBrain,
+  type BotDifficulty,
+} from "../../apps/server/src/bot.ts";
 
 const [factorsFile, shard, shards, matches, difficulty, out] =
   process.argv.slice(2);
 const factors: Record<string, number> =
   factorsFile === "-" ? {} : JSON.parse(readFileSync(factorsFile, "utf8"));
 for (const id of FIGHTER_IDS) TEAM_TUNING[id] = factors[id] ?? 1;
+// BOT_OVERRIDE (JSON, as in round-robin.ts) changes bot profiles for this run.
+for (const [d, o] of Object.entries(
+  JSON.parse(process.env.BOT_OVERRIDE ?? "{}") as Record<string, object>,
+))
+  Object.assign(BOT_PROFILES[d as BotDifficulty], o);
 
 // TEAMS_SEED picks another set of line-ups (to check tuned factors on fresh matches).
 let seed =
