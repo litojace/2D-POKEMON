@@ -1002,6 +1002,19 @@ bubbles), which the Shop and Wardrobe never drew.
 - Tests: `roster.test.ts` (the look handed to the rig, Colors and skins on
   stage and cards, no aura), `cute-art.test.ts`, `roster-smooth.spec.ts`.
 
+### A shorter match briefing (5 Nov 2026)
+
+Owner: the "How to play" card before a match should be short and keep only
+what is needed. It now holds the VS row; one goal line with a trophy
+("First to win 3 rounds"; free-for-all: last one standing takes the round;
+teams: stay side by side for the damage bonus); a team-up gift in one line;
+the arena's name, with its tip only when it has hazards to dodge (an
+Arcade event's tip once, not twice as before); the keys as one row of chips
+(touch: one line, the buttons are on screen); party rules if any. Gone: the
+arena flavour text, the long touch paragraph, the controls table and "the
+countdown begins when everyone confirms" (the button says it). The Menu's
+How to play screen keeps the full controls list.
+
 ## Decisions (owner, 3 Nov 2026)
 
 | #   | Question                                        | Decision                                                                                                                                                         |

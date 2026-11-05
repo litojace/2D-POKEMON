@@ -1003,6 +1003,76 @@ input::placeholder {
 .overlay-card button {
   margin: 20px 5px 0;
 }
+/* The match briefing, kept short: the goal, the arena (and what to dodge
+   in it), the keys as one row of chips. */
+.brief-goal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px auto 2px;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 14px;
+}
+.brief-goal svg {
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+.brief-arena {
+  margin: 4px auto;
+  max-width: 480px;
+  color: #b9c8de;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.brief-arena b {
+  margin-right: 6px;
+  color: #d9e6f5;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.brief-keys {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  max-width: 540px;
+  margin: 12px auto 0;
+}
+.brief-keys > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 3px;
+  border: 1px solid #ffffff1f;
+  border-radius: 999px;
+  background: #ffffff0d;
+  color: #d9e6f5;
+  font-size: 12px;
+}
+.brief-keys kbd {
+  min-width: 26px;
+  padding: 2px 6px;
+  border: 1px solid #ffffff2e;
+  border-radius: 999px;
+  background: #0b1430;
+  color: #fff;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+.battle-active.touch-mode .overlay-card .brief-keys {
+  display: none;
+}
+.mobile-howto {
+  font-size: 12px;
+  color: #b9c8de;
+}
 .arena-brief {
   margin: 14px auto 4px;
   max-width: 520px;

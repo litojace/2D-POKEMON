@@ -830,6 +830,12 @@ function controlsList(full = false) {
       : "";
   return `<div class="controls-list"><span><kbd>${escape(moveText())}</kbd>Move · ${aimHow}</span><span><kbd>${escape(keyText("basic"))}</kbd>Basic attack${full ? " · hold to keep attacking" : ""}</span><span><kbd>${escape(skillsText())}</kbd>Four skills · the last is your ultimate${casting}</span>${full ? "<span><kbd>ULT</kbd>The ultimate charges as you fight · basic hits shorten cooldowns</span><span><kbd>COMBO</kbd>Each fighter has a setup → payoff combo (see the fighter panel)</span>" : ""}<span><kbd>${escape(keyText("dash"))}</kbd>Dash${full ? " · 3 second cooldown" : ""}</span><span><kbd>${escape(keyText("jump"))}</kbd>Jump over ground attacks</span>${full ? "<span><kbd>ESC</kbd>Settings · change keys under Controls</span>" : ""}</div>`;
 }
+/** The briefing's keys: one compact row (the help screen has the full list). */
+function briefKeys() {
+  const key = (k: string, what: string) =>
+    `<span><kbd>${escape(k)}</kbd>${what}</span>`;
+  return `<div class="brief-keys">${key(moveText(), "Move")}${key(keyText("basic"), "Attack")}${key(skillsText(), "Skills")}${key(keyText("dash"), "Dash")}${key(keyText("jump"), "Jump")}</div>`;
+}
 let labelState = "";
 /** Keep HUD key labels in step with bindings and the device in use. */
 function refreshControlLabels() {
@@ -1263,10 +1269,8 @@ function teamUpNote(me: Fighter) {
     (p) => p.id !== me.id && teamOf(p) === teamOf(me),
   );
   if (!partner) return "";
-  const mine = giftFrom(partner.character),
-    theirs = giftFrom(me.character);
-  const myName = me.id === myId ? "You" : escape(me.name);
-  return `<p class="teamup-note"><b>Team-up</b> Side by side, you both deal ${Math.round((TEAMUP.damage - 1) * 100)}% more damage. ${myName} get <i>${escape(mine.name)}</i> (${escape(mine.text)}) from ${escape(CHARACTERS[partner.character].name)}; ${escape(partner.name)} gets <i>${escape(theirs.name)}</i> (${escape(theirs.text)}).</p>`;
+  const gift = giftFrom(partner.character);
+  return `<p class="teamup-note"><b>Team-up</b> ${me.id === myId ? "You get" : `${escape(me.name)} gets`} <i title="${escape(gift.text)}">${escape(gift.name)}</i> from ${escape(CHARACTERS[partner.character].name)}</p>`;
 }
 /** Join a friend's room from the friends list. */
 async function joinByCode(code: string) {
@@ -2790,24 +2794,30 @@ function renderBattle() {
           ])
             .map(card)
             .join('<span class="vs-mark">VS</span>')}</div>`;
+      // Short on purpose (owner, 5 Nov 2026): who, the goal, the arena if
+      // it has something to dodge, the keys. The HUD and the fighters'
+      // panels hold the rest.
       const arena = ARENAS[state.arena ?? "classic"];
+      const event = state.arcade ? ARCADE_EVENTS[state.arcade.id] : undefined;
+      const rounds = roundsNeeded(state.mutators);
+      const goal = isTeams()
+        ? `Stay side by side: +${Math.round((TEAMUP.damage - 1) * 100)}% damage · First team to ${rounds} rounds`
+        : isFfa()
+          ? `Last one standing takes the round · First to ${rounds}`
+          : `First to win ${rounds} rounds`;
+      const place = event
+        ? `<p class="brief-arena"><b>${escape(event.name)}</b>${escape(event.tip)} · No rating change</p>`
+        : arena.hazards.length
+          ? `<p class="brief-arena"><b>${escape(arena.name)}</b>${escape(arena.tip)}</p>`
+          : `<p class="brief-arena"><b>${escape(arena.name)}</b></p>`;
       details =
-        (state.arcade
-          ? `<p class="arcade-brief"><b>${ARCADE_EVENTS[state.arcade.id].name}</b>${ARCADE_EVENTS[state.arcade.id].tip} · Arcade does not change your PvP rating.</p>`
-          : "") +
         versus +
+        `<p class="brief-goal">${menuIcon("leaderboard")}<span>${goal}</span></p>` +
         teamUpNote(me) +
-        `<p class="arena-brief"><b>Arena · ${escape(arena.name)}</b>${escape(state.arcade ? ARCADE_EVENTS[state.arcade.id].tip : arena.tip)}</p>` +
-        '<p class="mobile-howto">Touch mode: left joystick to move; big button for basic attacks, the four curved buttons for skills, DASH and JUMP below. Aim follows your nearest opponent.</p>' +
-        controlsList() +
-        "<p>" +
-        (isTeams()
-          ? `Stick with your partner and focus the same target: side by side, you both hit ${Math.round((TEAMUP.damage - 1) * 100)}% harder (a link shows between you). Your attacks pass through your teammate. First team to win ${roundWord()} rounds takes the match.`
-          : isFfa()
-            ? `Everyone is your enemy: the last fighter standing takes the round. First to win ${roundWord()} rounds takes the match.`
-            : `Use cover. First to win ${roundWord()} rounds takes the match.`) +
-        partyRulesNote() +
-        " The countdown begins when everyone confirms.</p>";
+        place +
+        briefKeys() +
+        '<p class="mobile-howto">Joystick to move · aim follows your nearest foe</p>' +
+        partyRulesNote();
       actions = `<button class="primary btn-primary" id="instructions-ready" ${confirmed ? "disabled" : ""}>${confirmed ? "Waiting for the others…" : "I’m ready"}</button>`;
     }
     if (state.phase === "countdown") {
