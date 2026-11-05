@@ -326,7 +326,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A sugar-glider kit that stores static in its antennae. Glides over trouble and stays deadly at range.",
     color: 0xffd65b,
-    health: 156,
+    health: 153,
     speed: 270,
     basic: basic(
       "spark-dart",
@@ -396,14 +396,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A stout magma newt with a living flame crest. Layers burns and hits hardest up close.",
     color: 0xff7a4f,
-    health: 137,
+    health: 151,
     speed: 240,
     basic: basic(
       "cinder-snap",
       "Cinder Snap",
       "melee",
       15,
-      480,
+      455,
       "A short-range burst of fire in front of Cindrake.",
       { range: 170, arc: 0.2, knockback: 10 },
     ),
@@ -486,7 +486,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "An axolotl duelist in a river sash. The quickest fighter; pokes, slips away, regrows, then finishes.",
     color: 0x4fd6e6,
-    health: 150,
+    health: 146,
     speed: 285,
     basic: basic(
       "tide-needle",
@@ -551,14 +551,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A crystal-fisted lynx monk. Durable, patient and brutal against careless attacks.",
     color: 0x7f9cff,
-    health: 169,
+    health: 164,
     speed: 235,
     basic: basic(
       "prism-jab",
       "Prism Jab",
       "melee",
       13,
-      330,
+      335,
       "A close-range energy punch.",
       { range: 130, arc: 0.35, knockback: 12 },
     ),
@@ -615,14 +615,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A fluffy moth that sheds glowing dust. Balanced at every range; Kindle turns pressure into a race.",
     color: 0x86f0c0,
-    health: 140,
+    health: 139,
     speed: 265,
     basic: basic(
       "glint",
       "Glint",
       "projectile",
       6,
-      305,
+      310,
       "A glowing star projectile.",
       { speed: 820, radius: 10 },
     ),
@@ -679,14 +679,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A floating three-eyed owl. Slow, heavy attacks; controls space with its third-eye ray, a booming hoot and its wing cloak.",
     color: 0xff79d2,
-    health: 142,
+    health: 134,
     speed: 255,
     basic: basic(
       "mind-dart",
       "Mind Dart",
       "projectile",
       8,
-      380,
+      390,
       "A psychic energy projectile.",
       { speed: 760, radius: 11 },
     ),
@@ -745,14 +745,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A sleepy boulder tortoise. Huge health pool, crushing swings and a shell to hide in; make them come to you.",
     color: 0xc79a5b,
-    health: 192,
+    health: 193,
     speed: 222,
     basic: basic(
       "boulder-swipe",
       "Boulder Swipe",
       "melee",
       15,
-      635,
+      630,
       "A wide melee swing in front of Terradon.",
       { range: 150, arc: 0, knockback: 25 },
     ),
@@ -816,14 +816,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A hooded lantern wisp. Hangs its haunted lantern to hold ground, and strikes from the shadows at anything its ghostfire lights up.",
     color: 0x9c6bff,
-    health: 145,
+    health: 152,
     speed: 260,
     basic: basic(
       "lantern-wisp",
       "Lantern Wisp",
       "projectile",
       9,
-      355,
+      345,
       "A ghostly projectile.",
       { speed: 720, radius: 11 },
     ),
@@ -883,14 +883,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A ring-tailed lemur whose striped tail is a living electromagnet. Yanks runners in, then won't let go.",
     color: 0xf2c94c,
-    health: 139,
+    health: 144,
     speed: 250,
     basic: basic(
       "coil-swipe",
       "Coil Swipe",
       "melee",
       12,
-      365,
+      360,
       "A quick crackling swipe in front of Coilemur.",
       { range: 140, arc: 0.3, knockback: 12 },
     ),
@@ -973,14 +973,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A shy red panda, the \"fire fox\", with a flame at the tip of its tail. Lobs burning chestnuts from the back line and curls up in its tail when caught.",
     color: 0xff8a3d,
-    health: 150,
+    health: 140,
     speed: 235,
     basic: basic(
       "ember-lob",
       "Ember Lob",
       "projectile",
       10,
-      425,
+      440,
       "A long-range ember flicked from its tail.",
       { speed: 760, range: 760, radius: 12 },
     ),
@@ -1059,7 +1059,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A floating sea angel from the ice shelf. Slows, then freezes you solid; the only champion with true Freeze.",
     color: 0x9fe8ff,
-    health: 153,
+    health: 152,
     speed: 255,
     basic: basic(
       "rime-shard",
@@ -1146,14 +1146,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A kingfisher who focuses aura through a crystal beak. The longest reach in the arena, and the frailest body.",
     color: 0x6f8dff,
-    health: 143,
+    health: 138,
     speed: 260,
     basic: basic(
       "aura-quill",
       "Aura Quill",
       "projectile",
       8,
-      365,
+      370,
       "A fast, long-range feather of aura. Up to 50% more damage the farther it flies.",
       { speed: 1000, range: 760, radius: 9, farBonus: 0.5 },
     ),
@@ -1283,14 +1283,14 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A moon rabbit with a mochi mallet. Hops through space to land right on top of you.",
     color: 0xd78bff,
-    health: 132,
+    health: 134,
     speed: 262,
     basic: basic(
       "mallet-bop",
       "Mallet Bop",
       "melee",
       14,
-      415,
+      410,
       "A bonk with the mochi mallet.",
       { range: 145, arc: 0.3, knockback: 14 },
     ),
@@ -1429,7 +1429,7 @@ export const CHARACTERS: Record<CharacterId, Character> = {
     description:
       "A midnight octopus that vanishes in its own ink. Fragile, fast, and gone before you turn around.",
     color: 0x7b5cff,
-    health: 128,
+    health: 129,
     speed: 278,
     basic: basic(
       "tentacle-lash",
@@ -1691,30 +1691,30 @@ for (const character of Object.values(CHARACTERS))
     skill.element = character.element;
 /** Seconds between basic attacks, including Kindle. */
 /**
- * 2v2 tuning, for the team mode only. With two enemies on the field melee
- * champions are in reach far more often than in a duel, so 2v2 has its own
- * strength factor per champion, in the same form as the duel tuning: health
- * × f and basic-attack interval ÷ √f (rounded to 5 ms). Duels and raids use
- * the champions' own numbers; free-for-all has FFA_TUNING. Tuned with
- * scripts/balance/tune-teams.ts.
+ * 2v2 tuning, for the team mode only: a strength factor per champion in the
+ * same form as the duel tuning, health × f and basic-attack interval ÷ √f
+ * (rounded to 5 ms). Duels and raids use the champions' own numbers;
+ * free-for-all has FFA_TUNING. Tuned with scripts/balance/tune-teams.ts; since
+ * the bot fixes (bots pick their own target, Normal no longer flips
+ * champions) every factor is within 10% of 1.
  */
 export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
-  voltkit: 1.134,
-  cindrake: 0.91,
-  tidefin: 1.028,
-  auralynx: 0.883,
-  lumoth: 1.127,
-  mystowl: 1.142,
-  terradon: 0.882,
-  duskveil: 1.092,
-  coilemur: 0.902,
-  pyranda: 1,
-  glacelle: 1.017,
-  halcyra: 1.126,
-  sunbara: 1.048,
-  astrabun: 0.855,
-  wombolder: 0.944,
-  shadopus: 0.921,
+  voltkit: 1.045,
+  cindrake: 0.993,
+  tidefin: 1,
+  auralynx: 0.97,
+  lumoth: 0.997,
+  mystowl: 1.006,
+  terradon: 0.993,
+  duskveil: 1.025,
+  coilemur: 1.006,
+  pyranda: 0.915,
+  glacelle: 0.963,
+  halcyra: 1.008,
+  sunbara: 0.966,
+  astrabun: 1.008,
+  wombolder: 1.006,
+  shadopus: 1.047,
 };
 /**
  * Free-for-all tuning, for mode "ffa" only, in the same form as TEAM_TUNING

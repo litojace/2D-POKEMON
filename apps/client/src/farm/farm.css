@@ -2544,7 +2544,7 @@ body.hub-farm:has(.fm-hint:not(.done)) #toast {
   right: 0;
   bottom: calc(100% + 8px);
   display: grid;
-  grid-template-columns: repeat(4, 76px);
+  grid-template-columns: repeat(5, 76px);
   gap: 6px;
   padding: 8px;
   border-radius: 20px;
@@ -2636,9 +2636,15 @@ body.hub-farm:has(.fm-hint:not(.done)) #toast {
 .farm-layer #fm-dock [data-wish] {
   --ac: #c9a3ff;
 }
+.farm-layer #fm-dock [data-sheet="balloon"] {
+  --ac: #ff7a59;
+}
+.farm-layer #fm-dock [data-sheet="cup"] {
+  --ac: #ffe066;
+}
 .farm-layer.phone #fm-dock {
   bottom: calc(100% + 6px);
-  grid-template-columns: repeat(4, 62px);
+  grid-template-columns: repeat(5, 62px);
   gap: 5px;
   padding: 6px;
   border-radius: 16px;
@@ -2668,4 +2674,308 @@ body.hub-farm:has(.fm-hint:not(.done)) #toast {
 .farm-layer.phone .fm-sheet {
   /* The Menu button (64px) and 8px. */
   right: calc(var(--hud-x-r) + 72px);
+}
+
+/* Friendship hearts and the invite card (migration 057). */
+.farm-layer .fm-hearts {
+  display: inline-flex;
+  gap: 2px;
+  vertical-align: -1px;
+}
+.farm-layer .fm-hearts i {
+  width: 0.62em;
+  height: 0.62em;
+  border-radius: 2px 0 2px 0;
+  transform: rotate(45deg);
+  background: #ffffff2a;
+  margin: 0 0.12em;
+}
+.farm-layer .fm-hearts i.on {
+  background: #ff7aa8;
+}
+.farm-layer .fr .acts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
+}
+.farm-layer .fm-invite {
+  display: grid;
+  gap: 0.6em;
+  padding: 0.9em;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #24324f, #2b1f3f);
+  border: 1px solid #ffffff22;
+}
+.farm-layer .fm-invite p {
+  margin: 0;
+  font-size: 0.92em;
+  opacity: 0.9;
+}
+.farm-layer .fm-invite-link {
+  display: flex;
+  gap: 0.5em;
+}
+.farm-layer .fm-invite-link input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 0.9em;
+  padding: 0.45em 0.6em;
+  border-radius: 10px;
+  border: 1px solid #ffffff33;
+  background: #0007;
+  color: #fff;
+}
+.farm-layer .fm-invite-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4em;
+}
+.farm-layer .fm-invite-steps div {
+  display: grid;
+  gap: 0.15em;
+  padding: 0.5em;
+  border-radius: 10px;
+  background: #0005;
+  font-size: 0.85em;
+  text-align: center;
+}
+.farm-layer .fm-invite-steps div.got {
+  outline: 2px solid #ffd65b;
+}
+/* The Supply Balloon's crates (migration 058). */
+.farm-layer .fm-crates {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5em;
+}
+.farm-layer .fm-crate {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 0.25em;
+  min-height: 9em;
+  padding: 0.5em;
+  border-radius: 12px;
+  background: #3a2a18;
+  border: 2px solid #6b4a24;
+  text-align: center;
+  font-size: 0.9em;
+}
+.farm-layer .fm-crate img {
+  width: 2.6em;
+  height: 3em;
+  object-fit: contain;
+}
+.farm-layer .fm-crate small {
+  opacity: 0.85;
+}
+.farm-layer .fm-crate.done {
+  background: #1d3b22;
+  border-color: #2f8f4e;
+}
+.farm-layer .fm-crate.asked {
+  border-style: dashed;
+  border-color: #78c8ff;
+}
+.farm-layer .fm-crate .got {
+  color: #7ff0a2;
+}
+.farm-layer .fm-crate .asked {
+  color: #78c8ff;
+}
+.farm-layer .fm-wide {
+  width: 100%;
+  margin: 0.4em 0;
+}
+/* The Farm Stall's shelves (migration 059). */
+.farm-layer .fm-shelves {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5em;
+}
+.farm-layer .fm-shelf {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 0.25em;
+  min-height: 8.5em;
+  padding: 0.5em;
+  border-radius: 12px;
+  border: 1px solid #ffffff22;
+  background: #183039;
+  color: inherit;
+  font: inherit;
+  text-align: center;
+}
+.farm-layer .fm-shelf img {
+  width: 2.4em;
+  height: 2.8em;
+  object-fit: contain;
+}
+.farm-layer .fm-shelf.empty {
+  border-style: dashed;
+  background: #0c1a21;
+  cursor: pointer;
+}
+.farm-layer .fm-shelf.empty b {
+  font-size: 1.6em;
+}
+.farm-layer .fm-shelf.picked {
+  outline: 2px solid #ffd65b;
+}
+.farm-layer .fm-shelf.sold {
+  border-color: #7ff0a2;
+  background: #173a2a;
+}
+.farm-layer .fm-stall-form {
+  display: grid;
+  gap: 0.5em;
+  margin-top: 0.6em;
+  padding: 0.7em;
+  border-radius: 12px;
+  background: #0c1a21;
+  border: 1px solid #ffffff22;
+}
+.farm-layer .fm-stall-form label {
+  display: grid;
+  gap: 0.2em;
+  font-size: 0.9em;
+}
+.farm-layer .fm-stall-form select,
+.farm-layer .fm-stall-form input {
+  font: inherit;
+  width: 100%;
+}
+.farm-layer .fm-stall-form select {
+  padding: 0.35em;
+  border-radius: 8px;
+  background: #183039;
+  color: #fff;
+  border: 1px solid #ffffff33;
+}
+.farm-layer .fm-stall-form input[type="range"] {
+  accent-color: #ffd65b;
+}
+.farm-layer img.mini {
+  width: 1.1em;
+  height: 1.3em;
+  object-fit: contain;
+  vertical-align: -0.2em;
+}
+/* The Valley Cup sheet (migration 060). */
+.farm-layer .fm-cup-form {
+  display: flex;
+  gap: 0.5em;
+  align-items: end;
+  margin-bottom: 0.6em;
+}
+.farm-layer .fm-cup-form label {
+  flex: 1;
+  display: grid;
+  gap: 0.2em;
+  font-size: 0.9em;
+}
+.farm-layer .fm-cup-form input {
+  font: inherit;
+  padding: 0.45em 0.6em;
+  border-radius: 10px;
+  border: 1px solid #ffffff33;
+  background: #0007;
+  color: #fff;
+  min-width: 0;
+}
+.farm-layer .fm-coop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6em;
+  margin-bottom: 0.4em;
+}
+.farm-layer .fm-coop > div {
+  display: grid;
+}
+.farm-layer .fm-tiers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4em;
+}
+.farm-layer .fm-tiers .tier {
+  display: grid;
+  justify-items: center;
+  gap: 0.2em;
+  padding: 0.5em;
+  border-radius: 10px;
+  background: #0006;
+  text-align: center;
+  font-size: 0.85em;
+}
+.farm-layer .fm-tiers .tier.got {
+  outline: 2px solid #ffd65b;
+}
+.farm-layer .fm-tiers .got,
+.farm-layer .item.mine b {
+  color: #ffd65b;
+}
+.farm-layer .fm-members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35em;
+}
+.farm-layer .fm-members .mem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  padding: 0.2em 0.6em 0.2em 0.2em;
+  border-radius: 999px;
+  background: #0006;
+  font-size: 0.85em;
+}
+.farm-layer .fm-members img {
+  width: 1.7em;
+  height: 1.7em;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #ffffff22;
+}
+.farm-layer .fm-league {
+  display: grid;
+  gap: 0.25em;
+}
+.farm-layer .fm-league .lrow {
+  display: grid;
+  grid-template-columns: 1.6em minmax(0, 1fr) auto;
+  gap: 0.5em;
+  padding: 0.35em 0.6em;
+  border-radius: 8px;
+  background: #0006;
+  font-size: 0.9em;
+}
+.farm-layer .fm-league .lrow.me {
+  outline: 1px solid #ffd65b;
+  background: #3a3210;
+}
+/* Friends on your farm and emotes (migration 061). */
+.farm-layer .fm-here {
+  border-color: #7ff0a288;
+}
+.farm-layer .fm-here > div {
+  display: grid;
+}
+.farm-layer .fm-emotes {
+  display: inline-flex;
+  gap: 0.2em;
+}
+.farm-layer .fm-emotes button {
+  width: 2em;
+  height: 2em;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid #ffffff2a;
+  background: #ffffff14;
+  font-size: 1em;
+  cursor: pointer;
+}
+.farm-layer .fm-emotes button:active {
+  transform: scale(0.9);
 }

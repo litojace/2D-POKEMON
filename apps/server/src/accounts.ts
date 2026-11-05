@@ -43,7 +43,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "051_level_cosmetics.sql";
+export const LATEST_MIGRATION = "061_farm_party.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -596,6 +596,226 @@ export function installAccountRoutes(
       // A dog's fine changes both wallets.
       onPlayerChanged(account.id);
       onPlayerChanged(data.friend);
+      res.json(result);
+    }),
+  );
+  // Farm gifts, friendship days and farm invites (migration 057).
+  app.get(
+    "/api/farm/gifts",
+    route(false, async (_req, res, token, account) => {
+      res.setHeader("Cache-Control", "no-store");
+      const result = await provider.rpc(token, "arena_farm_gifts", {});
+      // Invite rewards may have just been paid.
+      onPlayerChanged(account.id);
+      res.json(result);
+    }),
+  );
+  const friendBody = z.object({ friend: z.string().uuid() }).strict();
+  app.post(
+    "/api/farm/gifts/send",
+    route(false, async (req, res, token) => {
+      const { friend } = friendBody.parse(req.body);
+      res.json(
+        await provider.rpc(token, "arena_farm_gift_send", { p_friend: friend }),
+      );
+    }),
+  );
+  app.post(
+    "/api/farm/gifts/open",
+    route(false, async (req, res, token) => {
+      const { friend } = friendBody.parse(req.body);
+      res.json(
+        await provider.rpc(token, "arena_farm_gift_open", { p_friend: friend }),
+      );
+    }),
+  );
+  // The Supply Balloon and friends' help (migration 058).
+  app.get(
+    "/api/farm/balloon",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await provider.rpc(token, "arena_farm_balloon", {}));
+    }),
+  );
+  app.post(
+    "/api/farm/balloon",
+    route(false, async (req, res, token, account) => {
+      const data = z
+        .object({
+          request: z.string().uuid(),
+          kind: z.enum(["fill", "ask", "launch"]),
+          slot: z.number().int().min(0).max(5).optional(),
+        })
+        .strict()
+        .parse(req.body);
+      const result = await provider.rpc(token, "arena_farm_balloon_act", {
+        p_request: data.request,
+        p_kind: data.kind,
+        p_slot: data.slot ?? null,
+      });
+      if (data.kind === "launch") onPlayerChanged(account.id);
+      res.json(result);
+    }),
+  );
+  app.get(
+    "/api/farm/help",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await provider.rpc(token, "arena_farm_help_list", {}));
+    }),
+  );
+  app.post(
+    "/api/farm/help",
+    route(false, async (req, res, token, account) => {
+      const data = z
+        .object({
+          request: z.string().uuid(),
+          friend: z.string().uuid(),
+          slot: z.number().int().min(0).max(5),
+        })
+        .strict()
+        .parse(req.body);
+      const result = await provider.rpc(token, "arena_farm_help_fill", {
+        p_request: data.request,
+        p_friend: data.friend,
+        p_slot: data.slot,
+      });
+      onPlayerChanged(account.id);
+      res.json(result);
+    }),
+  );
+  // The Farm Stall and the Valley Paper (migration 059).
+  app.get(
+    "/api/farm/stall",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await provider.rpc(token, "arena_farm_stall", {}));
+    }),
+  );
+  app.post(
+    "/api/farm/stall",
+    route(false, async (req, res, token, account) => {
+      const data = z
+        .object({
+          request: z.string().uuid(),
+          kind: z.enum(["list", "unlist", "collect", "buy"]),
+          slot: z.number().int().min(0).max(5),
+          crop: z
+            .string()
+            .max(32)
+            .regex(/^[a-z]+$/)
+            .optional(),
+          mutation: z
+            .string()
+            .max(64)
+            .regex(/^[a-z+]*$/)
+            .optional(),
+          qty: z.number().int().min(1).max(10).optional(),
+          price: z.number().int().min(1).max(100000).optional(),
+          seller: z.string().uuid().optional(),
+        })
+        .strict()
+        .parse(req.body);
+      const result = await provider.rpc(token, "arena_farm_stall_act", {
+        p_request: data.request,
+        p_kind: data.kind,
+        p_slot: data.slot,
+        p_crop: data.crop ?? null,
+        p_mutation: data.mutation ?? null,
+        p_qty: data.qty ?? null,
+        p_price: data.price ?? null,
+        p_seller: data.seller ?? null,
+      });
+      if (data.kind === "collect" || data.kind === "buy")
+        onPlayerChanged(account.id);
+      if (data.seller) onPlayerChanged(data.seller);
+      res.json(result);
+    }),
+  );
+  // Co-ops and the weekly Valley Cup (migration 060).
+  app.get(
+    "/api/farm/cup",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await provider.rpc(token, "arena_farm_cup", {}));
+    }),
+  );
+  app.post(
+    "/api/farm/cup",
+    route(false, async (req, res, token, account) => {
+      const data = z
+        .object({
+          request: z.string().uuid(),
+          kind: z.enum(["create", "join", "leave", "take", "drop", "claim"]),
+          arg: z.string().max(40).optional(),
+        })
+        .strict()
+        .parse(req.body);
+      const result = await provider.rpc(token, "arena_farm_cup_act", {
+        p_request: data.request,
+        p_kind: data.kind,
+        p_arg: data.arg ?? null,
+      });
+      if (data.kind === "claim") onPlayerChanged(account.id);
+      res.json(result);
+    }),
+  );
+  // Live visits, Harvest Parties and farm likes (migration 061).
+  app.post(
+    "/api/farm/here",
+    route(false, async (req, res, token, account) => {
+      const data = z
+        .object({
+          owner: z.string().uuid().optional(),
+          emote: z.enum(["wave", "heart", "party", "laugh"]).optional(),
+        })
+        .strict()
+        .parse(req.body);
+      res.json(
+        await provider.rpc(token, "arena_farm_here", {
+          p_owner: data.owner ?? account.id,
+          p_emote: data.emote ?? null,
+        }),
+      );
+    }),
+  );
+  app.post(
+    "/api/farm/gone",
+    route(false, async (_req, res, token) => {
+      await provider.rpc(token, "arena_farm_gone", {});
+      res.json({ ok: true });
+    }),
+  );
+  app.get(
+    "/api/farm/tour",
+    route(false, async (_req, res, token) => {
+      res.setHeader("Cache-Control", "no-store");
+      res.json(await provider.rpc(token, "arena_farm_tour", {}));
+    }),
+  );
+  app.post(
+    "/api/farm/like",
+    route(false, async (req, res, token) => {
+      const { owner } = z
+        .object({ owner: z.string().uuid() })
+        .strict()
+        .parse(req.body);
+      res.json(
+        await provider.rpc(token, "arena_farm_like", { p_owner: owner }),
+      );
+    }),
+  );
+  app.post(
+    "/api/farm/invite",
+    route(false, async (req, res, token, account) => {
+      const { code } = z
+        .object({ code: z.string().regex(/^[0-9A-Fa-f]{8}$/) })
+        .strict()
+        .parse(req.body);
+      const result = (await provider.rpc(token, "arena_farm_invite_claim", {
+        p_code: code,
+      })) as { ok?: boolean };
+      if (result?.ok) onFriendsChanged(account.id);
       res.json(result);
     }),
   );

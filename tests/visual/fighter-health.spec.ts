@@ -59,14 +59,23 @@ for (const viewport of [
         ["voltkit", "cindrake", "tidefin", "auralynx"],
         ["lumoth", "mystowl", "terradon", "duskveil"],
       ]) {
-        await page.evaluate(async (champions) => {
+        // Full health is the champion's in this mode and room size (the
+        // free-for-all tuning changes it), as the nameplate draws it.
+        const full = await page.evaluate(async (champions) => {
           const w = window as any,
-            { CHARACTERS } = await import("/rooms.ts");
+            { maxHealth } = await import("/rooms.ts");
           w.__snap.players.forEach((p: any, i: number) => {
             p.character = champions[i];
-            p.hp = CHARACTERS[p.character].health - 17;
+            p.hp =
+              maxHealth(p.character, w.__snap.mode, w.__snap.players.length) -
+              17;
           });
           w.__push();
+          return maxHealth(
+            champions[0],
+            w.__snap.mode,
+            w.__snap.players.length,
+          );
         }, champions);
         await expect
           .poll(() =>
@@ -79,6 +88,9 @@ for (const viewport of [
             }),
           )
           .toBe(true);
+        await expect(
+          page.locator('.fighter-health[data-team="self"]'),
+        ).toHaveAttribute("aria-valuemax", String(full));
         await expect(
           page.locator('.fighter-health[data-team="self"]'),
         ).toHaveAttribute(
