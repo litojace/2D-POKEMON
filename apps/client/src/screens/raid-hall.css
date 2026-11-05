@@ -18,100 +18,145 @@
 .rh-note.is-problem {
   color: #ffb4bc;
 }
+/* Seven vertical boss cards and Attack practice, four to a row: two even
+   rows. A row is half the hall's height (no scrolling on a tall screen)
+   but never squatter than 1 : 1.15, so the cards stay portrait and the
+   hall scrolls a little on a short one. */
+.rh-hall-body {
+  container-type: size;
+}
 .ui-grid.rh-grid {
-  grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
-  grid-auto-rows: auto;
+  --gap: var(--sp-3);
+  gap: var(--gap);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: max(
+    calc((100cqh - var(--gap)) / 2),
+    calc((100cqw - 3 * var(--gap)) / 4 * 1.15)
+  );
+}
+.rh-notes:not(:empty) ~ .rh-grid {
+  grid-auto-rows: calc((100cqw - 3 * var(--gap)) / 4 * 1.3);
 }
 .rh-card {
+  position: relative;
   display: grid;
-  grid-template-rows: auto auto 1fr;
-  gap: 8px;
+  align-content: end;
   min-width: 0;
-  padding: 8px;
+  overflow: hidden;
+  padding: 0;
   border-radius: var(--rad-lg);
-  border: 1px solid color-mix(in srgb, var(--boss) 40%, transparent);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--boss) 12%, var(--ui-bg-1)),
-    var(--ui-bg-1)
-  );
+  border: 1px solid color-mix(in srgb, var(--boss) 45%, transparent);
+  background: var(--ui-bg-1);
   text-align: left;
-  transition: border-color var(--dur-1);
+  transition:
+    border-color var(--dur-1),
+    transform var(--dur-2);
 }
 .rh-card:hover,
 .rh-card:focus-visible {
   border-color: var(--ui-accent);
 }
-.rh-card-art {
-  position: relative;
-  aspect-ratio: 16 / 10;
-  border-radius: var(--rad-md);
-  overflow: hidden;
-  background: var(--ui-bg-0);
+@media (hover: hover) {
+  .rh-card:not(.rh-practice):hover {
+    transform: translateY(-3px);
+  }
 }
+.rh-card-art,
 .rh-card-art img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
+}
+.rh-card-art img {
   object-fit: cover;
-  display: block;
+  object-position: 50% 35%;
+  transition: transform var(--dur-3);
 }
-.rh-card-art .ui-tag {
+.rh-card:hover .rh-card-art img {
+  transform: scale(1.03);
+}
+/* The text sits on a dark foot of the picture. */
+.rh-card:not(.rh-practice)::after {
+  content: "";
   position: absolute;
-  left: 8px;
-  top: 8px;
-}
-.rh-card-art .ui-tag:not(.is-new):not(.is-lock) {
-  background: #0b1020d9;
-}
-.rh-card-art .ui-tag svg {
-  width: 11px;
-  height: 11px;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    #0b102099 0%,
+    transparent 22%,
+    transparent 52%,
+    #0b1020f2 88%
+  );
+  pointer-events: none;
 }
 .rh-card.is-locked .rh-card-art img,
 .rh-card.is-soon .rh-card-art img {
   filter: grayscale(0.6) brightness(0.55);
 }
-.rh-card-text {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-  padding: 0 2px;
-}
-.rh-card-row {
+.rh-card-top {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 10px;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+.rh-card-top .ui-tag:not(.is-new):not(.is-lock) {
+  background: #0b1020d9;
+}
+.rh-card-top .ui-tag svg {
+  width: 11px;
+  height: 11px;
+}
+.rh-card-text {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 4px;
   min-width: 0;
+  padding: 14px;
 }
-.rh-card-row .ui-h {
-  font-size: 20px;
+.rh-card-name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(20px, 2.1vw, 30px);
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.rh-card-text .ui-note {
-  white-space: nowrap;
+.rh-card-line {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
+  color: #d6def0;
 }
 .rh-stars {
   flex: none;
+  padding: 2px 6px;
+  border-radius: var(--rad-pill, 999px);
+  background: #0b1020b3;
   color: var(--ui-accent);
   letter-spacing: 1px;
   font-size: 14px;
 }
 .rh-stars i {
   font-style: normal;
-  color: #ffffff2a;
+  color: #ffffff3a;
 }
 .rh-card-foot {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  align-self: end;
-  padding: 0 2px;
+  margin-top: 4px;
 }
 .rh-tricks {
   display: flex;
@@ -123,6 +168,8 @@
 .rh-practice {
   place-items: center;
   align-content: center;
+  gap: 10px;
+  padding: 16px;
   text-align: center;
   border-style: dashed;
   border-color: var(--ui-line-2);
@@ -130,13 +177,17 @@
 }
 .rh-practice .rh-card-text {
   justify-items: center;
+  padding: 0;
 }
-.rh-practice .rh-card-text .ui-note {
+.rh-practice .ui-h {
+  font-size: 22px;
+}
+.rh-practice .rh-card-name {
   white-space: normal;
 }
 .rh-practice-icon {
-  width: 64px;
-  height: 64px;
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -144,8 +195,8 @@
   color: var(--ui-accent);
 }
 .rh-practice-icon svg {
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
 }
 
 /* -------------------------------------------------------- boss page */
@@ -565,44 +616,46 @@
     padding: 0 8px;
   }
   .ui-grid.rh-grid {
-    grid-template-columns: repeat(auto-fill, minmax(136px, 1fr));
-    gap: 6px;
+    --gap: 6px;
   }
   .rh-card {
-    gap: 3px;
-    padding: 4px;
-    border-radius: var(--rad-sm);
+    border-radius: var(--rad-md);
   }
-  .rh-card-art {
-    aspect-ratio: 2 / 1;
-    border-radius: 7px;
+  .rh-card-top {
+    left: 5px;
+    right: 5px;
+    top: 5px;
   }
-  .rh-card-art .ui-tag {
-    left: 4px;
-    top: 4px;
-  }
-  .rh-card-row .ui-h {
-    font-size: 14px;
+  .rh-card-top .ui-tag {
+    font-size: 9px;
   }
   .rh-stars {
     font-size: 10px;
+    padding: 1px 4px;
   }
-  .rh-card-text .ui-note,
+  .rh-card-text {
+    padding: 6px 7px;
+    gap: 2px;
+  }
+  .rh-card-name {
+    font-size: 15px;
+  }
+  .rh-card-line,
   .rh-card-foot {
     display: none;
   }
   .rh-practice {
-    min-height: 120px;
+    padding: 6px;
+    gap: 6px;
   }
   .rh-practice-icon {
-    width: 34px;
-    height: 34px;
+    width: 40px;
+    height: 40px;
   }
   .rh-practice-icon svg {
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
   }
-  .rh-practice .rh-card-text .ui-note,
   .rh-practice > .ui-btn {
     display: none;
   }

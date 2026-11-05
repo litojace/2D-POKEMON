@@ -306,6 +306,14 @@ const SCREENS = {
   async raids(page, shot) {
     await hubMenu(page, "raids");
     await page.locator(".rh-room").waitFor({ state: "visible" });
+    // The cards' portraits load lazily: wait until they are drawn.
+    await page.evaluate(() =>
+      Promise.all(
+        [...document.querySelectorAll(".rh-room img")].map((i) =>
+          i.decode().catch(() => {}),
+        ),
+      ),
+    );
     await page.waitForTimeout(1500);
     await shot("raid-hall");
     await page.click('[data-raid-card="grumblecrag"]');
