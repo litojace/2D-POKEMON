@@ -97,6 +97,42 @@ from 30 to 25 first, to keep melee basics within the game's limit.
 
 All sixteen now win 47–52% in duels (before: 42–60%).
 
+### Duels re-tuned for the fixed bots
+
+After the bot fix below ([Bots: Hard and Normal](#bots-hard-and-normal)),
+Normal bots stopped flipping champions' win rates, and the duel numbers had
+to be tuned again: the old ~50% averages had come from Hard and Normal
+flipping in opposite directions. Two passes with `scripts/balance/tune.ts`
+(eight rounds of 20 games per pairing per difficulty, then, after
+re-calibrating `dazeBy` for the new numbers, one more 40-game step), written
+into the champions' numbers with `scripts/balance/apply-factors.ts`. Win
+rates: Hard and Normal averaged, 1,200 duels per champion on seeds the tuner
+never saw (`RR_SEED=60000`); before is `main` with the fixed bots.
+
+| Champion  | Health    | Basic attack (ms) | Before | After | Hard / Normal after |
+| --------- | --------- | ----------------- | ------ | ----- | ------------------- |
+| Voltkit   | 156 → 153 | 270               | 49.1%  | 49.9% | 46.2% / 53.5%       |
+| Cindrake  | 137 → 151 | 480 → 455         | 27.8%  | 51.0% | 54.2% / 47.7%       |
+| Tidefin   | 150 → 146 | 240               | 53.4%  | 53.1% | 52.3% / 54%         |
+| Auralynx  | 169 → 164 | 330 → 335         | 57.3%  | 46.6% | 50% / 43.3%         |
+| Lumoth    | 140 → 139 | 305 → 310         | 52.6%  | 48.3% | 48.3% / 48.2%       |
+| Mystowl   | 142 → 134 | 380 → 390         | 66.3%  | 51.9% | 53.2% / 50.5%       |
+| Terradon  | 192 → 193 | 635 → 630         | 39.4%  | 50.8% | 48.7% / 52.8%       |
+| Duskveil  | 145 → 152 | 355 → 345         | 40.0%  | 51.1% | 48.2% / 54%         |
+| Coilemur  | 139 → 144 | 365 → 360         | 44.5%  | 50.0% | 51.2% / 48.7%       |
+| Pyranda   | 150 → 140 | 425 → 440         | 61.0%  | 49.6% | 45.8% / 53.5%       |
+| Glacelle  | 153 → 152 | 325               | 48.6%  | 48.8% | 48.5% / 49%         |
+| Halcyra   | 143 → 138 | 365 → 370         | 60.3%  | 50.5% | 54.2% / 46.8%       |
+| Sunbara   | 190       | 335               | 55.9%  | 52.8% | 54.8% / 50.7%       |
+| Astrabun  | 132 → 134 | 415 → 410         | 45.9%  | 50.4% | 48.7% / 52%         |
+| Wombolder | 173       | 535               | 48.7%  | 46.5% | 45.5% / 47.5%       |
+| Shadopus  | 128 → 129 | 305               | 49.3%  | 49.0% | 50.3% / 47.8%       |
+
+All sixteen now win 46.5–53.1% (before: 27.8–66.3%; standard error about
+1.4 points). Every champion's Hard–Normal gap is under 8 points (largest
+7.7, Pyranda; average 4.1). Normal still takes 3.0% of rounds from Hard and
+Easy 31.3% from Normal.
+
 ### 2v2
 
 2v2 has its own per-champion tuning (`TEAM_TUNING` in
@@ -235,7 +271,7 @@ seconds favours brawlers too), so the fix (`apps/server/src/bot.ts`):
 - Normal is closer to Hard on the settings that favoured brawlers (reaction
   0.36 s, aim error 0.215, decisions every 0.19 s, dodge 43%, rest 12%) and
   is held back instead by a per-champion share of dazed seconds (`dazeBy`,
-  15–42%: no moving, attacking or skills for that second), calibrated in
+  15–41%: no moving, attacking or skills for that second), calibrated in
   bot duels so each champion does as well against Normal as against Hard.
   Hard has no daze.
 
@@ -275,16 +311,13 @@ bosses (one opponent) are unaffected.
 
 ## Known issues
 
-- Bot-measured balance has moved with the bot fixes above. Duels (Hard and
-  Normal averaged, `RR_SEED=60000`): Cindrake 28%, Terradon 39%, Duskveil
-  40%, Coilemur 45%, Mystowl 66%, Pyranda 61%, Halcyra 60%, Auralynx 57%,
-  Sunbara 56%, each within about 3 points of its Hard number before (the
-  old ~50% averages came from Hard and Normal flipping). 2v2 with
+- Bot-measured balance has moved with the bot fixes above (duels are
+  re-tuned, see above). 2v2 with
   `TEAM_TUNING`: 30–76% (47–52% with the old bots on the same line-ups;
   bot targeting alone moves it to 31–64%). Four-player free-for-all with
-  `FFA_TUNING`: 9–50% against a fair 25%. The duel numbers, `TEAM_TUNING`
-  and `FFA_TUNING` were all tuned with the old bots; re-tuning them is a
-  separate decision.
+  `FFA_TUNING`: 9–50% against a fair 25% (both measured before the duel
+  re-tune). `TEAM_TUNING` and `FFA_TUNING` were tuned with the old bots and
+  are re-tuned next.
 - Shadopus wins 27% of three-player free-for-alls (fair 33%) with the
   scaled four-player factor; it is within noise of fair with four players
   (measured with the old bots).

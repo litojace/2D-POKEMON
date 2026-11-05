@@ -36,7 +36,7 @@ const ROSTER: Record<
     name: "Cindrake",
     element: "Fire",
     role: "Burst damage fighter",
-    basic: ["Cinder Snap", 480],
+    basic: ["Cinder Snap", 455],
     skills: [
       ["Crest Flare", 8],
       ["Magma Bomb", 12],
@@ -60,7 +60,7 @@ const ROSTER: Record<
     name: "Auralynx",
     element: "Aura",
     role: "Counter specialist",
-    basic: ["Prism Jab", 330],
+    basic: ["Prism Jab", 335],
     skills: [
       ["Prism Shot", 8],
       ["Shatter Paw", 12],
@@ -72,7 +72,7 @@ const ROSTER: Record<
     name: "Lumoth",
     element: "Light",
     role: "Versatile fighter",
-    basic: ["Glint", 305],
+    basic: ["Glint", 310],
     skills: [
       ["Wing Dust", 8],
       ["Eyespot Flash", 12],
@@ -84,7 +84,7 @@ const ROSTER: Record<
     name: "Mystowl",
     element: "Psychic",
     role: "High-power duelist",
-    basic: ["Mind Dart", 380],
+    basic: ["Mind Dart", 390],
     skills: [
       ["Third-Eye Ray", 8],
       ["Booming Hoot", 12],
@@ -96,7 +96,7 @@ const ROSTER: Record<
     name: "Terradon",
     element: "Earth",
     role: "Defensive tank",
-    basic: ["Boulder Swipe", 635],
+    basic: ["Boulder Swipe", 630],
     skills: [
       ["Shell Bash", 8],
       ["Shell Up", 16],
@@ -108,7 +108,7 @@ const ROSTER: Record<
     name: "Duskveil",
     element: "Shadow",
     role: "Trickster / area control",
-    basic: ["Lantern Wisp", 355],
+    basic: ["Lantern Wisp", 345],
     skills: [
       ["Shade Crawl", 8],
       ["Ghostfire", 12],
@@ -120,7 +120,7 @@ const ROSTER: Record<
     name: "Coilemur",
     element: "Electric",
     role: "Grappler",
-    basic: ["Coil Swipe", 365],
+    basic: ["Coil Swipe", 360],
     skills: [
       ["Magnet Lash", 12],
       ["Static Clamp", 12],
@@ -132,7 +132,7 @@ const ROSTER: Record<
     name: "Pyranda",
     element: "Fire",
     role: "Artillery",
-    basic: ["Ember Lob", 425],
+    basic: ["Ember Lob", 440],
     skills: [
       ["Chestnut Mortar", 8],
       ["Hot Coals", 12],
@@ -156,7 +156,7 @@ const ROSTER: Record<
     name: "Halcyra",
     element: "Aura",
     role: "Marksman",
-    basic: ["Aura Quill", 365],
+    basic: ["Aura Quill", 370],
     skills: [
       ["Pinning Quill", 8],
       ["Focus Shot", 12],
@@ -180,7 +180,7 @@ const ROSTER: Record<
     name: "Astrabun",
     element: "Psychic",
     role: "Blink duelist",
-    basic: ["Mallet Bop", 415],
+    basic: ["Mallet Bop", 410],
     skills: [
       ["Moon Hop", 8],
       ["Mochi Pound", 12],
