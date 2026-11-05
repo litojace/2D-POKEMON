@@ -380,12 +380,12 @@ async function fakeFarm(page: Page) {
           }
           if (a.a === "buy-pasture" && !farm.pasture && farm.level >= 9) {
             farm.pasture = true;
-            farm.milkAt = at(4800);
+            farm.milkAt = at(1200);
             farm.leaves -= 900;
             return { ok: true, pasture: true, milkAt: farm.milkAt };
           }
           if (a.a === "milk" && farm.pasture) {
-            farm.milkAt = at(19200);
+            farm.milkAt = at(7200);
             farm.barn = [...farm.barn, { crop: "milk", mutation: "", qty: 2 }];
             return { ok: true, milk: 2, milkAt: farm.milkAt };
           }
@@ -1109,7 +1109,7 @@ for (const viewport of [
       await tapPasture();
       const sheet = page.locator("#fm-sheet");
       const item = sheet.locator(".item", { hasText: "Cow Pasture" });
-      await expect(item).toContainText("2 Storm Milk every 5h 20m");
+      await expect(item).toContainText("2 Storm Milk every 2h");
       await page.waitForTimeout(800);
       await snap(
         page,
@@ -1123,12 +1123,12 @@ for (const viewport of [
       await expect(item.locator("button")).toHaveText("Owned");
       await sheet.locator("[data-close]").click();
       await expect(sheet).toBeHidden();
-      // Grazing: the server set the first milk 1 h 20 m out. The toast rounds
+      // Grazing: the server set the first milk 20 m out. The toast rounds
       // to the second, so a tap within half a second of opening still reads
-      // 1h 20m (seen on CI); later, 1h 19m.
+      // 20m (seen on CI); later, 19m.
       await tapPasture();
       await expect(page.locator("#toast")).toContainText(
-        /The cow is grazing\. Milk in 1h (19|20)m/,
+        /The cow is grazing\. Milk in (19|20)m/,
       );
       // Ready: a milk bubble over the cow; a tap collects 2 Storm Milk.
       await page.evaluate(() => {

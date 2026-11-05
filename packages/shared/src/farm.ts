@@ -767,7 +767,7 @@ export const FARM_DECOR: readonly {
 export const DECOR_SLOTS = 8;
 export const charmBonus = (charm: number) =>
   Math.min(25, Math.floor(charm / 2));
-/** The Cow Pasture (migration 049; the prototype's numbers). */
+/** The Cow Pasture (migration 049; milk times from 064). */
 export const PASTURE = {
   level: 9,
   price: 900,
@@ -776,9 +776,9 @@ export const PASTURE = {
   milkXp: 8,
   /** Storm Milk per milking, and how long the cow takes (seconds). */
   milk: 2,
-  milkSeconds: 5 * 3600 + 20 * 60,
+  milkSeconds: 2 * 3600,
   /** The first milk after the pasture opens. */
-  firstMilkSeconds: 80 * 60,
+  firstMilkSeconds: 20 * 60,
 } as const;
 /** Storm Milk: a barn good, not a crop. Its price of the day is 0.85–1.35×. */
 export const MILK = {
