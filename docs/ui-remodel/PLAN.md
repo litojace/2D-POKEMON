@@ -1033,7 +1033,8 @@ drag, does not move. Test: `touch-recovery.spec.ts`.
 ### Step 5, part 2: the rooms (built 5 Nov 2026)
 
 As approved on 4 Nov (`images/mockups/room-*.webp`): the raid room and the
-private 1v1, 2v2 and free-for-all rooms share one frame. Pictures:
+private 1v1, 2v2 and free-for-all rooms share one frame. Before and after:
+[raid room](images/step5/room.webp); every size, raid and 2v2, in
 [`images/step5/`](images/step5/) (`room-*.webp`).
 
 - `apps/client/src/screens/room-view.ts` (the seats column: markup and
