@@ -1176,3 +1176,285 @@ export interface FarmOrderResult {
     who: string;
   } | null;
 }
+
+/** Friendship levels (migration 057): friendship days needed for each. */
+export const FARM_BONDS = [
+  { name: "Sprout", days: 0 },
+  { name: "Bud", days: 3 },
+  { name: "Bloom", days: 7 },
+  { name: "Grove", days: 30 },
+  { name: "Evergreen", days: 90 },
+] as const;
+/** Farm invite rewards: invites that reached farm level 10. */
+export const FARM_INVITE_STEPS = [
+  { invites: 1, reward: "200 Gold Leaves" },
+  { invites: 3, reward: "300 Gold Leaves + a Gold Fertilizer" },
+  { invites: 5, reward: "1,000 Gold Leaves" },
+] as const;
+/** What the person you invite gets when they reach farm level 10. */
+export const FARM_INVITE_WELCOME = 200;
+/** Gift parcels you can open in a Pacific day. */
+export const FARM_GIFT_OPEN_CAP = 20;
+export interface FarmGiftFriend {
+  id: string;
+  name: string;
+  fighter: string | null;
+  level: number;
+  /** Friendship days (a day a parcel between you was opened). */
+  days: number;
+  /** Index into FARM_BONDS. */
+  bond: number;
+  /** You sent them today's parcel. */
+  sent: boolean;
+  /** Parcels from them waiting to be opened. */
+  waiting: number;
+}
+export interface FarmGiftsState {
+  day: string;
+  openedToday: number;
+  openCap: number;
+  friends: FarmGiftFriend[];
+  invites: {
+    code: string;
+    joined: number;
+    counted: number;
+    claimed: number[];
+    invitedBy: string | null;
+  };
+}
+export interface FarmGiftResult {
+  ok: boolean;
+  error?: string;
+  crop?: string;
+  qty?: number;
+  state: FarmGiftsState;
+}
+
+/** The Supply Balloon (migration 058). */
+export const BALLOON = {
+  crates: 6,
+  /** Crates you can ask friends for, per balloon. */
+  ask: 3,
+  /** Launch pays this × the crates' market value. */
+  pay: 1.6,
+  /** A helper earns this × the crate's market value… */
+  help: 1.2,
+  /** …up to this many leaves a Pacific day. */
+  helpCap: 600,
+  /** Minutes until the next balloon. */
+  nextMinutes: 60,
+} as const;
+export interface FarmCrate {
+  crop: string;
+  qty: number;
+  state: "open" | "asked" | "done";
+  /** The friend who filled it, if a friend did. */
+  by: string | null;
+}
+export interface FarmBalloon {
+  crates: FarmCrate[] | null;
+  arrivesAt: string | null;
+  launches: number;
+  leaves: number | null;
+  xp: number | null;
+  helperStars: number;
+  helperLeavesToday: number;
+  helperCap: number;
+  /** Helper id → name. */
+  helpers: Record<string, string>;
+}
+export interface FarmBalloonResult {
+  balloon: FarmBalloon;
+  ok: boolean;
+  error?: string | null;
+  repeated?: boolean;
+  gained?: { leaves: number; xp: number; bonus: string } | null;
+}
+export interface FarmHelpRequest {
+  friend: string;
+  name: string;
+  fighter: string | null;
+  slot: number;
+  crop: string;
+  qty: number;
+  reward: number;
+  have: number;
+}
+export interface FarmHelpList {
+  requests: FarmHelpRequest[];
+  helperStars: number;
+  helperLeavesToday: number;
+  helperCap: number;
+}
+export interface FarmHelpResult {
+  help: FarmHelpRequest[];
+  ok: boolean;
+  error?: string | null;
+  repeated?: boolean;
+  gained?: { leaves: number; star: number } | null;
+}
+
+/** The Farm Stall (migration 059). */
+export const STALL = {
+  shelves: 6,
+  maxQty: 10,
+  /** A shelf's price: this range × what the Market pays you today. */
+  minPrice: 0.5,
+  maxPrice: 1.5,
+  /** The stall keeps 10% of each sale. */
+  fee: 0.1,
+  /** Stall sales pay at most this many leaves a Pacific day. */
+  earnCap: 3000,
+  /** Shelves you can buy a Pacific day. */
+  buyCap: 10,
+} as const;
+/** The price band for a shelf of `qty` at a unit Market price. */
+export function stallPriceRange(unit: number, qty: number) {
+  return {
+    min: Math.ceil(unit * qty * STALL.minPrice),
+    max: Math.floor(unit * qty * STALL.maxPrice),
+  };
+}
+export interface FarmStallShelf {
+  slot: number;
+  crop: string;
+  mutation: string;
+  qty: number;
+  price: number;
+  sold: boolean;
+  buyer: string | null;
+  /** What collecting pays (price less the fee), once sold. */
+  collect: number | null;
+}
+export interface FarmPaperItem {
+  seller: string;
+  name: string;
+  fighter: string | null;
+  slot: number;
+  crop: string;
+  mutation: string;
+  qty: number;
+  price: number;
+  /** What the Market would pay you for the same crops today. */
+  market: number;
+}
+export interface FarmStall {
+  shelves: FarmStallShelf[];
+  earnedToday: number;
+  boughtToday: number;
+  earnCap: number;
+  buyCap: number;
+  paper: FarmPaperItem[];
+}
+export interface FarmStallResult extends FarmStall {
+  ok: boolean;
+  error?: string | null;
+  repeated?: boolean;
+  gained?: Record<string, unknown> | null;
+}
+export interface FarmStallAction {
+  kind: "list" | "unlist" | "collect" | "buy";
+  slot: number;
+  crop?: string;
+  mutation?: string;
+  qty?: number;
+  price?: number;
+  seller?: string;
+}
+
+/** The weekly Valley Cup (migration 060): what each task asks for. */
+export const CUP_TASKS: Record<
+  string,
+  { name: string; goal: number; pts: number }
+> = {
+  harvest: { name: "Harvest 30 crops", goal: 30, pts: 320 },
+  orders: { name: "Deliver 2 orders", goal: 2, pts: 300 },
+  sell: { name: "Sell 2 stall shelves to friends", goal: 2, pts: 280 },
+  crates: { name: "Fill 3 balloon crates", goal: 3, pts: 260 },
+  help: { name: "Fill a friend's balloon crate", goal: 1, pts: 220 },
+  gifts: { name: "Send 3 seed gifts", goal: 3, pts: 150 },
+};
+export const CUP = { members: 10, tasksPerWeek: 9, tierPts: 2000 } as const;
+export interface FarmCup {
+  week: string;
+  endsAt: string;
+  coop: {
+    id: string;
+    name: string;
+    code: string;
+    members: {
+      id: string;
+      name: string;
+      fighter: string | null;
+      pts: number;
+    }[];
+  } | null;
+  pts: number;
+  tiers: {
+    tier: number;
+    pts: number;
+    reward: string;
+    reached: boolean;
+    claimed: boolean;
+  }[];
+  tasks: { id: string; goal: number; pts: number }[];
+  active: { task: string; goal: number; pts: number; progress: number } | null;
+  done: number;
+  taken: number;
+  rank: number | null;
+  coops: number;
+  ranking: { rank: number; name: string; pts: number; me: boolean }[];
+}
+export interface FarmCupResult {
+  cup: FarmCup;
+  ok: boolean;
+  error?: string | null;
+  repeated?: boolean;
+  gained?: Record<string, unknown> | null;
+}
+
+/** Live visits and Harvest Parties (migration 061). */
+export const PARTY = {
+  /** Extra crops a harvest gives during a party. */
+  bonus: 1,
+  /** Party minutes a farm gets a Pacific day. */
+  minutes: 60,
+} as const;
+export const FARM_EMOTES = {
+  wave: "👋",
+  heart: "❤️",
+  party: "🎉",
+  laugh: "😄",
+} as const;
+export type FarmEmote = keyof typeof FARM_EMOTES;
+export interface FarmHere {
+  owner: string;
+  present: {
+    id: string;
+    name: string;
+    fighter: string | null;
+    /** This one owns the farm. */
+    owner: boolean;
+    emote: FarmEmote | null;
+    emoteAt: string | null;
+  }[];
+  party: boolean;
+  /** Party seconds left today on this farm. */
+  partyLeft: number;
+}
+export interface FarmTourEntry {
+  id: string;
+  name: string;
+  fighter: string | null;
+  level: number;
+  me: boolean;
+  likes: number;
+  liked: boolean;
+  /** The owner is on their farm now. */
+  here: boolean;
+}
+export interface FarmLikeResult {
+  ok: boolean;
+  error?: string | null;
+  tour: FarmTourEntry[];
+}

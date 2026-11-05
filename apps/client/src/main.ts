@@ -55,6 +55,19 @@ import {
 } from "./farm/farm-screen";
 import type {
   FarmActResult,
+  FarmHere,
+  FarmLikeResult,
+  FarmTourEntry,
+  FarmCup,
+  FarmCupResult,
+  FarmStall,
+  FarmStallResult,
+  FarmBalloon,
+  FarmBalloonResult,
+  FarmHelpList,
+  FarmHelpResult,
+  FarmGiftResult,
+  FarmGiftsState,
   FarmFriend,
   FarmOrderResult,
   FarmState,
@@ -112,7 +125,6 @@ import { fighterArt, fighterAvatar, scopeIds } from "./fighter-art";
 import { fighterSkillColor, wornArt } from "./skins/skin-art";
 import { drawCollectionAura } from "./skins/collection-fx";
 import { colourPreview } from "./colour-preview";
-import { drawBattleAura } from "./battle-aura";
 import { stadiumCrowd } from "./stadium";
 import { paintArenaFloor, scaledPainter } from "./arena-floor";
 import {
@@ -221,6 +233,12 @@ import { controlsCapturing, showControlsScreen } from "./controls-screen";
 import { watchBattleZoom } from "./zoom-guard";
 import { KO_FEEL, hitFeel, hitStrength, rumble } from "./game-feel";
 import { captureInvite, clearInvite, pendingInvite } from "./invite";
+import {
+  captureFarmInvite,
+  clearFarmInvite,
+  farmInviteUrl,
+  pendingFarmInvite,
+} from "./farm/farm-invite";
 import { lockScrollWhileOpen, setScrollLock } from "./scroll-lock";
 import { watchMenuMotion } from "./menu-motion";
 import {
@@ -888,6 +906,27 @@ watchRotation();
 watchCosmeticPreviews();
 // Remember a room from an invite link (?room=ABC123) before the first render.
 if (captureInvite()) inviteHinted = false;
+// A farm invite (?farm=CODE) waits until the new player is signed in.
+captureFarmInvite();
+let farmInviteSent = false;
+/** Claim a farm invite once the player is signed in (migration 057). */
+function claimFarmInvite() {
+  const code = pendingFarmInvite();
+  if (!code || farmInviteSent || !accountsUI?.account) return;
+  farmInviteSent = true;
+  clearFarmInvite();
+  void accountsUI
+    .api("/api/farm/invite", { code })
+    .then((r) => {
+      const res = r as { ok?: boolean; inviter?: string; error?: string };
+      if (res.ok)
+        toast(
+          `You and ${res.inviter} are now friends. Reach farm level 10 and you both get rewards!`,
+        );
+      else if (res.error) toast(res.error);
+    })
+    .catch(() => {});
+}
 let savingRoomPick = "";
 let lockAttempt = 0;
 /**
@@ -1763,6 +1802,57 @@ function syncFarm(want: boolean) {
     reduced: reducedMotion,
     low: farmLow,
     sound: (cue, step) => audio.farm(cue, step),
+    gifts: async () =>
+      (await accountsUI.api("/api/farm/gifts")) as FarmGiftsState,
+    giftSend: async (friend) =>
+      (await accountsUI.api("/api/farm/gifts/send", {
+        friend,
+      })) as FarmGiftResult,
+    giftOpen: async (friend) =>
+      (await accountsUI.api("/api/farm/gifts/open", {
+        friend,
+      })) as FarmGiftResult,
+    inviteLink: (code) => farmInviteUrl(location.origin, code),
+    here: async (owner, emote) =>
+      (await accountsUI.api("/api/farm/here", {
+        ...(owner ? { owner } : {}),
+        ...(emote ? { emote } : {}),
+      })) as FarmHere,
+    gone: async () => {
+      await accountsUI.api("/api/farm/gone", {});
+    },
+    tour: async () =>
+      (await accountsUI.api("/api/farm/tour")) as FarmTourEntry[],
+    like: async (owner) =>
+      (await accountsUI.api("/api/farm/like", { owner })) as FarmLikeResult,
+    cup: async () => (await accountsUI.api("/api/farm/cup")) as FarmCup,
+    cupAct: async (kind, arg) =>
+      (await accountsUI.api("/api/farm/cup", {
+        request: crypto.randomUUID(),
+        kind,
+        ...(arg === undefined ? {} : { arg }),
+      })) as FarmCupResult,
+    stall: async () => (await accountsUI.api("/api/farm/stall")) as FarmStall,
+    stallAct: async (action) =>
+      (await accountsUI.api("/api/farm/stall", {
+        request: crypto.randomUUID(),
+        ...action,
+      })) as FarmStallResult,
+    balloon: async () =>
+      (await accountsUI.api("/api/farm/balloon")) as FarmBalloon,
+    balloonAct: async (kind, slot) =>
+      (await accountsUI.api("/api/farm/balloon", {
+        request: crypto.randomUUID(),
+        kind,
+        ...(slot === undefined ? {} : { slot }),
+      })) as FarmBalloonResult,
+    help: async () => (await accountsUI.api("/api/farm/help")) as FarmHelpList,
+    helpFill: async (friend, slot) =>
+      (await accountsUI.api("/api/farm/help", {
+        request: crypto.randomUUID(),
+        friend,
+        slot,
+      })) as FarmHelpResult,
     rainSound: (level) => audio.farmRainSound(level),
     load: async () => (await accountsUI.api("/api/farm")) as FarmState,
     act: async (actions) =>
@@ -2125,6 +2215,7 @@ function renderMenu(revealSelection = false) {
     $("join").onclick = () => void play("join");
     $("watch").onclick = () =>
       void watchRoom($<HTMLInputElement>("code").value);
+    claimFarmInvite();
     // Opened from an invite link: join as soon as we're signed in and online.
     const invite = pendingInvite();
     if (invite) {
@@ -5079,27 +5170,6 @@ class ArenaScene extends Phaser.Scene {
         48 - jump * 0.2,
         18 - jump * 0.1,
       );
-      // Trait aura at the feet; a stealthed opponent shows none.
-      const stealthed = serverPlayer.statuses.some((s) => s.kind === "stealth");
-      if (!reducedMotion && !(stealthed && p.id !== myId)) {
-        drawBattleAura(
-          g,
-          c.element,
-          x,
-          feetY,
-          this.feelClock / 1000,
-          stealthed ? 0.5 : 0.9,
-        );
-        if (serverPlayer.clone)
-          drawBattleAura(
-            g,
-            c.element,
-            serverPlayer.clone.x,
-            serverPlayer.clone.y + WORLD_ART.fighterFeet * view.fighterY * 0.7,
-            this.feelClock / 1000,
-            0.3,
-          );
-      }
       g.lineStyle(
         2,
         p.id === myId

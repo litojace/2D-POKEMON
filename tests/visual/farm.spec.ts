@@ -146,6 +146,183 @@ async function fakeFarm(page: Page) {
       }
       // Friends' farms (migration 047).
       if (url.endsWith("/api/farm/friends")) return json(w.__friends ?? []);
+      // The Farm Stall (059), the Valley Cup (060), live visits and likes (061).
+      if (url.endsWith("/api/farm/stall") && !init?.body)
+        return json(
+          w.__stall ?? {
+            shelves: [],
+            earnedToday: 0,
+            boughtToday: 0,
+            earnCap: 3000,
+            buyCap: 10,
+            paper: [],
+          },
+        );
+      if (url.endsWith("/api/farm/stall")) {
+        const body = JSON.parse(String(init?.body));
+        w.__farmRequests.push({ stall: body.kind, ...body });
+        const st = w.__stall;
+        if (body.kind === "list")
+          st.shelves.push({
+            slot: body.slot,
+            crop: body.crop,
+            mutation: body.mutation ?? "",
+            qty: body.qty,
+            price: body.price,
+            sold: false,
+            buyer: null,
+            collect: null,
+          });
+        if (body.kind === "buy")
+          st.paper = st.paper.filter(
+            (p: any) => !(p.seller === body.seller && p.slot === body.slot),
+          );
+        return json({
+          ...st,
+          ok: true,
+          gained:
+            body.kind === "buy" ? { crop: "melon", qty: 2, price: 50 } : null,
+        });
+      }
+      if (url.endsWith("/api/farm/cup") && !init?.body)
+        return json(
+          w.__cup ?? {
+            week: "2026-11-02",
+            endsAt: at(86400),
+            coop: null,
+            pts: 0,
+            tiers: [],
+            tasks: [],
+            active: null,
+            done: 0,
+            taken: 0,
+            rank: null,
+            coops: 0,
+            ranking: [],
+          },
+        );
+      if (url.endsWith("/api/farm/cup")) {
+        const body = JSON.parse(String(init?.body));
+        w.__farmRequests.push({ cup: body.kind, arg: body.arg });
+        const c = w.__cup;
+        if (body.kind === "create")
+          c.coop = {
+            id: "c1",
+            name: body.arg,
+            code: "ABC234",
+            members: [{ id: "me", name: "tester", fighter: "voltkit", pts: 0 }],
+          };
+        if (body.kind === "take") {
+          const t = c.tasks.find((x: any) => x.id === body.arg);
+          c.active = { task: t.id, goal: t.goal, pts: t.pts, progress: 0 };
+          c.taken++;
+        }
+        if (body.kind === "claim") c.tiers[+body.arg - 1].claimed = true;
+        return json({ cup: c, ok: true });
+      }
+      if (url.endsWith("/api/farm/here"))
+        return json(
+          w.__here ?? {
+            owner: "me",
+            present: [],
+            party: false,
+            partyLeft: 3600,
+          },
+        );
+      if (url.endsWith("/api/farm/gone")) return json({ ok: true });
+      if (url.endsWith("/api/farm/tour")) return json(w.__tour ?? []);
+      if (url.endsWith("/api/farm/like"))
+        return json({ ok: true, tour: w.__tour ?? [] });
+      // The Supply Balloon and friends' help (migration 058).
+      if (url.endsWith("/api/farm/balloon") && !init?.body)
+        return json(
+          w.__balloon ?? {
+            crates: null,
+            arrivesAt: null,
+            launches: 0,
+            leaves: null,
+            xp: null,
+            helperStars: 0,
+            helperLeavesToday: 0,
+            helperCap: 600,
+            helpers: {},
+          },
+        );
+      if (url.endsWith("/api/farm/balloon")) {
+        const body = JSON.parse(String(init?.body));
+        w.__farmRequests.push({ balloon: body.kind, slot: body.slot });
+        const b = w.__balloon;
+        if (body.kind === "launch") {
+          const gained = { leaves: b.leaves, xp: b.xp, bonus: "gold" };
+          Object.assign(b, {
+            crates: null,
+            arrivesAt: at(3600),
+            launches: b.launches + 1,
+          });
+          return json({ balloon: b, ok: true, gained });
+        }
+        b.crates[body.slot].state = body.kind === "ask" ? "asked" : "done";
+        return json({ balloon: b, ok: true });
+      }
+      if (url.endsWith("/api/farm/help") && !init?.body)
+        return json(
+          w.__help ?? {
+            requests: [],
+            helperStars: 0,
+            helperLeavesToday: 0,
+            helperCap: 600,
+          },
+        );
+      if (url.endsWith("/api/farm/help")) {
+        const body = JSON.parse(String(init?.body));
+        w.__farmRequests.push({ help: body.friend, slot: body.slot });
+        w.__help.requests = w.__help.requests.filter(
+          (r: any) => r.slot !== body.slot,
+        );
+        w.__help.helperStars++;
+        return json({
+          help: w.__help.requests,
+          ok: true,
+          gained: { leaves: 26, star: 1 },
+        });
+      }
+      // Gifts, friendship days and invites (migration 057).
+      if (url.endsWith("/api/farm/gifts"))
+        return json(
+          w.__gifts ?? {
+            day: "2026-11-05",
+            openedToday: 0,
+            openCap: 20,
+            friends: [],
+            invites: {
+              code: "AB12CD34",
+              joined: 0,
+              counted: 0,
+              claimed: [],
+              invitedBy: null,
+            },
+          },
+        );
+      if (
+        url.endsWith("/api/farm/gifts/send") ||
+        url.endsWith("/api/farm/gifts/open")
+      ) {
+        const body = JSON.parse(String(init?.body));
+        const g = w.__gifts,
+          f = g.friends.find((x: any) => x.id === body.friend);
+        w.__farmRequests.push({
+          gift: url.endsWith("send") ? "send" : "open",
+          ...body,
+        });
+        if (url.endsWith("send")) {
+          f.sent = true;
+          return json({ ok: true, state: g });
+        }
+        f.waiting--;
+        f.days++;
+        g.openedToday++;
+        return json({ ok: true, crop: "carrot", qty: 3, state: g });
+      }
       if (url.endsWith("/api/farm/visit/act")) {
         const body = JSON.parse(String(init?.body));
         w.__farmRequests.push(body);
@@ -1238,7 +1415,7 @@ for (const viewport of [
       );
       await page.click("#fm-menu-btn");
       await expect(dock).toBeVisible();
-      await expect(dock.locator("button")).toHaveCount(8);
+      await expect(dock.locator("button")).toHaveCount(10);
       await page.waitForTimeout(300);
       await snap(
         page,
@@ -1262,7 +1439,7 @@ for (const viewport of [
         viewport.width - (viewport.inset ?? 0),
       );
       expect(tools.r).toBeLessThan(menu.l);
-      // Tiles line up in a 4 × 2 grid.
+      // Tiles line up in a 5 × 2 grid.
       const tiles = await dock.locator("button").evaluateAll((els) =>
         els.map((e) => {
           const r = e.getBoundingClientRect();
@@ -1274,7 +1451,7 @@ for (const viewport of [
           ];
         }),
       );
-      expect(new Set(tiles.map((t) => t[0])).size).toBe(4);
+      expect(new Set(tiles.map((t) => t[0])).size).toBe(5);
       expect(new Set(tiles.map((t) => t[1])).size).toBe(2);
       expect(new Set(tiles.map((t) => `${t[2]}x${t[3]}`)).size).toBe(1);
       // A tile opens its sheet and folds the menu.
@@ -1882,5 +2059,385 @@ test("tapping the farm's animals, trees and buildings reacts and sends nothing; 
   await page.evaluate(() => (window as any).__farm.tod(0.95));
   await page.waitForTimeout(400);
   await snap(page, info, "farm-night");
+  expect(errors).toEqual([]);
+});
+
+test("friends trade seed gifts and grow friendship days; the invite tab shares a link", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openLobby(page);
+  await fakeFarm(page);
+  await page.evaluate(() => {
+    (window as any).__gifts = {
+      day: "2026-11-05",
+      openedToday: 0,
+      openCap: 20,
+      friends: [
+        {
+          id: "00000000-0000-4000-8000-0000000000a1",
+          name: "Mai",
+          fighter: "voltkit",
+          level: 44,
+          days: 6,
+          bond: 1,
+          sent: false,
+          waiting: 1,
+        },
+        {
+          id: "00000000-0000-4000-8000-0000000000a2",
+          name: "Khoa",
+          fighter: "tidefin",
+          level: 38,
+          days: 31,
+          bond: 3,
+          sent: true,
+          waiting: 0,
+        },
+      ],
+      invites: {
+        code: "AB12CD34",
+        joined: 2,
+        counted: 1,
+        claimed: [1],
+        invitedBy: null,
+      },
+    };
+  });
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+  // A waiting gift puts a dot on Friends (and so on the folded Menu).
+  await expect(page.locator("#fm-fr-dot")).not.toHaveAttribute("hidden", "");
+  await expect(page.locator("#fm-menu-btn")).toHaveAttribute("data-dot", "");
+  await openFromMenu(page, "friends");
+  await page.click('#fm-sheet [data-tab="gifts"]');
+  const sheet = page.locator("#fm-sheet");
+  await expect(sheet).toContainText("Mai · Lv 44");
+  await expect(sheet).toContainText(
+    "Bud · 6 friendship days · 1 more to Bloom",
+  );
+  await expect(sheet).toContainText("Grove");
+  await expect(
+    sheet.locator('[data-gift-send="00000000-0000-4000-8000-0000000000a2"]'),
+  ).toBeDisabled();
+  await snap(page, info, "farm-gifts");
+  await sheet
+    .locator('[data-gift-open="00000000-0000-4000-8000-0000000000a1"]')
+    .click();
+  await expect(sheet).toContainText("7 friendship days");
+  await expect(sheet.locator("[data-gift-open]")).toHaveCount(0);
+  await sheet
+    .locator('[data-gift-send="00000000-0000-4000-8000-0000000000a1"]')
+    .click();
+  await expect(
+    sheet.locator('[data-gift-send="00000000-0000-4000-8000-0000000000a1"]'),
+  ).toBeDisabled();
+  expect(
+    await page.evaluate(() =>
+      (window as any).__farmRequests
+        .filter((r: any) => r.gift)
+        .map((r: any) => r.gift),
+    ),
+  ).toEqual(["open", "send"]);
+  await page.click('#fm-sheet [data-tab="invite"]');
+  await expect(page.locator("#fm-invite-link")).toHaveValue(/\?farm=AB12CD34$/);
+  await expect(sheet).toContainText("reached level 10: 1");
+  await snap(page, info, "farm-invite");
+  expect(errors).toEqual([]);
+});
+
+test("the Supply Balloon: fill a crate, ask friends, launch it; help a friend's crate", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openLobby(page);
+  await fakeFarm(page);
+  await page.evaluate(() => {
+    const crate = (
+      crop: string,
+      qty: number,
+      state = "open",
+      by: string | null = null,
+    ) => ({ crop, qty, state, by });
+    (window as any).__balloon = {
+      crates: [
+        crate("wheat", 3),
+        crate("carrot", 6),
+        crate("wheat", 2, "done"),
+        crate("carrot", 4, "done", "f1"),
+        crate("wheat", 1, "done"),
+        crate("melon", 2, "asked"),
+      ],
+      arrivesAt: null,
+      launches: 0,
+      leaves: 140,
+      xp: 90,
+      helperStars: 3,
+      helperLeavesToday: 40,
+      helperCap: 600,
+      helpers: { f1: "Mai" },
+    };
+    (window as any).__help = {
+      requests: [
+        {
+          friend: "00000000-0000-4000-8000-0000000000a1",
+          name: "Mai",
+          fighter: "voltkit",
+          slot: 4,
+          crop: "wheat",
+          qty: 2,
+          reward: 12,
+          have: 4,
+        },
+      ],
+      helperStars: 3,
+      helperLeavesToday: 40,
+      helperCap: 600,
+    };
+  });
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+  // The balloon floats by the farm; a tap on it opens its sheet.
+  await page.evaluate(() => (window as any).__farm.look(1080, 300));
+  await page.waitForTimeout(500);
+  await snap(page, info, "farm-balloon-world");
+  const pt = await page.evaluate(() =>
+    (window as any).__farm.worldClient(1080, 60),
+  );
+  await page.mouse.click(pt.x, pt.y);
+  const sheet = page.locator("#fm-sheet");
+  await expect(sheet).toContainText("Supply balloon");
+  await expect(sheet).toContainText("Filled by Mai");
+  await expect(sheet).toContainText("Friends can fill it");
+  // 4 wheat in the barn: the 3-wheat crate can be filled.
+  await sheet.locator('[data-bfill="0"]').click();
+  await expect(sheet.locator(".fm-crate").nth(0)).toHaveClass(/done/);
+  await sheet.locator('[data-bask="1"]').click();
+  await expect(sheet.locator(".fm-crate").nth(1)).toHaveClass(/asked/);
+  await snap(page, info, "farm-balloon-sheet");
+  // Everything filled (the fake fills the asked crates): launch.
+  await page.evaluate(() =>
+    (window as any).__balloon.crates.forEach((c: any) => (c.state = "done")),
+  );
+  await page.evaluate(() => (window as any).__farm.F && null);
+  await page.click("#fm-menu-btn");
+  await page.click('#fm-dock [data-sheet="balloon"]');
+  await page.click("#fm-menu-btn");
+  await page.click('#fm-dock [data-sheet="balloon"]');
+  await expect(sheet.locator("[data-blaunch]")).toBeEnabled();
+  await sheet.locator("[data-blaunch]").click();
+  await expect(sheet).toBeHidden();
+  expect(
+    await page.evaluate(() =>
+      (window as any).__farmRequests
+        .filter((r: any) => r.balloon)
+        .map((r: any) => r.balloon),
+    ),
+  ).toEqual(["fill", "ask", "launch"]);
+  // Helping a friend from Friends → Help.
+  await openFromMenu(page, "friends");
+  await page.click('#fm-sheet [data-tab="help"]');
+  await expect(sheet).toContainText("Mai needs 2 Breeze Wheat");
+  await sheet.locator("[data-hfill]").click();
+  await expect(sheet).toContainText("No requests right now");
+  expect(errors).toEqual([]);
+});
+
+test("the Farm Stall: put crops on a shelf, and buy from a friend in the Valley Paper", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openLobby(page);
+  await fakeFarm(page);
+  await page.evaluate(() => {
+    (window as any).__stall = {
+      shelves: [
+        {
+          slot: 1,
+          crop: "carrot",
+          mutation: "",
+          qty: 4,
+          price: 26,
+          sold: true,
+          buyer: "Mai",
+          collect: 23,
+        },
+      ],
+      earnedToday: 0,
+      boughtToday: 0,
+      earnCap: 3000,
+      buyCap: 10,
+      paper: [
+        {
+          seller: "00000000-0000-4000-8000-0000000000a1",
+          name: "Mai",
+          fighter: "voltkit",
+          slot: 0,
+          crop: "melon",
+          mutation: "",
+          qty: 2,
+          price: 50,
+          market: 44,
+        },
+      ],
+    };
+  });
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+  await openFromMenu(page, "market");
+  await page.click('#fm-sheet [data-tab="stall"]');
+  const sheet = page.locator("#fm-sheet");
+  await expect(sheet).toContainText("Sold to Mai");
+  await sheet.locator('[data-shelf="0"]').click();
+  await expect(page.locator("#fm-st-crop")).toBeVisible();
+  // 4 wheat in the barn; the price follows the slider.
+  await page.locator("#fm-st-qty").selectOption("3");
+  await page.locator("#fm-st-price").fill("1.5");
+  await expect(page.locator("#fm-st-read")).toContainText("Asking");
+  await snap(page, info, "farm-stall");
+  await sheet.locator("[data-slist]").click();
+  await expect(sheet.locator(".fm-shelf").nth(0)).toContainText(
+    "3 Breeze Wheat",
+  );
+  const list = await page.evaluate(() =>
+    (window as any).__farmRequests.find((r: any) => r.stall === "list"),
+  );
+  expect(list).toMatchObject({ kind: "list", slot: 0, crop: "wheat", qty: 3 });
+  // The server's band: 0.5×–1.5× the market price.
+  const unit = await page.evaluate(() => {
+    const f = (window as any).__farm.F;
+    return Math.max(1, Math.round(5 * (f.market.mult.wheat?.m ?? 1)));
+  });
+  expect(list.price).toBeLessThanOrEqual(Math.floor(unit * 3 * 1.5));
+  expect(list.price).toBeGreaterThanOrEqual(Math.ceil(unit * 3 * 0.5));
+  await page.click('#fm-sheet [data-tab="paper"]');
+  await expect(sheet).toContainText("2 Storm Melon");
+  await expect(sheet).toContainText("you grow it at Lv 35");
+  await sheet.locator("[data-sbuy]").click();
+  await expect(sheet).toContainText("shelves are empty");
+  expect(errors).toEqual([]);
+});
+
+test("the Valley Cup: make a co-op, take a task, claim a tier", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openLobby(page);
+  await fakeFarm(page);
+  await page.evaluate(() => {
+    (window as any).__cup = {
+      week: "2026-11-02",
+      endsAt: new Date(Date.now() + 3 * 86400_000).toISOString(),
+      coop: null,
+      pts: 2400,
+      tiers: [
+        {
+          tier: 1,
+          pts: 2000,
+          reward: "3 Super Fertilizer",
+          reached: true,
+          claimed: false,
+        },
+        {
+          tier: 2,
+          pts: 4000,
+          reward: "Rare seeds",
+          reached: false,
+          claimed: false,
+        },
+        {
+          tier: 3,
+          pts: 6000,
+          reward: "500 Gold Leaves",
+          reached: false,
+          claimed: false,
+        },
+      ],
+      tasks: [
+        { id: "harvest", goal: 30, pts: 320 },
+        { id: "orders", goal: 2, pts: 300 },
+      ],
+      active: null,
+      done: 1,
+      taken: 1,
+      rank: 2,
+      coops: 5,
+      ranking: [
+        { rank: 1, name: "Moon Diggers", pts: 3410, me: false },
+        { rank: 2, name: "Thunder Sprouts", pts: 2400, me: true },
+      ],
+    };
+  });
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+  await openFromMenu(page, "cup");
+  const sheet = page.locator("#fm-sheet");
+  await expect(sheet).toContainText("Make a co-op");
+  await page.fill("#fm-cup-name", "Thunder Sprouts");
+  await sheet.locator("[data-cupcreate]").click();
+  await expect(sheet).toContainText("Code ABC234");
+  await expect(sheet).toContainText("#2 of 5");
+  await sheet.locator('[data-cuptake="harvest"]').click();
+  await expect(sheet).toContainText("Harvest 30 crops");
+  await expect(sheet).toContainText("0/30");
+  await sheet.locator('[data-cupclaim="1"]').click();
+  await expect(sheet).toContainText("Claimed");
+  await snap(page, info, "farm-cup");
+  expect(
+    await page.evaluate(() =>
+      (window as any).__farmRequests
+        .filter((r: any) => r.cup)
+        .map((r: any) => r.cup),
+    ),
+  ).toEqual(["create", "take", "claim"]);
+  expect(errors).toEqual([]);
+});
+
+test("a friend on your farm: they stand by the gate, emotes show, and a Harvest Party starts", async ({
+  page,
+}, info) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openLobby(page);
+  await fakeFarm(page);
+  await page.evaluate(() => {
+    (window as any).__here = {
+      owner: "me",
+      present: [
+        {
+          id: "00000000-0000-4000-8000-0000000000a1",
+          name: "Mai",
+          fighter: "voltkit",
+          owner: false,
+          emote: "wave",
+          emoteAt: new Date().toISOString(),
+        },
+      ],
+      party: true,
+      partyLeft: 1800,
+    };
+    const f = window.fetch;
+    (window as any).__pings = [];
+    window.fetch = (input: any, init?: any) => {
+      if (String(input).endsWith("/api/farm/here"))
+        (window as any).__pings.push(init?.body ? JSON.parse(init.body) : {});
+      return f(input, init);
+    };
+  });
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+  const pill = page.locator("#fm-here");
+  await expect(pill).toContainText("Mai is here");
+  await expect(pill).toContainText("Harvest Party: +1 crop a harvest");
+  await pill.locator('[data-emote="heart"]').click();
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window as any).__pings.some((p: any) => p.emote === "heart"),
+      ),
+    )
+    .toBe(true);
+  await page.evaluate(() => (window as any).__farm.look(780, 760));
+  await page.waitForTimeout(400);
+  await snap(page, info, "farm-party");
   expect(errors).toEqual([]);
 });

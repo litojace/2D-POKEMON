@@ -1,7 +1,6 @@
-import { WORLD_ART } from "../../packages/shared/src/world-art";
 import { svgMarkup } from "../../apps/client/tests/svg-markup";
 import { describe, expect, it } from "vitest";
-import { CHARACTERS, FIGHTER_IDS } from "@arena/shared";
+import { FIGHTER_IDS } from "@arena/shared";
 import {
   PROPORTIONS,
   creatureLayers,
@@ -9,11 +8,6 @@ import {
   proportioned,
 } from "../../apps/client/src/creature-design";
 import { rigAnchors, rigAssets } from "../../apps/client/src/animation/assets";
-import {
-  AURA_SCALE,
-  drawBattleAura,
-  type AuraPainter,
-} from "../../apps/client/src/battle-aura";
 import { rosterDetail, rosterGrid } from "./roster-markup";
 describe("cute proportions", () => {
   it("grows the face and shrinks the body while keeping the feet planted", () => {
@@ -93,60 +87,5 @@ describe("menu art", () => {
     expect(rosterGrid("tidefin") + rosterDetail("tidefin")).not.toContain(
       "trait-aura",
     );
-  });
-});
-describe("battle auras", () => {
-  const recorder = () => {
-    const points: number[][] = [];
-    let calls = 0;
-    const p: AuraPainter = {
-      fillStyle: () => p,
-      lineStyle: () => p,
-      fillEllipse: (x, y, w, h) => (
-        calls++,
-        points.push([x - w / 2, y - h / 2], [x + w / 2, y + h / 2]),
-        p
-      ),
-      strokeEllipse: (x, y, w, h) => (
-        calls++,
-        points.push([x - w / 2, y - h / 2], [x + w / 2, y + h / 2]),
-        p
-      ),
-      fillCircle: (x, y, r) => (
-        calls++,
-        points.push([x - r, y - r], [x + r, y + r]),
-        p
-      ),
-      fillTriangle: (a, b, c, d, e, f) => (
-        calls++,
-        points.push([a, b], [c, d], [e, f]),
-        p
-      ),
-      lineBetween: (a, b, c, d) => (calls++, points.push([a, b], [c, d]), p),
-    };
-    return { p, points, calls: () => calls };
-  };
-  it("draws a compact ground effect for every element", () => {
-    for (const id of FIGHTER_IDS) {
-      for (const t of [0, 0.37, 1.9, 12.4]) {
-        const r = recorder();
-        drawBattleAura(r.p, CHARACTERS[id].element, 500, 400, t);
-        expect(r.calls(), id).toBeGreaterThan(2);
-        for (const [x, y] of r.points) {
-          expect(Number.isFinite(x) && Number.isFinite(y)).toBe(true);
-          // Stays around the feet: within the scaled ring, rising no higher than the head.
-          expect(Math.abs(x - 500)).toBeLessThanOrEqual(40 * AURA_SCALE);
-          expect(y - 400).toBeLessThanOrEqual(
-            40 * WORLD_ART.groundY * AURA_SCALE,
-          );
-          expect(400 - y).toBeLessThanOrEqual(45 * AURA_SCALE);
-        }
-      }
-    }
-  });
-  it("draws nothing when hidden", () => {
-    const r = recorder();
-    drawBattleAura(r.p, "Fire", 0, 0, 1, 0);
-    expect(r.calls()).toBe(0);
   });
 });

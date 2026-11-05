@@ -2,7 +2,22 @@ import type { Economy } from "../../../../packages/shared/src/shop";
 import type {
   FarmAction,
   FarmActResult,
+  FarmEmote,
+  FarmHere,
+  FarmLikeResult,
+  FarmTourEntry,
+  FarmCup,
+  FarmCupResult,
+  FarmStall,
+  FarmStallAction,
+  FarmStallResult,
+  FarmBalloon,
+  FarmBalloonResult,
+  FarmHelpList,
+  FarmHelpResult,
   FarmFriend,
+  FarmGiftResult,
+  FarmGiftsState,
   FarmOrderResult,
   FarmState,
   FarmVisit,
@@ -54,6 +69,34 @@ export interface FarmScreenOptions {
     friend: string,
     actions: FarmVisitAction[],
   ): Promise<FarmVisitResult>;
+  /** Gifts, friendship days and invites (migration 057). */
+  gifts?(): Promise<FarmGiftsState>;
+  giftSend?(friend: string): Promise<FarmGiftResult>;
+  giftOpen?(friend: string): Promise<FarmGiftResult>;
+  /** The Supply Balloon and friends' help (migration 058). */
+  balloon?(): Promise<FarmBalloon>;
+  balloonAct?(
+    kind: "fill" | "ask" | "launch",
+    slot?: number,
+  ): Promise<FarmBalloonResult>;
+  help?(): Promise<FarmHelpList>;
+  helpFill?(friend: string, slot: number): Promise<FarmHelpResult>;
+  /** The Farm Stall and the Valley Paper (migration 059). */
+  stall?(): Promise<FarmStall>;
+  stallAct?(action: FarmStallAction): Promise<FarmStallResult>;
+  /** Co-ops and the weekly Valley Cup (migration 060). */
+  cup?(): Promise<FarmCup>;
+  cupAct?(
+    kind: "create" | "join" | "leave" | "take" | "drop" | "claim",
+    arg?: string,
+  ): Promise<FarmCupResult>;
+  /** Live visits, Harvest Parties and farm likes (migration 061). */
+  here?(owner: string | null, emote?: FarmEmote): Promise<FarmHere>;
+  gone?(): Promise<void>;
+  tour?(): Promise<FarmTourEntry[]>;
+  like?(owner: string): Promise<FarmLikeResult>;
+  /** The farm invite link for a friend code. */
+  inviteLink?(code: string): string;
   /** A farm sound effect (farm-sound.ts); `step` raises a harvest pop's pitch. */
   sound?(cue: FarmCue, step?: number): void;
   /** Rain on the farm: 0 off, 1 rain, 1.6 a storm. */

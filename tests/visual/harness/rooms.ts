@@ -3,6 +3,7 @@ import { Arena } from "../../../apps/server/src/simulation";
 export { Arena };
 export {
   CHARACTERS,
+  maxHealth,
   packSnapshot,
   blankInput,
   MetaTracker,

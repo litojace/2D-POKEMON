@@ -37,6 +37,15 @@ import {
   isStartPlot,
   touchesOwned,
   GIANT,
+  FARM_BONDS,
+  BALLOON,
+  STALL as STALL_RULES,
+  CUP,
+  CUP_TASKS,
+  FARM_EMOTES,
+  PARTY,
+  FARM_INVITE_STEPS,
+  FARM_INVITE_WELCOME,
   canGrowGiant,
   giantPlots,
   giantXp,
@@ -174,11 +183,14 @@ const FARM_HTML = `<div class="fm" id="fm">
         <button type="button" data-sheet="decor">${I("decor")}<span>Decor</span></button>
         <button type="button" data-sheet="friends">${I("friends")}<span>Friends</span><b class="dot" id="fm-fr-dot" hidden></b></button>
         <button type="button" data-wish>${I("spark")}<span>Wish</span><b class="dot" id="fm-wish-dot" hidden></b></button>
+        <button type="button" data-sheet="balloon">${I("orders")}<span>Balloon</span><b class="dot" id="fm-bal-dot" hidden></b></button>
+        <button type="button" data-sheet="cup">${I("spark")}<span>Cup</span><b class="dot" id="fm-cup-dot" hidden></b></button>
       </nav>
       <div class="fm-menu glass"><button type="button" class="fm-tool fm-menu-btn" id="fm-menu-btn" aria-expanded="false" aria-pressed="false" aria-controls="fm-dock" title="Menu (M)"><kbd>M</kbd>${I("menu")}<span>Menu</span></button></div>
       <div class="fm-zoom glass" id="fm-zoom" role="group" aria-label="Zoom"><button type="button" data-z="in" aria-label="Zoom in" title="Zoom in (+)">+</button><button type="button" data-z="out" aria-label="Zoom out" title="Zoom out (−)">−</button><button type="button" data-z="fit" aria-label="Show the whole farm" title="Show the whole farm">⤢</button></div>
     </div>
     <div class="fm-visit glass" id="fm-visit" hidden></div>
+    <div class="fm-visit fm-here glass" id="fm-here" hidden></div>
     <div class="fm-tools glass" id="fm-tools"></div>
     <div class="fm-log" id="fm-log" aria-live="polite"></div>
     <div class="fm-tip glass" id="fm-tip" hidden></div>
@@ -406,7 +418,9 @@ export function openFarm(options) {
   const barnUsed = () => Object.values(F.barn).reduce((a, b) => a + b, 0);
   const dogOn = () => !!F.dog && F.dog.until > serverNow();
   /** Crops a harvest gives: 3 while Terradon farms (Rich Soil). */
-  const yieldN = () => (farmPerkOf(F.farmer ?? "") === "terradon" ? 3 : 2);
+  const yieldN = () =>
+    (farmPerkOf(F.farmer ?? "") === "terradon" ? 3 : 2) +
+    (party && !V ? PARTY.bonus : 0);
   const perk = () => farmPerk(F.farmer);
   const warmLeft = () => Math.max(0, (F.warmUntil - serverNow()) / 1000);
   let farmerSent = false;
@@ -2631,7 +2645,8 @@ export function openFarm(options) {
       return;
     }
     el.hidden = false;
-    el.innerHTML = `<img src="${options.art(V.fighter)}" alt=""><div><b>${esc(V.name)}'s Farm</b><small>${V.dog ? `${I("dog")} ${DOG[V.dog]?.name ?? "A dog"} is on guard. Sneaking may get you caught` : "No guard dog"}</small></div><button type="button" data-home>← My farm</button>`;
+    const t = tour?.find((x) => x.id === V.id);
+    el.innerHTML = `<img src="${options.art(V.fighter)}" alt=""><div><b>${esc(V.name)}'s Farm</b><small>${V.dog ? `${I("dog")} ${DOG[V.dog]?.name ?? "A dog"} is on guard. Sneaking may get you caught` : "No guard dog"}</small></div>${options.here ? emoteButtons() : ""}${options.like ? `<button type="button" data-like="${esc(V.id)}" ${t?.liked ? "disabled" : ""}>${t?.liked ? "Liked" : "❤ Like"}</button>` : ""}<button type="button" data-home>← My farm</button>`;
   }
   async function visitFriend(id) {
     try {
@@ -2642,6 +2657,9 @@ export function openFarm(options) {
       visitQueue = [];
       applyVisit(v);
       log(`Visiting <b>${esc(v.name)}</b>'s farm`);
+      present.clear();
+      void ping();
+      if (!tour) void loadTour();
     } catch (e) {
       toast(e?.message || "Couldn't visit that farm.");
     }
@@ -2650,10 +2668,797 @@ export function openFarm(options) {
     await visitFlush();
     V = null;
     F.tool = "hand";
+    present.clear();
+    void ping();
     renderVisit();
     renderAll();
     // Helping friends gave you farm XP.
     await refresh();
+  }
+  /* ---------- live visits, Harvest Parties and likes (migration 061) ---------- */
+  const likesOf = (id) => {
+    const t = tour?.find((x) => x.id === id);
+    return t ? ` · ❤ ${t.likes}${t.here ? " · on their farm now" : ""}` : "";
+  };
+  let here = null,
+    tour = null,
+    hereAt = 0,
+    party = false;
+  const shownEmote = new Map(),
+    present = new Map();
+  const EMO = FARM_EMOTES;
+  async function ping(emote) {
+    if (!options.here || document.hidden) return;
+    hereAt = performance.now();
+    try {
+      const h = await options.here(V ? V.id : null, emote);
+      here = h;
+      const was = party;
+      party = !V && h.party;
+      if (party && !was) {
+        const who = h.present.find((p) => !p.owner)?.name ?? "A friend";
+        toast(`Harvest Party with ${who}! Each harvest gives one more crop`);
+        log(
+          `<b>Harvest Party</b> with ${esc(who)} · +${PARTY.bonus} crop a harvest`,
+          "good",
+        );
+        sfx("fanfare");
+        feel.pop(VW / 2, VH * 0.3, 50);
+      }
+      syncPresent(h);
+      renderHere();
+    } catch {
+      /* offline: try again next time */
+    }
+  }
+  /** Friends on the farm stand by the field gate, each with their fighter. */
+  function syncPresent(h) {
+    const ids = new Set(h.present.map((p) => p.id));
+    for (const id of [...present.keys()]) if (!ids.has(id)) present.delete(id);
+    h.present.forEach((p, k) => {
+      let a = present.get(p.id);
+      if (!a) {
+        const im = new Image();
+        im.src = options.art(p.fighter);
+        a = {
+          im,
+          name: p.name,
+          x: FCX + (k % 2 ? 1 : -1) * (90 + 60 * k),
+          t0: Math.random() * 6,
+        };
+        present.set(p.id, a);
+        if (!p.owner) sfx("boing");
+      }
+      if (p.emote && p.emoteAt && shownEmote.get(p.id) !== p.emoteAt) {
+        shownEmote.set(p.id, p.emoteAt);
+        a.emote = EMO[p.emote] ?? null;
+        a.emoteT = performance.now();
+      }
+    });
+  }
+  function drawPresent(items, time) {
+    let k = 0;
+    for (const a of present.values()) {
+      const x = a.x,
+        y = FR.y1 + 52 + (k++ % 2) * 14;
+      items.push({
+        y,
+        d: () => {
+          const bob = reduced ? 0 : Math.abs(Math.sin(time * 2.2 + a.t0)) * 3;
+          ctx.fillStyle = "rgba(0,0,0,.26)";
+          ctx.beginPath();
+          ctx.ellipse(x, y, 24, 8, 0, 0, 7);
+          ctx.fill();
+          if (a.im.complete) ctx.drawImage(a.im, x - 40, y - 78 - bob, 80, 81);
+          nameTag(ctx, a.name.toUpperCase(), x, y - 96);
+          const age = (performance.now() - (a.emoteT ?? 0)) / 1000;
+          if (a.emote && age < 3) {
+            const s = Math.min(1, age / 0.18);
+            ctx.save();
+            ctx.translate(x, y - 128);
+            ctx.scale(s, s);
+            ctx.fillStyle = "#fff";
+            ctx.beginPath();
+            ctx.roundRect(-22, -18, 44, 32, 12);
+            ctx.fill();
+            ctx.font =
+              "20px system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(a.emote, 0, -2);
+            ctx.textBaseline = "alphabetic";
+            ctx.restore();
+          }
+        },
+      });
+    }
+  }
+  /** On your farm with friends there: who is here, the party, emotes. */
+  function renderHere() {
+    const el = $("fm-here");
+    if (V || !here || !here.present.length) {
+      el.hidden = true;
+      return;
+    }
+    el.hidden = false;
+    const names = here.present.map((p) => esc(p.name)).join(", ");
+    el.innerHTML = `<div><b>${names} ${here.present.length > 1 ? "are" : "is"} here</b><small>${party ? `Harvest Party: +${PARTY.bonus} crop a harvest · ${Math.ceil(here.partyLeft / 60)} min left today` : "No party minutes left today"}</small></div>${emoteButtons()}`;
+  }
+  const emoteButtons = () =>
+    `<span class="fm-emotes">${Object.entries(EMO)
+      .map(
+        ([k, e]) =>
+          `<button type="button" data-emote="${k}" aria-label="${k}">${e}</button>`,
+      )
+      .join("")}</span>`;
+  async function loadTour() {
+    if (!options.tour) return;
+    try {
+      tour = await options.tour();
+    } catch {
+      return;
+    }
+    if (sheet === "friends") renderSheet();
+    renderVisit();
+  }
+  async function likeFarm(owner) {
+    if (!options.like) return;
+    try {
+      const r = await options.like(owner);
+      tour = r.tour;
+      if (r.ok) {
+        sfx("chime");
+        feel.burst(cam.x, cam.y, 10, "heart", {
+          v: 90,
+          up: 60,
+          life: 1.1,
+          s: 18,
+          c: "#ff7aa8",
+        });
+        toast("You liked this farm");
+      } else toast(r.error || "That didn't work.");
+    } catch (e) {
+      toast(e?.message || "Couldn't reach your farm. Check your connection.");
+    }
+    renderVisit();
+  }
+  /* ---------- co-ops and the weekly Valley Cup (migration 060) ---------- */
+  let cupState = null;
+  const FLAG = { x: 802, y: 282 };
+  async function loadCup() {
+    if (!options.cup) return;
+    try {
+      cupState = await options.cup();
+    } catch {
+      return;
+    }
+    syncCupDot();
+    if (sheet === "cup") renderSheet();
+  }
+  function syncCupDot() {
+    $("fm-cup-dot").hidden = !cupState?.tiers?.some(
+      (t) => t.reached && !t.claimed && cupState.done > 0,
+    );
+    syncMenuDot();
+  }
+  async function cupAct(kind, arg) {
+    if (!options.cupAct) return;
+    try {
+      const before = cupState?.done ?? 0;
+      const r = await options.cupAct(kind, arg);
+      cupState = r.cup;
+      if (!r.ok) {
+        if (!r.repeated) toast(r.error || "That didn't work.");
+      } else if (kind === "create" || kind === "join") {
+        sfx("fanfare");
+        toast(`Welcome to ${cupState.coop?.name}!`);
+      } else if (kind === "take") {
+        sfx("tick");
+      } else if (kind === "claim") {
+        sfx("chime");
+        feel.pop(VW / 2, VH * 0.35, 70);
+        toast("Cup reward claimed!");
+        void refresh();
+      } else if (kind === "leave") toast("You left the co-op");
+      if (cupState.done > before) cupCheer();
+    } catch (e) {
+      toast(e?.message || "Couldn't reach your farm. Check your connection.");
+    }
+    syncCupDot();
+    if (sheet === "cup") renderSheet();
+  }
+  function cupCheer() {
+    sfx("fanfare");
+    feel.burst(FLAG.x + 30, FLAG.y - 100, 20, "spark", {
+      v: 220,
+      life: 0.9,
+      s: 7,
+    });
+    feel.pop(
+      (FLAG.x - cam.x) * Z + VW / 2,
+      (FLAG.y - 100 - cam.y) * Z + VH / 2,
+      50,
+    );
+    toast("Cup task done! Points for your co-op");
+  }
+  function flagHit(w) {
+    return (
+      !V &&
+      Math.abs(w.x - (FLAG.x + 30)) < 50 &&
+      w.y < FLAG.y + 10 &&
+      w.y > FLAG.y - 135
+    );
+  }
+  function drawFlag(g, time) {
+    if (V) return;
+    const x = FLAG.x,
+      y = FLAG.y,
+      sp = F.weather.cur === "storm" ? 8 : 4,
+      t = reduced ? 0 : time;
+    GFX.shadow(g, x + 4, y + 2, 12, 4);
+    g.fillStyle = "#7a5230";
+    g.fillRect(x - 3, y - 120, 6, 122);
+    g.fillStyle = "#ffd65b";
+    g.beginPath();
+    g.arc(x, y - 122, 6, 0, 7);
+    g.fill();
+    g.save();
+    g.translate(x + 3, y - 114);
+    g.beginPath();
+    g.moveTo(0, 0);
+    for (let k = 0; k <= 10; k++)
+      g.lineTo(k * 7, Math.sin(t * sp - k * 0.6) * (k * 0.5) + k * 0.6);
+    for (let k = 10; k >= 0; k--)
+      g.lineTo(k * 7, 36 + Math.sin(t * sp - k * 0.6) * (k * 0.5) - k * 1.2);
+    g.closePath();
+    const fg = g.createLinearGradient(0, 0, 70, 36);
+    fg.addColorStop(0, "#ffd65b");
+    fg.addColorStop(1, "#f2a52a");
+    g.fillStyle = fg;
+    g.fill();
+    g.strokeStyle = "#b8800f";
+    g.lineWidth = 1.5;
+    g.stroke();
+    g.fillStyle = "#5a3a00";
+    g.font = "800 16px 'Barlow Condensed', sans-serif";
+    g.textAlign = "left";
+    g.textBaseline = "middle";
+    g.fillText("CUP", 14, 18 + Math.sin(t * sp - 2) * 2);
+    g.textBaseline = "alphabetic";
+    g.restore();
+    if (cupState?.coop && cupState.rank)
+      nameTag(g, `#${cupState.rank} · ${cupState.pts} PTS`, x + 20, y + 26);
+  }
+  function cupHTML() {
+    const c = cupState;
+    if (!c) return `<div class="sh-body"><p class="sh-note">Loading…</p></div>`;
+    const ends = Math.max(
+      0,
+      (new Date(c.endsAt).getTime() - serverNow()) / 1000,
+    );
+    if (!c.coop)
+      return `<div class="sh-body"><p class="sh-note">Join a <b>co-op</b> (up to ${CUP.members} farmers) and win the weekly <b>Valley Cup</b> together: take tasks, finish them on your farm, and your co-op's points reach rewards for everyone who helped.</p><div class="fm-cup-form"><label>Make a co-op<input id="fm-cup-name" maxlength="24" placeholder="Co-op name"></label><button type="button" class="btn-s gold" data-cupcreate>Make it</button></div><div class="fm-cup-form"><label>Join with a code<input id="fm-cup-code" maxlength="6" placeholder="ABC234" autocapitalize="characters"></label><button type="button" class="btn-s green" data-cupjoin>Join</button></div><p class="sh-note">${c.coops} co-op${c.coops === 1 ? "" : "s"} in this week's Cup · ends in ${fmtDur(ends)}.</p></div>`;
+    const max = 3 * CUP.tierPts;
+    const tiers = c.tiers
+      .map(
+        (t) =>
+          `<div class="tier${t.reached ? " got" : ""}"><b>${(t.pts / 1000).toFixed(0)}k</b><small>${esc(t.reward)}</small>${t.reached && !t.claimed && c.done > 0 ? `<button type="button" class="btn-s gold" data-cupclaim="${t.tier}">Claim</button>` : t.claimed ? `<small class="got">✓ Claimed</small>` : ""}</div>`,
+      )
+      .join("");
+    const task = c.active
+      ? `<div class="item mine"><span class="ic">${I("spark")}</span><div><b>${esc(CUP_TASKS[c.active.task]?.name ?? c.active.task)}</b><small>${c.active.progress}/${c.active.goal} · +${c.active.pts} points</small><div class="cap"><i style="width:${(c.active.progress / c.active.goal) * 100}%"></i></div></div><div class="acts"><button type="button" class="btn-s ghost" data-cupdrop>Drop</button></div></div>`
+      : c.tasks
+          .map(
+            (t) =>
+              `<div class="item"><span class="ic">${I("spark")}</span><div><b>${esc(CUP_TASKS[t.id]?.name ?? t.id)}</b><small>+${t.pts} points</small></div><div class="acts"><button type="button" class="btn-s gold" data-cuptake="${t.id}" ${c.taken >= CUP.tasksPerWeek ? "disabled" : ""}>Take</button></div></div>`,
+          )
+          .join("");
+    const members = c.coop.members
+      .map(
+        (m) =>
+          `<span class="mem"><img src="${options.art(m.fighter)}" alt="">${esc(m.name)} <b>${m.pts}</b></span>`,
+      )
+      .join("");
+    const ranking = c.ranking
+      .map(
+        (r) =>
+          `<div class="lrow${r.me ? " me" : ""}"><b>${r.rank}</b><span>${esc(r.name)}</span><b>${r.pts}</b></div>`,
+      )
+      .join("");
+    return `<div class="sh-body"><div class="fm-coop"><div><b>${esc(c.coop.name)}</b><small>Code <b>${esc(c.coop.code)}</b> · ${c.coop.members.length}/${CUP.members} farmers · ends in ${fmtDur(ends)}</small></div><button type="button" class="btn-s ghost" data-cupcopy="${esc(c.coop.code)}">Copy code</button></div><div class="cap"><i style="width:${Math.min(100, (c.pts / max) * 100)}%"></i></div><p class="sh-note"><b>${c.pts} points</b> this week · #${c.rank ?? "–"} of ${c.coops}</p><div class="fm-tiers">${tiers}</div><p class="sh-note">${c.active ? "Your task" : `Take a task · ${CUP.tasksPerWeek - c.taken} left this week`} · finished ${c.done}</p>${task}<p class="sh-note">Members</p><div class="fm-members">${members}</div><p class="sh-note">This week's Cup</p><div class="fm-league">${ranking}</div><button type="button" class="btn-s ghost fm-wide" data-cupleave>Leave the co-op</button></div>`;
+  }
+  /* ---------- the Farm Stall and the Valley Paper (migration 059) ---------- */
+  let stall = null,
+    stallSlot = null;
+  const stallForm = { key: null, qty: 1, f: 1.1 };
+  async function loadStall() {
+    if (!options.stall) return;
+    try {
+      stall = await options.stall();
+    } catch {
+      return;
+    }
+    if (sheet === "market") renderSheet();
+  }
+  async function stallAct(action) {
+    if (!options.stallAct) return;
+    try {
+      const r = await options.stallAct(action);
+      stall = r;
+      if (!r.ok) {
+        if (!r.repeated) toast(r.error || "That didn't work.");
+      } else if (action.kind === "list") {
+        sfx("boing");
+        bounce.stall = 1;
+        stallSlot = null;
+        toast("On your stall. Friends see it in the Valley Paper.");
+      } else if (action.kind === "unlist") {
+        sfx("tick");
+      } else if (action.kind === "collect") {
+        sfx("coin");
+        bounce.stall = 1;
+        feel.burst(STALL.x, STALL.y - 120, 14, "spark", { v: 160 });
+        feel.text(
+          STALL.x,
+          STALL.y - 140,
+          `+${r.gained?.leaves}`,
+          "#ffd65b",
+          34,
+        );
+        toast(
+          `Collected ${r.gained?.leaves} Gold Leaves (the stall kept ${r.gained?.fee})`,
+        );
+      } else if (action.kind === "buy") {
+        sfx("coin");
+        toast(
+          `Bought ${r.gained?.qty} ${CROP[r.gained?.crop]?.n ?? "crops"}. They're in your barn.`,
+        );
+      }
+      void refresh();
+    } catch (e) {
+      toast(e?.message || "Couldn't reach your farm. Check your connection.");
+    }
+    if (sheet === "market") renderSheet();
+  }
+  const stallRange = (key, qty) => {
+    const unit = price(key);
+    return {
+      min: Math.ceil(unit * qty * STALL_RULES.minPrice),
+      max: Math.floor(unit * qty * STALL_RULES.maxPrice),
+      unit,
+    };
+  };
+  const stallPrice = () => {
+    const r = stallRange(stallForm.key, stallForm.qty);
+    return Math.max(
+      r.min,
+      Math.min(r.max, Math.round(r.unit * stallForm.qty * stallForm.f)),
+    );
+  };
+  function stallHTML() {
+    if (!stall) return `<p class="sh-note">Loading your stall…</p>`;
+    const shelves = Array.from({ length: STALL_RULES.shelves }, (_, k) => {
+      const s = stall.shelves.find((x) => x.slot === k);
+      if (!s)
+        return `<button type="button" class="fm-shelf empty${stallSlot === k ? " picked" : ""}" data-shelf="${k}"><b>+</b><small>Empty shelf</small></button>`;
+      const c = CROP[s.crop];
+      if (s.sold)
+        return `<div class="fm-shelf sold"><img src="${icon(s.crop)}" alt=""><small>Sold to <b>${esc(s.buyer ?? "a friend")}</b></small><button type="button" class="btn-s gold" data-scollect="${k}">Collect ${s.collect}</button></div>`;
+      return `<div class="fm-shelf"><img src="${icon(s.crop)}" alt=""><b>${s.qty} ${esc(c?.n ?? s.crop)}${s.mutation ? ` · ${s.mutation}` : ""}</b><small class="price">${s.price} ${L}</small><button type="button" class="btn-s ghost" data-sunlist="${k}">Take down</button></div>`;
+    }).join("");
+    let form = "";
+    if (stallSlot != null) {
+      const keys = Object.entries(F.barn).filter(([, n]) => n > 0);
+      if (!keys.length)
+        form = `<p class="sh-note">Your barn is empty. Harvest something to sell first.</p>`;
+      else {
+        if (!stallForm.key || !F.barn[stallForm.key])
+          stallForm.key = keys[0][0];
+        const have = F.barn[stallForm.key];
+        stallForm.qty = Math.max(
+          1,
+          Math.min(stallForm.qty, have, STALL_RULES.maxQty),
+        );
+        const r = stallRange(stallForm.key, stallForm.qty);
+        form = `<div class="fm-stall-form"><label>Crop<select id="fm-st-crop">${keys
+          .map(([k, n]) => {
+            const [id, mut] = k.split("|");
+            return `<option value="${esc(k)}"${k === stallForm.key ? " selected" : ""}>${esc(CROP[id]?.n ?? id)}${mut ? ` (${esc(mut)})` : ""} · have ${n}</option>`;
+          })
+          .join(
+            "",
+          )}</select></label><label>How many<select id="fm-st-qty">${Array.from(
+          { length: Math.min(have, STALL_RULES.maxQty) },
+          (_, i) =>
+            `<option${i + 1 === stallForm.qty ? " selected" : ""}>${i + 1}</option>`,
+        ).join(
+          "",
+        )}</select></label><label>Price <b id="fm-st-f">${stallForm.f.toFixed(1)}×</b> the market<input id="fm-st-price" type="range" min="${STALL_RULES.minPrice}" max="${STALL_RULES.maxPrice}" step="0.1" value="${stallForm.f}"></label><p class="sh-note" id="fm-st-read">Asking <b>${stallPrice()} ${L}</b> · the Market pays ${r.unit * stallForm.qty}</p><button type="button" class="btn-s gold fm-wide" data-slist>Put on shelf ${stallSlot + 1}</button></div>`;
+      }
+    }
+    return `<p class="sh-note">Friends see your shelves in the <b>Valley Paper</b> and buy whole shelves. Price ${STALL_RULES.minPrice}×–${STALL_RULES.maxPrice}× the market; the stall keeps ${STALL_RULES.fee * 100}%. Stall income today: ${stall.earnedToday}/${stall.earnCap} ${L}.</p><div class="fm-shelves">${shelves}</div>${form}`;
+  }
+  function paperHTML() {
+    if (!stall) return `<p class="sh-note">Loading the Valley Paper…</p>`;
+    const rows = stall.paper.map((p) => {
+      const c = CROP[p.crop],
+        locked = c && c.lv > F.lv;
+      return `<div class="fr"><img src="${options.art(p.fighter)}" alt=""><div><b>${p.qty} ${esc(c?.n ?? p.crop)}${p.mutation ? ` · ${esc(p.mutation)}` : ""}</b><small><img class="mini" src="${icon(p.crop)}" alt=""> ${esc(p.name)}'s stall · the Market pays ${p.market}${locked ? ` · <b style="color:#ffd65b">you grow it at Lv ${c.lv}</b>` : ""}</small></div><button type="button" class="btn-s gold" data-sbuy="${esc(p.seller)}:${p.slot}" ${F.leaves < p.price || stall.boughtToday >= stall.buyCap ? "disabled" : ""}>${p.price} ${L}</button></div>`;
+    });
+    return `<p class="sh-note">Your friends' shelves. Buy crops you can't grow yet for orders and balloons. Bought today: ${stall.boughtToday}/${stall.buyCap}.</p>${rows.join("") || `<p class="sh-note">Your friends' shelves are empty right now.</p>`}`;
+  }
+  function wireStallForm(el) {
+    const crop = el.querySelector("#fm-st-crop"),
+      qty = el.querySelector("#fm-st-qty"),
+      range = el.querySelector("#fm-st-price");
+    if (!crop) return;
+    const read = () => {
+      const r = stallRange(stallForm.key, stallForm.qty);
+      el.querySelector("#fm-st-f").textContent = `${stallForm.f.toFixed(1)}×`;
+      el.querySelector("#fm-st-read").innerHTML =
+        `Asking <b>${stallPrice()} ${L}</b> · the Market pays ${r.unit * stallForm.qty}`;
+    };
+    crop.onchange = () => {
+      stallForm.key = crop.value;
+      renderSheet();
+    };
+    qty.onchange = () => {
+      stallForm.qty = +qty.value;
+      read();
+    };
+    range.oninput = () => {
+      stallForm.f = +range.value;
+      read();
+    };
+  }
+  /* ---------- the Supply Balloon and friends' help (migration 058) ---------- */
+  let balloon = null,
+    helpList = null;
+  const BAL = { x: 1080, y: 105 },
+    PEG = { x: 1104, y: 300 };
+  const bal = { mode: "idle", t0: 0 };
+  const balReady = () =>
+    !!balloon?.crates && balloon.crates.every((c) => c.state === "done");
+  async function loadBalloon() {
+    if (!options.balloon) return;
+    try {
+      balloon = await options.balloon();
+    } catch {
+      return;
+    }
+    if (balloon.crates && bal.mode !== "idle") bal.mode = "idle";
+    $("fm-bal-dot").hidden = !balReady();
+    syncMenuDot();
+    if (sheet === "balloon") renderSheet();
+  }
+  async function loadHelp() {
+    if (!options.help) return;
+    try {
+      helpList = await options.help();
+    } catch {
+      return;
+    }
+    if (sheet === "friends") renderSheet();
+  }
+  async function balloonAct(kind, slot) {
+    if (!options.balloonAct) return;
+    try {
+      const r = await options.balloonAct(kind, slot);
+      if (!r.ok) {
+        if (!r.repeated) toast(r.error || "That didn't work.");
+      } else if (kind === "fill") {
+        sfx("pop", 3);
+        feel.burst(BAL.x, BAL.y + 90, 12, "spark", { v: 150, life: 0.8 });
+      } else if (kind === "ask") {
+        sfx("whoosh");
+        toast("Asked your friends. It's on their Help list now.");
+      } else if (kind === "launch") {
+        bal.mode = "leave";
+        bal.t0 = performance.now();
+        sfx("whoosh");
+        setTimeout(() => sfx("fanfare"), 300);
+        feel.pop(
+          (BAL.x - cam.x) * Z + VW / 2,
+          (BAL.y - cam.y) * Z + VH / 2,
+          90,
+        );
+        feel.text(
+          BAL.x,
+          BAL.y + 40,
+          `+${r.gained?.leaves ?? ""}`,
+          "#ffd65b",
+          40,
+        );
+        toast(
+          `Balloon launched: +${r.gained?.leaves} Gold Leaves, +${r.gained?.xp} XP and a Gold Fertilizer`,
+        );
+        log(
+          `Launched the <b>Supply Balloon</b> · +${r.gained?.leaves} ${L}`,
+          "good",
+        );
+        closeSheet();
+      }
+      balloon = r.balloon;
+      $("fm-bal-dot").hidden = !balReady();
+      syncMenuDot();
+      void refresh();
+    } catch (e) {
+      toast(e?.message || "Couldn't reach your farm. Check your connection.");
+    }
+    if (sheet === "balloon") renderSheet();
+  }
+  async function helpFill(friend, slot) {
+    if (!options.helpFill) return;
+    try {
+      const r = await options.helpFill(friend, slot);
+      if (r.ok) {
+        sfx("coin");
+        toast(
+          `Crate filled! +${r.gained?.leaves ?? 0} Gold Leaves and a Helper Star`,
+        );
+        log(`Filled a friend's balloon crate · +1 Helper Star`, "good");
+        void refresh();
+      } else if (!r.repeated) toast(r.error || "That didn't work.");
+      if (helpList) helpList.requests = r.help;
+      void loadHelp();
+    } catch (e) {
+      toast(e?.message || "Couldn't reach your farm. Check your connection.");
+    }
+    if (sheet === "friends") renderSheet();
+  }
+  function balloonPos(time, now) {
+    let x = BAL.x + (reduced ? 0 : Math.sin(time * 0.45) * 5),
+      y = BAL.y + (reduced ? 0 : Math.sin(time * 0.9) * 7),
+      sc = 1,
+      a = 1;
+    if (bal.mode === "leave") {
+      const k = Math.min(1, (now - bal.t0) / 2600),
+        e = k * k;
+      y -= e * 700;
+      x += e * 260;
+      sc = 1 - e * 0.35;
+      a = 1 - Math.max(0, k - 0.8) * 5;
+    }
+    return { x, y, sc, a };
+  }
+  function balloonHit(w) {
+    if (V || !balloon?.crates || bal.mode !== "idle") return false;
+    return (
+      Math.hypot(w.x - BAL.x, (w.y - (BAL.y - 30)) * 0.9) < 85 ||
+      (Math.abs(w.x - BAL.x) < 40 && w.y > BAL.y && w.y < BAL.y + 135)
+    );
+  }
+  function drawBalloon(g, time) {
+    if (V || !balloon) return;
+    const now = performance.now();
+    if (bal.mode === "leave" && now - bal.t0 > 2600) bal.mode = "gone";
+    if (!balloon.crates || bal.mode === "gone") {
+      // The next one is on its way: its tether peg waits with a sign.
+      const left = balloon.arrivesAt
+        ? (new Date(balloon.arrivesAt).getTime() - serverNow()) / 1000
+        : 0;
+      if (left > 0)
+        nameTag(
+          g,
+          `BALLOON IN ${fmtSecs(left).toUpperCase()}`,
+          PEG.x,
+          PEG.y - 30,
+        );
+      g.fillStyle = "#7a5230";
+      g.fillRect(PEG.x - 3, PEG.y - 14, 6, 16);
+      return;
+    }
+    const { x, y, sc, a } = balloonPos(time, now),
+      rot = reduced ? 0 : Math.sin(time * 0.7) * 0.03,
+      done = balloon.crates.filter((c) => c.state === "done").length;
+    g.save();
+    // Its shadow on the ground, and the tether to its peg.
+    g.fillStyle = "rgba(20,40,20,.16)";
+    g.beginPath();
+    g.ellipse(x + 30, PEG.y + 2, 54, 13, 0, 0, 7);
+    g.fill();
+    if (bal.mode === "idle") {
+      g.strokeStyle = "rgba(90,60,30,.8)";
+      g.lineWidth = 2;
+      g.beginPath();
+      g.moveTo(PEG.x, PEG.y - 8);
+      g.quadraticCurveTo(
+        (PEG.x + x) / 2 + 20,
+        (PEG.y + y + 110) / 2 + 30,
+        x + 18,
+        y + 118,
+      );
+      g.stroke();
+      g.fillStyle = "#7a5230";
+      g.fillRect(PEG.x - 3, PEG.y - 14, 6, 16);
+    }
+    g.globalAlpha = Math.max(0, Math.min(1, a));
+    g.translate(x, y);
+    g.rotate(rot);
+    g.scale(sc, sc);
+    g.strokeStyle = "#6b4a24";
+    g.lineWidth = 2;
+    for (const [p, q, r, t] of [
+      [-44, 30, -26, 92],
+      [44, 30, 26, 92],
+      [-16, 44, -10, 92],
+      [16, 44, 10, 92],
+    ]) {
+      g.beginPath();
+      g.moveTo(p, q);
+      g.lineTo(r, t);
+      g.stroke();
+    }
+    const env = () => {
+      g.beginPath();
+      g.moveTo(0, 52);
+      g.bezierCurveTo(-30, 40, -76, 4, -74, -44);
+      g.bezierCurveTo(-72, -96, -36, -118, 0, -118);
+      g.bezierCurveTo(36, -118, 72, -96, 74, -44);
+      g.bezierCurveTo(76, 4, 30, 40, 0, 52);
+      g.closePath();
+    };
+    g.save();
+    env();
+    g.clip();
+    const cols = ["#ffd65b", "#ff7a59", "#ffd65b", "#5ec2ff"];
+    for (let k = 0; k < 8; k++) {
+      const a0 = -74 + (k * 148) / 8,
+        a1 = -74 + ((k + 1) * 148) / 8;
+      g.fillStyle = cols[k % 4];
+      g.beginPath();
+      g.moveTo(0, 60);
+      g.bezierCurveTo(a0 * 0.4, 30, a0 * 1.25, -20, a0 * 0.9, -70);
+      g.lineTo(0, -130);
+      g.lineTo(a1 * 0.9, -70);
+      g.bezierCurveTo(a1 * 1.25, -20, a1 * 0.4, 30, 0, 60);
+      g.fill();
+    }
+    const sh = g.createRadialGradient(-30, -70, 10, 0, -30, 110);
+    sh.addColorStop(0, "rgba(255,255,255,.5)");
+    sh.addColorStop(0.35, "rgba(255,255,255,0)");
+    sh.addColorStop(1, "rgba(40,20,60,.45)");
+    g.fillStyle = sh;
+    g.fillRect(-80, -130, 160, 190);
+    g.restore();
+    env();
+    g.strokeStyle = "rgba(90,40,30,.55)";
+    g.lineWidth = 2;
+    g.stroke();
+    g.fillStyle = "#c4502f";
+    g.beginPath();
+    g.roundRect(-18, 44, 36, 10, 4);
+    g.fill();
+    const fl =
+      (bal.mode === "idle" ? 0.6 : 1.3) +
+      (reduced ? 0 : Math.sin(time * 13) * 0.2 + Math.sin(time * 7.3) * 0.2);
+    g.fillStyle = `rgba(255,190,80,${0.35 * fl})`;
+    g.beginPath();
+    g.ellipse(0, 62, 10 * fl, 14 * fl, 0, 0, 7);
+    g.fill();
+    g.fillStyle = "#8a5a2f";
+    g.beginPath();
+    g.roundRect(-30, 88, 60, 36, 7);
+    g.fill();
+    g.strokeStyle = "#b07a45";
+    for (let k = 0; k < 4; k++) {
+      g.beginPath();
+      g.moveTo(-28, 94 + k * 8);
+      g.lineTo(28, 94 + k * 8);
+      g.stroke();
+    }
+    g.fillStyle = "#6b4527";
+    g.beginPath();
+    g.roundRect(-33, 84, 66, 8, 4);
+    g.fill();
+    balloon.crates.slice(0, 3).forEach((c, k) => {
+      const cx = -26 + k * 18;
+      g.fillStyle = c.state === "done" ? "#c99a5e" : "#7a5230";
+      g.beginPath();
+      g.roundRect(cx, 74, 16, 10, 2);
+      g.fill();
+      const im = c.state === "done" ? ITEM[c.crop] : null;
+      if (im?.complete) g.drawImage(im, cx - 2, 60, 20, 23);
+    });
+    g.restore();
+    if (bal.mode === "idle")
+      nameTag(
+        g,
+        done === balloon.crates.length
+          ? "READY TO LAUNCH!"
+          : `SUPPLY BALLOON ${done}/6`,
+        x,
+        y + 150,
+      );
+  }
+  function balloonHTML() {
+    if (!balloon)
+      return `<div class="sh-body"><p class="sh-note">Loading…</p></div>`;
+    const stars = `<div class="item"><span class="ic">${I("spark")}</span><div><b>${balloon.helperStars} Helper Star${balloon.helperStars === 1 ? "" : "s"}</b><small>Fill a friend's asked crate from Friends → Help: ${BALLOON.help}× its value in ${L} (up to ${balloon.helperCap} a day; ${balloon.helperLeavesToday} today) and a Helper Star.</small></div></div>`;
+    if (!balloon.crates) {
+      const left = balloon.arrivesAt
+        ? (new Date(balloon.arrivesAt).getTime() - serverNow()) / 1000
+        : 0;
+      return `<div class="sh-body"><p class="sh-note">The balloon is away. The next one floats in ${left > 0 ? `in <b>${fmtSecs(left)}</b>` : "any moment"}. Balloons launched: ${balloon.launches}.</p>${stars}</div>`;
+    }
+    const asked = balloon.crates.filter(
+      (c) => c.state === "asked" || c.by,
+    ).length;
+    const crates = balloon.crates
+      .map((c, k) => {
+        const crop = CROP[c.crop],
+          have = owned(c.crop);
+        const act =
+          c.state === "done"
+            ? `<small class="got">✓ ${c.by ? `Filled by ${esc(balloon.helpers[c.by] ?? "a friend")}` : "Filled"}</small>`
+            : have >= c.qty
+              ? `<button type="button" class="btn-s green" data-bfill="${k}">Fill</button>`
+              : c.state === "asked"
+                ? `<small class="asked">Friends can fill it</small>`
+                : `<button type="button" class="btn-s" data-bask="${k}" ${asked >= BALLOON.ask ? "disabled" : ""}>Ask friends</button>`;
+        return `<div class="fm-crate ${c.state}"><img src="${icon(c.crop)}" alt=""><b>${c.qty} ${esc(crop?.n ?? c.crop)}</b><small>You have ${have}${crop && crop.lv > F.lv ? ` · grows at Lv ${crop.lv}` : ""}</small>${act}</div>`;
+      })
+      .join("");
+    const ready = balReady();
+    return `<div class="sh-body"><p class="sh-note">Fill six crates for a big reward. Ask friends for the ones you can't fill (up to ${BALLOON.ask} a balloon): they get leaves and a Helper Star.</p><div class="fm-crates">${crates}</div><p class="sh-note">Reward: <b>${balloon.leaves} ${L}</b> · +${balloon.xp} XP · a Gold Fertilizer</p><button type="button" class="btn-s gold fm-wide" data-blaunch ${ready ? "" : "disabled"}>${ready ? "Launch the balloon" : `${balloon.crates.filter((c) => c.state !== "done").length} crates to go`}</button>${stars}</div>`;
+  }
+  function helpHTML() {
+    if (!helpList)
+      return `<div class="sh-body"><p class="sh-note">Loading your friends' requests…</p></div>`;
+    const rows = helpList.requests.map((h) => {
+      const c = CROP[h.crop];
+      return `<div class="fr"><img src="${options.art(h.fighter)}" alt=""><div><b>${esc(h.name)} needs ${h.qty} ${esc(c?.n ?? h.crop)}</b><small>You have ${h.have} · pays ${h.reward} ${L} + a Helper Star</small></div><button type="button" class="btn-s green" data-hfill="${esc(h.friend)}:${h.slot}" ${h.have >= h.qty ? "" : "disabled"}>Fill</button></div>`;
+    });
+    return `<div class="sh-body"><p class="sh-note">Crates your friends asked for on their Supply Balloons. Helper leaves today: ${helpList.helperLeavesToday}/${helpList.helperCap} · Helper Stars: ${helpList.helperStars}.</p>${rows.join("") || `<p class="sh-note">No requests right now. When a friend asks for a crate, it shows here.</p>`}</div>`;
+  }
+  /* ---------- gifts, friendship days and invites (migration 057) ---------- */
+  let gifts = null;
+  async function loadGifts() {
+    if (!options.gifts) return;
+    try {
+      gifts = await options.gifts();
+    } catch {
+      gifts = gifts ?? null;
+    }
+    syncFriendDot();
+    if (sheet === "friends") renderSheet();
+  }
+  function syncFriendDot() {
+    $("fm-fr-dot").hidden = !(
+      friendsList?.some((f) => f.bugs || f.ripe) ||
+      gifts?.friends?.some((f) => f.waiting > 0)
+    );
+    syncMenuDot();
+  }
+  async function giftAct(kind, id) {
+    const call = kind === "send" ? options.giftSend : options.giftOpen;
+    if (!call) return;
+    try {
+      const r = await call(id);
+      gifts = r.state;
+      const f = gifts.friends.find((x) => x.id === id);
+      if (!r.ok) toast(r.error || "That didn't work.");
+      else if (kind === "send") {
+        sfx("whoosh");
+        toast(`Sent ${f?.name ?? "your friend"} a seed parcel`);
+      } else {
+        sfx("chime");
+        const c = CROP[r.crop];
+        toast(
+          `${f?.name ?? "Your friend"}'s gift: ${r.qty} ${c?.n ?? r.crop} seed${r.qty === 1 ? "" : "s"}`,
+        );
+        log(
+          `Opened a gift from <b>${esc(f?.name ?? "a friend")}</b> · ${r.qty} ${esc(c?.n ?? r.crop)} seeds`,
+          "good",
+        );
+        feel.pop(VW / 2, VH * 0.4, 40);
+        void refresh();
+      }
+    } catch (e) {
+      toast(e?.message || "Couldn't reach your farm. Check your connection.");
+    }
+    syncFriendDot();
+    if (sheet === "friends") renderSheet();
   }
   async function loadFriends() {
     try {
@@ -2661,8 +3466,7 @@ export function openFarm(options) {
     } catch {
       friendsList = friendsList ?? [];
     }
-    $("fm-fr-dot").hidden = !friendsList.some((f) => f.bugs || f.ripe);
-    syncMenuDot();
+    syncFriendDot();
     if (sheet === "friends") renderSheet();
   }
   /** What a visit action looks like before the server answers. */
@@ -3576,6 +4380,8 @@ export function openFarm(options) {
         },
       }),
     );
+    items.push({ y: FLAG.y, d: () => drawFlag(ctx, time) });
+    drawPresent(items, time);
     items.push({
       y: -40,
       d: () => GFX.blit(ctx, GFX.sign("← PLAZA", "#2a6fd0"), HOUSE.x + 70, -40),
@@ -4001,6 +4807,7 @@ export function openFarm(options) {
         }
       }
     }
+    drawBalloon(ctx, time);
     for (const b of flyAway)
       GFX.bird(
         ctx,
@@ -4159,6 +4966,11 @@ export function openFarm(options) {
   }, 1000);
   let todAt = 0;
   function feelStep(dt) {
+    if (
+      options.here &&
+      performance.now() - hereAt > (here?.present?.length ? 10_000 : 20_000)
+    )
+      void ping();
     if (T - todAt > 1) {
       todAt = T;
       TOD = todOverride ?? deviceTimeOfDay();
@@ -4765,7 +5577,11 @@ export function openFarm(options) {
   function openSheet(name, tab) {
     sheet = name;
     sheetTab =
-      tab || ({ shop: "seeds", market: "sell", book: "book" }[name] ?? null);
+      tab ||
+      ({ shop: "seeds", market: "sell", book: "book", friends: "visit" }[
+        name
+      ] ??
+        null);
     $("fm-pop").hidden = true;
     renderSheet();
     $("fm-dock")
@@ -4786,6 +5602,35 @@ export function openFarm(options) {
   }
   function head(k, h, tabs) {
     return `<div class="sh-head"><div><div class="k">${k}</div><h4>${h}</h4></div><span class="sp"></span><button type="button" class="x" data-close aria-label="Close">✕</button></div>${tabs ? `<nav class="sh-tabs">${tabs.map(([id, l]) => `<button type="button" data-tab="${id}" aria-selected="${sheetTab === id}">${l}</button>`).join("")}</nav>` : "<div></div>"}`;
+  }
+  const hearts = (n) =>
+    `<span class="fm-hearts" aria-label="${FARM_BONDS[n].name}">${FARM_BONDS.map((_, k) => `<i class="${k <= n ? "on" : ""}"></i>`).join("")}</span>`;
+  function giftsHTML() {
+    if (!gifts)
+      return `<div class="sh-body"><p class="sh-note">Loading your friends…</p></div>`;
+    const rows = gifts.friends.map((f) => {
+      const next = FARM_BONDS[f.bond + 1];
+      return `<div class="fr"><img src="${options.art(f.fighter)}" alt=""><div><b>${esc(f.name)} · Lv ${f.level}</b><small>${hearts(f.bond)} <b>${FARM_BONDS[f.bond].name}</b> · ${f.days} friendship day${f.days === 1 ? "" : "s"}${next ? ` · ${next.days - f.days} more to ${next.name}` : ""}</small></div><div class="acts">${f.waiting ? `<button type="button" class="btn-s green" data-gift-open="${esc(f.id)}">Open${f.waiting > 1 ? ` (${f.waiting})` : ""}</button>` : ""}<button type="button" class="btn-s${f.sent ? " ghost" : ""}" data-gift-send="${esc(f.id)}" ${f.sent ? "disabled" : ""}>${f.sent ? "Sent" : "Send seeds"}</button></div></div>`;
+    });
+    return `<div class="sh-body"><p class="sh-note">Send each friend a <b>seed parcel</b> once a day; parcels keep for 7 days. Every day a parcel between you is opened is a <b>friendship day</b>: ${FARM_BONDS.slice(
+      1,
+    )
+      .map((b) => `${b.name} at ${b.days}`)
+      .join(
+        ", ",
+      )}. Opened today: ${gifts.openedToday}/${gifts.openCap}.</p>${rows.join("") || `<p class="sh-note">None of your friends has a farm yet. Invite them from the Invite tab.</p>`}</div>`;
+  }
+  function inviteHTML() {
+    const iv = gifts?.invites;
+    if (!iv)
+      return `<div class="sh-body"><p class="sh-note">Loading…</p></div>`;
+    const link = options.inviteLink?.(iv.code) ?? iv.code;
+    return `<div class="sh-body"><div class="fm-invite"><b>Bring a friend to the farm</b><p>Share your link. A new player who opens it becomes your friend. Once they reach <b>farm level 10</b> they get ${FARM_INVITE_WELCOME} ${L} and your invite counts.</p><div class="fm-invite-link"><input id="fm-invite-link" readonly value="${esc(link)}" aria-label="Your invite link"><button type="button" class="btn-s gold" data-invite-copy>Copy</button></div><div class="fm-invite-steps">${FARM_INVITE_STEPS.map(
+      (s) =>
+        `<div class="${iv.claimed.includes(s.invites) ? "got" : ""}"><b>${iv.claimed.includes(s.invites) ? "✓ " : ""}${s.invites} friend${s.invites > 1 ? "s" : ""}</b><span>${esc(s.reward)}</span></div>`,
+    ).join(
+      "",
+    )}</div><p class="sh-note">Joined with your link: ${iv.joined} · reached level 10: ${iv.counted}. Rewards arrive by themselves.${iv.invitedBy ? ` You joined through ${esc(iv.invitedBy)}'s invite.` : ""}</p></div></div>`;
   }
   const restockIn = () => Math.max(0, (F.shop.restockAt - serverNow()) / 1000);
   const marketIn = () => {
@@ -4870,9 +5715,13 @@ export function openFarm(options) {
       html =
         head("Farmers' market", "Market", [
           ["sell", "Sell"],
+          ["stall", "Stall"],
+          ["paper", "Paper"],
           ["prices", "Prices"],
           ["coins", "Coins"],
         ]) + `<div class="sh-body">`;
+      if (sheetTab === "stall") html += stallHTML();
+      if (sheetTab === "paper") html += paperHTML();
       if (sheetTab === "sell") {
         const rows = Object.entries(F.barn)
           .filter(([, n]) => n > 0)
@@ -5025,22 +5874,54 @@ export function openFarm(options) {
           return `<div class="item${lock ? " locked" : ""}"><span class="ic">${I(d.icon)}</span><div><b>${d.name}</b><small>+${d.charm} Charm${free ? ` · <b style="color:#7ff0a2">1 free</b>` : ""}${lock ? ` · <b style="color:#ffd65b">unlocks at Lv ${d.level}</b>` : ""}</small></div><div class="acts"><button type="button" class="btn-s${picking ? " green" : ""}" data-deco="${d.id}" ${lock || (!free && F.leaves < d.price) ? "disabled" : ""}>${picking ? "Placing…" : free ? "Free" : `${d.price.toLocaleString("en-US")} ${L}`}</button></div></div>`;
         }).join("") +
         `<div class="item"><span class="ic">${I("broom")}</span><div><b>Put decor away</b><small>Tap "Remove", then a decoration on the farm</small></div><div class="acts"><button type="button" class="btn-s ghost" data-deco="__remove">${F.decorPick === "__remove" ? "Removing…" : "Remove"}</button></div></div></div>`;
-    if (sheet === "friends")
+    if (sheet === "cup")
       html =
-        head("Neighbors", "Friends") +
-        `<div class="sh-body"><p class="sh-note">Visit a friend to <b>catch bugs and water</b> (+XP, up to 60 a day) or <b>sneak</b> 1 crop from a ripe plot. Watch out for guard dogs! You get 3 pranks a day.</p>` +
-        (friendsList === null
-          ? `<p class="sh-note">Loading your friends…</p>`
-          : friendsList.length
-            ? friendsList
-                .map(
-                  (f) =>
-                    `<div class="fr"><img src="${options.art(f.fighter)}" alt=""><div><b>${esc(f.name)} · Lv ${f.level}</b><small>${f.bugs ? `<span class="bd">${I("bug")} ${f.bugs} bug${f.bugs === 1 ? "" : "s"}</span> · ` : ""}${f.ripe ? `<span class="bd">${I("wheat")} ${f.ripe} ripe</span> · ` : ""}${f.dog ? `${I("dog")} ${DOG[f.dog]?.name ?? "Guard dog"}` : "No guard dog"}</small></div><button type="button" class="btn-s" data-visit="${esc(f.id)}"${V?.id === f.id ? " disabled" : ""}>${V?.id === f.id ? "Here" : "Visit"}</button></div>`,
-                )
-                .join("")
-            : `<p class="sh-note">None of your friends has a farm yet. Add friends from the Lobby, then visit their farms here.</p>`) +
-        `</div>`;
+        head(
+          "Valley Cup",
+          cupState?.coop ? esc(cupState.coop.name) : "Co-ops",
+        ) + cupHTML();
+    if (sheet === "balloon")
+      html =
+        head(
+          "Supply balloon",
+          balloon?.crates
+            ? `${balloon.crates.filter((c) => c.state === "done").length}/6 crates`
+            : "On its way",
+        ) + balloonHTML();
+    if (sheet === "friends") {
+      const tabs = [
+        ["visit", "Visit"],
+        [
+          "help",
+          `Help${helpList?.requests?.length ? ` (${helpList.requests.length})` : ""}`,
+        ],
+        ["gifts", `Gifts${gifts?.friends?.some((f) => f.waiting) ? " •" : ""}`],
+        ["invite", "Invite"],
+      ];
+      if (sheetTab === "gifts")
+        html = head("Neighbors", "Gifts", tabs) + giftsHTML();
+      else if (sheetTab === "help")
+        html = head("Neighbors", "Help friends", tabs) + helpHTML();
+      else if (sheetTab === "invite")
+        html = head("Neighbors", "Invite friends", tabs) + inviteHTML();
+      else
+        html =
+          head("Neighbors", "Friends", tabs) +
+          `<div class="sh-body"><p class="sh-note">Visit a friend to <b>catch bugs and water</b> (+XP, up to 60 a day) or <b>sneak</b> 1 crop from a ripe plot. Watch out for guard dogs! You get 3 pranks a day.</p>` +
+          (friendsList === null
+            ? `<p class="sh-note">Loading your friends…</p>`
+            : friendsList.length
+              ? friendsList
+                  .map(
+                    (f) =>
+                      `<div class="fr"><img src="${options.art(f.fighter)}" alt=""><div><b>${esc(f.name)} · Lv ${f.level}${likesOf(f.id)}</b><small>${f.bugs ? `<span class="bd">${I("bug")} ${f.bugs} bug${f.bugs === 1 ? "" : "s"}</span> · ` : ""}${f.ripe ? `<span class="bd">${I("wheat")} ${f.ripe} ripe</span> · ` : ""}${f.dog ? `${I("dog")} ${DOG[f.dog]?.name ?? "Guard dog"}` : "No guard dog"}</small></div><button type="button" class="btn-s" data-visit="${esc(f.id)}"${V?.id === f.id ? " disabled" : ""}>${V?.id === f.id ? "Here" : "Visit"}</button></div>`,
+                  )
+                  .join("")
+              : `<p class="sh-note">None of your friends has a farm yet. Add friends from the Lobby, or invite them from the Invite tab.</p>`) +
+          `</div>`;
+    }
     el.innerHTML = html;
+    if (sheet === "market" && sheetTab === "stall") wireStallForm(el);
     el.querySelectorAll("[data-dogprev]").forEach((c) => {
       const g = c.getContext("2d");
       g.clearRect(0, 0, 120, 120);
@@ -5078,7 +5959,68 @@ export function openFarm(options) {
     if (!t) return;
     const d = t.dataset;
     if ("close" in d) return closeSheet();
+    if ("cupcreate" in d)
+      return void cupAct("create", $("fm-cup-name")?.value ?? "");
+    if ("cupjoin" in d)
+      return void cupAct("join", $("fm-cup-code")?.value ?? "");
+    if (d.cuptake) return void cupAct("take", d.cuptake);
+    if ("cupdrop" in d) return void cupAct("drop");
+    if (d.cupclaim) return void cupAct("claim", d.cupclaim);
+    if ("cupleave" in d) return void cupAct("leave");
+    if (d.cupcopy) {
+      try {
+        await navigator.clipboard.writeText(d.cupcopy);
+        toast("Co-op code copied");
+      } catch {
+        toast(`Your co-op code is ${d.cupcopy}`);
+      }
+      return;
+    }
+    if (d.shelf) {
+      stallSlot = stallSlot === +d.shelf ? null : +d.shelf;
+      return renderSheet();
+    }
+    if ("slist" in d) {
+      const [crop, mutation = ""] = stallForm.key.split("|");
+      return void stallAct({
+        kind: "list",
+        slot: stallSlot,
+        crop,
+        mutation,
+        qty: stallForm.qty,
+        price: stallPrice(),
+      });
+    }
+    if (d.sunlist) return void stallAct({ kind: "unlist", slot: +d.sunlist });
+    if (d.scollect)
+      return void stallAct({ kind: "collect", slot: +d.scollect });
+    if (d.sbuy) {
+      const [seller, slot] = d.sbuy.split(":");
+      return void stallAct({ kind: "buy", slot: +slot, seller });
+    }
+    if (d.bfill) return void balloonAct("fill", +d.bfill);
+    if (d.bask) return void balloonAct("ask", +d.bask);
+    if ("blaunch" in d) return void balloonAct("launch");
+    if (d.hfill) {
+      const [friend, slot] = d.hfill.split(":");
+      return void helpFill(friend, +slot);
+    }
+    if (d.giftSend) return void giftAct("send", d.giftSend);
+    if (d.giftOpen) return void giftAct("open", d.giftOpen);
+    if ("inviteCopy" in d) {
+      const inp = $("fm-invite-link");
+      try {
+        await navigator.clipboard.writeText(inp.value);
+        toast("Invite link copied");
+      } catch {
+        inp.select();
+        toast("Select the link and copy it");
+      }
+      return;
+    }
     if (d.tab) {
+      if (sheet === "market" && (d.tab === "stall" || d.tab === "paper"))
+        void loadStall();
       sheetTab = d.tab;
       return renderSheet();
     }
@@ -5200,14 +6142,35 @@ export function openFarm(options) {
     const b = e.target.closest("[data-sheet]");
     if (!b) return;
     menuSet(false);
-    if (b.dataset.sheet === "friends" && sheet !== "friends")
+    if (b.dataset.sheet === "friends" && sheet !== "friends") {
+      void loadTour();
       void loadFriends();
+      void loadGifts();
+      void loadHelp();
+    }
+    if (b.dataset.sheet === "balloon" && sheet !== "balloon")
+      void loadBalloon();
+    if (b.dataset.sheet === "market" && sheet !== "market") void loadStall();
+    if (b.dataset.sheet === "cup" && sheet !== "cup") void loadCup();
     if (sheet === b.dataset.sheet) closeSheet();
     else openSheet(b.dataset.sheet);
   });
   $("fm-visit").addEventListener("click", (e) => {
     if (e.target.closest("[data-home]")) void goHome();
+    const like = e.target.closest("[data-like]");
+    if (like) void likeFarm(like.dataset.like);
+    const em = e.target.closest("[data-emote]");
+    if (em) sendEmote(em.dataset.emote);
   });
+  $("fm-here").addEventListener("click", (e) => {
+    const em = e.target.closest("[data-emote]");
+    if (em) sendEmote(em.dataset.emote);
+  });
+  function sendEmote(k) {
+    sfx("tick");
+    feel.text(cam.x, cam.y - 40, EMO[k] ?? "", "#fff", 40);
+    void ping(k);
+  }
   $("fm-chips").addEventListener("click", (e) => {
     const b = e.target.closest("[data-orb]");
     if (!b) return;
@@ -5257,7 +6220,13 @@ export function openFarm(options) {
   function syncMenuDot() {
     $("fm-menu-btn").toggleAttribute(
       "data-dot",
-      ["fm-ord-dot", "fm-fr-dot", "fm-wish-dot"].some((id) => !$(id).hidden),
+      [
+        "fm-ord-dot",
+        "fm-fr-dot",
+        "fm-wish-dot",
+        "fm-bal-dot",
+        "fm-cup-dot",
+      ].some((id) => !$(id).hidden),
     );
   }
   menuBtn.addEventListener("click", () => menuSet(dockEl.hidden));
@@ -5437,6 +6406,7 @@ export function openFarm(options) {
     ) {
       bounce.stall = 1;
       sfx("tick");
+      void loadStall();
       return openSheet("market");
     }
     if (
@@ -5460,6 +6430,16 @@ export function openFarm(options) {
       bounce.board = 1;
       sfx("tick");
       return openSheet("orders");
+    }
+    if (flagHit(w)) {
+      sfx("tick");
+      void loadCup();
+      return openSheet("cup");
+    }
+    if (balloonHit(w)) {
+      sfx("boing");
+      void loadBalloon();
+      return openSheet("balloon");
     }
     if (Math.hypot(w.x - WELL.x, w.y - (WELL.y - 50)) < 60) {
       bounce.well = 1;
@@ -5754,6 +6734,7 @@ export function openFarm(options) {
     cv.height = Math.round(nh * ps);
   }
   function enter() {
+    hereAt = 0;
     if (!inited) {
       paintBg();
       inited = true;
@@ -5769,6 +6750,8 @@ export function openFarm(options) {
   }
   function leave() {
     running = false;
+    hereAt = Infinity;
+    void options.gone?.().catch(() => {});
     rainLevel = -1;
     try {
       options.rainSound?.(0);
@@ -5797,7 +6780,10 @@ export function openFarm(options) {
           .visit(V.id)
           .then((v) => V && V.id === v.id && applyVisit(v))
           .catch(() => {});
-    } else if (!queue.length && !sending) void refresh();
+    } else if (!queue.length && !sending) {
+      void refresh();
+      if (cupState?.active) void loadCup();
+    }
   }, 60_000);
   onResize();
   if (matchMedia("(pointer: coarse)").matches)
@@ -5807,6 +6793,10 @@ export function openFarm(options) {
   void refresh();
   // The Friends button shows a dot when a friend's farm has bugs or ripe crops.
   void loadFriends();
+  void loadGifts();
+  void loadBalloon();
+  void loadHelp();
+  void loadCup();
   layer.focus({ preventScroll: true });
   return {
     refresh,
