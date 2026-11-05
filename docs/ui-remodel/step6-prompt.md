@@ -24,8 +24,10 @@ We are continuing the UI remodel of every screen outside matches. Read first:
    /api/friends/request, /respond, /remove); match players are in
    arena_match_players (supabase/migrations/004 and 006).
 
-State: steps 1–5 are on main and live. Step 5 (Raids and the rooms) ends
-at commit ec9eca8.
+State: steps 1–5 are on main and live, with the follow-ups after step 5:
+raid windows and the practice panel scroll under a finger, the boss
+page's Party tab has no Next rewards, and a scroll sweep checks every
+panel (see the last notes in PLAN.md's Progress).
 
 Process (owner): no pull requests. Work on your branch, fetch and merge
 main, run npm run typecheck, npm run test and npm run build, then push
@@ -83,6 +85,12 @@ neatly placed, evenly spaced and never overlapping, at every size.
   every request state. Cut text with an ellipsis, never let it spill out.
 - Panels use their room evenly: no big empty side while something else is
   cramped or cropped.
+- Long content scrolls: whenever a panel, list or row holds more than fits,
+  a finger can scroll it to the end, on phones and on desktop. Add your
+  screens (Ranks: Everyone and Friends; Friends: each tab) to
+  tests/visual/panel-scroll.spec.ts; tests/visual/scroll-sweep.ts swipes
+  every scroller with real touch input and fails on anything a finger
+  can't reach or that is cut off.
 
 DOUBLE CHECK BEFORE YOU PUSH (required)
 When the step is done, and before you push it to main, review it yourself.
@@ -94,8 +102,8 @@ This is your own careful look and judgement, not waiting for a test run:
    each one yourself, zoomed in, as the owner would: is every text centred
    in its box, is anything misaligned, cramped, cut off or overlapping, is
    the space used evenly? Compare them with the mockups.
-2. Measure what you see: layoutProblems, closeSpot and the centring checks
-   above.
+2. Measure what you see: layoutProblems, closeSpot, the centring checks
+   above, and the scroll sweep (panel-scroll.spec.ts) on your screens.
 3. Fix anything off, then look again at what you changed.
 4. Only then push. In the report, say what you checked and at which sizes,
    and attach or link the pictures.
