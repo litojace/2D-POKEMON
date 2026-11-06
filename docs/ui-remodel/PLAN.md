@@ -1231,6 +1231,28 @@ Before and after: [Ranks](images/step6/ranks.webp),
   row said "You" instead of your name; on a tall window the rank card
   left its lower half empty (it grows there now and its content sits in
   its middle).
+- **Found in the review before pushing** (screenshots at the five sizes,
+  looked at one by one): at 1280×720 the rank card was 20 px taller than
+  its box (it scrolled; it now fits a short window whole); a worn portrait
+  frame's ring touched the row's left edge (rows have 14 px / 12 px on
+  the left now; every portrait stays one size); the login toast "Pip
+  wants to be friends…" covered the open Friends sheet, which already
+  shows the request (it no longer shows while Friends is open); and the
+  room's picker could stay away if a party leader pulled you into a room
+  with Friends open in the Lobby (`renderRoom` now waits only for a
+  Friends sheet opened in that room).
+- **The prune changed the profile, and the pixel comparison caught it:**
+  an `:is()` / `:has()` list counts its most specific entry, so dropping
+  the dead `#leaderboard-body` from two dialog rules lowered them from ID
+  weight to class weight, and another rule won (the profile dialog lost
+  its scroll gutter and grew 12 px wider inside). Both rules keep their
+  weight with `#profile-progress`, which every profile dialog holds;
+  the profile is identical to `main` again. **Lesson for the next prune:**
+  when a trimmed `:is()` / `:has()` loses an ID, keep the ID weight. The
+  Lobby, Fighters, Shop, Missions, Journey, Raids, Settings, the party
+  invite and the Play panel were identical to `main` at 1440×900 (and the
+  Lobby at 844×390), apart from the Shop's animated aura tile; the other
+  screens at 844×390 were not compared (the comparison run was cut off).
 - **Deleted:** `friends-hub.ts` (490 lines), `friends-view.ts` (285),
   `friends.css` (745), the leaderboard and rank-help markup in
   `progress-view.ts` (49; `ratingMarkup` and `progressMarkup` stay for the
@@ -1268,7 +1290,9 @@ Before and after: [Ranks](images/step6/ranks.webp),
   `pvp-party-flow`, `rooms`, `portrait-frames`, `portrait-frames.test.ts`
   and `match-summary.test.ts` moved to the new screens; what they check
   stays. `panel-scroll.spec.ts` sweeps Ranks (Everyone, Friends) and each
-  Friends tab, filled past their height, as hub panels.
+  Friends tab, filled past their height, as hub panels (`SWEEP_ONLY=ranks,friends`
+  sweeps just those). `landscape-only.test.ts` no longer expects the old
+  Friends and leaderboard selectors in the hub dialog's size rule.
 
 ## Decisions (owner, 3 Nov 2026)
 
