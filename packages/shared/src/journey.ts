@@ -302,7 +302,7 @@ export const SEASON_ITEMS: JourneyItem[] = (
 export const JOURNEY_ITEMS = [...LEVEL_ITEMS, ...SEASON_ITEMS];
 /**
  * Reward frames for owning every skin of a champion-skin collection: never
- * sold, granted by arena_collection_bonus (migration 070). They share the
+ * sold, granted by arena_collection_bonus (migrations 071 and 072). They share the
  * reward items' lookup with the Journey's.
  */
 export const COLLECTION_FRAMES = [
@@ -327,6 +327,17 @@ export const COLLECTION_FRAMES = [
       "#dfe6f0",
     ),
     collection: "cyber" as const,
+  },
+  {
+    ...rewardItem(
+      "arcade-frame",
+      "Arcade frame",
+      "frame",
+      "Neon tubes, a synthwave grid and a joystick: own all eight Arcade skins",
+      "#ff4fd8",
+      "#2ff3ff",
+    ),
+    collection: "arcade" as const,
   },
 ];
 /** Every reward-only item: the Journey's and the collection frames. */

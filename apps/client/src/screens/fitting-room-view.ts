@@ -782,6 +782,13 @@ function skinsBody(view: FitView, d: FitData) {
       (view.rarity === "all" || s.rarity === view.rarity),
   );
   return `${fighterRow(view, d, "Fighter")}${filters(view, skins.length, true, "skin")}${collectionReward("cyber", view, d)}${
+    // The Arcade frame, on the fighters with an Arcade skin.
+    CHAMPION_SKINS.some(
+      (s) => s.champion === view.champion && s.collection === "arcade",
+    )
+      ? collectionReward("arcade", view, d)
+      : ""
+  }${
     skins.length
       ? grid(skins.map((s) => shopTile(s.id, view, d)).join(""))
       : noMatch()
@@ -789,7 +796,7 @@ function skinsBody(view: FitView, d: FitData) {
 }
 /** A skin collection's reward frame: how close you are, with its picture. */
 function collectionReward(
-  collection: "void" | "cyber",
+  collection: (typeof COLLECTION_FRAMES)[number]["collection"],
   view: FitView,
   d: FitData,
 ) {
