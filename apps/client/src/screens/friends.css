@@ -1,0 +1,345 @@
+/* ==========================================================================
+   The Friends sheet (UI remodel step 6, docs/ui-remodel/PLAN.md). Markup:
+   screens/friends-view.ts. Layout only on top of the shared components
+   (ui/components.css). The list scrolls between the tabs and your friend
+   code, which stays in view at the bottom.
+   ========================================================================== */
+.friends-sheet .ui-panel-head > .fr-add-toggle {
+  flex: none;
+}
+.friends-sheet .ui-panel-head > .fr-add-toggle[aria-expanded="true"] {
+  border-color: var(--ui-accent);
+  color: var(--ui-accent);
+}
+.friends-sheet .ui-tabs > button {
+  position: relative;
+}
+/* The Friends count: a pill you can see (as the mockup), so the label and
+   its count read as one centred group. */
+.friends-sheet .ui-tabs .ui-tag {
+  justify-content: center;
+  min-width: 18px;
+  padding: 0 5px;
+  background: #ffffff40;
+  color: #fff;
+  font-family: var(--font-body);
+  letter-spacing: 0;
+}
+.friends-sheet .ui-tabs > [aria-selected="true"] .ui-tag {
+  background: var(--ui-accent);
+  color: var(--ui-accent-ink);
+}
+/* The Requests tab's count: a red badge beside the label, centred on it. */
+.fr-tab-badge.ui-badge {
+  position: static;
+  border: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  /* The display font's figures sit in the middle of the dot (DM Sans's
+     "1" leans two pixels right). */
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: 0;
+}
+.fr-body.ui-panel-body {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  gap: var(--sp-2);
+}
+.fr-body > * {
+  flex: none;
+}
+.fr-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  /* Room for focus rings and frame ornaments at the edges. */
+  margin: 0 calc(-1 * var(--sp-1));
+  padding: 2px var(--sp-1) var(--sp-1);
+}
+.fr-list {
+  display: grid;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.fr-kicker {
+  display: flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 0 2px;
+}
+.fr-kicker.is-dim .ui-kicker {
+  color: var(--ui-dim);
+}
+/* A little more room on the left: a worn portrait frame's ring reaches past
+   the portrait (portraits.ts) and must not touch the row's edge. */
+.fr-row > .ui-row {
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  min-height: 60px;
+  padding-left: 14px;
+}
+.fr-row.is-offline > .ui-row {
+  background: #121a3399;
+}
+.fr-row.is-offline .fr-avatar,
+.fr-row.is-offline .ui-row-main {
+  opacity: 0.7;
+}
+.fr-row.is-pinned > .ui-row {
+  border-color: #ffd65b55;
+}
+.fr-row.is-request > .ui-row {
+  border-color: #ffd65b66;
+  background: linear-gradient(110deg, #ffd65b1a, var(--ui-bg-1) 60%);
+}
+/* Every action in the rows, and the code's Copy / Share, is one size
+   (owner's rule): a fixed width, label centred. */
+.fr-row .ui-row-acts > .ui-btn,
+.fr-row .ui-row-acts > .fr-in-party,
+.fr-opts > .ui-btn,
+.fr-code > .ui-btn {
+  width: var(--act-s);
+  min-width: 0;
+  padding: 0 6px;
+}
+/* The eye icon fills its box edge to edge: it needs none of the shared
+   nudge for icons drawn in from their left edge (measured, 1.5 px). */
+.fr-row .ui-btn[data-friend-watch] > svg:first-child {
+  margin-left: 0;
+}
+.fr-row .ui-row-acts > .fr-more {
+  width: var(--ctl-s);
+  height: var(--ctl-s);
+  min-width: 0;
+  background: transparent;
+  border-color: transparent;
+}
+.fr-row .ui-row-acts > .fr-more[aria-expanded="true"] {
+  border-color: var(--ui-line-2);
+  background: var(--ui-bg-2);
+}
+.fr-in-party {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--ctl-s);
+  overflow: hidden;
+  border-radius: var(--rad-sm);
+  border: 1px dashed var(--ui-line-2);
+  color: var(--ui-dim);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-body);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+}
+/* A portrait with its frame and the status dot. */
+.fr-avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+}
+.fr-avatar > .portrait-disc {
+  border: 2px solid var(--el, var(--ui-line-2));
+}
+.fr-avatar * {
+  animation: none !important;
+  transition: none !important;
+}
+.fr-initial {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--ui-accent);
+}
+.fr-avatar > .ui-status {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  z-index: 7;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--st, var(--st-away));
+  border: 2px solid var(--ui-bg-1);
+}
+/* A row's options: Pin and Remove (Remove asks once more). */
+.fr-opts {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 0 56px;
+  padding: 6px 8px;
+  border-radius: var(--rad-sm);
+  background: var(--ui-bg-1);
+  border: 1px solid var(--ui-line);
+}
+.fr-opts[hidden] {
+  display: none;
+}
+.fr-opts-text {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-small);
+  color: var(--ui-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Add a friend by code. */
+.fr-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--act-s);
+  gap: 4px var(--sp-2);
+  align-items: center;
+  padding: var(--sp-2) 10px;
+  border-radius: var(--rad-md);
+  background: var(--ui-bg-1);
+  border: 1px solid #ffd65b55;
+}
+.fr-add[hidden] {
+  display: none;
+}
+.fr-add-label {
+  grid-column: 1 / -1;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-small);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ui-accent);
+}
+.fr-add > input {
+  height: var(--ctl-s);
+  min-width: 0;
+  padding: 0 10px;
+  border-radius: var(--rad-sm);
+  border: 1px solid var(--ui-line-2);
+  background: var(--ui-bg-0);
+  color: var(--ui-text);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-lead);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.fr-add > input::placeholder {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: var(--fs-small);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ui-faint);
+}
+.fr-add > input:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 1px;
+}
+.fr-add > small {
+  grid-column: 1 / -1;
+}
+.fr-status:empty {
+  display: none;
+}
+/* Your friend code, always at the bottom. */
+.fr-code {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 8px 10px;
+  border-radius: var(--rad-md);
+  border: 1px dashed var(--ui-line-2);
+}
+.fr-code-text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+.fr-code-text b {
+  font-size: 20px;
+  line-height: 1.1;
+  letter-spacing: 0.08em;
+  color: var(--ui-accent);
+  white-space: nowrap;
+}
+.fr-scroll > .ui-empty {
+  margin-top: var(--sp-1);
+}
+
+@media (max-height: 500px) {
+  /* As in the mockup: the head is the title alone on a phone. */
+  .friends-sheet .ui-panel-head .ui-kicker {
+    display: none;
+  }
+  .friends-sheet .ui-panel-head > .fr-add-toggle {
+    width: var(--close);
+    height: var(--close);
+  }
+  .friends-sheet .ui-panel-head > .fr-add-toggle svg {
+    width: 16px;
+    height: 16px;
+  }
+  .fr-row > .ui-row {
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    min-height: 46px;
+    padding-left: 12px;
+  }
+  .fr-avatar {
+    width: 34px;
+    height: 34px;
+  }
+  .fr-initial {
+    font-size: 16px;
+  }
+  .fr-avatar > .ui-status {
+    width: 10px;
+    height: 10px;
+  }
+  /* The digit sat 1.5 px low in the dot at the phones' type size. */
+  .fr-tab-badge.ui-badge {
+    padding-bottom: 2px;
+  }
+  /* 76 px buttons: the label alone, centred (as in the rooms). */
+  .fr-row .ui-row-acts > .ui-btn > svg,
+  .fr-opts > .ui-btn > svg {
+    display: none;
+  }
+  .fr-opts {
+    margin-left: 0;
+    padding: 4px 6px;
+  }
+  .fr-code {
+    padding: 4px 8px;
+  }
+  .fr-code-text small {
+    display: none;
+  }
+  .fr-code-text b {
+    font-size: 16px;
+  }
+  .fr-code-text b::before {
+    content: "Code ";
+    color: var(--ui-dim);
+    font-size: var(--fs-small);
+    letter-spacing: 0.06em;
+  }
+  .fr-add {
+    padding: 6px 8px;
+  }
+  .fr-add > small {
+    display: none;
+  }
+}

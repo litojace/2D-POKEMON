@@ -43,7 +43,41 @@ const API: Record<string, unknown> = {
     rating: { rating: 1000, matches: 0, peak: 1000, rank: "Pupil", placementLeft: 5, next: { name: "Specialist", at: 1050 } },
   },
   "/api/friends": { code: "a1b2c3d4", friends: [], incoming: [], outgoing: [] },
-  "/api/leaderboard": { season: "2026-10", rows: [], unranked: [], me: null, rating: null },
+  // Ranks (step 6): the top 20 (as the server sends), Mae placing, you at #23.
+  "/api/leaderboard": {
+    season: today.slice(0, 7),
+    rows: ["Aria", "Bram", "Cleo", "Dax", "Esme", "Finn", "Gus", "Hana", "Ivo", "Jude", "Koa", "Lior", "Nico", "Odile", "Pax", "Quill", "Rhea", "Sol", "Tam", "Uma"].map((name, i) => ({
+      rank: i + 1,
+      name,
+      title: null,
+      titleColor: null,
+      rating: 1620 - i * 18,
+      rankName: i < 1 ? "Legendary Grandmaster" : i < 4 ? "International Grandmaster" : i < 8 ? "Grandmaster" : i < 12 ? "International Master" : "Master",
+      wins: 60 - i * 2,
+      matches: 80 - i * 2,
+      me: false,
+    })),
+    unranked: [{ name: "Mae", left: 2 }],
+    me: { rank: 23, wins: 36, matches: 62 },
+    rating: { rating: 1110, matches: 62, peak: 1140, rank: "Expert", placementLeft: 0, next: { name: "Candidate Master", at: 1150 } },
+  },
+  "/api/leaderboard/friends": {
+    season: today.slice(0, 7),
+    rows: [
+      { id: "f-kai", place: 1, name: "Kai", rating: 1388, rankName: "Grandmaster", placementLeft: 0, wins: 14, matches: 22, me: false },
+      { id: U, place: 2, name: "tester", rating: 1110, rankName: "Expert", placementLeft: 0, wins: 36, matches: 62, me: true },
+      { id: "f-mina", place: 3, name: "Mina", rating: 1046, rankName: "Specialist", placementLeft: 0, wins: 8, matches: 15, me: false },
+      { id: "f-rae", place: null, name: "Rae", rating: 1020, rankName: "Unranked", placementLeft: 3, wins: 2, matches: 2, me: false },
+    ],
+    rating: { rating: 1110, matches: 62, peak: 1140, rank: "Expert", placementLeft: 0, next: { name: "Candidate Master", at: 1150 } },
+  },
+  "/api/friends/recent": {
+    players: [
+      { id: "33333333-3333-4333-8333-333333333331", name: "Kai", fighter: "cindrake", lastPlayed: new Date(Date.now() - 2 * 3600e3).toISOString(), matches: 3, together: 0, wins: 2, losses: 1, relation: "friend", online: true },
+      { id: "33333333-3333-4333-8333-333333333332", name: "Wren", fighter: "tidefin", lastPlayed: new Date(Date.now() - 5 * 3600e3).toISOString(), matches: 1, together: 1, wins: 0, losses: 0, relation: "none", online: false },
+      { id: "33333333-3333-4333-8333-333333333333", name: "Oskar", fighter: "mystowl", lastPlayed: new Date(Date.now() - 30 * 3600e3).toISOString(), matches: 2, together: 0, wins: 0, losses: 2, relation: "sent", online: false },
+    ],
+  },
 };
 const realFetch = window.fetch.bind(window);
 window.fetch = async (input, init) => {
@@ -53,12 +87,16 @@ window.fetch = async (input, init) => {
     // Tests can set window.__missions (before load, or then refresh the
     // economy) to give the player today's missions, and window.__friends to
     // give them friends and requests, and window.__raids for their raid
-    // progress (its loadout is the equipped raid look).
+    // progress (its loadout is the equipped raid look); window.__board,
+    // __friendsBoard and __recent replace Ranks' boards and Recent players.
     const w = window as unknown as {
       __missions?: unknown[];
       __plazaProgress?: unknown;
       __friends?: unknown;
       __raids?: unknown;
+      __board?: unknown;
+      __friendsBoard?: unknown;
+      __recent?: unknown;
       __serverTime?: number;
     };
     const missions = w.__missions;
@@ -71,7 +109,13 @@ window.fetch = async (input, init) => {
             ? w.__friends
             : url.pathname === "/api/raids" && w.__raids
               ? w.__raids
-              : API[url.pathname];
+              : url.pathname === "/api/leaderboard" && w.__board
+                ? w.__board
+                : url.pathname === "/api/leaderboard/friends" && w.__friendsBoard
+                  ? w.__friendsBoard
+                  : url.pathname === "/api/friends/recent" && w.__recent
+                    ? w.__recent
+                    : API[url.pathname];
     // window.__serverTime: the server's clock, sent as the real server does
     // (X-Server-Time); otherwise no header, so the device clock is used.
     const headers: Record<string, string> = { "Content-Type": "application/json" };

@@ -15,7 +15,7 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
   const toolbar = document.createElement("div");
   toolbar.className = "dialog-toolbar";
   const back = content.querySelector<HTMLButtonElement>(
-    "#controls-back, #leaderboard-back, #credits-back",
+    "#controls-back, #credits-back",
   );
   if (back) toolbar.append(back);
   toolbar.append(close);
@@ -50,7 +50,6 @@ export function setDialogContent(dialog: HTMLDialogElement, html: string) {
       "#profile-leaderboard",
       "#profile-raids",
       "#profile-adventure",
-      "#friend-add > button",
       "#report-form > button[type=submit]",
     ].join(","),
   );

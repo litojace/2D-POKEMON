@@ -207,7 +207,14 @@ test("a free-for-all room's open seats invite friends", async ({ page }) => {
   await enterRoom(page, "ffa");
   await expect(page.locator(".room-seats .room-seat")).toHaveCount(4);
   await page.click("#invite-friends");
-  await expect(page.locator(".friends-hub")).toBeVisible();
+  // Friends takes the picker's place beside the seats; closing it brings
+  // the picker back.
+  await expect(page.locator(".room-screen .friends-sheet")).toBeVisible();
+  await expect(page.locator(".room-screen .roster-room")).toHaveCount(0);
+  await expect(page.locator(".room-seats")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".friends-sheet")).toHaveCount(0);
+  await expect(page.locator(".room-screen .roster-room")).toBeVisible();
   expect(errors).toEqual([]);
 });
 

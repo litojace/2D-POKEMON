@@ -21,6 +21,16 @@ import {
 } from "../../../packages/shared/src/shop.js";
 import { JOURNEY_ITEM_BY_ID } from "../../../packages/shared/src/journey.js";
 import { createClient } from "@supabase/supabase-js";
+import {
+  buildFriendsBoard,
+  buildRecentPlayers,
+  RECENT_DAYS,
+  RECENT_MATCHES,
+  seasonBounds,
+  seasonOf,
+  supabaseSocialStore,
+  type SocialStore,
+} from "./social.js";
 import type { Express, Request, Response, NextFunction } from "express";
 import {
   accountSchema,
@@ -37,6 +47,7 @@ import {
   friendRequestSchema,
   friendRespondSchema,
   friendRemoveSchema,
+  ratingSchema,
   type Friend,
   type Account,
   type MatchSummary,
@@ -53,6 +64,8 @@ export interface AccountProvider {
   /** Something the game server saw in the Plaza (quests, orbs, laps); returns the player's progress. */
   recordPlaza?(event: PlazaRecord): Promise<PlazaProgress | null>;
   authenticate(token: string): Promise<Account | null>;
+  /** Read-only rows for friends' ratings and recent players (step 6). */
+  social?: SocialStore;
   rpc(
     token: string,
     name: string,
@@ -83,6 +96,7 @@ export function createAccountProvider(): AccountProvider {
     });
   };
   return {
+    social: supabaseSocialStore(),
     async recordRaid(receipt) {
       const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
       if (!url || !serviceKey)
@@ -951,6 +965,93 @@ export function installAccountRoutes(
       res.json(
         await provider.rpc(token, "arena_leaderboard", { p_season: season }),
       );
+    }),
+  );
+  /** Read-only rows for the two social views, or a plain 503. */
+  const socialStore = () => {
+    if (!provider.social)
+      throw new AccountError(
+        503,
+        "Friends' ratings and recent players need server storage configuration.",
+      );
+    return provider.social;
+  };
+  // Ranks › Friends: you and your friends ranked among yourselves (step 6).
+  app.get(
+    "/api/leaderboard/friends",
+    route(false, async (_req, res, token, account) => {
+      res.setHeader("Cache-Control", "no-store");
+      const store = socialStore();
+      const list = friendsSchema.parse(
+        await provider.rpc(token, "arena_friends", {}),
+      );
+      // Your own rating card, exactly as the Everyone board shows it.
+      let rating;
+      try {
+        rating = ratingSchema.parse(
+          await provider.rpc(token, "arena_my_rating", {}),
+        );
+      } catch {
+        /* ratings not set up yet */
+      }
+      const friends = list.friends.slice(0, 500);
+      const ids = [account.id, ...friends.map((f) => f.id)];
+      const season = seasonOf(Date.now());
+      const { from, to } = seasonBounds(season);
+      const [ratings, top, month] = await Promise.all([
+        store.ratings(ids),
+        store.topRated(),
+        store.monthResults(ids, from, to),
+      ]);
+      res.json(
+        buildFriendsBoard({
+          me: {
+            id: account.id,
+            name: account.displayName,
+            title: account.title,
+            titleColor: account.titleColor,
+          },
+          friends,
+          ratings,
+          top,
+          month,
+          season,
+          rating,
+        }),
+      );
+    }),
+  );
+  // Friends › Recent: the players in your latest matches (step 6).
+  app.get(
+    "/api/friends/recent",
+    route(false, async (_req, res, token, account) => {
+      res.setHeader("Cache-Control", "no-store");
+      const store = socialStore();
+      const list = friendsSchema.parse(
+        await provider.rpc(token, "arena_friends", {}),
+      );
+      const since = new Date(
+        Date.now() - RECENT_DAYS * 86_400_000,
+      ).toISOString();
+      const mine = (await store.myMatches(account.id, since))
+        .sort((a, b) => Date.parse(b.played_at) - Date.parse(a.played_at))
+        .slice(0, RECENT_MATCHES);
+      const others = await store.matchPlayers(
+        mine.map((m) => m.match_id),
+        account.id,
+      );
+      const profiles = await store.profiles([
+        ...new Set(others.map((o) => o.player_id)),
+      ]);
+      res.json({
+        players: buildRecentPlayers({
+          mine,
+          others,
+          profiles,
+          friends: list,
+          presence,
+        }),
+      });
     }),
   );
   app.get(

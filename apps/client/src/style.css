@@ -556,22 +556,6 @@ input::placeholder {
   margin-top: 25px;
   text-align: center;
 }
-.room-code {
-  background: #172d4c;
-  border: 1px dashed #ffd65b50;
-  color: var(--lime);
-  width: 100%;
-  padding: 18px 5px;
-  font: 700 32px monospace;
-  letter-spacing: 5px;
-  border-radius: 7px;
-}
-.room-code span {
-  display: block;
-  font: 600 8px "DM Sans";
-  letter-spacing: 2px;
-  margin-top: 9px;
-}
 .players {
   margin-top: 22px;
 }
@@ -3547,12 +3531,6 @@ body::before {
   min-width: 170px;
 }
 /* Copy-code button: a real icon (iOS turns ↗ into an emoji). */
-.room-code span {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-}
 .copy-icon {
   width: 12px;
   height: 12px;
@@ -3971,7 +3949,7 @@ html.zoom-locked dialog input {
   /* The fighter panel slides open under the chosen card. */
   /* Cards respond to hover and taps. */
   /* Menu buttons press in slightly (touch battle buttons have their own). */
-  :is(.primary, .secondary, .quiet, .bot-level, .room-code):not(
+  :is(.primary, .secondary, .quiet, .bot-level):not(
       :disabled
     ):active {
     transform: scale(0.97);
@@ -4204,7 +4182,7 @@ html.scroll-locked {
     margin-bottom: 8px;
   }
 }
-/* ---- Profile progress, achievements, mastery, leaderboard ---- */
+/* ---- Profile progress, achievements, mastery ---- */
 .muted {
   color: var(--muted);
 }
@@ -4282,37 +4260,6 @@ html.scroll-locked {
 }
 .mastery li.ranked span {
   color: var(--tier);
-}
-.leaderboard {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-  margin: 8px 0 12px;
-}
-.leaderboard th,
-.leaderboard td {
-  padding: 6px 8px;
-  text-align: center;
-}
-.leaderboard tbody th {
-  text-align: left;
-  font-weight: 600;
-}
-.leaderboard thead th {
-  font-size: 10px;
-  letter-spacing: 1px;
-  color: var(--muted);
-}
-.leaderboard tbody tr {
-  border-top: 1px solid #ffffff14;
-}
-.leaderboard tr.me {
-  background: #ffd16618;
-}
-.leaderboard .empty {
-  color: var(--muted);
-  padding: 16px;
 }
 /* ---- Guest play ---- */
 .guest-play {
@@ -4484,110 +4431,6 @@ body.spectating #control-hints {
   font-weight: 700;
 }
 /* ---- Friends ---- */
-.friend-code-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin: 6px 0 12px;
-  font-size: 12px;
-  color: var(--muted);
-}
-.room-code.small-code {
-  padding: 6px 14px;
-  font-size: 18px;
-  letter-spacing: 0.18em;
-  width: auto;
-}
-.friend-add {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.friend-add input {
-  flex: 1 1 160px;
-  min-width: 0;
-  text-transform: uppercase;
-}
-#friends-body h3 {
-  font-size: 13px;
-  margin: 16px 0 6px;
-}
-.friend-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 6px;
-}
-.friend-list li {
-  display: grid;
-  grid-template-columns: 10px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border: 1px solid #ffffff17;
-  border-radius: 10px;
-}
-.friend-list li:not(.online):not(.request) {
-  opacity: 0.7;
-}
-.friend-name {
-  display: grid;
-  min-width: 0;
-}
-.friend-list .request > b {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-.friend-name b,
-.friend-name small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.friend-name small {
-  font-size: 11px;
-  color: var(--muted);
-}
-.friend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #5b6782;
-}
-.friend-dot.menu,
-.friend-dot.lobby {
-  background: #65d38a;
-}
-.friend-dot.match {
-  background: #ffd166;
-}
-.friend-dot.practice {
-  background: #7fd3ff;
-}
-.friend-dot.town {
-  background: #b59bff;
-}
-.friend-actions {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-@media (max-width: 480px) {
-  .friend-list li {
-    grid-template-columns: 10px minmax(0, 1fr);
-  }
-  .friend-actions {
-    grid-column: 2;
-    flex-wrap: wrap;
-  }
-  .friend-name b,
-  .friend-name small {
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
-}
 button.small {
   padding: 6px 10px;
   font-size: 12px;
@@ -4926,7 +4769,7 @@ button.small {
 .rite-head .rite-tier {
   white-space: normal;
 }
-/* ---- Ratings and ranks ---- */
+/* ---- Your rating on the profile (step 7 replaces it) ---- */
 .rating-card {
   display: grid;
   grid-template-columns: auto auto 1fr;
@@ -4957,56 +4800,6 @@ button.small {
   margin: 0;
   font-size: 12px;
   color: #c3d0e2;
-}
-.leaderboard .rank-tag {
-  display: block;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-}
-.unranked {
-  font-size: 12px;
-}
-.ranks-help {
-  margin-top: 14px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 10px 14px;
-  font-size: 12px;
-}
-.ranks-help summary {
-  cursor: pointer;
-  font-weight: 700;
-}
-.ranks-help ul {
-  margin: 10px 0;
-  padding-left: 18px;
-  display: grid;
-  gap: 6px;
-  color: #c3d0e2;
-  line-height: 1.45;
-}
-.rank-ladder {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 4px 12px;
-}
-.rank-ladder li {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 3px 0;
-  border-bottom: 1px solid #ffffff10;
-}
-.rank-ladder b {
-  color: var(--rank);
-}
-.rank-ladder span {
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
 }
 .records .rating-change b {
   color: #fff;
@@ -8219,20 +8012,17 @@ label.title-option {
 /* Content-rich menus share the available width, including tablets in portrait. */
 .profile-customize,
 #profile-progress,
-.friends-invite,
-#friends-body,
-.help-controls,
-.leaderboard-summary,
-.leaderboard-results {
+.help-controls {
   min-width: 0;
 }
 @media (min-width: 760px), (orientation: landscape) and (min-width: 560px) {
+  /* #profile-progress keeps this rule's ID weight (an :has() list counts
+     its most specific entry); it was #leaderboard-body before step 6. */
   dialog:has(
     .profile-screen,
-    .friends-screen,
     .controls-layout,
     .help-screen,
-    #leaderboard-body,
+    #profile-progress,
     .admin-tabs
   ) {
     width: min(
@@ -8270,9 +8060,7 @@ label.title-option {
     min-width: 0;
   }
   .profile-layout,
-  .friends-layout,
-  .help-layout,
-  .leaderboard-layout {
+  .help-layout {
     display: grid;
     grid-template-columns: minmax(220px, 0.7fr) minmax(0, 1.3fr);
     gap: 24px;
@@ -8280,23 +8068,6 @@ label.title-option {
   }
   .profile-layout .progress {
     margin-top: 0;
-  }
-  .friends-layout {
-    grid-template-columns: minmax(200px, 0.65fr) minmax(0, 1.35fr);
-  }
-  #friends-body > h3:first-child {
-    margin-top: 0;
-  }
-  .friends-invite .friend-code-row {
-    flex-wrap: wrap;
-  }
-  .friend-list li {
-    grid-template-columns: 10px minmax(0, 1fr);
-  }
-  .friend-list .friend-actions {
-    grid-column: 2;
-    justify-self: start;
-    flex-wrap: wrap;
   }
   .help-layout {
     grid-template-columns: minmax(180px, 0.45fr) minmax(0, 1.55fr);
@@ -8311,15 +8082,6 @@ label.title-option {
   }
   .help-layout .guide-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .leaderboard-layout {
-    grid-template-columns: minmax(200px, 0.6fr) minmax(0, 1.4fr);
-  }
-  .leaderboard-results .leaderboard {
-    margin-top: 0;
-  }
-  .leaderboard-summary .rating-card {
-    margin-top: 0;
   }
   .fullscreen-steps {
     display: grid;
@@ -8366,12 +8128,6 @@ label.title-option {
   .profile-layout {
     grid-template-columns: 320px minmax(0, 1fr);
   }
-  .friends-layout {
-    grid-template-columns: 300px minmax(0, 1fr);
-  }
-  .friend-list {
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  }
   .controls-layout {
     grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.6fr) minmax(0, 0.8fr);
   }
@@ -8401,9 +8157,7 @@ label.title-option {
   .header-menu-panel {
     max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom) - 70px);
   }
-  .profile-layout,
-  .friends-layout,
-  .leaderboard-layout {
+  .profile-layout {
     grid-template-columns: minmax(180px, 0.8fr) minmax(0, 1.2fr);
     gap: 16px;
   }
@@ -8421,19 +8175,13 @@ label.title-option {
 
 /* Consistent menu rhythm and a live fitting room for Shop cosmetics. */
 dialog
-  :is(
-    .profile-screen,
-    .friends-screen,
-    .help-screen,
-    .credits-screen,
-    .settings-screen
-  )
+  :is(.profile-screen, .help-screen, .credits-screen, .settings-screen)
   > h2 {
   padding-right: 32px;
   line-height: 1.15;
   overflow-wrap: anywhere;
 }
-dialog :is(.profile-layout, .friends-layout, .help-layout) {
+dialog :is(.profile-layout, .help-layout) {
   line-height: 1.5;
 }
 .shop-live-stage {
@@ -9072,16 +8820,6 @@ dialog::backdrop {
 .overlay-card h2 {
   font-size: clamp(28px, 3vw, 40px);
 }
-.room-code span {
-  font:
-    600 12px "DM Sans",
-    sans-serif;
-  letter-spacing: 0;
-}
-.room-code {
-  font-family: var(--display);
-  border-radius: 14px;
-}
 
 /* Two-column cards must accommodate a discounted price on narrow phones. */
 
@@ -9182,7 +8920,9 @@ dialog::backdrop {
   }
 }
 /* prettier-ignore */
-dialog:is(:has(.profile-screen), :has(.friends-screen), :has(#leaderboard-body), :has(.admin-tabs)) {
+/* :has(#profile-progress) keeps the ID weight :has(#leaderboard-body) gave
+   this rule before step 6 (the profile matches either way). */
+dialog:is(:has(.profile-screen), :has(#profile-progress), :has(.admin-tabs)) {
   --hub-height: min(
     900px,
     calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px)
@@ -9516,8 +9256,7 @@ dialog.framed-dialog > .dialog-toolbar > .dialog-tabs {
   margin: 0;
 }
 @media (min-width: 760px), (orientation: landscape) and (min-width: 560px) {
-  .framed-dialog .profile-customize,
-  .framed-dialog .friends-invite {
+  .framed-dialog .profile-customize {
     position: sticky;
     top: 0;
   }
@@ -11604,19 +11343,6 @@ body.battle-active .ability.ult-ready,
 
 /* All fighters stay visible; only the selected fighter animates in the detail pane. */
 @media (max-width: 1000px) and (orientation: landscape) {
-  body.lobby-active #menu .room-code span {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    font-size: 10px;
-    margin-top: 0;
-    letter-spacing: 0;
-    white-space: nowrap;
-  }
-  body.lobby-active #menu .room-code span svg {
-    width: 14px;
-    height: 14px;
-  }
   body.lobby-active #menu .invite-link {
     min-height: 40px;
     padding: 6px;

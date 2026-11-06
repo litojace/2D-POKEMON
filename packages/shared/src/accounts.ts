@@ -232,6 +232,56 @@ export const leaderboardSchema = z.object({
   rating: ratingSchema.optional(),
 });
 export type Leaderboard = z.infer<typeof leaderboardSchema>;
+/**
+ * Your friends' ratings (UI remodel step 6): you and every friend, ranked
+ * among yourselves. Read-only; the server builds it from the ratings table.
+ * `place` is null while a player is still in placement.
+ */
+export const friendsBoardSchema = z.object({
+  season: z.string(),
+  rows: z.array(
+    z.object({
+      id: z.string(),
+      place: z.number().nullable(),
+      name: z.string(),
+      title: z.string().nullable().optional(),
+      titleColor: z.string().nullable().optional(),
+      rating: z.number(),
+      rankName: z.string(),
+      placementLeft: z.number(),
+      wins: z.number(),
+      matches: z.number(),
+      me: z.boolean(),
+    }),
+  ),
+  rating: ratingSchema.optional(),
+});
+export type FriendsBoard = z.infer<typeof friendsBoardSchema>;
+/**
+ * Players you met in your recent matches (UI remodel step 6), newest first.
+ * Read-only, from the confirmed match records. `relation` says whether you
+ * are friends or a request is waiting either way.
+ */
+export const recentPlayerSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  /** The fighter they played in your latest match together. */
+  fighter: z.string().nullable(),
+  lastPlayed: z.string(),
+  /** Matches together in the window, and how many on the same team. */
+  matches: z.number(),
+  together: z.number(),
+  /** Your record against them (as opponents). */
+  wins: z.number(),
+  losses: z.number(),
+  relation: z.enum(["friend", "sent", "received", "none"]),
+  online: z.boolean().optional(),
+});
+export const recentPlayersSchema = z.object({
+  players: z.array(recentPlayerSchema),
+});
+export type RecentPlayer = z.infer<typeof recentPlayerSchema>;
+export type RecentPlayers = z.infer<typeof recentPlayersSchema>;
 /** Fighter mastery: matches played with a fighter unlock badge tiers. */
 export const MASTERY_TIERS = [
   { name: "Bronze", matches: 5, color: "#d69a6a" },
