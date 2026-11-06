@@ -938,6 +938,7 @@ let lockAttempt = 0;
  * which is the room's fighter picker (Lock in, Ready, the corner leaves).
  */
 let roomPicker: RosterScreen | undefined;
+let openingRoomPicker = false;
 let roomSeatsTemplate: HTMLElement | undefined;
 /** The roster's data, shared by the hub's Fighters screen and the rooms. */
 function rosterData() {
@@ -1036,33 +1037,48 @@ function renderRoom(watch: boolean) {
   if (watch) return;
   // Friends stands in the picker's place until it closes (only the sheet
   // opened in this room: one left over from the Lobby is closing).
-  if (!roomPicker && room.querySelector(":scope > .ui-panel-host .friends-sheet"))
+  // A sheet that is closing (fading out) has given the place back.
+  if (
+    !roomPicker &&
+    room.querySelector(
+      ":scope > .ui-panel-host:not([data-ui-leaving]) .friends-sheet",
+    )
+  )
     return;
   if (roomPicker?.isOpen) roomPicker.refresh();
-  else
-    roomPicker = openRoster(
-      {
-        data: () => {
-          const me = state?.players.find((p) => p.id === myId);
-          return {
-            ...rosterData(),
-            action: "lock" as const,
-            room: {
-              kicker: state ? roomKicker(roomData(false)) : "Room",
-              saving: !!savingRoomPick,
-              ready: !!me?.ready,
-              canReady: state?.phase === "lobby" && !savingRoomPick,
-            },
-          };
+  // Opening the picker closes the screen it replaces (Friends, left open on
+  // the Lobby), and Friends closing draws the room again: that nested draw
+  // must not open a second picker before this one is stored.
+  else if (!openingRoomPicker) {
+    openingRoomPicker = true;
+    try {
+      roomPicker = openRoster(
+        {
+          data: () => {
+            const me = state?.players.find((p) => p.id === myId);
+            return {
+              ...rosterData(),
+              action: "lock" as const,
+              room: {
+                kicker: state ? roomKicker(roomData(false)) : "Room",
+                saving: !!savingRoomPick,
+                ready: !!me?.ready,
+                canReady: state?.phase === "lobby" && !savingRoomPick,
+              },
+            };
+          },
+          choose: (c) => void lockIn(c),
+          skins: () => {},
+          ready: (c) => void roomReady(c),
+          leave: () => void leave(),
+          onClose: () => (roomPicker = undefined),
         },
-        choose: (c) => void lockIn(c),
-        skins: () => {},
-        ready: (c) => void roomReady(c),
-        leave: () => void leave(),
-        onClose: () => (roomPicker = undefined),
-      },
-      { focus: selected, room: { host: room } },
-    );
+        { focus: selected, room: { host: room } },
+      );
+    } finally {
+      openingRoomPicker = false;
+    }
+  }
 }
 /** Clicks on the seats column: invite, teams, shuffle, party rules. */
 function onRoomClick(event: MouseEvent) {

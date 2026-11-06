@@ -3,6 +3,7 @@ import {
   type RoomInvite,
 } from "../../../packages/shared/src/accounts";
 import { iconLabel } from "./menu-icons";
+import "./room-invites.css";
 
 const escape = (value: string) =>
   value.replace(

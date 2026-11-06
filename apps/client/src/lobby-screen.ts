@@ -312,7 +312,9 @@ export function openLobby(options: LobbyOptions): LobbyHandle {
     const emote =
       target.closest<HTMLElement>("[data-lobby-emote]")?.dataset.lobbyEmote;
     if (target.closest("#lobby-mode")) return setMenu(menu.hidden);
-    if (!target.closest("#lobby-mode-menu")) setMenu(false);
+    // A tap anywhere else closes the menu, and so does its own "Join or
+    // watch", which opens the play drawer over it.
+    if (!target.closest("#lobby-mode-menu") || action) setMenu(false);
     // The emotes, like the mode menu, close on a tap anywhere else.
     if (emotes.dataset.open === "true" && !target.closest(".lobby-emotes"))
       setEmotes(false);

@@ -1142,9 +1142,36 @@ same reason as the raid briefing (the zoom lock exempted `.practice-panel`
 but not what is inside it). Everything else reached its end. Two things
 the sweep first reported were its own mistakes and are fixed in the sweep:
 it swiped a chip row after scrolling the panel around it away, and it
-measured the mode menu while the play drawer covered it (the menu stays
-open, out of sight, under the drawer). Not verified: a real phone, and
-Safari's engine.
+measured the mode menu while the play drawer covered it (the menu stayed
+open, out of sight, under the drawer; it now closes as the drawer opens,
+see below). Not verified: a real phone, and Safari's engine.
+
+### The invitation card, the mode menu, API errors in the log (6 Nov 2026)
+
+- The room and party invitation (`room-invites.ts`) showed as the
+  browser's white popover in the middle of the screen: its rules lived in
+  `friends.css`, which step 6 deleted with the old Friends screen. They are
+  back, unchanged, in `room-invites.css` beside its markup, so replacing
+  another screen can't take them again. `pvp-party-flow.spec.ts` now checks
+  the card itself: its dark background, pinned 16 px from the bottom right,
+  Decline and Join side by side at the same size.
+- The Lobby's mode menu closes when its "Join or watch" opens the play
+  drawer (it stayed open under it). `openPlayPanel` in the visual helpers
+  checks it, so every spec that opens the drawer does too.
+- Joining a room from an invitation while Friends was open on the Lobby
+  opened two fighter pickers in the room: opening the picker closed Friends,
+  and Friends closing drew the room again before the first picker was
+  stored. `renderRoom` now ignores a draw that comes while its picker is
+  opening. And Friends opened inside a room gave the picker back only after
+  it had finished fading out, so closing it left the room without one; a
+  sheet that is leaving no longer holds the picker's place.
+  `pvp-party-flow.spec.ts` checks for exactly one picker, and for Ready
+  after Friends closes.
+- The server now logs the reason when an account request fails with an
+  unexpected error (`[api] GET /path failed: …`). Before, a player saw
+  only "Account service failed" or "Invalid request." and the logs said
+  nothing, which is why a Ranks failure on the live game could not be
+  traced.
 
 ### Step 6: Ranks, Leaderboard and Friends (built 6 Nov 2026)
 

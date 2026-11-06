@@ -552,7 +552,18 @@ export function createArenaServer(
     res.status(404).json({ error: "Unknown API endpoint." }),
   );
   app.use(
-    (error: unknown, _req: Request, res: Response, _next: NextFunction) => {
+    (error: unknown, req: Request, res: Response, _next: NextFunction) => {
+      // A player sees only "Account service failed" or "Invalid request.";
+      // the reason goes to the log, or nobody can tell why a screen failed.
+      if (!(error instanceof AccountError))
+        console.error(
+          `[api] ${req.method} ${req.path} failed:`,
+          error instanceof ZodError
+            ? JSON.stringify(error.issues).slice(0, 800)
+            : error instanceof Error
+              ? error.message
+              : String(error),
+        );
       res
         .status(
           error instanceof AccountError
