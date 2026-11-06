@@ -3006,8 +3006,8 @@ export function openBistro(o: BistroOptions): BistroHandle {
     if (dot) dot.hidden = !canHire;
     const need = xpToNext(S.level);
     const name = visiting ? visiting.name : o.playerName();
-    badge.innerHTML = `<div class="bs-ring" style="--p:${Math.round((S.xp / need) * 100)}"><b>${S.level}</b></div>
-      <strong>${esc(name.endsWith("s") ? `${name}'` : `${name}'s`)} Bistro${S.stars ? ` <i class="stars">${"★".repeat(S.stars)}</i>` : ""}</strong>
+    badge.innerHTML = `<div class="bs-ring" style="--p:${Math.round((S.xp / need) * 100)}"><b>${S.level}</b>${S.stars ? `<i class="stars" title="${S.stars} star${S.stars > 1 ? "s" : ""}: +${S.stars * 10}% on every price">★${S.stars}</i>` : ""}</div>
+      <strong>${esc(name.endsWith("s") ? `${name}'` : `${name}'s`)} Bistro</strong>
       ${visiting ? `<small class="likes">♥ ${fmt(visiting.likes)}</small>` : ""}
       <div class="xpbar" title="${S.xp} / ${need} XP"><i style="width:${(S.xp / need) * 100}%"></i></div>`;
     const pop = popNow().total;

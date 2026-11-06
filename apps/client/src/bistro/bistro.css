@@ -2255,10 +2255,21 @@ body.hub-bistro :is(#account-coins, #account-leaves) {
   padding: 0;
   overflow: visible;
 }
-.bistro-layer .bs-badge strong .stars {
-  font-style: normal;
+.bistro-layer .bs-ring .stars {
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  transform: translateX(-50%);
+  padding: 1px 4px;
+  border-radius: 8px;
+  background: #2a1a00;
+  border: 1px solid #ffd65b;
   color: #ffd65b;
-  font-size: 0.8em;
+  font:
+    800 9px/1 "DM Sans",
+    sans-serif;
+  font-style: normal;
+  white-space: nowrap;
 }
 .bistro-layer .bs-item.branch.armed {
   border-color: #ff8a5a;

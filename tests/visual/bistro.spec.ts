@@ -425,7 +425,7 @@ test("Bistro board: deliver a catering order, a regular's visit, claim the leagu
   expect(
     await B(page, "return [srv.S.level, srv.S.stars, srv.S.coins]"),
   ).toEqual([1, 1, 500]);
-  await expect(page.locator("#bs-badge .stars")).toHaveText("★");
+  await expect(page.locator("#bs-badge .stars")).toHaveText("★1");
   expect(errors).toEqual([]);
 });
 
