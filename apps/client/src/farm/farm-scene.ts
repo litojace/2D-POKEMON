@@ -187,6 +187,7 @@ const FARM_HTML = `<div class="fm" id="fm">
     <div class="fm-log" id="fm-log" aria-live="polite"></div>
     <div class="fm-tip glass" id="fm-tip" hidden></div>
     <div class="fm-pop glass" id="fm-pop" hidden></div>
+    <div class="fm-sickle fm-seedbub" id="fm-seed" hidden><button type="button" data-seedbub></button></div>
     <div class="fm-sickle" id="fm-sickle" hidden><button type="button" data-sickle aria-label="Harvest: tap, or drag across ripe crops">${I("sickle")}</button></div>
     <div class="fm-ghost" id="fm-ghost" hidden aria-hidden="true"></div>
     <div class="fm-orbpop glass" id="fm-orbpop" hidden></div>
@@ -383,7 +384,6 @@ export function openFarm(options) {
     market: { day: "", mult: {}, hot: null },
     leaves: 0,
     tool: "hand",
-    seed: "wheat",
     fert: "norm",
     can: 1,
     net: 1,
@@ -672,13 +672,6 @@ export function openFarm(options) {
       );
     announceGifts();
     announceVisits(st.visits);
-    // The seed in hand: one you have and can grow at your level.
-    if (!F.seeds[F.seed] || (CROP[F.seed]?.lv ?? 1) > F.lv) {
-      const first =
-        PCROPS.find((c) => F.seeds[c.id] && c.lv <= F.lv) ??
-        PCROPS.find((c) => F.seeds[c.id]);
-      if (first) F.seed = first.id;
-    }
     F.loaded = true;
     for (const a of queue) applyLocal(a);
     announceGiants();
@@ -2564,12 +2557,13 @@ export function openFarm(options) {
           y =
             wxMod(time * sp * (0.8 + r3 * 0.4) + r1 * 3000 + pan.y, VH + 40) -
             20,
-          sway = Math.sin(time * (0.6 + r2) + r1 * 9) * (8 + 14 * depth),
+          // Mostly straight down: a slow, slight sway and a gentle drift.
+          sway = Math.sin(time * (0.25 + r2 * 0.25) + r1 * 9) * (1 + 2 * depth),
           x =
             wxMod(
               r1 * span +
-                time * wind * 40 * depth +
-                y * wind * 0.5 +
+                time * wind * 6 * depth +
+                y * wind * 0.12 +
                 sway +
                 pan.x,
               span,
@@ -2872,20 +2866,6 @@ export function openFarm(options) {
     g.shadowOffsetY = 3;
     if (im?.complete) g.drawImage(im, -S * 0.35, -S * 0.75, S, S);
     g.restore();
-    if (t === "seed" && !CUR.grab) {
-      const ci = ITEM[F.seed] || CIMG[F.seed]?.[4];
-      if (ci?.complete) g.drawImage(ci, S * 0.22, -S * 0.1, 20, 23);
-      g.font = "800 11px 'DM Sans', sans-serif";
-      g.textAlign = "center";
-      g.textBaseline = "middle";
-      g.lineWidth = 3;
-      g.strokeStyle = "#2a1f12";
-      g.fillStyle = "#fff";
-      const n = `×${F.seeds[F.seed] || 0}`;
-      g.strokeText(n, S * 0.5, S * 0.5);
-      g.fillText(n, S * 0.5, S * 0.5);
-      g.textBaseline = "alphabetic";
-    }
     if (k > 0 && !CUR.grab) {
       if (t === "can") {
         g.fillStyle = "rgba(120,200,255,.9)";
@@ -2951,7 +2931,7 @@ export function openFarm(options) {
         ? area(hoverI, AREA(F.tool))
         : [hoverI];
     // A giant crop the tool takes whole lights up whole (migration 050).
-    if (s.me && ["hand", "seed", "sickle"].includes(F.tool))
+    if (s.me && ["hand", "sickle"].includes(F.tool))
       ids = [
         ...new Set(
           ids.flatMap((j) => (s.giantAt?.[j] ? s.giantAt[j].plots : [j])),
@@ -4324,7 +4304,7 @@ export function openFarm(options) {
     // A giant crop (migration 050): the hand and the seed bag harvest all of
     // it (a bug on its plot is caught first); the shovel leaves it.
     const gi = F.giantAt[i];
-    if (gi && ["hand", "seed", "shovel"].includes(F.tool)) {
+    if (gi && ["hand", "shovel"].includes(F.tool)) {
       if (F.tool === "hand" && p.pests) catchAt(i);
       else if (
         F.tool === "hand" &&
@@ -4336,7 +4316,7 @@ export function openFarm(options) {
         return;
       } else if (F.tool === "shovel") {
         if (!drag) toast("Harvest the giant crop first");
-      } else harvestGiant(gi, F.tool === "seed" && drag);
+      } else harvestGiant(gi, drag);
       renderChips();
       renderTools();
       return;
@@ -4354,10 +4334,6 @@ export function openFarm(options) {
           break;
         }
         if (!p.crop && !drag) seedPop(i);
-        break;
-      case "seed":
-        if (!p.crop) plantAt(i, F.seed);
-        else if (p.prog >= 1) harvestAt(i, true);
         break;
       case "can": {
         const dry = area(i, F.can).filter((j) => {
@@ -4445,6 +4421,7 @@ export function openFarm(options) {
     renderChips();
     renderTools();
   }
+  /** Tap an empty plot: pick a seed, then sow with the bubble (seedBubble). */
   function seedPop(i) {
     const r = plotRect(i),
       o = hudOff(),
@@ -4456,41 +4433,32 @@ export function openFarm(options) {
     // Seeds you can't grow yet (a gift or a wish above your level) are greyed
     // out at the end, with the level they need, as in the Shop.
     const have = PCROPS.filter((c) => F.seeds[c.id]).sort(
-        (a, b) => +(a.lv > F.lv) - +(b.lv > F.lv),
-      ),
-      buy = PCROPS.filter(
-        (c) => !F.seeds[c.id] && c.lv <= F.lv && (F.shop.stock[c.id] ?? 0) > 0,
-      ).slice(0, 4);
-    const card = (c, mine) => {
+      (a, b) => +(a.lv > F.lv) - +(b.lv > F.lv),
+    );
+    const card = (c) => {
       const lock = c.lv > F.lv;
-      return `<button type="button" class="opt sp r-${c.rar}${mine ? "" : " spbuy"}${lock ? " locked" : ""}" ${mine ? `data-pseed="${c.id}"` : `data-pbuy="${c.id}"`} ${lock || (!mine && F.leaves < c.cost) ? "disabled" : ""} title="${lock ? `${c.n}: grows at Lv ${c.lv}` : c.n}"><b>${mine ? `×${F.seeds[c.id]}` : `${c.cost}${L}`}</b><img src="${icon(c.id)}" alt=""><span>${c.n}</span><small>${lock ? `Lv ${c.lv}` : `${I("clock")}${fmtSecs(c.t)} · ${c.sell}${L}`}</small></button>`;
+      return `<button type="button" class="opt sp r-${c.rar}${lock ? " locked" : ""}" data-pseed="${c.id}" ${lock ? "disabled" : ""} title="${lock ? `${c.n}: grows at Lv ${c.lv}` : c.n}"><b>×${F.seeds[c.id]}</b><img src="${icon(c.id)}" alt=""><span>${c.n}</span><small>${lock ? `Lv ${c.lv}` : `${I("clock")}${fmtSecs(c.t)} · ${c.sell}${L}`}</small></button>`;
     };
-    pop.innerHTML = `<h6>What should grow here?</h6>${have.length ? `<div class="grid">${have.map((c) => card(c, true)).join("")}</div>` : `<p class="sh-note" style="margin:2px 4px 6px">Your seed bag is empty.</p>`}${buy.length ? `<h6 style="margin-top:8px">Quick buy 1 seed</h6><div class="grid">${buy.map((c) => card(c, false)).join("")}</div>` : ""}<p class="sh-note sp-tip">Tip: after picking a seed, <b>drag</b> across empty plots to sow them all.</p>`;
+    pop.innerHTML = have.length
+      ? `<h6>What should grow here?</h6><div class="grid">${have.map(card).join("")}</div><p class="sh-note sp-tip">Pick a seed, then <b>drag</b> it across empty plots to sow them.</p>`
+      : `<h6>What should grow here?</h6><p class="sh-note" style="margin:2px 4px 8px">Your seed bag is empty.</p><button type="button" class="btn-s gold fm-wide" data-seedshop>Buy seeds in the Shop</button>`;
     const pw = Math.min(320, o.w - 16);
     pop.style.width = `${pw}px`;
     pop.style.left = `${Math.max(8, Math.min(o.w - pw - 8, sp.x - pw / 2))}px`;
     const top = sp.y - pop.offsetHeight - 14;
     pop.style.top = `${top < 60 ? Math.min(o.h - pop.offsetHeight - 8, sp.y + PH * Z * K + 10) : top}px`;
-    // Press a seed and drag it across the field to sow every empty plot it
-    // passes; a tap still sows just this one.
-    pop.querySelectorAll("[data-pseed]:not([disabled])").forEach((b) => {
-      b.onpointerdown = (e) => startCarry(e, "seed", b.dataset.pseed, i);
-    });
     pop.onclick = (e) => {
-      if (carried()) return;
-      const b = e.target.closest("[data-pseed]"),
-        q = e.target.closest("[data-pbuy]");
-      const id = b?.dataset.pseed || q?.dataset.pbuy;
-      if (!id || (b ?? q).disabled) return;
-      if (q) act({ a: "buy-seeds", crop: id, qty: 1 });
-      F.seed = id;
-      F.tool = "seed";
-      plantAt(i, id);
+      if (e.target.closest("[data-seedshop]")) {
+        pop.hidden = true;
+        pop.classList.remove("seedpick");
+        return openSheet("shop", "seeds");
+      }
+      const b = e.target.closest("[data-pseed]");
+      if (!b || b.disabled) return;
       pop.hidden = true;
       pop.classList.remove("seedpick");
-      renderTools();
+      seedBubble(i, b.dataset.pseed);
       screen.focus({ preventScroll: true });
-      toast(`Planting ${CROP[id].n} · drag over empty plots to keep sowing`);
     };
   }
   /* ---------- planting and harvesting by hand, as in mobile farm games ----------
@@ -4506,15 +4474,42 @@ export function openFarm(options) {
     carriedAt = 0;
   /** A carry just ended with a drag: the click that follows is not a tap. */
   const carried = () => performance.now() - carriedAt < 400;
-  function sicklePop(i) {
+  /** Where a bubble (seed or sickle) floats: just above the plot's right. */
+  function placeBubble(el, i) {
     const r = plotRect(i),
       o = hudOff(),
-      sp0 = toScreen(r.x + PW * 0.82, r.y + PH * 0.15),
-      el = $("fm-sickle");
+      sp0 = toScreen(r.x + PW * 0.82, r.y + PH * 0.15);
     el.hidden = false;
     el.dataset.plot = String(i);
     el.style.left = `${Math.max(8, Math.min(o.w - 72, sp0.x - o.x - 32))}px`;
     el.style.top = `${Math.max(56, Math.min(o.h - 72, sp0.y - o.y - 70))}px`;
+  }
+  /** The picked seed, ready to sow: drag it across empty plots, or tap it to
+   *  sow just the plot you picked it for. Only this seed is sown: when it
+   *  runs out, sowing stops (no other seed is picked for you). */
+  function seedBubble(i, id) {
+    const el = $("fm-seed"),
+      b = el.querySelector("[data-seedbub]");
+    $("fm-sickle").hidden = true;
+    b.innerHTML = `<img src="${icon(id)}" alt=""><b>×${F.seeds[id] || 0}</b>`;
+    b.setAttribute(
+      "aria-label",
+      `Sow ${CROP[id]?.n}: tap, or drag across empty plots`,
+    );
+    placeBubble(el, i);
+    clearTimeout(seedBubble.t);
+    seedBubble.t = setTimeout(() => (el.hidden = true), 8000);
+    b.onpointerdown = (e) => startCarry(e, "seed", id, i);
+    b.onclick = () => {
+      if (carried()) return;
+      el.hidden = true;
+      carryOne("seed", id, i);
+    };
+  }
+  function sicklePop(i) {
+    const el = $("fm-sickle");
+    $("fm-seed").hidden = true;
+    placeBubble(el, i);
     clearTimeout(sicklePop.t);
     sicklePop.t = setTimeout(() => (el.hidden = true), 5000);
     const b = el.querySelector("[data-sickle]");
@@ -4557,7 +4552,7 @@ export function openFarm(options) {
         }
         return;
       }
-      if (plantAt(i, id)) F.seed = id;
+      plantAt(i, id);
       return;
     }
     if (p.crowAt) return shooAt(i);
@@ -4578,6 +4573,7 @@ export function openFarm(options) {
       $("fm-pop").hidden = true;
       $("fm-pop").classList.remove("seedpick");
       $("fm-sickle").hidden = true;
+      $("fm-seed").hidden = true;
       $("fm-tip").hidden = true;
       const g = $("fm-ghost");
       g.innerHTML =
@@ -5911,7 +5907,6 @@ export function openFarm(options) {
   ];
   const HOME_TOOLS = () => [
     ["hand", "hand", "Hand"],
-    ["seed", "seed", "Seeds", F.seeds[F.seed] || 0],
     [
       "can",
       ["", "can", "can2", "can3"][F.can],
@@ -5972,7 +5967,7 @@ export function openFarm(options) {
     $("fm-tools").innerHTML = TOOLS()
       .map(
         ([id, ic, label, count, lvl], idx) =>
-          `<button type="button" class="fm-tool" data-tool="${id}" aria-pressed="${F.tool === id}" title="${id === "seed" ? `${CROP[F.seed]?.n ?? "Seed"} seeds` : label} (key ${idx + 1})"><kbd>${idx + 1}</kbd>${count != null ? `<b>${count > 99 ? "99+" : count}</b>` : ""}${id === "seed" ? `<span class="seedico">${I("seed")}<img src="${icon(F.seed)}" alt=""></span>` : I(ic)}<span>${id === "seed" ? (CROP[F.seed]?.n ?? "Seeds").split(" ").pop() : label}</span>${lvl ? `<em>${lvl}</em>` : ""}</button>`,
+          `<button type="button" class="fm-tool" data-tool="${id}" aria-pressed="${F.tool === id}" title="${label} (key ${idx + 1})"><kbd>${idx + 1}</kbd>${count != null ? `<b>${count > 99 ? "99+" : count}</b>` : ""}${I(ic)}<span>${label}</span>${lvl ? `<em>${lvl}</em>` : ""}</button>`,
       )
       .join("");
   }
@@ -6518,7 +6513,6 @@ export function openFarm(options) {
     }
     if (d.buyseed) {
       act({ a: "buy-seeds", crop: d.buyseed, qty: +d.n }, true);
-      F.seed = d.buyseed;
       toast(`Bought ${d.n} ${CROP[d.buyseed].n} seed${+d.n > 1 ? "s" : ""}`);
       renderTools();
       return renderSheet();
@@ -6711,14 +6705,7 @@ export function openFarm(options) {
     const b = e.target.closest("[data-tool]");
     if (!b) return;
     const id = b.dataset.tool;
-    if (id === "seed") {
-      if (F.tool === "seed") {
-        const r = b.getBoundingClientRect(),
-          sr = hudEl.getBoundingClientRect();
-        toolPop("seed", r.left - sr.left, r.top - sr.top);
-      }
-      F.tool = "seed";
-    } else if (id === "fert") {
+    if (id === "fert") {
       if (F.tool === "fert") {
         const r = b.getBoundingClientRect(),
           sr = hudEl.getBoundingClientRect();
@@ -6731,41 +6718,23 @@ export function openFarm(options) {
   function toolPop(kind, x, y) {
     const pop = $("fm-pop");
     pop.hidden = false;
-    if (kind === "seed")
-      pop.innerHTML = `<h6>Pick a seed to sow</h6><div class="grid">${
-        PCROPS.filter((c) => F.seeds[c.id])
-          .sort((a, b) => +(a.lv > F.lv) - +(b.lv > F.lv))
-          .map((c) => {
-            const lock = c.lv > F.lv;
-            return `<button type="button" class="opt${lock ? " locked" : ""}" data-tseed="${c.id}" ${lock ? `disabled title="${esc(c.n)}: grows at Lv ${c.lv}"` : ""}><b>${F.seeds[c.id]}</b><img src="${icon(c.id)}" alt=""><span>${esc(c.n)}</span>${lock ? `<small class="lv">Lv ${c.lv}</small>` : ""}</button>`;
-          })
-          .join("") || `<p class="sh-note">No seeds</p>`
-      }</div>`;
-    else
-      pop.innerHTML = `<h6>Pick a fertilizer</h6><div class="grid">${[
-        ["norm", "fert", "Regular"],
-        ["super", "fertSuper", "Super"],
-        ["gold", "fertGold", "Gold"],
-      ]
-        .map(
-          ([k, ic, n]) =>
-            `<button type="button" class="opt" data-tfert="${k}" ${F.ferts[k] ? "" : "disabled"}><b>${F.ferts[k]}</b>${I(ic, "big")}<span>${n}</span></button>`,
-        )
-        .join("")}</div>`;
+    pop.innerHTML = `<h6>Pick a fertilizer</h6><div class="grid">${[
+      ["norm", "fert", "Regular"],
+      ["super", "fertSuper", "Super"],
+      ["gold", "fertGold", "Gold"],
+    ]
+      .map(
+        ([k, ic, n]) =>
+          `<button type="button" class="opt" data-tfert="${k}" ${F.ferts[k] ? "" : "disabled"}><b>${F.ferts[k]}</b>${I(ic, "big")}<span>${n}</span></button>`,
+      )
+      .join("")}</div>`;
     pop.style.left = `${Math.max(8, Math.min(NW - 308, x - 120))}px`;
     pop.style.top = `${y - pop.offsetHeight - 10}px`;
     pop.onclick = (e) => {
-      const s = e.target.closest("[data-tseed]:not([disabled])"),
-        f = e.target.closest("[data-tfert]");
-      if (s) {
-        F.seed = s.dataset.tseed;
-        F.tool = "seed";
-      }
+      const f = e.target.closest("[data-tfert]");
       if (f) {
         F.fert = f.dataset.tfert;
         F.tool = "fert";
-      }
-      if (s || f) {
         pop.hidden = true;
         renderTools();
         screen.focus({ preventScroll: true });
@@ -6833,6 +6802,7 @@ export function openFarm(options) {
     screen.focus({ preventScroll: true });
     $("fm-pop").hidden = true;
     $("fm-sickle").hidden = true;
+    $("fm-seed").hidden = true;
     try {
       cv.setPointerCapture(e.pointerId);
     } catch {}
@@ -6865,6 +6835,7 @@ export function openFarm(options) {
     screen.focus({ preventScroll: true });
     $("fm-pop").hidden = true;
     $("fm-sickle").hidden = true;
+    $("fm-seed").hidden = true;
     pressType = e.pointerType ?? "mouse";
     const w = toWorld(e.clientX, e.clientY);
     if (F.decorPick && !V) {

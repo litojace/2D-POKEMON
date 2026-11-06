@@ -580,7 +580,7 @@ for (const viewport of [
       await expect(page.locator("#fm-chips [data-orb]")).toHaveCount(4);
       await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
       await expect(page.locator("#fm-badge")).toContainText("20/");
-      await expect(page.locator("#fm-tools [data-tool]")).toHaveCount(7);
+      await expect(page.locator("#fm-tools [data-tool]")).toHaveCount(6);
       await page.waitForTimeout(600);
       await snap(
         page,
@@ -748,27 +748,30 @@ test("tapping a ripe plot harvests it, and an empty plot opens the seed picker",
     await expect(melon).toHaveClass(/locked/);
     await expect(melon).toContainText("Lv 35");
     await expect(page.locator('#fm-pop [data-pseed="carrot"]')).toBeEnabled();
+    // No quick buy here: seeds come from the Shop.
+    await expect(page.locator("#fm-pop [data-pbuy]")).toHaveCount(0);
     await snap(page, info, "farm-seed-picker-1280x800");
+    // Picking a seed sows nothing yet: it shows the seed, ready to sow…
     await page.locator('#fm-pop [data-pseed="carrot"]').click();
-    await expect
-      .poll(() =>
-        page.evaluate(() =>
-          (window as any).__farmRequests.flatMap((r: any) => r.actions),
-        ),
-      )
-      .toContainEqual({ a: "plant", plot: 3, crop: "carrot" });
-    // The seed tool's picker greys it out too, and the seed in hand is never it.
-    expect(await page.evaluate(() => (window as any).__farm.F.seed)).not.toBe(
-      "melon",
+    await expect(page.locator("#fm-pop")).toBeHidden();
+    const bubble = page.locator("#fm-seed [data-seedbub]");
+    await expect(bubble).toBeVisible();
+    await expect(bubble).toContainText("×6");
+    const sent = () =>
+      page.evaluate(() =>
+        (window as any).__farmRequests.flatMap((r: any) => r.actions),
+      );
+    expect(await sent()).not.toContainEqual(
+      expect.objectContaining({ a: "plant" }),
     );
-    const seedTool = page.locator('#fm-tools [data-tool="seed"]');
-    await seedTool.click();
-    await seedTool.click();
-    const tMelon = page.locator('#fm-pop [data-tseed="melon"]');
-    await expect(tMelon).toBeDisabled();
-    await expect(tMelon).toContainText("Lv 35");
-    await expect(page.locator('#fm-pop [data-tseed="wheat"]')).toBeEnabled();
-    await page.keyboard.press("Escape");
+    // …and a tap on it sows the plot it was picked for.
+    await bubble.click();
+    await expect
+      .poll(sent)
+      .toContainEqual({ a: "plant", plot: 3, crop: "carrot" });
+    await expect(page.locator("#fm-seed")).toBeHidden();
+    // No seed tool on the bar any more: nothing sows a seed you didn't pick.
+    await expect(page.locator('#fm-tools [data-tool="seed"]')).toHaveCount(0);
     // The market sheet opens from the menu.
     await openSheet(page, "market");
     await expect(page.locator("#fm-sheet")).toContainText("Farmers' market");
@@ -795,8 +798,8 @@ test("a tap catches a bug, and the Tools tab sells tools", async ({
     });
     await page.click('#hub-scenes [data-hub-scene="farm"]');
     await expect(page.locator("#fm-badge")).toContainText("tester's Farm");
-    // Seven tools, the can showing the one you own.
-    await expect(page.locator("#fm-tools [data-tool]")).toHaveCount(7);
+    // Six tools, the can showing the one you own.
+    await expect(page.locator("#fm-tools [data-tool]")).toHaveCount(6);
     await expect(page.locator('#fm-tools [data-tool="can"]')).toContainText(
       "Copper",
     );
@@ -1071,7 +1074,7 @@ test("visiting a friend's farm: sneak a ripe crop, catch a bug, go home", async 
     );
     await banner.locator("[data-home]").click();
     await expect(banner).toBeHidden();
-    await expect(page.locator("#fm-tools [data-tool]")).toHaveCount(7);
+    await expect(page.locator("#fm-tools [data-tool]")).toHaveCount(6);
     expect(errors).toEqual([]);
   } finally {
     await context.close();
@@ -1587,7 +1590,7 @@ test("on a phone, the Market's Sell and All buttons line up in columns", async (
   }
 });
 
-test("on a phone, drag a seed from the tray to sow, and the sickle to harvest", async ({
+test("on a phone, pick a seed and drag it to sow, and drag the sickle to harvest", async ({
   browser,
 }, info) => {
   const context = await browser.newContext({
@@ -1652,12 +1655,15 @@ test("on a phone, drag a seed from the tray to sow, and the sickle to harvest", 
             .sort((x: number, y: number) => x - y),
         a,
       );
-    // Sowing: tap an empty plot, then drag Breeze Wheat across the row.
+    // Sowing: tap an empty plot, pick Breeze Wheat, then drag the seed
+    // across the row.
     const p11 = await plot(11);
     await page.touchscreen.tap(p11.x, p11.y);
-    await expect(page.locator('#fm-pop [data-pseed="wheat"]')).toBeVisible();
+    await page.locator('#fm-pop [data-pseed="wheat"]').tap();
+    await expect(page.locator("#fm-seed [data-seedbub]")).toBeVisible();
+    await snap(page, info, "farm-seed-bubble-844x390");
     await swipe([
-      await center('#fm-pop [data-pseed="wheat"]'),
+      await center("#fm-seed [data-seedbub]"),
       await plot(12),
       await plot(14),
     ]);

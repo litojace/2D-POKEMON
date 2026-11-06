@@ -514,6 +514,33 @@
   cursor: grab;
   touch-action: none;
 }
+/* The picked seed, ready to sow: its picture and how many are left. */
+.farm-layer .fm-seedbub button {
+  position: relative;
+  border-color: #7ff0a2;
+  box-shadow:
+    0 6px 16px #0008,
+    0 0 0 4px #7ff0a233;
+}
+.farm-layer .fm-seedbub img {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  pointer-events: none;
+}
+.farm-layer .fm-seedbub b {
+  position: absolute;
+  right: -6px;
+  bottom: -4px;
+  min-width: 1.6em;
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: #ffd65b;
+  color: #2a1a00;
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: 0 0 0 2px #0b1020;
+}
 .farm-layer .fm-sickle .ico {
   width: 38px;
   height: 38px;
