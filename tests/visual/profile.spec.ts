@@ -219,7 +219,7 @@ for (const size of SIZES)
       await expect(panel.locator(".pf-title-chip.is-on")).toHaveText(
         "Cragbreaker",
       );
-      await expect(panel.locator(".pf-mastery-chip")).toHaveCount(16);
+      await expect(panel.locator(".pf-mastery-chip")).toHaveCount(18);
       await expect(panel.locator(".pf-mini")).toHaveCount(2);
       await expect(panel.locator(".pf-trophy")).toHaveCount(7);
       await expect(
@@ -297,7 +297,7 @@ for (const size of SIZES)
       expect(chipHeights, "title chips' height").toBe(1);
       const tiles = await rowsEven(page, ".pf-tile");
       expect(tiles.heights).toHaveLength(1);
-      // Sixteen fighters in two even rows of eight.
+      // Eighteen fighters in two even rows of nine.
       const rows = await page.evaluate(() => {
         const tops = Array.from(
           document.querySelectorAll(".pf-mastery-chip"),
@@ -306,7 +306,7 @@ for (const size of SIZES)
           (t) => tops.filter((x) => x === t).length,
         );
       });
-      expect(rows).toEqual([8, 8]);
+      expect(rows).toEqual([9, 9]);
       // The card keeps its place; the column beside it scrolls to its end.
       const main = panel.locator(".pf-main");
       await main.evaluate((e) => (e.scrollTop = e.scrollHeight));

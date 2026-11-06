@@ -17,6 +17,8 @@
  *   --gain <g>         how hard a round pushes toward the fair rate (default 1)
  *   --fresh            new line-ups every round instead of the same ones
  *                      (FRESH_BASE, default 5000, + round picks them)
+ *   --only <a,b,...>   play only line-ups with one of these champions and
+ *                      tune only them (the rest keep their factors)
  *
  * Every round plays the same line-ups (fixed seeds), so only the factors
  * change. One champion is one of four players, so its factor moves its own
@@ -65,6 +67,7 @@ const GAIN = +(opt("--gain") ?? 1);
 // --fresh: new line-ups every round (TEAMS_SEED / FFA_SEED = 5000 + round),
 // so the factors fit the mode in general rather than one fixed set of matches.
 const fresh = args.includes("--fresh");
+const only = opt("--only")?.split(",");
 let factors: Record<string, number> = opt("--start")
   ? JSON.parse(readFileSync(opt("--start")!, "utf8"))
   : Object.fromEntries(FIGHTER_IDS.map((id) => [id, table[id] ?? 1]));
@@ -73,12 +76,13 @@ const run = (cmd: string[]) =>
   new Promise<void>((resolve, reject) => {
     const child = spawn("npx", ["tsx", ...cmd], {
       stdio: "inherit",
-      env: fresh
-        ? {
-            ...process.env,
-            [ffa ? "FFA_SEED" : "TEAMS_SEED"]: String(seedFor),
-          }
-        : process.env,
+      env: {
+        ...process.env,
+        ...(fresh
+          ? { [ffa ? "FFA_SEED" : "TEAMS_SEED"]: String(seedFor) }
+          : {}),
+        ...(only ? { RR_ONLY: only.join(",") } : {}),
+      },
     });
     child.on("exit", (code) =>
       code === 0 ? resolve() : reject(new Error(`${cmd.join(" ")}: ${code}`)),
@@ -147,6 +151,10 @@ for (let r = 1; r <= rounds; r++) {
   const avg = (id: string) => (rates[id].hard + rates[id].normal) / 2;
   const next: Record<string, number> = {};
   for (const id of FIGHTER_IDS) {
+    if (only && !only.includes(id)) {
+      next[id] = factors[id] ?? 1;
+      continue;
+    }
     const step = Math.max(
       -STEP,
       Math.min(STEP, (GAIN * (TARGET - avg(id))) / 100),

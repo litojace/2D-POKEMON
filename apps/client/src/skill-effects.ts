@@ -11,6 +11,7 @@ import { lightKit } from "./skill-fx-light";
 import { psychicKit } from "./skill-fx-psychic";
 import { earthKit } from "./skill-fx-earth";
 import { shadowKit } from "./skill-fx-shadow";
+import { natureKit } from "./skill-fx-nature";
 import { withUltimates } from "./skill-fx-ultimates";
 /** New-style effects by move; anything not listed keeps its classic drawing. */
 const KIT = withUltimates(
@@ -23,6 +24,7 @@ const KIT = withUltimates(
     psychicKit,
     earthKit,
     shadowKit,
+    natureKit,
   ]),
 );
 /** For tests: which moves have a new-style effect. */

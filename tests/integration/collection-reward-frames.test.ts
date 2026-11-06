@@ -64,7 +64,7 @@ it("seeds each reward frame as a never-sold frame of its collection", async () =
       active: false,
     })).sort((a, b) => a.id.localeCompare(b.id)),
   );
-  // Each collection is the sixteen skins the client knows.
+  // Each collection is the eighteen skins the client knows (eight Arcade).
   for (const f of COLLECTION_FRAMES) {
     const n = (
       await db.query<{ n: number }>(
@@ -73,7 +73,7 @@ it("seeds each reward frame as a never-sold frame of its collection", async () =
       )
     ).rows[0].n;
     expect(n, f.collection).toBe(skins(f.collection).length);
-    expect(n, f.collection).toBe(f.collection === "arcade" ? 8 : 16);
+    expect(n, f.collection).toBe(f.collection === "arcade" ? 8 : 18);
   }
 });
 

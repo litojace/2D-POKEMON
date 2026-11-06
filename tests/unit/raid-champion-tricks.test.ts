@@ -141,6 +141,33 @@ describe("Grumblecrag tricks", () => {
     expect(open.slam).toBe(false);
     expect(pinned.stagger - open.stagger).toBeGreaterThan(25);
   });
+  it("Pangrove's Scale Curl lets Rock Volley glance off", () => {
+    for (const curled of [true, false]) {
+      const a = arena("grumblecrag", ["pangrove"]);
+      const p = hero(a, 0),
+        boss = a.boss()!;
+      Object.assign(p, { x: 1000, y: 450 });
+      if (curled) a.cast(p, skill("pangrove", "scale-curl"));
+      const hp = p.hp;
+      (a as any).resolveWarning(
+        {
+          id: 1,
+          kind: "volley",
+          x: boss.x,
+          y: boss.y,
+          tx: p.x,
+          ty: p.y,
+          radius: 2000,
+          spread: 0.4,
+          at: a.time,
+          startedAt: a.time,
+        } as RaidWarning,
+        boss,
+      );
+      if (curled) expect(p.hp).toBe(hp);
+      else expect(p.hp).toBeLessThan(hp);
+    }
+  });
   it("Rock Volley is blocked by Facet Guard only, not by any counter", () => {
     const a = arena("grumblecrag", ["wombolder"]);
     const p = hero(a, 0),
@@ -219,6 +246,44 @@ describe("Tidewyrm tricks", () => {
     run(a, 0.7);
     expect(a.raid.exposedUntil).toBeCloseTo(until + 2);
     expect(a.raid.message).toContain("stranded");
+  });
+  it("Mossloth's Rootsnare keeps a stranded Tidewyrm there 1 s longer", () => {
+    const a = arena<TidewyrmArena>("tidewyrm", ["mossloth"]);
+    const p = hero(a, 0),
+      boss = a.boss()!,
+      island = T.islands[0];
+    Object.assign(boss, island);
+    (a as any).strandedOn = 0;
+    a.raid.exposedUntil = a.time + 5;
+    const until = a.raid.exposedUntil;
+    aim(p, island.x, island.y, { x: island.x + 300, y: island.y });
+    a.cast(p, skill("mossloth", "rootsnare"));
+    run(a, 0.7);
+    expect(a.raid.exposedUntil).toBeCloseTo(until + 1);
+    expect(a.raid.message).toContain("stranded");
+  });
+  it("Pangrove's Sap Bite on a stranded Tidewyrm adds extra stagger", () => {
+    const staggerAfter = (id: string) => {
+      const a = arena<TidewyrmArena>("tidewyrm", ["pangrove"]);
+      const p = hero(a, 0),
+        boss = a.boss()!,
+        island = T.islands[0];
+      Object.assign(boss, island);
+      (a as any).strandedOn = 0;
+      a.raid.exposedUntil = a.time + 5;
+      a.raid.stagger = 0;
+      const move = [
+        CHARACTERS.pangrove.basic,
+        ...CHARACTERS.pangrove.skills,
+      ].find((m) => m.id === id)!;
+      a.damage(boss, 10, p.id, move);
+      return a.raid.stagger;
+    };
+    // Against the basic attack (no status of its own, so no stagger from one).
+    expect(staggerAfter("sap-bite") - staggerAfter("scale-swipe")).toBeCloseTo(
+      T.lanceStagger,
+      0,
+    );
   });
 });
 
@@ -304,6 +369,22 @@ describe("Emberwing tricks", () => {
     ];
     aim(p, 500, 700, { x: 300, y: 450 });
     a.cast(p, skill("glacelle", "frost-bloom"));
+    a.tick(1 / 30);
+    expect(a.raid.emberPatches).toEqual([]);
+    expect(a.raid.emberTrails).toEqual([]);
+  });
+  it("Mossloth's Wild Roots smother fire patches and dive trails where they burst", () => {
+    const a = flying("mossloth");
+    const p = hero(a, 0);
+    a.raid.emberPatches = [
+      { id: 1, x: 500, y: 700, radius: 80, until: a.time + 30, growAt: 99 },
+    ];
+    a.raid.emberTrails = [
+      { x: 400, y: 700, tx: 600, ty: 700, until: a.time + 5, width: 40 },
+    ];
+    aim(p, 500, 700, { x: 300, y: 450 });
+    p.ult = 100;
+    a.cast(p, skill("mossloth", "wild-roots"));
     a.tick(1 / 30);
     expect(a.raid.emberPatches).toEqual([]);
     expect(a.raid.emberTrails).toEqual([]);
@@ -442,6 +523,20 @@ describe("Somnara tricks", () => {
       run(a, 0.5);
       expect(d.step).toBe(1);
     });
+  it("Mossloth's prickly Bramble Patch keeps allies inside from going Drowsy", () => {
+    const a = arena<SomnaraArena>("somnara", ["mossloth", "voltkit"]);
+    const [p, ally] = [hero(a, 0), hero(a, 1)];
+    aim(p, 900, 450, { x: 700, y: 450 });
+    Object.assign(ally, { x: 900, y: 450 });
+    a.cast(p, skill("mossloth", "bramble-patch"));
+    for (let i = 0; i < S.drowsy.stacks + 1; i++) drowsy(a, ally);
+    expect(a.has(ally, "sleep")).toBe(false);
+    expect(a.raid.drowsy?.[ally.id]?.stacks ?? 0).toBe(0);
+    // Outside the patch, it builds again.
+    Object.assign(ally, { x: 1400, y: 450 });
+    drowsy(a, ally);
+    expect(a.raid.drowsy![ally.id].stacks).toBe(1);
+  });
   it("Shadopus hidden in its Ink Cloud can't go Drowsy or fall asleep", () => {
     const a = arena<SomnaraArena>("somnara", ["shadopus"]);
     const p = hero(a, 0);

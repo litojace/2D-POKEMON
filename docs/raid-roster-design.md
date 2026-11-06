@@ -543,7 +543,7 @@ Relay.
 ## 6. Champion tricks across the roster
 
 Every champion has **at least three bosses** where one of its skills is a
-special answer, so "who should I bring?" is part of each boss. All sixteen
+special answer, so "who should I bring?" is part of each boss. All eighteen
 champions qualify (`tests/unit/raid-roster.test.ts` checks it); the tricks
 are listed per boss in `RAID_BOSS_PERKS` (`packages/shared/src/raid.ts`), and
 the Raid Hub's guide and the raid briefing read them from there.
@@ -651,10 +651,25 @@ the Raid Hub's guide and the raid briefing read them from there.
 - **Somnara:** immune to Drowsy and sleep while stealthed.
 - **Prismatail:** an Ink Jet hit blots out Glare for 3 s.
 
-Grumblecrag, Gloomshade and Emberwing have eight champion tricks; Tidewyrm,
-Storm Twins, Somnara and Prismatail have seven. Only Auralynx's Facet
-Guard blocks Rock Volley (Wombolder's Rump Block is also a counter, but has
-its own trick on the Storm Twins).
+**Pangrove** (3)
+- **Grumblecrag:** curled up in Scale Curl, Rock Volley glances off it.
+- **Tidewyrm:** Sap Bite on a stranded boss adds +15 stagger (like Static
+  Lance).
+- **Storm Twins:** curled up in Scale Curl, Polarity can't touch it (like
+  Terradon's closed shell).
+
+**Mossloth** (3)
+- **Tidewyrm:** Rootsnare on a stranded boss keeps it there 1 s longer.
+- **Emberwing:** Wild Roots smother fire patches and dive trails where they
+  burst.
+- **Somnara:** allies inside its prickly Bramble Patch stay awake: no Drowsy,
+  no sleep.
+
+Grumblecrag, Tidewyrm and Emberwing have nine champion tricks; Gloomshade,
+Storm Twins and Somnara have eight, Prismatail seven. Only Auralynx's Facet
+Guard reflects Rock Volley; Pangrove's Scale Curl lets it glance off
+(Wombolder's Rump Block is also a counter, but has its own trick on the
+Storm Twins). Rooted on a boss works like a stun: 3 stagger, no root.
 
 ## 7. Rewards
 
@@ -1038,7 +1053,7 @@ skins) to earn that collection's frame for free.
   skin applies to your other champions.
 - The Shop and the Rewards tab both explain this in one line.
 
-### 10.6 Champion skin catalog (128 skins)
+### 10.6 Champion skin catalog (144 skins)
 
 Every champion gets **3 Common, 2 Rare, 2 Epic (one of them Cyber Mecha) and 1 Mythical**. Skins also
 belong to **collections** shared across champions:
@@ -1048,7 +1063,7 @@ belong to **collections** shared across champions:
 - **Garden** (petals, moss and blossoms)
 - **Arcade** (neon and pixels)
 - **Cyber Mecha** (a second Epic for every champion; see "Cyber Mecha" below)
-- **Void Knight** (all sixteen Mythicals: black steel, glowing runes and
+- **Void Knight** (all eighteen Mythicals: black steel, glowing runes and
   swords; see "The Void Knights" below)
 
 #### Cyber Mecha (a second Epic for every champion)
@@ -1086,12 +1101,14 @@ colour. Like a Mythical it swaps the champion's own head and neck pieces
 | Astrabun | **Warp Unit** | lilac / pink |
 | Wombolder | **Bulldozer** | brown / lime |
 | Shadopus | **Stealth Mk** | indigo / red |
+| Pangrove | **Scale Roller** | green / lime |
+| Mossloth | **Treehugger Mk** | khaki / mint |
 
 #### Collection reward frames (Void Knight, Cyber Mecha, Arcade)
 
 [Migration 071](../supabase/migrations/071_collection_reward_frames.sql) gives
 each of the two skin collections its own frame, earned (never sold) by
-owning all sixteen of its skins, like the other collections' free frame:
+owning all of its skins (eighteen since the Nature champions joined; a frame earned with sixteen stays), like the other collections' free frame:
 
 - **Void Knight frame** (Mythical): black steel with outward blades and
   violet runes, a rune gem, and a crown of blades over crossed swords.
@@ -1109,7 +1126,9 @@ black steel in Rift Duelist, chrome in Warp Unit.
 #### The Void Knights (every Mythical)
 
 [Migration 067](../supabase/migrations/067_void_knight_mythicals.sql) turned
-the sixteen Celestial Mythicals into Void Knights in place: same skin ids, so
+the sixteen Celestial Mythicals into Void Knights in place (and
+[071](../supabase/migrations/071_nature_void_knights_and_cyber.sql) the two
+Nature champions'): same skin ids, so
 owners keep the skin, its Awakening stage and what they have equipped. Each
 knight is in dark steel with runes in its own colour, and **swaps the
 champion's own head and neck pieces** (goggles, crest, kerchief, sprout...)
@@ -1343,6 +1362,42 @@ colours.
 | Rare · Garden | **Tide Pool** | Rock-pool speckles and a starfish clip; dashing blows bubbles |
 | Epic · Garden | **Anglerlight** | A glowing lure on a stalk, abyss-teal skills and a flicker. Hit sparks take its colour, KO is a puff in its colours, and a flickering flame plays on the rig |
 | **Mythical · Void Knight** | **Abyss Stalker** | Black steel, magenta runes; a crown of blades on its dome, and a short cape. Stages as in “The Void Knights” above |
+
+#### The Nature champions
+
+Pangrove and Mossloth have 3 Common, 2 Rare, 2 Epic (one Cyber Mecha) and 1
+Mythical each ([migration 070](../supabase/migrations/070_eighteen_champions.sql),
+then [071](../supabase/migrations/071_nature_void_knights_and_cyber.sql), which
+makes their Mythicals Void Knights and adds their Cyber Mecha Epics). Their
+Rares and first Epics join the Garden, Festival and Winter collections, so
+those collections' free frames now need them too (a frame someone already
+earned stays theirs).
+
+#### Pangrove (pangolin, Nature)
+
+| Rarity | Skin | Look and effects |
+|---|---|---|
+| Common | Autumn | Russet and gold leaf scales |
+| Common | Frostleaf | Frosted silver-blue leaves |
+| Common | Jade | Deep jade with a gold glow |
+| Rare · Garden | **Blossom** | Cherry-blossom scales and a flower crown; dashing scatters petals |
+| Rare · Festival | **Lantern Night** | Festival-red scales and lantern tassels; dashing throws confetti |
+| Epic · Garden | **Golden Sap** | Amber scales veined with sap, a golden stem, golden skills and a glint |
+| Epic · Cyber Mecha | **Scale Roller** | Green plating, lime neon (see "Cyber Mecha" above) |
+| **Mythical · Void Knight** | **Thorn Warden** | Black thorn-plate, lime runes; a crown of blades and spiked horns take the sprout's place, and a cape. Stages as in “The Void Knights” above |
+
+#### Mossloth (three-toed sloth, Nature)
+
+| Rarity | Skin | Look and effects |
+|---|---|---|
+| Common | Cinnamon | Warm cinnamon fur |
+| Common | Snowy | Snow-white fur, pale moss |
+| Common | Dusk | Lilac-grey fur, violet moss |
+| Rare · Garden | **Acorn Nap** | An acorn cap for napping; dashing drops leaves |
+| Rare · Winter | **Cozy Knit** | A knitted scarf over frosty fur; dashing leaves snowflakes |
+| Epic · Garden | **Bonsai Keeper** | A little bonsai on its head, blossom skills and a shimmer |
+| Epic · Cyber Mecha | **Treehugger Mk** | Khaki armour, mint neon (see "Cyber Mecha" above) |
+| **Mythical · Void Knight** | **Blight Sentinel** | Rotwood-black steel, mint runes; a crystal crest and ram horns take the moss crown's place, and a cape. Stages as in “The Void Knights” above |
 
 ### 10.7 All-fighter collections
 

@@ -122,6 +122,8 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
       astrabun: 0.36,
       wombolder: 0.36,
       shadopus: 0.3,
+      pangrove: 0.335,
+      mossloth: 0.23,
     },
   },
   hard: {
@@ -155,7 +157,7 @@ function rng(seed: number) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-const DISABLES = ["stun", "freeze", "sleep", "shell", "paralysis"] as const;
+const DISABLES = ["stun", "freeze", "sleep", "shell", "paralysis", "root"] as const;
 const OFFENSIVE = new Set([
   "projectile",
   "charged",
@@ -676,7 +678,9 @@ export class BotBrain {
         case "rush":
         case "blink":
           // Gap closers that land their hit on arrival: used like a long melee
-          // strike, once the target is within (most of) the reach.
+          // strike, once the target is within (most of) the reach. A rooted
+          // fighter's charge goes nowhere.
+          if (a.kind === "rush" && arena.has(me, "root")) break;
           if (s.sight && reach(a.range * 0.9 + RULES.radius))
             score = Math.max(a.damage, 12) * 1.2;
           break;
@@ -809,6 +813,7 @@ const STATUS_WEIGHT: Partial<Record<StatusKind, number>> = {
   sleep: 0.9,
   paralysis: 0.8,
   burn: 0.45,
+  root: 0.6,
   slow: 0.3,
   haste: 0.3,
 };
@@ -835,7 +840,9 @@ const perUse = (a: Ability, crowd = false) =>
         ticks(a) *
         // Marksman shots average half their far bonus; a charge finds a wall about a third of the time.
         (1 + (a.farBonus ?? 0) / 2) *
-        (a.wallSlam ? 1 + (a.wallSlam - 1) / 3 : 1) +
+        (a.wallSlam ? 1 + (a.wallSlam - 1) / 3 : 1) *
+        // Life drain: the healing counts too (a little less than damage).
+        (1 + (a.drain ?? 0) * 0.7) +
       (a.pop?.damage ?? 0) +
       (healing(a) ? a.heal! * ticks(a) * (crowd ? 1 : (a.selfHeal ?? 1)) : 0) +
       (a.kind === "veil" ? 10 + ((a.ambush ?? 1) - 1) * VEIL_OPENER : 0);

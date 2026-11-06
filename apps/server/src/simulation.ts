@@ -821,6 +821,12 @@ export class Arena {
       ...(comboName ? { combo: comboName } : {}),
       ...(ambushed ? { ambush: true } : {}),
     });
+    // Life drain (Sap Bite, Thornwheel) and the Nature team-up gift heal the
+    // attacker for a share of what the hit dealt.
+    if (source && source !== target && dealt > 0 && source.hp > 0) {
+      const share = (ability?.drain ?? 0) + (this.gift(source, "Nature") ?? 0);
+      if (share > 0) this.heal(source, dealt * share, ability?.id);
+    }
     if (counter && source && source !== target && source.hp > 0)
       this.reflectDamage(source, target, amount);
     // Setup: mark the target for this fighter's payoff (or the guard for
@@ -859,6 +865,15 @@ export class Arena {
       const dir = normalize(target.x - source.x, target.y - source.y);
       move(target, dir.x * push, dir.y * push);
     }
+  }
+  /** Restore health (capped at full), counted in stats, shown as a heal event. */
+  heal(p: Fighter, amount: number, abilityId?: string) {
+    const before = p.hp;
+    p.hp = Math.min(maxHealth(p.character, this.mode, this.players.length), p.hp + amount);
+    const healed = p.hp - before;
+    if (healed <= 0) return;
+    p.stats.healed = (p.stats.healed ?? 0) + healed;
+    if (healed >= 1) this.event("heal", p, 0x7dffb0, Math.round(healed), p.id, abilityId);
   }
   damageLimit(target: Fighter) {
     return target.hp;
@@ -1456,7 +1471,11 @@ export class Arena {
         if (this.rushes.delete(p.id))
           p.dashUntil = Math.min(p.dashUntil, this.time);
       }
-      if (input.dash && !disabled && this.time >= p.dashAt) {
+      // Rooted: no dashing, and a charge stops where it is.
+      const rooted = this.has(p, "root");
+      if (rooted && this.rushes.delete(p.id))
+        p.dashUntil = Math.min(p.dashUntil, this.time);
+      if (input.dash && !disabled && !rooted && this.time >= p.dashAt) {
         // Dashing out of a charge gives the charge up.
         this.rushes.delete(p.id);
         const d = normalize(input.dx, input.dy);

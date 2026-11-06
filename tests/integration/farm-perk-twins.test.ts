@@ -103,22 +103,27 @@ it("maps every champion to a perk, the same in SQL and in the client", async () 
     expect(Object.keys(FARM_PERKS), id).toContain(perk);
     expect(farmPerk(id), id).toBe(FARM_PERKS[perk]);
   }
-  // Each of the eight newest has the perk of the original of its element.
+  // Each of the eight newest has the perk of the original of its element;
+  // Nature has no original, so its two have the perk that suits them.
   const { CHARACTERS } = await import("../../packages/shared/src/index");
   for (const [id, twin] of Object.entries(FARM_PERK_OF))
-    expect(
-      CHARACTERS[id as keyof typeof CHARACTERS].element,
-      `${id} and ${twin}`,
-    ).toBe(CHARACTERS[twin as keyof typeof CHARACTERS].element);
-  expect(Object.keys(FARM_PERK_OF)).toHaveLength(8);
+    if (CHARACTERS[id as keyof typeof CHARACTERS].element !== "Nature")
+      expect(
+        CHARACTERS[id as keyof typeof CHARACTERS].element,
+        `${id} and ${twin}`,
+      ).toBe(CHARACTERS[twin as keyof typeof CHARACTERS].element);
+  expect(FARM_PERK_OF.pangrove).toBe("duskveil");
+  expect(FARM_PERK_OF.mossloth).toBe("lumoth");
+  expect(Object.keys(FARM_PERK_OF)).toHaveLength(10);
   expect(farmPerk(null)).toBeNull();
 });
 
-it("Sunbara has Early Sun (Lumoth's)", async () => {
+it("Sunbara and Mossloth have Early Sun (Lumoth's)", async () => {
   await farmer("voltkit");
   const r = await act([{ a: "plant", plot: 0, crop: "wheat" }]);
   expect(ripeIn(r.farm, 0)).toBeCloseTo(W, -1);
   expect(ripeIn(await farmer("sunbara"), 0)).toBeCloseTo(W / 1.2, -1);
+  expect(ripeIn(await farmer("mossloth"), 0)).toBeCloseTo(W / 1.2, -1);
 });
 
 it("Wombolder has Rich Soil and Shadopus Night Stalker", async () => {
@@ -162,6 +167,8 @@ it("Coilemur, Glacelle and Pyranda have Zap, Downpour and Warmth", async () => {
     "astrabun",
     "wombolder",
     "shadopus",
+    "pangrove",
+    "mossloth",
   ]) {
     await farmer(id);
     expect((await act([{ a: "perk" }])).results[0], id).toEqual({

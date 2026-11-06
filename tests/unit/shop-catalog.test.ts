@@ -12,12 +12,20 @@ import {
   awakeningStage,
 } from "../../packages/shared/src/shop";
 
-/** 010 seeds the first catalog; 053 and 054 add the eight newest champions' skins; 069 the Cyber Mecha Epics. */
+/**
+ * 010 seeds the first catalog; 053 and 054 add the second eight champions'
+ * skins; 069 the Cyber Mecha Epics; 070 and 071 the two Nature champions'.
+ */
 const migration =
   readFileSync("supabase/migrations/010_shop.sql", "utf8") +
   readFileSync("supabase/migrations/053_new_champion_skins.sql", "utf8") +
   readFileSync("supabase/migrations/054_new_champion_mythicals.sql", "utf8") +
-  readFileSync("supabase/migrations/069_cyber_mecha_epics.sql", "utf8");
+  readFileSync("supabase/migrations/069_cyber_mecha_epics.sql", "utf8") +
+  readFileSync("supabase/migrations/070_eighteen_champions.sql", "utf8") +
+  readFileSync(
+    "supabase/migrations/071_nature_void_knights_and_cyber.sql",
+    "utf8",
+  );
 /** Missions are re-seeded (with the solo flag) by 014. */
 const missionMigration = readFileSync(
   "supabase/migrations/014_missions.sql",
@@ -49,17 +57,25 @@ describe("shop catalog", () => {
     );
     // 067 turns every Mythical into a Void Knight in place (same id, new
     // name and collection).
+    // 071 does the same for the two Nature champions (070 sold them as
+    // Celestial Mythicals).
     const voidKnights = new Map(
       [
-        ...readFileSync(
-          "supabase/migrations/067_void_knight_mythicals.sql",
-          "utf8",
+        ...(
+          readFileSync(
+            "supabase/migrations/067_void_knight_mythicals.sql",
+            "utf8",
+          ) +
+          readFileSync(
+            "supabase/migrations/071_nature_void_knights_and_cyber.sql",
+            "utf8",
+          )
         ).matchAll(
           /set name = '([^']+)', collection = 'void' where id = '([a-z-]+)';/g,
         ),
       ].map(([, name, id]) => [id, name]),
     );
-    expect(voidKnights.size).toBe(16);
+    expect(voidKnights.size).toBe(18);
     for (const line of shopItemsSql.split("\n")) {
       const knight = line.match(/^ {2}\('([a-z-]+)', 'champion'/)?.[1];
       if (knight && voidKnights.has(knight)) {
@@ -152,7 +168,7 @@ describe("shop catalog", () => {
         id,
       ).toEqual([8, 3, 2, 2, 1]);
     }
-    expect(CHAMPION_SKINS).toHaveLength(8 * 16);
+    expect(CHAMPION_SKINS).toHaveLength(8 * 18);
     // Each champion has one Cyber Mecha Epic.
     for (const id of Object.keys(CHARACTERS))
       expect(

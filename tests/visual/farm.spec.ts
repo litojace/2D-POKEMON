@@ -1699,11 +1699,22 @@ test("on a phone, pick a seed and drag it to sow, and drag the sickle to harvest
       await plot(11),
       await plot(14),
     ]);
-    // The Copper Can waters three in a row, from plot 12 to 14 (the bubble
-    // floats over the row above, so the drag waters plot 1 there too).
+    // The Copper Can waters three in a row: together the waterings cover
+    // plots 11–14 (the fake server forgets watering, so which plots are sent
+    // varies; the bubble floats over the row above, so plot 1 gets some too).
+    const covered = async () =>
+      [
+        ...new Set(
+          (await sent("water")).flatMap((p: number) =>
+            [p - 1, p, p + 1].filter(
+              (q) => Math.floor(q / 10) === Math.floor(p / 10),
+            ),
+          ),
+        ),
+      ].sort((a, b) => a - b);
     await expect
-      .poll(() => sent("water"))
-      .toEqual(expect.arrayContaining([1, 12, 14]));
+      .poll(covered)
+      .toEqual(expect.arrayContaining([11, 12, 13, 14]));
     // Harvesting: a tap on a ripe crop shows the sickle (nothing is cut yet)…
     const p3 = await plot(3);
     await page.touchscreen.tap(p3.x, p3.y);
@@ -2802,6 +2813,18 @@ test("the Supply Balloon: fill a crate, ask friends, launch it; help a friend's 
   await sheet.locator('[data-bask="1"]').click();
   await expect(sheet.locator(".fm-crate").nth(1)).toHaveClass(/asked/);
   await snap(page, info, "farm-balloon-sheet");
+  // Not all six yet: it can leave early with the filled ones, after a
+  // second tap (the first sends nothing).
+  const launch = sheet.locator("[data-blaunch]");
+  await expect(launch).toBeEnabled();
+  await expect(launch).toContainText("Send it off now");
+  await launch.click();
+  await expect(launch).toContainText("Tap again: leave with");
+  expect(
+    await page.evaluate(() =>
+      (window as any).__farmRequests.filter((r: any) => r.balloon === "launch"),
+    ),
+  ).toEqual([]);
   // Everything filled (the fake fills the asked crates): launch.
   await page.evaluate(() =>
     (window as any).__balloon.crates.forEach((c: any) => (c.state = "done")),

@@ -1122,6 +1122,17 @@ export class FighterRig {
         p.armR.rotation = -1.2 + Math.sin(t * 9) * 0.4;
         p.armL.rotation = 0.3;
         break;
+      case "pangrove":
+        // A claw raised, the leafy tail swishing.
+        p.armR.rotation = -1.8 + Math.sin(t * 8) * 0.25;
+        p.tail.rotation = Math.sin(t * 6) * 0.15;
+        p.flame.rotation = Math.sin(t * 6) * 0.12;
+        break;
+      case "mossloth":
+        // A very, very slow wave.
+        p.armR.rotation = -1.6 + Math.sin(t * 2.5) * 0.35;
+        p.head.rotation = 0.08;
+        break;
     }
   }
 
@@ -1246,6 +1257,18 @@ export class FighterRig {
           0.5 + Math.sin(t * 4) * 0.03,
           0.5 - Math.sin(t * 4) * 0.02,
         );
+        break;
+      case "pangrove":
+        // Curls into a ball and rolls a full turn, then pops up, arms wide.
+        this.root.rotation = t < 0.7 ? (t / 0.7) * Math.PI * 2 : 0;
+        p.armL.rotation = t < 0.7 ? 0.6 : 1.3;
+        p.armR.rotation = t < 0.7 ? -0.6 : -1.3;
+        break;
+      case "mossloth":
+        // Arms up, slowly swaying like a sloth on a branch.
+        p.armL.rotation = 2.6 + Math.sin(t * 2) * 0.15;
+        p.armR.rotation = -2.6 + Math.sin(t * 2) * 0.15;
+        move(Math.sin(t * 2) * 3, 0);
         break;
       case "shadopus":
         // All tentacles up in a flourish.

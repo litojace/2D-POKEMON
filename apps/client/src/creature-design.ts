@@ -207,6 +207,20 @@ export const creaturePalette: Record<CharacterId, Palette> = {
     glow: "#ff6bd6",
     accent: "#120b26",
   },
+  pangrove: {
+    light: "#eef9cf",
+    mid: "#7fcf6a",
+    dark: "#1f4626",
+    glow: "#ffd166",
+    accent: "#3f8f4a",
+  },
+  mossloth: {
+    light: "#f4efd9",
+    mid: "#b8ad88",
+    dark: "#3d3726",
+    glow: "#9bd36a",
+    accent: "#ff9fc4",
+  },
 };
 /** Mirror the x coordinates of an absolute-command SVG path around x = 100. */
 function mirrorPath(d: string) {
@@ -239,7 +253,9 @@ type EyeStyle =
   | "keen"
   | "content"
   | "star"
-  | "bead";
+  | "bead"
+  | "leaf"
+  | "lazy";
 export const EYE_STYLE: Partial<Record<CharacterId, EyeStyle>> = {
   voltkit: "sparkle",
   cindrake: "fierce",
@@ -255,6 +271,8 @@ export const EYE_STYLE: Partial<Record<CharacterId, EyeStyle>> = {
   sunbara: "content",
   astrabun: "star",
   wombolder: "bead",
+  pangrove: "leaf",
+  mossloth: "lazy",
 };
 /**
  * Champions that float instead of standing: the rig glides them above the
@@ -327,6 +345,8 @@ export function creatureLayers(
     halcyra: `<radialGradient id="${prefix}-chest" cx="35%" cy="20%"><stop stop-color="#ffe1c2"/><stop offset=".6" stop-color="${p.accent}"/><stop offset="1" stop-color="#c25a1e"/></radialGradient>`,
     sunbara: `<radialGradient id="${prefix}-muzzle" cx="40%" cy="25%"><stop stop-color="${p.light}"/><stop offset="1" stop-color="#d9a873"/></radialGradient><radialGradient id="${prefix}-yuzu" cx="35%" cy="30%"><stop stop-color="#fff6c2"/><stop offset=".55" stop-color="${p.accent}"/><stop offset="1" stop-color="#e08a16"/></radialGradient>`,
     astrabun: `<linearGradient id="${prefix}-moon" x2="1" y2="1"><stop stop-color="#fffbe6"/><stop offset="1" stop-color="${p.glow}"/></linearGradient>`,
+    pangrove: `<linearGradient id="${prefix}-leaves" x2=".6" y2="1"><stop stop-color="${p.mid}"/><stop offset=".6" stop-color="${p.accent}"/><stop offset="1" stop-color="${p.dark}"/></linearGradient>`,
+    mossloth: `<radialGradient id="${prefix}-moss" cx="40%" cy="25%" r="90%"><stop stop-color="#d6f5a8"/><stop offset=".5" stop-color="${p.glow}"/><stop offset="1" stop-color="#3f7a34"/></radialGradient>`,
     wombolder: `<radialGradient id="${prefix}-stone" cx="35%" cy="25%"><stop stop-color="#c9ccd4"/><stop offset=".55" stop-color="${p.accent}"/><stop offset="1" stop-color="#4b4e57"/></radialGradient>`,
   };
   defs += EXTRA_DEFS[id] ? `<defs>${EXTRA_DEFS[id]}</defs>` : "";
@@ -505,6 +525,19 @@ export function creatureLayers(
           ? `<path d="M${n(x - 10)} ${by - 9.5}H${n(x + 10)}" stroke="${p.dark}" stroke-width="4.2" stroke-linecap="round" fill="none"/>`
           : "";
       return `${e(x, by, n(w * 0.72), n(h * 0.62), INK)}${e(n(x - w * 0.23), n(by - h * 0.16), n(w * 0.26), n(w * 0.26), "#ffffff")}${brow}`;
+    }
+    if (style === "leaf") {
+      // A leaf-shaped catchlight with its midrib: the pangolin's sap-gold eyes.
+      const lx = x - w * 0.3,
+        ly = y - h * 0.32,
+        r = w * 0.36;
+      return `${round}<path d="M${n(lx - r)} ${n(ly + r * 0.5)}Q${n(lx - r * 0.2)} ${n(ly - r)} ${n(lx + r)} ${n(ly - r * 0.5)}Q${n(lx + r * 0.2)} ${n(ly + r)} ${n(lx - r)} ${n(ly + r * 0.5)}Z" fill="#fff" stroke="none"/><circle cx="${n(x + w * 0.38)}" cy="${n(y + h * 0.36)}" r="${n(w * 0.15)}" fill="#fff"/>`;
+    }
+    if (style === "lazy") {
+      // Heavy, flat lids at half mast: a sloth in no hurry at all.
+      const top = y - h * 0.12;
+      const shape = `M${n(x - w)} ${n(top)}H${n(x + w)}A${n(w)} ${n(h)} 0 0 1 ${n(x - w)} ${n(top)}Z`;
+      return `<path d="${shape}" fill="${INK}"/>${e(x, y + h * 0.34, w * 0.7, h * 0.44, ring)}${e(x, y + h * 0.3, w * 0.38, h * 0.3, INK)}${e(x - w * 0.34, y + h * 0.08, w * 0.26, h * 0.17, "#ffffff")}<circle cx="${n(x + w * 0.34)}" cy="${n(y + h * 0.42)}" r="${n(w * 0.11)}" fill="#fff"/><path d="M${n(x - w * 1.02)} ${n(top)}H${n(x + w * 1.02)}" stroke="${p.dark}" stroke-width="2.6" stroke-linecap="round" fill="none"/>`;
     }
     return round + glints;
   };
@@ -1021,6 +1054,153 @@ export function creatureLayers(
       tentacle(104, 154, 108, 182, 100, 170);
     const curl = "M118 140Q160 150 168 116Q172 96 156 92";
     layers.tail = `${line(curl, p.dark, 15)}${line(curl, body, 11.5)}<circle cx="156" cy="92" r="5.6" fill="${body}"/>${e(160, 170, 7, 4, p.accent, ' opacity=".7" stroke="none"')}${e(40, 172, 5, 3, p.accent, ' opacity=".6" stroke="none"')}`;
+  }
+  if (id === "pangrove") {
+    // Pangolin: a coat of living leaf scales (cap, back mantle and a long
+    // curling tail), a pointed snout with a sap-gold nose, small round ears,
+    // big digging claws, and a sprout growing from the crown.
+    const scale = (
+      x: number,
+      y: number,
+      w: number,
+      h: number,
+      a = 0,
+      fill = body,
+    ) =>
+      `<path d="M${x} ${y - h}Q${x + w} ${y - h * 0.1} ${x} ${y + h}Q${x - w} ${y - h * 0.1} ${x} ${y - h}Z" fill="${fill}"${a ? ` transform="rotate(${a} ${x} ${y})"` : ""}/>${line(`M${x} ${y - h * 0.7}V${y + h * 0.75}`, p.dark, 1.1, 0.35).replace("/>", a ? ` transform="rotate(${a} ${x} ${y})"/>` : "/>")}`;
+    const leaves = `url(#${prefix}-leaves)`;
+    layers.tail =
+      tailPath(
+        "M120 150Q166 160 176 124Q184 96 162 80Q150 76 146 88Q160 94 158 112Q154 136 120 140Z",
+        leaves,
+      ) +
+      [
+        [168, 92, -30],
+        [174, 110, 0],
+        [168, 128, 30],
+        [154, 142, 60],
+        [138, 148, 80],
+      ]
+        .map(([x, y, a]) => scale(tailX(x), y, 7, 9, behind ? -a : a, body))
+        .join("");
+    layers.wings = [
+      [56, 120, -40],
+      [52, 138, -15],
+      [58, 156, 15],
+      [144, 120, 40],
+      [148, 138, 15],
+      [142, 156, -15],
+    ]
+      .map(([x, y, a]) => scale(x, y, 10, 13, a, leaves))
+      .join("");
+    layers.ears = `${e(62, 72, 9, 8)}${e(62, 73, 4.5, 4, "#ffb3c8", ' stroke="none"')}${e(138, 72, 9, 8)}${e(138, 73, 4.5, 4, "#ffb3c8", ' stroke="none"')}`;
+    layers.head =
+      `${e(100, 90, 40, 32, face)}` +
+      // The leaf-scale cap over the brow.
+      path(
+        "M62 82Q64 54 100 50Q136 54 138 82Q120 72 100 72Q80 72 62 82Z",
+        leaves,
+      ) +
+      [
+        [76, 66, -35],
+        [90, 59, -12],
+        [110, 59, 12],
+        [124, 66, 35],
+        [100, 66, 0],
+      ]
+        .map(([x, y, a]) => scale(x, y, 7, 9, a, body))
+        .join("") +
+      // The snout.
+      `${e(100, 107, 15, 11, p.light)}${e(100, 101, 5.5, 4, p.glow)}${e(98.5, 100, 1.8, 1.2, "#ffffff", ' stroke="none"')}` +
+      stroke("M95 111.5Q100 114.5 105 111.5", p.dark, 1.8) +
+      `${dot(100, 114.6, 2.4, 1.7, "#ff7d9c")}${highlight(70, 78, 18)}`;
+    layers.eyes = frontEyes(p.glow, 8.4, 10.2);
+    layers.flame = `${line("M100 52Q98 40 104 32", p.accent, 3)}${path("M103 36Q112 26 122 32Q114 42 103 36Z", body)}${path("M101 42Q90 34 82 40Q90 48 101 42Z", p.mid)}${line("M105 35Q112 32 118 32M99 41Q92 39 86 40", p.dark, 1, 0.4)}`;
+    layers.body =
+      `${e(100, 139, 31, 27)}${e(100, 145, 18, 18, pearl)}` +
+      [
+        [76, 128, -20],
+        [124, 128, 20],
+        [74, 146, -8],
+        [126, 146, 8],
+      ]
+        .map(([x, y, a]) => scale(x, y, 6, 8, a, leaves))
+        .join("") +
+      highlight(82, 126, 14);
+    const claw = (x: number) =>
+      `${e(x, 140, 10, 14)}${e(x, 152, 11, 7)}${line(`M${x - 6} 156Q${x - 8} 161 ${x - 5} 163M${x} 157Q${x} 163 ${x + 2} 164M${x + 6} 156Q${x + 8} 161 ${x + 9} 162`, "#f6eccf", 2.6)}`;
+    layers.armL = claw(66);
+    layers.armR = claw(134);
+    layers.legL = paw(81, 162, 14);
+    layers.legR = paw(119, 162, 14);
+  }
+  if (id === "mossloth") {
+    // Three-toed sloth: shaggy sandy fur, a pale face disc with dark eye
+    // stripes, a little moss garden on its back and crown (with flowers and a
+    // sprout), long arms ending in three hooked claws.
+    const moss = `url(#${prefix}-moss)`;
+    const bloom = (x: number, y: number, r = 3, colour = p.accent) =>
+      [0, 1, 2, 3, 4]
+        .map((i) =>
+          e(
+            +(x + Math.cos((i * Math.PI * 2) / 5) * r).toFixed(2),
+            +(y + Math.sin((i * Math.PI * 2) / 5) * r).toFixed(2),
+            r * 0.9,
+            r * 0.9,
+            colour,
+            ' stroke="none"',
+          ),
+        )
+        .join("") + e(x, y, r * 0.6, r * 0.6, "#fff2a0", ' stroke="none"');
+    const shag = (d: string) => line(d, p.dark, 1.4, 0.35);
+    layers.wings =
+      path(
+        "M48 150Q40 116 62 104Q80 96 100 96Q120 96 138 104Q160 116 152 150Q130 160 100 160Q70 160 48 150Z",
+        moss,
+      ) +
+      `${bloom(56, 118, 3.4)}${bloom(146, 124, 3)}${bloom(150, 144, 2.4, "#ffffff")}` +
+      line("M50 132q4 -6 8 0M144 110q3 -5 7 0", p.dark, 1.2, 0.4);
+    layers.ears = `${e(62, 84, 7, 6)}${e(138, 84, 7, 6)}`;
+    layers.head =
+      `${e(100, 90, 41, 34, face)}` +
+      // Shaggy fringe and the pale face disc.
+      path(
+        "M64 74Q74 56 100 54Q126 56 136 74Q124 66 112 70Q106 62 100 68Q92 62 88 70Q76 66 64 74Z",
+        body,
+      ) +
+      `${e(100, 96, 31, 25, p.light)}` +
+      // Dark eye stripes that slope down and out: the sloth's sleepy mask.
+      path(
+        "M58 86Q68 80 84 84Q92 88 90 98Q86 106 76 104Q64 100 58 86Z",
+        p.dark,
+        ' opacity=".82"',
+      ) +
+      path(
+        "M142 86Q132 80 116 84Q108 88 110 98Q114 106 124 104Q136 100 142 86Z",
+        p.dark,
+        ' opacity=".82"',
+      ) +
+      `${e(100, 104, 6.5, 4.6, "#3a2c22")}${e(98.4, 103, 2, 1.3, "#ffffff", ' opacity=".55" stroke="none"')}` +
+      stroke("M92 110.5Q100 116 108 110.5", p.dark, 2) +
+      shag("M70 70l-3 -5M80 64l-2 -5M120 64l2 -5M130 70l3 -5") +
+      highlight(70, 76, 20);
+    layers.eyes = eye(79, p.glow, 7.6, 9.4) + eye(121, p.glow, 7.6, 9.4);
+    layers.flame =
+      path(
+        "M80 60Q84 48 100 48Q116 48 120 60Q110 56 100 57Q90 56 80 60Z",
+        moss,
+      ) +
+      `${line("M100 50Q99 40 104 34", p.glow, 2.4)}${path("M103 37Q110 30 117 34Q111 41 103 37Z", p.glow)}${bloom(88, 54, 3)}${bloom(114, 53, 2.4, "#ffffff")}`;
+    layers.body =
+      `${e(100, 140, 30, 28)}${e(100, 146, 18, 18, pearl)}` +
+      shag("M78 126l-3 6M82 150l-3 5M122 126l3 6M118 150l3 5") +
+      highlight(80, 126, 16);
+    const arm = (x: number, out: number) =>
+      `${path(`M${x - 9} 122Q${x - 12 + out * 4} 146 ${x - 9 + out * 6} 160Q${x + out * 6} 168 ${x + 9 + out * 6} 160Q${x + 12 + out * 4} 144 ${x + 9} 122Z`, body)}${shag(`M${x - 4 + out * 2} 132l${out * 3} 5M${x + 3 + out * 3} 146l${out * 3} 5`)}${line(`M${x - 5 + out * 6} 163Q${x - 7 + out * 6} 172 ${x - 1 + out * 6} 174M${x + out * 6} 164Q${x + out * 6} 174 ${x + 6 + out * 6} 175M${x + 5 + out * 6} 163Q${x + 7 + out * 6} 172 ${x + 12 + out * 6} 172`, "#f6eccf", 2.8)}`;
+    layers.armL = arm(66, -1);
+    layers.armR = arm(134, 1);
+    layers.legL = paw(82, 162, 13);
+    layers.legR = paw(118, 162, 13);
   }
   if (dir === "down" && id !== "duskveil" && id !== "shadopus")
     layers.head += blush;

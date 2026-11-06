@@ -84,8 +84,9 @@ it("a balloon has six crates: five you grow and one you can't yet", async () => 
   const lv = Object.fromEntries(levels.map((r: any) => [r.id, r.level]));
   const crates = b.crates.map((c: any) => lv[c.crop]);
   expect(crates.slice(0, 5).every((l: number) => l <= 20)).toBe(true);
+  // The one you can't grow yet is at most 5 levels ahead (migration 068).
   expect(crates[5]).toBeGreaterThan(20);
-  expect(crates[5]).toBeLessThanOrEqual(40);
+  expect(crates[5]).toBeLessThanOrEqual(25);
   expect(b.crates.every((c: any) => c.state === "open" && c.qty >= 2)).toBe(
     true,
   );
@@ -98,7 +99,10 @@ it("a balloon has six crates: five you grow and one you can't yet", async () => 
 it("fills crates from the barn, plain crops first", async () => {
   const b = await call(ann, "public.arena_farm_balloon()");
   const c0 = b.crates[0];
-  let r = await balloonAct(ann, "fill", 0);
+  // Nothing filled yet: it can't leave.
+  let r = await balloonAct(ann, "launch");
+  expect(r).toMatchObject({ ok: false, error: "Fill a crate first" });
+  r = await balloonAct(ann, "fill", 0);
   expect(r).toMatchObject({
     ok: false,
     error: expect.stringMatching(/You need/),
@@ -118,8 +122,69 @@ it("fills crates from the barn, plain crops first", async () => {
   ]);
   r = await balloonAct(ann, "fill", 0);
   expect(r).toMatchObject({ ok: false, error: "This crate is full" });
-  r = await balloonAct(ann, "launch");
-  expect(r).toMatchObject({ ok: false, error: "Fill all six crates first" });
+  // Launching now would pay for that one crate.
+  expect(r.balloon.leavesNow).toBeGreaterThan(0);
+  expect(r.balloon.leavesNow).toBeLessThan(r.balloon.leaves);
+});
+
+it("leaves early with the crates you filled: their leaves and XP, no Gold Fertilizer", async () => {
+  let b = await call(dan, "public.arena_farm_balloon()");
+  for (const k of [0, 1]) {
+    await give(dan, b.crates[k].crop, b.crates[k].qty);
+    expect((await balloonAct(dan, "fill", k)).ok).toBe(true);
+  }
+  b = await call(dan, "public.arena_farm_balloon()");
+  const [{ fert_gold: g0 }] = await sql(
+    "select fert_gold from public.arena_farms where player_id = $1",
+    [dan],
+  );
+  const r = await balloonAct(dan, "launch");
+  expect(r).toMatchObject({
+    ok: true,
+    gained: { leaves: b.leavesNow, xp: b.xpNow, crates: 2, bonus: null },
+  });
+  // Paid once, for the two crates (the XP may level the farm up and pay
+  // a level reward on top: not counted here).
+  const paid = await sql(
+    "select amount from public.arena_leaf_ledger where player_id = $1 and reason = 'farm-balloon'",
+    [dan],
+  );
+  expect(paid).toEqual([{ amount: b.leavesNow }]);
+  const [{ fert_gold: g1 }] = await sql(
+    "select fert_gold from public.arena_farms where player_id = $1",
+    [dan],
+  );
+  expect(g1).toBe(g0);
+  expect(r.balloon).toMatchObject({ crates: null, launches: 1 });
+});
+
+it("a waiting balloon's crate far above your level is swapped for one in range", async () => {
+  // Ben waits on a crate of Storm Melon (level 35) his friends were asked for.
+  await call(ben, "public.arena_farm_balloon()");
+  await sql(
+    `update public.arena_farm_balloons set crates = jsonb_set(crates, '{5}',
+       '{"crop": "melon", "qty": 2, "state": "asked", "by": null}') where player_id = $1`,
+    [ben],
+  );
+  // Migration 068 again (it is safe to run again): the crate gets a crop in
+  // range, open again; the others stay.
+  const before = await call(ben, "public.arena_farm_balloon()");
+  await db.exec("reset role");
+  await db.exec(
+    await readFile("supabase/migrations/068_farm_balloon_fair.sql", "utf8"),
+  );
+  const after = await call(ben, "public.arena_farm_balloon()");
+  expect(after.crates.slice(0, 5)).toEqual(before.crates.slice(0, 5));
+  expect(after.crates[5]).toMatchObject({ state: "open", by: null });
+  const [{ level }] = await sql(
+    "select level from public.arena_farm_crops where id = $1",
+    [after.crates[5].crop],
+  );
+  const [{ level: lvl }] = await sql(
+    "select level from public.arena_farms where player_id = $1",
+    [ben],
+  );
+  expect(level).toBeLessThanOrEqual(lvl + 5);
 });
 
 it("asks friends for up to 3 crates; a friend fills one for leaves and a star", async () => {

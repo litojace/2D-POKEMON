@@ -1187,6 +1187,7 @@ export function openFarm(options) {
       y + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2,
     );
     g.restore();
+    return { x, y, w, h };
   }
   /* ---------- background ---------- */
   const bg = document.createElement("canvas");
@@ -3361,7 +3362,7 @@ export function openFarm(options) {
     helpList = null;
   const BAL = { x: 1080, y: 105 },
     PEG = { x: 1104, y: 300 };
-  const bal = { mode: "idle", t0: 0 };
+  const bal = { mode: "idle", t0: 0, armed: false };
   const balReady = () =>
     !!balloon?.crates && balloon.crates.every((c) => c.state === "done");
   async function loadBalloon() {
@@ -3413,7 +3414,9 @@ export function openFarm(options) {
           40,
         );
         toast(
-          `Balloon launched: +${r.gained?.leaves} Gold Leaves, +${r.gained?.xp} XP and a Gold Fertilizer`,
+          r.gained?.bonus === "gold"
+            ? `Balloon launched: +${r.gained?.leaves} Gold Leaves, +${r.gained?.xp} XP and a Gold Fertilizer`
+            : `Balloon sent with ${r.gained?.crates} crate${r.gained?.crates === 1 ? "" : "s"}: +${r.gained?.leaves} Gold Leaves, +${r.gained?.xp} XP`,
         );
         log(
           `Launched the <b>Supply Balloon</b> · +${r.gained?.leaves} ${L}`,
@@ -3624,8 +3627,9 @@ export function openFarm(options) {
         return `<div class="fm-crate ${c.state}"><img src="${icon(c.crop)}" alt=""><b>${c.qty} ${esc(crop?.n ?? c.crop)}</b><small>You have ${have}${crop && crop.lv > F.lv ? ` · grows at Lv ${crop.lv}` : ""}</small>${act}</div>`;
       })
       .join("");
-    const ready = balReady();
-    return `<div class="sh-body"><p class="sh-note">Fill six crates for a big reward. Ask friends for the ones you can't fill (up to ${BALLOON.ask} a balloon): they get leaves and a Helper Star.</p><div class="fm-crates">${crates}</div><p class="sh-note">Reward: <b>${balloon.leaves} ${L}</b> · +${balloon.xp} XP · a Gold Fertilizer</p><button type="button" class="btn-s gold fm-wide" data-blaunch ${ready ? "" : "disabled"}>${ready ? "Launch the balloon" : `${balloon.crates.filter((c) => c.state !== "done").length} crates to go`}</button>${stars}</div>`;
+    const ready = balReady(),
+      done = balloon.crates.filter((c) => c.state === "done").length;
+    return `<div class="sh-body"><p class="sh-note">Fill six crates for a big reward. Ask friends for the ones you can't fill (up to ${BALLOON.ask} a balloon): they get leaves and a Helper Star.</p><div class="fm-crates">${crates}</div><p class="sh-note">All six: <b>${balloon.leaves} ${L}</b> · +${balloon.xp} XP · a Gold Fertilizer.${!ready && done ? ` It can leave now with the ${done} you filled: <b>${balloon.leavesNow ?? 0} ${L}</b> · +${balloon.xpNow ?? 0} XP.` : ""}</p><button type="button" class="btn-s gold fm-wide${bal.armed ? " armed" : ""}" data-blaunch ${done ? "" : "disabled"}>${ready ? "Launch the balloon" : !done ? "Fill a crate to launch" : bal.armed ? `Tap again: leave with ${done}/6 (no Gold Fertilizer)` : `Send it off now · ${balloon.leavesNow ?? 0} ${L}`}</button>${stars}</div>`;
   }
   function helpHTML() {
     if (!helpList)
@@ -4687,7 +4691,8 @@ export function openFarm(options) {
   }
   /** Carrying a seed or a tool to the edge of the view scrolls the farm that
    *  way, faster the closer to the edge; what slides under the finger is
-   *  sown, watered or cut as it goes. Called every frame. */
+   *  sown, watered or cut as it goes. Called every frame; it starts once the
+   *  finger has left the edges, so a drag starting there doesn't scroll. */
   function edgeScroll(dt) {
     if (!carry?.moved || carry.lx == null) return;
     const r = cv.getBoundingClientRect(),
@@ -4701,7 +4706,13 @@ export function openFarm(options) {
             : 0,
       kx = push(carry.lx, r.left, r.right, ex),
       ky = push(carry.ly, r.top, r.bottom, ey);
-    if (!kx && !ky) return;
+    // Only once the finger has been away from the edges: a bubble near the
+    // top of a phone screen doesn't scroll the farm as the drag starts.
+    if (!kx && !ky) {
+      carry.edgeOk = true;
+      return;
+    }
+    if (!carry.edgeOk) return;
     const sp = (900 * dt) / Z,
       bx = cam.x,
       by = cam.y;
@@ -5408,27 +5419,64 @@ export function openFarm(options) {
     ctx.translate(-cam.x, -cam.y);
     const z = 1 / Math.max(0.6, Z),
       tag = (t, x, top, accent) => nameTag(ctx, t, x, top - 20 * z, accent);
-    const bob = reduced ? 0 : Math.abs(Math.sin(time * 3)) * 4;
-    const badge = (t, x, top, bg) => {
-      const fs = 15 * z;
-      ctx.font = `800 ${fs}px 'Barlow Condensed', sans-serif`;
-      const w = Math.max(22 * z, ctx.measureText(t).width + 14 * z),
-        h = 22 * z,
-        y = top - 50 * z - bob;
+    const bob = reduced ? 0 : Math.abs(Math.sin(time * 3)) * 2.5 * z;
+    /** A badge pinned to a tag's top-right corner, so it reads as part of
+     *  it: big, outlined, with a glow ring pulsing out to catch the eye. */
+    const badge = (box, t, bg) => {
+      const fs = 18 * z;
+      ctx.save();
+      ctx.font = `900 ${fs}px 'Barlow Condensed', sans-serif`;
+      const w = Math.max(28 * z, ctx.measureText(t).width + 16 * z),
+        h = 28 * z,
+        x = box.x + box.w / 2 - 6 * z,
+        y = box.y - box.h / 2 - 2 * z - bob;
+      if (!reduced) {
+        const k = (time * 0.9) % 1;
+        ctx.globalAlpha = 0.55 * (1 - k);
+        ctx.strokeStyle = bg;
+        ctx.lineWidth = 3 * z;
+        ctx.beginPath();
+        ctx.roundRect(
+          x - w / 2 - k * 12 * z,
+          y - h / 2 - k * 12 * z,
+          w + k * 24 * z,
+          h + k * 24 * z,
+          h / 2 + k * 12 * z,
+        );
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
       ctx.fillStyle = bg;
+      ctx.strokeStyle = "#1a0f05";
+      ctx.lineWidth = 2.5 * z;
       ctx.beginPath();
       ctx.roundRect(x - w / 2, y - h / 2, w, h, h / 2);
       ctx.fill();
+      ctx.stroke();
       ctx.fillStyle = "#1a0f05";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(t, x, y + 0.5);
-      ctx.textBaseline = "alphabetic";
+      ctx.fillText(t, x, y + 1 * z);
+      ctx.restore();
     };
     drawDecorPins(time, z);
-    tag("ORDERS", BOARDP.x, BOARDP.y - 140);
-    tag("MARKET", STALL.x, STALL.y - 150);
-    tag("BARN", BARN.x, BARN.y - 196);
+    // A place with something for you: its tag gets a gold edge and a badge.
+    const orderReady = !V && F.orders.some((o) => o.items && canFill(o)),
+      sold = !V && stall?.shelves?.some((x) => x.sold),
+      full = !V && barnUsed() >= F.barnCap * 0.9;
+    const tOrders = tag(
+        "ORDERS",
+        BOARDP.x,
+        BOARDP.y - 140,
+        orderReady ? "#ffd65b" : undefined,
+      ),
+      tMarket = tag(
+        "MARKET",
+        STALL.x,
+        STALL.y - 150,
+        sold ? "#7ff0a2" : undefined,
+      ),
+      tBarn = tag("BARN", BARN.x, BARN.y - 196, full ? "#ff8a7a" : undefined);
     tag(
       F.wishReady && !V ? "WISHING WELL ✦" : "WISHING WELL",
       WELL.x,
@@ -5436,12 +5484,9 @@ export function openFarm(options) {
       F.wishReady && !V ? "#ffd65b" : undefined,
     );
     if (!V) {
-      if (F.orders.some((o) => o.items && canFill(o)))
-        badge("!", BOARDP.x + 44 * z, BOARDP.y - 140, "#ffd65b");
-      if (stall?.shelves?.some((x) => x.sold))
-        badge("SOLD!", STALL.x + 46 * z, STALL.y - 150, "#7ff0a2");
-      if (barnUsed() >= F.barnCap * 0.9)
-        badge("FULL", BARN.x + 40 * z, BARN.y - 196, "#ff8a7a");
+      if (orderReady) badge(tOrders, "!", "#ffd65b");
+      if (sold) badge(tMarket, "SOLD!", "#7ff0a2");
+      if (full) badge(tBarn, "FULL", "#ff8a7a");
       if (balloon) {
         if (balloon.crates && bal.mode === "idle") {
           const p = balloonPos(time, performance.now()),
@@ -6596,7 +6641,19 @@ export function openFarm(options) {
     }
     if (d.bfill) return void balloonAct("fill", +d.bfill);
     if (d.bask) return void balloonAct("ask", +d.bask);
-    if ("blaunch" in d) return void balloonAct("launch");
+    if ("blaunch" in d) {
+      // Leaving early asks for a second tap (it gives up the other crates).
+      if (!balReady() && !bal.armed) {
+        bal.armed = true;
+        setTimeout(() => {
+          bal.armed = false;
+          if (sheet === "balloon") renderSheet();
+        }, 4000);
+        return renderSheet();
+      }
+      bal.armed = false;
+      return void balloonAct("launch");
+    }
     if (d.hfill) {
       const [friend, slot] = d.hfill.split(":");
       return void helpFill(friend, +slot);

@@ -369,7 +369,10 @@ export class RaidArena extends Arena {
     this.damage(source, amount * 0.3, target.id);
   }
   override status(p: Fighter, kind: StatusKind, duration: number, by?: string) {
-    if (p.raidBoss && ["stun", "freeze", "paralysis", "sleep"].includes(kind)) {
+    if (
+      p.raidBoss &&
+      ["stun", "freeze", "paralysis", "sleep", "root"].includes(kind)
+    ) {
       this.addBossStagger(p, 3);
       return;
     }
@@ -1045,6 +1048,16 @@ export class RaidArena extends Arena {
               r.stagger = Math.min(100, r.stagger + 12);
               r.message = `${p.name}'s guard reflects the volley!`;
               this.event("hit", boss, 0xc9f4ff, 0, p.id);
+              continue;
+            }
+            if (
+              p.character === "pangrove" &&
+              this.has(p, "shield") &&
+              !r.drill
+            ) {
+              // Pangrove curled up in its leaf scales: the stones glance off.
+              r.message = `The volley glances off ${p.name}'s scales!`;
+              this.event("hit", p, 0x7fcf6a, 0, boss.id);
               continue;
             }
             this.damage(p, BOSS.volley.damage, boss.id, ability);
