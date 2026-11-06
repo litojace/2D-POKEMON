@@ -3003,3 +3003,8 @@ body.hub-farm #account-coins {
 body.hub-farm #account-leaves {
   margin-left: auto;
 }
+/* The balloon leaving early asks for a second tap. */
+.farm-layer .btn-s.gold.armed {
+  background: linear-gradient(180deg, #ffb08a, #ff7a59);
+  color: #2a0f00;
+}

@@ -3360,7 +3360,7 @@ export function openFarm(options) {
     helpList = null;
   const BAL = { x: 1080, y: 105 },
     PEG = { x: 1104, y: 300 };
-  const bal = { mode: "idle", t0: 0 };
+  const bal = { mode: "idle", t0: 0, armed: false };
   const balReady = () =>
     !!balloon?.crates && balloon.crates.every((c) => c.state === "done");
   async function loadBalloon() {
@@ -3412,7 +3412,9 @@ export function openFarm(options) {
           40,
         );
         toast(
-          `Balloon launched: +${r.gained?.leaves} Gold Leaves, +${r.gained?.xp} XP and a Gold Fertilizer`,
+          r.gained?.bonus === "gold"
+            ? `Balloon launched: +${r.gained?.leaves} Gold Leaves, +${r.gained?.xp} XP and a Gold Fertilizer`
+            : `Balloon sent with ${r.gained?.crates} crate${r.gained?.crates === 1 ? "" : "s"}: +${r.gained?.leaves} Gold Leaves, +${r.gained?.xp} XP`,
         );
         log(
           `Launched the <b>Supply Balloon</b> · +${r.gained?.leaves} ${L}`,
@@ -3623,8 +3625,9 @@ export function openFarm(options) {
         return `<div class="fm-crate ${c.state}"><img src="${icon(c.crop)}" alt=""><b>${c.qty} ${esc(crop?.n ?? c.crop)}</b><small>You have ${have}${crop && crop.lv > F.lv ? ` · grows at Lv ${crop.lv}` : ""}</small>${act}</div>`;
       })
       .join("");
-    const ready = balReady();
-    return `<div class="sh-body"><p class="sh-note">Fill six crates for a big reward. Ask friends for the ones you can't fill (up to ${BALLOON.ask} a balloon): they get leaves and a Helper Star.</p><div class="fm-crates">${crates}</div><p class="sh-note">Reward: <b>${balloon.leaves} ${L}</b> · +${balloon.xp} XP · a Gold Fertilizer</p><button type="button" class="btn-s gold fm-wide" data-blaunch ${ready ? "" : "disabled"}>${ready ? "Launch the balloon" : `${balloon.crates.filter((c) => c.state !== "done").length} crates to go`}</button>${stars}</div>`;
+    const ready = balReady(),
+      done = balloon.crates.filter((c) => c.state === "done").length;
+    return `<div class="sh-body"><p class="sh-note">Fill six crates for a big reward. Ask friends for the ones you can't fill (up to ${BALLOON.ask} a balloon): they get leaves and a Helper Star.</p><div class="fm-crates">${crates}</div><p class="sh-note">All six: <b>${balloon.leaves} ${L}</b> · +${balloon.xp} XP · a Gold Fertilizer.${!ready && done ? ` It can leave now with the ${done} you filled: <b>${balloon.leavesNow ?? 0} ${L}</b> · +${balloon.xpNow ?? 0} XP.` : ""}</p><button type="button" class="btn-s gold fm-wide${bal.armed ? " armed" : ""}" data-blaunch ${done ? "" : "disabled"}>${ready ? "Launch the balloon" : !done ? "Fill a crate to launch" : bal.armed ? `Tap again: leave with ${done}/6 (no Gold Fertilizer)` : `Send it off now · ${balloon.leavesNow ?? 0} ${L}`}</button>${stars}</div>`;
   }
   function helpHTML() {
     if (!helpList)
@@ -6582,7 +6585,19 @@ export function openFarm(options) {
     }
     if (d.bfill) return void balloonAct("fill", +d.bfill);
     if (d.bask) return void balloonAct("ask", +d.bask);
-    if ("blaunch" in d) return void balloonAct("launch");
+    if ("blaunch" in d) {
+      // Leaving early asks for a second tap (it gives up the other crates).
+      if (!balReady() && !bal.armed) {
+        bal.armed = true;
+        setTimeout(() => {
+          bal.armed = false;
+          if (sheet === "balloon") renderSheet();
+        }, 4000);
+        return renderSheet();
+      }
+      bal.armed = false;
+      return void balloonAct("launch");
+    }
     if (d.hfill) {
       const [friend, slot] = d.hfill.split(":");
       return void helpFill(friend, +slot);

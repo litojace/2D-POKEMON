@@ -1256,8 +1256,12 @@ export interface FarmBalloon {
   crates: FarmCrate[] | null;
   arrivesAt: string | null;
   launches: number;
+  /** What all six full crates pay. */
   leaves: number | null;
   xp: number | null;
+  /** What launching now pays, for the crates already full (migration 068). */
+  leavesNow?: number | null;
+  xpNow?: number | null;
   helperStars: number;
   helperLeavesToday: number;
   helperCap: number;
@@ -1269,7 +1273,14 @@ export interface FarmBalloonResult {
   ok: boolean;
   error?: string | null;
   repeated?: boolean;
-  gained?: { leaves: number; xp: number; bonus: string } | null;
+  /** A launch: leaves and XP for the full crates, how many, and a Gold
+   *  Fertilizer ("gold") only when all six were full. */
+  gained?: {
+    leaves: number;
+    xp: number;
+    crates?: number;
+    bonus: string | null;
+  } | null;
 }
 export interface FarmHelpRequest {
   friend: string;

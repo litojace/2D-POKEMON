@@ -2802,6 +2802,18 @@ test("the Supply Balloon: fill a crate, ask friends, launch it; help a friend's 
   await sheet.locator('[data-bask="1"]').click();
   await expect(sheet.locator(".fm-crate").nth(1)).toHaveClass(/asked/);
   await snap(page, info, "farm-balloon-sheet");
+  // Not all six yet: it can leave early with the filled ones, after a
+  // second tap (the first sends nothing).
+  const launch = sheet.locator("[data-blaunch]");
+  await expect(launch).toBeEnabled();
+  await expect(launch).toContainText("Send it off now");
+  await launch.click();
+  await expect(launch).toContainText("Tap again: leave with");
+  expect(
+    await page.evaluate(() =>
+      (window as any).__farmRequests.filter((r: any) => r.balloon === "launch"),
+    ),
+  ).toEqual([]);
   // Everything filled (the fake fills the asked crates): launch.
   await page.evaluate(() =>
     (window as any).__balloon.crates.forEach((c: any) => (c.state = "done")),
