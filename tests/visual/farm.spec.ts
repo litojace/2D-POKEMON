@@ -738,7 +738,7 @@ test("tapping a ripe plot harvests it, and an empty plot opens the seed picker",
           (window as any).__farmRequests.flatMap((r: any) => r.actions),
         ),
       )
-      .toEqual([{ a: "harvest", plot: 0 }]);
+      .toEqual([{ a: "harvest", plot: 0, tool: "sickle" }]);
     const empty = await plot(3);
     await page.mouse.click(empty.x, empty.y);
     await expect(page.locator("#fm-pop")).toBeVisible();
@@ -2935,9 +2935,12 @@ test("a tap on the farm closes the open sheet or orb card and does nothing else"
     await page.waitForTimeout(1200);
     expect(await actions(), "the closing tap harvested").toEqual([]);
 
-    // With nothing open, the tap harvests as always.
+    // With nothing open, the tap harvests as always (a 3×3 cut: this farm
+    // owns the Sickle).
     await page.mouse.click(ripe.x, ripe.y);
-    await expect.poll(actions).toEqual([{ a: "harvest", plot: 0 }]);
+    await expect
+      .poll(actions)
+      .toEqual([{ a: "harvest", plot: 0, tool: "sickle" }]);
 
     // The land deed: a tap beside it, on its dim background, closes it
     // (and leaves the shop open behind it).
