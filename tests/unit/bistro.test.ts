@@ -429,20 +429,20 @@ describe("bistro: expanding the dining room", () => {
     const { buyExpand, sizeOf, EXPAND_STEPS } =
       await import("../../apps/client/src/bistro/bistro-model");
     const s = defaultState();
-    s.coins = 20000;
+    s.coins = 50000;
     s.stored = { plant: 2 };
     expect(tryPlace(s, "plant", 12, 4, 0)).toMatchObject({ ok: false });
     expect(buyExpand(s)).toMatchObject({ ok: false }); // level 4
-    s.level = 12;
+    s.level = 20;
     for (const step of EXPAND_STEPS) {
       const coins = s.coins;
       expect(buyExpand(s).ok).toBe(true);
       expect(s.coins).toBe(coins - step.price);
     }
     expect(buyExpand(s)).toMatchObject({ ok: false });
-    expect(sizeOf(s.sizeLv)).toEqual({ cols: 17, rows: 12 });
-    expect(tryPlace(s, "plant", 16, 11, 0).ok).toBe(true);
-    expect(tryPlace(s, "plant", 17, 11, 0)).toMatchObject({ ok: false });
+    expect(sizeOf(s.sizeLv)).toEqual({ cols: 21, rows: 14 });
+    expect(tryPlace(s, "plant", 20, 13, 0).ok).toBe(true);
+    expect(tryPlace(s, "plant", 21, 13, 0)).toMatchObject({ ok: false });
     // The far corner is reachable: a seat there works.
     const g = blockedGrid(s.items, -1, sizeOf(s.sizeLv));
     expect(findPath(g, DOOR, { x: 15, y: 10 })).not.toBeNull();
@@ -744,7 +744,7 @@ describe("bistro: dish levels and ingredients (docs/bistro-gdd.md §2)", () => {
     s.dishLv = Object.fromEntries(
       B.DISHES.map((d) => [d.id, { lv: 10, mastery: 0 }]),
     );
-    expect(B.gourmetOf(s)).toBe(261);
+    expect(B.gourmetOf(s)).toBe(1215);
     expect(B.popularity(s).gourmet).toBe(6);
   });
   it("the Market: four different ingredients every four hours, 20 to 60 coins", async () => {

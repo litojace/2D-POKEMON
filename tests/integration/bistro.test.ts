@@ -461,10 +461,12 @@ describe("expanding the dining room", () => {
     ]);
     expect(r.results[0].error).toBe("Expand at level 4.");
     expect(r.results[2].error).toBe("That's outside the restaurant.");
-    await setCoins(cal, 20000, 12);
+    await setCoins(cal, 60000, 20);
     r = await act(cal, [
       { a: "expand" },
       { a: "place", kind: "plant", x: 12, y: 9 },
+      { a: "expand" },
+      { a: "expand" },
       { a: "expand" },
       { a: "expand" },
       { a: "expand" },
@@ -474,18 +476,20 @@ describe("expanding the dining room", () => {
       true,
       true,
       true,
+      true,
+      true,
       false,
     ]);
-    expect(r.results[4].error).toBe("The dining room is as big as it gets.");
-    expect(r.bistro.sizeLv).toBe(3);
-    expect(r.bistro.coins).toBe(20000 - 800 - 2500 - 6000);
-    // The far corner of the biggest room (16, 11) takes a table and chairs.
+    expect(r.results[6].error).toBe("The dining room is as big as it gets.");
+    expect(r.bistro.sizeLv).toBe(5);
+    expect(r.bistro.coins).toBe(60000 - 800 - 2500 - 6000 - 12000 - 20000);
+    // The far corner of the biggest room (20, 13) takes a table and chairs.
     r = await act(cal, [
       { a: "buy", kind: "table" },
       { a: "buy", kind: "chair" },
-      { a: "place", kind: "table", x: 16, y: 11 },
-      { a: "place", kind: "chair", x: 15, y: 11, rot: 0 },
-      { a: "place", kind: "chair", x: 17, y: 11, rot: 2 },
+      { a: "place", kind: "table", x: 20, y: 13 },
+      { a: "place", kind: "chair", x: 19, y: 13, rot: 0 },
+      { a: "place", kind: "chair", x: 21, y: 13, rot: 2 },
     ]);
     expect(r.results.map((x: any) => x.ok)).toEqual([
       true,
@@ -530,7 +534,7 @@ describe("popularity and the floor plan (migration 070)", () => {
     expect(a.walks.length).toBeGreaterThan(0);
     // Cal: the biggest room, furniture in the far corner.
     const c = await compare(cal);
-    expect(c.b.sizeLv).toBe(3);
+    expect(c.b.sizeLv).toBe(5);
     expect(c.walks.some((w: any) => w.waiter >= 20)).toBe(true);
   });
   it("a plan with the tables far from the counter serves fewer guests while away", async () => {
@@ -936,5 +940,216 @@ describe("dish levels, ingredients, the Market and the Farm (migration 074)", ()
     expect(q).toBe(1);
     // A visitor doesn't see their pantry.
     expect(r.bistro.pantry).toBeUndefined();
+  });
+});
+
+describe("the long game (migration 100)", () => {
+  it("prices with dish levels and stars, events by date, regulars' stories: the same as the shared rules", async () => {
+    const B = await import("../../packages/shared/src/bistro");
+    for (const p of [4, 5, 8, 13, 30, 70])
+      for (const lv of [1, 2, 5, 10])
+        for (const st of [0, 1, 3, 5]) {
+          const [{ v }] = await sql(
+            "select public.arena_bistro_price_at($1, $2, $3) v",
+            [p, lv, st],
+          );
+          const d = B.DISHES.find((x) => x.price === p) ?? B.DISHES[0];
+          expect(v).toBe(
+            Math.round((p * (100 + 12 * (lv - 1)) * (10 + st)) / 1000),
+          );
+          if (d.price === p) expect(v).toBe(B.priceAt(d.id, lv, st));
+        }
+    for (const day of [
+      "2026-01-05",
+      "2026-02-28",
+      "2026-03-01",
+      "2026-09-14",
+      "2026-09-15",
+      "2026-11-30",
+      "2026-12-01",
+      "2026-12-15",
+      "2026-07-04",
+    ]) {
+      const [{ e }] = await sql(
+        "select public.arena_bistro_event($1::date) e",
+        [day],
+      );
+      expect(e).toBe(B.eventOn(day)?.id ?? null);
+    }
+    const steps = await sql(
+      "select rid, level, name, step, dish, qty from public.arena_bistro_regular_steps order by rid, step",
+    );
+    const mine = B.REGULARS.flatMap((g) =>
+      g.steps.map((st, i) => ({
+        rid: g.id,
+        level: g.level,
+        name: g.name,
+        step: i,
+        dish: st.dish,
+        qty: st.qty,
+      })),
+    ).sort((a, b) =>
+      a.rid < b.rid ? -1 : a.rid > b.rid ? 1 : a.step - b.step,
+    );
+    expect(steps).toEqual(mine);
+  });
+  it("catering orders: posted by level, filled from the counter, paid 1.6 times; a skip waits longer", async () => {
+    const B = await import("../../packages/shared/src/bistro");
+    await setCoins(ana, 50000, 12);
+    let b = await open(ana);
+    expect(b.orders).toHaveLength(3);
+    const o = b.orders.find((x: any) => x.dishes)!;
+    expect(o.dishes.length).toBeGreaterThan(0);
+    let pay = 0;
+    for (const d of o.dishes)
+      pay += d.qty * B.priceAt(d.dish, b.dishLv[d.dish]?.lv ?? 1, b.stars);
+    expect(o.coins).toBe(Math.round(pay * 1.6));
+    expect(o.expires - b.now).toBeGreaterThan(5.9 * 3600_000);
+    // Not enough on the counter yet.
+    await sql(
+      "update public.arena_bistro_counter set dish = null, servings = 0, perfect = false where player_id = $1",
+      [ana],
+    );
+    let r = await act(ana, [{ a: "order", slot: o.slot }]);
+    expect(r.results[0].error).toMatch(/^You need \d+ .+ on the counter\.$/);
+    // Stock the counter (one slot a dish) and fill it.
+    for (const [i, d] of o.dishes.entries())
+      await sql(
+        "update public.arena_bistro_counter set dish = $2, servings = $3 where player_id = $1 and slot = $4",
+        [ana, d.dish, d.qty + 2, i],
+      );
+    b = await open(ana);
+    const local = sanitize(b);
+    const lo = (b.orders as any[]).find((x) => x.slot === o.slot);
+    expect(B.fillOrder(local, lo).ok).toBe(true);
+    r = await act(ana, [{ a: "order", slot: o.slot }]);
+    expect(r.results[0].ok).toBe(true);
+    expect(r.bistro.coins).toBe(local.coins);
+    expect(r.bistro.counter).toEqual(local.counter);
+    const done = r.bistro.orders.find((x: any) => x.slot === o.slot);
+    expect(done.dishes).toBeNull();
+    expect(done.next - r.bistro.now).toBeGreaterThan(14 * 60_000);
+    // Skip another: back in 30 minutes.
+    const other = r.bistro.orders.find((x: any) => x.dishes)!;
+    r = await act(ana, [
+      { a: "skip", slot: other.slot },
+      { a: "skip", slot: other.slot },
+    ]);
+    expect(r.results.map((x: any) => x.ok)).toEqual([true, false]);
+    expect(
+      r.bistro.orders.find((x: any) => x.slot === other.slot).next -
+        r.bistro.now,
+    ).toBeGreaterThan(29 * 60_000);
+    // Ten league points for the order.
+    expect(
+      r.bistro.league.week.find((x: any) => x.me).points,
+    ).toBeGreaterThanOrEqual(10);
+  });
+  it("a regular's three visits: thanks each time, a Golden Plate at the end", async () => {
+    const B = await import("../../packages/shared/src/bistro");
+    await setCoins(ana, 50000, 12);
+    await sql("delete from public.arena_bistro_regulars where player_id = $1", [
+      ana,
+    ]);
+    let r = await act(ana, [
+      { a: "regular", id: "nobody" },
+      { a: "regular", id: "sage" },
+    ]);
+    expect(r.results[0].error).toBe("Nobody by that name.");
+    expect(r.results[1].error).toBe("Sage comes by at level 20.");
+    const g = B.REGULAR_BY_ID.mira;
+    for (const [i, st] of g.steps.entries()) {
+      await sql(
+        "update public.arena_bistro_counter set dish = case slot when 0 then $2 else null end, servings = case slot when 0 then $3 else 0 end where player_id = $1",
+        [ana, st.dish, st.qty],
+      );
+      const local = sanitize(await open(ana));
+      const ev =
+        B.eventOn((await sql("select public.arena_today()::text d"))[0].d)
+          ?.id ?? null;
+      expect(B.fillRegular(local, "mira", ev).ok).toBe(true);
+      r = await act(ana, [{ a: "regular", id: "mira" }]);
+      expect(r.results[0].ok).toBe(true);
+      expect(r.bistro.coins).toBe(local.coins);
+      expect(r.bistro.tokens).toBe(local.tokens);
+      expect(r.bistro.regulars.mira).toBe(i + 1);
+    }
+    expect(r.bistro.stored.trophy).toBeGreaterThanOrEqual(1);
+    r = await act(ana, [{ a: "regular", id: "mira" }]);
+    expect(r.results[0].error).toBe("Mira's story is complete.");
+  });
+  it("event items for tokens while the event is on; gifts are never sold", async () => {
+    const B = await import("../../packages/shared/src/bistro");
+    const [{ d }] = await sql("select public.arena_today()::text d");
+    const ev = B.eventOn(d);
+    await sql(
+      "update public.arena_bistros set tokens = 100, token_event = public.arena_bistro_event(public.arena_today()) where player_id = $1",
+      [ana],
+    );
+    const kind = ev ? ev.items[0] : "pumpkin";
+    const other = ev?.id === "harvest" ? "lantern" : "pumpkin";
+    const r = await act(ana, [
+      { a: "buy", kind },
+      { a: "buy", kind: other },
+      { a: "buy", kind: "trophy" },
+    ]);
+    expect(r.results[0].ok).toBe(!!ev);
+    expect(r.results[1].error).toBe("Only during its event.");
+    expect(r.results[2].error).toBe("That one is a gift from a regular.");
+    if (ev) expect(r.bistro.tokens).toBe(100 - B.ITEM_BY_KIND[kind].tokens!);
+  });
+  it("last week's league: claimed once, by your place among friends", async () => {
+    await sql("delete from public.arena_bistro_league_claims");
+    await sql(
+      `insert into public.arena_bistro_week(player_id, week, points) values
+        ($1, (date_trunc('week', public.arena_today()) - interval '7 days')::date, 120),
+        ($2, (date_trunc('week', public.arena_today()) - interval '7 days')::date, 300)
+       on conflict (player_id, week) do update set points = excluded.points`,
+      [ana, ben],
+    );
+    const b = await open(ana);
+    expect(b.league.last).toEqual({ points: 120, rank: 2, claimed: false });
+    const coins = b.coins;
+    const r = await act(ana, [{ a: "league" }, { a: "league" }]);
+    expect(r.results.map((x: any) => x.ok)).toEqual([true, false]);
+    expect(r.bistro.coins).toBe(coins + 1200);
+    expect(r.bistro.league.last.claimed).toBe(true);
+  });
+  it("a new branch at level 30: start over with a star, the furniture in storage, dishes kept", async () => {
+    const B = await import("../../packages/shared/src/bistro");
+    await setCoins(cal, 1000, 29);
+    let r = await act(cal, [{ a: "branch" }]);
+    expect(r.results[0].error).toBe("Open a new branch at level 30.");
+    await setCoins(cal, 1000, 30);
+    await sql(
+      "insert into public.arena_bistro_dish_lv(player_id, dish, lv, mastery) values ($1, 'goicuon', 5, 0) on conflict (player_id, dish) do update set lv = 5",
+      [cal],
+    );
+    const before = sanitize(await open(cal));
+    const local = JSON.parse(JSON.stringify(before));
+    expect(B.openBranch(local).ok).toBe(true);
+    r = await act(cal, [{ a: "branch" }]);
+    expect(r.results[0].ok).toBe(true);
+    const after = sanitize(r.bistro);
+    for (const k of [
+      "level",
+      "xp",
+      "coins",
+      "stars",
+      "sizeLv",
+      "kitchenLv",
+      "shiftLv",
+      "items",
+      "staff",
+      "stored",
+      "dishLv",
+    ] as const)
+      expect(k === "staff" ? after.staff.map((x) => x.char) : after[k]).toEqual(
+        k === "staff" ? local.staff.map((x: any) => x.char) : local[k],
+      );
+    expect(after.stars).toBe(1);
+    expect(after.dishLv.goicuon?.lv).toBe(5);
+    // Plates now sell at the star's price.
+    expect(B.priceAt("goicuon", 5, 1)).toBe(Math.round((4 * 148 * 11) / 1000));
   });
 });

@@ -65,6 +65,11 @@ it("passes the bistro, its actions and friends' visits to the database", async (
     { a: "hire", role: "janitor", friend: friend },
     { a: "feed", id: 2 },
     { a: "sweep" },
+    { a: "order", slot: 1 },
+    { a: "skip", slot: 0 },
+    { a: "regular", id: "mira" },
+    { a: "league" },
+    { a: "branch" },
   ];
   expect((await send(token, "/api/bistro")).status).toBe(200);
   expect(
@@ -105,8 +110,9 @@ it("refuses malformed requests before the database", async () => {
     [{ a: "hire", role: "janitor", friend: "not-a-uuid" }],
     [{ a: "hire", role: "cook", char: "nobody" }],
     [{ a: "trade", lots: 99 }],
-    [{ a: "place", kind: "plant", x: 17, y: 3, rot: 0 }],
-    [{ a: "place", kind: "plant", x: 3, y: 12, rot: 0 }],
+    [{ a: "order", slot: 7 }],
+    [{ a: "place", kind: "plant", x: 21, y: 3, rot: 0 }],
+    [{ a: "place", kind: "plant", x: 3, y: 14, rot: 0 }],
     [{ a: "place", kind: "plant", x: -1, y: 3, rot: 0 }],
     [{ a: "sync", extra: 1 }],
     Array.from({ length: 41 }, () => ({ a: "sync" })),

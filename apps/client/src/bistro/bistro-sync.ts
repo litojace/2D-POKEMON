@@ -18,6 +18,13 @@ import {
   dishLevel,
   dishUp,
   buyIngredient,
+  fillOrder,
+  fillRegular,
+  leagueReward,
+  openBranch,
+  addIngredient,
+  isDish as isDishId,
+  type CateringOrder,
   feedStaff,
   fromFarm,
   FARM_PER_INGREDIENT,
@@ -78,6 +85,11 @@ export type BistroAction =
   | { a: "dishup"; dish: DishId }
   | { a: "market"; id: Ingredient; qty: number }
   | { a: "farm"; id: string; qty: number }
+  | { a: "order"; slot: number }
+  | { a: "skip"; slot: number }
+  | { a: "regular"; id: string }
+  | { a: "league" }
+  | { a: "branch" }
   | { a: "sweep" }
   | { a: "train"; id: number }
   | { a: "cookdish"; id: number; dish: DishId }
@@ -105,6 +117,15 @@ export interface BistroExtras {
   /** Ingredients brought from the Farm today, and the barn's plain crops that can come. */
   farmSent: number;
   farmCrops: Record<string, number>;
+  /** The event on today (migration 100), or null. */
+  event: string | null;
+  /** Catering orders, by slot. */
+  orders: CateringOrder[];
+  /** This week's league (you and your friends) and last week's place. */
+  league: {
+    week: { name: string; fighter: string; points: number; me: boolean }[];
+    last: { rank: number; points: number; claimed: boolean } | null;
+  };
 }
 /** What a page was still waiting to send (kept in this browser). */
 export interface SyncSnapshot {
@@ -152,6 +173,7 @@ export function applyLocal(
         return { ok: false, error: "None left on the counter." };
       const bill = payment(x.dish, {
         level: dishLevel(s, x.dish),
+        stars: s.stars,
         vip: x.vip,
         combo: x.combo,
         hearts: x.hearts,
@@ -176,7 +198,34 @@ export function applyLocal(
     case "store":
       return r(putAway(s, x.id));
     case "buy":
-      return r(buyItem(s, x.kind));
+      return r(buyItem(s, x.kind, extras?.event ?? null));
+    case "order": {
+      const o = extras?.orders.find((o) => o.slot === x.slot);
+      if (!o) return { ok: false, error: "No order there yet." };
+      const res = fillOrder(s, o);
+      if (res.ok) o.dishes = null;
+      return r(res);
+    }
+    case "skip": {
+      const o = extras?.orders.find((o) => o.slot === x.slot);
+      if (!o?.dishes) return { ok: false, error: "No order there yet." };
+      o.dishes = null;
+      return { ok: true };
+    }
+    case "regular":
+      return r(fillRegular(s, x.id, extras?.event ?? null));
+    case "league": {
+      const last = extras?.league.last;
+      const rw =
+        last && !last.claimed ? leagueReward(last.rank, last.points) : null;
+      if (!last || !rw) return { ok: false, error: "Nothing to claim." };
+      s.coins += rw.coins;
+      addIngredient(s, "spice", rw.spice);
+      last.claimed = true;
+      return { ok: true };
+    }
+    case "branch":
+      return r(openBranch(s));
     case "style":
       return r(buyStyle(s, x.kind, x.id));
     case "stove":
@@ -312,6 +361,23 @@ export function readServer(raw: unknown): {
       >,
       farmSent: num(r.farmSent),
       farmCrops: numMap(r.farmCrops),
+      event: typeof r.event === "string" ? r.event : null,
+      orders: Array.isArray(r.orders)
+        ? (r.orders as Record<string, unknown>[]).map((o) => ({
+            slot: num(o.slot),
+            dishes: Array.isArray(o.dishes)
+              ? (o.dishes as { dish: unknown; qty: unknown }[])
+                  .filter((d) => isDishId(d.dish))
+                  .map((d) => ({ dish: d.dish as DishId, qty: num(d.qty) }))
+              : null,
+            coins: num(o.coins),
+            xp: num(o.xp),
+            tokens: num(o.tokens),
+            expires: num(o.expires),
+            next: num(o.next),
+          }))
+        : [],
+      league: readLeague(r.league),
     },
     now: num(r.now, Date.now()),
     away,
@@ -327,6 +393,27 @@ export function readServer(raw: unknown): {
 
 /** Refusals of one batch before it is split (or a lone action dropped). */
 const REFUSALS = 3;
+
+function readLeague(v: unknown): BistroExtras["league"] {
+  const l = (v ?? {}) as Record<string, unknown>;
+  const week = Array.isArray(l.week)
+    ? (l.week as Record<string, unknown>[]).map((x) => ({
+        name: String(x.name ?? ""),
+        fighter: String(x.fighter ?? "voltkit"),
+        points: Number(x.points) || 0,
+        me: x.me === true,
+      }))
+    : [];
+  const last =
+    l.last && typeof l.last === "object"
+      ? {
+          rank: Number((l.last as Record<string, unknown>).rank) || 0,
+          points: Number((l.last as Record<string, unknown>).points) || 0,
+          claimed: (l.last as Record<string, unknown>).claimed === true,
+        }
+      : null;
+  return { week, last };
+}
 
 const uuid = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -392,6 +479,9 @@ export class BistroSync {
       marketBought: {},
       farmSent: 0,
       farmCrops: {},
+      event: null,
+      orders: [],
+      league: { week: [], last: null },
     };
   }
   now() {

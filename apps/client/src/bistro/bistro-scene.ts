@@ -162,6 +162,14 @@ import {
   priceAt,
   servingsAt,
   type Ingredient,
+  BRANCH_LEVEL,
+  EVENTS,
+  LEAGUE_MIN,
+  MAX_STARS,
+  REGULARS,
+  leagueReward,
+  onCounter,
+  regularReward,
 } from "./bistro-model";
 import {
   carGlows,
@@ -536,6 +544,7 @@ const HTML = `<canvas class="bs-cv" aria-label="Your bistro"></canvas>
     <nav class="bs-rail glass" aria-label="Bistro menu">
       <button type="button" data-sheet="menu" title="Recipes">${I("book")}<span>Recipes</span></button>
       <button type="button" data-sheet="friends" title="Friends' bistros">${I("smile")}<span>Friends</span></button>
+      <button type="button" data-sheet="board" title="Catering orders, regulars, the league and events">${I("flag")}<span>Orders</span><b class="dot" id="bs-board-dot" hidden></b></button>
       <button type="button" data-sheet="staff" title="Staff and upgrades">${I("friends")}<span>Staff</span><b class="dot" id="bs-staff-dot" hidden></b></button>
       <button type="button" data-sheet="shop" title="Shop">${I("shop")}<span>Shop</span></button>
       <button type="button" data-act="decor" title="Decorate">${I("decor")}<span>Decor</span></button>
@@ -2121,6 +2130,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
   let hireRole: Role = "waiter";
   let hireChosen = false;
   let sheetArg: number | string | undefined;
+  /** The last sheet drawn: what it showed, and for which view. */
+  let drawnHtml = "";
+  let drawnView = "";
   const closeSheet = () => {
     sheet.hidden = true;
     sheetKind = null;
@@ -2133,6 +2145,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
     if (kind === "friends") void loadFriends();
     sheetKind = kind;
     sheetArg = arg;
+    drawnView = "";
     sheet.hidden = false;
     layer.classList.add("sheet-open");
     renderSheet();
@@ -2215,10 +2228,115 @@ export function openBistro(o: BistroOptions): BistroHandle {
       <p class="bs-note">Friends' bistros give an ingredient with each meal (sometimes Spice), and every bistro level brings a few.</p>
     </div>`;
   };
-  const renderSheet = () => {
+  let branchArmed = false;
+  /** Something on the board you can do now: an order or a regular to serve, a reward to claim. */
+  const boardReady = () => {
+    const ex = sync.extras;
+    if (
+      ex.orders.some(
+        (o) => o.dishes && o.dishes.every((d) => onCounter(S, d.dish) >= d.qty),
+      )
+    )
+      return true;
+    for (const g of REGULARS) {
+      const st = g.steps[S.regulars[g.id] ?? 0];
+      if (st && S.level >= g.level && onCounter(S, st.dish) >= st.qty)
+        return true;
+    }
+    const l = ex.league.last;
+    return !!l && !l.claimed && l.points >= LEAGUE_MIN;
+  };
+  const boardBody = (tab: string) => {
+    const ex = sync.extras;
+    const now = nowS();
+    const need = (dish: DishId, qty: number) => {
+      const have = onCounter(S, dish);
+      return `<em class="${have >= qty ? "ok" : "poor"}"><img src="${dishIconUrl(dish, 48)}" alt="">${Math.min(have, qty)}/${qty} ${esc(DISH_BY_ID[dish].name)}</em>`;
+    };
+    if (tab === "regulars")
+      return `<div class="bs-board">${REGULARS.map((g) => {
+        const step = S.regulars[g.id] ?? 0;
+        const done = step >= g.steps.length;
+        const st = g.steps[Math.min(step, g.steps.length - 1)];
+        const dots = g.steps
+          .map((_, i) => `<i class="${i < step ? "on" : ""}"></i>`)
+          .join("");
+        if (S.level < g.level)
+          return `<div class="bs-card locked"><img class="pt" src="${portrait(g.char)}" alt=""><div class="txt"><b>${esc(g.name)}</b><small>${I("lock")} Comes by at level ${g.level}</small></div></div>`;
+        if (done)
+          return `<div class="bs-card done"><img class="pt" src="${portrait(g.char)}" alt=""><div class="txt"><b>${esc(g.name)} <span class="dots">${dots}</span></b><small>Story complete: thanks for everything! (A Golden Plate is in your storage.)</small></div></div>`;
+        const rw = regularReward(g, step);
+        const ready = onCounter(S, st.dish) >= st.qty;
+        return `<div class="bs-card"><img class="pt" src="${portrait(g.char)}" alt=""><div class="txt"><b>${esc(g.name)} <span class="dots">${dots}</span></b><q>${esc(st.line)}</q><span class="needs">${need(st.dish, st.qty)}</span><small>Thanks: ${coinTag(rw.coins)} · ${rw.xp} XP${ex.event ? ` · ${rw.tokens} tokens` : ""}${rw.trophy ? " · a Golden Plate" : ""}</small></div><button type="button" class="pr${ready ? "" : " poor"}" data-regular="${g.id}">Serve</button></div>`;
+      }).join("")}</div>`;
+    if (tab === "league") {
+      const l = ex.league;
+      const rw = l.last ? leagueReward(l.last.rank, l.last.points) : null;
+      return `<div class="bs-board">
+        ${
+          l.last
+            ? `<div class="bs-card claim"><div class="ic">${I("trophy")}</div><div class="txt"><b>Last week: #${l.last.rank} with ${l.last.points} points</b><small>${rw ? `Reward: ${coinTag(rw.coins)} and ${rw.spice} Spice` : `At least ${LEAGUE_MIN} points earn a reward.`}</small></div>${rw && !l.last.claimed ? `<button type="button" class="pr" data-league>Claim</button>` : `<span class="lk">${l.last.claimed ? "Claimed" : "—"}</span>`}</div>`
+            : ""
+        }
+        <p class="bs-note">This week, among you and your friends: guests served 1 point, catering orders 10, a regular's visit 15, a meal at a friend's 3. Top 3 win coins and Spice.</p>
+        <ol class="bs-league">${l.week
+          .map(
+            (x, i) =>
+              `<li class="${x.me ? "me" : ""}"><span class="rk">${i + 1}</span><img src="${portrait(x.fighter)}" alt=""><b>${esc(x.name)}</b><em>${fmt(x.points)}</em></li>`,
+          )
+          .join("")}</ol>
+      </div>`;
+    }
+    if (tab === "event") {
+      const ev = EVENTS.find((e) => e.id === ex.event);
+      if (!ev)
+        return `<p class="bs-note">No event right now. ${EVENTS.map((e) => `${esc(e.name)} runs ${e.from.replace("-", "/")}–${e.to.replace("-", "/")}`).join(" · ")} (month/day).</p>`;
+      return `<div class="bs-board">
+        <div class="bs-card event"><div class="ic">${I("gift")}</div><div class="txt"><b>${esc(ev.name)}</b><small>Until ${ev.to.replace("-", "/")} · tokens from catering orders (5) and regulars (3) · a full set on the floor adds charm</small></div><span class="tok">${fmt(S.tokens)} tokens</span></div>
+        <div class="bs-items">${ev.items
+          .map((k) => {
+            const d = ITEM_BY_KIND[k];
+            return `<button type="button" class="bs-item" data-buy="${k}"><img src="${itemIconUrl(k, 96)}" alt=""><b>${esc(d.name)}</b><small>+${d.charm} charm${S.stored[k] ? ` · ${S.stored[k]} stored` : ""}</small><span class="pr ${S.tokens < (d.tokens ?? 0) ? "poor" : ""}">${d.tokens} tokens</span></button>`;
+          })
+          .join("")}</div>
+      </div>`;
+    }
+    // Catering orders.
+    return `<div class="bs-board">${ex.orders
+      .map((o) => {
+        if (!o.dishes) {
+          const left = Math.max(0, (o.next - now) / 1000);
+          return `<div class="bs-card wait"><div class="ic">${I("clock")}</div><div class="txt"><b>A new order</b><small>${left > 0 ? `comes in ${fmtTime(left)}` : "is on its way"}</small></div></div>`;
+        }
+        const ready = o.dishes.every((d) => onCounter(S, d.dish) >= d.qty);
+        const left = Math.max(0, (o.expires - now) / 1000);
+        return `<div class="bs-card"><div class="ic">${I("flag")}</div><div class="txt"><b>Catering order</b><span class="needs">${o.dishes.map((d) => need(d.dish, d.qty)).join("")}</span><small>${coinTag(o.coins)} · ${o.xp} XP${o.tokens ? ` · ${o.tokens} tokens` : ""} · ${fmtDur(left * 1000)} left</small></div><div class="acts"><button type="button" class="pr${ready ? "" : " poor"}" data-order="${o.slot}">Deliver</button><button type="button" class="pr ghost" data-skip="${o.slot}">Skip</button></div></div>`;
+      })
+      .join(
+        "",
+      )}<p class="bs-note">Orders take dishes off the counter and pay 1.6 times their price. Cook ahead, then deliver.</p></div>`;
+  };
+  const drawSheet = (out: { innerHTML: string }) => {
     if (!sheetKind) return;
     const head = (title: string, sub: string) =>
       `<header><div><h2>${title}</h2><p>${sub}</p></div><button type="button" class="x" data-close aria-label="Close">${I("close")}</button></header>`;
+    if (sheetKind === "board") {
+      const tab = (sheetArg as string) || "orders";
+      const tabs = [
+        ["orders", "Orders"],
+        ["regulars", "Regulars"],
+        ["league", "League"],
+        ["event", sync.extras.event ? "Event ★" : "Event"],
+      ];
+      out.innerHTML =
+        head(
+          "Orders & more",
+          `Catering, regulars, the weekly league and events · ${coinTag(S.coins)}`,
+        ) +
+        `<nav class="bs-tabs">${tabs.map(([id, label]) => `<button type="button" data-tab="${id}" aria-pressed="${id === tab}">${label}</button>`).join("")}</nav>` +
+        boardBody(tab);
+      return;
+    }
     if (sheetKind === "popularity") {
       const pi = popInput();
       const pp = popularity(S, pi);
@@ -2232,7 +2350,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       ) =>
         `<div class="bs-pop-row${minus ? " minus" : ""}"><b>${name}</b><i style="--w:${clamp(v / max, 0, 1) * 100}%"></i><strong>${minus && v > 0 ? "−" : ""}${v.toFixed(1)}<small> / ${max}</small></strong><small>${note}</small></div>`;
       const lay = layout;
-      sheet.innerHTML =
+      out.innerHTML =
         head(
           `Popularity ${Math.round(pp.total)} · ${popTier(pp.total)}`,
           "How wanted your bistro is, out of 50: it sets how often guests come, how many wait at the door and how many are VIPs.",
@@ -2256,7 +2374,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       return;
     }
     if (sheetKind === "friends") {
-      sheet.innerHTML =
+      out.innerHTML =
         head(
           "Friends' bistros",
           "Visit, eat there once a day (they earn the dish and a tip; you get coins and XP) and leave a like once a week.",
@@ -2282,7 +2400,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       return;
     }
     if (sheetKind === "menu" && sheetArg === "pantry") {
-      sheet.innerHTML =
+      out.innerHTML =
         head(
           "Recipes",
           `Ingredients level up your dishes · ${coinTag(S.coins)}`,
@@ -2293,7 +2411,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
       const cook = sheetKind === "cook";
       const sp = special();
       const g = gourmetOf(S);
-      sheet.innerHTML =
+      out.innerHTML =
         head(
           cook ? `Stove ${Number(sheetArg) + 1}: what's cooking?` : "Recipes",
           cook
@@ -2359,7 +2477,7 @@ export function openBistro(o: BistroOptions): BistroHandle {
           return `<div class="bs-staff${st.friend ? " is-friend" : ""}">
             <img class="pt" src="${portrait(st.char)}" alt="">
             <div class="who"><b>${esc(name)}</b><span class="role ${st.role}">${roleName(st.role)}</span>${st.friend ? `<span class="role friend">Friend</span>` : ""}
-              <span class="lv">${"★".repeat(st.level)}<i>${"★".repeat(STAFF_MAX_LEVEL - st.level)}</i></span>
+              <span class="lv">Lv ${st.level}<i> / ${STAFF_MAX_LEVEL}</i></span>
               <small>${job} · ${pace >= 0 ? `${pace}% faster` : `${-pace}% slower`}</small>
               <span class="en ${moodName(e).toLowerCase()}" title="Energy ${Math.round(e)} of ${max}"><i style="--e:${(e / max) * 100}%"></i><em>${moodName(e)} · ${Math.round(e)}</em></span>
             </div>
@@ -2465,9 +2583,16 @@ export function openBistro(o: BistroOptions): BistroHandle {
           ${card("data-buy-stove", "spark", "Another stove", `${S.stoves.length} of ${MAX_STOVES} in the kitchen`, sp, "All built")}
           ${card("data-kitchen", "star", `Kitchen level ${S.kitchenLv + 1}`, `Every dish cooks ${(S.kitchenLv + 1) * 10}% faster (now ${S.kitchenLv * 10}%)`, kp, "Fully upgraded")}
           ${card("data-shift", "clock", `Longer shifts`, `Open ${SHIFT_HOURS[S.shiftLv]} h while you're away${shp != null ? ` → ${SHIFT_HOURS[S.shiftLv + 1]} h` : ""}`, shp, "8 hours: the longest")}
+          ${
+            S.stars >= MAX_STARS
+              ? `<button type="button" class="bs-item" disabled><div class="ic">${I("trophy")}</div><b>Five stars</b><small>Every price +${MAX_STARS * 10}%</small><span class="lk">The most there are</span></button>`
+              : S.level < BRANCH_LEVEL
+                ? `<button type="button" class="bs-item" disabled><div class="ic">${I("trophy")}</div><b>A new branch</b><small>Start over with a star: +10% on every price</small><span class="lk">${I("lock")} Level ${BRANCH_LEVEL}</span></button>`
+                : `<button type="button" class="bs-item branch${branchArmed ? " armed" : ""}" data-branch><div class="ic">${I("trophy")}</div><b>Open a new branch</b><small>Back to level 1 with ★${S.stars + 1}: +10% on every price. Dish levels, the pantry and styles stay; furniture goes into storage.</small><span class="pr">${branchArmed ? "Tap again to open" : "Open"}</span></button>`
+          }
         </div>`;
       }
-      sheet.innerHTML =
+      out.innerHTML =
         head("Staff", `Hire, train and upgrade · ${coinTag(S.coins)}`) +
         `<nav class="bs-tabs">${tabs.map(([id, label]) => `<button type="button" data-tab="${id}" aria-pressed="${id === tab}">${label}</button>`).join("")}</nav>` +
         body;
@@ -2481,7 +2606,9 @@ export function openBistro(o: BistroOptions): BistroHandle {
       ];
       let body = "";
       if (tab === "furniture" || tab === "decor") {
-        body = `<div class="bs-items">${ITEMS.filter((i) => i.group === tab)
+        body = `<div class="bs-items">${ITEMS.filter(
+          (i) => i.group === tab && !i.event && !i.gift,
+        )
           .map((i) => {
             const locked = i.level > S.level;
             return `<button type="button" class="bs-item${locked ? " locked" : ""}" data-buy="${i.kind}" ${locked ? "disabled" : ""}>
@@ -2522,10 +2649,43 @@ export function openBistro(o: BistroOptions): BistroHandle {
             .join("");
         body = `<div class="bs-items">${row("floor", FLOORS, S.floor, S.floors)}${row("wall", WALLS, S.wall, S.walls)}</div>`;
       }
-      sheet.innerHTML =
+      out.innerHTML =
         head("Shop", `Bistro coins: ${coinTag(S.coins)}`) +
         `<nav class="bs-tabs">${tabs.map(([id, label]) => `<button type="button" data-tab="${id}" aria-pressed="${id === tab}">${label}</button>`).join("")}</nav>` +
         body;
+    }
+  };
+  /**
+   * Redraw the open sheet. Server answers (every coin a guest pays) redraw
+   * it too, so keep it as it was: skip a redraw that changes nothing, and
+   * keep the lists scrolled where the player left them.
+   */
+  const renderSheet = () => {
+    if (!sheetKind) return;
+    const out = { innerHTML: "" };
+    drawSheet(out);
+    const view = `${sheetKind}:${String(sheetArg ?? "")}`;
+    const same = view === drawnView;
+    if (same && out.innerHTML === drawnHtml) return;
+    const scrolled: [number, string, number, number][] = [];
+    if (same)
+      sheet.querySelectorAll<HTMLElement>("*").forEach((el, i) => {
+        if (el.scrollTop > 0 || el.scrollLeft > 0)
+          scrolled.push([i, el.className, el.scrollTop, el.scrollLeft]);
+      });
+    const top = sheet.scrollTop;
+    sheet.innerHTML = out.innerHTML;
+    drawnHtml = out.innerHTML;
+    drawnView = view;
+    if (!same) return;
+    sheet.scrollTop = top;
+    if (!scrolled.length) return;
+    const els = sheet.querySelectorAll<HTMLElement>("*");
+    for (const [i, cls, y, x] of scrolled) {
+      const el = els[i];
+      if (!el || el.className !== cls) continue;
+      el.scrollTop = y;
+      el.scrollLeft = x;
     }
   };
   sheet.addEventListener("click", (e) => {
@@ -2575,6 +2735,69 @@ export function openBistro(o: BistroOptions): BistroHandle {
       sound("fanfare");
       const c = iso(STOVE_TILES[S.stoves.length - 1].x, 0);
       burst(c.x, c.y - 50, "confetti", 30, "#ffd65b", 1);
+      changed();
+      return renderSheet();
+    }
+    if (b.dataset.order !== undefined) {
+      const slot = Number(b.dataset.order);
+      const ord = sync.extras.orders.find((x) => x.slot === slot);
+      const reward = ord ? { coins: ord.coins, xp: ord.xp } : null;
+      const r = sync.do({ a: "order", slot });
+      if (!r.ok) return o.toast(r.error ?? "Can't deliver that yet.");
+      sound("fanfare");
+      banner(
+        `<b>Order delivered!</b><span>+${reward?.coins ?? 0} coins · +${reward?.xp ?? 0} XP</span>`,
+      );
+      changed();
+      return renderSheet();
+    }
+    if (b.dataset.skip !== undefined) {
+      const r = sync.do({ a: "skip", slot: Number(b.dataset.skip) });
+      if (!r.ok) return o.toast(r.error ?? "Can't skip that.");
+      sound("whoosh");
+      changed();
+      return renderSheet();
+    }
+    if (b.dataset.regular) {
+      const g = REGULARS.find((x) => x.id === b.dataset.regular)!;
+      const step = S.regulars[g.id] ?? 0;
+      const r = sync.do({ a: "regular", id: g.id });
+      if (!r.ok) return o.toast(r.error ?? "Not yet.");
+      sound("fanfare");
+      banner(
+        step === g.steps.length - 1
+          ? `<b>${esc(g.name)}: thank you!</b><span>A Golden Plate for your bistro</span>`
+          : `<b>${esc(g.name)} is happy</b><span>Visit ${step + 1} of ${g.steps.length}</span>`,
+      );
+      changed();
+      return renderSheet();
+    }
+    if (b.hasAttribute("data-league")) {
+      const r = sync.do({ a: "league" });
+      if (!r.ok) return o.toast(r.error ?? "Nothing to claim.");
+      sound("fanfare");
+      changed();
+      return renderSheet();
+    }
+    if (b.hasAttribute("data-branch")) {
+      if (!branchArmed) {
+        branchArmed = true;
+        setTimeout(() => {
+          branchArmed = false;
+          if (sheetKind === "staff") renderSheet();
+        }, 4000);
+        return renderSheet();
+      }
+      branchArmed = false;
+      const r = sync.do({ a: "branch" });
+      if (!r.ok) return o.toast(r.error ?? "Not yet.");
+      relayout();
+      syncStaff();
+      sound("fanfare");
+      banner(
+        `<b>A new branch!</b><span>★${S.stars}: every price +${S.stars * 10}%</span>`,
+        3200,
+      );
       changed();
       return renderSheet();
     }
@@ -2777,12 +3000,14 @@ export function openBistro(o: BistroOptions): BistroHandle {
       const st = nextHire(S, r);
       return !!st && S.level >= st.level && S.coins >= st.price;
     });
+    const bdot = layer.querySelector<HTMLElement>("#bs-board-dot");
+    if (bdot) bdot.hidden = visiting !== null || !boardReady();
     const dot = layer.querySelector<HTMLElement>("#bs-staff-dot");
     if (dot) dot.hidden = !canHire;
     const need = xpToNext(S.level);
     const name = visiting ? visiting.name : o.playerName();
     badge.innerHTML = `<div class="bs-ring" style="--p:${Math.round((S.xp / need) * 100)}"><b>${S.level}</b></div>
-      <strong>${esc(name.endsWith("s") ? `${name}'` : `${name}'s`)} Bistro</strong>
+      <strong>${esc(name.endsWith("s") ? `${name}'` : `${name}'s`)} Bistro${S.stars ? ` <i class="stars">${"★".repeat(S.stars)}</i>` : ""}</strong>
       ${visiting ? `<small class="likes">♥ ${fmt(visiting.likes)}</small>` : ""}
       <div class="xpbar" title="${S.xp} / ${need} XP"><i style="width:${(S.xp / need) * 100}%"></i></div>`;
     const pop = popNow().total;

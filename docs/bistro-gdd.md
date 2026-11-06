@@ -395,11 +395,29 @@ Mỗi giai đoạn: một migration riêng (số tiếp theo còn trống), test
 
 ## 8. Trạng thái triển khai
 
-| Giai đoạn                                                                              | Migration                                                                     | Trạng thái |
-| -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ---------- |
-| 1. Popularity, hàng chờ, AI theo bản đồ khoảng cách, chỉ số Layout                     | [070_bistro_popularity.sql](../supabase/migrations/070_bistro_popularity.sql) | Đã làm     |
-| 2. Energy, Lao công + rác, Staff Corner, thuê bạn bè                                   | [073_bistro_staff.sql](../supabase/migrations/073_bistro_staff.sql)           | Đã làm     |
-| 3. Cấp món, kho nguyên liệu, Chợ, Farm → Bistro, nguyên liệu khi ăn ở nhà bạn, Gourmet | [074_bistro_dishes.sql](../supabase/migrations/074_bistro_dishes.sql)         | Đã làm     |
-| 4. Register, món yêu cầu của VIP, thưởng theo hạng Gourmet                             | —                                                                             | Chưa làm   |
+| Giai đoạn                                                                                                                              | Migration                                                                     | Trạng thái |
+| -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ---------- |
+| 1. Popularity, hàng chờ, AI theo bản đồ khoảng cách, chỉ số Layout                                                                     | [070_bistro_popularity.sql](../supabase/migrations/070_bistro_popularity.sql) | Đã làm     |
+| 2. Energy, Lao công + rác, Staff Corner, thuê bạn bè                                                                                   | [073_bistro_staff.sql](../supabase/migrations/073_bistro_staff.sql)           | Đã làm     |
+| 3. Cấp món, kho nguyên liệu, Chợ, Farm → Bistro, nguyên liệu khi ăn ở nhà bạn, Gourmet                                                 | [074_bistro_dishes.sql](../supabase/migrations/074_bistro_dishes.sql)         | Đã làm     |
+| 4. Register, món yêu cầu của VIP, thưởng theo hạng Gourmet                                                                             | —                                                                             | Chưa làm   |
+| 5. Chơi lâu dài: cân bằng offline, 6 món mới, phòng 21×14, nhân viên Lv10, đơn đặt tiệc, khách quen, giải đấu tuần, sự kiện, chi nhánh | [100_bistro_long_term.sql](../supabase/migrations/100_bistro_long_term.sql)   | Đã làm     |
 
 Khác với bản thiết kế ban đầu: Staff Corner giảm hao Energy thay vì hồi khi nhân viên rảnh (để server tính được cả khi offline); XP khi bày món không tăng theo cấp món; nút chuyển nông sản nằm trong Bistro (Pantry & Market) thay vì trong kho Farm.
+
+## 9. Chơi lâu dài (migration 100)
+
+Đo kinh tế cho thấy: thu nhập offline tăng nhanh (≈1.1k xu/giờ ở cấp 2 → ≈13.7k/giờ ở cấp 12 khi một món đã max), còn nội dung hết ở cấp 12. Migration 100 kéo dài game đến cấp 30 và thêm mục tiêu hằng ngày / hằng tuần / theo mùa.
+
+| Hệ thống                   | Luật                                                                                                                                                                                                                                         |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Cân bằng offline**       | Khách lúc vắng mặt: ×0.5 trong 2 giờ đầu, ×0.4 đến giờ thứ 4, ×0.3 sau đó (`awayRate`).                                                                                                                                                      |
+| **6 món mới**              | Sizzling Crepe (L10), Turmeric Noodles (L13), Dill Fish Grill (L16), Caramel Flan (L19), Crab Noodle Soup (L22), Phoenix Feast (L26), mỗi món hai nguyên liệu.                                                                               |
+| **Phòng & nhân viên**      | Mở rộng thêm ở cấp 16 (12,000 xu) và 20 (20,000 xu), tối đa 21 × 14. Nhân viên huấn luyện đến Lv 10.                                                                                                                                         |
+| **Đơn đặt tiệc (Orders)**  | 2 ô, 3 từ cấp 10, 4 từ cấp 20. Mỗi đơn cần một hai món với số lượng lớn, trả **1.6 ×** giá, hết hạn sau 6 giờ. Giao xong thì 15 phút sau có đơn mới, bỏ qua thì 30 phút.                                                                     |
+| **Khách quen (Regulars)**  | Mira (L3), Tobi (L6), Juno (L10), Rook (L15), Sage (L20); mỗi người 3 lần ghé có lời thoại, mỗi lần cần một món theo số lượng. Thưởng: xu (số lượng × giá × 3), XP, 3 token khi có sự kiện; lần cuối +1,000 xu và **Golden Plate** (trophy). |
+| **Sự kiện**                | Harvest Moon (15/9–30/11: Pumpkin Lantern, Hay Bale) và Lantern Festival (15/12–28/2: Red Lantern Stand, Plum Blossom). Đơn đặt tiệc và khách quen cho token; token mua đồ của sự kiện; đủ bộ +6 charm. Token về 0 khi sự kiện mới bắt đầu.  |
+| **Giải đấu tuần (League)** | Điểm: khách 1, đơn 10, khách quen 15, ăn ở nhà bạn 3. Xếp hạng với bạn bè; tuần sau nhận thưởng nếu ≥ 50 điểm: hạng 1 2,000 xu + 5 Spice, hạng 2 1,200 + 3, hạng 3 800 + 2, còn lại 300 + 1.                                                 |
+| **Chi nhánh (Branch)**     | Từ cấp 30 (chạm hai lần): bắt đầu lại ở cấp 1 với 500 xu và **+1 sao** (+10% mọi giá, tối đa 5 sao). Bàn ghế trong phòng vào kho; giữ cấp món, kho nguyên liệu, sàn/tường, khách quen.                                                       |
+
+Giá một phần: `round(price × (100 + 12 × (lv − 1)) × (10 + stars) / 1000)`.

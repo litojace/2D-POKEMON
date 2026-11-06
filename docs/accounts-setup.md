@@ -165,6 +165,8 @@ Then run [073_bistro_staff.sql](../supabase/migrations/073_bistro_staff.sql) (af
 
 Then run [074_bistro_dishes.sql](../supabase/migrations/074_bistro_dishes.sql) (after 073). The final query should return two **true** columns. It adds dish levels (`arena_bistro_dish_lv`), the ingredient pantry (`arena_bistro_pantry`), the Market (four ingredients every four hours, 5 of each a Pacific day) and bringing plain crops from the Farm's barn into the pantry (three for one, 30 a day).
 
+Then run [100_bistro_long_term.sql](../supabase/migrations/100_bistro_long_term.sql) (after 074). The final query should return two **true** columns. It slows guests while you are away after two and four hours, adds six dishes (levels 10 to 26, 14 in all), two more expansions (up to 21 × 14) and staff levels up to 10, catering orders (`arena_bistro_orders`), regulars (`arena_bistro_regulars`, `arena_bistro_regular_steps`), the weekly friend league (`arena_bistro_week`, `arena_bistro_league_claims`), event tokens and decor, and branches with stars (`stars` on `arena_bistros`).
+
 ### Unlimited coins for admin testing
 
 Run [016_admin_shop_coins.sql](../supabase/migrations/016_admin_shop_coins.sql) after the earlier migrations. Existing non-suspended administrators see **∞ coins** and can buy Shop items and collection sets without spending their real balance. Purchases persist, can be equipped normally, and are recorded in the admin audit log. Prices, Mythic Trials, Awakening requirements and regular player spending still work as usual. Removing admin membership ends unlimited spending immediately; the saved wallet balance is unchanged.

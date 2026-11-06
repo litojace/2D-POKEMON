@@ -376,6 +376,83 @@ test("Bistro recipes: master a dish and level it up, buy at the Market, bring cr
   expect(errors).toEqual([]);
 });
 
+test("Bistro board: deliver a catering order, a regular's visit, claim the league, buy event decor, open a branch", async ({
+  page,
+}, info) => {
+  const errors = await openBistro(page);
+  await B(
+    page,
+    `const S = srv.S; S.level = 30; S.coins = 20000; S.tokens = 40;
+     S.counter = [{ dish: 'goicuon', servings: 12, perfect: false }, null, null, null];
+     return b.load()`,
+  );
+  await expect(page.locator("#bs-board-dot")).toBeVisible();
+  await page.click('.bs-rail [data-sheet="board"]');
+  await snap(page, info, "bistro-orders");
+  await page.click('#bs-sheet [data-order="0"]');
+  await flush(page);
+  expect(await B(page, "return srv.S.coins")).toBe(20040);
+  expect(await B(page, "return srv.S.counter[0].servings")).toBe(8);
+  // Mira's first visit: six spring rolls.
+  await page.click('#bs-sheet [data-tab="regulars"]');
+  await snap(page, info, "bistro-regulars");
+  await page.click('#bs-sheet [data-regular="mira"]');
+  await flush(page);
+  expect(await B(page, "return srv.S.regulars.mira")).toBe(1);
+  expect(await B(page, "return srv.S.counter[0].servings")).toBe(2);
+  // Last week's league: second place.
+  await page.click('#bs-sheet [data-tab="league"]');
+  await snap(page, info, "bistro-league");
+  const coins = (await B(page, "return srv.S.coins")) as number;
+  await page.click("#bs-sheet [data-league]");
+  await flush(page);
+  expect(await B(page, "return srv.S.coins")).toBe(coins + 1200);
+  // The event: a Pumpkin Lantern for 30 tokens.
+  await page.click('#bs-sheet [data-tab="event"]');
+  await snap(page, info, "bistro-event");
+  await page.click('#bs-sheet [data-buy="pumpkin"]');
+  await page.click('#bs-edit [data-ed="done"]');
+  await flush(page);
+  // 40, +5 for the order and +3 for Mira during the event, −30.
+  expect(await B(page, "return srv.S.tokens")).toBe(18);
+  expect(await B(page, "return srv.S.stored.pumpkin")).toBe(1);
+  // A new branch at level 30 (two taps).
+  await page.click('.bs-rail [data-sheet="staff"]');
+  await page.click('#bs-sheet [data-tab="upgrades"]');
+  await page.click("#bs-sheet [data-branch]");
+  await page.click("#bs-sheet [data-branch]");
+  await flush(page);
+  expect(
+    await B(page, "return [srv.S.level, srv.S.stars, srv.S.coins]"),
+  ).toEqual([1, 1, 500]);
+  await expect(page.locator("#bs-badge .stars")).toHaveText("★");
+  expect(errors).toEqual([]);
+});
+
+test("Bistro: a sheet scrolled down stays there when the server answers", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 667, height: 375 });
+  const errors = await openBistro(page);
+  await B(page, "srv.S.level = 30; srv.S.coins = 5000; return b.load()");
+  await B(page, "b.sheet('menu')");
+  const list = page.locator("#bs-sheet .bs-dishes");
+  await list.evaluate((el) => (el.scrollTop = el.scrollHeight));
+  const y = await list.evaluate((el) => el.scrollTop);
+  expect(y).toBeGreaterThan(50);
+  await list.evaluate((el) => ((el as any).old = true));
+  // The server answers with other coins (a guest paid, a level-up cost
+  // was spent): the sheet is drawn again, and the list stays put.
+  await B(page, "srv.S.coins = 3; return b.load()");
+  await expect.poll(() => list.evaluate((el) => !!(el as any).old)).toBe(false);
+  expect(await list.evaluate((el) => el.scrollTop)).toBe(y);
+  // Another tab and back starts at the top again.
+  await page.click('#bs-sheet [data-rtab="pantry"]');
+  await page.click('#bs-sheet [data-rtab="dishes"]');
+  expect(await list.evaluate((el) => el.scrollTop)).toBe(0);
+  expect(errors).toEqual([]);
+});
+
 test("Bistro: furniture in the bigger room stays through tab switches, even when one change is refused", async ({
   page,
 }) => {

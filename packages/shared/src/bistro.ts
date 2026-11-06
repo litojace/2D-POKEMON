@@ -34,6 +34,8 @@ export const EXPAND_STEPS = [
   { level: 4, price: 800 },
   { level: 8, price: 2500 },
   { level: 12, price: 6000 },
+  { level: 16, price: 12000 },
+  { level: 20, price: 20000 },
 ] as const;
 export const MAX_SIZE_LV = EXPAND_STEPS.length;
 export const MAX_SIZE = sizeOf(MAX_SIZE_LV);
@@ -58,7 +60,20 @@ export const pickupTile = (slot: number) => ({ x: 1 + slot, y: 3 });
 export const WAITER_HOME = { x: 6, y: 3 } as const;
 
 export type DishId =
-  "goicuon" | "banhmi" | "pho" | "buncha" | "comtam" | "che" | "caphe" | "lau";
+  | "goicuon"
+  | "banhmi"
+  | "pho"
+  | "buncha"
+  | "comtam"
+  | "che"
+  | "caphe"
+  | "lau"
+  | "banhxeo"
+  | "miquang"
+  | "chaca"
+  | "flan"
+  | "banhcanh"
+  | "phoenix";
 export interface Dish {
   id: DishId;
   name: string;
@@ -164,6 +179,73 @@ export const DISHES: readonly Dish[] = [
     price: 30,
     xp: 50,
   },
+  // Later dishes (migration 100): something new to cook up to level 26.
+  {
+    id: "banhxeo",
+    name: "Sizzling Crepe",
+    blurb: "Crisp rice crepe, folded",
+    level: 10,
+    seconds: 240,
+    cost: 180,
+    servings: 18,
+    price: 20,
+    xp: 38,
+  },
+  {
+    id: "miquang",
+    name: "Turmeric Noodles",
+    blurb: "Golden noodles, peanuts",
+    level: 13,
+    seconds: 480,
+    cost: 260,
+    servings: 20,
+    price: 26,
+    xp: 52,
+  },
+  {
+    id: "chaca",
+    name: "Dill Fish Grill",
+    blurb: "Sizzling fish with dill",
+    level: 16,
+    seconds: 720,
+    cost: 400,
+    servings: 22,
+    price: 36,
+    xp: 70,
+  },
+  {
+    id: "flan",
+    name: "Caramel Flan",
+    blurb: "Silky custard, dark caramel",
+    level: 19,
+    seconds: 360,
+    cost: 300,
+    servings: 24,
+    price: 28,
+    xp: 60,
+  },
+  {
+    id: "banhcanh",
+    name: "Crab Noodle Soup",
+    blurb: "Thick noodles, rich broth",
+    level: 22,
+    seconds: 900,
+    cost: 600,
+    servings: 24,
+    price: 50,
+    xp: 95,
+  },
+  {
+    id: "phoenix",
+    name: "Phoenix Feast",
+    blurb: "The house's grand platter",
+    level: 26,
+    seconds: 1200,
+    cost: 900,
+    servings: 26,
+    price: 70,
+    xp: 130,
+  },
 ];
 export const DISH_BY_ID: Record<DishId, Dish> = Object.fromEntries(
   DISHES.map((d) => [d.id, d]),
@@ -226,6 +308,12 @@ export const RECIPES: Record<DishId, readonly [Ingredient, Ingredient]> = {
   che: ["beans", "coconut"],
   caphe: ["coffee", "milk"],
   lau: ["chili", "beans"],
+  banhxeo: ["rice", "pork"],
+  miquang: ["chili", "egg"],
+  chaca: ["herbs", "chili"],
+  flan: ["egg", "milk"],
+  banhcanh: ["rice", "chili"],
+  phoenix: ["pork", "coconut"],
 };
 export const DISH_MAX_LEVEL = 10;
 export const PANTRY_MAX = 99;
@@ -252,8 +340,11 @@ export function dishUpCost(dish: DishId, lv: number) {
   };
 }
 /** A plate's price at a level (before specials and tips). */
-export const priceAt = (dish: DishId, lv: number) =>
-  Math.round(DISH_BY_ID[dish].price * (1 + 0.12 * (lv - 1)));
+export const priceAt = (dish: DishId, lv: number, stars = 0) =>
+  // Whole numbers until the last step (the database rounds the same way).
+  Math.round(
+    (DISH_BY_ID[dish].price * (100 + 12 * (lv - 1)) * (10 + stars)) / 1000,
+  );
 export const servingsAt = (dish: DishId, lv: number) =>
   DISH_BY_ID[dish].servings + Math.floor((lv - 1) / 3);
 /** Gourmet points: each level above 1, times the level the dish opens at. */
@@ -386,6 +477,11 @@ export type ItemKind =
   | "aquarium"
   | "fountain"
   | "corner"
+  | "pumpkin"
+  | "haybale"
+  | "lantern"
+  | "blossom"
+  | "trophy"
   | "rug";
 export interface ItemDef {
   kind: ItemKind;
@@ -400,6 +496,11 @@ export interface ItemDef {
   w?: number;
   h?: number;
   group: "furniture" | "decor";
+  /** An event's item: bought with event tokens while the event is on. */
+  event?: string;
+  tokens?: number;
+  /** Only given (a regular's thank-you), never sold. */
+  gift?: boolean;
 }
 export const ITEMS: readonly ItemDef[] = [
   {
@@ -494,6 +595,57 @@ export const ITEMS: readonly ItemDef[] = [
     charm: 1,
     group: "furniture",
   },
+  // Event items (migration 100): tokens only, while their event is on.
+  {
+    kind: "pumpkin",
+    name: "Pumpkin Lantern",
+    price: 1,
+    level: 1,
+    charm: 4,
+    group: "decor",
+    event: "harvest",
+    tokens: 30,
+  },
+  {
+    kind: "haybale",
+    name: "Hay Bale",
+    price: 1,
+    level: 1,
+    charm: 3,
+    group: "decor",
+    event: "harvest",
+    tokens: 20,
+  },
+  {
+    kind: "lantern",
+    name: "Red Lantern Stand",
+    price: 1,
+    level: 1,
+    charm: 4,
+    group: "decor",
+    event: "lantern",
+    tokens: 30,
+  },
+  {
+    kind: "blossom",
+    name: "Plum Blossom",
+    price: 1,
+    level: 1,
+    charm: 5,
+    group: "decor",
+    event: "lantern",
+    tokens: 40,
+  },
+  // A regular's thanks at the end of their story.
+  {
+    kind: "trophy",
+    name: "Golden Plate",
+    price: 1,
+    level: 1,
+    charm: 6,
+    group: "decor",
+    gift: true,
+  },
 ];
 export const ITEM_BY_KIND: Record<ItemKind, ItemDef> = Object.fromEntries(
   ITEMS.map((i) => [i.kind, i]),
@@ -536,7 +688,7 @@ export interface Staff {
   /** A friend working here (migration 073): their account and name. */
   friend?: { id: string; name: string };
 }
-export const STAFF_MAX_LEVEL = 5;
+export const STAFF_MAX_LEVEL = 10;
 /** Hiring the n-th cook or waiter: the bistro level it opens at, and its price. */
 export const HIRE_STEPS: Record<
   Role,
@@ -614,6 +766,9 @@ export const SHIFT_PRICES = [300, 800, 1600] as const;
 export const AWAY_MIN_MS = 60_000;
 /** Fewer guests come while you are away than when you are there. */
 export const AWAY_RATE = 0.5;
+/** …and fewer the longer you are away: half for 2 h, then 40%, from 4 h 30%. */
+export const awayRate = (ms: number) =>
+  ms < 2 * 3600_000 ? 0.5 : ms < 4 * 3600_000 ? 0.4 : 0.3;
 /** Cooks start a new batch only while the counter holds fewer servings than this. */
 export const STOCK_CAP = 24;
 
@@ -669,6 +824,12 @@ export interface BistroState {
   dishLv: Partial<Record<DishId, DishLevel>>;
   /** Ingredients (migration 074). */
   pantry: Partial<Record<Ingredient, number>>;
+  /** Branches opened (migration 100): each star adds 10% to every price. */
+  stars: number;
+  /** Event tokens (they reset when the next event starts). */
+  tokens: number;
+  /** How far each regular's story has gone. */
+  regulars: Record<string, number>;
 }
 
 export function xpToNext(level: number): number {
@@ -734,6 +895,9 @@ export function defaultState(): BistroState {
     trash: 0,
     dishLv: {},
     pantry: {},
+    stars: 0,
+    tokens: 0,
+    regulars: {},
   };
 }
 
@@ -757,6 +921,14 @@ export function sanitize(raw: unknown): BistroState {
   s.shiftLv = Math.floor(num(r.shiftLv, 0, 0, SHIFT_PRICES.length));
   s.lastSeen = num(r.lastSeen, 0);
   s.trash = Math.floor(num(r.trash, 0, 0, TRASH_MAX));
+  s.stars = Math.floor(num(Number(r.stars), 0, 0, MAX_STARS));
+  s.tokens = Math.floor(num(Number(r.tokens), 0, 0, 1e6));
+  s.regulars = {};
+  if (r.regulars && typeof r.regulars === "object")
+    for (const g of REGULARS) {
+      const v = Number((r.regulars as Record<string, unknown>)[g.id]);
+      if (v > 0) s.regulars[g.id] = Math.min(g.steps.length, Math.floor(v));
+    }
   s.dishLv = {};
   if (r.dishLv && typeof r.dishLv === "object")
     for (const [k, v] of Object.entries(r.dishLv as Record<string, unknown>)) {
@@ -991,9 +1163,11 @@ export function payment(
     hearts?: number;
     /** The dish's level (its price grows 12% a level). */
     level?: number;
+    /** Branch stars: 10% each. */
+    stars?: number;
   },
 ): { base: number; tip: number; total: number } {
-  let base = priceAt(dish, o.level ?? 1);
+  let base = priceAt(dish, o.level ?? 1, o.stars ?? 0);
   if (o.special) base *= SPECIAL_MULT;
   if (o.vip) base *= VIP_MULT;
   base = Math.round(base);
@@ -1475,7 +1649,12 @@ export function putAway(s: BistroState, id: number): Result {
   return { ok: true };
 }
 export function charm(items: readonly Item[]): number {
-  return items.reduce((n, i) => n + ITEM_BY_KIND[i.kind].charm, 0);
+  let n = items.reduce((n, i) => n + ITEM_BY_KIND[i.kind].charm, 0);
+  // A full event set on the floor: a bonus.
+  for (const e of EVENTS)
+    if (e.items.every((k) => items.some((i) => i.kind === k)))
+      n += EVENT_SET_CHARM;
+  return n;
 }
 /* ───────────── popularity (0..50) ─────────────
    One number for how wanted the bistro is: how guests left (the rating),
@@ -1562,10 +1741,23 @@ export function rate(rating: number, verdict: number): number {
 
 /* ───────────── the shop ───────────── */
 
-export function buyItem(s: BistroState, kind: ItemKind): Result {
+export function buyItem(
+  s: BistroState,
+  kind: ItemKind,
+  /** The event on now (event items are sold only then, for tokens). */
+  eventId: string | null = null,
+): Result {
   const def = ITEM_BY_KIND[kind];
   if (!def) return fail("Unknown item.");
+  if (def.gift) return fail("That one is a gift from a regular.");
   if (def.level > s.level) return fail(`Opens at level ${def.level}.`);
+  if (def.event) {
+    if (def.event !== eventId) return fail("Only during its event.");
+    if (s.tokens < def.tokens!) return fail(`You need ${def.tokens} tokens.`);
+    s.tokens -= def.tokens!;
+    s.stored[kind] = (s.stored[kind] ?? 0) + 1;
+    return { ok: true };
+  }
   if (s.coins < def.price) return fail(`You need ${def.price} coins.`);
   s.coins -= def.price;
   s.stored[kind] = (s.stored[kind] ?? 0) + 1;
@@ -1895,7 +2087,7 @@ export function simulateAway(
       } else rep.spent += DISH_BY_ID[ev.dish].cost;
     }
     const secs = Math.min(STEP, end - t) / 1000;
-    acc += rateFrom(s, parts, (w) => eAt(w, t)) * AWAY_RATE * secs;
+    acc += rateFrom(s, parts, (w) => eAt(w, t)) * awayRate(t - from) * secs;
     let servedNow = 0;
     while (acc >= 1) {
       const slot = fullestSlot(s);
@@ -1909,6 +2101,7 @@ export function simulateAway(
         special: dish === special,
         hearts: 2,
         level: dishLevel(s, dish),
+        stars: s.stars,
       });
       s.coins += bill.total;
       rep.coins += bill.total;
@@ -1954,4 +2147,275 @@ export function buyStyle(
   if (kind === "floor") s.floor = id as FloorId;
   else s.wall = id as WallId;
   return { ok: true };
+}
+
+/* ───────────── the long game (migration 100) ─────────────
+   Events through the year, catering orders, regulars with a story, a
+   weekly league among friends, and new branches with stars. */
+export interface BistroEvent {
+  id: string;
+  name: string;
+  /** MM-DD, both days in (a range may wrap past the new year). */
+  from: string;
+  to: string;
+  items: ItemKind[];
+}
+export const EVENTS: readonly BistroEvent[] = [
+  {
+    id: "harvest",
+    name: "Harvest Moon",
+    from: "09-15",
+    to: "11-30",
+    items: ["pumpkin", "haybale"],
+  },
+  {
+    id: "lantern",
+    name: "Lantern Festival",
+    from: "12-15",
+    to: "02-28",
+    items: ["lantern", "blossom"],
+  },
+];
+/** A full set of an event's items on the floor adds this much charm. */
+export const EVENT_SET_CHARM = 6;
+/** The event on a day (YYYY-MM-DD, Pacific), or null. */
+export function eventOn(day: string): BistroEvent | null {
+  const md = day.slice(5, 10);
+  return (
+    EVENTS.find((e) =>
+      e.from <= e.to ? md >= e.from && md <= e.to : md >= e.from || md <= e.to,
+    ) ?? null
+  );
+}
+
+/* Branches: from level 30 open a new one. You start over (level 1, the
+   first room; the furniture goes into storage) and keep your dishes'
+   levels, the pantry, styles and regulars, and earn a star: +10% on every
+   price, up to five. */
+export const BRANCH_LEVEL = 30;
+export const MAX_STARS = 5;
+export const BRANCH_COINS = 500;
+export function openBranch(s: BistroState): Result {
+  if (s.level < BRANCH_LEVEL)
+    return fail(`Open a new branch at level ${BRANCH_LEVEL}.`);
+  if (s.stars >= MAX_STARS) return fail("Five stars: the most there are.");
+  const d = defaultState();
+  const stored = { ...s.stored };
+  for (const it of s.items) stored[it.kind] = (stored[it.kind] ?? 0) + 1;
+  s.level = 1;
+  s.xp = 0;
+  s.coins = BRANCH_COINS;
+  s.rating = d.rating;
+  s.items = d.items;
+  s.nextId = d.nextId;
+  s.stored = stored;
+  s.stoves = d.stoves;
+  s.counter = d.counter;
+  s.staff = d.staff;
+  s.kitchenLv = 0;
+  s.shiftLv = 0;
+  s.sizeLv = 0;
+  s.trash = 0;
+  s.stars++;
+  return { ok: true };
+}
+
+/* Catering orders: the server posts them (dishes and amounts by your
+   level); filling one takes the servings off the counter and pays 1.6
+   times their price, with XP and, during an event, tokens. */
+export interface CateringOrder {
+  slot: number;
+  dishes: { dish: DishId; qty: number }[] | null;
+  coins: number;
+  xp: number;
+  tokens: number;
+  /** When it goes (ms), or when the next one comes for an empty slot. */
+  expires: number;
+  next: number;
+}
+export const ORDER_PAY = 1.6;
+export const orderSlots = (level: number) =>
+  2 + (level >= 10 ? 1 : 0) + (level >= 20 ? 1 : 0);
+export const onCounter = (s: BistroState, dish: DishId) =>
+  s.counter.reduce((n, c) => n + (c?.dish === dish ? c.servings : 0), 0);
+export function fillOrder(s: BistroState, o: CateringOrder): Result {
+  if (!o.dishes) return fail("No order there yet.");
+  for (const d of o.dishes)
+    if (onCounter(s, d.dish) < d.qty)
+      return fail(
+        `You need ${d.qty} ${DISH_BY_ID[d.dish].name} on the counter.`,
+      );
+  for (const d of o.dishes)
+    for (let i = 0; i < d.qty; i++) takeServing(s, d.dish);
+  s.coins += o.coins;
+  addXp(s, o.xp);
+  s.tokens += o.tokens;
+  return { ok: true };
+}
+
+/* Regulars: guests with a story in three visits, each asking for a dish
+   in quantity; the last brings a Golden Plate. */
+export interface Regular {
+  id: string;
+  /** A roster creature. */
+  char: string;
+  name: string;
+  level: number;
+  steps: { dish: DishId; qty: number; line: string }[];
+}
+export const REGULARS: readonly Regular[] = [
+  {
+    id: "mira",
+    char: "astrabun",
+    name: "Mira",
+    level: 3,
+    steps: [
+      {
+        dish: "goicuon",
+        qty: 6,
+        line: "My first day in town! Something fresh, please.",
+      },
+      {
+        dish: "pho",
+        qty: 8,
+        line: "I brought my study group. Pho for everyone!",
+      },
+      {
+        dish: "buncha",
+        qty: 10,
+        line: "We passed our exams! A feast to celebrate.",
+      },
+    ],
+  },
+  {
+    id: "tobi",
+    char: "wombolder",
+    name: "Tobi",
+    level: 6,
+    steps: [
+      { dish: "banhmi", qty: 10, line: "The builders next door are starving." },
+      {
+        dish: "comtam",
+        qty: 10,
+        line: "Lunch for the whole crew, it's a big job.",
+      },
+      {
+        dish: "caphe",
+        qty: 12,
+        line: "The house is done! Coffee for the opening.",
+      },
+    ],
+  },
+  {
+    id: "juno",
+    char: "glacelle",
+    name: "Juno",
+    level: 10,
+    steps: [
+      { dish: "che", qty: 12, line: "A sweet treat for my dance class." },
+      {
+        dish: "banhxeo",
+        qty: 12,
+        line: "Our recital is tonight. Something crispy!",
+      },
+      {
+        dish: "lau",
+        qty: 10,
+        line: "We won the regional cup. Hotpot for all!",
+      },
+    ],
+  },
+  {
+    id: "rook",
+    char: "tidefin",
+    name: "Rook",
+    level: 15,
+    steps: [
+      { dish: "miquang", qty: 14, line: "The fishing fleet is back early." },
+      {
+        dish: "chaca",
+        qty: 12,
+        line: "A storm's coming. The crew needs warming up.",
+      },
+      {
+        dish: "banhcanh",
+        qty: 14,
+        line: "Biggest catch of the year! Let's celebrate.",
+      },
+    ],
+  },
+  {
+    id: "sage",
+    char: "lumoth",
+    name: "Sage",
+    level: 20,
+    steps: [
+      {
+        dish: "flan",
+        qty: 14,
+        line: "I'm writing a food guide. Dessert first.",
+      },
+      { dish: "banhcanh", qty: 14, line: "Your soup made the second chapter." },
+      {
+        dish: "phoenix",
+        qty: 12,
+        line: "You're on the cover. The grand platter, please!",
+      },
+    ],
+  },
+];
+export const REGULAR_BY_ID = Object.fromEntries(REGULARS.map((g) => [g.id, g]));
+/** A visit's thanks: three times the plates' price (base), XP; the last a Golden Plate and 1,000 coins. */
+export function regularReward(g: Regular, step: number) {
+  const st = g.steps[step];
+  const last = step === g.steps.length - 1;
+  return {
+    coins: st.qty * DISH_BY_ID[st.dish].price * 3 + (last ? 1000 : 0),
+    xp: st.qty * 3,
+    tokens: 3,
+    trophy: last,
+  };
+}
+export function fillRegular(
+  s: BistroState,
+  id: string,
+  eventId: string | null,
+): Result {
+  const g = REGULAR_BY_ID[id];
+  if (!g) return fail("Nobody by that name.");
+  if (s.level < g.level) return fail(`${g.name} comes by at level ${g.level}.`);
+  const step = s.regulars[id] ?? 0;
+  if (step >= g.steps.length) return fail(`${g.name}'s story is complete.`);
+  const st = g.steps[step];
+  if (DISH_BY_ID[st.dish].level > s.level)
+    return fail(
+      `${DISH_BY_ID[st.dish].name} opens at level ${DISH_BY_ID[st.dish].level}.`,
+    );
+  if (onCounter(s, st.dish) < st.qty)
+    return fail(
+      `You need ${st.qty} ${DISH_BY_ID[st.dish].name} on the counter.`,
+    );
+  for (let i = 0; i < st.qty; i++) takeServing(s, st.dish);
+  const r = regularReward(g, step);
+  s.coins += r.coins;
+  addXp(s, r.xp);
+  if (eventId) s.tokens += r.tokens;
+  if (r.trophy) s.stored.trophy = (s.stored.trophy ?? 0) + 1;
+  s.regulars[id] = step + 1;
+  return { ok: true };
+}
+
+/* The weekly league among friends: points for guests served (1), catering
+   orders (10), a regular's visit (15) and meals at friends' (3). After the
+   week, claim by your place among your friends (at least 50 points). */
+export const LEAGUE_MIN = 50;
+export function leagueReward(rank: number, points: number) {
+  if (points < LEAGUE_MIN) return null;
+  return rank === 1
+    ? { coins: 2000, spice: 5 }
+    : rank === 2
+      ? { coins: 1200, spice: 3 }
+      : rank === 3
+        ? { coins: 800, spice: 2 }
+        : { coins: 300, spice: 1 };
 }

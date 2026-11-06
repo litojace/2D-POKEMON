@@ -56,7 +56,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "074_bistro_dishes.sql";
+export const LATEST_MIGRATION = "100_bistro_long_term.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -668,6 +668,11 @@ export function installAccountRoutes(
         "dishup",
         "market",
         "farm",
+        "order",
+        "skip",
+        "regular",
+        "league",
+        "branch",
         "sync",
       ]),
       stove: z.number().int().min(0).max(3).optional(),
@@ -705,6 +710,8 @@ export function installAccountRoutes(
       lots: z.number().int().min(1).max(15).optional(),
       // Market buys and Farm crops (migration 074).
       qty: z.number().int().min(1).max(30).optional(),
+      // Catering orders (migration 100).
+      slot: z.number().int().min(0).max(3).optional(),
     })
     .strict();
   app.get(

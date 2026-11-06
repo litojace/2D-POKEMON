@@ -2083,3 +2083,196 @@ body.hub-bistro :is(#account-coins, #account-leaves) {
     animation: none;
   }
 }
+
+/* ── The board: catering orders, regulars, the league, events (migration 100) ── */
+.bistro-layer .bs-board {
+  flex: 1;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px 18px 16px;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+.bistro-layer .bs-card {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #ffffff1c;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #2c2442, #1d172e);
+}
+.bistro-layer .bs-card .pt,
+.bistro-layer .bs-card .ic {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  display: grid;
+  place-items: center;
+  font-size: 30px;
+}
+.bistro-layer .bs-card .txt {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.bistro-layer .bs-card b {
+  font: 800 16px/1.15 var(--display, "Barlow Condensed", sans-serif);
+  letter-spacing: 0.02em;
+}
+.bistro-layer .bs-card small {
+  font-size: 11.5px;
+  color: #b9c2d8;
+}
+.bistro-layer .bs-card q {
+  font-size: 12px;
+  font-style: italic;
+  color: #e6ebf7;
+}
+.bistro-layer .bs-card .needs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.bistro-layer .bs-card .needs em {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px 2px 2px;
+  border-radius: 9px;
+  background: #ffffff12;
+  font:
+    700 11px/1.2 "DM Sans",
+    sans-serif;
+  font-style: normal;
+}
+.bistro-layer .bs-card .needs em img {
+  width: 22px;
+  height: 22px;
+}
+.bistro-layer .bs-card .needs em.ok {
+  background: #2f8a5544;
+  color: #c8f5d6;
+}
+.bistro-layer .bs-card .needs em.poor {
+  color: #ffb0b0;
+}
+.bistro-layer .bs-card .dots {
+  display: inline-flex;
+  gap: 3px;
+  vertical-align: 2px;
+}
+.bistro-layer .bs-card .dots i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffffff2a;
+}
+.bistro-layer .bs-card .dots i.on {
+  background: #ffd65b;
+}
+.bistro-layer .bs-card .acts {
+  display: grid;
+  gap: 6px;
+}
+.bistro-layer .bs-card button.pr {
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #ffe27a, #f0a92a);
+  color: #2a1a00;
+  font: 800 13px/1 var(--display, "Barlow Condensed", sans-serif);
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.bistro-layer .bs-card button.pr.poor {
+  background: #3a3350;
+  color: #b9c2d8;
+}
+.bistro-layer .bs-card button.pr.ghost {
+  background: #ffffff14;
+  color: #dfe6f5;
+}
+.bistro-layer .bs-card.locked,
+.bistro-layer .bs-card.wait {
+  opacity: 0.7;
+}
+.bistro-layer .bs-card .tok,
+.bistro-layer .bs-card .lk {
+  font: 800 14px/1 var(--display, "Barlow Condensed", sans-serif);
+  color: #ffd65b;
+  white-space: nowrap;
+}
+.bistro-layer .bs-league {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.bistro-layer .bs-league li {
+  display: grid;
+  grid-template-columns: 26px 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: #ffffff0d;
+}
+.bistro-layer .bs-league li.me {
+  background: #ffd65b26;
+  outline: 1px solid #ffd65b66;
+}
+.bistro-layer .bs-league .rk {
+  font: 800 16px/1 var(--display, "Barlow Condensed", sans-serif);
+  color: #ffd65b;
+  text-align: center;
+}
+.bistro-layer .bs-league img {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+.bistro-layer .bs-league b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font:
+    700 14px/1.1 "DM Sans",
+    sans-serif;
+}
+.bistro-layer .bs-league em {
+  font: 800 16px/1 var(--display, "Barlow Condensed", sans-serif);
+  font-style: normal;
+}
+.bistro-layer .bs-board .bs-note {
+  padding: 0 2px;
+}
+.bistro-layer .bs-board .bs-items {
+  padding: 0;
+  overflow: visible;
+}
+.bistro-layer .bs-badge strong .stars {
+  font-style: normal;
+  color: #ffd65b;
+  font-size: 0.8em;
+}
+.bistro-layer .bs-item.branch.armed {
+  border-color: #ff8a5a;
+  box-shadow: 0 0 16px #ff8a5a66;
+}
+.bistro-layer.phone .bs-board {
+  padding: 0 12px 10px;
+}
+.bistro-layer.phone .bs-card {
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  padding: 8px 10px;
+}
+.bistro-layer.phone .bs-card .pt,
+.bistro-layer.phone .bs-card .ic {
+  width: 40px;
+  height: 40px;
+}

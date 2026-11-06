@@ -1961,7 +1961,174 @@ export function drawItem(
       return drawRug(ctx, x, y);
     case "corner":
       return drawStaffCorner(ctx, x, y, t);
+    case "pumpkin":
+      return drawPumpkin(ctx, x, y, t);
+    case "haybale":
+      return drawHayBale(ctx, x, y);
+    case "lantern":
+      return drawRedLantern(ctx, x, y, t);
+    case "blossom":
+      return drawBlossom(ctx, x, y, t);
+    case "trophy":
+      return drawTrophy(ctx, x, y, t);
   }
+}
+/** Harvest Moon: a carved pumpkin with a candle inside. */
+export function drawPumpkin(ctx: Ctx, x: number, y: number, t: number) {
+  const c = iso(x, y);
+  softShadow(ctx, c.x, c.y + 2, 24, 10, 0.28);
+  for (const [dx, r] of [
+    [-9, 11],
+    [9, 11],
+    [0, 13],
+  ] as const) {
+    ctx.fillStyle = rad(ctx, c.x + dx - 3, c.y - 22, r + 4, [
+      [0, "#ffb04a"],
+      [1, "#d8641a"],
+    ]);
+    ellipse(ctx, c.x + dx, c.y - 16, r, 15);
+    ctx.fill();
+  }
+  ctx.fillStyle = "#4a7a2a";
+  ctx.fillRect(c.x - 2, c.y - 36, 4, 8);
+  const flick = 0.75 + 0.25 * Math.sin(t * 9);
+  ctx.fillStyle = `rgba(255,${200 + 40 * flick},90,${flick})`;
+  ctx.beginPath();
+  ctx.moveTo(c.x - 8, c.y - 20);
+  ctx.lineTo(c.x - 4, c.y - 24);
+  ctx.lineTo(c.x - 2, c.y - 19);
+  ctx.closePath();
+  ctx.moveTo(c.x + 8, c.y - 20);
+  ctx.lineTo(c.x + 4, c.y - 24);
+  ctx.lineTo(c.x + 2, c.y - 19);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(c.x - 7, c.y - 12);
+  ctx.quadraticCurveTo(c.x, c.y - 6, c.x + 7, c.y - 12);
+  ctx.quadraticCurveTo(c.x, c.y - 9, c.x - 7, c.y - 12);
+  ctx.fill();
+}
+/** Harvest Moon: a hay bale to sit on, tied with twine. */
+export function drawHayBale(ctx: Ctx, x: number, y: number) {
+  const c = iso(x, y);
+  softShadow(ctx, c.x, c.y + 2, 30, 12, 0.26);
+  isoBox(ctx, x - 0.36, y - 0.3, x + 0.36, y + 0.3, 0, 24, {
+    top: "#f2d27a",
+    left: "#d9b04a",
+    right: "#c49a36",
+  });
+  ctx.strokeStyle = "rgba(150,110,30,.5)";
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 6; i++) {
+    ctx.beginPath();
+    ctx.moveTo(c.x - 24 + i * 3, c.y - 4 - i);
+    ctx.lineTo(c.x - 22 + i * 3, c.y - 18 - i);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = "#8a5a2a";
+  ctx.lineWidth = 2;
+  for (const f of [-0.15, 0.15]) {
+    const a = iso(x + f, y + 0.3),
+      b = iso(x + f, y - 0.3);
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y - 1);
+    ctx.lineTo(a.x, a.y - 24);
+    ctx.lineTo(b.x, b.y - 24);
+    ctx.stroke();
+  }
+}
+/** Lantern Festival: a red paper lantern on a stand, swaying. */
+export function drawRedLantern(ctx: Ctx, x: number, y: number, t: number) {
+  const c = iso(x, y);
+  softShadow(ctx, c.x, c.y + 2, 18, 7, 0.28);
+  ctx.fillStyle = "#5a3420";
+  ctx.fillRect(c.x - 2, c.y - 70, 4, 70);
+  ctx.fillRect(c.x - 9, c.y - 4, 18, 4);
+  ctx.fillRect(c.x - 2, c.y - 72, 16, 3);
+  const sw = Math.sin(t * 1.6) * 2;
+  const lx = c.x + 12 + sw,
+    ly = c.y - 52;
+  ctx.strokeStyle = "#5a3420";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(c.x + 12, c.y - 69);
+  ctx.lineTo(lx, ly - 13);
+  ctx.stroke();
+  ctx.fillStyle = rad(ctx, lx - 3, ly - 3, 14, [
+    [0, "#ff6a4a"],
+    [1, "#c0161a"],
+  ]);
+  ellipse(ctx, lx, ly, 11, 13);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,210,120,.6)";
+  for (const dx of [-5, 0, 5]) {
+    ctx.beginPath();
+    ctx.ellipse(lx, ly, Math.abs(dx) + 1, 13, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.fillStyle = "#f2c14e";
+  ctx.fillRect(lx - 6, ly - 15, 12, 3);
+  ctx.fillRect(lx - 6, ly + 12, 12, 3);
+  ctx.strokeStyle = "#f2c14e";
+  ctx.beginPath();
+  ctx.moveTo(lx, ly + 15);
+  ctx.lineTo(lx + sw * 0.5, ly + 24);
+  ctx.stroke();
+}
+/** Lantern Festival: a plum tree in a pot, in bloom. */
+export function drawBlossom(ctx: Ctx, x: number, y: number, t: number) {
+  const c = iso(x, y);
+  softShadow(ctx, c.x, c.y + 2, 22, 9, 0.26);
+  isoBox(ctx, x - 0.26, y - 0.26, x + 0.26, y + 0.26, 0, 18, {
+    top: "#3a4a6a",
+    left: "#2f6fa8",
+    right: "#245a8a",
+  });
+  ctx.strokeStyle = "#5a3420";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(c.x, c.y - 18);
+  ctx.quadraticCurveTo(c.x - 8, c.y - 40, c.x - 4, c.y - 58);
+  ctx.moveTo(c.x - 3, c.y - 36);
+  ctx.quadraticCurveTo(c.x + 10, c.y - 44, c.x + 12, c.y - 56);
+  ctx.stroke();
+  for (let i = 0; i < 22; i++) {
+    const a = (i / 22) * Math.PI * 2 + i;
+    const r = 6 + ((i * 7) % 12);
+    const px = c.x + Math.cos(a) * r + (i % 2 ? 6 : -3),
+      py = c.y - 52 + Math.sin(a) * r * 0.7 + Math.sin(t + i) * 0.4;
+    ctx.fillStyle = i % 3 ? "#ff8fb1" : "#ffd0de";
+    ctx.beginPath();
+    ctx.arc(px, py, 2.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+/** A regular's thank-you: a golden plate on a stand. */
+export function drawTrophy(ctx: Ctx, x: number, y: number, t: number) {
+  const c = iso(x, y);
+  softShadow(ctx, c.x, c.y + 2, 18, 7, 0.28);
+  isoBox(ctx, x - 0.22, y - 0.22, x + 0.22, y + 0.22, 0, 22, {
+    top: "#6d4025",
+    left: "#8a5530",
+    right: "#5a3420",
+  });
+  ctx.fillStyle = lin(ctx, c.x - 16, 0, c.x + 16, 0, [
+    [0, "#c98f2e"],
+    [0.5, "#ffe58a"],
+    [1, "#b77a1e"],
+  ]);
+  ellipse(ctx, c.x, c.y - 42, 15, 15);
+  ctx.fill();
+  ctx.fillStyle = "#ffd65b";
+  ellipse(ctx, c.x, c.y - 42, 10, 10);
+  ctx.fill();
+  ctx.fillStyle = "#c98f2e";
+  ctx.fillRect(c.x - 2, c.y - 28, 4, 8);
+  const g = 0.5 + 0.5 * Math.sin(t * 3);
+  ctx.fillStyle = `rgba(255,255,255,${0.5 * g})`;
+  ellipse(ctx, c.x - 4, c.y - 46, 4, 2);
+  ctx.fill();
 }
 /** The Staff Corner: a low bench with cushions and a pot of tea. */
 export function drawStaffCorner(ctx: Ctx, x: number, y: number, t: number) {
@@ -2021,6 +2188,10 @@ export function itemGlow(
   switch (kind) {
     case "lamp":
       return [14, -66, 130, "255,150,90"];
+    case "pumpkin":
+      return [0, -20, 80, "255,170,80"];
+    case "lantern":
+      return [12, -52, 100, "255,90,60"];
     case "jukebox":
       return [0, -50, 90, "255,120,220"];
     case "aquarium":
@@ -2414,6 +2585,235 @@ export function drawDish(
         ctx.arc(x + (-6 + i * 6) * k, y - 4 * k, ph * 1.8 * k, 0, 7);
         ctx.fill();
       }
+      break;
+    }
+    case "banhxeo": {
+      // A golden half-moon crepe with shrimp and sprouts peeking out.
+      plateDisc(ctx, x, y, s);
+      ctx.fillStyle = lin(ctx, x - 14 * k, 0, x + 14 * k, 0, [
+        [0, "#f2b234"],
+        [0.5, "#ffd45e"],
+        [1, "#e09a20"],
+      ]);
+      ctx.beginPath();
+      ctx.moveTo(x - 15 * k, y + 1 * k);
+      ctx.quadraticCurveTo(x, y - 16 * k, x + 15 * k, y + 1 * k);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#f5f0d8";
+      for (let i = 0; i < 4; i++) {
+        ctx.fillRect(x - 9 * k + i * 5 * k, y - 1 * k, 1.2 * k, 3 * k);
+      }
+      ctx.fillStyle = "#ff8a6a";
+      ellipse(ctx, x - 4 * k, y - 4 * k, 3 * k, 1.8 * k);
+      ctx.fill();
+      ellipse(ctx, x + 4 * k, y - 5 * k, 3 * k, 1.8 * k);
+      ctx.fill();
+      ctx.fillStyle = "#5fbf4f";
+      ellipse(ctx, x + 10 * k, y + 2 * k, 3.4 * k, 1.6 * k);
+      ctx.fill();
+      break;
+    }
+    case "miquang": {
+      // Golden noodles, peanuts, a quail egg and herbs in a shallow bowl.
+      ctx.fillStyle = "rgba(0,0,0,.2)";
+      ellipse(ctx, x, y + 3 * k, 16 * k, 5 * k);
+      ctx.fill();
+      bowl(ctx, x, y - 4 * k, 16 * k, "#3d7fb3", "#e9f1f8");
+      ctx.fillStyle = "#f4c23e";
+      ellipse(ctx, x, y - 4 * k, 13 * k, 4.4 * k);
+      ctx.fill();
+      ctx.strokeStyle = "#e0a52a";
+      ctx.lineWidth = 1 * k;
+      for (let i = -2; i <= 2; i++) {
+        ctx.beginPath();
+        ctx.moveTo(x - 10 * k, y - 4 * k + i * 1.4 * k);
+        ctx.quadraticCurveTo(
+          x,
+          y - 7 * k + i * 1.4 * k,
+          x + 10 * k,
+          y - 4 * k + i * 1.4 * k,
+        );
+        ctx.stroke();
+      }
+      ctx.fillStyle = "#c98a4a";
+      for (const [dx, dy] of [
+        [-6, -6],
+        [-3, -3],
+        [5, -6],
+        [8, -4],
+      ] as const) {
+        ellipse(ctx, x + dx * k, y + dy * k, 1.4 * k, 1 * k);
+        ctx.fill();
+      }
+      ctx.fillStyle = "#fff8ec";
+      ellipse(ctx, x + 2 * k, y - 6 * k, 2.6 * k, 2 * k);
+      ctx.fill();
+      ctx.fillStyle = "#ffcf3d";
+      ellipse(ctx, x + 2 * k, y - 6 * k, 1.2 * k, 1 * k);
+      ctx.fill();
+      ctx.fillStyle = "#5fbf4f";
+      ellipse(ctx, x - 8 * k, y - 5 * k, 2.6 * k, 1.2 * k);
+      ctx.fill();
+      break;
+    }
+    case "chaca": {
+      // Sizzling fish on a black pan, with a heap of dill.
+      ctx.fillStyle = "rgba(0,0,0,.25)";
+      ellipse(ctx, x, y + 2 * k, 17 * k, 6 * k);
+      ctx.fill();
+      ctx.fillStyle = "#2b2b30";
+      ellipse(ctx, x, y - 1 * k, 16 * k, 6 * k);
+      ctx.fill();
+      ctx.fillStyle = "#3b3b42";
+      ellipse(ctx, x, y - 2 * k, 13.5 * k, 4.8 * k);
+      ctx.fill();
+      ctx.fillStyle = "#e8a83a";
+      for (const [dx, dy] of [
+        [-6, -3],
+        [0, -1],
+        [6, -3],
+        [-2, -5],
+        [4, -5],
+      ] as const) {
+        ctx.beginPath();
+        ctx.roundRect(
+          x + dx * k - 3 * k,
+          y + dy * k - 1.6 * k,
+          6 * k,
+          3.2 * k,
+          1.4 * k,
+        );
+        ctx.fill();
+      }
+      ctx.fillStyle = "#7fd36a";
+      for (let i = 0; i < 7; i++) {
+        ellipse(
+          ctx,
+          x - 4 * k + i * 1.6 * k,
+          y - 7 * k - (i % 2) * 1.4 * k,
+          1.6 * k,
+          0.8 * k,
+        );
+        ctx.fill();
+      }
+      // Sizzle.
+      ctx.fillStyle = "rgba(255,255,255,.6)";
+      for (let i = 0; i < 3; i++) {
+        const ph = (t * 2 + i * 0.3) % 1;
+        ctx.beginPath();
+        ctx.arc(x + (-8 + i * 8) * k, y - 3 * k - ph * 4 * k, 0.8 * k, 0, 7);
+        ctx.fill();
+      }
+      break;
+    }
+    case "flan": {
+      // A wobbling caramel custard on a saucer.
+      plateDisc(ctx, x, y, s * 0.85);
+      const wob = Math.sin(t * 5) * 0.4 * k;
+      ctx.fillStyle = lin(ctx, x - 9 * k, 0, x + 9 * k, 0, [
+        [0, "#f6d27a"],
+        [0.5, "#ffe7a6"],
+        [1, "#e9b85a"],
+      ]);
+      ctx.beginPath();
+      ctx.moveTo(x - 9 * k, y - 1 * k);
+      ctx.lineTo(x - 7 * k + wob, y - 11 * k);
+      ctx.lineTo(x + 7 * k + wob, y - 11 * k);
+      ctx.lineTo(x + 9 * k, y - 1 * k);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#8a4a14";
+      ellipse(ctx, x + wob, y - 11 * k, 7 * k, 2.4 * k);
+      ctx.fill();
+      ctx.fillStyle = "#a85a1a";
+      ctx.beginPath();
+      ctx.moveTo(x - 7 * k + wob, y - 11 * k);
+      ctx.quadraticCurveTo(x - 8 * k, y - 6 * k, x - 6 * k, y - 5 * k);
+      ctx.lineTo(x - 5 * k + wob, y - 11 * k);
+      ctx.fill();
+      ctx.fillStyle = "#ff5a6a";
+      ctx.beginPath();
+      ctx.arc(x + 2 * k + wob, y - 13 * k, 1.6 * k, 0, 7);
+      ctx.fill();
+      break;
+    }
+    case "banhcanh": {
+      // Thick noodles in an orange crab broth with a claw on top.
+      ctx.fillStyle = "rgba(0,0,0,.2)";
+      ellipse(ctx, x, y + 3 * k, 17 * k, 5.4 * k);
+      ctx.fill();
+      bowl(ctx, x, y - 4 * k, 17 * k, "#e8e2d4", "#ffffff");
+      ctx.fillStyle = "#f08a3a";
+      ellipse(ctx, x, y - 4 * k, 14.5 * k, 4.8 * k);
+      ctx.fill();
+      ctx.strokeStyle = "#fff1d8";
+      ctx.lineWidth = 1.6 * k;
+      for (let i = -1; i <= 1; i++) {
+        ctx.beginPath();
+        ctx.moveTo(x - 9 * k, y - 4 * k + i * 1.8 * k);
+        ctx.quadraticCurveTo(
+          x,
+          y - 6 * k + i * 1.8 * k,
+          x + 9 * k,
+          y - 4 * k + i * 1.8 * k,
+        );
+        ctx.stroke();
+      }
+      ctx.fillStyle = "#d8402a";
+      ellipse(ctx, x + 5 * k, y - 7 * k, 4 * k, 2.4 * k);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(x + 8 * k, y - 8 * k);
+      ctx.lineTo(x + 12 * k, y - 11 * k);
+      ctx.lineTo(x + 10 * k, y - 7 * k);
+      ctx.fill();
+      ctx.fillStyle = "#5fbf4f";
+      ellipse(ctx, x - 7 * k, y - 6 * k, 2.4 * k, 1.2 * k);
+      ctx.fill();
+      break;
+    }
+    case "phoenix": {
+      // The grand platter: a golden bird of roast and fruit on a long board.
+      ctx.fillStyle = "rgba(0,0,0,.25)";
+      ellipse(ctx, x, y + 3 * k, 19 * k, 5.6 * k);
+      ctx.fill();
+      ctx.fillStyle = "#8a5530";
+      ellipse(ctx, x, y, 18 * k, 6 * k);
+      ctx.fill();
+      ctx.fillStyle = "#b0703f";
+      ellipse(ctx, x, y - 1 * k, 16.5 * k, 5 * k);
+      ctx.fill();
+      ctx.fillStyle = lin(ctx, x - 10 * k, 0, x + 10 * k, 0, [
+        [0, "#d9701f"],
+        [0.5, "#ffb34a"],
+        [1, "#c85a18"],
+      ]);
+      ellipse(ctx, x - 1 * k, y - 5 * k, 9 * k, 5 * k);
+      ctx.fill();
+      // Wings and tail feathers in fire colours.
+      const cols = ["#ff5a3a", "#ffd65b", "#ff8a3d"];
+      for (let i = 0; i < 5; i++) {
+        ctx.fillStyle = cols[i % 3];
+        ctx.beginPath();
+        const a = -0.6 + i * 0.3;
+        ctx.ellipse(x + 9 * k, y - 7 * k, 6 * k, 1.6 * k, a, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = "#ffd65b";
+      ctx.beginPath();
+      ctx.arc(x - 9 * k, y - 9 * k, 2.4 * k, 0, 7);
+      ctx.fill();
+      ctx.fillStyle = "#5fbf4f";
+      for (const dx of [-14, 13]) {
+        ellipse(ctx, x + dx * k, y, 2.6 * k, 1.4 * k);
+        ctx.fill();
+      }
+      ctx.fillStyle = "#ff6b8a";
+      ctx.beginPath();
+      ctx.arc(x - 12 * k, y - 2 * k, 1.6 * k, 0, 7);
+      ctx.arc(x + 12 * k, y - 3 * k, 1.6 * k, 0, 7);
+      ctx.fill();
       break;
     }
   }
