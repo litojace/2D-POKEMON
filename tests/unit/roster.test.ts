@@ -146,7 +146,7 @@ describe("what a card says", () => {
     const other = rosterMarkup(rosterView("tidefin"), data());
     expect(other).toMatch(/data-roster-select="tidefin"/);
     expect(other).not.toMatch(/disabled[^>]*data-roster-select/);
-    expect(other).toContain("3/8 looks");
+    expect(other).toContain("3/9 looks");
   });
   it("can be a room's picker: the main button locks in instead", () => {
     const html = rosterMarkup(rosterView("voltkit"), data({ action: "lock" }));

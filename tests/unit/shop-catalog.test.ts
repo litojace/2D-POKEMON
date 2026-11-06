@@ -12,11 +12,12 @@ import {
   awakeningStage,
 } from "../../packages/shared/src/shop";
 
-/** 010 seeds the first catalog; 053 and 054 add the eight newest champions' skins. */
+/** 010 seeds the first catalog; 053 and 054 add the eight newest champions' skins; 069 the Cyber Mecha Epics. */
 const migration =
   readFileSync("supabase/migrations/010_shop.sql", "utf8") +
   readFileSync("supabase/migrations/053_new_champion_skins.sql", "utf8") +
-  readFileSync("supabase/migrations/054_new_champion_mythicals.sql", "utf8");
+  readFileSync("supabase/migrations/054_new_champion_mythicals.sql", "utf8") +
+  readFileSync("supabase/migrations/069_cyber_mecha_epics.sql", "utf8");
 /** Missions are re-seeded (with the solo flag) by 014. */
 const missionMigration = readFileSync(
   "supabase/migrations/014_missions.sql",
@@ -46,7 +47,28 @@ describe("shop catalog", () => {
         ).matchAll(/set name = '([^']+)' where id = '([a-z-]+)';/g),
       ].map(([, name, id]) => [id, name]),
     );
+    // 067 turns every Mythical into a Void Knight in place (same id, new
+    // name and collection).
+    const voidKnights = new Map(
+      [
+        ...readFileSync(
+          "supabase/migrations/067_void_knight_mythicals.sql",
+          "utf8",
+        ).matchAll(
+          /set name = '([^']+)', collection = 'void' where id = '([a-z-]+)';/g,
+        ),
+      ].map(([, name, id]) => [id, name]),
+    );
+    expect(voidKnights.size).toBe(16);
     for (const line of shopItemsSql.split("\n")) {
+      const knight = line.match(/^ {2}\('([a-z-]+)', 'champion'/)?.[1];
+      if (knight && voidKnights.has(knight)) {
+        expect(line).toContain(
+          `'${voidKnights.get(knight)}', 'mythical', 'void'`,
+        );
+        expect(migration).toContain(`('${knight}', 'champion'`);
+        continue;
+      }
       const id = line.match(/^ {2}\('([a-z-]+)', 'look'/)?.[1];
       const change = id ? updated.get(id) : undefined;
       // 032 renames the Colors pieces (American spelling) in place.
@@ -128,12 +150,20 @@ describe("shop catalog", () => {
           count("mythical"),
         ],
         id,
-      ).toEqual([7, 3, 2, 1, 1]);
+      ).toEqual([8, 3, 2, 2, 1]);
     }
-    expect(CHAMPION_SKINS).toHaveLength(7 * 16);
-    // Every Mythical belongs to the Celestial collection.
+    expect(CHAMPION_SKINS).toHaveLength(8 * 16);
+    // Each champion has one Cyber Mecha Epic.
+    for (const id of Object.keys(CHARACTERS))
+      expect(
+        CHAMPION_SKINS.filter(
+          (s) => s.champion === id && s.collection === "cyber",
+        ),
+        id,
+      ).toHaveLength(1);
+    // Every Mythical belongs to the Void Knight collection.
     for (const s of CHAMPION_SKINS.filter((s) => s.rarity === "mythical"))
-      expect(s.collection, s.id).toBe("celestial");
+      expect(s.collection, s.id).toBe("void");
   });
 
   it("uses unique ids across skins, collection pieces and bundles", () => {

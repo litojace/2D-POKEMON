@@ -31,7 +31,8 @@ export type Collection =
   | "festival"
   | "garden"
   | "arcade"
-  | "celestial"
+  | "void"
+  | "cyber"
   | "candy"
   | "galaxy"
   | "retro";
@@ -40,7 +41,8 @@ export const COLLECTION_NAMES: Record<Collection, string> = {
   festival: "Festival",
   garden: "Garden",
   arcade: "Arcade",
-  celestial: "Celestial",
+  void: "Void Knight",
+  cyber: "Cyber Mecha",
   candy: "Candy",
   galaxy: "Galaxy",
   retro: "Retro Pixel",
@@ -70,7 +72,7 @@ const skin = (
   ...(collection ? { collection } : {}),
 });
 
-/** 7 per champion: 3 Common, 2 Rare, 1 Epic, 1 Mythical. */
+/** 8 per champion: 3 Common, 2 Rare, 2 Epic (one Cyber Mecha), 1 Mythical. */
 export const CHAMPION_SKINS: ChampionSkin[] = [
   skin("voltkit", "midnight", "Midnight", "common", "Navy fur, cyan cheeks"),
   skin("voltkit", "peach-fizz", "Peach Fizz", "common", "Peach and pink"),
@@ -101,11 +103,19 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
   ),
   skin(
     "voltkit",
+    "arc-unit",
+    "Arc Unit",
+    "epic",
+    "Gold paint over chrome, a V-fin headset, an arc-core collar and a jetpack",
+    "cyber",
+  ),
+  skin(
+    "voltkit",
     "stormcrown",
-    "Stormcrown",
+    "Storm Revenant",
     "mythical",
-    "Storm-grey fur with gold lightning, a rain cloud and a crown of bolts",
-    "celestial",
+    "Black steel crackling with violet lightning: a crown of bolts and a gorget for its goggles and kerchief",
+    "void",
   ),
 
   skin("cindrake", "ashen", "Ashen", "common", "Charcoal body, ember crest"),
@@ -137,11 +147,19 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
   ),
   skin(
     "cindrake",
+    "reactor",
+    "Reactor",
+    "epic",
+    "Red plating, a chrome crest fin for its flame and a reactor core",
+    "cyber",
+  ),
+  skin(
+    "cindrake",
     "sunforged",
-    "Sunforged",
+    "Hellforge",
     "mythical",
-    "Obsidian with sun-gold cracks and a crest that becomes a sun",
-    "celestial",
+    "Black-iron horns and a crest of black hellfire",
+    "void",
   ),
 
   skin(
@@ -179,11 +197,19 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
   ),
   skin(
     "tidefin",
+    "hydro-frame",
+    "Hydro Frame",
+    "epic",
+    "Teal hull plating, a crest fin headset and magenta thrusters",
+    "cyber",
+  ),
+  skin(
+    "tidefin",
     "moontide",
-    "Moontide",
+    "Abyssal Reaver",
     "mythical",
-    "A glowing deep-sea body, moonlit skills and jellyfish clones",
-    "celestial",
+    "Deep-sea armour with a steel dorsal fin and tide-green runes",
+    "void",
   ),
 
   skin(
@@ -221,11 +247,19 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
   ),
   skin(
     "auralynx",
+    "prism-mech",
+    "Prism Mech",
+    "epic",
+    "Periwinkle armour, a V-fin headset and a cyan prism core",
+    "cyber",
+  ),
+  skin(
+    "auralynx",
     "celestial-sage",
-    "Celestial Sage",
+    "Spectral Warden",
     "mythical",
-    "Star-filled fur, orbiting stones and a mandala guard",
-    "celestial",
+    "Night-blue plate and a crown of spectral blades over its gem",
+    "void",
   ),
 
   skin("lumoth", "lunar", "Lunar", "common", "Silver-white fluff"),
@@ -257,11 +291,19 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
   ),
   skin(
     "lumoth",
+    "photon",
+    "Photon",
+    "epic",
+    "Mint plating, twin antennae with yellow lights and a jetpack",
+    "cyber",
+  ),
+  skin(
+    "lumoth",
     "starweaver",
-    "Starweaver",
+    "Fallen Lightbringer",
     "mythical",
-    "Wings woven from starlight and shooting-star sparks",
-    "celestial",
+    "Tarnished armour, a crown of blades between its antennae and a gold rune glow",
+    "void",
   ),
 
   skin("mystowl", "snowy", "Snowy", "common", "White feathers, gold eyes"),
@@ -293,11 +335,19 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
   ),
   skin(
     "mystowl",
+    "psi-core",
+    "Psi Core",
+    "epic",
+    "Pink plating, sensor antennae and a cyan psi core",
+    "cyber",
+  ),
+  skin(
+    "mystowl",
     "oracle",
-    "Oracle",
+    "Void Inquisitor",
     "mythical",
-    "A third eye that opens onto a galaxy, with orbiting rune cards",
-    "celestial",
+    "Dark plate, a crown of blades and a third eye that never closes",
+    "void",
   ),
 
   skin("terradon", "mossy", "Mossy", "common", "Moss on the shell"),
@@ -335,11 +385,19 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
   ),
   skin(
     "terradon",
+    "tank-mk2",
+    "Tank Mk II",
+    "epic",
+    "Olive armour plate, a radar dish for its sprout and orange lights",
+    "cyber",
+  ),
+  skin(
+    "terradon",
     "world-shell",
-    "World-Shell",
+    "Obsidian Bulwark",
     "mythical",
-    "A tiny living island on its back, with birds and a waterfall",
-    "celestial",
+    "Ram horns, obsidian crystals for a sprout and a spiked shell",
+    "void",
   ),
 
   skin("duskveil", "ember", "Ember", "common", "Orange flame, charcoal hood"),
@@ -383,11 +441,19 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
   ),
   skin(
     "duskveil",
+    "phantom-os",
+    "Phantom OS",
+    "epic",
+    "Violet plating, antennae on the hood and a green core",
+    "cyber",
+  ),
+  skin(
+    "duskveil",
     "eclipse",
-    "Eclipse",
+    "Crimson Sovereign",
     "mythical",
-    "A hood that becomes a total eclipse; a tiny black-sun Void Orb",
-    "celestial",
+    "A horned black hood, crimson eyes and a rune gorget",
+    "void",
   ),
 
   // The eight newest champions.
@@ -438,11 +504,19 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
   ),
   skin(
     "coilemur",
+    "tesla-frame",
+    "Tesla Frame",
+    "epic",
+    "Brushed steel, coil antennae and yellow tesla lights",
+    "cyber",
+  ),
+  skin(
+    "coilemur",
     "cometcaller",
-    "Cometcaller",
+    "Volt Executioner",
     "mythical",
-    "Starry midnight fur, a comet pendant and a crown of comets",
-    "celestial",
+    "Gunmetal plate, cyan-striped limbs and a crown of bolts",
+    "void",
   ),
 
   skin("pyranda", "snowy", "Snowy", "common", "White fur, smoky markings"),
@@ -474,11 +548,19 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
   ),
   skin(
     "pyranda",
+    "afterburner",
+    "Afterburner",
+    "epic",
+    "Rust-orange plating, a V-fin and cyan afterburners",
+    "cyber",
+  ),
+  skin(
+    "pyranda",
     "harvest-moon",
-    "Harvest Moon",
+    "Ashen Warlord",
     "mythical",
-    "Night-sky fur with ember spots, a lantern moon and a harvest moon",
-    "celestial",
+    "Ash-grey markings, ember runes and a crown of black flame",
+    "void",
   ),
 
   skin("glacelle", "deep-sea", "Deep Sea", "common", "Navy body, cyan glow"),
@@ -510,11 +592,19 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
   ),
   skin(
     "glacelle",
+    "cryo-unit",
+    "Cryo Unit",
+    "epic",
+    "Ice-white plating, a V-fin and pink cryo lights",
+    "cyber",
+  ),
+  skin(
+    "glacelle",
     "polaris",
-    "Polaris",
+    "Rimebane",
     "mythical",
-    "A starry night body, a north-star crown and aurora ribbons",
-    "celestial",
+    "A crown of black ice and frost-bright runes",
+    "void",
   ),
 
   skin(
@@ -552,11 +642,19 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
   ),
   skin(
     "halcyra",
+    "sniper-drone",
+    "Sniper Drone",
+    "epic",
+    "Cobalt plating, a radar dish and orange thrusters",
+    "cyber",
+  ),
+  skin(
+    "halcyra",
     "starfletch",
-    "Starfletch",
+    "Nightfeather",
     "mythical",
-    "Constellation feathers, a star-bow sigil and shooting-star arrows",
-    "celestial",
+    "Midnight plumage, a crown of blades and a rune-lit monocle",
+    "void",
   ),
 
   skin("sunbara", "cocoa", "Cocoa", "common", "Dark cocoa fur"),
@@ -588,11 +686,19 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
   ),
   skin(
     "sunbara",
+    "solar-mech",
+    "Solar Mech",
+    "epic",
+    "Tan plating, a radar dish for its yuzu and a teal solar core",
+    "cyber",
+  ),
+  skin(
+    "sunbara",
     "daybreak",
-    "Daybreak",
+    "Eclipse Templar",
     "mythical",
-    "Sunrise fur with dawn bands, a sun corona and a sunrise behind it",
-    "celestial",
+    "A black sun with a blade corona where the yuzu sat",
+    "void",
   ),
 
   skin(
@@ -636,11 +742,19 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
   ),
   skin(
     "astrabun",
+    "warp-unit",
+    "Warp Unit",
+    "epic",
+    "Lilac plating, a V-fin between its ears and pink warp jets",
+    "cyber",
+  ),
+  skin(
+    "astrabun",
     "full-moon",
-    "Full Moon",
+    "Rift Duelist",
     "mythical",
-    "Moon-gold fur with craters, a crescent tiara and a full moon",
-    "celestial",
+    "Violet runes, a rift gem and a crown of blades between its ears",
+    "void",
   ),
 
   skin("wombolder", "sandy", "Sandy", "common", "Pale sand fur"),
@@ -672,11 +786,19 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
   ),
   skin(
     "wombolder",
+    "bulldozer",
+    "Bulldozer",
+    "epic",
+    "Brown work plating, a crest fin for its stone and lime lights",
+    "cyber",
+  ),
+  skin(
+    "wombolder",
     "saturnine",
-    "Saturnine",
+    "Iron Juggernaut",
     "mythical",
-    "Banded planet fur, orbiting moonlets and a planetary ring",
-    "celestial",
+    "A riveted iron helm with horns and acid-green runes",
+    "void",
   ),
 
   skin(
@@ -714,11 +836,19 @@ export const CHAMPION_SKINS: ChampionSkin[] = [
   ),
   skin(
     "shadopus",
+    "stealth-mk",
+    "Stealth Mk",
+    "epic",
+    "Indigo stealth plating, antennae and red sensor lights",
+    "cyber",
+  ),
+  skin(
+    "shadopus",
     "nebula",
-    "Nebula",
+    "Abyss Stalker",
     "mythical",
-    "Nebula skin, star suckers and a spiral galaxy",
-    "celestial",
+    "Black chitin, a crown of blades and magenta runes",
+    "void",
   ),
 ];
 
@@ -812,7 +942,8 @@ export const COLLECTION_TIER: Record<Collection, 0 | 1 | 2> = {
   garden: 0,
   retro: 0,
   arcade: 0,
-  celestial: 0,
+  void: 0,
+  cyber: 0,
   winter: 1,
   festival: 1,
   galaxy: 2,
