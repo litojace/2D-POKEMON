@@ -38,6 +38,8 @@ const MECHA: Record<
   astrabun: { sensor: "vfin", band: [16, 14] },
   wombolder: { sensor: "fin", band: [29, 12], neck: 127 },
   shadopus: { sensor: "antenna", band: [27, 12], neck: 128 },
+  pangrove: { sensor: "vfin", band: [24, 12] },
+  mossloth: { sensor: "dish", band: [24, 10] },
 };
 
 const CHROME = "#dfe6f0",

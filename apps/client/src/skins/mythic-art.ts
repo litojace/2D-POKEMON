@@ -180,6 +180,26 @@ export const VOID_KNIGHTS: Record<Mythic, VoidKnight> = {
     neck: 128,
     cape: 158,
   },
+  "thorn-warden": {
+    champion: "pangrove",
+    rune: "#7dff3a",
+    hot: "#e8ffd0",
+    crest: "blades",
+    band: [24, 12],
+    horns: "spike",
+    hornAt: [30, 18],
+    cape: 156,
+  },
+  "blight-sentinel": {
+    champion: "mossloth",
+    rune: "#3affc0",
+    hot: "#d6fff2",
+    crest: "crystals",
+    band: [22, 10],
+    horns: "ram",
+    hornAt: [34, 30],
+    cape: 158,
+  },
 };
 
 const STEEL = "#252a37",

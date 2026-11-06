@@ -67,7 +67,7 @@ function moment(skin: string, stage: number, start: Partial<FxContext>) {
 }
 
 it("plays every Void Knight's entrance, victory and stage III ultimate, then stops", () => {
-  expect(knights).toHaveLength(16);
+  expect(knights).toHaveLength(18);
   for (const { id } of knights) {
     // The resting frame's own drawing (the stage's ambient effects).
     const idle = moment(id, 3, {})[5];

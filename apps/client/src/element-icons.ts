@@ -14,6 +14,8 @@ const paths: Record<string, string> = {
   shadow:
     '<path d="M5 22V11a7 7 0 0 1 14 0v11l-3-2-2 2-2-2-2 2-2-2Z" fill="currentColor"/><circle cx="9.5" cy="11" r="1.5" fill="#0b1628"/><circle cx="14.5" cy="11" r="1.5" fill="#0b1628"/>',
 };
+paths.nature =
+  '<path d="M20 3C9 3 4 9 4 16c0 2 .5 3.5 1 5 1.5-5 5-9 10-11-4 3-7 7-8 12 9 1 13-6 13-19Z" fill="currentColor"/>';
 export function elementIcon(element: string) {
   const art = paths[element.toLowerCase()] ?? paths.light;
   return `<svg class="element-icon" viewBox="0 0 24 24" aria-hidden="true">${art}</svg>`;

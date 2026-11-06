@@ -317,6 +317,17 @@ describe("Polarity fairness and champion tricks", () => {
     expect(a.heroes()[0].hp).toBe(CHARACTERS.terradon.health);
     expect(a.raid.contributions!.p0.pillars).toBe(0);
   });
+  it("Pangrove curled in its Scale Curl takes no Polarity damage", () => {
+    for (const curled of [true, false]) {
+      const a = setup(1, 3, 1, ["pangrove"]);
+      attack(a, "polarity");
+      if (curled) a.status(a.heroes()[0], "shield", 5);
+      run(a, 4.1);
+      const lost = CHARACTERS.pangrove.health - a.heroes()[0].hp;
+      if (curled) expect(lost).toBe(0);
+      else expect(lost).toBeGreaterThan(0);
+    }
+  });
   it("Chain Lightning jumps only within 200px, with decreasing damage and no repeated victims", () => {
     const a = setup(3);
     a.heroes().forEach((p, i) => {

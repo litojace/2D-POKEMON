@@ -313,8 +313,10 @@ export class SomnaraArena extends RaidArena {
   }
   private addDrowsy(p: Fighter, bubble = false) {
     if (p.hp <= 0 || (bubble && this.hasRite(p, "lucid"))) return;
-    // Shadopus hidden in its Ink Cloud, and anyone in a Warm Spring, stay awake.
-    if (this.inked(p) || this.inSpring(p)) return;
+    // Shadopus hidden in its Ink Cloud, and anyone in a Warm Spring (or
+    // Mossloth's prickly Bramble Patch), stay awake.
+    if (this.inked(p) || this.inSpring(p) || this.inSpring(p, "bramble-patch"))
+      return;
     const d = ((this.raid.drowsy ??= {})[p.id] ??= {
       stacks: 0,
       sleepUntil: 0,

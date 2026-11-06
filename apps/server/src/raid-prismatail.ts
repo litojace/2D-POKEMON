@@ -105,7 +105,7 @@ export class PrismatailArena extends RaidArena {
       : "The light fades. Reconnect the mirrors and try again.";
   }
   override status(p: Fighter, kind: StatusKind, duration: number, by?: string) {
-    if (p.raidBoss && ["stun", "freeze", "paralysis", "sleep"].includes(kind))
+    if (p.raidBoss && ["stun", "freeze", "paralysis", "sleep", "root"].includes(kind))
       return;
     super.status(p, kind, duration, by);
   }

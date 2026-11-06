@@ -101,7 +101,9 @@ export type Mythic =
   | "eclipse-templar"
   | "rift-duelist"
   | "iron-juggernaut"
-  | "abyss-stalker";
+  | "abyss-stalker"
+  | "thorn-warden"
+  | "blight-sentinel";
 export interface SkinArt {
   palette: Partial<Palette>;
   pattern?: { kind: PatternKind; color: string; color2?: string; opacity?: number; parts?: CreaturePart[] };
@@ -778,6 +780,88 @@ export const SKIN_ART: Record<string, SkinArt> = {
     detail: "glint",
     mythic: "abyss-stalker",
   },
+  // --------------------------------------------------------------- Pangrove
+  "pangrove-autumn": { palette: { light: "#fff0d0", mid: "#e0883a", dark: "#4a2210", glow: "#ffe08a", accent: "#b04a1e" } },
+  "pangrove-frostleaf": { palette: { light: "#f4fbff", mid: "#a8d0e0", dark: "#22404e", glow: "#bff4ff", accent: "#6a9ab8" } },
+  "pangrove-jade": { palette: { light: "#e0fff0", mid: "#2fa878", dark: "#0a3a28", glow: "#ffd65b", accent: "#147a54" } },
+  "pangrove-blossom": {
+    palette: { light: "#fff2f8", mid: "#f4a8c8", dark: "#5a2440", glow: "#fff2a0", accent: "#e06a9a" },
+    accessories: ["flower-crown"],
+    trail: { kind: "petal", colors: [0xffb3d1, 0xffffff] },
+  },
+  "pangrove-lantern-night": {
+    palette: { light: "#ffe8d0", mid: "#d8442e", dark: "#3a0e08", glow: "#ffd65b", accent: "#8a1e12" },
+    pattern: { kind: "petals", color: "#ffd65b", opacity: 0.45 },
+    accessories: ["lantern-tassels"],
+    trail: { kind: "confetti", colors: [0xffd65b, 0xff4f3a, 0xffffff] },
+  },
+  "pangrove-golden-sap": {
+    palette: { light: "#fff6d8", mid: "#e0a43a", dark: "#4a2c08", glow: "#ffe36b", accent: "#a8681a" },
+    pattern: { kind: "veins", color: "#fff0a8", opacity: 0.8 },
+    accessories: ["stem"],
+    trail: { kind: "coin", colors: [0xffd65b, 0xffb02e] },
+    skill: 0xffc93d,
+    detail: "glint",
+  },
+  "pangrove-scaleroller": {
+    palette: { light: "#f4f8ff", mid: "#4a8a5a", dark: "#161c2a", glow: "#7dff3a", accent: "#2a3a2e" },
+    pattern: { kind: "plating", color: "#7dff3a", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0x7dff3a, 0xffffff] },
+    skill: 0x7dff3a,
+    detail: "scan",
+  },
+  "pangrove-evergrove": {
+    palette: { light: "#98a890", mid: "#2a3328", dark: "#080c08", glow: "#7dff3a", accent: "#2a4020" },
+    pattern: { kind: "runes", color: "#7dff3a", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    replaces: ["flame", "scarf"],
+    trail: { kind: "void", colors: [0x7dff3a, 0x1a1028] },
+    skill: 0x7dff3a,
+    detail: "glint",
+    mythic: "thorn-warden",
+  },
+  // --------------------------------------------------------------- Mossloth
+  "mossloth-cinnamon": { palette: { light: "#fff0dc", mid: "#b0703e", dark: "#3a1e0c", glow: "#a8e070", accent: "#ffb38a" } },
+  "mossloth-snowy": { palette: { light: "#ffffff", mid: "#e8e6dc", dark: "#4a4a40", glow: "#d6f5a8", accent: "#bfe6ff" } },
+  "mossloth-dusk": { palette: { light: "#f0e8ff", mid: "#9a8ab0", dark: "#2a2038", glow: "#c8a0ff", accent: "#ffd0f0" } },
+  "mossloth-acorn-nap": {
+    palette: { light: "#fff4e0", mid: "#c8a070", dark: "#3e2a14", glow: "#b8e07a", accent: "#ffb3c8" },
+    accessories: ["acorn-cap"],
+    trail: { kind: "leaf", colors: [0x8fd36a, 0xc89a5a, 0xe0b040] },
+  },
+  "mossloth-cozy-knit": {
+    palette: { light: "#ffffff", mid: "#d8dce4", dark: "#3a404e", glow: "#a8e0ff", accent: "#ff8fa8" },
+    pattern: { kind: "snow", color: "#ffffff", opacity: 0.85 },
+    accessories: ["knit-scarf"],
+    trail: { kind: "snow", colors: [0xffffff, 0xdfe6ee] },
+  },
+  "mossloth-bonsai-keeper": {
+    palette: { light: "#f6f0e0", mid: "#a89870", dark: "#33301e", glow: "#ffb3d1", accent: "#ff8fb8" },
+    pattern: { kind: "petals", color: "#ffd0e4", opacity: 0.5 },
+    accessories: ["bonsai"],
+    trail: { kind: "petal", colors: [0xffb3d1, 0xffffff] },
+    skill: 0xff9fc8,
+    detail: "shimmer",
+  },
+  "mossloth-treehugger": {
+    palette: { light: "#f4f8ff", mid: "#8a8468", dark: "#161c2a", glow: "#3affc0", accent: "#4a4838" },
+    pattern: { kind: "plating", color: "#3affc0", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0x3affc0, 0xffffff] },
+    skill: 0x3affc0,
+    detail: "scan",
+  },
+  "mossloth-moonbloom": {
+    palette: { light: "#a0a898", mid: "#30332c", dark: "#0a0c08", glow: "#3affc0", accent: "#24402e" },
+    pattern: { kind: "runes", color: "#3affc0", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    replaces: ["flame", "scarf"],
+    trail: { kind: "void", colors: [0x3affc0, 0x1a1028] },
+    skill: 0x3affc0,
+    detail: "glint",
+    mythic: "blight-sentinel",
+  },
 };
 
 /** Where a champion's head sits, per facing (art units, measured). */
@@ -798,6 +882,8 @@ export const HEAD: Record<CharacterId, Record<Facing, { cx: number; top: number 
   astrabun: { down: { cx: 100, top: 44 }, up: { cx: 100, top: 44 }, left: { cx: 94, top: 44 }, right: { cx: 106, top: 44 } },
   wombolder: { down: { cx: 100, top: 48 }, up: { cx: 100, top: 48 }, left: { cx: 94, top: 47 }, right: { cx: 106, top: 47 } },
   shadopus: { down: { cx: 100, top: 27 }, up: { cx: 100, top: 27 }, left: { cx: 99, top: 30 }, right: { cx: 101, top: 30 } },
+  pangrove: { down: { cx: 100, top: 50 }, up: { cx: 100, top: 50 }, left: { cx: 94, top: 50 }, right: { cx: 106, top: 50 } },
+  mossloth: { down: { cx: 100, top: 54 }, up: { cx: 100, top: 54 }, left: { cx: 94, top: 54 }, right: { cx: 106, top: 54 } },
 };
 
 /** Default parts a pattern covers (the eyes are a separate layer and stay clear). */

@@ -59,6 +59,15 @@ for (const size of SIZES)
       const cards = page.locator(".roster-card");
       await expect(cards).toHaveCount(total);
       expect(total).toBeGreaterThanOrEqual(16);
+      // Six to a row at every review size: eighteen fighters are three
+      // even rows.
+      const cols = await page
+        .locator(".roster-grid")
+        .evaluate(
+          (g) => getComputedStyle(g).gridTemplateColumns.split(" ").length,
+        );
+      expect(cols).toBe(6);
+      expect(total % cols).toBe(0);
       const boxes = await cards.evaluateAll((els) =>
         els.map((e) => e.getBoundingClientRect().toJSON()),
       );

@@ -1184,8 +1184,10 @@ it("passes farm actions and leaf trades to the database only when the request is
     ).status,
   ).toBe(401);
   expect(calls).toHaveLength(3);
-  // Every champion in the roster can be your farmer, the newest eight too.
+  // Every champion in the roster can be your farmer, the newest ten too.
   for (const id of [
+    "pangrove",
+    "mossloth",
     "coilemur",
     "pyranda",
     "glacelle",
