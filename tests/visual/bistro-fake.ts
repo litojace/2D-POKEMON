@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 
 /**
- * A stand-in for the Bistro's server (migration 067) inside the page: the
+ * A stand-in for the Bistro's server (migration 068) inside the page: the
  * harness has no database. It runs the same shared rules the database
  * mirrors (exposed by the scene as window.__bistroRules in development) on
  * a clock the test can move (window.__bistroServer.advance).

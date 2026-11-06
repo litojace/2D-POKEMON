@@ -1,7 +1,7 @@
 /*
  * Element Bistro: the catalog and the rules, shared by the client and the
  * tests. The rules that change coins, stoves, the counter, the staff and the
- * floor plan run in the database (supabase/migrations/067_bistro.sql), on the
+ * floor plan run in the database (supabase/migrations/068_bistro.sql), on the
  * server's clock; the client runs these same rules to show an action at once
  * and to animate, then takes the server's answer. Tests check the numbers and
  * the rules agree with the SQL (tests/integration/bistro.test.ts).
@@ -679,7 +679,7 @@ export function payment(
   if (o.special) base *= SPECIAL_MULT;
   if (o.vip) base *= VIP_MULT;
   base = Math.round(base);
-  // Whole percents, so the database (067_bistro.sql) rounds the same way.
+  // Whole percents, so the database (068_bistro.sql) rounds the same way.
   const combo = Math.min(COMBO_MAX, Math.max(1, Math.floor(o.combo ?? 1)));
   const hearts = Math.min(3, Math.max(1, Math.floor(o.hearts ?? 3)));
   let pct = (combo - 1) * 8 + (hearts - 1) * 5 + (o.quick ? 10 : 0);

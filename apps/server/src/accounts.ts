@@ -55,7 +55,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "067_bistro.sql";
+export const LATEST_MIGRATION = "068_bistro.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -635,7 +635,7 @@ export function installAccountRoutes(
       res.json(result);
     }),
   );
-  // The Element Bistro (migration 067): its state at the server's time,
+  // The Element Bistro (migration 068): its state at the server's time,
   // actions, and friends' bistros.
   const bistroId = z
     .string()

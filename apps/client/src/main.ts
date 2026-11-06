@@ -1822,7 +1822,7 @@ function syncLobby(want: boolean) {
   }
   lobby.update(lobbyView());
 }
-/** The Bistro (migration 067): the server's restaurant, next to the Farm. */
+/** The Bistro (migration 068): the server's restaurant, next to the Farm. */
 let bistro: BistroHandle | undefined;
 let bistroOwner: string | undefined;
 function syncBistro(want: boolean) {

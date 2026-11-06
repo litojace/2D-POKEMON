@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { createArenaServer } from "../../apps/server/src/server";
 import { fakeAccounts } from "../helpers/accounts";
 
-// The Bistro's routes (migration 067): checked, then passed to the database,
+// The Bistro's routes (migration 068): checked, then passed to the database,
 // which owns the rules and the clock.
 let server: ReturnType<typeof createArenaServer>,
   accounts: ReturnType<typeof fakeAccounts>,

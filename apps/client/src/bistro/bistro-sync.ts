@@ -1,5 +1,5 @@
 /*
- * Element Bistro: keeping the scene and the server in step (migration 067).
+ * Element Bistro: keeping the scene and the server in step (migration 068).
  * The server owns the bistro: its clock, its coins, its rules. The scene
  * shows each action at once by running the same rules
  * (packages/shared/src/bistro.ts) on a local copy, and sends the actions in

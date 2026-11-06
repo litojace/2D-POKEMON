@@ -1,5 +1,6 @@
 -- Element Bistro: a restaurant next to the Farm, kept on the server.
--- Run after 066_display_name_changes.sql. Safe to run again.
+-- Run after 066 (066_display_name_changes.sql, 066_farm_more_pests.sql); it does not
+-- need 067. Safe to run again.
 --
 -- The server owns time and money, like the Farm. Every change goes through
 -- arena_bistro_act (a list of actions with a request id: a retried request

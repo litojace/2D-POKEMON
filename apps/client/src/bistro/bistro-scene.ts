@@ -161,7 +161,7 @@ export interface BistroFriend {
 export interface BistroOptions {
   /** Whose bistro (the account id): keeps it ready this session. */
   owner?: string;
-  /** The server (migration 067): your bistro, its actions, friends' bistros. */
+  /** The server (migration 068): your bistro, its actions, friends' bistros. */
   api: BistroApi & {
     friends(): Promise<BistroFriend[]>;
     visit(id: string): Promise<unknown>;

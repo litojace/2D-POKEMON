@@ -2,7 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { openLobby, snap } from "./helpers";
 import { fakeBistro } from "./bistro-fake";
 
-// The Bistro tab (migration 067). The harness has no database: bistro-fake.ts
+// The Bistro tab (migration 068). The harness has no database: bistro-fake.ts
 // answers /api/bistro* in the page with the same shared rules.
 const B = (page: Page, js: string) =>
   page.evaluate(

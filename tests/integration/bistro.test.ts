@@ -20,7 +20,7 @@ import {
   type DishId,
 } from "../../packages/shared/src/bistro";
 
-// Migration 067: the Element Bistro on the server.
+// Migration 068: the Element Bistro on the server.
 let db: PGlite;
 const ana = "00000000-0000-4000-8000-000000000671";
 const ben = "00000000-0000-4000-8000-000000000672";

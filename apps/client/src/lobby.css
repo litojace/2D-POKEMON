@@ -1475,6 +1475,13 @@ body:not(.hub-active) #account-leaves {
     width: 80px;
   }
 }
+@media (max-height: 500px) {
+  .hub-scenes button {
+    width: 54px;
+    font-size: 12.5px;
+    letter-spacing: 0.06em;
+  }
+}
 @media (max-height: 500px) and (max-width: 760px) {
   .hub-scenes button {
     width: 50px;
