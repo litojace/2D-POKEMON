@@ -66,6 +66,11 @@ import {
   type Snapshot,
   type StatusKind,
   type Zone,
+  MOSS,
+  PLATES,
+  ROLL,
+  platesOf,
+  seedStage,
 } from "../../../packages/shared/src/index.js";
 import { chooseRite, type BotBrain } from "./bot.js";
 import { projectileContact } from "./projectile-collision.js";
@@ -117,6 +122,18 @@ export class Arena {
   private rushes = new Map<string, { until: number; ability: Ability }>();
   /** Armed ambush bonuses (cast out of stealth), by fighter id. */
   private ambushes = new Map<string, { mult: number; until: number }>();
+  /** Curl & Roll: when each roller last rammed each enemy (by id). */
+  private rollHits = new Map<string, Map<string, number>>();
+  /** Tongue Grapple zips: toward an enemy (followed) or a point, stopping `gap` short. */
+  private zips = new Map<
+    string,
+    { target?: string; x: number; y: number; gap: number; speed: number; until: number }
+  >();
+  /** Pinball flights: the enemies hit on the current stretch, and bounces left then. */
+  private pinballs = new Map<
+    string,
+    { ability: Ability; hit: Set<string>; bounces: number }
+  >();
   protected clearBufferedSkills(id?: string) {
     if (id === undefined) this.bufferedSkills.clear();
     else this.bufferedSkills.delete(id);
@@ -414,6 +431,9 @@ export class Arena {
     this.clearInputQueue();
     this.rushes.clear();
     this.ambushes.clear();
+    this.rollHits.clear();
+    this.pinballs.clear();
+    this.zips.clear();
     // Fighter roulette: a fresh random fighter for everyone each round.
     if (this.rule("random") && !this.practice)
       for (const p of this.players) {
@@ -467,6 +487,13 @@ export class Arena {
         charge: undefined,
         channel: undefined,
         clone: undefined,
+        roll: undefined,
+        pinball: undefined,
+        plates: undefined,
+        plateAt: 0,
+        moss: 0,
+        mossAt: 0,
+        mossStill: undefined,
         lastInput: blankInput(),
       });
     }
@@ -487,6 +514,11 @@ export class Arena {
     this.clearBufferedSkills(p.id);
     this.rushes.delete(p.id);
     this.ambushes.delete(p.id);
+    this.rollHits.delete(p.id);
+    this.pinballs.delete(p.id);
+    this.zips.delete(p.id);
+    p.roll = undefined;
+    p.pinball = undefined;
     p.vx = p.vy = 0;
     p.dashUntil = p.jumpUntil = 0;
     p.charge = undefined;
@@ -591,8 +623,10 @@ export class Arena {
       // while its current animation recovers, or refresh its expiry.
       this.clearBufferedSkills(p.id);
       const free = !!this.practice?.unlimitedCooldowns && p === this.players[0];
+      // Casting Curl & Roll again while rolling uncurls (it's on cooldown then).
+      const uncurl = !!p.roll && input.skill === p.roll.slot;
       if (input.skill < SKILL_SLOTS && p.hp > 0 &&
-          skillReady(p, input.skill, this.time, free) &&
+          (uncurl || skillReady(p, input.skill, this.time, free)) &&
           p.recoveryUntil <= this.time + SKILL_INPUT_BUFFER &&
           !p.statuses.some(s => s.until > this.time && DISABLING_STATUSES.includes(s.kind)))
         this.bufferedSkills.set(p.id, { slot: input.skill, ex: !!input.ex, until: this.time + SKILL_INPUT_BUFFER });
@@ -758,6 +792,14 @@ export class Arena {
     if (this.has(target, "shield")) dealt *= STATUS_RULES.shieldReduction;
     if (this.has(target, "sleep")) dealt *= STATUS_RULES.sleepVulnerability;
     if (this.has(target, "shell")) dealt *= STATUS_RULES.shellReduction;
+    // Curled up (Curl & Roll, Pinball): the ball takes less.
+    if (target.roll && this.time < target.roll.until)
+      dealt *= this.skillOfKind(target, "roll")?.roll?.reduction ?? 1;
+    if (target.pinball && this.time < target.dashUntil)
+      dealt *= this.skillOfKind(target, "pinball")?.pinball?.reduction ?? 1;
+    // Moss: each stack takes a little off.
+    if (CHARACTERS[target.character].passive === "moss")
+      dealt *= 1 - MOSS.reduction * (target.moss ?? 0);
     if (this.rule("glass")) dealt *= MUTATOR_RULES.glassDamage;
     if (source && source !== target && this.teamedUp(source)) {
       dealt *= TEAMUP.damage;
@@ -770,6 +812,16 @@ export class Arena {
         dealt *= this.gift(source, "Shadow") ?? 1;
     }
     dealt *= this.gift(target, "Aura") ?? 1;
+    // Armour plates (Pangrove): one breaks to halve a real hit; any damage
+    // puts their regrowth off.
+    if (CHARACTERS[target.character].passive === "plates" && dealt > 0) {
+      if (ability && dealt >= PLATES.minHit && platesOf(target) > 0) {
+        dealt *= PLATES.block;
+        target.plates = platesOf(target) - 1;
+        this.event("burst", target, 0x9be37a, target.plates, target.id, "plate-break");
+      }
+      target.plateAt = this.time + PLATES.regrowDelay;
+    }
     dealt = Math.min(this.damageLimit(target), dealt);
     const standing = target.hp > 0;
     target.hp = Math.max(0, target.hp - dealt);
@@ -821,7 +873,7 @@ export class Arena {
       ...(comboName ? { combo: comboName } : {}),
       ...(ambushed ? { ambush: true } : {}),
     });
-    // Life drain (Sap Bite, Thornwheel) and the Nature team-up gift heal the
+    // Life drain (an ability's `drain`) and the Nature team-up gift heal the
     // attacker for a share of what the hit dealt.
     if (source && source !== target && dealt > 0 && source.hp > 0) {
       const share = (ability?.drain ?? 0) + (this.gift(source, "Nature") ?? 0);
@@ -910,6 +962,54 @@ export class Arena {
       this.lineClear(p, enemy)
     );
   }
+  /** This fighter's (rite-changed) skill of a kind, if its kit has one. */
+  skillOfKind(p: Fighter, kind: Ability["kind"]) {
+    return this.kit(p).skills.find((k) => k.kind === kind);
+  }
+  /** Are the owners of these two things (fighters, shots, zones) on different sides? */
+  rivals(a: string, b: string) {
+    if (a === b) return false;
+    const pa = this.players.find((q) => q.id === a),
+      pb = this.players.find((q) => q.id === b);
+    return !pa || !pb || this.teamOf(pa) !== this.teamOf(pb);
+  }
+  /** Curl & Roll ends: back on its feet. */
+  endRoll(p: Fighter) {
+    if (!p.roll) return;
+    p.roll = undefined;
+    this.rollHits.delete(p.id);
+    this.event("land", p, CHARACTERS[p.character].color, undefined, p.id);
+  }
+  /** Pinball ends (out of bounces or time, or stopped): it can act again. */
+  endPinball(p: Fighter) {
+    this.pinballs.delete(p.id);
+    if (!p.pinball) return;
+    p.pinball = undefined;
+    p.dashUntil = Math.min(p.dashUntil, this.time);
+    p.recoveryUntil = Math.min(p.recoveryUntil, this.time + 0.15);
+  }
+  /**
+   * A seedling goes off: everyone near it takes its hit (scaled by how far it
+   * grew) and the seedling is gone.
+   */
+  bloomSeed(zone: Zone, stage: number) {
+    const a = zone.ability;
+    const share = a.seed?.stages[stage] ?? 1;
+    const hit: Ability = {
+      ...a,
+      damage: Math.round(a.damage * share),
+      statusDuration: (a.statusDuration ?? 1) * share,
+    };
+    zone.until = this.time;
+    this.event("burst", zone, zone.color, stage, zone.owner, a.id);
+    for (const enemy of this.enemiesOfOwner(zone.owner))
+      if (
+        enemy.hp > 0 &&
+        Math.hypot(enemy.x - zone.x, enemy.y - zone.y) <
+          zone.radius + this.hitRadius(enemy)
+      )
+        this.damage(enemy, hit.damage, zone.owner, hit);
+  }
   cast(p: Fighter, a: Ability, ex = false) {
     if (p.hp <= 0 || p.out) return;
     this.walls();
@@ -944,7 +1044,7 @@ export class Arena {
     // A primed self-combo payoff that flies (Static Lance after Static Glide)
     // lands after the cast has spent the mark, so the shot carries it.
     const shotAbility =
-      selfPrimed && ["projectile", "charged", "barrage"].includes(a.kind)
+      selfPrimed && ["projectile", "charged", "barrage", "shrapnel"].includes(a.kind)
         ? { ...a, selfPrimed: true }
         : a;
     const projectile = (offset: number) => {
@@ -1016,6 +1116,16 @@ export class Arena {
           this.lineClear(p, enemy)
         )
           this.damage(enemy, a.damage, p.id, a);
+      }
+      if (a.bloom) {
+        // Overgrowth: every seedling blooms at full growth, the moss grows full.
+        for (const z of this.zones)
+          if (z.owner === p.id && z.ability.kind === "seedling" && z.until > this.time)
+            this.bloomSeed(z, (z.ability.seed?.stages.length ?? 1) - 1);
+        if (CHARACTERS[p.character].passive === "moss") {
+          p.moss = MOSS.max;
+          p.mossAt = this.time + MOSS.shedEvery;
+        }
       }
     }
     if (a.kind === "beam") {
@@ -1117,6 +1227,228 @@ export class Arena {
       p.dashUntil = this.time + seconds;
       p.recoveryUntil = Math.max(p.recoveryUntil, this.time + seconds);
       this.rushes.set(p.id, { until: this.time + seconds, ability: a });
+    }
+    if (a.kind === "shrapnel") {
+      // Every plate becomes blades: `count`, plus `count` per plate.
+      const plated = CHARACTERS[p.character].passive === "plates";
+      const n = Math.max(1, (a.count ?? 3) * (1 + (plated ? platesOf(p) : 0)));
+      if (plated) {
+        p.plates = 0;
+        p.plateAt = this.time + PLATES.regrowDelay;
+      }
+      const fan = a.fan ?? 1.5;
+      for (let i = 0; i < n; i++)
+        projectile(n === 1 ? 0 : -fan / 2 + (fan * i) / (n - 1));
+    }
+    if (a.kind === "grapple") {
+      // The tongue: the first enemy (or decoy) or wall along the aim.
+      const dx = Math.cos(angle),
+        dy = Math.sin(angle);
+      const contact = projectileContact(
+        p,
+        { x: p.x + dx * a.range, y: p.y + dy * a.range },
+        a.radius,
+        currentObstacles(),
+      );
+      const reach = contact ? a.range * contact.fraction : a.range;
+      let x = p.x + dx * a.range,
+        y = p.y + dy * a.range,
+        struck: Fighter | undefined,
+        wall = false;
+      for (let travelled = 0; travelled < a.range; travelled += 8) {
+        if (contact && travelled >= reach) {
+          x = contact.x;
+          y = contact.y;
+          wall = true;
+          break;
+        }
+        x = p.x + dx * travelled;
+        y = p.y + dy * travelled;
+        const decoy = enemies.find(
+          (e) =>
+            e.clone &&
+            Math.hypot(x - e.clone.x, y - e.clone.y) < a.radius + RULES.radius,
+        );
+        if (decoy) {
+          decoy.clone = undefined;
+          break;
+        }
+        struck = enemies.find(
+          (e) =>
+            e.hp > 0 &&
+            Math.hypot(x - e.x, y - e.y) < a.radius + this.hitRadius(e),
+        );
+        if (struck) break;
+      }
+      this.events.push({
+        id: ++this.serial,
+        kind: "beam",
+        x: p.x,
+        y: p.y,
+        tx: x,
+        ty: y,
+        color,
+        owner: p.id,
+        abilityId: a.id,
+      });
+      if (this.events.length > 80) this.events.shift();
+      let goal: { x: number; y: number } | undefined,
+        gap = 0;
+      if (struck) {
+        this.damage(struck, a.damage, p.id, a);
+        goal = struck;
+        gap = this.hitRadius(struck) + this.hitRadius(p) + 4;
+      } else if (wall) {
+        // The tongue's tip (its own radius) touches the wall: end against it.
+        goal = { x, y };
+        gap = Math.max(2, RULES.radius - a.radius + 2);
+      }
+      const travel = goal ? Math.hypot(goal.x - p.x, goal.y - p.y) - gap : 0;
+      if (goal && travel > 8) {
+        // Zip along the tongue (a dash steered each tick by stepZip).
+        const until = this.time + travel / a.speed + 0.25;
+        this.zips.set(p.id, {
+          target: struck?.id,
+          x: goal.x,
+          y: goal.y,
+          gap,
+          speed: a.speed,
+          until,
+        });
+        this.rushes.delete(p.id);
+        p.dashUntil = until;
+        p.recoveryUntil = Math.max(p.recoveryUntil, this.time + travel / a.speed);
+        this.stepZip(p, 1 / RULES.tick);
+      }
+    }
+    if (a.kind === "roll") {
+      const slot = this.kit(p).skills.findIndex((k) => k.id === a.id);
+      p.roll = {
+        until: this.time + a.duration,
+        speed: CHARACTERS[p.character].speed * ROLL.start,
+        heading: angle,
+        top: a.speed,
+        slot,
+      };
+      this.rollHits.delete(p.id);
+    }
+    if (a.kind === "pinball") {
+      // A launch from a roll stops the roll.
+      if (p.roll) this.endRoll(p);
+      p.dashX = Math.cos(angle) * a.speed;
+      p.dashY = Math.sin(angle) * a.speed;
+      p.dashUntil = this.time + a.duration;
+      p.recoveryUntil = Math.max(p.recoveryUntil, p.dashUntil);
+      p.pinball = {
+        bounces: a.count ?? 4,
+        speedUp: a.pinball?.speedUp ?? 1.1,
+      };
+      this.rushes.delete(p.id);
+      this.pinballs.set(p.id, {
+        ability: a,
+        hit: new Set(),
+        bounces: p.pinball.bounces,
+      });
+    }
+    if (
+      (a.kind === "seedling" || a.kind === "timewarp") &&
+      this.zones.length < RULES.maxZones
+    ) {
+      const aim = p.lastInput;
+      // On open ground at the aim (or just short of a wall in the way).
+      const spot = blinkLanding(
+        p,
+        angle,
+        Math.min(a.range, Math.hypot(aim.aimX - p.x, aim.aimY - p.y)),
+      );
+      if (a.kind === "seedling") {
+        // Past the limit, the oldest seedling withers.
+        const mine = this.zones
+          .filter(
+            (z) =>
+              z.owner === p.id &&
+              z.ability.kind === "seedling" &&
+              z.until > this.time,
+          )
+          .sort((m, n) => (m.born ?? 0) - (n.born ?? 0));
+        for (const z of mine.slice(0, Math.max(0, mine.length - ((a.count ?? 3) - 1))))
+          z.until = this.time;
+      }
+      this.zones.push({
+        id: ++this.serial,
+        owner: p.id,
+        x: spot.x,
+        y: spot.y,
+        radius: a.radius,
+        until: this.time + a.duration,
+        nextTick: this.time,
+        ability: a,
+        color,
+        born: this.time,
+      });
+    }
+    if (a.kind === "swap") {
+      // The enemy or own seedling nearest the aim, near enough to it and to us.
+      const aim = { x: p.lastInput.aimX, y: p.lastInput.aimY };
+      type Option = { x: number; y: number; fighter?: Fighter; zone?: Zone };
+      const options: Option[] = [
+        ...enemies
+          .filter((e) => e.hp > 0 && !e.raidBoss)
+          .map((e): Option => ({ x: e.x, y: e.y, fighter: e })),
+        ...this.zones
+          .filter(
+            (z) =>
+              z.owner === p.id &&
+              z.ability.kind === "seedling" &&
+              z.until > this.time,
+          )
+          .map((z): Option => ({ x: z.x, y: z.y, zone: z })),
+      ].filter(
+        (o) =>
+          Math.hypot(o.x - aim.x, o.y - aim.y) <=
+            a.radius + (o.fighter ? this.hitRadius(o.fighter) : 0) &&
+          Math.hypot(o.x - p.x, o.y - p.y) <= a.range,
+      );
+      const pick = options.sort(
+        (m, n) =>
+          Math.hypot(m.x - aim.x, m.y - aim.y) -
+          Math.hypot(n.x - aim.x, n.y - aim.y),
+      )[0];
+      if (!pick) {
+        // Nothing to swap with: most of the cooldown comes back.
+        const slot = this.kit(p).skills.findIndex((k) => k.id === a.id);
+        if (slot >= 0 && slot !== ULT_SLOT)
+          p.cooldowns[slot] = Math.min(p.cooldowns[slot], this.time + 1.5);
+      } else {
+        const from = { x: p.x, y: p.y };
+        p.x = pick.x;
+        p.y = pick.y;
+        p.vx = p.vy = 0;
+        p.dashUntil = Math.min(p.dashUntil, this.time);
+        if (pick.fighter) {
+          const f = pick.fighter;
+          f.x = from.x;
+          f.y = from.y;
+          f.vx = f.vy = 0;
+          f.dashUntil = Math.min(f.dashUntil, this.time);
+          this.rushes.delete(f.id);
+          if (f.pinball) this.endPinball(f);
+          if (a.status) this.status(f, a.status, a.statusDuration ?? 1, p.id);
+          this.event("burst", f, color, undefined, p.id, a.id);
+          Object.assign(this.events[this.events.length - 1], {
+            tx: p.x,
+            ty: p.y,
+          });
+        } else if (pick.zone) {
+          pick.zone.x = from.x;
+          pick.zone.y = from.y;
+        }
+        this.event("burst", p, color, undefined, p.id, a.id);
+        Object.assign(this.events[this.events.length - 1], {
+          tx: from.x,
+          ty: from.y,
+        });
+      }
     }
     if (a.kind === "veil") {
       this.status(p, "stealth", a.duration);
@@ -1285,6 +1617,138 @@ export class Arena {
       if (healed <= 0) continue;
       ally.stats.healed = (ally.stats.healed ?? 0) + healed;
       this.event("heal", ally, 0x7dffb0, healed, ally.id, a.id);
+    }
+  }
+  /**
+   * Tongue Grapple: aim this tick's dash at the goal (an enemy is followed),
+   * no further than the gap; at the goal (or out of time) the zip stops dead.
+   */
+  private stepZip(p: Fighter, dt: number) {
+    const zip = this.zips.get(p.id);
+    if (!zip) return;
+    const target = zip.target
+      ? this.players.find((q) => q.id === zip.target && q.hp > 0)
+      : undefined;
+    const gx = target?.x ?? zip.x,
+      gy = target?.y ?? zip.y;
+    const d = Math.hypot(gx - p.x, gy - p.y);
+    const left = d - zip.gap;
+    if (left <= 1 || this.time >= zip.until) {
+      this.stopZip(p);
+      return;
+    }
+    const speed = Math.min(zip.speed, left / dt);
+    p.dashX = ((gx - p.x) / d) * speed;
+    p.dashY = ((gy - p.y) / d) * speed;
+    p.dashUntil = Math.max(p.dashUntil, this.time + dt);
+  }
+  private stopZip(p: Fighter) {
+    if (!this.zips.delete(p.id)) return;
+    p.dashUntil = Math.min(p.dashUntil, this.time);
+    p.vx = p.vy = 0;
+  }
+  /**
+   * Passives, after the fighter moved: Pangrove's plates grow back; Mossloth's
+   * moss grows while it stands still and falls off as it moves, and heals.
+   */
+  private stepPassive(p: Fighter, dt: number) {
+    const passive = CHARACTERS[p.character].passive;
+    if (passive === "plates") {
+      if (platesOf(p) < PLATES.max && this.time >= (p.plateAt ?? 0)) {
+        p.plates = platesOf(p) + 1;
+        p.plateAt = this.time + PLATES.regrowEvery;
+        this.event("burst", p, 0x9be37a, p.plates, p.id, "plate-grow");
+      }
+    } else if (passive === "moss") {
+      const still =
+        Math.hypot(p.vx, p.vy) < MOSS.stillSpeed &&
+        this.time >= p.dashUntil &&
+        !p.roll;
+      const moss = p.moss ?? 0;
+      if (still !== p.mossStill) {
+        p.mossStill = still;
+        p.mossAt = this.time + (still ? MOSS.growEvery : MOSS.shedEvery);
+      } else if (this.time >= (p.mossAt ?? 0)) {
+        if (still && moss < MOSS.max) {
+          p.moss = moss + 1;
+          p.mossAt = this.time + MOSS.growEvery;
+        } else if (!still && moss > 0) {
+          p.moss = moss - 1;
+          p.mossAt = this.time + MOSS.shedEvery;
+        }
+      }
+      if (p.moss && this.phase === "playing") {
+        const before = p.hp;
+        p.hp = Math.min(
+          maxHealth(p.character, this.mode, this.players.length),
+          p.hp + p.moss * MOSS.regen * dt,
+        );
+        p.stats.healed = (p.stats.healed ?? 0) + (p.hp - before);
+      }
+    }
+  }
+  /**
+   * Curl & Roll: an enemy the ball runs into is rammed (harder the faster it
+   * goes) and the ball bounces off it.
+   */
+  private stepRolls() {
+    for (const p of this.players) {
+      if (!p.roll || p.hp <= 0 || p.out) continue;
+      const a = this.kit(p).skills[p.roll.slot];
+      if (!a) continue;
+      const hits = this.rollHits.get(p.id) ?? new Map<string, number>();
+      this.rollHits.set(p.id, hits);
+      const base = CHARACTERS[p.character].speed;
+      for (const enemy of this.enemiesOf(p)) {
+        if (
+          enemy.hp <= 0 ||
+          Math.hypot(enemy.x - p.x, enemy.y - p.y) >=
+            this.hitRadius(enemy) + this.hitRadius(p) + 6 ||
+          this.time < (hits.get(enemy.id) ?? -Infinity) + ROLL.rehit
+        )
+          continue;
+        const momentum = Math.max(
+          0,
+          Math.min(1, (p.roll.speed - base) / Math.max(1, p.roll.top - base)),
+        );
+        hits.set(enemy.id, this.time);
+        this.event("burst", enemy, CHARACTERS[p.character].color, undefined, p.id, a.id);
+        this.damage(enemy, a.damage + (a.roll?.bonus ?? 0) * momentum, p.id, a);
+        if (!p.roll) break;
+        // Bounce off the one it rammed.
+        p.roll.heading = Math.atan2(p.y - enemy.y, p.x - enemy.x);
+        p.roll.speed *= 0.5;
+      }
+    }
+  }
+  /**
+   * Pinball flights: each enemy on a stretch between walls is hit once; a
+   * bounce (counted down by advanceMovement) starts a new stretch.
+   */
+  private stepPinballs() {
+    for (const [id, flight] of this.pinballs) {
+      const p = this.players.find((q) => q.id === id);
+      if (!p || p.hp <= 0 || p.out || !p.pinball || this.time >= p.dashUntil) {
+        if (p) this.endPinball(p);
+        else this.pinballs.delete(id);
+        continue;
+      }
+      if (p.pinball.bounces !== flight.bounces) {
+        flight.bounces = p.pinball.bounces;
+        flight.hit.clear();
+        this.event("burst", p, CHARACTERS[p.character].color, undefined, p.id, "pinball-bounce");
+      }
+      for (const enemy of this.enemiesOf(p))
+        if (
+          enemy.hp > 0 &&
+          !flight.hit.has(enemy.id) &&
+          Math.hypot(enemy.x - p.x, enemy.y - p.y) <
+            this.hitRadius(enemy) + this.hitRadius(p) + 8
+        ) {
+          flight.hit.add(enemy.id);
+          this.event("burst", enemy, CHARACTERS[p.character].color, undefined, p.id, flight.ability.id);
+          this.damage(enemy, flight.ability.damage, p.id, flight.ability);
+        }
     }
   }
   /**
@@ -1467,15 +1931,19 @@ export class Arena {
         this.clearBufferedSkills(p.id);
         p.charge = undefined;
         p.channel = undefined;
-        // A stun or freeze stops a charge in its tracks.
+        // A stun or freeze stops a charge in its tracks (and uncurls a ball).
         if (this.rushes.delete(p.id))
           p.dashUntil = Math.min(p.dashUntil, this.time);
+        this.endRoll(p);
+        this.endPinball(p);
       }
-      // Rooted: no dashing, and a charge stops where it is.
+      // Rooted: no dashing, and a charge (or a pinball) stops where it is.
       const rooted = this.has(p, "root");
       if (rooted && this.rushes.delete(p.id))
         p.dashUntil = Math.min(p.dashUntil, this.time);
-      if (input.dash && !disabled && !rooted && this.time >= p.dashAt) {
+      if (rooted) this.endPinball(p);
+      if (p.roll && this.time >= p.roll.until) this.endRoll(p);
+      if (input.dash && !disabled && !rooted && !p.roll && this.time >= p.dashAt) {
         // Dashing out of a charge gives the charge up.
         this.rushes.delete(p.id);
         const d = normalize(input.dx, input.dy);
@@ -1495,7 +1963,12 @@ export class Arena {
         p.jumpAt = freeCooldowns ? 0 : this.time + RULES.jumpCooldown;
         this.event("jump", p, CHARACTERS[p.character].color, undefined, p.id);
       }
+      if (this.zips.has(p.id)) {
+        if (disabled || rooted) this.stopZip(p);
+        else this.stepZip(p, dt);
+      }
       advanceMovement(p, input, dt, this.time);
+      this.stepPassive(p, dt);
       if (p.charge && this.time >= p.charge.at) {
         const a = this.kit(p).skills[p.charge.skill];
         this.cast(p, p.charge.ex ? exAbility(a) : a, p.charge.ex);
@@ -1506,6 +1979,16 @@ export class Arena {
       else if (buffered && !disabled) {
         input.skill = buffered.slot;
         input.ex = buffered.ex;
+      }
+      if (p.roll) {
+        // Curled up: no attacks; casting the roll again uncurls, and the
+        // ultimate (Pinball) launches straight out of it.
+        if (input.skill === p.roll.slot) {
+          this.clearBufferedSkills(p.id);
+          this.endRoll(p);
+          input.skill = -1;
+        } else if (input.skill !== ULT_SLOT) input.skill = -1;
+        input.basic = false;
       }
       if (!disabled && this.time >= p.recoveryUntil && !p.charge) {
         const character = CHARACTERS[p.character];
@@ -1594,18 +2077,30 @@ export class Arena {
       }
     }
     this.stepRushes();
+    this.stepRolls();
+    this.stepPinballs();
+    // Time bubbles slow the shots of whoever they work against.
+    const bubbles = this.zones.filter(
+      (z) => z.ability.kind === "timewarp" && z.until > this.time,
+    );
     // Swept substeps prevent fast projectiles from tunneling through a fighter or wall.
     this.projectiles = this.projectiles.filter((pr) => {
+      const slowed = bubbles.some(
+        (z) =>
+          this.rivals(z.owner, pr.owner) &&
+          Math.hypot(pr.x - z.x, pr.y - z.y) < z.radius,
+      );
+      const step = dt * (slowed ? (bubbles[0].ability.warp ?? STATUS_RULES.warpMultiplier) : 1);
       const steps = Math.max(
         1,
-        Math.ceil((Math.hypot(pr.vx, pr.vy) * dt) / 10),
+        Math.ceil((Math.hypot(pr.vx, pr.vy) * step) / 10),
       );
       const enemies = this.enemiesOfOwner(pr.owner);
       const explode = () => this.projectileImpact(pr);
       for (let i = 0; i < steps; i++) {
         const next = {
-          x: pr.x + (pr.vx * dt) / steps,
-          y: pr.y + (pr.vy * dt) / steps,
+          x: pr.x + (pr.vx * step) / steps,
+          y: pr.y + (pr.vy * step) / steps,
         };
         const contact = projectileContact(
           pr,
@@ -1615,7 +2110,7 @@ export class Arena {
         );
         pr.x = contact?.x ?? next.x;
         pr.y = contact?.y ?? next.y;
-        pr.remaining -= (Math.hypot(pr.vx, pr.vy) * dt) / steps;
+        pr.remaining -= (Math.hypot(pr.vx, pr.vy) * step) / steps;
         if (contact || pr.remaining <= 0) {
           explode();
           return false;
@@ -1665,6 +2160,30 @@ export class Arena {
       return true;
     });
     for (const zone of this.zones) {
+      if (zone.ability.kind === "timewarp") {
+        // Sloth Time: enemies inside move at a fraction of their speed.
+        for (const enemy of this.enemiesOfOwner(zone.owner))
+          if (
+            enemy.hp > 0 &&
+            Math.hypot(enemy.x - zone.x, enemy.y - zone.y) <
+              zone.radius + this.hitRadius(enemy) * 0.5
+          )
+            this.status(enemy, "warp", 0.15, zone.owner);
+        continue;
+      }
+      if (zone.ability.kind === "seedling") {
+        // A seedling waits for the first enemy to step on it (jumping clears it).
+        if (zone.until <= this.time) continue;
+        const trigger = (zone.ability.seed?.trigger ?? 30) as number;
+        const stepped = this.enemiesOfOwner(zone.owner).some(
+          (e) =>
+            e.hp > 0 &&
+            e.jumpUntil <= this.time &&
+            Math.hypot(e.x - zone.x, e.y - zone.y) < trigger + this.hitRadius(e),
+        );
+        if (stepped) this.bloomSeed(zone, seedStage(zone, this.time));
+        continue;
+      }
       if (zone.ability.follow) {
         const owner = this.players.find((p) => p.id === zone.owner);
         if (owner) {
@@ -1717,6 +2236,10 @@ export class Arena {
           p.clone = undefined;
           p.charge = undefined;
           p.channel = undefined;
+          p.roll = undefined;
+          p.pinball = undefined;
+          p.plates = undefined;
+          p.moss = 0;
           p.dashUntil = p.jumpUntil = 0;
           p.lastInput = blankInput();
         }

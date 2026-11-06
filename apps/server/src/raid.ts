@@ -507,6 +507,14 @@ export class RaidArena extends Arena {
         this.heroes().some((p) => p.id === z.owner),
     );
   }
+  /** Pangrove curled into a ball (Curl & Roll, or flying as a Pinball)? */
+  protected curled(p: Fighter) {
+    return (
+      p.character === "pangrove" &&
+      ((!!p.roll && p.roll.until > this.time) ||
+        (!!p.pinball && this.time < p.dashUntil))
+    );
+  }
   /** Is a raider standing in a Warm Spring (or another of these zones)? */
   protected inSpring(p: Fighter, ...ids: string[]) {
     return this.heroZones(...(ids.length ? ids : ["warm-spring"])).some(
@@ -1050,12 +1058,8 @@ export class RaidArena extends Arena {
               this.event("hit", boss, 0xc9f4ff, 0, p.id);
               continue;
             }
-            if (
-              p.character === "pangrove" &&
-              this.has(p, "shield") &&
-              !r.drill
-            ) {
-              // Pangrove curled up in its leaf scales: the stones glance off.
+            if (this.curled(p) && !r.drill) {
+              // Pangrove curled into a ball: the stones glance off its plates.
               r.message = `The volley glances off ${p.name}'s scales!`;
               this.event("hit", p, 0x7fcf6a, 0, boss.id);
               continue;

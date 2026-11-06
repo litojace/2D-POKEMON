@@ -117,7 +117,9 @@ describe("special skills", () => {
       "ink-cloud",
       "warm-spring",
       "sanctuary",
-      "scale-curl",
+      // Sloth Time and Lazy Swap slow and move, they don't hurt.
+      "sloth-time",
+      "lazy-swap",
     ]);
     for (const id of FIGHTER_IDS)
       for (let i = 0; i < 4; i++) {
