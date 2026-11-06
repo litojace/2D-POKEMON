@@ -222,6 +222,116 @@ function snowflake() {
   return svg(p, "-15 -15 30 30");
 }
 
+// ── Void Knight: black steel with outward blades, violet runes, a rune gem.
+function voidRing() {
+  seed = 53;
+  let b = `<defs><linearGradient id='v' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#4a4f63'/><stop offset='.5' stop-color='#1f2230'/><stop offset='1' stop-color='#0b0c12'/></linearGradient></defs>`;
+  // Blades point outward all round, longer at the four diagonals.
+  for (let a = 0; a < 360; a += 15) {
+    const long = a % 90 === 45;
+    const len = long ? 11 : a % 30 === 0 ? 6 : 4;
+    const w = long ? 3.4 : 2.4;
+    const [x1, y1] = pt(59, a - w);
+    const [x2, y2] = pt(59, a + w);
+    const [tx, ty] = pt(59 + len, a);
+    b += `<path d='M${x1} ${y1} L${tx} ${ty} L${x2} ${y2}Z' fill='#262a37' stroke='#07080d' stroke-width='.8' stroke-linejoin='round'/>`;
+    if (long)
+      b += `<path d='M${pt(60, a).join(" ")} L${pt(59 + len - 2, a).join(" ")}' stroke='#b48cff' stroke-width='.8' opacity='.9'/>`;
+  }
+  b += `<circle r='55' fill='none' stroke='#07080d' stroke-width='11.4'/>`;
+  b += `<circle r='55' fill='none' stroke='url(#v)' stroke-width='9.6'/>`;
+  b += `<circle r='59.4' fill='none' stroke='#8d96ab' stroke-width='.7' opacity='.8'/>`;
+  b += `<circle r='50.4' fill='none' stroke='#b48cff' stroke-width='1.3'/>`;
+  b += `<circle r='50.4' fill='none' stroke='#b48cff' stroke-width='3.6' opacity='.25'/>`;
+  // Runes round the band: a stave with angled branches, glowing.
+  for (let i = 0; i < 18; i++) {
+    const a = i * 20 + 10;
+    const [x, y] = pt(55, a);
+    const s = rnd() < 0.5 ? -1 : 1;
+    const d = `M0 -3.2V3.2M0 -3.2l${s * 2} 1.8M0 0.4l${-s * 2} -1.6`;
+    b += `<g transform='translate(${x} ${y}) rotate(${a + 90})'><path d='${d}' stroke='#b48cff' stroke-width='2.4' opacity='.35' stroke-linecap='round'/><path d='${d}' stroke='#efe6ff' stroke-width='.9' stroke-linecap='round'/></g>`;
+  }
+  // Rivets between the runes.
+  for (let i = 0; i < 18; i++) {
+    const [x, y] = pt(55, i * 20);
+    b += `<circle cx='${x}' cy='${y}' r='.9' fill='#b3bccf'/>`;
+  }
+  // A rune gem at the bottom.
+  b += `<circle cx='0' cy='55' r='6.6' fill='#b48cff' opacity='.35'/>`;
+  b += `<path d='M0 49.6 L4.2 55 L0 60.4 L-4.2 55Z' fill='#b48cff' stroke='#07080d' stroke-width='1'/>`;
+  b += `<path d='M-1 51.8 L1.2 54' stroke='#ffffff' stroke-width='.9' stroke-linecap='round'/>`;
+  return svg(b);
+}
+// Ornament: a crown of blades over two crossed rune swords.
+function voidCrest() {
+  const sword = (rot) =>
+    `<g transform='rotate(${rot})'><path d='M-1.6 -17 L0 -21 L1.6 -17 V6 H-1.6Z' fill='#2c3242' stroke='#07080d' stroke-width='.8'/><path d='M0 -16V4' stroke='#b48cff' stroke-width='1.6' opacity='.4'/><path d='M0 -16V4' stroke='#efe6ff' stroke-width='.6'/><path d='M-5 6.4H5' stroke='#07080d' stroke-width='2.6' stroke-linecap='round'/><path d='M-4.6 6.4H4.6' stroke='#4a4f63' stroke-width='1.4' stroke-linecap='round'/><path d='M0 7V12' stroke='#3a2c44' stroke-width='2'/><circle cy='13' r='1.4' fill='#b48cff' stroke='#07080d' stroke-width='.5'/></g>`;
+  let b = sword(-38) + sword(38);
+  // The crown: a curved band with five blades, the middle one tallest.
+  const blades = [
+    [-9, 6, -1.6],
+    [-4.6, 9.5, -0.8],
+    [0, 14, 0],
+    [4.6, 9.5, 0.8],
+    [9, 6, 1.6],
+  ];
+  for (const [x, h, lean] of blades) {
+    const y = 2 + Math.abs(x) * 0.18;
+    b += `<path d='M${f(x - 2)} ${f(y)} L${f(x + lean)} ${f(y - h)} L${f(x + 2)} ${f(y)}Z' fill='#262a37' stroke='#07080d' stroke-width='.7' stroke-linejoin='round'/>`;
+  }
+  b += `<path d='M0 -1 V-9' stroke='#b48cff' stroke-width='1.6' opacity='.45'/><path d='M0 -1 V-9' stroke='#efe6ff' stroke-width='.6'/>`;
+  b += `<path d='M-11.5 3.4 Q0 -1.4 11.5 3.4 L11 6.4 Q0 1.8 -11 6.4Z' fill='#3b4255' stroke='#07080d' stroke-width='.7'/>`;
+  b += `<path d='M0 2 L1.8 4 L0 6 L-1.8 4Z' fill='#b48cff' stroke='#07080d' stroke-width='.5'/>`;
+  return svg(b, "-16 -18 32 32");
+}
+
+// ── Cyber Mecha: segmented chrome, neon circuits, status lights, HUD ticks.
+function mechaRing() {
+  let b = `<defs><linearGradient id='m' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='#ffffff'/><stop offset='.45' stop-color='#b9c4d6'/><stop offset='.55' stop-color='#8693a8'/><stop offset='1' stop-color='#dfe6f0'/></linearGradient></defs>`;
+  b += `<circle r='55' fill='none' stroke='#0a0e16' stroke-width='11'/>`;
+  // Eight chrome plates with small gaps between them.
+  for (let i = 0; i < 8; i++) {
+    const a0 = i * 45 + 2.4,
+      a1 = i * 45 + 42.6;
+    const outer = polar(() => 59.6, a0, a1, 2);
+    const inner = polar(() => 50.6, a0, a1, 2).reverse();
+    b += `<path d='${pathOf([...outer, ...inner])}' fill='url(#m)' stroke='#0a0e16' stroke-width='.6'/>`;
+    // A neon trace along each plate, with a step halfway.
+    const mid = (a0 + a1) / 2;
+    const t1 = pt(53.4, a0 + 4),
+      t2 = pt(53.4, mid - 3),
+      t3 = pt(56.8, mid),
+      t4 = pt(56.8, a1 - 4);
+    const d = `M${t1.join(" ")} A53.4 53.4 0 0 1 ${t2.join(" ")} L${t3.join(" ")} A56.8 56.8 0 0 1 ${t4.join(" ")}`;
+    b += `<path d='${d}' fill='none' stroke='#3ff0ff' stroke-width='2.6' opacity='.3'/><path d='${d}' fill='none' stroke='#3ff0ff' stroke-width='.9'/>`;
+    const [lx, ly] = pt(56.8, a1 - 4);
+    const led = i % 3 === 0 ? "#ff4fd8" : "#3ff0ff";
+    b += `<circle cx='${lx}' cy='${ly}' r='1.3' fill='${led}' stroke='#0a0e16' stroke-width='.4'/>`;
+  }
+  b += `<circle r='50.4' fill='none' stroke='#3ff0ff' stroke-width='1.1'/>`;
+  b += `<circle r='50.4' fill='none' stroke='#3ff0ff' stroke-width='3.4' opacity='.22'/>`;
+  // HUD brackets outside the ring at the four diagonals.
+  for (const a of [45, 135, 225, 315]) {
+    const p1 = pt(63.4, a - 7),
+      p2 = pt(63.4, a + 7),
+      c1 = pt(61, a - 7),
+      c2 = pt(61, a + 7);
+    b += `<path d='M${c1.join(" ")} L${p1.join(" ")} A63.4 63.4 0 0 1 ${p2.join(" ")} L${c2.join(" ")}' fill='none' stroke='#3ff0ff' stroke-width='1.1' stroke-linejoin='round'/>`;
+  }
+  // A core light at the bottom.
+  b += `<circle cx='0' cy='55' r='6' fill='#3ff0ff' opacity='.3'/><circle cx='0' cy='55' r='4.4' fill='#5a6478' stroke='#0a0e16' stroke-width='.8'/><circle cx='0' cy='55' r='2.6' fill='#3ff0ff'/><circle cx='0' cy='55' r='1.1' fill='#ffffff'/>`;
+  return svg(b);
+}
+// Ornament: a chrome V-fin with a neon core, like a mecha's head antenna.
+function mechaCrest() {
+  let b = "";
+  for (const s of [-1, 1])
+    b += `<path d='M${s * 1.4} 6 L${s * 14} -9 L${s * 10} -10 L${s * 2.4} -1 Z' fill='#dfe6f0' stroke='#0a0e16' stroke-width='.8' stroke-linejoin='round'/><path d='M${s * 2.6} 2 L${s * 12.6} -8.6' stroke='#3ff0ff' stroke-width='1.8' opacity='.35'/><path d='M${s * 2.6} 2 L${s * 12.6} -8.6' stroke='#3ff0ff' stroke-width='.7'/>`;
+  b += `<path d='M-4.6 7 L0 1 L4.6 7 L0 10Z' fill='#8693a8' stroke='#0a0e16' stroke-width='.7'/>`;
+  b += `<circle cy='6' r='2.4' fill='#3ff0ff' opacity='.4'/><circle cy='6' r='1.5' fill='#3ff0ff' stroke='#0a0e16' stroke-width='.4'/><circle cx='-.4' cy='5.6' r='.5' fill='#ffffff'/>`;
+  return svg(b, "-15 -11 30 22");
+}
+
 const out = {
   cookie: uri(cookie()),
   bonbon: uri(bonbon()),
@@ -231,10 +341,15 @@ const out = {
   knot: uri(knot()),
   icicle: uri(icicle()),
   snowflake: uri(snowflake()),
+  voidRing: uri(voidRing()),
+  voidCrest: uri(voidCrest()),
+  mechaRing: uri(mechaRing()),
+  mechaCrest: uri(mechaCrest()),
 };
 
 const a = out;
-const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter).
+const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter; and the
+   reward frames for owning every Void Knight or every Cyber Mecha skin).
    Artwork is drawn as scalable SVG so the same frame reads clearly from a
    small identity portrait up to the large fitting-room review. ::before is
    the ring (viewBox -70…70 around a radius-50 portrait, hence inset -20%),
@@ -243,7 +358,9 @@ const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter).
     [data-cosmetic="candy-frame"],
     [data-cosmetic="garden-frame"],
     [data-cosmetic="festival-frame"],
-    [data-cosmetic="winter-frame"]
+    [data-cosmetic="winter-frame"],
+    [data-cosmetic="void-frame"],
+    [data-cosmetic="cyber-frame"]
   ) {
   box-shadow: none;
 }
@@ -251,7 +368,9 @@ const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter).
     [data-cosmetic="candy-frame"],
     [data-cosmetic="garden-frame"],
     [data-cosmetic="festival-frame"],
-    [data-cosmetic="winter-frame"]
+    [data-cosmetic="winter-frame"],
+    [data-cosmetic="void-frame"],
+    [data-cosmetic="cyber-frame"]
   )::before {
   content: "";
   position: absolute;
@@ -264,7 +383,9 @@ const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter).
     [data-cosmetic="candy-frame"],
     [data-cosmetic="garden-frame"],
     [data-cosmetic="festival-frame"],
-    [data-cosmetic="winter-frame"]
+    [data-cosmetic="winter-frame"],
+    [data-cosmetic="void-frame"],
+    [data-cosmetic="cyber-frame"]
   )::after {
   content: "";
   position: absolute;
@@ -376,6 +497,62 @@ const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter).
     radial-gradient(circle at 92% 50%, #ffffff 0 2.2%, #bfe8ff 2.6%, transparent 4%),
     radial-gradient(circle at 50% 92%, #ffffff 0 2.2%, #7fd0ff 2.6%, transparent 4%),
     radial-gradient(circle at 8% 50%, #ffffff 0 2.2%, #bfe8ff 2.6%, transparent 4%);
+}
+
+/* Void Knight (reward for all sixteen Void Knights): black steel with
+   outward blades and violet runes, a crown of blades over crossed swords. */
+.raid-cosmetic-preview[data-cosmetic="void-frame"]::before {
+  background-image: ${a.voidRing};
+}
+.raid-cosmetic-preview[data-cosmetic="void-frame"]::after {
+  top: -33%;
+  left: 50%;
+  width: 40%;
+  height: 40%;
+  transform: translateX(-50%);
+  background-image: ${a.voidCrest};
+}
+.raid-cosmetic-preview[data-cosmetic="void-frame"][data-tier="mythic"]
+  > .tier-fx {
+  background: conic-gradient(
+    from var(--tier-turn),
+    #b48cff,
+    #1f2230,
+    #efe6ff,
+    #5a3a9a,
+    #b48cff
+  );
+  box-shadow:
+    0 0 14px #b48cffaa,
+    inset 0 0 6px #efe6ff66;
+}
+
+/* Cyber Mecha (reward for all sixteen Cyber Mechas): segmented chrome,
+   neon circuits, status lights and HUD brackets, a V-fin on top. */
+.raid-cosmetic-preview[data-cosmetic="cyber-frame"]::before {
+  background-image: ${a.mechaRing};
+}
+.raid-cosmetic-preview[data-cosmetic="cyber-frame"]::after {
+  top: -25%;
+  left: 50%;
+  width: 40%;
+  height: 30%;
+  transform: translateX(-50%);
+  background-image: ${a.mechaCrest};
+}
+.raid-cosmetic-preview[data-cosmetic="cyber-frame"][data-tier="epic"]
+  > .tier-fx {
+  background: conic-gradient(
+    from var(--tier-turn),
+    #3ff0ff,
+    #dfe6f0,
+    #ff4fd8,
+    #8693a8,
+    #3ff0ff
+  );
+  box-shadow:
+    0 0 12px #3ff0ffaa,
+    inset 0 0 6px #dfe6f099;
 }
 `;
 writeFileSync(

@@ -300,8 +300,42 @@ export const SEASON_ITEMS: JourneyItem[] = (
   ),
 ]);
 export const JOURNEY_ITEMS = [...LEVEL_ITEMS, ...SEASON_ITEMS];
+/**
+ * Reward frames for owning every skin of a champion-skin collection: never
+ * sold, granted by arena_collection_bonus (migration 070). They share the
+ * reward items' lookup with the Journey's.
+ */
+export const COLLECTION_FRAMES = [
+  {
+    ...rewardItem(
+      "void-frame",
+      "Void Knight frame",
+      "frame",
+      "Black steel, violet runes and crossed swords: own all sixteen Void Knights",
+      "#b48cff",
+      "#efe6ff",
+    ),
+    collection: "void" as const,
+  },
+  {
+    ...rewardItem(
+      "cyber-frame",
+      "Cyber Mecha frame",
+      "frame",
+      "Chrome plates, neon circuits and a V-fin: own all sixteen Cyber Mechas",
+      "#3ff0ff",
+      "#dfe6f0",
+    ),
+    collection: "cyber" as const,
+  },
+];
+/** Every reward-only item: the Journey's and the collection frames. */
+export const REWARD_ITEMS: JourneyItem[] = [
+  ...JOURNEY_ITEMS,
+  ...COLLECTION_FRAMES,
+];
 export const JOURNEY_ITEM_BY_ID: Record<string, JourneyItem> =
-  Object.fromEntries(JOURNEY_ITEMS.map((i) => [i.id, i]));
+  Object.fromEntries(REWARD_ITEMS.map((i) => [i.id, i]));
 export const LEVEL_MILESTONES = [
   { level: 5, title: "Rising Spark", item: null },
   { level: 10, title: null, item: "wayfarer-frame" },

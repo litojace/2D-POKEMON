@@ -8,14 +8,14 @@ import {
   RAID_COSMETICS,
 } from "../../../packages/shared/src/raid";
 import { LOOK_ITEMS } from "../../../packages/shared/src/shop";
-import { JOURNEY_ITEMS } from "../../../packages/shared/src/journey";
+import { REWARD_ITEMS } from "../../../packages/shared/src/journey";
 import "./portrait-frames.css";
 
 const frames = new Set(
   [
     ...Object.entries(RAID_COSMETICS).map(([id, item]) => ({ id, ...item })),
     ...LOOK_ITEMS,
-    ...JOURNEY_ITEMS,
+    ...REWARD_ITEMS,
   ]
     .filter((item) => item.slot === "frame")
     .map((item) => item.id),
