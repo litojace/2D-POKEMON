@@ -254,10 +254,55 @@ function groundRing(
 }
 
 /**
+ * Stage III: a rune seal on the knight's back, turning slowly. It is a
+ * circle in the plane of the back, so it turns with the fighter: whole and
+ * behind them from the front, narrowing to an edge-on ellipse behind the
+ * back in profile, and in front of them (over the back, lighter) when they
+ * face away.
+ */
+function runeSeal(ctx: FxContext, color: number, hot: number) {
+  const { sc, now } = ctx;
+  // Facing: x across the screen, y toward the camera (angle π/2 = facing it).
+  const fx = Math.cos(ctx.angle),
+    fy = Math.sin(ctx.angle);
+  // The seal's width foreshortens with the turn (kept readable edge-on).
+  const kx = Math.max(0.34, Math.abs(fy));
+  const facingAway = fy < -0.2;
+  const layer = facingAway ? ctx.g : ctx.under;
+  const fade = facingAway ? 0.6 : 1;
+  // It sits a little behind the back: off to the side in profile.
+  const cx = ctx.headX - fx * 26 * sc,
+    cy = ctx.headY + 18 * sc,
+    r = 36 * sc,
+    pulse = (0.75 + Math.sin(now / 600) * 0.25) * fade;
+  /** A point on the seal's own plane (u across it, v up it) on screen. */
+  const at = (u: number, v: number) => ({ x: cx + u * kx, y: cy + v });
+  layer.fillStyle(color, 0.1 * pulse).fillEllipse(cx, cy, (r + 6 * sc) * 2 * kx, (r + 6 * sc) * 2);
+  layer.lineStyle(2.2 * sc, color, 0.7 * pulse).strokeEllipse(cx, cy, r * 2 * kx, r * 2);
+  layer.lineStyle(1.2 * sc, hot, 0.5 * pulse).strokeEllipse(cx, cy, (r - 6 * sc) * 2 * kx, (r - 6 * sc) * 2);
+  layer.lineStyle(1 * sc, color, 0.45 * pulse).strokeEllipse(cx, cy, r * 1.1 * kx, r * 1.1);
+  // Rune ticks between the rings turn one way...
+  for (let i = 0; i < 16; i++) {
+    const a = now / 3000 + (i / 16) * Math.PI * 2;
+    const p0 = at(Math.cos(a) * (r - 5 * sc), Math.sin(a) * (r - 5 * sc)),
+      p1 = at(Math.cos(a) * (r - 1.5 * sc), Math.sin(a) * (r - 1.5 * sc));
+    layer.lineStyle(1.6 * sc, i % 4 ? color : hot, 0.85 * pulse).lineBetween(p0.x, p0.y, p1.x, p1.y);
+  }
+  // ...and a hexagram turns the other.
+  for (const off of [0, Math.PI]) {
+    const pts = [0, 1, 2].map((k) => {
+      const a = -now / 4200 + off + (k / 3) * Math.PI * 2 - Math.PI / 2;
+      return at(Math.cos(a) * (r - 7 * sc), Math.sin(a) * (r - 7 * sc));
+    });
+    layer.lineStyle(1.3 * sc, color, 0.55 * pulse).strokePoints(pts, true);
+  }
+}
+
+/**
  * The Void Knights' Awakening effects, in each knight's rune colour.
  * Stage I: black smoke curls off the armour with rune sparks.
  * Stage II: a rune circle turns on the ground beneath it.
- * Stage III: void flames lick up behind it and rune shards orbit it.
+ * Stage III: a rune seal turns behind its shoulders and rune shards orbit it.
  */
 function mythic(ctx: FxContext, art: SkinArt, stage: number) {
   const { g, under, x, y, sc, now } = ctx;
@@ -308,16 +353,7 @@ function mythic(ctx: FxContext, art: SkinArt, stage: number) {
     }
   }
   if (stage >= 3) {
-    // Void flames behind the body: dark tongues edged in rune light.
-    for (let i = 0; i < 7; i++) {
-      const t = (i - 3) / 3;
-      const fx = x + t * 22 * sc,
-        base = y + 2 * sc,
-        h = (32 - Math.abs(t) * 10 + Math.sin(now / 110 + i * 1.7) * 6) * sc,
-        w = 6 * sc;
-      under.fillStyle(color, 0.5).fillTriangle(fx - w - 2 * sc, base, fx + w + 2 * sc, base, fx + t * 5 * sc, base - h - 5 * sc);
-      under.fillStyle(0x0c0614, 0.75).fillTriangle(fx - w, base, fx + w, base, fx + t * 4 * sc, base - h);
-    }
+    runeSeal(ctx, color, hot);
     // Three rune shards orbit at chest height.
     for (let i = 0; i < 3; i++) {
       const o = orbit(ctx, i, 3, 1100, 30, 10, -14);

@@ -12,6 +12,7 @@ import {
   STOVE_PRICES,
   cookMs,
   defaultState,
+  inRush,
   payment,
   popularity,
   sanitize,
@@ -244,7 +245,8 @@ describe("guests", () => {
       { a: "serve", dish: "pho", hearts: 3 },
     ]);
     const special = r.bistro.special as DishId;
-    const rush = Math.floor(Number(r.bistro.now) / 1000) % 240 < 35;
+    // Rush hours follow the server's clock: the time of this request.
+    const rush = inRush(Number(r.bistro.now));
     const bill = payment("goicuon", {
       special: special === "goicuon",
       combo: 1,
@@ -821,6 +823,8 @@ describe("dish levels, ingredients, the Market and the Farm (migration 074)", ()
         hearts: 3,
         level: 2,
         special: r.bistro.special === "pho",
+        // A serve inside a rush hour (by the server's clock) doubles the tip.
+        rush: inRush(Number(r.bistro.now)),
       }).total,
     );
     // Gourmet points count toward popularity.
