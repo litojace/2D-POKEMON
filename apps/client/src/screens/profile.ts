@@ -1,4 +1,4 @@
-import { openHubPanel, type HubPanel } from "../ui/hub-panel";
+import { askConfirm, openHubPanel, type HubPanel } from "../ui/hub-panel";
 import { parse, patch } from "../ui/patch";
 import type { RaidBossId } from "../../../../packages/shared/src/raid-roster";
 import {
@@ -7,7 +7,12 @@ import {
   type ProfileData,
   type ProfileView,
 } from "./profile-view";
+import { esc } from "../ui/components";
 import { sharePlayerCard } from "./profile-card";
+import {
+  checkName,
+  NAME_CHANGE_DAYS,
+} from "../../../../packages/shared/src/accounts";
 import "./profile.css";
 
 /**
@@ -20,6 +25,8 @@ export interface ProfileHooks {
   data(): ProfileData;
   /** Wear a title ("" for none); resolves once data() shows it. */
   equip(titleId: string): Promise<void>;
+  /** Change your name; resolves with the name the server kept. */
+  rename(name: string): Promise<string>;
   /** A guest adds an email; resolves with what to say. */
   save(email: string): Promise<string>;
   /** Load the records again (after a problem). */
@@ -85,11 +92,68 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
     render();
   }
 
+  /** Open or close the name form (focus goes where you'd type or were). */
+  function nameForm(open: boolean) {
+    view.renaming = open;
+    if (open) view.nameMessage = "";
+    render();
+    const input = root().querySelector<HTMLInputElement>(
+      "[data-profile-name-form] input",
+    );
+    if (open && input) {
+      input.value = hooks.data().name;
+      input.focus({ preventScroll: true });
+      input.select();
+    } else focusOn("[data-profile-rename]");
+  }
+  /** Check the name, ask once more (the next change is 14 days away), send. */
+  async function rename(raw: string) {
+    if (view.nameBusy) return;
+    const current = hooks.data().name;
+    const { name, problem } = checkName(raw, current);
+    if (problem) {
+      view.nameMessage = problem;
+      render();
+      return;
+    }
+    const sure = await askConfirm({
+      kicker: "Your name",
+      title: "Change your name?",
+      lines: [
+        ["Now", esc(current)],
+        ["New", `<b>${esc(name)}</b>`],
+      ],
+      total: ["Next change", `in ${NAME_CHANGE_DAYS} days`],
+      confirm: "Change name",
+    });
+    if (!sure || closed) return;
+    view.nameBusy = true;
+    view.nameMessage = "";
+    render();
+    try {
+      const kept = await hooks.rename(name);
+      view.renaming = false;
+      view.nameMessage = `Name changed. Everyone sees ${kept} now.`;
+    } catch (error) {
+      view.nameMessage =
+        error instanceof Error ? error.message : "That didn't work. Try again.";
+    }
+    view.nameBusy = false;
+    render();
+    if (view.renaming)
+      root()
+        .querySelector<HTMLInputElement>("[data-profile-name-form] input")
+        ?.focus({ preventScroll: true });
+    else focusOn("[data-profile-rename]");
+  }
+
   const onClick = (event: MouseEvent) => {
     const t = (event.target as Element).closest<HTMLButtonElement>("button");
     if (!t || !root().contains(t) || t.disabled) return;
     const d = t.dataset;
     if (d.profileTitle !== undefined) void equip(d.profileTitle);
+    else if (d.profileRename !== undefined) nameForm(true);
+    else if (d.profileNameCancel !== undefined) nameForm(false);
     else if (d.profileShare !== undefined) void share(t);
     else if (d.profileGo || d.profileBoss) {
       const go = d.profileGo,
@@ -101,6 +165,14 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
     } else if (d.profileRetry !== undefined) void hooks.retry().then(render);
   };
   const onSubmit = (event: SubmitEvent) => {
+    const named = (event.target as Element).closest<HTMLFormElement>(
+      "[data-profile-name-form]",
+    );
+    if (named) {
+      event.preventDefault();
+      void rename(String(new FormData(named).get("name") ?? ""));
+      return;
+    }
     const form = (event.target as Element).closest<HTMLFormElement>(
       "[data-profile-save]",
     );
@@ -127,6 +199,13 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
   // Arrows move along the title chips (and wrap to the next row).
   const onKey = (event: KeyboardEvent) => {
     const t = event.target as HTMLElement;
+    // Escape closes the name form before the card.
+    if (event.key === "Escape" && view.renaming && !view.nameBusy) {
+      event.preventDefault();
+      event.stopPropagation();
+      nameForm(false);
+      return;
+    }
     if (!/^Arrow(Left|Right|Up|Down)$/.test(event.key)) return;
     if (!t.matches(".pf-titles > button")) return;
     const items = Array.from(
@@ -142,9 +221,12 @@ export function openProfile(hooks: ProfileHooks): ProfileScreen {
 
   const html = profileMarkup(view, hooks.data());
   template = parse(html);
+  // The name's countdown is redrawn while the card is open.
+  const tick = setInterval(render, 30_000);
   panel = openHubPanel(html, {
     onClose: () => {
       closed = true;
+      clearInterval(tick);
       hooks.onClose?.();
     },
   });

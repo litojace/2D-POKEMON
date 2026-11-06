@@ -138,17 +138,30 @@ async function open(page: Page, size: Size, o: { guest?: boolean } = {}) {
     const w = window as any;
     w.__titleCalls = [];
     const fetch = window.fetch.bind(window);
+    w.__nameCalls = [];
     window.fetch = async (input, init) => {
       const url = String(input instanceof Request ? input.url : input);
-      if (new URL(url, location.href).pathname !== "/api/account/title")
-        return fetch(input, init);
-      const { titleId } = JSON.parse(String(init?.body ?? "{}"));
-      w.__titleCalls.push(titleId ?? "");
+      const path = new URL(url, location.href).pathname;
       const json = (body: unknown, status = 200) =>
         new Response(JSON.stringify(body), {
           status,
           headers: { "Content-Type": "application/json" },
         });
+      // Changing your name, answered as migration 065 does.
+      if (path === "/api/account/name" && init?.method === "POST") {
+        const { name } = JSON.parse(String(init?.body ?? "{}"));
+        w.__nameCalls.push(name);
+        if (w.__refuseName)
+          return json({ error: "You can change your name again on November 20, 2026 at 03:00 UTC." }, 400);
+        const now = Date.now();
+        const status = { changedAt: new Date(now).toISOString(), nextAt: new Date(now + 14 * 86400e3).toISOString(), now: new Date(now).toISOString(), days: 14 };
+        w.__nameStatus = status;
+        w.__accountPatch = { ...w.__accountPatch, displayName: name };
+        return json({ ...status, displayName: name });
+      }
+      if (path !== "/api/account/title") return fetch(input, init);
+      const { titleId } = JSON.parse(String(init?.body ?? "{}"));
+      w.__titleCalls.push(titleId ?? "");
       if (w.__refuseTitle)
         return json({ error: "That title is not yours." }, 400);
       const t = titles.find((x: any) => x.id === titleId);
@@ -254,6 +267,8 @@ for (const size of SIZES)
         size.phone ? { across: true } : {},
       );
       await centred(page, '.pf-title-chip[data-profile-title=""]', "No title");
+      await centred(page, "[data-profile-rename]", "Change name");
+      await boxCentred(page, ".pf-name-now", ".pf-name-row", "name", "y");
       await centred(page, ".pf-title-chip.is-on", "worn title");
       for (const go of ["ranks", "journey", "raids"])
         await centred(
@@ -306,6 +321,17 @@ for (const size of SIZES)
       await main.evaluate((e) => (e.scrollTop = 0));
       await settled(page, ".profile-panel");
       await snap(page, info, `profile-${size.name}`);
+      // The name form: one height with the row it replaces, its buttons one
+      // size and centred.
+      const rowHeight = await panel.locator(".pf-name-row").evaluate((e) => e.getBoundingClientRect().height);
+      await panel.locator("[data-profile-rename]").click();
+      await expect(panel.locator("[data-profile-name-form] input")).toBeFocused();
+      expect(await panel.locator(".pf-name-form").evaluate((e) => e.getBoundingClientRect().height)).toBe(rowHeight);
+      expect(await sizes(page, ".pf-name-form > .ui-btn"), "name buttons").toHaveLength(1);
+      await centred(page, "[data-profile-name-cancel]", "Cancel");
+      await centred(page, '.pf-name-form button[type="submit"]', "Save", 1, size.phone ? { across: true } : {});
+      expect(await layoutProblems(page, { inset: size.island ? ISLAND : undefined, phone: size.phone })).toEqual([]);
+      await snap(page, info, `profile-name-${size.name}`);
       expect(errors).toEqual([]);
     } finally {
       await context.close();
@@ -412,6 +438,97 @@ test("the profile with reduced motion and Low graphics", async ({
     ).toBe("none");
     await panel.locator('[data-profile-go="ranks"]').first().click();
     await expect(page.locator(".ranks-panel")).toBeVisible();
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test("change your name: checked, confirmed, then locked for 14 days", async ({ browser }) => {
+  test.setTimeout(150_000);
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  try {
+    const page = await context.newPage();
+    const { errors, panel } = await open(page, SIZES[1]);
+    const rename = panel.locator("[data-profile-rename]");
+    await expect(rename).toBeEnabled();
+    await expect(panel.locator(".pf-section", { hasText: "Name" })).toContainText("You can change it once every 14 days");
+    // Checked here first: nothing is sent for a bad name or the same one.
+    await rename.click();
+    const input = panel.locator("[data-profile-name-form] input");
+    await expect(input).toHaveValue("tester");
+    await input.fill("!!!");
+    await page.keyboard.press("Enter");
+    await expect(panel.locator(".pf-name-message")).toHaveText("Use at least one letter or number.");
+    await input.fill("tester");
+    await page.keyboard.press("Enter");
+    await expect(panel.locator(".pf-name-message")).toHaveText("That is already your name.");
+    expect(await page.evaluate(() => (window as any).__nameCalls)).toEqual([]);
+    // Escape closes the form, not the card.
+    await page.keyboard.press("Escape");
+    await expect(panel.locator(".pf-name-form")).toBeHidden();
+    await expect(rename).toBeFocused();
+    await expect(page.locator(".profile-panel")).toBeVisible();
+    // A real change asks once more (the next one is 14 days away). Cancel
+    // keeps your name.
+    await rename.click();
+    await input.fill("  Nova   Star ");
+    await page.keyboard.press("Enter");
+    const confirm = page.locator("[data-ui-confirm] .ui-modal");
+    await expect(confirm).toContainText("Change your name?");
+    await expect(confirm).toContainText("Nova Star");
+    await expect(confirm).toContainText("in 14 days");
+    await confirm.locator("[data-ui-cancel]").click();
+    expect(await page.evaluate(() => (window as any).__nameCalls)).toEqual([]);
+    await page.keyboard.press("Enter");
+    await page.locator("[data-ui-confirm] [data-ui-confirm-ok]").click();
+    // The server's name everywhere: the card, the head, the HUD.
+    await expect(panel.locator(".pf-name-message")).toHaveText("Name changed. Everyone sees Nova Star now.");
+    expect(await page.evaluate(() => (window as any).__nameCalls)).toEqual(["Nova Star"]);
+    await expect(panel.locator(".pf-card-name")).toHaveText("Nova Star");
+    await expect(panel.locator(".ui-title")).toHaveText("Nova Star");
+    await expect(page.locator("#account-profile .account-name")).toHaveText("Nova Star");
+    // Locked now, with the time left on the server's clock.
+    await expect(rename).toBeDisabled();
+    await expect(panel.locator(".pf-section", { hasText: "Name" })).toContainText(/You can change it again in 1[34] d \d+ h/);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test("a locked name says when; a refusal says why", async ({ browser }) => {
+  test.setTimeout(150_000);
+  const context = await browser.newContext({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true });
+  try {
+    const page = await context.newPage();
+    // Changed 4 days ago by the server's clock: 10 days to go.
+    const serverTime = Date.parse("2026-11-06T12:00:00Z");
+    await page.addInitScript((now) => {
+      const w = window as any;
+      w.__serverTime = now;
+      w.__nameStatus = { changedAt: new Date(now - 4 * 86400e3).toISOString(), nextAt: new Date(now + 10 * 86400e3).toISOString(), now: new Date(now).toISOString(), days: 14 };
+    }, serverTime);
+    const { errors, panel } = await open(page, SIZES[3]);
+    await expect(panel.locator("[data-profile-rename]")).toBeDisabled();
+    await expect(panel.locator(".pf-section", { hasText: "Name" })).toContainText(/You can change it again in (10 d 0 h|9 d 23 h)/);
+    expect(await layoutProblems(page, { phone: true })).toEqual([]);
+    // If the server refuses anyway (another device changed it), its reason shows.
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__nameStatus = null;
+      w.__refuseName = true;
+    });
+    await page.keyboard.press("Escape");
+    await page.click("#account-profile");
+    await expect(panel.locator("[data-profile-rename]")).toBeEnabled();
+    await panel.locator("[data-profile-rename]").click();
+    await panel.locator("[data-profile-name-form] input").fill("Nova");
+    await page.keyboard.press("Enter");
+    await page.locator("[data-ui-confirm] [data-ui-confirm-ok]").click();
+    await expect(panel.locator(".pf-name-message")).toHaveText("You can change your name again on November 20, 2026 at 03:00 UTC.");
+    await expect(panel.locator(".pf-card-name")).toHaveText("tester");
+    await expect(panel.locator("[data-profile-name-form] input")).toBeFocused();
     expect(errors).toEqual([]);
   } finally {
     await context.close();

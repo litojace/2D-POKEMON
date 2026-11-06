@@ -125,6 +125,34 @@ export const titleGrantSchema = z
 export const equipTitleSchema = z
   .object({ titleId: z.string().uuid().nullable() })
   .strict();
+/** Players change their own name once every 14 days (migration 065). */
+export const NAME_CHANGE_DAYS = 14;
+export const nameChangeSchema = z
+  .object({ name: z.string().max(60) })
+  .strict();
+/** When you last changed your name and when you can next (server time). */
+export const nameStatusSchema = z.object({
+  changedAt: z.string().nullable(),
+  nextAt: z.string().nullable(),
+  now: z.string(),
+  days: z.number(),
+});
+export type NameStatus = z.infer<typeof nameStatusSchema>;
+/**
+ * The same clean-up and checks the database makes, so the form can say
+ * what's wrong before sending. The database still decides.
+ */
+export function checkName(raw: string, current: string) {
+  if (/[\u0000-\u001f\u007f-\u009f\u00ad\u200b-\u200f\u2028-\u202e\u2060-\u2064\ufeff]/.test(raw))
+    return { name: "", problem: "That name has characters that can't be shown." };
+  const name = raw.trim().replace(/ +/g, " ");
+  if (name.length < 1 || [...name].length > 20)
+    return { name, problem: "A name is 1 to 20 characters." };
+  if (/^[\p{P}\p{S}\s]+$/u.test(name))
+    return { name, problem: "Use at least one letter or number." };
+  if (name === current) return { name, problem: "That is already your name." };
+  return { name, problem: "" };
+}
 
 /**
  * Every API answer carries the server's clock in this header (milliseconds

@@ -102,15 +102,19 @@ export async function boxCentred(
   inner: string,
   outer: string,
   label: string,
+  axis: "x" | "y" = "x",
 ) {
   const [a, b] = await Promise.all([
     page.locator(inner).first().boundingBox(),
     page.locator(outer).first().boundingBox(),
   ]);
-  const dx = a!.x + a!.width / 2 - (b!.x + b!.width / 2);
+  const d =
+    axis === "x"
+      ? a!.x + a!.width / 2 - (b!.x + b!.width / 2)
+      : a!.y + a!.height / 2 - (b!.y + b!.height / 2);
   expect(
-    Math.abs(dx),
-    `${label}: ${dx.toFixed(1)} px off centre`,
+    Math.abs(d),
+    `${label}: ${d.toFixed(1)} px off centre (${axis})`,
   ).toBeLessThanOrEqual(2);
 }
 /** Anything whose content is wider than its box without an ellipsis. */

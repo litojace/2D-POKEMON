@@ -17,6 +17,8 @@ import {
 } from "../../../../packages/shared/src/index";
 import {
   rankColor,
+  NAME_CHANGE_DAYS,
+  type NameStatus,
   type Progress,
   type Title,
 } from "../../../../packages/shared/src/accounts";
@@ -46,6 +48,8 @@ import {
   tag,
 } from "../ui/components";
 import { mastery } from "./roster-view";
+import { serverNow } from "../server-clock";
+import { countdownText } from "../ui/countdown";
 import { seasonState } from "./journey-view";
 import { rankProgress } from "./ranks-view";
 
@@ -66,6 +70,8 @@ export interface ProfileData {
   progress: Progress | null;
   progressProblem?: string;
   raids: RaidProgress | null;
+  /** When you can next change your name (null until loaded, or unknown). */
+  nameStatus: NameStatus | null;
 }
 export interface ProfileView {
   /** The title being equipped ("" for no title), while the server answers. */
@@ -74,12 +80,32 @@ export interface ProfileView {
   status: string;
   /** The guest's save-account answer. */
   saveStatus: string;
+  /** The name form is open. */
+  renaming: boolean;
+  /** A name change is on its way. */
+  nameBusy: boolean;
+  /** The last name answer ("Name changed." or the reason). */
+  nameMessage: string;
 }
 export const profileView = (): ProfileView => ({
   equipping: null,
   status: "",
   saveStatus: "",
+  renaming: false,
+  nameBusy: false,
+  nameMessage: "",
 });
+
+/**
+ * When you can next change your name: null when you can now (or before the
+ * status loads: the server decides either way). Counted on the server's
+ * clock.
+ */
+export function nameLockedFor(s: NameStatus | null, now = serverNow()) {
+  if (!s?.nextAt) return null;
+  const left = Date.parse(s.nextAt) - now;
+  return left > 0 ? left : null;
+}
 
 const num = (n: number) => n.toLocaleString("en-US");
 const safeColor = (c: string | null | undefined, fallback = "#a9b4c9") =>
@@ -231,10 +257,22 @@ function saveAccount(view: ProfileView) {
   return `<form class="pf-save" data-profile-save><span class="pf-save-text"><b>Keep your progress</b><small class="ui-note">Guest accounts live only on this device. Add your email and your records, titles and name come with you.</small></span><span class="pf-save-row"><input name="email" type="email" required autocomplete="email" placeholder="you@example.com" aria-label="Email"><button type="submit" class="ui-btn is-s is-primary"><span>Save</span></button></span><small class="ui-note pf-save-status" role="status">${esc(view.saveStatus)}</small></form>`;
 }
 
+/** Your name: change it once every 14 days (the server keeps the count). */
+function nameRow(d: ProfileData, view: ProfileView) {
+  const locked = nameLockedFor(d.nameStatus);
+  const note = locked
+    ? `You can change it again in ${countdownText(locked)}`
+    : `You can change it once every ${NAME_CHANGE_DAYS} days`;
+  // The form is always in the markup (hidden when closed), so opening it
+  // changes attributes and focus and the typed text stay put.
+  const form = `<form class="pf-name-form" data-profile-name-form${view.renaming ? "" : " hidden"}><input name="name" maxlength="20" required autocomplete="nickname" spellcheck="false" aria-label="New name" value="${esc(d.name)}"${view.nameBusy ? " disabled" : ""}>${button("Cancel", { size: "s", disabled: view.nameBusy, attrs: { "data-profile-name-cancel": true } })}<button type="submit" class="ui-btn is-s is-primary"${view.nameBusy ? ' disabled aria-busy="true"' : ""}><span>Save</span></button></form>`;
+  return `${section("Name", note, "pf-name-h")}<div class="pf-name" aria-labelledby="pf-name-h"><div class="pf-name-row"${view.renaming ? " hidden" : ""}><b class="pf-name-now">${esc(d.name)}</b>${button("Change name", { size: "s", disabled: !!locked, attrs: { "data-profile-rename": true, title: locked ? note : undefined } })}</div>${form}<p class="ui-note pf-name-message" role="status">${esc(view.nameMessage)}</p></div>`;
+}
+
 function main(d: ProfileData, view: ProfileView) {
   if (!d.progress && d.progressProblem)
     return `${tiles(d)}${emptyState("Your records aren't available", d.progressProblem, button("Try again", { size: "s", attrs: { "data-profile-retry": true } }))}`;
-  return `${tiles(d)}${d.guest ? saveAccount(view) : ""}${section("Title", "Tap to wear it · saved at once", "pf-titles-h")}${titleChips(d, view)}${section("Fighter mastery", "Badges for matches played", "pf-mastery-h")}${masteryGrid(d)}${summaries(d)}${section("Raid trophies", "Clears per boss", "pf-trophy-h")}${trophies(d)}${achievements(d)}<div class="pf-links">${button("Ranks", { icon: "leaderboard", attrs: { "data-profile-go": "ranks" } })}${button("Journey", { icon: "sparkle", attrs: { "data-profile-go": "journey" } })}${button("Raid rewards", { icon: "bestiary", attrs: { "data-profile-go": "raids" } })}</div><p class="ui-note pf-who">${esc(d.role)}${d.email ? ` · ${esc(d.email)}` : ""}</p>`;
+  return `${tiles(d)}${d.guest ? saveAccount(view) : ""}${nameRow(d, view)}${section("Title", "Tap to wear it · saved at once", "pf-titles-h")}${titleChips(d, view)}${section("Fighter mastery", "Badges for matches played", "pf-mastery-h")}${masteryGrid(d)}${summaries(d)}${section("Raid trophies", "Clears per boss", "pf-trophy-h")}${trophies(d)}${achievements(d)}<div class="pf-links">${button("Ranks", { icon: "leaderboard", attrs: { "data-profile-go": "ranks" } })}${button("Journey", { icon: "sparkle", attrs: { "data-profile-go": "journey" } })}${button("Raid rewards", { icon: "bestiary", attrs: { "data-profile-go": "raids" } })}</div><p class="ui-note pf-who">${esc(d.role)}${d.email ? ` · ${esc(d.email)}` : ""}</p>`;
 }
 
 export function profileMarkup(view: ProfileView, d: ProfileData) {
