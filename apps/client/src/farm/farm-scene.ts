@@ -196,8 +196,8 @@ const FARM_HTML = `<div class="fm" id="fm">
 
 /*
  * The farm as you left it, this session, per player: where the animals
- * stood, and the balloon and stall (loaded after the farm, so they popped in
- * on every visit). Opening the farm again starts from here.
+ * stood. Opening the farm again starts from here. (The balloon and stall,
+ * loaded after the farm, come kept from openFarmScreen so they don't pop in.)
  */
 const LEFT = new Map();
 export function openFarm(options) {
@@ -2976,7 +2976,7 @@ export function openFarm(options) {
     renderVisit();
   }
   /* ---------- the Farm Stall and the Valley Paper (migration 059) ---------- */
-  let stall = LEFT.get(options.owner ?? "")?.stall ?? null,
+  let stall = options.initialStall ?? null,
     stallSlot = null;
   const stallForm = { key: null, qty: 1, f: 1.1 };
   async function loadStall() {
@@ -3121,7 +3121,7 @@ export function openFarm(options) {
   }
   /* ---------- the Supply Balloon and friends' help (migration 058) ---------- */
   const left = LEFT.get(options.owner ?? "");
-  let balloon = left?.balloon ?? null,
+  let balloon = options.initialBalloon ?? null,
     helpList = null;
   const BAL = { x: 1080, y: 105 },
     PEG = { x: 1104, y: 300 };
@@ -6815,8 +6815,9 @@ export function openFarm(options) {
   addEventListener("resize", onResize);
   // While the farm is open, come back to the server now and then: ripe
   // crops, the restock and the market day are all decided there.
+  let hiddenAway = false;
   const poll = setInterval(() => {
-    if (document.hidden) return;
+    if (document.hidden || hiddenAway) return;
     if (V) {
       if (!visitQueue.length && !visitSending)
         options
@@ -6856,10 +6857,29 @@ export function openFarm(options) {
   layer.focus({ preventScroll: true });
   return {
     refresh,
+    /** Behind the Lobby or the Plaza: paused (no drawing, sound or polls)
+     *  and gone from your farm for visiting friends, but kept as it is. */
+    hide() {
+      if (hiddenAway) return;
+      hiddenAway = true;
+      void flush();
+      leave();
+      layer.style.display = "none";
+    },
+    /** Back on the farm: just as you left it, then refreshed. */
+    show() {
+      if (!hiddenAway) return;
+      hiddenAway = false;
+      layer.style.display = "";
+      onResize();
+      enter();
+      void refresh();
+      void loadBalloon();
+      void loadStall();
+      layer.focus({ preventScroll: true });
+    },
     close() {
       LEFT.set(options.owner ?? "", {
-        balloon,
-        stall,
         dog: {
           x: dog.x,
           y: dog.y,

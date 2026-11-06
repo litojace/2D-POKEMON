@@ -49,6 +49,7 @@ import {
   type LobbyMode,
 } from "./lobby-screen";
 import {
+  forgetFarms,
   openFarmScreen,
   prefetchFarm,
   type FarmScreen,
@@ -1817,20 +1818,35 @@ function syncLobby(want: boolean) {
 /** The Farm scene (hub redesign phase 4): server state, server time. */
 let farmScreen: FarmScreen | undefined;
 let farmLow = false;
+let farmOwner: string | undefined;
 const farmLoad = async () => (await accountsUI.api("/api/farm")) as FarmState;
 function syncFarm(want: boolean, hub = want) {
-  if (!want) {
-    farmScreen?.close();
+  const owner = accountsUI?.account?.id;
+  // Another player now (or logged out): that farm is not theirs.
+  if (farmScreen && farmOwner !== owner) {
+    farmScreen.close();
     farmScreen = undefined;
+  }
+  if (!want) {
+    // Behind the Lobby or the Plaza the farm waits, paused, as it is; out of
+    // the hub (a match) it closes, so the battle has the device to itself.
+    if (hub) farmScreen?.hide();
+    else {
+      farmScreen?.close();
+      farmScreen = undefined;
+    }
     // In the hub, the farm loads in the background (once) so it opens ready.
-    const owner = accountsUI?.account?.id;
     if (hub && owner) prefetchFarm(owner, farmLoad);
     return;
   }
-  if (farmScreen) return;
+  if (farmScreen) {
+    farmScreen.show();
+    return;
+  }
+  farmOwner = owner;
   farmLow = lowGraphics();
   farmScreen = openFarmScreen({
-    owner: accountsUI?.account?.id,
+    owner,
     reduced: reducedMotion,
     low: farmLow,
     sound: (cue, step) => audio.farm(cue, step),
@@ -5838,6 +5854,10 @@ accountsUI = new AccountUI({
   notify: toast,
   beforeSignOut: async () => {
     roomInvites.clear();
+    // The farm kept in this browser is this player's: forget it.
+    forgetFarms();
+    farmScreen?.close();
+    farmScreen = undefined;
     if (myId) await leave(false);
   },
   onSession: (token, accountId) => {

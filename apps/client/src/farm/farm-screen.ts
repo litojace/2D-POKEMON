@@ -36,6 +36,9 @@ export interface FarmScreenOptions {
   owner?: string;
   /** The farm as last known, drawn on the first frame (set by openFarmScreen). */
   initial?: FarmState;
+  /** The Supply Balloon and stall as last known (set by openFarmScreen). */
+  initialBalloon?: FarmBalloon;
+  initialStall?: FarmStall;
   act(actions: FarmAction[]): Promise<FarmActResult>;
   /** Trade lots of 100 leaves for 5 coins each. */
   trade(lots: number): Promise<void>;
@@ -103,43 +106,118 @@ export interface FarmScreenOptions {
 }
 export interface FarmScreen {
   refresh(): Promise<void>;
+  /** Pause it behind another hub scene, kept as it is. */
+  hide(): void;
+  /** Bring it back as you left it, then refresh. */
+  show(): void;
   close(): void;
 }
 /*
- * The farm, ready before you open it: the last state the server sent this
- * session (from a prefetch when you reach the hub, or from the farm's own
- * loads and actions while you play). Opening the farm draws it on the first
- * frame, moved on by the time since it came, then refreshes from the server.
- * Loading the farm counts as being on it (bugs and crows can come if you
- * were there in the last 150 s), so it is fetched once a session at most
- * unless you open the farm (a failed try is not repeated).
+ * The farm, ready before you open it: the last state the server sent (from
+ * the farm's own loads and actions, or one background load when you reach
+ * the hub), with the Supply Balloon and stall. It is kept in memory and in
+ * this browser's storage, per player, until you log out or clear the site's
+ * data, so the farm draws at once even after the browser was closed: moved
+ * on by the time since it came, then refreshed from the server, which
+ * always has the last word. Loading the farm counts as being on it (bugs
+ * and crows can come if you were there in the last 150 s), so the
+ * background load only runs when nothing is kept, once a session, and a
+ * failed try is not repeated.
  */
-let ready: { owner: string; state: FarmState; at: number } | null = null;
+type Kept = {
+  owner: string;
+  state?: FarmState;
+  at: number;
+  balloon?: FarmBalloon;
+  stall?: FarmStall;
+};
+const STORE = "arena-farm:";
+let ready: Kept | null = null;
 const tried = new Set<string>();
-function keep(owner: string | undefined, state: FarmState | undefined) {
-  if (owner && state?.now) ready = { owner, state, at: Date.now() };
+let saveTimer: ReturnType<typeof setTimeout> | undefined;
+function stored(owner: string): Kept | null {
+  try {
+    const k = JSON.parse(localStorage.getItem(STORE + owner) ?? "null");
+    return k?.v === 1 && k.state?.now
+      ? { owner, state: k.state, at: k.at, balloon: k.balloon, stall: k.stall }
+      : null;
+  } catch {
+    return null;
+  }
 }
-/** Fetch the farm in the background, once, so it opens ready. */
+function keptFor(owner: string | undefined): Kept | null {
+  if (!owner) return null;
+  if (ready?.owner !== owner) ready = stored(owner);
+  return ready;
+}
+function keep(
+  owner: string | undefined,
+  patch: { state?: FarmState; balloon?: FarmBalloon; stall?: FarmStall },
+) {
+  if (!owner) return;
+  if (patch.state && !patch.state.now) return;
+  const prev = keptFor(owner) ?? { owner, at: 0 };
+  ready = {
+    ...prev,
+    ...patch,
+    at: patch.state ? Date.now() : prev.at,
+  };
+  // Written a moment later, so a burst of actions saves once.
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    const k = ready;
+    if (!k?.state) return;
+    try {
+      localStorage.setItem(
+        STORE + k.owner,
+        JSON.stringify({
+          v: 1,
+          at: k.at,
+          state: k.state,
+          balloon: k.balloon,
+          stall: k.stall,
+        }),
+      );
+    } catch {
+      /* No storage, or it is full: memory still works this session. */
+    }
+  }, 400);
+}
+/** Fetch the farm in the background, once, when nothing is kept. */
 export function prefetchFarm(
   owner: string,
   load: () => Promise<FarmState>,
 ): void {
-  if (tried.has(owner) || ready?.owner === owner) return;
+  if (tried.has(owner) || keptFor(owner)?.state) return;
   tried.add(owner);
   load()
     .then((state) => {
       // The farm may have opened meanwhile and kept a newer state.
-      if (ready?.owner !== owner) keep(owner, state);
+      if (!keptFor(owner)?.state) keep(owner, { state });
     })
     .catch(() => {});
 }
-/** The ready farm for this owner, its clock moved on to now. */
+/** Forget every kept farm (logging out). */
+export function forgetFarms(): void {
+  ready = null;
+  tried.clear();
+  clearTimeout(saveTimer);
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(STORE)) localStorage.removeItem(key);
+    }
+  } catch {
+    /* No storage. */
+  }
+}
+/** The kept farm for this owner, its clock moved on to now. */
 function readyFor(owner: string | undefined): FarmState | undefined {
-  if (!owner || ready?.owner !== owner) return undefined;
-  const { state, at } = ready;
+  const k = keptFor(owner);
+  if (!k?.state) return undefined;
   return {
-    ...state,
-    now: new Date(Date.parse(state.now) + (Date.now() - at)).toISOString(),
+    ...k.state,
+    now: new Date(Date.parse(k.state.now) + (Date.now() - k.at)).toISOString(),
   };
 }
 export function openFarmScreen(options: FarmScreenOptions): FarmScreen {
@@ -148,27 +226,68 @@ export function openFarmScreen(options: FarmScreenOptions): FarmScreen {
   const scene = openFarm({
     ...options,
     initial: readyFor(owner),
+    initialBalloon: keptFor(owner)?.balloon,
+    initialStall: keptFor(owner)?.stall,
     load: async () => {
       const state = await options.load();
-      keep(owner, state);
+      keep(owner, { state });
       return state;
     },
     act: async (actions: FarmAction[]) => {
       const r = await options.act(actions);
-      keep(owner, r.farm);
+      keep(owner, { state: r.farm });
       return r;
     },
+    balloon:
+      options.balloon &&
+      (async () => {
+        const balloon = await options.balloon!();
+        keep(owner, { balloon });
+        return balloon;
+      }),
+    balloonAct:
+      options.balloonAct &&
+      (async (...args: Parameters<NonNullable<typeof options.balloonAct>>) => {
+        const r = await options.balloonAct!(...args);
+        if (r.balloon) keep(owner, { balloon: r.balloon });
+        return r;
+      }),
+    stall:
+      options.stall &&
+      (async () => {
+        const stall = await options.stall!();
+        keep(owner, { stall });
+        return stall;
+      }),
+    stallAct:
+      options.stallAct &&
+      (async (action: FarmStallAction) => {
+        const r = await options.stallAct!(action);
+        keep(owner, { stall: r });
+        return r;
+      }),
   }) as FarmScreen & { _dbg?: unknown };
   // Visual tests find plots through this (development builds only).
   if (import.meta.env.DEV)
     (window as unknown as { __farm?: unknown }).__farm = scene._dbg;
+  const away = () => {
+    document.body.classList.remove("hub-farm");
+    if (!document.querySelector(".lobby-layer"))
+      document.body.classList.remove("hub-screen");
+  };
   return {
     refresh: () => scene.refresh(),
+    hide() {
+      scene.hide();
+      away();
+    },
+    show() {
+      document.body.classList.add("hub-screen", "hub-farm");
+      scene.show();
+    },
     close() {
       scene.close();
-      document.body.classList.remove("hub-farm");
-      if (!document.querySelector(".lobby-layer"))
-        document.body.classList.remove("hub-screen");
+      away();
     },
   };
 }

@@ -193,7 +193,10 @@ async function fakeFarm(page: Page) {
             partyLeft: 3600,
           },
         );
-      if (url.endsWith("/api/farm/gone")) return json({ ok: true });
+      if (url.endsWith("/api/farm/gone")) {
+        w.__gones = (w.__gones ?? 0) + 1;
+        return json({ ok: true });
+      }
       if (url.endsWith("/api/farm/tour")) return json(w.__tour ?? []);
       if (url.endsWith("/api/farm/like"))
         return json({ ok: true, tour: w.__tour ?? [] });
@@ -1440,6 +1443,75 @@ test("the farm opens ready on every return: the same scenery, animals where they
     (window as any).__balloonDelay = 0;
   });
   expect(errors).toEqual([]);
+});
+
+test("switching hub tabs keeps the same farm, paused and gone while hidden", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const errors = await openLobby(page);
+  await fakeFarm(page);
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+  // Mark this farm, then go to the Lobby.
+  await page.evaluate(() => ((window as any).__farm.F.mark = "same farm"));
+  const layer = page.locator(".farm-layer");
+  await page.click('#hub-scenes [data-hub-scene="lobby"]');
+  // Hidden and paused: not drawn, and friends see you left.
+  await expect(layer).toBeHidden();
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__gones ?? 0))
+    .toBe(1);
+  // Back: the very same farm, shown at once and drawing again.
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  await expect(layer).toBeVisible();
+  expect(await page.evaluate(() => (window as any).__farm.F.mark)).toBe(
+    "same farm",
+  );
+  await expect(page.locator("body")).toHaveClass(/hub-farm/);
+  await openSheet(page, "barn");
+  await expect(page.locator("#fm-sheet")).toContainText("Barn storage");
+  expect(errors).toEqual([]);
+});
+
+test("the farm is kept in this browser: after a reload it draws at once", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await openLobby(page);
+  await fakeFarm(page);
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  await page.waitForFunction(() => (window as any).__farm?.F?.loaded);
+  // Kept per player, a moment after the farm loads.
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        Object.keys(localStorage).filter((k) => k.startsWith("arena-farm:")),
+      ),
+    )
+    .toHaveLength(1);
+  // A new visit: the page reloads (the farm closed, its memory gone).
+  await page.click('#hub-scenes [data-hub-scene="lobby"]');
+  await openLobby(page);
+  await fakeFarm(page);
+  await page.evaluate(() => ((window as any).__farmDelay = 4000));
+  await page.click('#hub-scenes [data-hub-scene="farm"]');
+  const now = await page.evaluate(() => {
+    const f = (window as any).__farm;
+    return { loaded: !!f.F.loaded, crop: f.F.plots[0]?.crop ?? null };
+  });
+  expect(now).toEqual({ loaded: true, crop: "wheat" });
+  await page.evaluate(() => ((window as any).__farmDelay = 0));
+  // Logging out forgets it: the next player on this browser starts clean.
+  await page.evaluate(() => document.getElementById("account-logout")!.click());
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        Object.keys(localStorage).filter((k) => k.startsWith("arena-farm:")),
+      ),
+    )
+    .toEqual([]);
+  await expect(page.locator(".farm-layer")).toHaveCount(0);
 });
 
 test("the farm rests behind Settings and wakes when it closes", async ({
