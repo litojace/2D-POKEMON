@@ -4674,12 +4674,41 @@ export function openFarm(options) {
       carryOne(carry.kind, carry.id, carry.from);
     }
     e.preventDefault();
+    carry.lx = e.clientX;
+    carry.ly = e.clientY;
     const o = hudOff(),
       lr = layer.getBoundingClientRect(),
       g = $("fm-ghost");
     g.style.left = `${e.clientX - lr.left - o.x}px`;
     g.style.top = `${e.clientY - lr.top - o.y}px`;
     const w = toWorld(e.clientX, e.clientY);
+    carryOne(carry.kind, carry.id, plotAt(w.x, w.y));
+  }
+  /** Carrying a seed or a tool to the edge of the view scrolls the farm that
+   *  way, faster the closer to the edge; what slides under the finger is
+   *  sown, watered or cut as it goes. Called every frame. */
+  function edgeScroll(dt) {
+    if (!carry?.moved || carry.lx == null) return;
+    const r = cv.getBoundingClientRect(),
+      ex = Math.min(72, r.width * 0.12),
+      ey = Math.min(72, r.height * 0.16),
+      push = (v, lo, hi, e) =>
+        v < lo + e
+          ? -Math.min(1, (lo + e - v) / e)
+          : v > hi - e
+            ? Math.min(1, (v - (hi - e)) / e)
+            : 0,
+      kx = push(carry.lx, r.left, r.right, ex),
+      ky = push(carry.ly, r.top, r.bottom, ey);
+    if (!kx && !ky) return;
+    const sp = (900 * dt) / Z,
+      bx = cam.x,
+      by = cam.y;
+    cam.x += kx * sp;
+    cam.y += ky * sp;
+    clampCam();
+    if (cam.x === bx && cam.y === by) return; // already at the farm's edge
+    const w = toWorld(carry.lx, carry.ly);
     carryOne(carry.kind, carry.id, plotAt(w.x, w.y));
   }
   function carryEnd(e) {
@@ -5608,6 +5637,7 @@ export function openFarm(options) {
     last = now;
     T = now / 1000;
     if (!inited) return;
+    edgeScroll(dt);
     const sn = serverNow();
     for (const p of F.plots) if (p.crop) p.prog = growth(p, sn);
     if (V) for (const p of V.plots) if (p.crop) p.prog = growth(p, sn);
@@ -7432,6 +7462,19 @@ export function openFarm(options) {
           x: r.left + (sp.x * r.width) / NW,
           y: r.top + (sp.y * r.height) / NH,
         };
+      },
+      /** A plot's centre on the farm (tests). */
+      plotWorld: (i) => {
+        const pr = plotRect(i);
+        return { x: pr.x + PW / 2, y: pr.y + PH / 2 };
+      },
+      /** Zoom (tests): the farm's scale, and a way to set it. */
+      zoom: (z) => {
+        if (z) {
+          Z = Math.max(ZMIN, Math.min(ZMAX, z));
+          clampCam();
+        }
+        return Z;
       },
       plotClient: (i) => {
         const r = cv.getBoundingClientRect(),
