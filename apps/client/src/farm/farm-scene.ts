@@ -666,8 +666,11 @@ export function openFarm(options) {
       );
     announceGifts();
     announceVisits(st.visits);
-    if (!F.seeds[F.seed]) {
-      const first = CROPS.find((c) => F.seeds[c.id]);
+    // The seed in hand: one you have and can grow at your level.
+    if (!F.seeds[F.seed] || (CROP[F.seed]?.lv ?? 1) > F.lv) {
+      const first =
+        PCROPS.find((c) => F.seeds[c.id] && c.lv <= F.lv) ??
+        PCROPS.find((c) => F.seeds[c.id]);
       if (first) F.seed = first.id;
     }
     F.loaded = true;
@@ -4217,12 +4220,18 @@ export function openFarm(options) {
       pop = $("fm-pop");
     pop.hidden = false;
     pop.classList.add("seedpick");
-    const have = PCROPS.filter((c) => F.seeds[c.id]),
+    // Seeds you can't grow yet (a gift or a wish above your level) are greyed
+    // out at the end, with the level they need, as in the Shop.
+    const have = PCROPS.filter((c) => F.seeds[c.id]).sort(
+        (a, b) => +(a.lv > F.lv) - +(b.lv > F.lv),
+      ),
       buy = PCROPS.filter(
         (c) => !F.seeds[c.id] && c.lv <= F.lv && (F.shop.stock[c.id] ?? 0) > 0,
       ).slice(0, 4);
-    const card = (c, mine) =>
-      `<button type="button" class="opt sp r-${c.rar}${mine ? "" : " spbuy"}" ${mine ? `data-pseed="${c.id}"` : `data-pbuy="${c.id}"`} ${!mine && F.leaves < c.cost ? "disabled" : ""} title="${c.n}"><b>${mine ? `×${F.seeds[c.id]}` : `${c.cost}${L}`}</b><img src="${icon(c.id)}" alt=""><span>${c.n}</span><small>${I("clock")}${fmtSecs(c.t)} · ${c.sell}${L}</small></button>`;
+    const card = (c, mine) => {
+      const lock = c.lv > F.lv;
+      return `<button type="button" class="opt sp r-${c.rar}${mine ? "" : " spbuy"}${lock ? " locked" : ""}" ${mine ? `data-pseed="${c.id}"` : `data-pbuy="${c.id}"`} ${lock || (!mine && F.leaves < c.cost) ? "disabled" : ""} title="${lock ? `${c.n}: grows at Lv ${c.lv}` : c.n}"><b>${mine ? `×${F.seeds[c.id]}` : `${c.cost}${L}`}</b><img src="${icon(c.id)}" alt=""><span>${c.n}</span><small>${lock ? `Lv ${c.lv}` : `${I("clock")}${fmtSecs(c.t)} · ${c.sell}${L}`}</small></button>`;
+    };
     pop.innerHTML = `<h6>What should grow here?</h6>${have.length ? `<div class="grid">${have.map((c) => card(c, true)).join("")}</div>` : `<p class="sh-note" style="margin:2px 4px 6px">Your seed bag is empty.</p>`}${buy.length ? `<h6 style="margin-top:8px">Quick buy 1 seed</h6><div class="grid">${buy.map((c) => card(c, false)).join("")}</div>` : ""}<p class="sh-note sp-tip">Tip: after picking a seed, <b>drag</b> across empty plots to sow them all.</p>`;
     const pw = Math.min(320, o.w - 16);
     pop.style.width = `${pw}px`;
@@ -4233,7 +4242,7 @@ export function openFarm(options) {
       const b = e.target.closest("[data-pseed]"),
         q = e.target.closest("[data-pbuy]");
       const id = b?.dataset.pseed || q?.dataset.pbuy;
-      if (!id) return;
+      if (!id || (b ?? q).disabled) return;
       if (q) act({ a: "buy-seeds", crop: id, qty: 1 });
       F.seed = id;
       F.tool = "seed";
@@ -6369,10 +6378,11 @@ export function openFarm(options) {
     if (kind === "seed")
       pop.innerHTML = `<h6>Pick a seed to sow</h6><div class="grid">${
         PCROPS.filter((c) => F.seeds[c.id])
-          .map(
-            (c) =>
-              `<button type="button" class="opt" data-tseed="${c.id}"><b>${F.seeds[c.id]}</b><img src="${icon(c.id)}" alt=""><span>${esc(c.n)}</span></button>`,
-          )
+          .sort((a, b) => +(a.lv > F.lv) - +(b.lv > F.lv))
+          .map((c) => {
+            const lock = c.lv > F.lv;
+            return `<button type="button" class="opt${lock ? " locked" : ""}" data-tseed="${c.id}" ${lock ? `disabled title="${esc(c.n)}: grows at Lv ${c.lv}"` : ""}><b>${F.seeds[c.id]}</b><img src="${icon(c.id)}" alt=""><span>${esc(c.n)}</span>${lock ? `<small class="lv">Lv ${c.lv}</small>` : ""}</button>`;
+          })
           .join("") || `<p class="sh-note">No seeds</p>`
       }</div>`;
     else
@@ -6389,7 +6399,7 @@ export function openFarm(options) {
     pop.style.left = `${Math.max(8, Math.min(NW - 308, x - 120))}px`;
     pop.style.top = `${y - pop.offsetHeight - 10}px`;
     pop.onclick = (e) => {
-      const s = e.target.closest("[data-tseed]"),
+      const s = e.target.closest("[data-tseed]:not([disabled])"),
         f = e.target.closest("[data-tfert]");
       if (s) {
         F.seed = s.dataset.tseed;

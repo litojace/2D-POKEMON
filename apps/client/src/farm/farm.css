@@ -538,6 +538,18 @@
   opacity: 0.35;
   cursor: default;
 }
+/* A seed you can't grow yet: greyed out with the level it needs, as in the
+   Shop, so nobody taps it. */
+.farm-layer .fm-pop .opt.locked {
+  opacity: 0.5;
+  filter: grayscale(0.85);
+  cursor: not-allowed;
+}
+.farm-layer .fm-pop .opt.locked small,
+.farm-layer .fm-pop .opt .lv {
+  color: #ffd65b;
+  font-weight: 800;
+}
 @keyframes fm-feedin {
   from {
     transform: translateX(-16px);
