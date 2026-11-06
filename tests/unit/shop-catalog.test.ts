@@ -12,11 +12,15 @@ import {
   awakeningStage,
 } from "../../packages/shared/src/shop";
 
-/** 010 seeds the first catalog; 053 and 054 add the eight newest champions' skins. */
+/**
+ * 010 seeds the first catalog; 053 and 054 add the second eight champions'
+ * skins, 067 the two Nature champions'.
+ */
 const migration =
   readFileSync("supabase/migrations/010_shop.sql", "utf8") +
   readFileSync("supabase/migrations/053_new_champion_skins.sql", "utf8") +
-  readFileSync("supabase/migrations/054_new_champion_mythicals.sql", "utf8");
+  readFileSync("supabase/migrations/054_new_champion_mythicals.sql", "utf8") +
+  readFileSync("supabase/migrations/067_eighteen_champions.sql", "utf8");
 /** Missions are re-seeded (with the solo flag) by 014. */
 const missionMigration = readFileSync(
   "supabase/migrations/014_missions.sql",
@@ -130,7 +134,7 @@ describe("shop catalog", () => {
         id,
       ).toEqual([7, 3, 2, 1, 1]);
     }
-    expect(CHAMPION_SKINS).toHaveLength(7 * 16);
+    expect(CHAMPION_SKINS).toHaveLength(7 * 18);
     // Every Mythical belongs to the Celestial collection.
     for (const s of CHAMPION_SKINS.filter((s) => s.rarity === "mythical"))
       expect(s.collection, s.id).toBe("celestial");

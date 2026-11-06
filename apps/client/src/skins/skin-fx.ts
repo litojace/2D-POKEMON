@@ -558,6 +558,37 @@ function newMythic(ctx: FxContext, art: SkinArt, stage: number) {
         }
       break;
     }
+    case "evergrove": {
+      // Glowing leaves drift down; awakened, fireflies circle; fully, a soft canopy light.
+      if (ctx.ambient && ctx.chance(stage >= 2 ? 5 : 3, ctx.dt))
+        ctx.emit({ x: x + (Math.random() - 0.5) * 44 * sc, y: mid - 26 * sc, vx: (Math.random() - 0.5) * 12, vy: 14, life: 1.2, size: 1.8 * sc, color: Math.random() < 0.5 ? 0x8fe06a : 0xb8ffcf, shape: "dot" });
+      if (stage >= 2)
+        for (let i = 0; i < 3; i++) {
+          const o = orbit(ctx, i, 3, 1700, 30, 12, -16);
+          const k = 0.5 + Math.sin(now / 240 + i * 2) * 0.5;
+          (o.front ? g : under).fillStyle(0xfff6b0, 0.5 + k * 0.5).fillCircle(o.x, o.y, (1.6 + k) * sc);
+        }
+      if (stage >= 3) {
+        const k = 0.5 + Math.sin(now / 900) * 0.5;
+        under.fillStyle(0x8fe06a, 0.07 + k * 0.06).fillCircle(ctx.headX, ctx.headY + 16 * sc, (38 + k * 4) * sc);
+      }
+      break;
+    }
+    case "moonbloom": {
+      // Moon pollen rises; awakened, two moths of light; fully, a pale moon glow.
+      if (ctx.ambient && ctx.chance(stage >= 2 ? 6 : 4, ctx.dt))
+        ctx.emit({ x: x + (Math.random() - 0.5) * 40 * sc, y: mid, vx: (Math.random() - 0.5) * 8, vy: -12, life: 1, size: 1.5 * sc, color: Math.random() < 0.5 ? 0xfff3b0 : 0xc8f0ff, shape: "dot" });
+      if (stage >= 2)
+        for (let i = 0; i < 2; i++) {
+          const o = orbit(ctx, i, 2, 1300, 32, 12, -18);
+          sparkle(o.front ? g : under, o.x, o.y, 2.6 * sc, i ? 0xc8f0ff : 0xfff3b0, 0.9);
+        }
+      if (stage >= 3) {
+        const k = 0.5 + Math.sin(now / 800) * 0.5;
+        under.fillStyle(0xc8f0ff, 0.08 + k * 0.07).fillCircle(ctx.headX, ctx.headY + 12 * sc, (34 + k * 4) * sc);
+      }
+      break;
+    }
     case "nebula": {
       if (ctx.ambient && ctx.chance(stage >= 2 ? 10 : 6, ctx.dt))
         ctx.emit({ x: x + (Math.random() - 0.5) * 36 * sc, y: y + (Math.random() - 0.3) * 10 * sc, vx: (Math.random() - 0.5) * 10, vy: -10 - Math.random() * 10, life: 0.9, size: 1.5 * sc, color: Math.random() < 0.5 ? 0xff6bd6 : 0x8ad8ff, shape: "dot", behind: true });

@@ -526,6 +526,56 @@ function newAwakening(
             : `<ellipse cx="100" cy="132" rx="76" ry="22" fill="none" stroke="#c8a8ff" stroke-width="7" opacity=".85"/><ellipse cx="100" cy="132" rx="76" ry="22" fill="none" stroke="#fff0d8" stroke-width="2"/><ellipse cx="100" cy="132" rx="64" ry="17" fill="none" stroke="#ffd27a" stroke-width="2" opacity=".8"/>`,
         );
       break;
+    case "evergrove": {
+      // Stage II: a halo of glowing leaves over the crown. III: an ancient
+      // tree rising behind, its canopy lit with fireflies.
+      const leafAt = (x: number, y: number, r: number, a: number) =>
+        `<g transform="translate(${+x.toFixed(1)} ${+y.toFixed(1)}) rotate(${+a.toFixed(1)})">${path(`M0 ${-r}Q${r * 0.8} 0 0 ${r}Q${-r * 0.8} 0 0 ${-r}Z`, "#b8ffcf", "#1e5a44", 1.2)}</g>`;
+      add(
+        "flame",
+        Array.from({ length: 7 }, (_, i) => {
+          const a = Math.PI + (i / 6) * Math.PI;
+          return leafAt(cx + Math.cos(a) * 20, top - 2 + Math.sin(a) * 12, 5, (a * 180) / Math.PI + 90);
+        }).join("") + star(cx, top - 16, 4, "#ffffff"),
+      );
+      if (full)
+        add(
+          "wings",
+          back
+            ? path(`M${peekX - 4} ${peekY + 26}V${peekY - 4}`, "none", "#6b4526", 5) +
+                `<circle cx="${peekX}" cy="${peekY - 8}" r="${peekR}" fill="none" stroke="#8fe06a" stroke-width="3" opacity=".9"/>`
+            : path(`M${peekX - 4} ${peekY + 30}Q${peekX - 8} ${peekY + 6} ${peekX} ${peekY - 6}`, "none", "#2a1a0e", 8) +
+                path(`M${peekX - 4} ${peekY + 30}Q${peekX - 8} ${peekY + 6} ${peekX} ${peekY - 6}`, "none", "#6b4526", 5) +
+                `<circle cx="${peekX}" cy="${peekY - 10}" r="${peekR}" fill="#2f7a4a" stroke="#b8ffcf" stroke-width="2.4"/>` +
+                [[-10, -18, 2.4], [9, -16, 2], [12, -2, 2.6], [-12, -2, 2], [0, -6, 1.8]]
+                  .map(([x, y, r]) => `<circle cx="${peekX + x}" cy="${peekY + y}" r="${r}" fill="#fff6b0"/>`)
+                  .join(""),
+        );
+      break;
+    }
+    case "moonbloom": {
+      // Stage II: a glowing moonflower tucked behind the ear and a petal
+      // collar. III: a giant night bloom open behind it.
+      const bloom = (x: number, y: number, r: number, petal: string, heart: string) =>
+        Array.from({ length: 6 }, (_, i) => {
+          const a = (i / 6) * Math.PI * 2;
+          return `<ellipse cx="${+(x + Math.cos(a) * r * 0.7).toFixed(1)}" cy="${+(y + Math.sin(a) * r * 0.7).toFixed(1)}" rx="${+(r * 0.55).toFixed(1)}" ry="${+(r * 0.32).toFixed(1)}" fill="${petal}" stroke="${p.dark}" stroke-width="1" transform="rotate(${+((a * 180) / Math.PI).toFixed(1)} ${+(x + Math.cos(a) * r * 0.7).toFixed(1)} ${+(y + Math.sin(a) * r * 0.7).toFixed(1)})"/>`;
+        }).join("") + circle(x, y, r * 0.3, heart, "none", 0);
+      add("flame", bloom(cx + (side ? -side * 6 : 20), top + 4, 10, "#e8f4ff", "#fff3b0"));
+      add(
+        "scarf",
+        back
+          ? path("M80 122Q100 130 120 122", "none", "#c8f0ff", 3)
+          : paired((s) => `<ellipse cx="${100 + s * 14}" cy="128" rx="8" ry="4.6" fill="#e8f4ff" stroke="${p.dark}" stroke-width="1"/>`) +
+              circle(100 + dx, 130, 4, "#fff3b0", "none", 0),
+      );
+      if (full)
+        add(
+          "wings",
+          backdrop(peekX, peekY, peekR, "#1a2a5a", "#c8f0ff", bloom(peekX, peekY, 19, "#dcecff", "#fff3b0")),
+        );
+      break;
+    }
     case "nebula":
       add(
         "armL",

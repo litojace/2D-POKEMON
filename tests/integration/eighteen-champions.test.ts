@@ -5,8 +5,9 @@ import { afterAll, beforeAll, expect, it } from "vitest";
 import { FIGHTER_IDS } from "../../packages/shared/src/index";
 import { CHAMPION_SKINS, skinPrice } from "../../packages/shared/src/shop";
 
-// Migration 052: the new champions can be your portrait and your farmer, and
-// SQL's roster matches FIGHTER_IDS. Migrations 053 and 054: their Shop skins.
+// Migrations 052 and 067: the new champions can be your portrait and your
+// farmer, and SQL's roster matches FIGHTER_IDS. Migrations 053, 054 and 067:
+// their Shop skins.
 let db: PGlite;
 const player = "00000000-0000-4000-8000-000000000511";
 const login = () =>
@@ -45,7 +46,7 @@ beforeAll(async () => {
 }, 60000);
 afterAll(async () => db.close());
 
-it("knows the same sixteen champions as the game", async () => {
+it("knows the same eighteen champions as the game", async () => {
   const [{ ids }] = await owner("select public.arena_champion_ids() ids");
   expect([...ids].sort()).toEqual([...FIGHTER_IDS].sort());
 });
@@ -72,7 +73,7 @@ it("lets every champion be your portrait, and nothing else", async () => {
   ).rejects.toThrow(/check/);
 });
 
-it("lets every champion farm (the new eight without a perk)", async () => {
+it("lets every champion farm", async () => {
   for (const id of FIGHTER_IDS) {
     const r = await act([{ a: "farmer", id }]);
     expect(r.results[0]?.error, id).toBeUndefined();
@@ -89,12 +90,12 @@ it("lets every champion farm (the new eight without a perk)", async () => {
   ).rejects.toThrow(/check/);
 });
 
-it("draws order faces from all sixteen", async () => {
+it("draws order faces from all eighteen", async () => {
   await owner("delete from public.arena_farm_orders where player_id = $1", [
     player,
   ]);
   const faces = new Set<string>();
-  for (let i = 0; i < 400 && faces.size < 16; i++) {
+  for (let i = 0; i < 400 && faces.size < FIGHTER_IDS.length; i++) {
     await owner("select public.arena_farm_new_order($1, 0, 10)", [player]);
     const [o] = await owner(
       "select face, who from public.arena_farm_orders where player_id = $1 and slot = 0",

@@ -649,7 +649,8 @@ export const FARM_PERKS: Record<
 /**
  * The champion whose perk a farmer has: the eight newest champions farm with
  * the perk of the original of their element (migration 055,
- * arena_farm_perk_of). The originals have their own.
+ * arena_farm_perk_of), the two Nature champions with the perk that suits
+ * them (067). The originals have their own.
  */
 export const FARM_PERK_OF: Record<string, string> = {
   coilemur: "voltkit",
@@ -660,6 +661,10 @@ export const FARM_PERK_OF: Record<string, string> = {
   astrabun: "mystowl",
   wombolder: "terradon",
   shadopus: "duskveil",
+  // Nature has no original champion: the pangolin hunts bugs (Night Stalker)
+  // and the gardener sloth grows crops faster (Early Sun). Migration 067.
+  pangrove: "duskveil",
+  mossloth: "lumoth",
 };
 /** Whose perk this farmer farms with (itself for the original eight). */
 export const farmPerkOf = (farmer: string) => FARM_PERK_OF[farmer] ?? farmer;

@@ -102,7 +102,9 @@ export type Mythic =
   | "daybreak"
   | "full-moon"
   | "saturnine"
-  | "nebula";
+  | "nebula"
+  | "evergrove"
+  | "moonbloom";
 export interface SkinArt {
   palette: Partial<Palette>;
   pattern?: { kind: PatternKind; color: string; color2?: string; opacity?: number; parts?: CreaturePart[] };
@@ -612,6 +614,68 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0xff6bd6,
     detail: "shimmer",
     mythic: "nebula",
+  },
+  // --------------------------------------------------------------- Pangrove
+  "pangrove-autumn": { palette: { light: "#fff0d0", mid: "#e0883a", dark: "#4a2210", glow: "#ffe08a", accent: "#b04a1e" } },
+  "pangrove-frostleaf": { palette: { light: "#f4fbff", mid: "#a8d0e0", dark: "#22404e", glow: "#bff4ff", accent: "#6a9ab8" } },
+  "pangrove-jade": { palette: { light: "#e0fff0", mid: "#2fa878", dark: "#0a3a28", glow: "#ffd65b", accent: "#147a54" } },
+  "pangrove-blossom": {
+    palette: { light: "#fff2f8", mid: "#f4a8c8", dark: "#5a2440", glow: "#fff2a0", accent: "#e06a9a" },
+    accessories: ["flower-crown"],
+    trail: { kind: "petal", colors: [0xffb3d1, 0xffffff] },
+  },
+  "pangrove-lantern-night": {
+    palette: { light: "#ffe8d0", mid: "#d8442e", dark: "#3a0e08", glow: "#ffd65b", accent: "#8a1e12" },
+    pattern: { kind: "petals", color: "#ffd65b", opacity: 0.45 },
+    accessories: ["lantern-tassels"],
+    trail: { kind: "confetti", colors: [0xffd65b, 0xff4f3a, 0xffffff] },
+  },
+  "pangrove-golden-sap": {
+    palette: { light: "#fff6d8", mid: "#e0a43a", dark: "#4a2c08", glow: "#ffe36b", accent: "#a8681a" },
+    pattern: { kind: "veins", color: "#fff0a8", opacity: 0.8 },
+    accessories: ["crown"],
+    trail: { kind: "coin", colors: [0xffd65b, 0xffb02e] },
+    skill: 0xffc93d,
+    detail: "glint",
+  },
+  "pangrove-evergrove": {
+    palette: { light: "#e8fff0", mid: "#3a8a6a", dark: "#082a20", glow: "#b8ffcf", accent: "#1e5a44" },
+    pattern: { kind: "constellation", color: "#d8ffe6", opacity: 0.8 },
+    trail: { kind: "leaf", colors: [0x8fe06a, 0xb8ffcf, 0xffffff] },
+    skill: 0x8fffb0,
+    detail: "shimmer",
+    mythic: "evergrove",
+  },
+  // --------------------------------------------------------------- Mossloth
+  "mossloth-cinnamon": { palette: { light: "#fff0dc", mid: "#b0703e", dark: "#3a1e0c", glow: "#a8e070", accent: "#ffb38a" } },
+  "mossloth-snowy": { palette: { light: "#ffffff", mid: "#e8e6dc", dark: "#4a4a40", glow: "#d6f5a8", accent: "#bfe6ff" } },
+  "mossloth-dusk": { palette: { light: "#f0e8ff", mid: "#9a8ab0", dark: "#2a2038", glow: "#c8a0ff", accent: "#ffd0f0" } },
+  "mossloth-acorn-nap": {
+    palette: { light: "#fff4e0", mid: "#c8a070", dark: "#3e2a14", glow: "#b8e07a", accent: "#ffb3c8" },
+    accessories: ["acorn-cap"],
+    trail: { kind: "leaf", colors: [0x8fd36a, 0xc89a5a, 0xe0b040] },
+  },
+  "mossloth-cozy-knit": {
+    palette: { light: "#ffffff", mid: "#d8dce4", dark: "#3a404e", glow: "#a8e0ff", accent: "#ff8fa8" },
+    pattern: { kind: "snow", color: "#ffffff", opacity: 0.85 },
+    accessories: ["knit-scarf"],
+    trail: { kind: "snow", colors: [0xffffff, 0xdfe6ee] },
+  },
+  "mossloth-bonsai-keeper": {
+    palette: { light: "#f6f0e0", mid: "#a89870", dark: "#33301e", glow: "#ffb3d1", accent: "#ff8fb8" },
+    pattern: { kind: "petals", color: "#ffd0e4", opacity: 0.5 },
+    accessories: ["bonsai"],
+    trail: { kind: "petal", colors: [0xffb3d1, 0xffffff] },
+    skill: 0xff9fc8,
+    detail: "shimmer",
+  },
+  "mossloth-moonbloom": {
+    palette: { light: "#e0e8ff", mid: "#4a5aa0", dark: "#0e1238", glow: "#c8f0ff", accent: "#fff3b0" },
+    pattern: { kind: "glowdots", color: "#fff3b0", opacity: 0.85 },
+    trail: { kind: "star", colors: [0xfff3b0, 0xc8f0ff] },
+    skill: 0xc8f0ff,
+    detail: "pulse",
+    mythic: "moonbloom",
   },
 };
 
