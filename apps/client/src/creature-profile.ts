@@ -1625,6 +1625,216 @@ export function creatureProfile(
     }
     profiles.scarf = "";
   }
+  if (id === "pangrove") {
+    const leaves = `url(#${prefix}-leaves)`;
+    const scale = (x: number, y: number, w: number, h: number, a = 0, fill = body) => {
+      const t = a ? ` transform="rotate(${a} ${x} ${y})"` : "";
+      return (
+        path(`M${x} ${y - h}Q${x + w} ${y - h * 0.1} ${x} ${y + h}Q${x - w} ${y - h * 0.1} ${x} ${y - h}Z`, fill, t) +
+        path(`M${x} ${y - h * 0.7}V${y + h * 0.75}`, "none", ` stroke="${p.dark}" stroke-width="1.1" opacity=".35"${t}`)
+      );
+    };
+    const scales = (pts: number[][], w: number, h: number, fill = body) =>
+      pts.map(([x, y, a]) => scale(x, y, w, h, a, fill)).join("");
+    const claws = (x: number) =>
+      line(`M${x - 6} 156q-2 5 1 7M${x} 157q0 6 2 7M${x + 6} 156q2 5 3 6`, "#f6eccf", 2.6);
+    const sprout = (x: number) =>
+      line(`M${x} 52Q${x - 2} 40 ${x + 4} 32`, p.accent, 3) +
+      path(`M${x + 3} 36Q${x + 12} 26 ${x + 22} 32Q${x + 14} 42 ${x + 3} 36Z`) +
+      path(`M${x + 1} 42Q${x - 10} 34 ${x - 18} 40Q${x - 10} 48 ${x + 1} 42Z`, p.mid);
+    profiles.flame = sprout(back ? 100 : 104);
+    profiles.legL = leg(back ? 82 : 89, 12);
+    profiles.legR = leg(back ? 118 : 112, 13);
+    if (back) {
+      profiles.ears =
+        e(62, 74, 9, 8) + e(138, 74, 9, 8);
+      profiles.head =
+        e(100, 88, 39, 33, face) +
+        path("M62 96Q58 56 100 52Q142 56 138 96Q120 104 100 104Q80 104 62 96Z", leaves) +
+        scales(
+          [
+            [80, 66, -25],
+            [100, 62, 0],
+            [120, 66, 25],
+            [72, 84, -40],
+            [90, 82, -10],
+            [110, 82, 10],
+            [128, 84, 40],
+          ],
+          8,
+          10,
+        );
+      // The scale mantle down its back, and the tail curling out below it.
+      profiles.wings =
+        path("M112 158Q150 170 166 146Q176 126 162 112Q154 108 150 118Q160 130 150 144Q138 154 112 150Z", leaves) +
+        scales(
+          [
+            [158, 122, 20],
+            [160, 140, 60],
+            [144, 152, 80],
+          ],
+          6,
+          8,
+        ) +
+        path("M66 140Q62 108 100 102Q138 108 134 140Q120 156 100 156Q80 156 66 140Z", leaves) +
+        scales(
+          [
+            [82, 116, -20],
+            [100, 112, 0],
+            [118, 116, 20],
+            [76, 134, -10],
+            [94, 130, 0],
+            [112, 130, 0],
+            [126, 134, 10],
+            [100, 146, 0],
+          ],
+          8,
+          10,
+        );
+      profiles.armL += claws(72);
+      profiles.armR += claws(128);
+    } else {
+      profiles.ears = e(114, 72, 9, 8) + e(114, 73, 4.5, 4, "#ffb3c8", ' stroke="none"');
+      profiles.earFar = e(98, 66, 7, 6);
+      profiles.head =
+        path(
+          "M128 88Q128 60 102 56Q80 54 68 70Q60 80 50 96Q46 104 52 107Q64 113 80 116Q106 124 120 110Q128 102 128 88Z",
+          face,
+        ) +
+        // The scale cap, swept back over the crown.
+        path("M70 70Q84 52 106 54Q130 58 130 92Q118 80 104 76Q88 72 70 70Z", leaves) +
+        scales(
+          [
+            [86, 62, -30],
+            [104, 60, 0],
+            [120, 66, 30],
+            [114, 82, 40],
+            [96, 70, 10],
+          ],
+          7,
+          9,
+        ) +
+        e(52, 101, 5.5, 4.5, p.glow) +
+        e(51, 99.5, 1.8, 1.2, "#ffffff", ' stroke="none"') +
+        line("M57 109q5 2.5 10 0", p.dark, 1.7) +
+        e(61, 111.6, 2.2, 1.6, "#ff7d9c", ' stroke="none"') +
+        shine(80, 66, 18) +
+        cheek(94, 108);
+      profiles.eyes = eyes(82, p.glow, 8.4, 10.2);
+      // Scales ride down its back; the tail curls up behind.
+      profiles.wings =
+        path("M108 104Q130 96 142 112Q152 132 140 156Q128 166 112 158Q106 134 108 104Z", leaves) +
+        scales(
+          [
+            [124, 110, 30],
+            [136, 126, 20],
+            [134, 146, 0],
+            [118, 128, 10],
+            [120, 150, -10],
+          ],
+          7,
+          9,
+        );
+      profiles.tail =
+        path("M118 150Q164 162 178 128Q186 100 166 84Q154 80 150 92Q164 100 162 118Q156 140 118 142Z", leaves) +
+        scales(
+          [
+            [170, 96, -30],
+            [176, 114, 0],
+            [170, 132, 30],
+            [156, 146, 60],
+            [138, 150, 80],
+          ],
+          7,
+          9,
+        );
+      profiles.armL += claws(76);
+      profiles.armR += claws(111);
+    }
+  }
+  if (id === "mossloth") {
+    const moss = `url(#${prefix}-moss)`;
+    const bloom = (x: number, y: number, r = 3, colour = p.accent) =>
+      [0, 1, 2, 3, 4]
+        .map((i) =>
+          e(
+            +(x + Math.cos((i * Math.PI * 2) / 5) * r).toFixed(2),
+            +(y + Math.sin((i * Math.PI * 2) / 5) * r).toFixed(2),
+            r * 0.9,
+            r * 0.9,
+            colour,
+            ' stroke="none"',
+          ),
+        )
+        .join("") + e(x, y, r * 0.6, r * 0.6, "#fff2a0", ' stroke="none"');
+    const shag = (d: string) => line(d, p.dark, 1.4, 0.35);
+    const crown = (x: number) =>
+      path(`M${x - 20} 60Q${x - 16} 48 ${x} 48Q${x + 16} 48 ${x + 20} 60Q${x + 10} 56 ${x} 57Q${x - 10} 56 ${x - 20} 60Z`, moss) +
+      line(`M${x} 50Q${x - 1} 40 ${x + 4} 34`, p.glow, 2.4) +
+      path(`M${x + 3} 37Q${x + 10} 30 ${x + 17} 34Q${x + 11} 41 ${x + 3} 37Z`, p.glow) +
+      bloom(x - 12, 54, 3) +
+      bloom(x + 14, 53, 2.4, "#ffffff");
+    // Long arms with three hooked claws.
+    const longArm = (x: number, pawX = x) =>
+      path(`M${x - 9} 120Q${pawX - 12} 146 ${pawX - 9} 160Q${pawX} 168 ${pawX + 9} 160Q${pawX + 12} 144 ${x + 9} 120Z`) +
+      e(x, 122, 12, 12) +
+      shag(`M${pawX - 3} 134l-2 5M${pawX + 3} 148l2 5`) +
+      line(
+        `M${pawX - 5} 163q-2 9 4 11M${pawX} 164q0 10 6 11M${pawX + 5} 163q2 9 7 9`,
+        "#f6eccf",
+        2.8,
+      );
+    profiles.flame = crown(back ? 100 : 104);
+    profiles.legL = leg(back ? 82 : 89, 12);
+    profiles.legR = leg(back ? 118 : 112, 13);
+    if (back) {
+      profiles.ears = e(62, 84, 7, 6) + e(138, 84, 7, 6);
+      profiles.head =
+        e(100, 88, 40, 34, face) +
+        shag("M70 72l-3 -5M84 64l-2 -5M116 64l2 -5M130 72l3 -5M78 100l-3 4M122 100l3 4") +
+        shine(76, 71, 22);
+      // The moss garden covering its back.
+      profiles.wings =
+        path("M60 150Q54 112 100 104Q146 112 140 150Q124 162 100 162Q76 162 60 150Z", moss) +
+        bloom(80, 122, 3.4) +
+        bloom(118, 132, 3) +
+        bloom(98, 146, 2.6, "#ffffff") +
+        bloom(126, 114, 2.2) +
+        line("M86 136q4 -6 8 0M108 118q3 -5 7 0", p.dark, 1.2, 0.4);
+      profiles.armL = longArm(72);
+      profiles.armR = longArm(128);
+    } else {
+      profiles.ears = e(116, 84, 7, 6);
+      profiles.earFar = "";
+      profiles.head =
+        path(
+          "M130 88Q130 58 100 55Q74 54 62 70Q54 82 54 96Q54 110 66 116Q86 126 112 120Q130 110 130 88Z",
+          face,
+        ) +
+        path("M66 70Q80 56 100 56Q124 58 130 80Q118 70 108 72Q98 64 90 70Q78 66 66 70Z", body) +
+        // The pale face disc and the dark stripe from the eye back to the ear.
+        path("M56 92Q58 76 76 76Q96 78 98 98Q96 116 76 118Q58 116 56 102Z", p.light) +
+        path("M66 86Q80 80 96 86Q112 90 116 96Q104 98 96 98Q90 104 80 103Q68 100 66 86Z", p.dark, ' opacity=".82"') +
+        e(58, 100, 5.5, 4.4, "#3a2c22") +
+        e(56.6, 98.8, 1.8, 1.2, "#ffffff", ' opacity=".55" stroke="none"') +
+        line("M60 110q5 3.5 11 0", p.dark, 1.8) +
+        shag("M84 64l-2 -5M108 62l2 -5M124 72l3 -4") +
+        shine(84, 66, 20) +
+        cheek(92, 110);
+      profiles.eyes = eyes(80, p.glow, 7.6, 9.4);
+      profiles.wings =
+        path("M106 104Q130 96 146 112Q156 134 144 156Q130 166 112 158Q104 134 106 104Z", moss) +
+        bloom(128, 112, 3.2) +
+        bloom(142, 138, 2.6, "#ffffff") +
+        bloom(124, 150, 2.4) +
+        line("M118 128q4 -6 8 0", p.dark, 1.2, 0.4);
+      profiles.armL = longArm(85, 78);
+      profiles.armR = longArm(111, 106);
+      profiles.body =
+        e(100, 121, 20, 17) + e(102, 142, 29, 27) + e(94, 146, 16, 18, pearl) +
+        shag("M84 132l-3 5M90 152l-2 5");
+    }
+  }
   // Paint the hidden clavicles as well as the visible torso. The circular
   // shoulder roots stay covered even at the largest casting rotations.
   // (Glacelle's body is translucent: there's nothing to hide, and the discs would show.)

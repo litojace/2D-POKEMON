@@ -55,7 +55,9 @@ export function predictFighter(
     }
     return;
   }
-  if (input.dash && time >= p.dashAt) {
+  // Rooted fighters can't dash (Arena.update ignores the input).
+  const rooted = p.statuses.some((s) => s.kind === "root" && s.until > time);
+  if (input.dash && !rooted && time >= p.dashAt) {
     const d = normalize(input.dx, input.dy);
     p.dashX = (d.x || d.y ? d.x : Math.cos(p.angle)) * RULES.dashSpeed;
     p.dashY = (d.x || d.y ? d.y : Math.sin(p.angle)) * RULES.dashSpeed;

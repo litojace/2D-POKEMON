@@ -633,6 +633,8 @@ export const HEAD: Record<CharacterId, Record<Facing, { cx: number; top: number 
   astrabun: { down: { cx: 100, top: 44 }, up: { cx: 100, top: 44 }, left: { cx: 94, top: 44 }, right: { cx: 106, top: 44 } },
   wombolder: { down: { cx: 100, top: 48 }, up: { cx: 100, top: 48 }, left: { cx: 94, top: 47 }, right: { cx: 106, top: 47 } },
   shadopus: { down: { cx: 100, top: 27 }, up: { cx: 100, top: 27 }, left: { cx: 99, top: 30 }, right: { cx: 101, top: 30 } },
+  pangrove: { down: { cx: 100, top: 50 }, up: { cx: 100, top: 50 }, left: { cx: 94, top: 50 }, right: { cx: 106, top: 50 } },
+  mossloth: { down: { cx: 100, top: 54 }, up: { cx: 100, top: 54 }, left: { cx: 94, top: 54 }, right: { cx: 106, top: 54 } },
 };
 
 /** Default parts a pattern covers (the eyes are a separate layer and stay clear). */

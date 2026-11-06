@@ -369,7 +369,7 @@ export class RaidArena extends Arena {
     this.damage(source, amount * 0.3, target.id);
   }
   override status(p: Fighter, kind: StatusKind, duration: number, by?: string) {
-    if (p.raidBoss && ["stun", "freeze", "paralysis", "sleep"].includes(kind)) {
+    if (p.raidBoss && ["stun", "freeze", "paralysis", "sleep", "root"].includes(kind)) {
       this.addBossStagger(p, 3);
       return;
     }

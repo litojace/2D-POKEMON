@@ -5460,6 +5460,7 @@ class ArenaScene extends Phaser.Scene {
           empower: 0xffb347,
           haste: 0x8ee6ad,
           stealth: 0xa98be6,
+          root: 0x7fcf6a,
           mark: 0xffffff,
         };
         g.fillStyle(colors[s.kind]).fillCircle(

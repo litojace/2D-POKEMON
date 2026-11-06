@@ -95,7 +95,9 @@ export type CharacterId =
   | "sunbara"
   | "astrabun"
   | "wombolder"
-  | "shadopus";
+  | "shadopus"
+  | "pangrove"
+  | "mossloth";
 export type StatusKind =
   | "burn"
   | "paralysis"
@@ -111,6 +113,8 @@ export type StatusKind =
   | "empower"
   | "haste"
   | "stealth"
+  /** Rooted: can't move or dash (a charge stops), but can still attack, cast and jump. */
+  | "root"
   /** Combo setup: primed for the marker's payoff skill (`by` = the marker). */
   | "mark";
 /** Statuses that count as harmful (the Shadow team-up gift, bots' targeting). */
@@ -122,6 +126,7 @@ export const DEBUFFS: StatusKind[] = [
   "stun",
   "sleep",
   "drowsy",
+  "root",
 ];
 export const STATUS_RULES = {
   stacking: "refresh" as const,
@@ -243,6 +248,8 @@ export interface Ability {
   wallSlam?: number;
   /** Veil: the caster's first hit out of stealth deals this many times the damage. */
   ambush?: number;
+  /** Life drain: the caster heals this share of the damage the hit deals (0.6 = 60%). */
+  drain?: number;
   /** Buff: the caster is airborne for `duration` (ground attacks miss). */
   glide?: boolean;
   /** Buff: a burst around the caster on cast that pushes enemies away and slows them. */
@@ -1486,6 +1493,150 @@ export const CHARACTERS: Record<CharacterId, Character> = {
       ),
     ],
   },
+  pangrove: {
+    id: "pangrove",
+    name: "Pangrove",
+    element: "Nature",
+    role: "Drain bruiser",
+    description:
+      "A pangolin whose scales are living leaves. Snags you with its sticky tongue, then bites the sap right out of you.",
+    color: 0x7fcf6a,
+    health: 165,
+    speed: 245,
+    basic: basic(
+      "scale-swipe",
+      "Scale Swipe",
+      "melee",
+      14,
+      450,
+      "A swipe of leafy scales in front of Pangrove.",
+      { range: 150, arc: 0.25, knockback: 12 },
+    ),
+    skills: [
+      ability(
+        "tongue-snag",
+        "Tongue Snag",
+        "beam",
+        10,
+        9,
+        "Flick out a long sticky tongue: the first enemy it reaches is Rooted for 0.9 seconds (can't move or dash, can still fight).",
+        { range: 400, radius: 16, knockback: 0, status: "root", statusDuration: 0.9 },
+      ),
+      ability(
+        "sap-bite",
+        "Sap Bite",
+        "melee",
+        22,
+        11,
+        "A deep bite that drinks sap: Pangrove heals 60% of the damage it deals.",
+        { range: 150, arc: 0.3, knockback: 40, drain: 0.6 },
+      ),
+      ability(
+        "scale-curl",
+        "Scale Curl",
+        "barrier",
+        0,
+        14,
+        "Curl up behind your leaf scales for 1.8 seconds: take 60% less damage.",
+        { duration: 1.8 },
+      ),
+      ability(
+        "thornwheel",
+        "Thornwheel",
+        "rush",
+        28,
+        20,
+        "Curl into a wheel of thorns and roll up to 560 px. The first enemy you hit, and everyone near it, is Rooted for a second; Pangrove heals half the damage dealt.",
+        {
+          range: 560,
+          speed: 1200,
+          cast: 0.25,
+          explosion: 120,
+          knockback: 60,
+          status: "root",
+          statusDuration: 1,
+          drain: 0.5,
+        },
+      ),
+    ],
+  },
+  mossloth: {
+    id: "mossloth",
+    name: "Mossloth",
+    element: "Nature",
+    role: "Root controller",
+    description:
+      "A three-toed sloth with a little moss garden on its back. Slow and sleepy, but nothing it plants lets go.",
+    color: 0x9bd36a,
+    health: 150,
+    speed: 225,
+    basic: basic(
+      "seed-spit",
+      "Seed Spit",
+      "projectile",
+      8,
+      380,
+      "Spit a hard seed.",
+      { speed: 720, range: 640, radius: 10 },
+    ),
+    skills: [
+      ability(
+        "rootsnare",
+        "Rootsnare",
+        "projectile",
+        12,
+        9,
+        "Throw a seed that sprouts on impact: the enemy hit is Rooted for 1.1 seconds (can't move or dash, can still fight).",
+        { speed: 760, range: 600, radius: 15, knockback: 0, status: "root", statusDuration: 1.1 },
+      ),
+      ability(
+        "thorn-volley",
+        "Thorn Volley",
+        "barrage",
+        8,
+        10,
+        "Flick a fan of four thorns.",
+        { count: 4, speed: 820, range: 520, radius: 10, knockback: 20 },
+      ),
+      ability(
+        "bramble-patch",
+        "Bramble Patch",
+        "zone",
+        3,
+        13,
+        "Grow a bramble patch at the aim point for 3 seconds. Enemies inside are slowed and scratched (jump over it).",
+        {
+          radius: 125,
+          range: 480,
+          duration: 3,
+          tickInterval: 0.5,
+          ground: true,
+          knockback: 0,
+          status: "slow",
+          statusDuration: 0.6,
+        },
+      ),
+      ability(
+        "wild-roots",
+        "Wild Roots",
+        "zone",
+        28,
+        20,
+        "Roots mark the ground at the aim point, then burst out half a second later: 28 damage and Rooted for 1.4 seconds (jump to dodge).",
+        {
+          radius: 160,
+          range: 520,
+          duration: 0.6,
+          tickDelay: 0.5,
+          tickInterval: 1,
+          ground: true,
+          knockback: 0,
+          status: "root",
+          statusDuration: 1.4,
+        },
+      ),
+    ],
+  },
 };
 /**
  * Free practice: the target drops this electrified ground patch every few
@@ -1679,6 +1830,22 @@ export const COMBOS: Record<CharacterId, Combo> = {
     damage: 1.4,
     text: "Ink Jet inks enemies. Ink Strike deals 40% more to Inked targets.",
   },
+  pangrove: {
+    name: "Snagged",
+    setup: "tongue-snag",
+    payoff: "sap-bite",
+    window: 3,
+    damage: 1.35,
+    text: "Tongue Snag snags enemies. Sap Bite deals 35% more to Snagged targets (and drinks that much more).",
+  },
+  mossloth: {
+    name: "Tangled",
+    setup: "rootsnare",
+    payoff: "thorn-volley",
+    window: 3,
+    damage: 1.3,
+    text: "Rootsnare tangles enemies. The first thorn of a Thorn Volley deals 30% more to a Tangled target.",
+  },
 };
 /** Is `p` carrying a combo mark placed by `by`? (Self combos: by = p.id.) */
 export function hasMark(p: Fighter, by: string, time: number) {
@@ -1715,6 +1882,8 @@ export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
   astrabun: 1.008,
   wombolder: 1.006,
   shadopus: 1.047,
+  pangrove: 1,
+  mossloth: 1,
 };
 /**
  * Free-for-all tuning, for mode "ffa" only, in the same form as TEAM_TUNING
@@ -1741,6 +1910,8 @@ export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
   astrabun: 1.026,
   wombolder: 1.11,
   shadopus: 1.089,
+  pangrove: 1,
+  mossloth: 1,
 };
 /**
  * The same for a free-for-all that started with three players, tuned on
@@ -1764,6 +1935,8 @@ export const FFA_THREE_TUNING: Partial<Record<CharacterId, number>> = {
   astrabun: 1.106,
   wombolder: 1.161,
   shadopus: 1.144,
+  pangrove: 1,
+  mossloth: 1,
 };
 /**
  * A champion's strength factor in this mode (1 outside 2v2 and free-for-all).
@@ -1893,6 +2066,8 @@ export const FIGHTER_IDS = [
   "astrabun",
   "wombolder",
   "shadopus",
+  "pangrove",
+  "mossloth",
 ] as const satisfies readonly CharacterId[];
 /** Older internal IDs, accepted so stale clients and saved sessions keep working. */
 const legacyIds: Record<string, CharacterId> = {
@@ -2102,6 +2277,7 @@ export const ELEMENT_GIFTS: Record<
   Psychic: { name: "Focus", text: "ultimate charges 15% faster", value: 1.15 },
   Earth: { name: "Bedrock", text: "knocked back 40% less", value: 0.6 },
   Shadow: { name: "Dusk edge", text: "+10% damage to slowed, burning or stunned foes", value: 1.1 },
+  Nature: { name: "Lifebloom", text: "heals 6% of the damage dealt", value: 0.06 },
 };
 /** The gift a fighter's partner gives them (by the partner's element). */
 export function giftFrom(partnerCharacter: CharacterId) {
@@ -2554,6 +2730,7 @@ export function advanceMovement(
       if (s.kind === "slow" || s.kind === "paralysis")
         modifier *= STATUS_RULES.slowMultiplier;
       if (s.kind === "haste") modifier *= STATUS_RULES.hasteMultiplier;
+      if (s.kind === "root") modifier = 0;
     }
   if (time < p.dashUntil) {
     p.vx = p.dashX;
@@ -2604,7 +2781,8 @@ type RiteNumber =
   | "knockback"
   | "statusDuration"
   | "tickInterval"
-  | "bonusVsStatus";
+  | "bonusVsStatus"
+  | "drain";
 export interface Rite {
   id: string;
   fighter: CharacterId;
@@ -2740,6 +2918,18 @@ export const RITES: Rite[] = [
   rite("shadopus", "minor", "tentacle-lash", "Long Arms", "Tentacle Lash reaches 20% further.", { mul: { range: 1.2 } }),
   rite("shadopus", "major", "ink-cloud", "Vanishing Act", "Ink Cloud cooldown 15s → 10s.", { set: { cooldown: 10 } }),
   rite("shadopus", "major", "kraken-grasp", "Leviathan", "Kraken Grasp reaches 25% further.", { mul: { range: 1.25 } }),
+  rite("pangrove", "minor", "tongue-snag", "Long Tongue", "Tongue Snag reaches 20% further.", { mul: { range: 1.2 } }),
+  rite("pangrove", "minor", "sap-bite", "Deep Bite", "Sap Bite deals 26 damage instead of 22.", { set: { damage: 26 } }),
+  rite("pangrove", "minor", "scale-curl", "Thick Scales", "Scale Curl lasts 2.4s instead of 1.8s.", { set: { duration: 2.4 } }),
+  rite("pangrove", "minor", "scale-swipe", "Sharp Scales", "Scale Swipe deals 16 damage instead of 14.", { set: { damage: 16 } }),
+  rite("pangrove", "major", "sap-bite", "Greedy Sap", "Sap Bite heals all the damage it deals instead of 60%.", { set: { drain: 1 } }),
+  rite("pangrove", "major", "thornwheel", "Bramble Wheel", "Thornwheel's burst is 35% wider.", { mul: { explosion: 1.35 } }),
+  rite("mossloth", "minor", "rootsnare", "Tight Snare", "Rootsnare roots for 1.5s instead of 1.1s.", { set: { statusDuration: 1.5 } }),
+  rite("mossloth", "minor", "thorn-volley", "Six Thorns", "Thorn Volley flicks 6 thorns of 7 damage instead of 4 of 8.", { set: { count: 6, damage: 7 } }),
+  rite("mossloth", "minor", "bramble-patch", "Wide Bramble", "Bramble Patch is 20% wider.", { mul: { radius: 1.2 } }),
+  rite("mossloth", "minor", "seed-spit", "Hard Seed", "Seed Spit deals 9 damage instead of 8.", { set: { damage: 9 } }),
+  rite("mossloth", "major", "rootsnare", "Quick Snare", "Rootsnare cooldown 9s → 6.5s.", { set: { cooldown: 6.5 } }),
+  rite("mossloth", "major", "wild-roots", "Deep Roots", "Wild Roots is 25% wider.", { mul: { radius: 1.25 } }),
 ];
 export const RITE_BY_ID: Record<string, Rite> = Object.fromEntries(
   RITES.map((r) => [r.id, r]),

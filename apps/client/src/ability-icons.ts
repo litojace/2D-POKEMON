@@ -249,6 +249,7 @@ const elementColors: Record<string, string> = {
   Psychic: "#ff8edc",
   Earth: "#e2b97e",
   Shadow: "#b493ff",
+  Nature: "#9ee37a",
 };
 const moveElements = new Map(
   Object.values(CHARACTERS).flatMap((c) =>

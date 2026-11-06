@@ -9,7 +9,7 @@ import {
   type CharacterId,
 } from "@arena/shared";
 import { mobileLayout } from "../../apps/client/src/mobile-input";
-// The sixteen-champion roster: names, elements, roles, basic attacks, intervals and skill cooldowns.
+// The eighteen-champion roster: names, elements, roles, basic attacks, intervals and skill cooldowns.
 const ROSTER: Record<
   CharacterId,
   {
@@ -212,8 +212,32 @@ const ROSTER: Record<
       ["Kraken Grasp", 20],
     ],
   },
+  pangrove: {
+    name: "Pangrove",
+    element: "Nature",
+    role: "Drain bruiser",
+    basic: ["Scale Swipe", 450],
+    skills: [
+      ["Tongue Snag", 9],
+      ["Sap Bite", 11],
+      ["Scale Curl", 14],
+      ["Thornwheel", 20],
+    ],
+  },
+  mossloth: {
+    name: "Mossloth",
+    element: "Nature",
+    role: "Root controller",
+    basic: ["Seed Spit", 380],
+    skills: [
+      ["Rootsnare", 9],
+      ["Thorn Volley", 10],
+      ["Bramble Patch", 13],
+      ["Wild Roots", 20],
+    ],
+  },
 };
-it("matches the sixteen-fighter roster, basic attacks and four skills exactly", () => {
+it("matches the eighteen-fighter roster, basic attacks and four skills exactly", () => {
   expect([...FIGHTER_IDS].sort()).toEqual(Object.keys(ROSTER).sort());
   for (const [id, spec] of Object.entries(ROSTER)) {
     const c = CHARACTERS[id as CharacterId];
