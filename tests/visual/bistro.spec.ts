@@ -440,19 +440,23 @@ test("Bistro: a guest stays at the table 12 to 17 s, so a busy room fills up", a
     page,
     "srv.S.counter = [{ dish: 'goicuon', servings: 20, perfect: false }, null, null, null]; return b.load()",
   );
-  await B(page, "b.spawn()");
+  // Follow one guest by id: others keep coming, and those who leave drop
+  // off the list.
+  const id = (await B(
+    page,
+    "b.spawn(); const c = b.customers().at(-1); return c.id",
+  )) as number;
+  const state = `const c = b.customers().find((x) => x.id === ${id}); return c ? c.state : 'gone'`;
   // Seated, ordered, served: eating.
   const served = (await B(
     page,
-    "for (let i = 0; i < 60; i++) { if (b.customers()[0]?.state === 'eating') return true; b.advance(0.5); } return false",
+    `for (let i = 0; i < 60; i++) { const c = b.customers().find((x) => x.id === ${id}); if (c?.state === 'eating') return true; b.advance(0.5); } return false`,
   )) as boolean;
   expect(served).toBe(true);
   await B(page, "b.advance(11.5)");
-  expect(await B(page, "return b.customers()[0]?.state")).toBe("eating");
+  expect(await B(page, state)).toBe("eating");
   await B(page, "b.advance(6)");
-  expect(await B(page, "return b.customers()[0]?.state ?? 'gone'")).not.toBe(
-    "eating",
-  );
+  expect(await B(page, state)).not.toBe("eating");
   expect(errors).toEqual([]);
 });
 
