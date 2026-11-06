@@ -179,61 +179,11 @@
   min-height: 0;
   display: grid;
 }
-/* A soft pool of the element's colour where the fighter's feet stand
-   (86% down the "selection" framing). */
-.roster-rig::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 86%;
-  width: 78%;
-  aspect-ratio: 4 / 1;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: radial-gradient(
-    closest-side,
-    color-mix(in srgb, var(--el) 30%, transparent),
-    transparent
-  );
+/* The stage light (stage-light.ts, owner's option C): the element's glow
+   and a lit disc with a ring under the feet, in the same 480 × 500 frame as
+   the fighter, so it sits under the still art and the live rig alike. */
+.roster-rig > .stage-light {
   pointer-events: none;
-  z-index: -1;
-}
-/* The spotlight: from the stage's top-right corner down onto the fighter.
-   It hangs from the fighter's feet (where the pool is) and leans up to the
-   right, so it lands on the fighter at any stage size; the stage clips its
-   far end. (A beam pinned to the corner at a fixed angle missed the fighter
-   on a tall stage.) */
-.roster-rig::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 86%;
-  width: 100%;
-  height: 260%;
-  transform-origin: 50% 100%;
-  transform: translate(-50%, -100%) rotate(28deg);
-  /* A cone from the source (top centre) with soft edges, fading out at
-     the feet and toward the source. */
-  background: conic-gradient(
-    from 0deg at 50% 0%,
-    transparent 170deg,
-    #ffe9a6 173.5deg,
-    #ffe9a6 186.5deg,
-    transparent 190deg
-  );
-  mask-image: linear-gradient(
-    to top,
-    transparent,
-    #000 8%,
-    #000 75%,
-    transparent
-  );
-  opacity: 0.42;
-  pointer-events: none;
-  z-index: -1;
-}
-.ui-panel[data-graphics="low"] .roster-rig::after {
-  opacity: 0.22;
 }
 .roster-rig > :is(svg, canvas) {
   grid-area: 1 / 1;
@@ -587,9 +537,6 @@
   .roster-stage {
     padding: 8px;
     gap: 2px;
-  }
-  .roster-rig::before {
-    display: none;
   }
   .roster-counter {
     font-size: 20px;
