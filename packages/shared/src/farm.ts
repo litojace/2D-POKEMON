@@ -563,8 +563,8 @@ export const FARM_TOOLS: readonly {
 /** Sprinklers, one a row from the top: what the 1st…5th costs and needs. */
 export const SPRINKLER_PRICES = [1500, 2200, 3000, 3800, 4500] as const;
 export const SPRINKLER_LEVELS = [18, 26, 34, 42, 50] as const;
-/** Bugs (migration 044): chance a second for each growing plot while you are on the farm. */
-export const BUG_RATE = 0.00005;
+/** Bugs (migration 044; doubled in 066): chance a second for each growing plot while you are on the farm. */
+export const BUG_RATE = 0.0001;
 /** Each bug slows its crop by this much; a plot holds at most BUG_MAX from nature. */
 export const BUG_SLOW = 0.2;
 export const BUG_MAX = 2;

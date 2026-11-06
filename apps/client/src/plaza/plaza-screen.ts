@@ -37,6 +37,10 @@ export interface PlazaScreenOptions {
   low: boolean;
 }
 export interface PlazaScreen {
+  /** Behind another hub scene: off the Plaza on the server, kept here. */
+  hide(): void;
+  /** Back on the Plaza: shown at once, joined again (where you stood). */
+  show(): void;
   look(
     character: CharacterId,
     skin: { skin: string; stage?: number } | null,
@@ -47,6 +51,8 @@ export function openPlazaScreen(options: PlazaScreenOptions): PlazaScreen {
   document.body.classList.add("hub-screen", "hub-plaza");
   const scene = openPlaza(options) as {
     look(character: string, skin: unknown): void;
+    hide(): void;
+    show(): void;
     close(): void;
     _dbg?: unknown;
   };
@@ -54,13 +60,14 @@ export function openPlazaScreen(options: PlazaScreenOptions): PlazaScreen {
   // Visual tests read positions through this (development builds only).
   if (import.meta.env.DEV)
     (window as unknown as { __plaza?: unknown }).__plaza = scene._dbg;
-  let closed = false;
+  let closed = false,
+    away = false;
   const finish = (failed: boolean, tellServer: boolean) => {
     if (closed) return;
     closed = true;
     options.socket.off("plaza-closed", onServerClose);
     options.socket.off("connect", rejoin);
-    if (tellServer) options.socket.emit("plaza-leave", {}, () => {});
+    if (tellServer && !away) options.socket.emit("plaza-leave", {}, () => {});
     scene.close();
     document.body.classList.remove("hub-plaza");
     if (
@@ -94,6 +101,29 @@ export function openPlazaScreen(options: PlazaScreenOptions): PlazaScreen {
       character = next;
       // The server reloads the saved skin and wardrobe itself.
       options.socket.emit("plaza-look", { character: next }, () => {});
+    },
+    hide() {
+      if (closed || away) return;
+      away = true;
+      // Others must not see you standing there: leave the Plaza (the server
+      // keeps your spot for a while), and don't rejoin on a reconnect.
+      options.socket.off("connect", rejoin);
+      options.socket.emit("plaza-leave", {}, () => {});
+      scene.hide();
+      document.body.classList.remove("hub-plaza");
+      if (
+        !document.querySelector(".lobby-layer") &&
+        !document.querySelector(".farm-layer:not([style*='display: none'])")
+      )
+        document.body.classList.remove("hub-screen");
+    },
+    show() {
+      if (closed || !away) return;
+      away = false;
+      document.body.classList.add("hub-screen", "hub-plaza");
+      scene.show();
+      options.socket.on("connect", rejoin);
+      join();
     },
     close: () => finish(false, true),
   };

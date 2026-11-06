@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { readFile, readdir } from "node:fs/promises";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import {
+  BUG_RATE,
   CROP_BY_ID,
   FARM_TOOLS,
   SPRINKLER_LEVELS,
@@ -237,22 +238,24 @@ it("brings bugs only while you are on the farm, and half as many with a Scarecro
   expect(await roll(151, 40)).toBe(0);
   expect(await roll(3600 * 5, 5)).toBe(0);
   expect(await bugs()).toBe(0);
-  // 120 s on the farm for 50 plots, 100 times: about 50 × 100 × 0.006 = 30
-  // bugs. (A fixed seed keeps the count the same every run.)
+  // 120 s on the farm for 50 plots, 100 times: about 50 × 100 × (1 -
+  // e^(-BUG_RATE × 120)) bugs, a little fewer as plots reach two. (A fixed
+  // seed keeps the count the same every run.)
+  const expected = 50 * 100 * (1 - Math.exp(-BUG_RATE * 120));
   await clear();
   await owner("select setseed(0.42)");
   const plain = await roll(120, 100);
-  expect(plain).toBeGreaterThan(12);
-  expect(plain).toBeLessThan(55);
+  expect(plain).toBeGreaterThan(expected * 0.6);
+  expect(plain).toBeLessThan(expected * 1.4);
   expect(await bugs()).toBe(plain);
-  // The same rolls with a Scarecrow: half the chance, about 15.
+  // The same rolls with a Scarecrow: half the chance.
   await clear();
   await tools("scarecrow = true");
   await owner("select setseed(0.42)");
   const scared = await roll(120, 100);
   expect(scared).toBeLessThan(plain);
-  expect(scared).toBeGreaterThan(4);
-  expect(scared).toBeLessThan(30);
+  expect(scared).toBeGreaterThan(expected * 0.25);
+  expect(scared).toBeLessThan(expected * 0.75);
   // Never more than two from nature.
   const [{ m }] = await owner(
     "select max(pests)::int m from public.arena_farm_plots where player_id = $1",

@@ -3980,7 +3980,36 @@ export function openPlaza(options) {
     if (b && Math.random() < 0.4) showEmote(b, pick(["👋", "GG", "🔥", "😎"]));
   }, 4000);
 
+  let away = false;
   return {
+    /** Behind the Lobby or the Farm: stop drawing and walking, kept as it is
+     *  (the screen leaves the Plaza on the server meanwhile). */
+    hide() {
+      if (away) return;
+      away = true;
+      running = false;
+      cancelAnimationFrame(raf);
+      joyReset();
+      keys.clear();
+      probe?.pause();
+      layer.style.display = "none";
+    },
+    /** Back: drawn at once as you left it; the server's state follows. */
+    show() {
+      if (!away) return;
+      away = false;
+      layer.style.display = "";
+      running = true;
+      frozen = false;
+      layer.dataset.frozen = "false";
+      last = performance.now();
+      raf = requestAnimationFrame(step);
+      screen.focus({ preventScroll: true });
+      options
+        .loadProgress()
+        .then(setProgress)
+        .catch(() => {});
+    },
     /** Your fighter or skin changed. */
     look(character, skin) {
       P.character = character;

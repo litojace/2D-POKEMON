@@ -244,17 +244,46 @@ test("the Photo Spot takes a polaroid, and quests update from the server", async
   expect(errors).toEqual([]);
 });
 
-test("leaving the Plaza tab leaves the Plaza on the server", async ({
+test("leaving the Plaza tab leaves the Plaza on the server; back, you and the townsfolk stand where you were", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   const errors = await openPlaza(page);
+  // Somewhere away from the fountain, and a mark on this Plaza.
+  await page.evaluate(() => {
+    (window as any).__plazaPosition(900, 1150);
+    (window as any).__plaza.mark = "same plaza";
+    // The townsfolk and bots of this Plaza (its copy on the server).
+    (window as any).__plazaWorld.copies.get(1).mark = "same townsfolk";
+  });
+  await expect
+    .poll(() => page.evaluate(() => Math.round((window as any).__plaza.P.x)))
+    .toBe(900);
   await page.click('#hub-scenes [data-hub-scene="lobby"]');
-  await expect(page.locator(".plaza-layer")).toHaveCount(0);
+  // Hidden here, gone on the server (nobody sees you standing there).
+  await expect(page.locator(".plaza-layer")).toBeHidden();
   await expect(page.locator("#lobby-play")).toBeVisible();
   await expect
     .poll(() => page.evaluate(() => (window as any).__plazaWorld.size))
     .toBe(0);
+  // Back: the same Plaza at once, joined again where you stood.
+  await page.click('#hub-scenes [data-hub-scene="plaza"]');
+  await expect(page.locator(".plaza-layer")).toBeVisible();
+  expect(await page.evaluate(() => (window as any).__plaza.mark)).toBe(
+    "same plaza",
+  );
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__plazaWorld.size))
+    .toBe(1);
+  const back = await page.evaluate(() => {
+    const b = (window as any).__plazaWorld.bodyOf("local");
+    return { x: Math.round(b.x), y: Math.round(b.y) };
+  });
+  expect(Math.hypot(back.x - 900, back.y - 1150)).toBeLessThan(3);
+  // The townsfolk and bots waited where they were.
+  expect(
+    await page.evaluate(() => (window as any).__plazaWorld.copies.get(1).mark),
+  ).toBe("same townsfolk");
   expect(errors).toEqual([]);
 });
 

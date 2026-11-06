@@ -1656,12 +1656,15 @@ function syncHub() {
   syncParty();
   syncLobby(hub && hubScene === "lobby");
   syncFarm(hub && hubScene === "farm", hub);
-  syncPlaza(hub && hubScene === "plaza");
+  syncPlaza(hub && hubScene === "plaza", hub);
 }
 /** The new Plaza (hub redesign phase 3): the server moves everyone in it. */
-function syncPlaza(want: boolean) {
+function syncPlaza(want: boolean, hub = want) {
   if (!want) {
-    if (plaza) {
+    // Behind the Lobby or the Farm the Plaza waits, drawn and kept (you are
+    // off it on the server, which keeps your spot); out of the hub it closes.
+    if (plaza && hub) plaza.hide();
+    else if (plaza) {
       wantedPlazaClosed = true;
       plaza.close();
       wantedPlazaClosed = false;
@@ -1671,6 +1674,7 @@ function syncPlaza(want: boolean) {
   const skin = accountsUI.economy?.looks[selected] ?? null;
   const look = plazaOutfitKey(selected, skin, accountsUI.raidLook);
   if (plaza) {
+    plaza.show();
     if (look !== plazaLook) plaza.look(selected, skin);
     plazaLook = look;
     return;
@@ -5860,6 +5864,11 @@ accountsUI = new AccountUI({
     forgetFarms();
     farmScreen?.close();
     farmScreen = undefined;
+    if (plaza) {
+      wantedPlazaClosed = true;
+      plaza.close();
+      wantedPlazaClosed = false;
+    }
     if (myId) await leave(false);
   },
   onSession: (token, accountId) => {
