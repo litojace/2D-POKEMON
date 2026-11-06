@@ -253,10 +253,10 @@
 }
 
 /* Mastery: every fighter, its portrait and its badge. */
-/* Sixteen fighters: two even rows of eight at every size. */
+/* Eighteen fighters: two even rows of nine at every size. */
 .pf-mastery {
   display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
+  grid-template-columns: repeat(9, minmax(0, 1fr));
   gap: var(--sp-2);
   margin: 0;
   padding: 0;

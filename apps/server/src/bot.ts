@@ -122,8 +122,8 @@ export const BOT_PROFILES: Record<BotDifficulty, Profile> = {
       astrabun: 0.36,
       wombolder: 0.36,
       shadopus: 0.3,
-      pangrove: 0.38,
-      mossloth: 0.14,
+      pangrove: 0.335,
+      mossloth: 0.23,
     },
   },
   hard: {
