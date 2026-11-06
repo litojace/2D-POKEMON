@@ -121,7 +121,11 @@ it("loads original art and valid public metadata for every fighter and direction
     // The ultimate charges from a meter instead of a cooldown.
     expect(detail).toContain(i === ULT_SLOT ? "Ultimate" : `${a.cooldown}s`);
   });
-  expect(rosterDetail("terradon", { tab: "overview" })).toContain(
+  // The combo sits on the Skills tab, under the basic attack row.
+  const combo = detail.indexOf(COMBOS.terradon.text);
+  expect(combo).toBeGreaterThan(detail.indexOf('data-roster-skill="basic"'));
+  expect(detail.indexOf('data-roster-skill="basic"')).toBeGreaterThan(-1);
+  expect(rosterDetail("terradon", { tab: "overview" })).not.toContain(
     COMBOS.terradon.text,
   );
   expect(rosterDetail("terradon", { tab: "skills", skill: "basic" })).toContain(
