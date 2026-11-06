@@ -19,13 +19,13 @@ import { fighterPackSchema } from "../../apps/client/src/animation/asset-schema"
 import { rosterDetail, rosterGrid } from "./roster-markup";
 import { elementShapes } from "../../apps/client/src/element-effects";
 import { readFileSync, existsSync } from "node:fs";
-it("has sixteen fighters, eighty unique moves and four special skills per fighter", () => {
+it("has eighteen fighters, ninety unique moves and four special skills per fighter", () => {
   expect(Object.keys(CHARACTERS)).toEqual([...FIGHTER_IDS]);
   const abilities = Object.values(CHARACTERS).flatMap((c) => [
     c.basic,
     ...c.skills,
   ]);
-  expect(new Set(abilities.map((a) => a.id)).size).toBe(80);
+  expect(new Set(abilities.map((a) => a.id)).size).toBe(90);
   for (const c of Object.values(CHARACTERS)) {
     expect(c.skills).toHaveLength(4);
     expect(c.health).toBeGreaterThan(0);
@@ -56,6 +56,8 @@ it("pins roster health (sixteen-champion balance pass) and movement speeds", () 
     astrabun: [134, 262],
     wombolder: [173, 232],
     shadopus: [129, 278],
+    pangrove: [165, 245],
+    mossloth: [150, 225],
   };
   for (const [id, stats] of Object.entries(baseline)) {
     const c = CHARACTERS[id as CharacterId];
@@ -109,9 +111,12 @@ it("loads original art and valid public metadata for every fighter and direction
     }
     art.add(creatureSvg(id));
   }
-  expect(art.size).toBe(16);
+  expect(art.size).toBe(18);
   // The roster (the one fighter picker since UI remodel step 5).
-  expect(rosterGrid("voltkit").match(/data-roster-card=/g)).toHaveLength(16);
+  expect(rosterGrid("voltkit").match(/data-roster-card=/g)).toHaveLength(18);
+  expect(
+    rosterGrid("voltkit", "Nature").match(/data-roster-card=/g),
+  ).toHaveLength(2);
   expect(
     rosterGrid("voltkit", "Earth").match(/data-roster-card=/g),
   ).toHaveLength(2);

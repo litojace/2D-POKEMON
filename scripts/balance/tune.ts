@@ -7,6 +7,8 @@
  *   --out <dir>        where round files go (default balance-out/, gitignored)
  *   --start <file>     starting factors JSON (default: all 1)
  *   --shards <n>       parallel processes per difficulty (default 4)
+ *   --only <a,b,...>   tune only these champions; the rest keep their
+ *                      starting factors (adding champions to a tuned roster)
  *
  * Each round writes <out>/round-N.json ({ factors, rates, next }) and prints
  * the win-rate spread. At the end it prints the factors averaged over the
@@ -37,6 +39,7 @@ if (!(rounds > 0 && games > 0)) {
 const out = opt("--out") ?? "balance-out";
 const shards = +(opt("--shards") ?? 4);
 const start = opt("--start");
+const only = opt("--only")?.split(",");
 mkdirSync(out, { recursive: true });
 
 // A factor moves at most 10% a round, half the distance from 50%.
@@ -99,6 +102,10 @@ for (let r = 0; r < rounds; r++) {
   const next: Record<string, number> = {};
   const avg = (id: string) => (rates[id].hard + rates[id].normal) / 2;
   for (const id of Object.keys(rates)) {
+    if (only && !only.includes(id)) {
+      next[id] = factors[id] ?? 1;
+      continue;
+    }
     const step = Math.max(-STEP, Math.min(STEP, (GAIN * (50 - avg(id))) / 100));
     next[id] = +Math.max(
       LO,

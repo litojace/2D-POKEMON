@@ -543,7 +543,7 @@ Relay.
 ## 6. Champion tricks across the roster
 
 Every champion has **at least three bosses** where one of its skills is a
-special answer, so "who should I bring?" is part of each boss. All sixteen
+special answer, so "who should I bring?" is part of each boss. All eighteen
 champions qualify (`tests/unit/raid-roster.test.ts` checks it); the tricks
 are listed per boss in `RAID_BOSS_PERKS` (`packages/shared/src/raid.ts`), and
 the Raid Hub's guide and the raid briefing read them from there.
@@ -651,10 +651,25 @@ the Raid Hub's guide and the raid briefing read them from there.
 - **Somnara:** immune to Drowsy and sleep while stealthed.
 - **Prismatail:** an Ink Jet hit blots out Glare for 3 s.
 
-Grumblecrag, Gloomshade and Emberwing have eight champion tricks; Tidewyrm,
-Storm Twins, Somnara and Prismatail have seven. Only Auralynx's Facet
-Guard blocks Rock Volley (Wombolder's Rump Block is also a counter, but has
-its own trick on the Storm Twins).
+**Pangrove** (3)
+- **Grumblecrag:** curled up in Scale Curl, Rock Volley glances off it.
+- **Tidewyrm:** Sap Bite on a stranded boss adds +15 stagger (like Static
+  Lance).
+- **Storm Twins:** curled up in Scale Curl, Polarity can't touch it (like
+  Terradon's closed shell).
+
+**Mossloth** (3)
+- **Tidewyrm:** Rootsnare on a stranded boss keeps it there 1 s longer.
+- **Emberwing:** Wild Roots smother fire patches and dive trails where they
+  burst.
+- **Somnara:** allies inside its prickly Bramble Patch stay awake: no Drowsy,
+  no sleep.
+
+Grumblecrag, Tidewyrm and Emberwing have nine champion tricks; Gloomshade,
+Storm Twins and Somnara have eight, Prismatail seven. Only Auralynx's Facet
+Guard reflects Rock Volley; Pangrove's Scale Curl lets it glance off
+(Wombolder's Rump Block is also a counter, but has its own trick on the
+Storm Twins). Rooted on a boss works like a stun: 3 stagger, no root.
 
 ## 7. Rewards
 
@@ -1038,7 +1053,7 @@ skins) to earn that collection's frame for free.
   skin applies to your other champions.
 - The Shop and the Rewards tab both explain this in one line.
 
-### 10.6 Champion skin catalog (112 skins)
+### 10.6 Champion skin catalog (126 skins)
 
 Every champion gets **3 Common, 2 Rare, 1 Epic and 1 Mythical**. Skins also
 belong to **collections** shared across champions:
@@ -1256,6 +1271,38 @@ colours.
 | Rare · Garden | **Tide Pool** | Rock-pool speckles and a starfish clip; dashing blows bubbles |
 | Epic · Garden | **Anglerlight** | A glowing lure on a stalk, abyss-teal skills and a flicker. Hit sparks take its colour, KO is a puff in its colours, and a flickering flame plays on the rig |
 | **Mythical · Celestial** | **Nebula** | **I:** nebula skin full of stars; stardust trails it. **II:** glowing star suckers on its arms, and sparkles orbit. **III:** a spiral galaxy turns behind it |
+
+#### The Nature champions
+
+Pangrove and Mossloth have 3 Common, 2 Rare, 1 Epic and 1 Mythical each
+([migration 067](../supabase/migrations/067_eighteen_champions.sql)). Their
+Rares and Epics join the Garden, Festival and Winter collections and their
+Mythicals join Celestial, so those collections' free frames now need them too
+(a frame someone already earned stays theirs).
+
+#### Pangrove (pangolin, Nature)
+
+| Rarity | Skin | Look and effects |
+|---|---|---|
+| Common | Autumn | Russet and gold leaf scales |
+| Common | Frostleaf | Frosted silver-blue leaves |
+| Common | Jade | Deep jade with a gold glow |
+| Rare · Garden | **Blossom** | Cherry-blossom scales and a flower crown; dashing scatters petals |
+| Rare · Festival | **Lantern Night** | Festival-red scales and lantern tassels; dashing throws confetti |
+| Epic · Garden | **Golden Sap** | Amber scales veined with sap, a leaf crown, golden skills and a glint |
+| **Mythical · Celestial** | **Evergrove** | **I:** starlit leaves; glowing leaves drift down. **II:** a halo of glowing leaves over the crown, and fireflies orbit. **III:** an ancient tree rises behind it, its canopy lit |
+
+#### Mossloth (three-toed sloth, Nature)
+
+| Rarity | Skin | Look and effects |
+|---|---|---|
+| Common | Cinnamon | Warm cinnamon fur |
+| Common | Snowy | Snow-white fur, pale moss |
+| Common | Dusk | Lilac-grey fur, violet moss |
+| Rare · Garden | **Acorn Nap** | An acorn cap for napping; dashing drops leaves |
+| Rare · Winter | **Cozy Knit** | A knitted scarf over frosty fur; dashing leaves snowflakes |
+| Epic · Garden | **Bonsai Keeper** | A little bonsai on its head, blossom skills and a shimmer |
+| **Mythical · Celestial** | **Moonbloom** | **I:** night-blue fur with glowing moonflowers; moon pollen rises. **II:** a moonflower behind the ear and a petal collar; two lights orbit. **III:** a giant night bloom opens behind it |
 
 ### 10.7 All-fighter collections
 

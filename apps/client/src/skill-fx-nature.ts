@@ -592,22 +592,23 @@ function bramblePatch(g: G, z: Zone, progress: number, now: number) {
   fx.floor
     .lineStyle(2, LEAF, 0.55 * fade)
     .strokeEllipse(z.x, z.y, r * 2 * grow, r * 2 * SQ * grow);
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 16; i++) {
     const a = hash(i * 7 + z.id) * TAU,
       d = r * Math.sqrt(hash(i * 13 + z.id)) * 0.85,
       bx = z.x + Math.cos(a) * d,
       by = z.y + Math.sin(a) * d * SQ,
       sway = Math.sin(now / 400 + i) * 0.15;
     const h = (16 + hash(i * 3) * 14) * grow;
-    fx.solid
-      .lineStyle(3, 0x3f7a34, fade)
-      .lineBetween(bx, by, bx + (sway + (hash(i) - 0.5)) * 12, by - h);
+    const ex = bx + (sway + (hash(i) - 0.5)) * 12;
+    fx.solid.lineStyle(6, BARK_DARK, 0.6 * fade).lineBetween(bx, by, ex, by - h);
+    fx.solid.lineStyle(4, 0x3f7a34, fade).lineBetween(bx, by, ex, by - h);
     for (let t = 1; t <= 2; t++) {
-      const tx = bx + (sway + (hash(i) - 0.5)) * 12 * (t / 3),
-        ty = by - h * (t / 3);
+      const tx = bx + (ex - bx) * (t / 3),
+        ty = by - h * (t / 3),
+        s = t % 2 ? 1 : -1;
       fx.solid
         .fillStyle(0xc7e88a, fade)
-        .fillTriangle(tx, ty, tx + 6, ty - 2, tx + 1, ty + 3);
+        .fillTriangle(tx, ty - 2, tx + s * 8, ty - 4, tx, ty + 2);
     }
     if (i % 4 === 0)
       fx.solid.fillStyle(BLOOM, fade).fillCircle(bx + sway * 12, by - h, 2.6);
@@ -664,9 +665,9 @@ function wildRoots(g: G, z: Zone, progress: number, now: number) {
       fx,
       z.x + Math.cos(a) * d,
       z.y + Math.sin(a) * d * SQ,
-      40 + hash(i * 3) * 30,
+      48 + hash(i * 3) * 34,
       (hash(i * 9) - 0.5) * 1.2,
-      7,
+      9,
       ease(Math.min(1, post * 5)),
       fade,
     );

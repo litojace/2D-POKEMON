@@ -9,15 +9,16 @@ it("labels every card by attack range instead of the basic attack", () => {
     "auralynx",
     "cindrake",
     "coilemur",
+    "pangrove",
     "shadopus",
     "terradon",
     "wombolder",
   ]);
   // The roster's cards (the one fighter picker since UI remodel step 5).
   const html = rosterGrid("voltkit");
-  expect(html.match(/class="ui-tag roster-range"/g)).toHaveLength(16);
-  expect(html.match(/roster-range">Ranged</g)).toHaveLength(9);
-  expect(html.match(/roster-range">Close</g)).toHaveLength(7);
+  expect(html.match(/class="ui-tag roster-range"/g)).toHaveLength(18);
+  expect(html.match(/roster-range">Ranged</g)).toHaveLength(10);
+  expect(html.match(/roster-range">Close</g)).toHaveLength(8);
   expect(html).not.toContain("card-basic");
   // The basic attack is still described in the fighter's detail.
   expect(rosterDetail("voltkit", { tab: "overview" })).toContain(
