@@ -109,7 +109,7 @@ export interface ActResult {
 
 /** Friends' names, for a friend hired before the server answers. */
 export const friendNames = new Map<string, string>();
-/** What a friend's bistros paid you today (migration 071). */
+/** What a friend's bistros paid you today (migration 073). */
 export interface Payday {
   xp: number;
   bistros: number;

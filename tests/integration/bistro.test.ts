@@ -179,7 +179,7 @@ describe("a new bistro", () => {
     const local = defaultState();
     expect(b.items).toEqual(local.items);
     expect(b.counter).toEqual(local.counter);
-    // A fresh waiter, full of energy (migration 071), never fed.
+    // A fresh waiter, full of energy (migration 073), never fed.
     expect(b.staff).toEqual(
       local.staff.map((x) => ({ ...x, energy: 100, fedAt: 0 })),
     );
@@ -572,7 +572,7 @@ describe("popularity and the floor plan (migration 070)", () => {
   });
 });
 
-describe("staff energy, janitors and friends (migration 071)", () => {
+describe("staff energy, janitors and friends (migration 073)", () => {
   it("tired staff, litter and janitors work the time away like the shared rules", async () => {
     await setCoins(ben, 20000, 9);
     let r = await act(ben, [

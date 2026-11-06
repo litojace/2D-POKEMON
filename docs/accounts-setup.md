@@ -161,7 +161,7 @@ Run [068_bistro.sql](../supabase/migrations/068_bistro.sql) after 066 (it does n
 
 Then run [070_bistro_popularity.sql](../supabase/migrations/070_bistro_popularity.sql) (after 068). The final query should return two **true** columns. It adds the Bistro's popularity (0–50, from the rating, the decor, this week's likes and today's friends' meals: it sets how often guests come) and the floor plan's walks (`arena_bistro_walks`: steps from the door and from the counter to every seat), so the time away serves guests at the pace the floor plan allows. The rules match `packages/shared/src/bistro.ts`; see [docs/bistro-gdd.md](bistro-gdd.md).
 
-Then run [071_bistro_staff.sql](../supabase/migrations/071_bistro_staff.sql) (after 070). The final query should return two **true** columns. It adds the staff's energy (worn down by work, back with a staff meal or the rest after a shift), janitors and the litter they sweep, the Staff Corner, and friends hired as staff (`friend_id`, with a daily XP payday in `arena_bistro_paydays`).
+Then run [073_bistro_staff.sql](../supabase/migrations/073_bistro_staff.sql) (after 070; it does not need 071 or 072). The final query should return two **true** columns. It adds the staff's energy (worn down by work, back with a staff meal or the rest after a shift), janitors and the litter they sweep, the Staff Corner, and friends hired as staff (`friend_id`, with a daily XP payday in `arena_bistro_paydays`).
 
 ### Unlimited coins for admin testing
 

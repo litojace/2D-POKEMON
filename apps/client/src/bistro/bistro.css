@@ -1765,7 +1765,7 @@ body.hub-bistro :is(#account-coins, #account-leaves) {
   font-weight: 700;
 }
 
-/* ── Staff energy, janitors, friends on the team (migration 071) ── */
+/* ── Staff energy, janitors, friends on the team (migration 073) ── */
 .bistro-layer .bs-staff .role.janitor {
   background: #7fe7a0;
   color: #06321a;

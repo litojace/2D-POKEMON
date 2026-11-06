@@ -331,11 +331,11 @@ export interface Staff {
   level: number;
   /** What a cook makes (cooks only). */
   dish: DishId;
-  /** Energy as of the bistro's lastSeen (migration 071); full when left out. */
+  /** Energy as of the bistro's lastSeen (migration 073); full when left out. */
   energy?: number;
   /** When they last had a staff meal (ms), for the cooldown. */
   fedAt?: number;
-  /** A friend working here (migration 071): their account and name. */
+  /** A friend working here (migration 073): their account and name. */
   friend?: { id: string; name: string };
 }
 export const STAFF_MAX_LEVEL = 5;
@@ -465,7 +465,7 @@ export interface BistroState {
   floors: FloorId[];
   walls: WallId[];
   nextId: number;
-  /** Litter left on the floor while you were away (migration 071), 0..10. */
+  /** Litter left on the floor while you were away (migration 073), 0..10. */
   trash: number;
 }
 
