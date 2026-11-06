@@ -72,6 +72,8 @@ export function mountShopPreview(
   let drawn = false;
   let clock = 0;
   let cycle = 0;
+  /** The rig and cycle the ultimate preview last cast in. */
+  let ultimateCast: { rig?: FighterRig; cycle: number } = { cycle: -1 };
   let original = false;
   let revision = 0;
   let rig: FighterRig | undefined;
@@ -216,6 +218,7 @@ export function mountShopPreview(
   const reset = () => {
     clock = 0;
     cycle = -1;
+    ultimateCast = { cycle: -1 };
     dirty = true;
     if (rig && scene) {
       rig.destroy();
@@ -512,6 +515,17 @@ export function mountShopPreview(
         cycle = nextCycle;
       }
       const t = (clock % 4400) / 1000;
+      // A Mythical's ultimate, early in each cycle (its Stage III effect
+      // plays as the cast lands; skin-fx). A rig rebuilt mid-cycle, once its
+      // textures load, casts again.
+      if (
+        action === "ultimate" &&
+        t < 3 &&
+        (ultimateCast.rig !== rig || ultimateCast.cycle !== cycle)
+      ) {
+        rig.trigger("skill3", clock, 1300);
+        ultimateCast = { rig, cycle };
+      }
       const { x, y } = framing;
       const pose: AnimationPose = {
         hp: 100,
@@ -627,6 +641,7 @@ export function mountShopPreview(
       replay() {
         clock = 0;
         cycle = -1;
+        ultimateCast = { cycle: -1 };
         dirty = true;
         rig?.controller.reset();
         syncLoop();

@@ -1134,6 +1134,8 @@ strikes (bolts), a pillar of black fire rises (flames), ice or obsidian
 spikes erupt (ice, crystals), the tide rings out (fins), a black sun flares
 (eclipse) or the ground quakes (iron helm). These stay around the fighter
 and last under a second; they change no shape, reach or timing.
+The Shop's stage shows all three before you buy: *Entrance*, *Victory* and
+*Ultimate* (a Mythical's stage III ultimate, cast every few seconds).
 
 #### Voltkit (sugar-glider kit, Electric)
 

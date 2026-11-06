@@ -639,6 +639,14 @@
   }
 }
 @media (max-height: 500px) {
+  /* Phones: the reward frame rows stay compact above the grid. */
+  .fit-set-reward {
+    gap: 8px;
+  }
+  .fit-set-reward-art {
+    width: 38px;
+    height: 38px;
+  }
   .fit-stage {
     --fit-info-h: 44px;
   }

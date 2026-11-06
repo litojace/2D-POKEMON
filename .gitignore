@@ -7,4 +7,6 @@ coverage/
 *.log
 test-results/
 playwright-report/
+blob-report/
+all-blob-reports/
 balance-out/

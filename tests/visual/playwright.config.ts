@@ -11,10 +11,16 @@ export default defineConfig({
   testMatch: "*.spec.ts",
   timeout: 90_000,
   expect: { timeout: 20_000 },
-  fullyParallel: false,
+  // One worker, so timing and frame-rate checks have the machine to
+  // themselves. CI splits the suite into shards on separate runners
+  // (.github/workflows/ci.yml); fullyParallel lets a shard take single tests
+  // rather than whole files, so a long file doesn't hold one shard up.
+  fullyParallel: true,
   workers: 1,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [["list"], ["html", { open: "never", outputFolder: "../../playwright-report" }]] : "list",
+  // Each CI shard writes a blob; the visual-report job merges them into one
+  // HTML report.
+  reporter: process.env.CI ? [["list"], ["blob", { outputDir: "../../blob-report" }]] : "list",
   outputDir: "../../test-results/visual",
   use: {
     baseURL: "http://localhost:4179",
