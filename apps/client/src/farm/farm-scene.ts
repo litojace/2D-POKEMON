@@ -6045,8 +6045,30 @@ export function openFarm(options) {
       g.clearRect(0, 0, 120, 120);
       GFX.dog(g, c.dataset.dogprev, "sit", 0, 54, 108, 1.7, 1);
     });
+    lineUpButtons(el);
     const b = el.querySelector(".sh-body");
     if (b) b.scrollTop = top;
+  }
+  /* Buttons of one kind line up in a column from row to row: each gets the
+     width of the widest (a bigger price, "All · 102" next to "All · 30", no
+     longer shifts its row's buttons). Measured once each time a sheet is
+     drawn, on phones and desktop alike. */
+  const LINE_UP = [
+    ".b-sell1",
+    ".b-sellall",
+    '[data-buyseed][data-n="1"]',
+    '[data-buyseed][data-n="5"]',
+    "[data-buytool]",
+    "[data-deco]",
+    "[data-mast]",
+  ];
+  function lineUpButtons(el) {
+    for (const sel of LINE_UP) {
+      const bs = [...el.querySelectorAll(`.item .acts ${sel}`)];
+      if (bs.length < 2) continue;
+      const w = Math.max(...bs.map((x) => x.offsetWidth));
+      for (const x of bs) x.style.minWidth = `${w}px`;
+    }
   }
   function updateSheetTimers() {
     const r = $("fm-restock");
