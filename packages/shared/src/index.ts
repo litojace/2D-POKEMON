@@ -44,7 +44,7 @@ export const RULES = {
   basicHitCooldownCut: 0.25,
   countdown: 3,
   intermission: 4,
-  reconnectMs: 30000,
+  reconnectMs: 60000,
   maxProjectiles: 150,
   maxZones: 40,
 };
