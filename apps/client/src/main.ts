@@ -1027,8 +1027,10 @@ function renderRoom(watch: boolean) {
     if (watch && panel) panel.outerHTML = roomWatchMarkup(d);
   }
   if (watch) return;
-  // Friends stands in the picker's place until it closes.
-  if (!roomPicker && accountsUI.friendsOpen) return;
+  // Friends stands in the picker's place until it closes (only the sheet
+  // opened in this room: one left over from the Lobby is closing).
+  if (!roomPicker && room.querySelector(":scope > .ui-panel-host .friends-sheet"))
+    return;
   if (roomPicker?.isOpen) roomPicker.refresh();
   else
     roomPicker = openRoster(

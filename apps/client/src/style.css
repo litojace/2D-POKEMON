@@ -8016,7 +8016,15 @@ label.title-option {
   min-width: 0;
 }
 @media (min-width: 760px), (orientation: landscape) and (min-width: 560px) {
-  dialog:has(.profile-screen, .controls-layout, .help-screen, .admin-tabs) {
+  /* #profile-progress keeps this rule's ID weight (an :has() list counts
+     its most specific entry); it was #leaderboard-body before step 6. */
+  dialog:has(
+    .profile-screen,
+    .controls-layout,
+    .help-screen,
+    #profile-progress,
+    .admin-tabs
+  ) {
     width: min(
       1320px,
       calc(100vw - var(--safe-left) - var(--safe-right) - 24px)
@@ -8912,7 +8920,9 @@ dialog::backdrop {
   }
 }
 /* prettier-ignore */
-dialog:is(:has(.profile-screen), :has(.admin-tabs)) {
+/* :has(#profile-progress) keeps the ID weight :has(#leaderboard-body) gave
+   this rule before step 6 (the profile matches either way). */
+dialog:is(:has(.profile-screen), :has(#profile-progress), :has(.admin-tabs)) {
   --hub-height: min(
     900px,
     calc(100dvh - var(--safe-top) - var(--safe-bottom) - 24px)
