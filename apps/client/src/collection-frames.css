@@ -1,5 +1,5 @@
 /* Collection portrait frames (Candy, Garden, Festival, Winter; and the
-   reward frames for owning every Void Knight or every Cyber Mecha skin).
+   reward frames for owning every Void Knight, Cyber Mecha or Arcade skin).
    Artwork is drawn as scalable SVG so the same frame reads clearly from a
    small identity portrait up to the large fitting-room review. ::before is
    the ring (viewBox -70…70 around a radius-50 portrait, hence inset -20%),
@@ -10,7 +10,8 @@
   [data-cosmetic="festival-frame"],
   [data-cosmetic="winter-frame"],
   [data-cosmetic="void-frame"],
-  [data-cosmetic="cyber-frame"]
+  [data-cosmetic="cyber-frame"],
+  [data-cosmetic="arcade-frame"]
 ) {
   box-shadow: none;
 }
@@ -20,7 +21,8 @@
     [data-cosmetic="festival-frame"],
     [data-cosmetic="winter-frame"],
     [data-cosmetic="void-frame"],
-    [data-cosmetic="cyber-frame"]
+    [data-cosmetic="cyber-frame"],
+    [data-cosmetic="arcade-frame"]
   )::before {
   content: "";
   position: absolute;
@@ -35,7 +37,8 @@
     [data-cosmetic="festival-frame"],
     [data-cosmetic="winter-frame"],
     [data-cosmetic="void-frame"],
-    [data-cosmetic="cyber-frame"]
+    [data-cosmetic="cyber-frame"],
+    [data-cosmetic="arcade-frame"]
   )::after {
   content: "";
   position: absolute;
@@ -243,4 +246,32 @@
   box-shadow:
     0 0 12px #3ff0ffaa,
     inset 0 0 6px #dfe6f099;
+}
+
+/* Arcade (reward for all eight Arcade skins): neon tubes in magenta and
+   cyan round a synthwave grid, pixel sparkles and a joystick on top. */
+.raid-cosmetic-preview[data-cosmetic="arcade-frame"]::before {
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-70 -70 140 140'><defs><linearGradient id='g' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%232a0f4a'/><stop offset='1' stop-color='%23120626'/></linearGradient></defs><circle r='55' fill='none' stroke='%230b0418' stroke-width='11.6'/><circle r='55' fill='none' stroke='url(%23g)' stroke-width='9.8'/><path d='M51 0 L59 0' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M50.23 8.86 L58.1 10.25' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M47.92 17.44 L55.44 20.18' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M44.17 25.5 L51.1 29.5' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M39.07 32.78 L45.2 37.92' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M32.78 39.07 L37.92 45.2' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M25.5 44.17 L29.5 51.1' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M17.44 47.92 L20.18 55.44' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M8.86 50.23 L10.25 58.1' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M0 51 L0 59' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M-8.86 50.23 L-10.25 58.1' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M-17.44 47.92 L-20.18 55.44' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M-25.5 44.17 L-29.5 51.1' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M-32.78 39.07 L-37.92 45.2' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M-39.07 32.78 L-45.2 37.92' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M-44.17 25.5 L-51.1 29.5' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M-47.92 17.44 L-55.44 20.18' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M-50.23 8.86 L-58.1 10.25' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M-51 0 L-59 0' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M-50.23 -8.86 L-58.1 -10.25' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M-47.92 -17.44 L-55.44 -20.18' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M-44.17 -25.5 L-51.1 -29.5' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M-39.07 -32.78 L-45.2 -37.92' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M-32.78 -39.07 L-37.92 -45.2' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M-25.5 -44.17 L-29.5 -51.1' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M-17.44 -47.92 L-20.18 -55.44' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M-8.86 -50.23 L-10.25 -58.1' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M0 -51 L0 -59' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M8.86 -50.23 L10.25 -58.1' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M17.44 -47.92 L20.18 -55.44' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M25.5 -44.17 L29.5 -51.1' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M32.78 -39.07 L37.92 -45.2' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M39.07 -32.78 L45.2 -37.92' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M44.17 -25.5 L51.1 -29.5' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M47.92 -17.44 L55.44 -20.18' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><path d='M50.23 -8.86 L58.1 -10.25' stroke='%23ff4fd8' stroke-width='.5' opacity='.55'/><circle r='53.6' fill='none' stroke='%23ff4fd8' stroke-width='.45' opacity='.5'/><circle r='56.6' fill='none' stroke='%23ff4fd8' stroke-width='.45' opacity='.5'/><circle r='60.2' fill='none' stroke='%23ff4fd8' stroke-width='4.4' opacity='.3'/><circle r='60.2' fill='none' stroke='%23ff4fd8' stroke-width='1.8'/><circle r='60.2' fill='none' stroke='%23ffffff' stroke-width='.6' opacity='.85'/><circle r='50.3' fill='none' stroke='%232ff3ff' stroke-width='4.4' opacity='.3'/><circle r='50.3' fill='none' stroke='%232ff3ff' stroke-width='1.8'/><circle r='50.3' fill='none' stroke='%23ffffff' stroke-width='.6' opacity='.85'/><rect x='51.41' y='14.3' width='1.8' height='5.4' fill='%23ffd65b'/><rect x='49.61' y='16.1' width='5.4' height='1.8' fill='%23ffd65b'/><rect x='31.24' y='41.93' width='1.8' height='5.4' fill='%232ff3ff'/><rect x='29.44' y='43.73' width='5.4' height='1.8' fill='%232ff3ff'/><rect x='-1.78' y='52.29' width='1.8' height='5.4' fill='%23ffd65b'/><rect x='-3.58' y='54.09' width='5.4' height='1.8' fill='%23ffd65b'/><rect x='-40.31' y='35.66' width='1.8' height='5.4' fill='%232ff3ff'/><rect x='-42.11' y='37.46' width='5.4' height='1.8' fill='%232ff3ff'/><rect x='-54.49' y='9.68' width='1.8' height='5.4' fill='%23ffd65b'/><rect x='-56.29' y='11.48' width='5.4' height='1.8' fill='%23ffd65b'/><rect x='-52.05' y='-22.92' width='1.8' height='5.4' fill='%232ff3ff'/><rect x='-53.85' y='-21.12' width='5.4' height='1.8' fill='%232ff3ff'/><rect x='-26.13' y='-51.57' width='1.8' height='5.4' fill='%23ffd65b'/><rect x='-27.93' y='-49.77' width='5.4' height='1.8' fill='%23ffd65b'/><rect x='3.04' y='-57.56' width='1.8' height='5.4' fill='%232ff3ff'/><rect x='1.24' y='-55.76' width='5.4' height='1.8' fill='%232ff3ff'/><rect x='34.73' y='-44.6' width='1.8' height='5.4' fill='%23ffd65b'/><rect x='32.93' y='-42.8' width='5.4' height='1.8' fill='%23ffd65b'/><rect x='51.46' y='-19.55' width='1.8' height='5.4' fill='%232ff3ff'/><rect x='49.66' y='-17.75' width='5.4' height='1.8' fill='%232ff3ff'/></svg>");
+}
+.raid-cosmetic-preview[data-cosmetic="arcade-frame"]::after {
+  top: -27%;
+  left: 50%;
+  width: 34%;
+  height: 34%;
+  transform: translateX(-50%);
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-15 -15 30 30'><path d='M-13 6 L13 6 L11 12 L-11 12Z' fill='%232a0f4a' stroke='%230b0418' stroke-width='.9' stroke-linejoin='round'/><path d='M-12.6 6 H12.6' stroke='%232ff3ff' stroke-width='.8'/><path d='M-5 6 V-6' stroke='%230b0418' stroke-width='3.2' stroke-linecap='round'/><path d='M-5 6 V-6' stroke='%239aa3b8' stroke-width='1.6' stroke-linecap='round'/><ellipse cx='-5' cy='6' rx='3.6' ry='1.4' fill='%230b0418'/><circle cx='-5' cy='-8' r='4.6' fill='%23ff3b6a' stroke='%230b0418' stroke-width='.9'/><circle cx='-6.4' cy='-9.4' r='1.4' fill='%23ffffff' opacity='.8'/><ellipse cx='4.4' cy='4.6' rx='2.6' ry='1.5' fill='%232ff3ff' stroke='%230b0418' stroke-width='.7'/><ellipse cx='9.4' cy='4.6' rx='2.6' ry='1.5' fill='%23ffd65b' stroke='%230b0418' stroke-width='.7'/></svg>");
+}
+.raid-cosmetic-preview[data-cosmetic="arcade-frame"][data-tier="epic"]
+  > .tier-fx {
+  background: conic-gradient(
+    from var(--tier-turn),
+    #ff4fd8,
+    #2ff3ff,
+    #ffd65b,
+    #7a2bd6,
+    #ff4fd8
+  );
+  box-shadow:
+    0 0 12px #ff4fd8aa,
+    inset 0 0 6px #2ff3ff99;
 }

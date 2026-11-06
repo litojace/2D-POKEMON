@@ -332,6 +332,47 @@ function mechaCrest() {
   return svg(b, "-15 -11 30 22");
 }
 
+// ── Arcade: neon tubes in magenta and cyan round a synthwave grid band.
+function neonRing() {
+  seed = 61;
+  let b = `<defs><linearGradient id='g' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#2a0f4a'/><stop offset='1' stop-color='#120626'/></linearGradient></defs>`;
+  b += `<circle r='55' fill='none' stroke='#0b0418' stroke-width='11.6'/>`;
+  b += `<circle r='55' fill='none' stroke='url(#g)' stroke-width='9.8'/>`;
+  // The grid: radial spokes and two rings inside the band.
+  for (let a = 0; a < 360; a += 10) {
+    const [x1, y1] = pt(51, a);
+    const [x2, y2] = pt(59, a);
+    b += `<path d='M${x1} ${y1} L${x2} ${y2}' stroke='#ff4fd8' stroke-width='.5' opacity='.55'/>`;
+  }
+  b += `<circle r='53.6' fill='none' stroke='#ff4fd8' stroke-width='.45' opacity='.5'/>`;
+  b += `<circle r='56.6' fill='none' stroke='#ff4fd8' stroke-width='.45' opacity='.5'/>`;
+  // Neon tubes: a soft glow, the tube and its hot core.
+  const tube = (r, c) =>
+    `<circle r='${r}' fill='none' stroke='${c}' stroke-width='4.4' opacity='.3'/><circle r='${r}' fill='none' stroke='${c}' stroke-width='1.8'/><circle r='${r}' fill='none' stroke='#ffffff' stroke-width='.6' opacity='.85'/>`;
+  b += tube(60.2, "#ff4fd8");
+  b += tube(50.3, "#2ff3ff");
+  // Pixel sparkles round the band.
+  for (let i = 0; i < 10; i++) {
+    const a = i * 36 + 18 + rnd() * 10;
+    const [x, y] = pt(55, a);
+    const c = i % 2 ? "#2ff3ff" : "#ffd65b";
+    b += `<rect x='${f(x - 0.9)}' y='${f(y - 2.7)}' width='1.8' height='5.4' fill='${c}'/><rect x='${f(x - 2.7)}' y='${f(y - 0.9)}' width='5.4' height='1.8' fill='${c}'/>`;
+  }
+  return svg(b);
+}
+// Ornament: an arcade joystick with two buttons on a little panel.
+function joystick() {
+  let b = "";
+  b += `<path d='M-13 6 L13 6 L11 12 L-11 12Z' fill='#2a0f4a' stroke='#0b0418' stroke-width='.9' stroke-linejoin='round'/>`;
+  b += `<path d='M-12.6 6 H12.6' stroke='#2ff3ff' stroke-width='.8'/>`;
+  b += `<path d='M-5 6 V-6' stroke='#0b0418' stroke-width='3.2' stroke-linecap='round'/><path d='M-5 6 V-6' stroke='#9aa3b8' stroke-width='1.6' stroke-linecap='round'/>`;
+  b += `<ellipse cx='-5' cy='6' rx='3.6' ry='1.4' fill='#0b0418'/>`;
+  b += `<circle cx='-5' cy='-8' r='4.6' fill='#ff3b6a' stroke='#0b0418' stroke-width='.9'/><circle cx='-6.4' cy='-9.4' r='1.4' fill='#ffffff' opacity='.8'/>`;
+  b += `<ellipse cx='4.4' cy='4.6' rx='2.6' ry='1.5' fill='#2ff3ff' stroke='#0b0418' stroke-width='.7'/>`;
+  b += `<ellipse cx='9.4' cy='4.6' rx='2.6' ry='1.5' fill='#ffd65b' stroke='#0b0418' stroke-width='.7'/>`;
+  return svg(b, "-15 -15 30 30");
+}
+
 const out = {
   cookie: uri(cookie()),
   bonbon: uri(bonbon()),
@@ -345,11 +386,13 @@ const out = {
   voidCrest: uri(voidCrest()),
   mechaRing: uri(mechaRing()),
   mechaCrest: uri(mechaCrest()),
+  neonRing: uri(neonRing()),
+  joystick: uri(joystick()),
 };
 
 const a = out;
 const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter; and the
-   reward frames for owning every Void Knight or every Cyber Mecha skin).
+   reward frames for owning every Void Knight, Cyber Mecha or Arcade skin).
    Artwork is drawn as scalable SVG so the same frame reads clearly from a
    small identity portrait up to the large fitting-room review. ::before is
    the ring (viewBox -70…70 around a radius-50 portrait, hence inset -20%),
@@ -360,7 +403,8 @@ const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter; and
     [data-cosmetic="festival-frame"],
     [data-cosmetic="winter-frame"],
     [data-cosmetic="void-frame"],
-    [data-cosmetic="cyber-frame"]
+    [data-cosmetic="cyber-frame"],
+    [data-cosmetic="arcade-frame"]
   ) {
   box-shadow: none;
 }
@@ -370,7 +414,8 @@ const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter; and
     [data-cosmetic="festival-frame"],
     [data-cosmetic="winter-frame"],
     [data-cosmetic="void-frame"],
-    [data-cosmetic="cyber-frame"]
+    [data-cosmetic="cyber-frame"],
+    [data-cosmetic="arcade-frame"]
   )::before {
   content: "";
   position: absolute;
@@ -385,7 +430,8 @@ const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter; and
     [data-cosmetic="festival-frame"],
     [data-cosmetic="winter-frame"],
     [data-cosmetic="void-frame"],
-    [data-cosmetic="cyber-frame"]
+    [data-cosmetic="cyber-frame"],
+    [data-cosmetic="arcade-frame"]
   )::after {
   content: "";
   position: absolute;
@@ -553,6 +599,34 @@ const css = `/* Collection portrait frames (Candy, Garden, Festival, Winter; and
   box-shadow:
     0 0 12px #3ff0ffaa,
     inset 0 0 6px #dfe6f099;
+}
+
+/* Arcade (reward for all eight Arcade skins): neon tubes in magenta and
+   cyan round a synthwave grid, pixel sparkles and a joystick on top. */
+.raid-cosmetic-preview[data-cosmetic="arcade-frame"]::before {
+  background-image: ${a.neonRing};
+}
+.raid-cosmetic-preview[data-cosmetic="arcade-frame"]::after {
+  top: -27%;
+  left: 50%;
+  width: 34%;
+  height: 34%;
+  transform: translateX(-50%);
+  background-image: ${a.joystick};
+}
+.raid-cosmetic-preview[data-cosmetic="arcade-frame"][data-tier="epic"]
+  > .tier-fx {
+  background: conic-gradient(
+    from var(--tier-turn),
+    #ff4fd8,
+    #2ff3ff,
+    #ffd65b,
+    #7a2bd6,
+    #ff4fd8
+  );
+  box-shadow:
+    0 0 12px #ff4fd8aa,
+    inset 0 0 6px #2ff3ff99;
 }
 `;
 writeFileSync(

@@ -4,8 +4,8 @@ import { afterAll, beforeAll, expect, it } from "vitest";
 import { CHAMPION_SKINS } from "../../packages/shared/src/shop";
 import { COLLECTION_FRAMES } from "../../packages/shared/src/journey";
 
-// Migration 071: owning every Void Knight or every Cyber Mecha earns that
-// collection's reward frame, which is never sold.
+// Migrations 071 and 072: owning every Void Knight, Cyber Mecha or Arcade
+// skin earns that collection's reward frame, which is never sold.
 let db: PGlite;
 const admin = "00000000-0000-4000-8000-000000000711";
 const player = "00000000-0000-4000-8000-000000000712";
@@ -73,7 +73,7 @@ it("seeds each reward frame as a never-sold frame of its collection", async () =
       )
     ).rows[0].n;
     expect(n, f.collection).toBe(skins(f.collection).length);
-    expect(n).toBe(16);
+    expect(n, f.collection).toBe(f.collection === "arcade" ? 8 : 16);
   }
 });
 
@@ -87,6 +87,9 @@ it("grants the frame with the last skin of the set, not before", async () => {
   expect(await owned()).not.toContain("cyber-frame");
   for (const id of skins("cyber")) await buy(id);
   expect(await owned()).toContain("cyber-frame");
+  expect(await owned()).not.toContain("arcade-frame");
+  for (const id of skins("arcade")) await buy(id);
+  expect(await owned()).toContain("arcade-frame");
   // It equips in the frame slot like any owned frame.
   await db.query("select public.arena_equip_raid_slot('frame', 'void-frame')");
   const look = (
