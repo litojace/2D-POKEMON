@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   CHARACTERS,
-  FFA_THREE_SCALE,
+  FFA_THREE_TUNING,
   FFA_TUNING,
   FIGHTER_IDS,
   RULES,
@@ -16,9 +16,14 @@ import { Arena } from "../../apps/server/src/simulation";
 import { BotBrain } from "../../apps/server/src/bot";
 
 const shipped = { ...FFA_TUNING };
+const shippedThree = { ...FFA_THREE_TUNING };
 afterEach(() => {
-  for (const id of FIGHTER_IDS) delete FFA_TUNING[id];
+  for (const id of FIGHTER_IDS) {
+    delete FFA_TUNING[id];
+    delete FFA_THREE_TUNING[id];
+  }
   Object.assign(FFA_TUNING, shipped);
+  Object.assign(FFA_THREE_TUNING, shippedThree);
 });
 
 /** A seeded bot match, played for `seconds`: everyone's health and spot. */
@@ -57,24 +62,23 @@ describe("free-for-all tuning", () => {
   });
 
   it("ships a factor for every champion, in a sane range", () => {
-    for (const id of FIGHTER_IDS) {
-      const f = FFA_TUNING[id]!;
-      expect(f, id).toBeDefined();
-      expect(f, id).toBeGreaterThanOrEqual(0.6);
-      expect(f, id).toBeLessThanOrEqual(1.6);
-    }
+    for (const table of [FFA_TUNING, FFA_THREE_TUNING])
+      for (const id of FIGHTER_IDS) {
+        const f = table[id]!;
+        expect(f, id).toBeDefined();
+        expect(f, id).toBeGreaterThanOrEqual(0.6);
+        expect(f, id).toBeLessThanOrEqual(1.6);
+      }
     for (const id of Object.keys(FFA_TUNING))
       expect(FIGHTER_IDS, id).toContain(id as CharacterId);
   });
 
-  it("applies part of each factor in a three-player free-for-all", () => {
+  it("reads the three-player table when a free-for-all started with three", () => {
     FFA_TUNING.cindrake = 1.5;
+    FFA_THREE_TUNING.cindrake = 1.25;
     expect(modeFactor("cindrake", "ffa", 4)).toBe(1.5);
     expect(modeFactor("cindrake", "ffa")).toBe(1.5);
-    expect(modeFactor("cindrake", "ffa", 3)).toBeCloseTo(
-      1 + 0.5 * FFA_THREE_SCALE,
-      9,
-    );
+    expect(modeFactor("cindrake", "ffa", 3)).toBe(1.25);
     // Player count means nothing outside a free-for-all.
     expect(modeFactor("cindrake", "duel", 3)).toBe(1);
     expect(modeFactor("cindrake", "teams", 3)).toBe(TEAM_TUNING.cindrake ?? 1);
@@ -83,6 +87,8 @@ describe("free-for-all tuning", () => {
   it("gives fighters their free-for-all health in a free-for-all", () => {
     FFA_TUNING.voltkit = 0.8;
     FFA_TUNING.astrabun = 1.3;
+    FFA_THREE_TUNING.voltkit = 0.7;
+    FFA_THREE_TUNING.astrabun = 1.45;
     const a = new Arena("f", "ffa");
     a.add("a", "A", "voltkit");
     a.add("b", "B", "astrabun");
@@ -90,12 +96,9 @@ describe("free-for-all tuning", () => {
     a.start();
     const hp = (arena: Arena, id: string) =>
       arena.players.find((p) => p.id === id)!.hp;
-    // Three players: 1 + (f - 1) × FFA_THREE_SCALE.
-    const three = (f: number) => 1 + (f - 1) * FFA_THREE_SCALE;
-    expect(hp(a, "a")).toBe(Math.round(CHARACTERS.voltkit.health * three(0.8)));
-    expect(hp(a, "b")).toBe(
-      Math.round(CHARACTERS.astrabun.health * three(1.3)),
-    );
+    // Three players: the three-player table.
+    expect(hp(a, "a")).toBe(Math.round(CHARACTERS.voltkit.health * 0.7));
+    expect(hp(a, "b")).toBe(Math.round(CHARACTERS.astrabun.health * 1.45));
     const four = new Arena("f4", "ffa");
     for (const [id, c] of [
       ["a", "voltkit"],

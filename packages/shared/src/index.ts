@@ -1722,34 +1722,49 @@ export const TEAM_TUNING: Partial<Record<CharacterId, number>> = {
  * fighter standing, so it rewards lasting rather than damage: melee champions
  * take about twice the damage per second of ranged ones (as in a duel), which
  * a duel repays with their higher damage but a free-for-all does not. Tuned
- * with scripts/balance/tune-teams.ts --mode ffa on four-player matches; a
- * three-player free-for-all applies them at FFA_THREE_SCALE.
+ * with scripts/balance/tune-teams.ts --mode ffa on four-player matches.
  */
 export const FFA_TUNING: Partial<Record<CharacterId, number>> = {
-  voltkit: 0.792,
-  cindrake: 1.205,
-  tidefin: 0.833,
-  auralynx: 1.076,
-  lumoth: 0.786,
-  mystowl: 0.821,
-  terradon: 0.989,
-  duskveil: 0.757,
-  coilemur: 1.284,
-  pyranda: 0.769,
-  glacelle: 0.829,
-  halcyra: 0.769,
-  sunbara: 0.836,
-  astrabun: 1.314,
-  wombolder: 1.143,
-  shadopus: 1.246,
+  voltkit: 0.928,
+  cindrake: 1.159,
+  tidefin: 0.881,
+  auralynx: 1.055,
+  lumoth: 0.919,
+  mystowl: 0.872,
+  terradon: 1,
+  duskveil: 0.917,
+  coilemur: 1.178,
+  pyranda: 0.899,
+  glacelle: 0.981,
+  halcyra: 0.863,
+  sunbara: 0.911,
+  astrabun: 1.026,
+  wombolder: 1.11,
+  shadopus: 1.089,
 };
 /**
- * How much of each FFA_TUNING factor a three-player free-for-all applies
- * (f becomes 1 + (f - 1) × this). With one enemy fewer the gap between
- * melee and ranged champions is about 60% of the four-player one, measured
- * in bot matches.
+ * The same for a free-for-all that started with three players, tuned on
+ * three-player matches (--mode ffa --players 3): with one enemy fewer the
+ * gap between melee and ranged champions is wider than with four.
  */
-export const FFA_THREE_SCALE = 0.6;
+export const FFA_THREE_TUNING: Partial<Record<CharacterId, number>> = {
+  voltkit: 0.868,
+  cindrake: 1.189,
+  tidefin: 0.835,
+  auralynx: 1.127,
+  lumoth: 0.864,
+  mystowl: 0.838,
+  terradon: 1.056,
+  duskveil: 0.864,
+  coilemur: 1.242,
+  pyranda: 0.852,
+  glacelle: 0.936,
+  halcyra: 0.788,
+  sunbara: 0.86,
+  astrabun: 1.106,
+  wombolder: 1.161,
+  shadopus: 1.144,
+};
 /**
  * A champion's strength factor in this mode (1 outside 2v2 and free-for-all).
  * `players` is how many fighters the match started with; only a
@@ -1762,8 +1777,7 @@ export function modeFactor(
 ) {
   if (mode === "teams") return TEAM_TUNING[id] ?? 1;
   if (mode !== "ffa") return 1;
-  const f = FFA_TUNING[id] ?? 1;
-  return players < MODE_SIZE.ffa ? 1 + (f - 1) * FFA_THREE_SCALE : f;
+  return (players < MODE_SIZE.ffa ? FFA_THREE_TUNING : FFA_TUNING)[id] ?? 1;
 }
 /** A champion's full health in this mode (and free-for-all size). */
 export function maxHealth(id: CharacterId, mode?: MatchMode, players?: number) {
