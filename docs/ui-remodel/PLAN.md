@@ -1167,6 +1167,16 @@ see below). Not verified: a real phone, and Safari's engine.
   sheet that is leaving no longer holds the picker's place.
   `pvp-party-flow.spec.ts` checks for exactly one picker, and for Ready
   after Friends closes.
+- Ranks on the live game said "UPDATE requires a WHERE clause". Not a step 6
+  bug: Supabase refuses an `UPDATE` or `DELETE` with no `WHERE` from API
+  sessions, and migration 006's monthly rating softening had none, so it
+  failed from its first run on 1 November (and rolled back, so every later
+  call tried again), taking the leaderboard and the rating card with it.
+  006's match rating update emptied its scratch table the same way, so no
+  player-vs-player match report had ever been saved (production: 51 bot
+  matches, no PvP match, no rating). Migration 065 names the rows in both;
+  the owner ran it in the SQL Editor on 6 Nov and both functions were
+  checked on the live database afterwards.
 - The server now logs the reason when an account request fails with an
   unexpected error (`[api] GET /path failed: …`). Before, a player saw
   only "Account service failed" or "Invalid request." and the logs said
