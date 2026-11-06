@@ -56,7 +56,7 @@ import {
   type OnlineList,
 } from "../../../packages/shared/src/accounts.js";
 /** The newest database migration the server expects. */
-export const LATEST_MIGRATION = "073_bistro_staff.sql";
+export const LATEST_MIGRATION = "074_bistro_dishes.sql";
 /** The migration that last redefined the raid appearance functions. */
 export const RAID_FUNCTIONS_MIGRATION = "018_collection_equipping.sql";
 export interface AccountProvider {
@@ -665,6 +665,9 @@ export function installAccountRoutes(
         "trade",
         "feed",
         "sweep",
+        "dishup",
+        "market",
+        "farm",
         "sync",
       ]),
       stove: z.number().int().min(0).max(3).optional(),
@@ -700,6 +703,8 @@ export function installAccountRoutes(
       friend: z.string().uuid().optional(),
       char: z.enum(FIGHTER_IDS).optional(),
       lots: z.number().int().min(1).max(15).optional(),
+      // Market buys and Farm crops (migration 074).
+      qty: z.number().int().min(1).max(30).optional(),
     })
     .strict();
   app.get(
@@ -723,8 +728,8 @@ export function installAccountRoutes(
         p_request: data.request,
         p_actions: data.actions,
       });
-      // A trade changes the leaf wallet shown in the top bar.
-      if (data.actions.some((x) => x.a === "trade"))
+      // A trade changes the leaf wallet; Farm crops leave the barn.
+      if (data.actions.some((x) => x.a === "trade" || x.a === "farm"))
         onPlayerChanged(account.id);
       res.json(result);
     }),

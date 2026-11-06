@@ -15,7 +15,12 @@ import {
   buyShift,
   buyStove,
   buyStyle,
+  dishLevel,
+  dishUp,
+  buyIngredient,
   feedStaff,
+  fromFarm,
+  FARM_PER_INGREDIENT,
   hire,
   sweepTrash,
   payment,
@@ -35,6 +40,7 @@ import {
   type AwayReport,
   type BistroState,
   type DishId,
+  type Ingredient,
   type ItemKind,
   type Role,
 } from "./bistro-model";
@@ -69,6 +75,9 @@ export type BistroAction =
   | { a: "expand" }
   | { a: "hire"; role: Role; char: string; friend?: string }
   | { a: "feed"; id: number }
+  | { a: "dishup"; dish: DishId }
+  | { a: "market"; id: Ingredient; qty: number }
+  | { a: "farm"; id: string; qty: number }
   | { a: "sweep" }
   | { a: "train"; id: number }
   | { a: "cookdish"; id: number; dish: DishId }
@@ -91,6 +100,11 @@ export interface BistroExtras {
   tradedToday: number;
   friendGuests: FriendGuest[];
   dinesToday: number;
+  /** Bought at the Market today, by ingredient (migration 074). */
+  marketBought: Partial<Record<Ingredient, number>>;
+  /** Ingredients brought from the Farm today, and the barn's plain crops that can come. */
+  farmSent: number;
+  farmCrops: Record<string, number>;
 }
 /** What a page was still waiting to send (kept in this browser). */
 export interface SyncSnapshot {
@@ -137,6 +151,7 @@ export function applyLocal(
       if (takeServing(s, x.dish) < 0)
         return { ok: false, error: "None left on the counter." };
       const bill = payment(x.dish, {
+        level: dishLevel(s, x.dish),
         vip: x.vip,
         combo: x.combo,
         hearts: x.hearts,
@@ -185,6 +200,34 @@ export function applyLocal(
       );
     case "feed":
       return r(feedStaff(s, x.id, now));
+    case "dishup":
+      return r(dishUp(s, x.dish));
+    case "market": {
+      const res = buyIngredient(
+        s,
+        x.id,
+        x.qty,
+        now,
+        extras?.marketBought[x.id] ?? 0,
+      );
+      if (res.ok && extras)
+        extras.marketBought[x.id] = (extras.marketBought[x.id] ?? 0) + x.qty;
+      return r(res);
+    }
+    case "farm": {
+      const res = fromFarm(
+        s,
+        x.id,
+        x.qty,
+        extras?.farmCrops[x.id] ?? 0,
+        extras?.farmSent ?? 0,
+      );
+      if (res.ok && extras) {
+        extras.farmCrops[x.id] -= x.qty * FARM_PER_INGREDIENT;
+        extras.farmSent += x.qty;
+      }
+      return r(res);
+    }
     case "sweep":
       return r(sweepTrash(s));
     case "train":
@@ -241,6 +284,13 @@ export function readServer(raw: unknown): {
       return { ...st, start: num(src.start, st.start) };
     });
   state.lastSeen = num(r.lastSeen);
+  const numMap = (v: unknown) => {
+    const out: Record<string, number> = {};
+    if (v && typeof v === "object")
+      for (const [k, n] of Object.entries(v as Record<string, unknown>))
+        out[k] = num(n);
+    return out;
+  };
   const guests = Array.isArray(r.friendGuests)
     ? (r.friendGuests as FriendGuest[])
     : [];
@@ -257,6 +307,11 @@ export function readServer(raw: unknown): {
       tradedToday: num(r.tradedToday),
       friendGuests: guests.filter((g) => g && isDish(g.dish)),
       dinesToday: num(r.dinesToday),
+      marketBought: numMap(r.marketBought) as Partial<
+        Record<Ingredient, number>
+      >,
+      farmSent: num(r.farmSent),
+      farmCrops: numMap(r.farmCrops),
     },
     now: num(r.now, Date.now()),
     away,
@@ -334,6 +389,9 @@ export class BistroSync {
       tradedToday: 0,
       friendGuests: [],
       dinesToday: 0,
+      marketBought: {},
+      farmSent: 0,
+      farmCrops: {},
     };
   }
   now() {

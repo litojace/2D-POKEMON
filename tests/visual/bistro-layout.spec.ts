@@ -194,6 +194,8 @@ for (const size of SIZES)
                       { id: 6, char: 'lumoth', role: 'waiter', level: 1, dish: 'goicuon', energy: 140,
                         friend: { id: '00000000-0000-4000-8000-000000000673', name: 'Bartholomew the Brave' } });
          S.trash = 4;
+         S.dishLv = { pho: { lv: 4, mastery: 12 }, lau: { lv: 10, mastery: 0 }, goicuon: { lv: 2, mastery: 10 } };
+         S.pantry = { rice: 12, flour: 3, herbs: 99, pork: 1, spice: 2 };
          S.stoves.push({ dish: null, start: 0, perfect: false }, { dish: null, start: 0, perfect: false });
          S.counter = [{ dish: 'lau', servings: 188, perfect: true }, { dish: 'pho', servings: 12, perfect: false },
                       { dish: 'caphe', servings: 9, perfect: false }, { dish: 'goicuon', servings: 3, perfect: false }];
@@ -217,6 +219,7 @@ for (const size of SIZES)
       const sheets: [string, string | number | undefined][] = [
         ["cook", 0],
         ["menu", undefined],
+        ["menu", "pantry"],
         ["shop", "furniture"],
         ["shop", "decor"],
         ["shop", "style"],
@@ -238,7 +241,7 @@ for (const size of SIZES)
         await page.evaluate(() =>
           document
             .querySelectorAll(
-              "#bs-sheet :is(.bs-dishes, .bs-items, .bs-team, .bs-bank, .bs-pop)",
+              "#bs-sheet :is(.bs-dishes, .bs-items, .bs-team, .bs-bank, .bs-pop, .bs-pantry)",
             )
             .forEach((e) => (e.scrollTop = e.scrollHeight)),
         );

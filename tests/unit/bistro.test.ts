@@ -689,3 +689,108 @@ describe("bistro: staff energy, janitors and friends (docs/bistro-gdd.md §1)", 
     expect(rested.staff[0].energy).toBe(100);
   });
 });
+
+describe("bistro: dish levels and ingredients (docs/bistro-gdd.md §2)", () => {
+  it("a level raises the price 12% and adds a serving every three", async () => {
+    const B = await import("../../packages/shared/src/bistro");
+    expect([1, 2, 5, 10].map((l) => B.priceAt("pho", l))).toEqual([
+      8, 9, 12, 17,
+    ]);
+    expect([1, 3, 4, 7, 10].map((l) => B.servingsAt("pho", l))).toEqual([
+      10, 10, 11, 12, 13,
+    ]);
+    expect(B.dishUpCost("pho", 1)).toEqual({
+      mastery: 5,
+      coins: 80,
+      each: 1,
+      spice: 0,
+    });
+    expect(B.dishUpCost("pho", 9)).toEqual({
+      mastery: 45,
+      coins: 2400,
+      each: 9,
+      spice: 3,
+    });
+    expect(B.dishUpCost("pho", 10)).toBeNull();
+    expect(payment("pho", { level: 10, hearts: 1 }).base).toBe(17);
+  });
+  it("mastery comes from cooking; a level-up takes it, the ingredients and coins", async () => {
+    const B = await import("../../packages/shared/src/bistro");
+    const s = defaultState();
+    s.level = 3;
+    s.coins = 10000;
+    for (let i = 0; i < 4; i++) {
+      B.startCooking(s, 0, "pho", T0);
+      if (i === 0) s.stoves[0].perfect = true;
+      expect(B.plate(s, 0, T0 + 3_600_000).ok).toBe(true);
+    }
+    expect(s.dishLv.pho).toEqual({ lv: 1, mastery: 5 });
+    expect(B.dishUp(s, "pho")).toMatchObject({
+      ok: false,
+      error: "You need 1 Flour.",
+    });
+    s.pantry = { flour: 1, herbs: 1 };
+    const coins = s.coins;
+    expect(B.dishUp(s, "pho").ok).toBe(true);
+    expect(s.coins).toBe(coins - 80);
+    expect(s.pantry).toEqual({ flour: 0, herbs: 0 });
+    expect(s.dishLv.pho).toEqual({ lv: 2, mastery: 0 });
+    expect(B.gourmetOf(s)).toBe(2);
+    expect(B.dishUp(s, "pho")).toMatchObject({
+      ok: false,
+      error: "Cook 10 more batches of Pho first.",
+    });
+    // Gourmet adds popularity (one point for every 40, up to 6).
+    s.dishLv = Object.fromEntries(
+      B.DISHES.map((d) => [d.id, { lv: 10, mastery: 0 }]),
+    );
+    expect(B.gourmetOf(s)).toBe(261);
+    expect(B.popularity(s).gourmet).toBe(6);
+  });
+  it("the Market: four different ingredients every four hours, 20 to 60 coins", async () => {
+    const B = await import("../../packages/shared/src/bistro");
+    for (let slot = 0; slot < 200; slot++) {
+      const o = B.marketOffers(slot * B.MARKET_PERIOD_MS + 1);
+      expect(new Set(o.map((x) => x.id)).size).toBe(4);
+      for (const x of o)
+        (expect(x.price).toBeGreaterThanOrEqual(20),
+          expect(x.price).toBeLessThanOrEqual(60));
+    }
+    const now = 1_800_000_000_000;
+    expect(B.marketNext(now) - now).toBeLessThanOrEqual(B.MARKET_PERIOD_MS);
+    const s = defaultState();
+    s.coins = 1000;
+    const o = B.marketOffers(now)[0];
+    expect(B.buyIngredient(s, o.id, 3, now, 0).ok).toBe(true);
+    expect(s.pantry[o.id]).toBe(3);
+    expect(s.coins).toBe(1000 - 3 * o.price);
+    expect(B.buyIngredient(s, o.id, 3, now, 3)).toMatchObject({ ok: false });
+  });
+  it("Farm crops: three for one, 30 a day; level-ups give three ingredients", async () => {
+    const B = await import("../../packages/shared/src/bistro");
+    const s = defaultState();
+    expect(B.fromFarm(s, "wheat", 2, 6, 0).ok).toBe(true);
+    expect(s.pantry.flour).toBe(2);
+    expect(B.fromFarm(s, "wheat", 3, 8, 0)).toMatchObject({
+      error: "You need 9 in the Farm's barn.",
+    });
+    expect(B.fromFarm(s, "milk", 1, 3, 30)).toMatchObject({ ok: false });
+    expect(B.fromFarm(s, "carrot", 1, 9, 0)).toMatchObject({ ok: false });
+    const t = defaultState();
+    addXp(t, 40); // level 2
+    expect(t.level).toBe(2);
+    expect(t.pantry).toEqual(Object.fromEntries(B.levelIngredients(2)));
+  });
+  it("while you are away, a levelled dish earns more", async () => {
+    const run = (lv: number) => {
+      const s = defaultState();
+      s.coins = 5000;
+      s.level = 9;
+      hire(s, "cook", "pyranda");
+      s.staff[1].dish = "pho";
+      s.dishLv = { pho: { lv, mastery: 0 } };
+      return simulateAway(s, T0, T0 + 2 * 3600_000)!;
+    };
+    expect(run(8).coins).toBeGreaterThan(run(1).coins);
+  });
+});

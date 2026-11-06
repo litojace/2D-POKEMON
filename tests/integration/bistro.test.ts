@@ -724,3 +724,217 @@ describe("staff energy, janitors and friends (migration 073)", () => {
     ]);
   });
 });
+
+describe("dish levels, ingredients, the Market and the Farm (migration 074)", () => {
+  it("the Market sells the same four ingredients at the same prices", async () => {
+    const { marketOffers, BASE_INGREDIENTS } =
+      await import("../../packages/shared/src/bistro");
+    for (const ms of [
+      0,
+      1_800_000_000_000,
+      1_800_000_000_000 + 4 * 3600_000 * 7 + 5,
+      1_900_123_456_789,
+    ]) {
+      const offers = marketOffers(ms);
+      expect(new Set(offers.map((o) => o.id)).size).toBe(4);
+      for (const id of BASE_INGREDIENTS) {
+        const [{ p }] = await sql(
+          "select public.arena_bistro_market_price(to_timestamp($1::double precision / 1000), $2) p",
+          [ms, id],
+        );
+        expect(p).toBe(offers.find((o) => o.id === id)?.price ?? null);
+      }
+    }
+  });
+  it("cooking builds mastery; a level-up takes ingredients and coins; plates sell for more", async () => {
+    await setCoins(cal, 50000, 12);
+    await sql("delete from public.arena_bistro_dish_lv where player_id = $1", [
+      cal,
+    ]);
+    await sql(
+      "update public.arena_bistro_stoves set dish = null, started_at = null, dur_ms = null, perfect = false where player_id = $1",
+      [cal],
+    );
+    await sql(
+      "update public.arena_bistro_counter set dish = null, servings = 0, perfect = false where player_id = $1",
+      [cal],
+    );
+    // Five batches of Pho: five points of mastery.
+    for (let n = 0; n < 5; n++) {
+      await act(cal, [{ a: "cook", stove: 0, dish: "pho" }]);
+      await sql(
+        "update public.arena_bistro_stoves set started_at = started_at - interval '2 minutes' where player_id = $1 and idx = 0",
+        [cal],
+      );
+      const r = await act(cal, [{ a: "plate", stove: 0 }]);
+      expect(r.results[0].ok).toBe(true);
+    }
+    let b = await open(cal);
+    expect(b.dishLv.pho).toEqual({ lv: 1, mastery: 5 });
+    await sql("delete from public.arena_bistro_pantry where player_id = $1", [
+      cal,
+    ]);
+    let r = await act(cal, [{ a: "dishup", dish: "pho" }]);
+    expect(r.results[0].error).toBe("You need 1 Flour.");
+    await sql(
+      "insert into public.arena_bistro_pantry(player_id, ingredient, qty) values ($1, 'flour', 3), ($1, 'herbs', 3)",
+      [cal],
+    );
+    const local = sanitize(await open(cal));
+    const coins = local.coins;
+    r = await act(cal, [
+      { a: "dishup", dish: "pho" },
+      { a: "dishup", dish: "pho" },
+    ]);
+    expect(r.results[0].ok).toBe(true);
+    expect(r.results[1].error).toBe("Cook 10 more batches of Pho first.");
+    const { dishUp, payment, priceAt, servingsAt } =
+      await import("../../packages/shared/src/bistro");
+    expect(dishUp(local, "pho").ok).toBe(true);
+    expect(r.bistro.coins).toBe(coins - 40 * 2);
+    expect(r.bistro.dishLv.pho).toEqual({ lv: 2, mastery: 0 });
+    expect(r.bistro.pantry).toEqual({ flour: 2, herbs: 2 });
+    expect(sanitize(r.bistro).pantry).toEqual(local.pantry);
+    // A level-2 Pho: 9 coins a plate (8 × 1.12), the same on both sides.
+    expect(priceAt("pho", 2)).toBe(9);
+    expect(servingsAt("pho", 4)).toBe(11);
+    const counter = r.bistro.counter.find((c: any) => c?.dish === "pho");
+    expect(counter.servings).toBeGreaterThan(0);
+    const before = r.bistro.coins;
+    r = await act(cal, [
+      {
+        a: "serve",
+        dish: "pho",
+        vip: false,
+        combo: 1,
+        hearts: 3,
+        quick: false,
+      },
+    ]);
+    expect(r.results[0].ok).toBe(true);
+    expect(r.bistro.coins - before).toBe(
+      payment("pho", {
+        hearts: 3,
+        level: 2,
+        special: r.bistro.special === "pho",
+      }).total,
+    );
+    // Gourmet points count toward popularity.
+    const [{ g, p }] = await sql(
+      "select public.arena_bistro_gourmet($1) g, public.arena_bistro_popularity($1) p",
+      [cal],
+    );
+    expect(g).toBe(2); // (2 − 1) × Pho's level 2
+    b = await open(cal);
+    expect(p).toBeCloseTo(
+      popularity(sanitize(b), {
+        likesWeek: b.likesWeek,
+        dinedToday: b.friendGuests.length,
+      }).total,
+      1,
+    );
+  });
+  it("buys at the Market (5 of each a day), brings Farm crops (3 for 1, 30 a day), and level-ups give ingredients", async () => {
+    const { marketOffers, levelIngredients } =
+      await import("../../packages/shared/src/bistro");
+    await setCoins(cal, 50000, 12);
+    await sql("delete from public.arena_bistro_pantry where player_id = $1", [
+      cal,
+    ]);
+    const [{ now }] = await sql(
+      "select (extract(epoch from now()) * 1000)::bigint now",
+    );
+    const offer = marketOffers(Number(now))[0];
+    let r = await act(cal, [
+      { a: "market", id: offer.id, qty: 4 },
+      { a: "market", id: offer.id, qty: 2 },
+      { a: "market", id: offer.id, qty: 1 },
+    ]);
+    expect(r.results.map((x: any) => x.ok)).toEqual([true, false, true]);
+    expect(r.results[1].error).toMatch(/^At most 5 /);
+    expect(r.bistro.pantry[offer.id]).toBe(5);
+    expect(r.bistro.marketBought[offer.id]).toBe(5);
+    const missing = [
+      "rice",
+      "flour",
+      "herbs",
+      "pork",
+      "egg",
+      "beans",
+      "coconut",
+      "coffee",
+      "milk",
+      "chili",
+    ].find((x) => !marketOffers(Number(now)).some((o) => o.id === x))!;
+    r = await act(cal, [{ a: "market", id: missing, qty: 1 }]);
+    expect(r.results[0].error).toBe("That's not at the Market right now.");
+    // The Farm: 7 plain wheat (and a golden one) make 2 flour.
+    await sql(
+      "insert into public.arena_farm_barn(player_id, crop, mutation, qty) values ($1, 'wheat', '', 7), ($1, 'wheat', 'gold', 4) on conflict (player_id, crop, mutation) do update set qty = excluded.qty",
+      [cal],
+    );
+    expect((await open(cal)).farmCrops).toMatchObject({ wheat: 7 });
+    r = await act(cal, [
+      { a: "farm", id: "wheat", qty: 3 },
+      { a: "farm", id: "wheat", qty: 2 },
+      { a: "farm", id: "carrot", qty: 1 },
+    ]);
+    expect(r.results.map((x: any) => x.ok)).toEqual([false, true, false]);
+    expect(r.results[0].error).toBe("You need 9 in the Farm's barn.");
+    expect(r.bistro.pantry.flour).toBe(2);
+    expect(r.bistro.farmSent).toBe(2);
+    const barn = await sql(
+      "select mutation, qty from public.arena_farm_barn where player_id = $1 and crop = 'wheat' order by mutation",
+      [cal],
+    );
+    expect(barn).toEqual([
+      { mutation: "", qty: 1 },
+      { mutation: "gold", qty: 4 },
+    ]);
+    // A level-up: three ingredients.
+    await sql("delete from public.arena_bistro_pantry where player_id = $1", [
+      cal,
+    ]);
+    await sql(
+      "update public.arena_bistros set level = 13, xp = 0 where player_id = $1",
+      [cal],
+    );
+    const [{ need }] = await sql("select public.arena_bistro_need(13) need");
+    await sql("select public.arena_bistro_add_xp($1, $2)", [cal, need]);
+    const pantry = Object.fromEntries(
+      (
+        await sql(
+          "select ingredient, qty from public.arena_bistro_pantry where player_id = $1",
+          [cal],
+        )
+      ).map((x: any) => [x.ingredient, x.qty]),
+    );
+    expect(pantry).toEqual(Object.fromEntries(levelIngredients(14)));
+  });
+  it("a meal at a friend's bistro pays its level's price and gives an ingredient to take home", async () => {
+    await sql("delete from public.arena_bistro_dines where diner = $1", [ben]);
+    await sql(
+      "update public.arena_bistro_counter set dish = case slot when 0 then 'pho' else null end, servings = case slot when 0 then 9 else 0 end where player_id = $1",
+      [ana],
+    );
+    await sql(
+      "insert into public.arena_bistro_dish_lv(player_id, dish, lv, mastery) values ($1, 'pho', 4, 0) on conflict (player_id, dish) do update set lv = 4",
+      [ana],
+    );
+    await sql("delete from public.arena_bistro_pantry where player_id = $1", [
+      ben,
+    ]);
+    const r = await friendAct(ben, ana, "dine");
+    expect(r).toMatchObject({ ok: true, dish: "pho" });
+    // 8 × 1.36 = 11, and a 50% tip.
+    expect(r.paid).toBe(11 + 6);
+    expect(["flour", "herbs", "spice"]).toContain(r.ingredient);
+    const [{ q }] = await sql(
+      "select qty q from public.arena_bistro_pantry where player_id = $1 and ingredient = $2",
+      [ben, r.ingredient],
+    );
+    expect(q).toBe(1);
+    // A visitor doesn't see their pantry.
+    expect(r.bistro.pantry).toBeUndefined();
+  });
+});
