@@ -234,12 +234,6 @@ main {
   align-items: center;
   gap: 10px;
 }
-.live-dot {
-  background: var(--lime);
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-}
 .intro {
   display: flex;
   align-items: center;
@@ -296,12 +290,6 @@ h2 {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
-}
-.element-label {
-  text-transform: uppercase;
-  font-size: 8px;
-  letter-spacing: 1.2px;
-  color: var(--element);
 }
 .skill-preview {
   margin-top: 22px;
@@ -415,9 +403,7 @@ input:not([type="range"]):not([type="checkbox"]):not([type="color"]):not(
   display: grid;
   gap: 15px;
 }
-.account-form label,
-.admin-player label,
-.admin-title label {
+.account-form label {
   display: grid;
   gap: 8px;
   font-size: 11px;
@@ -433,16 +419,6 @@ input:not([type="range"]):not([type="checkbox"]):not([type="color"]):not(
   border-radius: 5px;
   width: 100%;
 }
-.checkbox-label {
-  display: flex !important;
-  align-items: center;
-  gap: 9px !important;
-}
-.checkbox-label input {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--lime);
-}
 .auth-links {
   margin-top: 18px;
 }
@@ -452,42 +428,9 @@ input:not([type="range"]):not([type="checkbox"]):not([type="color"]):not(
 .account-form p:empty {
   display: none;
 }
-dialog:has(.admin-players) {
-  width: min(900px, 94vw);
-  max-height: 90vh;
-  overflow: auto;
-}
-.admin-players,
-.admin-titles {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-  gap: 15px;
-  margin: 20px 0;
-}
-.admin-player,
-.admin-title {
-  display: grid;
-  gap: 12px;
-  background: #182b49;
-  padding: 18px;
-  border: 1px solid #ffffff15;
-  border-radius: 8px;
-}
-.admin-player small {
-  font-size: 9px;
-  color: var(--muted);
-  word-break: break-all;
-}
 .title-grants {
   display: grid;
   gap: 9px;
-}
-.admin-title input[type="color"] {
-  width: 50px;
-  height: 30px;
-  padding: 0;
-  background: none;
-  border: 0;
 }
 .admin-pagination {
   justify-content: space-between;
@@ -520,22 +463,6 @@ input::placeholder {
   background: #293e63;
   color: #e2ecff;
   border: 1px solid #ffffff15;
-}
-.divider {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #91a5c3;
-  font-size: 8px;
-  letter-spacing: 1px;
-  margin: 27px 0 2px;
-}
-.divider:before,
-.divider:after {
-  content: "";
-  height: 1px;
-  background: #ffffff12;
-  flex: 1;
 }
 .join-row {
   display: flex;
@@ -586,15 +513,6 @@ input::placeholder {
   width: 100%;
   height: 100%;
   display: block;
-}
-.player-dot {
-  color: #14213b;
-  border-radius: 8px;
-  width: 30px;
-  height: 30px;
-  display: grid;
-  place-items: center;
-  font-weight: 700;
 }
 .players strong {
   font-size: 11px;
@@ -1067,24 +985,6 @@ input::placeholder {
     margin: 0 0 4px;
   }
 }
-.result-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-  margin: 22px auto 22px;
-  max-width: 460px;
-  text-align: center;
-}
-.result-stats span {
-  font-size: 8px;
-  letter-spacing: 1px;
-}
-.result-stats b {
-  display: block;
-  font-size: 25px;
-  color: #e5efda;
-  margin-bottom: 8px;
-}
 dialog {
   background: #1b2e4d;
   color: var(--text);
@@ -1222,9 +1122,6 @@ dialog input[type="range"] {
   .overlay-card h2 {
     font-size: 25px;
   }
-  .result-stats {
-    gap: 12px;
-  }
   .ability span {
     font-size: 9px;
   }
@@ -1276,20 +1173,6 @@ dialog input[type="range"] {
   }
   50% {
     transform: scaleX(0.88) rotate(2deg);
-  }
-}
-@keyframes fighter-ear {
-  0%,
-  80%,
-  100% {
-    transform: rotate(0);
-  }
-  85%,
-  95% {
-    transform: rotate(4deg);
-  }
-  90% {
-    transform: rotate(-3deg);
   }
 }
 @keyframes fighter-shadow {
@@ -2348,29 +2231,6 @@ body.battle-still .spectator {
 .brand-mark::after {
   display: none;
 }
-.elemental-roster {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-}
-.elemental-roster .element-label {
-  font-size: 8px;
-}
-.element-filter {
-  font-size: 10px;
-  color: #a6b7cf;
-  display: grid;
-  gap: 5px;
-  min-width: 110px;
-}
-.element-filter select {
-  padding: 8px 10px;
-  background: #182a43;
-  border: 1px solid #b4c4e533;
-  border-radius: 9px;
-  color: white;
-  font: 12px inherit;
-}
 .selected-art {
   text-align: center;
   min-width: 0;
@@ -2426,9 +2286,6 @@ body.battle-still .spectator {
   }
 }
 @media (max-width: 700px) {
-  .elemental-roster {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
   .selected-art svg {
     width: 120px;
     height: 145px;
@@ -2436,9 +2293,6 @@ body.battle-still .spectator {
   .selected-art > span {
     font-size: 6px;
     letter-spacing: 1px;
-  }
-  .element-filter {
-    min-width: 96px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -2448,21 +2302,6 @@ body.battle-still .spectator {
     animation: none;
   }
 }
-.elemental-roster .element-label {
-  color: var(--element);
-}
-@media (min-width: 370px) and (max-width: 700px) {
-  .elemental-roster {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 6px;
-  }
-}
-.elemental-roster .creature-portrait {
-  height: 110px;
-  width: 100%;
-  object-fit: contain;
-  filter: drop-shadow(0 7px 6px #01091966);
-}
 .selected-art .creature-portrait {
   width: 190px;
   height: 185px;
@@ -2470,17 +2309,9 @@ body.battle-still .spectator {
   filter: drop-shadow(0 15px 12px #030b2266);
 }
 @media (max-width: 700px) {
-  .elemental-roster .creature-portrait {
-    height: 100px;
-  }
   .selected-art .creature-portrait {
     width: 120px;
     height: 145px;
-  }
-}
-@media (min-width: 370px) and (max-width: 700px) {
-  .elemental-roster .creature-portrait {
-    height: 70px;
   }
 }
 /* Showcase-inspired navy and gold identity. */
@@ -3523,19 +3354,6 @@ body::before {
 .result-score span:first-child {
   text-align: right;
 }
-.result-stats > span {
-  display: grid;
-  justify-items: center;
-}
-.overlay-card .result-stats ~ button {
-  min-width: 170px;
-}
-/* Copy-code button: a real icon (iOS turns ↗ into an emoji). */
-.copy-icon {
-  width: 12px;
-  height: 12px;
-}
-/* Lobby status pills. */
 /* 2v2 columns: identical row heights for players and open seats. */
 @media (min-width: 701px) {
   body:not(.battle-active) main {
@@ -4008,10 +3826,6 @@ html.scroll-locked {
    rows, whichever fighter is picked, so nothing reflows when switching.
    Narrow roster (phones): one swipeable row, with the panel right under it
    (placeFighterDetail moves the panel out of the scrolling row). */
-/* Lobby: share an invite link right under the room code. */
-.invite-link {
-  margin: -4px 0 14px;
-}
 /* Ultimate meter: the ultimate button glows and pulses once it's charged. */
 .ability.ult-ready,
 .touch-buttons button.ult-ready {
@@ -4186,31 +4000,6 @@ html.scroll-locked {
 .muted {
   color: var(--muted);
 }
-/* ---- Guest play ---- */
-.guest-play {
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px solid #ffffff1a;
-  display: grid;
-  gap: 8px;
-}
-.guest-play > span {
-  font-size: 12px;
-  color: var(--muted);
-}
-.guest-play form {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-.guest-play input {
-  flex: 1 1 160px;
-  min-width: 0;
-}
-.guest-play small {
-  color: var(--muted);
-  font-size: 11px;
-}
 .dialog-actions {
   display: flex;
   flex-wrap: wrap;
@@ -4380,18 +4169,6 @@ button.small {
 /* Mastery flair label in the lobby. */
 .flair {
   font-weight: 800;
-}
-.flair-bronze {
-  color: #d69a6a;
-}
-.flair-silver {
-  color: #cfd8e6;
-}
-.flair-gold {
-  color: #ffd166;
-}
-.flair-crystal {
-  color: #9ff3ff;
 }
 /* ---- Ultimate ready: a spinning energy ring, a light sweep, a pop ----
    The ring is a conic gradient behind an inner panel, so only a bright
@@ -7517,16 +7294,6 @@ button.small .button-icon {
 .coin-button {
   padding: 4px 6px;
 }
-#shop-open {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-#shop-open .coin-chip {
-  margin-left: auto;
-}
-
-/* Rarity badges and card borders. */
 
 /* Use landscape width for related controls rather than stacking long columns. */
 .controls-preferences,
@@ -7857,8 +7624,7 @@ button.small .button-icon {
     grid-template-columns: 1fr;
   }
   #auth-form > button,
-  #auth-form > p,
-  #auth-form > .checkbox-label {
+  #auth-form > p {
     grid-column: 1 / -1;
   }
   #report-form {
@@ -8154,19 +7920,6 @@ dialog label {
   font-weight: 600;
   letter-spacing: 0;
   color: #c1cfe4;
-}
-.divider {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0;
-  color: #9fb2cf;
-}
-.divider:before,
-.divider:after {
-  background: linear-gradient(90deg, transparent, #8baee533);
-}
-.divider:after {
-  background: linear-gradient(90deg, #8baee533, transparent);
 }
 :is(.element-pill) {
   font-size: 10px;
@@ -11073,12 +10826,6 @@ body.battle-active .ability.ult-ready,
 
 /* All fighters stay visible; only the selected fighter animates in the detail pane. */
 @media (max-width: 1000px) and (orientation: landscape) {
-  body.lobby-active #menu .invite-link {
-    min-height: 40px;
-    padding: 6px;
-    margin-bottom: 8px;
-    font-size: 14px;
-  }
   body.lobby-active #menu .players {
     margin: 8px 0;
   }

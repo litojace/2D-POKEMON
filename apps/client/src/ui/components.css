@@ -752,34 +752,6 @@
   font-weight: 600;
   font-size: 0.8em;
 }
-/* Wallet pill: the same box in the HUD and wherever money shows. */
-.ui-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  height: 40px;
-  min-width: 128px;
-  padding: 0 16px 0 12px;
-  border-radius: var(--rad-pill);
-  background: #0b1020b3;
-  border: 1px solid var(--ui-line-2);
-  font-weight: 700;
-  font-size: 17px;
-  font-variant-numeric: tabular-nums;
-  backdrop-filter: blur(6px);
-}
-.ui-pill > :first-child {
-  margin-right: auto;
-}
-@media (max-height: 500px) {
-  .ui-pill {
-    height: 34px;
-    min-width: 92px;
-    padding: 0 12px 0 9px;
-    font-size: 14px;
-  }
-}
 .ui-badge {
   position: absolute;
   top: -6px;
