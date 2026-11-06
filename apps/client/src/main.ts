@@ -55,6 +55,12 @@ import {
   type FarmScreen,
   type FarmScreenOptions,
 } from "./farm/farm-screen";
+import {
+  forgetBistros,
+  openBistro,
+  type BistroFriend,
+  type BistroHandle,
+} from "./bistro/bistro-scene";
 import type {
   FarmActResult,
   FarmHere,
@@ -1656,12 +1662,19 @@ function syncHub() {
   syncParty();
   syncLobby(hub && hubScene === "lobby");
   syncFarm(hub && hubScene === "farm", hub);
-  syncPlaza(hub && hubScene === "plaza");
+  syncBistro(hub && hubScene === "bistro", hub);
+  syncPlaza(hub && hubScene === "plaza", hub);
+  // A scene hiding after the next one showed may have taken the hub's top
+  // bar style away (each checks only some of the others): in the hub it is on.
+  if (hub) document.body.classList.add("hub-screen");
 }
 /** The new Plaza (hub redesign phase 3): the server moves everyone in it. */
-function syncPlaza(want: boolean) {
+function syncPlaza(want: boolean, hub = want) {
   if (!want) {
-    if (plaza) {
+    // Behind the Lobby or the Farm the Plaza waits, drawn and kept (you are
+    // off it on the server, which keeps your spot); out of the hub it closes.
+    if (plaza && hub) plaza.hide();
+    else if (plaza) {
       wantedPlazaClosed = true;
       plaza.close();
       wantedPlazaClosed = false;
@@ -1671,6 +1684,7 @@ function syncPlaza(want: boolean) {
   const skin = accountsUI.economy?.looks[selected] ?? null;
   const look = plazaOutfitKey(selected, skin, accountsUI.raidLook);
   if (plaza) {
+    plaza.show();
     if (look !== plazaLook) plaza.look(selected, skin);
     plazaLook = look;
     return;
@@ -1816,6 +1830,62 @@ function syncLobby(want: boolean) {
     lobbyFriendsTimer = setInterval(() => void refreshLobbyFriends(), 60000);
   }
   lobby.update(lobbyView());
+}
+/** The Bistro (migration 068): the server's restaurant, next to the Farm. */
+let bistro: BistroHandle | undefined;
+let bistroOwner: string | undefined;
+function syncBistro(want: boolean, hub = want) {
+  // Another player now (or logged out): that bistro is not theirs.
+  if (bistro && bistroOwner !== accountsUI?.account?.id) {
+    bistro.close();
+    bistro = undefined;
+  }
+  if (!want) {
+    if (bistro) {
+      // Behind another hub tab the bistro waits, paused, as it is (guests,
+      // plates, coins); out of the hub (a match) it closes.
+      if (hub) bistro.hide();
+      else {
+        bistro.close();
+        bistro = undefined;
+      }
+      document.body.classList.remove("hub-bistro");
+      if (!document.querySelector(".lobby-layer"))
+        document.body.classList.remove("hub-screen");
+    }
+    return;
+  }
+  document.body.classList.add("hub-screen", "hub-bistro");
+  if (bistro) {
+    bistro.show();
+    return;
+  }
+  bistroOwner = accountsUI.account?.id;
+  bistro = openBistro({
+    owner: bistroOwner,
+    api: {
+      load: () => accountsUI.api("/api/bistro"),
+      act: (request, actions) =>
+        accountsUI.api("/api/bistro/act", { request, actions }),
+      friends: async () =>
+        (await accountsUI.api("/api/bistro/friends")) as BistroFriend[],
+      visit: (id) =>
+        accountsUI.api(`/api/bistro/visit/${encodeURIComponent(id)}`),
+      visitAct: (friend, kind) =>
+        accountsUI.api("/api/bistro/visit/act", {
+          request: crypto.randomUUID(),
+          friend,
+          kind,
+        }),
+    },
+    onLeaves: (balance) => accountsUI.setLeaves(balance),
+    playerName: () => accountsUI.account?.displayName ?? "Your",
+    character: () => selected,
+    toast,
+    sound: (cue, step) => audio.farm(cue, step),
+    reduced: reducedMotion,
+    low: lowGraphics(),
+  });
 }
 /** The Farm scene (hub redesign phase 4): server state, server time. */
 let farmScreen: FarmScreen | undefined;
@@ -5886,8 +5956,16 @@ accountsUI = new AccountUI({
     roomInvites.clear();
     // The farm kept in this browser is this player's: forget it.
     forgetFarms();
+    forgetBistros();
+    bistro?.close();
+    bistro = undefined;
     farmScreen?.close();
     farmScreen = undefined;
+    if (plaza) {
+      wantedPlazaClosed = true;
+      plaza.close();
+      wantedPlazaClosed = false;
+    }
     if (myId) await leave(false);
   },
   onSession: (token, accountId) => {

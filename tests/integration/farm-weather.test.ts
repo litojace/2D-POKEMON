@@ -96,7 +96,7 @@ it("picks the weather by its weights, the same for everyone, with a forecast", a
   expect(Date.parse(f.weather.until)).toBe((slot + 1) * 14400 * 1000);
 });
 
-it("grows faster in sun, slower in frost, and counts rain as watering", async () => {
+it("grows faster in sun, slower in frost, and counts rain and storms as watering", async () => {
   await pin("sun");
   let r = await act([{ a: "plant", plot: 0, crop: "wheat" }]);
   expect(ripeIn(r.farm, 0)).toBeCloseTo(W / 1.1, -1);
@@ -111,6 +111,15 @@ it("grows faster in sun, slower in frost, and counts rain as watering", async ()
   expect(r.results[1]).toEqual({ ok: false, error: "Already watered" });
   expect(r.farm.plots[2].wet).toBe(true);
   expect(ripeIn(r.farm, 2)).toBeCloseTo(W / 1.35, -1);
+  // A storm pours rain too: it waters as well (migration 067).
+  await pin("storm");
+  r = await act([
+    { a: "plant", plot: 4, crop: "wheat" },
+    { a: "water", plot: 4 },
+  ]);
+  expect(r.results[1]).toEqual({ ok: false, error: "Already watered" });
+  expect(r.farm.plots[4].wet).toBe(true);
+  await pin("rain");
   // Rain that fell after planting keeps the crop watered when the sky
   // clears: plant in a real past rain window, look at it in the next one.
   await pin(null);

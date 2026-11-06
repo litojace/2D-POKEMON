@@ -388,7 +388,8 @@ test("the mode menu picks and remembers a mode, and the scene switch opens the P
     await expect(page.locator(".lobby-layer")).toHaveCount(0);
     await page.click('#hub-scenes [data-hub-scene="lobby"]');
     await expect(page.locator("#lobby-play")).toBeVisible();
-    await expect(page.locator(".plaza-layer")).toHaveCount(0);
+    // The Plaza waits behind the Lobby, hidden.
+    await expect(page.locator(".plaza-layer")).toBeHidden();
     expect(errors).toEqual([]);
   } finally {
     await context.close();

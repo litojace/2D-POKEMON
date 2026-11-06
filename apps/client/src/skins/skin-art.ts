@@ -1,6 +1,7 @@
 import type { CharacterId } from "@arena/shared";
 import type { CreaturePart } from "../creature-design";
 import type { Facing } from "../animation/controller";
+import { mechaSvg, type MechaPiece } from "./mecha-art";
 
 /**
  * How each Shop skin looks. Skins re-draw the champion's own art with a new
@@ -23,7 +24,6 @@ export type PatternKind =
   | "bands"
   | "grid"
   | "stars"
-  | "constellation"
   | "panels"
   | "veins"
   | "cracks"
@@ -34,9 +34,10 @@ export type PatternKind =
   | "petals"
   | "snow"
   | "drips"
-  | "world"
   | "circuit"
-  | "knit";
+  | "knit"
+  | "runes"
+  | "plating";
 export type Accessory =
   | "earmuffs"
   | "ribbon"
@@ -50,12 +51,6 @@ export type Accessory =
   | "witchhat"
   | "bonsai"
   | "knit-scarf"
-  | "crown"
-  | "corona"
-  | "island"
-  | "halo"
-  | "third-eye"
-  | "eclipse-ring"
   | "bobble-hat"
   | "acorn-cap"
   | "paper-hat"
@@ -70,7 +65,8 @@ export type Accessory =
   | "hardhat"
   | "mask"
   | "starfish"
-  | "lure";
+  | "lure"
+  | MechaPiece;
 /** Particles left behind when dashing. */
 export type Trail =
   | "snow"
@@ -85,26 +81,29 @@ export type Trail =
   | "dust"
   | "pixel"
   | "star"
-  | "ember";
+  | "ember"
+  | "void"
+  | "jet";
+/** The Void Knight Mythicals (one per champion; art in mythic-art.ts). */
 export type Mythic =
-  | "stormcrown"
-  | "sunforged"
-  | "moontide"
-  | "celestial-sage"
-  | "starweaver"
-  | "oracle"
-  | "world-shell"
-  | "eclipse"
-  | "cometcaller"
-  | "harvest-moon"
-  | "polaris"
-  | "starfletch"
-  | "daybreak"
-  | "full-moon"
-  | "saturnine"
-  | "nebula"
-  | "evergrove"
-  | "moonbloom";
+  | "storm-revenant"
+  | "hellforge"
+  | "abyssal-reaver"
+  | "spectral-warden"
+  | "fallen-lightbringer"
+  | "void-inquisitor"
+  | "obsidian-bulwark"
+  | "crimson-sovereign"
+  | "volt-executioner"
+  | "ashen-warlord"
+  | "rimebane"
+  | "nightfeather"
+  | "eclipse-templar"
+  | "rift-duelist"
+  | "iron-juggernaut"
+  | "abyss-stalker"
+  | "thorn-warden"
+  | "blight-sentinel";
 export interface SkinArt {
   palette: Partial<Palette>;
   pattern?: { kind: PatternKind; color: string; color2?: string; opacity?: number; parts?: CreaturePart[] };
@@ -115,8 +114,13 @@ export interface SkinArt {
   /** Epic and up: skill and hit-spark colour (shapes never change). */
   skill?: number;
   /** Epic and up: a small animated detail on the rig. */
-  detail?: "pulse" | "glint" | "flicker" | "shimmer" | "gears" | "frost";
+  detail?: "pulse" | "glint" | "flicker" | "shimmer" | "gears" | "frost" | "scan";
   mythic?: Mythic;
+  /**
+   * Mythicals: the champion's own pieces on these parts (goggles, crest,
+   * kerchief...) come off, and the skin's armour takes their place.
+   */
+  replaces?: CreaturePart[];
 }
 
 const hex = (c: string) => Number.parseInt(c.slice(1), 16);
@@ -145,14 +149,23 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0xff4fd8,
     detail: "pulse",
   },
+  "voltkit-arc-unit": {
+    palette: { light: "#f4f8ff", mid: "#f2c640", dark: "#161c2a", glow: "#3ff0ff", accent: "#3ff0ff" },
+    pattern: { kind: "plating", color: "#3ff0ff", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0x3ff0ff, 0xffffff] },
+    skill: 0x3ff0ff,
+    detail: "scan",
+  },
   "voltkit-stormcrown": {
-    palette: { light: "#d9e0ea", mid: "#6f7d93", dark: "#232a38", glow: "#ffd65b", accent: "#ffd65b" },
-    pattern: { kind: "veins", color: "#ffd65b", opacity: 0.9 },
-    stageAccessories: [{ stage: 3, accessory: "crown" }],
-    trail: { kind: "star", colors: [0xffd65b, 0xfff3b0] },
-    skill: 0xffd65b,
+    palette: { light: "#b9b2d8", mid: "#3d3756", dark: "#0d0a18", glow: "#b48cff", accent: "#b48cff" },
+    pattern: { kind: "runes", color: "#b48cff", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    replaces: ["flame", "scarf"],
+    trail: { kind: "void", colors: [0xb48cff, 0x1a1028] },
+    skill: 0xb48cff,
     detail: "glint",
-    mythic: "stormcrown",
+    mythic: "storm-revenant",
   },
   // --------------------------------------------------------------- Cindrake
   "cindrake-ashen": { palette: { light: "#9a9aa6", mid: "#4a4a55", dark: "#17171d", glow: "#ff8a3d", accent: "#ff6a2a" } },
@@ -178,14 +191,23 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0xff9a2e,
     detail: "pulse",
   },
+  "cindrake-reactor": {
+    palette: { light: "#f4f8ff", mid: "#e8483a", dark: "#161c2a", glow: "#ffd23f", accent: "#ffd23f" },
+    pattern: { kind: "plating", color: "#ffd23f", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0xffd23f, 0xffffff] },
+    skill: 0xffd23f,
+    detail: "scan",
+  },
   "cindrake-sunforged": {
-    palette: { light: "#6a5a7a", mid: "#2a2230", dark: "#0e0a12", glow: "#ffd65b", accent: "#ffb02e" },
-    pattern: { kind: "cracks", color: "#ffd65b", opacity: 1 },
-    stageAccessories: [{ stage: 2, accessory: "corona" }],
-    trail: { kind: "ember", colors: [0xffd65b, 0xffb02e, 0xfff3b0] },
-    skill: 0xffe27a,
+    palette: { light: "#8a6f6a", mid: "#2e2226", dark: "#0c0608", glow: "#ff5a2e", accent: "#ff5a2e" },
+    pattern: { kind: "runes", color: "#ff5a2e", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    replaces: ["flame", "scarf"],
+    trail: { kind: "void", colors: [0xff5a2e, 0x1a1028] },
+    skill: 0xff5a2e,
     detail: "glint",
-    mythic: "sunforged",
+    mythic: "hellforge",
   },
   // ---------------------------------------------------------------- Tidefin
   "tidefin-bubblegum": { palette: { light: "#fff0f6", mid: "#ff9ec4", dark: "#6e2346", glow: "#ff4f9a", accent: "#b02a6e" } },
@@ -209,13 +231,23 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0xbff3ff,
     detail: "frost",
   },
+  "tidefin-hydro-frame": {
+    palette: { light: "#f4f8ff", mid: "#2fb3c8", dark: "#161c2a", glow: "#ff4fd8", accent: "#ff4fd8" },
+    pattern: { kind: "plating", color: "#ff4fd8", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0xff4fd8, 0xffffff] },
+    skill: 0xff4fd8,
+    detail: "scan",
+  },
   "tidefin-moontide": {
-    palette: { light: "#4f6fa8", mid: "#1a2a5a", dark: "#070d24", glow: "#7ff3ff", accent: "#c8f6ff" },
-    pattern: { kind: "glowdots", color: "#7ff3ff", opacity: 1 },
-    trail: { kind: "bubble", colors: [0x7ff3ff, 0xc8f6ff] },
-    skill: 0xc8f6ff,
-    detail: "shimmer",
-    mythic: "moontide",
+    palette: { light: "#8fb8b8", mid: "#1f3a40", dark: "#04100f", glow: "#2ef2d0", accent: "#2ef2d0" },
+    pattern: { kind: "runes", color: "#2ef2d0", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    replaces: ["flame", "scarf"],
+    trail: { kind: "void", colors: [0x2ef2d0, 0x1a1028] },
+    skill: 0x2ef2d0,
+    detail: "glint",
+    mythic: "abyssal-reaver",
   },
   // --------------------------------------------------------------- Auralynx
   "auralynx-snowshoe": { palette: { light: "#ffffff", mid: "#e6ecf5", dark: "#3a4a62", glow: "#a8e6ff", accent: "#2a3a5a" } },
@@ -238,14 +270,23 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0x8fb0ff,
     detail: "glint",
   },
+  "auralynx-prism-mech": {
+    palette: { light: "#f4f8ff", mid: "#7f8cff", dark: "#161c2a", glow: "#4ff7ff", accent: "#4ff7ff" },
+    pattern: { kind: "plating", color: "#4ff7ff", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0x4ff7ff, 0xffffff] },
+    skill: 0x4ff7ff,
+    detail: "scan",
+  },
   "auralynx-celestial-sage": {
-    palette: { light: "#a8b8ff", mid: "#2a3a8a", dark: "#0a0f2e", glow: "#fff3b0", accent: "#c8d0ff" },
-    pattern: { kind: "stars", color: "#fff3b0", opacity: 1 },
-    stageAccessories: [{ stage: 3, accessory: "halo" }],
-    trail: { kind: "star", colors: [0xfff3b0, 0xc8d0ff] },
-    skill: 0xd8deff,
-    detail: "shimmer",
-    mythic: "celestial-sage",
+    palette: { light: "#a9b6d8", mid: "#2b3352", dark: "#070b1a", glow: "#6fb4ff", accent: "#6fb4ff" },
+    pattern: { kind: "runes", color: "#6fb4ff", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    replaces: ["flame", "scarf"],
+    trail: { kind: "void", colors: [0x6fb4ff, 0x1a1028] },
+    skill: 0x6fb4ff,
+    detail: "glint",
+    mythic: "spectral-warden",
   },
   // ---------------------------------------------------------------- Lumoth
   "lumoth-lunar": { palette: { light: "#ffffff", mid: "#e6ecf2", dark: "#4a5a6a", glow: "#fff6d0", accent: "#ffffff" } },
@@ -268,13 +309,23 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0x7fffd0,
     detail: "shimmer",
   },
+  "lumoth-photon": {
+    palette: { light: "#f4f8ff", mid: "#7fe0b0", dark: "#161c2a", glow: "#fff04a", accent: "#fff04a" },
+    pattern: { kind: "plating", color: "#fff04a", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0xfff04a, 0xffffff] },
+    skill: 0xfff04a,
+    detail: "scan",
+  },
   "lumoth-starweaver": {
-    palette: { light: "#c8d0ff", mid: "#3a3a8a", dark: "#0e0e2e", glow: "#fff3b0", accent: "#ffffff" },
-    pattern: { kind: "constellation", color: "#fff3b0", opacity: 1 },
-    trail: { kind: "star", colors: [0xfff3b0, 0xffffff] },
-    skill: 0xfff3b0,
-    detail: "shimmer",
-    mythic: "starweaver",
+    palette: { light: "#c9c2a8", mid: "#34302a", dark: "#0e0c08", glow: "#ffd95a", accent: "#ffd95a" },
+    pattern: { kind: "runes", color: "#ffd95a", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    replaces: ["flame", "scarf"],
+    trail: { kind: "void", colors: [0xffd95a, 0x1a1028] },
+    skill: 0xffd95a,
+    detail: "glint",
+    mythic: "fallen-lightbringer",
   },
   // ---------------------------------------------------------------- Mystowl
   "mystowl-snowy": { palette: { light: "#ffffff", mid: "#eef2f8", dark: "#3a3a52", glow: "#ffd65b", accent: "#ffffff" } },
@@ -297,14 +348,23 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0xffd65b,
     detail: "gears",
   },
+  "mystowl-psi-core": {
+    palette: { light: "#f4f8ff", mid: "#ff7ac8", dark: "#161c2a", glow: "#5ae8ff", accent: "#ffe0f2" },
+    pattern: { kind: "plating", color: "#5ae8ff", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0x5ae8ff, 0xffffff] },
+    skill: 0x5ae8ff,
+    detail: "scan",
+  },
   "mystowl-oracle": {
-    palette: { light: "#ffc8f0", mid: "#6a2a8a", dark: "#1a0a2a", glow: "#b8f6ff", accent: "#ffd6ff" },
-    pattern: { kind: "stars", color: "#ffd6ff", opacity: 0.9 },
-    accessories: ["third-eye"],
-    trail: { kind: "star", colors: [0xb8f6ff, 0xffd6ff] },
-    skill: 0xd8a8ff,
-    detail: "shimmer",
-    mythic: "oracle",
+    palette: { light: "#c6a8c8", mid: "#3a2440", dark: "#10061a", glow: "#ff4fd2", accent: "#e2c4de" },
+    pattern: { kind: "runes", color: "#ff4fd2", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    replaces: ["flame", "scarf"],
+    trail: { kind: "void", colors: [0xff4fd2, 0x1a1028] },
+    skill: 0xff4fd2,
+    detail: "glint",
+    mythic: "void-inquisitor",
   },
   // --------------------------------------------------------------- Terradon
   "terradon-mossy": { palette: { light: "#e6f0c8", mid: "#8aa65a", dark: "#2f3a1c", glow: "#c8ff8a", accent: "#5a7a3a" } },
@@ -332,16 +392,23 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0xc86bff,
     detail: "pulse",
   },
+  "terradon-tank-mk2": {
+    palette: { light: "#f4f8ff", mid: "#8a9a5a", dark: "#161c2a", glow: "#ff9a2e", accent: "#ff9a2e" },
+    pattern: { kind: "plating", color: "#ff9a2e", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0xff9a2e, 0xffffff] },
+    skill: 0xff9a2e,
+    detail: "scan",
+  },
   "terradon-world-shell": {
-    // Jade skin with gold trim; the shell is a little world (ocean, lands,
-    // clouds) and a floating island with a waterfall hovers over the sprout.
-    palette: { light: "#eafff4", mid: "#6cc7a4", dark: "#173c3a", glow: "#ffd65b", accent: "#2a6fb0" },
-    pattern: { kind: "world", color: "#5fbf5a", color2: "#2f86d0", opacity: 1, parts: ["wings"] },
-    accessories: ["island"],
-    trail: { kind: "leaf", colors: [0x6fbf4a, 0x7fd0ff] },
-    skill: 0x8fe0a0,
-    detail: "shimmer",
-    mythic: "world-shell",
+    palette: { light: "#9aa890", mid: "#2c3328", dark: "#0a0e08", glow: "#8dff5a", accent: "#8dff5a" },
+    pattern: { kind: "runes", color: "#8dff5a", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    replaces: ["flame", "scarf"],
+    trail: { kind: "void", colors: [0x8dff5a, 0x1a1028] },
+    skill: 0x8dff5a,
+    detail: "glint",
+    mythic: "obsidian-bulwark",
   },
   // --------------------------------------------------------------- Duskveil
   "duskveil-ember": { palette: { light: "#6a6a76", mid: "#3a3a44", dark: "#121216", glow: "#ff9a3d", accent: "#0a0a0e" } },
@@ -364,13 +431,23 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0xffd65b,
     detail: "flicker",
   },
+  "duskveil-phantom-os": {
+    palette: { light: "#f4f8ff", mid: "#7a5ad8", dark: "#161c2a", glow: "#6aff8a", accent: "#0a0a14" },
+    pattern: { kind: "plating", color: "#6aff8a", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0x6aff8a, 0xffffff] },
+    skill: 0x6aff8a,
+    detail: "scan",
+  },
   "duskveil-eclipse": {
-    palette: { light: "#3a3a4a", mid: "#121218", dark: "#000000", glow: "#fff3b0", accent: "#0a0a10" },
-    accessories: ["eclipse-ring"],
-    trail: { kind: "ember", colors: [0xfff3b0, 0xffd65b] },
-    skill: 0xfff3b0,
+    palette: { light: "#5a4a52", mid: "#1e1418", dark: "#050203", glow: "#ff2d55", accent: "#0a0406" },
+    pattern: { kind: "runes", color: "#ff2d55", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    replaces: ["flame", "scarf"],
+    trail: { kind: "void", colors: [0xff2d55, 0x1a1028] },
+    skill: 0xff2d55,
     detail: "glint",
-    mythic: "eclipse",
+    mythic: "crimson-sovereign",
   },
   // --------------------------------------------------------------- Coilemur
   "coilemur-sifaka": { palette: { light: "#ffffff", mid: "#f0ece4", dark: "#4a2e22", glow: "#ffd84a", accent: "#c9763a" } },
@@ -394,13 +471,23 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0x4ff8ff,
     detail: "pulse",
   },
+  "coilemur-tesla-frame": {
+    palette: { light: "#f4f8ff", mid: "#9ab0c8", dark: "#161c2a", glow: "#ffe94a", accent: "#ffe94a" },
+    pattern: { kind: "plating", color: "#ffe94a", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0xffe94a, 0xffffff] },
+    skill: 0xffe94a,
+    detail: "scan",
+  },
   "coilemur-cometcaller": {
-    palette: { light: "#e8f6ff", mid: "#3a5aa8", dark: "#0c1636", glow: "#9ff3ff", accent: "#ffd65b" },
-    pattern: { kind: "stars", color: "#e8f6ff", opacity: 0.85 },
-    trail: { kind: "star", colors: [0x9ff3ff, 0xffffff, 0xffd65b] },
-    skill: 0x9ff3ff,
-    detail: "shimmer",
-    mythic: "cometcaller",
+    palette: { light: "#b8c8d0", mid: "#2e3a44", dark: "#081016", glow: "#4ff0ff", accent: "#4ff0ff" },
+    pattern: { kind: "runes", color: "#4ff0ff", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    replaces: ["flame", "scarf"],
+    trail: { kind: "void", colors: [0x4ff0ff, 0x1a1028] },
+    skill: 0x4ff0ff,
+    detail: "glint",
+    mythic: "volt-executioner",
   },
   // ---------------------------------------------------------------- Pyranda
   "pyranda-snowy": { palette: { light: "#ffffff", mid: "#e8e8ee", dark: "#3a3a46", glow: "#ffcf4d", accent: "#ffffff" } },
@@ -424,13 +511,23 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0xffb44d,
     detail: "flicker",
   },
+  "pyranda-afterburner": {
+    palette: { light: "#f4f8ff", mid: "#d8643a", dark: "#161c2a", glow: "#4ff0ff", accent: "#fff0dc" },
+    pattern: { kind: "plating", color: "#4ff0ff", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0x4ff0ff, 0xffffff] },
+    skill: 0x4ff0ff,
+    detail: "scan",
+  },
   "pyranda-harvest-moon": {
-    palette: { light: "#ffe6c0", mid: "#3e2c66", dark: "#140a24", glow: "#ffd27a", accent: "#ffe6c0" },
-    pattern: { kind: "glowdots", color: "#ffb04a", opacity: 0.85 },
-    trail: { kind: "leaf", colors: [0xff8a3a, 0xffd27a, 0xc8501e] },
-    skill: 0xffd27a,
+    palette: { light: "#b09a8a", mid: "#3a2a24", dark: "#100806", glow: "#ff8a1e", accent: "#cfc4bc" },
+    pattern: { kind: "runes", color: "#ff8a1e", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    replaces: ["flame", "scarf"],
+    trail: { kind: "void", colors: [0xff8a1e, 0x1a1028] },
+    skill: 0xff8a1e,
     detail: "glint",
-    mythic: "harvest-moon",
+    mythic: "ashen-warlord",
   },
   // --------------------------------------------------------------- Glacelle
   "glacelle-deep-sea": { palette: { light: "#8fd0f0", mid: "#2a5a9a", dark: "#0a1a3a", glow: "#4ffff0", accent: "#5fa8d8" } },
@@ -453,13 +550,23 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0xff5fd8,
     detail: "shimmer",
   },
+  "glacelle-cryo-unit": {
+    palette: { light: "#f4f8ff", mid: "#bfe8ff", dark: "#161c2a", glow: "#ff6ad5", accent: "#ff6ad5" },
+    pattern: { kind: "plating", color: "#ff6ad5", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0xff6ad5, 0xffffff] },
+    skill: 0xff6ad5,
+    detail: "scan",
+  },
   "glacelle-polaris": {
-    palette: { light: "#e8f0ff", mid: "#3a4aa0", dark: "#0a0f30", glow: "#fff6c8", accent: "#9fe8ff" },
-    pattern: { kind: "stars", color: "#fff6c8", opacity: 1 },
-    trail: { kind: "snow", colors: [0xfff6c8, 0x9fe8ff] },
-    skill: 0xfff6c8,
-    detail: "frost",
-    mythic: "polaris",
+    palette: { light: "#d0e6f0", mid: "#33465a", dark: "#08121e", glow: "#7fe8ff", accent: "#7fe8ff" },
+    pattern: { kind: "runes", color: "#7fe8ff", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    replaces: ["flame", "scarf"],
+    trail: { kind: "void", colors: [0x7fe8ff, 0x1a1028] },
+    skill: 0x7fe8ff,
+    detail: "glint",
+    mythic: "rimebane",
   },
   // ---------------------------------------------------------------- Halcyra
   "halcyra-teal-wing": { palette: { light: "#f0fff8", mid: "#2fb8a8", dark: "#0f3a3a", glow: "#c9fff4", accent: "#f0c890" } },
@@ -484,13 +591,23 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0xff4f5a,
     detail: "glint",
   },
+  "halcyra-sniper-drone": {
+    palette: { light: "#f4f8ff", mid: "#3f6ad8", dark: "#161c2a", glow: "#ffa63a", accent: "#ffa63a" },
+    pattern: { kind: "plating", color: "#ffa63a", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["scarf"],
+    trail: { kind: "jet", colors: [0xffa63a, 0xffffff] },
+    skill: 0xffa63a,
+    detail: "scan",
+  },
   "halcyra-starfletch": {
-    palette: { light: "#dfe8ff", mid: "#2a3a8a", dark: "#0a0e2a", glow: "#ffe9a0", accent: "#ffb04a" },
-    pattern: { kind: "constellation", color: "#ffe9a0", opacity: 1 },
-    trail: { kind: "star", colors: [0xffe9a0, 0xffffff] },
-    skill: 0xffe9a0,
+    palette: { light: "#b0b0d8", mid: "#2a2a4a", dark: "#08081a", glow: "#8a7cff", accent: "#8a7cff" },
+    pattern: { kind: "runes", color: "#8a7cff", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    replaces: ["scarf"],
+    trail: { kind: "void", colors: [0x8a7cff, 0x1a1028] },
+    skill: 0x8a7cff,
     detail: "glint",
-    mythic: "starfletch",
+    mythic: "nightfeather",
   },
   // ---------------------------------------------------------------- Sunbara
   "sunbara-cocoa": { palette: { light: "#e8c8a8", mid: "#6a3e22", dark: "#24140a", glow: "#ffe066", accent: "#ffb732" } },
@@ -515,13 +632,23 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0xffd84a,
     detail: "glint",
   },
+  "sunbara-solar-mech": {
+    palette: { light: "#f4f8ff", mid: "#d8a46a", dark: "#161c2a", glow: "#3ff5d0", accent: "#3ff5d0" },
+    pattern: { kind: "plating", color: "#3ff5d0", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0x3ff5d0, 0xffffff] },
+    skill: 0x3ff5d0,
+    detail: "scan",
+  },
   "sunbara-daybreak": {
-    palette: { light: "#fff0e0", mid: "#ff9a6a", dark: "#5a1e1a", glow: "#ffe066", accent: "#ffb732" },
-    pattern: { kind: "bands", color: "#ffe066", opacity: 0.45, parts: ["body", "head"] },
-    trail: { kind: "dust", colors: [0xffe066, 0xffb732, 0xff9a6a] },
-    skill: 0xffe066,
-    detail: "pulse",
-    mythic: "daybreak",
+    palette: { light: "#c8b49a", mid: "#3a3026", dark: "#0e0a06", glow: "#ffb02e", accent: "#ffb02e" },
+    pattern: { kind: "runes", color: "#ffb02e", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    replaces: ["flame", "scarf"],
+    trail: { kind: "void", colors: [0xffb02e, 0x1a1028] },
+    skill: 0xffb02e,
+    detail: "glint",
+    mythic: "eclipse-templar",
   },
   // --------------------------------------------------------------- Astrabun
   "astrabun-nightfall": { palette: { light: "#c8d0ff", mid: "#3a4a8a", dark: "#0e1430", glow: "#ffe9a3", accent: "#ffe9a3" } },
@@ -546,13 +673,23 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0x6ff0ff,
     detail: "glint",
   },
+  "astrabun-warp-unit": {
+    palette: { light: "#f4f8ff", mid: "#c8a0ff", dark: "#161c2a", glow: "#ff5aa8", accent: "#ff5aa8" },
+    pattern: { kind: "plating", color: "#ff5aa8", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0xff5aa8, 0xffffff] },
+    skill: 0xff5aa8,
+    detail: "scan",
+  },
   "astrabun-full-moon": {
-    palette: { light: "#fffbe8", mid: "#f0dc98", dark: "#4a3a1a", glow: "#fff3b0", accent: "#c8a040" },
-    pattern: { kind: "spots", color: "#c8b070", opacity: 0.55 },
-    trail: { kind: "star", colors: [0xfff3b0, 0xffffff] },
-    skill: 0xfff3b0,
-    detail: "shimmer",
-    mythic: "full-moon",
+    palette: { light: "#d0c0e0", mid: "#3a3048", dark: "#0e0a16", glow: "#c86bff", accent: "#c86bff" },
+    pattern: { kind: "runes", color: "#c86bff", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    replaces: ["flame", "scarf"],
+    trail: { kind: "void", colors: [0xc86bff, 0x1a1028] },
+    skill: 0xc86bff,
+    detail: "glint",
+    mythic: "rift-duelist",
   },
   // -------------------------------------------------------------- Wombolder
   "wombolder-sandy": { palette: { light: "#fff6e0", mid: "#e0c890", dark: "#5a4a2a", glow: "#9bd36a", accent: "#a89a80" } },
@@ -577,13 +714,23 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0xffc93d,
     detail: "glint",
   },
+  "wombolder-bulldozer": {
+    palette: { light: "#f4f8ff", mid: "#9a7050", dark: "#161c2a", glow: "#b8ff3a", accent: "#6a6458" },
+    pattern: { kind: "plating", color: "#b8ff3a", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0xb8ff3a, 0xffffff] },
+    skill: 0xb8ff3a,
+    detail: "scan",
+  },
   "wombolder-saturnine": {
-    palette: { light: "#ffe8c8", mid: "#c88a5a", dark: "#3a2010", glow: "#ffd27a", accent: "#8a6a9a" },
-    pattern: { kind: "bands", color: "#ffe0b0", opacity: 0.55 },
-    trail: { kind: "dust", colors: [0xffd27a, 0xc8a8ff] },
-    skill: 0xffd27a,
+    palette: { light: "#a8a898", mid: "#33332c", dark: "#0c0c08", glow: "#c8ff3a", accent: "#4a5530" },
+    pattern: { kind: "runes", color: "#c8ff3a", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    replaces: ["flame", "scarf"],
+    trail: { kind: "void", colors: [0xc8ff3a, 0x1a1028] },
+    skill: 0xc8ff3a,
     detail: "glint",
-    mythic: "saturnine",
+    mythic: "iron-juggernaut",
   },
   // --------------------------------------------------------------- Shadopus
   "shadopus-coral-reef": { palette: { light: "#fff0e0", mid: "#ff7a4f", dark: "#5a1a10", glow: "#ffe36b", accent: "#2a0a06" } },
@@ -607,13 +754,23 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0x5ff8e0,
     detail: "flicker",
   },
+  "shadopus-stealth-mk": {
+    palette: { light: "#f4f8ff", mid: "#5a48b8", dark: "#161c2a", glow: "#ff3a5a", accent: "#07030c" },
+    pattern: { kind: "plating", color: "#ff3a5a", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0xff3a5a, 0xffffff] },
+    skill: 0xff3a5a,
+    detail: "scan",
+  },
   "shadopus-nebula": {
-    palette: { light: "#c8a8ff", mid: "#3a1a6a", dark: "#0a0420", glow: "#ff6bd6", accent: "#050210" },
-    pattern: { kind: "stars", color: "#ffffff", opacity: 0.9 },
-    trail: { kind: "star", colors: [0xff6bd6, 0x8ad8ff, 0xffffff] },
-    skill: 0xff6bd6,
-    detail: "shimmer",
-    mythic: "nebula",
+    palette: { light: "#a888b8", mid: "#2a1830", dark: "#08040c", glow: "#ff3b9a", accent: "#07030c" },
+    pattern: { kind: "runes", color: "#ff3b9a", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    replaces: ["flame", "scarf"],
+    trail: { kind: "void", colors: [0xff3b9a, 0x1a1028] },
+    skill: 0xff3b9a,
+    detail: "glint",
+    mythic: "abyss-stalker",
   },
   // --------------------------------------------------------------- Pangrove
   "pangrove-autumn": { palette: { light: "#fff0d0", mid: "#e0883a", dark: "#4a2210", glow: "#ffe08a", accent: "#b04a1e" } },
@@ -633,18 +790,28 @@ export const SKIN_ART: Record<string, SkinArt> = {
   "pangrove-golden-sap": {
     palette: { light: "#fff6d8", mid: "#e0a43a", dark: "#4a2c08", glow: "#ffe36b", accent: "#a8681a" },
     pattern: { kind: "veins", color: "#fff0a8", opacity: 0.8 },
-    accessories: ["crown"],
+    accessories: ["stem"],
     trail: { kind: "coin", colors: [0xffd65b, 0xffb02e] },
     skill: 0xffc93d,
     detail: "glint",
   },
+  "pangrove-scaleroller": {
+    palette: { light: "#f4f8ff", mid: "#4a8a5a", dark: "#161c2a", glow: "#7dff3a", accent: "#2a3a2e" },
+    pattern: { kind: "plating", color: "#7dff3a", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0x7dff3a, 0xffffff] },
+    skill: 0x7dff3a,
+    detail: "scan",
+  },
   "pangrove-evergrove": {
-    palette: { light: "#e8fff0", mid: "#3a8a6a", dark: "#082a20", glow: "#b8ffcf", accent: "#1e5a44" },
-    pattern: { kind: "constellation", color: "#d8ffe6", opacity: 0.8 },
-    trail: { kind: "leaf", colors: [0x8fe06a, 0xb8ffcf, 0xffffff] },
-    skill: 0x8fffb0,
-    detail: "shimmer",
-    mythic: "evergrove",
+    palette: { light: "#98a890", mid: "#2a3328", dark: "#080c08", glow: "#7dff3a", accent: "#2a4020" },
+    pattern: { kind: "runes", color: "#7dff3a", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    replaces: ["flame", "scarf"],
+    trail: { kind: "void", colors: [0x7dff3a, 0x1a1028] },
+    skill: 0x7dff3a,
+    detail: "glint",
+    mythic: "thorn-warden",
   },
   // --------------------------------------------------------------- Mossloth
   "mossloth-cinnamon": { palette: { light: "#fff0dc", mid: "#b0703e", dark: "#3a1e0c", glow: "#a8e070", accent: "#ffb38a" } },
@@ -669,13 +836,23 @@ export const SKIN_ART: Record<string, SkinArt> = {
     skill: 0xff9fc8,
     detail: "shimmer",
   },
+  "mossloth-treehugger": {
+    palette: { light: "#f4f8ff", mid: "#8a8468", dark: "#161c2a", glow: "#3affc0", accent: "#4a4838" },
+    pattern: { kind: "plating", color: "#3affc0", opacity: 0.8, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    accessories: ["mecha-helm", "mecha-core", "mecha-pack"],
+    replaces: ["flame", "scarf"],
+    trail: { kind: "jet", colors: [0x3affc0, 0xffffff] },
+    skill: 0x3affc0,
+    detail: "scan",
+  },
   "mossloth-moonbloom": {
-    palette: { light: "#e0e8ff", mid: "#4a5aa0", dark: "#0e1238", glow: "#c8f0ff", accent: "#fff3b0" },
-    pattern: { kind: "glowdots", color: "#fff3b0", opacity: 0.85 },
-    trail: { kind: "star", colors: [0xfff3b0, 0xc8f0ff] },
-    skill: 0xc8f0ff,
-    detail: "pulse",
-    mythic: "moonbloom",
+    palette: { light: "#a0a898", mid: "#30332c", dark: "#0a0c08", glow: "#3affc0", accent: "#24402e" },
+    pattern: { kind: "runes", color: "#3affc0", opacity: 0.85, parts: ["body", "tail", "armL", "armR", "legL", "legR", "wings"] },
+    replaces: ["flame", "scarf"],
+    trail: { kind: "void", colors: [0x3affc0, 0x1a1028] },
+    skill: 0x3affc0,
+    detail: "glint",
+    mythic: "blight-sentinel",
   },
 };
 
@@ -748,13 +925,6 @@ export function patternSvg(kind: PatternKind, color: string, color2 = color, see
     case "stars":
       for (let i = 0; i < 34; i++) out.push(star(10 + r() * 180, -10 + r() * 195, 1 + r() * 2.6));
       break;
-    case "constellation": {
-      const pts = Array.from({ length: 22 }, () => [10 + r() * 180, -10 + r() * 195]);
-      for (let i = 0; i < pts.length - 1; i += 2)
-        out.push(`<path d="M${n(pts[i][0])} ${n(pts[i][1])}L${n(pts[i + 1][0])} ${n(pts[i + 1][1])}" stroke="${color}" stroke-width=".8" opacity=".6" fill="none"/>`);
-      for (const [x, y] of pts) out.push(star(x, y, 1.6 + r() * 1.8));
-      break;
-    }
     case "panels": {
       const fills = ["#ff4f6a", "#ffd65b", "#4fd68a", "#6a8aff", "#c86bff", "#7ff3ff"];
       for (let y = -10; y < 200; y += 22)
@@ -841,31 +1011,42 @@ export function patternSvg(kind: PatternKind, color: string, color2 = color, see
         out.push(`<path d="M${n(x - s)} ${n(y)}H${n(x + s)}M${n(x)} ${n(y - s)}V${n(y + s)}M${n(x - s * 0.7)} ${n(y - s * 0.7)}L${n(x + s * 0.7)} ${n(y + s * 0.7)}M${n(x + s * 0.7)} ${n(y - s * 0.7)}L${n(x - s * 0.7)} ${n(y + s * 0.7)}" stroke="${color}" stroke-width=".9"/>`);
       }
       break;
-    case "world": {
-      // A tiny planet: ocean, lands with sandy coasts and forests, drifting
-      // clouds and faint gold lines of latitude and longitude.
-      out.push(`<rect x="-40" y="-60" width="280" height="280" fill="${color2}"/>`);
-      for (let i = 0; i < 26; i++) {
-        const x = 30 + r() * 140,
-          y = 80 + r() * 92;
-        out.push(`<path d="M${n(x - 5)} ${n(y)}q5 -2 10 0" stroke="#7cc4f2" stroke-width="1.4" fill="none" stroke-linecap="round" opacity=".7"/>`);
+    case "plating":
+      // Armour panels: seams in a staggered brick of plates, rivets at the
+      // corners, and a few neon status lights.
+      for (let y = -8, row = 0; y < 200; y += 20, row++) {
+        out.push(`<path d="M0 ${y}H200" stroke="#0a0e16" stroke-width="1.2" opacity=".45" fill="none"/>`);
+        for (let x = row % 2 ? 14 : 0; x < 210; x += 28) {
+          out.push(`<path d="M${x} ${y}V${y + 20}" stroke="#0a0e16" stroke-width="1.2" opacity=".45" fill="none"/>`);
+          out.push(`<circle cx="${x + 3}" cy="${y + 3}" r=".9" fill="#ffffff" opacity=".7"/>`);
+        }
       }
-      const lands: [number, number, number][] = [
-        [62, 104, 1.1], [92, 92, 0.9], [128, 100, 1.2], [70, 140, 1.25], [106, 128, 1], [138, 142, 1.1], [92, 160, 0.9], [48, 124, 0.8], [152, 120, 0.8], [118, 164, 0.8],
-      ];
-      for (const [x, y, k] of lands) {
-        const a = Math.round(r() * 360);
-        const d = `M${n(x - 11 * k)} ${n(y)}q${n(2 * k)} ${n(-9 * k)} ${n(10 * k)} ${n(-8 * k)}q${n(6 * k)} ${n(-4 * k)} ${n(11 * k)} ${n(2 * k)}q${n(4 * k)} ${n(6 * k)} ${n(-2 * k)} ${n(10 * k)}q${n(-5 * k)} ${n(5 * k)} ${n(-12 * k)} ${n(2 * k)}q${n(-8 * k)} ${n(-1 * k)} ${n(-7 * k)} ${n(-6 * k)}z`;
-        out.push(`<g transform="rotate(${a} ${x} ${y})"><path d="${d}" fill="#f2df9a" stroke="#f2df9a" stroke-width="3" stroke-linejoin="round"/><path d="${d}" fill="${color}"/><circle cx="${n(x)}" cy="${n(y - 1)}" r="${n(3 * k)}" fill="#3f8f3a"/></g>`);
+      for (let i = 0; i < 12; i++) {
+        const x = 10 + r() * 180,
+          y = -4 + r() * 186;
+        out.push(r() < 0.5 ? `<rect x="${n(x)}" y="${n(y)}" width="7" height="2" rx="1" fill="${color}"/>` : `<circle cx="${n(x)}" cy="${n(y)}" r="1.6" fill="${color}"/>`);
       }
-      for (let i = 0; i < 7; i++) {
-        const x = 40 + r() * 120,
-          y = 84 + r() * 84;
-        out.push(`<path d="M${n(x - 8)} ${n(y)}q4 -4 8 -1q4 -4 9 0" stroke="#ffffff" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".85"/>`);
-      }
-      out.push(`<ellipse cx="100" cy="124" rx="46" ry="14" fill="none" stroke="#ffe9a0" stroke-width="1.2" opacity=".55"/><ellipse cx="100" cy="124" rx="16" ry="44" fill="none" stroke="#ffe9a0" stroke-width="1.2" opacity=".55"/>`);
       break;
-    }
+    case "runes":
+      // Glowing runes etched into black steel: a stave with angled branches,
+      // over faint plate seams.
+      for (let y = 8; y < 200; y += 26)
+        out.push(`<path d="M0 ${y}Q100 ${y + 8} 200 ${y}" stroke="#000000" stroke-width="1.4" opacity=".35" fill="none"/>`);
+      for (let i = 0; i < 24; i++) {
+        const x = 12 + r() * 176,
+          y = -6 + r() * 190,
+          h = 7 + r() * 5,
+          s = r() < 0.5 ? -1 : 1;
+        const branches = [
+          `M${n(x)} ${n(y - h * 0.5)}l${n(s * 4)} ${n(h * 0.3)}`,
+          `M${n(x)} ${n(y)}l${n(-s * 4)} ${n(-h * 0.35)}`,
+          `M${n(x)} ${n(y + h * 0.1)}l${n(s * 4)} ${n(h * 0.35)}`,
+        ]
+          .filter(() => r() < 0.7)
+          .join("");
+        out.push(`<path d="M${n(x)} ${n(y - h * 0.5)}V${n(y + h * 0.5)}${branches}" stroke="${color}" stroke-width="1.7" stroke-linecap="round" fill="none"/>`);
+      }
+      break;
     case "circuit":
       // Circuit-board traces: right-angled runs ending in solder pads.
       for (let i = 0; i < 16; i++) {
@@ -904,6 +1085,7 @@ export function patternSvg(kind: PatternKind, color: string, color2 = color, see
 
 /** Accessory art for a facing, as [part layer, svg] in art units. */
 export function accessorySvg(a: Accessory, id: CharacterId, dir: Facing, p: Palette): [CreaturePart, string][] {
+  if (a.startsWith("mecha-")) return mechaSvg(a as MechaPiece, id, dir, p);
   const h = HEAD[id][dir];
   const cx = h.cx,
     top = h.top,
@@ -944,53 +1126,6 @@ export function accessorySvg(a: Accessory, id: CharacterId, dir: Facing, p: Pale
       return [["flame", `<path d="M${cx} ${top + 4}q-2 -10 4 -18q-8 -4 -6 -12" stroke="#5a3a1a" stroke-width="4" fill="none"/><ellipse cx="${cx - 8}" cy="${top - 26}" rx="16" ry="9" fill="#4a8a2a" stroke="${ink}"/><ellipse cx="${cx + 12}" cy="${top - 18}" rx="13" ry="8" fill="#6fbf4a" stroke="${ink}"/><ellipse cx="${cx - 2}" cy="${top - 34}" rx="10" ry="6" fill="#8fd66a" stroke="${ink}"/>`]];
     case "knit-scarf":
       return [["scarf", `<path d="M76 124Q100 134 124 124L126 134Q100 144 74 134Z" fill="#c0262a" stroke="${ink}"/><path d="M80 128v4M88 130v5M96 131v5M104 131v5M112 130v5M120 128v4" stroke="#ffd2d2" stroke-width="1.4"/>${back ? "" : `<path d="M112 132l6 22l-10 0l-2 -20z" fill="#c0262a" stroke="${ink}"/>`}`]];
-    case "crown":
-      return [["flame", `<path d="M${cx - 22} ${top + 4}L${cx - 24} ${top - 14}L${cx - 12} ${top - 4}L${cx} ${top - 22}L${cx + 12} ${top - 4}L${cx + 24} ${top - 14}L${cx + 22} ${top + 4}Z" fill="#ffd65b" stroke="#6a4a1f"/><path d="M${cx - 3} ${top - 12}l6 -6l-2 7h4l-7 8l2 -7z" fill="#fff3b0" stroke="none"/>`]];
-    case "corona":
-      return [["flame", `${Array.from({ length: 10 }, (_, k) => {
-        const a = (k / 10) * Math.PI * 2;
-        return `<path d="M${n(cx + Math.cos(a) * 22)} ${n(top - 2 + Math.sin(a) * 18)}L${n(cx + Math.cos(a) * 32)} ${n(top - 2 + Math.sin(a) * 27)}" stroke="#ffd65b" stroke-width="3" stroke-linecap="round"/>`;
-      }).join("")}`]];
-    case "island": {
-      // A floating islet hovering over the sprout: layered rock beneath, a
-      // grassy top with a tree and a gold-domed shrine, and a waterfall
-      // spilling off the edge into mist.
-      const y = top - 22;
-      const rock = `M${cx - 26} ${y}Q${cx - 23} ${y + 9} ${cx - 12} ${y + 13}L${cx - 4} ${y + 21}L${cx + 5} ${y + 14}Q${cx + 21} ${y + 10} ${cx + 26} ${y}Z`;
-      return [
-        [
-          "flame",
-          `<ellipse cx="${cx}" cy="${y + 23}" rx="15" ry="2.6" fill="#bff4ff" opacity=".4" stroke="none"/>` +
-            `<path d="${rock}" fill="#9a7650" stroke="${ink}" stroke-width="1.6" stroke-linejoin="round"/>` +
-            `<path d="M${cx - 22} ${y + 6}Q${cx} ${y + 10} ${cx + 22} ${y + 6}M${cx - 12} ${y + 13}Q${cx} ${y + 15} ${cx + 8} ${y + 13}" stroke="#5e4630" stroke-width="1.4" fill="none" opacity=".8"/>` +
-            `<path d="M${cx - 18} ${y + 3}Q${cx - 6} ${y + 6} ${cx + 4} ${y + 4}" stroke="#d2a874" stroke-width="1.6" fill="none" stroke-linecap="round"/>` +
-            `<path d="M${cx - 4} ${y + 21}l-1 5M${cx + 2} ${y + 17}l1 4" stroke="#6fcf5a" stroke-width="1.4" stroke-linecap="round"/>` +
-            `<path d="M${cx + 24} ${y + 1}Q${cx + 26} ${y + 10} ${cx + 25} ${y + 22}" stroke="#58b8e8" stroke-width="4.4" fill="none" stroke-linecap="round"/>` +
-            `<path d="M${cx + 24} ${y + 1}Q${cx + 25.6} ${y + 10} ${cx + 24.6} ${y + 21}" stroke="#e6fbff" stroke-width="1.4" fill="none" stroke-linecap="round"/>` +
-            `<circle cx="${cx + 23}" cy="${y + 24}" r="2.6" fill="#ffffff" opacity=".85" stroke="none"/><circle cx="${cx + 27.5}" cy="${y + 23.5}" r="2" fill="#ffffff" opacity=".7" stroke="none"/>` +
-            `<ellipse cx="${cx}" cy="${y}" rx="27" ry="6.5" fill="#5fbf4a" stroke="${ink}" stroke-width="1.6"/>` +
-            `<ellipse cx="${cx - 3}" cy="${y - 1.5}" rx="20" ry="3.6" fill="#9be070" stroke="none"/>` +
-            `<path d="M${cx - 12} ${y - 2}V${y - 13}" stroke="#6a4424" stroke-width="3" stroke-linecap="round"/>` +
-            `<circle cx="${cx - 12}" cy="${y - 17}" r="7.5" fill="#3f9a3a" stroke="${ink}" stroke-width="1.4"/><circle cx="${cx - 14.5}" cy="${y - 19.5}" r="3.6" fill="#7fd05a" stroke="none"/>` +
-            // A flowering bush (it also hides the sprout's own bloom).
-            `<circle cx="${cx + 1}" cy="${y - 5}" r="6.6" fill="#4faa3f" stroke="${ink}" stroke-width="1.2"/><circle cx="${cx - 4}" cy="${y - 2.5}" r="4" fill="#4faa3f" stroke="${ink}" stroke-width="1.2"/>` +
-            `<circle cx="${cx - 2}" cy="${y - 7}" r="1.4" fill="#ffb3d1" stroke="none"/><circle cx="${cx + 2.5}" cy="${y - 9}" r="1.3" fill="#fff3a0" stroke="none"/><circle cx="${cx + 3}" cy="${y - 4}" r="1.4" fill="#ffb3d1" stroke="none"/><circle cx="${cx - 4.5}" cy="${y - 2.5}" r="1.2" fill="#ffb3d1" stroke="none"/>` +
-            `<path d="M${cx + 3} ${y - 1}V${y - 7}H${cx + 13}V${y - 1}Z" fill="#fff3d6" stroke="${ink}" stroke-width="1.2" stroke-linejoin="round"/>` +
-            `<path d="M${cx + 2} ${y - 7}Q${cx + 8} ${y - 15} ${cx + 14} ${y - 7}Z" fill="#ffd65b" stroke="${ink}" stroke-width="1.2" stroke-linejoin="round"/>` +
-            `<path d="M${cx + 8} ${y - 11}V${y - 14}" stroke="#ffd65b" stroke-width="1.2" stroke-linecap="round"/>` +
-            `<path d="M${cx + 7} ${y - 1}V${y - 4}H${cx + 9}V${y - 1}" fill="#6a4424" stroke="none"/>`,
-        ],
-      ];
-    }
-    case "halo":
-      return [["flame", `<ellipse cx="${cx}" cy="${top - 12}" rx="26" ry="6" fill="none" stroke="#fff3b0" stroke-width="3"/>`]];
-    case "third-eye":
-      if (back) return [];
-      return [["flame", `<ellipse cx="${cx + side * 4}" cy="${top + 14}" rx="7" ry="5" fill="#0a0a2a" stroke="${ink}"/><circle cx="${cx + side * 4}" cy="${top + 14}" r="3" fill="#b8f6ff" stroke="none"/><circle cx="${cx + side * 4 - 1}" cy="${top + 13}" r="1" fill="#fff" stroke="none"/>`]];
-    case "eclipse-ring":
-      // An eclipsed sun pinned to the hood; the full corona is a Mythical effect.
-      if (back) return [];
-      return [["flame", `<circle cx="${cx + side * 6}" cy="${top + 30}" r="12" fill="#ffd65b" opacity=".35" stroke="none"/><circle cx="${cx + side * 6}" cy="${top + 30}" r="8" fill="#fff3b0" stroke="none"/><circle cx="${cx + side * 6 + 2}" cy="${top + 29}" r="7" fill="#000" stroke="none"/>`]];
     default:
       return newAccessorySvg(a, id, dir, p);
   }

@@ -109,6 +109,8 @@ interface Copy {
   shower: string | null;
   orbs: Map<number, { id: number; x: number; y: number; at: number }>;
   nextOrbAt: number;
+  /** When its last player left: it waits, paused, for PLAZA_RETURN_MS. */
+  emptySince: number | null;
 }
 /** What happened this step, for server.ts to pay and announce. */
 export type PlazaEvent =
@@ -224,6 +226,8 @@ const RUNWAY_STEPS = (side: number) =>
 const emoteIndex = (e: (typeof PLAZA_EMOTES)[number]) =>
   PLAZA_EMOTES.indexOf(e) + 1;
 
+/** How long the Plaza keeps your spot after you leave it. */
+export const PLAZA_RETURN_MS = 10 * 60_000;
 export class PlazaWorld {
   private visitors = new Map<string, Visitor>();
   private copies = new Map<number, Copy>();
@@ -258,6 +262,8 @@ export class PlazaWorld {
     return this.visitors.get(key)?.body;
   }
 
+  /** Where each account last stood, for PLAZA_RETURN_MS after it left. */
+  private lastSpot = new Map<string, { x: number; y: number; at: number }>();
   join(
     key: string,
     accountId: string,
@@ -267,14 +273,22 @@ export class PlazaWorld {
     const existing = this.visitors.get(key);
     if (existing) return existing;
     for (const [k, v] of this.visitors)
-      if (v.accountId === accountId) this.leave(k);
+      if (v.accountId === accountId) this.leave(k, now);
     let plaza = 1;
     while (this.population(plaza) >= PLAZA.capacity) plaza++;
+    // Back within a few minutes (a look at the Lobby or the Farm, a match):
+    // you stand where you left; otherwise by the fountain.
+    const back = this.lastSpot.get(accountId);
+    this.lastSpot.delete(accountId);
     const a = this.random() * Math.PI * 2,
-      spot = plazaCollide({
-        x: PLAZA_SPAWN.x + Math.cos(a) * 70 * this.random(),
-        y: PLAZA_SPAWN.y + Math.sin(a) * 30 * this.random(),
-      });
+      spot = plazaCollide(
+        back && now - back.at < PLAZA_RETURN_MS
+          ? { x: back.x, y: back.y }
+          : {
+              x: PLAZA_SPAWN.x + Math.cos(a) * 70 * this.random(),
+              y: PLAZA_SPAWN.y + Math.sin(a) * 30 * this.random(),
+            },
+      );
     const visitor: Visitor = {
       key,
       accountId,
@@ -300,17 +314,30 @@ export class PlazaWorld {
     this.copy(plaza, now);
     return visitor;
   }
-  leave(key: string) {
+  leave(key: string, now = Date.now()) {
     const v = this.visitors.get(key);
     this.visitors.delete(key);
     this.told.delete(key);
-    // An empty copy stops: no bots or ball running for nobody.
-    if (v && !this.population(v.plaza)) this.copies.delete(v.plaza);
+    if (v) {
+      this.lastSpot.set(v.accountId, { x: v.body.x, y: v.body.y, at: now });
+      // Old spots are forgotten as others leave, so the map stays small.
+      if (this.lastSpot.size > 256)
+        for (const [id, s] of this.lastSpot)
+          if (now - s.at >= PLAZA_RETURN_MS) this.lastSpot.delete(id);
+    }
+    // An empty copy stops, paused as it is (no bots or ball running for
+    // nobody): someone back within PLAZA_RETURN_MS finds the townsfolk,
+    // bots and ball where they were; after that it is dropped.
+    const c = v && this.copies.get(v.plaza);
+    if (c && !this.population(c.id)) c.emptySince = now;
     return v?.plaza;
   }
   private copy(id: number, now: number) {
     let c = this.copies.get(id);
-    if (c) return c;
+    if (c) {
+      c.emptySince = null;
+      return c;
+    }
     c = {
       id,
       ball: plazaBallStart(),
@@ -340,6 +367,7 @@ export class PlazaWorld {
       shower: null,
       orbs: new Map(),
       nextOrbAt: now,
+      emptySince: null,
     };
     this.copies.set(id, c);
     // The first player finds the townsfolk already about their day.
@@ -536,7 +564,13 @@ export class PlazaWorld {
         v.cheers = 0;
       }
     }
-    for (const c of this.copies.values()) this.stepCopy(c, dt, now, events);
+    for (const c of this.copies.values()) {
+      if (c.emptySince !== null) {
+        if (now - c.emptySince >= PLAZA_RETURN_MS) this.copies.delete(c.id);
+        continue;
+      }
+      this.stepCopy(c, dt, now, events);
+    }
     return events;
   }
   private stepCopy(c: Copy, dt: number, now: number, events: PlazaEvent[]) {

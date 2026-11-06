@@ -1467,3 +1467,25 @@ body:not(.hub-active) #account-leaves {
 .lobby-layer.is-covered > :not(.ui-panel-host) * {
   animation-play-state: paused !important;
 }
+
+/* Four hub scenes (Lobby, Plaza, Farm, Bistro): narrower buttons where the
+   switch would otherwise reach the coin pills. */
+@media (max-width: 1100px) and (min-height: 501px) {
+  .hub-scenes button {
+    width: 80px;
+  }
+}
+@media (max-height: 500px) {
+  .hub-scenes button {
+    width: 54px;
+    font-size: 12.5px;
+    letter-spacing: 0.06em;
+  }
+}
+@media (max-height: 500px) and (max-width: 760px) {
+  .hub-scenes button {
+    width: 50px;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+  }
+}

@@ -68,15 +68,19 @@ drain (its healing counts at 70% of damage).
   (`skill-fx-nature.ts`).
 - **Raid tricks** (three bosses each, `RAID_BOSS_PERKS`): see
   [raid-roster-design.md](raid-roster-design.md) §6.
-- **Shop**: seven skins each, Mythicals Evergrove and Moonbloom
+- **Shop**: eight skins each: three Common, two Rare, a Garden Epic, a
+  Cyber Mecha Epic (Scale Roller, Treehugger Mk) and a Void Knight Mythical
+  (Thorn Warden, Blight Sentinel)
   ([raid-roster-design.md](raid-roster-design.md) §10.6).
 - **Farm**: Nature has no original champion, so Pangrove farms with Night
   Stalker (it hunts bugs) and Mossloth with Early Sun (crops grow faster).
 - **Database**: [migration 070](../supabase/migrations/070_eighteen_champions.sql)
   (run after 069) adds them to the roster SQL checks (portrait, farmer, farm
-  orders), their farm perks and their Shop skins. Without it, choosing one as
+  orders), their farm perks and their Shop skins; without it, choosing one as
   your portrait or playing one (your Lobby fighter is your farmer) is
-  refused.
+  refused. [Migration 071](../supabase/migrations/071_nature_void_knights_and_cyber.sql)
+  (after 070) makes their Mythicals Void Knights and adds their Cyber Mecha
+  Epics. Both are applied to the 2D-POKEMON Supabase project.
 
 ## Balance
 

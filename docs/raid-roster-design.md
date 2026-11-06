@@ -1053,16 +1053,77 @@ skins) to earn that collection's frame for free.
   skin applies to your other champions.
 - The Shop and the Rewards tab both explain this in one line.
 
-### 10.6 Champion skin catalog (126 skins)
+### 10.6 Champion skin catalog (144 skins)
 
-Every champion gets **3 Common, 2 Rare, 1 Epic and 1 Mythical**. Skins also
+Every champion gets **3 Common, 2 Rare, 2 Epic (one of them Cyber Mecha) and 1 Mythical**. Skins also
 belong to **collections** shared across champions:
 
 - **Winter** (frost, snow and scarves)
 - **Festival** (lanterns, paper and ribbons)
 - **Garden** (petals, moss and blossoms)
 - **Arcade** (neon and pixels)
-- **Celestial** (all eight Mythicals: stars, suns and eclipses)
+- **Cyber Mecha** (a second Epic for every champion; see "Cyber Mecha" below)
+- **Void Knight** (all eighteen Mythicals: black steel, glowing runes and
+  swords; see "The Void Knights" below)
+
+#### Cyber Mecha (a second Epic for every champion)
+
+[Migration 069](../supabase/migrations/069_cyber_mecha_epics.sql) adds one
+Epic per champion: its own paint over chrome, with neon in a contrasting
+colour. Like a Mythical it swaps the champion's own head and neck pieces
+(Halcyra keeps its head piece, which holds its beak):
+
+- a chrome **headset** with the champion's sensor: a V-fin (Voltkit,
+  Auralynx, Pyranda, Glacelle, Astrabun), twin antennae (Lumoth, Mystowl,
+  Duskveil, Coilemur, Shadopus), a crest fin (Cindrake, Tidefin, Wombolder)
+  or a radar dish (Terradon, Halcyra, Sunbara);
+- a segmented **collar** with a glowing core, and a **jetpack** with two
+  thrusters;
+- armour-plate panels with neon status lights; skills and hit sparks in the
+  neon colour; a neon scan line sweeps down the body (its animated
+  detail); dashing throws neon sparks.
+
+| Champion | Skin | Paint / neon |
+|---|---|---|
+| Voltkit | **Arc Unit** | gold / cyan |
+| Cindrake | **Reactor** | red / yellow |
+| Tidefin | **Hydro Frame** | teal / magenta |
+| Auralynx | **Prism Mech** | periwinkle / cyan |
+| Lumoth | **Photon** | mint / yellow |
+| Mystowl | **Psi Core** | pink / cyan |
+| Terradon | **Tank Mk II** | olive / orange |
+| Duskveil | **Phantom OS** | violet / green |
+| Coilemur | **Tesla Frame** | steel / yellow |
+| Pyranda | **Afterburner** | rust / cyan |
+| Glacelle | **Cryo Unit** | ice white / pink |
+| Halcyra | **Sniper Drone** | cobalt / orange |
+| Sunbara | **Solar Mech** | tan / teal |
+| Astrabun | **Warp Unit** | lilac / pink |
+| Wombolder | **Bulldozer** | brown / lime |
+| Shadopus | **Stealth Mk** | indigo / red |
+| Pangrove | **Scale Roller** | green / lime |
+| Mossloth | **Treehugger Mk** | khaki / mint |
+
+#### The Void Knights (every Mythical)
+
+[Migration 067](../supabase/migrations/067_void_knight_mythicals.sql) turned
+the sixteen Celestial Mythicals into Void Knights in place (and
+[071](../supabase/migrations/071_nature_void_knights_and_cyber.sql) the two
+Nature champions'): same skin ids, so
+owners keep the skin, its Awakening stage and what they have equipped. Each
+knight is in dark steel with runes in its own colour, and **swaps the
+champion's own head and neck pieces** (goggles, crest, kerchief, sprout...)
+for its armour (`SkinArt.replaces`; Halcyra keeps its head piece, which holds
+its beak):
+
+- **Stage I:** the knight's helm crest (a crown of blades, bolts, black
+  flame, ice or crystals; horns; an iron helm; a black sun) and a rune
+  gorget. Black smoke and rune sparks rise; it arrives in a rune shockwave.
+- **Stage II:** spiked pauldrons and a tattered cape with a rune sigil
+  (Terradon's shell grows obsidian spikes instead), and a rune circle turns
+  on the ground.
+- **Stage III:** four rune swords fanned behind the shoulders and a taller
+  crest; void flames lick up behind it and rune shards orbit it.
 
 #### Voltkit (sugar-glider kit, Electric)
 
@@ -1074,7 +1135,7 @@ belong to **collections** shared across champions:
 | Rare · Winter | **Snowcap** | Frosty blue fur, earmuffs; dash leaves snowflake sparks |
 | Rare · Festival | **Kite Runner** | Paper-kite wing pattern, a tail ribbon that trails; dash leaves confetti |
 | Epic · Arcade | **Neon Arcade** | Synthwave grid fur in pink and cyan. Skills turn neon magenta, hit sparks are pixel bursts, KO is a pixel "poof", and its antennae pulse like LEDs |
-| **Mythical · Celestial** | **Stormcrown** | **I:** storm-grey fur with gold lightning veins; Spark Dart leaves a gold zig-zag; arrives in a lightning strike; victory is a thunderclap with a floating crown. **II:** a tiny rain cloud follows overhead, and lightning crawls up the antennae. **III:** Overcharge bursts into a lightning crown with branching bolts, footsteps crackle, and its name flickers with static |
+| **Mythical · Void Knight** | **Storm Revenant** | Black steel, violet runes; a crown of lightning-bolt blades takes the goggles' place. Stages as in “The Void Knights” above |
 
 #### Cindrake (magma newt, Fire)
 
@@ -1086,7 +1147,7 @@ belong to **collections** shared across champions:
 | Rare · Garden | **Chili Pepper** | Glossy red with a green stem cap; dash puffs spice dust |
 | Rare · Winter | **Blue Flame** | Cool blue fire crest, white-hot skills |
 | Epic · Festival | **Volcano Forge** | Blacksmith apron and goggles, molten-metal skin. Magma Bomb becomes a glowing ingot, hits throw anvil sparks, KO is a puff of forge smoke, and its crest pulses like bellows |
-| **Mythical · Celestial** | **Sunforged** | **I:** obsidian body with sun-gold cracks; skills burn gold-white; arrives as a falling meteor; victory: its crest erupts in a sunburst. **II:** its crest becomes a small sun with orbiting flares. **III:** Sunfire Pillar becomes a solar column ringed by rotating sigils, footsteps leave brief golden glyphs, and its name glows like a corona |
+| **Mythical · Void Knight** | **Hellforge** | Black steel, ember runes; demon horns and a crest of black hellfire take the flame crest's place. Stages as in “The Void Knights” above |
 
 #### Tidefin (axolotl duelist, Water)
 
@@ -1098,7 +1159,7 @@ belong to **collections** shared across champions:
 | Rare · Garden | **Koi Pond** | Orange-and-white koi spots, a koi-scale sash; dash leaves lily pads |
 | Rare · Festival | **Corsair** | Tricorn hat and striped sash; splashes scatter gold coins |
 | Epic · Winter | **Glacier** | See-through ice-crystal body. Skills become ice, Eddy swirls with snow, hits shatter into shards, and its gills frost over and thaw |
-| **Mythical · Celestial** | **Moontide** | **I:** a deep-sea body speckled with glowing dots; skills shimmer moonlit silver; it rises out of a ripple pool; victory is a ring of glowing bubbles. **II:** its gills glow like deep-sea lights, and soft ripples spread wherever it stands. **III:** Tide Double's clones become ghostly jellyfish, Riptide Wave carries a moon's reflection, and its name ripples |
+| **Mythical · Void Knight** | **Abyssal Reaver** | Black steel, tide-green runes; a steel dorsal-fin helm takes the headband's place. Stages as in “The Void Knights” above |
 
 #### Auralynx (crystal-fisted lynx monk, Aura)
 
@@ -1110,7 +1171,7 @@ belong to **collections** shared across champions:
 | Rare · Garden | **Cherry Blossom** | Pink robe; petals drift down on dash |
 | Rare · Festival | **Jade Temple** | Jade fists, red tassels; hits ring like a small bell |
 | Epic · Arcade | **Stained Glass** | Fists and robe made of stained-glass panels. Prism Shot fires coloured glass, hits shatter into sparkles, Facet Guard looks like a rose window, and light glints across it |
-| **Mythical · Celestial** | **Celestial Sage** | **I:** fur full of slowly drifting stars; galaxy-crystal fists; steps through a star portal; victory: a meditative float with orbiting stars. **II:** a halo of floating stones orbits it. **III:** Facet Guard becomes a turning mandala shield, Shard Nova blooms into a small supernova, footsteps leave fading stars, and its name twinkles |
+| **Mythical · Void Knight** | **Spectral Warden** | Black steel, ice-blue runes; a crown of blades takes the gem's place. Stages as in “The Void Knights” above |
 
 #### Lumoth (fluffy moth, Light)
 
@@ -1122,7 +1183,7 @@ belong to **collections** shared across champions:
 | Rare · Garden | **Rosy Maple** | Pink and buttery yellow, like the real rosy maple moth; soft yellow dust puffs on dash |
 | Rare · Festival | **Paper Lantern** | Wings like warm paper lanterns that glow from inside |
 | Epic · Winter | **Aurora** | Wings ripple through northern-lights colours. Its dust becomes aurora ribbons, hits sparkle green-violet, and KO fades like dawn |
-| **Mythical · Celestial** | **Starweaver** | **I:** wings woven from starlight with drifting constellations; arrives by unfurling from a cocoon of light; victory: spreads its wings and paints a star. **II:** glowing threads trail from its wings. **III:** Kindle sparks become shooting stars, Radiant Flare draws a constellation shaped like Lumoth, and its name shimmers |
+| **Mythical · Void Knight** | **Fallen Lightbringer** | Black steel, gold runes; a small crown of blades between the antennae, and a short cape. Stages as in “The Void Knights” above |
 
 #### Mystowl (three-eyed owl, Psychic)
 
@@ -1134,7 +1195,7 @@ belong to **collections** shared across champions:
 | Rare · Festival | **Scholar** | A tiny graduation cap and scarf (all three eyes stay visible); pages flutter on dash |
 | Rare · Garden | **Witch's Familiar** | A pointed hat, potion-bubble dash trail |
 | Epic · Arcade | **Clockwork** | Brass gears and rivets, ticking eye. Third-Eye Ray becomes a golden clock-hand beam, Wing Cloak shows a clock face, and gears spin on its back |
-| **Mythical · Celestial** | **Oracle** | **I:** its third eye opens onto a galaxy; it materializes from a blink; victory: all three eyes flare. **II:** original rune cards orbit it. **III:** Third-Eye Ray becomes a galaxy beam, Wing Cloak shows a turning eye sigil, and its name has a faint third-eye glyph |
+| **Mythical · Void Knight** | **Void Inquisitor** | Black steel, magenta runes; a crown of blades and a third eye that never closes, and a short cape. Stages as in “The Void Knights” above |
 
 #### Terradon (boulder tortoise, Earth)
 
@@ -1146,7 +1207,7 @@ belong to **collections** shared across champions:
 | Rare · Garden | **Bonsai** | A tiny bonsai tree on its shell; leaves fall on dash |
 | Rare · Winter | **Snowball** | Snow-covered shell, knitted scarf; puffs of snow on hits |
 | Epic · Arcade | **Geode** | Shell cracks show glowing amethyst. Tremor bursts with crystal shards, hits sparkle violet, and the crystals pulse while it sleeps |
-| **Mythical · Celestial** | **World-Shell** | **I:** a tiny floating island on its shell, with trees, a waterfall and clouds; it rises from the ground like a mountain; victory: tiny fireworks from the shell's village. **II:** little birds circle and the waterfall flows. **III:** Shell Up lights up a sleeping village, Tremor makes flowers spring up, and its name has a tiny leaf |
+| **Mythical · Void Knight** | **Obsidian Bulwark** | Black steel, acid-green runes; ram horns and obsidian crystals take the sprout's place; at II the shell grows obsidian spikes instead of a cape. Stages as in “The Void Knights” above |
 
 #### Duskveil (hooded lantern wisp, Shadow)
 
@@ -1158,7 +1219,7 @@ belong to **collections** shared across champions:
 | Rare · Festival | **Pumpkin Lantern** | A carved-pumpkin lantern; autumn leaves on dash |
 | Rare · Festival | **Paper Lantern** | A red paper lantern with tassels |
 | Epic · Garden | **Candlelight** | A melting-candle hood with wax drips. Ghostfire becomes candle flames, hits puff smoke, and KO is a blown-out wick |
-| **Mythical · Celestial** | **Eclipse** | **I:** the hood becomes a total eclipse with a dark sun and a bright ring; it fades in like an eclipse; victory: the ring blooms. **II:** the ring flares and shadow wisps drift. **III:** Haunted Lantern becomes an eclipse sigil, Void Orb a tiny black sun, and its name has a ring |
+| **Mythical · Void Knight** | **Crimson Sovereign** | Black steel, crimson eyes and runes; demon horns rise from the hood. Stages as in “The Void Knights” above |
 
 #### The eight newest champions
 
@@ -1166,12 +1227,9 @@ Coilemur, Pyranda, Glacelle, Halcyra, Sunbara, Astrabun, Wombolder and
 Shadopus have 3 Common, 2 Rare, 1 Epic and 1 Mythical each
 ([migrations 053](../supabase/migrations/053_new_champion_skins.sql) and
 [054](../supabase/migrations/054_new_champion_mythicals.sql)). Their Rares and
-Epics join the Winter, Festival, Garden and Arcade collections and their
-Mythicals join Celestial, so those collections' free frame now needs these
-skins too (a frame someone already earned stays theirs). Their Mythicals' big
-stage III backdrops (moons, a sunrise, a galaxy) peek from beside the
-shoulder in portraits, inside the rig's crop; in battle the full backdrop is
-an effect drawn behind the fighter. Skin art recolours
+Epics join the Winter, Festival, Garden and Arcade collections, so those
+collections' free frame now needs these skins too (a frame someone already
+earned stays theirs). Their Mythicals are Void Knights, like everyone's. Skin art recolours
 markings with the skin (Pyranda's red-panda markings included); things a
 champion carries, like Pyranda's chestnuts or Coilemur's magnet, keep their
 colours.
@@ -1186,7 +1244,7 @@ colours.
 | Rare · Festival | **Firecracker** | Lucky red with a gold-banded tail; dashing pops confetti |
 | Rare · Winter | **Frost Fuse** | Icy fur and a bobble hat; dashing leaves snowflakes |
 | Epic · Arcade | **Tesla Coil** | Gunmetal fur with glowing circuits, teal skills and a crackling pulse. Hit sparks take its colour, KO is a puff in its colours, and a pulsing ring plays on the rig |
-| **Mythical · Celestial** | **Cometcaller** | **I:** starry midnight-blue fur; comets streak past. **II:** a comet pendant, and two comets orbit with their tails. **III:** a crown of three comets, and a crown of comets circles its head while more streak by |
+| **Mythical · Void Knight** | **Volt Executioner** | Black steel, cyan runes and stripes; a crown of bolts takes the magnet's place. Stages as in “The Void Knights” above |
 
 #### Pyranda (red panda, Fire)
 
@@ -1198,7 +1256,7 @@ colours.
 | Rare · Garden | **Chestnut Grove** | Chestnut brown with an acorn cap; dashing drops leaves |
 | Rare · Festival | **Street Vendor** | A folded paper hat and a striped coat; dashing puffs spice |
 | Epic · Winter | **Fireside Knit** | A cable-knit sweater, cocoa-gold skills and a flickering ember. Hit sparks take its colour, KO is a puff in its colours, and a flickering flame plays on the rig |
-| **Mythical · Celestial** | **Harvest Moon** | **I:** night-sky fur with ember spots; ember leaves rise around it. **II:** a lantern-moon pendant, and the ground glows amber. **III:** a harvest moon rises behind it, with a moon glow and orbiting lanterns |
+| **Mythical · Void Knight** | **Ashen Warlord** | Black steel, ash-grey markings and ember runes; a crown of black flame. Stages as in “The Void Knights” above |
 
 #### Glacelle (sea angel, Water)
 
@@ -1210,7 +1268,7 @@ colours.
 | Rare · Garden | **Water Lily** | Petal pink with a lotus bloom; dashing scatters petals |
 | Rare · Winter | **Snow Globe** | Snow drifting inside a glassy body; dashing leaves snowflakes |
 | Epic · Arcade | **Deep Glow** | An abyssal body with neon spots and magenta skills. Hit sparks take its colour, KO is a puff in its colours, and a shimmer of stars plays on the rig |
-| **Mythical · Celestial** | **Polaris** | **I:** a starry night body; frost falls around it. **II:** a north-star crown whose rays slowly turn. **III:** aurora ribbons on its sides and aurora curtains waving behind |
+| **Mythical · Void Knight** | **Rimebane** | Black steel, frost-bright runes; a crown of black ice, and a short cape. Stages as in “The Void Knights” above |
 
 #### Halcyra (kingfisher, Aura)
 
@@ -1222,7 +1280,7 @@ colours.
 | Rare · Festival | **Fletcher** | A feathered archer's cap and striped wings; dashing leaves gold dust |
 | Rare · Winter | **Winter Plume** | Frost-white feathers and earmuffs; dashing leaves snowflakes |
 | Epic · Festival | **Paper Crane** | Folded-paper feathers, crimson skills and a glinting crest. Hit sparks take its colour, KO is a puff in its colours, and a glint plays on the rig |
-| **Mythical · Celestial** | **Starfletch** | **I:** constellation feathers; shooting-star arrows fly where it faces. **II:** a golden star-bow sigil, and three stars orbit. **III:** a star-tipped crest, the stars link into a constellation, and a ring pulses out |
+| **Mythical · Void Knight** | **Nightfeather** | Black steel, indigo runes; a crown of blades over its own crest (it keeps its beak and monocle), and a short cape. Stages as in “The Void Knights” above |
 
 #### Sunbara (capybara, Light)
 
@@ -1234,7 +1292,7 @@ colours.
 | Rare · Festival | **Bathhouse** | A folded towel and steamy stripes; dashing blows bubbles |
 | Rare · Winter | **Snow Day** | Snow-dusted fur and a knitted scarf; dashing leaves snowflakes |
 | Epic · Garden | **Sunflower** | A sunflower bloom, golden skills and a glint. Hit sparks take its colour, KO is a puff in its colours, and a glint plays on the rig |
-| **Mythical · Celestial** | **Daybreak** | **I:** sunrise-coral fur with dawn bands; warm light rises. **II:** a sun corona round its yuzu, and rings of steam spread out. **III:** a dawn-cloud collar and a sunrise behind it with slowly turning rays |
+| **Mythical · Void Knight** | **Eclipse Templar** | Black steel, amber runes; a black sun with a blade corona takes the yuzu's place. Stages as in “The Void Knights” above |
 
 #### Astrabun (moon rabbit, Psychic)
 
@@ -1246,7 +1304,7 @@ colours.
 | Rare · Festival | **Mochi Maker** | A twisted headband for pounding mochi; dashing throws confetti |
 | Rare · Garden | **Clover** | Clover-green spots and a flower crown; dashing drops leaves |
 | Epic · Arcade | **Space Cadet** | A starry suit with an antenna, cyan skills and a glint. Hit sparks take its colour, KO is a puff in its colours, and a glint plays on the rig |
-| **Mythical · Celestial** | **Full Moon** | **I:** moon-gold fur with craters; stars drift down. **II:** a gold crescent tiara, and two tiny moons orbit. **III:** a full moon rises behind it, ringed by a pulsing moonlight halo |
+| **Mythical · Void Knight** | **Rift Duelist** | Black steel, violet runes; a rift gem and a crown of blades between its ears. Stages as in “The Void Knights” above |
 
 #### Wombolder (wombat, Earth)
 
@@ -1258,7 +1316,7 @@ colours.
 | Rare · Garden | **Mushroom Hollow** | A spotted toadstool cap; dashing drops leaves |
 | Rare · Winter | **Snowplough** | Frosted fur and a bobble hat; dashing kicks up snow |
 | Epic · Arcade | **Gold Rush** | A miner's lamp helmet, gold-veined fur and gold skills. Hit sparks take its colour, KO is a puff in its colours, and a glint plays on the rig |
-| **Mythical · Celestial** | **Saturnine** | **I:** banded planet fur; dust drifts around it. **II:** an orbit sash with two moonlets, and two moonlets orbit. **III:** a planetary ring, with a ring of tiny rocks turning around it |
+| **Mythical · Void Knight** | **Iron Juggernaut** | Black steel, acid-lime runes; a riveted iron helm with spike horns takes the stone's place. Stages as in “The Void Knights” above |
 
 #### Shadopus (octopus, Shadow)
 
@@ -1270,15 +1328,17 @@ colours.
 | Rare · Festival | **Masquerade** | A jewelled masquerade mask; dashing throws confetti |
 | Rare · Garden | **Tide Pool** | Rock-pool speckles and a starfish clip; dashing blows bubbles |
 | Epic · Garden | **Anglerlight** | A glowing lure on a stalk, abyss-teal skills and a flicker. Hit sparks take its colour, KO is a puff in its colours, and a flickering flame plays on the rig |
-| **Mythical · Celestial** | **Nebula** | **I:** nebula skin full of stars; stardust trails it. **II:** glowing star suckers on its arms, and sparkles orbit. **III:** a spiral galaxy turns behind it |
+| **Mythical · Void Knight** | **Abyss Stalker** | Black steel, magenta runes; a crown of blades on its dome, and a short cape. Stages as in “The Void Knights” above |
 
 #### The Nature champions
 
-Pangrove and Mossloth have 3 Common, 2 Rare, 1 Epic and 1 Mythical each
-([migration 070](../supabase/migrations/070_eighteen_champions.sql)). Their
-Rares and Epics join the Garden, Festival and Winter collections and their
-Mythicals join Celestial, so those collections' free frames now need them too
-(a frame someone already earned stays theirs).
+Pangrove and Mossloth have 3 Common, 2 Rare, 2 Epic (one Cyber Mecha) and 1
+Mythical each ([migration 070](../supabase/migrations/070_eighteen_champions.sql),
+then [071](../supabase/migrations/071_nature_void_knights_and_cyber.sql), which
+makes their Mythicals Void Knights and adds their Cyber Mecha Epics). Their
+Rares and first Epics join the Garden, Festival and Winter collections, so
+those collections' free frames now need them too (a frame someone already
+earned stays theirs).
 
 #### Pangrove (pangolin, Nature)
 
@@ -1289,8 +1349,9 @@ Mythicals join Celestial, so those collections' free frames now need them too
 | Common | Jade | Deep jade with a gold glow |
 | Rare · Garden | **Blossom** | Cherry-blossom scales and a flower crown; dashing scatters petals |
 | Rare · Festival | **Lantern Night** | Festival-red scales and lantern tassels; dashing throws confetti |
-| Epic · Garden | **Golden Sap** | Amber scales veined with sap, a leaf crown, golden skills and a glint |
-| **Mythical · Celestial** | **Evergrove** | **I:** starlit leaves; glowing leaves drift down. **II:** a halo of glowing leaves over the crown, and fireflies orbit. **III:** an ancient tree rises behind it, its canopy lit |
+| Epic · Garden | **Golden Sap** | Amber scales veined with sap, a golden stem, golden skills and a glint |
+| Epic · Cyber Mecha | **Scale Roller** | Green plating, lime neon (see "Cyber Mecha" above) |
+| **Mythical · Void Knight** | **Thorn Warden** | Black thorn-plate, lime runes; a crown of blades and spiked horns take the sprout's place, and a cape. Stages as in “The Void Knights” above |
 
 #### Mossloth (three-toed sloth, Nature)
 
@@ -1302,7 +1363,8 @@ Mythicals join Celestial, so those collections' free frames now need them too
 | Rare · Garden | **Acorn Nap** | An acorn cap for napping; dashing drops leaves |
 | Rare · Winter | **Cozy Knit** | A knitted scarf over frosty fur; dashing leaves snowflakes |
 | Epic · Garden | **Bonsai Keeper** | A little bonsai on its head, blossom skills and a shimmer |
-| **Mythical · Celestial** | **Moonbloom** | **I:** night-blue fur with glowing moonflowers; moon pollen rises. **II:** a moonflower behind the ear and a petal collar; two lights orbit. **III:** a giant night bloom opens behind it |
+| Epic · Cyber Mecha | **Treehugger Mk** | Khaki armour, mint neon (see "Cyber Mecha" above) |
+| **Mythical · Void Knight** | **Blight Sentinel** | Rotwood-black steel, mint runes; a crystal crest and ram horns take the moss crown's place, and a cape. Stages as in “The Void Knights” above |
 
 ### 10.7 All-fighter collections
 
