@@ -5,8 +5,8 @@ import { afterAll, beforeAll, expect, it } from "vitest";
 import { FIGHTER_IDS } from "../../packages/shared/src/index";
 import { CHAMPION_SKINS, skinPrice } from "../../packages/shared/src/shop";
 
-// Migrations 052 and 067: the new champions can be your portrait and your
-// farmer, and SQL's roster matches FIGHTER_IDS. Migrations 053, 054 and 067:
+// Migrations 052 and 070: the new champions can be your portrait and your
+// farmer, and SQL's roster matches FIGHTER_IDS. Migrations 053, 054 and 070:
 // their Shop skins.
 let db: PGlite;
 const player = "00000000-0000-4000-8000-000000000511";

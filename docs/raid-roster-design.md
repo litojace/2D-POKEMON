@@ -1275,7 +1275,7 @@ colours.
 #### The Nature champions
 
 Pangrove and Mossloth have 3 Common, 2 Rare, 1 Epic and 1 Mythical each
-([migration 067](../supabase/migrations/067_eighteen_champions.sql)). Their
+([migration 070](../supabase/migrations/070_eighteen_champions.sql)). Their
 Rares and Epics join the Garden, Festival and Winter collections and their
 Mythicals join Celestial, so those collections' free frames now need them too
 (a frame someone already earned stays theirs).

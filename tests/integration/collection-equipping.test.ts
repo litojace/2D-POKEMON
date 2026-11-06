@@ -200,7 +200,7 @@ it("still equips earned raid rewards alongside collection pieces", async () => {
 
 it("keeps every champion skin equippable through its separate champion slot", async () => {
   // The catalog includes the newest champions' skins, which 053, 054 and
-  // 067 seed (067's other changes need the farm tables, so just its skins).
+  // 070 seed (070's other changes need the farm tables, so just its skins).
   await db.exec("reset role");
   for (const file of [
     "053_new_champion_skins.sql",
@@ -208,7 +208,7 @@ it("keeps every champion skin equippable through its separate champion slot", as
   ])
     await db.exec(await readFile(`supabase/migrations/${file}`, "utf8"));
   const nature = await readFile(
-    "supabase/migrations/067_eighteen_champions.sql",
+    "supabase/migrations/070_eighteen_champions.sql",
     "utf8",
   );
   await db.exec(

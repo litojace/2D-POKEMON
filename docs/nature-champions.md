@@ -72,8 +72,8 @@ drain (its healing counts at 70% of damage).
   ([raid-roster-design.md](raid-roster-design.md) §10.6).
 - **Farm**: Nature has no original champion, so Pangrove farms with Night
   Stalker (it hunts bugs) and Mossloth with Early Sun (crops grow faster).
-- **Database**: [migration 067](../supabase/migrations/067_eighteen_champions.sql)
-  (run after 066) adds them to the roster SQL checks (portrait, farmer, farm
+- **Database**: [migration 070](../supabase/migrations/070_eighteen_champions.sql)
+  (run after 069) adds them to the roster SQL checks (portrait, farmer, farm
   orders), their farm perks and their Shop skins. Without it, choosing one as
   your portrait or playing one (your Lobby fighter is your farmer) is
   refused.

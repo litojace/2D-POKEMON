@@ -14,13 +14,13 @@ import {
 
 /**
  * 010 seeds the first catalog; 053 and 054 add the second eight champions'
- * skins, 067 the two Nature champions'.
+ * skins, 070 the two Nature champions'.
  */
 const migration =
   readFileSync("supabase/migrations/010_shop.sql", "utf8") +
   readFileSync("supabase/migrations/053_new_champion_skins.sql", "utf8") +
   readFileSync("supabase/migrations/054_new_champion_mythicals.sql", "utf8") +
-  readFileSync("supabase/migrations/067_eighteen_champions.sql", "utf8");
+  readFileSync("supabase/migrations/070_eighteen_champions.sql", "utf8");
 /** Missions are re-seeded (with the solo flag) by 014. */
 const missionMigration = readFileSync(
   "supabase/migrations/014_missions.sql",

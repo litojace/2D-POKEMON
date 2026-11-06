@@ -1,6 +1,6 @@
 -- Eighteen champions: the Nature element's Pangrove (a leaf-scaled pangolin)
 -- and Mossloth (a sloth with a moss garden on its back) join the roster
--- everywhere SQL names the champions. Run after 066. Without it, choosing one
+-- everywhere SQL names the champions. Run after 069. Without it, choosing one
 -- of them as your portrait, or playing one (your Lobby fighter is your
 -- farmer), is refused.
 --
